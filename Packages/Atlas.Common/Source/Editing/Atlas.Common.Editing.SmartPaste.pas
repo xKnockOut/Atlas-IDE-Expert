@@ -222,6 +222,8 @@ type
     procedure Add(const AName: string; const AInterfaceUses: TInterfaceUsesFunc; var AUses: TSmartPasteUses);
   end;
 
+{ TUsesSplit }
+
 procedure TUsesSplit.Add(const AName: string; const AInterfaceUses: TInterfaceUsesFunc;
   var AUses: TSmartPasteUses);
 begin

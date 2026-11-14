@@ -207,6 +207,8 @@ type
     procedure Tick(Sender: TObject);
   end;
 
+{ TStopTicker }
+
 procedure TStopTicker.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugSession.StopTick);
@@ -246,6 +248,8 @@ begin
       end;
     end);
 end;
+
+{ TAtlasIdeDebugSession.TNotifier }
 
 procedure TAtlasIdeDebugSession.TNotifier.ProcessCreated(const Process: IOTAProcess);
 begin
@@ -345,6 +349,117 @@ end;
 
 { TAtlasIdeDebugSession }
 
+class procedure TAtlasIdeDebugSession.NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>);
+var
+  mListeners: TArray<IAtlasIdeDebugListener>;
+  mListener: IAtlasIdeDebugListener;
+begin
+  if FListeners = nil then
+  begin
+    Exit;
+  end;
+  // Kopie: Ein Zuhörer darf sich beim Ereignis ab- oder einen anderen anmelden.
+  mListeners := FListeners.ToArray;
+  for mListener in mListeners do
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Debugger,
+      procedure
+      begin
+        if (FListeners <> nil) and (FListeners.IndexOf(mListener) >= 0) then
+        begin
+          AEvent(mListener);
+        end;
+      end);
+  end;
+end;
+
+class procedure TAtlasIdeDebugSession.StateChanged(const AProcess: IOTAProcess);
+var
+  mState: TOTAProcessState;
+  mStop: TAtlasDebugStop;
+begin
+  if (AProcess = nil) or (FInternal > 0) then
+  begin
+    Exit;
+  end;
+  mState := AProcess.ProcessState;
+  if IsStoppedState(mState) then
+  begin
+    case mState of
+      psException:
+        mStop := TAtlasDebugStop.Exception;
+      psFault, psResFault:
+        mStop := TAtlasDebugStop.Fault;
+    else
+      mStop := TAtlasDebugStop.Paused;
+    end;
+    FStopped := True;
+    Inc(FStopCount);
+    // Erst nach der Benachrichtigung des Debuggers melden; ist der Halt bis dahin vorbei, entfällt er.
+    FPendingStop := mStop;
+    FPendingCount := FStopCount;
+    if FStopTimer = nil then
+    begin
+      FTicker := TStopTicker.Create;
+      FStopTimer := TTimer.Create(nil);
+      FStopTimer.Enabled := False;
+      FStopTimer.Interval := 1;
+      FStopTimer.OnTimer := TStopTicker(FTicker).Tick;
+    end;
+    FStopTimer.Enabled := True;
+  end
+  else if (mState = psRunning) and FStopped then
+  begin
+    FStopped := False;
+    NotifyListeners(
+      procedure(AListener: IAtlasIdeDebugListener)
+      begin
+        AListener.DebugResumed;
+      end);
+  end;
+end;
+
+class procedure TAtlasIdeDebugSession.Ended;
+begin
+  FStopped := False;
+  NotifyListeners(
+    procedure(AListener: IAtlasIdeDebugListener)
+    begin
+      AListener.DebugEnded;
+    end);
+end;
+
+class function TAtlasIdeDebugSession.AllowLaunch(const AProject: IOTAProject): Boolean;
+var
+  mListeners: TArray<IAtlasIdeDebugListener>;
+  mListener: IAtlasIdeDebugListener;
+  mCheck: IAtlasIdeDebugLaunchCheck;
+begin
+  Result := True;
+  if FListeners = nil then
+  begin
+    Exit;
+  end;
+  mListeners := FListeners.ToArray;
+  for mListener in mListeners do
+  begin
+    if not Supports(mListener, IAtlasIdeDebugLaunchCheck, mCheck) then
+    begin
+      Continue;
+    end;
+    try
+      if not mCheck.AllowLaunch(AProject) then
+      begin
+        Exit(False);
+      end;
+    except
+      // Ein Fehler in der Prüfung darf den Start nicht verhindern.
+      on E: Exception do
+        TAtlasGuard.Log(Format('Launch check failed: %s: %s', [E.ClassName, TAtlasGuard.MessageText(E.Message)]));
+    end;
+  end;
+end;
+
 class procedure TAtlasIdeDebugSession.Start;
 var
   mServices: IOTADebuggerServices;
@@ -422,112 +537,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugSession.AllowLaunch(const AProject: IOTAProject): Boolean;
-var
-  mListeners: TArray<IAtlasIdeDebugListener>;
-  mListener: IAtlasIdeDebugListener;
-  mCheck: IAtlasIdeDebugLaunchCheck;
-begin
-  Result := True;
-  if FListeners = nil then
-  begin
-    Exit;
-  end;
-  mListeners := FListeners.ToArray;
-  for mListener in mListeners do
-  begin
-    if not Supports(mListener, IAtlasIdeDebugLaunchCheck, mCheck) then
-    begin
-      Continue;
-    end;
-    try
-      if not mCheck.AllowLaunch(AProject) then
-      begin
-        Exit(False);
-      end;
-    except
-      // Ein Fehler in der Prüfung darf den Start nicht verhindern.
-      on E: Exception do
-        TAtlasGuard.Log(Format('Launch check failed: %s: %s', [E.ClassName, TAtlasGuard.MessageText(E.Message)]));
-    end;
-  end;
-end;
-
-class procedure TAtlasIdeDebugSession.NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>);
-var
-  mListeners: TArray<IAtlasIdeDebugListener>;
-  mListener: IAtlasIdeDebugListener;
-begin
-  if FListeners = nil then
-  begin
-    Exit;
-  end;
-  // Kopie: Ein Zuhörer darf sich beim Ereignis ab- oder einen anderen anmelden.
-  mListeners := FListeners.ToArray;
-  for mListener in mListeners do
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Debugger,
-      procedure
-      begin
-        if (FListeners <> nil) and (FListeners.IndexOf(mListener) >= 0) then
-        begin
-          AEvent(mListener);
-        end;
-      end);
-  end;
-end;
-
-class procedure TAtlasIdeDebugSession.StateChanged(const AProcess: IOTAProcess);
-var
-  mState: TOTAProcessState;
-  mStop: TAtlasDebugStop;
-begin
-  if (AProcess = nil) or (FInternal > 0) then
-  begin
-    Exit;
-  end;
-  mState := AProcess.ProcessState;
-  if IsStoppedState(mState) then
-  begin
-    case mState of
-      psException:
-        mStop := TAtlasDebugStop.Exception;
-      psFault, psResFault:
-        mStop := TAtlasDebugStop.Fault;
-    else
-      mStop := TAtlasDebugStop.Paused;
-    end;
-    FStopped := True;
-    Inc(FStopCount);
-    // Erst nach der Benachrichtigung des Debuggers melden; ist der Halt bis dahin vorbei, entfällt er.
-    FPendingStop := mStop;
-    FPendingCount := FStopCount;
-    if FStopTimer = nil then
-    begin
-      FTicker := TStopTicker.Create;
-      FStopTimer := TTimer.Create(nil);
-      FStopTimer.Enabled := False;
-      FStopTimer.Interval := 1;
-      FStopTimer.OnTimer := TStopTicker(FTicker).Tick;
-    end;
-    FStopTimer.Enabled := True;
-  end
-  else if (mState = psRunning) and FStopped then
-  begin
-    FStopped := False;
-    NotifyListeners(
-      procedure(AListener: IAtlasIdeDebugListener)
-      begin
-        AListener.DebugResumed;
-      end);
-  end;
-end;
-
-class procedure TAtlasIdeDebugSession.SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter);
-begin
-  GStopFilter := AFilter;
-end;
-
 /// <summary>Halt über den Filter der Sitzung erledigt?</summary>
 function Filtered(AStop: TAtlasDebugStop): Boolean;
 var
@@ -576,14 +585,9 @@ begin
     end);
 end;
 
-class procedure TAtlasIdeDebugSession.Ended;
+class procedure TAtlasIdeDebugSession.SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter);
 begin
-  FStopped := False;
-  NotifyListeners(
-    procedure(AListener: IAtlasIdeDebugListener)
-    begin
-      AListener.DebugEnded;
-    end);
+  GStopFilter := AFilter;
 end;
 
 class function TAtlasIdeDebugSession.Active: Boolean;

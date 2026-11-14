@@ -65,19 +65,31 @@ uses
   Shell.Diagnostics,
   Atlas.Text.LogMarks;
 
-class function TShellStdio.CreateTraceStream(const AFileName, AFallbackTag: string; out AActualName: string): TStream;
+{ TShellStdio }
+
+class function TShellStdio.Open(const AOptions: TCommandLineOptions): TShellStdioChannel;
 var
-  mDirectory: string;
-  mStream: TRotatingFileStream;
+  mLoggerImpl: TLogger;
+  mWarning: TCommandLineWarning;
 begin
-  mDirectory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
-  if mDirectory <> '' then
+  Result := Default(TShellStdioChannel);
+  // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
+  TStackTrace.Install;
+  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE, soweit die
+  // Plattform sie braucht.
+  TShellPlatform.InstallGuards;
+  mLoggerImpl := NewLogger(AOptions, Result.RecentLog, Result.Anonymizer);
+  Result.Logger := mLoggerImpl;
+  Result.Transport := NewTransport(AOptions, Result.Logger, Result.Tracing);
+  mLoggerImpl.AddSink(TLspLogMessageSink.Create(Result.Transport), AOptions.LogLevel);
+  for mWarning in AOptions.Warnings do
   begin
-    ForceDirectories(mDirectory);
+    Result.Logger.Warning(mWarning.Text);
   end;
-  mStream := TRotatingFileStream.Create(AFileName, False, AFallbackTag);
-  AActualName := mStream.FileName;
-  Result := mStream;
+  if Result.Tracing <> nil then
+  begin
+    WatchTracing(Result.Tracing, Result.Logger);
+  end;
 end;
 
 class function TShellStdio.NewLogger(const AOptions: TCommandLineOptions; out ARecentLog: IRecentLogLines;
@@ -147,29 +159,19 @@ begin
     end;
 end;
 
-class function TShellStdio.Open(const AOptions: TCommandLineOptions): TShellStdioChannel;
+class function TShellStdio.CreateTraceStream(const AFileName, AFallbackTag: string; out AActualName: string): TStream;
 var
-  mLoggerImpl: TLogger;
-  mWarning: TCommandLineWarning;
+  mDirectory: string;
+  mStream: TRotatingFileStream;
 begin
-  Result := Default(TShellStdioChannel);
-  // Stacktraces für das Absturzprotokoll (Exception.StackTrace).
-  TStackTrace.Install;
-  // Schutzseite nach Stapelüberlauf (#1094) und Lesen mit FILE_SHARE_DELETE, soweit die
-  // Plattform sie braucht.
-  TShellPlatform.InstallGuards;
-  mLoggerImpl := NewLogger(AOptions, Result.RecentLog, Result.Anonymizer);
-  Result.Logger := mLoggerImpl;
-  Result.Transport := NewTransport(AOptions, Result.Logger, Result.Tracing);
-  mLoggerImpl.AddSink(TLspLogMessageSink.Create(Result.Transport), AOptions.LogLevel);
-  for mWarning in AOptions.Warnings do
+  mDirectory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
+  if mDirectory <> '' then
   begin
-    Result.Logger.Warning(mWarning.Text);
+    ForceDirectories(mDirectory);
   end;
-  if Result.Tracing <> nil then
-  begin
-    WatchTracing(Result.Tracing, Result.Logger);
-  end;
+  mStream := TRotatingFileStream.Create(AFileName, False, AFallbackTag);
+  AActualName := mStream.FileName;
+  Result := mStream;
 end;
 
 end.

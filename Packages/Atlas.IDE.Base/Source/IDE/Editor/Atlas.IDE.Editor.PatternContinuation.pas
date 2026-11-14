@@ -118,94 +118,6 @@ end;
 
 { TAtlasIdePatternContinuation }
 
-class procedure TAtlasIdePatternContinuation.Install(const ASessionOf: TFunc<TLspSession>;
-  const ACompletionVisible: TFunc<Boolean>);
-begin
-  FSessionOf := ASessionOf;
-  FCompletionVisible := ACompletionVisible;
-  if FPreview = nil then
-  begin
-    FPreview := TAtlasEditorPreview.Create;
-    FPreview.Element := TAtlasDrawnElement.PatternPreview;
-    FPreview.FollowCursor := True;
-  end;
-  if FKeys = nil then
-  begin
-    FKeys := TKeys.Create(cKeyPriority);
-  end;
-  if FEnums = nil then
-  begin
-    FEnums := TDictionary<string, TArray<string>>.Create;
-  end;
-  TAtlasEnterWatch.Add(cHandlerName,
-    function: Boolean
-    begin
-      Result := Enabled;
-    end,
-    function(const AView: IOTAEditView): Boolean
-    begin
-      Result := Run(AView);
-    end);
-end;
-
-class procedure TAtlasIdePatternContinuation.Uninstall;
-begin
-  TAtlasEnterWatch.Remove(cHandlerName);
-  Dismiss;
-  // Vor dem Freigeben abmelden (TAtlasKeyHook).
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-  FreeAndNil(FKeys);
-  FreeAndNil(FPreview);
-  FreeAndNil(FEnums);
-  FSessionOf := nil;
-  FCompletionVisible := nil;
-end;
-
-class function TAtlasIdePatternContinuation.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.ContinuePattern;
-end;
-
-class function TAtlasIdePatternContinuation.Visible: Boolean;
-begin
-  Result := FFileName <> '';
-end;
-
-class procedure TAtlasIdePatternContinuation.Dismiss;
-begin
-  if FFileName = '' then
-  begin
-    Exit;
-  end;
-  FFileName := '';
-  FSuggestion := Default(TAtlasPatternSuggestion);
-  if FKeys <> nil then
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-  if FPreview <> nil then
-  begin
-    FPreview.Clear;
-  end;
-end;
-
-class procedure TAtlasIdePatternContinuation.EditorModified;
-begin
-  Dismiss;
-end;
-
-class function TAtlasIdePatternContinuation.AtSuggestion: Boolean;
-var
-  mView: IOTAEditView;
-begin
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
-    (mView.CursorPos.Line = FLine) and (mView.CursorPos.Col = FColumn);
-end;
-
 class function TAtlasIdePatternContinuation.EnumValues(const AFileName, AText, AMember: string;
   ALine, ACharacter: Integer): TArray<string>;
 var
@@ -263,6 +175,100 @@ begin
   end;
 end;
 
+class function TAtlasIdePatternContinuation.AtSuggestion: Boolean;
+var
+  mView: IOTAEditView;
+begin
+  mView := TAtlasEditorBuffer.ActiveView;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
+    (mView.CursorPos.Line = FLine) and (mView.CursorPos.Col = FColumn);
+end;
+
+class function TAtlasIdePatternContinuation.CanSuggest(const AView: IOTAEditView): Boolean;
+begin
+  Result := Enabled and (AView <> nil) and (AView.Buffer <> nil) and (FPreview <> nil);
+  if Result and Assigned(FCompletionVisible) then
+  begin
+    Result := not FCompletionVisible();
+  end;
+  Result := Result and not AView.Buffer.IsReadOnly;
+end;
+
+class procedure TAtlasIdePatternContinuation.ShowGhost(const AFileName: string; const ACursor: TOTAEditPos;
+  const ACurrent: string; const ASuggestion: TAtlasPatternSuggestion);
+var
+  mGhost: string;
+begin
+  // Schattentext ab dem Cursor: was am Einzug noch fehlt, dann die Zeile.
+  mGhost := ASuggestion.Text;
+  if ASuggestion.Indent.StartsWith(ACurrent) then
+  begin
+    mGhost := Copy(ASuggestion.Indent, Length(ACurrent) + 1, MaxInt) + mGhost;
+  end;
+  FFileName := AFileName;
+  FLine := ACursor.Line;
+  FColumn := ACursor.Col;
+  FSuggestion := ASuggestion;
+  TAtlasKeyHook.Add(FKeys);
+  FPreview.Show(AFileName, ACursor.Line, ACursor.Col, mGhost);
+end;
+
+class procedure TAtlasIdePatternContinuation.Install(const ASessionOf: TFunc<TLspSession>;
+  const ACompletionVisible: TFunc<Boolean>);
+begin
+  FSessionOf := ASessionOf;
+  FCompletionVisible := ACompletionVisible;
+  if FPreview = nil then
+  begin
+    FPreview := TAtlasEditorPreview.Create;
+    FPreview.Element := TAtlasDrawnElement.PatternPreview;
+    FPreview.FollowCursor := True;
+  end;
+  if FKeys = nil then
+  begin
+    FKeys := TKeys.Create(cKeyPriority);
+  end;
+  if FEnums = nil then
+  begin
+    FEnums := TDictionary<string, TArray<string>>.Create;
+  end;
+  TAtlasEnterWatch.Add(cHandlerName,
+    function: Boolean
+    begin
+      Result := Enabled;
+    end,
+    function(const AView: IOTAEditView): Boolean
+    begin
+      Result := Run(AView);
+    end);
+end;
+
+class procedure TAtlasIdePatternContinuation.Uninstall;
+begin
+  TAtlasEnterWatch.Remove(cHandlerName);
+  Dismiss;
+  // Vor dem Freigeben abmelden (TAtlasKeyHook).
+  if FKeys <> nil then
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+  FreeAndNil(FKeys);
+  FreeAndNil(FPreview);
+  FreeAndNil(FEnums);
+  FSessionOf := nil;
+  FCompletionVisible := nil;
+end;
+
+class function TAtlasIdePatternContinuation.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.ContinuePattern;
+end;
+
+class function TAtlasIdePatternContinuation.Visible: Boolean;
+begin
+  Result := FFileName <> '';
+end;
+
 /// <summary>Enter am Zeilenende: Zeile ALine (0-basiert) ist leer oder nur eingerückt, und Spalte AColumn steht an
 /// ihrem Ende.</summary>
 function AtEmptyNewLine(const ALines: TArray<string>; ALine, AColumn, ATabWidth: Integer): Boolean;
@@ -296,35 +302,6 @@ begin
   begin
     TAtlasEditorSnapshots.ReplaceText(ABuffer, AText, mStart, mOldLength, mInsert);
   end;
-end;
-
-class function TAtlasIdePatternContinuation.CanSuggest(const AView: IOTAEditView): Boolean;
-begin
-  Result := Enabled and (AView <> nil) and (AView.Buffer <> nil) and (FPreview <> nil);
-  if Result and Assigned(FCompletionVisible) then
-  begin
-    Result := not FCompletionVisible();
-  end;
-  Result := Result and not AView.Buffer.IsReadOnly;
-end;
-
-class procedure TAtlasIdePatternContinuation.ShowGhost(const AFileName: string; const ACursor: TOTAEditPos;
-  const ACurrent: string; const ASuggestion: TAtlasPatternSuggestion);
-var
-  mGhost: string;
-begin
-  // Schattentext ab dem Cursor: was am Einzug noch fehlt, dann die Zeile.
-  mGhost := ASuggestion.Text;
-  if ASuggestion.Indent.StartsWith(ACurrent) then
-  begin
-    mGhost := Copy(ASuggestion.Indent, Length(ACurrent) + 1, MaxInt) + mGhost;
-  end;
-  FFileName := AFileName;
-  FLine := ACursor.Line;
-  FColumn := ACursor.Col;
-  FSuggestion := ASuggestion;
-  TAtlasKeyHook.Add(FKeys);
-  FPreview.Show(AFileName, ACursor.Line, ACursor.Col, mGhost);
 end;
 
 class function TAtlasIdePatternContinuation.Run(const AView: IOTAEditView): Boolean;
@@ -402,6 +379,29 @@ begin
   mView.CursorPos := mTarget;
   mView.MoveViewToCursor;
   mView.Paint;
+end;
+
+class procedure TAtlasIdePatternContinuation.Dismiss;
+begin
+  if FFileName = '' then
+  begin
+    Exit;
+  end;
+  FFileName := '';
+  FSuggestion := Default(TAtlasPatternSuggestion);
+  if FKeys <> nil then
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+  if FPreview <> nil then
+  begin
+    FPreview.Clear;
+  end;
+end;
+
+class procedure TAtlasIdePatternContinuation.EditorModified;
+begin
+  Dismiss;
 end;
 
 end.

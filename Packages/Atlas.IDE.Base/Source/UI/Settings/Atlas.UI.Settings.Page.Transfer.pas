@@ -86,10 +86,23 @@ const
 
 { TAtlasSettingsTransferPart }
 
-procedure TAtlasSettingsTransferPart.Build;
+procedure TAtlasSettingsTransferPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  // Einstellungen exportieren, importieren und zurücksetzen (#723).
-  AddTransferSection;
+  FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
+end;
+
+procedure TAtlasSettingsTransferPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.SettingsExportSecrets := 'omit';
+  if FSettingsExportSecrets.Choice = 1 then
+  begin
+    ASettings.SettingsExportSecrets := 'placeholder';
+  end;
+end;
+
+procedure TAtlasSettingsTransferPart.BindMarks;
+begin
+  FPage.Marks.Bind(FSettingsExportSecrets, ['SettingsExportSecrets']);
 end;
 
 procedure TAtlasSettingsTransferPart.AddTransferSection;
@@ -138,24 +151,6 @@ begin
     cRow2, cResetWidth, ResetAllClick);
 end;
 
-procedure TAtlasSettingsTransferPart.BindMarks;
-begin
-  FPage.Marks.Bind(FSettingsExportSecrets, ['SettingsExportSecrets']);
-end;
-
-procedure TAtlasSettingsTransferPart.ShowModified;
-var
-  mModified: TArray<string>;
-begin
-  FTransferBar.Visible := FSettingsExportImport.Checked;
-  mModified := nil;
-  if FSettingsMarkModified.Checked then
-  begin
-    mModified := TAtlasSettingsTransfer.ModifiedNames(FPage.Catalog, FPage.CurrentSettings);
-  end;
-  FPage.Marks.Show(mModified, FSettingsMarkModified.Checked);
-end;
-
 procedure TAtlasSettingsTransferPart.ResetPageClick(Sender: TObject);
 begin
   FPage.ResetPage;
@@ -199,18 +194,23 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsTransferPart.Load(const ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsTransferPart.Build;
 begin
-  FSettingsExportSecrets.Choice := Ord(ASettings.SettingsExportSecrets = 'placeholder');
+  // Einstellungen exportieren, importieren und zurücksetzen (#723).
+  AddTransferSection;
 end;
 
-procedure TAtlasSettingsTransferPart.Save(var ASettings: TAtlasPluginSettings);
+procedure TAtlasSettingsTransferPart.ShowModified;
+var
+  mModified: TArray<string>;
 begin
-  ASettings.SettingsExportSecrets := 'omit';
-  if FSettingsExportSecrets.Choice = 1 then
+  FTransferBar.Visible := FSettingsExportImport.Checked;
+  mModified := nil;
+  if FSettingsMarkModified.Checked then
   begin
-    ASettings.SettingsExportSecrets := 'placeholder';
+    mModified := TAtlasSettingsTransfer.ModifiedNames(FPage.Catalog, FPage.CurrentSettings);
   end;
+  FPage.Marks.Show(mModified, FSettingsMarkModified.Checked);
 end;
 
 end.

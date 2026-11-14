@@ -154,92 +154,6 @@ end;
 
 { TAtlasIdeDebugOwnCode }
 
-class function TAtlasIdeDebugOwnCode.NewTimer(const AOnTimer: TNotifyEvent): TTimer;
-begin
-  Result := TTimer.Create(nil);
-  Result.Enabled := False;
-  Result.Interval := cIntervalMs;
-  Result.OnTimer := AOnTimer;
-end;
-
-class procedure TAtlasIdeDebugOwnCode.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FStepTimer = nil then
-  begin
-    FStepTimer := NewTimer(FTicker.StepTick);
-  end;
-  if FJumpTimer = nil then
-  begin
-    FJumpTimer := NewTimer(FTicker.JumpTick);
-  end;
-  TAtlasIdeDebugTrace.AddHandler(cTraceHandler,
-    procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
-    begin
-      Traced(AKind);
-    end);
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugOwnCode.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  TAtlasIdeDebugTrace.RemoveHandler(cTraceHandler);
-  FreeAndNil(FStepTimer);
-  FreeAndNil(FJumpTimer);
-  FreeAndNil(FTicker);
-  FStepping := False;
-  FMessage := nil;
-  // Den Zwischenspeicher teilt sich Atlas mit dem Exception-Verlauf; er baut ihn bei Bedarf neu auf.
-  TAtlasIdeDebugSources.Release;
-end;
-
-class function TAtlasIdeDebugOwnCode.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class procedure TAtlasIdeDebugOwnCode.Traced(AKind: TAtlasTraceKind);
-begin
-  if AKind = TAtlasTraceKind.TraceInto then
-  begin
-    Stepped;
-  end;
-end;
-
-class procedure TAtlasIdeDebugOwnCode.ToggleSetting(const AMessage: TProc<string>);
-var
-  mNext: TAtlasPluginSettings;
-begin
-  mNext := TAtlasIdeSettings.Stored;
-  mNext.DebugJustMyCode := not mNext.DebugJustMyCode;
-  TAtlasIdeSettings.Update(mNext);
-  if Assigned(AMessage) then
-  begin
-    if mNext.DebugJustMyCode then
-    begin
-      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn));
-    end
-    else
-    begin
-      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOff));
-    end;
-  end;
-end;
-
 class procedure TAtlasIdeDebugOwnCode.Stepped;
 begin
   if not TAtlasIdeSettings.Current.DebugJustMyCode or (TAtlasIdeDebugSession.StoppedThread = nil) then
@@ -249,23 +163,6 @@ begin
   FStepping := True;
   FStepStop := TAtlasIdeDebugSession.StopCount;
   FReturns := 0;
-end;
-
-class function TAtlasIdeDebugOwnCode.ReadFrames(out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
-var
-  mThread: IOTAThread;
-begin
-  AFrames := nil;
-  mThread := TAtlasIdeDebugSession.StoppedThread;
-  if mThread = nil then
-  begin
-    Exit(TAtlasDebugStackRead.None);
-  end;
-  Result := TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugCallStack.cMaxFrames, AFrames);
-  if Result = TAtlasDebugStackRead.Ready then
-  begin
-    TAtlasIdeDebugSources.MarkFrames(AFrames);
-  end;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.CheckStep;
@@ -324,6 +221,33 @@ begin
   FJumpTimer.Enabled := True;
 end;
 
+class procedure TAtlasIdeDebugOwnCode.CheckJump;
+var
+  mFrames: TAtlasDebugFrames;
+begin
+  if not JumpReady then
+  begin
+    Exit;
+  end;
+  case ReadFrames(mFrames) of
+    TAtlasDebugStackRead.Wait:
+      begin
+        Inc(FJumpRetries);
+        if FJumpRetries > cStackRetries then
+        begin
+          FJumpTimer.Enabled := False;
+        end;
+      end;
+    TAtlasDebugStackRead.None:
+      FJumpTimer.Enabled := False;
+  else
+    begin
+      FJumpTimer.Enabled := False;
+      JumpTo(mFrames);
+    end;
+  end;
+end;
+
 class function TAtlasIdeDebugOwnCode.JumpReady: Boolean;
 begin
   Result := False;
@@ -362,30 +286,106 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugOwnCode.CheckJump;
+class function TAtlasIdeDebugOwnCode.ReadFrames(out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead;
 var
-  mFrames: TAtlasDebugFrames;
+  mThread: IOTAThread;
 begin
-  if not JumpReady then
+  AFrames := nil;
+  mThread := TAtlasIdeDebugSession.StoppedThread;
+  if mThread = nil then
   begin
-    Exit;
+    Exit(TAtlasDebugStackRead.None);
   end;
-  case ReadFrames(mFrames) of
-    TAtlasDebugStackRead.Wait:
-      begin
-        Inc(FJumpRetries);
-        if FJumpRetries > cStackRetries then
-        begin
-          FJumpTimer.Enabled := False;
-        end;
-      end;
-    TAtlasDebugStackRead.None:
-      FJumpTimer.Enabled := False;
-  else
+  Result := TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugCallStack.cMaxFrames, AFrames);
+  if Result = TAtlasDebugStackRead.Ready then
+  begin
+    TAtlasIdeDebugSources.MarkFrames(AFrames);
+  end;
+end;
+
+class function TAtlasIdeDebugOwnCode.NewTimer(const AOnTimer: TNotifyEvent): TTimer;
+begin
+  Result := TTimer.Create(nil);
+  Result.Enabled := False;
+  Result.Interval := cIntervalMs;
+  Result.OnTimer := AOnTimer;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FStepTimer = nil then
+  begin
+    FStepTimer := NewTimer(FTicker.StepTick);
+  end;
+  if FJumpTimer = nil then
+  begin
+    FJumpTimer := NewTimer(FTicker.JumpTick);
+  end;
+  TAtlasIdeDebugTrace.AddHandler(cTraceHandler,
+    procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
     begin
-      FJumpTimer.Enabled := False;
-      JumpTo(mFrames);
+      Traced(AKind);
+    end);
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  TAtlasIdeDebugTrace.RemoveHandler(cTraceHandler);
+  FreeAndNil(FStepTimer);
+  FreeAndNil(FJumpTimer);
+  FreeAndNil(FTicker);
+  FStepping := False;
+  FMessage := nil;
+  // Den Zwischenspeicher teilt sich Atlas mit dem Exception-Verlauf; er baut ihn bei Bedarf neu auf.
+  TAtlasIdeDebugSources.Release;
+end;
+
+class function TAtlasIdeDebugOwnCode.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.ToggleSetting(const AMessage: TProc<string>);
+var
+  mNext: TAtlasPluginSettings;
+begin
+  mNext := TAtlasIdeSettings.Stored;
+  mNext.DebugJustMyCode := not mNext.DebugJustMyCode;
+  TAtlasIdeSettings.Update(mNext);
+  if Assigned(AMessage) then
+  begin
+    if mNext.DebugJustMyCode then
+    begin
+      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn));
+    end
+    else
+    begin
+      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOff));
     end;
+  end;
+end;
+
+class procedure TAtlasIdeDebugOwnCode.Traced(AKind: TAtlasTraceKind);
+begin
+  if AKind = TAtlasTraceKind.TraceInto then
+  begin
+    Stepped;
   end;
 end;
 

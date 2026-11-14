@@ -33,6 +33,19 @@ uses
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.Deadlocks;
 
+{ TAtlasAsyncOriginTexts }
+
+class procedure TAtlasAsyncOriginTexts.AddLibrary(var ARows: TArray<string>; var AFrameIndex: TArray<Integer>;
+  var ACount: Integer);
+begin
+  if ACount > 0 then
+  begin
+    ARows := ARows + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginLibrary, [ACount])];
+    AFrameIndex := AFrameIndex + [-1];
+  end;
+  ACount := 0;
+end;
+
 class function TAtlasAsyncOriginTexts.Title(const AEntry: TAtlasAsyncEntry; AKind: TAtlasAsyncKind): string;
 begin
   Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginTitle,
@@ -47,17 +60,6 @@ begin
     Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginFrame,
       [Result, ExtractFileName(AFrame.FileName), AFrame.Line]);
   end;
-end;
-
-class procedure TAtlasAsyncOriginTexts.AddLibrary(var ARows: TArray<string>; var AFrameIndex: TArray<Integer>;
-  var ACount: Integer);
-begin
-  if ACount > 0 then
-  begin
-    ARows := ARows + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginLibrary, [ACount])];
-    AFrameIndex := AFrameIndex + [-1];
-  end;
-  ACount := 0;
 end;
 
 class function TAtlasAsyncOriginTexts.Rows(const AFrames: TAtlasDebugFrames;

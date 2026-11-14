@@ -155,6 +155,128 @@ begin
   end;
 end;
 
+procedure TAtlasMagnifierWindow.Paint;
+var
+  mView, mBar: TRect;
+begin
+  Canvas.Font.Assign(Font);
+  mView := Rect(0, BarHeight, ClientWidth, ClientHeight - BarHeight);
+  Canvas.Brush.Color := TColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  IntersectClipRect(Canvas.Handle, mView.Left, mView.Top, mView.Right, mView.Bottom);
+  PaintView(mView);
+  PaintLines(mView);
+  PaintCross(mView);
+  SelectClipRgn(Canvas.Handle, 0);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := TColor(FColors.Text);
+  mBar := Rect(S(4), 0, ClientWidth - S(4), BarHeight);
+  DrawText(Canvas.Handle, PChar(FHeader), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
+  mBar := Rect(S(4), ClientHeight - BarHeight, ClientWidth - S(4), ClientHeight);
+  DrawText(Canvas.Handle, PChar(FFooter), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasMagnifierWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if (Button = mbLeft) and Assigned(FEvents.OnCopy) then
+  begin
+    FEvents.OnCopy();
+  end;
+end;
+
+function TAtlasMagnifierWindow.BarHeight: Integer;
+begin
+  Result := S(cBarHeight);
+end;
+
+procedure TAtlasMagnifierWindow.PaintView(const AView: TRect);
+var
+  mIndex, mPos: Integer;
+begin
+  if FBitmap.Width = 0 then
+  begin
+    Exit;
+  end;
+  // Pixel als Blöcke, ohne Glätten.
+  SetStretchBltMode(Canvas.Handle, COLORONCOLOR);
+  StretchBlt(Canvas.Handle, AView.Left, AView.Top, FBitmap.Width * FZoom, FBitmap.Height * FZoom,
+    FBitmap.Canvas.Handle, 0, 0, FBitmap.Width, FBitmap.Height, SRCCOPY);
+  if not FGrid or (FZoom < TAtlasMagnifier.cGridZoom) then
+  begin
+    Exit;
+  end;
+  Canvas.Pen.Color := TColor(FColors.Line);
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  for mIndex := 1 to FBitmap.Width - 1 do
+  begin
+    mPos := AView.Left + mIndex * FZoom;
+    Canvas.MoveTo(mPos, AView.Top);
+    Canvas.LineTo(mPos, AView.Bottom);
+  end;
+  for mIndex := 1 to FBitmap.Height - 1 do
+  begin
+    mPos := AView.Top + mIndex * FZoom;
+    Canvas.MoveTo(AView.Left, mPos);
+    Canvas.LineTo(AView.Right, mPos);
+  end;
+end;
+
+procedure TAtlasMagnifierWindow.PaintCross(const AView: TRect);
+var
+  mCell: TRect;
+  mX, mY: Integer;
+begin
+  // Pixel in der Mitte des Ausschnitts (unter der Maus) umrahmen, Linien bis zum Rand.
+  mX := AView.Left + (FBitmap.Width div 2) * FZoom;
+  mY := AView.Top + (FBitmap.Height div 2) * FZoom;
+  mCell := Rect(mX - 1, mY - 1, mX + FZoom + 1, mY + FZoom + 1);
+  Canvas.Pen.Color := TColor(FColors.Error);
+  Canvas.Pen.Width := 1;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Rectangle(mCell);
+  Canvas.MoveTo(mX + FZoom div 2, AView.Top);
+  Canvas.LineTo(mX + FZoom div 2, mCell.Top);
+  Canvas.MoveTo(mX + FZoom div 2, mCell.Bottom);
+  Canvas.LineTo(mX + FZoom div 2, AView.Bottom);
+  Canvas.MoveTo(AView.Left, mY + FZoom div 2);
+  Canvas.LineTo(mCell.Left, mY + FZoom div 2);
+  Canvas.MoveTo(mCell.Right, mY + FZoom div 2);
+  Canvas.LineTo(AView.Right, mY + FZoom div 2);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasMagnifierWindow.PaintLines(const AView: TRect);
+var
+  mLine: TAtlasMagnifierLine;
+begin
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Style := psSolid;
+  for mLine in FLines do
+  begin
+    if mLine.Selected then
+    begin
+      Canvas.Pen.Color := TColor(FColors.Accent);
+    end
+    else
+    begin
+      Canvas.Pen.Color := TColor(FColors.Warn);
+    end;
+    if mLine.Vertical then
+    begin
+      Canvas.MoveTo(AView.Left + mLine.Position, AView.Top);
+      Canvas.LineTo(AView.Left + mLine.Position, AView.Bottom);
+    end
+    else
+    begin
+      Canvas.MoveTo(AView.Left, AView.Top + mLine.Position);
+      Canvas.LineTo(AView.Right, AView.Top + mLine.Position);
+    end;
+  end;
+end;
+
 procedure TAtlasMagnifierWindow.WMMouseActivate(var Message: TWMMouseActivate);
 begin
   // Klick in die Lupe: Fokus und Auswahl bleiben im Designer.
@@ -184,11 +306,6 @@ end;
 function TAtlasMagnifierWindow.S(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-function TAtlasMagnifierWindow.BarHeight: Integer;
-begin
-  Result := S(cBarHeight);
 end;
 
 procedure TAtlasMagnifierWindow.ApplyColors(const AColors: TAtlasColors);
@@ -252,123 +369,6 @@ procedure TAtlasMagnifierWindow.SetLines(const ALines: TArray<TAtlasMagnifierLin
 begin
   FLines := Copy(ALines);
   Invalidate;
-end;
-
-procedure TAtlasMagnifierWindow.PaintView(const AView: TRect);
-var
-  mIndex, mPos: Integer;
-begin
-  if FBitmap.Width = 0 then
-  begin
-    Exit;
-  end;
-  // Pixel als Blöcke, ohne Glätten.
-  SetStretchBltMode(Canvas.Handle, COLORONCOLOR);
-  StretchBlt(Canvas.Handle, AView.Left, AView.Top, FBitmap.Width * FZoom, FBitmap.Height * FZoom,
-    FBitmap.Canvas.Handle, 0, 0, FBitmap.Width, FBitmap.Height, SRCCOPY);
-  if not FGrid or (FZoom < TAtlasMagnifier.cGridZoom) then
-  begin
-    Exit;
-  end;
-  Canvas.Pen.Color := TColor(FColors.Line);
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Width := 1;
-  for mIndex := 1 to FBitmap.Width - 1 do
-  begin
-    mPos := AView.Left + mIndex * FZoom;
-    Canvas.MoveTo(mPos, AView.Top);
-    Canvas.LineTo(mPos, AView.Bottom);
-  end;
-  for mIndex := 1 to FBitmap.Height - 1 do
-  begin
-    mPos := AView.Top + mIndex * FZoom;
-    Canvas.MoveTo(AView.Left, mPos);
-    Canvas.LineTo(AView.Right, mPos);
-  end;
-end;
-
-procedure TAtlasMagnifierWindow.PaintLines(const AView: TRect);
-var
-  mLine: TAtlasMagnifierLine;
-begin
-  Canvas.Pen.Width := 1;
-  Canvas.Pen.Style := psSolid;
-  for mLine in FLines do
-  begin
-    if mLine.Selected then
-    begin
-      Canvas.Pen.Color := TColor(FColors.Accent);
-    end
-    else
-    begin
-      Canvas.Pen.Color := TColor(FColors.Warn);
-    end;
-    if mLine.Vertical then
-    begin
-      Canvas.MoveTo(AView.Left + mLine.Position, AView.Top);
-      Canvas.LineTo(AView.Left + mLine.Position, AView.Bottom);
-    end
-    else
-    begin
-      Canvas.MoveTo(AView.Left, AView.Top + mLine.Position);
-      Canvas.LineTo(AView.Right, AView.Top + mLine.Position);
-    end;
-  end;
-end;
-
-procedure TAtlasMagnifierWindow.PaintCross(const AView: TRect);
-var
-  mCell: TRect;
-  mX, mY: Integer;
-begin
-  // Pixel in der Mitte des Ausschnitts (unter der Maus) umrahmen, Linien bis zum Rand.
-  mX := AView.Left + (FBitmap.Width div 2) * FZoom;
-  mY := AView.Top + (FBitmap.Height div 2) * FZoom;
-  mCell := Rect(mX - 1, mY - 1, mX + FZoom + 1, mY + FZoom + 1);
-  Canvas.Pen.Color := TColor(FColors.Error);
-  Canvas.Pen.Width := 1;
-  Canvas.Brush.Style := bsClear;
-  Canvas.Rectangle(mCell);
-  Canvas.MoveTo(mX + FZoom div 2, AView.Top);
-  Canvas.LineTo(mX + FZoom div 2, mCell.Top);
-  Canvas.MoveTo(mX + FZoom div 2, mCell.Bottom);
-  Canvas.LineTo(mX + FZoom div 2, AView.Bottom);
-  Canvas.MoveTo(AView.Left, mY + FZoom div 2);
-  Canvas.LineTo(mCell.Left, mY + FZoom div 2);
-  Canvas.MoveTo(mCell.Right, mY + FZoom div 2);
-  Canvas.LineTo(AView.Right, mY + FZoom div 2);
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasMagnifierWindow.Paint;
-var
-  mView, mBar: TRect;
-begin
-  Canvas.Font.Assign(Font);
-  mView := Rect(0, BarHeight, ClientWidth, ClientHeight - BarHeight);
-  Canvas.Brush.Color := TColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  IntersectClipRect(Canvas.Handle, mView.Left, mView.Top, mView.Right, mView.Bottom);
-  PaintView(mView);
-  PaintLines(mView);
-  PaintCross(mView);
-  SelectClipRgn(Canvas.Handle, 0);
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Text);
-  mBar := Rect(S(4), 0, ClientWidth - S(4), BarHeight);
-  DrawText(Canvas.Handle, PChar(FHeader), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
-  mBar := Rect(S(4), ClientHeight - BarHeight, ClientWidth - S(4), ClientHeight);
-  DrawText(Canvas.Handle, PChar(FFooter), -1, mBar, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or DT_NOPREFIX);
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasMagnifierWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if (Button = mbLeft) and Assigned(FEvents.OnCopy) then
-  begin
-    FEvents.OnCopy();
-  end;
 end;
 
 procedure TAtlasMagnifierWindow.ShowNear(const AArea: TRect);

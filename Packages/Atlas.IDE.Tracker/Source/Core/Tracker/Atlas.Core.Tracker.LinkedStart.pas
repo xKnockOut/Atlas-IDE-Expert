@@ -102,6 +102,8 @@ begin
   end;
 end;
 
+{ TAtlasLinkedStart }
+
 class function TAtlasLinkedStart.Run(const ARequest: TAtlasLinkedStartRequest): TAtlasLinkedStartResult;
 var
   mBranching: IAtlasVcsBranching;

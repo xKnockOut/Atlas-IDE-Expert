@@ -446,35 +446,6 @@ begin
     mTypes.Free;
   end;
 end;
-procedure TAutomationCheck.CheckDispid(const ARange: TTextRange; const AText, AMember: string;
-  ADispids: TList<TAutomationDispid>);
-var
-  mDispid: TAutomationDispid;
-  mKey: string;
-begin
-  // Schlüssel: der Wert einer Zahl, sonst der Text des Ausdrucks.
-  mKey := NumberKey(AText);
-  if mKey = '' then
-  begin
-    mKey := UpperCase(AText);
-  end;
-  if mKey = '' then
-  begin
-    Exit;
-  end;
-  for mDispid in ADispids do
-  begin
-    if mDispid.Key = mKey then
-    begin
-      FReport.Add(ARange, cTexts[TAutomationText.DispidTaken].Fmt([AText, mDispid.Member]));
-      Exit;
-    end;
-  end;
-  mDispid.Key := mKey;
-  mDispid.Member := AMember;
-  ADispids.Add(mDispid);
-end;
-
 procedure TAutomationCheck.CheckRoutine(AHeader: TSyntaxNode; ADispids: TList<TAutomationDispid>);
 var
   mFirst: Integer;
@@ -523,6 +494,16 @@ begin
   CheckTypes(AHeader);
 end;
 
+function TAutomationCheck.PropertyNameToken(AProperty: TSyntaxNode; AStop: Integer): Integer;
+begin
+  Result := FirstToken(AProperty);
+  while (Result < AStop) and not ((FTokens[Result].Kind = TPascalTokenKind.Identifier) and
+    SameText(FTokens[Result].Text, AProperty.Name)) do
+  begin
+    Inc(Result);
+  end;
+end;
+
 /// <summary>Hat die Klasse AClass ein Feld namens AName?</summary>
 function IsClassField(AClass: TSyntaxNode; const AName: string): Boolean;
 var
@@ -535,16 +516,6 @@ begin
     begin
       Exit(True);
     end;
-  end;
-end;
-
-function TAutomationCheck.PropertyNameToken(AProperty: TSyntaxNode; AStop: Integer): Integer;
-begin
-  Result := FirstToken(AProperty);
-  while (Result < AStop) and not ((FTokens[Result].Kind = TPascalTokenKind.Identifier) and
-    SameText(FTokens[Result].Text, AProperty.Name)) do
-  begin
-    Inc(Result);
   end;
 end;
 
@@ -684,6 +655,35 @@ begin
   else
     // Übrige Mitglieder (Konstanten, Typen, Attribute) bleiben still.
   end;
+end;
+
+procedure TAutomationCheck.CheckDispid(const ARange: TTextRange; const AText, AMember: string;
+  ADispids: TList<TAutomationDispid>);
+var
+  mDispid: TAutomationDispid;
+  mKey: string;
+begin
+  // Schlüssel: der Wert einer Zahl, sonst der Text des Ausdrucks.
+  mKey := NumberKey(AText);
+  if mKey = '' then
+  begin
+    mKey := UpperCase(AText);
+  end;
+  if mKey = '' then
+  begin
+    Exit;
+  end;
+  for mDispid in ADispids do
+  begin
+    if mDispid.Key = mKey then
+    begin
+      FReport.Add(ARange, cTexts[TAutomationText.DispidTaken].Fmt([AText, mDispid.Member]));
+      Exit;
+    end;
+  end;
+  mDispid.Key := mKey;
+  mDispid.Member := AMember;
+  ADispids.Add(mDispid);
 end;
 
 procedure TAutomationCheck.CheckClass(AClass: TSyntaxNode);

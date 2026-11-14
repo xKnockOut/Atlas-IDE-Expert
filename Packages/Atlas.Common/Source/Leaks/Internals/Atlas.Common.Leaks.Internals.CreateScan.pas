@@ -215,15 +215,29 @@ begin
   end;
 end;
 
-function TLeakCreateScan.OwnerArgument(AIndex: Integer): Boolean;
+function TLeakCreateScan.ReadSite(AIndex: Integer; out ASite: TLeakCreateSite): Boolean;
 var
-  mName: string;
+  mFirst, mRoutine: Integer;
 begin
-  Result := TokenIs(AIndex, '(') and IsName(AIndex + 1);
-  if Result then
+  ASite := Default(TLeakCreateSite);
+  mFirst := FirstOfChain(AIndex);
+  // Kopfzeile „constructor TKlasse.Create“ und Exceptions („raise EFehler.Create“) sind keine Kandidaten.
+  Result := not ((mFirst > 0) and (FTokens[mFirst - 1].Kind = TPascalTokenKind.Keyword) and
+    (Contains(cRoutineWords, LowerAt(mFirst - 1)) or (LowerAt(mFirst - 1) = 'raise')));
+  if not Result then
   begin
-    mName := LowerAt(AIndex + 1);
-    Result := Contains(cOwnerNames, mName) or (Pos('owner', mName) > 0);
+    Exit;
+  end;
+  ASite.Position := FTokens[AIndex].StartPos;
+  ASite.ClassName := FTokens[AIndex].Text;
+  ASite.Owned := OwnerArgument(AIndex + cCreateLength);
+  ReadUse(mFirst, ASite);
+  mRoutine := RoutineAt(AIndex);
+  if mRoutine >= 0 then
+  begin
+    ASite.Routine := FRoutines[mRoutine].Name;
+    ASite.RoutineFrees := Contains(FRoutines[mRoutine].Freed, ASite.Target);
+    ASite.RoutineReturns := Contains(FRoutines[mRoutine].Returned, ASite.Target);
   end;
 end;
 
@@ -258,35 +272,16 @@ begin
   end;
 end;
 
-function TLeakCreateScan.ReadSite(AIndex: Integer; out ASite: TLeakCreateSite): Boolean;
+function TLeakCreateScan.OwnerArgument(AIndex: Integer): Boolean;
 var
-  mFirst, mRoutine: Integer;
+  mName: string;
 begin
-  ASite := Default(TLeakCreateSite);
-  mFirst := FirstOfChain(AIndex);
-  // Kopfzeile „constructor TKlasse.Create“ und Exceptions („raise EFehler.Create“) sind keine Kandidaten.
-  Result := not ((mFirst > 0) and (FTokens[mFirst - 1].Kind = TPascalTokenKind.Keyword) and
-    (Contains(cRoutineWords, LowerAt(mFirst - 1)) or (LowerAt(mFirst - 1) = 'raise')));
-  if not Result then
+  Result := TokenIs(AIndex, '(') and IsName(AIndex + 1);
+  if Result then
   begin
-    Exit;
+    mName := LowerAt(AIndex + 1);
+    Result := Contains(cOwnerNames, mName) or (Pos('owner', mName) > 0);
   end;
-  ASite.Position := FTokens[AIndex].StartPos;
-  ASite.ClassName := FTokens[AIndex].Text;
-  ASite.Owned := OwnerArgument(AIndex + cCreateLength);
-  ReadUse(mFirst, ASite);
-  mRoutine := RoutineAt(AIndex);
-  if mRoutine >= 0 then
-  begin
-    ASite.Routine := FRoutines[mRoutine].Name;
-    ASite.RoutineFrees := Contains(FRoutines[mRoutine].Freed, ASite.Target);
-    ASite.RoutineReturns := Contains(FRoutines[mRoutine].Returned, ASite.Target);
-  end;
-end;
-
-function TLeakCreateScan.DestructorFrees(const AName: string): Boolean;
-begin
-  Result := Contains(FreedInDestructors, AName);
 end;
 
 class function TLeakCreateScan.Run(const AText: string; const AClassNames: TArray<string>): TLeakCreateScan;
@@ -320,6 +315,11 @@ begin
       Result.Sites := Result.Sites + [mSite];
     end;
   end;
+end;
+
+function TLeakCreateScan.DestructorFrees(const AName: string): Boolean;
+begin
+  Result := Contains(FreedInDestructors, AName);
 end;
 
 end.

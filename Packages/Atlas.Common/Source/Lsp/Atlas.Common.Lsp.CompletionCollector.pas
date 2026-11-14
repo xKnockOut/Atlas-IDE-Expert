@@ -235,6 +235,8 @@ begin
   Result := (AItem.Scope in [1, 2, 4]) or ((AItem.Scope = 3) and (AItem.Depth = 0));
 end;
 
+{ TScoredItemComparer }
+
 function TScoredItemComparer.Compare(const Left, Right: TScoredItem): Integer;
 begin
   // Höhere Punktzahl zuerst, sonst Reihenfolge der Gültigkeitsbereiche.
@@ -849,29 +851,33 @@ begin
   end;
 end;
 
-procedure TCompletionCollector.AddUnavailable;
+procedure TCompletionCollector.AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
 var
-  mKnown: TDictionary<string, Boolean>;
-  mUsed: TArray<string>;
-  mOwn: string;
-  mUnitInfo: TUnitIndex;
-  mOwnUnit: Boolean;
+  mCandidate: TResolvedSymbol;
 begin
-  mKnown := KnownNames(Self);
-  try
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    for mUnitInfo in FRequest.Index.UnavailableUnits do
+  for mCandidate in ACandidates do
+  begin
+    // Typposition (#31): nur Typen.
+    if (FContext.Filter = TCompletionFilter.Types) and not mCandidate.IsType then
     begin
-      mOwnUnit := SameText(mUnitInfo.UnitName, mOwn);
-      if (Length(mUnitInfo.Unavailable) > 0) and (mOwnUnit or
-        TUsesClauses.IsUsed(mUsed, mUnitInfo.UnitName, FRequest.Resolver.Namespaces)) then
-      begin
-        AddUnavailableOf(Self, mUnitInfo, mOwnUnit, mKnown);
-      end;
+      Continue;
     end;
-  finally
-    mKnown.Free;
+    if Assigned(FAdmit) and not FAdmit(mCandidate) then
+    begin
+      Continue;
+    end;
+    if mCandidate.TypeName <> '' then
+    begin
+      Add(mCandidate.Name, mCandidate.TypeName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
+    end
+    else if mCandidate.Container <> '' then
+    begin
+      Add(mCandidate.Name, mCandidate.Container, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
+    end
+    else
+    begin
+      Add(mCandidate.Name, mCandidate.UnitName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
+    end;
   end;
 end;
 
@@ -903,6 +909,8 @@ begin
     TFuzzyMatch.cNoMatch) and (not Assigned(ACollector.FAdmit) or
     ACollector.FAdmit(TResolvedSymbol.FromIndex(AUnitInfo, ASymbol)));
 end;
+
+{ TImportScan }
 
 function TImportScan.Candidate(const AEntry: TImportNameEntry): Boolean;
 var
@@ -1022,25 +1030,83 @@ begin
   end;
 end;
 
-procedure TCompletionCollector.AddFromOtherUnits;
+procedure TCompletionCollector.AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
+var
+  mContainers, mKnown: TDictionary<string, Boolean>;
+  mCandidate, mMember: TResolvedSymbol;
+  mUnitInfo: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mExisting: TScoredItem;
 begin
-  AddImports(Self, nil);
+  mContainers := TDictionary<string, Boolean>.Create;
+  mKnown := TDictionary<string, Boolean>.Create;
+  try
+    for mCandidate in AMembers do
+    begin
+      if mCandidate.Container <> '' then
+      begin
+        mContainers.AddOrSetValue(UpperCase(mCandidate.Container), True);
+      end;
+    end;
+    if mContainers.Count = 0 then
+    begin
+      Exit;
+    end;
+    for mExisting in FList do
+    begin
+      mKnown.AddOrSetValue(UpperCase(mExisting.Item.Name), True);
+    end;
+    for mUnitInfo in FRequest.Index.UnavailableUnits do
+    begin
+      for mSymbol in mUnitInfo.Unavailable do
+      begin
+        if (mSymbol.Container = '') or not mContainers.ContainsKey(UpperCase(mSymbol.Container)) or
+          mKnown.ContainsKey(UpperCase(mSymbol.Name)) then
+        begin
+          Continue;
+        end;
+        mMember := Default(TResolvedSymbol);
+        mMember.Name := mSymbol.Name;
+        mMember.Container := mSymbol.Container;
+        mMember.Condition := mSymbol.Condition;
+        mMember.FileName := mUnitInfo.FileName;
+        mMember.SelectionRange.StartPos := mSymbol.SelectionRange.StartPos;
+        if Add(mSymbol.Name, mSymbol.Container, CompletionKindOf(mSymbol.Kind), cPenaltyUnavailable, mMember) then
+        begin
+          MarkLastUnavailable;
+          mKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
+        end;
+      end;
+    end;
+  finally
+    mKnown.Free;
+    mContainers.Free;
+  end;
 end;
 
-procedure TCompletionCollector.AddFromOtherUnits(const ANames: TArray<string>);
+procedure TCompletionCollector.AddUnavailable;
 var
-  mWanted: TDictionary<string, Boolean>;
-  mName: string;
+  mKnown: TDictionary<string, Boolean>;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mUnitInfo: TUnitIndex;
+  mOwnUnit: Boolean;
 begin
-  mWanted := TDictionary<string, Boolean>.Create;
+  mKnown := KnownNames(Self);
   try
-    for mName in ANames do
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    for mUnitInfo in FRequest.Index.UnavailableUnits do
     begin
-      mWanted.AddOrSetValue(UpperCase(mName), True);
+      mOwnUnit := SameText(mUnitInfo.UnitName, mOwn);
+      if (Length(mUnitInfo.Unavailable) > 0) and (mOwnUnit or
+        TUsesClauses.IsUsed(mUsed, mUnitInfo.UnitName, FRequest.Resolver.Namespaces)) then
+      begin
+        AddUnavailableOf(Self, mUnitInfo, mOwnUnit, mKnown);
+      end;
     end;
-    AddImports(Self, mWanted);
   finally
-    mWanted.Free;
+    mKnown.Free;
   end;
 end;
 
@@ -1060,41 +1126,9 @@ begin
     cKindClass, cPenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
 end;
 
-procedure TCompletionCollector.AddIdeTypes;
-var
-  mKnown: TDictionary<string, Boolean>;
-  mType: TIdeTypeEntry;
-  mUsed: TArray<string>;
-  mOwn: string;
-  mAdded: Integer;
+procedure TCompletionCollector.AddFromOtherUnits;
 begin
-  if (Length(FRequest.IdeTypes) = 0) or Assigned(FAdmit) or not KindAllowed(Self, TIndexSymbolKind.ClassType) then
-  begin
-    Exit;
-  end;
-  mKnown := KnownNames(Self);
-  try
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    mAdded := 0;
-    for mType in FRequest.IdeTypes do
-    begin
-      if mKnown.ContainsKey(UpperCase(mType.Name)) or SameText(mType.UnitName, mOwn) or
-        not AddIdeType(Self, mType, TUsesClauses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
-      begin
-        Continue;
-      end;
-      mKnown.AddOrSetValue(UpperCase(mType.Name), True);
-      Inc(mAdded);
-      if mAdded >= cCompletionMaxImportItems then
-      begin
-        FImportsCapped := True;
-        Exit;
-      end;
-    end;
-  finally
-    mKnown.Free;
-  end;
+  AddImports(Self, nil);
 end;
 
 const
@@ -1132,6 +1166,8 @@ type
     /// <summary>Die übrigen behalten ihre Reihenfolge, mit Platz für die Varianten dahinter.</summary>
     procedure Spread;
   end;
+
+{ TSameNameScan }
 
 procedure TSameNameScan.FindActive;
 var
@@ -1322,44 +1358,20 @@ begin
   end;
 end;
 
-procedure TCompletionCollector.AddSameNameVariants;
+procedure TCompletionCollector.AddFromOtherUnits(const ANames: TArray<string>);
 var
-  mScan: TSameNameScan;
-  mUsed: TArray<string>;
-  mRange: TTextRange;
-  mVariant: TSameNameVariant;
+  mWanted: TDictionary<string, Boolean>;
+  mName: string;
 begin
-  if not FRequest.Settings.SameNameVariants or (FContext.Kind <> TCompletionContextKind.Scope) or
-    (FRequest.Tree = nil) or (FRequest.Index = nil) then
-  begin
-    Exit;
-  end;
-  mScan := Default(TSameNameScan);
-  mScan.Collector := Self;
-  mScan.Active := TDictionary<string, Integer>.Create;
-  mScan.Variants := TList<TSameNameVariant>.Create;
+  mWanted := TDictionary<string, Boolean>.Create;
   try
-    mScan.FindActive;
-    if mScan.Active.Count = 0 then
+    for mName in ANames do
     begin
-      Exit;
+      mWanted.AddOrSetValue(UpperCase(mName), True);
     end;
-    mScan.Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    SetLength(mScan.Units, FList.Count);
-    SetLength(mScan.Hidden, FList.Count);
-    mScan.Collect;
-    mScan.MarkActive;
-    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    mRange := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
-      FRequest.Position.Line, FRequest.Position.Character);
-    for mVariant in mScan.Variants do
-    begin
-      mScan.AddVariant(mVariant, mUsed, mRange);
-    end;
+    AddImports(Self, mWanted);
   finally
-    mScan.Spread;
-    mScan.Variants.Free;
-    mScan.Active.Free;
+    mWanted.Free;
   end;
 end;
 
@@ -1422,19 +1434,15 @@ begin
   end;
 end;
 
-procedure TCompletionCollector.AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
+procedure TCompletionCollector.AddIdeTypes;
 var
   mKnown: TDictionary<string, Boolean>;
+  mType: TIdeTypeEntry;
   mUsed: TArray<string>;
   mOwn: string;
-  mNames: TImportNameIndex;
-  mEntry: TImportNameEntry;
-  mUnitInfo: TUnitIndex;
-  mHelper: TIndexSymbol;
-  mEdit: TRuleEdit;
-  mDepth: Integer;
+  mAdded: Integer;
 begin
-  if Length(ATypes) = 0 then
+  if (Length(FRequest.IdeTypes) = 0) or Assigned(FAdmit) or not KindAllowed(Self, TIndexSymbolKind.ClassType) then
   begin
     Exit;
   end;
@@ -1442,25 +1450,21 @@ begin
   try
     mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
     mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    mNames := TImportNames.Current(FRequest.Index);
-    for mEntry in mNames.Helpers do
+    mAdded := 0;
+    for mType in FRequest.IdeTypes do
     begin
-      mUnitInfo := mNames.Units[mEntry.UnitPos];
-      if HelperUnitSkipped(Self, mUnitInfo.UnitName, mOwn, mUsed) then
+      if mKnown.ContainsKey(UpperCase(mType.Name)) or SameText(mType.UnitName, mOwn) or
+        not AddIdeType(Self, mType, TUsesClauses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
       begin
         Continue;
       end;
-      mHelper := mUnitInfo.Symbols[mEntry.SymbolPos];
-      mDepth := HelperDepth(mHelper, ATypes);
-      if mDepth < 0 then
+      mKnown.AddOrSetValue(UpperCase(mType.Name), True);
+      Inc(mAdded);
+      if mAdded >= cCompletionMaxImportItems then
       begin
-        Continue;
-      end;
-      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, mUnitInfo.UnitName, #13#10, mEdit) then
-      begin
+        FImportsCapped := True;
         Exit;
       end;
-      AddHelperMembers(Self, mUnitInfo, mHelper.Name, mDepth, mEdit, mKnown);
     end;
   finally
     mKnown.Free;
@@ -1577,30 +1581,99 @@ begin
   FList.Clear;
 end;
 
-procedure TCompletionCollector.SendStage;
+procedure TCompletionCollector.AddSameNameVariants;
 var
-  mItems: TArray<TCompletionItem>;
+  mScan: TSameNameScan;
+  mUsed: TArray<string>;
+  mRange: TTextRange;
+  mVariant: TSameNameVariant;
 begin
-  if not Assigned(FOnPartial) or (FList.Count = 0) then
+  if not FRequest.Settings.SameNameVariants or (FContext.Kind <> TCompletionContextKind.Scope) or
+    (FRequest.Tree = nil) or (FRequest.Index = nil) then
   begin
     Exit;
   end;
-  mItems := TakeStage(True);
-  if Length(mItems) > 0 then
-  begin
-    FOnPartial(mItems);
+  mScan := Default(TSameNameScan);
+  mScan.Collector := Self;
+  mScan.Active := TDictionary<string, Integer>.Create;
+  mScan.Variants := TList<TSameNameVariant>.Create;
+  try
+    mScan.FindActive;
+    if mScan.Active.Count = 0 then
+    begin
+      Exit;
+    end;
+    mScan.Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    SetLength(mScan.Units, FList.Count);
+    SetLength(mScan.Hidden, FList.Count);
+    mScan.Collect;
+    mScan.MarkActive;
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mRange := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
+      FRequest.Position.Line, FRequest.Position.Character);
+    for mVariant in mScan.Variants do
+    begin
+      mScan.AddVariant(mVariant, mUsed, mRange);
+    end;
+  finally
+    mScan.Spread;
+    mScan.Variants.Free;
+    mScan.Active.Free;
   end;
 end;
 
-procedure TCompletionCollector.SetNameFilter(AOn: Boolean);
+procedure TCompletionCollector.AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
+var
+  mKnown: TDictionary<string, Boolean>;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mNames: TImportNameIndex;
+  mEntry: TImportNameEntry;
+  mUnitInfo: TUnitIndex;
+  mHelper: TIndexSymbol;
+  mEdit: TRuleEdit;
+  mDepth: Integer;
 begin
-  if AOn and (FContext.Prefix <> '') then
+  if Length(ATypes) = 0 then
   begin
-    FRequest.Resolver.Candidates.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
-  end
-  else
+    Exit;
+  end;
+  mKnown := KnownNames(Self);
+  try
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mNames := TImportNames.Current(FRequest.Index);
+    for mEntry in mNames.Helpers do
+    begin
+      mUnitInfo := mNames.Units[mEntry.UnitPos];
+      if HelperUnitSkipped(Self, mUnitInfo.UnitName, mOwn, mUsed) then
+      begin
+        Continue;
+      end;
+      mHelper := mUnitInfo.Symbols[mEntry.SymbolPos];
+      mDepth := HelperDepth(mHelper, ATypes);
+      if mDepth < 0 then
+      begin
+        Continue;
+      end;
+      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, mUnitInfo.UnitName, #13#10, mEdit) then
+      begin
+        Exit;
+      end;
+      AddHelperMembers(Self, mUnitInfo, mHelper.Name, mDepth, mEdit, mKnown);
+    end;
+  finally
+    mKnown.Free;
+  end;
+end;
+
+procedure TCompletionCollector.AddKeywords(const AWords: TArray<string>);
+var
+  mWord: string;
+begin
+  for mWord in AWords do
   begin
-    FRequest.Resolver.Candidates.NameFilter := nil;
+    Add(mWord, '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
   end;
 end;
 
@@ -1654,67 +1727,15 @@ begin
   end;
 end;
 
-procedure TCompletionCollector.AddKeywords(const AWords: TArray<string>);
-var
-  mWord: string;
+procedure TCompletionCollector.SetNameFilter(AOn: Boolean);
 begin
-  for mWord in AWords do
+  if AOn and (FContext.Prefix <> '') then
   begin
-    Add(mWord, '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
-  end;
-end;
-
-procedure TCompletionCollector.AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
-var
-  mContainers, mKnown: TDictionary<string, Boolean>;
-  mCandidate, mMember: TResolvedSymbol;
-  mUnitInfo: TUnitIndex;
-  mSymbol: TIndexSymbol;
-  mExisting: TScoredItem;
-begin
-  mContainers := TDictionary<string, Boolean>.Create;
-  mKnown := TDictionary<string, Boolean>.Create;
-  try
-    for mCandidate in AMembers do
-    begin
-      if mCandidate.Container <> '' then
-      begin
-        mContainers.AddOrSetValue(UpperCase(mCandidate.Container), True);
-      end;
-    end;
-    if mContainers.Count = 0 then
-    begin
-      Exit;
-    end;
-    for mExisting in FList do
-    begin
-      mKnown.AddOrSetValue(UpperCase(mExisting.Item.Name), True);
-    end;
-    for mUnitInfo in FRequest.Index.UnavailableUnits do
-    begin
-      for mSymbol in mUnitInfo.Unavailable do
-      begin
-        if (mSymbol.Container = '') or not mContainers.ContainsKey(UpperCase(mSymbol.Container)) or
-          mKnown.ContainsKey(UpperCase(mSymbol.Name)) then
-        begin
-          Continue;
-        end;
-        mMember := Default(TResolvedSymbol);
-        mMember.Name := mSymbol.Name;
-        mMember.Container := mSymbol.Container;
-        mMember.Condition := mSymbol.Condition;
-        mMember.FileName := mUnitInfo.FileName;
-        mMember.SelectionRange.StartPos := mSymbol.SelectionRange.StartPos;
-        if Add(mSymbol.Name, mSymbol.Container, CompletionKindOf(mSymbol.Kind), cPenaltyUnavailable, mMember) then
-        begin
-          MarkLastUnavailable;
-          mKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
-        end;
-      end;
-    end;
-  finally
-    mKnown.Free;
-    mContainers.Free;
+    FRequest.Resolver.Candidates.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
+  end
+  else
+  begin
+    FRequest.Resolver.Candidates.NameFilter := nil;
   end;
 end;
 
@@ -1723,33 +1744,18 @@ begin
   FAdmit := AAdmit;
 end;
 
-procedure TCompletionCollector.AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
+procedure TCompletionCollector.SendStage;
 var
-  mCandidate: TResolvedSymbol;
+  mItems: TArray<TCompletionItem>;
 begin
-  for mCandidate in ACandidates do
+  if not Assigned(FOnPartial) or (FList.Count = 0) then
   begin
-    // Typposition (#31): nur Typen.
-    if (FContext.Filter = TCompletionFilter.Types) and not mCandidate.IsType then
-    begin
-      Continue;
-    end;
-    if Assigned(FAdmit) and not FAdmit(mCandidate) then
-    begin
-      Continue;
-    end;
-    if mCandidate.TypeName <> '' then
-    begin
-      Add(mCandidate.Name, mCandidate.TypeName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
-    end
-    else if mCandidate.Container <> '' then
-    begin
-      Add(mCandidate.Name, mCandidate.Container, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
-    end
-    else
-    begin
-      Add(mCandidate.Name, mCandidate.UnitName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
-    end;
+    Exit;
+  end;
+  mItems := TakeStage(True);
+  if Length(mItems) > 0 then
+  begin
+    FOnPartial(mItems);
   end;
 end;
 

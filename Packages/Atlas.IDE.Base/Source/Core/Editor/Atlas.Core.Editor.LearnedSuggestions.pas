@@ -379,11 +379,6 @@ begin
   end;
 end;
 
-class function TAtlasLearnedSuggestions.EvidenceText(const AEvidence: TAtlasLearnedEvidence): string;
-begin
-  Result := Format('%s:%d', [ExtractFileName(AEvidence.FileName), AEvidence.Line + 1]);
-end;
-
 class function TAtlasLearnedSuggestions.HintText(const APattern: TAtlasLearnedPattern): string;
 var
   mLines: TArray<string>;
@@ -404,6 +399,11 @@ begin
   end;
   mLines := mLines + [Text(TLearnedText.HintKeys)];
   Result := string.Join(sLineBreak, mLines);
+end;
+
+class function TAtlasLearnedSuggestions.EvidenceText(const AEvidence: TAtlasLearnedEvidence): string;
+begin
+  Result := Format('%s:%d', [ExtractFileName(AEvidence.FileName), AEvidence.Line + 1]);
 end;
 
 initialization

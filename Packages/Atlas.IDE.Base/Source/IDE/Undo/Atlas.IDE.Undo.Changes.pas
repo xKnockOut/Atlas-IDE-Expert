@@ -76,9 +76,58 @@ uses
 const
   cBytesPerMb = 1024 * 1024;
 
-class function TAtlasIdeUndo.DefaultFolder: string;
+{ TAtlasIdeUndo }
+
+class procedure TAtlasIdeUndo.Say(const ALines: TArray<string>);
+var
+  mLine: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'undo');
+  if Assigned(FOnMessage) then
+  begin
+    for mLine in ALines do
+    begin
+      FOnMessage(mLine);
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeUndo.Report(const AReport: TAtlasUndoReport);
+begin
+  Say(TAtlasUndoMessages.Report(AReport));
+end;
+
+class procedure TAtlasIdeUndo.Refresh;
+var
+  mFrame: TAtlasResultsFrame;
+begin
+  // Nur eine schon sichtbare Liste aktualisieren; nie das Fenster deswegen öffnen.
+  mFrame := TAtlasIdeResultsWindow.ExistingFrame;
+  if (FJournal <> nil) and (mFrame <> nil) and mFrame.Changes.Shows then
+  begin
+    mFrame.Changes.Show(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now,
+      True);
+  end;
+end;
+
+/// <summary>Gesicherte Änderungen im Profil löschen; ein Fehler steht nur im Protokoll.</summary>
+procedure ClearStore(const AFactory: TAtlasUndoStoreFactory; const AFolder: string; const ALog: TProc<string>);
+var
+  mCleaner: IAtlasUndoStore;
+begin
+  if not Assigned(AFactory) then
+  begin
+    Exit;
+  end;
+  try
+    mCleaner := AFactory(AFolder, 0);
+    mCleaner.Clear;
+  except
+    on E: Exception do
+      if Assigned(ALog) then
+      begin
+        ALog('Atlas-Änderungsprotokoll nicht gelöscht: ' + E.ClassName);
+      end;
+  end;
 end;
 
 class procedure TAtlasIdeUndo.Start(const AMessage, ALog: TProc<string>);
@@ -125,27 +174,6 @@ begin
   TAtlasIdeResultsWindow.OnChangeUndo := nil;
   TAtlasIdeResultsWindow.OnChangeRedo := nil;
   TAtlasIdeResultsWindow.OnChangeDiff := nil;
-end;
-
-/// <summary>Gesicherte Änderungen im Profil löschen; ein Fehler steht nur im Protokoll.</summary>
-procedure ClearStore(const AFactory: TAtlasUndoStoreFactory; const AFolder: string; const ALog: TProc<string>);
-var
-  mCleaner: IAtlasUndoStore;
-begin
-  if not Assigned(AFactory) then
-  begin
-    Exit;
-  end;
-  try
-    mCleaner := AFactory(AFolder, 0);
-    mCleaner.Clear;
-  except
-    on E: Exception do
-      if Assigned(ALog) then
-      begin
-        ALog('Atlas-Änderungsprotokoll nicht gelöscht: ' + E.ClassName);
-      end;
-  end;
 end;
 
 class procedure TAtlasIdeUndo.ApplySettings;
@@ -206,24 +234,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeUndo.Say(const ALines: TArray<string>);
-var
-  mLine: string;
-begin
-  if Assigned(FOnMessage) then
-  begin
-    for mLine in ALines do
-    begin
-      FOnMessage(mLine);
-    end;
-  end;
-end;
-
-class procedure TAtlasIdeUndo.Report(const AReport: TAtlasUndoReport);
-begin
-  Say(TAtlasUndoMessages.Report(AReport));
-end;
-
 class procedure TAtlasIdeUndo.UndoLast;
 begin
   if FJournal = nil then
@@ -258,19 +268,6 @@ begin
     Exit;
   end;
   Report(FJournal.Redo(AId));
-end;
-
-class procedure TAtlasIdeUndo.Refresh;
-var
-  mFrame: TAtlasResultsFrame;
-begin
-  // Nur eine schon sichtbare Liste aktualisieren; nie das Fenster deswegen öffnen.
-  mFrame := TAtlasIdeResultsWindow.ExistingFrame;
-  if (FJournal <> nil) and (mFrame <> nil) and mFrame.Changes.Shows then
-  begin
-    mFrame.Changes.Show(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoListTitle, [FJournal.Count]), FJournal.Sets, Now,
-      True);
-  end;
 end;
 
 class procedure TAtlasIdeUndo.ShowList;
@@ -313,6 +310,11 @@ begin
   end;
   TAtlasUndoDiffView.Execute(TAtlasUndoStrings.Fmt(TAtlasUndoTextId.UndoDiffTitle, [mChangeSet.Action]),
     TAtlasUndoMessages.DiffLines(mChangeSet, AFileName));
+end;
+
+class function TAtlasIdeUndo.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'undo');
 end;
 
 end.

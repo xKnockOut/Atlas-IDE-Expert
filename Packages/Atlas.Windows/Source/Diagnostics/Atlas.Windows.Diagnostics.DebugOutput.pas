@@ -18,6 +18,8 @@ implementation
 uses
   Winapi.Windows;
 
+{ TDebugOutput }
+
 class procedure TDebugOutput.Write(const AText: string);
 begin
   OutputDebugString(PChar('[Atlas] ' + AText));

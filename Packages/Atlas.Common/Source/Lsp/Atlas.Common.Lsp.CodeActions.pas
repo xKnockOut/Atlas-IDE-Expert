@@ -165,24 +165,23 @@ begin
   FRuleProvider := ARuleProvider;
 end;
 
+function TLspCodeActions.FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
+var
+  mAction: TCodeAction;
+begin
+  Result := TJSONArray.Create;
+  if Assigned(FFormActions) then
+  begin
+    for mAction in FFormActions(AUri, AText, ARange) do
+    begin
+      Result.AddElement(ActionToJson(AUri, mAction));
+    end;
+  end;
+end;
+
 procedure TLspCodeActions.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleCodeAction);
-end;
-
-class function TLspCodeActions.Capability: TJSONObject;
-var
-  mKinds: TJSONArray;
-begin
-  mKinds := TJSONArray.Create;
-  mKinds.Add(cQuickFixKind);
-  mKinds.Add(cRewriteKind);
-  mKinds.Add(cExtractKind);
-  mKinds.Add(cOrganizeImportsKind);
-  mKinds.Add(cFixAllKind);
-  mKinds.Add(cRemoveUnusedKind);
-  Result := TJSONObject.Create;
-  Result.AddPair('codeActionKinds', mKinds);
 end;
 
 function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
@@ -200,14 +199,19 @@ begin
   end;
 end;
 
-class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+class function TLspCodeActions.Capability: TJSONObject;
 var
-  mChanges: TJSONObject;
+  mKinds: TJSONArray;
 begin
-  mChanges := TJSONObject.Create;
-  mChanges.AddPair(AUri, EditsToJson(AEdits));
+  mKinds := TJSONArray.Create;
+  mKinds.Add(cQuickFixKind);
+  mKinds.Add(cRewriteKind);
+  mKinds.Add(cExtractKind);
+  mKinds.Add(cOrganizeImportsKind);
+  mKinds.Add(cFixAllKind);
+  mKinds.Add(cRemoveUnusedKind);
   Result := TJSONObject.Create;
-  Result.AddPair('changes', mChanges);
+  Result.AddPair('codeActionKinds', mKinds);
 end;
 
 function CommandJson(const AAction: TCodeAction): TJSONObject;
@@ -406,6 +410,8 @@ type
     function Build(const AOnly: TArray<string>; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
   end;
 
+{ TCodeActionBuilder }
+
 constructor TCodeActionBuilder.Create(AOwner: TLspCodeActions; const AUri: string; const ARange: TTextRange;
   const AText: string; ATree: TSyntaxTree);
 begin
@@ -570,6 +576,11 @@ begin
   end;
 end;
 
+procedure TCodeActionBuilder.AddClassActions(const AStyle: TFormatStyle);
+begin
+  Add(TClassActions.Actions(FText, FTree, FRange.StartPos.Line, ClassContext(AStyle)));
+end;
+
 function TCodeActionBuilder.ClassContext(const AStyle: TFormatStyle): TClassActionContext;
 begin
   if Assigned(FOwner.FClassActionContextFor) then
@@ -582,11 +593,6 @@ begin
     Result.Uri := FUri;
   end;
   Result.Style := AStyle;
-end;
-
-procedure TCodeActionBuilder.AddClassActions(const AStyle: TFormatStyle);
-begin
-  Add(TClassActions.Actions(FText, FTree, FRange.StartPos.Line, ClassContext(AStyle)));
 end;
 
 function TCodeActionBuilder.RuleOffersFreeField: Boolean;
@@ -802,20 +808,6 @@ begin
   end;
 end;
 
-function TLspCodeActions.FormFileActions(const AUri, AText: string; const ARange: TTextRange): TJSONArray;
-var
-  mAction: TCodeAction;
-begin
-  Result := TJSONArray.Create;
-  if Assigned(FFormActions) then
-  begin
-    for mAction in FFormActions(AUri, AText, ARange) do
-    begin
-      Result.AddElement(ActionToJson(AUri, mAction));
-    end;
-  end;
-end;
-
 function TLspCodeActions.HandleCodeAction(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -848,6 +840,16 @@ begin
   finally
     mBuilder.Free;
   end;
+end;
+
+class function TLspCodeActions.WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  mChanges: TJSONObject;
+begin
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(AUri, EditsToJson(AEdits));
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', mChanges);
 end;
 
 initialization

@@ -121,22 +121,28 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasScalePreviewWindow.AddChoice(const ACaption: string; const AItems: TArray<string>;
-  AIndex: Integer): TComboBox;
-var
-  mLabel: TLabel;
+function TAtlasScalePreviewWindow.Px(AValue: Integer): Integer;
 begin
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := FParts.Bar;
-  mLabel.Caption := ACaption;
-  mLabel.AlignWithMargins := True;
-  Result := TComboBox.Create(Self);
-  Result.Parent := FParts.Bar;
-  Result.Style := csDropDownList;
-  Result.AlignWithMargins := True;
-  Result.Items.AddStrings(AItems);
-  Result.ItemIndex := AIndex;
-  Result.OnChange := ChoiceChanged;
+  // Das Abbild ist schon in Pixeln der gewählten Skalierung: 1:1.
+  Result := AValue;
+end;
+
+function TAtlasScalePreviewWindow.NodeText(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex <= High(FView.Texts)) and (FView.Texts[AIndex] <> '') then
+  begin
+    Result := FView.Texts[AIndex].Split([#10])[0];
+  end;
+  if Result = '' then
+  begin
+    Result := inherited NodeText(AIndex);
+  end;
+end;
+
+function TAtlasScalePreviewWindow.GripResizes: Boolean;
+begin
+  Result := False;
 end;
 
 procedure TAtlasScalePreviewWindow.BuildBar;
@@ -168,13 +174,78 @@ begin
     TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleLong, [FScale.LongFactor])], 0);
 end;
 
-function TAtlasScalePreviewWindow.Percent: Integer;
+procedure TAtlasScalePreviewWindow.Recalculate;
+var
+  mWidth, mHeight: Integer;
 begin
-  Result := cPercent;
-  if (FLevelBox <> nil) and (FLevelBox.ItemIndex >= 0) and (FLevelBox.ItemIndex <= High(FScale.Levels)) then
+  if FMeasure = nil then
   begin
-    Result := FScale.Levels[FLevelBox.ItemIndex];
+    Exit;
   end;
+  FView := TAtlasFormScale.View(FScale.Form.Nodes, FScale.Texts, Setup, TextWidth());
+  FData.Nodes := FView.Nodes;
+  FBounds := FView.Bounds;
+  FFindings := FView.Findings;
+  FProbe := FView.Client;
+  mWidth := Max(FProbe.cx, FView.Usable.cx);
+  mHeight := Max(FProbe.cy, FView.Usable.cy);
+  FParts.Paint.SetBounds(0, 0, mWidth + 2 * Origin.X, mHeight + 2 * Origin.Y);
+  if Length(FFindings) = 0 then
+  begin
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleNone, [Percent]) + ' · ' +
+      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleKeys);
+  end
+  else
+  begin
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleCount, [Length(FFindings),
+      Percent]);
+  end;
+  if not FScale.Scaled then
+  begin
+    FParts.Status.Caption := FParts.Status.Caption + ' · ' +
+      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleNotScaled);
+  end;
+  FillList;
+  FParts.Paint.Invalidate;
+end;
+
+procedure TAtlasScalePreviewWindow.PaintOver;
+var
+  mRect: TRect;
+begin
+  if (FView.Usable.cx <= 0) or (FView.Usable.cy <= 0) then
+  begin
+    Exit;
+  end;
+  // Nutzbare Fläche des Bildschirms gestrichelt (ohne Rahmen und Taskleiste).
+  mRect := Bounds(Origin.X, Origin.Y, FView.Usable.cx, FView.Usable.cy);
+  FParts.Paint.Canvas.Brush.Style := bsClear;
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Error);
+  FParts.Paint.Canvas.Pen.Style := psDash;
+  FParts.Paint.Canvas.Rectangle(mRect);
+  FParts.Paint.Canvas.Pen.Style := psSolid;
+  FParts.Paint.Canvas.Font.Color := TColor(FColors.Error);
+  FParts.Paint.Canvas.TextOut(mRect.Left + S(cDashGap),
+    mRect.Bottom - FParts.Paint.Canvas.TextHeight('0') - S(cDashGap),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleUsable));
+end;
+
+function TAtlasScalePreviewWindow.AddChoice(const ACaption: string; const AItems: TArray<string>;
+  AIndex: Integer): TComboBox;
+var
+  mLabel: TLabel;
+begin
+  mLabel := TLabel.Create(Self);
+  mLabel.Parent := FParts.Bar;
+  mLabel.Caption := ACaption;
+  mLabel.AlignWithMargins := True;
+  Result := TComboBox.Create(Self);
+  Result.Parent := FParts.Bar;
+  Result.Style := csDropDownList;
+  Result.AlignWithMargins := True;
+  Result.Items.AddStrings(AItems);
+  Result.ItemIndex := AIndex;
+  Result.OnChange := ChoiceChanged;
 end;
 
 function TAtlasScalePreviewWindow.Setup: TAtlasScaleSetup;
@@ -221,30 +292,6 @@ begin
     end;
 end;
 
-function TAtlasScalePreviewWindow.Px(AValue: Integer): Integer;
-begin
-  // Das Abbild ist schon in Pixeln der gewählten Skalierung: 1:1.
-  Result := AValue;
-end;
-
-function TAtlasScalePreviewWindow.NodeText(AIndex: Integer): string;
-begin
-  Result := '';
-  if (AIndex <= High(FView.Texts)) and (FView.Texts[AIndex] <> '') then
-  begin
-    Result := FView.Texts[AIndex].Split([#10])[0];
-  end;
-  if Result = '' then
-  begin
-    Result := inherited NodeText(AIndex);
-  end;
-end;
-
-function TAtlasScalePreviewWindow.GripResizes: Boolean;
-begin
-  Result := False;
-end;
-
 function TAtlasScalePreviewWindow.NameOf(ANode: Integer): string;
 begin
   Result := FScale.Form.FormName;
@@ -254,39 +301,18 @@ begin
   end;
 end;
 
-procedure TAtlasScalePreviewWindow.Recalculate;
-var
-  mWidth, mHeight: Integer;
+procedure TAtlasScalePreviewWindow.ChoiceChanged(Sender: TObject);
 begin
-  if FMeasure = nil then
+  Recalculate;
+end;
+
+procedure TAtlasScalePreviewWindow.ListClick(Sender: TObject);
+begin
+  if (FList.ItemIndex < 0) or (FList.ItemIndex > High(FListNodes)) or not Assigned(FOnSelect) then
   begin
     Exit;
   end;
-  FView := TAtlasFormScale.View(FScale.Form.Nodes, FScale.Texts, Setup, TextWidth());
-  FData.Nodes := FView.Nodes;
-  FBounds := FView.Bounds;
-  FFindings := FView.Findings;
-  FProbe := FView.Client;
-  mWidth := Max(FProbe.cx, FView.Usable.cx);
-  mHeight := Max(FProbe.cy, FView.Usable.cy);
-  FParts.Paint.SetBounds(0, 0, mWidth + 2 * Origin.X, mHeight + 2 * Origin.Y);
-  if Length(FFindings) = 0 then
-  begin
-    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleNone, [Percent]) + ' · ' +
-      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleKeys);
-  end
-  else
-  begin
-    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleCount, [Length(FFindings),
-      Percent]);
-  end;
-  if not FScale.Scaled then
-  begin
-    FParts.Status.Caption := FParts.Status.Caption + ' · ' +
-      TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleNotScaled);
-  end;
-  FillList;
-  FParts.Paint.Invalidate;
+  FOnSelect(NameOf(FListNodes[FList.ItemIndex]));
 end;
 
 procedure TAtlasScalePreviewWindow.FillList;
@@ -317,39 +343,13 @@ begin
   end;
 end;
 
-procedure TAtlasScalePreviewWindow.ChoiceChanged(Sender: TObject);
+function TAtlasScalePreviewWindow.Percent: Integer;
 begin
-  Recalculate;
-end;
-
-procedure TAtlasScalePreviewWindow.ListClick(Sender: TObject);
-begin
-  if (FList.ItemIndex < 0) or (FList.ItemIndex > High(FListNodes)) or not Assigned(FOnSelect) then
+  Result := cPercent;
+  if (FLevelBox <> nil) and (FLevelBox.ItemIndex >= 0) and (FLevelBox.ItemIndex <= High(FScale.Levels)) then
   begin
-    Exit;
+    Result := FScale.Levels[FLevelBox.ItemIndex];
   end;
-  FOnSelect(NameOf(FListNodes[FList.ItemIndex]));
-end;
-
-procedure TAtlasScalePreviewWindow.PaintOver;
-var
-  mRect: TRect;
-begin
-  if (FView.Usable.cx <= 0) or (FView.Usable.cy <= 0) then
-  begin
-    Exit;
-  end;
-  // Nutzbare Fläche des Bildschirms gestrichelt (ohne Rahmen und Taskleiste).
-  mRect := Bounds(Origin.X, Origin.Y, FView.Usable.cx, FView.Usable.cy);
-  FParts.Paint.Canvas.Brush.Style := bsClear;
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Error);
-  FParts.Paint.Canvas.Pen.Style := psDash;
-  FParts.Paint.Canvas.Rectangle(mRect);
-  FParts.Paint.Canvas.Pen.Style := psSolid;
-  FParts.Paint.Canvas.Font.Color := TColor(FColors.Error);
-  FParts.Paint.Canvas.TextOut(mRect.Left + S(cDashGap),
-    mRect.Bottom - FParts.Paint.Canvas.TextHeight('0') - S(cDashGap),
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ScaleUsable));
 end;
 
 end.

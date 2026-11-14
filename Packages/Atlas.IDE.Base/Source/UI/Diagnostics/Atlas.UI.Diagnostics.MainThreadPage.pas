@@ -112,32 +112,6 @@ begin
   SetSnapshot(Default(TAtlasPluginSnapshot));
 end;
 
-procedure TAtlasMainThreadPage.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot);
-begin
-  FSnapshot := ASnapshot;
-  FillFeatures;
-  FillSlow;
-end;
-
-procedure TAtlasMainThreadPage.SetColors(const AColors: TAtlasColors);
-begin
-  FFeatures.SetColors(AColors);
-  FSlow.SetColors(AColors);
-end;
-
-function TAtlasMainThreadPage.SelectedFeature(out AFeature: TAtlasFeature): Boolean;
-var
-  mIndex: Integer;
-begin
-  AFeature := Low(TAtlasFeature);
-  mIndex := FFeatures.Selected;
-  Result := (mIndex >= 0) and (mIndex <= High(FRows));
-  if Result then
-  begin
-    AFeature := FRows[mIndex].Feature;
-  end;
-end;
-
 procedure TAtlasMainThreadPage.FillFeatures;
 var
   mIndex, mSelected: Integer;
@@ -176,19 +150,6 @@ begin
     FSlowCaption.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.DiagSlowAll,
       [TAtlasPluginRecorder.cSlowCapacity]);
   end;
-end;
-
-procedure TAtlasMainThreadPage.ShowOnly(AFeature: TAtlasFeature);
-begin
-  FFilterOn := True;
-  FFilter := AFeature;
-  FillSlow;
-end;
-
-procedure TAtlasMainThreadPage.ShowAllSlow;
-begin
-  FFilterOn := False;
-  FillSlow;
 end;
 
 procedure TAtlasMainThreadPage.FeatureOpen(Sender: TObject);
@@ -235,6 +196,45 @@ begin
   begin
     FOnCopyText(FFeatures.RowText(FFeatures.Selected));
   end;
+end;
+
+procedure TAtlasMainThreadPage.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot);
+begin
+  FSnapshot := ASnapshot;
+  FillFeatures;
+  FillSlow;
+end;
+
+procedure TAtlasMainThreadPage.SetColors(const AColors: TAtlasColors);
+begin
+  FFeatures.SetColors(AColors);
+  FSlow.SetColors(AColors);
+end;
+
+function TAtlasMainThreadPage.SelectedFeature(out AFeature: TAtlasFeature): Boolean;
+var
+  mIndex: Integer;
+begin
+  AFeature := Low(TAtlasFeature);
+  mIndex := FFeatures.Selected;
+  Result := (mIndex >= 0) and (mIndex <= High(FRows));
+  if Result then
+  begin
+    AFeature := FRows[mIndex].Feature;
+  end;
+end;
+
+procedure TAtlasMainThreadPage.ShowOnly(AFeature: TAtlasFeature);
+begin
+  FFilterOn := True;
+  FFilter := AFeature;
+  FillSlow;
+end;
+
+procedure TAtlasMainThreadPage.ShowAllSlow;
+begin
+  FFilterOn := False;
+  FillSlow;
 end;
 
 end.

@@ -420,47 +420,22 @@ begin
   Result.AddPair('processId', TJSONNull.Create);
 end;
 
-class function TShellReplay.Reproduces(const ACase: TCrashCase; const AResponse: TJSONObject;
-  out ADetail: string): Boolean;
+{ TShellReplay }
+
+class function TShellReplay.Run(const AFileName: string; const ALogger: ILogger;
+  const AServer: TReplayServer): TReplayResult;
 var
-  mError, mValue: TJSONValue;
-  mCode: Integer;
-  mText: string;
+  mCase: TCrashCase;
+  mError: string;
 begin
-  Result := False;
-  if AResponse = nil then
+  if not TCrashCases.Load(AFileName, mCase, mError) then
   begin
-    ADetail := cTexts[TReplayText.NoAnswer].Text;
+    Result := Default(TReplayResult);
+    Result.Outcome := TReplayOutcome.Unreadable;
+    Result.Detail := mError;
     Exit;
   end;
-  mError := AResponse.GetValue('error');
-  if not (mError is TJSONObject) then
-  begin
-    ADetail := cTexts[TReplayText.NoError].Text;
-    Exit;
-  end;
-  mCode := 0;
-  mValue := TJSONObject(mError).GetValue('code');
-  if mValue is TJSONNumber then
-  begin
-    mCode := TJSONNumber(mValue).AsInt;
-  end;
-  mText := '';
-  mValue := TJSONObject(mError).GetValue('message');
-  if mValue is TJSONString then
-  begin
-    mText := mValue.Value;
-  end;
-  ADetail := cTexts[TReplayText.Error].Fmt([mCode, mText]);
-  if ACase.Kind = TCrashCaseKind.Timeout then
-  begin
-    Result := mCode = TJsonRpcErrorCode.cRequestCancelled;
-  end
-  else
-  begin
-    Result := (mCode = TJsonRpcErrorCode.cInternalError) and
-      ((ACase.ExceptionClass = '') or StartsText(ACase.ExceptionClass + ':', mText));
-  end;
+  Result := Run(mCase, TReplayPlace.Automatic, ALogger, AServer);
 end;
 
 type
@@ -647,22 +622,6 @@ begin
   end;
 end;
 
-class function TShellReplay.Run(const AFileName: string; const ALogger: ILogger;
-  const AServer: TReplayServer): TReplayResult;
-var
-  mCase: TCrashCase;
-  mError: string;
-begin
-  if not TCrashCases.Load(AFileName, mCase, mError) then
-  begin
-    Result := Default(TReplayResult);
-    Result.Outcome := TReplayOutcome.Unreadable;
-    Result.Detail := mError;
-    Exit;
-  end;
-  Result := Run(mCase, TReplayPlace.Automatic, ALogger, AServer);
-end;
-
 class function TShellReplay.ExitCodeOf(const AResult: TReplayResult): Integer;
 begin
   case AResult.Outcome of
@@ -672,6 +631,49 @@ begin
       Result := cExitNotReproduced;
   else
     Result := cExitUnreadable;
+  end;
+end;
+
+class function TShellReplay.Reproduces(const ACase: TCrashCase; const AResponse: TJSONObject;
+  out ADetail: string): Boolean;
+var
+  mError, mValue: TJSONValue;
+  mCode: Integer;
+  mText: string;
+begin
+  Result := False;
+  if AResponse = nil then
+  begin
+    ADetail := cTexts[TReplayText.NoAnswer].Text;
+    Exit;
+  end;
+  mError := AResponse.GetValue('error');
+  if not (mError is TJSONObject) then
+  begin
+    ADetail := cTexts[TReplayText.NoError].Text;
+    Exit;
+  end;
+  mCode := 0;
+  mValue := TJSONObject(mError).GetValue('code');
+  if mValue is TJSONNumber then
+  begin
+    mCode := TJSONNumber(mValue).AsInt;
+  end;
+  mText := '';
+  mValue := TJSONObject(mError).GetValue('message');
+  if mValue is TJSONString then
+  begin
+    mText := mValue.Value;
+  end;
+  ADetail := cTexts[TReplayText.Error].Fmt([mCode, mText]);
+  if ACase.Kind = TCrashCaseKind.Timeout then
+  begin
+    Result := mCode = TJsonRpcErrorCode.cRequestCancelled;
+  end
+  else
+  begin
+    Result := (mCode = TJsonRpcErrorCode.cInternalError) and
+      ((ACase.ExceptionClass = '') or StartsText(ACase.ExceptionClass + ':', mText));
   end;
 end;
 

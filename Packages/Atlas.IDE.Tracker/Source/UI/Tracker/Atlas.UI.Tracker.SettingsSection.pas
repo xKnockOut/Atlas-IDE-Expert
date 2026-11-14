@@ -106,6 +106,21 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasTrackerSettingsSection.Active: Boolean;
+begin
+  Result := not FClosed and (FRows <> nil) and FRows.Active;
+end;
+
+procedure TAtlasTrackerSettingsSection.ConnectionsChanged;
+begin
+  FProjects.Refresh;
+end;
+
+procedure TAtlasTrackerSettingsSection.ProjectsChanged;
+begin
+  FQueries.Refresh;
+end;
+
 function TAtlasTrackerSettingsSection.OwnerId: string;
 begin
   Result := cOwnerId;
@@ -114,11 +129,6 @@ end;
 function TAtlasTrackerSettingsSection.AreaId: string;
 begin
   Result := cAreaId;
-end;
-
-function TAtlasTrackerSettingsSection.Active: Boolean;
-begin
-  Result := not FClosed and (FRows <> nil) and FRows.Active;
 end;
 
 procedure TAtlasTrackerSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
@@ -206,16 +216,6 @@ begin
   // Der Schalter gehört der Seite.
   FEnabled := nil;
   FreeAndNil(FHooks);
-end;
-
-procedure TAtlasTrackerSettingsSection.ConnectionsChanged;
-begin
-  FProjects.Refresh;
-end;
-
-procedure TAtlasTrackerSettingsSection.ProjectsChanged;
-begin
-  FQueries.Refresh;
 end;
 
 procedure TAtlasTrackerSettingsSection.SetTrackerProviders(const ANames, ACaptions: TArray<string>);

@@ -75,22 +75,6 @@ begin
   inherited Create;
 end;
 
-class procedure TAtlasSettingsSection.ProvideIn(const AScope: IAtlasModuleScope);
-begin
-  AScope.Provide(IAtlasSettingsSectionProvider,
-    TAtlasSettingsSectionFactory.Create(Self) as IAtlasSettingsSectionProvider);
-end;
-
-procedure TAtlasSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
-begin
-  if FClosed or (FHost <> nil) then
-  begin
-    Exit;
-  end;
-  FHost := AHost;
-  BuildRows;
-end;
-
 procedure TAtlasSettingsSection.Title(const ACaption: string);
 begin
   FHost.AddTitle(ACaption);
@@ -146,6 +130,22 @@ function TAtlasSettingsSection.OwnChoice(const ACaption: string;
   const ACaptions, AKeys: TArray<string>): TAtlasChoiceBox;
 begin
   Result := FHost.AddOwnChoice(ACaption, ACaptions, AKeys) as TAtlasChoiceBox;
+end;
+
+class procedure TAtlasSettingsSection.ProvideIn(const AScope: IAtlasModuleScope);
+begin
+  AScope.Provide(IAtlasSettingsSectionProvider,
+    TAtlasSettingsSectionFactory.Create(Self) as IAtlasSettingsSectionProvider);
+end;
+
+procedure TAtlasSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
+begin
+  if FClosed or (FHost <> nil) then
+  begin
+    Exit;
+  end;
+  FHost := AHost;
+  BuildRows;
 end;
 
 procedure TAtlasSettingsSection.Load(const AValues: IAtlasSettingsValues);

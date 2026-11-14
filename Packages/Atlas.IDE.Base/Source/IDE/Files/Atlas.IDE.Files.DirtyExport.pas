@@ -188,6 +188,8 @@ begin
   end;
 end;
 
+{ TAtlasDirtyExport }
+
 constructor TAtlasDirtyExport.Create;
 begin
   inherited Create;
@@ -220,6 +222,53 @@ begin
       ;
   end;
   inherited Destroy;
+end;
+
+procedure TAtlasDirtyExport.Tick(Sender: TObject);
+var
+  mJson: TJSONObject;
+  mFiles, mOpen, mProjects: TJSONArray;
+  mName, mText, mActive: string;
+begin
+  try
+    mFiles := TJSONArray.Create;
+    for mName in ModifiedFiles do
+    begin
+      mFiles.Add(mName);
+    end;
+    mOpen := TJSONArray.Create;
+    for mName in OpenFiles do
+    begin
+      mOpen.Add(mName);
+    end;
+    mProjects := TJSONArray.Create;
+    for mName in OpenProjects(mActive) do
+    begin
+      mProjects.Add(mName);
+    end;
+    mJson := TJSONObject.Create;
+    try
+      mJson.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
+      mJson.AddPair('files', mFiles);
+      mJson.AddPair('open', mOpen);
+      mJson.AddPair('projects', mProjects);
+      mJson.AddPair('activeProject', mActive);
+      mText := mJson.ToJSON;
+    finally
+      mJson.Free;
+    end;
+    if mText = FLast then
+    begin
+      Exit;
+    end;
+    // Atomar: Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
+    TAtlasDataFile.Write(FFileName, mText);
+    FLast := mText;
+  except
+    // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten('Liste ungespeicherter Dateien', E);
+  end;
 end;
 
 class function TAtlasDirtyExport.ModifiedFiles: TArray<string>;
@@ -299,53 +348,6 @@ begin
   if (mProject <> nil) and SameText(ExtractFileExt(mProject.FileName), '.dproj') then
   begin
     AActive := mProject.FileName;
-  end;
-end;
-
-procedure TAtlasDirtyExport.Tick(Sender: TObject);
-var
-  mJson: TJSONObject;
-  mFiles, mOpen, mProjects: TJSONArray;
-  mName, mText, mActive: string;
-begin
-  try
-    mFiles := TJSONArray.Create;
-    for mName in ModifiedFiles do
-    begin
-      mFiles.Add(mName);
-    end;
-    mOpen := TJSONArray.Create;
-    for mName in OpenFiles do
-    begin
-      mOpen.Add(mName);
-    end;
-    mProjects := TJSONArray.Create;
-    for mName in OpenProjects(mActive) do
-    begin
-      mProjects.Add(mName);
-    end;
-    mJson := TJSONObject.Create;
-    try
-      mJson.AddPair('pid', TJSONNumber.Create(GetCurrentProcessId));
-      mJson.AddPair('files', mFiles);
-      mJson.AddPair('open', mOpen);
-      mJson.AddPair('projects', mProjects);
-      mJson.AddPair('activeProject', mActive);
-      mText := mJson.ToJSON;
-    finally
-      mJson.Free;
-    end;
-    if mText = FLast then
-    begin
-      Exit;
-    end;
-    // Atomar: Der Server liest die Liste jederzeit und sah sonst womöglich eine halbe.
-    TAtlasDataFile.Write(FFileName, mText);
-    FLast := mText;
-  except
-    // Ohne Liste schützt der Server weiter über den Vergleich mit der Platte; der Grund steht einmal im Protokoll.
-    on E: Exception do
-      TAtlasDataFile.ReportNotWritten('Liste ungespeicherter Dateien', E);
   end;
 end;
 

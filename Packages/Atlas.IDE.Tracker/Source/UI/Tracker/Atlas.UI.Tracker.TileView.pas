@@ -56,14 +56,14 @@ begin
   ParentBackground := True;
 end;
 
-function TAtlasTrackerTileView.BodyHeight: Integer;
+procedure TAtlasTrackerTileView.CreateWnd;
 begin
-  Result := cDefaultBodyHeight;
-end;
-
-procedure TAtlasTrackerTileView.UpdateContent;
-begin
-  Invalidate;
+  inherited CreateWnd;
+  if FPendingUpdate then
+  begin
+    FPendingUpdate := False;
+    UpdateContent;
+  end;
 end;
 
 procedure TAtlasTrackerTileView.HeightChanged;
@@ -91,14 +91,14 @@ begin
   Result := False;
 end;
 
-procedure TAtlasTrackerTileView.CreateWnd;
+function TAtlasTrackerTileView.BodyHeight: Integer;
 begin
-  inherited CreateWnd;
-  if FPendingUpdate then
-  begin
-    FPendingUpdate := False;
-    UpdateContent;
-  end;
+  Result := cDefaultBodyHeight;
+end;
+
+procedure TAtlasTrackerTileView.UpdateContent;
+begin
+  Invalidate;
 end;
 
 end.

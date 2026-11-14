@@ -167,43 +167,6 @@ begin
   FSourceFor := ASourceFor;
 end;
 
-procedure TLspArchitecture.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  // Bei einigen tausend Units dauert die Rechnung Sekundenbruchteile: nebenläufig, damit Editoranfragen nicht
-  // warten.
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
-end;
-
-class function TLspArchitecture.TryParseFormat(const AText: string; out AFormat: TLspArchitectureFormat): Boolean;
-begin
-  Result := True;
-  if (AText = '') or SameText(AText, 'json') then
-  begin
-    AFormat := TLspArchitectureFormat.Json;
-  end
-  else if SameText(AText, 'markdown') then
-  begin
-    AFormat := TLspArchitectureFormat.Markdown;
-  end
-  else if SameText(AText, 'html') then
-  begin
-    AFormat := TLspArchitectureFormat.Html;
-  end
-  else if SameText(AText, 'text') then
-  begin
-    AFormat := TLspArchitectureFormat.Text;
-  end
-  else
-  begin
-    AFormat := TLspArchitectureFormat.Json;
-    Result := False;
-  end;
-end;
-
 function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: Boolean; out ARoot: string;
   out ASettings: TServerSettings): TArchitectureOverview;
 var
@@ -242,6 +205,46 @@ begin
   end;
   mRequest.Rename := TJsonRead.FlagOr(AParams, 'renameSubsystems', False);
   Result := FService.Overview(mRequest);
+end;
+
+procedure TLspArchitecture.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  // Bei einigen tausend Units dauert die Rechnung Sekundenbruchteile: nebenläufig, damit Editoranfragen nicht
+  // warten.
+  ADispatcher.RegisterConcurrentRequest(cMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := Request(AParams);
+    end);
+end;
+
+function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  mParams: TJSONObject;
+  mOptions: TJSONObject;
+  mPair: TJSONPair;
+begin
+  mParams := TJSONObject.Create;
+  try
+    if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
+      mParams.AddPair('uri', AArguments.Items[0].Value);
+    end;
+    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+    begin
+      mOptions := TJSONObject(AArguments.Items[1]);
+      for mPair in mOptions do
+      begin
+        if mPair.JsonString.Value <> 'uri' then
+        begin
+          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+        end;
+      end;
+    end;
+    Result := Request(mParams);
+  finally
+    mParams.Free;
+  end;
 end;
 
 /// <summary>Stand für den Vergleich (#1121): "compareWith", sonst architecture.baseline (außer "compare": false);
@@ -438,32 +441,29 @@ begin
   Result := AnswerFor(mFormat, mParams, mState, mSection);
 end;
 
-function TLspArchitecture.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mParams: TJSONObject;
-  mOptions: TJSONObject;
-  mPair: TJSONPair;
+class function TLspArchitecture.TryParseFormat(const AText: string; out AFormat: TLspArchitectureFormat): Boolean;
 begin
-  mParams := TJSONObject.Create;
-  try
-    if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-    begin
-      mParams.AddPair('uri', AArguments.Items[0].Value);
-    end;
-    if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
-    begin
-      mOptions := TJSONObject(AArguments.Items[1]);
-      for mPair in mOptions do
-      begin
-        if mPair.JsonString.Value <> 'uri' then
-        begin
-          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-        end;
-      end;
-    end;
-    Result := Request(mParams);
-  finally
-    mParams.Free;
+  Result := True;
+  if (AText = '') or SameText(AText, 'json') then
+  begin
+    AFormat := TLspArchitectureFormat.Json;
+  end
+  else if SameText(AText, 'markdown') then
+  begin
+    AFormat := TLspArchitectureFormat.Markdown;
+  end
+  else if SameText(AText, 'html') then
+  begin
+    AFormat := TLspArchitectureFormat.Html;
+  end
+  else if SameText(AText, 'text') then
+  begin
+    AFormat := TLspArchitectureFormat.Text;
+  end
+  else
+  begin
+    AFormat := TLspArchitectureFormat.Json;
+    Result := False;
   end;
 end;
 

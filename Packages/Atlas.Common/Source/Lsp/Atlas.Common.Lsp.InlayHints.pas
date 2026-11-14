@@ -190,9 +190,17 @@ const
 
 {$SCOPEDENUMS OFF}
 
-class function TLspInlayHints.DefinesPrefix: string;
+{ TLspInlayHints }
+
+constructor TLspInlayHints.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText; const ASettings: TInlayHintSettingsProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
-  Result := cTexts[TInlayHintsText.Defines].Text;
+  inherited Create;
+  FStore := AStore;
+  FIndex := AIndex;
+  FReadText := AReadText;
+  FSettings := ASettings;
+  FEnsureUnit := AEnsureUnit;
 end;
 
 type
@@ -545,6 +553,12 @@ end;
 
 { TLspInlayHints }
 
+constructor TLspInlayHints.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: THoverReadText; const ASettings: TInlayHintSettingsProvider);
+begin
+  Create(AStore, AIndex, AReadText, ASettings, nil);
+end;
+
 function TLspInlayHints.GetNamespaces: TArray<string>;
 begin
   Result := TLspNamespaces.Read(FNamespaces);
@@ -555,55 +569,63 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-constructor TLspInlayHints.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: THoverReadText; const ASettings: TInlayHintSettingsProvider);
+class function TLspInlayHints.DefinesPrefix: string;
 begin
-  Create(AStore, AIndex, AReadText, ASettings, nil);
+  Result := cTexts[TInlayHintsText.Defines].Text;
 end;
 
-constructor TLspInlayHints.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: THoverReadText; const ASettings: TInlayHintSettingsProvider; const AEnsureUnit: TEnsureUnitFunc);
+function TLspInlayHints.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mRangeValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mSettings: TInlayHintSettings;
+  mMinLines: Integer;
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FSettings := ASettings;
-  FEnsureUnit := AEnsureUnit;
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TInlayHintsText.FieldsTextDocumentUriAndRange].Text);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  if Assigned(FSettings) then
+  begin
+    mSettings := FSettings(mUri);
+  end
+  else
+  begin
+    mSettings := TInlayHintSettings.Default;
+  end;
+  // Mindestlänge des Plugins (#620).
+  if TJSONObject(AParams).TryGetValue<Integer>(cMinLinesParam, mMinLines) and (mMinLines > 0) then
+  begin
+    mSettings.EndMarkerMinLines := mMinLines;
+  end;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := ToJson(Collect(TInlayHintSource.Create(mResolver, FIndex, mTree, mDocument.Text,
+      TDocumentUris.ToPath(mUri), FReadText), TLspPositions.ReadRange(mRangeValue), mSettings, mShared.Processed));
+  finally
+    mResolver.Free;
+  end;
 end;
 
 procedure TLspInlayHints.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
-end;
-
-class function TLspInlayHints.ParameterNames(const ASource: TInlayHintSource;
-  const ARange: TTextRange): TArray<TInlayHint>;
-var
-  mTokens: TArray<TPascalToken>;
-  mBlocks: TList<TSyntaxNode>;
-  mIndex, mOpen: Integer;
-  mList: TList<TInlayHint>;
-begin
-  mTokens := ASource.Tree.Tokens;
-  mBlocks := TList<TSyntaxNode>.Create;
-  mList := TList<TInlayHint>.Create;
-  try
-    // Nur Anweisungen: Köpfe von Routinen haben auch Bezeichner vor "(".
-    CollectNodes(ASource.Tree.Root, [TSyntaxKind.Block], mBlocks);
-    for mIndex := 0 to High(mTokens) - 1 do
-    begin
-      mOpen := CallOpen(mTokens, mIndex, ARange);
-      if (mOpen >= 0) and InAnyBlock(mBlocks, mTokens[mIndex].Offset) then
-      begin
-        AddCallHints(mList, ASource, mOpen);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-    mBlocks.Free;
-  end;
 end;
 
 /// <summary>Typ wie im Quelltext: eingebaut mit Namen, generisch mit eingesetzten Typargumenten ohne Unit.</summary>
@@ -975,45 +997,32 @@ begin
     ExpressionType(ASource, mFirst, mLast, AFound);
 end;
 
-class function TLspInlayHints.Inferred(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const ARange: TTextRange): TArray<TInferredType>;
+class function TLspInlayHints.ParameterNames(const ASource: TInlayHintSource;
+  const ARange: TTextRange): TArray<TInlayHint>;
 var
-  mSource: TInlayHintSource;
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mFound: TInferredType;
-  mList: TList<TInferredType>;
-  mOk: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mBlocks: TList<TSyntaxNode>;
+  mIndex, mOpen: Integer;
+  mList: TList<TInlayHint>;
 begin
-  mSource := TInlayHintSource.Create(AResolver, ATree, AFileName);
-  mNodes := TList<TSyntaxNode>.Create;
-  mList := TList<TInferredType>.Create;
+  mTokens := ASource.Tree.Tokens;
+  mBlocks := TList<TSyntaxNode>.Create;
+  mList := TList<TInlayHint>.Create;
   try
-    CollectNodes(ATree.Root, [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ForInStatement], mNodes);
-    for mNode in mNodes do
+    // Nur Anweisungen: Köpfe von Routinen haben auch Bezeichner vor "(".
+    CollectNodes(ASource.Tree.Root, [TSyntaxKind.Block], mBlocks);
+    for mIndex := 0 to High(mTokens) - 1 do
     begin
-      if not InRange(ARange, mNode.StartPos) or (Pos(',', mNode.Name) > 0) then
+      mOpen := CallOpen(mTokens, mIndex, ARange);
+      if (mOpen >= 0) and InAnyBlock(mBlocks, mTokens[mIndex].Offset) then
       begin
-        Continue;
-      end;
-      mFound := Default(TInferredType);
-      if mNode.Kind = TSyntaxKind.ForInStatement then
-      begin
-        mOk := InferForIn(mSource, mNode, mFound);
-      end
-      else
-      begin
-        mOk := InferInline(mSource, mNode, mFound);
-      end;
-      if mOk then
-      begin
-        mList.Add(mFound);
+        AddCallHints(mList, ASource, mOpen);
       end;
     end;
     Result := mList.ToArray;
   finally
     mList.Free;
-    mNodes.Free;
+    mBlocks.Free;
   end;
 end;
 
@@ -1139,36 +1148,46 @@ begin
   end;
 end;
 
-class function TLspInlayHints.ExplicitTypeAction(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName: string; const APosition: TTextPosition; const ALineBreak: string;
-  out AAction: TCodeAction): Boolean;
+class function TLspInlayHints.Inferred(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ARange: TTextRange): TArray<TInferredType>;
 var
-  mUnits: TTypeUnits;
+  mSource: TInlayHintSource;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mFound: TInferredType;
+  mList: TList<TInferredType>;
+  mOk: Boolean;
 begin
-  AAction := Default(TCodeAction);
-  mUnits := Default(TTypeUnits);
-  Result := (ATree <> nil) and (ATree.Root <> nil) and InferredAt(AResolver, ATree, AFileName, APosition,
-    mUnits.Found);
-  if not Result then
-  begin
-    Exit;
+  mSource := TInlayHintSource.Create(AResolver, ATree, AFileName);
+  mNodes := TList<TSyntaxNode>.Create;
+  mList := TList<TInferredType>.Create;
+  try
+    CollectNodes(ATree.Root, [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ForInStatement], mNodes);
+    for mNode in mNodes do
+    begin
+      if not InRange(ARange, mNode.StartPos) or (Pos(',', mNode.Name) > 0) then
+      begin
+        Continue;
+      end;
+      mFound := Default(TInferredType);
+      if mNode.Kind = TSyntaxKind.ForInStatement then
+      begin
+        mOk := InferForIn(mSource, mNode, mFound);
+      end
+      else
+      begin
+        mOk := InferInline(mSource, mNode, mFound);
+      end;
+      if mOk then
+      begin
+        mList.Add(mFound);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+    mNodes.Free;
   end;
-  AAction.Title := cTexts[TInlayHintsText.WriteOutTheType].Text;
-  AAction.Kind := cRewriteKind;
-  AAction.Edits := [TTextEdit.Create(TTextRange.Create(mUnits.Found.NameEnd, mUnits.Found.NameEnd),
-    ': ' + mUnits.Found.TypeName)];
-  mUnits.Resolver := AResolver;
-  mUnits.Tokens := ATree.Tokens;
-  mUnits.Offset := OffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
-  mUnits.Own := AResolver.ExtractedUnit(ATree, AFileName);
-  mUnits.OwnName := TUsesClauses.OwnName(mUnits.Tokens);
-  mUnits.Used := TUsesClauses.UsedUnits(mUnits.Tokens);
-  mUnits.Base := mUnits.Found.TypeName;
-  if Pos('<', mUnits.Base) > 0 then
-  begin
-    mUnits.Base := Copy(mUnits.Base, 1, Pos('<', mUnits.Base) - 1);
-  end;
-  AAction.Edits := AAction.Edits + TypeUnitEdits(mUnits, ALineBreak);
 end;
 
 /// <summary>Token "end" am Ende von ANode (bei Routinen das des Rumpfs); -1 ohne.</summary>
@@ -1259,33 +1278,36 @@ begin
   AHint.HasBlockStart := True;
 end;
 
-class function TLspInlayHints.EndMarkers(ATree: TSyntaxTree; const ARange: TTextRange;
-  AMinLines: Integer): TArray<TInlayHint>;
+class function TLspInlayHints.ExplicitTypeAction(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const ALineBreak: string;
+  out AAction: TCodeAction): Boolean;
 var
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mHint: TInlayHint;
-  mList: TList<TInlayHint>;
+  mUnits: TTypeUnits;
 begin
-  mNodes := TList<TSyntaxNode>.Create;
-  mList := TList<TInlayHint>.Create;
-  try
-    CollectNodes(ATree.Root, [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl, TSyntaxKind.IfStatement,
-      TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WithStatement,
-      TSyntaxKind.CaseStatement, TSyntaxKind.TryStatement], mNodes);
-    for mNode in mNodes do
-    begin
-      if (mNode.EndPos.Line - mNode.StartPos.Line + 1 >= AMinLines) and TryEndMarker(ATree.Tokens, mNode, ARange,
-        mHint) then
-      begin
-        mList.Add(mHint);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-    mNodes.Free;
+  AAction := Default(TCodeAction);
+  mUnits := Default(TTypeUnits);
+  Result := (ATree <> nil) and (ATree.Root <> nil) and InferredAt(AResolver, ATree, AFileName, APosition,
+    mUnits.Found);
+  if not Result then
+  begin
+    Exit;
   end;
+  AAction.Title := cTexts[TInlayHintsText.WriteOutTheType].Text;
+  AAction.Kind := cRewriteKind;
+  AAction.Edits := [TTextEdit.Create(TTextRange.Create(mUnits.Found.NameEnd, mUnits.Found.NameEnd),
+    ': ' + mUnits.Found.TypeName)];
+  mUnits.Resolver := AResolver;
+  mUnits.Tokens := ATree.Tokens;
+  mUnits.Offset := OffsetAt(mUnits.Tokens, mUnits.Found.NameStart);
+  mUnits.Own := AResolver.ExtractedUnit(ATree, AFileName);
+  mUnits.OwnName := TUsesClauses.OwnName(mUnits.Tokens);
+  mUnits.Used := TUsesClauses.UsedUnits(mUnits.Tokens);
+  mUnits.Base := mUnits.Found.TypeName;
+  if Pos('<', mUnits.Base) > 0 then
+  begin
+    mUnits.Base := Copy(mUnits.Base, 1, Pos('<', mUnits.Base) - 1);
+  end;
+  AAction.Edits := AAction.Edits + TypeUnitEdits(mUnits, ALineBreak);
 end;
 
 /// <summary>Text einer Direktive hinter {$ bzw. (*$, groß geschrieben; False bei anderen Token.</summary>
@@ -1402,6 +1424,55 @@ begin
   Result.IncludeFile := ExtractFileName(StringReplace(Trim(AIncludeName), '''', '', [rfReplaceAll]));
 end;
 
+class function TLspInlayHints.EndMarkers(ATree: TSyntaxTree; const ARange: TTextRange;
+  AMinLines: Integer): TArray<TInlayHint>;
+var
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mHint: TInlayHint;
+  mList: TList<TInlayHint>;
+begin
+  mNodes := TList<TSyntaxNode>.Create;
+  mList := TList<TInlayHint>.Create;
+  try
+    CollectNodes(ATree.Root, [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl, TSyntaxKind.IfStatement,
+      TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WithStatement,
+      TSyntaxKind.CaseStatement, TSyntaxKind.TryStatement], mNodes);
+    for mNode in mNodes do
+    begin
+      if (mNode.EndPos.Line - mNode.StartPos.Line + 1 >= AMinLines) and TryEndMarker(ATree.Tokens, mNode, ARange,
+        mHint) then
+      begin
+        mList.Add(mHint);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+    mNodes.Free;
+  end;
+end;
+
+/// <summary>Liegt ANode im Wert einer Konstanten (const-Abschnitt oder Inline-Konstante)?</summary>
+function InConstant(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ANode.Parent;
+  while (mNode <> nil) and not (mNode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst]) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  Result := mNode <> nil;
+end;
+
+/// <summary>Ein Literal aus genau einem ^X: der Parser schreibt es als #Code (#862).</summary>
+function IsCaretLiteral(ANode: TSyntaxNode; const ATreeText: string): Boolean;
+begin
+  Result := (ANode.EndOffset - ANode.StartOffset = 2) and (ANode.StartOffset < Length(ATreeText)) and
+    (ATreeText[ANode.StartOffset + 1] = '^') and ANode.Name.StartsWith('#');
+end;
+
 class function TLspInlayHints.IncludeDefines(ATree: TSyntaxTree; const AProcessed: TPreprocessorResult;
   const ARange: TTextRange): TArray<TInlayHint>;
 var
@@ -1435,26 +1506,6 @@ begin
   end;
 end;
 
-/// <summary>Liegt ANode im Wert einer Konstanten (const-Abschnitt oder Inline-Konstante)?</summary>
-function InConstant(ANode: TSyntaxNode): Boolean;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := ANode.Parent;
-  while (mNode <> nil) and not (mNode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst]) do
-  begin
-    mNode := mNode.Parent;
-  end;
-  Result := mNode <> nil;
-end;
-
-/// <summary>Ein Literal aus genau einem ^X: der Parser schreibt es als #Code (#862).</summary>
-function IsCaretLiteral(ANode: TSyntaxNode; const ATreeText: string): Boolean;
-begin
-  Result := (ANode.EndOffset - ANode.StartOffset = 2) and (ANode.StartOffset < Length(ATreeText)) and
-    (ATreeText[ANode.StartOffset + 1] = '^') and ANode.Name.StartsWith('#');
-end;
-
 class function TLspInlayHints.ControlChars(ATree: TSyntaxTree; const ATreeText: string;
   const ARange: TTextRange): TArray<TInlayHint>;
 var
@@ -1483,6 +1534,11 @@ begin
   finally
     mLiterals.Free;
   end;
+end;
+
+function CompareHints(const A, B: TInlayHint): Integer;
+begin
+  Result := ComparePositions(A.Position, B.Position);
 end;
 
 class function TLspInlayHints.MethodMarkers(AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -1515,15 +1571,46 @@ begin
   end;
 end;
 
-function CompareHints(const A, B: TInlayHint): Integer;
-begin
-  Result := ComparePositions(A.Position, B.Position);
-end;
-
 class function TLspInlayHints.Collect(const ASource: TInlayHintSource; const ARange: TTextRange;
   const ASettings: TInlayHintSettings): TArray<TInlayHint>;
 begin
   Result := Collect(ASource, ARange, ASettings, Default(TPreprocessorResult));
+end;
+
+/// <summary>Zusatzdaten des Hinweises für das Plugin ("data"); nil ohne.</summary>
+function HintData(const AHint: TInlayHint): TJSONObject;
+var
+  mDefines: TJSONArray;
+  mName: string;
+begin
+  Result := nil;
+  // Blockanfang für den Sprung per Klick (#620).
+  if AHint.HasBlockStart then
+  begin
+    Result := TJSONObject.Create(TJSONPair.Create('blockStart', TLspPositions.PositionToJson(AHint.BlockStart)));
+  end
+  // Symbole hinter {$I} (#860), für das Plugin getrennt von Endmarken.
+  else if Length(AHint.Defines) > 0 then
+  begin
+    mDefines := TJSONArray.Create;
+    for mName in AHint.Defines do
+    begin
+      mDefines.Add(mName);
+    end;
+    Result := TJSONObject.Create(TJSONPair.Create('includeDefines',
+      TJSONObject.Create.AddPair('file', AHint.IncludeFile).AddPair('names', mDefines)));
+  end
+  // Code eines Steuerzeichens (#862), für das Plugin getrennt von Endmarken.
+  else if AHint.ControlChar then
+  begin
+    Result := TJSONObject.Create(TJSONPair.Create('controlChar',
+      TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(AHint.CharCode)))));
+  end
+  // Methode ohne Self (#686): Das Plugin beschriftet die Marke in der Sprache der IDE.
+  else if AHint.MethodWithoutSelf then
+  begin
+    Result := TJSONObject.Create(TJSONPair.Create('methodWithoutSelf', TJSONBool.Create(True)));
+  end;
 end;
 
 class function TLspInlayHints.Collect(const ASource: TInlayHintSource; const ARange: TTextRange;
@@ -1565,42 +1652,6 @@ begin
   end;
 end;
 
-/// <summary>Zusatzdaten des Hinweises für das Plugin ("data"); nil ohne.</summary>
-function HintData(const AHint: TInlayHint): TJSONObject;
-var
-  mDefines: TJSONArray;
-  mName: string;
-begin
-  Result := nil;
-  // Blockanfang für den Sprung per Klick (#620).
-  if AHint.HasBlockStart then
-  begin
-    Result := TJSONObject.Create(TJSONPair.Create('blockStart', TLspPositions.PositionToJson(AHint.BlockStart)));
-  end
-  // Symbole hinter {$I} (#860), für das Plugin getrennt von Endmarken.
-  else if Length(AHint.Defines) > 0 then
-  begin
-    mDefines := TJSONArray.Create;
-    for mName in AHint.Defines do
-    begin
-      mDefines.Add(mName);
-    end;
-    Result := TJSONObject.Create(TJSONPair.Create('includeDefines',
-      TJSONObject.Create.AddPair('file', AHint.IncludeFile).AddPair('names', mDefines)));
-  end
-  // Code eines Steuerzeichens (#862), für das Plugin getrennt von Endmarken.
-  else if AHint.ControlChar then
-  begin
-    Result := TJSONObject.Create(TJSONPair.Create('controlChar',
-      TJSONObject.Create(TJSONPair.Create('code', TJSONNumber.Create(AHint.CharCode)))));
-  end
-  // Methode ohne Self (#686): Das Plugin beschriftet die Marke in der Sprache der IDE.
-  else if AHint.MethodWithoutSelf then
-  begin
-    Result := TJSONObject.Create(TJSONPair.Create('methodWithoutSelf', TJSONBool.Create(True)));
-  end;
-end;
-
 class function TLspInlayHints.ToJson(const AHints: TArray<TInlayHint>): TJSONArray;
 var
   mHint: TInlayHint;
@@ -1630,55 +1681,6 @@ begin
     begin
       mEntry.AddPair('data', mData);
     end;
-  end;
-end;
-
-function TLspInlayHints.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mRangeValue: TJSONValue;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mResolver: TNameResolver;
-  mSettings: TInlayHintSettings;
-  mMinLines: Integer;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TInlayHintsText.FieldsTextDocumentUriAndRange].Text);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  if Assigned(FSettings) then
-  begin
-    mSettings := FSettings(mUri);
-  end
-  else
-  begin
-    mSettings := TInlayHintSettings.Default;
-  end;
-  // Mindestlänge des Plugins (#620).
-  if TJSONObject(AParams).TryGetValue<Integer>(cMinLinesParam, mMinLines) and (mMinLines > 0) then
-  begin
-    mSettings.EndMarkerMinLines := mMinLines;
-  end;
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mResolver.Namespaces := Namespaces;
-    Result := ToJson(Collect(TInlayHintSource.Create(mResolver, FIndex, mTree, mDocument.Text,
-      TDocumentUris.ToPath(mUri), FReadText), TLspPositions.ReadRange(mRangeValue), mSettings, mShared.Processed));
-  finally
-    mResolver.Free;
   end;
 end;
 

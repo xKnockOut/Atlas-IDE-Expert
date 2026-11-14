@@ -420,19 +420,6 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.BuiltinCast(ACallee: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
-begin
-  // Byte(X), wenn System nicht im Index steht.
-  AType := Default(TResolvedSymbol);
-  Result := (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.Identifier) and
-    TResolverText.IsBuiltinTypeName(ACallee.Name) and
-    (Length(FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee)) = 0);
-  if Result then
-  begin
-    AType := BuiltinSymbol(ACallee.Name);
-  end;
-end;
-
 function TTypeMismatchCheck.IsIntrinsic(ACallee: TSyntaxNode): Boolean;
 var
   mCandidates: TArray<TResolvedSymbol>;
@@ -444,6 +431,19 @@ begin
   end;
   mCandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee);
   Result := (Length(mCandidates) = 0) or mCandidates[0].Builtin or SameText(mCandidates[0].UnitName, 'System');
+end;
+
+function TTypeMismatchCheck.BuiltinCast(ACallee: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+begin
+  // Byte(X), wenn System nicht im Index steht.
+  AType := Default(TResolvedSymbol);
+  Result := (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.Identifier) and
+    TResolverText.IsBuiltinTypeName(ACallee.Name) and
+    (Length(FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ACallee)) = 0);
+  if Result then
+  begin
+    AType := BuiltinSymbol(ACallee.Name);
+  end;
 end;
 
 function TTypeMismatchCheck.HiddenMember(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
@@ -906,40 +906,6 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
-var
-  mCandidate: TResolvedSymbol;
-
-  function Usable(const ACandidate: TResolvedSymbol): Boolean;
-  begin
-    Result := (ACandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
-      not ACandidate.Builtin;
-    Result := Result and (ACandidate.Signature <> '') and (ACandidate.TypeParams = '');
-    Result := Result and FScope.DeclarationSure(ACandidate, ANode) and not HiddenMember(ANode, ACandidate);
-  end;
-
-begin
-  ACandidates := nil;
-  Result := False;
-  if not IsPlainCallee(ANode) then
-  begin
-    Exit;
-  end;
-  ACandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ANode);
-  if Length(ACandidates) = 0 then
-  begin
-    Exit;
-  end;
-  for mCandidate in ACandidates do
-  begin
-    if not Usable(mCandidate) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := True;
-end;
-
 function TTypeMismatchCheck.IsProcedure(ANode: TSyntaxNode): Boolean;
 var
   mCandidates: TArray<TResolvedSymbol>;
@@ -1043,6 +1009,40 @@ begin
     [ATargetName, ShortText(FScope, ASource), ATargetName]), TRuleConfidence.High, [mFix]);
 end;
 
+function TTypeMismatchCheck.RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
+var
+  mCandidate: TResolvedSymbol;
+
+  function Usable(const ACandidate: TResolvedSymbol): Boolean;
+  begin
+    Result := (ACandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+      not ACandidate.Builtin;
+    Result := Result and (ACandidate.Signature <> '') and (ACandidate.TypeParams = '');
+    Result := Result and FScope.DeclarationSure(ACandidate, ANode) and not HiddenMember(ANode, ACandidate);
+  end;
+
+begin
+  ACandidates := nil;
+  Result := False;
+  if not IsPlainCallee(ANode) then
+  begin
+    Exit;
+  end;
+  ACandidates := FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, ANode);
+  if Length(ACandidates) = 0 then
+  begin
+    Exit;
+  end;
+  for mCandidate in ACandidates do
+  begin
+    if not Usable(mCandidate) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := True;
+end;
+
 procedure TTypeMismatchCheck.Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
 begin
   FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypeMismatchText.Incompatible].Fmt([ATarget,
@@ -1120,31 +1120,6 @@ begin
   end;
 end;
 
-procedure TTypeMismatchCheck.CheckAnonymous(ASource: TSyntaxNode; const ATarget: TProcShape;
-  const ATargetName: string);
-var
-  mHeader, mFormal, mActual: string;
-  mShape: TProcShape;
-  mMatch: TProcMatch;
-begin
-  mHeader := AnonymousHeader(FScope, ASource);
-  if not ATarget.Reference or not TProcShapes.ParseShape(mHeader, False, mShape) then
-  begin
-    Exit;
-  end;
-  mMatch := TProcShapes.ShapeKindMatch(ATarget, Default(TResolvedSymbol), mShape);
-  if mMatch = TProcMatch.Yes then
-  begin
-    mMatch := TProcShapes.ParamTypesMatch(ATarget, mShape, mFormal, mActual);
-  end;
-  if mMatch in [TProcMatch.Parameters, TProcMatch.ParameterType] then
-  begin
-    FReport.Add(TTextRange.Create(ASource.StartPos, TTextPosition.Create(ASource.StartPos.Line,
-      ASource.StartPos.Character + Length(ASource.Name))),
-      cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, mHeader]), TRuleConfidence.High);
-  end;
-end;
-
 procedure TTypeMismatchCheck.CheckProcedural(ASource: TSyntaxNode; const ATarget: TProcShape;
   const ATargetName: string);
 var
@@ -1207,6 +1182,31 @@ begin
   end;
 end;
 
+procedure TTypeMismatchCheck.CheckAnonymous(ASource: TSyntaxNode; const ATarget: TProcShape;
+  const ATargetName: string);
+var
+  mHeader, mFormal, mActual: string;
+  mShape: TProcShape;
+  mMatch: TProcMatch;
+begin
+  mHeader := AnonymousHeader(FScope, ASource);
+  if not ATarget.Reference or not TProcShapes.ParseShape(mHeader, False, mShape) then
+  begin
+    Exit;
+  end;
+  mMatch := TProcShapes.ShapeKindMatch(ATarget, Default(TResolvedSymbol), mShape);
+  if mMatch = TProcMatch.Yes then
+  begin
+    mMatch := TProcShapes.ParamTypesMatch(ATarget, mShape, mFormal, mActual);
+  end;
+  if mMatch in [TProcMatch.Parameters, TProcMatch.ParameterType] then
+  begin
+    FReport.Add(TTextRange.Create(ASource.StartPos, TTextPosition.Create(ASource.StartPos.Line,
+      ASource.StartPos.Character + Length(ASource.Name))),
+      cTexts[TTypeMismatchText.ReferenceParams].Fmt([ATargetName, mHeader]), TRuleConfidence.High);
+  end;
+end;
+
 procedure TTypeMismatchCheck.CheckDefault(ANode: TSyntaxNode);
 var
   mTypeNode, mValueNode: TSyntaxNode;
@@ -1232,99 +1232,6 @@ begin
   if TTypeCompatibility.AssignIncompatible(mTarget, mSource) then
   begin
     Mismatch(mValueNode, mTarget.Name, ShownName(mSource));
-  end;
-end;
-
-procedure TTypeMismatchCheck.CheckIntrinsic(ANode: TSyntaxNode; const AName: string);
-var
-  mValue: TValueType;
-begin
-  if MatchText(AName, ['Inc', 'Dec']) and (ANode.ChildCount = 3) then
-  begin
-    mValue := ValueOf(ANode[2]);
-    if (mValue.Kind = TValueKind.Builtin) and (mValue.Category in [TExpressionCategory.Float,
-      TExpressionCategory.Currency_, TExpressionCategory.String_]) then
-    begin
-      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), cTexts[TTypeMismatchText.IncStep].Fmt([AName,
-        ShortText(FScope, ANode[2]), mValue.Name]),
-        TRuleConfidence.High);
-    end;
-  end
-  else if SameText(AName, 'Ptr') and (ANode.ChildCount = 2) then
-  begin
-    mValue := ValueOf(ANode[1]);
-    if (mValue.Kind = TValueKind.Builtin) and (mValue.Category = TExpressionCategory.String_) then
-    begin
-      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos),
-        cTexts[TTypeMismatchText.PtrArg].Fmt([ShortText(FScope, ANode[1]), mValue.Name]), TRuleConfidence.High);
-    end;
-  end;
-end;
-
-procedure TTypeMismatchCheck.CheckCast(ANode: TSyntaxNode; const AType: TResolvedSymbol);
-var
-  mTarget, mSource: TValueType;
-  mWidth: Integer;
-  mSigned, mInvalid: Boolean;
-begin
-  if (ANode.ChildCount <> 2) or not AType.Builtin then
-  begin
-    Exit;
-  end;
-  mTarget := TValueType.FromBuiltin(AType.Name);
-  mSource := ValueOf(ANode[1]);
-  if (mTarget.Kind <> TValueKind.Builtin) or (mSource.Kind <> TValueKind.Builtin) then
-  begin
-    Exit;
-  end;
-  TExpressionTypes.CategoryOf(mTarget.Name, mWidth, mSigned);
-  // Ein langer String ist ein Zeiger: in Byte oder Word passt er auf keiner Plattform.
-  mInvalid := (mTarget.Category = TExpressionCategory.Integer_) and (mWidth in [1, 2]) and
-    TTypeCompatibility.IsLongString(mSource.Name);
-  // Gleitkomma nach Ordinal geht nur über Round oder Trunc.
-  mInvalid := mInvalid or ((mTarget.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_,
-    TExpressionCategory.Boolean_]) and (mSource.Category = TExpressionCategory.Float));
-  if mInvalid then
-  begin
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-      cTexts[TTypeMismatchText.InvalidCast].Fmt([mSource.Name, mTarget.Name]), TRuleConfidence.High);
-  end;
-end;
-
-procedure TTypeMismatchCheck.CheckVarArgument(AArgument: TSyntaxNode; const AFormal: TValueType);
-var
-  mArgument, mDecl: TSyntaxNode;
-  mSymbol, mType: TResolvedSymbol;
-  mFound: Boolean;
-  mActual: TValueType;
-begin
-  mArgument := Unwrapped(AArgument);
-  if not (mArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
-  begin
-    Exit;
-  end;
-  if not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mArgument, mSymbol, mType, mFound) or not mFound or
-    not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or
-    not FScope.DeclarationSure(mSymbol, mArgument) or HiddenMember(mArgument, mSymbol) then
-  begin
-    Exit;
-  end;
-  // const-Parameter meldet invalid-var-argument (wie E2197).
-  if mSymbol.IsParameter and (mSymbol.Kind = TResolvedKind.Local) then
-  begin
-    mDecl := DeclarationAt(FContext.Tree, mSymbol.SelectionRange.StartPos);
-    if (mDecl = nil) or (mDecl.Kind <> TSyntaxKind.Parameter) or
-      (mDecl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]) then
-    begin
-      Exit;
-    end;
-  end;
-  mActual := ValueOfSymbol(mSymbol, mType);
-  if TTypeCompatibility.VarParamDiffers(AFormal, mActual) then
-  begin
-    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
-      cTexts[TTypeMismatchText.VarParamTypes].Fmt([AFormal.Name, mActual.Name]),
-      TRuleConfidence.High);
   end;
 end;
 
@@ -1427,6 +1334,99 @@ begin
   for mIndex := 1 to ANode.ChildCount - 1 do
   begin
     CheckArgument(ANode[mIndex], mShape.Params[mIndex - 1]);
+  end;
+end;
+
+procedure TTypeMismatchCheck.CheckIntrinsic(ANode: TSyntaxNode; const AName: string);
+var
+  mValue: TValueType;
+begin
+  if MatchText(AName, ['Inc', 'Dec']) and (ANode.ChildCount = 3) then
+  begin
+    mValue := ValueOf(ANode[2]);
+    if (mValue.Kind = TValueKind.Builtin) and (mValue.Category in [TExpressionCategory.Float,
+      TExpressionCategory.Currency_, TExpressionCategory.String_]) then
+    begin
+      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), cTexts[TTypeMismatchText.IncStep].Fmt([AName,
+        ShortText(FScope, ANode[2]), mValue.Name]),
+        TRuleConfidence.High);
+    end;
+  end
+  else if SameText(AName, 'Ptr') and (ANode.ChildCount = 2) then
+  begin
+    mValue := ValueOf(ANode[1]);
+    if (mValue.Kind = TValueKind.Builtin) and (mValue.Category = TExpressionCategory.String_) then
+    begin
+      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos),
+        cTexts[TTypeMismatchText.PtrArg].Fmt([ShortText(FScope, ANode[1]), mValue.Name]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TTypeMismatchCheck.CheckCast(ANode: TSyntaxNode; const AType: TResolvedSymbol);
+var
+  mTarget, mSource: TValueType;
+  mWidth: Integer;
+  mSigned, mInvalid: Boolean;
+begin
+  if (ANode.ChildCount <> 2) or not AType.Builtin then
+  begin
+    Exit;
+  end;
+  mTarget := TValueType.FromBuiltin(AType.Name);
+  mSource := ValueOf(ANode[1]);
+  if (mTarget.Kind <> TValueKind.Builtin) or (mSource.Kind <> TValueKind.Builtin) then
+  begin
+    Exit;
+  end;
+  TExpressionTypes.CategoryOf(mTarget.Name, mWidth, mSigned);
+  // Ein langer String ist ein Zeiger: in Byte oder Word passt er auf keiner Plattform.
+  mInvalid := (mTarget.Category = TExpressionCategory.Integer_) and (mWidth in [1, 2]) and
+    TTypeCompatibility.IsLongString(mSource.Name);
+  // Gleitkomma nach Ordinal geht nur über Round oder Trunc.
+  mInvalid := mInvalid or ((mTarget.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_,
+    TExpressionCategory.Boolean_]) and (mSource.Category = TExpressionCategory.Float));
+  if mInvalid then
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeMismatchText.InvalidCast].Fmt([mSource.Name, mTarget.Name]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TTypeMismatchCheck.CheckVarArgument(AArgument: TSyntaxNode; const AFormal: TValueType);
+var
+  mArgument, mDecl: TSyntaxNode;
+  mSymbol, mType: TResolvedSymbol;
+  mFound: Boolean;
+  mActual: TValueType;
+begin
+  mArgument := Unwrapped(AArgument);
+  if not (mArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
+    Exit;
+  end;
+  if not FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mArgument, mSymbol, mType, mFound) or not mFound or
+    not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or
+    not FScope.DeclarationSure(mSymbol, mArgument) or HiddenMember(mArgument, mSymbol) then
+  begin
+    Exit;
+  end;
+  // const-Parameter meldet invalid-var-argument (wie E2197).
+  if mSymbol.IsParameter and (mSymbol.Kind = TResolvedKind.Local) then
+  begin
+    mDecl := DeclarationAt(FContext.Tree, mSymbol.SelectionRange.StartPos);
+    if (mDecl = nil) or (mDecl.Kind <> TSyntaxKind.Parameter) or
+      (mDecl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]) then
+    begin
+      Exit;
+    end;
+  end;
+  mActual := ValueOfSymbol(mSymbol, mType);
+  if TTypeCompatibility.VarParamDiffers(AFormal, mActual) then
+  begin
+    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
+      cTexts[TTypeMismatchText.VarParamTypes].Fmt([AFormal.Name, mActual.Name]),
+      TRuleConfidence.High);
   end;
 end;
 

@@ -262,52 +262,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeOwnershipHints.Wanted: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.OwnershipHints and not TAtlasGuard.Disabled(TAtlasFeature.Problems);
-end;
-
-class function TAtlasIdeOwnershipHints.Texts: TAtlasOwnershipTexts;
-begin
-  Result := Default(TAtlasOwnershipTexts);
-  Result.Labels[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipDestroy);
-  Result.Labels[TAtlasOwnershipKind.InFinally] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFinally);
-  Result.Labels[TAtlasOwnershipKind.Freed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreed);
-  Result.Labels[TAtlasOwnershipKind.Owner] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwner);
-  Result.Labels[TAtlasOwnershipKind.OwnedList] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnedList);
-  Result.Labels[TAtlasOwnershipKind.RefCounted] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipInterface);
-  Result.Labels[TAtlasOwnershipKind.Returned] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipReturned);
-  Result.Labels[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassed);
-  Result.Labels[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipUnknown);
-  Result.Labels[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipNever);
-  Result.FreedIn := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedIn);
-  Result.PassedSomewhere := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassedSomewhere);
-  Result.Reasons[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyDestroy);
-  Result.Reasons[TAtlasOwnershipKind.InFinally] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFinally);
-  Result.Reasons[TAtlasOwnershipKind.Freed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFreed);
-  Result.Reasons[TAtlasOwnershipKind.Owner] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwner);
-  Result.Reasons[TAtlasOwnershipKind.OwnedList] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwnedList);
-  Result.Reasons[TAtlasOwnershipKind.RefCounted] :=
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyInterface);
-  Result.Reasons[TAtlasOwnershipKind.Returned] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyReturned);
-  Result.Reasons[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyPassed);
-  Result.Reasons[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyUnknown);
-  Result.Reasons[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyNever);
-  Result.ContainerLabels[TAtlasOwnershipContainer.OwnsElements] :=
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnsElements);
-  Result.ContainerLabels[TAtlasOwnershipContainer.ElementsOwned] :=
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipElementsOwned);
-  Result.ContainerReasons[TAtlasOwnershipContainer.OwnsElements] :=
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwnsElements);
-  Result.ContainerReasons[TAtlasOwnershipContainer.ElementsOwned] :=
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyElementsOwned);
-  Result.Title := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTipTitle);
-  Result.Jump := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTipJump);
-end;
-
 procedure TAtlasIdeOwnershipHints.Clear;
 var
   mShowing: Boolean;
@@ -323,18 +277,6 @@ begin
   begin
     InvalidateEditor;
   end;
-end;
-
-procedure TAtlasIdeOwnershipHints.ApplySettings;
-begin
-  FTexts := Texts;
-  if not Wanted then
-  begin
-    Clear;
-    Exit;
-  end;
-  // An und aus von „nur Problemfälle“ zeichnet nur neu; die Antwort enthält alle Stellen.
-  InvalidateEditor;
 end;
 
 procedure TAtlasIdeOwnershipHints.AskIfDue(const AFileName: string);
@@ -372,30 +314,6 @@ begin
   InvalidateEditor;
 end;
 
-function TAtlasIdeOwnershipHints.LineMarks(const AContext: INTACodeEditorPaintContext;
-  out ALine: string): TArray<TAtlasOwnershipMark>;
-begin
-  Result := nil;
-  ALine := '';
-  if (AContext.LineState = nil) or (AContext.EditView = nil) or (AContext.EditView.Buffer = nil) or
-    not MatchText(ExtractFileExt(AContext.FileName), ['.pas', '.dpr']) then
-  begin
-    Exit;
-  end;
-  AskIfDue(AContext.FileName);
-  if SameText(AContext.FileName, FFileName) then
-  begin
-    ALine := AContext.LineState.Text;
-    Result := TAtlasOwnershipMarks.AtLine(TAtlasOwnershipMarks.Visible(FMarks,
-      TAtlasIdeSettings.Current.OwnershipHintsOnlyProblems), AContext.LogicalLineNum - 1, ALine);
-  end;
-  // Ausgeblendet am Element (#628): Anker ist der Text der Zeile.
-  if (Result <> nil) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.OwnershipHints, AContext.FileName, ALine) then
-  begin
-    Result := nil;
-  end;
-end;
-
 procedure TAtlasIdeOwnershipHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -423,6 +341,30 @@ begin
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Problems, E);
+  end;
+end;
+
+function TAtlasIdeOwnershipHints.LineMarks(const AContext: INTACodeEditorPaintContext;
+  out ALine: string): TArray<TAtlasOwnershipMark>;
+begin
+  Result := nil;
+  ALine := '';
+  if (AContext.LineState = nil) or (AContext.EditView = nil) or (AContext.EditView.Buffer = nil) or
+    not MatchText(ExtractFileExt(AContext.FileName), ['.pas', '.dpr']) then
+  begin
+    Exit;
+  end;
+  AskIfDue(AContext.FileName);
+  if SameText(AContext.FileName, FFileName) then
+  begin
+    ALine := AContext.LineState.Text;
+    Result := TAtlasOwnershipMarks.AtLine(TAtlasOwnershipMarks.Visible(FMarks,
+      TAtlasIdeSettings.Current.OwnershipHintsOnlyProblems), AContext.LogicalLineNum - 1, ALine);
+  end;
+  // Ausgeblendet am Element (#628): Anker ist der Text der Zeile.
+  if (Result <> nil) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.OwnershipHints, AContext.FileName, ALine) then
+  begin
+    Result := nil;
   end;
 end;
 
@@ -504,26 +446,6 @@ begin
   mView := TopView;
   Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
     (mView.TopRow = AHit.TopRow);
-end;
-
-procedure TAtlasIdeOwnershipHints.QueueJump(ALine: Integer);
-var
-  mState: IInterface;
-  mFileName: string;
-  mLine: Integer;
-begin
-  mState := FStateRef;
-  mFileName := FFileName;
-  mLine := ALine;
-  // Erst nach dem Mausereignis: Der Editor setzt sonst den Cursor danach.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Problems,
-    procedure
-    begin
-      if TState(mState as TObject).Alive then
-      begin
-        TAtlasIdeNavigation.GoToLocation(mFileName, mLine, 0);
-      end;
-    end);
 end;
 
 procedure TAtlasIdeOwnershipHints.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
@@ -630,6 +552,84 @@ begin
   begin
     FTip.HidePopup;
   end;
+end;
+
+procedure TAtlasIdeOwnershipHints.QueueJump(ALine: Integer);
+var
+  mState: IInterface;
+  mFileName: string;
+  mLine: Integer;
+begin
+  mState := FStateRef;
+  mFileName := FFileName;
+  mLine := ALine;
+  // Erst nach dem Mausereignis: Der Editor setzt sonst den Cursor danach.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Problems,
+    procedure
+    begin
+      if TState(mState as TObject).Alive then
+      begin
+        TAtlasIdeNavigation.GoToLocation(mFileName, mLine, 0);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeOwnershipHints.ApplySettings;
+begin
+  FTexts := Texts;
+  if not Wanted then
+  begin
+    Clear;
+    Exit;
+  end;
+  // An und aus von „nur Problemfälle“ zeichnet nur neu; die Antwort enthält alle Stellen.
+  InvalidateEditor;
+end;
+
+class function TAtlasIdeOwnershipHints.Wanted: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.OwnershipHints and not TAtlasGuard.Disabled(TAtlasFeature.Problems);
+end;
+
+class function TAtlasIdeOwnershipHints.Texts: TAtlasOwnershipTexts;
+begin
+  Result := Default(TAtlasOwnershipTexts);
+  Result.Labels[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipDestroy);
+  Result.Labels[TAtlasOwnershipKind.InFinally] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFinally);
+  Result.Labels[TAtlasOwnershipKind.Freed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreed);
+  Result.Labels[TAtlasOwnershipKind.Owner] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwner);
+  Result.Labels[TAtlasOwnershipKind.OwnedList] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnedList);
+  Result.Labels[TAtlasOwnershipKind.RefCounted] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipInterface);
+  Result.Labels[TAtlasOwnershipKind.Returned] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipReturned);
+  Result.Labels[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassed);
+  Result.Labels[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipUnknown);
+  Result.Labels[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipNever);
+  Result.FreedIn := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipFreedIn);
+  Result.PassedSomewhere := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipPassedSomewhere);
+  Result.Reasons[TAtlasOwnershipKind.InDestroy] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyDestroy);
+  Result.Reasons[TAtlasOwnershipKind.InFinally] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFinally);
+  Result.Reasons[TAtlasOwnershipKind.Freed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyFreed);
+  Result.Reasons[TAtlasOwnershipKind.Owner] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwner);
+  Result.Reasons[TAtlasOwnershipKind.OwnedList] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwnedList);
+  Result.Reasons[TAtlasOwnershipKind.RefCounted] :=
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyInterface);
+  Result.Reasons[TAtlasOwnershipKind.Returned] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyReturned);
+  Result.Reasons[TAtlasOwnershipKind.Passed] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyPassed);
+  Result.Reasons[TAtlasOwnershipKind.Unknown] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyUnknown);
+  Result.Reasons[TAtlasOwnershipKind.Never] := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyNever);
+  Result.ContainerLabels[TAtlasOwnershipContainer.OwnsElements] :=
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipOwnsElements);
+  Result.ContainerLabels[TAtlasOwnershipContainer.ElementsOwned] :=
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipElementsOwned);
+  Result.ContainerReasons[TAtlasOwnershipContainer.OwnsElements] :=
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyOwnsElements);
+  Result.ContainerReasons[TAtlasOwnershipContainer.ElementsOwned] :=
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipWhyElementsOwned);
+  Result.Title := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTipTitle);
+  Result.Jump := TAtlasRulesStrings.Text(TAtlasRulesTextId.OwnershipTipJump);
 end;
 
 end.

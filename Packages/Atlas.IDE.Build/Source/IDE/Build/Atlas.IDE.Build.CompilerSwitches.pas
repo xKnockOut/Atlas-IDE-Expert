@@ -145,6 +145,233 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeCompilerSwitches.Tick(Sender: TObject);
+begin
+  ReapWorkers(False);
+  if not Enabled or TAtlasGuard.Disabled(TAtlasFeature.Build) then
+  begin
+    Exit;
+  end;
+  if not Wanted then
+  begin
+    // Fenster zu, Statusfeld aus: einmal abräumen, danach nichts je Takt.
+    if FFollowing then
+    begin
+      FFollowing := False;
+      TAtlasGuard.Run(TAtlasFeature.Build,
+        procedure
+        begin
+          Rest;
+        end);
+    end;
+    Exit;
+  end;
+  FFollowing := True;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      Follow;
+    end);
+end;
+
+procedure TAtlasIdeCompilerSwitches.Follow;
+var
+  mView: IOTAEditView;
+  mFileName: string;
+  mCursor: TOTAEditPos;
+begin
+  mView := TAtlasEditorBuffer.ActiveView;
+  mFileName := '';
+  if (mView <> nil) and (mView.Buffer <> nil) then
+  begin
+    mFileName := mView.Buffer.FileName;
+  end;
+  if not TAtlasSwitchFollow.Applies(mFileName) then
+  begin
+    if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
+    begin
+      FHasView := False;
+      Inc(FRequest);
+      ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty));
+    end;
+    Exit;
+  end;
+  mCursor := mView.CursorPos;
+  if mCursor.Line < 1 then
+  begin
+    Exit;
+  end;
+  FFollow.Moved(mFileName, mCursor.Line - 1, TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(mView,
+    mCursor.Line), mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer)), GetTickCount64);
+  if FFollow.Due(GetTickCount64) then
+  begin
+    Ask;
+  end;
+end;
+
+procedure TAtlasIdeCompilerSwitches.Rest;
+begin
+  // Nichts fragen; beim Öffnen sofort.
+  FFollow.Invalidate;
+  UpdateStatus;
+end;
+
+function TAtlasIdeCompilerSwitches.Wanted: Boolean;
+begin
+  Result := TAtlasIdeBuildSwitchesWindow.Visible or TAtlasIdeSettings.Current.BuildSwitchesInStatusBar;
+end;
+
+procedure TAtlasIdeCompilerSwitches.Accept(ARequest: Integer; const AFileName: string; ALine: Integer;
+  const AView: TAtlasCompilerSwitchView; AKnown: Boolean);
+var
+  mFrame: TAtlasBuildSwitchesFrame;
+begin
+  // Nur die jüngste Antwort.
+  if (ARequest <> FRequest) or not Enabled then
+  begin
+    Exit;
+  end;
+  if not AKnown then
+  begin
+    // Datei dem Server unbekannt oder Server zu langsam: Hinweis, beim nächsten Halt des Cursors wieder.
+    FHasView := False;
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
+    Exit;
+  end;
+  FHasView := True;
+  FView := AView;
+  FViewFile := AFileName;
+  FViewLine := ALine;
+  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    Fill(mFrame);
+  end;
+  UpdateStatus;
+end;
+
+procedure TAtlasIdeCompilerSwitches.ShowMessageText(const AText: string);
+var
+  mFrame: TAtlasBuildSwitchesFrame;
+begin
+  FMessage := AText;
+  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    Fill(mFrame);
+  end;
+  UpdateStatus;
+end;
+
+procedure TAtlasIdeCompilerSwitches.UpdateStatus;
+var
+  mText, mHint: string;
+begin
+  mText := '';
+  mHint := '';
+  if Enabled and TAtlasIdeSettings.Current.BuildSwitchesInStatusBar and FHasView and (FView.Summary <> '') then
+  begin
+    mText := FView.Summary;
+    mHint := StatusHint(FView);
+  end;
+  if mText = FStatusText then
+  begin
+    Exit;
+  end;
+  FStatusText := mText;
+  if Assigned(FStatus) then
+  begin
+    FStatus(mText, mHint);
+  end;
+end;
+
+procedure TAtlasIdeCompilerSwitches.Fill(AFrame: TAtlasBuildSwitchesFrame);
+begin
+  if FHasView then
+  begin
+    AFrame.SetView(FView, FViewFile, FViewLine);
+  end
+  else
+  begin
+    AFrame.SetMessage(FMessage);
+  end;
+end;
+
+procedure TAtlasIdeCompilerSwitches.ReapWorkers(AWait: Boolean);
+var
+  mIndex: Integer;
+begin
+  if FWorkers = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := FWorkers.Count - 1 downto 0 do
+  begin
+    if AWait or FWorkers[mIndex].Finished then
+    begin
+      FWorkers[mIndex].WaitFor;
+      FWorkers[mIndex].Free;
+      FWorkers.Delete(mIndex);
+    end;
+  end;
+end;
+
+class function TAtlasIdeCompilerSwitches.Fetch(ASession: TLspSession; const AFileName: string;
+  ALine, ACharacter: Integer; out AView: TAtlasCompilerSwitchView): Boolean;
+var
+  mResponse: TJSONValue;
+begin
+  AView := Default(TAtlasCompilerSwitchView);
+  mResponse := nil;
+  try
+    try
+      mResponse := ASession.CompilerSwitches(AFileName, ALine, ACharacter, cRequestTimeoutMs);
+      Result := TAtlasCompilerSwitchView.FromJson(mResponse, AView);
+    except
+      // Server langsam oder weg: kein Stand.
+      Result := False;
+    end;
+  finally
+    mResponse.Free;
+  end;
+end;
+
+class procedure TAtlasIdeCompilerSwitches.WireFrame(AFrame: TAtlasBuildSwitchesFrame);
+begin
+  AFrame.OnJump :=
+    procedure(ARow: TAtlasSwitchRow)
+    begin
+      TAtlasIdeNavigation.GoToLocation(ARow.FileName, ARow.Line, 0);
+    end;
+  AFrame.OnOptions :=
+    procedure
+    begin
+      OpenOptions;
+    end;
+  AFrame.OnCopy :=
+    procedure(AText: string)
+    begin
+      Clipboard.AsText := AText;
+    end;
+end;
+
+class procedure TAtlasIdeCompilerSwitches.OpenOptions;
+var
+  mProject: IOTAProject;
+begin
+  mProject := GetActiveProject;
+  if (mProject = nil) or (mProject.ProjectOptions = nil) then
+  begin
+    Exit;
+  end;
+  mProject.ProjectOptions.EditOptions;
+  // Geänderte Optionen: gleich neu fragen.
+  if FInstance <> nil then
+  begin
+    FInstance.FFollow.Invalidate;
+  end;
+end;
+
 class procedure TAtlasIdeCompilerSwitches.Start(const ASession: TAtlasCompilerSwitchesSessionFunc;
   const AStatus: TAtlasCompilerSwitchesStatusProc);
 begin
@@ -158,6 +385,72 @@ begin
       WireFrame(AFrame);
     end;
   TAtlasIdeBuildSwitchesWindow.Prepare;
+end;
+
+/// <summary>Thread, der die Schalter an der Stelle holt und die Antwort im Hauptthread an die Instanz gibt.
+/// </summary>
+function FetchThread(ASession: TLspSession; const AFileName: string; ALine, ACharacter,
+  ARequest: Integer): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mAnswer: TAtlasCompilerSwitchView;
+      mKnown: Boolean;
+    begin
+      mKnown := TAtlasIdeCompilerSwitches.Fetch(ASession, AFileName, ALine, ACharacter, mAnswer);
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
+      TAtlasMainThread.Queue(TAtlasFeature.Build,
+        procedure
+        begin
+          if TAtlasIdeCompilerSwitches.FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.Build,
+              procedure
+              begin
+                if TAtlasIdeCompilerSwitches.FInstance <> nil then
+                begin
+                  TAtlasIdeCompilerSwitches.FInstance.Accept(ARequest, AFileName, ALine, mAnswer, mKnown);
+                end;
+              end);
+          end;
+        end);
+    end);
+end;
+
+procedure TAtlasIdeCompilerSwitches.Ask;
+var
+  mSession: TLspSession;
+  mView: IOTAEditView;
+  mWorker: TThread;
+begin
+  mSession := nil;
+  if Assigned(FSession) then
+  begin
+    mSession := FSession();
+  end;
+  if mSession = nil then
+  begin
+    FHasView := False;
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
+    Exit;
+  end;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFollow.FileName) then
+  begin
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(FFollow.FileName, TAtlasEditorBuffer.Text(mView.Buffer));
+  if not FHasView then
+  begin
+    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
+  end;
+  Inc(FRequest);
+  mWorker := FetchThread(mSession, FFollow.FileName, FFollow.Line, FFollow.Character, FRequest);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
 end;
 
 class procedure TAtlasIdeCompilerSwitches.Release;
@@ -236,299 +529,6 @@ begin
   begin
     mValue := TAtlasCompilerSwitchTexts.Value(mRow.Value);
     Result := Result + sLineBreak + mRow.Name + ' ' + mValue + ': ' + TAtlasBuildSwitchesFrame.OriginText(mRow);
-  end;
-end;
-
-class procedure TAtlasIdeCompilerSwitches.WireFrame(AFrame: TAtlasBuildSwitchesFrame);
-begin
-  AFrame.OnJump :=
-    procedure(ARow: TAtlasSwitchRow)
-    begin
-      TAtlasIdeNavigation.GoToLocation(ARow.FileName, ARow.Line, 0);
-    end;
-  AFrame.OnOptions :=
-    procedure
-    begin
-      OpenOptions;
-    end;
-  AFrame.OnCopy :=
-    procedure(AText: string)
-    begin
-      Clipboard.AsText := AText;
-    end;
-end;
-
-class procedure TAtlasIdeCompilerSwitches.OpenOptions;
-var
-  mProject: IOTAProject;
-begin
-  mProject := GetActiveProject;
-  if (mProject = nil) or (mProject.ProjectOptions = nil) then
-  begin
-    Exit;
-  end;
-  mProject.ProjectOptions.EditOptions;
-  // Geänderte Optionen: gleich neu fragen.
-  if FInstance <> nil then
-  begin
-    FInstance.FFollow.Invalidate;
-  end;
-end;
-
-function TAtlasIdeCompilerSwitches.Wanted: Boolean;
-begin
-  Result := TAtlasIdeBuildSwitchesWindow.Visible or TAtlasIdeSettings.Current.BuildSwitchesInStatusBar;
-end;
-
-procedure TAtlasIdeCompilerSwitches.Tick(Sender: TObject);
-begin
-  ReapWorkers(False);
-  if not Enabled or TAtlasGuard.Disabled(TAtlasFeature.Build) then
-  begin
-    Exit;
-  end;
-  if not Wanted then
-  begin
-    // Fenster zu, Statusfeld aus: einmal abräumen, danach nichts je Takt.
-    if FFollowing then
-    begin
-      FFollowing := False;
-      TAtlasGuard.Run(TAtlasFeature.Build,
-        procedure
-        begin
-          Rest;
-        end);
-    end;
-    Exit;
-  end;
-  FFollowing := True;
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    begin
-      Follow;
-    end);
-end;
-
-procedure TAtlasIdeCompilerSwitches.Rest;
-begin
-  // Nichts fragen; beim Öffnen sofort.
-  FFollow.Invalidate;
-  UpdateStatus;
-end;
-
-procedure TAtlasIdeCompilerSwitches.Follow;
-var
-  mView: IOTAEditView;
-  mFileName: string;
-  mCursor: TOTAEditPos;
-begin
-  mView := TAtlasEditorBuffer.ActiveView;
-  mFileName := '';
-  if (mView <> nil) and (mView.Buffer <> nil) then
-  begin
-    mFileName := mView.Buffer.FileName;
-  end;
-  if not TAtlasSwitchFollow.Applies(mFileName) then
-  begin
-    if FFollow.Moved('', -1, -1, GetTickCount64) or FHasView then
-    begin
-      FHasView := False;
-      Inc(FRequest);
-      ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty));
-    end;
-    Exit;
-  end;
-  mCursor := mView.CursorPos;
-  if mCursor.Line < 1 then
-  begin
-    Exit;
-  end;
-  FFollow.Moved(mFileName, mCursor.Line - 1, TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(mView,
-    mCursor.Line), mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer)), GetTickCount64);
-  if FFollow.Due(GetTickCount64) then
-  begin
-    Ask;
-  end;
-end;
-
-/// <summary>Thread, der die Schalter an der Stelle holt und die Antwort im Hauptthread an die Instanz gibt.
-/// </summary>
-function FetchThread(ASession: TLspSession; const AFileName: string; ALine, ACharacter,
-  ARequest: Integer): TThread;
-begin
-  Result := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mAnswer: TAtlasCompilerSwitchView;
-      mKnown: Boolean;
-    begin
-      mKnown := TAtlasIdeCompilerSwitches.Fetch(ASession, AFileName, ALine, ACharacter, mAnswer);
-      // Atlas gehört der Eintrag: beim Entladen verworfen.
-      TAtlasMainThread.Queue(TAtlasFeature.Build,
-        procedure
-        begin
-          if TAtlasIdeCompilerSwitches.FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.Build,
-              procedure
-              begin
-                if TAtlasIdeCompilerSwitches.FInstance <> nil then
-                begin
-                  TAtlasIdeCompilerSwitches.FInstance.Accept(ARequest, AFileName, ALine, mAnswer, mKnown);
-                end;
-              end);
-          end;
-        end);
-    end);
-end;
-
-procedure TAtlasIdeCompilerSwitches.Ask;
-var
-  mSession: TLspSession;
-  mView: IOTAEditView;
-  mWorker: TThread;
-begin
-  mSession := nil;
-  if Assigned(FSession) then
-  begin
-    mSession := FSession();
-  end;
-  if mSession = nil then
-  begin
-    FHasView := False;
-    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
-    Exit;
-  end;
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFollow.FileName) then
-  begin
-    Exit;
-  end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  mSession.Sync(FFollow.FileName, TAtlasEditorBuffer.Text(mView.Buffer));
-  if not FHasView then
-  begin
-    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesWaiting));
-  end;
-  Inc(FRequest);
-  mWorker := FetchThread(mSession, FFollow.FileName, FFollow.Line, FFollow.Character, FRequest);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
-end;
-
-class function TAtlasIdeCompilerSwitches.Fetch(ASession: TLspSession; const AFileName: string;
-  ALine, ACharacter: Integer; out AView: TAtlasCompilerSwitchView): Boolean;
-var
-  mResponse: TJSONValue;
-begin
-  AView := Default(TAtlasCompilerSwitchView);
-  mResponse := nil;
-  try
-    try
-      mResponse := ASession.CompilerSwitches(AFileName, ALine, ACharacter, cRequestTimeoutMs);
-      Result := TAtlasCompilerSwitchView.FromJson(mResponse, AView);
-    except
-      // Server langsam oder weg: kein Stand.
-      Result := False;
-    end;
-  finally
-    mResponse.Free;
-  end;
-end;
-
-procedure TAtlasIdeCompilerSwitches.Accept(ARequest: Integer; const AFileName: string; ALine: Integer;
-  const AView: TAtlasCompilerSwitchView; AKnown: Boolean);
-var
-  mFrame: TAtlasBuildSwitchesFrame;
-begin
-  // Nur die jüngste Antwort.
-  if (ARequest <> FRequest) or not Enabled then
-  begin
-    Exit;
-  end;
-  if not AKnown then
-  begin
-    // Datei dem Server unbekannt oder Server zu langsam: Hinweis, beim nächsten Halt des Cursors wieder.
-    FHasView := False;
-    ShowMessageText(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
-    Exit;
-  end;
-  FHasView := True;
-  FView := AView;
-  FViewFile := AFileName;
-  FViewLine := ALine;
-  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    Fill(mFrame);
-  end;
-  UpdateStatus;
-end;
-
-procedure TAtlasIdeCompilerSwitches.Fill(AFrame: TAtlasBuildSwitchesFrame);
-begin
-  if FHasView then
-  begin
-    AFrame.SetView(FView, FViewFile, FViewLine);
-  end
-  else
-  begin
-    AFrame.SetMessage(FMessage);
-  end;
-end;
-
-procedure TAtlasIdeCompilerSwitches.ShowMessageText(const AText: string);
-var
-  mFrame: TAtlasBuildSwitchesFrame;
-begin
-  FMessage := AText;
-  mFrame := TAtlasIdeBuildSwitchesWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    Fill(mFrame);
-  end;
-  UpdateStatus;
-end;
-
-procedure TAtlasIdeCompilerSwitches.UpdateStatus;
-var
-  mText, mHint: string;
-begin
-  mText := '';
-  mHint := '';
-  if Enabled and TAtlasIdeSettings.Current.BuildSwitchesInStatusBar and FHasView and (FView.Summary <> '') then
-  begin
-    mText := FView.Summary;
-    mHint := StatusHint(FView);
-  end;
-  if mText = FStatusText then
-  begin
-    Exit;
-  end;
-  FStatusText := mText;
-  if Assigned(FStatus) then
-  begin
-    FStatus(mText, mHint);
-  end;
-end;
-
-procedure TAtlasIdeCompilerSwitches.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
   end;
 end;
 

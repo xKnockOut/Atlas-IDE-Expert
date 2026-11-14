@@ -86,6 +86,30 @@ const
 
 { TAtlasIdeStartOptions }
 
+class function TAtlasIdeStartOptions.BuildConfiguration(const AProject: IOTAProject): IOTABuildConfiguration;
+var
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mPlatformed: IOTABuildConfiguration;
+begin
+  Result := nil;
+  if (AProject = nil) or not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations,
+    mConfigurations) then
+  begin
+    Exit;
+  end;
+  Result := mConfigurations.ActiveConfiguration;
+  if (Result = nil) or (AProject.CurrentPlatform = '') then
+  begin
+    Exit;
+  end;
+  // Die IDE legt die Startoptionen je Konfiguration und Plattform ab (Cfg_1_Win32).
+  mPlatformed := Result.PlatformConfiguration[AProject.CurrentPlatform];
+  if mPlatformed <> nil then
+  begin
+    Result := mPlatformed;
+  end;
+end;
+
 class function TAtlasIdeStartOptions.Folder: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
@@ -138,30 +162,6 @@ begin
     (mServices.MainProjectGroup <> nil) and (mServices.MainProjectGroup.ActiveProject <> AProject) then
   begin
     mServices.MainProjectGroup.ActiveProject := AProject;
-  end;
-end;
-
-class function TAtlasIdeStartOptions.BuildConfiguration(const AProject: IOTAProject): IOTABuildConfiguration;
-var
-  mConfigurations: IOTAProjectOptionsConfigurations;
-  mPlatformed: IOTABuildConfiguration;
-begin
-  Result := nil;
-  if (AProject = nil) or not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations,
-    mConfigurations) then
-  begin
-    Exit;
-  end;
-  Result := mConfigurations.ActiveConfiguration;
-  if (Result = nil) or (AProject.CurrentPlatform = '') then
-  begin
-    Exit;
-  end;
-  // Die IDE legt die Startoptionen je Konfiguration und Plattform ab (Cfg_1_Win32).
-  mPlatformed := Result.PlatformConfiguration[AProject.CurrentPlatform];
-  if mPlatformed <> nil then
-  begin
-    Result := mPlatformed;
   end;
 end;
 

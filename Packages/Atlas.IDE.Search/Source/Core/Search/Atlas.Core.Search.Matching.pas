@@ -260,6 +260,13 @@ begin
   end;
 end;
 
+{ TAtlasTextSearch }
+
+class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
+begin
+  Result := IntToStr(AHit.Line + 1) + ': ' + HitText(ALines, AHit);
+end;
+
 class function TAtlasTextSearch.HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
 const
   cMaxText = 200;
@@ -275,32 +282,41 @@ begin
   end;
 end;
 
-class function TAtlasTextSearch.HitCaption(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
-begin
-  Result := IntToStr(AHit.Line + 1) + ': ' + HitText(ALines, AHit);
-end;
-
-class function TAtlasTextSearch.IsReserved(const AWord: string): Boolean;
-const
-  cWords: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
-    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file',
-    'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
-    'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or',
-    'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr',
-    'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor',
-    'operator');
+class function TAtlasTextSearch.Next(const AHits: TArray<TAtlasSearchHit>; const AFrom: TAtlasSearchPos;
+  ABackward: Boolean; out AWrapped: Boolean): Integer;
 var
-  mLower, mWord: string;
+  mIndex: Integer;
 begin
-  mLower := LowerCase(AWord);
-  for mWord in cWords do
+  AWrapped := False;
+  Result := -1;
+  if Length(AHits) = 0 then
   begin
-    if mWord = mLower then
-    begin
-      Exit(True);
-    end;
+    Exit;
   end;
-  Result := False;
+  if ABackward then
+  begin
+    for mIndex := High(AHits) downto 0 do
+    begin
+      if TAtlasSearchPos.Compare(AHits[mIndex].StartPos, AFrom) < 0 then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+    AWrapped := True;
+    Result := High(AHits);
+  end
+  else
+  begin
+    for mIndex := 0 to High(AHits) do
+    begin
+      if TAtlasSearchPos.Compare(AHits[mIndex].StartPos, AFrom) >= 0 then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+    AWrapped := True;
+    Result := 0;
+  end;
 end;
 
 class function TAtlasTextSearch.WordAt(const ALine: string; ACharacter: Integer): string;
@@ -605,18 +621,27 @@ begin
   Result := FLine;
 end;
 
-class function TAtlasTextSearch.CodeOnly(const ALines: TArray<string>): TArray<string>;
+class function TAtlasTextSearch.IsReserved(const AWord: string): Boolean;
+const
+  cWords: array[0..64] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
+    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file',
+    'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
+    'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or',
+    'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr',
+    'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor',
+    'operator');
 var
-  mMasker: TCodeMasker;
-  mIndex: Integer;
+  mLower, mWord: string;
 begin
-  Result := nil;
-  SetLength(Result, Length(ALines));
-  mMasker := Default(TCodeMasker);
-  for mIndex := 0 to High(ALines) do
+  mLower := LowerCase(AWord);
+  for mWord in cWords do
   begin
-    Result[mIndex] := mMasker.MaskLine(ALines[mIndex]);
+    if mWord = mLower then
+    begin
+      Exit(True);
+    end;
   end;
+  Result := False;
 end;
 
 /// <summary>Suchtext des Bezeichner-Modus ohne führendes &amp;; '' wenn er kein Bezeichner ist.</summary>
@@ -801,53 +826,21 @@ begin
   end;
 end;
 
-class function TAtlasTextSearch.Next(const AHits: TArray<TAtlasSearchHit>; const AFrom: TAtlasSearchPos;
-  ABackward: Boolean; out AWrapped: Boolean): Integer;
+class function TAtlasTextSearch.CodeOnly(const ALines: TArray<string>): TArray<string>;
 var
+  mMasker: TCodeMasker;
   mIndex: Integer;
 begin
-  AWrapped := False;
-  Result := -1;
-  if Length(AHits) = 0 then
+  Result := nil;
+  SetLength(Result, Length(ALines));
+  mMasker := Default(TCodeMasker);
+  for mIndex := 0 to High(ALines) do
   begin
-    Exit;
-  end;
-  if ABackward then
-  begin
-    for mIndex := High(AHits) downto 0 do
-    begin
-      if TAtlasSearchPos.Compare(AHits[mIndex].StartPos, AFrom) < 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-    AWrapped := True;
-    Result := High(AHits);
-  end
-  else
-  begin
-    for mIndex := 0 to High(AHits) do
-    begin
-      if TAtlasSearchPos.Compare(AHits[mIndex].StartPos, AFrom) >= 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-    AWrapped := True;
-    Result := 0;
+    Result[mIndex] := mMasker.MaskLine(ALines[mIndex]);
   end;
 end;
 
 { TAtlasSearchRegex }
-
-class function TAtlasSearchRegex.Options(const AOptions: TAtlasSearchOptions): TRegExOptions;
-begin
-  Result := [];
-  if not AOptions.CaseSensitive then
-  begin
-    Include(Result, roIgnoreCase);
-  end;
-end;
 
 class function TAtlasSearchRegex.Check(const APattern: string; out AError: string): Boolean;
 var
@@ -869,6 +862,15 @@ begin
       AError := E.Message;
       Result := False;
     end;
+  end;
+end;
+
+class function TAtlasSearchRegex.Options(const AOptions: TAtlasSearchOptions): TRegExOptions;
+begin
+  Result := [];
+  if not AOptions.CaseSensitive then
+  begin
+    Include(Result, roIgnoreCase);
   end;
 end;
 

@@ -54,12 +54,7 @@ uses
   Shell.Composition.DocumentEvents,
   Shell.Composition.Session;
 
-class procedure TShellCoreWiring.Workspaces(AParts: TShellParts);
-begin
-  AParts.Core := TShellCore.Create(CoreServices(AParts));
-  DocumentEvents(AParts);
-  AParts.Core.Attach(AParts.Protocol.Dispatcher);
-end;
+{ TShellCoreWiring }
 
 class procedure TShellCoreWiring.DocumentEvents(AParts: TShellParts);
 var
@@ -97,6 +92,49 @@ begin
       Result := AParts.DeriveWorkspaces;
     end;
   TShellDocumentEvents.Attach(AParts.Documents, mServices);
+end;
+
+class procedure TShellCoreWiring.CoreEvents(AParts: TShellParts; var AServices: TShellCoreServices);
+begin
+  AServices.ProjectLoaded :=
+    procedure
+    begin
+      AParts.IndexArea.ProjectLoaded;
+    end;
+  AServices.IndexStageDone :=
+    procedure(AProjectStage: Boolean)
+    begin
+      AParts.IndexArea.IndexStageDone(AProjectStage);
+    end;
+  AServices.IndexEvent :=
+    procedure(AText: string)
+    begin
+      // Absicherung: Beim Beenden ist das Diagnoselog schon fort.
+      if AParts.Session <> nil then
+      begin
+        AParts.Session.Diagnostics.Log.LogEvent(AText);
+      end;
+    end;
+  AServices.SettingsChanged :=
+    procedure(ASettings: TServerSettings)
+    begin
+      AParts.Protocol.Dispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
+      AParts.Session.ApplySettings(ASettings);
+      // server.statusFile (#1901) gilt serverweit.
+      TServerActivity.Shared.Enabled := ASettings.ServerStatusFile;
+      // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
+      if not AParts.Replay then
+      begin
+        AParts.Protocol.CrashCases.Enabled := ASettings.ServerCrashCases;
+        AParts.Protocol.CrashCases.SkipEnabled := ASettings.ServerCrashSkip;
+      end;
+    end;
+  // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
+  AServices.FilesChanged :=
+    procedure(const AFiles: TArray<string>)
+    begin
+      AParts.Connection.Post(TLspWatchedFiles.Notification(AFiles));
+    end;
 end;
 
 /// <summary>Katalog der Typen aus der IDE (atlas/ideTypes) für die Prüfregeln.</summary>
@@ -181,56 +219,6 @@ begin
   CoreEvents(AParts, Result);
 end;
 
-class procedure TShellCoreWiring.CoreEvents(AParts: TShellParts; var AServices: TShellCoreServices);
-begin
-  AServices.ProjectLoaded :=
-    procedure
-    begin
-      AParts.IndexArea.ProjectLoaded;
-    end;
-  AServices.IndexStageDone :=
-    procedure(AProjectStage: Boolean)
-    begin
-      AParts.IndexArea.IndexStageDone(AProjectStage);
-    end;
-  AServices.IndexEvent :=
-    procedure(AText: string)
-    begin
-      // Absicherung: Beim Beenden ist das Diagnoselog schon fort.
-      if AParts.Session <> nil then
-      begin
-        AParts.Session.Diagnostics.Log.LogEvent(AText);
-      end;
-    end;
-  AServices.SettingsChanged :=
-    procedure(ASettings: TServerSettings)
-    begin
-      AParts.Protocol.Dispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
-      AParts.Session.ApplySettings(ASettings);
-      // server.statusFile (#1901) gilt serverweit.
-      TServerActivity.Shared.Enabled := ASettings.ServerStatusFile;
-      // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
-      if not AParts.Replay then
-      begin
-        AParts.Protocol.CrashCases.Enabled := ASettings.ServerCrashCases;
-        AParts.Protocol.CrashCases.SkipEnabled := ASettings.ServerCrashSkip;
-      end;
-    end;
-  // Im Thread der Nachrichtenschleife verarbeiten wie eine Meldung des Clients.
-  AServices.FilesChanged :=
-    procedure(const AFiles: TArray<string>)
-    begin
-      AParts.Connection.Post(TLspWatchedFiles.Notification(AFiles));
-    end;
-end;
-
-class procedure TShellCoreWiring.Index(AParts: TShellParts);
-begin
-  AParts.IndexArea := TShellIndexArea.Create(IndexAreaServices(AParts));
-  AParts.EditingArea.Editing.UseIndex(AParts.IndexArea.Index);
-  Session(AParts);
-end;
-
 class function TShellCoreWiring.IndexAreaServices(AParts: TShellParts): TShellIndexAreaServices;
 begin
   Result := Default(TShellIndexAreaServices);
@@ -306,6 +294,20 @@ begin
       AParts.Connection.Stop;
     end;
   AParts.Session := TShellSession.Create(mServices, TShellParts.cRequestTimeoutMs);
+end;
+
+class procedure TShellCoreWiring.Workspaces(AParts: TShellParts);
+begin
+  AParts.Core := TShellCore.Create(CoreServices(AParts));
+  DocumentEvents(AParts);
+  AParts.Core.Attach(AParts.Protocol.Dispatcher);
+end;
+
+class procedure TShellCoreWiring.Index(AParts: TShellParts);
+begin
+  AParts.IndexArea := TShellIndexArea.Create(IndexAreaServices(AParts));
+  AParts.EditingArea.Editing.UseIndex(AParts.IndexArea.Index);
+  Session(AParts);
 end;
 
 end.

@@ -214,11 +214,6 @@ end;
 
 { TAtlasCompileEvents }
 
-constructor TAtlasCompileEvents.Create;
-begin
-  Create(nil);
-end;
-
 constructor TAtlasCompileEvents.Create(const AClock: TAtlasClockFunc);
 begin
   inherited Create;
@@ -226,6 +221,11 @@ begin
   FRetired := TObjectList<TAtlasCompileParticipant>.Create(True);
   FRunning := TList<TRunning>.Create;
   FClock := AClock;
+end;
+
+constructor TAtlasCompileEvents.Create;
+begin
+  Create(nil);
 end;
 
 destructor TAtlasCompileEvents.Destroy;
@@ -248,53 +248,16 @@ begin
   end;
 end;
 
-procedure TAtlasCompileEvents.Add(AParticipant: TAtlasCompileParticipant);
+function TAtlasCompileEvents.RunningIndex(const AFileName: string): Integer;
 begin
-  FParticipants.Add(AParticipant);
-end;
-
-procedure TAtlasCompileEvents.Remove(AParticipant: TAtlasCompileParticipant);
-begin
-  if (AParticipant = nil) or not FParticipants.Contains(AParticipant) then
+  for Result := 0 to FRunning.Count - 1 do
   begin
-    Exit;
+    if SameText(FRunning[Result].Project.FileName, AFileName) then
+    begin
+      Exit;
+    end;
   end;
-  FParticipants.Extract(AParticipant);
-  if FDispatching > 0 then
-  begin
-    FRetired.Add(AParticipant);
-  end
-  else
-  begin
-    AParticipant.Free;
-  end;
-end;
-
-function TAtlasCompileEvents.EnterDispatch: TArray<TAtlasCompileParticipant>;
-begin
-  Inc(FDispatching);
-  Result := FParticipants.ToArray;
-end;
-
-procedure TAtlasCompileEvents.LeaveDispatch;
-begin
-  Dec(FDispatching);
-  if FDispatching = 0 then
-  begin
-    FRetired.Clear;
-  end;
-end;
-
-function TAtlasCompileEvents.IsLive(AParticipant: TAtlasCompileParticipant): Boolean;
-begin
-  Result := FParticipants.Contains(AParticipant);
-end;
-
-class function TAtlasCompileEvents.KindText(AKind: TAtlasCompileKind): string;
-const
-  cTexts: array[TAtlasCompileKind] of string = ('make', 'build', 'check', 'makeUnit', 'clean', 'link');
-begin
-  Result := cTexts[AKind];
+  Result := -1;
 end;
 
 procedure TAtlasCompileEvents.Notify(const AMethod: string; AParams: TJSONObject);
@@ -322,30 +285,46 @@ begin
   end;
 end;
 
-function TAtlasCompileEvents.Compiling: Boolean;
-var
-  mRunning: TRunning;
+function TAtlasCompileEvents.EnterDispatch: TArray<TAtlasCompileParticipant>;
 begin
-  Result := False;
-  for mRunning in FRunning do
+  Inc(FDispatching);
+  Result := FParticipants.ToArray;
+end;
+
+procedure TAtlasCompileEvents.LeaveDispatch;
+begin
+  Dec(FDispatching);
+  if FDispatching = 0 then
   begin
-    if not mRunning.Project.Background then
-    begin
-      Exit(True);
-    end;
+    FRetired.Clear;
   end;
 end;
 
-function TAtlasCompileEvents.RunningIndex(const AFileName: string): Integer;
+function TAtlasCompileEvents.IsLive(AParticipant: TAtlasCompileParticipant): Boolean;
 begin
-  for Result := 0 to FRunning.Count - 1 do
+  Result := FParticipants.Contains(AParticipant);
+end;
+
+procedure TAtlasCompileEvents.Add(AParticipant: TAtlasCompileParticipant);
+begin
+  FParticipants.Add(AParticipant);
+end;
+
+procedure TAtlasCompileEvents.Remove(AParticipant: TAtlasCompileParticipant);
+begin
+  if (AParticipant = nil) or not FParticipants.Contains(AParticipant) then
   begin
-    if SameText(FRunning[Result].Project.FileName, AFileName) then
-    begin
-      Exit;
-    end;
+    Exit;
   end;
-  Result := -1;
+  FParticipants.Extract(AParticipant);
+  if FDispatching > 0 then
+  begin
+    FRetired.Add(AParticipant);
+  end
+  else
+  begin
+    AParticipant.Free;
+  end;
 end;
 
 procedure TAtlasCompileEvents.GroupStarted(AKind: TAtlasCompileKind);
@@ -468,6 +447,27 @@ begin
     Inc(FCodeInsightMs, Now_ - FCodeInsightStarted);
   end;
   FCodeInsightStarted := 0;
+end;
+
+class function TAtlasCompileEvents.KindText(AKind: TAtlasCompileKind): string;
+const
+  cTexts: array[TAtlasCompileKind] of string = ('make', 'build', 'check', 'makeUnit', 'clean', 'link');
+begin
+  Result := cTexts[AKind];
+end;
+
+function TAtlasCompileEvents.Compiling: Boolean;
+var
+  mRunning: TRunning;
+begin
+  Result := False;
+  for mRunning in FRunning do
+  begin
+    if not mRunning.Project.Background then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 function ProjectJson(const AProject: TAtlasCompileProject): TJSONObject;

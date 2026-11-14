@@ -103,6 +103,11 @@ begin
   inherited;
 end;
 
+function TServerComposition.GetDocuments: IDocumentStore;
+begin
+  Result := FParts.Documents;
+end;
+
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
 var
   mChannel: TShellStdioChannel;
@@ -120,17 +125,17 @@ begin
   end;
 end;
 
+function TServerComposition.Run: Integer;
+begin
+  Result := FParts.Session.Run(FParts.Connection, FParts.Protocol.Lifecycle);
+end;
+
 procedure TServerComposition.PrepareReplay(const ASettingsFile: string);
 begin
   FParts.Replay := True;
   FParts.Core.Configuration.UseReplaySettings(ASettingsFile);
   FParts.Protocol.CrashCases.Enabled := False;
   FParts.Protocol.CrashCases.SkipEnabled := False;
-end;
-
-function TServerComposition.Run: Integer;
-begin
-  Result := FParts.Session.Run(FParts.Connection, FParts.Protocol.Lifecycle);
 end;
 
 function TServerComposition.CrashCases: TShellCrashCases;
@@ -141,11 +146,6 @@ end;
 function TServerComposition.Index: ISymbolIndex;
 begin
   Result := FParts.Index;
-end;
-
-function TServerComposition.GetDocuments: IDocumentStore;
-begin
-  Result := FParts.Documents;
 end;
 
 end.

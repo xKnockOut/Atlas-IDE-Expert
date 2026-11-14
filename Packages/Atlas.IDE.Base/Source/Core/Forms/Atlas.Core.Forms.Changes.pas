@@ -154,6 +154,8 @@ type
     function Run: Boolean;
   end;
 
+{ TFormDiff }
+
 procedure TFormDiff.Track(const ALine: string);
 var
   mName, mTrimmed: string;
@@ -225,6 +227,29 @@ begin
   end;
 end;
 
+function TFormDiff.ChangedLine(out AOk: Boolean): Boolean;
+var
+  mOldName, mOldValue, mNewName, mNewValue: string;
+begin
+  AOk := True;
+  Result := BothLeft and PropertyLine(OldLines[OldIndex], mOldName, mOldValue) and
+    PropertyLine(NewLines[NewIndex], mNewName, mNewValue) and (mOldName = mNewName);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AOk := TakeChange(mOldName, mOldValue, mNewValue);
+  if AOk then
+  begin
+    Inc(OldIndex);
+    Inc(NewIndex);
+  end
+  else
+  begin
+    Fail(OldIndex + 1, OldLines[OldIndex]);
+  end;
+end;
+
 function TFormDiff.TakeChange(const AName, AOldValue, ANewValue: string): Boolean;
 var
   mChange: TAtlasFormEventChange;
@@ -246,29 +271,6 @@ begin
   else
   begin
     Properties := Properties + [NewProperty(AName, ANewValue, False, OldIndex + 1)];
-  end;
-end;
-
-function TFormDiff.ChangedLine(out AOk: Boolean): Boolean;
-var
-  mOldName, mOldValue, mNewName, mNewValue: string;
-begin
-  AOk := True;
-  Result := BothLeft and PropertyLine(OldLines[OldIndex], mOldName, mOldValue) and
-    PropertyLine(NewLines[NewIndex], mNewName, mNewValue) and (mOldName = mNewName);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AOk := TakeChange(mOldName, mOldValue, mNewValue);
-  if AOk then
-  begin
-    Inc(OldIndex);
-    Inc(NewIndex);
-  end
-  else
-  begin
-    Fail(OldIndex + 1, OldLines[OldIndex]);
   end;
 end;
 
@@ -325,28 +327,19 @@ begin
   end;
 end;
 
-class function TAtlasFormChanges.ObjectName(const ALine: string; out AIsObject: Boolean): string;
+{ TAtlasFormChanges }
+
+class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
+  out AReason: string): Boolean;
 var
-  mLine, mKeyword: string;
-  mColon: Integer;
+  mProperties: TArray<TAtlasFormPropertyChange>;
 begin
-  Result := '';
-  mLine := Trim(ALine);
-  AIsObject := False;
-  for mKeyword in TArray<string>.Create('object ', 'inherited ', 'inline ') do
+  Result := Diff(AOld, ANew, AChanges, mProperties, AReason);
+  if Result and (Length(mProperties) > 0) then
   begin
-    if mLine.StartsWith(mKeyword, True) then
-    begin
-      AIsObject := True;
-      mLine := Trim(Copy(mLine, Length(mKeyword) + 1, MaxInt));
-      mColon := Pos(':', mLine);
-      // Ohne Doppelpunkt ("object TTimer") hat die Komponente keinen Namen.
-      if mColon > 0 then
-      begin
-        Result := Trim(Copy(mLine, 1, mColon - 1));
-      end;
-      Exit;
-    end;
+    AChanges := nil;
+    AReason := Format('Zeile %d: %s', [mProperties[0].Line, mProperties[0].PropertyPath]);
+    Result := False;
   end;
 end;
 
@@ -392,6 +385,45 @@ begin
   end;
 end;
 
+class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
+  out AProperties: TArray<TAtlasFormPropertyChange>; out AReason: string): Boolean;
+var
+  mDiff: TFormDiff;
+begin
+  mDiff := Default(TFormDiff);
+  mDiff.OldLines := TTextLines.SplitLines(AOld);
+  mDiff.NewLines := TTextLines.SplitLines(ANew);
+  Result := mDiff.Run;
+  AChanges := mDiff.Changes;
+  AProperties := mDiff.Properties;
+  AReason := mDiff.Reason;
+end;
+
+class function TAtlasFormChanges.ObjectName(const ALine: string; out AIsObject: Boolean): string;
+var
+  mLine, mKeyword: string;
+  mColon: Integer;
+begin
+  Result := '';
+  mLine := Trim(ALine);
+  AIsObject := False;
+  for mKeyword in TArray<string>.Create('object ', 'inherited ', 'inline ') do
+  begin
+    if mLine.StartsWith(mKeyword, True) then
+    begin
+      AIsObject := True;
+      mLine := Trim(Copy(mLine, Length(mKeyword) + 1, MaxInt));
+      mColon := Pos(':', mLine);
+      // Ohne Doppelpunkt ("object TTimer") hat die Komponente keinen Namen.
+      if mColon > 0 then
+      begin
+        Result := Trim(Copy(mLine, 1, mColon - 1));
+      end;
+      Exit;
+    end;
+  end;
+end;
+
 class function TAtlasFormChanges.StringValue(const AValue: string; out AText: string): Boolean;
 var
   mIndex: Integer;
@@ -416,34 +448,6 @@ begin
   begin
     AText := '';
   end;
-end;
-
-class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
-  out AReason: string): Boolean;
-var
-  mProperties: TArray<TAtlasFormPropertyChange>;
-begin
-  Result := Diff(AOld, ANew, AChanges, mProperties, AReason);
-  if Result and (Length(mProperties) > 0) then
-  begin
-    AChanges := nil;
-    AReason := Format('Zeile %d: %s', [mProperties[0].Line, mProperties[0].PropertyPath]);
-    Result := False;
-  end;
-end;
-
-class function TAtlasFormChanges.Diff(const AOld, ANew: string; out AChanges: TArray<TAtlasFormEventChange>;
-  out AProperties: TArray<TAtlasFormPropertyChange>; out AReason: string): Boolean;
-var
-  mDiff: TFormDiff;
-begin
-  mDiff := Default(TFormDiff);
-  mDiff.OldLines := TTextLines.SplitLines(AOld);
-  mDiff.NewLines := TTextLines.SplitLines(ANew);
-  Result := mDiff.Run;
-  AChanges := mDiff.Changes;
-  AProperties := mDiff.Properties;
-  AReason := mDiff.Reason;
 end;
 
 end.

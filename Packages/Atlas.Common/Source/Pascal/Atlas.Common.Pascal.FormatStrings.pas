@@ -154,14 +154,6 @@ type
 
 { TFormatParser }
 
-procedure TFormatParser.Init(const AText: string);
-begin
-  FText := AText;
-  FPos := 1;
-  FNext := 0;
-  FDynamic := False;
-end;
-
 function TFormatParser.AtEnd: Boolean;
 begin
   Result := FPos > Length(FText);
@@ -296,6 +288,14 @@ begin
   end;
 end;
 
+procedure TFormatParser.Init(const AText: string);
+begin
+  FText := AText;
+  FPos := 1;
+  FNext := 0;
+  FDynamic := False;
+end;
+
 function TFormatParser.Next(out ASpec: TFormatSpec): Boolean;
 var
   mStart: Integer;
@@ -321,14 +321,6 @@ begin
 end;
 
 { TLiteralReader }
-
-procedure TLiteralReader.Init(const AText: string);
-begin
-  FText := AText;
-  FPos := 1;
-  Value := '';
-  Offsets := nil;
-end;
 
 procedure TLiteralReader.Add(AChar: Char; AOffset: Integer);
 begin
@@ -406,6 +398,14 @@ begin
   end;
 end;
 
+procedure TLiteralReader.Init(const AText: string);
+begin
+  FText := AText;
+  FPos := 1;
+  Value := '';
+  Offsets := nil;
+end;
+
 function TLiteralReader.Read: Boolean;
 begin
   Result := True;
@@ -480,6 +480,19 @@ begin
   Result := False;
 end;
 
+class function TFormatString.Parse(const AFormat: string): TFormatString;
+var
+  mParser: TFormatParser;
+  mSpec: TFormatSpec;
+begin
+  Result.Specs := nil;
+  mParser.Init(AFormat);
+  while mParser.Next(mSpec) do
+  begin
+    Result.Specs := Result.Specs + [mSpec];
+  end;
+end;
+
 class function TFormatString.IsLocaleType(AType: Char): Boolean;
 begin
   Result := CharInSet(AType, ['e', 'f', 'g', 'n', 'm']);
@@ -497,19 +510,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-class function TFormatString.Parse(const AFormat: string): TFormatString;
-var
-  mParser: TFormatParser;
-  mSpec: TFormatSpec;
-begin
-  Result.Specs := nil;
-  mParser.Init(AFormat);
-  while mParser.Next(mSpec) do
-  begin
-    Result.Specs := Result.Specs + [mSpec];
-  end;
 end;
 
 class function TFormatString.LiteralValue(const AText: string; out AValue: string): Boolean;

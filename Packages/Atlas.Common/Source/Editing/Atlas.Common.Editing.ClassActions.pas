@@ -338,6 +338,46 @@ end;
 
 { TClassActions }
 
+class function TClassActions.Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer;
+  const AContext: TClassActionContext): TArray<TCodeAction>;
+var
+  mDecl: TSyntaxNode;
+  mAction: TCodeAction;
+  mName: string;
+  mCount: Integer;
+begin
+  Result := nil;
+  mDecl := ClassDeclAt(ATree, ALine);
+  if mDecl = nil then
+  begin
+    Exit;
+  end;
+  if PropertyAccessors(AText, ALine, AContext, mAction) then
+  begin
+    Result := Result + [mAction];
+  end;
+  for mName in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), mDecl.StartPos.Line) do
+  begin
+    if TRegEx.IsMatch(mName, '^I[A-Z]') and ImplementInterface(AText, ALine, mName, AContext, mAction) then
+    begin
+      Result := Result + [mAction];
+    end;
+  end;
+  mCount := 0;
+  for mName in OverrideCandidates(AText, ALine, AContext) do
+  begin
+    if mCount >= cMaxOverrides then
+    begin
+      Break;
+    end;
+    if OverrideMethod(AText, ALine, mName, AContext, mAction) then
+    begin
+      Result := Result + [mAction];
+      Inc(mCount);
+    end;
+  end;
+end;
+
 class function TClassActions.PropertyAccessors(const AText: string; ALine: Integer;
   const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
 var
@@ -433,6 +473,13 @@ begin
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
 end;
 
+class function TClassActions.MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
+begin
+  Result := TClassCompletion.MissingBodies(ATree, AText, APosition,
+    TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), AAction);
+end;
+
 class function TClassActions.OverrideCandidates(const AText: string; ALine: Integer;
   const AContext: TClassActionContext): TArray<string>;
 var
@@ -440,53 +487,6 @@ var
 begin
   mPhantom := PhantomText(AText, ALine, '/override');
   Result := Atlas.Common.Editing.ClassCommands.OverrideCandidates(SlashContext(mPhantom, ALine + 1, AContext));
-end;
-
-class function TClassActions.Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-  const AContext: TClassActionContext): TArray<TCodeAction>;
-var
-  mDecl: TSyntaxNode;
-  mAction: TCodeAction;
-  mName: string;
-  mCount: Integer;
-begin
-  Result := nil;
-  mDecl := ClassDeclAt(ATree, ALine);
-  if mDecl = nil then
-  begin
-    Exit;
-  end;
-  if PropertyAccessors(AText, ALine, AContext, mAction) then
-  begin
-    Result := Result + [mAction];
-  end;
-  for mName in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), mDecl.StartPos.Line) do
-  begin
-    if TRegEx.IsMatch(mName, '^I[A-Z]') and ImplementInterface(AText, ALine, mName, AContext, mAction) then
-    begin
-      Result := Result + [mAction];
-    end;
-  end;
-  mCount := 0;
-  for mName in OverrideCandidates(AText, ALine, AContext) do
-  begin
-    if mCount >= cMaxOverrides then
-    begin
-      Break;
-    end;
-    if OverrideMethod(AText, ALine, mName, AContext, mAction) then
-    begin
-      Result := Result + [mAction];
-      Inc(mCount);
-    end;
-  end;
-end;
-
-class function TClassActions.MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-  const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
-begin
-  Result := TClassCompletion.MissingBodies(ATree, AText, APosition,
-    TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), AAction);
 end;
 
 initialization

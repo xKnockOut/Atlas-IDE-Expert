@@ -192,29 +192,6 @@ begin
   end;
 end;
 
-function TShellProjectLoader.FindProjectFile(const ASettings: TServerSettings): string;
-begin
-  // Aus der Projektgruppe (#648): Die Datei ist vorgegeben, auch wenn mehrere im Ordner liegen.
-  if FSetup.ProjectFile <> '' then
-  begin
-    Result := FSetup.ProjectFile;
-    if not FileExists(Result) then
-    begin
-      FLogger.Warning('Projektdatei nicht gefunden: ' + TLogMarks.Path(Result));
-      Result := '';
-    end;
-  end
-  else if ASettings.Project <> '' then
-  begin
-    Result := ConfiguredProjectFile(ASettings);
-  end
-  else
-  begin
-    // Ohne Angabe: die einzige .dproj im Ordner.
-    Result := SingleProjectFile;
-  end;
-end;
-
 function TShellProjectLoader.ChosenVersion(const ASettings: TServerSettings; const ALoaded: TShellLoadedProject;
   const AInstalled: TArray<string>): string;
 var
@@ -332,6 +309,29 @@ begin
   end;
   // Symbole aus den Projektoptionen der IDE gelten vor denen der Datei (#615).
   FBuild.ApplyDefines(ALoaded.Project);
+end;
+
+function TShellProjectLoader.FindProjectFile(const ASettings: TServerSettings): string;
+begin
+  // Aus der Projektgruppe (#648): Die Datei ist vorgegeben, auch wenn mehrere im Ordner liegen.
+  if FSetup.ProjectFile <> '' then
+  begin
+    Result := FSetup.ProjectFile;
+    if not FileExists(Result) then
+    begin
+      FLogger.Warning('Projektdatei nicht gefunden: ' + TLogMarks.Path(Result));
+      Result := '';
+    end;
+  end
+  else if ASettings.Project <> '' then
+  begin
+    Result := ConfiguredProjectFile(ASettings);
+  end
+  else
+  begin
+    // Ohne Angabe: die einzige .dproj im Ordner.
+    Result := SingleProjectFile;
+  end;
 end;
 
 function TShellProjectLoader.Load(const AProjectFile: string; const ASettings: TServerSettings;

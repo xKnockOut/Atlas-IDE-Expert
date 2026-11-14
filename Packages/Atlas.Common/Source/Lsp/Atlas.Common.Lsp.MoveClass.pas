@@ -107,6 +107,8 @@ begin
   Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc']);
 end;
 
+{ TLspMoveClass }
+
 class function TLspMoveClass.Lookup(AResolver: TNameResolver): TMoveClassLookup;
 begin
   Result :=

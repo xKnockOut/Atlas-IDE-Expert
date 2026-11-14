@@ -88,36 +88,6 @@ end;
 
 { TAtlasIdeBreakpointCheck }
 
-class procedure TAtlasIdeBreakpointCheck.Start(const ASession: TAtlasBreakpointCheckSessionFunc;
-  const AMessage: TProc<string>);
-begin
-  FSession := ASession;
-  FMessage := AMessage;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-    TAtlasIdeDebugSession.Start;
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointCheck.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FLastProblems := nil;
-  FSession := nil;
-  FMessage := nil;
-end;
-
-class function TAtlasIdeBreakpointCheck.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
 class procedure TAtlasIdeBreakpointCheck.Report(const AText: string);
 begin
   if Assigned(FMessage) then
@@ -177,6 +147,81 @@ begin
   end;
 end;
 
+class function TAtlasIdeBreakpointCheck.Check(const AProject: IOTAProject; const ASpots: TAtlasBreakpointSpots;
+  out AProblems: TAtlasBreakpointProblems; out AError: string): Boolean;
+var
+  mSession: TLspSession;
+  mAnswer: TJSONValue;
+  mServer: TAtlasBreakpointProblems;
+begin
+  AProblems := nil;
+  AError := '';
+  Result := False;
+  mSession := nil;
+  if Assigned(FSession) then
+  begin
+    mSession := FSession();
+  end;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  try
+    SyncOpenFiles(mSession, ASpots);
+    mAnswer := mSession.RunCommand(TAtlasBreakpointCheck.cCommand, TAtlasBreakpointCheck.Arguments(ASpots),
+      cTimeoutMs);
+    try
+      Result := TAtlasBreakpointCheck.ReadAnswer(mAnswer, ASpots, mServer);
+    finally
+      mAnswer.Free;
+    end;
+  except
+    on E: ELspClientError do
+    begin
+      AError := E.Message;
+      Result := False;
+    end;
+  end;
+  if Result then
+  begin
+    AProblems := TAtlasBreakpointCheck.Sorted(mServer + ProjectProblems(AProject, ASpots));
+    FLastProblems := AProblems;
+  end;
+end;
+
+class function TAtlasIdeBreakpointCheck.MoveProblems(const AProblems: TAtlasBreakpointProblems): Integer;
+var
+  mProblem: TAtlasBreakpointProblem;
+  mBreakpoint: IOTABreakpoint;
+begin
+  Result := 0;
+  for mProblem in AProblems do
+  begin
+    if not mProblem.CanMove then
+    begin
+      Continue;
+    end;
+    mBreakpoint := TAtlasIdeBreakpoints.Find(mProblem.FileName, mProblem.Line);
+    if (mBreakpoint <> nil) and (TAtlasIdeBreakpoints.MoveTo(mBreakpoint, mProblem.NextLine) <> nil) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointCheck.Start(const ASession: TAtlasBreakpointCheckSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  FSession := ASession;
+  FMessage := AMessage;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+    TAtlasIdeDebugSession.Start;
+  end;
+end;
+
 /// <summary>Ist AFileName Modul eines anderen Projekts der Gruppe als ALaunched?</summary>
 function InOtherProject(const ALaunched: IOTAProject; const AFileName: string): Boolean;
 var
@@ -228,71 +273,26 @@ begin
   end;
 end;
 
-class function TAtlasIdeBreakpointCheck.Check(const AProject: IOTAProject; const ASpots: TAtlasBreakpointSpots;
-  out AProblems: TAtlasBreakpointProblems; out AError: string): Boolean;
-var
-  mSession: TLspSession;
-  mAnswer: TJSONValue;
-  mServer: TAtlasBreakpointProblems;
+class procedure TAtlasIdeBreakpointCheck.Release;
 begin
-  AProblems := nil;
-  AError := '';
-  Result := False;
-  mSession := nil;
-  if Assigned(FSession) then
+  if FListener <> nil then
   begin
-    mSession := FSession();
+    TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  try
-    SyncOpenFiles(mSession, ASpots);
-    mAnswer := mSession.RunCommand(TAtlasBreakpointCheck.cCommand, TAtlasBreakpointCheck.Arguments(ASpots),
-      cTimeoutMs);
-    try
-      Result := TAtlasBreakpointCheck.ReadAnswer(mAnswer, ASpots, mServer);
-    finally
-      mAnswer.Free;
-    end;
-  except
-    on E: ELspClientError do
-    begin
-      AError := E.Message;
-      Result := False;
-    end;
-  end;
-  if Result then
-  begin
-    AProblems := TAtlasBreakpointCheck.Sorted(mServer + ProjectProblems(AProject, ASpots));
-    FLastProblems := AProblems;
-  end;
+  FListener := nil;
+  FLastProblems := nil;
+  FSession := nil;
+  FMessage := nil;
+end;
+
+class function TAtlasIdeBreakpointCheck.Started: Boolean;
+begin
+  Result := FListener <> nil;
 end;
 
 class function TAtlasIdeBreakpointCheck.LastProblems: TAtlasBreakpointProblems;
 begin
   Result := FLastProblems;
-end;
-
-class function TAtlasIdeBreakpointCheck.MoveProblems(const AProblems: TAtlasBreakpointProblems): Integer;
-var
-  mProblem: TAtlasBreakpointProblem;
-  mBreakpoint: IOTABreakpoint;
-begin
-  Result := 0;
-  for mProblem in AProblems do
-  begin
-    if not mProblem.CanMove then
-    begin
-      Continue;
-    end;
-    mBreakpoint := TAtlasIdeBreakpoints.Find(mProblem.FileName, mProblem.Line);
-    if (mBreakpoint <> nil) and (TAtlasIdeBreakpoints.MoveTo(mBreakpoint, mProblem.NextLine) <> nil) then
-    begin
-      Inc(Result);
-    end;
-  end;
 end;
 
 /// <summary>Sprung aus dem Dialog; eigene Routine, damit die Methodenreferenz nichts weiter festhält.</summary>

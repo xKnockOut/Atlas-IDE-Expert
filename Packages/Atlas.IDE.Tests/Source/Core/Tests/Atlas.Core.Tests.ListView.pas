@@ -53,6 +53,8 @@ begin
   Result := Format('%d|%d|%d|%d', [AUnit, AFixture, ATest, ACase]);
 end;
 
+{ TAtlasTestListView }
+
 class function TAtlasTestListView.Units(const AInputs: TArray<TAtlasTestUnitInput>): TArray<TDUnitXUnit>;
 var
   mIndex: Integer;

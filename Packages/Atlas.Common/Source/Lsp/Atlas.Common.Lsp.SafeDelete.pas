@@ -490,16 +490,6 @@ begin
   end;
 end;
 
-function TSafeDeletePlan.FileTreeOf(const AFileName, AText: string): TSyntaxTree;
-begin
-  if SameText(AFileName, FFileName) then
-  begin
-    Exit(FTree);
-  end;
-  Result := TSyntaxTreeCache.Parse(AText);
-  FTrees.Add(Result);
-end;
-
 procedure TSafeDeletePlan.FindOverrides(ALayout: TClassLayout);
 var
   mQueue, mSeen: TArray<string>;
@@ -534,22 +524,6 @@ begin
   end;
 end;
 
-function TSafeDeletePlan.UsedElsewhere(ALayout: TClassLayout; AIndex: Integer): Boolean;
-var
-  mSpans: TArray<TLineSpan>;
-  mLocation: TReferenceLocation;
-begin
-  mSpans := TSafeDelete.OwnLines(FTree, FText, TSafeDelete.ForMember(ALayout, AIndex)) + OwnSpans;
-  for mLocation in References(TSafeDelete.ForMember(ALayout, AIndex).NameRange.StartPos) do
-  begin
-    if not SameText(mLocation.FileName, FFileName) or not InSpans(mSpans, mLocation.Range.StartPos.Line) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TSafeDeletePlan.FindCascade(ALayout: TClassLayout);
 var
   mMember: TClassMember;
@@ -572,6 +546,67 @@ begin
       begin
         Freed := Freed + [mIndex];
       end;
+    end;
+  end;
+end;
+
+function TSafeDeletePlan.CascadeTargets: TArray<TSafeDeleteTarget>;
+var
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if Freed = nil then
+  begin
+    Exit;
+  end;
+  mDecl := TClassLayout.DeclNamed(FTree, Target.ClassName);
+  if mDecl = nil then
+  begin
+    Exit;
+  end;
+  mLayout := TClassLayout.Read(FTree, FText, mDecl);
+  try
+    for mIndex in Freed do
+    begin
+      Result := Result + [TSafeDelete.ForMember(mLayout, mIndex)];
+    end;
+  finally
+    mLayout.Free;
+  end;
+end;
+
+function TSafeDeletePlan.NewlyUnused(const ANewText: string): TArray<string>;
+var
+  mUses_: TUsesContext;
+  mBefore, mAfter: TArray<string>;
+  mCheck: TSyntaxTree;
+  mName: string;
+begin
+  Result := nil;
+  if not Assigned(FContext.UsesFor) then
+  begin
+    Exit;
+  end;
+  mUses_ := FContext.UsesFor(FFileName);
+  if not Assigned(mUses_.Info) then
+  begin
+    Exit;
+  end;
+  // Mit Namensauflösung wie "ungenutzte uses" (#1925).
+  mBefore := TUsesActions.UnusedUnits(FTree.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(FText, nil));
+  mCheck := TSyntaxTreeCache.Parse(ANewText);
+  try
+    mAfter := TUsesActions.UnusedUnits(mCheck.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(ANewText, nil));
+  finally
+    mCheck.Free;
+  end;
+  for mName in mAfter do
+  begin
+    if IndexText(mName, mBefore) < 0 then
+    begin
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -657,6 +692,104 @@ begin
   end;
 end;
 
+function TSafeDeletePlan.UnitEdits(const AText: string; AFileTree: TSyntaxTree; const AUnits: TArray<string>;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mLineBreak: string;
+begin
+  mLineBreak := #10;
+  if Pos(#13#10, AText) > 0 then
+  begin
+    mLineBreak := #13#10;
+  end;
+  Result := TUsesActions.RemoveUnits(AFileTree.Tokens, AText, AUnits, mLineBreak, AEdits);
+end;
+
+function TSafeDeletePlan.FileTreeOf(const AFileName, AText: string): TSyntaxTree;
+begin
+  if SameText(AFileName, FFileName) then
+  begin
+    Exit(FTree);
+  end;
+  Result := TSyntaxTreeCache.Parse(AText);
+  FTrees.Add(Result);
+end;
+
+function TSafeDeletePlan.UsedElsewhere(ALayout: TClassLayout; AIndex: Integer): Boolean;
+var
+  mSpans: TArray<TLineSpan>;
+  mLocation: TReferenceLocation;
+begin
+  mSpans := TSafeDelete.OwnLines(FTree, FText, TSafeDelete.ForMember(ALayout, AIndex)) + OwnSpans;
+  for mLocation in References(TSafeDelete.ForMember(ALayout, AIndex).NameRange.StartPos) do
+  begin
+    if not SameText(mLocation.FileName, FFileName) or not InSpans(mSpans, mLocation.Range.StartPos.Line) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Ziele der Überschreibungen AOverrides in der Datei AFileName mit dem Baum AFileTree.</summary>
+function OverrideTargets(AFileTree: TSyntaxTree; const AText, AFileName: string;
+  const AOverrides: TArray<TSafeDeleteOverride>): TArray<TSafeDeleteTarget>;
+var
+  mHit: TSafeDeleteOverride;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+begin
+  Result := nil;
+  for mHit in AOverrides do
+  begin
+    if not SameText(mHit.FileName, AFileName) then
+    begin
+      Continue;
+    end;
+    mDecl := TClassLayout.DeclNamed(AFileTree, mHit.ClassName);
+    if mDecl = nil then
+    begin
+      Continue;
+    end;
+    mLayout := TClassLayout.Read(AFileTree, AText, mDecl);
+    try
+      Result := Result + [TSafeDelete.ForMember(mLayout, mHit.Member)];
+    finally
+      mLayout.Free;
+    end;
+  end;
+end;
+
+procedure TSafeDeletePlan.DeleteUnit(AChanges: TWorkspaceChanges);
+var
+  mFileName, mText, mForm: string;
+  mEdits: TArray<TTextEdit>;
+begin
+  for mFileName in UsesFiles do
+  begin
+    if not ReadFile(mFileName, mText) then
+    begin
+      Continue;
+    end;
+    if UnitEdits(mText, FileTreeOf(mFileName, mText), [Target.Name], mEdits) then
+    begin
+      AChanges.Add(mFileName, mEdits);
+    end
+    else
+    begin
+      AChanges.Warn(cTexts[TLspSafeDeleteText.TheUsesEntryInCould].Fmt([ExtractFileName(mFileName)]));
+    end;
+  end;
+  AChanges.DeleteFile(FFileName);
+  for mForm in TFormFiles.FormFiles(FFileName, FText) do
+  begin
+    if ReadFile(mForm, mText) then
+    begin
+      AChanges.DeleteFile(mForm);
+    end;
+  end;
+end;
+
 procedure TSafeDeletePlan.Analyze(const APosition: TTextPosition);
 var
   mReason: string;
@@ -717,73 +850,6 @@ begin
   FreedUnits := NewlyUnused(NewText(True, True));
 end;
 
-function TSafeDeletePlan.CascadeTargets: TArray<TSafeDeleteTarget>;
-var
-  mDecl: TSyntaxNode;
-  mLayout: TClassLayout;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if Freed = nil then
-  begin
-    Exit;
-  end;
-  mDecl := TClassLayout.DeclNamed(FTree, Target.ClassName);
-  if mDecl = nil then
-  begin
-    Exit;
-  end;
-  mLayout := TClassLayout.Read(FTree, FText, mDecl);
-  try
-    for mIndex in Freed do
-    begin
-      Result := Result + [TSafeDelete.ForMember(mLayout, mIndex)];
-    end;
-  finally
-    mLayout.Free;
-  end;
-end;
-
-function TSafeDeletePlan.CascadeNames: TArray<string>;
-var
-  mItem: TSafeDeleteTarget;
-begin
-  Result := nil;
-  for mItem in CascadeTargets do
-  begin
-    Result := Result + [mItem.Name];
-  end;
-end;
-
-/// <summary>Ziele der Überschreibungen AOverrides in der Datei AFileName mit dem Baum AFileTree.</summary>
-function OverrideTargets(AFileTree: TSyntaxTree; const AText, AFileName: string;
-  const AOverrides: TArray<TSafeDeleteOverride>): TArray<TSafeDeleteTarget>;
-var
-  mHit: TSafeDeleteOverride;
-  mDecl: TSyntaxNode;
-  mLayout: TClassLayout;
-begin
-  Result := nil;
-  for mHit in AOverrides do
-  begin
-    if not SameText(mHit.FileName, AFileName) then
-    begin
-      Continue;
-    end;
-    mDecl := TClassLayout.DeclNamed(AFileTree, mHit.ClassName);
-    if mDecl = nil then
-    begin
-      Continue;
-    end;
-    mLayout := TClassLayout.Read(AFileTree, AText, mDecl);
-    try
-      Result := Result + [TSafeDelete.ForMember(mLayout, mHit.Member)];
-    finally
-      mLayout.Free;
-    end;
-  end;
-end;
-
 function TSafeDeletePlan.NewText(AOverrides, ACascade: Boolean): string;
 var
   mTargets: TArray<TSafeDeleteTarget>;
@@ -798,53 +864,6 @@ begin
     mTargets := mTargets + OverrideTargets(FTree, FText, FFileName, Overrides);
   end;
   Result := TTextChanges.Apply(FText, TSafeDelete.Edits(FTree, FText, mTargets));
-end;
-
-function TSafeDeletePlan.NewlyUnused(const ANewText: string): TArray<string>;
-var
-  mUses_: TUsesContext;
-  mBefore, mAfter: TArray<string>;
-  mCheck: TSyntaxTree;
-  mName: string;
-begin
-  Result := nil;
-  if not Assigned(FContext.UsesFor) then
-  begin
-    Exit;
-  end;
-  mUses_ := FContext.UsesFor(FFileName);
-  if not Assigned(mUses_.Info) then
-  begin
-    Exit;
-  end;
-  // Mit Namensauflösung wie "ungenutzte uses" (#1925).
-  mBefore := TUsesActions.UnusedUnits(FTree.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(FText, nil));
-  mCheck := TSyntaxTreeCache.Parse(ANewText);
-  try
-    mAfter := TUsesActions.UnusedUnits(mCheck.Tokens, mUses_.Info, mUses_.Keep, mUses_.Resolution(ANewText, nil));
-  finally
-    mCheck.Free;
-  end;
-  for mName in mAfter do
-  begin
-    if IndexText(mName, mBefore) < 0 then
-    begin
-      Result := Result + [mName];
-    end;
-  end;
-end;
-
-function TSafeDeletePlan.UnitEdits(const AText: string; AFileTree: TSyntaxTree; const AUnits: TArray<string>;
-  out AEdits: TArray<TTextEdit>): Boolean;
-var
-  mLineBreak: string;
-begin
-  mLineBreak := #10;
-  if Pos(#13#10, AText) > 0 then
-  begin
-    mLineBreak := #13#10;
-  end;
-  Result := TUsesActions.RemoveUnits(AFileTree.Tokens, AText, AUnits, mLineBreak, AEdits);
 end;
 
 /// <summary>EJsonRpcError, wenn ANew mehr Parserfehler hat als AOld.</summary>
@@ -863,36 +882,6 @@ begin
   finally
     mAfter.Free;
     mBefore.Free;
-  end;
-end;
-
-procedure TSafeDeletePlan.DeleteUnit(AChanges: TWorkspaceChanges);
-var
-  mFileName, mText, mForm: string;
-  mEdits: TArray<TTextEdit>;
-begin
-  for mFileName in UsesFiles do
-  begin
-    if not ReadFile(mFileName, mText) then
-    begin
-      Continue;
-    end;
-    if UnitEdits(mText, FileTreeOf(mFileName, mText), [Target.Name], mEdits) then
-    begin
-      AChanges.Add(mFileName, mEdits);
-    end
-    else
-    begin
-      AChanges.Warn(cTexts[TLspSafeDeleteText.TheUsesEntryInCould].Fmt([ExtractFileName(mFileName)]));
-    end;
-  end;
-  AChanges.DeleteFile(FFileName);
-  for mForm in TFormFiles.FormFiles(FFileName, FText) do
-  begin
-    if ReadFile(mForm, mText) then
-    begin
-      AChanges.DeleteFile(mForm);
-    end;
   end;
 end;
 
@@ -947,6 +936,17 @@ begin
   if AChoices.Overrides then
   begin
     DeleteOverrides(AChanges);
+  end;
+end;
+
+function TSafeDeletePlan.CascadeNames: TArray<string>;
+var
+  mItem: TSafeDeleteTarget;
+begin
+  Result := nil;
+  for mItem in CascadeTargets do
+  begin
+    Result := Result + [mItem.Name];
   end;
 end;
 

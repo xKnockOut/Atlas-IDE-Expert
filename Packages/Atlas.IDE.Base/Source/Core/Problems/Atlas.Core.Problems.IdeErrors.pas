@@ -96,20 +96,6 @@ const
 
 { TAtlasIdeErrors }
 
-class function TAtlasIdeErrors.SeverityOf(AValue: Integer): TAtlasProblemSeverity;
-begin
-  case AValue of
-    cSeverityWarning:
-      Result := TAtlasProblemSeverity.Warning;
-    cSeverityInformation:
-      Result := TAtlasProblemSeverity.Information;
-    cSeverityHint:
-      Result := TAtlasProblemSeverity.Hint;
-  else
-    Result := TAtlasProblemSeverity.Error;
-  end;
-end;
-
 class function TAtlasIdeErrors.ToProblem(const AError: TAtlasIdeError): TAtlasProblem;
 begin
   Result := Default(TAtlasProblem);
@@ -134,6 +120,20 @@ begin
   for mIndex := 0 to High(AErrors) do
   begin
     Result[mIndex] := ToProblem(AErrors[mIndex]);
+  end;
+end;
+
+class function TAtlasIdeErrors.SeverityOf(AValue: Integer): TAtlasProblemSeverity;
+begin
+  case AValue of
+    cSeverityWarning:
+      Result := TAtlasProblemSeverity.Warning;
+    cSeverityInformation:
+      Result := TAtlasProblemSeverity.Information;
+    cSeverityHint:
+      Result := TAtlasProblemSeverity.Hint;
+  else
+    Result := TAtlasProblemSeverity.Error;
   end;
 end;
 

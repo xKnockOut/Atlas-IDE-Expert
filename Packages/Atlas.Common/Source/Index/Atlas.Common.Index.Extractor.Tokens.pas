@@ -165,6 +165,188 @@ begin
   FTokens := ATokens;
 end;
 
+procedure TIndexTokenReader.ReadScopedSwitches;
+var
+  mToken: TPascalToken;
+  mText: string;
+begin
+  FScopedKnown := True;
+  for mToken in FTokens do
+  begin
+    if mToken.Kind <> TPascalTokenKind.Directive then
+    begin
+      Continue;
+    end;
+    mText := UpperCase(mToken.Text);
+    if mText.StartsWith('{$SCOPEDENUMS') or mText.StartsWith('(*$SCOPEDENUMS') then
+    begin
+      mText := Trim(Copy(mText, Pos('SCOPEDENUMS', mText) + Length('SCOPEDENUMS'), MaxInt));
+      FScopedOffsets := FScopedOffsets + [mToken.Offset];
+      FScopedOn := FScopedOn + [mText.StartsWith('ON')];
+    end;
+  end;
+end;
+
+function TIndexTokenReader.NextCode(AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result < Length(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function TIndexTokenReader.PreviousCode(AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result >= 0) and (FTokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+function TIndexTokenReader.IsHintAt(APos: Integer): Boolean;
+begin
+  Result := (APos >= 0) and (APos < Length(FTokens)) and
+    (FTokens[APos].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+    (IndexText(FTokens[APos].Text, cHintDirectives) >= 0);
+end;
+
+function TIndexTokenReader.EndsHint(APos: Integer): Boolean;
+begin
+  Result := (APos >= Length(FTokens)) or FTokens[APos].IsSymbol(';') or FTokens[APos].IsSymbol(',') or
+    (FTokens[APos].Kind = TPascalTokenKind.StringLiteral) or IsHintAt(APos);
+end;
+
+procedure TIndexTokenReader.ReasonAt(APos: Integer; var AText: string);
+var
+  mNext: Integer;
+begin
+  if (APos < 0) or (APos >= Length(FTokens)) or not SameText(FTokens[APos].Text, 'deprecated') then
+  begin
+    Exit;
+  end;
+  mNext := NextCode(APos + 1);
+  if (mNext < Length(FTokens)) and (FTokens[mNext].Kind = TPascalTokenKind.StringLiteral) then
+  begin
+    AText := Unquoted(FTokens[mNext].Text);
+  end;
+end;
+
+procedure TIndexTokenReader.HeaderDirectives(AHeader: TSyntaxNode; var AWords: TArray<string>;
+  var AReason: string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AHeader.ChildCount - 1 do
+  begin
+    if AHeader[mIndex].Kind = TSyntaxKind.Directive then
+    begin
+      AddHint(AWords, AHeader[mIndex].Name);
+      ReasonAt(TokenIndexAt(AHeader[mIndex].StartOffset), AReason);
+    end;
+  end;
+end;
+
+procedure TIndexTokenReader.HintsBefore(ALast: Integer; var AWords: TArray<string>; var AReason: string);
+var
+  mIndex: Integer;
+begin
+  mIndex := ALast;
+  while (mIndex > 0) and ((FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
+    TPascalTokenKind.StringLiteral]) or FTokens[mIndex].IsSymbol(';')) do
+  begin
+    Dec(mIndex);
+  end;
+  while (mIndex > 0) and IsHintAt(mIndex) do
+  begin
+    AddHint(AWords, FTokens[mIndex].Text);
+    ReasonAt(mIndex, AReason);
+    Dec(mIndex);
+    while (mIndex > 0) and ((FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
+      FTokens[mIndex].IsSymbol(',')) do
+    begin
+      Dec(mIndex);
+    end;
+  end;
+end;
+
+procedure TIndexTokenReader.HintsAfter(AFirst: Integer; var AWords: TArray<string>; var AReason: string);
+var
+  mIndex: Integer;
+begin
+  mIndex := AFirst;
+  while (mIndex < Length(FTokens)) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive, TPascalTokenKind.StringLiteral]) do
+  begin
+    Inc(mIndex);
+  end;
+  while IsHintAt(mIndex) and EndsHint(NextCode(mIndex + 1)) do
+  begin
+    AddHint(AWords, FTokens[mIndex].Text);
+    ReasonAt(mIndex, AReason);
+    mIndex := NextCode(mIndex + 1);
+    while (mIndex < Length(FTokens)) and ((FTokens[mIndex].Kind = TPascalTokenKind.StringLiteral) or
+      FTokens[mIndex].IsSymbol(',')) do
+    begin
+      mIndex := NextCode(mIndex + 1);
+    end;
+  end;
+end;
+
+function TIndexTokenReader.TopLevelOf(AFirst, ALast: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  Result := AFirst;
+  while Result < ALast do
+  begin
+    if (mDepth = 0) and FTokens[Result].IsKeyword('of') then
+    begin
+      Exit;
+    end;
+    mDepth := DepthAfter(FTokens[Result], mDepth);
+    Inc(Result);
+  end;
+  Result := -1;
+end;
+
+function TIndexTokenReader.AfterUnitName(AIndex: Integer): Integer;
+var
+  mAfterPart: Boolean;
+begin
+  // Name aus Teilen mit Punkt dazwischen; nach einem Teil ohne folgenden Punkt beginnen die Hinweise.
+  Result := AIndex;
+  mAfterPart := False;
+  while (Result < Length(FTokens)) and not FTokens[Result].IsSymbol(';') do
+  begin
+    if mAfterPart and not FTokens[Result].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    mAfterPart := not FTokens[Result].IsSymbol('.');
+    Result := NextCode(Result + 1);
+  end;
+end;
+
+function TIndexTokenReader.StringLengthSuffix(ANode: TSyntaxNode): string;
+var
+  mTypeRef: TSyntaxNode;
+begin
+  // string[8]: Die Länge gehört zur Signatur (Anzeige, string-length-limit #1036); der Typname bleibt
+  // string, damit die Namensauflösung ihn findet.
+  Result := '';
+  mTypeRef := TIndexTypeText.DeclaredTypeNode(ANode);
+  if (mTypeRef <> nil) and SameText(mTypeRef.Name, 'string') and (mTypeRef.ChildCount = 1) and
+    (mTypeRef[0].Kind <> TSyntaxKind.GenericArgs) then
+  begin
+    Result := '[' + TokenText(TokenIndexAt(mTypeRef[0].StartOffset), TokenIndexAt(mTypeRef[0].EndOffset) - 1,
+      False) + ']';
+  end;
+end;
+
 class function TIndexTokenReader.Shortened(const AText: string; AMax: Integer): string;
 begin
   Result := AText;
@@ -193,47 +375,6 @@ begin
     end;
   end;
   Result := mLeft;
-end;
-
-function TIndexTokenReader.NextCode(AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result < Length(FTokens)) and (FTokens[Result].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function TIndexTokenReader.PreviousCode(AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result >= 0) and (FTokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(Result);
-  end;
-end;
-
-procedure TIndexTokenReader.ReadScopedSwitches;
-var
-  mToken: TPascalToken;
-  mText: string;
-begin
-  FScopedKnown := True;
-  for mToken in FTokens do
-  begin
-    if mToken.Kind <> TPascalTokenKind.Directive then
-    begin
-      Continue;
-    end;
-    mText := UpperCase(mToken.Text);
-    if mText.StartsWith('{$SCOPEDENUMS') or mText.StartsWith('(*$SCOPEDENUMS') then
-    begin
-      mText := Trim(Copy(mText, Pos('SCOPEDENUMS', mText) + Length('SCOPEDENUMS'), MaxInt));
-      FScopedOffsets := FScopedOffsets + [mToken.Offset];
-      FScopedOn := FScopedOn + [mText.StartsWith('ON')];
-    end;
-  end;
 end;
 
 function TIndexTokenReader.ScopedAt(AOffset: Integer): Boolean;
@@ -362,22 +503,6 @@ begin
   Result := Shortened(Result, TIndexSymbol.cMaxSignature);
 end;
 
-function TIndexTokenReader.StringLengthSuffix(ANode: TSyntaxNode): string;
-var
-  mTypeRef: TSyntaxNode;
-begin
-  // string[8]: Die Länge gehört zur Signatur (Anzeige, string-length-limit #1036); der Typname bleibt
-  // string, damit die Namensauflösung ihn findet.
-  Result := '';
-  mTypeRef := TIndexTypeText.DeclaredTypeNode(ANode);
-  if (mTypeRef <> nil) and SameText(mTypeRef.Name, 'string') and (mTypeRef.ChildCount = 1) and
-    (mTypeRef[0].Kind <> TSyntaxKind.GenericArgs) then
-  begin
-    Result := '[' + TokenText(TokenIndexAt(mTypeRef[0].StartOffset), TokenIndexAt(mTypeRef[0].EndOffset) - 1,
-      False) + ']';
-  end;
-end;
-
 function TIndexTokenReader.SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;
   const AName, ATypeText: string): string;
 var
@@ -402,24 +527,6 @@ begin
   end;
 end;
 
-function TIndexTokenReader.TopLevelOf(AFirst, ALast: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  Result := AFirst;
-  while Result < ALast do
-  begin
-    if (mDepth = 0) and FTokens[Result].IsKeyword('of') then
-    begin
-      Exit;
-    end;
-    mDepth := DepthAfter(FTokens[Result], mDepth);
-    Inc(Result);
-  end;
-  Result := -1;
-end;
-
 function TIndexTokenReader.ProcedureKindOf(AType: TSyntaxNode): string;
 var
   mOf, mLast, mIndex: Integer;
@@ -440,95 +547,6 @@ begin
   if (mOf >= 0) and (mIndex <= mLast) and SameText(FTokens[mIndex].Text, 'object') then
   begin
     Result := 'of object';
-  end;
-end;
-
-function TIndexTokenReader.IsHintAt(APos: Integer): Boolean;
-begin
-  Result := (APos >= 0) and (APos < Length(FTokens)) and
-    (FTokens[APos].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-    (IndexText(FTokens[APos].Text, cHintDirectives) >= 0);
-end;
-
-function TIndexTokenReader.EndsHint(APos: Integer): Boolean;
-begin
-  Result := (APos >= Length(FTokens)) or FTokens[APos].IsSymbol(';') or FTokens[APos].IsSymbol(',') or
-    (FTokens[APos].Kind = TPascalTokenKind.StringLiteral) or IsHintAt(APos);
-end;
-
-procedure TIndexTokenReader.ReasonAt(APos: Integer; var AText: string);
-var
-  mNext: Integer;
-begin
-  if (APos < 0) or (APos >= Length(FTokens)) or not SameText(FTokens[APos].Text, 'deprecated') then
-  begin
-    Exit;
-  end;
-  mNext := NextCode(APos + 1);
-  if (mNext < Length(FTokens)) and (FTokens[mNext].Kind = TPascalTokenKind.StringLiteral) then
-  begin
-    AText := Unquoted(FTokens[mNext].Text);
-  end;
-end;
-
-procedure TIndexTokenReader.HeaderDirectives(AHeader: TSyntaxNode; var AWords: TArray<string>;
-  var AReason: string);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to AHeader.ChildCount - 1 do
-  begin
-    if AHeader[mIndex].Kind = TSyntaxKind.Directive then
-    begin
-      AddHint(AWords, AHeader[mIndex].Name);
-      ReasonAt(TokenIndexAt(AHeader[mIndex].StartOffset), AReason);
-    end;
-  end;
-end;
-
-procedure TIndexTokenReader.HintsBefore(ALast: Integer; var AWords: TArray<string>; var AReason: string);
-var
-  mIndex: Integer;
-begin
-  mIndex := ALast;
-  while (mIndex > 0) and ((FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive,
-    TPascalTokenKind.StringLiteral]) or FTokens[mIndex].IsSymbol(';')) do
-  begin
-    Dec(mIndex);
-  end;
-  while (mIndex > 0) and IsHintAt(mIndex) do
-  begin
-    AddHint(AWords, FTokens[mIndex].Text);
-    ReasonAt(mIndex, AReason);
-    Dec(mIndex);
-    while (mIndex > 0) and ((FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.StringLiteral]) or
-      FTokens[mIndex].IsSymbol(',')) do
-    begin
-      Dec(mIndex);
-    end;
-  end;
-end;
-
-procedure TIndexTokenReader.HintsAfter(AFirst: Integer; var AWords: TArray<string>; var AReason: string);
-var
-  mIndex: Integer;
-begin
-  mIndex := AFirst;
-  while (mIndex < Length(FTokens)) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive, TPascalTokenKind.StringLiteral]) do
-  begin
-    Inc(mIndex);
-  end;
-  while IsHintAt(mIndex) and EndsHint(NextCode(mIndex + 1)) do
-  begin
-    AddHint(AWords, FTokens[mIndex].Text);
-    ReasonAt(mIndex, AReason);
-    mIndex := NextCode(mIndex + 1);
-    while (mIndex < Length(FTokens)) and ((FTokens[mIndex].Kind = TPascalTokenKind.StringLiteral) or
-      FTokens[mIndex].IsSymbol(',')) do
-    begin
-      mIndex := NextCode(mIndex + 1);
-    end;
   end;
 end;
 
@@ -591,24 +609,6 @@ begin
   mDoc := TXmlDoc.Parse(String.Join(#10, mLines));
   // Eine Zeile, Leerraum zusammengefasst.
   Result := Shortened(TRegEx.Replace(mDoc.Summary, '\s+', ' ').Trim, TIndexSymbol.cMaxSummary);
-end;
-
-function TIndexTokenReader.AfterUnitName(AIndex: Integer): Integer;
-var
-  mAfterPart: Boolean;
-begin
-  // Name aus Teilen mit Punkt dazwischen; nach einem Teil ohne folgenden Punkt beginnen die Hinweise.
-  Result := AIndex;
-  mAfterPart := False;
-  while (Result < Length(FTokens)) and not FTokens[Result].IsSymbol(';') do
-  begin
-    if mAfterPart and not FTokens[Result].IsSymbol('.') then
-    begin
-      Exit;
-    end;
-    mAfterPart := not FTokens[Result].IsSymbol('.');
-    Result := NextCode(Result + 1);
-  end;
 end;
 
 procedure TIndexTokenReader.UnitHints(var AUnit: TUnitIndex);

@@ -80,6 +80,8 @@ begin
   Result := 0;
 end;
 
+{ TProjectPaths }
+
 class function TProjectPaths.IsAbsolute(const APath: string): Boolean;
 begin
   Result := ((Length(APath) >= 2) and (APath[2] = ':')) or
@@ -132,6 +134,22 @@ begin
   end;
 end;
 
+class function TProjectPaths.Combine(const ABase, APath: string): string;
+begin
+  if APath = '' then
+  begin
+    Result := Normalize(ABase);
+  end
+  else if IsAbsolute(APath) or (ABase = '') then
+  begin
+    Result := Normalize(APath);
+  end
+  else
+  begin
+    Result := Normalize(ABase + SeparatorFor(ABase + APath) + APath);
+  end;
+end;
+
 class function TProjectPaths.Normalize(const APath: string): string;
 var
   mSeparator: Char;
@@ -155,22 +173,6 @@ begin
     Result := mPrefix + string.Join(mSeparator, mParts.ToArray);
   finally
     mParts.Free;
-  end;
-end;
-
-class function TProjectPaths.Combine(const ABase, APath: string): string;
-begin
-  if APath = '' then
-  begin
-    Result := Normalize(ABase);
-  end
-  else if IsAbsolute(APath) or (ABase = '') then
-  begin
-    Result := Normalize(APath);
-  end
-  else
-  begin
-    Result := Normalize(ABase + SeparatorFor(ABase + APath) + APath);
   end;
 end;
 

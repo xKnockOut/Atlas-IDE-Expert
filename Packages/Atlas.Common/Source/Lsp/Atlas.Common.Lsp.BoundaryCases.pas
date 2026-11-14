@@ -121,6 +121,20 @@ begin
   Result := mFound;
 end;
 
+{ TLspBoundaryCases }
+
+class procedure TLspBoundaryCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+var
+  mReadText: TLspTestCasesReadText;
+begin
+  mReadText := AReadText;
+  ACommands.RegisterConcurrent(cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := Execute(AArguments, mReadText);
+    end);
+end;
+
 class function TLspBoundaryCases.RoutineOf(ATree: TSyntaxTree; ALine: Integer; const AName: string): TSyntaxNode;
 begin
   Result := nil;
@@ -136,11 +150,6 @@ begin
   begin
     Result := RoutineNamed(ATree, Trim(AName));
   end;
-end;
-
-class function TLspBoundaryCases.FitsTestCase(const AResult: TBoundaryResult; ACase: Integer): Boolean;
-begin
-  Result := AResult.Parameters[AResult.Cases[ACase].Parameter].Kind <> TBoundaryKind.Reference;
 end;
 
 function StringsToJson(const AValues: TArray<string>): TJSONArray;
@@ -177,31 +186,9 @@ begin
   Result.AddPair('values', StringsToJson(AResult.Values(ACase)));
 end;
 
-class function TLspBoundaryCases.ToJson(const AUri: string; ALine: Integer;
-  const AResult: TBoundaryResult): TJSONObject;
-var
-  mParameters, mCases: TJSONArray;
-  mParameter: TBoundaryParameter;
-  mIndex: Integer;
+class function TLspBoundaryCases.FitsTestCase(const AResult: TBoundaryResult; ACase: Integer): Boolean;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('uri', AUri);
-  Result.AddPair('routine', AResult.Routine);
-  Result.AddPair('resultType', AResult.ResultType);
-  Result.AddPair('line', TJSONNumber.Create(ALine));
-  Result.AddPair('truncated', TJSONBool.Create(AResult.Truncated));
-  mParameters := TJSONArray.Create;
-  Result.AddPair('parameters', mParameters);
-  for mParameter in AResult.Parameters do
-  begin
-    mParameters.AddElement(ParameterToJson(mParameter));
-  end;
-  mCases := TJSONArray.Create;
-  Result.AddPair('cases', mCases);
-  for mIndex := 0 to High(AResult.Cases) do
-  begin
-    mCases.AddElement(CaseToJson(AResult, mIndex));
-  end;
+  Result := AResult.Parameters[AResult.Cases[ACase].Parameter].Kind <> TBoundaryKind.Reference;
 end;
 
 /// <summary>Text für eine Zelle einer Markdown-Tabelle.</summary>
@@ -243,6 +230,33 @@ begin
     mReason.Replace('|', '\|'), mLine, Cell(string.Join(', ', AResult.Values(ACase)))]);
 end;
 
+class function TLspBoundaryCases.ToJson(const AUri: string; ALine: Integer;
+  const AResult: TBoundaryResult): TJSONObject;
+var
+  mParameters, mCases: TJSONArray;
+  mParameter: TBoundaryParameter;
+  mIndex: Integer;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('uri', AUri);
+  Result.AddPair('routine', AResult.Routine);
+  Result.AddPair('resultType', AResult.ResultType);
+  Result.AddPair('line', TJSONNumber.Create(ALine));
+  Result.AddPair('truncated', TJSONBool.Create(AResult.Truncated));
+  mParameters := TJSONArray.Create;
+  Result.AddPair('parameters', mParameters);
+  for mParameter in AResult.Parameters do
+  begin
+    mParameters.AddElement(ParameterToJson(mParameter));
+  end;
+  mCases := TJSONArray.Create;
+  Result.AddPair('cases', mCases);
+  for mIndex := 0 to High(AResult.Cases) do
+  begin
+    mCases.AddElement(CaseToJson(AResult, mIndex));
+  end;
+end;
+
 class function TLspBoundaryCases.ToMarkdown(const AFile: string; ALine: Integer;
   const AResult: TBoundaryResult): string;
 var
@@ -270,15 +284,6 @@ begin
   Result := string.Join(sLineBreak, mLines);
 end;
 
-class function TLspBoundaryCases.MaxCases(AMax: Integer): Integer;
-begin
-  Result := TBoundaryCases.cDefaultMax;
-  if AMax <> 0 then
-  begin
-    Result := EnsureRange(AMax, cMinMax, cMaxMax);
-  end;
-end;
-
 /// <summary>Höchstzahl aus AArguments[2]; Vorgabe ohne Angabe.</summary>
 function MaxOf(const AArguments: TJSONArray): Integer;
 begin
@@ -287,6 +292,15 @@ begin
   begin
     Result := EnsureRange(TJSONNumber(AArguments.Items[2]).AsInt, TLspBoundaryCases.cMinMax,
       TLspBoundaryCases.cMaxMax);
+  end;
+end;
+
+class function TLspBoundaryCases.MaxCases(AMax: Integer): Integer;
+begin
+  Result := TBoundaryCases.cDefaultMax;
+  if AMax <> 0 then
+  begin
+    Result := EnsureRange(AMax, cMinMax, cMaxMax);
   end;
 end;
 
@@ -355,18 +369,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-class procedure TLspBoundaryCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-var
-  mReadText: TLspTestCasesReadText;
-begin
-  mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(AArguments, mReadText);
-    end);
 end;
 
 initialization

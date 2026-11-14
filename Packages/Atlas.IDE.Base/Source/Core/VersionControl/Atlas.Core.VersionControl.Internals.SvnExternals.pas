@@ -358,66 +358,6 @@ begin
   end;
 end;
 
-class function TAtlasSvnExternals.UrlDecode(const AText: string): string;
-var
-  mBytes: TBytes;
-  mIndex, mCount, mValue: Integer;
-  mChar: TBytes;
-begin
-  if Pos('%', AText) = 0 then
-  begin
-    Exit(AText);
-  end;
-  mChar := TEncoding.UTF8.GetBytes(AText);
-  SetLength(mBytes, Length(mChar));
-  mCount := 0;
-  mIndex := 0;
-  while mIndex <= High(mChar) do
-  begin
-    if (mChar[mIndex] = Ord('%')) and (mIndex + 2 <= High(mChar)) and
-      TryStrToInt('$' + Chr(mChar[mIndex + 1]) + Chr(mChar[mIndex + 2]), mValue) then
-    begin
-      mBytes[mCount] := Byte(mValue);
-      Inc(mIndex, 3);
-    end
-    else
-    begin
-      mBytes[mCount] := mChar[mIndex];
-      Inc(mIndex);
-    end;
-    Inc(mCount);
-  end;
-  SetLength(mBytes, mCount);
-  Result := TEncoding.UTF8.GetString(mBytes);
-end;
-
-class function TAtlasSvnExternals.ResolveUrl(const AUrl, AOwnerUrl, ARepositoryRoot: string): string;
-var
-  mRest, mBase, mScheme: string;
-begin
-  if Copy(AUrl, 1, 2) = '^/' then
-  begin
-    // ^/../Anderes: Nachbar-Repository neben der Wurzel.
-    mRest := Copy(AUrl, 3, MaxInt);
-    mBase := WithoutSlash(ARepositoryRoot);
-    Exit(Normalized(mBase + '/' + mRest));
-  end;
-  if Copy(AUrl, 1, 2) = '//' then
-  begin
-    mScheme := Copy(AOwnerUrl, 1, Pos('://', AOwnerUrl) - 1);
-    Exit(Normalized(mScheme + ':' + AUrl));
-  end;
-  if Copy(AUrl, 1, 1) = '/' then
-  begin
-    Exit(Normalized(ServerOf(AOwnerUrl) + AUrl));
-  end;
-  if Copy(AUrl, 1, 3) = '../' then
-  begin
-    Exit(Normalized(WithoutSlash(AOwnerUrl) + '/' + AUrl));
-  end;
-  Result := Normalized(AUrl);
-end;
-
 class function TAtlasSvnExternals.Parse(const ADefinition: TAtlasVcsSvnExternalDefinition; const AOwnerUrl,
   ARepositoryRoot: string): TArray<TAtlasVcsSvnExternal>;
 var
@@ -481,6 +421,66 @@ begin
     end;
     Result := Result + Parse(mDefinition, mOwnerUrl, ARepositoryRoot);
   end;
+end;
+
+class function TAtlasSvnExternals.ResolveUrl(const AUrl, AOwnerUrl, ARepositoryRoot: string): string;
+var
+  mRest, mBase, mScheme: string;
+begin
+  if Copy(AUrl, 1, 2) = '^/' then
+  begin
+    // ^/../Anderes: Nachbar-Repository neben der Wurzel.
+    mRest := Copy(AUrl, 3, MaxInt);
+    mBase := WithoutSlash(ARepositoryRoot);
+    Exit(Normalized(mBase + '/' + mRest));
+  end;
+  if Copy(AUrl, 1, 2) = '//' then
+  begin
+    mScheme := Copy(AOwnerUrl, 1, Pos('://', AOwnerUrl) - 1);
+    Exit(Normalized(mScheme + ':' + AUrl));
+  end;
+  if Copy(AUrl, 1, 1) = '/' then
+  begin
+    Exit(Normalized(ServerOf(AOwnerUrl) + AUrl));
+  end;
+  if Copy(AUrl, 1, 3) = '../' then
+  begin
+    Exit(Normalized(WithoutSlash(AOwnerUrl) + '/' + AUrl));
+  end;
+  Result := Normalized(AUrl);
+end;
+
+class function TAtlasSvnExternals.UrlDecode(const AText: string): string;
+var
+  mBytes: TBytes;
+  mIndex, mCount, mValue: Integer;
+  mChar: TBytes;
+begin
+  if Pos('%', AText) = 0 then
+  begin
+    Exit(AText);
+  end;
+  mChar := TEncoding.UTF8.GetBytes(AText);
+  SetLength(mBytes, Length(mChar));
+  mCount := 0;
+  mIndex := 0;
+  while mIndex <= High(mChar) do
+  begin
+    if (mChar[mIndex] = Ord('%')) and (mIndex + 2 <= High(mChar)) and
+      TryStrToInt('$' + Chr(mChar[mIndex + 1]) + Chr(mChar[mIndex + 2]), mValue) then
+    begin
+      mBytes[mCount] := Byte(mValue);
+      Inc(mIndex, 3);
+    end
+    else
+    begin
+      mBytes[mCount] := mChar[mIndex];
+      Inc(mIndex);
+    end;
+    Inc(mCount);
+  end;
+  SetLength(mBytes, mCount);
+  Result := TEncoding.UTF8.GetString(mBytes);
 end;
 
 class function TAtlasSvnExternals.ReplaceLine(const AText: string; ALine: Integer; const ANewLine: string): string;
@@ -663,21 +663,6 @@ begin
   Result := mBest <> '';
 end;
 
-class function TAtlasSvnExternals.Allowed(const AExternal: TAtlasVcsSvnExternal;
-  AAction: TAtlasVcsExternalAction): Boolean;
-begin
-  case AAction of
-    TAtlasVcsExternalAction.Keep:
-      Result := True;
-    TAtlasVcsExternalAction.Pin:
-      Result := not AExternal.Fixed;
-    TAtlasVcsExternalAction.Branch:
-      Result := AExternal.CanBranch;
-  else
-    Result := False;
-  end;
-end;
-
 class function TAtlasSvnExternals.DefaultAction(const AExternal: TAtlasVcsSvnExternal;
   const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsExternalAction;
 var
@@ -702,6 +687,21 @@ begin
     Exit(TAtlasVcsExternalAction.Pin);
   end;
   Result := AOptions.ExternalsOnBranch;
+end;
+
+class function TAtlasSvnExternals.Allowed(const AExternal: TAtlasVcsSvnExternal;
+  AAction: TAtlasVcsExternalAction): Boolean;
+begin
+  case AAction of
+    TAtlasVcsExternalAction.Keep:
+      Result := True;
+    TAtlasVcsExternalAction.Pin:
+      Result := not AExternal.Fixed;
+    TAtlasVcsExternalAction.Branch:
+      Result := AExternal.CanBranch;
+  else
+    Result := False;
+  end;
 end;
 
 end.

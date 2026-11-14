@@ -229,11 +229,6 @@ begin
   Result.Winner := -1;
 end;
 
-function TAtlasKeyItem.RarelyByKeyboard: Boolean;
-begin
-  Result := TAtlasCommandUsage.IsRarelyByKeyboard(MouseUses, KeyUses);
-end;
-
 function TAtlasKeyItem.Holder: string;
 begin
   if OriginName = '' then
@@ -244,6 +239,11 @@ begin
   begin
     Result := Command + ' (' + OriginName + ')';
   end;
+end;
+
+function TAtlasKeyItem.RarelyByKeyboard: Boolean;
+begin
+  Result := TAtlasCommandUsage.IsRarelyByKeyboard(MouseUses, KeyUses);
 end;
 
 { TAtlasKeyQuery }

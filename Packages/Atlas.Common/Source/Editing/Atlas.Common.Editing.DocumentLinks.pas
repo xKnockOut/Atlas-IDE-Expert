@@ -255,6 +255,8 @@ begin
   end;
 end;
 
+{ TDocumentLinks }
+
 class function TDocumentLinks.Find(const AText, AFileName: string; const ASearchPaths: TArray<string>;
   const AFileExists: TFileExistsFunc): TArray<TDocumentLink>;
 var

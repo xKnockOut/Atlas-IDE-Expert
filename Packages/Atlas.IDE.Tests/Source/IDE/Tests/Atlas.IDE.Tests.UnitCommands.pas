@@ -65,6 +65,13 @@ begin
   end;
 end;
 
+{ TAtlasIdeTestUnitCommands }
+
+class function TAtlasIdeTestUnitCommands.HasProjectUnits: Boolean;
+begin
+  Result := TAtlasProjectContext.Active and TAtlasProjectContext.Current.HasUnits;
+end;
+
 class procedure TAtlasIdeTestUnitCommands.RunProjectUnits(ATests: TAtlasIdeTests);
 var
   mSelection: TAtlasProjectSelection;
@@ -85,11 +92,6 @@ begin
   end;
   // Das Testprojekt bestimmt die erste Testunit; die Namen gelten für alle gefundenen.
   ATests.RunTests(mTestUnits[0], mNames, False);
-end;
-
-class function TAtlasIdeTestUnitCommands.HasProjectUnits: Boolean;
-begin
-  Result := TAtlasProjectContext.Active and TAtlasProjectContext.Current.HasUnits;
 end;
 
 class procedure TAtlasIdeTestUnitCommands.NewTestUnitFor;

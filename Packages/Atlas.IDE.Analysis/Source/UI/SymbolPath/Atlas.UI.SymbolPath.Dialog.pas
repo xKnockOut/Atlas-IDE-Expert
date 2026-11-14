@@ -219,6 +219,8 @@ begin
   ADialog.FTimer.OnTimer := ADialog.TimerTick;
 end;
 
+{ TAtlasSymbolPathDialog }
+
 constructor TAtlasSymbolPathDialog.CreateDialog(AOwner: TComponent; const ASuggest: TAtlasSymbolPathSuggest);
 var
   mLayout: TDialogLayout;
@@ -240,29 +242,6 @@ begin
   BuildButtons(Self, mLayout, mY);
   BuildList(Self, mLayout);
   ActiveControl := FFrom;
-end;
-
-class function TAtlasSymbolPathDialog.Execute(const ASuggest: TAtlasSymbolPathSuggest;
-  var AInput: TAtlasSymbolPathRequestInput): Boolean;
-var
-  mDialog: TAtlasSymbolPathDialog;
-begin
-  mDialog := TAtlasSymbolPathDialog.CreateDialog(Application, ASuggest);
-  try
-    mDialog.Input := AInput;
-    // Von schon gefüllt („Weg von hier nach …“): gleich ins Ziel.
-    if mDialog.FFrom.Text <> '' then
-    begin
-      mDialog.ActiveControl := mDialog.FTo;
-    end;
-    Result := mDialog.ShowModal = mrOk;
-    if Result then
-    begin
-      AInput := mDialog.Input;
-    end;
-  finally
-    mDialog.Free;
-  end;
 end;
 
 function TAtlasSymbolPathDialog.GetInput: TAtlasSymbolPathRequestInput;
@@ -305,81 +284,6 @@ begin
   FMessage.Caption := '';
   FTimer.Enabled := False;
   FTimer.Enabled := Assigned(FSuggest);
-end;
-
-procedure TAtlasSymbolPathDialog.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  if FTarget <> nil then
-  begin
-    Suggest(FTarget);
-  end;
-end;
-
-procedure TAtlasSymbolPathDialog.Suggest(AEdit: TEdit);
-var
-  mItems: TArray<string>;
-  mItem: string;
-begin
-  FTarget := AEdit;
-  mItems := nil;
-  if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
-  begin
-    mItems := FSuggest(Trim(AEdit.Text));
-  end;
-  FList.Items.BeginUpdate;
-  try
-    FList.Items.Clear;
-    for mItem in mItems do
-    begin
-      if FList.Items.Count >= cMaxSuggestions then
-      begin
-        Break;
-      end;
-      if FList.Items.IndexOf(mItem) < 0 then
-      begin
-        FList.Items.Add(mItem);
-      end;
-    end;
-  finally
-    FList.Items.EndUpdate;
-  end;
-  if FList.Items.Count = 0 then
-  begin
-    HideList;
-    Exit;
-  end;
-  FList.Left := AEdit.Left;
-  FList.Top := AEdit.Top + AEdit.Height;
-  FList.Width := AEdit.Width;
-  FList.ItemIndex := 0;
-  FList.Visible := True;
-  FList.BringToFront;
-end;
-
-procedure TAtlasSymbolPathDialog.HideList;
-begin
-  FList.Visible := False;
-end;
-
-procedure TAtlasSymbolPathDialog.TakeSuggestion;
-begin
-  if (FTarget = nil) or not FList.Visible or (FList.ItemIndex < 0) then
-  begin
-    Exit;
-  end;
-  FFilling := True;
-  try
-    FTarget.Text := FList.Items[FList.ItemIndex];
-    FTarget.SelStart := Length(FTarget.Text);
-  finally
-    FFilling := False;
-  end;
-  HideList;
-  if FTarget.Showing and FTarget.CanFocus then
-  begin
-    FTarget.SetFocus;
-  end;
 end;
 
 procedure TAtlasSymbolPathDialog.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -426,6 +330,20 @@ begin
   TakeSuggestion;
 end;
 
+procedure TAtlasSymbolPathDialog.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  if FTarget <> nil then
+  begin
+    Suggest(FTarget);
+  end;
+end;
+
+procedure TAtlasSymbolPathDialog.SearchClick(Sender: TObject);
+begin
+  Accept;
+end;
+
 procedure TAtlasSymbolPathDialog.CMDialogKey(var Message: TCMDialogKey);
 begin
   if FList.Visible and ((Message.CharCode = VK_RETURN) or (Message.CharCode = VK_ESCAPE)) then
@@ -448,6 +366,81 @@ begin
   inherited;
 end;
 
+procedure TAtlasSymbolPathDialog.Accept;
+begin
+  HideList;
+  if Validate then
+  begin
+    ModalResult := mrOk;
+  end;
+end;
+
+procedure TAtlasSymbolPathDialog.HideList;
+begin
+  FList.Visible := False;
+end;
+
+procedure TAtlasSymbolPathDialog.Suggest(AEdit: TEdit);
+var
+  mItems: TArray<string>;
+  mItem: string;
+begin
+  FTarget := AEdit;
+  mItems := nil;
+  if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
+  begin
+    mItems := FSuggest(Trim(AEdit.Text));
+  end;
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mItem in mItems do
+    begin
+      if FList.Items.Count >= cMaxSuggestions then
+      begin
+        Break;
+      end;
+      if FList.Items.IndexOf(mItem) < 0 then
+      begin
+        FList.Items.Add(mItem);
+      end;
+    end;
+  finally
+    FList.Items.EndUpdate;
+  end;
+  if FList.Items.Count = 0 then
+  begin
+    HideList;
+    Exit;
+  end;
+  FList.Left := AEdit.Left;
+  FList.Top := AEdit.Top + AEdit.Height;
+  FList.Width := AEdit.Width;
+  FList.ItemIndex := 0;
+  FList.Visible := True;
+  FList.BringToFront;
+end;
+
+procedure TAtlasSymbolPathDialog.TakeSuggestion;
+begin
+  if (FTarget = nil) or not FList.Visible or (FList.ItemIndex < 0) then
+  begin
+    Exit;
+  end;
+  FFilling := True;
+  try
+    FTarget.Text := FList.Items[FList.ItemIndex];
+    FTarget.SelStart := Length(FTarget.Text);
+  finally
+    FFilling := False;
+  end;
+  HideList;
+  if FTarget.Showing and FTarget.CanFocus then
+  begin
+    FTarget.SetFocus;
+  end;
+end;
+
 function TAtlasSymbolPathDialog.Validate: Boolean;
 begin
   Result := (Trim(FFrom.Text) <> '') and (Trim(FTo.Text) <> '');
@@ -466,18 +459,27 @@ begin
   end;
 end;
 
-procedure TAtlasSymbolPathDialog.Accept;
+class function TAtlasSymbolPathDialog.Execute(const ASuggest: TAtlasSymbolPathSuggest;
+  var AInput: TAtlasSymbolPathRequestInput): Boolean;
+var
+  mDialog: TAtlasSymbolPathDialog;
 begin
-  HideList;
-  if Validate then
-  begin
-    ModalResult := mrOk;
+  mDialog := TAtlasSymbolPathDialog.CreateDialog(Application, ASuggest);
+  try
+    mDialog.Input := AInput;
+    // Von schon gefüllt („Weg von hier nach …“): gleich ins Ziel.
+    if mDialog.FFrom.Text <> '' then
+    begin
+      mDialog.ActiveControl := mDialog.FTo;
+    end;
+    Result := mDialog.ShowModal = mrOk;
+    if Result then
+    begin
+      AInput := mDialog.Input;
+    end;
+  finally
+    mDialog.Free;
   end;
-end;
-
-procedure TAtlasSymbolPathDialog.SearchClick(Sender: TObject);
-begin
-  Accept;
 end;
 
 end.

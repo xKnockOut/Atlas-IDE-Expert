@@ -696,6 +696,63 @@ begin
   end;
 end;
 
+// Die Signatur gibt das Ereignis OnEditorPaintText der Open Tools API vor; die Arbeit macht ColorRun.
+// lsp-ignore: metric-parameter-count
+procedure TAtlasEditorPairs.PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
+  const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean; var AllowDefaultPainting: Boolean;
+  const Context: INTACodeEditorPaintContext);
+var
+  mRun: TPairRun;
+begin
+  // Durch die Sicherung abgeschaltet (#493); markierten Text zeichnet die IDE.
+  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) or not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
+  begin
+    Exit;
+  end;
+  try
+    mRun := TPairRun.Create(Rect, ColNum, Text, Context);
+    if ColorRun(mRun) then
+    begin
+      AllowDefaultPainting := False;
+    end;
+  except
+    // Zeichnen darf die IDE nie stören; die IDE zeichnet dann selbst.
+    on E: Exception do
+    begin
+      AllowDefaultPainting := True;
+      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
+    end;
+  end;
+end;
+
+procedure TAtlasEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mLine: Integer;
+  mCode: TRect;
+begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  try
+    FEdges.RepaintMoved(Context);
+    PaintBand(Rect, Context);
+    if GuidesLine(Rect, Context, mLine, mCode) then
+    begin
+      PaintGuides(Rect, Context, mLine, mCode);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+    begin
+      FGuides := nil;
+      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
+    end;
+  end;
+end;
+
 procedure TAtlasEditorPairs.Refresh(const AContext: INTACodeEditorPaintContext);
 var
   mView: IOTAEditView;
@@ -741,6 +798,32 @@ begin
   FBandOf := TAtlasRoutineNesting.BandOfLines(FBands, Length(mLines));
 end;
 
+{ TAtlasEditorPairs.TBackdrop }
+
+function TAtlasEditorPairs.TBackdrop.PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
+begin
+  // Der vorbereitete Pinsel ist der Hintergrund des Editor-Farbschemas.
+  if (AContext <> nil) and (AContext.Canvas <> nil) then
+  begin
+    Color := AContext.Canvas.Brush.Color;
+    Known := True;
+  end;
+  Result := Palette;
+end;
+
+function TAtlasEditorPairs.TBackdrop.Palette: TAtlasColors;
+begin
+  if Known then
+  begin
+    Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(Color)));
+  end
+  else
+  begin
+    Result := TAtlasIdeStyle.Colors;
+  end;
+  Result := TAtlasRoutineNesting.PairPalette(Result, TAtlasIdeSettings.Current);
+end;
+
 procedure TAtlasEditorPairs.AddTokens(const ALines: TArray<string>; const ATokens: TArray<TAtlasPairToken>);
 var
   mToken: TAtlasPairToken;
@@ -779,32 +862,6 @@ begin
       FGuides[mLine] := FGuides[mLine] + [mLineGuide];
     end;
   end;
-end;
-
-{ TAtlasEditorPairs.TBackdrop }
-
-function TAtlasEditorPairs.TBackdrop.PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
-begin
-  // Der vorbereitete Pinsel ist der Hintergrund des Editor-Farbschemas.
-  if (AContext <> nil) and (AContext.Canvas <> nil) then
-  begin
-    Color := AContext.Canvas.Brush.Color;
-    Known := True;
-  end;
-  Result := Palette;
-end;
-
-function TAtlasEditorPairs.TBackdrop.Palette: TAtlasColors;
-begin
-  if Known then
-  begin
-    Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(Color)));
-  end
-  else
-  begin
-    Result := TAtlasIdeStyle.Colors;
-  end;
-  Result := TAtlasRoutineNesting.PairPalette(Result, TAtlasIdeSettings.Current);
 end;
 
 function TAtlasEditorPairs.InactiveSpans(const AContext: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
@@ -870,35 +927,6 @@ begin
   begin
     TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.UnusedUses, AContext.FileName, ALine, ''),
       ARect, TopRowOf(AContext), ARect.Height);
-  end;
-end;
-
-// Die Signatur gibt das Ereignis OnEditorPaintText der Open Tools API vor; die Arbeit macht ColorRun.
-// lsp-ignore: metric-parameter-count
-procedure TAtlasEditorPairs.PaintText(const Rect: TRect; const ColNum: SmallInt; const Text: string;
-  const SyntaxCode: TOTASyntaxCode; const Hilight, BeforeEvent: Boolean; var AllowDefaultPainting: Boolean;
-  const Context: INTACodeEditorPaintContext);
-var
-  mRun: TPairRun;
-begin
-  // Durch die Sicherung abgeschaltet (#493); markierten Text zeichnet die IDE.
-  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) or not BeforeEvent or Hilight or (Text = '') or (Context = nil) then
-  begin
-    Exit;
-  end;
-  try
-    mRun := TPairRun.Create(Rect, ColNum, Text, Context);
-    if ColorRun(mRun) then
-    begin
-      AllowDefaultPainting := False;
-    end;
-  except
-    // Zeichnen darf die IDE nie stören; die IDE zeichnet dann selbst.
-    on E: Exception do
-    begin
-      AllowDefaultPainting := True;
-      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
-    end;
   end;
 end;
 
@@ -1017,34 +1045,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mLine: Integer;
-  mCode: TRect;
-begin
-  // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.Pairs) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
-  begin
-    Exit;
-  end;
-  try
-    FEdges.RepaintMoved(Context);
-    PaintBand(Rect, Context);
-    if GuidesLine(Rect, Context, mLine, mCode) then
-    begin
-      PaintGuides(Rect, Context, mLine, mCode);
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-    begin
-      FGuides := nil;
-      TAtlasGuard.Report(TAtlasFeature.Pairs, E);
-    end;
-  end;
-end;
-
 function TAtlasEditorPairs.GuidesLine(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   out ALine: Integer; out ACode: TRect): Boolean;
 var
@@ -1070,51 +1070,6 @@ begin
     Exit;
   end;
   Result := LineMatches(AContext, ALine, ACode);
-end;
-
-function TAtlasEditorPairs.LineMatches(const AContext: INTACodeEditorPaintContext; ALine: Integer;
-  out ACode: TRect): Boolean;
-var
-  mState: INTACodeEditorLineState;
-begin
-  // Wie bei den Läufen: nur, wenn die Zeile zur Analyse passt.
-  ACode := TRect.Empty;
-  mState := AContext.LineState;
-  Result := (mState <> nil) and (ALine >= 0) and (ALine <= High(FDisplay)) and
-    (TrimRight(TAtlasPairs.DisplayLine(mState.Text, FTabWidth)) = TrimRight(FDisplay[ALine]));
-  if Result then
-  begin
-    ACode := mState.CodeRect;
-  end;
-end;
-
-procedure TAtlasEditorPairs.PaintBand(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
-var
-  mSettings: TAtlasPluginSettings;
-  mLine: Integer;
-  mCode: TRect;
-  mBand: TAtlasRoutineBand;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  if not (mSettings.PairColors and mSettings.NestedRoutineBand) or
-    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, AContext.FileName) then
-  begin
-    Exit;
-  end;
-  if FCheck or not SameText(AContext.FileName, FFileName) then
-  begin
-    Refresh(AContext);
-  end;
-  mLine := AContext.LogicalLineNum - 1;
-  // Unter dem mitlaufenden Kopf nicht: der Kopf deckt die Zeile ab.
-  if (mLine < 0) or (mLine > High(FBandOf)) or (FBandOf[mLine] < 0) or UnderStickyHeader(ARect, AContext.FileName) or
-    not LineMatches(AContext, mLine, mCode) then
-  begin
-    Exit;
-  end;
-  mBand := FBands[FBandOf[mLine]];
-  BlendRect(AContext.Canvas.Handle, TRect.Create(Max(ARect.Left, mCode.Left), ARect.Top, ARect.Right, ARect.Bottom),
-    FNesting.Color(FBackdrop.Palette, mBand.Depth, mBand.Routine), cBandAlpha);
 end;
 
 procedure TAtlasEditorPairs.PaintGuides(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
@@ -1163,6 +1118,51 @@ begin
   end;
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.PairGuides, AContext.FileName, ALine, ''),
     ACode, TopRowOf(AContext), ARect.Height);
+end;
+
+procedure TAtlasEditorPairs.PaintBand(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
+var
+  mSettings: TAtlasPluginSettings;
+  mLine: Integer;
+  mCode: TRect;
+  mBand: TAtlasRoutineBand;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  if not (mSettings.PairColors and mSettings.NestedRoutineBand) or
+    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, AContext.FileName) then
+  begin
+    Exit;
+  end;
+  if FCheck or not SameText(AContext.FileName, FFileName) then
+  begin
+    Refresh(AContext);
+  end;
+  mLine := AContext.LogicalLineNum - 1;
+  // Unter dem mitlaufenden Kopf nicht: der Kopf deckt die Zeile ab.
+  if (mLine < 0) or (mLine > High(FBandOf)) or (FBandOf[mLine] < 0) or UnderStickyHeader(ARect, AContext.FileName) or
+    not LineMatches(AContext, mLine, mCode) then
+  begin
+    Exit;
+  end;
+  mBand := FBands[FBandOf[mLine]];
+  BlendRect(AContext.Canvas.Handle, TRect.Create(Max(ARect.Left, mCode.Left), ARect.Top, ARect.Right, ARect.Bottom),
+    FNesting.Color(FBackdrop.Palette, mBand.Depth, mBand.Routine), cBandAlpha);
+end;
+
+function TAtlasEditorPairs.LineMatches(const AContext: INTACodeEditorPaintContext; ALine: Integer;
+  out ACode: TRect): Boolean;
+var
+  mState: INTACodeEditorLineState;
+begin
+  // Wie bei den Läufen: nur, wenn die Zeile zur Analyse passt.
+  ACode := TRect.Empty;
+  mState := AContext.LineState;
+  Result := (mState <> nil) and (ALine >= 0) and (ALine <= High(FDisplay)) and
+    (TrimRight(TAtlasPairs.DisplayLine(mState.Text, FTabWidth)) = TrimRight(FDisplay[ALine]));
+  if Result then
+  begin
+    ACode := mState.CodeRect;
+  end;
 end;
 
 { TAtlasEditorPairs.TEdges }

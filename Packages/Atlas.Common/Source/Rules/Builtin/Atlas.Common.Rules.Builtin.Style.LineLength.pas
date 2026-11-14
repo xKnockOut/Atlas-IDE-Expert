@@ -355,6 +355,13 @@ begin
   end;
 end;
 
+function TLineScanner.NeedsCheck(ALine: Integer): Boolean;
+begin
+  // Ohne Tabs ist die Breite höchstens die Länge.
+  Result := (Length(FLines[ALine]) > Min(FMaxLength, TLineLengthRule.cCompilerLimit)) or
+    ((Pos(#9, FLines[ALine]) > 0) and (Length(FLines[ALine]) * FTabWidth > FMaxLength));
+end;
+
 procedure TLineScanner.CheckLine(ALine: Integer);
 var
   mColumnsOfLine: TArray<Integer>;
@@ -381,13 +388,6 @@ begin
   FReport.Add(TTextRange.Create(TTextPosition.Create(ALine, OverflowStart(mColumnsOfLine)),
     TTextPosition.Create(ALine, Length(FLines[ALine]))), cTexts[TStyleLineLengthText.TooLong].Fmt(
     [mWidth, FMaxLength]), mFixes);
-end;
-
-function TLineScanner.NeedsCheck(ALine: Integer): Boolean;
-begin
-  // Ohne Tabs ist die Breite höchstens die Länge.
-  Result := (Length(FLines[ALine]) > Min(FMaxLength, TLineLengthRule.cCompilerLimit)) or
-    ((Pos(#9, FLines[ALine]) > 0) and (Length(FLines[ALine]) * FTabWidth > FMaxLength));
 end;
 
 procedure TLineScanner.Run;

@@ -83,6 +83,8 @@ const
   cCheckWidth = 32;
   cReplaceWidth = 170;
 
+{ TAtlasSearchReplaceFrame }
+
 constructor TAtlasSearchReplaceFrame.Create(AOwner: TComponent);
 var
   mColumn: TListColumn;
@@ -148,41 +150,6 @@ begin
   UpdateTitle;
 end;
 
-procedure TAtlasSearchReplaceFrame.SetModel(AModel: TAtlasReplaceList);
-begin
-  FModel := AModel;
-  FRows := nil;
-  if FModel <> nil then
-  begin
-    FRows := FModel.Rows;
-  end;
-  FList.Items.Count := Length(FRows);
-  FList.Invalidate;
-  UpdateTitle;
-end;
-
-procedure TAtlasSearchReplaceFrame.SetNotice(const AText: string);
-begin
-  FNotice.Caption := AText;
-end;
-
-procedure TAtlasSearchReplaceFrame.UpdateTitle;
-var
-  mFiles: Integer;
-begin
-  if FModel = nil then
-  begin
-    FTitle.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceEmpty);
-    FReplace.Enabled := False;
-    Exit;
-  end;
-  mFiles := Length(FModel.Results);
-  FTitle.Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceListTitle,
-    [FModel.Query.Text, FModel.Replace,
-    FModel.CheckedCount, FModel.HitCount, mFiles]);
-  FReplace.Enabled := FModel.CheckedCount > 0;
-end;
-
 procedure TAtlasSearchReplaceFrame.ListData(Sender: TObject; Item: TListItem);
 var
   mRow: TAtlasReplaceRow;
@@ -213,57 +180,6 @@ begin
     Item.SubItems.Add(mRow.Text);
     Item.SubItems.Add(mRow.Preview);
   end;
-end;
-
-procedure TAtlasSearchReplaceFrame.ToggleRow(AIndex: Integer);
-begin
-  Toggle(AIndex);
-end;
-
-procedure TAtlasSearchReplaceFrame.Toggle(AIndex: Integer);
-var
-  mRow: TAtlasReplaceRow;
-begin
-  if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) then
-  begin
-    Exit;
-  end;
-  mRow := FRows[AIndex];
-  if mRow.Kind = TAtlasReplaceRowKind.FileRow then
-  begin
-    FModel.SetFileChecked(mRow.FileIndex, not mRow.Checked);
-  end
-  else
-  begin
-    FModel.SetHitChecked(mRow.FileIndex, mRow.HitIndex, not mRow.Checked);
-  end;
-  // Zeilen neu aus dem Modell: Die Kopfzeile folgt ihren Treffern und umgekehrt.
-  FRows := FModel.Rows;
-  FList.Invalidate;
-  UpdateTitle;
-end;
-
-procedure TAtlasSearchReplaceFrame.Open(AIndex: Integer);
-var
-  mRow: TAtlasReplaceRow;
-  mHit: Integer;
-begin
-  if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) or not Assigned(FOnOpen) then
-  begin
-    Exit;
-  end;
-  mRow := FRows[AIndex];
-  mHit := mRow.HitIndex;
-  if mHit < 0 then
-  begin
-    mHit := 0;
-  end;
-  if (mRow.FileIndex > High(FModel.Results)) or (mHit > High(FModel.Results[mRow.FileIndex].Hits)) then
-  begin
-    Exit;
-  end;
-  FOnOpen(mRow.FileName, FModel.Results[mRow.FileIndex].Hits[mHit].Line,
-    FModel.Results[mRow.FileIndex].Hits[mHit].Character);
 end;
 
 procedure TAtlasSearchReplaceFrame.ListMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
@@ -316,6 +232,92 @@ begin
   begin
     FOnReplace();
   end;
+end;
+
+procedure TAtlasSearchReplaceFrame.Toggle(AIndex: Integer);
+var
+  mRow: TAtlasReplaceRow;
+begin
+  if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) then
+  begin
+    Exit;
+  end;
+  mRow := FRows[AIndex];
+  if mRow.Kind = TAtlasReplaceRowKind.FileRow then
+  begin
+    FModel.SetFileChecked(mRow.FileIndex, not mRow.Checked);
+  end
+  else
+  begin
+    FModel.SetHitChecked(mRow.FileIndex, mRow.HitIndex, not mRow.Checked);
+  end;
+  // Zeilen neu aus dem Modell: Die Kopfzeile folgt ihren Treffern und umgekehrt.
+  FRows := FModel.Rows;
+  FList.Invalidate;
+  UpdateTitle;
+end;
+
+procedure TAtlasSearchReplaceFrame.Open(AIndex: Integer);
+var
+  mRow: TAtlasReplaceRow;
+  mHit: Integer;
+begin
+  if (FModel = nil) or (AIndex < 0) or (AIndex > High(FRows)) or not Assigned(FOnOpen) then
+  begin
+    Exit;
+  end;
+  mRow := FRows[AIndex];
+  mHit := mRow.HitIndex;
+  if mHit < 0 then
+  begin
+    mHit := 0;
+  end;
+  if (mRow.FileIndex > High(FModel.Results)) or (mHit > High(FModel.Results[mRow.FileIndex].Hits)) then
+  begin
+    Exit;
+  end;
+  FOnOpen(mRow.FileName, FModel.Results[mRow.FileIndex].Hits[mHit].Line,
+    FModel.Results[mRow.FileIndex].Hits[mHit].Character);
+end;
+
+procedure TAtlasSearchReplaceFrame.UpdateTitle;
+var
+  mFiles: Integer;
+begin
+  if FModel = nil then
+  begin
+    FTitle.Caption := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchReplaceEmpty);
+    FReplace.Enabled := False;
+    Exit;
+  end;
+  mFiles := Length(FModel.Results);
+  FTitle.Caption := TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchReplaceListTitle,
+    [FModel.Query.Text, FModel.Replace,
+    FModel.CheckedCount, FModel.HitCount, mFiles]);
+  FReplace.Enabled := FModel.CheckedCount > 0;
+end;
+
+procedure TAtlasSearchReplaceFrame.SetModel(AModel: TAtlasReplaceList);
+begin
+  FModel := AModel;
+  FRows := nil;
+  if FModel <> nil then
+  begin
+    FRows := FModel.Rows;
+  end;
+  FList.Items.Count := Length(FRows);
+  FList.Invalidate;
+  UpdateTitle;
+end;
+
+procedure TAtlasSearchReplaceFrame.SetNotice(const AText: string);
+begin
+  FNotice.Caption := AText;
+end;
+
+procedure TAtlasSearchReplaceFrame.ToggleRow(AIndex: Integer);
+begin
+  Toggle(AIndex);
 end;
 
 end.

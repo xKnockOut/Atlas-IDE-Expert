@@ -123,6 +123,8 @@ uses
   Atlas.Common.Index.NameFacts,
   Atlas.Common.Pascal.IncludeFiles;
 
+{ TShellProjectState }
+
 constructor TShellProjectState.Create(ASetup: TShellWorkspaceSetup);
 begin
   inherited Create;

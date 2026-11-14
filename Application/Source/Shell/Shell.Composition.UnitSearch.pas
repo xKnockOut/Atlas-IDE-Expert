@@ -78,6 +78,8 @@ begin
   end;
 end;
 
+{ TShellUnitSearch }
+
 constructor TShellUnitSearch.Create(const AServices: TShellUnitSearchServices);
 begin
   inherited Create;
@@ -89,27 +91,6 @@ destructor TShellUnitSearch.Destroy;
 begin
   FreeAndNil(FUnitSearch);
   inherited Destroy;
-end;
-
-procedure TShellUnitSearch.RegisterCommands(ACommands: TLspCommands);
-begin
-  // Closures: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  // Liste und Vorschau lesen nur (Arbeitsbereiche unter ihrer Sperre): nebenläufig.
-  ACommands.RegisterConcurrent(TUnitSearch.cUnitsCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitSearch.ExecuteUnits(AArguments);
-    end);
-  ACommands.RegisterConcurrent(TUnitSearch.cPreviewCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitSearch.ExecutePreview(AArguments);
-    end);
-  ACommands.Register(TUnitSearch.cAddUsesCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := FUnitSearch.ExecuteAddUses(AArguments);
-    end);
 end;
 
 function TShellUnitSearch.Context(out AContext: TUnitSearchContext): Boolean;
@@ -183,14 +164,6 @@ begin
   end;
 end;
 
-function TShellUnitSearch.UsesFor(AUri: string): TUsesContext;
-begin
-  if not FServices.UsesContextFor(AUri, Result) then
-  begin
-    Result := Default(TUsesContext);
-  end;
-end;
-
 function TShellUnitSearch.GitState(AFileName: string): string;
 var
   mRequest: TCompilerRequest;
@@ -223,6 +196,35 @@ begin
   end;
   // Exit-Code 128: kein Repository.
   Result := TUnitSearch.GitState(mOutput, mCode = 0);
+end;
+
+function TShellUnitSearch.UsesFor(AUri: string): TUsesContext;
+begin
+  if not FServices.UsesContextFor(AUri, Result) then
+  begin
+    Result := Default(TUsesContext);
+  end;
+end;
+
+procedure TShellUnitSearch.RegisterCommands(ACommands: TLspCommands);
+begin
+  // Closures: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
+  // Liste und Vorschau lesen nur (Arbeitsbereiche unter ihrer Sperre): nebenläufig.
+  ACommands.RegisterConcurrent(TUnitSearch.cUnitsCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecuteUnits(AArguments);
+    end);
+  ACommands.RegisterConcurrent(TUnitSearch.cPreviewCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecutePreview(AArguments);
+    end);
+  ACommands.Register(TUnitSearch.cAddUsesCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitSearch.ExecuteAddUses(AArguments);
+    end);
 end;
 
 end.

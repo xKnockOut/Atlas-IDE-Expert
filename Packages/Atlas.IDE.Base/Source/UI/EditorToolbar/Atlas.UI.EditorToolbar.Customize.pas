@@ -136,6 +136,8 @@ type
     procedure BuildHeading;
   end;
 
+{ TAtlasToolbarCustomizeBuilder }
+
 function TAtlasToolbarCustomizeBuilder.NewPanel(AParent: TWinControl; AAlign: TAlign; ASize: Integer): TPanel;
 begin
   Result := TPanel.Create(Dialog);
@@ -329,22 +331,10 @@ begin
   end;
 end;
 
-function TAtlasToolbarCustomizeDialog.CaptionOf(const AId: string): string;
-var
-  mCommand: TAtlasToolbarCommandInfo;
+procedure TAtlasToolbarCustomizeDialog.DoShow;
 begin
-  if TAtlasToolbarItems.IsSeparator(AId) then
-  begin
-    Exit(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarSeparator));
-  end;
-  for mCommand in FCommands do
-  begin
-    if SameText(mCommand.Id, AId) then
-    begin
-      Exit(mCommand.Caption);
-    end;
-  end;
-  Result := AId;
+  inherited DoShow;
+  Fill(-1, -1);
 end;
 
 procedure TAtlasToolbarCustomizeDialog.BuildAvailable;
@@ -384,6 +374,189 @@ begin
   finally
     mRest.Free;
   end;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.Fill(ACurrentIndex, AAvailableIndex: Integer);
+var
+  mItem: string;
+  mIndex: Integer;
+begin
+  // Ohne Fenster bleibt es bei FConfig; DoShow füllt dann.
+  if not HandleAllocated then
+  begin
+    Exit;
+  end;
+  FFilled := True;
+  FAvailableList.Items.BeginUpdate;
+  try
+    FAvailableList.Items.Clear;
+    for mItem in FAvailable do
+    begin
+      FAvailableList.Items.Add(CaptionOf(mItem));
+    end;
+  finally
+    FAvailableList.Items.EndUpdate;
+  end;
+  FCurrentList.Items.BeginUpdate;
+  try
+    FCurrentList.Items.Clear;
+    for mItem in FConfig.Items do
+    begin
+      FCurrentList.Items.Add(CaptionOf(mItem));
+    end;
+  finally
+    FCurrentList.Items.EndUpdate;
+  end;
+  FCurrentList.ItemIndex := ACurrentIndex;
+  FAvailableList.ItemIndex := AAvailableIndex;
+  FLabelsCheck.Checked := FConfig.Labels;
+  if FPositionCombo.Items.Count = 0 then
+  begin
+    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow));
+    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove));
+    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline));
+  end;
+  FPositionCombo.ItemIndex := 0;
+  for mIndex := 0 to High(cAtlasToolbarPositions) do
+  begin
+    if cAtlasToolbarPositions[mIndex] = FConfig.Position then
+    begin
+      FPositionCombo.ItemIndex := mIndex;
+    end;
+  end;
+  UpdateButtons;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.UpdateButtons;
+var
+  mCurrent: Integer;
+begin
+  mCurrent := FCurrentList.ItemIndex;
+  FAddButton.Enabled := FAvailableList.ItemIndex >= 0;
+  FRemoveButton.Enabled := mCurrent >= 0;
+  FUpButton.Enabled := mCurrent > 0;
+  FDownButton.Enabled := (mCurrent >= 0) and (mCurrent < High(FConfig.Items));
+end;
+
+procedure TAtlasToolbarCustomizeDialog.ActionClick(Sender: TObject);
+var
+  mTarget: Integer;
+begin
+  case TAtlasToolbarCustomizeAction(TComponent(Sender).Tag) of
+    TAtlasToolbarCustomizeAction.Add:
+      begin
+        // Hinter dem ausgewählten Knopf der Leiste einfügen, sonst hinten.
+        mTarget := Length(FConfig.Items);
+        if FCurrentList.ItemIndex >= 0 then
+        begin
+          mTarget := FCurrentList.ItemIndex + 1;
+        end;
+        AddItem(FAvailableList.ItemIndex, mTarget);
+      end;
+    TAtlasToolbarCustomizeAction.Remove:
+      RemoveItem(FCurrentList.ItemIndex);
+    TAtlasToolbarCustomizeAction.Up:
+      MoveItem(FCurrentList.ItemIndex, -1);
+    TAtlasToolbarCustomizeAction.Down:
+      MoveItem(FCurrentList.ItemIndex, 1);
+    TAtlasToolbarCustomizeAction.Default:
+      RestoreDefault;
+    TAtlasToolbarCustomizeAction.Ok:
+      begin
+        // Trennstriche am Rand oder doppelt fallen beim Übernehmen weg.
+        FConfig.Items := TAtlasToolbarItems.Clean(FConfig.Items);
+        ModalResult := mrOk;
+      end;
+  else
+    // None: Abbrechen schließt über ModalResult.
+  end;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.ListDblClick(Sender: TObject);
+begin
+  if Sender = FAvailableList then
+  begin
+    ActionClick(FAddButton);
+  end
+  else
+  begin
+    ActionClick(FRemoveButton);
+  end;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.ListClick(Sender: TObject);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.LabelsClick(Sender: TObject);
+begin
+  FConfig.Labels := FLabelsCheck.Checked;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.PositionChange(Sender: TObject);
+begin
+  if (FPositionCombo.ItemIndex >= 0) and (FPositionCombo.ItemIndex <= High(cAtlasToolbarPositions)) then
+  begin
+    FConfig.Position := cAtlasToolbarPositions[FPositionCombo.ItemIndex];
+  end;
+end;
+
+procedure TAtlasToolbarCustomizeDialog.CurrentDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
+  State: TOwnerDrawState);
+var
+  mList: TListBox;
+  mId: string;
+  mIcon, mText: TRect;
+  mCaption_: string;
+  mSize, mMiddle: Integer;
+begin
+  mList := TListBox(Control);
+  mList.Canvas.FillRect(Rect);
+  if (Index < 0) or (Index > High(FConfig.Items)) then
+  begin
+    Exit;
+  end;
+  mId := FConfig.Items[Index];
+  mCaption_ := CaptionOf(mId);
+  mSize := ScaleValue(16);
+  mIcon := System.Types.Rect(Rect.Left + ScaleValue(4), Rect.Top + (Rect.Height - mSize) div 2,
+    Rect.Left + ScaleValue(4) + mSize, Rect.Top + (Rect.Height - mSize) div 2 + mSize);
+  if TAtlasToolbarItems.IsSeparator(mId) then
+  begin
+    mMiddle := (Rect.Top + Rect.Bottom) div 2;
+    mList.Canvas.Pen.Color := mList.Canvas.Font.Color;
+    mList.Canvas.MoveTo(mIcon.Left, mMiddle);
+    mList.Canvas.LineTo(mIcon.Right, mMiddle);
+  end
+  else
+  begin
+    TAtlasGlyphPainter.Draw(mList.Canvas, TAtlasToolbarIcons.IconOf(mId), mIcon, mList.Canvas.Font.Color,
+      mList.Canvas.Brush.Color, mCaption_);
+  end;
+  mText := System.Types.Rect(mIcon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
+  mList.Canvas.Brush.Style := bsClear;
+  DrawText(mList.Canvas.Handle, PChar(mCaption_), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  mList.Canvas.Brush.Style := bsSolid;
+end;
+
+function TAtlasToolbarCustomizeDialog.CaptionOf(const AId: string): string;
+var
+  mCommand: TAtlasToolbarCommandInfo;
+begin
+  if TAtlasToolbarItems.IsSeparator(AId) then
+  begin
+    Exit(TAtlasEditorToolbarStrings.Text(TAtlasEditorToolbarTextId.EditorToolbarSeparator));
+  end;
+  for mCommand in FCommands do
+  begin
+    if SameText(mCommand.Id, AId) then
+    begin
+      Exit(mCommand.Caption);
+    end;
+  end;
+  Result := AId;
 end;
 
 function TAtlasToolbarCustomizeDialog.Available: TArray<string>;
@@ -460,177 +633,6 @@ begin
       end;
     end;
   end;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.DoShow;
-begin
-  inherited DoShow;
-  Fill(-1, -1);
-end;
-
-procedure TAtlasToolbarCustomizeDialog.Fill(ACurrentIndex, AAvailableIndex: Integer);
-var
-  mItem: string;
-  mIndex: Integer;
-begin
-  // Ohne Fenster bleibt es bei FConfig; DoShow füllt dann.
-  if not HandleAllocated then
-  begin
-    Exit;
-  end;
-  FFilled := True;
-  FAvailableList.Items.BeginUpdate;
-  try
-    FAvailableList.Items.Clear;
-    for mItem in FAvailable do
-    begin
-      FAvailableList.Items.Add(CaptionOf(mItem));
-    end;
-  finally
-    FAvailableList.Items.EndUpdate;
-  end;
-  FCurrentList.Items.BeginUpdate;
-  try
-    FCurrentList.Items.Clear;
-    for mItem in FConfig.Items do
-    begin
-      FCurrentList.Items.Add(CaptionOf(mItem));
-    end;
-  finally
-    FCurrentList.Items.EndUpdate;
-  end;
-  FCurrentList.ItemIndex := ACurrentIndex;
-  FAvailableList.ItemIndex := AAvailableIndex;
-  FLabelsCheck.Checked := FConfig.Labels;
-  if FPositionCombo.Items.Count = 0 then
-  begin
-    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionBelow));
-    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove));
-    FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline));
-  end;
-  FPositionCombo.ItemIndex := 0;
-  for mIndex := 0 to High(cAtlasToolbarPositions) do
-  begin
-    if cAtlasToolbarPositions[mIndex] = FConfig.Position then
-    begin
-      FPositionCombo.ItemIndex := mIndex;
-    end;
-  end;
-  UpdateButtons;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.UpdateButtons;
-var
-  mCurrent: Integer;
-begin
-  mCurrent := FCurrentList.ItemIndex;
-  FAddButton.Enabled := FAvailableList.ItemIndex >= 0;
-  FRemoveButton.Enabled := mCurrent >= 0;
-  FUpButton.Enabled := mCurrent > 0;
-  FDownButton.Enabled := (mCurrent >= 0) and (mCurrent < High(FConfig.Items));
-end;
-
-procedure TAtlasToolbarCustomizeDialog.ListClick(Sender: TObject);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.ActionClick(Sender: TObject);
-var
-  mTarget: Integer;
-begin
-  case TAtlasToolbarCustomizeAction(TComponent(Sender).Tag) of
-    TAtlasToolbarCustomizeAction.Add:
-      begin
-        // Hinter dem ausgewählten Knopf der Leiste einfügen, sonst hinten.
-        mTarget := Length(FConfig.Items);
-        if FCurrentList.ItemIndex >= 0 then
-        begin
-          mTarget := FCurrentList.ItemIndex + 1;
-        end;
-        AddItem(FAvailableList.ItemIndex, mTarget);
-      end;
-    TAtlasToolbarCustomizeAction.Remove:
-      RemoveItem(FCurrentList.ItemIndex);
-    TAtlasToolbarCustomizeAction.Up:
-      MoveItem(FCurrentList.ItemIndex, -1);
-    TAtlasToolbarCustomizeAction.Down:
-      MoveItem(FCurrentList.ItemIndex, 1);
-    TAtlasToolbarCustomizeAction.Default:
-      RestoreDefault;
-    TAtlasToolbarCustomizeAction.Ok:
-      begin
-        // Trennstriche am Rand oder doppelt fallen beim Übernehmen weg.
-        FConfig.Items := TAtlasToolbarItems.Clean(FConfig.Items);
-        ModalResult := mrOk;
-      end;
-  else
-    // None: Abbrechen schließt über ModalResult.
-  end;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.ListDblClick(Sender: TObject);
-begin
-  if Sender = FAvailableList then
-  begin
-    ActionClick(FAddButton);
-  end
-  else
-  begin
-    ActionClick(FRemoveButton);
-  end;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.LabelsClick(Sender: TObject);
-begin
-  FConfig.Labels := FLabelsCheck.Checked;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.PositionChange(Sender: TObject);
-begin
-  if (FPositionCombo.ItemIndex >= 0) and (FPositionCombo.ItemIndex <= High(cAtlasToolbarPositions)) then
-  begin
-    FConfig.Position := cAtlasToolbarPositions[FPositionCombo.ItemIndex];
-  end;
-end;
-
-procedure TAtlasToolbarCustomizeDialog.CurrentDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
-  State: TOwnerDrawState);
-var
-  mList: TListBox;
-  mId: string;
-  mIcon, mText: TRect;
-  mCaption_: string;
-  mSize, mMiddle: Integer;
-begin
-  mList := TListBox(Control);
-  mList.Canvas.FillRect(Rect);
-  if (Index < 0) or (Index > High(FConfig.Items)) then
-  begin
-    Exit;
-  end;
-  mId := FConfig.Items[Index];
-  mCaption_ := CaptionOf(mId);
-  mSize := ScaleValue(16);
-  mIcon := System.Types.Rect(Rect.Left + ScaleValue(4), Rect.Top + (Rect.Height - mSize) div 2,
-    Rect.Left + ScaleValue(4) + mSize, Rect.Top + (Rect.Height - mSize) div 2 + mSize);
-  if TAtlasToolbarItems.IsSeparator(mId) then
-  begin
-    mMiddle := (Rect.Top + Rect.Bottom) div 2;
-    mList.Canvas.Pen.Color := mList.Canvas.Font.Color;
-    mList.Canvas.MoveTo(mIcon.Left, mMiddle);
-    mList.Canvas.LineTo(mIcon.Right, mMiddle);
-  end
-  else
-  begin
-    TAtlasGlyphPainter.Draw(mList.Canvas, TAtlasToolbarIcons.IconOf(mId), mIcon, mList.Canvas.Font.Color,
-      mList.Canvas.Brush.Color, mCaption_);
-  end;
-  mText := System.Types.Rect(mIcon.Right + ScaleValue(6), Rect.Top, Rect.Right - ScaleValue(2), Rect.Bottom);
-  mList.Canvas.Brush.Style := bsClear;
-  DrawText(mList.Canvas.Handle, PChar(mCaption_), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
-    DT_END_ELLIPSIS);
-  mList.Canvas.Brush.Style := bsSolid;
 end;
 
 class function TAtlasToolbarCustomizeDialog.Execute(const ACommands: TArray<TAtlasToolbarCommandInfo>;

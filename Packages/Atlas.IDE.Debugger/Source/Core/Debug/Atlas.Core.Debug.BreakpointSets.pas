@@ -224,9 +224,12 @@ begin
   end;
 end;
 
-class function TAtlasBreakpointSets.SameFile(const A, B: string): Boolean;
+class function TAtlasBreakpointSets.Capture(const AFileName, AText: string; ALine: Integer;
+  const AProps: TAtlasBreakpointProps): TAtlasBreakpointSetEntry;
 begin
-  Result := SameText(A.Replace('\', '/'), B.Replace('\', '/'));
+  Result.FileName := AFileName;
+  Result.Anchor := TAtlasMethodAnchors.Capture(AText, ALine);
+  Result.Props := AProps;
 end;
 
 /// <summary>Pfad für die Datei: relativ zu AFolder, wenn darunter, mit "/".</summary>
@@ -409,12 +412,22 @@ begin
   end;
 end;
 
-class function TAtlasBreakpointSets.Capture(const AFileName, AText: string; ALine: Integer;
-  const AProps: TAtlasBreakpointProps): TAtlasBreakpointSetEntry;
+class function TAtlasBreakpointSets.ForBranch(const ASets: TAtlasBreakpointSetList; const ABranch: string): Integer;
+var
+  mIndex: Integer;
 begin
-  Result.FileName := AFileName;
-  Result.Anchor := TAtlasMethodAnchors.Capture(AText, ALine);
-  Result.Props := AProps;
+  Result := -1;
+  if Trim(ABranch) = '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(ASets) do
+  begin
+    if SameText(ASets[mIndex].Branch, Trim(ABranch)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
 end;
 
 function HasEntryAt(const ASet: TAtlasBreakpointSet; const AEntry: TAtlasBreakpointSetEntry): Boolean;
@@ -443,24 +456,6 @@ begin
     if not HasEntryAt(Result, mEntry) then
     begin
       Result.Entries := Result.Entries + [mEntry];
-    end;
-  end;
-end;
-
-class function TAtlasBreakpointSets.ForBranch(const ASets: TAtlasBreakpointSetList; const ABranch: string): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  if Trim(ABranch) = '' then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(ASets) do
-  begin
-    if SameText(ASets[mIndex].Branch, Trim(ABranch)) then
-    begin
-      Exit(mIndex);
     end;
   end;
 end;
@@ -503,6 +498,11 @@ begin
     mReadable.Free;
     mTexts.Free;
   end;
+end;
+
+class function TAtlasBreakpointSets.SameFile(const A, B: string): Boolean;
+begin
+  Result := SameText(A.Replace('\', '/'), B.Replace('\', '/'));
 end;
 
 function IndexAt(const ACurrent: TAtlasBreakpointPlaces; const AFileName: string; ALine: Integer): Integer;

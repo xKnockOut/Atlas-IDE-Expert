@@ -166,143 +166,14 @@ begin
   inherited;
 end;
 
-class function TConsideredUsed.Matches(const APattern, AName: string): Boolean;
-var
-  mPattern, mName: string;
-  P, N, mStarP, mStarN: Integer;
-begin
-  mPattern := UpperCase(APattern);
-  mName := UpperCase(AName);
-  P := 1;
-  N := 1;
-  mStarP := 0;
-  mStarN := 0;
-  while N <= Length(mName) do
-  begin
-    if (P <= Length(mPattern)) and ((mPattern[P] = '?') or (mPattern[P] = mName[N])) then
-    begin
-      Inc(P);
-      Inc(N);
-    end
-    else if (P <= Length(mPattern)) and (mPattern[P] = '*') then
-    begin
-      mStarP := P;
-      mStarN := N;
-      Inc(P);
-    end
-    else if mStarP > 0 then
-    begin
-      P := mStarP + 1;
-      Inc(mStarN);
-      N := mStarN;
-    end
-    else
-    begin
-      Exit(False);
-    end;
-  end;
-  while (P <= Length(mPattern)) and (mPattern[P] = '*') do
-  begin
-    Inc(P);
-  end;
-  Result := P > Length(mPattern);
-end;
-
-class function TConsideredUsed.Explain(AReason: TConsideredUsedReason): string;
-begin
-  Result := '';
-  if AReason <> TConsideredUsedReason.None then
-  begin
-    Result := cTexts[AReason].Text;
-  end;
-end;
-
 function TConsideredUsed.TokenAt(const APosition: TTextPosition): Integer;
 begin
   Result := TokenIndexAt(FTokens, APosition);
 end;
 
-class function TConsideredUsed.TokenIndexAt(const ATokens: TArray<TPascalToken>;
-  const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh_, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh_ := Length(ATokens);
-  while mLow < mHigh_ do
-  begin
-    mMiddle := (mLow + mHigh_) div 2;
-    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
-      (ATokens[mMiddle].StartPos.Character < APosition.Character)) then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh_ := mMiddle;
-    end;
-  end;
-  Result := mLow;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
-end;
-
 function TConsideredUsed.AttributesBefore(const APosition: TTextPosition): TArray<string>;
 begin
   Result := AttributesAt(FTokens, APosition);
-end;
-
-/// <summary>Eine Attributgruppe [A, B('x')] rückwärts ab AAt (auf "]"); AAt steht danach auf "[". Der erste
-/// Bezeichner nach [ oder , ist der Name, ohne die Endung Attribute.</summary>
-procedure ReadAttributeGroup(const ATokens: TArray<TPascalToken>; var AAt: Integer; var ANames: TArray<string>);
-var
-  mDepth: Integer;
-  mName: string;
-begin
-  mDepth := 0;
-  while AAt >= 0 do
-  begin
-    if ATokens[AAt].IsSymbol(']') then
-    begin
-      Inc(mDepth);
-    end
-    else if ATokens[AAt].IsSymbol('[') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end
-    else if (mDepth = 1) and (ATokens[AAt].Kind = TPascalTokenKind.Identifier) and (AAt > 0) and
-      (ATokens[AAt - 1].IsSymbol('[') or ATokens[AAt - 1].IsSymbol(',')) then
-    begin
-      mName := ATokens[AAt].Text;
-      if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
-      begin
-        mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
-      end;
-      ANames := ANames + [mName];
-    end;
-    Dec(AAt);
-  end;
-end;
-
-class function TConsideredUsed.AttributesAt(const ATokens: TArray<TPascalToken>;
-  const APosition: TTextPosition): TArray<string>;
-var
-  mAt: Integer;
-begin
-  Result := nil;
-  mAt := TokenIndexAt(ATokens, APosition) - 1;
-  // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration.
-  while (mAt >= 0) and ATokens[mAt].IsSymbol(']') do
-  begin
-    ReadAttributeGroup(ATokens, mAt, Result);
-    Dec(mAt);
-  end;
 end;
 
 function TConsideredUsed.Owner(const AContainer: string; out AOwner: TIndexSymbol): Boolean;
@@ -415,6 +286,42 @@ begin
   Result := True;
 end;
 
+/// <summary>Eine Attributgruppe [A, B('x')] rückwärts ab AAt (auf "]"); AAt steht danach auf "[". Der erste
+/// Bezeichner nach [ oder , ist der Name, ohne die Endung Attribute.</summary>
+procedure ReadAttributeGroup(const ATokens: TArray<TPascalToken>; var AAt: Integer; var ANames: TArray<string>);
+var
+  mDepth: Integer;
+  mName: string;
+begin
+  mDepth := 0;
+  while AAt >= 0 do
+  begin
+    if ATokens[AAt].IsSymbol(']') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[AAt].IsSymbol('[') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end
+    else if (mDepth = 1) and (ATokens[AAt].Kind = TPascalTokenKind.Identifier) and (AAt > 0) and
+      (ATokens[AAt - 1].IsSymbol('[') or ATokens[AAt - 1].IsSymbol(',')) then
+    begin
+      mName := ATokens[AAt].Text;
+      if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
+      begin
+        mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
+      end;
+      ANames := ANames + [mName];
+    end;
+    Dec(AAt);
+  end;
+end;
+
 function TConsideredUsed.ChainHas(const AChain: TArray<TIndexSymbol>; const ATypeName: string): Boolean;
 var
   mSymbol: TIndexSymbol;
@@ -424,6 +331,45 @@ begin
     if SameText(mSymbol.Name, ATypeName) then
     begin
       Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TConsideredUsed.ImplementsName(const AOwner: TIndexSymbol; const AChain: TArray<TIndexSymbol>;
+  const AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AChain do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and InterfaceHas(mSymbol, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := MapsMethod(AOwner, AName);
+end;
+
+function TConsideredUsed.IsAccessor(const ASymbol: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  for mSymbol in FUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mSymbol.Container, ASymbol.Container) then
+    begin
+      mWords := mSymbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
+        TStringSplitOptions.ExcludeEmpty);
+      for mIndex := 0 to High(mWords) - 1 do
+      begin
+        if (IndexText(mWords[mIndex], cAccessorWords) >= 0) and SameText(mWords[mIndex + 1], ASymbol.Name) then
+        begin
+          Exit(True);
+        end;
+      end;
     end;
   end;
   Result := False;
@@ -483,121 +429,6 @@ begin
     Inc(mAt);
   end;
   Result := False;
-end;
-
-function TConsideredUsed.ImplementsName(const AOwner: TIndexSymbol; const AChain: TArray<TIndexSymbol>;
-  const AName: string): Boolean;
-var
-  mSymbol: TIndexSymbol;
-begin
-  for mSymbol in AChain do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and InterfaceHas(mSymbol, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := MapsMethod(AOwner, AName);
-end;
-
-function TConsideredUsed.IsAccessor(const ASymbol: TIndexSymbol): Boolean;
-var
-  mSymbol: TIndexSymbol;
-  mWords: TArray<string>;
-  mIndex: Integer;
-begin
-  for mSymbol in FUnit.Symbols do
-  begin
-    if (mSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mSymbol.Container, ASymbol.Container) then
-    begin
-      mWords := mSymbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
-        TStringSplitOptions.ExcludeEmpty);
-      for mIndex := 0 to High(mWords) - 1 do
-      begin
-        if (IndexText(mWords[mIndex], cAccessorWords) >= 0) and SameText(mWords[mIndex + 1], ASymbol.Name) then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-  end;
-  Result := False;
-end;
-
-procedure TConsideredUsed.CollectExports;
-var
-  mIndex: Integer;
-  mInExports: Boolean;
-begin
-  mInExports := False;
-  for mIndex := 0 to High(FTokens) do
-  begin
-    if FTokens[mIndex].IsKeyword('exports') then
-    begin
-      mInExports := True;
-    end
-    else if mInExports and FTokens[mIndex].IsSymbol(';') then
-    begin
-      mInExports := False;
-    end
-    else if mInExports and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and (mIndex > 0) and
-      (FTokens[mIndex - 1].IsKeyword('exports') or FTokens[mIndex - 1].IsSymbol(',')) then
-    begin
-      FExported.AddOrSetValue(LowerCase(FTokens[mIndex].Text), True);
-    end;
-  end;
-end;
-
-function HasKeptDirective(const ASymbol: TIndexSymbol): Boolean;
-var
-  mDirective: string;
-begin
-  for mDirective in cKeptDirectives do
-  begin
-    if ASymbol.HasDirective(mDirective) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Gründe, die schon die Deklaration verrät: Direktiven, Konstruktoren, Operatoren, Enumerator,
-/// Default-Property und implements.</summary>
-function DeclarationReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
-var
-  mSignature: string;
-  mProperty: Boolean;
-begin
-  Result := TConsideredUsedReason.None;
-  mSignature := TrimLeft(ASymbol.Signature);
-  mProperty := ASymbol.Kind = TIndexSymbolKind.Property_;
-  if HasKeptDirective(ASymbol) then
-  begin
-    Result := TConsideredUsedReason.Directive;
-  end
-  else if (ASymbol.Kind = TIndexSymbolKind.Constructor_) or StartsText('constructor', mSignature) or
-    StartsText('destructor', mSignature) or StartsText('class constructor', mSignature) or
-    StartsText('class destructor', mSignature) then
-  begin
-    Result := TConsideredUsedReason.Constructor_;
-  end
-  else if StartsText('class operator', mSignature) then
-  begin
-    Result := TConsideredUsedReason.Operator;
-  end
-  else if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, cEnumeratorNames) >= 0) then
-  begin
-    Result := TConsideredUsedReason.Enumerator;
-  end
-  else if mProperty and ASymbol.IsDefault then
-  begin
-    Result := TConsideredUsedReason.DefaultProperty;
-  end
-  else if mProperty and ContainsText(' ' + mSignature + ' ', ' implements ') then
-  begin
-    Result := TConsideredUsedReason.Implements;
-  end;
 end;
 
 function TConsideredUsed.NameReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
@@ -694,6 +525,82 @@ begin
   end;
 end;
 
+procedure TConsideredUsed.CollectExports;
+var
+  mIndex: Integer;
+  mInExports: Boolean;
+begin
+  mInExports := False;
+  for mIndex := 0 to High(FTokens) do
+  begin
+    if FTokens[mIndex].IsKeyword('exports') then
+    begin
+      mInExports := True;
+    end
+    else if mInExports and FTokens[mIndex].IsSymbol(';') then
+    begin
+      mInExports := False;
+    end
+    else if mInExports and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and (mIndex > 0) and
+      (FTokens[mIndex - 1].IsKeyword('exports') or FTokens[mIndex - 1].IsSymbol(',')) then
+    begin
+      FExported.AddOrSetValue(LowerCase(FTokens[mIndex].Text), True);
+    end;
+  end;
+end;
+
+function HasKeptDirective(const ASymbol: TIndexSymbol): Boolean;
+var
+  mDirective: string;
+begin
+  for mDirective in cKeptDirectives do
+  begin
+    if ASymbol.HasDirective(mDirective) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Gründe, die schon die Deklaration verrät: Direktiven, Konstruktoren, Operatoren, Enumerator,
+/// Default-Property und implements.</summary>
+function DeclarationReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
+var
+  mSignature: string;
+  mProperty: Boolean;
+begin
+  Result := TConsideredUsedReason.None;
+  mSignature := TrimLeft(ASymbol.Signature);
+  mProperty := ASymbol.Kind = TIndexSymbolKind.Property_;
+  if HasKeptDirective(ASymbol) then
+  begin
+    Result := TConsideredUsedReason.Directive;
+  end
+  else if (ASymbol.Kind = TIndexSymbolKind.Constructor_) or StartsText('constructor', mSignature) or
+    StartsText('destructor', mSignature) or StartsText('class constructor', mSignature) or
+    StartsText('class destructor', mSignature) then
+  begin
+    Result := TConsideredUsedReason.Constructor_;
+  end
+  else if StartsText('class operator', mSignature) then
+  begin
+    Result := TConsideredUsedReason.Operator;
+  end
+  else if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, cEnumeratorNames) >= 0) then
+  begin
+    Result := TConsideredUsedReason.Enumerator;
+  end
+  else if mProperty and ASymbol.IsDefault then
+  begin
+    Result := TConsideredUsedReason.DefaultProperty;
+  end
+  else if mProperty and ContainsText(' ' + mSignature + ' ', ' implements ') then
+  begin
+    Result := TConsideredUsedReason.Implements;
+  end;
+end;
+
 function TConsideredUsed.Reason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
 var
   mOwner: TIndexSymbol;
@@ -712,6 +619,99 @@ begin
     Exit(TConsideredUsedReason.UnknownAncestor);
   end;
   Result := OwnerReason(ASymbol, mOwner);
+end;
+
+class function TConsideredUsed.Explain(AReason: TConsideredUsedReason): string;
+begin
+  Result := '';
+  if AReason <> TConsideredUsedReason.None then
+  begin
+    Result := cTexts[AReason].Text;
+  end;
+end;
+
+class function TConsideredUsed.Matches(const APattern, AName: string): Boolean;
+var
+  mPattern, mName: string;
+  P, N, mStarP, mStarN: Integer;
+begin
+  mPattern := UpperCase(APattern);
+  mName := UpperCase(AName);
+  P := 1;
+  N := 1;
+  mStarP := 0;
+  mStarN := 0;
+  while N <= Length(mName) do
+  begin
+    if (P <= Length(mPattern)) and ((mPattern[P] = '?') or (mPattern[P] = mName[N])) then
+    begin
+      Inc(P);
+      Inc(N);
+    end
+    else if (P <= Length(mPattern)) and (mPattern[P] = '*') then
+    begin
+      mStarP := P;
+      mStarN := N;
+      Inc(P);
+    end
+    else if mStarP > 0 then
+    begin
+      P := mStarP + 1;
+      Inc(mStarN);
+      N := mStarN;
+    end
+    else
+    begin
+      Exit(False);
+    end;
+  end;
+  while (P <= Length(mPattern)) and (mPattern[P] = '*') do
+  begin
+    Inc(P);
+  end;
+  Result := P > Length(mPattern);
+end;
+
+class function TConsideredUsed.TokenIndexAt(const ATokens: TArray<TPascalToken>;
+  const APosition: TTextPosition): Integer;
+var
+  mLow, mHigh_, mMiddle: Integer;
+begin
+  mLow := 0;
+  mHigh_ := Length(ATokens);
+  while mLow < mHigh_ do
+  begin
+    mMiddle := (mLow + mHigh_) div 2;
+    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
+      (ATokens[mMiddle].StartPos.Character < APosition.Character)) then
+    begin
+      mLow := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh_ := mMiddle;
+    end;
+  end;
+  Result := mLow;
+  if Result > High(ATokens) then
+  begin
+    Result := -1;
+  end;
+end;
+
+class function TConsideredUsed.AttributesAt(const ATokens: TArray<TPascalToken>;
+  const APosition: TTextPosition): TArray<string>;
+var
+  mAt: Integer;
+begin
+  Result := nil;
+  mAt := TokenIndexAt(ATokens, APosition) - 1;
+  // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration.
+  while (mAt >= 0) and ATokens[mAt].IsSymbol(']') do
+  begin
+    ReadAttributeGroup(ATokens, mAt, Result);
+    Dec(mAt);
+  end;
 end;
 
 initialization

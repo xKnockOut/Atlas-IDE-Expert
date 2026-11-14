@@ -613,39 +613,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeForms.Log(const AText: string);
-begin
-  if Assigned(FLog) then
-  begin
-    FLog(AText);
-  end;
-end;
-
-procedure TAtlasIdeForms.Changed(const ADesigner: IDesigner);
-var
-  mRoot: TComponent;
-begin
-  mRoot := nil;
-  if ADesigner <> nil then
-  begin
-    mRoot := ADesigner.Root;
-  end;
-  if mRoot = nil then
-  begin
-    FAll := True;
-  end
-  else if not FDirtyRoots.Contains(mRoot) then
-  begin
-    FDirtyRoots.Add(mRoot);
-  end;
-  // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit.
-  TAtlasEditorSnapshots.Invalidate;
-  // Erst nach einer Pause senden: Beim Ziehen kommt eine Meldung je Mausbewegung.
-  FDirty := True;
-  FTimer.Enabled := False;
-  FTimer.Enabled := True;
-end;
-
 procedure TAtlasIdeForms.Tick(Sender: TObject);
 var
   mSession: TLspSession;
@@ -685,6 +652,56 @@ begin
         SyncDirty(mSession);
       end;
     end);
+end;
+
+procedure TAtlasIdeForms.Changed(const ADesigner: IDesigner);
+var
+  mRoot: TComponent;
+begin
+  mRoot := nil;
+  if ADesigner <> nil then
+  begin
+    mRoot := ADesigner.Root;
+  end;
+  if mRoot = nil then
+  begin
+    FAll := True;
+  end
+  else if not FDirtyRoots.Contains(mRoot) then
+  begin
+    FDirtyRoots.Add(mRoot);
+  end;
+  // Der Designer schreibt Felder und Methoden ohne Editorereignis in die Unit.
+  TAtlasEditorSnapshots.Invalidate;
+  // Erst nach einer Pause senden: Beim Ziehen kommt eine Meldung je Mausbewegung.
+  FDirty := True;
+  FTimer.Enabled := False;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeForms.Closed(ARoot: TComponent);
+var
+  mFileName: string;
+  mSession: TLspSession;
+begin
+  if not FRoots.TryGetValue(ARoot, mFileName) then
+  begin
+    Exit;
+  end;
+  FRoots.Remove(ARoot);
+  FTexts.Remove(Key(mFileName));
+  mSession := nil;
+  if Assigned(FSessionOf) then
+  begin
+    mSession := FSessionOf();
+  end;
+  if mSession <> nil then
+    try
+      mSession.Close(mFileName);
+    except
+      on E: Exception do
+        Log(Format('Formular %s nicht abgemeldet: %s', [ExtractFileName(mFileName), E.Message]));
+    end;
 end;
 
 procedure TAtlasIdeForms.SyncAll(ASession: TLspSession);
@@ -743,29 +760,12 @@ begin
   end;
 end;
 
-procedure TAtlasIdeForms.Closed(ARoot: TComponent);
-var
-  mFileName: string;
-  mSession: TLspSession;
+procedure TAtlasIdeForms.Log(const AText: string);
 begin
-  if not FRoots.TryGetValue(ARoot, mFileName) then
+  if Assigned(FLog) then
   begin
-    Exit;
+    FLog(AText);
   end;
-  FRoots.Remove(ARoot);
-  FTexts.Remove(Key(mFileName));
-  mSession := nil;
-  if Assigned(FSessionOf) then
-  begin
-    mSession := FSessionOf();
-  end;
-  if mSession <> nil then
-    try
-      mSession.Close(mFileName);
-    except
-      on E: Exception do
-        Log(Format('Formular %s nicht abgemeldet: %s', [ExtractFileName(mFileName), E.Message]));
-    end;
 end;
 
 class procedure TAtlasIdeForms.SyncNow(ASession: TLspSession);

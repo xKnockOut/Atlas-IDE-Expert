@@ -198,32 +198,6 @@ begin
     not Code(Prev(AIndex)).IsSymbol('.');
 end;
 
-function TGuardScan.MatchingEnd(ABegin: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  Result := ABegin;
-  while Result <= High(Tokens) do
-  begin
-    if OpensBlock(Tokens[Result]) then
-    begin
-      Inc(mDepth);
-    end
-    else if Tokens[Result].IsKeyword('end') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-    Result := Next(Result);
-  end;
-  // Unfertiger Code: Der Block reicht bis zum Ende.
-  Result := Length(Tokens);
-end;
-
 function TGuardScan.BlockEnd(AFrom: Integer): Integer;
 var
   mDepth: Integer;
@@ -251,6 +225,32 @@ begin
     end;
     Result := Next(Result);
   end;
+  Result := Length(Tokens);
+end;
+
+function TGuardScan.MatchingEnd(ABegin: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  Result := ABegin;
+  while Result <= High(Tokens) do
+  begin
+    if OpensBlock(Tokens[Result]) then
+    begin
+      Inc(mDepth);
+    end
+    else if Tokens[Result].IsKeyword('end') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end;
+    Result := Next(Result);
+  end;
+  // Unfertiger Code: Der Block reicht bis zum Ende.
   Result := Length(Tokens);
 end;
 

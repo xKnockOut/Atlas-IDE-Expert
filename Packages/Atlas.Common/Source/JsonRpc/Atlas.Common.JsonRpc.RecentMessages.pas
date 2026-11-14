@@ -204,19 +204,6 @@ begin
   inherited;
 end;
 
-class function TJsonRpcRecentMessages.Shortened(const AValue: TJSONValue; AMaxString, AMaxLength: Integer): string;
-var
-  mOut: TStringBuilder;
-begin
-  mOut := TStringBuilder.Create;
-  try
-    WriteShort(AValue, AMaxString, mOut, AMaxLength);
-    Result := mOut.ToString;
-  finally
-    mOut.Free;
-  end;
-end;
-
 procedure TJsonRpcRecentMessages.Add(const AMessage: TJSONObject);
 var
   mText, mId, mMethod, mParams: string;
@@ -321,6 +308,19 @@ begin
     end;
   finally
     System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TJsonRpcRecentMessages.Shortened(const AValue: TJSONValue; AMaxString, AMaxLength: Integer): string;
+var
+  mOut: TStringBuilder;
+begin
+  mOut := TStringBuilder.Create;
+  try
+    WriteShort(AValue, AMaxString, mOut, AMaxLength);
+    Result := mOut.ToString;
+  finally
+    mOut.Free;
   end;
 end;
 

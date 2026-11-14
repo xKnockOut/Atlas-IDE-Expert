@@ -185,14 +185,16 @@ type
 
 implementation
 
-constructor TNameResolver.Create(const AIndex: ISymbolIndex);
-begin
-  Create(AIndex, nil, nil);
-end;
+{ TNameResolver }
 
 constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc);
 begin
   Create(AIndex, AEnsureUnit, nil);
+end;
+
+constructor TNameResolver.Create(const AIndex: ISymbolIndex);
+begin
+  Create(AIndex, nil, nil);
 end;
 
 constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;

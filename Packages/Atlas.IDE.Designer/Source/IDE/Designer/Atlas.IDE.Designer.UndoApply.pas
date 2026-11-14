@@ -185,11 +185,23 @@ begin
   Apply(mComponent, ACreate);
 end;
 
-procedure TAtlasDesignerUndoApply.ReaderError(Reader: TReader; const Message: string; var Handled: Boolean);
+procedure TAtlasDesignerUndoApply.Apply(AComponent: TComponent; const AChange: TAtlasUndoComponent);
+var
+  mPath: string;
+  mEvent: TAtlasUndoEvent;
 begin
-  // Unbekannte Eigenschaft oder falscher Wert: diesen Wert auslassen, die übrigen lesen.
-  FReadErrors := FReadErrors + [Message];
-  Handled := True;
+  for mPath in AChange.Resets do
+  begin
+    ResetValue(AComponent, AChange.Key, mPath);
+  end;
+  if AChange.Text <> '' then
+  begin
+    ReadValues(AComponent, AChange.Key, AChange.Text);
+  end;
+  for mEvent in AChange.Events do
+  begin
+    AssignEvent(AComponent, AChange.Key, mEvent);
+  end;
 end;
 
 procedure TAtlasDesignerUndoApply.ReadValues(AComponent: TComponent; const AKey, AText: string);
@@ -391,23 +403,11 @@ begin
   SetMethodProp(AComponent, mProp, mMethod);
 end;
 
-procedure TAtlasDesignerUndoApply.Apply(AComponent: TComponent; const AChange: TAtlasUndoComponent);
-var
-  mPath: string;
-  mEvent: TAtlasUndoEvent;
+procedure TAtlasDesignerUndoApply.ReaderError(Reader: TReader; const Message: string; var Handled: Boolean);
 begin
-  for mPath in AChange.Resets do
-  begin
-    ResetValue(AComponent, AChange.Key, mPath);
-  end;
-  if AChange.Text <> '' then
-  begin
-    ReadValues(AComponent, AChange.Key, AChange.Text);
-  end;
-  for mEvent in AChange.Events do
-  begin
-    AssignEvent(AComponent, AChange.Key, mEvent);
-  end;
+  // Unbekannte Eigenschaft oder falscher Wert: diesen Wert auslassen, die übrigen lesen.
+  FReadErrors := FReadErrors + [Message];
+  Handled := True;
 end;
 
 procedure TAtlasDesignerUndoApply.Run(const APlan: TAtlasUndoPlan; const ATarget: string);

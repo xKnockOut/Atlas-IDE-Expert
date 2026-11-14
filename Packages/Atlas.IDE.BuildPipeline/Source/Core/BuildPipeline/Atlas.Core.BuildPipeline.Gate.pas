@@ -250,154 +250,6 @@ begin
   inherited;
 end;
 
-function TAtlasBuildGateParticipant.Now_: Int64;
-begin
-  if Assigned(FClock) then
-  begin
-    Result := FClock();
-  end
-  else
-  begin
-    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-  end;
-end;
-
-function TAtlasBuildGateParticipant.PendingIndex(const AFileName: string): Integer;
-begin
-  for Result := 0 to FPending.Count - 1 do
-  begin
-    if SameText(FPending[Result].Project, AFileName) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasBuildGateParticipant.RememberedOf(const AProject: string): TDictionary<string, string>;
-begin
-  if not FRemembered.TryGetValue(UpperCase(AProject), Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
-/// <summary>Stand vormerken: Gelingt der Compile, gilt er als letzter erfolgreicher.</summary>
-procedure TAtlasBuildGateParticipant.RememberPending(const AFileName: string; const AUnits: TAtlasGateUnits);
-var
-  mPending: TPending;
-  mIndex: Integer;
-begin
-  mPending.Project := AFileName;
-  mPending.Units := AUnits;
-  mIndex := PendingIndex(AFileName);
-  if mIndex >= 0 then
-  begin
-    FPending[mIndex] := mPending;
-  end
-  else
-  begin
-    FPending.Add(mPending);
-  end;
-end;
-
-/// <summary>Stände der Unit AFileName in AUnits.</summary>
-function UnitStamps(const AUnits: TAtlasGateUnits; const AFileName: string): TArray<string>;
-var
-  mItem: TAtlasGateUnit;
-begin
-  Result := nil;
-  for mItem in AUnits do
-  begin
-    if SameText(mItem.FileName, AFileName) then
-    begin
-      Result := Result + [mItem.Stamp];
-    end;
-  end;
-end;
-
-/// <summary>Probleme der Unit AFileName, die für das Gate zählen.</summary>
-function CountedFindings(const AFileName: string; const AProblems: TArray<TAtlasProblem>): TAtlasGateFindings;
-var
-  mProblem: TAtlasProblem;
-  mFinding: TAtlasGateFinding;
-begin
-  Result := nil;
-  for mProblem in AProblems do
-  begin
-    if TAtlasBuildGateCheck.Counts(mProblem) then
-    begin
-      mFinding.FileName := AFileName;
-      mFinding.Problem := mProblem;
-      Result := Result + [mFinding];
-    end;
-  end;
-end;
-
-function TAtlasBuildGateParticipant.RunChecks(const ASettings: TAtlasGateSettings; const AChanged: TArray<string>;
-  const AUnits: TAtlasGateUnits): TGateRun;
-var
-  mStarted, mRemaining: Int64;
-  mFileName: string;
-  mProblems: TArray<TAtlasProblem>;
-begin
-  Result := Default(TGateRun);
-  mStarted := Now_;
-  for mFileName in AChanged do
-  begin
-    mRemaining := ASettings.TimeoutMs - (Now_ - mStarted);
-    if (mRemaining <= 0) or not FCheck(mFileName, Integer(mRemaining), mProblems) or
-      (Now_ - mStarted > ASettings.TimeoutMs) then
-    begin
-      Result.TimedOut := True;
-      Break;
-    end;
-    Inc(Result.Checked);
-    Result.Stamps := Result.Stamps + UnitStamps(AUnits, mFileName);
-    Result.Findings := Result.Findings + CountedFindings(mFileName, mProblems);
-  end;
-end;
-
-/// <summary>Ausgang in ARun festlegen; False, wenn nichts zu melden ist.</summary>
-function TAtlasBuildGateParticipant.Decide(const AProject: string; const ASettings: TAtlasGateSettings;
-  var ARun: TGateRun): Boolean;
-var
-  mCurrentKey: string;
-begin
-  Result := True;
-  if ARun.TimedOut then
-  begin
-    // Zeitlimit: Der Compile läuft ungehindert; was bis dahin gefunden wurde, steht trotzdem da.
-    ARun.Outcome := TAtlasGateOutcome.TimedOut;
-    ARun.NotifyTimeout := not FTimeoutNotified;
-    FTimeoutNotified := True;
-    Result := (Length(ARun.Findings) > 0) or ARun.NotifyTimeout;
-  end
-  else if Length(ARun.Findings) = 0 then
-  begin
-    Result := False;
-  end
-  else if ASettings.Gate <> TAtlasBuildGate.Block then
-  begin
-    ARun.Outcome := TAtlasGateOutcome.Reported;
-  end
-  else
-  begin
-    mCurrentKey := TAtlasBuildGateCheck.Key(AProject, ARun.Stamps, ARun.Findings);
-    if (mCurrentKey = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasBuildGateCheck.cOverrideMs) then
-    begin
-      ARun.Outcome := TAtlasGateOutcome.Overridden;
-      FBlockedKey := '';
-    end
-    else
-    begin
-      ARun.Outcome := TAtlasGateOutcome.Blocked;
-      FBlockedKey := mCurrentKey;
-      FBlockedAt := Now_;
-    end;
-  end;
-end;
-
 function TAtlasBuildGateParticipant.CancelCompile(const AProject: TAtlasCompileProject;
   out AReason: string): Boolean;
 var
@@ -474,6 +326,154 @@ begin
     end;
   end;
   FRemembered.AddOrSetValue(UpperCase(mPending.Project), mStamps);
+end;
+
+function TAtlasBuildGateParticipant.Now_: Int64;
+begin
+  if Assigned(FClock) then
+  begin
+    Result := FClock();
+  end
+  else
+  begin
+    Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+  end;
+end;
+
+/// <summary>Stände der Unit AFileName in AUnits.</summary>
+function UnitStamps(const AUnits: TAtlasGateUnits; const AFileName: string): TArray<string>;
+var
+  mItem: TAtlasGateUnit;
+begin
+  Result := nil;
+  for mItem in AUnits do
+  begin
+    if SameText(mItem.FileName, AFileName) then
+    begin
+      Result := Result + [mItem.Stamp];
+    end;
+  end;
+end;
+
+/// <summary>Probleme der Unit AFileName, die für das Gate zählen.</summary>
+function CountedFindings(const AFileName: string; const AProblems: TArray<TAtlasProblem>): TAtlasGateFindings;
+var
+  mProblem: TAtlasProblem;
+  mFinding: TAtlasGateFinding;
+begin
+  Result := nil;
+  for mProblem in AProblems do
+  begin
+    if TAtlasBuildGateCheck.Counts(mProblem) then
+    begin
+      mFinding.FileName := AFileName;
+      mFinding.Problem := mProblem;
+      Result := Result + [mFinding];
+    end;
+  end;
+end;
+
+function TAtlasBuildGateParticipant.PendingIndex(const AFileName: string): Integer;
+begin
+  for Result := 0 to FPending.Count - 1 do
+  begin
+    if SameText(FPending[Result].Project, AFileName) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasBuildGateParticipant.RememberedOf(const AProject: string): TDictionary<string, string>;
+begin
+  if not FRemembered.TryGetValue(UpperCase(AProject), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Stand vormerken: Gelingt der Compile, gilt er als letzter erfolgreicher.</summary>
+procedure TAtlasBuildGateParticipant.RememberPending(const AFileName: string; const AUnits: TAtlasGateUnits);
+var
+  mPending: TPending;
+  mIndex: Integer;
+begin
+  mPending.Project := AFileName;
+  mPending.Units := AUnits;
+  mIndex := PendingIndex(AFileName);
+  if mIndex >= 0 then
+  begin
+    FPending[mIndex] := mPending;
+  end
+  else
+  begin
+    FPending.Add(mPending);
+  end;
+end;
+
+function TAtlasBuildGateParticipant.RunChecks(const ASettings: TAtlasGateSettings; const AChanged: TArray<string>;
+  const AUnits: TAtlasGateUnits): TGateRun;
+var
+  mStarted, mRemaining: Int64;
+  mFileName: string;
+  mProblems: TArray<TAtlasProblem>;
+begin
+  Result := Default(TGateRun);
+  mStarted := Now_;
+  for mFileName in AChanged do
+  begin
+    mRemaining := ASettings.TimeoutMs - (Now_ - mStarted);
+    if (mRemaining <= 0) or not FCheck(mFileName, Integer(mRemaining), mProblems) or
+      (Now_ - mStarted > ASettings.TimeoutMs) then
+    begin
+      Result.TimedOut := True;
+      Break;
+    end;
+    Inc(Result.Checked);
+    Result.Stamps := Result.Stamps + UnitStamps(AUnits, mFileName);
+    Result.Findings := Result.Findings + CountedFindings(mFileName, mProblems);
+  end;
+end;
+
+/// <summary>Ausgang in ARun festlegen; False, wenn nichts zu melden ist.</summary>
+function TAtlasBuildGateParticipant.Decide(const AProject: string; const ASettings: TAtlasGateSettings;
+  var ARun: TGateRun): Boolean;
+var
+  mCurrentKey: string;
+begin
+  Result := True;
+  if ARun.TimedOut then
+  begin
+    // Zeitlimit: Der Compile läuft ungehindert; was bis dahin gefunden wurde, steht trotzdem da.
+    ARun.Outcome := TAtlasGateOutcome.TimedOut;
+    ARun.NotifyTimeout := not FTimeoutNotified;
+    FTimeoutNotified := True;
+    Result := (Length(ARun.Findings) > 0) or ARun.NotifyTimeout;
+  end
+  else if Length(ARun.Findings) = 0 then
+  begin
+    Result := False;
+  end
+  else if ASettings.Gate <> TAtlasBuildGate.Block then
+  begin
+    ARun.Outcome := TAtlasGateOutcome.Reported;
+  end
+  else
+  begin
+    mCurrentKey := TAtlasBuildGateCheck.Key(AProject, ARun.Stamps, ARun.Findings);
+    if (mCurrentKey = FBlockedKey) and (Now_ - FBlockedAt <= TAtlasBuildGateCheck.cOverrideMs) then
+    begin
+      ARun.Outcome := TAtlasGateOutcome.Overridden;
+      FBlockedKey := '';
+    end
+    else
+    begin
+      ARun.Outcome := TAtlasGateOutcome.Blocked;
+      FBlockedKey := mCurrentKey;
+      FBlockedAt := Now_;
+    end;
+  end;
 end;
 
 end.

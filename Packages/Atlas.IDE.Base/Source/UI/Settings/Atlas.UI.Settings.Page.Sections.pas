@@ -214,15 +214,15 @@ begin
   FPage := APart.FPage;
 end;
 
+function TAtlasSettingsSectionHost.NameOf(const AKey: string): string;
+begin
+  Result := FPart.NameOf(AKey);
+end;
+
 procedure TAtlasSettingsSectionHost.Detach;
 begin
   FPart := nil;
   FPage := nil;
-end;
-
-function TAtlasSettingsSectionHost.NameOf(const AKey: string): string;
-begin
-  Result := FPart.NameOf(AKey);
 end;
 
 procedure TAtlasSettingsSectionHost.AddTitle(const ACaption: string);
@@ -505,6 +505,55 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasSettingsSectionsPart.Load(const ASettings: TAtlasPluginSettings);
+var
+  mStore: IAtlasMemorySettingsStore;
+  mValues: IAtlasSettingsValues;
+  mSection: IAtlasSettingsSection;
+begin
+  if (Length(FSections) = 0) and (FBindings.Count = 0) then
+  begin
+    Exit;
+  end;
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  FBindings.Load(mStore);
+  mValues := Values(mStore);
+  for mSection in FSections do
+  begin
+    mSection.Load(mValues);
+  end;
+end;
+
+procedure TAtlasSettingsSectionsPart.Save(var ASettings: TAtlasPluginSettings);
+var
+  mStore: IAtlasMemorySettingsStore;
+  mSection: IAtlasSettingsSection;
+  mValues: IAtlasSettingsValues;
+begin
+  if (Length(FSections) = 0) and (FBindings.Count = 0) then
+  begin
+    Exit;
+  end;
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  FBindings.Save(mStore);
+  mValues := Values(mStore);
+  for mSection in FSections do
+  begin
+    mSection.Save(mValues);
+  end;
+  ASettings.Load(mStore);
+end;
+
+procedure TAtlasSettingsSectionsPart.WindowReady;
+var
+  mSection: IAtlasSettingsSection;
+begin
+  for mSection in FSections do
+  begin
+    mSection.WindowReady;
+  end;
+end;
+
 function TAtlasSettingsSectionsPart.SheetWith(const AArea: string; AByPage: Boolean): Integer;
 var
   mSheet, mIndex: Integer;
@@ -559,49 +608,6 @@ begin
   Result := -1;
 end;
 
-procedure TAtlasSettingsSectionsPart.Build;
-var
-  mItem: IInterface;
-  mProvider: IAtlasSettingsSectionProvider;
-  mPending: TAtlasPendingSections;
-  mIndex: Integer;
-begin
-  // Abschnitte der Module (#1455): in den Reiter ihrer Seite, hinter die Einstellungen von Base. Neue Reiter in der
-  // Reihenfolge des Katalogs, nicht in der zufälligen Reihenfolge der Anmeldung.
-  mPending := TAtlasPendingSections.Create(FPage.Catalog);
-  try
-    for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
-    begin
-      if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
-      begin
-        mPending.Add(mProvider, CreateSection(mProvider));
-      end;
-    end;
-    for mIndex in mPending.Order do
-    begin
-      AddBuilt(mPending.Providers[mIndex], mPending.Sections[mIndex]);
-    end;
-  finally
-    mPending.Free;
-  end;
-  FWatch := TAtlasSettingsSectionWatch.Create(Self);
-  FWatchRegistration := AtlasModuleRegistry.Subscribe(FWatch);
-end;
-
-function TAtlasSettingsSectionsPart.CreateSection(
-  const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
-begin
-  Result := nil;
-  try
-    Result := AProvider.CreateSection;
-  except
-    on E: Exception do
-    begin
-      TAtlasGuard.ReportProvider('settings', E);
-    end;
-  end;
-end;
-
 function TAtlasSettingsSectionsPart.AreaSheetCaption(const AArea: string): string;
 var
   mEnglish: Boolean;
@@ -617,33 +623,17 @@ begin
   end;
 end;
 
-function TAtlasSettingsSectionsPart.NameOf(const AKey: string): string;
+function TAtlasSettingsSectionsPart.CreateSection(
+  const AProvider: IAtlasSettingsSectionProvider): IAtlasSettingsSection;
 begin
-  Result := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
-  if Result = '' then
-  begin
-    raise EAtlasSettingsKey.CreateFmt(cSectionKeyMissing, [AKey]);
-  end;
-end;
-
-procedure TAtlasSettingsSectionsPart.MarkOwn(AControl: TControl; const AKeys: TArray<string>; AMark: Boolean);
-var
-  mNames: TArray<string>;
-  mKey, mName: string;
-begin
-  if Length(AKeys) = 0 then
-  begin
-    Exit;
-  end;
-  mNames := nil;
-  for mKey in AKeys do
-  begin
-    mNames := mNames + [NameOf(mKey)];
-  end;
-  FPage.Marks.Bind(AControl, mNames, AMark);
-  for mName in mNames do
-  begin
-    FPage.Bind(mName, AControl);
+  Result := nil;
+  try
+    Result := AProvider.CreateSection;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.ReportProvider('settings', E);
+    end;
   end;
 end;
 
@@ -780,49 +770,40 @@ begin
   FPage.Marks.Bind(AControl, [AName]);
 end;
 
+function TAtlasSettingsSectionsPart.NameOf(const AKey: string): string;
+begin
+  Result := TAtlasSettingsStoreValues.PluginName(FPage.Catalog, AKey);
+  if Result = '' then
+  begin
+    raise EAtlasSettingsKey.CreateFmt(cSectionKeyMissing, [AKey]);
+  end;
+end;
+
+procedure TAtlasSettingsSectionsPart.MarkOwn(AControl: TControl; const AKeys: TArray<string>; AMark: Boolean);
+var
+  mNames: TArray<string>;
+  mKey, mName: string;
+begin
+  if Length(AKeys) = 0 then
+  begin
+    Exit;
+  end;
+  mNames := nil;
+  for mKey in AKeys do
+  begin
+    mNames := mNames + [NameOf(mKey)];
+  end;
+  FPage.Marks.Bind(AControl, mNames, AMark);
+  for mName in mNames do
+  begin
+    FPage.Bind(mName, AControl);
+  end;
+end;
+
 function TAtlasSettingsSectionsPart.Values(const AStore: IAtlasMemorySettingsStore): IAtlasSettingsValues;
 begin
   Result := TAtlasSettingsStoreValues.Create(FPage.Catalog, AStore,
     TAtlasMemorySettingsStore.FromSettings(TAtlasPluginSettings.Defaults));
-end;
-
-procedure TAtlasSettingsSectionsPart.Load(const ASettings: TAtlasPluginSettings);
-var
-  mStore: IAtlasMemorySettingsStore;
-  mValues: IAtlasSettingsValues;
-  mSection: IAtlasSettingsSection;
-begin
-  if (Length(FSections) = 0) and (FBindings.Count = 0) then
-  begin
-    Exit;
-  end;
-  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  FBindings.Load(mStore);
-  mValues := Values(mStore);
-  for mSection in FSections do
-  begin
-    mSection.Load(mValues);
-  end;
-end;
-
-procedure TAtlasSettingsSectionsPart.Save(var ASettings: TAtlasPluginSettings);
-var
-  mStore: IAtlasMemorySettingsStore;
-  mSection: IAtlasSettingsSection;
-  mValues: IAtlasSettingsValues;
-begin
-  if (Length(FSections) = 0) and (FBindings.Count = 0) then
-  begin
-    Exit;
-  end;
-  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  FBindings.Save(mStore);
-  mValues := Values(mStore);
-  for mSection in FSections do
-  begin
-    mSection.Save(mValues);
-  end;
-  ASettings.Load(mStore);
 end;
 
 procedure TAtlasSettingsSectionsPart.DropMissing;
@@ -896,14 +877,33 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsSectionsPart.WindowReady;
+procedure TAtlasSettingsSectionsPart.Build;
 var
-  mSection: IAtlasSettingsSection;
+  mItem: IInterface;
+  mProvider: IAtlasSettingsSectionProvider;
+  mPending: TAtlasPendingSections;
+  mIndex: Integer;
 begin
-  for mSection in FSections do
-  begin
-    mSection.WindowReady;
+  // Abschnitte der Module (#1455): in den Reiter ihrer Seite, hinter die Einstellungen von Base. Neue Reiter in der
+  // Reihenfolge des Katalogs, nicht in der zufälligen Reihenfolge der Anmeldung.
+  mPending := TAtlasPendingSections.Create(FPage.Catalog);
+  try
+    for mItem in AtlasModuleRegistry.FindAll(IAtlasSettingsSectionProvider) do
+    begin
+      if Supports(mItem, IAtlasSettingsSectionProvider, mProvider) then
+      begin
+        mPending.Add(mProvider, CreateSection(mProvider));
+      end;
+    end;
+    for mIndex in mPending.Order do
+    begin
+      AddBuilt(mPending.Providers[mIndex], mPending.Sections[mIndex]);
+    end;
+  finally
+    mPending.Free;
   end;
+  FWatch := TAtlasSettingsSectionWatch.Create(Self);
+  FWatchRegistration := AtlasModuleRegistry.Subscribe(FWatch);
 end;
 
 function TAtlasSettingsSectionsPart.ShowSettingArgument(const AName, AArgument: string): Boolean;

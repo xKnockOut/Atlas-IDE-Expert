@@ -461,11 +461,6 @@ begin
   TAtlasIdeCodeQueryWindow.Release;
 end;
 
-class function TAtlasIdeCodeQuery.Enabled: Boolean;
-begin
-  Result := Active;
-end;
-
 class procedure TAtlasIdeCodeQuery.ShowWindow;
 var
   mFrame: TAtlasCodeQueryFrame;
@@ -504,6 +499,11 @@ end;
 class procedure TAtlasIdeCodeQuery.ThemeChanged;
 begin
   TAtlasIdeCodeQueryWindow.ApplyTheme;
+end;
+
+class function TAtlasIdeCodeQuery.Enabled: Boolean;
+begin
+  Result := Active;
 end;
 
 end.

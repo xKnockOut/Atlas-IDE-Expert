@@ -70,16 +70,6 @@ uses
 
 { THotspotHistory }
 
-class function THotspotHistory.IsoDate(ADate: TDateTime): string;
-begin
-  Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"Z"', ADate);
-end;
-
-class function THotspotHistory.Since(ANow: TDateTime; AMonths: Integer): TDateTime;
-begin
-  Result := IncMonth(ANow, -AMonths);
-end;
-
 class function THotspotHistory.GitLogArguments(ASince: TDateTime): TArray<string>;
 begin
   Result := TArray<string>.Create('log', '--no-merges', '--numstat', '-M', '--no-color',
@@ -118,6 +108,24 @@ begin
     AOld := Copy(AText, 1, mArrow - 1);
     ANew := Copy(AText, mArrow + 4, MaxInt);
   end;
+end;
+
+class function THotspotHistory.SvnLogArguments(ASince: TDateTime; const ATarget: string): TArray<string>;
+begin
+  Result := TArray<string>.Create('log', '-v', '--xml', '--non-interactive', '-r', 'HEAD:{' + IsoDate(ASince) + '}',
+    ATarget);
+end;
+
+class function THotspotHistory.TryParseIsoDate(const AText: string; out ADate: TDateTime): Boolean;
+var
+  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
+begin
+  ADate := 0;
+  Result := (Length(AText) >= 19) and (AText[5] = '-') and (AText[8] = '-') and (AText[11] = 'T') and
+    TryStrToInt(Copy(AText, 1, 4), mYear) and TryStrToInt(Copy(AText, 6, 2), mMonth) and
+    TryStrToInt(Copy(AText, 9, 2), mDay) and TryStrToInt(Copy(AText, 12, 2), mHour) and
+    TryStrToInt(Copy(AText, 15, 2), mMinute) and TryStrToInt(Copy(AText, 18, 2), mSecond) and
+    TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, 0, ADate);
 end;
 
 function CountOf(const AText: string): Integer;
@@ -213,22 +221,32 @@ begin
   end;
 end;
 
-class function THotspotHistory.SvnLogArguments(ASince: TDateTime; const ATarget: string): TArray<string>;
+class function THotspotHistory.IsoDate(ADate: TDateTime): string;
 begin
-  Result := TArray<string>.Create('log', '-v', '--xml', '--non-interactive', '-r', 'HEAD:{' + IsoDate(ASince) + '}',
-    ATarget);
+  Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"Z"', ADate);
 end;
 
-class function THotspotHistory.TryParseIsoDate(const AText: string; out ADate: TDateTime): Boolean;
+class procedure THotspotHistory.CountPatch(const ALines: TArray<string>; out AAdded, ADeleted: Integer);
 var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
+  mLine: string;
 begin
-  ADate := 0;
-  Result := (Length(AText) >= 19) and (AText[5] = '-') and (AText[8] = '-') and (AText[11] = 'T') and
-    TryStrToInt(Copy(AText, 1, 4), mYear) and TryStrToInt(Copy(AText, 6, 2), mMonth) and
-    TryStrToInt(Copy(AText, 9, 2), mDay) and TryStrToInt(Copy(AText, 12, 2), mHour) and
-    TryStrToInt(Copy(AText, 15, 2), mMinute) and TryStrToInt(Copy(AText, 18, 2), mSecond) and
-    TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, 0, ADate);
+  AAdded := 0;
+  ADeleted := 0;
+  for mLine in ALines do
+  begin
+    if StartsStr('+++', mLine) or StartsStr('---', mLine) then
+    begin
+      Continue;
+    end
+    else if StartsStr('+', mLine) then
+    begin
+      Inc(AAdded);
+    end
+    else if StartsStr('-', mLine) then
+    begin
+      Inc(ADeleted);
+    end;
+  end;
 end;
 
 /// <summary>Zeichencode der Entität AName (amp, lt, gt, quot, apos, #nn, #xhh); -1 unbekannt.</summary>
@@ -641,27 +659,9 @@ begin
   end;
 end;
 
-class procedure THotspotHistory.CountPatch(const ALines: TArray<string>; out AAdded, ADeleted: Integer);
-var
-  mLine: string;
+class function THotspotHistory.Since(ANow: TDateTime; AMonths: Integer): TDateTime;
 begin
-  AAdded := 0;
-  ADeleted := 0;
-  for mLine in ALines do
-  begin
-    if StartsStr('+++', mLine) or StartsStr('---', mLine) then
-    begin
-      Continue;
-    end
-    else if StartsStr('+', mLine) then
-    begin
-      Inc(AAdded);
-    end
-    else if StartsStr('-', mLine) then
-    begin
-      Inc(ADeleted);
-    end;
-  end;
+  Result := IncMonth(ANow, -AMonths);
 end;
 
 end.

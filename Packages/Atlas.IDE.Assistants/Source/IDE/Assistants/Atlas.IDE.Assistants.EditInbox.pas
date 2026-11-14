@@ -55,6 +55,8 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.Core.Editor.WorkspacePlan;
 
+{ TAtlasIdeEditInbox }
+
 constructor TAtlasIdeEditInbox.Create(const AFiles: IAtlasEditorFiles; const AOnMessage: TAtlasEditInboxProc);
 begin
   inherited Create;
@@ -80,20 +82,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeEditInbox.Clean;
-begin
-  // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on Exception do
-      ;
-  end;
-end;
-
 procedure TAtlasIdeEditInbox.Tick(Sender: TObject);
 var
   mRequestFile: string;
@@ -112,6 +100,20 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Files, E);
+  end;
+end;
+
+procedure TAtlasIdeEditInbox.Clean;
+begin
+  // Reste eines früheren Prozesses mit derselben Nummer oder dieses Laufs.
+  try
+    if TDirectory.Exists(FFolder) then
+    begin
+      TDirectory.Delete(FFolder, True);
+    end;
+  except
+    on Exception do
+      ;
   end;
 end;
 

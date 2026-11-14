@@ -259,6 +259,8 @@ begin
   end;
 end;
 
+{ TAttributeUsageInvalidRule }
+
 function TAttributeUsageInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cAttributeUsageInvalidRuleId, TRuleSeverity.Error,

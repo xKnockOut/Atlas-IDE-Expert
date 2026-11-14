@@ -198,6 +198,8 @@ const
   /// älteren Server (#2135).</summary>
   cUnprocessable = 422;
 
+{ TAtlasGitHubTracker }
+
 function TAtlasGitHubTracker.Name: string;
 begin
   Result := TAtlasGitHubApi.cProviderName;

@@ -220,6 +220,8 @@ begin
   Result.Indexed := (Pos('[', mHead) > 0) or HasWord(mText, 'index') or (ASymbol.MaxArgs > 0);
 end;
 
+{ TTypeShape }
+
 class function TTypeShape.Read(const AUnit: TUnitIndex; const ALines: TArray<string>;
   const ATypeName: string): TTypeShape;
 var
@@ -413,27 +415,22 @@ begin
   Result := nil;
 end;
 
-class function TClassBodies.ParameterNames(const AHeader: string): TArray<string>;
+class function TClassBodies.Body(const AShape: TTypeShape; const AHeader, ADeclaration, AName: string;
+  const AOptions: TClassBodyOptions; const ALineBreak: string): string;
 var
-  mGroup, mNames, mName: string;
+  mStub: TArray<string>;
 begin
-  Result := nil;
-  for mGroup in ParameterGroups(AHeader) do
+  mStub := nil;
+  if AOptions.BodyStubs then
   begin
-    mNames := Trim(mGroup);
-    if Pos(':', mNames) > 0 then
-    begin
-      mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
-    end;
-    for mName in mNames.Split([',']) do
-    begin
-      // Letztes Wort: const, var, out und constref stehen davor.
-      if Trim(mName) <> '' then
-      begin
-        Result := Result + [Trim(Copy(Trim(mName), LastDelimiter(' ', Trim(mName)) + 1, MaxInt))];
-      end;
-    end;
+    mStub := StubLines(AShape, ADeclaration, AName, AOptions.Indent);
   end;
+  if mStub = nil then
+  begin
+    mStub := TArray<string>.Create('');
+  end;
+  Result := AHeader + ALineBreak + 'begin' + ALineBreak + TTextLines.JoinLines(mStub, ALineBreak) + ALineBreak +
+    'end;';
 end;
 
 /// <summary>"inherited Name(A, B)" mit den Parametern des Kopfs.</summary>
@@ -543,24 +540,6 @@ begin
   end;
 end;
 
-class function TClassBodies.Body(const AShape: TTypeShape; const AHeader, ADeclaration, AName: string;
-  const AOptions: TClassBodyOptions; const ALineBreak: string): string;
-var
-  mStub: TArray<string>;
-begin
-  mStub := nil;
-  if AOptions.BodyStubs then
-  begin
-    mStub := StubLines(AShape, ADeclaration, AName, AOptions.Indent);
-  end;
-  if mStub = nil then
-  begin
-    mStub := TArray<string>.Create('');
-  end;
-  Result := AHeader + ALineBreak + 'begin' + ALineBreak + TTextLines.JoinLines(mStub, ALineBreak) + ALineBreak +
-    'end;';
-end;
-
 class function TClassBodies.Wrapped(const AShape: TTypeShape; const AOptions: TClassBodyOptions;
   const ABodies, ALineBreak: string): string;
 var
@@ -595,6 +574,29 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TClassBodies.ParameterNames(const AHeader: string): TArray<string>;
+var
+  mGroup, mNames, mName: string;
+begin
+  Result := nil;
+  for mGroup in ParameterGroups(AHeader) do
+  begin
+    mNames := Trim(mGroup);
+    if Pos(':', mNames) > 0 then
+    begin
+      mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
+    end;
+    for mName in mNames.Split([',']) do
+    begin
+      // Letztes Wort: const, var, out und constref stehen davor.
+      if Trim(mName) <> '' then
+      begin
+        Result := Result + [Trim(Copy(Trim(mName), LastDelimiter(' ', Trim(mName)) + 1, MaxInt))];
+      end;
+    end;
+  end;
 end;
 
 end.

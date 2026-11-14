@@ -435,30 +435,36 @@ begin
   inherited Destroy;
 end;
 
-procedure TDesignerBarState.Reset;
+procedure TDesignerBarState.Tick(Sender: TObject);
 begin
+  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
+  if not FHost.Guard then
+  begin
+    TAtlasKeyHook.Remove(FKeyClient);
+    FTabOrder.Hide;
+    FCommands.Hide;
+    Exit;
+  end;
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
-    FHost.Clear;
+    TAtlasKeyHook.Remove(FKeyClient);
     FTabOrder.Hide;
-    CloseSearch;
-  end;
-  UpdateKeyClient;
-  ApplyTheme;
-end;
-
-procedure TDesignerBarState.ApplyTheme;
-var
-  mColors: TAtlasColors;
-begin
-  mColors := TAtlasIdeStyle.BarColors;
-  FHost.ForEach(
-    procedure(ABar: TControl)
+    FCommands.Hide;
+    if FHost.Count > 0 then
     begin
-      TAtlasDesignerBar(ABar).ApplyColors(mColors);
+      FHost.Clear;
+    end;
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      FHost.Ensure;
+      UpdateKeyClient;
+      UpdateBars;
+      FTabOrder.Update;
+      FCommands.Tick;
     end);
-  FTabOrder.ApplyTheme;
-  FCommands.ApplyTheme;
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -516,40 +522,6 @@ begin
         end);
     end;
   Result := mBar;
-end;
-
-function TDesignerBarState.FindNonVisualAction: TContainedAction;
-var
-  mServices: INTAServices;
-  mList: TCustomActionList;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  mList := mServices.ActionList;
-  // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
-  if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
-    SameText(mList.Actions[FActionIndex].Name, cNonVisualAction) then
-  begin
-    Exit(mList.Actions[FActionIndex]);
-  end;
-  FActionIndex := -1;
-  for mIndex := 0 to mList.ActionCount - 1 do
-  begin
-    if SameText(mList.Actions[mIndex].Name, cNonVisualAction) then
-    begin
-      FActionIndex := mIndex;
-      Exit(mList.Actions[mIndex]);
-    end;
-  end;
-  if not FActionLogged then
-  begin
-    FActionLogged := True;
-    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + cNonVisualAction + ' nicht gefunden');
-  end;
 end;
 
 function TDesignerBarState.Buttons: TArray<TAtlasDesignerButton>;
@@ -655,38 +627,6 @@ begin
   FTabOrder.UpdateKeys(mWanted);
 end;
 
-procedure TDesignerBarState.Tick(Sender: TObject);
-begin
-  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
-  if not FHost.Guard then
-  begin
-    TAtlasKeyHook.Remove(FKeyClient);
-    FTabOrder.Hide;
-    FCommands.Hide;
-    Exit;
-  end;
-  if not TAtlasIdeSettings.Current.EditorDesignerBar then
-  begin
-    TAtlasKeyHook.Remove(FKeyClient);
-    FTabOrder.Hide;
-    FCommands.Hide;
-    if FHost.Count > 0 then
-    begin
-      FHost.Clear;
-    end;
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      FHost.Ensure;
-      UpdateKeyClient;
-      UpdateBars;
-      FTabOrder.Update;
-      FCommands.Tick;
-    end);
-end;
-
 procedure TDesignerBarState.Command(const AId: string);
 begin
   if FCommands.Execute(AId) then
@@ -762,18 +702,38 @@ begin
   FAlignMenu.Popup(APoint.X, APoint.Y);
 end;
 
-procedure TDesignerBarState.AlignMenuClick(Sender: TObject);
+function TDesignerBarState.FindNonVisualAction: TContainedAction;
 var
-  mKind: TAtlasAlignKind;
+  mServices: INTAServices;
+  mList: TCustomActionList;
+  mIndex: Integer;
 begin
-  mKind := TAtlasAlignKind(TMenuItem(Sender).Tag);
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
+  Result := nil;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  mList := mServices.ActionList;
+  // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
+  if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
+    SameText(mList.Actions[FActionIndex].Name, cNonVisualAction) then
+  begin
+    Exit(mList.Actions[FActionIndex]);
+  end;
+  FActionIndex := -1;
+  for mIndex := 0 to mList.ActionCount - 1 do
+  begin
+    if SameText(mList.Actions[mIndex].Name, cNonVisualAction) then
     begin
-      FLastAlign := mKind;
-      AlignSelection(mKind);
-      UpdateBars;
-    end);
+      FActionIndex := mIndex;
+      Exit(mList.Actions[mIndex]);
+    end;
+  end;
+  if not FActionLogged then
+  begin
+    FActionLogged := True;
+    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + cNonVisualAction + ' nicht gefunden');
+  end;
 end;
 
 procedure TDesignerBarState.ToggleNonVisual;
@@ -792,6 +752,20 @@ begin
     Exit;
   end;
   mAction.Execute;
+end;
+
+procedure TDesignerBarState.AlignMenuClick(Sender: TObject);
+var
+  mKind: TAtlasAlignKind;
+begin
+  mKind := TAtlasAlignKind(TMenuItem(Sender).Tag);
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      FLastAlign := mKind;
+      AlignSelection(mKind);
+      UpdateBars;
+    end);
 end;
 
 /// <summary>Optionen des Suchfensters: Formular, gemerkte Wahl und die erste Auswahl im Designer.</summary>
@@ -862,35 +836,6 @@ begin
     end;
 end;
 
-procedure TDesignerBarState.OpenSearch;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mOptions: TAtlasComponentSearchOptions;
-  mArea: TRect;
-  mWindow: TAtlasComponentSearchWindow;
-begin
-  if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNoForm));
-    Exit;
-  end;
-  // Schon offen: neu aufbauen, das Formular kann ein anderes sein.
-  CloseSearch;
-  mOptions := SearchOptions(mEditor, mRoot);
-  mWindow := TAtlasComponentSearchWindow.CreateSearch(nil, mOptions,
-    TAtlasDesignerSearchItems.ItemsOf(mRoot, TAtlasDesignerAccess.DesignerOf(mEditor)),
-    TAtlasIdeStyle.Colors);
-  FSearch := mWindow;
-  WireSearch(mWindow, mOptions.Compact);
-  mArea := Screen.WorkAreaRect;
-  if mRoot is TWinControl then
-  begin
-    mArea := Screen.MonitorFromWindow(TWinControl(mRoot).Handle).WorkareaRect;
-  end;
-  mWindow.ShowOver(mArea);
-end;
-
 procedure TDesignerBarState.CloseSearch;
 var
   mWindow: TAtlasComponentSearchWindow;
@@ -922,6 +867,61 @@ begin
       end;
       TAtlasGuard.Run(TAtlasFeature.DesignerBar, mAction);
     end);
+end;
+
+procedure TDesignerBarState.Reset;
+begin
+  if not TAtlasIdeSettings.Current.EditorDesignerBar then
+  begin
+    FHost.Clear;
+    FTabOrder.Hide;
+    CloseSearch;
+  end;
+  UpdateKeyClient;
+  ApplyTheme;
+end;
+
+procedure TDesignerBarState.ApplyTheme;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := TAtlasIdeStyle.BarColors;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasDesignerBar(ABar).ApplyColors(mColors);
+    end);
+  FTabOrder.ApplyTheme;
+  FCommands.ApplyTheme;
+end;
+
+procedure TDesignerBarState.OpenSearch;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mOptions: TAtlasComponentSearchOptions;
+  mArea: TRect;
+  mWindow: TAtlasComponentSearchWindow;
+begin
+  if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchNoForm));
+    Exit;
+  end;
+  // Schon offen: neu aufbauen, das Formular kann ein anderes sein.
+  CloseSearch;
+  mOptions := SearchOptions(mEditor, mRoot);
+  mWindow := TAtlasComponentSearchWindow.CreateSearch(nil, mOptions,
+    TAtlasDesignerSearchItems.ItemsOf(mRoot, TAtlasDesignerAccess.DesignerOf(mEditor)),
+    TAtlasIdeStyle.Colors);
+  FSearch := mWindow;
+  WireSearch(mWindow, mOptions.Compact);
+  mArea := Screen.WorkAreaRect;
+  if mRoot is TWinControl then
+  begin
+    mArea := Screen.MonitorFromWindow(TWinControl(mRoot).Handle).WorkareaRect;
+  end;
+  mWindow.ShowOver(mArea);
 end;
 
 { TAtlasIdeDesignerBar }

@@ -78,16 +78,6 @@ end;
 
 { TRotatingFileStream }
 
-class function TRotatingFileStream.FallbackName(const AFileName, ATag: string): string;
-begin
-  Result := ChangeFileExt(AFileName, '') + '.' + ATag + ExtractFileExt(AFileName);
-end;
-
-constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string);
-begin
-  Create(AFileName, AAppend, AFallbackTag, cDefaultMaxBytes);
-end;
-
 constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string;
   AMaxBytes: Int64);
 var
@@ -126,25 +116,15 @@ begin
   end;
 end;
 
+constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string);
+begin
+  Create(AFileName, AAppend, AFallbackTag, cDefaultMaxBytes);
+end;
+
 destructor TRotatingFileStream.Destroy;
 begin
   FStream.Free;
   inherited;
-end;
-
-procedure TRotatingFileStream.Rotate;
-var
-  mPrevious: string;
-begin
-  mPrevious := FFileName + '.1';
-  FreeAndNil(FStream);
-  if FileExists(mPrevious) then
-  begin
-    System.SysUtils.DeleteFile(mPrevious);
-  end;
-  // Klappt das Umbenennen nicht, beginnt die Datei eben von vorn.
-  RenameFile(FFileName, mPrevious); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
-  FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
 end;
 
 function TRotatingFileStream.GetSize: Int64;
@@ -169,6 +149,26 @@ end;
 function TRotatingFileStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
 begin
   Result := FStream.Seek(Offset, Origin);
+end;
+
+procedure TRotatingFileStream.Rotate;
+var
+  mPrevious: string;
+begin
+  mPrevious := FFileName + '.1';
+  FreeAndNil(FStream);
+  if FileExists(mPrevious) then
+  begin
+    System.SysUtils.DeleteFile(mPrevious);
+  end;
+  // Klappt das Umbenennen nicht, beginnt die Datei eben von vorn.
+  RenameFile(FFileName, mPrevious); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
+  FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
+end;
+
+class function TRotatingFileStream.FallbackName(const AFileName, ATag: string): string;
+begin
+  Result := ChangeFileExt(AFileName, '') + '.' + ATag + ExtractFileExt(AFileName);
 end;
 
 initialization

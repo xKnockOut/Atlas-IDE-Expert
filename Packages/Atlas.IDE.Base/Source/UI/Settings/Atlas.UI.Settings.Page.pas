@@ -175,6 +175,244 @@ begin
   FSearch.OnOpen := SearchOpen;
 end;
 
+procedure TAtlasSettingsPage.CreateWnd;
+var
+  mPage: TAtlasSettingsNodePage;
+  mPart: TAtlasSettingsPagePart;
+  mActivity: IInterface;
+begin
+  mActivity := TAtlasActivity.Scope(cWindowActivity);
+  inherited CreateWnd;
+  // Je Knoten ein Reiter, in der Reihenfolge des Baums.
+  for mPage in FNodePages do
+  begin
+    if mPage.Sheet.PageControl = nil then
+    begin
+      mPage.Sheet.PageControl := FPages;
+      mPage.Sheet.TabVisible := False;
+    end;
+  end;
+  // Der Baum braucht ein Fenster für seine Knoten (wie die Reiter); zeigt die zuletzt gewählte Seite.
+  FillTree;
+  // Listen der Teile brauchen ein Fenster; vorher bleiben sie leer.
+  for mPart in FParts do
+  begin
+    mPart.WindowReady;
+  end;
+  // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
+  if FPendingReveal <> '' then
+  begin
+    ApplyReveal(FPendingReveal);
+  end;
+end;
+
+function TAtlasSettingsPage.CurrentSettings: TAtlasPluginSettings;
+begin
+  Result := FWidths;
+  SaveTo(Result);
+end;
+
+procedure TAtlasSettingsPage.RefreshMarks;
+begin
+  Part<TAtlasSettingsTransferPart>.ShowModified;
+  FExperimentalBanner.Visible := FMarks.HasExperimental and
+    not Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked;
+  UpdateLocks;
+  // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt, auch im Baum.
+  if FMarks.Filter = sfModified then
+  begin
+    FMarks.ApplyFilter(sfModified);
+    if ListReady(FTree) then
+    begin
+      FillTree;
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsPage.ResetNames(const ANames: TArray<string>);
+begin
+  if Length(ANames) = 0 then
+  begin
+    Exit;
+  end;
+  LoadFrom(TAtlasSettingsTransfer.ResetNames(Catalog, CurrentSettings, ANames));
+end;
+
+procedure TAtlasSettingsPage.ResetPage;
+var
+  mCurrent, mIndex: Integer;
+  mNames: TArray<string>;
+begin
+  // Ohne Fenster hängen die Reiter noch nicht am PageControl.
+  mCurrent := ActiveNode;
+  if mCurrent < 0 then
+  begin
+    Exit;
+  end;
+  // Unterpunkt: nur seine Einstellungen; Hauptknoten: der ganze Bereich mit allen Unterpunkten (#890).
+  if FNodePages[mCurrent].Node <> '' then
+  begin
+    mNames := FMarks.NamesIn(FNodePages[mCurrent].Box);
+  end
+  else
+  begin
+    mNames := nil;
+    for mIndex := 0 to High(FNodePages) do
+    begin
+      if FNodePages[mIndex].Area = FNodePages[mCurrent].Area then
+      begin
+        mNames := mNames + FMarks.NamesIn(FNodePages[mIndex].Box);
+      end;
+    end;
+  end;
+  ResetNames(mNames);
+end;
+
+procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
+begin
+  // Während des Ladens lösen die Elemente keine Neuberechnung der Punkte aus.
+  FMarks.BeginLoad;
+  try
+    LoadControls(ASettings);
+  finally
+    FMarks.EndLoad;
+  end;
+  RefreshMarks;
+end;
+
+function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;
+begin
+  Result := ControlOf(AKey) <> nil;
+  if not Result then
+  begin
+    Exit;
+  end;
+  if HandleAllocated then
+  begin
+    ApplyReveal(AKey);
+  end
+  else
+  begin
+    FPendingReveal := AKey;
+  end;
+end;
+
+function TAtlasSettingsPage.RevealTarget(AControl: TControl): TControl;
+var
+  mNames: TArray<string>;
+  mLock: TAtlasSettingsLock;
+  mMaster: TControl;
+begin
+  // Gesperrt (#890): den Hauptschalter zeigen, der sie freigibt.
+  Result := AControl;
+  mNames := FMarks.NamesOf(AControl);
+  if (Length(mNames) = 0) or (FGroups = nil) then
+  begin
+    Exit;
+  end;
+  mLock := LockOfName(mNames[0]);
+  if mLock.Locked then
+  begin
+    mMaster := FMarks.ControlOfName(mLock.Master);
+    if mMaster <> nil then
+    begin
+      Result := mMaster;
+    end;
+  end;
+end;
+
+/// <summary>Rollt AControl in seinem Kasten ins Bild.</summary>
+procedure ScrollToControl(AControl: TControl);
+var
+  mParent: TWinControl;
+begin
+  mParent := AControl.Parent;
+  while (mParent <> nil) and not (mParent is TScrollBox) do
+  begin
+    mParent := mParent.Parent;
+  end;
+  if mParent is TScrollBox then
+  begin
+    TScrollBox(mParent).ScrollInView(AControl);
+  end;
+end;
+
+/// <summary>Zeile hervorheben: Kontrollkästchen fett, sonst die Beschriftung der Zeile.</summary>
+procedure HighlightRow(AControl: TControl);
+var
+  mChild: Integer;
+begin
+  if AControl is TCheckBox then
+  begin
+    TCheckBox(AControl).Font.Style := [fsBold];
+    Exit;
+  end;
+  if AControl.Parent = nil then
+  begin
+    Exit;
+  end;
+  for mChild := 0 to AControl.Parent.ControlCount - 1 do
+  begin
+    if AControl.Parent.Controls[mChild] is TLabel then
+    begin
+      TLabel(AControl.Parent.Controls[mChild]).Font.Style := [fsBold];
+    end;
+  end;
+end;
+
+/// <summary>Fokus nur mit sichtbarer Form: CanFocus allein lässt eine noch verborgene Form durch („kann den Fokus
+/// nicht erhalten“).</summary>
+procedure FocusShown(AControl: TControl);
+begin
+  if (AControl is TWinControl) and TWinControl(AControl).CanFocus and (GetParentForm(AControl) <> nil) and
+    GetParentForm(AControl).Visible then
+  begin
+    TWinControl(AControl).SetFocus;
+  end;
+end;
+
+procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
+var
+  mControl: TControl;
+begin
+  FPendingReveal := '';
+  mControl := ControlOf(AKey);
+  if mControl = nil then
+  begin
+    Exit;
+  end;
+  mControl := RevealTarget(mControl);
+  // Knoten des Elements wählen, wie ein Klick im Baum links.
+  SelectPage(PageOf(mControl));
+  ScrollToControl(mControl);
+  HighlightRow(mControl);
+  FocusShown(mControl);
+end;
+
+procedure TAtlasSettingsPage.ExperimentalAllowClick(Sender: TObject);
+begin
+  // Wie ein Klick auf das Kontrollkästchen: Punkte und Hinweis folgen über die Bindung.
+  Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked := True;
+end;
+
+// Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
+// Auflösung (Atlas.Core.Projects.Matching).
+
+// Serverzugang (#1287): nur auf Klick, Zustand aus der Sitzung.
+
+procedure TAtlasSettingsPage.FilterChange(Sender: TObject);
+begin
+  if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
+  begin
+    FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
+  end;
+  // Knoten ohne Treffer fallen aus dem Baum (#890).
+  if ListReady(FTree) then
+  begin
+    FillTree;
+  end;
+end;
+
 procedure TAtlasSettingsPage.SearchOpen(AHit: TAtlasSettingHit);
 begin
   if SameText(AHit.Module, Scope.Switch) and Reveal(AHit.Name) then
@@ -264,143 +502,22 @@ begin
   FMarks.MarkExperimental(TAtlasExperimental.PluginNames(Catalog));
 end;
 
-procedure TAtlasSettingsPage.ExperimentalAllowClick(Sender: TObject);
-begin
-  // Wie ein Klick auf das Kontrollkästchen: Punkte und Hinweis folgen über die Bindung.
-  Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked := True;
-end;
-
-procedure TAtlasSettingsPage.FilterChange(Sender: TObject);
-begin
-  if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
-  begin
-    FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
-  end;
-  // Knoten ohne Treffer fallen aus dem Baum (#890).
-  if ListReady(FTree) then
-  begin
-    FillTree;
-  end;
-end;
-
-procedure TAtlasSettingsPage.SetTitle(const ACaption: string);
-begin
-  FTitle.Caption := ACaption;
-end;
-
-function TAtlasSettingsPage.Reveal(const AKey: string): Boolean;
-begin
-  Result := ControlOf(AKey) <> nil;
-  if not Result then
-  begin
-    Exit;
-  end;
-  if HandleAllocated then
-  begin
-    ApplyReveal(AKey);
-  end
-  else
-  begin
-    FPendingReveal := AKey;
-  end;
-end;
-
-/// <summary>Rollt AControl in seinem Kasten ins Bild.</summary>
-procedure ScrollToControl(AControl: TControl);
+procedure TAtlasSettingsPage.LoadControls(const ASettings: TAtlasPluginSettings);
 var
-  mParent: TWinControl;
+  mPart: TAtlasSettingsPagePart;
 begin
-  mParent := AControl.Parent;
-  while (mParent <> nil) and not (mParent is TScrollBox) do
+  FWidths := ASettings;
+  FSearch.SetAvailable(ASettings.SettingsSearch);
+  FBindings.Load(TAtlasMemorySettingsStore.FromSettings(ASettings));
+  for mPart in FParts do
   begin
-    mParent := mParent.Parent;
-  end;
-  if mParent is TScrollBox then
-  begin
-    TScrollBox(mParent).ScrollInView(AControl);
+    mPart.Load(ASettings);
   end;
 end;
 
-/// <summary>Zeile hervorheben: Kontrollkästchen fett, sonst die Beschriftung der Zeile.</summary>
-procedure HighlightRow(AControl: TControl);
-var
-  mChild: Integer;
-begin
-  if AControl is TCheckBox then
-  begin
-    TCheckBox(AControl).Font.Style := [fsBold];
-    Exit;
-  end;
-  if AControl.Parent = nil then
-  begin
-    Exit;
-  end;
-  for mChild := 0 to AControl.Parent.ControlCount - 1 do
-  begin
-    if AControl.Parent.Controls[mChild] is TLabel then
-    begin
-      TLabel(AControl.Parent.Controls[mChild]).Font.Style := [fsBold];
-    end;
-  end;
-end;
 
-/// <summary>Fokus nur mit sichtbarer Form: CanFocus allein lässt eine noch verborgene Form durch („kann den Fokus
-/// nicht erhalten“).</summary>
-procedure FocusShown(AControl: TControl);
-begin
-  if (AControl is TWinControl) and TWinControl(AControl).CanFocus and (GetParentForm(AControl) <> nil) and
-    GetParentForm(AControl).Visible then
-  begin
-    TWinControl(AControl).SetFocus;
-  end;
-end;
+// Prüfregeln (#909).
 
-function TAtlasSettingsPage.RevealTarget(AControl: TControl): TControl;
-var
-  mNames: TArray<string>;
-  mLock: TAtlasSettingsLock;
-  mMaster: TControl;
-begin
-  // Gesperrt (#890): den Hauptschalter zeigen, der sie freigibt.
-  Result := AControl;
-  mNames := FMarks.NamesOf(AControl);
-  if (Length(mNames) = 0) or (FGroups = nil) then
-  begin
-    Exit;
-  end;
-  mLock := LockOfName(mNames[0]);
-  if mLock.Locked then
-  begin
-    mMaster := FMarks.ControlOfName(mLock.Master);
-    if mMaster <> nil then
-    begin
-      Result := mMaster;
-    end;
-  end;
-end;
-
-procedure TAtlasSettingsPage.ApplyReveal(const AKey: string);
-var
-  mControl: TControl;
-begin
-  FPendingReveal := '';
-  mControl := ControlOf(AKey);
-  if mControl = nil then
-  begin
-    Exit;
-  end;
-  mControl := RevealTarget(mControl);
-  // Knoten des Elements wählen, wie ein Klick im Baum links.
-  SelectPage(PageOf(mControl));
-  ScrollToControl(mControl);
-  HighlightRow(mControl);
-  FocusShown(mControl);
-end;
-
-// Art und Hauptbranch je Projekt (#1286): wie die Tabelle Projekte der Seite Issue-Tracker (#1261), dieselbe
-// Auflösung (Atlas.Core.Projects.Matching).
-
-// Serverzugang (#1287): nur auf Klick, Zustand aus der Sitzung.
 
 procedure TAtlasSettingsPage.BindControls;
 var
@@ -415,128 +532,6 @@ begin
   for mIndex := 0 to FBindings.Count - 1 do
   begin
     FMarks.Bind(FBindings.Item(mIndex).Control, [FBindings.Item(mIndex).Name]);
-  end;
-end;
-
-function TAtlasSettingsPage.CurrentSettings: TAtlasPluginSettings;
-begin
-  Result := FWidths;
-  SaveTo(Result);
-end;
-
-procedure TAtlasSettingsPage.RefreshMarks;
-begin
-  Part<TAtlasSettingsTransferPart>.ShowModified;
-  FExperimentalBanner.Visible := FMarks.HasExperimental and
-    not Part<TAtlasSettingsGeneralPart>.ExperimentalEnabled.Checked;
-  UpdateLocks;
-  // Geänderte Werte ändern sich mit jeder Eingabe; der Filter folgt, auch im Baum.
-  if FMarks.Filter = sfModified then
-  begin
-    FMarks.ApplyFilter(sfModified);
-    if ListReady(FTree) then
-    begin
-      FillTree;
-    end;
-  end;
-end;
-
-procedure TAtlasSettingsPage.ResetNames(const ANames: TArray<string>);
-begin
-  if Length(ANames) = 0 then
-  begin
-    Exit;
-  end;
-  LoadFrom(TAtlasSettingsTransfer.ResetNames(Catalog, CurrentSettings, ANames));
-end;
-
-procedure TAtlasSettingsPage.ResetPage;
-var
-  mCurrent, mIndex: Integer;
-  mNames: TArray<string>;
-begin
-  // Ohne Fenster hängen die Reiter noch nicht am PageControl.
-  mCurrent := ActiveNode;
-  if mCurrent < 0 then
-  begin
-    Exit;
-  end;
-  // Unterpunkt: nur seine Einstellungen; Hauptknoten: der ganze Bereich mit allen Unterpunkten (#890).
-  if FNodePages[mCurrent].Node <> '' then
-  begin
-    mNames := FMarks.NamesIn(FNodePages[mCurrent].Box);
-  end
-  else
-  begin
-    mNames := nil;
-    for mIndex := 0 to High(FNodePages) do
-    begin
-      if FNodePages[mIndex].Area = FNodePages[mCurrent].Area then
-      begin
-        mNames := mNames + FMarks.NamesIn(FNodePages[mIndex].Box);
-      end;
-    end;
-  end;
-  ResetNames(mNames);
-end;
-
-procedure TAtlasSettingsPage.CreateWnd;
-var
-  mPage: TAtlasSettingsNodePage;
-  mPart: TAtlasSettingsPagePart;
-  mActivity: IInterface;
-begin
-  mActivity := TAtlasActivity.Scope(cWindowActivity);
-  inherited CreateWnd;
-  // Je Knoten ein Reiter, in der Reihenfolge des Baums.
-  for mPage in FNodePages do
-  begin
-    if mPage.Sheet.PageControl = nil then
-    begin
-      mPage.Sheet.PageControl := FPages;
-      mPage.Sheet.TabVisible := False;
-    end;
-  end;
-  // Der Baum braucht ein Fenster für seine Knoten (wie die Reiter); zeigt die zuletzt gewählte Seite.
-  FillTree;
-  // Listen der Teile brauchen ein Fenster; vorher bleiben sie leer.
-  for mPart in FParts do
-  begin
-    mPart.WindowReady;
-  end;
-  // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
-  if FPendingReveal <> '' then
-  begin
-    ApplyReveal(FPendingReveal);
-  end;
-end;
-
-
-// Prüfregeln (#909).
-
-
-procedure TAtlasSettingsPage.LoadFrom(const ASettings: TAtlasPluginSettings);
-begin
-  // Während des Ladens lösen die Elemente keine Neuberechnung der Punkte aus.
-  FMarks.BeginLoad;
-  try
-    LoadControls(ASettings);
-  finally
-    FMarks.EndLoad;
-  end;
-  RefreshMarks;
-end;
-
-procedure TAtlasSettingsPage.LoadControls(const ASettings: TAtlasPluginSettings);
-var
-  mPart: TAtlasSettingsPagePart;
-begin
-  FWidths := ASettings;
-  FSearch.SetAvailable(ASettings.SettingsSearch);
-  FBindings.Load(TAtlasMemorySettingsStore.FromSettings(ASettings));
-  for mPart in FParts do
-  begin
-    mPart.Load(ASettings);
   end;
 end;
 
@@ -555,10 +550,15 @@ begin
   ASettings.Normalize;
 end;
 
-
 function TAtlasSettingsPage.SheetCountForTests: Integer;
 begin
   Result := Length(FSheets);
+end;
+
+
+procedure TAtlasSettingsPage.SetTitle(const ACaption: string);
+begin
+  FTitle.Caption := ACaption;
 end;
 
 end.

@@ -268,6 +268,8 @@ type
     property Runs: TAtlasMinimapLine read FRuns;
   end;
 
+{ TRunBuilder }
+
 procedure TRunBuilder.Init(AMaxColumn, ATabWidth: Integer);
 begin
   FRuns := nil;
@@ -944,11 +946,6 @@ begin
   end;
 end;
 
-class function TAtlasMinimap.MarkerKinds: TAtlasOverviewKinds;
-begin
-  Result := [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search, TAtlasOverviewKind.Changes];
-end;
-
 class function TAtlasMinimap.MarkerBars(const AMarks: TAtlasOverviewMarks; const AMap: TAtlasMinimapMap;
   AMinHeight: Integer): TAtlasOverviewBars;
 var
@@ -964,6 +961,25 @@ begin
         AddKindBars(AMarks, AMap, AMinHeight, mKind, Result);
       end;
     end;
+  end;
+end;
+
+class function TAtlasMinimap.MarkerKinds: TAtlasOverviewKinds;
+begin
+  Result := [TAtlasOverviewKind.Diagnostics, TAtlasOverviewKind.Search, TAtlasOverviewKind.Changes];
+end;
+
+class function TAtlasMinimap.Runs(const ALines: TArray<string>; AMaxColumn, ATabWidth: Integer):
+  TAtlasMinimapLines;
+var
+  mTokens: TArray<TAtlasTokens>;
+  mIndex: Integer;
+begin
+  mTokens := TAtlasSyntax.LineTokens(ALines);
+  SetLength(Result, Length(ALines));
+  for mIndex := 0 to High(ALines) do
+  begin
+    Result[mIndex] := LineRuns(ALines[mIndex], mTokens[mIndex], AMaxColumn, ATabWidth);
   end;
 end;
 
@@ -990,20 +1006,6 @@ begin
   end;
   mBuilder.Close;
   Result := mBuilder.Runs;
-end;
-
-class function TAtlasMinimap.Runs(const ALines: TArray<string>; AMaxColumn, ATabWidth: Integer):
-  TAtlasMinimapLines;
-var
-  mTokens: TArray<TAtlasTokens>;
-  mIndex: Integer;
-begin
-  mTokens := TAtlasSyntax.LineTokens(ALines);
-  SetLength(Result, Length(ALines));
-  for mIndex := 0 to High(ALines) do
-  begin
-    Result[mIndex] := LineRuns(ALines[mIndex], mTokens[mIndex], AMaxColumn, ATabWidth);
-  end;
 end;
 
 class function TAtlasMinimap.SameLine(const A, B: TAtlasMinimapLine): Boolean;

@@ -155,42 +155,6 @@ end;
 
 { TLspStepFilter }
 
-class function TLspStepFilter.PlainName(const AName: string): string;
-var
-  mDepth: Integer;
-  mChar: Char;
-begin
-  Result := '';
-  mDepth := 0;
-  for mChar in AName do
-  begin
-    if mChar = '<' then
-    begin
-      Inc(mDepth);
-    end
-    else if mChar = '>' then
-    begin
-      if mDepth > 0 then
-      begin
-        Dec(mDepth);
-      end;
-    end
-    else if mDepth = 0 then
-    begin
-      Result := Result + mChar;
-    end;
-  end;
-end;
-
-class function TLspStepFilter.UnitName(ATree: TSyntaxTree): string;
-begin
-  Result := '';
-  if (ATree <> nil) and (ATree.Root <> nil) then
-  begin
-    Result := ATree.Root.Name;
-  end;
-end;
-
 class function TLspStepFilter.Keyword(AHeader: TSyntaxNode; const AText: string): string;
 var
   mWords: TArray<string>;
@@ -300,6 +264,56 @@ begin
   Result := AStatement.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement];
 end;
 
+class function TLspStepFilter.IsFieldTarget(ATarget: TSyntaxNode; const ALocals: TArray<string>): Boolean;
+begin
+  Result := False;
+  case ATarget.Kind of
+    TSyntaxKind.Identifier:
+      Result := not Contains(ALocals, ATarget.Name);
+    TSyntaxKind.MemberAccess:
+      Result := (ATarget.ChildCount = 1) and (ATarget[0].Kind = TSyntaxKind.Identifier) and
+        SameText(ATarget[0].Name, 'Self');
+  else
+    // Übrige Arten: nichts zu tun.
+  end;
+end;
+
+class function TLspStepFilter.IsTrivial(ARoutine: TSyntaxNode; const AShortName: string): Boolean;
+var
+  mBody: TArray<TSyntaxNode>;
+  mStatement, mTarget, mCallee: TSyntaxNode;
+begin
+  Result := False;
+  mBody := Statements(ARoutine.FindChild(TSyntaxKind.Block));
+  if Length(mBody) <> 1 then
+  begin
+    Exit;
+  end;
+  mStatement := mBody[0];
+  if (mStatement.Kind = TSyntaxKind.AssignStatement) and (mStatement.ChildCount = 2) then
+  begin
+    mTarget := mStatement[0];
+    if HasCall(mStatement[1]) then
+    begin
+      Exit;
+    end;
+    if (mTarget.Kind = TSyntaxKind.Identifier) and
+      (SameText(mTarget.Name, 'Result') or SameText(mTarget.Name, AShortName)) then
+    begin
+      Exit(True);
+    end;
+    Exit(IsFieldTarget(mTarget, LocalNames(ARoutine)));
+  end;
+  // Exit(Wert)
+  if (mStatement.Kind = TSyntaxKind.CallStatement) and (mStatement.ChildCount = 1) and
+    (mStatement[0].Kind = TSyntaxKind.Call) and (mStatement[0].ChildCount = 2) then
+  begin
+    mCallee := mStatement[0][0];
+    Result := (mCallee.Kind = TSyntaxKind.Identifier) and SameText(mCallee.Name, 'Exit') and
+      not HasCall(mStatement[0][1]);
+  end;
+end;
+
 /// <summary>Hängt die durch Komma getrennten Namen aus AText an AResult an.</summary>
 procedure AddNames(var AResult: TArray<string>; const AText: string);
 var
@@ -366,56 +380,6 @@ begin
   Result := ParameterNames(ARoutine) + SectionNames(ARoutine);
 end;
 
-class function TLspStepFilter.IsFieldTarget(ATarget: TSyntaxNode; const ALocals: TArray<string>): Boolean;
-begin
-  Result := False;
-  case ATarget.Kind of
-    TSyntaxKind.Identifier:
-      Result := not Contains(ALocals, ATarget.Name);
-    TSyntaxKind.MemberAccess:
-      Result := (ATarget.ChildCount = 1) and (ATarget[0].Kind = TSyntaxKind.Identifier) and
-        SameText(ATarget[0].Name, 'Self');
-  else
-    // Übrige Arten: nichts zu tun.
-  end;
-end;
-
-class function TLspStepFilter.IsTrivial(ARoutine: TSyntaxNode; const AShortName: string): Boolean;
-var
-  mBody: TArray<TSyntaxNode>;
-  mStatement, mTarget, mCallee: TSyntaxNode;
-begin
-  Result := False;
-  mBody := Statements(ARoutine.FindChild(TSyntaxKind.Block));
-  if Length(mBody) <> 1 then
-  begin
-    Exit;
-  end;
-  mStatement := mBody[0];
-  if (mStatement.Kind = TSyntaxKind.AssignStatement) and (mStatement.ChildCount = 2) then
-  begin
-    mTarget := mStatement[0];
-    if HasCall(mStatement[1]) then
-    begin
-      Exit;
-    end;
-    if (mTarget.Kind = TSyntaxKind.Identifier) and
-      (SameText(mTarget.Name, 'Result') or SameText(mTarget.Name, AShortName)) then
-    begin
-      Exit(True);
-    end;
-    Exit(IsFieldTarget(mTarget, LocalNames(ARoutine)));
-  end;
-  // Exit(Wert)
-  if (mStatement.Kind = TSyntaxKind.CallStatement) and (mStatement.ChildCount = 1) and
-    (mStatement[0].Kind = TSyntaxKind.Call) and (mStatement[0].ChildCount = 2) then
-  begin
-    mCallee := mStatement[0][0];
-    Result := (mCallee.Kind = TSyntaxKind.Identifier) and SameText(mCallee.Name, 'Exit') and
-      not HasCall(mStatement[0][1]);
-  end;
-end;
-
 class function TLspStepFilter.FindType(ARoot: TSyntaxNode; const AContainer: string): TSyntaxNode;
 begin
   Result := nil;
@@ -477,80 +441,6 @@ begin
   end;
 end;
 
-/// <summary>True, wenn ABody höchstens aus einem inherited-Aufruf besteht.</summary>
-function OnlyInherited(const ABody: TArray<TSyntaxNode>): Boolean;
-var
-  mStatement: TSyntaxNode;
-begin
-  Result := Length(ABody) <= 1;
-  for mStatement in ABody do
-  begin
-    if not TLspStepFilter.IsInherited(mStatement) then
-    begin
-      Result := False;
-    end;
-  end;
-end;
-
-/// <summary>Getter bzw. Setter einer Eigenschaft: Methode mit Punkt im Namen und einer einfachen Anweisung.</summary>
-function AccessorKinds(ATree: TSyntaxTree; const AText, AWord, AName: string;
-  const ABody: TArray<TSyntaxNode>): TStepFilterKinds;
-var
-  mContainer, mShort: string;
-begin
-  Result := [];
-  mContainer := ContainerPart(AName);
-  mShort := LastPart(AName);
-  if (mContainer = '') or (Length(ABody) <> 1) or not TLspStepFilter.IsSimple(ABody[0]) then
-  begin
-    Exit;
-  end;
-  if (AWord = 'function') and TLspStepFilter.IsAccessor(ATree, AText, mContainer, mShort, False) then
-  begin
-    Include(Result, TStepFilterKind.Getters);
-  end;
-  if (AWord = 'procedure') and TLspStepFilter.IsAccessor(ATree, AText, mContainer, mShort, True) then
-  begin
-    Include(Result, TStepFilterKind.Setters);
-  end;
-end;
-
-class function TLspStepFilter.Classify(ATree: TSyntaxTree; const AText: string;
-  ARoutine: TSyntaxNode): TStepFilterKinds;
-var
-  mBlock: TSyntaxNode;
-  mWord, mName: string;
-  mBody: TArray<TSyntaxNode>;
-begin
-  Result := [];
-  if (ARoutine = nil) or (ARoutine.Kind <> TSyntaxKind.RoutineDecl) then
-  begin
-    Exit;
-  end;
-  mWord := Keyword(ARoutine.FindChild(TSyntaxKind.RoutineHeader), AText);
-  if mWord = 'operator' then
-  begin
-    Include(Result, TStepFilterKind.Operators);
-  end;
-  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
-  if mBlock = nil then
-  begin
-    Exit;
-  end;
-  mName := PlainName(ARoutine.Name);
-  mBody := Statements(mBlock);
-  if ((mWord = 'constructor') or (mWord = 'destructor')) and OnlyInherited(mBody) then
-  begin
-    Include(Result, TStepFilterKind.EmptyConstructors);
-  end;
-  if IsTrivial(ARoutine, LastPart(mName)) then
-  begin
-    Include(Result, TStepFilterKind.Trivial);
-  end;
-  // Methode einer Klasse: Name mit Punkt, Kopf außerhalb eines Typs (sonst Deklaration).
-  Result := Result + AccessorKinds(ATree, AText, mWord, mName, mBody);
-end;
-
 class function TLspStepFilter.RoutineOf(ATree: TSyntaxTree; const AText: string;
   ANode: TSyntaxNode): TLspStepRoutine;
 var
@@ -608,6 +498,116 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
+end;
+
+/// <summary>True, wenn ABody höchstens aus einem inherited-Aufruf besteht.</summary>
+function OnlyInherited(const ABody: TArray<TSyntaxNode>): Boolean;
+var
+  mStatement: TSyntaxNode;
+begin
+  Result := Length(ABody) <= 1;
+  for mStatement in ABody do
+  begin
+    if not TLspStepFilter.IsInherited(mStatement) then
+    begin
+      Result := False;
+    end;
+  end;
+end;
+
+/// <summary>Getter bzw. Setter einer Eigenschaft: Methode mit Punkt im Namen und einer einfachen Anweisung.</summary>
+function AccessorKinds(ATree: TSyntaxTree; const AText, AWord, AName: string;
+  const ABody: TArray<TSyntaxNode>): TStepFilterKinds;
+var
+  mContainer, mShort: string;
+begin
+  Result := [];
+  mContainer := ContainerPart(AName);
+  mShort := LastPart(AName);
+  if (mContainer = '') or (Length(ABody) <> 1) or not TLspStepFilter.IsSimple(ABody[0]) then
+  begin
+    Exit;
+  end;
+  if (AWord = 'function') and TLspStepFilter.IsAccessor(ATree, AText, mContainer, mShort, False) then
+  begin
+    Include(Result, TStepFilterKind.Getters);
+  end;
+  if (AWord = 'procedure') and TLspStepFilter.IsAccessor(ATree, AText, mContainer, mShort, True) then
+  begin
+    Include(Result, TStepFilterKind.Setters);
+  end;
+end;
+
+class function TLspStepFilter.UnitName(ATree: TSyntaxTree): string;
+begin
+  Result := '';
+  if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
+    Result := ATree.Root.Name;
+  end;
+end;
+
+class function TLspStepFilter.PlainName(const AName: string): string;
+var
+  mDepth: Integer;
+  mChar: Char;
+begin
+  Result := '';
+  mDepth := 0;
+  for mChar in AName do
+  begin
+    if mChar = '<' then
+    begin
+      Inc(mDepth);
+    end
+    else if mChar = '>' then
+    begin
+      if mDepth > 0 then
+      begin
+        Dec(mDepth);
+      end;
+    end
+    else if mDepth = 0 then
+    begin
+      Result := Result + mChar;
+    end;
+  end;
+end;
+
+class function TLspStepFilter.Classify(ATree: TSyntaxTree; const AText: string;
+  ARoutine: TSyntaxNode): TStepFilterKinds;
+var
+  mBlock: TSyntaxNode;
+  mWord, mName: string;
+  mBody: TArray<TSyntaxNode>;
+begin
+  Result := [];
+  if (ARoutine = nil) or (ARoutine.Kind <> TSyntaxKind.RoutineDecl) then
+  begin
+    Exit;
+  end;
+  mWord := Keyword(ARoutine.FindChild(TSyntaxKind.RoutineHeader), AText);
+  if mWord = 'operator' then
+  begin
+    Include(Result, TStepFilterKind.Operators);
+  end;
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if mBlock = nil then
+  begin
+    Exit;
+  end;
+  mName := PlainName(ARoutine.Name);
+  mBody := Statements(mBlock);
+  if ((mWord = 'constructor') or (mWord = 'destructor')) and OnlyInherited(mBody) then
+  begin
+    Include(Result, TStepFilterKind.EmptyConstructors);
+  end;
+  if IsTrivial(ARoutine, LastPart(mName)) then
+  begin
+    Include(Result, TStepFilterKind.Trivial);
+  end;
+  // Methode einer Klasse: Name mit Punkt, Kopf außerhalb eines Typs (sonst Deklaration).
+  Result := Result + AccessorKinds(ATree, AText, mWord, mName, mBody);
 end;
 
 class function TLspStepFilter.RoutineAt(ATree: TSyntaxTree; const AText: string; ALine: Integer;
@@ -686,18 +686,6 @@ begin
   Result := mList;
 end;
 
-class function TLspStepFilter.NewCounts(const APatterns: TArray<string>): TLspStepFilterCounts;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TLspStepFilterCounts);
-  SetLength(Result.Patterns, Length(APatterns));
-  for mIndex := 0 to High(Result.Patterns) do
-  begin
-    Result.Patterns[mIndex] := 0;
-  end;
-end;
-
 class procedure TLspStepFilter.AddCounts(ATree: TSyntaxTree; const AText: string; const APatterns: TArray<string>;
   var ACounts: TLspStepFilterCounts);
 var
@@ -723,6 +711,18 @@ begin
         Inc(ACounts.Patterns[mIndex]);
       end;
     end;
+  end;
+end;
+
+class function TLspStepFilter.NewCounts(const APatterns: TArray<string>): TLspStepFilterCounts;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TLspStepFilterCounts);
+  SetLength(Result.Patterns, Length(APatterns));
+  for mIndex := 0 to High(Result.Patterns) do
+  begin
+    Result.Patterns[mIndex] := 0;
   end;
 end;
 

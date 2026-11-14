@@ -31,6 +31,8 @@ type
     procedure FindMethodName(Writer: TWriter; AMethod: TMethod; var AName: string);
   end;
 
+{ TMethodNamer }
+
 procedure TMethodNamer.FindMethodName(Writer: TWriter; AMethod: TMethod; var AName: string);
 begin
   if Assigned(FMethodName) then
@@ -38,6 +40,8 @@ begin
     AName := FMethodName(AMethod);
   end;
 end;
+
+{ TAtlasFormText }
 
 class function TAtlasFormText.Write(ARoot: TComponent; const AMethodName: TFunc<TMethod, string>): string;
 var

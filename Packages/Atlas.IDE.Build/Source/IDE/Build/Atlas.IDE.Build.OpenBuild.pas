@@ -318,28 +318,115 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeOpenBuild.NowMs: Int64;
-begin
-  Result := GetTickCount64;
-end;
-
-class function TAtlasIdeOpenBuild.IdleMs: Int64;
+procedure TAtlasIdeOpenBuild.Tick(Sender: TObject);
 var
-  mIdle: Cardinal;
+  mSettings: TAtlasPluginSettings;
 begin
-  // Zeit seit der letzten Eingabe in Windows; ohne Angabe gilt die IDE als ruhig.
-  if not TAtlasUserIdle.IdleMs(mIdle) then
-  begin
-    Exit(High(Integer));
+  try
+    // Läuft auch in der modalen Schleife des Compilers weiter.
+    if FCompiling then
+    begin
+      if not FWaiting then
+      begin
+        TAtlasIdeCheckOnSave.PressProgressOk;
+      end;
+      Exit;
+    end;
+    if FWaiting then
+    begin
+      // Im Hintergrund: Ende über die Compile-Ereignisse; ohne Gruppenende spätestens nach MaxRunMs.
+      if FCore.RunComplete or FCore.RunOverdue(NowMs) then
+      begin
+        Finish;
+      end;
+      Exit;
+    end;
+    mSettings := TAtlasIdeSettings.Current;
+    if not mSettings.BuildOnOpen then
+    begin
+      Exit;
+    end;
+    // Compilerprüfung (#548) oder ein Auftrag des Läufers (#261, #69) läuft gerade.
+    if FEvents.Background or (FEvents.RequestedBy <> '') then
+    begin
+      Exit;
+    end;
+    if FCore.Due(NowMs, mSettings.BuildOnOpenDelayMs, IdleMs, Debugging) then
+    begin
+      Run;
+    end;
+  except
+    // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
   end;
-  Result := mIdle;
 end;
 
-class function TAtlasIdeOpenBuild.Debugging: Boolean;
+procedure TAtlasIdeOpenBuild.RestoreTargets;
 var
-  mDebugger: IOTADebuggerServices;
+  mSwitch: TSwitch;
 begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+  for mSwitch in FSwitched do
+    try
+      if not SameText(mSwitch.Project.CurrentConfiguration, mSwitch.Configuration) then
+      begin
+        mSwitch.Project.CurrentConfiguration := mSwitch.Configuration;
+      end;
+      if not SameText(mSwitch.Project.CurrentPlatform, mSwitch.Platform) then
+      begin
+        mSwitch.Project.CurrentPlatform := mSwitch.Platform;
+      end;
+    except
+      // Ein inzwischen geschlossenes Projekt hält die anderen nicht auf (#493).
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Build, E);
+    end;
+  FSwitched := nil;
+end;
+
+procedure TAtlasIdeOpenBuild.Compile(const AProjects: TArray<IOTAProject>; const AFiles: TArray<string>);
+const
+  cModes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
+    cmOTAClean, cmOTALink);
+var
+  mCompileServices: IOTACompileServices;
+  mOutcome: TOTACompileResult;
+  mActivity: IInterface;
+begin
+  if not Supports(BorlandIDEServices, IOTACompileServices, mCompileServices) then
+  begin
+    Exit;
+  end;
+  FCore.RunStarted(AFiles, NowMs);
+  FStartedAt := NowMs;
+  FWaiting := False;
+  // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
+  FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
+  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
+  FCompiling := True;
+  try
+    try
+      ApplyTargets(AProjects);
+      mOutcome := mCompileServices.CompileProjects(AProjects, cModes[FKind], False, True);
+    finally
+      FCompiling := False;
+    end;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
+      Finish;
+      Exit;
+    end;
+  end;
+  if (mOutcome = crOTABackground) and FCore.Running and not FCore.RunComplete then
+  begin
+    FWaiting := True;
+  end
+  else
+  begin
+    Finish;
+  end;
 end;
 
 procedure TAtlasIdeOpenBuild.Opened(const AFileName: string);
@@ -427,48 +514,11 @@ begin
   end;
 end;
 
-procedure TAtlasIdeOpenBuild.Tick(Sender: TObject);
+class function TAtlasIdeOpenBuild.Debugging: Boolean;
 var
-  mSettings: TAtlasPluginSettings;
+  mDebugger: IOTADebuggerServices;
 begin
-  try
-    // Läuft auch in der modalen Schleife des Compilers weiter.
-    if FCompiling then
-    begin
-      if not FWaiting then
-      begin
-        TAtlasIdeCheckOnSave.PressProgressOk;
-      end;
-      Exit;
-    end;
-    if FWaiting then
-    begin
-      // Im Hintergrund: Ende über die Compile-Ereignisse; ohne Gruppenende spätestens nach MaxRunMs.
-      if FCore.RunComplete or FCore.RunOverdue(NowMs) then
-      begin
-        Finish;
-      end;
-      Exit;
-    end;
-    mSettings := TAtlasIdeSettings.Current;
-    if not mSettings.BuildOnOpen then
-    begin
-      Exit;
-    end;
-    // Compilerprüfung (#548) oder ein Auftrag des Läufers (#261, #69) läuft gerade.
-    if FEvents.Background or (FEvents.RequestedBy <> '') then
-    begin
-      Exit;
-    end;
-    if FCore.Due(NowMs, mSettings.BuildOnOpenDelayMs, IdleMs, Debugging) then
-    begin
-      Run;
-    end;
-  except
-    // Keine Exception an die IDE (#493).
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Build, E);
-  end;
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
 end;
 
 /// <summary>Projekte der gemeldeten Gruppen; ACovered bekommt alle Mitglieder. Noch nicht geladene Gruppen kommen
@@ -676,71 +726,21 @@ begin
   end;
 end;
 
-procedure TAtlasIdeOpenBuild.RestoreTargets;
+class function TAtlasIdeOpenBuild.IdleMs: Int64;
 var
-  mSwitch: TSwitch;
+  mIdle: Cardinal;
 begin
-  for mSwitch in FSwitched do
-    try
-      if not SameText(mSwitch.Project.CurrentConfiguration, mSwitch.Configuration) then
-      begin
-        mSwitch.Project.CurrentConfiguration := mSwitch.Configuration;
-      end;
-      if not SameText(mSwitch.Project.CurrentPlatform, mSwitch.Platform) then
-      begin
-        mSwitch.Project.CurrentPlatform := mSwitch.Platform;
-      end;
-    except
-      // Ein inzwischen geschlossenes Projekt hält die anderen nicht auf (#493).
-      on E: Exception do
-        TAtlasGuard.Report(TAtlasFeature.Build, E);
-    end;
-  FSwitched := nil;
+  // Zeit seit der letzten Eingabe in Windows; ohne Angabe gilt die IDE als ruhig.
+  if not TAtlasUserIdle.IdleMs(mIdle) then
+  begin
+    Exit(High(Integer));
+  end;
+  Result := mIdle;
 end;
 
-procedure TAtlasIdeOpenBuild.Compile(const AProjects: TArray<IOTAProject>; const AFiles: TArray<string>);
-const
-  cModes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
-    cmOTAClean, cmOTALink);
-var
-  mCompileServices: IOTACompileServices;
-  mOutcome: TOTACompileResult;
-  mActivity: IInterface;
+class function TAtlasIdeOpenBuild.NowMs: Int64;
 begin
-  if not Supports(BorlandIDEServices, IOTACompileServices, mCompileServices) then
-  begin
-    Exit;
-  end;
-  FCore.RunStarted(AFiles, NowMs);
-  FStartedAt := NowMs;
-  FWaiting := False;
-  // Bis zum Ende des Laufs (auch im Hintergrund) tragen die Compile-Ereignisse den Auftraggeber "open".
-  FEvents.RequestedBy := TAtlasOpenBuild.cRequestedBy;
-  mActivity := TAtlasActivity.Scope('Bauen beim Öffnen');
-  FCompiling := True;
-  try
-    try
-      ApplyTargets(AProjects);
-      mOutcome := mCompileServices.CompileProjects(AProjects, cModes[FKind], False, True);
-    finally
-      FCompiling := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      TAtlasGuard.Report(TAtlasFeature.Build, E);
-      Finish;
-      Exit;
-    end;
-  end;
-  if (mOutcome = crOTABackground) and FCore.Running and not FCore.RunComplete then
-  begin
-    FWaiting := True;
-  end
-  else
-  begin
-    Finish;
-  end;
+  Result := GetTickCount64;
 end;
 
 function FinishSeverity(const AOutcome: TAtlasOpenBuildResult; AHasNotes: Boolean): TAtlasNotificationSeverity;

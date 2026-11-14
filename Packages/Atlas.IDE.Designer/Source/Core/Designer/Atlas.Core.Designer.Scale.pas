@@ -102,6 +102,8 @@ const
   cPercent = 100;
   cLineBreak = #10;
 
+{ TAtlasFormScale }
+
 class function TAtlasFormScale.Value(AValue, ADesignPpi, APpi: Integer): Integer;
 var
   mProduct: Int64;

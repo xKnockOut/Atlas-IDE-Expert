@@ -57,21 +57,6 @@ begin
   inherited;
 end;
 
-class function TAtlasModuleAnswer.Open(const AScope: IAtlasModuleScope;
-  const ADone: TProc<string>): IAtlasModuleAnswer;
-begin
-  Result := TAtlasModuleAnswer.Create(ADone);
-  // Own löst sofort, wenn der Scope schon zu ist; ohne Scope gibt es niemanden, der lösen könnte.
-  if AScope = nil then
-  begin
-    Result.Revoke;
-  end
-  else
-  begin
-    AScope.Own(Result);
-  end;
-end;
-
 procedure TAtlasModuleAnswer.DoRevoke;
 begin
   // Freigabe des Rückrufs hier, solange das Modul noch geladen ist.
@@ -100,6 +85,21 @@ begin
   if Result then
   begin
     mDone(AText);
+  end;
+end;
+
+class function TAtlasModuleAnswer.Open(const AScope: IAtlasModuleScope;
+  const ADone: TProc<string>): IAtlasModuleAnswer;
+begin
+  Result := TAtlasModuleAnswer.Create(ADone);
+  // Own löst sofort, wenn der Scope schon zu ist; ohne Scope gibt es niemanden, der lösen könnte.
+  if AScope = nil then
+  begin
+    Result.Revoke;
+  end
+  else
+  begin
+    AScope.Own(Result);
   end;
 end;
 

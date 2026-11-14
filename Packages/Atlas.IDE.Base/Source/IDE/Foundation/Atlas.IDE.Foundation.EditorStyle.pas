@@ -91,6 +91,109 @@ end;
 
 { TAtlasIdeStyle }
 
+class function TAtlasIdeStyle.Colors: TAtlasColors;
+var
+  mTheming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
+  begin
+    Exit(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow)))));
+  end;
+  if WindowsUsesLightApps then
+  begin
+    Result := TAtlasColors.Light;
+  end
+  else
+  begin
+    Result := TAtlasColors.Dark;
+  end;
+end;
+
+class function TAtlasIdeStyle.ChromeColors: TAtlasColors;
+var
+  mTheming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
+  begin
+    Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnFace))),
+      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
+  end;
+  Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
+end;
+
+class function TAtlasIdeStyle.BarColors: TAtlasColors;
+begin
+  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
+  begin
+    Result := ChromeColors;
+  end
+  else
+  begin
+    Result := Colors;
+  end;
+end;
+
+class function TAtlasIdeStyle.WindowColors: TAtlasColors;
+var
+  mTheming: IOTAIDEThemingServices;
+begin
+  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
+  begin
+    Exit(TAtlasColors.ForWindow(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow))),
+      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindowText)))));
+  end;
+  Result := Colors;
+end;
+
+class function TAtlasIdeStyle.WindowColorsIf(AIdeColors: Boolean): TAtlasColors;
+begin
+  if AIdeColors then
+  begin
+    Result := WindowColors;
+  end
+  else
+  begin
+    Result := Colors;
+  end;
+end;
+
+class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;
+var
+  mEditor: IOTAEditorServices;
+  mFontName: string;
+  mFontSize, mMonitorPPI, mTextHeight: Integer;
+  mZoom: Double;
+begin
+  AWindow.Colors := Colors;
+  mFontName := AWindow.Font.Name;
+  mFontSize := AWindow.Font.Size;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
+  begin
+    mFontName := mEditor.EditOptions.FontName;
+    mFontSize := mEditor.EditOptions.FontSize;
+  end;
+  mMonitorPPI := TAtlasPopupWindow.MonitorPPI(ACaret.CenterPoint);
+  mTextHeight := TextHeightAt(mFontName, mFontSize, mMonitorPPI);
+  mZoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, mTextHeight);
+  AWindow.SetScaling(mMonitorPPI, mZoom, mFontName, mFontSize);
+  Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
+    [mFontName, mFontSize, mMonitorPPI, ACaret.Height, mTextHeight, mZoom], TFormatSettings.Invariant);
+end;
+
+class function TAtlasIdeStyle.BaseTextHeight: Integer;
+var
+  mEditor: IOTAEditorServices;
+begin
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
+  begin
+    Result := TextHeightAt(mEditor.EditOptions.FontName, mEditor.EditOptions.FontSize, 96);
+  end
+  else
+  begin
+    Result := 16;
+  end;
+end;
+
 class procedure TAtlasIdeStyle.Blend(ADC: HDC; const ARect: TRect; AColor: COLORREF; AAlpha: Byte);
 var
   mMemory: HDC;
@@ -132,109 +235,6 @@ begin
   begin
     Result := TAtlasColor(mSample);
   end;
-end;
-
-class function TAtlasIdeStyle.Colors: TAtlasColors;
-var
-  mTheming: IOTAIDEThemingServices;
-begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
-  begin
-    Exit(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow)))));
-  end;
-  if WindowsUsesLightApps then
-  begin
-    Result := TAtlasColors.Light;
-  end
-  else
-  begin
-    Result := TAtlasColors.Dark;
-  end;
-end;
-
-class function TAtlasIdeStyle.ChromeColors: TAtlasColors;
-var
-  mTheming: IOTAIDEThemingServices;
-begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
-  begin
-    Exit(TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnFace))),
-      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
-  end;
-  Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
-end;
-
-class function TAtlasIdeStyle.WindowColors: TAtlasColors;
-var
-  mTheming: IOTAIDEThemingServices;
-begin
-  if Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and mTheming.IDEThemingEnabled then
-  begin
-    Exit(TAtlasColors.ForWindow(TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindow))),
-      TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clWindowText)))));
-  end;
-  Result := Colors;
-end;
-
-class function TAtlasIdeStyle.WindowColorsIf(AIdeColors: Boolean): TAtlasColors;
-begin
-  if AIdeColors then
-  begin
-    Result := WindowColors;
-  end
-  else
-  begin
-    Result := Colors;
-  end;
-end;
-
-class function TAtlasIdeStyle.BarColors: TAtlasColors;
-begin
-  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-  begin
-    Result := ChromeColors;
-  end
-  else
-  begin
-    Result := Colors;
-  end;
-end;
-
-class function TAtlasIdeStyle.BaseTextHeight: Integer;
-var
-  mEditor: IOTAEditorServices;
-begin
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
-  begin
-    Result := TextHeightAt(mEditor.EditOptions.FontName, mEditor.EditOptions.FontSize, 96);
-  end
-  else
-  begin
-    Result := 16;
-  end;
-end;
-
-class function TAtlasIdeStyle.Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string;
-var
-  mEditor: IOTAEditorServices;
-  mFontName: string;
-  mFontSize, mMonitorPPI, mTextHeight: Integer;
-  mZoom: Double;
-begin
-  AWindow.Colors := Colors;
-  mFontName := AWindow.Font.Name;
-  mFontSize := AWindow.Font.Size;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditor) and (mEditor.EditOptions <> nil) then
-  begin
-    mFontName := mEditor.EditOptions.FontName;
-    mFontSize := mEditor.EditOptions.FontSize;
-  end;
-  mMonitorPPI := TAtlasPopupWindow.MonitorPPI(ACaret.CenterPoint);
-  mTextHeight := TextHeightAt(mFontName, mFontSize, mMonitorPPI);
-  mZoom := TAtlasScaling.ZoomFromCaret(ACaret.Height, mTextHeight);
-  AWindow.SetScaling(mMonitorPPI, mZoom, mFontName, mFontSize);
-  Result := Format('Darstellung: %s %d pt, Monitor %d dpi, Caret %d px, Text %d px, Zoom %.2f',
-    [mFontName, mFontSize, mMonitorPPI, ACaret.Height, mTextHeight, mZoom], TFormatSettings.Invariant);
 end;
 
 end.

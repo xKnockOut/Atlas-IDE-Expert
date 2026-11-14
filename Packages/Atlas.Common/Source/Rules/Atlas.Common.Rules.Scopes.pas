@@ -214,20 +214,6 @@ begin
   end;
 end;
 
-function TFindingScopes.HeaderLine(ALine: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := High(FRoutines) downto 0 do
-  begin
-    if (FRoutines[mIndex].FirstLine <= ALine) and (ALine <= FRoutines[mIndex].LastLine) then
-    begin
-      Exit(FRoutines[mIndex].FirstLine);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TFindingScopes.HasRoutine(const AName: string): Boolean;
 var
   mItem: TFindingScope;
@@ -240,6 +226,20 @@ begin
     end;
   end;
   Result := False;
+end;
+
+function TFindingScopes.HeaderLine(ALine: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := High(FRoutines) downto 0 do
+  begin
+    if (FRoutines[mIndex].FirstLine <= ALine) and (ALine <= FRoutines[mIndex].LastLine) then
+    begin
+      Exit(FRoutines[mIndex].FirstLine);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TFindingScopes.RoutineCount: Integer;

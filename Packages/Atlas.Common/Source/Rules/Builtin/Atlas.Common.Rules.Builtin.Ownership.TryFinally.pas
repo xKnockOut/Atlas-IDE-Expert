@@ -59,6 +59,25 @@ begin
   Result.Style := AStyle;
 end;
 
+function TTryFinallyWrap.Wrap(AStatement: TSyntaxNode; const APrefix, AFree: string; out AEdit: TTextEdit): Boolean;
+var
+  mLastSibling: TSyntaxNode;
+begin
+  // Die letzte folgende Anweisung desselben Blocks muss ihre Zeile allein beenden.
+  mLastSibling := AStatement;
+  Result := StandsAlone(AStatement);
+  if Result then
+  begin
+    mLastSibling := LastSiblingOf(AStatement);
+    Result := EndsLine(mLastSibling);
+  end;
+  if Result then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, mLastSibling.EndPos.Line + 1, 0),
+      WrappedText(AStatement, mLastSibling.EndPos.Line, APrefix, AFree));
+  end;
+end;
+
 /// <summary>Endet ANode seine Zeile (danach höchstens ein Semikolon)?</summary>
 function TTryFinallyWrap.EndsLine(ANode: TSyntaxNode): Boolean;
 var
@@ -103,25 +122,6 @@ begin
   end;
   Result := Result + mIndent + 'finally' + LineBreak + mIndent + mUnitIndent + AFree + LineBreak + mIndent +
     'end;' + LineBreak;
-end;
-
-function TTryFinallyWrap.Wrap(AStatement: TSyntaxNode; const APrefix, AFree: string; out AEdit: TTextEdit): Boolean;
-var
-  mLastSibling: TSyntaxNode;
-begin
-  // Die letzte folgende Anweisung desselben Blocks muss ihre Zeile allein beenden.
-  mLastSibling := AStatement;
-  Result := StandsAlone(AStatement);
-  if Result then
-  begin
-    mLastSibling := LastSiblingOf(AStatement);
-    Result := EndsLine(mLastSibling);
-  end;
-  if Result then
-  begin
-    AEdit := TTextEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, mLastSibling.EndPos.Line + 1, 0),
-      WrappedText(AStatement, mLastSibling.EndPos.Line, APrefix, AFree));
-  end;
 end;
 
 end.

@@ -127,30 +127,82 @@ end;
 
 { TEventHandlers }
 
-class function TEventHandlers.MayAssignHandlers(const AText: string): Boolean;
+class function TEventHandlers.Collect(const AUnitFile, AUnitText: string;
+  const AForms: TArray<TEventHandlerForm>): TArray<TEventHandler>;
 var
-  mPosition, mIndex: Integer;
+  mTree: TSyntaxTree;
+  mBodies: TDictionary<string, TEventHandlerBody>;
+  mForm: TEventHandlerForm;
 begin
-  // Schneller Vorfilter ohne Parser: ":=" nach einem Bezeichner, der mit On/Before/After beginnt.
-  Result := False;
-  mPosition := Pos(':=', AText);
-  while mPosition > 0 do
+  Result := nil;
+  if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
   begin
-    mIndex := mPosition - 1;
-    while (mIndex > 0) and CharInSet(AText[mIndex], [' ', #9]) do
-    begin
-      Dec(mIndex);
-    end;
-    while (mIndex > 0) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-    begin
-      Dec(mIndex);
-    end;
-    if TDfmProperty.IsEventName(Copy(AText, mIndex + 1, mPosition - mIndex - 1).Trim) then
-    begin
-      Exit(True);
-    end;
-    mPosition := PosEx(':=', AText, mPosition + 2);
+    Exit;
   end;
+  mBodies := TDictionary<string, TEventHandlerBody>.Create;
+  mTree := TSyntaxTreeCache.Parse(AUnitText, nil);
+  try
+    TEventHandlers.Bodies(mTree, mBodies);
+    for mForm in AForms do
+    begin
+      Result := Result + FromForm(mForm, AUnitFile, mBodies);
+    end;
+    if MayAssignHandlers(AUnitText) then
+    begin
+      Result := Result + FromCode(mTree, AUnitFile, AUnitText, mBodies);
+    end;
+  finally
+    mTree.Free;
+    mBodies.Free;
+  end;
+end;
+
+class function TEventHandlers.FromForm(const AForm: TEventHandlerForm; const AUnitFile: string;
+  ABodies: TDictionary<string, TEventHandlerBody>): TArray<TEventHandler>;
+var
+  mModel: TFormModel;
+  mEvent: TFormEvent;
+  mHandler: TEventHandler;
+begin
+  Result := nil;
+  mModel := TFormModel.Create(AForm.Text);
+  try
+    for mEvent in mModel.Events do
+    begin
+      mHandler := Default(TEventHandler);
+      mHandler.Origin := TEventHandlerOrigin.Form;
+      mHandler.FormClass := mModel.FormClass;
+      mHandler.Component := mEvent.Obj.Name;
+      mHandler.ComponentClass := mEvent.Obj.TypeName;
+      mHandler.Event := mEvent.Event.Name;
+      mHandler.Handler := mEvent.Event.Value;
+      mHandler.Container := mModel.FormClass;
+      mHandler.Line := -1;
+      mHandler.BodyLine := -1;
+      mHandler.SourceFile := AForm.FileName;
+      mHandler.SourceLine := mEvent.Event.NameRange.StartPos.Line;
+      mHandler.Interval := IntervalOf(mEvent.Obj);
+      Resolve(mHandler, AUnitFile, ABodies);
+      Result := Result + [mHandler];
+    end;
+  finally
+    mModel.Free;
+  end;
+end;
+
+class function TEventHandlers.Resolve(var AHandler: TEventHandler; const AFileName: string;
+  ABodies: TDictionary<string, TEventHandlerBody>): Boolean;
+var
+  mBody: TEventHandlerBody;
+begin
+  Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), mBody);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AHandler.FileName := AFileName;
+  AHandler.Line := mBody.Line;
+  AHandler.BodyLine := mBody.BodyLine;
 end;
 
 class procedure TEventHandlers.Bodies(ATree: TSyntaxTree; ABodies: TDictionary<string, TEventHandlerBody>);
@@ -189,54 +241,6 @@ begin
       end;
       ABodies.AddOrSetValue(LowerCase(ANode.Name), Body);
     end);
-end;
-
-class function TEventHandlers.Resolve(var AHandler: TEventHandler; const AFileName: string;
-  ABodies: TDictionary<string, TEventHandlerBody>): Boolean;
-var
-  mBody: TEventHandlerBody;
-begin
-  Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), mBody);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AHandler.FileName := AFileName;
-  AHandler.Line := mBody.Line;
-  AHandler.BodyLine := mBody.BodyLine;
-end;
-
-class function TEventHandlers.FromForm(const AForm: TEventHandlerForm; const AUnitFile: string;
-  ABodies: TDictionary<string, TEventHandlerBody>): TArray<TEventHandler>;
-var
-  mModel: TFormModel;
-  mEvent: TFormEvent;
-  mHandler: TEventHandler;
-begin
-  Result := nil;
-  mModel := TFormModel.Create(AForm.Text);
-  try
-    for mEvent in mModel.Events do
-    begin
-      mHandler := Default(TEventHandler);
-      mHandler.Origin := TEventHandlerOrigin.Form;
-      mHandler.FormClass := mModel.FormClass;
-      mHandler.Component := mEvent.Obj.Name;
-      mHandler.ComponentClass := mEvent.Obj.TypeName;
-      mHandler.Event := mEvent.Event.Name;
-      mHandler.Handler := mEvent.Event.Value;
-      mHandler.Container := mModel.FormClass;
-      mHandler.Line := -1;
-      mHandler.BodyLine := -1;
-      mHandler.SourceFile := AForm.FileName;
-      mHandler.SourceLine := mEvent.Event.NameRange.StartPos.Line;
-      mHandler.Interval := IntervalOf(mEvent.Obj);
-      Resolve(mHandler, AUnitFile, ABodies);
-      Result := Result + [mHandler];
-    end;
-  finally
-    mModel.Free;
-  end;
 end;
 
 /// <summary>Ereignis und Komponente aus dem Ziel einer Zuweisung (Komponente.OnXyz oder OnXyz der eigenen
@@ -353,33 +357,29 @@ begin
   Result := mFound;
 end;
 
-class function TEventHandlers.Collect(const AUnitFile, AUnitText: string;
-  const AForms: TArray<TEventHandlerForm>): TArray<TEventHandler>;
+class function TEventHandlers.MayAssignHandlers(const AText: string): Boolean;
 var
-  mTree: TSyntaxTree;
-  mBodies: TDictionary<string, TEventHandlerBody>;
-  mForm: TEventHandlerForm;
+  mPosition, mIndex: Integer;
 begin
-  Result := nil;
-  if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
+  // Schneller Vorfilter ohne Parser: ":=" nach einem Bezeichner, der mit On/Before/After beginnt.
+  Result := False;
+  mPosition := Pos(':=', AText);
+  while mPosition > 0 do
   begin
-    Exit;
-  end;
-  mBodies := TDictionary<string, TEventHandlerBody>.Create;
-  mTree := TSyntaxTreeCache.Parse(AUnitText, nil);
-  try
-    TEventHandlers.Bodies(mTree, mBodies);
-    for mForm in AForms do
+    mIndex := mPosition - 1;
+    while (mIndex > 0) and CharInSet(AText[mIndex], [' ', #9]) do
     begin
-      Result := Result + FromForm(mForm, AUnitFile, mBodies);
+      Dec(mIndex);
     end;
-    if MayAssignHandlers(AUnitText) then
+    while (mIndex > 0) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
     begin
-      Result := Result + FromCode(mTree, AUnitFile, AUnitText, mBodies);
+      Dec(mIndex);
     end;
-  finally
-    mTree.Free;
-    mBodies.Free;
+    if TDfmProperty.IsEventName(Copy(AText, mIndex + 1, mPosition - mIndex - 1).Trim) then
+    begin
+      Exit(True);
+    end;
+    mPosition := PosEx(':=', AText, mPosition + 2);
   end;
 end;
 

@@ -52,6 +52,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TEnumValueCommands }
+
 class function TEnumValueCommands.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AReadText: TCompletionReadText;
   const AArguments: TJSONArray): TJSONValue;

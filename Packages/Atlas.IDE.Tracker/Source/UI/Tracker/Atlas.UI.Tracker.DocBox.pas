@@ -93,21 +93,16 @@ begin
   inherited;
 end;
 
-procedure TAtlasIssueDocBox.WMGetDlgCode(var AMessage: TWMGetDlgCode);
+procedure TAtlasIssueDocBox.Paint;
 begin
-  inherited;
-  AMessage.Result := AMessage.Result or DLGC_WANTARROWS;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  FView.Paint(Canvas, FColors, 0, 0);
 end;
 
-procedure TAtlasIssueDocBox.SetDoc(const ADoc: TAtlasDoc; const AColors: TAtlasColors; AMono: TFont);
+procedure TAtlasIssueDocBox.Resize;
 begin
-  FDoc := ADoc;
-  FColors := AColors;
-  if AMono <> nil then
-  begin
-    FMono.Assign(AMono);
-  end;
-  FBuiltWidth := -1;
+  inherited;
   Rebuild;
 end;
 
@@ -117,39 +112,6 @@ begin
   // Messen braucht ein Fenster.
   FBuiltWidth := -1;
   Rebuild;
-end;
-
-procedure TAtlasIssueDocBox.Rebuild;
-var
-  mHeight: Integer;
-begin
-  if not HandleAllocated or (ClientWidth <= 0) or (ClientWidth = FBuiltWidth) then
-  begin
-    Exit;
-  end;
-  FBuiltWidth := ClientWidth;
-  Canvas.Font := Font;
-  FView.Build(Canvas, TAtlasDocContent.Create(FDoc, Default(TAtlasDocSignature), True), ClientWidth,
-    TAtlasDocFonts.Create(FMono, Font, CurrentPPI), TAtlasDocLabels.German);
-  mHeight := Max(FView.Height, 1);
-  if Height <> mHeight then
-  begin
-    Height := mHeight;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasIssueDocBox.Resize;
-begin
-  inherited;
-  Rebuild;
-end;
-
-procedure TAtlasIssueDocBox.Paint;
-begin
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  FView.Paint(Canvas, FColors, 0, 0);
 end;
 
 procedure TAtlasIssueDocBox.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -242,34 +204,6 @@ begin
   end;
 end;
 
-function TAtlasIssueDocBox.TaskAt(AX, AY: Integer): Boolean;
-var
-  mLink, mIndex: Integer;
-begin
-  mLink := FView.LinkAt(AX, AY);
-  Result := (mLink >= 0) and (FView.Link(mLink).Kind = TAtlasDocLinkKind.Url) and
-    TAtlasTrackerMarkdown.TaskIndexOf(FView.Link(mLink).Url, mIndex);
-end;
-
-function TAtlasIssueDocBox.HasTasks: Boolean;
-var
-  mSection: TAtlasDocSection;
-  mRun: TAtlasDocRun;
-  mIndex: Integer;
-begin
-  Result := False;
-  for mSection in FDoc.Sections do
-  begin
-    for mRun in mSection.Runs do
-    begin
-      if (mRun.Kind = TAtlasDocRunKind.Bullet) and TAtlasTrackerMarkdown.TaskIndexOf(mRun.Target, mIndex) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-end;
-
 procedure TAtlasIssueDocBox.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
@@ -290,9 +224,75 @@ begin
   end;
 end;
 
+procedure TAtlasIssueDocBox.Rebuild;
+var
+  mHeight: Integer;
+begin
+  if not HandleAllocated or (ClientWidth <= 0) or (ClientWidth = FBuiltWidth) then
+  begin
+    Exit;
+  end;
+  FBuiltWidth := ClientWidth;
+  Canvas.Font := Font;
+  FView.Build(Canvas, TAtlasDocContent.Create(FDoc, Default(TAtlasDocSignature), True), ClientWidth,
+    TAtlasDocFonts.Create(FMono, Font, CurrentPPI), TAtlasDocLabels.German);
+  mHeight := Max(FView.Height, 1);
+  if Height <> mHeight then
+  begin
+    Height := mHeight;
+  end;
+  Invalidate;
+end;
+
+function TAtlasIssueDocBox.TaskAt(AX, AY: Integer): Boolean;
+var
+  mLink, mIndex: Integer;
+begin
+  mLink := FView.LinkAt(AX, AY);
+  Result := (mLink >= 0) and (FView.Link(mLink).Kind = TAtlasDocLinkKind.Url) and
+    TAtlasTrackerMarkdown.TaskIndexOf(FView.Link(mLink).Url, mIndex);
+end;
+
+procedure TAtlasIssueDocBox.WMGetDlgCode(var AMessage: TWMGetDlgCode);
+begin
+  inherited;
+  AMessage.Result := AMessage.Result or DLGC_WANTARROWS;
+end;
+
+procedure TAtlasIssueDocBox.SetDoc(const ADoc: TAtlasDoc; const AColors: TAtlasColors; AMono: TFont);
+begin
+  FDoc := ADoc;
+  FColors := AColors;
+  if AMono <> nil then
+  begin
+    FMono.Assign(AMono);
+  end;
+  FBuiltWidth := -1;
+  Rebuild;
+end;
+
 function TAtlasIssueDocBox.SelectedText: string;
 begin
   Result := FView.SelectedText;
+end;
+
+function TAtlasIssueDocBox.HasTasks: Boolean;
+var
+  mSection: TAtlasDocSection;
+  mRun: TAtlasDocRun;
+  mIndex: Integer;
+begin
+  Result := False;
+  for mSection in FDoc.Sections do
+  begin
+    for mRun in mSection.Runs do
+    begin
+      if (mRun.Kind = TAtlasDocRunKind.Bullet) and TAtlasTrackerMarkdown.TaskIndexOf(mRun.Target, mIndex) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
 end;
 
 end.

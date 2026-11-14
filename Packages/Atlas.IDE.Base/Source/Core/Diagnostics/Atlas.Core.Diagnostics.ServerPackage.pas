@@ -48,6 +48,8 @@ type
 
 implementation
 
+{ TAtlasServerDiagnostics }
+
 class function TAtlasServerDiagnostics.ServerArguments(AAnonymize: Boolean): string;
 var
   mArguments: TJSONArray;
@@ -63,12 +65,6 @@ begin
   finally
     mArguments.Free;
   end;
-end;
-
-class function TAtlasServerDiagnostics.IsServerName(const AName: string): Boolean;
-begin
-  Result := AName.StartsWith(cServerFolder) and (Length(AName) > Length(cServerFolder)) and
-    (Pos('..', AName) = 0) and (Pos('\', AName) = 0) and (Pos(':', AName) = 0) and not AName.EndsWith('/');
 end;
 
 class function TAtlasServerDiagnostics.ServerFiles(const AAnswer: TJSONValue): TAtlasPackageFiles;
@@ -107,6 +103,12 @@ begin
     end;
     Result := Result + [TAtlasPackageFile.Create(mName.Value, TAtlasPackagePart.Logs, mContent.Value)];
   end;
+end;
+
+class function TAtlasServerDiagnostics.IsServerName(const AName: string): Boolean;
+begin
+  Result := AName.StartsWith(cServerFolder) and (Length(AName) > Length(cServerFolder)) and
+    (Pos('..', AName) = 0) and (Pos('\', AName) = 0) and (Pos(':', AName) = 0) and not AName.EndsWith('/');
 end;
 
 class function TAtlasServerDiagnostics.Build(const AReport: string;

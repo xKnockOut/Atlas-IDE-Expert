@@ -155,12 +155,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasProblemsPainter.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  Invalidate;
-end;
-
 function TAtlasProblemsPainter.Typing(const AFileName: string; ALine: Integer; const AText: string): Boolean;
 var
   mKey: string;
@@ -187,14 +181,35 @@ begin
   Result := not TAtlasInlineDiagnostics.PauseOver(FTypedAt, TAtlasTicks.Now);
 end;
 
-class procedure TAtlasProblemsPainter.Invalidate;
-var
-  mServices: INTACodeEditorServices;
+procedure TAtlasProblemsPainter.TimerTick(Sender: TObject);
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  FTimer.Enabled := False;
+  Invalidate;
+end;
+
+function TAtlasProblemsPainter.LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer;
+  out AText: string; out ATabWidth: Integer; out ABusy: Boolean): Boolean;
+var
+  mLineState: INTACodeEditorLineState;
+begin
+  AText := '';
+  ATabWidth := 0;
+  ABusy := False;
+  mLineState := AContext.LineState;
+  Result := (mLineState <> nil) and (AContext.EditView <> nil) and (AContext.EditView.Buffer <> nil) and
+    FStore.LineText(AContext.FileName, ALine, AText);
+  if not Result then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    Exit;
   end;
+  ATabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
+  // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
+  ABusy := (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
+    Typing(AContext.FileName, ALine, mLineState.Text);
+  // Nur, wenn die Zeile im Editor der im Speicher entspricht; nicht in .atlas ausgeblendet (#628).
+  Result := (TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
+    TrimRight(TAtlasPairs.DisplayLine(AText, ATabWidth))) and
+    not TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, AContext.FileName, AText);
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
@@ -384,31 +399,6 @@ begin
   Result.Caption := AProblem.Caption;
 end;
 
-function TAtlasProblemsPainter.LineToPaint(const AContext: INTACodeEditorPaintContext; ALine: Integer;
-  out AText: string; out ATabWidth: Integer; out ABusy: Boolean): Boolean;
-var
-  mLineState: INTACodeEditorLineState;
-begin
-  AText := '';
-  ATabWidth := 0;
-  ABusy := False;
-  mLineState := AContext.LineState;
-  Result := (mLineState <> nil) and (AContext.EditView <> nil) and (AContext.EditView.Buffer <> nil) and
-    FStore.LineText(AContext.FileName, ALine, AText);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ATabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
-  // Tipp-Pause in der Cursorzeile (#509): vor dem Vergleich, denn beim Tippen weicht der Text kurz ab.
-  ABusy := (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
-    Typing(AContext.FileName, ALine, mLineState.Text);
-  // Nur, wenn die Zeile im Editor der im Speicher entspricht; nicht in .atlas ausgeblendet (#628).
-  Result := (TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(AText, ATabWidth))) and
-    not TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, AContext.FileName, AText);
-end;
-
 procedure TAtlasProblemsPainter.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
 var
@@ -442,6 +432,44 @@ begin
     end;
   finally
     RestoreDC(mDC, mSaved);
+  end;
+end;
+
+procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mProblems: TArray<TAtlasProblem>;
+  mLine, mSource, mTabWidth: Integer;
+  mText: string;
+  mBusy: Boolean;
+begin
+  // Durch die Sicherung abgeschaltet (#493).
+  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  begin
+    Exit;
+  end;
+  try
+    mLine := Context.LogicalLineNum - 1;
+    // Was jetzt in dieser Zeile steht (#1818); weggerückte oder gelöschte Zeilen tragen keine Marke.
+    if not TAtlasIdeLineTracker.SourceAt(Tracked(Context), mLine, mSource) then
+    begin
+      Exit;
+    end;
+    mProblems := FStore.OnLine(Context.FileName, mSource);
+    // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme.
+    if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
+      LineToPaint(Context, mSource, mText, mTabWidth, mBusy) then
+    begin
+      PaintMarks(Rect, Context, mProblems, mSource, mText, mTabWidth);
+      if not mBusy then
+      begin
+        PaintInline(Rect, Context, mProblems, mSource, mText, mTabWidth);
+      end;
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Problems, E);
   end;
 end;
 
@@ -494,41 +522,13 @@ begin
     end);
 end;
 
-procedure TAtlasProblemsPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+class procedure TAtlasProblemsPainter.Invalidate;
 var
-  mProblems: TArray<TAtlasProblem>;
-  mLine, mSource, mTabWidth: Integer;
-  mText: string;
-  mBusy: Boolean;
+  mServices: INTACodeEditorServices;
 begin
-  // Durch die Sicherung abgeschaltet (#493).
-  if TAtlasGuard.Disabled(TAtlasFeature.Problems) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Exit;
-  end;
-  try
-    mLine := Context.LogicalLineNum - 1;
-    // Was jetzt in dieser Zeile steht (#1818); weggerückte oder gelöschte Zeilen tragen keine Marke.
-    if not TAtlasIdeLineTracker.SourceAt(Tracked(Context), mLine, mSource) then
-    begin
-      Exit;
-    end;
-    mProblems := FStore.OnLine(Context.FileName, mSource);
-    // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme.
-    if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
-      LineToPaint(Context, mSource, mText, mTabWidth, mBusy) then
-    begin
-      PaintMarks(Rect, Context, mProblems, mSource, mText, mTabWidth);
-      if not mBusy then
-      begin
-        PaintInline(Rect, Context, mProblems, mSource, mText, mTabWidth);
-      end;
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Problems, E);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 

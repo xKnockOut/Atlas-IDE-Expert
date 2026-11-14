@@ -134,6 +134,8 @@ type
     function Wait(AMs: Cardinal): Boolean;
   end;
 
+{ TFolderChangeWait }
+
 constructor TFolderChangeWait.Create(const AFolder: string);
 begin
   inherited Create;

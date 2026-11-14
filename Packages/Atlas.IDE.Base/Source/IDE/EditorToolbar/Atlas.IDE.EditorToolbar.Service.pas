@@ -341,47 +341,45 @@ begin
   inherited Destroy;
 end;
 
+procedure TToolbarState.Tick(Sender: TObject);
+var
+  mOn: Boolean;
+begin
+  mOn := ToolbarOn;
+  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
+  if not FHost.Guard then
+  begin
+    Exit;
+  end;
+  // Ohne Leiste und ohne Rücksprungpunkte gibt es nichts zu tun.
+  if not mOn and (FPoints.Count = 0) then
+  begin
+    if FHost.Count > 0 then
+    begin
+      FHost.Clear;
+    end;
+    Exit;
+  end;
+  // Kein Editor aktiv oder die IDE im Hintergrund: Nur jeder SlowTicks-te Takt räumt auf.
+  if not Application.Active or (TAtlasEditorBuffer.ActiveView = nil) then
+  begin
+    Inc(FIdle);
+    if FIdle < cSlowTicks then
+    begin
+      Exit;
+    end;
+  end;
+  FIdle := 0;
+  TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
+    procedure
+    begin
+      Step(mOn);
+    end);
+end;
+
 function TToolbarState.ToolbarOn: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.EditorToolbar;
-end;
-
-procedure TToolbarState.Reset;
-begin
-  FSlow := 0;
-  FSectionsFile := '';
-  // Die Position stellt Place beim nächsten Takt um, die Knöpfe UpdateBar; hier nur, was alle Leisten betrifft.
-  FHost.ForEach(
-    procedure(ABar: TControl)
-    begin
-      TAtlasEditorToolbar(ABar).Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
-    end);
-  ApplyTheme;
-  ReadCommands;
-end;
-
-/// <summary>Befehlsliste und Tasten neu lesen: nach geänderten Einstellungen und im langsamen Takt.</summary>
-procedure TToolbarState.ReadCommands;
-begin
-  FCommands := nil;
-  if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
-  begin
-    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
-  end;
-  FShortCuts := nil;
-  if Assigned(TAtlasIdeEditorToolbar.FHooks.ShortCuts) then
-  begin
-    FShortCuts := TAtlasIdeEditorToolbar.FHooks.ShortCuts();
-  end;
-end;
-
-procedure TToolbarState.ApplyTheme;
-begin
-  FHost.ForEach(
-    procedure(ABar: TControl)
-    begin
-      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors);
-    end);
 end;
 
 function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
@@ -512,35 +510,97 @@ begin
   end;
 end;
 
-function TToolbarState.SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
+/// <summary>Rücksprungpunkte mit eingefügten bzw. gelöschten Zeilen verschieben (wie der Navigationsverlauf) und
+/// erledigen, wenn der Caret auf die Zeile zurückkommt.</summary>
+procedure TToolbarState.Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
 var
-  mSnapshot: TAtlasEditorSnapshot;
+  mKey: string;
+  mCount, mKnown, mAnchor: Integer;
 begin
-  mSnapshot := TAtlasEditorSnapshots.Get(AView);
-  AFileName := mSnapshot.FileName;
-  if (mSnapshot.Version <> FSectionsVersion) or not SameText(mSnapshot.FileName, FSectionsFile) then
+  if FPoints.Count = 0 then
   begin
-    FSections := TAtlasSectionScanner.Scan(mSnapshot.Text);
-    FSectionsVersion := mSnapshot.Version;
-    FSectionsFile := mSnapshot.FileName;
+    FLineCounts.Clear;
+    Exit;
   end;
-  Result := FSections;
+  mKey := AnsiUpperCase(AFileName);
+  mCount := AView.Buffer.GetLinesInBuffer;
+  if FLineCounts.TryGetValue(mKey, mKnown) and (mKnown <> mCount) then
+  begin
+    // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
+    mAnchor := ALine;
+    if SameText(FLastFile, AFileName) and (FLastLine >= 0) then
+    begin
+      mAnchor := Min(mAnchor, FLastLine);
+    end;
+    FPoints.LinesChanged(AFileName, mAnchor, mCount - mKnown);
+  end;
+  FLineCounts.AddOrSetValue(mKey, mCount);
+  FPoints.Caret(AFileName, ALine);
+  FLastFile := AFileName;
+  FLastLine := ALine;
 end;
 
-function TToolbarState.CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
+procedure TToolbarState.UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
+  ALine, ACharacter: Integer);
 var
-  mCommand: TAtlasCommand;
+  mPoint: TAtlasReturnPoint;
+  mHint: string;
 begin
-  for mCommand in FCommands do
+  ABar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
+  ABar.SetButtons(ButtonsFor(AFileName, ALine, ACharacter));
+  if TAtlasIdeSettings.Current.EditorToolbarReturnButton and FPoints.Find(AFileName, mPoint) then
   begin
-    if SameText(mCommand.Id, AId) then
+    if mPoint.Context <> '' then
     begin
-      ACommand := mCommand;
-      Exit(True);
+      mHint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLineIn), [mPoint.Line + 1, mPoint.Context]);
+    end
+    else
+    begin
+      mHint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLine), [mPoint.Line + 1]);
+    end;
+    ABar.SetReturn(True, IntToStr(mPoint.Line + 1), mHint);
+  end
+  else
+  begin
+    ABar.SetReturn(False, '', '');
+  end;
+end;
+
+function TToolbarState.ButtonsFor(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasToolbarButton>;
+var
+  mItems: TArray<string>;
+  mId, mCaption: string;
+  mButton: TAtlasToolbarButton;
+  mTarget: TAtlasSectionTarget;
+  mSection: TAtlasCodeSection;
+  mPinned, mIndex: Integer;
+begin
+  Result := nil;
+  mItems := TAtlasToolbarItems.Parse(TAtlasIdeSettings.Current.EditorToolbarItems);
+  mPinned := TAtlasToolbarItems.PinnedCount(mItems);
+  mSection := FSections.SectionAt(ALine, ACharacter);
+  for mIndex := 0 to High(mItems) do
+  begin
+    mId := mItems[mIndex];
+    if TAtlasToolbarItems.IsSeparator(mId) then
+    begin
+      Result := Result + [TAtlasToolbarButton.Separator];
+    end
+    else if CaptionOf(mId, mCaption) then
+    begin
+      mButton := TAtlasToolbarButton.Create(mId, mCaption, KeyHint(mId, mCaption), TAtlasToolbarIcons.IconOf(mId));
+      mButton.Pinned := mIndex < mPinned;
+      if SectionTargetOf(mId, mTarget) then
+      begin
+        MarkSection(mButton, mTarget, ALine, ACharacter, mSection);
+      end
+      else
+      begin
+        MarkHooks(mButton, AFileName);
+      end;
+      Result := Result + [mButton];
     end;
   end;
-  ACommand := Default(TAtlasCommand);
-  Result := False;
 end;
 
 /// <summary>Text der Schaltfläche; False, wenn der Befehl fehlt.</summary>
@@ -596,166 +656,6 @@ begin
   end;
 end;
 
-function TToolbarState.ButtonsFor(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasToolbarButton>;
-var
-  mItems: TArray<string>;
-  mId, mCaption: string;
-  mButton: TAtlasToolbarButton;
-  mTarget: TAtlasSectionTarget;
-  mSection: TAtlasCodeSection;
-  mPinned, mIndex: Integer;
-begin
-  Result := nil;
-  mItems := TAtlasToolbarItems.Parse(TAtlasIdeSettings.Current.EditorToolbarItems);
-  mPinned := TAtlasToolbarItems.PinnedCount(mItems);
-  mSection := FSections.SectionAt(ALine, ACharacter);
-  for mIndex := 0 to High(mItems) do
-  begin
-    mId := mItems[mIndex];
-    if TAtlasToolbarItems.IsSeparator(mId) then
-    begin
-      Result := Result + [TAtlasToolbarButton.Separator];
-    end
-    else if CaptionOf(mId, mCaption) then
-    begin
-      mButton := TAtlasToolbarButton.Create(mId, mCaption, KeyHint(mId, mCaption), TAtlasToolbarIcons.IconOf(mId));
-      mButton.Pinned := mIndex < mPinned;
-      if SectionTargetOf(mId, mTarget) then
-      begin
-        MarkSection(mButton, mTarget, ALine, ACharacter, mSection);
-      end
-      else
-      begin
-        MarkHooks(mButton, AFileName);
-      end;
-      Result := Result + [mButton];
-    end;
-  end;
-end;
-
-procedure TToolbarState.UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
-  ALine, ACharacter: Integer);
-var
-  mPoint: TAtlasReturnPoint;
-  mHint: string;
-begin
-  ABar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
-  ABar.SetButtons(ButtonsFor(AFileName, ALine, ACharacter));
-  if TAtlasIdeSettings.Current.EditorToolbarReturnButton and FPoints.Find(AFileName, mPoint) then
-  begin
-    if mPoint.Context <> '' then
-    begin
-      mHint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLineIn), [mPoint.Line + 1, mPoint.Context]);
-    end
-    else
-    begin
-      mHint := Format(TAtlasStrings.Text(TAtlasTextId.EditorToolbarReturnLine), [mPoint.Line + 1]);
-    end;
-    ABar.SetReturn(True, IntToStr(mPoint.Line + 1), mHint);
-  end
-  else
-  begin
-    ABar.SetReturn(False, '', '');
-  end;
-end;
-
-/// <summary>Rücksprungpunkte mit eingefügten bzw. gelöschten Zeilen verschieben (wie der Navigationsverlauf) und
-/// erledigen, wenn der Caret auf die Zeile zurückkommt.</summary>
-procedure TToolbarState.Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
-var
-  mKey: string;
-  mCount, mKnown, mAnchor: Integer;
-begin
-  if FPoints.Count = 0 then
-  begin
-    FLineCounts.Clear;
-    Exit;
-  end;
-  mKey := AnsiUpperCase(AFileName);
-  mCount := AView.Buffer.GetLinesInBuffer;
-  if FLineCounts.TryGetValue(mKey, mKnown) and (mKnown <> mCount) then
-  begin
-    // Eingefügt bzw. gelöscht wurde an der Cursorstelle vor oder nach der Änderung.
-    mAnchor := ALine;
-    if SameText(FLastFile, AFileName) and (FLastLine >= 0) then
-    begin
-      mAnchor := Min(mAnchor, FLastLine);
-    end;
-    FPoints.LinesChanged(AFileName, mAnchor, mCount - mKnown);
-  end;
-  FLineCounts.AddOrSetValue(mKey, mCount);
-  FPoints.Caret(AFileName, ALine);
-  FLastFile := AFileName;
-  FLastLine := ALine;
-end;
-
-procedure TToolbarState.ForgetClosedFiles;
-var
-  mServices: IOTAModuleServices;
-  mFiles: TArray<string>;
-  mIndex: Integer;
-begin
-  if (FPoints.Count = 0) or not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mFiles := nil;
-  for mIndex := 0 to mServices.ModuleCount - 1 do
-  begin
-    mFiles := mFiles + [mServices.Modules[mIndex].FileName];
-  end;
-  FPoints.KeepOnly(mFiles);
-end;
-
-procedure TToolbarState.Tick(Sender: TObject);
-var
-  mOn: Boolean;
-begin
-  mOn := ToolbarOn;
-  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
-  if not FHost.Guard then
-  begin
-    Exit;
-  end;
-  // Ohne Leiste und ohne Rücksprungpunkte gibt es nichts zu tun.
-  if not mOn and (FPoints.Count = 0) then
-  begin
-    if FHost.Count > 0 then
-    begin
-      FHost.Clear;
-    end;
-    Exit;
-  end;
-  // Kein Editor aktiv oder die IDE im Hintergrund: Nur jeder SlowTicks-te Takt räumt auf.
-  if not Application.Active or (TAtlasEditorBuffer.ActiveView = nil) then
-  begin
-    Inc(FIdle);
-    if FIdle < cSlowTicks then
-    begin
-      Exit;
-    end;
-  end;
-  FIdle := 0;
-  TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
-    procedure
-    begin
-      Step(mOn);
-    end);
-end;
-
-/// <summary>Befehlsliste und offene Dateien nur alle SlowTicks Takte neu lesen.</summary>
-procedure TToolbarState.SlowRefresh;
-begin
-  Inc(FSlow);
-  if FSlow < cSlowTicks then
-  begin
-    Exit;
-  end;
-  FSlow := 0;
-  ReadCommands;
-  ForgetClosedFiles;
-end;
-
 /// <summary>Ein Takt unter dem Wächter: Leisten zeigen bzw. entfernen, Rücksprungpunkte nachführen, Leiste
 /// füllen.</summary>
 procedure TToolbarState.Step(AOn: Boolean);
@@ -799,6 +699,68 @@ begin
   UpdateBar(mBar, mFileName, mLine, mCharacter);
 end;
 
+/// <summary>Befehlsliste und offene Dateien nur alle SlowTicks Takte neu lesen.</summary>
+procedure TToolbarState.SlowRefresh;
+begin
+  Inc(FSlow);
+  if FSlow < cSlowTicks then
+  begin
+    Exit;
+  end;
+  FSlow := 0;
+  ReadCommands;
+  ForgetClosedFiles;
+end;
+
+function TToolbarState.CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
+var
+  mCommand: TAtlasCommand;
+begin
+  for mCommand in FCommands do
+  begin
+    if SameText(mCommand.Id, AId) then
+    begin
+      ACommand := mCommand;
+      Exit(True);
+    end;
+  end;
+  ACommand := Default(TAtlasCommand);
+  Result := False;
+end;
+
+procedure TToolbarState.ForgetClosedFiles;
+var
+  mServices: IOTAModuleServices;
+  mFiles: TArray<string>;
+  mIndex: Integer;
+begin
+  if (FPoints.Count = 0) or not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  mFiles := nil;
+  for mIndex := 0 to mServices.ModuleCount - 1 do
+  begin
+    mFiles := mFiles + [mServices.Modules[mIndex].FileName];
+  end;
+  FPoints.KeepOnly(mFiles);
+end;
+
+/// <summary>Befehlsliste und Tasten neu lesen: nach geänderten Einstellungen und im langsamen Takt.</summary>
+procedure TToolbarState.ReadCommands;
+begin
+  FCommands := nil;
+  if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
+  begin
+    FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
+  end;
+  FShortCuts := nil;
+  if Assigned(TAtlasIdeEditorToolbar.FHooks.ShortCuts) then
+  begin
+    FShortCuts := TAtlasIdeEditorToolbar.FHooks.ShortCuts();
+  end;
+end;
+
 /// <summary>Erst nach dem Klick ausführen (siehe CreateBar); nur, wenn der Zustand dann noch lebt.</summary>
 procedure TToolbarState.Later(const AAction: TProc);
 var
@@ -818,6 +780,44 @@ begin
     end);
 end;
 
+procedure TToolbarState.Reset;
+begin
+  FSlow := 0;
+  FSectionsFile := '';
+  // Die Position stellt Place beim nächsten Takt um, die Knöpfe UpdateBar; hier nur, was alle Leisten betrifft.
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorToolbar(ABar).Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
+    end);
+  ApplyTheme;
+  ReadCommands;
+end;
+
+procedure TToolbarState.ApplyTheme;
+begin
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors);
+    end);
+end;
+
+function TToolbarState.SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
+var
+  mSnapshot: TAtlasEditorSnapshot;
+begin
+  mSnapshot := TAtlasEditorSnapshots.Get(AView);
+  AFileName := mSnapshot.FileName;
+  if (mSnapshot.Version <> FSectionsVersion) or not SameText(mSnapshot.FileName, FSectionsFile) then
+  begin
+    FSections := TAtlasSectionScanner.Scan(mSnapshot.Text);
+    FSectionsVersion := mSnapshot.Version;
+    FSectionsFile := mSnapshot.FileName;
+  end;
+  Result := FSections;
+end;
+
 { TAtlasIdeEditorToolbar }
 
 class procedure TAtlasIdeEditorToolbar.Say(const AText: string);
@@ -826,11 +826,6 @@ begin
   begin
     FHooks.Message(AText);
   end;
-end;
-
-class function TAtlasIdeEditorToolbar.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.EditorToolbar;
 end;
 
 class procedure TAtlasIdeEditorToolbar.Install(const AHooks: THooks);
@@ -861,6 +856,11 @@ begin
   begin
     State.ApplyTheme;
   end;
+end;
+
+class function TAtlasIdeEditorToolbar.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.EditorToolbar;
 end;
 
 class procedure TAtlasIdeEditorToolbar.GoToSection(ATarget: TAtlasSectionTarget);
@@ -970,22 +970,6 @@ begin
     end);
 end;
 
-class function TAtlasIdeEditorToolbar.CommandInfos: TArray<TAtlasToolbarCommandInfo>;
-var
-  mCommand: TAtlasCommand;
-begin
-  Result := nil;
-  if Assigned(FHooks.Commands) then
-  begin
-    for mCommand in FHooks.Commands() do
-    begin
-      Result := Result + [TAtlasToolbarCommandInfo.Create(mCommand.Id, PlainCaption(mCommand.Caption))];
-    end;
-  end;
-  Result := Result + [TAtlasToolbarCommandInfo.Create(TAtlasToolbarItems.cCommandPalette,
-    TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand))];
-end;
-
 class procedure TAtlasIdeEditorToolbar.Customize;
 var
   mConfig: TAtlasToolbarConfig;
@@ -1003,6 +987,22 @@ begin
   mNext.EditorToolbarLabels := mConfig.Labels;
   mNext.EditorToolbarPosition := mConfig.Position;
   TAtlasIdeSettings.Update(mNext);
+end;
+
+class function TAtlasIdeEditorToolbar.CommandInfos: TArray<TAtlasToolbarCommandInfo>;
+var
+  mCommand: TAtlasCommand;
+begin
+  Result := nil;
+  if Assigned(FHooks.Commands) then
+  begin
+    for mCommand in FHooks.Commands() do
+    begin
+      Result := Result + [TAtlasToolbarCommandInfo.Create(mCommand.Id, PlainCaption(mCommand.Caption))];
+    end;
+  end;
+  Result := Result + [TAtlasToolbarCommandInfo.Create(TAtlasToolbarItems.cCommandPalette,
+    TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand))];
 end;
 
 end.

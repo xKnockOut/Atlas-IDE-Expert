@@ -77,6 +77,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeBreakpointListMenu }
+
 constructor TAtlasIdeBreakpointListMenu.CreateMenu(const ACaptions: TArray<string>; const AActions: TArray<TProc>);
 var
   mIndex: Integer;
@@ -110,19 +112,6 @@ begin
   Follow(nil);
   FActions := nil;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeBreakpointListMenu.Follow(AMenu: TPopupMenu);
-begin
-  if FMenu <> nil then
-  begin
-    FMenu.RemoveFreeNotification(Self);
-  end;
-  FMenu := AMenu;
-  if FMenu <> nil then
-  begin
-    FMenu.FreeNotification(Self);
-  end;
 end;
 
 procedure TAtlasIdeBreakpointListMenu.Notification(AComponent: TComponent; Operation: TOperation);
@@ -178,6 +167,30 @@ begin
   end;
 end;
 
+procedure TAtlasIdeBreakpointListMenu.ItemClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (mIndex >= 0) and (mIndex <= High(FActions)) and Assigned(FActions[mIndex]) then
+  begin
+    FActions[mIndex]();
+  end;
+end;
+
+procedure TAtlasIdeBreakpointListMenu.Follow(AMenu: TPopupMenu);
+begin
+  if FMenu <> nil then
+  begin
+    FMenu.RemoveFreeNotification(Self);
+  end;
+  FMenu := AMenu;
+  if FMenu <> nil then
+  begin
+    FMenu.FreeNotification(Self);
+  end;
+end;
+
 procedure TAtlasIdeBreakpointListMenu.Attach;
 var
   mMenu: TPopupMenu;
@@ -206,17 +219,6 @@ begin
   begin
     FLogged := True;
     TAtlasGuard.Log('Breakpoint list menu (#855): attached to' + mDetails);
-  end;
-end;
-
-procedure TAtlasIdeBreakpointListMenu.ItemClick(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := TMenuItem(Sender).Tag;
-  if (mIndex >= 0) and (mIndex <= High(FActions)) and Assigned(FActions[mIndex]) then
-  begin
-    FActions[mIndex]();
   end;
 end;
 

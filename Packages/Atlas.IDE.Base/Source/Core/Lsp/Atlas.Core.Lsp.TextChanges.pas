@@ -113,28 +113,7 @@ begin
   Result := (Ord(AChar) >= $DC00) and (Ord(AChar) <= $DFFF);
 end;
 
-class function TLspTextChanges.PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition;
-var
-  mPosition: TTextPosition;
-begin
-  mPosition := ALines.PositionAt(AOffset);
-  Result := TLspTextPosition.Create(mPosition.Line, mPosition.Character);
-end;
-
-class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
-begin
-  Result := PositionOf(TLineTable.Build(AText), AOffset);
-end;
-
-class function TLspTextChanges.OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer;
-begin
-  Result := ALines.OffsetAt(TTextPosition.Create(APosition.Line, APosition.Character));
-end;
-
-class function TLspTextChanges.OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer;
-begin
-  Result := OffsetOf(TLineTable.Build(AText), APosition);
-end;
+{ TLspTextChanges }
 
 class function TLspTextChanges.Between(const AOld, ANew: string): TLspTextChange;
 var
@@ -179,6 +158,29 @@ begin
   Result.StartPos := PositionOf(mLines, mPrefix);
   Result.EndPos := PositionOf(mLines, Length(AOld) - mSuffix);
   Result.Text := Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix);
+end;
+
+class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
+begin
+  Result := PositionOf(TLineTable.Build(AText), AOffset);
+end;
+
+class function TLspTextChanges.PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition;
+var
+  mPosition: TTextPosition;
+begin
+  mPosition := ALines.PositionAt(AOffset);
+  Result := TLspTextPosition.Create(mPosition.Line, mPosition.Character);
+end;
+
+class function TLspTextChanges.OffsetOf(const AText: string; const APosition: TLspTextPosition): Integer;
+begin
+  Result := OffsetOf(TLineTable.Build(AText), APosition);
+end;
+
+class function TLspTextChanges.OffsetOf(const ALines: TLineTable; const APosition: TLspTextPosition): Integer;
+begin
+  Result := ALines.OffsetAt(TTextPosition.Create(APosition.Line, APosition.Character));
 end;
 
 end.

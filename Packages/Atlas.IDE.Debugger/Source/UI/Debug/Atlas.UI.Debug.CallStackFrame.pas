@@ -269,23 +269,6 @@ begin
   FStatus.Parent := Self;
 end;
 
-function TAtlasCallStackBar.MenuItem(ACaption: TAtlasDebugTextId; AClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(FCopyMenu);
-  Result.Caption := TAtlasDebugStrings.Text(ACaption);
-  Result.OnClick := AClick;
-end;
-
-function TAtlasCallStackBar.Query: string;
-begin
-  Result := Trim(FSearch.Text);
-end;
-
-function TAtlasCallStackBar.Comparing: Boolean;
-begin
-  Result := FCompare.Checked;
-end;
-
 procedure TAtlasCallStackBar.Changed(Sender: TObject);
 begin
   if Assigned(FOnChange) then
@@ -316,6 +299,23 @@ begin
   begin
     FOnCopy(True);
   end;
+end;
+
+function TAtlasCallStackBar.MenuItem(ACaption: TAtlasDebugTextId; AClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(FCopyMenu);
+  Result.Caption := TAtlasDebugStrings.Text(ACaption);
+  Result.OnClick := AClick;
+end;
+
+function TAtlasCallStackBar.Query: string;
+begin
+  Result := Trim(FSearch.Text);
+end;
+
+function TAtlasCallStackBar.Comparing: Boolean;
+begin
+  Result := FCompare.Checked;
 end;
 
 { TAtlasDebugCallStackFrame }
@@ -360,6 +360,15 @@ begin
   Result.Parent := AParent;
 end;
 
+procedure TAtlasDebugCallStackFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  if not FFilled then
+  begin
+    Fill;
+  end;
+end;
+
 procedure TAtlasDebugCallStackFrame.BuildLists;
 var
   mFooter: TLabel;
@@ -386,59 +395,6 @@ begin
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
-end;
-
-procedure TAtlasDebugCallStackFrame.CreateWnd;
-begin
-  inherited CreateWnd;
-  if not FFilled then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.SetStack(const AStack, APrevious: TAtlasDebugStackView; AHasPrevious: Boolean);
-begin
-  FStack := AStack;
-  FPrev := APrevious;
-  FHasPrevious := AHasPrevious;
-  FExpanded := nil;
-  FStatusText := '';
-  FFilled := False;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.UpdateStack(const AStack, APrevious: TAtlasDebugStackView);
-var
-  mSelected: Integer;
-begin
-  FStack := AStack;
-  FPrev := APrevious;
-  if not HandleAllocated then
-  begin
-    FFilled := False;
-    Exit;
-  end;
-  mSelected := -1;
-  if FList.Selected <> nil then
-  begin
-    mSelected := FList.Selected.Index;
-  end;
-  Fill;
-  if (mSelected >= 0) and (mSelected < FList.Items.Count) then
-  begin
-    FList.Items[mSelected].Selected := True;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.ShowStatus(const AText: string);
-begin
-  SetStack(Default(TAtlasDebugStackView), Default(TAtlasDebugStackView), False);
-  FStatusText := AText;
-  FBar.StatusLabel.Caption := AText;
 end;
 
 procedure TAtlasDebugCallStackFrame.Fill;
@@ -513,6 +469,147 @@ begin
   end;
 end;
 
+procedure TAtlasDebugCallStackFrame.BarChange(Sender: TObject);
+begin
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.ListDblClick(Sender: TObject);
+begin
+  OpenRow(RowIndex(FList.Selected));
+end;
+
+procedure TAtlasDebugCallStackFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    Key := 0;
+    OpenRow(RowIndex(FList.Selected));
+  end
+  else if (ssCtrl in Shift) and (Key = Ord('C')) then
+  begin
+    Key := 0;
+    CopyToClipboard(False);
+  end
+  else if (ssCtrl in Shift) and (Key = Ord('F')) then
+  begin
+    Key := 0;
+    if FBar.SearchEdit.CanFocus and Showing then
+    begin
+      FBar.SearchEdit.SetFocus;
+    end;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  DrawRow(Sender.Canvas, Item, State);
+end;
+
+procedure TAtlasDebugCallStackFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  DrawRow(Sender.Canvas, Item, State);
+end;
+
+procedure TAtlasDebugCallStackFrame.PreviousCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  mChanged: Boolean;
+begin
+  DefaultDraw := True;
+  mChanged := FHasPrevious and (Item.Index <= High(FPrev.Entries)) and
+    (FPrev.Entries[Item.Index].Changed or FPrev.Entries[Item.Index].ParamsChanged);
+  TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FPrevious, State, not FHasPrevious);
+  if mChanged and not (cdsSelected in State) then
+  begin
+    Sender.Canvas.Font.Color := cChangedColor;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.DrawRow(ACanvas: TCanvas; AItem: TListItem; AState: TCustomDrawState);
+var
+  mIndex: Integer;
+  mRow: TAtlasDebugStackRow;
+  mEntry: TAtlasDebugStackEntry;
+begin
+  mIndex := RowIndex(AItem);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  mRow := FRows[mIndex];
+  TAtlasDebugExceptionStack.RowColors(ACanvas, FList, AState, mRow.Faded);
+  if FStack.Hits(mRow, FBar.Query) > 0 then
+  begin
+    ACanvas.Font.Style := [fsBold];
+    if not (cdsSelected in AState) then
+    begin
+      ACanvas.Font.Color := cHitColor;
+    end;
+    Exit;
+  end;
+  if mRow.Kind <> TAtlasDebugStackRowKind.Frame then
+  begin
+    Exit;
+  end;
+  mEntry := FStack.Entries[mRow.First];
+  if FBar.Comparing and (mEntry.Changed or mEntry.ParamsChanged) and not (cdsSelected in AState) then
+  begin
+    ACanvas.Font.Color := cChangedColor;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.SetStack(const AStack, APrevious: TAtlasDebugStackView; AHasPrevious: Boolean);
+begin
+  FStack := AStack;
+  FPrev := APrevious;
+  FHasPrevious := AHasPrevious;
+  FExpanded := nil;
+  FStatusText := '';
+  FFilled := False;
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.UpdateStack(const AStack, APrevious: TAtlasDebugStackView);
+var
+  mSelected: Integer;
+begin
+  FStack := AStack;
+  FPrev := APrevious;
+  if not HandleAllocated then
+  begin
+    FFilled := False;
+    Exit;
+  end;
+  mSelected := -1;
+  if FList.Selected <> nil then
+  begin
+    mSelected := FList.Selected.Index;
+  end;
+  Fill;
+  if (mSelected >= 0) and (mSelected < FList.Items.Count) then
+  begin
+    FList.Items[mSelected].Selected := True;
+  end;
+end;
+
+procedure TAtlasDebugCallStackFrame.ShowStatus(const AText: string);
+begin
+  SetStack(Default(TAtlasDebugStackView), Default(TAtlasDebugStackView), False);
+  FStatusText := AText;
+  FBar.StatusLabel.Caption := AText;
+end;
+
 procedure TAtlasDebugCallStackFrame.OpenRow(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FRows)) then
@@ -557,103 +654,6 @@ begin
   if Assigned(FOnCopied) then
   begin
     FOnCopied(Length(mText.Split([sLineBreak])));
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.BarChange(Sender: TObject);
-begin
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.ListDblClick(Sender: TObject);
-begin
-  OpenRow(RowIndex(FList.Selected));
-end;
-
-procedure TAtlasDebugCallStackFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if Key = VK_RETURN then
-  begin
-    Key := 0;
-    OpenRow(RowIndex(FList.Selected));
-  end
-  else if (ssCtrl in Shift) and (Key = Ord('C')) then
-  begin
-    Key := 0;
-    CopyToClipboard(False);
-  end
-  else if (ssCtrl in Shift) and (Key = Ord('F')) then
-  begin
-    Key := 0;
-    if FBar.SearchEdit.CanFocus and Showing then
-    begin
-      FBar.SearchEdit.SetFocus;
-    end;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.DrawRow(ACanvas: TCanvas; AItem: TListItem; AState: TCustomDrawState);
-var
-  mIndex: Integer;
-  mRow: TAtlasDebugStackRow;
-  mEntry: TAtlasDebugStackEntry;
-begin
-  mIndex := RowIndex(AItem);
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  mRow := FRows[mIndex];
-  TAtlasDebugExceptionStack.RowColors(ACanvas, FList, AState, mRow.Faded);
-  if FStack.Hits(mRow, FBar.Query) > 0 then
-  begin
-    ACanvas.Font.Style := [fsBold];
-    if not (cdsSelected in AState) then
-    begin
-      ACanvas.Font.Color := cHitColor;
-    end;
-    Exit;
-  end;
-  if mRow.Kind <> TAtlasDebugStackRowKind.Frame then
-  begin
-    Exit;
-  end;
-  mEntry := FStack.Entries[mRow.First];
-  if FBar.Comparing and (mEntry.Changed or mEntry.ParamsChanged) and not (cdsSelected in AState) then
-  begin
-    ACanvas.Font.Color := cChangedColor;
-  end;
-end;
-
-procedure TAtlasDebugCallStackFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  DrawRow(Sender.Canvas, Item, State);
-end;
-
-procedure TAtlasDebugCallStackFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
-  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  DrawRow(Sender.Canvas, Item, State);
-end;
-
-procedure TAtlasDebugCallStackFrame.PreviousCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-var
-  mChanged: Boolean;
-begin
-  DefaultDraw := True;
-  mChanged := FHasPrevious and (Item.Index <= High(FPrev.Entries)) and
-    (FPrev.Entries[Item.Index].Changed or FPrev.Entries[Item.Index].ParamsChanged);
-  TAtlasDebugExceptionStack.RowColors(Sender.Canvas, FPrevious, State, not FHasPrevious);
-  if mChanged and not (cdsSelected in State) then
-  begin
-    Sender.Canvas.Font.Color := cChangedColor;
   end;
 end;
 

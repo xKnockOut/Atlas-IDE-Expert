@@ -39,6 +39,8 @@ uses
   Atlas.UI.Architecture.Assignment,
   Atlas.UI.Analysis.Strings;
 
+{ TAtlasArchitectureTexts }
+
 class function TAtlasArchitectureTexts.UnitCaption(const AModel: TAtlasArchitectureModel; AUnit: Integer): string;
 begin
   Result := '';

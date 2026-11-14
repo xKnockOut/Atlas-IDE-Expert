@@ -938,6 +938,21 @@ begin
   Result := '';
 end;
 
+{ TClassCompletion }
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.Default, AAction);
+end;
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle;
+  out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.FromSettings(ASettings, AStyle), AAction);
+end;
+
 class function TClassCompletion.Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
   out AShape: TSignatureShape): Boolean;
 var
@@ -967,139 +982,6 @@ begin
     AShape.ResultType := Trim(Copy(mAfter, 2, MaxInt));
   end;
   ReadShapeDirectives(ATree.Tokens, mTail.Range.EndPos, AShape);
-end;
-
-class function TClassCompletion.Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>;
-var
-  mItems: TArray<TUnmatchedMethod>;
-  mShapes: TArray<TSignatureShape>;
-  mValid: TArray<Boolean>;
-  mIndex, mOther: Integer;
-  mPair: TSignaturePair;
-
-  function Candidate(A, B: Integer): Boolean;
-  begin
-    Result := (A <> B) and mValid[A] and mValid[B] and (mItems[A].Declared <> mItems[B].Declared) and
-      SameText(mItems[A].TypeName, mItems[B].TypeName) and SameText(mItems[A].Symbol.Name, mItems[B].Symbol.Name);
-  end;
-
-  function Score(A, B: Integer): Integer;
-  begin
-    if mItems[A].Declared then
-    begin
-      Result := Closeness(mShapes[A], mShapes[B]);
-    end
-    else
-    begin
-      Result := Closeness(mShapes[B], mShapes[A]);
-    end;
-  end;
-
-  /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
-  function Best(A: Integer): Integer;
-  var
-    B, mTop, mCount: Integer;
-  begin
-    Result := -1;
-    mTop := -1;
-    mCount := 0;
-    for B := 0 to High(mItems) do
-    begin
-      if Candidate(A, B) then
-      begin
-        if Score(A, B) > mTop then
-        begin
-          mTop := Score(A, B);
-          Result := B;
-          mCount := 1;
-        end
-        else if Score(A, B) = mTop then
-        begin
-          Inc(mCount);
-        end;
-      end;
-    end;
-    if mCount <> 1 then
-    begin
-      Result := -1;
-    end;
-  end;
-
-begin
-  Result := nil;
-  mItems := Unmatched(ATree, AText);
-  SetLength(mShapes, Length(mItems));
-  SetLength(mValid, Length(mItems));
-  for mIndex := 0 to High(mItems) do
-  begin
-    mValid[mIndex] := Shape(ATree, AText, mItems[mIndex].Symbol, mShapes[mIndex]);
-  end;
-  for mIndex := 0 to High(mItems) do
-  begin
-    if mItems[mIndex].Declared then
-    begin
-      Continue;
-    end;
-    mOther := Best(mIndex);
-    if (mOther < 0) or (Best(mOther) <> mIndex) then
-    begin
-      Continue;
-    end;
-    mPair.Declaration := mItems[mOther];
-    mPair.Body := mItems[mIndex];
-    mPair.DeclarationShape := mShapes[mOther];
-    mPair.BodyShape := mShapes[mIndex];
-    Result := Result + [mPair];
-  end;
-end;
-
-class function TClassCompletion.PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
-  out AFixes: TArray<TCodeAction>): Boolean;
-var
-  mDeclRange, mBodyRange: TTextRange;
-  mDeclTail, mBodyTail, mDeclTailText, mConvention: string;
-  mFix: TCodeAction;
-  mName: string;
-begin
-  AFixes := nil;
-  Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, mDeclRange, mDeclTail) and
-    SignatureTail(ATree, AText, APair.Body.Symbol, mBodyRange, mBodyTail);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mName := APair.Body.Symbol.Name;
-  mFix := Default(TCodeAction);
-  mFix.Kind := cQuickFixKind;
-  mFix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([mName]);
-  mFix.Edits := [TTextEdit.Create(mBodyRange, WithoutDefaults(mDeclTail))];
-  // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
-  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
-  begin
-    mConvention := APair.DeclarationShape.Convention;
-    if mConvention = '' then
-    begin
-      mConvention := 'register';
-    end;
-    mFix.Edits := mFix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, mConvention)];
-  end;
-  AFixes := AFixes + [mFix];
-  mFix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([mName]);
-  mDeclTailText := WithDefaultsOf(mBodyTail, mDeclTail);
-  mFix.Edits := nil;
-  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
-  begin
-    if APair.DeclarationShape.Convention <> '' then
-    begin
-      mFix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
-    end
-    else
-    begin
-      mDeclTailText := mDeclTailText + '; ' + APair.BodyShape.Convention;
-    end;
-  end;
-  mFix.Edits := [TTextEdit.Create(mDeclRange, mDeclTailText)] + mFix.Edits;
-  AFixes := AFixes + [mFix];
 end;
 
 
@@ -1136,6 +1018,8 @@ type
     function BodyFor(var AMatch: TTypeMatch; ADeclaration: Integer): Integer;
     function MatchType(const AType: TIndexSymbol): TTypeMatch;
   end;
+
+{ TMethodMatcher }
 
 /// <summary>Generisch ist ein Typ mit Typparametern; die kennt der Index nicht immer, dann steht "&lt;" hinter dem
 /// Namen.</summary>
@@ -1519,10 +1403,88 @@ begin
     NewSectionEdit(mLines, mType, mDeclaration, mLB, AEdit));
 end;
 
-class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
-  out AEdit: TTextEdit): Boolean;
+class function TClassCompletion.Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>;
+var
+  mItems: TArray<TUnmatchedMethod>;
+  mShapes: TArray<TSignatureShape>;
+  mValid: TArray<Boolean>;
+  mIndex, mOther: Integer;
+  mPair: TSignaturePair;
+
+  function Candidate(A, B: Integer): Boolean;
+  begin
+    Result := (A <> B) and mValid[A] and mValid[B] and (mItems[A].Declared <> mItems[B].Declared) and
+      SameText(mItems[A].TypeName, mItems[B].TypeName) and SameText(mItems[A].Symbol.Name, mItems[B].Symbol.Name);
+  end;
+
+  function Score(A, B: Integer): Integer;
+  begin
+    if mItems[A].Declared then
+    begin
+      Result := Closeness(mShapes[A], mShapes[B]);
+    end
+    else
+    begin
+      Result := Closeness(mShapes[B], mShapes[A]);
+    end;
+  end;
+
+  /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
+  function Best(A: Integer): Integer;
+  var
+    B, mTop, mCount: Integer;
+  begin
+    Result := -1;
+    mTop := -1;
+    mCount := 0;
+    for B := 0 to High(mItems) do
+    begin
+      if Candidate(A, B) then
+      begin
+        if Score(A, B) > mTop then
+        begin
+          mTop := Score(A, B);
+          Result := B;
+          mCount := 1;
+        end
+        else if Score(A, B) = mTop then
+        begin
+          Inc(mCount);
+        end;
+      end;
+    end;
+    if mCount <> 1 then
+    begin
+      Result := -1;
+    end;
+  end;
+
 begin
-  Result := BodyEdit(ATree, AText, ATypeName, ABody, TClassBodyOptions.Default, AEdit);
+  Result := nil;
+  mItems := Unmatched(ATree, AText);
+  SetLength(mShapes, Length(mItems));
+  SetLength(mValid, Length(mItems));
+  for mIndex := 0 to High(mItems) do
+  begin
+    mValid[mIndex] := Shape(ATree, AText, mItems[mIndex].Symbol, mShapes[mIndex]);
+  end;
+  for mIndex := 0 to High(mItems) do
+  begin
+    if mItems[mIndex].Declared then
+    begin
+      Continue;
+    end;
+    mOther := Best(mIndex);
+    if (mOther < 0) or (Best(mOther) <> mIndex) then
+    begin
+      Continue;
+    end;
+    mPair.Declaration := mItems[mOther];
+    mPair.Body := mItems[mIndex];
+    mPair.DeclarationShape := mShapes[mOther];
+    mPair.BodyShape := mShapes[mIndex];
+    Result := Result + [mPair];
+  end;
 end;
 
 /// <summary>Zeile von "implementation"; 0 ohne.</summary>
@@ -1552,46 +1514,53 @@ begin
   end;
 end;
 
-class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
-  const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean;
+class function TClassCompletion.PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
+  out AFixes: TArray<TCodeAction>): Boolean;
 var
-  mLines: TArray<string>;
-  mUnit: TUnitIndex;
-  mSymbol, mType: TIndexSymbol;
-  mLastLine, mInsertLine: Integer;
-  mLB: string;
+  mDeclRange, mBodyRange: TTextRange;
+  mDeclTail, mBodyTail, mDeclTailText, mConvention: string;
+  mFix: TCodeAction;
+  mName: string;
 begin
-  AEdit := Default(TTextEdit);
-  mLines := TTextLines.SplitLines(AText);
-  mUnit := TIndexExtractor.Extract(ATree, '');
-  if not FindTypeNamed(mUnit, ATypeName, mType) then
+  AFixes := nil;
+  Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, mDeclRange, mDeclTail) and
+    SignatureTail(ATree, AText, APair.Body.Symbol, mBodyRange, mBodyTail);
+  if not Result then
   begin
-    Exit(False);
+    Exit;
   end;
-  mLastLine := -1;
-  for mSymbol in mUnit.Symbols do
+  mName := APair.Body.Symbol.Name;
+  mFix := Default(TCodeAction);
+  mFix.Kind := cQuickFixKind;
+  mFix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([mName]);
+  mFix.Edits := [TTextEdit.Create(mBodyRange, WithoutDefaults(mDeclTail))];
+  // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
+  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
-    if (mSymbol.Kind in cMethodKinds) and SameText(mSymbol.Container, ATypeName) and
-      not ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and (mSymbol.Range.EndPos.Line > mLastLine) then
+    mConvention := APair.DeclarationShape.Convention;
+    if mConvention = '' then
     begin
-      mLastLine := mSymbol.Range.EndPos.Line;
+      mConvention := 'register';
+    end;
+    mFix.Edits := mFix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, mConvention)];
+  end;
+  AFixes := AFixes + [mFix];
+  mFix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([mName]);
+  mDeclTailText := WithDefaultsOf(mBodyTail, mDeclTail);
+  mFix.Edits := nil;
+  if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
+  begin
+    if APair.DeclarationShape.Convention <> '' then
+    begin
+      mFix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
+    end
+    else
+    begin
+      mDeclTailText := mDeclTailText + '; ' + APair.BodyShape.Convention;
     end;
   end;
-  mLB := TTextLines.LineBreakOf(AText);
-  if mLastLine >= 0 then
-  begin
-    AEdit := TTextEdit.Create(TTextRange.Create(mLastLine, Length(mLines[mLastLine]), mLastLine,
-      Length(mLines[mLastLine])), mLB + mLB + ABody);
-    Exit(True);
-  end;
-  mInsertLine := ImplementationEndLine(ATree);
-  Result := mInsertLine >= 0;
-  if Result then
-  begin
-    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
-      WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
-      AOptions) + mLB + mLB);
-  end;
+  mFix.Edits := [TTextEdit.Create(mDeclRange, mDeclTailText)] + mFix.Edits;
+  AFixes := AFixes + [mFix];
 end;
 
 /// <summary>Innerster Typ in Zeile ALine; False ohne.</summary>
@@ -1797,17 +1766,52 @@ begin
   end;
 end;
 
-class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
-  const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+  out AEdit: TTextEdit): Boolean;
 begin
-  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.Default, AAction);
+  Result := BodyEdit(ATree, AText, ATypeName, ABody, TClassBodyOptions.Default, AEdit);
 end;
 
-class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
-  const APosition: TTextPosition; const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle;
-  out AAction: TCodeAction): Boolean;
+class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+  const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean;
+var
+  mLines: TArray<string>;
+  mUnit: TUnitIndex;
+  mSymbol, mType: TIndexSymbol;
+  mLastLine, mInsertLine: Integer;
+  mLB: string;
 begin
-  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.FromSettings(ASettings, AStyle), AAction);
+  AEdit := Default(TTextEdit);
+  mLines := TTextLines.SplitLines(AText);
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  if not FindTypeNamed(mUnit, ATypeName, mType) then
+  begin
+    Exit(False);
+  end;
+  mLastLine := -1;
+  for mSymbol in mUnit.Symbols do
+  begin
+    if (mSymbol.Kind in cMethodKinds) and SameText(mSymbol.Container, ATypeName) and
+      not ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and (mSymbol.Range.EndPos.Line > mLastLine) then
+    begin
+      mLastLine := mSymbol.Range.EndPos.Line;
+    end;
+  end;
+  mLB := TTextLines.LineBreakOf(AText);
+  if mLastLine >= 0 then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(mLastLine, Length(mLines[mLastLine]), mLastLine,
+      Length(mLines[mLastLine])), mLB + mLB + ABody);
+    Exit(True);
+  end;
+  mInsertLine := ImplementationEndLine(ATree);
+  Result := mInsertLine >= 0;
+  if Result then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
+      AOptions) + mLB + mLB);
+  end;
 end;
 
 /// <summary>ABodies (je Rumpf mit Zeilenumbruch davor und dahinter) als erste Rümpfe des Typs AShape: mit dessen

@@ -80,6 +80,8 @@ type
     function ReadText(const AFileName: string; out AText: string): Boolean;
   end;
 
+{ TShellLeakSetupFiles }
+
 constructor TShellLeakSetupFiles.Create(const AReadText: TShellLeakSetupReadText);
 begin
   inherited Create;
@@ -161,14 +163,24 @@ begin
   end;
 end;
 
-class function TShellLeakSetup.ProjectFilesOf(const AServices: TShellLeakSetupServices; const AFileName: string;
-  out AMainSource: string; out AFiles: TArray<string>): Boolean;
+class function TShellLeakSetup.OutputFolderOf(const AProjectFile, AExeOutput: string): string;
 var
-  mProject: TProjectInfo;
-  mFolders: TArray<string>;
+  mFolder: string;
 begin
-  Result := LoadedProject(AServices, AFileName, mProject, mFolders, AFiles);
-  AMainSource := mProject.MainSource;
+  mFolder := ExcludeTrailingPathDelimiter(StringReplace(AExeOutput, '\', PathDelim, [rfReplaceAll]));
+  if (mFolder = '') or (mFolder = '.') then
+  begin
+    Result := ExtractFileDir(AProjectFile);
+  end
+  else if (ExtractFileDrive(mFolder) <> '') or mFolder.StartsWith(PathDelim) then
+  begin
+    Result := mFolder;
+  end
+  else
+  begin
+    Result := ExcludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(ExtractFileDir(AProjectFile)) +
+      mFolder));
+  end;
 end;
 
 function PropertyOf(const AProject: TProjectInfo; const AName: string): string;
@@ -233,24 +245,14 @@ begin
   ReadDebugConfiguration(AServices, mProject, AInput);
 end;
 
-class function TShellLeakSetup.OutputFolderOf(const AProjectFile, AExeOutput: string): string;
+class function TShellLeakSetup.ProjectFilesOf(const AServices: TShellLeakSetupServices; const AFileName: string;
+  out AMainSource: string; out AFiles: TArray<string>): Boolean;
 var
-  mFolder: string;
+  mProject: TProjectInfo;
+  mFolders: TArray<string>;
 begin
-  mFolder := ExcludeTrailingPathDelimiter(StringReplace(AExeOutput, '\', PathDelim, [rfReplaceAll]));
-  if (mFolder = '') or (mFolder = '.') then
-  begin
-    Result := ExtractFileDir(AProjectFile);
-  end
-  else if (ExtractFileDrive(mFolder) <> '') or mFolder.StartsWith(PathDelim) then
-  begin
-    Result := mFolder;
-  end
-  else
-  begin
-    Result := ExcludeTrailingPathDelimiter(ExpandFileName(IncludeTrailingPathDelimiter(ExtractFileDir(AProjectFile)) +
-      mFolder));
-  end;
+  Result := LoadedProject(AServices, AFileName, mProject, mFolders, AFiles);
+  AMainSource := mProject.MainSource;
 end;
 
 class function TShellLeakSetup.PathFolders(const APath: string): TArray<string>;

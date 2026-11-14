@@ -96,6 +96,8 @@ begin
   end;
 end;
 
+{ TAtlasVcsExternalRules }
+
 class function TAtlasVcsExternalRules.RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>;
 var
   mRoot, mItem: TJSONValue;

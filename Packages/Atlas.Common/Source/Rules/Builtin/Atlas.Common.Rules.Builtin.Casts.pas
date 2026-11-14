@@ -162,40 +162,6 @@ begin
     cTexts[TCastsText.UnrelatedTitle].Text);
 end;
 
-class function TUnrelatedClassCastRule.Allowed(const AAllowTypes: TArray<string>; const ASource,
-  ATarget: string): Boolean;
-
-  function SameName(const AEntry, AName: string): Boolean;
-  begin
-    // "Vcl.StdCtrls.TButton" passt zu "TButton" und umgekehrt.
-    Result := SameText(AEntry, AName) or EndsText('.' + AEntry, AName) or EndsText('.' + AName, AEntry);
-  end;
-
-var
-  mEntry, mSource, mTarget: string;
-  mEqual: Integer;
-begin
-  for mEntry in AAllowTypes do
-  begin
-    mEqual := Pos('=', mEntry);
-    if mEqual = 0 then
-    begin
-      if SameName(Trim(mEntry), ASource) or SameName(Trim(mEntry), ATarget) then
-      begin
-        Exit(True);
-      end;
-      Continue;
-    end;
-    mSource := Trim(Copy(mEntry, 1, mEqual - 1));
-    mTarget := Trim(Copy(mEntry, mEqual + 1, MaxInt));
-    if SameName(mSource, ASource) and SameName(mTarget, ATarget) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TUnrelatedClassCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScope: TTypedScope;
@@ -364,6 +330,40 @@ begin
   finally
     mScope.Free;
   end;
+end;
+
+class function TUnrelatedClassCastRule.Allowed(const AAllowTypes: TArray<string>; const ASource,
+  ATarget: string): Boolean;
+
+  function SameName(const AEntry, AName: string): Boolean;
+  begin
+    // "Vcl.StdCtrls.TButton" passt zu "TButton" und umgekehrt.
+    Result := SameText(AEntry, AName) or EndsText('.' + AEntry, AName) or EndsText('.' + AName, AEntry);
+  end;
+
+var
+  mEntry, mSource, mTarget: string;
+  mEqual: Integer;
+begin
+  for mEntry in AAllowTypes do
+  begin
+    mEqual := Pos('=', mEntry);
+    if mEqual = 0 then
+    begin
+      if SameName(Trim(mEntry), ASource) or SameName(Trim(mEntry), ATarget) then
+      begin
+        Exit(True);
+      end;
+      Continue;
+    end;
+    mSource := Trim(Copy(mEntry, 1, mEqual - 1));
+    mTarget := Trim(Copy(mEntry, mEqual + 1, MaxInt));
+    if SameName(mSource, ASource) and SameName(mTarget, ATarget) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 { TRedundantCastRule }

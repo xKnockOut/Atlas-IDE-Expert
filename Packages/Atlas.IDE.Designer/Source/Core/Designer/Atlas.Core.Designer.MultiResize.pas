@@ -296,40 +296,6 @@ end;
 
 { TAtlasMultiResize }
 
-class function TAtlasMultiResize.Horizontal(AEdge: TAtlasResizeEdge): Boolean;
-begin
-  Result := AEdge in [TAtlasResizeEdge.Right, TAtlasResizeEdge.Corner, TAtlasResizeEdge.Left];
-end;
-
-class function TAtlasMultiResize.Vertical(AEdge: TAtlasResizeEdge): Boolean;
-begin
-  Result := AEdge in [TAtlasResizeEdge.Bottom, TAtlasResizeEdge.Corner, TAtlasResizeEdge.Top];
-end;
-
-class function TAtlasMultiResize.Opposite(AEdge: TAtlasResizeEdge): TAtlasResizeEdge;
-begin
-  case AEdge of
-    TAtlasResizeEdge.Right:
-      Result := TAtlasResizeEdge.Left;
-    TAtlasResizeEdge.Bottom:
-      Result := TAtlasResizeEdge.Top;
-  else
-    Result := AEdge;
-  end;
-end;
-
-class function TAtlasMultiResize.ModeOf(const AText: string): TAtlasResizeMode;
-begin
-  if SameText(AText, cModeAlign) then
-  begin
-    Result := TAtlasResizeMode.Align;
-  end
-  else
-  begin
-    Result := TAtlasResizeMode.Delta;
-  end;
-end;
-
 class function TAtlasMultiResize.Apply(const AItems: TArray<TAtlasResizeItem>;
   const ANeighbours: TArray<TAtlasResizeNeighbour>; const ADrag: TAtlasResizeDrag): TAtlasResizeResult;
 var
@@ -368,6 +334,40 @@ begin
       mShift := NeighbourShift(ANeighbours[mIndex], AItems, Result.Items, ADrag.Edge);
       Result.Neighbours[mIndex].Offset(mShift.X, mShift.Y);
     end;
+  end;
+end;
+
+class function TAtlasMultiResize.Horizontal(AEdge: TAtlasResizeEdge): Boolean;
+begin
+  Result := AEdge in [TAtlasResizeEdge.Right, TAtlasResizeEdge.Corner, TAtlasResizeEdge.Left];
+end;
+
+class function TAtlasMultiResize.Vertical(AEdge: TAtlasResizeEdge): Boolean;
+begin
+  Result := AEdge in [TAtlasResizeEdge.Bottom, TAtlasResizeEdge.Corner, TAtlasResizeEdge.Top];
+end;
+
+class function TAtlasMultiResize.Opposite(AEdge: TAtlasResizeEdge): TAtlasResizeEdge;
+begin
+  case AEdge of
+    TAtlasResizeEdge.Right:
+      Result := TAtlasResizeEdge.Left;
+    TAtlasResizeEdge.Bottom:
+      Result := TAtlasResizeEdge.Top;
+  else
+    Result := AEdge;
+  end;
+end;
+
+class function TAtlasMultiResize.ModeOf(const AText: string): TAtlasResizeMode;
+begin
+  if SameText(AText, cModeAlign) then
+  begin
+    Result := TAtlasResizeMode.Align;
+  end
+  else
+  begin
+    Result := TAtlasResizeMode.Delta;
   end;
 end;
 

@@ -59,9 +59,23 @@ uses
 
 { TUpdateSelection }
 
-class function TUpdateSelection.Contains(const ANames: TArray<string>; const AName: string): Boolean;
+class function TUpdateSelection.MustAsk(const ACandidates: TArray<TUpdateCandidate>;
+  ANewModules: TUpdateNewModules): Boolean;
+var
+  mCandidate: TUpdateCandidate;
 begin
-  Result := IndexText(AName, ANames) >= 0;
+  Result := False;
+  if ANewModules <> TUpdateNewModules.Ask then
+  begin
+    Exit;
+  end;
+  for mCandidate in ACandidates do
+  begin
+    if mCandidate.IsNew and not mCandidate.Declined and not mCandidate.Required then
+    begin
+      Result := True;
+    end;
+  end;
 end;
 
 function Proposed(const ACandidate: TUpdateCandidate; ANewModules: TUpdateNewModules): Boolean;
@@ -92,22 +106,33 @@ begin
   end;
 end;
 
-class function TUpdateSelection.MustAsk(const ACandidates: TArray<TUpdateCandidate>;
-  ANewModules: TUpdateNewModules): Boolean;
+class function TUpdateSelection.Declined(const AOld: TArray<string>; const ACandidates: TArray<TUpdateCandidate>;
+  const ASelected: TArray<string>): TArray<string>;
 var
+  mList: TList<string>;
+  mName: string;
   mCandidate: TUpdateCandidate;
 begin
-  Result := False;
-  if ANewModules <> TUpdateNewModules.Ask then
-  begin
-    Exit;
-  end;
-  for mCandidate in ACandidates do
-  begin
-    if mCandidate.IsNew and not mCandidate.Declined and not mCandidate.Required then
+  mList := TList<string>.Create;
+  try
+    for mName in AOld do
     begin
-      Result := True;
+      if not Contains(ASelected, mName) then
+      begin
+        mList.Add(mName);
+      end;
     end;
+    for mCandidate in ACandidates do
+    begin
+      if mCandidate.IsNew and not Contains(ASelected, mCandidate.Name) and
+        not Contains(mList.ToArray, mCandidate.Name) then
+      begin
+        mList.Add(mCandidate.Name);
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
 end;
 
@@ -169,34 +194,9 @@ begin
   end;
 end;
 
-class function TUpdateSelection.Declined(const AOld: TArray<string>; const ACandidates: TArray<TUpdateCandidate>;
-  const ASelected: TArray<string>): TArray<string>;
-var
-  mList: TList<string>;
-  mName: string;
-  mCandidate: TUpdateCandidate;
+class function TUpdateSelection.Contains(const ANames: TArray<string>; const AName: string): Boolean;
 begin
-  mList := TList<string>.Create;
-  try
-    for mName in AOld do
-    begin
-      if not Contains(ASelected, mName) then
-      begin
-        mList.Add(mName);
-      end;
-    end;
-    for mCandidate in ACandidates do
-    begin
-      if mCandidate.IsNew and not Contains(ASelected, mCandidate.Name) and
-        not Contains(mList.ToArray, mCandidate.Name) then
-      begin
-        mList.Add(mCandidate.Name);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
+  Result := IndexText(AName, ANames) >= 0;
 end;
 
 class function TUpdateSelection.ParseLines(const AText: string): TArray<string>;

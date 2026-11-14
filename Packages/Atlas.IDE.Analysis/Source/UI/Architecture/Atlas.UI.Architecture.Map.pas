@@ -458,6 +458,8 @@ begin
     end;
 end;
 
+{ TAtlasArchitectureMap }
+
 constructor TAtlasArchitectureMap.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -474,52 +476,6 @@ destructor TAtlasArchitectureMap.Destroy;
 begin
   FState.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasArchitectureMap.SetModel(const AModel: TAtlasArchitectureModel);
-begin
-  FFitted := False;
-  FState.SetModel(AModel);
-  if (ClientWidth > 0) and (ClientHeight > 0) then
-  begin
-    FitView;
-  end;
-end;
-
-procedure TAtlasArchitectureMap.FitView;
-begin
-  FView.Fit(FState.Model, ClientWidth, ClientHeight);
-  FFitted := Length(FState.Model.Subsystems) > 0;
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.ZoomBy(AFactor: Double);
-begin
-  FView.ZoomAt(AFactor, ClientWidth / 2, ClientHeight / 2);
-  Invalidate;
-end;
-
-procedure TAtlasArchitectureMap.SelectUnit(AUnit: Integer; ACenter: Boolean);
-var
-  mUnit: Integer;
-begin
-  FState.SelectUnit(AUnit);
-  mUnit := FState.Selected;
-  if ACenter and (mUnit >= 0) then
-  begin
-    FView.Pan(ClientWidth / 2 - FView.ScreenX(FState.Model.Units[mUnit].X),
-      ClientHeight / 2 - FView.ScreenY(FState.Model.Units[mUnit].Y));
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasArchitectureMap.Resize;
-begin
-  inherited Resize;
-  if not FFitted and (ClientWidth > 0) and (ClientHeight > 0) then
-  begin
-    FitView;
-  end;
 end;
 
 procedure TAtlasArchitectureMap.Paint;
@@ -565,10 +521,13 @@ begin
   end;
 end;
 
-procedure TAtlasArchitectureMap.CMMouseLeave(var Message: TMessage);
+procedure TAtlasArchitectureMap.Resize;
 begin
-  inherited;
-  FState.SetHover(-1);
+  inherited Resize;
+  if not FFitted and (ClientWidth > 0) and (ClientHeight > 0) then
+  begin
+    FitView;
+  end;
 end;
 
 procedure TAtlasArchitectureMap.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -689,6 +648,49 @@ begin
     FView.ZoomAt(1 / 1.15, mLocal.X, mLocal.Y);
   end;
   Invalidate;
+end;
+
+procedure TAtlasArchitectureMap.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  FState.SetHover(-1);
+end;
+
+procedure TAtlasArchitectureMap.SetModel(const AModel: TAtlasArchitectureModel);
+begin
+  FFitted := False;
+  FState.SetModel(AModel);
+  if (ClientWidth > 0) and (ClientHeight > 0) then
+  begin
+    FitView;
+  end;
+end;
+
+procedure TAtlasArchitectureMap.FitView;
+begin
+  FView.Fit(FState.Model, ClientWidth, ClientHeight);
+  FFitted := Length(FState.Model.Subsystems) > 0;
+  Invalidate;
+end;
+
+procedure TAtlasArchitectureMap.ZoomBy(AFactor: Double);
+begin
+  FView.ZoomAt(AFactor, ClientWidth / 2, ClientHeight / 2);
+  Invalidate;
+end;
+
+procedure TAtlasArchitectureMap.SelectUnit(AUnit: Integer; ACenter: Boolean);
+var
+  mUnit: Integer;
+begin
+  FState.SelectUnit(AUnit);
+  mUnit := FState.Selected;
+  if ACenter and (mUnit >= 0) then
+  begin
+    FView.Pan(ClientWidth / 2 - FView.ScreenX(FState.Model.Units[mUnit].X),
+      ClientHeight / 2 - FView.ScreenY(FState.Model.Units[mUnit].Y));
+    Invalidate;
+  end;
 end;
 
 end.

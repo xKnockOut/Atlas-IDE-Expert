@@ -277,29 +277,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeCoveredByLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := (TAtlasCoveredBy.Wanted(ASettings) or TAtlasIdeUntestedMark.Wanted(ASettings)) and
-    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
-end;
-
-procedure TAtlasIdeCoveredByLens.Clear;
-begin
-  FUnit := Default(TAtlasCoveredUnit);
-  FStale := nil;
-  FPainted := nil;
-  FShownFile := '';
-  if FMark <> nil then
-  begin
-    FMark.Clear;
-  end;
-  if FShowing then
-  begin
-    FShowing := False;
-    InvalidateEditor;
-  end;
-end;
-
 procedure TAtlasIdeCoveredByLens.Tick(Sender: TObject);
 var
   mSettings: TAtlasPluginSettings;
@@ -446,6 +423,42 @@ begin
   InvalidateEditor;
 end;
 
+procedure TAtlasIdeCoveredByLens.Clear;
+begin
+  FUnit := Default(TAtlasCoveredUnit);
+  FStale := nil;
+  FPainted := nil;
+  FShownFile := '';
+  if FMark <> nil then
+  begin
+    FMark.Clear;
+  end;
+  if FShowing then
+  begin
+    FShowing := False;
+    InvalidateEditor;
+  end;
+end;
+
+function TAtlasIdeCoveredByLens.TallyOf(const ATests: TArray<TAtlasCoveredTest>): TAtlasTestTally;
+var
+  mTests: TAtlasIdeTests;
+  mStale: TArray<string>;
+begin
+  mTests := FTests;
+  mStale := FStale;
+  Result := TAtlasCoveredBy.TallyOf(ATests,
+    function(const AUnitName, AFixture, AMethod: string): TAtlasTestTally
+    var
+      mKey: TAtlasTestKey;
+    begin
+      mKey := Default(TAtlasTestKey);
+      mKey.Method := AMethod;
+      Result := mTests.TallyOf(AUnitName, AFixture, TArray<TAtlasTestKey>.Create(mKey),
+        TAtlasTestRun.StaleOf(mStale, AUnitName, AFixture));
+    end);
+end;
+
 /// <summary>Zeilen einer Testunit: offener Puffer, sonst die Platte.</summary>
 function ReadLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 begin
@@ -470,23 +483,28 @@ begin
   FStale := TAtlasCoveredBy.StaleKeysOf(mTests, ReadLines, FStaleKeys);
 end;
 
-function TAtlasIdeCoveredByLens.TallyOf(const ATests: TArray<TAtlasCoveredTest>): TAtlasTestTally;
+procedure TAtlasIdeCoveredByLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
+  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  mTests: TAtlasIdeTests;
-  mStale: TArray<string>;
+  mLine: string;
+  mIndex: Integer;
 begin
-  mTests := FTests;
-  mStale := FStale;
-  Result := TAtlasCoveredBy.TallyOf(ATests,
-    function(const AUnitName, AFixture, AMethod: string): TAtlasTestTally
-    var
-      mKey: TAtlasTestKey;
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
+  begin
+    Exit;
+  end;
+  try
+    mIndex := LineMethod(Context, mLine);
+    if mIndex >= 0 then
     begin
-      mKey := Default(TAtlasTestKey);
-      mKey.Method := AMethod;
-      Result := mTests.TallyOf(AUnitName, AFixture, TArray<TAtlasTestKey>.Create(mKey),
-        TAtlasTestRun.StaleOf(mStale, AUnitName, AFixture));
-    end);
+      PaintAt(mIndex, Rect, Context, mLine);
+    end;
+    FMark.PaintLine(Rect, Context);
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
+  end;
 end;
 
 /// <summary>Beschriftung ACount mit dem Stand ATally; ATone wird grün, rot oder gelb, ohne Ergebnis bleibt sie.
@@ -583,30 +601,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCoveredByLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
-  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mLine: string;
-  mIndex: Integer;
-begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FShowing then
-  begin
-    Exit;
-  end;
-  try
-    mIndex := LineMethod(Context, mLine);
-    if mIndex >= 0 then
-    begin
-      PaintAt(mIndex, Rect, Context, mLine);
-    end;
-    FMark.PaintLine(Rect, Context);
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
-  end;
-end;
-
 procedure TAtlasIdeCoveredByLens.PaintAt(AIndex: Integer; const ARow: TRect;
   const AContext: INTACodeEditorPaintContext; const ALine: string);
 var
@@ -646,6 +640,20 @@ begin
     ARow.Height);
 end;
 
+function TAtlasIdeCoveredByLens.StillShown(AIndex: Integer): Boolean;
+var
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+begin
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    mView := mEditors.TopView;
+  end;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FShownFile) and
+    (mView.TopRow = FPainted[AIndex].TopRow);
+end;
+
 /// <summary>Index der Marke unter (AX, AY); -1 ohne.</summary>
 function HitIn(const APainted: TArray<TAtlasIdeCoveredByLens.TPainted>; AX, AY: Integer): Integer;
 var
@@ -661,18 +669,31 @@ begin
   Result := -1;
 end;
 
-function TAtlasIdeCoveredByLens.StillShown(AIndex: Integer): Boolean;
+procedure TAtlasIdeCoveredByLens.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
 var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
+  mHit: Integer;
 begin
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  if (Button <> mbLeft) or (Shift * [ssShift, ssAlt] <> []) or not FShowing or
+    not Wanted(TAtlasIdeSettings.Current) then
   begin
-    mView := mEditors.TopView;
+    Exit;
   end;
-  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FShownFile) and
-    (mView.TopRow = FPainted[AIndex].TopRow);
+  // Marke an der unit-Zeile (#1783): Menü der ungetesteten Methoden.
+  if FMark.MouseDown(X, Y, Editor.ClientToScreen(Point(X, Y))) then
+  begin
+    Exit;
+  end;
+  mHit := -1;
+  if TAtlasCoveredBy.Wanted(TAtlasIdeSettings.Current) then
+  begin
+    mHit := HitIn(FPainted, X, Y);
+  end;
+  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
+  if (mHit >= 0) and StillShown(mHit) then
+  begin
+    QueueClick(mHit, ssCtrl in Shift, Editor.ClientToScreen(Point(X, Y)));
+  end;
 end;
 
 procedure TAtlasIdeCoveredByLens.QueueClick(AIndex: Integer; AList: Boolean; const AAt: TPoint);
@@ -727,31 +748,10 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCoveredByLens.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-var
-  mHit: Integer;
+class function TAtlasIdeCoveredByLens.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  if (Button <> mbLeft) or (Shift * [ssShift, ssAlt] <> []) or not FShowing or
-    not Wanted(TAtlasIdeSettings.Current) then
-  begin
-    Exit;
-  end;
-  // Marke an der unit-Zeile (#1783): Menü der ungetesteten Methoden.
-  if FMark.MouseDown(X, Y, Editor.ClientToScreen(Point(X, Y))) then
-  begin
-    Exit;
-  end;
-  mHit := -1;
-  if TAtlasCoveredBy.Wanted(TAtlasIdeSettings.Current) then
-  begin
-    mHit := HitIn(FPainted, X, Y);
-  end;
-  // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  if (mHit >= 0) and StillShown(mHit) then
-  begin
-    QueueClick(mHit, ssCtrl in Shift, Editor.ClientToScreen(Point(X, Y)));
-  end;
+  Result := (TAtlasCoveredBy.Wanted(ASettings) or TAtlasIdeUntestedMark.Wanted(ASettings)) and
+    not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
 end.

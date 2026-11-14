@@ -246,6 +246,36 @@ end;
 
 { TAtlasTodoList }
 
+class function TAtlasTodoList.Entries(const AJson: string; out AEntries: TArray<TAtlasResultEntry>): Boolean;
+var
+  mValue: TJSONValue;
+  mFiles: TJSONArray;
+  mFileItem, mTodo: TJSONObject;
+  mFileName, mRootPath: string;
+begin
+  AEntries := nil;
+  mValue := TJsonRead.Parse(AJson);
+  try
+    mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
+    Result := mFiles <> nil;
+    if not Result then
+    begin
+      Exit;
+    end;
+    mRootPath := TJsonRead.Text(TJSONObject(mValue), 'root');
+    for mFileItem in ObjectsOf(mFiles) do
+    begin
+      mFileName := FullPath(mRootPath, TJsonRead.Text(mFileItem, 'file'));
+      for mTodo in ObjectsOf(TJsonRead.Items(TJsonRead.AsObject(mFileItem), 'todos')) do
+      begin
+        AEntries := AEntries + [TodoEntryOf(mFileName, mTodo)];
+      end;
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
 class function TAtlasTodoList.Caption(const AKeyword: string; APriority: Integer; const ACategory, AOwner,
   AText: string): string;
 var
@@ -291,36 +321,6 @@ begin
     Result := Result + '\';
   end;
   Result := Result + mPath;
-end;
-
-class function TAtlasTodoList.Entries(const AJson: string; out AEntries: TArray<TAtlasResultEntry>): Boolean;
-var
-  mValue: TJSONValue;
-  mFiles: TJSONArray;
-  mFileItem, mTodo: TJSONObject;
-  mFileName, mRootPath: string;
-begin
-  AEntries := nil;
-  mValue := TJsonRead.Parse(AJson);
-  try
-    mFiles := TJsonRead.Items(TJsonRead.AsObject(mValue), 'files');
-    Result := mFiles <> nil;
-    if not Result then
-    begin
-      Exit;
-    end;
-    mRootPath := TJsonRead.Text(TJSONObject(mValue), 'root');
-    for mFileItem in ObjectsOf(mFiles) do
-    begin
-      mFileName := FullPath(mRootPath, TJsonRead.Text(mFileItem, 'file'));
-      for mTodo in ObjectsOf(TJsonRead.Items(TJsonRead.AsObject(mFileItem), 'todos')) do
-      begin
-        AEntries := AEntries + [TodoEntryOf(mFileName, mTodo)];
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
 end;
 
 class function TAtlasTodoList.Choices(const AJson: string; out AChoices: TAtlasTodoChoices): Boolean;

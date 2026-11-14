@@ -73,6 +73,8 @@ begin
   end;
 end;
 
+{ TLinterMutation }
+
 class function TLinterMutation.OptionsOf(const AOptions: TCommandLineOptions; out AMutation: TMutationOptions;
   out AError: string): Boolean;
 var

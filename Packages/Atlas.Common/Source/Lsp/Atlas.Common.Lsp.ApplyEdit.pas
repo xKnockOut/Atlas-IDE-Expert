@@ -67,6 +67,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspApplyEdit }
+
 class function TLspApplyEdit.ClientSupports(const AInitializeParams: TJSONObject): Boolean;
 var
   mValue: Boolean;
@@ -98,6 +100,32 @@ begin
     mLines := [''];
   end;
   Result := TTextRange.Create(0, 0, High(mLines), Length(mLines[High(mLines)]));
+end;
+
+class function TLspApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
+var
+  mLines: TArray<string>;
+  mLast: string;
+  mEdit: TJSONObject;
+  mEdits: TJSONArray;
+  mChanges: TJSONObject;
+begin
+  // Ende des alten Texts: letzte Zeile, Länge in UTF-16-Einheiten wie im LSP üblich.
+  mLines := AOldText.Split([#10]);
+  if Length(mLines) = 0 then
+  begin
+    mLines := [''];
+  end;
+  mLast := mLines[High(mLines)];
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(mLines), Length(mLast))));
+  mEdit.AddPair('newText', ANewText);
+  mEdits := TJSONArray.Create;
+  mEdits.AddElement(mEdit);
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(TDocumentUris.FromPath(AFileName), mEdits);
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', mChanges);
 end;
 
 class function TLspApplyEdit.Files(const AChanges: TArray<TLspFileChange>): TJSONObject;
@@ -142,32 +170,6 @@ begin
   end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', mChanges);
-end;
-
-class function TLspApplyEdit.ReplaceAll(const AFileName, AOldText, ANewText: string): TJSONObject;
-var
-  mLines: TArray<string>;
-  mLast: string;
-  mEdit: TJSONObject;
-  mEdits: TJSONArray;
-  mChanges: TJSONObject;
-begin
-  // Ende des alten Texts: letzte Zeile, Länge in UTF-16-Einheiten wie im LSP üblich.
-  mLines := AOldText.Split([#10]);
-  if Length(mLines) = 0 then
-  begin
-    mLines := [''];
-  end;
-  mLast := mLines[High(mLines)];
-  mEdit := TJSONObject.Create;
-  mEdit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(mLines), Length(mLast))));
-  mEdit.AddPair('newText', ANewText);
-  mEdits := TJSONArray.Create;
-  mEdits.AddElement(mEdit);
-  mChanges := TJSONObject.Create;
-  mChanges.AddPair(TDocumentUris.FromPath(AFileName), mEdits);
-  Result := TJSONObject.Create;
-  Result.AddPair('changes', mChanges);
 end;
 
 class function TLspApplyEdit.TextEdits(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;

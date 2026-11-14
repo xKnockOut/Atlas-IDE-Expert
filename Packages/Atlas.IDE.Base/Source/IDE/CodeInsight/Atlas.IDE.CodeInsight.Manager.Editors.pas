@@ -90,6 +90,8 @@ implementation
 uses
   Atlas.Core.Problems.Contract;
 
+{ TAtlasCodeInsightEditors }
+
 constructor TAtlasCodeInsightEditors.Create(const AHooks: TAtlasCodeInsightEditorHooks);
 begin
   inherited Create;
@@ -195,34 +197,6 @@ begin
     end, FHooks.RunCommandAsync);
 end;
 
-function TAtlasCodeInsightEditors.Signature: TAtlasEditorSignature;
-var
-  mRunning: TFunc<TLspSession>;
-  mDiagnose: TProc<string>;
-begin
-  if FSignature = nil then
-  begin
-    mRunning := FHooks.RunningSession;
-    mDiagnose := FHooks.Diagnose;
-    FSignature := TAtlasEditorSignature.Create(
-      FHooks.NewSignatureSource(
-        function: TLspSession
-        begin
-          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start.
-          Result := mRunning();
-        end),
-      function: Boolean
-      begin
-        Result := CompletionVisible;
-      end,
-      procedure(const AMessage: string)
-      begin
-        mDiagnose(AMessage);
-      end);
-  end;
-  Result := FSignature;
-end;
-
 function TAtlasCodeInsightEditors.Completion: TAtlasEditorCompletion;
 var
   mRunning: TFunc<TLspSession>;
@@ -255,6 +229,34 @@ begin
       end;
   end;
   Result := FCompletion;
+end;
+
+function TAtlasCodeInsightEditors.Signature: TAtlasEditorSignature;
+var
+  mRunning: TFunc<TLspSession>;
+  mDiagnose: TProc<string>;
+begin
+  if FSignature = nil then
+  begin
+    mRunning := FHooks.RunningSession;
+    mDiagnose := FHooks.Diagnose;
+    FSignature := TAtlasEditorSignature.Create(
+      FHooks.NewSignatureSource(
+        function: TLspSession
+        begin
+          // Im Hauptthread beim Öffnen des Hints: nur eine laufende Sitzung, nie ein Start.
+          Result := mRunning();
+        end),
+      function: Boolean
+      begin
+        Result := CompletionVisible;
+      end,
+      procedure(const AMessage: string)
+      begin
+        mDiagnose(AMessage);
+      end);
+  end;
+  Result := FSignature;
 end;
 
 function TAtlasCodeInsightEditors.CompletionVisible: Boolean;

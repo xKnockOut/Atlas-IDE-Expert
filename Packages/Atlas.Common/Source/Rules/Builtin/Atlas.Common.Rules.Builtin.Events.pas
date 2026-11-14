@@ -145,6 +145,18 @@ begin
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
+procedure TEventCallWithoutAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TEventCallScan;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mScan := TEventCallScan.Create(AContext, AReport);
+  mScan.Run;
+end;
+
 class function TEventCallWithoutAssignedRule.IsKnownEventType(const ATypeName: string): Boolean;
 var
   mName: string;
@@ -156,18 +168,6 @@ begin
   mName := ShortTypeName(ATypeName);
   Result := (IndexText(mName, cKnownEventTypes) >= 0) or
     ((Length(mName) > 6) and StartsStr('T', mName) and EndsStr('Event', mName));
-end;
-
-procedure TEventCallWithoutAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mScan: TEventCallScan;
-begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
-  begin
-    Exit;
-  end;
-  mScan := TEventCallScan.Create(AContext, AReport);
-  mScan.Run;
 end;
 
 // Ohne Leerraum, klein und ohne "self.", für den Vergleich von Bedingungen.
@@ -334,31 +334,6 @@ begin
   FLines := TTextLines.SplitLines(AContext.Text, FLineBreak);
   FUnitTypes := nil;
   FRoutines := nil;
-end;
-
-procedure TEventCallScan.Run;
-var
-  mDecl, mClassNode: TSyntaxNode;
-  mEvents: TArray<string>;
-begin
-  CollectTypes(FContext.Tree.Root);
-  for mDecl in FUnitTypes do
-  begin
-    mClassNode := mDecl.FindChild(TSyntaxKind.ClassType);
-    if mClassNode = nil then
-    begin
-      mClassNode := mDecl.FindChild(TSyntaxKind.RecordType);
-    end;
-    if mClassNode = nil then
-    begin
-      Continue;
-    end;
-    mEvents := EventsOf(mDecl.Name, mClassNode);
-    if mEvents <> nil then
-    begin
-      CheckRoutines(FContext.Tree.Root, mDecl.Name, mEvents);
-    end;
-  end;
 end;
 
 function TEventCallScan.NodeText(ANode: TSyntaxNode): string;
@@ -983,6 +958,31 @@ begin
     end;
   finally
     mPending.Free;
+  end;
+end;
+
+procedure TEventCallScan.Run;
+var
+  mDecl, mClassNode: TSyntaxNode;
+  mEvents: TArray<string>;
+begin
+  CollectTypes(FContext.Tree.Root);
+  for mDecl in FUnitTypes do
+  begin
+    mClassNode := mDecl.FindChild(TSyntaxKind.ClassType);
+    if mClassNode = nil then
+    begin
+      mClassNode := mDecl.FindChild(TSyntaxKind.RecordType);
+    end;
+    if mClassNode = nil then
+    begin
+      Continue;
+    end;
+    mEvents := EventsOf(mDecl.Name, mClassNode);
+    if mEvents <> nil then
+    begin
+      CheckRoutines(FContext.Tree.Root, mDecl.Name, mEvents);
+    end;
   end;
 end;
 

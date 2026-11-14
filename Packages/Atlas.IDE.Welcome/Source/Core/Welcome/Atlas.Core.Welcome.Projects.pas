@@ -187,6 +187,8 @@ begin
   end;
 end;
 
+{ TAtlasWelcomeProjects }
+
 class function TAtlasWelcomeProjects.Entries(const ARecent: TArray<string>; const ALoad: TAtlasProjectSummaryLoader;
   AMax: Integer): TAtlasProjectEntries;
 var

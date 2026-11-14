@@ -202,6 +202,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspChangeSignature }
+
 class function TLspChangeSignature.Title: string;
 begin
   Result := cTexts[TLspChangeSignatureText.ChangeSignature].Text;
@@ -1086,34 +1088,6 @@ end;
 
 { TLspChangeSignature }
 
-class function TLspChangeSignature.ModeName(AMode: TNewParameterMode): string;
-begin
-  if AMode = TNewParameterMode.UpdateCallers then
-  begin
-    Result := 'updateCallers';
-  end
-  else
-  begin
-    Result := 'overload';
-  end;
-end;
-
-class function TLspChangeSignature.ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode;
-begin
-  if SameText(AName, 'updateCallers') then
-  begin
-    Result := TNewParameterMode.UpdateCallers;
-  end
-  else if SameText(AName, 'overload') then
-  begin
-    Result := TNewParameterMode.Overload;
-  end
-  else
-  begin
-    Result := ADefault;
-  end;
-end;
-
 class function TLspChangeSignature.IsOffered(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): Boolean;
 var
@@ -1169,6 +1143,7 @@ begin
     Result := [ActionJson(AUri, APosition)];
   end;
 end;
+
 class function TLspChangeSignature.Prepare(const ASource: TChangeSignatureSource): TChangeSignatureInfo;
 var
   mCollector: TSignatureCollector;
@@ -1199,6 +1174,25 @@ begin
   end;
 end;
 
+class function TLspChangeSignature.Execute(const ASource: TChangeSignatureSource;
+  const ARequest: TChangeSignatureRequest; const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
+var
+  mCollector: TSignatureCollector;
+  mEditor: TSignatureEditor;
+begin
+  mCollector := TSignatureCollector.Create(ASource);
+  try
+    mCollector.Collect;
+    mEditor := TSignatureEditor.Create(mCollector, ARequest);
+    try
+      Result := mEditor.Run(AIsReadOnly);
+    finally
+      mEditor.Free;
+    end;
+  finally
+    mCollector.Free;
+  end;
+end;
 class function TLspChangeSignature.Family(const ASource: TChangeSignatureSource): TRoutineFamily;
 var
   mCollector: TSignatureCollector;
@@ -1237,26 +1231,6 @@ begin
     Result.Accessors := mCollector.Accessors;
     Result.Warnings := mCollector.Warnings;
     Result.BoundEvent := mCollector.BoundEvent;
-  finally
-    mCollector.Free;
-  end;
-end;
-
-class function TLspChangeSignature.Execute(const ASource: TChangeSignatureSource;
-  const ARequest: TChangeSignatureRequest; const AIsReadOnly: TChangeSignatureReadOnly): TChangeSignatureOutcome;
-var
-  mCollector: TSignatureCollector;
-  mEditor: TSignatureEditor;
-begin
-  mCollector := TSignatureCollector.Create(ASource);
-  try
-    mCollector.Collect;
-    mEditor := TSignatureEditor.Create(mCollector, ARequest);
-    try
-      Result := mEditor.Run(AIsReadOnly);
-    finally
-      mEditor.Free;
-    end;
   finally
     mCollector.Free;
   end;
@@ -1384,6 +1358,34 @@ begin
     mWarnings.Add(mWarning);
   end;
   Result.AddPair('newParameter', ModeName(AOutcome.Mode));
+end;
+
+class function TLspChangeSignature.ModeName(AMode: TNewParameterMode): string;
+begin
+  if AMode = TNewParameterMode.UpdateCallers then
+  begin
+    Result := 'updateCallers';
+  end
+  else
+  begin
+    Result := 'overload';
+  end;
+end;
+
+class function TLspChangeSignature.ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode;
+begin
+  if SameText(AName, 'updateCallers') then
+  begin
+    Result := TNewParameterMode.UpdateCallers;
+  end
+  else if SameText(AName, 'overload') then
+  begin
+    Result := TNewParameterMode.Overload;
+  end
+  else
+  begin
+    Result := ADefault;
+  end;
 end;
 
 initialization

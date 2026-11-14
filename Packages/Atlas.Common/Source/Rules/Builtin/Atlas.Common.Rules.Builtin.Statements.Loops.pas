@@ -166,30 +166,12 @@ begin
   end;
 end;
 
+{ TLoopOffByOneRule }
+
 function TLoopOffByOneRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cLoopOffByOneRuleId, TRuleSeverity.Warning,
     cTexts[TStatementsLoopsText.Title].Text);
-end;
-
-class function TLoopOffByOneRule.ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean;
-var
-  mToken: TPascalToken;
-  mText: string;
-begin
-  Result := False;
-  for mToken in ATokens do
-  begin
-    if mToken.Kind = TPascalTokenKind.Directive then
-    begin
-      mText := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
-      if Pos('$ZEROBASEDSTRINGS', mText) = 0 then
-      begin
-        Continue;
-      end;
-      Result := (Pos('$ZEROBASEDSTRINGSON', mText) > 0) or (Pos('$ZEROBASEDSTRINGS+', mText) > 0);
-    end;
-  end;
 end;
 
 procedure TLoopOffByOneRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -549,6 +531,26 @@ begin
   end;
 end;
 
+class function TLoopOffByOneRule.ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean;
+var
+  mToken: TPascalToken;
+  mText: string;
+begin
+  Result := False;
+  for mToken in ATokens do
+  begin
+    if mToken.Kind = TPascalTokenKind.Directive then
+    begin
+      mText := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
+      if Pos('$ZEROBASEDSTRINGS', mText) = 0 then
+      begin
+        Continue;
+      end;
+      Result := (Pos('$ZEROBASEDSTRINGSON', mText) > 0) or (Pos('$ZEROBASEDSTRINGS+', mText) > 0);
+    end;
+  end;
+end;
+
 { TCollectionModifiedInLoopRule }
 
 type
@@ -561,10 +563,7 @@ type
     Fix: TArray<TRuleFix>;
   end;
 
-class function TCollectionModifiedInLoopRule.DefaultMutatingMethods: TArray<string>;
-begin
-  Result := ['Add', 'Insert', 'Delete', 'Remove', 'Extract', 'Clear'];
-end;
+{ TCollectionModifiedInLoopRule }
 
 function TCollectionModifiedInLoopRule.Descriptor: TRuleDescriptor;
 begin
@@ -870,6 +869,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   mMethods := TRuleOptions.Strings(AContext.Options, 'mutatingMethods', DefaultMutatingMethods);
   Visit(AContext.Tree.Root);
+end;
+
+class function TCollectionModifiedInLoopRule.DefaultMutatingMethods: TArray<string>;
+begin
+  Result := ['Add', 'Insert', 'Delete', 'Remove', 'Extract', 'Clear'];
 end;
 
 initialization

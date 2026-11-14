@@ -613,6 +613,28 @@ begin
   Result.Active := TAtlasActiveIssue.Empty;
 end;
 
+function TAtlasIssuesState.Matches(const ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  Result := (Provider <> '') and SameText(Provider, ATarget.Provider) and SameText(Server, ATarget.Server) and
+    SameText(Project, ATarget.Project) and (Query = ATarget.Query);
+end;
+
+function TAtlasIssuesState.Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
+var
+  mItem: TAtlasTrackerIssue;
+begin
+  AIssue := TAtlasTrackerIssue.Empty;
+  Result := False;
+  for mItem in Items do
+  begin
+    if SameText(mItem.Key, AKey) then
+    begin
+      AIssue := mItem;
+      Exit(True);
+    end;
+  end;
+end;
+
 function TAtlasIssuesState.CountOf(const AName: string): Integer;
 var
   mCount: TAtlasIssuesQueryCount;
@@ -649,28 +671,6 @@ begin
   Counts := Counts + [mCount];
 end;
 
-function TAtlasIssuesState.Matches(const ATarget: TAtlasTrackerTarget): Boolean;
-begin
-  Result := (Provider <> '') and SameText(Provider, ATarget.Provider) and SameText(Server, ATarget.Server) and
-    SameText(Project, ATarget.Project) and (Query = ATarget.Query);
-end;
-
-function TAtlasIssuesState.Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
-var
-  mItem: TAtlasTrackerIssue;
-begin
-  AIssue := TAtlasTrackerIssue.Empty;
-  Result := False;
-  for mItem in Items do
-  begin
-    if SameText(mItem.Key, AKey) then
-    begin
-      AIssue := mItem;
-      Exit(True);
-    end;
-  end;
-end;
-
 { TAtlasIssuesGroup }
 
 function TAtlasIssuesGroup.More: Integer;
@@ -683,11 +683,6 @@ end;
 function TAtlasIssuesView.OpenCount: Integer;
 begin
   Result := Length(Items);
-end;
-
-function TAtlasIssuesView.ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
-begin
-  Result := (AKey <> '') and TAtlasTrackerReopened.Find(Reopened, AKey, AReopen);
 end;
 
 function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
@@ -706,6 +701,11 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+function TAtlasIssuesView.ReopenOf(const AKey: string; out AReopen: TAtlasTrackerReopen): Boolean;
+begin
+  Result := (AKey <> '') and TAtlasTrackerReopened.Find(Reopened, AKey, AReopen);
 end;
 
 { TAtlasIssueStartResult }
@@ -731,6 +731,20 @@ begin
 end;
 
 { TAtlasMyIssues }
+
+class function TAtlasMyIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
+  const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+var
+  mRun: TAtlasIssueStartRun;
+begin
+  mRun := TAtlasIssueStartRun.Create(AVcs, APlan, AUseRequest, ARequest);
+  if mRun.Named and mRun.Missing and mRun.Resolved and mRun.FolderFree then
+  begin
+    mRun.Run(AProgress);
+  end;
+  Result := mRun.Outcome;
+end;
 
 class function TAtlasMyIssues.StartName(AStart: TAtlasIssueStart): string;
 begin
@@ -886,6 +900,41 @@ begin
   end;
 end;
 
+class function TAtlasMyIssues.View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
+  const ABranch: string): TAtlasIssuesView;
+begin
+  Result := Default(TAtlasIssuesView);
+  Result.Items := nil;
+  Result.Unseen := nil;
+  Result.Reopened := nil;
+  Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
+  if not ATarget.Configured then
+  begin
+    Result.Status := TAtlasIssuesStatus.NotConfigured;
+    Exit;
+  end;
+  if not AState.Matches(ATarget) or (AState.Attempt <= 0) then
+  begin
+    Result.Status := TAtlasIssuesStatus.Waiting;
+    Exit;
+  end;
+  Result.Error := AState.Error;
+  Result.At := AState.At;
+  Result.Items := AState.Items;
+  if AState.Error = TAtlasCiFetchError.None then
+  begin
+    Result.Status := TAtlasIssuesStatus.Ready;
+  end
+  else if AState.At > 0 then
+  begin
+    Result.Status := TAtlasIssuesStatus.Stale;
+  end
+  else
+  begin
+    Result.Status := TAtlasIssuesStatus.Failed;
+  end;
+end;
+
 class procedure TAtlasMyIssues.AddGroup(var AView: TAtlasIssuesView; const ACaption, AProject: string;
   const AGroup: TAtlasIssuesView; APerGroup: Integer);
 var
@@ -921,41 +970,6 @@ begin
     begin
       Result := mIndex;
     end;
-  end;
-end;
-
-class function TAtlasMyIssues.View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
-  const ABranch: string): TAtlasIssuesView;
-begin
-  Result := Default(TAtlasIssuesView);
-  Result.Items := nil;
-  Result.Unseen := nil;
-  Result.Reopened := nil;
-  Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
-  if not ATarget.Configured then
-  begin
-    Result.Status := TAtlasIssuesStatus.NotConfigured;
-    Exit;
-  end;
-  if not AState.Matches(ATarget) or (AState.Attempt <= 0) then
-  begin
-    Result.Status := TAtlasIssuesStatus.Waiting;
-    Exit;
-  end;
-  Result.Error := AState.Error;
-  Result.At := AState.At;
-  Result.Items := AState.Items;
-  if AState.Error = TAtlasCiFetchError.None then
-  begin
-    Result.Status := TAtlasIssuesStatus.Ready;
-  end
-  else if AState.At > 0 then
-  begin
-    Result.Status := TAtlasIssuesStatus.Stale;
-  end
-  else
-  begin
-    Result.Status := TAtlasIssuesStatus.Failed;
   end;
 end;
 
@@ -1039,20 +1053,6 @@ begin
   Result := Start(AVcs, APlan, True, ARequest, AProgress);
 end;
 
-class function TAtlasMyIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
-  AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
-  const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
-var
-  mRun: TAtlasIssueStartRun;
-begin
-  mRun := TAtlasIssueStartRun.Create(AVcs, APlan, AUseRequest, ARequest);
-  if mRun.Named and mRun.Missing and mRun.Resolved and mRun.FolderFree then
-  begin
-    mRun.Run(AProgress);
-  end;
-  Result := mRun.Outcome;
-end;
-
 class procedure TAtlasMyIssues.Started(var AState: TAtlasIssuesState; const AIssue: TAtlasTrackerIssue;
   AMode: TAtlasIssueStart; const ABranch: string; ANowUtc: TDateTime);
 var
@@ -1082,22 +1082,6 @@ begin
   AState.EndedBranch := ABranch;
 end;
 
-class function TAtlasMyIssues.NumberOfKey(const AKey: string): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := 0;
-  mIndex := Length(AKey);
-  while (mIndex >= 1) and CharInSet(AKey[mIndex], ['0'..'9']) do
-  begin
-    Dec(mIndex);
-  end;
-  if (mIndex < Length(AKey)) and ((mIndex = 0) or CharInSet(AKey[mIndex], ['#', '-'])) then
-  begin
-    Result := StrToIntDef(Copy(AKey, mIndex + 1, cNumberDigits), 0);
-  end;
-end;
-
 class function TAtlasMyIssues.CommitPrefix(const AActive: TAtlasActiveIssue; const APattern: string): string;
 var
   mIssue: TAtlasTrackerIssue;
@@ -1112,6 +1096,22 @@ begin
   mIssue.Number := NumberOfKey(AActive.Key);
   mIssue.Title := AActive.Title;
   Result := TAtlasTrackerNaming.CommitPrefix(APattern, mIssue);
+end;
+
+class function TAtlasMyIssues.NumberOfKey(const AKey: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  mIndex := Length(AKey);
+  while (mIndex >= 1) and CharInSet(AKey[mIndex], ['0'..'9']) do
+  begin
+    Dec(mIndex);
+  end;
+  if (mIndex < Length(AKey)) and ((mIndex = 0) or CharInSet(AKey[mIndex], ['#', '-'])) then
+  begin
+    Result := StrToIntDef(Copy(AKey, mIndex + 1, cNumberDigits), 0);
+  end;
 end;
 
 class function TAtlasMyIssues.Fields(const AIssue: TAtlasTrackerIssue): TArray<string>;
@@ -1358,31 +1358,6 @@ begin
   end;
 end;
 
-class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
-var
-  mSection: TJSONObject;
-begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
-end;
-
-class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AState := TAtlasIssuesState.Empty;
-  mValue := TJsonRead.Parse(AJson);
-  try
-    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasMyIssues.Read(const ASummary: TAtlasProjectSummary; out AState: TAtlasIssuesState): Boolean;
 var
   mValue: TJSONValue;
@@ -1424,6 +1399,31 @@ begin
     ASummary.Raw := mRoot.ToJSON;
   finally
     mRoot.Free;
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasMyIssues.ToJson(const AState: TAtlasIssuesState): string;
+var
+  mSection: TJSONObject;
+begin
+  mSection := SectionJson(AState);
+  try
+    Result := mSection.ToJSON;
+  finally
+    mSection.Free;
+  end;
+end;
+
+class function TAtlasMyIssues.FromJson(const AJson: string; out AState: TAtlasIssuesState): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AState := TAtlasIssuesState.Empty;
+  mValue := TJsonRead.Parse(AJson);
+  try
+    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
+  finally
     mValue.Free;
   end;
 end;

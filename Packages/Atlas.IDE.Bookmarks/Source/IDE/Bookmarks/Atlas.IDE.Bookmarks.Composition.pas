@@ -344,6 +344,24 @@ end;
 
 { TAtlasBookmarksModule }
 
+class function TAtlasBookmarksModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [
+    // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien).
+    TAtlasFeaturePart.AtLevel('Notes', TAtlasSafeLevel.Safe, NotesStarted, StartNotes, StopNotes),
+    // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
+    // Notizen, jede Schicht folgt ihrer Einstellung.
+    TAtlasFeaturePart.AtLevel('Bookmarks', TAtlasSafeLevel.Safe, BookmarksStarted, StartBookmarks, StopBookmarks),
+    // Schnelle Lesezeichen (#1104): Spalte links der Zeilennummern, Wiederfinden und Übernahme der IDE-Lesezeichen;
+    // nach den Lesezeichen (#622), deren Listen sie liest.
+    TAtlasFeaturePart.When('QuickBookmarks',
+      function(ALevel: TAtlasSafeLevel): Boolean
+      begin
+        Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+          TAtlasIdeSettings.Current.QuickBookmarks);
+      end, QuickColumnStarted, StartQuickColumn, StopQuickColumn)];
+end;
+
 function TAtlasBookmarksModule.Info: TAtlasModuleInfo;
 begin
   // Notizen und benannte Lesezeichen gab es schon im abgesicherten Start (nur lokale Dateien).
@@ -364,6 +382,28 @@ end;
 function TAtlasBookmarksModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := ACommandId;
+  Result.Place := APlace;
+end;
+
+/// <summary>Eintrag im Untermenü „Notizen und Lesezeichen“ des Atlas-Menüs.</summary>
+function NotesMenuEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.MenuGroupNotes);
+end;
+
+/// <summary>Eintrag im gleichnamigen Untermenü von Atlas im Kontextmenü des Editors.</summary>
+function NotesContextEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := NotesMenuEntry(ACommandId);
+  Result.Place := TAtlasMenuPlace.EditorContext;
+  Result.Group := 'notes';
 end;
 
 function TAtlasBookmarksModule.Commands: TArray<TAtlasModuleCommand>;
@@ -409,28 +449,6 @@ begin
     Command(TAtlasFeature.Palette, 'Atlas.TodoListFilter',
       TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterCommand), FilterTodos,
       TodoListVisible)];
-end;
-
-function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := APlace;
-end;
-
-/// <summary>Eintrag im Untermenü „Notizen und Lesezeichen“ des Atlas-Menüs.</summary>
-function NotesMenuEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
-  Result.Section := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.MenuGroupNotes);
-end;
-
-/// <summary>Eintrag im gleichnamigen Untermenü von Atlas im Kontextmenü des Editors.</summary>
-function NotesContextEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := NotesMenuEntry(ACommandId);
-  Result.Place := TAtlasMenuPlace.EditorContext;
-  Result.Group := 'notes';
 end;
 
 function TAtlasBookmarksModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -515,17 +533,17 @@ begin
   end;
 end;
 
-procedure TAtlasBookmarksModule.ThemeChanged;
-begin
-  TAtlasIdeBookmarks.ThemeChanged;
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
 begin
   TAtlasBookmarksEditorSection.ProvideIn(GScope);
   TAtlasBookmarksKeysSection.ProvideIn(GScope);
+end;
+
+procedure TAtlasBookmarksModule.ThemeChanged;
+begin
+  TAtlasIdeBookmarks.ThemeChanged;
 end;
 
 function TAtlasBookmarksModule.Marks(const AFileName: string; out AMarks: TAtlasOverviewMarks): Boolean;
@@ -544,24 +562,6 @@ begin
         mMark.DisplayName)];
     end;
   end;
-end;
-
-class function TAtlasBookmarksModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [
-    // Persönliche Notizen (#545): Befehle auch abgesichert (nur lokale Dateien).
-    TAtlasFeaturePart.AtLevel('Notes', TAtlasSafeLevel.Safe, NotesStarted, StartNotes, StopNotes),
-    // Benannte Lesezeichen (#622): Befehle auch abgesichert; die Rinne teilt sich die Zeichenschicht mit den
-    // Notizen, jede Schicht folgt ihrer Einstellung.
-    TAtlasFeaturePart.AtLevel('Bookmarks', TAtlasSafeLevel.Safe, BookmarksStarted, StartBookmarks, StopBookmarks),
-    // Schnelle Lesezeichen (#1104): Spalte links der Zeilennummern, Wiederfinden und Übernahme der IDE-Lesezeichen;
-    // nach den Lesezeichen (#622), deren Listen sie liest.
-    TAtlasFeaturePart.When('QuickBookmarks',
-      function(ALevel: TAtlasSafeLevel): Boolean
-      begin
-        Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
-          TAtlasIdeSettings.Current.QuickBookmarks);
-      end, QuickColumnStarted, StartQuickColumn, StopQuickColumn)];
 end;
 
 class function TAtlasBookmarksModule.RegisterModule: Boolean;

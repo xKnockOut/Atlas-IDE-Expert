@@ -383,6 +383,121 @@ end;
 
 { TBulkFix }
 
+class function TBulkFix.SafeFixOf(const AFinding: TRuleFinding; const AOptions: TBulkFixOptions; out AFix: TRuleFix;
+  out ASkip: TBulkFixSkip): Boolean;
+var
+  mFix: TRuleFix;
+  mCount, mTextFixes: Integer;
+begin
+  Result := False;
+  AFix := Default(TRuleFix);
+  if Ord(AFinding.Confidence) < Ord(AOptions.MinConfidence) then
+  begin
+    ASkip := TBulkFixSkip.Confidence;
+    Exit;
+  end;
+  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht. Genommen wird die eine sichere
+  // Korrektur wie bei source.fixAll; weitere, nicht sichere (begin … end in der ganzen Methode) bleiben eine
+  // Auswahl für den Benutzer. Zwei sichere sind selbst eine Auswahl.
+  mTextFixes := 0;
+  mCount := 0;
+  for mFix in AFinding.Fixes do
+  begin
+    if (mFix.Edits <> nil) or (mFix.OtherFiles <> nil) then
+    begin
+      Inc(mTextFixes);
+      if mFix.Safe and not mFix.Alternative then
+      begin
+        Inc(mCount);
+        AFix := mFix;
+      end;
+    end;
+  end;
+  if mTextFixes = 0 then
+  begin
+    ASkip := TBulkFixSkip.NoFix;
+    Exit;
+  end;
+  ASkip := TBulkFixSkip.Unsafe;
+  if (mCount <> 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or (AFix.OtherFiles <> nil) or
+    (AFix.FileName <> '') or (AFix.Edits = nil) then
+  begin
+    AFix := Default(TRuleFix);
+    Exit;
+  end;
+  Result := True;
+end;
+
+class function TBulkFix.Overlaps(const A, B: TTextRange): Boolean;
+begin
+  if A.StartPos = B.StartPos then
+  begin
+    Exit(True);
+  end;
+  Result := (ComparePosition(A.StartPos, B.EndPos) < 0) and (ComparePosition(B.StartPos, A.EndPos) < 0);
+end;
+
+class function TBulkFix.Diff(const ADisplayName: string; const AFile: TBulkFixFile): string;
+begin
+  if not AFile.Changed then
+  begin
+    Exit('');
+  end;
+  Result := string.Join(sLineBreak, TTextDiff.Unified('a/' + ADisplayName, 'b/' + ADisplayName,
+    TTextLines.SplitLines(AFile.OldText), TTextLines.SplitLines(AFile.NewText), cDiffContext)) + sLineBreak;
+end;
+
+class function TBulkFix.WriteAll(const AFiles: TArray<TBulkFixFile>; const AWrite: TBulkFixWrite): Integer;
+var
+  mFile: TBulkFixFile;
+  mNames, mOld, mNew: TArray<string>;
+begin
+  mNames := nil;
+  mOld := nil;
+  mNew := nil;
+  for mFile in AFiles do
+  begin
+    if mFile.Changed then
+    begin
+      mNames := mNames + [mFile.FileName];
+      mOld := mOld + [mFile.OldText];
+      mNew := mNew + [mFile.NewText];
+    end;
+  end;
+  Result := WriteAll(mNames, mOld, mNew, AWrite);
+end;
+
+class function TBulkFix.WriteAll(const ANames, AOldTexts, ANewTexts: TArray<string>;
+  const AWrite: TBulkFixWrite): Integer;
+var
+  mIndex, mWritten: Integer;
+begin
+  mWritten := 0;
+  try
+    for mIndex := 0 to High(ANames) do
+    begin
+      AWrite(ANames[mIndex], ANewTexts[mIndex]);
+      Inc(mWritten);
+    end;
+  except
+    on E: Exception do
+    begin
+      // Alles oder nichts: schon geschriebene Dateien zurücksetzen.
+      for mIndex := mWritten - 1 downto 0 do
+        try
+          AWrite(ANames[mIndex], AOldTexts[mIndex]);
+        except
+          // Zurücksetzen nach Kräften; gemeldet wird der erste Fehler, der die übrigen Dateien verhindert hat.
+          // lsp-ignore: catch-all-without-raise -- Zurücksetzen nach Kräften; der erste Fehler wird ausgelöst
+          on Exception do
+            Continue;
+        end;
+      raise EBulkFixWrite.CreateFmt(cTexts[TBulkFixText.WriteFailed].Text, [E.Message]);
+    end;
+  end;
+  Result := mWritten;
+end;
+
 class function TBulkFix.SafeRulesOf(const ACatalog: TArray<TRuleCatalogEntry>): TArray<string>;
 var
   mEntry: TRuleCatalogEntry;
@@ -460,109 +575,6 @@ begin
       Exit(AAll);
     end;
   end;
-end;
-
-class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource): TBulkFixCheck;
-begin
-  Result :=
-    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
-    var
-      mScopes: TFindingScopes;
-    begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
-        TCheckOrigin.Make(AProject, ASource), mScopes);
-    end;
-end;
-
-class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource;
-  const ABaseline: IRuleBaseline): TBulkFixCheck;
-begin
-  if ABaseline = nil then
-  begin
-    Exit(CheckWith(ARules, ASettings, ARelativePath, AProject, ASource));
-  end;
-  Result :=
-    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
-    var
-      mScopes: TFindingScopes;
-    begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
-        TCheckOrigin.Make(AProject, ASource), mScopes);
-      Result := ABaseline.Filter(ARelativePath, AText, mScopes, Result);
-    end;
-end;
-
-class function TBulkFix.SyntaxErrorsWith(const ASource: TCheckSource): TBulkFixSyntaxErrors;
-begin
-  Result :=
-    function(const AText: string): Integer
-    var
-      mProcessed: TPreprocessorResult;
-      mTree: TSyntaxTree;
-    begin
-      mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
-      try
-        Result := Length(mTree.Diagnostics);
-      finally
-        mTree.Free;
-      end;
-    end;
-end;
-
-class function TBulkFix.Overlaps(const A, B: TTextRange): Boolean;
-begin
-  if A.StartPos = B.StartPos then
-  begin
-    Exit(True);
-  end;
-  Result := (ComparePosition(A.StartPos, B.EndPos) < 0) and (ComparePosition(B.StartPos, A.EndPos) < 0);
-end;
-
-class function TBulkFix.SafeFixOf(const AFinding: TRuleFinding; const AOptions: TBulkFixOptions; out AFix: TRuleFix;
-  out ASkip: TBulkFixSkip): Boolean;
-var
-  mFix: TRuleFix;
-  mCount, mTextFixes: Integer;
-begin
-  Result := False;
-  AFix := Default(TRuleFix);
-  if Ord(AFinding.Confidence) < Ord(AOptions.MinConfidence) then
-  begin
-    ASkip := TBulkFixSkip.Confidence;
-    Exit;
-  end;
-  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht. Genommen wird die eine sichere
-  // Korrektur wie bei source.fixAll; weitere, nicht sichere (begin … end in der ganzen Methode) bleiben eine
-  // Auswahl für den Benutzer. Zwei sichere sind selbst eine Auswahl.
-  mTextFixes := 0;
-  mCount := 0;
-  for mFix in AFinding.Fixes do
-  begin
-    if (mFix.Edits <> nil) or (mFix.OtherFiles <> nil) then
-    begin
-      Inc(mTextFixes);
-      if mFix.Safe and not mFix.Alternative then
-      begin
-        Inc(mCount);
-        AFix := mFix;
-      end;
-    end;
-  end;
-  if mTextFixes = 0 then
-  begin
-    ASkip := TBulkFixSkip.NoFix;
-    Exit;
-  end;
-  ASkip := TBulkFixSkip.Unsafe;
-  if (mCount <> 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or (AFix.OtherFiles <> nil) or
-    (AFix.FileName <> '') or (AFix.Edits = nil) then
-  begin
-    AFix := Default(TRuleFix);
-    Exit;
-  end;
-  Result := True;
 end;
 
 /// <summary>Zählt eine angewendete Korrektur der Regel ARuleId.</summary>
@@ -736,14 +748,17 @@ begin
   end;
 end;
 
-class function TBulkFix.Diff(const ADisplayName: string; const AFile: TBulkFixFile): string;
+class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource): TBulkFixCheck;
 begin
-  if not AFile.Changed then
-  begin
-    Exit('');
-  end;
-  Result := string.Join(sLineBreak, TTextDiff.Unified('a/' + ADisplayName, 'b/' + ADisplayName,
-    TTextLines.SplitLines(AFile.OldText), TTextLines.SplitLines(AFile.NewText), cDiffContext)) + sLineBreak;
+  Result :=
+    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
+    var
+      mScopes: TFindingScopes;
+    begin
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
+    end;
 end;
 
 /// <summary>Zeile "Übersprungen: …"; '' ohne übersprungene Treffer.</summary>
@@ -836,55 +851,40 @@ begin
   Result := string.Join(ALineBreak, mLines);
 end;
 
-class function TBulkFix.WriteAll(const AFiles: TArray<TBulkFixFile>; const AWrite: TBulkFixWrite): Integer;
-var
-  mFile: TBulkFixFile;
-  mNames, mOld, mNew: TArray<string>;
+class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ARelativePath: string; const AProject: TCheckProject; const ASource: TCheckSource;
+  const ABaseline: IRuleBaseline): TBulkFixCheck;
 begin
-  mNames := nil;
-  mOld := nil;
-  mNew := nil;
-  for mFile in AFiles do
+  if ABaseline = nil then
   begin
-    if mFile.Changed then
-    begin
-      mNames := mNames + [mFile.FileName];
-      mOld := mOld + [mFile.OldText];
-      mNew := mNew + [mFile.NewText];
-    end;
+    Exit(CheckWith(ARules, ASettings, ARelativePath, AProject, ASource));
   end;
-  Result := WriteAll(mNames, mOld, mNew, AWrite);
+  Result :=
+    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
+    var
+      mScopes: TFindingScopes;
+    begin
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
+      Result := ABaseline.Filter(ARelativePath, AText, mScopes, Result);
+    end;
 end;
 
-class function TBulkFix.WriteAll(const ANames, AOldTexts, ANewTexts: TArray<string>;
-  const AWrite: TBulkFixWrite): Integer;
-var
-  mIndex, mWritten: Integer;
+class function TBulkFix.SyntaxErrorsWith(const ASource: TCheckSource): TBulkFixSyntaxErrors;
 begin
-  mWritten := 0;
-  try
-    for mIndex := 0 to High(ANames) do
+  Result :=
+    function(const AText: string): Integer
+    var
+      mProcessed: TPreprocessorResult;
+      mTree: TSyntaxTree;
     begin
-      AWrite(ANames[mIndex], ANewTexts[mIndex]);
-      Inc(mWritten);
+      mTree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, mProcessed);
+      try
+        Result := Length(mTree.Diagnostics);
+      finally
+        mTree.Free;
+      end;
     end;
-  except
-    on E: Exception do
-    begin
-      // Alles oder nichts: schon geschriebene Dateien zurücksetzen.
-      for mIndex := mWritten - 1 downto 0 do
-        try
-          AWrite(ANames[mIndex], AOldTexts[mIndex]);
-        except
-          // Zurücksetzen nach Kräften; gemeldet wird der erste Fehler, der die übrigen Dateien verhindert hat.
-          // lsp-ignore: catch-all-without-raise -- Zurücksetzen nach Kräften; der erste Fehler wird ausgelöst
-          on Exception do
-            Continue;
-        end;
-      raise EBulkFixWrite.CreateFmt(cTexts[TBulkFixText.WriteFailed].Text, [E.Message]);
-    end;
-  end;
-  Result := mWritten;
 end;
 
 initialization

@@ -25,6 +25,8 @@ type
 
 implementation
 
+{ TAtlasExitWatch }
+
 constructor TAtlasExitWatch.Create(ATarget: TComponent; const AOnExit: TProc);
 begin
   inherited Create(nil);

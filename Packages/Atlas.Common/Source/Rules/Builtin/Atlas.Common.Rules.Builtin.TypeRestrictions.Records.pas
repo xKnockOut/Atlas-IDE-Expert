@@ -322,6 +322,8 @@ begin
   Result := False;
 end;
 
+{ TTypeRestrictionViolatedRule }
+
 function TTypeRestrictionViolatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cTypeRestrictionViolatedRuleId, TRuleSeverity.Error,

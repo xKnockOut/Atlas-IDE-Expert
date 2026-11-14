@@ -372,45 +372,6 @@ begin
   Result := Length(FTargets);
 end;
 
-function TAtlasClassExtractionModel.IsMove: Boolean;
-begin
-  Result := FTargets <> nil;
-end;
-
-procedure TAtlasClassExtractionModel.SetTargetChecked(AIndex: Integer; AChecked: Boolean);
-var
-  mIndex: Integer;
-begin
-  if (AIndex < 0) or (AIndex > High(FTargets)) then
-  begin
-    Exit;
-  end;
-  if not FSource.MultiTarget then
-  begin
-    // Ein Vorfahr: genau einer gewählt.
-    for mIndex := 0 to High(FTargets) do
-    begin
-      FTargets[mIndex].Checked := mIndex = AIndex;
-    end;
-    Exit;
-  end;
-  FTargets[AIndex].Checked := AChecked;
-end;
-
-function TAtlasClassExtractionModel.CheckedTargets: TArray<string>;
-var
-  mItem: TAtlasExtractionTarget;
-begin
-  Result := nil;
-  for mItem in FTargets do
-  begin
-    if mItem.Checked then
-    begin
-      Result := Result + [mItem.Name];
-    end;
-  end;
-end;
-
 function TAtlasClassExtractionModel.IndexOfId(AId: Integer): Integer;
 begin
   Result := IndexIn(FMembers, AId);
@@ -583,15 +544,6 @@ begin
   Result := Validate(mSubject);
 end;
 
-function TAtlasClassExtractionModel.Target: string;
-begin
-  Result := Trim(FTargetUnit);
-  if SameText(Result, FSource.OwnUnit) then
-  begin
-    Result := '';
-  end;
-end;
-
 function TAtlasClassExtractionModel.RequestJson: TJSONObject;
 var
   mList, mAbstracts: TJSONArray;
@@ -642,6 +594,54 @@ begin
   if FSource.OptionKind <> '' then
   begin
     Result.AddPair('option', TJSONBool.Create(FOption));
+  end;
+end;
+
+function TAtlasClassExtractionModel.Target: string;
+begin
+  Result := Trim(FTargetUnit);
+  if SameText(Result, FSource.OwnUnit) then
+  begin
+    Result := '';
+  end;
+end;
+
+function TAtlasClassExtractionModel.IsMove: Boolean;
+begin
+  Result := FTargets <> nil;
+end;
+
+procedure TAtlasClassExtractionModel.SetTargetChecked(AIndex: Integer; AChecked: Boolean);
+var
+  mIndex: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FTargets)) then
+  begin
+    Exit;
+  end;
+  if not FSource.MultiTarget then
+  begin
+    // Ein Vorfahr: genau einer gewählt.
+    for mIndex := 0 to High(FTargets) do
+    begin
+      FTargets[mIndex].Checked := mIndex = AIndex;
+    end;
+    Exit;
+  end;
+  FTargets[AIndex].Checked := AChecked;
+end;
+
+function TAtlasClassExtractionModel.CheckedTargets: TArray<string>;
+var
+  mItem: TAtlasExtractionTarget;
+begin
+  Result := nil;
+  for mItem in FTargets do
+  begin
+    if mItem.Checked then
+    begin
+      Result := Result + [mItem.Name];
+    end;
   end;
 end;
 

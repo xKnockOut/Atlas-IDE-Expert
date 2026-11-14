@@ -139,29 +139,10 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasDisplayRules.Clear;
+function TAtlasDisplayRules.Lookup(const AName: string; out AIndex: Integer): Boolean;
 begin
-  FRules.Clear;
-  FByName.Clear;
-  FInherits.Clear;
-  FInheritNames.Clear;
-end;
-
-class function TAtlasDisplayRules.ShortName(const ATypeName: string): string;
-var
-  mAngle, mDot: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Copy(Result, 1, mAngle - 1);
-  end;
-  mDot := LastDelimiter('.', Result);
-  if mDot > 0 then
-  begin
-    Result := Copy(Result, mDot + 1, MaxInt);
-  end;
+  Result := FByName.TryGetValue(LowerCase(Trim(AName)), AIndex) or
+    FByName.TryGetValue(LowerCase(ShortName(AName)), AIndex);
 end;
 
 procedure TAtlasDisplayRules.MapName(const AKey: string; AIndex: Integer);
@@ -180,6 +161,36 @@ begin
     Exit;
   end;
   FByName.AddOrSetValue(AKey, AIndex);
+end;
+
+procedure TAtlasDisplayRules.AddInherits(AInherits: TJSONValue);
+var
+  mItem: TJSONValue;
+  mTypeName, mFrom: string;
+begin
+  if not (AInherits is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AInherits) do
+  begin
+    if mItem is TJSONObject then
+    begin
+      mTypeName := '';
+      mFrom := '';
+      TJSONObject(mItem).TryGetValue<string>('type', mTypeName);
+      TJSONObject(mItem).TryGetValue<string>('from', mFrom);
+      AddInherit(mTypeName, mFrom);
+    end;
+  end;
+end;
+
+procedure TAtlasDisplayRules.Clear;
+begin
+  FRules.Clear;
+  FByName.Clear;
+  FInherits.Clear;
+  FInheritNames.Clear;
 end;
 
 procedure TAtlasDisplayRules.Add(const ARule: TAtlasDisplayRule);
@@ -201,24 +212,6 @@ begin
   MapName(LowerCase(mRule.TypeName), mIndex);
   MapName(LowerCase(mRule.Name), mIndex);
   MapName(LowerCase(ShortName(mRule.TypeName)), mIndex);
-end;
-
-procedure TAtlasDisplayRules.AddInherit(const ATypeName, AFrom: string);
-var
-  mName: string;
-begin
-  if (Trim(ATypeName) = '') or (Trim(AFrom) = '') then
-  begin
-    Exit;
-  end;
-  for mName in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
-  begin
-    if not FInherits.ContainsKey(LowerCase(mName)) or (mName = Trim(ATypeName)) then
-    begin
-      FInherits.AddOrSetValue(LowerCase(mName), Trim(AFrom));
-      FInheritNames.AddOrSetValue(LowerCase(mName), mName);
-    end;
-  end;
 end;
 
 /// <summary>Namen aus "children": nur nicht leere Zeichenketten.</summary>
@@ -291,24 +284,20 @@ begin
   end;
 end;
 
-procedure TAtlasDisplayRules.AddInherits(AInherits: TJSONValue);
+procedure TAtlasDisplayRules.AddInherit(const ATypeName, AFrom: string);
 var
-  mItem: TJSONValue;
-  mTypeName, mFrom: string;
+  mName: string;
 begin
-  if not (AInherits is TJSONArray) then
+  if (Trim(ATypeName) = '') or (Trim(AFrom) = '') then
   begin
     Exit;
   end;
-  for mItem in TJSONArray(AInherits) do
+  for mName in TArray<string>.Create(Trim(ATypeName), ShortName(ATypeName)) do
   begin
-    if mItem is TJSONObject then
+    if not FInherits.ContainsKey(LowerCase(mName)) or (mName = Trim(ATypeName)) then
     begin
-      mTypeName := '';
-      mFrom := '';
-      TJSONObject(mItem).TryGetValue<string>('type', mTypeName);
-      TJSONObject(mItem).TryGetValue<string>('from', mFrom);
-      AddInherit(mTypeName, mFrom);
+      FInherits.AddOrSetValue(LowerCase(mName), Trim(AFrom));
+      FInheritNames.AddOrSetValue(LowerCase(mName), mName);
     end;
   end;
 end;
@@ -330,12 +319,6 @@ begin
   finally
     mRoot.Free;
   end;
-end;
-
-function TAtlasDisplayRules.Lookup(const AName: string; out AIndex: Integer): Boolean;
-begin
-  Result := FByName.TryGetValue(LowerCase(Trim(AName)), AIndex) or
-    FByName.TryGetValue(LowerCase(ShortName(AName)), AIndex);
 end;
 
 function TAtlasDisplayRules.Find(const ATypeName: string; out ARule: TAtlasDisplayRule): Boolean;
@@ -429,6 +412,23 @@ begin
     begin
       Result := Result + [mRule.TypeName];
     end;
+  end;
+end;
+
+class function TAtlasDisplayRules.ShortName(const ATypeName: string): string;
+var
+  mAngle, mDot: Integer;
+begin
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
+  begin
+    Result := Copy(Result, 1, mAngle - 1);
+  end;
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
+  begin
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 

@@ -65,6 +65,8 @@ type
     property Survey: TEncodingSurvey read FSurvey;
   end;
 
+{ TSurveyFiles }
+
 constructor TSurveyFiles.Create(AAnsiCodePage: Integer);
 begin
   inherited Create;

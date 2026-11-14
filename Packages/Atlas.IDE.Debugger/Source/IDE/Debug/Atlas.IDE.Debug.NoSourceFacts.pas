@@ -78,12 +78,6 @@ end;
 
 { TAtlasIdeNoSourceFacts }
 
-class procedure TAtlasIdeNoSourceFacts.Release;
-begin
-  FreeAndNil(FFolders);
-  FFoldersKept := False;
-end;
-
 class function TAtlasIdeNoSourceFacts.Folders: TArray<string>;
 var
   mProject: IOTAProject;
@@ -180,6 +174,12 @@ begin
   begin
     Result := mFiles[0];
   end;
+end;
+
+class procedure TAtlasIdeNoSourceFacts.Release;
+begin
+  FreeAndNil(FFolders);
+  FFoldersKept := False;
 end;
 
 /// <summary>Schaltet der Quelltext AFileName die Debug-Informationen ab?</summary>

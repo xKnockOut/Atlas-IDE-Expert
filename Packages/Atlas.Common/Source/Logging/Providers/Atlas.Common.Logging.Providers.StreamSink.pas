@@ -55,6 +55,12 @@ begin
   inherited;
 end;
 
+class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string;
+  AMaxBytes: Int64): TStreamLogSink;
+begin
+  Result := TStreamLogSink.Create(TRotatingFileStream.Create(AFileName, True, AFallbackTag, AMaxBytes), True);
+end;
+
 class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string): TStreamLogSink;
 begin
   Result := CreateForFile(AFileName, AFallbackTag, TRotatingFileStream.cDefaultMaxBytes);
@@ -63,12 +69,6 @@ end;
 class function TStreamLogSink.CreateForFile(const AFileName: string): TStreamLogSink;
 begin
   Result := CreateForFile(AFileName, '', TRotatingFileStream.cDefaultMaxBytes);
-end;
-
-class function TStreamLogSink.CreateForFile(const AFileName, AFallbackTag: string;
-  AMaxBytes: Int64): TStreamLogSink;
-begin
-  Result := TStreamLogSink.Create(TRotatingFileStream.Create(AFileName, True, AFallbackTag, AMaxBytes), True);
 end;
 
 procedure TStreamLogSink.Write(const AEntry: TLogEntry);

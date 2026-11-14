@@ -206,8 +206,8 @@ begin
   Result := LowerName(AModule.Name) = mProgramName;
 end;
 
-{ TAtlasDebugLoadedModule }
 
+{ TAtlasDebugLoadedModule }
 
 class function TAtlasDebugLoadedModule.Create(const AFileName: string; ABase, ASize: UInt64): TAtlasDebugLoadedModule;
 begin

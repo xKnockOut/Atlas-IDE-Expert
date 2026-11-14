@@ -206,20 +206,6 @@ end;
 
 { TAtlasDiscover }
 
-class function TAtlasDiscover.IndexIn(const AList: TArray<string>; const AId: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AList) do
-  begin
-    if SameText(AList[mIndex], Trim(AId)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 class function TAtlasDiscover.UsageOf(const ATip: TAtlasTip; AUsage: TAtlasCommandUsage;
   out ALastUsed: TDateTime): Integer;
 var
@@ -239,35 +225,6 @@ begin
     if mEntry.LastUsed > ALastUsed then
     begin
       ALastUsed := mEntry.LastUsed;
-    end;
-  end;
-end;
-
-class function TAtlasDiscover.NeverUsed(const ATip: TAtlasTip; AUsage: TAtlasCommandUsage): Boolean;
-var
-  mLastUsed: TDateTime;
-begin
-  Result := (UsageOf(ATip, AUsage, mLastUsed) = 0) and (mLastUsed = 0);
-end;
-
-/// <summary>Indizes in Reihenfolge der Datei, beginnend nach AAfter (Index in ATips; -1 = von vorn).</summary>
-function RotateAfter(const AIndexes: TArray<Integer>; AAfter: Integer): TArray<Integer>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex in AIndexes do
-  begin
-    if mIndex > AAfter then
-    begin
-      Result := Result + [mIndex];
-    end;
-  end;
-  for mIndex in AIndexes do
-  begin
-    if mIndex <= AAfter then
-    begin
-      Result := Result + [mIndex];
     end;
   end;
 end;
@@ -304,6 +261,71 @@ begin
   end;
   mValue := Trim(mStore.Text(AName));
   Result := (mValue <> '') and not SameText(mValue, 'off');
+end;
+
+/// <summary>Indizes in Reihenfolge der Datei, beginnend nach AAfter (Index in ATips; -1 = von vorn).</summary>
+function RotateAfter(const AIndexes: TArray<Integer>; AAfter: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex in AIndexes do
+  begin
+    if mIndex > AAfter then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+  for mIndex in AIndexes do
+  begin
+    if mIndex <= AAfter then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+class function TAtlasDiscover.NeverUsed(const ATip: TAtlasTip; AUsage: TAtlasCommandUsage): Boolean;
+var
+  mLastUsed: TDateTime;
+begin
+  Result := (UsageOf(ATip, AUsage, mLastUsed) = 0) and (mLastUsed = 0);
+end;
+
+class function TAtlasDiscover.AgeOf(ALastUsed, ANow: TDateTime): TAtlasDiscoverAge;
+var
+  mDays: Integer;
+begin
+  if ALastUsed <= 0 then
+  begin
+    Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0));
+  end;
+  // Kalendertage: gestern 23 Uhr ist „gestern“, auch wenn erst eine Stunde vergangen ist.
+  mDays := Trunc(ANow) - Trunc(ALastUsed);
+  if mDays <= 0 then
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Today, 0);
+  end
+  else if mDays = 1 then
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1);
+  end
+  else if mDays < 14 then
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, mDays);
+  end
+  else if mDays < 60 then
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div 7);
+  end
+  else if mDays < 365 then
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div 30);
+  end
+  else
+  begin
+    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div 365);
+  end;
 end;
 
 /// <summary>Kennungen der Tipps AIndexes aus ATips.</summary>
@@ -394,42 +416,6 @@ begin
     Result := IdsOf(ATips, RotateAfter(mFresh, mAfter)) + IdsOf(ATips, mUsed.ToArray);
   finally
     mUsed.Free;
-  end;
-end;
-
-class function TAtlasDiscover.AgeOf(ALastUsed, ANow: TDateTime): TAtlasDiscoverAge;
-var
-  mDays: Integer;
-begin
-  if ALastUsed <= 0 then
-  begin
-    Exit(TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Never, 0));
-  end;
-  // Kalendertage: gestern 23 Uhr ist „gestern“, auch wenn erst eine Stunde vergangen ist.
-  mDays := Trunc(ANow) - Trunc(ALastUsed);
-  if mDays <= 0 then
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Today, 0);
-  end
-  else if mDays = 1 then
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Yesterday, 1);
-  end
-  else if mDays < 14 then
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Days, mDays);
-  end
-  else if mDays < 60 then
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Weeks, mDays div 7);
-  end
-  else if mDays < 365 then
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Months, mDays div 30);
-  end
-  else
-  begin
-    Result := TAtlasDiscoverAge.Create(TAtlasDiscoverAgeKind.Years, mDays div 365);
   end;
 end;
 
@@ -527,6 +513,20 @@ begin
     Exit(Pick(AQueue, AAllowed, ACurrent));
   end;
   Result := mList[(mIndex + 1) mod Length(mList)];
+end;
+
+class function TAtlasDiscover.IndexIn(const AList: TArray<string>; const AId: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AList) do
+  begin
+    if SameText(AList[mIndex], Trim(AId)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 end.

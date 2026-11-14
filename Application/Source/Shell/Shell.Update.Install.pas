@@ -270,6 +270,8 @@ begin
   Result := Swap(ASystem, AArgs, mFilesDir, mCandidates);
 end;
 
+{ TShellUpdateInstall }
+
 class function TShellUpdateInstall.Run(const AArgs: TUpdateArguments): Integer;
 var
   mArgs: TUpdateArguments;

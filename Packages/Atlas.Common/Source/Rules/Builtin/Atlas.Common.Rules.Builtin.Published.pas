@@ -285,6 +285,8 @@ begin
   Result := ByteSpanKind(mLow div 8, mHigh div 8);
 end;
 
+{ TPublishedTypeInvalidRule }
+
 function TPublishedTypeInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cPublishedTypeInvalidRuleId, TRuleSeverity.Error,

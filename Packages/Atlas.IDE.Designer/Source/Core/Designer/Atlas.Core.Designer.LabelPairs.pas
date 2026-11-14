@@ -80,6 +80,8 @@ begin
   end;
 end;
 
+{ TAtlasLabelPairs }
+
 class function TAtlasLabelPairs.FindField(const ALabel: TRect; const AFields: TArray<TRect>;
   ADistance: Integer): TAtlasPairMatch;
 var

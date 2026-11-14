@@ -59,6 +59,8 @@ begin
   end;
 end;
 
+{ TGitUser }
+
 class function TGitUser.NameIn(const AConfig: string): string;
 var
   mLine, mKey: string;

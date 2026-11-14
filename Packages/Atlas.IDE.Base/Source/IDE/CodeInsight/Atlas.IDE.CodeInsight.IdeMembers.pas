@@ -267,6 +267,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeMemberCollector }
+
 class function TAtlasIdeMemberCollector.Detail(AType: TRttiType; const AUnit: string;
   out ADetail: TAtlasIdeTypeDetail): Boolean;
 begin

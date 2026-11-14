@@ -121,79 +121,6 @@ begin
   inherited;
 end;
 
-procedure TLspProfiler.Register(ACommands: TLspCommands);
-begin
-  ACommands.Register(cStartCommand, HandleStart);
-  ACommands.Register(cStatusCommand, HandleStatus);
-  ACommands.Register(cStopCommand, HandleStop);
-end;
-
-procedure TLspProfiler.LoadMap(const AFileName: string);
-begin
-  FreeAndNil(FMap);
-  if (AFileName <> '') and TFile.Exists(AFileName) then
-  begin
-    FMap := TMapFile.Create(TFile.ReadAllText(AFileName, TEncoding.UTF8));
-  end;
-end;
-
-/// <summary>Abtastung des Prozesses AProcessId mit dem Takt aus AParams, gestartet; sonst EJsonRpcError.</summary>
-function TLspProfiler.StartedSampler(AParams: TJSONObject; AProcessId: Integer): IAtlasProfileSampler;
-var
-  mError: string;
-begin
-  Result := nil;
-  if Assigned(FFactory) then
-  begin
-    Result := FFactory();
-  end;
-  if Result = nil then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TProfilerText.NotAvailable].Text);
-  end;
-  if not Result.Start(Cardinal(AProcessId), EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs),
-    cMinIntervalMs, cMaxIntervalMs), mError) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
-      cTexts[TProfilerText.StartFailed].Fmt([AProcessId, mError]));
-  end;
-end;
-
-/// <summary>Übernimmt die laufende Abtastung ASampler und legt den Kopf des Profils aus AParams an.</summary>
-procedure TLspProfiler.BeginProfile(AParams: TJSONObject; const ASampler: IAtlasProfileSampler; AProcessId: Integer);
-begin
-  FSampler := ASampler;
-  FProcessId := Cardinal(AProcessId);
-  FWatch := TStopwatch.StartNew;
-  FProfile := Default(TAtlasProfile);
-  FProfile.ProgramName := TextParam(AParams, 'program');
-  FProfile.Project := TextParam(AParams, 'project');
-  FProfile.Platform := TextParam(AParams, 'platform');
-  FProfile.StartedAt := Now;
-  FProfile.IntervalMs := EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
-    cMaxIntervalMs);
-  if FProfile.ProgramName = '' then
-  begin
-    FProfile.ProgramName := ExtractFileName(ASampler.MainFileName);
-  end;
-end;
-
-/// <summary>Antwort von atlas/profilerStart mit der Map-Datei AMapFile.</summary>
-function TLspProfiler.StartResult(const AMapFile: string): TJSONObject;
-var
-  mRoutines: Integer;
-begin
-  mRoutines := 0;
-  if FMap <> nil then
-  begin
-    mRoutines := FMap.SymbolCount;
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('started', TJSONBool.Create(True));
-  Result.AddPair('mapFile', AMapFile);
-  Result.AddPair('routines', TJSONNumber.Create(mRoutines));
-end;
-
 function TLspProfiler.HandleStart(const AArguments: TJSONArray): TJSONValue;
 var
   mParams: TJSONObject;
@@ -264,6 +191,72 @@ begin
   Result := Finish;
 end;
 
+procedure TLspProfiler.LoadMap(const AFileName: string);
+begin
+  FreeAndNil(FMap);
+  if (AFileName <> '') and TFile.Exists(AFileName) then
+  begin
+    FMap := TMapFile.Create(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+  end;
+end;
+
+/// <summary>Abtastung des Prozesses AProcessId mit dem Takt aus AParams, gestartet; sonst EJsonRpcError.</summary>
+function TLspProfiler.StartedSampler(AParams: TJSONObject; AProcessId: Integer): IAtlasProfileSampler;
+var
+  mError: string;
+begin
+  Result := nil;
+  if Assigned(FFactory) then
+  begin
+    Result := FFactory();
+  end;
+  if Result = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TProfilerText.NotAvailable].Text);
+  end;
+  if not Result.Start(Cardinal(AProcessId), EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs),
+    cMinIntervalMs, cMaxIntervalMs), mError) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed,
+      cTexts[TProfilerText.StartFailed].Fmt([AProcessId, mError]));
+  end;
+end;
+
+/// <summary>Übernimmt die laufende Abtastung ASampler und legt den Kopf des Profils aus AParams an.</summary>
+procedure TLspProfiler.BeginProfile(AParams: TJSONObject; const ASampler: IAtlasProfileSampler; AProcessId: Integer);
+begin
+  FSampler := ASampler;
+  FProcessId := Cardinal(AProcessId);
+  FWatch := TStopwatch.StartNew;
+  FProfile := Default(TAtlasProfile);
+  FProfile.ProgramName := TextParam(AParams, 'program');
+  FProfile.Project := TextParam(AParams, 'project');
+  FProfile.Platform := TextParam(AParams, 'platform');
+  FProfile.StartedAt := Now;
+  FProfile.IntervalMs := EnsureRange(IntParam(AParams, 'intervalMs', cDefaultIntervalMs), cMinIntervalMs,
+    cMaxIntervalMs);
+  if FProfile.ProgramName = '' then
+  begin
+    FProfile.ProgramName := ExtractFileName(ASampler.MainFileName);
+  end;
+end;
+
+/// <summary>Antwort von atlas/profilerStart mit der Map-Datei AMapFile.</summary>
+function TLspProfiler.StartResult(const AMapFile: string): TJSONObject;
+var
+  mRoutines: Integer;
+begin
+  mRoutines := 0;
+  if FMap <> nil then
+  begin
+    mRoutines := FMap.SymbolCount;
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('started', TJSONBool.Create(True));
+  Result.AddPair('mapFile', AMapFile);
+  Result.AddPair('routines', TJSONNumber.Create(mRoutines));
+end;
+
 function TLspProfiler.Finish: TJSONObject;
 var
   mRun: TAtlasSampleRun;
@@ -301,6 +294,13 @@ begin
   begin
     TFile.Delete(mFile);
   end;
+end;
+
+procedure TLspProfiler.Register(ACommands: TLspCommands);
+begin
+  ACommands.Register(cStartCommand, HandleStart);
+  ACommands.Register(cStatusCommand, HandleStatus);
+  ACommands.Register(cStopCommand, HandleStop);
 end;
 
 initialization

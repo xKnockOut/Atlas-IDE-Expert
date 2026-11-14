@@ -224,41 +224,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TPeekState.Hide;
-begin
-  Timer.Enabled := False;
-  if TAtlasKeyHook.Contains(Keys) then
-  begin
-    TAtlasKeyHook.Remove(Keys);
-  end;
-  Window.Dismiss;
-end;
-
-procedure TPeekState.Open;
-var
-  mPlace: TAtlasPeekPlace;
-begin
-  if (Window.View = nil) or (Window.View.Count = 0) then
-  begin
-    Exit;
-  end;
-  mPlace := Window.View.OpenPlace;
-  Hide;
-  if mPlace.FileName <> '' then
-  begin
-    TAtlasIdeNavigation.GoToLocation(mPlace.FileName, mPlace.Line, mPlace.Character);
-  end;
-end;
-
-procedure TPeekState.WindowOpen(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Peek,
-    procedure
-    begin
-      Open;
-    end);
-end;
-
 procedure TPeekState.Watch(Sender: TObject);
 var
   mView: IOTAEditView;
@@ -285,6 +250,41 @@ begin
       Hide;
       TAtlasGuard.Report(TAtlasFeature.Peek, E);
     end;
+  end;
+end;
+
+procedure TPeekState.WindowOpen(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Peek,
+    procedure
+    begin
+      Open;
+    end);
+end;
+
+procedure TPeekState.Hide;
+begin
+  Timer.Enabled := False;
+  if TAtlasKeyHook.Contains(Keys) then
+  begin
+    TAtlasKeyHook.Remove(Keys);
+  end;
+  Window.Dismiss;
+end;
+
+procedure TPeekState.Open;
+var
+  mPlace: TAtlasPeekPlace;
+begin
+  if (Window.View = nil) or (Window.View.Count = 0) then
+  begin
+    Exit;
+  end;
+  mPlace := Window.View.OpenPlace;
+  Hide;
+  if mPlace.FileName <> '' then
+  begin
+    TAtlasIdeNavigation.GoToLocation(mPlace.FileName, mPlace.Line, mPlace.Character);
   end;
 end;
 
@@ -338,6 +338,8 @@ type
     destructor Destroy; override;
     function Lines(const AFileName: string): TArray<string>;
   end;
+
+{ TLineCache }
 
 constructor TLineCache.Create;
 begin

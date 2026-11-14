@@ -150,6 +150,55 @@ begin
   inherited Destroy;
 end;
 
+class function TAtlasTestStamps.UnitsChanged(const AUnits: TArray<TAtlasUnitStamp>;
+  const AReadLines: TAtlasTestReadLines; ACache: TDictionary<string, string>): Boolean;
+var
+  mStamp: TAtlasUnitStamp;
+  mKey, mNow: string;
+begin
+  Result := False;
+  for mStamp in AUnits do
+  begin
+    mKey := AnsiLowerCase(mStamp.FileName);
+    if not ACache.TryGetValue(mKey, mNow) then
+    begin
+      mNow := FileFingerprint(mStamp.FileName, AReadLines);
+      ACache.Add(mKey, mNow);
+    end;
+    // Nicht mehr lesbar zählt als geändert.
+    if mNow <> mStamp.Fingerprint then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TAtlasTestStamps.StaleKeys(const AUnit: TDUnitXUnit; const ALines: TArray<string>; AWithUnits: Boolean;
+  const AReadLines: TAtlasTestReadLines; ACache: TDictionary<string, string>): TArray<string>;
+var
+  mFixture, mTest: Integer;
+  mKey: string;
+  mStamp: TAtlasTestStamp;
+begin
+  Result := nil;
+  for mFixture := 0 to High(AUnit.Fixtures) do
+  begin
+    for mTest := 0 to High(AUnit.Fixtures[mFixture].Tests) do
+    begin
+      mKey := KeyOf(AUnit.UnitName, AUnit.Fixtures[mFixture].Name, AUnit.Fixtures[mFixture].Tests[mTest].Method);
+      if not FStamps.TryGetValue(mKey, mStamp) then
+      begin
+        Continue;
+      end;
+      if (mStamp.Body <> BodyOf(AUnit, ALines, mFixture, mTest)) or
+        (AWithUnits and UnitsChanged(mStamp.Units, AReadLines, ACache)) then
+      begin
+        Result := Result + [mKey];
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasTestStamps.KeyOf(const AUnitName, AFixture, AMethod: string): string;
 begin
   Result := AnsiLowerCase(AUnitName + '.' + AFixture + '.' + AMethod);
@@ -252,60 +301,6 @@ begin
   Result := FStamps.TryGetValue(AKey, AStamp);
 end;
 
-function TAtlasTestStamps.Count: Integer;
-begin
-  Result := FStamps.Count;
-end;
-
-class function TAtlasTestStamps.UnitsChanged(const AUnits: TArray<TAtlasUnitStamp>;
-  const AReadLines: TAtlasTestReadLines; ACache: TDictionary<string, string>): Boolean;
-var
-  mStamp: TAtlasUnitStamp;
-  mKey, mNow: string;
-begin
-  Result := False;
-  for mStamp in AUnits do
-  begin
-    mKey := AnsiLowerCase(mStamp.FileName);
-    if not ACache.TryGetValue(mKey, mNow) then
-    begin
-      mNow := FileFingerprint(mStamp.FileName, AReadLines);
-      ACache.Add(mKey, mNow);
-    end;
-    // Nicht mehr lesbar zählt als geändert.
-    if mNow <> mStamp.Fingerprint then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-function TAtlasTestStamps.StaleKeys(const AUnit: TDUnitXUnit; const ALines: TArray<string>; AWithUnits: Boolean;
-  const AReadLines: TAtlasTestReadLines; ACache: TDictionary<string, string>): TArray<string>;
-var
-  mFixture, mTest: Integer;
-  mKey: string;
-  mStamp: TAtlasTestStamp;
-begin
-  Result := nil;
-  for mFixture := 0 to High(AUnit.Fixtures) do
-  begin
-    for mTest := 0 to High(AUnit.Fixtures[mFixture].Tests) do
-    begin
-      mKey := KeyOf(AUnit.UnitName, AUnit.Fixtures[mFixture].Name, AUnit.Fixtures[mFixture].Tests[mTest].Method);
-      if not FStamps.TryGetValue(mKey, mStamp) then
-      begin
-        Continue;
-      end;
-      if (mStamp.Body <> BodyOf(AUnit, ALines, mFixture, mTest)) or
-        (AWithUnits and UnitsChanged(mStamp.Units, AReadLines, ACache)) then
-      begin
-        Result := Result + [mKey];
-      end;
-    end;
-  end;
-end;
-
 function TAtlasTestStamps.StaleIn(const AUnit: TDUnitXUnit; const ALines: TArray<string>; AWithUnits: Boolean;
   const AReadLines: TAtlasTestReadLines): TArray<string>;
 var
@@ -317,6 +312,11 @@ begin
   finally
     mCache.Free;
   end;
+end;
+
+class function TAtlasTestStamps.Listed(const AValues: TArray<string>; const AValue: string): Boolean;
+begin
+  Result := InList(AValues, AValue);
 end;
 
 /// <summary>Lauf für das Testprojekt AProject in ARuns; legt ihn an, wenn es ihn noch nicht gibt.</summary>
@@ -380,9 +380,9 @@ begin
   end;
 end;
 
-class function TAtlasTestStamps.Listed(const AValues: TArray<string>; const AValue: string): Boolean;
+function TAtlasTestStamps.Count: Integer;
 begin
-  Result := InList(AValues, AValue);
+  Result := FStamps.Count;
 end;
 
 end.

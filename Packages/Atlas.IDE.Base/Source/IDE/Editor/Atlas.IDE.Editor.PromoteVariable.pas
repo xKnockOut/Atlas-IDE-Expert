@@ -36,6 +36,8 @@ uses
 const
   cApplyCommand = 'atlas.server.promoteVariable';
 
+{ TAtlasIdePromoteVariable }
+
 class procedure TAtlasIdePromoteVariable.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

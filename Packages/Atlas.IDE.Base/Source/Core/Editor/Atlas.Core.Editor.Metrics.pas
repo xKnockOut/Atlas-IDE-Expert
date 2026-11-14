@@ -215,6 +215,8 @@ begin
   end;
 end;
 
+{ TAtlasFileMetrics }
+
 class function TAtlasFileMetrics.FromJson(const AValue: TJSONValue): TAtlasFileMetrics;
 var
   mAnswer: TJSONObject;

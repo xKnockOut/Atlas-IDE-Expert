@@ -84,6 +84,47 @@ begin
   AddVcsGitSection;
 end;
 
+procedure TAtlasSettingsVcsBranchPart.Load(const AValues: IAtlasSettingsValues);
+begin
+  if FVcsExternalsRules = nil then
+  begin
+    Exit;
+  end;
+  FVcsExternalsRules.Text :=
+    TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(AValues.ReadString(cRulesKey)));
+end;
+
+procedure TAtlasSettingsVcsBranchPart.Save(const AValues: IAtlasSettingsValues);
+var
+  mRules: TArray<TAtlasVcsExternalRule>;
+  mInvalid: string;
+begin
+  // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
+  if (FVcsExternalsRules <> nil) and TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules,
+    mInvalid) then
+  begin
+    AValues.WriteString(cRulesKey, TAtlasVcsExternalRules.RulesJson(mRules));
+  end;
+end;
+
+procedure TAtlasSettingsVcsBranchPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FVcsBranchSvnSource := nil;
+    FVcsBranchSvnAfter := nil;
+    FVcsExternalsOnBranch := nil;
+    FVcsExternalsSuggest := nil;
+    FVcsExternalsRules := nil;
+    FVcsExternalsRulesError := nil;
+    FVcsExternalsUpdate := nil;
+    FVcsBranchGitBase := nil;
+    FVcsBranchGitPush := nil;
+    FVcsBranchGitUncommitted := nil;
+  end;
+end;
+
 procedure TAtlasSettingsVcsBranchPart.AddVcsExternalsSection;
 var
   mPanel: TWinControl;
@@ -166,47 +207,6 @@ begin
       TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
   end;
   FPage.RefreshMarks;
-end;
-
-procedure TAtlasSettingsVcsBranchPart.Load(const AValues: IAtlasSettingsValues);
-begin
-  if FVcsExternalsRules = nil then
-  begin
-    Exit;
-  end;
-  FVcsExternalsRules.Text :=
-    TAtlasVcsExternalRules.RulesText(TAtlasVcsExternalRules.RulesOf(AValues.ReadString(cRulesKey)));
-end;
-
-procedure TAtlasSettingsVcsBranchPart.Save(const AValues: IAtlasSettingsValues);
-var
-  mRules: TArray<TAtlasVcsExternalRule>;
-  mInvalid: string;
-begin
-  // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
-  if (FVcsExternalsRules <> nil) and TAtlasVcsExternalRules.RulesOfText(FVcsExternalsRules.Text, mRules,
-    mInvalid) then
-  begin
-    AValues.WriteString(cRulesKey, TAtlasVcsExternalRules.RulesJson(mRules));
-  end;
-end;
-
-procedure TAtlasSettingsVcsBranchPart.Attached(APage: TAtlasVcsSettingsOwner);
-begin
-  inherited Attached(APage);
-  if APage = nil then
-  begin
-    FVcsBranchSvnSource := nil;
-    FVcsBranchSvnAfter := nil;
-    FVcsExternalsOnBranch := nil;
-    FVcsExternalsSuggest := nil;
-    FVcsExternalsRules := nil;
-    FVcsExternalsRulesError := nil;
-    FVcsExternalsUpdate := nil;
-    FVcsBranchGitBase := nil;
-    FVcsBranchGitPush := nil;
-    FVcsBranchGitUncommitted := nil;
-  end;
 end;
 
 end.

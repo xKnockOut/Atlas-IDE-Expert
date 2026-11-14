@@ -88,41 +88,28 @@ begin
   FLabel.OnClick := LabelClick;
 end;
 
-class function TAtlasTrackerProjectPicker.Shows(const AView: TAtlasIssuesView): Boolean;
-begin
-  Result := AView.ProjectPicker and (Length(AView.ProjectChoices) > 0);
-end;
-
-class function TAtlasTrackerProjectPicker.CaptionOf(const AView: TAtlasIssuesView): string;
+procedure TAtlasTrackerProjectPicker.LabelClick(Sender: TObject);
 var
-  mName: string;
-  mIndex: Integer;
+  mPoint: TPoint;
 begin
-  mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAuto);
-  mIndex := TAtlasTrackerProjects.IndexOfChoice(AView.ProjectChoices, AView.ProjectKey);
-  if mIndex >= 0 then
+  Fill;
+  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
+  FMenu.Popup(mPoint.X, mPoint.Y);
+end;
+
+procedure TAtlasTrackerProjectPicker.ItemClick(Sender: TObject);
+begin
+  if Assigned(FOnSelect) and (TMenuItem(Sender).Tag >= 0) and (TMenuItem(Sender).Tag <= High(FKeys)) then
   begin
-    mName := AView.ProjectChoices[mIndex].Caption;
-  end
-  else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
-  begin
-    mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAll);
+    FOnSelect(FKeys[TMenuItem(Sender).Tag]);
   end;
-  Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesProjectLabel, [mName]);
 end;
 
-function TAtlasTrackerProjectPicker.Visible: Boolean;
+procedure TAtlasTrackerProjectPicker.EditClick(Sender: TObject);
 begin
-  Result := FLabel.Visible;
-end;
-
-procedure TAtlasTrackerProjectPicker.Update(const AView: TAtlasIssuesView; AMeasure: Boolean);
-begin
-  FView := AView;
-  FLabel.Visible := Shows(AView);
-  if FLabel.Visible and AMeasure then
+  if Assigned(FOnEdit) then
   begin
-    FLabel.Caption := CaptionOf(AView) + cDropMark;
+    FOnEdit();
   end;
 end;
 
@@ -138,6 +125,16 @@ begin
   FKeys := FKeys + [AKey];
   mItem.OnClick := ItemClick;
   FMenu.Items.Add(mItem);
+end;
+
+procedure TAtlasTrackerProjectPicker.Update(const AView: TAtlasIssuesView; AMeasure: Boolean);
+begin
+  FView := AView;
+  FLabel.Visible := Shows(AView);
+  if FLabel.Visible and AMeasure then
+  begin
+    FLabel.Caption := CaptionOf(AView) + cDropMark;
+  end;
 end;
 
 procedure TAtlasTrackerProjectPicker.Fill;
@@ -172,29 +169,32 @@ begin
   FMenu.Items.Add(mItem);
 end;
 
-procedure TAtlasTrackerProjectPicker.LabelClick(Sender: TObject);
+function TAtlasTrackerProjectPicker.Visible: Boolean;
+begin
+  Result := FLabel.Visible;
+end;
+
+class function TAtlasTrackerProjectPicker.Shows(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := AView.ProjectPicker and (Length(AView.ProjectChoices) > 0);
+end;
+
+class function TAtlasTrackerProjectPicker.CaptionOf(const AView: TAtlasIssuesView): string;
 var
-  mPoint: TPoint;
+  mName: string;
+  mIndex: Integer;
 begin
-  Fill;
-  mPoint := FLabel.ClientToScreen(Point(0, FLabel.Height));
-  FMenu.Popup(mPoint.X, mPoint.Y);
-end;
-
-procedure TAtlasTrackerProjectPicker.ItemClick(Sender: TObject);
-begin
-  if Assigned(FOnSelect) and (TMenuItem(Sender).Tag >= 0) and (TMenuItem(Sender).Tag <= High(FKeys)) then
+  mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAuto);
+  mIndex := TAtlasTrackerProjects.IndexOfChoice(AView.ProjectChoices, AView.ProjectKey);
+  if mIndex >= 0 then
   begin
-    FOnSelect(FKeys[TMenuItem(Sender).Tag]);
-  end;
-end;
-
-procedure TAtlasTrackerProjectPicker.EditClick(Sender: TObject);
-begin
-  if Assigned(FOnEdit) then
+    mName := AView.ProjectChoices[mIndex].Caption;
+  end
+  else if AView.ProjectKey = TAtlasTrackerProjects.cAllKey then
   begin
-    FOnEdit();
+    mName := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssuesProjectAll);
   end;
+  Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssuesProjectLabel, [mName]);
 end;
 
 end.

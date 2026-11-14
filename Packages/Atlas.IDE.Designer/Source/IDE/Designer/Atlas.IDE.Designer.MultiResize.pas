@@ -92,17 +92,81 @@ const
 
 { TAtlasIdeMultiResize }
 
-class function TAtlasIdeMultiResize.Available(const ASettings: TAtlasPluginSettings): Boolean;
+procedure TAtlasIdeMultiResize.Down(AIndex: Integer; AShift: TShiftState);
+var
+  mTag: Integer;
 begin
-  Result := ASettings.DesignerMultiResize;
+  if not FindItems or (AIndex < 0) or (AIndex >= Length(Overlay.Handles)) then
+  begin
+    Overlay.CancelDrag;
+    Exit;
+  end;
+  mTag := Overlay.Handles[AIndex].Tag;
+  FDragged := mTag div cEdgeSlots;
+  FEdge := TAtlasResizeEdge(mTag mod cEdgeSlots);
+  if FDragged > High(FControls) then
+  begin
+    Overlay.CancelDrag;
+    Exit;
+  end;
+  // Ohne eigene Griffe links und oben: Alt beim Drücken zieht die Gegenkante.
+  if (ssAlt in AShift) and not TAtlasIdeSettings.Current.DesignerMultiResizeLeftTopHandles then
+  begin
+    FEdge := TAtlasMultiResize.Opposite(FEdge);
+  end;
+  CollectNeighbours;
+  BeginStep;
 end;
 
-function TAtlasIdeMultiResize.Button: TAtlasDesignerButton;
+procedure TAtlasIdeMultiResize.Drag(const ADelta: TPoint; AShift: TShiftState);
+var
+  mResult: TAtlasResizeResult;
+  mDrag: TAtlasResizeDrag;
+  mIndex: Integer;
+  mAt: TRect;
 begin
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.MultiResize,
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeHint));
-  Result.Pressed := Active;
-  Result.Menu := True;
+  if not InStep then
+  begin
+    Exit;
+  end;
+  mDrag.Dragged := FDragged;
+  mDrag.Edge := FEdge;
+  mDrag.Delta := ADelta;
+  mDrag.Mode := TAtlasMultiResize.ModeOf(TAtlasIdeSettings.Current.DesignerMultiResizeMode);
+  mDrag.Grid := 0;
+  if not (ssAlt in AShift) then
+  begin
+    mDrag.Grid := TAtlasDesignerAccess.GridSize(not TAtlasMultiResize.Horizontal(FEdge));
+  end;
+  mDrag.Follow := ssShift in AShift;
+  mResult := TAtlasMultiResize.Apply(FItems, FNeighbourItems, mDrag);
+  for mIndex := 0 to High(FControls) do
+  begin
+    if FControls[mIndex].BoundsRect <> mResult.Items[mIndex] then
+    begin
+      FControls[mIndex].BoundsRect := mResult.Items[mIndex];
+    end;
+  end;
+  for mIndex := 0 to High(FNeighbours) do
+  begin
+    if FNeighbours[mIndex].BoundsRect <> mResult.Neighbours[mIndex] then
+    begin
+      FNeighbours[mIndex].BoundsRect := mResult.Neighbours[mIndex];
+    end;
+  end;
+  Changed := mResult.Changed > 0;
+  FCount := mResult.Changed;
+  FLabel := SizeText(FItems[FDragged].Bounds, mResult.Items[FDragged], mResult.Changed);
+  mAt := TAtlasDesignerAccess.BoundsInRoot(FControls[FDragged], FRoot);
+  FLabelAt := Point(mAt.Right + Overlay.S(cMargin), mAt.Bottom + Overlay.S(cMargin) div 2);
+  ShowItems;
+end;
+
+procedure TAtlasIdeMultiResize.Up;
+begin
+  CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeDone, [FCount]), False);
+  FLabel := '';
+  Tick;
 end;
 
 function TAtlasIdeMultiResize.ShowCaption: string;
@@ -120,21 +184,6 @@ begin
   Result := TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeUndone);
 end;
 
-function TAtlasIdeMultiResize.GroupOf(AParent: TWinControl): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FParents) do
-  begin
-    if FParents[mIndex] = AParent then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  FParents := FParents + [AParent];
-  Result := High(FParents);
-end;
-
 /// <summary>AutoSize (veröffentlicht) oder Align: Größe legt nicht der Designer fest.</summary>
 function IsFixed(AControl: TControl): Boolean;
 begin
@@ -143,6 +192,21 @@ begin
   begin
     Result := GetOrdProp(AControl, 'AutoSize') <> 0;
   end;
+end;
+
+procedure TAtlasIdeMultiResize.Tick;
+begin
+  if Dragging then
+  begin
+    Exit;
+  end;
+  if not TAtlasIdeSettings.Current.DesignerMultiResize or not Active or not FindItems then
+  begin
+    Hide;
+    Exit;
+  end;
+  FLabel := '';
+  ShowItems;
 end;
 
 /// <summary>Markierte Steuerelemente des aktiven Formulars (Felder FRoot, FControls, FItems, FParents).</summary>
@@ -175,35 +239,6 @@ begin
   Result := Length(FControls) >= 2;
 end;
 
-/// <summary>Nicht markierte Steuerelemente in den Elternelementen der Auswahl.</summary>
-procedure TAtlasIdeMultiResize.CollectNeighbours;
-var
-  mGroup, mIndex: Integer;
-  mControl: TControl;
-  mSelected: Boolean;
-  mItem: TControl;
-begin
-  FNeighbours := nil;
-  FNeighbourItems := nil;
-  for mGroup := 0 to High(FParents) do
-  begin
-    for mIndex := 0 to FParents[mGroup].ControlCount - 1 do
-    begin
-      mControl := FParents[mGroup].Controls[mIndex];
-      mSelected := False;
-      for mItem in FControls do
-      begin
-        mSelected := mSelected or (mItem = mControl);
-      end;
-      if not mSelected and (mControl.Align = alNone) then
-      begin
-        FNeighbours := FNeighbours + [mControl];
-        FNeighbourItems := FNeighbourItems + [TAtlasResizeNeighbour.Create(mControl.BoundsRect, mGroup)];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Mitte des Griffs an der Kante AEdge von ARect; Ecke unten rechts.</summary>
 function HandlePoint(const ARect: TRect; AEdge: TAtlasResizeEdge): TPoint;
 begin
@@ -232,6 +267,50 @@ begin
   else if TAtlasMultiResize.Vertical(AEdge) and not TAtlasMultiResize.Horizontal(AEdge) then
   begin
     Result := crSizeNS;
+  end;
+end;
+
+function TAtlasIdeMultiResize.GroupOf(AParent: TWinControl): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FParents) do
+  begin
+    if FParents[mIndex] = AParent then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  FParents := FParents + [AParent];
+  Result := High(FParents);
+end;
+
+/// <summary>Nicht markierte Steuerelemente in den Elternelementen der Auswahl.</summary>
+procedure TAtlasIdeMultiResize.CollectNeighbours;
+var
+  mGroup, mIndex: Integer;
+  mControl: TControl;
+  mSelected: Boolean;
+  mItem: TControl;
+begin
+  FNeighbours := nil;
+  FNeighbourItems := nil;
+  for mGroup := 0 to High(FParents) do
+  begin
+    for mIndex := 0 to FParents[mGroup].ControlCount - 1 do
+    begin
+      mControl := FParents[mGroup].Controls[mIndex];
+      mSelected := False;
+      for mItem in FControls do
+      begin
+        mSelected := mSelected or (mItem = mControl);
+      end;
+      if not mSelected and (mControl.Align = alNone) then
+      begin
+        FNeighbours := FNeighbours + [mControl];
+        FNeighbourItems := FNeighbourItems + [TAtlasResizeNeighbour.Create(mControl.BoundsRect, mGroup)];
+      end;
+    end;
   end;
 end;
 
@@ -299,47 +378,6 @@ begin
   Overlay.ShowAt(mVisible);
 end;
 
-procedure TAtlasIdeMultiResize.Tick;
-begin
-  if Dragging then
-  begin
-    Exit;
-  end;
-  if not TAtlasIdeSettings.Current.DesignerMultiResize or not Active or not FindItems then
-  begin
-    Hide;
-    Exit;
-  end;
-  FLabel := '';
-  ShowItems;
-end;
-
-procedure TAtlasIdeMultiResize.Down(AIndex: Integer; AShift: TShiftState);
-var
-  mTag: Integer;
-begin
-  if not FindItems or (AIndex < 0) or (AIndex >= Length(Overlay.Handles)) then
-  begin
-    Overlay.CancelDrag;
-    Exit;
-  end;
-  mTag := Overlay.Handles[AIndex].Tag;
-  FDragged := mTag div cEdgeSlots;
-  FEdge := TAtlasResizeEdge(mTag mod cEdgeSlots);
-  if FDragged > High(FControls) then
-  begin
-    Overlay.CancelDrag;
-    Exit;
-  end;
-  // Ohne eigene Griffe links und oben: Alt beim Drücken zieht die Gegenkante.
-  if (ssAlt in AShift) and not TAtlasIdeSettings.Current.DesignerMultiResizeLeftTopHandles then
-  begin
-    FEdge := TAtlasMultiResize.Opposite(FEdge);
-  end;
-  CollectNeighbours;
-  BeginStep;
-end;
-
 function TAtlasIdeMultiResize.SizeText(const AOld, ANew: TRect; ACount: Integer): string;
 begin
   if FEdge = TAtlasResizeEdge.Corner then
@@ -357,55 +395,17 @@ begin
   end;
 end;
 
-procedure TAtlasIdeMultiResize.Drag(const ADelta: TPoint; AShift: TShiftState);
-var
-  mResult: TAtlasResizeResult;
-  mDrag: TAtlasResizeDrag;
-  mIndex: Integer;
-  mAt: TRect;
+class function TAtlasIdeMultiResize.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  if not InStep then
-  begin
-    Exit;
-  end;
-  mDrag.Dragged := FDragged;
-  mDrag.Edge := FEdge;
-  mDrag.Delta := ADelta;
-  mDrag.Mode := TAtlasMultiResize.ModeOf(TAtlasIdeSettings.Current.DesignerMultiResizeMode);
-  mDrag.Grid := 0;
-  if not (ssAlt in AShift) then
-  begin
-    mDrag.Grid := TAtlasDesignerAccess.GridSize(not TAtlasMultiResize.Horizontal(FEdge));
-  end;
-  mDrag.Follow := ssShift in AShift;
-  mResult := TAtlasMultiResize.Apply(FItems, FNeighbourItems, mDrag);
-  for mIndex := 0 to High(FControls) do
-  begin
-    if FControls[mIndex].BoundsRect <> mResult.Items[mIndex] then
-    begin
-      FControls[mIndex].BoundsRect := mResult.Items[mIndex];
-    end;
-  end;
-  for mIndex := 0 to High(FNeighbours) do
-  begin
-    if FNeighbours[mIndex].BoundsRect <> mResult.Neighbours[mIndex] then
-    begin
-      FNeighbours[mIndex].BoundsRect := mResult.Neighbours[mIndex];
-    end;
-  end;
-  Changed := mResult.Changed > 0;
-  FCount := mResult.Changed;
-  FLabel := SizeText(FItems[FDragged].Bounds, mResult.Items[FDragged], mResult.Changed);
-  mAt := TAtlasDesignerAccess.BoundsInRoot(FControls[FDragged], FRoot);
-  FLabelAt := Point(mAt.Right + Overlay.S(cMargin), mAt.Bottom + Overlay.S(cMargin) div 2);
-  ShowItems;
+  Result := ASettings.DesignerMultiResize;
 end;
 
-procedure TAtlasIdeMultiResize.Up;
+function TAtlasIdeMultiResize.Button: TAtlasDesignerButton;
 begin
-  CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeDone, [FCount]), False);
-  FLabel := '';
-  Tick;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.MultiResize,
+    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.ResizeHint));
+  Result.Pressed := Active;
+  Result.Menu := True;
 end;
 
 end.

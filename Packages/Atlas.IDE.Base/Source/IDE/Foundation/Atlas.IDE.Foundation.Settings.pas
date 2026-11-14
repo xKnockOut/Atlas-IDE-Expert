@@ -401,6 +401,54 @@ end;
 
 { TAtlasIdeSettings }
 
+class procedure TAtlasIdeSettings.EnsureLoaded;
+var
+  mContent: TAtlasTextFileContent;
+  mReadable: Boolean;
+  mRouted: TAtlasRoutedSettingsStore;
+  mStore: IAtlasSettingsStore;
+  mChanged: Boolean;
+  mMigration: TAtlasSettingsQueryMigration;
+begin
+  if GState.Loaded then
+  begin
+    Exit;
+  end;
+  GState.Stored := TAtlasPluginSettings.Defaults;
+  ApplyRenames;
+  mReadable := LoadGlobal(mContent);
+  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), mContent.Text);
+  mStore := mRouted;
+  // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
+  mChanged := mRouted.Migrate;
+  mMigration := Default(TAtlasSettingsQueryMigration);
+  // Eine nicht lesbare Datei wird nicht geschrieben: dann bleibt auch issues.query in der Registry.
+  if mReadable and MigrateQuery(mStore, mMigration) then
+  begin
+    mChanged := True;
+  end;
+  if mChanged and mReadable then
+  begin
+    SaveGlobal(mContent, mRouted.Text);
+  end;
+  if mReadable then
+  begin
+    RemoveLegacyQuery(mMigration);
+  end;
+  GState.Stored.Load(mStore);
+  GState.Loaded := True;
+  GState.Effective := EffectiveSettings;
+end;
+
+class procedure TAtlasIdeSettings.Changed;
+begin
+  GState.Effective := EffectiveSettings;
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged();
+  end;
+end;
+
 class function TAtlasIdeSettings.GlobalFile: string;
 begin
   Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
@@ -449,104 +497,17 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSettings.EnsureLoaded;
-var
-  mContent: TAtlasTextFileContent;
-  mReadable: Boolean;
-  mRouted: TAtlasRoutedSettingsStore;
-  mStore: IAtlasSettingsStore;
-  mChanged: Boolean;
-  mMigration: TAtlasSettingsQueryMigration;
-begin
-  if GState.Loaded then
-  begin
-    Exit;
-  end;
-  GState.Stored := TAtlasPluginSettings.Defaults;
-  ApplyRenames;
-  mReadable := LoadGlobal(mContent);
-  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), mContent.Text);
-  mStore := mRouted;
-  // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
-  mChanged := mRouted.Migrate;
-  mMigration := Default(TAtlasSettingsQueryMigration);
-  // Eine nicht lesbare Datei wird nicht geschrieben: dann bleibt auch issues.query in der Registry.
-  if mReadable and MigrateQuery(mStore, mMigration) then
-  begin
-    mChanged := True;
-  end;
-  if mChanged and mReadable then
-  begin
-    SaveGlobal(mContent, mRouted.Text);
-  end;
-  if mReadable then
-  begin
-    RemoveLegacyQuery(mMigration);
-  end;
-  GState.Stored.Load(mStore);
-  GState.Loaded := True;
-  GState.Effective := EffectiveSettings;
-end;
-
-class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;
-var
-  mCatalog: TAtlasSettingsCatalog;
-begin
-  if not GState.ExperimentalRead then
-  begin
-    mCatalog := TAtlasSettingsCatalog.CreateDefault;
-    try
-      GState.Experimental := TAtlasExperimental.PluginEntries(mCatalog);
-    finally
-      mCatalog.Free;
-    end;
-    GState.ExperimentalRead := True;
-  end;
-  Result := GState.Experimental;
-end;
-
-
-class function TAtlasIdeSettings.ModuleSwitches: TArray<TAtlasModuleSwitch>;
-var
-  mCatalog: TAtlasSettingsCatalog;
-begin
-  if not GState.ModulesRead then
-  begin
-    mCatalog := TAtlasSettingsCatalog.CreateDefault;
-    try
-      GState.Modules := TAtlasModuleSwitches.Read(mCatalog);
-    finally
-      mCatalog.Free;
-    end;
-    GState.ModulesRead := True;
-  end;
-  Result := GState.Modules;
-end;
-
-class function TAtlasIdeSettings.ModuleOn(const AModule: string): Boolean;
-begin
-  EnsureLoaded;
-  // Der Schalter selbst gehört nicht zu seinen Mitgliedern: In GState.Effective steht sein Wert samt Sitzungswert.
-  Result := TAtlasModuleSwitches.IsOn(GState.Effective, ModuleSwitches, AModule);
-end;
-
-class function TAtlasIdeSettings.ActiveExperimental: TArray<string>;
-var
-  mCatalog: TAtlasSettingsCatalog;
-begin
-  EnsureLoaded;
-  mCatalog := TAtlasSettingsCatalog.CreateDefault;
-  try
-    Result := TAtlasExperimental.Active(GState.Session.Apply(GState.Stored, QuickToggles), GlobalText, mCatalog);
-  finally
-    mCatalog.Free;
-  end;
-end;
 
 class function TAtlasIdeSettings.Current: TAtlasPluginSettings;
 begin
   EnsureLoaded;
   Result := GState.Effective;
+end;
+
+class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;
+begin
+  EnsureLoaded;
+  Result := GState.Stored;
 end;
 
 class function TAtlasIdeSettings.InlayHintsOn: Boolean;
@@ -597,6 +558,12 @@ begin
   Result := GState.Effective.Enabled and GState.Effective.RecursionMarkers;
 end;
 
+class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
+begin
+  EnsureLoaded;
+  Result := GState.Effective.RecursionMarkersDepth;
+end;
+
 class function TAtlasIdeSettings.GutterColumnOn: Boolean;
 begin
   EnsureLoaded;
@@ -633,12 +600,6 @@ begin
   Result := GState.Effective.Enabled and GState.Effective.Reassigned;
 end;
 
-class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.RecursionMarkersDepth;
-end;
-
 class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
 begin
   EnsureLoaded;
@@ -670,21 +631,6 @@ begin
   Result := GState.Effective.Enabled and GState.Effective.Problems and GState.Effective.ProblemsStatusCounter and
     not (GState.Effective.EditorStatusBar and TAtlasStatusBarItems.Contains(
     TAtlasStatusBarItems.Parse(GState.Effective.EditorStatusBarItems), TAtlasStatusBarItems.cFindings));
-end;
-
-class function TAtlasIdeSettings.Stored: TAtlasPluginSettings;
-begin
-  EnsureLoaded;
-  Result := GState.Stored;
-end;
-
-class procedure TAtlasIdeSettings.Changed;
-begin
-  GState.Effective := EffectiveSettings;
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
@@ -752,6 +698,74 @@ begin
   Changed;
 end;
 
+class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;
+var
+  mEnglish: Boolean;
+begin
+  mEnglish := TAtlasStrings.Language = TAtlasLanguage.English;
+  if not GState.TogglesBuilt or (mEnglish <> GState.TogglesEnglish) then
+  begin
+    GState.Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson, mEnglish);
+    GState.TogglesEnglish := mEnglish;
+    GState.TogglesBuilt := True;
+  end;
+  Result := GState.Toggles;
+end;
+
+class function TAtlasIdeSettings.ModuleSwitches: TArray<TAtlasModuleSwitch>;
+var
+  mCatalog: TAtlasSettingsCatalog;
+begin
+  if not GState.ModulesRead then
+  begin
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      GState.Modules := TAtlasModuleSwitches.Read(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
+    GState.ModulesRead := True;
+  end;
+  Result := GState.Modules;
+end;
+
+class function TAtlasIdeSettings.ModuleOn(const AModule: string): Boolean;
+begin
+  EnsureLoaded;
+  // Der Schalter selbst gehört nicht zu seinen Mitgliedern: In GState.Effective steht sein Wert samt Sitzungswert.
+  Result := TAtlasModuleSwitches.IsOn(GState.Effective, ModuleSwitches, AModule);
+end;
+
+class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;
+var
+  mCatalog: TAtlasSettingsCatalog;
+begin
+  if not GState.ExperimentalRead then
+  begin
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
+    try
+      GState.Experimental := TAtlasExperimental.PluginEntries(mCatalog);
+    finally
+      mCatalog.Free;
+    end;
+    GState.ExperimentalRead := True;
+  end;
+  Result := GState.Experimental;
+end;
+
+class function TAtlasIdeSettings.ActiveExperimental: TArray<string>;
+var
+  mCatalog: TAtlasSettingsCatalog;
+begin
+  EnsureLoaded;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    Result := TAtlasExperimental.Active(GState.Session.Apply(GState.Stored, QuickToggles), GlobalText, mCatalog);
+  finally
+    mCatalog.Free;
+  end;
+end;
+
 class function TAtlasIdeSettings.History: TAtlasSettingsHistory;
 begin
   if GState.History = nil then
@@ -787,20 +801,6 @@ begin
   GState.ExperimentalRead := False;
   GState.Modules := nil;
   GState.ModulesRead := False;
-end;
-
-class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;
-var
-  mEnglish: Boolean;
-begin
-  mEnglish := TAtlasStrings.Language = TAtlasLanguage.English;
-  if not GState.TogglesBuilt or (mEnglish <> GState.TogglesEnglish) then
-  begin
-    GState.Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson, mEnglish);
-    GState.TogglesEnglish := mEnglish;
-    GState.TogglesBuilt := True;
-  end;
-  Result := GState.Toggles;
 end;
 
 class procedure TAtlasIdeSettings.Reload;

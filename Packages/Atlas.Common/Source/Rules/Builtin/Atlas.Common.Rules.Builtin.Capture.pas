@@ -557,6 +557,8 @@ type
     procedure Run;
   end;
 
+{ TLoopCaptureCheck }
+
 constructor TLoopCaptureCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -565,6 +567,33 @@ begin
   FApis := DeferredApis(AContext.Options);
   // Routinen, Signaturen und Graphen teilt der Lauf mit den anderen Regeln.
   FCache := TRuleDerived.Open(AContext);
+end;
+
+function TLoopCaptureCheck.ChangesLater(AMethod: TSyntaxNode; const ALocal: TLocal): Boolean;
+var
+  mLoop: TSyntaxNode;
+  mStart: TFlowNode;
+begin
+  mLoop := EnclosingLoop(AMethod, ALocal.Name);
+  if mLoop <> nil then
+  begin
+    // for I := … mit äußerer Variable lässt sich nicht erfassen (E2555).
+    Result := (mLoop.Kind <> TSyntaxKind.ForStatement) or IsInlineLoop(FContext, mLoop);
+  end
+  else if WrittenInside(AMethod, ALocal.Name) then
+  begin
+    // Ereignis, das in die Variable schreibt (Log := Log + …, Inc(Zähler)): gewollt geteilt.
+    Result := False;
+  end
+  else
+  begin
+    if FGraph = nil then
+    begin
+      FGraph := TRuleDerived.Graph(FCache, FContext, FRoutine);
+    end;
+    mStart := FlowNodeOf(FGraph, AMethod);
+    Result := FGraph.Complete and (mStart <> nil) and WrittenAfter(FGraph, mStart, ALocal.Name);
+  end;
 end;
 
 function TLoopCaptureCheck.UsesOtherLocals(AIdentifiers: TList<TSyntaxNode>; const ALocal: TLocal): Boolean;
@@ -656,33 +685,6 @@ begin
     TRuleEdit.Create(TRuleDerived.OffsetRange(FCache, FContext, AMethod.StartOffset, AMethod.EndOffset),
       mFunctionName + '(' + ALocal.Name + ')')]);
   Result := True;
-end;
-
-function TLoopCaptureCheck.ChangesLater(AMethod: TSyntaxNode; const ALocal: TLocal): Boolean;
-var
-  mLoop: TSyntaxNode;
-  mStart: TFlowNode;
-begin
-  mLoop := EnclosingLoop(AMethod, ALocal.Name);
-  if mLoop <> nil then
-  begin
-    // for I := … mit äußerer Variable lässt sich nicht erfassen (E2555).
-    Result := (mLoop.Kind <> TSyntaxKind.ForStatement) or IsInlineLoop(FContext, mLoop);
-  end
-  else if WrittenInside(AMethod, ALocal.Name) then
-  begin
-    // Ereignis, das in die Variable schreibt (Log := Log + …, Inc(Zähler)): gewollt geteilt.
-    Result := False;
-  end
-  else
-  begin
-    if FGraph = nil then
-    begin
-      FGraph := TRuleDerived.Graph(FCache, FContext, FRoutine);
-    end;
-    mStart := FlowNodeOf(FGraph, AMethod);
-    Result := FGraph.Complete and (mStart <> nil) and WrittenAfter(FGraph, mStart, ALocal.Name);
-  end;
 end;
 
 procedure TLoopCaptureCheck.ReportCapture(AIdentifier, AMethod: TSyntaxNode; const ALocal: TLocal;
@@ -907,6 +909,8 @@ begin
   end;
 end;
 
+{ TCaptureLookup }
+
 constructor TCaptureLookup.Create(const AText: string; const ATokens: TArray<TPascalToken>;
   const APaths: TArray<string>);
 begin
@@ -1113,6 +1117,8 @@ begin
   mIndex := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
   Result := (mIndex >= 0) and (mIndex < Length(ATokens)) and ATokens[mIndex].IsSymbol(':');
 end;
+
+{ TAnonymousCaptureInvalidRule }
 
 function TAnonymousCaptureInvalidRule.Descriptor: TRuleDescriptor;
 begin

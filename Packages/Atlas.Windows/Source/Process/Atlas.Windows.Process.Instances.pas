@@ -25,6 +25,8 @@ uses
   Winapi.Windows,
   Winapi.TlHelp32;
 
+{ TProcessInstances }
+
 class function TProcessInstances.IdsOf(const AExeName: string): TArray<Cardinal>;
 var
   mSnapshot: THandle;

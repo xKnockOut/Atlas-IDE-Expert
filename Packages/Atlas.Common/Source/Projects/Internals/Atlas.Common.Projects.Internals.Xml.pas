@@ -132,6 +132,16 @@ begin
   inherited;
 end;
 
+function TXmlElement.GetChildCount: Integer;
+begin
+  Result := FChildren.Count;
+end;
+
+function TXmlElement.GetChild(AIndex: Integer): TXmlElement;
+begin
+  Result := FChildren[AIndex];
+end;
+
 function TXmlElement.Attribute(const AName: string): string;
 var
   mIndex: Integer;
@@ -166,16 +176,6 @@ begin
   Result := nil;
 end;
 
-function TXmlElement.GetChildCount: Integer;
-begin
-  Result := FChildren.Count;
-end;
-
-function TXmlElement.GetChild(AIndex: Integer): TXmlElement;
-begin
-  Result := FChildren[AIndex];
-end;
-
 { TParser }
 
 constructor TParser.Create(const AText: string);
@@ -200,11 +200,6 @@ begin
   Result := FPos > Length(FText);
 end;
 
-function TParser.Peek: Char;
-begin
-  Result := Peek(0);
-end;
-
 function TParser.Peek(AOffset: Integer): Char;
 begin
   if FPos + AOffset <= Length(FText) then
@@ -215,6 +210,11 @@ begin
   begin
     Result := #0;
   end;
+end;
+
+function TParser.Peek: Char;
+begin
+  Result := Peek(0);
 end;
 
 function TParser.StartsWith(const AValue: string): Boolean;
@@ -349,31 +349,6 @@ begin
   end;
 end;
 
-// Kommentare, Verarbeitungsanweisungen, DOCTYPE und Leerraum zwischen Elementen.
-procedure TParser.SkipMisc;
-begin
-  while True do
-  begin
-    SkipSpace;
-    if StartsWith('<!--') then
-    begin
-      SkipUntil('-->');
-    end
-    else if StartsWith('<?') then
-    begin
-      SkipUntil('?>');
-    end
-    else if StartsWith('<!DOCTYPE') then
-    begin
-      SkipUntil('>');
-    end
-    else
-    begin
-      Exit;
-    end;
-  end;
-end;
-
 procedure TParser.ReadAttribute(AElement: TXmlElement);
 var
   mName: string;
@@ -483,6 +458,31 @@ begin
     AElement.FText := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+// Kommentare, Verarbeitungsanweisungen, DOCTYPE und Leerraum zwischen Elementen.
+procedure TParser.SkipMisc;
+begin
+  while True do
+  begin
+    SkipSpace;
+    if StartsWith('<!--') then
+    begin
+      SkipUntil('-->');
+    end
+    else if StartsWith('<?') then
+    begin
+      SkipUntil('?>');
+    end
+    else if StartsWith('<!DOCTYPE') then
+    begin
+      SkipUntil('>');
+    end
+    else
+    begin
+      Exit;
+    end;
   end;
 end;
 

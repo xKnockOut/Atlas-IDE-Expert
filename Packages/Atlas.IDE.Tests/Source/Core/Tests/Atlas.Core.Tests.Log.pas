@@ -169,6 +169,8 @@ const
   cTimeWidth = 6;
   cPasExtension = '.pas';
 
+{ TAtlasTestLogEntry }
+
 function TAtlasTestLogEntry.Count: Integer;
 var
   mLine: TAtlasTestLogLine;
@@ -182,6 +184,8 @@ begin
     end;
   end;
 end;
+
+{ TAtlasTestLogRun }
 
 function TAtlasTestLogRun.IndexOf(const AName: string): Integer;
 begin
@@ -224,6 +228,8 @@ begin
   Result.Origin := AOrigin;
   Result.Text := AText;
 end;
+
+{ TLogReader }
 
 function TLogReader.EntryOf(const AName: string; AIsFixture: Boolean): Integer;
 var

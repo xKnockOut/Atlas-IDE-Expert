@@ -778,63 +778,6 @@ end;
 
 { TAtlasIdeProblems }
 
-class function TAtlasIdeProblems.UpdateMode: TAtlasProblemsUpdate;
-begin
-  Result := TAtlasProblemsUpdateSetting.Parse(Settings.ProblemsUpdate);
-end;
-
-class procedure TAtlasIdeProblems.CheckFileNow;
-begin
-  TAtlasProblemsCheckRequest.Request;
-end;
-
-class procedure TAtlasIdeProblems.CheckFiles(const AFiles: TArray<string>);
-begin
-  if not Enabled or (Length(AFiles) = 0) then
-  begin
-    Exit;
-  end;
-  TAtlasProblemsCheckRequest.RequestFiles(AFiles);
-  ShowWindow;
-end;
-
-class function TAtlasIdeProblems.Enabled: Boolean;
-begin
-  Result := Settings.Enabled and Settings.Problems and Settings.ProblemsWindow;
-end;
-
-var
-  // Projektliste für ProjectProgress (#1232): Die Statusleiste fragt alle 250 ms.
-  ProgressFiles: TArray<string>;
-  ProgressAt: UInt64;
-
-class function TAtlasIdeProblems.ProjectProgress(out AChecked, ATotal: Integer): Boolean;
-const
-  cRefreshMs = 2000;
-var
-  mStore: TAtlasProblemStore;
-begin
-  AChecked := 0;
-  ATotal := 0;
-  mStore := TAtlasProblemsController.Current;
-  if mStore = nil then
-  begin
-    Exit(False);
-  end;
-  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= cRefreshMs) then
-  begin
-    ProgressFiles := TAtlasIdeProblemFiles.ActiveFiles;
-    ProgressAt := TThread.GetTickCount64;
-  end;
-  ATotal := Length(ProgressFiles);
-  if ATotal = 0 then
-  begin
-    Exit(False);
-  end;
-  AChecked := TAtlasFindings.CheckedCount(mStore, ProgressFiles);
-  Result := True;
-end;
-
 class procedure TAtlasIdeProblems.Start(const AHooks: TAtlasIdeProblemsHooks);
 begin
   if State = nil then
@@ -858,59 +801,6 @@ begin
   begin
     TAtlasIdeProblemsWindow.Prepare;
   end;
-end;
-
-class function TAtlasIdeProblems.Catalog: TJSONValue;
-begin
-  Result := nil;
-  if CatalogReady then
-  begin
-    Result := State.Catalog;
-  end
-  else
-  begin
-    LoadCatalog(nil);
-  end;
-end;
-
-class procedure TAtlasIdeProblems.WithCatalog(const ADone: TProc<TJSONValue>);
-var
-  mDone: TProc<TJSONValue>;
-begin
-  if CatalogReady then
-  begin
-    ADone(State.Catalog);
-    Exit;
-  end;
-  if (State = nil) or not Assigned(State.Hooks.Command) then
-  begin
-    ADone(nil);
-    Exit;
-  end;
-  mDone := ADone;
-  LoadCatalog(
-    procedure
-    begin
-      mDone(State.Catalog);
-    end);
-end;
-
-class procedure TAtlasIdeProblems.Explain(const AProblem: TAtlasProblem);
-begin
-  ExplainKey(TAtlasRuleExplanation.Key(AProblem));
-end;
-
-class procedure TAtlasIdeProblems.Release;
-begin
-  if State <> nil then
-  begin
-    SaveLayout(TAtlasIdeProblemsWindow.ExistingFrame);
-  end;
-  TAtlasIdeProblemsWindow.Release;
-  FreeAndNil(State);
-  ProgressFiles := nil;
-  ProgressAt := 0;
-  TAtlasIdeProblemFiles.Release;
 end;
 
 class procedure TAtlasIdeProblems.ApplySettings;
@@ -952,6 +842,24 @@ begin
   begin
     Refresh(True);
   end;
+end;
+
+var
+  // Projektliste für ProjectProgress (#1232): Die Statusleiste fragt alle 250 ms.
+  ProgressFiles: TArray<string>;
+  ProgressAt: UInt64;
+
+class procedure TAtlasIdeProblems.Release;
+begin
+  if State <> nil then
+  begin
+    SaveLayout(TAtlasIdeProblemsWindow.ExistingFrame);
+  end;
+  TAtlasIdeProblemsWindow.Release;
+  FreeAndNil(State);
+  ProgressFiles := nil;
+  ProgressAt := 0;
+  TAtlasIdeProblemFiles.Release;
 end;
 
 class procedure TAtlasIdeProblems.ShowCurrentFile;
@@ -998,6 +906,98 @@ begin
     State.Cursor := mFinding.FileName + ':' + mFinding.Problem.StartLine.ToString;
   end;
   Result := True;
+end;
+
+class function TAtlasIdeProblems.Enabled: Boolean;
+begin
+  Result := Settings.Enabled and Settings.Problems and Settings.ProblemsWindow;
+end;
+
+class function TAtlasIdeProblems.UpdateMode: TAtlasProblemsUpdate;
+begin
+  Result := TAtlasProblemsUpdateSetting.Parse(Settings.ProblemsUpdate);
+end;
+
+class procedure TAtlasIdeProblems.CheckFileNow;
+begin
+  TAtlasProblemsCheckRequest.Request;
+end;
+
+class procedure TAtlasIdeProblems.CheckFiles(const AFiles: TArray<string>);
+begin
+  if not Enabled or (Length(AFiles) = 0) then
+  begin
+    Exit;
+  end;
+  TAtlasProblemsCheckRequest.RequestFiles(AFiles);
+  ShowWindow;
+end;
+
+class function TAtlasIdeProblems.ProjectProgress(out AChecked, ATotal: Integer): Boolean;
+const
+  cRefreshMs = 2000;
+var
+  mStore: TAtlasProblemStore;
+begin
+  AChecked := 0;
+  ATotal := 0;
+  mStore := TAtlasProblemsController.Current;
+  if mStore = nil then
+  begin
+    Exit(False);
+  end;
+  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= cRefreshMs) then
+  begin
+    ProgressFiles := TAtlasIdeProblemFiles.ActiveFiles;
+    ProgressAt := TThread.GetTickCount64;
+  end;
+  ATotal := Length(ProgressFiles);
+  if ATotal = 0 then
+  begin
+    Exit(False);
+  end;
+  AChecked := TAtlasFindings.CheckedCount(mStore, ProgressFiles);
+  Result := True;
+end;
+
+class function TAtlasIdeProblems.Catalog: TJSONValue;
+begin
+  Result := nil;
+  if CatalogReady then
+  begin
+    Result := State.Catalog;
+  end
+  else
+  begin
+    LoadCatalog(nil);
+  end;
+end;
+
+class procedure TAtlasIdeProblems.WithCatalog(const ADone: TProc<TJSONValue>);
+var
+  mDone: TProc<TJSONValue>;
+begin
+  if CatalogReady then
+  begin
+    ADone(State.Catalog);
+    Exit;
+  end;
+  if (State = nil) or not Assigned(State.Hooks.Command) then
+  begin
+    ADone(nil);
+    Exit;
+  end;
+  mDone := ADone;
+  LoadCatalog(
+    procedure
+    begin
+      mDone(State.Catalog);
+    end);
+end;
+
+class procedure TAtlasIdeProblems.Explain(const AProblem: TAtlasProblem);
+begin
+  ExplainKey(TAtlasRuleExplanation.Key(AProblem));
 end;
 
 initialization

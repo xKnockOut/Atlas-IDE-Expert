@@ -142,6 +142,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TFreeFields }
+
 class function TFreeFields.FieldTitle: string;
 begin
   Result := cTexts[TFreeFieldsText.FreeInTheDestructor].Text;
@@ -484,6 +486,8 @@ begin
     StartsWithWord(TFreeFieldTypes.NodeText(AText, AHeader), 'destructor');
 end;
 
+{ TClassAnalyzer }
+
 constructor TClassAnalyzer.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex;
   ADecl: TSyntaxNode);
 begin
@@ -506,23 +510,6 @@ begin
   inherited Destroy;
 end;
 
-function TClassAnalyzer.FieldIndex(const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  if AName <> '' then
-  begin
-    for mIndex := 0 to High(FFields) do
-    begin
-      if SameText(FFields[mIndex].Name, AName) then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-  Result := -1;
-end;
-
 function TClassAnalyzer.FreedRef(ANode: TSyntaxNode): Integer;
 var
   mIndex: Integer;
@@ -539,6 +526,23 @@ begin
       Exit(FAliases[mIndex].Field);
     end;
   end;
+end;
+
+function TClassAnalyzer.FieldIndex(const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  if AName <> '' then
+  begin
+    for mIndex := 0 to High(FFields) do
+    begin
+      if SameText(FFields[mIndex].Name, AName) then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+  end;
+  Result := -1;
 end;
 
 function TClassAnalyzer.FieldRef(ANode: TSyntaxNode): Integer;
@@ -582,28 +586,6 @@ begin
   Result := nil;
 end;
 
-function TClassAnalyzer.Creation(AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
-var
-  mAccess, mArgument: TSyntaxNode;
-begin
-  ATypeName := '';
-  AOwned := False;
-  Result := CreateCall(AValue, mAccess, mArgument) and ReceiverType(mAccess[0], FText, ATypeName) and
-    not SameText(ATypeName, 'Self') and (FieldIndex(ATypeName) < 0) and
-    not (FTypes.TypeGuess(ATypeName) in [tgRecord, tgInterface, tgOther]);
-  if not Result then
-  begin
-    ATypeName := '';
-  end
-  // Owner ungleich nil: die Komponente gibt ihr Owner frei. Owner ist auch ein Komponentenfeld der Klasse
-  // (Host := TForm.Create…; Box := TFoo.Create(Host)).
-  else if (mArgument <> nil) and not IsNilLiteral(mArgument) then
-  begin
-    AOwned := FTypes.OwnedByArgument(ATypeName, mArgument) or
-      ((FieldRef(mArgument) >= 0) and FTypes.IsComponent(FFields[FieldRef(mArgument)].TypeName));
-  end;
-end;
-
 function TClassAnalyzer.CalledPrivate(AStatement: TSyntaxNode): string;
 var
   mTarget: TSyntaxNode;
@@ -622,6 +604,36 @@ begin
   if IndexText(Result, FPrivate) < 0 then
   begin
     Result := '';
+  end;
+end;
+
+procedure TClassAnalyzer.NoteCreation(ANode: TSyntaxNode);
+var
+  mField: Integer;
+  mTypeName: string;
+  mOwned: Boolean;
+begin
+  if (ANode.Kind <> TSyntaxKind.AssignStatement) or (ANode.ChildCount < 2) then
+  begin
+    Exit;
+  end;
+  mField := FieldRef(ANode[0]);
+  if (mField < 0) or (FFields[mField].CreatedIn <> '') or not Creation(ANode[1], mTypeName, mOwned) then
+  begin
+    Exit;
+  end;
+  FFields[mField].CreatedIn := FCurrent;
+  FFields[mField].CreatedType := mTypeName;
+  FFields[mField].Order := Length(FCreated);
+  FCreated := FCreated + [mField];
+  // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
+  if mOwned then
+  begin
+    FFields[mField].Reason := cOwnedReason;
+  end;
+  if CreatedWithFalse(ANode[1]) then
+  begin
+    FNotOwning := FNotOwning + [mField];
   end;
 end;
 
@@ -692,36 +704,6 @@ begin
   Result := False;
 end;
 
-procedure TClassAnalyzer.NoteCreation(ANode: TSyntaxNode);
-var
-  mField: Integer;
-  mTypeName: string;
-  mOwned: Boolean;
-begin
-  if (ANode.Kind <> TSyntaxKind.AssignStatement) or (ANode.ChildCount < 2) then
-  begin
-    Exit;
-  end;
-  mField := FieldRef(ANode[0]);
-  if (mField < 0) or (FFields[mField].CreatedIn <> '') or not Creation(ANode[1], mTypeName, mOwned) then
-  begin
-    Exit;
-  end;
-  FFields[mField].CreatedIn := FCurrent;
-  FFields[mField].CreatedType := mTypeName;
-  FFields[mField].Order := Length(FCreated);
-  FCreated := FCreated + [mField];
-  // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
-  if mOwned then
-  begin
-    FFields[mField].Reason := cOwnedReason;
-  end;
-  if CreatedWithFalse(ANode[1]) then
-  begin
-    FNotOwning := FNotOwning + [mField];
-  end;
-end;
-
 procedure TClassAnalyzer.PushCalled(ANode: TSyntaxNode; APending: TStack<TCreationEntry>);
 var
   mCalled: string;
@@ -780,18 +762,6 @@ begin
   finally
     mPending.Free;
     FCurrent := mSaved;
-  end;
-end;
-
-procedure TClassAnalyzer.SetUnclear(AField: Integer; const AReason: string);
-begin
-  // Komponenten mit Owner und vom Interface übernommene Objekte gibt ein anderer frei,
-  // gleich wohin sie die Klasse weiterreicht.
-  if (AField >= 0) and (FFields[AField].State <> TOwnedFieldState.Unclear) and
-    (FFields[AField].Reason <> cInterfaceReason) and (FFields[AField].Reason <> cOwnedReason) then
-  begin
-    FFields[AField].State := TOwnedFieldState.Unclear;
-    FFields[AField].Reason := AReason;
   end;
 end;
 
@@ -884,27 +854,6 @@ begin
   end;
 end;
 
-procedure TClassAnalyzer.NoteCopy(ATarget: TSyntaxNode; AField: Integer; const AMethod: string);
-var
-  mAlias: TFieldAlias;
-begin
-  if (ATarget.Kind = TSyntaxKind.Identifier) and SameText(ATarget.Name, 'Result') then
-  begin
-    SetUnclear(AField, cTexts[TFreeFieldsText.IsReturnedBy].Fmt([AMethod]));
-  end
-  else if (ATarget.Kind = TSyntaxKind.Identifier) and (FieldRef(ATarget) < 0) then
-  begin
-    // Lokale Kopie: Gibt die Methode sie frei, ist das Feld freigegeben.
-    mAlias.Name := ATarget.Name;
-    mAlias.Field := AField;
-    FAliases := FAliases + [mAlias];
-  end
-  else if (ATarget.Kind = TSyntaxKind.MemberAccess) and (FieldRef(ATarget) < 0) then
-  begin
-    SetUnclear(AField, cTexts[TFreeFieldsText.IsPassedTo1In].Fmt([AMethod, TFreeFieldTypes.CodeOf(FText, ATarget)]));
-  end;
-end;
-
 procedure TClassAnalyzer.CheckAssign(ANode: TSyntaxNode; const AMethod: string);
 var
   mTarget: TSyntaxNode;
@@ -933,6 +882,39 @@ begin
   if (mField >= 0) and not Creation(ANode[1], mTypeName, mOwned) and not IsNilLiteral(ANode[1]) then
   begin
     SetUnclear(mField, cTexts[TFreeFieldsText.IsAlsoAssignedWithoutCreate].Fmt([AMethod]));
+  end;
+end;
+
+procedure TClassAnalyzer.NoteCopy(ATarget: TSyntaxNode; AField: Integer; const AMethod: string);
+var
+  mAlias: TFieldAlias;
+begin
+  if (ATarget.Kind = TSyntaxKind.Identifier) and SameText(ATarget.Name, 'Result') then
+  begin
+    SetUnclear(AField, cTexts[TFreeFieldsText.IsReturnedBy].Fmt([AMethod]));
+  end
+  else if (ATarget.Kind = TSyntaxKind.Identifier) and (FieldRef(ATarget) < 0) then
+  begin
+    // Lokale Kopie: Gibt die Methode sie frei, ist das Feld freigegeben.
+    mAlias.Name := ATarget.Name;
+    mAlias.Field := AField;
+    FAliases := FAliases + [mAlias];
+  end
+  else if (ATarget.Kind = TSyntaxKind.MemberAccess) and (FieldRef(ATarget) < 0) then
+  begin
+    SetUnclear(AField, cTexts[TFreeFieldsText.IsPassedTo1In].Fmt([AMethod, TFreeFieldTypes.CodeOf(FText, ATarget)]));
+  end;
+end;
+
+procedure TClassAnalyzer.SetUnclear(AField: Integer; const AReason: string);
+begin
+  // Komponenten mit Owner und vom Interface übernommene Objekte gibt ein anderer frei,
+  // gleich wohin sie die Klasse weiterreicht.
+  if (AField >= 0) and (FFields[AField].State <> TOwnedFieldState.Unclear) and
+    (FFields[AField].Reason <> cInterfaceReason) and (FFields[AField].Reason <> cOwnedReason) then
+  begin
+    FFields[AField].State := TOwnedFieldState.Unclear;
+    FFields[AField].Reason := AReason;
   end;
 end;
 
@@ -992,6 +974,28 @@ begin
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
+  end;
+end;
+
+function TClassAnalyzer.Creation(AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
+var
+  mAccess, mArgument: TSyntaxNode;
+begin
+  ATypeName := '';
+  AOwned := False;
+  Result := CreateCall(AValue, mAccess, mArgument) and ReceiverType(mAccess[0], FText, ATypeName) and
+    not SameText(ATypeName, 'Self') and (FieldIndex(ATypeName) < 0) and
+    not (FTypes.TypeGuess(ATypeName) in [tgRecord, tgInterface, tgOther]);
+  if not Result then
+  begin
+    ATypeName := '';
+  end
+  // Owner ungleich nil: die Komponente gibt ihr Owner frei. Owner ist auch ein Komponentenfeld der Klasse
+  // (Host := TForm.Create…; Box := TFoo.Create(Host)).
+  else if (mArgument <> nil) and not IsNilLiteral(mArgument) then
+  begin
+    AOwned := FTypes.OwnedByArgument(ATypeName, mArgument) or
+      ((FieldRef(mArgument) >= 0) and FTypes.IsComponent(FFields[FieldRef(mArgument)].TypeName));
   end;
 end;
 

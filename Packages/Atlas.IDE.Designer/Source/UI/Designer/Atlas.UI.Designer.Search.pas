@@ -498,25 +498,6 @@ begin
   Result := FWindow.ScaleValue(AValue);
 end;
 
-function TAtlasComponentSearchWindow.TPainter.Metrics: TMetrics;
-begin
-  Result.Header := S(44);
-  Result.Group := S(24);
-  Result.Footer := S(24);
-  if FWindow.FOptions.Compact then
-  begin
-    Result.Chips := 0;
-    Result.Entry := S(26);
-    Result.Actions := 0;
-  end
-  else
-  begin
-    Result.Chips := S(32);
-    Result.Entry := S(40);
-    Result.Actions := S(34);
-  end;
-end;
-
 procedure TAtlasComponentSearchWindow.TPainter.AddArea(AKind: THit; const ARect: TRect; AValue: Integer);
 var
   mArea: THitArea;
@@ -525,74 +506,6 @@ begin
   mArea.Rect := ARect;
   mArea.Value := AValue;
   FAreas.Add(mArea);
-end;
-
-procedure TAtlasComponentSearchWindow.TPainter.Layout;
-var
-  mBody: TRect;
-  mMetrics: TMetrics;
-begin
-  mMetrics := Metrics;
-  mBody := Rect(0, mMetrics.Header + mMetrics.Chips, FWindow.ClientWidth,
-    FWindow.ClientHeight - mMetrics.Footer - mMetrics.Actions);
-  FPreviewRect := TRect.Empty;
-  if FWindow.FState.PreviewVisible then
-  begin
-    FPreviewRect := Rect(mBody.Right - Min(S(320), mBody.Width div 2), mBody.Top, mBody.Right, mBody.Bottom);
-    mBody.Right := FPreviewRect.Left;
-  end;
-  FListRect := mBody;
-end;
-
-function TAtlasComponentSearchWindow.TPainter.DrawHighlighted(const AText: string; const ARect: TRect;
-  ABase: TAtlasColor; AMatch: Boolean): Integer;
-var
-  mPos, mLength, mX: Integer;
-  mParts: array[0..2] of string;
-  mPart: Integer;
-  mRect: TRect;
-  mPattern: string;
-begin
-  mPos := 0;
-  mPattern := Trim(FWindow.FState.Pattern);
-  mLength := Length(mPattern);
-  if AMatch and (mLength > 0) then
-  begin
-    mPos := Pos(LowerCase(mPattern), LowerCase(AText));
-  end;
-  mParts[0] := AText;
-  mParts[1] := '';
-  mParts[2] := '';
-  if mPos > 0 then
-  begin
-    mParts[0] := Copy(AText, 1, mPos - 1);
-    mParts[1] := Copy(AText, mPos, mLength);
-    mParts[2] := Copy(AText, mPos + mLength, MaxInt);
-  end;
-  mX := ARect.Left;
-  for mPart := 0 to 2 do
-  begin
-    if (mParts[mPart] = '') or (mX >= ARect.Right) then
-    begin
-      Continue;
-    end;
-    if mPart = 1 then
-    begin
-      Canvas.Font.Style := [fsBold];
-      Canvas.Font.Color := C(FColors.Accent);
-    end
-    else
-    begin
-      Canvas.Font.Style := [];
-      Canvas.Font.Color := C(ABase);
-    end;
-    mRect := Rect(mX, ARect.Top, ARect.Right, ARect.Bottom);
-    DrawText(Canvas.Handle, PChar(mParts[mPart]), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
-      DT_END_ELLIPSIS);
-    Inc(mX, Canvas.TextWidth(mParts[mPart]));
-  end;
-  Canvas.Font.Style := [];
-  Result := Min(mX, ARect.Right);
 end;
 
 procedure TAtlasComponentSearchWindow.TPainter.DrawChip(var AX: Integer; AY: Integer; const ACaption: string;
@@ -737,6 +650,88 @@ begin
   end;
 end;
 
+procedure TAtlasComponentSearchWindow.TPainter.DrawList;
+var
+  mRow: Integer;
+  mRect: TRect;
+  mClip: HRGN;
+  mTops: TArray<Integer>;
+  mScroll: Integer;
+begin
+  Canvas.Font.Assign(FUIFont);
+  if Length(FWindow.FState.Rows) = 0 then
+  begin
+    Canvas.Font.Color := C(FColors.Muted);
+    Canvas.Brush.Style := bsClear;
+    DrawText(Canvas.Handle, '—', -1, FListRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+    Canvas.Brush.Style := bsSolid;
+    Exit;
+  end;
+  mTops := FWindow.FState.RowTops;
+  mScroll := FWindow.FState.Scroll;
+  mClip := CreateRectRgn(FListRect.Left, FListRect.Top, FListRect.Right, FListRect.Bottom);
+  try
+    SelectClipRgn(Canvas.Handle, mClip);
+    for mRow := 0 to High(FWindow.FState.Rows) do
+    begin
+      if FListRect.Top + mTops[mRow + 1] - mScroll <= FListRect.Top then
+      begin
+        Continue;
+      end;
+      if FListRect.Top + mTops[mRow] - mScroll >= FListRect.Bottom then
+      begin
+        Break;
+      end;
+      mRect := Rect(FListRect.Left + S(4), FListRect.Top + mTops[mRow] - mScroll, FListRect.Right - S(6),
+        FListRect.Top + mTops[mRow + 1] - mScroll);
+      DrawRow(mRow, mRect);
+      AddArea(THit.Row, mRect, mRow);
+    end;
+  finally
+    SelectClipRgn(Canvas.Handle, 0);
+    DeleteObject(mClip);
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.TPainter.DrawRow(ARow: Integer; const ARect: TRect);
+var
+  mRow: TAtlasDesignerRow;
+  mPart: TRect;
+  mText: string;
+begin
+  mRow := FWindow.FState.Rows[ARow];
+  mPart := Rect(ARect.Left + S(10), ARect.Top, ARect.Right - S(10), ARect.Bottom);
+  Canvas.Brush.Style := bsClear;
+  if mRow.Header then
+  begin
+    Canvas.Font.Assign(FSmallFont);
+    Canvas.Font.Style := [fsBold];
+    Canvas.Font.Color := C(FColors.Muted);
+    mText := mRow.Caption + '   ' + IntToStr(mRow.Count);
+    DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    Canvas.Font.Style := [];
+    Canvas.Brush.Style := bsSolid;
+    Exit;
+  end;
+  if ARow = FWindow.FState.Selected then
+  begin
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := C(FColors.Selection);
+    Canvas.FillRect(ARect);
+    Canvas.Brush.Style := bsClear;
+  end;
+  Canvas.Font.Assign(FUIFont);
+  if FWindow.FOptions.Compact then
+  begin
+    DrawCompactRow(FWindow.FItems[mRow.Item], mPart);
+  end
+  else
+  begin
+    DrawFullRow(FWindow.FItems[mRow.Item], ARect, mPart);
+  end;
+  Canvas.Brush.Style := bsSolid;
+end;
+
 /// <summary>Eine Zeile: Name, Klasse, Caption.</summary>
 procedure TAtlasComponentSearchWindow.TPainter.DrawCompactRow(const AItem: TAtlasDesignerItem; const APart: TRect);
 var
@@ -793,132 +788,93 @@ begin
   end;
 end;
 
-procedure TAtlasComponentSearchWindow.TPainter.DrawRow(ARow: Integer; const ARect: TRect);
+function TAtlasComponentSearchWindow.TPainter.DrawHighlighted(const AText: string; const ARect: TRect;
+  ABase: TAtlasColor; AMatch: Boolean): Integer;
 var
-  mRow: TAtlasDesignerRow;
-  mPart: TRect;
-  mText: string;
-begin
-  mRow := FWindow.FState.Rows[ARow];
-  mPart := Rect(ARect.Left + S(10), ARect.Top, ARect.Right - S(10), ARect.Bottom);
-  Canvas.Brush.Style := bsClear;
-  if mRow.Header then
-  begin
-    Canvas.Font.Assign(FSmallFont);
-    Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := C(FColors.Muted);
-    mText := mRow.Caption + '   ' + IntToStr(mRow.Count);
-    DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
-    Canvas.Font.Style := [];
-    Canvas.Brush.Style := bsSolid;
-    Exit;
-  end;
-  if ARow = FWindow.FState.Selected then
-  begin
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := C(FColors.Selection);
-    Canvas.FillRect(ARect);
-    Canvas.Brush.Style := bsClear;
-  end;
-  Canvas.Font.Assign(FUIFont);
-  if FWindow.FOptions.Compact then
-  begin
-    DrawCompactRow(FWindow.FItems[mRow.Item], mPart);
-  end
-  else
-  begin
-    DrawFullRow(FWindow.FItems[mRow.Item], ARect, mPart);
-  end;
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasComponentSearchWindow.TPainter.DrawList;
-var
-  mRow: Integer;
+  mPos, mLength, mX: Integer;
+  mParts: array[0..2] of string;
+  mPart: Integer;
   mRect: TRect;
-  mClip: HRGN;
-  mTops: TArray<Integer>;
-  mScroll: Integer;
+  mPattern: string;
 begin
-  Canvas.Font.Assign(FUIFont);
-  if Length(FWindow.FState.Rows) = 0 then
+  mPos := 0;
+  mPattern := Trim(FWindow.FState.Pattern);
+  mLength := Length(mPattern);
+  if AMatch and (mLength > 0) then
   begin
-    Canvas.Font.Color := C(FColors.Muted);
-    Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, '—', -1, FListRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
-    Canvas.Brush.Style := bsSolid;
-    Exit;
+    mPos := Pos(LowerCase(mPattern), LowerCase(AText));
   end;
-  mTops := FWindow.FState.RowTops;
-  mScroll := FWindow.FState.Scroll;
-  mClip := CreateRectRgn(FListRect.Left, FListRect.Top, FListRect.Right, FListRect.Bottom);
-  try
-    SelectClipRgn(Canvas.Handle, mClip);
-    for mRow := 0 to High(FWindow.FState.Rows) do
+  mParts[0] := AText;
+  mParts[1] := '';
+  mParts[2] := '';
+  if mPos > 0 then
+  begin
+    mParts[0] := Copy(AText, 1, mPos - 1);
+    mParts[1] := Copy(AText, mPos, mLength);
+    mParts[2] := Copy(AText, mPos + mLength, MaxInt);
+  end;
+  mX := ARect.Left;
+  for mPart := 0 to 2 do
+  begin
+    if (mParts[mPart] = '') or (mX >= ARect.Right) then
     begin
-      if FListRect.Top + mTops[mRow + 1] - mScroll <= FListRect.Top then
-      begin
-        Continue;
-      end;
-      if FListRect.Top + mTops[mRow] - mScroll >= FListRect.Bottom then
-      begin
-        Break;
-      end;
-      mRect := Rect(FListRect.Left + S(4), FListRect.Top + mTops[mRow] - mScroll, FListRect.Right - S(6),
-        FListRect.Top + mTops[mRow + 1] - mScroll);
-      DrawRow(mRow, mRect);
-      AddArea(THit.Row, mRect, mRow);
+      Continue;
     end;
-  finally
-    SelectClipRgn(Canvas.Handle, 0);
-    DeleteObject(mClip);
+    if mPart = 1 then
+    begin
+      Canvas.Font.Style := [fsBold];
+      Canvas.Font.Color := C(FColors.Accent);
+    end
+    else
+    begin
+      Canvas.Font.Style := [];
+      Canvas.Font.Color := C(ABase);
+    end;
+    mRect := Rect(mX, ARect.Top, ARect.Right, ARect.Bottom);
+    DrawText(Canvas.Handle, PChar(mParts[mPart]), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+    Inc(mX, Canvas.TextWidth(mParts[mPart]));
   end;
+  Canvas.Font.Style := [];
+  Result := Min(mX, ARect.Right);
 end;
 
-procedure TAtlasComponentSearchWindow.TPainter.DrawMap(const AArea: TRect; const AItem: TAtlasDesignerItem);
+procedure TAtlasComponentSearchWindow.TPainter.DrawPreview;
 var
-  mForm, mRect, mBounds: TRect;
-  mScale: Double;
-  mOther: TAtlasDesignerItem;
-
-  function Map(const ABounds: TRect): TRect;
-  begin
-    Result := Rect(mForm.Left + Round(ABounds.Left * mScale), mForm.Top + Round(ABounds.Top * mScale),
-      mForm.Left + Max(Round(ABounds.Left * mScale) + 2, Round(ABounds.Right * mScale)),
-      mForm.Top + Max(Round(ABounds.Top * mScale) + 2, Round(ABounds.Bottom * mScale)));
-  end;
-
+  mIndex, mTop: Integer;
+  mItem: TAtlasDesignerItem;
+  mArea, mLine: TRect;
 begin
-  mBounds := FWindow.FOptions.FormBounds;
-  if mBounds.IsEmpty then
+  if not FWindow.FState.PreviewVisible then
   begin
     Exit;
   end;
-  mScale := Min(AArea.Width / mBounds.Width, AArea.Height / mBounds.Height);
-  mForm := Rect(AArea.Left, AArea.Top, AArea.Left + Round(mBounds.Width * mScale),
-    AArea.Top + Round(mBounds.Height * mScale));
-  Canvas.Brush.Color := C(FColors.Gutter);
   Canvas.Pen.Color := C(FColors.Line);
-  Canvas.Rectangle(mForm);
+  Canvas.MoveTo(FPreviewRect.Left, FPreviewRect.Top);
+  Canvas.LineTo(FPreviewRect.Left, FPreviewRect.Bottom);
+  mIndex := FWindow.FState.SelectedItem;
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  mItem := FWindow.FItems[mIndex];
+  mArea := Rect(FPreviewRect.Left + S(12), FPreviewRect.Top + S(8), FPreviewRect.Right - S(12),
+    FPreviewRect.Bottom - S(8));
+  mTop := mArea.Top;
   Canvas.Brush.Style := bsClear;
-  for mOther in FWindow.FItems do
-  begin
-    if mOther.Visual and not mOther.Bounds.IsEmpty and not SameText(mOther.Name, AItem.Name) then
-    begin
-      mRect := Map(mOther.Bounds);
-      Canvas.Rectangle(mRect);
-    end;
-  end;
-  if not AItem.Bounds.IsEmpty then
-  begin
-    mRect := Map(AItem.Bounds);
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := C(FColors.AccentSoft);
-    Canvas.Pen.Color := C(FColors.Accent);
-    Canvas.Pen.Width := Max(1, S(2));
-    Canvas.Rectangle(mRect);
-    Canvas.Pen.Width := 1;
-  end;
+  Canvas.Font.Assign(FUIFont);
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := C(FColors.Text);
+  mLine := Rect(mArea.Left, mTop, mArea.Right, mTop + S(22));
+  DrawText(Canvas.Handle, PChar(mItem.Name), -1, mLine, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  Canvas.Font.Style := [];
+  Inc(mTop, S(22));
+  Canvas.Font.Assign(FSmallFont);
+  PreviewLine(mItem.TypeName, FColors.Muted, mArea, mTop);
+  Inc(mTop, S(6));
+  PreviewPlace(mItem, mArea, mTop);
+  PreviewDetails(mItem, mArea, mTop);
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -1010,42 +966,50 @@ begin
   end;
 end;
 
-procedure TAtlasComponentSearchWindow.TPainter.DrawPreview;
+procedure TAtlasComponentSearchWindow.TPainter.DrawMap(const AArea: TRect; const AItem: TAtlasDesignerItem);
 var
-  mIndex, mTop: Integer;
-  mItem: TAtlasDesignerItem;
-  mArea, mLine: TRect;
+  mForm, mRect, mBounds: TRect;
+  mScale: Double;
+  mOther: TAtlasDesignerItem;
+
+  function Map(const ABounds: TRect): TRect;
+  begin
+    Result := Rect(mForm.Left + Round(ABounds.Left * mScale), mForm.Top + Round(ABounds.Top * mScale),
+      mForm.Left + Max(Round(ABounds.Left * mScale) + 2, Round(ABounds.Right * mScale)),
+      mForm.Top + Max(Round(ABounds.Top * mScale) + 2, Round(ABounds.Bottom * mScale)));
+  end;
+
 begin
-  if not FWindow.FState.PreviewVisible then
+  mBounds := FWindow.FOptions.FormBounds;
+  if mBounds.IsEmpty then
   begin
     Exit;
   end;
+  mScale := Min(AArea.Width / mBounds.Width, AArea.Height / mBounds.Height);
+  mForm := Rect(AArea.Left, AArea.Top, AArea.Left + Round(mBounds.Width * mScale),
+    AArea.Top + Round(mBounds.Height * mScale));
+  Canvas.Brush.Color := C(FColors.Gutter);
   Canvas.Pen.Color := C(FColors.Line);
-  Canvas.MoveTo(FPreviewRect.Left, FPreviewRect.Top);
-  Canvas.LineTo(FPreviewRect.Left, FPreviewRect.Bottom);
-  mIndex := FWindow.FState.SelectedItem;
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  mItem := FWindow.FItems[mIndex];
-  mArea := Rect(FPreviewRect.Left + S(12), FPreviewRect.Top + S(8), FPreviewRect.Right - S(12),
-    FPreviewRect.Bottom - S(8));
-  mTop := mArea.Top;
+  Canvas.Rectangle(mForm);
   Canvas.Brush.Style := bsClear;
-  Canvas.Font.Assign(FUIFont);
-  Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := C(FColors.Text);
-  mLine := Rect(mArea.Left, mTop, mArea.Right, mTop + S(22));
-  DrawText(Canvas.Handle, PChar(mItem.Name), -1, mLine, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
-    DT_END_ELLIPSIS);
-  Canvas.Font.Style := [];
-  Inc(mTop, S(22));
-  Canvas.Font.Assign(FSmallFont);
-  PreviewLine(mItem.TypeName, FColors.Muted, mArea, mTop);
-  Inc(mTop, S(6));
-  PreviewPlace(mItem, mArea, mTop);
-  PreviewDetails(mItem, mArea, mTop);
+  for mOther in FWindow.FItems do
+  begin
+    if mOther.Visual and not mOther.Bounds.IsEmpty and not SameText(mOther.Name, AItem.Name) then
+    begin
+      mRect := Map(mOther.Bounds);
+      Canvas.Rectangle(mRect);
+    end;
+  end;
+  if not AItem.Bounds.IsEmpty then
+  begin
+    mRect := Map(AItem.Bounds);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := C(FColors.AccentSoft);
+    Canvas.Pen.Color := C(FColors.Accent);
+    Canvas.Pen.Width := Max(1, S(2));
+    Canvas.Rectangle(mRect);
+    Canvas.Pen.Width := 1;
+  end;
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -1129,6 +1093,42 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
+function TAtlasComponentSearchWindow.TPainter.Metrics: TMetrics;
+begin
+  Result.Header := S(44);
+  Result.Group := S(24);
+  Result.Footer := S(24);
+  if FWindow.FOptions.Compact then
+  begin
+    Result.Chips := 0;
+    Result.Entry := S(26);
+    Result.Actions := 0;
+  end
+  else
+  begin
+    Result.Chips := S(32);
+    Result.Entry := S(40);
+    Result.Actions := S(34);
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.TPainter.Layout;
+var
+  mBody: TRect;
+  mMetrics: TMetrics;
+begin
+  mMetrics := Metrics;
+  mBody := Rect(0, mMetrics.Header + mMetrics.Chips, FWindow.ClientWidth,
+    FWindow.ClientHeight - mMetrics.Footer - mMetrics.Actions);
+  FPreviewRect := TRect.Empty;
+  if FWindow.FState.PreviewVisible then
+  begin
+    FPreviewRect := Rect(mBody.Right - Min(S(320), mBody.Width div 2), mBody.Top, mBody.Right, mBody.Bottom);
+    mBody.Right := FPreviewRect.Left;
+  end;
+  FListRect := mBody;
+end;
+
 procedure TAtlasComponentSearchWindow.TPainter.Paint;
 begin
   FAreas.Clear;
@@ -1146,6 +1146,22 @@ begin
   Canvas.Pen.Color := C(FColors.Accent);
   Canvas.Rectangle(FWindow.ClientRect);
   Canvas.Brush.Style := bsSolid;
+end;
+
+function TAtlasComponentSearchWindow.TPainter.HitAt(AX, AY: Integer; out AArea: THitArea): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := FAreas.Count - 1 downto 0 do
+  begin
+    if FAreas[mIndex].Rect.Contains(Point(AX, AY)) then
+    begin
+      AArea := FAreas[mIndex];
+      Exit(True);
+    end;
+  end;
+  AArea := Default(THitArea);
+  Result := False;
 end;
 
 function TAtlasComponentSearchWindow.TPainter.RowAt(AY: Integer): Integer;
@@ -1167,22 +1183,6 @@ begin
       Exit(mRow);
     end;
   end;
-end;
-
-function TAtlasComponentSearchWindow.TPainter.HitAt(AX, AY: Integer; out AArea: THitArea): Boolean;
-var
-  mIndex: Integer;
-begin
-  for mIndex := FAreas.Count - 1 downto 0 do
-  begin
-    if FAreas[mIndex].Rect.Contains(Point(AX, AY)) then
-    begin
-      AArea := FAreas[mIndex];
-      Exit(True);
-    end;
-  end;
-  AArea := Default(THitArea);
-  Result := False;
 end;
 
 { TAtlasComponentSearchWindow }
@@ -1244,171 +1244,12 @@ begin
   DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
 end;
 
-procedure TAtlasComponentSearchWindow.ShowOver(const AArea: TRect);
-var
-  mWidth, mHeight: Integer;
-  mMetrics: TMetrics;
+procedure TAtlasComponentSearchWindow.Paint;
 begin
-  mMetrics := FPainter.Metrics;
-  if FOptions.Compact then
-  begin
-    mWidth := Min(ScaleValue(560), AArea.Width - ScaleValue(40));
-    mHeight := mMetrics.Header + cCompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(4);
-    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + ScaleValue(80), mWidth, mHeight);
-  end
-  else if not FOptions.Bounds.IsEmpty and (Screen.MonitorFromRect(FOptions.Bounds, mdNull) <> nil) then
-  begin
-    SetBounds(FOptions.Bounds.Left, FOptions.Bounds.Top, FOptions.Bounds.Width, FOptions.Bounds.Height);
-  end
-  else
-  begin
-    mWidth := Min(ScaleValue(900), AArea.Width - ScaleValue(40));
-    mHeight := Min(ScaleValue(580), AArea.Height - ScaleValue(40));
-    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2,
-      AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div 3), mWidth, mHeight);
-  end;
-  Show;
-  SetFocus;
+  FPainter.Paint;
 end;
 
 { Liste }
-
-procedure TAtlasComponentSearchWindow.Refilter(const AKeep: string);
-begin
-  FState.Hits := TAtlasDesignerSearch.Find(FItems, FState.Pattern, FState.Fields, FState.Kind, FOptions.Fuzzy);
-  FState.Rebuild(FItems, FOptions.FormName, FPainter.Metrics);
-  FState.SelectName(FItems, AKeep);
-  if FState.Selected < 0 then
-  begin
-    FState.Scroll := 0;
-    FState.SelectFirstItem;
-  end;
-  EnsureVisible;
-  Invalidate;
-end;
-
-function TAtlasComponentSearchWindow.SelectedItem: Integer;
-begin
-  Result := FState.SelectedItem;
-end;
-
-procedure TAtlasComponentSearchWindow.MoveSelection(ADelta: Integer);
-begin
-  if (Length(FState.Rows) = 0) or (ADelta = 0) then
-  begin
-    Exit;
-  end;
-  FState.Move(ADelta);
-  EnsureVisible;
-  Invalidate;
-end;
-
-procedure TAtlasComponentSearchWindow.EnsureVisible;
-begin
-  FPainter.Layout;
-  FState.Reveal(FPainter.ListRect.Height);
-end;
-
-procedure TAtlasComponentSearchWindow.SetPattern(const APattern: string);
-begin
-  FState.Pattern := APattern;
-  Refilter('');
-end;
-
-procedure TAtlasComponentSearchWindow.SetKind(AKind: TAtlasDesignerKind);
-var
-  mKeep: string;
-begin
-  mKeep := FState.SelectedName(FItems);
-  FState.Kind := AKind;
-  Refilter(mKeep);
-end;
-
-procedure TAtlasComponentSearchWindow.SetFields(AFields: TAtlasDesignerFields);
-begin
-  // Mindestens ein Feld bleibt gewählt.
-  if AFields = [] then
-  begin
-    Exit;
-  end;
-  FState.Fields := AFields;
-  Refilter('');
-end;
-
-procedure TAtlasComponentSearchWindow.SetGrouping(AGrouping: TAtlasDesignerGrouping);
-var
-  mKeep: string;
-begin
-  mKeep := FState.SelectedName(FItems);
-  FState.Grouping := AGrouping;
-  Refilter(mKeep);
-end;
-
-procedure TAtlasComponentSearchWindow.Run(AAction: TAtlasComponentSearchAction);
-var
-  mItem: TAtlasDesignerItem;
-  mHandler: TAtlasComponentSearchActionEvent;
-begin
-  if not FState.ActionEnabled(FItems, AAction) then
-  begin
-    Exit;
-  end;
-  mItem := FItems[FState.SelectedItem];
-  if AAction = TAtlasComponentSearchAction.CopyName then
-  begin
-    Clipboard.AsText := mItem.Name;
-    Exit;
-  end;
-  mHandler := FHooks.OnAction;
-  // Zur Auswahl hinzufügen lässt das Fenster offen, damit weitere folgen können.
-  if AAction = TAtlasComponentSearchAction.Add then
-  begin
-    if Assigned(mHandler) then
-    begin
-      mHandler(AAction, mItem);
-    end;
-    Exit;
-  end;
-  // Erst schließen, dann im Designer bzw. Code wirken: Die IDE holt dort den Fokus.
-  if HandleAllocated then
-  begin
-    Close;
-  end;
-  if Assigned(mHandler) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
-      procedure
-      begin
-        mHandler(AAction, mItem);
-      end);
-  end;
-end;
-
-procedure TAtlasComponentSearchWindow.FormClose(Sender: TObject; var Action: TCloseAction);
-var
-  mClosed: TProc;
-begin
-  Action := caFree;
-  if FHooks.Closing then
-  begin
-    Exit;
-  end;
-  FHooks.Closing := True;
-  mClosed := FHooks.OnClosed;
-  if Assigned(mClosed) then
-  begin
-    mClosed();
-  end;
-end;
-
-procedure TAtlasComponentSearchWindow.FormDeactivate(Sender: TObject);
-begin
-  // Klein wie Strg+P: Ein Klick daneben schließt.
-  if FOptions.Compact and not FHooks.Closing then
-  begin
-    Close;
-  end;
-end;
 
 procedure TAtlasComponentSearchWindow.Resize;
 begin
@@ -1418,81 +1259,6 @@ begin
     EnsureVisible;
   end;
   Invalidate;
-end;
-
-procedure TAtlasComponentSearchWindow.Paint;
-begin
-  FPainter.Paint;
-end;
-
-{ Eingabe }
-
-procedure TAtlasComponentSearchWindow.WMNCHitTest(var Message: TWMNCHitTest);
-var
-  mPoint: TPoint;
-  mArea: THitArea;
-  mHeader: Integer;
-begin
-  inherited;
-  if FOptions.Compact then
-  begin
-    Exit;
-  end;
-  mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
-  Message.Result := EdgeHit(mPoint, ClientRect, ScaleValue(6));
-  if Message.Result <> HTNOWHERE then
-  begin
-    Exit;
-  end;
-  mHeader := FPainter.Metrics.Header;
-  // Freie Stellen im Kopf verschieben das Fenster.
-  if (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
-    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
-  begin
-    Message.Result := HTCAPTION;
-  end
-  else
-  begin
-    Message.Result := HTCLIENT;
-  end;
-end;
-
-procedure TAtlasComponentSearchWindow.WMGetDlgCode(var Message: TWMGetDlgCode);
-begin
-  inherited;
-  Message.Result := Message.Result or DLGC_WANTALLKEYS or DLGC_WANTARROWS or DLGC_WANTCHARS or DLGC_WANTTAB;
-end;
-
-/// <summary>Tasten, die Suchwort und Ansicht ändern; False, wenn die Taste nichts tut.</summary>
-function TAtlasComponentSearchWindow.EditKey(AKey: Word; AShift: TShiftState): Boolean;
-begin
-  Result := True;
-  if (AKey = VK_F4) and not FOptions.Compact then
-  begin
-    FState.PreviewVisible := not FState.PreviewVisible;
-    EnsureVisible;
-    Invalidate;
-  end
-  else if (AKey = VK_BACK) and (FState.Pattern <> '') and (ssCtrl in AShift) then
-  begin
-    SetPattern('');
-  end
-  else if (AKey = VK_BACK) and (FState.Pattern <> '') then
-  begin
-    SetPattern(Copy(FState.Pattern, 1, Length(FState.Pattern) - 1));
-  end
-  else if (ssCtrl in AShift) and (AKey = Ord('C')) then
-  begin
-    Run(TAtlasComponentSearchAction.CopyName);
-  end
-  else if (ssCtrl in AShift) and (AKey = Ord('G')) and not FOptions.Compact then
-  begin
-    SetGrouping(TAtlasDesignerGrouping((Ord(FState.Grouping) + 1) mod (Ord(High(TAtlasDesignerGrouping)) + 1)));
-  end
-  else
-  begin
-    Result := AKey in [VK_F4, VK_BACK];
-  end;
 end;
 
 procedure TAtlasComponentSearchWindow.KeyDown(var Key: Word; Shift: TShiftState);
@@ -1605,6 +1371,240 @@ begin
   FState.ScrollBy(-Sign(WheelDelta) * 3 * FPainter.Metrics.Entry, FPainter.ListRect.Height);
   Invalidate;
   Result := True;
+end;
+
+procedure TAtlasComponentSearchWindow.Refilter(const AKeep: string);
+begin
+  FState.Hits := TAtlasDesignerSearch.Find(FItems, FState.Pattern, FState.Fields, FState.Kind, FOptions.Fuzzy);
+  FState.Rebuild(FItems, FOptions.FormName, FPainter.Metrics);
+  FState.SelectName(FItems, AKeep);
+  if FState.Selected < 0 then
+  begin
+    FState.Scroll := 0;
+    FState.SelectFirstItem;
+  end;
+  EnsureVisible;
+  Invalidate;
+end;
+
+procedure TAtlasComponentSearchWindow.EnsureVisible;
+begin
+  FPainter.Layout;
+  FState.Reveal(FPainter.ListRect.Height);
+end;
+
+/// <summary>Tasten, die Suchwort und Ansicht ändern; False, wenn die Taste nichts tut.</summary>
+function TAtlasComponentSearchWindow.EditKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := True;
+  if (AKey = VK_F4) and not FOptions.Compact then
+  begin
+    FState.PreviewVisible := not FState.PreviewVisible;
+    EnsureVisible;
+    Invalidate;
+  end
+  else if (AKey = VK_BACK) and (FState.Pattern <> '') and (ssCtrl in AShift) then
+  begin
+    SetPattern('');
+  end
+  else if (AKey = VK_BACK) and (FState.Pattern <> '') then
+  begin
+    SetPattern(Copy(FState.Pattern, 1, Length(FState.Pattern) - 1));
+  end
+  else if (ssCtrl in AShift) and (AKey = Ord('C')) then
+  begin
+    Run(TAtlasComponentSearchAction.CopyName);
+  end
+  else if (ssCtrl in AShift) and (AKey = Ord('G')) and not FOptions.Compact then
+  begin
+    SetGrouping(TAtlasDesignerGrouping((Ord(FState.Grouping) + 1) mod (Ord(High(TAtlasDesignerGrouping)) + 1)));
+  end
+  else
+  begin
+    Result := AKey in [VK_F4, VK_BACK];
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.FormClose(Sender: TObject; var Action: TCloseAction);
+var
+  mClosed: TProc;
+begin
+  Action := caFree;
+  if FHooks.Closing then
+  begin
+    Exit;
+  end;
+  FHooks.Closing := True;
+  mClosed := FHooks.OnClosed;
+  if Assigned(mClosed) then
+  begin
+    mClosed();
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.FormDeactivate(Sender: TObject);
+begin
+  // Klein wie Strg+P: Ein Klick daneben schließt.
+  if FOptions.Compact and not FHooks.Closing then
+  begin
+    Close;
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.WMNCHitTest(var Message: TWMNCHitTest);
+var
+  mPoint: TPoint;
+  mArea: THitArea;
+  mHeader: Integer;
+begin
+  inherited;
+  if FOptions.Compact then
+  begin
+    Exit;
+  end;
+  mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
+  Message.Result := EdgeHit(mPoint, ClientRect, ScaleValue(6));
+  if Message.Result <> HTNOWHERE then
+  begin
+    Exit;
+  end;
+  mHeader := FPainter.Metrics.Header;
+  // Freie Stellen im Kopf verschieben das Fenster.
+  if (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
+    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
+  begin
+    Message.Result := HTCAPTION;
+  end
+  else
+  begin
+    Message.Result := HTCLIENT;
+  end;
+end;
+
+procedure TAtlasComponentSearchWindow.WMGetDlgCode(var Message: TWMGetDlgCode);
+begin
+  inherited;
+  Message.Result := Message.Result or DLGC_WANTALLKEYS or DLGC_WANTARROWS or DLGC_WANTCHARS or DLGC_WANTTAB;
+end;
+
+{ Eingabe }
+
+procedure TAtlasComponentSearchWindow.ShowOver(const AArea: TRect);
+var
+  mWidth, mHeight: Integer;
+  mMetrics: TMetrics;
+begin
+  mMetrics := FPainter.Metrics;
+  if FOptions.Compact then
+  begin
+    mWidth := Min(ScaleValue(560), AArea.Width - ScaleValue(40));
+    mHeight := mMetrics.Header + cCompactRows * mMetrics.Entry + mMetrics.Footer + ScaleValue(4);
+    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + ScaleValue(80), mWidth, mHeight);
+  end
+  else if not FOptions.Bounds.IsEmpty and (Screen.MonitorFromRect(FOptions.Bounds, mdNull) <> nil) then
+  begin
+    SetBounds(FOptions.Bounds.Left, FOptions.Bounds.Top, FOptions.Bounds.Width, FOptions.Bounds.Height);
+  end
+  else
+  begin
+    mWidth := Min(ScaleValue(900), AArea.Width - ScaleValue(40));
+    mHeight := Min(ScaleValue(580), AArea.Height - ScaleValue(40));
+    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2,
+      AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div 3), mWidth, mHeight);
+  end;
+  Show;
+  SetFocus;
+end;
+
+procedure TAtlasComponentSearchWindow.SetPattern(const APattern: string);
+begin
+  FState.Pattern := APattern;
+  Refilter('');
+end;
+
+procedure TAtlasComponentSearchWindow.SetKind(AKind: TAtlasDesignerKind);
+var
+  mKeep: string;
+begin
+  mKeep := FState.SelectedName(FItems);
+  FState.Kind := AKind;
+  Refilter(mKeep);
+end;
+
+procedure TAtlasComponentSearchWindow.SetFields(AFields: TAtlasDesignerFields);
+begin
+  // Mindestens ein Feld bleibt gewählt.
+  if AFields = [] then
+  begin
+    Exit;
+  end;
+  FState.Fields := AFields;
+  Refilter('');
+end;
+
+procedure TAtlasComponentSearchWindow.SetGrouping(AGrouping: TAtlasDesignerGrouping);
+var
+  mKeep: string;
+begin
+  mKeep := FState.SelectedName(FItems);
+  FState.Grouping := AGrouping;
+  Refilter(mKeep);
+end;
+
+procedure TAtlasComponentSearchWindow.MoveSelection(ADelta: Integer);
+begin
+  if (Length(FState.Rows) = 0) or (ADelta = 0) then
+  begin
+    Exit;
+  end;
+  FState.Move(ADelta);
+  EnsureVisible;
+  Invalidate;
+end;
+
+procedure TAtlasComponentSearchWindow.Run(AAction: TAtlasComponentSearchAction);
+var
+  mItem: TAtlasDesignerItem;
+  mHandler: TAtlasComponentSearchActionEvent;
+begin
+  if not FState.ActionEnabled(FItems, AAction) then
+  begin
+    Exit;
+  end;
+  mItem := FItems[FState.SelectedItem];
+  if AAction = TAtlasComponentSearchAction.CopyName then
+  begin
+    Clipboard.AsText := mItem.Name;
+    Exit;
+  end;
+  mHandler := FHooks.OnAction;
+  // Zur Auswahl hinzufügen lässt das Fenster offen, damit weitere folgen können.
+  if AAction = TAtlasComponentSearchAction.Add then
+  begin
+    if Assigned(mHandler) then
+    begin
+      mHandler(AAction, mItem);
+    end;
+    Exit;
+  end;
+  // Erst schließen, dann im Designer bzw. Code wirken: Die IDE holt dort den Fokus.
+  if HandleAllocated then
+  begin
+    Close;
+  end;
+  if Assigned(mHandler) then
+  begin
+    TAtlasMainThread.ForceQueue(TAtlasFeature.DesignerBar,
+      procedure
+      begin
+        mHandler(AAction, mItem);
+      end);
+  end;
+end;
+
+function TAtlasComponentSearchWindow.SelectedItem: Integer;
+begin
+  Result := FState.SelectedItem;
 end;
 
 end.

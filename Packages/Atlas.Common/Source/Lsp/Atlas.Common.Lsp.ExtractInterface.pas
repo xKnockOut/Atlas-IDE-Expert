@@ -179,23 +179,7 @@ begin
   end;
 end;
 
-class function TLspExtractInterface.AncestorsLookup(ATree: TSyntaxTree;
-  const AIndex: ISymbolIndex): TClassAncestorsLookup;
-begin
-  Result :=
-    function(const AClassName: string; out AAncestors: TArray<string>): Boolean
-    var
-      mDecl: TSyntaxNode;
-    begin
-      mDecl := TClassLayout.DeclNamed(ATree, AClassName);
-      if mDecl <> nil then
-      begin
-        AAncestors := TreeAncestors(mDecl);
-        Exit(True);
-      end;
-      Result := IndexAncestors(AIndex, AClassName, AAncestors);
-    end;
-end;
+{ TLspExtractInterface }
 
 class function TLspExtractInterface.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
@@ -228,6 +212,24 @@ begin
   mAction.AddPair('kind', TExtractInterface.cKind);
   mAction.AddPair('command', mCommand);
   Result := [mAction];
+end;
+
+class function TLspExtractInterface.AncestorsLookup(ATree: TSyntaxTree;
+  const AIndex: ISymbolIndex): TClassAncestorsLookup;
+begin
+  Result :=
+    function(const AClassName: string; out AAncestors: TArray<string>): Boolean
+    var
+      mDecl: TSyntaxNode;
+    begin
+      mDecl := TClassLayout.DeclNamed(ATree, AClassName);
+      if mDecl <> nil then
+      begin
+        AAncestors := TreeAncestors(mDecl);
+        Exit(True);
+      end;
+      Result := IndexAncestors(AIndex, AClassName, AAncestors);
+    end;
 end;
 
 class function TLspExtractInterface.Prepare(ATree: TSyntaxTree; const AText: string;
@@ -412,6 +414,8 @@ type
     function Run: TJSONObject;
   end;
 
+{ TInterfaceExtraction }
+
 constructor TInterfaceExtraction.Create(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AContext: TExtractInterfaceContext);
 begin
@@ -430,25 +434,6 @@ destructor TInterfaceExtraction.Destroy;
 begin
   FChanges.Free;
   inherited;
-end;
-
-procedure TInterfaceExtraction.ReadRequest(ARequest: TJSONValue);
-var
-  mName: string;
-begin
-  FRequest := Default(TExtractInterfaceRequest);
-  FRequest.Members := ReadRequestJson(ARequest, mName, FUnitName);
-  FRequest.Name := mName;
-  FRequest.Guid := FContext.Guid;
-  if FRequest.Guid = '' then
-  begin
-    FRequest.Guid := TGUID.NewGuid.ToString;
-  end;
-  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, FOwnUnit);
-  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
-  begin
-    raise Failed(cTexts[TLspExtractInterfaceText.IsNotAValidUnit].Fmt([FUnitName]));
-  end;
 end;
 
 function TInterfaceExtraction.Resolves(const AName: string): Boolean;
@@ -608,6 +593,25 @@ begin
   Result.AddPair('file', TDocumentUris.FromPath(FTargetFile));
   Result.AddPair('name', FRequest.Name);
   Result.AddPair('methods', TJSONNumber.Create(mCount));
+end;
+
+procedure TInterfaceExtraction.ReadRequest(ARequest: TJSONValue);
+var
+  mName: string;
+begin
+  FRequest := Default(TExtractInterfaceRequest);
+  FRequest.Members := ReadRequestJson(ARequest, mName, FUnitName);
+  FRequest.Name := mName;
+  FRequest.Guid := FContext.Guid;
+  if FRequest.Guid = '' then
+  begin
+    FRequest.Guid := TGUID.NewGuid.ToString;
+  end;
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, FOwnUnit);
+  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
+  begin
+    raise Failed(cTexts[TLspExtractInterfaceText.IsNotAValidUnit].Fmt([FUnitName]));
+  end;
 end;
 
 function TInterfaceExtraction.Run: TJSONObject;

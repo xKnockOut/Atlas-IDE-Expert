@@ -133,6 +133,8 @@ begin
   end;
 end;
 
+{ TAtlasGenerateProtocol }
+
 class function TAtlasGenerateProtocol.MenuArguments(const ASpot: TAtlasGenerateSpot): string;
 begin
   Result := ArrayText(SpotArray(ASpot));

@@ -49,6 +49,8 @@ const
     (De: 'Feld "textDocument.uri" fehlt in %s'; En: 'Field "textDocument.uri" is missing in %s'),
     (De: '%s nicht lesbar'; En: '%s not readable'));
 
+{ TShellCoveredByRequest }
+
 class procedure TShellCoveredByRequest.Attach(ADispatcher: TJsonRpcDispatcher;
   const AServices: TShellAffectedTestsServices);
 var
@@ -75,31 +77,6 @@ begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TCoveredByRequestText.UriMissing].Fmt([AMethod]));
   end;
-end;
-
-class function TShellCoveredByRequest.RequestFor(const AServices: TShellAffectedTestsServices; const AUri: string;
-  AParams: TJSONObject): TCoveredRequest;
-var
-  mAffected: TAffectedRequest;
-  mDepth: Integer;
-  mPrivate: Boolean;
-begin
-  // Dieselben Projektdateien, Testprogramme und Testunits wie die betroffenen Tests (#1353).
-  mAffected := TShellAffectedTestsRequest.RequestFor(AServices, AUri, AServices.Settings.SettingsFor(AUri));
-  Result := Default(TCoveredRequest);
-  Result.Files := mAffected.Files;
-  Result.ReadText := AServices.ReadText;
-  Result.Options := mAffected.Options;
-  if not AParams.TryGetValue<Integer>('depth', mDepth) then
-  begin
-    mDepth := TCoveredBy.cDefaultDepth;
-  end;
-  Result.Options.Depth := mDepth;
-  if not AParams.TryGetValue<Boolean>('includePrivate', mPrivate) then
-  begin
-    mPrivate := False;
-  end;
-  Result.IncludePrivate := mPrivate;
 end;
 
 class function TShellCoveredByRequest.Handle(const AServices: TShellAffectedTestsServices;
@@ -145,6 +122,31 @@ begin
     mResolver.Free;
   end;
   Result := TCoveredBy.ProjectToJson(mFound);
+end;
+
+class function TShellCoveredByRequest.RequestFor(const AServices: TShellAffectedTestsServices; const AUri: string;
+  AParams: TJSONObject): TCoveredRequest;
+var
+  mAffected: TAffectedRequest;
+  mDepth: Integer;
+  mPrivate: Boolean;
+begin
+  // Dieselben Projektdateien, Testprogramme und Testunits wie die betroffenen Tests (#1353).
+  mAffected := TShellAffectedTestsRequest.RequestFor(AServices, AUri, AServices.Settings.SettingsFor(AUri));
+  Result := Default(TCoveredRequest);
+  Result.Files := mAffected.Files;
+  Result.ReadText := AServices.ReadText;
+  Result.Options := mAffected.Options;
+  if not AParams.TryGetValue<Integer>('depth', mDepth) then
+  begin
+    mDepth := TCoveredBy.cDefaultDepth;
+  end;
+  Result.Options.Depth := mDepth;
+  if not AParams.TryGetValue<Boolean>('includePrivate', mPrivate) then
+  begin
+    mPrivate := False;
+  end;
+  Result.IncludePrivate := mPrivate;
 end;
 
 initialization

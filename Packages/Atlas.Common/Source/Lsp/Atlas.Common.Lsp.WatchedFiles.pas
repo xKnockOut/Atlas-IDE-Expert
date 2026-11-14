@@ -65,9 +65,37 @@ begin
   FTransport := ATransport;
 end;
 
+procedure TLspWatchedFiles.HandleChanged(const AParams: TJSONValue);
+var
+  mChanges: TArray<TFileChange>;
+begin
+  mChanges := ParseChanges(AParams);
+  if (Length(mChanges) > 0) and Assigned(FOnChanged) then
+  begin
+    FOnChanged(mChanges);
+  end;
+end;
+
 procedure TLspWatchedFiles.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterNotification(cMethod, HandleChanged);
+end;
+
+procedure TLspWatchedFiles.RegisterWatchers(const AInitializeParams: TJSONObject);
+var
+  mRequest: TJSONObject;
+begin
+  // Die Antwort des Clients wird nicht ausgewertet.
+  if not SupportsDynamicRegistration(AInitializeParams) then
+  begin
+    Exit;
+  end;
+  mRequest := BuildRegistration;
+  try
+    FTransport.WriteMessage(mRequest);
+  finally
+    mRequest.Free;
+  end;
 end;
 
 class function TLspWatchedFiles.SupportsDynamicRegistration(const AInitializeParams: TJSONObject): Boolean;
@@ -103,23 +131,6 @@ begin
   Result.AddPair('id', 'atlas/registerWatchers');
   Result.AddPair('method', cRegisterMethod);
   Result.AddPair('params', mParams);
-end;
-
-procedure TLspWatchedFiles.RegisterWatchers(const AInitializeParams: TJSONObject);
-var
-  mRequest: TJSONObject;
-begin
-  // Die Antwort des Clients wird nicht ausgewertet.
-  if not SupportsDynamicRegistration(AInitializeParams) then
-  begin
-    Exit;
-  end;
-  mRequest := BuildRegistration;
-  try
-    FTransport.WriteMessage(mRequest);
-  finally
-    mRequest.Free;
-  end;
 end;
 
 class function TLspWatchedFiles.ParseChanges(const AParams: TJSONValue): TArray<TFileChange>;
@@ -183,17 +194,6 @@ begin
   Result.AddPair('jsonrpc', '2.0');
   Result.AddPair('method', cMethod);
   Result.AddPair('params', mParams);
-end;
-
-procedure TLspWatchedFiles.HandleChanged(const AParams: TJSONValue);
-var
-  mChanges: TArray<TFileChange>;
-begin
-  mChanges := ParseChanges(AParams);
-  if (Length(mChanges) > 0) and Assigned(FOnChanged) then
-  begin
-    FOnChanged(mChanges);
-  end;
 end;
 
 end.

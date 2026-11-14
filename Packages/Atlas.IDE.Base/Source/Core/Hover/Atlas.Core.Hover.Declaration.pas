@@ -84,6 +84,8 @@ begin
   end;
 end;
 
+{ TAtlasHoverDeclaration }
+
 class function TAtlasHoverDeclaration.DeclaredType(const ADeclaration: string): string;
 var
   mIndex, mDepth, mStart: Integer;

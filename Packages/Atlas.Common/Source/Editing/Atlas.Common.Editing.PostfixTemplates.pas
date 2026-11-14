@@ -211,11 +211,6 @@ begin
   end;
 end;
 
-class function TPostfixTemplates.IsTypeCondition(const ACondition: string): Boolean;
-begin
-  Result := (Trim(ACondition) <> '') and not MatchText(Trim(ACondition), cConditions);
-end;
-
 class function TPostfixTemplates.Applies(const ATemplate: TPostfixTemplate; const ATraits: TPostfixTraits;
   AInlineVar: Boolean; const ADescends: TFunc<string, Boolean>): Boolean;
 var
@@ -272,9 +267,9 @@ begin
   end;
 end;
 
-class function TPostfixTemplates.Escape(const AText: string): string;
+class function TPostfixTemplates.IsTypeCondition(const ACondition: string): Boolean;
 begin
-  Result := AText.Replace('\', '\\').Replace('$', '\$').Replace('}', '\}');
+  Result := (Trim(ACondition) <> '') and not MatchText(Trim(ACondition), cConditions);
 end;
 
 class function TPostfixTemplates.Expand(const AKey, AExpr, AIndent, ALineBreak: string; AInlineVar: Boolean): string;
@@ -286,6 +281,11 @@ begin
   mTemplate.Key := AKey;
   mTraits := Default(TPostfixTraits);
   Result := Expand(mTemplate, AExpr, mTraits, TPostfixLayout.Create(AIndent, ALineBreak, AInlineVar, False)).Text;
+end;
+
+class function TPostfixTemplates.ClassicDeclaration(const ATraits: TPostfixTraits): string;
+begin
+  Result := Format('%s: %s;', [cItemName, ATraits.ElementType]);
 end;
 
 { TPostfixLayout }
@@ -319,6 +319,8 @@ type
     function TryCreate: TPostfixExpansion;
     function NewVar: TPostfixExpansion;
   end;
+
+{ TPostfixExpander }
 
 function TPostfixExpander.Field(ANumber: Integer; const ADefault: string): string;
 begin
@@ -549,46 +551,6 @@ begin
   end;
 end;
 
-class function TPostfixTemplates.CustomText(const ABody, AExpr, AIndent, ALineBreak: string;
-  ASnippet: Boolean): string;
-var
-  mIndex: Integer;
-  mBody, mPart: string;
-  mChar: Char;
-begin
-  // Text der Vorlage: Zeilen mit #10, Folgezeilen mit der Einrückung der Cursorzeile.
-  mBody := ABody.Replace(#13#10, #10).Replace(#13, #10);
-  Result := '';
-  mIndex := 1;
-  while mIndex <= Length(mBody) do
-  begin
-    mChar := mBody[mIndex];
-    if mChar = #10 then
-    begin
-      Result := Result + ALineBreak + AIndent;
-    end
-    else if (mChar = '$') and DollarPart(mBody, AExpr, mIndex, ASnippet, mPart) then
-    begin
-      Result := Result + mPart;
-      Continue;
-    end
-    else if ASnippet and CharInSet(mChar, ['\', '$', '}']) then
-    begin
-      Result := Result + '\' + mChar;
-    end
-    else
-    begin
-      Result := Result + mChar;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
-class function TPostfixTemplates.ClassicDeclaration(const ATraits: TPostfixTraits): string;
-begin
-  Result := Format('%s: %s;', [cItemName, ATraits.ElementType]);
-end;
-
 class function TPostfixTemplates.SuggestName(const ATypeName: string): string;
 var
   mText: string;
@@ -663,6 +625,46 @@ var
 begin
   mText := Trim(ATypeText);
   Result := MatchText(mText, ['Pointer', 'PChar', 'PAnsiChar', 'PWideChar', 'PByte']) or StartsStr('^', mText);
+end;
+
+class function TPostfixTemplates.Escape(const AText: string): string;
+begin
+  Result := AText.Replace('\', '\\').Replace('$', '\$').Replace('}', '\}');
+end;
+
+class function TPostfixTemplates.CustomText(const ABody, AExpr, AIndent, ALineBreak: string;
+  ASnippet: Boolean): string;
+var
+  mIndex: Integer;
+  mBody, mPart: string;
+  mChar: Char;
+begin
+  // Text der Vorlage: Zeilen mit #10, Folgezeilen mit der Einrückung der Cursorzeile.
+  mBody := ABody.Replace(#13#10, #10).Replace(#13, #10);
+  Result := '';
+  mIndex := 1;
+  while mIndex <= Length(mBody) do
+  begin
+    mChar := mBody[mIndex];
+    if mChar = #10 then
+    begin
+      Result := Result + ALineBreak + AIndent;
+    end
+    else if (mChar = '$') and DollarPart(mBody, AExpr, mIndex, ASnippet, mPart) then
+    begin
+      Result := Result + mPart;
+      Continue;
+    end
+    else if ASnippet and CharInSet(mChar, ['\', '$', '}']) then
+    begin
+      Result := Result + '\' + mChar;
+    end
+    else
+    begin
+      Result := Result + mChar;
+    end;
+    Inc(mIndex);
+  end;
 end;
 
 end.

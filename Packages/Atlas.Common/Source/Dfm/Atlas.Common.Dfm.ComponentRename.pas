@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TDfmComponentRename }
+
 class function TDfmComponentRename.Handlers(const ADfmText, AOldName, ANewName: string): TArray<THandlerRename>;
 var
   mDocument: TDfmDocument;

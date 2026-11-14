@@ -162,183 +162,6 @@ begin
   end;
 end;
 
-procedure TAtlasDesignerHandles.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  // Griff gedrückt: Fokus bleibt im Designer.
-  Message.Result := MA_NOACTIVATE;
-end;
-
-procedure TAtlasDesignerHandles.WMCaptureChanged(var Message: TMessage);
-begin
-  inherited;
-  // Maus verloren (Fensterwechsel, Esc der IDE): wie Loslassen behandeln.
-  if Dragging and (HWND(Message.LParam) <> Handle) then
-  begin
-    FDragIndex := -1;
-    if Assigned(FOnUp) then
-    begin
-      FOnUp([]);
-    end;
-  end;
-end;
-
-function TAtlasDesignerHandles.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasDesignerHandles.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
-function TAtlasDesignerHandles.SameContent(const AHandles: TArray<TAtlasHandle>;
-  const AFrames: TArray<TAtlasHandleFrame>; const ALabel: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (Length(AHandles) = Length(FHandles)) and (Length(AFrames) = Length(FFrames)) and (ALabel = FLabel);
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(AHandles) do
-  begin
-    Result := Result and (AHandles[mIndex].Bounds = FHandles[mIndex].Bounds) and
-      (AHandles[mIndex].Text = FHandles[mIndex].Text) and (AHandles[mIndex].Muted = FHandles[mIndex].Muted);
-  end;
-  for mIndex := 0 to High(AFrames) do
-  begin
-    Result := Result and (AFrames[mIndex].Bounds = FFrames[mIndex].Bounds) and
-      (AFrames[mIndex].Kind = FFrames[mIndex].Kind);
-  end;
-end;
-
-procedure TAtlasDesignerHandles.SetContent(const AHandles: TArray<TAtlasHandle>;
-  const AFrames: TArray<TAtlasHandleFrame>; const ALabel: string; const ALabelAt: TPoint);
-begin
-  // Der Takt der Leiste setzt alle 200 ms denselben Inhalt: nur bei Änderungen neu zeichnen.
-  if SameContent(AHandles, AFrames, ALabel) and (ALabelAt = FLabelAt) then
-  begin
-    Exit;
-  end;
-  FHandles := Copy(AHandles);
-  FFrames := Copy(AFrames);
-  FLabel := ALabel;
-  FLabelAt := ALabelAt;
-  Invalidate;
-end;
-
-function TAtlasDesignerHandles.HandleAt(AX, AY: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := High(FHandles) downto 0 do
-  begin
-    if FHandles[mIndex].Bounds.Contains(Point(AX, AY)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasDesignerHandles.Dragging: Boolean;
-begin
-  Result := FDragIndex >= 0;
-end;
-
-procedure TAtlasDesignerHandles.CancelDrag;
-begin
-  FDragIndex := -1;
-  if MouseCapture then
-  begin
-    MouseCapture := False;
-  end;
-end;
-
-procedure TAtlasDesignerHandles.PaintFrames;
-var
-  mFrame: TAtlasHandleFrame;
-begin
-  Canvas.Brush.Style := bsClear;
-  for mFrame in FFrames do
-  begin
-    if mFrame.Kind = TAtlasHandleFrameKind.Bad then
-    begin
-      Canvas.Pen.Color := TColor(FColors.Error);
-      Canvas.Pen.Style := psSolid;
-      Canvas.Pen.Width := S(2);
-    end
-    else
-    begin
-      Canvas.Pen.Color := TColor(FColors.Accent);
-      Canvas.Pen.Style := psDash;
-      Canvas.Pen.Width := 1;
-    end;
-    Canvas.Rectangle(mFrame.Bounds);
-  end;
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Width := 1;
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasDesignerHandles.PaintHandle(const AHandle: TAtlasHandle);
-var
-  mBack: TColor;
-  mRect: TRect;
-begin
-  mBack := TColor(FColors.Accent);
-  if AHandle.Muted then
-  begin
-    mBack := TColor(FColors.Muted);
-  end;
-  mRect := AHandle.Bounds;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := mBack;
-  Canvas.Pen.Color := TColor(FColors.Surface);
-  if AHandle.Kind = TAtlasHandleKind.Square then
-  begin
-    Canvas.Rectangle(mRect);
-    Exit;
-  end;
-  Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Surface);
-  DrawText(Canvas.Handle, PChar(AHandle.Text), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasDesignerHandles.PaintLabel;
-var
-  mSize: TSize;
-  mRect: TRect;
-begin
-  if FLabel = '' then
-  begin
-    Exit;
-  end;
-  mSize := Canvas.TextExtent(FLabel);
-  mRect := Rect(FLabelAt.X, FLabelAt.Y, FLabelAt.X + mSize.cx + S(10), FLabelAt.Y + mSize.cy + S(4));
-  // Im Fenster halten.
-  if mRect.Right > ClientWidth then
-  begin
-    mRect.Offset(ClientWidth - mRect.Right, 0);
-  end;
-  if mRect.Bottom > ClientHeight then
-  begin
-    mRect.Offset(0, ClientHeight - mRect.Bottom);
-  end;
-  Canvas.Brush.Color := TColor(FColors.Surface);
-  Canvas.Pen.Color := TColor(FColors.Accent);
-  Canvas.Rectangle(mRect);
-  Canvas.Brush.Style := bsClear;
-  Canvas.Font.Color := TColor(FColors.Text);
-  DrawText(Canvas.Handle, PChar(FLabel), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
-  Canvas.Brush.Style := bsSolid;
-end;
-
 procedure TAtlasDesignerHandles.Paint;
 var
   mHandle: TAtlasHandle;
@@ -428,6 +251,169 @@ begin
   end;
 end;
 
+function TAtlasDesignerHandles.SameContent(const AHandles: TArray<TAtlasHandle>;
+  const AFrames: TArray<TAtlasHandleFrame>; const ALabel: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (Length(AHandles) = Length(FHandles)) and (Length(AFrames) = Length(FFrames)) and (ALabel = FLabel);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(AHandles) do
+  begin
+    Result := Result and (AHandles[mIndex].Bounds = FHandles[mIndex].Bounds) and
+      (AHandles[mIndex].Text = FHandles[mIndex].Text) and (AHandles[mIndex].Muted = FHandles[mIndex].Muted);
+  end;
+  for mIndex := 0 to High(AFrames) do
+  begin
+    Result := Result and (AFrames[mIndex].Bounds = FFrames[mIndex].Bounds) and
+      (AFrames[mIndex].Kind = FFrames[mIndex].Kind);
+  end;
+end;
+
+procedure TAtlasDesignerHandles.PaintFrames;
+var
+  mFrame: TAtlasHandleFrame;
+begin
+  Canvas.Brush.Style := bsClear;
+  for mFrame in FFrames do
+  begin
+    if mFrame.Kind = TAtlasHandleFrameKind.Bad then
+    begin
+      Canvas.Pen.Color := TColor(FColors.Error);
+      Canvas.Pen.Style := psSolid;
+      Canvas.Pen.Width := S(2);
+    end
+    else
+    begin
+      Canvas.Pen.Color := TColor(FColors.Accent);
+      Canvas.Pen.Style := psDash;
+      Canvas.Pen.Width := 1;
+    end;
+    Canvas.Rectangle(mFrame.Bounds);
+  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasDesignerHandles.PaintHandle(const AHandle: TAtlasHandle);
+var
+  mBack: TColor;
+  mRect: TRect;
+begin
+  mBack := TColor(FColors.Accent);
+  if AHandle.Muted then
+  begin
+    mBack := TColor(FColors.Muted);
+  end;
+  mRect := AHandle.Bounds;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := mBack;
+  Canvas.Pen.Color := TColor(FColors.Surface);
+  if AHandle.Kind = TAtlasHandleKind.Square then
+  begin
+    Canvas.Rectangle(mRect);
+    Exit;
+  end;
+  Canvas.RoundRect(mRect.Left, mRect.Top, mRect.Right, mRect.Bottom, mRect.Height, mRect.Height);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := TColor(FColors.Surface);
+  DrawText(Canvas.Handle, PChar(AHandle.Text), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasDesignerHandles.PaintLabel;
+var
+  mSize: TSize;
+  mRect: TRect;
+begin
+  if FLabel = '' then
+  begin
+    Exit;
+  end;
+  mSize := Canvas.TextExtent(FLabel);
+  mRect := Rect(FLabelAt.X, FLabelAt.Y, FLabelAt.X + mSize.cx + S(10), FLabelAt.Y + mSize.cy + S(4));
+  // Im Fenster halten.
+  if mRect.Right > ClientWidth then
+  begin
+    mRect.Offset(ClientWidth - mRect.Right, 0);
+  end;
+  if mRect.Bottom > ClientHeight then
+  begin
+    mRect.Offset(0, ClientHeight - mRect.Bottom);
+  end;
+  Canvas.Brush.Color := TColor(FColors.Surface);
+  Canvas.Pen.Color := TColor(FColors.Accent);
+  Canvas.Rectangle(mRect);
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font.Color := TColor(FColors.Text);
+  DrawText(Canvas.Handle, PChar(FLabel), -1, mRect, DT_SINGLELINE or DT_VCENTER or DT_CENTER or DT_NOPREFIX);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasDesignerHandles.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  // Griff gedrückt: Fokus bleibt im Designer.
+  Message.Result := MA_NOACTIVATE;
+end;
+
+procedure TAtlasDesignerHandles.WMCaptureChanged(var Message: TMessage);
+begin
+  inherited;
+  // Maus verloren (Fensterwechsel, Esc der IDE): wie Loslassen behandeln.
+  if Dragging and (HWND(Message.LParam) <> Handle) then
+  begin
+    FDragIndex := -1;
+    if Assigned(FOnUp) then
+    begin
+      FOnUp([]);
+    end;
+  end;
+end;
+
+function TAtlasDesignerHandles.S(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
+end;
+
+procedure TAtlasDesignerHandles.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+procedure TAtlasDesignerHandles.SetContent(const AHandles: TArray<TAtlasHandle>;
+  const AFrames: TArray<TAtlasHandleFrame>; const ALabel: string; const ALabelAt: TPoint);
+begin
+  // Der Takt der Leiste setzt alle 200 ms denselben Inhalt: nur bei Änderungen neu zeichnen.
+  if SameContent(AHandles, AFrames, ALabel) and (ALabelAt = FLabelAt) then
+  begin
+    Exit;
+  end;
+  FHandles := Copy(AHandles);
+  FFrames := Copy(AFrames);
+  FLabel := ALabel;
+  FLabelAt := ALabelAt;
+  Invalidate;
+end;
+
+function TAtlasDesignerHandles.HandleAt(AX, AY: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := High(FHandles) downto 0 do
+  begin
+    if FHandles[mIndex].Bounds.Contains(Point(AX, AY)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
 procedure TAtlasDesignerHandles.ShowAt(const AScreen: TRect);
 begin
   if AScreen.IsEmpty then
@@ -452,6 +438,20 @@ begin
     ShowWindow(Handle, SW_HIDE);
   end;
   FShown := False;
+end;
+
+procedure TAtlasDesignerHandles.CancelDrag;
+begin
+  FDragIndex := -1;
+  if MouseCapture then
+  begin
+    MouseCapture := False;
+  end;
+end;
+
+function TAtlasDesignerHandles.Dragging: Boolean;
+begin
+  Result := FDragIndex >= 0;
 end;
 
 end.

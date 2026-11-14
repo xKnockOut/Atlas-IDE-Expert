@@ -128,6 +128,8 @@ type
     property Anchor: TTextRange read FAnchor;
   end;
 
+{ TBindingModel }
+
 constructor TBindingModel.Create(const AContext: TRuleContext);
 begin
   inherited Create;
@@ -155,6 +157,21 @@ begin
   FObjects.Free;
   FDocument.Free;
   inherited;
+end;
+
+procedure TBindingModel.Collect(AObject, AParent: TDfmObject);
+var
+  mChild: TDfmObject;
+begin
+  FObjects.Add(AObject);
+  if AParent <> nil then
+  begin
+    FParents.Add(AObject, AParent);
+  end;
+  for mChild in AObject.Children do
+  begin
+    Collect(mChild, AObject);
+  end;
 end;
 
 // Iterativ (tiefe Bäume sprengen den Stapel nicht).
@@ -189,21 +206,6 @@ begin
     end;
   finally
     mPending.Free;
-  end;
-end;
-
-procedure TBindingModel.Collect(AObject, AParent: TDfmObject);
-var
-  mChild: TDfmObject;
-begin
-  FObjects.Add(AObject);
-  if AParent <> nil then
-  begin
-    FParents.Add(AObject, AParent);
-  end;
-  for mChild in AObject.Children do
-  begin
-    Collect(mChild, AObject);
   end;
 end;
 

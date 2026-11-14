@@ -44,6 +44,8 @@ const
   // Alle verwendenden Units suchen dauert; wie beim Umbenennen.
   cTimeoutMs = 60000;
 
+{ TAtlasIdeMoveClass }
+
 class procedure TAtlasIdeMoveClass.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

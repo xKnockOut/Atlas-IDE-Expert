@@ -425,6 +425,8 @@ begin
   Result.Backward := ALink.Backward;
 end;
 
+{ TArchitectureSnapshots }
+
 class function TArchitectureSnapshots.FromOverview(const AOverview: TArchitectureOverview): TArchitectureSnapshot;
 var
   mIndex: Integer;
@@ -498,43 +500,42 @@ begin
   end;
 end;
 
-class procedure TArchitectureSnapshots.Normalize(var ASnapshot: TArchitectureSnapshot);
+class function TArchitectureSnapshots.Load(const AFileName: string; out ASnapshot: TArchitectureSnapshot;
+  out AError: string): Boolean;
 var
-  mIndex: Integer;
+  mBytes: TBytes;
+  mText: string;
 begin
-  TArray.Sort<TSnapshotUnit>(ASnapshot.Units, TComparer<TSnapshotUnit>.Construct(
-    function(const ALeft, ARight: TSnapshotUnit): Integer
-    begin
-      Result := CompareNames(ALeft.Name, ARight.Name);
-    end));
-  TArray.Sort<TSnapshotEdge>(ASnapshot.Edges, TComparer<TSnapshotEdge>.Construct(
-    function(const ALeft, ARight: TSnapshotEdge): Integer
-    begin
-      Result := CompareEdges(ALeft, ARight);
-    end));
-  for mIndex := 0 to High(ASnapshot.Subsystems) do
+  ASnapshot := Default(TArchitectureSnapshot);
+  if not TFile.Exists(AFileName) then
   begin
-    TArray.Sort<string>(ASnapshot.Subsystems[mIndex].Units, TComparer<string>.Construct(
-      function(const ALeft, ARight: string): Integer
-      begin
-        Result := CompareNames(ALeft, ARight);
-      end));
+    AError := cTexts[TSnapshotText.ArchitectureStateNotFound].Fmt([AFileName]);
+    Exit(False);
   end;
-  TArray.Sort<TSnapshotOutlier>(ASnapshot.Outliers, TComparer<TSnapshotOutlier>.Construct(
-    function(const ALeft, ARight: TSnapshotOutlier): Integer
+  try
+    mBytes := TFile.ReadAllBytes(AFileName);
+    // UTF-8, ein BOM fällt weg.
+    if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
     begin
-      Result := CompareNames(ALeft.Unit_, ARight.Unit_);
-    end));
-  TArray.Sort<TSnapshotCycle>(ASnapshot.Cycles, TComparer<TSnapshotCycle>.Construct(
-    function(const ALeft, ARight: TSnapshotCycle): Integer
+      mText := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
+    end
+    else
     begin
-      Result := CompareCycles(ALeft, ARight);
-    end));
-  TArray.Sort<TSnapshotCrossLink>(ASnapshot.CrossLinks, TComparer<TSnapshotCrossLink>.Construct(
-    function(const ALeft, ARight: TSnapshotCrossLink): Integer
+      mText := TEncoding.UTF8.GetString(mBytes);
+    end;
+  except
+    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
+    on E: Exception do
     begin
-      Result := CompareEdges(ALeft.Edge, ARight.Edge);
-    end));
+      AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;
+      Exit(False);
+    end;
+  end;
+  Result := Parse(mText, ASnapshot, AError);
+  if not Result then
+  begin
+    AError := AFileName + ': ' + AError;
+  end;
 end;
 
 function Text(const AValue: string): string;
@@ -790,6 +791,8 @@ type
     constructor Create(AData: TJSONObject; AFormat: Integer);
     function Read: TArchitectureSnapshot;
   end;
+
+{ TSnapshotReader }
 
 constructor TSnapshotReader.Create(AData: TJSONObject; AFormat: Integer);
 begin
@@ -1278,44 +1281,6 @@ begin
   end;
 end;
 
-class function TArchitectureSnapshots.Load(const AFileName: string; out ASnapshot: TArchitectureSnapshot;
-  out AError: string): Boolean;
-var
-  mBytes: TBytes;
-  mText: string;
-begin
-  ASnapshot := Default(TArchitectureSnapshot);
-  if not TFile.Exists(AFileName) then
-  begin
-    AError := cTexts[TSnapshotText.ArchitectureStateNotFound].Fmt([AFileName]);
-    Exit(False);
-  end;
-  try
-    mBytes := TFile.ReadAllBytes(AFileName);
-    // UTF-8, ein BOM fällt weg.
-    if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
-    begin
-      mText := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
-    end
-    else
-    begin
-      mText := TEncoding.UTF8.GetString(mBytes);
-    end;
-  except
-    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
-    on E: Exception do
-    begin
-      AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;
-      Exit(False);
-    end;
-  end;
-  Result := Parse(mText, ASnapshot, AError);
-  if not Result then
-  begin
-    AError := AFileName + ': ' + AError;
-  end;
-end;
-
 class procedure TArchitectureSnapshots.Save(const AFileName: string; const ASnapshot: TArchitectureSnapshot);
 var
   mFolder: string;
@@ -1326,6 +1291,45 @@ begin
     ForceDirectories(mFolder);
   end;
   TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(Json(ASnapshot)));
+end;
+
+class procedure TArchitectureSnapshots.Normalize(var ASnapshot: TArchitectureSnapshot);
+var
+  mIndex: Integer;
+begin
+  TArray.Sort<TSnapshotUnit>(ASnapshot.Units, TComparer<TSnapshotUnit>.Construct(
+    function(const ALeft, ARight: TSnapshotUnit): Integer
+    begin
+      Result := CompareNames(ALeft.Name, ARight.Name);
+    end));
+  TArray.Sort<TSnapshotEdge>(ASnapshot.Edges, TComparer<TSnapshotEdge>.Construct(
+    function(const ALeft, ARight: TSnapshotEdge): Integer
+    begin
+      Result := CompareEdges(ALeft, ARight);
+    end));
+  for mIndex := 0 to High(ASnapshot.Subsystems) do
+  begin
+    TArray.Sort<string>(ASnapshot.Subsystems[mIndex].Units, TComparer<string>.Construct(
+      function(const ALeft, ARight: string): Integer
+      begin
+        Result := CompareNames(ALeft, ARight);
+      end));
+  end;
+  TArray.Sort<TSnapshotOutlier>(ASnapshot.Outliers, TComparer<TSnapshotOutlier>.Construct(
+    function(const ALeft, ARight: TSnapshotOutlier): Integer
+    begin
+      Result := CompareNames(ALeft.Unit_, ARight.Unit_);
+    end));
+  TArray.Sort<TSnapshotCycle>(ASnapshot.Cycles, TComparer<TSnapshotCycle>.Construct(
+    function(const ALeft, ARight: TSnapshotCycle): Integer
+    begin
+      Result := CompareCycles(ALeft, ARight);
+    end));
+  TArray.Sort<TSnapshotCrossLink>(ASnapshot.CrossLinks, TComparer<TSnapshotCrossLink>.Construct(
+    function(const ALeft, ARight: TSnapshotCrossLink): Integer
+    begin
+      Result := CompareEdges(ALeft.Edge, ARight.Edge);
+    end));
 end;
 
 initialization

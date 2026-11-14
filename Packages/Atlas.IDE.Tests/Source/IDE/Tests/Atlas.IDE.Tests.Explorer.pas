@@ -379,9 +379,35 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeTestExplorer.Wanted: Boolean;
+procedure TAtlasIdeTestExplorer.Tick(Sender: TObject);
 begin
-  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsWindow;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    var
+      mFrame: TAtlasTestsExplorerFrame;
+    begin
+      mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
+      if mFrame = nil then
+      begin
+        FTimer.Enabled := False;
+        Exit;
+      end;
+      if not TAtlasIdeTestsExplorerWindow.Visible then
+      begin
+        Exit;
+      end;
+      if FDirty then
+      begin
+        Reload;
+      end
+      else if (FBusy <> FTests.Busy) or (FVersion <> FTests.Version) then
+      begin
+        FBusy := FTests.Busy;
+        FVersion := FTests.Version;
+        mFrame.SetBusy(FBusy);
+        mFrame.SetStatus(StatusOf(Self));
+      end;
+    end);
 end;
 
 procedure TAtlasIdeTestExplorer.Wire(AFrame: TAtlasTestsExplorerFrame);
@@ -420,102 +446,35 @@ begin
   Reload;
 end;
 
-procedure TAtlasIdeTestExplorer.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    var
-      mFrame: TAtlasTestsExplorerFrame;
-    begin
-      mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-      if mFrame = nil then
-      begin
-        FTimer.Enabled := False;
-        Exit;
-      end;
-      if not TAtlasIdeTestsExplorerWindow.Visible then
-      begin
-        Exit;
-      end;
-      if FDirty then
-      begin
-        Reload;
-      end
-      else if (FBusy <> FTests.Busy) or (FVersion <> FTests.Version) then
-      begin
-        FBusy := FTests.Busy;
-        FVersion := FTests.Version;
-        mFrame.SetBusy(FBusy);
-        mFrame.SetStatus(StatusOf(Self));
-      end;
-    end);
-end;
-
-procedure TAtlasIdeTestExplorer.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
-var
-  mKey: string;
-  mRun: TProjectRun;
-begin
-  mKey := KeyOf(ATarget.Project);
-  if not FResults.TryGetValue(mKey, mRun) then
-  begin
-    mRun := Default(TProjectRun);
-  end;
-  mRun.Cases := TAtlasTestRun.Merged(mRun.Cases, ARun.Cases);
-  mRun.At := Now;
-  mRun.DurationMs := ARun.DurationMs;
-  FResults.AddOrSetValue(mKey, mRun);
-  FLogs.Remember(ATarget.Project, ARun);
-  // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
-  FDirty := True;
-  if Assigned(FNext) then
-  begin
-    FNext(ATarget, ARun);
-  end;
-end;
-
-procedure TAtlasIdeTestExplorer.FileSaved(const AFileName: string);
-begin
-  if FScanned.ContainsKey(KeyOf(AFileName)) then
-  begin
-    FScanned.Remove(KeyOf(AFileName));
-    FDirty := True;
-  end;
-end;
-
-procedure TAtlasIdeTestExplorer.Show(AFlakyOnly: Boolean);
+procedure TAtlasIdeTestExplorer.Reload;
 var
   mFrame: TAtlasTestsExplorerFrame;
+  mNames: TArray<string>;
+  mProject: string;
 begin
-  if not Wanted then
+  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
+  FDirty := False;
+  if mFrame = nil then
   begin
     Exit;
   end;
-  TAtlasIdeTestsExplorerWindow.Prepare;
-  mFrame := TAtlasIdeTestsExplorerWindow.Show;
-  if mFrame <> nil then
+  ReadProjects;
+  ReadUnits;
+  FNodes := TAtlasTestExplorer.Build(FUnits, StatusInput(FProject).Cases);
+  mNames := nil;
+  for mProject in FProjects do
   begin
-    FTimer.Enabled := True;
-    Reload;
-    if AFlakyOnly then
-    begin
-      mFrame.Bar.SetFilters([TAtlasTestFilter.Flaky]);
-    end;
+    mNames := mNames + [ProjectName(mProject)];
   end;
-end;
-
-procedure TAtlasIdeTestExplorer.ApplySettings;
-begin
-  if not Wanted then
+  mFrame.SetProjects(mNames, IndexText(FProject, FProjects));
+  if Lists <> nil then
   begin
-    TAtlasIdeTestsExplorerWindow.Hide;
-    FTimer.Enabled := False;
+    Lists.Refresh(FProject);
   end;
-end;
-
-class procedure TAtlasIdeTestExplorer.ThemeChanged;
-begin
-  TAtlasIdeTestsExplorerWindow.ApplyTheme;
+  FBusy := FTests.Busy;
+  FVersion := FTests.Version;
+  mFrame.SetBusy(FBusy);
+  ShowRows;
 end;
 
 procedure TAtlasIdeTestExplorer.ReadProjects;
@@ -545,34 +504,6 @@ begin
   begin
     FProject := FProjects[0];
   end;
-end;
-
-function TAtlasIdeTestExplorer.ScanFile(const AFileName: string): TScanned;
-var
-  mAge: TDateTime;
-begin
-  mAge := 0;
-  if FileExists(AFileName) then
-  begin
-    mAge := TFile.GetLastWriteTime(AFileName);
-  end;
-  if FScanned.TryGetValue(KeyOf(AFileName), Result) and (Result.Age = mAge) then
-  begin
-    Exit;
-  end;
-  Result := Default(TScanned);
-  Result.Age := mAge;
-  if TAtlasIdeFiles.ReadLines(AFileName, Result.Lines) and TDUnitXSource.UsesDUnitX(Result.Lines) then
-  begin
-    Result.Found := TDUnitXSource.Scan(Result.Lines);
-    Result.IsTest := Length(Result.Found.Fixtures) > 0;
-  end;
-  if not Result.IsTest then
-  begin
-    // Nur Testunits behalten ihren Text (veraltete Tests); andere Units merken sich nur die Zeit.
-    Result.Lines := nil;
-  end;
-  FScanned.AddOrSetValue(KeyOf(AFileName), Result);
 end;
 
 procedure TAtlasIdeTestExplorer.ReadUnits;
@@ -617,63 +548,32 @@ begin
   end;
 end;
 
-function TAtlasIdeTestExplorer.StatusInput(const AProject: string): TAtlasTestStatusInput;
+function TAtlasIdeTestExplorer.ScanFile(const AFileName: string): TScanned;
 var
-  mRun: TProjectRun;
-  mNode: TAtlasTestNode;
+  mAge: TDateTime;
 begin
-  Result := Default(TAtlasTestStatusInput);
-  Result.Busy := FTests.Busy;
-  Result.Stale := -1;
-  if FResults.TryGetValue(KeyOf(AProject), mRun) then
+  mAge := 0;
+  if FileExists(AFileName) then
   begin
-    Result.Cases := mRun.Cases;
-    Result.LastRun := mRun.At;
-    Result.DurationMs := mRun.DurationMs;
+    mAge := TFile.GetLastWriteTime(AFileName);
   end;
-  if (KeyOf(AProject) <> KeyOf(FProject)) or (Length(FNodes) = 0) then
+  if FScanned.TryGetValue(KeyOf(AFileName), Result) and (Result.Age = mAge) then
   begin
     Exit;
   end;
-  Result.Stale := 0;
-  for mNode in FNodes do
+  Result := Default(TScanned);
+  Result.Age := mAge;
+  if TAtlasIdeFiles.ReadLines(AFileName, Result.Lines) and TDUnitXSource.UsesDUnitX(Result.Lines) then
   begin
-    if (mNode.Kind = TAtlasTestNodeKind.Test) and (TAtlasTestExplorer.StateOf(mNode) = TAtlasTestNodeState.Stale) then
-    begin
-      Inc(Result.Stale);
-    end;
+    Result.Found := TDUnitXSource.Scan(Result.Lines);
+    Result.IsTest := Length(Result.Found.Fixtures) > 0;
   end;
-end;
-
-procedure TAtlasIdeTestExplorer.Reload;
-var
-  mFrame: TAtlasTestsExplorerFrame;
-  mNames: TArray<string>;
-  mProject: string;
-begin
-  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-  FDirty := False;
-  if mFrame = nil then
+  if not Result.IsTest then
   begin
-    Exit;
+    // Nur Testunits behalten ihren Text (veraltete Tests); andere Units merken sich nur die Zeit.
+    Result.Lines := nil;
   end;
-  ReadProjects;
-  ReadUnits;
-  FNodes := TAtlasTestExplorer.Build(FUnits, StatusInput(FProject).Cases);
-  mNames := nil;
-  for mProject in FProjects do
-  begin
-    mNames := mNames + [ProjectName(mProject)];
-  end;
-  mFrame.SetProjects(mNames, IndexText(FProject, FProjects));
-  if Lists <> nil then
-  begin
-    Lists.Refresh(FProject);
-  end;
-  FBusy := FTests.Busy;
-  FVersion := FTests.Version;
-  mFrame.SetBusy(FBusy);
-  ShowRows;
+  FScanned.AddOrSetValue(KeyOf(AFileName), Result);
 end;
 
 procedure TAtlasIdeTestExplorer.ShowRows;
@@ -709,6 +609,109 @@ begin
   end;
   FProject := FProjects[AIndex];
   Reload;
+end;
+
+procedure TAtlasIdeTestExplorer.OpenNode(ANode: Integer);
+begin
+  if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].FileName <> '') then
+  begin
+    OpenAt(FNodes[ANode].FileName, Max(FNodes[ANode].Line, 0));
+  end;
+end;
+
+procedure TAtlasIdeTestExplorer.RunAll;
+var
+  mReason: string;
+begin
+  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
+  begin
+    FTests.Say(mReason);
+  end;
+end;
+
+procedure TAtlasIdeTestExplorer.RunSelected;
+var
+  mChosen: TArray<Integer>;
+  mNames: TArray<string>;
+begin
+  mChosen := Chosen;
+  mNames := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
+  if Length(mNames) > 0 then
+  begin
+    // Die Testunit des ersten gewählten Knotens bestimmt das Testprojekt wie bei der Testlinse.
+    FTests.RunTests(FNodes[mChosen[0]].FileName, mNames, False);
+  end;
+end;
+
+procedure TAtlasIdeTestExplorer.DebugSelected;
+var
+  mChosen: TArray<Integer>;
+  mNode: TAtlasTestNode;
+  mSelection: TAtlasTestSelection;
+begin
+  mChosen := Chosen;
+  if Length(mChosen) = 0 then
+  begin
+    Exit;
+  end;
+  mNode := FNodes[mChosen[0]];
+  // Eine ganze Testunit: über ihre erste Fixture benennen, die Namen decken alle ab.
+  mSelection := TAtlasTestDebug.Selection(FUnits[mNode.UnitIndex].Found, Max(mNode.FixtureIndex, 0),
+    mNode.TestIndex, mNode.CaseIndex);
+  mSelection.Names := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
+  if (Length(mChosen) > 1) or (mNode.Kind = TAtlasTestNodeKind.TestUnit) then
+  begin
+    // Mehrere Tests: kein einmaliger Haltepunkt am Anfang eines davon.
+    mSelection.BreakLine := -1;
+  end;
+  if Length(mSelection.Names) > 0 then
+  begin
+    FDebugger.Debug(mNode.FileName, mSelection);
+  end;
+end;
+
+function TAtlasIdeTestExplorer.Chosen: TArray<Integer>;
+var
+  mFrame: TAtlasTestsExplorerFrame;
+begin
+  Result := nil;
+  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    Result := mFrame.SelectedNodes;
+  end;
+  if Length(Result) = 0 then
+  begin
+    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNothingSelected));
+  end;
+end;
+
+class function TAtlasIdeTestExplorer.Wanted: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestRun and TAtlasIdeSettings.Current.TestsWindow;
+end;
+
+procedure TAtlasIdeTestExplorer.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+var
+  mKey: string;
+  mRun: TProjectRun;
+begin
+  mKey := KeyOf(ATarget.Project);
+  if not FResults.TryGetValue(mKey, mRun) then
+  begin
+    mRun := Default(TProjectRun);
+  end;
+  mRun.Cases := TAtlasTestRun.Merged(mRun.Cases, ARun.Cases);
+  mRun.At := Now;
+  mRun.DurationMs := ARun.DurationMs;
+  FResults.AddOrSetValue(mKey, mRun);
+  FLogs.Remember(ATarget.Project, ARun);
+  // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
+  FDirty := True;
+  if Assigned(FNext) then
+  begin
+    FNext(ATarget, ARun);
+  end;
 end;
 
 /// <summary>Verlauf des wackelnden Tests ANode (#1773) vor den Einzelheiten; leer, wenn er nicht wackelt.
@@ -775,78 +778,75 @@ begin
     TAtlasTestExplorer.ResultsOf(FNodes[ANode], FUnits, StatusInput(FProject).Cases), FRefs, mTexts));
 end;
 
-procedure TAtlasIdeTestExplorer.OpenNode(ANode: Integer);
+procedure TAtlasIdeTestExplorer.FileSaved(const AFileName: string);
 begin
-  if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].FileName <> '') then
+  if FScanned.ContainsKey(KeyOf(AFileName)) then
   begin
-    OpenAt(FNodes[ANode].FileName, Max(FNodes[ANode].Line, 0));
+    FScanned.Remove(KeyOf(AFileName));
+    FDirty := True;
   end;
 end;
 
-function TAtlasIdeTestExplorer.Chosen: TArray<Integer>;
+procedure TAtlasIdeTestExplorer.Show(AFlakyOnly: Boolean);
 var
   mFrame: TAtlasTestsExplorerFrame;
 begin
-  Result := nil;
-  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    Result := mFrame.SelectedNodes;
-  end;
-  if Length(Result) = 0 then
-  begin
-    FTests.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNothingSelected));
-  end;
-end;
-
-procedure TAtlasIdeTestExplorer.RunAll;
-var
-  mReason: string;
-begin
-  if (FProject <> '') and not FTests.RunProject(FProject, mReason) and (mReason <> '') then
-  begin
-    FTests.Say(mReason);
-  end;
-end;
-
-procedure TAtlasIdeTestExplorer.RunSelected;
-var
-  mChosen: TArray<Integer>;
-  mNames: TArray<string>;
-begin
-  mChosen := Chosen;
-  mNames := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
-  if Length(mNames) > 0 then
-  begin
-    // Die Testunit des ersten gewählten Knotens bestimmt das Testprojekt wie bei der Testlinse.
-    FTests.RunTests(FNodes[mChosen[0]].FileName, mNames, False);
-  end;
-end;
-
-procedure TAtlasIdeTestExplorer.DebugSelected;
-var
-  mChosen: TArray<Integer>;
-  mNode: TAtlasTestNode;
-  mSelection: TAtlasTestSelection;
-begin
-  mChosen := Chosen;
-  if Length(mChosen) = 0 then
+  if not Wanted then
   begin
     Exit;
   end;
-  mNode := FNodes[mChosen[0]];
-  // Eine ganze Testunit: über ihre erste Fixture benennen, die Namen decken alle ab.
-  mSelection := TAtlasTestDebug.Selection(FUnits[mNode.UnitIndex].Found, Max(mNode.FixtureIndex, 0),
-    mNode.TestIndex, mNode.CaseIndex);
-  mSelection.Names := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
-  if (Length(mChosen) > 1) or (mNode.Kind = TAtlasTestNodeKind.TestUnit) then
+  TAtlasIdeTestsExplorerWindow.Prepare;
+  mFrame := TAtlasIdeTestsExplorerWindow.Show;
+  if mFrame <> nil then
   begin
-    // Mehrere Tests: kein einmaliger Haltepunkt am Anfang eines davon.
-    mSelection.BreakLine := -1;
+    FTimer.Enabled := True;
+    Reload;
+    if AFlakyOnly then
+    begin
+      mFrame.Bar.SetFilters([TAtlasTestFilter.Flaky]);
+    end;
   end;
-  if Length(mSelection.Names) > 0 then
+end;
+
+procedure TAtlasIdeTestExplorer.ApplySettings;
+begin
+  if not Wanted then
   begin
-    FDebugger.Debug(mNode.FileName, mSelection);
+    TAtlasIdeTestsExplorerWindow.Hide;
+    FTimer.Enabled := False;
+  end;
+end;
+
+class procedure TAtlasIdeTestExplorer.ThemeChanged;
+begin
+  TAtlasIdeTestsExplorerWindow.ApplyTheme;
+end;
+
+function TAtlasIdeTestExplorer.StatusInput(const AProject: string): TAtlasTestStatusInput;
+var
+  mRun: TProjectRun;
+  mNode: TAtlasTestNode;
+begin
+  Result := Default(TAtlasTestStatusInput);
+  Result.Busy := FTests.Busy;
+  Result.Stale := -1;
+  if FResults.TryGetValue(KeyOf(AProject), mRun) then
+  begin
+    Result.Cases := mRun.Cases;
+    Result.LastRun := mRun.At;
+    Result.DurationMs := mRun.DurationMs;
+  end;
+  if (KeyOf(AProject) <> KeyOf(FProject)) or (Length(FNodes) = 0) then
+  begin
+    Exit;
+  end;
+  Result.Stale := 0;
+  for mNode in FNodes do
+  begin
+    if (mNode.Kind = TAtlasTestNodeKind.Test) and (TAtlasTestExplorer.StateOf(mNode) = TAtlasTestNodeState.Stale) then
+    begin
+      Inc(Result.Stale);
+    end;
   end;
 end;
 

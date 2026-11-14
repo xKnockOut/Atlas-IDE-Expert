@@ -139,19 +139,6 @@ begin
   end;
 end;
 
-class function TAtlasDebugWaits.Matches(const ARoutine, APattern: string): Boolean;
-var
-  mStart: Integer;
-begin
-  if (APattern = '') or (Length(ARoutine) < Length(APattern)) then
-  begin
-    Exit(False);
-  end;
-  mStart := Length(ARoutine) - Length(APattern) + 1;
-  Result := SameText(Copy(ARoutine, mStart, Length(APattern)), APattern) and
-    ((mStart = 1) or (ARoutine[mStart - 1] = '.'));
-end;
-
 class function TAtlasDebugWaits.KindOf(const ARoutine: string): TAtlasDebugWaitKind;
 var
   mEntry: string;
@@ -190,6 +177,19 @@ begin
       Result.Routine := AStack.Frames[mIndex].Routine;
     end;
   end;
+end;
+
+class function TAtlasDebugWaits.Matches(const ARoutine, APattern: string): Boolean;
+var
+  mStart: Integer;
+begin
+  if (APattern = '') or (Length(ARoutine) < Length(APattern)) then
+  begin
+    Exit(False);
+  end;
+  mStart := Length(ARoutine) - Length(APattern) + 1;
+  Result := SameText(Copy(ARoutine, mStart, Length(APattern)), APattern) and
+    ((mStart = 1) or (ARoutine[mStart - 1] = '.'));
 end;
 
 class function TAtlasDebugWaits.MainIndex(const AStacks: TAtlasDebugThreadStacks): Integer;

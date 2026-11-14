@@ -121,40 +121,6 @@ begin
   FDisk := FDiskFactory(mHooks);
 end;
 
-class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;
-begin
-  Result := nil;
-  if AProject <> '' then
-  begin
-    Supports(TAtlasIdeFiles.ProjectModule(AProject), IOTAProject, Result);
-  end;
-end;
-
-function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  if not TAtlasIdeFiles.IsProjectFile(AFileName) then
-  begin
-    mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
-    if mBuffer <> nil then
-    begin
-      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
-      AContent.Text := TAtlasEditorBuffer.Text(mBuffer);
-      Exit(True);
-    end;
-    // Formular im Designer: der Stand des Designers, nicht die Datei.
-    if TAtlasIdeForms.CurrentText(AFileName, mText) then
-    begin
-      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
-      AContent.Text := mText;
-      Exit(True);
-    end;
-  end;
-  Result := FDisk.Read(AFileName, AContent);
-end;
-
 class procedure TAtlasIdeUndoTarget.WriteBuffer(const ABuffer: IOTAEditBuffer; const AOld, ANew: string);
 var
   mChange: TLspTextChange;
@@ -175,6 +141,32 @@ begin
   mWriter := nil;
   // Eigener Schreibvorgang: gemeinsamen Pufferstand verwerfen.
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+end;
+
+class function TAtlasIdeUndoTarget.ProjectOf(const AProject: string): IOTAProject;
+begin
+  Result := nil;
+  if AProject <> '' then
+  begin
+    Supports(TAtlasIdeFiles.ProjectModule(AProject), IOTAProject, Result);
+  end;
+end;
+
+class procedure TAtlasIdeUndoTarget.CloseFile(const AFileName: string);
+var
+  mServices: IOTAModuleServices;
+  mModule: IOTAModule;
+begin
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  mModule := mServices.FindModule(AFileName);
+  // Inhalt ist geprüft (genau der Stand nach der Aktion); ohne Rückfrage schließen.
+  if mModule <> nil then
+  begin
+    mModule.CloseModule(True);
+  end;
 end;
 
 /// <summary>Projektdatei: nie als Text; ungespeicherte Projektänderungen nicht verwerfen.</summary>
@@ -220,6 +212,31 @@ begin
   end;
 end;
 
+function TAtlasIdeUndoTarget.Read(const AFileName: string; out AContent: TAtlasTextFileContent): Boolean;
+var
+  mBuffer: IOTAEditBuffer;
+  mText: string;
+begin
+  if not TAtlasIdeFiles.IsProjectFile(AFileName) then
+  begin
+    mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+    if mBuffer <> nil then
+    begin
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
+      AContent.Text := TAtlasEditorBuffer.Text(mBuffer);
+      Exit(True);
+    end;
+    // Formular im Designer: der Stand des Designers, nicht die Datei.
+    if TAtlasIdeForms.CurrentText(AFileName, mText) then
+    begin
+      AContent := TAtlasIdeFiles.DiskEncoding(AFileName);
+      AContent.Text := mText;
+      Exit(True);
+    end;
+  end;
+  Result := FDisk.Read(AFileName, AContent);
+end;
+
 procedure TAtlasIdeUndoTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
 var
   mBuffer: IOTAEditBuffer;
@@ -247,23 +264,6 @@ end;
 procedure TAtlasIdeUndoTarget.CreateFile(const AFileName, AProject: string; const AContent: TAtlasTextFileContent);
 begin
   FDisk.CreateFile(AFileName, AProject, AContent);
-end;
-
-class procedure TAtlasIdeUndoTarget.CloseFile(const AFileName: string);
-var
-  mServices: IOTAModuleServices;
-  mModule: IOTAModule;
-begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mModule := mServices.FindModule(AFileName);
-  // Inhalt ist geprüft (genau der Stand nach der Aktion); ohne Rückfrage schließen.
-  if mModule <> nil then
-  begin
-    mModule.CloseModule(True);
-  end;
 end;
 
 procedure TAtlasIdeUndoTarget.RemoveFile(const AFileName, AProject: string; AMode: TAtlasNewFilesMode);

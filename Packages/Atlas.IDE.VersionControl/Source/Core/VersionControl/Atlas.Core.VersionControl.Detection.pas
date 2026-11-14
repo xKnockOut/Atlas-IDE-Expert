@@ -33,6 +33,8 @@ implementation
 uses
   Atlas.Core.VersionControl.Internals.Text;
 
+{ TAtlasVcsDetection }
+
 class function TAtlasVcsDetection.Find(const AFolder: string; AProvider: TAtlasVcsProvider;
   const ADirExists, AFileExists: TAtlasVcsPathExists): TAtlasVcsWorkingCopy;
 var
@@ -67,11 +69,6 @@ begin
   end;
 end;
 
-class function TAtlasVcsDetection.RelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
-begin
-  Result := VcsRelativePath(ARoot, AFileName, ARelative);
-end;
-
 class function TAtlasVcsDetection.Find(const AFolder: string; AProvider: TAtlasVcsProvider): TAtlasVcsWorkingCopy;
 begin
   if Trim(AFolder) = '' then
@@ -87,6 +84,11 @@ begin
     begin
       Result := FileExists(APath);
     end);
+end;
+
+class function TAtlasVcsDetection.RelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
+begin
+  Result := VcsRelativePath(ARoot, AFileName, ARelative);
 end;
 
 end.

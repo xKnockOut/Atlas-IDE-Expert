@@ -213,6 +213,21 @@ begin
   inherited;
 end;
 
+procedure TFormMatch.CollectObjects(AObject: TDfmObject; AInFrame: Boolean);
+var
+  mChild: TDfmObject;
+begin
+  if (AObject <> FDocument.Root) and not AInFrame and (AObject.Name <> '') and
+    (AObject.Kind in [TDfmObjectKind.Object_, TDfmObjectKind.Inline_]) then
+  begin
+    FObjects.Add(AObject);
+  end;
+  for mChild in AObject.Children do
+  begin
+    CollectObjects(mChild, AInFrame or ((AObject <> FDocument.Root) and (AObject.Kind = TDfmObjectKind.Inline_)));
+  end;
+end;
+
 // Iterativ (tiefe Bäume sprengen den Stapel nicht).
 function TFormMatch.FindClass(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
@@ -248,21 +263,6 @@ begin
     end;
   finally
     mPending.Free;
-  end;
-end;
-
-procedure TFormMatch.CollectObjects(AObject: TDfmObject; AInFrame: Boolean);
-var
-  mChild: TDfmObject;
-begin
-  if (AObject <> FDocument.Root) and not AInFrame and (AObject.Name <> '') and
-    (AObject.Kind in [TDfmObjectKind.Object_, TDfmObjectKind.Inline_]) then
-  begin
-    FObjects.Add(AObject);
-  end;
-  for mChild in AObject.Children do
-  begin
-    CollectObjects(mChild, AInFrame or ((AObject <> FDocument.Root) and (AObject.Kind = TDfmObjectKind.Inline_)));
   end;
 end;
 
@@ -502,83 +502,6 @@ function TFormAccessBeforeCreateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('form-access-before-create', TRuleSeverity.Warning,
     cTexts[TFormFieldsText.NotCreatedTitle].Text);
-end;
-
-class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;
-var
-  mTokens: TArray<TPascalToken>;
-  mCode: TArray<Integer>;
-  mIndex, mPosition: Integer;
-
-  function IsText(APosition: Integer; const AText: string): Boolean;
-  begin
-    Result := (APosition <= High(mCode)) and SameText(mTokens[mCode[APosition]].Text, AText);
-  end;
-
-  /// <summary>Steht ab APosition "Application.CreateForm(Klasse, Name)" mit einem Bezeichner als Name?</summary>
-  function IsCreateForm(APosition: Integer): Boolean;
-  begin
-    Result := IsText(APosition, 'Application') and IsText(APosition + 1, '.') and
-      IsText(APosition + 2, 'CreateForm') and IsText(APosition + 3, '(');
-    Result := Result and IsText(APosition + 5, ',') and IsText(APosition + 7, ')') and
-      (mTokens[mCode[APosition + 6]].Kind = TPascalTokenKind.Identifier);
-  end;
-
-begin
-  Result := nil;
-  mTokens := TPascalLexer.Tokenize(AMainSource);
-  mCode := nil;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      mCode := mCode + [mIndex];
-    end;
-  end;
-  // Application.CreateForm(TfrmHaupt, frmHaupt);
-  for mPosition := 0 to High(mCode) - 7 do
-  begin
-    if IsCreateForm(mPosition) then
-    begin
-      Result := Result + [mTokens[mCode[mPosition + 6]].Text];
-    end;
-  end;
-end;
-
-class function TFormAccessBeforeCreateRule.FormsOfProgram(const APrograms: TArray<string>;
-  const AUnitName: string): TArray<string>;
-var
-  mMain: string;
-begin
-  for mMain in APrograms do
-  begin
-    if MatchText(AUnitName, TUsesClauses.UsedUnitsOf(mMain)) then
-    begin
-      Exit(AutoCreatedForms(mMain));
-    end;
-  end;
-  Result := nil;
-end;
-
-class function TFormAccessBeforeCreateRule.CreateHandler(const AFormText: string): string;
-var
-  mLine, mText: string;
-begin
-  // OnCreate des Formulars bzw. Datenmoduls selbst: vor dem ersten eingerückten object.
-  for mLine in TTextLines.SplitLines(AFormText) do
-  begin
-    mText := Trim(mLine);
-    if (mLine <> TrimLeft(mLine)) and (StartsText('object ', mText) or StartsText('inherited ', mText) or
-      StartsText('inline ', mText)) then
-    begin
-      Break;
-    end;
-    if StartsText('OnCreate = ', mText) then
-    begin
-      Exit(Trim(Copy(mText, Length('OnCreate = ') + 1, MaxInt)));
-    end;
-  end;
-  Result := '';
 end;
 
 procedure TFormAccessBeforeCreateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -848,6 +771,83 @@ begin
       CheckRoutine(mRoutine);
     end;
   end;
+end;
+
+class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;
+var
+  mTokens: TArray<TPascalToken>;
+  mCode: TArray<Integer>;
+  mIndex, mPosition: Integer;
+
+  function IsText(APosition: Integer; const AText: string): Boolean;
+  begin
+    Result := (APosition <= High(mCode)) and SameText(mTokens[mCode[APosition]].Text, AText);
+  end;
+
+  /// <summary>Steht ab APosition "Application.CreateForm(Klasse, Name)" mit einem Bezeichner als Name?</summary>
+  function IsCreateForm(APosition: Integer): Boolean;
+  begin
+    Result := IsText(APosition, 'Application') and IsText(APosition + 1, '.') and
+      IsText(APosition + 2, 'CreateForm') and IsText(APosition + 3, '(');
+    Result := Result and IsText(APosition + 5, ',') and IsText(APosition + 7, ')') and
+      (mTokens[mCode[APosition + 6]].Kind = TPascalTokenKind.Identifier);
+  end;
+
+begin
+  Result := nil;
+  mTokens := TPascalLexer.Tokenize(AMainSource);
+  mCode := nil;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      mCode := mCode + [mIndex];
+    end;
+  end;
+  // Application.CreateForm(TfrmHaupt, frmHaupt);
+  for mPosition := 0 to High(mCode) - 7 do
+  begin
+    if IsCreateForm(mPosition) then
+    begin
+      Result := Result + [mTokens[mCode[mPosition + 6]].Text];
+    end;
+  end;
+end;
+
+class function TFormAccessBeforeCreateRule.FormsOfProgram(const APrograms: TArray<string>;
+  const AUnitName: string): TArray<string>;
+var
+  mMain: string;
+begin
+  for mMain in APrograms do
+  begin
+    if MatchText(AUnitName, TUsesClauses.UsedUnitsOf(mMain)) then
+    begin
+      Exit(AutoCreatedForms(mMain));
+    end;
+  end;
+  Result := nil;
+end;
+
+class function TFormAccessBeforeCreateRule.CreateHandler(const AFormText: string): string;
+var
+  mLine, mText: string;
+begin
+  // OnCreate des Formulars bzw. Datenmoduls selbst: vor dem ersten eingerückten object.
+  for mLine in TTextLines.SplitLines(AFormText) do
+  begin
+    mText := Trim(mLine);
+    if (mLine <> TrimLeft(mLine)) and (StartsText('object ', mText) or StartsText('inherited ', mText) or
+      StartsText('inline ', mText)) then
+    begin
+      Break;
+    end;
+    if StartsText('OnCreate = ', mText) then
+    begin
+      Exit(Trim(Copy(mText, Length('OnCreate = ') + 1, MaxInt)));
+    end;
+  end;
+  Result := '';
 end;
 
 procedure RegisterFormFieldRules(const ARegistry: TRuleRegistry);

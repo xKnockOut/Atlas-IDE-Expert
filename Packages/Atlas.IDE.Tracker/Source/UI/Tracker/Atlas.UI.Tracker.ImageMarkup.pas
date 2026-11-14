@@ -215,66 +215,6 @@ begin
   UpdateButtons;
 end;
 
-/// <summary>Leiste oben: Werkzeuge und „Rückgängig“.</summary>
-procedure TAtlasImageMarkupForm.AddToolBar;
-const
-  cToolText: array[TAtlasMarkupTool] of TAtlasAttachTextId = (TAtlasAttachTextId.AttachMarkupRectangle,
-    TAtlasAttachTextId.AttachMarkupArrow, TAtlasAttachTextId.AttachMarkupBlacken);
-var
-  mTop: TPanel;
-  mTool: TAtlasMarkupTool;
-  mLeft: Integer;
-begin
-  mTop := TPanel.Create(Self);
-  mTop.Parent := Self;
-  mTop.Align := alTop;
-  mTop.Height := mTop.ScaleValue(40);
-  mTop.BevelOuter := bvNone;
-  mLeft := cGap;
-  for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
-  begin
-    FToolButtons[mTool] := TButton.Create(Self);
-    FToolButtons[mTool].Parent := mTop;
-    FToolButtons[mTool].SetBounds(mLeft, 6, 110, 28);
-    FToolButtons[mTool].Caption := TAtlasAttachStrings.Text(cToolText[mTool]);
-    FToolButtons[mTool].Tag := Ord(mTool);
-    FToolButtons[mTool].OnClick := ToolClick;
-    Inc(mLeft, 110 + cGap div 2);
-  end;
-  FUndo := TButton.Create(Self);
-  FUndo.Parent := mTop;
-  FUndo.SetBounds(mLeft + cGap, 6, 110, 28);
-  FUndo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupUndo);
-  FUndo.OnClick := UndoClick;
-end;
-
-/// <summary>Leiste unten: „Übernehmen“ und „Abbrechen“.</summary>
-procedure TAtlasImageMarkupForm.AddBottomButtons;
-var
-  mBottom: TPanel;
-  mButton: TButton;
-begin
-  mBottom := TPanel.Create(Self);
-  mBottom.Parent := Self;
-  mBottom.Align := alBottom;
-  mBottom.Height := mBottom.ScaleValue(44);
-  mBottom.BevelOuter := bvNone;
-  mButton := TButton.Create(Self);
-  mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (110 + cGap), 8, 110, 28);
-  mButton.Anchors := [akTop, akRight];
-  mButton.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupApply);
-  mButton.Default := True;
-  mButton.ModalResult := mrOk;
-  mButton := TButton.Create(Self);
-  mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (110 + cGap), 8, 110, 28);
-  mButton.Anchors := [akTop, akRight];
-  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
-  mButton.Cancel := True;
-  mButton.ModalResult := mrCancel;
-end;
-
 destructor TAtlasImageMarkupForm.Destroy;
 begin
   FBitmap.Free;
@@ -282,20 +222,16 @@ begin
   inherited;
 end;
 
-class function TAtlasImageMarkupForm.Execute(ABitmap: TBitmap): Boolean;
-var
-  mForm: TAtlasImageMarkupForm;
+procedure TAtlasImageMarkupForm.KeyDown(var Key: Word; Shift: TShiftState);
 begin
-  mForm := TAtlasImageMarkupForm.CreateFor(nil, ABitmap);
-  try
-    Result := (mForm.ShowModal = mrOk) and (Length(mForm.Shapes) > 0);
-    if Result then
-    begin
-      mForm.ApplyTo(ABitmap);
-    end;
-  finally
-    mForm.Free;
+  // Strg+Z nimmt die letzte Form zurück.
+  if (Key = Ord('Z')) and (ssCtrl in Shift) then
+  begin
+    Undo;
+    Key := 0;
+    Exit;
   end;
+  inherited;
 end;
 
 function TAtlasImageMarkupForm.Scale: Double;
@@ -371,31 +307,6 @@ begin
   AddShape(FDrag);
 end;
 
-procedure TAtlasImageMarkupForm.AddShape(const AShape: TAtlasMarkupShape);
-begin
-  if not AShape.Tiny then
-  begin
-    FShapes := FShapes + [AShape];
-  end;
-  UpdateButtons;
-  FBox.Invalidate;
-end;
-
-procedure TAtlasImageMarkupForm.Undo;
-begin
-  if Length(FShapes) > 0 then
-  begin
-    SetLength(FShapes, Length(FShapes) - 1);
-  end;
-  UpdateButtons;
-  FBox.Invalidate;
-end;
-
-procedure TAtlasImageMarkupForm.ApplyTo(ABitmap: TBitmap);
-begin
-  TAtlasImageMarkup.Apply(ABitmap, FShapes);
-end;
-
 procedure TAtlasImageMarkupForm.ToolClick(Sender: TObject);
 begin
   FTool := TAtlasMarkupTool((Sender as TButton).Tag);
@@ -426,16 +337,105 @@ begin
   FUndo.Enabled := Length(FShapes) > 0;
 end;
 
-procedure TAtlasImageMarkupForm.KeyDown(var Key: Word; Shift: TShiftState);
+/// <summary>Leiste oben: Werkzeuge und „Rückgängig“.</summary>
+procedure TAtlasImageMarkupForm.AddToolBar;
+const
+  cToolText: array[TAtlasMarkupTool] of TAtlasAttachTextId = (TAtlasAttachTextId.AttachMarkupRectangle,
+    TAtlasAttachTextId.AttachMarkupArrow, TAtlasAttachTextId.AttachMarkupBlacken);
+var
+  mTop: TPanel;
+  mTool: TAtlasMarkupTool;
+  mLeft: Integer;
 begin
-  // Strg+Z nimmt die letzte Form zurück.
-  if (Key = Ord('Z')) and (ssCtrl in Shift) then
+  mTop := TPanel.Create(Self);
+  mTop.Parent := Self;
+  mTop.Align := alTop;
+  mTop.Height := mTop.ScaleValue(40);
+  mTop.BevelOuter := bvNone;
+  mLeft := cGap;
+  for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
   begin
-    Undo;
-    Key := 0;
-    Exit;
+    FToolButtons[mTool] := TButton.Create(Self);
+    FToolButtons[mTool].Parent := mTop;
+    FToolButtons[mTool].SetBounds(mLeft, 6, 110, 28);
+    FToolButtons[mTool].Caption := TAtlasAttachStrings.Text(cToolText[mTool]);
+    FToolButtons[mTool].Tag := Ord(mTool);
+    FToolButtons[mTool].OnClick := ToolClick;
+    Inc(mLeft, 110 + cGap div 2);
   end;
-  inherited;
+  FUndo := TButton.Create(Self);
+  FUndo.Parent := mTop;
+  FUndo.SetBounds(mLeft + cGap, 6, 110, 28);
+  FUndo.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupUndo);
+  FUndo.OnClick := UndoClick;
+end;
+
+/// <summary>Leiste unten: „Übernehmen“ und „Abbrechen“.</summary>
+procedure TAtlasImageMarkupForm.AddBottomButtons;
+var
+  mBottom: TPanel;
+  mButton: TButton;
+begin
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.Height := mBottom.ScaleValue(44);
+  mBottom.BevelOuter := bvNone;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mBottom;
+  mButton.SetBounds(mBottom.Width - 2 * (110 + cGap), 8, 110, 28);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Caption := TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachMarkupApply);
+  mButton.Default := True;
+  mButton.ModalResult := mrOk;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mBottom;
+  mButton.SetBounds(mBottom.Width - (110 + cGap), 8, 110, 28);
+  mButton.Anchors := [akTop, akRight];
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
+  mButton.Cancel := True;
+  mButton.ModalResult := mrCancel;
+end;
+
+procedure TAtlasImageMarkupForm.AddShape(const AShape: TAtlasMarkupShape);
+begin
+  if not AShape.Tiny then
+  begin
+    FShapes := FShapes + [AShape];
+  end;
+  UpdateButtons;
+  FBox.Invalidate;
+end;
+
+procedure TAtlasImageMarkupForm.Undo;
+begin
+  if Length(FShapes) > 0 then
+  begin
+    SetLength(FShapes, Length(FShapes) - 1);
+  end;
+  UpdateButtons;
+  FBox.Invalidate;
+end;
+
+procedure TAtlasImageMarkupForm.ApplyTo(ABitmap: TBitmap);
+begin
+  TAtlasImageMarkup.Apply(ABitmap, FShapes);
+end;
+
+class function TAtlasImageMarkupForm.Execute(ABitmap: TBitmap): Boolean;
+var
+  mForm: TAtlasImageMarkupForm;
+begin
+  mForm := TAtlasImageMarkupForm.CreateFor(nil, ABitmap);
+  try
+    Result := (mForm.ShowModal = mrOk) and (Length(mForm.Shapes) > 0);
+    if Result then
+    begin
+      mForm.ApplyTo(ABitmap);
+    end;
+  finally
+    mForm.Free;
+  end;
 end;
 
 end.

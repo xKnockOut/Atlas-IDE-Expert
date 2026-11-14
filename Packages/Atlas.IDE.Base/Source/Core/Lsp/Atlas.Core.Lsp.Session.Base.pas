@@ -271,22 +271,7 @@ begin
     end;
 end;
 
-procedure TLspSessionBase.AttachClientHandlers;
-begin
-  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FEvents.OnShowMessage,
-    FEvents.OnAtlasNotification);
-  if Assigned(FEvents.OnApplyEdit) then
-  begin
-    FClient.OnServerRequest := ApplyEditRequestHandler(FEvents.OnApplyEdit, FClient);
-  end;
-end;
-
 { TLspSessionBase }
-
-constructor TLspSessionBase.Create(AClient: TLspClient);
-begin
-  Create(AClient, 3000);
-end;
 
 constructor TLspSessionBase.Create(AClient: TLspClient; ATimeoutMs: Cardinal);
 begin
@@ -300,52 +285,19 @@ begin
   FProgress := TLspProgress.Create;
 end;
 
+{ TLspSessionBase }
+
+constructor TLspSessionBase.Create(AClient: TLspClient);
+begin
+  Create(AClient, 3000);
+end;
+
 destructor TLspSessionBase.Destroy;
 begin
   FSentContexts.Free;
   FDocuments.Free;
   FDocLock.Free;
   inherited;
-end;
-
-procedure TLspSessionBase.Initialize;
-var
-  mParams: TJSONObject;
-  mContext: TAtlasProjectContext;
-  mResponse: TJSONValue;
-begin
-  mParams := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FEvents.OnApplyEdit),
-    FInitializeOptions.Locale);
-  // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
-  for mContext in FContexts do
-  begin
-    FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
-  end;
-  // Empfänger vor initialize setzen: Der Server darf gleich danach Nachrichten schicken.
-  AttachClientHandlers;
-  // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
-  // außerhalb der gemeldeten Projekte.
-  mResponse := FClient.Request('initialize', mParams, 15000);
-  try
-    if mResponse is TJSONObject then
-    begin
-      FServerVersion := TJSONObject(mResponse).GetValue<string>('serverInfo.version', '');
-    end;
-  finally
-    mResponse.Free;
-  end;
-  FClient.Notify('initialized', TJSONObject.Create);
-  FInitialized := True;
-end;
-
-procedure TLspSessionBase.Sync(const AFileName, AText: string);
-begin
-  TMonitor.Enter(FDocLock);
-  try
-    SyncLocked(AFileName, AText);
-  finally
-    TMonitor.Exit(FDocLock);
-  end;
 end;
 
 procedure TLspSessionBase.SyncLocked(const AFileName, AText: string);
@@ -399,12 +351,27 @@ begin
   FClient.Notify('textDocument/didChange', mParams);
 end;
 
-function TLspSessionBase.TimeoutOr(ATimeoutMs: Cardinal): Cardinal;
+procedure TLspSessionBase.CloseLocked(const AFileName: string);
+var
+  mKey: string;
 begin
-  Result := FTimeoutMs;
-  if ATimeoutMs > 0 then
+  mKey := AnsiLowerCase(AFileName);
+  if not FDocuments.ContainsKey(mKey) then
   begin
-    Result := ATimeoutMs;
+    Exit;
+  end;
+  FDocuments.Remove(mKey);
+  FClient.Notify('textDocument/didClose', TJSONObject.Create(TJSONPair.Create('textDocument',
+    TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
+end;
+
+procedure TLspSessionBase.AttachClientHandlers;
+begin
+  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FEvents.OnShowMessage,
+    FEvents.OnAtlasNotification);
+  if Assigned(FEvents.OnApplyEdit) then
+  begin
+    FClient.OnServerRequest := ApplyEditRequestHandler(FEvents.OnApplyEdit, FClient);
   end;
 end;
 
@@ -420,11 +387,106 @@ begin
   Result.AddPair('position', mPosition);
 end;
 
+function TLspSessionBase.TimeoutOr(ATimeoutMs: Cardinal): Cardinal;
+begin
+  Result := FTimeoutMs;
+  if ATimeoutMs > 0 then
+  begin
+    Result := ATimeoutMs;
+  end;
+end;
+
 function TLspSessionBase.IsSynced(const AFileName: string): Boolean;
 begin
   TMonitor.Enter(FDocLock);
   try
     Result := FDocuments.ContainsKey(AnsiLowerCase(AFileName));
+  finally
+    TMonitor.Exit(FDocLock);
+  end;
+end;
+
+procedure TLspSessionBase.SetProjects(const AProjects: TArray<string>);
+var
+  mAdded, mRemoved: TArray<string>;
+begin
+  if not FInitialized then
+  begin
+    FProjects := AProjects;
+    Exit;
+  end;
+  ProjectChanges(FProjects, AProjects, mAdded, mRemoved);
+  FProjects := AProjects;
+  if (Length(mAdded) = 0) and (Length(mRemoved) = 0) then
+  begin
+    Exit;
+  end;
+  if Length(mRemoved) > 0 then
+  begin
+    Inc(FProjectsRemoved);
+  end;
+  FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
+    TJSONObject.Create.AddPair('added', ProjectFolders(mAdded)).AddPair('removed', ProjectFolders(mRemoved)))));
+end;
+
+function TLspSessionBase.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>):
+  TArray<TAtlasProjectContext>;
+var
+  mContext: TAtlasProjectContext;
+  mKnown: string;
+begin
+  Result := nil;
+  if not FInitialized then
+  begin
+    FContexts := AContexts;
+    Exit(AContexts);
+  end;
+  for mContext in AContexts do
+  begin
+    if not FSentContexts.TryGetValue(AnsiUpperCase(mContext.Project), mKnown) or (mKnown <> mContext.Key) then
+    begin
+      FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
+      FClient.Notify('atlas/projectContext', mContext.ToJson);
+      Result := Result + [mContext];
+    end;
+  end;
+end;
+
+procedure TLspSessionBase.Initialize;
+var
+  mParams: TJSONObject;
+  mContext: TAtlasProjectContext;
+  mResponse: TJSONValue;
+begin
+  mParams := InitializeParams(FProjects, FInitializeOptions.Settings, FContexts, Assigned(FEvents.OnApplyEdit),
+    FInitializeOptions.Locale);
+  // Gesendete Kontexte merken: SetProjectContexts schickt danach nur neue oder geänderte (#396).
+  for mContext in FContexts do
+  begin
+    FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
+  end;
+  // Empfänger vor initialize setzen: Der Server darf gleich danach Nachrichten schicken.
+  AttachClientHandlers;
+  // Ohne Arbeitsbereich leitet der Server ihn aus den geöffneten Dateien ab, ebenso für Dateien
+  // außerhalb der gemeldeten Projekte.
+  mResponse := FClient.Request('initialize', mParams, 15000);
+  try
+    if mResponse is TJSONObject then
+    begin
+      FServerVersion := TJSONObject(mResponse).GetValue<string>('serverInfo.version', '');
+    end;
+  finally
+    mResponse.Free;
+  end;
+  FClient.Notify('initialized', TJSONObject.Create);
+  FInitialized := True;
+end;
+
+procedure TLspSessionBase.Sync(const AFileName, AText: string);
+begin
+  TMonitor.Enter(FDocLock);
+  try
+    SyncLocked(AFileName, AText);
   finally
     TMonitor.Exit(FDocLock);
   end;
@@ -438,20 +500,6 @@ begin
   finally
     TMonitor.Exit(FDocLock);
   end;
-end;
-
-procedure TLspSessionBase.CloseLocked(const AFileName: string);
-var
-  mKey: string;
-begin
-  mKey := AnsiLowerCase(AFileName);
-  if not FDocuments.ContainsKey(mKey) then
-  begin
-    Exit;
-  end;
-  FDocuments.Remove(mKey);
-  FClient.Notify('textDocument/didClose', TJSONObject.Create(TJSONPair.Create('textDocument',
-    TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))))));
 end;
 
 function TLspSessionBase.SyncedFiles: TArray<string>;
@@ -513,52 +561,6 @@ begin
     if not FDocuments.ContainsKey(AnsiLowerCase(mDocument.FileName)) then
     begin
       Sync(mDocument.FileName, mDocument.Text);
-    end;
-  end;
-end;
-
-procedure TLspSessionBase.SetProjects(const AProjects: TArray<string>);
-var
-  mAdded, mRemoved: TArray<string>;
-begin
-  if not FInitialized then
-  begin
-    FProjects := AProjects;
-    Exit;
-  end;
-  ProjectChanges(FProjects, AProjects, mAdded, mRemoved);
-  FProjects := AProjects;
-  if (Length(mAdded) = 0) and (Length(mRemoved) = 0) then
-  begin
-    Exit;
-  end;
-  if Length(mRemoved) > 0 then
-  begin
-    Inc(FProjectsRemoved);
-  end;
-  FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
-    TJSONObject.Create.AddPair('added', ProjectFolders(mAdded)).AddPair('removed', ProjectFolders(mRemoved)))));
-end;
-
-function TLspSessionBase.SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>):
-  TArray<TAtlasProjectContext>;
-var
-  mContext: TAtlasProjectContext;
-  mKnown: string;
-begin
-  Result := nil;
-  if not FInitialized then
-  begin
-    FContexts := AContexts;
-    Exit(AContexts);
-  end;
-  for mContext in AContexts do
-  begin
-    if not FSentContexts.TryGetValue(AnsiUpperCase(mContext.Project), mKnown) or (mKnown <> mContext.Key) then
-    begin
-      FSentContexts.AddOrSetValue(AnsiUpperCase(mContext.Project), mContext.Key);
-      FClient.Notify('atlas/projectContext', mContext.ToJson);
-      Result := Result + [mContext];
     end;
   end;
 end;

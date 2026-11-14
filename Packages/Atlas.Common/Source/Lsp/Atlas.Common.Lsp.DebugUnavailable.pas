@@ -347,6 +347,8 @@ type
     function Run(const AText: string; AStoppedLine: Integer): TUnavailableFacts;
   end;
 
+{ TFactsCollector }
+
 constructor TFactsCollector.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AName: string);
 begin
   inherited Create;
@@ -577,6 +579,55 @@ begin
   FContextFor := AContextFor;
 end;
 
+function TLspDebugUnavailable.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri, mName, mFileName: string;
+  mPositionValue: TJSONValue;
+  mPosition: TTextPosition;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mContext: TCompilerSwitchContext;
+  mFacts: TUnavailableFacts;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
+    TJSONObject(AParams).TryGetValue<string>('name', mName)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDebugUnavailableText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  ACancellation.ThrowIfCancellationRequested;
+  mPosition := TLspPositions.ReadPosition(mPositionValue);
+  mFileName := TDocumentUris.ToPath(mUri);
+  mContext := Default(TCompilerSwitchContext);
+  if Assigned(FContextFor) then
+  begin
+    mContext := FContextFor(mUri);
+  end;
+  mResolver := nil;
+  if FIndex <> nil then
+  begin
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  end;
+  try
+    mFacts := TLspDebugUnavailable.Facts(mResolver, mShared.Tree, mFileName, mDocument.Text, mName, mPosition.Line);
+  finally
+    mResolver.Free;
+  end;
+  ACancellation.ThrowIfCancellationRequested;
+  Result := ToJson(mFacts, TLspCompilerSwitches.StateAt(mDocument.Text, mPosition, mContext), mFileName);
+end;
+
 procedure TLspDebugUnavailable.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
@@ -638,55 +689,6 @@ begin
     mFixes.AddPair('unitOptimization', TLspApplyEdit.TextEdits(AFileName, AFacts.UnitFix));
   end;
   Result.AddPair('fixes', mFixes);
-end;
-
-function TLspDebugUnavailable.Handle(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri, mName, mFileName: string;
-  mPositionValue: TJSONValue;
-  mPosition: TTextPosition;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mResolver: TNameResolver;
-  mContext: TCompilerSwitchContext;
-  mFacts: TUnavailableFacts;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
-    TJSONObject(AParams).TryGetValue<string>('name', mName)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TDebugUnavailableText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  ACancellation.ThrowIfCancellationRequested;
-  mPosition := TLspPositions.ReadPosition(mPositionValue);
-  mFileName := TDocumentUris.ToPath(mUri);
-  mContext := Default(TCompilerSwitchContext);
-  if Assigned(FContextFor) then
-  begin
-    mContext := FContextFor(mUri);
-  end;
-  mResolver := nil;
-  if FIndex <> nil then
-  begin
-    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  end;
-  try
-    mFacts := TLspDebugUnavailable.Facts(mResolver, mShared.Tree, mFileName, mDocument.Text, mName, mPosition.Line);
-  finally
-    mResolver.Free;
-  end;
-  ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(mFacts, TLspCompilerSwitches.StateAt(mDocument.Text, mPosition, mContext), mFileName);
 end;
 
 initialization

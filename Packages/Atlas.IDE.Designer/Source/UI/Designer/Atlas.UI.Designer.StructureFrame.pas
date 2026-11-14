@@ -328,49 +328,6 @@ begin
   end;
 end;
 
-procedure TAtlasStructureFrame.ShowNodes(const ANodes: TArray<TAtlasStructureNode>;
-  const AImageIndex: TFunc<TAtlasStructureNode, Integer>);
-var
-  mSelected: string;
-  mParents: TArray<TTreeNode>;
-  mIndex: Integer;
-  mNode: TTreeNode;
-begin
-  mSelected := NameOf(FTree.Selected);
-  // Bildliste bei jedem Füllen nach dem Häkchen setzen: SetImages kann vor dem Häkchen kommen, dann blieb der
-  // Baum ohne Bilder (nicht einmal Platz dafür).
-  if FShowImages.Checked then
-  begin
-    FTree.Images := FImages;
-  end;
-  FUpdating := True;
-  FTree.Items.BeginUpdate;
-  try
-    FTree.Items.Clear;
-    FNodes := ANodes;
-    SetLength(mParents, 1);
-    mParents[0] := nil;
-    for mIndex := 0 to High(ANodes) do
-    begin
-      SetLength(mParents, ANodes[mIndex].Level + 2);
-      mNode := FTree.Items.AddChildObject(mParents[ANodes[mIndex].Level], TextOf(ANodes[mIndex]),
-        Pointer(NativeInt(mIndex)));
-      mNode.ImageIndex := -1;
-      if Assigned(AImageIndex) then
-      begin
-        mNode.ImageIndex := AImageIndex(ANodes[mIndex]);
-      end;
-      mNode.SelectedIndex := mNode.ImageIndex;
-      mParents[ANodes[mIndex].Level + 1] := mNode;
-    end;
-    RestoreOpen;
-  finally
-    FTree.Items.EndUpdate;
-    FUpdating := False;
-  end;
-  MarkName(mSelected);
-end;
-
 procedure TAtlasStructureFrame.RestoreOpen;
 var
   mIndex: Integer;
@@ -389,33 +346,6 @@ begin
       mOpen := DefaultOpen(FNodes[NodeOf(mNode)]);
     end;
     mNode.Expanded := mOpen;
-  end;
-end;
-
-procedure TAtlasStructureFrame.MarkName(const AName: string);
-var
-  mIndex: Integer;
-  mNode: TTreeNode;
-begin
-  if SameText(NameOf(FTree.Selected), AName) then
-  begin
-    Exit;
-  end;
-  FUpdating := True;
-  try
-    FTree.Selected := nil;
-    for mIndex := 0 to FTree.Items.Count - 1 do
-    begin
-      mNode := FTree.Items[mIndex];
-      if (AName <> '') and (NodeOf(mNode) >= 0) and (FNodes[NodeOf(mNode)].Kind <> TAtlasStructureNodeKind.Link) and
-        SameText(FNodes[NodeOf(mNode)].Name, AName) then
-      begin
-        FTree.Selected := mNode;
-        Break;
-      end;
-    end;
-  finally
-    FUpdating := False;
   end;
 end;
 
@@ -440,14 +370,6 @@ begin
   end;
 end;
 
-procedure TAtlasStructureFrame.TreeToggled(Sender: TObject; Node: TTreeNode);
-begin
-  if not FUpdating and (NodeOf(Node) >= 0) then
-  begin
-    FOpen.AddOrSetValue(FNodes[NodeOf(Node)].Key, Node.Expanded);
-  end;
-end;
-
 procedure TAtlasStructureFrame.ImagesClick(Sender: TObject);
 begin
   if FShowImages.Checked then
@@ -465,6 +387,14 @@ begin
   if not FUpdating and Assigned(FOnSelect) and (NameOf(Node) <> '') then
   begin
     FOnSelect(NameOf(Node));
+  end;
+end;
+
+procedure TAtlasStructureFrame.TreeToggled(Sender: TObject; Node: TTreeNode);
+begin
+  if not FUpdating and (NodeOf(Node) >= 0) then
+  begin
+    FOpen.AddOrSetValue(FNodes[NodeOf(Node)].Key, Node.Expanded);
   end;
 end;
 
@@ -522,6 +452,76 @@ begin
   if Assigned(FOnDrop) then
   begin
     FOnDrop();
+  end;
+end;
+
+procedure TAtlasStructureFrame.ShowNodes(const ANodes: TArray<TAtlasStructureNode>;
+  const AImageIndex: TFunc<TAtlasStructureNode, Integer>);
+var
+  mSelected: string;
+  mParents: TArray<TTreeNode>;
+  mIndex: Integer;
+  mNode: TTreeNode;
+begin
+  mSelected := NameOf(FTree.Selected);
+  // Bildliste bei jedem Füllen nach dem Häkchen setzen: SetImages kann vor dem Häkchen kommen, dann blieb der
+  // Baum ohne Bilder (nicht einmal Platz dafür).
+  if FShowImages.Checked then
+  begin
+    FTree.Images := FImages;
+  end;
+  FUpdating := True;
+  FTree.Items.BeginUpdate;
+  try
+    FTree.Items.Clear;
+    FNodes := ANodes;
+    SetLength(mParents, 1);
+    mParents[0] := nil;
+    for mIndex := 0 to High(ANodes) do
+    begin
+      SetLength(mParents, ANodes[mIndex].Level + 2);
+      mNode := FTree.Items.AddChildObject(mParents[ANodes[mIndex].Level], TextOf(ANodes[mIndex]),
+        Pointer(NativeInt(mIndex)));
+      mNode.ImageIndex := -1;
+      if Assigned(AImageIndex) then
+      begin
+        mNode.ImageIndex := AImageIndex(ANodes[mIndex]);
+      end;
+      mNode.SelectedIndex := mNode.ImageIndex;
+      mParents[ANodes[mIndex].Level + 1] := mNode;
+    end;
+    RestoreOpen;
+  finally
+    FTree.Items.EndUpdate;
+    FUpdating := False;
+  end;
+  MarkName(mSelected);
+end;
+
+procedure TAtlasStructureFrame.MarkName(const AName: string);
+var
+  mIndex: Integer;
+  mNode: TTreeNode;
+begin
+  if SameText(NameOf(FTree.Selected), AName) then
+  begin
+    Exit;
+  end;
+  FUpdating := True;
+  try
+    FTree.Selected := nil;
+    for mIndex := 0 to FTree.Items.Count - 1 do
+    begin
+      mNode := FTree.Items[mIndex];
+      if (AName <> '') and (NodeOf(mNode) >= 0) and (FNodes[NodeOf(mNode)].Kind <> TAtlasStructureNodeKind.Link) and
+        SameText(FNodes[NodeOf(mNode)].Name, AName) then
+      begin
+        FTree.Selected := mNode;
+        Break;
+      end;
+    end;
+  finally
+    FUpdating := False;
   end;
 end;
 

@@ -96,25 +96,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugFieldRequests.Query(ASession: TLspSession; const AFileName: string; ALine: Integer;
-  const AExpression: string; AWithProperties: Boolean): TArray<string>;
-var
-  mResponse: TJSONValue;
-begin
-  Result := nil;
-  try
-    mResponse := ASession.ExpressionCompletion(AFileName, ALine, AExpression, Length(AExpression), cTimeoutMs);
-    try
-      Result := TAtlasEvalText.FieldsOf(mResponse, AWithProperties);
-    finally
-      mResponse.Free;
-    end;
-  except
-    // Server langsam oder weg: Der Aufrufer zerlegt den Ergebnis-String.
-    Result := nil;
-  end;
-end;
-
 procedure TAtlasIdeDebugFieldRequests.Start(ASession: TLspSession; const AFileName: string; ALine: Integer;
   const AExpression: string; AWithProperties: Boolean; const AArrived: TAtlasDebugFieldsArrived);
 var
@@ -134,6 +115,25 @@ begin
   mWorker.FreeOnTerminate := False;
   FThreads.Add(mWorker);
   mWorker.Start;
+end;
+
+class function TAtlasIdeDebugFieldRequests.Query(ASession: TLspSession; const AFileName: string; ALine: Integer;
+  const AExpression: string; AWithProperties: Boolean): TArray<string>;
+var
+  mResponse: TJSONValue;
+begin
+  Result := nil;
+  try
+    mResponse := ASession.ExpressionCompletion(AFileName, ALine, AExpression, Length(AExpression), cTimeoutMs);
+    try
+      Result := TAtlasEvalText.FieldsOf(mResponse, AWithProperties);
+    finally
+      mResponse.Free;
+    end;
+  except
+    // Server langsam oder weg: Der Aufrufer zerlegt den Ergebnis-String.
+    Result := nil;
+  end;
 end;
 
 end.

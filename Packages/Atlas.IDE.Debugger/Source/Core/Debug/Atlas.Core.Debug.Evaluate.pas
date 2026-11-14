@@ -456,16 +456,6 @@ begin
   end;
 end;
 
-class function TAtlasEvalText.WithFieldNames(const AExpression: string): string;
-begin
-  Result := Trim(AExpression);
-  if (Result = '') or (Length(SplitTop(Result)) > 1) then
-  begin
-    Exit(AExpression);
-  end;
-  Result := Result + ',r';
-end;
-
 class function TAtlasEvalText.FieldExpression(const AExpression, AField: string): string;
 var
   mIndex: Integer;
@@ -489,6 +479,16 @@ begin
   begin
     Result := '(' + AExpression + ').' + AField;
   end;
+end;
+
+class function TAtlasEvalText.WithFieldNames(const AExpression: string): string;
+begin
+  Result := Trim(AExpression);
+  if (Result = '') or (Length(SplitTop(Result)) > 1) then
+  begin
+    Exit(AExpression);
+  end;
+  Result := Result + ',r';
 end;
 
 class function TAtlasEvalText.ExpressionAt(const ALine: string; ACharacter: Integer): string;
@@ -827,6 +827,43 @@ begin
   Result := FRoots[AIndex];
 end;
 
+procedure TAtlasEvalList.CollectPending(ANode: TAtlasEvalNode; AList: TList<TAtlasEvalNode>);
+var
+  mIndex: Integer;
+begin
+  if (ANode.Expression <> '') and (ANode.State = TAtlasEvalState.Pending) then
+  begin
+    AList.Add(ANode);
+  end;
+  if ANode.Expanded then
+  begin
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      CollectPending(ANode.Children[mIndex], AList);
+    end;
+  end;
+end;
+
+procedure TAtlasEvalList.Restart(ANode: TAtlasEvalNode);
+var
+  mIndex: Integer;
+begin
+  if ANode.FromParts then
+  begin
+    // Teile entstehen aus dem neuen Wert des Elternknotens neu; aufgeklappt bleibt er.
+    ANode.ClearChildren;
+  end;
+  if ANode.Expression <> '' then
+  begin
+    ANode.State := TAtlasEvalState.Pending;
+    ANode.Changed := False;
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    Restart(ANode.Children[mIndex]);
+  end;
+end;
+
 function TAtlasEvalList.Add(const AExpression: string): TAtlasEvalNode;
 var
   mExpression: string;
@@ -919,26 +956,6 @@ end;
 function TAtlasEvalList.IndexOf(ANode: TAtlasEvalNode): Integer;
 begin
   Result := FRoots.IndexOf(ANode);
-end;
-
-procedure TAtlasEvalList.Restart(ANode: TAtlasEvalNode);
-var
-  mIndex: Integer;
-begin
-  if ANode.FromParts then
-  begin
-    // Teile entstehen aus dem neuen Wert des Elternknotens neu; aufgeklappt bleibt er.
-    ANode.ClearChildren;
-  end;
-  if ANode.Expression <> '' then
-  begin
-    ANode.State := TAtlasEvalState.Pending;
-    ANode.Changed := False;
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    Restart(ANode.Children[mIndex]);
-  end;
 end;
 
 procedure TAtlasEvalList.BeginStop;
@@ -1039,23 +1056,6 @@ begin
   end;
   ANode.ChildrenLoaded := True;
   ANode.FromParts := True;
-end;
-
-procedure TAtlasEvalList.CollectPending(ANode: TAtlasEvalNode; AList: TList<TAtlasEvalNode>);
-var
-  mIndex: Integer;
-begin
-  if (ANode.Expression <> '') and (ANode.State = TAtlasEvalState.Pending) then
-  begin
-    AList.Add(ANode);
-  end;
-  if ANode.Expanded then
-  begin
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      CollectPending(ANode.Children[mIndex], AList);
-    end;
-  end;
 end;
 
 function TAtlasEvalList.Pending: TArray<TAtlasEvalNode>;

@@ -187,6 +187,8 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+{ TUnresolvedIdentifierRule }
+
 function TUnresolvedIdentifierRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unresolved-identifier', TRuleSeverity.Warning,
@@ -375,6 +377,8 @@ type
     function Scan: TArray<TUsesListEntry>;
   end;
 
+{ TUsesEntryDraft }
+
 procedure TUsesEntryDraft.Reset;
 begin
   Name := '';
@@ -383,6 +387,8 @@ begin
   Last := -1;
   AfterIn := False;
 end;
+
+{ TUsesListScanner }
 
 constructor TUsesListScanner.Create(const ATokens: TArray<TPascalToken>);
 begin
@@ -874,6 +880,8 @@ type
     procedure Run;
   end;
 
+{ TUsesUnitCheck }
+
 constructor TUsesUnitCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -1072,6 +1080,8 @@ const
     'TestCaseProvider', 'TestInOwnThread', 'IgnoreMemoryLeaks', 'AutoNameTestCase');
   cDUnitXUnit = 'DUnitX.TestFramework';
 
+{ TUnresolvedAttributeRule }
+
 function TUnresolvedAttributeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unresolved-attribute', TRuleSeverity.Error,
@@ -1199,6 +1209,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
+
+{ TUnresolvedAttributeCheck }
 
 constructor TUnresolvedAttributeCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
@@ -1398,6 +1410,8 @@ begin
   end;
 end;
 
+{ TUnresolvedTypeRule }
+
 function TUnresolvedTypeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unresolved-type', TRuleSeverity.Error, cTexts[TUnresolvedText.TypeTitle].Text);
@@ -1537,6 +1551,8 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
+
+{ TUnresolvedTypeCheck }
 
 constructor TUnresolvedTypeCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

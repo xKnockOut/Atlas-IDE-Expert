@@ -83,6 +83,8 @@ type
     property Method: TAtlasProfileMethod read FMethod;
   end;
 
+{ TMethodTally }
+
 constructor TMethodTally.Create(const AFrame: TAtlasProfileFrame);
 begin
   inherited Create;

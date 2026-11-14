@@ -64,6 +64,8 @@ type
     procedure Kill;
   end;
 
+{ TRequestAlive }
+
 constructor TRequestAlive.Create;
 begin
   inherited Create;

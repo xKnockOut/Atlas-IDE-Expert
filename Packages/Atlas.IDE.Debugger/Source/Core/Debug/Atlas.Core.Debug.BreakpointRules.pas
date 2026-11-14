@@ -225,19 +225,59 @@ begin
   Result := LowerCase(AFileName) + '|' + IntToStr(ALine);
 end;
 
-class function TAtlasBreakpointRules.HitName(AMode: TAtlasHitMode): string;
+class function TAtlasBreakpointRules.IndexOf(const ARules: TAtlasBreakpointRuleList; const AFileName: string;
+  ALine: Integer): Integer;
+var
+  mIndex: Integer;
 begin
-  Result := cHitNames[AMode];
+  Result := -1;
+  for mIndex := 0 to High(ARules) do
+  begin
+    if SameText(ARules[mIndex].FileName, AFileName) and (ARules[mIndex].Line = ALine) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
 end;
 
-class function TAtlasBreakpointRules.ThreadName(AFilter: TAtlasThreadFilter): string;
+class procedure TAtlasBreakpointRules.Put(var ARules: TAtlasBreakpointRuleList; const ARule: TAtlasBreakpointRule);
+var
+  mIndex: Integer;
 begin
-  Result := cThreadNames[AFilter];
+  mIndex := IndexOf(ARules, ARule.FileName, ARule.Line);
+  if ARule.IsEmpty then
+  begin
+    if mIndex >= 0 then
+    begin
+      Delete(ARules, mIndex, 1);
+    end;
+  end
+  else if mIndex >= 0 then
+  begin
+    ARules[mIndex] := ARule;
+  end
+  else
+  begin
+    ARules := ARules + [ARule];
+  end;
 end;
 
-class function TAtlasBreakpointRules.DependName(AMode: TAtlasDependMode): string;
+class procedure TAtlasBreakpointRules.Moved(var ARules: TAtlasBreakpointRuleList; const AFileName: string;
+  AFromLine, AToLine: Integer);
+var
+  mIndex: Integer;
 begin
-  Result := cDependNames[AMode];
+  for mIndex := 0 to High(ARules) do
+  begin
+    if SameText(ARules[mIndex].FileName, AFileName) and (ARules[mIndex].Line = AFromLine) then
+    begin
+      ARules[mIndex].Line := AToLine;
+    end;
+    if ARules[mIndex].TriggeredBy(AFileName, AFromLine) then
+    begin
+      ARules[mIndex].TriggerLine := AToLine;
+    end;
+  end;
 end;
 
 function RuleJson(const ARule: TAtlasBreakpointRule): TJSONObject;
@@ -373,59 +413,19 @@ begin
   end;
 end;
 
-class function TAtlasBreakpointRules.IndexOf(const ARules: TAtlasBreakpointRuleList; const AFileName: string;
-  ALine: Integer): Integer;
-var
-  mIndex: Integer;
+class function TAtlasBreakpointRules.HitName(AMode: TAtlasHitMode): string;
 begin
-  Result := -1;
-  for mIndex := 0 to High(ARules) do
-  begin
-    if SameText(ARules[mIndex].FileName, AFileName) and (ARules[mIndex].Line = ALine) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
+  Result := cHitNames[AMode];
 end;
 
-class procedure TAtlasBreakpointRules.Put(var ARules: TAtlasBreakpointRuleList; const ARule: TAtlasBreakpointRule);
-var
-  mIndex: Integer;
+class function TAtlasBreakpointRules.ThreadName(AFilter: TAtlasThreadFilter): string;
 begin
-  mIndex := IndexOf(ARules, ARule.FileName, ARule.Line);
-  if ARule.IsEmpty then
-  begin
-    if mIndex >= 0 then
-    begin
-      Delete(ARules, mIndex, 1);
-    end;
-  end
-  else if mIndex >= 0 then
-  begin
-    ARules[mIndex] := ARule;
-  end
-  else
-  begin
-    ARules := ARules + [ARule];
-  end;
+  Result := cThreadNames[AFilter];
 end;
 
-class procedure TAtlasBreakpointRules.Moved(var ARules: TAtlasBreakpointRuleList; const AFileName: string;
-  AFromLine, AToLine: Integer);
-var
-  mIndex: Integer;
+class function TAtlasBreakpointRules.DependName(AMode: TAtlasDependMode): string;
 begin
-  for mIndex := 0 to High(ARules) do
-  begin
-    if SameText(ARules[mIndex].FileName, AFileName) and (ARules[mIndex].Line = AFromLine) then
-    begin
-      ARules[mIndex].Line := AToLine;
-    end;
-    if ARules[mIndex].TriggeredBy(AFileName, AFromLine) then
-    begin
-      ARules[mIndex].TriggerLine := AToLine;
-    end;
-  end;
+  Result := cDependNames[AMode];
 end;
 
 end.

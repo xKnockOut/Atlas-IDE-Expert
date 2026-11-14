@@ -92,12 +92,34 @@ end;
 
 { TChangedFiles }
 
-class function TChangedFiles.FullPath(const ARepoRoot, AGitPath: string): string;
+class function TChangedFiles.ParseNameStatus(const ALines: TArray<string>): TArray<string>;
+var
+  mLine, mStatus, mRest: string;
+  mTab: Integer;
 begin
-  Result := IncludeTrailingPathDelimiter(ARepoRoot) + StringReplace(AGitPath, '/', PathDelim, [rfReplaceAll]);
-  if PathDelim = '/' then
+  Result := nil;
+  for mLine in ALines do
   begin
-    Result := StringReplace(Result, '\', '/', [rfReplaceAll]);
+    // "M<Tab>Pfad", "R087<Tab>Alt<Tab>Neu"
+    mTab := Pos(#9, mLine);
+    if mTab < 2 then
+    begin
+      Continue;
+    end;
+    mStatus := UpperCase(Copy(mLine, 1, 1));
+    mRest := Copy(mLine, mTab + 1, MaxInt);
+    if (mStatus = 'R') or (mStatus = 'C') then
+    begin
+      mTab := Pos(#9, mRest);
+      if mTab > 0 then
+      begin
+        Result := Result + [UnquotePath(Copy(mRest, mTab + 1, MaxInt))];
+      end;
+    end
+    else if ((mStatus = 'A') or (mStatus = 'M') or (mStatus = 'T')) and (mRest <> '') then
+    begin
+      Result := Result + [UnquotePath(mRest)];
+    end;
   end;
 end;
 
@@ -157,34 +179,12 @@ begin
 end;
 
 
-class function TChangedFiles.ParseNameStatus(const ALines: TArray<string>): TArray<string>;
-var
-  mLine, mStatus, mRest: string;
-  mTab: Integer;
+class function TChangedFiles.FullPath(const ARepoRoot, AGitPath: string): string;
 begin
-  Result := nil;
-  for mLine in ALines do
+  Result := IncludeTrailingPathDelimiter(ARepoRoot) + StringReplace(AGitPath, '/', PathDelim, [rfReplaceAll]);
+  if PathDelim = '/' then
   begin
-    // "M<Tab>Pfad", "R087<Tab>Alt<Tab>Neu"
-    mTab := Pos(#9, mLine);
-    if mTab < 2 then
-    begin
-      Continue;
-    end;
-    mStatus := UpperCase(Copy(mLine, 1, 1));
-    mRest := Copy(mLine, mTab + 1, MaxInt);
-    if (mStatus = 'R') or (mStatus = 'C') then
-    begin
-      mTab := Pos(#9, mRest);
-      if mTab > 0 then
-      begin
-        Result := Result + [UnquotePath(Copy(mRest, mTab + 1, MaxInt))];
-      end;
-    end
-    else if ((mStatus = 'A') or (mStatus = 'M') or (mStatus = 'T')) and (mRest <> '') then
-    begin
-      Result := Result + [UnquotePath(mRest)];
-    end;
+    Result := StringReplace(Result, '\', '/', [rfReplaceAll]);
   end;
 end;
 

@@ -153,6 +153,22 @@ begin
     cTexts[TFormReferencesText.Title].Text);
 end;
 
+procedure TDfmReferenceUnitMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mCheck: TFormReferenceCheck;
+begin
+  if (AContext.FormText = '') or (AContext.Tree = nil) then
+  begin
+    Exit;
+  end;
+  mCheck := TFormReferenceCheck.Create(AContext, AReport);
+  try
+    mCheck.Run;
+  finally
+    mCheck.Free;
+  end;
+end;
+
 class function TDfmReferenceUnitMissingRule.ProjectModules(const AMainSource: string): TArray<TFormModuleUnit>;
 var
   mTokens: TArray<TPascalToken>;
@@ -175,22 +191,6 @@ begin
   end;
 end;
 
-procedure TDfmReferenceUnitMissingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mCheck: TFormReferenceCheck;
-begin
-  if (AContext.FormText = '') or (AContext.Tree = nil) then
-  begin
-    Exit;
-  end;
-  mCheck := TFormReferenceCheck.Create(AContext, AReport);
-  try
-    mCheck.Run;
-  finally
-    mCheck.Free;
-  end;
-end;
-
 { TFormReferenceCheck }
 
 constructor TFormReferenceCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -206,39 +206,6 @@ destructor TFormReferenceCheck.Destroy;
 begin
   FModel.Free;
   inherited;
-end;
-
-procedure TFormReferenceCheck.Run;
-var
-  mReference: TFormModuleReference;
-begin
-  if (FModel.Document.Root = nil) or (FModel.FormClass = '') then
-  begin
-    Exit;
-  end;
-  for mReference in FModel.References do
-  begin
-    CheckReference(mReference);
-  end;
-end;
-
-procedure TFormReferenceCheck.CheckReference(const AReference: TFormModuleReference);
-var
-  mUnitName: string;
-begin
-  // Das eigene Formular oder eine eigene Komponente (eingebetteter Rahmen Frame11.Button1).
-  if FModel.IsOwnName(AReference.ModuleName) then
-  begin
-    Exit;
-  end;
-  if ProjectUnit(AReference.ModuleName, mUnitName) then
-  begin
-    Report(AReference, mUnitName, TRuleConfidence.High);
-  end
-  else if IndexUnit(AReference.ModuleName, mUnitName) then
-  begin
-    Report(AReference, mUnitName, TRuleConfidence.Medium);
-  end;
 end;
 
 function TFormReferenceCheck.ProjectUnit(const AModuleName: string; out AUnitName: string): Boolean;
@@ -372,6 +339,39 @@ begin
   else
   begin
     FReport.AddWithDetails(ReportRange(AReference), mMessage, mDetails, AConfidence, Fixes(AUnitName));
+  end;
+end;
+
+procedure TFormReferenceCheck.CheckReference(const AReference: TFormModuleReference);
+var
+  mUnitName: string;
+begin
+  // Das eigene Formular oder eine eigene Komponente (eingebetteter Rahmen Frame11.Button1).
+  if FModel.IsOwnName(AReference.ModuleName) then
+  begin
+    Exit;
+  end;
+  if ProjectUnit(AReference.ModuleName, mUnitName) then
+  begin
+    Report(AReference, mUnitName, TRuleConfidence.High);
+  end
+  else if IndexUnit(AReference.ModuleName, mUnitName) then
+  begin
+    Report(AReference, mUnitName, TRuleConfidence.Medium);
+  end;
+end;
+
+procedure TFormReferenceCheck.Run;
+var
+  mReference: TFormModuleReference;
+begin
+  if (FModel.Document.Root = nil) or (FModel.FormClass = '') then
+  begin
+    Exit;
+  end;
+  for mReference in FModel.References do
+  begin
+    CheckReference(mReference);
   end;
 end;
 

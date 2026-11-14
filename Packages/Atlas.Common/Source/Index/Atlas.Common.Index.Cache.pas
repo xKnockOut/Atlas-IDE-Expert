@@ -229,12 +229,6 @@ begin
   SetLength(FData, ACapacity);
 end;
 
-class function TCacheWriter.Counter: TCacheWriter;
-begin
-  Result := TCacheWriter.Create(0);
-  Result.FCounting := True;
-end;
-
 procedure TCacheWriter.Grow(ACount: Integer);
 var
   mNeeded, mCapacity: Integer;
@@ -254,6 +248,12 @@ begin
     mCapacity := mCapacity * 2;
   end;
   SetLength(FData, mCapacity);
+end;
+
+class function TCacheWriter.Counter: TCacheWriter;
+begin
+  Result := TCacheWriter.Create(0);
+  Result.FCounting := True;
 end;
 
 procedure TCacheWriter.WriteByte(AValue: Byte);
@@ -351,18 +351,6 @@ begin
   until mValue < $80;
 end;
 
-function TCacheReader.ReadNumber: Integer;
-var
-  mValue: UInt64;
-begin
-  mValue := ReadVar;
-  if mValue > UInt64(High(Integer)) then
-  begin
-    Fail;
-  end;
-  Result := Integer(mValue);
-end;
-
 function TCacheReader.ReadCount: Integer;
 var
   mValue: UInt64;
@@ -370,6 +358,18 @@ begin
   mValue := ReadVar;
   // Mehr Einträge als Bytes kann es nicht geben.
   if mValue > UInt64(Limit) then
+  begin
+    Fail;
+  end;
+  Result := Integer(mValue);
+end;
+
+function TCacheReader.ReadNumber: Integer;
+var
+  mValue: UInt64;
+begin
+  mValue := ReadVar;
+  if mValue > UInt64(High(Integer)) then
   begin
     Fail;
   end;
@@ -746,6 +746,8 @@ begin
   end;
 end;
 
+{ TIndexCache }
+
 class function TIndexCache.Serialize(const AUnits: TArray<TUnitIndex>): TBytes;
 var
   mTable: TStringTable;
@@ -1065,42 +1067,6 @@ begin
   end;
 end;
 
-class function TIndexCache.ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
-var
-  mReader: TCacheReader;
-  mIndex: Integer;
-begin
-  AUsages := nil;
-  if AEntry.Expanded then
-  begin
-    AUsages := AEntry.Header.Usages;
-    Exit(True);
-  end;
-  mReader.Data := AEntry.Data;
-  mReader.Position := AEntry.UsageOffset;
-  mReader.Limit := AEntry.UsageEnd;
-  try
-    SetLength(AUsages, AEntry.UsageCount);
-    for mIndex := 0 to AEntry.UsageCount - 1 do
-    begin
-      AUsages[mIndex] := ReadUsage(mReader, AEntry.Strings);
-    end;
-    Result := mReader.Position = mReader.Limit;
-  except
-    on ECacheFormat do
-      Result := False;
-  end;
-  if not Result then
-  begin
-    AUsages := nil;
-  end;
-end;
-
-class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean;
-begin
-  Result := Expand(AEntry, AUnit, True);
-end;
-
 class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex; AUsages: Boolean): Boolean;
 var
   mReader: TCacheReader;
@@ -1144,6 +1110,42 @@ begin
   if not Result then
   begin
     AUnit := AEntry.Header;
+  end;
+end;
+
+class function TIndexCache.Expand(const AEntry: TIndexCacheEntry; out AUnit: TUnitIndex): Boolean;
+begin
+  Result := Expand(AEntry, AUnit, True);
+end;
+
+class function TIndexCache.ExpandUsages(const AEntry: TIndexCacheEntry; out AUsages: TArray<TIndexUsage>): Boolean;
+var
+  mReader: TCacheReader;
+  mIndex: Integer;
+begin
+  AUsages := nil;
+  if AEntry.Expanded then
+  begin
+    AUsages := AEntry.Header.Usages;
+    Exit(True);
+  end;
+  mReader.Data := AEntry.Data;
+  mReader.Position := AEntry.UsageOffset;
+  mReader.Limit := AEntry.UsageEnd;
+  try
+    SetLength(AUsages, AEntry.UsageCount);
+    for mIndex := 0 to AEntry.UsageCount - 1 do
+    begin
+      AUsages[mIndex] := ReadUsage(mReader, AEntry.Strings);
+    end;
+    Result := mReader.Position = mReader.Limit;
+  except
+    on ECacheFormat do
+      Result := False;
+  end;
+  if not Result then
+  begin
+    AUsages := nil;
   end;
 end;
 

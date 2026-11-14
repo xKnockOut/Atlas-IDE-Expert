@@ -38,6 +38,23 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Exceptions;
 
+{ TAtlasIdeDebugReport }
+
+class function TAtlasIdeDebugReport.NoteTexts: TAtlasDebugNoteTexts;
+begin
+  Result.Title := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTitle);
+  Result.Project := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteProject);
+  Result.Configuration := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteConfiguration);
+  Result.TargetPlatform := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNotePlatform);
+  Result.Time := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTime);
+  Result.Thread := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteThread);
+  Result.Location := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLocation);
+  Result.CallStack := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCallStack);
+  Result.LastException := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLastException);
+  Result.Count := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCount);
+  Result.NoLocation := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteNoLocation);
+end;
+
 function TAtlasIdeDebugReport.DebuggedProcessId: Cardinal;
 var
   mProcess: IOTAProcess;
@@ -53,21 +70,6 @@ end;
 function TAtlasIdeDebugReport.LaunchProject: string;
 begin
   Result := TAtlasIdeDebugSession.LaunchProject;
-end;
-
-class function TAtlasIdeDebugReport.NoteTexts: TAtlasDebugNoteTexts;
-begin
-  Result.Title := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTitle);
-  Result.Project := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteProject);
-  Result.Configuration := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteConfiguration);
-  Result.TargetPlatform := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNotePlatform);
-  Result.Time := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTime);
-  Result.Thread := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteThread);
-  Result.Location := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLocation);
-  Result.CallStack := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCallStack);
-  Result.LastException := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLastException);
-  Result.Count := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCount);
-  Result.NoLocation := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteNoLocation);
 end;
 
 /// <summary>Aufrufstapel des Halts mit eigenem Code markiert, dazu die Routine des obersten Rahmens.</summary>

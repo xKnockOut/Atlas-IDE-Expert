@@ -182,41 +182,6 @@ begin
     cTexts[TMigrationUnicodeText.CountTitle].Text);
 end;
 
-class function TCharCountAsBytesRule.CountArgument(const ARoutine: string; AMember: Boolean;
-  out ABuffers: TArray<Integer>): Integer;
-begin
-  Result := -1;
-  ABuffers := nil;
-  if AMember then
-  begin
-    if MatchText(ARoutine, ['Read', 'ReadBuffer', 'Write', 'WriteBuffer']) then
-    begin
-      ABuffers := [0];
-      Result := 1;
-    end;
-  end
-  else if MatchText(ARoutine, ['Move', 'CopyMemory', 'MoveMemory', 'CompareMem']) then
-  begin
-    ABuffers := [0, 1];
-    Result := 2;
-  end
-  else if MatchText(ARoutine, ['FillChar', 'ZeroMemory', 'FillMemory']) then
-  begin
-    ABuffers := [0];
-    Result := 1;
-  end
-  else if MatchText(ARoutine, ['BlockRead', 'BlockWrite', 'ReadFile', 'WriteFile']) then
-  begin
-    ABuffers := [1];
-    Result := 2;
-  end
-  else if MatchText(ARoutine, ['GetMem', 'ReallocMem']) then
-  begin
-    // Kein Puffer aus dem String: Der Zeiger (erstes Argument) muss PChar sein.
-    Result := 1;
-  end;
-end;
-
 procedure TCharCountAsBytesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScope: TTypedScope;
@@ -379,23 +344,47 @@ begin
   end;
 end;
 
+class function TCharCountAsBytesRule.CountArgument(const ARoutine: string; AMember: Boolean;
+  out ABuffers: TArray<Integer>): Integer;
+begin
+  Result := -1;
+  ABuffers := nil;
+  if AMember then
+  begin
+    if MatchText(ARoutine, ['Read', 'ReadBuffer', 'Write', 'WriteBuffer']) then
+    begin
+      ABuffers := [0];
+      Result := 1;
+    end;
+  end
+  else if MatchText(ARoutine, ['Move', 'CopyMemory', 'MoveMemory', 'CompareMem']) then
+  begin
+    ABuffers := [0, 1];
+    Result := 2;
+  end
+  else if MatchText(ARoutine, ['FillChar', 'ZeroMemory', 'FillMemory']) then
+  begin
+    ABuffers := [0];
+    Result := 1;
+  end
+  else if MatchText(ARoutine, ['BlockRead', 'BlockWrite', 'ReadFile', 'WriteFile']) then
+  begin
+    ABuffers := [1];
+    Result := 2;
+  end
+  else if MatchText(ARoutine, ['GetMem', 'ReallocMem']) then
+  begin
+    // Kein Puffer aus dem String: Der Zeiger (erstes Argument) muss PChar sein.
+    Result := 1;
+  end;
+end;
+
 { TAnsiApiCallRule }
 
 function TAnsiApiCallRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cAnsiApiCallRuleId, TRuleSeverity.Warning,
     cTexts[TMigrationUnicodeText.ApiTitle].Text);
-end;
-
-class function TAnsiApiCallRule.NeutralName(const AName: string): string;
-begin
-  Result := '';
-  // Kleinbuchstabe oder Ziffer vor dem A: MessageBoxA, lstrlenA, RegOpenKeyExA, nicht DATA oder LeseDATA.
-  if (Length(AName) >= 3) and (AName[Length(AName)] = 'A') and
-    CharInSet(AName[Length(AName) - 1], ['a'..'z', '0'..'9']) and CharInSet(AName[1], ['A'..'Z', 'a'..'z']) then
-  begin
-    Result := Copy(AName, 1, Length(AName) - 1);
-  end;
 end;
 
 procedure TAnsiApiCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -524,6 +513,17 @@ begin
   finally
     mScope.Free;
     mMigration.Free;
+  end;
+end;
+
+class function TAnsiApiCallRule.NeutralName(const AName: string): string;
+begin
+  Result := '';
+  // Kleinbuchstabe oder Ziffer vor dem A: MessageBoxA, lstrlenA, RegOpenKeyExA, nicht DATA oder LeseDATA.
+  if (Length(AName) >= 3) and (AName[Length(AName)] = 'A') and
+    CharInSet(AName[Length(AName) - 1], ['a'..'z', '0'..'9']) and CharInSet(AName[1], ['A'..'Z', 'a'..'z']) then
+  begin
+    Result := Copy(AName, 1, Length(AName) - 1);
   end;
 end;
 

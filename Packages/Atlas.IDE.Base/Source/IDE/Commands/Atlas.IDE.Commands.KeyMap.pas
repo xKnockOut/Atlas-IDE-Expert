@@ -192,6 +192,8 @@ type
     function OfAddress(AAddress: Pointer; out AName: string): TAtlasKeyOrigin;
   end;
 
+{ TOrigins }
+
 constructor TOrigins.Create;
 begin
   inherited Create;
@@ -808,32 +810,86 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeKeyMap.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      if FInstance <> nil then
+      begin
+        FInstance.CheckNow;
+      end;
+    end);
+end;
+
+procedure TAtlasIdeKeyMap.Refresh;
+begin
+  if FWindow <> nil then
+  begin
+    FWindow.SetItems(Collect);
+  end;
+end;
+
+procedure TAtlasIdeKeyMap.ExportHtml;
+var
+  mFileName, mHtml: string;
+begin
+  if FWindow = nil then
+  begin
+    Exit;
+  end;
+  mFileName := ExportFile;
+  try
+    mHtml := FWindow.ExportHtml(FormatDateTime('ddddd t', Now));
+    ForceDirectories(ExtractFileDir(mFileName));
+    TFile.WriteAllText(mFileName, mHtml, TEncoding.UTF8);
+    ShellExecute(0, 'open', PChar(mFileName), nil, nil, SW_SHOWNORMAL);
+    // Anonym: nur die Anzahl, kein Pfad.
+    TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
+  except
+    on E: Exception do
+      TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapExportFailed, [E.ClassName]));
+  end;
+end;
+
+procedure TAtlasIdeKeyMap.OpenKeyConflicts;
+var
+  mOptions: IOTAEnvironmentOptions140;
+  mServices: IOTAServices;
+begin
+  // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach neu einlesen.
+  if Supports(BorlandIDEServices, IOTAServices, mServices) and
+    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
+  begin
+    mOptions.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
+  end;
+  Refresh;
+end;
+
+/// <summary>Nachschlagen in AIds/AKeys (gleich lang); eigene Routine, damit die Methodenreferenz nur die Arrays hält.
+/// </summary>
+function ShortCutLookup(const AIds, AKeys: TArray<string>): TFunc<string, string>;
+begin
+  Result :=
+    function(AId: string): string
+    var
+      mIndex: Integer;
+    begin
+      Result := '';
+      for mIndex := 0 to High(AIds) do
+      begin
+        if SameText(AIds[mIndex], AId) then
+        begin
+          Exit(AKeys[mIndex]);
+        end;
+      end;
+    end;
+end;
+
 class function TAtlasIdeKeyMap.Instance: TAtlasIdeKeyMap;
 begin
   Result := FInstance;
-end;
-
-class function TAtlasIdeKeyMap.AtlasEntries: TArray<TAtlasKeyEntry>;
-var
-  mIndex: Integer;
-  mHooked: TBasicAction;
-begin
-  Result := TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current);
-  mHooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
-  for mIndex := 0 to High(Result) do
-  begin
-    if Result[mIndex].Func = TAtlasKeyFunction.UnitSearchIde then
-    begin
-      if mHooked is TCustomAction then
-      begin
-        Result[mIndex].Key := Word(TCustomAction(mHooked).ShortCut);
-      end
-      else
-      begin
-        Result[mIndex].Key := 0;
-      end;
-    end;
-  end;
 end;
 
 class function TAtlasIdeKeyMap.Collect: TArray<TAtlasKeyItem>;
@@ -858,6 +914,29 @@ begin
   end;
   TAtlasKeyMap.Analyze(Result);
   AddUsage(Result);
+end;
+
+class function TAtlasIdeKeyMap.AtlasEntries: TArray<TAtlasKeyEntry>;
+var
+  mIndex: Integer;
+  mHooked: TBasicAction;
+begin
+  Result := TAtlasKeyEntry.AllFromSettings(TAtlasIdeSettings.Current);
+  mHooked := TakenAction(TAtlasKeyFunction.UnitSearchIde);
+  for mIndex := 0 to High(Result) do
+  begin
+    if Result[mIndex].Func = TAtlasKeyFunction.UnitSearchIde then
+    begin
+      if mHooked is TCustomAction then
+      begin
+        Result[mIndex].Key := Word(TCustomAction(mHooked).ShortCut);
+      end
+      else
+      begin
+        Result[mIndex].Key := 0;
+      end;
+    end;
+  end;
 end;
 
 class function TAtlasIdeKeyMap.SetupKeys: TArray<TAtlasSetupKey>;
@@ -890,26 +969,6 @@ begin
     end;
     Result := Result + [TAtlasSetupKey.Create(mCurrent, mText, mOwner)];
   end;
-end;
-
-/// <summary>Nachschlagen in AIds/AKeys (gleich lang); eigene Routine, damit die Methodenreferenz nur die Arrays hält.
-/// </summary>
-function ShortCutLookup(const AIds, AKeys: TArray<string>): TFunc<string, string>;
-begin
-  Result :=
-    function(AId: string): string
-    var
-      mIndex: Integer;
-    begin
-      Result := '';
-      for mIndex := 0 to High(AIds) do
-      begin
-        if SameText(AIds[mIndex], AId) then
-        begin
-          Exit(AKeys[mIndex]);
-        end;
-      end;
-    end;
 end;
 
 class function TAtlasIdeKeyMap.AtlasShortCuts: TFunc<string, string>;
@@ -965,14 +1024,6 @@ begin
   Result := TPath.Combine(TPath.Combine(mFolder, 'Atlas'), cExportFileName);
 end;
 
-procedure TAtlasIdeKeyMap.Refresh;
-begin
-  if FWindow <> nil then
-  begin
-    FWindow.SetItems(Collect);
-  end;
-end;
-
 procedure TAtlasIdeKeyMap.ShowWindow;
 begin
   ShowWindow('');
@@ -1022,42 +1073,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeKeyMap.ExportHtml;
-var
-  mFileName, mHtml: string;
-begin
-  if FWindow = nil then
-  begin
-    Exit;
-  end;
-  mFileName := ExportFile;
-  try
-    mHtml := FWindow.ExportHtml(FormatDateTime('ddddd t', Now));
-    ForceDirectories(ExtractFileDir(mFileName));
-    TFile.WriteAllText(mFileName, mHtml, TEncoding.UTF8);
-    ShellExecute(0, 'open', PChar(mFileName), nil, nil, SW_SHOWNORMAL);
-    // Anonym: nur die Anzahl, kein Pfad.
-    TAtlasGuard.Log(Format('Tastenkürzel-Übersicht exportiert: %d Zeilen (#520)', [Length(FWindow.Shown)]));
-  except
-    on E: Exception do
-      TAtlasIdeHost.Message(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.KeyMapExportFailed, [E.ClassName]));
-  end;
-end;
-
-procedure TAtlasIdeKeyMap.OpenKeyConflicts;
-var
-  mOptions: IOTAEnvironmentOptions140;
-  mServices: IOTAServices;
-begin
-  // Seite „Atlas.Tastenkonflikte“ (#494) unter Tools › Optionen; danach neu einlesen.
-  if Supports(BorlandIDEServices, IOTAServices, mServices) and
-    Supports(mServices.GetEnvironmentOptions, IOTAEnvironmentOptions140, mOptions) then
-  begin
-    mOptions.EditOptions('', 'Atlas.' + TAtlasStrings.Text(TAtlasTextId.KeysTitle));
-  end;
-  Refresh;
-end;
-
 procedure TAtlasIdeKeyMap.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
 var
   mRun: TProc;
@@ -1089,19 +1104,6 @@ begin
   end;
   FTimer.Interval := cStartDelayMs;
   FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeKeyMap.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  TAtlasGuard.Run(TAtlasFeature.Settings,
-    procedure
-    begin
-      if FInstance <> nil then
-      begin
-        FInstance.CheckNow;
-      end;
-    end);
 end;
 
 procedure TAtlasIdeKeyMap.CheckNow;

@@ -172,13 +172,6 @@ begin
   FChanged := AChanged;
 end;
 
-procedure TAtlasIdeContinueIssues.Stop;
-begin
-  FStopped := True;
-  FChanges := nil;
-  FChanged := nil;
-end;
-
 procedure TAtlasIdeContinueIssues.Report(const AText: string);
 begin
   if Assigned(FMessage) and (AText <> '') then
@@ -192,32 +185,6 @@ begin
   if not FStopped and Assigned(FChanged) then
   begin
     FChanged();
-  end;
-end;
-
-function TAtlasIdeContinueIssues.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := not FStopped and mSettings.WelcomePage and mSettings.WelcomePageContinue and
-    mSettings.WelcomePageContinueIssues;
-end;
-
-function TAtlasIdeContinueIssues.IssuesEnabled: Boolean;
-var
-  mSource: IAtlasIssueWorkSource;
-begin
-  // Ohne Tracker-Modul kein Reiter.
-  Result := Enabled and TAtlasWelcomeNeighbors.IssueWorkSource(mSource);
-end;
-
-function TAtlasIdeContinueIssues.IssuesNotice: string;
-begin
-  Result := '';
-  if IssuesEnabled then
-  begin
-    Result := FNotice;
   end;
 end;
 
@@ -345,203 +312,6 @@ begin
     end);
 end;
 
-procedure TAtlasIdeContinueIssues.ProjectWritten(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot);
-var
-  mSource: IAtlasIssueWorkSource;
-  mIssue: TAtlasIssueWorkIssue;
-begin
-  if not Enabled or not TAtlasWelcomeNeighbors.IssueWorkSource(mSource) or
-    not mSource.ActiveIssue(ATarget, mIssue) then
-  begin
-    Exit;
-  end;
-  Store(ATarget, mIssue, ASnapshot);
-end;
-
-procedure TAtlasIdeContinueIssues.Forget(const AProject, AKey: string);
-var
-  mTarget, mKey: string;
-  mEntry: TAtlasIssueWorkEntry;
-begin
-  if FStopped or not FindEntry(AProject, AKey, mTarget, mEntry) then
-  begin
-    Exit;
-  end;
-  mKey := mEntry.Key;
-  TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, mTarget,
-    procedure(var ASummary: TAtlasProjectSummary)
-    var
-      mEntries: TAtlasIssueWorkEntries;
-    begin
-      if TAtlasWelcomeContinueIssues.Read(ASummary, mEntries) then
-      begin
-        TAtlasWelcomeContinueIssues.Write(ASummary,
-          TAtlasWelcomeContinueIssues.Without(mEntries, TArray<string>.Create(mKey)));
-      end;
-    end);
-  Changed;
-end;
-
-procedure TAtlasIdeContinueIssues.SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
-var
-  mTarget: string;
-begin
-  if not Enabled or (Trim(AIssue.Key) = '') or (FChanges = nil) then
-  begin
-    Exit;
-  end;
-  // Nur das offene Projekt (bzw. seine Gruppe) hat Reiter, die zu AIssue gehören.
-  mTarget := TAtlasIdeContinueEditor.CurrentTarget;
-  if (mTarget = '') or not TAtlasWelcomeContinue.SameFile(mTarget, TAtlasIdeContinueEditor.TargetOf(AProject)) then
-  begin
-    Exit;
-  end;
-  Store(mTarget, AIssue, TAtlasIdeContinueEditor.TakeSnapshot(FChanges));
-  // Änderungen ab jetzt gehören zum nächsten Issue.
-  FSince := NowUtc;
-  Changed;
-end;
-
-function TAtlasIdeContinueIssues.HasState(const AProject, AKey: string): Boolean;
-var
-  mTarget: string;
-  mEntry: TAtlasIssueWorkEntry;
-begin
-  Result := Enabled and FindEntry(AProject, AKey, mTarget, mEntry);
-end;
-
-procedure TAtlasIdeContinueIssues.OfferRestore(const AProject, AKey: string);
-var
-  mTarget: string;
-  mEntry: TAtlasIssueWorkEntry;
-begin
-  if not Enabled or not FindEntry(AProject, AKey, mTarget, mEntry) then
-  begin
-    Exit;
-  end;
-  if MessageDlg(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIssuesRestorePrompt,
-    [mEntry.Key, TAtlasContinueIssueTexts.TabsText(mEntry.State.TabCount)]), mtConfirmation, [mbYes, mbNo],
-    0) = mrYes then
-  begin
-    ResumeIssue(mTarget, mEntry.Key);
-  end;
-end;
-
-procedure TAtlasIdeContinueIssues.Restore(const AProject, AKey: string);
-var
-  mTarget: string;
-  mEntry: TAtlasIssueWorkEntry;
-begin
-  if Enabled and FindEntry(AProject, AKey, mTarget, mEntry) then
-  begin
-    ResumeIssue(mTarget, mEntry.Key);
-  end;
-end;
-
-procedure TAtlasIdeContinueIssues.StatusesChanged;
-begin
-  Changed;
-end;
-
-function TAtlasIdeContinueIssues.IssueRows: TAtlasIssueWorkRows;
-var
-  mProjects: TArray<string>;
-  mRoot, mCurrent: string;
-  mOwner: TAtlasIdeContinueIssues;
-begin
-  Result := nil;
-  if not IssuesEnabled then
-  begin
-    Exit;
-  end;
-  // Das offene Projekt zuerst: Beim Wechsel des Issues ist es noch offen.
-  mProjects := nil;
-  mCurrent := TAtlasIdeContinueEditor.CurrentTarget;
-  if mCurrent <> '' then
-  begin
-    mProjects := mProjects + [mCurrent];
-  end;
-  try
-    mProjects := mProjects + TAtlasIdeWelcomeSearch.ClosedProjects;
-  except
-    // Registry nicht lesbar: nur das offene Projekt.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
-  end;
-  mRoot := TAtlasIdeProjectSummaries.Folder;
-  mOwner := Self;
-  Result := TAtlasWelcomeContinueIssues.Rows(mProjects,
-    function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
-    begin
-      Result := TAtlasProjectSummaries.Load(mRoot, AProject, ASummary);
-    end,
-    function(const AProject: string; const AKeys: TArray<string>): TArray<TAtlasIssueStateKind>
-    begin
-      Result := mOwner.StatesOf(AProject, AKeys);
-    end,
-    TAtlasIdeSettings.Current.WelcomePageContinueIssuesCount);
-end;
-
-procedure TAtlasIdeContinueIssues.ResumeIssue(const AProject, AKey: string);
-var
-  mTarget, mFolder, mStored, mCurrent: string;
-  mEntry: TAtlasIssueWorkEntry;
-  mKeep: IAtlasContinueIssuesSource;
-  mExists, mKnown: Boolean;
-begin
-  if not Enabled then
-  begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
-    Exit;
-  end;
-  if not FindEntry(AProject, AKey, mTarget, mEntry) then
-  begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
-    Exit;
-  end;
-  if not FileExists(mTarget) then
-  begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mTarget]));
-    Exit;
-  end;
-  FNotice := '';
-  if mEntry.Branch = '' then
-  begin
-    OpenPlan(mTarget, mEntry);
-    Exit;
-  end;
-  // Branch im Hintergrund prüfen; Rückfrage und Öffnen im Hauptthread.
-  mKeep := Self;
-  mFolder := ExtractFileDir(mTarget);
-  mStored := mEntry.Branch;
-  mCurrent := '';
-  mExists := False;
-  mKnown := False;
-  if not TAtlasIdeVcs.Run(
-    procedure
-    begin
-      ProbeBranch(mFolder, mStored, mCurrent, mExists, mKnown);
-    end,
-    procedure
-    var
-      Step: TAtlasIssueBranchStep;
-    begin
-      if (mKeep = nil) or FStopped then
-      begin
-        Exit;
-      end;
-      Step := TAtlasIssueBranchStep.Keep;
-      if mKnown then
-      begin
-        Step := TAtlasWelcomeContinueIssues.BranchStep(mStored, mCurrent, mExists);
-      end;
-      BranchChecked(mTarget, mEntry, Step, mCurrent);
-    end) then
-  begin
-    OpenPlan(mTarget, mEntry);
-  end;
-end;
-
 procedure TAtlasIdeContinueIssues.BranchChecked(const AProject: string; const AEntry: TAtlasIssueWorkEntry;
   AStep: TAtlasIssueBranchStep; const ACurrent: string);
 begin
@@ -646,6 +416,236 @@ begin
       end;
       Changed;
     end);
+end;
+
+procedure TAtlasIdeContinueIssues.Stop;
+begin
+  FStopped := True;
+  FChanges := nil;
+  FChanged := nil;
+end;
+
+function TAtlasIdeContinueIssues.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := not FStopped and mSettings.WelcomePage and mSettings.WelcomePageContinue and
+    mSettings.WelcomePageContinueIssues;
+end;
+
+procedure TAtlasIdeContinueIssues.ProjectWritten(const ATarget: string; const ASnapshot: TAtlasContinueSnapshot);
+var
+  mSource: IAtlasIssueWorkSource;
+  mIssue: TAtlasIssueWorkIssue;
+begin
+  if not Enabled or not TAtlasWelcomeNeighbors.IssueWorkSource(mSource) or
+    not mSource.ActiveIssue(ATarget, mIssue) then
+  begin
+    Exit;
+  end;
+  Store(ATarget, mIssue, ASnapshot);
+end;
+
+procedure TAtlasIdeContinueIssues.SaveIssue(const AProject: string; const AIssue: TAtlasIssueWorkIssue);
+var
+  mTarget: string;
+begin
+  if not Enabled or (Trim(AIssue.Key) = '') or (FChanges = nil) then
+  begin
+    Exit;
+  end;
+  // Nur das offene Projekt (bzw. seine Gruppe) hat Reiter, die zu AIssue gehören.
+  mTarget := TAtlasIdeContinueEditor.CurrentTarget;
+  if (mTarget = '') or not TAtlasWelcomeContinue.SameFile(mTarget, TAtlasIdeContinueEditor.TargetOf(AProject)) then
+  begin
+    Exit;
+  end;
+  Store(mTarget, AIssue, TAtlasIdeContinueEditor.TakeSnapshot(FChanges));
+  // Änderungen ab jetzt gehören zum nächsten Issue.
+  FSince := NowUtc;
+  Changed;
+end;
+
+function TAtlasIdeContinueIssues.HasState(const AProject, AKey: string): Boolean;
+var
+  mTarget: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  Result := Enabled and FindEntry(AProject, AKey, mTarget, mEntry);
+end;
+
+procedure TAtlasIdeContinueIssues.OfferRestore(const AProject, AKey: string);
+var
+  mTarget: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  if not Enabled or not FindEntry(AProject, AKey, mTarget, mEntry) then
+  begin
+    Exit;
+  end;
+  if MessageDlg(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIssuesRestorePrompt,
+    [mEntry.Key, TAtlasContinueIssueTexts.TabsText(mEntry.State.TabCount)]), mtConfirmation, [mbYes, mbNo],
+    0) = mrYes then
+  begin
+    ResumeIssue(mTarget, mEntry.Key);
+  end;
+end;
+
+procedure TAtlasIdeContinueIssues.Restore(const AProject, AKey: string);
+var
+  mTarget: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  if Enabled and FindEntry(AProject, AKey, mTarget, mEntry) then
+  begin
+    ResumeIssue(mTarget, mEntry.Key);
+  end;
+end;
+
+procedure TAtlasIdeContinueIssues.Forget(const AProject, AKey: string);
+var
+  mTarget, mKey: string;
+  mEntry: TAtlasIssueWorkEntry;
+begin
+  if FStopped or not FindEntry(AProject, AKey, mTarget, mEntry) then
+  begin
+    Exit;
+  end;
+  mKey := mEntry.Key;
+  TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, mTarget,
+    procedure(var ASummary: TAtlasProjectSummary)
+    var
+      mEntries: TAtlasIssueWorkEntries;
+    begin
+      if TAtlasWelcomeContinueIssues.Read(ASummary, mEntries) then
+      begin
+        TAtlasWelcomeContinueIssues.Write(ASummary,
+          TAtlasWelcomeContinueIssues.Without(mEntries, TArray<string>.Create(mKey)));
+      end;
+    end);
+  Changed;
+end;
+
+procedure TAtlasIdeContinueIssues.StatusesChanged;
+begin
+  Changed;
+end;
+
+function TAtlasIdeContinueIssues.IssuesEnabled: Boolean;
+var
+  mSource: IAtlasIssueWorkSource;
+begin
+  // Ohne Tracker-Modul kein Reiter.
+  Result := Enabled and TAtlasWelcomeNeighbors.IssueWorkSource(mSource);
+end;
+
+function TAtlasIdeContinueIssues.IssueRows: TAtlasIssueWorkRows;
+var
+  mProjects: TArray<string>;
+  mRoot, mCurrent: string;
+  mOwner: TAtlasIdeContinueIssues;
+begin
+  Result := nil;
+  if not IssuesEnabled then
+  begin
+    Exit;
+  end;
+  // Das offene Projekt zuerst: Beim Wechsel des Issues ist es noch offen.
+  mProjects := nil;
+  mCurrent := TAtlasIdeContinueEditor.CurrentTarget;
+  if mCurrent <> '' then
+  begin
+    mProjects := mProjects + [mCurrent];
+  end;
+  try
+    mProjects := mProjects + TAtlasIdeWelcomeSearch.ClosedProjects;
+  except
+    // Registry nicht lesbar: nur das offene Projekt.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
+  end;
+  mRoot := TAtlasIdeProjectSummaries.Folder;
+  mOwner := Self;
+  Result := TAtlasWelcomeContinueIssues.Rows(mProjects,
+    function(const AProject: string; out ASummary: TAtlasProjectSummary): Boolean
+    begin
+      Result := TAtlasProjectSummaries.Load(mRoot, AProject, ASummary);
+    end,
+    function(const AProject: string; const AKeys: TArray<string>): TArray<TAtlasIssueStateKind>
+    begin
+      Result := mOwner.StatesOf(AProject, AKeys);
+    end,
+    TAtlasIdeSettings.Current.WelcomePageContinueIssuesCount);
+end;
+
+function TAtlasIdeContinueIssues.IssuesNotice: string;
+begin
+  Result := '';
+  if IssuesEnabled then
+  begin
+    Result := FNotice;
+  end;
+end;
+
+procedure TAtlasIdeContinueIssues.ResumeIssue(const AProject, AKey: string);
+var
+  mTarget, mFolder, mStored, mCurrent: string;
+  mEntry: TAtlasIssueWorkEntry;
+  mKeep: IAtlasContinueIssuesSource;
+  mExists, mKnown: Boolean;
+begin
+  if not Enabled then
+  begin
+    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
+    Exit;
+  end;
+  if not FindEntry(AProject, AKey, mTarget, mEntry) then
+  begin
+    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
+    Exit;
+  end;
+  if not FileExists(mTarget) then
+  begin
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mTarget]));
+    Exit;
+  end;
+  FNotice := '';
+  if mEntry.Branch = '' then
+  begin
+    OpenPlan(mTarget, mEntry);
+    Exit;
+  end;
+  // Branch im Hintergrund prüfen; Rückfrage und Öffnen im Hauptthread.
+  mKeep := Self;
+  mFolder := ExtractFileDir(mTarget);
+  mStored := mEntry.Branch;
+  mCurrent := '';
+  mExists := False;
+  mKnown := False;
+  if not TAtlasIdeVcs.Run(
+    procedure
+    begin
+      ProbeBranch(mFolder, mStored, mCurrent, mExists, mKnown);
+    end,
+    procedure
+    var
+      Step: TAtlasIssueBranchStep;
+    begin
+      if (mKeep = nil) or FStopped then
+      begin
+        Exit;
+      end;
+      Step := TAtlasIssueBranchStep.Keep;
+      if mKnown then
+      begin
+        Step := TAtlasWelcomeContinueIssues.BranchStep(mStored, mCurrent, mExists);
+      end;
+      BranchChecked(mTarget, mEntry, Step, mCurrent);
+    end) then
+  begin
+    OpenPlan(mTarget, mEntry);
+  end;
 end;
 
 end.

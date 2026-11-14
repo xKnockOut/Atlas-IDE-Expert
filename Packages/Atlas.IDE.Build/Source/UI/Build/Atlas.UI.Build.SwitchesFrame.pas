@@ -214,170 +214,112 @@ begin
   Refill;
 end;
 
-class function TAtlasBuildSwitchesFrame.Lines(const AView: TAtlasCompilerSwitchView): TAtlasSwitchLines;
+procedure TAtlasBuildSwitchesFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if Item <> nil then
+  begin
+    RowColors(Sender.Canvas, State, Item.Index);
+  end;
+end;
+
+procedure TAtlasBuildSwitchesFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  if Item <> nil then
+  begin
+    RowColors(Sender.Canvas, State, Item.Index);
+  end;
+end;
+
+procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
 var
-  mSection: TAtlasSwitchSection;
-  mIndex: Integer;
   mLine: TAtlasSwitchLine;
-  mHasHeader: Boolean;
+  mDeviates: Boolean;
 begin
-  Result := nil;
-  for mSection := Low(TAtlasSwitchSection) to High(TAtlasSwitchSection) do
+  mDeviates := False;
+  ACanvas.Font.Style := [];
+  if (AIndex >= 0) and (AIndex <= High(FLines)) then
   begin
-    mHasHeader := False;
-    for mIndex := 0 to High(AView.Rows) do
+    mLine := FLines[AIndex];
+    if mLine.Header then
     begin
-      if AView.Rows[mIndex].Section <> mSection then
-      begin
-        Continue;
-      end;
-      if not mHasHeader then
-      begin
-        mLine := Default(TAtlasSwitchLine);
-        mLine.Header := True;
-        mLine.Section := mSection;
-        mLine.Row := -1;
-        Result := Result + [mLine];
-        mHasHeader := True;
-      end;
-      mLine := Default(TAtlasSwitchLine);
-      mLine.Section := mSection;
-      mLine.Row := mIndex;
-      Result := Result + [mLine];
-    end;
-  end;
-end;
-
-class function TAtlasBuildSwitchesFrame.SectionText(ASection: TAtlasSwitchSection): string;
-begin
-  case ASection of
-    TAtlasSwitchSection.Switches:
-      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionSwitches);
-    TAtlasSwitchSection.Messages:
-      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionMessages);
-    TAtlasSwitchSection.Defines:
-      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionDefines);
-  else
-    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionTarget);
-  end;
-end;
-
-class function TAtlasBuildSwitchesFrame.OriginText(const ARow: TAtlasSwitchRow): string;
-begin
-  case ARow.Kind of
-    TAtlasSwitchOriginKind.Directive:
-      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginLine, [ARow.Line + 1]);
-    TAtlasSwitchOriginKind.Include:
-      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginInclude,
-        [ExtractFileName(ARow.FileName), ARow.Line + 1]);
-    TAtlasSwitchOriginKind.Project:
-      begin
-        // Symbole tragen ihre Herkunft schon als Satz („Konfiguration Debug (.dproj)“).
-        if ARow.Section = TAtlasSwitchSection.Target then
-        begin
-          Result := '';
-        end
-        else if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
-        begin
-          Result := ARow.OriginText;
-        end
-        else if ARow.OriginText <> '' then
-        begin
-          Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText]);
-        end
-        else
-        begin
-          Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginProject);
-        end;
-      end;
-  else
-    if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
-    begin
-      Result := ARow.OriginText;
+      ACanvas.Font.Style := [fsBold];
     end
     else
     begin
-      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginDefault);
+      mDeviates := FView.Rows[mLine.Row].Deviates;
+      if mDeviates then
+      begin
+        ACanvas.Font.Style := [fsBold];
+      end;
     end;
   end;
-end;
-
-class function TAtlasBuildSwitchesFrame.Cells(const ARow: TAtlasSwitchRow): TArray<string>;
-var
-  mName: string;
-begin
-  mName := ARow.Name;
-  if ARow.Section = TAtlasSwitchSection.Target then
+  // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
+  if cdsSelected in AState then
   begin
-    if ARow.Name = 'platform' then
-    begin
-      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform);
-    end
-    else
-    begin
-      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
-    end;
-    Result := TArray<string>.Create(mName, ARow.Value, '', '');
-    Exit;
-  end;
-  if ARow.LongName <> '' then
-  begin
-    mName := mName + ' (' + ARow.LongName + ')';
-  end;
-  if ARow.Section = TAtlasSwitchSection.Defines then
-  begin
-    Result := TArray<string>.Create(mName, '', '', OriginText(ARow));
+    ACanvas.Brush.Color := ListColor(FParts.List, clHighlight);
+    ACanvas.Font.Color := ListColor(FParts.List, clHighlightText);
   end
   else
   begin
-    Result := TArray<string>.Create(mName, TAtlasCompilerSwitchTexts.Value(ARow.Value),
-      TAtlasCompilerSwitchTexts.Value(ARow.ProjectValue), OriginText(ARow));
-  end;
-end;
-
-class function TAtlasBuildSwitchesFrame.AsText(const AView: TAtlasCompilerSwitchView): string;
-var
-  mLine: TAtlasSwitchLine;
-  mBuilder: TStringBuilder;
-begin
-  mBuilder := TStringBuilder.Create;
-  try
-    for mLine in Lines(AView) do
+    ACanvas.Brush.Color := ListColor(FParts.List, FParts.List.Color);
+    if mDeviates then
     begin
-      if mLine.Header then
-      begin
-        mBuilder.Append(SectionText(mLine.Section)).Append(sLineBreak);
-      end
-      else
-      begin
-        mBuilder.Append('  ').Append(string.Join(#9, Cells(AView.Rows[mLine.Row]))).Append(sLineBreak);
-      end;
+      ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
+        ACanvas.Brush.Color))).Warn));
+    end
+    else if (AIndex >= 0) and (AIndex <= High(FLines)) and FLines[AIndex].Header then
+    begin
+      ACanvas.Font.Color := ListColor(FParts.List, clGrayText);
+    end
+    else
+    begin
+      ACanvas.Font.Color := ListColor(FParts.List, FParts.List.Font.Color);
     end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
   end;
 end;
 
-procedure TAtlasBuildSwitchesFrame.SetView(const AView: TAtlasCompilerSwitchView; const AFileName: string;
-  ALine: Integer);
+procedure TAtlasBuildSwitchesFrame.ListDblClick(Sender: TObject);
 begin
-  FView := AView;
-  FHasView := True;
-  FFileName := AFileName;
-  FLine := ALine;
-  FMessage := '';
-  Refill;
+  ExecuteSelected;
 end;
 
-procedure TAtlasBuildSwitchesFrame.SetMessage(const AText: string);
+procedure TAtlasBuildSwitchesFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  FMessage := AText;
-  if AText <> '' then
+  if (Key = VK_RETURN) and (Shift = []) then
   begin
-    FHasView := False;
+    ExecuteSelected;
+    Key := 0;
+  end
+  else if (Key = Ord('C')) and (Shift = [ssCtrl]) then
+  begin
+    CopyAll;
+    Key := 0;
   end;
-  Refill;
+end;
+
+procedure TAtlasBuildSwitchesFrame.MenuPopup(Sender: TObject);
+var
+  mRow: TAtlasSwitchRow;
+  mHas: Boolean;
+begin
+  mHas := TrySelected(mRow);
+  FParts.JumpItem.Enabled := mHas and mRow.CanJump;
+  FParts.OptionsItem.Enabled := mHas and mRow.FromProject and (mRow.Section <> TAtlasSwitchSection.Target);
+  FParts.CopyItem.Enabled := FHasView;
+end;
+
+procedure TAtlasBuildSwitchesFrame.JumpClick(Sender: TObject);
+var
+  mRow: TAtlasSwitchRow;
+begin
+  if TrySelected(mRow) and mRow.CanJump and Assigned(FHandlers.OnJump) then
+  begin
+    FHandlers.OnJump(mRow);
+  end;
 end;
 
 function WhereText(const AFileName: string; ALine: Integer): string;
@@ -487,6 +429,40 @@ begin
   end;
 end;
 
+procedure TAtlasBuildSwitchesFrame.OptionsClick(Sender: TObject);
+begin
+  if Assigned(FHandlers.OnOptions) then
+  begin
+    FHandlers.OnOptions();
+  end;
+end;
+
+procedure TAtlasBuildSwitchesFrame.CopyClick(Sender: TObject);
+begin
+  CopyAll;
+end;
+
+procedure TAtlasBuildSwitchesFrame.SetView(const AView: TAtlasCompilerSwitchView; const AFileName: string;
+  ALine: Integer);
+begin
+  FView := AView;
+  FHasView := True;
+  FFileName := AFileName;
+  FLine := ALine;
+  FMessage := '';
+  Refill;
+end;
+
+procedure TAtlasBuildSwitchesFrame.SetMessage(const AText: string);
+begin
+  FMessage := AText;
+  if AText <> '' then
+  begin
+    FHasView := False;
+  end;
+  Refill;
+end;
+
 function TAtlasBuildSwitchesFrame.TrySelected(out ARow: TAtlasSwitchRow): Boolean;
 var
   mLine: TAtlasSwitchLine;
@@ -534,125 +510,149 @@ begin
   end;
 end;
 
-procedure TAtlasBuildSwitchesFrame.RowColors(ACanvas: TCanvas; AState: TCustomDrawState; AIndex: Integer);
+class function TAtlasBuildSwitchesFrame.Lines(const AView: TAtlasCompilerSwitchView): TAtlasSwitchLines;
 var
+  mSection: TAtlasSwitchSection;
+  mIndex: Integer;
   mLine: TAtlasSwitchLine;
-  mDeviates: Boolean;
+  mHasHeader: Boolean;
 begin
-  mDeviates := False;
-  ACanvas.Font.Style := [];
-  if (AIndex >= 0) and (AIndex <= High(FLines)) then
+  Result := nil;
+  for mSection := Low(TAtlasSwitchSection) to High(TAtlasSwitchSection) do
   begin
-    mLine := FLines[AIndex];
-    if mLine.Header then
+    mHasHeader := False;
+    for mIndex := 0 to High(AView.Rows) do
     begin
-      ACanvas.Font.Style := [fsBold];
+      if AView.Rows[mIndex].Section <> mSection then
+      begin
+        Continue;
+      end;
+      if not mHasHeader then
+      begin
+        mLine := Default(TAtlasSwitchLine);
+        mLine.Header := True;
+        mLine.Section := mSection;
+        mLine.Row := -1;
+        Result := Result + [mLine];
+        mHasHeader := True;
+      end;
+      mLine := Default(TAtlasSwitchLine);
+      mLine.Section := mSection;
+      mLine.Row := mIndex;
+      Result := Result + [mLine];
+    end;
+  end;
+end;
+
+class function TAtlasBuildSwitchesFrame.SectionText(ASection: TAtlasSwitchSection): string;
+begin
+  case ASection of
+    TAtlasSwitchSection.Switches:
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionSwitches);
+    TAtlasSwitchSection.Messages:
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionMessages);
+    TAtlasSwitchSection.Defines:
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionDefines);
+  else
+    Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesSectionTarget);
+  end;
+end;
+
+class function TAtlasBuildSwitchesFrame.Cells(const ARow: TAtlasSwitchRow): TArray<string>;
+var
+  mName: string;
+begin
+  mName := ARow.Name;
+  if ARow.Section = TAtlasSwitchSection.Target then
+  begin
+    if ARow.Name = 'platform' then
+    begin
+      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesPlatform);
     end
     else
     begin
-      mDeviates := FView.Rows[mLine.Row].Deviates;
-      if mDeviates then
-      begin
-        ACanvas.Font.Style := [fsBold];
-      end;
+      mName := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesConfiguration);
     end;
+    Result := TArray<string>.Create(mName, ARow.Value, '', '');
+    Exit;
   end;
-  // Farben ausdrücklich aus dem Stil der Liste, sonst im dunklen Thema weiße Zellen.
-  if cdsSelected in AState then
+  if ARow.LongName <> '' then
   begin
-    ACanvas.Brush.Color := ListColor(FParts.List, clHighlight);
-    ACanvas.Font.Color := ListColor(FParts.List, clHighlightText);
+    mName := mName + ' (' + ARow.LongName + ')';
+  end;
+  if ARow.Section = TAtlasSwitchSection.Defines then
+  begin
+    Result := TArray<string>.Create(mName, '', '', OriginText(ARow));
   end
   else
   begin
-    ACanvas.Brush.Color := ListColor(FParts.List, FParts.List.Color);
-    if mDeviates then
+    Result := TArray<string>.Create(mName, TAtlasCompilerSwitchTexts.Value(ARow.Value),
+      TAtlasCompilerSwitchTexts.Value(ARow.ProjectValue), OriginText(ARow));
+  end;
+end;
+
+class function TAtlasBuildSwitchesFrame.OriginText(const ARow: TAtlasSwitchRow): string;
+begin
+  case ARow.Kind of
+    TAtlasSwitchOriginKind.Directive:
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginLine, [ARow.Line + 1]);
+    TAtlasSwitchOriginKind.Include:
+      Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginInclude,
+        [ExtractFileName(ARow.FileName), ARow.Line + 1]);
+    TAtlasSwitchOriginKind.Project:
+      begin
+        // Symbole tragen ihre Herkunft schon als Satz („Konfiguration Debug (.dproj)“).
+        if ARow.Section = TAtlasSwitchSection.Target then
+        begin
+          Result := '';
+        end
+        else if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
+        begin
+          Result := ARow.OriginText;
+        end
+        else if ARow.OriginText <> '' then
+        begin
+          Result := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.CompilerSwitchesOriginProjectNamed, [ARow.OriginText]);
+        end
+        else
+        begin
+          Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginProject);
+        end;
+      end;
+  else
+    if (ARow.Section = TAtlasSwitchSection.Defines) and (ARow.OriginText <> '') then
     begin
-      ACanvas.Font.Color := ColorToRGB(TColor(TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(
-        ACanvas.Brush.Color))).Warn));
-    end
-    else if (AIndex >= 0) and (AIndex <= High(FLines)) and FLines[AIndex].Header then
-    begin
-      ACanvas.Font.Color := ListColor(FParts.List, clGrayText);
+      Result := ARow.OriginText;
     end
     else
     begin
-      ACanvas.Font.Color := ListColor(FParts.List, FParts.List.Font.Color);
+      Result := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesOriginDefault);
     end;
   end;
 end;
 
-procedure TAtlasBuildSwitchesFrame.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  if Item <> nil then
-  begin
-    RowColors(Sender.Canvas, State, Item.Index);
-  end;
-end;
-
-procedure TAtlasBuildSwitchesFrame.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
-  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  if Item <> nil then
-  begin
-    RowColors(Sender.Canvas, State, Item.Index);
-  end;
-end;
-
-procedure TAtlasBuildSwitchesFrame.ListDblClick(Sender: TObject);
-begin
-  ExecuteSelected;
-end;
-
-procedure TAtlasBuildSwitchesFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_RETURN) and (Shift = []) then
-  begin
-    ExecuteSelected;
-    Key := 0;
-  end
-  else if (Key = Ord('C')) and (Shift = [ssCtrl]) then
-  begin
-    CopyAll;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasBuildSwitchesFrame.MenuPopup(Sender: TObject);
+class function TAtlasBuildSwitchesFrame.AsText(const AView: TAtlasCompilerSwitchView): string;
 var
-  mRow: TAtlasSwitchRow;
-  mHas: Boolean;
+  mLine: TAtlasSwitchLine;
+  mBuilder: TStringBuilder;
 begin
-  mHas := TrySelected(mRow);
-  FParts.JumpItem.Enabled := mHas and mRow.CanJump;
-  FParts.OptionsItem.Enabled := mHas and mRow.FromProject and (mRow.Section <> TAtlasSwitchSection.Target);
-  FParts.CopyItem.Enabled := FHasView;
-end;
-
-procedure TAtlasBuildSwitchesFrame.JumpClick(Sender: TObject);
-var
-  mRow: TAtlasSwitchRow;
-begin
-  if TrySelected(mRow) and mRow.CanJump and Assigned(FHandlers.OnJump) then
-  begin
-    FHandlers.OnJump(mRow);
+  mBuilder := TStringBuilder.Create;
+  try
+    for mLine in Lines(AView) do
+    begin
+      if mLine.Header then
+      begin
+        mBuilder.Append(SectionText(mLine.Section)).Append(sLineBreak);
+      end
+      else
+      begin
+        mBuilder.Append('  ').Append(string.Join(#9, Cells(AView.Rows[mLine.Row]))).Append(sLineBreak);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
   end;
-end;
-
-procedure TAtlasBuildSwitchesFrame.OptionsClick(Sender: TObject);
-begin
-  if Assigned(FHandlers.OnOptions) then
-  begin
-    FHandlers.OnOptions();
-  end;
-end;
-
-procedure TAtlasBuildSwitchesFrame.CopyClick(Sender: TObject);
-begin
-  CopyAll;
 end;
 
 end.

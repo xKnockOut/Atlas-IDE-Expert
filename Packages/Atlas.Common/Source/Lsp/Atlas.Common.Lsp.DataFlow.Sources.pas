@@ -581,29 +581,6 @@ begin
   end;
 end;
 
-function TDataFlowSources.FunctionBody(const ASymbol: TDataFlowSymbol; out ABodyFile: string): TSyntaxNode;
-var
-  mTargets: TArray<TDefinitionTarget>;
-  mBodyTree: TSyntaxTree;
-  mPosition: TTextPosition;
-begin
-  Result := nil;
-  mTargets := TLspDefinition.Targets(FResolver, FIndex, FFiles.TreeOf(ASymbol.FileName), ASymbol.FileName,
-    ASymbol.Position, False);
-  ABodyFile := ASymbol.FileName;
-  mPosition := ASymbol.Position;
-  if Length(mTargets) > 0 then
-  begin
-    ABodyFile := mTargets[0].FileName;
-    mPosition := mTargets[0].SelectionRange.StartPos;
-  end;
-  mBodyTree := FFiles.TreeOf(ABodyFile);
-  if (mBodyTree <> nil) and FFiles.InProject(ABodyFile) then
-  begin
-    Result := TDataFlowSyntax.RoutineWithBody(TDataFlowSyntax.NodeAt(mBodyTree.Root, mPosition));
-  end;
-end;
-
 procedure TDataFlowSources.FunctionSources(const ASymbol: TDataFlowSymbol);
 var
   mBody, mStatement: TSyntaxNode;
@@ -629,6 +606,29 @@ begin
     end;
     AddValueNode(TDataFlowSpot.Create(TDataFlowKind.Return, mBodyFile, mStatement.StartPos), mBodyTree,
       mStatement[1], mVia, '');
+  end;
+end;
+
+function TDataFlowSources.FunctionBody(const ASymbol: TDataFlowSymbol; out ABodyFile: string): TSyntaxNode;
+var
+  mTargets: TArray<TDefinitionTarget>;
+  mBodyTree: TSyntaxTree;
+  mPosition: TTextPosition;
+begin
+  Result := nil;
+  mTargets := TLspDefinition.Targets(FResolver, FIndex, FFiles.TreeOf(ASymbol.FileName), ASymbol.FileName,
+    ASymbol.Position, False);
+  ABodyFile := ASymbol.FileName;
+  mPosition := ASymbol.Position;
+  if Length(mTargets) > 0 then
+  begin
+    ABodyFile := mTargets[0].FileName;
+    mPosition := mTargets[0].SelectionRange.StartPos;
+  end;
+  mBodyTree := FFiles.TreeOf(ABodyFile);
+  if (mBodyTree <> nil) and FFiles.InProject(ABodyFile) then
+  begin
+    Result := TDataFlowSyntax.RoutineWithBody(TDataFlowSyntax.NodeAt(mBodyTree.Root, mPosition));
   end;
 end;
 

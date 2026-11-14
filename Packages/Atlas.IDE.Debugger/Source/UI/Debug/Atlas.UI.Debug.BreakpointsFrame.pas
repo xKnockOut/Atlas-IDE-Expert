@@ -269,6 +269,11 @@ begin
   end;
 end;
 
+class function TAtlasBreakpointTexts.ColumnCaption(AColumn: TAtlasBreakpointColumn): string;
+begin
+  Result := TAtlasDebugStrings.Text(cColumnTexts[AColumn]);
+end;
+
 class function TAtlasBreakpointTexts.RuleText(const ARule: TAtlasBreakpointRule; const ATriggerText: string): string;
 var
   mParts: TArray<string>;
@@ -283,11 +288,6 @@ begin
     end;
   end;
   Result := string.Join(cPartSeparator, mParts);
-end;
-
-class function TAtlasBreakpointTexts.ColumnCaption(AColumn: TAtlasBreakpointColumn): string;
-begin
-  Result := TAtlasDebugStrings.Text(cColumnTexts[AColumn]);
 end;
 
 class function TAtlasBreakpointTexts.GroupCaption(const ACaption: string; AGrouping: TAtlasBreakpointGrouping;
@@ -659,6 +659,19 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasDebugBreakpointsFrame.GetColumns: TAtlasBreakpointColumns;
+begin
+  CaptureColumns;
+  Result := FState.Columns;
+end;
+
+procedure TAtlasDebugBreakpointsFrame.SetColumns(const AValue: TAtlasBreakpointColumns);
+begin
+  FState.Columns := TAtlasBreakpointColumns.Parse(AValue.ToText);
+  BuildColumns;
+  Fill;
+end;
+
 procedure TAtlasDebugBreakpointsFrame.CreateWnd;
 var
   mGrouping: TAtlasBreakpointGrouping;
@@ -680,37 +693,6 @@ begin
   end;
   BuildColumns;
   Fill;
-end;
-
-function TAtlasDebugBreakpointsFrame.CurrentFilters: TAtlasBreakpointFilters;
-var
-  mFilter: TAtlasBreakpointFilter;
-begin
-  Result := [];
-  for mFilter := Low(TAtlasBreakpointFilter) to High(TAtlasBreakpointFilter) do
-  begin
-    if FControls.Chips[mFilter].Checked then
-    begin
-      Include(Result, mFilter);
-    end;
-  end;
-end;
-
-function TAtlasDebugBreakpointsFrame.CurrentGrouping: TAtlasBreakpointGrouping;
-var
-  mIndex: Integer;
-begin
-  mIndex := FControls.Grouping.ItemIndex;
-  if mIndex < 0 then
-  begin
-    mIndex := FControls.Grouping.Tag;
-  end;
-  Result := TAtlasBreakpointGrouping(mIndex);
-end;
-
-function TAtlasDebugBreakpointsFrame.ShownRows: TArray<Integer>;
-begin
-  Result := TAtlasBreakpointView.Filter(FState.Rows, FControls.Search.Text, CurrentFilters);
 end;
 
 procedure TAtlasDebugBreakpointsFrame.BuildColumns;
@@ -766,68 +748,6 @@ begin
   end;
 end;
 
-function TAtlasDebugBreakpointsFrame.GetColumns: TAtlasBreakpointColumns;
-begin
-  CaptureColumns;
-  Result := FState.Columns;
-end;
-
-procedure TAtlasDebugBreakpointsFrame.SetColumns(const AValue: TAtlasBreakpointColumns);
-begin
-  FState.Columns := TAtlasBreakpointColumns.Parse(AValue.ToText);
-  BuildColumns;
-  Fill;
-end;
-
-function TAtlasDebugBreakpointsFrame.SelectedKeys: TStrings;
-var
-  mItem: TListItem;
-begin
-  Result := TStringList.Create;
-  TStringList(Result).Sorted := True;
-  TStringList(Result).Duplicates := dupIgnore;
-  if not FControls.List.HandleAllocated then
-  begin
-    Exit;
-  end;
-  mItem := FControls.List.Selected;
-  while mItem <> nil do
-  begin
-    Result.Add(RowKey(FState.Rows[Integer(NativeInt(mItem.Data))]));
-    mItem := FControls.List.GetNextItem(mItem, sdAll, [isSelected]);
-  end;
-end;
-
-procedure TAtlasDebugBreakpointsFrame.AddItems(const AEntry: TAtlasBreakpointGroupEntry; AGroupId: Integer;
-  ASelected: TStrings);
-var
-  mRow, mIndex: Integer;
-  mItem: TListItem;
-  mColumn: TListColumn;
-  mText: string;
-begin
-  for mRow in AEntry.Rows do
-  begin
-    mItem := FControls.List.Items.Add;
-    mItem.Data := Pointer(NativeInt(mRow));
-    mItem.GroupID := AGroupId;
-    for mIndex := 0 to FControls.List.Columns.Count - 1 do
-    begin
-      mColumn := FControls.List.Columns[mIndex];
-      mText := TAtlasBreakpointTexts.Cell(FState.Rows[mRow], TAtlasBreakpointColumn(mColumn.Tag), FState.HasRun);
-      if mIndex = 0 then
-      begin
-        mItem.Caption := mText;
-      end
-      else
-      begin
-        mItem.SubItems.Add(mText);
-      end;
-    end;
-    mItem.Selected := ASelected.IndexOf(RowKey(FState.Rows[mRow])) >= 0;
-  end;
-end;
-
 procedure TAtlasDebugBreakpointsFrame.Fill;
 begin
   FillKeeping(SelectedKeys);
@@ -875,6 +795,95 @@ begin
   end;
   FControls.Summary.Caption := TAtlasBreakpointTexts.Summary(Length(mShown), Length(FState.Rows), FState.HasRun);
   UpdateCommands;
+end;
+
+procedure TAtlasDebugBreakpointsFrame.AddItems(const AEntry: TAtlasBreakpointGroupEntry; AGroupId: Integer;
+  ASelected: TStrings);
+var
+  mRow, mIndex: Integer;
+  mItem: TListItem;
+  mColumn: TListColumn;
+  mText: string;
+begin
+  for mRow in AEntry.Rows do
+  begin
+    mItem := FControls.List.Items.Add;
+    mItem.Data := Pointer(NativeInt(mRow));
+    mItem.GroupID := AGroupId;
+    for mIndex := 0 to FControls.List.Columns.Count - 1 do
+    begin
+      mColumn := FControls.List.Columns[mIndex];
+      mText := TAtlasBreakpointTexts.Cell(FState.Rows[mRow], TAtlasBreakpointColumn(mColumn.Tag), FState.HasRun);
+      if mIndex = 0 then
+      begin
+        mItem.Caption := mText;
+      end
+      else
+      begin
+        mItem.SubItems.Add(mText);
+      end;
+    end;
+    mItem.Selected := ASelected.IndexOf(RowKey(FState.Rows[mRow])) >= 0;
+  end;
+end;
+
+procedure TAtlasDebugBreakpointsFrame.UpdateCommands;
+var
+  mAny: Boolean;
+begin
+  mAny := FControls.List.HandleAllocated and (FControls.List.SelCount > 0);
+  FControls.AddTag.Enabled := mAny;
+  FControls.RemoveTag.Enabled := mAny;
+end;
+
+function TAtlasDebugBreakpointsFrame.SelectedKeys: TStrings;
+var
+  mItem: TListItem;
+begin
+  Result := TStringList.Create;
+  TStringList(Result).Sorted := True;
+  TStringList(Result).Duplicates := dupIgnore;
+  if not FControls.List.HandleAllocated then
+  begin
+    Exit;
+  end;
+  mItem := FControls.List.Selected;
+  while mItem <> nil do
+  begin
+    Result.Add(RowKey(FState.Rows[Integer(NativeInt(mItem.Data))]));
+    mItem := FControls.List.GetNextItem(mItem, sdAll, [isSelected]);
+  end;
+end;
+
+function TAtlasDebugBreakpointsFrame.CurrentFilters: TAtlasBreakpointFilters;
+var
+  mFilter: TAtlasBreakpointFilter;
+begin
+  Result := [];
+  for mFilter := Low(TAtlasBreakpointFilter) to High(TAtlasBreakpointFilter) do
+  begin
+    if FControls.Chips[mFilter].Checked then
+    begin
+      Include(Result, mFilter);
+    end;
+  end;
+end;
+
+procedure TAtlasDebugBreakpointsFrame.FilterChanged(Sender: TObject);
+begin
+  if Sender = FControls.Grouping then
+  begin
+    FControls.Grouping.Tag := FControls.Grouping.ItemIndex;
+  end;
+  Fill;
+end;
+
+procedure TAtlasDebugBreakpointsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if not FState.Filling then
+  begin
+    UpdateCommands;
+  end;
 end;
 
 procedure TAtlasDebugBreakpointsFrame.SetRows(const ARows: TArray<TAtlasBreakpointRow>; AHasRun: Boolean);
@@ -934,20 +943,29 @@ begin
   end;
 end;
 
-procedure TAtlasDebugBreakpointsFrame.UpdateCommands;
-var
-  mAny: Boolean;
+function TAtlasDebugBreakpointsFrame.ShownRows: TArray<Integer>;
 begin
-  mAny := FControls.List.HandleAllocated and (FControls.List.SelCount > 0);
-  FControls.AddTag.Enabled := mAny;
-  FControls.RemoveTag.Enabled := mAny;
+  Result := TAtlasBreakpointView.Filter(FState.Rows, FControls.Search.Text, CurrentFilters);
 end;
 
-procedure TAtlasDebugBreakpointsFrame.FilterChanged(Sender: TObject);
+function TAtlasDebugBreakpointsFrame.CurrentGrouping: TAtlasBreakpointGrouping;
+var
+  mIndex: Integer;
 begin
-  if Sender = FControls.Grouping then
+  mIndex := FControls.Grouping.ItemIndex;
+  if mIndex < 0 then
   begin
-    FControls.Grouping.Tag := FControls.Grouping.ItemIndex;
+    mIndex := FControls.Grouping.Tag;
+  end;
+  Result := TAtlasBreakpointGrouping(mIndex);
+end;
+
+procedure TAtlasDebugBreakpointsFrame.SetGrouping(AGrouping: TAtlasBreakpointGrouping);
+begin
+  FControls.Grouping.Tag := Ord(AGrouping);
+  if FControls.Grouping.Items.Count > Ord(AGrouping) then
+  begin
+    FControls.Grouping.ItemIndex := Ord(AGrouping);
   end;
   Fill;
 end;
@@ -966,24 +984,6 @@ begin
     Exit;
   end;
   mEvent(mRows, mTag, AAdd);
-end;
-
-procedure TAtlasDebugBreakpointsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-begin
-  if not FState.Filling then
-  begin
-    UpdateCommands;
-  end;
-end;
-
-procedure TAtlasDebugBreakpointsFrame.SetGrouping(AGrouping: TAtlasBreakpointGrouping);
-begin
-  FControls.Grouping.Tag := Ord(AGrouping);
-  if FControls.Grouping.Items.Count > Ord(AGrouping) then
-  begin
-    FControls.Grouping.ItemIndex := Ord(AGrouping);
-  end;
-  Fill;
 end;
 
 procedure TAtlasDebugBreakpointsFrame.SetChip(AFilter: TAtlasBreakpointFilter; AChecked: Boolean);

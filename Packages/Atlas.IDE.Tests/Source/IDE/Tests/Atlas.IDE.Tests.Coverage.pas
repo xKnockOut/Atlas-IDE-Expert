@@ -290,11 +290,6 @@ begin
   TAtlasIdeGutterMarks.Invalidate;
 end;
 
-class procedure TAtlasIdeTestCoverage.ProvideIn(const AScope: IAtlasModuleScope);
-begin
-  AScope.Provide(IAtlasGutterLayer, TAtlasIdeTestCoverage.Create as IAtlasGutterLayer);
-end;
-
 class procedure TAtlasIdeTestCoverage.Clear;
 begin
   if FState <> nil then
@@ -302,6 +297,11 @@ begin
     FState.Clear;
     TAtlasIdeGutterMarks.Invalidate;
   end;
+end;
+
+class procedure TAtlasIdeTestCoverage.ProvideIn(const AScope: IAtlasModuleScope);
+begin
+  AScope.Provide(IAtlasGutterLayer, TAtlasIdeTestCoverage.Create as IAtlasGutterLayer);
 end;
 
 end.

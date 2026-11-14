@@ -463,18 +463,9 @@ begin
   FPos := 1;
 end;
 
-function TAtlasVcsXmlReader.Attr(const AName: string): string;
-var
-  mIndex: Integer;
+function TAtlasVcsXmlReader.AtChar(AChar: Char): Boolean;
 begin
-  for mIndex := 0 to High(FAttrNames) do
-  begin
-    if FAttrNames[mIndex] = AName then
-    begin
-      Exit(FAttrValues[mIndex]);
-    end;
-  end;
-  Result := '';
+  Result := (FPos <= Length(FText)) and (FText[FPos] = AChar);
 end;
 
 function IsSpace(AChar: Char): Boolean;
@@ -488,11 +479,6 @@ begin
   begin
     Inc(FPos);
   end;
-end;
-
-function TAtlasVcsXmlReader.AtChar(AChar: Char): Boolean;
-begin
-  Result := (FPos <= Length(FText)) and (FText[FPos] = AChar);
 end;
 
 procedure TAtlasVcsXmlReader.ReadTagName;
@@ -678,6 +664,20 @@ begin
       Result := ReadMarkup;
     end;
   end;
+end;
+
+function TAtlasVcsXmlReader.Attr(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FAttrNames) do
+  begin
+    if FAttrNames[mIndex] = AName then
+    begin
+      Exit(FAttrValues[mIndex]);
+    end;
+  end;
+  Result := '';
 end;
 
 end.

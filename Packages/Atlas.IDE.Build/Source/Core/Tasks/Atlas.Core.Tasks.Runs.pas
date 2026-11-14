@@ -186,24 +186,6 @@ begin
   end;
 end;
 
-class function TAtlasTaskLines.Clean(const ALine: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := ALine;
-  if (Result <> '') and (Result[Length(Result)] = #13) then
-  begin
-    SetLength(Result, Length(Result) - 1);
-  end;
-  // Steuerfolgen der Konsole (pwsh färbt Fehler).
-  mIndex := Pos(#27, Result);
-  while mIndex > 0 do
-  begin
-    Delete(Result, mIndex, EscapeEnd(Result, mIndex) - mIndex + 1);
-    mIndex := Pos(#27, Result);
-  end;
-end;
-
 function TAtlasTaskLines.Decode(const ABytes: TBytes; AStart, ACount: Integer): string;
 var
   mEncoding: TEncoding;
@@ -263,6 +245,24 @@ begin
     Result := [Decode(FPending, 0, Length(FPending))];
   end;
   FPending := nil;
+end;
+
+class function TAtlasTaskLines.Clean(const ALine: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := ALine;
+  if (Result <> '') and (Result[Length(Result)] = #13) then
+  begin
+    SetLength(Result, Length(Result) - 1);
+  end;
+  // Steuerfolgen der Konsole (pwsh färbt Fehler).
+  mIndex := Pos(#27, Result);
+  while mIndex > 0 do
+  begin
+    Delete(Result, mIndex, EscapeEnd(Result, mIndex) - mIndex + 1);
+    mIndex := Pos(#27, Result);
+  end;
 end;
 
 { TAtlasTaskCounts }
@@ -352,6 +352,8 @@ const
   cOutcomeNames: array[TAtlasTaskOutcome] of string = ('finished', 'programMissing', 'startFailed', 'timedOut',
     'cancelled');
 
+{ TAtlasTaskHistory }
+
 constructor TAtlasTaskHistory.Create;
 begin
   inherited Create;
@@ -362,16 +364,6 @@ destructor TAtlasTaskHistory.Destroy;
 begin
   FProjects.Free;
   inherited Destroy;
-end;
-
-class function TAtlasTaskHistory.Key(const AProject: string): string;
-begin
-  Result := AnsiLowerCase(StringReplace(Trim(AProject), '/', '\', [rfReplaceAll]));
-end;
-
-procedure TAtlasTaskHistory.Clear;
-begin
-  FProjects.Clear;
 end;
 
 function TAtlasTaskHistory.Find(const AProject: string): TProject;
@@ -415,6 +407,16 @@ begin
   Result := TProject.Create;
   Result.FKey := Key(AProject);
   FProjects.Add(Result);
+end;
+
+class function TAtlasTaskHistory.Key(const AProject: string): string;
+begin
+  Result := AnsiLowerCase(StringReplace(Trim(AProject), '/', '\', [rfReplaceAll]));
+end;
+
+procedure TAtlasTaskHistory.Clear;
+begin
+  FProjects.Clear;
 end;
 
 procedure TAtlasTaskHistory.Remember(const AProject: string; const ARun: TAtlasTaskRun);

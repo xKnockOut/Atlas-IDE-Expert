@@ -92,6 +92,8 @@ begin
   end;
 end;
 
+{ TAtlasProjectTrendLog }
+
 class function TAtlasProjectTrendLog.SameStamp(AUtc1, AUtc2: TDateTime): Boolean;
 begin
   Result := (AUtc1 > 0) and (AUtc2 > 0) and
@@ -117,21 +119,6 @@ begin
     APoint.Branch := ASummary.Vcs.Branch;
     APoint.Commit := ASummary.Vcs.Revision;
   end;
-end;
-
-class function TAtlasProjectTrendLog.IndexOf(const ATrends: TAtlasProjectTrends; AAtUtc: TDateTime): Integer;
-var
-  mIndex: Integer;
-begin
-  // Von hinten: Nachträge betreffen fast immer den letzten Punkt.
-  for mIndex := High(ATrends.Points) downto 0 do
-  begin
-    if SameStamp(ATrends.Points[mIndex].At, AAtUtc) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 class procedure TAtlasProjectTrendLog.Append(var ASummary: TAtlasProjectSummary; AAtUtc: TDateTime;
@@ -184,6 +171,21 @@ begin
   mPoint := ASummary.Trends.Points[mIndex];
   Measure(ASummary, AAtUtc, mPoint);
   ASummary.Trends.Points[mIndex] := mPoint;
+end;
+
+class function TAtlasProjectTrendLog.IndexOf(const ATrends: TAtlasProjectTrends; AAtUtc: TDateTime): Integer;
+var
+  mIndex: Integer;
+begin
+  // Von hinten: Nachträge betreffen fast immer den letzten Punkt.
+  for mIndex := High(ATrends.Points) downto 0 do
+  begin
+    if SameStamp(ATrends.Points[mIndex].At, AAtUtc) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 end.

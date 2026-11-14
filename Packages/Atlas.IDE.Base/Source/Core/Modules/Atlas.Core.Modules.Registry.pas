@@ -463,14 +463,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasModuleRegistry.RaiseFailures(const AFailures: TArray<string>);
-begin
-  if Length(AFailures) > 0 then
-  begin
-    raise EAtlasModuleRegistry.Create(string.Join(sLineBreak, AFailures));
-  end;
-end;
-
 function TAtlasModuleRegistry.IndexOfModule(const AModuleId: string): Integer;
 var
   mIndex: Integer;
@@ -562,6 +554,112 @@ end;
 function TAtlasModuleRegistry.NotifyModule(AKind: TAtlasRegistryChangeKind; const AModuleId: string): TArray<string>;
 begin
   Result := Notify(AKind, AModuleId, cNoIID);
+end;
+
+function TAtlasModuleRegistry.AddProvision(const AOwnerId: string; const AIID: TGUID;
+  const AObject: IInterface): IAtlasRegistration;
+var
+  mProvision: TProvision;
+  mItem: TAtlasProvisionRegistration;
+begin
+  if (AObject = nil) or not Supports(AObject, AIID) then
+  begin
+    raise EAtlasModuleRegistry.CreateFmt('Objekt unterstützt %s nicht', [GUIDToString(AIID)]);
+  end;
+  mItem := TAtlasProvisionRegistration.Create(Self);
+  mProvision.IID := AIID;
+  mProvision.Instance := AObject;
+  mProvision.OwnerId := AOwnerId;
+  mProvision.Item := mItem;
+  mProvision.Ref := mItem;
+  FLock.Acquire;
+  try
+    FProvisions.Add(mProvision);
+  finally
+    FLock.Release;
+  end;
+  Result := mProvision.Ref;
+  RaiseFailures(Notify(rcProvided, AOwnerId, AIID));
+end;
+
+function TAtlasModuleRegistry.AddListener(const AOwnerId: string;
+  const AListener: IAtlasRegistryListener): IAtlasRegistration;
+var
+  mEntry: TListenerEntry;
+  mItem: TAtlasListenerRegistration;
+begin
+  if AListener = nil then
+  begin
+    raise EAtlasModuleRegistry.Create('Kein Hörer angegeben');
+  end;
+  mItem := TAtlasListenerRegistration.Create(Self);
+  mEntry.Listener := AListener;
+  mEntry.OwnerId := AOwnerId;
+  mEntry.Item := mItem;
+  mEntry.Ref := mItem;
+  FLock.Acquire;
+  try
+    FListeners.Add(mEntry);
+  finally
+    FLock.Release;
+  end;
+  Result := mEntry.Ref;
+end;
+
+procedure TAtlasModuleRegistry.RemoveProvision(AItem: TAtlasRegistration);
+var
+  mIndex: Integer;
+  mProvision: TProvision;
+  mFound: Boolean;
+begin
+  mFound := False;
+  FLock.Acquire;
+  try
+    for mIndex := 0 to FProvisions.Count - 1 do
+    begin
+      if FProvisions[mIndex].Item = AItem then
+      begin
+        mProvision := FProvisions[mIndex];
+        FProvisions.Delete(mIndex);
+        mFound := True;
+        Break;
+      end;
+    end;
+  finally
+    FLock.Release;
+  end;
+  if mFound then
+  begin
+    RaiseFailures(Notify(rcRevoked, mProvision.OwnerId, mProvision.IID));
+  end;
+end;
+
+procedure TAtlasModuleRegistry.RemoveListener(AItem: TAtlasRegistration);
+var
+  mIndex: Integer;
+begin
+  // Wer Revoke ruft, hält selbst eine Referenz: AItem lebt über das Löschen hinaus.
+  FLock.Acquire;
+  try
+    for mIndex := 0 to FListeners.Count - 1 do
+    begin
+      if FListeners[mIndex].Item = AItem then
+      begin
+        FListeners.Delete(mIndex);
+        Break;
+      end;
+    end;
+  finally
+    FLock.Release;
+  end;
+end;
+
+class procedure TAtlasModuleRegistry.RaiseFailures(const AFailures: TArray<string>);
+begin
+  if Length(AFailures) > 0 then
+  begin
+    raise EAtlasModuleRegistry.Create(string.Join(sLineBreak, AFailures));
+  end;
 end;
 
 function TAtlasModuleRegistry.RegisterModule(const AModule: IAtlasModule): IAtlasModuleScope;
@@ -744,104 +842,6 @@ begin
       if mEntry.Info.Handle = AHandle then
       begin
         Exit(True);
-      end;
-    end;
-  finally
-    FLock.Release;
-  end;
-end;
-
-function TAtlasModuleRegistry.AddProvision(const AOwnerId: string; const AIID: TGUID;
-  const AObject: IInterface): IAtlasRegistration;
-var
-  mProvision: TProvision;
-  mItem: TAtlasProvisionRegistration;
-begin
-  if (AObject = nil) or not Supports(AObject, AIID) then
-  begin
-    raise EAtlasModuleRegistry.CreateFmt('Objekt unterstützt %s nicht', [GUIDToString(AIID)]);
-  end;
-  mItem := TAtlasProvisionRegistration.Create(Self);
-  mProvision.IID := AIID;
-  mProvision.Instance := AObject;
-  mProvision.OwnerId := AOwnerId;
-  mProvision.Item := mItem;
-  mProvision.Ref := mItem;
-  FLock.Acquire;
-  try
-    FProvisions.Add(mProvision);
-  finally
-    FLock.Release;
-  end;
-  Result := mProvision.Ref;
-  RaiseFailures(Notify(rcProvided, AOwnerId, AIID));
-end;
-
-function TAtlasModuleRegistry.AddListener(const AOwnerId: string;
-  const AListener: IAtlasRegistryListener): IAtlasRegistration;
-var
-  mEntry: TListenerEntry;
-  mItem: TAtlasListenerRegistration;
-begin
-  if AListener = nil then
-  begin
-    raise EAtlasModuleRegistry.Create('Kein Hörer angegeben');
-  end;
-  mItem := TAtlasListenerRegistration.Create(Self);
-  mEntry.Listener := AListener;
-  mEntry.OwnerId := AOwnerId;
-  mEntry.Item := mItem;
-  mEntry.Ref := mItem;
-  FLock.Acquire;
-  try
-    FListeners.Add(mEntry);
-  finally
-    FLock.Release;
-  end;
-  Result := mEntry.Ref;
-end;
-
-procedure TAtlasModuleRegistry.RemoveProvision(AItem: TAtlasRegistration);
-var
-  mIndex: Integer;
-  mProvision: TProvision;
-  mFound: Boolean;
-begin
-  mFound := False;
-  FLock.Acquire;
-  try
-    for mIndex := 0 to FProvisions.Count - 1 do
-    begin
-      if FProvisions[mIndex].Item = AItem then
-      begin
-        mProvision := FProvisions[mIndex];
-        FProvisions.Delete(mIndex);
-        mFound := True;
-        Break;
-      end;
-    end;
-  finally
-    FLock.Release;
-  end;
-  if mFound then
-  begin
-    RaiseFailures(Notify(rcRevoked, mProvision.OwnerId, mProvision.IID));
-  end;
-end;
-
-procedure TAtlasModuleRegistry.RemoveListener(AItem: TAtlasRegistration);
-var
-  mIndex: Integer;
-begin
-  // Wer Revoke ruft, hält selbst eine Referenz: AItem lebt über das Löschen hinaus.
-  FLock.Acquire;
-  try
-    for mIndex := 0 to FListeners.Count - 1 do
-    begin
-      if FListeners[mIndex].Item = AItem then
-      begin
-        FListeners.Delete(mIndex);
-        Break;
       end;
     end;
   finally

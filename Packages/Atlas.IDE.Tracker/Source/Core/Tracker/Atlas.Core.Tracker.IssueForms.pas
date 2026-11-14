@@ -534,10 +534,7 @@ begin
   AForm.Body := Trim(string.Join(#10, Copy(mLines, mEnd + 1, MaxInt)));
 end;
 
-class function TAtlasIssueForms.IsConfigFile(const AName: string): Boolean;
-begin
-  Result := SameText(AName, cConfigName) or SameText(AName, 'config.yaml');
-end;
+{ TAtlasIssueForms }
 
 class function TAtlasIssueForms.IsFormFile(const AName: string): Boolean;
 var
@@ -545,6 +542,11 @@ var
 begin
   mExt := LowerCase(ExtractFileExt(AName));
   Result := ((mExt = '.yml') or (mExt = '.yaml') or (mExt = '.md')) and not IsConfigFile(AName);
+end;
+
+class function TAtlasIssueForms.IsConfigFile(const AName: string): Boolean;
+begin
+  Result := SameText(AName, cConfigName) or SameText(AName, 'config.yaml');
 end;
 
 class function TAtlasIssueForms.Parse(const AFile: TAtlasIssueFormFile; out AForm: TAtlasIssueForm): Boolean;

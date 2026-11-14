@@ -94,12 +94,45 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.Uris;
 
+{ TShellNavigation }
+
 constructor TShellNavigation.Create(const AServices: TShellNavigationServices);
 begin
   inherited Create;
   FServices := AServices;
   CreateSymbolViews;
   CreateEditorViews;
+end;
+
+destructor TShellNavigation.Destroy;
+begin
+  FreeAndNil(FLinkedEditing);
+  FreeAndNil(FInlineValues);
+  FreeAndNil(FCompilerSwitches);
+  FreeAndNil(FDebugUnavailable);
+  FreeAndNil(FDefinition);
+  FreeAndNil(FHover);
+  FreeAndNil(FWorkspaceSymbols);
+  FreeAndNil(FBookmarks);
+  FreeAndNil(FDocumentHighlights);
+  FreeAndNil(FReferences);
+  FreeAndNil(FRename);
+  inherited Destroy;
+end;
+
+function TShellNavigation.GetNamespaces: TArray<string>;
+begin
+  Result := FDefinition.Namespaces;
+end;
+
+function TShellNavigation.ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := FServices.ReadText(AFileName, AText);
+end;
+
+function TShellNavigation.ProjectFiles: TArray<string>;
+begin
+  Result := FServices.ProjectFiles();
 end;
 
 procedure TShellNavigation.CreateSymbolViews;
@@ -133,37 +166,6 @@ begin
   FCompilerSwitches := TLspCompilerSwitches.Create(FServices.Documents, FServices.CompilerSwitchContextFor);
   FDebugUnavailable := TLspDebugUnavailable.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit,
     FServices.CompilerSwitchContextFor);
-end;
-
-destructor TShellNavigation.Destroy;
-begin
-  FreeAndNil(FLinkedEditing);
-  FreeAndNil(FInlineValues);
-  FreeAndNil(FCompilerSwitches);
-  FreeAndNil(FDebugUnavailable);
-  FreeAndNil(FDefinition);
-  FreeAndNil(FHover);
-  FreeAndNil(FWorkspaceSymbols);
-  FreeAndNil(FBookmarks);
-  FreeAndNil(FDocumentHighlights);
-  FreeAndNil(FReferences);
-  FreeAndNil(FRename);
-  inherited Destroy;
-end;
-
-function TShellNavigation.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  Result := FServices.ReadText(AFileName, AText);
-end;
-
-function TShellNavigation.ProjectFiles: TArray<string>;
-begin
-  Result := FServices.ProjectFiles();
-end;
-
-function TShellNavigation.GetNamespaces: TArray<string>;
-begin
-  Result := FDefinition.Namespaces;
 end;
 
 procedure TShellNavigation.Attach(ADispatcher: TJsonRpcDispatcher);

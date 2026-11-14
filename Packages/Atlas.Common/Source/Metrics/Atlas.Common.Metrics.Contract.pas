@@ -146,11 +146,6 @@ begin
   Result.Structure[TStructureKind.InheritanceDepth] := 5;
 end;
 
-function TMetricLimits.ExceedsStructure(AKind: TStructureKind; AValue: Integer): Boolean;
-begin
-  Result := AValue > Structure[AKind];
-end;
-
 function TMetricLimits.Exceeds(AKind: TMetricKind; AValue: Integer): Boolean;
 begin
   Result := AValue > Values[AKind];
@@ -168,6 +163,11 @@ begin
       Result := Result + [mKind];
     end;
   end;
+end;
+
+function TMetricLimits.ExceedsStructure(AKind: TStructureKind; AValue: Integer): Boolean;
+begin
+  Result := AValue > Structure[AKind];
 end;
 
 { TFileMetrics }

@@ -757,6 +757,23 @@ begin
   Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
+{ TMethodUseScan }
+
+class function TMethodUseScan.Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan;
+var
+  mScan: TMethodUseScan;
+begin
+  mScan := Default(TMethodUseScan);
+  mScan.Offset := AOffset;
+  mScan.Name := AName;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := mScan.Visit(ANode);
+    end);
+  Result := mScan;
+end;
+
 function TMethodUseScan.IsNameAt(ANode: TSyntaxNode): Boolean;
 begin
   if not SameText(ANode.Name, Name) then
@@ -792,21 +809,6 @@ begin
   begin
     Found := ANode;
   end;
-end;
-
-class function TMethodUseScan.Scan(ATree: TSyntaxTree; AOffset: Integer; const AName: string): TMethodUseScan;
-var
-  mScan: TMethodUseScan;
-begin
-  mScan := Default(TMethodUseScan);
-  mScan.Offset := AOffset;
-  mScan.Name := AName;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      Result := mScan.Visit(ANode);
-    end);
-  Result := mScan;
 end;
 
 end.

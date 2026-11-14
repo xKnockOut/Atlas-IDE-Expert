@@ -192,9 +192,26 @@ end;
 
 { TAtlasDebugExpression }
 
-class function TAtlasDebugExpression.IsReserved(const AWord: string): Boolean;
+class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;
+var
+  mStart, mStop: Integer;
 begin
-  Result := MatchText(AWord, cReservedWords);
+  Result := '';
+  if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
+  begin
+    Exit;
+  end;
+  mStart := AIndex;
+  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
+  begin
+    Dec(mStart);
+  end;
+  mStop := AIndex + 1;
+  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
+  begin
+    Inc(mStop);
+  end;
+  Result := At(ALine, mStart, mStop);
 end;
 
 type
@@ -256,20 +273,9 @@ begin
   end;
 end;
 
-class function TAtlasDebugExpression.InStringOrComment(const ALine: string; AIndex: Integer): Boolean;
-var
-  mIndex: Integer;
-  mState: TLineState;
+class function TAtlasDebugExpression.IsReserved(const AWord: string): Boolean;
 begin
-  // Zustand am Anfang der Zeile: außerhalb; mehrzeilige Kommentare davor kennt die Zeile nicht.
-  mState := lsCode;
-  mIndex := 1;
-  while (mIndex <= AIndex) and (mIndex <= Length(ALine)) and (mState <> lsLineComment) do
-  begin
-    mState := StepState(ALine, mIndex, mState);
-    Inc(mIndex);
-  end;
-  Result := mState <> lsCode;
+  Result := MatchText(AWord, cReservedWords);
 end;
 
 /// <summary>Von „]“ an APos (1-basiert) zur passenden öffnenden Klammer und davor; False bei Klammern oder
@@ -389,26 +395,20 @@ begin
   end;
 end;
 
-class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;
+class function TAtlasDebugExpression.InStringOrComment(const ALine: string; AIndex: Integer): Boolean;
 var
-  mStart, mStop: Integer;
+  mIndex: Integer;
+  mState: TLineState;
 begin
-  Result := '';
-  if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
+  // Zustand am Anfang der Zeile: außerhalb; mehrzeilige Kommentare davor kennt die Zeile nicht.
+  mState := lsCode;
+  mIndex := 1;
+  while (mIndex <= AIndex) and (mIndex <= Length(ALine)) and (mState <> lsLineComment) do
   begin
-    Exit;
+    mState := StepState(ALine, mIndex, mState);
+    Inc(mIndex);
   end;
-  mStart := AIndex;
-  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
-  begin
-    Dec(mStart);
-  end;
-  mStop := AIndex + 1;
-  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
-  begin
-    Inc(mStop);
-  end;
-  Result := At(ALine, mStart, mStop);
+  Result := mState <> lsCode;
 end;
 
 class function TAtlasDebugExpression.Shorten(const AText: string; AMaxLength: Integer): string;

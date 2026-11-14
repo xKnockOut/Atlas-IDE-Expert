@@ -454,20 +454,6 @@ begin
   end;
 end;
 
-function TConstructorScan.RaisingCall(ARoot: TSyntaxNode): string;
-var
-  mRaiser: string;
-begin
-  mRaiser := '';
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Skip lässt den Teilbaum aus, Found liefert den ersten Treffer.
-  ARoot.Search(
-    function(ANode: TSyntaxNode): TSyntaxSearchStep
-    begin
-      Result := RaisingStep(ANode, mRaiser);
-    end);
-  Result := mRaiser;
-end;
-
 /// <summary>Konstruktor Create der Klasse AClass ohne Rumpf oder mit werfendem Aufruf?</summary>
 function TConstructorScan.IsRaisingCreate(ARoutine: TSyntaxNode; const AClass: string): Boolean;
 var
@@ -529,28 +515,6 @@ begin
       end;
     end;
   until not mChanged;
-end;
-
-procedure TConstructorScan.Start(const AFields: TArray<string>);
-begin
-  FFields := AFields;
-  FRisky := nil;
-  FImplications := nil;
-end;
-
-function TConstructorScan.RiskOf(const AField: string; out AItem: TNilAtDestroy): Boolean;
-var
-  mItem: TNilAtDestroy;
-begin
-  Result := False;
-  for mItem in FRisky do
-  begin
-    if not Result and SameText(mItem.Field, AField) then
-    begin
-      AItem := mItem;
-      Result := True;
-    end;
-  end;
 end;
 
 procedure TConstructorScan.AddRisky(const AField, ARaiser: string; AConditional: Boolean);
@@ -708,6 +672,27 @@ begin
   end;
 end;
 
+function TConstructorScan.RaisingCall(ARoot: TSyntaxNode): string;
+var
+  mRaiser: string;
+begin
+  mRaiser := '';
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Skip lässt den Teilbaum aus, Found liefert den ersten Treffer.
+  ARoot.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := RaisingStep(ANode, mRaiser);
+    end);
+  Result := mRaiser;
+end;
+
+procedure TConstructorScan.Start(const AFields: TArray<string>);
+begin
+  FFields := AFields;
+  FRisky := nil;
+  FImplications := nil;
+end;
+
 procedure TConstructorScan.Scan(AConstructor: TSyntaxNode);
 var
   mBody: TSyntaxNode;
@@ -725,6 +710,21 @@ begin
   for mIndex := 0 to mBody.ChildCount - 1 do
   begin
     ScanStatement(mBody[mIndex]);
+  end;
+end;
+
+function TConstructorScan.RiskOf(const AField: string; out AItem: TNilAtDestroy): Boolean;
+var
+  mItem: TNilAtDestroy;
+begin
+  Result := False;
+  for mItem in FRisky do
+  begin
+    if not Result and SameText(mItem.Field, AField) then
+    begin
+      AItem := mItem;
+      Result := True;
+    end;
   end;
 end;
 

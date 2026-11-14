@@ -25,6 +25,8 @@ implementation
 uses
   Atlas.Core.Lsp.Contract;
 
+{ TAtlasProblemAtCaret }
+
 class function TAtlasProblemAtCaret.Rule(const AEditor: IAtlasActiveEditor; AStore: TAtlasProblemStore;
   out ARule: string): Boolean;
 var

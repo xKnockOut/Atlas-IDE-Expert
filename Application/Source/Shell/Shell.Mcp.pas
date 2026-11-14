@@ -71,6 +71,8 @@ const
     En: 'Delphi project in %s. For questions about types, units and forms, use these tools first instead of ' +
     'reading source files completely.'));
 
+{ TMcpShell }
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   mContext: TMcpToolContext;

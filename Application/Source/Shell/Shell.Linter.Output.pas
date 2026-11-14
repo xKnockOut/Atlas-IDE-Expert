@@ -61,6 +61,8 @@ begin
   end;
 end;
 
+{ TLinterOutput }
+
 class procedure TLinterOutput.Error(const AText: string);
 var
   mStream: TStream;
@@ -70,18 +72,6 @@ begin
     WriteText(mStream, AText + sLineBreak);
   finally
     mStream.Free;
-  end;
-end;
-
-class procedure TLinterOutput.SaveUtf8(const AFileName, AText: string);
-var
-  mEncoding: TEncoding;
-begin
-  mEncoding := TUTF8Encoding.Create(False);
-  try
-    TFile.WriteAllText(AFileName, AText, mEncoding);
-  finally
-    mEncoding.Free;
   end;
 end;
 
@@ -112,6 +102,18 @@ begin
   end;
 end;
 
+class procedure TLinterOutput.SaveUtf8(const AFileName, AText: string);
+var
+  mEncoding: TEncoding;
+begin
+  mEncoding := TUTF8Encoding.Create(False);
+  try
+    TFile.WriteAllText(AFileName, AText, mEncoding);
+  finally
+    mEncoding.Free;
+  end;
+end;
+
 /// <summary>ATimings mit name#N statt der Unit-Namen.</summary>
 function AnonymousTimings(const ATimings: TCheckTimings): TCheckTimings;
 var
@@ -124,6 +126,21 @@ begin
     begin
       Result := mAnonymizer.Anonymize(TLogMarks.Name(AName));
     end);
+end;
+
+class procedure TLinterOutput.Timings(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings);
+var
+  mText: string;
+begin
+  mText := TimingsText(AOptions, ATimings);
+  if AOptions.TimingsFile = '' then
+  begin
+    Error(mText);
+    Exit;
+  end;
+  ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.TimingsFile)));
+  SaveUtf8(AOptions.TimingsFile, mText);
+  Error(Format('Zeitprofil geschrieben: %s', [AOptions.TimingsFile]));
 end;
 
 class function TLinterOutput.TimingsText(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings): string;
@@ -150,21 +167,6 @@ begin
   finally
     mJson.Free;
   end;
-end;
-
-class procedure TLinterOutput.Timings(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings);
-var
-  mText: string;
-begin
-  mText := TimingsText(AOptions, ATimings);
-  if AOptions.TimingsFile = '' then
-  begin
-    Error(mText);
-    Exit;
-  end;
-  ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.TimingsFile)));
-  SaveUtf8(AOptions.TimingsFile, mText);
-  Error(Format('Zeitprofil geschrieben: %s', [AOptions.TimingsFile]));
 end;
 
 initialization

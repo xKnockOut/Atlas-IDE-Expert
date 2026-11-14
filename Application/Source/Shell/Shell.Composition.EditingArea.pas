@@ -54,6 +54,8 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Uris;
 
+{ TShellEditingArea }
+
 constructor TShellEditingArea.Create(const AServices: TShellEditingAreaServices);
 var
   mEditing: TShellEditingServices;

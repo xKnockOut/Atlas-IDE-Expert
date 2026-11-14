@@ -458,39 +458,123 @@ begin
   DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
 end;
 
-procedure TAtlasUnitSearchWindow.ShowOver(const AArea: TRect);
-var
-  mArea: TRect;
-  mWidth, mHeight: Integer;
+procedure TAtlasUnitSearchWindow.Paint;
 begin
-  mArea := Rect(FData.State.Left, FData.State.Top, FData.State.Left + FData.State.Width,
-    FData.State.Top + FData.State.Height);
-  // Gemerkte Lage nur übernehmen, wenn sie noch auf einem Monitor liegt.
-  if (FData.State.Width > 0) and (FData.State.Height > 0) and (Screen.MonitorFromRect(mArea, mdNull) <> nil) then
+  FData.Layout(ClientWidth, ClientHeight);
+  FPainter.Paint(Canvas, ClientRect, Caption);
+end;
+
+procedure TAtlasUnitSearchWindow.Resize;
+begin
+  inherited;
+  if FData = nil then
   begin
-    SetBounds(mArea.Left, mArea.Top, mArea.Width, mArea.Height);
-  end
-  else
-  begin
-    mWidth := Min(ScaleValue(1000), AArea.Width - ScaleValue(40));
-    mHeight := Min(ScaleValue(620), AArea.Height - ScaleValue(40));
-    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div
-      3), mWidth, mHeight);
+    Exit;
   end;
-  Show;
-  SetFocus;
-end;
-
-procedure TAtlasUnitSearchWindow.SetEntries(const AEntries: TAtlasUnitEntries);
-begin
-  FData.SetEntries(AEntries);
-  Refilter(False);
-end;
-
-procedure TAtlasUnitSearchWindow.SetUseInfo(const AInfo: TAtlasUseUnitInfo);
-begin
-  FData.SetUseInfo(AInfo);
+  FData.Metrics.PPI := CurrentPPI;
+  FData.Layout(ClientWidth, ClientHeight);
+  FData.EnsureVisible;
   Invalidate;
+end;
+
+procedure TAtlasUnitSearchWindow.KeyDown(var Key: Word; Shift: TShiftState);
+var
+  mRow: Integer;
+begin
+  if NavigationRow(FData, Key, Shift, mRow) then
+  begin
+    if FData.Select(mRow) then
+    begin
+      Changed;
+    end;
+  end
+  else if not KeyCommand(Key, Shift) then
+  begin
+    Exit;
+  end;
+  Key := 0;
+end;
+
+procedure TAtlasUnitSearchWindow.KeyPress(var Key: Char);
+begin
+  if Key > ' ' then
+  begin
+    FData.Filter.Pattern := FData.Filter.Pattern + Key;
+    Refilter(False);
+  end;
+  Key := #0;
+end;
+
+procedure TAtlasUnitSearchWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mArea: TAtlasUnitSearchHitArea;
+begin
+  inherited;
+  if FPainter.HitAt(X, Y, mArea) then
+  begin
+    ClickArea(mArea, Button, Shift, X, Y);
+  end;
+end;
+
+procedure TAtlasUnitSearchWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mArea: TAtlasUnitSearchHitArea;
+  mText: string;
+begin
+  inherited;
+  if FDragSplitter then
+  begin
+    FData.Preview.Width := MulDiv(ClientWidth - X, 96, CurrentPPI);
+    FData.Layout(ClientWidth, ClientHeight);
+    Invalidate;
+    Exit;
+  end;
+  if not FPainter.HitAt(X, Y, mArea) then
+  begin
+    mArea := Default(TAtlasUnitSearchHitArea);
+  end;
+  Cursor := AreaCursor(mArea);
+  // Voller Pfad als Tooltip.
+  mText := AreaHint(FData, mArea);
+  if mText <> Hint then
+  begin
+    Hint := mText;
+    Application.CancelHint;
+  end;
+end;
+
+procedure TAtlasUnitSearchWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if FDragSplitter then
+  begin
+    FDragSplitter := False;
+    MouseCapture := False;
+  end;
+end;
+
+procedure TAtlasUnitSearchWindow.DblClick;
+var
+  mPoint: TPoint;
+  mRow: Integer;
+begin
+  inherited;
+  mPoint := ScreenToClient(Mouse.CursorPos);
+  mRow := RowAt(FData, mPoint.Y);
+  if (mRow >= 0) and not FData.List.Rows[mRow].IsGroup and (mPoint.X < FData.List.Rect.Right) then
+  begin
+    FData.Select(mRow);
+    FData.Marked.Clear;
+    Changed;
+    Run(AcceptAction(FData.Options.Mode, False));
+  end;
+end;
+
+function TAtlasUnitSearchWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  FData.ScrollBy(-Sign(WheelDelta) * 3 * FData.Metrics.EntryHeight);
+  Invalidate;
+  Result := True;
 end;
 
 procedure TAtlasUnitSearchWindow.Changed;
@@ -566,24 +650,6 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchWindow.FormClose(Sender: TObject; var Action: TCloseAction);
-var
-  mClosed: TProc;
-begin
-  if FClosing then
-  begin
-    Exit;
-  end;
-  FClosing := True;
-  FData.SaveState(BoundsRect);
-  Action := caFree;
-  mClosed := FEvents.OnClosed;
-  if Assigned(mClosed) then
-  begin
-    mClosed();
-  end;
-end;
-
 procedure TAtlasUnitSearchWindow.SchedulePreview;
 begin
   if FData.Preview.Visible and Assigned(FEvents.OnPreview) then
@@ -621,65 +687,37 @@ begin
   Run(TAtlasUnitSearchAction(TMenuItem(Sender).Tag));
 end;
 
-procedure TAtlasUnitSearchWindow.Resize;
-begin
-  inherited;
-  if FData = nil then
-  begin
-    Exit;
-  end;
-  FData.Metrics.PPI := CurrentPPI;
-  FData.Layout(ClientWidth, ClientHeight);
-  FData.EnsureVisible;
-  Invalidate;
-end;
-
-procedure TAtlasUnitSearchWindow.Paint;
-begin
-  FData.Layout(ClientWidth, ClientHeight);
-  FPainter.Paint(Canvas, ClientRect, Caption);
-end;
-
-procedure TAtlasUnitSearchWindow.WMNCHitTest(var Message: TWMNCHitTest);
+procedure TAtlasUnitSearchWindow.ClickArea(const AArea: TAtlasUnitSearchHitArea; AButton: TMouseButton;
+  AShift: TShiftState; AX, AY: Integer);
 var
   mPoint: TPoint;
-  mArea: TAtlasUnitSearchHitArea;
-  mHeader: Integer;
 begin
-  inherited;
-  mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
-  mHeader := FData.Metrics.HeaderHeight;
-  Message.Result := EdgeHit(mPoint, ClientWidth, ClientHeight, ScaleValue(6));
-  // Freie Stellen im Kopf verschieben das Fenster.
-  if (Message.Result = HTCLIENT) and (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
-    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
+  if AArea.Kind = TAtlasUnitSearchHit.Row then
   begin
-    Message.Result := HTCAPTION;
-  end;
-end;
-
-procedure TAtlasUnitSearchWindow.WMGetDlgCode(var Message: TWMGetDlgCode);
-begin
-  inherited;
-  Message.Result := Message.Result or DLGC_WANTALLKEYS or DLGC_WANTARROWS or DLGC_WANTCHARS or DLGC_WANTTAB;
-end;
-
-procedure TAtlasUnitSearchWindow.KeyDown(var Key: Word; Shift: TShiftState);
-var
-  mRow: Integer;
-begin
-  if NavigationRow(FData, Key, Shift, mRow) then
-  begin
-    if FData.Select(mRow) then
+    FData.Select(AArea.Value);
+    Changed;
+    if (AButton = mbRight) and not FData.List.Rows[AArea.Value].IsGroup then
     begin
-      Changed;
+      mPoint := ClientToScreen(Point(AX, AY));
+      FActionMenu.Popup(mPoint.X, mPoint.Y);
     end;
-  end
-  else if not KeyCommand(Key, Shift) then
+  end;
+  if AButton <> mbLeft then
   begin
     Exit;
   end;
-  Key := 0;
+  case AArea.Kind of
+    TAtlasUnitSearchHit.Splitter:
+      begin
+        FDragSplitter := True;
+        MouseCapture := True;
+      end;
+    TAtlasUnitSearchHit.Action:
+      Run(TAtlasUnitSearchAction(AArea.Value));
+  else
+    ClickLeft(FData, AArea, AShift);
+  end;
+  Changed;
 end;
 
 function TAtlasUnitSearchWindow.KeyCommand(AKey: Word; AShift: TShiftState): Boolean;
@@ -762,119 +800,81 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchWindow.KeyPress(var Key: Char);
-begin
-  if Key > ' ' then
-  begin
-    FData.Filter.Pattern := FData.Filter.Pattern + Key;
-    Refilter(False);
-  end;
-  Key := #0;
-end;
-
-procedure TAtlasUnitSearchWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mArea: TAtlasUnitSearchHitArea;
-begin
-  inherited;
-  if FPainter.HitAt(X, Y, mArea) then
-  begin
-    ClickArea(mArea, Button, Shift, X, Y);
-  end;
-end;
-
-procedure TAtlasUnitSearchWindow.ClickArea(const AArea: TAtlasUnitSearchHitArea; AButton: TMouseButton;
-  AShift: TShiftState; AX, AY: Integer);
+procedure TAtlasUnitSearchWindow.WMNCHitTest(var Message: TWMNCHitTest);
 var
   mPoint: TPoint;
+  mArea: TAtlasUnitSearchHitArea;
+  mHeader: Integer;
 begin
-  if AArea.Kind = TAtlasUnitSearchHit.Row then
+  inherited;
+  mPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
+  mHeader := FData.Metrics.HeaderHeight;
+  Message.Result := EdgeHit(mPoint, ClientWidth, ClientHeight, ScaleValue(6));
+  // Freie Stellen im Kopf verschieben das Fenster.
+  if (Message.Result = HTCLIENT) and (mPoint.Y < mHeader) and not FPainter.HitAt(mPoint.X, mPoint.Y, mArea) and
+    ((mPoint.Y < ScaleValue(7)) or (mPoint.Y > mHeader - ScaleValue(7))) then
   begin
-    FData.Select(AArea.Value);
-    Changed;
-    if (AButton = mbRight) and not FData.List.Rows[AArea.Value].IsGroup then
-    begin
-      mPoint := ClientToScreen(Point(AX, AY));
-      FActionMenu.Popup(mPoint.X, mPoint.Y);
-    end;
+    Message.Result := HTCAPTION;
   end;
-  if AButton <> mbLeft then
+end;
+
+procedure TAtlasUnitSearchWindow.WMGetDlgCode(var Message: TWMGetDlgCode);
+begin
+  inherited;
+  Message.Result := Message.Result or DLGC_WANTALLKEYS or DLGC_WANTARROWS or DLGC_WANTCHARS or DLGC_WANTTAB;
+end;
+
+procedure TAtlasUnitSearchWindow.FormClose(Sender: TObject; var Action: TCloseAction);
+var
+  mClosed: TProc;
+begin
+  if FClosing then
   begin
     Exit;
   end;
-  case AArea.Kind of
-    TAtlasUnitSearchHit.Splitter:
-      begin
-        FDragSplitter := True;
-        MouseCapture := True;
-      end;
-    TAtlasUnitSearchHit.Action:
-      Run(TAtlasUnitSearchAction(AArea.Value));
-  else
-    ClickLeft(FData, AArea, AShift);
-  end;
-  Changed;
-end;
-
-procedure TAtlasUnitSearchWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mArea: TAtlasUnitSearchHitArea;
-  mText: string;
-begin
-  inherited;
-  if FDragSplitter then
+  FClosing := True;
+  FData.SaveState(BoundsRect);
+  Action := caFree;
+  mClosed := FEvents.OnClosed;
+  if Assigned(mClosed) then
   begin
-    FData.Preview.Width := MulDiv(ClientWidth - X, 96, CurrentPPI);
-    FData.Layout(ClientWidth, ClientHeight);
-    Invalidate;
-    Exit;
-  end;
-  if not FPainter.HitAt(X, Y, mArea) then
-  begin
-    mArea := Default(TAtlasUnitSearchHitArea);
-  end;
-  Cursor := AreaCursor(mArea);
-  // Voller Pfad als Tooltip.
-  mText := AreaHint(FData, mArea);
-  if mText <> Hint then
-  begin
-    Hint := mText;
-    Application.CancelHint;
+    mClosed();
   end;
 end;
 
-procedure TAtlasUnitSearchWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasUnitSearchWindow.SetEntries(const AEntries: TAtlasUnitEntries);
 begin
-  inherited;
-  if FDragSplitter then
-  begin
-    FDragSplitter := False;
-    MouseCapture := False;
-  end;
+  FData.SetEntries(AEntries);
+  Refilter(False);
 end;
 
-procedure TAtlasUnitSearchWindow.DblClick;
-var
-  mPoint: TPoint;
-  mRow: Integer;
+procedure TAtlasUnitSearchWindow.SetUseInfo(const AInfo: TAtlasUseUnitInfo);
 begin
-  inherited;
-  mPoint := ScreenToClient(Mouse.CursorPos);
-  mRow := RowAt(FData, mPoint.Y);
-  if (mRow >= 0) and not FData.List.Rows[mRow].IsGroup and (mPoint.X < FData.List.Rect.Right) then
-  begin
-    FData.Select(mRow);
-    FData.Marked.Clear;
-    Changed;
-    Run(AcceptAction(FData.Options.Mode, False));
-  end;
-end;
-
-function TAtlasUnitSearchWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-begin
-  FData.ScrollBy(-Sign(WheelDelta) * 3 * FData.Metrics.EntryHeight);
+  FData.SetUseInfo(AInfo);
   Invalidate;
-  Result := True;
+end;
+
+procedure TAtlasUnitSearchWindow.ShowOver(const AArea: TRect);
+var
+  mArea: TRect;
+  mWidth, mHeight: Integer;
+begin
+  mArea := Rect(FData.State.Left, FData.State.Top, FData.State.Left + FData.State.Width,
+    FData.State.Top + FData.State.Height);
+  // Gemerkte Lage nur übernehmen, wenn sie noch auf einem Monitor liegt.
+  if (FData.State.Width > 0) and (FData.State.Height > 0) and (Screen.MonitorFromRect(mArea, mdNull) <> nil) then
+  begin
+    SetBounds(mArea.Left, mArea.Top, mArea.Width, mArea.Height);
+  end
+  else
+  begin
+    mWidth := Min(ScaleValue(1000), AArea.Width - ScaleValue(40));
+    mHeight := Min(ScaleValue(620), AArea.Height - ScaleValue(40));
+    SetBounds(AArea.Left + (AArea.Width - mWidth) div 2, AArea.Top + Max(ScaleValue(20), (AArea.Height - mHeight) div
+      3), mWidth, mHeight);
+  end;
+  Show;
+  SetFocus;
 end;
 
 end.

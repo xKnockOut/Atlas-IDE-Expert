@@ -446,6 +446,15 @@ begin
   end;
 end;
 
+function TPairAnalyzer.TopWord: string;
+begin
+  Result := '';
+  if FBlocks.Count > 0 then
+  begin
+    Result := FBlocks.Last.Word;
+  end;
+end;
+
 function TPairAnalyzer.CurrentRoutine: Integer;
 begin
   // Im Block gilt die Routine des äußersten Blocks; dazwischen ist der letzte offene Kopf die Routine, deren
@@ -457,15 +466,6 @@ begin
   else
   begin
     Result := Max(0, FHeaders.Count - 1);
-  end;
-end;
-
-function TPairAnalyzer.TopWord: string;
-begin
-  Result := '';
-  if FBlocks.Count > 0 then
-  begin
-    Result := FBlocks.Last.Word;
   end;
 end;
 
@@ -932,6 +932,25 @@ begin
   end;
 end;
 
+class function TAtlasPairs.Analyze(const AText: string): TArray<TAtlasPairToken>;
+var
+  mBlocks: TArray<TAtlasPairBlock>;
+begin
+  Result := Analyze(AText, mBlocks);
+end;
+
+class function TAtlasPairs.Analyze(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
+var
+  mAnalyzer: TPairAnalyzer;
+begin
+  mAnalyzer := TPairAnalyzer.Create;
+  try
+    Result := mAnalyzer.Run(AText, ABlocks);
+  finally
+    mAnalyzer.Free;
+  end;
+end;
+
 class function TAtlasPairs.DisplayLine(const ALine: string; ATabWidth: Integer): string;
 var
   mBuilder: TStringBuilder;
@@ -976,25 +995,6 @@ begin
     begin
       Inc(Result);
     end;
-  end;
-end;
-
-class function TAtlasPairs.Analyze(const AText: string): TArray<TAtlasPairToken>;
-var
-  mBlocks: TArray<TAtlasPairBlock>;
-begin
-  Result := Analyze(AText, mBlocks);
-end;
-
-class function TAtlasPairs.Analyze(const AText: string; out ABlocks: TArray<TAtlasPairBlock>): TArray<TAtlasPairToken>;
-var
-  mAnalyzer: TPairAnalyzer;
-begin
-  mAnalyzer := TPairAnalyzer.Create;
-  try
-    Result := mAnalyzer.Run(AText, ABlocks);
-  finally
-    mAnalyzer.Free;
   end;
 end;
 

@@ -142,37 +142,6 @@ end;
 
 { TPaletteIconRule }
 
-function TPaletteIconRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create('component-palette-icon', TRuleSeverity.Hint,
-    cTexts[TPaletteIconsText.Title].Text);
-end;
-
-procedure TPaletteIconRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TArray<TPascalToken>;
-  mNames: TArray<string>;
-  mIndex: Integer;
-begin
-  if (AContext.Tree = nil) or not Assigned(AContext.ReadFile) then
-  begin
-    Exit;
-  end;
-  mTokens := AContext.Tree.Tokens;
-  if not ReadResourceNames(AContext, mTokens, mNames) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-      SameText(mTokens[mIndex].Text, 'RegisterComponents') then
-    begin
-      CheckRegistration(AContext, mTokens, mNames, mIndex, AReport);
-    end;
-  end;
-end;
-
 class function TPaletteIconRule.ReadResourceNames(const AContext: TRuleContext;
   const ATokens: TArray<TPascalToken>; out ANames: TArray<string>): Boolean;
 var
@@ -256,6 +225,37 @@ begin
   begin
     AReport.Add(TTextRange.Create(AToken.StartPos, AToken.EndPos),
       cTexts[TPaletteIconsText.MissingSizes].Fmt([mUpper, mMissing]));
+  end;
+end;
+
+function TPaletteIconRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create('component-palette-icon', TRuleSeverity.Hint,
+    cTexts[TPaletteIconsText.Title].Text);
+end;
+
+procedure TPaletteIconRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mTokens: TArray<TPascalToken>;
+  mNames: TArray<string>;
+  mIndex: Integer;
+begin
+  if (AContext.Tree = nil) or not Assigned(AContext.ReadFile) then
+  begin
+    Exit;
+  end;
+  mTokens := AContext.Tree.Tokens;
+  if not ReadResourceNames(AContext, mTokens, mNames) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(mTokens[mIndex].Text, 'RegisterComponents') then
+    begin
+      CheckRegistration(AContext, mTokens, mNames, mIndex, AReport);
+    end;
   end;
 end;
 

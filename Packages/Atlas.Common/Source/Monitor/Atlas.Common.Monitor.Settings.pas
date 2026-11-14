@@ -51,6 +51,8 @@ const
   cStartWithWindows = 'startWithWindows';
   cCheck = 'check';
 
+{ TMonitorSettings }
+
 class function TMonitorSettings.Defaults: TMonitorSettings;
 begin
   Result := Default(TMonitorSettings);

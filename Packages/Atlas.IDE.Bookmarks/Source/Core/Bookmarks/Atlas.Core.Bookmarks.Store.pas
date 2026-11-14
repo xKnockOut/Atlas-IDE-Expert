@@ -293,24 +293,6 @@ begin
   end;
 end;
 
-function TAtlasBookmarkList.IndexOfNumber(ANumber: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  if ANumber <= 0 then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(Bookmarks) do
-  begin
-    if Bookmarks[mIndex].Number = ANumber then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-end;
-
 function TAtlasBookmarkList.AtLine(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>;
 var
   mMark: TAtlasBookmark;
@@ -391,6 +373,24 @@ begin
   mMark.Created := ANowUtc;
   Bookmarks := Bookmarks + [mMark];
   Result := mMark.Id;
+end;
+
+function TAtlasBookmarkList.IndexOfNumber(ANumber: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if ANumber <= 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(Bookmarks) do
+  begin
+    if Bookmarks[mIndex].Number = ANumber then
+    begin
+      Exit(mIndex);
+    end;
+  end;
 end;
 
 function TAtlasBookmarkList.Rename(const AId, AName: string): Boolean;
@@ -896,18 +896,6 @@ begin
   end;
 end;
 
-class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJsonRead.ParseObject(AJson);
-  try
-    Result := TJsonRead.IntOr(mRoot, 'format', 0);
-  finally
-    mRoot.Free;
-  end;
-end;
-
 class function TAtlasBookmarks.Parse(const AJson, AFolder: string; out AList: TAtlasBookmarkList): Boolean;
 var
   mRoot: TJSONObject;
@@ -975,6 +963,18 @@ begin
   finally
     mRoot.Free;
     mOriginal.Free;
+  end;
+end;
+
+class function TAtlasBookmarks.FormatOf(const AJson: string): Integer;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJsonRead.ParseObject(AJson);
+  try
+    Result := TJsonRead.IntOr(mRoot, 'format', 0);
+  finally
+    mRoot.Free;
   end;
 end;
 

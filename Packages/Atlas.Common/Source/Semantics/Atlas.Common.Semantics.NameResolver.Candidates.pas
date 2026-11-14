@@ -315,6 +315,27 @@ begin
   Result := FSeen.ContainsKey(UpperCase(AName));
 end;
 
+procedure TResolverCandidateList.WidenLast(const AName: string; AMaxArgs: Integer);
+var
+  mLast: TResolvedSymbol;
+begin
+  if FList.Count = 0 then
+  begin
+    Exit;
+  end;
+  mLast := FList[FList.Count - 1];
+  if SameText(mLast.Name, AName) and mLast.Builtin and (AMaxArgs > mLast.MaxArgs) then
+  begin
+    mLast.MaxArgs := AMaxArgs;
+    FList[FList.Count - 1] := mLast;
+  end;
+end;
+
+function TResolverCandidateList.ToArray: TArray<TResolvedSymbol>;
+begin
+  Result := FList.ToArray;
+end;
+
 procedure TResolverCandidateList.KeepHidden;
 begin
   if FHidden = nil then
@@ -361,27 +382,6 @@ begin
   end;
 end;
 
-procedure TResolverCandidateList.WidenLast(const AName: string; AMaxArgs: Integer);
-var
-  mLast: TResolvedSymbol;
-begin
-  if FList.Count = 0 then
-  begin
-    Exit;
-  end;
-  mLast := FList[FList.Count - 1];
-  if SameText(mLast.Name, AName) and mLast.Builtin and (AMaxArgs > mLast.MaxArgs) then
-  begin
-    mLast.MaxArgs := AMaxArgs;
-    FList[FList.Count - 1] := mLast;
-  end;
-end;
-
-function TResolverCandidateList.ToArray: TArray<TResolvedSymbol>;
-begin
-  Result := FList.ToArray;
-end;
-
 { TResolverCandidates }
 
 constructor TResolverCandidates.Create(const AParts: TResolverParts; AExpressions: TResolverExpressions;
@@ -404,6 +404,22 @@ function TResolverCandidates.NameWanted(const AName: string): Boolean;
 begin
   // Vor FromIndex prüfen: Das Aufbauen der Records kostet bei großen Units die meiste Zeit (#616).
   Result := not Assigned(FNameFilter) or FNameFilter(AName);
+end;
+
+procedure TResolverCandidates.NoteHidden(const AUnit: TUnitIndex; APosition, ADepth: Integer;
+  AList: TResolverCandidateList);
+var
+  mMember: THiddenMember;
+begin
+  // Rümpfe aus dem implementation-Teil fremder Units sind keine verdeckten Mitglieder (#2108).
+  if not AList.KeepsHidden or not (AUnit.Symbols[APosition].InInterface or
+    FParts.Place.IsCurrentFile(AUnit.FileName)) or not NameWanted(AUnit.Symbols[APosition].Name) then
+  begin
+    Exit;
+  end;
+  mMember.Symbol := TResolvedSymbol.FromIndex(AUnit, AUnit.Symbols[APosition]).AsMember(ADepth, False);
+  mMember.External := AUnit.Library_;
+  AList.AddHidden(mMember);
 end;
 
 procedure TResolverCandidates.CollectNames(ANode: TSyntaxNode; AKind: TIndexSymbolKind; AIsParameter: Boolean;
@@ -439,6 +455,19 @@ begin
   end;
 end;
 
+/// <summary>Liegt A vor B oder an derselben Stelle?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
+end;
+
+/// <summary>Steht ASymbol in der Deklaration des Typs AType (kein Rumpf aus implementation)?</summary>
+function DeclaredIn(const AType: TResolvedSymbol; const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := not NotAfter(AType.Range.EndPos, AType.Range.StartPos) and NotAfter(AType.Range.StartPos,
+    ASymbol.Range.StartPos) and NotAfter(ASymbol.Range.EndPos, AType.Range.EndPos);
+end;
+
 procedure TResolverCandidates.CollectHelperMembers(const AType: TResolvedSymbol; ADepth: Integer;
   AList: TResolverCandidateList);
 var
@@ -460,19 +489,6 @@ begin
     end;
     mHelper := mParent;
   end;
-end;
-
-/// <summary>Liegt A vor B oder an derselben Stelle?</summary>
-function NotAfter(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
-end;
-
-/// <summary>Steht ASymbol in der Deklaration des Typs AType (kein Rumpf aus implementation)?</summary>
-function DeclaredIn(const AType: TResolvedSymbol; const ASymbol: TIndexSymbol): Boolean;
-begin
-  Result := not NotAfter(AType.Range.EndPos, AType.Range.StartPos) and NotAfter(AType.Range.StartPos,
-    ASymbol.Range.StartPos) and NotAfter(ASymbol.Range.EndPos, AType.Range.EndPos);
 end;
 
 procedure TResolverCandidates.CollectOwnMembers(const AType: TResolvedSymbol; const AUnit: TUnitIndex;
@@ -510,22 +526,6 @@ begin
       end;
     end;
   end;
-end;
-
-procedure TResolverCandidates.NoteHidden(const AUnit: TUnitIndex; APosition, ADepth: Integer;
-  AList: TResolverCandidateList);
-var
-  mMember: THiddenMember;
-begin
-  // Rümpfe aus dem implementation-Teil fremder Units sind keine verdeckten Mitglieder (#2108).
-  if not AList.KeepsHidden or not (AUnit.Symbols[APosition].InInterface or
-    FParts.Place.IsCurrentFile(AUnit.FileName)) or not NameWanted(AUnit.Symbols[APosition].Name) then
-  begin
-    Exit;
-  end;
-  mMember.Symbol := TResolvedSymbol.FromIndex(AUnit, AUnit.Symbols[APosition]).AsMember(ADepth, False);
-  mMember.External := AUnit.Library_;
-  AList.AddHidden(mMember);
 end;
 
 procedure TResolverCandidates.CollectMembers(const AType: TResolvedSymbol; AList: TResolverCandidateList);

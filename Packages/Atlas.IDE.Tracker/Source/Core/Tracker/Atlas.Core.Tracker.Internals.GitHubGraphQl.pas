@@ -57,6 +57,8 @@ const
   /// <summary>Antwort mit Inhalt; GraphQL meldet auch Fehler so.</summary>
   cStatusOk = 200;
 
+{ TAtlasGitHubGraphQl }
+
 class function TAtlasGitHubGraphQl.Url(const ATarget: TAtlasTrackerTarget): string;
 var
   mBase: string;

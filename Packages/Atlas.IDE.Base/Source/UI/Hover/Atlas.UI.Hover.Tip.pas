@@ -484,6 +484,94 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasHoverTipView.SetProblemActions(AValue: Boolean);
+begin
+  if FOptions.ProblemActions = AValue then
+  begin
+    Exit;
+  end;
+  FOptions.ProblemActions := AValue;
+  FHot := -1;
+  FLayoutKey := '';
+  Invalidate;
+end;
+
+procedure TAtlasHoverTipView.SetHideCompilerCode(AValue: Boolean);
+begin
+  if FOptions.HideCompilerCode = AValue then
+  begin
+    Exit;
+  end;
+  FOptions.HideCompilerCode := AValue;
+  FLayoutKey := '';
+  Invalidate;
+end;
+
+{ TAtlasHoverTip }
+
+procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+begin
+  inherited;
+  mIndex := FLayout.HitAt(Point(X, Y));
+  // Rechtsklick auf eine Zeile des Debug-Werts (#895): wählen und ihre Aktionen anbieten.
+  if (Button = mbRight) and (mIndex >= 0) and (FLayout.Hits[mIndex].Kind = TAtlasHoverHitKind.DebugRow) and
+    Assigned(FOnDebugRow) then
+  begin
+    FDebugSelectedRow := FLayout.Hits[mIndex].Index + 1;
+    Invalidate;
+    FOnDebugRow(Self, FLayout.Hits[mIndex].Index, True);
+    Exit;
+  end;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  if mIndex < 0 then
+  begin
+    DocMouseDown(Shift, X, Y);
+  end
+  else
+  begin
+    FireHit(mIndex, Shift);
+  end;
+end;
+
+procedure TAtlasHoverTip.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot, mDocHot: Integer;
+begin
+  inherited;
+  // Markieren in der Doku (#654).
+  if FDoc.Selecting and (ssLeft in Shift) then
+  begin
+    FDoc.ExtendSelection(Canvas, X - FLayout.DocLeft, Y - FLayout.DocTop);
+    Invalidate;
+    Exit;
+  end;
+  mHot := FLayout.HitAt(Point(X, Y));
+  mDocHot := DocLinkAt(X, Y);
+  if (mHot >= 0) or (mDocHot >= 0) then
+  begin
+    Cursor := crHandPoint;
+  end
+  else if InDoc(X, Y) then
+  begin
+    Cursor := crIBeam;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  if (mHot <> FHot) or (mDocHot <> FDoc.HotLink) then
+  begin
+    FHot := mHot;
+    FDoc.HotLink := mDocHot;
+    Invalidate;
+  end;
+end;
+
 procedure TAtlasHoverTipView.PrepareDoc(AWidth: Integer);
 var
   mDoc: TAtlasDoc;
@@ -509,62 +597,6 @@ begin
     TAtlasStrings.DocLabels);
 end;
 
-procedure TAtlasHoverTipView.ToggleDoc;
-begin
-  TAtlasDocExpandState.Remember(TAtlasDocSurface.Tooltip, FDoc.Toggle(Canvas));
-  FDoc.ClearSelection;
-  FDoc.HotLink := -1;
-  Refit;
-end;
-
-procedure TAtlasHoverTip.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation;
-  APinned: Boolean);
-begin
-  if (AProblem < 0) or (AProblem > High(FView.Problems)) then
-  begin
-    Exit;
-  end;
-  if Length(FView.Examples) <> Length(FView.Problems) then
-  begin
-    SetLength(FView.Examples, Length(FView.Problems));
-  end;
-  FView.Examples[AProblem] := AExample;
-  // Ohne Katalogtext zur Regel steht der Hinweis als Beschreibung da.
-  if (AExample.Id <> '') and (AExample.Description = '') and (AExample.Bad = '') and (AExample.Good = '') then
-  begin
-    FView.Examples[AProblem].Description := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverNoExample);
-  end;
-  FView.Pinned := APinned;
-  // Die Klickflächen der Aktionszeile behalten ihren Index: Beschreibung und Beispiel haben keine.
-  FLayoutKey := '';
-  Refit;
-end;
-
-procedure TAtlasHoverTip.TogglePublished(AToggle: TAtlasHoverPublishedToggle);
-begin
-  FView.Toggle(AToggle);
-  FHot := -1;
-  FLayoutKey := '';
-  Refit;
-end;
-
-procedure TAtlasHoverTipView.Refit;
-var
-  mArea, mBounds: TRect;
-  mNewHeight: Integer;
-begin
-  mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mNewHeight := FitHeight(Width, mArea.Height - Scale(8));
-  mBounds := TRect.Create(BoundsRect.TopLeft, Width, mNewHeight);
-  // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
-  if FAbove or (mBounds.Bottom > mArea.Bottom) then
-  begin
-    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, BoundsRect.Bottom - mNewHeight));
-  end;
-  ShowAt(mBounds);
-  Invalidate;
-end;
-
 function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;
 var
   mNatural: Integer;
@@ -587,115 +619,6 @@ begin
     mNatural := FLayout.Height;
   end;
   Result := mNatural;
-end;
-
-function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
-begin
-  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
-    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
-    (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
-end;
-
-function TAtlasHoverTipView.DocLinkAt(AX, AY: Integer): Integer;
-begin
-  Result := -1;
-  if InDoc(AX, AY) then
-  begin
-    Result := FDoc.LinkAt(AX - FLayout.DocLeft, AY - FLayout.DocTop);
-  end;
-end;
-
-procedure TAtlasHoverTip.DocMouseDown(AShift: TShiftState; AX, AY: Integer);
-var
-  mIndex: Integer;
-  mLink: TAtlasDocLink;
-  mRef: TAtlasHoverTypeRef;
-begin
-  mIndex := DocLinkAt(AX, AY);
-  if mIndex >= 0 then
-  begin
-    mLink := FDoc.Link(mIndex);
-    if mLink.Kind = TAtlasDocLinkKind.Toggle then
-    begin
-      ToggleDoc;
-    end
-    else if mLink.Kind = TAtlasDocLinkKind.Url then
-    begin
-      if Assigned(FOnUrl) then
-      begin
-        FOnUrl(Self, mLink.Url);
-      end;
-    end
-    else if Assigned(FOnLink) then
-    begin
-      // Wie Typnamen der Deklaration (#588): Klick zeigt den Typ, Strg+Klick springt hin.
-      mRef := Default(TAtlasHoverTypeRef);
-      mRef.Name := mLink.Target.Name;
-      mRef.UnitName := mLink.Target.UnitName;
-      mRef.FileName := mLink.Target.FileName;
-      mRef.Line := mLink.Target.Line;
-      mRef.Character := mLink.Target.Character;
-      FOnLink(Self, mRef, ssCtrl in AShift);
-    end;
-    Exit;
-  end;
-  if InDoc(AX, AY) then
-  begin
-    FDoc.StartSelection(Canvas, AX - FLayout.DocLeft, AY - FLayout.DocTop);
-  end
-  else
-  begin
-    FDoc.ClearSelection;
-  end;
-  Invalidate;
-end;
-
-function TAtlasHoverTipView.SelectedText: string;
-begin
-  Result := FDoc.SelectedText;
-end;
-
-function TAtlasHoverTipView.HasSelection: Boolean;
-begin
-  Result := FDoc.HasSelection;
-end;
-
-function TAtlasHoverTipView.ScrollDoc(ASteps: Integer): Boolean;
-begin
-  Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
-  if Result then
-  begin
-    Invalidate;
-  end;
-end;
-
-function TAtlasHoverTipView.ScrollRegion(ADebugRows: Boolean; ASteps: Integer): Boolean;
-var
-  mRegion: TAtlasHoverScroll;
-  mScroll: Integer;
-begin
-  mRegion := FLayout.Members;
-  if ADebugRows then
-  begin
-    mRegion := FLayout.DebugRows;
-  end;
-  mScroll := EnsureRange(mRegion.Scroll + ASteps * cWheelRows * mRegion.Row, 0, mRegion.MaxScroll);
-  Result := mScroll <> mRegion.Scroll;
-  if Result and ADebugRows then
-  begin
-    FDebugRows.Scroll := mScroll;
-  end
-  else if Result then
-  begin
-    FMembers.Scroll := mScroll;
-  end;
-  if Result then
-  begin
-    // Sofort neu setzen: Klickflächen unter der Maus gelten schon vor dem nächsten Paint.
-    BuildLayout(ClientWidth);
-    FLayout.Anchor(ClientHeight);
-    Invalidate;
-  end;
 end;
 
 function TAtlasHoverTipView.LayoutKey(AWidth: Integer): string;
@@ -732,6 +655,92 @@ begin
   FMembers.Scroll := FLayout.Members.Scroll;
   FDebugRows.Scroll := FLayout.DebugRows.Scroll;
   FLayoutKey := LayoutKey(AWidth);
+end;
+
+procedure TAtlasHoverTip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if FDoc.Selecting then
+  begin
+    FDoc.EndSelection;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasHoverTipView.PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
+  AColor: TAtlasColor);
+begin
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, 0);
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(AItem.Rect.Left, AItem.Rect.Top, AItem.Text);
+end;
+
+procedure TAtlasHoverTipView.PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
+  AColor: TAtlasColor);
+var
+  mArea: TRect;
+begin
+  ApplyHoverFace(Canvas, Font, UIFont, AFace, AItem.Rect.Height);
+  Canvas.Font.Color := ToColor(AColor);
+  Canvas.Brush.Style := bsClear;
+  mArea := AItem.Rect;
+  DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+function TAtlasHoverTipView.PreferredWidth: Integer;
+var
+  mWidest: Integer;
+  mProblem: TAtlasProblem;
+begin
+  HandleNeeded;
+  // Breite: Deklaration in einer Zeile, sonst die Höchstbreite.
+  Canvas.Font := Font;
+  Canvas.Font.Style := [fsBold];
+  mWidest := Canvas.TextWidth(FView.Data.Declaration);
+  if FView.DebugValue.Visible then
+  begin
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
+  end;
+  Canvas.Font := UIFont;
+  if FView.DebugValue.Visible then
+  begin
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
+  end;
+  mWidest := Max(mWidest, Canvas.TextWidth(FView.Data.UnitName));
+  for mProblem in FView.Problems do
+  begin
+    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(9));
+  end;
+  if NeedsFullWidth(FView) then
+  begin
+    mWidest := Scale(cMaxWidth);
+  end;
+  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
+end;
+
+function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
+begin
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
+    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+    (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
+end;
+
+function TAtlasHoverTipView.DocLinkAt(AX, AY: Integer): Integer;
+begin
+  Result := -1;
+  if InDoc(AX, AY) then
+  begin
+    Result := FDoc.LinkAt(AX - FLayout.DocLeft, AY - FLayout.DocTop);
+  end;
+end;
+
+procedure TAtlasHoverTipView.ToggleDoc;
+begin
+  TAtlasDocExpandState.Remember(TAtlasDocSurface.Tooltip, FDoc.Toggle(Canvas));
+  FDoc.ClearSelection;
+  FDoc.HotLink := -1;
+  Refit;
 end;
 
 /// <summary>Trennlinie AItem, hervorgehoben dicker.</summary>
@@ -776,25 +785,31 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTipView.PaintText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
-  AColor: TAtlasColor);
-begin
-  ApplyHoverFace(Canvas, Font, UIFont, AFace, 0);
-  Canvas.Font.Color := ToColor(AColor);
-  Canvas.Brush.Style := bsClear;
-  Canvas.TextOut(AItem.Rect.Left, AItem.Rect.Top, AItem.Text);
-end;
-
-procedure TAtlasHoverTipView.PaintCenterText(const AItem: TAtlasHoverItem; const AFace: TAtlasHoverFace;
-  AColor: TAtlasColor);
+procedure TAtlasHoverTipView.Paint;
 var
-  mArea: TRect;
+  mIndex: Integer;
 begin
-  ApplyHoverFace(Canvas, Font, UIFont, AFace, AItem.Rect.Height);
-  Canvas.Font.Color := ToColor(AColor);
-  Canvas.Brush.Style := bsClear;
-  mArea := AItem.Rect;
-  DrawText(Canvas.Handle, PChar(AItem.Text), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  // Nur neu setzen, wenn sich Breite, Doku-Höhe, Markierung, Schrift, Farben oder Rollbereich geändert haben.
+  if LayoutKey(ClientWidth) <> FLayoutKey then
+  begin
+    BuildLayout(ClientWidth);
+  end;
+  // Letzte Randfläche am unteren Fensterrand.
+  FLayout.Anchor(ClientHeight);
+  for mIndex := 0 to High(FLayout.Items) do
+  begin
+    // Rollbereiche der Mitglieder (#1841) und des Debug-Werts (#895) über die Clip-Region beschneiden.
+    // Erst den oberen Bereich (Debug-Wert) beenden, dann den der Mitglieder beginnen.
+    ClipScroll(Canvas, FLayout.DebugRows, mIndex);
+    ClipScroll(Canvas, FLayout.Members, mIndex);
+    PaintItem(FLayout.Items[mIndex]);
+  end;
+  SelectClipRgn(Canvas.Handle, 0);
+  Canvas.Brush.Style := bsSolid;
+  PaintBorder;
 end;
 
 procedure TAtlasHoverTipView.PaintItem(const AItem: TAtlasHoverItem);
@@ -843,163 +858,39 @@ begin
   end;
 end;
 
-function TAtlasHoverTipView.PreferredWidth: Integer;
+procedure TAtlasHoverTipView.Refit;
 var
-  mWidest: Integer;
-  mProblem: TAtlasProblem;
-begin
-  HandleNeeded;
-  // Breite: Deklaration in einer Zeile, sonst die Höchstbreite.
-  Canvas.Font := Font;
-  Canvas.Font.Style := [fsBold];
-  mWidest := Canvas.TextWidth(FView.Data.Declaration);
-  if FView.DebugValue.Visible then
-  begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
-  end;
-  Canvas.Font := UIFont;
-  if FView.DebugValue.Visible then
-  begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
-  end;
-  mWidest := Max(mWidest, Canvas.TextWidth(FView.Data.UnitName));
-  for mProblem in FView.Problems do
-  begin
-    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(9));
-  end;
-  if NeedsFullWidth(FView) then
-  begin
-    mWidest := Scale(cMaxWidth);
-  end;
-  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
-end;
-
-procedure TAtlasHoverTipView.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
-var
-  mWidth, mHeight: Integer;
-  mSpoken: string;
   mArea, mBounds: TRect;
+  mNewHeight: Integer;
 begin
-  FView := AView;
-  FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
-  FHot := -1;
-  FMembers.Scroll := 0;
-  FDebugRows.Scroll := 0;
-  FDebugSelectedRow := 0;
-  mWidth := PreferredWidth;
-  PrepareDoc(mWidth);
-  mArea := WorkAreaAt(AWord.TopLeft);
-  // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
-  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(12));
-  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
-  FAbove := mBounds.Bottom > mArea.Bottom;
-  if FAbove then
-  begin
-    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(4));
-  end;
-  if mBounds.Right > mArea.Right then
-  begin
-    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
-  end;
-  ShowAt(mBounds);
-  // Sprachausgabe (#447): Deklaration und Anfang der Doku.
-  SetAccessible(cUiaToolTipControlType, TAtlasHoverStrings.Text(TAtlasHoverTextId.AccessHover));
-  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
-  // Wert im Debugger (#891) zuerst.
-  if AView.DebugValue.PlainText <> '' then
-  begin
-    mSpoken := AView.DebugValue.PlainText + '. ' + mSpoken;
-  end;
-  Announce(mSpoken);
-end;
-
-procedure TAtlasHoverTipView.UpdateContent(const AView: TAtlasHoverView);
-var
-  mWidth, mHeight: Integer;
-  mBounds, mArea: TRect;
-begin
-  if not IsShown then
-  begin
-    Exit;
-  end;
-  // Auf- und Zuklappen (#895) tauscht nur die Zeilen: Versatz und Auswahl bleiben beim selben Ausdruck.
-  if AView.DebugValue.Expression <> FView.DebugValue.Expression then
-  begin
-    FDebugRows.Scroll := 0;
-    FDebugSelectedRow := 0;
-  end;
-  FDebugSelectedRow := Min(FDebugSelectedRow, Length(AView.DebugValue.Rows));
-  FView := AView;
-  FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
-  FHot := -1;
-  FMembers.Scroll := 0;
-  mWidth := Max(BoundsRect.Width, PreferredWidth);
-  PrepareDoc(mWidth);
   mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(4)));
-  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(80)));
-  mBounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
+  mNewHeight := FitHeight(Width, mArea.Height - Scale(8));
+  mBounds := TRect.Create(BoundsRect.TopLeft, Width, mNewHeight);
+  // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
+  if FAbove or (mBounds.Bottom > mArea.Bottom) then
+  begin
+    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, BoundsRect.Bottom - mNewHeight));
+  end;
   ShowAt(mBounds);
   Invalidate;
 end;
 
-procedure TAtlasHoverTip.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot, mDocHot: Integer;
+function TAtlasHoverTipView.SelectedText: string;
 begin
-  inherited;
-  // Markieren in der Doku (#654).
-  if FDoc.Selecting and (ssLeft in Shift) then
-  begin
-    FDoc.ExtendSelection(Canvas, X - FLayout.DocLeft, Y - FLayout.DocTop);
-    Invalidate;
-    Exit;
-  end;
-  mHot := FLayout.HitAt(Point(X, Y));
-  mDocHot := DocLinkAt(X, Y);
-  if (mHot >= 0) or (mDocHot >= 0) then
-  begin
-    Cursor := crHandPoint;
-  end
-  else if InDoc(X, Y) then
-  begin
-    Cursor := crIBeam;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if (mHot <> FHot) or (mDocHot <> FDoc.HotLink) then
-  begin
-    FHot := mHot;
-    FDoc.HotLink := mDocHot;
-    Invalidate;
-  end;
+  Result := FDoc.SelectedText;
 end;
 
-procedure TAtlasHoverTip.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+function TAtlasHoverTipView.HasSelection: Boolean;
 begin
-  inherited;
-  if FDoc.Selecting then
-  begin
-    FDoc.EndSelection;
-    Invalidate;
-  end;
+  Result := FDoc.HasSelection;
 end;
 
-procedure TAtlasHoverTip.Wheel(ASteps: Integer; const AClientPos: TPoint);
+function TAtlasHoverTipView.ScrollDoc(ASteps: Integer): Boolean;
 begin
-  if FLayout.DebugRows.Scrollable and FLayout.DebugRows.View.Contains(AClientPos) then
+  Result := FDoc.ScrollBy(ASteps * FDoc.WheelStep);
+  if Result then
   begin
-    ScrollRegion(True, ASteps);
-  end
-  else if FLayout.Members.Scrollable and FLayout.Members.View.Contains(AClientPos) then
-  begin
-    ScrollRegion(False, ASteps);
-  end
-  else if not ScrollDoc(ASteps) and FLayout.Members.Scrollable then
-  begin
-    ScrollRegion(False, ASteps);
+    Invalidate;
   end;
 end;
 
@@ -1020,15 +911,72 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.CMMouseLeave(var Message: TMessage);
+procedure TAtlasHoverTip.DocMouseDown(AShift: TShiftState; AX, AY: Integer);
+var
+  mIndex: Integer;
+  mLink: TAtlasDocLink;
+  mRef: TAtlasHoverTypeRef;
 begin
-  inherited;
-  if (FHot >= 0) or (FDoc.HotLink >= 0) then
+  mIndex := DocLinkAt(AX, AY);
+  if mIndex >= 0 then
   begin
-    FHot := -1;
-    FDoc.HotLink := -1;
-    Invalidate;
+    mLink := FDoc.Link(mIndex);
+    if mLink.Kind = TAtlasDocLinkKind.Toggle then
+    begin
+      ToggleDoc;
+    end
+    else if mLink.Kind = TAtlasDocLinkKind.Url then
+    begin
+      if Assigned(FOnUrl) then
+      begin
+        FOnUrl(Self, mLink.Url);
+      end;
+    end
+    else if Assigned(FOnLink) then
+    begin
+      // Wie Typnamen der Deklaration (#588): Klick zeigt den Typ, Strg+Klick springt hin.
+      mRef := Default(TAtlasHoverTypeRef);
+      mRef.Name := mLink.Target.Name;
+      mRef.UnitName := mLink.Target.UnitName;
+      mRef.FileName := mLink.Target.FileName;
+      mRef.Line := mLink.Target.Line;
+      mRef.Character := mLink.Target.Character;
+      FOnLink(Self, mRef, ssCtrl in AShift);
+    end;
+    Exit;
   end;
+  if InDoc(AX, AY) then
+  begin
+    FDoc.StartSelection(Canvas, AX - FLayout.DocLeft, AY - FLayout.DocTop);
+  end
+  else
+  begin
+    FDoc.ClearSelection;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasHoverTip.TogglePublished(AToggle: TAtlasHoverPublishedToggle);
+begin
+  FView.Toggle(AToggle);
+  FHot := -1;
+  FLayoutKey := '';
+  Refit;
+end;
+
+function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
+var
+  mProblemIndex, mItem: Integer;
+  mProblemAction: TAtlasHoverProblemAction;
+begin
+  Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
+    (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
+  if not Result then
+  begin
+    Exit;
+  end;
+  TAtlasHoverProblemActionCode.Decode(FLayout.Hits[AHit].Index, mProblemIndex, mProblemAction, mItem);
+  FOnProblemAction(Self, mProblemIndex, mProblemAction, mItem);
 end;
 
 procedure TAtlasHoverTip.FireHit(AHit: Integer; AShift: TShiftState);
@@ -1095,9 +1043,165 @@ begin
   end;
 end;
 
-function TAtlasHoverTip.DebugSelectedIndex: Integer;
+procedure TAtlasHoverTip.CMMouseLeave(var Message: TMessage);
 begin
-  Result := FDebugSelectedRow - 1;
+  inherited;
+  if (FHot >= 0) or (FDoc.HotLink >= 0) then
+  begin
+    FHot := -1;
+    FDoc.HotLink := -1;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasHoverTip.Wheel(ASteps: Integer; const AClientPos: TPoint);
+begin
+  if FLayout.DebugRows.Scrollable and FLayout.DebugRows.View.Contains(AClientPos) then
+  begin
+    ScrollRegion(True, ASteps);
+  end
+  else if FLayout.Members.Scrollable and FLayout.Members.View.Contains(AClientPos) then
+  begin
+    ScrollRegion(False, ASteps);
+  end
+  else if not ScrollDoc(ASteps) and FLayout.Members.Scrollable then
+  begin
+    ScrollRegion(False, ASteps);
+  end;
+end;
+
+function TAtlasHoverTip.StepProblemAction(AForward: Boolean): Boolean;
+var
+  mNext: Integer;
+begin
+  mNext := FLayout.NextProblemHit(FHot, AForward);
+  Result := mNext >= 0;
+  if Result and (mNext <> FHot) then
+  begin
+    FHot := mNext;
+    Invalidate;
+  end;
+end;
+
+function TAtlasHoverTip.ActivateProblemAction: Boolean;
+begin
+  Result := ProblemActionMarked and FireProblemAction(FHot);
+end;
+
+function TAtlasHoverTip.ApplyFix: Boolean;
+begin
+  Result := HasFix and Assigned(FOnProblemAction);
+  if Result then
+  begin
+    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix, 0);
+  end;
+end;
+
+function TAtlasHoverTipView.ScrollRegion(ADebugRows: Boolean; ASteps: Integer): Boolean;
+var
+  mRegion: TAtlasHoverScroll;
+  mScroll: Integer;
+begin
+  mRegion := FLayout.Members;
+  if ADebugRows then
+  begin
+    mRegion := FLayout.DebugRows;
+  end;
+  mScroll := EnsureRange(mRegion.Scroll + ASteps * cWheelRows * mRegion.Row, 0, mRegion.MaxScroll);
+  Result := mScroll <> mRegion.Scroll;
+  if Result and ADebugRows then
+  begin
+    FDebugRows.Scroll := mScroll;
+  end
+  else if Result then
+  begin
+    FMembers.Scroll := mScroll;
+  end;
+  if Result then
+  begin
+    // Sofort neu setzen: Klickflächen unter der Maus gelten schon vor dem nächsten Paint.
+    BuildLayout(ClientWidth);
+    FLayout.Anchor(ClientHeight);
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasHoverTipView.ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
+var
+  mWidth, mHeight: Integer;
+  mSpoken: string;
+  mArea, mBounds: TRect;
+begin
+  FView := AView;
+  FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
+  FHot := -1;
+  FMembers.Scroll := 0;
+  FDebugRows.Scroll := 0;
+  FDebugSelectedRow := 0;
+  mWidth := PreferredWidth;
+  PrepareDoc(mWidth);
+  mArea := WorkAreaAt(AWord.TopLeft);
+  // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
+  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(12));
+  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
+  FAbove := mBounds.Bottom > mArea.Bottom;
+  if FAbove then
+  begin
+    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(4));
+  end;
+  if mBounds.Right > mArea.Right then
+  begin
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
+  end;
+  ShowAt(mBounds);
+  // Sprachausgabe (#447): Deklaration und Anfang der Doku.
+  SetAccessible(cUiaToolTipControlType, TAtlasHoverStrings.Text(TAtlasHoverTextId.AccessHover));
+  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
+  // Wert im Debugger (#891) zuerst.
+  if AView.DebugValue.PlainText <> '' then
+  begin
+    mSpoken := AView.DebugValue.PlainText + '. ' + mSpoken;
+  end;
+  Announce(mSpoken);
+end;
+
+procedure TAtlasHoverTip.SetExample(AProblem: Integer; const AExample: TAtlasRuleExplanation;
+  APinned: Boolean);
+begin
+  if (AProblem < 0) or (AProblem > High(FView.Problems)) then
+  begin
+    Exit;
+  end;
+  if Length(FView.Examples) <> Length(FView.Problems) then
+  begin
+    SetLength(FView.Examples, Length(FView.Problems));
+  end;
+  FView.Examples[AProblem] := AExample;
+  // Ohne Katalogtext zur Regel steht der Hinweis als Beschreibung da.
+  if (AExample.Id <> '') and (AExample.Description = '') and (AExample.Bad = '') and (AExample.Good = '') then
+  begin
+    FView.Examples[AProblem].Description := TAtlasHoverStrings.Text(TAtlasHoverTextId.HoverNoExample);
+  end;
+  FView.Pinned := APinned;
+  // Die Klickflächen der Aktionszeile behalten ihren Index: Beschreibung und Beispiel haben keine.
+  FLayoutKey := '';
+  Refit;
+end;
+
+function TAtlasHoverTip.HasProblemActions: Boolean;
+begin
+  Result := FLayout.NextProblemHit(-1, True) >= 0;
+end;
+
+function TAtlasHoverTip.HasFix: Boolean;
+begin
+  Result := FLayout.FixProblem >= 0;
+end;
+
+function TAtlasHoverTip.ProblemActionMarked: Boolean;
+begin
+  Result := (FHot >= 0) and (FHot <= High(FLayout.Hits)) and
+    (FLayout.Hits[FHot].Kind = TAtlasHoverHitKind.ProblemAction);
 end;
 
 function TAtlasHoverTip.MoveDebugSelection(ADelta: Integer): Boolean;
@@ -1146,141 +1250,39 @@ begin
   end;
 end;
 
-procedure TAtlasHoverTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
+function TAtlasHoverTip.DebugSelectedIndex: Integer;
 begin
-  inherited;
-  mIndex := FLayout.HitAt(Point(X, Y));
-  // Rechtsklick auf eine Zeile des Debug-Werts (#895): wählen und ihre Aktionen anbieten.
-  if (Button = mbRight) and (mIndex >= 0) and (FLayout.Hits[mIndex].Kind = TAtlasHoverHitKind.DebugRow) and
-    Assigned(FOnDebugRow) then
-  begin
-    FDebugSelectedRow := FLayout.Hits[mIndex].Index + 1;
-    Invalidate;
-    FOnDebugRow(Self, FLayout.Hits[mIndex].Index, True);
-    Exit;
-  end;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  if mIndex < 0 then
-  begin
-    DocMouseDown(Shift, X, Y);
-  end
-  else
-  begin
-    FireHit(mIndex, Shift);
-  end;
+  Result := FDebugSelectedRow - 1;
 end;
 
-procedure TAtlasHoverTipView.SetProblemActions(AValue: Boolean);
+procedure TAtlasHoverTipView.UpdateContent(const AView: TAtlasHoverView);
+var
+  mWidth, mHeight: Integer;
+  mBounds, mArea: TRect;
 begin
-  if FOptions.ProblemActions = AValue then
+  if not IsShown then
   begin
     Exit;
   end;
-  FOptions.ProblemActions := AValue;
+  // Auf- und Zuklappen (#895) tauscht nur die Zeilen: Versatz und Auswahl bleiben beim selben Ausdruck.
+  if AView.DebugValue.Expression <> FView.DebugValue.Expression then
+  begin
+    FDebugRows.Scroll := 0;
+    FDebugSelectedRow := 0;
+  end;
+  FDebugSelectedRow := Min(FDebugSelectedRow, Length(AView.DebugValue.Rows));
+  FView := AView;
+  FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
-  FLayoutKey := '';
+  FMembers.Scroll := 0;
+  mWidth := Max(BoundsRect.Width, PreferredWidth);
+  PrepareDoc(mWidth);
+  mArea := WorkAreaAt(BoundsRect.TopLeft);
+  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(4)));
+  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(80)));
+  mBounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
+  ShowAt(mBounds);
   Invalidate;
-end;
-
-procedure TAtlasHoverTipView.SetHideCompilerCode(AValue: Boolean);
-begin
-  if FOptions.HideCompilerCode = AValue then
-  begin
-    Exit;
-  end;
-  FOptions.HideCompilerCode := AValue;
-  FLayoutKey := '';
-  Invalidate;
-end;
-
-function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
-var
-  mProblemIndex, mItem: Integer;
-  mProblemAction: TAtlasHoverProblemAction;
-begin
-  Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
-    (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
-  if not Result then
-  begin
-    Exit;
-  end;
-  TAtlasHoverProblemActionCode.Decode(FLayout.Hits[AHit].Index, mProblemIndex, mProblemAction, mItem);
-  FOnProblemAction(Self, mProblemIndex, mProblemAction, mItem);
-end;
-
-function TAtlasHoverTip.HasProblemActions: Boolean;
-begin
-  Result := FLayout.NextProblemHit(-1, True) >= 0;
-end;
-
-function TAtlasHoverTip.HasFix: Boolean;
-begin
-  Result := FLayout.FixProblem >= 0;
-end;
-
-function TAtlasHoverTip.ProblemActionMarked: Boolean;
-begin
-  Result := (FHot >= 0) and (FHot <= High(FLayout.Hits)) and
-    (FLayout.Hits[FHot].Kind = TAtlasHoverHitKind.ProblemAction);
-end;
-
-function TAtlasHoverTip.StepProblemAction(AForward: Boolean): Boolean;
-var
-  mNext: Integer;
-begin
-  mNext := FLayout.NextProblemHit(FHot, AForward);
-  Result := mNext >= 0;
-  if Result and (mNext <> FHot) then
-  begin
-    FHot := mNext;
-    Invalidate;
-  end;
-end;
-
-function TAtlasHoverTip.ActivateProblemAction: Boolean;
-begin
-  Result := ProblemActionMarked and FireProblemAction(FHot);
-end;
-
-function TAtlasHoverTip.ApplyFix: Boolean;
-begin
-  Result := HasFix and Assigned(FOnProblemAction);
-  if Result then
-  begin
-    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix, 0);
-  end;
-end;
-
-procedure TAtlasHoverTipView.Paint;
-var
-  mIndex: Integer;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  // Nur neu setzen, wenn sich Breite, Doku-Höhe, Markierung, Schrift, Farben oder Rollbereich geändert haben.
-  if LayoutKey(ClientWidth) <> FLayoutKey then
-  begin
-    BuildLayout(ClientWidth);
-  end;
-  // Letzte Randfläche am unteren Fensterrand.
-  FLayout.Anchor(ClientHeight);
-  for mIndex := 0 to High(FLayout.Items) do
-  begin
-    // Rollbereiche der Mitglieder (#1841) und des Debug-Werts (#895) über die Clip-Region beschneiden.
-    // Erst den oberen Bereich (Debug-Wert) beenden, dann den der Mitglieder beginnen.
-    ClipScroll(Canvas, FLayout.DebugRows, mIndex);
-    ClipScroll(Canvas, FLayout.Members, mIndex);
-    PaintItem(FLayout.Items[mIndex]);
-  end;
-  SelectClipRgn(Canvas.Handle, 0);
-  Canvas.Brush.Style := bsSolid;
-  PaintBorder;
 end;
 
 end.

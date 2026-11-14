@@ -330,6 +330,73 @@ begin
   WireSettings(FPopup);
 end;
 
+procedure TAtlasEditorCompletionState.Log(const AMessage: string);
+begin
+  if Assigned(FLog) then
+  begin
+    FLog(AMessage);
+  end;
+end;
+
+procedure TAtlasEditorCompletionState.CancelDelay;
+begin
+  FDelay.Timer.Enabled := False;
+  FDelay.View := nil;
+end;
+
+procedure TAtlasEditorCompletionState.ActiveChanged;
+begin
+  FTimer.Enabled := FController.Active;
+  if not FController.Active and (FPreview <> nil) then
+  begin
+    FPreview.Clear;
+  end;
+  if FController.Active then
+  begin
+    InstallKeyHook;
+  end
+  else
+  begin
+    RemoveKeyHook;
+    HideDetails;
+    FOpen.View := nil;
+  end;
+end;
+
+procedure TAtlasEditorCompletionState.HideDetails;
+begin
+  FPopup.ClearDetails;
+  FDetails.Key := '';
+  FDetails.Requested := False;
+end;
+
+procedure TAtlasEditorCompletionState.InstallKeyHook;
+begin
+  TAtlasKeyHook.Add(FKeys);
+  if not TAtlasKeyHook.Installed then
+  begin
+    Log('Vervollständigung: Tastatur-Hook nicht möglich: ' + SysErrorMessage(GetLastError));
+  end;
+end;
+
+procedure TAtlasEditorCompletionState.RemoveKeyHook;
+begin
+  TAtlasKeyHook.Remove(FKeys);
+end;
+
+function TAtlasEditorCompletionState.IndexingNow: Boolean;
+var
+  mSession: TLspSession;
+begin
+  Result := False;
+  if not Assigned(FSession) then
+  begin
+    Exit;
+  end;
+  mSession := FSession();
+  Result := (mSession <> nil) and (mSession.IndexingText <> '');
+end;
+
 class function TAtlasEditorCompletionState.WindowState(const AView: IOTAEditView; AWindow,
   AFocus: HWND): TAtlasEditorWindowState;
 begin
@@ -347,53 +414,6 @@ begin
   begin
     Result.FileName := AView.Buffer.FileName;
   end;
-end;
-
-procedure TAtlasEditorCompletionState.Log(const AMessage: string);
-begin
-  if Assigned(FLog) then
-  begin
-    FLog(AMessage);
-  end;
-end;
-
-procedure TAtlasEditorCompletionState.Shutdown;
-begin
-  Close;
-  if Assigned(FSources.Shutdown) then
-  begin
-    FSources.Shutdown();
-  end;
-end;
-
-function TAtlasEditorCompletionState.IndexingNow: Boolean;
-var
-  mSession: TLspSession;
-begin
-  Result := False;
-  if not Assigned(FSession) then
-  begin
-    Exit;
-  end;
-  mSession := FSession();
-  Result := (mSession <> nil) and (mSession.IndexingText <> '');
-end;
-
-function TAtlasEditorCompletionState.PlaceholdersActive: Boolean;
-begin
-  Result := (FPlaceholders <> nil) and FPlaceholders.Active;
-end;
-
-function TAtlasEditorCompletionState.Visible: Boolean;
-begin
-  // Auch der leere Zustand (#423) nimmt Esc entgegen.
-  Result := FController.Visible or FController.Empty;
-end;
-
-procedure TAtlasEditorCompletionState.CancelDelay;
-begin
-  FDelay.Timer.Enabled := False;
-  FDelay.View := nil;
 end;
 
 procedure TAtlasEditorCompletionState.Close;
@@ -416,44 +436,30 @@ begin
   end;
 end;
 
-procedure TAtlasEditorCompletionState.ActiveChanged;
+procedure TAtlasEditorCompletionState.Shutdown;
 begin
-  FTimer.Enabled := FController.Active;
-  if not FController.Active and (FPreview <> nil) then
+  Close;
+  if Assigned(FSources.Shutdown) then
   begin
-    FPreview.Clear;
-  end;
-  if FController.Active then
-  begin
-    InstallKeyHook;
-  end
-  else
-  begin
-    RemoveKeyHook;
-    HideDetails;
-    FOpen.View := nil;
+    FSources.Shutdown();
   end;
 end;
 
-procedure TAtlasEditorCompletionState.InstallKeyHook;
+function TAtlasEditorCompletionState.Visible: Boolean;
 begin
-  TAtlasKeyHook.Add(FKeys);
-  if not TAtlasKeyHook.Installed then
-  begin
-    Log('Vervollständigung: Tastatur-Hook nicht möglich: ' + SysErrorMessage(GetLastError));
-  end;
+  // Auch der leere Zustand (#423) nimmt Esc entgegen.
+  Result := FController.Visible or FController.Empty;
 end;
 
-procedure TAtlasEditorCompletionState.RemoveKeyHook;
+function TAtlasEditorCompletionState.PlaceholdersActive: Boolean;
 begin
-  TAtlasKeyHook.Remove(FKeys);
+  Result := (FPlaceholders <> nil) and FPlaceholders.Active;
 end;
 
-procedure TAtlasEditorCompletionState.HideDetails;
+function TAtlasEditorCompletionState.GuardPending(const AView: IOTAEditView): Boolean;
 begin
-  FPopup.ClearDetails;
-  FDetails.Key := '';
-  FDetails.Requested := False;
+  Result := (FGuard.Line > 0) and (AView <> nil) and (AView.Buffer <> nil) and
+    (AView.CursorPos.Line = FGuard.Line) and SameText(AView.Buffer.FileName, FGuard.FileName);
 end;
 
 function TAtlasEditorCompletionState.GuardNewLine(const AView: IOTAEditView): Boolean;
@@ -462,12 +468,6 @@ begin
     (AView.CursorPos.Line = FGuard.Line + 1) and SameText(AView.Buffer.FileName, FGuard.FileName) and
     (Trim(TAtlasEditorBuffer.LineText(AView, AView.CursorPos.Line)) = '') and
     not TAtlasEditorBuffer.LineText(AView, FGuard.Line).TrimRight.EndsWith(';');
-end;
-
-function TAtlasEditorCompletionState.GuardPending(const AView: IOTAEditView): Boolean;
-begin
-  Result := (FGuard.Line > 0) and (AView <> nil) and (AView.Buffer <> nil) and
-    (AView.CursorPos.Line = FGuard.Line) and SameText(AView.Buffer.FileName, FGuard.FileName);
 end;
 
 end.

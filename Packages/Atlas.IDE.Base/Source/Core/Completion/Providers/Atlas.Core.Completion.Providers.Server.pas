@@ -120,16 +120,6 @@ end;
 
 { TAtlasServerCompletionProvider }
 
-class function TAtlasServerCompletionProvider.ProviderTitle: string;
-begin
-  Result := UiText(TServerText.CompletionServer);
-end;
-
-constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc);
-begin
-  Create(ASession, cDefaultTimeoutMs);
-end;
-
 constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);
 begin
   inherited Create;
@@ -139,47 +129,105 @@ begin
   FSnippets := True;
 end;
 
+constructor TAtlasServerCompletionProvider.Create(const ASession: TAtlasSessionFunc);
+begin
+  Create(ASession, cDefaultTimeoutMs);
+end;
+
 function TAtlasServerCompletionProvider.IsFailure(E: Exception): Boolean;
 begin
   Result := inherited IsFailure(E) and not (E is ELspClientError);
 end;
 
-class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;
-const
-  // Index: CompletionItemKind des LSP; nicht abgebildete Arten bleiben Unknown.
-  cLspKinds: array[0..25] of TAtlasItemKind = (
-    TAtlasItemKind.Unknown, // 0
-    TAtlasItemKind.Unknown, // 1
-    TAtlasItemKind.Method, // 2
-    TAtlasItemKind.Function_, // 3
-    TAtlasItemKind.Constructor_, // 4
-    TAtlasItemKind.Field, // 5
-    TAtlasItemKind.Variable, // 6
-    TAtlasItemKind.Class_, // 7
-    TAtlasItemKind.Interface_, // 8
-    TAtlasItemKind.Unit_, // 9
-    TAtlasItemKind.Property_, // 10
-    TAtlasItemKind.Unknown, // 11
-    TAtlasItemKind.Unknown, // 12
-    TAtlasItemKind.Enum, // 13
-    TAtlasItemKind.Keyword, // 14
-    TAtlasItemKind.Snippet, // 15
-    TAtlasItemKind.Unknown, // 16
-    TAtlasItemKind.Unknown, // 17
-    TAtlasItemKind.Unknown, // 18
-    TAtlasItemKind.Unknown, // 19
-    TAtlasItemKind.EnumMember, // 20
-    TAtlasItemKind.Constant, // 21
-    TAtlasItemKind.Record_, // 22
-    TAtlasItemKind.Event, // 23
-    TAtlasItemKind.Unknown, // 24
-    TAtlasItemKind.Type_); // 25
+function TAtlasServerCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+var
+  mSession: TLspSession;
 begin
-  if (ALspKind < Low(cLspKinds)) or (ALspKind > High(cLspKinds)) then
+  AData := nil;
+  mSession := nil;
+  if Assigned(FSession) then
   begin
-    Exit(TAtlasItemKind.Unknown);
+    mSession := FSession();
   end;
-  Result := cLspKinds[ALspKind];
+  Result := (mSession <> nil) and (AContext.FileName <> '');
+  if not Result then
+  begin
+    if mSession = nil then
+    begin
+      Log('Vervollständigung: kein Server verbunden');
+    end;
+    Exit;
+  end;
+  // Sync ist threadsicher (FDocLock in TLspSession); hier im Zeitlimit-Arbeiter.
+  mSession.Sync(AContext.FileName, AContext.Text);
+  AData := mSession;
+end;
+
+function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
+var
+  mResponse: TJSONValue;
+  mNextRank: Integer;
+  mEmit: TAtlasEmitProc;
+  mWatch: TStopwatch;
+  mSnippets: Boolean;
+begin
+  AState := Default(TAtlasFetchState);
+  mNextRank := 0;
+  mEmit := AEmit;
+  mSnippets := FSnippets;
+  mWatch := TStopwatch.StartNew;
+  // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
+  mResponse := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
+    AContext.Trigger,
+    procedure(const AValue: TJSONValue)
+    var
+      Items: TAtlasCompletionItems;
+    begin
+      if not (AValue is TJSONArray) then
+      begin
+        Exit;
+      end;
+      Items := ItemsFromLsp(AValue, mNextRank);
+      Inc(mNextRank, TJSONArray(AValue).Count);
+      // completion.snippets aus (#51): wie ohne die Funktion.
+      if not mSnippets then
+      begin
+        Items := WithoutSnippets(Items);
+      end;
+      mEmit(Items);
+    end);
+  try
+    // Ohne Antwort bleibt die Liste leer; das Zeitlimit ist FTimeoutMs.
+    if mResponse = nil then
+    begin
+      Log(Format('Vervollständigung: keine Antwort nach %d ms (%d Teilergebnisse)',
+        [mWatch.ElapsedMilliseconds, mNextRank]));
+    end
+    else
+    begin
+      Log(Format('Vervollständigung: Antwort nach %d ms', [mWatch.ElapsedMilliseconds]));
+    end;
+    if ACancelled() then
+    begin
+      Exit(nil);
+    end;
+    // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
+    // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
+    AState.Incomplete := (mResponse is TJSONObject) and (TJSONObject(mResponse).GetValue('isIncomplete') is TJSONBool) and
+      TJSONBool(TJSONObject(mResponse).GetValue('isIncomplete')).AsBoolean;
+    AState.Syntax := SyntaxNoticeOf(mResponse);
+    Result := ItemsFromLsp(mResponse, mNextRank);
+    if not mSnippets then
+    begin
+      Result := WithoutSnippets(Result);
+    end;
+    // Nur wegen der Sichtbarkeit fehlende Mitglieder (#2108): die Liste blendet sie bis Strg+Leertaste aus.
+    Result := Result + HiddenMembersOf(mResponse, mNextRank + Length(Result));
+  finally
+    mResponse.Free;
+  end;
 end;
 
 function EditFromLsp(AEdit: TJSONObject; out AResult: TAtlasTextEdit): Boolean;
@@ -494,6 +542,84 @@ begin
   end;
 end;
 
+class function TAtlasServerCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TServerText.CompletionServer);
+end;
+
+procedure TAtlasServerCompletionProvider.Log(const AMessage: string);
+begin
+  if Assigned(FOnLog) then
+  begin
+    FOnLog(AMessage);
+  end;
+end;
+
+/// <summary>Befehl für die Aktionen eines nicht sichtbaren Mitglieds (#2108), nur mit Datei der Deklaration
+/// und nicht aus fremdem Code (external): Argumente [uri, position, name] für atlas.server.memberActions.
+/// </summary>
+procedure ReadMemberActions(AMember: TJSONObject; var AItem: TAtlasCompletionItem);
+var
+  mArguments: TJSONArray;
+  mPosition: TJSONObject;
+begin
+  if (TJsonRead.Text(AMember, 'uri') = '') or AMember.GetValue<Boolean>('external', False) then
+  begin
+    Exit;
+  end;
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TJsonRead.Text(AMember, 'uri'));
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(AMember.GetValue<Integer>('line', 0)));
+    mPosition.AddPair('character', TJSONNumber.Create(AMember.GetValue<Integer>('character', 0)));
+    mArguments.AddElement(mPosition);
+    mArguments.Add(AItem.Name);
+    AItem.Command := TAtlasServerCompletionProvider.cMemberActionsCommand;
+    AItem.CommandArguments := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;
+const
+  // Index: CompletionItemKind des LSP; nicht abgebildete Arten bleiben Unknown.
+  cLspKinds: array[0..25] of TAtlasItemKind = (
+    TAtlasItemKind.Unknown, // 0
+    TAtlasItemKind.Unknown, // 1
+    TAtlasItemKind.Method, // 2
+    TAtlasItemKind.Function_, // 3
+    TAtlasItemKind.Constructor_, // 4
+    TAtlasItemKind.Field, // 5
+    TAtlasItemKind.Variable, // 6
+    TAtlasItemKind.Class_, // 7
+    TAtlasItemKind.Interface_, // 8
+    TAtlasItemKind.Unit_, // 9
+    TAtlasItemKind.Property_, // 10
+    TAtlasItemKind.Unknown, // 11
+    TAtlasItemKind.Unknown, // 12
+    TAtlasItemKind.Enum, // 13
+    TAtlasItemKind.Keyword, // 14
+    TAtlasItemKind.Snippet, // 15
+    TAtlasItemKind.Unknown, // 16
+    TAtlasItemKind.Unknown, // 17
+    TAtlasItemKind.Unknown, // 18
+    TAtlasItemKind.Unknown, // 19
+    TAtlasItemKind.EnumMember, // 20
+    TAtlasItemKind.Constant, // 21
+    TAtlasItemKind.Record_, // 22
+    TAtlasItemKind.Event, // 23
+    TAtlasItemKind.Unknown, // 24
+    TAtlasItemKind.Type_); // 25
+begin
+  if (ALspKind < Low(cLspKinds)) or (ALspKind > High(cLspKinds)) then
+  begin
+    Exit(TAtlasItemKind.Unknown);
+  end;
+  Result := cLspKinds[ALspKind];
+end;
+
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
 var
   mData: TJSONObject;
@@ -523,68 +649,64 @@ begin
   ReadCommand(AItem, Result);
 end;
 
-class function TAtlasServerCompletionProvider.Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem;
-
-  function Expanded(const AText: string): string;
-  begin
-    // Zeilenumbrüche wie geliefert: Der Server schreibt die des Dokuments.
-    if Pos(#13#10, AText) > 0 then
-    begin
-      Result := TAtlasSnippets.Expand(AText, '', #13#10).Text;
-    end
-    else
-    begin
-      Result := TAtlasSnippets.Expand(AText, '', #10).Text;
-    end;
-  end;
-
+class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;
+  AFirstRank: Integer): TAtlasCompletionItems;
 var
-  mIndex: Integer;
+  mItems: TJSONValue;
+  mIndex, mCount: Integer;
 begin
-  Result := AItem;
-  if Result.HasTextEdit then
+  Result := nil;
+  if AResponse is TJSONObject then
   begin
-    Result.TextEdit.NewText := Expanded(Result.Snippet);
+    mItems := TJSONObject(AResponse).GetValue('items');
   end
   else
   begin
-    Result.InsertText := Expanded(Result.Snippet);
+    mItems := AResponse;
   end;
-  if Result.LinkedEdits then
-  begin
-    for mIndex := 0 to High(Result.AdditionalEdits) do
-    begin
-      Result.AdditionalEdits[mIndex].NewText := Expanded(Result.AdditionalEdits[mIndex].NewText);
-    end;
-  end;
-  Result.Snippet := '';
-  Result.LinkedEdits := False;
-end;
-
-/// <summary>Befehl für die Aktionen eines nicht sichtbaren Mitglieds (#2108), nur mit Datei der Deklaration
-/// und nicht aus fremdem Code (external): Argumente [uri, position, name] für atlas.server.memberActions.
-/// </summary>
-procedure ReadMemberActions(AMember: TJSONObject; var AItem: TAtlasCompletionItem);
-var
-  mArguments: TJSONArray;
-  mPosition: TJSONObject;
-begin
-  if (TJsonRead.Text(AMember, 'uri') = '') or AMember.GetValue<Boolean>('external', False) then
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(TJsonRead.Text(AMember, 'uri'));
-    mPosition := TJSONObject.Create;
-    mPosition.AddPair('line', TJSONNumber.Create(AMember.GetValue<Integer>('line', 0)));
-    mPosition.AddPair('character', TJSONNumber.Create(AMember.GetValue<Integer>('character', 0)));
-    mArguments.AddElement(mPosition);
-    mArguments.Add(AItem.Name);
-    AItem.Command := TAtlasServerCompletionProvider.cMemberActionsCommand;
-    AItem.CommandArguments := mArguments.ToJSON;
-  finally
-    mArguments.Free;
+  // Einmal anlegen statt je Eintrag anzuhängen: Das kopierte bei 1000 Einträgen die ganze Liste jedes Mal (#616).
+  SetLength(Result, TJSONArray(mItems).Count);
+  mCount := 0;
+  for mIndex := 0 to TJSONArray(mItems).Count - 1 do
+  begin
+    if TJSONArray(mItems).Items[mIndex] is TJSONObject then
+    begin
+      Result[mCount] := ItemFromLsp(TJSONObject(TJSONArray(mItems).Items[mIndex]), AFirstRank + mIndex);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems;
+begin
+  Result := ItemsFromLsp(AResponse, 0);
+end;
+
+class function TAtlasServerCompletionProvider.WithoutSnippets(
+  const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
+var
+  mItem: TAtlasCompletionItem;
+begin
+  Result := nil;
+  // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
+  // (resourcestring auslagern, #473), Gerüste anonymer Methoden (#468, eigener Schalter
+  // completion.anonymousMethods) und "EFoo.Create('')" nach raise (#483, completion.exceptionClasses) bleiben ohne
+  // Platzhalter.
+  for mItem in AItems do
+  begin
+    if (mItem.Snippet = '') or mItem.Postfix then
+    begin
+      Result := Result + [mItem];
+    end
+    else if mItem.IsAction or (mItem.MethodRef <> '') or (mItem.ExceptionGroup <> '') then
+    begin
+      Result := Result + [Plain(mItem)];
+    end;
   end;
 end;
 
@@ -669,164 +791,42 @@ begin
   Result.Message := TJSONObject(mNotice).GetValue<string>('message', '');
 end;
 
-class function TAtlasServerCompletionProvider.WithoutSnippets(
-  const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
-var
-  mItem: TAtlasCompletionItem;
-begin
-  Result := nil;
-  // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
-  // (resourcestring auslagern, #473), Gerüste anonymer Methoden (#468, eigener Schalter
-  // completion.anonymousMethods) und "EFoo.Create('')" nach raise (#483, completion.exceptionClasses) bleiben ohne
-  // Platzhalter.
-  for mItem in AItems do
-  begin
-    if (mItem.Snippet = '') or mItem.Postfix then
-    begin
-      Result := Result + [mItem];
-    end
-    else if mItem.IsAction or (mItem.MethodRef <> '') or (mItem.ExceptionGroup <> '') then
-    begin
-      Result := Result + [Plain(mItem)];
-    end;
-  end;
-end;
+class function TAtlasServerCompletionProvider.Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem;
 
-class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue): TAtlasCompletionItems;
-begin
-  Result := ItemsFromLsp(AResponse, 0);
-end;
-
-class function TAtlasServerCompletionProvider.ItemsFromLsp(AResponse: TJSONValue;
-  AFirstRank: Integer): TAtlasCompletionItems;
-var
-  mItems: TJSONValue;
-  mIndex, mCount: Integer;
-begin
-  Result := nil;
-  if AResponse is TJSONObject then
+  function Expanded(const AText: string): string;
   begin
-    mItems := TJSONObject(AResponse).GetValue('items');
-  end
-  else
-  begin
-    mItems := AResponse;
-  end;
-  if not (mItems is TJSONArray) then
-  begin
-    Exit;
-  end;
-  // Einmal anlegen statt je Eintrag anzuhängen: Das kopierte bei 1000 Einträgen die ganze Liste jedes Mal (#616).
-  SetLength(Result, TJSONArray(mItems).Count);
-  mCount := 0;
-  for mIndex := 0 to TJSONArray(mItems).Count - 1 do
-  begin
-    if TJSONArray(mItems).Items[mIndex] is TJSONObject then
+    // Zeilenumbrüche wie geliefert: Der Server schreibt die des Dokuments.
+    if Pos(#13#10, AText) > 0 then
     begin
-      Result[mCount] := ItemFromLsp(TJSONObject(TJSONArray(mItems).Items[mIndex]), AFirstRank + mIndex);
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-end;
-
-procedure TAtlasServerCompletionProvider.Log(const AMessage: string);
-begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AMessage);
-  end;
-end;
-
-function TAtlasServerCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
-var
-  mSession: TLspSession;
-begin
-  AData := nil;
-  mSession := nil;
-  if Assigned(FSession) then
-  begin
-    mSession := FSession();
-  end;
-  Result := (mSession <> nil) and (AContext.FileName <> '');
-  if not Result then
-  begin
-    if mSession = nil then
-    begin
-      Log('Vervollständigung: kein Server verbunden');
-    end;
-    Exit;
-  end;
-  // Sync ist threadsicher (FDocLock in TLspSession); hier im Zeitlimit-Arbeiter.
-  mSession.Sync(AContext.FileName, AContext.Text);
-  AData := mSession;
-end;
-
-function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
-    out AState: TAtlasFetchState): TAtlasCompletionItems;
-var
-  mResponse: TJSONValue;
-  mNextRank: Integer;
-  mEmit: TAtlasEmitProc;
-  mWatch: TStopwatch;
-  mSnippets: Boolean;
-begin
-  AState := Default(TAtlasFetchState);
-  mNextRank := 0;
-  mEmit := AEmit;
-  mSnippets := FSnippets;
-  mWatch := TStopwatch.StartNew;
-  // Teilergebnisse kommen im Lese-Thread nacheinander und alle vor der Antwort.
-  mResponse := TLspSession(AData).Completion(AContext.FileName, AContext.Line, AContext.Character, FTimeoutMs,
-    AContext.Trigger,
-    procedure(const AValue: TJSONValue)
-    var
-      Items: TAtlasCompletionItems;
-    begin
-      if not (AValue is TJSONArray) then
-      begin
-        Exit;
-      end;
-      Items := ItemsFromLsp(AValue, mNextRank);
-      Inc(mNextRank, TJSONArray(AValue).Count);
-      // completion.snippets aus (#51): wie ohne die Funktion.
-      if not mSnippets then
-      begin
-        Items := WithoutSnippets(Items);
-      end;
-      mEmit(Items);
-    end);
-  try
-    // Ohne Antwort bleibt die Liste leer; das Zeitlimit ist FTimeoutMs.
-    if mResponse = nil then
-    begin
-      Log(Format('Vervollständigung: keine Antwort nach %d ms (%d Teilergebnisse)',
-        [mWatch.ElapsedMilliseconds, mNextRank]));
+      Result := TAtlasSnippets.Expand(AText, '', #13#10).Text;
     end
     else
     begin
-      Log(Format('Vervollständigung: Antwort nach %d ms', [mWatch.ElapsedMilliseconds]));
+      Result := TAtlasSnippets.Expand(AText, '', #10).Text;
     end;
-    if ACancelled() then
-    begin
-      Exit(nil);
-    end;
-    // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
-    // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
-    AState.Incomplete := (mResponse is TJSONObject) and (TJSONObject(mResponse).GetValue('isIncomplete') is TJSONBool) and
-      TJSONBool(TJSONObject(mResponse).GetValue('isIncomplete')).AsBoolean;
-    AState.Syntax := SyntaxNoticeOf(mResponse);
-    Result := ItemsFromLsp(mResponse, mNextRank);
-    if not mSnippets then
-    begin
-      Result := WithoutSnippets(Result);
-    end;
-    // Nur wegen der Sichtbarkeit fehlende Mitglieder (#2108): die Liste blendet sie bis Strg+Leertaste aus.
-    Result := Result + HiddenMembersOf(mResponse, mNextRank + Length(Result));
-  finally
-    mResponse.Free;
   end;
+
+var
+  mIndex: Integer;
+begin
+  Result := AItem;
+  if Result.HasTextEdit then
+  begin
+    Result.TextEdit.NewText := Expanded(Result.Snippet);
+  end
+  else
+  begin
+    Result.InsertText := Expanded(Result.Snippet);
+  end;
+  if Result.LinkedEdits then
+  begin
+    for mIndex := 0 to High(Result.AdditionalEdits) do
+    begin
+      Result.AdditionalEdits[mIndex].NewText := Expanded(Result.AdditionalEdits[mIndex].NewText);
+    end;
+  end;
+  Result.Snippet := '';
+  Result.LinkedEdits := False;
 end;
 
 function EntriesOf(AObject: TJSONObject; const AName: string): TArray<TAtlasDocEntry>;

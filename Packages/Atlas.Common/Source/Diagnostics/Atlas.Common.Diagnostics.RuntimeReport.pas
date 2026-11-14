@@ -196,6 +196,13 @@ begin
   end;
 end;
 
+{ TRuntimeReports }
+
+class function TRuntimeReports.SourceOf(AKind: TCrashReportKind): string;
+begin
+  Result := cKindNames[AKind];
+end;
+
 class procedure TRuntimeReports.LoadSymbols(const AMapName, AExeName: string; ABase: UInt64;
   out ASymbols: TReportSymbols);
 var
@@ -284,11 +291,6 @@ begin
     mFrame.Module := AReport.Module;
     Result := Result + [mFrame];
   end;
-end;
-
-class function TRuntimeReports.SourceOf(AKind: TCrashReportKind): string;
-begin
-  Result := cKindNames[AKind];
 end;
 
 { Aufbau }

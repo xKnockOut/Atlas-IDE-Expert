@@ -191,6 +191,8 @@ type
     procedure Run;
   end;
 
+{ TAsmChecker }
+
 constructor TAsmChecker.Create(const ATree: TSyntaxTree; const AReport: IRuleReport);
 begin
   inherited Create;

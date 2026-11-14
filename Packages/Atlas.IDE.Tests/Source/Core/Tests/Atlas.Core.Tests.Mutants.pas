@@ -174,6 +174,8 @@ begin
   end;
 end;
 
+{ TAtlasMutants }
+
 class function TAtlasMutants.Parse(const AJson: string; out AList: TAtlasMutantList): Boolean;
 var
   mRoot: TJSONObject;

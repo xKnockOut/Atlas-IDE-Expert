@@ -114,6 +114,13 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasBreakpointCheckDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster: erst hier füllen.
+  Fill;
+end;
+
 procedure TAtlasBreakpointCheckDialog.CreateSummary;
 var
   mRow: TPanel;
@@ -164,73 +171,6 @@ begin
   end;
 end;
 
-procedure TAtlasBreakpointCheckDialog.Fill;
-var
-  mProblem: TAtlasBreakpointProblem;
-begin
-  if FList.Items.Count > 0 then
-  begin
-    Exit;
-  end;
-  FList.Items.BeginUpdate;
-  try
-    for mProblem in FProblems do
-    begin
-      FList.Items.Add(ProblemText(mProblem));
-    end;
-  finally
-    FList.Items.EndUpdate;
-  end;
-  if FList.Items.Count > 0 then
-  begin
-    FList.ItemIndex := 0;
-  end;
-end;
-
-procedure TAtlasBreakpointCheckDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster: erst hier füllen.
-  Fill;
-end;
-
-class function TAtlasBreakpointCheckDialog.ReasonText(const AProblem: TAtlasBreakpointProblem): string;
-begin
-  case AProblem.Reason of
-    TAtlasBreakpointReason.NoCode:
-      if AProblem.CanMove then
-      begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoCodeNext, [AProblem.NextLine + 1]);
-      end
-      else
-      begin
-        Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNoCode);
-      end;
-    TAtlasBreakpointReason.Inactive:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckInactive, [AProblem.Detail]);
-    TAtlasBreakpointReason.NoDebugInfo:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoDebugInfo, [AProblem.Detail]);
-    TAtlasBreakpointReason.NotInProject:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNotInProject);
-  else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckUnreadable);
-  end;
-end;
-
-class function TAtlasBreakpointCheckDialog.ProblemText(const AProblem: TAtlasBreakpointProblem): string;
-begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckProblemLine,
-    [ExtractFileName(AProblem.FileName.Replace('/', PathDelim)), AProblem.Line + 1, ReasonText(AProblem)]);
-end;
-
-procedure TAtlasBreakpointCheckDialog.JumpTo(AIndex: Integer);
-begin
-  if Assigned(FJump) and (AIndex >= 0) and (AIndex <= High(FProblems)) then
-  begin
-    FJump(FProblems[AIndex]);
-  end;
-end;
-
 procedure TAtlasBreakpointCheckDialog.ListDblClick(Sender: TObject);
 begin
   JumpTo(FList.ItemIndex);
@@ -261,6 +201,66 @@ procedure TAtlasBreakpointCheckDialog.CancelClick(Sender: TObject);
 begin
   FChoice := TAtlasBreakpointCheckChoice.Cancel;
   ModalResult := mrCancel;
+end;
+
+procedure TAtlasBreakpointCheckDialog.Fill;
+var
+  mProblem: TAtlasBreakpointProblem;
+begin
+  if FList.Items.Count > 0 then
+  begin
+    Exit;
+  end;
+  FList.Items.BeginUpdate;
+  try
+    for mProblem in FProblems do
+    begin
+      FList.Items.Add(ProblemText(mProblem));
+    end;
+  finally
+    FList.Items.EndUpdate;
+  end;
+  if FList.Items.Count > 0 then
+  begin
+    FList.ItemIndex := 0;
+  end;
+end;
+
+procedure TAtlasBreakpointCheckDialog.JumpTo(AIndex: Integer);
+begin
+  if Assigned(FJump) and (AIndex >= 0) and (AIndex <= High(FProblems)) then
+  begin
+    FJump(FProblems[AIndex]);
+  end;
+end;
+
+class function TAtlasBreakpointCheckDialog.ProblemText(const AProblem: TAtlasBreakpointProblem): string;
+begin
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckProblemLine,
+    [ExtractFileName(AProblem.FileName.Replace('/', PathDelim)), AProblem.Line + 1, ReasonText(AProblem)]);
+end;
+
+class function TAtlasBreakpointCheckDialog.ReasonText(const AProblem: TAtlasBreakpointProblem): string;
+begin
+  case AProblem.Reason of
+    TAtlasBreakpointReason.NoCode:
+      if AProblem.CanMove then
+      begin
+        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoCodeNext, [AProblem.NextLine + 1]);
+      end
+      else
+      begin
+        Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNoCode);
+      end;
+    TAtlasBreakpointReason.Inactive:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckInactive, [AProblem.Detail]);
+    TAtlasBreakpointReason.NoDebugInfo:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoDebugInfo, [AProblem.Detail]);
+    TAtlasBreakpointReason.NotInProject:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNotInProject);
+  else
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckUnreadable);
+  end;
 end;
 
 class function TAtlasBreakpointCheckDialog.Execute(const AProblems: TAtlasBreakpointProblems;

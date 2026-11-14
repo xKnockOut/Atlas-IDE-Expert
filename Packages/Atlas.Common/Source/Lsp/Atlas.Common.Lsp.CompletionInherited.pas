@@ -278,6 +278,8 @@ begin
   Result := False;
 end;
 
+{ TInheritedHeader }
+
 class function TInheritedHeader.Parse(const AText: string; out AHeader: TInheritedHeader): Boolean;
 var
   mRest: string;
@@ -320,6 +322,8 @@ begin
     end;
   end;
 end;
+
+{ TInheritedCall }
 
 function TInheritedCall.Text: string;
 begin
@@ -365,6 +369,8 @@ begin
   end;
   Result := -1;
 end;
+
+{ TCompletionInherited }
 
 class function TCompletionInherited.Arguments(const ACurrent, ATarget: TInheritedHeader): TArray<string>;
 var

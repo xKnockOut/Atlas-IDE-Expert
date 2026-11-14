@@ -22,6 +22,8 @@ type
 
 implementation
 
+{ TMcpFreshness }
+
 class function TMcpFreshness.Changes(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
   const AFiles: TArray<string>): TArray<TFileChange>;
 var

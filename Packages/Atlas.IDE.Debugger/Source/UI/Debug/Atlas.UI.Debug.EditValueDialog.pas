@@ -101,6 +101,87 @@ begin
   FitHeight;
 end;
 
+procedure TAtlasEditValueDialog.DoShow;
+var
+  mValue: string;
+  mIndex: Integer;
+begin
+  inherited DoShow;
+  if (FChoice <> nil) and (FChoice.Items.Count = 0) then
+  begin
+    FChoice.Items.BeginUpdate;
+    try
+      for mValue in Choices do
+      begin
+        FChoice.Items.Add(mValue);
+      end;
+    finally
+      FChoice.Items.EndUpdate;
+    end;
+    // Den jetzigen Wert vorwählen (ohne Typpräfix, wie der Debugger ihn zeigt).
+    mIndex := FChoice.Items.IndexOf(FOldValue);
+    if (mIndex < 0) and FOldValue.StartsWith(FInfo.Prefix) then
+    begin
+      mIndex := FChoice.Items.IndexOf(Copy(FOldValue, Length(FInfo.Prefix) + 1, MaxInt));
+    end;
+    FChoice.ItemIndex := mIndex;
+  end;
+  InputChange(nil);
+end;
+
+procedure TAtlasEditValueDialog.InputChange(Sender: TObject);
+var
+  mProblem: string;
+begin
+  FCheck := TAtlasEditValue.Check(FInfo, Input);
+  mProblem := ProblemText(FCheck);
+  if mProblem <> '' then
+  begin
+    FNote.ShowNote(mProblem, TAtlasSignalKind.Error);
+  end
+  else if FInfo.Setter <> '' then
+  begin
+    FNote.ShowNote(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueSetter, [FInfo.Setter]), TAtlasSignalKind.Warn);
+  end
+  else
+  begin
+    FNote.ShowNote('', TAtlasSignalKind.Idle);
+  end;
+  if FEdit <> nil then
+  begin
+    FEdit.Hint := mProblem;
+  end;
+  FApply.Enabled := FCheck.Ok;
+end;
+
+procedure TAtlasEditValueDialog.ApplyClick(Sender: TObject);
+begin
+  if FApply.Enabled then
+  begin
+    ModalResult := mrOk;
+  end;
+end;
+
+procedure TAtlasEditValueDialog.ColorClick(Sender: TObject);
+var
+  mDialog: TColorDialog;
+  mColor: Integer;
+begin
+  mDialog := TColorDialog.Create(Self);
+  try
+    if TAtlasEditValue.ColorOf(FEdit.Text, mColor) then
+    begin
+      mDialog.Color := mColor;
+    end;
+    if mDialog.Execute(Handle) then
+    begin
+      FEdit.Text := TAtlasEditValue.ColorText(mDialog.Color);
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
 function TAtlasEditValueDialog.Choices: TArray<string>;
 begin
   Result := nil;
@@ -112,6 +193,30 @@ begin
   begin
     Result := FInfo.Values;
   end;
+end;
+
+function TAtlasEditValueDialog.Input: string;
+var
+  mBox: TCheckBox;
+  mNames: TArray<string>;
+begin
+  if FChoice <> nil then
+  begin
+    Exit(FChoice.Text);
+  end;
+  if FEdit <> nil then
+  begin
+    Exit(FEdit.Text);
+  end;
+  mNames := nil;
+  for mBox in FBoxes do
+  begin
+    if mBox.Checked then
+    begin
+      mNames := mNames + [mBox.Caption];
+    end;
+  end;
+  Result := TAtlasEditValue.SetText(FInfo, mNames);
 end;
 
 procedure TAtlasEditValueDialog.AddInput;
@@ -187,58 +292,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditValueDialog.DoShow;
-var
-  mValue: string;
-  mIndex: Integer;
-begin
-  inherited DoShow;
-  if (FChoice <> nil) and (FChoice.Items.Count = 0) then
-  begin
-    FChoice.Items.BeginUpdate;
-    try
-      for mValue in Choices do
-      begin
-        FChoice.Items.Add(mValue);
-      end;
-    finally
-      FChoice.Items.EndUpdate;
-    end;
-    // Den jetzigen Wert vorwählen (ohne Typpräfix, wie der Debugger ihn zeigt).
-    mIndex := FChoice.Items.IndexOf(FOldValue);
-    if (mIndex < 0) and FOldValue.StartsWith(FInfo.Prefix) then
-    begin
-      mIndex := FChoice.Items.IndexOf(Copy(FOldValue, Length(FInfo.Prefix) + 1, MaxInt));
-    end;
-    FChoice.ItemIndex := mIndex;
-  end;
-  InputChange(nil);
-end;
-
-function TAtlasEditValueDialog.Input: string;
-var
-  mBox: TCheckBox;
-  mNames: TArray<string>;
-begin
-  if FChoice <> nil then
-  begin
-    Exit(FChoice.Text);
-  end;
-  if FEdit <> nil then
-  begin
-    Exit(FEdit.Text);
-  end;
-  mNames := nil;
-  for mBox in FBoxes do
-  begin
-    if mBox.Checked then
-    begin
-      mNames := mNames + [mBox.Caption];
-    end;
-  end;
-  Result := TAtlasEditValue.SetText(FInfo, mNames);
-end;
-
 class function TAtlasEditValueDialog.ProblemText(const ACheck: TAtlasEditCheck): string;
 begin
   case ACheck.Problem of
@@ -260,59 +313,6 @@ begin
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueReadOnly, [ACheck.Detail]);
   else
     Result := '';
-  end;
-end;
-
-procedure TAtlasEditValueDialog.InputChange(Sender: TObject);
-var
-  mProblem: string;
-begin
-  FCheck := TAtlasEditValue.Check(FInfo, Input);
-  mProblem := ProblemText(FCheck);
-  if mProblem <> '' then
-  begin
-    FNote.ShowNote(mProblem, TAtlasSignalKind.Error);
-  end
-  else if FInfo.Setter <> '' then
-  begin
-    FNote.ShowNote(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueSetter, [FInfo.Setter]), TAtlasSignalKind.Warn);
-  end
-  else
-  begin
-    FNote.ShowNote('', TAtlasSignalKind.Idle);
-  end;
-  if FEdit <> nil then
-  begin
-    FEdit.Hint := mProblem;
-  end;
-  FApply.Enabled := FCheck.Ok;
-end;
-
-procedure TAtlasEditValueDialog.ApplyClick(Sender: TObject);
-begin
-  if FApply.Enabled then
-  begin
-    ModalResult := mrOk;
-  end;
-end;
-
-procedure TAtlasEditValueDialog.ColorClick(Sender: TObject);
-var
-  mDialog: TColorDialog;
-  mColor: Integer;
-begin
-  mDialog := TColorDialog.Create(Self);
-  try
-    if TAtlasEditValue.ColorOf(FEdit.Text, mColor) then
-    begin
-      mDialog.Color := mColor;
-    end;
-    if mDialog.Execute(Handle) then
-    begin
-      FEdit.Text := TAtlasEditValue.ColorText(mDialog.Color);
-    end;
-  finally
-    mDialog.Free;
   end;
 end;
 

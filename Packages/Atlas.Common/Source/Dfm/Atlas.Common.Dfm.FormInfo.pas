@@ -115,6 +115,8 @@ begin
   Result := Result + ')';
 end;
 
+{ TFormInfo }
+
 class function TFormInfo.ValueText(const AProperty: TDfmProperty): string;
 var
   mValue: string;

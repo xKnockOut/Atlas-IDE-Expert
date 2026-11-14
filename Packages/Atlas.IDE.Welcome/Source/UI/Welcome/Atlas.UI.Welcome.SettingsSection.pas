@@ -222,6 +222,27 @@ const
 
 { TAtlasWelcomeSettingsHooks }
 
+function TAtlasWelcomeSettingsHooks.BrowseFolder(const AFolder: string): string;
+var
+  mDialog: TFileOpenDialog;
+begin
+  Result := '';
+  mDialog := TFileOpenDialog.Create(nil);
+  try
+    mDialog.Options := mDialog.Options + [fdoPickFolders, fdoPathMustExist];
+    if AFolder <> '' then
+    begin
+      mDialog.DefaultFolder := AFolder;
+    end;
+    if mDialog.Execute then
+    begin
+      Result := mDialog.FileName;
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
 procedure TAtlasWelcomeSettingsHooks.Attach(const AHost: IAtlasSettingsSectionHost; AFolder: TEdit);
 begin
   FHost := AHost;
@@ -274,27 +295,6 @@ begin
   end;
 end;
 
-function TAtlasWelcomeSettingsHooks.BrowseFolder(const AFolder: string): string;
-var
-  mDialog: TFileOpenDialog;
-begin
-  Result := '';
-  mDialog := TFileOpenDialog.Create(nil);
-  try
-    mDialog.Options := mDialog.Options + [fdoPickFolders, fdoPathMustExist];
-    if AFolder <> '' then
-    begin
-      mDialog.DefaultFolder := AFolder;
-    end;
-    if mDialog.Execute then
-    begin
-      Result := mDialog.FileName;
-    end;
-  finally
-    mDialog.Free;
-  end;
-end;
-
 procedure TAtlasWelcomeSettingsHooks.HelpFolderBrowseClick(Sender: TObject);
 var
   mFolder: string;
@@ -324,16 +324,6 @@ begin
   Close;
   FreeAndNil(FLayouts);
   inherited Destroy;
-end;
-
-function TAtlasWelcomeSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasWelcomeSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
 end;
 
 function TAtlasWelcomeSettingsSection.Check(const AKey: string; AText: TAtlasWelcomeTextId): TCheckBox;
@@ -394,23 +384,6 @@ begin
   Result.Top := Result.ScaleValue(cButtonTop);
   Result.Width := AWidth;
   Result.OnClick := AClick;
-end;
-
-procedure TAtlasWelcomeSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
-begin
-  if FClosed or (FOwner <> nil) then
-  begin
-    Exit;
-  end;
-  FHost := AHost;
-  FOwner := TComponent.Create(nil);
-  BuildStart;
-  BuildContinue;
-  BuildTests;
-  BuildQuickActions;
-  BuildMore;
-  FHooks.Attach(AHost, FMore.HelpReportFolder);
-  TrackLayouts;
 end;
 
 procedure TAtlasWelcomeSettingsSection.BuildStart;
@@ -488,34 +461,6 @@ begin
   BuildModuleTiles;
 end;
 
-procedure TAtlasWelcomeSettingsSection.BuildModuleTiles;
-var
-  mIndex: Integer;
-  mCheck: TCheckBox;
-  mLink: TButton;
-  mRow: TWinControl;
-begin
-  // Kacheln anderer Module (#1903, z. B. Meine Issues und Sprint des Trackers): Schalter mit der Beschriftung
-  // aus dem Katalog, Unterpunkt nach x-node; die Seite kennt die Schlüssel nicht.
-  SetLength(FTiles.ModuleTiles, Length(FHooks.TileSwitches));
-  SetLength(FTiles.ModuleTileLinks, Length(FHooks.TileSwitches));
-  for mIndex := 0 to High(FHooks.TileSwitches) do
-  begin
-    mCheck := FHost.AddModuleSwitch(FHooks.TileSwitches[mIndex].Key) as TCheckBox;
-    FTiles.ModuleTiles[mIndex] := mCheck;
-    mLink := nil;
-    if FHooks.TileSwitches[mIndex].SettingsKey <> '' then
-    begin
-      mRow := FHost.AddRow(cButtonRow, nil);
-      mLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
-        FHooks.TileLinkClick);
-      mLink.Tag := mIndex;
-      FHost.Attach(mRow, mCheck);
-    end;
-    FTiles.ModuleTileLinks[mIndex] := mLink;
-  end;
-end;
-
 procedure TAtlasWelcomeSettingsSection.BuildQuickActions;
 var
   mAction: TAtlasQuickAction;
@@ -586,6 +531,34 @@ begin
   FMore.HelpFolderBrowse.Anchors := [akTop, akRight];
 end;
 
+procedure TAtlasWelcomeSettingsSection.BuildModuleTiles;
+var
+  mIndex: Integer;
+  mCheck: TCheckBox;
+  mLink: TButton;
+  mRow: TWinControl;
+begin
+  // Kacheln anderer Module (#1903, z. B. Meine Issues und Sprint des Trackers): Schalter mit der Beschriftung
+  // aus dem Katalog, Unterpunkt nach x-node; die Seite kennt die Schlüssel nicht.
+  SetLength(FTiles.ModuleTiles, Length(FHooks.TileSwitches));
+  SetLength(FTiles.ModuleTileLinks, Length(FHooks.TileSwitches));
+  for mIndex := 0 to High(FHooks.TileSwitches) do
+  begin
+    mCheck := FHost.AddModuleSwitch(FHooks.TileSwitches[mIndex].Key) as TCheckBox;
+    FTiles.ModuleTiles[mIndex] := mCheck;
+    mLink := nil;
+    if FHooks.TileSwitches[mIndex].SettingsKey <> '' then
+    begin
+      mRow := FHost.AddRow(cButtonRow, nil);
+      mLink := AddButton(mRow, 0, 200, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeIssuesLink),
+        FHooks.TileLinkClick);
+      mLink.Tag := mIndex;
+      FHost.Attach(mRow, mCheck);
+    end;
+    FTiles.ModuleTileLinks[mIndex] := mLink;
+  end;
+end;
+
 procedure TAtlasWelcomeSettingsSection.TrackLayouts;
 var
   mSwitches: TArray<TAtlasWelcomeSwitch>;
@@ -620,6 +593,33 @@ begin
   end;
   Add('WelcomePageHelp', FMore.Help);
   FLayouts.Track(mSwitches, FStart.WhatsNew);
+end;
+
+function TAtlasWelcomeSettingsSection.OwnerId: string;
+begin
+  Result := cOwnerId;
+end;
+
+function TAtlasWelcomeSettingsSection.AreaId: string;
+begin
+  Result := cAreaId;
+end;
+
+procedure TAtlasWelcomeSettingsSection.Build(const AHost: IAtlasSettingsSectionHost);
+begin
+  if FClosed or (FOwner <> nil) then
+  begin
+    Exit;
+  end;
+  FHost := AHost;
+  FOwner := TComponent.Create(nil);
+  BuildStart;
+  BuildContinue;
+  BuildTests;
+  BuildQuickActions;
+  BuildMore;
+  FHooks.Attach(AHost, FMore.HelpReportFolder);
+  TrackLayouts;
 end;
 
 procedure TAtlasWelcomeSettingsSection.Load(const AValues: IAtlasSettingsValues);

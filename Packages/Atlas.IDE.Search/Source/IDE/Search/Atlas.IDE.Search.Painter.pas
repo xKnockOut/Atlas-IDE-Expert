@@ -109,6 +109,40 @@ begin
   FCheck := True;
 end;
 
+procedure TAtlasIdeSearchPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
+  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mLine: Integer;
+begin
+  if TAtlasGuard.Disabled(TAtlasFeature.Search) then
+  begin
+    Exit;
+  end;
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not TAtlasIdeSearchSession.Highlight or
+    TAtlasIdeSearchSession.Last.IsEmpty then
+  begin
+    Exit;
+  end;
+  try
+    if FCheck then
+    begin
+      Refresh(Context);
+    end;
+    mLine := Context.LogicalLineNum - 1;
+    if HasHits(mLine, Context) then
+    begin
+      DrawHits(mLine, Rect, Context);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+    begin
+      FHits := nil;
+      TAtlasGuard.Report(TAtlasFeature.Search, E);
+    end;
+  end;
+end;
+
 procedure TAtlasIdeSearchPainter.Refresh(const AContext: INTACodeEditorPaintContext);
 var
   mView: IOTAEditView;
@@ -209,40 +243,6 @@ begin
     end;
   finally
     RestoreDC(mDC, mSaved);
-  end;
-end;
-
-procedure TAtlasIdeSearchPainter.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
-  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-var
-  mLine: Integer;
-begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Search) then
-  begin
-    Exit;
-  end;
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not TAtlasIdeSearchSession.Highlight or
-    TAtlasIdeSearchSession.Last.IsEmpty then
-  begin
-    Exit;
-  end;
-  try
-    if FCheck then
-    begin
-      Refresh(Context);
-    end;
-    mLine := Context.LogicalLineNum - 1;
-    if HasHits(mLine, Context) then
-    begin
-      DrawHits(mLine, Rect, Context);
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-    begin
-      FHits := nil;
-      TAtlasGuard.Report(TAtlasFeature.Search, E);
-    end;
   end;
 end;
 

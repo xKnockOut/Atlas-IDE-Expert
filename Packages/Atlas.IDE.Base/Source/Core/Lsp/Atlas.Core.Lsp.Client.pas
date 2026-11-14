@@ -592,24 +592,46 @@ begin
   inherited;
 end;
 
-class function TLspClient.Frame(const AText: string): TBytes;
-var
-  mBody: TBytes;
-  mHeader: TBytes;
-begin
-  mBody := TEncoding.UTF8.GetBytes(AText);
-  mHeader := TEncoding.UTF8.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)]));
-  Result := mHeader + mBody;
-end;
-
 procedure TLspClient.SendText(const AText: string);
 begin
   FSend(Frame(AText));
 end;
 
-function TLspClient.Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
+procedure TLspClient.CancelOnServer(AId: Integer);
 begin
-  Result := RequestCancellable(AMethod, AParams, ATimeoutMs, nil);
+  try
+    Notify('$/cancelRequest', TJSONObject.Create.AddPair('id', TJSONNumber.Create(AId)));
+  except
+    // Abbruch ist ein Hinweis an den Server; scheitert das Senden, bleibt es bei der Zeitüberschreitung.
+    on Exception do
+      ;
+  end;
+end;
+
+procedure TLspClient.HandleMessage(const AText: string);
+var
+  mValue: TJSONValue;
+  mMessage: TJSONObject;
+  mIdValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue(AText);
+  try
+    if mValue is TJSONObject then
+    begin
+      mMessage := TJSONObject(mValue);
+      mIdValue := mMessage.GetValue('id');
+      if mMessage.GetValue('method') <> nil then
+      begin
+        HandleServerMessage(Self, mMessage, mIdValue);
+      end
+      else if mIdValue is TJSONNumber then
+      begin
+        AnswerPending(Self, mMessage, TJSONNumber(mIdValue).AsInt);
+      end;
+    end;
+  finally
+    mValue.Free;
+  end;
 end;
 
 /// <summary>Name der Anfrage im Diagnose-Fenster: bei workspace/executeCommand mit dem Befehl
@@ -624,6 +646,101 @@ begin
   begin
     Result := AMethod + ' ' + mCommand;
   end;
+end;
+
+function TLspClient.HandlePartial(AMessage: TJSONObject): Boolean;
+var
+  mParams, mToken: TJSONValue;
+  mPartial: TLspPartialProc;
+begin
+  Result := False;
+  if AMessage.GetValue<string>('method', '') <> '$/progress' then
+  begin
+    Exit;
+  end;
+  mParams := AMessage.GetValue('params');
+  if not (mParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mToken := TJSONObject(mParams).GetValue('token');
+  if not (mToken is TJSONString) then
+  begin
+    Exit;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    if not FPartials.TryGetValue(TJSONString(mToken).Value, mPartial) then
+    begin
+      Exit;
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := True;
+  try
+    mPartial(TJSONObject(mParams).GetValue('value'));
+  except
+    // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
+    on Exception do
+      ;
+  end;
+end;
+
+function TLspClient.TakeMessage(out AText: string): Boolean;
+var
+  mHeaderLength, mLen, mBodyLength: Integer;
+begin
+  Result := False;
+  mHeaderLength := HeaderEndIndex(FBuffer);
+  if mHeaderLength < 0 then
+  begin
+    RejectEndlessHeader(FBuffer);
+    Exit;
+  end;
+  mBodyLength := ContentLengthOf(TEncoding.UTF8.GetString(FBuffer, 0, mHeaderLength));
+  mLen := mHeaderLength + Length(cHeaderEnd);
+  if mBodyLength < 0 then
+  begin
+    // Kaputter Kopf: verwerfen und weitermachen.
+    Delete(FBuffer, 0, mLen);
+    Exit(True);
+  end;
+  RejectOversizedBody(FBuffer, mBodyLength);
+  if Length(FBuffer) >= mLen + mBodyLength then
+  begin
+    AText := TEncoding.UTF8.GetString(FBuffer, mLen, mBodyLength);
+    Delete(FBuffer, 0, mLen + mBodyLength);
+    Result := True;
+  end;
+end;
+
+function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>): TJSONValue;
+var
+  mRun: TLspRequestRun;
+begin
+  mRun := TLspRequestRun.Create(Self, AMethod, ATimeoutMs, ACancelled);
+  try
+    Result := mRun.Execute(AParams);
+  finally
+    mRun.Free;
+  end;
+end;
+
+class function TLspClient.Frame(const AText: string): TBytes;
+var
+  mBody: TBytes;
+  mHeader: TBytes;
+begin
+  mBody := TEncoding.UTF8.GetBytes(AText);
+  mHeader := TEncoding.UTF8.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)]));
+  Result := mHeader + mBody;
+end;
+
+function TLspClient.Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := RequestCancellable(AMethod, AParams, ATimeoutMs, nil);
 end;
 
 function TLspClient.RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
@@ -660,19 +777,6 @@ begin
     end;
   finally
     TAtlasPluginTimings.NoteRequest(mLabel, mWatch.Elapsed.TotalMilliseconds, mOutcome);
-  end;
-end;
-
-function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
-  const ACancelled: TFunc<Boolean>): TJSONValue;
-var
-  mRun: TLspRequestRun;
-begin
-  mRun := TLspRequestRun.Create(Self, AMethod, ATimeoutMs, ACancelled);
-  try
-    Result := mRun.Execute(AParams);
-  finally
-    mRun.Free;
   end;
 end;
 
@@ -717,82 +821,6 @@ begin
   end;
 end;
 
-procedure TLspClient.CancelOnServer(AId: Integer);
-begin
-  try
-    Notify('$/cancelRequest', TJSONObject.Create.AddPair('id', TJSONNumber.Create(AId)));
-  except
-    // Abbruch ist ein Hinweis an den Server; scheitert das Senden, bleibt es bei der Zeitüberschreitung.
-    on Exception do
-      ;
-  end;
-end;
-
-function TLspClient.HandlePartial(AMessage: TJSONObject): Boolean;
-var
-  mParams, mToken: TJSONValue;
-  mPartial: TLspPartialProc;
-begin
-  Result := False;
-  if AMessage.GetValue<string>('method', '') <> '$/progress' then
-  begin
-    Exit;
-  end;
-  mParams := AMessage.GetValue('params');
-  if not (mParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mToken := TJSONObject(mParams).GetValue('token');
-  if not (mToken is TJSONString) then
-  begin
-    Exit;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    if not FPartials.TryGetValue(TJSONString(mToken).Value, mPartial) then
-    begin
-      Exit;
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  Result := True;
-  try
-    mPartial(TJSONObject(mParams).GetValue('value'));
-  except
-    // Ein Fehler im Empfänger darf den Lese-Thread nicht beenden.
-    on Exception do
-      ;
-  end;
-end;
-
-procedure TLspClient.HandleMessage(const AText: string);
-var
-  mValue: TJSONValue;
-  mMessage: TJSONObject;
-  mIdValue: TJSONValue;
-begin
-  mValue := TJSONObject.ParseJSONValue(AText);
-  try
-    if mValue is TJSONObject then
-    begin
-      mMessage := TJSONObject(mValue);
-      mIdValue := mMessage.GetValue('id');
-      if mMessage.GetValue('method') <> nil then
-      begin
-        HandleServerMessage(Self, mMessage, mIdValue);
-      end
-      else if mIdValue is TJSONNumber then
-      begin
-        AnswerPending(Self, mMessage, TJSONNumber(mIdValue).AsInt);
-      end;
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
 procedure TLspClient.Respond(AId, AResult: TJSONValue);
 var
   mReply: TJSONObject;
@@ -817,34 +845,6 @@ begin
   if not FClosed then
   begin
     SendText(mText);
-  end;
-end;
-
-function TLspClient.TakeMessage(out AText: string): Boolean;
-var
-  mHeaderLength, mLen, mBodyLength: Integer;
-begin
-  Result := False;
-  mHeaderLength := HeaderEndIndex(FBuffer);
-  if mHeaderLength < 0 then
-  begin
-    RejectEndlessHeader(FBuffer);
-    Exit;
-  end;
-  mBodyLength := ContentLengthOf(TEncoding.UTF8.GetString(FBuffer, 0, mHeaderLength));
-  mLen := mHeaderLength + Length(cHeaderEnd);
-  if mBodyLength < 0 then
-  begin
-    // Kaputter Kopf: verwerfen und weitermachen.
-    Delete(FBuffer, 0, mLen);
-    Exit(True);
-  end;
-  RejectOversizedBody(FBuffer, mBodyLength);
-  if Length(FBuffer) >= mLen + mBodyLength then
-  begin
-    AText := TEncoding.UTF8.GetString(FBuffer, mLen, mBodyLength);
-    Delete(FBuffer, 0, mLen + mBodyLength);
-    Result := True;
   end;
 end;
 
@@ -953,11 +953,6 @@ begin
   end;
 end;
 
-class function TLspClient.CountsResponseTime(const AMethod: string): Boolean;
-begin
-  Result := not SameText(AMethod, 'workspace/diagnostic');
-end;
-
 function TLspClient.AverageMs(out ASamples: Integer): Double;
 begin
   TMonitor.Enter(FLock);
@@ -966,6 +961,11 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
+end;
+
+class function TLspClient.CountsResponseTime(const AMethod: string): Boolean;
+begin
+  Result := not SameText(AMethod, 'workspace/diagnostic');
 end;
 
 { TLspResponseTimes }

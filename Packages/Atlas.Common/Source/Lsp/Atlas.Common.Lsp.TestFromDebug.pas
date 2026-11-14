@@ -63,6 +63,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspTestFromDebug }
+
 constructor TLspTestFromDebug.Create(ATestUnits: TLspTestUnits);
 begin
   inherited Create;

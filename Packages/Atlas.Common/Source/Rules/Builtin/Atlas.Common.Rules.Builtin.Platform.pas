@@ -275,6 +275,8 @@ const
   cDialogServices: array[0..2] of string = ('TDialogService', 'TDialogServiceSync', 'TDialogServiceAsync');
   cDialogServiceMethods: array[0..3] of string = ('ShowMessage', 'MessageDialog', 'InputQuery', 'InputBox');
 
+{ TUiCallInConsoleOrServiceRule }
+
 function TUiCallInConsoleOrServiceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cUiCallInConsoleOrServiceRuleId, TRuleSeverity.Warning,
@@ -444,6 +446,8 @@ const
   cStringListProperties: array[0..3] of string = ('Lines', 'Items', 'SQL', 'Strings');
   // TFile-Methoden, die ohne BOM TEncoding.Default lesen; WriteAllText und TStreamReader nehmen UTF-8.
   cReadAllMethods: array[0..1] of string = ('ReadAllText', 'ReadAllLines');
+
+{ TLoadWithoutEncodingRule }
 
 function TLoadWithoutEncodingRule.Descriptor: TRuleDescriptor;
 begin
@@ -626,6 +630,8 @@ const
   cRegistryWrites: array[0..16] of string = ('CreateKey', 'DeleteKey', 'DeleteValue', 'RenameValue', 'MoveKey',
     'WriteString', 'WriteExpandString', 'WriteInteger', 'WriteBool', 'WriteFloat', 'WriteCurrency', 'WriteDate',
     'WriteTime', 'WriteDateTime', 'WriteBinaryData', 'SaveKey', 'RestoreKey');
+
+{ TRegistryHklmWriteRule }
 
 function TRegistryHklmWriteRule.Descriptor: TRuleDescriptor;
 begin
@@ -848,33 +854,6 @@ begin
   end;
 end;
 
-procedure TNowElapsedScan.CheckRoutine(ARoutine: TSyntaxNode);
-var
-  mMeasures: TArray<TSyntaxNode>;
-  mNode: TSyntaxNode;
-begin
-  FRoutine := ARoutine;
-  CollectStarts;
-  if FStarts = nil then
-  begin
-    Exit;
-  end;
-  // Teilausdrücke einer Messung nicht noch einmal melden.
-  mMeasures := nil;
-  for mNode in NodesOf(ARoutine, True) do
-  begin
-    if not InsideAny(mNode.StartOffset, mMeasures) and (MeasuredStart(mNode) >= 0) then
-    begin
-      mMeasures := mMeasures + [mNode];
-    end;
-  end;
-  for mNode in mMeasures do
-  begin
-    FReport.Add(NodeRange(mNode), cTexts[TPlatformText.NowMeasure].Text, TRuleConfidence.High,
-      Fixes(MeasuredStart(mNode)));
-  end;
-end;
-
 // Variable AName, der vor AAt in einem nicht ausschließenden Zweig Now zugewiesen wurde: Index, sonst -1.
 function TNowElapsedScan.StartOf(ANode, AAt: TSyntaxNode): Integer;
 var
@@ -1083,6 +1062,33 @@ begin
     mEdits := mEdits + [mExtra];
   end;
   Result := [TRuleFix.Create(cTexts[TPlatformText.ToStopwatch].Text, mEdits)];
+end;
+
+procedure TNowElapsedScan.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mMeasures: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  FRoutine := ARoutine;
+  CollectStarts;
+  if FStarts = nil then
+  begin
+    Exit;
+  end;
+  // Teilausdrücke einer Messung nicht noch einmal melden.
+  mMeasures := nil;
+  for mNode in NodesOf(ARoutine, True) do
+  begin
+    if not InsideAny(mNode.StartOffset, mMeasures) and (MeasuredStart(mNode) >= 0) then
+    begin
+      mMeasures := mMeasures + [mNode];
+    end;
+  end;
+  for mNode in mMeasures do
+  begin
+    FReport.Add(NodeRange(mNode), cTexts[TPlatformText.NowMeasure].Text, TRuleConfidence.High,
+      Fixes(MeasuredStart(mNode)));
+  end;
 end;
 
 { TNowForElapsedTimeRule }

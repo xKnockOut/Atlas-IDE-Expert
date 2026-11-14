@@ -75,6 +75,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspOverloads }
+
 class function TLspOverloads.KindName(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then

@@ -140,20 +140,6 @@ begin
   inherited;
 end;
 
-class function TAtlasStatusRegistry.Default: IAtlasStatusRegistry;
-begin
-  if FDefault = nil then
-  begin
-    FDefault := TAtlasStatusRegistry.Create;
-  end;
-  Result := FDefault;
-end;
-
-class procedure TAtlasStatusRegistry.ReleaseDefault;
-begin
-  FDefault := nil;
-end;
-
 function TAtlasStatusRegistry.IndexOf(const AId: string): Integer;
 var
   mIndex: Integer;
@@ -166,6 +152,47 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TAtlasStatusRegistry.Notify;
+var
+  mListeners: TArray<TProc>;
+  mListener: TProc;
+begin
+  FLock.Enter;
+  try
+    Inc(FVersion);
+    mListeners := FListeners.Values.ToArray;
+  finally
+    FLock.Leave;
+  end;
+  // Außerhalb der Sperre: Beobachter dürfen die Registry lesen.
+  for mListener in mListeners do
+    try
+      mListener();
+    except
+      // Ein Fehler im Beobachter darf die meldende Zeile nicht stören.
+      on Exception do
+        ;
+    end;
+end;
+
+procedure TAtlasStatusRegistry.Remove(const AId: string);
+var
+  mIndex: Integer;
+begin
+  FLock.Enter;
+  try
+    mIndex := IndexOf(AId);
+    if mIndex < 0 then
+    begin
+      Exit;
+    end;
+    FItems.Delete(mIndex);
+  finally
+    FLock.Leave;
+  end;
+  Notify;
 end;
 
 function Comes(const ALeft, ARight: IAtlasStatusItem): Boolean;
@@ -207,24 +234,6 @@ begin
   Notify;
 end;
 
-procedure TAtlasStatusRegistry.Remove(const AId: string);
-var
-  mIndex: Integer;
-begin
-  FLock.Enter;
-  try
-    mIndex := IndexOf(AId);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    FItems.Delete(mIndex);
-  finally
-    FLock.Leave;
-  end;
-  Notify;
-end;
-
 function TAtlasStatusRegistry.Find(const AId: string): IAtlasStatusItem;
 var
   mIndex: Integer;
@@ -260,29 +269,6 @@ begin
   Notify;
 end;
 
-procedure TAtlasStatusRegistry.Notify;
-var
-  mListeners: TArray<TProc>;
-  mListener: TProc;
-begin
-  FLock.Enter;
-  try
-    Inc(FVersion);
-    mListeners := FListeners.Values.ToArray;
-  finally
-    FLock.Leave;
-  end;
-  // Außerhalb der Sperre: Beobachter dürfen die Registry lesen.
-  for mListener in mListeners do
-    try
-      mListener();
-    except
-      // Ein Fehler im Beobachter darf die meldende Zeile nicht stören.
-      on Exception do
-        ;
-    end;
-end;
-
 function TAtlasStatusRegistry.Version: Integer;
 begin
   FLock.Enter;
@@ -313,6 +299,20 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+class function TAtlasStatusRegistry.Default: IAtlasStatusRegistry;
+begin
+  if FDefault = nil then
+  begin
+    FDefault := TAtlasStatusRegistry.Create;
+  end;
+  Result := FDefault;
+end;
+
+class procedure TAtlasStatusRegistry.ReleaseDefault;
+begin
+  FDefault := nil;
 end;
 
 { TAtlasStatusLine }
@@ -352,11 +352,6 @@ begin
   Result := FId;
 end;
 
-function TAtlasStatusLine.Order: Integer;
-begin
-  Result := FOrder;
-end;
-
 function TAtlasStatusLine.Text: string;
 begin
   FLock.Enter;
@@ -385,6 +380,11 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+function TAtlasStatusLine.Order: Integer;
+begin
+  Result := FOrder;
 end;
 
 function TAtlasStatusLine.HasAction: Boolean;

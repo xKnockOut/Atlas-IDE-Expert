@@ -237,6 +237,8 @@ begin
   end;
 end;
 
+{ TAtlasTimeLog }
+
 class function TAtlasTimeLog.Empty: TAtlasTimeLog;
 begin
   Result.Entries := nil;
@@ -361,37 +363,6 @@ begin
   end;
 end;
 
-function TAtlasTimeLog.IndexOf(const AIssue: TAtlasTimeIssue; ADay: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Entries) do
-  begin
-    if (Entries[mIndex].Day = ADay) and Entries[mIndex].Issue.Same(AIssue) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-function TAtlasTimeLog.AddEntry(const AIssue: TAtlasTimeIssue; ADay: Integer): Integer;
-var
-  mEntry: TAtlasTimeEntry;
-begin
-  Result := IndexOf(AIssue, ADay);
-  if Result >= 0 then
-  begin
-    Exit;
-  end;
-  mEntry.Issue := AIssue;
-  mEntry.Day := ADay;
-  mEntry.Seconds := 0;
-  mEntry.Last := 0;
-  Entries := Entries + [mEntry];
-  Result := High(Entries);
-end;
-
 procedure TAtlasTimeLog.Add(const ASpan: TAtlasTimeSpan);
 var
   mFrom, mTo, mDayEnd: TDateTime;
@@ -437,28 +408,6 @@ begin
     if mEntry.Issue.Same(AIssue) then
     begin
       Inc(Result, mEntry.Seconds);
-    end;
-  end;
-end;
-
-procedure TAtlasTimeLog.Prune(const AIssue: TAtlasTimeIssue);
-var
-  mIndex, mNewest: Integer;
-begin
-  // Leere Tage fallen weg; der jüngste bleibt mit "last", damit eine andere Instanz nichts neu zählt.
-  mNewest := -1;
-  for mIndex := 0 to High(Entries) do
-  begin
-    if Entries[mIndex].Issue.Same(AIssue) and ((mNewest < 0) or (Entries[mIndex].Day > Entries[mNewest].Day)) then
-    begin
-      mNewest := mIndex;
-    end;
-  end;
-  for mIndex := High(Entries) downto 0 do
-  begin
-    if (mIndex <> mNewest) and (Entries[mIndex].Seconds = 0) and Entries[mIndex].Issue.Same(AIssue) then
-    begin
-      Delete(Entries, mIndex, 1);
     end;
   end;
 end;
@@ -525,6 +474,59 @@ begin
     Entries[mIndex].Last := mLast;
   end;
   Prune(AIssue);
+end;
+
+function TAtlasTimeLog.IndexOf(const AIssue: TAtlasTimeIssue; ADay: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Entries) do
+  begin
+    if (Entries[mIndex].Day = ADay) and Entries[mIndex].Issue.Same(AIssue) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasTimeLog.AddEntry(const AIssue: TAtlasTimeIssue; ADay: Integer): Integer;
+var
+  mEntry: TAtlasTimeEntry;
+begin
+  Result := IndexOf(AIssue, ADay);
+  if Result >= 0 then
+  begin
+    Exit;
+  end;
+  mEntry.Issue := AIssue;
+  mEntry.Day := ADay;
+  mEntry.Seconds := 0;
+  mEntry.Last := 0;
+  Entries := Entries + [mEntry];
+  Result := High(Entries);
+end;
+
+procedure TAtlasTimeLog.Prune(const AIssue: TAtlasTimeIssue);
+var
+  mIndex, mNewest: Integer;
+begin
+  // Leere Tage fallen weg; der jüngste bleibt mit "last", damit eine andere Instanz nichts neu zählt.
+  mNewest := -1;
+  for mIndex := 0 to High(Entries) do
+  begin
+    if Entries[mIndex].Issue.Same(AIssue) and ((mNewest < 0) or (Entries[mIndex].Day > Entries[mNewest].Day)) then
+    begin
+      mNewest := mIndex;
+    end;
+  end;
+  for mIndex := High(Entries) downto 0 do
+  begin
+    if (mIndex <> mNewest) and (Entries[mIndex].Seconds = 0) and Entries[mIndex].Issue.Same(AIssue) then
+    begin
+      Delete(Entries, mIndex, 1);
+    end;
+  end;
 end;
 
 /// <summary>Stelle des Issues AIssue in AOpen; -1 ohne.</summary>

@@ -140,31 +140,6 @@ type
 
 { TAtlasTrackerChecks }
 
-class function TAtlasTrackerChecks.State(const AAccess: IAtlasTrackerAccess;
-  const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
-var
-  mTarget: TAtlasTrackerTarget;
-begin
-  mTarget := AConnection.Target;
-  if (AAccess = nil) or not AAccess.HasToken(mTarget) then
-  begin
-    Exit(TAtlasTrackerTokenStatus.Stored(False));
-  end;
-  if (FStates <> nil) and FStates.TryGetValue(LowerCase(mTarget.CredentialTarget), Result) then
-  begin
-    Exit;
-  end;
-  Result := TAtlasTrackerTokenStatus.Stored(True);
-end;
-
-class procedure TAtlasTrackerChecks.Forget(const AConnection: TAtlasTrackerConnection);
-begin
-  if FStates <> nil then
-  begin
-    FStates.Remove(LowerCase(AConnection.Target.CredentialTarget));
-  end;
-end;
-
 class procedure TAtlasTrackerChecks.Launch(const AWork: TAtlasTrackerWork);
 var
   mWork: TAtlasTrackerWork;
@@ -224,55 +199,6 @@ begin
   end;
 end;
 
-class procedure TAtlasTrackerChecks.Checked(const AKey: string; const AStatus: TAtlasTrackerTokenStatus);
-begin
-  if FStates = nil then
-  begin
-    FStates := TDictionary<string, TAtlasTrackerTokenStatus>.Create;
-  end;
-  FStates.AddOrSetValue(AKey, AStatus);
-  TAtlasGuard.Log(Format(cLogChecked, [cTrackerStateKeys[AStatus.State]], TFormatSettings.Invariant));
-end;
-
-class function TAtlasTrackerChecks.CheckedDone(const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
-  const ADone: TProc): TProc;
-var
-  mKey: string;
-  mStatus: TAtlasTrackerTokenStatus;
-  mDone: TProc;
-begin
-  mKey := AKey;
-  mStatus := AStatus;
-  mDone := ADone;
-  Result :=
-    procedure
-    begin
-      Checked(mKey, mStatus);
-      mDone();
-    end;
-end;
-
-class procedure TAtlasTrackerChecks.Start(const AAccess: IAtlasTrackerAccess;
-  const AConnection: TAtlasTrackerConnection; const ADone: TProc);
-var
-  mAccess: IAtlasTrackerAccess;
-  mTarget: TAtlasTrackerTarget;
-  mProvider: IAtlasTrackerProvider;
-  mKey: string;
-  mDone: TProc;
-begin
-  mAccess := AAccess;
-  mTarget := AConnection.Target;
-  mProvider := AAccess.Provider(AConnection.Provider);
-  mKey := LowerCase(mTarget.CredentialTarget);
-  mDone := ADone;
-  Launch(
-    procedure(AThread: TThread)
-    begin
-      Deliver(AThread, CheckedDone(mKey, CheckStatus(mAccess, mProvider, mTarget), mDone));
-    end);
-end;
-
 class function TAtlasTrackerChecks.ValuesOf(const AAccess: IAtlasTrackerAccess;
   const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
   const AStateField, AProject: string): TAtlasTrackerValueSet;
@@ -305,6 +231,49 @@ begin
   end;
 end;
 
+class function TAtlasTrackerChecks.QueryResult(const AAccess: IAtlasTrackerAccess;
+  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): TAtlasTrackerQueryTestResult;
+begin
+  try
+    // Token aus dem Anmeldespeicher ohne Dialog; ohne Token „kein Token“ und kein Netz.
+    Result := TAtlasTrackerQueryTest.Run(AProvider, ATarget, AAccess.Transport(AProvider, ATarget));
+  except
+    on E: Exception do
+    begin
+      Result := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
+      TAtlasGuard.Log(Format(cLogQueryAborted, [E.ClassName], TFormatSettings.Invariant));
+    end;
+  end;
+end;
+
+class procedure TAtlasTrackerChecks.Checked(const AKey: string; const AStatus: TAtlasTrackerTokenStatus);
+begin
+  if FStates = nil then
+  begin
+    FStates := TDictionary<string, TAtlasTrackerTokenStatus>.Create;
+  end;
+  FStates.AddOrSetValue(AKey, AStatus);
+  TAtlasGuard.Log(Format(cLogChecked, [cTrackerStateKeys[AStatus.State]], TFormatSettings.Invariant));
+end;
+
+class function TAtlasTrackerChecks.CheckedDone(const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
+  const ADone: TProc): TProc;
+var
+  mKey: string;
+  mStatus: TAtlasTrackerTokenStatus;
+  mDone: TProc;
+begin
+  mKey := AKey;
+  mStatus := AStatus;
+  mDone := ADone;
+  Result :=
+    procedure
+    begin
+      Checked(mKey, mStatus);
+      mDone();
+    end;
+end;
+
 class function TAtlasTrackerChecks.ValuesDelivered(const AValues: TAtlasTrackerValueSet;
   const ADone: TProc<TAtlasTrackerValueSet, string>): TProc;
 var
@@ -320,6 +289,90 @@ begin
         Length(mValues.States)], TFormatSettings.Invariant));
       mDone(mValues, TAtlasTrackerEndDialog.ErrorText('', mValues.Outcome));
     end;
+end;
+
+class function TAtlasTrackerChecks.QueryDelivered(const AProviderName: string;
+  const AResult: TAtlasTrackerQueryTestResult; const ADone: TAtlasQueryTestDone): TProc;
+var
+  mProviderName: string;
+  mResult: TAtlasTrackerQueryTestResult;
+  mDone: TAtlasQueryTestDone;
+begin
+  mProviderName := AProviderName;
+  mResult := AResult;
+  mDone := ADone;
+  Result :=
+    procedure
+    begin
+      TAtlasGuard.Log(Format(cLogQueryTested, [mProviderName, cOutcomeKeys[mResult.Outcome]],
+        TFormatSettings.Invariant));
+      mDone(mResult);
+    end;
+end;
+
+class function TAtlasTrackerChecks.State(const AAccess: IAtlasTrackerAccess;
+  const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
+var
+  mTarget: TAtlasTrackerTarget;
+begin
+  mTarget := AConnection.Target;
+  if (AAccess = nil) or not AAccess.HasToken(mTarget) then
+  begin
+    Exit(TAtlasTrackerTokenStatus.Stored(False));
+  end;
+  if (FStates <> nil) and FStates.TryGetValue(LowerCase(mTarget.CredentialTarget), Result) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasTrackerTokenStatus.Stored(True);
+end;
+
+class procedure TAtlasTrackerChecks.Forget(const AConnection: TAtlasTrackerConnection);
+begin
+  if FStates <> nil then
+  begin
+    FStates.Remove(LowerCase(AConnection.Target.CredentialTarget));
+  end;
+end;
+
+class procedure TAtlasTrackerChecks.Start(const AAccess: IAtlasTrackerAccess;
+  const AConnection: TAtlasTrackerConnection; const ADone: TProc);
+var
+  mAccess: IAtlasTrackerAccess;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
+  mKey: string;
+  mDone: TProc;
+begin
+  mAccess := AAccess;
+  mTarget := AConnection.Target;
+  mProvider := AAccess.Provider(AConnection.Provider);
+  mKey := LowerCase(mTarget.CredentialTarget);
+  mDone := ADone;
+  Launch(
+    procedure(AThread: TThread)
+    begin
+      Deliver(AThread, CheckedDone(mKey, CheckStatus(mAccess, mProvider, mTarget), mDone));
+    end);
+end;
+
+class procedure TAtlasTrackerChecks.StartQueryTest(const AAccess: IAtlasTrackerAccess;
+  const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
+var
+  mAccess: IAtlasTrackerAccess;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
+  mDone: TAtlasQueryTestDone;
+begin
+  mAccess := AAccess;
+  mTarget := ATarget;
+  mProvider := AAccess.Provider(AConnection.Provider);
+  mDone := ADone;
+  Launch(
+    procedure(AThread: TThread)
+    begin
+      Deliver(AThread, QueryDelivered(mTarget.Provider, QueryResult(mAccess, mProvider, mTarget), mDone));
+    end);
 end;
 
 class procedure TAtlasTrackerChecks.Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
@@ -342,59 +395,6 @@ begin
     procedure(AThread: TThread)
     begin
       Deliver(AThread, ValuesDelivered(ValuesOf(mAccess, mProvider, mTarget, mField, mProject), mDone));
-    end);
-end;
-
-class function TAtlasTrackerChecks.QueryResult(const AAccess: IAtlasTrackerAccess;
-  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): TAtlasTrackerQueryTestResult;
-begin
-  try
-    // Token aus dem Anmeldespeicher ohne Dialog; ohne Token „kein Token“ und kein Netz.
-    Result := TAtlasTrackerQueryTest.Run(AProvider, ATarget, AAccess.Transport(AProvider, ATarget));
-  except
-    on E: Exception do
-    begin
-      Result := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
-      TAtlasGuard.Log(Format(cLogQueryAborted, [E.ClassName], TFormatSettings.Invariant));
-    end;
-  end;
-end;
-
-class function TAtlasTrackerChecks.QueryDelivered(const AProviderName: string;
-  const AResult: TAtlasTrackerQueryTestResult; const ADone: TAtlasQueryTestDone): TProc;
-var
-  mProviderName: string;
-  mResult: TAtlasTrackerQueryTestResult;
-  mDone: TAtlasQueryTestDone;
-begin
-  mProviderName := AProviderName;
-  mResult := AResult;
-  mDone := ADone;
-  Result :=
-    procedure
-    begin
-      TAtlasGuard.Log(Format(cLogQueryTested, [mProviderName, cOutcomeKeys[mResult.Outcome]],
-        TFormatSettings.Invariant));
-      mDone(mResult);
-    end;
-end;
-
-class procedure TAtlasTrackerChecks.StartQueryTest(const AAccess: IAtlasTrackerAccess;
-  const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
-var
-  mAccess: IAtlasTrackerAccess;
-  mTarget: TAtlasTrackerTarget;
-  mProvider: IAtlasTrackerProvider;
-  mDone: TAtlasQueryTestDone;
-begin
-  mAccess := AAccess;
-  mTarget := ATarget;
-  mProvider := AAccess.Provider(AConnection.Provider);
-  mDone := ADone;
-  Launch(
-    procedure(AThread: TThread)
-    begin
-      Deliver(AThread, QueryDelivered(mTarget.Provider, QueryResult(mAccess, mProvider, mTarget), mDone));
     end);
 end;
 
@@ -641,11 +641,6 @@ end;
 
 { TAtlasIdeTrackerSettings }
 
-class procedure TAtlasIdeTrackerSettings.Release;
-begin
-  TAtlasTrackerChecks.Release;
-end;
-
 function TAtlasIdeTrackerSettings.CreateSection: IAtlasSettingsSection;
 var
   mSection: TAtlasTrackerSettingsSection;
@@ -663,6 +658,11 @@ begin
     TAtlasTrackerSettingsWiring.WireTokens(mSection, mAccess);
     TAtlasTrackerSettingsWiring.WireChecks(mSection, mAccess);
   end;
+end;
+
+class procedure TAtlasIdeTrackerSettings.Release;
+begin
+  TAtlasTrackerChecks.Release;
 end;
 
 end.

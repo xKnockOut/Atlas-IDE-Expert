@@ -141,20 +141,13 @@ begin
   end;
 end;
 
+{ TAtlasDesignerSearchItems }
+
 class function TAtlasDesignerSearchItems.ItemsOf(ARoot: TComponent;
   const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
 begin
   Result := nil;
   AddItems(ARoot, ARoot, ADesigner, Result);
-end;
-
-class function TAtlasDesignerSearchItems.Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>;
-begin
-  Result := nil;
-  if ADesigner <> nil then
-  begin
-    Result := EventsOf(AComponent, ADesigner);
-  end;
 end;
 
 class function TAtlasDesignerSearchItems.RootItem(ARoot: TComponent; const ADesigner: IDesigner): TAtlasDesignerItem;
@@ -163,6 +156,15 @@ begin
   if ADesigner <> nil then
   begin
     Result.Events := EventsOf(ARoot, ADesigner);
+  end;
+end;
+
+class function TAtlasDesignerSearchItems.Events(AComponent: TComponent; const ADesigner: IDesigner): TArray<string>;
+begin
+  Result := nil;
+  if ADesigner <> nil then
+  begin
+    Result := EventsOf(AComponent, ADesigner);
   end;
 end;
 

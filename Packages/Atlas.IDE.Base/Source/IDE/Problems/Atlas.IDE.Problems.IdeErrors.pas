@@ -50,6 +50,8 @@ begin
   Result := False;
 end;
 
+{ TAtlasIdeErrorSource }
+
 class function TAtlasIdeErrorSource.Enabled: Boolean;
 var
   mSettings: TAtlasPluginSettings;

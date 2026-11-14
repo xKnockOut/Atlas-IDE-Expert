@@ -280,22 +280,6 @@ end;
 
 { TLspCodeLens }
 
-function TLspCodeLens.GetNamespaces: TArray<string>;
-begin
-  Result := TLspNamespaces.Read(FNamespaces);
-end;
-
-procedure TLspCodeLens.SetNamespaces(const AValue: TArray<string>);
-begin
-  TLspNamespaces.Write(FNamespaces, AValue);
-end;
-
-constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
-begin
-  Create(AStore, AIndex, AReadText, AFiles, nil);
-end;
-
 constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -307,16 +291,71 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-procedure TLspCodeLens.Attach(ADispatcher: TJsonRpcDispatcher);
+constructor TLspCodeLens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
 begin
-  ADispatcher.RegisterConcurrentRequest(cLensMethod, HandleLens);
-  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
+  Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
-class function TLspCodeLens.Capability: TJSONObject;
+function TLspCodeLens.GetNamespaces: TArray<string>;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('resolveProvider', TJSONBool.Create(True));
+  Result := TLspNamespaces.Read(FNamespaces);
+end;
+
+procedure TLspCodeLens.SetNamespaces(const AValue: TArray<string>);
+begin
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+function TLspCodeLens.NewResolver: TNameResolver;
+begin
+  Result := TNameResolver.Create(FIndex, FEnsureUnit);
+  Result.Namespaces := Namespaces;
+end;
+
+function TLspCodeLens.HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mSource: TCodeLensSource;
+  mEntry: TCodeLensEntry;
+  mLimits: TMetricLimits;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  ACancellation.ThrowIfCancellationRequested;
+  mSource.Index := FIndex;
+  mSource.Tree := mShared.Tree;
+  mSource.FileName := TDocumentUris.ToPath(mUri);
+  mSource.ReadText := FReadText;
+  mSource.Resolver := NewResolver;
+  try
+    Result := TJSONArray.Create;
+    for mEntry in Lenses(mSource) do
+    begin
+      TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
+    end;
+    if Assigned(FMetricsFor) and FMetricsFor(mUri, mLimits) then
+    begin
+      for mEntry in MetricLenses(mSource.Tree, mLimits, FIndex, mSource.FileName) do
+      begin
+        TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
+      end;
+    end;
+  finally
+    mSource.Resolver.Free;
+  end;
 end;
 
 function NewEntry(AKind: TCodeLensKind; const ARange: TTextRange; const ATitle: string): TCodeLensEntry;
@@ -418,6 +457,18 @@ begin
   end;
 end;
 
+procedure TLspCodeLens.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cLensMethod, HandleLens);
+  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
+end;
+
+class function TLspCodeLens.Capability: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('resolveProvider', TJSONBool.Create(True));
+end;
+
 class function TLspCodeLens.Lenses(const ASource: TCodeLensSource): TArray<TCodeLensEntry>;
 var
   mCurrent: TUnitIndex;
@@ -454,13 +505,6 @@ begin
     mTypes.Free;
     mList.Free;
   end;
-end;
-
-class function TLspCodeLens.OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string;
-  out AFound: TCodeLensOverride): Boolean;
-begin
-  Result := FindOverridden(AResolver, AIndex, ACurrent, AType, AName, AFound);
 end;
 
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
@@ -505,10 +549,11 @@ begin
   end;
 end;
 
-class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
-  const AFiles: TArray<string>): TCodeLensEntry;
+class function TLspCodeLens.OverriddenAncestor(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const ACurrent: TUnitIndex; const AType: TIndexSymbol; const AName: string;
+  out AFound: TCodeLensOverride): Boolean;
 begin
-  Result := ResolveReferences(ASource, AEntry, AFiles, nil);
+  Result := FindOverridden(AResolver, AIndex, ACurrent, AType, AName, AFound);
 end;
 
 class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
@@ -536,6 +581,12 @@ begin
   end;
   Result.Title := Plural(Length(Result.Targets), cTexts[TCodeLensText.Reference].Text,
     cTexts[TCodeLensText.References].Text);
+end;
+
+class function TLspCodeLens.ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
+  const AFiles: TArray<string>): TCodeLensEntry;
+begin
+  Result := ResolveReferences(ASource, AEntry, AFiles, nil);
 end;
 
 class function TLspCodeLens.ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject;
@@ -584,57 +635,6 @@ begin
   mCommand.AddPair('command', cShowLocationsCommand);
   mCommand.AddPair('arguments', mArguments);
   Result.AddPair('command', mCommand);
-end;
-
-function TLspCodeLens.NewResolver: TNameResolver;
-begin
-  Result := TNameResolver.Create(FIndex, FEnsureUnit);
-  Result.Namespaces := Namespaces;
-end;
-
-function TLspCodeLens.HandleLens(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mSource: TCodeLensSource;
-  mEntry: TCodeLensEntry;
-  mLimits: TMetricLimits;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  ACancellation.ThrowIfCancellationRequested;
-  mSource.Index := FIndex;
-  mSource.Tree := mShared.Tree;
-  mSource.FileName := TDocumentUris.ToPath(mUri);
-  mSource.ReadText := FReadText;
-  mSource.Resolver := NewResolver;
-  try
-    Result := TJSONArray.Create;
-    for mEntry in Lenses(mSource) do
-    begin
-      TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
-    end;
-    if Assigned(FMetricsFor) and FMetricsFor(mUri, mLimits) then
-    begin
-      for mEntry in MetricLenses(mSource.Tree, mLimits, FIndex, mSource.FileName) do
-      begin
-        TJSONArray(Result).AddElement(ToJson(mEntry, mSource.FileName));
-      end;
-    end;
-  finally
-    mSource.Resolver.Free;
-  end;
 end;
 
 /// <summary>Stelle APrefix.line/APrefix.character in data der Linse.</summary>

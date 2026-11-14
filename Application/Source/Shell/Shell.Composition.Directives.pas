@@ -78,51 +78,13 @@ begin
   end;
 end;
 
+{ TShellDirectives }
+
 constructor TShellDirectives.Create(AWorkspaces: TShellWorkspaceRegistry; ASettings: TShellSettings);
 begin
   inherited Create;
   FWorkspaces := AWorkspaces;
   FSettings := ASettings;
-end;
-
-function TShellDirectives.Defines: TDefinesProvider;
-begin
-  Result := DefinesFor;
-end;
-
-function TShellDirectives.TreeDefines: TTreeDefinesProvider;
-begin
-  Result := DefinesFor;
-end;
-
-function TShellDirectives.TreeIncludes: TTreeIncludeProvider;
-begin
-  Result := IncludeResolverFor;
-end;
-
-function TShellDirectives.UsesDefines: TUsesDefinesFunc;
-begin
-  Result := DefinesOfFile;
-end;
-
-function TShellDirectives.IncludeResolver(const AUri: string): TIncludeResolver;
-begin
-  Result := IncludeResolverFor(AUri);
-end;
-
-function TShellDirectives.ConditionalContext: TConditionalContextFunc;
-begin
-  Result := ConditionalContextFor;
-end;
-
-function TShellDirectives.CompilerSwitchContext: TCompilerSwitchContextFunc;
-begin
-  Result := CompilerSwitchContextFor;
-end;
-
-function TShellDirectives.BuildTarget: TBuildTargetProvider;
-begin
-  Result := BuildTargetFor;
 end;
 
 function TShellDirectives.DefinesFor(const AUri: string; out ADefines: TArray<string>): Boolean;
@@ -153,6 +115,15 @@ begin
   end;
 end;
 
+function TShellDirectives.IncludeResolverFor(const AUri: string): TIncludeResolver;
+var
+  mIncludePaths: TArray<string>;
+  mProject: TProjectInfo;
+begin
+  ProjectOf(TDocumentUris.ToPath(AUri), mIncludePaths, mProject);
+  Result := TIncludeFiles.Resolver(mIncludePaths);
+end;
+
 function TShellDirectives.ProjectOf(const AFileName: string; out AIncludePaths: TArray<string>;
   out AProject: TProjectInfo): Boolean;
 var
@@ -175,15 +146,6 @@ begin
   begin
     AProject := Default(TProjectInfo);
   end;
-end;
-
-function TShellDirectives.IncludeResolverFor(const AUri: string): TIncludeResolver;
-var
-  mIncludePaths: TArray<string>;
-  mProject: TProjectInfo;
-begin
-  ProjectOf(TDocumentUris.ToPath(AUri), mIncludePaths, mProject);
-  Result := TIncludeFiles.Resolver(mIncludePaths);
 end;
 
 function TShellDirectives.ConditionalContextFor(const AUri: string): TConditionalContext;
@@ -261,6 +223,46 @@ begin
   Result := ProjectOf(TDocumentUris.ToPath(AUri), mIncludePaths, mProject);
   APlatform := mProject.Platform;
   AConfig := mProject.Config;
+end;
+
+function TShellDirectives.Defines: TDefinesProvider;
+begin
+  Result := DefinesFor;
+end;
+
+function TShellDirectives.TreeDefines: TTreeDefinesProvider;
+begin
+  Result := DefinesFor;
+end;
+
+function TShellDirectives.TreeIncludes: TTreeIncludeProvider;
+begin
+  Result := IncludeResolverFor;
+end;
+
+function TShellDirectives.UsesDefines: TUsesDefinesFunc;
+begin
+  Result := DefinesOfFile;
+end;
+
+function TShellDirectives.IncludeResolver(const AUri: string): TIncludeResolver;
+begin
+  Result := IncludeResolverFor(AUri);
+end;
+
+function TShellDirectives.ConditionalContext: TConditionalContextFunc;
+begin
+  Result := ConditionalContextFor;
+end;
+
+function TShellDirectives.CompilerSwitchContext: TCompilerSwitchContextFunc;
+begin
+  Result := CompilerSwitchContextFor;
+end;
+
+function TShellDirectives.BuildTarget: TBuildTargetProvider;
+begin
+  Result := BuildTargetFor;
 end;
 
 end.

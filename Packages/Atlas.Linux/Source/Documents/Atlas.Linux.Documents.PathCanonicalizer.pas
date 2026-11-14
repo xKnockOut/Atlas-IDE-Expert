@@ -24,6 +24,8 @@ const
 
 function realpath(APath, AResolved: PAnsiChar): PAnsiChar; cdecl; external 'c' name 'realpath';
 
+{ TLinuxPathCanonicalizer }
+
 class function TLinuxPathCanonicalizer.Canonicalize(const APath: string): string;
 var
   mSource: UTF8String;

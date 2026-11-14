@@ -69,19 +69,18 @@ type
 
 { TFileWatcher }
 
-class function TFileWatcher.Stamp(const AFileName: string): string;
-var
-  mInfo: Stat;
+constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
 begin
-  if FpStat(RawByteString(UTF8String(AFileName)), mInfo) <> 0 then
-  begin
-    Exit('');
-  end;
-  if FpS_ISDIR(mInfo.st_mode) then
-  begin
-    Exit('');
-  end;
-  Result := Format('%d.%d.%d', [Int64(mInfo.st_mtime), Int64(mInfo.st_mtime_nsec), Int64(mInfo.st_size)]);
+  inherited Create;
+  FTracker := TFileChangeTracker.Create(
+    function(const AFileName: string): string
+    begin
+      Result := TFileWatcher.Stamp(AFileName);
+    end);
+  FStop := TEvent.Create(nil, True, False, '');
+  FReconfigure := TEvent.Create(nil, False, False, '');
+  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
+  FThread.Start;
 end;
 
 /// <summary>Wartet bis zu ATimeoutMs auf Ereignisse von inotify und liest sie ab; True, wenn welche kamen.</summary>
@@ -120,6 +119,24 @@ begin
   FStop := AStop;
   FReconfigure := AReconfigure;
   FOnChanged := AOnChanged;
+end;
+
+procedure TWatchThread.Execute;
+var
+  mInotify: cint;
+  mGoOn: Boolean;
+begin
+  repeat
+    mInotify := OpenInotify;
+    try
+      mGoOn := Watch(mInotify);
+    finally
+      if mInotify >= 0 then
+      begin
+        FpClose(mInotify);
+      end;
+    end;
+  until Terminated or not mGoOn;
 end;
 
 function TWatchThread.OpenInotify: cint;
@@ -192,39 +209,7 @@ begin
   Result := False;
 end;
 
-procedure TWatchThread.Execute;
-var
-  mInotify: cint;
-  mGoOn: Boolean;
-begin
-  repeat
-    mInotify := OpenInotify;
-    try
-      mGoOn := Watch(mInotify);
-    finally
-      if mInotify >= 0 then
-      begin
-        FpClose(mInotify);
-      end;
-    end;
-  until Terminated or not mGoOn;
-end;
-
 { TFileWatcher }
-
-constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
-begin
-  inherited Create;
-  FTracker := TFileChangeTracker.Create(
-    function(const AFileName: string): string
-    begin
-      Result := TFileWatcher.Stamp(AFileName);
-    end);
-  FStop := TEvent.Create(nil, True, False, '');
-  FReconfigure := TEvent.Create(nil, False, False, '');
-  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
-  FThread.Start;
-end;
 
 destructor TFileWatcher.Destroy;
 begin
@@ -245,6 +230,21 @@ procedure TFileWatcher.SetFiles(const AFiles: TArray<string>);
 begin
   FTracker.SetFiles(AFiles);
   FReconfigure.SetEvent;
+end;
+
+class function TFileWatcher.Stamp(const AFileName: string): string;
+var
+  mInfo: Stat;
+begin
+  if FpStat(RawByteString(UTF8String(AFileName)), mInfo) <> 0 then
+  begin
+    Exit('');
+  end;
+  if FpS_ISDIR(mInfo.st_mode) then
+  begin
+    Exit('');
+  end;
+  Result := Format('%d.%d.%d', [Int64(mInfo.st_mtime), Int64(mInfo.st_mtime_nsec), Int64(mInfo.st_size)]);
 end;
 
 end.

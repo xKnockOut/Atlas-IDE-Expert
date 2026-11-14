@@ -556,11 +556,6 @@ end;
 
 { TRuleFix }
 
-constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
-begin
-  Self := TRuleFix.Create(ATitle, AEdits, False);
-end;
-
 constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>; ASafe: Boolean);
 begin
   Title := ATitle;
@@ -575,6 +570,11 @@ begin
   OpensSignature := False;
   OtherFiles := nil;
   ShowsUnitRelations := False;
+end;
+
+constructor TRuleFix.Create(const ATitle: string; const AEdits: TArray<TRuleEdit>);
+begin
+  Self := TRuleFix.Create(ATitle, AEdits, False);
 end;
 
 class function TRuleFix.Jump(const ATitle: string; const ATarget: TTextPosition): TRuleFix;

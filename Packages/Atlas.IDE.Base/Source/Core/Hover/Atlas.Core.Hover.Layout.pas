@@ -453,6 +453,21 @@ begin
   EndLinkRow(mOldFont);
 end;
 
+procedure TBuilder.RuleExample(AIndex: Integer);
+var
+  mExample: TAtlasRuleExplanation;
+begin
+  if not FInput.RuleExamples or not FInput.View.ExampleShown(AIndex) then
+  begin
+    Exit;
+  end;
+  // Ohne Katalogtext setzt der Aufrufer den Hinweis „keine Beschreibung“ als Beschreibung.
+  mExample := FInput.View.Examples[AIndex];
+  Block(mExample.Description, FColors.Text, cExampleDescriptionLines);
+  ExampleCode(FInput.Texts.ExampleBad, mExample.Bad, FColors.Error);
+  ExampleCode(FInput.Texts.ExampleGood, mExample.Good, FColors.Add);
+end;
+
 procedure TBuilder.ExampleCode(const ACaption, ACode: string; AColor: TAtlasColor);
 var
   mLines: TArray<string>;
@@ -481,21 +496,6 @@ begin
       FColors.Text);
   end;
   FY := mBottom + Scale(cExampleGap);
-end;
-
-procedure TBuilder.RuleExample(AIndex: Integer);
-var
-  mExample: TAtlasRuleExplanation;
-begin
-  if not FInput.RuleExamples or not FInput.View.ExampleShown(AIndex) then
-  begin
-    Exit;
-  end;
-  // Ohne Katalogtext setzt der Aufrufer den Hinweis „keine Beschreibung“ als Beschreibung.
-  mExample := FInput.View.Examples[AIndex];
-  Block(mExample.Description, FColors.Text, cExampleDescriptionLines);
-  ExampleCode(FInput.Texts.ExampleBad, mExample.Bad, FColors.Error);
-  ExampleCode(FInput.Texts.ExampleGood, mExample.Good, FColors.Add);
 end;
 
 procedure TBuilder.UsesActions(const AProblem: TAtlasProblem; AIndex: Integer);
@@ -633,19 +633,6 @@ begin
     MessageActions(AIndex);
   end;
   SideBar(mStart, ProblemColor(FColors, mProblem));
-end;
-
-procedure TBuilder.Problems;
-var
-  mIndex: Integer;
-begin
-  // Probleme an der Mausposition, Fehler zuerst (#909): Farbbalken, Pille mit der Art und Meldung, darunter
-  // Herkunft und Regel, bei Regeltreffern die Konfidenz und die Aktionszeile. Klickflächen tragen den Index
-  // in View.Problems, nicht die Position im Hover.
-  for mIndex in FInput.View.ProblemOrder do
-  begin
-    Problem(mIndex);
-  end;
 end;
 
 procedure TBuilder.ChainBand;
@@ -952,6 +939,19 @@ begin
   EndLinkRow(mOldFont);
 end;
 
+procedure TBuilder.Problems;
+var
+  mIndex: Integer;
+begin
+  // Probleme an der Mausposition, Fehler zuerst (#909): Farbbalken, Pille mit der Art und Meldung, darunter
+  // Herkunft und Regel, bei Regeltreffern die Konfidenz und die Aktionszeile. Klickflächen tragen den Index
+  // in View.Problems, nicht die Position im Hover.
+  for mIndex in FInput.View.ProblemOrder do
+  begin
+    Problem(mIndex);
+  end;
+end;
+
 procedure TBuilder.Header;
 var
   mCaption, mLocation: string;
@@ -1199,20 +1199,6 @@ begin
   end;
 end;
 
-function TAtlasHoverLayout.HitAt(const APoint: TPoint): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Hits) do
-  begin
-    if Hits[mIndex].Rect.Contains(APoint) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TAtlasHoverLayout.NextProblemHit(AHot: Integer; AForward: Boolean): Integer;
 var
   mStep, mIndex, mTries: Integer;
@@ -1240,6 +1226,20 @@ begin
       Exit(mIndex);
     end;
   end;
+end;
+
+function TAtlasHoverLayout.HitAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Hits) do
+  begin
+    if Hits[mIndex].Rect.Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TAtlasHoverLayout.IsHot(AHot: Integer; AKind: TAtlasHoverHitKind; AIndex: Integer): Boolean;

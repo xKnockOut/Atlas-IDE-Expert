@@ -132,171 +132,12 @@ end;
 
 { TAtlasIdeDebugRestart }
 
-class procedure TAtlasIdeDebugRestart.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugRestart.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  FreeAndNil(FBar);
-  FreeAndNil(FRun);
-  FMessage := nil;
-  FEnabledAtStart := nil;
-  FReenable := nil;
-end;
-
-class function TAtlasIdeDebugRestart.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class procedure TAtlasIdeDebugRestart.ThemeChanged;
-begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
-  end;
-end;
-
 class procedure TAtlasIdeDebugRestart.Say(const AText: string);
 begin
   if Assigned(FMessage) then
   begin
     FMessage(AText);
   end;
-end;
-
-class function TAtlasIdeDebugRestart.BreakpointKeys(AEnabled: Boolean): TArray<string>;
-var
-  mServices: IOTADebuggerServices;
-  mIndex: Integer;
-  mBreakpoint: IOTASourceBreakpoint;
-begin
-  Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
-  if mServices = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.SourceBkptCount - 1 do
-  begin
-    mBreakpoint := mServices.SourceBkpts[mIndex];
-    if (mBreakpoint <> nil) and (mBreakpoint.Enabled = AEnabled) then
-    begin
-      Result := Result + [TAtlasRestartBreakpoints.KeyOf(mBreakpoint.FileName, mBreakpoint.LineNumber)];
-    end;
-  end;
-end;
-
-class function TAtlasIdeDebugRestart.ReenableBreakpoints: Integer;
-var
-  mServices: IOTADebuggerServices;
-  mIndex: Integer;
-  mBreakpoint: IOTASourceBreakpoint;
-  mKey: string;
-begin
-  Result := 0;
-  mServices := TAtlasIdeBreakpoints.Debugger;
-  if (mServices = nil) or (Length(FReenable) = 0) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.SourceBkptCount - 1 do
-  begin
-    mBreakpoint := mServices.SourceBkpts[mIndex];
-    if (mBreakpoint = nil) or mBreakpoint.Enabled then
-    begin
-      Continue;
-    end;
-    for mKey in FReenable do
-    begin
-      if SameText(mKey, TAtlasRestartBreakpoints.KeyOf(mBreakpoint.FileName, mBreakpoint.LineNumber)) then
-      begin
-        mBreakpoint.Enabled := True;
-        Inc(Result);
-        Break;
-      end;
-    end;
-  end;
-end;
-
-class procedure TAtlasIdeDebugRestart.RememberPlace;
-var
-  mView: IOTAEditView;
-begin
-  FFileName := '';
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  FFileName := mView.Buffer.FileName;
-  FLine := mView.CursorPos.Line - 1;
-  FColumn := mView.CursorPos.Col - 1;
-end;
-
-class procedure TAtlasIdeDebugRestart.ReturnToPlace;
-begin
-  if FFileName <> '' then
-  begin
-    TAtlasIdeNavigation.GoToLocation(FFileName, FLine, FColumn);
-  end;
-end;
-
-class procedure TAtlasIdeDebugRestart.Execute;
-var
-  mProject: IOTAProject;
-  mChanged: Boolean;
-begin
-  if not Started or ((FRun <> nil) and FRun.Running) then
-  begin
-    Exit;
-  end;
-  mProject := GetActiveProject;
-  if mProject = nil then
-  begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartNoProject));
-    Exit;
-  end;
-  RememberPlace;
-  FReenable := nil;
-  if TAtlasIdeSettings.Current.DebugRestartReenableBreakpoints then
-  begin
-    FReenable := TAtlasRestartBreakpoints.ToReenable(FEnabledAtStart, BreakpointKeys(False));
-  end;
-  mChanged := (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild;
-  FreeAndNil(FRun);
-  FRun := TAtlasRestartRun.Create(TAtlasIdeDebugSession.Active, mChanged);
-  FDoneAt := 0;
-  FStepDone := True;
-  FTimer.Enabled := True;
-  Tick;
 end;
 
 class procedure TAtlasIdeDebugRestart.Tick;
@@ -366,6 +207,62 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugRestart.Fail(const AText: string);
+begin
+  FRun.Finish(False, TThread.GetTickCount64);
+  Say(AText);
+  Finished;
+end;
+
+class procedure TAtlasIdeDebugRestart.Finished;
+begin
+  FDoneAt := TThread.GetTickCount64;
+  ShowBar;
+end;
+
+class procedure TAtlasIdeDebugRestart.ShowBar;
+var
+  mCaptions: TAtlasRestartCaptions;
+  mPoint: TPoint;
+begin
+  mCaptions[TAtlasRestartStep.Stop] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStop);
+  mCaptions[TAtlasRestartStep.Build] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartBuild);
+  mCaptions[TAtlasRestartStep.Start] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStart);
+  mCaptions[TAtlasRestartStep.Return] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartReturn);
+  if FBar = nil then
+  begin
+    FBar := TAtlasStepsBar.Create(nil);
+  end;
+  mPoint := TAtlasStepsBar.ActiveCorner;
+  FBar.Colors := TAtlasIdeStyle.Colors;
+  FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
+  FBar.ShowSteps(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartTitle), FRun.Text(mCaptions, cDoneMark,
+    cFailedMark), mPoint);
+end;
+
+class procedure TAtlasIdeDebugRestart.RememberPlace;
+var
+  mView: IOTAEditView;
+begin
+  FFileName := '';
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  FFileName := mView.Buffer.FileName;
+  FLine := mView.CursorPos.Line - 1;
+  FColumn := mView.CursorPos.Col - 1;
+end;
+
+class procedure TAtlasIdeDebugRestart.ReturnToPlace;
+begin
+  if FFileName <> '' then
+  begin
+    TAtlasIdeNavigation.GoToLocation(FFileName, FLine, FColumn);
+  end;
+end;
+
 class procedure TAtlasIdeDebugRestart.Stop;
 var
   mProcess: IOTAProcess;
@@ -412,37 +309,140 @@ begin
   TAtlasIdeDebugUnavailableFixes.Run(FMessage);
 end;
 
-class procedure TAtlasIdeDebugRestart.Fail(const AText: string);
-begin
-  FRun.Finish(False, TThread.GetTickCount64);
-  Say(AText);
-  Finished;
-end;
-
-class procedure TAtlasIdeDebugRestart.Finished;
-begin
-  FDoneAt := TThread.GetTickCount64;
-  ShowBar;
-end;
-
-class procedure TAtlasIdeDebugRestart.ShowBar;
+class function TAtlasIdeDebugRestart.BreakpointKeys(AEnabled: Boolean): TArray<string>;
 var
-  mCaptions: TAtlasRestartCaptions;
-  mPoint: TPoint;
+  mServices: IOTADebuggerServices;
+  mIndex: Integer;
+  mBreakpoint: IOTASourceBreakpoint;
 begin
-  mCaptions[TAtlasRestartStep.Stop] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStop);
-  mCaptions[TAtlasRestartStep.Build] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartBuild);
-  mCaptions[TAtlasRestartStep.Start] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStart);
-  mCaptions[TAtlasRestartStep.Return] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartReturn);
-  if FBar = nil then
+  Result := nil;
+  mServices := TAtlasIdeBreakpoints.Debugger;
+  if mServices = nil then
   begin
-    FBar := TAtlasStepsBar.Create(nil);
+    Exit;
   end;
-  mPoint := TAtlasStepsBar.ActiveCorner;
-  FBar.Colors := TAtlasIdeStyle.Colors;
-  FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
-  FBar.ShowSteps(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartTitle), FRun.Text(mCaptions, cDoneMark,
-    cFailedMark), mPoint);
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
+  begin
+    mBreakpoint := mServices.SourceBkpts[mIndex];
+    if (mBreakpoint <> nil) and (mBreakpoint.Enabled = AEnabled) then
+    begin
+      Result := Result + [TAtlasRestartBreakpoints.KeyOf(mBreakpoint.FileName, mBreakpoint.LineNumber)];
+    end;
+  end;
+end;
+
+class function TAtlasIdeDebugRestart.ReenableBreakpoints: Integer;
+var
+  mServices: IOTADebuggerServices;
+  mIndex: Integer;
+  mBreakpoint: IOTASourceBreakpoint;
+  mKey: string;
+begin
+  Result := 0;
+  mServices := TAtlasIdeBreakpoints.Debugger;
+  if (mServices = nil) or (Length(FReenable) = 0) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
+  begin
+    mBreakpoint := mServices.SourceBkpts[mIndex];
+    if (mBreakpoint = nil) or mBreakpoint.Enabled then
+    begin
+      Continue;
+    end;
+    for mKey in FReenable do
+    begin
+      if SameText(mKey, TAtlasRestartBreakpoints.KeyOf(mBreakpoint.FileName, mBreakpoint.LineNumber)) then
+      begin
+        mBreakpoint.Enabled := True;
+        Inc(Result);
+        Break;
+      end;
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeDebugRestart.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugRestart.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  FreeAndNil(FBar);
+  FreeAndNil(FRun);
+  FMessage := nil;
+  FEnabledAtStart := nil;
+  FReenable := nil;
+end;
+
+class function TAtlasIdeDebugRestart.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class procedure TAtlasIdeDebugRestart.ThemeChanged;
+begin
+  if (FBar <> nil) and FBar.IsShown then
+  begin
+    FBar.Colors := TAtlasIdeStyle.Colors;
+    FBar.Invalidate;
+  end;
+end;
+
+class procedure TAtlasIdeDebugRestart.Execute;
+var
+  mProject: IOTAProject;
+  mChanged: Boolean;
+begin
+  if not Started or ((FRun <> nil) and FRun.Running) then
+  begin
+    Exit;
+  end;
+  mProject := GetActiveProject;
+  if mProject = nil then
+  begin
+    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartNoProject));
+    Exit;
+  end;
+  RememberPlace;
+  FReenable := nil;
+  if TAtlasIdeSettings.Current.DebugRestartReenableBreakpoints then
+  begin
+    FReenable := TAtlasRestartBreakpoints.ToReenable(FEnabledAtStart, BreakpointKeys(False));
+  end;
+  mChanged := (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild;
+  FreeAndNil(FRun);
+  FRun := TAtlasRestartRun.Create(TAtlasIdeDebugSession.Active, mChanged);
+  FDoneAt := 0;
+  FStepDone := True;
+  FTimer.Enabled := True;
+  Tick;
 end;
 
 end.

@@ -64,6 +64,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasMenuSlots }
+
 class function TAtlasMenuSlots.NewList(ACount: Integer): TAtlasSlotList;
 var
   mIndex: Integer;

@@ -330,22 +330,7 @@ begin
   end;
 end;
 
-procedure TLineMarks.MarkLines(const AToken: TPascalToken);
-var
-  mLine: Integer;
-begin
-  for mLine := AToken.StartPos.Line to AToken.EndPos.Line do
-  begin
-    if AToken.Kind = TPascalTokenKind.Comment then
-    begin
-      Comment[mLine] := True;
-    end
-    else
-    begin
-      Code[mLine] := True;
-    end;
-  end;
-end;
+{ TLineMarks }
 
 procedure TLineMarks.Build(ATree: TSyntaxTree; ALineCount: Integer; const AIgnore: TArray<Boolean>);
 var
@@ -376,6 +361,23 @@ begin
   begin
     CondAt[mLine] := CondAt[mLine - 1] + mCondDelta[mLine - 1];
     RegionAt[mLine] := RegionAt[mLine - 1] + mRegionDelta[mLine - 1];
+  end;
+end;
+
+procedure TLineMarks.MarkLines(const AToken: TPascalToken);
+var
+  mLine: Integer;
+begin
+  for mLine := AToken.StartPos.Line to AToken.EndPos.Line do
+  begin
+    if AToken.Kind = TPascalTokenKind.Comment then
+    begin
+      Comment[mLine] := True;
+    end
+    else
+    begin
+      Code[mLine] := True;
+    end;
   end;
 end;
 
@@ -652,6 +654,8 @@ type
     RegionEnd: Boolean;
     Lines: TArray<string>;
   end;
+
+{ TOrderText }
 
 procedure TOrderText.Add(const ALine: string; AOrigin: Integer);
 begin
@@ -1043,6 +1047,18 @@ end;
 
 { TMethodOrder }
 
+class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
+  APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := Arrange(ATree, AText, TMethodOrderOptions.Create(APlacement));
+end;
+
+class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
+  APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := PlaceNew(ATree, AText, ABefore, TMethodOrderOptions.Create(APlacement));
+end;
+
 class function TMethodOrder.PlacementName(APlacement: TMethodPlacement): string;
 begin
   case APlacement of
@@ -1054,40 +1070,6 @@ begin
       Result := 'grouped';
   else
     Result := 'declaration';
-  end;
-end;
-
-class function TMethodOrder.PlacementOf(const AName: string): TMethodPlacement;
-begin
-  if SameText(AName, 'off') then
-  begin
-    Result := TMethodPlacement.Off;
-  end
-  else if SameText(AName, 'alphabetical') then
-  begin
-    Result := TMethodPlacement.Alphabetical;
-  end
-  else if (AName = '') or SameText(AName, 'grouped') then
-  begin
-    Result := TMethodPlacement.Grouped;
-  end
-  else
-  begin
-    Result := TMethodPlacement.Declaration;
-  end;
-end;
-
-class function TMethodOrder.ReasonName(AReason: TMethodStayReason): string;
-begin
-  case AReason of
-    TMethodStayReason.Region:
-      Result := 'region';
-    TMethodStayReason.Conditional:
-      Result := 'ifdef';
-    TMethodStayReason.SharedLine:
-      Result := 'line';
-  else
-    Result := '';
   end;
 end;
 
@@ -1206,12 +1188,6 @@ begin
 end;
 
 class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
-  APlacement: TMethodPlacement): TMethodOrderResult;
-begin
-  Result := Arrange(ATree, AText, TMethodOrderOptions.Create(APlacement));
-end;
-
-class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
   const AOptions: TMethodOrderOptions): TMethodOrderResult;
 var
   mLines: TArray<string>;
@@ -1226,6 +1202,26 @@ begin
   mLines := TTextLines.SplitLines(AText);
   mBlocks := PreparedBlocks(ATree, AText, mLines, mHeaders);
   Result := ArrangeBlocks(mLines, mBlocks, mHeaders, AOptions, TTextLines.LineBreakOf(AText));
+end;
+
+class function TMethodOrder.PlacementOf(const AName: string): TMethodPlacement;
+begin
+  if SameText(AName, 'off') then
+  begin
+    Result := TMethodPlacement.Off;
+  end
+  else if SameText(AName, 'alphabetical') then
+  begin
+    Result := TMethodPlacement.Alphabetical;
+  end
+  else if (AName = '') or SameText(AName, 'grouped') then
+  begin
+    Result := TMethodPlacement.Grouped;
+  end
+  else
+  begin
+    Result := TMethodPlacement.Declaration;
+  end;
 end;
 
 type
@@ -1277,19 +1273,7 @@ begin
   Result := (A.Block = B.Block) and (A.After = B.After);
 end;
 
-function TNewPlacement.IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
-var
-  mLine: Integer;
-begin
-  Result := not AKnown.ContainsKey(Trim(Lines[ABlock.Header])) and StartsText('end', Trim(Lines[ABlock.Last]));
-  for mLine := ABlock.Header + 1 to ABlock.Last do
-  begin
-    if Result and IsRoutineHeader(Lines[mLine]) and AKnown.ContainsKey(Trim(Lines[mLine])) then
-    begin
-      Result := False;
-    end;
-  end;
-end;
+{ TNewPlacement }
 
 procedure TNewPlacement.Split(const ABlocks: TBlocks; const ABefore: string);
 var
@@ -1319,6 +1303,20 @@ begin
     end;
   finally
     mKnown.Free;
+  end;
+end;
+
+function TNewPlacement.IsFresh(const ABlock: TBlock; AKnown: TDictionary<string, Boolean>): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := not AKnown.ContainsKey(Trim(Lines[ABlock.Header])) and StartsText('end', Trim(Lines[ABlock.Last]));
+  for mLine := ABlock.Header + 1 to ABlock.Last do
+  begin
+    if Result and IsRoutineHeader(Lines[mLine]) and AKnown.ContainsKey(Trim(Lines[mLine])) then
+    begin
+      Result := False;
+    end;
   end;
 end;
 
@@ -1767,6 +1765,21 @@ type
     procedure AddComment(var AReview: TMethodTypeReview);
   end;
 
+{ TOrderReview }
+
+function TOrderReview.ReviewOf(const ATypeName: string): TMethodTypeReview;
+var
+  mFirst, mLast: Integer;
+begin
+  Result := Default(TMethodTypeReview);
+  Result.TypeName := ATypeName;
+  TypeRange(Blocks, ATypeName, mFirst, mLast);
+  Result.NameRange := NameRangeOf(Lines, Blocks[mFirst], ATypeName);
+  Result.OrderEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, ATypeName, True), HeadersOf(Headers, ATypeName),
+    Options, LineBreak).Edits;
+  AddComment(Result);
+end;
+
 procedure TOrderReview.AddComment(var AReview: TMethodTypeReview);
 var
   mHeader: THeader;
@@ -1782,59 +1795,6 @@ begin
   AReview.CommentText := CommentTextOf(mHeader);
   AReview.CommentEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, AReview.TypeName, False),
     TArray<THeader>.Create(mHeader), Options, LineBreak).Edits;
-end;
-
-function TOrderReview.ReviewOf(const ATypeName: string): TMethodTypeReview;
-var
-  mFirst, mLast: Integer;
-begin
-  Result := Default(TMethodTypeReview);
-  Result.TypeName := ATypeName;
-  TypeRange(Blocks, ATypeName, mFirst, mLast);
-  Result.NameRange := NameRangeOf(Lines, Blocks[mFirst], ATypeName);
-  Result.OrderEdits := ArrangeBlocks(Lines, MovableOnly(Blocks, ATypeName, True), HeadersOf(Headers, ATypeName),
-    Options, LineBreak).Edits;
-  AddComment(Result);
-end;
-
-class function TMethodOrder.Review(ATree: TSyntaxTree; const AText: string;
-  const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>;
-var
-  mReview: TOrderReview;
-  mDone: TDictionary<string, Boolean>;
-  mBlock: TBlock;
-begin
-  Result := nil;
-  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
-  begin
-    Exit;
-  end;
-  mReview := Default(TOrderReview);
-  mReview.Options := AOptions;
-  mReview.Lines := TTextLines.SplitLines(AText);
-  mReview.LineBreak := TTextLines.LineBreakOf(AText);
-  mReview.Blocks := PreparedBlocks(ATree, AText, mReview.Lines, mReview.Headers);
-  mReview.UnitIndex := TIndexExtractor.Extract(ATree, '');
-  mDone := TDictionary<string, Boolean>.Create;
-  try
-    for mBlock in mReview.Blocks do
-    begin
-      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
-      begin
-        Continue;
-      end;
-      mDone.Add(LowerCase(mBlock.TypeName), True);
-      Result := Result + [mReview.ReviewOf(mBlock.TypeName)];
-    end;
-  finally
-    mDone.Free;
-  end;
-end;
-
-class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
-  APlacement: TMethodPlacement): TMethodOrderResult;
-begin
-  Result := PlaceNew(ATree, AText, ABefore, TMethodOrderOptions.Create(APlacement));
 end;
 
 class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
@@ -1873,6 +1833,54 @@ begin
   begin
     Result.Edits := [mEdit];
     Result.Moves := mPlacement.Moves(mText.Lines);
+  end;
+end;
+
+class function TMethodOrder.Review(ATree: TSyntaxTree; const AText: string;
+  const AOptions: TMethodOrderOptions): TArray<TMethodTypeReview>;
+var
+  mReview: TOrderReview;
+  mDone: TDictionary<string, Boolean>;
+  mBlock: TBlock;
+begin
+  Result := nil;
+  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
+  begin
+    Exit;
+  end;
+  mReview := Default(TOrderReview);
+  mReview.Options := AOptions;
+  mReview.Lines := TTextLines.SplitLines(AText);
+  mReview.LineBreak := TTextLines.LineBreakOf(AText);
+  mReview.Blocks := PreparedBlocks(ATree, AText, mReview.Lines, mReview.Headers);
+  mReview.UnitIndex := TIndexExtractor.Extract(ATree, '');
+  mDone := TDictionary<string, Boolean>.Create;
+  try
+    for mBlock in mReview.Blocks do
+    begin
+      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
+      begin
+        Continue;
+      end;
+      mDone.Add(LowerCase(mBlock.TypeName), True);
+      Result := Result + [mReview.ReviewOf(mBlock.TypeName)];
+    end;
+  finally
+    mDone.Free;
+  end;
+end;
+
+class function TMethodOrder.ReasonName(AReason: TMethodStayReason): string;
+begin
+  case AReason of
+    TMethodStayReason.Region:
+      Result := 'region';
+    TMethodStayReason.Conditional:
+      Result := 'ifdef';
+    TMethodStayReason.SharedLine:
+      Result := 'line';
+  else
+    Result := '';
   end;
 end;
 

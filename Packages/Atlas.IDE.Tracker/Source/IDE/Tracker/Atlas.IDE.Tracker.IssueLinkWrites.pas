@@ -292,12 +292,6 @@ begin
   inherited;
 end;
 
-function TAtlasIdeIssueLinkWrites.TakeNotice: string;
-begin
-  Result := FNotice;
-  FNotice := '';
-end;
-
 procedure TAtlasIdeIssueLinkWrites.CreateSubtask;
 var
   mTarget: TAtlasTrackerTarget;
@@ -381,6 +375,12 @@ begin
           [TAtlasIssueTip.ErrorText(AError, mOther)]), AError);
       end;
     end);
+end;
+
+function TAtlasIdeIssueLinkWrites.TakeNotice: string;
+begin
+  Result := FNotice;
+  FNotice := '';
 end;
 
 procedure TAtlasIdeIssueLinkWrites.CheckBlocked(const ATarget: TAtlasTrackerTarget; const AKey: string;

@@ -426,58 +426,48 @@ begin
   inherited;
 end;
 
-class function TAtlasSettingsParts.ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey,
-  AOldKey: string): TAtlasSettingsChange;
+function TAtlasSettingsParts.KeyOf(const AKey: string; AKind: TAtlasSettingsValueKind): TKeyEntry;
 begin
-  Result.Kind := AKind;
-  Result.OwnerId := AOwnerId;
-  Result.Key := AKey;
-  Result.OldKey := AOldKey;
-end;
-
-class function TAtlasSettingsParts.OwnerKeysName(const AOwnerId: string): string;
-begin
-  Result := cAtlasOwnerKeysPrefix + AOwnerId + cAtlasOwnerKeysSuffix;
-end;
-
-procedure TAtlasSettingsParts.Notify(const AChanges: TArray<TAtlasSettingsChange>);
-var
-  mListeners: TArray<TListenerEntry>;
-  mListener: TListenerEntry;
-  mChange: TAtlasSettingsChange;
-  mFailures: TArray<string>;
-begin
-  if Length(AChanges) = 0 then
+  if not FKeys.TryGetValue(AKey, Result) then
   begin
-    Exit;
+    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
   end;
+  if Result.Key.Kind <> AKind then
+  begin
+    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist kein %s, sondern %s',
+      [AKey, cKindNames[AKind], cKindNames[Result.Key.Kind]]);
+  end;
+end;
+
+function TAtlasSettingsParts.TextOf(const AEntry: TKeyEntry): string;
+begin
+  if FStorage.Contains(AEntry.Key.Key) then
+  begin
+    Result := FStorage.ReadText(AEntry.Key.Key);
+  end
+  else
+  begin
+    Result := AEntry.Key.Default;
+  end;
+end;
+
+procedure TAtlasSettingsParts.WriteValue(const AEntry: TKeyEntry; const AText: string);
+var
+  mChanged: Boolean;
+begin
   FLock.Acquire;
   try
-    mListeners := FListeners.ToArray;
+    mChanged := not FStorage.Contains(AEntry.Key.Key) or (FStorage.ReadText(AEntry.Key.Key) <> AText);
+    if mChanged then
+    begin
+      FStorage.WriteText(AEntry.Key.Key, AText);
+    end;
   finally
     FLock.Release;
   end;
-  mFailures := nil;
-  for mChange in AChanges do
+  if mChanged then
   begin
-    for mListener in mListeners do
-    begin
-      if mListener.Item.IsRevoked then
-      begin
-        Continue;
-      end;
-      try
-        mListener.Listener.SettingsChanged(mChange);
-      except
-        on mError: Exception do
-          mFailures := mFailures + [mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
-      end;
-    end;
-  end;
-  // Alle Hörer haben die Änderung erfahren; erst dann den Fehler melden.
-  if Length(mFailures) > 0 then
-  begin
-    raise EAtlasSettingsParts.Create(string.Join(sLineBreak, mFailures));
+    Notify([ChangeOf(scValueChanged, AEntry.OwnerId, AEntry.Key.Key, '')]);
   end;
 end;
 
@@ -534,43 +524,45 @@ begin
   end;
 end;
 
-function TAtlasSettingsParts.Add(const APart: IAtlasSettingsPart): IAtlasRegistration;
+procedure TAtlasSettingsParts.Notify(const AChanges: TArray<TAtlasSettingsChange>);
 var
-  mEntry: TPartEntry;
-  mItem: TAtlasPartRegistration;
-  mKey: TAtlasSettingsKey;
-  mKeyEntry: TKeyEntry;
-  mOwnKeys: TList<string>;
-  mChanges: TArray<TAtlasSettingsChange>;
+  mListeners: TArray<TListenerEntry>;
+  mListener: TListenerEntry;
+  mChange: TAtlasSettingsChange;
+  mFailures: TArray<string>;
 begin
-  mEntry := PartEntryOf(APart);
-  mOwnKeys := TList<string>.Create;
-  try
-    FLock.Acquire;
-    try
-      CheckKeys(mEntry.Keys, mEntry.OwnerId, FKeys, mOwnKeys);
-      CheckRenames(mEntry.Renames, mEntry.OwnerId, FKeys, mOwnKeys);
-      mItem := TAtlasPartRegistration.Create(Self);
-      mEntry.Item := mItem;
-      mEntry.Ref := mItem;
-      FParts.Add(mEntry);
-      for mKey in mEntry.Keys do
-      begin
-        mKeyEntry.Key := mKey;
-        mKeyEntry.OwnerId := mEntry.OwnerId;
-        FKeys.Add(mKey.Key, mKeyEntry);
-      end;
-      mChanges := TArray<TAtlasSettingsChange>.Create(ChangeOf(scPartAdded, mEntry.OwnerId, '', '')) +
-        ApplyRenames(mEntry);
-      RecordOwnerKeys(mEntry);
-    finally
-      FLock.Release;
-    end;
-  finally
-    mOwnKeys.Free;
+  if Length(AChanges) = 0 then
+  begin
+    Exit;
   end;
-  Result := mEntry.Ref;
-  Notify(mChanges);
+  FLock.Acquire;
+  try
+    mListeners := FListeners.ToArray;
+  finally
+    FLock.Release;
+  end;
+  mFailures := nil;
+  for mChange in AChanges do
+  begin
+    for mListener in mListeners do
+    begin
+      if mListener.Item.IsRevoked then
+      begin
+        Continue;
+      end;
+      try
+        mListener.Listener.SettingsChanged(mChange);
+      except
+        on mError: Exception do
+          mFailures := mFailures + [mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
+      end;
+    end;
+  end;
+  // Alle Hörer haben die Änderung erfahren; erst dann den Fehler melden.
+  if Length(mFailures) > 0 then
+  begin
+    raise EAtlasSettingsParts.Create(string.Join(sLineBreak, mFailures));
+  end;
 end;
 
 procedure TAtlasSettingsParts.RemovePart(AItem: TAtlasRegistration);
@@ -625,6 +617,59 @@ begin
   finally
     FLock.Release;
   end;
+end;
+
+class function TAtlasSettingsParts.ChangeOf(AKind: TAtlasSettingsChangeKind; const AOwnerId, AKey,
+  AOldKey: string): TAtlasSettingsChange;
+begin
+  Result.Kind := AKind;
+  Result.OwnerId := AOwnerId;
+  Result.Key := AKey;
+  Result.OldKey := AOldKey;
+end;
+
+class function TAtlasSettingsParts.OwnerKeysName(const AOwnerId: string): string;
+begin
+  Result := cAtlasOwnerKeysPrefix + AOwnerId + cAtlasOwnerKeysSuffix;
+end;
+
+function TAtlasSettingsParts.Add(const APart: IAtlasSettingsPart): IAtlasRegistration;
+var
+  mEntry: TPartEntry;
+  mItem: TAtlasPartRegistration;
+  mKey: TAtlasSettingsKey;
+  mKeyEntry: TKeyEntry;
+  mOwnKeys: TList<string>;
+  mChanges: TArray<TAtlasSettingsChange>;
+begin
+  mEntry := PartEntryOf(APart);
+  mOwnKeys := TList<string>.Create;
+  try
+    FLock.Acquire;
+    try
+      CheckKeys(mEntry.Keys, mEntry.OwnerId, FKeys, mOwnKeys);
+      CheckRenames(mEntry.Renames, mEntry.OwnerId, FKeys, mOwnKeys);
+      mItem := TAtlasPartRegistration.Create(Self);
+      mEntry.Item := mItem;
+      mEntry.Ref := mItem;
+      FParts.Add(mEntry);
+      for mKey in mEntry.Keys do
+      begin
+        mKeyEntry.Key := mKey;
+        mKeyEntry.OwnerId := mEntry.OwnerId;
+        FKeys.Add(mKey.Key, mKeyEntry);
+      end;
+      mChanges := TArray<TAtlasSettingsChange>.Create(ChangeOf(scPartAdded, mEntry.OwnerId, '', '')) +
+        ApplyRenames(mEntry);
+      RecordOwnerKeys(mEntry);
+    finally
+      FLock.Release;
+    end;
+  finally
+    mOwnKeys.Free;
+  end;
+  Result := mEntry.Ref;
+  Notify(mChanges);
 end;
 
 function TAtlasSettingsParts.Parts: TArray<IAtlasSettingsPart>;
@@ -757,51 +802,6 @@ begin
     FLock.Release;
   end;
   Result := mEntry.Ref;
-end;
-
-function TAtlasSettingsParts.KeyOf(const AKey: string; AKind: TAtlasSettingsValueKind): TKeyEntry;
-begin
-  if not FKeys.TryGetValue(AKey, Result) then
-  begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist nicht angemeldet', [AKey]);
-  end;
-  if Result.Key.Kind <> AKind then
-  begin
-    raise EAtlasSettingsKey.CreateFmt('Einstellung %s ist kein %s, sondern %s',
-      [AKey, cKindNames[AKind], cKindNames[Result.Key.Kind]]);
-  end;
-end;
-
-function TAtlasSettingsParts.TextOf(const AEntry: TKeyEntry): string;
-begin
-  if FStorage.Contains(AEntry.Key.Key) then
-  begin
-    Result := FStorage.ReadText(AEntry.Key.Key);
-  end
-  else
-  begin
-    Result := AEntry.Key.Default;
-  end;
-end;
-
-procedure TAtlasSettingsParts.WriteValue(const AEntry: TKeyEntry; const AText: string);
-var
-  mChanged: Boolean;
-begin
-  FLock.Acquire;
-  try
-    mChanged := not FStorage.Contains(AEntry.Key.Key) or (FStorage.ReadText(AEntry.Key.Key) <> AText);
-    if mChanged then
-    begin
-      FStorage.WriteText(AEntry.Key.Key, AText);
-    end;
-  finally
-    FLock.Release;
-  end;
-  if mChanged then
-  begin
-    Notify([ChangeOf(scValueChanged, AEntry.OwnerId, AEntry.Key.Key, '')]);
-  end;
 end;
 
 function TAtlasSettingsParts.Contains(const AKey: string): Boolean;

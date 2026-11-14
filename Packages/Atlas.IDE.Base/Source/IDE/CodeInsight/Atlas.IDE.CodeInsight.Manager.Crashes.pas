@@ -62,6 +62,8 @@ uses
   Atlas.IDE.CodeInsight.Manager.State,
   Atlas.IDE.CodeInsight.Manager.Handlers;
 
+{ TAtlasCodeInsightCrashes }
+
 procedure TAtlasCodeInsightCrashes.ServerEnded(const AInfo: TLspCloseInfo);
 var
   mManager: TAtlasCodeInsightCrashes;
@@ -97,17 +99,10 @@ begin
     end);
 end;
 
-procedure TAtlasCodeInsightCrashes.ServerEndedMain(ACode: Cardinal; AContinues: Boolean);
+procedure TAtlasCodeInsightCrashes.AcceptNotifications(ASession: TLspSession);
 begin
-  if not AContinues then
-  begin
-    ServerHeld(ACode);
-  end
-  // Inzwischen neu gestartet oder von Atlas beendet: Die Ursache gehört nicht mehr ins Statusfeld.
-  else if (FPhase.Phase = TAtlasServerPhase.Stopped) and not FPhase.Ended then
-  begin
-    SetPhase(TAtlasServerPhase.Stopped, TAtlasServerExits.Describe(ACode));
-  end;
+  inherited AcceptNotifications(ASession);
+  AcceptAtlasNotifications(ASession);
 end;
 
 procedure TAtlasCodeInsightCrashes.ServerHeld(ACode: Cardinal);
@@ -144,10 +139,17 @@ begin
     mActions);
 end;
 
-procedure TAtlasCodeInsightCrashes.AcceptNotifications(ASession: TLspSession);
+procedure TAtlasCodeInsightCrashes.ServerEndedMain(ACode: Cardinal; AContinues: Boolean);
 begin
-  inherited AcceptNotifications(ASession);
-  AcceptAtlasNotifications(ASession);
+  if not AContinues then
+  begin
+    ServerHeld(ACode);
+  end
+  // Inzwischen neu gestartet oder von Atlas beendet: Die Ursache gehört nicht mehr ins Statusfeld.
+  else if (FPhase.Phase = TAtlasServerPhase.Stopped) and not FPhase.Ended then
+  begin
+    SetPhase(TAtlasServerPhase.Stopped, TAtlasServerExits.Describe(ACode));
+  end;
 end;
 
 procedure TAtlasCodeInsightCrashes.AcceptAtlasNotifications(ASession: TLspSession);
@@ -223,32 +225,6 @@ begin
     TAtlasServerHandlers.CrashActions(ACase, FOnCrashIssue));
 end;
 
-function TAtlasCodeInsightCrashes.RetryAction(const AUri: string): TProc;
-var
-  mManager: TAtlasCodeInsightCrashes;
-  mUri: string;
-begin
-  mManager := Self;
-  mUri := AUri;
-  Result :=
-    procedure
-    var
-      mArguments: TJSONArray;
-    begin
-      // Die Meldung kann den Manager überleben (Entladen).
-      if not ManagerLive(mManager) then
-      begin
-        Exit;
-      end;
-      mArguments := TAtlasCrashCases.RetryArguments(mUri);
-      try
-        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, 5000, nil);
-      finally
-        mArguments.Free;
-      end;
-    end;
-end;
-
 procedure TAtlasCodeInsightCrashes.CrashSkipChanged(const ASkip: TAtlasCrashSkip);
 var
   mName: string;
@@ -276,6 +252,32 @@ begin
       [ASkip.Method, mName]), LogActions);
   end;
   ServerChanged;
+end;
+
+function TAtlasCodeInsightCrashes.RetryAction(const AUri: string): TProc;
+var
+  mManager: TAtlasCodeInsightCrashes;
+  mUri: string;
+begin
+  mManager := Self;
+  mUri := AUri;
+  Result :=
+    procedure
+    var
+      mArguments: TJSONArray;
+    begin
+      // Die Meldung kann den Manager überleben (Entladen).
+      if not ManagerLive(mManager) then
+      begin
+        Exit;
+      end;
+      mArguments := TAtlasCrashCases.RetryArguments(mUri);
+      try
+        mManager.RunServerCommandAsync(TAtlasCrashCases.cRetryCommand, mArguments.ToJSON, 5000, nil);
+      finally
+        mArguments.Free;
+      end;
+    end;
 end;
 
 end.

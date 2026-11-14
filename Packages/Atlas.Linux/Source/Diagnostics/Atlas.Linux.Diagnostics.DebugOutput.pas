@@ -24,6 +24,8 @@ uses
 const
   cStdErrorFd = 2;
 
+{ TDebugOutput }
+
 class procedure TDebugOutput.Write(const AText: string);
 var
   mBytes: TBytes;

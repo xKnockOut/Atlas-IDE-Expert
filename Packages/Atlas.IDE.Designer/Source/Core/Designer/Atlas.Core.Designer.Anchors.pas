@@ -259,6 +259,8 @@ begin
   end;
 end;
 
+{ TAtlasAnchorSuggest }
+
 class function TAtlasAnchorSuggest.Suggest(const AItems: TArray<TAtlasAnchorItem>; const AClient: TSize;
   AEdge: Integer; AKeepExisting: Boolean): TArray<TAtlasAnchorSuggestion>;
 var

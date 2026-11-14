@@ -179,6 +179,8 @@ begin
   end;
 end;
 
+{ TAtlasTrackerConnection }
+
 class function TAtlasTrackerConnection.Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection;
 begin
   Result.Name := Trim(AName);
@@ -353,6 +355,8 @@ begin
     end;
   end;
 end;
+
+{ TAtlasTrackerConnections }
 
 class function TAtlasTrackerConnections.Read(const AJson: string): TArray<TAtlasTrackerConnection>;
 var

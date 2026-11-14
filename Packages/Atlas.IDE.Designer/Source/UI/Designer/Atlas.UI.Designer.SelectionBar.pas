@@ -132,27 +132,61 @@ begin
   end;
 end;
 
-procedure TAtlasSelectionBarWindow.WMMouseActivate(var Message: TWMMouseActivate);
+procedure TAtlasSelectionBarWindow.Paint;
+var
+  mIndex, mX: Integer;
 begin
-  // Knopf gedrückt: Fokus und Auswahl bleiben im Designer.
-  Message.Result := MA_NOACTIVATE;
+  Canvas.Font.Assign(Font);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(FColors.Surface);
+  Canvas.Pen.Color := TColor(FColors.Accent);
+  Canvas.Rectangle(ClientRect);
+  for mIndex := 0 to High(FButtons) do
+  begin
+    if FButtons[mIndex].Separated and (mIndex > 0) then
+    begin
+      mX := FRects[mIndex].Left - S(cSeparatorWidth) div 2 - 1;
+      Canvas.Pen.Color := TColor(FColors.Line);
+      Canvas.MoveTo(mX, FRects[mIndex].Top + S(3));
+      Canvas.LineTo(mX, FRects[mIndex].Bottom - S(3));
+    end;
+    PaintButton(mIndex);
+  end;
 end;
 
-procedure TAtlasSelectionBarWindow.CMMouseLeave(var Message: TMessage);
+procedure TAtlasSelectionBarWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   inherited;
-  SetHot(-1);
+  FPressed := -1;
+  if Button = mbLeft then
+  begin
+    FPressed := ButtonAt(X, Y);
+  end;
 end;
 
-function TAtlasSelectionBarWindow.S(AValue: Integer): Integer;
+procedure TAtlasSelectionBarWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
+  inherited;
+  SetHot(ButtonAt(X, Y));
 end;
 
-procedure TAtlasSelectionBarWindow.ApplyColors(const AColors: TAtlasColors);
+procedure TAtlasSelectionBarWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
 begin
-  FColors := AColors;
-  Invalidate;
+  inherited;
+  mIndex := ButtonAt(X, Y);
+  if (Button <> mbLeft) or (mIndex < 0) or (mIndex <> FPressed) then
+  begin
+    FPressed := -1;
+    Exit;
+  end;
+  FPressed := -1;
+  if (FButtons[mIndex].State <> TAtlasBarState.None) and Assigned(FOnClick) then
+  begin
+    Application.CancelHint;
+    FOnClick(mIndex, ClientToScreen(Point(FRects[mIndex].Left, FRects[mIndex].Bottom)));
+  end;
 end;
 
 function TAtlasSelectionBarWindow.SameButtons(const AButtons: TArray<TAtlasBarButton>): Boolean;
@@ -192,45 +226,6 @@ begin
     Inc(mX, mWidth + S(1));
   end;
   Canvas.Font.Style := [];
-end;
-
-procedure TAtlasSelectionBarWindow.SetButtons(const AButtons: TArray<TAtlasBarButton>);
-begin
-  if SameButtons(AButtons) then
-  begin
-    Exit;
-  end;
-  FButtons := Copy(AButtons);
-  Layout;
-  if (FHot >= 0) and (FHot <= High(FButtons)) then
-  begin
-    Hint := FButtons[FHot].Hint;
-  end;
-  Invalidate;
-end;
-
-function TAtlasSelectionBarWindow.BarSize: TSize;
-begin
-  Result.cx := S(cPadding) * 2;
-  if Length(FRects) > 0 then
-  begin
-    Result.cx := FRects[High(FRects)].Right + S(cPadding);
-  end;
-  Result.cy := S(cButtonHeight) + S(cPadding) * 2;
-end;
-
-function TAtlasSelectionBarWindow.ButtonAt(AX, AY: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FRects) do
-  begin
-    if FRects[mIndex].Contains(Point(AX, AY)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 procedure TAtlasSelectionBarWindow.PaintButton(AIndex: Integer);
@@ -287,28 +282,6 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasSelectionBarWindow.Paint;
-var
-  mIndex, mX: Integer;
-begin
-  Canvas.Font.Assign(Font);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TColor(FColors.Surface);
-  Canvas.Pen.Color := TColor(FColors.Accent);
-  Canvas.Rectangle(ClientRect);
-  for mIndex := 0 to High(FButtons) do
-  begin
-    if FButtons[mIndex].Separated and (mIndex > 0) then
-    begin
-      mX := FRects[mIndex].Left - S(cSeparatorWidth) div 2 - 1;
-      Canvas.Pen.Color := TColor(FColors.Line);
-      Canvas.MoveTo(mX, FRects[mIndex].Top + S(3));
-      Canvas.LineTo(mX, FRects[mIndex].Bottom - S(3));
-    end;
-    PaintButton(mIndex);
-  end;
-end;
-
 procedure TAtlasSelectionBarWindow.SetHot(AIndex: Integer);
 begin
   if AIndex = FHot then
@@ -325,39 +298,66 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasSelectionBarWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasSelectionBarWindow.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  // Knopf gedrückt: Fokus und Auswahl bleiben im Designer.
+  Message.Result := MA_NOACTIVATE;
+end;
+
+procedure TAtlasSelectionBarWindow.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  FPressed := -1;
-  if Button = mbLeft then
+  SetHot(-1);
+end;
+
+function TAtlasSelectionBarWindow.S(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
+end;
+
+procedure TAtlasSelectionBarWindow.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+procedure TAtlasSelectionBarWindow.SetButtons(const AButtons: TArray<TAtlasBarButton>);
+begin
+  if SameButtons(AButtons) then
   begin
-    FPressed := ButtonAt(X, Y);
+    Exit;
   end;
+  FButtons := Copy(AButtons);
+  Layout;
+  if (FHot >= 0) and (FHot <= High(FButtons)) then
+  begin
+    Hint := FButtons[FHot].Hint;
+  end;
+  Invalidate;
 end;
 
-procedure TAtlasSelectionBarWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+function TAtlasSelectionBarWindow.BarSize: TSize;
 begin
-  inherited;
-  SetHot(ButtonAt(X, Y));
+  Result.cx := S(cPadding) * 2;
+  if Length(FRects) > 0 then
+  begin
+    Result.cx := FRects[High(FRects)].Right + S(cPadding);
+  end;
+  Result.cy := S(cButtonHeight) + S(cPadding) * 2;
 end;
 
-procedure TAtlasSelectionBarWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+function TAtlasSelectionBarWindow.ButtonAt(AX, AY: Integer): Integer;
 var
   mIndex: Integer;
 begin
-  inherited;
-  mIndex := ButtonAt(X, Y);
-  if (Button <> mbLeft) or (mIndex < 0) or (mIndex <> FPressed) then
+  for mIndex := 0 to High(FRects) do
   begin
-    FPressed := -1;
-    Exit;
+    if FRects[mIndex].Contains(Point(AX, AY)) then
+    begin
+      Exit(mIndex);
+    end;
   end;
-  FPressed := -1;
-  if (FButtons[mIndex].State <> TAtlasBarState.None) and Assigned(FOnClick) then
-  begin
-    Application.CancelHint;
-    FOnClick(mIndex, ClientToScreen(Point(FRects[mIndex].Left, FRects[mIndex].Bottom)));
-  end;
+  Result := -1;
 end;
 
 procedure TAtlasSelectionBarWindow.ShowAt(const AScreen: TRect);

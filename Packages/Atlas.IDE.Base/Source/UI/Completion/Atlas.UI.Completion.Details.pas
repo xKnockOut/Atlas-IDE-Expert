@@ -336,25 +336,6 @@ begin
   Inc(Y, mLineHeight + Scale(8));
 end;
 
-procedure TDetailRender.Tag(const ATag: string; const ABox: TRect);
-var
-  mText: TRect;
-begin
-  if ATag = 'deprecated' then
-  begin
-    Frame(ABox, Colors.Warn);
-    Canvas.Font.Color := ToColor(Colors.Warn);
-  end
-  else
-  begin
-    Frame(ABox, Colors.Line);
-    Canvas.Font.Color := ToColor(Colors.Muted);
-  end;
-  Canvas.Brush.Style := bsClear;
-  mText := ABox;
-  DrawText(Canvas.Handle, PChar(ATag), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-end;
-
 procedure TDetailRender.Tags;
 var
   mTag: string;
@@ -383,6 +364,25 @@ begin
     mTagX := mBox.Right + Scale(6);
   end;
   Inc(Y, mTagHeight + Scale(8));
+end;
+
+procedure TDetailRender.Tag(const ATag: string; const ABox: TRect);
+var
+  mText: TRect;
+begin
+  if ATag = 'deprecated' then
+  begin
+    Frame(ABox, Colors.Warn);
+    Canvas.Font.Color := ToColor(Colors.Warn);
+  end
+  else
+  begin
+    Frame(ABox, Colors.Line);
+    Canvas.Font.Color := ToColor(Colors.Muted);
+  end;
+  Canvas.Brush.Style := bsClear;
+  mText := ABox;
+  DrawText(Canvas.Handle, PChar(ATag), -1, mText, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
 end;
 
 procedure TDetailRender.Declaration;
@@ -568,24 +568,6 @@ begin
   end;
 end;
 
-procedure TDetailRender.BuildDoc;
-var
-  mExpanded: Boolean;
-begin
-  // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
-  if View.FDocWidth = 0 then
-  begin
-    mExpanded := TAtlasDocExpandState.Initial(View.FDetails.Display.Expand, TAtlasDocSurface.Details);
-  end
-  else
-  begin
-    mExpanded := View.FDoc.Expanded;
-  end;
-  View.FDoc.Build(Canvas, TAtlasDocContent.Create(View.FDocData, TAtlasDocSignature.Parse(View.FDetails.Declaration),
-    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
-  View.FDocWidth := Right - Left;
-end;
-
 procedure TDetailRender.Doc(ATop: Integer);
 var
   mFixed: Integer;
@@ -633,6 +615,24 @@ begin
     View.FDoc.Paint(Canvas, Colors, Left, Y);
   end;
   Inc(Y, View.FDoc.Height);
+end;
+
+procedure TDetailRender.BuildDoc;
+var
+  mExpanded: Boolean;
+begin
+  // Neue Details: Zustand nach Einstellung; nur andere Breite: Zustand bleibt.
+  if View.FDocWidth = 0 then
+  begin
+    mExpanded := TAtlasDocExpandState.Initial(View.FDetails.Display.Expand, TAtlasDocSurface.Details);
+  end
+  else
+  begin
+    mExpanded := View.FDoc.Expanded;
+  end;
+  View.FDoc.Build(Canvas, TAtlasDocContent.Create(View.FDocData, TAtlasDocSignature.Parse(View.FDetails.Declaration),
+    mExpanded), Right - Left, TAtlasDocFonts.Create(Font, UIFont, PPI), TAtlasStrings.DocLabels);
+  View.FDocWidth := Right - Left;
 end;
 
 { TAtlasDetailSurface }

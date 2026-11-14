@@ -180,40 +180,6 @@ end;
 
 { TAtlasStackFrames }
 
-class function TAtlasStackFrames.Symbolize(const AFrame: string; const AMap: TMapFile;
-  const AMapModule: string): string;
-var
-  mPlus: Integer;
-  mOffset: Int64;
-  mLocation: TMapLocation;
-  mHex: string;
-begin
-  Result := AFrame;
-  if (AMap = nil) or (AMapModule = '') then
-  begin
-    Exit;
-  end;
-  mPlus := Pos('+', AFrame);
-  if (mPlus = 0) or not SameText(Copy(AFrame, 1, mPlus - 1), AMapModule) then
-  begin
-    Exit;
-  end;
-  mHex := Copy(AFrame, mPlus + 1, MaxInt);
-  if mHex.StartsWith('$') then
-  begin
-    mHex := Copy(mHex, 2, MaxInt);
-  end;
-  if not TryStrToInt64('$' + mHex, mOffset) then
-  begin
-    Exit;
-  end;
-  mLocation := AMap.Resolve(UInt64(mOffset));
-  if mLocation.Found then
-  begin
-    Result := AFrame + ' ' + mLocation.ToString;
-  end;
-end;
-
 class function TAtlasStackFrames.Describe(const AAddresses: TArray<UInt64>;
   const AModules: TArray<TAtlasModuleRange>; const AMap: TMapFile; const AMapModule: string; AMax: Integer): string;
 var
@@ -245,6 +211,40 @@ begin
     end;
     Result := Result + mFrame;
     Inc(mLines);
+  end;
+end;
+
+class function TAtlasStackFrames.Symbolize(const AFrame: string; const AMap: TMapFile;
+  const AMapModule: string): string;
+var
+  mPlus: Integer;
+  mOffset: Int64;
+  mLocation: TMapLocation;
+  mHex: string;
+begin
+  Result := AFrame;
+  if (AMap = nil) or (AMapModule = '') then
+  begin
+    Exit;
+  end;
+  mPlus := Pos('+', AFrame);
+  if (mPlus = 0) or not SameText(Copy(AFrame, 1, mPlus - 1), AMapModule) then
+  begin
+    Exit;
+  end;
+  mHex := Copy(AFrame, mPlus + 1, MaxInt);
+  if mHex.StartsWith('$') then
+  begin
+    mHex := Copy(mHex, 2, MaxInt);
+  end;
+  if not TryStrToInt64('$' + mHex, mOffset) then
+  begin
+    Exit;
+  end;
+  mLocation := AMap.Resolve(UInt64(mOffset));
+  if mLocation.Found then
+  begin
+    Result := AFrame + ' ' + mLocation.ToString;
   end;
 end;
 

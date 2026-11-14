@@ -264,24 +264,20 @@ begin
   Result := TPath.Combine(FolderOf(ARoot), Format('server-%d.json', [APid]));
 end;
 
-class function TServerStatusFile.Matches(const AWorkspaceRoots: TArray<string>; const AFolder: string): Boolean;
+class procedure TServerStatusFile.Write(const ARoot: string; APid: Cardinal; const AWorkspaceRoots: TArray<string>;
+  const AStatus: TJSONObject; ANow: TDateTime);
 var
-  mRoot, mFolder, mWanted: string;
+  mEntry: TServerStatusEntry;
 begin
-  mWanted := NormalFolder(AFolder);
-  for mRoot in AWorkspaceRoots do
+  if AStatus = nil then
   begin
-    mFolder := NormalFolder(mRoot);
-    if (mFolder = '/') or (mWanted = '/') then
-    begin
-      Continue;
-    end;
-    if mWanted.StartsWith(mFolder) or mFolder.StartsWith(mWanted) then
-    begin
-      Exit(True);
-    end;
+    Exit;
   end;
-  Result := False;
+  mEntry := Default(TServerStatusEntry);
+  mEntry.Pid := APid;
+  mEntry.Roots := AWorkspaceRoots;
+  mEntry.Kind := TServerStatusEntry.cKindLsp;
+  TServerStatusFile.Write(ARoot, mEntry, AStatus, ANow);
 end;
 
 /// <summary>Inhalt der Datei; '' wenn sie fehlt oder gerade ersetzt wird.</summary>
@@ -394,25 +390,29 @@ begin
   end;
 end;
 
-class procedure TServerStatusFile.Write(const ARoot: string; APid: Cardinal; const AWorkspaceRoots: TArray<string>;
-  const AStatus: TJSONObject; ANow: TDateTime);
-var
-  mEntry: TServerStatusEntry;
-begin
-  if AStatus = nil then
-  begin
-    Exit;
-  end;
-  mEntry := Default(TServerStatusEntry);
-  mEntry.Pid := APid;
-  mEntry.Roots := AWorkspaceRoots;
-  mEntry.Kind := TServerStatusEntry.cKindLsp;
-  TServerStatusFile.Write(ARoot, mEntry, AStatus, ANow);
-end;
-
 class procedure TServerStatusFile.Delete(const ARoot: string; APid: Cardinal);
 begin
   DeleteQuietly(FileFor(ARoot, APid));
+end;
+
+class function TServerStatusFile.Matches(const AWorkspaceRoots: TArray<string>; const AFolder: string): Boolean;
+var
+  mRoot, mFolder, mWanted: string;
+begin
+  mWanted := NormalFolder(AFolder);
+  for mRoot in AWorkspaceRoots do
+  begin
+    mFolder := NormalFolder(mRoot);
+    if (mFolder = '/') or (mWanted = '/') then
+    begin
+      Continue;
+    end;
+    if mWanted.StartsWith(mFolder) or mFolder.StartsWith(mWanted) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TServerStatusFile.Find(const ARoot, AFolder: string; ANow: TDateTime; out AStatus: string;

@@ -102,6 +102,8 @@ begin
   Result := AError = '';
 end;
 
+{ TAtlasHttpVersionSource }
+
 function TAtlasHttpVersionSource.Fetch(const AUrl: string; ATimeoutMs: Integer; out AText,
   AError: string): Boolean;
 var

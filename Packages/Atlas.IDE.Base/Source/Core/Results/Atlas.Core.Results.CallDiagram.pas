@@ -232,54 +232,19 @@ begin
   FProjectOnly := True;
 end;
 
-class function TAtlasCallDiagram.KeyOf(const AItem: TAtlasHierarchyItem): string;
+function TAtlasCallDiagram.GetNode(AIndex: Integer): TAtlasCallNode;
 begin
-  Result := UpperCase(AItem.FileName) + '|' + IntToStr(AItem.Line) + '|' + IntToStr(AItem.Character) + '|' +
-    UpperCase(AItem.Name);
+  Result := FNodes[AIndex];
 end;
 
-class function TAtlasCallDiagram.Title(const AItem: TAtlasHierarchyItem): string;
-var
-  mContainer: string;
-  mSeparator: Integer;
+function TAtlasCallDiagram.GetCount: Integer;
 begin
-  // Detail des Servers: "TKunde · Kunden", "TKunde" oder nur die Unit.
-  mContainer := AItem.Detail;
-  mSeparator := Pos(' · ', mContainer);
-  if mSeparator > 0 then
-  begin
-    mContainer := Copy(mContainer, 1, mSeparator - 1);
-  end
-  else if SameText(mContainer, ChangeFileExt(ExtractFileName(AItem.FileName), '')) then
-  begin
-    mContainer := '';
-  end;
-  if mContainer <> '' then
-  begin
-    Result := mContainer + '.' + AItem.Name;
-  end
-  else
-  begin
-    Result := AItem.Name;
-  end;
+  Result := Length(FNodes);
 end;
 
-class function TAtlasCallDiagram.Location(const AItem: TAtlasHierarchyItem): string;
+procedure TAtlasCallDiagram.SetProjectOnly(AValue: Boolean);
 begin
-  Result := '';
-  if AItem.FileName <> '' then
-  begin
-    Result := ExtractFileName(AItem.FileName) + ':' + IntToStr(AItem.Line + 1);
-  end;
-end;
-
-function TAtlasCallDiagram.IsLibrary(const AItem: TAtlasHierarchyItem): Boolean;
-begin
-  if AItem.FileName = '' then
-  begin
-    Exit(True);
-  end;
-  Result := Assigned(FIsProjectFile) and not FIsProjectFile(AItem.FileName);
+  FProjectOnly := AValue;
 end;
 
 function TAtlasCallDiagram.NewNode(const AItem: TAtlasHierarchyItem; AParent: Integer): Integer;
@@ -299,19 +264,13 @@ begin
   FNodes := FNodes + [mNode];
 end;
 
-function TAtlasCallDiagram.GetNode(AIndex: Integer): TAtlasCallNode;
+function TAtlasCallDiagram.IsLibrary(const AItem: TAtlasHierarchyItem): Boolean;
 begin
-  Result := FNodes[AIndex];
-end;
-
-function TAtlasCallDiagram.GetCount: Integer;
-begin
-  Result := Length(FNodes);
-end;
-
-procedure TAtlasCallDiagram.SetProjectOnly(AValue: Boolean);
-begin
-  FProjectOnly := AValue;
+  if AItem.FileName = '' then
+  begin
+    Exit(True);
+  end;
+  Result := Assigned(FIsProjectFile) and not FIsProjectFile(AItem.FileName);
 end;
 
 procedure TAtlasCallDiagram.Reset(ADirection: TAtlasHierarchyDirection; const ARoots: TArray<TAtlasHierarchyItem>);
@@ -642,6 +601,47 @@ begin
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
+  end;
+end;
+
+class function TAtlasCallDiagram.KeyOf(const AItem: TAtlasHierarchyItem): string;
+begin
+  Result := UpperCase(AItem.FileName) + '|' + IntToStr(AItem.Line) + '|' + IntToStr(AItem.Character) + '|' +
+    UpperCase(AItem.Name);
+end;
+
+class function TAtlasCallDiagram.Title(const AItem: TAtlasHierarchyItem): string;
+var
+  mContainer: string;
+  mSeparator: Integer;
+begin
+  // Detail des Servers: "TKunde · Kunden", "TKunde" oder nur die Unit.
+  mContainer := AItem.Detail;
+  mSeparator := Pos(' · ', mContainer);
+  if mSeparator > 0 then
+  begin
+    mContainer := Copy(mContainer, 1, mSeparator - 1);
+  end
+  else if SameText(mContainer, ChangeFileExt(ExtractFileName(AItem.FileName), '')) then
+  begin
+    mContainer := '';
+  end;
+  if mContainer <> '' then
+  begin
+    Result := mContainer + '.' + AItem.Name;
+  end
+  else
+  begin
+    Result := AItem.Name;
+  end;
+end;
+
+class function TAtlasCallDiagram.Location(const AItem: TAtlasHierarchyItem): string;
+begin
+  Result := '';
+  if AItem.FileName <> '' then
+  begin
+    Result := ExtractFileName(AItem.FileName) + ':' + IntToStr(AItem.Line + 1);
   end;
 end;
 

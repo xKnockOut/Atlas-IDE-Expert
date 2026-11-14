@@ -177,6 +177,8 @@ begin
   end;
 end;
 
+{ TShellSlash }
+
 constructor TShellSlash.Create(const AServices: TShellSlashServices);
 var
   mHost: TShellSlashHost;
@@ -267,33 +269,6 @@ begin
   Result := ATarget.Reason = '';
 end;
 
-function TShellSlash.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
-var
-  mContext: TRuleCheckContext;
-  mTree: TSyntaxTree;
-  mFinding: TRuleFinding;
-begin
-  AIds := nil;
-  Result := FServices.RuleContextFor(AUri, mContext);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    for mFinding in TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mContext) do
-    begin
-      if (mFinding.Range.StartPos.Line = ALine) and not SameText(mFinding.RuleId, 'slash-command') and
-        not MatchText(mFinding.RuleId, AIds) then
-      begin
-        AIds := AIds + [mFinding.RuleId];
-      end;
-    end;
-  finally
-    mTree.Free;
-  end;
-end;
-
 function TShellSlash.FindingsAt(const AUri, AText: string; ALine: Integer;
   out AFindings: TArray<TSlashFinding>): Boolean;
 var
@@ -334,6 +309,33 @@ begin
         mItem.SafeFix := mAction.Edits;
       end;
       AFindings := AFindings + [mItem];
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+function TShellSlash.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+var
+  mContext: TRuleCheckContext;
+  mTree: TSyntaxTree;
+  mFinding: TRuleFinding;
+begin
+  AIds := nil;
+  Result := FServices.RuleContextFor(AUri, mContext);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    for mFinding in TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mContext) do
+    begin
+      if (mFinding.Range.StartPos.Line = ALine) and not SameText(mFinding.RuleId, 'slash-command') and
+        not MatchText(mFinding.RuleId, AIds) then
+      begin
+        AIds := AIds + [mFinding.RuleId];
+      end;
     end;
   finally
     mTree.Free;

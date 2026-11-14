@@ -176,6 +176,8 @@ begin
   end;
 end;
 
+{ TShellFolders }
+
 constructor TShellFolders.Create(const AServices: TShellFoldersServices);
 begin
   inherited Create;
@@ -187,11 +189,6 @@ destructor TShellFolders.Destroy;
 begin
   FreeAndNil(FScheduler);
   inherited Destroy;
-end;
-
-function TShellFolders.EnsureUnitFunc: TEnsureUnitFunc;
-begin
-  Result := EnsureUnit;
 end;
 
 function TShellFolders.ProjectsOf(const AFolder: TWorkspaceFolder): TArray<string>;
@@ -215,26 +212,6 @@ begin
   if mGroupFile <> '' then
   begin
     Result := TShellBootstrap.LoadGroup(mGroupFile, FServices.Logger);
-  end;
-end;
-
-procedure TShellFolders.Add(const AFolder: TWorkspaceFolder);
-var
-  mProjects: TArray<string>;
-  mIndex: Integer;
-  mHasOthers: Boolean;
-begin
-  mProjects := ProjectsOf(AFolder);
-  if Length(mProjects) = 0 then
-  begin
-    AddProject(AFolder.Path, AFolder.Name, '', AFolder.Key, False);
-    Exit;
-  end;
-  mHasOthers := FServices.Workspaces.AddGroupProjects(mProjects);
-  for mIndex := 0 to High(mProjects) do
-  begin
-    AddProject(ExtractFileDir(mProjects[mIndex]), ChangeFileExt(ExtractFileName(mProjects[mIndex]), ''),
-      mProjects[mIndex], AFolder.Key, mHasOthers or (mIndex > 0));
   end;
 end;
 
@@ -346,6 +323,22 @@ begin
   end;
 end;
 
+procedure TShellFolders.RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
+var
+  mIndex: ISymbolIndex;
+  mUnit: TUnitIndex;
+begin
+  // Geteilte Bibliotheks-Units bleiben.
+  mIndex := FServices.Index();
+  for mUnit in mIndex.Units do
+  begin
+    if not mUnit.Library_ and OwnedByAny(ARemoved, mUnit.FileName) and not OwnedByAny(ARemaining, mUnit.FileName) then
+    begin
+      mIndex.RemoveFile(mUnit.FileName);
+    end;
+  end;
+end;
+
 function TShellFolders.ConfigurationExtraIssues(const ASettings: TServerSettings): TArray<TConfigurationIssue>;
 var
   mIndex: ISymbolIndex;
@@ -369,6 +362,26 @@ begin
   if Result then
   begin
     AData := TEncoding.UTF8.GetBytes(mText);
+  end;
+end;
+
+procedure TShellFolders.Add(const AFolder: TWorkspaceFolder);
+var
+  mProjects: TArray<string>;
+  mIndex: Integer;
+  mHasOthers: Boolean;
+begin
+  mProjects := ProjectsOf(AFolder);
+  if Length(mProjects) = 0 then
+  begin
+    AddProject(AFolder.Path, AFolder.Name, '', AFolder.Key, False);
+    Exit;
+  end;
+  mHasOthers := FServices.Workspaces.AddGroupProjects(mProjects);
+  for mIndex := 0 to High(mProjects) do
+  begin
+    AddProject(ExtractFileDir(mProjects[mIndex]), ChangeFileExt(ExtractFileName(mProjects[mIndex]), ''),
+      mProjects[mIndex], AFolder.Key, mHasOthers or (mIndex > 0));
   end;
 end;
 
@@ -397,22 +410,6 @@ begin
   end;
   FServices.Configuration.UpdateWatchedFiles;
   FServices.ProjectLoaded();
-end;
-
-procedure TShellFolders.RemoveOwnedUnits(const ARemoved, ARemaining: TArray<TShellWorkspace>);
-var
-  mIndex: ISymbolIndex;
-  mUnit: TUnitIndex;
-begin
-  // Geteilte Bibliotheks-Units bleiben.
-  mIndex := FServices.Index();
-  for mUnit in mIndex.Units do
-  begin
-    if not mUnit.Library_ and OwnedByAny(ARemoved, mUnit.FileName) and not OwnedByAny(ARemaining, mUnit.FileName) then
-    begin
-      mIndex.RemoveFile(mUnit.FileName);
-    end;
-  end;
 end;
 
 procedure TShellFolders.Derive(const AFileName: string);
@@ -466,6 +463,11 @@ begin
   finally
     FServices.Workspaces.Release(mTargets);
   end;
+end;
+
+function TShellFolders.EnsureUnitFunc: TEnsureUnitFunc;
+begin
+  Result := EnsureUnit;
 end;
 
 end.

@@ -149,6 +149,8 @@ begin
     (AStatement.Parent.Kind = TSyntaxKind.Block);
 end;
 
+{ TStringListUnsortedRule }
+
 function TStringListUnsortedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('stringlist-unsorted', TRuleSeverity.Warning,
@@ -652,6 +654,8 @@ begin
     end;
   end;
 end;
+
+{ TDictionaryGetWithoutCheckRule }
 
 function TDictionaryGetWithoutCheckRule.Descriptor: TRuleDescriptor;
 begin

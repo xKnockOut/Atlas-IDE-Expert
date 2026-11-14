@@ -73,6 +73,8 @@ const
   cMinShareLow = 50;
   cMinShareHigh = 100;
 
+{ TLspLearnedSuggestions }
+
 class procedure TLspLearnedSuggestions.ReadOptions(const AValue: TJSONValue; var AOptions: TLearnedOptions);
 var
   mObject, mAdjust: TJSONObject;

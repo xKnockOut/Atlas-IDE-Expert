@@ -408,24 +408,9 @@ begin
 end;
 
 
-function TAtlasCallDiagramView.BoxRect(ABox: Integer): TRect;
-var
-  mLeft, mTop: Double;
-begin
-  mLeft := FView.ScreenX(TAtlasCallView.BoxX(FLayout.Boxes[ABox]));
-  mTop := FView.ScreenY(TAtlasCallView.BoxY(FLayout.Boxes[ABox]));
-  Result := Rect(Px(mLeft), Px(mTop), Px(mLeft + TAtlasCallView.cBoxWidth * FView.Scale),
-    Px(mTop + TAtlasCallView.cBoxHeight * FView.Scale));
-end;
-
 function TAtlasCallDiagramView.GetProjectOnly: Boolean;
 begin
   Result := FDiagram.ProjectOnly;
-end;
-
-procedure TAtlasCallDiagramView.SetIsProjectFile(const AValue: TFunc<string, Boolean>);
-begin
-  FDiagram.IsProjectFile := AValue;
 end;
 
 procedure TAtlasCallDiagramView.SetProjectOnly(AValue: Boolean);
@@ -438,102 +423,14 @@ begin
   Relayout;
 end;
 
-procedure TAtlasCallDiagramView.Relayout;
+procedure TAtlasCallDiagramView.SetIsProjectFile(const AValue: TFunc<string, Boolean>);
 begin
-  FLayout := FDiagram.Layout;
-  FHintBox := -1;
-  Invalidate;
+  FDiagram.IsProjectFile := AValue;
 end;
 
-procedure TAtlasCallDiagramView.ShowRoots(ADirection: TAtlasHierarchyDirection;
-  const ARoots: TArray<TAtlasHierarchyItem>);
+procedure TAtlasCallDiagramView.Paint;
 begin
-  FDiagram.Reset(ADirection, ARoots);
-  FSelected := -1;
-  if FDiagram.Count > 0 then
-  begin
-    FSelected := 0;
-    ToggleNode(0);
-  end;
-  Relayout;
-  FFitted := False;
-  if (ClientWidth > 0) and (ClientHeight > 0) then
-  begin
-    FitView;
-  end;
-end;
-
-procedure TAtlasCallDiagramView.ToggleNode(ANode: Integer);
-var
-  mChildren: TArray<TAtlasHierarchyItem>;
-begin
-  if (ANode < 0) or (ANode >= FDiagram.Count) then
-  begin
-    Exit;
-  end;
-  if FDiagram.NeedsLoad(ANode) then
-  begin
-    mChildren := nil;
-    if Assigned(FHandlers.OnLoad) then
-    begin
-      Screen.Cursor := crHourGlass;
-      try
-        mChildren := FHandlers.OnLoad(FDiagram.Direction, FDiagram[ANode].Item);
-      finally
-        Screen.Cursor := crDefault;
-      end;
-    end;
-    FDiagram.SetChildren(ANode, mChildren);
-  end
-  else
-  begin
-    FDiagram.Toggle(ANode);
-  end;
-  Relayout;
-end;
-
-procedure TAtlasCallDiagramView.ClickBox(ABox: Integer);
-begin
-  if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
-  begin
-    FSelected := -1;
-    Invalidate;
-    Exit;
-  end;
-  if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
-  begin
-    FDiagram.ShowAll(FLayout.Boxes[ABox].Node);
-    Relayout;
-    Exit;
-  end;
-  FSelected := FLayout.Boxes[ABox].Node;
-  ToggleNode(FSelected);
-end;
-
-procedure TAtlasCallDiagramView.FitView;
-begin
-  FView.Fit(FLayout, ClientWidth, ClientHeight);
-  FFitted := Length(FLayout.Boxes) > 0;
-  Invalidate;
-end;
-
-procedure TAtlasCallDiagramView.ZoomBy(AFactor: Double);
-begin
-  FView.ZoomAt(AFactor, ClientWidth / 2, ClientHeight / 2);
-  Invalidate;
-end;
-
-function TAtlasCallDiagramView.Html(const ATitle: string): string;
-begin
-  Result := FDiagram.Html(ATitle);
-end;
-
-procedure TAtlasCallDiagramView.OpenSelected;
-begin
-  if (FSelected >= 0) and (FSelected < FDiagram.Count) and Assigned(FHandlers.OnOpen) then
-  begin
-    FHandlers.OnOpen(FDiagram[FSelected].Item);
-  end;
+  TCallPainter.Create(Self).Paint;
 end;
 
 procedure TAtlasCallDiagramView.Resize;
@@ -542,35 +439,6 @@ begin
   if not FFitted and (ClientWidth > 0) and (ClientHeight > 0) and (Length(FLayout.Boxes) > 0) then
   begin
     FitView;
-  end;
-end;
-
-procedure TAtlasCallDiagramView.Paint;
-begin
-  TCallPainter.Create(Self).Paint;
-end;
-
-function TAtlasCallDiagramView.BoxHint(ABox: Integer): string;
-var
-  mNode: TAtlasCallNode;
-begin
-  if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
-  begin
-    Exit(TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint));
-  end;
-  if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
-  begin
-    Exit(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramMore, [FLayout.Boxes[ABox].Hidden]));
-  end;
-  mNode := FDiagram[FLayout.Boxes[ABox].Node];
-  Result := TAtlasCallDiagram.Title(mNode.Item);
-  if mNode.Item.FileName <> '' then
-  begin
-    Result := Result + ' (' + TAtlasCallDiagram.Location(mNode.Item) + ')';
-  end;
-  if mNode.Item.Confidence.Explanation <> '' then
-  begin
-    Result := Result + sLineBreak + mNode.Item.Confidence.Explanation;
   end;
 end;
 
@@ -675,6 +543,138 @@ begin
     FView.ZoomAt(1 / 1.15, mLocal.X, mLocal.Y);
   end;
   Invalidate;
+end;
+
+function TAtlasCallDiagramView.BoxRect(ABox: Integer): TRect;
+var
+  mLeft, mTop: Double;
+begin
+  mLeft := FView.ScreenX(TAtlasCallView.BoxX(FLayout.Boxes[ABox]));
+  mTop := FView.ScreenY(TAtlasCallView.BoxY(FLayout.Boxes[ABox]));
+  Result := Rect(Px(mLeft), Px(mTop), Px(mLeft + TAtlasCallView.cBoxWidth * FView.Scale),
+    Px(mTop + TAtlasCallView.cBoxHeight * FView.Scale));
+end;
+
+procedure TAtlasCallDiagramView.Relayout;
+begin
+  FLayout := FDiagram.Layout;
+  FHintBox := -1;
+  Invalidate;
+end;
+
+function TAtlasCallDiagramView.BoxHint(ABox: Integer): string;
+var
+  mNode: TAtlasCallNode;
+begin
+  if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
+  begin
+    Exit(TAtlasResultsStrings.Text(TAtlasResultsTextId.CallDiagramHint));
+  end;
+  if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
+  begin
+    Exit(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.CallDiagramMore, [FLayout.Boxes[ABox].Hidden]));
+  end;
+  mNode := FDiagram[FLayout.Boxes[ABox].Node];
+  Result := TAtlasCallDiagram.Title(mNode.Item);
+  if mNode.Item.FileName <> '' then
+  begin
+    Result := Result + ' (' + TAtlasCallDiagram.Location(mNode.Item) + ')';
+  end;
+  if mNode.Item.Confidence.Explanation <> '' then
+  begin
+    Result := Result + sLineBreak + mNode.Item.Confidence.Explanation;
+  end;
+end;
+
+procedure TAtlasCallDiagramView.ShowRoots(ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>);
+begin
+  FDiagram.Reset(ADirection, ARoots);
+  FSelected := -1;
+  if FDiagram.Count > 0 then
+  begin
+    FSelected := 0;
+    ToggleNode(0);
+  end;
+  Relayout;
+  FFitted := False;
+  if (ClientWidth > 0) and (ClientHeight > 0) then
+  begin
+    FitView;
+  end;
+end;
+
+procedure TAtlasCallDiagramView.ToggleNode(ANode: Integer);
+var
+  mChildren: TArray<TAtlasHierarchyItem>;
+begin
+  if (ANode < 0) or (ANode >= FDiagram.Count) then
+  begin
+    Exit;
+  end;
+  if FDiagram.NeedsLoad(ANode) then
+  begin
+    mChildren := nil;
+    if Assigned(FHandlers.OnLoad) then
+    begin
+      Screen.Cursor := crHourGlass;
+      try
+        mChildren := FHandlers.OnLoad(FDiagram.Direction, FDiagram[ANode].Item);
+      finally
+        Screen.Cursor := crDefault;
+      end;
+    end;
+    FDiagram.SetChildren(ANode, mChildren);
+  end
+  else
+  begin
+    FDiagram.Toggle(ANode);
+  end;
+  Relayout;
+end;
+
+procedure TAtlasCallDiagramView.ClickBox(ABox: Integer);
+begin
+  if (ABox < 0) or (ABox > High(FLayout.Boxes)) then
+  begin
+    FSelected := -1;
+    Invalidate;
+    Exit;
+  end;
+  if FLayout.Boxes[ABox].Kind = TAtlasCallBoxKind.More then
+  begin
+    FDiagram.ShowAll(FLayout.Boxes[ABox].Node);
+    Relayout;
+    Exit;
+  end;
+  FSelected := FLayout.Boxes[ABox].Node;
+  ToggleNode(FSelected);
+end;
+
+procedure TAtlasCallDiagramView.FitView;
+begin
+  FView.Fit(FLayout, ClientWidth, ClientHeight);
+  FFitted := Length(FLayout.Boxes) > 0;
+  Invalidate;
+end;
+
+procedure TAtlasCallDiagramView.OpenSelected;
+begin
+  if (FSelected >= 0) and (FSelected < FDiagram.Count) and Assigned(FHandlers.OnOpen) then
+  begin
+    FHandlers.OnOpen(FDiagram[FSelected].Item);
+  end;
+end;
+
+procedure TAtlasCallDiagramView.ZoomBy(AFactor: Double);
+begin
+  FView.ZoomAt(AFactor, ClientWidth / 2, ClientHeight / 2);
+  Invalidate;
+end;
+
+function TAtlasCallDiagramView.Html(const ATitle: string): string;
+begin
+  Result := FDiagram.Html(ATitle);
 end;
 
 end.

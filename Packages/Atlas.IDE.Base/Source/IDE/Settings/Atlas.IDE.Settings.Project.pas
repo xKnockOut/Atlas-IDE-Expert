@@ -150,85 +150,6 @@ begin
   Result := TAtlasSettingsFiles.GlobalFile(GetEnvironmentVariable('APPDATA'));
 end;
 
-class function TAtlasProjectSettings.ReadText(const AFileName: string; out AHasBom: Boolean): string;
-var
-  mContent: TAtlasTextFileContent;
-begin
-  Result := '';
-  AHasBom := False;
-  if (AFileName = '') or not TFile.Exists(AFileName) then
-  begin
-    Exit;
-  end;
-  mContent := TAtlasTextFile.Load(AFileName);
-  AHasBom := mContent.Encoding = TAtlasTextEncoding.Utf8Bom;
-  Result := mContent.Text;
-end;
-
-class function TAtlasProjectSettings.ReadProject: TJSONObject;
-var
-  mHasBom: Boolean;
-begin
-  Result := TAtlasJsonText.Parse(ReadText(SettingsFile, mHasBom));
-end;
-
-class function TAtlasProjectSettings.WriteValue(const APath, AJson: string): Boolean;
-var
-  mFileName, mNewText: string;
-  mContent: TAtlasTextFileContent;
-begin
-  mFileName := SettingsFile;
-  Result := mFileName <> '';
-  if not Result then
-  begin
-    Exit;
-  end;
-  mContent := LoadContent(mFileName);
-  mNewText := TAtlasJsonText.SetValue(mContent.Text, APath, AJson);
-  if mNewText = mContent.Text then
-  begin
-    Exit;
-  end;
-  mContent.Text := mNewText;
-  TAtlasTextFile.Save(mFileName, mContent);
-end;
-
-/// <summary>Versionsnummern unter Software\Embarcadero\BDS des Zweigs ARoot an AVersions anhängen.</summary>
-procedure AddInstalledVersions(ARoot: HKEY; var AVersions: TArray<string>);
-var
-  mRegistry: TRegistry;
-  mKeys: TStringList;
-  mKey: string;
-begin
-  mKeys := TStringList.Create;
-  mRegistry := TRegistry.Create(KEY_READ);
-  try
-    mRegistry.RootKey := ARoot;
-    if not mRegistry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
-    begin
-      Exit;
-    end;
-    mRegistry.GetKeyNames(mKeys);
-    for mKey in mKeys do
-    begin
-      if (mKey <> '') and CharInSet(mKey[1], ['0'..'9']) then
-      begin
-        AVersions := AVersions + [mKey];
-      end;
-    end;
-  finally
-    mRegistry.Free;
-    mKeys.Free;
-  end;
-end;
-
-class function TAtlasProjectSettings.InstalledVersions: TArray<string>;
-begin
-  Result := nil;
-  AddInstalledVersions(HKEY_CURRENT_USER, Result);
-  AddInstalledVersions(HKEY_LOCAL_MACHINE, Result);
-end;
-
 class procedure TAtlasProjectSettings.Execute;
 var
   mFileName: string;
@@ -274,6 +195,85 @@ begin
   end;
 end;
 
+/// <summary>Versionsnummern unter Software\Embarcadero\BDS des Zweigs ARoot an AVersions anhängen.</summary>
+procedure AddInstalledVersions(ARoot: HKEY; var AVersions: TArray<string>);
+var
+  mRegistry: TRegistry;
+  mKeys: TStringList;
+  mKey: string;
+begin
+  mKeys := TStringList.Create;
+  mRegistry := TRegistry.Create(KEY_READ);
+  try
+    mRegistry.RootKey := ARoot;
+    if not mRegistry.OpenKeyReadOnly('Software\Embarcadero\BDS') then
+    begin
+      Exit;
+    end;
+    mRegistry.GetKeyNames(mKeys);
+    for mKey in mKeys do
+    begin
+      if (mKey <> '') and CharInSet(mKey[1], ['0'..'9']) then
+      begin
+        AVersions := AVersions + [mKey];
+      end;
+    end;
+  finally
+    mRegistry.Free;
+    mKeys.Free;
+  end;
+end;
+
+class function TAtlasProjectSettings.ReadText(const AFileName: string; out AHasBom: Boolean): string;
+var
+  mContent: TAtlasTextFileContent;
+begin
+  Result := '';
+  AHasBom := False;
+  if (AFileName = '') or not TFile.Exists(AFileName) then
+  begin
+    Exit;
+  end;
+  mContent := TAtlasTextFile.Load(AFileName);
+  AHasBom := mContent.Encoding = TAtlasTextEncoding.Utf8Bom;
+  Result := mContent.Text;
+end;
+
+class function TAtlasProjectSettings.ReadProject: TJSONObject;
+var
+  mHasBom: Boolean;
+begin
+  Result := TAtlasJsonText.Parse(ReadText(SettingsFile, mHasBom));
+end;
+
+class function TAtlasProjectSettings.WriteValue(const APath, AJson: string): Boolean;
+var
+  mFileName, mNewText: string;
+  mContent: TAtlasTextFileContent;
+begin
+  mFileName := SettingsFile;
+  Result := mFileName <> '';
+  if not Result then
+  begin
+    Exit;
+  end;
+  mContent := LoadContent(mFileName);
+  mNewText := TAtlasJsonText.SetValue(mContent.Text, APath, AJson);
+  if mNewText = mContent.Text then
+  begin
+    Exit;
+  end;
+  mContent.Text := mNewText;
+  TAtlasTextFile.Save(mFileName, mContent);
+end;
+
+class function TAtlasProjectSettings.InstalledVersions: TArray<string>;
+begin
+  Result := nil;
+  AddInstalledVersions(HKEY_CURRENT_USER, Result);
+  AddInstalledVersions(HKEY_LOCAL_MACHINE, Result);
+end;
+
 type
   /// <summary>Ein Lauf des Dialogs über eine Einstellungsdatei: prüfen, zeigen, speichern, auf Wunsch im Editor
   /// öffnen.</summary>
@@ -311,6 +311,8 @@ type
     destructor Destroy; override;
     procedure Run;
   end;
+
+{ TAtlasSettingsFileEdit }
 
 constructor TAtlasSettingsFileEdit.Create(const AFileName: string; AGlobal: Boolean; const ARuleId: string);
 begin

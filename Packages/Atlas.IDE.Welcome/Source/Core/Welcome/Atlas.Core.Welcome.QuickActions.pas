@@ -460,18 +460,6 @@ begin
   Result := AVcs.Known and SameText(AVcs.Kind, 'svn');
 end;
 
-class function TAtlasWelcomeQuickActions.UsesIde(AAction: TAtlasQuickAction): Boolean;
-begin
-  Result := (AAction = TAtlasQuickAction.Build) or (AAction = TAtlasQuickAction.Tests) or
-    (AAction = TAtlasQuickAction.Run);
-end;
-
-class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
-  ABusy: Boolean): TAtlasQuickActionButtons;
-begin
-  Result := Buttons(AItems, AVcs, ABusy, False);
-end;
-
 class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
   ABusy: Boolean; AIdeBusy: Boolean): TAtlasQuickActionButtons;
 var
@@ -509,6 +497,18 @@ begin
     end;
     Result := Result + [mButton];
   end;
+end;
+
+class function TAtlasWelcomeQuickActions.Buttons(AItems: TAtlasQuickActions; const AVcs: TAtlasProjectVcs;
+  ABusy: Boolean): TAtlasQuickActionButtons;
+begin
+  Result := Buttons(AItems, AVcs, ABusy, False);
+end;
+
+class function TAtlasWelcomeQuickActions.UsesIde(AAction: TAtlasQuickAction): Boolean;
+begin
+  Result := (AAction = TAtlasQuickAction.Build) or (AAction = TAtlasQuickAction.Tests) or
+    (AAction = TAtlasQuickAction.Run);
 end;
 
 class function TAtlasWelcomeQuickActions.IndexOf(const AButtons: TAtlasQuickActionButtons;
@@ -697,40 +697,6 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeQuickActions.CombinePath(const AFolder, ARelative: string): string;
-var
-  mParts, mKept: TArray<string>;
-  mPart, mJoined: string;
-begin
-  mJoined := StringReplace(ARelative, '/', cDelimiter, [rfReplaceAll]);
-  // Absoluter Pfad (Laufwerk oder UNC) bleibt, sonst relativ zu AFolder.
-  if not ((Length(mJoined) > 1) and ((mJoined[2] = ':') or (Copy(mJoined, 1, 2) = '\\'))) then
-  begin
-    mJoined := StringReplace(AFolder, '/', cDelimiter, [rfReplaceAll]) + cDelimiter + mJoined;
-  end;
-  mKept := nil;
-  mParts := mJoined.Split([cDelimiter]);
-  for mPart in mParts do
-  begin
-    if (mPart = '.') or ((mPart = '') and (Length(mKept) > 0)) then
-    begin
-      Continue;
-    end;
-    if (mPart = '..') and (Length(mKept) > 1) and (mKept[High(mKept)] <> '..') then
-    begin
-      SetLength(mKept, Length(mKept) - 1);
-      Continue;
-    end;
-    mKept := mKept + [mPart];
-  end;
-  Result := string.Join(cDelimiter, mKept);
-  // UNC: zwei führende Trenner.
-  if Copy(mJoined, 1, 2) = '\\' then
-  begin
-    Result := cDelimiter + Result;
-  end;
-end;
-
 class function TAtlasWelcomeQuickActions.GroupProjects(const AText, AFolder: string): TArray<string>;
 var
   mPosition: Integer;
@@ -788,6 +754,20 @@ begin
       begin
         Result := Result + [mPath];
       end;
+    end;
+  end;
+end;
+
+class procedure TAtlasWelcomeQuickActions.AskExternals(var AButtons: TAtlasQuickActionButtons);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AButtons) do
+  begin
+    if (AButtons[mIndex].Action = TAtlasQuickAction.Pull) and AButtons[mIndex].Update then
+    begin
+      AButtons[mIndex].AskExternals := True;
+      AButtons[mIndex].HasMenu := True;
     end;
   end;
 end;
@@ -887,17 +867,37 @@ begin
   end;
 end;
 
-class procedure TAtlasWelcomeQuickActions.AskExternals(var AButtons: TAtlasQuickActionButtons);
+class function TAtlasWelcomeQuickActions.CombinePath(const AFolder, ARelative: string): string;
 var
-  mIndex: Integer;
+  mParts, mKept: TArray<string>;
+  mPart, mJoined: string;
 begin
-  for mIndex := 0 to High(AButtons) do
+  mJoined := StringReplace(ARelative, '/', cDelimiter, [rfReplaceAll]);
+  // Absoluter Pfad (Laufwerk oder UNC) bleibt, sonst relativ zu AFolder.
+  if not ((Length(mJoined) > 1) and ((mJoined[2] = ':') or (Copy(mJoined, 1, 2) = '\\'))) then
   begin
-    if (AButtons[mIndex].Action = TAtlasQuickAction.Pull) and AButtons[mIndex].Update then
+    mJoined := StringReplace(AFolder, '/', cDelimiter, [rfReplaceAll]) + cDelimiter + mJoined;
+  end;
+  mKept := nil;
+  mParts := mJoined.Split([cDelimiter]);
+  for mPart in mParts do
+  begin
+    if (mPart = '.') or ((mPart = '') and (Length(mKept) > 0)) then
     begin
-      AButtons[mIndex].AskExternals := True;
-      AButtons[mIndex].HasMenu := True;
+      Continue;
     end;
+    if (mPart = '..') and (Length(mKept) > 1) and (mKept[High(mKept)] <> '..') then
+    begin
+      SetLength(mKept, Length(mKept) - 1);
+      Continue;
+    end;
+    mKept := mKept + [mPart];
+  end;
+  Result := string.Join(cDelimiter, mKept);
+  // UNC: zwei führende Trenner.
+  if Copy(mJoined, 1, 2) = '\\' then
+  begin
+    Result := cDelimiter + Result;
   end;
 end;
 

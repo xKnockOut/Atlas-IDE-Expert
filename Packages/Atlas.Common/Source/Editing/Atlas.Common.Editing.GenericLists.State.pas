@@ -120,6 +120,28 @@ const
 
 { TGenericListTarget }
 
+function TGenericListTarget.Accepts(const ASymbol: TResolvedSymbol; AFileIndex: Integer;
+  const AName: string): Boolean;
+begin
+  if IsLocal then
+  begin
+    Result := AcceptsLocal(ASymbol);
+  end
+  else if IsField then
+  begin
+    Result := AcceptsField(ASymbol, AFileIndex, AName);
+  end
+  else
+  begin
+    Result := AcceptsGlobal(ASymbol, AFileIndex);
+  end;
+end;
+
+function TGenericListTarget.InScope(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (Scope <> nil) and (ANode.StartOffset >= Scope.StartOffset) and (ANode.EndOffset <= Scope.EndOffset);
+end;
+
 function TGenericListTarget.IsOwnUnit(const ASymbol: TResolvedSymbol; AFileIndex: Integer): Boolean;
 begin
   Result := (AFileIndex = 0) or SameText(ASymbol.UnitName, UnitName);
@@ -146,28 +168,6 @@ function TGenericListTarget.AcceptsGlobal(const ASymbol: TResolvedSymbol; AFileI
 begin
   Result := (ASymbol.SymbolKind = TIndexSymbolKind.Variable) and (ASymbol.Container = '') and
     IsOwnUnit(ASymbol, AFileIndex);
-end;
-
-function TGenericListTarget.Accepts(const ASymbol: TResolvedSymbol; AFileIndex: Integer;
-  const AName: string): Boolean;
-begin
-  if IsLocal then
-  begin
-    Result := AcceptsLocal(ASymbol);
-  end
-  else if IsField then
-  begin
-    Result := AcceptsField(ASymbol, AFileIndex, AName);
-  end
-  else
-  begin
-    Result := AcceptsGlobal(ASymbol, AFileIndex);
-  end;
-end;
-
-function TGenericListTarget.InScope(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (Scope <> nil) and (ANode.StartOffset >= Scope.StartOffset) and (ANode.EndOffset <= Scope.EndOffset);
 end;
 
 { TGenericListState }
@@ -253,6 +253,18 @@ begin
   end;
 end;
 
+function TGenericListState.IsTypeCast(ASource: TGenericListSource; ACall: TSyntaxNode;
+  out ATypeText: string): Boolean;
+begin
+  ATypeText := '';
+  Result := TGenericListSyntax.IsSingleArgumentCall(ACall) and TGenericListSyntax.IsPlainName(ACall[0]) and
+    IsTypeName(ASource, ACall[0]);
+  if Result then
+  begin
+    ATypeText := ASource.NodeText(ACall[0]);
+  end;
+end;
+
 function TGenericListState.IsTypeName(ASource: TGenericListSource; ACallee: TSyntaxNode): Boolean;
 var
   mSymbol, mSymbolType: TResolvedSymbol;
@@ -272,18 +284,6 @@ begin
   begin
     // Nicht auflösbar (Typ aus einer Unit außerhalb des Index): Delphi-Konvention T… bzw. P… für Typen.
     Result := (Length(mName) >= 2) and CharInSet(mName[1], ['T', 'P']) and CharInSet(mName[2], ['A'..'Z']);
-  end;
-end;
-
-function TGenericListState.IsTypeCast(ASource: TGenericListSource; ACall: TSyntaxNode;
-  out ATypeText: string): Boolean;
-begin
-  ATypeText := '';
-  Result := TGenericListSyntax.IsSingleArgumentCall(ACall) and TGenericListSyntax.IsPlainName(ACall[0]) and
-    IsTypeName(ASource, ACall[0]);
-  if Result then
-  begin
-    ATypeText := ASource.NodeText(ACall[0]);
   end;
 end;
 

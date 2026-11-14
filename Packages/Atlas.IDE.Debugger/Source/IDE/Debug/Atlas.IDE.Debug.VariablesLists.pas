@@ -125,6 +125,25 @@ begin
   Result := FLists[ATab];
 end;
 
+procedure TAtlasIdeVariablesLists.Put(ATab: TAtlasVariablesTab; const AKey, AText: string; AOk: Boolean);
+var
+  mNode: TAtlasEvalNode;
+  mText: string;
+begin
+  // Über den Schlüssel: Der Knoten kann seit dem Start der Auswertung weg sein.
+  mNode := FLists[ATab].Find(AKey);
+  if mNode = nil then
+  begin
+    Exit;
+  end;
+  mText := AText;
+  if not AOk and (mText = '') then
+  begin
+    mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout);
+  end;
+  FLists[ATab].SetResult(mNode, AOk, mText);
+end;
+
 procedure TAtlasIdeVariablesLists.BeginStop;
 var
   mTab: TAtlasVariablesTab;
@@ -157,37 +176,32 @@ begin
   Result := FValues.Busy;
 end;
 
-function TAtlasIdeVariablesLists.HasPending: Boolean;
+function TAtlasIdeVariablesLists.Slice(AFirst: TAtlasVariablesTab; const AFileName: string; ALine: Integer;
+  out AChanged: Boolean): TAtlasVariablesStep;
 var
+  mStartedAt: UInt64;
   mTab: TAtlasVariablesTab;
+  mNode: TAtlasEvalNode;
 begin
-  Result := False;
-  for mTab := Low(TAtlasVariablesTab) to High(TAtlasVariablesTab) do
+  AChanged := False;
+  mStartedAt := TAtlasTicks.Now;
+  for mTab in TabOrder(AFirst) do
   begin
-    if Length(FLists[mTab].Pending) > 0 then
+    for mNode in FLists[mTab].Pending do
     begin
-      Exit(True);
+      if TAtlasTicks.Since(mStartedAt) >= cSliceMs then
+      begin
+        Exit(TAtlasVariablesStep.More);
+      end;
+      Result := EvaluateOne(mTab, mNode, AFileName, ALine);
+      if Result <> TAtlasVariablesStep.Done then
+      begin
+        Exit;
+      end;
+      AChanged := True;
     end;
   end;
-end;
-
-procedure TAtlasIdeVariablesLists.Put(ATab: TAtlasVariablesTab; const AKey, AText: string; AOk: Boolean);
-var
-  mNode: TAtlasEvalNode;
-  mText: string;
-begin
-  // Über den Schlüssel: Der Knoten kann seit dem Start der Auswertung weg sein.
-  mNode := FLists[ATab].Find(AKey);
-  if mNode = nil then
-  begin
-    Exit;
-  end;
-  mText := AText;
-  if not AOk and (mText = '') then
-  begin
-    mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout);
-  end;
-  FLists[ATab].SetResult(mNode, AOk, mText);
+  Result := TAtlasVariablesStep.Done;
 end;
 
 /// <summary>Rückruf einer Auswertung an ALists, eigene Routine: fängt nur, was sie braucht.</summary>
@@ -231,32 +245,18 @@ begin
   end;
 end;
 
-function TAtlasIdeVariablesLists.Slice(AFirst: TAtlasVariablesTab; const AFileName: string; ALine: Integer;
-  out AChanged: Boolean): TAtlasVariablesStep;
+function TAtlasIdeVariablesLists.HasPending: Boolean;
 var
-  mStartedAt: UInt64;
   mTab: TAtlasVariablesTab;
-  mNode: TAtlasEvalNode;
 begin
-  AChanged := False;
-  mStartedAt := TAtlasTicks.Now;
-  for mTab in TabOrder(AFirst) do
+  Result := False;
+  for mTab := Low(TAtlasVariablesTab) to High(TAtlasVariablesTab) do
   begin
-    for mNode in FLists[mTab].Pending do
+    if Length(FLists[mTab].Pending) > 0 then
     begin
-      if TAtlasTicks.Since(mStartedAt) >= cSliceMs then
-      begin
-        Exit(TAtlasVariablesStep.More);
-      end;
-      Result := EvaluateOne(mTab, mNode, AFileName, ALine);
-      if Result <> TAtlasVariablesStep.Done then
-      begin
-        Exit;
-      end;
-      AChanged := True;
+      Exit(True);
     end;
   end;
-  Result := TAtlasVariablesStep.Done;
 end;
 
 end.

@@ -160,18 +160,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeIssueComments.Stop;
-begin
-  FHooks := Default(TAtlasIssueCommentHooks);
-  FRefresh := nil;
-end;
-
-procedure TAtlasIdeIssueComments.Unbind;
-begin
-  FBoundKey := '';
-  FBoundActive := False;
-end;
-
 procedure TAtlasIdeIssueComments.UpdateWrite;
 var
   mFrame: TAtlasIssueFrame;
@@ -188,6 +176,12 @@ begin
   mFrame.SetFlag(TAtlasIssueFlag.CanEnd, mWrite and Assigned(FHooks.IsActive) and
     FHooks.IsActive(FContext.Current.Key));
   BindComment(Self, mFrame, mWrite);
+end;
+
+procedure TAtlasIdeIssueComments.Unbind;
+begin
+  FBoundKey := '';
+  FBoundActive := False;
 end;
 
 procedure TAtlasIdeIssueComments.Send(const AText: string);
@@ -216,6 +210,12 @@ begin
         CommentSent(mOwner, mTarget, mKey, AResult);
       end;
     end);
+end;
+
+procedure TAtlasIdeIssueComments.Stop;
+begin
+  FHooks := Default(TAtlasIssueCommentHooks);
+  FRefresh := nil;
 end;
 
 end.

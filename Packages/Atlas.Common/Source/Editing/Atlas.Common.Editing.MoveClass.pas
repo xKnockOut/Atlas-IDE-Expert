@@ -1083,6 +1083,8 @@ type
     function ParseIssue: string;
   end;
 
+{ TMovePlanning }
+
 class function TMovePlanning.Create(const ASource: TMoveClassSource; const ALookup: TMoveClassLookup): TMovePlanning;
 begin
   Result := Default(TMovePlanning);

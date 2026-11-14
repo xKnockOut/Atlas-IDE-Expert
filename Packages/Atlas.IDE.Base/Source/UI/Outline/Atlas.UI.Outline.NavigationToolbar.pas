@@ -88,6 +88,15 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasNavigationToolbar.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (FPanels <> nil) and (AComponent is TWinControl) then
+  begin
+    FPanels.Remove(TWinControl(AComponent));
+  end;
+end;
+
 class function TAtlasNavigationToolbar.Find(AParent: TWinControl): TWinControl;
 
   function Search(AControl: TWinControl; ADepth: Integer): TWinControl;
@@ -130,11 +139,6 @@ end;
 class function TAtlasNavigationToolbar.IsHidden(AToolbar: TControl): Boolean;
 begin
   Result := (AToolbar <> nil) and (AToolbar.Parent is TToolbarHolder);
-end;
-
-function TAtlasNavigationToolbar.HiddenCount: Integer;
-begin
-  Result := FPanels.Count;
 end;
 
 /// <summary>Fenster von AControl und allen Kindern jetzt im aufrufenden (Haupt-)Thread anlegen.</summary>
@@ -220,13 +224,9 @@ begin
   end;
 end;
 
-procedure TAtlasNavigationToolbar.Notification(AComponent: TComponent; Operation: TOperation);
+function TAtlasNavigationToolbar.HiddenCount: Integer;
 begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (FPanels <> nil) and (AComponent is TWinControl) then
-  begin
-    FPanels.Remove(TWinControl(AComponent));
-  end;
+  Result := FPanels.Count;
 end;
 
 end.

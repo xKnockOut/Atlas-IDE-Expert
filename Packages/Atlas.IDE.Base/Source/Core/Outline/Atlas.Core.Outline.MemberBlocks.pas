@@ -87,6 +87,8 @@ type
     function Run(AEndLine, AEndCharacter: Integer): TAtlasMemberBlocks;
   end;
 
+{ TBlockCollector }
+
 constructor TBlockCollector.Create(const ATokens: TAtlasTypeTokens);
 begin
   inherited Create;
@@ -194,6 +196,8 @@ begin
   Close(AEndLine, AEndCharacter);
   Result := FBlocks;
 end;
+
+{ TAtlasMemberBlockFinder }
 
 class function TAtlasMemberBlockFinder.BlocksOf(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   AType: Integer): TAtlasMemberBlocks;

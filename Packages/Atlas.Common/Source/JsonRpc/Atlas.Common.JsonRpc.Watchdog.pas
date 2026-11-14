@@ -156,6 +156,120 @@ begin
   inherited;
 end;
 
+function TJsonRpcWatchdog.CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
+var
+  mPair: TPair<Int64, TEntry>;
+begin
+  Result := High(UInt64);
+  for mPair in FEntries.ToArray do
+  begin
+    if mPair.Value.Due <= ATicks then
+    begin
+      AExpired.Add(mPair.Value);
+      FEntries.Remove(mPair.Key);
+    end
+    else if mPair.Value.Due < Result then
+    begin
+      Result := mPair.Value.Due;
+    end;
+  end;
+end;
+
+function TJsonRpcWatchdog.TakeExpired(AExpired: TList<TEntry>): Boolean;
+var
+  mTicks, mNextDue: UInt64;
+begin
+  TMonitor.Enter(FEntries);
+  try
+    Result := not FStopping;
+    if not Result then
+    begin
+      Exit;
+    end;
+    mTicks := TThread.GetTickCount64;
+    mNextDue := CollectExpired(AExpired, mTicks);
+    if (AExpired.Count = 0) and (mNextDue = High(UInt64)) then
+    begin
+      TMonitor.Wait(FEntries, cWaitForever);
+    end
+    else if AExpired.Count = 0 then
+    begin
+      TMonitor.Wait(FEntries, Cardinal(mNextDue - mTicks));
+    end;
+  finally
+    TMonitor.Exit(FEntries);
+  end;
+end;
+
+procedure TJsonRpcWatchdog.Execute;
+var
+  mExpired: TList<TEntry>;
+  mEntry: TEntry;
+begin
+  mExpired := TList<TEntry>.Create;
+  try
+    while TakeExpired(mExpired) do
+    begin
+      // Außerhalb der Sperre: Cancel und Meldung dürfen dauern.
+      for mEntry in mExpired do
+        try
+          Expire(mEntry);
+        except
+          // Eine fehlerhafte Meldung darf die Überwachung nicht beenden.
+        end;
+      mExpired.Clear;
+    end;
+  finally
+    mExpired.Free;
+  end;
+end;
+
+procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
+var
+  mAnswered, mAbandoned: Boolean;
+  mLimit: Cardinal;
+begin
+  try
+    mLimit := Timeout;
+    mAnswered := False;
+    // Vor dem eigenen Abbruch fragen: Danach ist jede Anfrage abgebrochen.
+    mAbandoned := FPending.Abandoned(AEntry.Id);
+    if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
+    begin
+      // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
+      // Die Antwort zählt als laufende Arbeit, und zwar schon vor dem Beanspruchen: Der Worker verwirft seine
+      // Antwort, sobald der Watchdog sie beansprucht hat, und meldet sein Ende. Ohne eigene Zählung meldete
+      // WaitForWork dann Ruhe, bevor die Fehlerantwort geschrieben war; beim Beenden der Verbindung ging sie
+      // verloren (Dauerlauf ConnectionSoakDetectsWorkerLeak unter Last: 100 statt 101 Antworten).
+      FPending.BeginWork;
+      try
+        mAnswered := FPending.Expire(AEntry.Token);
+        if mAnswered then
+        begin
+          AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.cRequestCancelled,
+            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([mLimit])));
+        end;
+      finally
+        FPending.EndWork;
+      end;
+    end
+    else
+    begin
+      FPending.Cancel(AEntry.Id);
+    end;
+    if Assigned(FOnTimeout) then
+    begin
+      FOnTimeout(AEntry.Method, mLimit, mAnswered);
+    end;
+    if Assigned(FOnExpired) and not mAbandoned then
+    begin
+      FOnExpired(AEntry.Id.ToJSON, AEntry.Method, mLimit);
+    end;
+  finally
+    AEntry.Id.Free;
+  end;
+end;
+
 function TJsonRpcWatchdog.Watch(const AId: TJSONValue; const AMethod: string): Int64;
 begin
   Result := Watch(AId, AMethod, nil, nil);
@@ -228,120 +342,6 @@ begin
     Result := FTimeout;
   finally
     TMonitor.Exit(FEntries);
-  end;
-end;
-
-procedure TJsonRpcWatchdog.Expire(const AEntry: TEntry);
-var
-  mAnswered, mAbandoned: Boolean;
-  mLimit: Cardinal;
-begin
-  try
-    mLimit := Timeout;
-    mAnswered := False;
-    // Vor dem eigenen Abbruch fragen: Danach ist jede Anfrage abgebrochen.
-    mAbandoned := FPending.Abandoned(AEntry.Id);
-    if (AEntry.Token <> nil) and Assigned(AEntry.Responder) then
-    begin
-      // Abbrechen und die Antwort beanspruchen: Wer zuerst kommt (Worker oder Watchdog), antwortet.
-      // Die Antwort zählt als laufende Arbeit, und zwar schon vor dem Beanspruchen: Der Worker verwirft seine
-      // Antwort, sobald der Watchdog sie beansprucht hat, und meldet sein Ende. Ohne eigene Zählung meldete
-      // WaitForWork dann Ruhe, bevor die Fehlerantwort geschrieben war; beim Beenden der Verbindung ging sie
-      // verloren (Dauerlauf ConnectionSoakDetectsWorkerLeak unter Last: 100 statt 101 Antworten).
-      FPending.BeginWork;
-      try
-        mAnswered := FPending.Expire(AEntry.Token);
-        if mAnswered then
-        begin
-          AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.cRequestCancelled,
-            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([mLimit])));
-        end;
-      finally
-        FPending.EndWork;
-      end;
-    end
-    else
-    begin
-      FPending.Cancel(AEntry.Id);
-    end;
-    if Assigned(FOnTimeout) then
-    begin
-      FOnTimeout(AEntry.Method, mLimit, mAnswered);
-    end;
-    if Assigned(FOnExpired) and not mAbandoned then
-    begin
-      FOnExpired(AEntry.Id.ToJSON, AEntry.Method, mLimit);
-    end;
-  finally
-    AEntry.Id.Free;
-  end;
-end;
-
-function TJsonRpcWatchdog.CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
-var
-  mPair: TPair<Int64, TEntry>;
-begin
-  Result := High(UInt64);
-  for mPair in FEntries.ToArray do
-  begin
-    if mPair.Value.Due <= ATicks then
-    begin
-      AExpired.Add(mPair.Value);
-      FEntries.Remove(mPair.Key);
-    end
-    else if mPair.Value.Due < Result then
-    begin
-      Result := mPair.Value.Due;
-    end;
-  end;
-end;
-
-function TJsonRpcWatchdog.TakeExpired(AExpired: TList<TEntry>): Boolean;
-var
-  mTicks, mNextDue: UInt64;
-begin
-  TMonitor.Enter(FEntries);
-  try
-    Result := not FStopping;
-    if not Result then
-    begin
-      Exit;
-    end;
-    mTicks := TThread.GetTickCount64;
-    mNextDue := CollectExpired(AExpired, mTicks);
-    if (AExpired.Count = 0) and (mNextDue = High(UInt64)) then
-    begin
-      TMonitor.Wait(FEntries, cWaitForever);
-    end
-    else if AExpired.Count = 0 then
-    begin
-      TMonitor.Wait(FEntries, Cardinal(mNextDue - mTicks));
-    end;
-  finally
-    TMonitor.Exit(FEntries);
-  end;
-end;
-
-procedure TJsonRpcWatchdog.Execute;
-var
-  mExpired: TList<TEntry>;
-  mEntry: TEntry;
-begin
-  mExpired := TList<TEntry>.Create;
-  try
-    while TakeExpired(mExpired) do
-    begin
-      // Außerhalb der Sperre: Cancel und Meldung dürfen dauern.
-      for mEntry in mExpired do
-        try
-          Expire(mEntry);
-        except
-          // Eine fehlerhafte Meldung darf die Überwachung nicht beenden.
-        end;
-      mExpired.Clear;
-    end;
-  finally
-    mExpired.Free;
   end;
 end;
 

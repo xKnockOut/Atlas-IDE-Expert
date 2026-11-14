@@ -63,11 +63,6 @@ begin
   Result := TTextUris.NormalizePath(APath);
 end;
 
-class function TDocumentUris.Key(const AUri: string): string;
-begin
-  Result := Key(AUri, nil);
-end;
-
 class function TDocumentUris.Key(const AUri: string; const ACanonicalize: TPathCanonicalizer): string;
 var
   mPath: string;
@@ -88,6 +83,11 @@ begin
     mPath := AnsiLowerCase(mPath);
   end;
   Result := 'file:' + mPath;
+end;
+
+class function TDocumentUris.Key(const AUri: string): string;
+begin
+  Result := Key(AUri, nil);
 end;
 
 class function TDocumentUris.SameFile(const AUriA, AUriB: string): Boolean;

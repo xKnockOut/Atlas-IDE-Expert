@@ -44,6 +44,8 @@ const
   cApplyCommand = 'atlas.server.enumTable';
   cSyncApplyCommand = 'atlas.server.enumTablesSync';
 
+{ TAtlasIdeEnumTables }
+
 class procedure TAtlasIdeEnumTables.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

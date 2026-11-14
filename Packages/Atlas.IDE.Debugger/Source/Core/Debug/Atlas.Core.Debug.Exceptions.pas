@@ -165,45 +165,6 @@ begin
   Result := LowerCase(ExceptionClass) + '|' + LowerCase(mWhere) + '|' + IntToStr(Line);
 end;
 
-function TAtlasDebugException.HasSource: Boolean;
-begin
-  Result := (FileName <> '') and (Line > 0);
-end;
-
-class function TAtlasDebugException.FilterWords(const AText: string): TArray<string>;
-var
-  mPart: string;
-begin
-  Result := nil;
-  for mPart in AText.ToLower.Split([' ', #9]) do
-  begin
-    if mPart <> '' then
-    begin
-      Result := Result + [mPart];
-    end;
-  end;
-end;
-
-function TAtlasDebugException.Matches(const AClass: string; const AWords: TArray<string>): Boolean;
-var
-  mHaystack, mWord: string;
-begin
-  Result := (AClass = '') or SameText(ExceptionClass, AClass);
-  if not Result or (AWords = nil) then
-  begin
-    Exit;
-  end;
-  mHaystack := (ExceptionClass + ' ' + Message + ' ' + LocationText + ' ' + Routine + ' ' + ThreadName + ' ' +
-    IntToStr(ThreadId)).ToLower;
-  for mWord in AWords do
-  begin
-    if Pos(mWord, mHaystack) = 0 then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function TAtlasDebugException.LocationText: string;
 begin
   if FileName <> '' then
@@ -282,6 +243,45 @@ begin
   end;
 end;
 
+function TAtlasDebugException.HasSource: Boolean;
+begin
+  Result := (FileName <> '') and (Line > 0);
+end;
+
+function TAtlasDebugException.Matches(const AClass: string; const AWords: TArray<string>): Boolean;
+var
+  mHaystack, mWord: string;
+begin
+  Result := (AClass = '') or SameText(ExceptionClass, AClass);
+  if not Result or (AWords = nil) then
+  begin
+    Exit;
+  end;
+  mHaystack := (ExceptionClass + ' ' + Message + ' ' + LocationText + ' ' + Routine + ' ' + ThreadName + ' ' +
+    IntToStr(ThreadId)).ToLower;
+  for mWord in AWords do
+  begin
+    if Pos(mWord, mHaystack) = 0 then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+class function TAtlasDebugException.FilterWords(const AText: string): TArray<string>;
+var
+  mPart: string;
+begin
+  Result := nil;
+  for mPart in AText.ToLower.Split([' ', #9]) do
+  begin
+    if mPart <> '' then
+    begin
+      Result := Result + [mPart];
+    end;
+  end;
+end;
+
 { TAtlasDebugExceptionHistory }
 
 constructor TAtlasDebugExceptionHistory.Create;
@@ -297,21 +297,6 @@ begin
   begin
     FMaxEntries := 1;
   end;
-end;
-
-procedure TAtlasDebugExceptionHistory.StartSession;
-begin
-  Inc(FSession);
-  Clear;
-end;
-
-procedure TAtlasDebugExceptionHistory.Clear;
-begin
-  if FItems <> nil then
-  begin
-    FChanged := True;
-  end;
-  FItems := nil;
 end;
 
 function TAtlasDebugExceptionHistory.GetCount: Integer;
@@ -350,6 +335,21 @@ begin
       Result := mIndex;
     end;
   end;
+end;
+
+procedure TAtlasDebugExceptionHistory.StartSession;
+begin
+  Inc(FSession);
+  Clear;
+end;
+
+procedure TAtlasDebugExceptionHistory.Clear;
+begin
+  if FItems <> nil then
+  begin
+    FChanged := True;
+  end;
+  FItems := nil;
 end;
 
 function TAtlasDebugExceptionHistory.Add(const AException: TAtlasDebugException): Integer;
@@ -499,25 +499,18 @@ end;
 
 { TAtlasDebugExceptionText }
 
-class function TAtlasDebugExceptionText.IsClassName(const AText: string): Boolean;
+class function TAtlasDebugExceptionText.Unquote(const AText: string): string;
 var
-  mIndex: Integer;
+  mText: string;
 begin
-  Result := AText <> '';
-  if not Result then
+  mText := Trim(AText);
+  if (Length(mText) >= 2) and (mText[1] = '''') and (mText[Length(mText)] = '''') then
   begin
-    Exit;
-  end;
-  if not CharInSet(AText[1], ['A'..'Z', 'a'..'z', '_']) then
+    Result := StringReplace(Copy(mText, 2, Length(mText) - 2), '''''', '''', [rfReplaceAll]);
+  end
+  else
   begin
-    Exit(False);
-  end;
-  for mIndex := 2 to Length(AText) do
-  begin
-    if not CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
-    begin
-      Exit(False);
-    end;
+    Result := mText;
   end;
 end;
 
@@ -617,18 +610,25 @@ begin
   end;
 end;
 
-class function TAtlasDebugExceptionText.Unquote(const AText: string): string;
+class function TAtlasDebugExceptionText.IsClassName(const AText: string): Boolean;
 var
-  mText: string;
+  mIndex: Integer;
 begin
-  mText := Trim(AText);
-  if (Length(mText) >= 2) and (mText[1] = '''') and (mText[Length(mText)] = '''') then
+  Result := AText <> '';
+  if not Result then
   begin
-    Result := StringReplace(Copy(mText, 2, Length(mText) - 2), '''''', '''', [rfReplaceAll]);
-  end
-  else
+    Exit;
+  end;
+  if not CharInSet(AText[1], ['A'..'Z', 'a'..'z', '_']) then
   begin
-    Result := mText;
+    Exit(False);
+  end;
+  for mIndex := 2 to Length(AText) do
+  begin
+    if not CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
+      Exit(False);
+    end;
   end;
 end;
 

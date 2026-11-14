@@ -119,6 +119,38 @@ begin
   AddProblems(Result, ATable, ARow);
 end;
 
+{ TLspTestCases }
+
+class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
+var
+  mReadText: TLspTestCasesReadText;
+begin
+  mReadText := AReadText;
+  ACommands.RegisterConcurrent(cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := Execute(AArguments, mReadText);
+    end);
+end;
+
+/// <summary>Werte einer Zeile der Anfrage.</summary>
+function ValuesOf(AObject: TJSONObject): TArray<string>;
+var
+  mArray: TJSONArray;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not AObject.TryGetValue<TJSONArray>('values', mArray) then
+  begin
+    Exit;
+  end;
+  SetLength(Result, mArray.Count);
+  for mIndex := 0 to mArray.Count - 1 do
+  begin
+    Result[mIndex] := mArray.Items[mIndex].Value;
+  end;
+end;
+
 class function TLspTestCases.TableToJson(const AUri: string; const ATable: TTestCaseTable): TJSONObject;
 var
   mColumns, mRows: TJSONArray;
@@ -144,61 +176,6 @@ begin
   for mRow in ATable.Rows do
   begin
     mRows.AddElement(RowToJson(ATable, mRow));
-  end;
-end;
-
-/// <summary>Werte einer Zeile der Anfrage.</summary>
-function ValuesOf(AObject: TJSONObject): TArray<string>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not AObject.TryGetValue<TJSONArray>('values', mArray) then
-  begin
-    Exit;
-  end;
-  SetLength(Result, mArray.Count);
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    Result[mIndex] := mArray.Items[mIndex].Value;
-  end;
-end;
-
-class function TLspTestCases.RowsFromJson(const ATable: TTestCaseTable; AArray: TJSONArray): TArray<TTestCaseRow>;
-var
-  mIndex, mFrom: Integer;
-  mObject: TJSONObject;
-  mRow: TTestCaseRow;
-  mName: string;
-begin
-  Result := nil;
-  for mIndex := 0 to AArray.Count - 1 do
-  begin
-    if not (AArray.Items[mIndex] is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mObject := TJSONObject(AArray.Items[mIndex]);
-    if not mObject.TryGetValue<Integer>('from', mFrom) then
-    begin
-      mFrom := -1;
-    end;
-    if not mObject.TryGetValue<string>('name', mName) then
-    begin
-      mName := '';
-    end;
-    if (mFrom >= 0) and (mFrom <= High(ATable.Rows)) then
-    begin
-      mRow := ATable.Rows[mFrom];
-      mRow.Name := mName;
-      mRow.Values := ValuesOf(mObject);
-    end
-    else
-    begin
-      mRow := TTestCaseTables.NewRow(ATable, mName, ValuesOf(mObject));
-    end;
-    Result := Result + [mRow];
   end;
 end;
 
@@ -253,6 +230,43 @@ begin
   AResult.AddPair('editReason', mReason);
 end;
 
+class function TLspTestCases.RowsFromJson(const ATable: TTestCaseTable; AArray: TJSONArray): TArray<TTestCaseRow>;
+var
+  mIndex, mFrom: Integer;
+  mObject: TJSONObject;
+  mRow: TTestCaseRow;
+  mName: string;
+begin
+  Result := nil;
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    if not (AArray.Items[mIndex] is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mObject := TJSONObject(AArray.Items[mIndex]);
+    if not mObject.TryGetValue<Integer>('from', mFrom) then
+    begin
+      mFrom := -1;
+    end;
+    if not mObject.TryGetValue<string>('name', mName) then
+    begin
+      mName := '';
+    end;
+    if (mFrom >= 0) and (mFrom <= High(ATable.Rows)) then
+    begin
+      mRow := ATable.Rows[mFrom];
+      mRow.Name := mName;
+      mRow.Values := ValuesOf(mObject);
+    end
+    else
+    begin
+      mRow := TTestCaseTables.NewRow(ATable, mName, ValuesOf(mObject));
+    end;
+    Result := Result + [mRow];
+  end;
+end;
+
 class function TLspTestCases.Execute(const AArguments: TJSONArray; const AReadText: TLspTestCasesReadText): TJSONValue;
 var
   mUri, mText: string;
@@ -293,18 +307,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-class procedure TLspTestCases.Attach(ACommands: TLspCommands; const AReadText: TLspTestCasesReadText);
-var
-  mReadText: TLspTestCasesReadText;
-begin
-  mReadText := AReadText;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := Execute(AArguments, mReadText);
-    end);
 end;
 
 initialization

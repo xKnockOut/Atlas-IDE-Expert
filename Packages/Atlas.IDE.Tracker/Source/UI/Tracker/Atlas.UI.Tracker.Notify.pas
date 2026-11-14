@@ -46,21 +46,7 @@ uses
   System.SysUtils,
   Atlas.UI.Tracker.MyIssues.Strings;
 
-class function TAtlasTrackerNoticeText.StateText(const AState: string): string;
-begin
-  if SameText(AState, 'open') then
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyStateOpen);
-  end
-  else if SameText(AState, 'closed') then
-  begin
-    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyStateClosed);
-  end
-  else
-  begin
-    Result := AState;
-  end;
-end;
+{ TAtlasTrackerNoticeText }
 
 class function TAtlasTrackerNoticeText.Title(const ANotice: TAtlasTrackerNotice): string;
 var
@@ -118,6 +104,22 @@ begin
   begin
     Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.IssueReopenedNoticePlain, [AReopen.Key,
       StateText(AReopen.State)]);
+  end;
+end;
+
+class function TAtlasTrackerNoticeText.StateText(const AState: string): string;
+begin
+  if SameText(AState, 'open') then
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyStateOpen);
+  end
+  else if SameText(AState, 'closed') then
+  begin
+    Result := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyStateClosed);
+  end
+  else
+  begin
+    Result := AState;
   end;
 end;
 

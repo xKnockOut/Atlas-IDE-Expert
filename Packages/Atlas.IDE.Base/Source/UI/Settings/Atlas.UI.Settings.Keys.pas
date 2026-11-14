@@ -143,16 +143,15 @@ begin
   FStartupCheck := AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsKeyStartupCheck));
 end;
 
-function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;
+procedure TAtlasKeysPage.SetOwnerOf(const AValue: TAtlasKeyOwnerFunc);
+var
+  mIndex: Integer;
 begin
-  Result := TCheckBox.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Caption := ACaption;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
+  FOwnerOf := AValue;
+  for mIndex := 0 to High(FRows) do
+  begin
+    UpdateRow(mIndex);
+  end;
 end;
 
 procedure TAtlasKeysPage.Resize;
@@ -195,6 +194,18 @@ begin
   Result.Top := ATop;
 end;
 
+function TAtlasKeysPage.AddCheck(const ACaption: string): TCheckBox;
+begin
+  Result := TCheckBox.Create(Self);
+  Result.Parent := Self;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Caption := ACaption;
+  // alTop stapelt nach Top: jedes neue Element unter das vorige.
+  Result.Top := FNextTop;
+  Inc(FNextTop, 100);
+end;
+
 procedure TAtlasKeysPage.AddRow(AIndex: Integer);
 var
   mPanel: TPanel;
@@ -227,72 +238,6 @@ begin
   FRows[AIndex].Choice.OnChange := ChoiceChange;
   FRows[AIndex].Status := AddLabel(mPanel, '', cKeyLeft, 27);
   FRows[AIndex].Status.Font.Color := clGrayText;
-end;
-
-class function TAtlasKeysPage.FunctionCaption(AFunc: TAtlasKeyFunction): string;
-begin
-  case AFunc of
-    TAtlasKeyFunction.Palette:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey);
-    TAtlasKeyFunction.Check:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey);
-    TAtlasKeyFunction.Completion:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey);
-    TAtlasKeyFunction.Signature:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
-    TAtlasKeyFunction.QuickToggle:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey);
-    TAtlasKeyFunction.DiagnosticMode:
-      Result := TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey);
-  else
-    // Die übrigen Funktionen (#520) stehen nur in der Übersicht, nicht auf dieser Seite.
-    Result := TAtlasKeyMapWindow.FunctionCaption(AFunc);
-  end;
-end;
-
-class function TAtlasKeysPage.StatusText(const AEntry: TAtlasKeyEntry; const AOwner: string): string;
-begin
-  case AEntry.Status(AOwner) of
-    TAtlasKeyStatus.NoKey:
-      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusNone);
-    TAtlasKeyStatus.IdeKey:
-      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusIdeKey,
-        [ShortCutToText(TShortCut(AEntry.IdeKey))]);
-    TAtlasKeyStatus.Free:
-      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree);
-    TAtlasKeyStatus.AtlasWins:
-      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusAtlasWins, [AOwner]);
-  else
-    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusLeft, [AOwner]);
-  end;
-end;
-
-procedure TAtlasKeysPage.UpdateRow(AIndex: Integer);
-var
-  mOwner, mText: string;
-  mStatus: TAtlasKeyStatus;
-begin
-  mText := Trim(FRows[AIndex].Key.Text);
-  if (mText <> '') and (TextToShortCut(mText) = 0) then
-  begin
-    FRows[AIndex].Status.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysInvalid, [mText]);
-    Exit;
-  end;
-  mOwner := '';
-  if Assigned(FOwnerOf) and (FEntries[AIndex].Key <> 0) then
-  begin
-    mOwner := FOwnerOf(FEntries[AIndex].Key);
-  end;
-  mStatus := FEntries[AIndex].Status(mOwner);
-  FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], mOwner);
-  FUpdating := True;
-  try
-    FRows[AIndex].Choice.Choice := Ord(FEntries[AIndex].Choice);
-    // Zu entscheiden gibt es nur bei einer Belegung (bzw. bei der Taste der IDE).
-    FRows[AIndex].Choice.Enabled := (mStatus <> TAtlasKeyStatus.Free) and (mStatus <> TAtlasKeyStatus.NoKey);
-  finally
-    FUpdating := False;
-  end;
 end;
 
 procedure TAtlasKeysPage.KeyChange(Sender: TObject);
@@ -340,14 +285,52 @@ begin
   end;
 end;
 
-procedure TAtlasKeysPage.SetOwnerOf(const AValue: TAtlasKeyOwnerFunc);
+procedure TAtlasKeysPage.UpdateRow(AIndex: Integer);
 var
-  mIndex: Integer;
+  mOwner, mText: string;
+  mStatus: TAtlasKeyStatus;
 begin
-  FOwnerOf := AValue;
-  for mIndex := 0 to High(FRows) do
+  mText := Trim(FRows[AIndex].Key.Text);
+  if (mText <> '') and (TextToShortCut(mText) = 0) then
   begin
-    UpdateRow(mIndex);
+    FRows[AIndex].Status.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysInvalid, [mText]);
+    Exit;
+  end;
+  mOwner := '';
+  if Assigned(FOwnerOf) and (FEntries[AIndex].Key <> 0) then
+  begin
+    mOwner := FOwnerOf(FEntries[AIndex].Key);
+  end;
+  mStatus := FEntries[AIndex].Status(mOwner);
+  FRows[AIndex].Status.Caption := StatusText(FEntries[AIndex], mOwner);
+  FUpdating := True;
+  try
+    FRows[AIndex].Choice.Choice := Ord(FEntries[AIndex].Choice);
+    // Zu entscheiden gibt es nur bei einer Belegung (bzw. bei der Taste der IDE).
+    FRows[AIndex].Choice.Enabled := (mStatus <> TAtlasKeyStatus.Free) and (mStatus <> TAtlasKeyStatus.NoKey);
+  finally
+    FUpdating := False;
+  end;
+end;
+
+class function TAtlasKeysPage.FunctionCaption(AFunc: TAtlasKeyFunction): string;
+begin
+  case AFunc of
+    TAtlasKeyFunction.Palette:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsPaletteKey);
+    TAtlasKeyFunction.Check:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsCheckKey);
+    TAtlasKeyFunction.Completion:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsCompletionKey);
+    TAtlasKeyFunction.Signature:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsSignatureKey);
+    TAtlasKeyFunction.QuickToggle:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey);
+    TAtlasKeyFunction.DiagnosticMode:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey);
+  else
+    // Die übrigen Funktionen (#520) stehen nur in der Übersicht, nicht auf dieser Seite.
+    Result := TAtlasKeyMapWindow.FunctionCaption(AFunc);
   end;
 end;
 
@@ -386,6 +369,23 @@ begin
   ASettings.KeyOverview := FOverview.Checked;
   ASettings.KeyStartupCheck := FStartupCheck.Checked;
   ASettings.Normalize;
+end;
+
+class function TAtlasKeysPage.StatusText(const AEntry: TAtlasKeyEntry; const AOwner: string): string;
+begin
+  case AEntry.Status(AOwner) of
+    TAtlasKeyStatus.NoKey:
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusNone);
+    TAtlasKeyStatus.IdeKey:
+      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusIdeKey,
+        [ShortCutToText(TShortCut(AEntry.IdeKey))]);
+    TAtlasKeyStatus.Free:
+      Result := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysStatusFree);
+    TAtlasKeyStatus.AtlasWins:
+      Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusAtlasWins, [AOwner]);
+  else
+    Result := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.KeysStatusLeft, [AOwner]);
+  end;
 end;
 
 procedure TAtlasKeysPage.ShowForeignCompletions(const ANames: TArray<string>);

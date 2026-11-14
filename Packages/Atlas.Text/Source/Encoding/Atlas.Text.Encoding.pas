@@ -65,24 +65,6 @@ const
 
 { TTextEncodingProbe }
 
-class function TTextEncodingProbe.HasPrefix(const ABytes: TBytes; const APrefix: array of Byte): Boolean;
-var
-  mIndex: Integer;
-begin
-  if Length(ABytes) < Length(APrefix) then
-  begin
-    Exit(False);
-  end;
-  for mIndex := 0 to High(APrefix) do
-  begin
-    if ABytes[mIndex] <> APrefix[mIndex] then
-    begin
-      Exit(False);
-    end;
-  end;
-  Result := True;
-end;
-
 class function TTextEncodingProbe.BomOf(const ABytes: TBytes): TTextBom;
 begin
   if HasPrefix(ABytes, [$EF, $BB, $BF]) then
@@ -113,6 +95,13 @@ begin
   else
     Result := 0;
   end;
+end;
+
+class function TTextEncodingProbe.IsValidUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
+var
+  mHasNonAscii: Boolean;
+begin
+  Result := IsValidUtf8(ABytes, AStart, mHasNonAscii);
 end;
 
 // Leitbyte einer Mehrbytefolge: Zahl der Folgebytes und Startwert; False bei ungültigem Leitbyte.
@@ -200,13 +189,6 @@ begin
   Result := True;
 end;
 
-class function TTextEncodingProbe.IsValidUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
-var
-  mHasNonAscii: Boolean;
-begin
-  Result := IsValidUtf8(ABytes, AStart, mHasNonAscii);
-end;
-
 class function TTextEncodingProbe.IsAscii(const ABytes: TBytes): Boolean;
 var
   mValue: Byte;
@@ -221,23 +203,27 @@ begin
   Result := True;
 end;
 
+class function TTextEncodingProbe.HasPrefix(const ABytes: TBytes; const APrefix: array of Byte): Boolean;
+var
+  mIndex: Integer;
+begin
+  if Length(ABytes) < Length(APrefix) then
+  begin
+    Exit(False);
+  end;
+  for mIndex := 0 to High(APrefix) do
+  begin
+    if ABytes[mIndex] <> APrefix[mIndex] then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
 class function TTextEncodingProbe.IsBinaryForm(const ABytes: TBytes): Boolean;
 begin
   Result := HasPrefix(ABytes, [Ord('T'), Ord('P'), Ord('F'), Ord('0')]) or HasPrefix(ABytes, [$FF, $0A, $00]);
-end;
-
-class function TTextEncodingProbe.IsSingleByteCodePage(ACodePage: Integer): Boolean;
-var
-  mKnown: Integer;
-begin
-  for mKnown in cSingleByteCodePages do
-  begin
-    if mKnown = ACodePage then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 class function TTextEncodingProbe.ParseCodePage(const AText: string; out ACodePage: Integer): Boolean;
@@ -270,6 +256,20 @@ begin
     Exit(True);
   end;
   ACodePage := 0;
+end;
+
+class function TTextEncodingProbe.IsSingleByteCodePage(ACodePage: Integer): Boolean;
+var
+  mKnown: Integer;
+begin
+  for mKnown in cSingleByteCodePages do
+  begin
+    if mKnown = ACodePage then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TTextEncodingProbe.DecodeCp1252(const ABytes: TBytes; AStart: Integer): string;

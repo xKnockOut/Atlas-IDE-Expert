@@ -45,6 +45,8 @@ type
 
 implementation
 
+{ TAtlasDesignerFlash }
+
 constructor TAtlasDesignerFlash.CreateFlash(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
   FOwnerWindow := AOwnerWindow;
@@ -72,22 +74,6 @@ begin
   end;
 end;
 
-procedure TAtlasDesignerFlash.WMMouseActivate(var Message: TWMMouseActivate);
-begin
-  Message.Result := MA_NOACTIVATE;
-end;
-
-function TAtlasDesignerFlash.S(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
-end;
-
-procedure TAtlasDesignerFlash.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
 procedure TAtlasDesignerFlash.Paint;
 var
   mWidth: Integer;
@@ -102,6 +88,31 @@ begin
   Canvas.Rectangle(mWidth div 2, mWidth div 2, ClientWidth - mWidth div 2 + 1, ClientHeight - mWidth div 2 + 1);
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Width := 1;
+end;
+
+function TAtlasDesignerFlash.S(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
+end;
+
+procedure TAtlasDesignerFlash.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  if HandleAllocated then
+  begin
+    ShowWindow(Handle, SW_HIDE);
+  end;
+end;
+
+procedure TAtlasDesignerFlash.WMMouseActivate(var Message: TWMMouseActivate);
+begin
+  Message.Result := MA_NOACTIVATE;
+end;
+
+procedure TAtlasDesignerFlash.ApplyColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
 end;
 
 procedure TAtlasDesignerFlash.FlashAt(const AScreen: TRect);
@@ -120,15 +131,6 @@ begin
   SetWindowPos(Handle, HWND_TOP, mRect.Left, mRect.Top, mRect.Width, mRect.Height, SWP_NOACTIVATE or SWP_SHOWWINDOW);
   Invalidate;
   FTimer.Enabled := True;
-end;
-
-procedure TAtlasDesignerFlash.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  if HandleAllocated then
-  begin
-    ShowWindow(Handle, SW_HIDE);
-  end;
 end;
 
 end.

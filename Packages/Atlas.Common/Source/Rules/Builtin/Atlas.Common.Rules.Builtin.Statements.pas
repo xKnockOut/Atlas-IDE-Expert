@@ -423,26 +423,6 @@ begin
     cTexts[TStatementsText.ComparisonTitle].Text);
 end;
 
-class function TComparisonAsStatementRule.ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode;
-begin
-  Result := nil;
-  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
-  begin
-    Exit;
-  end;
-  Result := AStatement[0];
-  // (A = 1); zählt wie A = 1;
-  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-  begin
-    Result := Result[0];
-  end;
-  if not (Result.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.Literal,
-    TSyntaxKind.SetConstructor]) then
-  begin
-    Result := nil;
-  end;
-end;
-
 procedure TComparisonAsStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   cComparisons: array[0..7] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is');
@@ -608,6 +588,26 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   Visit(AContext.Tree.Root);
+end;
+
+class function TComparisonAsStatementRule.ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode;
+begin
+  Result := nil;
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
+  begin
+    Exit;
+  end;
+  Result := AStatement[0];
+  // (A = 1); zählt wie A = 1;
+  while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
+    Result := Result[0];
+  end;
+  if not (Result.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.Literal,
+    TSyntaxKind.SetConstructor]) then
+  begin
+    Result := nil;
+  end;
 end;
 
 procedure RegisterStatementRules(const ARegistry: TRuleRegistry);

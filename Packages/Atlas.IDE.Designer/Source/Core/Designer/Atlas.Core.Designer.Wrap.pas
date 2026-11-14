@@ -60,6 +60,8 @@ uses
   System.Math,
   System.Character;
 
+{ TAtlasContainerWrap }
+
 class function TAtlasContainerWrap.Enclosing(const ABounds: TArray<TRect>): TRect;
 var
   mBounds: TRect;

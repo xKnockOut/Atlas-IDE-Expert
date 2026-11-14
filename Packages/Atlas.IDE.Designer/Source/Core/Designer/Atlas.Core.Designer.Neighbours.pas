@@ -233,33 +233,6 @@ begin
   Result := -1;
 end;
 
-class function TAtlasNeighbours.ParentOf(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer): Integer;
-begin
-  Result := -1;
-  if (AFrom >= 0) and (AFrom <= High(AItems)) and (AItems[AFrom].ParentName <> '') then
-  begin
-    Result := IndexOf(AItems, AItems[AFrom].ParentName);
-  end;
-end;
-
-class function TAtlasNeighbours.FirstChild(const AItems: TArray<TAtlasNeighbourItem>; AContainer: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  if (AContainer < 0) or (AContainer > High(AItems)) then
-  begin
-    Exit;
-  end;
-  for mIndex in ChildrenOf(AItems, AItems[AContainer].Name, True, AContainer) do
-  begin
-    if (Result < 0) or ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds) then
-    begin
-      Result := mIndex;
-    end;
-  end;
-end;
-
 class function TAtlasNeighbours.Find(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer;
   ADirection: TAtlasNeighbourDirection; ACross: Boolean): Integer;
 var
@@ -291,6 +264,33 @@ begin
   begin
     mIndex := Best(AItems, AItems[AFrom].Bounds, ChildrenOf(AItems, AItems[mNext].Name, True, mNext), ADirection);
     if mIndex >= 0 then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+class function TAtlasNeighbours.ParentOf(const AItems: TArray<TAtlasNeighbourItem>; AFrom: Integer): Integer;
+begin
+  Result := -1;
+  if (AFrom >= 0) and (AFrom <= High(AItems)) and (AItems[AFrom].ParentName <> '') then
+  begin
+    Result := IndexOf(AItems, AItems[AFrom].ParentName);
+  end;
+end;
+
+class function TAtlasNeighbours.FirstChild(const AItems: TArray<TAtlasNeighbourItem>; AContainer: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if (AContainer < 0) or (AContainer > High(AItems)) then
+  begin
+    Exit;
+  end;
+  for mIndex in ChildrenOf(AItems, AItems[AContainer].Name, True, AContainer) do
+  begin
+    if (Result < 0) or ReadsBefore(AItems[mIndex].Bounds, AItems[Result].Bounds) then
     begin
       Result := mIndex;
     end;

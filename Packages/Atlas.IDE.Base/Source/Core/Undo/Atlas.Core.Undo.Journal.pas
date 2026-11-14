@@ -144,27 +144,25 @@ begin
   inherited;
 end;
 
-procedure TAtlasUndoJournal.Log(const AText: string);
-begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
-end;
-
-procedure TAtlasUndoJournal.Changed;
-begin
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged();
-  end;
-end;
-
 procedure TAtlasUndoJournal.SetOptions(const AValue: TAtlasUndoOptions);
 begin
   FOptions := AValue;
   FOptions.Depth := EnsureRange(FOptions.Depth, TAtlasUndoOptions.cMinDepth, TAtlasUndoOptions.cMaxDepth);
   Trim;
+end;
+
+function TAtlasUndoJournal.SetIndex(AId: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FSets.Count - 1 do
+  begin
+    if FSets[mIndex].Id = AId then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 procedure TAtlasUndoJournal.Trim;
@@ -185,6 +183,22 @@ begin
   if mDropped then
   begin
     Changed;
+  end;
+end;
+
+procedure TAtlasUndoJournal.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+  begin
+    FOnLog(AText);
+  end;
+end;
+
+procedure TAtlasUndoJournal.Changed;
+begin
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged();
   end;
 end;
 
@@ -240,20 +254,6 @@ begin
   Trim;
   Changed;
   Result := mChangeSet.Id;
-end;
-
-function TAtlasUndoJournal.SetIndex(AId: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to FSets.Count - 1 do
-  begin
-    if FSets[mIndex].Id = AId then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 function TAtlasUndoJournal.Sets: TArray<TAtlasChangeSet>;

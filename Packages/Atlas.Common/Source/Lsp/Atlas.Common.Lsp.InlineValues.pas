@@ -211,9 +211,40 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-procedure TLspInlineValues.Attach(ADispatcher: TJsonRpcDispatcher);
+function TLspInlineValues.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mRangeValue, mStoppedValue: TJSONValue;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mStopped: TTextRange;
 begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', mStoppedValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  ACancellation.ThrowIfCancellationRequested;
+  mStopped := TLspPositions.ReadRange(mStoppedValue);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mResolver.Namespaces := Namespaces;
+    Result := ToJson(Collect(mResolver, mShared.Tree, TDocumentUris.ToPath(mUri), TLspPositions.ReadRange(mRangeValue),
+      mStopped.StartPos.Line));
+  finally
+    mResolver.Free;
+  end;
 end;
 
 /// <summary>Zeilen von AFirstLine bis ALastLine, in denen ARoutine Werte zeigt: ab ihrem Anfang bzw. ARange bis
@@ -344,6 +375,11 @@ begin
   end;
 end;
 
+procedure TLspInlineValues.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
+end;
+
 class function TLspInlineValues.Collect(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const ARange: TTextRange; AStoppedLine: Integer): TArray<TInlineValue>;
 var
@@ -392,42 +428,6 @@ begin
       mItem.AddPair('atlasType', mValue.TypeName);
     end;
     Result.AddElement(mItem);
-  end;
-end;
-
-function TLspInlineValues.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mRangeValue, mStoppedValue: TJSONValue;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mResolver: TNameResolver;
-  mStopped: TTextRange;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', mStoppedValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  ACancellation.ThrowIfCancellationRequested;
-  mStopped := TLspPositions.ReadRange(mStoppedValue);
-  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mResolver.Namespaces := Namespaces;
-    Result := ToJson(Collect(mResolver, mShared.Tree, TDocumentUris.ToPath(mUri), TLspPositions.ReadRange(mRangeValue),
-      mStopped.StartPos.Line));
-  finally
-    mResolver.Free;
   end;
 end;
 

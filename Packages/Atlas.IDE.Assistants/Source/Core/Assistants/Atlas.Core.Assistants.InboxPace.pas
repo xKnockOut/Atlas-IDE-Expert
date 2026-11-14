@@ -29,6 +29,8 @@ type
 
 implementation
 
+{ TAtlasInboxPace }
+
 function TAtlasInboxPace.Due(AChanged: Boolean; ANowMs: UInt64): Boolean;
 begin
   Result := AChanged or FBacklog or not FListed or (ANowMs < FListedAt) or

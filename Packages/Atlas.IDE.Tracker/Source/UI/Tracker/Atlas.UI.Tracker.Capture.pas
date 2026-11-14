@@ -185,6 +185,15 @@ begin
     cResponseMs, @mResult) <> 0);
 end;
 
+class function TAtlasWindowCapture.RootAt(const APoint: TPoint): HWND;
+begin
+  Result := WindowFromPoint(APoint);
+  if Result <> 0 then
+  begin
+    Result := GetAncestor(Result, GA_ROOT);
+  end;
+end;
+
 class function TAtlasWindowCapture.ProcessOf(AWindow: HWND): DWORD;
 begin
   Result := 0;
@@ -205,15 +214,6 @@ begin
   end;
   Result := SetWindowPos(AWindow, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE or
     SWP_ASYNCWINDOWPOS);
-end;
-
-class function TAtlasWindowCapture.RootAt(const APoint: TPoint): HWND;
-begin
-  Result := WindowFromPoint(APoint);
-  if Result <> 0 then
-  begin
-    Result := GetAncestor(Result, GA_ROOT);
-  end;
 end;
 
 /// <summary>Sichtbarer Rahmen ohne den unsichtbaren Rand von Windows 10/11.</summary>
@@ -332,39 +332,13 @@ begin
   PickHook := 0;
 end;
 
+{ TAtlasWindowPicker }
+
 destructor TAtlasWindowPicker.Destroy;
 begin
   Cancel;
   FTimer.Free;
   inherited;
-end;
-
-function TAtlasWindowPicker.Active: Boolean;
-begin
-  Result := (FTimer <> nil) and FTimer.Enabled;
-end;
-
-procedure TAtlasWindowPicker.Start(const AOnPicked: TAtlasWindowPicked);
-begin
-  Cancel;
-  FOnPicked := AOnPicked;
-  PickWindow := 0;
-  PickDone := False;
-  PickHook := SetWindowsHookEx(WH_MOUSE_LL, @PickMouse, HInstance, 0);
-  if PickHook = 0 then
-  begin
-    Finish(0);
-    Exit;
-  end;
-  FStarted := GetTickCount64;
-  // Der Takt bleibt bis zum Freigeben bestehen: Finish läuft in seinem OnTimer.
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Interval := 50;
-    FTimer.OnTimer := Tick;
-  end;
-  FTimer.Enabled := True;
 end;
 
 procedure TAtlasWindowPicker.Tick(Sender: TObject);
@@ -396,6 +370,29 @@ begin
   end;
 end;
 
+procedure TAtlasWindowPicker.Start(const AOnPicked: TAtlasWindowPicked);
+begin
+  Cancel;
+  FOnPicked := AOnPicked;
+  PickWindow := 0;
+  PickDone := False;
+  PickHook := SetWindowsHookEx(WH_MOUSE_LL, @PickMouse, HInstance, 0);
+  if PickHook = 0 then
+  begin
+    Finish(0);
+    Exit;
+  end;
+  FStarted := GetTickCount64;
+  // Der Takt bleibt bis zum Freigeben bestehen: Finish läuft in seinem OnTimer.
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Interval := 50;
+    FTimer.OnTimer := Tick;
+  end;
+  FTimer.Enabled := True;
+end;
+
 procedure TAtlasWindowPicker.Cancel;
 begin
   Unhook;
@@ -404,6 +401,11 @@ begin
     FTimer.Enabled := False;
   end;
   FOnPicked := nil;
+end;
+
+function TAtlasWindowPicker.Active: Boolean;
+begin
+  Result := (FTimer <> nil) and FTimer.Enabled;
 end;
 
 { TAtlasAttachImages }

@@ -261,6 +261,8 @@ begin
     end));
 end;
 
+{ TSubsystemMatcher }
+
 class function TSubsystemMatcher.Match(const AOld, ANew: TArchitectureSnapshot; AMode: TSubsystemMatchMode)
   : TArray<TSubsystemMatch>;
 var

@@ -127,23 +127,7 @@ begin
   end;
 end;
 
-class function TAtlasDataFile.TryRead(const AFileName: string; out AText: string): Boolean;
-begin
-  AText := '';
-  Result := False;
-  if not FileExists(AFileName) then
-  begin
-    Exit;
-  end;
-  try
-    AText := TextOf(TAtlasTextFile.ReadAllBytes(AFileName));
-    Result := True;
-  except
-    // Fehlt inzwischen, gesperrt oder Lesefehler; Load unterscheidet das über FileExists.
-    on EStreamError do
-      AText := '';
-  end;
-end;
+{ TAtlasDataFile }
 
 class function TAtlasDataFile.Load(const AFileName, AKind: string; const AParse: TAtlasDataParse): TAtlasDataLoad;
 var
@@ -195,6 +179,24 @@ end;
 class function TAtlasDataFile.Writable(ALoad: TAtlasDataLoad): Boolean;
 begin
   Result := ALoad <> TAtlasDataLoad.Kept;
+end;
+
+class function TAtlasDataFile.TryRead(const AFileName: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := False;
+  if not FileExists(AFileName) then
+  begin
+    Exit;
+  end;
+  try
+    AText := TextOf(TAtlasTextFile.ReadAllBytes(AFileName));
+    Result := True;
+  except
+    // Fehlt inzwischen, gesperrt oder Lesefehler; Load unterscheidet das über FileExists.
+    on EStreamError do
+      AText := '';
+  end;
 end;
 
 class procedure TAtlasDataFile.Write(const AFileName, AText: string);

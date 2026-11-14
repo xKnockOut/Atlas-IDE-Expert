@@ -101,6 +101,11 @@ begin
   inherited;
 end;
 
+function TAtlasFeatureTable.SlotModuleOn(const ASlot: TSlot): Boolean;
+begin
+  Result := (ASlot.Module = '') or not Assigned(FModuleOn) or FModuleOn(ASlot.Module);
+end;
+
 procedure TAtlasFeatureTable.Add(const AName: string; AMinLevel: TAtlasSafeLevel; const AIsActive: TFunc<Boolean>;
   const AStart, AStop: TProc);
 begin
@@ -170,11 +175,6 @@ begin
       end);
   end;
   Result := mTeardown.Failures;
-end;
-
-function TAtlasFeatureTable.SlotModuleOn(const ASlot: TSlot): Boolean;
-begin
-  Result := (ASlot.Module = '') or not Assigned(FModuleOn) or FModuleOn(ASlot.Module);
 end;
 
 procedure TAtlasFeatureTable.Join(const AModule: string; const ANames: array of string);

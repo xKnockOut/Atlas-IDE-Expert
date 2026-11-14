@@ -114,39 +114,50 @@ begin
   inherited Destroy;
 end;
 
-class function TLspMetrics.TryParseMode(const AText: string; out AMode: TLspMetricsMode): Boolean;
+function TLspMetrics.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName, mModeText: string;
+  mMode: TLspMetricsMode;
+  mSource: TLspMetricsSource;
+  mText: string;
 begin
-  Result := True;
-  if (AText = '') or SameText(AText, 'file') then
+  mFileName := '';
+  mModeText := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    AMode := TLspMetricsMode.FileValues;
-  end
-  else if SameText(AText, 'summary') then
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
   begin
-    AMode := TLspMetricsMode.Summary;
-  end
-  else if SameText(AText, 'json') then
+    mModeText := AArguments.Items[1].Value;
+  end;
+  if not TryParseMode(mModeText, mMode) then
   begin
-    AMode := TLspMetricsMode.Json;
-  end
-  else if SameText(AText, 'markdown') then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TMetricsText.UnknownModeAllowedFileSummary].Fmt([mModeText]));
+  end;
+  if (mMode = TLspMetricsMode.FileValues) and IsProject(mFileName) then
   begin
-    AMode := TLspMetricsMode.Markdown;
+    mMode := TLspMetricsMode.Summary;
+  end;
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, mMode <> TLspMetricsMode.FileValues, mSource)) then
+  begin
+    mSource := Default(TLspMetricsSource);
+    mSource.Settings := TServerSettings.Default;
+  end;
+  if mMode = TLspMetricsMode.FileValues then
+  begin
+    mText := FileJson(mFileName, mSource);
   end
   else
   begin
-    AMode := TLspMetricsMode.FileValues;
-    Result := False;
+    mText := ProjectJson(mSource, mMode);
   end;
-end;
-
-class function TLspMetrics.IsProject(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (AFileName = '') or (mExtension = '') or (mExtension = '.dproj') or (mExtension = '.dpr') or
-    (mExtension = '.dpk') or (mExtension = '.groupproj');
+  Result := TJSONObject.ParseJSONValue(mText);
+  if Result = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TMetricsText.MetricsDataIsNotValid].Text);
+  end;
 end;
 
 function TLspMetrics.FileJson(const AFileName: string; const ASource: TLspMetricsSource): string;
@@ -205,50 +216,39 @@ begin
   end;
 end;
 
-function TLspMetrics.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName, mModeText: string;
-  mMode: TLspMetricsMode;
-  mSource: TLspMetricsSource;
-  mText: string;
+class function TLspMetrics.TryParseMode(const AText: string; out AMode: TLspMetricsMode): Boolean;
 begin
-  mFileName := '';
-  mModeText := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  Result := True;
+  if (AText = '') or SameText(AText, 'file') then
   begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+    AMode := TLspMetricsMode.FileValues;
+  end
+  else if SameText(AText, 'summary') then
   begin
-    mModeText := AArguments.Items[1].Value;
-  end;
-  if not TryParseMode(mModeText, mMode) then
+    AMode := TLspMetricsMode.Summary;
+  end
+  else if SameText(AText, 'json') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TMetricsText.UnknownModeAllowedFileSummary].Fmt([mModeText]));
-  end;
-  if (mMode = TLspMetricsMode.FileValues) and IsProject(mFileName) then
+    AMode := TLspMetricsMode.Json;
+  end
+  else if SameText(AText, 'markdown') then
   begin
-    mMode := TLspMetricsMode.Summary;
-  end;
-  if not (Assigned(FSourceFor) and FSourceFor(mFileName, mMode <> TLspMetricsMode.FileValues, mSource)) then
-  begin
-    mSource := Default(TLspMetricsSource);
-    mSource.Settings := TServerSettings.Default;
-  end;
-  if mMode = TLspMetricsMode.FileValues then
-  begin
-    mText := FileJson(mFileName, mSource);
+    AMode := TLspMetricsMode.Markdown;
   end
   else
   begin
-    mText := ProjectJson(mSource, mMode);
+    AMode := TLspMetricsMode.FileValues;
+    Result := False;
   end;
-  Result := TJSONObject.ParseJSONValue(mText);
-  if Result = nil then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TMetricsText.MetricsDataIsNotValid].Text);
-  end;
+end;
+
+class function TLspMetrics.IsProject(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (AFileName = '') or (mExtension = '') or (mExtension = '.dproj') or (mExtension = '.dpr') or
+    (mExtension = '.dpk') or (mExtension = '.groupproj');
 end;
 
 initialization

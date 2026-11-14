@@ -134,11 +134,6 @@ begin
   end;
 end;
 
-function TMigrationScope.OffsetOf(const APosition: TTextPosition): Integer;
-begin
-  Result := FLines.OffsetAt(APosition);
-end;
-
 function TMigrationScope.Inactive(const APosition: TTextPosition): Boolean;
 var
   mRange: TTextRange;
@@ -166,6 +161,11 @@ begin
   Result := not Inactive(APosition) and not PlatformGuarded(APosition);
 end;
 
+function TMigrationScope.OffsetOf(const APosition: TTextPosition): Integer;
+begin
+  Result := FLines.OffsetAt(APosition);
+end;
+
 { TMigrationTypes }
 
 const
@@ -183,6 +183,8 @@ begin
     Result := Result or ContainsStr(AWord, mPart);
   end;
 end;
+
+{ TMigrationTypes }
 
 class function TMigrationTypes.IsPlatformCondition(const ADirective: string): Boolean;
 var

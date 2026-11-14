@@ -108,6 +108,8 @@ begin
     end;
 end;
 
+{ TShellIndexArea }
+
 constructor TShellIndexArea.Create(const AServices: TShellIndexAreaServices);
 begin
   inherited Create;
@@ -148,35 +150,6 @@ begin
   for mFolder in AAdded do
   begin
     mCore.Folders.Add(mFolder);
-  end;
-end;
-
-procedure TShellIndexArea.ProjectLoaded;
-var
-  mNamespaces: TArray<string>;
-  mLibraryRoots: TArray<string>;
-  mAnonymizer: ILogAnonymizer;
-  mDiagnostics: TShellDiagnosticsArea;
-begin
-  // Absicherung: Beim Beenden sind die Diagnosen vor dem Index fort.
-  mDiagnostics := FServices.Diagnostics();
-  // Neuer Indexaufbau: Seine Projektstufe oder, falls die ausbleibt, sein Ende startet die Projektprüfung.
-  if mDiagnostics <> nil then
-  begin
-    mDiagnostics.IndexRecheck.IndexStarted;
-  end;
-  FServices.ProjectStarted();
-  CollectNamespaces(mNamespaces, mLibraryRoots);
-  ApplyNamespaces(mNamespaces);
-  FServices.LibraryRootsChanged(mLibraryRoots);
-  mAnonymizer := FServices.Anonymizer();
-  if mAnonymizer <> nil then
-  begin
-    mAnonymizer.SetLibraryRoots(mLibraryRoots);
-  end;
-  if mDiagnostics <> nil then
-  begin
-    mDiagnostics.Syntax.Refresh;
   end;
 end;
 
@@ -268,6 +241,35 @@ begin
         mWorkspace.Configuration.Revalidate;
       end;
     end);
+end;
+
+procedure TShellIndexArea.ProjectLoaded;
+var
+  mNamespaces: TArray<string>;
+  mLibraryRoots: TArray<string>;
+  mAnonymizer: ILogAnonymizer;
+  mDiagnostics: TShellDiagnosticsArea;
+begin
+  // Absicherung: Beim Beenden sind die Diagnosen vor dem Index fort.
+  mDiagnostics := FServices.Diagnostics();
+  // Neuer Indexaufbau: Seine Projektstufe oder, falls die ausbleibt, sein Ende startet die Projektprüfung.
+  if mDiagnostics <> nil then
+  begin
+    mDiagnostics.IndexRecheck.IndexStarted;
+  end;
+  FServices.ProjectStarted();
+  CollectNamespaces(mNamespaces, mLibraryRoots);
+  ApplyNamespaces(mNamespaces);
+  FServices.LibraryRootsChanged(mLibraryRoots);
+  mAnonymizer := FServices.Anonymizer();
+  if mAnonymizer <> nil then
+  begin
+    mAnonymizer.SetLibraryRoots(mLibraryRoots);
+  end;
+  if mDiagnostics <> nil then
+  begin
+    mDiagnostics.Syntax.Refresh;
+  end;
 end;
 
 procedure TShellIndexArea.IndexStageDone(AProjectStage: Boolean);

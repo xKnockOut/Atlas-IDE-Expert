@@ -309,6 +309,8 @@ type
     function NewLine(AIndex: Integer; out AText: string): Boolean;
   end;
 
+{ TSwapBlock }
+
 function TSwapBlock.Analyze(ACount: Integer; const AReadOnly: TReadOnlyCheck): Boolean;
 var
   mIndex: Integer;

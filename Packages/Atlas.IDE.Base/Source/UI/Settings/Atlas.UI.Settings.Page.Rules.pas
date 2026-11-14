@@ -58,6 +58,48 @@ const
 
 { TAtlasSettingsRulesPart }
 
+procedure TAtlasSettingsRulesPart.Load(const ASettings: TAtlasPluginSettings);
+begin
+  FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, cScopeValues));
+  FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, cGroupByValues));
+  FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, cClosedUnitsValues));
+  FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, cCompilerMergeValues));
+  FProblemsUpdate.Choice := Max(0, IndexText(ASettings.ProblemsUpdate, cProblemsUpdateValues));
+end;
+
+procedure TAtlasSettingsRulesPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(cScopeValues)) then
+  begin
+    ASettings.ProblemsWindowScope := cScopeValues[FProblemsWindowScope.Choice];
+  end;
+  if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(cGroupByValues)) then
+  begin
+    ASettings.ProblemsWindowGroupBy := cGroupByValues[FProblemsWindowGroupBy.Choice];
+  end;
+  if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(cClosedUnitsValues)) then
+  begin
+    ASettings.ProblemsWindowClosedUnits := cClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
+  end;
+  if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(cCompilerMergeValues)) then
+  begin
+    ASettings.ProblemsCompilerMerge := cCompilerMergeValues[FProblemsCompilerMerge.Choice];
+  end;
+  if (FProblemsUpdate.Choice >= 0) and (FProblemsUpdate.Choice <= High(cProblemsUpdateValues)) then
+  begin
+    ASettings.ProblemsUpdate := cProblemsUpdateValues[FProblemsUpdate.Choice];
+  end;
+end;
+
+procedure TAtlasSettingsRulesPart.BindMarks;
+begin
+  FPage.Marks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
+  FPage.Marks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
+  FPage.Marks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
+  FPage.Marks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
+  FPage.Marks.Bind(FProblemsUpdate, ['ProblemsUpdate']);
+end;
+
 procedure TAtlasSettingsRulesPart.Build;
 begin
   // Prüfregeln (#909): das Fenster „Atlas-Prüfung“ und die laufende Prüfung. Den Weg zu den Regeln (sie stehen in
@@ -104,48 +146,6 @@ begin
     TAtlasSettingsStrings.Text(TAtlasSettingsTextId.ProblemsCompilerMergeBoth)]);
   BindCheck('ProblemsShowCompilerCode',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsShowCompilerCode)));
-end;
-
-procedure TAtlasSettingsRulesPart.BindMarks;
-begin
-  FPage.Marks.Bind(FProblemsWindowScope, ['ProblemsWindowScope']);
-  FPage.Marks.Bind(FProblemsWindowGroupBy, ['ProblemsWindowGroupBy']);
-  FPage.Marks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
-  FPage.Marks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
-  FPage.Marks.Bind(FProblemsUpdate, ['ProblemsUpdate']);
-end;
-
-procedure TAtlasSettingsRulesPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, cScopeValues));
-  FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, cGroupByValues));
-  FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, cClosedUnitsValues));
-  FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, cCompilerMergeValues));
-  FProblemsUpdate.Choice := Max(0, IndexText(ASettings.ProblemsUpdate, cProblemsUpdateValues));
-end;
-
-procedure TAtlasSettingsRulesPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(cScopeValues)) then
-  begin
-    ASettings.ProblemsWindowScope := cScopeValues[FProblemsWindowScope.Choice];
-  end;
-  if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(cGroupByValues)) then
-  begin
-    ASettings.ProblemsWindowGroupBy := cGroupByValues[FProblemsWindowGroupBy.Choice];
-  end;
-  if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(cClosedUnitsValues)) then
-  begin
-    ASettings.ProblemsWindowClosedUnits := cClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
-  end;
-  if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(cCompilerMergeValues)) then
-  begin
-    ASettings.ProblemsCompilerMerge := cCompilerMergeValues[FProblemsCompilerMerge.Choice];
-  end;
-  if (FProblemsUpdate.Choice >= 0) and (FProblemsUpdate.Choice <= High(cProblemsUpdateValues)) then
-  begin
-    ASettings.ProblemsUpdate := cProblemsUpdateValues[FProblemsUpdate.Choice];
-  end;
 end;
 
 end.

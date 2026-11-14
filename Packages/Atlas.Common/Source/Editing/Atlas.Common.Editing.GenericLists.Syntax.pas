@@ -68,6 +68,8 @@ uses
   System.StrUtils,
   Atlas.Common.Pascal.TokenCursor;
 
+{ TGenericListSyntax }
+
 class function TGenericListSyntax.LastName(const AText: string): string;
 var
   mDot: Integer;

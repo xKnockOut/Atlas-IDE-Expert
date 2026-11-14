@@ -90,6 +90,8 @@ const
 const
   cScopeNames: array[TDisableWarningScope] of string = ('line', 'routine', 'unit');
 
+{ TLspDisableWarning }
+
 class function TLspDisableWarning.ScopeName(AScope: TDisableWarningScope): string;
 begin
   Result := cScopeNames[AScope];

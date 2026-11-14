@@ -155,6 +155,8 @@ begin
   end;
 end;
 
+{ TAtlasAssertLine }
+
 class function TAtlasAssertLine.FromStackTrace(const AStackTrace, AUnitName, AFileName: string;
   ALineCount: Integer): Integer;
 var
@@ -344,27 +346,6 @@ begin
   end;
 end;
 
-class function TAtlasAssertLine.MatchesExpected(const AArgument, AExpected: string): Boolean;
-var
-  mFormat: TFormatSettings;
-  mLeft, mRight: string;
-  mA, mB: Double;
-begin
-  mLeft := Unquoted(AArgument);
-  mRight := Unquoted(AExpected);
-  if (mLeft = '') or (mRight = '') then
-  begin
-    Exit(False);
-  end;
-  if mLeft = mRight then
-  begin
-    Exit(True);
-  end;
-  mFormat := TFormatSettings.Invariant;
-  Result := TryStrToFloat(mLeft, mA, mFormat) and TryStrToFloat(StringReplace(mRight, ',', '.', []), mB, mFormat) and
-    SameValue(mA, mB);
-end;
-
 class function TAtlasAssertLine.FromAsserts(const ALines: TArray<string>; AFirstLine, ALastLine: Integer;
   const AExpected: string; AHasValues, AFailed: Boolean): Integer;
 var
@@ -442,6 +423,27 @@ begin
   begin
     AEnd := AStart + Length(Trim(mCode));
   end;
+end;
+
+class function TAtlasAssertLine.MatchesExpected(const AArgument, AExpected: string): Boolean;
+var
+  mFormat: TFormatSettings;
+  mLeft, mRight: string;
+  mA, mB: Double;
+begin
+  mLeft := Unquoted(AArgument);
+  mRight := Unquoted(AExpected);
+  if (mLeft = '') or (mRight = '') then
+  begin
+    Exit(False);
+  end;
+  if mLeft = mRight then
+  begin
+    Exit(True);
+  end;
+  mFormat := TFormatSettings.Invariant;
+  Result := TryStrToFloat(mLeft, mA, mFormat) and TryStrToFloat(StringReplace(mRight, ',', '.', []), mB, mFormat) and
+    SameValue(mA, mB);
 end;
 
 end.

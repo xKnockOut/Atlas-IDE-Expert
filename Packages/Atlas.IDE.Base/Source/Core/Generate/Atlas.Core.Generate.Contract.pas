@@ -36,6 +36,8 @@ const
   cDefaultGroups: array[0..2] of TAtlasGenerateGroup = (TAtlasGenerateGroup.Generate, TAtlasGenerateGroup.Surround,
     TAtlasGenerateGroup.Templates);
 
+{ TAtlasGenerateLists }
+
 class function TAtlasGenerateLists.Split(const AText: string): TArray<string>;
 var
   mItem: string;

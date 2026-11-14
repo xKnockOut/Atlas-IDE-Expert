@@ -122,35 +122,7 @@ begin
   Result := TAtlasDesignerStrings.Text(AId);
 end;
 
-class function TAtlasFontsDialog.KeyOf(AFont: TFont): TAtlasFontKey;
-var
-  mStyle: Integer;
-  mFontStyle: TFontStyle;
-begin
-  // Ein Bit je Stil in der Reihenfolge von TFontStyle (fett, kursiv, unterstrichen, durchgestrichen).
-  mStyle := 0;
-  for mFontStyle in AFont.Style do
-  begin
-    mStyle := mStyle or (1 shl Ord(mFontStyle));
-  end;
-  Result := TAtlasFontKey.Create(AFont.Name, AFont.Size, mStyle, ColorToString(AFont.Color));
-end;
-
-function FontLine(const AFont: TAtlasFontKey): string;
-begin
-  Result := TAtlasFontsColors.FontText(AFont, TAtlasFontsDialog.StyleNames);
-  if not SameText(AFont.Color, 'clWindowText') then
-  begin
-    Result := Result + ', ' + AFont.Color;
-  end;
-end;
-
 { TAtlasFontsDialog }
-
-class function TAtlasFontsDialog.StyleNames: TArray<string>;
-begin
-  Result := UiText(TAtlasDesignerTextId.DesignerFontsStyles).Split([',']);
-end;
 
 constructor TAtlasFontsDialog.CreateDialog(AOwner: TComponent; const AForm: string;
   const AFontRows: TArray<TAtlasFontRow>; const AColorRows: TArray<TAtlasColorRow>;
@@ -177,6 +149,17 @@ begin
   FColors.OnCustomDrawSubItem := ColorDrawSubItem;
   Fill;
 end;
+
+function FontLine(const AFont: TAtlasFontKey): string;
+begin
+  Result := TAtlasFontsColors.FontText(AFont, TAtlasFontsDialog.StyleNames);
+  if not SameText(AFont.Color, 'clWindowText') then
+  begin
+    Result := Result + ', ' + AFont.Color;
+  end;
+end;
+
+{ TAtlasFontsDialog }
 
 function TAtlasFontsDialog.AddList(const ACaption: string; const AColumns: array of string): TListView;
 var
@@ -347,6 +330,25 @@ begin
     FAction := TAtlasFontsAction.ReplaceColor;
     ModalResult := mrOk;
   end;
+end;
+
+class function TAtlasFontsDialog.StyleNames: TArray<string>;
+begin
+  Result := UiText(TAtlasDesignerTextId.DesignerFontsStyles).Split([',']);
+end;
+
+class function TAtlasFontsDialog.KeyOf(AFont: TFont): TAtlasFontKey;
+var
+  mStyle: Integer;
+  mFontStyle: TFontStyle;
+begin
+  // Ein Bit je Stil in der Reihenfolge von TFontStyle (fett, kursiv, unterstrichen, durchgestrichen).
+  mStyle := 0;
+  for mFontStyle in AFont.Style do
+  begin
+    mStyle := mStyle or (1 shl Ord(mFontStyle));
+  end;
+  Result := TAtlasFontKey.Create(AFont.Name, AFont.Size, mStyle, ColorToString(AFont.Color));
 end;
 
 class function TAtlasFontsDialog.Execute(const AForm: string; const AFontRows: TArray<TAtlasFontRow>;

@@ -62,6 +62,8 @@ begin
   end;
 end;
 
+{ TAtlasFormatLog }
+
 class function TAtlasFormatLog.Request(ABlockValid: Boolean; ABlockSize: Integer;
   const ASelection: TLspRange): string;
 var

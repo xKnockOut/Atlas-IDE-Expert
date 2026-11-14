@@ -61,6 +61,8 @@ begin
   Result := (APos < Length(ALine)) and (ALine[APos + 1] = AChar);
 end;
 
+{ TScanner }
+
 procedure TScanner.Finish(ALine, ACharacter: Integer);
 var
   mText: string;
@@ -180,6 +182,8 @@ begin
   end;
   Result := FDirectives;
 end;
+
+{ TAtlasDirectiveScanner }
 
 class function TAtlasDirectiveScanner.Scan(const ALines: TArray<string>): TAtlasDirectives;
 var

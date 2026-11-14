@@ -109,17 +109,6 @@ begin
   FParts.RunTests.Visible := False;
 end;
 
-procedure TAtlasResultsImpactPart.AddForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
-var
-  mForm: TAtlasImpactForm;
-begin
-  for mForm in AForms do
-  begin
-    View.AddNode(AParent, TAtlasResultsTexts.ImpactFormText(mForm),
-      TAtlasResultsNode.Place(TAtlasResultsNodeKind.Entry, mForm.FileName, mForm.Line, mForm.Character));
-  end;
-end;
-
 function TAtlasResultsImpactPart.AddPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
 var
   mPlace: TAtlasImpactPlace;
@@ -142,6 +131,17 @@ begin
   for mChild in FImpact.Children(ACause) do
   begin
     AddBranch(AddPlace(AParent, mChild), mChild);
+  end;
+end;
+
+procedure TAtlasResultsImpactPart.AddForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
+var
+  mForm: TAtlasImpactForm;
+begin
+  for mForm in AForms do
+  begin
+    View.AddNode(AParent, TAtlasResultsTexts.ImpactFormText(mForm),
+      TAtlasResultsNode.Place(TAtlasResultsNodeKind.Entry, mForm.FileName, mForm.Line, mForm.Character));
   end;
 end;
 
@@ -242,6 +242,22 @@ begin
   end;
 end;
 
+procedure TAtlasResultsImpactPart.DepthChange(Sender: TObject);
+begin
+  if FShows and (FParts.Depth.ItemIndex >= 0) and Assigned(FHandlers.OnDepth) then
+  begin
+    FHandlers.OnDepth(FParts.Depth.ItemIndex + 1);
+  end;
+end;
+
+procedure TAtlasResultsImpactPart.RunTestsClick(Sender: TObject);
+begin
+  if FShows and (Length(FImpact.Tests) > 0) and Assigned(FHandlers.OnRunTests) then
+  begin
+    FHandlers.OnRunTests(FImpact);
+  end;
+end;
+
 procedure TAtlasResultsImpactPart.Show(const ATitle: string; const AImpact: TAtlasImpact);
 begin
   View.Clear(ATitle);
@@ -258,22 +274,6 @@ begin
     View.Tree.Items.EndUpdate;
   end;
   View.Select(nil);
-end;
-
-procedure TAtlasResultsImpactPart.DepthChange(Sender: TObject);
-begin
-  if FShows and (FParts.Depth.ItemIndex >= 0) and Assigned(FHandlers.OnDepth) then
-  begin
-    FHandlers.OnDepth(FParts.Depth.ItemIndex + 1);
-  end;
-end;
-
-procedure TAtlasResultsImpactPart.RunTestsClick(Sender: TObject);
-begin
-  if FShows and (Length(FImpact.Tests) > 0) and Assigned(FHandlers.OnRunTests) then
-  begin
-    FHandlers.OnRunTests(FImpact);
-  end;
 end;
 
 end.

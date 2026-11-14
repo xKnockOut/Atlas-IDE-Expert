@@ -148,6 +148,8 @@ begin
   ARegistry.CloseKey;
 end;
 
+{ TAtlasIdeStructureSwitch }
+
 class function TAtlasIdeStructureSwitch.ApplySwitch(const ASubKey, AValueName, AMarker, ALegacyMarker: string;
   AOwn: Boolean): Boolean;
 var
@@ -313,11 +315,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeStructureSwitch.ErrorInsightChanged: Boolean;
-begin
-  Result := (ErrorInsightAtStart >= 0) and (Ord(ReadErrorInsight) <> ErrorInsightAtStart);
-end;
-
 class function TAtlasIdeStructureSwitch.SetErrorInsight(AEnabled: Boolean): Boolean;
 var
   mRegistry: TRegistry;
@@ -356,6 +353,11 @@ begin
   finally
     mRegistry.Free;
   end;
+end;
+
+class function TAtlasIdeStructureSwitch.ErrorInsightChanged: Boolean;
+begin
+  Result := (ErrorInsightAtStart >= 0) and (Ord(ReadErrorInsight) <> ErrorInsightAtStart);
 end;
 
 /// <summary>Meldung zu einem geänderten Schalter: AOffId, wenn Atlas übernimmt, sonst AOnId.</summary>

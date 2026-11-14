@@ -124,24 +124,6 @@ begin
   AlignWithMargins := True;
 end;
 
-function TAtlasButtonRow.ButtonWidth(const ACaption: string): Integer;
-var
-  mBitmap: TBitmap;
-begin
-  mBitmap := TBitmap.Create;
-  try
-    // Font.Height ist schon in Gerätepixeln der Leiste.
-    mBitmap.Canvas.Font.Assign(Font);
-    Result := mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
-  finally
-    mBitmap.Free;
-  end;
-  if Result < ScaleValue(cButtonMinWidth) then
-  begin
-    Result := ScaleValue(cButtonMinWidth);
-  end;
-end;
-
 function TAtlasButtonRow.AddButton(const ACaption: string; AKind: TAtlasButtonKind): TButton;
 begin
   Result := TButton.Create(Owner);
@@ -161,6 +143,24 @@ end;
 function TAtlasButtonRow.AddButton(const ACaption: string): TButton;
 begin
   Result := AddButton(ACaption, TAtlasButtonKind.Plain);
+end;
+
+function TAtlasButtonRow.ButtonWidth(const ACaption: string): Integer;
+var
+  mBitmap: TBitmap;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    // Font.Height ist schon in Gerätepixeln der Leiste.
+    mBitmap.Canvas.Font.Assign(Font);
+    Result := mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
+  finally
+    mBitmap.Free;
+  end;
+  if Result < ScaleValue(cButtonMinWidth) then
+  begin
+    Result := ScaleValue(cButtonMinWidth);
+  end;
 end;
 
 { TAtlasNoteLabel }

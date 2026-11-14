@@ -86,6 +86,8 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Shell.Workspace;
 
+{ TShellIdeArea }
+
 constructor TShellIdeArea.Create(ACore: TShellCore; const AServices: TShellIdeAreaServices);
 begin
   inherited Create;
@@ -108,27 +110,17 @@ begin
   inherited;
 end;
 
-function TShellIdeArea.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
-var
-  mWorkspace: TShellWorkspace;
-  mProject: TProjectInfo;
-  mContext: TIdeProjectContext;
-  mName: string;
+function TShellIdeArea.FileChangesServices: TShellFileChangesServices;
 begin
-  Result := TFormatRoutines.Defaults;
-  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(cFormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
-    'formatMethods', nil) do
-  begin
-    if Trim(mName) <> '' then
-    begin
-      Result := Result + [TFormatRoutines.Custom(mName, -1)];
-    end;
-  end;
-  mWorkspace := FCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
-  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIde.Project.Find(mProject.FileName, mContext) then
-  begin
-    Result := Result + mContext.FormatFunctions;
-  end;
+  Result := Default(TShellFileChangesServices);
+  Result.Logger := FServices.Logger;
+  Result.Workspaces := FCore.Workspaces;
+  Result.Transport := FServices.Transport;
+  Result.Configuration := FCore.Configuration;
+  Result.RefreshLater := RefreshLater;
+  // Beim Tippen macht die Projektprüfung Platz (#1247).
+  Result.Typed := Typed;
+  Result.Affected := Affected;
 end;
 
 procedure TShellIdeArea.RefreshLater;
@@ -164,17 +156,27 @@ begin
   end;
 end;
 
-function TShellIdeArea.FileChangesServices: TShellFileChangesServices;
+function TShellIdeArea.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TProjectInfo;
+  mContext: TIdeProjectContext;
+  mName: string;
 begin
-  Result := Default(TShellFileChangesServices);
-  Result.Logger := FServices.Logger;
-  Result.Workspaces := FCore.Workspaces;
-  Result.Transport := FServices.Transport;
-  Result.Configuration := FCore.Configuration;
-  Result.RefreshLater := RefreshLater;
-  // Beim Tippen macht die Projektprüfung Platz (#1247).
-  Result.Typed := Typed;
-  Result.Affected := Affected;
+  Result := TFormatRoutines.Defaults;
+  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(cFormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
+    'formatMethods', nil) do
+  begin
+    if Trim(mName) <> '' then
+    begin
+      Result := Result + [TFormatRoutines.Custom(mName, -1)];
+    end;
+  end;
+  mWorkspace := FCore.Workspaces.WorkspaceOf(TDocumentUris.ToPath(AUri));
+  if (mWorkspace <> nil) and mWorkspace.State.Project(mProject) and FIde.Project.Find(mProject.FileName, mContext) then
+  begin
+    Result := Result + mContext.FormatFunctions;
+  end;
 end;
 
 /// <summary>Schickt Benachrichtigungen über ATransport an die IDE.</summary>

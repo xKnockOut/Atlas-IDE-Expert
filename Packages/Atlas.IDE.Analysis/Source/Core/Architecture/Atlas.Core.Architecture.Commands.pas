@@ -107,6 +107,8 @@ begin
   Result.Compare := ACompare;
 end;
 
+{ TAtlasArchitectureCommands }
+
 class function TAtlasArchitectureCommands.Arguments(const AProjectUri, AScope: string;
   AIncludeLibrary: Boolean): string;
 begin
@@ -137,18 +139,6 @@ begin
   end;
 end;
 
-class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
-  AIncludeLibrary: Boolean): string;
-begin
-  Result := SaveArguments(AProjectUri, AFileName, TAtlasArchitectureOptions.Create(AScope, AIncludeLibrary));
-end;
-
-class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
-  AIncludeLibrary: Boolean; const ACompareWith: string; ACompare: Boolean): string;
-begin
-  Result := SaveArguments(AProjectUri, AFileName, ComparedOptions(AScope, AIncludeLibrary, ACompareWith, ACompare));
-end;
-
 class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName: string;
   const AOptions: TAtlasArchitectureOptions): string;
 var
@@ -163,6 +153,18 @@ begin
   finally
     mItems.Free;
   end;
+end;
+
+class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
+  AIncludeLibrary: Boolean): string;
+begin
+  Result := SaveArguments(AProjectUri, AFileName, TAtlasArchitectureOptions.Create(AScope, AIncludeLibrary));
+end;
+
+class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
+  AIncludeLibrary: Boolean; const ACompareWith: string; ACompare: Boolean): string;
+begin
+  Result := SaveArguments(AProjectUri, AFileName, ComparedOptions(AScope, AIncludeLibrary, ACompareWith, ACompare));
 end;
 
 class function TAtlasArchitectureCommands.SavedFile(const AAnswer: string): string;

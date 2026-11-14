@@ -143,20 +143,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeRuleChecksNotice.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := ExtractFileExt(AFileName);
-  Result := SameText(mExt, '.dproj') or SameText(mExt, '.dpr') or SameText(mExt, '.dpk') or
-    SameText(mExt, '.groupproj');
-end;
-
-class function TAtlasIdeRuleChecksNotice.ConfigExists(const AFileName: string): Boolean;
-begin
-  Result := TFile.Exists(AFileName);
-end;
-
 procedure TAtlasIdeRuleChecksNotice.Opened(const AFileName: string);
 var
   mConfig, mText: string;
@@ -180,15 +166,6 @@ begin
   if FCore.Wanted(mConfig, mText, TAtlasIdeSettings.ModuleOn(cModule)) then
   begin
     Show(AFileName);
-  end;
-end;
-
-class procedure TAtlasIdeRuleChecksNotice.TurnOn;
-begin
-  // Schon eingeschaltet (z. B. über die Optionsseite): nicht wieder ausschalten.
-  if not TAtlasIdeSettings.ModuleOn(cModule) then
-  begin
-    TAtlasIdeQuickToggles.Switch(cSwitchKey);
   end;
 end;
 
@@ -225,6 +202,29 @@ begin
   FToast.Colors := TAtlasIdeStyle.Colors;
   FToast.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
   FToast.ShowNotice(mTitle, mText, [mCaption], mArea);
+end;
+
+class function TAtlasIdeRuleChecksNotice.IsProjectFile(const AFileName: string): Boolean;
+var
+  mExt: string;
+begin
+  mExt := ExtractFileExt(AFileName);
+  Result := SameText(mExt, '.dproj') or SameText(mExt, '.dpr') or SameText(mExt, '.dpk') or
+    SameText(mExt, '.groupproj');
+end;
+
+class function TAtlasIdeRuleChecksNotice.ConfigExists(const AFileName: string): Boolean;
+begin
+  Result := TFile.Exists(AFileName);
+end;
+
+class procedure TAtlasIdeRuleChecksNotice.TurnOn;
+begin
+  // Schon eingeschaltet (z. B. über die Optionsseite): nicht wieder ausschalten.
+  if not TAtlasIdeSettings.ModuleOn(cModule) then
+  begin
+    TAtlasIdeQuickToggles.Switch(cSwitchKey);
+  end;
 end;
 
 end.

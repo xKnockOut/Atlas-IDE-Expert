@@ -66,19 +66,45 @@ implementation
 
 { TStepFilterNames }
 
-class function TStepFilterNames.TryKind(const AName: string; out AKind: TStepFilterKind): Boolean;
+class function TStepFilterNames.WildMatch(const APattern, AText: string): Boolean;
 var
-  mKind: TStepFilterKind;
+  mPattern, mText: Integer;
+  mStar, mMark: Integer;
 begin
-  for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  // Nur * als Platzhalter: Bei einem Fehlschlag springt der Vergleich hinter den letzten * zurück.
+  mPattern := 1;
+  mText := 1;
+  mStar := 0;
+  mMark := 0;
+  while mText <= Length(AText) do
   begin
-    if SameText(Trim(AName), cKindNames[mKind]) then
+    if (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') then
     begin
-      AKind := mKind;
-      Exit(True);
+      mStar := mPattern;
+      mMark := mText;
+      Inc(mPattern);
+    end
+    else if (mPattern <= Length(APattern)) and (APattern[mPattern] = AText[mText]) then
+    begin
+      Inc(mPattern);
+      Inc(mText);
+    end
+    else if mStar > 0 then
+    begin
+      mPattern := mStar + 1;
+      Inc(mMark);
+      mText := mMark;
+    end
+    else
+    begin
+      Exit(False);
     end;
   end;
-  Result := False;
+  while (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') do
+  begin
+    Inc(mPattern);
+  end;
+  Result := mPattern > Length(APattern);
 end;
 
 class function TStepFilterNames.ParseKinds(const AText: string): TStepFilterKinds;
@@ -117,6 +143,21 @@ end;
 class function TStepFilterNames.NormalizeKinds(const AText: string): string;
 begin
   Result := KindsText(ParseKinds(AText));
+end;
+
+class function TStepFilterNames.TryKind(const AName: string; out AKind: TStepFilterKind): Boolean;
+var
+  mKind: TStepFilterKind;
+begin
+  for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
+    if SameText(Trim(AName), cKindNames[mKind]) then
+    begin
+      AKind := mKind;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TStepFilterNames.IsValidPattern(const APattern: string): Boolean;
@@ -171,47 +212,6 @@ end;
 class function TStepFilterNames.NormalizePatterns(const AText: string): string;
 begin
   Result := string.Join(cPatternSeparator, ParsePatterns(AText));
-end;
-
-class function TStepFilterNames.WildMatch(const APattern, AText: string): Boolean;
-var
-  mPattern, mText: Integer;
-  mStar, mMark: Integer;
-begin
-  // Nur * als Platzhalter: Bei einem Fehlschlag springt der Vergleich hinter den letzten * zurück.
-  mPattern := 1;
-  mText := 1;
-  mStar := 0;
-  mMark := 0;
-  while mText <= Length(AText) do
-  begin
-    if (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') then
-    begin
-      mStar := mPattern;
-      mMark := mText;
-      Inc(mPattern);
-    end
-    else if (mPattern <= Length(APattern)) and (APattern[mPattern] = AText[mText]) then
-    begin
-      Inc(mPattern);
-      Inc(mText);
-    end
-    else if mStar > 0 then
-    begin
-      mPattern := mStar + 1;
-      Inc(mMark);
-      mText := mMark;
-    end
-    else
-    begin
-      Exit(False);
-    end;
-  end;
-  while (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') do
-  begin
-    Inc(mPattern);
-  end;
-  Result := mPattern > Length(APattern);
 end;
 
 class function TStepFilterNames.Matches(const APattern, AName: string): Boolean;

@@ -51,6 +51,8 @@ type
 
 implementation
 
+{ TAtlasIdeBreakpoints }
+
 class function TAtlasIdeBreakpoints.Debugger: IOTADebuggerServices;
 begin
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
@@ -71,11 +73,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeBreakpoints.IsStopped(const AProcess: IOTAProcess): Boolean;
-begin
-  Result := (AProcess <> nil) and (AProcess.ProcessState in [psStopped, psFault, psException]);
-end;
-
 class function TAtlasIdeBreakpoints.StoppedProcess: IOTAProcess;
 begin
   Result := CurrentProcess;
@@ -83,6 +80,11 @@ begin
   begin
     Result := nil;
   end;
+end;
+
+class function TAtlasIdeBreakpoints.IsStopped(const AProcess: IOTAProcess): Boolean;
+begin
+  Result := (AProcess <> nil) and (AProcess.ProcessState in [psStopped, psFault, psException]);
 end;
 
 class function TAtlasIdeBreakpoints.Position(const AThread: IOTAThread; out AFileName: string;
@@ -178,24 +180,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeBreakpoints.CopyProperties(const ASource, ATarget: IOTABreakpoint);
-begin
-  ATarget.Expression := ASource.Expression;
-  ATarget.PassCount := ASource.PassCount;
-  ATarget.GroupName := ASource.GroupName;
-  ATarget.DoBreak := ASource.DoBreak;
-  ATarget.LogMessage := ASource.LogMessage;
-  ATarget.EvalExpression := ASource.EvalExpression;
-  ATarget.LogResult := ASource.LogResult;
-  ATarget.EnableGroup := ASource.EnableGroup;
-  ATarget.DisableGroup := ASource.DisableGroup;
-  ATarget.DoHandleExceptions := ASource.DoHandleExceptions;
-  ATarget.DoIgnoreExceptions := ASource.DoIgnoreExceptions;
-  ATarget.StackFramesToLog := ASource.StackFramesToLog;
-  ATarget.ThreadCondition := ASource.ThreadCondition;
-  ATarget.Enabled := ASource.Enabled;
-end;
-
 class function TAtlasIdeBreakpoints.MoveTo(const ABreakpoint: IOTABreakpoint; ALine: Integer): IOTABreakpoint;
 var
   mServices: IOTADebuggerServices;
@@ -236,6 +220,24 @@ begin
         ;
     end;
   end;
+end;
+
+class procedure TAtlasIdeBreakpoints.CopyProperties(const ASource, ATarget: IOTABreakpoint);
+begin
+  ATarget.Expression := ASource.Expression;
+  ATarget.PassCount := ASource.PassCount;
+  ATarget.GroupName := ASource.GroupName;
+  ATarget.DoBreak := ASource.DoBreak;
+  ATarget.LogMessage := ASource.LogMessage;
+  ATarget.EvalExpression := ASource.EvalExpression;
+  ATarget.LogResult := ASource.LogResult;
+  ATarget.EnableGroup := ASource.EnableGroup;
+  ATarget.DisableGroup := ASource.DisableGroup;
+  ATarget.DoHandleExceptions := ASource.DoHandleExceptions;
+  ATarget.DoIgnoreExceptions := ASource.DoIgnoreExceptions;
+  ATarget.StackFramesToLog := ASource.StackFramesToLog;
+  ATarget.ThreadCondition := ASource.ThreadCondition;
+  ATarget.Enabled := ASource.Enabled;
 end;
 
 /// <summary>ABreakpoint entfernen; schon vom Benutzer gelöscht ist kein Fehler.</summary>

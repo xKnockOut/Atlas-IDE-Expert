@@ -109,55 +109,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasEditorPreview.InvalidateLine(ALine: Integer);
-var
-  mServices: INTACodeEditorServices;
-begin
-  if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTopLine(mServices, ALine);
-  end;
-end;
-
-procedure TAtlasEditorPreview.Show(const AFileName: string; ALine, AColumn: Integer; const AText: string);
-begin
-  if (AText = FText) and (ALine = FLine) and (AColumn = FColumn) and SameText(AFileName, FFileName) then
-  begin
-    Exit;
-  end;
-  if FLine <> ALine then
-  begin
-    InvalidateLine(FLine);
-  end;
-  FFileName := AFileName;
-  FLine := ALine;
-  FColumn := AColumn;
-  FText := AText;
-  InvalidateLine(FLine);
-end;
-
-procedure TAtlasEditorPreview.Clear;
-begin
-  if FText = '' then
-  begin
-    Exit;
-  end;
-  FText := '';
-  InvalidateLine(FLine);
-  FLine := 0;
-end;
-
-function TAtlasEditorPreview.ShowsIn(const AContext: INTACodeEditorPaintContext): Boolean;
-begin
-  Result := (FText <> '') and (AContext <> nil) and (AContext.LogicalLineNum = FLine) and
-    SameText(AContext.FileName, FFileName);
-  // Nur in der Cursorzeile (FollowCursor): Der Cursor der Ansicht muss in der Zeile stehen.
-  if Result and FFollowCursor then
-  begin
-    Result := (AContext.EditView <> nil) and (AContext.EditView.CursorPos.Line = FLine);
-  end;
-end;
-
 procedure TAtlasEditorPreview.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -212,6 +163,55 @@ begin
       TAtlasGuard.Report(TAtlasFeature.Completion, E);
     end;
   end;
+end;
+
+function TAtlasEditorPreview.ShowsIn(const AContext: INTACodeEditorPaintContext): Boolean;
+begin
+  Result := (FText <> '') and (AContext <> nil) and (AContext.LogicalLineNum = FLine) and
+    SameText(AContext.FileName, FFileName);
+  // Nur in der Cursorzeile (FollowCursor): Der Cursor der Ansicht muss in der Zeile stehen.
+  if Result and FFollowCursor then
+  begin
+    Result := (AContext.EditView <> nil) and (AContext.EditView.CursorPos.Line = FLine);
+  end;
+end;
+
+procedure TAtlasEditorPreview.InvalidateLine(ALine: Integer);
+var
+  mServices: INTACodeEditorServices;
+begin
+  if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTopLine(mServices, ALine);
+  end;
+end;
+
+procedure TAtlasEditorPreview.Show(const AFileName: string; ALine, AColumn: Integer; const AText: string);
+begin
+  if (AText = FText) and (ALine = FLine) and (AColumn = FColumn) and SameText(AFileName, FFileName) then
+  begin
+    Exit;
+  end;
+  if FLine <> ALine then
+  begin
+    InvalidateLine(FLine);
+  end;
+  FFileName := AFileName;
+  FLine := ALine;
+  FColumn := AColumn;
+  FText := AText;
+  InvalidateLine(FLine);
+end;
+
+procedure TAtlasEditorPreview.Clear;
+begin
+  if FText = '' then
+  begin
+    Exit;
+  end;
+  FText := '';
+  InvalidateLine(FLine);
+  FLine := 0;
 end;
 
 end.

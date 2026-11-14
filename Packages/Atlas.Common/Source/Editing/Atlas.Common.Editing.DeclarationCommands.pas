@@ -263,6 +263,8 @@ begin
   Result := SplitDeclaration(mArguments, ':', ASpec.Name, ASpec.TypeName);
 end;
 
+{ TPropSpec }
+
 function TPropSpec.Field: string;
 begin
   Result := 'F' + Name;

@@ -122,6 +122,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeDebugProcesses }
+
 class function TAtlasIdeDebugProcesses.Named(const AName: string; ADetails: Boolean): TAtlasReattachProcesses;
 var
   mSnapshot: THandle;

@@ -326,16 +326,6 @@ end;
 
 { TAtlasRotatingLog }
 
-constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64);
-begin
-  Create(AFolder, AMaxBytes, 5);
-end;
-
-constructor TAtlasRotatingLog.Create(const AFolder: string);
-begin
-  Create(AFolder, 1024 * 1024, 5);
-end;
-
 constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64; AMaxFiles: Integer);
 begin
   inherited Create;
@@ -346,37 +336,21 @@ begin
   FRedactor := TAtlasLogRedactor.Create(TAtlasLogRedactor.EnvironmentIdentity);
 end;
 
+constructor TAtlasRotatingLog.Create(const AFolder: string; AMaxBytes: Int64);
+begin
+  Create(AFolder, AMaxBytes, 5);
+end;
+
+constructor TAtlasRotatingLog.Create(const AFolder: string);
+begin
+  Create(AFolder, 1024 * 1024, 5);
+end;
+
 destructor TAtlasRotatingLog.Destroy;
 begin
   FRedactor.Free;
   FLock.Free;
   inherited;
-end;
-
-class function TAtlasRotatingLog.MutexName(const AFolder: string): string;
-var
-  mKey: string;
-  mHash: Cardinal;
-  mIndex: Integer;
-begin
-  // FNV-1a über den Ordner; ein Mutexname darf außer nach „Local\“ keinen Backslash enthalten.
-  mKey := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
-  mHash := 2166136261;
-  for mIndex := 1 to Length(mKey) do
-  begin
-    mHash := Cardinal((UInt64(mHash xor Ord(mKey[mIndex])) * 16777619) and $FFFFFFFF);
-  end;
-  Result := 'Local\Atlas.Log.' + IntToHex(mHash, 8);
-end;
-
-class function TAtlasRotatingLog.DefaultFolder: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'Logs');
-end;
-
-function TAtlasRotatingLog.FileName: string;
-begin
-  Result := TPath.Combine(FFolder, 'atlas.log');
 end;
 
 procedure TAtlasRotatingLog.Rotate;
@@ -405,13 +379,6 @@ begin
       TFile.Move(mNewer, mOlder);
     end;
   end;
-end;
-
-/// <summary>Fehlermeldung fürs Protokoll: ohne den Ordner (enthält den Benutzernamen), einzeilig und gekürzt.</summary>
-function TAtlasRotatingLog.Clean(const AText: string): string;
-begin
-  Result := TAtlasGuard.SafeMessage(StringReplace(AText, ExcludeTrailingPathDelimiter(FFolder), 'Logs',
-    [rfReplaceAll, rfIgnoreCase]));
 end;
 
 /// <summary>Rotieren und Anhängen unter der prozessübergreifenden Sperre; '' = geschrieben, sonst der Grund. Nur
@@ -488,6 +455,13 @@ begin
   end;
 end;
 
+/// <summary>Fehlermeldung fürs Protokoll: ohne den Ordner (enthält den Benutzernamen), einzeilig und gekürzt.</summary>
+function TAtlasRotatingLog.Clean(const AText: string): string;
+begin
+  Result := TAtlasGuard.SafeMessage(StringReplace(AText, ExcludeTrailingPathDelimiter(FFolder), 'Logs',
+    [rfReplaceAll, rfIgnoreCase]));
+end;
+
 procedure TAtlasRotatingLog.Add(const AText: string);
 var
   mFailure, mError: string;
@@ -521,12 +495,33 @@ begin
   end;
 end;
 
-{ TAtlasFuse }
-
-constructor TAtlasFuse.Create;
+class function TAtlasRotatingLog.MutexName(const AFolder: string): string;
+var
+  mKey: string;
+  mHash: Cardinal;
+  mIndex: Integer;
 begin
-  Create(nil);
+  // FNV-1a über den Ordner; ein Mutexname darf außer nach „Local\“ keinen Backslash enthalten.
+  mKey := UpperCase(ExcludeTrailingPathDelimiter(AFolder));
+  mHash := 2166136261;
+  for mIndex := 1 to Length(mKey) do
+  begin
+    mHash := Cardinal((UInt64(mHash xor Ord(mKey[mIndex])) * 16777619) and $FFFFFFFF);
+  end;
+  Result := 'Local\Atlas.Log.' + IntToHex(mHash, 8);
 end;
+
+function TAtlasRotatingLog.FileName: string;
+begin
+  Result := TPath.Combine(FFolder, 'atlas.log');
+end;
+
+class function TAtlasRotatingLog.DefaultFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'Logs');
+end;
+
+{ TAtlasFuse }
 
 constructor TAtlasFuse.Create(const AClock: TFunc<TDateTime>);
 begin
@@ -545,6 +540,11 @@ begin
   FProvidersTripped := TDictionary<string, string>.Create;
   FSlowLogged := TDictionary<string, TDateTime>.Create;
   FSlowSkipped := TDictionary<string, Integer>.Create;
+end;
+
+constructor TAtlasFuse.Create;
+begin
+  Create(nil);
 end;
 
 destructor TAtlasFuse.Destroy;
@@ -622,97 +622,6 @@ begin
   end;
 end;
 
-function TAtlasFuse.ProviderFailed(const AName: string): Boolean;
-var
-  mKey: string;
-  mStamps: TArray<TDateTime>;
-begin
-  mKey := AnsiLowerCase(AName);
-  FLock.Enter;
-  try
-    Result := False;
-    if FProvidersTripped.ContainsKey(mKey) then
-    begin
-      Exit;
-    end;
-    if not FProviderFailures.TryGetValue(mKey, mStamps) then
-    begin
-      mStamps := nil;
-    end;
-    if Count(mStamps) then
-    begin
-      FProvidersTripped.Add(mKey, AName);
-      Result := True;
-    end;
-    FProviderFailures.AddOrSetValue(mKey, mStamps);
-  finally
-    FLock.Leave;
-  end;
-end;
-
-function TAtlasFuse.ProviderSlow(const AName: string; out ASkipped: Integer): Boolean;
-var
-  mKey: string;
-  mTime, mLogged: TDateTime;
-begin
-  mKey := AnsiLowerCase(AName);
-  FLock.Enter;
-  try
-    mTime := FClock;
-    if not FSlowSkipped.TryGetValue(mKey, ASkipped) then
-    begin
-      ASkipped := 0;
-    end;
-    Result := not FSlowLogged.TryGetValue(mKey, mLogged) or (SecondsBetween(mTime, mLogged) >= cSlowLogSeconds);
-    if Result then
-    begin
-      FSlowLogged.AddOrSetValue(mKey, mTime);
-      FSlowSkipped.AddOrSetValue(mKey, 0);
-    end
-    else
-    begin
-      FSlowSkipped.AddOrSetValue(mKey, ASkipped + 1);
-      ASkipped := 0;
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-function TAtlasFuse.ProviderTripped(const AName: string): Boolean;
-begin
-  FLock.Enter;
-  try
-    Result := FProvidersTripped.ContainsKey(AnsiLowerCase(AName));
-  finally
-    FLock.Leave;
-  end;
-end;
-
-function TAtlasFuse.TrippedProviders: TArray<string>;
-begin
-  FLock.Enter;
-  try
-    Result := FProvidersTripped.Values.ToArray;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TAtlasFuse.ResetProvider(const AName: string);
-var
-  mKey: string;
-begin
-  mKey := AnsiLowerCase(AName);
-  FLock.Enter;
-  try
-    FProvidersTripped.Remove(mKey);
-    FProviderFailures.Remove(mKey);
-  finally
-    FLock.Leave;
-  end;
-end;
-
 function TAtlasFuse.Tripped(AFeature: TAtlasFeature): Boolean;
 begin
   FLock.Enter;
@@ -756,6 +665,97 @@ begin
   end;
 end;
 
+function TAtlasFuse.ProviderFailed(const AName: string): Boolean;
+var
+  mKey: string;
+  mStamps: TArray<TDateTime>;
+begin
+  mKey := AnsiLowerCase(AName);
+  FLock.Enter;
+  try
+    Result := False;
+    if FProvidersTripped.ContainsKey(mKey) then
+    begin
+      Exit;
+    end;
+    if not FProviderFailures.TryGetValue(mKey, mStamps) then
+    begin
+      mStamps := nil;
+    end;
+    if Count(mStamps) then
+    begin
+      FProvidersTripped.Add(mKey, AName);
+      Result := True;
+    end;
+    FProviderFailures.AddOrSetValue(mKey, mStamps);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TAtlasFuse.ProviderTripped(const AName: string): Boolean;
+begin
+  FLock.Enter;
+  try
+    Result := FProvidersTripped.ContainsKey(AnsiLowerCase(AName));
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TAtlasFuse.TrippedProviders: TArray<string>;
+begin
+  FLock.Enter;
+  try
+    Result := FProvidersTripped.Values.ToArray;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TAtlasFuse.ResetProvider(const AName: string);
+var
+  mKey: string;
+begin
+  mKey := AnsiLowerCase(AName);
+  FLock.Enter;
+  try
+    FProvidersTripped.Remove(mKey);
+    FProviderFailures.Remove(mKey);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TAtlasFuse.ProviderSlow(const AName: string; out ASkipped: Integer): Boolean;
+var
+  mKey: string;
+  mTime, mLogged: TDateTime;
+begin
+  mKey := AnsiLowerCase(AName);
+  FLock.Enter;
+  try
+    mTime := FClock;
+    if not FSlowSkipped.TryGetValue(mKey, ASkipped) then
+    begin
+      ASkipped := 0;
+    end;
+    Result := not FSlowLogged.TryGetValue(mKey, mLogged) or (SecondsBetween(mTime, mLogged) >= cSlowLogSeconds);
+    if Result then
+    begin
+      FSlowLogged.AddOrSetValue(mKey, mTime);
+      FSlowSkipped.AddOrSetValue(mKey, 0);
+    end
+    else
+    begin
+      FSlowSkipped.AddOrSetValue(mKey, ASkipped + 1);
+      ASkipped := 0;
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
 procedure TAtlasFuse.ResetAll;
 var
   mFeature: TAtlasFeature;
@@ -792,105 +792,6 @@ begin
   FreeAndNil(FFuse);
 end;
 
-class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
-const
-  cNames: array[TAtlasLanguage, TAtlasFeature] of string = (
-    ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
-      'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
-      'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
-      'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen',
-      'Benachrichtigungen', 'Brotkrumenleiste', 'Gliederung', 'Mitlaufender Kopf', 'Minimap', 'Änderungsmarken',
-      'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
-      'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
-      'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
-      'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
-      'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
-      'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
-      'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
-      'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste', 'Tracker',
-      'Willkommensseite: Aktualisieren', 'Regionen falten', 'Einrückung beim Tippen',
-      'Gelernte Vorschläge'),
-    ('Completion', 'Parameter hint', 'Tooltip', 'Bracket pairs',
-      'Problems', 'Reload', 'Command palette', 'Check on save', 'Watchdog', 'Server', 'Settings', 'Menu',
-      'Files', 'Inlay hints', 'Results window', 'Editor commands', 'Forms', 'Compile events', 'Status field',
-      'Welcome page', 'Shortcut tips', 'Notes', 'Bookmarks',
-      'Notifications', 'Breadcrumbs', 'Outline', 'Sticky scroll', 'Minimap', 'Change marks',
-      'Atlas column', 'Recursion markers', 'Overview ruler', 'Highlight same text', 'Multiple carets',
-      'Linked identifier editing', 'Code Lens', 'Navigation history', 'Peek definition', 'Paste with uses completion',
-      'Surround selection', 'Remove surrounding', 'Hide at element', 'Atlas Search', 'Search units',
-      'Generate menu', 'Continue comment and pattern', 'Quick commands', 'Go to definition', 'Editor toolbar',
-      'Quick bookmarks', 'Atlas status bar', 'Architecture overview', 'Unit relations',
-      'Path between symbols', 'Project tasks', 'Debugging',
-      'Exit points', 'Reassigned variables', 'Type of expression', 'Method order',
-      'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
-      'Welcome page: updates', 'Region folding', 'Indent while typing',
-      'Learned suggestions'));
-begin
-  Result := cNames[TAtlasTextLanguage.Current, AFeature];
-end;
-
-class procedure TAtlasGuard.Log(const AText: string);
-begin
-  if FLog <> nil then
-  begin
-    FLog.Add(AText);
-  end;
-end;
-
-class function TAtlasGuard.ErrorText(AE: Exception): string;
-begin
-  Result := AE.ClassName + ': ' + MessageText(AE.Message);
-end;
-
-class function TAtlasGuard.MessageText(const AText: string): string;
-begin
-  Result := TLogMarks.Text(SafeMessage(AText));
-end;
-
-class procedure TAtlasGuard.SetLogNames(AValue: Boolean);
-begin
-  if FLog <> nil then
-  begin
-    FLog.Redactor.Names := AValue;
-  end;
-end;
-
-class function TAtlasGuard.SafeMessage(const AText: string): string;
-var
-  mBuilder: TStringBuilder;
-  mCh: Char;
-  mSpace: Boolean;
-begin
-  // Zeilenumbrüche und Steuerzeichen werden zu einem Leerzeichen; Folgen davon zu einem.
-  mBuilder := TStringBuilder.Create;
-  try
-    mSpace := False;
-    for mCh in AText do
-    begin
-      if CharInSet(mCh, [#0..#32]) then
-      begin
-        mSpace := True;
-      end
-      else
-      begin
-        if mSpace and (mBuilder.Length > 0) then
-        begin
-          mBuilder.Append(' ');
-        end;
-        mSpace := False;
-        mBuilder.Append(mCh);
-      end;
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
-  if Length(Result) > cMaxMessageLength then
-  begin
-    Result := Copy(Result, 1, cMaxMessageLength) + '…';
-  end;
-end;
-
 class function TAtlasGuard.ErrorLine(const AWhere: string; AE: Exception): string;
 var
   mTrace: string;
@@ -909,6 +810,64 @@ begin
   if mTrace <> '' then
   begin
     Result := Result + sLineBreak + '  Stack: ' + StringReplace(mTrace, sLineBreak, sLineBreak + '  ', [rfReplaceAll]);
+  end;
+end;
+
+class function TAtlasGuard.Disabled(AFeature: TAtlasFeature): Boolean;
+begin
+  Result := (FFuse <> nil) and FFuse.Tripped(AFeature);
+end;
+
+class procedure TAtlasGuard.Enable(AFeature: TAtlasFeature);
+begin
+  if FFuse <> nil then
+  begin
+    FFuse.Reset(AFeature);
+  end;
+  Log(Format('%s wieder eingeschaltet', [FeatureName(AFeature)]));
+end;
+
+class procedure TAtlasGuard.EnableAll;
+var
+  mFeature: TAtlasFeature;
+  mName: string;
+begin
+  for mFeature in DisabledSet do
+  begin
+    Enable(mFeature);
+  end;
+  for mName in DisabledProviders do
+  begin
+    EnableProvider(mName);
+  end;
+end;
+
+class procedure TAtlasGuard.Disable(AFeature: TAtlasFeature);
+begin
+  if FFuse <> nil then
+  begin
+    FFuse.Trip(AFeature);
+  end;
+  Log(Format('%s im Diagnose-Fenster bis zum Neustart ausgeschaltet', [FeatureName(AFeature)]));
+end;
+
+class function TAtlasGuard.DisabledSet: TAtlasFeatures;
+begin
+  if FFuse = nil then
+  begin
+    Result := [];
+  end
+  else
+  begin
+    Result := FFuse.TrippedSet;
+  end;
+end;
+
+class procedure TAtlasGuard.Log(const AText: string);
+begin
+  if FLog <> nil then
+  begin
+    FLog.Add(AText);
   end;
 end;
 
@@ -988,6 +947,61 @@ begin
     end;
 end;
 
+class function TAtlasGuard.ErrorText(AE: Exception): string;
+begin
+  Result := AE.ClassName + ': ' + MessageText(AE.Message);
+end;
+
+class function TAtlasGuard.MessageText(const AText: string): string;
+begin
+  Result := TLogMarks.Text(SafeMessage(AText));
+end;
+
+class procedure TAtlasGuard.SetLogNames(AValue: Boolean);
+begin
+  if FLog <> nil then
+  begin
+    FLog.Redactor.Names := AValue;
+  end;
+end;
+
+class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
+const
+  cNames: array[TAtlasLanguage, TAtlasFeature] of string = (
+    ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
+      'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
+      'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
+      'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen',
+      'Benachrichtigungen', 'Brotkrumenleiste', 'Gliederung', 'Mitlaufender Kopf', 'Minimap', 'Änderungsmarken',
+      'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
+      'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
+      'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
+      'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
+      'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
+      'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
+      'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
+      'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste', 'Tracker',
+      'Willkommensseite: Aktualisieren', 'Regionen falten', 'Einrückung beim Tippen',
+      'Gelernte Vorschläge'),
+    ('Completion', 'Parameter hint', 'Tooltip', 'Bracket pairs',
+      'Problems', 'Reload', 'Command palette', 'Check on save', 'Watchdog', 'Server', 'Settings', 'Menu',
+      'Files', 'Inlay hints', 'Results window', 'Editor commands', 'Forms', 'Compile events', 'Status field',
+      'Welcome page', 'Shortcut tips', 'Notes', 'Bookmarks',
+      'Notifications', 'Breadcrumbs', 'Outline', 'Sticky scroll', 'Minimap', 'Change marks',
+      'Atlas column', 'Recursion markers', 'Overview ruler', 'Highlight same text', 'Multiple carets',
+      'Linked identifier editing', 'Code Lens', 'Navigation history', 'Peek definition', 'Paste with uses completion',
+      'Surround selection', 'Remove surrounding', 'Hide at element', 'Atlas Search', 'Search units',
+      'Generate menu', 'Continue comment and pattern', 'Quick commands', 'Go to definition', 'Editor toolbar',
+      'Quick bookmarks', 'Atlas status bar', 'Architecture overview', 'Unit relations',
+      'Path between symbols', 'Project tasks', 'Debugging',
+      'Exit points', 'Reassigned variables', 'Type of expression', 'Method order',
+      'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
+      'Welcome page: updates', 'Region folding', 'Indent while typing',
+      'Learned suggestions'));
+begin
+  Result := cNames[TAtlasTextLanguage.Current, AFeature];
+end;
+
 class procedure TAtlasGuard.ReportProvider(const AName: string; AE: Exception);
 begin
   Log(ErrorLine('Quelle ' + AName, AE));
@@ -1033,52 +1047,6 @@ begin
   Log(Format('Quelle %s langsam: %s%s; zählt nicht als Fehler', [AName, MessageText(AText), mSuffix]));
 end;
 
-class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;
-begin
-  if ProviderDisabled(AName) then
-  begin
-    Exit(False);
-  end;
-  try
-    AProc();
-    Result := True;
-  except
-    on E: EAbort do
-      Result := False;
-    on E: Exception do
-    begin
-      ReportProvider(AName, E);
-      Result := False;
-    end;
-  end;
-end;
-
-class function TAtlasGuard.ProviderDisabled(const AName: string): Boolean;
-begin
-  Result := (FFuse <> nil) and FFuse.ProviderTripped(AName);
-end;
-
-class procedure TAtlasGuard.EnableProvider(const AName: string);
-begin
-  if FFuse <> nil then
-  begin
-    FFuse.ResetProvider(AName);
-  end;
-  Log(Format('Quelle %s wieder eingeschaltet', [AName]));
-end;
-
-class function TAtlasGuard.DisabledProviders: TArray<string>;
-begin
-  if FFuse = nil then
-  begin
-    Result := nil;
-  end
-  else
-  begin
-    Result := FFuse.TrippedProviders;
-  end;
-end;
-
 type
   /// <summary>Was im Hauptthread gerade über TAtlasGuard.Run bzw. RunIde läuft, innerstes oben. Nur der
   /// Hauptthread schreibt; der Einfrier-Wächter liest ohne Sperre (ganze Zahlen, Index begrenzt).</summary>
@@ -1098,6 +1066,8 @@ type
     /// <summary>Innerster Eintrag; False, wenn nichts läuft.</summary>
     class function Top(out AEntry: Integer): Boolean; static;
   end;
+
+{ TRunningStack }
 
 class function TRunningStack.Enter(AEntry: Integer): Integer;
 begin
@@ -1156,17 +1126,6 @@ begin
   end;
 end;
 
-class function TAtlasGuard.CurrentFeatureName: string;
-var
-  mEntry: Integer;
-begin
-  Result := '';
-  if TRunningStack.Top(mEntry) and (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
-  begin
-    Result := FeatureName(TAtlasFeature(mEntry));
-  end;
-end;
-
 class function TAtlasGuard.Run(AFeature: TAtlasFeature; const AProc: TProc): Boolean;
 var
   mTiming: TAtlasGuardTiming;
@@ -1219,6 +1178,17 @@ begin
   end;
 end;
 
+class function TAtlasGuard.CurrentFeatureName: string;
+var
+  mEntry: Integer;
+begin
+  Result := '';
+  if TRunningStack.Top(mEntry) and (mEntry >= Ord(Low(TAtlasFeature))) and (mEntry <= Ord(High(TAtlasFeature))) then
+  begin
+    Result := FeatureName(TAtlasFeature(mEntry));
+  end;
+end;
+
 { TAtlasGuardTiming }
 
 procedure TAtlasGuardTiming.ModalBegin;
@@ -1231,53 +1201,85 @@ begin
   // Ohne Rekorder nichts zu tun.
 end;
 
-class function TAtlasGuard.Disabled(AFeature: TAtlasFeature): Boolean;
+class function TAtlasGuard.RunProvider(const AName: string; const AProc: TProc): Boolean;
 begin
-  Result := (FFuse <> nil) and FFuse.Tripped(AFeature);
+  if ProviderDisabled(AName) then
+  begin
+    Exit(False);
+  end;
+  try
+    AProc();
+    Result := True;
+  except
+    on E: EAbort do
+      Result := False;
+    on E: Exception do
+    begin
+      ReportProvider(AName, E);
+      Result := False;
+    end;
+  end;
 end;
 
-class function TAtlasGuard.DisabledSet: TAtlasFeatures;
+class function TAtlasGuard.ProviderDisabled(const AName: string): Boolean;
+begin
+  Result := (FFuse <> nil) and FFuse.ProviderTripped(AName);
+end;
+
+class procedure TAtlasGuard.EnableProvider(const AName: string);
+begin
+  if FFuse <> nil then
+  begin
+    FFuse.ResetProvider(AName);
+  end;
+  Log(Format('Quelle %s wieder eingeschaltet', [AName]));
+end;
+
+class function TAtlasGuard.DisabledProviders: TArray<string>;
 begin
   if FFuse = nil then
   begin
-    Result := [];
+    Result := nil;
   end
   else
   begin
-    Result := FFuse.TrippedSet;
+    Result := FFuse.TrippedProviders;
   end;
 end;
 
-class procedure TAtlasGuard.Disable(AFeature: TAtlasFeature);
-begin
-  if FFuse <> nil then
-  begin
-    FFuse.Trip(AFeature);
-  end;
-  Log(Format('%s im Diagnose-Fenster bis zum Neustart ausgeschaltet', [FeatureName(AFeature)]));
-end;
-
-class procedure TAtlasGuard.Enable(AFeature: TAtlasFeature);
-begin
-  if FFuse <> nil then
-  begin
-    FFuse.Reset(AFeature);
-  end;
-  Log(Format('%s wieder eingeschaltet', [FeatureName(AFeature)]));
-end;
-
-class procedure TAtlasGuard.EnableAll;
+class function TAtlasGuard.SafeMessage(const AText: string): string;
 var
-  mFeature: TAtlasFeature;
-  mName: string;
+  mBuilder: TStringBuilder;
+  mCh: Char;
+  mSpace: Boolean;
 begin
-  for mFeature in DisabledSet do
-  begin
-    Enable(mFeature);
+  // Zeilenumbrüche und Steuerzeichen werden zu einem Leerzeichen; Folgen davon zu einem.
+  mBuilder := TStringBuilder.Create;
+  try
+    mSpace := False;
+    for mCh in AText do
+    begin
+      if CharInSet(mCh, [#0..#32]) then
+      begin
+        mSpace := True;
+      end
+      else
+      begin
+        if mSpace and (mBuilder.Length > 0) then
+        begin
+          mBuilder.Append(' ');
+        end;
+        mSpace := False;
+        mBuilder.Append(mCh);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
   end;
-  for mName in DisabledProviders do
+  if Length(Result) > cMaxMessageLength then
   begin
-    EnableProvider(mName);
+    Result := Copy(Result, 1, cMaxMessageLength) + '…';
   end;
 end;
 

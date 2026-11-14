@@ -111,16 +111,119 @@ begin
   inherited;
 end;
 
-class function TAtlasFileReloader.DiskStamp(const AFileName: string; out AStamp: Int64): Boolean;
-var
-  mData: TWin32FileAttributeData;
+procedure TAtlasFileReloader.Tick(Sender: TObject);
 begin
-  AStamp := 0;
-  Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData);
-  if Result then
+  // Beobachtet wird immer (Speichern erkennen, #548); neu geladen nur mit der Einstellung.
+  if FBusy then
   begin
-    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl 32 or mData.ftLastWriteTime.dwLowDateTime;
+    Exit;
   end;
+  FBusy := True;
+  try
+    try
+      FChanges.Observe(OpenFiles, NowMs);
+      if FChanges.Due(NowMs) then
+      begin
+        Process(FChanges.TakeBatch);
+      end;
+    except
+      // Keine Exception an die IDE (#493); im nächsten Takt neu versuchen.
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Reloader, E);
+    end;
+  finally
+    FBusy := False;
+  end;
+end;
+
+function TAtlasFileReloader.OpenFiles: TArray<TAtlasObservedFile>;
+var
+  mServices: IOTAModuleServices;
+  mIndex: Integer;
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mStamp: Int64;
+  mExists: Boolean;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.ModuleCount - 1 do
+  begin
+    mModule := mServices.Modules[mIndex];
+    // Nur Quelltexte im Editor; Projekte und Gruppen verwaltet die IDE selbst.
+    mEditor := SourceEditorOf(mModule);
+    if mEditor = nil then
+    begin
+      Continue;
+    end;
+    mExists := DiskStamp(mEditor.FileName, mStamp);
+    Result := Result + [TAtlasObservedFile.Create(mEditor.FileName, mExists, mStamp, mEditor.Modified)];
+  end;
+end;
+
+class procedure TAtlasFileReloader.ShowDiff(const AFileName: string; AShow: Boolean);
+const
+  cMaxDiffLines = 40;
+var
+  mModule: IOTAModule;
+  mEditor: IOTASourceEditor;
+  mBuffer: IOTAEditBuffer;
+  mDisk: string;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mMessages: IOTAMessageServices;
+begin
+  // Die Rückfrage der IDE lässt sich nicht unterdrücken (sie hat „Alle Ja/Alle Nein“); der
+  // Unterschied steht im Meldungsfenster, damit man nachsehen kann.
+  mModule := FindModule(AFileName);
+  mEditor := nil;
+  if mModule <> nil then
+  begin
+    mEditor := SourceEditorOf(mModule);
+  end;
+  if not Supports(mEditor, IOTAEditBuffer, mBuffer) then
+  begin
+    Exit;
+  end;
+  try
+    mDisk := DiskText(AFileName);
+  except
+    on Exception do
+      Exit;
+  end;
+  mLines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(mBuffer), mDisk);
+  if Length(mLines) = 0 then
+  begin
+    Exit;
+  end;
+  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
+  for mIndex := 0 to High(mLines) do
+  begin
+    if mIndex < cMaxDiffLines then
+    begin
+      TAtlasIdeHost.Message('    ' + mLines[mIndex]);
+    end;
+  end;
+  if Length(mLines) > cMaxDiffLines then
+  begin
+    TAtlasIdeHost.Message('    …');
+  end;
+  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    mMessages.ShowMessageView(mMessages.GetGroup('Atlas'));
+  end;
+end;
+
+class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
+begin
+  Result := TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsCompare),
+    procedure
+    begin
+      ShowDiff(AFileName, True);
+    end);
 end;
 
 class function TAtlasFileReloader.SourceEditorOf(const AModule: IOTAModule): IOTASourceEditor;
@@ -174,78 +277,6 @@ begin
       Exit(mServices.Modules[mIndex]);
     end;
   end;
-end;
-
-function TAtlasFileReloader.OpenFiles: TArray<TAtlasObservedFile>;
-var
-  mServices: IOTAModuleServices;
-  mIndex: Integer;
-  mModule: IOTAModule;
-  mEditor: IOTASourceEditor;
-  mStamp: Int64;
-  mExists: Boolean;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.ModuleCount - 1 do
-  begin
-    mModule := mServices.Modules[mIndex];
-    // Nur Quelltexte im Editor; Projekte und Gruppen verwaltet die IDE selbst.
-    mEditor := SourceEditorOf(mModule);
-    if mEditor = nil then
-    begin
-      Continue;
-    end;
-    mExists := DiskStamp(mEditor.FileName, mStamp);
-    Result := Result + [TAtlasObservedFile.Create(mEditor.FileName, mExists, mStamp, mEditor.Modified)];
-  end;
-end;
-
-procedure TAtlasFileReloader.Tick(Sender: TObject);
-begin
-  // Beobachtet wird immer (Speichern erkennen, #548); neu geladen nur mit der Einstellung.
-  if FBusy then
-  begin
-    Exit;
-  end;
-  FBusy := True;
-  try
-    try
-      FChanges.Observe(OpenFiles, NowMs);
-      if FChanges.Due(NowMs) then
-      begin
-        Process(FChanges.TakeBatch);
-      end;
-    except
-      // Keine Exception an die IDE (#493); im nächsten Takt neu versuchen.
-      on E: Exception do
-        TAtlasGuard.Report(TAtlasFeature.Reloader, E);
-    end;
-  finally
-    FBusy := False;
-  end;
-end;
-
-class function TAtlasFileReloader.SameAsDisk(const AEditor: IOTASourceEditor; const AFileName: string): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-  mCurrent, mDisk: string;
-begin
-  Result := False;
-  if not Supports(AEditor, IOTAEditBuffer, mBuffer) then
-  begin
-    Exit;
-  end;
-  mCurrent := TAtlasEditorBuffer.Text(mBuffer).Replace(#13, '');
-  try
-    mDisk := DiskText(AFileName).Replace(#13, '');
-  except
-    Exit;
-  end;
-  Result := mCurrent = mDisk;
 end;
 
 type
@@ -327,66 +358,35 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasFileReloader.ShowDiff(const AFileName: string; AShow: Boolean);
-const
-  cMaxDiffLines = 40;
+class function TAtlasFileReloader.DiskStamp(const AFileName: string; out AStamp: Int64): Boolean;
 var
-  mModule: IOTAModule;
-  mEditor: IOTASourceEditor;
-  mBuffer: IOTAEditBuffer;
-  mDisk: string;
-  mLines: TArray<string>;
-  mIndex: Integer;
-  mMessages: IOTAMessageServices;
+  mData: TWin32FileAttributeData;
 begin
-  // Die Rückfrage der IDE lässt sich nicht unterdrücken (sie hat „Alle Ja/Alle Nein“); der
-  // Unterschied steht im Meldungsfenster, damit man nachsehen kann.
-  mModule := FindModule(AFileName);
-  mEditor := nil;
-  if mModule <> nil then
+  AStamp := 0;
+  Result := GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData);
+  if Result then
   begin
-    mEditor := SourceEditorOf(mModule);
-  end;
-  if not Supports(mEditor, IOTAEditBuffer, mBuffer) then
-  begin
-    Exit;
-  end;
-  try
-    mDisk := DiskText(AFileName);
-  except
-    on Exception do
-      Exit;
-  end;
-  mLines := TAtlasTextDiff.Lines(TAtlasEditorBuffer.Text(mBuffer), mDisk);
-  if Length(mLines) = 0 then
-  begin
-    Exit;
-  end;
-  TAtlasIdeHost.Message(TAtlasStrings.Fmt(TAtlasTextId.ReloadDiffTitle, [ExtractFileName(AFileName)]));
-  for mIndex := 0 to High(mLines) do
-  begin
-    if mIndex < cMaxDiffLines then
-    begin
-      TAtlasIdeHost.Message('    ' + mLines[mIndex]);
-    end;
-  end;
-  if Length(mLines) > cMaxDiffLines then
-  begin
-    TAtlasIdeHost.Message('    …');
-  end;
-  if AShow and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    mMessages.ShowMessageView(mMessages.GetGroup('Atlas'));
+    AStamp := Int64(mData.ftLastWriteTime.dwHighDateTime) shl 32 or mData.ftLastWriteTime.dwLowDateTime;
   end;
 end;
 
-class function TAtlasFileReloader.CompareAction(const AFileName: string): TAtlasNotificationAction;
+class function TAtlasFileReloader.SameAsDisk(const AEditor: IOTASourceEditor; const AFileName: string): Boolean;
+var
+  mBuffer: IOTAEditBuffer;
+  mCurrent, mDisk: string;
 begin
-  Result := TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsCompare),
-    procedure
-    begin
-      ShowDiff(AFileName, True);
-    end);
+  Result := False;
+  if not Supports(AEditor, IOTAEditBuffer, mBuffer) then
+  begin
+    Exit;
+  end;
+  mCurrent := TAtlasEditorBuffer.Text(mBuffer).Replace(#13, '');
+  try
+    mDisk := DiskText(AFileName).Replace(#13, '');
+  except
+    Exit;
+  end;
+  Result := mCurrent = mDisk;
 end;
 
 /// <summary>Eigene Änderungen behalten: Hinweis mit „Vergleichen“, bei „einblenden“ der Unterschied (#536).</summary>

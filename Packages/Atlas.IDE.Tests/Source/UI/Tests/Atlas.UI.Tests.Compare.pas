@@ -135,97 +135,6 @@ begin
   Font.Size := cFontSize;
 end;
 
-procedure TAtlasTestsCompareView.ShowResult(const AResult: TAtlasCompareResult);
-var
-  mBitmap: TBitmap;
-  mRow: TAtlasCompareRow;
-  mWidest: Integer;
-begin
-  FResult := AResult;
-  // Messen über eine Bitmap: Das Steuerelement hat noch kein Fenster seines Formulars.
-  mBitmap := TBitmap.Create;
-  try
-    mBitmap.Canvas.Font := Font;
-    FRowHeight := mBitmap.Canvas.TextHeight('Ag') + 2;
-    mWidest := mBitmap.Canvas.TextWidth('W') * cMinColumnChars;
-    for mRow in AResult.Rows do
-    begin
-      mWidest := Max(mWidest, Max(mBitmap.Canvas.TextWidth(mRow.Left), mBitmap.Canvas.TextWidth(mRow.Right)));
-    end;
-  finally
-    mBitmap.Free;
-  end;
-  FColumn := mWidest + 2 * MulDiv(cTextGap, Font.PixelsPerInch, 96);
-  SetBounds(0, 0, 2 * FColumn + 1, Max(1, Length(AResult.Rows)) * FRowHeight);
-  Invalidate;
-end;
-
-function InSpan(AIndex, AStart, ALength: Integer): Boolean;
-begin
-  Result := (AIndex - 1 >= AStart) and (AIndex - 1 < AStart + ALength);
-end;
-
-procedure TAtlasTestsCompareView.PaintText(AX, AY: Integer; const ASide: TSide; AMark: TColor);
-var
-  mColors: TAtlasColors;
-  mIndex, mFrom: Integer;
-  mInSpan, mMarker: Boolean;
-  mRun, mText: string;
-begin
-  mText := ASide.Text;
-  mColors := TAtlasUiTheme.Colors;
-  mIndex := 1;
-  while mIndex <= Length(mText) do
-  begin
-    // Lauf gleicher Art: im abweichenden Bereich oder nicht, sichtbarer Leerraum oder Text.
-    mFrom := mIndex;
-    mInSpan := InSpan(mIndex, ASide.Start, ASide.Length);
-    mMarker := IsMarker(mText[mIndex]);
-    while (mIndex <= Length(mText)) and (InSpan(mIndex, ASide.Start, ASide.Length) = mInSpan) and
-      (IsMarker(mText[mIndex]) = mMarker) do
-    begin
-      Inc(mIndex);
-    end;
-    mRun := Copy(mText, mFrom, mIndex - mFrom);
-    Canvas.Brush.Style := bsClear;
-    if mInSpan then
-    begin
-      Canvas.Brush.Style := bsSolid;
-      Canvas.Brush.Color := AMark;
-    end;
-    Canvas.Font.Color := TColor(mColors.Text);
-    if mMarker then
-    begin
-      Canvas.Font.Color := TColor(mColors.Muted);
-    end;
-    Canvas.TextOut(AX, AY, mRun);
-    Inc(AX, Canvas.TextWidth(mRun));
-  end;
-end;
-
-procedure TAtlasTestsCompareView.PaintSide(const ARect: TRect; const ASide: TSide; AWhole: Boolean; AMark: TColor);
-var
-  mColors: TAtlasColors;
-begin
-  mColors := TAtlasUiTheme.Colors;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TColor(mColors.Surface);
-  if not ASide.Has then
-  begin
-    // Lücke gegenüber einer Zeile, die es nur auf der anderen Seite gibt.
-    Canvas.Brush.Color := TColor(mColors.Gutter);
-  end
-  else if AWhole then
-  begin
-    Canvas.Brush.Color := AMark;
-  end;
-  Canvas.FillRect(ARect);
-  if ASide.Has then
-  begin
-    PaintText(ARect.Left + MulDiv(cTextGap, Font.PixelsPerInch, 96), ARect.Top + 1, ASide, AMark);
-  end;
-end;
-
 procedure TAtlasTestsCompareView.Paint;
 var
   mColors: TAtlasColors;
@@ -266,6 +175,97 @@ begin
   Canvas.LineTo(FColumn, mClip.Bottom);
 end;
 
+function InSpan(AIndex, AStart, ALength: Integer): Boolean;
+begin
+  Result := (AIndex - 1 >= AStart) and (AIndex - 1 < AStart + ALength);
+end;
+
+procedure TAtlasTestsCompareView.PaintSide(const ARect: TRect; const ASide: TSide; AWhole: Boolean; AMark: TColor);
+var
+  mColors: TAtlasColors;
+begin
+  mColors := TAtlasUiTheme.Colors;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(mColors.Surface);
+  if not ASide.Has then
+  begin
+    // Lücke gegenüber einer Zeile, die es nur auf der anderen Seite gibt.
+    Canvas.Brush.Color := TColor(mColors.Gutter);
+  end
+  else if AWhole then
+  begin
+    Canvas.Brush.Color := AMark;
+  end;
+  Canvas.FillRect(ARect);
+  if ASide.Has then
+  begin
+    PaintText(ARect.Left + MulDiv(cTextGap, Font.PixelsPerInch, 96), ARect.Top + 1, ASide, AMark);
+  end;
+end;
+
+procedure TAtlasTestsCompareView.PaintText(AX, AY: Integer; const ASide: TSide; AMark: TColor);
+var
+  mColors: TAtlasColors;
+  mIndex, mFrom: Integer;
+  mInSpan, mMarker: Boolean;
+  mRun, mText: string;
+begin
+  mText := ASide.Text;
+  mColors := TAtlasUiTheme.Colors;
+  mIndex := 1;
+  while mIndex <= Length(mText) do
+  begin
+    // Lauf gleicher Art: im abweichenden Bereich oder nicht, sichtbarer Leerraum oder Text.
+    mFrom := mIndex;
+    mInSpan := InSpan(mIndex, ASide.Start, ASide.Length);
+    mMarker := IsMarker(mText[mIndex]);
+    while (mIndex <= Length(mText)) and (InSpan(mIndex, ASide.Start, ASide.Length) = mInSpan) and
+      (IsMarker(mText[mIndex]) = mMarker) do
+    begin
+      Inc(mIndex);
+    end;
+    mRun := Copy(mText, mFrom, mIndex - mFrom);
+    Canvas.Brush.Style := bsClear;
+    if mInSpan then
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := AMark;
+    end;
+    Canvas.Font.Color := TColor(mColors.Text);
+    if mMarker then
+    begin
+      Canvas.Font.Color := TColor(mColors.Muted);
+    end;
+    Canvas.TextOut(AX, AY, mRun);
+    Inc(AX, Canvas.TextWidth(mRun));
+  end;
+end;
+
+procedure TAtlasTestsCompareView.ShowResult(const AResult: TAtlasCompareResult);
+var
+  mBitmap: TBitmap;
+  mRow: TAtlasCompareRow;
+  mWidest: Integer;
+begin
+  FResult := AResult;
+  // Messen über eine Bitmap: Das Steuerelement hat noch kein Fenster seines Formulars.
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font := Font;
+    FRowHeight := mBitmap.Canvas.TextHeight('Ag') + 2;
+    mWidest := mBitmap.Canvas.TextWidth('W') * cMinColumnChars;
+    for mRow in AResult.Rows do
+    begin
+      mWidest := Max(mWidest, Max(mBitmap.Canvas.TextWidth(mRow.Left), mBitmap.Canvas.TextWidth(mRow.Right)));
+    end;
+  finally
+    mBitmap.Free;
+  end;
+  FColumn := mWidest + 2 * MulDiv(cTextGap, Font.PixelsPerInch, 96);
+  SetBounds(0, 0, 2 * FColumn + 1, Max(1, Length(AResult.Rows)) * FRowHeight);
+  Invalidate;
+end;
+
 { TAtlasTestsCompareDialog }
 
 /// <summary>Spaltenkopf: „Erwartet“ bzw. „Erhalten“, gekürzt mit Zusatz.</summary>
@@ -291,6 +291,8 @@ begin
       Result := Result + ' ' + TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsCompareXml);
   end;
 end;
+
+{ TAtlasTestsCompareDialog }
 
 constructor TAtlasTestsCompareDialog.CreateDialog(AOwner: TComponent; const ATest, AExpected, AActual: string;
   AFormat: Boolean);
@@ -340,24 +342,11 @@ begin
   AllowResize(mRow);
 end;
 
-procedure TAtlasTestsCompareDialog.AddApprovalButtons(AButtons: TAtlasButtonRow);
+procedure TAtlasTestsCompareDialog.ThemeChanged;
 begin
-  FAccept := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalAccept));
-  FAccept.ModalResult := mrYes;
-  FGoTo := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalGoTo));
-  FGoTo.ModalResult := mrRetry;
-end;
-
-class function TAtlasTestsCompareDialog.ChoiceOf(AModalResult: TModalResult): TAtlasTestsCompareChoice;
-begin
-  case AModalResult of
-    mrYes:
-      Result := TAtlasTestsCompareChoice.Accept;
-    mrRetry:
-      Result := TAtlasTestsCompareChoice.GoToTest;
-  else
-    Result := TAtlasTestsCompareChoice.Close;
-  end;
+  inherited;
+  // Die Farben der Spalten kommen beim Zeichnen aus der Palette.
+  FView.Invalidate;
 end;
 
 procedure TAtlasTestsCompareDialog.CopyClick(Sender: TObject);
@@ -365,11 +354,12 @@ begin
   Clipboard.AsText := FActual;
 end;
 
-procedure TAtlasTestsCompareDialog.ThemeChanged;
+procedure TAtlasTestsCompareDialog.AddApprovalButtons(AButtons: TAtlasButtonRow);
 begin
-  inherited;
-  // Die Farben der Spalten kommen beim Zeichnen aus der Palette.
-  FView.Invalidate;
+  FAccept := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalAccept));
+  FAccept.ModalResult := mrYes;
+  FGoTo := AButtons.AddButton(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsApprovalGoTo));
+  FGoTo.ModalResult := mrRetry;
 end;
 
 class procedure TAtlasTestsCompareDialog.Execute(const ATest, AExpected, AActual: string; AFormat: Boolean);
@@ -394,6 +384,18 @@ begin
     Result := ChoiceOf(mDialog.ShowModal);
   finally
     mDialog.Free;
+  end;
+end;
+
+class function TAtlasTestsCompareDialog.ChoiceOf(AModalResult: TModalResult): TAtlasTestsCompareChoice;
+begin
+  case AModalResult of
+    mrYes:
+      Result := TAtlasTestsCompareChoice.Accept;
+    mrRetry:
+      Result := TAtlasTestsCompareChoice.GoToTest;
+  else
+    Result := TAtlasTestsCompareChoice.Close;
   end;
 end;
 

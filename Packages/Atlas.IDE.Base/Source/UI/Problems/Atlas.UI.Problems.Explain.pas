@@ -171,6 +171,14 @@ begin
   ModalResult := mrOk;
 end;
 
+procedure TAtlasRuleExplainDialog.DocWikiClick(Sender: TObject);
+begin
+  if Assigned(FOpenUrl) then
+  begin
+    FOpenUrl(FUrl);
+  end;
+end;
+
 class function TAtlasRuleExplainDialog.TitleOf(const AExplanation: TAtlasRuleExplanation): string;
 begin
   if AExplanation.DocWiki <> '' then
@@ -211,14 +219,6 @@ begin
   mHeading.Font.Style := [fsBold];
   FCause := AddLabel(ACause);
   FCause.WordWrap := True;
-end;
-
-procedure TAtlasRuleExplainDialog.DocWikiClick(Sender: TObject);
-begin
-  if Assigned(FOpenUrl) then
-  begin
-    FOpenUrl(FUrl);
-  end;
 end;
 
 class procedure TAtlasRuleExplainDialog.Execute(const AExplanation: TAtlasRuleExplanation;

@@ -145,6 +145,8 @@ begin
   end;
 end;
 
+{ TShellUpdate }
+
 class function TShellUpdate.Run: Integer;
 var
   mArgs: TUpdateArguments;

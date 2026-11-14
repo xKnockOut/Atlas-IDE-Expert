@@ -86,6 +86,8 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Pascal.LanguageFeatures;
 
+{ TShellCompletion }
+
 constructor TShellCompletion.Create(const AServices: TShellCompletionServices);
 begin
   inherited Create;
@@ -96,38 +98,11 @@ begin
   FExpressionCompletion := TLspExpressionCompletion.Create(FServices.Documents, FCompletion);
 end;
 
-procedure TShellCompletion.WireCallbacks;
-begin
-  FCompletion.Hooks.MatchingFor := MatchingFor;
-  FCompletion.Hooks.SettingsFor := FServices.CompletionSettingsFor;
-  FCompletion.Hooks.SlashCommandsFor := FServices.SlashCommandsFor;
-  FCompletion.Hooks.RuleIdsFor := FServices.RuleIdsFor;
-  FCompletion.Hooks.PostfixFor := PostfixOptionsFor;
-  // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
-  FCompletion.Hooks.WithFor := WithEdits;
-  // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
-  FCompletion.Hooks.CreateFor := CreateMethod;
-  FCompletion.Hooks.NamingFor := FServices.NamingFor;
-  FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
-  FCompletion.Hooks.HintsFor := FServices.HintsFor;
-  FCompletion.Hooks.DocCommentsFor := FServices.DocCommentsFor;
-  FCompletion.Hooks.SymbolsFor := FServices.SymbolsFor;
-  FCompletion.Hooks.ReadText := FServices.ReadText;
-  FCompletion.Hooks.Notify := FServices.Notify;
-  FCompletion.Hooks.Log := FServices.Log;
-end;
-
 destructor TShellCompletion.Destroy;
 begin
   FreeAndNil(FExpressionCompletion);
   FreeAndNil(FCompletion);
   inherited Destroy;
-end;
-
-procedure TShellCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FCompletion.Attach(ADispatcher);
-  FExpressionCompletion.Attach(ADispatcher);
 end;
 
 function TShellCompletion.MatchingFor(const AUri: string): TCompletionMatching;
@@ -180,6 +155,33 @@ begin
     ADetail := mCreated.Detail;
     AEdits := mCreated.Edits;
   end;
+end;
+
+procedure TShellCompletion.WireCallbacks;
+begin
+  FCompletion.Hooks.MatchingFor := MatchingFor;
+  FCompletion.Hooks.SettingsFor := FServices.CompletionSettingsFor;
+  FCompletion.Hooks.SlashCommandsFor := FServices.SlashCommandsFor;
+  FCompletion.Hooks.RuleIdsFor := FServices.RuleIdsFor;
+  FCompletion.Hooks.PostfixFor := PostfixOptionsFor;
+  // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
+  FCompletion.Hooks.WithFor := WithEdits;
+  // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
+  FCompletion.Hooks.CreateFor := CreateMethod;
+  FCompletion.Hooks.NamingFor := FServices.NamingFor;
+  FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
+  FCompletion.Hooks.HintsFor := FServices.HintsFor;
+  FCompletion.Hooks.DocCommentsFor := FServices.DocCommentsFor;
+  FCompletion.Hooks.SymbolsFor := FServices.SymbolsFor;
+  FCompletion.Hooks.ReadText := FServices.ReadText;
+  FCompletion.Hooks.Notify := FServices.Notify;
+  FCompletion.Hooks.Log := FServices.Log;
+end;
+
+procedure TShellCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FCompletion.Attach(ADispatcher);
+  FExpressionCompletion.Attach(ADispatcher);
 end;
 
 end.

@@ -85,6 +85,53 @@ begin
   FShows := False;
 end;
 
+function TAtlasResultsChangesPart.Open(const AData: TAtlasResultsNode): Boolean;
+begin
+  // Doppelklick zeigt den Unterschied.
+  Result := AData.Kind in [TAtlasResultsNodeKind.ChangeSet, TAtlasResultsNodeKind.ChangeFile];
+  if Result then
+  begin
+    ShowSelectedDiff;
+  end;
+end;
+
+procedure TAtlasResultsChangesPart.Popup;
+var
+  mData: TAtlasResultsNode;
+begin
+  mData := SelectedSet;
+  FItems.Undo.Visible := FShows;
+  FItems.Redo.Visible := FShows;
+  FItems.Diff.Visible := FShows;
+  FItems.Undo.Enabled := (mData.SetId > 0) and (mData.State <> TAtlasChangeSetState.Undone);
+  FItems.Redo.Enabled := (mData.SetId > 0) and (mData.State <> TAtlasChangeSetState.Applied);
+  FItems.Diff.Enabled := mData.SetId > 0;
+end;
+
+function TAtlasResultsChangesPart.SelectedSet: TAtlasResultsNode;
+begin
+  Result := View.DataOf(View.Tree.Selected);
+  if not (Result.Kind in [TAtlasResultsNodeKind.ChangeSet, TAtlasResultsNodeKind.ChangeFile]) then
+  begin
+    Result := Default(TAtlasResultsNode);
+  end;
+end;
+
+procedure TAtlasResultsChangesPart.UndoClick(Sender: TObject);
+begin
+  UndoSelected;
+end;
+
+procedure TAtlasResultsChangesPart.RedoClick(Sender: TObject);
+begin
+  RedoSelected;
+end;
+
+procedure TAtlasResultsChangesPart.DiffClick(Sender: TObject);
+begin
+  ShowSelectedDiff;
+end;
+
 procedure TAtlasResultsChangesPart.Show(const ATitle: string; const ASets: TArray<TAtlasChangeSet>; ANow: TDateTime;
   AKeepSelection: Boolean);
 var
@@ -127,38 +174,6 @@ begin
   View.Select(mSelected);
 end;
 
-function TAtlasResultsChangesPart.SelectedSet: TAtlasResultsNode;
-begin
-  Result := View.DataOf(View.Tree.Selected);
-  if not (Result.Kind in [TAtlasResultsNodeKind.ChangeSet, TAtlasResultsNodeKind.ChangeFile]) then
-  begin
-    Result := Default(TAtlasResultsNode);
-  end;
-end;
-
-function TAtlasResultsChangesPart.Open(const AData: TAtlasResultsNode): Boolean;
-begin
-  // Doppelklick zeigt den Unterschied.
-  Result := AData.Kind in [TAtlasResultsNodeKind.ChangeSet, TAtlasResultsNodeKind.ChangeFile];
-  if Result then
-  begin
-    ShowSelectedDiff;
-  end;
-end;
-
-procedure TAtlasResultsChangesPart.Popup;
-var
-  mData: TAtlasResultsNode;
-begin
-  mData := SelectedSet;
-  FItems.Undo.Visible := FShows;
-  FItems.Redo.Visible := FShows;
-  FItems.Diff.Visible := FShows;
-  FItems.Undo.Enabled := (mData.SetId > 0) and (mData.State <> TAtlasChangeSetState.Undone);
-  FItems.Redo.Enabled := (mData.SetId > 0) and (mData.State <> TAtlasChangeSetState.Applied);
-  FItems.Diff.Enabled := mData.SetId > 0;
-end;
-
 procedure TAtlasResultsChangesPart.ShowSelectedDiff;
 var
   mData: TAtlasResultsNode;
@@ -190,21 +205,6 @@ begin
   begin
     FHandlers.OnRedo(mData.SetId);
   end;
-end;
-
-procedure TAtlasResultsChangesPart.UndoClick(Sender: TObject);
-begin
-  UndoSelected;
-end;
-
-procedure TAtlasResultsChangesPart.RedoClick(Sender: TObject);
-begin
-  RedoSelected;
-end;
-
-procedure TAtlasResultsChangesPart.DiffClick(Sender: TObject);
-begin
-  ShowSelectedDiff;
 end;
 
 end.

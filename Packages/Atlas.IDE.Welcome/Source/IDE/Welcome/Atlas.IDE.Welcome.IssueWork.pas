@@ -43,16 +43,12 @@ implementation
 uses
   Atlas.Core.Diagnostics.Guard;
 
+{ TAtlasWelcomeIssueWork }
+
 constructor TAtlasWelcomeIssueWork.Create(const ACurrent: TFunc<TAtlasIdeWelcome>);
 begin
   inherited Create;
   FCurrent := ACurrent;
-end;
-
-class function TAtlasWelcomeIssueWork.Provide(const AScope: IAtlasModuleScope;
-  const ACurrent: TFunc<TAtlasIdeWelcome>): IAtlasRegistration;
-begin
-  Result := AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(ACurrent) as IAtlasIssueWork);
 end;
 
 function TAtlasWelcomeIssueWork.Issues: TAtlasIdeContinueIssues;
@@ -69,6 +65,12 @@ begin
   begin
     Result := mWelcome.Areas.ContinueWork.Issues;
   end;
+end;
+
+class function TAtlasWelcomeIssueWork.Provide(const AScope: IAtlasModuleScope;
+  const ACurrent: TFunc<TAtlasIdeWelcome>): IAtlasRegistration;
+begin
+  Result := AScope.Provide(IAtlasIssueWork, TAtlasWelcomeIssueWork.Create(ACurrent) as IAtlasIssueWork);
 end;
 
 function TAtlasWelcomeIssueWork.Enabled: Boolean;

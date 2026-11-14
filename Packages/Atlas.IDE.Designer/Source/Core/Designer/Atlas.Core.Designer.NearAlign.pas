@@ -161,6 +161,8 @@ type
     function Beats(const AOther: TLine): Boolean;
   end;
 
+{ TLine }
+
 function TLine.Beats(const AOther: TLine): Boolean;
 begin
   Result := (Count > AOther.Count) or ((Count = AOther.Count) and (First < AOther.First));

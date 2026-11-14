@@ -128,6 +128,8 @@ begin
   Result.AddPair('changes', mChanges);
 end;
 
+{ TLspSmartPaste }
+
 class function TLspSmartPaste.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
   const AUses: TUsesContext; const AInterfaceUses: TInterfaceUsesFunc): TJSONObject;
 var

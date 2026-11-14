@@ -607,6 +607,18 @@ begin
   GAccess := nil;
 end;
 
+class function TAtlasTrackerParts.Parts: TArray<IAtlasFeaturePart>;
+begin
+  // Zuerst „Meine Issues“ (Tracker und Vorschau), danach die Teile, die es brauchen; Abbau rückwärts.
+  Result := [
+    TAtlasFeaturePart.AtLevel('MyIssues', TAtlasSafeLevel.Safe, MyIssuesStarted, StartMyIssues, StopMyIssues),
+    TAtlasFeaturePart.When('IssueLinks', WithSession, IssueLinksStarted, StartIssueLinks, StopIssueLinks),
+    TAtlasFeaturePart.When('BlameIssues', WithSession, BlameIssuesStarted, StartBlameIssues, StopBlameIssues),
+    // Unabhängig von „Meine Issues“: lokale Testläufe auch ohne Tracker.
+    TAtlasFeaturePart.AtLevel('TestResults', TAtlasSafeLevel.Safe, TestResultsStarted, StartTestResults,
+      StopTestResults)];
+end;
+
 class function TAtlasTrackerParts.Commands: TArray<TAtlasModuleCommand>;
 var
   mCreate: TAtlasModuleCommand;
@@ -642,27 +654,23 @@ begin
       CiLoginVisible)];
 end;
 
-class procedure TAtlasTrackerParts.ApplySettings;
-begin
-  // welcomePage.issues, issues.tracker, .query, die Muster, issues.notify, welcomePage.sprint (#765, #1277).
-  if SessionAvailable then
-  begin
-    GIssues.Refresh;
-  end;
-  // welcomePage.tests, .maxFailures und .ci (#763).
-  if GTests <> nil then
-  begin
-    GTests.Refresh;
-  end;
-end;
-
-class function TAtlasTrackerParts.PaletteSource: IAtlasPaletteSource;
+class function TAtlasTrackerParts.Keys: TArray<TAtlasModuleKey>;
+var
+  mKey: TAtlasModuleKey;
 begin
   Result := nil;
-  if SessionAvailable then
+  // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
+  if TAtlasIdeSettings.Current.CreateIssueKey = 0 then
   begin
-    Result := GIssues.Services.PaletteSearch;
+    Exit;
   end;
+  mKey := Default(TAtlasModuleKey);
+  mKey.Id := 'Atlas.CreateIssue';
+  mKey.Caption := TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand);
+  mKey.Key := TAtlasIdeSettings.Current.CreateIssueKey;
+  mKey.Priority := TAtlasKeyPriority.Shared;
+  mKey.Run := CreateIssue;
+  Result := [mKey];
 end;
 
 function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
@@ -690,35 +698,27 @@ begin
     MenuEntry('Atlas.CreateIssue', TAtlasMenuPlace.EditorContext)];
 end;
 
-class function TAtlasTrackerParts.Keys: TArray<TAtlasModuleKey>;
-var
-  mKey: TAtlasModuleKey;
+class procedure TAtlasTrackerParts.ApplySettings;
 begin
-  Result := nil;
-  // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
-  if TAtlasIdeSettings.Current.CreateIssueKey = 0 then
+  // welcomePage.issues, issues.tracker, .query, die Muster, issues.notify, welcomePage.sprint (#765, #1277).
+  if SessionAvailable then
   begin
-    Exit;
+    GIssues.Refresh;
   end;
-  mKey := Default(TAtlasModuleKey);
-  mKey.Id := 'Atlas.CreateIssue';
-  mKey.Caption := TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand);
-  mKey.Key := TAtlasIdeSettings.Current.CreateIssueKey;
-  mKey.Priority := TAtlasKeyPriority.Shared;
-  mKey.Run := CreateIssue;
-  Result := [mKey];
+  // welcomePage.tests, .maxFailures und .ci (#763).
+  if GTests <> nil then
+  begin
+    GTests.Refresh;
+  end;
 end;
 
-class function TAtlasTrackerParts.Parts: TArray<IAtlasFeaturePart>;
+class function TAtlasTrackerParts.PaletteSource: IAtlasPaletteSource;
 begin
-  // Zuerst „Meine Issues“ (Tracker und Vorschau), danach die Teile, die es brauchen; Abbau rückwärts.
-  Result := [
-    TAtlasFeaturePart.AtLevel('MyIssues', TAtlasSafeLevel.Safe, MyIssuesStarted, StartMyIssues, StopMyIssues),
-    TAtlasFeaturePart.When('IssueLinks', WithSession, IssueLinksStarted, StartIssueLinks, StopIssueLinks),
-    TAtlasFeaturePart.When('BlameIssues', WithSession, BlameIssuesStarted, StartBlameIssues, StopBlameIssues),
-    // Unabhängig von „Meine Issues“: lokale Testläufe auch ohne Tracker.
-    TAtlasFeaturePart.AtLevel('TestResults', TAtlasSafeLevel.Safe, TestResultsStarted, StartTestResults,
-      StopTestResults)];
+  Result := nil;
+  if SessionAvailable then
+  begin
+    Result := GIssues.Services.PaletteSearch;
+  end;
 end;
 
 

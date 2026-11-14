@@ -77,6 +77,8 @@ type
     procedure Close;
   end;
 
+{ TAtlasToolHandles }
+
 function TAtlasToolHandles.Open(out AError: string): Boolean;
 begin
   AError := '';

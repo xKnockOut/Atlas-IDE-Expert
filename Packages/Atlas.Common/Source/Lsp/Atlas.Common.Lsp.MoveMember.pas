@@ -334,6 +334,8 @@ begin
   Result.AddPair('command', mCommand);
 end;
 
+{ TLspMoveMember }
+
 class function TLspMoveMember.Actions(ATree: TSyntaxTree; const AText, AFileName, AUri: string;
   const APosition: TTextPosition; const AIndex: ISymbolIndex): TArray<TJSONObject>;
 var
@@ -666,6 +668,8 @@ type
     procedure Scan(ASource, ATarget: TClassLayout; const ATargetUnit: string; const AIds, ABodyIds: TArray<Integer>);
   end;
 
+{ TUsesScan }
+
 constructor TUsesScan.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string; AUp: Boolean);
 begin
   inherited Create;
@@ -898,6 +902,8 @@ type
     destructor Destroy; override;
     function Run(const APosition: TTextPosition): TJSONObject;
   end;
+
+{ TMemberMoveRun }
 
 constructor TMemberMoveRun.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
   const AContext: TMoveMemberContext);

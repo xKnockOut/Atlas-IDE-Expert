@@ -175,10 +175,7 @@ const
   cKindStruct = 23;
   cDefaultTabWidth = 8;
 
-class function TAtlasStickyScroll.ClampLines(AMaxLines: Integer): Integer;
-begin
-  Result := EnsureRange(AMaxLines, 1, cMaxMaxLines);
-end;
+{ TAtlasStickyScroll }
 
 class function TAtlasStickyScroll.IsBlock(const ANode: TAtlasOutlineNode): Boolean;
 begin
@@ -270,6 +267,31 @@ begin
       Exit;
     end;
   end;
+end;
+
+class function TAtlasStickyScroll.SourceIndex(const ARow: TAtlasStickyRow; const ALine: string; AOffset: Integer;
+  out AIndex: Integer): Boolean;
+var
+  mIndent, mPos: Integer;
+begin
+  AIndex := -1;
+  Result := False;
+  if ARow.Summary or (AOffset < 0) or (AOffset >= Length(ARow.Text)) then
+  begin
+    Exit;
+  end;
+  // Der Kopf ist die Zeile ohne Einrückung (Header, BlockText): bis einschließlich AOffset muss er ihr gleichen.
+  // Ein Tabulator im Text stünde im Kopf schmaler als im Editor, danach passten die Spalten nicht mehr.
+  mIndent := Length(ALine) - Length(TrimLeft(ALine));
+  for mPos := 1 to AOffset + 1 do
+  begin
+    if (mIndent + mPos > Length(ALine)) or (ARow.Text[mPos] <> ALine[mIndent + mPos]) or (ARow.Text[mPos] = #9) then
+    begin
+      Exit;
+    end;
+  end;
+  AIndex := mIndent + AOffset;
+  Result := True;
 end;
 
 /// <summary>Öffnende Klammer an APosition: merkt die äußerste.</summary>
@@ -366,31 +388,6 @@ begin
   Result := Result + ')';
 end;
 
-class function TAtlasStickyScroll.SourceIndex(const ARow: TAtlasStickyRow; const ALine: string; AOffset: Integer;
-  out AIndex: Integer): Boolean;
-var
-  mIndent, mPos: Integer;
-begin
-  AIndex := -1;
-  Result := False;
-  if ARow.Summary or (AOffset < 0) or (AOffset >= Length(ARow.Text)) then
-  begin
-    Exit;
-  end;
-  // Der Kopf ist die Zeile ohne Einrückung (Header, BlockText): bis einschließlich AOffset muss er ihr gleichen.
-  // Ein Tabulator im Text stünde im Kopf schmaler als im Editor, danach passten die Spalten nicht mehr.
-  mIndent := Length(ALine) - Length(TrimLeft(ALine));
-  for mPos := 1 to AOffset + 1 do
-  begin
-    if (mIndent + mPos > Length(ALine)) or (ARow.Text[mPos] <> ALine[mIndent + mPos]) or (ARow.Text[mPos] = #9) then
-    begin
-      Exit;
-    end;
-  end;
-  AIndex := mIndent + AOffset;
-  Result := True;
-end;
-
 class function TAtlasStickyScroll.IndentColumns(const ALine: string; ATabWidth: Integer): Integer;
 var
   mIndent: Char;
@@ -410,6 +407,12 @@ begin
   end;
 end;
 
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
+  AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+begin
+  Result := Rows(ANodes, ALines, nil, ATopLine, AMaxLines, ATabWidth);
+end;
+
 function HeaderRow(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ANode,
   ATabWidth: Integer): TAtlasStickyRow;
 begin
@@ -424,32 +427,10 @@ begin
   Result.Summary := False;
 end;
 
-class function TAtlasStickyScroll.IsReserved(const AWord: string): Boolean;
-const
-  // Reservierte Wörter von Delphi und die Direktiven in Köpfen. Mehrdeutige Direktiven (index, name, read, write,
-  // default, message …) fehlen: Als Bezeichner zeigt sie der Editor nicht fett.
-  cWords: array[0..98] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
-    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file',
-    'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
-    'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or',
-    'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr',
-    'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor',
-    'operator', 'out', 'absolute', 'abstract', 'assembler', 'automated', 'cdecl', 'deprecated', 'dynamic',
-    'experimental', 'external', 'final', 'forward', 'overload', 'override', 'pascal', 'platform', 'private',
-    'protected', 'public', 'published', 'register', 'reintroduce', 'safecall', 'sealed', 'static', 'stdcall',
-    'strict', 'unsafe', 'varargs', 'virtual', 'winapi', 'delayed', 'reference', 'helper');
-var
-  mLower, mWord: string;
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
 begin
-  mLower := LowerCase(AWord);
-  for mWord in cWords do
-  begin
-    if mWord = mLower then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := Rows(TAtlasStickySource.Create(ANodes, ALines, ABlocks, cOutlineKinds), ATopLine, AMaxLines, ATabWidth);
 end;
 
 function CharAt(const AText: string; APos: Integer): Char;
@@ -627,6 +608,39 @@ begin
   end;
 end;
 
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
+  AMaxLines: Integer): TAtlasStickyRows;
+begin
+  Result := Rows(ANodes, ALines, ATopLine, AMaxLines, cDefaultTabWidth);
+end;
+
+{ TAtlasStickyBlock }
+
+{ TAtlasStickySource }
+
+class function TAtlasStickySource.Create(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds): TAtlasStickySource;
+begin
+  Result.Nodes := ANodes;
+  Result.Lines := ALines;
+  Result.Blocks := ABlocks;
+  Result.Kinds := AKinds;
+end;
+
+{ TAtlasStickyBlock }
+
+class function TAtlasStickyBlock.Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock;
+begin
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+  Result.EndLine := AEndLine;
+end;
+
+class function TAtlasStickyScroll.ClampLines(AMaxLines: Integer): Integer;
+begin
+  Result := EnsureRange(AMaxLines, 1, cMaxMaxLines);
+end;
+
 class function TAtlasStickyScroll.Syntax(const AText: string): TArray<TAtlasStickyToken>;
 var
   mIndex, mStart: Integer;
@@ -642,50 +656,6 @@ begin
     mToken.Length := mIndex - mStart;
     Result := Result + [mToken];
   end;
-end;
-
-{ TAtlasStickyBlock }
-
-class function TAtlasStickySource.Create(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds): TAtlasStickySource;
-begin
-  Result.Nodes := ANodes;
-  Result.Lines := ALines;
-  Result.Blocks := ABlocks;
-  Result.Kinds := AKinds;
-end;
-
-class function TAtlasStickyBlock.Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock;
-begin
-  Result.Line := ALine;
-  Result.Character := ACharacter;
-  Result.EndLine := AEndLine;
-end;
-
-class function TAtlasStickyScroll.GuideStart(const ARows: TAtlasStickyRows;
-  AFirstLine: Integer): TAtlasStickyGuideStart;
-var
-  mIndex: Integer;
-begin
-  Result.Row := High(ARows);
-  Result.FadeIn := Length(ARows) > 0;
-  for mIndex := 0 to High(ARows) do
-  begin
-    if not ARows[mIndex].Summary and (ARows[mIndex].Line = AFirstLine) then
-    begin
-      Result.Row := mIndex;
-      Result.FadeIn := False;
-    end;
-  end;
-end;
-
-class function TAtlasStickyScroll.FadeWeight(AOffset, AHeight: Integer): Double;
-begin
-  if AHeight <= 1 then
-  begin
-    Exit(1);
-  end;
-  Result := Sqr(EnsureRange(AOffset + 1, 1, AHeight) / AHeight);
 end;
 
 type
@@ -803,10 +773,32 @@ begin
   Result.Summary := False;
 end;
 
-class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+class function TAtlasStickyScroll.IsReserved(const AWord: string): Boolean;
+const
+  // Reservierte Wörter von Delphi und die Direktiven in Köpfen. Mehrdeutige Direktiven (index, name, read, write,
+  // default, message …) fehlen: Als Bezeichner zeigt sie der Editor nicht fett.
+  cWords: array[0..98] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
+    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file',
+    'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
+    'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or',
+    'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr',
+    'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor',
+    'operator', 'out', 'absolute', 'abstract', 'assembler', 'automated', 'cdecl', 'deprecated', 'dynamic',
+    'experimental', 'external', 'final', 'forward', 'overload', 'override', 'pascal', 'platform', 'private',
+    'protected', 'public', 'published', 'register', 'reintroduce', 'safecall', 'sealed', 'static', 'stdcall',
+    'strict', 'unsafe', 'varargs', 'virtual', 'winapi', 'delayed', 'reference', 'helper');
+var
+  mLower, mWord: string;
 begin
-  Result := Rows(TAtlasStickySource.Create(ANodes, ALines, ABlocks, cOutlineKinds), ATopLine, AMaxLines, ATabWidth);
+  mLower := LowerCase(AWord);
+  for mWord in cWords do
+  begin
+    if mWord = mLower then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die Kette zur kleinsten
@@ -870,16 +862,30 @@ begin
   end;
 end;
 
-class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
-  AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+class function TAtlasStickyScroll.GuideStart(const ARows: TAtlasStickyRows;
+  AFirstLine: Integer): TAtlasStickyGuideStart;
+var
+  mIndex: Integer;
 begin
-  Result := Rows(ANodes, ALines, nil, ATopLine, AMaxLines, ATabWidth);
+  Result.Row := High(ARows);
+  Result.FadeIn := Length(ARows) > 0;
+  for mIndex := 0 to High(ARows) do
+  begin
+    if not ARows[mIndex].Summary and (ARows[mIndex].Line = AFirstLine) then
+    begin
+      Result.Row := mIndex;
+      Result.FadeIn := False;
+    end;
+  end;
 end;
 
-class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
-  AMaxLines: Integer): TAtlasStickyRows;
+class function TAtlasStickyScroll.FadeWeight(AOffset, AHeight: Integer): Double;
 begin
-  Result := Rows(ANodes, ALines, ATopLine, AMaxLines, cDefaultTabWidth);
+  if AHeight <= 1 then
+  begin
+    Exit(1);
+  end;
+  Result := Sqr(EnsureRange(AOffset + 1, 1, AHeight) / AHeight);
 end;
 
 end.

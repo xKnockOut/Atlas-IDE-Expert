@@ -549,32 +549,6 @@ begin
   end;
 end;
 
-function TYamlReader.Document: TJSONValue;
-begin
-  SkipBlank;
-  if not AtEnd and (FLines[FIndex].Indent = 0) and (FLines[FIndex].Text = '---') then
-  begin
-    Inc(FIndex);
-    SkipBlank;
-  end;
-  if AtEnd then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  Result := ParseBlock(FLines[FIndex].Indent);
-  try
-    SkipBlank;
-    // Ein zweites Dokument (---) oder Reste mit kleinerer Einrückung versteht der Leser nicht; "..." beendet.
-    if not AtEnd and (FLines[FIndex].Text <> '...') then
-    begin
-      Fail;
-    end;
-  except
-    Result.Free;
-    raise;
-  end;
-end;
-
 function TYamlReader.ParseBlock(AIndent: Integer): TJSONValue;
 var
   mKey, mRest: string;
@@ -683,6 +657,39 @@ begin
   Result := ParseValue(' ' + mContent, AIndent);
 end;
 
+function TYamlReader.ParseValue(const ARest: string; AOwnerIndent: Integer): TJSONValue;
+var
+  mText: string;
+  mFlow: TYamlFlow;
+begin
+  mText := Trim(ARest);
+  if (mText = '') or (mText[1] = '#') then
+  begin
+    Exit(ParseNested(AOwnerIndent));
+  end;
+  RejectSpecial(mText);
+  if CharInSet(mText[1], ['|', '>']) then
+  begin
+    Exit(ParseBlockScalar(mText, AOwnerIndent));
+  end;
+  if not CharInSet(mText[1], ['"', '''', '[', '{']) then
+  begin
+    Exit(ParsePlain(mText, AOwnerIndent));
+  end;
+  mFlow := TYamlFlow.Create(Continued(mText, AOwnerIndent));
+  try
+    Result := mFlow.ReadValue;
+    try
+      mFlow.ExpectEnd;
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    mFlow.Free;
+  end;
+end;
+
 function TYamlReader.ParseNested(AOwnerIndent: Integer): TJSONValue;
 begin
   SkipBlank;
@@ -741,54 +748,6 @@ begin
   Result := (mDepth > 0) or (mQuote <> #0);
 end;
 
-function TYamlReader.Continued(const AText: string; AOwnerIndent: Integer): string;
-begin
-  Result := AText;
-  while FlowOpen(Result) do
-  begin
-    // Noch offen: die nächste Zeile gehört dazu (eingerückt hinter dem Schlüssel).
-    if AtEnd or ((FLines[FIndex].Text <> '') and (FLines[FIndex].Indent <= AOwnerIndent)) then
-    begin
-      Fail;
-    end;
-    Result := Result + #10 + FLines[FIndex].Text;
-    Inc(FIndex);
-  end;
-end;
-
-function TYamlReader.ParseValue(const ARest: string; AOwnerIndent: Integer): TJSONValue;
-var
-  mText: string;
-  mFlow: TYamlFlow;
-begin
-  mText := Trim(ARest);
-  if (mText = '') or (mText[1] = '#') then
-  begin
-    Exit(ParseNested(AOwnerIndent));
-  end;
-  RejectSpecial(mText);
-  if CharInSet(mText[1], ['|', '>']) then
-  begin
-    Exit(ParseBlockScalar(mText, AOwnerIndent));
-  end;
-  if not CharInSet(mText[1], ['"', '''', '[', '{']) then
-  begin
-    Exit(ParsePlain(mText, AOwnerIndent));
-  end;
-  mFlow := TYamlFlow.Create(Continued(mText, AOwnerIndent));
-  try
-    Result := mFlow.ReadValue;
-    try
-      mFlow.ExpectEnd;
-    except
-      Result.Free;
-      raise;
-    end;
-  finally
-    mFlow.Free;
-  end;
-end;
-
 function TYamlReader.ParsePlain(const AText: string; AOwnerIndent: Integer): TJSONValue;
 var
   mText: TStringBuilder;
@@ -823,6 +782,43 @@ begin
     Result := Scalar(mText.ToString);
   finally
     mText.Free;
+  end;
+end;
+
+function TYamlReader.BlockIndent(AOwnerIndent, AExplicit: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  if AExplicit > 0 then
+  begin
+    Exit(AOwnerIndent + AExplicit);
+  end;
+  Result := 0;
+  mIndex := FIndex;
+  while (mIndex <= High(FLines)) and (Trim(FLines[mIndex].Raw) = '') do
+  begin
+    Inc(mIndex);
+  end;
+  if mIndex <= High(FLines) then
+  begin
+    Result := FLines[mIndex].Indent;
+  end;
+end;
+
+function TYamlReader.BlockLines(AIndent: Integer): TArray<string>;
+var
+  mLines: TList<string>;
+begin
+  mLines := TList<string>.Create;
+  try
+    while not AtEnd and ((Trim(FLines[FIndex].Raw) = '') or (FLines[FIndex].Indent >= AIndent)) do
+    begin
+      mLines.Add(TrimRight(Copy(FLines[FIndex].Raw, AIndent + 1, MaxInt)));
+      Inc(FIndex);
+    end;
+    Result := mLines.ToArray;
+  finally
+    mLines.Free;
   end;
 end;
 
@@ -914,43 +910,6 @@ begin
   end;
 end;
 
-function TYamlReader.BlockIndent(AOwnerIndent, AExplicit: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  if AExplicit > 0 then
-  begin
-    Exit(AOwnerIndent + AExplicit);
-  end;
-  Result := 0;
-  mIndex := FIndex;
-  while (mIndex <= High(FLines)) and (Trim(FLines[mIndex].Raw) = '') do
-  begin
-    Inc(mIndex);
-  end;
-  if mIndex <= High(FLines) then
-  begin
-    Result := FLines[mIndex].Indent;
-  end;
-end;
-
-function TYamlReader.BlockLines(AIndent: Integer): TArray<string>;
-var
-  mLines: TList<string>;
-begin
-  mLines := TList<string>.Create;
-  try
-    while not AtEnd and ((Trim(FLines[FIndex].Raw) = '') or (FLines[FIndex].Indent >= AIndent)) do
-    begin
-      mLines.Add(TrimRight(Copy(FLines[FIndex].Raw, AIndent + 1, MaxInt)));
-      Inc(FIndex);
-    end;
-    Result := mLines.ToArray;
-  finally
-    mLines.Free;
-  end;
-end;
-
 function TYamlReader.ParseBlockScalar(const AHeader: string; AOwnerIndent: Integer): TJSONValue;
 var
   mHeader: string;
@@ -967,6 +926,47 @@ begin
     mLines := BlockLines(mIndent);
   end;
   Result := TJSONString.Create(JoinBlock(mLines, mHeader[1] = '>', mChomp));
+end;
+
+function TYamlReader.Continued(const AText: string; AOwnerIndent: Integer): string;
+begin
+  Result := AText;
+  while FlowOpen(Result) do
+  begin
+    // Noch offen: die nächste Zeile gehört dazu (eingerückt hinter dem Schlüssel).
+    if AtEnd or ((FLines[FIndex].Text <> '') and (FLines[FIndex].Indent <= AOwnerIndent)) then
+    begin
+      Fail;
+    end;
+    Result := Result + #10 + FLines[FIndex].Text;
+    Inc(FIndex);
+  end;
+end;
+
+function TYamlReader.Document: TJSONValue;
+begin
+  SkipBlank;
+  if not AtEnd and (FLines[FIndex].Indent = 0) and (FLines[FIndex].Text = '---') then
+  begin
+    Inc(FIndex);
+    SkipBlank;
+  end;
+  if AtEnd then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  Result := ParseBlock(FLines[FIndex].Indent);
+  try
+    SkipBlank;
+    // Ein zweites Dokument (---) oder Reste mit kleinerer Einrückung versteht der Leser nicht; "..." beendet.
+    if not AtEnd and (FLines[FIndex].Text <> '...') then
+    begin
+      Fail;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 { TAtlasFormYaml }

@@ -195,30 +195,67 @@ const
 
 { TAtlasProblemsFrame }
 
-procedure TAtlasProblemsFrameMenu.BuildMenu;
+{ TAtlasProblemsFrameMenu }
+
+function TAtlasProblemsFrameMenu.SelectedRows: TArray<Integer>;
+var
+  mItem: TListItem;
 begin
-  FMenu := TPopupMenu.Create(Self);
-  FMenu.OnPopup := MenuPopup;
-  FOpenItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuOpen), OpenClick);
-  FOpenItem.Default := True;
-  FFixItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuFixNone), FixClick);
-  FFixItem.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
-  FFixAllItem := AddMenuItem(nil, TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFixAll, ['…']),
-    FixAllClick);
-  FFixAllItem.Visible := False;
-  FSuppressItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress), SuppressClick);
-  FMenu.Items.Add(NewLine);
-  FConfigureItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure), ConfigureClick);
-  FDisableItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuDisable), DisableClick);
-  FExplainItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuExplain), ExplainClick);
-  FIssueItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCreateIssue), IssueClick);
-  FIssueItem.Visible := False;
-  FMenu.Items.Add(NewLine);
-  FCopyItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCopy), CopyClick);
-  FCopyItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
-  FColumnsItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuColumns), nil);
-  FResetSortItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuResetSort),
-    ResetSortClick);
+  Result := nil;
+  mItem := FList.Selected;
+  while mItem <> nil do
+  begin
+    Result := Result + [mItem.Index];
+    mItem := FList.GetNextItem(mItem, sdAll, [isSelected]);
+  end;
+end;
+
+{ TAtlasProblemsFrame }
+
+constructor TAtlasProblemsFrame.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
+  Name := '';
+  FView := TAtlasFindingsView.Create;
+  BuildBar;
+  BuildTools;
+  // Statuszeile, Symbole, Kontextmenü, Liste: in dieser Reihenfolge, die Ausrichtung hängt daran.
+  BuildList;
+  FColumns := TAtlasFindings.ParseColumns('');
+  FShowCompilerCode := True;
+  BuildImages;
+  BuildColumns;
+  UpdateKindCaptions;
+end;
+
+destructor TAtlasProblemsFrame.Destroy;
+begin
+  FreeAndNil(FView);
+  FreeAndNil(FScopeBox);
+  inherited Destroy;
+end;
+
+procedure TAtlasProblemsFrame.CreateWnd;
+var
+  mCategory: Integer;
+begin
+  inherited CreateWnd;
+  // Die Einträge der Auswahllisten brauchen ein Fenster: erst jetzt füllen, Auswahl aus dem Modell.
+  mCategory := 0;
+  if FView.Filter.OneCategory then
+  begin
+    mCategory := Ord(FView.Filter.Category) + 1;
+  end;
+  FUpdating := True;
+  try
+    FScopeBox.Fill;
+    FillCombo(FCategory, FCategoryTexts, mCategory);
+    FillCombo(FGrouping, FGroupingTexts, Ord(FView.Grouping));
+    FillCombo(FOrigin, FOriginTexts, Ord(FView.Filter.Origin));
+  finally
+    FUpdating := False;
+  end;
 end;
 
 procedure TAtlasProblemsFrame.BuildBar;
@@ -379,159 +416,6 @@ begin
   FNewTimer.OnTimer := NewTimerTick;
 end;
 
-constructor TAtlasProblemsFrame.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
-  Name := '';
-  FView := TAtlasFindingsView.Create;
-  BuildBar;
-  BuildTools;
-  // Statuszeile, Symbole, Kontextmenü, Liste: in dieser Reihenfolge, die Ausrichtung hängt daran.
-  BuildList;
-  FColumns := TAtlasFindings.ParseColumns('');
-  FShowCompilerCode := True;
-  BuildImages;
-  BuildColumns;
-  UpdateKindCaptions;
-end;
-
-destructor TAtlasProblemsFrame.Destroy;
-begin
-  FreeAndNil(FView);
-  FreeAndNil(FScopeBox);
-  inherited Destroy;
-end;
-
-procedure TAtlasProblemsFrame.CreateWnd;
-var
-  mCategory: Integer;
-begin
-  inherited CreateWnd;
-  // Die Einträge der Auswahllisten brauchen ein Fenster: erst jetzt füllen, Auswahl aus dem Modell.
-  mCategory := 0;
-  if FView.Filter.OneCategory then
-  begin
-    mCategory := Ord(FView.Filter.Category) + 1;
-  end;
-  FUpdating := True;
-  try
-    FScopeBox.Fill;
-    FillCombo(FCategory, FCategoryTexts, mCategory);
-    FillCombo(FGrouping, FGroupingTexts, Ord(FView.Grouping));
-    FillCombo(FOrigin, FOriginTexts, Ord(FView.Filter.Origin));
-  finally
-    FUpdating := False;
-  end;
-end;
-
-procedure TAtlasProblemsFrame.ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping;
-  const AColumns: string; ACompiler: Boolean);
-var
-  mFilter: TAtlasFindingFilter;
-begin
-  FUpdating := True;
-  try
-    FScopeBox.Select(TAtlasScopeChoice.Create(AScope, FScopeBox.Choice.Project));
-    if FGrouping.Items.Count > Ord(AGrouping) then
-    begin
-      FGrouping.ItemIndex := Ord(AGrouping);
-    end;
-  finally
-    FUpdating := False;
-  end;
-  mFilter := FView.Filter;
-  mFilter.Scope := AScope;
-  mFilter.Compiler := ACompiler;
-  FView.Filter := mFilter;
-  FView.Grouping := AGrouping;
-  FColumns := TAtlasFindings.ParseColumns(AColumns);
-  BuildColumns;
-  Refill;
-end;
-
-procedure TAtlasProblemsFrame.ApplyScopeSettings(AShowProjects: Boolean; const AProject: string);
-begin
-  FUpdating := True;
-  try
-    FScopeBox.SetShowProjects(AShowProjects);
-    FScopeBox.Select(TAtlasScopeChoice.Create(FScopeBox.Choice.Scope, AProject));
-  finally
-    FUpdating := False;
-  end;
-end;
-
-procedure TAtlasProblemsFrame.SetScopeProjects(const AProjects: TArray<TAtlasScopeProject>);
-var
-  mFellBack: Boolean;
-begin
-  FUpdating := True;
-  try
-    mFellBack := FScopeBox.SetProjects(AProjects);
-  finally
-    FUpdating := False;
-  end;
-  if mFellBack and Assigned(FOnLayout) then
-  begin
-    FOnLayout();
-  end;
-end;
-
-procedure TAtlasProblemsFrame.ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits;
-  AShowCleanActive: Boolean);
-begin
-  FOpenFirst.Down := AOpenFirst;
-  FView.ClosedUnits := AClosedUnits;
-  FView.ShowCleanActive := AShowCleanActive;
-  FView.OpenFirst := AOpenFirst;
-  Refill;
-end;
-
-procedure TAtlasProblemsFrame.SetOpenFiles(const AActive: string; const AOpen: TArray<string>;
-  AActiveChecked: Boolean);
-var
-  mBefore: string;
-begin
-  mBefore := FView.ActiveFile;
-  FView.SetOpenFiles(AActive, AOpen, AActiveChecked);
-  Refill;
-  KeepInView(mBefore);
-end;
-
-procedure TAtlasProblemsFrame.KeepInView(const ABefore: string);
-var
-  mSelected: Integer;
-begin
-  if SameText(ABefore, FView.ActiveFile) or (FList.Items.Count = 0) then
-  begin
-    Exit;
-  end;
-  // Editorwechsel: Die ausgewählte Zeile bleibt sichtbar; ohne Auswahl steht die angepinnte Unit oben.
-  mSelected := FView.SelectedRow;
-  if (mSelected >= 0) and (FList.Items[mSelected] <> nil) then
-  begin
-    FList.Items[mSelected].MakeVisible(False);
-  end
-  else if FList.Items[0] <> nil then
-  begin
-    FList.Items[0].MakeVisible(False);
-  end;
-end;
-
-procedure TAtlasProblemsFrame.OpenFirstClick(Sender: TObject);
-begin
-  if FUpdating then
-  begin
-    Exit;
-  end;
-  FView.OpenFirst := FOpenFirst.Down;
-  Refill;
-  if Assigned(FOnLayout) then
-  begin
-    FOnLayout();
-  end;
-end;
-
 function TAtlasProblemsFrame.FilterFromControls: TAtlasFindingFilter;
 var
   mKind: TAtlasFindingKind;
@@ -558,46 +442,6 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
-  const AFiles: TArray<string>);
-var
-  mFilter: TAtlasFindingFilter;
-begin
-  FView.BeginUpdate;
-  try
-    mFilter := FView.Filter;
-    mFilter.CurrentFile := ACurrentFile;
-    mFilter.Files := AFiles;
-    FView.Filter := mFilter;
-    FView.SetFindings(AFindings);
-  finally
-    FView.EndUpdate;
-  end;
-  FindingsChanged;
-end;
-
-procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
-  const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean);
-var
-  mFilter: TAtlasFindingFilter;
-  mBefore: string;
-begin
-  mBefore := FView.ActiveFile;
-  FView.BeginUpdate;
-  try
-    mFilter := FView.Filter;
-    mFilter.CurrentFile := ACurrentFile;
-    mFilter.Files := AFiles;
-    FView.Filter := mFilter;
-    FView.SetFindings(AFindings);
-    FView.SetOpenFiles(ACurrentFile, AOpen, AActiveChecked);
-  finally
-    FView.EndUpdate;
-  end;
-  FindingsChanged;
-  KeepInView(mBefore);
-end;
-
 procedure TAtlasProblemsFrame.FindingsChanged;
 var
   mRow: TAtlasFindingRow;
@@ -620,57 +464,96 @@ begin
   Refill;
 end;
 
-procedure TAtlasProblemsFrame.SetStatus(const AText: string);
-begin
-  FStatus.Caption := AText;
-end;
-
-procedure TAtlasProblemsFrame.SetUpdate(AMode: TAtlasProblemsUpdate);
-begin
-  case AMode of
-    TAtlasProblemsUpdate.Save:
-      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOnSave);
-    TAtlasProblemsUpdate.Manual:
-      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsManual);
-  else
-    FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
-  end;
-  if AMode = TAtlasProblemsUpdate.Live then
-  begin
-    FLive.Font.Color := $0050A030;
-  end
-  else
-  begin
-    FLive.Font.Color := clGrayText;
-  end;
-end;
-
-procedure TAtlasProblemsFrame.FollowCursor(const AFileName: string; ALine: Integer);
+procedure TAtlasProblemsFrame.KeepInView(const ABefore: string);
 var
-  mBefore: string;
+  mSelected: Integer;
 begin
-  mBefore := FView.SelectedKey;
-  if FView.SelectAt(AFileName, ALine) and (FView.SelectedKey <> mBefore) then
-  begin
-    Refill;
-    if (FView.SelectedRow >= 0) and (FList.Items[FView.SelectedRow] <> nil) then
-    begin
-      FList.Items[FView.SelectedRow].MakeVisible(False);
-    end;
-  end;
-end;
-
-function TAtlasProblemsFrame.Step(AForward: Boolean; out AFinding: TAtlasFinding): Boolean;
-begin
-  Result := FView.Step(AForward, AFinding);
-  if not Result then
+  if SameText(ABefore, FView.ActiveFile) or (FList.Items.Count = 0) then
   begin
     Exit;
   end;
-  Refill;
-  if (FView.SelectedRow >= 0) and (FList.Items[FView.SelectedRow] <> nil) then
+  // Editorwechsel: Die ausgewählte Zeile bleibt sichtbar; ohne Auswahl steht die angepinnte Unit oben.
+  mSelected := FView.SelectedRow;
+  if (mSelected >= 0) and (FList.Items[mSelected] <> nil) then
   begin
-    FList.Items[FView.SelectedRow].MakeVisible(False);
+    FList.Items[mSelected].MakeVisible(False);
+  end
+  else if FList.Items[0] <> nil then
+  begin
+    FList.Items[0].MakeVisible(False);
+  end;
+end;
+
+procedure TAtlasProblemsFrame.ControlsChanged(Sender: TObject);
+begin
+  if FUpdating then
+  begin
+    Exit;
+  end;
+  FView.Filter := FilterFromControls;
+  Refill;
+end;
+
+procedure TAtlasProblemsFrame.ScopeChange(Sender: TObject);
+var
+  mFilter: TAtlasFindingFilter;
+begin
+  if FUpdating or not FScopeBox.Pick then
+  begin
+    Exit;
+  end;
+  mFilter := FilterFromControls;
+  mFilter.Scope := FScopeBox.Choice.Scope;
+  FView.Filter := mFilter;
+  if Assigned(FOnScope) then
+  begin
+    FOnScope(mFilter.Scope);
+  end;
+  Refill;
+  if Assigned(FOnLayout) then
+  begin
+    FOnLayout();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.GroupingChange(Sender: TObject);
+begin
+  if FUpdating or (FGrouping.ItemIndex < 0) then
+  begin
+    Exit;
+  end;
+  FView.Grouping := TAtlasFindingGrouping(FGrouping.ItemIndex);
+  Refill;
+  if Assigned(FOnLayout) then
+  begin
+    FOnLayout();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.OpenFirstClick(Sender: TObject);
+begin
+  if FUpdating then
+  begin
+    Exit;
+  end;
+  FView.OpenFirst := FOpenFirst.Down;
+  Refill;
+  if Assigned(FOnLayout) then
+  begin
+    FOnLayout();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_DOWN) and FList.Visible and FList.CanFocus then
+  begin
+    Key := 0;
+    FList.SetFocus;
+    if (FList.ItemIndex < 0) and (FList.Items.Count > 0) then
+    begin
+      FList.ItemIndex := 0;
+    end;
   end;
 end;
 
@@ -696,24 +579,6 @@ begin
   FView.Select(Item.Index);
 end;
 
-procedure TAtlasProblemsFrame.ListMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mHit: TListItem;
-  mRow: TAtlasFindingRow;
-begin
-  // Klick auf eine Gruppe klappt sie; Mehrfachauswahl mit Strg/Umschalt bleibt.
-  if (Button <> mbLeft) or (Shift * [ssCtrl, ssShift] <> []) then
-  begin
-    Exit;
-  end;
-  mHit := FList.GetItemAt(X, Y);
-  if (mHit <> nil) and RowAt(mHit.Index, mRow) and mRow.IsGroup and not mRow.IsSection then
-  begin
-    FView.Toggle(mHit.Index);
-    Refill;
-  end;
-end;
-
 procedure TAtlasProblemsFrame.ListClick(Sender: TObject);
 begin
   if FList.ItemIndex >= 0 then
@@ -729,6 +594,14 @@ begin
   if RowAt(FList.ItemIndex, mRow) and not mRow.IsGroup and not mRow.IsSection then
   begin
     Fire(FOnOpen);
+  end;
+end;
+
+procedure TAtlasProblemsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if MoveKey(Key, Shift) or ActionKey(Key, Shift) then
+  begin
+    Key := 0;
   end;
 end;
 
@@ -812,14 +685,6 @@ begin
   end;
 end;
 
-procedure TAtlasProblemsFrame.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if MoveKey(Key, Shift) or ActionKey(Key, Shift) then
-  begin
-    Key := 0;
-  end;
-end;
-
 procedure TAtlasProblemsFrame.ListColumnClick(Sender: TObject; Column: TListColumn);
 begin
   if (Column = nil) or (Column.Index > High(FShown)) then
@@ -830,6 +695,24 @@ begin
   Refill;
 end;
 
+procedure TAtlasProblemsFrame.ListMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mHit: TListItem;
+  mRow: TAtlasFindingRow;
+begin
+  // Klick auf eine Gruppe klappt sie; Mehrfachauswahl mit Strg/Umschalt bleibt.
+  if (Button <> mbLeft) or (Shift * [ssCtrl, ssShift] <> []) then
+  begin
+    Exit;
+  end;
+  mHit := FList.GetItemAt(X, Y);
+  if (mHit <> nil) and RowAt(mHit.Index, mRow) and mRow.IsGroup and not mRow.IsSection then
+  begin
+    FView.Toggle(mHit.Index);
+    Refill;
+  end;
+end;
+
 procedure TAtlasProblemsFrame.NewTimerTick(Sender: TObject);
 begin
   FNewTimer.Enabled := False;
@@ -837,75 +720,170 @@ begin
   FList.Invalidate;
 end;
 
-procedure TAtlasProblemsFrame.ControlsChanged(Sender: TObject);
-begin
-  if FUpdating then
-  begin
-    Exit;
-  end;
-  FView.Filter := FilterFromControls;
-  Refill;
-end;
-
-procedure TAtlasProblemsFrame.ScopeChange(Sender: TObject);
+procedure TAtlasProblemsFrame.ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping;
+  const AColumns: string; ACompiler: Boolean);
 var
   mFilter: TAtlasFindingFilter;
 begin
-  if FUpdating or not FScopeBox.Pick then
-  begin
-    Exit;
-  end;
-  mFilter := FilterFromControls;
-  mFilter.Scope := FScopeBox.Choice.Scope;
-  FView.Filter := mFilter;
-  if Assigned(FOnScope) then
-  begin
-    FOnScope(mFilter.Scope);
-  end;
-  Refill;
-  if Assigned(FOnLayout) then
-  begin
-    FOnLayout();
-  end;
-end;
-
-procedure TAtlasProblemsFrame.GroupingChange(Sender: TObject);
-begin
-  if FUpdating or (FGrouping.ItemIndex < 0) then
-  begin
-    Exit;
-  end;
-  FView.Grouping := TAtlasFindingGrouping(FGrouping.ItemIndex);
-  Refill;
-  if Assigned(FOnLayout) then
-  begin
-    FOnLayout();
-  end;
-end;
-
-procedure TAtlasProblemsFrame.FilterKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_DOWN) and FList.Visible and FList.CanFocus then
-  begin
-    Key := 0;
-    FList.SetFocus;
-    if (FList.ItemIndex < 0) and (FList.Items.Count > 0) then
+  FUpdating := True;
+  try
+    FScopeBox.Select(TAtlasScopeChoice.Create(AScope, FScopeBox.Choice.Project));
+    if FGrouping.Items.Count > Ord(AGrouping) then
     begin
-      FList.ItemIndex := 0;
+      FGrouping.ItemIndex := Ord(AGrouping);
+    end;
+  finally
+    FUpdating := False;
+  end;
+  mFilter := FView.Filter;
+  mFilter.Scope := AScope;
+  mFilter.Compiler := ACompiler;
+  FView.Filter := mFilter;
+  FView.Grouping := AGrouping;
+  FColumns := TAtlasFindings.ParseColumns(AColumns);
+  BuildColumns;
+  Refill;
+end;
+
+procedure TAtlasProblemsFrame.ApplyScopeSettings(AShowProjects: Boolean; const AProject: string);
+begin
+  FUpdating := True;
+  try
+    FScopeBox.SetShowProjects(AShowProjects);
+    FScopeBox.Select(TAtlasScopeChoice.Create(FScopeBox.Choice.Scope, AProject));
+  finally
+    FUpdating := False;
+  end;
+end;
+
+procedure TAtlasProblemsFrame.SetScopeProjects(const AProjects: TArray<TAtlasScopeProject>);
+var
+  mFellBack: Boolean;
+begin
+  FUpdating := True;
+  try
+    mFellBack := FScopeBox.SetProjects(AProjects);
+  finally
+    FUpdating := False;
+  end;
+  if mFellBack and Assigned(FOnLayout) then
+  begin
+    FOnLayout();
+  end;
+end;
+
+procedure TAtlasProblemsFrame.ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits;
+  AShowCleanActive: Boolean);
+begin
+  FOpenFirst.Down := AOpenFirst;
+  FView.ClosedUnits := AClosedUnits;
+  FView.ShowCleanActive := AShowCleanActive;
+  FView.OpenFirst := AOpenFirst;
+  Refill;
+end;
+
+procedure TAtlasProblemsFrame.SetOpenFiles(const AActive: string; const AOpen: TArray<string>;
+  AActiveChecked: Boolean);
+var
+  mBefore: string;
+begin
+  mBefore := FView.ActiveFile;
+  FView.SetOpenFiles(AActive, AOpen, AActiveChecked);
+  Refill;
+  KeepInView(mBefore);
+end;
+
+procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
+  const AFiles: TArray<string>);
+var
+  mFilter: TAtlasFindingFilter;
+begin
+  FView.BeginUpdate;
+  try
+    mFilter := FView.Filter;
+    mFilter.CurrentFile := ACurrentFile;
+    mFilter.Files := AFiles;
+    FView.Filter := mFilter;
+    FView.SetFindings(AFindings);
+  finally
+    FView.EndUpdate;
+  end;
+  FindingsChanged;
+end;
+
+procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
+  const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean);
+var
+  mFilter: TAtlasFindingFilter;
+  mBefore: string;
+begin
+  mBefore := FView.ActiveFile;
+  FView.BeginUpdate;
+  try
+    mFilter := FView.Filter;
+    mFilter.CurrentFile := ACurrentFile;
+    mFilter.Files := AFiles;
+    FView.Filter := mFilter;
+    FView.SetFindings(AFindings);
+    FView.SetOpenFiles(ACurrentFile, AOpen, AActiveChecked);
+  finally
+    FView.EndUpdate;
+  end;
+  FindingsChanged;
+  KeepInView(mBefore);
+end;
+
+procedure TAtlasProblemsFrame.SetStatus(const AText: string);
+begin
+  FStatus.Caption := AText;
+end;
+
+procedure TAtlasProblemsFrame.SetUpdate(AMode: TAtlasProblemsUpdate);
+begin
+  case AMode of
+    TAtlasProblemsUpdate.Save:
+      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsOnSave);
+    TAtlasProblemsUpdate.Manual:
+      FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsManual);
+  else
+    FLive.Caption := TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsLive);
+  end;
+  if AMode = TAtlasProblemsUpdate.Live then
+  begin
+    FLive.Font.Color := $0050A030;
+  end
+  else
+  begin
+    FLive.Font.Color := clGrayText;
+  end;
+end;
+
+procedure TAtlasProblemsFrame.FollowCursor(const AFileName: string; ALine: Integer);
+var
+  mBefore: string;
+begin
+  mBefore := FView.SelectedKey;
+  if FView.SelectAt(AFileName, ALine) and (FView.SelectedKey <> mBefore) then
+  begin
+    Refill;
+    if (FView.SelectedRow >= 0) and (FList.Items[FView.SelectedRow] <> nil) then
+    begin
+      FList.Items[FView.SelectedRow].MakeVisible(False);
     end;
   end;
 end;
 
-function TAtlasProblemsFrameMenu.SelectedRows: TArray<Integer>;
-var
-  mItem: TListItem;
+function TAtlasProblemsFrame.Step(AForward: Boolean; out AFinding: TAtlasFinding): Boolean;
 begin
-  Result := nil;
-  mItem := FList.Selected;
-  while mItem <> nil do
+  Result := FView.Step(AForward, AFinding);
+  if not Result then
   begin
-    Result := Result + [mItem.Index];
-    mItem := FList.GetNextItem(mItem, sdAll, [isSelected]);
+    Exit;
+  end;
+  Refill;
+  if (FView.SelectedRow >= 0) and (FList.Items[FView.SelectedRow] <> nil) then
+  begin
+    FList.Items[FView.SelectedRow].MakeVisible(False);
   end;
 end;
 
@@ -950,17 +928,6 @@ begin
   if Assigned(AEvent) and Current(mFinding) then
   begin
     AEvent(mFinding);
-  end;
-end;
-
-procedure TAtlasProblemsFrameMenu.CopySelection;
-var
-  mText: string;
-begin
-  mText := TAtlasFindings.AsText(FView.FindingsOfRows(SelectedRows));
-  if mText <> '' then
-  begin
-    Clipboard.AsText := mText;
   end;
 end;
 
@@ -1057,11 +1024,6 @@ begin
   Fire(FOnExplain);
 end;
 
-function TAtlasProblemsFrameMenu.SelectedFindings: TArray<TAtlasFinding>;
-begin
-  Result := FView.FindingsOfRows(SelectedRows);
-end;
-
 procedure TAtlasProblemsFrameMenu.IssueClick(Sender: TObject);
 var
   mFindings: TArray<TAtlasFinding>;
@@ -1082,6 +1044,48 @@ procedure TAtlasProblemsFrameMenu.ResetSortClick(Sender: TObject);
 begin
   FView.ResetSort;
   Refill;
+end;
+
+procedure TAtlasProblemsFrameMenu.BuildMenu;
+begin
+  FMenu := TPopupMenu.Create(Self);
+  FMenu.OnPopup := MenuPopup;
+  FOpenItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuOpen), OpenClick);
+  FOpenItem.Default := True;
+  FFixItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuFixNone), FixClick);
+  FFixItem.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
+  FFixAllItem := AddMenuItem(nil, TAtlasProblemsStrings.Fmt(TAtlasProblemsTextId.ProblemsMenuFixAll, ['…']),
+    FixAllClick);
+  FFixAllItem.Visible := False;
+  FSuppressItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress), SuppressClick);
+  FMenu.Items.Add(NewLine);
+  FConfigureItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure), ConfigureClick);
+  FDisableItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuDisable), DisableClick);
+  FExplainItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuExplain), ExplainClick);
+  FIssueItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCreateIssue), IssueClick);
+  FIssueItem.Visible := False;
+  FMenu.Items.Add(NewLine);
+  FCopyItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuCopy), CopyClick);
+  FCopyItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
+  FColumnsItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuColumns), nil);
+  FResetSortItem := AddMenuItem(nil, TAtlasProblemsStrings.Text(TAtlasProblemsTextId.ProblemsMenuResetSort),
+    ResetSortClick);
+end;
+
+procedure TAtlasProblemsFrameMenu.CopySelection;
+var
+  mText: string;
+begin
+  mText := TAtlasFindings.AsText(FView.FindingsOfRows(SelectedRows));
+  if mText <> '' then
+  begin
+    Clipboard.AsText := mText;
+  end;
+end;
+
+function TAtlasProblemsFrameMenu.SelectedFindings: TArray<TAtlasFinding>;
+begin
+  Result := FView.FindingsOfRows(SelectedRows);
 end;
 
 end.

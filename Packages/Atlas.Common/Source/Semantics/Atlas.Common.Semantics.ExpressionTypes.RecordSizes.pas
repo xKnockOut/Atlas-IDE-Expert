@@ -90,6 +90,8 @@ begin
   end;
 end;
 
+{ TRecordLayout }
+
 procedure TRecordLayout.Add(ABytes, AAlign, ACount: Integer);
 var
   mAlign, mIndex: Integer;
@@ -139,6 +141,8 @@ begin
     end;
   end;
 end;
+
+{ TRecordSizes }
 
 constructor TRecordSizes.Create(ATree: TSyntaxTree; ADepth: Integer);
 begin

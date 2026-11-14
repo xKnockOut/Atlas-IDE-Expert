@@ -896,6 +896,8 @@ implementation
 uses
   System.StrUtils;
 
+{ TAtlasTrackerCall }
+
 class function TAtlasTrackerCall.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   ATimeoutMs: Integer): TAtlasTrackerCall;
 begin
@@ -1324,6 +1326,8 @@ begin
     Delete(Result, Length(Result), 1);
   end;
 end;
+
+{ TAtlasTrackerTarget }
 
 class function TAtlasTrackerTarget.Create(const AProvider, AUrl, AProject, AQuery: string): TAtlasTrackerTarget;
 var

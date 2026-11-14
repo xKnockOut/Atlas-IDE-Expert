@@ -159,11 +159,6 @@ end;
 
 { TAtlasAvTexts }
 
-class function TAtlasAvTexts.OffsetText(AOffset: Integer): string;
-begin
-  Result := '$' + IntToHex(AOffset, 2);
-end;
-
 class function TAtlasAvTexts.Busy: TAtlasDebugBannerExplanation;
 begin
   Result := Default(TAtlasDebugBannerExplanation);
@@ -180,52 +175,6 @@ begin
   Result.Headline := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguous);
   Result.Detail := AReason;
   Result.CopyText := CopyTextOf(Result, AHeader);
-end;
-
-class function TAtlasAvTexts.CheckLine(AAnalysis: TAtlasAvAnalysis; AIndex: Integer): TAtlasDebugBannerLine;
-var
-  mCheck: TAtlasAvCheck;
-  mValue: string;
-begin
-  mCheck := AAnalysis.Checks[AIndex];
-  mValue := mCheck.Value;
-  if mCheck.State = TAtlasAvCheckState.NilValue then
-  begin
-    mValue := 'nil';
-  end;
-  case mCheck.State of
-    TAtlasAvCheckState.Ok:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok, mCheck.Expression + ' = ' + mValue);
-    TAtlasAvCheckState.NilValue:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue);
-    TAtlasAvCheckState.Freed:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFreed) + ')');
-    TAtlasAvCheckState.Invalid:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateInvalid) + ')');
-    TAtlasAvCheckState.OutOfRange:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateOutOfRange) + ')');
-    TAtlasAvCheckState.NotReached:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotReached));
-    TAtlasAvCheckState.Failed:
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFailed));
-  else
-    // Nicht ausgewertet: wegen eines Aufrufs ohne allowCalls oder weil die Prüfung abbrach.
-    if AAnalysis.LinkOf(AIndex).Call and not AAnalysis.AllowCalls then
-    begin
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall));
-    end
-    else
-    begin
-      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotEvaluated));
-    end;
-  end;
 end;
 
 class function TAtlasAvTexts.FromAnalysis(AAnalysis: TAtlasAvAnalysis; ACanWhere, ACanEvaluate: Boolean;
@@ -283,6 +232,76 @@ begin
     end;
   end;
   Result.CopyText := CopyTextOf(Result, AHeader);
+end;
+
+class function TAtlasAvTexts.CheckLine(AAnalysis: TAtlasAvAnalysis; AIndex: Integer): TAtlasDebugBannerLine;
+var
+  mCheck: TAtlasAvCheck;
+  mValue: string;
+begin
+  mCheck := AAnalysis.Checks[AIndex];
+  mValue := mCheck.Value;
+  if mCheck.State = TAtlasAvCheckState.NilValue then
+  begin
+    mValue := 'nil';
+  end;
+  case mCheck.State of
+    TAtlasAvCheckState.Ok:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok, mCheck.Expression + ' = ' + mValue);
+    TAtlasAvCheckState.NilValue:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue);
+    TAtlasAvCheckState.Freed:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFreed) + ')');
+    TAtlasAvCheckState.Invalid:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateInvalid) + ')');
+    TAtlasAvCheckState.OutOfRange:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateOutOfRange) + ')');
+    TAtlasAvCheckState.NotReached:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotReached));
+    TAtlasAvCheckState.Failed:
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFailed));
+  else
+    // Nicht ausgewertet: wegen eines Aufrufs ohne allowCalls oder weil die Prüfung abbrach.
+    if AAnalysis.LinkOf(AIndex).Call and not AAnalysis.AllowCalls then
+    begin
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall));
+    end
+    else
+    begin
+      Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
+        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotEvaluated));
+    end;
+  end;
+end;
+
+class function TAtlasAvTexts.MessageLines(const AExplanation: TAtlasDebugBannerExplanation;
+
+  const APlace: string): TArray<string>;
+var
+  mText: string;
+  mLine: TAtlasDebugBannerLine;
+begin
+  mText := AExplanation.Headline;
+  if AExplanation.Detail <> '' then
+  begin
+    mText := mText + ' ' + #$00B7 + ' ' + AExplanation.Detail;
+  end;
+  Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, mText]));
+  for mLine in AExplanation.Lines do
+  begin
+    Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
+  end;
+end;
+
+class function TAtlasAvTexts.OffsetText(AOffset: Integer): string;
+begin
+  Result := '$' + IntToHex(AOffset, 2);
 end;
 
 class function TAtlasAvTexts.ModuleText(const AModule: TAtlasDebugFaultModule): string;
@@ -343,6 +362,7 @@ begin
   Result.CopyText := CopyTextOf(Result, AHeader);
 end;
 
+
 class function TAtlasAvTexts.WithModule(const AExplanation: TAtlasDebugBannerExplanation;
   const AModuleText: string): TAtlasDebugBannerExplanation;
 begin
@@ -362,26 +382,6 @@ begin
   if Result.CopyText <> '' then
   begin
     Result.CopyText := Result.CopyText + sLineBreak + AModuleText;
-  end;
-end;
-
-
-class function TAtlasAvTexts.MessageLines(const AExplanation: TAtlasDebugBannerExplanation;
-
-  const APlace: string): TArray<string>;
-var
-  mText: string;
-  mLine: TAtlasDebugBannerLine;
-begin
-  mText := AExplanation.Headline;
-  if AExplanation.Detail <> '' then
-  begin
-    mText := mText + ' ' + #$00B7 + ' ' + AExplanation.Detail;
-  end;
-  Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, mText]));
-  for mLine in AExplanation.Lines do
-  begin
-    Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
   end;
 end;
 

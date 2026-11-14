@@ -68,28 +68,6 @@ begin
   inherited;
 end;
 
-procedure TUsesGraphService.SetOptions(const AOptions: TUsesGraphOptions);
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    FOptions := AOptions;
-    FreeAndNil(FGraph);
-    FGeneration := -1;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-function TUsesGraphService.Options: TUsesGraphOptions;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := FOptions;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
 procedure TUsesGraphService.Refresh;
 var
   mCurrent: Int64;
@@ -110,6 +88,28 @@ begin
     Inc(FUpdates);
   end;
   FGeneration := mCurrent;
+end;
+
+procedure TUsesGraphService.SetOptions(const AOptions: TUsesGraphOptions);
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FOptions := AOptions;
+    FreeAndNil(FGraph);
+    FGeneration := -1;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TUsesGraphService.Options: TUsesGraphOptions;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Result := FOptions;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
 end;
 
 procedure TUsesGraphService.Read(const AReader: TUsesGraphReader);

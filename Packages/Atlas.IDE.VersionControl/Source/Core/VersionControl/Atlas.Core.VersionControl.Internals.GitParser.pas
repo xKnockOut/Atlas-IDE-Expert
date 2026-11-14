@@ -137,6 +137,8 @@ begin
   end;
 end;
 
+{ TAtlasGitParser }
+
 class function TAtlasGitParser.KindOf(const AXY: string): TAtlasVcsChangeKind;
 var
   X, Y: Char;
@@ -378,35 +380,58 @@ begin
   end;
 end;
 
-class function TAtlasGitParser.ParseBranches(const AText: string): TArray<TAtlasVcsBranch>;
+class function TAtlasGitParser.ParseRefs(const AText: string): TArray<TAtlasVcsRef>;
+const
+  cHeads = 'refs/heads/';
+  cRemotes = 'refs/remotes/';
 var
-  mLine: string;
+  mLine, mName: string;
   mFields: TArray<string>;
-  mBranch: TAtlasVcsBranch;
+  mRef: TAtlasVcsRef;
+  mSlash: Integer;
 begin
   Result := nil;
   for mLine in NonEmptyLines(AText) do
   begin
     mFields := mLine.Split([#0]);
-    if Length(mFields) < 7 then
+    if Length(mFields) < 3 then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: sieben Felder erwartet');
+      raise EAtlasVcsParse.Create('git for-each-ref: drei Felder erwartet');
     end;
-    mBranch := Default(TAtlasVcsBranch);
-    mBranch.Name := mFields[0];
-    mBranch.Upstream := mFields[1];
-    mBranch.Remote := mFields[2];
-    mBranch.RemoteRef := mFields[3];
-    mBranch.Ahead := -1;
-    mBranch.Behind := -1;
-    ReadTrack(mFields[4], mBranch);
-    mBranch.TipDate := UnixField(mFields[5]);
-    mBranch.Current := Trim(mFields[6]) = '*';
-    if mBranch.Name = '' then
+    mName := mFields[0];
+    mRef := Default(TAtlasVcsRef);
+    if mName.StartsWith(cHeads) then
+    begin
+      mRef.Name := Copy(mName, Length(cHeads) + 1, MaxInt);
+      mRef.LocalName := mRef.Name;
+    end
+    else if mName.StartsWith(cRemotes) then
+    begin
+      mRef.Name := Copy(mName, Length(cRemotes) + 1, MaxInt);
+      mRef.Remote := True;
+      // "origin/HEAD" zeigt nur auf einen anderen Branch.
+      if mRef.Name.EndsWith('/HEAD') then
+      begin
+        Continue;
+      end;
+      mSlash := Pos('/', mRef.Name);
+      if mSlash = 0 then
+      begin
+        Continue;
+      end;
+      mRef.LocalName := Copy(mRef.Name, mSlash + 1, MaxInt);
+    end
+    else
+    begin
+      Continue;
+    end;
+    if mRef.Name = '' then
     begin
       raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
     end;
-    Result := Result + [mBranch];
+    mRef.TipDate := UnixField(mFields[1]);
+    mRef.Current := Trim(mFields[2]) = '*';
+    Result := Result + [mRef];
   end;
 end;
 
@@ -442,6 +467,84 @@ begin
     AStash.Branch := Copy(ASubject, 4, mColon - 4);
   end;
   AStash.Message := mRest;
+end;
+
+class procedure TAtlasGitParser.ParseDistance(const AText: string; out AAhead, ABehind: Integer);
+var
+  mParts: TArray<string>;
+begin
+  // Links steht, was nur in der Basis liegt (Rückstand), rechts, was nur im Branch liegt (Vorsprung).
+  mParts := Trim(AText).Split([#9, ' '], TStringSplitOptions.ExcludeEmpty);
+  if (Length(mParts) <> 2) or not TryStrToInt(mParts[0], ABehind) or not TryStrToInt(mParts[1], AAhead) then
+  begin
+    raise EAtlasVcsParse.CreateFmt('git rev-list --count: "%s" unbekannt', [Trim(AText)]);
+  end;
+end;
+
+class function TAtlasGitParser.ParseBranches(const AText: string): TArray<TAtlasVcsBranch>;
+var
+  mLine: string;
+  mFields: TArray<string>;
+  mBranch: TAtlasVcsBranch;
+begin
+  Result := nil;
+  for mLine in NonEmptyLines(AText) do
+  begin
+    mFields := mLine.Split([#0]);
+    if Length(mFields) < 7 then
+    begin
+      raise EAtlasVcsParse.Create('git for-each-ref: sieben Felder erwartet');
+    end;
+    mBranch := Default(TAtlasVcsBranch);
+    mBranch.Name := mFields[0];
+    mBranch.Upstream := mFields[1];
+    mBranch.Remote := mFields[2];
+    mBranch.RemoteRef := mFields[3];
+    mBranch.Ahead := -1;
+    mBranch.Behind := -1;
+    ReadTrack(mFields[4], mBranch);
+    mBranch.TipDate := UnixField(mFields[5]);
+    mBranch.Current := Trim(mFields[6]) = '*';
+    if mBranch.Name = '' then
+    begin
+      raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+    end;
+    Result := Result + [mBranch];
+  end;
+end;
+
+/// <summary>Art aus dem Kennbuchstaben von git diff --name-status; löst EAtlasVcsParse für unbekannte aus.</summary>
+function NameStatusKind(const AStatus: string): TAtlasVcsChangeKind;
+begin
+  case AStatus[1] of
+    'M':
+      Result := TAtlasVcsChangeKind.Modified;
+    'A':
+      Result := TAtlasVcsChangeKind.Added;
+    'D':
+      Result := TAtlasVcsChangeKind.Deleted;
+    'T':
+      Result := TAtlasVcsChangeKind.TypeChanged;
+    'U':
+      Result := TAtlasVcsChangeKind.Conflicted;
+    'R':
+      Result := TAtlasVcsChangeKind.Renamed;
+    'C':
+      Result := TAtlasVcsChangeKind.Copied;
+  else
+    raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [AStatus]);
+  end;
+end;
+
+/// <summary>Pfad bei AIndex (danach weiter); löst EAtlasVcsParse mit AMissing aus, wenn er fehlt.</summary>
+function NextPath(const AEntries: TArray<string>; var AIndex: Integer; const AMissing: string): string;
+begin
+  if (AIndex > High(AEntries)) or (AEntries[AIndex] = '') then
+  begin
+    raise EAtlasVcsParse.Create(AMissing);
+  end;
+  Result := AEntries[AIndex];
+  Inc(AIndex);
 end;
 
 class function TAtlasGitParser.ParseStashes(const AText: string): TArray<TAtlasVcsStash>;
@@ -494,120 +597,6 @@ begin
     else
     begin
       mCommit.Summary := '';
-    end;
-    Result := Result + [mCommit];
-  end;
-end;
-
-/// <summary>Art aus dem Kennbuchstaben von git diff --name-status; löst EAtlasVcsParse für unbekannte aus.</summary>
-function NameStatusKind(const AStatus: string): TAtlasVcsChangeKind;
-begin
-  case AStatus[1] of
-    'M':
-      Result := TAtlasVcsChangeKind.Modified;
-    'A':
-      Result := TAtlasVcsChangeKind.Added;
-    'D':
-      Result := TAtlasVcsChangeKind.Deleted;
-    'T':
-      Result := TAtlasVcsChangeKind.TypeChanged;
-    'U':
-      Result := TAtlasVcsChangeKind.Conflicted;
-    'R':
-      Result := TAtlasVcsChangeKind.Renamed;
-    'C':
-      Result := TAtlasVcsChangeKind.Copied;
-  else
-    raise EAtlasVcsParse.CreateFmt('git diff --name-status: Art "%s" unbekannt', [AStatus]);
-  end;
-end;
-
-/// <summary>Pfad bei AIndex (danach weiter); löst EAtlasVcsParse mit AMissing aus, wenn er fehlt.</summary>
-function NextPath(const AEntries: TArray<string>; var AIndex: Integer; const AMissing: string): string;
-begin
-  if (AIndex > High(AEntries)) or (AEntries[AIndex] = '') then
-  begin
-    raise EAtlasVcsParse.Create(AMissing);
-  end;
-  Result := AEntries[AIndex];
-  Inc(AIndex);
-end;
-
-class function TAtlasGitParser.ParseNameStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>;
-var
-  mEntries: TArray<string>;
-  mIndex: Integer;
-  mStatus: string;
-  mChange: TAtlasVcsChange;
-begin
-  Result := nil;
-  mEntries := AText.Split([#0]);
-  mIndex := 0;
-  while mIndex <= High(mEntries) do
-  begin
-    mStatus := mEntries[mIndex].Trim([#10, #13]);
-    Inc(mIndex);
-    if mStatus = '' then
-    begin
-      Continue;
-    end;
-    if mIndex > High(mEntries) then
-    begin
-      raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
-    end;
-    mChange := Default(TAtlasVcsChange);
-    mChange.Staged := True;
-    mChange.Unstaged := False;
-    mChange.Kind := NameStatusKind(mStatus);
-    if mChange.Kind in [TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied] then
-    begin
-      // Erst der alte, dann der neue Pfad.
-      mChange.OldPath := VcsFullPath(ARoot, mEntries[mIndex]);
-      Inc(mIndex);
-      if mIndex > High(mEntries) then
-      begin
-        raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
-      end;
-    end;
-    mChange.Path := VcsFullPath(ARoot, NextPath(mEntries, mIndex, 'git diff --name-status: Pfad fehlt'));
-    Result := Result + [mChange];
-  end;
-end;
-
-class function TAtlasGitParser.ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>;
-var
-  mRecords, mFields: TArray<string>;
-  mItem, mPath: string;
-  mIndex: Integer;
-  mCommit: TAtlasVcsIncomingCommit;
-begin
-  Result := nil;
-  mRecords := AText.Split([#$1E]);
-  for mItem in mRecords do
-  begin
-    // Vor dem ersten Trenner steht nichts; Zeilenenden zwischen den Commits zählen nicht.
-    if mItem.Trim([#0, #10, #13]) = '' then
-    begin
-      Continue;
-    end;
-    mFields := mItem.Split([#0]);
-    if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
-    begin
-      raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
-    end;
-    mCommit := Default(TAtlasVcsIncomingCommit);
-    mCommit.Hash := mFields[0];
-    mCommit.Date := UnixField(mFields[1]);
-    mCommit.Author := mFields[2];
-    mCommit.Summary := mFields[3];
-    // Dateien: die erste nach einem Zeilenende, alle je mit NUL abgeschlossen.
-    for mIndex := 4 to High(mFields) do
-    begin
-      mPath := mFields[mIndex].Trim([#10, #13]);
-      if mPath <> '' then
-      begin
-        mCommit.Files := mCommit.Files + [VcsFullPath(ARoot, mPath)];
-      end;
     end;
     Result := Result + [mCommit];
   end;
@@ -723,70 +712,83 @@ begin
   end;
 end;
 
-class function TAtlasGitParser.ParseRefs(const AText: string): TArray<TAtlasVcsRef>;
-const
-  cHeads = 'refs/heads/';
-  cRemotes = 'refs/remotes/';
+class function TAtlasGitParser.ParseNameStatus(const AText, ARoot: string): TArray<TAtlasVcsChange>;
 var
-  mLine, mName: string;
-  mFields: TArray<string>;
-  mRef: TAtlasVcsRef;
-  mSlash: Integer;
+  mEntries: TArray<string>;
+  mIndex: Integer;
+  mStatus: string;
+  mChange: TAtlasVcsChange;
 begin
   Result := nil;
-  for mLine in NonEmptyLines(AText) do
+  mEntries := AText.Split([#0]);
+  mIndex := 0;
+  while mIndex <= High(mEntries) do
   begin
-    mFields := mLine.Split([#0]);
-    if Length(mFields) < 3 then
-    begin
-      raise EAtlasVcsParse.Create('git for-each-ref: drei Felder erwartet');
-    end;
-    mName := mFields[0];
-    mRef := Default(TAtlasVcsRef);
-    if mName.StartsWith(cHeads) then
-    begin
-      mRef.Name := Copy(mName, Length(cHeads) + 1, MaxInt);
-      mRef.LocalName := mRef.Name;
-    end
-    else if mName.StartsWith(cRemotes) then
-    begin
-      mRef.Name := Copy(mName, Length(cRemotes) + 1, MaxInt);
-      mRef.Remote := True;
-      // "origin/HEAD" zeigt nur auf einen anderen Branch.
-      if mRef.Name.EndsWith('/HEAD') then
-      begin
-        Continue;
-      end;
-      mSlash := Pos('/', mRef.Name);
-      if mSlash = 0 then
-      begin
-        Continue;
-      end;
-      mRef.LocalName := Copy(mRef.Name, mSlash + 1, MaxInt);
-    end
-    else
+    mStatus := mEntries[mIndex].Trim([#10, #13]);
+    Inc(mIndex);
+    if mStatus = '' then
     begin
       Continue;
     end;
-    if mRef.Name = '' then
+    if mIndex > High(mEntries) then
     begin
-      raise EAtlasVcsParse.Create('git for-each-ref: Name fehlt');
+      raise EAtlasVcsParse.Create('git diff --name-status: Pfad fehlt');
     end;
-    mRef.TipDate := UnixField(mFields[1]);
-    mRef.Current := Trim(mFields[2]) = '*';
-    Result := Result + [mRef];
+    mChange := Default(TAtlasVcsChange);
+    mChange.Staged := True;
+    mChange.Unstaged := False;
+    mChange.Kind := NameStatusKind(mStatus);
+    if mChange.Kind in [TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied] then
+    begin
+      // Erst der alte, dann der neue Pfad.
+      mChange.OldPath := VcsFullPath(ARoot, mEntries[mIndex]);
+      Inc(mIndex);
+      if mIndex > High(mEntries) then
+      begin
+        raise EAtlasVcsParse.Create('git diff --name-status: neuer Pfad fehlt');
+      end;
+    end;
+    mChange.Path := VcsFullPath(ARoot, NextPath(mEntries, mIndex, 'git diff --name-status: Pfad fehlt'));
+    Result := Result + [mChange];
   end;
 end;
 
-class procedure TAtlasGitParser.ParseDistance(const AText: string; out AAhead, ABehind: Integer);
+class function TAtlasGitParser.ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>;
 var
-  mParts: TArray<string>;
+  mRecords, mFields: TArray<string>;
+  mItem, mPath: string;
+  mIndex: Integer;
+  mCommit: TAtlasVcsIncomingCommit;
 begin
-  // Links steht, was nur in der Basis liegt (Rückstand), rechts, was nur im Branch liegt (Vorsprung).
-  mParts := Trim(AText).Split([#9, ' '], TStringSplitOptions.ExcludeEmpty);
-  if (Length(mParts) <> 2) or not TryStrToInt(mParts[0], ABehind) or not TryStrToInt(mParts[1], AAhead) then
+  Result := nil;
+  mRecords := AText.Split([#$1E]);
+  for mItem in mRecords do
   begin
-    raise EAtlasVcsParse.CreateFmt('git rev-list --count: "%s" unbekannt', [Trim(AText)]);
+    // Vor dem ersten Trenner steht nichts; Zeilenenden zwischen den Commits zählen nicht.
+    if mItem.Trim([#0, #10, #13]) = '' then
+    begin
+      Continue;
+    end;
+    mFields := mItem.Split([#0]);
+    if (Length(mFields) < 4) or (Length(mFields[0]) < 7) then
+    begin
+      raise EAtlasVcsParse.Create('git log: Hash, Zeit, Autor und Betreff erwartet');
+    end;
+    mCommit := Default(TAtlasVcsIncomingCommit);
+    mCommit.Hash := mFields[0];
+    mCommit.Date := UnixField(mFields[1]);
+    mCommit.Author := mFields[2];
+    mCommit.Summary := mFields[3];
+    // Dateien: die erste nach einem Zeilenende, alle je mit NUL abgeschlossen.
+    for mIndex := 4 to High(mFields) do
+    begin
+      mPath := mFields[mIndex].Trim([#10, #13]);
+      if mPath <> '' then
+      begin
+        mCommit.Files := mCommit.Files + [VcsFullPath(ARoot, mPath)];
+      end;
+    end;
+    Result := Result + [mCommit];
   end;
 end;
 
@@ -933,6 +935,8 @@ type
     function Next(out AItem: TAtlasVcsBlameLine): Boolean;
   end;
 
+{ TGitBlameReader }
+
 constructor TGitBlameReader.Create(const AText: string);
 begin
   inherited Create;
@@ -947,11 +951,6 @@ destructor TGitBlameReader.Destroy;
 begin
   FreeAndNil(FCommitIndexOf);
   inherited;
-end;
-
-function TGitBlameReader.Capacity: Integer;
-begin
-  Result := Length(FLines);
 end;
 
 function TGitBlameReader.CommitFor(const AHash: string): Integer;
@@ -995,6 +994,11 @@ begin
       ACommit.Summary := mValue;
     end;
   end;
+end;
+
+function TGitBlameReader.Capacity: Integer;
+begin
+  Result := Length(FLines);
 end;
 
 function TGitBlameReader.Next(out AItem: TAtlasVcsBlameLine): Boolean;

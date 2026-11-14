@@ -114,6 +114,8 @@ type
     function Cut(AOpen, AClose: Integer; const AMember, APrevious: TMember): string;
   end;
 
+{ TScanner }
+
 procedure TScanner.SkipSpace(var APos: Integer);
 begin
   // Offene Blockkommentare toleriert: APos steht dann hinter dem Text.
@@ -480,19 +482,6 @@ end;
 
 { TAtlasJsonText }
 
-class function TAtlasJsonText.Quote(const AValue: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AValue);
-  try
-    // Ohne Option: Umlaute bleiben lesbar (die Dateien sind UTF-8); ToJSON allein schreibt \u-Folgen.
-    Result := mValue.ToJSON([]);
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasJsonText.StripComments(const AText: string): string;
 begin
   Result := TJsoncScanner.StripComments(AText);
@@ -540,25 +529,6 @@ begin
   Result := mSetter.Run;
 end;
 
-class function TAtlasJsonText.ApplyChanges(const AText: string;
-  const AChanges: TArray<TPair<string, string>>): string;
-var
-  mChange: TPair<string, string>;
-begin
-  Result := AText;
-  for mChange in AChanges do
-  begin
-    if mChange.Value = '' then
-    begin
-      Result := Remove(Result, mChange.Key);
-    end
-    else
-    begin
-      Result := SetValue(Result, mChange.Key, mChange.Value);
-    end;
-  end;
-end;
-
 class function TAtlasJsonText.Remove(const AText, APath: string): string;
 var
   mRemover: TValueRemover;
@@ -590,6 +560,38 @@ begin
       Exit;
     end;
     mOpen := mMember.ValueStart;
+  end;
+end;
+
+class function TAtlasJsonText.ApplyChanges(const AText: string;
+  const AChanges: TArray<TPair<string, string>>): string;
+var
+  mChange: TPair<string, string>;
+begin
+  Result := AText;
+  for mChange in AChanges do
+  begin
+    if mChange.Value = '' then
+    begin
+      Result := Remove(Result, mChange.Key);
+    end
+    else
+    begin
+      Result := SetValue(Result, mChange.Key, mChange.Value);
+    end;
+  end;
+end;
+
+class function TAtlasJsonText.Quote(const AValue: string): string;
+var
+  mValue: TJSONString;
+begin
+  mValue := TJSONString.Create(AValue);
+  try
+    // Ohne Option: Umlaute bleiben lesbar (die Dateien sind UTF-8); ToJSON allein schreibt \u-Folgen.
+    Result := mValue.ToJSON([]);
+  finally
+    mValue.Free;
   end;
 end;
 

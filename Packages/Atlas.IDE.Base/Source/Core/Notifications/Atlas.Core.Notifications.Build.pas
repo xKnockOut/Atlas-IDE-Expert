@@ -69,15 +69,50 @@ uses
 
 { TAtlasBuildNotices }
 
-class function TAtlasBuildNotices.SourceOf(ABackground: Boolean): string;
+class function TAtlasBuildNotices.FromVerdict(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AVerdict: TAtlasBuildVerdict): TAtlasBuildNotice;
 begin
-  if ABackground then
+  Result := Default(TAtlasBuildNotice);
+  Result.Errors := AVerdict.Errors;
+  Result.Warnings := AVerdict.Warnings;
+  Result.Hints := AVerdict.Hints;
+  Result.Baselined := AVerdict.Baselined;
+  Result.Reason := AVerdict.Reason;
+  Result.PromotedCode := AVerdict.PromotedCode;
+  Result.HasTarget := (AVerdict.First >= 0) and (AVerdict.First <= High(AMessages));
+  if Result.HasTarget then
   begin
-    Result := TAtlasNotificationSources.cCheck;
-  end
+    Result.Target := AMessages[AVerdict.First];
+  end;
+  case AVerdict.Reason of
+    TAtlasBuildVerdictReason.CompilerFailed:
+      begin
+        Result.Severity := TAtlasNotificationSeverity.Error;
+        if Result.Errors > 0 then
+        begin
+          Result.Kind := TAtlasBuildNoticeKind.Errors;
+        end
+        else
+        begin
+          Result.Kind := TAtlasBuildNoticeKind.Failed;
+        end;
+      end;
+    TAtlasBuildVerdictReason.WarningsAsErrors, TAtlasBuildVerdictReason.ZeroHints:
+      begin
+        Result.Severity := TAtlasNotificationSeverity.Error;
+        Result.Kind := TAtlasBuildNoticeKind.Rejected;
+      end;
   else
-  begin
-    Result := TAtlasNotificationSources.cBuild;
+    if Result.Warnings > 0 then
+    begin
+      Result.Kind := TAtlasBuildNoticeKind.Warnings;
+      Result.Severity := TAtlasNotificationSeverity.Warning;
+    end
+    else
+    begin
+      Result.Kind := TAtlasBuildNoticeKind.Succeeded;
+      Result.Severity := TAtlasNotificationSeverity.Info;
+    end;
   end;
 end;
 
@@ -164,50 +199,15 @@ begin
   end;
 end;
 
-class function TAtlasBuildNotices.FromVerdict(const AMessages: TArray<TAtlasCompilerMessage>;
-  const AVerdict: TAtlasBuildVerdict): TAtlasBuildNotice;
+class function TAtlasBuildNotices.SourceOf(ABackground: Boolean): string;
 begin
-  Result := Default(TAtlasBuildNotice);
-  Result.Errors := AVerdict.Errors;
-  Result.Warnings := AVerdict.Warnings;
-  Result.Hints := AVerdict.Hints;
-  Result.Baselined := AVerdict.Baselined;
-  Result.Reason := AVerdict.Reason;
-  Result.PromotedCode := AVerdict.PromotedCode;
-  Result.HasTarget := (AVerdict.First >= 0) and (AVerdict.First <= High(AMessages));
-  if Result.HasTarget then
+  if ABackground then
   begin
-    Result.Target := AMessages[AVerdict.First];
-  end;
-  case AVerdict.Reason of
-    TAtlasBuildVerdictReason.CompilerFailed:
-      begin
-        Result.Severity := TAtlasNotificationSeverity.Error;
-        if Result.Errors > 0 then
-        begin
-          Result.Kind := TAtlasBuildNoticeKind.Errors;
-        end
-        else
-        begin
-          Result.Kind := TAtlasBuildNoticeKind.Failed;
-        end;
-      end;
-    TAtlasBuildVerdictReason.WarningsAsErrors, TAtlasBuildVerdictReason.ZeroHints:
-      begin
-        Result.Severity := TAtlasNotificationSeverity.Error;
-        Result.Kind := TAtlasBuildNoticeKind.Rejected;
-      end;
+    Result := TAtlasNotificationSources.cCheck;
+  end
   else
-    if Result.Warnings > 0 then
-    begin
-      Result.Kind := TAtlasBuildNoticeKind.Warnings;
-      Result.Severity := TAtlasNotificationSeverity.Warning;
-    end
-    else
-    begin
-      Result.Kind := TAtlasBuildNoticeKind.Succeeded;
-      Result.Severity := TAtlasNotificationSeverity.Info;
-    end;
+  begin
+    Result := TAtlasNotificationSources.cBuild;
   end;
 end;
 

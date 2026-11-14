@@ -338,119 +338,12 @@ end;
 
 { TAtlasIdeLaunchGroups }
 
-class procedure TAtlasIdeLaunchGroups.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
-begin
-  FMessage := AMessage;
-  FRegistry := ARegistry;
-  if FHandler = nil then
-  begin
-    FHandler := THandler.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cTickMs;
-    FTimer.OnTimer := FHandler.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeLaunchGroups.Release;
-begin
-  // Regel 3 der Module: Thread, Zeitgeber, Leiste und Statusfeld gehen mit.
-  FreeProbe;
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  if (FRegistry <> nil) and (FStatus <> nil) then
-  begin
-    FRegistry.Remove(cStatusId);
-  end;
-  FStatus := nil;
-  FStatusText := '';
-  FRegistry := nil;
-  FreeAndNil(FTimer);
-  FreeAndNil(FHandler);
-  FreeAndNil(FBar);
-  FreeAndNil(FRun);
-  TAtlasIdeLaunchActive.Release;
-  FMessage := nil;
-  FStarted := nil;
-  FKnown := nil;
-  FFolder := '';
-end;
-
-class function TAtlasIdeLaunchGroups.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
-class procedure TAtlasIdeLaunchGroups.ThemeChanged;
-begin
-  if (FBar <> nil) and FBar.IsShown then
-  begin
-    FBar.Colors := TAtlasIdeStyle.Colors;
-    FBar.Invalidate;
-  end;
-end;
-
 class procedure TAtlasIdeLaunchGroups.Say(const AText: string);
 begin
   if Assigned(FMessage) then
   begin
     FMessage(AText);
   end;
-end;
-
-class function TAtlasIdeLaunchGroups.Groups(out AProblems: TArray<string>): TAtlasLaunchGroupList;
-var
-  mTeam: TAtlasTeamSettings;
-begin
-  mTeam := TAtlasIdeTeamFile.Current;
-  FFolder := mTeam.Folder;
-  Result := TAtlasLaunchGroups.Parse(mTeam.LaunchGroups, AProblems);
-end;
-
-class procedure TAtlasIdeLaunchGroups.ShowWindow;
-var
-  mProblems: TArray<string>;
-  mGroups: TAtlasLaunchGroupList;
-  mChosen: string;
-begin
-  mGroups := Groups(mProblems);
-  if mProblems <> nil then
-  begin
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchProblems, [string.Join(', ', mProblems)]));
-  end;
-  case TAtlasLaunchGroupsDialog.Execute(mGroups, TAtlasIdeLaunchActive.Name, mChosen) of
-    TAtlasLaunchGroupsChoice.Activate:
-      TAtlasIdeLaunchActive.SetName(mChosen);
-    TAtlasLaunchGroupsChoice.Start:
-      begin
-        TAtlasIdeLaunchActive.SetName(mChosen);
-        RunGroup(mChosen);
-      end;
-    TAtlasLaunchGroupsChoice.Edit:
-      TAtlasIdeTeamFile.OpenInEditor;
-  end;
-end;
-
-class procedure TAtlasIdeLaunchGroups.RunActive;
-begin
-  if TAtlasIdeLaunchActive.Name = '' then
-  begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
-    Exit;
-  end;
-  RunGroup(TAtlasIdeLaunchActive.Name);
 end;
 
 class function TAtlasIdeLaunchGroups.BuildChanged(const AGroup: TAtlasLaunchGroup): Boolean;
@@ -476,34 +369,47 @@ begin
   Result := True;
 end;
 
-class procedure TAtlasIdeLaunchGroups.RunGroup(const AName: string);
+class procedure TAtlasIdeLaunchGroups.Tick;
 var
-  mProblems: TArray<string>;
-  mGroups: TAtlasLaunchGroupList;
   mIndex: Integer;
+  mWaitingBefore: Boolean;
 begin
-  mGroups := Groups(mProblems);
-  mIndex := TAtlasLaunchGroups.IndexOf(mGroups, AName);
-  if mIndex < 0 then
+  if (FRun = nil) or FAsking then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
+    UpdateStatus;
     Exit;
   end;
-  if (FRun <> nil) and not FRun.Finished then
+  TrackPid;
+  mWaitingBefore := (FRun.Current >= 0) and (FRun.State(FRun.Current) = TAtlasLaunchItemState.Waiting);
+  if mWaitingBefore and (FProbe <> nil) then
   begin
+    FRun.Check(NowMs, FProbe.PortOpen, FProbe.WindowFound);
+  end
+  else if mWaitingBefore then
+  begin
+    FRun.Check(NowMs, False, False);
+  end;
+  if FRun.Halted then
+  begin
+    FreeProbe;
+    if mWaitingBefore then
+    begin
+      Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchTimedOut, [FRun.Group.Items[FRun.Current].Caption]));
+    end;
+    AskOnFailure;
     Exit;
   end;
-  FreeProbe;
-  FreeAndNil(FRun);
-  FStarted := nil;
-  if not BuildChanged(mGroups[mIndex]) then
+  if FRun.Advance(NowMs, mIndex) then
   begin
-    Exit;
+    FreeProbe;
+    StartItem(mIndex);
   end;
-  FRun := TAtlasLaunchRun.Create(mGroups[mIndex]);
-  FDoneAt := 0;
-  FTimer.Enabled := True;
   ShowBar;
+  UpdateStatus;
+  if FRun.Finished then
+  begin
+    FinishRun;
+  end;
 end;
 
 class procedure TAtlasIdeLaunchGroups.StartItem(AIndex: Integer);
@@ -576,49 +482,6 @@ begin
     begin
       FProbe.SetPid(mProcess.Pid);
     end;
-  end;
-end;
-
-class procedure TAtlasIdeLaunchGroups.Tick;
-var
-  mIndex: Integer;
-  mWaitingBefore: Boolean;
-begin
-  if (FRun = nil) or FAsking then
-  begin
-    UpdateStatus;
-    Exit;
-  end;
-  TrackPid;
-  mWaitingBefore := (FRun.Current >= 0) and (FRun.State(FRun.Current) = TAtlasLaunchItemState.Waiting);
-  if mWaitingBefore and (FProbe <> nil) then
-  begin
-    FRun.Check(NowMs, FProbe.PortOpen, FProbe.WindowFound);
-  end
-  else if mWaitingBefore then
-  begin
-    FRun.Check(NowMs, False, False);
-  end;
-  if FRun.Halted then
-  begin
-    FreeProbe;
-    if mWaitingBefore then
-    begin
-      Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchTimedOut, [FRun.Group.Items[FRun.Current].Caption]));
-    end;
-    AskOnFailure;
-    Exit;
-  end;
-  if FRun.Advance(NowMs, mIndex) then
-  begin
-    FreeProbe;
-    StartItem(mIndex);
-  end;
-  ShowBar;
-  UpdateStatus;
-  if FRun.Finished then
-  begin
-    FinishRun;
   end;
 end;
 
@@ -737,20 +600,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeLaunchGroups.AnyRunning: Boolean;
-var
-  mStarted: TStarted;
-begin
-  for mStarted in FStarted do
-  begin
-    if StateText(mStarted) <> TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class procedure TAtlasIdeLaunchGroups.UpdateStatus;
 var
   mParts: TArray<string>;
@@ -831,6 +680,157 @@ begin
   end;
   mServices.CurrentProcess := mCandidates[(mFrom + 1) mod Length(mCandidates)];
   UpdateStatus;
+end;
+
+class function TAtlasIdeLaunchGroups.AnyRunning: Boolean;
+var
+  mStarted: TStarted;
+begin
+  for mStarted in FStarted do
+  begin
+    if StateText(mStarted) <> TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class procedure TAtlasIdeLaunchGroups.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
+begin
+  FMessage := AMessage;
+  FRegistry := ARegistry;
+  if FHandler = nil then
+  begin
+    FHandler := THandler.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cTickMs;
+    FTimer.OnTimer := FHandler.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeLaunchGroups.Release;
+begin
+  // Regel 3 der Module: Thread, Zeitgeber, Leiste und Statusfeld gehen mit.
+  FreeProbe;
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  if (FRegistry <> nil) and (FStatus <> nil) then
+  begin
+    FRegistry.Remove(cStatusId);
+  end;
+  FStatus := nil;
+  FStatusText := '';
+  FRegistry := nil;
+  FreeAndNil(FTimer);
+  FreeAndNil(FHandler);
+  FreeAndNil(FBar);
+  FreeAndNil(FRun);
+  TAtlasIdeLaunchActive.Release;
+  FMessage := nil;
+  FStarted := nil;
+  FKnown := nil;
+  FFolder := '';
+end;
+
+class function TAtlasIdeLaunchGroups.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class procedure TAtlasIdeLaunchGroups.ThemeChanged;
+begin
+  if (FBar <> nil) and FBar.IsShown then
+  begin
+    FBar.Colors := TAtlasIdeStyle.Colors;
+    FBar.Invalidate;
+  end;
+end;
+
+class function TAtlasIdeLaunchGroups.Groups(out AProblems: TArray<string>): TAtlasLaunchGroupList;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  mTeam := TAtlasIdeTeamFile.Current;
+  FFolder := mTeam.Folder;
+  Result := TAtlasLaunchGroups.Parse(mTeam.LaunchGroups, AProblems);
+end;
+
+class procedure TAtlasIdeLaunchGroups.ShowWindow;
+var
+  mProblems: TArray<string>;
+  mGroups: TAtlasLaunchGroupList;
+  mChosen: string;
+begin
+  mGroups := Groups(mProblems);
+  if mProblems <> nil then
+  begin
+    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchProblems, [string.Join(', ', mProblems)]));
+  end;
+  case TAtlasLaunchGroupsDialog.Execute(mGroups, TAtlasIdeLaunchActive.Name, mChosen) of
+    TAtlasLaunchGroupsChoice.Activate:
+      TAtlasIdeLaunchActive.SetName(mChosen);
+    TAtlasLaunchGroupsChoice.Start:
+      begin
+        TAtlasIdeLaunchActive.SetName(mChosen);
+        RunGroup(mChosen);
+      end;
+    TAtlasLaunchGroupsChoice.Edit:
+      TAtlasIdeTeamFile.OpenInEditor;
+  end;
+end;
+
+class procedure TAtlasIdeLaunchGroups.RunActive;
+begin
+  if TAtlasIdeLaunchActive.Name = '' then
+  begin
+    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
+    Exit;
+  end;
+  RunGroup(TAtlasIdeLaunchActive.Name);
+end;
+
+class procedure TAtlasIdeLaunchGroups.RunGroup(const AName: string);
+var
+  mProblems: TArray<string>;
+  mGroups: TAtlasLaunchGroupList;
+  mIndex: Integer;
+begin
+  mGroups := Groups(mProblems);
+  mIndex := TAtlasLaunchGroups.IndexOf(mGroups, AName);
+  if mIndex < 0 then
+  begin
+    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
+    Exit;
+  end;
+  if (FRun <> nil) and not FRun.Finished then
+  begin
+    Exit;
+  end;
+  FreeProbe;
+  FreeAndNil(FRun);
+  FStarted := nil;
+  if not BuildChanged(mGroups[mIndex]) then
+  begin
+    Exit;
+  end;
+  FRun := TAtlasLaunchRun.Create(mGroups[mIndex]);
+  FDoneAt := 0;
+  FTimer.Enabled := True;
+  ShowBar;
 end;
 
 class procedure TAtlasIdeLaunchGroups.StopAll;

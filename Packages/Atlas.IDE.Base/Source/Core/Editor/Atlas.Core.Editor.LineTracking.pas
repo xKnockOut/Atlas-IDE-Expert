@@ -111,6 +111,28 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasTrackedLines.BuildSourceAt;
+var
+  mPair: TPair<Integer, Integer>;
+  mHeld: Integer;
+begin
+  FSourceAt.Clear;
+  for mPair in FCurrent do
+  begin
+    if mPair.Value < 0 then
+    begin
+      Continue;
+    end;
+    // Zwei Quellzeilen in einer Zeile (Zeilen zusammengeführt): die kleinere gilt, damit das Ergebnis nicht von
+    // der Reihenfolge im Wörterbuch abhängt.
+    if not FSourceAt.TryGetValue(mPair.Value, mHeld) or (mPair.Key < mHeld) then
+    begin
+      FSourceAt.AddOrSetValue(mPair.Value, mPair.Key);
+    end;
+  end;
+  FSourceAtValid := True;
+end;
+
 procedure TAtlasTrackedLines.Reset(AStamp: Integer; const ALines: TArray<Integer>);
 var
   mLine: Integer;
@@ -148,28 +170,6 @@ begin
   FCurrent[ASource] := ANewLine;
   FMoved := True;
   FSourceAtValid := False;
-end;
-
-procedure TAtlasTrackedLines.BuildSourceAt;
-var
-  mPair: TPair<Integer, Integer>;
-  mHeld: Integer;
-begin
-  FSourceAt.Clear;
-  for mPair in FCurrent do
-  begin
-    if mPair.Value < 0 then
-    begin
-      Continue;
-    end;
-    // Zwei Quellzeilen in einer Zeile (Zeilen zusammengeführt): die kleinere gilt, damit das Ergebnis nicht von
-    // der Reihenfolge im Wörterbuch abhängt.
-    if not FSourceAt.TryGetValue(mPair.Value, mHeld) or (mPair.Key < mHeld) then
-    begin
-      FSourceAt.AddOrSetValue(mPair.Value, mPair.Key);
-    end;
-  end;
-  FSourceAtValid := True;
 end;
 
 function TAtlasTrackedLines.SourceAt(ACurrent: Integer; out ASource: Integer): Boolean;

@@ -33,6 +33,8 @@ const
   cLibraryPrefixes: array[0..15] of string = ('System', 'Vcl', 'Winapi', 'Data', 'Xml', 'Soap', 'Datasnap',
     'FireDAC', 'REST', 'Web', 'IBX', 'FMX', 'Posix', 'Macapi', 'Androidapi', 'iOSapi');
 
+{ TLibraryUnits }
+
 class function TLibraryUnits.IsLibraryUnit(const AUnitName: string): Boolean;
 var
   mPrefix: string;

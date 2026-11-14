@@ -147,28 +147,16 @@ begin
   inherited Destroy;
 end;
 
-class function TIdeTypeCatalog.Parse(const AParams: TJSONValue): TArray<TIdeTypeEntry>;
-var
-  mUnits: TJSONArray;
-  mItem: TJSONValue;
-  mSeen: TDictionary<string, Boolean>;
+function TIdeTypeCatalog.UnitsOf(const ATypeName: string): TArray<string>;
 begin
-  Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('units', mUnits)) then
-  begin
-    Exit;
-  end;
-  mSeen := TDictionary<string, Boolean>.Create;
+  System.TMonitor.Enter(FLock);
   try
-    for mItem in mUnits do
+    if not FUnits.TryGetValue(UpperCase(ATypeName), Result) then
     begin
-      if mItem is TJSONObject then
-      begin
-        AddUnitEntries(TJSONObject(mItem), mSeen, Result);
-      end;
+      Result := nil;
     end;
   finally
-    mSeen.Free;
+    System.TMonitor.Exit(FLock);
   end;
 end;
 
@@ -201,19 +189,6 @@ begin
   Result := Length(mEntries);
 end;
 
-function TIdeTypeCatalog.UnitsOf(const ATypeName: string): TArray<string>;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    if not FUnits.TryGetValue(UpperCase(ATypeName), Result) then
-    begin
-      Result := nil;
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
 function TIdeTypeCatalog.Entries: TArray<TIdeTypeEntry>;
 begin
   System.TMonitor.Enter(FLock);
@@ -227,6 +202,31 @@ end;
 function TIdeTypeCatalog.Count: Integer;
 begin
   Result := Length(Entries);
+end;
+
+class function TIdeTypeCatalog.Parse(const AParams: TJSONValue): TArray<TIdeTypeEntry>;
+var
+  mUnits: TJSONArray;
+  mItem: TJSONValue;
+  mSeen: TDictionary<string, Boolean>;
+begin
+  Result := nil;
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('units', mUnits)) then
+  begin
+    Exit;
+  end;
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    for mItem in mUnits do
+    begin
+      if mItem is TJSONObject then
+      begin
+        AddUnitEntries(TJSONObject(mItem), mSeen, Result);
+      end;
+    end;
+  finally
+    mSeen.Free;
+  end;
 end;
 
 { TLspIdeTypes }
@@ -245,11 +245,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TLspIdeTypes.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterNotification(cMethod, HandleNotification);
-end;
-
 procedure TLspIdeTypes.HandleNotification(const AParams: TJSONValue);
 var
   mCount: Integer;
@@ -259,6 +254,11 @@ begin
   begin
     FOnChanged(mCount);
   end;
+end;
+
+procedure TLspIdeTypes.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
 end.

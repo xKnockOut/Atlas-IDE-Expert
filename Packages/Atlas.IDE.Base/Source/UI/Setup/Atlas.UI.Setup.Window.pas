@@ -775,14 +775,6 @@ begin
   Layout;
 end;
 
-function TAtlasSetupWindow.NewButton(const ACaption: string): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := Self;
-  Result.Caption := ACaption;
-  Result.OnClick := FooterClick;
-end;
-
 function TAtlasSetupWindow.FixButton(AIndex: Integer): TButton;
 begin
   Result := nil;
@@ -790,6 +782,62 @@ begin
   begin
     Result := FFixButtons[AIndex];
   end;
+end;
+
+procedure TAtlasSetupWindow.Paint;
+var
+  mPainter: TAtlasSetupPainter;
+  mLine: TAtlasSetupLine;
+begin
+  mPainter.Window := Self;
+  mPainter.Metrics.Window := Self;
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  mPainter.Header;
+  for mLine in FGeometry.Lines do
+  begin
+    if mLine.Project >= 0 then
+    begin
+      mPainter.ProjectLine(mLine, FResults[mLine.Result_]);
+    end
+    else
+    begin
+      mPainter.ResultLine(mLine, FResults[mLine.Result_]);
+    end;
+  end;
+  mPainter.Note;
+  mPainter.TryIt;
+  Canvas.Pen.Color := ToColor(FColors.Line);
+  Canvas.MoveTo(0, ClientHeight - mPainter.Metrics.ButtonsHeight);
+  Canvas.LineTo(ClientWidth, ClientHeight - mPainter.Metrics.ButtonsHeight);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasSetupWindow.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+  begin
+    Key := 0;
+    Close;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TAtlasSetupWindow.Resize;
+begin
+  inherited;
+  Invalidate;
+end;
+
+function TAtlasSetupWindow.NewButton(const ACaption: string): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := Self;
+  Result.Caption := ACaption;
+  Result.OnClick := FooterClick;
 end;
 
 procedure TAtlasSetupWindow.Layout;
@@ -804,51 +852,6 @@ begin
   mArranger.Note(mArranger.Lines(mArranger.Metrics.HeaderHeight));
   mArranger.Footer;
   Invalidate;
-end;
-
-procedure TAtlasSetupWindow.Resize;
-begin
-  inherited;
-  Invalidate;
-end;
-
-procedure TAtlasSetupWindow.SetResults(const AResults: TArray<TAtlasSetupResult>);
-begin
-  FResults := AResults;
-  Layout;
-end;
-
-procedure TAtlasSetupWindow.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Color := ToColor(FColors.Surface);
-  FShowAtStart.Font.Color := ToColor(FColors.Text);
-  Invalidate;
-end;
-
-procedure TAtlasSetupWindow.SetTryKey(const AKey: string);
-begin
-  if AKey <> '' then
-  begin
-    FTryKey := AKey;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasSetupWindow.SetShowAtStart(AValue: Boolean);
-begin
-  FUpdating := True;
-  try
-    FShowAtStart.Checked := AValue;
-  finally
-    FUpdating := False;
-  end;
-end;
-
-procedure TAtlasSetupWindow.ShowNote(const AText: string);
-begin
-  FNote := AText;
-  Layout;
 end;
 
 procedure TAtlasSetupWindow.FixClick(Sender: TObject);
@@ -908,46 +911,43 @@ begin
   Action := caHide;
 end;
 
-procedure TAtlasSetupWindow.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TAtlasSetupWindow.SetResults(const AResults: TArray<TAtlasSetupResult>);
 begin
-  if Key = VK_ESCAPE then
-  begin
-    Key := 0;
-    Close;
-    Exit;
-  end;
-  inherited;
+  FResults := AResults;
+  Layout;
 end;
 
-procedure TAtlasSetupWindow.Paint;
-var
-  mPainter: TAtlasSetupPainter;
-  mLine: TAtlasSetupLine;
+procedure TAtlasSetupWindow.SetColors(const AColors: TAtlasColors);
 begin
-  mPainter.Window := Self;
-  mPainter.Metrics.Window := Self;
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  mPainter.Header;
-  for mLine in FGeometry.Lines do
+  FColors := AColors;
+  Color := ToColor(FColors.Surface);
+  FShowAtStart.Font.Color := ToColor(FColors.Text);
+  Invalidate;
+end;
+
+procedure TAtlasSetupWindow.SetTryKey(const AKey: string);
+begin
+  if AKey <> '' then
   begin
-    if mLine.Project >= 0 then
-    begin
-      mPainter.ProjectLine(mLine, FResults[mLine.Result_]);
-    end
-    else
-    begin
-      mPainter.ResultLine(mLine, FResults[mLine.Result_]);
-    end;
+    FTryKey := AKey;
   end;
-  mPainter.Note;
-  mPainter.TryIt;
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, ClientHeight - mPainter.Metrics.ButtonsHeight);
-  Canvas.LineTo(ClientWidth, ClientHeight - mPainter.Metrics.ButtonsHeight);
-  Canvas.Brush.Style := bsSolid;
+  Invalidate;
+end;
+
+procedure TAtlasSetupWindow.SetShowAtStart(AValue: Boolean);
+begin
+  FUpdating := True;
+  try
+    FShowAtStart.Checked := AValue;
+  finally
+    FUpdating := False;
+  end;
+end;
+
+procedure TAtlasSetupWindow.ShowNote(const AText: string);
+begin
+  FNote := AText;
+  Layout;
 end;
 
 end.

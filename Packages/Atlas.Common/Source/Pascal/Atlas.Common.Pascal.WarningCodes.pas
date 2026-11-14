@@ -171,6 +171,8 @@ begin
   end;
 end;
 
+{ TWarningCodes }
+
 class function TWarningCodes.KindOf(const ACode: string): TWarningCodeKind;
 begin
   Result := TWarningCodeKind.None;

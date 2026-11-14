@@ -191,15 +191,133 @@ begin
   Result := MulDiv(AValue, CurrentPPI, 96);
 end;
 
-function TAtlasDiagnosticGrid.RowHeight: Integer;
-begin
-  Result := Scale(20);
-end;
-
 procedure TAtlasDiagnosticGrid.UpdateHeight;
 begin
   // Kopfzeile plus Zeilen; ohne Zeilen eine Zeile für EmptyText.
   FBox.Height := RowHeight * (1 + Max(1, Length(FRows)));
+end;
+
+procedure TAtlasDiagnosticGrid.BoxPaint(Sender: TObject);
+var
+  mCanvas: TCanvas;
+  mColumn, mIndex, mTop: Integer;
+  mSpan: TPoint;
+begin
+  mCanvas := FBox.Canvas;
+  mCanvas.Font := Font;
+  mCanvas.Brush.Style := bsSolid;
+  mCanvas.Brush.Color := ToColor(FColors.Surface);
+  mCanvas.FillRect(FBox.ClientRect);
+  mCanvas.Brush.Color := ToColor(FColors.Gutter);
+  mCanvas.FillRect(Rect(0, 0, FBox.Width, RowHeight));
+  for mColumn := 0 to High(FColumns) do
+  begin
+    mSpan := ColumnSpan(mColumn, FBox.Width);
+    PaintCell(mCanvas, Rect(mSpan.X, 0, mSpan.Y, RowHeight), FColumns[mColumn].Caption, TAtlasGridMark.None,
+      FColumns[mColumn].Right, True);
+  end;
+  mCanvas.Pen.Color := ToColor(FColors.Line);
+  mCanvas.MoveTo(0, RowHeight - 1);
+  mCanvas.LineTo(FBox.Width, RowHeight - 1);
+  if Length(FRows) = 0 then
+  begin
+    PaintCell(mCanvas, Rect(0, RowHeight, FBox.Width, 2 * RowHeight), FEmptyText, TAtlasGridMark.None, False, True);
+    Exit;
+  end;
+  mTop := RowHeight;
+  for mIndex := 0 to High(FRows) do
+  begin
+    PaintRow(mCanvas, FRows[mIndex], mTop, mIndex = FSelected);
+    Inc(mTop, RowHeight);
+  end;
+end;
+
+procedure TAtlasDiagnosticGrid.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  mRow: Integer;
+begin
+  mRow := RowAt(Y);
+  if mRow >= 0 then
+  begin
+    SelectRow(mRow);
+  end;
+end;
+
+procedure TAtlasDiagnosticGrid.BoxDblClick(Sender: TObject);
+begin
+  if (FSelected >= 0) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(Self);
+  end;
+end;
+
+procedure TAtlasDiagnosticGrid.PaintRow(ACanvas: TCanvas; const ARow: TAtlasGridRow; ATop: Integer;
+  ASelected: Boolean);
+var
+  mColumn: Integer;
+  mSpan: TPoint;
+  mCell, mBar: TRect;
+  mText: string;
+begin
+  if ASelected then
+  begin
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := ToColor(FColors.Selection);
+    ACanvas.FillRect(Rect(0, ATop, FBox.Width, ATop + RowHeight));
+  end;
+  for mColumn := 0 to High(FColumns) do
+  begin
+    mSpan := ColumnSpan(mColumn, FBox.Width);
+    mCell := Rect(mSpan.X, ATop, mSpan.Y, ATop + RowHeight);
+    mText := '';
+    if mColumn < Length(ARow.Cells) then
+    begin
+      mText := ARow.Cells[mColumn];
+    end;
+    if (mColumn = High(FColumns)) and (ARow.Bar >= 0) then
+    begin
+      // Balken links in der Zelle, Zahl rechts daneben.
+      mBar := Rect(mCell.Left + Scale(4), ATop + Scale(6), mCell.Left + Scale(4) + Round(Min(1, ARow.Bar) *
+        Scale(40)), ATop + RowHeight - Scale(6));
+      ACanvas.Brush.Style := bsSolid;
+      ACanvas.Brush.Color := ToColor(FColors.Accent);
+      ACanvas.FillRect(mBar);
+    end;
+    PaintCell(ACanvas, mCell, mText, ARow.Mark(mColumn), FColumns[mColumn].Right, False);
+  end;
+end;
+
+procedure TAtlasDiagnosticGrid.PaintCell(ACanvas: TCanvas; const ARect: TRect; const AText: string;
+  AMark: TAtlasGridMark; ARight, AMuted: Boolean);
+var
+  mRect: TRect;
+  mFlags: Cardinal;
+begin
+  ACanvas.Font.Style := [];
+  ACanvas.Font.Color := ToColor(FColors.Text);
+  if AMuted then
+  begin
+    ACanvas.Font.Color := ToColor(FColors.Muted);
+  end
+  else if AMark = TAtlasGridMark.Warn then
+  begin
+    ACanvas.Font.Color := ToColor(FColors.Warn);
+  end
+  else if AMark = TAtlasGridMark.Bad then
+  begin
+    ACanvas.Font.Color := ToColor(FColors.Error);
+    ACanvas.Font.Style := [fsBold];
+  end;
+  ACanvas.Brush.Style := bsClear;
+  mRect := ARect;
+  InflateRect(mRect, -Scale(4), 0);
+  mFlags := cTextFlags or DT_LEFT;
+  if ARight then
+  begin
+    mFlags := cTextFlags or DT_RIGHT;
+  end;
+  DrawText(ACanvas.Handle, PChar(AText), Length(AText), mRect, mFlags);
 end;
 
 procedure TAtlasDiagnosticGrid.SetColumns(const AColumns: TArray<TAtlasGridColumn>);
@@ -240,6 +358,11 @@ begin
   end;
 end;
 
+function TAtlasDiagnosticGrid.RowHeight: Integer;
+begin
+  Result := Scale(20);
+end;
+
 function TAtlasDiagnosticGrid.RowAt(AY: Integer): Integer;
 begin
   Result := AY div RowHeight - 1;
@@ -268,129 +391,6 @@ begin
   if (AIndex >= 0) and (AIndex <= High(FRows)) then
   begin
     Result := string.Join(#9, FRows[AIndex].Cells);
-  end;
-end;
-
-procedure TAtlasDiagnosticGrid.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-var
-  mRow: Integer;
-begin
-  mRow := RowAt(Y);
-  if mRow >= 0 then
-  begin
-    SelectRow(mRow);
-  end;
-end;
-
-procedure TAtlasDiagnosticGrid.BoxDblClick(Sender: TObject);
-begin
-  if (FSelected >= 0) and Assigned(FOnOpen) then
-  begin
-    FOnOpen(Self);
-  end;
-end;
-
-procedure TAtlasDiagnosticGrid.PaintCell(ACanvas: TCanvas; const ARect: TRect; const AText: string;
-  AMark: TAtlasGridMark; ARight, AMuted: Boolean);
-var
-  mRect: TRect;
-  mFlags: Cardinal;
-begin
-  ACanvas.Font.Style := [];
-  ACanvas.Font.Color := ToColor(FColors.Text);
-  if AMuted then
-  begin
-    ACanvas.Font.Color := ToColor(FColors.Muted);
-  end
-  else if AMark = TAtlasGridMark.Warn then
-  begin
-    ACanvas.Font.Color := ToColor(FColors.Warn);
-  end
-  else if AMark = TAtlasGridMark.Bad then
-  begin
-    ACanvas.Font.Color := ToColor(FColors.Error);
-    ACanvas.Font.Style := [fsBold];
-  end;
-  ACanvas.Brush.Style := bsClear;
-  mRect := ARect;
-  InflateRect(mRect, -Scale(4), 0);
-  mFlags := cTextFlags or DT_LEFT;
-  if ARight then
-  begin
-    mFlags := cTextFlags or DT_RIGHT;
-  end;
-  DrawText(ACanvas.Handle, PChar(AText), Length(AText), mRect, mFlags);
-end;
-
-procedure TAtlasDiagnosticGrid.PaintRow(ACanvas: TCanvas; const ARow: TAtlasGridRow; ATop: Integer;
-  ASelected: Boolean);
-var
-  mColumn: Integer;
-  mSpan: TPoint;
-  mCell, mBar: TRect;
-  mText: string;
-begin
-  if ASelected then
-  begin
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Brush.Color := ToColor(FColors.Selection);
-    ACanvas.FillRect(Rect(0, ATop, FBox.Width, ATop + RowHeight));
-  end;
-  for mColumn := 0 to High(FColumns) do
-  begin
-    mSpan := ColumnSpan(mColumn, FBox.Width);
-    mCell := Rect(mSpan.X, ATop, mSpan.Y, ATop + RowHeight);
-    mText := '';
-    if mColumn < Length(ARow.Cells) then
-    begin
-      mText := ARow.Cells[mColumn];
-    end;
-    if (mColumn = High(FColumns)) and (ARow.Bar >= 0) then
-    begin
-      // Balken links in der Zelle, Zahl rechts daneben.
-      mBar := Rect(mCell.Left + Scale(4), ATop + Scale(6), mCell.Left + Scale(4) + Round(Min(1, ARow.Bar) *
-        Scale(40)), ATop + RowHeight - Scale(6));
-      ACanvas.Brush.Style := bsSolid;
-      ACanvas.Brush.Color := ToColor(FColors.Accent);
-      ACanvas.FillRect(mBar);
-    end;
-    PaintCell(ACanvas, mCell, mText, ARow.Mark(mColumn), FColumns[mColumn].Right, False);
-  end;
-end;
-
-procedure TAtlasDiagnosticGrid.BoxPaint(Sender: TObject);
-var
-  mCanvas: TCanvas;
-  mColumn, mIndex, mTop: Integer;
-  mSpan: TPoint;
-begin
-  mCanvas := FBox.Canvas;
-  mCanvas.Font := Font;
-  mCanvas.Brush.Style := bsSolid;
-  mCanvas.Brush.Color := ToColor(FColors.Surface);
-  mCanvas.FillRect(FBox.ClientRect);
-  mCanvas.Brush.Color := ToColor(FColors.Gutter);
-  mCanvas.FillRect(Rect(0, 0, FBox.Width, RowHeight));
-  for mColumn := 0 to High(FColumns) do
-  begin
-    mSpan := ColumnSpan(mColumn, FBox.Width);
-    PaintCell(mCanvas, Rect(mSpan.X, 0, mSpan.Y, RowHeight), FColumns[mColumn].Caption, TAtlasGridMark.None,
-      FColumns[mColumn].Right, True);
-  end;
-  mCanvas.Pen.Color := ToColor(FColors.Line);
-  mCanvas.MoveTo(0, RowHeight - 1);
-  mCanvas.LineTo(FBox.Width, RowHeight - 1);
-  if Length(FRows) = 0 then
-  begin
-    PaintCell(mCanvas, Rect(0, RowHeight, FBox.Width, 2 * RowHeight), FEmptyText, TAtlasGridMark.None, False, True);
-    Exit;
-  end;
-  mTop := RowHeight;
-  for mIndex := 0 to High(FRows) do
-  begin
-    PaintRow(mCanvas, FRows[mIndex], mTop, mIndex = FSelected);
-    Inc(mTop, RowHeight);
   end;
 end;
 

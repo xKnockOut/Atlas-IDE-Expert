@@ -22,6 +22,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasChoiceFilter }
+
 class function TAtlasChoiceFilter.Matches(const AItems: TArray<string>; const ASearch: string): TArray<Integer>;
 var
   mWords: TArray<string>;

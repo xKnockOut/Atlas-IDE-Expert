@@ -142,6 +142,8 @@ begin
   Result.SetAside := SetBaselineAside;
 end;
 
+{ TShellBaselines }
+
 constructor TShellBaselines.Create(const AServices: TShellBaselineServices);
 begin
   inherited Create;
@@ -240,18 +242,6 @@ begin
   FServices.RefreshLater();
 end;
 
-procedure TShellBaselines.RegisterCommands(ACommands: TLspCommands);
-begin
-  ACommands.Register(TLspBaseline.cCommand, RunBaseline);
-  ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
-  ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
-end;
-
-procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);
-begin
-  ACommands.Register(TLspCompilerBaseline.cClassifyCommand, RunCompilerBaselineClassify);
-end;
-
 function TShellBaselines.RunBaseline(const AArguments: TJSONArray): TJSONValue;
 var
   mWatch: TStopwatch;
@@ -308,6 +298,18 @@ end;
 function TShellBaselines.RunCompilerBaselineClassify(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := FCompilerBaseline.ExecuteClassify(AArguments);
+end;
+
+procedure TShellBaselines.RegisterCommands(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspBaseline.cCommand, RunBaseline);
+  ACommands.Register(TLspBulkFix.cCommand, RunBulkFix);
+  ACommands.Register(TLspCompilerBaseline.cAddCommand, RunCompilerBaselineAdd);
+end;
+
+procedure TShellBaselines.RegisterClassifyCommand(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspCompilerBaseline.cClassifyCommand, RunCompilerBaselineClassify);
 end;
 
 initialization

@@ -130,6 +130,8 @@ begin
   end;
 end;
 
+{ TAtlasEditorSelectionCommands }
+
 class procedure TAtlasEditorSelectionCommands.Step(AExpand: Boolean);
 var
   mView: IOTAEditView;
@@ -171,6 +173,20 @@ begin
   if mMoved then
   begin
     Select(mView, mLines, mNext);
+  end;
+end;
+
+class function TAtlasEditorSelectionCommands.SelectedNeedle(const AView: IOTAEditView; out ANeedle: string): Boolean;
+var
+  mBlock: IOTAEditBlock;
+begin
+  ANeedle := '';
+  mBlock := AView.Block;
+  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow);
+  if Result then
+  begin
+    ANeedle := mBlock.Text;
+    Result := (ANeedle <> '') and (Pos(#10, ANeedle) = 0) and (Pos(#13, ANeedle) = 0);
   end;
 end;
 
@@ -277,47 +293,6 @@ begin
   end;
 end;
 
-class procedure TAtlasEditorSelectionCommands.StepProblem(AForward: Boolean);
-var
-  mCaret: TAtlasEditorCaret;
-  mProblems: TArray<TAtlasProblem>;
-  mTarget: TAtlasProblem;
-begin
-  if not Caret(mCaret) then
-  begin
-    Exit;
-  end;
-  if Assigned(FStepList) and FStepList(AForward) then
-  begin
-    Exit;
-  end;
-  mProblems := nil;
-  if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then
-  begin
-    mProblems := FProblemsOf(mCaret.View.Buffer.FileName);
-  end;
-  if not TAtlasInlineDiagnostics.Next(mProblems, mCaret.Row, mCaret.Character, AForward, mTarget) then
-  begin
-    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemNoneInFile));
-    Exit;
-  end;
-  MoveCaret(mCaret, TLspTextPosition.Create(mTarget.StartLine, mTarget.StartCharacter));
-end;
-
-class function TAtlasEditorSelectionCommands.SelectedNeedle(const AView: IOTAEditView; out ANeedle: string): Boolean;
-var
-  mBlock: IOTAEditBlock;
-begin
-  ANeedle := '';
-  mBlock := AView.Block;
-  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow);
-  if Result then
-  begin
-    ANeedle := mBlock.Text;
-    Result := (ANeedle <> '') and (Pos(#10, ANeedle) = 0) and (Pos(#13, ANeedle) = 0);
-  end;
-end;
-
 class function TAtlasEditorSelectionCommands.TryFindSelection(ABackward: Boolean): Boolean;
 var
   mCaret: TAtlasEditorCaret;
@@ -356,6 +331,33 @@ begin
     Select(mCaret.View, mCaret.Lines, mFound);
     Result := True;
   end;
+end;
+
+class procedure TAtlasEditorSelectionCommands.StepProblem(AForward: Boolean);
+var
+  mCaret: TAtlasEditorCaret;
+  mProblems: TArray<TAtlasProblem>;
+  mTarget: TAtlasProblem;
+begin
+  if not Caret(mCaret) then
+  begin
+    Exit;
+  end;
+  if Assigned(FStepList) and FStepList(AForward) then
+  begin
+    Exit;
+  end;
+  mProblems := nil;
+  if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then
+  begin
+    mProblems := FProblemsOf(mCaret.View.Buffer.FileName);
+  end;
+  if not TAtlasInlineDiagnostics.Next(mProblems, mCaret.Row, mCaret.Character, AForward, mTarget) then
+  begin
+    Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemNoneInFile));
+    Exit;
+  end;
+  MoveCaret(mCaret, TLspTextPosition.Create(mTarget.StartLine, mTarget.StartCharacter));
 end;
 
 end.

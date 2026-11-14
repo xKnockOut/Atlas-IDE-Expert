@@ -311,9 +311,31 @@ begin
   Result := -1;
 end;
 
-function TUsesGraph.NamesOf(ANode: Integer): TArray<string>;
+procedure TUsesGraph.Unlink(ANode: Integer);
+var
+  mItem, mTarget: TUsesNode;
+  mEdge: TUsesEdge;
+  mKept: TArray<TUsesEdgeRef>;
+  mRef: TUsesEdgeRef;
 begin
-  Result := FInterfaceNames[ANode] + FImplementationNames[ANode];
+  mItem := FNodes[ANode];
+  for mEdge in mItem.Outgoing do
+  begin
+    mTarget := FNodes[mEdge.Target];
+    mKept := nil;
+    for mRef in mTarget.Incoming do
+    begin
+      if mRef.Source <> ANode then
+      begin
+        mKept := mKept + [mRef];
+      end;
+    end;
+    mTarget.Incoming := mKept;
+    FNodes[mEdge.Target] := mTarget;
+  end;
+  mItem.Outgoing := nil;
+  FNodes[ANode] := mItem;
+  ForgetUnresolved(ANode);
 end;
 
 procedure TUsesGraph.ForgetUnresolved(ANode: Integer);
@@ -398,31 +420,9 @@ begin
   end;
 end;
 
-procedure TUsesGraph.Unlink(ANode: Integer);
-var
-  mItem, mTarget: TUsesNode;
-  mEdge: TUsesEdge;
-  mKept: TArray<TUsesEdgeRef>;
-  mRef: TUsesEdgeRef;
+function TUsesGraph.NamesOf(ANode: Integer): TArray<string>;
 begin
-  mItem := FNodes[ANode];
-  for mEdge in mItem.Outgoing do
-  begin
-    mTarget := FNodes[mEdge.Target];
-    mKept := nil;
-    for mRef in mTarget.Incoming do
-    begin
-      if mRef.Source <> ANode then
-      begin
-        mKept := mKept + [mRef];
-      end;
-    end;
-    mTarget.Incoming := mKept;
-    FNodes[mEdge.Target] := mTarget;
-  end;
-  mItem.Outgoing := nil;
-  FNodes[ANode] := mItem;
-  ForgetUnresolved(ANode);
+  Result := FInterfaceNames[ANode] + FImplementationNames[ANode];
 end;
 
 /// <summary>Knoten, die auf einen der Namen ANames warten, jeder einmal in der Reihenfolge des Auftretens.
@@ -462,6 +462,52 @@ begin
       Unlink(mNode);
       Link(mNode);
     end;
+  end;
+end;
+
+function TUsesGraph.RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
+var
+  mSpreads: TArray<Boolean>;
+  mQueue: TQueue<Integer>;
+  mCurrent: Integer;
+  mRef: TUsesEdgeRef;
+  mSource: TUsesNode;
+begin
+  // Ändert sich das interface von X, übersetzt der Compiler jeden Verwender von X neu. Verwendet ein Verwender X
+  // im interface, ändert sich dadurch auch seine Schnittstelle, und seine Verwender folgen.
+  ACount := 0;
+  // Result kann auf ein altes Feld des Aufrufers zeigen: frisch anlegen.
+  Result := nil;
+  SetLength(Result, FNodes.Count);
+  SetLength(mSpreads, FNodes.Count);
+  mSpreads[ANode] := True;
+  mQueue := TQueue<Integer>.Create;
+  try
+    mQueue.Enqueue(ANode);
+    while mQueue.Count > 0 do
+    begin
+      mCurrent := mQueue.Dequeue;
+      for mRef in FNodes[mCurrent].Incoming do
+      begin
+        mSource := FNodes[mRef.Source];
+        if not mSource.Active then
+        begin
+          Continue;
+        end;
+        if (mRef.Source <> ANode) and not Result[mRef.Source] then
+        begin
+          Result[mRef.Source] := True;
+          Inc(ACount);
+        end;
+        if (mSource.Outgoing[mRef.Item].Section = TUsesSection.Interface_) and not mSpreads[mRef.Source] then
+        begin
+          mSpreads[mRef.Source] := True;
+          mQueue.Enqueue(mRef.Source);
+        end;
+      end;
+    end;
+  finally
+    mQueue.Free;
   end;
 end;
 
@@ -676,6 +722,26 @@ begin
   end;
 end;
 
+/// <summary>Sortiert Knotennummern nach Unit-Name.</summary>
+procedure SortByName(AGraph: TUsesGraph; var ANodes: TArray<Integer>);
+begin
+  TArray.Sort<Integer>(ANodes, TComparer<Integer>.Construct(
+    function(const ALeft, ARight: Integer): Integer
+    begin
+      Result := CompareText(AGraph.Node(ALeft).UnitName, AGraph.Node(ARight).UnitName);
+      if Result = 0 then
+      begin
+        Result := ALeft - ARight;
+      end;
+    end));
+end;
+
+/// <summary>Kante gehört zu einem der Abschnitte ASections und führt zu einem aktiven Knoten.</summary>
+function EdgeAllowed(AGraph: TUsesGraph; const AEdge: TUsesEdge; ASections: TUsesSections): Boolean;
+begin
+  Result := (AEdge.Section in ASections) and AGraph.Node(AEdge.Target).Active;
+end;
+
 function TUsesGraph.SortedNodes: TArray<Integer>;
 var
   mIndex_: Integer;
@@ -703,26 +769,6 @@ begin
   finally
     mList.Free;
   end;
-end;
-
-/// <summary>Sortiert Knotennummern nach Unit-Name.</summary>
-procedure SortByName(AGraph: TUsesGraph; var ANodes: TArray<Integer>);
-begin
-  TArray.Sort<Integer>(ANodes, TComparer<Integer>.Construct(
-    function(const ALeft, ARight: Integer): Integer
-    begin
-      Result := CompareText(AGraph.Node(ALeft).UnitName, AGraph.Node(ARight).UnitName);
-      if Result = 0 then
-      begin
-        Result := ALeft - ARight;
-      end;
-    end));
-end;
-
-/// <summary>Kante gehört zu einem der Abschnitte ASections und führt zu einem aktiven Knoten.</summary>
-function EdgeAllowed(AGraph: TUsesGraph; const AEdge: TUsesEdge; ASections: TUsesSections): Boolean;
-begin
-  Result := (AEdge.Section in ASections) and AGraph.Node(AEdge.Target).Active;
 end;
 
 function TUsesGraph.DirectDependencies(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
@@ -823,52 +869,6 @@ begin
     mStack.Free;
   end;
   SortByName(Self, Result);
-end;
-
-function TUsesGraph.RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
-var
-  mSpreads: TArray<Boolean>;
-  mQueue: TQueue<Integer>;
-  mCurrent: Integer;
-  mRef: TUsesEdgeRef;
-  mSource: TUsesNode;
-begin
-  // Ändert sich das interface von X, übersetzt der Compiler jeden Verwender von X neu. Verwendet ein Verwender X
-  // im interface, ändert sich dadurch auch seine Schnittstelle, und seine Verwender folgen.
-  ACount := 0;
-  // Result kann auf ein altes Feld des Aufrufers zeigen: frisch anlegen.
-  Result := nil;
-  SetLength(Result, FNodes.Count);
-  SetLength(mSpreads, FNodes.Count);
-  mSpreads[ANode] := True;
-  mQueue := TQueue<Integer>.Create;
-  try
-    mQueue.Enqueue(ANode);
-    while mQueue.Count > 0 do
-    begin
-      mCurrent := mQueue.Dequeue;
-      for mRef in FNodes[mCurrent].Incoming do
-      begin
-        mSource := FNodes[mRef.Source];
-        if not mSource.Active then
-        begin
-          Continue;
-        end;
-        if (mRef.Source <> ANode) and not Result[mRef.Source] then
-        begin
-          Result[mRef.Source] := True;
-          Inc(ACount);
-        end;
-        if (mSource.Outgoing[mRef.Item].Section = TUsesSection.Interface_) and not mSpreads[mRef.Source] then
-        begin
-          mSpreads[mRef.Source] := True;
-          mQueue.Enqueue(mRef.Source);
-        end;
-      end;
-    end;
-  finally
-    mQueue.Free;
-  end;
 end;
 
 function TUsesGraph.RecompileSet(ANode: Integer): TArray<Integer>;
@@ -986,6 +986,8 @@ type
     destructor Destroy; override;
     function Cycles: TArray<TUsesCycle>;
   end;
+
+{ TUsesCycleFinder }
 
 constructor TUsesCycleFinder.Create(AGraph: TUsesGraph; ASections: TUsesSections);
 begin

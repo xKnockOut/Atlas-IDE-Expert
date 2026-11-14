@@ -571,6 +571,8 @@ type
     function Feed(const AToken: TPascalToken): Boolean;
   end;
 
+{ THeaderTracker }
+
 function THeaderTracker.Feed(const AToken: TPascalToken): Boolean;
 begin
   if AToken.IsKeyword('procedure') or AToken.IsKeyword('function') then

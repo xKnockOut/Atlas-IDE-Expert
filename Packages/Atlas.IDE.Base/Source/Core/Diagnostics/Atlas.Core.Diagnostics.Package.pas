@@ -163,24 +163,13 @@ end;
 
 { TAtlasDiagnosticPackage }
 
-class function TAtlasDiagnosticPackage.ReadShared(const AFileName: string): TBytes;
-var
-  mStream: TFileStream;
+class function TAtlasDiagnosticPackage.IsDrive(const AValue: string): Boolean;
 begin
-  Result := nil;
-  if (AFileName = '') or not FileExists(AFileName) then
+  // Laufwerk: „C:“ allein oder „C:/…“.
+  Result := (Length(AValue) >= 2) and CharInSet(AValue[1], ['A'..'Z', 'a'..'z']) and (AValue[2] = ':');
+  if Result and (Length(AValue) > 2) then
   begin
-    Exit;
-  end;
-  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-  try
-    SetLength(Result, mStream.Size);
-    if Length(Result) > 0 then
-    begin
-      mStream.ReadBuffer(Result[0], Length(Result));
-    end;
-  finally
-    mStream.Free;
+    Result := CharInSet(AValue[3], ['\', '/']);
   end;
 end;
 
@@ -222,39 +211,6 @@ begin
   begin
     Result[mIndex - mFirst] := mLines[mIndex];
   end;
-end;
-
-class function TAtlasDiagnosticPackage.Anonymize(const AText: string; const ARoots, AIdentity: TArray<string>): string;
-begin
-  Result := TAtlasBugReport.AnonymizePaths(AText, ARoots, AIdentity);
-end;
-
-class function TAtlasDiagnosticPackage.AnonymizeLog(const AText: string; const ARoots,
-  AIdentity: TArray<string>): string;
-begin
-  Result := TAtlasBugReport.AnonymizeLogLine(AText, ARoots, AIdentity);
-end;
-
-class function TAtlasDiagnosticPackage.IsDrive(const AValue: string): Boolean;
-begin
-  // Laufwerk: „C:“ allein oder „C:/…“.
-  Result := (Length(AValue) >= 2) and CharInSet(AValue[1], ['A'..'Z', 'a'..'z']) and (AValue[2] = ':');
-  if Result and (Length(AValue) > 2) then
-  begin
-    Result := CharInSet(AValue[3], ['\', '/']);
-  end;
-end;
-
-class function TAtlasDiagnosticPackage.LooksLikePath(const AValue: string): Boolean;
-var
-  mValue: string;
-begin
-  mValue := Trim(AValue);
-  if mValue = '' then
-  begin
-    Exit(False);
-  end;
-  Result := (Pos('\', mValue) > 0) or StartsText('file:', mValue) or (mValue[1] = '/') or IsDrive(mValue);
 end;
 
 class function TAtlasDiagnosticPackage.DecodeEscape(const AJson: string; var AIndex: Integer): string;
@@ -314,57 +270,53 @@ begin
   Result := (mNext <= Length(AJson)) and (AJson[mNext] = ':');
 end;
 
-class function TAtlasDiagnosticPackage.SettingsWithoutPaths(const AJson: string): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex, mStop: Integer;
-  mDecoded: string;
+class function TAtlasDiagnosticPackage.Pick(AEnglish: Boolean; const AEnglishText, AGermanText: string): string;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mIndex := 1;
-    while mIndex <= Length(AJson) do
-    begin
-      if AJson[mIndex] <> '"' then
-      begin
-        mBuilder.Append(AJson[mIndex]);
-        Inc(mIndex);
-        Continue;
-      end;
-      mDecoded := DecodeString(AJson, mIndex, mStop);
-      // Schlüssel stehen vor einem Doppelpunkt.
-      if not ColonFollows(AJson, mStop + 1) and LooksLikePath(mDecoded) then
-      begin
-        mBuilder.Append('"').Append(cPathValue).Append('"');
-      end
-      else
-      begin
-        mBuilder.Append(Copy(AJson, mIndex, mStop - mIndex + 1));
-      end;
-      mIndex := mStop + 1;
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
+  if AEnglish then
+  begin
+    Result := AEnglishText;
+  end
+  else
+  begin
+    Result := AGermanText;
   end;
 end;
 
-class function TAtlasDiagnosticPackage.Info(const AInput: TAtlasPackageInput): string;
-var
-  mLog: string;
+class procedure TAtlasDiagnosticPackage.AppendVersions(ABuilder: TStringBuilder; const AInput: TAtlasPackageInput;
+  AParts: TAtlasPackageParts; AEnglish: Boolean);
 begin
-  // Klarnamen stehen nur nach ausdrücklicher Wahl im Protokoll; das Paket sagt es sichtbar (#1478).
-  mLog := 'Protokoll des Plugins anonym geschrieben';
-  if AInput.PluginLogNames then
+  ABuilder.Append(Pick(AEnglish, '## Versions', '## Versionen'));
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+  if TAtlasPackagePart.Versions in AParts then
   begin
-    mLog := 'Protokoll des Plugins mit Klarnamen geschrieben (diagnostics.log.names), im Paket über die Pfadregeln';
+    ABuilder.Append('- Atlas: ').Append(AInput.AtlasVersion).Append(sLineBreak);
+    ABuilder.Append('- RAD Studio: ').Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
+      .Append(sLineBreak);
+    ABuilder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
+  end
+  else
+  begin
+    ABuilder.Append(Pick(AEnglish, '(not included)', '(nicht angegeben)')).Append(sLineBreak);
   end;
-  Result := 'Atlas ' + AInput.AtlasVersion + sLineBreak +
-    'RAD Studio ' + AInput.IdeVersion + sLineBreak +
-    'Windows ' + AInput.WindowsVersion + sLineBreak +
-    'Plattform ' + AInput.Platform + sLineBreak +
-    'Erstellt ' + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak +
-    mLog + sLineBreak;
+  ABuilder.Append(sLineBreak);
+end;
+
+class procedure TAtlasDiagnosticPackage.AppendZip(ABuilder: TStringBuilder; const AZipName: string;
+  AEnglish: Boolean);
+begin
+  ABuilder.Append(Pick(AEnglish, '## Diagnostic package', '## Diagnosepaket'));
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
+  if AZipName <> '' then
+  begin
+    ABuilder.Append('`').Append(ExtractFileName(AZipName)).Append(Pick(AEnglish,
+      '` (anonymized, checked before sharing; please attach it to this issue)',
+      '` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)'));
+  end
+  else
+  begin
+    ABuilder.Append(Pick(AEnglish, 'No diagnostic package created.', 'Kein Diagnosepaket angelegt.'));
+  end;
+  ABuilder.Append(sLineBreak).Append(sLineBreak);
 end;
 
 class function TAtlasDiagnosticPackage.Build(const AInput: TAtlasPackageInput;
@@ -418,6 +370,82 @@ begin
       Anonymize(ReadText(AInput.LastDataFile), AInput.Roots, AInput.Identity))];
   end;
   Result := mFiles;
+end;
+
+class function TAtlasDiagnosticPackage.Info(const AInput: TAtlasPackageInput): string;
+var
+  mLog: string;
+begin
+  // Klarnamen stehen nur nach ausdrücklicher Wahl im Protokoll; das Paket sagt es sichtbar (#1478).
+  mLog := 'Protokoll des Plugins anonym geschrieben';
+  if AInput.PluginLogNames then
+  begin
+    mLog := 'Protokoll des Plugins mit Klarnamen geschrieben (diagnostics.log.names), im Paket über die Pfadregeln';
+  end;
+  Result := 'Atlas ' + AInput.AtlasVersion + sLineBreak +
+    'RAD Studio ' + AInput.IdeVersion + sLineBreak +
+    'Windows ' + AInput.WindowsVersion + sLineBreak +
+    'Plattform ' + AInput.Platform + sLineBreak +
+    'Erstellt ' + FormatDateTime('yyyy"-"mm"-"dd hh":"nn', AInput.Created) + sLineBreak +
+    mLog + sLineBreak;
+end;
+
+class function TAtlasDiagnosticPackage.Anonymize(const AText: string; const ARoots, AIdentity: TArray<string>): string;
+begin
+  Result := TAtlasBugReport.AnonymizePaths(AText, ARoots, AIdentity);
+end;
+
+class function TAtlasDiagnosticPackage.AnonymizeLog(const AText: string; const ARoots,
+  AIdentity: TArray<string>): string;
+begin
+  Result := TAtlasBugReport.AnonymizeLogLine(AText, ARoots, AIdentity);
+end;
+
+class function TAtlasDiagnosticPackage.SettingsWithoutPaths(const AJson: string): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex, mStop: Integer;
+  mDecoded: string;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mIndex := 1;
+    while mIndex <= Length(AJson) do
+    begin
+      if AJson[mIndex] <> '"' then
+      begin
+        mBuilder.Append(AJson[mIndex]);
+        Inc(mIndex);
+        Continue;
+      end;
+      mDecoded := DecodeString(AJson, mIndex, mStop);
+      // Schlüssel stehen vor einem Doppelpunkt.
+      if not ColonFollows(AJson, mStop + 1) and LooksLikePath(mDecoded) then
+      begin
+        mBuilder.Append('"').Append(cPathValue).Append('"');
+      end
+      else
+      begin
+        mBuilder.Append(Copy(AJson, mIndex, mStop - mIndex + 1));
+      end;
+      mIndex := mStop + 1;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+class function TAtlasDiagnosticPackage.LooksLikePath(const AValue: string): Boolean;
+var
+  mValue: string;
+begin
+  mValue := Trim(AValue);
+  if mValue = '' then
+  begin
+    Exit(False);
+  end;
+  Result := (Pos('\', mValue) > 0) or StartsText('file:', mValue) or (mValue[1] = '/') or IsDrive(mValue);
 end;
 
 class function TAtlasDiagnosticPackage.ZipName(ANow: TDateTime): string;
@@ -513,55 +541,6 @@ begin
   end;
 end;
 
-class function TAtlasDiagnosticPackage.Pick(AEnglish: Boolean; const AEnglishText, AGermanText: string): string;
-begin
-  if AEnglish then
-  begin
-    Result := AEnglishText;
-  end
-  else
-  begin
-    Result := AGermanText;
-  end;
-end;
-
-class procedure TAtlasDiagnosticPackage.AppendVersions(ABuilder: TStringBuilder; const AInput: TAtlasPackageInput;
-  AParts: TAtlasPackageParts; AEnglish: Boolean);
-begin
-  ABuilder.Append(Pick(AEnglish, '## Versions', '## Versionen'));
-  ABuilder.Append(sLineBreak).Append(sLineBreak);
-  if TAtlasPackagePart.Versions in AParts then
-  begin
-    ABuilder.Append('- Atlas: ').Append(AInput.AtlasVersion).Append(sLineBreak);
-    ABuilder.Append('- RAD Studio: ').Append(AInput.IdeVersion).Append(', ').Append(AInput.Platform)
-      .Append(sLineBreak);
-    ABuilder.Append('- Windows: ').Append(AInput.WindowsVersion).Append(sLineBreak);
-  end
-  else
-  begin
-    ABuilder.Append(Pick(AEnglish, '(not included)', '(nicht angegeben)')).Append(sLineBreak);
-  end;
-  ABuilder.Append(sLineBreak);
-end;
-
-class procedure TAtlasDiagnosticPackage.AppendZip(ABuilder: TStringBuilder; const AZipName: string;
-  AEnglish: Boolean);
-begin
-  ABuilder.Append(Pick(AEnglish, '## Diagnostic package', '## Diagnosepaket'));
-  ABuilder.Append(sLineBreak).Append(sLineBreak);
-  if AZipName <> '' then
-  begin
-    ABuilder.Append('`').Append(ExtractFileName(AZipName)).Append(Pick(AEnglish,
-      '` (anonymized, checked before sharing; please attach it to this issue)',
-      '` (anonymisiert, vor dem Weitergeben geprüft; bitte an dieses Issue anhängen)'));
-  end
-  else
-  begin
-    ABuilder.Append(Pick(AEnglish, 'No diagnostic package created.', 'Kein Diagnosepaket angelegt.'));
-  end;
-  ABuilder.Append(sLineBreak).Append(sLineBreak);
-end;
-
 class function TAtlasDiagnosticPackage.IssueTemplate(const ADescription: string; const AInput: TAtlasPackageInput;
   AParts: TAtlasPackageParts; const AZipName: string; AEnglish: Boolean): string;
 var
@@ -620,6 +599,27 @@ begin
     end;
   end;
   Result := True;
+end;
+
+class function TAtlasDiagnosticPackage.ReadShared(const AFileName: string): TBytes;
+var
+  mStream: TFileStream;
+begin
+  Result := nil;
+  if (AFileName = '') or not FileExists(AFileName) then
+  begin
+    Exit;
+  end;
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  try
+    SetLength(Result, mStream.Size);
+    if Length(Result) > 0 then
+    begin
+      mStream.ReadBuffer(Result[0], Length(Result));
+    end;
+  finally
+    mStream.Free;
+  end;
 end;
 
 end.

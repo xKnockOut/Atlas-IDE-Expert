@@ -79,58 +79,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.VersionControl.Service;
 
-class procedure TAtlasIdeWorkingCopies.ShowFor(const AProject: string; const ADone: TProc);
-var
-  mSession: TAtlasIdeWorkingCopies;
-  mKeep: IInterface;
-  mFile: string;
-begin
-  if ExtractFileDir(AProject) = '' then
-  begin
-    Exit;
-  end;
-  mSession := TAtlasIdeWorkingCopies.Create;
-  mKeep := mSession;
-  mSession.FFolder := ExtractFileDir(AProject);
-  mFile := TAtlasIdeFiles.GroupOfProject(AProject);
-  if mFile = '' then
-  begin
-    mFile := AProject;
-  end;
-  mSession.FName := ChangeFileExt(ExtractFileName(mFile), '');
-  mSession.FDone := ADone;
-  mSession.FList := TAtlasVcsWorkingCopyList.Empty;
-  mSession.FDialog := TAtlasWorkingCopiesDialog.CreateDialog(nil, mSession.FName);
-  try
-    TAtlasIdeDockWindow.ApplyIdeTheme(mSession.FDialog);
-    mSession.FDialog.OnCheckServer := mSession.CheckServer;
-    mSession.FDialog.OnUpdate := mSession.Update;
-    mSession.FDialog.OnPin := mSession.Pin;
-    mSession.FDialog.OnOpenFolder := mSession.OpenFolder;
-    mSession.FOpen := True;
-    mSession.Collect;
-    mSession.FDialog.ShowModal;
-  finally
-    // Späte Ergebnisse gehen danach nicht mehr an den Dialog; die Sitzung lebt, bis der letzte Lauf endet.
-    mSession.FOpen := False;
-    mSession.FDialog.Free;
-    mSession.FDialog := nil;
-  end;
-end;
-
-function TAtlasIdeWorkingCopies.Current(AGeneration: Integer): Boolean;
-begin
-  Result := FOpen and (FDialog <> nil) and (AGeneration = FGeneration);
-end;
-
-function TAtlasIdeWorkingCopies.RowName(AIndex: Integer): string;
-begin
-  Result := FName;
-  if (AIndex >= 0) and (AIndex <= High(FList.Rows)) then
-  begin
-    Result := FList.Rows[AIndex].Caption(FName);
-  end;
-end;
+{ TAtlasIdeWorkingCopies }
 
 procedure TAtlasIdeWorkingCopies.Collect;
 var
@@ -232,16 +181,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeWorkingCopies.CheckServer(Sender: TObject);
-begin
-  if FList.Kind <> TAtlasVcsKind.Svn then
-  begin
-    Exit;
-  end;
-  FDialog.SetBusy(True);
-  CheckNext(0);
-end;
-
 procedure TAtlasIdeWorkingCopies.CheckNext(AIndex: Integer);
 var
   mKeep: IInterface;
@@ -294,106 +233,14 @@ begin
   end;
 end;
 
-procedure TAtlasIdeWorkingCopies.AfterChange;
+procedure TAtlasIdeWorkingCopies.CheckServer(Sender: TObject);
 begin
-  if Assigned(FDone) then
-  begin
-    FDone();
-  end;
-  if FOpen and (FDialog <> nil) then
-  begin
-    FDialog.SetBusy(False);
-    // Neue Revisionen, ggf. neue Externals: neu lesen.
-    Collect;
-  end;
-end;
-
-/// <summary>Meldung nach dem Aktualisieren von AName.</summary>
-function PullMessage(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome; const AName: string): string;
-begin
-  case AOutcome of
-    TAtlasPullOutcome.Updated:
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdated, [AName]);
-    TAtlasPullOutcome.UpToDate:
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpToDate, [AName]);
-    TAtlasPullOutcome.Blocked:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [AName]);
-  else
-    if AReason = TAtlasVcsOutcome.LoginNeeded then
-    begin
-      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [AName]);
-    end
-    else
-    begin
-      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateFailed,
-        [AName, AtlasVcsOutcomeName(AReason)]);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeWorkingCopies.Update(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
-var
-  mKeep: IInterface;
-  mFolder, mName: string;
-  mIgnore: Boolean;
-  mOutcome: TAtlasPullOutcome;
-  mReason: TAtlasVcsOutcome;
-begin
-  if (AIndex < 0) or (AIndex > High(FList.Rows)) then
+  if FList.Kind <> TAtlasVcsKind.Svn then
   begin
     Exit;
   end;
-  mKeep := Self;
-  // Wurzel bzw. die eigene Arbeitskopie des Externals (der Ordner hat ein eigenes .svn).
-  mFolder := FList.Rows[AIndex].Folder;
-  mName := RowName(AIndex);
-  mIgnore := AIgnoreExternals;
-  mOutcome := TAtlasPullOutcome.Failed;
-  mReason := TAtlasVcsOutcome.Failed;
   FDialog.SetBusy(True);
-  if not TAtlasIdeVcsCore.Run(
-    procedure
-    begin
-      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcsCore.ForFolder(mFolder,
-        TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)), mIgnore, mReason);
-    end,
-    procedure
-    begin
-      if mKeep = nil then
-      begin
-        Exit;
-      end;
-      TAtlasGuard.Log(Format('Arbeitskopien: aktualisiert (ohne Externals %s), %s',
-        [BoolToStr(mIgnore, True), AtlasVcsOutcomeName(mReason)]));
-      TAtlasIdeVcsCore.Report(PullMessage(mOutcome, mReason, mName));
-      AfterChange;
-    end) then
-  begin
-    FDialog.SetBusy(False);
-  end;
-end;
-
-class function TAtlasIdeWorkingCopies.PinQuestion(const AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
-  const AName: string; out AText: string): Boolean;
-var
-  mOwner, mDefinition: string;
-begin
-  AText := '';
-  Result := TAtlasVcsWorkingCopies.PinnedText(AList, AIndex, mOwner, mDefinition);
-  if not Result then
-  begin
-    Exit;
-  end;
-  if mOwner = '' then
-  begin
-    mOwner := AName;
-  end
-  else
-  begin
-    mOwner := StringReplace(mOwner, '/', '\', [rfReplaceAll]);
-  end;
-  AText := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesPinConfirm, [AList.Rows[AIndex].Caption(AName),
-    AList.Rows[AIndex].Revision, mOwner, sLineBreak + sLineBreak]);
+  CheckNext(0);
 end;
 
 procedure TAtlasIdeWorkingCopies.Pin(Sender: TObject; AIndex: Integer);
@@ -471,6 +318,161 @@ begin
         ShellExecute(0, 'open', PChar(mFolder), nil, nil, SW_SHOWNORMAL);
       end;
     end);
+end;
+
+function TAtlasIdeWorkingCopies.Current(AGeneration: Integer): Boolean;
+begin
+  Result := FOpen and (FDialog <> nil) and (AGeneration = FGeneration);
+end;
+
+function TAtlasIdeWorkingCopies.RowName(AIndex: Integer): string;
+begin
+  Result := FName;
+  if (AIndex >= 0) and (AIndex <= High(FList.Rows)) then
+  begin
+    Result := FList.Rows[AIndex].Caption(FName);
+  end;
+end;
+
+/// <summary>Meldung nach dem Aktualisieren von AName.</summary>
+function PullMessage(AOutcome: TAtlasPullOutcome; AReason: TAtlasVcsOutcome; const AName: string): string;
+begin
+  case AOutcome of
+    TAtlasPullOutcome.Updated:
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdated, [AName]);
+    TAtlasPullOutcome.UpToDate:
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpToDate, [AName]);
+    TAtlasPullOutcome.Blocked:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [AName]);
+  else
+    if AReason = TAtlasVcsOutcome.LoginNeeded then
+    begin
+      Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [AName]);
+    end
+    else
+    begin
+      Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesUpdateFailed,
+        [AName, AtlasVcsOutcomeName(AReason)]);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeWorkingCopies.Update(Sender: TObject; AIndex: Integer; AIgnoreExternals: Boolean);
+var
+  mKeep: IInterface;
+  mFolder, mName: string;
+  mIgnore: Boolean;
+  mOutcome: TAtlasPullOutcome;
+  mReason: TAtlasVcsOutcome;
+begin
+  if (AIndex < 0) or (AIndex > High(FList.Rows)) then
+  begin
+    Exit;
+  end;
+  mKeep := Self;
+  // Wurzel bzw. die eigene Arbeitskopie des Externals (der Ordner hat ein eigenes .svn).
+  mFolder := FList.Rows[AIndex].Folder;
+  mName := RowName(AIndex);
+  mIgnore := AIgnoreExternals;
+  mOutcome := TAtlasPullOutcome.Failed;
+  mReason := TAtlasVcsOutcome.Failed;
+  FDialog.SetBusy(True);
+  if not TAtlasIdeVcsCore.Run(
+    procedure
+    begin
+      mOutcome := TAtlasVcsPull.Pull(TAtlasIdeVcsCore.ForFolder(mFolder,
+        TAtlasIdeVcsCore.AtLeast(cServerTimeoutMs)), mIgnore, mReason);
+    end,
+    procedure
+    begin
+      if mKeep = nil then
+      begin
+        Exit;
+      end;
+      TAtlasGuard.Log(Format('Arbeitskopien: aktualisiert (ohne Externals %s), %s',
+        [BoolToStr(mIgnore, True), AtlasVcsOutcomeName(mReason)]));
+      TAtlasIdeVcsCore.Report(PullMessage(mOutcome, mReason, mName));
+      AfterChange;
+    end) then
+  begin
+    FDialog.SetBusy(False);
+  end;
+end;
+
+procedure TAtlasIdeWorkingCopies.AfterChange;
+begin
+  if Assigned(FDone) then
+  begin
+    FDone();
+  end;
+  if FOpen and (FDialog <> nil) then
+  begin
+    FDialog.SetBusy(False);
+    // Neue Revisionen, ggf. neue Externals: neu lesen.
+    Collect;
+  end;
+end;
+
+class procedure TAtlasIdeWorkingCopies.ShowFor(const AProject: string; const ADone: TProc);
+var
+  mSession: TAtlasIdeWorkingCopies;
+  mKeep: IInterface;
+  mFile: string;
+begin
+  if ExtractFileDir(AProject) = '' then
+  begin
+    Exit;
+  end;
+  mSession := TAtlasIdeWorkingCopies.Create;
+  mKeep := mSession;
+  mSession.FFolder := ExtractFileDir(AProject);
+  mFile := TAtlasIdeFiles.GroupOfProject(AProject);
+  if mFile = '' then
+  begin
+    mFile := AProject;
+  end;
+  mSession.FName := ChangeFileExt(ExtractFileName(mFile), '');
+  mSession.FDone := ADone;
+  mSession.FList := TAtlasVcsWorkingCopyList.Empty;
+  mSession.FDialog := TAtlasWorkingCopiesDialog.CreateDialog(nil, mSession.FName);
+  try
+    TAtlasIdeDockWindow.ApplyIdeTheme(mSession.FDialog);
+    mSession.FDialog.OnCheckServer := mSession.CheckServer;
+    mSession.FDialog.OnUpdate := mSession.Update;
+    mSession.FDialog.OnPin := mSession.Pin;
+    mSession.FDialog.OnOpenFolder := mSession.OpenFolder;
+    mSession.FOpen := True;
+    mSession.Collect;
+    mSession.FDialog.ShowModal;
+  finally
+    // Späte Ergebnisse gehen danach nicht mehr an den Dialog; die Sitzung lebt, bis der letzte Lauf endet.
+    mSession.FOpen := False;
+    mSession.FDialog.Free;
+    mSession.FDialog := nil;
+  end;
+end;
+
+class function TAtlasIdeWorkingCopies.PinQuestion(const AList: TAtlasVcsWorkingCopyList; AIndex: Integer;
+  const AName: string; out AText: string): Boolean;
+var
+  mOwner, mDefinition: string;
+begin
+  AText := '';
+  Result := TAtlasVcsWorkingCopies.PinnedText(AList, AIndex, mOwner, mDefinition);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if mOwner = '' then
+  begin
+    mOwner := AName;
+  end
+  else
+  begin
+    mOwner := StringReplace(mOwner, '/', '\', [rfReplaceAll]);
+  end;
+  AText := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsWorkingCopiesPinConfirm, [AList.Rows[AIndex].Caption(AName),
+    AList.Rows[AIndex].Revision, mOwner, sLineBreak + sLineBreak]);
 end;
 
 end.

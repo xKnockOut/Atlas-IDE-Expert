@@ -90,27 +90,43 @@ end;
 
 { TAtlasEditorCompletionOpen }
 
-procedure TAtlasEditorCompletionOpen.ApplyStyle(const ACaret: TRect);
-begin
-  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen, Monitor-DPI und Zoom
-  // am Caret (#411, #412, #445).
-  Log(TAtlasIdeStyle.Apply(FPopup, ACaret));
-end;
-
-function TAtlasEditorCompletionOpen.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
+procedure TAtlasEditorCompletionOpen.DelayTimerTick(Sender: TObject);
 var
-  mInfo: TGUIThreadInfo;
+  mView: IOTAEditView;
+  mLineText: string;
+  mCharacter: Integer;
+  mSame: Boolean;
 begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
+  mView := FDelay.View;
+  CancelDelay;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
-  AWindow := mInfo.hwndCaret;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(AWindow, 0, ARect, 2);
+  try
+    mSame := mView.CursorPos.Line = FDelay.Line;
+    mLineText := TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line);
+    mCharacter := TLspSession.ColumnToIndex(mLineText, mView.CursorPos.Col,
+      TAtlasEditorBuffer.TabWidth(mView.Buffer));
+    if not TAtlasCloseRules.DelayedOpen(FDelay.State, WindowState(mView, FDelay.Window, GetFocus), mSame,
+      mLineText, FDelay.Character, mCharacter) then
+    begin
+      Log('Vervollständigung: verzögertes Öffnen verworfen');
+      Exit;
+    end;
+    FDelay.Running := True;
+    try
+      Invoke(mView, True);
+    finally
+      FDelay.Running := False;
+    end;
+  except
+    on E: Exception do
+    begin
+      Log('Vervollständigung: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+    end;
+  end;
 end;
 
 function TAtlasEditorCompletionOpen.ContextAt(const AView: IOTAEditView; const ALineText: string; ALine,
@@ -132,31 +148,27 @@ begin
   end;
 end;
 
-function TAtlasEditorCompletionOpen.AutomaticTrigger(const AView: IOTAEditView; const ALineText: string;
-  ACharacter: Integer): string;
+procedure TAtlasEditorCompletionOpen.ApplyStyle(const ACaret: TRect);
 begin
-  Result := '';
-  // Nach "[" automatisch geöffnet (#448): nur ein Mengenkonstruktor bekommt eine Liste.
-  if TypedBefore(ALineText, ACharacter, '[') then
+  // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen, Monitor-DPI und Zoom
+  // am Caret (#411, #412, #445).
+  Log(TAtlasIdeStyle.Apply(FPopup, ACaret));
+end;
+
+function TAtlasEditorCompletionOpen.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
+var
+  mInfo: TGUIThreadInfo;
+begin
+  FillChar(mInfo, SizeOf(mInfo), 0);
+  mInfo.cbSize := SizeOf(mInfo);
+  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
+  if not Result then
   begin
-    Result := '[';
-  end
-  // Nach dem ";" hinter einem übernommenen Konstruktor (#489): nur „Mit try…finally absichern“.
-  else if TypedBefore(ALineText, ACharacter, ';') and GuardPending(AView) then
-  begin
-    Result := ';';
-    FGuard.Line := 0;
-  end
-  // Nach dem Zeilenende (Enter) hinter einem übernommenen Konstruktor ohne ";" (#489).
-  else if FGuard.NewLine then
-  begin
-    Result := #10;
-  end
-  // Nach "(" hinter einem Namen (#472): nur „Methode anlegen“, wenn der Name unbekannt ist.
-  else if FCall.Opened then
-  begin
-    Result := '(';
+    Exit;
   end;
+  AWindow := mInfo.hwndCaret;
+  ARect := mInfo.rcCaret;
+  MapWindowPoints(AWindow, 0, ARect, 2);
 end;
 
 procedure TAtlasEditorCompletionOpen.ApplyOptions;
@@ -204,18 +216,6 @@ begin
   end;
 end;
 
-procedure TAtlasEditorCompletionOpen.StartDelay(const AView: IOTAEditView; ALine, ACharacter: Integer;
-  AWindow: HWND);
-begin
-  FDelay.View := AView;
-  FDelay.Line := ALine;
-  FDelay.Character := ACharacter;
-  FDelay.Window := AWindow;
-  FDelay.State := WindowState(AView, AWindow, AWindow);
-  FDelay.Timer.Interval := Cardinal(TAtlasIdeSettings.Current.OpenDelayMs);
-  FDelay.Timer.Enabled := True;
-end;
-
 procedure TAtlasEditorCompletionOpen.Anchor(const AView: IOTAEditView; AWindow: HWND; ACaret: TRect; ALine,
   AWordStart: Integer; const APrefix: string);
 begin
@@ -230,9 +230,43 @@ begin
   FOpen.Opened := WindowState(AView, AWindow, AWindow);
 end;
 
-function TAtlasEditorCompletionOpen.Invoke(const AView: IOTAEditView): Boolean;
+procedure TAtlasEditorCompletionOpen.StartDelay(const AView: IOTAEditView; ALine, ACharacter: Integer;
+  AWindow: HWND);
 begin
-  Result := Invoke(AView, False);
+  FDelay.View := AView;
+  FDelay.Line := ALine;
+  FDelay.Character := ACharacter;
+  FDelay.Window := AWindow;
+  FDelay.State := WindowState(AView, AWindow, AWindow);
+  FDelay.Timer.Interval := Cardinal(TAtlasIdeSettings.Current.OpenDelayMs);
+  FDelay.Timer.Enabled := True;
+end;
+
+function TAtlasEditorCompletionOpen.AutomaticTrigger(const AView: IOTAEditView; const ALineText: string;
+  ACharacter: Integer): string;
+begin
+  Result := '';
+  // Nach "[" automatisch geöffnet (#448): nur ein Mengenkonstruktor bekommt eine Liste.
+  if TypedBefore(ALineText, ACharacter, '[') then
+  begin
+    Result := '[';
+  end
+  // Nach dem ";" hinter einem übernommenen Konstruktor (#489): nur „Mit try…finally absichern“.
+  else if TypedBefore(ALineText, ACharacter, ';') and GuardPending(AView) then
+  begin
+    Result := ';';
+    FGuard.Line := 0;
+  end
+  // Nach dem Zeilenende (Enter) hinter einem übernommenen Konstruktor ohne ";" (#489).
+  else if FGuard.NewLine then
+  begin
+    Result := #10;
+  end
+  // Nach "(" hinter einem Namen (#472): nur „Methode anlegen“, wenn der Name unbekannt ist.
+  else if FCall.Opened then
+  begin
+    Result := '(';
+  end;
 end;
 
 function TAtlasEditorCompletionOpen.Invoke(const AView: IOTAEditView; AAutomatic: Boolean): Boolean;
@@ -297,43 +331,9 @@ begin
   Result := True;
 end;
 
-procedure TAtlasEditorCompletionOpen.DelayTimerTick(Sender: TObject);
-var
-  mView: IOTAEditView;
-  mLineText: string;
-  mCharacter: Integer;
-  mSame: Boolean;
+function TAtlasEditorCompletionOpen.Invoke(const AView: IOTAEditView): Boolean;
 begin
-  mView := FDelay.View;
-  CancelDelay;
-  if (mView = nil) or (mView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  try
-    mSame := mView.CursorPos.Line = FDelay.Line;
-    mLineText := TAtlasEditorBuffer.LineText(mView, mView.CursorPos.Line);
-    mCharacter := TLspSession.ColumnToIndex(mLineText, mView.CursorPos.Col,
-      TAtlasEditorBuffer.TabWidth(mView.Buffer));
-    if not TAtlasCloseRules.DelayedOpen(FDelay.State, WindowState(mView, FDelay.Window, GetFocus), mSame,
-      mLineText, FDelay.Character, mCharacter) then
-    begin
-      Log('Vervollständigung: verzögertes Öffnen verworfen');
-      Exit;
-    end;
-    FDelay.Running := True;
-    try
-      Invoke(mView, True);
-    finally
-      FDelay.Running := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      Log('Vervollständigung: ' + E.Message);
-      TAtlasGuard.Report(TAtlasFeature.Completion, E);
-    end;
-  end;
+  Result := Invoke(AView, False);
 end;
 
 end.

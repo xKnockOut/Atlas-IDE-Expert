@@ -224,39 +224,6 @@ begin
   Result := AFirst <= ALast;
 end;
 
-class function TExtractSupport.IsFiller(const AToken: TPascalToken): Boolean;
-begin
-  Result := (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or AToken.IsSymbol(';');
-end;
-
-class function TExtractSupport.NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean): string;
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex: Integer;
-  mSkipped: set of TPascalTokenKind;
-begin
-  mSkipped := [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
-  if AKeepDirectives then
-  begin
-    mSkipped := [TPascalTokenKind.Comment];
-  end;
-  mTokens := ATree.Tokens;
-  Result := '';
-  mIndex := TRoutineBody.TokenAt(mTokens, ANode.StartOffset);
-  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
-  begin
-    if mTokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
-    begin
-      Result := Result + mTokens[mIndex].Text + ' ';
-    end
-    else if not (mTokens[mIndex].Kind in mSkipped) then
-    begin
-      Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
-    end;
-    Inc(mIndex);
-  end;
-end;
-
 class function TExtractSupport.Trimmed(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
   out AStart, AEnd: Integer): Boolean;
 var
@@ -292,6 +259,39 @@ end;
 class function TExtractSupport.InSelection(ANode: TSyntaxNode; AStart, AEnd: Integer): Boolean;
 begin
   Result := (ANode.StartOffset >= AStart) and (ANode.EndOffset <= AEnd);
+end;
+
+class function TExtractSupport.IsFiller(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) or AToken.IsSymbol(';');
+end;
+
+class function TExtractSupport.NormalText(ATree: TSyntaxTree; ANode: TSyntaxNode; AKeepDirectives: Boolean): string;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mSkipped: set of TPascalTokenKind;
+begin
+  mSkipped := [TPascalTokenKind.Comment, TPascalTokenKind.Directive];
+  if AKeepDirectives then
+  begin
+    mSkipped := [TPascalTokenKind.Comment];
+  end;
+  mTokens := ATree.Tokens;
+  Result := '';
+  mIndex := TRoutineBody.TokenAt(mTokens, ANode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if mTokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
+    begin
+      Result := Result + mTokens[mIndex].Text + ' ';
+    end
+    else if not (mTokens[mIndex].Kind in mSkipped) then
+    begin
+      Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
+    end;
+    Inc(mIndex);
+  end;
 end;
 
 class function TExtractSupport.InsideBlocked(ANode, ABody: TSyntaxNode; out AReason: string): Boolean;
@@ -527,6 +527,19 @@ begin
   FIndent := TTextLines.IndentOf(AText, ARoutine.StartPos.Line);
 end;
 
+function TExtractSignature.Declarations: string;
+begin
+  Result := '';
+  if FVarLines <> '' then
+  begin
+    Result := Result + FIndent + 'var' + FLineBreak + FVarLines;
+  end;
+  if FConstLines <> '' then
+  begin
+    Result := Result + FIndent + 'const' + FLineBreak + FConstLines;
+  end;
+end;
+
 function TExtractSignature.LocalType(const ALocal: TRoutineLocal; out AType: string): Boolean;
 var
   mProbed: TProbedType;
@@ -580,28 +593,15 @@ begin
   end;
 end;
 
-function TExtractSignature.Declarations: string;
+function TExtractSignature.RoutineText(const AHead, ABody, ABodyIndent: string): string;
 begin
-  Result := '';
-  if FVarLines <> '' then
-  begin
-    Result := Result + FIndent + 'var' + FLineBreak + FVarLines;
-  end;
-  if FConstLines <> '' then
-  begin
-    Result := Result + FIndent + 'const' + FLineBreak + FConstLines;
-  end;
+  Result := AHead + Declarations + FIndent + 'begin' + FLineBreak + TRoutineBody.Reindent(ABody, ABodyIndent,
+    FIndent + FIndentUnit, FLineBreak) + FLineBreak + FIndent + 'end;' + FLineBreak + FLineBreak;
 end;
 
 function TExtractSignature.Key(const AHead: string): string;
 begin
   Result := AHead + Declarations;
-end;
-
-function TExtractSignature.RoutineText(const AHead, ABody, ABodyIndent: string): string;
-begin
-  Result := AHead + Declarations + FIndent + 'begin' + FLineBreak + TRoutineBody.Reindent(ABody, ABodyIndent,
-    FIndent + FIndentUnit, FLineBreak) + FLineBreak + FIndent + 'end;' + FLineBreak + FLineBreak;
 end;
 
 initialization

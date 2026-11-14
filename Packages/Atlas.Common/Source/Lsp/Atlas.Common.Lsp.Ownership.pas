@@ -79,22 +79,18 @@ begin
   end;
 end;
 
-class function TLspOwnership.Sites(const AText: string; const ARules: TRuleCheckContext): TArray<TOwnershipSite>;
+{ TLspOwnership }
+
+class procedure TLspOwnership.Attach(ACommands: TLspCommands; const AInput: TLspOwnershipInput);
 var
-  mRules: TRuleCheckContext;
-  mTree: TSyntaxTree;
+  mInput: TLspOwnershipInput;
 begin
-  mRules := ARules;
-  mRules.Rules := OwnershipRules(ARules.Rules);
-  // Eigener Lauf nur dieser Regeln: Das Memo der Diagnose hält alle Regeln und kann einen anderen Text haben.
-  mRules.Memo := nil;
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    Result := TOwnershipSites.Analyze(mTree, AText, ARules.Services.Index,
-      TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mRules));
-  finally
-    mTree.Free;
-  end;
+  mInput := AInput;
+  ACommands.RegisterConcurrent(cCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspOwnership.Execute(AArguments, mInput);
+    end);
 end;
 
 function SiteToJson(const ASite: TOwnershipSite; const ALines: TArray<string>): TJSONObject;
@@ -128,6 +124,24 @@ begin
   if ASite.Message <> '' then
   begin
     Result.AddPair('message', ASite.Message);
+  end;
+end;
+
+class function TLspOwnership.Sites(const AText: string; const ARules: TRuleCheckContext): TArray<TOwnershipSite>;
+var
+  mRules: TRuleCheckContext;
+  mTree: TSyntaxTree;
+begin
+  mRules := ARules;
+  mRules.Rules := OwnershipRules(ARules.Rules);
+  // Eigener Lauf nur dieser Regeln: Das Memo der Diagnose hält alle Regeln und kann einen anderen Text haben.
+  mRules.Memo := nil;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := TOwnershipSites.Analyze(mTree, AText, ARules.Services.Index,
+      TLspSyntaxDiagnostics.RuleFindings(AText, mTree, mRules));
+  finally
+    mTree.Free;
   end;
 end;
 
@@ -165,18 +179,6 @@ begin
     Exit(ToJson(mUri, '', nil));
   end;
   Result := ToJson(mUri, mText, Sites(mText, mRules));
-end;
-
-class procedure TLspOwnership.Attach(ACommands: TLspCommands; const AInput: TLspOwnershipInput);
-var
-  mInput: TLspOwnershipInput;
-begin
-  mInput := AInput;
-  ACommands.RegisterConcurrent(cCommand,
-    function(const AArguments: TJSONArray): TJSONValue
-    begin
-      Result := TLspOwnership.Execute(AArguments, mInput);
-    end);
 end;
 
 end.

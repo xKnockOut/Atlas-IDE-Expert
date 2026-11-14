@@ -69,57 +69,6 @@ begin
   inherited Destroy;
 end;
 
-class function TMetricsCollector.Checksum(const AText: string): Cardinal;
-var
-  mIndex: Integer;
-begin
-  Result := 2166136261;
-  for mIndex := 1 to Length(AText) do
-  begin
-    Result := Result xor Ord(AText[mIndex]);
-    // In 64 Bit gerechnet und abgeschnitten: kein Überlauf, auch mit Überlaufprüfung.
-    Result := Cardinal((UInt64(Result) * 16777619) and $FFFFFFFF);
-  end;
-end;
-
-class function TMetricsCollector.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
-end;
-
-class function TMetricsCollector.RelativePath(const ARoot, AFileName: string): string;
-var
-  mRoot, mPath: string;
-begin
-  mPath := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  mRoot := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
-  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
-  begin
-    mRoot := mRoot + '/';
-  end;
-  if (mRoot <> '/') and (mRoot <> '') and SameText(Copy(mPath, 1, Length(mRoot)), mRoot) then
-  begin
-    Result := Copy(mPath, Length(mRoot) + 1, MaxInt);
-  end
-  else
-  begin
-    Result := AFileName;
-  end;
-end;
-
-function TMetricsCollector.CachedCount: Integer;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FCache.Count;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
 function TMetricsCollector.FileRoutines(const AFileName, AText: string): TArray<TRoutineMetrics>;
 var
   mKey: string;
@@ -180,6 +129,57 @@ begin
   finally
     mList.Free;
     mSeen.Free;
+  end;
+end;
+
+function TMetricsCollector.CachedCount: Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FCache.Count;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class function TMetricsCollector.RelativePath(const ARoot, AFileName: string): string;
+var
+  mRoot, mPath: string;
+begin
+  mPath := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  mRoot := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
+  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
+  begin
+    mRoot := mRoot + '/';
+  end;
+  if (mRoot <> '/') and (mRoot <> '') and SameText(Copy(mPath, 1, Length(mRoot)), mRoot) then
+  begin
+    Result := Copy(mPath, Length(mRoot) + 1, MaxInt);
+  end
+  else
+  begin
+    Result := AFileName;
+  end;
+end;
+
+class function TMetricsCollector.IsSource(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
+end;
+
+class function TMetricsCollector.Checksum(const AText: string): Cardinal;
+var
+  mIndex: Integer;
+begin
+  Result := 2166136261;
+  for mIndex := 1 to Length(AText) do
+  begin
+    Result := Result xor Ord(AText[mIndex]);
+    // In 64 Bit gerechnet und abgeschnitten: kein Überlauf, auch mit Überlaufprüfung.
+    Result := Cardinal((UInt64(Result) * 16777619) and $FFFFFFFF);
   end;
 end;
 

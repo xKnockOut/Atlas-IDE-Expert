@@ -153,13 +153,6 @@ end;
 
 { TAtlasIdeDebugReattach.TListener }
 
-function TAtlasIdeDebugReattach.TListener.AllowLaunch(const AProject: IOTAProject): Boolean;
-begin
-  // Die IDE startet ein Programm (Start, F9): diese Sitzung ist nicht angehängt.
-  FLaunching := True;
-  Result := True;
-end;
-
 procedure TAtlasIdeDebugReattach.TListener.DebugStarted;
 var
   mProcess: IOTAProcess;
@@ -200,6 +193,13 @@ begin
     end);
 end;
 
+function TAtlasIdeDebugReattach.TListener.AllowLaunch(const AProject: IOTAProject): Boolean;
+begin
+  // Die IDE startet ein Programm (Start, F9): diese Sitzung ist nicht angehängt.
+  FLaunching := True;
+  Result := True;
+end;
+
 { TAtlasIdeDebugReattach.THandler }
 
 procedure TAtlasIdeDebugReattach.THandler.Tick(Sender: TObject);
@@ -218,58 +218,6 @@ begin
 end;
 
 { TAtlasIdeDebugReattach }
-
-class procedure TAtlasIdeDebugReattach.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
-begin
-  FMessage := AMessage;
-  FRegistry := ARegistry;
-  if FHandler = nil then
-  begin
-    FHandler := THandler.Create;
-  end;
-  if FGroupTimer = nil then
-  begin
-    FGroupTimer := TTimer.Create(nil);
-    FGroupTimer.Enabled := True;
-    FGroupTimer.Interval := cGroupCheckMs;
-    FGroupTimer.OnTimer := FHandler.Tick;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  InstallMenu;
-end;
-
-class procedure TAtlasIdeDebugReattach.Release;
-begin
-  // Regel 3 der Module: Nach dem Abmelden erreicht nichts mehr das Modul (Thread, Zeitgeber, Menü, Statusfeld).
-  StopWaiter;
-  HideStatus;
-  RemoveMenu;
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FreeAndNil(FGroupTimer);
-  FreeAndNil(FHandler);
-  FreeAndNil(FHistory);
-  FHistoryKept := False;
-  FRegistry := nil;
-  FMessage := nil;
-  FAttachedPath := '';
-  FWaitTarget := '';
-  FWaitGroup := '';
-  FMenuGroup := '';
-end;
-
-class function TAtlasIdeDebugReattach.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
 
 class procedure TAtlasIdeDebugReattach.Say(const AText: string);
 begin
@@ -336,18 +284,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDebugReattach.LastTarget: string;
-var
-  mItems: TArray<string>;
-begin
-  Result := '';
-  mItems := History.Items(CurrentGroup);
-  if mItems <> nil then
-  begin
-    Result := mItems[0];
-  end;
-end;
-
 class procedure TAtlasIdeDebugReattach.ShowStatus(const AText, ASummary: string; const AAction: TProc);
 var
   mLine: TAtlasStatusLine;
@@ -383,43 +319,16 @@ begin
   FreeAndNil(FWaiter);
 end;
 
-class function TAtlasIdeDebugReattach.Waiting: Boolean;
+class procedure TAtlasIdeDebugReattach.Found(AGeneration: Integer; APid: Cardinal);
 begin
-  Result := FWaiter <> nil;
-end;
-
-class procedure TAtlasIdeDebugReattach.WaitFor(const APath: string);
-var
-  mGeneration: Integer;
-begin
-  StopWaiter;
-  HideStatus;
-  if APath = '' then
-  begin
-    Exit;
-  end;
-  FWaitTarget := APath;
-  FWaitGroup := CurrentGroup;
-  mGeneration := FGeneration;
-  FWaiter := TAtlasIdeReattachWaiter.Create(APath, TAtlasIdeSettings.Current.DebugReattachWaitIntervalMs,
-    procedure(APid: Cardinal)
-    begin
-      TAtlasIdeDebugReattach.Found(mGeneration, APid);
-    end);
-  ShowStatus(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaiting, [TAtlasReattach.NameOf(APath)]),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaitingSummary, [TAtlasReattach.NameOf(APath)]),
-    TAtlasIdeDebugReattach.CancelWait);
-end;
-
-class procedure TAtlasIdeDebugReattach.CancelWait;
-begin
-  if not Waiting then
+  // Ein Treffer aus einem abgebrochenen oder ersetzten Warten zählt nicht.
+  if (AGeneration <> FGeneration) or not Waiting then
   begin
     Exit;
   end;
   StopWaiter;
   HideStatus;
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachStopped, [TAtlasReattach.NameOf(FWaitTarget)]));
+  AttachTo(APid, TAtlasReattach.NameOf(FWaitTarget));
 end;
 
 class procedure TAtlasIdeDebugReattach.CheckGroup;
@@ -437,18 +346,6 @@ begin
   begin
     UpdateMenu;
   end;
-end;
-
-class procedure TAtlasIdeDebugReattach.Found(AGeneration: Integer; APid: Cardinal);
-begin
-  // Ein Treffer aus einem abgebrochenen oder ersetzten Warten zählt nicht.
-  if (AGeneration <> FGeneration) or not Waiting then
-  begin
-    Exit;
-  end;
-  StopWaiter;
-  HideStatus;
-  AttachTo(APid, TAtlasReattach.NameOf(FWaitTarget));
 end;
 
 class procedure TAtlasIdeDebugReattach.AttachTo(APid: Cardinal; const AName: string);
@@ -474,6 +371,116 @@ begin
     [TAtlasReattach.NameOf(APath)])) then
   begin
     WaitFor(APath);
+  end;
+end;
+
+class procedure TAtlasIdeDebugReattach.InstallMenu;
+var
+  mParent: TMenuItem;
+begin
+  mParent := RunMenu;
+  if (mParent = nil) or (FMenuReattach <> nil) then
+  begin
+    Exit;
+  end;
+  FMenuReattach := TMenuItem.Create(nil);
+  FMenuReattach.Name := cReattachItemName;
+  FMenuReattach.OnClick := FHandler.ReattachClick;
+  mParent.Add(FMenuReattach);
+  FMenuWait := TMenuItem.Create(nil);
+  FMenuWait.Name := cWaitItemName;
+  FMenuWait.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachWaitMenu);
+  FMenuWait.OnClick := FHandler.WaitClick;
+  mParent.Add(FMenuWait);
+  UpdateMenu;
+end;
+
+class procedure TAtlasIdeDebugReattach.RemoveMenu;
+begin
+  FreeAndNil(FMenuReattach);
+  FreeAndNil(FMenuWait);
+end;
+
+class procedure TAtlasIdeDebugReattach.UpdateMenu;
+var
+  mTarget: string;
+begin
+  if FMenuReattach = nil then
+  begin
+    Exit;
+  end;
+  FMenuGroup := CurrentGroup;
+  mTarget := LastTarget;
+  if mTarget = '' then
+  begin
+    FMenuReattach.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach);
+    Exit;
+  end;
+  FMenuReattach.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachCommand,
+    [TAtlasReattach.NameOf(mTarget)]);
+end;
+
+class procedure TAtlasIdeDebugReattach.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
+begin
+  FMessage := AMessage;
+  FRegistry := ARegistry;
+  if FHandler = nil then
+  begin
+    FHandler := THandler.Create;
+  end;
+  if FGroupTimer = nil then
+  begin
+    FGroupTimer := TTimer.Create(nil);
+    FGroupTimer.Enabled := True;
+    FGroupTimer.Interval := cGroupCheckMs;
+    FGroupTimer.OnTimer := FHandler.Tick;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  InstallMenu;
+end;
+
+class procedure TAtlasIdeDebugReattach.Release;
+begin
+  // Regel 3 der Module: Nach dem Abmelden erreicht nichts mehr das Modul (Thread, Zeitgeber, Menü, Statusfeld).
+  StopWaiter;
+  HideStatus;
+  RemoveMenu;
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  FreeAndNil(FGroupTimer);
+  FreeAndNil(FHandler);
+  FreeAndNil(FHistory);
+  FHistoryKept := False;
+  FRegistry := nil;
+  FMessage := nil;
+  FAttachedPath := '';
+  FWaitTarget := '';
+  FWaitGroup := '';
+  FMenuGroup := '';
+end;
+
+class function TAtlasIdeDebugReattach.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
+class function TAtlasIdeDebugReattach.LastTarget: string;
+var
+  mItems: TArray<string>;
+begin
+  Result := '';
+  mItems := History.Items(CurrentGroup);
+  if mItems <> nil then
+  begin
+    Result := mItems[0];
   end;
 end;
 
@@ -532,50 +539,43 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugReattach.InstallMenu;
+class procedure TAtlasIdeDebugReattach.WaitFor(const APath: string);
 var
-  mParent: TMenuItem;
+  mGeneration: Integer;
 begin
-  mParent := RunMenu;
-  if (mParent = nil) or (FMenuReattach <> nil) then
+  StopWaiter;
+  HideStatus;
+  if APath = '' then
   begin
     Exit;
   end;
-  FMenuReattach := TMenuItem.Create(nil);
-  FMenuReattach.Name := cReattachItemName;
-  FMenuReattach.OnClick := FHandler.ReattachClick;
-  mParent.Add(FMenuReattach);
-  FMenuWait := TMenuItem.Create(nil);
-  FMenuWait.Name := cWaitItemName;
-  FMenuWait.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachWaitMenu);
-  FMenuWait.OnClick := FHandler.WaitClick;
-  mParent.Add(FMenuWait);
-  UpdateMenu;
+  FWaitTarget := APath;
+  FWaitGroup := CurrentGroup;
+  mGeneration := FGeneration;
+  FWaiter := TAtlasIdeReattachWaiter.Create(APath, TAtlasIdeSettings.Current.DebugReattachWaitIntervalMs,
+    procedure(APid: Cardinal)
+    begin
+      TAtlasIdeDebugReattach.Found(mGeneration, APid);
+    end);
+  ShowStatus(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaiting, [TAtlasReattach.NameOf(APath)]),
+    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaitingSummary, [TAtlasReattach.NameOf(APath)]),
+    TAtlasIdeDebugReattach.CancelWait);
 end;
 
-class procedure TAtlasIdeDebugReattach.RemoveMenu;
+class procedure TAtlasIdeDebugReattach.CancelWait;
 begin
-  FreeAndNil(FMenuReattach);
-  FreeAndNil(FMenuWait);
+  if not Waiting then
+  begin
+    Exit;
+  end;
+  StopWaiter;
+  HideStatus;
+  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachStopped, [TAtlasReattach.NameOf(FWaitTarget)]));
 end;
 
-class procedure TAtlasIdeDebugReattach.UpdateMenu;
-var
-  mTarget: string;
+class function TAtlasIdeDebugReattach.Waiting: Boolean;
 begin
-  if FMenuReattach = nil then
-  begin
-    Exit;
-  end;
-  FMenuGroup := CurrentGroup;
-  mTarget := LastTarget;
-  if mTarget = '' then
-  begin
-    FMenuReattach.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach);
-    Exit;
-  end;
-  FMenuReattach.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachCommand,
-    [TAtlasReattach.NameOf(mTarget)]);
+  Result := FWaiter <> nil;
 end;
 
 end.

@@ -670,11 +670,6 @@ begin
   inherited;
 end;
 
-function TSearchArea.IsOwnFile(const AFile: string): Boolean;
-begin
-  Result := SameText(AFile, FContext.FileName);
-end;
-
 procedure TSearchArea.AddSource(ASeen: TDictionary<string, Integer>; const AProject: TRuleProject;
   const ASource: string);
 var
@@ -717,6 +712,86 @@ begin
   end;
 end;
 
+function TSearchArea.MentionsRegisterCall(const AFile: string; out AUnknown: Boolean): Boolean;
+var
+  mCall: string;
+begin
+  Result := False;
+  AUnknown := False;
+  for mCall in cRegisterCalls do
+  begin
+    case FContext.ProjectFiles.NameIn(AFile, mCall) of
+      TRuleNameAnswer.Present:
+        Result := True;
+      TRuleNameAnswer.Unknown:
+        AUnknown := True;
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+end;
+
+function TSearchArea.FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
+var
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  if IsOwnFile(AEntry.FileName) then
+  begin
+    Exit(RegistersIn(FContext.Tree.Tokens, AShort));
+  end;
+  if not TextOf(AEntry.FileName, mText) then
+  begin
+    Exit(True);
+  end;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    Result := RegistersIn(mTree.Tokens, AShort);
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSearchArea.FindRegisterFiles;
+var
+  mEntry: TSearchFile;
+  mUnknown: Boolean;
+begin
+  FRegisterFiles := TList<TSearchFile>.Create;
+  FRegisterUnknown := False;
+  for mEntry in FFiles do
+  begin
+    if IsOwnFile(mEntry.FileName) then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if MentionsRegisterCall(mEntry.FileName, mUnknown) and not mUnknown then
+    begin
+      FRegisterFiles.Add(mEntry);
+    end
+    else if mUnknown then
+    begin
+      FRegisterUnknown := True;
+    end;
+  end;
+end;
+
+function TSearchArea.LiteralInFile(const AFile, AText, ALiteral: string): Boolean;
+var
+  mTree: TSyntaxTree;
+begin
+  if IsOwnFile(AFile) then
+  begin
+    Exit(LiteralIn(FContext.Tree.Tokens, ALiteral));
+  end;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := LiteralIn(mTree.Tokens, ALiteral);
+  finally
+    mTree.Free;
+  end;
+end;
+
 procedure TSearchArea.Collect(const AProjects: TArray<TRuleProject>);
 var
   mSeen: TDictionary<string, Integer>;
@@ -742,6 +817,11 @@ begin
   finally
     mSeen.Free;
   end;
+end;
+
+function TSearchArea.IsOwnFile(const AFile: string): Boolean;
+begin
+  Result := SameText(AFile, FContext.FileName);
 end;
 
 function TSearchArea.TextOf(const AFile: string; out AText: string): Boolean;
@@ -804,70 +884,6 @@ begin
   Result := FFormsState = 2;
 end;
 
-function TSearchArea.MentionsRegisterCall(const AFile: string; out AUnknown: Boolean): Boolean;
-var
-  mCall: string;
-begin
-  Result := False;
-  AUnknown := False;
-  for mCall in cRegisterCalls do
-  begin
-    case FContext.ProjectFiles.NameIn(AFile, mCall) of
-      TRuleNameAnswer.Present:
-        Result := True;
-      TRuleNameAnswer.Unknown:
-        AUnknown := True;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  end;
-end;
-
-procedure TSearchArea.FindRegisterFiles;
-var
-  mEntry: TSearchFile;
-  mUnknown: Boolean;
-begin
-  FRegisterFiles := TList<TSearchFile>.Create;
-  FRegisterUnknown := False;
-  for mEntry in FFiles do
-  begin
-    if IsOwnFile(mEntry.FileName) then
-    begin
-      FRegisterFiles.Add(mEntry);
-    end
-    else if MentionsRegisterCall(mEntry.FileName, mUnknown) and not mUnknown then
-    begin
-      FRegisterFiles.Add(mEntry);
-    end
-    else if mUnknown then
-    begin
-      FRegisterUnknown := True;
-    end;
-  end;
-end;
-
-function TSearchArea.FileRegisters(const AEntry: TSearchFile; const AShort: string): Boolean;
-var
-  mText: string;
-  mTree: TSyntaxTree;
-begin
-  if IsOwnFile(AEntry.FileName) then
-  begin
-    Exit(RegistersIn(FContext.Tree.Tokens, AShort));
-  end;
-  if not TextOf(AEntry.FileName, mText) then
-  begin
-    Exit(True);
-  end;
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    Result := RegistersIn(mTree.Tokens, AShort);
-  finally
-    mTree.Free;
-  end;
-end;
-
 function TSearchArea.IsRegistered(const AContainer: string): Boolean;
 var
   mShort: string;
@@ -892,22 +908,6 @@ begin
     end;
   end;
   FRegistered.Add(LowerCase(mShort), Result);
-end;
-
-function TSearchArea.LiteralInFile(const AFile, AText, ALiteral: string): Boolean;
-var
-  mTree: TSyntaxTree;
-begin
-  if IsOwnFile(AFile) then
-  begin
-    Exit(LiteralIn(FContext.Tree.Tokens, ALiteral));
-  end;
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    Result := LiteralIn(mTree.Tokens, ALiteral);
-  finally
-    mTree.Free;
-  end;
 end;
 
 function TSearchArea.InStrings(const AName: string): Boolean;

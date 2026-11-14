@@ -245,6 +245,8 @@ begin
   end;
 end;
 
+{ TAtlasGitHubProjects }
+
 class function TAtlasGitHubProjects.ParseItems(const AJson: string;
   out AItems: TArray<TAtlasGitHubProjectItem>): Boolean;
 begin

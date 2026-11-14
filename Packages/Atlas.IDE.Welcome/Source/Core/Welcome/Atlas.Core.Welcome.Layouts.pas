@@ -132,9 +132,24 @@ begin
   Result.Active := 0;
 end;
 
-class function TAtlasWelcomeLayouts.ValidName(const AName: string): Boolean;
+function TAtlasWelcomeLayouts.ToJson: string;
+var
+  mLayout: TAtlasWelcomeLayout;
 begin
-  Result := Trim(AName) <> '';
+  Result := '';
+  if IsDefault then
+  begin
+    Exit;
+  end;
+  for mLayout in Items do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + mLayout.ToJson;
+  end;
+  Result := '[' + Result + ']';
 end;
 
 /// <summary>Layout aus AValue mit getrimmtem Namen; False bei ungültigem Eintrag oder leerem Namen.</summary>
@@ -191,26 +206,6 @@ begin
   begin
     Result.Active := 0;
   end;
-end;
-
-function TAtlasWelcomeLayouts.ToJson: string;
-var
-  mLayout: TAtlasWelcomeLayout;
-begin
-  Result := '';
-  if IsDefault then
-  begin
-    Exit;
-  end;
-  for mLayout in Items do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ',';
-    end;
-    Result := Result + mLayout.ToJson;
-  end;
-  Result := '[' + Result + ']';
 end;
 
 function TAtlasWelcomeLayouts.IsDefault: Boolean;
@@ -371,6 +366,11 @@ begin
     Inc(mNumber);
     Result := Trim(ABase) + ' ' + IntToStr(mNumber);
   end;
+end;
+
+class function TAtlasWelcomeLayouts.ValidName(const AName: string): Boolean;
+begin
+  Result := Trim(AName) <> '';
 end;
 
 { TAtlasWelcomeCustomizing }

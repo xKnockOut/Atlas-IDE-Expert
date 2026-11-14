@@ -236,27 +236,12 @@ begin
   Result := SameText(AQualifier, AType) or EndsText('.' + AType, AQualifier);
 end;
 
-class function TPathConcatWithoutDelimiterRule.DirectorySource(ANode: TSyntaxNode): string;
-var
-  mName, mQualifier: string;
+{ TPathConcatWithoutDelimiterRule }
+
+function TPathConcatWithoutDelimiterRule.Descriptor: TRuleDescriptor;
 begin
-  Result := '';
-  if not CalleeName(ANode, mName, mQualifier) then
-  begin
-    Exit;
-  end;
-  if ((mQualifier = '') or QualifierIs(mQualifier, 'SysUtils')) and MatchText(mName, cSysUtilsDirectories) then
-  begin
-    Result := mName;
-  end
-  else if QualifierIs(mQualifier, 'TPath') and MatchText(mName, cPathDirectories) then
-  begin
-    Result := mName;
-  end
-  else if QualifierIs(mQualifier, 'TDirectory') and MatchText(mName, cDirectoryDirectories) then
-  begin
-    Result := mName;
-  end;
+  Result := TRuleDescriptor.Create(cPathConcatWithoutDelimiterRuleId, TRuleSeverity.Warning,
+    cTexts[TFilesText.ConcatTitle].Text);
 end;
 
 function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
@@ -463,12 +448,6 @@ end;
 
 { TPathConcatWithoutDelimiterRule }
 
-function TPathConcatWithoutDelimiterRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create(cPathConcatWithoutDelimiterRuleId, TRuleSeverity.Warning,
-    cTexts[TFilesText.ConcatTitle].Text);
-end;
-
 procedure TPathConcatWithoutDelimiterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mText, mLineBreak: string;
@@ -570,10 +549,35 @@ begin
   end;
 end;
 
+class function TPathConcatWithoutDelimiterRule.DirectorySource(ANode: TSyntaxNode): string;
+var
+  mName, mQualifier: string;
+begin
+  Result := '';
+  if not CalleeName(ANode, mName, mQualifier) then
+  begin
+    Exit;
+  end;
+  if ((mQualifier = '') or QualifierIs(mQualifier, 'SysUtils')) and MatchText(mName, cSysUtilsDirectories) then
+  begin
+    Result := mName;
+  end
+  else if QualifierIs(mQualifier, 'TPath') and MatchText(mName, cPathDirectories) then
+  begin
+    Result := mName;
+  end
+  else if QualifierIs(mQualifier, 'TDirectory') and MatchText(mName, cDirectoryDirectories) then
+  begin
+    Result := mName;
+  end;
+end;
+
 { THardcodedPathRule }
 
 const
   cUserFolders: array[0..1] of string = ('Users', 'Documents and Settings');
+
+{ THardcodedPathRule }
 
 function THardcodedPathRule.Descriptor: TRuleDescriptor;
 begin
@@ -632,34 +636,6 @@ begin
   Result := Result and IsSlash(APath[3]) and not IsSlash(APath[4]);
 end;
 
-class function THardcodedPathRule.PathKind(const APath: string): THardcodedPathKind;
-begin
-  Result := THardcodedPathKind.None;
-  if IsDrivePath(APath) then
-  begin
-    Result := DriveKind(APath);
-  end
-  else if (Length(APath) > 3) and (APath[1] = '\') and (APath[2] = '\') and TTextChars.IsIdentChar(APath[3]) then
-  begin
-    Result := NetworkKind(APath);
-  end;
-end;
-
-class function THardcodedPathRule.UnitAllowed(const AUnitName: string; const AAllowed: TArray<string>): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AAllowed do
-  begin
-    if SameText(mItem, AUnitName) or (EndsStr('*', mItem) and StartsText(Copy(mItem, 1, Length(mItem) - 1),
-      AUnitName)) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure THardcodedPathRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
@@ -700,6 +676,34 @@ begin
   end;
 end;
 
+class function THardcodedPathRule.PathKind(const APath: string): THardcodedPathKind;
+begin
+  Result := THardcodedPathKind.None;
+  if IsDrivePath(APath) then
+  begin
+    Result := DriveKind(APath);
+  end
+  else if (Length(APath) > 3) and (APath[1] = '\') and (APath[2] = '\') and TTextChars.IsIdentChar(APath[3]) then
+  begin
+    Result := NetworkKind(APath);
+  end;
+end;
+
+class function THardcodedPathRule.UnitAllowed(const AUnitName: string; const AAllowed: TArray<string>): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AAllowed do
+  begin
+    if SameText(mItem, AUnitName) or (EndsStr('*', mItem) and StartsText(Copy(mItem, 1, Length(mItem) - 1),
+      AUnitName)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 { TFilenameCompareCaseRule }
 
 const
@@ -710,6 +714,8 @@ const
   // System.IOUtils.TPath
   cPathFileNames: array[0..7] of string = ('GetFileName', 'GetFileNameWithoutExtension', 'GetExtension',
     'GetDirectoryName', 'GetFullPath', 'Combine', 'ChangeExtension', 'GetTempFileName');
+
+{ TFilenameCompareCaseRule }
 
 function TFilenameCompareCaseRule.Descriptor: TRuleDescriptor;
 begin

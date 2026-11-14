@@ -133,6 +133,48 @@ begin
   inherited;
 end;
 
+class procedure TAtlasNavHistory.Push(AList: TList<TAtlasNavPlace>; const APlace: TAtlasNavPlace);
+begin
+  if (AList.Count > 0) and AList.Last.SameLine(APlace) then
+  begin
+    AList[AList.Count - 1] := APlace;
+  end
+  else
+  begin
+    AList.Add(APlace);
+  end;
+  while AList.Count > cMaxEntries do
+  begin
+    AList.Delete(0);
+  end;
+end;
+
+class procedure TAtlasNavHistory.ShiftList(AList: TList<TAtlasNavPlace>; const AFileName: string;
+  AAnchor, ADelta: Integer);
+var
+  mIndex: Integer;
+  mPlace: TAtlasNavPlace;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    mPlace := AList[mIndex];
+    if not SameText(mPlace.FileName, AFileName) or (mPlace.Line <= AAnchor) then
+    begin
+      Continue;
+    end;
+    if (ADelta < 0) and (mPlace.Line <= AAnchor - ADelta) then
+    begin
+      // In den gelöschten Zeilen: an die Stelle der Löschung.
+      mPlace.Line := AAnchor;
+    end
+    else
+    begin
+      mPlace.Line := mPlace.Line + ADelta;
+    end;
+    AList[mIndex] := mPlace;
+  end;
+end;
+
 class function TAtlasNavHistory.IsJump(const AFrom, ATo: TAtlasNavPlace): Boolean;
 begin
   if (AFrom.FileName = '') or (ATo.FileName = '') then
@@ -148,22 +190,6 @@ begin
   if Length(Result) > cMaxExcerpt then
   begin
     Result := Copy(Result, 1, cMaxExcerpt - 1) + '…';
-  end;
-end;
-
-class procedure TAtlasNavHistory.Push(AList: TList<TAtlasNavPlace>; const APlace: TAtlasNavPlace);
-begin
-  if (AList.Count > 0) and AList.Last.SameLine(APlace) then
-  begin
-    AList[AList.Count - 1] := APlace;
-  end
-  else
-  begin
-    AList.Add(APlace);
-  end;
-  while AList.Count > cMaxEntries do
-  begin
-    AList.Delete(0);
   end;
 end;
 
@@ -247,32 +273,6 @@ begin
   end;
   FEditCursor := mIndex;
   ATarget := FEdits[mIndex];
-end;
-
-class procedure TAtlasNavHistory.ShiftList(AList: TList<TAtlasNavPlace>; const AFileName: string;
-  AAnchor, ADelta: Integer);
-var
-  mIndex: Integer;
-  mPlace: TAtlasNavPlace;
-begin
-  for mIndex := 0 to AList.Count - 1 do
-  begin
-    mPlace := AList[mIndex];
-    if not SameText(mPlace.FileName, AFileName) or (mPlace.Line <= AAnchor) then
-    begin
-      Continue;
-    end;
-    if (ADelta < 0) and (mPlace.Line <= AAnchor - ADelta) then
-    begin
-      // In den gelöschten Zeilen: an die Stelle der Löschung.
-      mPlace.Line := AAnchor;
-    end
-    else
-    begin
-      mPlace.Line := mPlace.Line + ADelta;
-    end;
-    AList[mIndex] := mPlace;
-  end;
 end;
 
 procedure TAtlasNavHistory.LinesChanged(const AFileName: string; AAnchor, ADelta: Integer);

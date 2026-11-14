@@ -348,24 +348,63 @@ begin
     MatchText(ABranch, ARequest.Linked);
 end;
 
-class function TAtlasIssueDevelopmentQuery.Matching(const AKey: string;
-  const AEntries: TArray<TAtlasVcsLogEntry>): TArray<TAtlasVcsLogEntry>;
+class function TAtlasIssueDevelopmentQuery.Collect(const AVcs: IAtlasVersionControl;
+  const ARequest: TAtlasIssueDevelopmentRequest; out ADevelopment: TAtlasIssueDevelopment): TAtlasVcsOutcome;
 var
-  mEntry: TAtlasVcsLogEntry;
-  mList: TList<TAtlasVcsLogEntry>;
+  mHistory: IAtlasVcsHistory;
+  mEntries: TArray<TAtlasVcsLogEntry>;
+  mRefs: TArray<TAtlasVcsRef>;
+  mIndex, mAhead, mBehind, mMax: Integer;
+  mFrom: string;
 begin
-  mList := TList<TAtlasVcsLogEntry>.Create;
-  try
-    for mEntry in AEntries do
+  ADevelopment := TAtlasIssueDevelopment.Empty;
+  ADevelopment.Key := ARequest.Key;
+  if (AVcs = nil) or not Supports(AVcs, IAtlasVcsHistory, mHistory) then
+  begin
+    Exit(TAtlasVcsOutcome.NoWorkingCopy);
+  end;
+  ADevelopment.VcsKind := AVcs.Kind;
+  if ARequest.Key = '' then
+  begin
+    ADevelopment.VcsOutcome := TAtlasVcsOutcome.Failed;
+    Exit(TAtlasVcsOutcome.Failed);
+  end;
+  mMax := ARequest.MaxCommits;
+  if mMax < 1 then
+  begin
+    mMax := TAtlasIssueDevelopmentRequest.cDefaultMaxCommits;
+  end;
+  Result := mHistory.SearchLog(SearchText(ARequest.Key), mMax, mEntries);
+  ADevelopment.VcsOutcome := Result;
+  if Result <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  ADevelopment.Truncated := Length(mEntries) >= mMax;
+  ADevelopment.Commits := Matching(ARequest.Key, mEntries);
+  ADevelopment.Units := GroupUnits(ADevelopment.Commits, ARequest.Projects);
+  // Branches gehören dazu, scheitern aber nicht die ganze Abfrage (SVN ohne ^/branches).
+  if mHistory.AllBranches(mRefs) <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit;
+  end;
+  ADevelopment.Branches := BranchesOf(ARequest, mRefs);
+  for mIndex := 0 to High(ADevelopment.Branches) do
+  begin
+    if ADevelopment.Branches[mIndex].Base = '' then
     begin
-      if MentionsKey(AKey, mEntry.Message) then
-      begin
-        mList.Add(mEntry);
-      end;
+      Continue;
     end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
+    mFrom := ADevelopment.Branches[mIndex].Name;
+    if not ADevelopment.Branches[mIndex].Local then
+    begin
+      mFrom := ADevelopment.Branches[mIndex].RemoteName;
+    end;
+    if mHistory.Distance(mFrom, ADevelopment.Branches[mIndex].Base, mAhead, mBehind) = TAtlasVcsOutcome.Ok then
+    begin
+      ADevelopment.Branches[mIndex].Ahead := mAhead;
+      ADevelopment.Branches[mIndex].Behind := mBehind;
+    end;
   end;
 end;
 
@@ -453,27 +492,24 @@ begin
   end;
 end;
 
-class function TAtlasIssueDevelopmentQuery.BranchesOf(const ARequest: TAtlasIssueDevelopmentRequest;
-  const ARefs: TArray<TAtlasVcsRef>): TArray<TAtlasIssueBranch>;
+class function TAtlasIssueDevelopmentQuery.Matching(const AKey: string;
+  const AEntries: TArray<TAtlasVcsLogEntry>): TArray<TAtlasVcsLogEntry>;
 var
-  mRef: TAtlasVcsRef;
-  mFound: Integer;
-  mBase: string;
+  mEntry: TAtlasVcsLogEntry;
+  mList: TList<TAtlasVcsLogEntry>;
 begin
-  Result := nil;
-  mBase := BaseOf(ARequest.Bases, ARefs);
-  for mRef in ARefs do
-  begin
-    if not BranchMatches(ARequest, mRef.LocalName) then
+  mList := TList<TAtlasVcsLogEntry>.Create;
+  try
+    for mEntry in AEntries do
     begin
-      Continue;
+      if MentionsKey(AKey, mEntry.Message) then
+      begin
+        mList.Add(mEntry);
+      end;
     end;
-    mFound := BranchIndex(Result, mRef.LocalName, mBase);
-    if mFound >= 0 then
-    begin
-      MergeRef(Result[mFound], mRef);
-      Result[mFound].Linked := MatchText(mRef.LocalName, ARequest.Linked);
-    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
 end;
 
@@ -650,6 +686,30 @@ begin
   end;
 end;
 
+class function TAtlasIssueDevelopmentQuery.BranchesOf(const ARequest: TAtlasIssueDevelopmentRequest;
+  const ARefs: TArray<TAtlasVcsRef>): TArray<TAtlasIssueBranch>;
+var
+  mRef: TAtlasVcsRef;
+  mFound: Integer;
+  mBase: string;
+begin
+  Result := nil;
+  mBase := BaseOf(ARequest.Bases, ARefs);
+  for mRef in ARefs do
+  begin
+    if not BranchMatches(ARequest, mRef.LocalName) then
+    begin
+      Continue;
+    end;
+    mFound := BranchIndex(Result, mRef.LocalName, mBase);
+    if mFound >= 0 then
+    begin
+      MergeRef(Result[mFound], mRef);
+      Result[mFound].Linked := MatchText(mRef.LocalName, ARequest.Linked);
+    end;
+  end;
+end;
+
 class function TAtlasIssueDevelopmentQuery.GroupUnits(const ACommits: TArray<TAtlasVcsLogEntry>;
   const AProjects: TArray<TAtlasIssueProject>): TArray<TAtlasIssueUnitGroup>;
 var
@@ -674,66 +734,6 @@ begin
     mMembers.Free;
     mOrder.Free;
     mFiles.Free;
-  end;
-end;
-
-class function TAtlasIssueDevelopmentQuery.Collect(const AVcs: IAtlasVersionControl;
-  const ARequest: TAtlasIssueDevelopmentRequest; out ADevelopment: TAtlasIssueDevelopment): TAtlasVcsOutcome;
-var
-  mHistory: IAtlasVcsHistory;
-  mEntries: TArray<TAtlasVcsLogEntry>;
-  mRefs: TArray<TAtlasVcsRef>;
-  mIndex, mAhead, mBehind, mMax: Integer;
-  mFrom: string;
-begin
-  ADevelopment := TAtlasIssueDevelopment.Empty;
-  ADevelopment.Key := ARequest.Key;
-  if (AVcs = nil) or not Supports(AVcs, IAtlasVcsHistory, mHistory) then
-  begin
-    Exit(TAtlasVcsOutcome.NoWorkingCopy);
-  end;
-  ADevelopment.VcsKind := AVcs.Kind;
-  if ARequest.Key = '' then
-  begin
-    ADevelopment.VcsOutcome := TAtlasVcsOutcome.Failed;
-    Exit(TAtlasVcsOutcome.Failed);
-  end;
-  mMax := ARequest.MaxCommits;
-  if mMax < 1 then
-  begin
-    mMax := TAtlasIssueDevelopmentRequest.cDefaultMaxCommits;
-  end;
-  Result := mHistory.SearchLog(SearchText(ARequest.Key), mMax, mEntries);
-  ADevelopment.VcsOutcome := Result;
-  if Result <> TAtlasVcsOutcome.Ok then
-  begin
-    Exit;
-  end;
-  ADevelopment.Truncated := Length(mEntries) >= mMax;
-  ADevelopment.Commits := Matching(ARequest.Key, mEntries);
-  ADevelopment.Units := GroupUnits(ADevelopment.Commits, ARequest.Projects);
-  // Branches gehören dazu, scheitern aber nicht die ganze Abfrage (SVN ohne ^/branches).
-  if mHistory.AllBranches(mRefs) <> TAtlasVcsOutcome.Ok then
-  begin
-    Exit;
-  end;
-  ADevelopment.Branches := BranchesOf(ARequest, mRefs);
-  for mIndex := 0 to High(ADevelopment.Branches) do
-  begin
-    if ADevelopment.Branches[mIndex].Base = '' then
-    begin
-      Continue;
-    end;
-    mFrom := ADevelopment.Branches[mIndex].Name;
-    if not ADevelopment.Branches[mIndex].Local then
-    begin
-      mFrom := ADevelopment.Branches[mIndex].RemoteName;
-    end;
-    if mHistory.Distance(mFrom, ADevelopment.Branches[mIndex].Base, mAhead, mBehind) = TAtlasVcsOutcome.Ok then
-    begin
-      ADevelopment.Branches[mIndex].Ahead := mAhead;
-      ADevelopment.Branches[mIndex].Behind := mBehind;
-    end;
   end;
 end;
 

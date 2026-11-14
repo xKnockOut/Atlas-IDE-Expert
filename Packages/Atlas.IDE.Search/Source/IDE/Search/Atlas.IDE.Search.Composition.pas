@@ -312,6 +312,16 @@ end;
 
 { TAtlasSearchModule }
 
+class function TAtlasSearchModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  // Wie bisher mit den Editorbefehlen ab dem abgesicherten Start; ihre Einstellungen prüfen die Teile selbst.
+  Result := [
+    TAtlasFeaturePart.AtLevel('Search', TAtlasSafeLevel.Safe, SearchStarted, StartSearch, StopSearch),
+    TAtlasFeaturePart.AtLevel('UnitSearch', TAtlasSafeLevel.Safe, UnitSearchStarted, StartUnitSearch,
+      StopUnitSearch),
+    TAtlasFeaturePart.AtLevel('Query', TAtlasSafeLevel.Safe, QueryStarted, StartQuery, StopQuery)];
+end;
+
 function TAtlasSearchModule.Info: TAtlasModuleInfo;
 begin
   // Lief mit den Editorbefehlen schon im abgesicherten Start.
@@ -332,6 +342,13 @@ end;
 function TAtlasSearchModule.IsActive: Boolean;
 begin
   Result := FActive;
+end;
+
+function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := ACommandId;
+  Result.Place := APlace;
 end;
 
 function TAtlasSearchModule.Commands: TArray<TAtlasModuleCommand>;
@@ -360,13 +377,6 @@ begin
     // Code-Abfragen (#1351); nur sichtbar, solange query.enabled an ist.
     Command('Atlas.Query', TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryCommand),
       Guarded(TAtlasFeature.Query, ShowQuery), QueryVisible)];
-end;
-
-function MenuEntry(const ACommandId: string; APlace: TAtlasMenuPlace): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := APlace;
 end;
 
 function TAtlasSearchModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -436,18 +446,18 @@ begin
   TAtlasIdeCodeQuery.ApplySettings;
 end;
 
-procedure TAtlasSearchModule.ThemeChanged;
-begin
-  TAtlasIdeCodeQuery.ThemeChanged;
-  TAtlasIdeSearch.ThemeChanged;
-end;
-
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
 begin
   TAtlasSearchUnitSearchSection.ProvideIn(GScope);
   TAtlasSearchQuerySection.ProvideIn(GScope);
+end;
+
+procedure TAtlasSearchModule.ThemeChanged;
+begin
+  TAtlasIdeCodeQuery.ThemeChanged;
+  TAtlasIdeSearch.ThemeChanged;
 end;
 
 function TAtlasSearchModule.TakenActions: TArray<TAtlasTakenAction>;
@@ -465,16 +475,6 @@ begin
   mTaken.Func := TAtlasKeyFunction.UnitSearchIde;
   mTaken.ActionName := mAction.Name;
   Result := [mTaken];
-end;
-
-class function TAtlasSearchModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  // Wie bisher mit den Editorbefehlen ab dem abgesicherten Start; ihre Einstellungen prüfen die Teile selbst.
-  Result := [
-    TAtlasFeaturePart.AtLevel('Search', TAtlasSafeLevel.Safe, SearchStarted, StartSearch, StopSearch),
-    TAtlasFeaturePart.AtLevel('UnitSearch', TAtlasSafeLevel.Safe, UnitSearchStarted, StartUnitSearch,
-      StopUnitSearch),
-    TAtlasFeaturePart.AtLevel('Query', TAtlasSafeLevel.Safe, QueryStarted, StartQuery, StopQuery)];
 end;
 
 class function TAtlasSearchModule.RegisterModule: Boolean;

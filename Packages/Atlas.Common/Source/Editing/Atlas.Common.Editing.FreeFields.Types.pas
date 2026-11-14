@@ -78,6 +78,39 @@ const
   cKnownNonComponents: array[0..9] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TThread',
     'TStream', 'TStrings', 'TStringList', 'TList', 'TObjectList', 'TDictionary');
 
+{ TFreeFieldTypes }
+
+constructor TFreeFieldTypes.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+begin
+  inherited Create;
+  FTree := ATree;
+  FText := AText;
+  FIndex := AIndex;
+end;
+
+function TFreeFieldTypes.IndexAncestor(const AName: string; out ANext: string): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  ANext := '';
+  if FIndex = nil then
+  begin
+    Exit(False);
+  end;
+  for mLocation in FIndex.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
+    begin
+      if Length(mLocation.Symbol.Ancestors) > 0 then
+      begin
+        ANext := TFreeFieldTypes.BaseName(mLocation.Symbol.Ancestors[0]);
+      end;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TFreeFieldTypes.NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -105,23 +138,6 @@ begin
       mSpace := False;
       Result := Result + AText[mIndex];
     end;
-  end;
-end;
-
-class function TFreeFieldTypes.CodeOf(const AText: string; ANode: TSyntaxNode): string;
-begin
-  Result := Collapse(NodeText(AText, ANode));
-end;
-
-class function TFreeFieldTypes.BaseName(const ATypeName: string): string;
-var
-  mAngle: Integer;
-begin
-  Result := Trim(ATypeName);
-  mAngle := Pos('<', Result);
-  if mAngle > 0 then
-  begin
-    Result := Trim(Copy(Result, 1, mAngle - 1));
   end;
 end;
 
@@ -257,14 +273,6 @@ end;
 
 { TFreeFieldTypes }
 
-constructor TFreeFieldTypes.Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
-begin
-  inherited Create;
-  FTree := ATree;
-  FText := AText;
-  FIndex := AIndex;
-end;
-
 function TFreeFieldTypes.FromFile(const AName: string; out AAlias: string): TTypeGuess;
 var
   mGuess: TTypeGuess;
@@ -298,6 +306,35 @@ begin
     end);
   AAlias := mFound;
   Result := mGuess;
+end;
+
+function TFreeFieldTypes.FileAncestor(const AName: string; out ANext: string): Boolean;
+var
+  mName, mNext: string;
+  mDeclared: Boolean;
+begin
+  mName := AName;
+  mNext := '';
+  mDeclared := False;
+  FTree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      mKind: TSyntaxNode;
+    begin
+      Result := not mDeclared;
+      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
+      begin
+        Exit;
+      end;
+      mKind := ANode.FindChild(TSyntaxKind.ClassType);
+      if mKind <> nil then
+      begin
+        mDeclared := True;
+        mNext := FirstAncestor(mKind);
+      end;
+    end);
+  ANext := mNext;
+  Result := mDeclared;
 end;
 
 /// <summary>Alias der obersten Ebene mit Ziel (TPos = Werk.Lage.TLage)?</summary>
@@ -343,153 +380,6 @@ begin
   begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
   end;
-end;
-
-function TFreeFieldTypes.TypeGuess(const ATypeName: string): TTypeGuess;
-var
-  mBase, mAlias: string;
-  mDepth: Integer;
-  mGeneric: Boolean;
-begin
-  Result := tgUnknown;
-  mBase := TFreeFieldTypes.BaseName(ATypeName);
-  // TArray<T> ist ein dynamisches Array aus System; die Klasse TArray (System.Generics.Collections) trägt
-  // keine Typparameter.
-  mGeneric := Pos('<', ATypeName) > 0;
-  if mGeneric and SameText(mBase, 'TArray') then
-  begin
-    Exit(tgOther);
-  end;
-  for mDepth := 1 to 8 do
-  begin
-    if mBase = '' then
-    begin
-      Break;
-    end;
-    Result := FromFile(mBase, mAlias);
-    // Ohne Deklaration oder mit Alias gleichen Namens (TLage = Werk.Lage.TLage): Der Index kennt das Ziel.
-    if (Result = tgUnknown) and ((mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase)) then
-    begin
-      Result := IndexGuess(mBase, mGeneric, mAlias);
-    end;
-    if (Result <> tgUnknown) or (mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase) then
-    begin
-      Break;
-    end;
-    // Alias in der Datei oder im Index (TFoo = TBar, TFoo = Werk.TBar): weiter mit TBar.
-    mBase := UnqualifiedBase(mAlias);
-    mGeneric := Pos('<', mAlias) > 0;
-  end;
-  if Result <> tgUnknown then
-  begin
-    Exit;
-  end;
-  Result := FallbackGuess(mBase);
-end;
-
-function TFreeFieldTypes.FileAncestor(const AName: string; out ANext: string): Boolean;
-var
-  mName, mNext: string;
-  mDeclared: Boolean;
-begin
-  mName := AName;
-  mNext := '';
-  mDeclared := False;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      mKind: TSyntaxNode;
-    begin
-      Result := not mDeclared;
-      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
-      begin
-        Exit;
-      end;
-      mKind := ANode.FindChild(TSyntaxKind.ClassType);
-      if mKind <> nil then
-      begin
-        mDeclared := True;
-        mNext := FirstAncestor(mKind);
-      end;
-    end);
-  ANext := mNext;
-  Result := mDeclared;
-end;
-
-function TFreeFieldTypes.IndexAncestor(const AName: string; out ANext: string): Boolean;
-var
-  mLocation: TSymbolLocation;
-begin
-  ANext := '';
-  if FIndex = nil then
-  begin
-    Exit(False);
-  end;
-  for mLocation in FIndex.FindSymbols(AName) do
-  begin
-    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
-    begin
-      if Length(mLocation.Symbol.Ancestors) > 0 then
-      begin
-        ANext := TFreeFieldTypes.BaseName(mLocation.Symbol.Ancestors[0]);
-      end;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TFreeFieldTypes.ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
-var
-  mName, mNext: string;
-  mDepth: Integer;
-  mDeclared: Boolean;
-begin
-  mName := TFreeFieldTypes.BaseName(ATypeName);
-  Result := TArray<string>.Create(mName);
-  AEndsKnown := False;
-  for mDepth := 1 to 32 do
-  begin
-    mDeclared := FileAncestor(mName, mNext) or IndexAncestor(mName, mNext);
-    // Klasse ohne Vorfahren stammt von TObject ab: das Ende ist bekannt.
-    if mDeclared and (mNext = '') then
-    begin
-      AEndsKnown := True;
-    end;
-    if (mNext = '') or (IndexText(mNext, Result) >= 0) then
-    begin
-      Break;
-    end;
-    Result := Result + [mNext];
-    mName := mNext;
-  end;
-  AEndsKnown := AEndsKnown or DescendsFrom(Result, cComponentRoots) or DescendsFrom(Result, cKnownComponents) or
-    DescendsFrom(Result, cKnownNonComponents);
-end;
-
-function TFreeFieldTypes.IsComponent(const ATypeName: string): Boolean;
-var
-  mChain: TArray<string>;
-  mEndsKnown: Boolean;
-begin
-  mChain := ComponentChain(ATypeName, mEndsKnown);
-  Result := DescendsFrom(mChain, cComponentRoots) or DescendsFrom(mChain, cKnownComponents);
-end;
-
-function TFreeFieldTypes.ComponentKnown(const ATypeName: string): Boolean;
-begin
-  ComponentChain(ATypeName, Result);
-end;
-
-function TFreeFieldTypes.OwnedByArgument(const ATypeName: string; AArgument: TSyntaxNode): Boolean;
-begin
-  if IsComponent(ATypeName) then
-  begin
-    Exit(True);
-  end;
-  // Unbekannte Vorfahren (z. B. VCL-Klassen ohne Index): Owner am Argument erkennen.
-  Result := not ComponentKnown(ATypeName) and
-    (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(AArgument.Name, cOwnerNames);
 end;
 
 function TFreeFieldTypes.FileFieldTypes(const AClassName: string; out ADeclared: Boolean): TArray<string>;
@@ -594,13 +484,116 @@ begin
   end;
 end;
 
-function TFreeFieldTypes.MemberType(const ATypeName, AMember: string): string;
+class function TFreeFieldTypes.BaseName(const ATypeName: string): string;
+var
+  mAngle: Integer;
 begin
-  Result := FileMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
-  if Result = '' then
+  Result := Trim(ATypeName);
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    Result := IndexMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
+    Result := Trim(Copy(Result, 1, mAngle - 1));
   end;
+end;
+
+class function TFreeFieldTypes.CodeOf(const AText: string; ANode: TSyntaxNode): string;
+begin
+  Result := Collapse(NodeText(AText, ANode));
+end;
+
+function TFreeFieldTypes.TypeGuess(const ATypeName: string): TTypeGuess;
+var
+  mBase, mAlias: string;
+  mDepth: Integer;
+  mGeneric: Boolean;
+begin
+  Result := tgUnknown;
+  mBase := TFreeFieldTypes.BaseName(ATypeName);
+  // TArray<T> ist ein dynamisches Array aus System; die Klasse TArray (System.Generics.Collections) trägt
+  // keine Typparameter.
+  mGeneric := Pos('<', ATypeName) > 0;
+  if mGeneric and SameText(mBase, 'TArray') then
+  begin
+    Exit(tgOther);
+  end;
+  for mDepth := 1 to 8 do
+  begin
+    if mBase = '' then
+    begin
+      Break;
+    end;
+    Result := FromFile(mBase, mAlias);
+    // Ohne Deklaration oder mit Alias gleichen Namens (TLage = Werk.Lage.TLage): Der Index kennt das Ziel.
+    if (Result = tgUnknown) and ((mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase)) then
+    begin
+      Result := IndexGuess(mBase, mGeneric, mAlias);
+    end;
+    if (Result <> tgUnknown) or (mAlias = '') or SameText(UnqualifiedBase(mAlias), mBase) then
+    begin
+      Break;
+    end;
+    // Alias in der Datei oder im Index (TFoo = TBar, TFoo = Werk.TBar): weiter mit TBar.
+    mBase := UnqualifiedBase(mAlias);
+    mGeneric := Pos('<', mAlias) > 0;
+  end;
+  if Result <> tgUnknown then
+  begin
+    Exit;
+  end;
+  Result := FallbackGuess(mBase);
+end;
+
+function TFreeFieldTypes.ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
+var
+  mName, mNext: string;
+  mDepth: Integer;
+  mDeclared: Boolean;
+begin
+  mName := TFreeFieldTypes.BaseName(ATypeName);
+  Result := TArray<string>.Create(mName);
+  AEndsKnown := False;
+  for mDepth := 1 to 32 do
+  begin
+    mDeclared := FileAncestor(mName, mNext) or IndexAncestor(mName, mNext);
+    // Klasse ohne Vorfahren stammt von TObject ab: das Ende ist bekannt.
+    if mDeclared and (mNext = '') then
+    begin
+      AEndsKnown := True;
+    end;
+    if (mNext = '') or (IndexText(mNext, Result) >= 0) then
+    begin
+      Break;
+    end;
+    Result := Result + [mNext];
+    mName := mNext;
+  end;
+  AEndsKnown := AEndsKnown or DescendsFrom(Result, cComponentRoots) or DescendsFrom(Result, cKnownComponents) or
+    DescendsFrom(Result, cKnownNonComponents);
+end;
+
+function TFreeFieldTypes.IsComponent(const ATypeName: string): Boolean;
+var
+  mChain: TArray<string>;
+  mEndsKnown: Boolean;
+begin
+  mChain := ComponentChain(ATypeName, mEndsKnown);
+  Result := DescendsFrom(mChain, cComponentRoots) or DescendsFrom(mChain, cKnownComponents);
+end;
+
+function TFreeFieldTypes.ComponentKnown(const ATypeName: string): Boolean;
+begin
+  ComponentChain(ATypeName, Result);
+end;
+
+function TFreeFieldTypes.OwnedByArgument(const ATypeName: string; AArgument: TSyntaxNode): Boolean;
+begin
+  if IsComponent(ATypeName) then
+  begin
+    Exit(True);
+  end;
+  // Unbekannte Vorfahren (z. B. VCL-Klassen ohne Index): Owner am Argument erkennen.
+  Result := not ComponentKnown(ATypeName) and
+    (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(AArgument.Name, cOwnerNames);
 end;
 
 function TFreeFieldTypes.ClassFieldTypes(const AClassName: string): TArray<string>;
@@ -611,6 +604,15 @@ begin
   if not mDeclared then
   begin
     Result := IndexFieldTypes(AClassName);
+  end;
+end;
+
+function TFreeFieldTypes.MemberType(const ATypeName, AMember: string): string;
+begin
+  Result := FileMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
+  if Result = '' then
+  begin
+    Result := IndexMemberType(TFreeFieldTypes.BaseName(ATypeName), AMember);
   end;
 end;
 

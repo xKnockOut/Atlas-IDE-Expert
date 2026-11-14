@@ -126,11 +126,6 @@ begin
     end;
 end;
 
-function TConstantValues.Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
-begin
-  Result := TOrdinalConstants.Evaluate(FTokens, AFirst, ALast, FLookup, AValue);
-end;
-
 function TConstantValues.OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
 begin
   if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
@@ -162,6 +157,61 @@ begin
     end;
   end;
   Result := mLow;
+end;
+
+function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
+  out AValue: Int64): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex, mLast: Integer;
+  mLookup: TOrdinalNameLookup;
+  mOwner: TUnitIndex;
+begin
+  // "Max = Basis + 1" aus der Signatur; Namen darin gelten in der Unit der Konstanten.
+  Result := False;
+  AValue := 0;
+  if ASymbol.Signature.EndsWith('…') then
+  begin
+    Exit;
+  end;
+  mTokens := TPascalLexer.Tokenize(ASymbol.Signature);
+  mIndex := SymbolAtDepthZero(mTokens, 0, Length(mTokens), '=');
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  mLast := High(mTokens);
+  if (mLast > mIndex) and mTokens[mLast].IsSymbol(';') then
+  begin
+    Dec(mLast);
+  end;
+  mOwner := AOwner;
+  mLookup :=
+    function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
+    var
+      Resolved: TResolvedSymbol;
+    begin
+      AResult := 0;
+      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(mOwner, AParts[0], Resolved) and
+        Resolved.Found;
+      if not Result then
+      begin
+        Exit;
+      end;
+      if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
+      begin
+        Result := EnumOrdinal(Resolved, AResult);
+      end
+      else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
+      begin
+        Result := ConstantValue(Resolved, AResult);
+      end
+      else
+      begin
+        Result := False;
+      end;
+    end;
+  Result := TOrdinalConstants.Evaluate(mTokens, mIndex + 1, mLast, mLookup, AValue);
 end;
 
 /// <summary>Aufzählung ohne eigene Werte (a = 3) und mit ungekürzter Signatur: Positionen sind sicher.</summary>
@@ -247,61 +297,6 @@ begin
     MemberPosition(mOwner, ASymbol.Container, ASymbol.Name, AValue);
 end;
 
-function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
-  out AValue: Int64): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex, mLast: Integer;
-  mLookup: TOrdinalNameLookup;
-  mOwner: TUnitIndex;
-begin
-  // "Max = Basis + 1" aus der Signatur; Namen darin gelten in der Unit der Konstanten.
-  Result := False;
-  AValue := 0;
-  if ASymbol.Signature.EndsWith('…') then
-  begin
-    Exit;
-  end;
-  mTokens := TPascalLexer.Tokenize(ASymbol.Signature);
-  mIndex := SymbolAtDepthZero(mTokens, 0, Length(mTokens), '=');
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  mLast := High(mTokens);
-  if (mLast > mIndex) and mTokens[mLast].IsSymbol(';') then
-  begin
-    Dec(mLast);
-  end;
-  mOwner := AOwner;
-  mLookup :=
-    function(const AParts: TArray<string>; AAt: Integer; out AResult: Int64): Boolean
-    var
-      Resolved: TResolvedSymbol;
-    begin
-      AResult := 0;
-      Result := (Length(AParts) = 1) and FResolver.ResolveNameFrom(mOwner, AParts[0], Resolved) and
-        Resolved.Found;
-      if not Result then
-      begin
-        Exit;
-      end;
-      if Resolved.SymbolKind = TIndexSymbolKind.EnumMember then
-      begin
-        Result := EnumOrdinal(Resolved, AResult);
-      end
-      else if Resolved.SymbolKind = TIndexSymbolKind.Constant then
-      begin
-        Result := ConstantValue(Resolved, AResult);
-      end
-      else
-      begin
-        Result := False;
-      end;
-    end;
-  Result := TOrdinalConstants.Evaluate(mTokens, mIndex + 1, mLast, mLookup, AValue);
-end;
-
 function TConstantValues.OwnValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
 var
   mFirst, mLast, mEquals: Integer;
@@ -351,31 +346,6 @@ begin
   end;
 end;
 
-function TConstantValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
-begin
-  Result := False;
-  AValue := 0;
-  // Konstanten, die aufeinander verweisen, enden hier.
-  if FDepth >= 8 then
-  begin
-    Exit;
-  end;
-  Inc(FDepth);
-  try
-    if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
-    begin
-      // Deklaration im eigenen Baum.
-      Result := OwnValue(ASymbol, AValue);
-    end
-    else
-    begin
-      Result := IndexedValue(ASymbol, AValue);
-    end;
-  finally
-    Dec(FDepth);
-  end;
-end;
-
 function TConstantValues.NameValue(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean;
 var
   mResolved: TResolvedSymbol;
@@ -401,12 +371,34 @@ begin
   end;
 end;
 
-function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
+function TConstantValues.ConstantValue(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
 begin
-  // Erstes Token ab dem Knotenanfang, letztes vor dem Knotenende.
-  AFirst := TokenFrom(FTokens, ANode.StartOffset);
-  ALast := TokenFrom(FTokens, ANode.EndOffset) - 1;
-  Result := ALast >= AFirst;
+  Result := False;
+  AValue := 0;
+  // Konstanten, die aufeinander verweisen, enden hier.
+  if FDepth >= 8 then
+  begin
+    Exit;
+  end;
+  Inc(FDepth);
+  try
+    if (ASymbol.Kind = TResolvedKind.Local) or (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) then
+    begin
+      // Deklaration im eigenen Baum.
+      Result := OwnValue(ASymbol, AValue);
+    end
+    else
+    begin
+      Result := IndexedValue(ASymbol, AValue);
+    end;
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TConstantValues.Evaluate(AFirst, ALast: Integer; out AValue: Int64): Boolean;
+begin
+  Result := TOrdinalConstants.Evaluate(FTokens, AFirst, ALast, FLookup, AValue);
 end;
 
 function TConstantValues.EvaluateNode(ANode: TSyntaxNode; out AValue: Int64): Boolean;
@@ -416,6 +408,38 @@ begin
   AValue := 0;
   Result := (ANode <> nil) and TokenRange(ANode, mFirst, mLast) and Evaluate(mFirst, mLast, AValue);
 end;
+
+function TConstantValues.Check(AFirst, ALast: Integer; out AValue: Int64): TOrdinalStatus;
+begin
+  FCheckPaths := True;
+  FSitePath := TConditionalBranches.PathAt(FPaths, AFirst);
+  try
+    Result := TOrdinalConstants.Check(FTokens, AFirst, ALast, FLookup, AValue);
+  finally
+    FCheckPaths := False;
+  end;
+end;
+
+function TConstantValues.Check(ANode: TSyntaxNode; out AValue: Int64): TOrdinalStatus;
+var
+  mFirst, mLast: Integer;
+begin
+  AValue := 0;
+  if not TokenRange(ANode, mFirst, mLast) then
+  begin
+    Exit(TOrdinalStatus.Unknown);
+  end;
+  Result := Check(mFirst, mLast, AValue);
+end;
+
+function TConstantValues.TokenRange(ANode: TSyntaxNode; out AFirst, ALast: Integer): Boolean;
+begin
+  // Erstes Token ab dem Knotenanfang, letztes vor dem Knotenende.
+  AFirst := TokenFrom(FTokens, ANode.StartOffset);
+  ALast := TokenFrom(FTokens, ANode.EndOffset) - 1;
+  Result := ALast >= AFirst;
+end;
+
 
 function TConstantValues.EnumMembers(const AEnum: TResolvedSymbol; out ANames: TArray<string>): Boolean;
 var
@@ -481,30 +505,6 @@ begin
     AHigh := 0;
     Result := False;
   end;
-end;
-
-
-function TConstantValues.Check(AFirst, ALast: Integer; out AValue: Int64): TOrdinalStatus;
-begin
-  FCheckPaths := True;
-  FSitePath := TConditionalBranches.PathAt(FPaths, AFirst);
-  try
-    Result := TOrdinalConstants.Check(FTokens, AFirst, ALast, FLookup, AValue);
-  finally
-    FCheckPaths := False;
-  end;
-end;
-
-function TConstantValues.Check(ANode: TSyntaxNode; out AValue: Int64): TOrdinalStatus;
-var
-  mFirst, mLast: Integer;
-begin
-  AValue := 0;
-  if not TokenRange(ANode, mFirst, mLast) then
-  begin
-    Exit(TOrdinalStatus.Unknown);
-  end;
-  Result := Check(mFirst, mLast, AValue);
 end;
 
 end.

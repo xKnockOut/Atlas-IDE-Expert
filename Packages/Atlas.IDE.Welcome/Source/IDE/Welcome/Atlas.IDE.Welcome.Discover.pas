@@ -149,61 +149,55 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeDiscover.Start;
+procedure TAtlasIdeDiscover.Report(const AText: string);
 begin
-  FStarted := True;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cDiscover,
-    function(AOwner: TComponent): TAtlasWelcomeSectionFrame
-    var
-      Frame: TAtlasWelcomeDiscoverFrame;
-    begin
-      Frame := TAtlasWelcomeDiscoverFrame.Create(AOwner);
-      Frame.Source := Self;
-      Result := Frame;
-    end);
-  FTitle := '';
-  Refresh;
-end;
-
-procedure TAtlasIdeDiscover.Stop;
-begin
-  FStarted := False;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cDiscover);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cDiscover);
-  if FInstance = Self then
+  if Assigned(FMessage) then
   begin
-    FInstance := nil;
+    FMessage(AText);
   end;
 end;
 
-function TAtlasIdeDiscover.Section: TAtlasWelcomeSection;
+function TAtlasIdeDiscover.Commands: TArray<TAtlasCommand>;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cDiscover, TAtlasDiscoverTexts.TitleText, cOrder,
-    TAtlasWelcomeColumn.Right,
-    function: Boolean
-    begin
-      Result := Active;
-    end);
+  Result := nil;
+  if FSnapshotActive then
+  begin
+    Result := FSnapshot;
+  end
+  else if Assigned(FCommands) then
+  begin
+    Result := FCommands();
+  end;
 end;
 
-procedure TAtlasIdeDiscover.Refresh;
+procedure TAtlasIdeDiscover.TryFound(const ATip: TAtlasTip);
 var
-  mNext: TAtlasWelcomeSection;
+  mFileName: string;
+  mCommand: TAtlasCommand;
 begin
-  if not FStarted then
+  mFileName := SamplePath(ATip);
+  if mFileName <> '' then
   begin
-    Exit;
-  end;
-  mNext := Section;
-  // Nur beim ersten Mal anmelden: Add meldet allen Beobachtern, und die rufen wieder Refresh.
-  if mNext.Title <> FTitle then
+    // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
+    TAtlasIdeResults.Open(mFileName, Max(ATip.Line - 1, 0), Max(ATip.Column - 1, 0));
+    if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
+    begin
+      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
+    end;
+  end
+  else if ATip.Sample <> '' then
   begin
-    FTitle := mNext.Title;
-    TAtlasWelcomeSections.Default.Add(mNext);
-    Exit;
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
+  end
+  else if CanRun(ATip.TryId) and Assigned(FRun) then
+  begin
+    // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
+    FRun(ATip.TryId);
+  end
+  else
+  begin
+    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
   end;
-  // Eingeschaltete Funktionen können sich geändert haben: Karte neu.
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cDiscover);
 end;
 
 procedure TAtlasIdeDiscover.Changed;
@@ -211,14 +205,6 @@ begin
   // Sichtbarkeit (letzter Tipp gesperrt) und Inhalt der Karte.
   TAtlasWelcomeSections.Default.Changed;
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cDiscover);
-end;
-
-procedure TAtlasIdeDiscover.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 function TAtlasIdeDiscover.Tips: TAtlasTips;
@@ -285,19 +271,6 @@ begin
     end);
 end;
 
-function TAtlasIdeDiscover.Commands: TArray<TAtlasCommand>;
-begin
-  Result := nil;
-  if FSnapshotActive then
-  begin
-    Result := FSnapshot;
-  end
-  else if Assigned(FCommands) then
-  begin
-    Result := FCommands();
-  end;
-end;
-
 function TAtlasIdeDiscover.AllowedIds: TArray<string>;
 var
   mTip: TAtlasTip;
@@ -325,6 +298,30 @@ begin
       FSnapshot := nil;
     end;
   end;
+end;
+
+procedure TAtlasIdeDiscover.EnsureQueue;
+var
+  mUsage: TAtlasCommandUsage;
+begin
+  if FQueued then
+  begin
+    Exit;
+  end;
+  FQueued := True;
+  LoadState;
+  mUsage := nil;
+  if TAtlasIdeCommandUsage.Instance <> nil then
+  begin
+    mUsage := TAtlasIdeCommandUsage.Instance.Usage;
+  end;
+  FQueue := TAtlasDiscover.Order(Tips, mUsage, FState,
+    function(ATip: TAtlasTip): Boolean
+    begin
+      Result := IsEnabled(ATip);
+    end, Tracking);
+  // Anonym: nur Zahlen.
+  TAtlasGuard.Log(Format('Atlas entdecken (#757): %d von %d Tipps in Frage', [Length(FQueue), Length(Tips)]));
 end;
 
 procedure TAtlasIdeDiscover.LoadState;
@@ -360,30 +357,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDiscover.EnsureQueue;
-var
-  mUsage: TAtlasCommandUsage;
-begin
-  if FQueued then
-  begin
-    Exit;
-  end;
-  FQueued := True;
-  LoadState;
-  mUsage := nil;
-  if TAtlasIdeCommandUsage.Instance <> nil then
-  begin
-    mUsage := TAtlasIdeCommandUsage.Instance.Usage;
-  end;
-  FQueue := TAtlasDiscover.Order(Tips, mUsage, FState,
-    function(ATip: TAtlasTip): Boolean
-    begin
-      Result := IsEnabled(ATip);
-    end, Tracking);
-  // Anonym: nur Zahlen.
-  TAtlasGuard.Log(Format('Atlas entdecken (#757): %d von %d Tipps in Frage', [Length(FQueue), Length(Tips)]));
-end;
-
 function TAtlasIdeDiscover.Current: string;
 begin
   Result := '';
@@ -402,12 +375,6 @@ begin
   end;
 end;
 
-function TAtlasIdeDiscover.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageDiscover and
-    (Current <> '');
-end;
-
 function TAtlasIdeDiscover.SamplePath(const ATip: TAtlasTip): string;
 begin
   Result := '';
@@ -418,6 +385,115 @@ begin
   if (Result <> '') and not FileExists(Result) then
   begin
     Result := '';
+  end;
+end;
+
+procedure TAtlasIdeDiscover.Start;
+begin
+  FStarted := True;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cDiscover,
+    function(AOwner: TComponent): TAtlasWelcomeSectionFrame
+    var
+      Frame: TAtlasWelcomeDiscoverFrame;
+    begin
+      Frame := TAtlasWelcomeDiscoverFrame.Create(AOwner);
+      Frame.Source := Self;
+      Result := Frame;
+    end);
+  FTitle := '';
+  Refresh;
+end;
+
+procedure TAtlasIdeDiscover.Stop;
+begin
+  FStarted := False;
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cDiscover);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cDiscover);
+  if FInstance = Self then
+  begin
+    FInstance := nil;
+  end;
+end;
+
+procedure TAtlasIdeDiscover.Refresh;
+var
+  mNext: TAtlasWelcomeSection;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  mNext := Section;
+  // Nur beim ersten Mal anmelden: Add meldet allen Beobachtern, und die rufen wieder Refresh.
+  if mNext.Title <> FTitle then
+  begin
+    FTitle := mNext.Title;
+    TAtlasWelcomeSections.Default.Add(mNext);
+    Exit;
+  end;
+  // Eingeschaltete Funktionen können sich geändert haben: Karte neu.
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cDiscover);
+end;
+
+function TAtlasIdeDiscover.Section: TAtlasWelcomeSection;
+begin
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cDiscover, TAtlasDiscoverTexts.TitleText, cOrder,
+    TAtlasWelcomeColumn.Right,
+    function: Boolean
+    begin
+      Result := Active;
+    end);
+end;
+
+function TAtlasIdeDiscover.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageDiscover and
+    (Current <> '');
+end;
+
+class procedure TAtlasIdeDiscover.UnblockAll;
+var
+  mUsage: TAtlasCommandUsage;
+  mState: TAtlasDiscoverState;
+begin
+  if TAtlasIdeCommandUsage.Instance <> nil then
+  begin
+    mUsage := TAtlasIdeCommandUsage.Instance.Usage;
+    mState := TAtlasDiscoverState.Parse(mUsage.Section(TAtlasDiscover.cSectionName));
+    mState.Blocked := nil;
+    mUsage.SetSection(TAtlasDiscover.cSectionName, mState.ToJson);
+    TAtlasIdeCommandUsage.Instance.SaveNow;
+    if FInstance <> nil then
+    begin
+      FInstance.FState.Blocked := nil;
+      FInstance.Changed;
+    end;
+  end
+  else
+  begin
+    mUsage := TAtlasCommandUsage.Create;
+    try
+      mUsage.LoadFromFiles(TAtlasIdeCommandUsage.TipsFile, TAtlasIdeCommandUsage.UsageFile);
+      mState := TAtlasDiscoverState.Parse(mUsage.Section(TAtlasDiscover.cSectionName));
+      mState.Blocked := nil;
+      mUsage.SetSection(TAtlasDiscover.cSectionName, mState.ToJson);
+      mUsage.SaveToFiles(TAtlasIdeCommandUsage.TipsFile, TAtlasIdeCommandUsage.UsageFile);
+    finally
+      mUsage.Free;
+    end;
+  end;
+  TAtlasGuard.Log('Atlas entdecken (#757): Sperren aufgehoben');
+end;
+
+class procedure TAtlasIdeDiscover.TryCommand(AId: string);
+begin
+  if SameText(AId, TAtlasShortcutTips.cPaletteCommandId) then
+  begin
+    TAtlasIdeHost.ShowPalette;
+  end
+  else
+  begin
+    TAtlasIdeHost.ExecuteCommand(AId);
   end;
 end;
 
@@ -469,36 +545,6 @@ begin
   ACard.Position := TAtlasDiscover.IndexIn(mShown, mTip.Id) + 1;
   ACard.Count := Length(mShown);
   Result := True;
-end;
-
-procedure TAtlasIdeDiscover.TryFound(const ATip: TAtlasTip);
-var
-  mFileName: string;
-  mCommand: TAtlasCommand;
-begin
-  mFileName := SamplePath(ATip);
-  if mFileName <> '' then
-  begin
-    // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
-    TAtlasIdeResults.Open(mFileName, Max(ATip.Line - 1, 0), Max(ATip.Column - 1, 0));
-    if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
-    begin
-      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
-    end;
-  end
-  else if ATip.Sample <> '' then
-  begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
-  end
-  else if CanRun(ATip.TryId) and Assigned(FRun) then
-  begin
-    // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
-    FRun(ATip.TryId);
-  end
-  else
-  begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
-  end;
 end;
 
 procedure TAtlasIdeDiscover.TryTip(const AId: string);
@@ -563,52 +609,6 @@ begin
       TAtlasGuard.Log('Atlas entdecken (#757): Tipp gesperrt');
       Changed;
     end);
-end;
-
-class procedure TAtlasIdeDiscover.UnblockAll;
-var
-  mUsage: TAtlasCommandUsage;
-  mState: TAtlasDiscoverState;
-begin
-  if TAtlasIdeCommandUsage.Instance <> nil then
-  begin
-    mUsage := TAtlasIdeCommandUsage.Instance.Usage;
-    mState := TAtlasDiscoverState.Parse(mUsage.Section(TAtlasDiscover.cSectionName));
-    mState.Blocked := nil;
-    mUsage.SetSection(TAtlasDiscover.cSectionName, mState.ToJson);
-    TAtlasIdeCommandUsage.Instance.SaveNow;
-    if FInstance <> nil then
-    begin
-      FInstance.FState.Blocked := nil;
-      FInstance.Changed;
-    end;
-  end
-  else
-  begin
-    mUsage := TAtlasCommandUsage.Create;
-    try
-      mUsage.LoadFromFiles(TAtlasIdeCommandUsage.TipsFile, TAtlasIdeCommandUsage.UsageFile);
-      mState := TAtlasDiscoverState.Parse(mUsage.Section(TAtlasDiscover.cSectionName));
-      mState.Blocked := nil;
-      mUsage.SetSection(TAtlasDiscover.cSectionName, mState.ToJson);
-      mUsage.SaveToFiles(TAtlasIdeCommandUsage.TipsFile, TAtlasIdeCommandUsage.UsageFile);
-    finally
-      mUsage.Free;
-    end;
-  end;
-  TAtlasGuard.Log('Atlas entdecken (#757): Sperren aufgehoben');
-end;
-
-class procedure TAtlasIdeDiscover.TryCommand(AId: string);
-begin
-  if SameText(AId, TAtlasShortcutTips.cPaletteCommandId) then
-  begin
-    TAtlasIdeHost.ShowPalette;
-  end
-  else
-  begin
-    TAtlasIdeHost.ExecuteCommand(AId);
-  end;
 end;
 
 end.

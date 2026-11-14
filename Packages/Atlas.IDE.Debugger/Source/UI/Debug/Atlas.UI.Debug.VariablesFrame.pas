@@ -452,91 +452,6 @@ begin
   Refresh;
 end;
 
-procedure TAtlasDebugVariablesFrame.SetList(AList: TAtlasEvalList; ASearch: TAtlasVariableSearch);
-begin
-  FList := AList;
-  FSearch := ASearch;
-  Refresh;
-end;
-
-procedure TAtlasDebugVariablesFrame.Refresh;
-var
-  mKeep: string;
-begin
-  if not HandleAllocated then
-  begin
-    Exit;
-  end;
-  mKeep := FSync.KeyOf(FParts.Tree.Selected);
-  FFilling := True;
-  try
-    FSync.Sync(FList);
-  finally
-    FFilling := False;
-  end;
-  if (mKeep <> '') and (FSync.KeyOf(FParts.Tree.Selected) <> mKeep) then
-  begin
-    Select(mKeep);
-  end;
-end;
-
-procedure TAtlasDebugVariablesFrame.SetStatus(const AText: string);
-begin
-  if FParts.Status.Caption <> AText then
-  begin
-    FParts.Status.Caption := AText;
-  end;
-end;
-
-procedure TAtlasDebugVariablesFrame.SetTab(ATab: TAtlasVariablesTab);
-begin
-  FTab := ATab;
-  FParts.TabButtons[ATab].Down := True;
-  FParts.WatchBar.Visible := ATab = TAtlasVariablesTab.Watch;
-end;
-
-procedure TAtlasDebugVariablesFrame.FocusSearch;
-begin
-  if FParts.SearchEdit.CanFocus and FParts.SearchEdit.Showing then
-  begin
-    FParts.SearchEdit.SetFocus;
-    FParts.SearchEdit.SelectAll;
-  end;
-end;
-
-function TAtlasDebugVariablesFrame.Selected: TAtlasEvalNode;
-begin
-  Result := nil;
-  if HandleAllocated then
-  begin
-    Result := NodeOf(Self, FParts.Tree.Selected);
-  end;
-end;
-
-procedure TAtlasDebugVariablesFrame.Select(const AKey: string);
-var
-  mItem: TTreeNode;
-begin
-  if not HandleAllocated then
-  begin
-    Exit;
-  end;
-  mItem := FSync.ItemOf(AKey);
-  if mItem <> nil then
-  begin
-    FParts.Tree.Selected := mItem;
-  end;
-end;
-
-class function TAtlasDebugVariablesFrame.ValueText(ANode: TAtlasEvalNode): string;
-begin
-  Result := '';
-  if (ANode <> nil) and (ANode.State = TAtlasEvalState.Value) then
-  begin
-    Result := ANode.Value;
-  end;
-end;
-
 procedure TAtlasDebugVariablesFrame.TabClick(Sender: TObject);
 begin
   if not (Sender is TSpeedButton) then
@@ -704,6 +619,91 @@ begin
   if Sender is TMenuItem then
   begin
     RunRow(Self, Selected, TRowAction(TMenuItem(Sender).Tag));
+  end;
+end;
+
+procedure TAtlasDebugVariablesFrame.SetList(AList: TAtlasEvalList; ASearch: TAtlasVariableSearch);
+begin
+  FList := AList;
+  FSearch := ASearch;
+  Refresh;
+end;
+
+procedure TAtlasDebugVariablesFrame.Refresh;
+var
+  mKeep: string;
+begin
+  if not HandleAllocated then
+  begin
+    Exit;
+  end;
+  mKeep := FSync.KeyOf(FParts.Tree.Selected);
+  FFilling := True;
+  try
+    FSync.Sync(FList);
+  finally
+    FFilling := False;
+  end;
+  if (mKeep <> '') and (FSync.KeyOf(FParts.Tree.Selected) <> mKeep) then
+  begin
+    Select(mKeep);
+  end;
+end;
+
+procedure TAtlasDebugVariablesFrame.SetStatus(const AText: string);
+begin
+  if FParts.Status.Caption <> AText then
+  begin
+    FParts.Status.Caption := AText;
+  end;
+end;
+
+procedure TAtlasDebugVariablesFrame.SetTab(ATab: TAtlasVariablesTab);
+begin
+  FTab := ATab;
+  FParts.TabButtons[ATab].Down := True;
+  FParts.WatchBar.Visible := ATab = TAtlasVariablesTab.Watch;
+end;
+
+procedure TAtlasDebugVariablesFrame.FocusSearch;
+begin
+  if FParts.SearchEdit.CanFocus and FParts.SearchEdit.Showing then
+  begin
+    FParts.SearchEdit.SetFocus;
+    FParts.SearchEdit.SelectAll;
+  end;
+end;
+
+function TAtlasDebugVariablesFrame.Selected: TAtlasEvalNode;
+begin
+  Result := nil;
+  if HandleAllocated then
+  begin
+    Result := NodeOf(Self, FParts.Tree.Selected);
+  end;
+end;
+
+procedure TAtlasDebugVariablesFrame.Select(const AKey: string);
+var
+  mItem: TTreeNode;
+begin
+  if not HandleAllocated then
+  begin
+    Exit;
+  end;
+  mItem := FSync.ItemOf(AKey);
+  if mItem <> nil then
+  begin
+    FParts.Tree.Selected := mItem;
+  end;
+end;
+
+class function TAtlasDebugVariablesFrame.ValueText(ANode: TAtlasEvalNode): string;
+begin
+  Result := '';
+  if (ANode <> nil) and (ANode.State = TAtlasEvalState.Value) then
+  begin
+    Result := ANode.Value;
   end;
 end;
 

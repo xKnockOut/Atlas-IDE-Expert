@@ -177,6 +177,8 @@ begin
   end;
 end;
 
+{ TAtlasSelectionMatches }
+
 class function TAtlasSelectionMatches.Term(const ASelection: string; const AOptions: TAtlasSelectionMatchOptions;
   out ATerm: string): Boolean;
 begin

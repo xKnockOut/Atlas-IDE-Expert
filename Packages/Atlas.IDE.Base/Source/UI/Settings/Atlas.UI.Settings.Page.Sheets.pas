@@ -92,6 +92,167 @@ end;
 
 { TAtlasSettingsPageSheets }
 
+function TAtlasSettingsPageSheets.ListReady(AControl: TWinControl): Boolean;
+begin
+  if not AControl.HandleAllocated and HandleAllocated then
+  begin
+    AControl.HandleNeeded;
+  end;
+  Result := AControl.HandleAllocated;
+end;
+
+procedure TAtlasSettingsPageSheets.AddSheet(AId: TAtlasTextId);
+begin
+  AddSheetCaption(TAtlasStrings.Text(AId));
+end;
+
+procedure TAtlasSettingsPageSheets.AddSheetCaption(const ACaption: string);
+begin
+  FSheet := TTabSheet.Create(Self);
+  FSheet.Caption := ACaption;
+  FSheets := FSheets + [FSheet];
+  // Rollbar: Lange Reiter passten sonst nicht in die Optionsseite und wurden abgeschnitten.
+  FContent := TScrollBox.Create(Self);
+  FBoxes := FBoxes + [FContent];
+  FContent.Parent := FSheet;
+  FContent.Align := alClient;
+  FContent.BorderStyle := bsNone;
+  FContent.ParentBackground := True;
+  FContent.VertScrollBar.Tracking := True;
+  FContent.HorzScrollBar.Visible := False;
+  FNextTop := 100;
+end;
+
+procedure TAtlasSettingsPageSheets.ContinueSheet(AIndex: Integer);
+var
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  FSheet := FSheets[AIndex];
+  FContent := FBoxes[AIndex];
+  // Neue Zeilen unter die vorhandenen: alTop ordnet nach Top.
+  FNextTop := 100;
+  for mIndex := 0 to FContent.ControlCount - 1 do
+  begin
+    mControl := FContent.Controls[mIndex];
+    FNextTop := Max(FNextTop, mControl.Top + mControl.Height + 100);
+  end;
+end;
+
+function TAtlasSettingsPageSheets.AddCheck(const ACaption: string): TCheckBox;
+begin
+  Result := TCheckBox.Create(Self);
+  Result.Parent := FContent;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Caption := ACaption;
+  // alTop stapelt nach Top: jedes neue Element unter das vorige.
+  Result.Top := FNextTop;
+  Inc(FNextTop, 100);
+end;
+
+function TAtlasSettingsPageSheets.AddPanel(AHeight: Integer): TWinControl;
+begin
+  // Kein TPanel: Das zeichnet im IDE-Thema einen eigenen Hintergrund (dunkle Streifen im Reiter).
+  Result := TAtlasSettingsRow.Create(Self);
+  Result.Parent := FContent;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.Height := AHeight;
+  Result.Top := FNextTop;
+  Inc(FNextTop, 100);
+end;
+
+function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  mPanel := AddPanel(26);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := mCaption.ScaleValue(5);
+  Result := TEdit.Create(Self);
+  Result.Parent := mPanel;
+  Result.Left := Result.ScaleValue(cFieldLeft);
+  Result.Top := 1;
+  Result.Width := Result.ScaleValue(60);
+  Result.NumbersOnly := True;
+end;
+
+function TAtlasSettingsPageSheets.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  mPanel := AddPanel(26);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := mCaption.ScaleValue(5);
+  Result := TAtlasChoiceBox.Create(Self);
+  Result.Parent := mPanel;
+  Result.Left := Result.ScaleValue(cFieldLeft);
+  Result.Top := 1;
+  Result.Width := Result.ScaleValue(180);
+  Result.SetChoices(AItems);
+end;
+
+procedure TAtlasSettingsPageSheets.AddTitle(AId: TAtlasTextId);
+begin
+  AddTitleText(TAtlasStrings.Text(AId));
+end;
+
+procedure TAtlasSettingsPageSheets.AddTitleText(const ACaption: string);
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  mPanel := AddPanel(22);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := ACaption;
+  mCaption.Font.Style := [fsBold];
+  mCaption.Left := 0;
+  mCaption.Top := mCaption.ScaleValue(4);
+end;
+
+function TAtlasSettingsPageSheets.AddKey(const ACaption: string): TEdit;
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  mPanel := AddPanel(26);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := StringReplace(ACaption, '…', '', []);
+  mCaption.Left := 0;
+  mCaption.Top := mCaption.ScaleValue(5);
+  // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
+  Result := TEdit.Create(Self);
+  Result.Parent := mPanel;
+  Result.Left := Result.ScaleValue(cFieldLeft);
+  Result.Top := 1;
+  Result.Width := Result.ScaleValue(140);
+end;
+
+function TAtlasSettingsPageSheets.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
+var
+  mPanel: TWinControl;
+begin
+  mPanel := AddPanel(AHeight);
+  Result := TLabel.Create(Self);
+  Result.Parent := mPanel;
+  Result.AutoSize := False;
+  Result.Align := alClient;
+  Result.WordWrap := True;
+  Result.ShowAccelChar := False;
+  Result.Caption := ACaption;
+end;
+
 function TAtlasSettingsPageSheets.AddFieldRow(AId: TAtlasTextId; AControl: TWinControl;
   AWidth: Integer): TWinControl;
 var
@@ -140,167 +301,6 @@ begin
   Result.Top := 1;
   Result.Width := Result.ScaleValue(466);
   Result.Anchors := [akLeft, akTop, akRight];
-end;
-
-procedure TAtlasSettingsPageSheets.AddSheet(AId: TAtlasTextId);
-begin
-  AddSheetCaption(TAtlasStrings.Text(AId));
-end;
-
-function TAtlasSettingsPageSheets.ListReady(AControl: TWinControl): Boolean;
-begin
-  if not AControl.HandleAllocated and HandleAllocated then
-  begin
-    AControl.HandleNeeded;
-  end;
-  Result := AControl.HandleAllocated;
-end;
-
-procedure TAtlasSettingsPageSheets.AddTitle(AId: TAtlasTextId);
-begin
-  AddTitleText(TAtlasStrings.Text(AId));
-end;
-
-procedure TAtlasSettingsPageSheets.AddTitleText(const ACaption: string);
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
-begin
-  mPanel := AddPanel(22);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := ACaption;
-  mCaption.Font.Style := [fsBold];
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(4);
-end;
-
-function TAtlasSettingsPageSheets.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
-begin
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := ACaption;
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
-  Result := TAtlasChoiceBox.Create(Self);
-  Result.Parent := mPanel;
-  Result.Left := Result.ScaleValue(cFieldLeft);
-  Result.Top := 1;
-  Result.Width := Result.ScaleValue(180);
-  Result.SetChoices(AItems);
-end;
-
-function TAtlasSettingsPageSheets.AddCheck(const ACaption: string): TCheckBox;
-begin
-  Result := TCheckBox.Create(Self);
-  Result.Parent := FContent;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Caption := ACaption;
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-end;
-
-function TAtlasSettingsPageSheets.AddPanel(AHeight: Integer): TWinControl;
-begin
-  // Kein TPanel: Das zeichnet im IDE-Thema einen eigenen Hintergrund (dunkle Streifen im Reiter).
-  Result := TAtlasSettingsRow.Create(Self);
-  Result.Parent := FContent;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.Height := AHeight;
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-end;
-
-function TAtlasSettingsPageSheets.AddKey(const ACaption: string): TEdit;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
-begin
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := StringReplace(ACaption, '…', '', []);
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
-  // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
-  Result := TEdit.Create(Self);
-  Result.Parent := mPanel;
-  Result.Left := Result.ScaleValue(cFieldLeft);
-  Result.Top := 1;
-  Result.Width := Result.ScaleValue(140);
-end;
-
-function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
-var
-  mPanel: TWinControl;
-  mCaption: TLabel;
-begin
-  mPanel := AddPanel(26);
-  mCaption := TLabel.Create(Self);
-  mCaption.Parent := mPanel;
-  mCaption.Caption := ACaption;
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
-  Result := TEdit.Create(Self);
-  Result.Parent := mPanel;
-  Result.Left := Result.ScaleValue(cFieldLeft);
-  Result.Top := 1;
-  Result.Width := Result.ScaleValue(60);
-  Result.NumbersOnly := True;
-end;
-
-function TAtlasSettingsPageSheets.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
-var
-  mPanel: TWinControl;
-begin
-  mPanel := AddPanel(AHeight);
-  Result := TLabel.Create(Self);
-  Result.Parent := mPanel;
-  Result.AutoSize := False;
-  Result.Align := alClient;
-  Result.WordWrap := True;
-  Result.ShowAccelChar := False;
-  Result.Caption := ACaption;
-end;
-
-procedure TAtlasSettingsPageSheets.ContinueSheet(AIndex: Integer);
-var
-  mIndex: Integer;
-  mControl: TControl;
-begin
-  FSheet := FSheets[AIndex];
-  FContent := FBoxes[AIndex];
-  // Neue Zeilen unter die vorhandenen: alTop ordnet nach Top.
-  FNextTop := 100;
-  for mIndex := 0 to FContent.ControlCount - 1 do
-  begin
-    mControl := FContent.Controls[mIndex];
-    FNextTop := Max(FNextTop, mControl.Top + mControl.Height + 100);
-  end;
-end;
-
-procedure TAtlasSettingsPageSheets.AddSheetCaption(const ACaption: string);
-begin
-  FSheet := TTabSheet.Create(Self);
-  FSheet.Caption := ACaption;
-  FSheets := FSheets + [FSheet];
-  // Rollbar: Lange Reiter passten sonst nicht in die Optionsseite und wurden abgeschnitten.
-  FContent := TScrollBox.Create(Self);
-  FBoxes := FBoxes + [FContent];
-  FContent.Parent := FSheet;
-  FContent.Align := alClient;
-  FContent.BorderStyle := bsNone;
-  FContent.ParentBackground := True;
-  FContent.VertScrollBar.Tracking := True;
-  FContent.HorzScrollBar.Visible := False;
-  FNextTop := 100;
 end;
 
 end.

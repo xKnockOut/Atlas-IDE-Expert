@@ -166,36 +166,6 @@ end;
 
 { TSuppressions }
 
-class function TSuppressions.Suggest(const AId: string; const AKnown: TArray<string>): string;
-var
-  mKnown: string;
-  mBest, mCurrent, mLimit: Integer;
-begin
-  Result := '';
-  // Höchstens ein Viertel der Zeichen falsch, mindestens 1, höchstens 3.
-  mLimit := Max(1, Min(3, Length(AId) div 4));
-  mBest := mLimit + 1;
-  for mKnown in AKnown do
-  begin
-    mCurrent := Distance(AId, mKnown);
-    if mCurrent < mBest then
-    begin
-      mBest := mCurrent;
-      Result := LowerCase(mKnown);
-    end;
-  end;
-end;
-
-class function TSuppressions.LineMarker: string;
-begin
-  Result := 'lsp-ignore:';
-end;
-
-class function TSuppressions.FileMarker: string;
-begin
-  Result := 'lsp-ignore-file:';
-end;
-
 constructor TSuppressions.Create(const ATokens: TArray<TPascalToken>);
 var
   I, J: Integer;
@@ -305,6 +275,36 @@ begin
     if not mEntry.Used then
     begin
       Result := Result + [mEntry];
+    end;
+  end;
+end;
+
+class function TSuppressions.LineMarker: string;
+begin
+  Result := 'lsp-ignore:';
+end;
+
+class function TSuppressions.FileMarker: string;
+begin
+  Result := 'lsp-ignore-file:';
+end;
+
+class function TSuppressions.Suggest(const AId: string; const AKnown: TArray<string>): string;
+var
+  mKnown: string;
+  mBest, mCurrent, mLimit: Integer;
+begin
+  Result := '';
+  // Höchstens ein Viertel der Zeichen falsch, mindestens 1, höchstens 3.
+  mLimit := Max(1, Min(3, Length(AId) div 4));
+  mBest := mLimit + 1;
+  for mKnown in AKnown do
+  begin
+    mCurrent := Distance(AId, mKnown);
+    if mCurrent < mBest then
+    begin
+      mBest := mCurrent;
+      Result := LowerCase(mKnown);
     end;
   end;
 end;

@@ -578,136 +578,14 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeMultiCursor.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasMultiCursorStatusProc);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeMultiCursor.Create(ABusy, AStatus);
-  end;
-end;
-
-class procedure TAtlasIdeMultiCursor.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeMultiCursor.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.MultiCursor;
-end;
-
-class function TAtlasIdeMultiCursor.Active: Boolean;
-begin
-  Result := (FInstance <> nil) and FInstance.IsActive;
-end;
-
-function TAtlasIdeMultiCursor.IsActive: Boolean;
-begin
-  Result := (FState <> nil) and FState.Active;
-end;
-
 function TAtlasIdeMultiCursor.IsBusy: Boolean;
 begin
   Result := Assigned(FBusy) and FBusy();
 end;
 
-procedure TAtlasIdeMultiCursor.Refresh;
+function TAtlasIdeMultiCursor.IsActive: Boolean;
 begin
-  if not IsActive then
-  begin
-    Finish;
-    Exit;
-  end;
-  FWasModified := FState.View.Buffer.IsModified;
-  if Assigned(FStatus) then
-  begin
-    FStatus(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MultiCursorStatus, [FState.Count]),
-      TAtlasEditorStrings.Text(TAtlasEditorTextId.MultiCursorStatusHint));
-  end;
-  // Nach jedem Schritt sichtbar, dann wieder im Takt.
-  FBlink := True;
-  FTimer.Enabled := False;
-  FTimer.Enabled := True;
-  Invalidate;
-end;
-
-procedure TAtlasIdeMultiCursor.Finish;
-var
-  mWas: Boolean;
-begin
-  mWas := IsActive;
-  FState.Clear;
-  FInput := Default(TInput);
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  if mWas then
-  begin
-    if Assigned(FStatus) then
-    begin
-      FStatus('', '');
-    end;
-    Invalidate;
-  end;
-end;
-
-class procedure TAtlasIdeMultiCursor.EditorModified(const AView: IOTAEditView);
-begin
-  if (FInstance = nil) or not FInstance.IsActive or FInstance.FState.Writing or
-    not FInstance.FState.Shows(AView) then
-  begin
-    Exit;
-  end;
-  // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.MultiCursor,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.MultiCursor,
-        procedure
-        begin
-          if (FInstance <> nil) and FInstance.IsActive and (FInstance.FState.View <> nil) then
-          begin
-            FInstance.FState.Reconcile(TAtlasEditorBuffer.Text(FInstance.FState.View.Buffer));
-            FInstance.Refresh;
-          end;
-        end);
-    end);
-end;
-
-class procedure TAtlasIdeMultiCursor.Dismiss;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Finish;
-  end;
-end;
-
-class function TAtlasIdeMultiCursor.TryNext: Boolean;
-begin
-  Result := (FInstance <> nil) and Enabled;
-  // Platzhalter-Modus oder SyncEdit-ähnliche Zustände: Strg+D wirkungslos (die Taste bleibt bei Atlas).
-  if Result and FInstance.IsBusy then
-  begin
-    Result := FInstance.IsActive;
-  end
-  else if Result then
-  begin
-    Result := FInstance.FState.Next;
-  end;
-end;
-
-class function TAtlasIdeMultiCursor.TryLineEnds: Boolean;
-begin
-  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.LineEnds;
-end;
-
-class function TAtlasIdeMultiCursor.TryVertical(AUp: Boolean): Boolean;
-begin
-  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.Vertical(AUp);
+  Result := (FState <> nil) and FState.Active;
 end;
 
 procedure TAtlasIdeMultiCursor.AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -818,23 +696,6 @@ begin
   end;
 end;
 
-function TAtlasIdeMultiCursor.Follow: Boolean;
-var
-  mView: IOTAEditView;
-begin
-  mView := TAtlasEditorBuffer.ActiveView;
-  Result := FState.Shows(mView) and Enabled and not FormShown and
-    not (FWasModified and not mView.Buffer.IsModified);
-  if not Result then
-  begin
-    Exit;
-  end;
-  FWasModified := mView.Buffer.IsModified;
-  // Cursor der IDE ohne Atlas bewegt (Bild auf/ab, Suchen): Hauptmarke nachziehen.
-  FState.SyncMain;
-  Result := IsActive;
-end;
-
 procedure TAtlasIdeMultiCursor.TimerTick(Sender: TObject);
 begin
   try
@@ -855,6 +716,23 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.MultiCursor, E);
   end;
+end;
+
+function TAtlasIdeMultiCursor.Follow: Boolean;
+var
+  mView: IOTAEditView;
+begin
+  mView := TAtlasEditorBuffer.ActiveView;
+  Result := FState.Shows(mView) and Enabled and not FormShown and
+    not (FWasModified and not mView.Buffer.IsModified);
+  if not Result then
+  begin
+    Exit;
+  end;
+  FWasModified := mView.Buffer.IsModified;
+  // Cursor der IDE ohne Atlas bewegt (Bild auf/ab, Suchen): Hauptmarke nachziehen.
+  FState.SyncMain;
+  Result := IsActive;
 end;
 
 procedure TAtlasIdeMultiCursor.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -912,6 +790,128 @@ begin
     DeleteObject(mRun.Brush);
     RestoreDC(mRun.DC, mSaved);
   end;
+end;
+
+procedure TAtlasIdeMultiCursor.Refresh;
+begin
+  if not IsActive then
+  begin
+    Finish;
+    Exit;
+  end;
+  FWasModified := FState.View.Buffer.IsModified;
+  if Assigned(FStatus) then
+  begin
+    FStatus(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MultiCursorStatus, [FState.Count]),
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.MultiCursorStatusHint));
+  end;
+  // Nach jedem Schritt sichtbar, dann wieder im Takt.
+  FBlink := True;
+  FTimer.Enabled := False;
+  FTimer.Enabled := True;
+  Invalidate;
+end;
+
+procedure TAtlasIdeMultiCursor.Finish;
+var
+  mWas: Boolean;
+begin
+  mWas := IsActive;
+  FState.Clear;
+  FInput := Default(TInput);
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+  end;
+  if mWas then
+  begin
+    if Assigned(FStatus) then
+    begin
+      FStatus('', '');
+    end;
+    Invalidate;
+  end;
+end;
+
+class procedure TAtlasIdeMultiCursor.Install(const ABusy: TFunc<Boolean>; const AStatus: TAtlasMultiCursorStatusProc);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeMultiCursor.Create(ABusy, AStatus);
+  end;
+end;
+
+class procedure TAtlasIdeMultiCursor.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeMultiCursor.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.MultiCursor;
+end;
+
+class function TAtlasIdeMultiCursor.Active: Boolean;
+begin
+  Result := (FInstance <> nil) and FInstance.IsActive;
+end;
+
+class function TAtlasIdeMultiCursor.TryNext: Boolean;
+begin
+  Result := (FInstance <> nil) and Enabled;
+  // Platzhalter-Modus oder SyncEdit-ähnliche Zustände: Strg+D wirkungslos (die Taste bleibt bei Atlas).
+  if Result and FInstance.IsBusy then
+  begin
+    Result := FInstance.IsActive;
+  end
+  else if Result then
+  begin
+    Result := FInstance.FState.Next;
+  end;
+end;
+
+class function TAtlasIdeMultiCursor.TryLineEnds: Boolean;
+begin
+  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.LineEnds;
+end;
+
+class function TAtlasIdeMultiCursor.TryVertical(AUp: Boolean): Boolean;
+begin
+  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.Vertical(AUp);
+end;
+
+class procedure TAtlasIdeMultiCursor.Dismiss;
+begin
+  if FInstance <> nil then
+  begin
+    FInstance.Finish;
+  end;
+end;
+
+class procedure TAtlasIdeMultiCursor.EditorModified(const AView: IOTAEditView);
+begin
+  if (FInstance = nil) or not FInstance.IsActive or FInstance.FState.Writing or
+    not FInstance.FState.Shows(AView) then
+  begin
+    Exit;
+  end;
+  // Nie im Notifier schreiben: nach der Änderung, in der Warteschlange des Hauptthreads.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.MultiCursor,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.MultiCursor,
+        procedure
+        begin
+          if (FInstance <> nil) and FInstance.IsActive and (FInstance.FState.View <> nil) then
+          begin
+            FInstance.FState.Reconcile(TAtlasEditorBuffer.Text(FInstance.FState.View.Buffer));
+            FInstance.Refresh;
+          end;
+        end);
+    end);
 end;
 
 end.

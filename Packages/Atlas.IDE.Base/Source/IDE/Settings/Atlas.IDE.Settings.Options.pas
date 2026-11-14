@@ -190,6 +190,14 @@ end;
 
 { TAtlasAddInOptions }
 
+constructor TAtlasAddInOptions.Create(const AScope: TAtlasSettingsNodeScope; const ACaption, ATitle: string);
+begin
+  inherited Create;
+  FScope := AScope;
+  FCaption := ACaption;
+  FTitle := ATitle;
+end;
+
 function TAtlasAddInOptions.Alive: TFunc<Boolean>;
 var
   mKeep: INTAAddInOptions;
@@ -242,14 +250,6 @@ function TAtlasAddInOptions.GetArea: string;
 begin
   // Leer: unter „Drittanbieter“, wie die Open Tools API empfiehlt.
   Result := '';
-end;
-
-constructor TAtlasAddInOptions.Create(const AScope: TAtlasSettingsNodeScope; const ACaption, ATitle: string);
-begin
-  inherited Create;
-  FScope := AScope;
-  FCaption := ACaption;
-  FTitle := ATitle;
 end;
 
 function TAtlasAddInOptions.GetCaption: string;

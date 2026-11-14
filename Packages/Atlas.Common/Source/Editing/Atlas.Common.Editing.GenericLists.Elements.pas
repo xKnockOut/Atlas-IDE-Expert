@@ -59,6 +59,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TGenericListElementCheck }
+
 constructor TGenericListElementCheck.Create(AResolver: TNameResolver; AFiles: TObjectList<TGenericListSource>;
   const AListName, AItemType: string);
 begin

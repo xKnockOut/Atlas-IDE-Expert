@@ -131,33 +131,6 @@ begin
   end;
 end;
 
-procedure TAtlasTestsExplorerDetails.SetDetails(const ALines: TArray<TAtlasTestStackLine>);
-begin
-  FDetailLines := ALines;
-  if FFrame.HandleAllocated then
-  begin
-    FillList;
-  end;
-end;
-
-procedure TAtlasTestsExplorerDetails.SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer;
-  AEnabled: Boolean);
-begin
-  FLogLines := ALines;
-  FLogCount := ACount;
-  FLogEnabled := AEnabled;
-  if FFrame.HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
-procedure TAtlasTestsExplorerDetails.Fill;
-begin
-  FillTabs;
-  FillList;
-end;
-
 procedure TAtlasTestsExplorerDetails.FillTabs;
 var
   mIndex: Integer;
@@ -205,23 +178,6 @@ begin
   FillList;
 end;
 
-procedure TAtlasTestsExplorerDetails.OpenLine;
-var
-  mIndex: Integer;
-  mLines: TArray<TAtlasTestStackLine>;
-begin
-  mIndex := FList.ItemIndex;
-  mLines := Shown;
-  if (mIndex < 0) or (mIndex > High(mLines)) or (mLines[mIndex].FileName = '') then
-  begin
-    Exit;
-  end;
-  if Assigned(FOnOpenLine) then
-  begin
-    FOnOpenLine(mLines[mIndex].FileName, mLines[mIndex].Line);
-  end;
-end;
-
 procedure TAtlasTestsExplorerDetails.ListDblClick(Sender: TObject);
 begin
   OpenLine;
@@ -241,6 +197,55 @@ begin
   end;
 end;
 
+procedure TAtlasTestsExplorerDetails.CopyClick(Sender: TObject);
+begin
+  Clipboard.AsText := LogText;
+end;
+
+procedure TAtlasTestsExplorerDetails.OpenLine;
+var
+  mIndex: Integer;
+  mLines: TArray<TAtlasTestStackLine>;
+begin
+  mIndex := FList.ItemIndex;
+  mLines := Shown;
+  if (mIndex < 0) or (mIndex > High(mLines)) or (mLines[mIndex].FileName = '') then
+  begin
+    Exit;
+  end;
+  if Assigned(FOnOpenLine) then
+  begin
+    FOnOpenLine(mLines[mIndex].FileName, mLines[mIndex].Line);
+  end;
+end;
+
+procedure TAtlasTestsExplorerDetails.SetDetails(const ALines: TArray<TAtlasTestStackLine>);
+begin
+  FDetailLines := ALines;
+  if FFrame.HandleAllocated then
+  begin
+    FillList;
+  end;
+end;
+
+procedure TAtlasTestsExplorerDetails.SetLog(const ALines: TArray<TAtlasTestStackLine>; ACount: Integer;
+  AEnabled: Boolean);
+begin
+  FLogLines := ALines;
+  FLogCount := ACount;
+  FLogEnabled := AEnabled;
+  if FFrame.HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasTestsExplorerDetails.Fill;
+begin
+  FillTabs;
+  FillList;
+end;
+
 function TAtlasTestsExplorerDetails.LogText: string;
 var
   mLine: TAtlasTestStackLine;
@@ -250,11 +255,6 @@ begin
   begin
     Result := Result + mLine.Text + sLineBreak;
   end;
-end;
-
-procedure TAtlasTestsExplorerDetails.CopyClick(Sender: TObject);
-begin
-  Clipboard.AsText := LogText;
 end;
 
 end.

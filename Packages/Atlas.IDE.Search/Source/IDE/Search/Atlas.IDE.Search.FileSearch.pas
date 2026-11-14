@@ -174,6 +174,45 @@ begin
   end;
 end;
 
+{ TAtlasIdeFileSearch }
+
+class procedure TAtlasIdeFileSearch.Found(ARun: Integer; const AHits: TAtlasFileHits);
+begin
+  if (ARun = FRun) and Assigned(FOnFound) then
+  begin
+    FOnFound(AHits);
+  end;
+end;
+
+class procedure TAtlasIdeFileSearch.Done(ARun: Integer; const ASummary: TAtlasFileSearchSummary);
+var
+  mOnDone: TProc<TAtlasFileSearchSummary>;
+begin
+  if ARun <> FRun then
+  begin
+    Exit;
+  end;
+  mOnDone := FOnDone;
+  Finish;
+  if Assigned(mOnDone) then
+  begin
+    mOnDone(ASummary);
+  end;
+end;
+
+/// <summary>Fertigen Thread freigeben, Rückrufe vergessen.</summary>
+class procedure TAtlasIdeFileSearch.Finish;
+begin
+  if FWorker <> nil then
+  begin
+    FWorker.Terminate;
+    FWorker.WaitFor;
+    FreeAndNil(FWorker);
+  end;
+  FOnFound := nil;
+  FOnDone := nil;
+end;
+
 class function TAtlasIdeFileSearch.FilesOf(AScope: TAtlasSearchScope): TArray<string>;
 var
   mServices: IOTAModuleServices;
@@ -259,43 +298,6 @@ begin
   FOnFound := AOnFound;
   FOnDone := AOnDone;
   FWorker := TWorker.Create(mSources, AQuery, FRun);
-end;
-
-class procedure TAtlasIdeFileSearch.Found(ARun: Integer; const AHits: TAtlasFileHits);
-begin
-  if (ARun = FRun) and Assigned(FOnFound) then
-  begin
-    FOnFound(AHits);
-  end;
-end;
-
-class procedure TAtlasIdeFileSearch.Done(ARun: Integer; const ASummary: TAtlasFileSearchSummary);
-var
-  mOnDone: TProc<TAtlasFileSearchSummary>;
-begin
-  if ARun <> FRun then
-  begin
-    Exit;
-  end;
-  mOnDone := FOnDone;
-  Finish;
-  if Assigned(mOnDone) then
-  begin
-    mOnDone(ASummary);
-  end;
-end;
-
-/// <summary>Fertigen Thread freigeben, Rückrufe vergessen.</summary>
-class procedure TAtlasIdeFileSearch.Finish;
-begin
-  if FWorker <> nil then
-  begin
-    FWorker.Terminate;
-    FWorker.WaitFor;
-    FreeAndNil(FWorker);
-  end;
-  FOnFound := nil;
-  FOnDone := nil;
 end;
 
 class procedure TAtlasIdeFileSearch.Cancel;

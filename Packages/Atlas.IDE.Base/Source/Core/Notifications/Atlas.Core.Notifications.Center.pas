@@ -232,34 +232,48 @@ begin
   inherited;
 end;
 
-class function TAtlasNotificationCenter.Default: IAtlasNotificationCenter;
+function TAtlasNotificationCenter.GetEnabled: Boolean;
 begin
-  if GDefaultCenter = nil then
-  begin
-    GDefaultCenterObject := TAtlasNotificationCenter.Create;
-    // Bis das Plugin sie nach seinen Einstellungen einschaltet, verhält sich alles wie vor #601.
-    GDefaultCenterObject.FEnabled := False;
-    GDefaultCenter := GDefaultCenterObject;
+  FLock.Enter;
+  try
+    Result := FEnabled;
+  finally
+    FLock.Leave;
   end;
-  Result := GDefaultCenter;
 end;
 
-class function TAtlasNotificationCenter.DefaultCenter: TAtlasNotificationCenter;
+function TAtlasNotificationCenter.Notify(const ASource: string; ASeverity: TAtlasNotificationSeverity;
+  const ATitle, AText: string): TAtlasNotificationMode;
 begin
-  Default;
-  Result := GDefaultCenterObject;
+  Result := Notify(ASource, ASeverity, ATitle, AText, nil);
 end;
 
-class procedure TAtlasNotificationCenter.ReleaseDefault;
+function TAtlasNotificationCenter.Items: TArray<IAtlasNotification>;
 begin
-  GDefaultCenterObject := nil;
-  GDefaultCenter := nil;
+  FLock.Enter;
+  try
+    Result := FItems.ToArray;
+  finally
+    FLock.Leave;
+  end;
 end;
 
-class function TAtlasNotificationCenter.Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction;
+function TAtlasNotificationCenter.Items(const ASource: string): TArray<IAtlasNotification>;
+var
+  mEntry: IAtlasNotification;
 begin
-  Result.Caption := ACaption;
-  Result.Run := ARun;
+  if ASource = '' then
+  begin
+    Exit(Items);
+  end;
+  Result := nil;
+  for mEntry in Items do
+  begin
+    if SameText(mEntry.Source, ASource) then
+    begin
+      Result := Result + [mEntry];
+    end;
+  end;
 end;
 
 function Copy_(const AEntry: IAtlasNotification): TAtlasNotificationCenter.TEntry;
@@ -343,10 +357,24 @@ begin
     end;
 end;
 
-function TAtlasNotificationCenter.Notify(const ASource: string; ASeverity: TAtlasNotificationSeverity;
-  const ATitle, AText: string): TAtlasNotificationMode;
+procedure TAtlasNotificationCenter.SetEnabled(AValue: Boolean);
 begin
-  Result := Notify(ASource, ASeverity, ATitle, AText, nil);
+  FLock.Enter;
+  try
+    if FEnabled = AValue then
+    begin
+      Exit;
+    end;
+    FEnabled := AValue;
+    // Ausgeschaltet: keine Liste, kein Zähler.
+    if not AValue then
+    begin
+      FItems.Clear;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  NotifyChanged(Self);
 end;
 
 function TAtlasNotificationCenter.Notify(const ASource: string; ASeverity: TAtlasNotificationSeverity;
@@ -436,54 +464,6 @@ begin
     FLock.Leave;
   end;
   NotifyChanged(Self);
-end;
-
-procedure TAtlasNotificationCenter.ApplyModes(const ASpec: string);
-var
-  mEntry: TAtlasNotificationSourceMode;
-begin
-  FLock.Enter;
-  try
-    FModes.Clear;
-    for mEntry in TAtlasNotificationSources.Parse(ASpec) do
-    begin
-      if mEntry.Mode <> TAtlasNotificationMode.Show then
-      begin
-        FModes.AddOrSetValue(LowerCase(mEntry.Source), mEntry.Mode);
-      end;
-    end;
-  finally
-    FLock.Leave;
-  end;
-  NotifyChanged(Self);
-end;
-
-function TAtlasNotificationCenter.Items: TArray<IAtlasNotification>;
-begin
-  FLock.Enter;
-  try
-    Result := FItems.ToArray;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-function TAtlasNotificationCenter.Items(const ASource: string): TArray<IAtlasNotification>;
-var
-  mEntry: IAtlasNotification;
-begin
-  if ASource = '' then
-  begin
-    Exit(Items);
-  end;
-  Result := nil;
-  for mEntry in Items do
-  begin
-    if SameText(mEntry.Source, ASource) then
-    begin
-      Result := Result + [mEntry];
-    end;
-  end;
 end;
 
 function TAtlasNotificationCenter.Find(AId: Integer): IAtlasNotification;
@@ -722,34 +702,54 @@ begin
   end;
 end;
 
-function TAtlasNotificationCenter.GetEnabled: Boolean;
+procedure TAtlasNotificationCenter.ApplyModes(const ASpec: string);
+var
+  mEntry: TAtlasNotificationSourceMode;
 begin
   FLock.Enter;
   try
-    Result := FEnabled;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-procedure TAtlasNotificationCenter.SetEnabled(AValue: Boolean);
-begin
-  FLock.Enter;
-  try
-    if FEnabled = AValue then
+    FModes.Clear;
+    for mEntry in TAtlasNotificationSources.Parse(ASpec) do
     begin
-      Exit;
-    end;
-    FEnabled := AValue;
-    // Ausgeschaltet: keine Liste, kein Zähler.
-    if not AValue then
-    begin
-      FItems.Clear;
+      if mEntry.Mode <> TAtlasNotificationMode.Show then
+      begin
+        FModes.AddOrSetValue(LowerCase(mEntry.Source), mEntry.Mode);
+      end;
     end;
   finally
     FLock.Leave;
   end;
   NotifyChanged(Self);
+end;
+
+class function TAtlasNotificationCenter.Default: IAtlasNotificationCenter;
+begin
+  if GDefaultCenter = nil then
+  begin
+    GDefaultCenterObject := TAtlasNotificationCenter.Create;
+    // Bis das Plugin sie nach seinen Einstellungen einschaltet, verhält sich alles wie vor #601.
+    GDefaultCenterObject.FEnabled := False;
+    GDefaultCenter := GDefaultCenterObject;
+  end;
+  Result := GDefaultCenter;
+end;
+
+class function TAtlasNotificationCenter.DefaultCenter: TAtlasNotificationCenter;
+begin
+  Default;
+  Result := GDefaultCenterObject;
+end;
+
+class procedure TAtlasNotificationCenter.ReleaseDefault;
+begin
+  GDefaultCenterObject := nil;
+  GDefaultCenter := nil;
+end;
+
+class function TAtlasNotificationCenter.Action(const ACaption: string; const ARun: TProc): TAtlasNotificationAction;
+begin
+  Result.Caption := ACaption;
+  Result.Run := ARun;
 end;
 
 end.

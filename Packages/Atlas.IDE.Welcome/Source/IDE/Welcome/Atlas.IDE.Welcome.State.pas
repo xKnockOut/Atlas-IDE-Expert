@@ -102,6 +102,78 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeWelcomeState.Check;
+var
+  mNext: TAtlasStateRows;
+  mSignature: string;
+  mShown: Boolean;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  // Ausgeschaltet: nichts zu tun; die Willkommensseite fragt den Schalter beim nächsten Sync selbst.
+  if not TAtlasIdeSettings.Current.WelcomePageStatusTile then
+  begin
+    Exit;
+  end;
+  mNext := Rows;
+  mSignature := TAtlasWelcomeState.Signature(mNext);
+  mShown := ShouldShow(mNext);
+  if mShown <> FShown then
+  begin
+    // onlyProblems: Die Kachel erscheint oder verschwindet; die Willkommensseite ordnet neu.
+    FShown := mShown;
+    FSignature := mSignature;
+    TAtlasWelcomeSections.Default.Changed;
+    Exit;
+  end;
+  if mSignature = FSignature then
+  begin
+    Exit;
+  end;
+  FSignature := mSignature;
+  // Nur dieser Bereich: Die Frames lesen die Zeilen neu und zeichnen (Invalidate).
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cState);
+end;
+
+function TAtlasIdeWelcomeState.ShouldShow(const ARows: TAtlasStateRows): Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasWelcomeState.Visible(mSettings.WelcomePageStatusTile, mSettings.WelcomePageStatusTileOnlyProblems,
+    ARows);
+end;
+
+class function TAtlasIdeWelcomeState.CreateForHost: TAtlasIdeWelcomeState;
+var
+  mActions: TAtlasStateActions;
+begin
+  mActions := Default(TAtlasStateActions);
+  mActions.Restart :=
+    procedure
+    begin
+      TAtlasIdeHost.RestartServer;
+    end;
+  mActions.Settings :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenOptions;
+    end;
+  mActions.LogFolder :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenLogFolder;
+    end;
+  mActions.Update :=
+    procedure
+    begin
+      TAtlasIdeHost.OpenUpdate;
+    end;
+  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, mActions);
+end;
+
 procedure TAtlasIdeWelcomeState.Start;
 var
   mKeep: IAtlasStateSource;
@@ -171,15 +243,6 @@ begin
   TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cState);
 end;
 
-function TAtlasIdeWelcomeState.ShouldShow(const ARows: TAtlasStateRows): Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasWelcomeState.Visible(mSettings.WelcomePageStatusTile, mSettings.WelcomePageStatusTileOnlyProblems,
-    ARows);
-end;
-
 function TAtlasIdeWelcomeState.Section: TAtlasWelcomeSection;
 begin
   Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cState,
@@ -195,41 +258,6 @@ begin
         Current.FShown := Result;
       end;
     end);
-end;
-
-procedure TAtlasIdeWelcomeState.Check;
-var
-  mNext: TAtlasStateRows;
-  mSignature: string;
-  mShown: Boolean;
-begin
-  if FStopped then
-  begin
-    Exit;
-  end;
-  // Ausgeschaltet: nichts zu tun; die Willkommensseite fragt den Schalter beim nächsten Sync selbst.
-  if not TAtlasIdeSettings.Current.WelcomePageStatusTile then
-  begin
-    Exit;
-  end;
-  mNext := Rows;
-  mSignature := TAtlasWelcomeState.Signature(mNext);
-  mShown := ShouldShow(mNext);
-  if mShown <> FShown then
-  begin
-    // onlyProblems: Die Kachel erscheint oder verschwindet; die Willkommensseite ordnet neu.
-    FShown := mShown;
-    FSignature := mSignature;
-    TAtlasWelcomeSections.Default.Changed;
-    Exit;
-  end;
-  if mSignature = FSignature then
-  begin
-    Exit;
-  end;
-  FSignature := mSignature;
-  // Nur dieser Bereich: Die Frames lesen die Zeilen neu und zeichnen (Invalidate).
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cState);
 end;
 
 function TAtlasIdeWelcomeState.Rows: TAtlasStateRows;
@@ -288,34 +316,6 @@ begin
     begin
       mAction();
     end);
-end;
-
-class function TAtlasIdeWelcomeState.CreateForHost: TAtlasIdeWelcomeState;
-var
-  mActions: TAtlasStateActions;
-begin
-  mActions := Default(TAtlasStateActions);
-  mActions.Restart :=
-    procedure
-    begin
-      TAtlasIdeHost.RestartServer;
-    end;
-  mActions.Settings :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenOptions;
-    end;
-  mActions.LogFolder :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenLogFolder;
-    end;
-  mActions.Update :=
-    procedure
-    begin
-      TAtlasIdeHost.OpenUpdate;
-    end;
-  Result := TAtlasIdeWelcomeState.Create(TAtlasStatusRegistry.Default, mActions);
 end;
 
 end.

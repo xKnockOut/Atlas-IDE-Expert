@@ -97,6 +97,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TFindingsOutput }
+
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
   mValue: string;
@@ -122,37 +124,6 @@ begin
   end;
 end;
 
-class function TFindingsOutput.SeverityName(ASeverity: TRuleSeverity): string;
-begin
-  case ASeverity of
-    TRuleSeverity.Error:
-      Result := 'error';
-    TRuleSeverity.Warning:
-      Result := 'warning';
-    TRuleSeverity.Information:
-      Result := 'info';
-  else
-    Result := 'hint';
-  end;
-end;
-
-function SarifLevel(ASeverity: TRuleSeverity): string;
-begin
-  case ASeverity of
-    TRuleSeverity.Error:
-      Result := 'error';
-    TRuleSeverity.Warning:
-      Result := 'warning';
-  else
-    Result := 'note';
-  end;
-end;
-
-class function TFindingsOutput.JsonString(const AText: string): string;
-begin
-  Result := TJsonText.Quote(AText);
-end;
-
 class function TFindingsOutput.TryParseFailOn(const AText: string; out AFailOn: TFailOn): Boolean;
 var
   mValue: string;
@@ -175,6 +146,48 @@ begin
   begin
     AFailOn := TFailOn.Error;
     Result := False;
+  end;
+end;
+
+function SarifLevel(ASeverity: TRuleSeverity): string;
+begin
+  case ASeverity of
+    TRuleSeverity.Error:
+      Result := 'error';
+    TRuleSeverity.Warning:
+      Result := 'warning';
+  else
+    Result := 'note';
+  end;
+end;
+
+class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
+  const ARules: TArray<TRuleDescriptor>): string;
+begin
+  Result := Render(AFiles, AFormat, ARules, '');
+end;
+
+class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer;
+var
+  mCheckedFile: TCheckedFile;
+  mFinding: TRuleFinding;
+begin
+  Result := cExitClean;
+  if AFailOn = TFailOn.Never then
+  begin
+    Exit;
+  end;
+  // Treffer aus der Baseline sind hier schon ausgeblendet und zählen deshalb nie.
+  for mCheckedFile in AFiles do
+  begin
+    for mFinding in mCheckedFile.Findings do
+    begin
+      if (mFinding.Severity = TRuleSeverity.Error) or
+        ((AFailOn = TFailOn.Warning) and (mFinding.Severity = TRuleSeverity.Warning)) then
+      begin
+        Exit(cExitFindings);
+      end;
+    end;
   end;
 end;
 
@@ -205,21 +218,30 @@ begin
   end;
 end;
 
-class function TFindingsOutput.FileUri(const AFullPath: string): string;
-var
-  mPath: string;
+class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>): Integer;
 begin
-  mPath := UriPath(AFullPath);
-  // UNC-Pfad \\server\freigabe wird zu file://server/freigabe.
-  if Copy(mPath, 1, 2) = '//' then
+  Result := ExitCode(AFiles, TFailOn.Error);
+end;
+
+class function TFindingsOutput.FindGitRoot(const AStart: string; const AExists: TPathExists): string;
+var
+  mDir, mParent: string;
+begin
+  mDir := ExcludeTrailingPathDelimiter(AStart);
+  while mDir <> '' do
   begin
-    Exit('file:' + EncodeUri(mPath));
+    if AExists(IncludeTrailingPathDelimiter(mDir) + '.git') then
+    begin
+      Exit(mDir);
+    end;
+    mParent := ExtractFileDir(mDir);
+    if (mParent = mDir) or (mParent = '') then
+    begin
+      Break;
+    end;
+    mDir := mParent;
   end;
-  if Copy(mPath, 1, 1) <> '/' then
-  begin
-    mPath := '/' + mPath;
-  end;
-  Result := 'file://' + EncodeUri(mPath);
+  Result := '';
 end;
 
 class function TFindingsOutput.SarifUri(const AFullPath, ASourceRoot: string; out ARelative: Boolean): string;
@@ -242,27 +264,6 @@ begin
   begin
     Result := FileUri(AFullPath);
   end;
-end;
-
-class function TFindingsOutput.FindGitRoot(const AStart: string; const AExists: TPathExists): string;
-var
-  mDir, mParent: string;
-begin
-  mDir := ExcludeTrailingPathDelimiter(AStart);
-  while mDir <> '' do
-  begin
-    if AExists(IncludeTrailingPathDelimiter(mDir) + '.git') then
-    begin
-      Exit(mDir);
-    end;
-    mParent := ExtractFileDir(mDir);
-    if (mParent = mDir) or (mParent = '') then
-    begin
-      Break;
-    end;
-    mDir := mParent;
-  end;
-  Result := '';
 end;
 
 function RenderText(const AFiles: TArray<TCheckedFile>): string;
@@ -465,6 +466,8 @@ type
     function Render(const AFiles: TArray<TCheckedFile>): string;
   end;
 
+{ TSarifWriter }
+
 constructor TSarifWriter.Create(const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string);
 begin
   inherited Create;
@@ -663,12 +666,6 @@ begin
 end;
 
 class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
-  const ARules: TArray<TRuleDescriptor>): string;
-begin
-  Result := Render(AFiles, AFormat, ARules, '');
-end;
-
-class function TFindingsOutput.Render(const AFiles: TArray<TCheckedFile>; AFormat: TFindingsFormat;
   const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string): string;
 begin
   case AFormat of
@@ -681,33 +678,40 @@ begin
   end;
 end;
 
-class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>): Integer;
+class function TFindingsOutput.FileUri(const AFullPath: string): string;
+var
+  mPath: string;
 begin
-  Result := ExitCode(AFiles, TFailOn.Error);
+  mPath := UriPath(AFullPath);
+  // UNC-Pfad \\server\freigabe wird zu file://server/freigabe.
+  if Copy(mPath, 1, 2) = '//' then
+  begin
+    Exit('file:' + EncodeUri(mPath));
+  end;
+  if Copy(mPath, 1, 1) <> '/' then
+  begin
+    mPath := '/' + mPath;
+  end;
+  Result := 'file://' + EncodeUri(mPath);
 end;
 
-class function TFindingsOutput.ExitCode(const AFiles: TArray<TCheckedFile>; AFailOn: TFailOn): Integer;
-var
-  mCheckedFile: TCheckedFile;
-  mFinding: TRuleFinding;
+class function TFindingsOutput.SeverityName(ASeverity: TRuleSeverity): string;
 begin
-  Result := cExitClean;
-  if AFailOn = TFailOn.Never then
-  begin
-    Exit;
+  case ASeverity of
+    TRuleSeverity.Error:
+      Result := 'error';
+    TRuleSeverity.Warning:
+      Result := 'warning';
+    TRuleSeverity.Information:
+      Result := 'info';
+  else
+    Result := 'hint';
   end;
-  // Treffer aus der Baseline sind hier schon ausgeblendet und zählen deshalb nie.
-  for mCheckedFile in AFiles do
-  begin
-    for mFinding in mCheckedFile.Findings do
-    begin
-      if (mFinding.Severity = TRuleSeverity.Error) or
-        ((AFailOn = TFailOn.Warning) and (mFinding.Severity = TRuleSeverity.Warning)) then
-      begin
-        Exit(cExitFindings);
-      end;
-    end;
-  end;
+end;
+
+class function TFindingsOutput.JsonString(const AText: string): string;
+begin
+  Result := TJsonText.Quote(AText);
 end;
 
 initialization

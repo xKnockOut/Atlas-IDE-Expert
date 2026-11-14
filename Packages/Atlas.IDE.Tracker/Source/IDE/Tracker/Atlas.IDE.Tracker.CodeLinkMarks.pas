@@ -117,6 +117,8 @@ begin
   end;
 end;
 
+{ TAtlasCodeLinkPainter }
+
 class function TAtlasCodeLinkPainter.Paint(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const AMatches: TArray<TAtlasIssueKeyMatch>; ATabWidth: Integer): TArray<TAtlasCodeLinkHit>;
 var
@@ -196,75 +198,6 @@ begin
   end;
 end;
 
-function TAtlasCodeLinkHover.Over(const APoint: TPoint): Boolean;
-begin
-  Result := (FTip <> nil) and FTip.IsShown and PtInRect(FTip.BoundsRect, APoint);
-end;
-
-procedure TAtlasCodeLinkHover.SetScreen(const ARect: TRect);
-begin
-  FScreen := ARect;
-end;
-
-procedure TAtlasCodeLinkHover.SetHit(const AHit: TAtlasCodeLinkHit; AOn: Boolean);
-var
-  mChanged: Boolean;
-begin
-  mChanged := AOn <> FOn;
-  if AOn and FOn then
-  begin
-    mChanged := (AHit.Wnd <> FHit.Wnd) or (AHit.Line <> FHit.Line) or
-      (AHit.Match.Character <> FHit.Match.Character) or not SameText(AHit.FileName, FHit.FileName);
-  end;
-  if not mChanged then
-  begin
-    Exit;
-  end;
-  Hide;
-  FOn := AOn;
-  FHit := AHit;
-  FSince := TThread.GetTickCount64;
-end;
-
-procedure TAtlasCodeLinkHover.Check(AShown: Boolean; const ATarget: TAtlasTrackerTarget);
-begin
-  if not FOn then
-  begin
-    Exit;
-  end;
-  // Kein Stand mehr, oder die Maus hat die Kennung verlassen, ohne dass der Editor es gemeldet hat (anderes
-  // Fenster).
-  if not AShown or (not PtInRect(FScreen, Mouse.CursorPos) and not Over(Mouse.CursorPos)) then
-  begin
-    SetHit(Default(TAtlasCodeLinkHit), False);
-  end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FSince >= TAtlasCloseRules.cTooltipShowDelayMs) then
-  begin
-    FTarget := ATarget;
-    ShowTip;
-  end;
-end;
-
-procedure TAtlasCodeLinkHover.Hide;
-begin
-  FTipKey := '';
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
-  end;
-end;
-
-procedure TAtlasCodeLinkHover.ShowState(const AKey: string; AState: TAtlasIssueTipState;
-  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
-var
-  mText: string;
-begin
-  mText := TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
-    TAtlasIdeIssuePreview.Active);
-  FTipKey := AKey;
-  FTip.ShowNote(AKey, mText, Point(FScreen.Left, FScreen.Bottom + 2));
-end;
-
 procedure TAtlasCodeLinkHover.ShowTip;
 var
   mPreview: TAtlasIdeIssuePreview;
@@ -306,6 +239,17 @@ begin
     end);
 end;
 
+procedure TAtlasCodeLinkHover.ShowState(const AKey: string; AState: TAtlasIssueTipState;
+  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+var
+  mText: string;
+begin
+  mText := TAtlasIssueTip.Compose(AKey, AState, ADetails, AError, TTimeZone.Local.ToUniversalTime(Now),
+    TAtlasIdeIssuePreview.Active);
+  FTipKey := AKey;
+  FTip.ShowNote(AKey, mText, Point(FScreen.Left, FScreen.Bottom + 2));
+end;
+
 procedure TAtlasCodeLinkHover.LookedUp(const AKey: string; ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
   AError: TAtlasCiFetchError);
 var
@@ -330,6 +274,64 @@ begin
     // Ohne Netz bleibt ein vorhandener Stand stehen; sonst der Grund.
     ShowState(AKey, TAtlasIssueTipState.Failed, ADetails, AError);
   end;
+end;
+
+procedure TAtlasCodeLinkHover.SetHit(const AHit: TAtlasCodeLinkHit; AOn: Boolean);
+var
+  mChanged: Boolean;
+begin
+  mChanged := AOn <> FOn;
+  if AOn and FOn then
+  begin
+    mChanged := (AHit.Wnd <> FHit.Wnd) or (AHit.Line <> FHit.Line) or
+      (AHit.Match.Character <> FHit.Match.Character) or not SameText(AHit.FileName, FHit.FileName);
+  end;
+  if not mChanged then
+  begin
+    Exit;
+  end;
+  Hide;
+  FOn := AOn;
+  FHit := AHit;
+  FSince := TThread.GetTickCount64;
+end;
+
+procedure TAtlasCodeLinkHover.SetScreen(const ARect: TRect);
+begin
+  FScreen := ARect;
+end;
+
+procedure TAtlasCodeLinkHover.Check(AShown: Boolean; const ATarget: TAtlasTrackerTarget);
+begin
+  if not FOn then
+  begin
+    Exit;
+  end;
+  // Kein Stand mehr, oder die Maus hat die Kennung verlassen, ohne dass der Editor es gemeldet hat (anderes
+  // Fenster).
+  if not AShown or (not PtInRect(FScreen, Mouse.CursorPos) and not Over(Mouse.CursorPos)) then
+  begin
+    SetHit(Default(TAtlasCodeLinkHit), False);
+  end
+  else if not FTip.IsShown and (TThread.GetTickCount64 - FSince >= TAtlasCloseRules.cTooltipShowDelayMs) then
+  begin
+    FTarget := ATarget;
+    ShowTip;
+  end;
+end;
+
+procedure TAtlasCodeLinkHover.Hide;
+begin
+  FTipKey := '';
+  if (FTip <> nil) and FTip.IsShown then
+  begin
+    FTip.HidePopup;
+  end;
+end;
+
+function TAtlasCodeLinkHover.Over(const APoint: TPoint): Boolean;
+begin
+  Result := (FTip <> nil) and FTip.IsShown and PtInRect(FTip.BoundsRect, APoint);
 end;
 
 end.

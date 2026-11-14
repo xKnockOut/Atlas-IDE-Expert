@@ -38,6 +38,8 @@ uses
 const
   cApplyCommand = 'atlas.server.anonymousMethod';
 
+{ TAtlasIdeAnonymousMethod }
+
 class procedure TAtlasIdeAnonymousMethod.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

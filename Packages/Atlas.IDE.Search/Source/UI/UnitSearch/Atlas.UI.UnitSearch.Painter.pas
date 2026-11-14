@@ -282,23 +282,6 @@ begin
   FAreas.Add(mArea);
 end;
 
-function TAtlasUnitSearchPainter.HitAt(AX, AY: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
-var
-  mIndex: Integer;
-begin
-  // Rückwärts: Häkchen und Chips liegen über Zeilen und Feld.
-  for mIndex := FAreas.Count - 1 downto 0 do
-  begin
-    if PtInRect(FAreas[mIndex].Rect, Point(AX, AY)) then
-    begin
-      AArea := FAreas[mIndex];
-      Exit(True);
-    end;
-  end;
-  AArea := Default(TAtlasUnitSearchHitArea);
-  Result := False;
-end;
-
 procedure TAtlasUnitSearchPainter.Text(const AText: string; ARect: TRect; AFormat: Cardinal);
 begin
   DrawText(FCanvas.Handle, PChar(AText), -1, ARect, AFormat);
@@ -309,27 +292,6 @@ begin
   FCanvas.Brush.Color := C(AFill);
   FCanvas.Pen.Color := C(APen);
   FCanvas.Font.Color := C(AFont);
-end;
-
-procedure TAtlasUnitSearchPainter.Paint(ACanvas: TCanvas; const AClient: TRect; const ACaption: string);
-begin
-  FCanvas := ACanvas;
-  FClient := AClient;
-  FAreas.Clear;
-  FCanvas.Brush.Color := C(FColors.Surface);
-  FCanvas.FillRect(FClient);
-  DrawHeader;
-  DrawMode(ACaption);
-  DrawChips;
-  DrawList;
-  TAtlasUnitSearchPreviewPainter.Create(Self, FData).Paint;
-  DrawActions;
-  DrawFooter;
-  // Rahmen in Akzentfarbe (ältere Windows-Versionen ohne Rahmenfarbe des Fenstermanagers).
-  FCanvas.Brush.Style := bsClear;
-  FCanvas.Pen.Color := C(FColors.Accent);
-  FCanvas.Rectangle(FClient);
-  FCanvas.Brush.Style := bsSolid;
 end;
 
 procedure TAtlasUnitSearchPainter.DrawChip(var AX: Integer; AY: Integer; const ACaption: string; AOn: Boolean;
@@ -520,6 +482,88 @@ begin
   begin
     DrawChip(mX, mY, KindCaption(mKind), mKind in FData.Filter.Kinds, cChipKinds + Ord(mKind), FClient.Width - S(10));
   end;
+end;
+
+procedure TAtlasUnitSearchPainter.DrawList;
+var
+  mRow: Integer;
+  mRowRect, mThumb, mList: TRect;
+  mTotal: Integer;
+  mClip: HRGN;
+begin
+  mList := FData.List.Rect;
+  FCanvas.Font.Assign(FFonts.UI);
+  if FData.List.Loading or (Length(FData.List.Rows) = 0) then
+  begin
+    FCanvas.Font.Color := C(FColors.Muted);
+    FCanvas.Brush.Style := bsClear;
+    if FData.List.Loading then
+    begin
+      Text(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchLoading), mList, cCentered);
+    end
+    else
+    begin
+      Text('—', mList, cCentered);
+    end;
+    FCanvas.Brush.Style := bsSolid;
+    Exit;
+  end;
+  mClip := CreateRectRgn(mList.Left, mList.Top, mList.Right, mList.Bottom);
+  try
+    SelectClipRgn(FCanvas.Handle, mClip);
+    mRow := FirstVisibleRow(FData.List);
+    while (mRow <= High(FData.List.Rows)) and
+      (mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll < mList.Bottom) do
+    begin
+      mRowRect := Rect(mList.Left + S(4), mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll, mList.Right - S(10),
+        mList.Top + FData.List.RowTops[mRow + 1] - FData.List.Scroll);
+      DrawRow(mRow, mRowRect);
+      AddArea(TAtlasUnitSearchHit.Row, mRowRect, mRow);
+      Inc(mRow);
+    end;
+  finally
+    SelectClipRgn(FCanvas.Handle, 0);
+    DeleteObject(mClip);
+  end;
+  // Schmale Bildlaufleiste.
+  mTotal := FData.List.RowTops[Length(FData.List.Rows)];
+  if mTotal > mList.Height then
+  begin
+    mThumb := Rect(mList.Right - S(6), 0, mList.Right - S(2), 0);
+    mThumb.Top := mList.Top + MulDiv(FData.List.Scroll, mList.Height, mTotal);
+    mThumb.Bottom := mThumb.Top + Max(S(20), MulDiv(mList.Height, mList.Height, mTotal));
+    FCanvas.Brush.Color := C(FColors.Line);
+    FCanvas.FillRect(mThumb);
+  end;
+end;
+
+procedure TAtlasUnitSearchPainter.DrawRow(ARow: Integer; const ARect: TRect);
+var
+  mRow: TAtlasUnitRow;
+  mLeft, mRight: Integer;
+begin
+  mRow := FData.List.Rows[ARow];
+  if ARow = FData.List.Selected then
+  begin
+    FCanvas.Brush.Color := C(FColors.Selection);
+    FCanvas.FillRect(ARect);
+  end;
+  FCanvas.Brush.Style := bsClear;
+  if mRow.IsGroup then
+  begin
+    DrawGroupRow(mRow, ARect);
+    Exit;
+  end;
+  mLeft := ARect.Left + S(10);
+  if FData.Options.MultiSelect then
+  begin
+    mLeft := DrawCheck(ARow, ARect, mLeft);
+  end;
+  mRight := ARect.Right - S(10);
+  DrawRowBadges(mRow, ARect, mRight);
+  DrawNames(FData.Entries[mRow.Entry], FData.UseInUses(mRow.Entry), ARect, mLeft, mRight);
+  DrawPath(FData.Entries[mRow.Entry], ARect, mLeft);
+  FCanvas.Brush.Style := bsSolid;
 end;
 
 procedure TAtlasUnitSearchPainter.DrawGroupRow(const ARow: TAtlasUnitRow; const ARect: TRect);
@@ -714,88 +758,6 @@ begin
   Text(TAtlasUnitSearch.MiddleEllipsis(mPath, mMaxChars), mPart, cLine or DT_PATH_ELLIPSIS);
 end;
 
-procedure TAtlasUnitSearchPainter.DrawRow(ARow: Integer; const ARect: TRect);
-var
-  mRow: TAtlasUnitRow;
-  mLeft, mRight: Integer;
-begin
-  mRow := FData.List.Rows[ARow];
-  if ARow = FData.List.Selected then
-  begin
-    FCanvas.Brush.Color := C(FColors.Selection);
-    FCanvas.FillRect(ARect);
-  end;
-  FCanvas.Brush.Style := bsClear;
-  if mRow.IsGroup then
-  begin
-    DrawGroupRow(mRow, ARect);
-    Exit;
-  end;
-  mLeft := ARect.Left + S(10);
-  if FData.Options.MultiSelect then
-  begin
-    mLeft := DrawCheck(ARow, ARect, mLeft);
-  end;
-  mRight := ARect.Right - S(10);
-  DrawRowBadges(mRow, ARect, mRight);
-  DrawNames(FData.Entries[mRow.Entry], FData.UseInUses(mRow.Entry), ARect, mLeft, mRight);
-  DrawPath(FData.Entries[mRow.Entry], ARect, mLeft);
-  FCanvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasUnitSearchPainter.DrawList;
-var
-  mRow: Integer;
-  mRowRect, mThumb, mList: TRect;
-  mTotal: Integer;
-  mClip: HRGN;
-begin
-  mList := FData.List.Rect;
-  FCanvas.Font.Assign(FFonts.UI);
-  if FData.List.Loading or (Length(FData.List.Rows) = 0) then
-  begin
-    FCanvas.Font.Color := C(FColors.Muted);
-    FCanvas.Brush.Style := bsClear;
-    if FData.List.Loading then
-    begin
-      Text(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchLoading), mList, cCentered);
-    end
-    else
-    begin
-      Text('—', mList, cCentered);
-    end;
-    FCanvas.Brush.Style := bsSolid;
-    Exit;
-  end;
-  mClip := CreateRectRgn(mList.Left, mList.Top, mList.Right, mList.Bottom);
-  try
-    SelectClipRgn(FCanvas.Handle, mClip);
-    mRow := FirstVisibleRow(FData.List);
-    while (mRow <= High(FData.List.Rows)) and
-      (mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll < mList.Bottom) do
-    begin
-      mRowRect := Rect(mList.Left + S(4), mList.Top + FData.List.RowTops[mRow] - FData.List.Scroll, mList.Right - S(10),
-        mList.Top + FData.List.RowTops[mRow + 1] - FData.List.Scroll);
-      DrawRow(mRow, mRowRect);
-      AddArea(TAtlasUnitSearchHit.Row, mRowRect, mRow);
-      Inc(mRow);
-    end;
-  finally
-    SelectClipRgn(FCanvas.Handle, 0);
-    DeleteObject(mClip);
-  end;
-  // Schmale Bildlaufleiste.
-  mTotal := FData.List.RowTops[Length(FData.List.Rows)];
-  if mTotal > mList.Height then
-  begin
-    mThumb := Rect(mList.Right - S(6), 0, mList.Right - S(2), 0);
-    mThumb.Top := mList.Top + MulDiv(FData.List.Scroll, mList.Height, mTotal);
-    mThumb.Bottom := mThumb.Top + Max(S(20), MulDiv(mList.Height, mList.Height, mTotal));
-    FCanvas.Brush.Color := C(FColors.Line);
-    FCanvas.FillRect(mThumb);
-  end;
-end;
-
 function TAtlasUnitSearchPainter.DrawHighlighted(const AText: string; ARect: TRect; ABase: TAtlasColor): Integer;
 var
   mMarks: TArray<Boolean>;
@@ -885,6 +847,44 @@ begin
   end;
 end;
 
+procedure TAtlasUnitSearchPainter.Paint(ACanvas: TCanvas; const AClient: TRect; const ACaption: string);
+begin
+  FCanvas := ACanvas;
+  FClient := AClient;
+  FAreas.Clear;
+  FCanvas.Brush.Color := C(FColors.Surface);
+  FCanvas.FillRect(FClient);
+  DrawHeader;
+  DrawMode(ACaption);
+  DrawChips;
+  DrawList;
+  TAtlasUnitSearchPreviewPainter.Create(Self, FData).Paint;
+  DrawActions;
+  DrawFooter;
+  // Rahmen in Akzentfarbe (ältere Windows-Versionen ohne Rahmenfarbe des Fenstermanagers).
+  FCanvas.Brush.Style := bsClear;
+  FCanvas.Pen.Color := C(FColors.Accent);
+  FCanvas.Rectangle(FClient);
+  FCanvas.Brush.Style := bsSolid;
+end;
+
+function TAtlasUnitSearchPainter.HitAt(AX, AY: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
+var
+  mIndex: Integer;
+begin
+  // Rückwärts: Häkchen und Chips liegen über Zeilen und Feld.
+  for mIndex := FAreas.Count - 1 downto 0 do
+  begin
+    if PtInRect(FAreas[mIndex].Rect, Point(AX, AY)) then
+    begin
+      AArea := FAreas[mIndex];
+      Exit(True);
+    end;
+  end;
+  AArea := Default(TAtlasUnitSearchHitArea);
+  Result := False;
+end;
+
 /// <summary>Linker Teil der Fußzeile: Kreis der aktuellen Unit (#786), sonst ihr voller Pfad, sonst die Tasten.
 /// </summary>
 function FooterText(AData: TAtlasUnitSearchData): string;
@@ -959,49 +959,44 @@ begin
   Result := FData.Preview.Data;
 end;
 
-procedure TAtlasUnitSearchPreviewPainter.Paint;
+procedure TAtlasUnitSearchPreviewPainter.DrawSections(const AArea: TRect; ATop: Integer);
 var
-  mArea, mRect: TRect;
-  mTop, mIndex: Integer;
+  mSection: TAtlasPreviewSection;
+  mInputs: TAtlasSectionInputs;
+  mHead: Integer;
 begin
-  try
-    if not FData.Preview.Visible then
+  // Abschnitte (#876): erst messen, dann einklappen, was nicht passt.
+  mHead := FData.Metrics.SectionHeadHeight;
+  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  begin
+    mInputs[mSection].Present := SectionPresent(mSection);
+    mInputs[mSection].ClosedHeight := mHead;
+    mInputs[mSection].OpenHeight := 0;
+    if mInputs[mSection].Present then
     begin
-      Exit;
+      mInputs[mSection].OpenHeight := mHead + SectionBody(mSection, Rect(AArea.Left, 0, AArea.Right, MaxInt div 2),
+        False) + FData.Metrics.SectionGap;
     end;
-    mRect := FData.Preview.Rect;
-    Canvas.Brush.Color := C(FPainter.FColors.Gutter);
-    Canvas.FillRect(mRect);
-    Canvas.Pen.Color := C(FPainter.FColors.Line);
-    Canvas.MoveTo(mRect.Left, mRect.Top);
-    Canvas.LineTo(mRect.Left, mRect.Bottom);
-    FPainter.AddArea(TAtlasUnitSearchHit.Splitter, Rect(mRect.Left - FPainter.S(3), mRect.Top,
-      mRect.Left + FPainter.S(3), mRect.Bottom), 0);
-    mArea := mRect;
-    InflateRect(mArea, -FPainter.S(12), -FPainter.S(10));
-    mTop := mArea.Top;
-    Canvas.Brush.Style := bsClear;
-    if not FData.CurrentEntry(mIndex) or (Preview.FileName = '') then
+  end;
+  FData.Preview.Sections := TAtlasPreviewSections.Arrange(mInputs, FData.State.Sections, AArea.Bottom - ATop,
+    FData.Options.PreviewAutoCollapse);
+  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
+  begin
+    if FData.Preview.Sections[mSection] = TAtlasSectionState.Hidden then
     begin
-      Canvas.Font.Assign(FPainter.FFonts.UI);
-      Canvas.Font.Color := C(FPainter.FColors.Muted);
-      FPainter.Text(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewNone), mArea, cCentered);
-    end
-    else
-    begin
-      // Name und Kenndaten.
-      Canvas.Font.Assign(FPainter.FFonts.UI);
-      Canvas.Font.Style := [fsBold];
-      Canvas.Font.Color := C(FPainter.FColors.Text);
-      FPainter.Text(FData.Entries[mIndex].Name, Rect(mArea.Left, mTop, mArea.Right, mTop + FPainter.S(20)),
-        DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-      Inc(mTop, FPainter.S(22));
-      DrawFacts(mArea, mTop);
-      DrawSections(mArea, mTop);
+      Continue;
     end;
-    Canvas.Brush.Style := bsSolid;
-  finally
-    Free;
+    if ATop + mHead > AArea.Bottom then
+    begin
+      Break;
+    end;
+    DrawSectionHead(mSection, Rect(AArea.Left, ATop, AArea.Right, ATop + mHead));
+    Inc(ATop, mHead);
+    if TAtlasPreviewSections.IsOpen(FData.Preview.Sections[mSection]) then
+    begin
+      Inc(ATop, SectionBody(mSection, Rect(AArea.Left, ATop, AArea.Right, AArea.Bottom), True) +
+        FData.Metrics.SectionGap);
+    end;
   end;
 end;
 
@@ -1048,47 +1043,6 @@ begin
   FPainter.Text(string.Join(' · ', mFacts), Rect(AArea.Left, ATop, AArea.Right, ATop + FPainter.S(16)),
     DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   Inc(ATop, FPainter.S(22));
-end;
-
-procedure TAtlasUnitSearchPreviewPainter.DrawSections(const AArea: TRect; ATop: Integer);
-var
-  mSection: TAtlasPreviewSection;
-  mInputs: TAtlasSectionInputs;
-  mHead: Integer;
-begin
-  // Abschnitte (#876): erst messen, dann einklappen, was nicht passt.
-  mHead := FData.Metrics.SectionHeadHeight;
-  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
-  begin
-    mInputs[mSection].Present := SectionPresent(mSection);
-    mInputs[mSection].ClosedHeight := mHead;
-    mInputs[mSection].OpenHeight := 0;
-    if mInputs[mSection].Present then
-    begin
-      mInputs[mSection].OpenHeight := mHead + SectionBody(mSection, Rect(AArea.Left, 0, AArea.Right, MaxInt div 2),
-        False) + FData.Metrics.SectionGap;
-    end;
-  end;
-  FData.Preview.Sections := TAtlasPreviewSections.Arrange(mInputs, FData.State.Sections, AArea.Bottom - ATop,
-    FData.Options.PreviewAutoCollapse);
-  for mSection := Low(TAtlasPreviewSection) to High(TAtlasPreviewSection) do
-  begin
-    if FData.Preview.Sections[mSection] = TAtlasSectionState.Hidden then
-    begin
-      Continue;
-    end;
-    if ATop + mHead > AArea.Bottom then
-    begin
-      Break;
-    end;
-    DrawSectionHead(mSection, Rect(AArea.Left, ATop, AArea.Right, ATop + mHead));
-    Inc(ATop, mHead);
-    if TAtlasPreviewSections.IsOpen(FData.Preview.Sections[mSection]) then
-    begin
-      Inc(ATop, SectionBody(mSection, Rect(AArea.Left, ATop, AArea.Right, AArea.Bottom), True) +
-        FData.Metrics.SectionGap);
-    end;
-  end;
 end;
 
 procedure TAtlasUnitSearchPreviewPainter.DrawSketch(var ATop: Integer; const AArea: TRect);
@@ -1221,6 +1175,18 @@ begin
   FPainter.AddArea(TAtlasUnitSearchHit.Section, ARect, Ord(ASection));
 end;
 
+function TAtlasUnitSearchPreviewPainter.PathBody(const AArea: TRect; ADraw: Boolean): Integer;
+begin
+  Canvas.Font.Assign(FPainter.FFonts.Mono);
+  Canvas.Font.Color := C(FPainter.FColors.Text);
+  Result := FPainter.S(16);
+  if ADraw then
+  begin
+    FPainter.Text(ExtractFilePath(Preview.FileName), Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom,
+      AArea.Top + Result)), DT_SINGLELINE or DT_NOPREFIX or DT_PATH_ELLIPSIS);
+  end;
+end;
+
 /// <summary>Units, die die Unit verwendet bzw. die sie verwenden (mit „…“, wenn es mehr gibt).</summary>
 function UnitsText(const APreview: TAtlasUnitPreview; ASection: TAtlasPreviewSection): string;
 begin
@@ -1272,18 +1238,6 @@ begin
   end;
 end;
 
-function TAtlasUnitSearchPreviewPainter.PathBody(const AArea: TRect; ADraw: Boolean): Integer;
-begin
-  Canvas.Font.Assign(FPainter.FFonts.Mono);
-  Canvas.Font.Color := C(FPainter.FColors.Text);
-  Result := FPainter.S(16);
-  if ADraw then
-  begin
-    FPainter.Text(ExtractFilePath(Preview.FileName), Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom,
-      AArea.Top + Result)), DT_SINGLELINE or DT_NOPREFIX or DT_PATH_ELLIPSIS);
-  end;
-end;
-
 function TAtlasUnitSearchPreviewPainter.WrappedBody(const AText: string; const AArea: TRect; ADraw: Boolean;
   AMaxHeight: Integer; AFormat: Cardinal): Integer;
 var
@@ -1298,24 +1252,6 @@ begin
     FPainter.Text(AText, Rect(AArea.Left, AArea.Top, AArea.Right, Min(AArea.Bottom, AArea.Top + Result)),
       DT_WORDBREAK or DT_NOPREFIX or DT_END_ELLIPSIS or AFormat);
   end;
-end;
-
-procedure TAtlasUnitSearchPreviewPainter.DrawType(const AType: TAtlasUnitType; const AArea: TRect; ATop: Integer);
-var
-  mLine: TRect;
-  mBadge: TAtlasBadgeColors;
-begin
-  // Symbol: Anfangsbuchstabe der Art im Kästchen.
-  mBadge := FPainter.FColors.Badges[TAtlasBadgeKind.Type_];
-  mLine := Rect(AArea.Left, ATop + FPainter.S(1), AArea.Left + FPainter.S(16), ATop + FPainter.S(15));
-  Canvas.Brush.Style := bsSolid;
-  FPainter.SetColors(mBadge.Background, mBadge.Background, mBadge.Text);
-  Canvas.RoundRect(mLine.Left, mLine.Top, mLine.Right, mLine.Bottom, FPainter.S(4), FPainter.S(4));
-  Canvas.Brush.Style := bsClear;
-  FPainter.Text(UpperCase(Copy(AType.Kind, 1, 1)), mLine, cCentered);
-  Canvas.Font.Color := C(FPainter.FColors.Text);
-  FPainter.Text(AType.Name + '   ' + AType.Kind, Rect(AArea.Left + FPainter.S(22), ATop, AArea.Right,
-    ATop + FPainter.S(16)), cLineEllipsis);
 end;
 
 function TAtlasUnitSearchPreviewPainter.TypesBody(const AArea: TRect; ADraw: Boolean): Integer;
@@ -1353,6 +1289,70 @@ begin
     Inc(mTop, mStep);
   end;
   Result := mTop - AArea.Top;
+end;
+
+procedure TAtlasUnitSearchPreviewPainter.DrawType(const AType: TAtlasUnitType; const AArea: TRect; ATop: Integer);
+var
+  mLine: TRect;
+  mBadge: TAtlasBadgeColors;
+begin
+  // Symbol: Anfangsbuchstabe der Art im Kästchen.
+  mBadge := FPainter.FColors.Badges[TAtlasBadgeKind.Type_];
+  mLine := Rect(AArea.Left, ATop + FPainter.S(1), AArea.Left + FPainter.S(16), ATop + FPainter.S(15));
+  Canvas.Brush.Style := bsSolid;
+  FPainter.SetColors(mBadge.Background, mBadge.Background, mBadge.Text);
+  Canvas.RoundRect(mLine.Left, mLine.Top, mLine.Right, mLine.Bottom, FPainter.S(4), FPainter.S(4));
+  Canvas.Brush.Style := bsClear;
+  FPainter.Text(UpperCase(Copy(AType.Kind, 1, 1)), mLine, cCentered);
+  Canvas.Font.Color := C(FPainter.FColors.Text);
+  FPainter.Text(AType.Name + '   ' + AType.Kind, Rect(AArea.Left + FPainter.S(22), ATop, AArea.Right,
+    ATop + FPainter.S(16)), cLineEllipsis);
+end;
+
+procedure TAtlasUnitSearchPreviewPainter.Paint;
+var
+  mArea, mRect: TRect;
+  mTop, mIndex: Integer;
+begin
+  try
+    if not FData.Preview.Visible then
+    begin
+      Exit;
+    end;
+    mRect := FData.Preview.Rect;
+    Canvas.Brush.Color := C(FPainter.FColors.Gutter);
+    Canvas.FillRect(mRect);
+    Canvas.Pen.Color := C(FPainter.FColors.Line);
+    Canvas.MoveTo(mRect.Left, mRect.Top);
+    Canvas.LineTo(mRect.Left, mRect.Bottom);
+    FPainter.AddArea(TAtlasUnitSearchHit.Splitter, Rect(mRect.Left - FPainter.S(3), mRect.Top,
+      mRect.Left + FPainter.S(3), mRect.Bottom), 0);
+    mArea := mRect;
+    InflateRect(mArea, -FPainter.S(12), -FPainter.S(10));
+    mTop := mArea.Top;
+    Canvas.Brush.Style := bsClear;
+    if not FData.CurrentEntry(mIndex) or (Preview.FileName = '') then
+    begin
+      Canvas.Font.Assign(FPainter.FFonts.UI);
+      Canvas.Font.Color := C(FPainter.FColors.Muted);
+      FPainter.Text(TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchPreviewNone), mArea, cCentered);
+    end
+    else
+    begin
+      // Name und Kenndaten.
+      Canvas.Font.Assign(FPainter.FFonts.UI);
+      Canvas.Font.Style := [fsBold];
+      Canvas.Font.Color := C(FPainter.FColors.Text);
+      FPainter.Text(FData.Entries[mIndex].Name, Rect(mArea.Left, mTop, mArea.Right, mTop + FPainter.S(20)),
+        DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
+      Inc(mTop, FPainter.S(22));
+      DrawFacts(mArea, mTop);
+      DrawSections(mArea, mTop);
+    end;
+    Canvas.Brush.Style := bsSolid;
+  finally
+    Free;
+  end;
 end;
 
 end.

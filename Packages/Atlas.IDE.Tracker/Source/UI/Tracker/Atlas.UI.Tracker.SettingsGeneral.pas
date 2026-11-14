@@ -98,28 +98,6 @@ begin
   FRows := ARows;
 end;
 
-function TAtlasTrackerGeneralPart.Check(const AKey: string; AText: TAtlasOptionsTextId): TCheckBox;
-begin
-  Result := FRows.AddCheck(AKey, TAtlasOptionsStrings.Text(AText));
-end;
-
-function TAtlasTrackerGeneralPart.Number(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
-begin
-  Result := FRows.AddNumber(AKey, TAtlasOptionsStrings.Text(AText));
-end;
-
-function TAtlasTrackerGeneralPart.Line(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
-begin
-  Result := FRows.AddText(AKey, TAtlasOptionsStrings.Text(AText));
-end;
-
-procedure TAtlasTrackerGeneralPart.BuildStart;
-begin
-  BuildTracker;
-  BuildPatterns;
-  BuildPreview;
-end;
-
 procedure TAtlasTrackerGeneralPart.BuildTracker;
 begin
   // Anbieter (Vorgabe aus der .atlas). „Beginnen“ und die Muster stehen als Beitrag bei der Versionsverwaltung
@@ -148,23 +126,6 @@ begin
   // Issues in der Befehlspalette (#1270) und Kommentar-Editor (#1278).
   FView.PaletteSearch := Check('issues.paletteSearch', TAtlasOptionsTextId.SettingsIssuesPaletteSearch);
   FView.CommentEditor := Check('issues.commentEditor', TAtlasOptionsTextId.SettingsIssuesCommentEditor);
-end;
-
-procedure TAtlasTrackerGeneralPart.BuildTime;
-begin
-  // Hauptschalter, Leerlauf und Rundung (x-parent issues.timeTracking).
-  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesTimeTitle));
-  FView.TimeTracking := Check('issues.timeTracking', TAtlasOptionsTextId.SettingsIssuesTimeTracking);
-  FView.IdleMinutes := Number('issues.idleMinutes', TAtlasOptionsTextId.SettingsIssuesIdleMinutes);
-  FView.TimeRounding := Number('issues.timeRounding', TAtlasOptionsTextId.SettingsIssuesTimeRounding);
-end;
-
-procedure TAtlasTrackerGeneralPart.BuildMore;
-begin
-  BuildChecklists;
-  BuildBoard;
-  BuildNotify;
-  BuildAttach;
 end;
 
 procedure TAtlasTrackerGeneralPart.BuildChecklists;
@@ -232,6 +193,45 @@ begin
     TAtlasOptionsTextId.SettingsIssuesAttachMaxImageWidth);
   FView.AttachRaiseProgram := Check('issues.attach.raiseProgram',
     TAtlasOptionsTextId.SettingsIssuesAttachRaiseProgram);
+end;
+
+function TAtlasTrackerGeneralPart.Check(const AKey: string; AText: TAtlasOptionsTextId): TCheckBox;
+begin
+  Result := FRows.AddCheck(AKey, TAtlasOptionsStrings.Text(AText));
+end;
+
+function TAtlasTrackerGeneralPart.Number(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
+begin
+  Result := FRows.AddNumber(AKey, TAtlasOptionsStrings.Text(AText));
+end;
+
+function TAtlasTrackerGeneralPart.Line(const AKey: string; AText: TAtlasOptionsTextId): TEdit;
+begin
+  Result := FRows.AddText(AKey, TAtlasOptionsStrings.Text(AText));
+end;
+
+procedure TAtlasTrackerGeneralPart.BuildStart;
+begin
+  BuildTracker;
+  BuildPatterns;
+  BuildPreview;
+end;
+
+procedure TAtlasTrackerGeneralPart.BuildTime;
+begin
+  // Hauptschalter, Leerlauf und Rundung (x-parent issues.timeTracking).
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesTimeTitle));
+  FView.TimeTracking := Check('issues.timeTracking', TAtlasOptionsTextId.SettingsIssuesTimeTracking);
+  FView.IdleMinutes := Number('issues.idleMinutes', TAtlasOptionsTextId.SettingsIssuesIdleMinutes);
+  FView.TimeRounding := Number('issues.timeRounding', TAtlasOptionsTextId.SettingsIssuesTimeRounding);
+end;
+
+procedure TAtlasTrackerGeneralPart.BuildMore;
+begin
+  BuildChecklists;
+  BuildBoard;
+  BuildNotify;
+  BuildAttach;
 end;
 
 end.

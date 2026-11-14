@@ -61,6 +61,8 @@ uses
   Atlas.Common.Lsp.References,
   Atlas.Common.Lsp.Hierarchies;
 
+{ TSymbolPathCalls }
+
 constructor TSymbolPathCalls.Create(ATable: TSymbolPathNodeTable; AGraph: TSymbolPathGraph;
   const AReadText: TSymbolPathReadText; const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>);
 begin
@@ -82,11 +84,6 @@ begin
   inherited;
 end;
 
-function TSymbolPathCalls.IsStopped: Boolean;
-begin
-  Result := Assigned(FStopped) and FStopped();
-end;
-
 function TSymbolPathCalls.Resolver: TNameResolver;
 begin
   if FResolver = nil then
@@ -95,6 +92,24 @@ begin
     FResolver.Namespaces := FNamespaces;
   end;
   Result := FResolver;
+end;
+
+procedure TSymbolPathCalls.CallersIn(AData: TSymbolPathUnit; ANode: Integer; var AResult: TArray<Integer>);
+var
+  mIndex, mCandidate: Integer;
+begin
+  for mIndex := 0 to High(AData.Data.Symbols) do
+  begin
+    if not (AData.Data.Symbols[mIndex].Kind in cSymbolPathRoutineKinds) then
+    begin
+      Continue;
+    end;
+    mCandidate := FTable.SymbolNode(AData, mIndex);
+    if (mCandidate <> ANode) and FGraph.Passable(mCandidate) and Leads(mCandidate, ANode) then
+    begin
+      AResult := AResult + [mCandidate];
+    end;
+  end;
 end;
 
 /// <summary>Eintrag der Aufrufhierarchie für die Routine ANode aus AData.</summary>
@@ -166,6 +181,11 @@ begin
   end;
 end;
 
+function TSymbolPathCalls.IsStopped: Boolean;
+begin
+  Result := Assigned(FStopped) and FStopped();
+end;
+
 function TSymbolPathCalls.CallsOf(ANode: Integer): TSymbolPathEdges;
 var
   mNode: TSymbolPathNode;
@@ -184,24 +204,6 @@ begin
     Result := BuildCalls(ANode, mData);
   end;
   FCalls.Add(ANode, Result);
-end;
-
-function TSymbolPathCalls.Leads(ASource, ATarget: Integer): Boolean;
-var
-  mEdge: TSymbolPathEdge;
-begin
-  if FGraph.Leads(ASource, ATarget) then
-  begin
-    Exit(True);
-  end;
-  for mEdge in CallsOf(ASource) do
-  begin
-    if mEdge.Target = ATarget then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function HasUsage(const AUnit: TUnitIndex; const AName: string): Boolean;
@@ -234,24 +236,6 @@ begin
     if TSymbolPathNames.UsesMatches(mName, ANode.UnitName) then
     begin
       Result := True;
-    end;
-  end;
-end;
-
-procedure TSymbolPathCalls.CallersIn(AData: TSymbolPathUnit; ANode: Integer; var AResult: TArray<Integer>);
-var
-  mIndex, mCandidate: Integer;
-begin
-  for mIndex := 0 to High(AData.Data.Symbols) do
-  begin
-    if not (AData.Data.Symbols[mIndex].Kind in cSymbolPathRoutineKinds) then
-    begin
-      Continue;
-    end;
-    mCandidate := FTable.SymbolNode(AData, mIndex);
-    if (mCandidate <> ANode) and FGraph.Passable(mCandidate) and Leads(mCandidate, ANode) then
-    begin
-      AResult := AResult + [mCandidate];
     end;
   end;
 end;
@@ -303,6 +287,24 @@ begin
   begin
     FCallers.Add(ANode, Result);
   end;
+end;
+
+function TSymbolPathCalls.Leads(ASource, ATarget: Integer): Boolean;
+var
+  mEdge: TSymbolPathEdge;
+begin
+  if FGraph.Leads(ASource, ATarget) then
+  begin
+    Exit(True);
+  end;
+  for mEdge in CallsOf(ASource) do
+  begin
+    if mEdge.Target = ATarget then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 end.

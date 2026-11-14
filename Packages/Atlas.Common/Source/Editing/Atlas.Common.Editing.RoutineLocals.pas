@@ -71,6 +71,8 @@ uses
   System.StrUtils,
   Atlas.Common.Editing.RoutineBody;
 
+{ TRoutineLocals }
+
 class procedure TRoutineLocals.CollectKind(ANode: TSyntaxNode; AKind: TSyntaxKind; AList: TList<TSyntaxNode>);
 var
   mKind: TSyntaxKind;
@@ -143,6 +145,8 @@ type
     /// <summary>Laufvariablen aus for var im Rumpf.</summary>
     procedure AddLoops(const ATokens: TArray<TPascalToken>);
   end;
+
+{ TLocalCollector }
 
 function TLocalCollector.Local(const AName: string; AKind: TRoutineLocalKind; ADecl: TSyntaxNode): TRoutineLocal;
 begin

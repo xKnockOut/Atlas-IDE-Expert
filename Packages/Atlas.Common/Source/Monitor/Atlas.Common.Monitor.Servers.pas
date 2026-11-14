@@ -110,6 +110,8 @@ begin
   end;
 end;
 
+{ TMonitorServers }
+
 class function TMonitorServers.HealthOf(const AEntry: TServerStatusEntry; ANow: TDateTime): TMonitorHealth;
 begin
   if (SecondsSince(AEntry.Written, ANow) > cSilentSeconds) or (AEntry.RunningMs > cHangingRequestMs) then

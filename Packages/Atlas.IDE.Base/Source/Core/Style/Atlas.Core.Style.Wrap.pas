@@ -22,6 +22,8 @@ type
 
 implementation
 
+{ TAtlasWrap }
+
 class function TAtlasWrap.AtSpaces(const AText: string; const ACum: TArray<Integer>; AWidth, AIndent: Integer):
   TArray<TPoint>;
 var

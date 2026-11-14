@@ -221,6 +221,8 @@ end;
 
 { Befehle }
 
+{ TAtlasIdeRuntimeReport }
+
 class procedure TAtlasIdeRuntimeReport.Paste(const AScope: IAtlasModuleScope);
 var
   mProject, mText: string;

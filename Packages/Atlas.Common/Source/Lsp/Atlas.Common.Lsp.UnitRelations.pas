@@ -183,15 +183,6 @@ begin
   inherited;
 end;
 
-procedure TLspUnitRelations.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
-end;
-
 function TLspUnitRelations.TextOf(const AFileName: string): string;
 begin
   if not (Assigned(FReader) and FReader(AFileName, Result)) then
@@ -267,6 +258,15 @@ begin
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TUnitRelationsText.FileMissing].Text);
   end;
+end;
+
+procedure TLspUnitRelations.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := Request(AParams);
+    end);
 end;
 
 function TLspUnitRelations.Request(const AParams: TJSONValue): TJSONValue;
@@ -346,96 +346,6 @@ begin
     Result := Request(mParams);
   finally
     mParams.Free;
-  end;
-end;
-
-function TLspUnitRelations.Cost(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName: string;
-  mAnswer: TJSONObject;
-begin
-  mFileName := FileOf(AArguments, 0);
-  EnsureOptions(mFileName);
-  mAnswer := nil;
-  FGraph.Read(
-    procedure(const AGraph: TUsesGraph)
-    begin
-      mAnswer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, mFileName, cCostUnits));
-    end);
-  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
-  Result := mAnswer;
-end;
-
-function TLspUnitRelations.UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName: string;
-  mAnswer: TJSONObject;
-  mList: TJSONArray;
-  mReference: TUsesReference;
-begin
-  mFileName := FileOf(AArguments, 0);
-  EnsureOptions(mFileName);
-  mAnswer := nil;
-  FGraph.Read(
-    procedure(const AGraph: TUsesGraph)
-    begin
-      mAnswer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, mFileName));
-    end);
-  // „schon in uses“ aus dem Text, wie ihn der Editor gerade hat.
-  mList := TJSONArray.Create;
-  for mReference in TUsesLocator.UsesReferences(TextOf(mFileName), DefinesOf(mFileName)) do
-  begin
-    mList.Add(mReference.Name);
-  end;
-  mAnswer.AddPair('inUses', mList);
-  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
-  Result := mAnswer;
-end;
-
-class function TLspUnitRelations.MoveEdits(const AText, AUnit: string; ATarget: TUsesSection;
-  out AEdits: TArray<TTextEdit>; out AError: string): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-  mReference: TUsesReference;
-  mFound: Boolean;
-  mName: string;
-begin
-  AEdits := nil;
-  AError := '';
-  mTokens := TPascalLexer.Tokenize(AText);
-  // Den Eintrag in der anderen Liste suchen, Schreibweise wie im Quelltext.
-  mFound := False;
-  mName := AUnit;
-  for mReference in TUsesClauses.References(mTokens) do
-  begin
-    if (mReference.List = TUsesListKind.UsesList) and SameText(mReference.Name, AUnit) then
-    begin
-      if mReference.InInterface = (ATarget = TUsesSection.Interface_) then
-      begin
-        AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
-          TUnitRelationsBuilder.SectionName(ATarget)]);
-        Exit(False);
-      end;
-      mFound := True;
-      mName := mReference.Name;
-    end;
-  end;
-  if not mFound then
-  begin
-    AError := cTexts[TUnitRelationsText.IsInNoUsesList].Fmt([AUnit]);
-    Exit(False);
-  end;
-  if ATarget = TUsesSection.Implementation_ then
-  begin
-    Result := TUsesActions.MoveUnits(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
-  end
-  else
-  begin
-    Result := TUsesActions.MoveUnitsToInterface(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
-  end;
-  if not Result then
-  begin
-    AError := cTexts[TUnitRelationsText.TheUsesListsCannotBe].Text;
   end;
 end;
 
@@ -529,6 +439,96 @@ begin
   mAnswer := TJSONObject.Create;
   mAnswer.AddPair('edit', TLspApplyEdit.TextEdits(mFileName, [mEdit]));
   Result := mAnswer;
+end;
+
+function TLspUnitRelations.Cost(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName: string;
+  mAnswer: TJSONObject;
+begin
+  mFileName := FileOf(AArguments, 0);
+  EnsureOptions(mFileName);
+  mAnswer := nil;
+  FGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    begin
+      mAnswer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, mFileName, cCostUnits));
+    end);
+  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := mAnswer;
+end;
+
+function TLspUnitRelations.UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName: string;
+  mAnswer: TJSONObject;
+  mList: TJSONArray;
+  mReference: TUsesReference;
+begin
+  mFileName := FileOf(AArguments, 0);
+  EnsureOptions(mFileName);
+  mAnswer := nil;
+  FGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    begin
+      mAnswer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, mFileName));
+    end);
+  // „schon in uses“ aus dem Text, wie ihn der Editor gerade hat.
+  mList := TJSONArray.Create;
+  for mReference in TUsesLocator.UsesReferences(TextOf(mFileName), DefinesOf(mFileName)) do
+  begin
+    mList.Add(mReference.Name);
+  end;
+  mAnswer.AddPair('inUses', mList);
+  mAnswer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := mAnswer;
+end;
+
+class function TLspUnitRelations.MoveEdits(const AText, AUnit: string; ATarget: TUsesSection;
+  out AEdits: TArray<TTextEdit>; out AError: string): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mReference: TUsesReference;
+  mFound: Boolean;
+  mName: string;
+begin
+  AEdits := nil;
+  AError := '';
+  mTokens := TPascalLexer.Tokenize(AText);
+  // Den Eintrag in der anderen Liste suchen, Schreibweise wie im Quelltext.
+  mFound := False;
+  mName := AUnit;
+  for mReference in TUsesClauses.References(mTokens) do
+  begin
+    if (mReference.List = TUsesListKind.UsesList) and SameText(mReference.Name, AUnit) then
+    begin
+      if mReference.InInterface = (ATarget = TUsesSection.Interface_) then
+      begin
+        AError := cTexts[TUnitRelationsText.IsAlreadyInTheUses].Fmt([AUnit,
+          TUnitRelationsBuilder.SectionName(ATarget)]);
+        Exit(False);
+      end;
+      mFound := True;
+      mName := mReference.Name;
+    end;
+  end;
+  if not mFound then
+  begin
+    AError := cTexts[TUnitRelationsText.IsInNoUsesList].Fmt([AUnit]);
+    Exit(False);
+  end;
+  if ATarget = TUsesSection.Implementation_ then
+  begin
+    Result := TUsesActions.MoveUnits(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
+  end
+  else
+  begin
+    Result := TUsesActions.MoveUnitsToInterface(mTokens, AText, [mName], TTextLines.LineBreakOf(AText), AEdits);
+  end;
+  if not Result then
+  begin
+    AError := cTexts[TUnitRelationsText.TheUsesListsCannotBe].Text;
+  end;
 end;
 
 initialization

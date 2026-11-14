@@ -204,6 +204,8 @@ begin
   Result := True;
 end;
 
+{ TAtlasDesignerSearch }
+
 class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string; AFuzzy: Boolean): TAtlasDesignerMatch;
 var
   mText, mPattern: string;
@@ -235,18 +237,9 @@ begin
   end;
 end;
 
-class function TAtlasDesignerSearch.OfKind(const AItem: TAtlasDesignerItem; AKind: TAtlasDesignerKind): Boolean;
+class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string): TAtlasDesignerMatch;
 begin
-  case AKind of
-    TAtlasDesignerKind.Controls:
-      Result := AItem.Visual;
-    TAtlasDesignerKind.NonVisual:
-      Result := not AItem.Visual;
-    TAtlasDesignerKind.Containers:
-      Result := AItem.Visual and AItem.Container;
-  else
-    Result := True;
-  end;
+  Result := MatchOf(AText, APattern, False);
 end;
 
 function FieldText(const AItem: TAtlasDesignerItem; AField: TAtlasDesignerField): string;
@@ -295,15 +288,18 @@ begin
   end;
 end;
 
-class function TAtlasDesignerSearch.MatchOf(const AText, APattern: string): TAtlasDesignerMatch;
+class function TAtlasDesignerSearch.OfKind(const AItem: TAtlasDesignerItem; AKind: TAtlasDesignerKind): Boolean;
 begin
-  Result := MatchOf(AText, APattern, False);
-end;
-
-class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
-  AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>;
-begin
-  Result := Find(AItems, APattern, AFields, AKind, False);
+  case AKind of
+    TAtlasDesignerKind.Controls:
+      Result := AItem.Visual;
+    TAtlasDesignerKind.NonVisual:
+      Result := not AItem.Visual;
+    TAtlasDesignerKind.Containers:
+      Result := AItem.Visual and AItem.Container;
+  else
+    Result := True;
+  end;
 end;
 
 class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
@@ -358,6 +354,12 @@ begin
   finally
     mHits.Free;
   end;
+end;
+
+class function TAtlasDesignerSearch.Find(const AItems: TArray<TAtlasDesignerItem>; const APattern: string;
+  AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>;
+begin
+  Result := Find(AItems, APattern, AFields, AKind, False);
 end;
 
 class function TAtlasDesignerSearch.Step(AIndex, ACount, ADelta: Integer): Integer;
@@ -441,6 +443,8 @@ begin
     mOrder.Free;
   end;
 end;
+
+{ TAtlasDesignerGroups }
 
 class function TAtlasDesignerGroups.Rows(const AItems: TArray<TAtlasDesignerItem>; const AHits: TArray<Integer>;
   AGrouping: TAtlasDesignerGrouping; const ARootName: string): TArray<TAtlasDesignerRow>;

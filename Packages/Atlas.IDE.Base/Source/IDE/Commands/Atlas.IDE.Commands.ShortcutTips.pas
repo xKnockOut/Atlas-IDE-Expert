@@ -240,133 +240,15 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeShortcutTips.Instance: TAtlasIdeShortcutTips;
-begin
-  Result := FInstance;
-end;
-
 function TAtlasIdeShortcutTips.GetUsage: TAtlasCommandUsage;
 begin
   Result := FHolder.Usage;
-end;
-
-function TAtlasIdeShortcutTips.TipTitle(const AId: string): string;
-var
-  mTip: TAtlasTip;
-begin
-  Result := '';
-  if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, mTip) then
-  begin
-    Result := mTip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
-  end;
-end;
-
-class procedure TAtlasIdeShortcutTips.Invoked(const AId: string);
-begin
-  if (FInstance = nil) or not FInstance.FActive or (Trim(AId) = '') or
-    TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) then
-  begin
-    Exit;
-  end;
-  try
-    FInstance.Explicit(AId);
-    FInstance.MouseUse(AId);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
-  end;
-end;
-
-class function TAtlasIdeShortcutTips.KeyOnlyText(const AId: string; out AKeyText: string): Boolean;
-begin
-  Result := TAtlasIdeActionKeys.KeyOnlyText(AId, AKeyText);
-end;
-
-procedure TAtlasIdeShortcutTips.UpdateActive;
-var
-  mActive: Boolean;
-begin
-  mActive := (TAtlasIdeSettings.Current.ShortcutTips or FCountAlways) and
-    not TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips);
-  if mActive = FActive then
-  begin
-    Exit;
-  end;
-  FActive := mActive;
-  if FActive then
-  begin
-    FEvents.OnMessage := AppMessage;
-    FEvents.OnActionExecute := AppActionExecute;
-  end
-  else
-  begin
-    FEvents.OnMessage := nil;
-    FEvents.OnActionExecute := nil;
-    if FWindow <> nil then
-    begin
-      FWindow.Dismiss;
-    end;
-  end;
-  // Anonym: nur der Zustand.
-  TAtlasGuard.Log(Format('Tastenkürzel-Tipps (#600): Beobachtung %s', [BoolToStr(FActive, True)]));
 end;
 
 procedure TAtlasIdeShortcutTips.SetCountAlways(AValue: Boolean);
 begin
   FCountAlways := AValue;
   UpdateActive;
-end;
-
-procedure TAtlasIdeShortcutTips.ApplySettings;
-begin
-  ResetKeys;
-  UpdateActive;
-  if (FWindow <> nil) and not TAtlasIdeSettings.Current.ShortcutTips then
-  begin
-    FWindow.Dismiss;
-  end;
-end;
-
-procedure TAtlasIdeShortcutTips.KeysChanged;
-begin
-  ResetKeys;
-end;
-
-procedure TAtlasIdeShortcutTips.ThemeChanged;
-begin
-  if (FWindow <> nil) and FWindow.IsShown then
-  begin
-    FWindow.Colors := TAtlasIdeStyle.Colors;
-    FWindow.Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeShortcutTips.Changed;
-begin
-  // Gesammelt speichern: nicht bei jedem Klick auf die Platte.
-  FHolder.Changed;
-end;
-
-procedure TAtlasIdeShortcutTips.Save;
-begin
-  FHolder.SaveNow;
-end;
-
-procedure TAtlasIdeShortcutTips.CountKeys(const AIds: TArray<string>);
-var
-  mId: string;
-  mNow: TDateTime;
-begin
-  if Length(AIds) = 0 then
-  begin
-    Exit;
-  end;
-  mNow := Now;
-  for mId in AIds do
-  begin
-    Usage.Count(mId, TAtlasCommandInput.Keyboard, mNow);
-  end;
-  Changed;
 end;
 
 procedure TAtlasIdeShortcutTips.AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -411,6 +293,97 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
   end;
+end;
+
+procedure TAtlasIdeShortcutTips.NeverClick(Sender: TObject);
+begin
+  SetNever(FTipId);
+end;
+
+procedure TAtlasIdeShortcutTips.AllKeysClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
+    procedure
+    begin
+      if TAtlasIdeKeyMap.Instance <> nil then
+      begin
+        TAtlasIdeKeyMap.Instance.ShowAll;
+      end;
+    end);
+end;
+
+procedure TAtlasIdeShortcutTips.SetNever(const AId: string);
+var
+  mEntry: TAtlasCommandUsageEntry;
+  mId: string;
+begin
+  mId := AId;
+  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
+    procedure
+    begin
+      if mId = '' then
+      begin
+        Exit;
+      end;
+      mEntry := Usage.Entry(mId);
+      mEntry.Never := True;
+      Usage.Put(mEntry);
+      // Gleich sichern: Die Wahl soll auch einen Absturz überstehen.
+      Save;
+    end);
+end;
+
+class function TAtlasIdeShortcutTips.TipActions(const AId: string): TArray<TAtlasNotificationAction>;
+begin
+  Result := nil;
+  if TAtlasIdeSettings.Current.KeyOverview then
+  begin
+    Result := [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipAllKeys),
+      procedure
+      begin
+        if TAtlasIdeKeyMap.Instance <> nil then
+        begin
+          TAtlasIdeKeyMap.Instance.ShowAll;
+        end;
+      end)];
+  end;
+  Result := Result + [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipNever),
+    procedure
+    begin
+      // Die Tipps können inzwischen beendet sein: nur über die laufende Instanz.
+      if FInstance <> nil then
+      begin
+        FInstance.SetNever(AId);
+      end;
+    end)];
+end;
+
+procedure TAtlasIdeShortcutTips.Changed;
+begin
+  // Gesammelt speichern: nicht bei jedem Klick auf die Platte.
+  FHolder.Changed;
+end;
+
+procedure TAtlasIdeShortcutTips.Save;
+begin
+  FHolder.SaveNow;
+end;
+
+procedure TAtlasIdeShortcutTips.CountKeys(const AIds: TArray<string>);
+var
+  mId: string;
+  mNow: TDateTime;
+begin
+  if Length(AIds) = 0 then
+  begin
+    Exit;
+  end;
+  mNow := Now;
+  for mId in AIds do
+  begin
+    Usage.Count(mId, TAtlasCommandInput.Keyboard, mNow);
+  end;
+  Changed;
 end;
 
 procedure TAtlasIdeShortcutTips.MouseUse(const AId: string);
@@ -509,31 +482,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeShortcutTips.TipActions(const AId: string): TArray<TAtlasNotificationAction>;
-begin
-  Result := nil;
-  if TAtlasIdeSettings.Current.KeyOverview then
-  begin
-    Result := [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipAllKeys),
-      procedure
-      begin
-        if TAtlasIdeKeyMap.Instance <> nil then
-        begin
-          TAtlasIdeKeyMap.Instance.ShowAll;
-        end;
-      end)];
-  end;
-  Result := Result + [TAtlasNotificationCenter.Action(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ShortcutTipNever),
-    procedure
-    begin
-      // Die Tipps können inzwischen beendet sein: nur über die laufende Instanz.
-      if FInstance <> nil then
-      begin
-        FInstance.SetNever(AId);
-      end;
-    end)];
-end;
-
 procedure TAtlasIdeShortcutTips.ShowTip(const AId, AKeyText, ACaption: string);
 var
   mEntry: TAtlasCommandUsageEntry;
@@ -581,42 +529,94 @@ begin
   TAtlasGuard.Log('Tastenkürzel-Tipp gezeigt (#600)');
 end;
 
-procedure TAtlasIdeShortcutTips.NeverClick(Sender: TObject);
-begin
-  SetNever(FTipId);
-end;
-
-procedure TAtlasIdeShortcutTips.SetNever(const AId: string);
+procedure TAtlasIdeShortcutTips.UpdateActive;
 var
-  mEntry: TAtlasCommandUsageEntry;
-  mId: string;
+  mActive: Boolean;
 begin
-  mId := AId;
-  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
-    procedure
+  mActive := (TAtlasIdeSettings.Current.ShortcutTips or FCountAlways) and
+    not TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips);
+  if mActive = FActive then
+  begin
+    Exit;
+  end;
+  FActive := mActive;
+  if FActive then
+  begin
+    FEvents.OnMessage := AppMessage;
+    FEvents.OnActionExecute := AppActionExecute;
+  end
+  else
+  begin
+    FEvents.OnMessage := nil;
+    FEvents.OnActionExecute := nil;
+    if FWindow <> nil then
     begin
-      if mId = '' then
-      begin
-        Exit;
-      end;
-      mEntry := Usage.Entry(mId);
-      mEntry.Never := True;
-      Usage.Put(mEntry);
-      // Gleich sichern: Die Wahl soll auch einen Absturz überstehen.
-      Save;
-    end);
+      FWindow.Dismiss;
+    end;
+  end;
+  // Anonym: nur der Zustand.
+  TAtlasGuard.Log(Format('Tastenkürzel-Tipps (#600): Beobachtung %s', [BoolToStr(FActive, True)]));
 end;
 
-procedure TAtlasIdeShortcutTips.AllKeysClick(Sender: TObject);
+function TAtlasIdeShortcutTips.TipTitle(const AId: string): string;
+var
+  mTip: TAtlasTip;
 begin
-  TAtlasGuard.Run(TAtlasFeature.ShortcutTips,
-    procedure
-    begin
-      if TAtlasIdeKeyMap.Instance <> nil then
-      begin
-        TAtlasIdeKeyMap.Instance.ShowAll;
-      end;
-    end);
+  Result := '';
+  if TAtlasTipCatalog.FindByCommand(FHolder.Tips, AId, mTip) then
+  begin
+    Result := mTip.TitleIn(TAtlasStrings.Language = TAtlasLanguage.English);
+  end;
+end;
+
+class function TAtlasIdeShortcutTips.Instance: TAtlasIdeShortcutTips;
+begin
+  Result := FInstance;
+end;
+
+class procedure TAtlasIdeShortcutTips.Invoked(const AId: string);
+begin
+  if (FInstance = nil) or not FInstance.FActive or (Trim(AId) = '') or
+    TAtlasGuard.Disabled(TAtlasFeature.ShortcutTips) then
+  begin
+    Exit;
+  end;
+  try
+    FInstance.Explicit(AId);
+    FInstance.MouseUse(AId);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
+  end;
+end;
+
+class function TAtlasIdeShortcutTips.KeyOnlyText(const AId: string; out AKeyText: string): Boolean;
+begin
+  Result := TAtlasIdeActionKeys.KeyOnlyText(AId, AKeyText);
+end;
+
+procedure TAtlasIdeShortcutTips.ApplySettings;
+begin
+  ResetKeys;
+  UpdateActive;
+  if (FWindow <> nil) and not TAtlasIdeSettings.Current.ShortcutTips then
+  begin
+    FWindow.Dismiss;
+  end;
+end;
+
+procedure TAtlasIdeShortcutTips.KeysChanged;
+begin
+  ResetKeys;
+end;
+
+procedure TAtlasIdeShortcutTips.ThemeChanged;
+begin
+  if (FWindow <> nil) and FWindow.IsShown then
+  begin
+    FWindow.Colors := TAtlasIdeStyle.Colors;
+    FWindow.Invalidate;
+  end;
 end;
 
 end.

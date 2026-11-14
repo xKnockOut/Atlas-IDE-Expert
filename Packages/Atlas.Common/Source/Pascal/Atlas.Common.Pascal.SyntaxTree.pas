@@ -230,22 +230,6 @@ begin
   FKind := AKind;
 end;
 
-procedure TSyntaxNode.DetachChildren(APending: TStack<TSyntaxNode>);
-var
-  mIndex: Integer;
-begin
-  if FChildren = nil then
-  begin
-    Exit;
-  end;
-  FChildren.OwnsObjects := False;
-  for mIndex := 0 to FChildren.Count - 1 do
-  begin
-    APending.Push(FChildren[mIndex]);
-  end;
-  FChildren.Clear;
-end;
-
 destructor TSyntaxNode.Destroy;
 var
   mPending: TStack<TSyntaxNode>;
@@ -270,6 +254,39 @@ begin
   end;
   FChildren.Free;
   inherited;
+end;
+
+function TSyntaxNode.GetChildCount: Integer;
+begin
+  if FChildren = nil then
+  begin
+    Result := 0;
+  end
+  else
+  begin
+    Result := FChildren.Count;
+  end;
+end;
+
+function TSyntaxNode.GetChild(AIndex: Integer): TSyntaxNode;
+begin
+  Result := FChildren[AIndex];
+end;
+
+procedure TSyntaxNode.DetachChildren(APending: TStack<TSyntaxNode>);
+var
+  mIndex: Integer;
+begin
+  if FChildren = nil then
+  begin
+    Exit;
+  end;
+  FChildren.OwnsObjects := False;
+  for mIndex := 0 to FChildren.Count - 1 do
+  begin
+    APending.Push(FChildren[mIndex]);
+  end;
+  FChildren.Clear;
 end;
 
 procedure TSyntaxNode.Add(ANode: TSyntaxNode);
@@ -362,29 +379,48 @@ begin
   end;
 end;
 
-function TSyntaxNode.GetChild(AIndex: Integer): TSyntaxNode;
-begin
-  Result := FChildren[AIndex];
-end;
-
-function TSyntaxNode.GetChildCount: Integer;
-begin
-  if FChildren = nil then
-  begin
-    Result := 0;
-  end
-  else
-  begin
-    Result := FChildren.Count;
-  end;
-end;
-
 procedure TSyntaxNode.SetRange(const AStartPos, AEndPos: TTextPosition; AStartOffset, AEndOffset: Integer);
 begin
   FStartPos := AStartPos;
   FEndPos := AEndPos;
   FStartOffset := AStartOffset;
   FEndOffset := AEndOffset;
+end;
+
+procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die
+  // Kette lang; rekursiv kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge
+  // auf den Stapel, damit die Reihenfolge der Besuche die der Rekursion bleibt.
+  if not AVisit(Self) or (ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    for mIndex := ChildCount - 1 downto 0 do
+    begin
+      mPending.Push(Children[mIndex]);
+    end;
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if not AVisit(mNode) then
+      begin
+        Continue;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode.Children[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
 end;
 
 function TSyntaxNode.Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
@@ -428,42 +464,6 @@ begin
   end;
 end;
 
-procedure TSyntaxNode.Walk(const AVisit: TSyntaxNodeVisit);
-var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Ketten wie 1 - 1 - … - 1 ergeben Bäume, die so tief sind wie die
-  // Kette lang; rekursiv kostete jede Ebene einen Stapelrahmen je Läufer. Die Kinder kommen in umgekehrter Reihenfolge
-  // auf den Stapel, damit die Reihenfolge der Besuche die der Rekursion bleibt.
-  if not AVisit(Self) or (ChildCount = 0) then
-  begin
-    Exit;
-  end;
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    for mIndex := ChildCount - 1 downto 0 do
-    begin
-      mPending.Push(Children[mIndex]);
-    end;
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if not AVisit(mNode) then
-      begin
-        Continue;
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode.Children[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 { TSyntaxTree }
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -478,51 +478,40 @@ begin
   end;
 end;
 
-function TSyntaxTree.FirstTokenFrom(AOffset: Integer): Integer;
+{ TSyntaxTree }
+
+constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
+  const ADiagnostics: TArray<TSyntaxDiagnostic>);
 begin
-  Result := FirstTokenOf(FTokens, AOffset);
+  inherited Create;
+  FRoot := ARoot;
+  FTokens := ATokens;
+  FDiagnostics := ADiagnostics;
 end;
 
-class function TSyntaxTree.FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
+destructor TSyntaxTree.Destroy;
 begin
-  Result := TokenFrom(ATokens, AOffset);
+  FDerived := nil;
+  FRoot.Free;
+  inherited;
 end;
 
-function TSyntaxTree.IdentifierAt(const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
+function TSyntaxTree.Depth: Integer;
 begin
-  // Die Token folgen ohne Überlappung aufeinander, ihre Enden steigen also mit: Vor dem ersten Token, das nicht vor
-  // APosition endet, berührt keines APosition. Früher lief die Suche ab Dateianfang und kopierte jedes Token, und
-  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, wurden quadratisch (#1323).
-  mLow := 0;
-  mHigh := Length(FTokens);
-  while mLow < mHigh do
+  if (FDepth = 0) and (FRoot <> nil) then
   begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ComparePositions(FTokens[mMiddle].EndPos, APosition) < 0 then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
+    Measure;
   end;
-  // Höchstens zwei Kandidaten: das Token, das vor APosition endet, und das, das dort beginnt; der frühere gewinnt.
-  while (mLow <= High(FTokens)) and (ComparePositions(FTokens[mLow].StartPos, APosition) <= 0) do
+  Result := FDepth;
+end;
+
+function TSyntaxTree.Deepest: TSyntaxNode;
+begin
+  if (FDepth = 0) and (FRoot <> nil) then
   begin
-    if FTokens[mLow].Kind = TPascalTokenKind.Identifier then
-    begin
-      if IsControlCharPart(mLow) then
-      begin
-        Exit(-1);
-      end;
-      Exit(mLow);
-    end;
-    Inc(mLow);
+    Measure;
   end;
-  Result := -1;
+  Result := FDeepest;
 end;
 
 function TSyntaxTree.IsControlCharPart(ATokenIndex: Integer): Boolean;
@@ -558,34 +547,14 @@ begin
   until not mFound;
 end;
 
-constructor TSyntaxTree.Create(ARoot: TSyntaxNode; const ATokens: TArray<TPascalToken>;
-  const ADiagnostics: TArray<TSyntaxDiagnostic>);
+function TSyntaxTree.FirstTokenFrom(AOffset: Integer): Integer;
 begin
-  inherited Create;
-  FRoot := ARoot;
-  FTokens := ATokens;
-  FDiagnostics := ADiagnostics;
+  Result := FirstTokenOf(FTokens, AOffset);
 end;
 
-destructor TSyntaxTree.Destroy;
+class function TSyntaxTree.FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 begin
-  FDerived := nil;
-  FRoot.Free;
-  inherited;
-end;
-
-function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;
-begin
-  System.TMonitor.Enter(Self);
-  try
-    if FDerived = nil then
-    begin
-      FDerived := AFactory();
-    end;
-    Result := FDerived;
-  finally
-    System.TMonitor.Exit(Self);
-  end;
+  Result := TokenFrom(ATokens, AOffset);
 end;
 
 type
@@ -635,22 +604,55 @@ begin
   FDepth := mFound;
 end;
 
-function TSyntaxTree.Depth: Integer;
+function TSyntaxTree.IdentifierAt(const APosition: TTextPosition): Integer;
+var
+  mLow, mHigh, mMiddle: Integer;
 begin
-  if (FDepth = 0) and (FRoot <> nil) then
+  // Die Token folgen ohne Überlappung aufeinander, ihre Enden steigen also mit: Vor dem ersten Token, das nicht vor
+  // APosition endet, berührt keines APosition. Früher lief die Suche ab Dateianfang und kopierte jedes Token, und
+  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, wurden quadratisch (#1323).
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
   begin
-    Measure;
+    mMiddle := (mLow + mHigh) div 2;
+    if ComparePositions(FTokens[mMiddle].EndPos, APosition) < 0 then
+    begin
+      mLow := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
+    end;
   end;
-  Result := FDepth;
+  // Höchstens zwei Kandidaten: das Token, das vor APosition endet, und das, das dort beginnt; der frühere gewinnt.
+  while (mLow <= High(FTokens)) and (ComparePositions(FTokens[mLow].StartPos, APosition) <= 0) do
+  begin
+    if FTokens[mLow].Kind = TPascalTokenKind.Identifier then
+    begin
+      if IsControlCharPart(mLow) then
+      begin
+        Exit(-1);
+      end;
+      Exit(mLow);
+    end;
+    Inc(mLow);
+  end;
+  Result := -1;
 end;
 
-function TSyntaxTree.Deepest: TSyntaxNode;
+function TSyntaxTree.Derived(const AFactory: TFunc<IInterface>): IInterface;
 begin
-  if (FDepth = 0) and (FRoot <> nil) then
-  begin
-    Measure;
+  System.TMonitor.Enter(Self);
+  try
+    if FDerived = nil then
+    begin
+      FDerived := AFactory();
+    end;
+    Result := FDerived;
+  finally
+    System.TMonitor.Exit(Self);
   end;
-  Result := FDeepest;
 end;
 
 end.

@@ -278,54 +278,43 @@ begin
   inherited Create(AOnMessage);
 end;
 
-procedure TAtlasIdeFontsColors.Execute;
+procedure TAtlasIdeFontsColors.Remember(const AEditor: IOTAFormEditor; ARoot: TComponent;
+  const ANames: TArray<string>);
 var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mDesigner: IDesigner;
-  mUses: TArray<TAtlasFontUse>;
-  mFonts: TArray<TAtlasFontRow>;
-  mColors: TArray<TAtlasColorRow>;
-  mAction: TAtlasFontsAction;
-  mTab, mRow: Integer;
+  mIndex: Integer;
+  mComponent: TComponent;
+  mFont: TFont;
+  mState: TAtlasFontState;
 begin
-  if not TAtlasIdeSettings.Current.DesignerFontsColors or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  FUndoFile := AEditor.FileName;
+  FUndo := nil;
+  // In der Reihenfolge des Formulars, damit Parents vor ihren Kindern zurückkommen.
+  for mIndex := -1 to ARoot.ComponentCount - 1 do
   begin
-    Exit;
-  end;
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  mTab := 0;
-  repeat
-    mUses := Collect(mRoot);
-    mFonts := TAtlasFontsColors.FontRows(mUses, mRoot.Name);
-    mColors := TAtlasFontsColors.ColorRows(mUses, TAtlasIdeSettings.Current.DesignerFontsColorsIgnoreColors);
-    mAction := TAtlasFontsDialog.Execute(mRoot.Name, mFonts, mColors,
-      procedure(ANames: TArray<string>)
-      var
-        mName: string;
-        mSelected: TArray<TComponent>;
-        mFound: TComponent;
-      begin
-        mSelected := nil;
-        for mName in ANames do
-        begin
-          mFound := mRoot.FindComponent(mName);
-          if mFound <> nil then
-          begin
-            mSelected := mSelected + [mFound];
-          end;
-        end;
-        TAtlasDesignerAccess.Select(mDesigner, mRoot, mSelected);
-      end, mTab, mRow);
-    if (mAction = TAtlasFontsAction.ReplaceFont) and (mRow >= 0) and (mRow <= High(mFonts)) then
+    mComponent := ARoot;
+    if mIndex >= 0 then
     begin
-      ReplaceFont(mEditor, mRoot, mUses, mFonts[mRow], mFonts);
-    end
-    else if (mAction = TAtlasFontsAction.ReplaceColor) and (mRow >= 0) and (mRow <= High(mColors)) then
-    begin
-      ReplaceColor(mEditor, mRoot, mUses, mColors[mRow], mColors);
+      mComponent := ARoot.Components[mIndex];
     end;
-  until mAction = TAtlasFontsAction.Close;
+    mFont := FontOfComponent(mComponent);
+    if (mFont = nil) or not MatchText(mComponent.Name, ANames) then
+    begin
+      Continue;
+    end;
+    mState := Default(TAtlasFontState);
+    mState.Component := mComponent.Name;
+    mState.FontName := mFont.Name;
+    mState.FontHeight := mFont.Height;
+    mState.FontStyle := mFont.Style;
+    mState.FontColor := mFont.Color;
+    mState.ParentFont := FlagOf(mComponent, 'ParentFont');
+    if HasColor(mComponent) then
+    begin
+      mState.Color := TColor(GetOrdProp(mComponent, 'Color'));
+      mState.ParentColor := FlagOf(mComponent, 'ParentColor');
+    end;
+    FUndo := FUndo + [mState];
+  end;
 end;
 
 procedure TAtlasIdeFontsColors.ReplaceFont(const AEditor: IOTAFormEditor; ARoot: TComponent;
@@ -428,43 +417,54 @@ begin
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFontsDone, [Length(FUndo)]));
 end;
 
-procedure TAtlasIdeFontsColors.Remember(const AEditor: IOTAFormEditor; ARoot: TComponent;
-  const ANames: TArray<string>);
+procedure TAtlasIdeFontsColors.Execute;
 var
-  mIndex: Integer;
-  mComponent: TComponent;
-  mFont: TFont;
-  mState: TAtlasFontState;
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mDesigner: IDesigner;
+  mUses: TArray<TAtlasFontUse>;
+  mFonts: TArray<TAtlasFontRow>;
+  mColors: TArray<TAtlasColorRow>;
+  mAction: TAtlasFontsAction;
+  mTab, mRow: Integer;
 begin
-  FUndoFile := AEditor.FileName;
-  FUndo := nil;
-  // In der Reihenfolge des Formulars, damit Parents vor ihren Kindern zurückkommen.
-  for mIndex := -1 to ARoot.ComponentCount - 1 do
+  if not TAtlasIdeSettings.Current.DesignerFontsColors or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
-    mComponent := ARoot;
-    if mIndex >= 0 then
-    begin
-      mComponent := ARoot.Components[mIndex];
-    end;
-    mFont := FontOfComponent(mComponent);
-    if (mFont = nil) or not MatchText(mComponent.Name, ANames) then
-    begin
-      Continue;
-    end;
-    mState := Default(TAtlasFontState);
-    mState.Component := mComponent.Name;
-    mState.FontName := mFont.Name;
-    mState.FontHeight := mFont.Height;
-    mState.FontStyle := mFont.Style;
-    mState.FontColor := mFont.Color;
-    mState.ParentFont := FlagOf(mComponent, 'ParentFont');
-    if HasColor(mComponent) then
-    begin
-      mState.Color := TColor(GetOrdProp(mComponent, 'Color'));
-      mState.ParentColor := FlagOf(mComponent, 'ParentColor');
-    end;
-    FUndo := FUndo + [mState];
+    Exit;
   end;
+  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
+  mTab := 0;
+  repeat
+    mUses := Collect(mRoot);
+    mFonts := TAtlasFontsColors.FontRows(mUses, mRoot.Name);
+    mColors := TAtlasFontsColors.ColorRows(mUses, TAtlasIdeSettings.Current.DesignerFontsColorsIgnoreColors);
+    mAction := TAtlasFontsDialog.Execute(mRoot.Name, mFonts, mColors,
+      procedure(ANames: TArray<string>)
+      var
+        mName: string;
+        mSelected: TArray<TComponent>;
+        mFound: TComponent;
+      begin
+        mSelected := nil;
+        for mName in ANames do
+        begin
+          mFound := mRoot.FindComponent(mName);
+          if mFound <> nil then
+          begin
+            mSelected := mSelected + [mFound];
+          end;
+        end;
+        TAtlasDesignerAccess.Select(mDesigner, mRoot, mSelected);
+      end, mTab, mRow);
+    if (mAction = TAtlasFontsAction.ReplaceFont) and (mRow >= 0) and (mRow <= High(mFonts)) then
+    begin
+      ReplaceFont(mEditor, mRoot, mUses, mFonts[mRow], mFonts);
+    end
+    else if (mAction = TAtlasFontsAction.ReplaceColor) and (mRow >= 0) and (mRow <= High(mColors)) then
+    begin
+      ReplaceColor(mEditor, mRoot, mUses, mColors[mRow], mColors);
+    end;
+  until mAction = TAtlasFontsAction.Close;
 end;
 
 function TAtlasIdeFontsColors.CanUndo: Boolean;

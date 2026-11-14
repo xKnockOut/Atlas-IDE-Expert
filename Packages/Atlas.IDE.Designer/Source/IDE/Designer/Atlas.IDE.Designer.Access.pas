@@ -74,6 +74,8 @@ uses
   Atlas.Core.Forms.Text,
   Atlas.IDE.Foundation.DesignerView;
 
+{ TAtlasDesignerAccess }
+
 class function TAtlasDesignerAccess.DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
 var
   mNative: INTAFormEditor;

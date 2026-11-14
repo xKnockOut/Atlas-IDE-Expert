@@ -42,6 +42,8 @@ uses
   Atlas.Core.Debug.Reattach,
   Atlas.IDE.Debug.Processes;
 
+{ TAtlasIdeReattachWaiter }
+
 constructor TAtlasIdeReattachWaiter.Create(const ATarget: string; AIntervalMs: Integer;
   const AOnFound: TProc<Cardinal>);
 begin
@@ -62,6 +64,21 @@ begin
   FWake.Free;
 end;
 
+procedure TAtlasIdeReattachWaiter.Execute;
+var
+  mProcess: TAtlasReattachProcess;
+begin
+  while not Terminated do
+  begin
+    if TAtlasReattach.Arrival(FTarget, TAtlasIdeDebugProcesses.Named(FName, False), FKnown, mProcess) then
+    begin
+      Report(mProcess.Pid);
+      Exit;
+    end;
+    FWake.WaitFor(FIntervalMs);
+  end;
+end;
+
 procedure TAtlasIdeReattachWaiter.TerminatedSet;
 begin
   inherited;
@@ -78,21 +95,6 @@ begin
     begin
       mFound(APid);
     end);
-end;
-
-procedure TAtlasIdeReattachWaiter.Execute;
-var
-  mProcess: TAtlasReattachProcess;
-begin
-  while not Terminated do
-  begin
-    if TAtlasReattach.Arrival(FTarget, TAtlasIdeDebugProcesses.Named(FName, False), FKnown, mProcess) then
-    begin
-      Report(mProcess.Pid);
-      Exit;
-    end;
-    FWake.WaitFor(FIntervalMs);
-  end;
 end;
 
 end.

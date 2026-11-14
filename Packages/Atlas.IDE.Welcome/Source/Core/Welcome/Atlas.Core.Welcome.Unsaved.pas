@@ -517,6 +517,13 @@ begin
   end;
 end;
 
+class function TAtlasWelcomeUnsaved.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
+  ANowUtc: TDateTime; const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired;
+  out AState: TAtlasUnsavedState): Boolean;
+begin
+  Result := Probe(AVcs, TAtlasUnsavedQuery.Create(AFolder, ANowUtc, AFileTime, AExpired), AState);
+end;
+
 class function TAtlasWelcomeUnsaved.PlacesOf(const AChanges: TArray<TAtlasVcsChange>;
   const ARows: TArray<TAtlasVcsWorkingCopyRow>): TArray<TAtlasUnsavedPlace>;
 var
@@ -561,13 +568,6 @@ begin
     end;
     Result := Result + mText + ' ' + IntToStr(mPlace.Count);
   end;
-end;
-
-class function TAtlasWelcomeUnsaved.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
-  ANowUtc: TDateTime; const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired;
-  out AState: TAtlasUnsavedState): Boolean;
-begin
-  Result := Probe(AVcs, TAtlasUnsavedQuery.Create(AFolder, ANowUtc, AFileTime, AExpired), AState);
 end;
 
 procedure AddPlaces(var AState: TAtlasUnsavedState; const AVcs: IAtlasVersionControl;
@@ -629,6 +629,8 @@ type
     procedure AddTracked(const ABranch: TAtlasVcsBranch);
     procedure AddUntracked(const ABranch: TAtlasVcsBranch);
   end;
+
+{ TBranchScan }
 
 function TBranchScan.CanCall: Boolean;
 begin
@@ -992,6 +994,8 @@ type
     procedure AddProject(const AProject: TAtlasUnsavedProject; AProjectIndex: Integer);
   end;
 
+{ TViewBuild }
+
 function TViewBuild.FirstInCopy(const AState: TAtlasUnsavedState; AKind: TAtlasUnsavedKind): Boolean;
 var
   mKey, mKnown: string;
@@ -1338,31 +1342,6 @@ begin
   AState.Ignored := IgnoredOf(TJsonRead.Obj(ASection, 'ignore'));
 end;
 
-class function TAtlasWelcomeUnsaved.ToJson(const AState: TAtlasUnsavedState): string;
-var
-  mSection: TJSONObject;
-begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
-end;
-
-class function TAtlasWelcomeUnsaved.FromJson(const AJson: string; out AState: TAtlasUnsavedState): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AState := TAtlasUnsavedState.Empty;
-  mValue := TJsonRead.Parse(AJson);
-  try
-    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasWelcomeUnsaved.Read(const ASummary: TAtlasProjectSummary;
   out AState: TAtlasUnsavedState): Boolean;
 var
@@ -1405,6 +1384,31 @@ begin
     ASummary.Raw := mRoot.ToJSON;
   finally
     mRoot.Free;
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasWelcomeUnsaved.ToJson(const AState: TAtlasUnsavedState): string;
+var
+  mSection: TJSONObject;
+begin
+  mSection := SectionJson(AState);
+  try
+    Result := mSection.ToJSON;
+  finally
+    mSection.Free;
+  end;
+end;
+
+class function TAtlasWelcomeUnsaved.FromJson(const AJson: string; out AState: TAtlasUnsavedState): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AState := TAtlasUnsavedState.Empty;
+  mValue := TJsonRead.Parse(AJson);
+  try
+    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
+  finally
     mValue.Free;
   end;
 end;

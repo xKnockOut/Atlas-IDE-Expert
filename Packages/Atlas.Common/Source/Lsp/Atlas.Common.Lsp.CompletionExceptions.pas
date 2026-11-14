@@ -329,6 +329,8 @@ type
     procedure AddCall(const ATokens: TArray<TPascalToken>; AIndex: Integer);
   end;
 
+{ TTryScan }
+
 procedure TTryScan.AddClass(const AName, AUnit: string);
 var
   mPlain: string;
@@ -507,6 +509,8 @@ begin
   end;
   Result := -1;
 end;
+
+{ TExceptionEntries }
 
 procedure TExceptionEntries.Add(AEntry: TExceptionEntry);
 var

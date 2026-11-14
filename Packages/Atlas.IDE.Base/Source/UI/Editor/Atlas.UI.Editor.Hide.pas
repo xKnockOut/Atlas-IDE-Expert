@@ -130,61 +130,13 @@ begin
   FMenu.AutoHotkeys := maManual;
 end;
 
-class function TAtlasHideMenu.ElementName(AElement: TAtlasDrawnElement; APlural: Boolean): string;
-const
-  cSingular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
-    TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
-    TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
-    TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
-    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
-    TAtlasTextId.ElementUnusedUses, TAtlasTextId.ElementRecursion, TAtlasTextId.ElementInlineDiagnostics,
-    TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame,
-    TAtlasTextId.ElementPatternPreview, TAtlasTextId.ElementGutterColumn, TAtlasTextId.ElementSelectionMatches,
-    TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
-    TAtlasTextId.ElementInlayMethodHints,
-    TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned, TAtlasTextId.ElementLearnedSuggestions,
-    TAtlasTextId.ElementCodeLensCoveredBy, TAtlasTextId.ElementThreadsInSource,
-    TAtlasTextId.ElementCodeLensUntested,
-    TAtlasTextId.ElementTestCoverage, TAtlasTextId.ElementOwnershipHints,
-    TAtlasTextId.ElementMutationResults);
-  cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
-    TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
-    TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
-    TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
-    TAtlasTextId.ElementPairColorsPlural, TAtlasTextId.ElementPairGuidesPlural,
-    TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
-    TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural,
-    TAtlasTextId.ElementRecursionPlural, TAtlasTextId.ElementInlineDiagnosticsPlural,
-    TAtlasTextId.ElementInlayTypeHintsPlural, TAtlasTextId.ElementGitGutterPlural, TAtlasTextId.ElementGitBlamePlural,
-    TAtlasTextId.ElementPatternPreviewPlural, TAtlasTextId.ElementGutterColumnPlural,
-    TAtlasTextId.ElementSelectionMatchesPlural, TAtlasTextId.ElementInlayDefineHintsPlural,
-    TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
-    TAtlasTextId.ElementInlayMethodHintsPlural,
-    TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural,
-    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural,
-    TAtlasTextId.ElementThreadsInSourcePlural, TAtlasTextId.ElementCodeLensUntestedPlural,
-    TAtlasTextId.ElementTestCoveragePlural, TAtlasTextId.ElementOwnershipHintsPlural,
-    TAtlasTextId.ElementMutationResultsPlural);
+procedure TAtlasHideMenu.ItemClick(Sender: TObject);
 begin
-  if APlural then
-  begin
-    Result := TAtlasStrings.Text(cPlural[AElement]);
-  end
-  else
-  begin
-    Result := TAtlasStrings.Text(cSingular[AElement]);
-  end;
-end;
-
-class function TAtlasHideMenu.ScopeCaption(AElement: TAtlasDrawnElement; AScope: TAtlasHideScope): string;
-begin
-  case AScope of
-    TAtlasHideScope.Here:
-      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideHere);
-    TAtlasHideScope.InFile:
-      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideInFile);
-  else
-    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideEverywhere, [ElementName(AElement, True)]);
+  try
+    Choose(TMenuItem(Sender).Tag);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
   end;
 end;
 
@@ -283,21 +235,69 @@ begin
   end;
 end;
 
-procedure TAtlasHideMenu.ItemClick(Sender: TObject);
-begin
-  try
-    Choose(TMenuItem(Sender).Tag);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hide, E);
-  end;
-end;
-
 procedure TAtlasHideMenu.Popup(const APoint: TPoint);
 begin
   if FMenu.Items.Count > 0 then
   begin
     FMenu.Popup(APoint.X, APoint.Y);
+  end;
+end;
+
+class function TAtlasHideMenu.ElementName(AElement: TAtlasDrawnElement; APlural: Boolean): string;
+const
+  cSingular: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetrics,
+    TAtlasTextId.ElementCodeLensTests, TAtlasTextId.ElementCodeLensTestUnit, TAtlasTextId.ElementBlockEndLabels,
+    TAtlasTextId.ElementInlayHints, TAtlasTextId.ElementProblems, TAtlasTextId.ElementNotes,
+    TAtlasTextId.ElementBookmarks, TAtlasTextId.ElementPairColors, TAtlasTextId.ElementPairGuides,
+    TAtlasTextId.ElementPairOwners, TAtlasTextId.ElementInactiveDim, TAtlasTextId.ElementCompletionPreview,
+    TAtlasTextId.ElementUnusedUses, TAtlasTextId.ElementRecursion, TAtlasTextId.ElementInlineDiagnostics,
+    TAtlasTextId.ElementInlayTypeHints, TAtlasTextId.ElementGitGutter, TAtlasTextId.ElementGitBlame,
+    TAtlasTextId.ElementPatternPreview, TAtlasTextId.ElementGutterColumn, TAtlasTextId.ElementSelectionMatches,
+    TAtlasTextId.ElementInlayDefineHints, TAtlasTextId.ElementInlayCharHints, TAtlasTextId.ElementQuickBookmarks,
+    TAtlasTextId.ElementInlayMethodHints,
+    TAtlasTextId.ElementExitPoints, TAtlasTextId.ElementReassigned, TAtlasTextId.ElementLearnedSuggestions,
+    TAtlasTextId.ElementCodeLensCoveredBy, TAtlasTextId.ElementThreadsInSource,
+    TAtlasTextId.ElementCodeLensUntested,
+    TAtlasTextId.ElementTestCoverage, TAtlasTextId.ElementOwnershipHints,
+    TAtlasTextId.ElementMutationResults);
+  cPlural: array[TAtlasDrawnElement] of TAtlasTextId = (TAtlasTextId.ElementCodeLensMetricsPlural,
+    TAtlasTextId.ElementCodeLensTestsPlural, TAtlasTextId.ElementCodeLensTestUnitPlural,
+    TAtlasTextId.ElementBlockEndLabelsPlural, TAtlasTextId.ElementInlayHintsPlural,
+    TAtlasTextId.ElementProblemsPlural, TAtlasTextId.ElementNotesPlural, TAtlasTextId.ElementBookmarksPlural,
+    TAtlasTextId.ElementPairColorsPlural, TAtlasTextId.ElementPairGuidesPlural,
+    TAtlasTextId.ElementPairOwnersPlural, TAtlasTextId.ElementInactiveDimPlural,
+    TAtlasTextId.ElementCompletionPreviewPlural, TAtlasTextId.ElementUnusedUsesPlural,
+    TAtlasTextId.ElementRecursionPlural, TAtlasTextId.ElementInlineDiagnosticsPlural,
+    TAtlasTextId.ElementInlayTypeHintsPlural, TAtlasTextId.ElementGitGutterPlural, TAtlasTextId.ElementGitBlamePlural,
+    TAtlasTextId.ElementPatternPreviewPlural, TAtlasTextId.ElementGutterColumnPlural,
+    TAtlasTextId.ElementSelectionMatchesPlural, TAtlasTextId.ElementInlayDefineHintsPlural,
+    TAtlasTextId.ElementInlayCharHintsPlural, TAtlasTextId.ElementQuickBookmarksPlural,
+    TAtlasTextId.ElementInlayMethodHintsPlural,
+    TAtlasTextId.ElementExitPointsPlural, TAtlasTextId.ElementReassignedPlural,
+    TAtlasTextId.ElementLearnedSuggestionsPlural, TAtlasTextId.ElementCodeLensCoveredByPlural,
+    TAtlasTextId.ElementThreadsInSourcePlural, TAtlasTextId.ElementCodeLensUntestedPlural,
+    TAtlasTextId.ElementTestCoveragePlural, TAtlasTextId.ElementOwnershipHintsPlural,
+    TAtlasTextId.ElementMutationResultsPlural);
+begin
+  if APlural then
+  begin
+    Result := TAtlasStrings.Text(cPlural[AElement]);
+  end
+  else
+  begin
+    Result := TAtlasStrings.Text(cSingular[AElement]);
+  end;
+end;
+
+class function TAtlasHideMenu.ScopeCaption(AElement: TAtlasDrawnElement; AScope: TAtlasHideScope): string;
+begin
+  case AScope of
+    TAtlasHideScope.Here:
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideHere);
+    TAtlasHideScope.InFile:
+      Result := TAtlasEditorStrings.Text(TAtlasEditorTextId.HideInFile);
+  else
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideEverywhere, [ElementName(AElement, True)]);
   end;
 end;
 
@@ -314,25 +314,13 @@ begin
   FTimer.OnTimer := TimerTick;
 end;
 
-class function TAtlasHideNoticeWindow.PlaceBelow(const APoint: TPoint; AWidth, AHeight, AGap: Integer;
-  const AWorkArea: TRect): TRect;
-var
-  mLeft, mTop: Integer;
+procedure TAtlasHideNoticeWindow.Paint;
 begin
-  mLeft := APoint.X;
-  mTop := APoint.Y + AGap;
-  // Unten kein Platz: über die Stelle.
-  if mTop + AHeight > AWorkArea.Bottom then
-  begin
-    mTop := APoint.Y - AGap - AHeight;
-  end;
-  if mLeft + AWidth > AWorkArea.Right then
-  begin
-    mLeft := AWorkArea.Right - AWidth;
-  end;
-  mLeft := Max(mLeft, AWorkArea.Left);
-  mTop := Max(mTop, AWorkArea.Top);
-  Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
 end;
 
 /// <summary>Schreibt AText bei AX, AY in AColor (nur wenn ADraw) und rückt AX um seine Breite weiter.</summary>
@@ -345,6 +333,51 @@ begin
     ACanvas.TextOut(AX, AY, AText);
   end;
   Inc(AX, ACanvas.TextWidth(AText));
+end;
+
+procedure TAtlasHideNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if (Button = mbLeft) and not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y)) then
+  begin
+    ClickUndo;
+  end;
+end;
+
+procedure TAtlasHideNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: Boolean;
+begin
+  inherited;
+  mHot := not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y));
+  if mHot then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  if mHot <> FUndoHot then
+  begin
+    FUndoHot := mHot;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasHideNoticeWindow.TimerTick(Sender: TObject);
+begin
+  try
+    // Wer auf den Hinweis zeigt, will vielleicht zurücknehmen: noch einmal so lange.
+    if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
+    begin
+      Exit;
+    end;
+    Dismiss;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Hide, E);
+  end;
 end;
 
 function TAtlasHideNoticeWindow.Layout(ADraw: Boolean): TSize;
@@ -410,6 +443,16 @@ begin
   Canvas.Font.Style := [];
 end;
 
+procedure TAtlasHideNoticeWindow.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  if FUndoHot then
+  begin
+    FUndoHot := False;
+    Invalidate;
+  end;
+end;
+
 procedure TAtlasHideNoticeWindow.ShowNotice(const ATitle, ADetail: string; ACanUndo: Boolean;
   const APoint: TPoint);
 var
@@ -453,68 +496,25 @@ begin
   Result := FUndoRect;
 end;
 
-procedure TAtlasHideNoticeWindow.TimerTick(Sender: TObject);
-begin
-  try
-    // Wer auf den Hinweis zeigt, will vielleicht zurücknehmen: noch einmal so lange.
-    if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
-    begin
-      Exit;
-    end;
-    Dismiss;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Hide, E);
-  end;
-end;
-
-procedure TAtlasHideNoticeWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasHideNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if (Button = mbLeft) and not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y)) then
-  begin
-    ClickUndo;
-  end;
-end;
-
-procedure TAtlasHideNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+class function TAtlasHideNoticeWindow.PlaceBelow(const APoint: TPoint; AWidth, AHeight, AGap: Integer;
+  const AWorkArea: TRect): TRect;
 var
-  mHot: Boolean;
+  mLeft, mTop: Integer;
 begin
-  inherited;
-  mHot := not FUndoRect.IsEmpty and PtInRect(FUndoRect, Point(X, Y));
-  if mHot then
+  mLeft := APoint.X;
+  mTop := APoint.Y + AGap;
+  // Unten kein Platz: über die Stelle.
+  if mTop + AHeight > AWorkArea.Bottom then
   begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
+    mTop := APoint.Y - AGap - AHeight;
   end;
-  if mHot <> FUndoHot then
+  if mLeft + AWidth > AWorkArea.Right then
   begin
-    FUndoHot := mHot;
-    Invalidate;
+    mLeft := AWorkArea.Right - AWidth;
   end;
-end;
-
-procedure TAtlasHideNoticeWindow.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  if FUndoHot then
-  begin
-    FUndoHot := False;
-    Invalidate;
-  end;
+  mLeft := Max(mLeft, AWorkArea.Left);
+  mTop := Max(mTop, AWorkArea.Top);
+  Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
 end.

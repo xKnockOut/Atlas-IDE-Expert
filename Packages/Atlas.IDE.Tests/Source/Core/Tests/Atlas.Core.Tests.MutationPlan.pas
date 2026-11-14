@@ -63,6 +63,8 @@ uses
   System.Generics.Collections,
   Atlas.Text.TestResults;
 
+{ TAtlasMutationPlan }
+
 class function TAtlasMutationPlan.OperatorsOf(const ASetting: string): TArray<string>;
 var
   mPart, mId: string;

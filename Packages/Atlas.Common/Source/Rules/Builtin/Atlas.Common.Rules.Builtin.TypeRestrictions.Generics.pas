@@ -321,6 +321,35 @@ end;
 
 { TConstraintScan }
 
+function TConstraintScan.Step(const AToken: TPascalToken): Boolean;
+begin
+  Result := True;
+  if AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+  begin
+    Exit;
+  end;
+  if AToken.IsSymbol('<') then
+  begin
+    Inc(Depth);
+    if Depth = 1 then
+    begin
+      Exit;
+    end;
+  end
+  else if AToken.IsSymbol('>') or AToken.IsSymbol('>=') or AToken.IsSymbol('>>') then
+  begin
+    if Close(AToken) then
+    begin
+      Exit(False);
+    end;
+  end
+  else if (Depth = 1) and Separator(AToken) then
+  begin
+    Exit;
+  end;
+  Append(AToken);
+end;
+
 procedure TConstraintScan.Flush;
 begin
   if Current.Text <> '' then
@@ -400,35 +429,6 @@ begin
   end;
   Current.Text := Current.Text + AToken.Text;
   Current.Range.EndPos := AToken.EndPos;
-end;
-
-function TConstraintScan.Step(const AToken: TPascalToken): Boolean;
-begin
-  Result := True;
-  if AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-  begin
-    Exit;
-  end;
-  if AToken.IsSymbol('<') then
-  begin
-    Inc(Depth);
-    if Depth = 1 then
-    begin
-      Exit;
-    end;
-  end
-  else if AToken.IsSymbol('>') or AToken.IsSymbol('>=') or AToken.IsSymbol('>>') then
-  begin
-    if Close(AToken) then
-    begin
-      Exit(False);
-    end;
-  end
-  else if (Depth = 1) and Separator(AToken) then
-  begin
-    Exit;
-  end;
-  Append(AToken);
 end;
 
 /// <summary>Gruppen "A, B: Einschränkungen" der Liste AParams; je Gruppe die Einschränkungen in Reihenfolge.</summary>
@@ -699,6 +699,8 @@ begin
     Result := '';
   end;
 end;
+
+{ TGenericDeclarationInvalidRule }
 
 function TGenericDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin

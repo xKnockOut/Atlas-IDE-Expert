@@ -100,6 +100,8 @@ begin
   Result := False;
 end;
 
+{ TRaiseVisibility }
+
 class function TRaiseVisibility.Targets(ALayout: TClassLayout; AIndex: Integer): TArray<TClassVisibility>;
 var
   mTarget: TClassVisibility;

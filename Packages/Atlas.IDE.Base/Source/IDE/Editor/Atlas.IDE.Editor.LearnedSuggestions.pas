@@ -160,50 +160,6 @@ end;
 
 { TAtlasIdeLearnedSuggestions }
 
-class procedure TAtlasIdeLearnedSuggestions.Install(const ASessionOf: TFunc<TLspSession>;
-  const AMessage: TProc<string>);
-begin
-  FSessionOf := ASessionOf;
-  FMessage := AMessage;
-  if FUsage = nil then
-  begin
-    FUsage := TAtlasLearnedUsage.Create;
-    Load;
-  end;
-  if FListRequest = nil then
-  begin
-    FListRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
-  end;
-  if FProvider = nil then
-  begin
-    FProvider := TLearnedProvider.Create;
-    TAtlasGhostProviders.Add(FProvider);
-  end;
-end;
-
-class procedure TAtlasIdeLearnedSuggestions.Uninstall;
-begin
-  if FProvider <> nil then
-  begin
-    TAtlasGhostProviders.Remove(FProvider);
-    FProvider := nil;
-  end;
-  FreeAndNil(FListRequest);
-  FreeAndNil(FUsage);
-  FSessionOf := nil;
-  FMessage := nil;
-end;
-
-class function TAtlasIdeLearnedSuggestions.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.SuggestionsLearned;
-end;
-
-class function TAtlasIdeLearnedSuggestions.Usage: TAtlasLearnedUsage;
-begin
-  Result := FUsage;
-end;
-
 class function TAtlasIdeLearnedSuggestions.Session: TLspSession;
 begin
   Result := nil;
@@ -250,6 +206,50 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeLearnedSuggestions.Install(const ASessionOf: TFunc<TLspSession>;
+  const AMessage: TProc<string>);
+begin
+  FSessionOf := ASessionOf;
+  FMessage := AMessage;
+  if FUsage = nil then
+  begin
+    FUsage := TAtlasLearnedUsage.Create;
+    Load;
+  end;
+  if FListRequest = nil then
+  begin
+    FListRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.LearnedSuggestions);
+  end;
+  if FProvider = nil then
+  begin
+    FProvider := TLearnedProvider.Create;
+    TAtlasGhostProviders.Add(FProvider);
+  end;
+end;
+
+class procedure TAtlasIdeLearnedSuggestions.Uninstall;
+begin
+  if FProvider <> nil then
+  begin
+    TAtlasGhostProviders.Remove(FProvider);
+    FProvider := nil;
+  end;
+  FreeAndNil(FListRequest);
+  FreeAndNil(FUsage);
+  FSessionOf := nil;
+  FMessage := nil;
+end;
+
+class function TAtlasIdeLearnedSuggestions.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.SuggestionsLearned;
+end;
+
+class function TAtlasIdeLearnedSuggestions.Usage: TAtlasLearnedUsage;
+begin
+  Result := FUsage;
+end;
+
 class procedure TAtlasIdeLearnedSuggestions.UpdateGroup;
 var
   mServices: IOTAModuleServices;
@@ -274,47 +274,6 @@ begin
   else
   begin
     FUsage.SetGroup('');
-  end;
-end;
-
-class procedure TAtlasIdeLearnedSuggestions.Accepted(const AId: string);
-begin
-  if (FUsage <> nil) and TAtlasIdeSettings.Current.SuggestionsLearnFromUsage then
-  begin
-    UpdateGroup;
-    FUsage.Accepted(AId);
-    Save;
-  end;
-end;
-
-class procedure TAtlasIdeLearnedSuggestions.Rejected(const AId: string);
-begin
-  if (FUsage <> nil) and TAtlasIdeSettings.Current.SuggestionsLearnFromUsage then
-  begin
-    UpdateGroup;
-    FUsage.Rejected(AId);
-    Save;
-  end;
-end;
-
-class function TAtlasIdeLearnedSuggestions.ProposalOf(const ASuggestion: TAtlasLearnedSuggestion):
-  TAtlasGhostProposal;
-var
-  mEvidence: TAtlasLearnedEvidence;
-  mLocation: TAtlasGhostLocation;
-begin
-  Result := Default(TAtlasGhostProposal);
-  Result.Id := ASuggestion.Pattern.Id;
-  Result.Lines := ASuggestion.Lines;
-  Result.CursorLine := ASuggestion.CursorLine;
-  Result.CursorCharacter := ASuggestion.CursorCharacter;
-  Result.StatusText := TAtlasLearnedSuggestions.StatusText(ASuggestion.Pattern);
-  Result.Hint := TAtlasLearnedSuggestions.HintText(ASuggestion.Pattern);
-  for mEvidence in ASuggestion.Pattern.Evidence do
-  begin
-    mLocation.FileName := mEvidence.FileName;
-    mLocation.Line := mEvidence.Line;
-    Result.Locations := Result.Locations + [mLocation];
   end;
 end;
 
@@ -366,6 +325,47 @@ begin
         FMessage(TAtlasLearnedTexts.Text(TAtlasLearnedText.NoServer));
       end;
     end);
+end;
+
+class function TAtlasIdeLearnedSuggestions.ProposalOf(const ASuggestion: TAtlasLearnedSuggestion):
+  TAtlasGhostProposal;
+var
+  mEvidence: TAtlasLearnedEvidence;
+  mLocation: TAtlasGhostLocation;
+begin
+  Result := Default(TAtlasGhostProposal);
+  Result.Id := ASuggestion.Pattern.Id;
+  Result.Lines := ASuggestion.Lines;
+  Result.CursorLine := ASuggestion.CursorLine;
+  Result.CursorCharacter := ASuggestion.CursorCharacter;
+  Result.StatusText := TAtlasLearnedSuggestions.StatusText(ASuggestion.Pattern);
+  Result.Hint := TAtlasLearnedSuggestions.HintText(ASuggestion.Pattern);
+  for mEvidence in ASuggestion.Pattern.Evidence do
+  begin
+    mLocation.FileName := mEvidence.FileName;
+    mLocation.Line := mEvidence.Line;
+    Result.Locations := Result.Locations + [mLocation];
+  end;
+end;
+
+class procedure TAtlasIdeLearnedSuggestions.Accepted(const AId: string);
+begin
+  if (FUsage <> nil) and TAtlasIdeSettings.Current.SuggestionsLearnFromUsage then
+  begin
+    UpdateGroup;
+    FUsage.Accepted(AId);
+    Save;
+  end;
+end;
+
+class procedure TAtlasIdeLearnedSuggestions.Rejected(const AId: string);
+begin
+  if (FUsage <> nil) and TAtlasIdeSettings.Current.SuggestionsLearnFromUsage then
+  begin
+    UpdateGroup;
+    FUsage.Rejected(AId);
+    Save;
+  end;
 end;
 
 /// <summary>Zeile der Liste für APattern mit den Lernzählern aus AUsage.</summary>

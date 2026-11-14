@@ -50,6 +50,8 @@ const
   cTexts: array[TLinterChangesText] of TAtlasText = (
     (De: '%s: %d von %d Dateien geändert gegenüber %s'; En: '%s: %d of %d files changed compared with %s'));
 
+{ TLinterChanges }
+
 class function TLinterChanges.Detect(const AConfigRoot: string; const ASettings: TServerSettings): TVcsChanges;
 var
   mProcess: ICompilerProcess;

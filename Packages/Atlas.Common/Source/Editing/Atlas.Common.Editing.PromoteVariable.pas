@@ -174,6 +174,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TPromoteVariable }
+
 class function TPromoteVariable.ToFieldTitle: string;
 begin
   Result := cTexts[TEditingPromoteVariableText.ConvertToField].Text;
@@ -883,6 +885,40 @@ begin
   end;
 end;
 
+function TPromotePlan.AnalyzeLocal(AOffset: Integer; out AReason: string): Boolean;
+var
+  mLocals: TArray<TRoutineLocal>;
+  mFound: Integer;
+  mCreated, mFreed: Boolean;
+begin
+  Direction := TPromoteDirection.ToField;
+  AReason := MethodIssue(AOffset);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  mLocals := TRoutineLocals.Collect(Text, Tree, Method);
+  mFound := LocalAt(mLocals, Name, AOffset);
+  if mFound < 0 then
+  begin
+    // Kein lokaler Name: vielleicht ein Feld.
+    Direction := TPromoteDirection.ToLocal;
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoLocalVariable].Text, AReason));
+  end;
+  if ClassName = '' then
+  begin
+    Exit(Fail(cTexts[TEditingPromoteVariableText.NoMethod].Text, AReason));
+  end;
+  Local := mLocals[mFound];
+  AReason := LocalIssue;
+  Result := AReason = '';
+  if Result then
+  begin
+    CollectLocalReferences(mLocals, mCreated, mFreed);
+    Warnings := LocalWarnings(Local, Method, mCreated, mFreed);
+  end;
+end;
+
 function TPromotePlan.MethodIssue(AOffset: Integer): string;
 var
   mRoutine: TSyntaxNode;
@@ -903,25 +939,6 @@ begin
   else if TRoutineBody.BodyOf(Method) = nil then
   begin
     Result := cTexts[TEditingPromoteVariableText.RoutineWithoutBody].Text;
-  end;
-end;
-
-function TPromotePlan.LocalTypeIssue: string;
-begin
-  TypeBody := TRoutineBody.TypeBody(Tree.Root, ClassName);
-  if TypeBody = nil then
-  begin
-    Exit(cTexts[TEditingPromoteVariableText.ClassNotInTheFile].Fmt([ClassName]));
-  end;
-  TypeText := Local.TypeText;
-  if (TypeText = '') and Assigned(Lookup.InlineType) then
-  begin
-    TypeText := Lookup.InlineType(Local);
-  end;
-  Result := '';
-  if TypeText = '' then
-  begin
-    Result := cTexts[TEditingPromoteVariableText.TypeOfUnknown].Fmt([Local.Name]);
   end;
 end;
 
@@ -946,6 +963,25 @@ begin
   else
   begin
     Result := LocalTypeIssue;
+  end;
+end;
+
+function TPromotePlan.LocalTypeIssue: string;
+begin
+  TypeBody := TRoutineBody.TypeBody(Tree.Root, ClassName);
+  if TypeBody = nil then
+  begin
+    Exit(cTexts[TEditingPromoteVariableText.ClassNotInTheFile].Fmt([ClassName]));
+  end;
+  TypeText := Local.TypeText;
+  if (TypeText = '') and Assigned(Lookup.InlineType) then
+  begin
+    TypeText := Lookup.InlineType(Local);
+  end;
+  Result := '';
+  if TypeText = '' then
+  begin
+    Result := cTexts[TEditingPromoteVariableText.TypeOfUnknown].Fmt([Local.Name]);
   end;
 end;
 
@@ -981,37 +1017,34 @@ begin
   ACreated := ACreated or IsCreate(InitializerOf(Local.Decl));
 end;
 
-function TPromotePlan.AnalyzeLocal(AOffset: Integer; out AReason: string): Boolean;
-var
-  mLocals: TArray<TRoutineLocal>;
-  mFound: Integer;
-  mCreated, mFreed: Boolean;
+function TPromotePlan.AnalyzeField(AOffset: Integer; out AReason: string): Boolean;
 begin
-  Direction := TPromoteDirection.ToField;
-  AReason := MethodIssue(AOffset);
-  if AReason <> '' then
+  Direction := TPromoteDirection.ToLocal;
+  Field := NodeAtOffset(Tree, AOffset, TSyntaxKind.Field);
+  if Field <> nil then
   begin
-    Exit(False);
-  end;
-  mLocals := TRoutineLocals.Collect(Text, Tree, Method);
-  mFound := LocalAt(mLocals, Name, AOffset);
-  if mFound < 0 then
+    AReason := DeclaredFieldIssue;
+  end
+  else
   begin
-    // Kein lokaler Name: vielleicht ein Feld.
-    Direction := TPromoteDirection.ToLocal;
-    Exit(Fail(cTexts[TEditingPromoteVariableText.NoLocalVariable].Text, AReason));
+    AReason := UsedFieldIssue(AOffset);
   end;
-  if ClassName = '' then
+  if AReason = '' then
   begin
-    Exit(Fail(cTexts[TEditingPromoteVariableText.NoMethod].Text, AReason));
+    AReason := FieldIssue;
   end;
-  Local := mLocals[mFound];
-  AReason := LocalIssue;
+  if AReason = '' then
+  begin
+    AReason := FieldUseIssue;
+  end;
+  if AReason = '' then
+  begin
+    AReason := FieldMethodIssue(Tokens, Method);
+  end;
   Result := AReason = '';
   if Result then
   begin
-    CollectLocalReferences(mLocals, mCreated, mFreed);
-    Warnings := LocalWarnings(Local, Method, mCreated, mFreed);
+    Warnings := nil;
   end;
 end;
 
@@ -1093,55 +1126,6 @@ begin
   end;
 end;
 
-function TPromotePlan.ForeignUseIssue(ATop: TSyntaxNode; out ASkip: Boolean): string;
-var
-  mQualifier: string;
-  mOther: TSyntaxNode;
-begin
-  // Methode einer anderen Klasse mit eigenem Feld gleichen Namens bzw. freie Routine ohne with: anderer Name.
-  ASkip := True;
-  Result := '';
-  mQualifier := TRoutineBody.QualifierOf(ATop.Name);
-  if mQualifier = '' then
-  begin
-    if TRoutineLocals.HasKind(ATop, TSyntaxKind.WithStatement) then
-    begin
-      Result := Name + cTexts[TEditingPromoteVariableText.IsInAWith].Text;
-    end;
-    Exit;
-  end;
-  mOther := TRoutineBody.TypeBody(Tree.Root, mQualifier);
-  if (mOther = nil) or (IndexText(Name, TRoutineBody.MemberNames(mOther)) < 0) then
-  begin
-    Result := Name + cTexts[TEditingPromoteVariableText.IsAlsoUsedIn].Fmt([ATop.Name]);
-  end;
-end;
-
-function TPromotePlan.UseIssue(ANode, ATop: TSyntaxNode; out ASkip: Boolean): string;
-begin
-  ASkip := False;
-  Result := '';
-  if ATop = nil then
-  begin
-    Result := Name + cTexts[TEditingPromoteVariableText.IsUsedOutsideAMethod].Text;
-  end
-  else if ANode.Kind = TSyntaxKind.MemberAccess then
-  begin
-    if not IsSelfAccess(ANode) or not SameText(TRoutineBody.QualifierOf(ATop.Name), ClassName) then
-    begin
-      Result := Name + cTexts[TEditingPromoteVariableText.IsUsedViaAnotherObject].Text;
-    end;
-  end
-  else if ShadowedBelow(Text, Tree, ANode, nil, Name) then
-  begin
-    ASkip := True;
-  end
-  else if not SameText(TRoutineBody.QualifierOf(ATop.Name), ClassName) then
-  begin
-    Result := ForeignUseIssue(ATop, ASkip);
-  end;
-end;
-
 function TPromotePlan.FieldUseIssue: string;
 var
   mNode, mTop: TSyntaxNode;
@@ -1175,35 +1159,128 @@ begin
   Result := TopsIssue(Name, mTops, Method);
 end;
 
-function TPromotePlan.AnalyzeField(AOffset: Integer; out AReason: string): Boolean;
+function TPromotePlan.UseIssue(ANode, ATop: TSyntaxNode; out ASkip: Boolean): string;
 begin
-  Direction := TPromoteDirection.ToLocal;
-  Field := NodeAtOffset(Tree, AOffset, TSyntaxKind.Field);
-  if Field <> nil then
+  ASkip := False;
+  Result := '';
+  if ATop = nil then
   begin
-    AReason := DeclaredFieldIssue;
+    Result := Name + cTexts[TEditingPromoteVariableText.IsUsedOutsideAMethod].Text;
+  end
+  else if ANode.Kind = TSyntaxKind.MemberAccess then
+  begin
+    if not IsSelfAccess(ANode) or not SameText(TRoutineBody.QualifierOf(ATop.Name), ClassName) then
+    begin
+      Result := Name + cTexts[TEditingPromoteVariableText.IsUsedViaAnotherObject].Text;
+    end;
+  end
+  else if ShadowedBelow(Text, Tree, ANode, nil, Name) then
+  begin
+    ASkip := True;
+  end
+  else if not SameText(TRoutineBody.QualifierOf(ATop.Name), ClassName) then
+  begin
+    Result := ForeignUseIssue(ATop, ASkip);
+  end;
+end;
+
+function TPromotePlan.ForeignUseIssue(ATop: TSyntaxNode; out ASkip: Boolean): string;
+var
+  mQualifier: string;
+  mOther: TSyntaxNode;
+begin
+  // Methode einer anderen Klasse mit eigenem Feld gleichen Namens bzw. freie Routine ohne with: anderer Name.
+  ASkip := True;
+  Result := '';
+  mQualifier := TRoutineBody.QualifierOf(ATop.Name);
+  if mQualifier = '' then
+  begin
+    if TRoutineLocals.HasKind(ATop, TSyntaxKind.WithStatement) then
+    begin
+      Result := Name + cTexts[TEditingPromoteVariableText.IsInAWith].Text;
+    end;
+    Exit;
+  end;
+  mOther := TRoutineBody.TypeBody(Tree.Root, mQualifier);
+  if (mOther = nil) or (IndexText(Name, TRoutineBody.MemberNames(mOther)) < 0) then
+  begin
+    Result := Name + cTexts[TEditingPromoteVariableText.IsAlsoUsedIn].Fmt([ATop.Name]);
+  end;
+end;
+
+function TPromotePlan.Build(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
+  out AResult: TPromoteResult; out AReason: string): Boolean;
+var
+  mEdits: TArray<TTextEdit>;
+  mDone: string;
+  mCheck: TSyntaxTree;
+begin
+  AResult := Default(TPromoteResult);
+  if not IsValidName(ANewName) then
+  begin
+    Exit(Fail(cTexts[TEditingPromoteVariableText.IsNotAValidName].Fmt([ANewName]), AReason));
+  end;
+  if Direction = TPromoteDirection.ToField then
+  begin
+    Result := BuildField(ANewName, AStyle, ACheckName, mEdits, AReason);
   end
   else
   begin
-    AReason := UsedFieldIssue(AOffset);
+    Result := BuildLocal(ANewName, AStyle, ACheckName, mEdits, AReason);
   end;
-  if AReason = '' then
+  if not Result then
   begin
-    AReason := FieldIssue;
+    Exit;
   end;
-  if AReason = '' then
+  mDone := TChangeSignature.ApplyEdits(Text, mEdits);
+  mCheck := TSyntaxTreeCache.Parse(mDone);
+  try
+    if Length(mCheck.Diagnostics) > 0 then
+    begin
+      Exit(Fail(cTexts[TEditingPromoteVariableText.ResultDoesNotParse].Text, AReason));
+    end;
+  finally
+    mCheck.Free;
+  end;
+  if (Direction = TPromoteDirection.ToLocal) and not WrittenFirst(mDone, ANewName, AReason) then
   begin
-    AReason := FieldUseIssue;
+    Exit(False);
   end;
-  if AReason = '' then
+  AResult.Edits := mEdits;
+  AResult.Warnings := Warnings;
+  AResult.Places := Length(References) + 2;
+end;
+
+function TPromotePlan.BuildField(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
+  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
+var
+  mNode: TSyntaxNode;
+  mEdit: TTextEdit;
+begin
+  AEdits := nil;
+  AReason := '';
+  if ACheckName then
   begin
-    AReason := FieldMethodIssue(Tokens, Method);
+    AReason := FieldNameIssue(ANewName);
   end;
-  Result := AReason = '';
-  if Result then
+  if AReason <> '' then
   begin
-    Warnings := nil;
+    Exit(False);
   end;
+  if not TRoutineBody.FieldDeclaration(Text, Tree, TypeBody, ANewName + ': ' + TypeText + ';', AStyle, mEdit) then
+  begin
+    Exit(Fail(cTexts[TEditingPromoteVariableText.ClassDeclarationCannotBeExtended].Text, AReason));
+  end;
+  AEdits := AEdits + [mEdit];
+  RemoveLocalDeclaration(ANewName, AEdits);
+  if not SameStr(ANewName, Local.Name) then
+  begin
+    for mNode in References do
+    begin
+      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mNode.StartPos, mNode.EndPos), ANewName)];
+    end;
+  end;
+  Result := True;
 end;
 
 function TPromotePlan.FieldNameIssue(const ANewName: string): string;
@@ -1243,38 +1320,6 @@ begin
   begin
     AEdits := AEdits + [InlineRemoval(Text, Tokens, Lines, Local.Decl)];
   end;
-end;
-
-function TPromotePlan.BuildField(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
-  out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
-var
-  mNode: TSyntaxNode;
-  mEdit: TTextEdit;
-begin
-  AEdits := nil;
-  AReason := '';
-  if ACheckName then
-  begin
-    AReason := FieldNameIssue(ANewName);
-  end;
-  if AReason <> '' then
-  begin
-    Exit(False);
-  end;
-  if not TRoutineBody.FieldDeclaration(Text, Tree, TypeBody, ANewName + ': ' + TypeText + ';', AStyle, mEdit) then
-  begin
-    Exit(Fail(cTexts[TEditingPromoteVariableText.ClassDeclarationCannotBeExtended].Text, AReason));
-  end;
-  AEdits := AEdits + [mEdit];
-  RemoveLocalDeclaration(ANewName, AEdits);
-  if not SameStr(ANewName, Local.Name) then
-  begin
-    for mNode in References do
-    begin
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mNode.StartPos, mNode.EndPos), ANewName)];
-    end;
-  end;
-  Result := True;
 end;
 
 function TPromotePlan.BuildLocal(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
@@ -1361,49 +1406,6 @@ begin
   finally
     mCheck.Free;
   end;
-end;
-
-function TPromotePlan.Build(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
-  out AResult: TPromoteResult; out AReason: string): Boolean;
-var
-  mEdits: TArray<TTextEdit>;
-  mDone: string;
-  mCheck: TSyntaxTree;
-begin
-  AResult := Default(TPromoteResult);
-  if not IsValidName(ANewName) then
-  begin
-    Exit(Fail(cTexts[TEditingPromoteVariableText.IsNotAValidName].Fmt([ANewName]), AReason));
-  end;
-  if Direction = TPromoteDirection.ToField then
-  begin
-    Result := BuildField(ANewName, AStyle, ACheckName, mEdits, AReason);
-  end
-  else
-  begin
-    Result := BuildLocal(ANewName, AStyle, ACheckName, mEdits, AReason);
-  end;
-  if not Result then
-  begin
-    Exit;
-  end;
-  mDone := TChangeSignature.ApplyEdits(Text, mEdits);
-  mCheck := TSyntaxTreeCache.Parse(mDone);
-  try
-    if Length(mCheck.Diagnostics) > 0 then
-    begin
-      Exit(Fail(cTexts[TEditingPromoteVariableText.ResultDoesNotParse].Text, AReason));
-    end;
-  finally
-    mCheck.Free;
-  end;
-  if (Direction = TPromoteDirection.ToLocal) and not WrittenFirst(mDone, ANewName, AReason) then
-  begin
-    Exit(False);
-  end;
-  AResult.Edits := mEdits;
-  AResult.Warnings := Warnings;
-  AResult.Places := Length(References) + 2;
 end;
 
 { TPromoteVariable }

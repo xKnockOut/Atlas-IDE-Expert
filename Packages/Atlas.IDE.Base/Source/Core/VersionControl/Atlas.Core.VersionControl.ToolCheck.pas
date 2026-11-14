@@ -57,6 +57,8 @@ type
 
 implementation
 
+{ TAtlasVcsToolChecks }
+
 class function TAtlasVcsToolChecks.VersionArguments(AKind: TAtlasVcsKind): TArray<string>;
 begin
   if AKind = TAtlasVcsKind.Svn then
@@ -139,16 +141,6 @@ begin
   end;
 end;
 
-class function TAtlasVcsToolChecks.Missing(AKind: TAtlasVcsKind;
-  const ALocation: TAtlasVcsToolLocation): TAtlasVcsToolCheck;
-begin
-  Result.Kind := AKind;
-  Result.State := TAtlasVcsToolState.Missing;
-  Result.Version := '';
-  Result.ExitCode := -1;
-  Result.Location := ALocation;
-end;
-
 class function TAtlasVcsToolChecks.Classify(AKind: TAtlasVcsKind; const ALocation: TAtlasVcsToolLocation;
   const ARun: TAtlasVcsRunResult): TAtlasVcsToolCheck;
 begin
@@ -186,6 +178,16 @@ begin
     Result.State := TAtlasVcsToolState.StartFailed;
     Result.ExitCode := ARun.ExitCode;
   end;
+end;
+
+class function TAtlasVcsToolChecks.Missing(AKind: TAtlasVcsKind;
+  const ALocation: TAtlasVcsToolLocation): TAtlasVcsToolCheck;
+begin
+  Result.Kind := AKind;
+  Result.State := TAtlasVcsToolState.Missing;
+  Result.Version := '';
+  Result.ExitCode := -1;
+  Result.Location := ALocation;
 end;
 
 class function TAtlasVcsToolChecks.Check(AKind: TAtlasVcsKind; const ALocation: TAtlasVcsToolLocation;

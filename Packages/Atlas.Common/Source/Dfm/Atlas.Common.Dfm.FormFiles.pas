@@ -45,6 +45,8 @@ begin
   end;
 end;
 
+{ TFormFiles }
+
 class function TFormFiles.UnitFile(const AFormFile: string): string;
 var
   mBase, mSegment: string;

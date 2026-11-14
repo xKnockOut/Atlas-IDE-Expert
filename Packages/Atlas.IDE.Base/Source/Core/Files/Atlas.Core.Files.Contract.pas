@@ -78,6 +78,8 @@ type
 
 implementation
 
+{ TAtlasEditorFile }
+
 class function TAtlasEditorFile.Closed: TAtlasEditorFile;
 begin
   Result := Default(TAtlasEditorFile);
@@ -89,6 +91,8 @@ begin
   Result.Text := AText;
   Result.Modified := AModified;
 end;
+
+{ TAtlasActiveEditorPos }
 
 class function TAtlasActiveEditorPos.None: TAtlasActiveEditorPos;
 begin

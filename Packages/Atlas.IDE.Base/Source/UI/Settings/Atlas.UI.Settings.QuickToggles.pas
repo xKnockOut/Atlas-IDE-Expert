@@ -203,32 +203,6 @@ end;
 
 { TAtlasQuickToggleRows }
 
-class function TAtlasQuickToggleRows.IsCollapsed(const APage: string): Boolean;
-var
-  mPage: string;
-begin
-  for mPage in GCollapsed do
-  begin
-    if SameText(mPage, APage) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class procedure TAtlasQuickToggleRows.ExpandAll;
-begin
-  GCollapsed := nil;
-  GCollapseInitialized := True;
-end;
-
-class procedure TAtlasQuickToggleRows.ResetCollapse;
-begin
-  GCollapsed := nil;
-  GCollapseInitialized := False;
-end;
-
 procedure TAtlasQuickToggleRows.AddPage(const APage: string);
 var
   mRow: TAtlasQuickToggleRow;
@@ -341,6 +315,32 @@ begin
   Result := FItems[FRows[ARow].Item];
 end;
 
+class function TAtlasQuickToggleRows.IsCollapsed(const APage: string): Boolean;
+var
+  mPage: string;
+begin
+  for mPage in GCollapsed do
+  begin
+    if SameText(mPage, APage) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class procedure TAtlasQuickToggleRows.ExpandAll;
+begin
+  GCollapsed := nil;
+  GCollapseInitialized := True;
+end;
+
+class procedure TAtlasQuickToggleRows.ResetCollapse;
+begin
+  GCollapsed := nil;
+  GCollapseInitialized := False;
+end;
+
 { TAtlasQuickToggleScroll }
 
 procedure TAtlasQuickToggleScroll.Clamp(ACount: Integer);
@@ -383,6 +383,8 @@ type
     /// <summary>Symbol „Einstellung öffnen“ rechts in einer Schalterzeile; leer sonst.</summary>
     function OpenRect(ARow: Integer): TRect;
   end;
+
+{ TToggleGeometry }
 
 class function TToggleGeometry.Create(AWindow: TAtlasQuickToggleWindow): TToggleGeometry;
 begin
@@ -465,6 +467,8 @@ type
     procedure Frame;
     procedure Paint;
   end;
+
+{ TTogglePainter }
 
 class function TTogglePainter.Create(AWindow: TAtlasQuickToggleWindow): TTogglePainter;
 begin
@@ -702,248 +706,18 @@ begin
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
-procedure TAtlasQuickToggleWindow.OpenRow(ARow: Integer);
-var
-  mItem: TAtlasQuickToggleItem;
-  mHandler: TProc<TAtlasQuickToggleItem>;
-begin
-  mHandler := FOnOpenSetting;
-  if not FRows.IsToggle(ARow) or FClosing or not Assigned(mHandler) then
-  begin
-    Exit;
-  end;
-  mItem := FRows.ToggleOf(ARow);
-  // Tools › Optionen ist modal: erst schließen, dann öffnen.
-  Dismiss;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
-    procedure
-    begin
-      mHandler(mItem);
-    end);
-end;
-
-procedure TAtlasQuickToggleWindow.ClickOpen(ARow: Integer);
-begin
-  OpenRow(ARow);
-end;
-
-function TAtlasQuickToggleWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-begin
-  // Drei Zeilen je Raste, wie im Editor.
-  if WheelDelta > 0 then
-  begin
-    Dec(FScroll.First, 3);
-  end
-  else
-  begin
-    Inc(FScroll.First, 3);
-  end;
-  FScroll.Clamp(FRows.Count);
-  Invalidate;
-  Result := True;
-end;
-
-procedure TAtlasQuickToggleWindow.ToggleGroup(const APage: string);
-begin
-  // Auswahl bleibt auf der Überschrift.
-  FHot := FRows.ToggleGroup(APage);
-  Layout;
-  // Die aufgeklappte Seite steht oben.
-  FScroll.First := Max(0, FHot);
-  FScroll.Clamp(FRows.Count);
-  // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
-  if Visible then
-  begin
-    PlaceAboveAnchor;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasQuickToggleWindow.Layout;
-var
-  mGeometry: TToggleGeometry;
-  mWidth, mButtonWidth, mTags, mIndex: Integer;
-begin
-  mGeometry := TToggleGeometry.Create(Self);
-  Canvas.Font := Font;
-  mTags := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesProject)),
-    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesSession)));
-  mWidth := ScaleValue(280);
-  for mIndex := 0 to FRows.Count - 1 do
-  begin
-    // 64: Kästchen und Ränder, 28: Symbol „Einstellung öffnen“.
-    mWidth := Max(mWidth, Canvas.TextWidth(FRows.Text(mIndex)) + mTags + ScaleValue(64 + 28));
-  end;
-  mWidth := Min(mWidth, ScaleValue(720));
-  mButtonWidth := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff)),
-    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) +
-    ScaleValue(cAllButtonPadding);
-  ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(20));
-  // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
-  FScroll.Visible := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 -
-    mGeometry.HeaderHeight - mGeometry.ButtonsHeight) div mGeometry.RowHeight);
-  FScroll.Visible := Min(FScroll.Visible, Max(1, FRows.Count));
-  FScroll.Clamp(FRows.Count);
-  ClientHeight := mGeometry.HeaderHeight + FScroll.Visible * mGeometry.RowHeight + mGeometry.ButtonsHeight;
-  FAllButton.SetBounds(ScaleValue(10), ClientHeight - mGeometry.ButtonsHeight + ScaleValue(8), mButtonWidth,
-    ScaleValue(25));
-end;
-
-procedure TAtlasQuickToggleWindow.SetItems(const AItems: TArray<TAtlasQuickToggleItem>; AAllOff: Boolean);
-begin
-  FAllOff := AAllOff;
-  FRows.Build(AItems);
-  if FHot >= FRows.Count then
-  begin
-    FHot := -1;
-  end;
-  if FAllOff then
-  begin
-    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn);
-  end
-  else
-  begin
-    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff);
-  end;
-  Layout;
-  if Visible then
-  begin
-    PlaceAboveAnchor;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasQuickToggleWindow.PlaceAboveAnchor;
-var
-  mArea: TRect;
-begin
-  // Wächst das Fenster (Gruppe aufgeklappt), bleibt die Unterkante am Anker, solange oben Platz ist; sonst stößt
-  // es oben an die Arbeitsfläche, statt darüber hinaus zu ragen.
-  mArea := Screen.MonitorFromPoint(FAnchor).WorkareaRect;
-  SetBounds(EnsureRange(FAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width)),
-    Max(mArea.Top, FAnchor.Y - Height), Width, Height);
-end;
-
-procedure TAtlasQuickToggleWindow.ShowAbove(const AAnchor: TPoint);
-var
-  mArea: TRect;
-begin
-  // Erst der Anker (Monitor und Unterkante), dann das Layout: Die Höchsthöhe richtet sich nach diesem Monitor.
-  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  FAnchor := Point(AAnchor.X, Min(AAnchor.Y, mArea.Bottom));
-  Layout;
-  PlaceAboveAnchor;
-  Show;
-  SetFocus;
-end;
-
-procedure TAtlasQuickToggleWindow.Dismiss;
-begin
-  if FClosing then
-  begin
-    Exit;
-  end;
-  FClosing := True;
-  Close;
-  Release;
-end;
-
 procedure TAtlasQuickToggleWindow.Deactivate;
 begin
   inherited;
   Dismiss;
 end;
 
-procedure TAtlasQuickToggleWindow.AllClick(Sender: TObject);
-begin
-  if Assigned(FOnAllOff) then
-  begin
-    FOnAllOff();
-  end;
-end;
-
-procedure TAtlasQuickToggleWindow.ToggleRow(ARow: Integer);
+procedure TAtlasQuickToggleWindow.Paint;
 var
-  mItem: TAtlasQuickToggleItem;
-  mHandler: TProc<TAtlasQuickToggleItem>;
+  mPainter: TTogglePainter;
 begin
-  if (ARow < 0) or (ARow >= FRows.Count) or FClosing then
-  begin
-    Exit;
-  end;
-  // Überschrift: Gruppe ein- bzw. ausklappen.
-  if not FRows.IsToggle(ARow) then
-  begin
-    ToggleGroup(FRows.Text(ARow));
-    Exit;
-  end;
-  mItem := FRows.ToggleOf(ARow);
-  mHandler := FOnToggle;
-  if not Assigned(mHandler) then
-  begin
-    Exit;
-  end;
-  if not mItem.Project or mItem.Session then
-  begin
-    // Gilt sofort; das Fenster bleibt offen und bekommt den neuen Stand über SetItems.
-    mHandler(mItem);
-    Exit;
-  end;
-  // Projektwert: Die IDE-Schicht fragt nach, wo die Änderung gelten soll; das Fenster schließt vorher.
-  Dismiss;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
-    procedure
-    begin
-      mHandler(mItem);
-    end);
-end;
-
-procedure TAtlasQuickToggleWindow.ClickRow(ARow: Integer);
-begin
-  ToggleRow(ARow);
-end;
-
-procedure TAtlasQuickToggleWindow.MoveHot(ADelta: Integer);
-var
-  mRow, mCount: Integer;
-begin
-  mCount := FRows.Count;
-  if mCount = 0 then
-  begin
-    Exit;
-  end;
-  // Überschriften sind Stationen: Leertaste bzw. Enter klappt dort die Gruppe.
-  mRow := FHot + ADelta;
-  if mRow < 0 then
-  begin
-    mRow := mCount - 1;
-  end;
-  if mRow >= mCount then
-  begin
-    mRow := 0;
-  end;
-  FHot := mRow;
-  FScroll.Reveal(FHot, mCount);
-  Invalidate;
-end;
-
-procedure TAtlasQuickToggleWindow.CMDialogKey(var Message: TCMDialogKey);
-begin
-  // Pfeiltasten und Tab bewegen die Auswahl statt des Fokus.
-  if (Message.CharCode = VK_UP) or (Message.CharCode = VK_DOWN) or (Message.CharCode = VK_TAB) then
-  begin
-    if Message.CharCode = VK_UP then
-    begin
-      MoveHot(-1);
-    end
-    else
-    begin
-      MoveHot(1);
-    end;
-    Message.Result := 1;
-    Exit;
-  end;
-  inherited;
+  mPainter := TTogglePainter.Create(Self);
+  mPainter.Paint;
 end;
 
 procedure TAtlasQuickToggleWindow.KeyDown(var Key: Word; Shift: TShiftState);
@@ -1011,12 +785,6 @@ begin
   end;
 end;
 
-procedure TAtlasQuickToggleWindow.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  Cursor := crDefault;
-end;
-
 procedure TAtlasQuickToggleWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   mGeometry: TToggleGeometry;
@@ -1039,12 +807,248 @@ begin
   end;
 end;
 
-procedure TAtlasQuickToggleWindow.Paint;
-var
-  mPainter: TTogglePainter;
+function TAtlasQuickToggleWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  mPainter := TTogglePainter.Create(Self);
-  mPainter.Paint;
+  // Drei Zeilen je Raste, wie im Editor.
+  if WheelDelta > 0 then
+  begin
+    Dec(FScroll.First, 3);
+  end
+  else
+  begin
+    Inc(FScroll.First, 3);
+  end;
+  FScroll.Clamp(FRows.Count);
+  Invalidate;
+  Result := True;
+end;
+
+procedure TAtlasQuickToggleWindow.OpenRow(ARow: Integer);
+var
+  mItem: TAtlasQuickToggleItem;
+  mHandler: TProc<TAtlasQuickToggleItem>;
+begin
+  mHandler := FOnOpenSetting;
+  if not FRows.IsToggle(ARow) or FClosing or not Assigned(mHandler) then
+  begin
+    Exit;
+  end;
+  mItem := FRows.ToggleOf(ARow);
+  // Tools › Optionen ist modal: erst schließen, dann öffnen.
+  Dismiss;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      mHandler(mItem);
+    end);
+end;
+
+procedure TAtlasQuickToggleWindow.Layout;
+var
+  mGeometry: TToggleGeometry;
+  mWidth, mButtonWidth, mTags, mIndex: Integer;
+begin
+  mGeometry := TToggleGeometry.Create(Self);
+  Canvas.Font := Font;
+  mTags := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesProject)),
+    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesSession)));
+  mWidth := ScaleValue(280);
+  for mIndex := 0 to FRows.Count - 1 do
+  begin
+    // 64: Kästchen und Ränder, 28: Symbol „Einstellung öffnen“.
+    mWidth := Max(mWidth, Canvas.TextWidth(FRows.Text(mIndex)) + mTags + ScaleValue(64 + 28));
+  end;
+  mWidth := Min(mWidth, ScaleValue(720));
+  mButtonWidth := Max(Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff)),
+    Canvas.TextWidth(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn))) +
+    ScaleValue(cAllButtonPadding);
+  ClientWidth := Max(mWidth, mButtonWidth + ScaleValue(20));
+  // Höchstens 80 % der Arbeitsfläche hoch; der Rest per Mausrad bzw. Pfeiltasten.
+  FScroll.Visible := Max(3, (Screen.MonitorFromPoint(FAnchor).WorkareaRect.Height * 4 div 5 -
+    mGeometry.HeaderHeight - mGeometry.ButtonsHeight) div mGeometry.RowHeight);
+  FScroll.Visible := Min(FScroll.Visible, Max(1, FRows.Count));
+  FScroll.Clamp(FRows.Count);
+  ClientHeight := mGeometry.HeaderHeight + FScroll.Visible * mGeometry.RowHeight + mGeometry.ButtonsHeight;
+  FAllButton.SetBounds(ScaleValue(10), ClientHeight - mGeometry.ButtonsHeight + ScaleValue(8), mButtonWidth,
+    ScaleValue(25));
+end;
+
+procedure TAtlasQuickToggleWindow.MoveHot(ADelta: Integer);
+var
+  mRow, mCount: Integer;
+begin
+  mCount := FRows.Count;
+  if mCount = 0 then
+  begin
+    Exit;
+  end;
+  // Überschriften sind Stationen: Leertaste bzw. Enter klappt dort die Gruppe.
+  mRow := FHot + ADelta;
+  if mRow < 0 then
+  begin
+    mRow := mCount - 1;
+  end;
+  if mRow >= mCount then
+  begin
+    mRow := 0;
+  end;
+  FHot := mRow;
+  FScroll.Reveal(FHot, mCount);
+  Invalidate;
+end;
+
+procedure TAtlasQuickToggleWindow.PlaceAboveAnchor;
+var
+  mArea: TRect;
+begin
+  // Wächst das Fenster (Gruppe aufgeklappt), bleibt die Unterkante am Anker, solange oben Platz ist; sonst stößt
+  // es oben an die Arbeitsfläche, statt darüber hinaus zu ragen.
+  mArea := Screen.MonitorFromPoint(FAnchor).WorkareaRect;
+  SetBounds(EnsureRange(FAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width)),
+    Max(mArea.Top, FAnchor.Y - Height), Width, Height);
+end;
+
+procedure TAtlasQuickToggleWindow.ToggleRow(ARow: Integer);
+var
+  mItem: TAtlasQuickToggleItem;
+  mHandler: TProc<TAtlasQuickToggleItem>;
+begin
+  if (ARow < 0) or (ARow >= FRows.Count) or FClosing then
+  begin
+    Exit;
+  end;
+  // Überschrift: Gruppe ein- bzw. ausklappen.
+  if not FRows.IsToggle(ARow) then
+  begin
+    ToggleGroup(FRows.Text(ARow));
+    Exit;
+  end;
+  mItem := FRows.ToggleOf(ARow);
+  mHandler := FOnToggle;
+  if not Assigned(mHandler) then
+  begin
+    Exit;
+  end;
+  if not mItem.Project or mItem.Session then
+  begin
+    // Gilt sofort; das Fenster bleibt offen und bekommt den neuen Stand über SetItems.
+    mHandler(mItem);
+    Exit;
+  end;
+  // Projektwert: Die IDE-Schicht fragt nach, wo die Änderung gelten soll; das Fenster schließt vorher.
+  Dismiss;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      mHandler(mItem);
+    end);
+end;
+
+procedure TAtlasQuickToggleWindow.ToggleGroup(const APage: string);
+begin
+  // Auswahl bleibt auf der Überschrift.
+  FHot := FRows.ToggleGroup(APage);
+  Layout;
+  // Die aufgeklappte Seite steht oben.
+  FScroll.First := Max(0, FHot);
+  FScroll.Clamp(FRows.Count);
+  // Unten bleibt unten: das Fenster wächst bzw. schrumpft nach oben.
+  if Visible then
+  begin
+    PlaceAboveAnchor;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasQuickToggleWindow.AllClick(Sender: TObject);
+begin
+  if Assigned(FOnAllOff) then
+  begin
+    FOnAllOff();
+  end;
+end;
+
+procedure TAtlasQuickToggleWindow.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  Cursor := crDefault;
+end;
+
+procedure TAtlasQuickToggleWindow.CMDialogKey(var Message: TCMDialogKey);
+begin
+  // Pfeiltasten und Tab bewegen die Auswahl statt des Fokus.
+  if (Message.CharCode = VK_UP) or (Message.CharCode = VK_DOWN) or (Message.CharCode = VK_TAB) then
+  begin
+    if Message.CharCode = VK_UP then
+    begin
+      MoveHot(-1);
+    end
+    else
+    begin
+      MoveHot(1);
+    end;
+    Message.Result := 1;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TAtlasQuickToggleWindow.SetItems(const AItems: TArray<TAtlasQuickToggleItem>; AAllOff: Boolean);
+begin
+  FAllOff := AAllOff;
+  FRows.Build(AItems);
+  if FHot >= FRows.Count then
+  begin
+    FHot := -1;
+  end;
+  if FAllOff then
+  begin
+    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn);
+  end
+  else
+  begin
+    FAllButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOff);
+  end;
+  Layout;
+  if Visible then
+  begin
+    PlaceAboveAnchor;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasQuickToggleWindow.ShowAbove(const AAnchor: TPoint);
+var
+  mArea: TRect;
+begin
+  // Erst der Anker (Monitor und Unterkante), dann das Layout: Die Höchsthöhe richtet sich nach diesem Monitor.
+  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
+  FAnchor := Point(AAnchor.X, Min(AAnchor.Y, mArea.Bottom));
+  Layout;
+  PlaceAboveAnchor;
+  Show;
+  SetFocus;
+end;
+
+procedure TAtlasQuickToggleWindow.Dismiss;
+begin
+  if FClosing then
+  begin
+    Exit;
+  end;
+  FClosing := True;
+  Close;
+  Release;
+end;
+
+procedure TAtlasQuickToggleWindow.ClickRow(ARow: Integer);
+begin
+  ToggleRow(ARow);
+end;
+
+procedure TAtlasQuickToggleWindow.ClickOpen(ARow: Integer);
+begin
+  OpenRow(ARow);
 end;
 
 end.

@@ -383,6 +383,11 @@ end;
 
 { TAtlasVcsModule }
 
+class function TAtlasVcsModule.Parts: TArray<IAtlasFeaturePart>;
+begin
+  Result := [TAtlasFeaturePart.AtLevel('Vcs', TAtlasSafeLevel.Safe, VcsStarted, StartVcs, StopVcs)];
+end;
+
 function TAtlasVcsModule.Info: TAtlasModuleInfo;
 begin
   // Die Versionsverwaltung lief bisher auch im abgesicherten Start (Projektzustand, Änderungsmarken).
@@ -403,11 +408,6 @@ end;
 function TAtlasVcsModule.IsActive: Boolean;
 begin
   Result := FActive;
-end;
-
-class function TAtlasVcsModule.Parts: TArray<IAtlasFeaturePart>;
-begin
-  Result := [TAtlasFeaturePart.AtLevel('Vcs', TAtlasSafeLevel.Safe, VcsStarted, StartVcs, StopVcs)];
 end;
 
 class function TAtlasVcsModule.RegisterModule: Boolean;

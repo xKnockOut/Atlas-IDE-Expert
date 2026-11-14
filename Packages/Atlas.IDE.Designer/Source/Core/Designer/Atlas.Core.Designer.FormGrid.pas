@@ -139,6 +139,8 @@ begin
   end;
 end;
 
+{ TAtlasFormGrid }
+
 class function TAtlasFormGrid.Partners(const AItems: TArray<TAtlasGridItem>): TArray<Integer>;
 var
   mIndex, mField: Integer;

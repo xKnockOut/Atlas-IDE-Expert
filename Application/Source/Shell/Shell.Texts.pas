@@ -43,6 +43,8 @@ const
     (De: 'Kein Projekt geladen'; En: 'No project loaded'),
     (De: 'Kein Projekt geladen; Datei angeben'; En: 'No project loaded; specify a file'));
 
+{ TShellTexts }
+
 class function TShellTexts.Joined(const AItems: array of string; AOr: Boolean): string;
 var
   mIndex: Integer;

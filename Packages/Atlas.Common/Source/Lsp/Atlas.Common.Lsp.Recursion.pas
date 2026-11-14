@@ -52,6 +52,35 @@ begin
   FReadText := AReadText;
 end;
 
+function TLspRecursion.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName, mText: string;
+  mDepth: Integer;
+  mTree: TSyntaxTree;
+begin
+  mFileName := '';
+  mDepth := TRecursionAnalysis.cDefaultDepth;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONNumber) then
+  begin
+    mDepth := TJSONNumber(AArguments.Items[1]).AsInt;
+  end;
+  if (mFileName = '') or not Assigned(FReadText) or not FReadText(mFileName, mText) then
+  begin
+    Result := TJSONObject.Create(TJSONPair.Create('calls', TJSONArray.Create));
+    Exit;
+  end;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    Result := Json(mTree, mDepth);
+  finally
+    mTree.Free;
+  end;
+end;
+
 class function TLspRecursion.Json(ATree: TSyntaxTree; ADepth: Integer): TJSONObject;
 var
   mCalls, mChain: TJSONArray;
@@ -80,35 +109,6 @@ begin
       mStep.AddPair('line', TJSONNumber.Create(mLink.Range.StartPos.Line));
       mStep.AddPair('character', TJSONNumber.Create(mLink.Range.StartPos.Character));
     end;
-  end;
-end;
-
-function TLspRecursion.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName, mText: string;
-  mDepth: Integer;
-  mTree: TSyntaxTree;
-begin
-  mFileName := '';
-  mDepth := TRecursionAnalysis.cDefaultDepth;
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONNumber) then
-  begin
-    mDepth := TJSONNumber(AArguments.Items[1]).AsInt;
-  end;
-  if (mFileName = '') or not Assigned(FReadText) or not FReadText(mFileName, mText) then
-  begin
-    Result := TJSONObject.Create(TJSONPair.Create('calls', TJSONArray.Create));
-    Exit;
-  end;
-  mTree := TSyntaxTreeCache.Parse(mText);
-  try
-    Result := Json(mTree, mDepth);
-  finally
-    mTree.Free;
   end;
 end;
 

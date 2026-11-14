@@ -166,6 +166,8 @@ type
     function Declaration(const ATypeName: string; AReadOnly: Boolean): TArray<string>;
   end;
 
+{ TRecordParts }
+
 procedure TRecordParts.AddGroup(const AGroup: TFieldGroup; AReadOnly: Boolean; const ALineBreak: string);
 var
   mPrefix, mName: string;
@@ -306,6 +308,8 @@ type
     /// <summary>Nimmt Deklaration und Rumpf eines Operators auf.</summary>
     procedure Add(const ATypeName, ASignature: string; const ALines: TArray<string>; const ALineBreak: string);
   end;
+
+{ TOperatorOutput }
 
 procedure TOperatorOutput.Add(const ATypeName, ASignature: string; const ALines: TArray<string>;
   const ALineBreak: string);
@@ -589,6 +593,8 @@ type
     /// <summary>Rümpfe von Equals und GetHashCode.</summary>
     function Bodies(ASource: TCommandSource; const ATypeName: string): string;
   end;
+
+{ TEqualsParts }
 
 procedure TEqualsParts.AddField(const AField: TIndexSymbol; const ATypeName: string; AIsObject: Boolean;
   const ALineBreak: string);

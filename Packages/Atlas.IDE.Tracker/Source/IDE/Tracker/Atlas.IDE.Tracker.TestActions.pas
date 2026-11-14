@@ -86,47 +86,12 @@ begin
   FMessage := AMessage;
 end;
 
-procedure TAtlasTestResultsActions.Release;
-begin
-  FLink := nil;
-end;
-
 procedure TAtlasTestResultsActions.Report(const AText: string);
 begin
   if Assigned(FMessage) then
   begin
     FMessage(AText);
   end;
-end;
-
-class function TAtlasTestResultsActions.TestProjectOf(const ARow: TAtlasTestRow): string;
-begin
-  Result := ARow.TestProject;
-  if Result = '' then
-  begin
-    Result := ARow.Project;
-  end;
-end;
-
-class function TAtlasTestResultsActions.ProjectIsOpen(const AFileName: string): Boolean;
-var
-  mModules: IOTAModuleServices;
-begin
-  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
-end;
-
-class function TAtlasTestResultsActions.JobOfProject(const AProject: string): TAtlasCiJob;
-var
-  mTeam: TAtlasTeamSettings;
-  mProvider: string;
-begin
-  mTeam := TAtlasIdeTeamFile.ForProject(AProject);
-  mProvider := mTeam.Ci.Provider;
-  if mProvider = '' then
-  begin
-    mProvider := TAtlasIdeSettings.Current.WelcomePageTestsCiProvider;
-  end;
-  Result := TAtlasCiJob.Create(mProvider, mTeam.Ci.Url, mTeam.Ci.Job, mTeam.Ci.Multibranch, '');
 end;
 
 function TAtlasTestResultsActions.EnsureOpen(const AProject: string): Boolean;
@@ -171,6 +136,27 @@ begin
       Result := mTests.LocateByName(TestProjectOf(ARow), AItem.Test, AFileName, ALine);
     end;
   end;
+end;
+
+class function TAtlasTestResultsActions.TestProjectOf(const ARow: TAtlasTestRow): string;
+begin
+  Result := ARow.TestProject;
+  if Result = '' then
+  begin
+    Result := ARow.Project;
+  end;
+end;
+
+class function TAtlasTestResultsActions.ProjectIsOpen(const AFileName: string): Boolean;
+var
+  mModules: IOTAModuleServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.FindModule(AFileName) <> nil);
+end;
+
+procedure TAtlasTestResultsActions.Release;
+begin
+  FLink := nil;
 end;
 
 procedure TAtlasTestResultsActions.OpenTest(const ARow: TAtlasTestRow; const AItem: TAtlasTestFailureItem);
@@ -244,6 +230,14 @@ begin
   end;
 end;
 
+procedure TAtlasTestResultsActions.OpenProject(const ARow: TAtlasTestRow);
+begin
+  if FLink <> nil then
+  begin
+    FLink.Open(ARow.Project);
+  end;
+end;
+
 /// <summary>Vergleich des ersten laufenden Moduls (#1779); False ohne. Jedes Mal neu gefragt (Regel 3).</summary>
 function FindTestValues(out AValues: IAtlasTestValues): Boolean;
 var
@@ -277,14 +271,6 @@ begin
   end;
 end;
 
-procedure TAtlasTestResultsActions.OpenProject(const ARow: TAtlasTestRow);
-begin
-  if FLink <> nil then
-  begin
-    FLink.Open(ARow.Project);
-  end;
-end;
-
 procedure TAtlasTestResultsActions.OpenBuildPage(const AJob: TAtlasCiJob; ANumber: Integer);
 var
   mProvider: IAtlasCiProvider;
@@ -305,6 +291,20 @@ begin
   begin
     TAtlasTrackerFiles.Shell.Open(mUrl);
   end;
+end;
+
+class function TAtlasTestResultsActions.JobOfProject(const AProject: string): TAtlasCiJob;
+var
+  mTeam: TAtlasTeamSettings;
+  mProvider: string;
+begin
+  mTeam := TAtlasIdeTeamFile.ForProject(AProject);
+  mProvider := mTeam.Ci.Provider;
+  if mProvider = '' then
+  begin
+    mProvider := TAtlasIdeSettings.Current.WelcomePageTestsCiProvider;
+  end;
+  Result := TAtlasCiJob.Create(mProvider, mTeam.Ci.Url, mTeam.Ci.Job, mTeam.Ci.Multibranch, '');
 end;
 
 end.

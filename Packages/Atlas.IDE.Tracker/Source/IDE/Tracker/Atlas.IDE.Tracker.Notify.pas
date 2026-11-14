@@ -189,60 +189,204 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeIssueNotify.Active: Boolean;
+procedure TAtlasIdeIssueNotify.TimerTick(Sender: TObject);
 begin
-  Result := TAtlasIdeSettings.Current.IssuesNotify;
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
+    procedure
+    begin
+      Poll(False);
+    end);
 end;
 
-class function TAtlasIdeIssueNotify.NowUtc: TDateTime;
-begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
-end;
-
-class function TAtlasIdeIssueNotify.UserIsActive: Boolean;
+procedure TAtlasIdeIssueNotify.Poll(AOnDemand: Boolean);
 var
-  mMinimized: Boolean;
-  mIdle: Cardinal;
+  mJobs: TArray<TJob>;
 begin
-  mMinimized := IsIconic(Application.Handle);
-  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
-  begin
-    mMinimized := mMinimized or IsIconic(Application.MainForm.Handle);
-  end;
-  // Ohne Angabe von Windows gilt der Benutzer als aktiv (0 ms).
-  TAtlasUserIdle.IdleMs(mIdle);
-  Result := TAtlasTrackerNotify.UserActive(mMinimized, mIdle);
-end;
-
-procedure TAtlasIdeIssueNotify.Start;
-begin
-  if FStarted then
+  if not FStarted or not SyncEnabled then
   begin
     Exit;
   end;
-  FStarted := True;
-  FTimer := TTimer.Create(nil);
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := TimerTick;
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeIssueNotify.Stop;
-begin
-  if not FStarted then
+  // Eine Abfrage zur Zeit; was fällig bleibt, kommt mit dem nächsten Takt.
+  FWorker.Prune;
+  if FWorker.Busy then
   begin
     Exit;
   end;
-  FStarted := False;
-  FreeAndNil(FTimer);
-  FreeAndNil(FToast);
-  FToastOpen := nil;
-  // Die Abfrage endet mit der Zeitgrenze des Transports; kurz warten, dann sich selbst überlassen.
-  FWorker.Stop(TAtlasShutdown.cStopMs);
-  // Die Hooks halten „Meine Issues“: Stop löst den Ring.
-  FHooks := Default(TAtlasIssueNotifyHooks);
+  mJobs := Jobs(AOnDemand);
+  if Length(mJobs) = 0 then
+  begin
+    Exit;
+  end;
+  FWorker.Start(TThread.CreateAnonymousThread(Worker(Self, Self, mJobs, FHooks.Transport)));
 end;
 
+procedure TAtlasIdeIssueNotify.Delivered(const AOutcome: TOutcome);
+var
+  mSchedule: TAtlasTrackerNotifySchedule;
+  mConnection: TAtlasTrackerNotifyConnection;
+  mNotices: TArray<TAtlasTrackerNotice>;
+  mRest: Integer;
+begin
+  if not FStarted or not FFile.Enabled or AOutcome.Skipped or (AOutcome.Job.Generation <> FGeneration) then
+  begin
+    Exit;
+  end;
+  mSchedule := ScheduleOf(AOutcome.Job.Id);
+  if not AOutcome.Succeeded then
+  begin
+    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s)', [AOutcome.Job.Target.Provider,
+      TAtlasCiBuild.ErrorKey(AOutcome.Error)]));
+    if mSchedule.Failed and (AOutcome.Error <> TAtlasCiFetchError.Cancelled) then
+    begin
+      NotifyError(AOutcome.Job, AOutcome.Error);
+    end;
+    FSchedules.AddOrSetValue(AOutcome.Job.Id, mSchedule);
+    Exit;
+  end;
+  mSchedule.Succeeded(AOutcome.Job.Poll.PollSeconds);
+  FSchedules.AddOrSetValue(AOutcome.Job.Id, mSchedule);
+  FFile.Find(AOutcome.Job.Id, mConnection);
+  mConnection.Me := AOutcome.Job.Poll.Me;
+  mConnection.LastModified := AOutcome.Job.Poll.LastModified;
+  mConnection.Since := TAtlasTrackerNotify.NextSince(mConnection.Since, AOutcome.Job.Poll.Latest);
+  mNotices := TAtlasTrackerNotify.Summarize(TAtlasTrackerNotify.Foreign(AOutcome.Changes, mConnection.Me),
+    TAtlasTrackerNotify.cMaxNotices, mRest);
+  TAtlasTrackerNotify.MarkUnseen(mConnection, mNotices);
+  FFile.Put(mConnection);
+  SaveFile;
+  // Anonym: Anbieter und Anzahl.
+  TAtlasGuard.Log(Format('Issue-Meldungen: %s, %d Issues geändert', [AOutcome.Job.Target.Provider,
+    Length(mNotices) + mRest]));
+  if Length(mNotices) = 0 then
+  begin
+    Exit;
+  end;
+  Notify(AOutcome.Job, mNotices, mRest);
+  if Assigned(FHooks.Changed) then
+  begin
+    FHooks.Changed();
+  end;
+  if Assigned(FHooks.Updated) then
+  begin
+    FHooks.Updated();
+  end;
+end;
+
+procedure TAtlasIdeIssueNotify.Notify(const AJob: TJob; const ANotices: TArray<TAtlasTrackerNotice>; ARest: Integer);
+var
+  mNotice: TAtlasTrackerNotice;
+  mTarget: TAtlasTrackerTarget;
+  mOpen: TProc;
+  mCaption, mTitle: string;
+  mCenter: IAtlasNotificationCenter;
+  mIndex: Integer;
+  mMode: TAtlasNotificationMode;
+  mReopen: TAtlasTrackerReopen;
+  mAnchor: TDateTime;
+begin
+  mCenter := TAtlasNotificationCenter.Default;
+  mCaption := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyOpen);
+  if ARest > 0 then
+  begin
+    mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info,
+      TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyMoreText));
+  end;
+  // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
+  for mIndex := High(ANotices) downto 0 do
+  begin
+    mNotice := ANotices[mIndex];
+    mTarget := AJob.Target;
+    // GitHub: das Repository der Meldung, nicht das des Projekts.
+    if mNotice.Project <> '' then
+    begin
+      mTarget.Project := mNotice.Project;
+    end;
+    // Wieder geöffnet (#2127): eigener Titel mit Grund, Sprung zum Kommentar.
+    if Assigned(FHooks.Reopened) and FHooks.Reopened(mTarget, mNotice, mReopen) then
+    begin
+      mTitle := TAtlasTrackerNoticeText.ReopenedTitle(mReopen);
+      mAnchor := mNotice.Anchor;
+      if mReopen.CommentAt > 0 then
+      begin
+        mAnchor := mReopen.CommentAt;
+      end;
+    end
+    else
+    begin
+      mTitle := TAtlasTrackerNoticeText.Title(mNotice);
+      mAnchor := mNotice.Anchor;
+    end;
+    mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mAnchor);
+    mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
+      [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
+    if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
+    begin
+      ShowToast(mTitle, mNotice.Title, mCaption, mOpen);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeIssueNotify.NotifyError(const AJob: TJob; AError: TAtlasCiFetchError);
+var
+  mTitle, mText, mCaption: string;
+  mRun: TProc;
+begin
+  mTitle := TAtlasTrackerNoticeText.ErrorTitle(AError, AJob.Target.Server);
+  mText := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyErrorText);
+  mCaption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
+  mRun := SettingsAction(Self, Self);
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Warning,
+    mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then
+  begin
+    ShowToast(mTitle, mText, mCaption, mRun);
+  end;
+end;
+
+
+procedure TAtlasIdeIssueNotify.ShowToast(const ATitle, AText, AAction: string; const ARun: TProc);
+var
+  mArea: TRect;
+begin
+  if FToast = nil then
+  begin
+    FToast := TAtlasNoticeWindow.Create(nil);
+    FToast.OnAction :=
+      procedure(AIndex: Integer)
+      begin
+        if (AIndex = 0) and Assigned(FToastOpen) then
+        begin
+          FToastOpen();
+        end;
+      end;
+  end;
+  FToastOpen := ARun;
+  mArea := Screen.WorkAreaRect;
+  if Application.MainForm <> nil then
+  begin
+    mArea := Application.MainForm.BoundsRect;
+  end;
+  FToast.Colors := TAtlasIdeStyle.Colors;
+  FToast.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
+  FToast.ShowNotice(ATitle, AText, [AAction], mArea);
+end;
+
+procedure TAtlasIdeIssueNotify.OpenIssue(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
+var
+  mAnchor: TDateTime;
+begin
+  if not FStarted or not Assigned(FHooks.Open) then
+  begin
+    Exit;
+  end;
+  // Der älteste ungesehene Kommentar, falls seit der Meldung weitere kamen.
+  mAnchor := AnchorOf(ATarget, AKey);
+  if mAnchor = 0 then
+  begin
+    mAnchor := AAnchor;
+  end;
+  Seen(ATarget, AKey);
+  FHooks.Open(ATarget, AKey, mAnchor);
+end;
 
 procedure TAtlasIdeIssueNotify.EnsureLoaded;
 begin
@@ -252,14 +396,6 @@ begin
   end;
   FLoaded := True;
   FFile := TAtlasTrackerNotify.Load(FFolder);
-end;
-
-procedure TAtlasIdeIssueNotify.SaveFile;
-begin
-  if not TAtlasTrackerNotify.Save(FFolder, FFile) then
-  begin
-    TAtlasGuard.Log('Issue-Meldungen: Stand nicht gespeichert');
-  end;
 end;
 
 function TAtlasIdeIssueNotify.SyncEnabled: Boolean;
@@ -291,6 +427,14 @@ begin
   end;
 end;
 
+procedure TAtlasIdeIssueNotify.SaveFile;
+begin
+  if not TAtlasTrackerNotify.Save(FFolder, FFile) then
+  begin
+    TAtlasGuard.Log('Issue-Meldungen: Stand nicht gespeichert');
+  end;
+end;
+
 function TAtlasIdeIssueNotify.ScheduleOf(const AId: string): TAtlasTrackerNotifySchedule;
 begin
   if not FSchedules.TryGetValue(AId, Result) then
@@ -299,31 +443,17 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssueNotify.TimerTick(Sender: TObject);
+class procedure TAtlasIdeIssueNotify.Deliver(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
+  const AOutcome: TOutcome);
 begin
-  TAtlasGuard.Run(TAtlasFeature.Tracker,
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
     procedure
     begin
-      Poll(False);
+      if AKeep <> nil then
+      begin
+        AOwner.Delivered(AOutcome);
+      end;
     end);
-end;
-
-procedure TAtlasIdeIssueNotify.Refresh;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  Poll(False);
-end;
-
-procedure TAtlasIdeIssueNotify.PollNow;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  Poll(True);
 end;
 
 /// <summary>Ist die Verbindung fällig? Auf Anfrage nach eigener Regel, sonst nach issues.notifyInterval und
@@ -411,26 +541,18 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssueNotify.Poll(AOnDemand: Boolean);
-var
-  mJobs: TArray<TJob>;
+class function TAtlasIdeIssueNotify.OpenAction(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
+  const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime): TProc;
 begin
-  if not FStarted or not SyncEnabled then
-  begin
-    Exit;
-  end;
-  // Eine Abfrage zur Zeit; was fällig bleibt, kommt mit dem nächsten Takt.
-  FWorker.Prune;
-  if FWorker.Busy then
-  begin
-    Exit;
-  end;
-  mJobs := Jobs(AOnDemand);
-  if Length(mJobs) = 0 then
-  begin
-    Exit;
-  end;
-  FWorker.Start(TThread.CreateAnonymousThread(Worker(Self, Self, mJobs, FHooks.Transport)));
+  // Eigene Routine: Jede Meldung behält ihr Issue.
+  Result :=
+    procedure
+    begin
+      if AKeep <> nil then
+      begin
+        AOwner.OpenIssue(ATarget, AKey, AAnchor);
+      end;
+    end;
 end;
 
 /// <summary>Eine Verbindung abfragen. Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Netz
@@ -504,85 +626,6 @@ begin
     end;
 end;
 
-class procedure TAtlasIdeIssueNotify.Deliver(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
-  const AOutcome: TOutcome);
-begin
-  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
-    procedure
-    begin
-      if AKeep <> nil then
-      begin
-        AOwner.Delivered(AOutcome);
-      end;
-    end);
-end;
-
-procedure TAtlasIdeIssueNotify.Delivered(const AOutcome: TOutcome);
-var
-  mSchedule: TAtlasTrackerNotifySchedule;
-  mConnection: TAtlasTrackerNotifyConnection;
-  mNotices: TArray<TAtlasTrackerNotice>;
-  mRest: Integer;
-begin
-  if not FStarted or not FFile.Enabled or AOutcome.Skipped or (AOutcome.Job.Generation <> FGeneration) then
-  begin
-    Exit;
-  end;
-  mSchedule := ScheduleOf(AOutcome.Job.Id);
-  if not AOutcome.Succeeded then
-  begin
-    TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s)', [AOutcome.Job.Target.Provider,
-      TAtlasCiBuild.ErrorKey(AOutcome.Error)]));
-    if mSchedule.Failed and (AOutcome.Error <> TAtlasCiFetchError.Cancelled) then
-    begin
-      NotifyError(AOutcome.Job, AOutcome.Error);
-    end;
-    FSchedules.AddOrSetValue(AOutcome.Job.Id, mSchedule);
-    Exit;
-  end;
-  mSchedule.Succeeded(AOutcome.Job.Poll.PollSeconds);
-  FSchedules.AddOrSetValue(AOutcome.Job.Id, mSchedule);
-  FFile.Find(AOutcome.Job.Id, mConnection);
-  mConnection.Me := AOutcome.Job.Poll.Me;
-  mConnection.LastModified := AOutcome.Job.Poll.LastModified;
-  mConnection.Since := TAtlasTrackerNotify.NextSince(mConnection.Since, AOutcome.Job.Poll.Latest);
-  mNotices := TAtlasTrackerNotify.Summarize(TAtlasTrackerNotify.Foreign(AOutcome.Changes, mConnection.Me),
-    TAtlasTrackerNotify.cMaxNotices, mRest);
-  TAtlasTrackerNotify.MarkUnseen(mConnection, mNotices);
-  FFile.Put(mConnection);
-  SaveFile;
-  // Anonym: Anbieter und Anzahl.
-  TAtlasGuard.Log(Format('Issue-Meldungen: %s, %d Issues geändert', [AOutcome.Job.Target.Provider,
-    Length(mNotices) + mRest]));
-  if Length(mNotices) = 0 then
-  begin
-    Exit;
-  end;
-  Notify(AOutcome.Job, mNotices, mRest);
-  if Assigned(FHooks.Changed) then
-  begin
-    FHooks.Changed();
-  end;
-  if Assigned(FHooks.Updated) then
-  begin
-    FHooks.Updated();
-  end;
-end;
-
-class function TAtlasIdeIssueNotify.OpenAction(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
-  const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime): TProc;
-begin
-  // Eigene Routine: Jede Meldung behält ihr Issue.
-  Result :=
-    procedure
-    begin
-      if AKeep <> nil then
-      begin
-        AOwner.OpenIssue(ATarget, AKey, AAnchor);
-      end;
-    end;
-end;
-
 class function TAtlasIdeIssueNotify.SettingsAction(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify): TProc;
 begin
   Result :=
@@ -595,119 +638,71 @@ begin
     end;
 end;
 
-procedure TAtlasIdeIssueNotify.Notify(const AJob: TJob; const ANotices: TArray<TAtlasTrackerNotice>; ARest: Integer);
+class function TAtlasIdeIssueNotify.UserIsActive: Boolean;
 var
-  mNotice: TAtlasTrackerNotice;
-  mTarget: TAtlasTrackerTarget;
-  mOpen: TProc;
-  mCaption, mTitle: string;
-  mCenter: IAtlasNotificationCenter;
-  mIndex: Integer;
-  mMode: TAtlasNotificationMode;
-  mReopen: TAtlasTrackerReopen;
-  mAnchor: TDateTime;
+  mMinimized: Boolean;
+  mIdle: Cardinal;
 begin
-  mCenter := TAtlasNotificationCenter.Default;
-  mCaption := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyOpen);
-  if ARest > 0 then
+  mMinimized := IsIconic(Application.Handle);
+  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
   begin
-    mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info,
-      TAtlasTrackerNoticeText.MoreTitle(ARest), TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyMoreText));
+    mMinimized := mMinimized or IsIconic(Application.MainForm.Handle);
   end;
-  // Älteste zuerst in die Liste, damit die neueste oben steht; eingeblendet wird nur die neueste.
-  for mIndex := High(ANotices) downto 0 do
-  begin
-    mNotice := ANotices[mIndex];
-    mTarget := AJob.Target;
-    // GitHub: das Repository der Meldung, nicht das des Projekts.
-    if mNotice.Project <> '' then
-    begin
-      mTarget.Project := mNotice.Project;
-    end;
-    // Wieder geöffnet (#2127): eigener Titel mit Grund, Sprung zum Kommentar.
-    if Assigned(FHooks.Reopened) and FHooks.Reopened(mTarget, mNotice, mReopen) then
-    begin
-      mTitle := TAtlasTrackerNoticeText.ReopenedTitle(mReopen);
-      mAnchor := mNotice.Anchor;
-      if mReopen.CommentAt > 0 then
-      begin
-        mAnchor := mReopen.CommentAt;
-      end;
-    end
-    else
-    begin
-      mTitle := TAtlasTrackerNoticeText.Title(mNotice);
-      mAnchor := mNotice.Anchor;
-    end;
-    mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mAnchor);
-    mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
-      [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
-    if (mIndex = 0) and (mMode = TAtlasNotificationMode.Show) then
-    begin
-      ShowToast(mTitle, mNotice.Title, mCaption, mOpen);
-    end;
-  end;
+  // Ohne Angabe von Windows gilt der Benutzer als aktiv (0 ms).
+  TAtlasUserIdle.IdleMs(mIdle);
+  Result := TAtlasTrackerNotify.UserActive(mMinimized, mIdle);
 end;
 
-procedure TAtlasIdeIssueNotify.NotifyError(const AJob: TJob; AError: TAtlasCiFetchError);
-var
-  mTitle, mText, mCaption: string;
-  mRun: TProc;
+class function TAtlasIdeIssueNotify.NowUtc: TDateTime;
 begin
-  mTitle := TAtlasTrackerNoticeText.ErrorTitle(AError, AJob.Target.Server);
-  mText := TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.IssueNotifyErrorText);
-  mCaption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
-  mRun := SettingsAction(Self, Self);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Warning,
-    mTitle, mText, [TAtlasNotificationCenter.Action(mCaption, mRun)]) = TAtlasNotificationMode.Show then
-  begin
-    ShowToast(mTitle, mText, mCaption, mRun);
-  end;
+  Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
-procedure TAtlasIdeIssueNotify.ShowToast(const ATitle, AText, AAction: string; const ARun: TProc);
-var
-  mArea: TRect;
+procedure TAtlasIdeIssueNotify.Start;
 begin
-  if FToast = nil then
-  begin
-    FToast := TAtlasNoticeWindow.Create(nil);
-    FToast.OnAction :=
-      procedure(AIndex: Integer)
-      begin
-        if (AIndex = 0) and Assigned(FToastOpen) then
-        begin
-          FToastOpen();
-        end;
-      end;
-  end;
-  FToastOpen := ARun;
-  mArea := Screen.WorkAreaRect;
-  if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.BoundsRect;
-  end;
-  FToast.Colors := TAtlasIdeStyle.Colors;
-  FToast.SetScaling(TAtlasPopupWindow.MonitorPPI(mArea.BottomRight), 1, '', 10);
-  FToast.ShowNotice(ATitle, AText, [AAction], mArea);
-end;
-
-procedure TAtlasIdeIssueNotify.OpenIssue(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
-var
-  mAnchor: TDateTime;
-begin
-  if not FStarted or not Assigned(FHooks.Open) then
+  if FStarted then
   begin
     Exit;
   end;
-  // Der älteste ungesehene Kommentar, falls seit der Meldung weitere kamen.
-  mAnchor := AnchorOf(ATarget, AKey);
-  if mAnchor = 0 then
+  FStarted := True;
+  FTimer := TTimer.Create(nil);
+  FTimer.Interval := cTickMs;
+  FTimer.OnTimer := TimerTick;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIdeIssueNotify.Stop;
+begin
+  if not FStarted then
   begin
-    mAnchor := AAnchor;
+    Exit;
   end;
-  Seen(ATarget, AKey);
-  FHooks.Open(ATarget, AKey, mAnchor);
+  FStarted := False;
+  FreeAndNil(FTimer);
+  FreeAndNil(FToast);
+  FToastOpen := nil;
+  // Die Abfrage endet mit der Zeitgrenze des Transports; kurz warten, dann sich selbst überlassen.
+  FWorker.Stop(TAtlasShutdown.cStopMs);
+  // Die Hooks halten „Meine Issues“: Stop löst den Ring.
+  FHooks := Default(TAtlasIssueNotifyHooks);
+end;
+
+procedure TAtlasIdeIssueNotify.Refresh;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  Poll(False);
+end;
+
+procedure TAtlasIdeIssueNotify.PollNow;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  Poll(True);
 end;
 
 function TAtlasIdeIssueNotify.Unseen(const ATarget: TAtlasTrackerTarget): TArray<string>;
@@ -731,22 +726,6 @@ begin
     begin
       Result := Result + [mItem.Key];
     end;
-  end;
-end;
-
-function TAtlasIdeIssueNotify.LoginOf(const ATarget: TAtlasTrackerTarget): string;
-var
-  mConnection: TAtlasTrackerNotifyConnection;
-begin
-  Result := '';
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  EnsureLoaded;
-  if FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
-  begin
-    Result := mConnection.Me;
   end;
 end;
 
@@ -788,6 +767,27 @@ begin
   begin
     FHooks.Changed();
   end;
+end;
+
+function TAtlasIdeIssueNotify.LoginOf(const ATarget: TAtlasTrackerTarget): string;
+var
+  mConnection: TAtlasTrackerNotifyConnection;
+begin
+  Result := '';
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  EnsureLoaded;
+  if FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  begin
+    Result := mConnection.Me;
+  end;
+end;
+
+class function TAtlasIdeIssueNotify.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.IssuesNotify;
 end;
 
 end.

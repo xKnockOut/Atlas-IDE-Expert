@@ -74,26 +74,6 @@ begin
   FView := AView;
 end;
 
-class function TAtlasSignatureController.CountFits(const ASignature: TAtlasSignature; AParameter: Integer): Boolean;
-begin
-  Result := (AParameter = 0) or (AParameter < Length(ASignature.Parameters));
-end;
-
-class function TAtlasSignatureController.TooManyArguments(const AHelp: TAtlasSignatureHelp;
-  AParameter: Integer): Boolean;
-var
-  mSignature: TAtlasSignature;
-begin
-  Result := Length(AHelp.Signatures) > 0;
-  for mSignature in AHelp.Signatures do
-  begin
-    if CountFits(mSignature, AParameter) then
-    begin
-      Exit(False);
-    end;
-  end;
-end;
-
 function TAtlasSignatureController.Fits(ASignature, AParameter: Integer): Boolean;
 begin
   // Nach der Anzahl; ein Argument mit unverträglichem Typ passt nie (#498).
@@ -125,6 +105,11 @@ begin
     end;
   end;
   Result := mBest;
+end;
+
+procedure TAtlasSignatureController.Update;
+begin
+  FView.ShowSignature(FHelp, FSignature, FParameter);
 end;
 
 procedure TAtlasSignatureController.Show(const AHelp: TAtlasSignatureHelp; AParameter: Integer);
@@ -220,9 +205,24 @@ begin
   FView.HideSignature;
 end;
 
-procedure TAtlasSignatureController.Update;
+class function TAtlasSignatureController.CountFits(const ASignature: TAtlasSignature; AParameter: Integer): Boolean;
 begin
-  FView.ShowSignature(FHelp, FSignature, FParameter);
+  Result := (AParameter = 0) or (AParameter < Length(ASignature.Parameters));
+end;
+
+class function TAtlasSignatureController.TooManyArguments(const AHelp: TAtlasSignatureHelp;
+  AParameter: Integer): Boolean;
+var
+  mSignature: TAtlasSignature;
+begin
+  Result := Length(AHelp.Signatures) > 0;
+  for mSignature in AHelp.Signatures do
+  begin
+    if CountFits(mSignature, AParameter) then
+    begin
+      Exit(False);
+    end;
+  end;
 end;
 
 end.

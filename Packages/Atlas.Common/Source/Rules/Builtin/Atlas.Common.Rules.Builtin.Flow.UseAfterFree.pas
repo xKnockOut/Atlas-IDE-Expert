@@ -98,6 +98,74 @@ begin
   FReport := AReport;
 end;
 
+/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
+/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
+function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
+var
+  mTarget: TSyntaxNode;
+  mName: string;
+begin
+  Result := False;
+  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) then
+  begin
+    Exit;
+  end;
+  mName := AStatement.Name;
+  if AStatement.ChildCount > 0 then
+  begin
+    mTarget := AStatement[0];
+    if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
+    begin
+      mTarget := mTarget[0];
+    end;
+    // Name oder Self.Name.
+    mName := FreedPath(mTarget);
+  end;
+  Result := (mName <> '') and MatchText(mName, FMethods);
+end;
+
+procedure TUseAfterFreeCheck.CollectMembers(ARoot, ARoutine: TSyntaxNode);
+var
+  mClass, mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+begin
+  FFields := nil;
+  FMethods := nil;
+  if ClassOf(ARoutine) = '' then
+  begin
+    Exit;
+  end;
+  mClass := FindClassType(ARoot, DeclaredClassName(ClassOf(ARoutine)));
+  FFields := ClassFields(mClass);
+  if mClass = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(mClass);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl] then
+      begin
+        FMethods := FMethods + [ShortName(mNode.Name)];
+        Continue;
+      end;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
+        if mNode[mIndex].Kind <> TSyntaxKind.TypeSection then
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
 function TUseAfterFreeCheck.AlreadyReported(AOffset: Integer): Boolean;
 var
   mOffset: Integer;
@@ -304,74 +372,6 @@ begin
   end;
   FReport.Add(NodeRange(AAccess), mMessage, mConfidence,
     [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
-end;
-
-/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
-/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
-function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
-var
-  mTarget: TSyntaxNode;
-  mName: string;
-begin
-  Result := False;
-  if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) then
-  begin
-    Exit;
-  end;
-  mName := AStatement.Name;
-  if AStatement.ChildCount > 0 then
-  begin
-    mTarget := AStatement[0];
-    if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
-    begin
-      mTarget := mTarget[0];
-    end;
-    // Name oder Self.Name.
-    mName := FreedPath(mTarget);
-  end;
-  Result := (mName <> '') and MatchText(mName, FMethods);
-end;
-
-procedure TUseAfterFreeCheck.CollectMembers(ARoot, ARoutine: TSyntaxNode);
-var
-  mClass, mNode: TSyntaxNode;
-  mPending: TStack<TSyntaxNode>;
-  mIndex: Integer;
-begin
-  FFields := nil;
-  FMethods := nil;
-  if ClassOf(ARoutine) = '' then
-  begin
-    Exit;
-  end;
-  mClass := FindClassType(ARoot, DeclaredClassName(ClassOf(ARoutine)));
-  FFields := ClassFields(mClass);
-  if mClass = nil then
-  begin
-    Exit;
-  end;
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(mClass);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if mNode.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl] then
-      begin
-        FMethods := FMethods + [ShortName(mNode.Name)];
-        Continue;
-      end;
-      for mIndex := 0 to mNode.ChildCount - 1 do
-      begin
-        if mNode[mIndex].Kind <> TSyntaxKind.TypeSection then
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
 end;
 
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>

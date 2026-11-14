@@ -79,11 +79,6 @@ end;
 
 { TAtlasExpressionCompletionProvider }
 
-class function TAtlasExpressionCompletionProvider.ProviderTitle: string;
-begin
-  Result := UiText(TExpressionText.CompletionDebugDialogs);
-end;
-
 constructor TAtlasExpressionCompletionProvider.Create(const ASession: TAtlasSessionFunc;
   const AHistory: TFunc<TArray<string>>; const AItemsOf: TAtlasLspItemsFunc; ATimeoutMs: Cardinal);
 begin
@@ -146,6 +141,11 @@ begin
   finally
     mResponse.Free;
   end;
+end;
+
+class function TAtlasExpressionCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TExpressionText.CompletionDebugDialogs);
 end;
 
 class function TAtlasExpressionCompletionProvider.HistoryItems(const AExpressions: TArray<string>;

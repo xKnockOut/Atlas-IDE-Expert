@@ -283,6 +283,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeProjectContext }
+
 class function TAtlasIdeProjectContext.Read(const AProject: IOTAProject): TAtlasProjectContext;
 var
   mBaseKey: string;
@@ -301,6 +303,35 @@ begin
   ReadOptions(AProject, Result);
   Result.LibraryPaths := LibraryPaths(mBaseKey, Result.Platform);
   ReadNaming(Result);
+end;
+
+class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;
+var
+  mModules: IOTAModuleServices;
+  mProjects: IOTAProjectGroup;
+  mIndex: Integer;
+  mContext: TAtlasProjectContext;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mProjects := mModules.MainProjectGroup;
+  if mProjects = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mProjects.ProjectCount - 1 do
+  begin
+    mContext := Read(mProjects.Projects[mIndex]);
+    // Aktives Projekt für Dateien, die zu mehreren Projekten gehören (#46).
+    mContext.Active := mProjects.Projects[mIndex] = mProjects.ActiveProject;
+    if mContext.Project <> '' then
+    begin
+      Result := Result + [mContext];
+    end;
+  end;
 end;
 
 class function TAtlasIdeProjectContext.Macros(const AContext: TAtlasProjectContext): TAtlasPathMacros;
@@ -366,16 +397,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeProjectContext.BuildConfiguration(const AProject: IOTAProject;
-  const AName: string): IOTABuildConfiguration;
-begin
-  Result := nil;
-  if AProject <> nil then
-  begin
-    Result := NamedConfiguration(AProject, AName, '');
-  end;
-end;
-
 class function TAtlasIdeProjectContext.Configurations(const AProject: IOTAProject): TArray<string>;
 var
   mItems: IOTAProjectOptionsConfigurations;
@@ -410,32 +431,13 @@ begin
   end;
 end;
 
-class function TAtlasIdeProjectContext.Group: TArray<TAtlasProjectContext>;
-var
-  mModules: IOTAModuleServices;
-  mProjects: IOTAProjectGroup;
-  mIndex: Integer;
-  mContext: TAtlasProjectContext;
+class function TAtlasIdeProjectContext.BuildConfiguration(const AProject: IOTAProject;
+  const AName: string): IOTABuildConfiguration;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  if AProject <> nil then
   begin
-    Exit;
-  end;
-  mProjects := mModules.MainProjectGroup;
-  if mProjects = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mProjects.ProjectCount - 1 do
-  begin
-    mContext := Read(mProjects.Projects[mIndex]);
-    // Aktives Projekt für Dateien, die zu mehreren Projekten gehören (#46).
-    mContext.Active := mProjects.Projects[mIndex] = mProjects.ActiveProject;
-    if mContext.Project <> '' then
-    begin
-      Result := Result + [mContext];
-    end;
+    Result := NamedConfiguration(AProject, AName, '');
   end;
 end;
 

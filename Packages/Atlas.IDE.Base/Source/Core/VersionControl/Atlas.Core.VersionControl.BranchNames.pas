@@ -35,6 +35,8 @@ type
 
 implementation
 
+{ TAtlasVcsBranchNames }
+
 class function TAtlasVcsBranchNames.Valid(const AName: string): Boolean;
 var
   mIndex: Integer;

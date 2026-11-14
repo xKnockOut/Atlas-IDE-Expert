@@ -96,6 +96,8 @@ begin
   end;
 end;
 
+{ TPureRoutines }
+
 class function TPureRoutines.Names: TArray<string>;
 begin
   Result := Copy(GNames);

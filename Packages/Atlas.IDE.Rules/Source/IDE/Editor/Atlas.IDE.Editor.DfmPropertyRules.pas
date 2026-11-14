@@ -54,6 +54,8 @@ const
   // Projektgruppe: alle Formulare prüfen dauert; wie beim Umbenennen.
   cTimeoutMs = 60000;
 
+{ TAtlasIdeDfmPropertyRules }
+
 class function TAtlasIdeDfmPropertyRules.ScopeName(AScope: TAtlasDfmRulesScope): string;
 begin
   case AScope of

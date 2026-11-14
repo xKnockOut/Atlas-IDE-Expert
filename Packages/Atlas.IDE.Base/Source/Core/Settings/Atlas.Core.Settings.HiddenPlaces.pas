@@ -115,24 +115,6 @@ end;
 
 { TAtlasHiddenPlaces }
 
-class function TAtlasHiddenPlaces.NormalizePath(const APath: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := Trim(APath);
-  for mIndex := 1 to Length(Result) do
-  begin
-    if Result[mIndex] = '\' then
-    begin
-      Result[mIndex] := '/';
-    end;
-  end;
-  while Result.StartsWith('./') do
-  begin
-    Result := Copy(Result, 3, MaxInt);
-  end;
-end;
-
 class function TAtlasHiddenPlaces.Relative(const AFolder, AFileName: string; out ARelative: string): Boolean;
 var
   mFolder, mFileName: string;
@@ -155,6 +137,24 @@ begin
   begin
     ARelative := '';
     Result := False;
+  end;
+end;
+
+class function TAtlasHiddenPlaces.NormalizePath(const APath: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(APath);
+  for mIndex := 1 to Length(Result) do
+  begin
+    if Result[mIndex] = '\' then
+    begin
+      Result[mIndex] := '/';
+    end;
+  end;
+  while Result.StartsWith('./') do
+  begin
+    Result := Copy(Result, 3, MaxInt);
   end;
 end;
 
@@ -202,6 +202,40 @@ begin
   Result := Result + ALineBreak + AIndent + ']';
 end;
 
+class function TAtlasHiddenPlaces.AddTo(const AText, ASkeleton: string; const APlace: TAtlasHiddenPlace): string;
+var
+  mPlaces: TArray<TAtlasHiddenPlace>;
+begin
+  Result := AText;
+  if Trim(Result) = '' then
+  begin
+    Result := ASkeleton;
+  end;
+  mPlaces := FromText(Result);
+  if IndexOf(mPlaces, APlace) >= 0 then
+  begin
+    Exit;
+  end;
+  mPlaces := mPlaces + [APlace];
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
+end;
+
+class function TAtlasHiddenPlaces.RemoveFrom(const AText: string; const APlace: TAtlasHiddenPlace): string;
+var
+  mPlaces: TArray<TAtlasHiddenPlace>;
+  mIndex: Integer;
+begin
+  Result := AText;
+  mPlaces := FromText(Result);
+  mIndex := IndexOf(mPlaces, APlace);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  Delete(mPlaces, mIndex, 1);
+  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
+end;
+
 class function TAtlasHiddenPlaces.FromText(const AText: string): TArray<TAtlasHiddenPlace>;
 var
   mRoot: TJSONObject;
@@ -238,40 +272,6 @@ begin
   end;
 end;
 
-class function TAtlasHiddenPlaces.AddTo(const AText, ASkeleton: string; const APlace: TAtlasHiddenPlace): string;
-var
-  mPlaces: TArray<TAtlasHiddenPlace>;
-begin
-  Result := AText;
-  if Trim(Result) = '' then
-  begin
-    Result := ASkeleton;
-  end;
-  mPlaces := FromText(Result);
-  if IndexOf(mPlaces, APlace) >= 0 then
-  begin
-    Exit;
-  end;
-  mPlaces := mPlaces + [APlace];
-  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
-end;
-
-class function TAtlasHiddenPlaces.RemoveFrom(const AText: string; const APlace: TAtlasHiddenPlace): string;
-var
-  mPlaces: TArray<TAtlasHiddenPlace>;
-  mIndex: Integer;
-begin
-  Result := AText;
-  mPlaces := FromText(Result);
-  mIndex := IndexOf(mPlaces, APlace);
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  Delete(mPlaces, mIndex, 1);
-  Result := TAtlasJsonText.SetValue(Result, cKey, ToJson(mPlaces, '  ', TTextLines.LineBreakOf(Result)));
-end;
-
 { TAtlasHiddenIndex }
 
 constructor TAtlasHiddenIndex.Create(const APlaces: TArray<TAtlasHiddenPlace>; const AFolder: string);
@@ -305,11 +305,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasHiddenIndex.IsEmpty: Boolean;
-begin
-  Result := FAnchors.Count = 0;
-end;
-
 function TAtlasHiddenIndex.Lookup(const ASetting, AFileName: string; out AAnchors: TList<string>): Boolean;
 begin
   AAnchors := nil;
@@ -324,6 +319,11 @@ begin
     FLastInside := TAtlasHiddenPlaces.Relative(FFolder, AFileName, FLastRelative);
   end;
   Result := FLastInside and FAnchors.TryGetValue(LowerCase(ASetting + '|' + FLastRelative), AAnchors);
+end;
+
+function TAtlasHiddenIndex.IsEmpty: Boolean;
+begin
+  Result := FAnchors.Count = 0;
 end;
 
 function TAtlasHiddenIndex.FileHidden(const ASetting, AFileName: string): Boolean;

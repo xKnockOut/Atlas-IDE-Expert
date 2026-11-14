@@ -145,21 +145,6 @@ begin
   FWorkingDir := AWorkingDir;
 end;
 
-class function TVcsChanges.FindProgram(const AName: string): string;
-var
-  mDir: string;
-begin
-  // Der Prozessläufer übergibt den Programmnamen direkt an CreateProcess, das PATH nicht durchsucht.
-  for mDir in GetEnvironmentVariable('PATH').Split([PathSep]) do
-  begin
-    if (mDir <> '') and TFile.Exists(TPath.Combine(mDir.Trim(['"']), AName + '.exe')) then
-    begin
-      Exit(TPath.Combine(mDir.Trim(['"']), AName + '.exe'));
-    end;
-  end;
-  Result := AName;
-end;
-
 function TVcsChanges.Run(const AExecutable: string; const AArguments: TArray<string>; ACheck: Boolean;
   out AExitCode: Integer): TArray<string>;
 var
@@ -194,28 +179,6 @@ begin
   mItem.Path := APath;
   mItem.Spans := [mWhole];
   FLines := FLines + [mItem];
-end;
-
-class function TVcsChanges.ToolFor(AKind: TAtlasVcsKind; const AConfigured: string): string;
-var
-  mLocation: TAtlasVcsToolLocation;
-begin
-  // Ohne eigenen Pfad der gemerkte Fund (auch TAtlasVcsTools.Preset), sonst neu suchen.
-  if AConfigured = '' then
-  begin
-    mLocation := TAtlasVcsTools.Where(AKind);
-  end
-  else
-  begin
-    mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
-  end;
-  if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
-  begin
-    raise EVcsChanges.Create(cTexts[TVcsChangesText.NotFound].Fmt([TAtlasVcsTools.ProgramName(AKind),
-      mLocation.Configured,
-      TAtlasVcsTools.ProgramName(AKind)]));
-  end;
-  Result := mLocation.Executable;
 end;
 
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
@@ -267,9 +230,46 @@ begin
   end;
 end;
 
+class function TVcsChanges.ToolFor(AKind: TAtlasVcsKind; const AConfigured: string): string;
+var
+  mLocation: TAtlasVcsToolLocation;
+begin
+  // Ohne eigenen Pfad der gemerkte Fund (auch TAtlasVcsTools.Preset), sonst neu suchen.
+  if AConfigured = '' then
+  begin
+    mLocation := TAtlasVcsTools.Where(AKind);
+  end
+  else
+  begin
+    mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
+  end;
+  if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
+  begin
+    raise EVcsChanges.Create(cTexts[TVcsChangesText.NotFound].Fmt([TAtlasVcsTools.ProgramName(AKind),
+      mLocation.Configured,
+      TAtlasVcsTools.ProgramName(AKind)]));
+  end;
+  Result := mLocation.Executable;
+end;
+
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges;
 begin
   Result := Detect(AProcess, AWorkingDir, 'auto');
+end;
+
+class function TVcsChanges.FindProgram(const AName: string): string;
+var
+  mDir: string;
+begin
+  // Der Prozessläufer übergibt den Programmnamen direkt an CreateProcess, das PATH nicht durchsucht.
+  for mDir in GetEnvironmentVariable('PATH').Split([PathSep]) do
+  begin
+    if (mDir <> '') and TFile.Exists(TPath.Combine(mDir.Trim(['"']), AName + '.exe')) then
+    begin
+      Exit(TPath.Combine(mDir.Trim(['"']), AName + '.exe'));
+    end;
+  end;
+  Result := AName;
 end;
 
 { TGitChanges }
@@ -278,27 +278,6 @@ constructor TGitChanges.Create(const AProcess: ICompilerProcess; const AWorkingD
 begin
   inherited Create(AProcess, AWorkingDir);
   FGit := AGit;
-end;
-
-function TGitChanges.Name: string;
-begin
-  Result := 'Git';
-end;
-
-function TGitChanges.Git(const AArguments: TArray<string>): TArray<string>;
-var
-  mExitCode: Integer;
-begin
-  // Pfade mit Sonderzeichen kommen als Oktalfolgen (core.quotepath) und damit
-  // unabhängig von der Codepage, in der der Prozessläufer liest.
-  if FGit <> '' then
-  begin
-    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
-  end
-  else
-  begin
-    Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
-  end;
 end;
 
 procedure TGitChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
@@ -350,6 +329,27 @@ begin
         AddWholeFile(TChangedFiles.UnquotePath(Trim(mPath)));
       end;
     end;
+  end;
+end;
+
+function TGitChanges.Name: string;
+begin
+  Result := 'Git';
+end;
+
+function TGitChanges.Git(const AArguments: TArray<string>): TArray<string>;
+var
+  mExitCode: Integer;
+begin
+  // Pfade mit Sonderzeichen kommen als Oktalfolgen (core.quotepath) und damit
+  // unabhängig von der Codepage, in der der Prozessläufer liest.
+  if FGit <> '' then
+  begin
+    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
+  end
+  else
+  begin
+    Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, mExitCode);
   end;
 end;
 

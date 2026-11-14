@@ -51,30 +51,22 @@ const
   cCornerRight = 3;
   cCornerTop = 8;
 
-class function TAtlasStepsBar.ActiveCorner: TPoint;
-var
-  mForm: TCustomForm;
-  mRect: TRect;
-begin
-  mForm := Screen.ActiveCustomForm;
-  if mForm = nil then
-  begin
-    mForm := Application.MainForm;
-  end;
-  if mForm = nil then
-  begin
-    Exit(Mouse.CursorPos);
-  end;
-  mRect := mForm.BoundsRect;
-  Result := TPoint.Create(mRect.Right - mForm.ScaleValue(cPad * cCornerRight),
-    mRect.Top + mForm.ScaleValue(cPad * cCornerTop));
-end;
+{ TAtlasStepsBar }
 
 constructor TAtlasStepsBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   SetAccessible(cUiaToolTipControlType, '');
+end;
+
+procedure TAtlasStepsBar.Paint;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
 end;
 
 function TAtlasStepsBar.Layout(ADraw: Boolean): TSize;
@@ -128,13 +120,23 @@ begin
   HidePopup;
 end;
 
-procedure TAtlasStepsBar.Paint;
+class function TAtlasStepsBar.ActiveCorner: TPoint;
+var
+  mForm: TCustomForm;
+  mRect: TRect;
 begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
+  mForm := Screen.ActiveCustomForm;
+  if mForm = nil then
+  begin
+    mForm := Application.MainForm;
+  end;
+  if mForm = nil then
+  begin
+    Exit(Mouse.CursorPos);
+  end;
+  mRect := mForm.BoundsRect;
+  Result := TPoint.Create(mRect.Right - mForm.ScaleValue(cPad * cCornerRight),
+    mRect.Top + mForm.ScaleValue(cPad * cCornerTop));
 end;
 
 end.

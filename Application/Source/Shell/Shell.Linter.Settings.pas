@@ -121,9 +121,14 @@ begin
   end;
 end;
 
-function TLinterTarget.IsFolder: Boolean;
+class function TLinterTarget.ResolveCheck(const AOptions: TCommandLineOptions; out AResult: TLinterTarget): Boolean;
 begin
-  Result := TDirectory.Exists(Target);
+  Result := Resolve(AOptions.CheckTarget, AResult);
+  if Result and (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
+  begin
+    TLinterOutput.Error(cTexts[TLinterSettingsText.NoSourceRoot].Fmt([AOptions.SourceRoot]));
+    Result := False;
+  end;
 end;
 
 function TLinterTarget.Title: string;
@@ -150,6 +155,8 @@ function IsRepositoryRoot(const AFolder: string): Boolean;
 begin
   Result := DirectoryExists(AFolder + '.git') or DirectoryExists(AFolder + '.svn') or FileExists(AFolder + '.git');
 end;
+
+{ TLinterSettings }
 
 class function TLinterSettings.ConfigFileOf(const ARoot: string): string;
 var
@@ -248,14 +255,9 @@ begin
   Result.MinSeverity := AOptions.MinSeverity;
 end;
 
-class function TLinterTarget.ResolveCheck(const AOptions: TCommandLineOptions; out AResult: TLinterTarget): Boolean;
+function TLinterTarget.IsFolder: Boolean;
 begin
-  Result := Resolve(AOptions.CheckTarget, AResult);
-  if Result and (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
-  begin
-    TLinterOutput.Error(cTexts[TLinterSettingsText.NoSourceRoot].Fmt([AOptions.SourceRoot]));
-    Result := False;
-  end;
+  Result := TDirectory.Exists(Target);
 end;
 
 /// <summary>Fehler der Kombination von Optionen in AOptions; '' ohne Fehler.</summary>

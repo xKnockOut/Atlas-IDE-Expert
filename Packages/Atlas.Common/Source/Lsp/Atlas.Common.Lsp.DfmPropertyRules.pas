@@ -142,6 +142,8 @@ type
     function Changes(out AFiles, AEdits: Integer): TJSONArray;
   end;
 
+{ TDfmEditCollector }
+
 constructor TDfmEditCollector.Create;
 begin
   inherited Create;

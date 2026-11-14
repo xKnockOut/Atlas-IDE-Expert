@@ -72,6 +72,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspLeakSetup }
+
 constructor TLspLeakSetup.Create(const AContextFor: TLeakSetupContextProvider; const AFiles: ILeakSetupFiles);
 begin
   inherited Create;

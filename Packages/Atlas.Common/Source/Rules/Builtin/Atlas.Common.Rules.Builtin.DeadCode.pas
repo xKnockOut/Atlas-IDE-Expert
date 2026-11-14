@@ -463,6 +463,8 @@ begin
   end;
 end;
 
+{ TUsesCycleCheck }
+
 constructor TUsesCycleCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -842,6 +844,8 @@ begin
   end;
 end;
 
+{ TUnusedDeclarationCheck }
+
 constructor TUnusedDeclarationCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -1177,6 +1181,8 @@ begin
   end;
 end;
 
+{ TUnusedUnitRule }
+
 function TUnusedUnitRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cUnusedUnitRuleId, TRuleSeverity.Hint,
@@ -1232,14 +1238,14 @@ begin
   Result := TRuleDescriptor.Create(cUnusedUsesRuleId, TRuleSeverity.Hint, cTexts[TDeadCodeText.UsesTitle].Text);
 end;
 
-class function TUnusedUsesRule.Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>;
-begin
-  Result := AUsesKeep + TRuleOptions.Strings(AOptions, 'keep', nil);
-end;
-
 function TUnusedUsesRule.Applies(const AContext: TRuleContext): Boolean;
 begin
   Result := UsesEntriesChecked(AContext);
+end;
+
+class function TUnusedUsesRule.Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>;
+begin
+  Result := AUsesKeep + TRuleOptions.Strings(AOptions, 'keep', nil);
 end;
 
 /// <summary>Auffällige uses-Einträge der Datei wie im Editor (#621) samt Namensauflösung (#1925); AKeep: Units,

@@ -1394,6 +1394,8 @@ begin
   ASettings.SafeDeleteIncludeOverrides := 'ask';
 end;
 
+{ TRefactoringSettings }
+
 class function TRefactoringSettings.Default: TRefactoringSettings;
 begin
   SetRefactoringBasics(Result);
@@ -1569,6 +1571,22 @@ begin
   ASettings.VcsProjects := '';
 end;
 
+{ TServerSettings }
+
+function TServerSettings.IsIndexExcluded(const AFileName: string): Boolean;
+var
+  mPattern: string;
+begin
+  for mPattern in IndexExclude do
+  begin
+    if MatchesGlob(mPattern, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 class function TServerSettings.Default: TServerSettings;
 begin
   SetGeneralDefaults(Result);
@@ -1591,23 +1609,17 @@ begin
   Result := ADefault;
 end;
 
-function TServerSettings.TryFindProfile(const AName: string; out AProfile: TRuleProfile): Boolean;
+function TServerSettings.IsExcluded(const ARelativePath: string): Boolean;
 var
-  mProfile: TRuleProfile;
+  mPattern: string;
 begin
-  for mProfile in Profiles do
+  for mPattern in Exclude do
   begin
-    if SameText(mProfile.Name, AName) then
+    if MatchesGlob(mPattern, ARelativePath) then
     begin
-      AProfile := mProfile;
       Exit(True);
     end;
   end;
-  // Nicht Default(…): innerhalb von TServerSettings träfe das die gleichnamige Klassenfunktion.
-  AProfile.Name := '';
-  AProfile.Extends := '';
-  AProfile.Categories := nil;
-  AProfile.Rules := nil;
   Result := False;
 end;
 
@@ -1630,31 +1642,23 @@ begin
   Result := TryFindProfile(AName, mProfile);
 end;
 
-function TServerSettings.IsIndexExcluded(const AFileName: string): Boolean;
+function TServerSettings.TryFindProfile(const AName: string; out AProfile: TRuleProfile): Boolean;
 var
-  mPattern: string;
+  mProfile: TRuleProfile;
 begin
-  for mPattern in IndexExclude do
+  for mProfile in Profiles do
   begin
-    if MatchesGlob(mPattern, AFileName) then
+    if SameText(mProfile.Name, AName) then
     begin
+      AProfile := mProfile;
       Exit(True);
     end;
   end;
-  Result := False;
-end;
-
-function TServerSettings.IsExcluded(const ARelativePath: string): Boolean;
-var
-  mPattern: string;
-begin
-  for mPattern in Exclude do
-  begin
-    if MatchesGlob(mPattern, ARelativePath) then
-    begin
-      Exit(True);
-    end;
-  end;
+  // Nicht Default(…): innerhalb von TServerSettings träfe das die gleichnamige Klassenfunktion.
+  AProfile.Name := '';
+  AProfile.Extends := '';
+  AProfile.Categories := nil;
+  AProfile.Rules := nil;
   Result := False;
 end;
 

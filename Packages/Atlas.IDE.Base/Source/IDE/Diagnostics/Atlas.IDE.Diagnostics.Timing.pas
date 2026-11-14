@@ -171,23 +171,156 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeDiagnosticMode.Rebind;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  FKey.Rebind(Word(mSettings.DiagnosticModeKey), mSettings.DiagnosticModeKeyPriority,
-    TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey));
-end;
-
-class procedure TAtlasIdeDiagnosticMode.Toggle;
+procedure TAtlasIdeDiagnosticMode.TimerTick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Settings,
     procedure
     begin
-      // Dieselbe Einstellung wie Optionsseite und Schnellschalter; Update meldet OnChanged → ApplySettings.
-      TAtlasIdeQuickToggles.Switch(cToggleKey);
+      if TAtlasIdeTimingWindow.Visible then
+      begin
+        Refresh(TAtlasIdeTimingWindow.ExistingFrame, False);
+      end;
+      if (DataVersion <> FSavedVersion) and
+        (TThread.GetTickCount64 - FSavedAt >= cSaveEveryMs) then
+      begin
+        SaveLastData;
+      end;
     end);
+end;
+
+procedure TAtlasIdeDiagnosticMode.Refresh(AFrame: TAtlasDiagnosticsFrame; AForce: Boolean);
+var
+  mVersion: Integer;
+begin
+  if AFrame = nil then
+  begin
+    Exit;
+  end;
+  FPlugin.Refresh(AFrame, AForce);
+  mVersion := TAtlasQueryTimings.Shared.Version;
+  if AForce then
+  begin
+    AFrame.SetColors(TAtlasIdeStyle.Colors);
+  end
+  else if mVersion = FShownVersion then
+  begin
+    Exit;
+  end;
+  FShownVersion := mVersion;
+  AFrame.Completion.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
+end;
+
+class function TAtlasIdeDiagnosticMode.DataVersion: Integer;
+begin
+  // Beide Zähler steigen nur; die Summe ändert sich, sobald sich einer ändert.
+  Result := TAtlasQueryTimings.Shared.Version + TAtlasIdePluginTimings.Version;
+end;
+
+procedure TAtlasIdeDiagnosticMode.CopyReport(AFileNames: Boolean);
+var
+  mFrame: TAtlasDiagnosticsFrame;
+begin
+  Clipboard.AsText := Report(AFileNames);
+  mFrame := TAtlasIdeTimingWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.Completion.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
+    mFrame.Bar.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
+  end;
+end;
+
+procedure TAtlasIdeDiagnosticMode.AddStatusLine;
+begin
+  if (FRegistry = nil) or (FLineRef <> nil) then
+  begin
+    Exit;
+  end;
+  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder,
+    procedure
+    begin
+      if FInstance <> nil then
+      begin
+        FInstance.ShowWindow;
+      end;
+    end);
+  FLineRef := FLine;
+  // Gelb: Der Modus misst und schreibt Diagnosedaten (#754).
+  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusLine), TAtlasStatusState.Yellow,
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusSummary),
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticOn),
+    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticDetail));
+  FRegistry.Add(FLineRef);
+end;
+
+procedure TAtlasIdeDiagnosticMode.RemoveStatusLine;
+begin
+  if FLineRef = nil then
+  begin
+    Exit;
+  end;
+  if FRegistry <> nil then
+  begin
+    FRegistry.Remove(cStatusId);
+  end;
+  FLine := nil;
+  FLineRef := nil;
+end;
+
+function CopyHandler: TProc<Boolean>;
+begin
+  // Eigene Routine: Die Methodenreferenz fängt nur AFileNames ein (kein gemeinsamer Rahmen).
+  Result :=
+    procedure(AFileNames: Boolean)
+    var
+      mFileNames: Boolean;
+    begin
+      mFileNames := AFileNames;
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          if TAtlasIdeDiagnosticMode.FInstance <> nil then
+          begin
+            TAtlasIdeDiagnosticMode.FInstance.CopyReport(mFileNames);
+          end;
+        end);
+    end;
+end;
+
+procedure TAtlasIdeDiagnosticMode.FrameCreated(AFrame: TAtlasDiagnosticsFrame);
+var
+  mCopy: TProc<Boolean>;
+begin
+  mCopy := CopyHandler();
+  AFrame.Completion.OnCopy := mCopy;
+  AFrame.Bar.OnCopy :=
+    procedure
+    begin
+      mCopy(False);
+    end;
+  TAtlasIdePluginTimings.Wire(AFrame);
+  Refresh(AFrame, True);
+end;
+
+procedure TAtlasIdeDiagnosticMode.SaveLastData;
+var
+  mVersion: Integer;
+begin
+  mVersion := DataVersion;
+  FSavedAt := TThread.GetTickCount64;
+  if (mVersion = FSavedVersion) or ((Length(TAtlasQueryTimings.Shared.Snapshot) = 0) and
+    (TAtlasIdePluginTimings.Version = 0)) then
+  begin
+    Exit;
+  end;
+  FSavedVersion := mVersion;
+  try
+    ForceDirectories(ExtractFileDir(LastDataFile));
+    // Ohne Dateinamen: Die Datei soll ohne Rückfrage in ein Diagnosepaket dürfen (#766).
+    TFile.WriteAllText(LastDataFile, Report(False), TEncoding.UTF8);
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Diagnosemodus: letzte Diagnosedaten nicht geschrieben (' + E.ClassName + ')');
+  end;
 end;
 
 procedure TAtlasIdeDiagnosticMode.ApplySettings;
@@ -231,41 +364,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDiagnosticMode.AddStatusLine;
+procedure TAtlasIdeDiagnosticMode.Rebind;
+var
+  mSettings: TAtlasPluginSettings;
 begin
-  if (FRegistry = nil) or (FLineRef <> nil) then
-  begin
-    Exit;
-  end;
-  FLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder,
-    procedure
-    begin
-      if FInstance <> nil then
-      begin
-        FInstance.ShowWindow;
-      end;
-    end);
-  FLineRef := FLine;
-  // Gelb: Der Modus misst und schreibt Diagnosedaten (#754).
-  FLine.Update(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusLine), TAtlasStatusState.Yellow,
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticStatusSummary),
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticOn),
-    TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.WelcomeStateDiagnosticDetail));
-  FRegistry.Add(FLineRef);
-end;
-
-procedure TAtlasIdeDiagnosticMode.RemoveStatusLine;
-begin
-  if FLineRef = nil then
-  begin
-    Exit;
-  end;
-  if FRegistry <> nil then
-  begin
-    FRegistry.Remove(cStatusId);
-  end;
-  FLine := nil;
-  FLineRef := nil;
+  mSettings := TAtlasIdeSettings.Current;
+  FKey.Rebind(Word(mSettings.DiagnosticModeKey), mSettings.DiagnosticModeKeyPriority,
+    TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey));
 end;
 
 procedure TAtlasIdeDiagnosticMode.ShowWindow;
@@ -276,105 +381,6 @@ begin
   if mFrame <> nil then
   begin
     Refresh(mFrame, True);
-  end;
-end;
-
-function CopyHandler: TProc<Boolean>;
-begin
-  // Eigene Routine: Die Methodenreferenz fängt nur AFileNames ein (kein gemeinsamer Rahmen).
-  Result :=
-    procedure(AFileNames: Boolean)
-    var
-      mFileNames: Boolean;
-    begin
-      mFileNames := AFileNames;
-      TAtlasGuard.Run(TAtlasFeature.Settings,
-        procedure
-        begin
-          if TAtlasIdeDiagnosticMode.FInstance <> nil then
-          begin
-            TAtlasIdeDiagnosticMode.FInstance.CopyReport(mFileNames);
-          end;
-        end);
-    end;
-end;
-
-procedure TAtlasIdeDiagnosticMode.FrameCreated(AFrame: TAtlasDiagnosticsFrame);
-var
-  mCopy: TProc<Boolean>;
-begin
-  mCopy := CopyHandler();
-  AFrame.Completion.OnCopy := mCopy;
-  AFrame.Bar.OnCopy :=
-    procedure
-    begin
-      mCopy(False);
-    end;
-  TAtlasIdePluginTimings.Wire(AFrame);
-  Refresh(AFrame, True);
-end;
-
-class function TAtlasIdeDiagnosticMode.DataVersion: Integer;
-begin
-  // Beide Zähler steigen nur; die Summe ändert sich, sobald sich einer ändert.
-  Result := TAtlasQueryTimings.Shared.Version + TAtlasIdePluginTimings.Version;
-end;
-
-procedure TAtlasIdeDiagnosticMode.Refresh(AFrame: TAtlasDiagnosticsFrame; AForce: Boolean);
-var
-  mVersion: Integer;
-begin
-  if AFrame = nil then
-  begin
-    Exit;
-  end;
-  FPlugin.Refresh(AFrame, AForce);
-  mVersion := TAtlasQueryTimings.Shared.Version;
-  if AForce then
-  begin
-    AFrame.SetColors(TAtlasIdeStyle.Colors);
-  end
-  else if mVersion = FShownVersion then
-  begin
-    Exit;
-  end;
-  FShownVersion := mVersion;
-  AFrame.Completion.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
-end;
-
-procedure TAtlasIdeDiagnosticMode.TimerTick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Settings,
-    procedure
-    begin
-      if TAtlasIdeTimingWindow.Visible then
-      begin
-        Refresh(TAtlasIdeTimingWindow.ExistingFrame, False);
-      end;
-      if (DataVersion <> FSavedVersion) and
-        (TThread.GetTickCount64 - FSavedAt >= cSaveEveryMs) then
-      begin
-        SaveLastData;
-      end;
-    end);
-end;
-
-procedure TAtlasIdeDiagnosticMode.ThemeChanged;
-begin
-  TAtlasIdeTimingWindow.ApplyTheme;
-  Refresh(TAtlasIdeTimingWindow.ExistingFrame, True);
-end;
-
-procedure TAtlasIdeDiagnosticMode.CopyReport(AFileNames: Boolean);
-var
-  mFrame: TAtlasDiagnosticsFrame;
-begin
-  Clipboard.AsText := Report(AFileNames);
-  mFrame := TAtlasIdeTimingWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.Completion.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
-    mFrame.Bar.ShowNote(TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagnosticCopied));
   end;
 end;
 
@@ -399,6 +405,12 @@ begin
     end);
 end;
 
+procedure TAtlasIdeDiagnosticMode.ThemeChanged;
+begin
+  TAtlasIdeTimingWindow.ApplyTheme;
+  Refresh(TAtlasIdeTimingWindow.ExistingFrame, True);
+end;
+
 function SettingsJson: string;
 var
   mValues: TJSONObject;
@@ -409,6 +421,16 @@ begin
   finally
     mValues.Free;
   end;
+end;
+
+class procedure TAtlasIdeDiagnosticMode.Toggle;
+begin
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      // Dieselbe Einstellung wie Optionsseite und Schnellschalter; Update meldet OnChanged → ApplySettings.
+      TAtlasIdeQuickToggles.Switch(cToggleKey);
+    end);
 end;
 
 class function TAtlasIdeDiagnosticMode.Report(AFileNames: Boolean): string;
@@ -435,28 +457,6 @@ end;
 class function TAtlasIdeDiagnosticMode.LastDataFile: string;
 begin
   Result := TPath.Combine(TAtlasDiagnosticExport.DefaultFolder, TAtlasTimingReport.cFileName);
-end;
-
-procedure TAtlasIdeDiagnosticMode.SaveLastData;
-var
-  mVersion: Integer;
-begin
-  mVersion := DataVersion;
-  FSavedAt := TThread.GetTickCount64;
-  if (mVersion = FSavedVersion) or ((Length(TAtlasQueryTimings.Shared.Snapshot) = 0) and
-    (TAtlasIdePluginTimings.Version = 0)) then
-  begin
-    Exit;
-  end;
-  FSavedVersion := mVersion;
-  try
-    ForceDirectories(ExtractFileDir(LastDataFile));
-    // Ohne Dateinamen: Die Datei soll ohne Rückfrage in ein Diagnosepaket dürfen (#766).
-    TFile.WriteAllText(LastDataFile, Report(False), TEncoding.UTF8);
-  except
-    on E: Exception do
-      TAtlasGuard.Log('Diagnosemodus: letzte Diagnosedaten nicht geschrieben (' + E.ClassName + ')');
-  end;
 end;
 
 end.

@@ -91,6 +91,8 @@ begin
   Result := TShutdownLeaks.AllocatedBytes;
 end;
 
+{ TShellSession }
+
 constructor TShellSession.Create(const AServices: TShellSessionServices; ARequestTimeoutMs: Cardinal);
 begin
   inherited Create;

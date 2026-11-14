@@ -87,6 +87,8 @@ const
     'TColorListBox');
   cFreeWords: array[0..3] of string = ('Free', 'FreeAndNil', 'DisposeOf', 'Destroy');
 
+{ TStringListObjectsLeakRule }
+
 function TStringListObjectsLeakRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cStringListObjectsLeakRuleId, TRuleSeverity.Warning,

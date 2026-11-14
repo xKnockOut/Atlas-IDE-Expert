@@ -231,74 +231,6 @@ end;
 
 { TAtlasIdeDebugLeaks }
 
-class procedure TAtlasIdeDebugLeaks.Start(const AScope: IAtlasModuleScope; const AMessage: TProc<string>);
-begin
-  FScope := AScope;
-  FMessage := AMessage;
-  if FTicker = nil then
-  begin
-    FTicker := TTicker.Create;
-  end;
-  if FTimer = nil then
-  begin
-    FTimer := TTimer.Create(nil);
-    FTimer.Enabled := False;
-    FTimer.Interval := cIntervalMs;
-    FTimer.OnTimer := FTicker.Tick;
-  end;
-  TAtlasIdeDebugLeaksWindow.Prepare;
-  TAtlasIdeDebugLeaksWindow.OnFrame :=
-    procedure(AFrame: TAtlasDebugLeaksFrame)
-    begin
-      AFrame.OnOpen :=
-        procedure(ARow: TAtlasLeakRow)
-        begin
-          Open(ARow);
-        end;
-      AFrame.OnMarkKnown :=
-        procedure(AName: string)
-        begin
-          ToggleKnown(AName);
-        end;
-      AFrame.OnFilter :=
-        procedure
-        begin
-          Refresh;
-        end;
-      Refresh;
-    end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-end;
-
-class procedure TAtlasIdeDebugLeaks.Release;
-begin
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-    FListener := nil;
-  end;
-  FreeAndNil(FTimer);
-  FreeAndNil(FTicker);
-  TAtlasIdeDebugLeaksWindow.Release;
-  FScope := nil;
-  FMessage := nil;
-  FBox := Default(TAtlasLeakCapture);
-  FCapture := Default(TAtlasLeakCapture);
-  FEntries := nil;
-  FPlaces := nil;
-  FHistory := Default(TAtlasLeakHistory);
-end;
-
-class function TAtlasIdeDebugLeaks.Started: Boolean;
-begin
-  Result := FListener <> nil;
-end;
-
 class procedure TAtlasIdeDebugLeaks.Began;
 var
   mProcess: IOTAProcess;
@@ -317,6 +249,22 @@ begin
   FConfiguration := TAtlasIdeDebugSession.LaunchConfiguration;
   FPlatform := TAtlasIdeDebugSession.LaunchPlatform;
   FTimer.Enabled := FProcessId <> 0;
+end;
+
+class procedure TAtlasIdeDebugLeaks.Ended;
+var
+  mCapture: TAtlasLeakCapture;
+begin
+  FTimer.Enabled := False;
+  // Letzter Blick: Das Meldungsfenster steht bis zum Klick, das Ende kommt danach.
+  mCapture := TAtlasLeakCaptures.Choose(FBox, ReadLogFile);
+  FBox := Default(TAtlasLeakCapture);
+  if mCapture.IsEmpty then
+  begin
+    Exit;
+  end;
+  FCapture := mCapture;
+  Present;
 end;
 
 class procedure TAtlasIdeDebugLeaks.ScanWindows;
@@ -366,22 +314,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugLeaks.Ended;
-var
-  mCapture: TAtlasLeakCapture;
-begin
-  FTimer.Enabled := False;
-  // Letzter Blick: Das Meldungsfenster steht bis zum Klick, das Ende kommt danach.
-  mCapture := TAtlasLeakCaptures.Choose(FBox, ReadLogFile);
-  FBox := Default(TAtlasLeakCapture);
-  if mCapture.IsEmpty then
-  begin
-    Exit;
-  end;
-  FCapture := mCapture;
-  Present;
-end;
-
 class function TAtlasIdeDebugLeaks.HistoryFile: string;
 begin
   Result := '';
@@ -389,6 +321,73 @@ begin
   begin
     Result := TPath.Combine(TPath.Combine(ExtractFileDir(FProject), cLocalFolder),
       TAtlasLeakCaptures.HistoryFileName(FConfiguration, FPlatform));
+  end;
+end;
+
+class procedure TAtlasIdeDebugLeaks.RequestCandidates;
+var
+  mDone: TProc<string>;
+begin
+  if FProject = '' then
+  begin
+    Exit;
+  end;
+  mDone :=
+    procedure(AAnswer: string)
+    begin
+      FPlaces := TAtlasLeakViews.PlacesFromJson(AAnswer);
+      FStatus := TAtlasLeakTexts.Summary(FCapture);
+      Refresh;
+    end;
+  FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksSearching);
+  if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Debugger,
+    TAtlasLeakViews.cCandidatesCommand, TAtlasLeakViews.CandidateArgumentsJson(FProject, FCapture.Text), cTimeoutMs,
+    mDone) then
+  begin
+    FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksNoServer);
+  end;
+  Refresh;
+end;
+
+class procedure TAtlasIdeDebugLeaks.Refresh;
+var
+  mFrame: TAtlasDebugLeaksFrame;
+begin
+  mFrame := TAtlasIdeDebugLeaksWindow.ExistingFrame;
+  if mFrame = nil then
+  begin
+    Exit;
+  end;
+  if FStatus = '' then
+  begin
+    FStatus := TAtlasLeakTexts.Summary(FCapture);
+  end;
+  mFrame.SetRows(TAtlasLeakViews.Rows(FEntries, FPlaces, FCapture.Report.Groups, mFrame.HideKnown), FStatus);
+end;
+
+class procedure TAtlasIdeDebugLeaks.Open(const ARow: TAtlasLeakRow);
+var
+  mFrame: TLeakFrame;
+  mFile: string;
+begin
+  if ARow.Kind = TAtlasLeakRowKind.Place then
+  begin
+    TAtlasIdeNavigation.GoToLocation(ARow.Place.FileName, ARow.Place.Line, ARow.Place.Character);
+    Exit;
+  end;
+  if (ARow.Kind <> TAtlasLeakRowKind.Group) or (ARow.Group.Site < 0) then
+  begin
+    Exit;
+  end;
+  mFrame := ARow.Group.Frames[ARow.Group.Site];
+  mFile := mFrame.FileName;
+  if not FileExists(mFile) then
+  begin
+    mFile := ProjectFileNamed(FProject, mFrame.FileName);
+  end;
+  if mFile <> '' then
+  begin
+    TAtlasIdeNavigation.GoToLocation(mFile, mFrame.Line - 1, 0);
   end;
 end;
 
@@ -471,73 +470,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDebugLeaks.RequestCandidates;
-var
-  mDone: TProc<string>;
-begin
-  if FProject = '' then
-  begin
-    Exit;
-  end;
-  mDone :=
-    procedure(AAnswer: string)
-    begin
-      FPlaces := TAtlasLeakViews.PlacesFromJson(AAnswer);
-      FStatus := TAtlasLeakTexts.Summary(FCapture);
-      Refresh;
-    end;
-  FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksSearching);
-  if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Debugger,
-    TAtlasLeakViews.cCandidatesCommand, TAtlasLeakViews.CandidateArgumentsJson(FProject, FCapture.Text), cTimeoutMs,
-    mDone) then
-  begin
-    FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksNoServer);
-  end;
-  Refresh;
-end;
-
-class procedure TAtlasIdeDebugLeaks.Refresh;
-var
-  mFrame: TAtlasDebugLeaksFrame;
-begin
-  mFrame := TAtlasIdeDebugLeaksWindow.ExistingFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  if FStatus = '' then
-  begin
-    FStatus := TAtlasLeakTexts.Summary(FCapture);
-  end;
-  mFrame.SetRows(TAtlasLeakViews.Rows(FEntries, FPlaces, FCapture.Report.Groups, mFrame.HideKnown), FStatus);
-end;
-
-class procedure TAtlasIdeDebugLeaks.Open(const ARow: TAtlasLeakRow);
-var
-  mFrame: TLeakFrame;
-  mFile: string;
-begin
-  if ARow.Kind = TAtlasLeakRowKind.Place then
-  begin
-    TAtlasIdeNavigation.GoToLocation(ARow.Place.FileName, ARow.Place.Line, ARow.Place.Character);
-    Exit;
-  end;
-  if (ARow.Kind <> TAtlasLeakRowKind.Group) or (ARow.Group.Site < 0) then
-  begin
-    Exit;
-  end;
-  mFrame := ARow.Group.Frames[ARow.Group.Site];
-  mFile := mFrame.FileName;
-  if not FileExists(mFile) then
-  begin
-    mFile := ProjectFileNamed(FProject, mFrame.FileName);
-  end;
-  if mFile <> '' then
-  begin
-    TAtlasIdeNavigation.GoToLocation(mFile, mFrame.Line - 1, 0);
-  end;
-end;
-
 class procedure TAtlasIdeDebugLeaks.ToggleKnown(const AName: string);
 var
   mIndex: Integer;
@@ -549,6 +481,74 @@ begin
     FEntries[mIndex].Known := FHistory.IsKnown(FEntries[mIndex].Name);
   end;
   Refresh;
+end;
+
+class procedure TAtlasIdeDebugLeaks.Start(const AScope: IAtlasModuleScope; const AMessage: TProc<string>);
+begin
+  FScope := AScope;
+  FMessage := AMessage;
+  if FTicker = nil then
+  begin
+    FTicker := TTicker.Create;
+  end;
+  if FTimer = nil then
+  begin
+    FTimer := TTimer.Create(nil);
+    FTimer.Enabled := False;
+    FTimer.Interval := cIntervalMs;
+    FTimer.OnTimer := FTicker.Tick;
+  end;
+  TAtlasIdeDebugLeaksWindow.Prepare;
+  TAtlasIdeDebugLeaksWindow.OnFrame :=
+    procedure(AFrame: TAtlasDebugLeaksFrame)
+    begin
+      AFrame.OnOpen :=
+        procedure(ARow: TAtlasLeakRow)
+        begin
+          Open(ARow);
+        end;
+      AFrame.OnMarkKnown :=
+        procedure(AName: string)
+        begin
+          ToggleKnown(AName);
+        end;
+      AFrame.OnFilter :=
+        procedure
+        begin
+          Refresh;
+        end;
+      Refresh;
+    end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+end;
+
+class procedure TAtlasIdeDebugLeaks.Release;
+begin
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+    FListener := nil;
+  end;
+  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
+  TAtlasIdeDebugLeaksWindow.Release;
+  FScope := nil;
+  FMessage := nil;
+  FBox := Default(TAtlasLeakCapture);
+  FCapture := Default(TAtlasLeakCapture);
+  FEntries := nil;
+  FPlaces := nil;
+  FHistory := Default(TAtlasLeakHistory);
+end;
+
+class function TAtlasIdeDebugLeaks.Started: Boolean;
+begin
+  Result := FListener <> nil;
 end;
 
 class procedure TAtlasIdeDebugLeaks.ShowWindow;

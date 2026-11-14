@@ -500,11 +500,6 @@ begin
   end;
 end;
 
-function TAtlasCompletionState.SetMode: Boolean;
-begin
-  Result := FActive and TAtlasCompletionSets.Active(FItems);
-end;
-
 function TAtlasCompletionState.SelectedItem(out AItem: TAtlasCompletionItem): Boolean;
 begin
   Result := GetVisible and not FPassive and (FSelected >= 0) and (FSelected < Length(FOrder));
@@ -530,6 +525,11 @@ end;
 function TAtlasCompletionState.NeedsQuery(const APrefix: string): Boolean;
 begin
   Result := FActive and (FIncomplete or not APrefix.StartsWith(FQueryPrefix, True));
+end;
+
+function TAtlasCompletionState.SetMode: Boolean;
+begin
+  Result := FActive and TAtlasCompletionSets.Active(FItems);
 end;
 
 { TAtlasCompletionController.TWordPlace }
@@ -713,6 +713,44 @@ begin
   inherited;
 end;
 
+procedure TAtlasCompletionController.Dismiss;
+begin
+  FDismissed := FWord;
+  Close;
+end;
+
+procedure TAtlasCompletionController.ToggleSelected;
+var
+  mIndex: Integer;
+begin
+  if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
+  begin
+    Exit;
+  end;
+  mIndex := FOrder[FSelected];
+  FItems[mIndex].Checked := not FItems[mIndex].Checked;
+  FToggled := True;
+  FView.ShowList(FItems, FOrder, FSelected, FPrefix);
+end;
+
+procedure TAtlasCompletionController.CommitSet;
+var
+  mItem: TAtlasCompletionItem;
+begin
+  // Ohne Leertaste: Enter übernimmt den gewählten Wert zusätzlich zu den vorhandenen.
+  if not FToggled and (FSelected >= 0) and (FSelected <= High(FOrder)) and
+    not TAtlasRanking.IsHeader(FOrder[FSelected]) then
+  begin
+    FItems[FOrder[FSelected]].Checked := True;
+  end;
+  mItem := TAtlasCompletionSets.CommitItem(FItems);
+  Close;
+  if Assigned(FOnCommit) then
+  begin
+    FOnCommit(mItem);
+  end;
+end;
+
 procedure TAtlasCompletionController.ShowChips;
 begin
   if FChipsEnabled then
@@ -723,173 +761,6 @@ begin
   begin
     FView.ShowChips(Default(TAtlasChipCounts), TAtlasChip.All, False);
   end;
-end;
-
-procedure TAtlasCompletionController.SelectChip(AChip: TAtlasChip);
-begin
-  if not FActive or (AChip = FChip) then
-  begin
-    Exit;
-  end;
-  FChip := AChip;
-  Refresh(True);
-end;
-
-procedure TAtlasCompletionController.SelectChipAt(AIndex: Integer);
-var
-  mCounts: TAtlasChipCounts;
-  mChip: TAtlasChip;
-begin
-  // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
-  mCounts := TAtlasRanking.ChipCounts(FItems, FPrefix);
-  for mChip := Low(TAtlasChip) to High(TAtlasChip) do
-  begin
-    if (mChip = TAtlasChip.All) or (mCounts[mChip] > 0) then
-    begin
-      if AIndex = 0 then
-      begin
-        SelectChip(mChip);
-        Exit;
-      end;
-      Dec(AIndex);
-    end;
-  end;
-end;
-
-function TAtlasCompletionController.Dismissed(const AContext: TAtlasContext): Boolean;
-begin
-  Result := FDismissed.Matches(AContext);
-end;
-
-procedure TAtlasCompletionController.Dismiss;
-begin
-  FDismissed := FWord;
-  Close;
-end;
-
-procedure TAtlasCompletionController.Start(const AContext: TAtlasContext);
-begin
-  Close;
-  if AContext.Automatic and Dismissed(AContext) then
-  begin
-    Exit;
-  end;
-  // Ein anderes Wort oder Strg+Leer hebt die Sperre auf.
-  FDismissed.Line := -1;
-  FWord := TWordPlace.At(AContext);
-  Inc(FGeneration);
-  FActive := True;
-  FLoading := True;
-  FChip := TAtlasChip.All;
-  FPrefix := AContext.Prefix;
-  FTrigger := AContext.Trigger;
-  FMembers := AContext.Kind = TAtlasContextKind.MemberAccess;
-  FRestStart := -1;
-  FToggled := False;
-  FShowInaccessible := False;
-  FItems := nil;
-  FOrder := nil;
-  FSelected := -1;
-  FEmpty := False;
-  if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
-  begin
-    TAtlasQueryTimings.Shared.BeginQuery(AContext.Started, TimingKind(AContext), ExtractFileName(AContext.FileName));
-  end;
-  Query(AContext);
-end;
-
-procedure TAtlasCompletionController.Query(const AContext: TAtlasContext);
-var
-  mSink: IAtlasCompletionSink;
-begin
-  FIncomplete := False;
-  FPendingSyntax := Default(TAtlasSyntaxNotice);
-  FQueryPrefix := AContext.Prefix;
-  mSink := TControllerSink.Create(Self, FFlag, FGeneration);
-  FProvider.Query(AContext, mSink);
-end;
-
-procedure TAtlasCompletionController.Requery(const AContext: TAtlasContext);
-begin
-  if not FActive then
-  begin
-    Start(AContext);
-    Exit;
-  end;
-  // Sofort lokal filtern, damit das Popup ohne Warten folgt (#409) ...
-  UpdatePrefix(AContext.Prefix);
-  // ... und im Hintergrund die vollständigere Liste holen; ältere Antworten verfallen.
-  Inc(FGeneration);
-  FLoading := True;
-  FReplace := True;
-  Query(AContext);
-end;
-
-procedure TAtlasCompletionController.IncompleteArrived(AGeneration: Integer);
-begin
-  if FActive and (AGeneration = FGeneration) then
-  begin
-    FIncomplete := True;
-  end;
-end;
-
-procedure TAtlasCompletionController.SyntaxArrived(AGeneration: Integer; const ANotice: TAtlasSyntaxNotice);
-begin
-  if not FActive or (AGeneration <> FGeneration) then
-  begin
-    Exit;
-  end;
-  FPendingSyntax := ANotice;
-  FSyntax := ANotice;
-  ShowSyntax;
-end;
-
-procedure TAtlasCompletionController.ShowSyntax;
-var
-  mView: IAtlasCompletionSyntaxView;
-begin
-  if Supports(FView, IAtlasCompletionSyntaxView, mView) then
-  begin
-    mView.ShowSyntax(FSyntax);
-  end;
-end;
-
-function TAtlasCompletionController.CanRevealInaccessible: Boolean;
-begin
-  Result := FActive and not FShowInaccessible and (Length(TAtlasRanking.Inaccessible(FItems, FPrefix)) > 0);
-end;
-
-function TAtlasCompletionController.RevealInaccessible: Boolean;
-begin
-  Result := CanRevealInaccessible;
-  if Result then
-  begin
-    FShowInaccessible := True;
-    Refresh(True);
-  end;
-end;
-
-procedure TAtlasCompletionController.Close;
-begin
-  if not FActive then
-  begin
-    Exit;
-  end;
-  FActive := False;
-  FLoading := False;
-  FIncomplete := False;
-  FSyntax := Default(TAtlasSyntaxNotice);
-  FPendingSyntax := FSyntax;
-  FReplace := False;
-  Inc(FGeneration);
-  FProvider.Cancel;
-  FItems := nil;
-  FOrder := nil;
-  FSelected := -1;
-  FEmpty := False;
-  FPassive := False;
-  FRestStart := -1;
-  FView.HideList;
 end;
 
 procedure TAtlasCompletionController.ItemsArrived(AGeneration: Integer; const AItems: TAtlasCompletionItems);
@@ -925,35 +796,44 @@ begin
   Refresh(True);
 end;
 
-function TAtlasCompletionController.ToggleFavorite(APosition: Integer;
-  out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+procedure TAtlasCompletionController.IncompleteArrived(AGeneration: Integer);
 begin
-  Result := TAtlasFavoriteToggle.NotAllowed;
-  AItem := Default(TAtlasCompletionItem);
-  if (FFavorites = nil) or not FActive or (APosition < 0) or (APosition > High(FOrder)) or
-    TAtlasRanking.IsHeader(FOrder[APosition]) then
+  if FActive and (AGeneration = FGeneration) then
   begin
-    Exit;
+    FIncomplete := True;
   end;
-  AItem := FItems[FOrder[APosition]];
-  Result := FFavorites.Toggle(AItem);
-  if (Result <> TAtlasFavoriteToggle.Added) and (Result <> TAtlasFavoriteToggle.Removed) then
-  begin
-    Exit;
-  end;
-  // Alle Einträge neu markieren: Derselbe Member kann aus mehreren Quellen kommen.
-  MarkItems(FItems, 0);
-  AItem.Favorite := Result = TAtlasFavoriteToggle.Added;
-  Refresh(True);
 end;
 
-function TAtlasCompletionController.ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+procedure TAtlasCompletionController.SyntaxArrived(AGeneration: Integer; const ANotice: TAtlasSyntaxNotice);
 begin
-  if not SelectedItem(AItem) then
+  if not FActive or (AGeneration <> FGeneration) then
   begin
-    Exit(TAtlasFavoriteToggle.NotAllowed);
+    Exit;
   end;
-  Result := ToggleFavorite(FSelected, AItem);
+  FPendingSyntax := ANotice;
+  FSyntax := ANotice;
+  ShowSyntax;
+end;
+
+procedure TAtlasCompletionController.ShowSyntax;
+var
+  mView: IAtlasCompletionSyntaxView;
+begin
+  if Supports(FView, IAtlasCompletionSyntaxView, mView) then
+  begin
+    mView.ShowSyntax(FSyntax);
+  end;
+end;
+
+procedure TAtlasCompletionController.Query(const AContext: TAtlasContext);
+var
+  mSink: IAtlasCompletionSink;
+begin
+  FIncomplete := False;
+  FPendingSyntax := Default(TAtlasSyntaxNotice);
+  FQueryPrefix := AContext.Prefix;
+  mSink := TControllerSink.Create(Self, FFlag, FGeneration);
+  FProvider.Query(AContext, mSink);
 end;
 
 procedure TAtlasCompletionController.Completed(AGeneration: Integer);
@@ -1044,27 +924,6 @@ begin
   end;
 end;
 
-procedure TAtlasCompletionController.UpdatePrefix(const APrefix: string);
-begin
-  if not FActive or (APrefix = FPrefix) then
-  begin
-    Exit;
-  end;
-  // Weitertippen verwirft das Angebot „Mit try…finally absichern“ (#489).
-  if (APrefix <> '') and TAtlasItemPresentation.Guarding(FItems) then
-  begin
-    Close;
-    Exit;
-  end;
-  FPrefix := APrefix;
-  Refresh(False);
-end;
-
-procedure TAtlasCompletionController.MoveSelection(APosition: Integer);
-begin
-  MoveSelection(APosition, 1);
-end;
-
 procedure TAtlasCompletionController.MoveSelection(APosition, ADirection: Integer);
 begin
   // Erste Pfeiltaste ohne Auswahl (#471): die erste Deklaration wählen.
@@ -1082,6 +941,11 @@ begin
   end;
   FSelected := APosition;
   FView.ShowList(FItems, FOrder, FSelected, FPrefix);
+end;
+
+procedure TAtlasCompletionController.MoveSelection(APosition: Integer);
+begin
+  MoveSelection(APosition, 1);
 end;
 
 function TAtlasCompletionController.MoveByKey(AKey: TAtlasNavigationKey; APage: Integer): Boolean;
@@ -1132,6 +996,97 @@ begin
   end;
 end;
 
+procedure TAtlasCompletionController.Start(const AContext: TAtlasContext);
+begin
+  Close;
+  if AContext.Automatic and Dismissed(AContext) then
+  begin
+    Exit;
+  end;
+  // Ein anderes Wort oder Strg+Leer hebt die Sperre auf.
+  FDismissed.Line := -1;
+  FWord := TWordPlace.At(AContext);
+  Inc(FGeneration);
+  FActive := True;
+  FLoading := True;
+  FChip := TAtlasChip.All;
+  FPrefix := AContext.Prefix;
+  FTrigger := AContext.Trigger;
+  FMembers := AContext.Kind = TAtlasContextKind.MemberAccess;
+  FRestStart := -1;
+  FToggled := False;
+  FShowInaccessible := False;
+  FItems := nil;
+  FOrder := nil;
+  FSelected := -1;
+  FEmpty := False;
+  if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
+  begin
+    TAtlasQueryTimings.Shared.BeginQuery(AContext.Started, TimingKind(AContext), ExtractFileName(AContext.FileName));
+  end;
+  Query(AContext);
+end;
+
+function TAtlasCompletionController.Dismissed(const AContext: TAtlasContext): Boolean;
+begin
+  Result := FDismissed.Matches(AContext);
+end;
+
+procedure TAtlasCompletionController.UpdatePrefix(const APrefix: string);
+begin
+  if not FActive or (APrefix = FPrefix) then
+  begin
+    Exit;
+  end;
+  // Weitertippen verwirft das Angebot „Mit try…finally absichern“ (#489).
+  if (APrefix <> '') and TAtlasItemPresentation.Guarding(FItems) then
+  begin
+    Close;
+    Exit;
+  end;
+  FPrefix := APrefix;
+  Refresh(False);
+end;
+
+procedure TAtlasCompletionController.Requery(const AContext: TAtlasContext);
+begin
+  if not FActive then
+  begin
+    Start(AContext);
+    Exit;
+  end;
+  // Sofort lokal filtern, damit das Popup ohne Warten folgt (#409) ...
+  UpdatePrefix(AContext.Prefix);
+  // ... und im Hintergrund die vollständigere Liste holen; ältere Antworten verfallen.
+  Inc(FGeneration);
+  FLoading := True;
+  FReplace := True;
+  Query(AContext);
+end;
+
+procedure TAtlasCompletionController.Close;
+begin
+  if not FActive then
+  begin
+    Exit;
+  end;
+  FActive := False;
+  FLoading := False;
+  FIncomplete := False;
+  FSyntax := Default(TAtlasSyntaxNotice);
+  FPendingSyntax := FSyntax;
+  FReplace := False;
+  Inc(FGeneration);
+  FProvider.Cancel;
+  FItems := nil;
+  FOrder := nil;
+  FSelected := -1;
+  FEmpty := False;
+  FPassive := False;
+  FRestStart := -1;
+  FView.HideList;
+end;
+
 function TAtlasCompletionController.HandleKey(AKey: TAtlasNavigationKey): Boolean;
 var
   mPage: Integer;
@@ -1161,38 +1116,6 @@ begin
       Result := ToggleKey;
   else
     // Bewegungen hat MoveByKey genommen.
-  end;
-end;
-
-procedure TAtlasCompletionController.ToggleSelected;
-var
-  mIndex: Integer;
-begin
-  if (FSelected < 0) or (FSelected > High(FOrder)) or TAtlasRanking.IsHeader(FOrder[FSelected]) then
-  begin
-    Exit;
-  end;
-  mIndex := FOrder[FSelected];
-  FItems[mIndex].Checked := not FItems[mIndex].Checked;
-  FToggled := True;
-  FView.ShowList(FItems, FOrder, FSelected, FPrefix);
-end;
-
-procedure TAtlasCompletionController.CommitSet;
-var
-  mItem: TAtlasCompletionItem;
-begin
-  // Ohne Leertaste: Enter übernimmt den gewählten Wert zusätzlich zu den vorhandenen.
-  if not FToggled and (FSelected >= 0) and (FSelected <= High(FOrder)) and
-    not TAtlasRanking.IsHeader(FOrder[FSelected]) then
-  begin
-    FItems[FOrder[FSelected]].Checked := True;
-  end;
-  mItem := TAtlasCompletionSets.CommitItem(FItems);
-  Close;
-  if Assigned(FOnCommit) then
-  begin
-    FOnCommit(mItem);
   end;
 end;
 
@@ -1245,6 +1168,83 @@ begin
   if Assigned(FOnCommit) then
   begin
     FOnCommit(mItem);
+  end;
+end;
+
+procedure TAtlasCompletionController.SelectChip(AChip: TAtlasChip);
+begin
+  if not FActive or (AChip = FChip) then
+  begin
+    Exit;
+  end;
+  FChip := AChip;
+  Refresh(True);
+end;
+
+procedure TAtlasCompletionController.SelectChipAt(AIndex: Integer);
+var
+  mCounts: TAtlasChipCounts;
+  mChip: TAtlasChip;
+begin
+  // Wie angezeigt: nur Chips mit Treffern, "Alle" immer.
+  mCounts := TAtlasRanking.ChipCounts(FItems, FPrefix);
+  for mChip := Low(TAtlasChip) to High(TAtlasChip) do
+  begin
+    if (mChip = TAtlasChip.All) or (mCounts[mChip] > 0) then
+    begin
+      if AIndex = 0 then
+      begin
+        SelectChip(mChip);
+        Exit;
+      end;
+      Dec(AIndex);
+    end;
+  end;
+end;
+
+function TAtlasCompletionController.ToggleFavorite(APosition: Integer;
+  out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+begin
+  Result := TAtlasFavoriteToggle.NotAllowed;
+  AItem := Default(TAtlasCompletionItem);
+  if (FFavorites = nil) or not FActive or (APosition < 0) or (APosition > High(FOrder)) or
+    TAtlasRanking.IsHeader(FOrder[APosition]) then
+  begin
+    Exit;
+  end;
+  AItem := FItems[FOrder[APosition]];
+  Result := FFavorites.Toggle(AItem);
+  if (Result <> TAtlasFavoriteToggle.Added) and (Result <> TAtlasFavoriteToggle.Removed) then
+  begin
+    Exit;
+  end;
+  // Alle Einträge neu markieren: Derselbe Member kann aus mehreren Quellen kommen.
+  MarkItems(FItems, 0);
+  AItem.Favorite := Result = TAtlasFavoriteToggle.Added;
+  Refresh(True);
+end;
+
+function TAtlasCompletionController.ToggleSelectedFavorite(out AItem: TAtlasCompletionItem): TAtlasFavoriteToggle;
+begin
+  if not SelectedItem(AItem) then
+  begin
+    Exit(TAtlasFavoriteToggle.NotAllowed);
+  end;
+  Result := ToggleFavorite(FSelected, AItem);
+end;
+
+function TAtlasCompletionController.CanRevealInaccessible: Boolean;
+begin
+  Result := FActive and not FShowInaccessible and (Length(TAtlasRanking.Inaccessible(FItems, FPrefix)) > 0);
+end;
+
+function TAtlasCompletionController.RevealInaccessible: Boolean;
+begin
+  Result := CanRevealInaccessible;
+  if Result then
+  begin
+    FShowInaccessible := True;
+    Refresh(True);
   end;
 end;
 

@@ -68,6 +68,8 @@ const
     '|  Vcl.Controls, Vcl.Forms, Vcl.Dialogs';
   cDataModuleUses = 'System.SysUtils, System.Classes';
 
+{ TUnitTemplates }
+
 class function TUnitTemplates.InstanceName(const AClassName: string): string;
 begin
   if (Length(AClassName) > 1) and CharInSet(AClassName[1], ['T', 't']) then

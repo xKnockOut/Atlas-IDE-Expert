@@ -131,39 +131,12 @@ begin
   Result := FileExists(AFileName);
 end;
 
+{ TShellServerCommands }
+
 constructor TShellServerCommands.Create(const AServices: TShellServerCommandServices);
 begin
   inherited Create;
   FServices := AServices;
-end;
-
-procedure TShellServerCommands.RegisterReadCommands(ACommands: TLspCommands);
-begin
-  // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
-  // Status (#28); Argument optional {"anonymize": true} (#1356, Fenster „Atlas-Server“ und Diagnosepaket).
-  ACommands.RegisterConcurrent(cStatusCommand, RunStatus);
-  // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
-  ACommands.RegisterConcurrent(cProcessesCommand, RunProcesses);
-  // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
-  ACommands.RegisterConcurrent(TLspSettingsCommands.cCheckCommand, RunSettingsCheck);
-  ACommands.RegisterConcurrent(TLspSettingsCommands.cCatalogCommand, RunSettingsCatalog);
-end;
-
-procedure TShellServerCommands.RegisterActionCommands(ACommands: TLspCommands);
-begin
-  ACommands.Register(cCompileCommand, RunCompile);
-  ACommands.Register(cRebuildIndexCommand, RunRebuildIndex);
-  ACommands.Register(cClearIndexCommand, RunClearIndex);
-  // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
-  ACommands.Register(TShellCrashCases.cRetryCommand, RunRetryCrashCase);
-  ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
-  ACommands.Register(cSelectBuildCommand, RunSelectBuild);
-  ACommands.Register(cSelectProjectCommand, RunSelectProject);
-end;
-
-procedure TShellServerCommands.RegisterConvertCommand(ACommands: TLspCommands);
-begin
-  ACommands.Register(TLspFormFiles.cConvertCommand, RunConvertForms);
 end;
 
 function TShellServerCommands.RunStatus(const AArguments: TJSONArray): TJSONValue;
@@ -183,33 +156,6 @@ begin
   mWorkspaces := CollectProcesses;
   Result := TLspProcesses.ToJson(mWorkspaces, TShellPlatform.CurrentProcessId, Now);
   FServices.Logger.Info(TLspProcesses.MarkedMarkdown(mWorkspaces, TShellPlatform.CurrentProcessId, Now));
-end;
-
-function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
-var
-  mWorkspace: TShellWorkspace;
-  mItem: TLspProcessWorkspace;
-  mStatus: TWorkspaceStatus;
-begin
-  Result := nil;
-  for mWorkspace in FServices.Workspaces('') do
-  begin
-    mItem := Default(TLspProcessWorkspace);
-    if not mWorkspace.Cache.Processes(mItem.CacheFile, mItem.Processes) then
-    begin
-      Continue;
-    end;
-    mStatus := mWorkspace.IndexStatus;
-    mItem.Name := mWorkspace.Name;
-    mItem.Project := mStatus.Project;
-    mItem.FormatVersion := TIndexCache.cFormatVersion;
-    mItem.Units := mStatus.Parsed + mStatus.FromCache;
-    if TFile.Exists(mItem.CacheFile) then
-    begin
-      mItem.Saved := TFile.GetLastWriteTime(mItem.CacheFile);
-    end;
-    Result := Result + [mItem];
-  end;
 end;
 
 function TShellServerCommands.RunSettingsCheck(const AArguments: TJSONArray): TJSONValue;
@@ -355,20 +301,6 @@ begin
   Result := TJSONObject.Create(TJSONPair.Create('projects', mItems));
 end;
 
-function TShellServerCommands.ProjectWorkspaces: TArray<TShellWorkspace>;
-var
-  mWorkspace: TShellWorkspace;
-begin
-  Result := nil;
-  for mWorkspace in FServices.Workspaces('') do
-  begin
-    if mWorkspace.State.ProjectFileName <> '' then
-    begin
-      Result := Result + [mWorkspace];
-    end;
-  end;
-end;
-
 function TShellServerCommands.RunSelectProject(const AArguments: TJSONArray): TJSONValue;
 var
   mArgs: TSelectProjectArgs;
@@ -412,6 +344,76 @@ begin
     mItems[mIndex].Selected := FServices.IsSelectedProject(mTargets[mIndex]);
   end;
   Result := TBuildCommands.ProjectChoices(mItems);
+end;
+
+function TShellServerCommands.ProjectWorkspaces: TArray<TShellWorkspace>;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  Result := nil;
+  for mWorkspace in FServices.Workspaces('') do
+  begin
+    if mWorkspace.State.ProjectFileName <> '' then
+    begin
+      Result := Result + [mWorkspace];
+    end;
+  end;
+end;
+
+function TShellServerCommands.CollectProcesses: TArray<TLspProcessWorkspace>;
+var
+  mWorkspace: TShellWorkspace;
+  mItem: TLspProcessWorkspace;
+  mStatus: TWorkspaceStatus;
+begin
+  Result := nil;
+  for mWorkspace in FServices.Workspaces('') do
+  begin
+    mItem := Default(TLspProcessWorkspace);
+    if not mWorkspace.Cache.Processes(mItem.CacheFile, mItem.Processes) then
+    begin
+      Continue;
+    end;
+    mStatus := mWorkspace.IndexStatus;
+    mItem.Name := mWorkspace.Name;
+    mItem.Project := mStatus.Project;
+    mItem.FormatVersion := TIndexCache.cFormatVersion;
+    mItem.Units := mStatus.Parsed + mStatus.FromCache;
+    if TFile.Exists(mItem.CacheFile) then
+    begin
+      mItem.Saved := TFile.GetLastWriteTime(mItem.CacheFile);
+    end;
+    Result := Result + [mItem];
+  end;
+end;
+
+procedure TShellServerCommands.RegisterReadCommands(ACommands: TLspCommands);
+begin
+  // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
+  // Status (#28); Argument optional {"anonymize": true} (#1356, Fenster „Atlas-Server“ und Diagnosepaket).
+  ACommands.RegisterConcurrent(cStatusCommand, RunStatus);
+  // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
+  ACommands.RegisterConcurrent(cProcessesCommand, RunProcesses);
+  // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
+  ACommands.RegisterConcurrent(TLspSettingsCommands.cCheckCommand, RunSettingsCheck);
+  ACommands.RegisterConcurrent(TLspSettingsCommands.cCatalogCommand, RunSettingsCatalog);
+end;
+
+procedure TShellServerCommands.RegisterActionCommands(ACommands: TLspCommands);
+begin
+  ACommands.Register(cCompileCommand, RunCompile);
+  ACommands.Register(cRebuildIndexCommand, RunRebuildIndex);
+  ACommands.Register(cClearIndexCommand, RunClearIndex);
+  // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
+  ACommands.Register(TShellCrashCases.cRetryCommand, RunRetryCrashCase);
+  ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
+  ACommands.Register(cSelectBuildCommand, RunSelectBuild);
+  ACommands.Register(cSelectProjectCommand, RunSelectProject);
+end;
+
+procedure TShellServerCommands.RegisterConvertCommand(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspFormFiles.cConvertCommand, RunConvertForms);
 end;
 
 initialization

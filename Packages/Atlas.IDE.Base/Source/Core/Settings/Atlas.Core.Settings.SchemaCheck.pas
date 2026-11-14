@@ -363,6 +363,40 @@ end;
 
 { TAtlasSchemaCheck }
 
+class function TAtlasSchemaCheck.Validate(const AText, ASchemaJson, AScope: string;
+  out AIssues: TArray<string>): Boolean;
+var
+  mRoot: TJSONObject;
+  mSchema: TJSONValue;
+begin
+  AIssues := nil;
+  mRoot := TAtlasJsonText.Parse(AText);
+  mSchema := nil;
+  try
+    if mRoot = nil then
+    begin
+      Add(AIssues, '', UiText(TSchemaCheckText.NotAValidJSONObject));
+    end
+    else
+    begin
+      mSchema := TJsonRead.Parse(ASchemaJson);
+      if mSchema is TJSONObject then
+      begin
+        Check(mRoot, TJSONObject(mSchema), '', AIssues);
+        CheckScopes(mRoot, TJSONObject(mSchema), AScope, AIssues);
+      end
+      else
+      begin
+        Add(AIssues, '', UiText(TSchemaCheckText.SchemaNotReadable));
+      end;
+    end;
+    Result := Length(AIssues) = 0;
+  finally
+    mSchema.Free;
+    mRoot.Free;
+  end;
+end;
+
 class procedure TAtlasSchemaCheck.Check(AValue: TJSONValue; ASchema: TJSONObject; const APath: string;
   var AIssues: TArray<string>);
 var
@@ -396,40 +430,6 @@ begin
   else if AValue is TJSONArray then
   begin
     CheckItems(TJSONArray(AValue), ASchema, APath, AIssues);
-  end;
-end;
-
-class function TAtlasSchemaCheck.Validate(const AText, ASchemaJson, AScope: string;
-  out AIssues: TArray<string>): Boolean;
-var
-  mRoot: TJSONObject;
-  mSchema: TJSONValue;
-begin
-  AIssues := nil;
-  mRoot := TAtlasJsonText.Parse(AText);
-  mSchema := nil;
-  try
-    if mRoot = nil then
-    begin
-      Add(AIssues, '', UiText(TSchemaCheckText.NotAValidJSONObject));
-    end
-    else
-    begin
-      mSchema := TJsonRead.Parse(ASchemaJson);
-      if mSchema is TJSONObject then
-      begin
-        Check(mRoot, TJSONObject(mSchema), '', AIssues);
-        CheckScopes(mRoot, TJSONObject(mSchema), AScope, AIssues);
-      end
-      else
-      begin
-        Add(AIssues, '', UiText(TSchemaCheckText.SchemaNotReadable));
-      end;
-    end;
-    Result := Length(AIssues) = 0;
-  finally
-    mSchema.Free;
-    mRoot.Free;
   end;
 end;
 

@@ -667,20 +667,6 @@ begin
   end;
 end;
 
-function TImpactRun.UnitNameOf(const AFileName: string): string;
-var
-  mIndexed: TUnitIndex;
-begin
-  if FIndex.FindFile(AFileName, mIndexed) or ExtractedUnit(AFileName, mIndexed) then
-  begin
-    Result := mIndexed.UnitName;
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 function TImpactRun.TestOf(const AItem: THierarchyItem; ALevel: Integer): Integer;
 var
   mText, mUnitName: string;
@@ -732,6 +718,20 @@ begin
     mSource.Fixtures[mFixtureIndex].Tests[mTestIndex].Method);
   mTest.Level := ALevel;
   Result := FTests.Add(mTest);
+end;
+
+function TImpactRun.UnitNameOf(const AFileName: string): string;
+var
+  mIndexed: TUnitIndex;
+begin
+  if FIndex.FindFile(AFileName, mIndexed) or ExtractedUnit(AFileName, mIndexed) then
+  begin
+    Result := mIndexed.UnitName;
+  end
+  else
+  begin
+    Result := '';
+  end;
 end;
 
 function TImpactRun.Add(const AItem: THierarchyItem; const AStep: TImpactStep; AEdge: TImpactEdge;
@@ -1226,12 +1226,6 @@ end;
 { TImpactAnalysis }
 
 constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
-begin
-  Create(AStore, AIndex, AReadText, AFiles, nil);
-end;
-
-constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -1240,6 +1234,12 @@ begin
   FReadText := AReadText;
   FFiles := AFiles;
   FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TImpactAnalysis.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
 end;
 
 function TImpactAnalysis.GetNamespaces: TArray<string>;
@@ -1252,51 +1252,27 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-procedure TImpactAnalysis.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, HandleImpact);
-end;
-
-class function TImpactAnalysis.ClampDepth(ADepth: Integer): Integer;
-begin
-  Result := ADepth;
-  if Result < cMinDepth then
-  begin
-    Result := cMinDepth;
-  end
-  else if Result > cMaxDepth then
-  begin
-    Result := cMaxDepth;
-  end;
-end;
-
-class function TImpactAnalysis.CandidateFiles(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
-  const AName: string): TArray<string>;
+function TImpactAnalysis.OptionsFrom(AParams: TJSONObject; const AUri: string): TImpactOptions;
 var
-  mFileName, mAlternative: string;
-  mCount: Integer;
+  mDepth: Integer;
 begin
-  // Attribute (#119): [Foo] verwendet FooAttribute; wie in der Referenzsuche beide Schreibweisen.
-  if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
+  if Assigned(FOptionsFor) then
   begin
-    mAlternative := Copy(AName, 1, Length(AName) - Length('Attribute'));
+    Result := FOptionsFor(AUri);
   end
   else
   begin
-    mAlternative := AName + 'Attribute';
+    Result := TImpactOptions.Default;
   end;
-  SetLength(Result, Length(AFiles));
-  mCount := 0;
-  for mFileName in AFiles do
+  if AParams.TryGetValue<Integer>('depth', mDepth) then
   begin
-    if (TIndexUsages.Lookup(AIndex, mFileName, AName) <> TIndexUsageAnswer.Absent) or
-      (TIndexUsages.Lookup(AIndex, mFileName, mAlternative) <> TIndexUsageAnswer.Absent) then
-    begin
-      Result[mCount] := mFileName;
-      Inc(mCount);
-    end;
+    Result.Depth := mDepth;
   end;
-  SetLength(Result, mCount);
+end;
+
+procedure TImpactAnalysis.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleImpact);
 end;
 
 class function TImpactAnalysis.Analyze(AResolver: TNameResolver; const AIndex: ISymbolIndex;
@@ -1357,19 +1333,54 @@ begin
   end;
 end;
 
+class function TImpactAnalysis.CandidateFiles(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
+  const AName: string): TArray<string>;
+var
+  mFileName, mAlternative: string;
+  mCount: Integer;
+begin
+  // Attribute (#119): [Foo] verwendet FooAttribute; wie in der Referenzsuche beide Schreibweisen.
+  if EndsText('Attribute', AName) and (Length(AName) > Length('Attribute')) then
+  begin
+    mAlternative := Copy(AName, 1, Length(AName) - Length('Attribute'));
+  end
+  else
+  begin
+    mAlternative := AName + 'Attribute';
+  end;
+  SetLength(Result, Length(AFiles));
+  mCount := 0;
+  for mFileName in AFiles do
+  begin
+    if (TIndexUsages.Lookup(AIndex, mFileName, AName) <> TIndexUsageAnswer.Absent) or
+      (TIndexUsages.Lookup(AIndex, mFileName, mAlternative) <> TIndexUsageAnswer.Absent) then
+    begin
+      Result[mCount] := mFileName;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TImpactAnalysis.ClampDepth(ADepth: Integer): Integer;
+begin
+  Result := ADepth;
+  if Result < cMinDepth then
+  begin
+    Result := cMinDepth;
+  end
+  else if Result > cMaxDepth then
+  begin
+    Result := cMaxDepth;
+  end;
+end;
+
 class function TImpactAnalysis.EdgeName(AEdge: TImpactEdge): string;
 const
   cNames: array[TImpactEdge] of string = ('call', 'reference', 'override', 'baseMethod', 'interfaceMethod',
     'implementation');
 begin
   Result := cNames[AEdge];
-end;
-
-class function TImpactAnalysis.LimitName(ALimit: TImpactLimit): string;
-const
-  cNames: array[TImpactLimit] of string = ('depth', 'count', 'time');
-begin
-  Result := cNames[ALimit];
 end;
 
 function FormsToJson(const AForms: TArray<TImpactFormBinding>): TJSONArray;
@@ -1449,6 +1460,13 @@ begin
   end;
 end;
 
+class function TImpactAnalysis.LimitName(ALimit: TImpactLimit): string;
+const
+  cNames: array[TImpactLimit] of string = ('depth', 'count', 'time');
+begin
+  Result := cNames[ALimit];
+end;
+
 class function TImpactAnalysis.ToJson(const AResult: TImpactResult): TJSONObject;
 var
   mPlaces, mTests: TJSONArray;
@@ -1475,24 +1493,6 @@ begin
   Result.AddPair('unexpanded', TJSONNumber.Create(AResult.Unexpanded));
   Result.AddPair('maxPlaces', TJSONNumber.Create(AResult.MaxPlaces));
   Result.AddPair('timeoutMs', TJSONNumber.Create(AResult.TimeoutMs));
-end;
-
-function TImpactAnalysis.OptionsFrom(AParams: TJSONObject; const AUri: string): TImpactOptions;
-var
-  mDepth: Integer;
-begin
-  if Assigned(FOptionsFor) then
-  begin
-    Result := FOptionsFor(AUri);
-  end
-  else
-  begin
-    Result := TImpactOptions.Default;
-  end;
-  if AParams.TryGetValue<Integer>('depth', mDepth) then
-  begin
-    Result.Depth := mDepth;
-  end;
 end;
 
 /// <summary>Baum der Datei AUri: aus dem Dokumentspeicher AStore (AShared) oder frisch gelesen (AOwnTree, der

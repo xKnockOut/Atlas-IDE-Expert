@@ -77,12 +77,6 @@ uses
 
 { TAtlasChecklistProgress }
 
-class function TAtlasChecklistProgress.Create(ADone, ATotal: Integer): TAtlasChecklistProgress;
-begin
-  Result.Done := ADone;
-  Result.Total := ATotal;
-end;
-
 function TAtlasChecklistProgress.Any: Boolean;
 begin
   Result := Total > 0;
@@ -95,6 +89,12 @@ begin
   begin
     Result := IntToStr(Done) + '/' + IntToStr(Total);
   end;
+end;
+
+class function TAtlasChecklistProgress.Create(ADone, ATotal: Integer): TAtlasChecklistProgress;
+begin
+  Result.Done := ADone;
+  Result.Total := ATotal;
 end;
 
 { Zeilen }

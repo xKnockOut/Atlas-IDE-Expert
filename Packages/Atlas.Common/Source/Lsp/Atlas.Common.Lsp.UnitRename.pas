@@ -81,6 +81,8 @@ begin
   end;
 end;
 
+{ TLspUnitRename }
+
 class function TLspUnitRename.Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TJSONObject;
 var

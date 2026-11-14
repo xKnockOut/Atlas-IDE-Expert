@@ -475,9 +475,129 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeSetup.Active: Boolean;
+procedure TAtlasIdeSetup.TargetMayChange;
+var
+  mOpen: Boolean;
+  mProject: string;
 begin
-  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageProjectSetup;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      // Anderes aktives Projekt in der Projektverwaltung: Karte für dieses Projekt.
+      mProject := Target(mOpen);
+      if SameText(mProject, FWatched) then
+      begin
+        Exit;
+      end;
+      FWatched := mProject;
+      Refresh;
+    end);
+end;
+
+procedure TAtlasIdeSetup.ProjectsChanged(const AId: string);
+var
+  mKeep: IAtlasSetupSource;
+begin
+  // Nur auf „Projekte“: Ein eigenes Changed löst hier nichts aus (keine Schleife).
+  if not FStarted or (AId <> TAtlasWelcomeIds.cProjects) or FQueued then
+  begin
+    Exit;
+  end;
+  FQueued := True;
+  // Keep hält die Quelle, bis der Eintrag gelaufen ist.
+  mKeep := Self;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if mKeep = nil then
+      begin
+        Exit;
+      end;
+      FQueued := False;
+      Refresh;
+    end);
+end;
+
+procedure TAtlasIdeSetup.BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
+  const AError: string);
+var
+  mStamp: TDateTime;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  if ASucceeded then
+  begin
+    mStamp := TAtlasIdeProjectSummaries.StampUtc;
+    // Abnahme: Nach der Baseline sind die neuen Treffer 0 (alle stehen in der Baseline).
+    TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
+      procedure(var ASummary: TAtlasProjectSummary)
+      begin
+        TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, mStamp);
+      end);
+  end;
+  if not SameText(FBaseline.Project, AProject) then
+  begin
+    Exit;
+  end;
+  FBaseline.Total := ATotal;
+  FBaseline.Files := AFiles;
+  FBaseline.Error := AError;
+  if ASucceeded then
+  begin
+    FBaseline.Run := TAtlasSetupRun.Done;
+  end
+  else
+  begin
+    FBaseline.Run := TAtlasSetupRun.Failed;
+  end;
+  Refresh;
+end;
+
+procedure TAtlasIdeSetup.PathsFinished(const AProject: string; const ARuns: TArray<TAtlasSetupPathRun>);
+var
+  mRun: TAtlasSetupPathRun;
+  mStamp: TDateTime;
+  mError: string;
+  mTotals: TPathTotals;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  mError := '';
+  mTotals := Default(TPathTotals);
+  mStamp := TAtlasIdeProjectSummaries.StampUtc;
+  for mRun in ARuns do
+  begin
+    if mRun.Error = '' then
+    begin
+      StoreRun(mRun, mStamp, mTotals);
+    end
+    else if mError = '' then
+    begin
+      mError := mRun.Error;
+    end;
+  end;
+  // Anonym: nur Zahlen, keine Pfade und keine Makronamen.
+  TAtlasGuard.Log(Format('Einrichtung: %d Projekte, %d Dateien geprüft, %d Units fehlen, %d Defines ohne Quelle, ' +
+    '%d davon unsicher', [Length(ARuns), mTotals.Files, mTotals.Units, mTotals.Defines, mTotals.Uncertain]));
+  if SameText(FPaths.Project, AProject) then
+  begin
+    FPaths.Run := TAtlasSetupRun.Done;
+    if mError <> '' then
+    begin
+      FPaths.Run := TAtlasSetupRun.Failed;
+      FPaths.Error := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsFailed, [mError]);
+    end;
+  end;
+  Refresh;
+end;
+
+function TAtlasIdeSetup.ShouldShow: Boolean;
+begin
+  Result := Active and Card.Visible;
 end;
 
 procedure TAtlasIdeSetup.Start;
@@ -516,25 +636,6 @@ begin
   Refresh;
 end;
 
-procedure TAtlasIdeSetup.TargetMayChange;
-var
-  mOpen: Boolean;
-  mProject: string;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      // Anderes aktives Projekt in der Projektverwaltung: Karte für dieses Projekt.
-      mProject := Target(mOpen);
-      if SameText(mProject, FWatched) then
-      begin
-        Exit;
-      end;
-      FWatched := mProject;
-      Refresh;
-    end);
-end;
-
 procedure TAtlasIdeSetup.Stop;
 begin
   if not FStarted then
@@ -564,47 +665,6 @@ begin
       FThread := nil;
     end;
   end;
-end;
-
-procedure TAtlasIdeSetup.ProjectsChanged(const AId: string);
-var
-  mKeep: IAtlasSetupSource;
-begin
-  // Nur auf „Projekte“: Ein eigenes Changed löst hier nichts aus (keine Schleife).
-  if not FStarted or (AId <> TAtlasWelcomeIds.cProjects) or FQueued then
-  begin
-    Exit;
-  end;
-  FQueued := True;
-  // Keep hält die Quelle, bis der Eintrag gelaufen ist.
-  mKeep := Self;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      if mKeep = nil then
-      begin
-        Exit;
-      end;
-      FQueued := False;
-      Refresh;
-    end);
-end;
-
-function TAtlasIdeSetup.ShouldShow: Boolean;
-begin
-  Result := Active and Card.Visible;
-end;
-
-function TAtlasIdeSetup.Section: TAtlasWelcomeSection;
-begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cSetup, TAtlasSetupTexts.TitleText(Card), cOrder,
-    TAtlasWelcomeColumn.Left,
-    function: Boolean
-    begin
-      // Abnahme: Bei vollständiger Einrichtung (und ohne „Neu mit Atlas“) erscheint keine Karte.
-      Result := FStarted and ShouldShow;
-      FShown := Result;
-    end);
 end;
 
 procedure TAtlasIdeSetup.Refresh;
@@ -638,6 +698,46 @@ begin
       end;
       TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cSetup);
     end);
+end;
+
+function TAtlasIdeSetup.Section: TAtlasWelcomeSection;
+begin
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cSetup, TAtlasSetupTexts.TitleText(Card), cOrder,
+    TAtlasWelcomeColumn.Left,
+    function: Boolean
+    begin
+      // Abnahme: Bei vollständiger Einrichtung (und ohne „Neu mit Atlas“) erscheint keine Karte.
+      Result := FStarted and ShouldShow;
+      FShown := Result;
+    end);
+end;
+
+procedure TAtlasIdeSetup.Ask;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      Project: string;
+      Open: Boolean;
+    begin
+      Project := TargetOrReport(Self, Open);
+      if Project = '' then
+      begin
+        Exit;
+      end;
+      TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
+        procedure(var ASummary: TAtlasProjectSummary)
+        begin
+          ASummary.Setup.Dismissed := False;
+          ASummary.Setup.DismissedAt := 0;
+        end);
+      Refresh;
+    end);
+end;
+
+class function TAtlasIdeSetup.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePage and TAtlasIdeSettings.Current.WelcomePageProjectSetup;
 end;
 
 function TAtlasIdeSetup.Card: TAtlasSetupCard;
@@ -757,43 +857,6 @@ begin
     end);
 end;
 
-procedure TAtlasIdeSetup.BaselineFinished(const AProject: string; ASucceeded: Boolean; ATotal, AFiles: Integer;
-  const AError: string);
-var
-  mStamp: TDateTime;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  if ASucceeded then
-  begin
-    mStamp := TAtlasIdeProjectSummaries.StampUtc;
-    // Abnahme: Nach der Baseline sind die neuen Treffer 0 (alle stehen in der Baseline).
-    TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, AProject,
-      procedure(var ASummary: TAtlasProjectSummary)
-      begin
-        TAtlasWelcomeSetup.BaselineWritten(ASummary.Rules, mStamp);
-      end);
-  end;
-  if not SameText(FBaseline.Project, AProject) then
-  begin
-    Exit;
-  end;
-  FBaseline.Total := ATotal;
-  FBaseline.Files := AFiles;
-  FBaseline.Error := AError;
-  if ASucceeded then
-  begin
-    FBaseline.Run := TAtlasSetupRun.Done;
-  end
-  else
-  begin
-    FBaseline.Run := TAtlasSetupRun.Failed;
-  end;
-  Refresh;
-end;
-
 procedure TAtlasIdeSetup.CheckPaths;
 begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
@@ -838,46 +901,6 @@ begin
       FThread.FreeOnTerminate := False;
       FThread.Start;
     end);
-end;
-
-procedure TAtlasIdeSetup.PathsFinished(const AProject: string; const ARuns: TArray<TAtlasSetupPathRun>);
-var
-  mRun: TAtlasSetupPathRun;
-  mStamp: TDateTime;
-  mError: string;
-  mTotals: TPathTotals;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  mError := '';
-  mTotals := Default(TPathTotals);
-  mStamp := TAtlasIdeProjectSummaries.StampUtc;
-  for mRun in ARuns do
-  begin
-    if mRun.Error = '' then
-    begin
-      StoreRun(mRun, mStamp, mTotals);
-    end
-    else if mError = '' then
-    begin
-      mError := mRun.Error;
-    end;
-  end;
-  // Anonym: nur Zahlen, keine Pfade und keine Makronamen.
-  TAtlasGuard.Log(Format('Einrichtung: %d Projekte, %d Dateien geprüft, %d Units fehlen, %d Defines ohne Quelle, ' +
-    '%d davon unsicher', [Length(ARuns), mTotals.Files, mTotals.Units, mTotals.Defines, mTotals.Uncertain]));
-  if SameText(FPaths.Project, AProject) then
-  begin
-    FPaths.Run := TAtlasSetupRun.Done;
-    if mError <> '' then
-    begin
-      FPaths.Run := TAtlasSetupRun.Failed;
-      FPaths.Error := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsFailed, [mError]);
-    end;
-  end;
-  Refresh;
 end;
 
 procedure TAtlasIdeSetup.OpenOptions;
@@ -948,29 +971,6 @@ begin
           ASummary.Setup.Known := True;
           ASummary.Setup.Dismissed := True;
           ASummary.Setup.DismissedAt := Stamp;
-        end);
-      Refresh;
-    end);
-end;
-
-procedure TAtlasIdeSetup.Ask;
-begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    var
-      Project: string;
-      Open: Boolean;
-    begin
-      Project := TargetOrReport(Self, Open);
-      if Project = '' then
-      begin
-        Exit;
-      end;
-      TAtlasProjectSummaries.Update(TAtlasIdeProjectSummaries.Folder, Project,
-        procedure(var ASummary: TAtlasProjectSummary)
-        begin
-          ASummary.Setup.Dismissed := False;
-          ASummary.Setup.DismissedAt := 0;
         end);
       Refresh;
     end);

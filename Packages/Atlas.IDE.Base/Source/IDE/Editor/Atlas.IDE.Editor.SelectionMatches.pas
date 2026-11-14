@@ -184,13 +184,38 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeSelectionMatches.Invalidate;
-var
-  mServices: INTACodeEditorServices;
+procedure TAtlasIdeSelectionMatches.TimerTick(Sender: TObject);
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  try
+    Update;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.SelectionMatches, E);
+  end;
+end;
+
+/// <summary>Markierung von AView und gesuchter Bereich in FLines.</summary>
+procedure TAtlasIdeSelectionMatches.Locate(const AView: IOTAEditView; var AState: TState);
+var
+  mBlock: IOTAEditBlock;
+  mLineText: string;
+begin
+  mBlock := AView.Block;
+  AState.SelectionLine := mBlock.StartingRow - 1;
+  mLineText := '';
+  if (AState.SelectionLine >= 0) and (AState.SelectionLine < Length(FLines)) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    mLineText := FLines[AState.SelectionLine];
+  end;
+  AState.SelectionStart := TLspSession.ColumnToIndex(mLineText, mBlock.StartingColumn, FTabWidth);
+  AState.SelectionStop := TLspSession.ColumnToIndex(mLineText, mBlock.EndingColumn, FTabWidth);
+  AState.FirstLine := 0;
+  AState.LastLine := High(FLines);
+  // Sehr große Dateien: nur der sichtbare Bereich.
+  if Length(FLines) > TAtlasSelectionMatches.cLargeFileLines then
+  begin
+    AState.FirstLine := AView.TopRow - 1;
+    AState.LastLine := AView.BottomRow - 1;
   end;
 end;
 
@@ -223,15 +248,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSelectionMatches.TimerTick(Sender: TObject);
-begin
-  try
-    Update;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.SelectionMatches, E);
-  end;
-end;
+{ TAtlasIdeSelectionMatches.TState }
 
 function TAtlasIdeSelectionMatches.TState.Same(const AOther: TState): Boolean;
 begin
@@ -265,31 +282,6 @@ begin
     end;
   end;
   Result := ATerm <> '';
-end;
-
-/// <summary>Markierung von AView und gesuchter Bereich in FLines.</summary>
-procedure TAtlasIdeSelectionMatches.Locate(const AView: IOTAEditView; var AState: TState);
-var
-  mBlock: IOTAEditBlock;
-  mLineText: string;
-begin
-  mBlock := AView.Block;
-  AState.SelectionLine := mBlock.StartingRow - 1;
-  mLineText := '';
-  if (AState.SelectionLine >= 0) and (AState.SelectionLine < Length(FLines)) then
-  begin
-    mLineText := FLines[AState.SelectionLine];
-  end;
-  AState.SelectionStart := TLspSession.ColumnToIndex(mLineText, mBlock.StartingColumn, FTabWidth);
-  AState.SelectionStop := TLspSession.ColumnToIndex(mLineText, mBlock.EndingColumn, FTabWidth);
-  AState.FirstLine := 0;
-  AState.LastLine := High(FLines);
-  // Sehr große Dateien: nur der sichtbare Bereich.
-  if Length(FLines) > TAtlasSelectionMatches.cLargeFileLines then
-  begin
-    AState.FirstLine := AView.TopRow - 1;
-    AState.LastLine := AView.BottomRow - 1;
-  end;
 end;
 
 procedure TAtlasIdeSelectionMatches.Update;
@@ -461,6 +453,16 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.SelectionMatches, E);
+  end;
+end;
+
+class procedure TAtlasIdeSelectionMatches.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 

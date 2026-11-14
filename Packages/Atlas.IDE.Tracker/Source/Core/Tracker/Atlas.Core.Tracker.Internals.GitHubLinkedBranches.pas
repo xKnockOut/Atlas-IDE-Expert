@@ -86,6 +86,8 @@ const
   cGitSuffix = '.git';
   cApiPrefix = 'api.';
 
+{ TAtlasGitHubLinkedBranches }
+
 class function TAtlasGitHubLinkedBranches.FactsQuery(ANumber: Integer): string;
 begin
   Result := Format(cFactsQuery, [Format(cIssuePart, [ANumber, cMaxLinked], TFormatSettings.Invariant)],

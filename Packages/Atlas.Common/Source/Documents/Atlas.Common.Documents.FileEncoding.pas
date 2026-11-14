@@ -211,11 +211,6 @@ var
 
 { TFileFormat }
 
-class function TFileFormat.Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle): TFileFormat;
-begin
-  Result := Create(AEncoding, ALineBreak, 1252);
-end;
-
 class function TFileFormat.Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle;
   ACodePage: Integer): TFileFormat;
 begin
@@ -225,12 +220,19 @@ begin
   Result.CodePage := ACodePage;
 end;
 
+class function TFileFormat.Create(AEncoding: TFileEncodingKind; ALineBreak: TLineBreakStyle): TFileFormat;
+begin
+  Result := Create(AEncoding, ALineBreak, 1252);
+end;
+
 { TFileEncodingDefaults }
 
 function FolderKey(const ARoot: string): string;
 begin
   Result := IncludeTrailingPathDelimiter(AnsiUpperCase(ExpandFileName(ARoot)));
 end;
+
+{ TFileEncodingDefaults }
 
 class procedure TFileEncodingDefaults.SetFolder(const ARoot: string; ACodePage: Integer);
 begin
@@ -570,21 +572,6 @@ end;
 
 { TFileEncoding }
 
-class function TFileEncoding.DetectEncoding(const ABytes: TBytes): TFileEncodingKind;
-begin
-  Result := DetectEncoding(ABytes, TFileEncodingKind.Utf8);
-end;
-
-class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean): TLineBreakStyle;
-begin
-  Result := DetectLineBreak(AText, AMixed, TLineBreakStyle.CRLF);
-end;
-
-class function TFileEncoding.Decode(const ABytes: TBytes; out AFormat: TFileFormat): string;
-begin
-  Result := Decode(ABytes, AFormat, TFileEncodingKind.Utf8);
-end;
-
 class function TFileEncoding.DetectEncoding(const ABytes: TBytes; ADefault: TFileEncodingKind): TFileEncodingKind;
 var
   mHasNonAscii: Boolean;
@@ -617,6 +604,11 @@ begin
   end;
 end;
 
+class function TFileEncoding.DetectEncoding(const ABytes: TBytes): TFileEncodingKind;
+begin
+  Result := DetectEncoding(ABytes, TFileEncodingKind.Utf8);
+end;
+
 class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean;
   ADefault: TLineBreakStyle): TLineBreakStyle;
 const
@@ -633,6 +625,11 @@ begin
   else
     Result := ADefault;
   end;
+end;
+
+class function TFileEncoding.DetectLineBreak(const AText: string; out AMixed: Boolean): TLineBreakStyle;
+begin
+  Result := DetectLineBreak(AText, AMixed, TLineBreakStyle.CRLF);
 end;
 
 class function TFileEncoding.Decode(const ABytes: TBytes; out AFormat: TFileFormat;
@@ -656,6 +653,11 @@ begin
   AFormat.CodePage := 1252;
   AFormat.LineBreak := DetectLineBreak(Result, mMixed);
   AFormat.MixedLineBreaks := mMixed;
+end;
+
+class function TFileEncoding.Decode(const ABytes: TBytes; out AFormat: TFileFormat): string;
+begin
+  Result := Decode(ABytes, AFormat, TFileEncodingKind.Utf8);
 end;
 
 class function TFileEncoding.DecodeWithCodePage(const ABytes: TBytes; out AFormat: TFileFormat;
@@ -728,6 +730,18 @@ begin
   end;
 end;
 
+class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;
+begin
+  Result := TTextEncodingProbe.IsBinaryForm(ABytes);
+end;
+
+class function TFileEncoding.HasUtf32Bom(const ABytes: TBytes): Boolean;
+begin
+  Result := (Length(ABytes) >= 4) and
+    (((ABytes[0] = $FF) and (ABytes[1] = $FE) and (ABytes[2] = 0) and (ABytes[3] = 0)) or
+    ((ABytes[0] = 0) and (ABytes[1] = 0) and (ABytes[2] = $FE) and (ABytes[3] = $FF)));
+end;
+
 class function TFileEncoding.InvalidUtf8(const ABytes: TBytes; const AFormat: TFileFormat): TArray<TInvalidUtf8>;
 var
   mIndex, mCount, mValid, mLine, mColumn, mMultibyteCount: Integer;
@@ -782,28 +796,36 @@ begin
   end;
 end;
 
-class function TFileEncoding.IsBinaryForm(const ABytes: TBytes): Boolean;
+class function TFileEncoding.IsBinaryFormFile(const AFileName: string): Boolean;
+var
+  mStream: TFileStream;
+  mHead: TBytes;
 begin
-  Result := TTextEncodingProbe.IsBinaryForm(ABytes);
-end;
-
-class function TFileEncoding.HasUtf32Bom(const ABytes: TBytes): Boolean;
-begin
-  Result := (Length(ABytes) >= 4) and
-    (((ABytes[0] = $FF) and (ABytes[1] = $FE) and (ABytes[2] = 0) and (ABytes[3] = 0)) or
-    ((ABytes[0] = 0) and (ABytes[1] = 0) and (ABytes[2] = $FE) and (ABytes[3] = $FF)));
-end;
-
-class function TFileEncoding.NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string;
-begin
-  case AStyle of
-    TLineBreakStyle.LF:
-      Result := TTextLines.NormalizeLineBreaks(AText, #10);
-    TLineBreakStyle.CR:
-      Result := TTextLines.NormalizeLineBreaks(AText, #13);
-  else
-    Result := TTextLines.NormalizeLineBreaks(AText, #13#10);
+  Result := False;
+  if not FileExists(AFileName) then
+  begin
+    Exit;
   end;
+  try
+    mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(mHead, mStream.Size);
+      if Length(mHead) > 4 then
+      begin
+        SetLength(mHead, 4);
+      end;
+      if Length(mHead) > 0 then
+      begin
+        mStream.ReadBuffer(mHead[0], Length(mHead));
+      end;
+    finally
+      mStream.Free;
+    end;
+  except
+    on EStreamError do
+      Exit;
+  end;
+  Result := IsBinaryForm(mHead);
 end;
 
 class function TFileEncoding.Encode(const AText: string; const AFormat: TFileFormat): TBytes;
@@ -838,6 +860,18 @@ begin
       Result := EncodeUtf16(mText, True);
   else
     Result := EncodeAnsi(mText, AFormat.CodePage);
+  end;
+end;
+
+class function TFileEncoding.NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string;
+begin
+  case AStyle of
+    TLineBreakStyle.LF:
+      Result := TTextLines.NormalizeLineBreaks(AText, #10);
+    TLineBreakStyle.CR:
+      Result := TTextLines.NormalizeLineBreaks(AText, #13);
+  else
+    Result := TTextLines.NormalizeLineBreaks(AText, #13#10);
   end;
 end;
 
@@ -889,38 +923,6 @@ begin
   begin
     SetLength(Result, Length(Result) - 1);
   end;
-end;
-
-class function TFileEncoding.IsBinaryFormFile(const AFileName: string): Boolean;
-var
-  mStream: TFileStream;
-  mHead: TBytes;
-begin
-  Result := False;
-  if not FileExists(AFileName) then
-  begin
-    Exit;
-  end;
-  try
-    mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-    try
-      SetLength(mHead, mStream.Size);
-      if Length(mHead) > 4 then
-      begin
-        SetLength(mHead, 4);
-      end;
-      if Length(mHead) > 0 then
-      begin
-        mStream.ReadBuffer(mHead[0], Length(mHead));
-      end;
-    finally
-      mStream.Free;
-    end;
-  except
-    on EStreamError do
-      Exit;
-  end;
-  Result := IsBinaryForm(mHead);
 end;
 
 class procedure TFileEncoding.SaveToFile(const AFileName, AText: string; const AFormat: TFileFormat);

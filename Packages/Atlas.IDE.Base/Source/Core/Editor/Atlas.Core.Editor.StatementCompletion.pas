@@ -334,6 +334,8 @@ type
     function Run(const ABody: string): TLineScan;
   end;
 
+{ TLineScanner }
+
 function TLineScanner.OpenBracket: Boolean;
 var
   mClose: Integer;

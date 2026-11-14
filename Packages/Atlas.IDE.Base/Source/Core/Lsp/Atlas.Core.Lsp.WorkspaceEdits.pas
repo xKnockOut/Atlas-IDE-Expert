@@ -272,6 +272,8 @@ begin
   end;
 end;
 
+{ TLspFileOperation }
+
 class function TLspFileOperation.FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean;
 var
   mKind: string;
@@ -412,6 +414,8 @@ type
     Range: TLspTextRange;
     Index: Integer;
   end;
+
+{ TLspEdits }
 
 class function TLspEdits.Ordered(const AText: string; const AEdits: TArray<TLspTextEdit>): TArray<TLspTextRange>;
 var

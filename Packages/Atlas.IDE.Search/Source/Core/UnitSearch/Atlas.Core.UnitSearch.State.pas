@@ -98,6 +98,27 @@ begin
   end;
 end;
 
+function TAtlasUnitSearchState.WindowJson: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('left', TJSONNumber.Create(Left));
+  Result.AddPair('top', TJSONNumber.Create(Top));
+  Result.AddPair('width', TJSONNumber.Create(Width));
+  Result.AddPair('height', TJSONNumber.Create(Height));
+  Result.AddPair('previewWidth', TJSONNumber.Create(PreviewWidth));
+  Result.AddPair('previewVisible', TJSONBool.Create(PreviewVisible));
+end;
+
+procedure TAtlasUnitSearchState.LoadWindow(AWindow: TJSONObject);
+begin
+  AWindow.TryGetValue<Integer>('left', Left);
+  AWindow.TryGetValue<Integer>('top', Top);
+  AWindow.TryGetValue<Integer>('width', Width);
+  AWindow.TryGetValue<Integer>('height', Height);
+  AWindow.TryGetValue<Integer>('previewWidth', PreviewWidth);
+  AWindow.TryGetValue<Boolean>('previewVisible', PreviewVisible);
+end;
+
 function TAtlasUnitSearchState.Collapsed(const AGroupFile: string; AGrouping: TAtlasUnitGrouping): TArray<string>;
 var
   mItem, mPrefix: string;
@@ -135,29 +156,6 @@ begin
     mKept := mKept + [mPrefix + LowerCase(mItem)];
   end;
   mState.Collapsed := mKept;
-  FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
-end;
-
-function TAtlasUnitSearchState.Filters(const AGroupFile: string; out AOrigins: TAtlasUnitOrigins;
-  out AKinds: TAtlasUnitKinds): Boolean;
-var
-  mState: TGroupState;
-begin
-  mState := GroupState(AGroupFile);
-  AOrigins := mState.Origins;
-  AKinds := mState.Kinds;
-  Result := mState.HasFilters;
-end;
-
-procedure TAtlasUnitSearchState.SetFilters(const AGroupFile: string; AOrigins: TAtlasUnitOrigins;
-  AKinds: TAtlasUnitKinds);
-var
-  mState: TGroupState;
-begin
-  mState := GroupState(AGroupFile);
-  mState.HasFilters := True;
-  mState.Origins := AOrigins;
-  mState.Kinds := AKinds;
   FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
 end;
 
@@ -205,35 +203,27 @@ begin
   end;
 end;
 
-function TAtlasUnitSearchState.WindowJson: TJSONObject;
+function TAtlasUnitSearchState.Filters(const AGroupFile: string; out AOrigins: TAtlasUnitOrigins;
+  out AKinds: TAtlasUnitKinds): Boolean;
+var
+  mState: TGroupState;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('left', TJSONNumber.Create(Left));
-  Result.AddPair('top', TJSONNumber.Create(Top));
-  Result.AddPair('width', TJSONNumber.Create(Width));
-  Result.AddPair('height', TJSONNumber.Create(Height));
-  Result.AddPair('previewWidth', TJSONNumber.Create(PreviewWidth));
-  Result.AddPair('previewVisible', TJSONBool.Create(PreviewVisible));
+  mState := GroupState(AGroupFile);
+  AOrigins := mState.Origins;
+  AKinds := mState.Kinds;
+  Result := mState.HasFilters;
 end;
 
-function TAtlasUnitSearchState.ToJson: string;
+procedure TAtlasUnitSearchState.SetFilters(const AGroupFile: string; AOrigins: TAtlasUnitOrigins;
+  AKinds: TAtlasUnitKinds);
 var
-  mRoot, mGroups: TJSONObject;
-  mPair: TPair<string, TGroupState>;
+  mState: TGroupState;
 begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('window', WindowJson);
-    mGroups := TJSONObject.Create;
-    for mPair in FGroups do
-    begin
-      mGroups.AddPair(mPair.Key, GroupToJson(mPair.Value));
-    end;
-    mRoot.AddPair('groups', mGroups);
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
+  mState := GroupState(AGroupFile);
+  mState.HasFilters := True;
+  mState.Origins := AOrigins;
+  mState.Kinds := AKinds;
+  FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
 end;
 
 function OriginsFromJson(AList: TJSONArray): TAtlasUnitOrigins;
@@ -293,16 +283,6 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchState.LoadWindow(AWindow: TJSONObject);
-begin
-  AWindow.TryGetValue<Integer>('left', Left);
-  AWindow.TryGetValue<Integer>('top', Top);
-  AWindow.TryGetValue<Integer>('width', Width);
-  AWindow.TryGetValue<Integer>('height', Height);
-  AWindow.TryGetValue<Integer>('previewWidth', PreviewWidth);
-  AWindow.TryGetValue<Boolean>('previewVisible', PreviewVisible);
-end;
-
 procedure TAtlasUnitSearchState.LoadGroups(AGroups: TJSONObject);
 var
   mPair: TJSONPair;
@@ -313,6 +293,26 @@ begin
     begin
       FGroups.AddOrSetValue(LowerCase(mPair.JsonString.Value), GroupFromJson(TJSONObject(mPair.JsonValue)));
     end;
+  end;
+end;
+
+function TAtlasUnitSearchState.ToJson: string;
+var
+  mRoot, mGroups: TJSONObject;
+  mPair: TPair<string, TGroupState>;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('window', WindowJson);
+    mGroups := TJSONObject.Create;
+    for mPair in FGroups do
+    begin
+      mGroups.AddPair(mPair.Key, GroupToJson(mPair.Value));
+    end;
+    mRoot.AddPair('groups', mGroups);
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
   end;
 end;
 

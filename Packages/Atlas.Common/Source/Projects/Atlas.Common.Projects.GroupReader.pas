@@ -67,6 +67,8 @@ begin
   end;
 end;
 
+{ TGroupProjReader }
+
 class function TGroupProjReader.Read(const AFileName, AText: string): TArray<string>;
 var
   mRoot: TXmlElement;

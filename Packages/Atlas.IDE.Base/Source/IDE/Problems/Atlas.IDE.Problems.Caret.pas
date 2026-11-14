@@ -21,6 +21,8 @@ uses
   Atlas.IDE.Foundation.ActiveEditor,
   Atlas.IDE.Problems.Controller;
 
+{ TAtlasIdeProblemAtCaret }
+
 class function TAtlasIdeProblemAtCaret.Rule(out ARule: string): Boolean;
 var
   mEditor: IAtlasActiveEditor;

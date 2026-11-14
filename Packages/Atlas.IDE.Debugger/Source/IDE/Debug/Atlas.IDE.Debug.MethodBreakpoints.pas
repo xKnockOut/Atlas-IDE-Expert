@@ -98,6 +98,11 @@ uses
 
 { TAtlasIdeMethodBreakpoints.TListener }
 
+procedure TAtlasIdeMethodBreakpoints.TListener.DebugStarted;
+begin
+  TAtlasIdeMethodBreakpoints.AttachListMenu;
+end;
+
 function TAtlasIdeMethodBreakpoints.TListener.AllowLaunch(const AProject: IOTAProject): Boolean;
 begin
   // Mitwachsen hält den Start nie auf.
@@ -106,11 +111,6 @@ begin
   begin
     TAtlasIdeMethodBreakpoints.Grow(AProject.FileName);
   end;
-end;
-
-procedure TAtlasIdeMethodBreakpoints.TListener.DebugStarted;
-begin
-  TAtlasIdeMethodBreakpoints.AttachListMenu;
 end;
 
 /// <summary>Einträge des Kontextmenüs der Haltepunktliste: die beiden Befehle.</summary>
@@ -131,29 +131,6 @@ begin
 end;
 
 { TAtlasIdeMethodBreakpoints }
-
-class procedure TAtlasIdeMethodBreakpoints.Start(const ASession: TAtlasMethodBreakpointSessionFunc;
-  const AMessage: TProc<string>);
-begin
-  FSession := ASession;
-  FMessage := AMessage;
-  if FStore = nil then
-  begin
-    FStore := TAtlasMethodGroupStore.Create;
-    LoadStore;
-  end;
-  if FListener = nil then
-  begin
-    FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FListener);
-    TAtlasIdeDebugSession.Start;
-  end;
-  if FListMenu = nil then
-  begin
-    FListMenu := NewListMenu;
-  end;
-  AttachListMenu;
-end;
 
 class procedure TAtlasIdeMethodBreakpoints.AttachListMenu;
 begin
@@ -189,25 +166,6 @@ begin
   mLine := TAtlasEditorBuffer.LineText(mView, mCursor.Line);
   Result := TAtlasMethodBreakpoints.StartPattern(TAtlasEvalText.ExpressionAt(mLine, TLspSession.ColumnToIndex(mLine,
     mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer))), mLine);
-end;
-
-class procedure TAtlasIdeMethodBreakpoints.Release;
-begin
-  FreeAndNil(FListMenu);
-  if FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(FListener);
-  end;
-  FListener := nil;
-  FSession := nil;
-  FMessage := nil;
-  FreeAndNil(FStore);
-  FLastGroup := Default(TAtlasMethodGroup);
-end;
-
-class function TAtlasIdeMethodBreakpoints.Started: Boolean;
-begin
-  Result := FListener <> nil;
 end;
 
 class procedure TAtlasIdeMethodBreakpoints.Report(const AText: string);
@@ -259,6 +217,94 @@ begin
   end;
 end;
 
+class function TAtlasIdeMethodBreakpoints.Place(const AGroup: TAtlasMethodGroup;
+  const AHits: TAtlasMethodHits): Integer;
+var
+  mHit: TAtlasMethodHit;
+  mBreakpoint: IOTABreakpoint;
+begin
+  Result := 0;
+  for mHit in AHits do
+  begin
+    if not mHit.HasSource then
+    begin
+      Continue;
+    end;
+    // Steht dort schon ein Haltepunkt des Benutzers, bleibt er, wie er ist (Add liefert nil).
+    mBreakpoint := TAtlasIdeBreakpoints.Add(mHit.FileName, mHit.Line,
+      TAtlasMethodBreakpoints.GroupName(AGroup.Pattern));
+    if mBreakpoint = nil then
+    begin
+      Continue;
+    end;
+    try
+      if AGroup.Condition <> '' then
+      begin
+        mBreakpoint.Expression := AGroup.Condition;
+      end;
+      if AGroup.LogOnly then
+      begin
+        mBreakpoint.DoBreak := False;
+        mBreakpoint.LogMessage := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsLog,
+          [mHit.QualifiedName]);
+      end;
+    except
+      // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
+      on Exception do
+        ;
+    end;
+    Inc(Result);
+  end;
+end;
+
+class function TAtlasIdeMethodBreakpoints.GroupBreakpoints(const APattern: string): TArray<IOTABreakpoint>;
+var
+  mServices: IOTADebuggerServices;
+  mIndex, mCount: Integer;
+  mBreakpoint: IOTASourceBreakpoint;
+  mName: string;
+begin
+  Result := nil;
+  mServices := TAtlasIdeBreakpoints.Debugger;
+  if mServices = nil then
+  begin
+    Exit;
+  end;
+  mName := TAtlasMethodBreakpoints.GroupName(APattern);
+  // Höchstens alle Haltepunkte; am Ende auf die gefundenen kürzen.
+  SetLength(Result, mServices.SourceBkptCount);
+  mCount := 0;
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
+  begin
+    mBreakpoint := mServices.SourceBkpts[mIndex];
+    if (mBreakpoint <> nil) and (mCount < Length(Result)) and SameText(mBreakpoint.GroupName, mName) then
+    begin
+      Result[mCount] := mBreakpoint;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class procedure TAtlasIdeMethodBreakpoints.ToggleGroup(const AGroup: TAtlasMethodGroup);
+var
+  mBreakpoints: TArray<IOTABreakpoint>;
+  mBreakpoint: IOTABreakpoint;
+  mAllEnabled: Boolean;
+begin
+  mBreakpoints := GroupBreakpoints(AGroup.Pattern);
+  mAllEnabled := True;
+  for mBreakpoint in mBreakpoints do
+  begin
+    mAllEnabled := mAllEnabled and mBreakpoint.Enabled;
+  end;
+  // Alle an: alle aus; sonst alle an.
+  for mBreakpoint in mBreakpoints do
+  begin
+    mBreakpoint.Enabled := not mAllEnabled;
+  end;
+end;
+
 /// <summary>URI der Antwort in einen Pfad; eigene Routine, damit die Methodenreferenz nichts weiter festhält.
 /// </summary>
 function UriToPathFunc: TAtlasUriToPath;
@@ -305,43 +351,30 @@ begin
   end;
 end;
 
-class function TAtlasIdeMethodBreakpoints.Place(const AGroup: TAtlasMethodGroup;
-  const AHits: TAtlasMethodHits): Integer;
+class function TAtlasIdeMethodBreakpoints.States: TAtlasMethodGroupStates;
 var
-  mHit: TAtlasMethodHit;
+  mGroup: TAtlasMethodGroup;
+  mState: TAtlasMethodGroupState;
   mBreakpoint: IOTABreakpoint;
 begin
-  Result := 0;
-  for mHit in AHits do
+  Result := nil;
+  if FStore = nil then
   begin
-    if not mHit.HasSource then
+    Exit;
+  end;
+  for mGroup in FStore.Groups(ActiveProject) do
+  begin
+    mState := Default(TAtlasMethodGroupState);
+    mState.Group := mGroup;
+    for mBreakpoint in GroupBreakpoints(mGroup.Pattern) do
     begin
-      Continue;
-    end;
-    // Steht dort schon ein Haltepunkt des Benutzers, bleibt er, wie er ist (Add liefert nil).
-    mBreakpoint := TAtlasIdeBreakpoints.Add(mHit.FileName, mHit.Line,
-      TAtlasMethodBreakpoints.GroupName(AGroup.Pattern));
-    if mBreakpoint = nil then
-    begin
-      Continue;
-    end;
-    try
-      if AGroup.Condition <> '' then
+      Inc(mState.Breakpoints);
+      if mBreakpoint.Enabled then
       begin
-        mBreakpoint.Expression := AGroup.Condition;
+        Inc(mState.Enabled);
       end;
-      if AGroup.LogOnly then
-      begin
-        mBreakpoint.DoBreak := False;
-        mBreakpoint.LogMessage := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsLog,
-          [mHit.QualifiedName]);
-      end;
-    except
-      // Ohne Bedingung oder Aktion hält der Haltepunkt trotzdem.
-      on Exception do
-        ;
     end;
-    Inc(Result);
+    Result := Result + [mState];
   end;
 end;
 
@@ -421,6 +454,65 @@ begin
     end;
 end;
 
+class procedure TAtlasIdeMethodBreakpoints.RemoveGroup(const AGroup: TAtlasMethodGroup);
+var
+  mBreakpoints: TArray<IOTABreakpoint>;
+  mCount: Integer;
+  mProject: string;
+begin
+  mBreakpoints := GroupBreakpoints(AGroup.Pattern);
+  mCount := Length(mBreakpoints);
+  TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
+  mProject := ActiveProject;
+  if (FStore <> nil) and FStore.Remove(mProject, AGroup.Pattern) then
+  begin
+    SaveStore;
+  end;
+  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodGroupsRemoved, [AGroup.Pattern, mCount]));
+end;
+
+class procedure TAtlasIdeMethodBreakpoints.Start(const ASession: TAtlasMethodBreakpointSessionFunc;
+  const AMessage: TProc<string>);
+begin
+  FSession := ASession;
+  FMessage := AMessage;
+  if FStore = nil then
+  begin
+    FStore := TAtlasMethodGroupStore.Create;
+    LoadStore;
+  end;
+  if FListener = nil then
+  begin
+    FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FListener);
+    TAtlasIdeDebugSession.Start;
+  end;
+  if FListMenu = nil then
+  begin
+    FListMenu := NewListMenu;
+  end;
+  AttachListMenu;
+end;
+
+class procedure TAtlasIdeMethodBreakpoints.Release;
+begin
+  FreeAndNil(FListMenu);
+  if FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(FListener);
+  end;
+  FListener := nil;
+  FSession := nil;
+  FMessage := nil;
+  FreeAndNil(FStore);
+  FLastGroup := Default(TAtlasMethodGroup);
+end;
+
+class function TAtlasIdeMethodBreakpoints.Started: Boolean;
+begin
+  Result := FListener <> nil;
+end;
+
 class procedure TAtlasIdeMethodBreakpoints.Run;
 var
   mGroup, mKnown: TAtlasMethodGroup;
@@ -469,98 +561,6 @@ begin
   begin
     FStore.Put(mProject, mGroup);
     SaveStore;
-  end;
-end;
-
-class function TAtlasIdeMethodBreakpoints.GroupBreakpoints(const APattern: string): TArray<IOTABreakpoint>;
-var
-  mServices: IOTADebuggerServices;
-  mIndex, mCount: Integer;
-  mBreakpoint: IOTASourceBreakpoint;
-  mName: string;
-begin
-  Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
-  if mServices = nil then
-  begin
-    Exit;
-  end;
-  mName := TAtlasMethodBreakpoints.GroupName(APattern);
-  // Höchstens alle Haltepunkte; am Ende auf die gefundenen kürzen.
-  SetLength(Result, mServices.SourceBkptCount);
-  mCount := 0;
-  for mIndex := 0 to mServices.SourceBkptCount - 1 do
-  begin
-    mBreakpoint := mServices.SourceBkpts[mIndex];
-    if (mBreakpoint <> nil) and (mCount < Length(Result)) and SameText(mBreakpoint.GroupName, mName) then
-    begin
-      Result[mCount] := mBreakpoint;
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-end;
-
-class procedure TAtlasIdeMethodBreakpoints.ToggleGroup(const AGroup: TAtlasMethodGroup);
-var
-  mBreakpoints: TArray<IOTABreakpoint>;
-  mBreakpoint: IOTABreakpoint;
-  mAllEnabled: Boolean;
-begin
-  mBreakpoints := GroupBreakpoints(AGroup.Pattern);
-  mAllEnabled := True;
-  for mBreakpoint in mBreakpoints do
-  begin
-    mAllEnabled := mAllEnabled and mBreakpoint.Enabled;
-  end;
-  // Alle an: alle aus; sonst alle an.
-  for mBreakpoint in mBreakpoints do
-  begin
-    mBreakpoint.Enabled := not mAllEnabled;
-  end;
-end;
-
-class procedure TAtlasIdeMethodBreakpoints.RemoveGroup(const AGroup: TAtlasMethodGroup);
-var
-  mBreakpoints: TArray<IOTABreakpoint>;
-  mCount: Integer;
-  mProject: string;
-begin
-  mBreakpoints := GroupBreakpoints(AGroup.Pattern);
-  mCount := Length(mBreakpoints);
-  TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
-  mProject := ActiveProject;
-  if (FStore <> nil) and FStore.Remove(mProject, AGroup.Pattern) then
-  begin
-    SaveStore;
-  end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodGroupsRemoved, [AGroup.Pattern, mCount]));
-end;
-
-class function TAtlasIdeMethodBreakpoints.States: TAtlasMethodGroupStates;
-var
-  mGroup: TAtlasMethodGroup;
-  mState: TAtlasMethodGroupState;
-  mBreakpoint: IOTABreakpoint;
-begin
-  Result := nil;
-  if FStore = nil then
-  begin
-    Exit;
-  end;
-  for mGroup in FStore.Groups(ActiveProject) do
-  begin
-    mState := Default(TAtlasMethodGroupState);
-    mState.Group := mGroup;
-    for mBreakpoint in GroupBreakpoints(mGroup.Pattern) do
-    begin
-      Inc(mState.Breakpoints);
-      if mBreakpoint.Enabled then
-      begin
-        Inc(mState.Enabled);
-      end;
-    end;
-    Result := Result + [mState];
   end;
 end;
 

@@ -195,11 +195,6 @@ begin
   FreeAndNil(FLock);
 end;
 
-class function TAtlasMainThread.IsMain: Boolean;
-begin
-  Result := TThread.CurrentThread.ThreadID = MainThreadID;
-end;
-
 class function TAtlasMainThread.Guarded(AFeature: TAtlasFeature; const AProc: TThreadProcedure): TThreadProcedure;
 var
   mFeature: TAtlasFeature;
@@ -221,9 +216,37 @@ begin
     end;
 end;
 
-class function TAtlasMainThread.ModuleOf(const AProc: TThreadProcedure): NativeUInt;
+class procedure TAtlasMainThread.Post(AFeature: TAtlasFeature; const AProc: TThreadProcedure; AForce: Boolean);
+var
+  mProc: TThreadProcedure;
+  mModule: NativeUInt;
 begin
-  Result := CodeModuleOf(AProc);
+  if FLock = nil then
+  begin
+    Exit;
+  end;
+  mModule := ModuleOf(AProc);
+  // Unter FLock nur einreihen, nie ausführen (AForce oder Arbeiter-Thread): Kein fremder Code hält die Sperre,
+  // ein Hauptthread in Stop kann nicht auf einen Arbeiter warten, der hier wartet.
+  FLock.Enter;
+  try
+    // Nach Stop (Entladen) oder Abmelden des Moduls: verwerfen; der Code dahinter ist gleich nicht mehr geladen.
+    if FStopped or (FOwner = nil) or (FClosed.IndexOf(mModule) >= 0) then
+    begin
+      Exit;
+    end;
+    mProc := Guarded(AFeature, AddPending(mModule, AProc));
+    if AForce then
+    begin
+      TThread.ForceQueue(FOwner, mProc);
+    end
+    else
+    begin
+      TThread.Queue(FOwner, mProc);
+    end;
+  finally
+    FLock.Leave;
+  end;
 end;
 
 class function TAtlasMainThread.AddPending(AModule: NativeUInt; const AProc: TThreadProcedure): TThreadProcedure;
@@ -324,78 +347,6 @@ begin
   // wieder einreihen.
 end;
 
-class procedure TAtlasMainThread.CloseModule(AModule: NativeUInt);
-begin
-  DropModule(AModule, True);
-end;
-
-class procedure TAtlasMainThread.ModuleUnloaded(AModule: NativeUInt);
-begin
-  DropModule(AModule, False);
-end;
-
-class procedure TAtlasMainThread.OpenModule(AModule: NativeUInt);
-begin
-  if (AModule = 0) or (FLock = nil) then
-  begin
-    Exit;
-  end;
-  FLock.Enter;
-  try
-    FClosed.Remove(AModule);
-  finally
-    FLock.Leave;
-  end;
-end;
-
-class function TAtlasMainThread.PendingCount: Integer;
-begin
-  Result := 0;
-  if FLock = nil then
-  begin
-    Exit;
-  end;
-  FLock.Enter;
-  try
-    Result := FPending.Count;
-  finally
-    FLock.Leave;
-  end;
-end;
-
-class procedure TAtlasMainThread.Post(AFeature: TAtlasFeature; const AProc: TThreadProcedure; AForce: Boolean);
-var
-  mProc: TThreadProcedure;
-  mModule: NativeUInt;
-begin
-  if FLock = nil then
-  begin
-    Exit;
-  end;
-  mModule := ModuleOf(AProc);
-  // Unter FLock nur einreihen, nie ausführen (AForce oder Arbeiter-Thread): Kein fremder Code hält die Sperre,
-  // ein Hauptthread in Stop kann nicht auf einen Arbeiter warten, der hier wartet.
-  FLock.Enter;
-  try
-    // Nach Stop (Entladen) oder Abmelden des Moduls: verwerfen; der Code dahinter ist gleich nicht mehr geladen.
-    if FStopped or (FOwner = nil) or (FClosed.IndexOf(mModule) >= 0) then
-    begin
-      Exit;
-    end;
-    mProc := Guarded(AFeature, AddPending(mModule, AProc));
-    if AForce then
-    begin
-      TThread.ForceQueue(FOwner, mProc);
-    end
-    else
-    begin
-      TThread.Queue(FOwner, mProc);
-    end;
-  finally
-    FLock.Leave;
-  end;
-end;
-
 class procedure TAtlasMainThread.Queue(AFeature: TAtlasFeature; const AProc: TThreadProcedure);
 var
   mProc: TThreadProcedure;
@@ -476,6 +427,55 @@ begin
   begin
     TAtlasGuard.Log('Atlas: Besitzer der Hauptthread-Einträge endet nicht; er gibt sich bei Rückkehr selbst frei');
     mOwner.FreeOnTerminate := True;
+  end;
+end;
+
+class function TAtlasMainThread.IsMain: Boolean;
+begin
+  Result := TThread.CurrentThread.ThreadID = MainThreadID;
+end;
+
+class function TAtlasMainThread.ModuleOf(const AProc: TThreadProcedure): NativeUInt;
+begin
+  Result := CodeModuleOf(AProc);
+end;
+
+class procedure TAtlasMainThread.CloseModule(AModule: NativeUInt);
+begin
+  DropModule(AModule, True);
+end;
+
+class procedure TAtlasMainThread.OpenModule(AModule: NativeUInt);
+begin
+  if (AModule = 0) or (FLock = nil) then
+  begin
+    Exit;
+  end;
+  FLock.Enter;
+  try
+    FClosed.Remove(AModule);
+  finally
+    FLock.Leave;
+  end;
+end;
+
+class procedure TAtlasMainThread.ModuleUnloaded(AModule: NativeUInt);
+begin
+  DropModule(AModule, False);
+end;
+
+class function TAtlasMainThread.PendingCount: Integer;
+begin
+  Result := 0;
+  if FLock = nil then
+  begin
+    Exit;
+  end;
+  FLock.Enter;
+  try
+    Result := FPending.Count;
+  finally
+    FLock.Leave;
   end;
 end;
 

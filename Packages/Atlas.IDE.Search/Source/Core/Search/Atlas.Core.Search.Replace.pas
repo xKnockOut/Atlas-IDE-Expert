@@ -102,6 +102,8 @@ begin
   end;
 end;
 
+{ TAtlasSearchReplace }
+
 class function TAtlasSearchReplace.Expand(const ATemplate: string; const AMatch: TMatch): string;
 var
   I, mClose: Integer;
@@ -145,15 +147,6 @@ begin
       Result := Result + '$';
       Inc(I);
     end;
-  end;
-end;
-
-class function TAtlasSearchReplace.HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
-begin
-  Result := '';
-  if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
-  begin
-    Result := Copy(CleanLine(ALines[AHit.Line]), AHit.Character + 1, AHit.Length);
   end;
 end;
 
@@ -202,6 +195,15 @@ begin
     Result[mIndex].EndPos.Line := AHits[mIndex].Line;
     Result[mIndex].EndPos.Character := AHits[mIndex].Character + AHits[mIndex].Length;
     Result[mIndex].NewText := Replacement(ALines, AHits[mIndex], AQuery, AReplace);
+  end;
+end;
+
+class function TAtlasSearchReplace.HitText(const ALines: TArray<string>; const AHit: TAtlasSearchHit): string;
+begin
+  Result := '';
+  if (AHit.Line >= 0) and (AHit.Line <= High(ALines)) then
+  begin
+    Result := Copy(CleanLine(ALines[AHit.Line]), AHit.Character + 1, AHit.Length);
   end;
 end;
 

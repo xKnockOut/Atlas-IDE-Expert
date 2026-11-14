@@ -232,6 +232,12 @@ begin
   ClientHeight := FCount.Top + ScaleValue(28) + mBottom.Height;
 end;
 
+procedure TAtlasEventBreakDialog.DoShow;
+begin
+  Prepare;
+  inherited;
+end;
+
 function TAtlasEventBreakDialog.AddCheck(AParent: TWinControl; const ACaption: string): TCheckBox;
 begin
   Result := TCheckBox.Create(Self);
@@ -264,6 +270,44 @@ begin
   Result.Top := ScaleValue(cDialogGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
+end;
+
+procedure TAtlasEventBreakDialog.Changed(Sender: TObject);
+var
+  mCurrent: TAtlasEventChoice;
+begin
+  if not FPrepared then
+  begin
+    Exit;
+  end;
+  if (Sender = FForm) and (FForm.ItemIndex >= 0) then
+  begin
+    FOne.Checked := True;
+  end;
+  mCurrent := Choice;
+  FOk.Enabled := mCurrent.Categories <> [];
+  if Assigned(FCountText) then
+  begin
+    FCount.Caption := FCountText(mCurrent);
+  end
+  else
+  begin
+    FCount.Caption := '';
+  end;
+end;
+
+procedure TAtlasEventBreakDialog.OkClick(Sender: TObject);
+begin
+  if Choice.Categories = [] then
+  begin
+    Exit;
+  end;
+  ModalResult := mrOk;
+end;
+
+procedure TAtlasEventBreakDialog.CancelClick(Sender: TObject);
+begin
+  ModalResult := mrCancel;
 end;
 
 procedure TAtlasEventBreakDialog.Prepare;
@@ -305,17 +349,6 @@ begin
   Changed(nil);
 end;
 
-procedure TAtlasEventBreakDialog.DoShow;
-begin
-  Prepare;
-  inherited;
-end;
-
-function TAtlasEventBreakDialog.CategoryCheck(ACategory: TAtlasEventCategory): TCheckBox;
-begin
-  Result := FCategories[ACategory];
-end;
-
 function TAtlasEventBreakDialog.Choice: TAtlasEventChoice;
 var
   mCategory: TAtlasEventCategory;
@@ -341,44 +374,6 @@ begin
   end;
 end;
 
-procedure TAtlasEventBreakDialog.Changed(Sender: TObject);
-var
-  mCurrent: TAtlasEventChoice;
-begin
-  if not FPrepared then
-  begin
-    Exit;
-  end;
-  if (Sender = FForm) and (FForm.ItemIndex >= 0) then
-  begin
-    FOne.Checked := True;
-  end;
-  mCurrent := Choice;
-  FOk.Enabled := mCurrent.Categories <> [];
-  if Assigned(FCountText) then
-  begin
-    FCount.Caption := FCountText(mCurrent);
-  end
-  else
-  begin
-    FCount.Caption := '';
-  end;
-end;
-
-procedure TAtlasEventBreakDialog.OkClick(Sender: TObject);
-begin
-  if Choice.Categories = [] then
-  begin
-    Exit;
-  end;
-  ModalResult := mrOk;
-end;
-
-procedure TAtlasEventBreakDialog.CancelClick(Sender: TObject);
-begin
-  ModalResult := mrCancel;
-end;
-
 class function TAtlasEventBreakDialog.Execute(var AChoice: TAtlasEventChoice; const AForms: TArray<string>;
   const AExcluded: string; const ACount: TAtlasEventBreakCount): Boolean;
 var
@@ -396,6 +391,11 @@ begin
   end;
 end;
 
+function TAtlasEventBreakDialog.CategoryCheck(ACategory: TAtlasEventCategory): TCheckBox;
+begin
+  Result := FCategories[ACategory];
+end;
+
 { TAtlasEventBreakBar }
 
 constructor TAtlasEventBreakBar.Create(AOwner: TComponent);
@@ -404,6 +404,66 @@ begin
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
   SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
+end;
+
+procedure TAtlasEventBreakBar.Paint;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasEventBreakBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mPoint: TPoint;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mPoint := TPoint.Create(X, Y);
+  if PtInRect(FContinueRect, mPoint) then
+  begin
+    KeepWatching;
+  end
+  else if PtInRect(FCloseRect, mPoint) then
+  begin
+    CloseBar;
+  end;
+end;
+
+procedure TAtlasEventBreakBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mPoint: TPoint;
+  mHot: Integer;
+begin
+  inherited;
+  mPoint := TPoint.Create(X, Y);
+  mHot := -1;
+  if PtInRect(FContinueRect, mPoint) then
+  begin
+    mHot := 0;
+  end
+  else if PtInRect(FCloseRect, mPoint) then
+  begin
+    mHot := 1;
+  end;
+  if mHot >= 0 then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  if mHot <> FHot then
+  begin
+    FHot := mHot;
+    Invalidate;
+  end;
 end;
 
 function TAtlasEventBreakBar.Layout(ADraw: Boolean): TSize;
@@ -514,66 +574,6 @@ end;
 function TAtlasEventBreakBar.CloseRect: TRect;
 begin
   Result := FCloseRect;
-end;
-
-procedure TAtlasEventBreakBar.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasEventBreakBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mPoint: TPoint;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mPoint := TPoint.Create(X, Y);
-  if PtInRect(FContinueRect, mPoint) then
-  begin
-    KeepWatching;
-  end
-  else if PtInRect(FCloseRect, mPoint) then
-  begin
-    CloseBar;
-  end;
-end;
-
-procedure TAtlasEventBreakBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mPoint: TPoint;
-  mHot: Integer;
-begin
-  inherited;
-  mPoint := TPoint.Create(X, Y);
-  mHot := -1;
-  if PtInRect(FContinueRect, mPoint) then
-  begin
-    mHot := 0;
-  end
-  else if PtInRect(FCloseRect, mPoint) then
-  begin
-    mHot := 1;
-  end;
-  if mHot >= 0 then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if mHot <> FHot then
-  begin
-    FHot := mHot;
-    Invalidate;
-  end;
 end;
 
 end.

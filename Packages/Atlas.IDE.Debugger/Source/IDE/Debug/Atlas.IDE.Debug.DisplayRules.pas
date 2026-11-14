@@ -127,6 +127,8 @@ type
     procedure Timer(Sender: TObject);
   end;
 
+{ TTicker }
+
 procedure TTicker.Timer(Sender: TObject);
 begin
   TAtlasIdeDisplayRules.Tick;
@@ -156,18 +158,6 @@ begin
   AllDescendants := True;
 end;
 
-procedure TAtlasIdeDisplayVisualizer.GetSupportedType(Index: Integer; var TypeName: string;
-  var AllDescendants: Boolean; var IsGeneric: Boolean);
-begin
-  if (Index < 0) or (Index > High(FTypes)) then
-  begin
-    Exit;
-  end;
-  TypeName := FTypes[Index];
-  AllDescendants := True;
-  IsGeneric := False;
-end;
-
 function TAtlasIdeDisplayVisualizer.GetVisualizerIdentifier: string;
 begin
   Result := cVisualizerIdentifier;
@@ -181,6 +171,18 @@ end;
 function TAtlasIdeDisplayVisualizer.GetVisualizerDescription: string;
 begin
   Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugDisplayDescription);
+end;
+
+procedure TAtlasIdeDisplayVisualizer.GetSupportedType(Index: Integer; var TypeName: string;
+  var AllDescendants: Boolean; var IsGeneric: Boolean);
+begin
+  if (Index < 0) or (Index > High(FTypes)) then
+  begin
+    Exit;
+  end;
+  TypeName := FTypes[Index];
+  AllDescendants := True;
+  IsGeneric := False;
 end;
 
 function TAtlasIdeDisplayVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
@@ -232,6 +234,59 @@ end;
 
 { TAtlasIdeDisplayRules }
 
+class function TAtlasIdeDisplayRules.Debugging: Boolean;
+var
+  mDebugger: IOTADebuggerServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+end;
+
+class function TAtlasIdeDisplayRules.StateKey: string;
+begin
+  Result := TAtlasIdeFiles.ActiveProjectFile + '|' + IntToStr(TAtlasIdeTeamFile.Version);
+end;
+
+class procedure TAtlasIdeDisplayRules.Register;
+var
+  mDebugger: IOTADebuggerServices;
+  mTypes: TArray<string>;
+begin
+  Unregister;
+  mTypes := FRules.TypeNames;
+  if (Length(mTypes) = 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
+  begin
+    Exit;
+  end;
+  FVisualizer := TAtlasIdeDisplayVisualizer.Create(mTypes);
+  try
+    mDebugger.RegisterDebugVisualizer(FVisualizer);
+  except
+    on E: Exception do
+    begin
+      FVisualizer := nil;
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeDisplayRules.Unregister;
+var
+  mDebugger: IOTADebuggerServices;
+begin
+  if FVisualizer = nil then
+  begin
+    Exit;
+  end;
+  if Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
+    try
+      mDebugger.UnregisterDebugVisualizer(FVisualizer);
+    except
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+    end;
+  FVisualizer := nil;
+end;
+
 class function TAtlasIdeDisplayRules.Started: Boolean;
 begin
   Result := FTimer <> nil;
@@ -280,47 +335,6 @@ begin
   else
   begin
     FFetchedKey := '';
-  end;
-end;
-
-class function TAtlasIdeDisplayRules.Options: TAtlasDisplayRuleOptions;
-begin
-  Result := Default(TAtlasDisplayRuleOptions);
-  Result.AllowCalls := TAtlasIdeSettings.Current.DebugDisplayRulesAllowCalls;
-  Result.MaxLength := TAtlasIdeSettings.Current.DebugVisualizerMaxLength;
-end;
-
-class function TAtlasIdeDisplayRules.Debugging: Boolean;
-var
-  mDebugger: IOTADebuggerServices;
-begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
-end;
-
-class function TAtlasIdeDisplayRules.StateKey: string;
-begin
-  Result := TAtlasIdeFiles.ActiveProjectFile + '|' + IntToStr(TAtlasIdeTeamFile.Version);
-end;
-
-class procedure TAtlasIdeDisplayRules.Tick;
-var
-  mKey: string;
-begin
-  try
-    if not Started or not TAtlasIdeSettings.Current.DebugDisplayRules or not Debugging then
-    begin
-      Exit;
-    end;
-    mKey := StateKey;
-    // Gleicher Stand mit Antwort des Servers: nichts zu tun; ohne Antwort erst nach RetryMs wieder fragen.
-    if (mKey = FFetchedKey) and ((FServerKey = mKey) or (GetTickCount64 < FRetryAt)) then
-    begin
-      Exit;
-    end;
-    Fetch(mKey);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
   end;
 end;
 
@@ -401,63 +415,38 @@ begin
   Register;
 end;
 
-class procedure TAtlasIdeDisplayRules.Register;
+class procedure TAtlasIdeDisplayRules.Tick;
 var
-  mDebugger: IOTADebuggerServices;
-  mTypes: TArray<string>;
+  mKey: string;
 begin
-  Unregister;
-  mTypes := FRules.TypeNames;
-  if (Length(mTypes) = 0) or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
-  begin
-    Exit;
-  end;
-  FVisualizer := TAtlasIdeDisplayVisualizer.Create(mTypes);
   try
-    mDebugger.RegisterDebugVisualizer(FVisualizer);
+    if not Started or not TAtlasIdeSettings.Current.DebugDisplayRules or not Debugging then
+    begin
+      Exit;
+    end;
+    mKey := StateKey;
+    // Gleicher Stand mit Antwort des Servers: nichts zu tun; ohne Antwort erst nach RetryMs wieder fragen.
+    if (mKey = FFetchedKey) and ((FServerKey = mKey) or (GetTickCount64 < FRetryAt)) then
+    begin
+      Exit;
+    end;
+    Fetch(mKey);
   except
     on E: Exception do
-    begin
-      FVisualizer := nil;
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
   end;
 end;
 
-class procedure TAtlasIdeDisplayRules.Unregister;
-var
-  mDebugger: IOTADebuggerServices;
+class function TAtlasIdeDisplayRules.Options: TAtlasDisplayRuleOptions;
 begin
-  if FVisualizer = nil then
-  begin
-    Exit;
-  end;
-  if Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
-    try
-      mDebugger.UnregisterDebugVisualizer(FVisualizer);
-    except
-      on E: Exception do
-        TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  FVisualizer := nil;
+  Result := Default(TAtlasDisplayRuleOptions);
+  Result.AllowCalls := TAtlasIdeSettings.Current.DebugDisplayRulesAllowCalls;
+  Result.MaxLength := TAtlasIdeSettings.Current.DebugVisualizerMaxLength;
 end;
 
 class function TAtlasIdeDisplayRules.FindRule(const ATypeName: string; out ARule: TAtlasDisplayRule): Boolean;
 begin
   Result := (FRules <> nil) and TAtlasIdeSettings.Current.DebugDisplayRules and FRules.Find(ATypeName, ARule);
-end;
-
-class function TAtlasIdeDisplayRules.ReplacementText(const AExpression, ATypeName: string): string;
-var
-  mRule: TAtlasDisplayRule;
-begin
-  Result := '';
-  if not FindRule(ATypeName, mRule) then
-  begin
-    Exit;
-  end;
-  Result := TAtlasDisplayRender.Render(mRule, AExpression, Options,
-    TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs).Eval);
 end;
 
 class function TAtlasIdeDisplayRules.HoverText(const AExpression: string; const ATypeChain: array of string): string;
@@ -479,6 +468,19 @@ begin
       Result := '';
     end;
   end;
+end;
+
+class function TAtlasIdeDisplayRules.ReplacementText(const AExpression, ATypeName: string): string;
+var
+  mRule: TAtlasDisplayRule;
+begin
+  Result := '';
+  if not FindRule(ATypeName, mRule) then
+  begin
+    Exit;
+  end;
+  Result := TAtlasDisplayRender.Render(mRule, AExpression, Options,
+    TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs).Eval);
 end;
 
 class function TAtlasIdeDisplayRules.ViewOf(const AExpression, ATypeName, AEvalResult: string): TAtlasVisualizerView;

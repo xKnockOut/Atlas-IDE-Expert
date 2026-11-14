@@ -202,6 +202,16 @@ end;
 
 { TSlashCommandRegistry }
 
+class destructor TSlashCommandRegistry.DestroyShared;
+var
+  mLanguage: TTextLanguage;
+begin
+  for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+  begin
+    FreeAndNil(FShared[mLanguage]);
+  end;
+end;
+
 constructor TSlashCommandRegistry.Create;
 begin
   inherited Create;
@@ -214,16 +224,6 @@ begin
   FLock.Free;
   FCommands.Free;
   inherited;
-end;
-
-class destructor TSlashCommandRegistry.DestroyShared;
-var
-  mLanguage: TTextLanguage;
-begin
-  for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
-  begin
-    FreeAndNil(FShared[mLanguage]);
-  end;
 end;
 
 function UsesCommand: TSlashCommand;

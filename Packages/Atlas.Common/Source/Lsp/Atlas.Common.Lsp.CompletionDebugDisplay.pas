@@ -92,6 +92,8 @@ begin
   Result := CharInSet(mBefore, [':', ',', '(', '''']);
 end;
 
+{ TCompletionDebugDisplay }
+
 class function TCompletionDebugDisplay.PrefixAt(const ALine: string; ACharacter, ATemplateColumn: Integer;
   APlace: TDebugDisplayCompletionPlace; out AStart: Integer; out APrefix: string): Boolean;
 begin

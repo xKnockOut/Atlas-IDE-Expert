@@ -120,34 +120,24 @@ begin
     end));
 end;
 
-class function TAtlasUndoFileStore.ToJson(const ASet: TAtlasChangeSet): TJSONObject;
+procedure TAtlasUndoFileStore.Shrink;
 var
-  mFiles: TJSONArray;
-  mItem: TJSONObject;
-  mChange: TAtlasFileChange;
+  mFiles: TArray<string>;
+  mTotal: Int64;
+  mIndex: Integer;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('id', TJSONNumber.Create(ASet.Id));
-  Result.AddPair('action', ASet.Action);
-  Result.AddPair('time', DateToISO8601(ASet.Time, False));
-  mFiles := TJSONArray.Create;
-  Result.AddPair('files', mFiles);
-  for mChange in ASet.Files do
+  mFiles := SetFiles;
+  mTotal := 0;
+  for mIndex := 0 to High(mFiles) do
   begin
-    mItem := TJSONObject.Create;
-    mFiles.AddElement(mItem);
-    mItem.AddPair('file', mChange.FileName);
-    mItem.AddPair('kind', cKindNames[mChange.Kind]);
-    mItem.AddPair('project', mChange.Project);
-    mItem.AddPair('undone', TJSONBool.Create(mChange.Undone));
-    if mChange.Kind <> TAtlasFileChangeKind.Created then
-    begin
-      mItem.AddPair('before', ContentToJson(mChange.Before));
-    end;
-    if mChange.Kind <> TAtlasFileChangeKind.Deleted then
-    begin
-      mItem.AddPair('after', ContentToJson(mChange.After));
-    end;
+    Inc(mTotal, TFile.GetSize(mFiles[mIndex]));
+  end;
+  mIndex := 0;
+  while (mTotal > FMaxBytes) and (mIndex < Length(mFiles)) do
+  begin
+    Dec(mTotal, TFile.GetSize(mFiles[mIndex]));
+    TFile.Delete(mFiles[mIndex]);
+    Inc(mIndex);
   end;
 end;
 
@@ -209,30 +199,6 @@ begin
     Result := ContentFromJson(mItem.GetValue('after'), AChange.After);
   end;
 end;
-class function TAtlasUndoFileStore.FromJson(const AValue: TJSONValue; out ASet: TAtlasChangeSet): Boolean;
-var
-  mFiles: TJSONArray;
-  mValue: TJSONValue;
-  mChange: TAtlasFileChange;
-begin
-  ASet := Default(TAtlasChangeSet);
-  Result := HeaderFromJson(AValue, ASet, mFiles);
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mValue in mFiles do
-  begin
-    Result := ChangeFromJson(mValue, mChange);
-    if not Result then
-    begin
-      Exit;
-    end;
-    ASet.Files := ASet.Files + [mChange];
-  end;
-  Result := (ASet.Id > 0) and (Length(ASet.Files) > 0);
-end;
-
 procedure TAtlasUndoFileStore.Save(const ASet: TAtlasChangeSet);
 var
   mJson: TJSONObject;
@@ -258,27 +224,6 @@ begin
   TDirectory.CreateDirectory(FFolder);
   TAtlasTextFile.Replace(mFileName, mBytes);
   Shrink;
-end;
-
-procedure TAtlasUndoFileStore.Shrink;
-var
-  mFiles: TArray<string>;
-  mTotal: Int64;
-  mIndex: Integer;
-begin
-  mFiles := SetFiles;
-  mTotal := 0;
-  for mIndex := 0 to High(mFiles) do
-  begin
-    Inc(mTotal, TFile.GetSize(mFiles[mIndex]));
-  end;
-  mIndex := 0;
-  while (mTotal > FMaxBytes) and (mIndex < Length(mFiles)) do
-  begin
-    Dec(mTotal, TFile.GetSize(mFiles[mIndex]));
-    TFile.Delete(mFiles[mIndex]);
-    Inc(mIndex);
-  end;
 end;
 
 procedure TAtlasUndoFileStore.Delete(AId: Integer);
@@ -331,6 +276,61 @@ begin
   begin
     TFile.Delete(mFileName);
   end;
+end;
+
+class function TAtlasUndoFileStore.ToJson(const ASet: TAtlasChangeSet): TJSONObject;
+var
+  mFiles: TJSONArray;
+  mItem: TJSONObject;
+  mChange: TAtlasFileChange;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', TJSONNumber.Create(ASet.Id));
+  Result.AddPair('action', ASet.Action);
+  Result.AddPair('time', DateToISO8601(ASet.Time, False));
+  mFiles := TJSONArray.Create;
+  Result.AddPair('files', mFiles);
+  for mChange in ASet.Files do
+  begin
+    mItem := TJSONObject.Create;
+    mFiles.AddElement(mItem);
+    mItem.AddPair('file', mChange.FileName);
+    mItem.AddPair('kind', cKindNames[mChange.Kind]);
+    mItem.AddPair('project', mChange.Project);
+    mItem.AddPair('undone', TJSONBool.Create(mChange.Undone));
+    if mChange.Kind <> TAtlasFileChangeKind.Created then
+    begin
+      mItem.AddPair('before', ContentToJson(mChange.Before));
+    end;
+    if mChange.Kind <> TAtlasFileChangeKind.Deleted then
+    begin
+      mItem.AddPair('after', ContentToJson(mChange.After));
+    end;
+  end;
+end;
+
+class function TAtlasUndoFileStore.FromJson(const AValue: TJSONValue; out ASet: TAtlasChangeSet): Boolean;
+var
+  mFiles: TJSONArray;
+  mValue: TJSONValue;
+  mChange: TAtlasFileChange;
+begin
+  ASet := Default(TAtlasChangeSet);
+  Result := HeaderFromJson(AValue, ASet, mFiles);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mValue in mFiles do
+  begin
+    Result := ChangeFromJson(mValue, mChange);
+    if not Result then
+    begin
+      Exit;
+    end;
+    ASet.Files := ASet.Files + [mChange];
+  end;
+  Result := (ASet.Id > 0) and (Length(ASet.Files) > 0);
 end;
 
 end.

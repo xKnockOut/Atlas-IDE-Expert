@@ -93,11 +93,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasLearnedUsage.SetGroup(const AGroup: string);
-begin
-  FGroup := LowerCase(AGroup);
-end;
-
 function TAtlasLearnedUsage.KeyOf(const AId: string): string;
 begin
   Result := FGroup + cSeparator + LowerCase(AId);
@@ -150,6 +145,11 @@ begin
     end;
     FEntries.Remove(mVictim);
   end;
+end;
+
+procedure TAtlasLearnedUsage.SetGroup(const AGroup: string);
+begin
+  FGroup := LowerCase(AGroup);
 end;
 
 procedure TAtlasLearnedUsage.Accepted(const AId: string);
@@ -264,6 +264,15 @@ begin
   Result := FEntries.Count;
 end;
 
+procedure TAtlasLearnedUsage.Clear;
+begin
+  if FEntries.Count > 0 then
+  begin
+    FEntries.Clear;
+    FChanged := True;
+  end;
+end;
+
 function TAtlasLearnedUsage.FromJson(const AText: string): Boolean;
 var
   mRoot, mGroups, mPatterns, mItem: TJSONValue;
@@ -308,20 +317,6 @@ begin
   end;
 end;
 
-procedure TAtlasLearnedUsage.Clear;
-begin
-  if FEntries.Count > 0 then
-  begin
-    FEntries.Clear;
-    FChanged := True;
-  end;
-end;
-
-procedure TAtlasLearnedUsage.MarkSaved;
-begin
-  FChanged := False;
-end;
-
 function TAtlasLearnedUsage.ToJson: string;
 var
   mRoot, mGroups, mGroup, mItem: TJSONObject;
@@ -354,6 +349,11 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+procedure TAtlasLearnedUsage.MarkSaved;
+begin
+  FChanged := False;
 end;
 
 end.

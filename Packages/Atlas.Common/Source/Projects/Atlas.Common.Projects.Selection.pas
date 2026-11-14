@@ -94,6 +94,23 @@ begin
   inherited;
 end;
 
+procedure TProjectSelection.Save;
+begin
+  if FFileName = '' then
+  begin
+    Exit;
+  end;
+  try
+    TDirectory.CreateDirectory(ExtractFileDir(FFileName));
+    TFile.WriteAllText(FFileName, ToText, TEncoding.UTF8);
+  except
+    // Ohne Schreibrecht gilt die Wahl bis zum Neustart.
+    // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
+    on Exception do
+      Exit;
+  end;
+end;
+
 procedure TProjectSelection.LoadBuilds(ABuilds: TJSONObject);
 var
   mPair: TJSONPair;
@@ -214,23 +231,6 @@ begin
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
-  end;
-end;
-
-procedure TProjectSelection.Save;
-begin
-  if FFileName = '' then
-  begin
-    Exit;
-  end;
-  try
-    TDirectory.CreateDirectory(ExtractFileDir(FFileName));
-    TFile.WriteAllText(FFileName, ToText, TEncoding.UTF8);
-  except
-    // Ohne Schreibrecht gilt die Wahl bis zum Neustart.
-    // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
-    on Exception do
-      Exit;
   end;
 end;
 

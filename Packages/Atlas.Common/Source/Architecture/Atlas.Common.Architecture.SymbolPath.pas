@@ -403,6 +403,8 @@ begin
     end;
 end;
 
+{ TSymbolPathRun }
+
 constructor TSymbolPathRun.Create(ASearch: TSymbolPathSearch);
 begin
   inherited Create;
@@ -501,6 +503,16 @@ begin
   end;
 end;
 
+function TSymbolPathRun.ExpandBackward(ANode, ADepth: Integer; AWithCalls: Boolean; ANext: TList<Integer>): Boolean;
+begin
+  Reach(FEdges.PredecessorsOf(ANode), ADepth, ANext);
+  if AWithCalls then
+  begin
+    Reach(FCalls.CallersOf(ANode), ADepth, ANext);
+  end;
+  Result := FAbortReason = '';
+end;
+
 procedure TSymbolPathRun.Reach(const ANodes: TArray<Integer>; ADepth: Integer; ANext: TList<Integer>);
 var
   mNode: Integer;
@@ -514,16 +526,6 @@ begin
       ANext.Add(mNode);
     end;
   end;
-end;
-
-function TSymbolPathRun.ExpandBackward(ANode, ADepth: Integer; AWithCalls: Boolean; ANext: TList<Integer>): Boolean;
-begin
-  Reach(FEdges.PredecessorsOf(ANode), ADepth, ANext);
-  if AWithCalls then
-  begin
-    Reach(FCalls.CallersOf(ANode), ADepth, ANext);
-  end;
-  Result := FAbortReason = '';
 end;
 
 function TSymbolPathRun.Advance(var AFront: TList<Integer>; var ADepth: Integer; AWithCalls, AForward: Boolean)
@@ -703,6 +705,31 @@ begin
   end;
 end;
 
+procedure TSymbolPathRun.Route(AEnd: Integer; const ARequest: TSymbolPathRequest; var AResult: TSymbolPathResult);
+var
+  mOutcome: TSymbolPathOutcome;
+  mLength, mDepth: Integer;
+  mPaths: TArray<TSymbolPathStepRefs>;
+begin
+  AResult.Target := FTable.Node(AEnd);
+  FGoal := FTable.Targets(AEnd);
+  FEdges.Configure(ARequest.Via, ARequest.ThroughLibrary, TArray<Integer>.Create(FStart) + FGoal);
+  // Stufe 1: Kanten aus dem Index.
+  mOutcome := Search(False, AResult.MaxSteps, mLength, mDepth);
+  mPaths := nil;
+  if mOutcome = TSymbolPathOutcome.Found then
+  begin
+    mPaths := Collect(mLength, mDepth, False);
+  end;
+  // Stufe 2: nur ein kürzerer Weg über Aufrufe.
+  if (TSymbolPathEdgeKind.Calls in ARequest.Via) and (mOutcome <> TSymbolPathOutcome.Aborted) and
+    ((mOutcome = TSymbolPathOutcome.NoPath) or (mLength > 1)) then
+  begin
+    CallStage(mOutcome, mLength, mPaths, AResult);
+  end;
+  Report(mOutcome, mPaths, mLength, ARequest.All, AResult);
+end;
+
 procedure TSymbolPathRun.Report(AOutcome: TSymbolPathOutcome; const APaths: TArray<TSymbolPathStepRefs>;
   ALength: Integer; AAll: Boolean; var AResult: TSymbolPathResult);
 var
@@ -735,31 +762,6 @@ begin
     AResult.AbortReason := FAbortReason;
     AResult.SearchedSteps := FSearchedSteps;
   end;
-end;
-
-procedure TSymbolPathRun.Route(AEnd: Integer; const ARequest: TSymbolPathRequest; var AResult: TSymbolPathResult);
-var
-  mOutcome: TSymbolPathOutcome;
-  mLength, mDepth: Integer;
-  mPaths: TArray<TSymbolPathStepRefs>;
-begin
-  AResult.Target := FTable.Node(AEnd);
-  FGoal := FTable.Targets(AEnd);
-  FEdges.Configure(ARequest.Via, ARequest.ThroughLibrary, TArray<Integer>.Create(FStart) + FGoal);
-  // Stufe 1: Kanten aus dem Index.
-  mOutcome := Search(False, AResult.MaxSteps, mLength, mDepth);
-  mPaths := nil;
-  if mOutcome = TSymbolPathOutcome.Found then
-  begin
-    mPaths := Collect(mLength, mDepth, False);
-  end;
-  // Stufe 2: nur ein kürzerer Weg über Aufrufe.
-  if (TSymbolPathEdgeKind.Calls in ARequest.Via) and (mOutcome <> TSymbolPathOutcome.Aborted) and
-    ((mOutcome = TSymbolPathOutcome.NoPath) or (mLength > 1)) then
-  begin
-    CallStage(mOutcome, mLength, mPaths, AResult);
-  end;
-  Report(mOutcome, mPaths, mLength, ARequest.All, AResult);
 end;
 
 /// <summary>Mehrdeutig oder unbekannt: ANodes zur Angabe ASubject als Trefferliste.</summary>

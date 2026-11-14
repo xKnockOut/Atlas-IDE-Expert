@@ -67,6 +67,14 @@ uses
 
 { TAtlasAvJson }
 
+class function TAtlasAvJson.Params(const AFileName: string; ALine, APointerSize: Integer): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', TTextUris.FromPath(AFileName))));
+  Result.AddPair('line', TJSONNumber.Create(ALine));
+  Result.AddPair('pointerSize', TJSONNumber.Create(APointerSize));
+end;
+
 class function TAtlasAvJson.PointerSize(const APlatform: string): Integer;
 begin
   if StartsText('win64', Trim(APlatform)) then
@@ -77,14 +85,6 @@ begin
   begin
     Result := 4;
   end;
-end;
-
-class function TAtlasAvJson.Params(const AFileName: string; ALine, APointerSize: Integer): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', TTextUris.FromPath(AFileName))));
-  Result.AddPair('line', TJSONNumber.Create(ALine));
-  Result.AddPair('pointerSize', TJSONNumber.Create(APointerSize));
 end;
 
 function KindOf(const AName: string): TAtlasAvLinkKind;

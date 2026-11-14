@@ -161,6 +161,8 @@ begin
     CharInSet(AName[Length(cEventPrefix) + 1], ['A'..'Z']);
 end;
 
+{ TAtlasDesignerUsages }
+
 class function TAtlasDesignerUsages.KindAt(const ALine: string; ACharacter: Integer): TAtlasUsageKind;
 var
   mPos, mMembers: Integer;

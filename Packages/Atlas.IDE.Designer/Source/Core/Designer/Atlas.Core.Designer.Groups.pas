@@ -159,27 +159,6 @@ begin
   FSets.Changed := AValue;
 end;
 
-function TAtlasDesignerGroups.GroupsOf(const AForm: string): TArray<TAtlasSelectionSet>;
-begin
-  Result := FSets.SetsOf(AForm);
-end;
-
-function TAtlasDesignerGroups.IndexOf(const AForm, AMember: string): Integer;
-var
-  mGroups: TArray<TAtlasSelectionSet>;
-  mIndex: Integer;
-begin
-  mGroups := GroupsOf(AForm);
-  for mIndex := 0 to High(mGroups) do
-  begin
-    if Contains(mGroups[mIndex].Members, AMember) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 procedure TAtlasDesignerGroups.Prune(const AForm: string);
 var
   mGroups: TArray<TAtlasSelectionSet>;
@@ -215,6 +194,11 @@ begin
       Result := AName + ' ' + IntToStr(mNumber);
     end;
   until not mTaken;
+end;
+
+function TAtlasDesignerGroups.GroupsOf(const AForm: string): TArray<TAtlasSelectionSet>;
+begin
+  Result := FSets.SetsOf(AForm);
 end;
 
 function TAtlasDesignerGroups.Add(const AForm, AName: string; const AMembers: TArray<string>): Integer;
@@ -260,6 +244,22 @@ begin
   begin
     FSets.Delete(AForm, mIndex);
   end;
+end;
+
+function TAtlasDesignerGroups.IndexOf(const AForm, AMember: string): Integer;
+var
+  mGroups: TArray<TAtlasSelectionSet>;
+  mIndex: Integer;
+begin
+  mGroups := GroupsOf(AForm);
+  for mIndex := 0 to High(mGroups) do
+  begin
+    if Contains(mGroups[mIndex].Members, AMember) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TAtlasDesignerGroups.Expand(const AForm: string; const ASelection: TArray<string>): TArray<string>;

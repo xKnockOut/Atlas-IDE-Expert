@@ -155,21 +155,6 @@ end;
 
 { TAtlasIdeStatusLines }
 
-function TAtlasIdeStatusLines.Units: Integer;
-begin
-  Result := FUnits.Value;
-end;
-
-function TAtlasIdeStatusLines.StatusJson: string;
-begin
-  TMonitor.Enter(FUnits);
-  try
-    Result := FUnits.Json;
-  finally
-    TMonitor.Exit(FUnits);
-  end;
-end;
-
 constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
   const ASources: TAtlasStatusLineSources);
 begin
@@ -236,11 +221,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeStatusLines.Key(const AFileName: string): string;
-begin
-  Result := AnsiUpperCase(AFileName);
-end;
-
 procedure TAtlasIdeStatusLines.PollTick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Status,
@@ -250,11 +230,6 @@ begin
       StartQuery(nil);
       RefreshServer;
     end);
-end;
-
-function TAtlasIdeStatusLines.QueryNow(const ADone: TProc): Boolean;
-begin
-  Result := StartQuery(ADone);
 end;
 
 function TAtlasIdeStatusLines.StartQuery(const ADone: TProc): Boolean;
@@ -304,13 +279,6 @@ begin
     end);
 end;
 
-procedure TAtlasIdeStatusLines.Refresh;
-begin
-  RefreshServer;
-  RefreshIndex;
-  RefreshFile;
-end;
-
 procedure TAtlasIdeStatusLines.RefreshServer;
 var
   mInfo: TAtlasServerInfo;
@@ -357,6 +325,30 @@ begin
     TAtlasStatusLines.IndexSummary(mInfo), TAtlasStatusLines.IndexBrief(mInfo), TAtlasStatusLines.IndexDetail(mInfo));
 end;
 
+procedure TAtlasIdeStatusLines.RefreshFile;
+var
+  mInfo: TAtlasFileInfo;
+  mBytes: TBytes;
+begin
+  FActiveFile := ActiveFile;
+  mInfo := Default(TAtlasFileInfo);
+  mInfo.Name := ExtractFileName(FActiveFile);
+  mInfo.Known := DiskFormat(FActiveFile, mInfo.Format);
+  mInfo.HasTarget := mInfo.Known and FTargets.TryGetValue(Key(FActiveFile), mInfo.Target);
+  if mInfo.HasTarget then
+  begin
+    // Schon im gewählten Format: kein Pfeil.
+    try
+      mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
+      mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
+    except
+      on Exception do
+        ;
+    end;
+  end;
+  FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
+end;
+
 function TAtlasIdeStatusLines.ActiveFile: string;
 var
   mEditor: IOTAEditorServices;
@@ -399,30 +391,6 @@ begin
   mCached.Stamp := mStamp;
   FCache.AddOrSetValue(Key(AFileName), mCached);
   AFormat := mCached.Format;
-end;
-
-procedure TAtlasIdeStatusLines.RefreshFile;
-var
-  mInfo: TAtlasFileInfo;
-  mBytes: TBytes;
-begin
-  FActiveFile := ActiveFile;
-  mInfo := Default(TAtlasFileInfo);
-  mInfo.Name := ExtractFileName(FActiveFile);
-  mInfo.Known := DiskFormat(FActiveFile, mInfo.Format);
-  mInfo.HasTarget := mInfo.Known and FTargets.TryGetValue(Key(FActiveFile), mInfo.Target);
-  if mInfo.HasTarget then
-  begin
-    // Schon im gewählten Format: kein Pfeil.
-    try
-      mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
-      mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
-    except
-      on Exception do
-        ;
-    end;
-  end;
-  FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
 end;
 
 procedure TAtlasIdeStatusLines.ShowFormatMenu;
@@ -473,6 +441,74 @@ begin
     end);
 end;
 
+procedure TAtlasIdeStatusLines.MarkModified(const AFileName: string);
+var
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mSource: IOTASourceEditor;
+  mIndex: Integer;
+begin
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
+  begin
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mSource) and
+      SameText(mSource.FileName, AFileName) then
+    begin
+      mSource.MarkModified;
+    end;
+  end;
+end;
+
+class function TAtlasIdeStatusLines.Key(const AFileName: string): string;
+begin
+  Result := AnsiUpperCase(AFileName);
+end;
+
+procedure TAtlasIdeStatusLines.Refresh;
+begin
+  RefreshServer;
+  RefreshIndex;
+  RefreshFile;
+end;
+
+procedure TAtlasIdeStatusLines.Saved(const AFileName: string);
+var
+  mTarget: TAtlasFileFormat;
+  mBytes: TBytes;
+  mStamp: TDateTime;
+begin
+  if not FTargets.TryGetValue(Key(AFileName), mTarget) or not FileExists(AFileName) then
+  begin
+    Exit;
+  end;
+  mBytes := TAtlasTextFile.ReadAllBytes(AFileName);
+  if not TAtlasFileFormats.Satisfies(mBytes, mTarget) then
+  begin
+    mStamp := TFile.GetLastWriteTime(AFileName);
+    // Atomar: An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
+    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(mBytes, mTarget));
+    // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
+    TFile.SetLastWriteTime(AFileName, mStamp);
+    FCache.Remove(Key(AFileName));
+    if Assigned(FSources.Report) then
+    begin
+      FSources.Report(Format(UiText(TIdeStatusLinesText.SavedAs), [ExtractFileName(AFileName), mTarget.Text]));
+    end;
+  end;
+  if SameText(AFileName, FActiveFile) then
+  begin
+    RefreshFile;
+  end;
+end;
+
 procedure TAtlasIdeStatusLines.SetTarget(const AFileName: string; const ATarget: TAtlasFileFormat);
 var
   mBytes: TBytes;
@@ -506,60 +542,24 @@ begin
   RefreshFile;
 end;
 
-procedure TAtlasIdeStatusLines.MarkModified(const AFileName: string);
-var
-  mModules: IOTAModuleServices;
-  mModule: IOTAModule;
-  mSource: IOTASourceEditor;
-  mIndex: Integer;
+function TAtlasIdeStatusLines.Units: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  mModule := mModules.FindModule(AFileName);
-  if mModule = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mModule.ModuleFileCount - 1 do
-  begin
-    if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mSource) and
-      SameText(mSource.FileName, AFileName) then
-    begin
-      mSource.MarkModified;
-    end;
+  Result := FUnits.Value;
+end;
+
+function TAtlasIdeStatusLines.StatusJson: string;
+begin
+  TMonitor.Enter(FUnits);
+  try
+    Result := FUnits.Json;
+  finally
+    TMonitor.Exit(FUnits);
   end;
 end;
 
-procedure TAtlasIdeStatusLines.Saved(const AFileName: string);
-var
-  mTarget: TAtlasFileFormat;
-  mBytes: TBytes;
-  mStamp: TDateTime;
+function TAtlasIdeStatusLines.QueryNow(const ADone: TProc): Boolean;
 begin
-  if not FTargets.TryGetValue(Key(AFileName), mTarget) or not FileExists(AFileName) then
-  begin
-    Exit;
-  end;
-  mBytes := TAtlasTextFile.ReadAllBytes(AFileName);
-  if not TAtlasFileFormats.Satisfies(mBytes, mTarget) then
-  begin
-    mStamp := TFile.GetLastWriteTime(AFileName);
-    // Atomar: An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
-    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(mBytes, mTarget));
-    // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
-    TFile.SetLastWriteTime(AFileName, mStamp);
-    FCache.Remove(Key(AFileName));
-    if Assigned(FSources.Report) then
-    begin
-      FSources.Report(Format(UiText(TIdeStatusLinesText.SavedAs), [ExtractFileName(AFileName), mTarget.Text]));
-    end;
-  end;
-  if SameText(AFileName, FActiveFile) then
-  begin
-    RefreshFile;
-  end;
+  Result := StartQuery(ADone);
 end;
 
 initialization

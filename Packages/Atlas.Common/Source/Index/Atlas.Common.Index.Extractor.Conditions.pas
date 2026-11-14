@@ -295,14 +295,6 @@ end;
 
 { TIndexConditions }
 
-class function TIndexConditions.InRange(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
-begin
-  Result := ((APosition.Line > ARange.StartPos.Line) or
-    ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
-    ((APosition.Line < ARange.EndPos.Line) or
-    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character < ARange.EndPos.Character)));
-end;
-
 class function TIndexConditions.BlankInactive(const AText, AFileName: string; const ADefines: TArray<string>;
   const AResolver: TIncludeResolver; out AIncludes: TArray<string>;
   out AConditionals: TArray<TConditionalRange>): string;
@@ -374,6 +366,14 @@ begin
   end;
 end;
 
+class function TIndexConditions.InRange(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
+begin
+  Result := ((APosition.Line > ARange.StartPos.Line) or
+    ((APosition.Line = ARange.StartPos.Line) and (APosition.Character >= ARange.StartPos.Character))) and
+    ((APosition.Line < ARange.EndPos.Line) or
+    ((APosition.Line = ARange.EndPos.Line) and (APosition.Character < ARange.EndPos.Character)));
+end;
+
 { TConditionAnnotator }
 
 constructor TConditionAnnotator.Create(const ASymbols: TArray<TIndexSymbol>; const ALines: TArray<string>);
@@ -398,11 +398,6 @@ begin
   FUnavailable.Free;
   FKnown.Free;
   inherited;
-end;
-
-function TConditionAnnotator.Unavailable: TArray<TIndexSymbol>;
-begin
-  Result := FUnavailable.ToArray;
 end;
 
 procedure TConditionAnnotator.ReadSections;
@@ -709,6 +704,11 @@ begin
   begin
     ScanDeclarations(AConditional);
   end;
+end;
+
+function TConditionAnnotator.Unavailable: TArray<TIndexSymbol>;
+begin
+  Result := FUnavailable.ToArray;
 end;
 
 end.

@@ -152,6 +152,8 @@ type
     function PieceAt(AOffset: Integer; out APiece: TSqlPiece): Boolean;
   end;
 
+{ TSqlBuild }
+
 constructor TSqlBuild.Create(ASqlContext: Boolean);
 begin
   inherited Create;
@@ -651,6 +653,35 @@ begin
   end;
 end;
 
+procedure TSqlExpressions.Evaluate(AFirst, ALast: Integer; ABuild: TSqlBuild);
+var
+  mIndex: Integer;
+begin
+  mIndex := AFirst;
+  while mIndex <= ALast do
+  begin
+    if FTokens[mIndex].Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
+    begin
+      AddLiteral(mIndex, ABuild);
+    end
+    else if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
+    begin
+      ABuild.AddHole(mIndex);
+      mIndex := MatchingClose(mIndex);
+    end
+    else if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+    begin
+      mIndex := EvaluateIdentifier(mIndex, ALast, ABuild);
+    end
+    else if not FTokens[mIndex].IsSymbol('+') then
+    begin
+      // + verkettet, alles andere ist unbekannt.
+      ABuild.AddHole(mIndex);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
 procedure TSqlExpressions.AddLiteral(AIndex: Integer; ABuild: TSqlBuild);
 var
   mPlain: string;
@@ -663,6 +694,20 @@ begin
   begin
     ABuild.AddHole(AIndex);
   end;
+end;
+
+/// <summary>Aktueller Wert des Namens AName in AValues; False ohne oder nach einer Zuweisung ohne Literal.</summary>
+function CurrentValue(AValues: TObjectDictionary<string, TNamedValue>; const AName: string;
+  out ABuild: TSqlBuild): Boolean;
+var
+  mValue: TNamedValue;
+begin
+  ABuild := nil;
+  if AValues.TryGetValue(LowerCase(AName), mValue) then
+  begin
+    ABuild := mValue.Current;
+  end;
+  Result := ABuild <> nil;
 end;
 
 /// <summary>Format(…) oder Concat(…) ab dem Namen bis ALast; liefert die schließende Klammer.</summary>
@@ -692,20 +737,6 @@ begin
   finally
     mInner.Free;
   end;
-end;
-
-/// <summary>Aktueller Wert des Namens AName in AValues; False ohne oder nach einer Zuweisung ohne Literal.</summary>
-function CurrentValue(AValues: TObjectDictionary<string, TNamedValue>; const AName: string;
-  out ABuild: TSqlBuild): Boolean;
-var
-  mValue: TNamedValue;
-begin
-  ABuild := nil;
-  if AValues.TryGetValue(LowerCase(AName), mValue) then
-  begin
-    ABuild := mValue.Current;
-  end;
-  Result := ABuild <> nil;
 end;
 
 /// <summary>Liest AName den Text eines Empfängers (X.SQL.Text, X.CommandText)? Dann dessen Text anhängen.</summary>
@@ -767,35 +798,6 @@ begin
   else
   begin
     EvaluateName(mName, AIndex, mLast, ABuild);
-  end;
-end;
-
-procedure TSqlExpressions.Evaluate(AFirst, ALast: Integer; ABuild: TSqlBuild);
-var
-  mIndex: Integer;
-begin
-  mIndex := AFirst;
-  while mIndex <= ALast do
-  begin
-    if FTokens[mIndex].Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
-    begin
-      AddLiteral(mIndex, ABuild);
-    end
-    else if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
-    begin
-      ABuild.AddHole(mIndex);
-      mIndex := MatchingClose(mIndex);
-    end
-    else if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
-    begin
-      mIndex := EvaluateIdentifier(mIndex, ALast, ABuild);
-    end
-    else if not FTokens[mIndex].IsSymbol('+') then
-    begin
-      // + verkettet, alles andere ist unbekannt.
-      ABuild.AddHole(mIndex);
-    end;
-    Inc(mIndex);
   end;
 end;
 
@@ -1270,18 +1272,6 @@ begin
   FinishNamed(FConstants, 0, High(FTokens));
 end;
 
-procedure TSqlScan.Run;
-begin
-  if Length(FTokens) = 0 then
-  begin
-    Exit;
-  end;
-  ComputeSegments;
-  CollectConstants;
-  CollectKeys;
-  Scan;
-end;
-
 /// <summary>Wird der Empfänger des Funds in einem anderen Segment ergänzt oder weitergegeben?</summary>
 function TSqlScan.TouchedElsewhere(const AFound: TSqlFound): Boolean;
 var
@@ -1296,6 +1286,18 @@ begin
       Result := Result or (mSegment <> AFound.Segment);
     end;
   end;
+end;
+
+procedure TSqlScan.Run;
+begin
+  if Length(FTokens) = 0 then
+  begin
+    Exit;
+  end;
+  ComputeSegments;
+  CollectConstants;
+  CollectKeys;
+  Scan;
 end;
 
 procedure TSqlScan.Report(const AReport: IRuleReport; const AFixer: TSqlFixer);
@@ -1539,6 +1541,8 @@ end;
 const
   // Feldarten, die nicht aus der Abfrage kommen (TFieldKind).
   cComputedFieldKinds: array[0..3] of string = ('fkCalculated', 'fkLookup', 'fkInternalCalc', 'fkAggregate');
+
+{ TSqlSelectStarRule }
 
 function TSqlSelectStarRule.Descriptor: TRuleDescriptor;
 begin

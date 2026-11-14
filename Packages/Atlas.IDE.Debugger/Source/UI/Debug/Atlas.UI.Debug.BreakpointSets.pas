@@ -109,32 +109,10 @@ begin
   end;
 end;
 
-function TAtlasBreakpointSetDialog.TitleText: string;
+procedure TAtlasBreakpointSetDialog.DoShow;
 begin
-  case FMode of
-    TAtlasBreakpointSetMode.Save:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSaveTitle);
-    TAtlasBreakpointSetMode.Add:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAddTitle);
-    TAtlasBreakpointSetMode.Delete:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDeleteTitle);
-  else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSwitchTitle);
-  end;
-end;
-
-function TAtlasBreakpointSetDialog.OkText: string;
-begin
-  case FMode of
-    TAtlasBreakpointSetMode.Save:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSave);
-    TAtlasBreakpointSetMode.Add:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAdd);
-    TAtlasBreakpointSetMode.Delete:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDelete);
-  else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSwitch);
-  end;
+  inherited;
+  Fill;
 end;
 
 procedure TAtlasBreakpointSetDialog.CreateSaveRows;
@@ -186,16 +164,44 @@ begin
   mCancel.ModalResult := mrCancel;
 end;
 
-class function TAtlasBreakpointSetDialog.ItemText(const ASet: TAtlasBreakpointSet): string;
+procedure TAtlasBreakpointSetDialog.ListDblClick(Sender: TObject);
 begin
-  if ASet.Branch <> '' then
+  OkClick(Sender);
+end;
+
+procedure TAtlasBreakpointSetDialog.OkClick(Sender: TObject);
+begin
+  if ChosenName <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetItemBranch,
-      [ASet.Name, Length(ASet.Entries), ASet.Branch]);
-  end
+    ModalResult := mrOk;
+  end;
+end;
+
+function TAtlasBreakpointSetDialog.TitleText: string;
+begin
+  case FMode of
+    TAtlasBreakpointSetMode.Save:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSaveTitle);
+    TAtlasBreakpointSetMode.Add:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAddTitle);
+    TAtlasBreakpointSetMode.Delete:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDeleteTitle);
   else
-  begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetItem, [ASet.Name, Length(ASet.Entries)]);
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSwitchTitle);
+  end;
+end;
+
+function TAtlasBreakpointSetDialog.OkText: string;
+begin
+  case FMode of
+    TAtlasBreakpointSetMode.Save:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSave);
+    TAtlasBreakpointSetMode.Add:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAdd);
+    TAtlasBreakpointSetMode.Delete:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDelete);
+  else
+    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSwitch);
   end;
 end;
 
@@ -249,12 +255,6 @@ begin
   end;
 end;
 
-procedure TAtlasBreakpointSetDialog.DoShow;
-begin
-  inherited;
-  Fill;
-end;
-
 function TAtlasBreakpointSetDialog.ChosenName: string;
 begin
   Result := '';
@@ -277,16 +277,16 @@ begin
   end;
 end;
 
-procedure TAtlasBreakpointSetDialog.ListDblClick(Sender: TObject);
+class function TAtlasBreakpointSetDialog.ItemText(const ASet: TAtlasBreakpointSet): string;
 begin
-  OkClick(Sender);
-end;
-
-procedure TAtlasBreakpointSetDialog.OkClick(Sender: TObject);
-begin
-  if ChosenName <> '' then
+  if ASet.Branch <> '' then
   begin
-    ModalResult := mrOk;
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetItemBranch,
+      [ASet.Name, Length(ASet.Entries), ASet.Branch]);
+  end
+  else
+  begin
+    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetItem, [ASet.Name, Length(ASet.Entries)]);
   end;
 end;
 

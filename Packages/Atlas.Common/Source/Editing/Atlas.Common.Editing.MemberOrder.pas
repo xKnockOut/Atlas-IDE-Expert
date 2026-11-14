@@ -547,6 +547,8 @@ begin
   end;
 end;
 
+{ TMemberOrder }
+
 class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean;
 var

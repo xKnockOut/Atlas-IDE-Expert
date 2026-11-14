@@ -175,9 +175,42 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeIssueLookups.Clear;
+procedure TAtlasIdeIssueLookups.LookedUp(const AId: string; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
+  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+var
+  mWaiting: TArray<TAtlasIssueLookupDone>;
+  mDone: TAtlasIssueLookupDone;
+  mDetails, mCached: TAtlasTrackerDetails;
 begin
-  FLookups.Clear;
+  FContext.ReleaseThreads(False);
+  if not FContext.Started or not FLookups.TryGetValue(AId, mWaiting) then
+  begin
+    Exit;
+  end;
+  FLookups.Remove(AId);
+  mDetails := ADetails;
+  if ASucceeded then
+  begin
+    mDetails.Fetched := TAtlasIdeIssueContext.NowUtc;
+    // Ohne Kommentare gefragt: die der Vorschau nicht verlieren.
+    if not mDetails.CommentsLoaded and FContext.Cache.Get(ATarget, mDetails.Key, TAtlasIdeIssueContext.NowUtc,
+      mCached) and mCached.CommentsLoaded then
+    begin
+      mDetails.CommentsLoaded := True;
+      mDetails.Comments := mCached.Comments;
+    end;
+    FContext.Cache.Put(ATarget, mDetails);
+  end
+  else if AError = TAtlasCiFetchError.NotFound then
+  begin
+    FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
+  end;
+  // Anonym: nie Kennung oder Titel.
+  TAtlasGuard.Log('Issue-Kennung: ' + TAtlasIdeIssueContext.LoadState(ASucceeded, AError));
+  for mDone in mWaiting do
+  begin
+    Deliver(mDone, ASucceeded, mDetails, AError);
+  end;
 end;
 
 function TAtlasIdeIssueLookups.Peek(const ATarget: TAtlasTrackerTarget; const AKey: string;
@@ -227,42 +260,9 @@ begin
   StartLookup(Self, mId, ATarget, AKey, mProvider, mTransport);
 end;
 
-procedure TAtlasIdeIssueLookups.LookedUp(const AId: string; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
-  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
-var
-  mWaiting: TArray<TAtlasIssueLookupDone>;
-  mDone: TAtlasIssueLookupDone;
-  mDetails, mCached: TAtlasTrackerDetails;
+procedure TAtlasIdeIssueLookups.Clear;
 begin
-  FContext.ReleaseThreads(False);
-  if not FContext.Started or not FLookups.TryGetValue(AId, mWaiting) then
-  begin
-    Exit;
-  end;
-  FLookups.Remove(AId);
-  mDetails := ADetails;
-  if ASucceeded then
-  begin
-    mDetails.Fetched := TAtlasIdeIssueContext.NowUtc;
-    // Ohne Kommentare gefragt: die der Vorschau nicht verlieren.
-    if not mDetails.CommentsLoaded and FContext.Cache.Get(ATarget, mDetails.Key, TAtlasIdeIssueContext.NowUtc,
-      mCached) and mCached.CommentsLoaded then
-    begin
-      mDetails.CommentsLoaded := True;
-      mDetails.Comments := mCached.Comments;
-    end;
-    FContext.Cache.Put(ATarget, mDetails);
-  end
-  else if AError = TAtlasCiFetchError.NotFound then
-  begin
-    FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
-  end;
-  // Anonym: nie Kennung oder Titel.
-  TAtlasGuard.Log('Issue-Kennung: ' + TAtlasIdeIssueContext.LoadState(ASucceeded, AError));
-  for mDone in mWaiting do
-  begin
-    Deliver(mDone, ASucceeded, mDetails, AError);
-  end;
+  FLookups.Clear;
 end;
 
 end.

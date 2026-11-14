@@ -25,6 +25,8 @@ implementation
 uses
   Atlas.Text.LogMarks;
 
+{ TLogEntryText }
+
 class function TLogEntryText.Plain(const AEntry: TLogEntry): string;
 begin
   Result := TLogMarks.Plain(AEntry.Text);

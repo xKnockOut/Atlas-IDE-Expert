@@ -593,6 +593,8 @@ type
       AWholeWord: Boolean): TFindQuery; static;
   end;
 
+{ TFindQuery }
+
 class function TFindQuery.Create(const ANeedle: string; AFromLine, AFromCharacter: Integer; AMatchCase,
   AWholeWord: Boolean): TFindQuery;
 begin

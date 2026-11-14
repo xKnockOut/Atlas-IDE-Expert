@@ -76,6 +76,8 @@ const
     (De: 'Datei nicht ersetzbar (gesperrt oder schreibgeschützt)';
     En: 'File cannot be replaced (locked or read-only)'));
 
+{ TLinterFormatting }
+
 class function TLinterFormatting.KindOf(const AOptions: TCommandLineOptions; out AKind: TFormatOutputKind): Boolean;
 begin
   AKind := TFormatOutputKind.Text;

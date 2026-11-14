@@ -195,51 +195,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeReassigned.Install(const ASession: TAtlasReassignedSessionFunc);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeReassigned.Create(ASession);
-  end;
-end;
-
-class procedure TAtlasIdeReassigned.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeReassigned.Installed: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class procedure TAtlasIdeReassigned.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-class function TAtlasIdeReassigned.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
-end;
-
-procedure TAtlasIdeReassigned.Clear;
-begin
-  FSet := Default(TAtlasReassignedSet);
-  FShownFile := '';
-  FLines := nil;
-  FAskedKey := '';
-  FAskedRange := TAtlasReassignedRange.Whole;
-end;
-
 procedure TAtlasIdeReassigned.TimerTick(Sender: TObject);
 begin
   try
@@ -247,6 +202,51 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Reassigned, E);
+  end;
+end;
+
+procedure TAtlasIdeReassigned.Update;
+var
+  mView: IOTAEditView;
+  mSnapshot: TAtlasEditorSnapshot;
+  mTargetsText, mStyleText, mColorText, mKey: string;
+  mTargets: TAtlasReassignedTargets;
+  mFirst, mLast: Integer;
+begin
+  mView := nil;
+  if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
+    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
+  begin
+    mView := TAtlasEditorBuffer.ActiveView;
+  end;
+  if mView = nil then
+  begin
+    // Aus oder kein Editor vorn: nichts zeigen, beim Wiederkommen neu fragen.
+    Forget;
+    Exit;
+  end;
+  // Kein Quelltext vorn: Die Linien der Quelldatei bleiben.
+  if (mView.Buffer = nil) or not IsSource(mView.Buffer.FileName) then
+  begin
+    Exit;
+  end;
+  ApplyStyle(mStyleText, mColorText);
+  mSnapshot := TAtlasEditorSnapshots.Get(mView);
+  if not Settled(mSnapshot) then
+  begin
+    Exit;
+  end;
+  mTargets := TAtlasReassignedNames.ParseTargets(mTargetsText);
+  mKey := Format('%s|%d|%s', [FFileName, FVersion, TAtlasReassignedNames.TargetsText(mTargets)]);
+  mFirst := mView.TopRow - 1;
+  mLast := Max(mFirst, mView.BottomRow - 1);
+  // Nur der sichtbare Teil mit Rand: Die ganze Datei lief in großen Units ins Zeitlimit.
+  if (mKey <> FAskedKey) or not FAskedRange.Contains(mFirst, mLast) then
+  begin
+    FAskedKey := mKey;
+    FAskedRange := TAtlasReassignedRange.Around(mFirst, mLast);
+    FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+    Ask(mSnapshot.Text, mTargets, FAskedRange);
   end;
 end;
 
@@ -299,119 +299,13 @@ begin
   Result := (mMoment - FChangedAt >= cQuietMs) and FRetryAt.Reached;
 end;
 
-procedure TAtlasIdeReassigned.Update;
-var
-  mView: IOTAEditView;
-  mSnapshot: TAtlasEditorSnapshot;
-  mTargetsText, mStyleText, mColorText, mKey: string;
-  mTargets: TAtlasReassignedTargets;
-  mFirst, mLast: Integer;
+procedure TAtlasIdeReassigned.Clear;
 begin
-  mView := nil;
-  if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
-    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
-  begin
-    mView := TAtlasEditorBuffer.ActiveView;
-  end;
-  if mView = nil then
-  begin
-    // Aus oder kein Editor vorn: nichts zeigen, beim Wiederkommen neu fragen.
-    Forget;
-    Exit;
-  end;
-  // Kein Quelltext vorn: Die Linien der Quelldatei bleiben.
-  if (mView.Buffer = nil) or not IsSource(mView.Buffer.FileName) then
-  begin
-    Exit;
-  end;
-  ApplyStyle(mStyleText, mColorText);
-  mSnapshot := TAtlasEditorSnapshots.Get(mView);
-  if not Settled(mSnapshot) then
-  begin
-    Exit;
-  end;
-  mTargets := TAtlasReassignedNames.ParseTargets(mTargetsText);
-  mKey := Format('%s|%d|%s', [FFileName, FVersion, TAtlasReassignedNames.TargetsText(mTargets)]);
-  mFirst := mView.TopRow - 1;
-  mLast := Max(mFirst, mView.BottomRow - 1);
-  // Nur der sichtbare Teil mit Rand: Die ganze Datei lief in großen Units ins Zeitlimit.
-  if (mKey <> FAskedKey) or not FAskedRange.Contains(mFirst, mLast) then
-  begin
-    FAskedKey := mKey;
-    FAskedRange := TAtlasReassignedRange.Around(mFirst, mLast);
-    FTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
-    Ask(mSnapshot.Text, mTargets, FAskedRange);
-  end;
-end;
-
-/// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
-function Asker(ASession: TLspSession; const AArguments: string; ARequest: Integer;
-  const AFileName, AText: string): TThread;
-begin
-  Result := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mAnswer: TJSONValue;
-      mFound: TAtlasReassignedSet;
-      mFailed: Boolean;
-    begin
-      mFound := Default(TAtlasReassignedSet);
-      mFailed := False;
-      try
-        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.cCommand, AArguments, TAtlasIdeReassigned.cTimeoutMs);
-        try
-          mFound := TAtlasReassignedSet.FromJson(mAnswer);
-        finally
-          mAnswer.Free;
-        end;
-      except
-        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
-        mFailed := True;
-      end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen.
-      TAtlasMainThread.Queue(TAtlasFeature.Reassigned,
-        procedure
-        begin
-          if TAtlasIdeReassigned.FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.Reassigned,
-              procedure
-              begin
-                if TAtlasIdeReassigned.FInstance <> nil then
-                begin
-                  TAtlasIdeReassigned.FInstance.Accept(ARequest, AFileName, AText, mFound, mFailed);
-                end;
-              end);
-          end;
-        end);
-    end);
-end;
-
-procedure TAtlasIdeReassigned.Ask(const AText: string; ATargets: TAtlasReassignedTargets;
-  const ARange: TAtlasReassignedRange);
-var
-  mSession: TLspSession;
-  mWorker: TThread;
-begin
-  if not Assigned(FSession) then
-  begin
-    Exit;
-  end;
-  mSession := FSession();
-  if mSession = nil then
-  begin
-    // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
-    FAskedKey := '';
-    FRetryAt := TAtlasDeadline.After(cRetryMs);
-    Exit;
-  end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  mSession.Sync(FFileName, AText);
-  FWorkers.Prune;
-  Inc(FRequest);
-  mWorker := Asker(mSession, TAtlasReassigned.Arguments(TLspSession.PathToUri(FFileName), ATargets, ARange),
-    FRequest, FFileName, AText);
-  FWorkers.Start(mWorker);
+  FSet := Default(TAtlasReassignedSet);
+  FShownFile := '';
+  FLines := nil;
+  FAskedKey := '';
+  FAskedRange := TAtlasReassignedRange.Whole;
 end;
 
 procedure TAtlasIdeReassigned.Accept(ARequest: Integer; const AFileName, AText: string;
@@ -525,6 +419,112 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Reassigned, E);
   end;
+end;
+
+class function TAtlasIdeReassigned.IsSource(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
+end;
+
+/// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
+function Asker(ASession: TLspSession; const AArguments: string; ARequest: Integer;
+  const AFileName, AText: string): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mAnswer: TJSONValue;
+      mFound: TAtlasReassignedSet;
+      mFailed: Boolean;
+    begin
+      mFound := Default(TAtlasReassignedSet);
+      mFailed := False;
+      try
+        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.cCommand, AArguments, TAtlasIdeReassigned.cTimeoutMs);
+        try
+          mFound := TAtlasReassignedSet.FromJson(mAnswer);
+        finally
+          mAnswer.Free;
+        end;
+      except
+        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): später noch einmal, der Editor bleibt frei.
+        mFailed := True;
+      end;
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
+      TAtlasMainThread.Queue(TAtlasFeature.Reassigned,
+        procedure
+        begin
+          if TAtlasIdeReassigned.FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.Reassigned,
+              procedure
+              begin
+                if TAtlasIdeReassigned.FInstance <> nil then
+                begin
+                  TAtlasIdeReassigned.FInstance.Accept(ARequest, AFileName, AText, mFound, mFailed);
+                end;
+              end);
+          end;
+        end);
+    end);
+end;
+
+procedure TAtlasIdeReassigned.Ask(const AText: string; ATargets: TAtlasReassignedTargets;
+  const ARange: TAtlasReassignedRange);
+var
+  mSession: TLspSession;
+  mWorker: TThread;
+begin
+  if not Assigned(FSession) then
+  begin
+    Exit;
+  end;
+  mSession := FSession();
+  if mSession = nil then
+  begin
+    // Server läuft (noch) nicht: beim nächsten Takt nach der Wartezeit noch einmal.
+    FAskedKey := '';
+    FRetryAt := TAtlasDeadline.After(cRetryMs);
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(FFileName, AText);
+  FWorkers.Prune;
+  Inc(FRequest);
+  mWorker := Asker(mSession, TAtlasReassigned.Arguments(TLspSession.PathToUri(FFileName), ATargets, ARange),
+    FRequest, FFileName, AText);
+  FWorkers.Start(mWorker);
+end;
+
+class procedure TAtlasIdeReassigned.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+class procedure TAtlasIdeReassigned.Install(const ASession: TAtlasReassignedSessionFunc);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeReassigned.Create(ASession);
+  end;
+end;
+
+class procedure TAtlasIdeReassigned.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeReassigned.Installed: Boolean;
+begin
+  Result := FInstance <> nil;
 end;
 
 end.

@@ -335,25 +335,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeLabelPairs.Remember(ARoot: TComponent);
-var
-  mIndex: Integer;
-begin
-  FRoot := ARoot;
-  FBounds.Clear;
-  if ARoot = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
-  begin
-    if ARoot.Components[mIndex] is TControl then
-    begin
-      FBounds.AddOrSetValue(ARoot.Components[mIndex].Name, TControl(ARoot.Components[mIndex]).BoundsRect);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeLabelPairs.Changed;
 var
   mOwner: TAtlasIdeLabelPairs;
@@ -407,6 +388,25 @@ begin
     end;
   end;
   Remember(mRoot);
+end;
+
+procedure TAtlasIdeLabelPairs.Remember(ARoot: TComponent);
+var
+  mIndex: Integer;
+begin
+  FRoot := ARoot;
+  FBounds.Clear;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  begin
+    if ARoot.Components[mIndex] is TControl then
+    begin
+      FBounds.AddOrSetValue(ARoot.Components[mIndex].Name, TControl(ARoot.Components[mIndex]).BoundsRect);
+    end;
+  end;
 end;
 
 /// <summary>Labels von AField nach dem alten Stand (FocusControl oder Lage).</summary>
@@ -774,24 +774,6 @@ begin
   end;
 end;
 
-function TAtlasIdeLabelPairs.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := FSnapshot.CanRestore or ((Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FCreatedFile));
-end;
-
-function TAtlasIdeLabelPairs.CanCreate: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and (Length(Unlabeled(mRoot,
-    TAtlasDesignerAccess.Selection(mEditor, mRoot), TAtlasIdeSettings.Current.DesignerLabelPairsPairDistance)) > 0);
-end;
-
 procedure TAtlasIdeLabelPairs.DoUndo;
 var
   mEditor: IOTAFormEditor;
@@ -844,6 +826,24 @@ begin
     TAtlasPairsCommand.Undo:
       DoUndo;
   end;
+end;
+
+function TAtlasIdeLabelPairs.CanUndo: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := FSnapshot.CanRestore or ((Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    SameText(mEditor.FileName, FCreatedFile));
+end;
+
+function TAtlasIdeLabelPairs.CanCreate: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and (Length(Unlabeled(mRoot,
+    TAtlasDesignerAccess.Selection(mEditor, mRoot), TAtlasIdeSettings.Current.DesignerLabelPairsPairDistance)) > 0);
 end;
 
 end.

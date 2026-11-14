@@ -291,11 +291,6 @@ end;
 
 { TAtlasCompletionProviders }
 
-class function TAtlasCompletionProviders.DefaultName: string;
-begin
-  Result := UiText(TCompositeText.Completion);
-end;
-
 constructor TAtlasCompletionProviders.Create;
 begin
   inherited Create;
@@ -308,63 +303,6 @@ begin
   Cancel;
   FLock.Free;
   inherited;
-end;
-
-procedure TAtlasCompletionProviders.Add(const AProvider: IAtlasCompletionProvider);
-var
-  mEntry: TEntry;
-  mNamed: IAtlasNamedProvider;
-begin
-  mEntry.Provider := AProvider;
-  mEntry.Name := DefaultName;
-  if Supports(AProvider, IAtlasNamedProvider, mNamed) and (mNamed.ProviderName <> '') then
-  begin
-    mEntry.Name := mNamed.ProviderName;
-  end;
-  mEntry.Running := TRunning.Create;
-  mEntry.RunningRef := mEntry.Running;
-  FLock.Enter;
-  try
-    FProviders := FProviders + [mEntry];
-  finally
-    FLock.Leave;
-  end;
-end;
-
-class function TAtlasCompletionProviders.Work(const AEntry: TEntry; const AContext: TAtlasContext;
-  const APart: IAtlasCompletionSink): TProc;
-var
-  mProvider: IAtlasCompletionProvider;
-  mPart: IAtlasCompletionSink;
-  mContext: TAtlasContext;
-  mRunning: TRunning;
-  mRunningRef: IInterface;
-  mName: string;
-begin
-  mProvider := AEntry.Provider;
-  mPart := APart;
-  mContext := AContext;
-  mRunning := AEntry.Running;
-  mRunningRef := AEntry.RunningRef;
-  mName := AEntry.Name;
-  Result :=
-    procedure
-    var
-      mStarted: Int64;
-    begin
-      // Diagnose-Fenster, Reiter „Hintergrund“: Arbeitszeit der Quelle, auch über dem Zeitlimit.
-      mStarted := TAtlasPluginTimings.StampIfEnabled;
-      try
-        mProvider.Query(mContext, mPart);
-      finally
-        TAtlasPluginTimings.NoteSource(mName, mStarted);
-        // Über mRunningRef lebt der Zustand, auch wenn die Quellen inzwischen freigegeben sind.
-        if mRunningRef <> nil then
-        begin
-          TInterlocked.Exchange(mRunning.Active, 0);
-        end;
-      end;
-    end;
 end;
 
 procedure TAtlasCompletionProviders.Abandon(const AEntry: TEntry; const APart: IAtlasCompletionSink);
@@ -416,6 +354,68 @@ begin
       end;
   else
     Abandon(AEntry, mPart);
+  end;
+end;
+
+class function TAtlasCompletionProviders.Work(const AEntry: TEntry; const AContext: TAtlasContext;
+  const APart: IAtlasCompletionSink): TProc;
+var
+  mProvider: IAtlasCompletionProvider;
+  mPart: IAtlasCompletionSink;
+  mContext: TAtlasContext;
+  mRunning: TRunning;
+  mRunningRef: IInterface;
+  mName: string;
+begin
+  mProvider := AEntry.Provider;
+  mPart := APart;
+  mContext := AContext;
+  mRunning := AEntry.Running;
+  mRunningRef := AEntry.RunningRef;
+  mName := AEntry.Name;
+  Result :=
+    procedure
+    var
+      mStarted: Int64;
+    begin
+      // Diagnose-Fenster, Reiter „Hintergrund“: Arbeitszeit der Quelle, auch über dem Zeitlimit.
+      mStarted := TAtlasPluginTimings.StampIfEnabled;
+      try
+        mProvider.Query(mContext, mPart);
+      finally
+        TAtlasPluginTimings.NoteSource(mName, mStarted);
+        // Über mRunningRef lebt der Zustand, auch wenn die Quellen inzwischen freigegeben sind.
+        if mRunningRef <> nil then
+        begin
+          TInterlocked.Exchange(mRunning.Active, 0);
+        end;
+      end;
+    end;
+end;
+
+class function TAtlasCompletionProviders.DefaultName: string;
+begin
+  Result := UiText(TCompositeText.Completion);
+end;
+
+procedure TAtlasCompletionProviders.Add(const AProvider: IAtlasCompletionProvider);
+var
+  mEntry: TEntry;
+  mNamed: IAtlasNamedProvider;
+begin
+  mEntry.Provider := AProvider;
+  mEntry.Name := DefaultName;
+  if Supports(AProvider, IAtlasNamedProvider, mNamed) and (mNamed.ProviderName <> '') then
+  begin
+    mEntry.Name := mNamed.ProviderName;
+  end;
+  mEntry.Running := TRunning.Create;
+  mEntry.RunningRef := mEntry.Running;
+  FLock.Enter;
+  try
+    FProviders := FProviders + [mEntry];
+  finally
+    FLock.Leave;
   end;
 end;
 

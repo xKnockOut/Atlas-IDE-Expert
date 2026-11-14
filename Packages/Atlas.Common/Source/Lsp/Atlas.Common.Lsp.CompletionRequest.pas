@@ -386,26 +386,6 @@ begin
   FUnitIndexReady := False;
 end;
 
-function TCompletionRequest.Lines: TArray<string>;
-var
-  mIndex: Integer;
-begin
-  if not FLinesReady then
-  begin
-    FLines := nil;
-    FLines := FText.Split([#10]);
-    for mIndex := 0 to High(FLines) do
-    begin
-      if FLines[mIndex].EndsWith(#13) then
-      begin
-        FLines[mIndex] := Copy(FLines[mIndex], 1, Length(FLines[mIndex]) - 1);
-      end;
-    end;
-    FLinesReady := True;
-  end;
-  Result := FLines;
-end;
-
 function TCompletionRequest.LineText(ALine: Integer): string;
 begin
   Lines;
@@ -435,6 +415,26 @@ begin
     Inc(mStop);
   end;
   Result := Copy(FText, mStart, Min(FPosition.Character, mStop - mStart));
+end;
+
+function TCompletionRequest.Lines: TArray<string>;
+var
+  mIndex: Integer;
+begin
+  if not FLinesReady then
+  begin
+    FLines := nil;
+    FLines := FText.Split([#10]);
+    for mIndex := 0 to High(FLines) do
+    begin
+      if FLines[mIndex].EndsWith(#13) then
+      begin
+        FLines[mIndex] := Copy(FLines[mIndex], 1, Length(FLines[mIndex]) - 1);
+      end;
+    end;
+    FLinesReady := True;
+  end;
+  Result := FLines;
 end;
 
 function TCompletionRequest.OffsetAt(const APosition: TTextPosition): Integer;

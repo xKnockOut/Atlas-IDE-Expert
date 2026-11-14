@@ -272,32 +272,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasIdeDesignerMeasure.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-begin
-  if not ASettings.DesignerMeasureDistances and not ASettings.DesignerMeasureAltKey then
-  begin
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.MeasureDistances,
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureHint));
-  Result.Pressed := FActive;
-end;
-
-procedure TAtlasIdeDesignerMeasure.Toggle;
-begin
-  FActive := not FActive;
-  FDragging := False;
-  Hide;
-end;
-
-procedure TAtlasIdeDesignerMeasure.ApplyTheme;
-begin
-  if FOverlay <> nil then
-  begin
-    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-end;
-
 procedure TAtlasIdeDesignerMeasure.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
@@ -305,6 +279,26 @@ begin
     begin
       Update;
     end);
+end;
+
+function TAtlasIdeDesignerMeasure.UpdateDrag(ARoot: TWinControl; const AControls: TArray<TControl>): Boolean;
+var
+  mLeft: Boolean;
+  mMarks: TArray<TAtlasMeasureMark>;
+begin
+  mLeft := GetAsyncKeyState(VK_LBUTTON) < 0;
+  Result := mLeft or FDragging;
+  if not Result then
+  begin
+    Exit;
+  end;
+  if DragMarks(ARoot, AControls, mLeft, mMarks) then
+  begin
+    Show(ARoot, mMarks);
+    FHoldUntil := GetTickCount64 + cHoldMs;
+  end;
+  // Losgelassen: Die letzten Linien bleiben bis FHoldUntil stehen.
+  FDragging := FDragging and mLeft;
 end;
 
 procedure TAtlasIdeDesignerMeasure.Hide;
@@ -410,31 +404,29 @@ begin
     mScale.ToDesign(mTargetRect), mTarget.Name), mScale);
 end;
 
+function TAtlasIdeDesignerMeasure.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not ASettings.DesignerMeasureDistances and not ASettings.DesignerMeasureAltKey then
+  begin
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.MeasureDistances,
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.MeasureHint));
+  Result.Pressed := FActive;
+end;
+
+procedure TAtlasIdeDesignerMeasure.Toggle;
+begin
+  FActive := not FActive;
+  FDragging := False;
+  Hide;
+end;
+
 /// <summary>Formular sichtbar auf dem Bildschirm?</summary>
 function RootVisible(ARoot: TComponent): Boolean;
 begin
   Result := (ARoot is TWinControl) and TWinControl(ARoot).HandleAllocated and
     IsWindowVisible(TWinControl(ARoot).Handle);
-end;
-
-function TAtlasIdeDesignerMeasure.UpdateDrag(ARoot: TWinControl; const AControls: TArray<TControl>): Boolean;
-var
-  mLeft: Boolean;
-  mMarks: TArray<TAtlasMeasureMark>;
-begin
-  mLeft := GetAsyncKeyState(VK_LBUTTON) < 0;
-  Result := mLeft or FDragging;
-  if not Result then
-  begin
-    Exit;
-  end;
-  if DragMarks(ARoot, AControls, mLeft, mMarks) then
-  begin
-    Show(ARoot, mMarks);
-    FHoldUntil := GetTickCount64 + cHoldMs;
-  end;
-  // Losgelassen: Die letzten Linien bleiben bis FHoldUntil stehen.
-  FDragging := FDragging and mLeft;
 end;
 
 procedure TAtlasIdeDesignerMeasure.Update;
@@ -467,6 +459,14 @@ begin
   if GetTickCount64 >= FHoldUntil then
   begin
     Hide;
+  end;
+end;
+
+procedure TAtlasIdeDesignerMeasure.ApplyTheme;
+begin
+  if FOverlay <> nil then
+  begin
+    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
   end;
 end;
 

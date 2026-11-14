@@ -220,6 +220,8 @@ type
     function Items: TArray<TCompletionItem>;
   end;
 
+{ TAttributeList }
+
 constructor TAttributeList.Create(ARequest: TCompletionRequest; const APrefix: string);
 begin
   inherited Create;

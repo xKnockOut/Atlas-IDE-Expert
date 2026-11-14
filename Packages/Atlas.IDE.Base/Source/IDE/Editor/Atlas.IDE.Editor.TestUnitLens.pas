@@ -158,33 +158,25 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasEditorTestUnitLens.Invalidate;
+procedure TAtlasEditorTestUnitLens.Fetch;
 var
-  mServices: INTACodeEditorServices;
+  mLine: Integer;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  mLine := TAtlasTestUnits.UnitLine(FPoll.Text.Replace(#13#10, #10).Split([#10]));
+  if mLine < 0 then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    Clear;
+    FPoll.Fetched;
+    Exit;
   end;
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cTestUnitCommand, FPoll.UriLineArguments(mLine), cTimeoutMs), cRetryMs, Answer(mLine));
 end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.CodeLensTestUnit and
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
-end;
-
-procedure TAtlasEditorTestUnitLens.Clear;
-begin
-  FInfo := Default(TAtlasTestUnitInfo);
-  FPoll.Forget;
-  FLine := -1;
-  FLensRect := TRect.Empty;
-  if FShowing then
-  begin
-    FShowing := False;
-    Invalidate;
-  end;
 end;
 
 procedure TAtlasEditorTestUnitLens.Tick(Sender: TObject);
@@ -208,21 +200,6 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.CodeLens, E);
   end;
-end;
-
-procedure TAtlasEditorTestUnitLens.Fetch;
-var
-  mLine: Integer;
-begin
-  mLine := TAtlasTestUnits.UnitLine(FPoll.Text.Replace(#13#10, #10).Split([#10]));
-  if mLine < 0 then
-  begin
-    Clear;
-    FPoll.Fetched;
-    Exit;
-  end;
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
-    TAtlasLensRequest.Create(cTestUnitCommand, FPoll.UriLineArguments(mLine), cTimeoutMs), cRetryMs, Answer(mLine));
 end;
 
 function TAtlasEditorTestUnitLens.Answer(ALine: Integer): TProc<TJSONValue>;
@@ -256,6 +233,19 @@ begin
   FLine := ALine;
   FShowing := mInfo.Lens <> TAtlasTestUnitLens.None;
   Invalidate;
+end;
+
+procedure TAtlasEditorTestUnitLens.Clear;
+begin
+  FInfo := Default(TAtlasTestUnitInfo);
+  FPoll.Forget;
+  FLine := -1;
+  FLensRect := TRect.Empty;
+  if FShowing then
+  begin
+    FShowing := False;
+    Invalidate;
+  end;
 end;
 
 function TAtlasEditorTestUnitLens.Caption: string;
@@ -347,6 +337,16 @@ begin
       // Neu fragen: eine angelegte Testunit ändert die Lens.
       FPoll.FetchedAt := 0;
     end);
+end;
+
+class procedure TAtlasEditorTestUnitLens.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
 end;
 
 end.

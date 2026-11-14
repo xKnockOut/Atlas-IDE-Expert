@@ -431,6 +431,90 @@ begin
   end;
 end;
 
+procedure TAtlasImportDialog.Recalculate(Sender: TObject);
+var
+  mAreas: TArray<string>;
+  mIndex: Integer;
+  mMode: TAtlasImportMode;
+begin
+  if not Assigned(FOnPreview) then
+  begin
+    Exit;
+  end;
+  mAreas := nil;
+  for mIndex := 0 to High(FAreaBoxes) do
+  begin
+    if FAreaBoxes[mIndex].Checked then
+    begin
+      mAreas := mAreas + [FAreaIds[mIndex]];
+    end;
+  end;
+  mMode := imMerge;
+  if FMode.ItemIndex = 1 then
+  begin
+    mMode := imReplace;
+  end;
+  // Keine Bereiche gewählt: leere Vorschau statt „alle“.
+  if Length(mAreas) = 0 then
+  begin
+    FPreview.Items := nil;
+    FPreview.Areas := nil;
+    FPreview.Mode := mMode;
+  end
+  else
+  begin
+    FPreview := FOnPreview(mMode, mAreas);
+  end;
+  if HandleAllocated then
+  begin
+    Fill;
+  end;
+end;
+
+procedure TAtlasImportDialog.ListChanged(Sender: TObject);
+begin
+  SyncChecks;
+end;
+
+procedure TAtlasImportDialog.ListKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  SyncChecks;
+end;
+
+procedure TAtlasImportDialog.SyncChecks;
+var
+  mRow: TListItem;
+  mIndex, mSelected, mSelectable: Integer;
+begin
+  mSelected := 0;
+  mSelectable := 0;
+  for mRow in FList.Items do
+  begin
+    mIndex := NativeInt(mRow.Data);
+    if (mIndex < 0) or (mIndex > High(FPreview.Items)) then
+    begin
+      Continue;
+    end;
+    // Übersprungene Einträge lassen sich nicht wählen.
+    if not FPreview.Items[mIndex].Selectable then
+    begin
+      if mRow.Checked then
+      begin
+        mRow.Checked := False;
+      end;
+      Continue;
+    end;
+    Inc(mSelectable);
+    FPreview.Items[mIndex].Selected := mRow.Checked;
+    if mRow.Checked then
+    begin
+      Inc(mSelected);
+    end;
+  end;
+  FCount.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportCount, [mSelected, mSelectable]);
+  FApply.Enabled := mSelected > 0;
+end;
+
 function TAtlasImportDialog.ValueText(const AItem: TAtlasImportItem; const AJson: string): string;
 var
   mValue: Integer;
@@ -530,90 +614,6 @@ begin
   SyncChecks;
 end;
 
-procedure TAtlasImportDialog.SyncChecks;
-var
-  mRow: TListItem;
-  mIndex, mSelected, mSelectable: Integer;
-begin
-  mSelected := 0;
-  mSelectable := 0;
-  for mRow in FList.Items do
-  begin
-    mIndex := NativeInt(mRow.Data);
-    if (mIndex < 0) or (mIndex > High(FPreview.Items)) then
-    begin
-      Continue;
-    end;
-    // Übersprungene Einträge lassen sich nicht wählen.
-    if not FPreview.Items[mIndex].Selectable then
-    begin
-      if mRow.Checked then
-      begin
-        mRow.Checked := False;
-      end;
-      Continue;
-    end;
-    Inc(mSelectable);
-    FPreview.Items[mIndex].Selected := mRow.Checked;
-    if mRow.Checked then
-    begin
-      Inc(mSelected);
-    end;
-  end;
-  FCount.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsImportCount, [mSelected, mSelectable]);
-  FApply.Enabled := mSelected > 0;
-end;
-
-procedure TAtlasImportDialog.ListChanged(Sender: TObject);
-begin
-  SyncChecks;
-end;
-
-procedure TAtlasImportDialog.ListKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  SyncChecks;
-end;
-
-procedure TAtlasImportDialog.Recalculate(Sender: TObject);
-var
-  mAreas: TArray<string>;
-  mIndex: Integer;
-  mMode: TAtlasImportMode;
-begin
-  if not Assigned(FOnPreview) then
-  begin
-    Exit;
-  end;
-  mAreas := nil;
-  for mIndex := 0 to High(FAreaBoxes) do
-  begin
-    if FAreaBoxes[mIndex].Checked then
-    begin
-      mAreas := mAreas + [FAreaIds[mIndex]];
-    end;
-  end;
-  mMode := imMerge;
-  if FMode.ItemIndex = 1 then
-  begin
-    mMode := imReplace;
-  end;
-  // Keine Bereiche gewählt: leere Vorschau statt „alle“.
-  if Length(mAreas) = 0 then
-  begin
-    FPreview.Items := nil;
-    FPreview.Areas := nil;
-    FPreview.Mode := mMode;
-  end
-  else
-  begin
-    FPreview := FOnPreview(mMode, mAreas);
-  end;
-  if HandleAllocated then
-  begin
-    Fill;
-  end;
-end;
-
 function TAtlasImportDialog.Result_: TAtlasImportPreview;
 begin
   if FFilled then
@@ -680,14 +680,6 @@ begin
   FNames := ANames;
 end;
 
-procedure TAtlasProfileDialog.ListDblClick(Sender: TObject);
-begin
-  if FList.ItemIndex >= 0 then
-  begin
-    ModalResult := mrOk;
-  end;
-end;
-
 procedure TAtlasProfileDialog.DoShow;
 var
   mName: string;
@@ -715,6 +707,14 @@ begin
     FDescription.Caption := FDescriptions[FList.ItemIndex];
   end;
   FLoad.Enabled := FList.ItemIndex >= 0;
+end;
+
+procedure TAtlasProfileDialog.ListDblClick(Sender: TObject);
+begin
+  if FList.ItemIndex >= 0 then
+  begin
+    ModalResult := mrOk;
+  end;
 end;
 
 class function TAtlasProfileDialog.Choose(const ANames, ADescriptions: TArray<string>; out AIndex: Integer;

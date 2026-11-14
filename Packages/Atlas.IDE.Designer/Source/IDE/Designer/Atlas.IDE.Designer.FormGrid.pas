@@ -149,15 +149,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeFormGrid.CanArrange: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    (Length(TAtlasDesignerAccess.SelectedSiblings(mEditor, mRoot)) >= 2);
-end;
-
 procedure TAtlasIdeFormGrid.SetTabOrders(ARoot: TComponent; const AControls: TArray<TControl>;
   const AOrder: TArray<Integer>);
 var
@@ -277,6 +268,15 @@ begin
   FTabOrders := nil;
   FSnapshot.Restore;
   Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGridUndone));
+end;
+
+class function TAtlasIdeFormGrid.CanArrange: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    (Length(TAtlasDesignerAccess.SelectedSiblings(mEditor, mRoot)) >= 2);
 end;
 
 end.

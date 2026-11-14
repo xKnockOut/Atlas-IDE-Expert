@@ -185,32 +185,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeWrapSelection.Install(const ABusy: TFunc<Boolean>);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeWrapSelection.Create(ABusy);
-  end;
-end;
-
-class procedure TAtlasIdeWrapSelection.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeWrapSelection.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.WrapSelection;
-end;
-
-class function TAtlasIdeWrapSelection.Chars: string;
-begin
-  Result := TAtlasWrapSelection.Normalize(TAtlasIdeSettings.Current.WrapSelectionChars);
-end;
-
 procedure TAtlasIdeWrapSelection.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
   mTyped: Char;
@@ -238,6 +212,32 @@ begin
       TAtlasGuard.Report(TAtlasFeature.WrapSelection, E);
     end;
   end;
+end;
+
+class procedure TAtlasIdeWrapSelection.Install(const ABusy: TFunc<Boolean>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeWrapSelection.Create(ABusy);
+  end;
+end;
+
+class procedure TAtlasIdeWrapSelection.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeWrapSelection.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.WrapSelection;
+end;
+
+class function TAtlasIdeWrapSelection.Chars: string;
+begin
+  Result := TAtlasWrapSelection.Normalize(TAtlasIdeSettings.Current.WrapSelectionChars);
 end;
 
 class function TAtlasIdeWrapSelection.Run(AOpen: Char): Boolean;

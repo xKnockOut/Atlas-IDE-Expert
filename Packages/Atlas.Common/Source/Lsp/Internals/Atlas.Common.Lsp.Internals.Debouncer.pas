@@ -84,6 +84,89 @@ begin
   inherited;
 end;
 
+procedure TDebouncer.Execute;
+var
+  mAction: TProc;
+  mFound: Boolean;
+begin
+  repeat
+    TMonitor.Enter(FPending);
+    try
+      mFound := TakeDue(mAction);
+    finally
+      TMonitor.Exit(FPending);
+    end;
+    if mFound then
+    begin
+      RunAction(mAction);
+      // Die Aktion samt eingefangener Variablen erst freigeben, dann Ruhe melden.
+      mAction := nil;
+      TMonitor.Enter(FPending);
+      try
+        FRunning := False;
+        TMonitor.PulseAll(FPending);
+      finally
+        TMonitor.Exit(FPending);
+      end;
+    end;
+  until not mFound;
+end;
+
+function TDebouncer.TakeDue(out AAction: TProc): Boolean;
+var
+  mPair: TPair<string, TPending>;
+  mFirstKey: string;
+  mFirstDue: UInt64;
+  mTicks: UInt64;
+begin
+  // Wartet unter der Sperre, bis eine Aktion fällig ist; False beim Beenden.
+  AAction := nil;
+  while not FStopping do
+  begin
+    mFirstKey := '';
+    mFirstDue := High(UInt64);
+    for mPair in FPending do
+    begin
+      if mPair.Value.Due < mFirstDue then
+      begin
+        mFirstKey := mPair.Key;
+        mFirstDue := mPair.Value.Due;
+      end;
+    end;
+    mTicks := TThread.GetTickCount64;
+    if mFirstDue = High(UInt64) then
+    begin
+      TMonitor.Wait(FPending, cWaitForever);
+    end
+    else if mFirstDue > mTicks then
+    begin
+      TMonitor.Wait(FPending, Cardinal(mFirstDue - mTicks));
+    end
+    else
+    begin
+      AAction := FPending[mFirstKey].Action;
+      FPending.Remove(mFirstKey);
+      FRunning := True;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TDebouncer.RunAction(const AAction: TProc);
+begin
+  try
+    AAction();
+  except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Timers; FOnError meldet
+    on E: Exception do
+      if Assigned(FOnError) then
+      begin
+        FOnError(E);
+      end;
+  end;
+end;
+
 procedure TDebouncer.Schedule(const AKey: string; const AAction: TProc);
 var
   mPending: TPending;
@@ -134,89 +217,6 @@ begin
     Result := True;
   finally
     TMonitor.Exit(FPending);
-  end;
-end;
-
-function TDebouncer.TakeDue(out AAction: TProc): Boolean;
-var
-  mPair: TPair<string, TPending>;
-  mFirstKey: string;
-  mFirstDue: UInt64;
-  mTicks: UInt64;
-begin
-  // Wartet unter der Sperre, bis eine Aktion fällig ist; False beim Beenden.
-  AAction := nil;
-  while not FStopping do
-  begin
-    mFirstKey := '';
-    mFirstDue := High(UInt64);
-    for mPair in FPending do
-    begin
-      if mPair.Value.Due < mFirstDue then
-      begin
-        mFirstKey := mPair.Key;
-        mFirstDue := mPair.Value.Due;
-      end;
-    end;
-    mTicks := TThread.GetTickCount64;
-    if mFirstDue = High(UInt64) then
-    begin
-      TMonitor.Wait(FPending, cWaitForever);
-    end
-    else if mFirstDue > mTicks then
-    begin
-      TMonitor.Wait(FPending, Cardinal(mFirstDue - mTicks));
-    end
-    else
-    begin
-      AAction := FPending[mFirstKey].Action;
-      FPending.Remove(mFirstKey);
-      FRunning := True;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure TDebouncer.Execute;
-var
-  mAction: TProc;
-  mFound: Boolean;
-begin
-  repeat
-    TMonitor.Enter(FPending);
-    try
-      mFound := TakeDue(mAction);
-    finally
-      TMonitor.Exit(FPending);
-    end;
-    if mFound then
-    begin
-      RunAction(mAction);
-      // Die Aktion samt eingefangener Variablen erst freigeben, dann Ruhe melden.
-      mAction := nil;
-      TMonitor.Enter(FPending);
-      try
-        FRunning := False;
-        TMonitor.PulseAll(FPending);
-      finally
-        TMonitor.Exit(FPending);
-      end;
-    end;
-  until not mFound;
-end;
-
-procedure TDebouncer.RunAction(const AAction: TProc);
-begin
-  try
-    AAction();
-  except
-    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Timers; FOnError meldet
-    on E: Exception do
-      if Assigned(FOnError) then
-      begin
-        FOnError(E);
-      end;
   end;
 end;
 

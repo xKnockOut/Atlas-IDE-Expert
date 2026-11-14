@@ -68,6 +68,63 @@ begin
   FOnlySure.Visible := False;
 end;
 
+procedure TAtlasResultsEntriesPart.RenderRated;
+var
+  mSure, mInferred: TArray<TAtlasResultEntry>;
+  mEntry: TAtlasResultEntry;
+begin
+  mSure := TAtlasResults.SureOnly(FRated.Entries);
+  mInferred := nil;
+  for mEntry in FRated.Entries do
+  begin
+    if mEntry.Confidence.Inferred then
+    begin
+      mInferred := mInferred + [mEntry];
+    end;
+  end;
+  if Length(mInferred) = 0 then
+  begin
+    Show(FRated.Title, TAtlasResults.Group(FRated.Entries));
+    Exit;
+  end;
+  View.Clear(FRated.Title);
+  FOnlySure.Visible := True;
+  View.Tree.Items.BeginUpdate;
+  try
+    if FOnlySure.Checked then
+    begin
+      AddGroups(nil, TAtlasResults.Group(mSure));
+    end
+    else
+    begin
+      AddSection(FRated.SureCaption, mSure);
+      AddSection(FRated.InferredCaption, mInferred);
+    end;
+  finally
+    View.Tree.Items.EndUpdate;
+  end;
+  View.Select(nil);
+end;
+
+procedure TAtlasResultsEntriesPart.AddSection(const ACaption: string; const AEntries: TArray<TAtlasResultEntry>);
+var
+  mSection: TTreeNode;
+begin
+  mSection := View.AddNode(nil, Format(ACaption, [Length(AEntries)]),
+    TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
+  AddGroups(mSection, TAtlasResults.Group(AEntries));
+  mSection.Expand(False);
+end;
+
+procedure TAtlasResultsEntriesPart.OnlySureClick(Sender: TObject);
+begin
+  // Clear blendet den Filter aus und RenderRated wieder ein; Checked bleibt.
+  if Length(FRated.Entries) > 0 then
+  begin
+    RenderRated;
+  end;
+end;
+
 procedure TAtlasResultsEntriesPart.AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
 var
   mGroup: TAtlasResultGroup;
@@ -110,63 +167,6 @@ begin
   FRated.SureCaption := ASureCaption;
   FRated.InferredCaption := AInferredCaption;
   RenderRated;
-end;
-
-procedure TAtlasResultsEntriesPart.AddSection(const ACaption: string; const AEntries: TArray<TAtlasResultEntry>);
-var
-  mSection: TTreeNode;
-begin
-  mSection := View.AddNode(nil, Format(ACaption, [Length(AEntries)]),
-    TAtlasResultsNode.Create(TAtlasResultsNodeKind.Placeholder));
-  AddGroups(mSection, TAtlasResults.Group(AEntries));
-  mSection.Expand(False);
-end;
-
-procedure TAtlasResultsEntriesPart.RenderRated;
-var
-  mSure, mInferred: TArray<TAtlasResultEntry>;
-  mEntry: TAtlasResultEntry;
-begin
-  mSure := TAtlasResults.SureOnly(FRated.Entries);
-  mInferred := nil;
-  for mEntry in FRated.Entries do
-  begin
-    if mEntry.Confidence.Inferred then
-    begin
-      mInferred := mInferred + [mEntry];
-    end;
-  end;
-  if Length(mInferred) = 0 then
-  begin
-    Show(FRated.Title, TAtlasResults.Group(FRated.Entries));
-    Exit;
-  end;
-  View.Clear(FRated.Title);
-  FOnlySure.Visible := True;
-  View.Tree.Items.BeginUpdate;
-  try
-    if FOnlySure.Checked then
-    begin
-      AddGroups(nil, TAtlasResults.Group(mSure));
-    end
-    else
-    begin
-      AddSection(FRated.SureCaption, mSure);
-      AddSection(FRated.InferredCaption, mInferred);
-    end;
-  finally
-    View.Tree.Items.EndUpdate;
-  end;
-  View.Select(nil);
-end;
-
-procedure TAtlasResultsEntriesPart.OnlySureClick(Sender: TObject);
-begin
-  // Clear blendet den Filter aus und RenderRated wieder ein; Checked bleibt.
-  if Length(FRated.Entries) > 0 then
-  begin
-    RenderRated;
-  end;
 end;
 
 end.

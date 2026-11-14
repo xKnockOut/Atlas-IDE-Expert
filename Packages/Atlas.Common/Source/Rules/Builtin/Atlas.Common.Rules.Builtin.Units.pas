@@ -345,6 +345,8 @@ begin
   end;
 end;
 
+{ TModuleHeader }
+
 class function TModuleHeader.Read(const ATokens: TArray<TPascalToken>): TModuleHeader;
 var
   mIndex: Integer;
@@ -522,45 +524,6 @@ begin
     cTexts[TUnitsText.AfterEndTitle].Text);
 end;
 
-class function TTextAfterFinalEndRule.FinalDot(const AContext: TRuleContext): Integer;
-var
-  mTokens: TArray<TPascalToken>;
-  mRoot: TSyntaxNode;
-  mFrom, mIndex: Integer;
-begin
-  Result := -1;
-  if (AContext.Tree = nil) or (AContext.Tree.Diagnostics <> nil) or (AContext.Tree.Root = nil) or
-    (AContext.Tree.Root.ChildCount = 0) then
-  begin
-    Exit;
-  end;
-  mRoot := AContext.Tree.Root;
-  mTokens := AContext.Tree.Tokens;
-  // Hinter dem letzten Abschnitt folgen end und der Punkt; beim Programm gehört end zum Block.
-  mFrom := mRoot.Children[mRoot.ChildCount - 1].EndOffset;
-  mIndex := 0;
-  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mFrom) do
-  begin
-    Inc(mIndex);
-  end;
-  while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
-  begin
-    Inc(mIndex);
-  end;
-  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsKeyword('end') then
-  begin
-    Inc(mIndex);
-    while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
-    begin
-      Inc(mIndex);
-    end;
-  end;
-  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') then
-  begin
-    Result := mIndex;
-  end;
-end;
-
 procedure TTextAfterFinalEndRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TArray<TPascalToken>;
@@ -610,6 +573,45 @@ begin
     [TRuleEdit.Create(TTextRange.Create(mTokens[mFirst - 1].EndPos, mTokens[High(mTokens)].EndPos), '')])]);
 end;
 
+class function TTextAfterFinalEndRule.FinalDot(const AContext: TRuleContext): Integer;
+var
+  mTokens: TArray<TPascalToken>;
+  mRoot: TSyntaxNode;
+  mFrom, mIndex: Integer;
+begin
+  Result := -1;
+  if (AContext.Tree = nil) or (AContext.Tree.Diagnostics <> nil) or (AContext.Tree.Root = nil) or
+    (AContext.Tree.Root.ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  mRoot := AContext.Tree.Root;
+  mTokens := AContext.Tree.Tokens;
+  // Hinter dem letzten Abschnitt folgen end und der Punkt; beim Programm gehört end zum Block.
+  mFrom := mRoot.Children[mRoot.ChildCount - 1].EndOffset;
+  mIndex := 0;
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mFrom) do
+  begin
+    Inc(mIndex);
+  end;
+  while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
+  begin
+    Inc(mIndex);
+  end;
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsKeyword('end') then
+  begin
+    Inc(mIndex);
+    while (mIndex <= High(mTokens)) and not IsCode(mTokens[mIndex]) do
+    begin
+      Inc(mIndex);
+    end;
+  end;
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') then
+  begin
+    Result := mIndex;
+  end;
+end;
+
 { TExportsInvalidRule }
 
 function TExportsInvalidRule.Descriptor: TRuleDescriptor;
@@ -651,6 +653,8 @@ type
     constructor Create(const ATokens: TArray<TPascalToken>);
     function Scan(AFirst, ALast: Integer): TArray<TExportEntry>;
   end;
+
+{ TExportsScanner }
 
 constructor TExportsScanner.Create(const ATokens: TArray<TPascalToken>);
 begin
@@ -1015,6 +1019,8 @@ type
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run(const ANodes: TArray<TSyntaxNode>);
   end;
+
+{ TExportsCheck }
 
 constructor TExportsCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

@@ -60,6 +60,8 @@ begin
   end;
 end;
 
+{ TIdeIndex }
+
 constructor TIdeIndex.Create(const AInner, AIde: ISymbolIndex);
 begin
   inherited Create;

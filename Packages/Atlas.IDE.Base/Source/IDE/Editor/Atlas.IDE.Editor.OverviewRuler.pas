@@ -180,33 +180,23 @@ begin
   inherited Destroy;
 end;
 
-procedure TOverviewState.Removed(ARuler: TControl);
+procedure TOverviewState.Tick(Sender: TObject);
 begin
-  if FHoverRuler = ARuler then
+  // Löst die Sicherung aus, blendet Guard die Streifen aus und danach wieder ein.
+  if not TAtlasIdeSettings.Current.OverviewRuler or not FHost.Guard then
   begin
-    HoverEnd;
+    Exit;
   end;
-end;
-
-procedure TOverviewState.Reset;
-begin
-  FFileName := '';
-  FText := '';
-  FLines := nil;
-  FSearchText := '';
-  FSearchTerm := '';
-  FSearchLines := nil;
-  FKinds := TAtlasOverview.Kinds(TAtlasIdeSettings.Current.OverviewRulerKinds);
-  HoverEnd;
-end;
-
-procedure TOverviewState.ApplyTheme;
-begin
-  FHost.ForEach(
-    procedure(ABar: TControl)
+  TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
+    procedure
     begin
-      TAtlasOverviewRuler(ABar).SetColors(TAtlasIdeStyle.Colors);
+      Update;
     end);
+end;
+
+function TOverviewState.ActiveRuler: TAtlasOverviewRuler;
+begin
+  Result := TAtlasOverviewRuler(FHost.ActiveBar);
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
@@ -250,14 +240,68 @@ begin
   ARuler.Parent := AParent;
 end;
 
-function TOverviewState.ActiveRuler: TAtlasOverviewRuler;
+/// <summary>Treffer von ATerm neu suchen: neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause; nur
+/// dann kostet der Text des Puffers etwas.</summary>
+procedure TOverviewState.RefreshSearch(const AView: IOTAEditView; const ATerm, AKey: string; AMatching: Boolean;
+  const AOptions: TAtlasSelectionMatchOptions);
+var
+  mText: string;
 begin
-  Result := TAtlasOverviewRuler(FHost.ActiveBar);
+  if not SameText(FFileName, AView.Buffer.FileName) then
+  begin
+    FFileName := AView.Buffer.FileName;
+    FText := '';
+    FSearchText := '';
+    FSearchLines := nil;
+    FChangedAt := 0;
+  end;
+  if ATerm = '' then
+  begin
+    FSearchTerm := '';
+    FSearchLines := nil;
+    Exit;
+  end;
+  mText := TAtlasEditorSnapshots.Get(AView).Text;
+  if mText <> FText then
+  begin
+    FText := mText;
+    FChangedAt := TThread.GetTickCount64;
+  end;
+  if (ATerm = FSearchTerm) and (AKey = FSearchOptions) and
+    ((FText = FSearchText) or (TThread.GetTickCount64 - FChangedAt < cQuietMs)) then
+  begin
+    Exit;
+  end;
+  FLines := TTextLines.SplitLines(FText);
+  if AMatching then
+  begin
+    FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, ATerm, AOptions));
+  end
+  else
+  begin
+    FSearchLines := TAtlasOverview.Occurrences(FLines, ATerm);
+  end;
+  FSearchOptions := AKey;
+  FSearchTerm := ATerm;
+  FSearchText := FText;
 end;
 
 function TOverviewState.Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
 begin
   Result := TAtlasIdeOverviewRuler.CollectMarks(AView, ALineCount, FKinds, FSearchTerm, FSearchLines);
+end;
+
+procedure TOverviewState.Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
+var
+  mView: IOTAEditView;
+begin
+  HoverEnd;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (ARuler <> ActiveRuler) or (mView = nil) or (mView.Buffer = nil) or (ALine < 0) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeNavigation.GoToLocation(mView.Buffer.FileName, ALine, 0);
 end;
 
 /// <summary>Eigene Lesezeichen des ersten laufenden Moduls, das welche für AFileName hat (#1455); False ohne.</summary>
@@ -406,37 +450,14 @@ begin
   end;
 end;
 
-class function TAtlasIdeOverviewRuler.CollectMarks(const AView: IOTAEditView; ALineCount: Integer;
-  AKinds: TAtlasOverviewKinds; const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
-var
-  mFileName: string;
+{ TAtlasIdeOverviewRuler }
+
+class procedure TAtlasIdeOverviewRuler.Install;
 begin
-  Result := nil;
-  mFileName := AView.Buffer.FileName;
-  if TAtlasOverviewKind.Diagnostics in AKinds then
+  FreeAndNil(FState);
+  if Active then
   begin
-    Result := Result + DiagnosticMarks(mFileName);
-  end;
-  if (TAtlasOverviewKind.Search in AKinds) and (ASearchTerm <> '') then
-  begin
-    Result := Result + SearchMarks(ASearchTerm, ASearchLines);
-  end;
-  if TAtlasOverviewKind.Changes in AKinds then
-  begin
-    Result := Result + ChangeMarks(mFileName, ALineCount);
-  end;
-  if TAtlasOverviewKind.Breakpoints in AKinds then
-  begin
-    Result := Result + BreakpointMarks(mFileName);
-  end;
-  if TAtlasOverviewKind.Bookmarks in AKinds then
-  begin
-    Result := Result + BookmarkMarks(AView, mFileName);
-  end;
-  if TAtlasOverviewKind.Cursor in AKinds then
-  begin
-    Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
-      TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewCursor))];
+    FState := TOverviewState.Create;
   end;
 end;
 
@@ -475,52 +496,6 @@ begin
   end;
 end;
 
-/// <summary>Treffer von ATerm neu suchen: neuer Suchtext sofort, geänderter Text erst nach der Tipp-Pause; nur
-/// dann kostet der Text des Puffers etwas.</summary>
-procedure TOverviewState.RefreshSearch(const AView: IOTAEditView; const ATerm, AKey: string; AMatching: Boolean;
-  const AOptions: TAtlasSelectionMatchOptions);
-var
-  mText: string;
-begin
-  if not SameText(FFileName, AView.Buffer.FileName) then
-  begin
-    FFileName := AView.Buffer.FileName;
-    FText := '';
-    FSearchText := '';
-    FSearchLines := nil;
-    FChangedAt := 0;
-  end;
-  if ATerm = '' then
-  begin
-    FSearchTerm := '';
-    FSearchLines := nil;
-    Exit;
-  end;
-  mText := TAtlasEditorSnapshots.Get(AView).Text;
-  if mText <> FText then
-  begin
-    FText := mText;
-    FChangedAt := TThread.GetTickCount64;
-  end;
-  if (ATerm = FSearchTerm) and (AKey = FSearchOptions) and
-    ((FText = FSearchText) or (TThread.GetTickCount64 - FChangedAt < cQuietMs)) then
-  begin
-    Exit;
-  end;
-  FLines := TTextLines.SplitLines(FText);
-  if AMatching then
-  begin
-    FSearchLines := TAtlasSelectionMatches.Lines(TAtlasSelectionMatches.Find(FLines, ATerm, AOptions));
-  end
-  else
-  begin
-    FSearchLines := TAtlasOverview.Occurrences(FLines, ATerm);
-  end;
-  FSearchOptions := AKey;
-  FSearchTerm := ATerm;
-  FSearchText := FText;
-end;
-
 procedure TOverviewState.Update;
 var
   mRuler: TAtlasOverviewRuler;
@@ -547,19 +522,6 @@ begin
   begin
     ShowPreview;
   end;
-end;
-
-procedure TOverviewState.Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
-var
-  mView: IOTAEditView;
-begin
-  HoverEnd;
-  mView := TAtlasEditorBuffer.ActiveView;
-  if (ARuler <> ActiveRuler) or (mView = nil) or (mView.Buffer = nil) or (ALine < 0) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeNavigation.GoToLocation(mView.Buffer.FileName, ALine, 0);
 end;
 
 procedure TOverviewState.Hover(ARuler: TAtlasOverviewRuler; ALine, AMark: Integer; const APoint: TPoint);
@@ -618,30 +580,36 @@ begin
   FTip.ShowNote(mTitle, mText, Point(FHoverPoint.X - mWidth - MulDiv(12, FHoverRuler.CurrentPPI, 96), FHoverPoint.Y));
 end;
 
-procedure TOverviewState.Tick(Sender: TObject);
+procedure TOverviewState.Removed(ARuler: TControl);
 begin
-  // Löst die Sicherung aus, blendet Guard die Streifen aus und danach wieder ein.
-  if not TAtlasIdeSettings.Current.OverviewRuler or not FHost.Guard then
+  if FHoverRuler = ARuler then
   begin
-    Exit;
+    HoverEnd;
   end;
-  TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
-    procedure
+end;
+
+procedure TOverviewState.Reset;
+begin
+  FFileName := '';
+  FText := '';
+  FLines := nil;
+  FSearchText := '';
+  FSearchTerm := '';
+  FSearchLines := nil;
+  FKinds := TAtlasOverview.Kinds(TAtlasIdeSettings.Current.OverviewRulerKinds);
+  HoverEnd;
+end;
+
+procedure TOverviewState.ApplyTheme;
+begin
+  FHost.ForEach(
+    procedure(ABar: TControl)
     begin
-      Update;
+      TAtlasOverviewRuler(ABar).SetColors(TAtlasIdeStyle.Colors);
     end);
 end;
 
 { TAtlasIdeOverviewRuler }
-
-class procedure TAtlasIdeOverviewRuler.Install;
-begin
-  FreeAndNil(FState);
-  if Active then
-  begin
-    FState := TOverviewState.Create;
-  end;
-end;
 
 class procedure TAtlasIdeOverviewRuler.Uninstall;
 begin
@@ -671,6 +639,40 @@ begin
   if FState <> nil then
   begin
     TOverviewState(FState).ApplyTheme;
+  end;
+end;
+
+class function TAtlasIdeOverviewRuler.CollectMarks(const AView: IOTAEditView; ALineCount: Integer;
+  AKinds: TAtlasOverviewKinds; const ASearchTerm: string; const ASearchLines: TArray<Integer>): TAtlasOverviewMarks;
+var
+  mFileName: string;
+begin
+  Result := nil;
+  mFileName := AView.Buffer.FileName;
+  if TAtlasOverviewKind.Diagnostics in AKinds then
+  begin
+    Result := Result + DiagnosticMarks(mFileName);
+  end;
+  if (TAtlasOverviewKind.Search in AKinds) and (ASearchTerm <> '') then
+  begin
+    Result := Result + SearchMarks(ASearchTerm, ASearchLines);
+  end;
+  if TAtlasOverviewKind.Changes in AKinds then
+  begin
+    Result := Result + ChangeMarks(mFileName, ALineCount);
+  end;
+  if TAtlasOverviewKind.Breakpoints in AKinds then
+  begin
+    Result := Result + BreakpointMarks(mFileName);
+  end;
+  if TAtlasOverviewKind.Bookmarks in AKinds then
+  begin
+    Result := Result + BookmarkMarks(AView, mFileName);
+  end;
+  if TAtlasOverviewKind.Cursor in AKinds then
+  begin
+    Result := Result + [TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Cursor, AView.CursorPos.Line - 1, 1,
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewCursor))];
   end;
 end;
 

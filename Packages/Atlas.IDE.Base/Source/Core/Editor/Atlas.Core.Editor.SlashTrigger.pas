@@ -54,6 +54,8 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z']);
 end;
 
+{ TAtlasSlashTrigger }
+
 class function TAtlasSlashTrigger.Detect(const APrevious, ABefore: string): TAtlasSlashKind;
 var
   mPrevious: string;

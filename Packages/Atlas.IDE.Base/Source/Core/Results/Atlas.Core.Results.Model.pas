@@ -114,11 +114,6 @@ end;
 
 { TAtlasResults }
 
-class function TAtlasResults.Lines(const AText: string): TArray<string>;
-begin
-  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
-
 class function TAtlasResults.Group(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultGroup>;
 var
   mGroups: TList<TAtlasResultGroup>;
@@ -200,6 +195,11 @@ begin
   finally
     mCache.Free;
   end;
+end;
+
+class function TAtlasResults.Lines(const AText: string): TArray<string>;
+begin
+  Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
 end;
 
 /// <summary>Einträge für angelegte, umbenannte und gelöschte Dateien.</summary>

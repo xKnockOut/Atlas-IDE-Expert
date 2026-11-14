@@ -151,6 +151,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TOverloads }
+
 class function TOverloads.CopyTitle: string;
 begin
   Result := cTexts[TOverloadsText.CreateOverloadCopy].Text;
@@ -216,6 +218,8 @@ type
     /// <summary>Text als Platzhalter ANumber.</summary>
     procedure Add(const AText: string; ANumber: Integer); overload;
   end;
+
+{ TInsertBuilder }
 
 procedure TInsertBuilder.Add(const AText: string);
 begin
@@ -599,6 +603,8 @@ type
     procedure SetReasons;
   end;
 
+{ TTargetReader }
+
 function TTargetReader.Locate(AOffset: Integer): Boolean;
 var
   mRoutine: TSyntaxNode;
@@ -687,6 +693,26 @@ begin
   end;
 end;
 
+function TTargetReader.ReadFromBody: Boolean;
+begin
+  Result := ReadNode(Text, Tree, TRoutineParts.HeaderOf(BodyNode), Target.Body);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Target.Name := ShortName(Target.Body.QualifiedName);
+  Result := ResolveContainer and ReadDeclOfBody;
+  // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
+  if Result and Target.HasDecl then
+  begin
+    Target.LastTypeOffset := LastTypeOffset(HeaderNodeAt(Tree, Tokens[Target.Decl.NameToken].Offset));
+  end
+  else if Result then
+  begin
+    Target.LastTypeOffset := LastTypeOffset(TRoutineParts.HeaderOf(BodyNode));
+  end;
+end;
+
 function TTargetReader.ResolveContainer: Boolean;
 var
   mQualified: string;
@@ -723,26 +749,6 @@ begin
   else
   begin
     Target.Decl := Target.Body;
-  end;
-end;
-
-function TTargetReader.ReadFromBody: Boolean;
-begin
-  Result := ReadNode(Text, Tree, TRoutineParts.HeaderOf(BodyNode), Target.Body);
-  if not Result then
-  begin
-    Exit;
-  end;
-  Target.Name := ShortName(Target.Body.QualifiedName);
-  Result := ResolveContainer and ReadDeclOfBody;
-  // Typ des letzten Parameters: aus der Deklaration, sonst aus dem Kopf der Implementierung.
-  if Result and Target.HasDecl then
-  begin
-    Target.LastTypeOffset := LastTypeOffset(HeaderNodeAt(Tree, Tokens[Target.Decl.NameToken].Offset));
-  end
-  else if Result then
-  begin
-    Target.LastTypeOffset := LastTypeOffset(TRoutineParts.HeaderOf(BodyNode));
   end;
 end;
 
@@ -852,53 +858,10 @@ begin
   ATarget := mReader.Target;
 end;
 
-class function TOverloads.DefaultValue(const ATypeName: string): string;
-const
-  cNumbers: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint',
-    'smallint', 'longint', 'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16',
-    'uint32', 'single', 'double', 'extended', 'real', 'currency', 'comp', 'tdatetime', 'tdate', 'ttime', 'fixedint');
-  cStrings: array[0..6] of string = ('string', 'ansistring', 'unicodestring', 'widestring', 'rawbytestring',
-    'utf8string', 'shortstring');
-  cChars: array[0..2] of string = ('char', 'ansichar', 'widechar');
-  cBooleans: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
-  cPointers: array[0..8] of string = ('pointer', 'tobject', 'tclass', 'iinterface', 'iunknown', 'pchar', 'pansichar',
-    'pwidechar', 'tprocedure');
-var
-  mName: string;
+class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
+  AKind: TOverloadKind; out AResult: TOverloadResult; out AReason: string): Boolean;
 begin
-  mName := LowerCase(Trim(ATypeName));
-  if StartsText('system.', mName) then
-  begin
-    mName := Copy(mName, Length('system.') + 1, MaxInt);
-  end;
-  if StartsText('array of ', mName) then
-  begin
-    Result := '[]';
-  end
-  else if IndexText(mName, cNumbers) >= 0 then
-  begin
-    Result := '0';
-  end
-  else if IndexText(mName, cStrings) >= 0 then
-  begin
-    Result := '''''';
-  end
-  else if IndexText(mName, cChars) >= 0 then
-  begin
-    Result := '#0';
-  end
-  else if IndexText(mName, cBooleans) >= 0 then
-  begin
-    Result := 'False';
-  end
-  else if IndexText(mName, cPointers) >= 0 then
-  begin
-    Result := 'nil';
-  end
-  else
-  begin
-    Result := '';
-  end;
+  Result := Build(AText, ATree, ATarget, TOverloadRequest.Create(AKind, nil), AResult, AReason);
 end;
 
 /// <summary>Der ///-Kommentar über Zeile ALine (Attribute dazwischen übersprungen), ohne Einrückung; bei
@@ -1086,6 +1049,8 @@ type
     function Outcome: TOverloadResult;
   end;
 
+{ TOverloadWriter }
+
 procedure TOverloadWriter.Prepare;
 var
   mLines: TArray<string>;
@@ -1140,6 +1105,29 @@ begin
   Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, Target.Decl.LastToken), mDecl)];
 end;
 
+procedure TOverloadWriter.AddBody;
+var
+  mBody: TInsertBuilder;
+begin
+  mBody := Default(TInsertBuilder);
+  mBody.Add(LineBreak + LineBreak);
+  if not Target.HasDecl then
+  begin
+    mBody.Add(DocBlock(Doc, BodyIndent, LineBreak));
+  end;
+  AddHead(mBody, Text, Tokens, Target.Body, Parameters, not Target.HasDecl);
+  if Request.Kind = TOverloadKind.Copy then
+  begin
+    AddCopyBody(mBody);
+  end
+  else
+  begin
+    AddForwardBody(mBody);
+  end;
+  mBody.Add('', 0);
+  Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, Target.BodyLast), mBody)];
+end;
+
 procedure TOverloadWriter.AddCopyBody(var ABody: TInsertBuilder);
 var
   mHead, mBegin, mInner, mInnerEnd: Integer;
@@ -1166,26 +1154,6 @@ begin
   end;
 end;
 
-function TOverloadWriter.ForwardValue: string;
-var
-  mParameter: TSignatureParameter;
-begin
-  mParameter := Target.Decl.Parameters[High(Target.Decl.Parameters)];
-  Result := '';
-  if Assigned(Request.DefaultOf) then
-  begin
-    Result := Request.DefaultOf(mParameter.TypeName, Target.LastTypeOffset);
-  end;
-  if Result = '' then
-  begin
-    Result := TOverloads.DefaultValue(mParameter.TypeName);
-  end;
-  if Result = '' then
-  begin
-    Result := 'Default(' + mParameter.TypeName + ')';
-  end;
-end;
-
 procedure TOverloadWriter.AddForwardBody(var ABody: TInsertBuilder);
 var
   mCall, mArguments: string;
@@ -1208,27 +1176,24 @@ begin
   ABody.Add(');' + LineBreak + BodyIndent + 'end;');
 end;
 
-procedure TOverloadWriter.AddBody;
+function TOverloadWriter.ForwardValue: string;
 var
-  mBody: TInsertBuilder;
+  mParameter: TSignatureParameter;
 begin
-  mBody := Default(TInsertBuilder);
-  mBody.Add(LineBreak + LineBreak);
-  if not Target.HasDecl then
+  mParameter := Target.Decl.Parameters[High(Target.Decl.Parameters)];
+  Result := '';
+  if Assigned(Request.DefaultOf) then
   begin
-    mBody.Add(DocBlock(Doc, BodyIndent, LineBreak));
+    Result := Request.DefaultOf(mParameter.TypeName, Target.LastTypeOffset);
   end;
-  AddHead(mBody, Text, Tokens, Target.Body, Parameters, not Target.HasDecl);
-  if Request.Kind = TOverloadKind.Copy then
+  if Result = '' then
   begin
-    AddCopyBody(mBody);
-  end
-  else
-  begin
-    AddForwardBody(mBody);
+    Result := TOverloads.DefaultValue(mParameter.TypeName);
   end;
-  mBody.Add('', 0);
-  Inserts := Inserts + [MakeInsert(TokenEnd(Tokens, Target.BodyLast), mBody)];
+  if Result = '' then
+  begin
+    Result := 'Default(' + mParameter.TypeName + ')';
+  end;
 end;
 
 function TOverloadWriter.Outcome: TOverloadResult;
@@ -1278,12 +1243,6 @@ end;
 { TOverloads: Build }
 
 class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
-  AKind: TOverloadKind; out AResult: TOverloadResult; out AReason: string): Boolean;
-begin
-  Result := Build(AText, ATree, ATarget, TOverloadRequest.Create(AKind, nil), AResult, AReason);
-end;
-
-class function TOverloads.Build(const AText: string; ATree: TSyntaxTree; const ATarget: TOverloadTarget;
   const ARequest: TOverloadRequest; out AResult: TOverloadResult; out AReason: string): Boolean;
 var
   mWriter: TOverloadWriter;
@@ -1304,6 +1263,55 @@ begin
   mWriter.AddBody;
   AResult := mWriter.Outcome;
   Result := True;
+end;
+
+class function TOverloads.DefaultValue(const ATypeName: string): string;
+const
+  cNumbers: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint',
+    'smallint', 'longint', 'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16',
+    'uint32', 'single', 'double', 'extended', 'real', 'currency', 'comp', 'tdatetime', 'tdate', 'ttime', 'fixedint');
+  cStrings: array[0..6] of string = ('string', 'ansistring', 'unicodestring', 'widestring', 'rawbytestring',
+    'utf8string', 'shortstring');
+  cChars: array[0..2] of string = ('char', 'ansichar', 'widechar');
+  cBooleans: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
+  cPointers: array[0..8] of string = ('pointer', 'tobject', 'tclass', 'iinterface', 'iunknown', 'pchar', 'pansichar',
+    'pwidechar', 'tprocedure');
+var
+  mName: string;
+begin
+  mName := LowerCase(Trim(ATypeName));
+  if StartsText('system.', mName) then
+  begin
+    mName := Copy(mName, Length('system.') + 1, MaxInt);
+  end;
+  if StartsText('array of ', mName) then
+  begin
+    Result := '[]';
+  end
+  else if IndexText(mName, cNumbers) >= 0 then
+  begin
+    Result := '0';
+  end
+  else if IndexText(mName, cStrings) >= 0 then
+  begin
+    Result := '''''';
+  end
+  else if IndexText(mName, cChars) >= 0 then
+  begin
+    Result := '#0';
+  end
+  else if IndexText(mName, cBooleans) >= 0 then
+  begin
+    Result := 'False';
+  end
+  else if IndexText(mName, cPointers) >= 0 then
+  begin
+    Result := 'nil';
+  end
+  else
+  begin
+    Result := '';
+  end;
 end;
 
 initialization

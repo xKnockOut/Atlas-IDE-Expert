@@ -843,220 +843,6 @@ begin
   end;
 end;
 
-function TAnalyzer.TakeMoved(const AMoved: TArray<TSyntaxNode>; var AFinding: TForwardFinding;
-  out AText: string): Boolean;
-var
-  mChild: TSyntaxNode;
-  mRange: TTextRange;
-begin
-  AText := '';
-  for mChild in AMoved do
-  begin
-    if not WholeLines(mChild, mChild, mRange) then
-    begin
-      AFinding.Reason := cTexts[TForwardDeclarationsText.TheSectionBetweenTheType2].Fmt([SectionWord(mChild)]);
-      Exit(False);
-    end;
-    AText := AText + LinesText(mRange);
-    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(mRange, '')];
-  end;
-  Result := True;
-end;
-
-procedure TAnalyzer.DropLaterKeywords(const ABlocks: TArray<TSyntaxNode>; var AFinding: TForwardFinding);
-var
-  mLater: Integer;
-  mEdit: TTextEdit;
-begin
-  for mLater := 1 to High(ABlocks) do
-  begin
-    if DropKeyword(ABlocks[mLater], mEdit) then
-    begin
-      AFinding.Edits := AFinding.Edits + [mEdit];
-    end;
-  end;
-end;
-
-procedure TAnalyzer.FixMerge(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
-var
-  mParent: TSyntaxNode;
-  mMoved, mBlocks: TArray<TSyntaxNode>;
-  mText: string;
-  mAt: TTextPosition;
-begin
-  mParent := AUser.Section.Parent;
-  mMoved := nil;
-  mBlocks := TArray<TSyntaxNode>.Create(AUser.Section);
-  // Was die Typen aus den Abschnitten dazwischen brauchen, steht danach weiter vorn und bleibt
-  // erreichbar. Brauchen umgekehrt die Abschnitte dazwischen einen der Typen, geht es nicht.
-  if not SplitBetween(mParent, IndexIn(mParent, AUser.Section), IndexIn(mParent, ATarget.Section), mBlocks,
-    mMoved) then
-  begin
-    AFinding.Reason := cTexts[TForwardDeclarationsText.BetweenTheTypeBlocksThere].Text;
-  end
-  else
-  begin
-    AFinding.Reason := MovedNeedError(mMoved, mBlocks);
-  end;
-  if (AFinding.Reason = '') and
-    not IsBlank(Copy(LineText(AUser.Section.StartPos.Line), 1, AUser.Section.StartPos.Character)) then
-  begin
-    AFinding.Reason := cTexts[TForwardDeclarationsText.TheFirstTypeBlockDoes].Text;
-  end;
-  if (AFinding.Reason <> '') or not TakeMoved(mMoved, AFinding, mText) then
-  begin
-    Exit;
-  end;
-  DropLaterKeywords(mBlocks, AFinding);
-  if mText <> '' then
-  begin
-    mAt := Pos_(AUser.Section.StartPos.Line, 0);
-    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText)];
-  end;
-  AFinding.Edits := AFinding.Edits + [SectionStart(AUser.Section, ForwardText(ATarget))];
-  AFinding.Fix := TForwardFix.MergeBlocks;
-end;
-
-function TAnalyzer.TargetRange(const AUser, ATarget: TDecl; ATargetStart: TSyntaxNode;
-  out ARange: TTextRange): Boolean;
-begin
-  // Besteht der Block nur aus dem Typ, entfällt er ganz.
-  if (ATarget.Section <> AUser.Section) and (ATarget.Section[0] = ATargetStart) and
-    (ATarget.Section[ATarget.Section.ChildCount - 1] = ATarget.Node) and
-    WholeLines(ATarget.Section, ATarget.Section, ARange) then
-  begin
-    Exit(True);
-  end;
-  Result := WholeLines(ATargetStart, ATarget.Node, ARange);
-end;
-
-procedure TAnalyzer.FixMove(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
-var
-  mUserStart, mTargetStart: TSyntaxNode;
-  mRange: TTextRange;
-  mNeeded, mText: string;
-  mAt: TTextPosition;
-begin
-  mUserStart := BlockStart(AUser);
-  mTargetStart := BlockStart(ATarget);
-  // Was zwischen Verwender und Typ deklariert ist, stünde danach hinter dem Typ: neue Lücke.
-  mNeeded := NeededName(ATarget.Node, DeclaredBetween(AUser.Section.Parent, mUserStart.StartOffset,
-    mTargetStart.StartOffset));
-  if mNeeded <> '' then
-  begin
-    AFinding.Reason := cTexts[TForwardDeclarationsText.NeedsWhichIsDeclaredBefore].Fmt([ATarget.Node.Name, mNeeded]);
-  end
-  else if not IsBlank(Copy(LineText(mUserStart.StartPos.Line), 1, mUserStart.StartPos.Character)) then
-  begin
-    AFinding.Reason := cTexts[TForwardDeclarationsText.DoesNotStartAtThe].Fmt([AUser.Node.Name]);
-  end
-  else if not TargetRange(AUser, ATarget, mTargetStart, mRange) then
-  begin
-    AFinding.Reason := cTexts[TForwardDeclarationsText.SharesLinesWithOtherCode].Fmt([ATarget.Node.Name]);
-  end;
-  if AFinding.Reason <> '' then
-  begin
-    Exit;
-  end;
-  mText := TTextLines.IndentOf(LineText(mUserStart.StartPos.Line)) +
-    Source(mTargetStart.StartOffset, ATarget.Node.EndOffset) + FBreak;
-  mAt := Pos_(mUserStart.StartPos.Line, 0);
-  AFinding.Edits := [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText), TTextEdit.Create(mRange, '')];
-  AFinding.Fix := TForwardFix.MoveDeclaration;
-end;
-
-procedure TAnalyzer.UsedBefore(const AUser, ATarget: TDecl; ARef: TSyntaxNode);
-var
-  mFinding: TForwardFinding;
-  mRange: TTextRange;
-begin
-  mFinding := Default(TForwardFinding);
-  mFinding.Issue := TForwardIssue.UsedBeforeDeclaration;
-  mFinding.TypeName := ATarget.Node.Name;
-  mFinding.UserName := AUser.Node.Name;
-  mFinding.Range := RangeOf(ARef);
-  if ATarget.Forward then
-  begin
-    // Die Forward-Deklaration gibt es schon, nur zu weit unten.
-    if ATarget.Section <> AUser.Section then
-    begin
-      mFinding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationIsIn].Text;
-    end
-    else if not WholeLines(ATarget.Node, ATarget.Node, mRange) then
-    begin
-      mFinding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationSharesThe].Text;
-    end
-    else
-    begin
-      mFinding.Edits := [TTextEdit.Create(mRange, ''),
-        SectionStart(AUser.Section, Source(ATarget.Node.StartOffset, ATarget.Node.EndOffset))];
-      mFinding.Fix := TForwardFix.MoveForward;
-    end;
-  end
-  else if CanForward(ATarget.Node) then
-  begin
-    if ATarget.Section = AUser.Section then
-    begin
-      mFinding.Edits := [SectionStart(AUser.Section, ForwardText(ATarget))];
-      mFinding.Fix := TForwardFix.AddForward;
-    end
-    else
-    begin
-      FixMerge(mFinding, AUser, ATarget);
-    end;
-  end
-  else
-  begin
-    FixMove(mFinding, AUser, ATarget);
-  end;
-  if mFinding.Fix = TForwardFix.NoFix then
-  begin
-    mFinding.Edits := nil;
-  end;
-  FFindings := FFindings + [mFinding];
-end;
-
-function TAnalyzer.RemovalRange(ANode: TSyntaxNode): TTextRange;
-var
-  mLine: string;
-  mStop: Integer;
-begin
-  if WholeLines(ANode, ANode, Result) then
-  begin
-    Exit;
-  end;
-  // Mit anderen Deklarationen in der Zeile: nur sie samt folgenden Leerzeichen.
-  mLine := LineText(ANode.EndPos.Line);
-  mStop := ANode.EndPos.Character;
-  while (mStop < Length(mLine)) and CharInSet(mLine[mStop + 1], [' ', #9]) do
-  begin
-    Inc(mStop);
-  end;
-  Result := TTextRange.Create(ANode.StartPos, Pos_(ANode.EndPos.Line, mStop));
-end;
-
-procedure TAnalyzer.Unneeded(const ADecls: TArray<TDecl>; AIndex: Integer);
-var
-  mFull: Integer;
-  mFinding: TForwardFinding;
-begin
-  mFull := FullIndex(ADecls, AIndex);
-  // Ohne vollständige Deklaration im Block meldet der Compiler selbst (E2086). Benutzt vor der vollständigen
-  // Deklaration, auch schon vor der Forward-Deklaration (dann steht sie zu weit unten, das meldet
-  // type-used-before-declaration): gebraucht.
-  if (mFull < 0) or UsedBeforeFull(ADecls, AIndex, mFull) then
-  begin
-    Exit;
-  end;
-  mFinding := Default(TForwardFinding);
-  mFinding.Issue := TForwardIssue.UnneededForward;
-  mFinding.TypeName := ADecls[AIndex].Node.Name;
-  mFinding.Range := RangeOf(ADecls[AIndex].Node);
-  mFinding.Edits := [TTextEdit.Create(RemovalRange(ADecls[AIndex].Node), '')];
-  mFinding.Fix := TForwardFix.RemoveForward;
-  FFindings := FFindings + [mFinding];
-end;
-
 function TAnalyzer.CollectDecls(AParent: TSyntaxNode): TArray<TDecl>;
 var
   mIndex, mChild: Integer;
@@ -1143,6 +929,220 @@ begin
       Unneeded(mDecls, mIndex);
     end;
   end;
+end;
+
+procedure TAnalyzer.UsedBefore(const AUser, ATarget: TDecl; ARef: TSyntaxNode);
+var
+  mFinding: TForwardFinding;
+  mRange: TTextRange;
+begin
+  mFinding := Default(TForwardFinding);
+  mFinding.Issue := TForwardIssue.UsedBeforeDeclaration;
+  mFinding.TypeName := ATarget.Node.Name;
+  mFinding.UserName := AUser.Node.Name;
+  mFinding.Range := RangeOf(ARef);
+  if ATarget.Forward then
+  begin
+    // Die Forward-Deklaration gibt es schon, nur zu weit unten.
+    if ATarget.Section <> AUser.Section then
+    begin
+      mFinding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationIsIn].Text;
+    end
+    else if not WholeLines(ATarget.Node, ATarget.Node, mRange) then
+    begin
+      mFinding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationSharesThe].Text;
+    end
+    else
+    begin
+      mFinding.Edits := [TTextEdit.Create(mRange, ''),
+        SectionStart(AUser.Section, Source(ATarget.Node.StartOffset, ATarget.Node.EndOffset))];
+      mFinding.Fix := TForwardFix.MoveForward;
+    end;
+  end
+  else if CanForward(ATarget.Node) then
+  begin
+    if ATarget.Section = AUser.Section then
+    begin
+      mFinding.Edits := [SectionStart(AUser.Section, ForwardText(ATarget))];
+      mFinding.Fix := TForwardFix.AddForward;
+    end
+    else
+    begin
+      FixMerge(mFinding, AUser, ATarget);
+    end;
+  end
+  else
+  begin
+    FixMove(mFinding, AUser, ATarget);
+  end;
+  if mFinding.Fix = TForwardFix.NoFix then
+  begin
+    mFinding.Edits := nil;
+  end;
+  FFindings := FFindings + [mFinding];
+end;
+
+function TAnalyzer.TargetRange(const AUser, ATarget: TDecl; ATargetStart: TSyntaxNode;
+  out ARange: TTextRange): Boolean;
+begin
+  // Besteht der Block nur aus dem Typ, entfällt er ganz.
+  if (ATarget.Section <> AUser.Section) and (ATarget.Section[0] = ATargetStart) and
+    (ATarget.Section[ATarget.Section.ChildCount - 1] = ATarget.Node) and
+    WholeLines(ATarget.Section, ATarget.Section, ARange) then
+  begin
+    Exit(True);
+  end;
+  Result := WholeLines(ATargetStart, ATarget.Node, ARange);
+end;
+
+procedure TAnalyzer.FixMove(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
+var
+  mUserStart, mTargetStart: TSyntaxNode;
+  mRange: TTextRange;
+  mNeeded, mText: string;
+  mAt: TTextPosition;
+begin
+  mUserStart := BlockStart(AUser);
+  mTargetStart := BlockStart(ATarget);
+  // Was zwischen Verwender und Typ deklariert ist, stünde danach hinter dem Typ: neue Lücke.
+  mNeeded := NeededName(ATarget.Node, DeclaredBetween(AUser.Section.Parent, mUserStart.StartOffset,
+    mTargetStart.StartOffset));
+  if mNeeded <> '' then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.NeedsWhichIsDeclaredBefore].Fmt([ATarget.Node.Name, mNeeded]);
+  end
+  else if not IsBlank(Copy(LineText(mUserStart.StartPos.Line), 1, mUserStart.StartPos.Character)) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.DoesNotStartAtThe].Fmt([AUser.Node.Name]);
+  end
+  else if not TargetRange(AUser, ATarget, mTargetStart, mRange) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.SharesLinesWithOtherCode].Fmt([ATarget.Node.Name]);
+  end;
+  if AFinding.Reason <> '' then
+  begin
+    Exit;
+  end;
+  mText := TTextLines.IndentOf(LineText(mUserStart.StartPos.Line)) +
+    Source(mTargetStart.StartOffset, ATarget.Node.EndOffset) + FBreak;
+  mAt := Pos_(mUserStart.StartPos.Line, 0);
+  AFinding.Edits := [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText), TTextEdit.Create(mRange, '')];
+  AFinding.Fix := TForwardFix.MoveDeclaration;
+end;
+
+function TAnalyzer.TakeMoved(const AMoved: TArray<TSyntaxNode>; var AFinding: TForwardFinding;
+  out AText: string): Boolean;
+var
+  mChild: TSyntaxNode;
+  mRange: TTextRange;
+begin
+  AText := '';
+  for mChild in AMoved do
+  begin
+    if not WholeLines(mChild, mChild, mRange) then
+    begin
+      AFinding.Reason := cTexts[TForwardDeclarationsText.TheSectionBetweenTheType2].Fmt([SectionWord(mChild)]);
+      Exit(False);
+    end;
+    AText := AText + LinesText(mRange);
+    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(mRange, '')];
+  end;
+  Result := True;
+end;
+
+procedure TAnalyzer.DropLaterKeywords(const ABlocks: TArray<TSyntaxNode>; var AFinding: TForwardFinding);
+var
+  mLater: Integer;
+  mEdit: TTextEdit;
+begin
+  for mLater := 1 to High(ABlocks) do
+  begin
+    if DropKeyword(ABlocks[mLater], mEdit) then
+    begin
+      AFinding.Edits := AFinding.Edits + [mEdit];
+    end;
+  end;
+end;
+
+procedure TAnalyzer.FixMerge(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
+var
+  mParent: TSyntaxNode;
+  mMoved, mBlocks: TArray<TSyntaxNode>;
+  mText: string;
+  mAt: TTextPosition;
+begin
+  mParent := AUser.Section.Parent;
+  mMoved := nil;
+  mBlocks := TArray<TSyntaxNode>.Create(AUser.Section);
+  // Was die Typen aus den Abschnitten dazwischen brauchen, steht danach weiter vorn und bleibt
+  // erreichbar. Brauchen umgekehrt die Abschnitte dazwischen einen der Typen, geht es nicht.
+  if not SplitBetween(mParent, IndexIn(mParent, AUser.Section), IndexIn(mParent, ATarget.Section), mBlocks,
+    mMoved) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.BetweenTheTypeBlocksThere].Text;
+  end
+  else
+  begin
+    AFinding.Reason := MovedNeedError(mMoved, mBlocks);
+  end;
+  if (AFinding.Reason = '') and
+    not IsBlank(Copy(LineText(AUser.Section.StartPos.Line), 1, AUser.Section.StartPos.Character)) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.TheFirstTypeBlockDoes].Text;
+  end;
+  if (AFinding.Reason <> '') or not TakeMoved(mMoved, AFinding, mText) then
+  begin
+    Exit;
+  end;
+  DropLaterKeywords(mBlocks, AFinding);
+  if mText <> '' then
+  begin
+    mAt := Pos_(AUser.Section.StartPos.Line, 0);
+    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText)];
+  end;
+  AFinding.Edits := AFinding.Edits + [SectionStart(AUser.Section, ForwardText(ATarget))];
+  AFinding.Fix := TForwardFix.MergeBlocks;
+end;
+
+function TAnalyzer.RemovalRange(ANode: TSyntaxNode): TTextRange;
+var
+  mLine: string;
+  mStop: Integer;
+begin
+  if WholeLines(ANode, ANode, Result) then
+  begin
+    Exit;
+  end;
+  // Mit anderen Deklarationen in der Zeile: nur sie samt folgenden Leerzeichen.
+  mLine := LineText(ANode.EndPos.Line);
+  mStop := ANode.EndPos.Character;
+  while (mStop < Length(mLine)) and CharInSet(mLine[mStop + 1], [' ', #9]) do
+  begin
+    Inc(mStop);
+  end;
+  Result := TTextRange.Create(ANode.StartPos, Pos_(ANode.EndPos.Line, mStop));
+end;
+
+procedure TAnalyzer.Unneeded(const ADecls: TArray<TDecl>; AIndex: Integer);
+var
+  mFull: Integer;
+  mFinding: TForwardFinding;
+begin
+  mFull := FullIndex(ADecls, AIndex);
+  // Ohne vollständige Deklaration im Block meldet der Compiler selbst (E2086). Benutzt vor der vollständigen
+  // Deklaration, auch schon vor der Forward-Deklaration (dann steht sie zu weit unten, das meldet
+  // type-used-before-declaration): gebraucht.
+  if (mFull < 0) or UsedBeforeFull(ADecls, AIndex, mFull) then
+  begin
+    Exit;
+  end;
+  mFinding := Default(TForwardFinding);
+  mFinding.Issue := TForwardIssue.UnneededForward;
+  mFinding.TypeName := ADecls[AIndex].Node.Name;
+  mFinding.Range := RangeOf(ADecls[AIndex].Node);
+  mFinding.Edits := [TTextEdit.Create(RemovalRange(ADecls[AIndex].Node), '')];
+  mFinding.Fix := TForwardFix.RemoveForward;
+  FFindings := FFindings + [mFinding];
 end;
 
 procedure TAnalyzer.Run;

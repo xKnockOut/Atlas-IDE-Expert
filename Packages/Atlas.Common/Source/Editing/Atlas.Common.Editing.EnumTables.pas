@@ -172,6 +172,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TEnumTables }
+
 class function TEnumTables.CreateTitle: string;
 begin
   Result := cTexts[TEditingEnumTablesText.CreateNameTable].Text;
@@ -591,6 +593,8 @@ type
     function Declaration: string;
   end;
 
+{ TTableDraft }
+
 function TTableDraft.CollectItems(const ATaken: TArray<string>; out AReason: string): Boolean;
 var
   mName, mResource: string;
@@ -848,6 +852,8 @@ type
     /// </summary>
     function ToPrevious(const AText: string; ACommentStop: Integer; AAfterComma: Boolean): Boolean;
   end;
+
+{ TGap }
 
 class function TGap.Create(AStart, AStop: Integer; AHasPrevious, AHasNext: Boolean): TGap;
 begin
@@ -1291,6 +1297,8 @@ type
       const AValues: TEnumTableValues);
     function Run(out ARepair: TEnumTableRepair): Boolean;
   end;
+
+{ TTableRepairer }
 
 constructor TTableRepairer.Create(const AText: string; ATree: TSyntaxTree; AValue: TSyntaxNode;
   const ANames: TArray<string>; const AValues: TEnumTableValues);

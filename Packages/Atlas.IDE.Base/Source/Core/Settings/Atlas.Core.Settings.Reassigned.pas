@@ -51,6 +51,8 @@ const
   cTargetNames: array[TAtlasReassignedTarget] of string = ('locals', 'loopVars', 'valueParams', 'varParams',
     'fields');
 
+{ TAtlasReassignedNames }
+
 class function TAtlasReassignedNames.TargetName(ATarget: TAtlasReassignedTarget): string;
 begin
   Result := cTargetNames[ATarget];

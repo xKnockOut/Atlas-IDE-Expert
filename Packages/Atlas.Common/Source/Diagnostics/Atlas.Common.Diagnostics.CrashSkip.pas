@@ -108,21 +108,6 @@ end;
 
 // FNV-1a rechnet modulo 2^64: die Überlaufprüfung ist nur hier aus, danach wie vorher (#972).
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
-class function TCrashSkips.Checksum(const AText: string): string;
-var
-  mHash: UInt64;
-  mIndex: Integer;
-begin
-  mHash := UInt64($CBF29CE484222325);
-  for mIndex := 1 to Length(AText) do
-  begin
-    mHash := mHash xor Ord(AText[mIndex]);
-    mHash := mHash * UInt64($00000100000001B3);
-  end;
-  Result := IntToHex(Int64(mHash), 16);
-end;
-{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
-
 function TCrashSkips.IndexOf(const AMethod, AUri: string): Integer;
 var
   mIndex: Integer;
@@ -136,6 +121,7 @@ begin
   end;
   Result := -1;
 end;
+{$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function TCrashSkips.Crashed(const AMethod, AUri, AChecksum, ACaseFolder, AExceptionClass: string): Boolean;
 var
@@ -395,6 +381,20 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+class function TCrashSkips.Checksum(const AText: string): string;
+var
+  mHash: UInt64;
+  mIndex: Integer;
+begin
+  mHash := UInt64($CBF29CE484222325);
+  for mIndex := 1 to Length(AText) do
+  begin
+    mHash := mHash xor Ord(AText[mIndex]);
+    mHash := mHash * UInt64($00000100000001B3);
+  end;
+  Result := IntToHex(Int64(mHash), 16);
 end;
 
 end.

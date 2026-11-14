@@ -46,6 +46,8 @@ begin
   Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
+{ TAtlasOverloads }
+
 class function TAtlasOverloads.Find(const ANodes: TAtlasOutlineNodes; ANode: Integer): TArray<Integer>;
 var
   mIndex: Integer;

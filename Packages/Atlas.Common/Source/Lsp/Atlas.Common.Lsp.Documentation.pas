@@ -246,33 +246,6 @@ end;
 
 { TLspDocumentation }
 
-class function TLspDocumentation.SplitLines(const AText: string): TArray<string>;
-begin
-  Result := TTextLines.SplitLines(AText);
-end;
-
-class function TLspDocumentation.HintsJson(const AHints: THintSettings): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('expand', AHints.XmlDocExpand);
-  Result.AddPair('maxLines', TJSONNumber.Create(AHints.XmlDocMaxLines));
-end;
-
-class function TLspDocumentation.Reader(const AOwnFile, AOwnText: string;
-  const AReadText: TDocReadText): TDocReadText;
-begin
-  Result :=
-    function(const AName: string; out AText: string): Boolean
-    begin
-      if SameText(AName, AOwnFile) then
-      begin
-        AText := AOwnText;
-        Exit(True);
-      end;
-      Result := Assigned(AReadText) and AReadText(AName, AText);
-    end;
-end;
-
 class function TLspDocumentation.Load(AResolver: TNameResolver; const ASymbol: TResolvedSymbol;
   const ALines: TArray<string>; ALine: Integer; const AReadText: TDocReadText): TXmlDoc;
 var
@@ -346,6 +319,33 @@ begin
   finally
     mSeen.Free;
   end;
+end;
+
+class function TLspDocumentation.HintsJson(const AHints: THintSettings): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('expand', AHints.XmlDocExpand);
+  Result.AddPair('maxLines', TJSONNumber.Create(AHints.XmlDocMaxLines));
+end;
+
+class function TLspDocumentation.Reader(const AOwnFile, AOwnText: string;
+  const AReadText: TDocReadText): TDocReadText;
+begin
+  Result :=
+    function(const AName: string; out AText: string): Boolean
+    begin
+      if SameText(AName, AOwnFile) then
+      begin
+        AText := AOwnText;
+        Exit(True);
+      end;
+      Result := Assigned(AReadText) and AReadText(AName, AText);
+    end;
+end;
+
+class function TLspDocumentation.SplitLines(const AText: string): TArray<string>;
+begin
+  Result := TTextLines.SplitLines(AText);
 end;
 
 function FindTarget(const ATargets: TArray<TDocTarget>; const ACref: string; out ATarget: TDocTarget): Boolean;

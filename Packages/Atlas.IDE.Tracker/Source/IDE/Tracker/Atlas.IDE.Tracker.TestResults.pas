@@ -232,40 +232,6 @@ begin
   inherited;
 end;
 
-class function TAtlasTestResultsData.KeyOf(const AProject: string): string;
-begin
-  Result := TAtlasProjectSummaries.NormalizedPath(AProject);
-end;
-
-procedure TAtlasTestResultsData.Forget(const AProject: string);
-begin
-  if AProject = '' then
-  begin
-    FSummaries.Clear;
-  end
-  else
-  begin
-    FSummaries.Remove(KeyOf(AProject));
-  end;
-end;
-
-procedure TAtlasTestResultsData.SetQuerying(const AProjects: TArray<string>; AQuerying: Boolean);
-var
-  mProject: string;
-begin
-  for mProject in AProjects do
-  begin
-    if AQuerying then
-    begin
-      FQuerying.AddOrSetValue(KeyOf(mProject), True);
-    end
-    else
-    begin
-      FQuerying.Remove(KeyOf(mProject));
-    end;
-  end;
-end;
-
 function TAtlasTestResultsData.SummaryOf(const AProject: string): TAtlasProjectSummary;
 var
   mCached: TCachedSummary;
@@ -289,6 +255,23 @@ begin
   mCached.Summary := Result;
   mCached.Tick := GetTickCount64;
   FSummaries.AddOrSetValue(KeyOf(AProject), mCached);
+end;
+
+function TAtlasTestResultsData.JobOf(const AProject, ABranch: string): TAtlasCiJob;
+var
+  mKey: string;
+  mCached: TCachedJob;
+begin
+  // .atlas nicht bei jedem Zeichnen lesen.
+  mKey := KeyOf(AProject) + '|' + ABranch;
+  if FJobs.TryGetValue(mKey, mCached) and (GetTickCount64 - mCached.Tick < cCacheMs) then
+  begin
+    Exit(mCached.Job);
+  end;
+  Result := ReadJob(AProject, ABranch);
+  mCached.Job := Result;
+  mCached.Tick := GetTickCount64;
+  FJobs.AddOrSetValue(mKey, mCached);
 end;
 
 function TAtlasTestResultsData.ReadJob(const AProject, ABranch: string): TAtlasCiJob;
@@ -317,21 +300,9 @@ begin
   end;
 end;
 
-function TAtlasTestResultsData.JobOf(const AProject, ABranch: string): TAtlasCiJob;
-var
-  mKey: string;
-  mCached: TCachedJob;
+class function TAtlasTestResultsData.KeyOf(const AProject: string): string;
 begin
-  // .atlas nicht bei jedem Zeichnen lesen.
-  mKey := KeyOf(AProject) + '|' + ABranch;
-  if FJobs.TryGetValue(mKey, mCached) and (GetTickCount64 - mCached.Tick < cCacheMs) then
-  begin
-    Exit(mCached.Job);
-  end;
-  Result := ReadJob(AProject, ABranch);
-  mCached.Job := Result;
-  mCached.Tick := GetTickCount64;
-  FJobs.AddOrSetValue(mKey, mCached);
+  Result := TAtlasProjectSummaries.NormalizedPath(AProject);
 end;
 
 function TAtlasTestResultsData.Projects(ACi: Boolean): TArray<TAtlasTestProject>;
@@ -357,6 +328,35 @@ begin
     end;
     mItem.Querying := FQuerying.ContainsKey(KeyOf(mProject.Project));
     Result := Result + [mItem];
+  end;
+end;
+
+procedure TAtlasTestResultsData.Forget(const AProject: string);
+begin
+  if AProject = '' then
+  begin
+    FSummaries.Clear;
+  end
+  else
+  begin
+    FSummaries.Remove(KeyOf(AProject));
+  end;
+end;
+
+procedure TAtlasTestResultsData.SetQuerying(const AProjects: TArray<string>; AQuerying: Boolean);
+var
+  mProject: string;
+begin
+  for mProject in AProjects do
+  begin
+    if AQuerying then
+    begin
+      FQuerying.AddOrSetValue(KeyOf(mProject), True);
+    end
+    else
+    begin
+      FQuerying.Remove(KeyOf(mProject));
+    end;
   end;
 end;
 
@@ -459,53 +459,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeTestResults.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.WelcomePageTests;
-end;
-
-class function TAtlasIdeTestResults.Title: string;
-begin
-  Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsTitle);
-end;
-
-procedure TAtlasIdeTestResults.Start;
-begin
-  FStarted := True;
-  FActive := Active;
-end;
-
-procedure TAtlasIdeTestResults.Stop;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := False;
-  // Die Abfrage bricht beim Abbruchsignal ab (Transport); kurz warten, dann sich selbst überlassen.
-  FWorker.Stop(TAtlasShutdown.cStopMs);
-  FLink := nil;
-  FActions.Release;
-  FData.FLink := nil;
-end;
-
-
-procedure TAtlasIdeTestResults.Refresh;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FData.Forget('');
-  // welcomePage.tests umgeschaltet bzw. Sprache: Titel und Schalter neu; sonst nur der Inhalt.
-  if (FActive <> Active) and (FLink <> nil) then
-  begin
-    FActive := Active;
-    FLink.TileInfoChanged(cTileId);
-  end;
-  Changed;
-end;
-
 procedure TAtlasIdeTestResults.Changed;
 begin
   if FStarted and (FLink <> nil) then
@@ -520,78 +473,6 @@ begin
   begin
     FMessage(AText);
   end;
-end;
-
-procedure TAtlasIdeTestResults.Guarded(const AProc: TProc);
-begin
-  if FStarted then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Tracker, AProc);
-  end;
-end;
-
-procedure TAtlasIdeTestResults.SummaryChanged(const AProject: string);
-begin
-  FData.Forget(AProject);
-  Changed;
-end;
-
-function TAtlasIdeTestResults.View: TAtlasTestResultsView;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  Result := Default(TAtlasTestResultsView);
-  Result.Selected := -1;
-  if not FStarted or not Active then
-  begin
-    Exit;
-  end;
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasTestResults.View(FData.Projects(mSettings.WelcomePageTestsCi), FData.Selected,
-    mSettings.WelcomePageTestsMaxFailures, mSettings.WelcomePageTestsCi);
-  // Langsamste Tests nur mit tests.showDuration (#1772).
-  if not mSettings.TestsShowDuration then
-  begin
-    Result.Slowest := nil;
-  end;
-end;
-
-procedure TAtlasIdeTestResults.Shown;
-begin
-  Fetch(False, '', '');
-end;
-
-class function TAtlasIdeTestResults.Wanted(const AItem: TAtlasTestProject; const AOnly, AServer: string): Boolean;
-begin
-  Result := AItem.Job.Configured and not AItem.Querying;
-  if Result and (AOnly <> '') then
-  begin
-    Result := SameText(AItem.Project, AOnly);
-  end;
-  if Result and (AServer <> '') then
-  begin
-    Result := AItem.Job.Server = AServer;
-  end;
-end;
-
-class procedure TAtlasIdeTestResults.AddFetch(var AList: TArray<TAtlasTestResultsFetch>;
-  const AItem: TAtlasTestProject);
-var
-  mIndex: Integer;
-  mNext: TAtlasTestResultsFetch;
-begin
-  // Derselbe Job (Projektgruppe und ihr Testprojekt): einmal fragen, bei beiden eintragen.
-  for mIndex := 0 to High(AList) do
-  begin
-    if AList[mIndex].Job.Key = AItem.Job.Key then
-    begin
-      AList[mIndex].Projects := AList[mIndex].Projects + [AItem.Project];
-      Exit;
-    end;
-  end;
-  mNext.Job := AItem.Job;
-  mNext.Projects := [AItem.Project];
-  AList := AList + [mNext];
 end;
 
 function TAtlasIdeTestResults.DueJobs(AForce: Boolean; const AOnly, AServer: string): TArray<TAtlasTestResultsFetch>;
@@ -611,6 +492,40 @@ begin
       AddFetch(Result, mItem);
     end;
   end;
+end;
+
+class function TAtlasIdeTestResults.Wanted(const AItem: TAtlasTestProject; const AOnly, AServer: string): Boolean;
+begin
+  Result := AItem.Job.Configured and not AItem.Querying;
+  if Result and (AOnly <> '') then
+  begin
+    Result := SameText(AItem.Project, AOnly);
+  end;
+  if Result and (AServer <> '') then
+  begin
+    Result := AItem.Job.Server = AServer;
+  end;
+end;
+
+
+class procedure TAtlasIdeTestResults.AddFetch(var AList: TArray<TAtlasTestResultsFetch>;
+  const AItem: TAtlasTestProject);
+var
+  mIndex: Integer;
+  mNext: TAtlasTestResultsFetch;
+begin
+  // Derselbe Job (Projektgruppe und ihr Testprojekt): einmal fragen, bei beiden eintragen.
+  for mIndex := 0 to High(AList) do
+  begin
+    if AList[mIndex].Job.Key = AItem.Job.Key then
+    begin
+      AList[mIndex].Projects := AList[mIndex].Projects + [AItem.Project];
+      Exit;
+    end;
+  end;
+  mNext.Job := AItem.Job;
+  mNext.Projects := [AItem.Project];
+  AList := AList + [mNext];
 end;
 
 procedure TAtlasIdeTestResults.Fetch(AForce: Boolean; const AOnly, AServer: string);
@@ -645,6 +560,60 @@ begin
   mJob.Keep := Self;
   mJob.Owner := Self;
   FWorker.Start(FetchThread(mJob));
+end;
+
+procedure TAtlasIdeTestResults.Guarded(const AProc: TProc);
+begin
+  if FStarted then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Tracker, AProc);
+  end;
+end;
+
+procedure TAtlasIdeTestResults.Start;
+begin
+  FStarted := True;
+  FActive := Active;
+end;
+
+procedure TAtlasIdeTestResults.Stop;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := False;
+  // Die Abfrage bricht beim Abbruchsignal ab (Transport); kurz warten, dann sich selbst überlassen.
+  FWorker.Stop(TAtlasShutdown.cStopMs);
+  FLink := nil;
+  FActions.Release;
+  FData.FLink := nil;
+end;
+
+procedure TAtlasIdeTestResults.Refresh;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FData.Forget('');
+  // welcomePage.tests umgeschaltet bzw. Sprache: Titel und Schalter neu; sonst nur der Inhalt.
+  if (FActive <> Active) and (FLink <> nil) then
+  begin
+    FActive := Active;
+    FLink.TileInfoChanged(cTileId);
+  end;
+  Changed;
+end;
+
+class function TAtlasIdeTestResults.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageTests;
+end;
+
+class function TAtlasIdeTestResults.Title: string;
+begin
+  Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsTitle);
 end;
 
 procedure TAtlasIdeTestResults.Fetched(const AFetch: TAtlasTestResultsFetch; ASucceeded: Boolean;
@@ -693,6 +662,51 @@ begin
   Changed;
 end;
 
+procedure TAtlasIdeTestResults.EnterCredentialsForActive;
+var
+  mProject: string;
+begin
+  mProject := TAtlasIdeFiles.ActiveProjectFile;
+  if mProject = '' then
+  begin
+    Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
+  end
+  else
+  begin
+    EnterCredentials(TAtlasTestResultsActions.JobOfProject(mProject));
+  end;
+end;
+
+procedure TAtlasIdeTestResults.EnterCredentials(const AJob: TAtlasCiJob);
+var
+  mJob: TAtlasCiJob;
+begin
+  mJob := AJob;
+  Guarded(
+    procedure
+    begin
+      if not CanEnterCredentials then
+      begin
+        Exit;
+      end;
+      if mJob.Server = '' then
+      begin
+        Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
+      end
+      else if FAccess.EnterCredentials(mJob) then
+      begin
+        // Mit dem neuen Zugang gleich alle Jobs dieses Servers fragen (nur mit welcomePage.tests.ci).
+        Fetch(True, '', mJob.Server);
+      end;
+    end);
+end;
+
+procedure TAtlasIdeTestResults.SummaryChanged(const AProject: string);
+begin
+  FData.Forget(AProject);
+  Changed;
+end;
+
 /// <summary>„Im Browser“ des Hinweises; eigene Routine, damit die Methodenreferenz nur ihre Werte hält.</summary>
 function BrowseAction(const AKeep: IAtlasTestResultsSource; AActions: TAtlasTestResultsActions;
   const AJob: TAtlasCiJob; ANumber: Integer): TProc;
@@ -732,6 +746,26 @@ begin
   if mMode = TAtlasNotificationMode.Show then
   begin
     Report(mTitle + ' – ' + mText);
+  end;
+end;
+
+function TAtlasIdeTestResults.View: TAtlasTestResultsView;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  Result := Default(TAtlasTestResultsView);
+  Result.Selected := -1;
+  if not FStarted or not Active then
+  begin
+    Exit;
+  end;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasTestResults.View(FData.Projects(mSettings.WelcomePageTestsCi), FData.Selected,
+    mSettings.WelcomePageTestsMaxFailures, mSettings.WelcomePageTestsCi);
+  // Langsamste Tests nur mit tests.showDuration (#1772).
+  if not mSettings.TestsShowDuration then
+  begin
+    Result.Slowest := nil;
   end;
 end;
 
@@ -827,53 +861,9 @@ begin
     end);
 end;
 
-function TAtlasIdeTestResults.CanEnterCredentials: Boolean;
-begin
-  Result := FStarted and TAtlasIdeSettings.Current.CiLogin and (FAccess <> nil);
-end;
-
-procedure TAtlasIdeTestResults.EnterCredentials(const AJob: TAtlasCiJob);
-var
-  mJob: TAtlasCiJob;
-begin
-  mJob := AJob;
-  Guarded(
-    procedure
-    begin
-      if not CanEnterCredentials then
-      begin
-        Exit;
-      end;
-      if mJob.Server = '' then
-      begin
-        Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
-      end
-      else if FAccess.EnterCredentials(mJob) then
-      begin
-        // Mit dem neuen Zugang gleich alle Jobs dieses Servers fragen (nur mit welcomePage.tests.ci).
-        Fetch(True, '', mJob.Server);
-      end;
-    end);
-end;
-
 procedure TAtlasIdeTestResults.Credentials(const ARow: TAtlasTestRow);
 begin
   EnterCredentials(ARow.Job);
-end;
-
-procedure TAtlasIdeTestResults.EnterCredentialsForActive;
-var
-  mProject: string;
-begin
-  mProject := TAtlasIdeFiles.ActiveProjectFile;
-  if mProject = '' then
-  begin
-    Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
-  end
-  else
-  begin
-    EnterCredentials(TAtlasTestResultsActions.JobOfProject(mProject));
-  end;
 end;
 
 procedure TAtlasIdeTestResults.OpenProject(const ARow: TAtlasTestRow);
@@ -886,6 +876,16 @@ begin
     begin
       FActions.OpenProject(mRow);
     end);
+end;
+
+function TAtlasIdeTestResults.CanEnterCredentials: Boolean;
+begin
+  Result := FStarted and TAtlasIdeSettings.Current.CiLogin and (FAccess <> nil);
+end;
+
+procedure TAtlasIdeTestResults.Shown;
+begin
+  Fetch(False, '', '');
 end;
 
 end.

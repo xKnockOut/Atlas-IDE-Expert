@@ -104,6 +104,8 @@ const
   cLengthSuffix = 'H';
   cEntryPointText = 'Program entry point at';
 
+{ TMapLocation }
+
 function TMapLocation.ToString: string;
 begin
   if not Found then
@@ -224,23 +226,36 @@ begin
   Result := FSymbols.Count;
 end;
 
-procedure TMapFile.StartLineSection(const ALine: string);
+procedure TMapFile.Parse(const AText: string);
 var
-  mInside: string;
-  mOpen, mClose: Integer;
+  mLine: string;
+  mParts: TArray<string>;
 begin
-  // Line numbers for System(System.pas) segment .text
-  mInside := Copy(ALine, Length('Line numbers for ') + 1, MaxInt);
-  mOpen := Pos('(', mInside);
-  mClose := Pos(')', mInside);
-  FCurrentUnit := Copy(mInside, 1, mOpen - 1);
-  FCurrentFile := Copy(mInside, mOpen + 1, mClose - mOpen - 1);
-  // Nur Codesegment .text zählt.
-  FSection := TSection.Other;
-  if ContainsText(Copy(mInside, mClose + 1, MaxInt), '.text') then
+  FSection := TSection.Header;
+  FHeaderDone := False;
+  for mLine in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
   begin
-    FSection := TSection.Lines;
+    if (Trim(mLine) = '') or StartsSection(mLine) then
+    begin
+      Continue;
+    end;
+    mParts := Words(mLine);
+    case FSection of
+      TSection.Header:
+        ReadHeader(mParts);
+      TSection.Publics:
+        ReadPublic(mParts);
+      TSection.Lines:
+        ReadLineNumbers(mParts);
+    end;
   end;
+  FCurrentUnit := '';
+  FCurrentFile := '';
+  if FEntryPoint > 0 then
+  begin
+    FEntryPoint := FEntryPoint + FCodeStart;
+  end;
+  SortEntries;
 end;
 
 function TMapFile.StartsSection(const ALine: string): Boolean;
@@ -290,6 +305,38 @@ begin
   end;
 end;
 
+procedure TMapFile.StartLineSection(const ALine: string);
+var
+  mInside: string;
+  mOpen, mClose: Integer;
+begin
+  // Line numbers for System(System.pas) segment .text
+  mInside := Copy(ALine, Length('Line numbers for ') + 1, MaxInt);
+  mOpen := Pos('(', mInside);
+  mClose := Pos(')', mInside);
+  FCurrentUnit := Copy(mInside, 1, mOpen - 1);
+  FCurrentFile := Copy(mInside, mOpen + 1, mClose - mOpen - 1);
+  // Nur Codesegment .text zählt.
+  FSection := TSection.Other;
+  if ContainsText(Copy(mInside, mClose + 1, MaxInt), '.text') then
+  begin
+    FSection := TSection.Lines;
+  end;
+end;
+
+procedure TMapFile.ReadEntryPoint(const ALine: string);
+var
+  mParts: TArray<string>;
+  mAddress: UInt64;
+begin
+  // Program entry point at 0001:00000180 (relativ zum Codesegment); erst nach dem Kopf bekannt.
+  mParts := Words(ALine);
+  if (Length(mParts) > 0) and ReadCodeAddress(mParts[High(mParts)], mAddress) then
+  begin
+    FEntryPoint := mAddress;
+  end;
+end;
+
 procedure TMapFile.ReadHeader(const AParts: TArray<string>);
 var
   mAddress: UInt64;
@@ -308,19 +355,6 @@ begin
   end;
   ReadLength(AParts[1], FCodeSize);
   FHeaderDone := True;
-end;
-
-procedure TMapFile.ReadEntryPoint(const ALine: string);
-var
-  mParts: TArray<string>;
-  mAddress: UInt64;
-begin
-  // Program entry point at 0001:00000180 (relativ zum Codesegment); erst nach dem Kopf bekannt.
-  mParts := Words(ALine);
-  if (Length(mParts) > 0) and ReadCodeAddress(mParts[High(mParts)], mAddress) then
-  begin
-    FEntryPoint := mAddress;
-  end;
 end;
 
 procedure TMapFile.ReadPublic(const AParts: TArray<string>);
@@ -365,38 +399,6 @@ begin
     begin
       Result := CompareAddress(ALeft.Address, ARight.Address);
     end));
-end;
-
-procedure TMapFile.Parse(const AText: string);
-var
-  mLine: string;
-  mParts: TArray<string>;
-begin
-  FSection := TSection.Header;
-  FHeaderDone := False;
-  for mLine in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
-  begin
-    if (Trim(mLine) = '') or StartsSection(mLine) then
-    begin
-      Continue;
-    end;
-    mParts := Words(mLine);
-    case FSection of
-      TSection.Header:
-        ReadHeader(mParts);
-      TSection.Publics:
-        ReadPublic(mParts);
-      TSection.Lines:
-        ReadLineNumbers(mParts);
-    end;
-  end;
-  FCurrentUnit := '';
-  FCurrentFile := '';
-  if FEntryPoint > 0 then
-  begin
-    FEntryPoint := FEntryPoint + FCodeStart;
-  end;
-  SortEntries;
 end;
 
 function TMapFile.Resolve(AModuleOffset: UInt64): TMapLocation;

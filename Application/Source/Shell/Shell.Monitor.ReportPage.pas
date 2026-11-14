@@ -41,6 +41,8 @@ uses
   Atlas.Common.Monitor.Texts,
   Atlas.Windows.Monitor.Adapters.System;
 
+{ TMonitorReportPage }
+
 constructor TMonitorReportPage.Create(AOwner: TComponent; APages: TPageControl; const AOnInform: TProc<string>);
 begin
   inherited Create(AOwner);
@@ -59,11 +61,6 @@ begin
   FBrowser.Parent := FTab;
 end;
 
-procedure TMonitorReportPage.OpenOutside;
-begin
-  TMonitorSystem.OpenFile(FFileName);
-end;
-
 procedure TMonitorReportPage.BrowserCreated(ASender: TCustomEdgeBrowser; AResult: HResult);
 begin
   if Succeeded(AResult) then
@@ -77,6 +74,11 @@ begin
     FOnInform(TMonitorTexts.Text(TMonitorText.BrowserFailed));
   end;
   OpenOutside;
+end;
+
+procedure TMonitorReportPage.OpenOutside;
+begin
+  TMonitorSystem.OpenFile(FFileName);
 end;
 
 procedure TMonitorReportPage.ShowFile(const AFileName: string);

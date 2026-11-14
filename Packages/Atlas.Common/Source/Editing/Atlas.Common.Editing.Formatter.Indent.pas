@@ -399,6 +399,8 @@ begin
   end;
 end;
 
+{ TBranchTracker }
+
 procedure TBranchTracker.Directive(const AToken: TPascalToken; var AState: TIndentState);
 var
   mName: string;
@@ -479,6 +481,37 @@ begin
   Result := LowerCase(Tokens[AIndex].Text);
 end;
 
+function TIndentTokens.TypeHeaderEnd(AIndex: Integer; const AWord: string; out AEnd: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  AEnd := AIndex;
+  mNext := NextSignificant(AIndex);
+  if MatchStr(WordOf(mNext), ['of', ';', '>', ',', ')', '=']) then
+  begin
+    Exit(False);
+  end;
+  if AWord <> 'record' then
+  begin
+    while MatchStr(WordOf(mNext), ['abstract', 'sealed']) do
+    begin
+      AEnd := mNext;
+      mNext := NextSignificant(mNext);
+    end;
+  end;
+  Result := True;
+  if WordOf(mNext) = 'helper' then
+  begin
+    AEnd := HelperEnd(mNext);
+  end
+  else if (AWord <> 'record') and (WordOf(mNext) = '(') then
+  begin
+    // Vorfahren; "class(TBasis);" ist eine Kurzform ohne Rumpf.
+    AEnd := ClosingParenthesis(mNext);
+    Result := WordOf(NextSignificant(AEnd)) <> ';';
+  end;
+end;
+
 function TIndentTokens.HelperEnd(AHelper: Integer): Integer;
 var
   mNext: Integer;
@@ -513,37 +546,6 @@ begin
     Result := mNext;
     mNext := NextSignificant(mNext);
   until (mDepth = 0) or (mNext > High(Tokens));
-end;
-
-function TIndentTokens.TypeHeaderEnd(AIndex: Integer; const AWord: string; out AEnd: Integer): Boolean;
-var
-  mNext: Integer;
-begin
-  AEnd := AIndex;
-  mNext := NextSignificant(AIndex);
-  if MatchStr(WordOf(mNext), ['of', ';', '>', ',', ')', '=']) then
-  begin
-    Exit(False);
-  end;
-  if AWord <> 'record' then
-  begin
-    while MatchStr(WordOf(mNext), ['abstract', 'sealed']) do
-    begin
-      AEnd := mNext;
-      mNext := NextSignificant(mNext);
-    end;
-  end;
-  Result := True;
-  if WordOf(mNext) = 'helper' then
-  begin
-    AEnd := HelperEnd(mNext);
-  end
-  else if (AWord <> 'record') and (WordOf(mNext) = '(') then
-  begin
-    // Vorfahren; "class(TBasis);" ist eine Kurzform ohne Rumpf.
-    AEnd := ClosingParenthesis(mNext);
-    Result := WordOf(NextSignificant(AEnd)) <> ';';
-  end;
 end;
 
 { TIndentLines }
@@ -584,23 +586,6 @@ begin
   Placed[ALine] := True;
 end;
 
-/// <summary>Verschiebung der nächsten gesetzten Codezeile nach ALine; 0 ohne.</summary>
-function TIndentLines.FollowDelta(ALine: Integer): Integer;
-var
-  mNext: Integer;
-begin
-  mNext := ALine + 1;
-  while (mNext <= High(Follow)) and not Placed[mNext] and (FirstToken[mNext] < 0) do
-  begin
-    Inc(mNext);
-  end;
-  Result := 0;
-  if (mNext <= High(Follow)) and Placed[mNext] then
-  begin
-    Result := Resolved[mNext] - Original[mNext];
-  end;
-end;
-
 procedure TIndentLines.FollowComments;
 var
   mLine, mDelta: Integer;
@@ -615,6 +600,23 @@ begin
         Place(mLine, Original[mLine] + mDelta);
       end;
     end;
+  end;
+end;
+
+/// <summary>Verschiebung der nächsten gesetzten Codezeile nach ALine; 0 ohne.</summary>
+function TIndentLines.FollowDelta(ALine: Integer): Integer;
+var
+  mNext: Integer;
+begin
+  mNext := ALine + 1;
+  while (mNext <= High(Follow)) and not Placed[mNext] and (FirstToken[mNext] < 0) do
+  begin
+    Inc(mNext);
+  end;
+  Result := 0;
+  if (mNext <= High(Follow)) and Placed[mNext] then
+  begin
+    Result := Resolved[mNext] - Original[mNext];
   end;
 end;
 
@@ -861,63 +863,6 @@ begin
   FState.AtStart := False;
 end;
 
-procedure TStatementIndenter.CloseEnd;
-var
-  mFrame: TFrame;
-begin
-  FState.PopPending;
-  while FState.Count > 1 do
-  begin
-    mFrame := FState.TopFrame;
-    // Der variante Teil eines Records hat kein eigenes end.
-    if (mFrame.Kind in cEndBlocks) and not ((mFrame.Kind = TFrameKind.CaseBlock) and mFrame.Variant) then
-    begin
-      CloseBlock(mFrame);
-      Exit;
-    end;
-    FState.Pop;
-  end;
-  Place(0);
-  FState.AtStart := False;
-end;
-
-function TStatementIndenter.BlockWord(const AWord: string): Boolean;
-begin
-  Result := True;
-  if AWord = 'end' then
-  begin
-    CloseEnd;
-  end
-  else if AWord = 'else' then
-  begin
-    CloseElse;
-  end
-  else if MatchStr(AWord, ['finally', 'except']) then
-  begin
-    CloseTryPart;
-  end
-  else if AWord = 'until' then
-  begin
-    CloseRepeat;
-  end
-  else if AWord = 'begin' then
-  begin
-    OpenBegin;
-  end
-  else if AWord = 'asm' then
-  begin
-    OpenAsm;
-  end
-  else if MatchStr(AWord, ['try', 'repeat']) then
-  begin
-    OpenTry(AWord);
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
-
 function TStatementIndenter.CaseWord(const AWord: string): Boolean;
 begin
   Result := (AWord = 'case') and not FState.PendingCase;
@@ -968,11 +913,6 @@ begin
   PlaceStatement;
   FState.Push(mKind, StatementLineColumn);
   FState.AtStart := True;
-end;
-
-function TStatementIndenter.StatementWord(const AWord: string): Boolean;
-begin
-  Result := CaseWord(AWord) or OfWord(AWord) or PendingWord(AWord);
 end;
 
 procedure TStatementIndenter.OpenBracket(const AText: string);
@@ -1035,6 +975,68 @@ begin
     FState.Push(TFrameKind.LabelPending, StatementLineColumn);
     FState.AtStart := True;
   end;
+end;
+
+procedure TStatementIndenter.CloseEnd;
+var
+  mFrame: TFrame;
+begin
+  FState.PopPending;
+  while FState.Count > 1 do
+  begin
+    mFrame := FState.TopFrame;
+    // Der variante Teil eines Records hat kein eigenes end.
+    if (mFrame.Kind in cEndBlocks) and not ((mFrame.Kind = TFrameKind.CaseBlock) and mFrame.Variant) then
+    begin
+      CloseBlock(mFrame);
+      Exit;
+    end;
+    FState.Pop;
+  end;
+  Place(0);
+  FState.AtStart := False;
+end;
+
+function TStatementIndenter.BlockWord(const AWord: string): Boolean;
+begin
+  Result := True;
+  if AWord = 'end' then
+  begin
+    CloseEnd;
+  end
+  else if AWord = 'else' then
+  begin
+    CloseElse;
+  end
+  else if MatchStr(AWord, ['finally', 'except']) then
+  begin
+    CloseTryPart;
+  end
+  else if AWord = 'until' then
+  begin
+    CloseRepeat;
+  end
+  else if AWord = 'begin' then
+  begin
+    OpenBegin;
+  end
+  else if AWord = 'asm' then
+  begin
+    OpenAsm;
+  end
+  else if MatchStr(AWord, ['try', 'repeat']) then
+  begin
+    OpenTry(AWord);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TStatementIndenter.StatementWord(const AWord: string): Boolean;
+begin
+  Result := CaseWord(AWord) or OfWord(AWord) or PendingWord(AWord);
 end;
 
 procedure TStatementIndenter.Symbol(const AText: string);
@@ -1407,26 +1409,6 @@ begin
   end;
 end;
 
-function TIndenter.RunLines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
-  AIndentSize: Integer): TArray<TIndentLineInfo>;
-var
-  mLine: Integer;
-begin
-  Run(ATokens, AColumns, AIndentSize);
-  SetLength(Result, Length(AColumns));
-  for mLine := 0 to High(AColumns) do
-  begin
-    Result[mLine].Column := FLines.Resolved[mLine];
-    Result[mLine].Placed := FLines.Placed[mLine];
-    Result[mLine].Continued := FLines.Continued[mLine];
-    Result[mLine].StatementLine := mLine;
-    if FLines.Continued[mLine] then
-    begin
-      Result[mLine].StatementLine := FLines.StatementOf[mLine];
-    end;
-  end;
-end;
-
 function TIndenter.Run(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
   AIndentSize: Integer): TArray<Integer>;
 var
@@ -1451,6 +1433,26 @@ begin
   end;
   FLines.FollowComments;
   Result := FLines.Target;
+end;
+
+function TIndenter.RunLines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
+  AIndentSize: Integer): TArray<TIndentLineInfo>;
+var
+  mLine: Integer;
+begin
+  Run(ATokens, AColumns, AIndentSize);
+  SetLength(Result, Length(AColumns));
+  for mLine := 0 to High(AColumns) do
+  begin
+    Result[mLine].Column := FLines.Resolved[mLine];
+    Result[mLine].Placed := FLines.Placed[mLine];
+    Result[mLine].Continued := FLines.Continued[mLine];
+    Result[mLine].StatementLine := mLine;
+    if FLines.Continued[mLine] then
+    begin
+      Result[mLine].StatementLine := FLines.StatementOf[mLine];
+    end;
+  end;
 end;
 
 { TBlockIndenter }

@@ -136,91 +136,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeBuildTarget.Read(out ATarget: TAtlasBuildTarget): Boolean;
-var
-  mModules: IOTAModuleServices;
-  mProject: IOTAProject;
-  mConfigurations: IOTAProjectOptionsConfigurations;
-  mConfig, mPlatform: IOTABuildConfiguration;
-begin
-  ATarget := Default(TAtlasBuildTarget);
-  Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  mProject := mModules.GetActiveProject;
-  if (mProject = nil) or not SameText(ExtractFileExt(mProject.FileName), '.dproj') then
-  begin
-    Exit;
-  end;
-  ATarget.Project := mProject.FileName;
-  ATarget.Config := mProject.CurrentConfiguration;
-  ATarget.Platform := mProject.CurrentPlatform;
-  if Supports(mProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
-  begin
-    mConfig := mConfigurations.ActiveConfiguration;
-    if mConfig <> nil then
-    begin
-      // Werte der Plattform enthalten die der Konfiguration (geerbt).
-      mPlatform := mConfig.PlatformConfiguration[ATarget.Platform];
-      if mPlatform <> nil then
-      begin
-        mConfig := mPlatform;
-      end;
-      ATarget.Defines := TAtlasBuildTarget.ParseDefines(mConfig.GetValue('DCC_Define', True));
-    end;
-  end;
-  Result := True;
-end;
-
-procedure TAtlasIdeBuildTarget.FreeFinished;
-var
-  mIndex: Integer;
-begin
-  for mIndex := FRequests.Count - 1 downto 0 do
-  begin
-    if FRequests[mIndex].Finished then
-    begin
-      TThread.RemoveQueuedEvents(FRequests[mIndex]);
-      FRequests.Delete(mIndex);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeBuildTarget.Tick(ASession: TLspSession; ANow: UInt64);
-var
-  mTarget: TAtlasBuildTarget;
-  mAction: TAtlasBuildTargetAction;
-begin
-  FreeFinished;
-  if ASession <> FSession then
-  begin
-    // Neuer Server: beginnt mit der Auswahl der Datei, also neu abgleichen.
-    Stop(False);
-    FSession := ASession;
-  end;
-  if (ASession = nil) or (ANow - FCheckedAt < cIntervalMs) then
-  begin
-    Exit;
-  end;
-  FCheckedAt := ANow;
-  if FRetryPending and (ANow - FRetryFrom < cRetryMs) then
-  begin
-    Exit;
-  end;
-  FRetryPending := False;
-  if not Read(mTarget) then
-  begin
-    Exit;
-  end;
-  mAction := FTracker.Decide(mTarget);
-  if mAction <> TAtlasBuildTargetAction.None then
-  begin
-    Send(ASession, mTarget, mAction);
-  end;
-end;
-
 procedure TAtlasIdeBuildTarget.Send(ASession: TLspSession; const ATarget: TAtlasBuildTarget;
   AAction: TAtlasBuildTargetAction);
 var
@@ -261,6 +176,91 @@ begin
         FRetryFrom := TAtlasTicks.Now;
       end;
     end));
+end;
+
+procedure TAtlasIdeBuildTarget.FreeFinished;
+var
+  mIndex: Integer;
+begin
+  for mIndex := FRequests.Count - 1 downto 0 do
+  begin
+    if FRequests[mIndex].Finished then
+    begin
+      TThread.RemoveQueuedEvents(FRequests[mIndex]);
+      FRequests.Delete(mIndex);
+    end;
+  end;
+end;
+
+class function TAtlasIdeBuildTarget.Read(out ATarget: TAtlasBuildTarget): Boolean;
+var
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+  mConfigurations: IOTAProjectOptionsConfigurations;
+  mConfig, mPlatform: IOTABuildConfiguration;
+begin
+  ATarget := Default(TAtlasBuildTarget);
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  mProject := mModules.GetActiveProject;
+  if (mProject = nil) or not SameText(ExtractFileExt(mProject.FileName), '.dproj') then
+  begin
+    Exit;
+  end;
+  ATarget.Project := mProject.FileName;
+  ATarget.Config := mProject.CurrentConfiguration;
+  ATarget.Platform := mProject.CurrentPlatform;
+  if Supports(mProject.ProjectOptions, IOTAProjectOptionsConfigurations, mConfigurations) then
+  begin
+    mConfig := mConfigurations.ActiveConfiguration;
+    if mConfig <> nil then
+    begin
+      // Werte der Plattform enthalten die der Konfiguration (geerbt).
+      mPlatform := mConfig.PlatformConfiguration[ATarget.Platform];
+      if mPlatform <> nil then
+      begin
+        mConfig := mPlatform;
+      end;
+      ATarget.Defines := TAtlasBuildTarget.ParseDefines(mConfig.GetValue('DCC_Define', True));
+    end;
+  end;
+  Result := True;
+end;
+
+procedure TAtlasIdeBuildTarget.Tick(ASession: TLspSession; ANow: UInt64);
+var
+  mTarget: TAtlasBuildTarget;
+  mAction: TAtlasBuildTargetAction;
+begin
+  FreeFinished;
+  if ASession <> FSession then
+  begin
+    // Neuer Server: beginnt mit der Auswahl der Datei, also neu abgleichen.
+    Stop(False);
+    FSession := ASession;
+  end;
+  if (ASession = nil) or (ANow - FCheckedAt < cIntervalMs) then
+  begin
+    Exit;
+  end;
+  FCheckedAt := ANow;
+  if FRetryPending and (ANow - FRetryFrom < cRetryMs) then
+  begin
+    Exit;
+  end;
+  FRetryPending := False;
+  if not Read(mTarget) then
+  begin
+    Exit;
+  end;
+  mAction := FTracker.Decide(mTarget);
+  if mAction <> TAtlasBuildTargetAction.None then
+  begin
+    Send(ASession, mTarget, mAction);
+  end;
 end;
 
 procedure TAtlasIdeBuildTarget.Stop(AWait: Boolean);

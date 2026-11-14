@@ -37,11 +37,7 @@ type
 
 implementation
 
-class function TStackGuard.IsOverflow(const AError: Exception): Boolean;
-begin
-  // Am Namen: Delphi 13 markiert EStackOverflow als veraltet (W1000), meldet den Überlauf aber weiter so.
-  Result := (AError <> nil) and AError.ClassNameIs('EStackOverflow');
-end;
+{ TStackGuard }
 
 class procedure TStackGuard.AfterError(const AError: Exception);
 var
@@ -58,6 +54,12 @@ begin
   end;
   mAction();
   AtomicIncrement(FRestored);
+end;
+
+class function TStackGuard.IsOverflow(const AError: Exception): Boolean;
+begin
+  // Am Namen: Delphi 13 markiert EStackOverflow als veraltet (W1000), meldet den Überlauf aber weiter so.
+  Result := (AError <> nil) and AError.ClassNameIs('EStackOverflow');
 end;
 
 end.

@@ -58,10 +58,14 @@ type
 
 implementation
 
+{ TExpressionTypeInfo }
+
 function TExpressionTypeInfo.Found: Boolean;
 begin
   Result := TypeName <> '';
 end;
+
+{ TExpressionTypeOptions }
 
 class function TExpressionTypeOptions.Default: TExpressionTypeOptions;
 begin

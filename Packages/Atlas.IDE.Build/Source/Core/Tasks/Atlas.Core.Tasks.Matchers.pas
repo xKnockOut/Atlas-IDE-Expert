@@ -102,109 +102,6 @@ const
 
 { TAtlasTaskLineMatcher }
 
-class function TAtlasTaskLineMatcher.SeverityWord(const AWord: string; out ASeverity: TAtlasTaskSeverity): Boolean;
-var
-  mWord: string;
-begin
-  mWord := AnsiLowerCase(Trim(AWord));
-  Result := True;
-  // Wörter des deutschen Compilers, keine Oberfläche.
-  if (mWord = 'error') or (mWord = 'fehler') or (mWord = 'fatal') or (mWord = 'schwerer fehler') then // german-ok
-  begin
-    ASeverity := TAtlasTaskSeverity.Error;
-  end
-  else if (mWord = 'warning') or (mWord = 'warnung') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Warning;
-  end
-  else if (mWord = 'hint') or (mWord = 'hinweis') or (mWord = 'info') or (mWord = 'information') or
-    (mWord = 'message') then
-  begin
-    ASeverity := TAtlasTaskSeverity.Info;
-  end
-  else
-  begin
-    ASeverity := TAtlasTaskSeverity.Error;
-    Result := False;
-  end;
-end;
-
-/// <summary>Name der Gruppe, die bei AIndex mit (? beginnt: (?&lt;name&gt;…), (?P&lt;name&gt;…), (?'name'…); '' bei
-/// anderen Formen.</summary>
-function GroupName(const APattern: string; AIndex: Integer): string;
-var
-  mClose: Integer;
-begin
-  Result := '';
-  if (AIndex + 2 > Length(APattern)) or not CharInSet(APattern[AIndex + 2], ['<', 'P', '''']) then
-  begin
-    Exit;
-  end;
-  mClose := AIndex + 3;
-  if APattern[AIndex + 2] = 'P' then
-  begin
-    Inc(mClose);
-  end;
-  while (mClose <= Length(APattern)) and not CharInSet(APattern[mClose], ['>', '''']) do
-  begin
-    Inc(mClose);
-  end;
-  if (APattern[AIndex + 2] = 'P') and (AIndex + 3 <= Length(APattern)) and (APattern[AIndex + 3] = '<') then
-  begin
-    Result := Copy(APattern, AIndex + 4, mClose - AIndex - 4);
-  end
-  else if APattern[AIndex + 2] <> 'P' then
-  begin
-    Result := Copy(APattern, AIndex + 3, mClose - AIndex - 3);
-  end;
-end;
-
-/// <summary>Die Klammer bei AIndex öffnet eine zählende Gruppe; AName ist ihr Name ('' ohne). Nicht (?&lt;=…),
-/// (?&lt;!…) und andere (?…-Formen.</summary>
-function OpensGroup(const APattern: string; AIndex: Integer; out AName: string): Boolean;
-begin
-  AName := '';
-  Result := True;
-  if (AIndex < Length(APattern)) and (APattern[AIndex + 1] = '?') then
-  begin
-    AName := GroupName(APattern, AIndex);
-    Result := (AName <> '') and not CharInSet(AName[1], ['=', '!']);
-  end;
-end;
-
-class function TAtlasTaskLineMatcher.GroupNumber(const APattern, AName: string): Integer;
-var
-  mIndex, mCount: Integer;
-  mInClass: Boolean;
-  mName: string;
-begin
-  Result := 0;
-  mCount := 0;
-  mInClass := False;
-  mIndex := 1;
-  while mIndex <= Length(APattern) do
-  begin
-    case APattern[mIndex] of
-      '\':
-        Inc(mIndex);
-      '[':
-        mInClass := True;
-      ']':
-        mInClass := False;
-      '(':
-        if not mInClass and OpensGroup(APattern, mIndex, mName) then
-        begin
-          Inc(mCount);
-          if (mName <> '') and SameText(mName, AName) then
-          begin
-            Exit(mCount);
-          end;
-        end;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
 constructor TAtlasTaskLineMatcher.Create(const AMatcher: TAtlasTaskMatcher);
 begin
   inherited Create;
@@ -256,6 +153,49 @@ begin
   end;
 end;
 
+/// <summary>Name der Gruppe, die bei AIndex mit (? beginnt: (?&lt;name&gt;…), (?P&lt;name&gt;…), (?'name'…); '' bei
+/// anderen Formen.</summary>
+function GroupName(const APattern: string; AIndex: Integer): string;
+var
+  mClose: Integer;
+begin
+  Result := '';
+  if (AIndex + 2 > Length(APattern)) or not CharInSet(APattern[AIndex + 2], ['<', 'P', '''']) then
+  begin
+    Exit;
+  end;
+  mClose := AIndex + 3;
+  if APattern[AIndex + 2] = 'P' then
+  begin
+    Inc(mClose);
+  end;
+  while (mClose <= Length(APattern)) and not CharInSet(APattern[mClose], ['>', '''']) do
+  begin
+    Inc(mClose);
+  end;
+  if (APattern[AIndex + 2] = 'P') and (AIndex + 3 <= Length(APattern)) and (APattern[AIndex + 3] = '<') then
+  begin
+    Result := Copy(APattern, AIndex + 4, mClose - AIndex - 4);
+  end
+  else if APattern[AIndex + 2] <> 'P' then
+  begin
+    Result := Copy(APattern, AIndex + 3, mClose - AIndex - 3);
+  end;
+end;
+
+/// <summary>Die Klammer bei AIndex öffnet eine zählende Gruppe; AName ist ihr Name ('' ohne). Nicht (?&lt;=…),
+/// (?&lt;!…) und andere (?…-Formen.</summary>
+function OpensGroup(const APattern: string; AIndex: Integer; out AName: string): Boolean;
+begin
+  AName := '';
+  Result := True;
+  if (AIndex < Length(APattern)) and (APattern[AIndex + 1] = '?') then
+  begin
+    AName := GroupName(APattern, AIndex);
+    Result := (AName <> '') and not CharInSet(AName[1], ['=', '!']);
+  end;
+end;
+
 procedure TAtlasTaskLineMatcher.AddRule(AForm: TForm; const APattern: string; AOptions: TRegExOptions);
 var
   mRule: TRule;
@@ -281,6 +221,54 @@ begin
   if (mWord = '') or not SeverityWord(mWord, Result) then
   begin
     Result := FMatcher.DefaultSeverity;
+  end;
+end;
+
+function TAtlasTaskLineMatcher.Match(const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
+var
+  mRule: TRule;
+begin
+  AFinding := Default(TAtlasTaskFinding);
+  for mRule in FRules do
+  begin
+    if Apply(mRule, ALine, AFinding) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasTaskLineMatcher.GroupNumber(const APattern, AName: string): Integer;
+var
+  mIndex, mCount: Integer;
+  mInClass: Boolean;
+  mName: string;
+begin
+  Result := 0;
+  mCount := 0;
+  mInClass := False;
+  mIndex := 1;
+  while mIndex <= Length(APattern) do
+  begin
+    case APattern[mIndex] of
+      '\':
+        Inc(mIndex);
+      '[':
+        mInClass := True;
+      ']':
+        mInClass := False;
+      '(':
+        if not mInClass and OpensGroup(APattern, mIndex, mName) then
+        begin
+          Inc(mCount);
+          if (mName <> '') and SameText(mName, AName) then
+          begin
+            Exit(mCount);
+          end;
+        end;
+    end;
+    Inc(mIndex);
   end;
 end;
 
@@ -414,24 +402,6 @@ begin
   end;
 end;
 
-procedure TAtlasTaskLineMatcher.ReadCustom(const AFound: TMatch; const ALine: string;
-  var AFinding: TAtlasTaskFinding);
-begin
-  AFinding.FileName := Trim(GroupText(AFound, FFileGroup));
-  AFinding.Line := StrToIntDef(GroupText(AFound, FLineGroup), 0);
-  AFinding.Column := StrToIntDef(GroupText(AFound, FColumnGroup), 0);
-  AFinding.Severity := CustomSeverity(GroupText(AFound, FSeverityGroup));
-  AFinding.Code := Trim(GroupText(AFound, FCodeGroup));
-  if FMessageGroup > 0 then
-  begin
-    AFinding.Message := Trim(GroupText(AFound, FMessageGroup));
-  end
-  else
-  begin
-    AFinding.Message := Trim(ALine);
-  end;
-end;
-
 function TAtlasTaskLineMatcher.Apply(const ARule: TRule; const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
 var
   mFound: TMatch;
@@ -468,19 +438,49 @@ begin
   end;
 end;
 
-function TAtlasTaskLineMatcher.Match(const ALine: string; out AFinding: TAtlasTaskFinding): Boolean;
-var
-  mRule: TRule;
+procedure TAtlasTaskLineMatcher.ReadCustom(const AFound: TMatch; const ALine: string;
+  var AFinding: TAtlasTaskFinding);
 begin
-  AFinding := Default(TAtlasTaskFinding);
-  for mRule in FRules do
+  AFinding.FileName := Trim(GroupText(AFound, FFileGroup));
+  AFinding.Line := StrToIntDef(GroupText(AFound, FLineGroup), 0);
+  AFinding.Column := StrToIntDef(GroupText(AFound, FColumnGroup), 0);
+  AFinding.Severity := CustomSeverity(GroupText(AFound, FSeverityGroup));
+  AFinding.Code := Trim(GroupText(AFound, FCodeGroup));
+  if FMessageGroup > 0 then
   begin
-    if Apply(mRule, ALine, AFinding) then
-    begin
-      Exit(True);
-    end;
+    AFinding.Message := Trim(GroupText(AFound, FMessageGroup));
+  end
+  else
+  begin
+    AFinding.Message := Trim(ALine);
   end;
-  Result := False;
+end;
+
+class function TAtlasTaskLineMatcher.SeverityWord(const AWord: string; out ASeverity: TAtlasTaskSeverity): Boolean;
+var
+  mWord: string;
+begin
+  mWord := AnsiLowerCase(Trim(AWord));
+  Result := True;
+  // Wörter des deutschen Compilers, keine Oberfläche.
+  if (mWord = 'error') or (mWord = 'fehler') or (mWord = 'fatal') or (mWord = 'schwerer fehler') then // german-ok
+  begin
+    ASeverity := TAtlasTaskSeverity.Error;
+  end
+  else if (mWord = 'warning') or (mWord = 'warnung') then
+  begin
+    ASeverity := TAtlasTaskSeverity.Warning;
+  end
+  else if (mWord = 'hint') or (mWord = 'hinweis') or (mWord = 'info') or (mWord = 'information') or
+    (mWord = 'message') then
+  begin
+    ASeverity := TAtlasTaskSeverity.Info;
+  end
+  else
+  begin
+    ASeverity := TAtlasTaskSeverity.Error;
+    Result := False;
+  end;
 end;
 
 { TAtlasTaskPaths }

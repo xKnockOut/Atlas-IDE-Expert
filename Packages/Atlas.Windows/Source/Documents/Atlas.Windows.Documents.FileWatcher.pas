@@ -70,20 +70,18 @@ type
 
 { TFileWatcher }
 
-class function TFileWatcher.Stamp(const AFileName: string): string;
-var
-  mData: TWin32FileAttributeData;
+constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
 begin
-  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData) then
-  begin
-    Exit('');
-  end;
-  if (mData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
-  begin
-    Exit('');
-  end;
-  Result := Format('%u.%u.%u.%u', [mData.ftLastWriteTime.dwHighDateTime, mData.ftLastWriteTime.dwLowDateTime,
-    mData.nFileSizeHigh, mData.nFileSizeLow]);
+  inherited Create;
+  FTracker := TFileChangeTracker.Create(
+    function(const AFileName: string): string
+    begin
+      Result := TFileWatcher.Stamp(AFileName);
+    end);
+  FStop := CreateEvent(nil, True, False, nil);
+  FReconfigure := CreateEvent(nil, False, False, nil);
+  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
+  FThread.Start;
 end;
 
 // Meldung eines Ordners (nicht Stop, nicht neue Dateiliste, kein Zeitablauf)?
@@ -103,6 +101,21 @@ begin
   FStop := AStop;
   FReconfigure := AReconfigure;
   FOnChanged := AOnChanged;
+end;
+
+procedure TWatchThread.Execute;
+var
+  mHandles: TArray<THandle>;
+  mGoOn: Boolean;
+begin
+  repeat
+    mHandles := OpenHandles;
+    try
+      mGoOn := Watch(mHandles);
+    finally
+      CloseHandles(mHandles);
+    end;
+  until Terminated or not mGoOn;
 end;
 
 function TWatchThread.OpenHandles: TArray<THandle>;
@@ -180,36 +193,7 @@ begin
   Result := False;
 end;
 
-procedure TWatchThread.Execute;
-var
-  mHandles: TArray<THandle>;
-  mGoOn: Boolean;
-begin
-  repeat
-    mHandles := OpenHandles;
-    try
-      mGoOn := Watch(mHandles);
-    finally
-      CloseHandles(mHandles);
-    end;
-  until Terminated or not mGoOn;
-end;
-
 { TFileWatcher }
-
-constructor TFileWatcher.Create(const AOnChanged: TFileWatcherChanged);
-begin
-  inherited Create;
-  FTracker := TFileChangeTracker.Create(
-    function(const AFileName: string): string
-    begin
-      Result := TFileWatcher.Stamp(AFileName);
-    end);
-  FStop := CreateEvent(nil, True, False, nil);
-  FReconfigure := CreateEvent(nil, False, False, nil);
-  FThread := TWatchThread.Create(FTracker, FStop, FReconfigure, AOnChanged);
-  FThread.Start;
-end;
 
 destructor TFileWatcher.Destroy;
 begin
@@ -236,6 +220,22 @@ procedure TFileWatcher.SetFiles(const AFiles: TArray<string>);
 begin
   FTracker.SetFiles(AFiles);
   SetEvent(FReconfigure);
+end;
+
+class function TFileWatcher.Stamp(const AFileName: string): string;
+var
+  mData: TWin32FileAttributeData;
+begin
+  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard, @mData) then
+  begin
+    Exit('');
+  end;
+  if (mData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+  begin
+    Exit('');
+  end;
+  Result := Format('%u.%u.%u.%u', [mData.ftLastWriteTime.dwHighDateTime, mData.ftLastWriteTime.dwLowDateTime,
+    mData.nFileSizeHigh, mData.nFileSizeLow]);
 end;
 
 end.

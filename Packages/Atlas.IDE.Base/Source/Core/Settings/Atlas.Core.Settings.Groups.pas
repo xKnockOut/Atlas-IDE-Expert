@@ -130,11 +130,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasSettingsGroups.AddIssue(const AText: string);
-begin
-  FIssues := FIssues + [AText];
-end;
-
 procedure TAtlasSettingsGroups.Read(ACatalog: TAtlasSettingsCatalog);
 var
   mIndex, mCount: Integer;
@@ -184,39 +179,6 @@ begin
     begin
       Inc(FChildCount[FParents[mIndex]]);
     end;
-  end;
-end;
-
-function TAtlasSettingsGroups.BooleanKey(const AKey: string): Integer;
-begin
-  if not FByKey.TryGetValue(LowerCase(AKey), Result) or not FBoolean[Result] then
-  begin
-    Result := -1;
-  end;
-end;
-
-function TAtlasSettingsGroups.PrefixParent(AIndex: Integer): Integer;
-var
-  mPrefix: string;
-  mDot: Integer;
-begin
-  Result := -1;
-  mPrefix := FKeys[AIndex];
-  mDot := mPrefix.LastIndexOf('.');
-  while mDot > 0 do
-  begin
-    mPrefix := mPrefix.Substring(0, mDot);
-    Result := BooleanKey(mPrefix);
-    if (Result < 0) or (Result = AIndex) then
-    begin
-      Result := BooleanKey(mPrefix + '.enabled');
-    end;
-    if (Result >= 0) and (Result <> AIndex) then
-    begin
-      Exit;
-    end;
-    Result := -1;
-    mDot := mPrefix.LastIndexOf('.');
   end;
 end;
 
@@ -308,6 +270,39 @@ begin
   end;
 end;
 
+function TAtlasSettingsGroups.PrefixParent(AIndex: Integer): Integer;
+var
+  mPrefix: string;
+  mDot: Integer;
+begin
+  Result := -1;
+  mPrefix := FKeys[AIndex];
+  mDot := mPrefix.LastIndexOf('.');
+  while mDot > 0 do
+  begin
+    mPrefix := mPrefix.Substring(0, mDot);
+    Result := BooleanKey(mPrefix);
+    if (Result < 0) or (Result = AIndex) then
+    begin
+      Result := BooleanKey(mPrefix + '.enabled');
+    end;
+    if (Result >= 0) and (Result <> AIndex) then
+    begin
+      Exit;
+    end;
+    Result := -1;
+    mDot := mPrefix.LastIndexOf('.');
+  end;
+end;
+
+function TAtlasSettingsGroups.BooleanKey(const AKey: string): Integer;
+begin
+  if not FByKey.TryGetValue(LowerCase(AKey), Result) or not FBoolean[Result] then
+  begin
+    Result := -1;
+  end;
+end;
+
 function TAtlasSettingsGroups.Find(const AName: string): Integer;
 begin
   if not FByName.TryGetValue(LowerCase(AName), Result) then
@@ -316,21 +311,14 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsGroups.AddIssue(const AText: string);
+begin
+  FIssues := FIssues + [AText];
+end;
+
 function TAtlasSettingsGroups.Contains(const AName: string): Boolean;
 begin
   Result := Find(AName) >= 0;
-end;
-
-function TAtlasSettingsGroups.KeyOf(const AName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  mIndex := Find(AName);
-  if mIndex >= 0 then
-  begin
-    Result := FKeys[mIndex];
-  end;
 end;
 
 function TAtlasSettingsGroups.ParentOf(const AName: string): string;
@@ -492,6 +480,18 @@ begin
     begin
       Result := Result + [FNames[mIndex]];
     end;
+  end;
+end;
+
+function TAtlasSettingsGroups.KeyOf(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := Find(AName);
+  if mIndex >= 0 then
+  begin
+    Result := FKeys[mIndex];
   end;
 end;
 

@@ -167,6 +167,8 @@ uses
   Atlas.Core.Tracker.Internals.YouTrackJson,
   Atlas.Text.Json;
 
+{ TAtlasYouTrackApi }
+
 class function TAtlasYouTrackApi.FullQuery(const ATarget: TAtlasTrackerTarget): string;
 var
   mProject: string;
@@ -590,6 +592,8 @@ begin
     Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/comments?fields=id';
   end;
 end;
+
+{ TAtlasYouTrackBodies }
 
 class function TAtlasYouTrackBodies.CommandWord(const AText: string): string;
 var

@@ -85,6 +85,67 @@ begin
   inherited;
 end;
 
+procedure TAtlasEnterWatch.AppMessage(var Msg: TMsg; var Handled: Boolean);
+var
+  mView: IOTAEditView;
+begin
+  if (Msg.message <> WM_KEYDOWN) or (Msg.wParam <> VK_RETURN) then
+  begin
+    Exit;
+  end;
+  try
+    FPendingFile := '';
+    // Strg+Enter und Alt+Enter sind Befehle, kein Zeilenumbruch; nur im Editor selbst.
+    if not AnyEnabled or (GetKeyState(VK_CONTROL) < 0) or (GetKeyState(VK_MENU) < 0) or
+      (Screen.ActiveControl = nil) or not Screen.ActiveControl.ClassNameIs('TEditControl') then
+    begin
+      Exit;
+    end;
+    mView := TAtlasEditorBuffer.ActiveView;
+    if (mView = nil) or (mView.Buffer = nil) then
+    begin
+      Exit;
+    end;
+    FPendingFile := mView.Buffer.FileName;
+    FPendingLines := mView.Buffer.GetLinesInBuffer;
+    FPendingAt := TThread.GetTickCount64;
+  except
+    // Die Taste geht in jedem Fall an die IDE (Handled bleibt False).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.ContinueLines, E);
+  end;
+end;
+
+class function TAtlasEnterWatch.AnyEnabled: Boolean;
+var
+  mHandler: THandler;
+begin
+  Result := False;
+  for mHandler in FHandlers do
+  begin
+    if not Assigned(mHandler.Enabled) or mHandler.Enabled() then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class procedure TAtlasEnterWatch.Run(const AView: IOTAEditView);
+var
+  mHandlers: TArray<THandler>;
+  mHandler: THandler;
+begin
+  // Eine Kopie: Ein Handler darf sich abmelden.
+  mHandlers := Copy(FHandlers);
+  for mHandler in mHandlers do
+  begin
+    if (not Assigned(mHandler.Enabled) or mHandler.Enabled()) and mHandler.Run(AView) then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
 class procedure TAtlasEnterWatch.Add(const AName: string; const AEnabled: TFunc<Boolean>;
   const AHandler: TAtlasEnterHandler);
 var
@@ -124,51 +185,6 @@ begin
   begin
     FHandlers := nil;
     FreeAndNil(FInstance);
-  end;
-end;
-
-class function TAtlasEnterWatch.AnyEnabled: Boolean;
-var
-  mHandler: THandler;
-begin
-  Result := False;
-  for mHandler in FHandlers do
-  begin
-    if not Assigned(mHandler.Enabled) or mHandler.Enabled() then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-procedure TAtlasEnterWatch.AppMessage(var Msg: TMsg; var Handled: Boolean);
-var
-  mView: IOTAEditView;
-begin
-  if (Msg.message <> WM_KEYDOWN) or (Msg.wParam <> VK_RETURN) then
-  begin
-    Exit;
-  end;
-  try
-    FPendingFile := '';
-    // Strg+Enter und Alt+Enter sind Befehle, kein Zeilenumbruch; nur im Editor selbst.
-    if not AnyEnabled or (GetKeyState(VK_CONTROL) < 0) or (GetKeyState(VK_MENU) < 0) or
-      (Screen.ActiveControl = nil) or not Screen.ActiveControl.ClassNameIs('TEditControl') then
-    begin
-      Exit;
-    end;
-    mView := TAtlasEditorBuffer.ActiveView;
-    if (mView = nil) or (mView.Buffer = nil) then
-    begin
-      Exit;
-    end;
-    FPendingFile := mView.Buffer.FileName;
-    FPendingLines := mView.Buffer.GetLinesInBuffer;
-    FPendingAt := TThread.GetTickCount64;
-  except
-    // Die Taste geht in jedem Fall an die IDE (Handled bleibt False).
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.ContinueLines, E);
   end;
 end;
 
@@ -213,22 +229,6 @@ begin
           Run(mView);
         end);
     end);
-end;
-
-class procedure TAtlasEnterWatch.Run(const AView: IOTAEditView);
-var
-  mHandlers: TArray<THandler>;
-  mHandler: THandler;
-begin
-  // Eine Kopie: Ein Handler darf sich abmelden.
-  mHandlers := Copy(FHandlers);
-  for mHandler in mHandlers do
-  begin
-    if (not Assigned(mHandler.Enabled) or mHandler.Enabled()) and mHandler.Run(AView) then
-    begin
-      Exit;
-    end;
-  end;
 end;
 
 end.

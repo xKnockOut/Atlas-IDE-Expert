@@ -104,21 +104,9 @@ const
 
 { TTodoRules }
 
-class function TTodoRules.IsValidKeyword(const AKeyword: string): Boolean;
-var
-  mCh: Char;
+class function TTodoRules.Keywords(const ASettings: TServerSettings): TArray<string>;
 begin
-  Result := (AKeyword <> '') and not SameText(AKeyword, TTodos.cDoneKeyword);
-  if Result then
-  begin
-    for mCh in AKeyword do
-    begin
-      if not CharInSet(mCh, ['A'..'Z', 'a'..'z']) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
+  Result := KeywordsFromOptions(TRuleEngine.RuleOptions(cTodoCommentRuleId, ASettings));
 end;
 
 /// <summary>Gültige Schlüsselwörter aus der Option als JSON-Wert (Array von Strings), in Großbuchstaben.</summary>
@@ -163,9 +151,21 @@ begin
   end;
 end;
 
-class function TTodoRules.Keywords(const ASettings: TServerSettings): TArray<string>;
+class function TTodoRules.IsValidKeyword(const AKeyword: string): Boolean;
+var
+  mCh: Char;
 begin
-  Result := KeywordsFromOptions(TRuleEngine.RuleOptions(cTodoCommentRuleId, ASettings));
+  Result := (AKeyword <> '') and not SameText(AKeyword, TTodos.cDoneKeyword);
+  if Result then
+  begin
+    for mCh in AKeyword do
+    begin
+      if not CharInSet(mCh, ['A'..'Z', 'a'..'z']) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
 end;
 
 { TTodoRule }
@@ -213,56 +213,6 @@ type
 function TCommentedOutCodeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cCommentedOutCodeRuleId, TRuleSeverity.Hint, cTexts[TTodosText.CommentedTitle].Text);
-end;
-
-class function TCommentedOutCodeRule.LooksLikeCode(const ALine: string): Boolean;
-const
-  cBlockWords: array[0..9] of string = ('begin', 'end', 'end;', 'try', 'finally', 'except', 'else', 'repeat',
-    'end.', 'end else');
-  cLastWords: array[0..4] of string = ('then', 'do', 'begin', 'of', 'else');
-var
-  mLine, mLast: string;
-  mSpace: Integer;
-begin
-  mLine := Trim(ALine);
-  if mLine = '' then
-  begin
-    Exit(False);
-  end;
-  if EndsStr(';', mLine) or (Pos(':=', mLine) > 0) or MatchText(mLine, cBlockWords) then
-  begin
-    Exit(True);
-  end;
-  mSpace := LastDelimiter(' ', mLine);
-  mLast := Copy(mLine, mSpace + 1, MaxInt);
-  Result := (mSpace > 0) and MatchText(mLast, cLastWords);
-end;
-
-class function TCommentedOutCodeRule.ParsesAsCode(const ALines: TArray<string>): Boolean;
-const
-  cWrappers: array[0..2, 0..1] of string = (
-    ('unit X;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10, #10'end;'#10'end.'),
-    ('unit X;'#10'interface'#10'implementation'#10, #10'end.'),
-    ('unit X;'#10'interface'#10'type'#10'  T = class'#10, #10'  end;'#10'implementation'#10'end.'));
-var
-  mCode: string;
-  mIndex: Integer;
-  mTree: TSyntaxTree;
-begin
-  mCode := string.Join(#10, ALines);
-  for mIndex := Low(cWrappers) to High(cWrappers) do
-  begin
-    mTree := TSyntaxTreeCache.Parse(cWrappers[mIndex, 0] + mCode + cWrappers[mIndex, 1]);
-    try
-      if Length(mTree.Diagnostics) = 0 then
-      begin
-        Exit(True);
-      end;
-    finally
-      mTree.Free;
-    end;
-  end;
-  Result := False;
 end;
 
 procedure TCommentedOutCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -457,6 +407,56 @@ begin
     end;
   end;
   Flush;
+end;
+
+class function TCommentedOutCodeRule.ParsesAsCode(const ALines: TArray<string>): Boolean;
+const
+  cWrappers: array[0..2, 0..1] of string = (
+    ('unit X;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10, #10'end;'#10'end.'),
+    ('unit X;'#10'interface'#10'implementation'#10, #10'end.'),
+    ('unit X;'#10'interface'#10'type'#10'  T = class'#10, #10'  end;'#10'implementation'#10'end.'));
+var
+  mCode: string;
+  mIndex: Integer;
+  mTree: TSyntaxTree;
+begin
+  mCode := string.Join(#10, ALines);
+  for mIndex := Low(cWrappers) to High(cWrappers) do
+  begin
+    mTree := TSyntaxTreeCache.Parse(cWrappers[mIndex, 0] + mCode + cWrappers[mIndex, 1]);
+    try
+      if Length(mTree.Diagnostics) = 0 then
+      begin
+        Exit(True);
+      end;
+    finally
+      mTree.Free;
+    end;
+  end;
+  Result := False;
+end;
+
+class function TCommentedOutCodeRule.LooksLikeCode(const ALine: string): Boolean;
+const
+  cBlockWords: array[0..9] of string = ('begin', 'end', 'end;', 'try', 'finally', 'except', 'else', 'repeat',
+    'end.', 'end else');
+  cLastWords: array[0..4] of string = ('then', 'do', 'begin', 'of', 'else');
+var
+  mLine, mLast: string;
+  mSpace: Integer;
+begin
+  mLine := Trim(ALine);
+  if mLine = '' then
+  begin
+    Exit(False);
+  end;
+  if EndsStr(';', mLine) or (Pos(':=', mLine) > 0) or MatchText(mLine, cBlockWords) then
+  begin
+    Exit(True);
+  end;
+  mSpace := LastDelimiter(' ', mLine);
+  mLast := Copy(mLine, mSpace + 1, MaxInt);
+  Result := (mSpace > 0) and MatchText(mLast, cLastWords);
 end;
 
 procedure RegisterTodoRules(const ARegistry: TRuleRegistry);

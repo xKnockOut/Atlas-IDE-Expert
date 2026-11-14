@@ -159,15 +159,6 @@ begin
   AllowResize(FList);
 end;
 
-procedure TAtlasTrackerSuggestDialog.AddColumn(const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := FList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := ScaleValue(AWidth);
-end;
-
 procedure TAtlasTrackerSuggestDialog.AddButtons;
 var
   mButtons: TAtlasButtonRow;
@@ -185,14 +176,13 @@ begin
   FitHeight;
 end;
 
-class function TAtlasTrackerSuggestDialog.WhyText(const AItem: TAtlasTrackerPathSuggestion): string;
-const
-  cIds: array[TAtlasTrackerPathReason] of TAtlasNewIssueTextId = (TAtlasNewIssueTextId.SuggestWhyProject,
-    TAtlasNewIssueTextId.SuggestWhyExternal, TAtlasNewIssueTextId.SuggestWhySubmodule,
-    TAtlasNewIssueTextId.SuggestWhyGroup, TAtlasNewIssueTextId.SuggestWhyRemote,
-    TAtlasNewIssueTextId.SuggestWhyWorktree);
+procedure TAtlasTrackerSuggestDialog.AddColumn(const ACaption: string; AWidth: Integer);
+var
+  mColumn: TListColumn;
 begin
-  Result := TAtlasNewIssueStrings.Fmt(cIds[AItem.Reason], [AItem.Detail]);
+  mColumn := FList.Columns.Add;
+  mColumn.Caption := ACaption;
+  mColumn.Width := ScaleValue(AWidth);
 end;
 
 procedure TAtlasTrackerSuggestDialog.Fill(const AItems: TArray<TAtlasTrackerPathSuggestion>);
@@ -232,6 +222,16 @@ begin
       Result := Result + [FList.Items[mIndex].Caption];
     end;
   end;
+end;
+
+class function TAtlasTrackerSuggestDialog.WhyText(const AItem: TAtlasTrackerPathSuggestion): string;
+const
+  cIds: array[TAtlasTrackerPathReason] of TAtlasNewIssueTextId = (TAtlasNewIssueTextId.SuggestWhyProject,
+    TAtlasNewIssueTextId.SuggestWhyExternal, TAtlasNewIssueTextId.SuggestWhySubmodule,
+    TAtlasNewIssueTextId.SuggestWhyGroup, TAtlasNewIssueTextId.SuggestWhyRemote,
+    TAtlasNewIssueTextId.SuggestWhyWorktree);
+begin
+  Result := TAtlasNewIssueStrings.Fmt(cIds[AItem.Reason], [AItem.Detail]);
 end;
 
 class function TAtlasTrackerSuggestDialog.Execute(const ATitle: string; const AStart: TAtlasTrackerSuggestStart;

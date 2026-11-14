@@ -526,6 +526,8 @@ type
     procedure Run;
   end;
 
+{ TInterfaceUsesCheck }
+
 constructor TInterfaceUsesCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;

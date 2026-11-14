@@ -46,38 +46,6 @@ uses
 
 { TAtlasMetricsLens }
 
-class function TAtlasMetricsLens.StructureCaption(const AItem: TAtlasStructureItem;
-  const AFormats: TAtlasStructureFormats; const ALimitFormat: string): string;
-begin
-  Result := Format(AFormats[AItem.Kind], [AItem.Value]);
-  if AItem.Value > AItem.Limit then
-  begin
-    Result := Format(ALimitFormat, [Result, AItem.Limit]);
-  end;
-end;
-
-class function TAtlasMetricsLens.StructureCaption(const AItems: TArray<TAtlasStructureItem>;
-  const AFormats: TAtlasStructureFormats; const AAtLeastFormat, ALimitFormat: string): string;
-var
-  mItem: TAtlasStructureItem;
-  mFormats: TAtlasStructureFormats;
-begin
-  Result := '';
-  for mItem in AItems do
-  begin
-    mFormats := AFormats;
-    if mItem.AtLeast then
-    begin
-      mFormats[mItem.Kind] := AAtLeastFormat;
-    end;
-    if Result <> '' then
-    begin
-      Result := Result + ' · ';
-    end;
-    Result := Result + StructureCaption(mItem, mFormats, ALimitFormat);
-  end;
-end;
-
 class function TAtlasMetricsLens.Caption(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues;
   const AFormats: TAtlasMetricFormats; const ALimitFormat: string): string;
 var
@@ -113,6 +81,38 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TAtlasMetricsLens.StructureCaption(const AItem: TAtlasStructureItem;
+  const AFormats: TAtlasStructureFormats; const ALimitFormat: string): string;
+begin
+  Result := Format(AFormats[AItem.Kind], [AItem.Value]);
+  if AItem.Value > AItem.Limit then
+  begin
+    Result := Format(ALimitFormat, [Result, AItem.Limit]);
+  end;
+end;
+
+class function TAtlasMetricsLens.StructureCaption(const AItems: TArray<TAtlasStructureItem>;
+  const AFormats: TAtlasStructureFormats; const AAtLeastFormat, ALimitFormat: string): string;
+var
+  mItem: TAtlasStructureItem;
+  mFormats: TAtlasStructureFormats;
+begin
+  Result := '';
+  for mItem in AItems do
+  begin
+    mFormats := AFormats;
+    if mItem.AtLeast then
+    begin
+      mFormats[mItem.Kind] := AAtLeastFormat;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ' · ';
+    end;
+    Result := Result + StructureCaption(mItem, mFormats, ALimitFormat);
+  end;
 end;
 
 /// <summary>Letzter Teil eines Namens mit Punkten (TFoo.Run → Run).</summary>

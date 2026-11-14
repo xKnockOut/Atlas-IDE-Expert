@@ -63,6 +63,8 @@ begin
     end;
 end;
 
+{ TLinterHotspots }
+
 class function TLinterHotspots.Analyze(const ATarget: TLinterTarget; const ASettings: TServerSettings;
   const AVcs: IHotspotVcs): THotspotResult;
 var

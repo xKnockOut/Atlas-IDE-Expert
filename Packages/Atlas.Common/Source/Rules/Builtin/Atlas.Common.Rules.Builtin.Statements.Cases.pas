@@ -334,6 +334,8 @@ type
     Count: Integer;
   end;
 
+{ TDuplicateCaseLabelRule }
+
 function TDuplicateCaseLabelRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cDuplicateCaseLabelRuleId, TRuleSeverity.Error,

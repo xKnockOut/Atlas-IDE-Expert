@@ -473,6 +473,8 @@ type
     function TryGet(const AFileName: string; out ATree: TSyntaxTree): Boolean;
   end;
 
+{ TCallCollector }
+
 constructor TCallCollector.Create;
 begin
   inherited Create;
@@ -516,6 +518,8 @@ function TCallCollector.ToArray: TArray<THierarchyCall>;
 begin
   Result := FCalls.ToArray;
 end;
+
+{ TTreeSet }
 
 constructor TTreeSet.Create(const AReadText: TReferenceReadText);
 begin
@@ -632,6 +636,23 @@ end;
 
 { TLspHierarchies }
 
+constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
+begin
+  inherited Create;
+  FStore := AStore;
+  FIndex := AIndex;
+  FReadText := AReadText;
+  FFiles := AFiles;
+  FEnsureUnit := AEnsureUnit;
+end;
+
+constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
+  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+begin
+  Create(AStore, AIndex, AReadText, AFiles, nil);
+end;
+
 function TLspHierarchies.GetNamespaces: TArray<string>;
 begin
   Result := TLspNamespaces.Read(FNamespaces);
@@ -642,21 +663,16 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
-constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider);
+function TLspHierarchies.HandlePrepareType(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  Create(AStore, AIndex, AReadText, AFiles, nil);
+  Result := Prepare(AParams, ACancellation, False);
 end;
 
-constructor TLspHierarchies.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
-  const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
+function TLspHierarchies.HandlePrepareCall(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
-  inherited Create;
-  FStore := AStore;
-  FIndex := AIndex;
-  FReadText := AReadText;
-  FFiles := AFiles;
-  FEnsureUnit := AEnsureUnit;
+  Result := Prepare(AParams, ACancellation, True);
 end;
 
 procedure TLspHierarchies.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -822,18 +838,18 @@ begin
 end;
 
 class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AItem: THierarchyItem; const AFiles: TArray<string>;
-    const AReadText: TReferenceReadText): TArray<THierarchyCall>;
-begin
-  Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, nil);
-end;
-
-class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
   Result := IncomingCalls(THierarchyCallSource.Create(AResolver, AIndex, AReadText, ACancellation), AItem, AFiles,
     TReferenceSettings.SureOnly);
+end;
+
+class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem; const AFiles: TArray<string>;
+    const AReadText: TReferenceReadText): TArray<THierarchyCall>;
+begin
+  Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, nil);
 end;
 
 class function TLspHierarchies.IncomingCalls(const ASource: THierarchyCallSource; const AItem: THierarchyItem;
@@ -867,41 +883,9 @@ begin
 end;
 
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
-  const AReadText: TReferenceReadText): TArray<THierarchyCall>;
-begin
-  Result := OutgoingCalls(AResolver, AItem, AReadText, nil);
-end;
-
-class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 begin
   Result := OutgoingCalls(AResolver, nil, AItem, AReadText, ACancellation);
-end;
-
-class function TLspHierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
-  out AImplementations: Integer): TReferenceReason;
-begin
-  Result := TReferenceReason.None;
-  AImplementations := 0;
-  if (AIndex = nil) or (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.Container = '') or
-    not (AResolved.SymbolKind in cRoutineKinds) then
-  begin
-    Exit;
-  end;
-  if TLspImplementations.IsInterfaceType(AIndex, AResolved.Container) then
-  begin
-    Result := TReferenceReason.Interface_;
-  end
-  else if AResolved.IsVirtual then
-  begin
-    Result := TReferenceReason.Virtual;
-  end
-  else
-  begin
-    Exit;
-  end;
-  AImplementations := TLspImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
-    Result = TReferenceReason.Interface_);
 end;
 
 /// <summary>Bezeichner ATokenIndex im Rumpf als Aufruf eintragen, wenn er eine Routine bezeichnet.</summary>
@@ -953,6 +937,12 @@ begin
   end;
 end;
 
+class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
+  const AReadText: TReferenceReadText): TArray<THierarchyCall>;
+begin
+  Result := OutgoingCalls(AResolver, AItem, AReadText, nil);
+end;
+
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
@@ -981,6 +971,32 @@ begin
     mCalls.Free;
     mTree.Free;
   end;
+end;
+
+class function TLspHierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+  out AImplementations: Integer): TReferenceReason;
+begin
+  Result := TReferenceReason.None;
+  AImplementations := 0;
+  if (AIndex = nil) or (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.Container = '') or
+    not (AResolved.SymbolKind in cRoutineKinds) then
+  begin
+    Exit;
+  end;
+  if TLspImplementations.IsInterfaceType(AIndex, AResolved.Container) then
+  begin
+    Result := TReferenceReason.Interface_;
+  end
+  else if AResolved.IsVirtual then
+  begin
+    Result := TReferenceReason.Virtual;
+  end
+  else
+  begin
+    Exit;
+  end;
+  AImplementations := TLspImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
+    Result = TReferenceReason.Interface_);
 end;
 
 class function TLspHierarchies.ItemToJson(const AItem: THierarchyItem): TJSONObject;
@@ -1014,73 +1030,6 @@ begin
   mData.AddPair('container', AItem.Container);
   mData.AddPair('symbolKind', TJSONNumber.Create(Ord(AItem.SymbolKind)));
   Result.AddPair('data', mData);
-end;
-
-class function TLspHierarchies.ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean;
-var
-  mItem: TJSONObject;
-  mUri: string;
-  mRangeValue, mSelectionValue: TJSONValue;
-  mKind: Integer;
-begin
-  AItem := Default(THierarchyItem);
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<string>('name', AItem.Name) and
-    TJSONObject(AValue).TryGetValue<string>('uri', mUri) and
-    TJSONObject(AValue).TryGetValue<TJSONValue>('range', mRangeValue) and
-    TJSONObject(AValue).TryGetValue<TJSONValue>('selectionRange', mSelectionValue);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mItem := TJSONObject(AValue);
-  AItem.FileName := TDocumentUris.ToPath(mUri);
-  AItem.Range := TLspPositions.ReadRange(mRangeValue);
-  AItem.SelectionRange := TLspPositions.ReadRange(mSelectionValue);
-  if not mItem.TryGetValue<string>('data.container', AItem.Container) then
-  begin
-    AItem.Container := '';
-  end;
-  if mItem.TryGetValue<Integer>('data.symbolKind', mKind) and (mKind >= Ord(Low(TIndexSymbolKind))) and
-    (mKind <= Ord(High(TIndexSymbolKind))) then
-  begin
-    AItem.SymbolKind := TIndexSymbolKind(mKind);
-  end
-  else
-  begin
-    AItem.SymbolKind := TIndexSymbolKind.Routine;
-  end;
-end;
-
-class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
-var
-  mCall: THierarchyCall;
-  mEntry, mDispatch: TJSONObject;
-  mRanges: TJSONArray;
-  mRange: TTextRange;
-begin
-  Result := TJSONArray.Create;
-  for mCall in ACalls do
-  begin
-    mEntry := TJSONObject.Create;
-    Result.AddElement(mEntry);
-    mEntry.AddPair(AKey, ItemToJson(mCall.Item));
-    mRanges := TJSONArray.Create;
-    mEntry.AddPair('fromRanges', mRanges);
-    for mRange in mCall.Ranges do
-    begin
-      mRanges.AddElement(TLspPositions.RangeToJson(mRange));
-    end;
-    // Erweiterung (#1119); Editoren ohne Kenntnis übergehen das Feld.
-    mEntry.AddPair('atlasConfidence', mCall.Confidence.ToJson);
-    // Erweiterung (#1122): Aufruf über Interface bzw. virtuelle Methode mit der Zahl der Umsetzungen.
-    if mCall.Dispatch <> TReferenceReason.None then
-    begin
-      mDispatch := TJSONObject.Create;
-      mDispatch.AddPair('kind', TReferenceConfidence.NameOfReason(mCall.Dispatch));
-      mDispatch.AddPair('implementations', TJSONNumber.Create(mCall.Implementations));
-      mEntry.AddPair('atlasDispatch', mDispatch);
-    end;
-  end;
 end;
 
 function ItemsToJson(const AItems: TArray<THierarchyItem>): TJSONArray;
@@ -1163,18 +1112,6 @@ begin
   TJSONArray(Result).AddElement(ItemToJson(mItem));
 end;
 
-function TLspHierarchies.HandlePrepareType(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-begin
-  Result := Prepare(AParams, ACancellation, False);
-end;
-
-function TLspHierarchies.HandlePrepareCall(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-begin
-  Result := Prepare(AParams, ACancellation, True);
-end;
-
 function TLspHierarchies.HandleSupertypes(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
@@ -1238,6 +1175,73 @@ begin
     Result := CallsToJson(OutgoingCalls(mResolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
   finally
     mResolver.Free;
+  end;
+end;
+
+class function TLspHierarchies.ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean;
+var
+  mItem: TJSONObject;
+  mUri: string;
+  mRangeValue, mSelectionValue: TJSONValue;
+  mKind: Integer;
+begin
+  AItem := Default(THierarchyItem);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<string>('name', AItem.Name) and
+    TJSONObject(AValue).TryGetValue<string>('uri', mUri) and
+    TJSONObject(AValue).TryGetValue<TJSONValue>('range', mRangeValue) and
+    TJSONObject(AValue).TryGetValue<TJSONValue>('selectionRange', mSelectionValue);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mItem := TJSONObject(AValue);
+  AItem.FileName := TDocumentUris.ToPath(mUri);
+  AItem.Range := TLspPositions.ReadRange(mRangeValue);
+  AItem.SelectionRange := TLspPositions.ReadRange(mSelectionValue);
+  if not mItem.TryGetValue<string>('data.container', AItem.Container) then
+  begin
+    AItem.Container := '';
+  end;
+  if mItem.TryGetValue<Integer>('data.symbolKind', mKind) and (mKind >= Ord(Low(TIndexSymbolKind))) and
+    (mKind <= Ord(High(TIndexSymbolKind))) then
+  begin
+    AItem.SymbolKind := TIndexSymbolKind(mKind);
+  end
+  else
+  begin
+    AItem.SymbolKind := TIndexSymbolKind.Routine;
+  end;
+end;
+
+class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
+var
+  mCall: THierarchyCall;
+  mEntry, mDispatch: TJSONObject;
+  mRanges: TJSONArray;
+  mRange: TTextRange;
+begin
+  Result := TJSONArray.Create;
+  for mCall in ACalls do
+  begin
+    mEntry := TJSONObject.Create;
+    Result.AddElement(mEntry);
+    mEntry.AddPair(AKey, ItemToJson(mCall.Item));
+    mRanges := TJSONArray.Create;
+    mEntry.AddPair('fromRanges', mRanges);
+    for mRange in mCall.Ranges do
+    begin
+      mRanges.AddElement(TLspPositions.RangeToJson(mRange));
+    end;
+    // Erweiterung (#1119); Editoren ohne Kenntnis übergehen das Feld.
+    mEntry.AddPair('atlasConfidence', mCall.Confidence.ToJson);
+    // Erweiterung (#1122): Aufruf über Interface bzw. virtuelle Methode mit der Zahl der Umsetzungen.
+    if mCall.Dispatch <> TReferenceReason.None then
+    begin
+      mDispatch := TJSONObject.Create;
+      mDispatch.AddPair('kind', TReferenceConfidence.NameOfReason(mCall.Dispatch));
+      mDispatch.AddPair('implementations', TJSONNumber.Create(mCall.Implementations));
+      mEntry.AddPair('atlasDispatch', mDispatch);
+    end;
   end;
 end;
 

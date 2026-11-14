@@ -102,9 +102,20 @@ begin
   end;
 end;
 
-class function TTextUris.IsWindowsPath(const APath: string): Boolean;
+class function TTextUris.FromPath(const APath: string): string;
+var
+  mPath: string;
 begin
-  Result := ((Length(APath) >= 2) and (APath[2] = ':')) or (Copy(APath, 1, 2) = '\\');
+  mPath := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
+  if Copy(mPath, 1, 2) = '//' then
+  begin
+    Exit(cScheme + PercentEncode(Copy(mPath, 3, MaxInt)));
+  end;
+  if (Length(mPath) >= 2) and (mPath[2] = ':') then
+  begin
+    mPath := '/' + LowerCase(mPath[1]) + ':' + Copy(mPath, 3, MaxInt);
+  end;
+  Result := cScheme + PercentEncode(mPath);
 end;
 
 class function TTextUris.ToPath(const AUri: string): string;
@@ -135,20 +146,9 @@ begin
   end;
 end;
 
-class function TTextUris.FromPath(const APath: string): string;
-var
-  mPath: string;
+class function TTextUris.IsWindowsPath(const APath: string): Boolean;
 begin
-  mPath := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
-  if Copy(mPath, 1, 2) = '//' then
-  begin
-    Exit(cScheme + PercentEncode(Copy(mPath, 3, MaxInt)));
-  end;
-  if (Length(mPath) >= 2) and (mPath[2] = ':') then
-  begin
-    mPath := '/' + LowerCase(mPath[1]) + ':' + Copy(mPath, 3, MaxInt);
-  end;
-  Result := cScheme + PercentEncode(mPath);
+  Result := ((Length(APath) >= 2) and (APath[2] = ':')) or (Copy(APath, 1, 2) = '\\');
 end;
 
 // Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.

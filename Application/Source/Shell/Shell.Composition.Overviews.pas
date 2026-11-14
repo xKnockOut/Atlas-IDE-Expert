@@ -97,12 +97,36 @@ uses
   System.JSON,
   Atlas.Common.Architecture.UsesGraph;
 
+{ TShellOverviews }
+
 constructor TShellOverviews.Create(const AServices: TShellOverviewServices);
 begin
   inherited Create;
   FServices := AServices;
   CreateArchitecture;
   CreateUnitViews;
+end;
+
+destructor TShellOverviews.Destroy;
+begin
+  FreeAndNil(FSymbolPath);
+  FreeAndNil(FArchitecture);
+  FreeAndNil(FArchitectureService);
+  FreeAndNil(FQuery);
+  FQueries := nil;
+  FreeAndNil(FHotspots);
+  FreeAndNil(FHotspotService);
+  FreeAndNil(FUnitRelations);
+  FreeAndNil(FUnitRelationsGraph);
+  FreeAndNil(FDebugDisplay);
+  FreeAndNil(FEventHandlers);
+  FreeAndNil(FRecursion);
+  inherited Destroy;
+end;
+
+function TShellOverviews.ReadText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := FServices.ReadText(AFileName, AText);
 end;
 
 procedure TShellOverviews.CreateArchitecture;
@@ -135,28 +159,6 @@ begin
   FEventHandlers.Index := FServices.Index;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadText);
-end;
-
-destructor TShellOverviews.Destroy;
-begin
-  FreeAndNil(FSymbolPath);
-  FreeAndNil(FArchitecture);
-  FreeAndNil(FArchitectureService);
-  FreeAndNil(FQuery);
-  FQueries := nil;
-  FreeAndNil(FHotspots);
-  FreeAndNil(FHotspotService);
-  FreeAndNil(FUnitRelations);
-  FreeAndNil(FUnitRelationsGraph);
-  FreeAndNil(FDebugDisplay);
-  FreeAndNil(FEventHandlers);
-  FreeAndNil(FRecursion);
-  inherited Destroy;
-end;
-
-function TShellOverviews.ReadText(const AFileName: string; out AText: string): Boolean;
-begin
-  Result := FServices.ReadText(AFileName, AText);
 end;
 
 procedure TShellOverviews.Attach(ADispatcher: TJsonRpcDispatcher);

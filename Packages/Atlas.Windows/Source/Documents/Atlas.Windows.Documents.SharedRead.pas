@@ -38,6 +38,8 @@ uses
   System.RTLConsts,
   Atlas.Common.Documents.FileEncoding;
 
+{ TWindowsSharedRead }
+
 class function TWindowsSharedRead.ReadAllBytes(const AFileName: string): TBytes;
 var
   mHandle: THandle;

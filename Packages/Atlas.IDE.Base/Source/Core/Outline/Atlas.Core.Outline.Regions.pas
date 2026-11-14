@@ -92,6 +92,8 @@ begin
   end;
 end;
 
+{ TAtlasRegionFinder }
+
 class function TAtlasRegionFinder.At(const ALines: TArray<string>; ALine, ACharacter: Integer): TAtlasRegionPlace;
 begin
   Result := At(TAtlasDirectiveScanner.Scan(ALines), Length(ALines), ALine, ACharacter);

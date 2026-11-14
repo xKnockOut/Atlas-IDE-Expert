@@ -1447,6 +1447,34 @@ uses
 
 { TAtlasPluginSettings }
 
+procedure TAtlasPluginSettings.Exchange(const AIo: TAtlasSettingsExchange);
+begin
+  FCompletion.Exchange(AIo);
+  FEditingKeys.Exchange(AIo);
+  FKeyPriorities.Exchange(AIo);
+  FEditorTyping.Exchange(AIo);
+  FGeneralServer.Exchange(AIo);
+  FHighlighting.Exchange(AIo);
+  FEditorInsight.Exchange(AIo);
+  FBookmarks.Exchange(AIo);
+  FNavigationKeys.Exchange(AIo);
+  FEditorNavigation.Exchange(AIo);
+  FRules.Exchange(AIo);
+  FBuild.Exchange(AIo);
+  FCodeActions.Exchange(AIo);
+  FDebug.Exchange(AIo);
+  FSnippets.Exchange(AIo);
+  FGeneral.Exchange(AIo);
+  FUnitSearch.Exchange(AIo);
+  FStickyScroll.Exchange(AIo);
+  FEditorView.Exchange(AIo);
+  FIssues.Exchange(AIo);
+  FWelcome.Exchange(AIo);
+  FWelcomeTiles.Exchange(AIo);
+  FIssueWork.Exchange(AIo);
+  FVcs.Exchange(AIo);
+end;
+
 class function TAtlasPluginSettings.Defaults: TAtlasPluginSettings;
 begin
   Result.FCompletion := TAtlasPluginCompletionSettings.Defaults;
@@ -1499,34 +1527,6 @@ begin
   FWelcomeTiles.Normalize;
   FIssueWork.Normalize;
   FVcs.Normalize;
-end;
-
-procedure TAtlasPluginSettings.Exchange(const AIo: TAtlasSettingsExchange);
-begin
-  FCompletion.Exchange(AIo);
-  FEditingKeys.Exchange(AIo);
-  FKeyPriorities.Exchange(AIo);
-  FEditorTyping.Exchange(AIo);
-  FGeneralServer.Exchange(AIo);
-  FHighlighting.Exchange(AIo);
-  FEditorInsight.Exchange(AIo);
-  FBookmarks.Exchange(AIo);
-  FNavigationKeys.Exchange(AIo);
-  FEditorNavigation.Exchange(AIo);
-  FRules.Exchange(AIo);
-  FBuild.Exchange(AIo);
-  FCodeActions.Exchange(AIo);
-  FDebug.Exchange(AIo);
-  FSnippets.Exchange(AIo);
-  FGeneral.Exchange(AIo);
-  FUnitSearch.Exchange(AIo);
-  FStickyScroll.Exchange(AIo);
-  FEditorView.Exchange(AIo);
-  FIssues.Exchange(AIo);
-  FWelcome.Exchange(AIo);
-  FWelcomeTiles.Exchange(AIo);
-  FIssueWork.Exchange(AIo);
-  FVcs.Exchange(AIo);
 end;
 
 procedure TAtlasPluginSettings.Load(const AStore: IAtlasSettingsStore);

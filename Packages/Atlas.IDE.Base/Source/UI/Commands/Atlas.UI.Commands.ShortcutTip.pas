@@ -118,9 +118,58 @@ begin
   FTimer.OnTimer := TimerTick;
 end;
 
-function TAtlasShortcutTipWindow.SpokenText: string;
+procedure TAtlasShortcutTipWindow.Paint;
 begin
-  Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.ShortcutTipSpoken, [FView.KeyText, FView.Command]);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasShortcutTipWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  if Button = mbLeft then
+  begin
+    ClickLink(LinkAt(X, Y));
+  end;
+end;
+
+procedure TAtlasShortcutTipWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: TAtlasShortcutTipLink;
+begin
+  inherited;
+  mHot := LinkAt(X, Y);
+  if mHot <> TAtlasShortcutTipLink.None then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  if mHot <> FHot then
+  begin
+    FHot := mHot;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasShortcutTipWindow.TimerTick(Sender: TObject);
+begin
+  try
+    // Wer gerade auf den Tipp zeigt, will klicken: noch einmal so lange.
+    if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
+    begin
+      Exit;
+    end;
+    Dismiss;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
+  end;
 end;
 
 procedure TAtlasShortcutTipWindow.PutText(const AText: string; AColor: TColor);
@@ -256,6 +305,16 @@ begin
   Result.cy := FY + FTextHeight + Scale(cPad);
 end;
 
+procedure TAtlasShortcutTipWindow.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  if FHot <> TAtlasShortcutTipLink.None then
+  begin
+    FHot := TAtlasShortcutTipLink.None;
+    Invalidate;
+  end;
+end;
+
 procedure TAtlasShortcutTipWindow.ShowTip(const AView: TAtlasShortcutTipView; const AArea: TRect);
 var
   mSize: TSize;
@@ -276,21 +335,6 @@ begin
   FTimer.Enabled := False;
   FHot := TAtlasShortcutTipLink.None;
   HidePopup;
-end;
-
-procedure TAtlasShortcutTipWindow.TimerTick(Sender: TObject);
-begin
-  try
-    // Wer gerade auf den Tipp zeigt, will klicken: noch einmal so lange.
-    if IsShown and PtInRect(BoundsRect, Mouse.CursorPos) then
-    begin
-      Exit;
-    end;
-    Dismiss;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.ShortcutTips, E);
-  end;
 end;
 
 function TAtlasShortcutTipWindow.LinkAt(AX, AY: Integer): TAtlasShortcutTipLink;
@@ -331,53 +375,9 @@ begin
   Dismiss;
 end;
 
-procedure TAtlasShortcutTipWindow.Paint;
+function TAtlasShortcutTipWindow.SpokenText: string;
 begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasShortcutTipWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited;
-  if Button = mbLeft then
-  begin
-    ClickLink(LinkAt(X, Y));
-  end;
-end;
-
-procedure TAtlasShortcutTipWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot: TAtlasShortcutTipLink;
-begin
-  inherited;
-  mHot := LinkAt(X, Y);
-  if mHot <> TAtlasShortcutTipLink.None then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if mHot <> FHot then
-  begin
-    FHot := mHot;
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasShortcutTipWindow.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  if FHot <> TAtlasShortcutTipLink.None then
-  begin
-    FHot := TAtlasShortcutTipLink.None;
-    Invalidate;
-  end;
+  Result := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.ShortcutTipSpoken, [FView.KeyText, FView.Command]);
 end;
 
 end.

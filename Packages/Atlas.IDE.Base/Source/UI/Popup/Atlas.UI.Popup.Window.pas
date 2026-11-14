@@ -174,9 +174,23 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasPopupWindow.Scale(AValue: Integer): Integer;
+procedure TAtlasPopupWindow.SetColors(const AValue: TAtlasColors);
 begin
-  Result := MulDiv(AValue, FPPI, 96);
+  FColors := AValue;
+  FBorderColor := FColors.Accent;
+  UpdateCorners;
+  Invalidate;
+end;
+
+procedure TAtlasPopupWindow.SetBorderColor(AValue: TAtlasColor);
+begin
+  if FBorderColor = AValue then
+  begin
+    Exit;
+  end;
+  FBorderColor := AValue;
+  UpdateCorners;
+  Invalidate;
 end;
 
 procedure TAtlasPopupWindow.CreateParams(var Params: TCreateParams);
@@ -195,6 +209,19 @@ begin
   else
   begin
     Params.WndParent := Application.Handle;
+  end;
+end;
+
+procedure TAtlasPopupWindow.WndProc(var Message: TMessage);
+begin
+  try
+    if not HandleOwnMessage(Message) then
+    begin
+      inherited WndProc(Message);
+    end;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(FGuardFeature, E);
   end;
 end;
 
@@ -225,28 +252,13 @@ begin
   inherited DestroyWnd;
 end;
 
-procedure TAtlasPopupWindow.WndProc(var Message: TMessage);
+procedure TAtlasPopupWindow.Resize;
 begin
-  try
-    if not HandleOwnMessage(Message) then
-    begin
-      inherited WndProc(Message);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(FGuardFeature, E);
+  inherited Resize;
+  if not FCorners.ByWindowManager then
+  begin
+    UpdateCorners;
   end;
-end;
-
-procedure TAtlasPopupWindow.SetAccessible(ARole: Integer; const AName: string);
-begin
-  FAccess.Role := ARole;
-  FAccess.Name := AName;
-end;
-
-function TAtlasPopupWindow.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
-begin
-  Result := TAtlasAccessibleElement.Create(Handle, ARole, AName);
 end;
 
 function TAtlasPopupWindow.Accessible: IAtlasRawElementProvider;
@@ -279,14 +291,18 @@ begin
   end;
 end;
 
-procedure TAtlasPopupWindow.Announce(const AText: string);
+procedure TAtlasPopupWindow.CMFontChanged(var Message: TMessage);
 begin
-  if (AText = FAccess.Announced) or not IsShown then
+  inherited;
+  if FUIFont = nil then
   begin
     Exit;
   end;
-  FAccess.Announced := AText;
-  TAtlasAccessibility.Announce(Accessible, AText);
+  // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
+  FUIFont.Name := Screen.MessageFont.Name;
+  FUIFont.PixelsPerInch := Font.PixelsPerInch;
+  FUIFont.Height := MulDiv(Font.Height, 12, 13);
+  FUIFont.Charset := Font.Charset;
 end;
 
 procedure TAtlasPopupWindow.UpdateCorners;
@@ -311,46 +327,19 @@ begin
   end;
 end;
 
-procedure TAtlasPopupWindow.Resize;
+procedure TAtlasPopupWindow.PaintBorder;
 begin
-  inherited Resize;
-  if not FCorners.ByWindowManager then
-  begin
-    UpdateCorners;
-  end;
-end;
-
-procedure TAtlasPopupWindow.CMFontChanged(var Message: TMessage);
-begin
-  inherited;
-  if FUIFont = nil then
+  // Unter Windows 11 zeichnet der Fenstermanager den Rahmen (DWMWA_BORDER_COLOR).
+  if FCorners.ByWindowManager then
   begin
     Exit;
   end;
-  // UI-Schrift der IDE, etwas kleiner als die Editorschrift (Entwurf: 12 zu 13 px).
-  FUIFont.Name := Screen.MessageFont.Name;
-  FUIFont.PixelsPerInch := Font.PixelsPerInch;
-  FUIFont.Height := MulDiv(Font.Height, 12, 13);
-  FUIFont.Charset := Font.Charset;
+  FrameRounded(ClientRect, FBorderColor, cCornerRadius);
 end;
 
-procedure TAtlasPopupWindow.SetColors(const AValue: TAtlasColors);
+function TAtlasPopupWindow.Scale(AValue: Integer): Integer;
 begin
-  FColors := AValue;
-  FBorderColor := FColors.Accent;
-  UpdateCorners;
-  Invalidate;
-end;
-
-procedure TAtlasPopupWindow.SetBorderColor(AValue: TAtlasColor);
-begin
-  if FBorderColor = AValue then
-  begin
-    Exit;
-  end;
-  FBorderColor := AValue;
-  UpdateCorners;
-  Invalidate;
+  Result := MulDiv(AValue, FPPI, 96);
 end;
 
 procedure TAtlasPopupWindow.FillRounded(const ARect: TRect; AColor: TAtlasColor; ARadius: Integer);
@@ -362,11 +351,6 @@ begin
   Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right + 1, ARect.Bottom + 1, Scale(2 * ARadius),
     Scale(2 * ARadius));
   Canvas.Pen.Style := psSolid;
-end;
-
-procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer);
-begin
-  FrameRounded(ARect, ALine, ARadius, clNone);
 end;
 
 procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer;
@@ -387,14 +371,30 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasPopupWindow.PaintBorder;
+procedure TAtlasPopupWindow.FrameRounded(const ARect: TRect; ALine: TAtlasColor; ARadius: Integer);
 begin
-  // Unter Windows 11 zeichnet der Fenstermanager den Rahmen (DWMWA_BORDER_COLOR).
-  if FCorners.ByWindowManager then
+  FrameRounded(ARect, ALine, ARadius, clNone);
+end;
+
+procedure TAtlasPopupWindow.SetAccessible(ARole: Integer; const AName: string);
+begin
+  FAccess.Role := ARole;
+  FAccess.Name := AName;
+end;
+
+function TAtlasPopupWindow.CreateAccessible(ARole: Integer; const AName: string): TAtlasAccessibleElement;
+begin
+  Result := TAtlasAccessibleElement.Create(Handle, ARole, AName);
+end;
+
+procedure TAtlasPopupWindow.Announce(const AText: string);
+begin
+  if (AText = FAccess.Announced) or not IsShown then
   begin
     Exit;
   end;
-  FrameRounded(ClientRect, FBorderColor, cCornerRadius);
+  FAccess.Announced := AText;
+  TAtlasAccessibility.Announce(Accessible, AText);
 end;
 
 procedure TAtlasPopupWindow.ShowAt(const ABounds: TRect);
@@ -424,6 +424,21 @@ begin
   Result := HandleAllocated and IsWindowVisible(Handle);
 end;
 
+class function TAtlasPopupWindow.WorkAreaAt(const APoint: TPoint): TRect;
+var
+  mMonitor: TMonitor;
+begin
+  mMonitor := Screen.MonitorFromPoint(APoint, mdNearest);
+  if mMonitor <> nil then
+  begin
+    Result := mMonitor.WorkareaRect;
+  end
+  else
+  begin
+    Result := Screen.WorkAreaRect;
+  end;
+end;
+
 procedure TAtlasPopupWindow.SetScaling(AMonitorPPI: Integer; AZoom: Double; const AFontName: string;
   AFontSize: Integer);
 begin
@@ -450,21 +465,6 @@ begin
   else
   begin
     Result := Screen.PixelsPerInch;
-  end;
-end;
-
-class function TAtlasPopupWindow.WorkAreaAt(const APoint: TPoint): TRect;
-var
-  mMonitor: TMonitor;
-begin
-  mMonitor := Screen.MonitorFromPoint(APoint, mdNearest);
-  if mMonitor <> nil then
-  begin
-    Result := mMonitor.WorkareaRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
   end;
 end;
 

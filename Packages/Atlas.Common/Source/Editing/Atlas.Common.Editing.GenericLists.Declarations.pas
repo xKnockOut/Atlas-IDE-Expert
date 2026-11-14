@@ -85,24 +85,6 @@ const
 
 { TGenericListDeclarations }
 
-function TGenericListDeclarations.IsLegacyName(ANode: TSyntaxNode): Boolean;
-begin
-  Result := False;
-  if ANode = nil then
-  begin
-    Exit;
-  end;
-  if ANode.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := SameText(ANode.Name, FKind.LegacyName);
-  end
-  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
-    TGenericListSyntax.IsPlainName(ANode[0]) then
-  begin
-    Result := SameText(ANode.Name, FKind.LegacyName);
-  end;
-end;
-
 function TGenericListDeclarations.CreatedClass(AValue: TSyntaxNode): TSyntaxNode;
 var
   mMember: TSyntaxNode;
@@ -140,36 +122,6 @@ begin
   end;
 end;
 
-procedure TGenericListDeclarations.NoteCreation(AFileIndex: Integer; AValue: TSyntaxNode);
-var
-  mSource: TGenericListSource;
-  mClass: TSyntaxNode;
-begin
-  mSource := FFiles[AFileIndex];
-  if TGenericListSyntax.IsNil(AValue) then
-  begin
-    Exit;
-  end;
-  mClass := CreatedClass(AValue);
-  if mClass = nil then
-  begin
-    Fail(cTexts[TDeclarationsText.GetsAValueOther].Fmt([FTarget.Name, LineOf(AValue),
-      FKind.LegacyName]));
-  end
-  else if not IsLegacyName(mClass) then
-  begin
-    Fail(cTexts[TDeclarationsText.IsCreatedAs2].Fmt([FTarget.Name, LineOf(AValue), mSource.NodeText(mClass)]));
-  end
-  else
-  begin
-    FCreated := True;
-    mSource.NoteRewritten(mClass);
-    // Der Typtext folgt in Finish, wenn T feststeht.
-    mSource.AddEdit(mClass.StartPos, mClass.EndPos, cGenericPlaceholder);
-    AddCreateArguments(mSource, AValue);
-  end;
-end;
-
 procedure TGenericListDeclarations.SplitDeclaration(ASource: TGenericListSource; ADeclaration,
   ATypeRef: TSyntaxNode; const AName, ANewType: string; ALegacy: Boolean);
 var
@@ -200,35 +152,6 @@ begin
     ASource.LineBreak + mIndent + AName + ': ' + ANewType + ';');
 end;
 
-procedure TGenericListDeclarations.RetypeDeclaration(ASource: TGenericListSource; ADeclaration: TSyntaxNode;
-  const AName, ANewType: string; ALegacy: Boolean);
-var
-  mTypeRef: TSyntaxNode;
-begin
-  mTypeRef := ADeclaration.FindChild(TSyntaxKind.TypeReference);
-  if mTypeRef = nil then
-  begin
-    Exit;
-  end;
-  if Pos(',', ADeclaration.Name) > 0 then
-  begin
-    SplitDeclaration(ASource, ADeclaration, mTypeRef, AName, ANewType, ALegacy);
-    Exit;
-  end;
-  if ALegacy then
-  begin
-    ASource.NoteRewritten(mTypeRef);
-  end;
-  ASource.AddEdit(mTypeRef.StartPos, mTypeRef.EndPos, ANewType);
-end;
-
-function TGenericListDeclarations.ReadsTarget(ASource: TGenericListSource; AMember: TSyntaxNode): Boolean;
-begin
-  Result := (AMember.Kind = TSyntaxKind.PropertyDecl) and
-    (SameText(TGenericListSyntax.IdentifierAfter(ASource.Tree, AMember, 'read'), FTarget.Name) or
-    SameText(TGenericListSyntax.IdentifierAfter(ASource.Tree, AMember, 'write'), FTarget.Name));
-end;
-
 function TGenericListDeclarations.PropertyProblem(ASource: TGenericListSource; AMember: TSyntaxNode): string;
 var
   mTypeRef: TSyntaxNode;
@@ -255,6 +178,13 @@ begin
   begin
     Result := cTexts[TDeclarationsText.ThePropertyHasIndexParameters].Fmt([AMember.Name]);
   end;
+end;
+
+function TGenericListDeclarations.ReadsTarget(ASource: TGenericListSource; AMember: TSyntaxNode): Boolean;
+begin
+  Result := (AMember.Kind = TSyntaxKind.PropertyDecl) and
+    (SameText(TGenericListSyntax.IdentifierAfter(ASource.Tree, AMember, 'read'), FTarget.Name) or
+    SameText(TGenericListSyntax.IdentifierAfter(ASource.Tree, AMember, 'write'), FTarget.Name));
 end;
 
 procedure TGenericListDeclarations.ScanProperties(ASource: TGenericListSource; AClass: TSyntaxNode;
@@ -365,22 +295,6 @@ begin
   end;
 end;
 
-procedure TGenericListDeclarations.ScanDeclaration(ASource: TGenericListSource);
-begin
-  case FTarget.Declaration.Kind of
-    TSyntaxKind.Field:
-      ScanField(ASource);
-    TSyntaxKind.VarDecl:
-      ScanVariable(ASource);
-    TSyntaxKind.InlineVar:
-      ScanInlineVar(ASource);
-    TSyntaxKind.Parameter:
-      Fail(cTexts[TDeclarationsText.IsAParameterTheSignature].Fmt([FTarget.Name]));
-  else
-    Fail(cTexts[TDeclarationsText.IsNeitherAVariableNor].Fmt([FTarget.Name]));
-  end;
-end;
-
 class function TGenericListDeclarations.FieldOfProperty(ATree: TSyntaxTree; AProperty: TSyntaxNode;
   var AName: string): TSyntaxNode;
 var
@@ -403,6 +317,92 @@ begin
       AName := mFieldName;
       Exit(mMember);
     end;
+  end;
+end;
+
+function TGenericListDeclarations.IsLegacyName(ANode: TSyntaxNode): Boolean;
+begin
+  Result := False;
+  if ANode = nil then
+  begin
+    Exit;
+  end;
+  if ANode.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := SameText(ANode.Name, FKind.LegacyName);
+  end
+  else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) and
+    TGenericListSyntax.IsPlainName(ANode[0]) then
+  begin
+    Result := SameText(ANode.Name, FKind.LegacyName);
+  end;
+end;
+
+procedure TGenericListDeclarations.NoteCreation(AFileIndex: Integer; AValue: TSyntaxNode);
+var
+  mSource: TGenericListSource;
+  mClass: TSyntaxNode;
+begin
+  mSource := FFiles[AFileIndex];
+  if TGenericListSyntax.IsNil(AValue) then
+  begin
+    Exit;
+  end;
+  mClass := CreatedClass(AValue);
+  if mClass = nil then
+  begin
+    Fail(cTexts[TDeclarationsText.GetsAValueOther].Fmt([FTarget.Name, LineOf(AValue),
+      FKind.LegacyName]));
+  end
+  else if not IsLegacyName(mClass) then
+  begin
+    Fail(cTexts[TDeclarationsText.IsCreatedAs2].Fmt([FTarget.Name, LineOf(AValue), mSource.NodeText(mClass)]));
+  end
+  else
+  begin
+    FCreated := True;
+    mSource.NoteRewritten(mClass);
+    // Der Typtext folgt in Finish, wenn T feststeht.
+    mSource.AddEdit(mClass.StartPos, mClass.EndPos, cGenericPlaceholder);
+    AddCreateArguments(mSource, AValue);
+  end;
+end;
+
+procedure TGenericListDeclarations.RetypeDeclaration(ASource: TGenericListSource; ADeclaration: TSyntaxNode;
+  const AName, ANewType: string; ALegacy: Boolean);
+var
+  mTypeRef: TSyntaxNode;
+begin
+  mTypeRef := ADeclaration.FindChild(TSyntaxKind.TypeReference);
+  if mTypeRef = nil then
+  begin
+    Exit;
+  end;
+  if Pos(',', ADeclaration.Name) > 0 then
+  begin
+    SplitDeclaration(ASource, ADeclaration, mTypeRef, AName, ANewType, ALegacy);
+    Exit;
+  end;
+  if ALegacy then
+  begin
+    ASource.NoteRewritten(mTypeRef);
+  end;
+  ASource.AddEdit(mTypeRef.StartPos, mTypeRef.EndPos, ANewType);
+end;
+
+procedure TGenericListDeclarations.ScanDeclaration(ASource: TGenericListSource);
+begin
+  case FTarget.Declaration.Kind of
+    TSyntaxKind.Field:
+      ScanField(ASource);
+    TSyntaxKind.VarDecl:
+      ScanVariable(ASource);
+    TSyntaxKind.InlineVar:
+      ScanInlineVar(ASource);
+    TSyntaxKind.Parameter:
+      Fail(cTexts[TDeclarationsText.IsAParameterTheSignature].Fmt([FTarget.Name]));
+  else
+    Fail(cTexts[TDeclarationsText.IsNeitherAVariableNor].Fmt([FTarget.Name]));
   end;
 end;
 

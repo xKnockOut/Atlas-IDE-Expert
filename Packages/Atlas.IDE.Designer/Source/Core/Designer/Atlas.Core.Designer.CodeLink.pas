@@ -89,6 +89,8 @@ begin
   end;
 end;
 
+{ TAtlasDesignerLink }
+
 class function TAtlasDesignerLink.ChainAt(const ALine: string; ACharacter: Integer): TArray<string>;
 var
   mStart, mStop, mPos: Integer;

@@ -55,6 +55,8 @@ const
   // Projektweit über viele Units; deutlich länger als eine Hover-Anfrage.
   cRenameTimeoutMs = 60000;
 
+{ TAtlasIdeRename }
+
 class procedure TAtlasIdeRename.SyncOpenBuffers(ASession: TLspSession);
 var
   mFileName: string;

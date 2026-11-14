@@ -172,6 +172,13 @@ type
     function Read(AAddress: UInt64; ACount: Integer; out ABytes: TBytes): Boolean;
   end;
 
+{ TEvaluator }
+
+function TEvaluator.First(const AProbes: array of TProbe; AIndex: Integer; out AText: string): Boolean;
+begin
+  Result := FirstOf(Expression, AProbes, AIndex, AText);
+end;
+
 function TEvaluator.FirstOf(const AInner: string; const AProbes: array of TProbe; AIndex: Integer;
   out AText: string): Boolean;
 var
@@ -199,11 +206,6 @@ begin
     end;
   end;
   AText := '';
-end;
-
-function TEvaluator.First(const AProbes: array of TProbe; AIndex: Integer; out AText: string): Boolean;
-begin
-  Result := FirstOf(Expression, AProbes, AIndex, AText);
 end;
 
 function TEvaluator.Int(const AProbes: array of TProbe; out AValue: Int64): Boolean;

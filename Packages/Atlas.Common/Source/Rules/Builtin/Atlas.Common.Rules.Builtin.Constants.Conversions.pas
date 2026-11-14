@@ -287,14 +287,14 @@ begin
     cTexts[TConstantsConversionsText.LossTitle].Text);
 end;
 
-class function TNarrowingAssignmentRule.DefaultTypes: TArray<string>;
-begin
-  Result := ['Int64>Integer', 'NativeInt>Integer'];
-end;
-
 class function TNarrowingAssignmentRule.CanonicalTypeName(const ATypeName: string): string;
 begin
   Result := Atlas.Common.Rules.Builtin.Constants.Types.CanonicalTypeName(ATypeName);
+end;
+
+class function TNarrowingAssignmentRule.DefaultTypes: TArray<string>;
+begin
+  Result := ['Int64>Integer', 'NativeInt>Integer'];
 end;
 
 /// <summary>Ist der einheitliche Typname ein Gleitkommatyp?</summary>

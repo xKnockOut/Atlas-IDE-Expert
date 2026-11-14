@@ -75,6 +75,17 @@ const
 
 { TAtlasDebugSettingsSection }
 
+procedure TAtlasDebugSettingsSection.BuildRows;
+begin
+  ModuleSwitch('debug.enabled');
+  // Variablenwerte im Hover beim Debuggen (#891).
+  Switch('debug.hoverValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverValues));
+  BuildVisualizers;
+  BuildStepping;
+  BuildMore;
+  BuildRestartRows;
+end;
+
 function TAtlasDebugSettingsSection.OwnerId: string;
 begin
   Result := cOwnerId;
@@ -85,15 +96,88 @@ begin
   Result := cAreaId;
 end;
 
-procedure TAtlasDebugSettingsSection.BuildRows;
+procedure TAtlasDebugSettingsSection.Load(const AValues: IAtlasSettingsValues);
+var
+  mVisualizerKind: TAtlasVisualizerKind;
+  mStepFilterKind: TStepFilterKind;
+  mVisualizerKinds: TAtlasVisualizerKinds;
+  mStepFilterKinds: TStepFilterKinds;
 begin
-  ModuleSwitch('debug.enabled');
-  // Variablenwerte im Hover beim Debuggen (#891).
-  Switch('debug.hoverValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverValues));
-  BuildVisualizers;
-  BuildStepping;
-  BuildMore;
-  BuildRestartRows;
+  if Closed then
+  begin
+    Exit;
+  end;
+  mVisualizerKinds := TAtlasVisualizerSettings.ParseKinds(AValues.ReadString(cVisualizerTypesKey));
+  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
+    FVisualizerKinds[mVisualizerKind].Checked := mVisualizerKind in mVisualizerKinds;
+  end;
+  mStepFilterKinds := TStepFilterNames.ParseKinds(AValues.ReadString(cStepFilterKindsKey));
+  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
+    FStepFilterKinds[mStepFilterKind].Checked := mStepFilterKind in mStepFilterKinds;
+  end;
+end;
+
+procedure TAtlasDebugSettingsSection.Save(const AValues: IAtlasSettingsValues);
+var
+  mVisualizerKind: TAtlasVisualizerKind;
+  mStepFilterKind: TStepFilterKind;
+  mVisualizerKinds: TAtlasVisualizerKinds;
+  mStepFilterKinds: TStepFilterKinds;
+begin
+  if Closed then
+  begin
+    Exit;
+  end;
+  mVisualizerKinds := [];
+  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
+    if FVisualizerKinds[mVisualizerKind].Checked then
+    begin
+      Include(mVisualizerKinds, mVisualizerKind);
+    end;
+  end;
+  AValues.WriteString(cVisualizerTypesKey, TAtlasVisualizerSettings.KindsText(mVisualizerKinds));
+  mStepFilterKinds := [];
+  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
+    if FStepFilterKinds[mStepFilterKind].Checked then
+    begin
+      Include(mStepFilterKinds, mStepFilterKind);
+    end;
+  end;
+  AValues.WriteString(cStepFilterKindsKey, TStepFilterNames.KindsText(mStepFilterKinds));
+  // Die Seite hat die Textfelder gespeichert; hier nur die einheitliche Form.
+  AValues.WriteString(cVisualizerNameFieldsKey,
+    TAtlasVisualizerSettings.NormalizeNameFields(AValues.ReadString(cVisualizerNameFieldsKey)));
+  AValues.WriteString(cStepFilterPatternsKey,
+    TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
+  AValues.WriteString(cBreakExcludedKey,
+    TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
+  AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
+  AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
+end;
+
+procedure TAtlasDebugSettingsSection.Close;
+var
+  mVisualizerKind: TAtlasVisualizerKind;
+  mStepFilterKind: TStepFilterKind;
+begin
+  // Die Elemente gehören der Seite: nur die Verweise lösen.
+  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
+    FVisualizerKinds[mVisualizerKind] := nil;
+  end;
+  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
+    FStepFilterKinds[mStepFilterKind] := nil;
+  end;
+  FVisualizerNameFields := nil;
+  FStepFilterPatterns := nil;
+  FBreakOnNextEventExcluded := nil;
+  FOwnCodeFolders := nil;
+  inherited Close;
 end;
 
 procedure TAtlasDebugSettingsSection.BuildVisualizers;
@@ -290,90 +374,6 @@ end;
 function TAtlasDebugSettingsSection.StepFilterKindCheck(AKind: TStepFilterKind): TCheckBox;
 begin
   Result := FStepFilterKinds[AKind];
-end;
-
-procedure TAtlasDebugSettingsSection.Load(const AValues: IAtlasSettingsValues);
-var
-  mVisualizerKind: TAtlasVisualizerKind;
-  mStepFilterKind: TStepFilterKind;
-  mVisualizerKinds: TAtlasVisualizerKinds;
-  mStepFilterKinds: TStepFilterKinds;
-begin
-  if Closed then
-  begin
-    Exit;
-  end;
-  mVisualizerKinds := TAtlasVisualizerSettings.ParseKinds(AValues.ReadString(cVisualizerTypesKey));
-  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-  begin
-    FVisualizerKinds[mVisualizerKind].Checked := mVisualizerKind in mVisualizerKinds;
-  end;
-  mStepFilterKinds := TStepFilterNames.ParseKinds(AValues.ReadString(cStepFilterKindsKey));
-  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
-  begin
-    FStepFilterKinds[mStepFilterKind].Checked := mStepFilterKind in mStepFilterKinds;
-  end;
-end;
-
-procedure TAtlasDebugSettingsSection.Save(const AValues: IAtlasSettingsValues);
-var
-  mVisualizerKind: TAtlasVisualizerKind;
-  mStepFilterKind: TStepFilterKind;
-  mVisualizerKinds: TAtlasVisualizerKinds;
-  mStepFilterKinds: TStepFilterKinds;
-begin
-  if Closed then
-  begin
-    Exit;
-  end;
-  mVisualizerKinds := [];
-  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-  begin
-    if FVisualizerKinds[mVisualizerKind].Checked then
-    begin
-      Include(mVisualizerKinds, mVisualizerKind);
-    end;
-  end;
-  AValues.WriteString(cVisualizerTypesKey, TAtlasVisualizerSettings.KindsText(mVisualizerKinds));
-  mStepFilterKinds := [];
-  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
-  begin
-    if FStepFilterKinds[mStepFilterKind].Checked then
-    begin
-      Include(mStepFilterKinds, mStepFilterKind);
-    end;
-  end;
-  AValues.WriteString(cStepFilterKindsKey, TStepFilterNames.KindsText(mStepFilterKinds));
-  // Die Seite hat die Textfelder gespeichert; hier nur die einheitliche Form.
-  AValues.WriteString(cVisualizerNameFieldsKey,
-    TAtlasVisualizerSettings.NormalizeNameFields(AValues.ReadString(cVisualizerNameFieldsKey)));
-  AValues.WriteString(cStepFilterPatternsKey,
-    TStepFilterNames.NormalizePatterns(AValues.ReadString(cStepFilterPatternsKey)));
-  AValues.WriteString(cBreakExcludedKey,
-    TAtlasEventBreakSettings.NormalizeExcluded(AValues.ReadString(cBreakExcludedKey)));
-  AValues.WriteString(cOwnCodeFoldersKey, TAtlasFolderList.Text(AValues.ReadString(cOwnCodeFoldersKey)));
-  AValues.WriteString(cEventLogColorsKey, TAtlasEventColors.Normalize(AValues.ReadString(cEventLogColorsKey)));
-end;
-
-procedure TAtlasDebugSettingsSection.Close;
-var
-  mVisualizerKind: TAtlasVisualizerKind;
-  mStepFilterKind: TStepFilterKind;
-begin
-  // Die Elemente gehören der Seite: nur die Verweise lösen.
-  for mVisualizerKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-  begin
-    FVisualizerKinds[mVisualizerKind] := nil;
-  end;
-  for mStepFilterKind := Low(TStepFilterKind) to High(TStepFilterKind) do
-  begin
-    FStepFilterKinds[mStepFilterKind] := nil;
-  end;
-  FVisualizerNameFields := nil;
-  FStepFilterPatterns := nil;
-  FBreakOnNextEventExcluded := nil;
-  FOwnCodeFolders := nil;
-  inherited Close;
 end;
 
 end.

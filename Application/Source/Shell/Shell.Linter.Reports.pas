@@ -39,6 +39,8 @@ uses
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Rules.Builtin.Todos;
 
+{ TLinterReports }
+
 class function TLinterReports.SlashPath(const APath: string): string;
 begin
   Result := StringReplace(APath, '\', '/', [rfReplaceAll]);

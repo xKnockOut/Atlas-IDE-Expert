@@ -108,6 +108,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspDiagnosticItems }
+
 class function TLspDiagnosticItems.InactiveMessage: string;
 begin
   Result := cTexts[TDiagnosticItemsText.InactiveRegionConditionalCompilation].Text;
@@ -406,32 +408,6 @@ begin
   Result.AddPair('message', AIssue.Message);
 end;
 
-class function TLspDiagnosticItems.UsesStateName(AState: TUsesEntryState): string;
-begin
-  case AState of
-    TUsesEntryState.KeptForInitialization:
-      Result := 'initialization';
-    TUsesEntryState.KeptByAllowlist:
-      Result := 'allowlist';
-    TUsesEntryState.OnlyImplementation:
-      Result := 'implementation';
-  else
-    Result := 'unused';
-  end;
-end;
-
-class function TLspDiagnosticItems.UsesRuleOf(AState: TUsesEntryState): string;
-begin
-  case AState of
-    TUsesEntryState.Unused:
-      Result := cUnusedUsesRuleId;
-    TUsesEntryState.OnlyImplementation:
-      Result := cUsesOnlyInImplementationRuleId;
-  else
-    Result := '';
-  end;
-end;
-
 class procedure TLspDiagnosticItems.AddUses(AItems: TJSONArray; const AText: string;
   const AInactive: TArray<TTextRange>; const AContext: TUsesContext; ASuppressions: TSuppressions;
   const AShown: TUsesEntryStates);
@@ -468,6 +444,32 @@ begin
     mData.AddPair('state', UsesStateName(mEntry.State));
     mItem.AddPair('data', TJSONObject.Create(TJSONPair.Create('uses', mData)));
     AItems.AddElement(mItem);
+  end;
+end;
+
+class function TLspDiagnosticItems.UsesRuleOf(AState: TUsesEntryState): string;
+begin
+  case AState of
+    TUsesEntryState.Unused:
+      Result := cUnusedUsesRuleId;
+    TUsesEntryState.OnlyImplementation:
+      Result := cUsesOnlyInImplementationRuleId;
+  else
+    Result := '';
+  end;
+end;
+
+class function TLspDiagnosticItems.UsesStateName(AState: TUsesEntryState): string;
+begin
+  case AState of
+    TUsesEntryState.KeptForInitialization:
+      Result := 'initialization';
+    TUsesEntryState.KeptByAllowlist:
+      Result := 'allowlist';
+    TUsesEntryState.OnlyImplementation:
+      Result := 'implementation';
+  else
+    Result := 'unused';
   end;
 end;
 

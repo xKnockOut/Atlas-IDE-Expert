@@ -68,18 +68,6 @@ implementation
 
 { TDfmProperty }
 
-class function TDfmProperty.IsEventName(const AName: string): Boolean;
-
-  function Prefixed(const APrefix: string): Boolean;
-  begin
-    Result := (Length(AName) > Length(APrefix)) and SameText(Copy(AName, 1, Length(APrefix)), APrefix) and
-      CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']);
-  end;
-
-begin
-  Result := Prefixed('On') or Prefixed('Before') or Prefixed('After');
-end;
-
 function TDfmProperty.IsEvent: Boolean;
 var
   mIndex: Integer;
@@ -96,6 +84,18 @@ begin
       end;
     end;
   end;
+end;
+
+class function TDfmProperty.IsEventName(const AName: string): Boolean;
+
+  function Prefixed(const APrefix: string): Boolean;
+  begin
+    Result := (Length(AName) > Length(APrefix)) and SameText(Copy(AName, 1, Length(APrefix)), APrefix) and
+      CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']);
+  end;
+
+begin
+  Result := Prefixed('On') or Prefixed('Before') or Prefixed('After');
 end;
 
 { TDfmObject }

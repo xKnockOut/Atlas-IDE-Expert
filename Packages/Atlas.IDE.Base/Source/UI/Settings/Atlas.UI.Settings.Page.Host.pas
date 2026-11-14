@@ -309,6 +309,35 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageHost.MarksChanged(Sender: TObject);
+begin
+  RefreshMarks;
+end;
+
+procedure TAtlasSettingsPageHost.MarksResetPage(Sender: TObject);
+begin
+  ResetPage;
+end;
+
+function TAtlasSettingsPageHost.Part<T>: T;
+var
+  mPart: TAtlasSettingsPagePart;
+begin
+  for mPart in FParts do
+  begin
+    if mPart is T then
+    begin
+      Exit(T(mPart));
+    end;
+  end;
+  raise EInvalidOperation.CreateFmt(cPartMissing, [T.ClassName]);
+end;
+
+procedure TAtlasSettingsPageHost.AddPart(APart: TAtlasSettingsPagePart);
+begin
+  FParts.Add(APart);
+end;
+
 procedure TAtlasSettingsPageHost.MarkSectionOwner(AControl: TControl; const AOwnerId: string);
 begin
   FSectionOwners.AddOrSetValue(AControl, AOwnerId);
@@ -333,68 +362,6 @@ begin
       Result := Result + [mPair.Value];
     end;
   end;
-end;
-
-function TAtlasSettingsPageHost.Part<T>: T;
-var
-  mPart: TAtlasSettingsPagePart;
-begin
-  for mPart in FParts do
-  begin
-    if mPart is T then
-    begin
-      Exit(T(mPart));
-    end;
-  end;
-  raise EInvalidOperation.CreateFmt(cPartMissing, [T.ClassName]);
-end;
-
-procedure TAtlasSettingsPageHost.AddPart(APart: TAtlasSettingsPagePart);
-begin
-  FParts.Add(APart);
-end;
-
-procedure TAtlasSettingsPageHost.MarksResetPage(Sender: TObject);
-begin
-  ResetPage;
-end;
-
-procedure TAtlasSettingsPageHost.Bind(const AKey: string; AControl: TControl);
-begin
-  if AControl = nil then
-  begin
-    Exit;
-  end;
-  FRevealKeys := FRevealKeys + [AKey];
-  FRevealControls := FRevealControls + [AControl];
-end;
-
-function TAtlasSettingsPageHost.ControlOf(const AKey: string): TControl;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FRevealKeys) do
-  begin
-    if SameText(FRevealKeys[mIndex], AKey) then
-    begin
-      Exit(FRevealControls[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
-function TAtlasSettingsPageHost.Catalog: TAtlasSettingsCatalog;
-begin
-  if FCatalog = nil then
-  begin
-    FCatalog := TAtlasSettingsCatalog.CreateDefault;
-  end;
-  Result := FCatalog;
-end;
-
-procedure TAtlasSettingsPageHost.MarksChanged(Sender: TObject);
-begin
-  RefreshMarks;
 end;
 
 procedure TAtlasSettingsPageHost.Attach(ARow, AAnchor: TControl);
@@ -445,11 +412,14 @@ begin
   AControl.Enabled := AValue and not FLockedControls.Contains(AControl);
 end;
 
-procedure TAtlasSettingsPageHost.BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
-  AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
+procedure TAtlasSettingsPageHost.Bind(const AKey: string; AControl: TControl);
 begin
-  ABindings.Add(AName, AControl, AKind, AValues);
-  Bind(AName, AControl);
+  if AControl = nil then
+  begin
+    Exit;
+  end;
+  FRevealKeys := FRevealKeys + [AKey];
+  FRevealControls := FRevealControls + [AControl];
 end;
 
 function TAtlasSettingsPageHost.BindCheck(const AName: string; AControl: TCheckBox): TCheckBox;
@@ -470,9 +440,39 @@ begin
   Result := AControl;
 end;
 
+procedure TAtlasSettingsPageHost.BindValues(ABindings: TAtlasSettingsBindings; const AName: string; AControl: TControl;
+  AKind: TAtlasSettingsBindingKind; const AValues: TArray<string>);
+begin
+  ABindings.Add(AName, AControl, AKind, AValues);
+  Bind(AName, AControl);
+end;
+
+function TAtlasSettingsPageHost.Catalog: TAtlasSettingsCatalog;
+begin
+  if FCatalog = nil then
+  begin
+    FCatalog := TAtlasSettingsCatalog.CreateDefault;
+  end;
+  Result := FCatalog;
+end;
+
 function TAtlasSettingsPageHost.ControlOfSetting(const AName: string): TControl;
 begin
   Result := FMarks.ControlOfName(AName);
+end;
+
+function TAtlasSettingsPageHost.ControlOf(const AKey: string): TControl;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FRevealKeys) do
+  begin
+    if SameText(FRevealKeys[mIndex], AKey) then
+    begin
+      Exit(FRevealControls[mIndex]);
+    end;
+  end;
+  Result := nil;
 end;
 
 end.

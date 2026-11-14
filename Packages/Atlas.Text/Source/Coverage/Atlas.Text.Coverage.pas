@@ -205,6 +205,47 @@ end;
 
 { TCoverage }
 
+class function TCoverage.Parse(const AXml: string): TCoverageReport;
+var
+  mReader: TCoverageReader;
+begin
+  mReader := TCoverageReader.Create;
+  try
+    Result := mReader.Read(AXml);
+  finally
+    mReader.Free;
+  end;
+end;
+
+class function TCoverage.ParseLineHits(const AText: string): TArray<TCoverageLine>;
+const
+  // Platz für so viele Zeilen mehr, wenn das Feld voll ist.
+  cLinesGrowth = 16;
+var
+  mPart: string;
+  mEqual, mCount: Integer;
+  mLine: TCoverageLine;
+begin
+  SetLength(Result, 0);
+  mCount := 0;
+  for mPart in AText.Split([';']) do
+  begin
+    mEqual := Pos('=', mPart);
+    if (mEqual > 0) and TryStrToInt(Trim(Copy(mPart, 1, mEqual - 1)), mLine.Line) and
+      TryStrToInt(Trim(Copy(mPart, mEqual + 1, MaxInt)), mLine.Hits) and (mLine.Line > 0) and (mLine.Hits >= 0) then
+    begin
+      if mCount = Length(Result) then
+      begin
+        SetLength(Result, mCount * 2 + cLinesGrowth);
+      end;
+      Result[mCount] := mLine;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+  Result := Normalized(Result);
+end;
+
 class function TCoverage.Normalized(const ALines: TArray<TCoverageLine>): TArray<TCoverageLine>;
 var
   mSorted: TArray<TCoverageLine>;
@@ -238,48 +279,19 @@ begin
   SetLength(Result, mCount);
 end;
 
-class function TCoverage.ParseLineHits(const AText: string): TArray<TCoverageLine>;
-const
-  // Platz für so viele Zeilen mehr, wenn das Feld voll ist.
-  cLinesGrowth = 16;
-var
-  mPart: string;
-  mEqual, mCount: Integer;
-  mLine: TCoverageLine;
-begin
-  SetLength(Result, 0);
-  mCount := 0;
-  for mPart in AText.Split([';']) do
-  begin
-    mEqual := Pos('=', mPart);
-    if (mEqual > 0) and TryStrToInt(Trim(Copy(mPart, 1, mEqual - 1)), mLine.Line) and
-      TryStrToInt(Trim(Copy(mPart, mEqual + 1, MaxInt)), mLine.Hits) and (mLine.Line > 0) and (mLine.Hits >= 0) then
-    begin
-      if mCount = Length(Result) then
-      begin
-        SetLength(Result, mCount * 2 + cLinesGrowth);
-      end;
-      Result[mCount] := mLine;
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-  Result := Normalized(Result);
-end;
-
-class function TCoverage.Parse(const AXml: string): TCoverageReport;
-var
-  mReader: TCoverageReader;
-begin
-  mReader := TCoverageReader.Create;
-  try
-    Result := mReader.Read(AXml);
-  finally
-    mReader.Free;
-  end;
-end;
-
 { TCoverageReader }
+
+constructor TCoverageReader.Create;
+begin
+  inherited Create;
+  FHitText := TStringBuilder.Create;
+end;
+
+destructor TCoverageReader.Destroy;
+begin
+  FHitText.Free;
+  inherited Destroy;
+end;
 
 procedure TCoverageReader.AddFile(var AFiles: TArray<TCoverageFile>; const AName: string;
   const ALines: TArray<TCoverageLine>);
@@ -299,30 +311,6 @@ begin
   mFile.Lines := TCoverage.Normalized(ALines);
   SetLength(AFiles, Length(AFiles) + 1);
   AFiles[High(AFiles)] := mFile;
-end;
-
-procedure TCoverageReader.ReadLine;
-var
-  mLine: TCoverageLine;
-  mCovered, mMissed: Integer;
-begin
-  if not TryStrToInt(FCursor.Attribute('nr'), mLine.Line) or (mLine.Line <= 0) then
-  begin
-    Exit;
-  end;
-  mCovered := StrToIntDef(FCursor.Attribute('ci'), 0);
-  mMissed := StrToIntDef(FCursor.Attribute('mi'), 0);
-  if (mCovered <= 0) and (mMissed <= 0) then
-  begin
-    Exit;
-  end;
-  mLine.Hits := 0;
-  if mCovered > 0 then
-  begin
-    mLine.Hits := 1;
-  end;
-  SetLength(FSourceLines, Length(FSourceLines) + 1);
-  FSourceLines[High(FSourceLines)] := mLine;
 end;
 
 procedure TCoverageReader.OpenElement(const AName: string);
@@ -394,16 +382,28 @@ begin
   end;
 end;
 
-constructor TCoverageReader.Create;
+procedure TCoverageReader.ReadLine;
+var
+  mLine: TCoverageLine;
+  mCovered, mMissed: Integer;
 begin
-  inherited Create;
-  FHitText := TStringBuilder.Create;
-end;
-
-destructor TCoverageReader.Destroy;
-begin
-  FHitText.Free;
-  inherited Destroy;
+  if not TryStrToInt(FCursor.Attribute('nr'), mLine.Line) or (mLine.Line <= 0) then
+  begin
+    Exit;
+  end;
+  mCovered := StrToIntDef(FCursor.Attribute('ci'), 0);
+  mMissed := StrToIntDef(FCursor.Attribute('mi'), 0);
+  if (mCovered <= 0) and (mMissed <= 0) then
+  begin
+    Exit;
+  end;
+  mLine.Hits := 0;
+  if mCovered > 0 then
+  begin
+    mLine.Hits := 1;
+  end;
+  SetLength(FSourceLines, Length(FSourceLines) + 1);
+  FSourceLines[High(FSourceLines)] := mLine;
 end;
 
 function TCoverageReader.Read(const AXml: string): TCoverageReport;

@@ -35,6 +35,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer;
 
+{ TConditionalBranches }
+
 class function TConditionalBranches.ApplyDirective(const AName: string; var AStack: TArray<string>;
   var ANext: Integer): Boolean;
 var

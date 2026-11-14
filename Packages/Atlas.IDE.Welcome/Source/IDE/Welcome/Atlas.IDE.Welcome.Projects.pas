@@ -115,6 +115,34 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeProjects.Changed;
+begin
+  if FStopped then
+  begin
+    Exit;
+  end;
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cProjects);
+  // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHistory);
+  // Ebenso die Testergebnisse (#763, Abschnitt "tests" und Branch für den Multibranch-Job).
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cTests);
+  // Und „Meine Issues“ (#765): Auswahl, Branch (Branch → Ticket) und Art der Versionsverwaltung.
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cIssues);
+end;
+
+procedure TAtlasIdeProjects.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class function TAtlasIdeProjects.TrendsOn: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
+end;
+
 class function TAtlasIdeProjects.ProjectOpen(const AFileName: string): Boolean;
 var
   mModules: IOTAModuleServices;
@@ -176,54 +204,26 @@ begin
     end);
 end;
 
-procedure TAtlasIdeProjects.Changed;
+function TAtlasIdeProjects.VcsOf(const AProject: string): TAtlasProjectVcs;
 begin
-  if FStopped then
+  Result := TAtlasProjectVcs.Empty;
+  if not FStopped and (Summaries <> nil) then
   begin
-    Exit;
+    Result := Summaries.VcsOf(AProject);
   end;
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cProjects);
-  // Der Projektverlauf (#758) liest dieselben Zusammenfassungen und folgt der Auswahl.
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHistory);
-  // Ebenso die Testergebnisse (#763, Abschnitt "tests" und Branch für den Multibranch-Job).
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cTests);
-  // Und „Meine Issues“ (#765): Auswahl, Branch (Branch → Ticket) und Art der Versionsverwaltung.
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cIssues);
 end;
 
-class function TAtlasIdeProjects.TrendsOn: Boolean;
+procedure TAtlasIdeProjects.Refresh(const AProject: string);
 begin
-  Result := TAtlasIdeSettings.Current.WelcomePageTrends;
-end;
-
-function TAtlasIdeProjects.Selectable: Boolean;
-begin
-  // Ohne Projektverlauf und „Meine Issues“ (#765) hat eine Auswahl keinen Zweck: Klick öffnet wie bisher (#592).
-  Result := not FStopped and (TrendsOn or TAtlasIdeSettings.Current.WelcomePageIssues);
-end;
-
-procedure TAtlasIdeProjects.Select(const AProject: string);
-begin
-  if FStopped or (TAtlasProjectSummaries.NormalizedPath(AProject) = TAtlasProjectSummaries.NormalizedPath(FSelected))
-  then
+  if not FStopped and (Summaries <> nil) then
   begin
-    Exit;
+    Summaries.Refresh(AProject);
   end;
-  FSelected := AProject;
+end;
+
+procedure TAtlasIdeProjects.SummaryChanged(const AProject: string);
+begin
   Changed;
-end;
-
-function TAtlasIdeProjects.Selected: string;
-begin
-  Result := FSelected;
-end;
-
-procedure TAtlasIdeProjects.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 function TAtlasIdeProjects.Entries: TAtlasProjectEntries;
@@ -268,42 +268,6 @@ begin
     end;
     Result[mIndex].VcsQuerying := mSummaries.Querying(Result[mIndex].Project);
   end;
-end;
-
-procedure TAtlasIdeProjects.Shown;
-var
-  mEntry: TAtlasProjectEntry;
-begin
-  if FStopped or (Summaries = nil) or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
-  begin
-    Exit;
-  end;
-  for mEntry in Entries do
-  begin
-    Summaries.QueryIfStale(mEntry.Project);
-  end;
-end;
-
-function TAtlasIdeProjects.VcsOf(const AProject: string): TAtlasProjectVcs;
-begin
-  Result := TAtlasProjectVcs.Empty;
-  if not FStopped and (Summaries <> nil) then
-  begin
-    Result := Summaries.VcsOf(AProject);
-  end;
-end;
-
-procedure TAtlasIdeProjects.Refresh(const AProject: string);
-begin
-  if not FStopped and (Summaries <> nil) then
-  begin
-    Summaries.Refresh(AProject);
-  end;
-end;
-
-procedure TAtlasIdeProjects.SummaryChanged(const AProject: string);
-begin
-  Changed;
 end;
 
 procedure TAtlasIdeProjects.Open(const AProject: string);
@@ -455,6 +419,42 @@ begin
         Summaries.SetHidden(AProject, True);
       end;
     end);
+end;
+
+procedure TAtlasIdeProjects.Shown;
+var
+  mEntry: TAtlasProjectEntry;
+begin
+  if FStopped or (Summaries = nil) or not TAtlasIdeSettings.Current.WelcomePageRefreshVcs then
+  begin
+    Exit;
+  end;
+  for mEntry in Entries do
+  begin
+    Summaries.QueryIfStale(mEntry.Project);
+  end;
+end;
+
+function TAtlasIdeProjects.Selectable: Boolean;
+begin
+  // Ohne Projektverlauf und „Meine Issues“ (#765) hat eine Auswahl keinen Zweck: Klick öffnet wie bisher (#592).
+  Result := not FStopped and (TrendsOn or TAtlasIdeSettings.Current.WelcomePageIssues);
+end;
+
+procedure TAtlasIdeProjects.Select(const AProject: string);
+begin
+  if FStopped or (TAtlasProjectSummaries.NormalizedPath(AProject) = TAtlasProjectSummaries.NormalizedPath(FSelected))
+  then
+  begin
+    Exit;
+  end;
+  FSelected := AProject;
+  Changed;
+end;
+
+function TAtlasIdeProjects.Selected: string;
+begin
+  Result := FSelected;
 end;
 
 end.

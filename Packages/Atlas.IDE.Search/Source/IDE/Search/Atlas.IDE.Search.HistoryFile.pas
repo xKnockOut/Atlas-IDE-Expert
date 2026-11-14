@@ -41,6 +41,8 @@ begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), 'search-history.json');
 end;
 
+{ TAtlasIdeSearchHistories }
+
 constructor TAtlasIdeSearchHistories.Create(ACapacity: Integer);
 begin
   inherited Create;

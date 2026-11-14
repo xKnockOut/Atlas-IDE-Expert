@@ -306,6 +306,8 @@ uses
   Atlas.Core.Tracker.Transitions,
   Atlas.Text.Json;
 
+{ TAtlasBoardRequest }
+
 class function TAtlasBoardRequest.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const ABoardId, ASprintId: string; ATimeoutMs: Integer): TAtlasBoardRequest;
 begin
@@ -315,6 +317,8 @@ begin
   Result.SprintId := ASprintId;
   Result.TimeoutMs := ATimeoutMs;
 end;
+
+{ TAtlasBoardMove }
 
 class function TAtlasBoardMove.Create(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string; ATimeoutMs: Integer): TAtlasBoardMove;
@@ -348,10 +352,14 @@ end;
 
 { TAtlasBoardCard }
 
+{ TAtlasBoardSwimlanes }
+
 function TAtlasBoardSwimlanes.Active: Boolean;
 begin
   Result := Length(Fields) > 0;
 end;
+
+{ TAtlasBoardCard }
 
 function TAtlasBoardCard.Issue: TAtlasTrackerIssue;
 begin
@@ -422,6 +430,8 @@ function IsLetter(AChar: Char): Boolean;
 begin
   Result := AChar.IsLetterOrDigit;
 end;
+
+{ TAtlasTrackerBoard }
 
 class function TAtlasTrackerBoard.Initials(const AName: string): string;
 var
@@ -604,6 +614,8 @@ begin
   Result := AColumn.Values + [AColumn.Name];
 end;
 
+{ TAtlasBoardTransitions }
+
 class function TAtlasBoardTransitions.Into(const ACard: TAtlasBoardCard; const AColumn: TAtlasBoardColumn): Integer;
 begin
   Result := TAtlasTrackerTransitions.Into(ACard.Workflow, ColumnValues(AColumn));
@@ -704,22 +716,30 @@ begin
   end;
 end;
 
-class function TAtlasTrackerBoard.TimeText(AValue: TDateTime): string;
+class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget): string;
 begin
-  Result := '';
-  if AValue > 0 then
-  begin
-    Result := DateToISO8601(AValue, True);
-  end;
+  Result := CacheFile(AFolder, ATarget, 'board');
 end;
 
-class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
+class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const AName: string): string;
+var
+  mIndex: Integer;
 begin
-  Result := 0;
-  if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
+  Result := '';
+  if (AFolder = '') or (ATarget.Server = '') or (AName = '') then
   begin
-    Result := 0;
+    Exit;
   end;
+  // Der Name kommt auch aus IDs des Trackers (Sprints): nur harmlose Zeichen in den Dateinamen.
+  for mIndex := 1 to Length(AName) do
+  begin
+    if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := TAtlasTrackerFiles.Join(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
 end;
 
 function Texts(const AItems: TArray<string>): TJSONArray;
@@ -1055,52 +1075,6 @@ end;
 
 { Zwischenspeicher }
 
-class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget): string;
-begin
-  Result := CacheFile(AFolder, ATarget, 'board');
-end;
-
-class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-  const AName: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  if (AFolder = '') or (ATarget.Server = '') or (AName = '') then
-  begin
-    Exit;
-  end;
-  // Der Name kommt auch aus IDs des Trackers (Sprints): nur harmlose Zeichen in den Dateinamen.
-  for mIndex := 1 to Length(AName) do
-  begin
-    if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
-    begin
-      Exit;
-    end;
-  end;
-  Result := TAtlasTrackerFiles.Join(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
-end;
-
-class procedure TAtlasTrackerBoard.WriteText(const AFile, AText: string);
-begin
-  if AFile = '' then
-  begin
-    Exit;
-  end;
-  // Kein Platz, keine Rechte: Ohne Netz fehlt dann eben der letzte Stand.
-  TAtlasTrackerFiles.Files.WriteText(AFile, AText);
-end;
-
-class function TAtlasTrackerBoard.ReadText(const AFile: string; out AText: string): Boolean;
-begin
-  // Fehlende, gesperrte oder kaputte Datei: als fehlend werten.
-  Result := (AFile <> '') and TAtlasTrackerFiles.Files.ReadText(AFile, AText);
-  if not Result then
-  begin
-    AText := '';
-  end;
-end;
-
 class procedure TAtlasTrackerBoard.Save(const AFolder: string; const ATarget: TAtlasTrackerTarget;
   const ASnapshot: TAtlasBoardSnapshot);
 begin
@@ -1126,6 +1100,44 @@ var
 begin
   ASnapshot := TAtlasBoardSnapshot.Empty;
   Result := ReadText(CacheFile(AFolder, ATarget, AName), mText) and FromJson(mText, ASnapshot);
+end;
+
+class procedure TAtlasTrackerBoard.WriteText(const AFile, AText: string);
+begin
+  if AFile = '' then
+  begin
+    Exit;
+  end;
+  // Kein Platz, keine Rechte: Ohne Netz fehlt dann eben der letzte Stand.
+  TAtlasTrackerFiles.Files.WriteText(AFile, AText);
+end;
+
+class function TAtlasTrackerBoard.ReadText(const AFile: string; out AText: string): Boolean;
+begin
+  // Fehlende, gesperrte oder kaputte Datei: als fehlend werten.
+  Result := (AFile <> '') and TAtlasTrackerFiles.Files.ReadText(AFile, AText);
+  if not Result then
+  begin
+    AText := '';
+  end;
+end;
+
+class function TAtlasTrackerBoard.TimeText(AValue: TDateTime): string;
+begin
+  Result := '';
+  if AValue > 0 then
+  begin
+    Result := DateToISO8601(AValue, True);
+  end;
+end;
+
+class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
+begin
+  Result := 0;
+  if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
+  begin
+    Result := 0;
+  end;
 end;
 
 end.

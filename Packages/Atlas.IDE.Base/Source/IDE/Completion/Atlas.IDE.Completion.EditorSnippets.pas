@@ -120,6 +120,15 @@ begin
   mSession.Notify('atlas/postfixTemplates', TAtlasSnippets.PostfixParams(FSnippets.Postfix));
 end;
 
+class function TAtlasEditorCompletionSnippets.SnippetFolder: string;
+begin
+  Result := GetEnvironmentVariable('APPDATA');
+  if Result <> '' then
+  begin
+    Result := IncludeTrailingPathDelimiter(Result) + 'Atlas\Snippets';
+  end;
+end;
+
 class function TAtlasEditorCompletionSnippets.IdeTemplateFolder: string;
 var
   mServices: IOTAServices;
@@ -128,15 +137,6 @@ begin
   if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     Result := TAtlasLiveTemplates.Folder(TAtlasProjectContext.VersionOfRegistryKey(mServices.GetBaseRegistryKey));
-  end;
-end;
-
-class function TAtlasEditorCompletionSnippets.SnippetFolder: string;
-begin
-  Result := GetEnvironmentVariable('APPDATA');
-  if Result <> '' then
-  begin
-    Result := IncludeTrailingPathDelimiter(Result) + 'Atlas\Snippets';
   end;
 end;
 

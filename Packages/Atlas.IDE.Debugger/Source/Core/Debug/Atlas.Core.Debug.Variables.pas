@@ -200,6 +200,50 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasVariableSearch.Visit(ANode: TAtlasEvalNode; AUnderHit: Boolean): Boolean;
+var
+  mHit, mBelow: Boolean;
+  mIndex: Integer;
+begin
+  mHit := Matches(ANode);
+  if mHit then
+  begin
+    FHits.AddOrSetValue(ANode.Key, True);
+  end;
+  mBelow := False;
+  if ANode.ChildrenLoaded then
+  begin
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      if Visit(ANode.Children[mIndex], AUnderHit or mHit) then
+      begin
+        mBelow := True;
+      end;
+    end;
+  end;
+  if mBelow then
+  begin
+    // Pfad zum Treffer aufklappen.
+    ANode.Expanded := True;
+  end
+  else if FOpened.ContainsKey(ANode.Key) then
+  begin
+    ANode.Expanded := False;
+  end;
+  Result := mHit or mBelow;
+  if Result or AUnderHit then
+  begin
+    FShown.AddOrSetValue(ANode.Key, True);
+  end;
+end;
+
+function TAtlasVariableSearch.IsCandidate(ANode: TAtlasEvalNode; ADepth: Integer): Boolean;
+begin
+  // Zu oder ohne Kinder: öffnen. Felder eines zugeklappten Knotens wertet niemand aus.
+  Result := (ADepth < FDepth) and ANode.CanExpand and not FTried.ContainsKey(ANode.Key) and
+    not (ANode.Expanded and ANode.ChildrenLoaded);
+end;
+
 procedure TAtlasVariableSearch.Start(const AText: string; AMode: TAtlasVariableSearchMode; ADeep: Boolean;
   ADepth, ALimit: Integer);
 begin
@@ -243,13 +287,6 @@ begin
     Result := (ANode.State = TAtlasEvalState.Value) and not TAtlasEvalText.IsStructured(ANode.Value) and
       ContainsText(ANode.Value, FText);
   end;
-end;
-
-function TAtlasVariableSearch.IsCandidate(ANode: TAtlasEvalNode; ADepth: Integer): Boolean;
-begin
-  // Zu oder ohne Kinder: öffnen. Felder eines zugeklappten Knotens wertet niemand aus.
-  Result := (ADepth < FDepth) and ANode.CanExpand and not FTried.ContainsKey(ANode.Key) and
-    not (ANode.Expanded and ANode.ChildrenLoaded);
 end;
 
 function TAtlasVariableSearch.NextToOpen(AList: TAtlasEvalList): TAtlasEvalNode;
@@ -331,43 +368,6 @@ end;
 function TAtlasVariableSearch.Tried(const AKey: string): Boolean;
 begin
   Result := FTried.ContainsKey(AKey);
-end;
-
-function TAtlasVariableSearch.Visit(ANode: TAtlasEvalNode; AUnderHit: Boolean): Boolean;
-var
-  mHit, mBelow: Boolean;
-  mIndex: Integer;
-begin
-  mHit := Matches(ANode);
-  if mHit then
-  begin
-    FHits.AddOrSetValue(ANode.Key, True);
-  end;
-  mBelow := False;
-  if ANode.ChildrenLoaded then
-  begin
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      if Visit(ANode.Children[mIndex], AUnderHit or mHit) then
-      begin
-        mBelow := True;
-      end;
-    end;
-  end;
-  if mBelow then
-  begin
-    // Pfad zum Treffer aufklappen.
-    ANode.Expanded := True;
-  end
-  else if FOpened.ContainsKey(ANode.Key) then
-  begin
-    ANode.Expanded := False;
-  end;
-  Result := mHit or mBelow;
-  if Result or AUnderHit then
-  begin
-    FShown.AddOrSetValue(ANode.Key, True);
-  end;
 end;
 
 function TAtlasVariableSearch.Apply(AList: TAtlasEvalList): Integer;

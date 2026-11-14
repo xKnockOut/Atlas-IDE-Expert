@@ -173,20 +173,6 @@ begin
   inherited;
 end;
 
-class function TAtlasWelcomeSections.Default: TAtlasWelcomeSections;
-begin
-  if FDefault = nil then
-  begin
-    FDefault := TAtlasWelcomeSections.Create;
-  end;
-  Result := FDefault;
-end;
-
-class procedure TAtlasWelcomeSections.ReleaseDefault;
-begin
-  FreeAndNil(FDefault);
-end;
-
 function TAtlasWelcomeSections.IndexOf(const AId: string): Integer;
 var
   mIndex: Integer;
@@ -201,6 +187,38 @@ begin
   Result := -1;
 end;
 
+procedure TAtlasWelcomeSections.Notify(const AId: string);
+var
+  mListeners: TArray<TProc<string>>;
+  mListener: TProc<string>;
+begin
+  FLock.Enter;
+  try
+    Inc(FVersion);
+    mListeners := FListeners.Values.ToArray;
+  finally
+    FLock.Leave;
+  end;
+  // Außerhalb der Sperre: Beobachter dürfen die Bereiche lesen.
+  for mListener in mListeners do
+    try
+      mListener(AId);
+    except
+      // Ein Fehler im Beobachter darf den meldenden Bereich nicht stören.
+      on Exception do
+        ;
+    end;
+end;
+
+class function TAtlasWelcomeSections.Default: TAtlasWelcomeSections;
+begin
+  if FDefault = nil then
+  begin
+    FDefault := TAtlasWelcomeSections.Create;
+  end;
+  Result := FDefault;
+end;
+
 function Comes(const ALeft, ARight: TAtlasWelcomeSection): Boolean;
 begin
   if ALeft.Order <> ARight.Order then
@@ -211,6 +229,11 @@ begin
   begin
     Result := CompareText(ALeft.Id, ARight.Id) < 0;
   end;
+end;
+
+class procedure TAtlasWelcomeSections.ReleaseDefault;
+begin
+  FreeAndNil(FDefault);
 end;
 
 procedure TAtlasWelcomeSections.Add(const ASection: TAtlasWelcomeSection);
@@ -334,29 +357,6 @@ begin
   finally
     FLock.Leave;
   end;
-end;
-
-procedure TAtlasWelcomeSections.Notify(const AId: string);
-var
-  mListeners: TArray<TProc<string>>;
-  mListener: TProc<string>;
-begin
-  FLock.Enter;
-  try
-    Inc(FVersion);
-    mListeners := FListeners.Values.ToArray;
-  finally
-    FLock.Leave;
-  end;
-  // Außerhalb der Sperre: Beobachter dürfen die Bereiche lesen.
-  for mListener in mListeners do
-    try
-      mListener(AId);
-    except
-      // Ein Fehler im Beobachter darf den meldenden Bereich nicht stören.
-      on Exception do
-        ;
-    end;
 end;
 
 function TAtlasWelcomeSections.AddListener(const AListener: TProc<string>): Integer;

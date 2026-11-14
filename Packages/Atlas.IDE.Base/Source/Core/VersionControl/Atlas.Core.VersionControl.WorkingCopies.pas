@@ -326,55 +326,61 @@ end;
 
 { TAtlasVcsWorkingCopies }
 
-class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
+class function TAtlasVcsWorkingCopies.Collect(const AVcs: IAtlasVersionControl): TAtlasVcsWorkingCopyList;
 var
-  mEntry: TStatusEntry;
+  mHead: TAtlasVcsHead;
+  mSvn: IAtlasVcsSvnWorkingCopy;
+  mStatus: IAtlasVcsSvnExternals;
+  mSubmodules: IAtlasVcsSubmodules;
+  mXml, mRepository, mStatusXml, mText: string;
 begin
-  Result := nil;
-  if Trim(AStatusXml) = '' then
+  Result := TAtlasVcsWorkingCopyList.Empty;
+  if AVcs = nil then
   begin
     Exit;
   end;
-  // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
-  for mEntry in StatusEntries(AStatusXml) do
-  begin
-    if (mEntry.Item = 'external') and (mEntry.Path <> '') then
-    begin
-      Result := Result + [mEntry.Path];
-    end;
-  end;
-end;
-
-class procedure TAtlasVcsWorkingCopies.CountChanges(var ARows: TArray<TAtlasVcsWorkingCopyRow>;
-  const AStatusXml: string);
-var
-  mEntry: TStatusEntry;
-  mIndex, mRow: Integer;
-begin
-  if Trim(AStatusXml) = '' then
+  Result.Kind := AVcs.Kind;
+  Result.Root := AVcs.WorkingCopy.Root;
+  Result.Outcome := AVcs.Head(mHead);
+  if Result.Outcome <> TAtlasVcsOutcome.Ok then
   begin
     Exit;
   end;
-  for mIndex := 0 to High(ARows) do
+  if Result.Kind = TAtlasVcsKind.Git then
   begin
-    if ARows[mIndex].Kind <> TAtlasVcsWorkingCopyKind.Submodule then
+    mText := '';
+    if Supports(AVcs, IAtlasVcsSubmodules, mSubmodules) and
+      (mSubmodules.SubmoduleStatus(mText) <> TAtlasVcsOutcome.Ok) then
     begin
-      ARows[mIndex].Changed := 0;
+      mText := '';
     end;
+    Result.Rows := FromSubmodules(Result.Root, mHead.Branch, mHead.ShortRevision(TAtlasVcsKind.Git), mText);
+    Exit;
   end;
-  // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
-  // (geänderte Eigenschaft) gehört zu ihm.
-  for mEntry in StatusEntries(AStatusXml) do
+  mStatusXml := '';
+  if Supports(AVcs, IAtlasVcsSvnExternals, mStatus) and (mStatus.StatusXml(mStatusXml) <> TAtlasVcsOutcome.Ok) then
   begin
-    mRow := -1;
-    if IsChangedStatus(mEntry) then
-    begin
-      mRow := DeepestRow(ARows, mEntry.Path);
+    mStatusXml := '';
+  end;
+  // Ohne lesbare Externals bleiben die Zeilen aus dem Status (ohne Quelle).
+  if Supports(AVcs, IAtlasVcsSvnWorkingCopy, mSvn) and (mSvn.ExternalsXml(mXml) = TAtlasVcsOutcome.Ok) and
+    (mSvn.RepositoryRoot(mRepository) = TAtlasVcsOutcome.Ok) and (mRepository <> '') then
+    try
+      Result.Definitions := TAtlasSvnExternals.Definitions(mXml, Result.Root);
+      Result.Externals := TAtlasSvnExternals.ParseAll(Result.Definitions, mRepository + '/' +
+        StringReplace(mHead.Branch, ' ', '%20', [rfReplaceAll]), mRepository);
+    except
+      on EAtlasVcsParse do
+      begin
+        Result.Definitions := nil;
+        Result.Externals := nil;
+      end;
     end;
-    if mRow >= 0 then
-    begin
-      Inc(ARows[mRow].Changed);
-    end;
+  try
+    Result.Rows := FromSvn(Result.Root, mHead.Branch, mHead.Revision, Result.Externals, mStatusXml);
+  except
+    on EAtlasVcsParse do
+      Result.Rows := FromSvn(Result.Root, mHead.Branch, mHead.Revision, Result.Externals, '');
   end;
 end;
 
@@ -472,61 +478,55 @@ begin
   SortAndIndent(Result);
 end;
 
-class function TAtlasVcsWorkingCopies.Collect(const AVcs: IAtlasVersionControl): TAtlasVcsWorkingCopyList;
+class procedure TAtlasVcsWorkingCopies.CountChanges(var ARows: TArray<TAtlasVcsWorkingCopyRow>;
+  const AStatusXml: string);
 var
-  mHead: TAtlasVcsHead;
-  mSvn: IAtlasVcsSvnWorkingCopy;
-  mStatus: IAtlasVcsSvnExternals;
-  mSubmodules: IAtlasVcsSubmodules;
-  mXml, mRepository, mStatusXml, mText: string;
+  mEntry: TStatusEntry;
+  mIndex, mRow: Integer;
 begin
-  Result := TAtlasVcsWorkingCopyList.Empty;
-  if AVcs = nil then
+  if Trim(AStatusXml) = '' then
   begin
     Exit;
   end;
-  Result.Kind := AVcs.Kind;
-  Result.Root := AVcs.WorkingCopy.Root;
-  Result.Outcome := AVcs.Head(mHead);
-  if Result.Outcome <> TAtlasVcsOutcome.Ok then
+  for mIndex := 0 to High(ARows) do
   begin
-    Exit;
-  end;
-  if Result.Kind = TAtlasVcsKind.Git then
-  begin
-    mText := '';
-    if Supports(AVcs, IAtlasVcsSubmodules, mSubmodules) and
-      (mSubmodules.SubmoduleStatus(mText) <> TAtlasVcsOutcome.Ok) then
+    if ARows[mIndex].Kind <> TAtlasVcsWorkingCopyKind.Submodule then
     begin
-      mText := '';
+      ARows[mIndex].Changed := 0;
     end;
-    Result.Rows := FromSubmodules(Result.Root, mHead.Branch, mHead.ShortRevision(TAtlasVcsKind.Git), mText);
+  end;
+  // Jede Datei in der tiefsten Arbeitskopie, die sie enthält; der Ordner eines Externals selbst
+  // (geänderte Eigenschaft) gehört zu ihm.
+  for mEntry in StatusEntries(AStatusXml) do
+  begin
+    mRow := -1;
+    if IsChangedStatus(mEntry) then
+    begin
+      mRow := DeepestRow(ARows, mEntry.Path);
+    end;
+    if mRow >= 0 then
+    begin
+      Inc(ARows[mRow].Changed);
+    end;
+  end;
+end;
+
+class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
+var
+  mEntry: TStatusEntry;
+begin
+  Result := nil;
+  if Trim(AStatusXml) = '' then
+  begin
     Exit;
   end;
-  mStatusXml := '';
-  if Supports(AVcs, IAtlasVcsSvnExternals, mStatus) and (mStatus.StatusXml(mStatusXml) <> TAtlasVcsOutcome.Ok) then
+  // Einträge sind relativ zum Arbeitsordner von svn (wie das target "."), nicht zum target.
+  for mEntry in StatusEntries(AStatusXml) do
   begin
-    mStatusXml := '';
-  end;
-  // Ohne lesbare Externals bleiben die Zeilen aus dem Status (ohne Quelle).
-  if Supports(AVcs, IAtlasVcsSvnWorkingCopy, mSvn) and (mSvn.ExternalsXml(mXml) = TAtlasVcsOutcome.Ok) and
-    (mSvn.RepositoryRoot(mRepository) = TAtlasVcsOutcome.Ok) and (mRepository <> '') then
-    try
-      Result.Definitions := TAtlasSvnExternals.Definitions(mXml, Result.Root);
-      Result.Externals := TAtlasSvnExternals.ParseAll(Result.Definitions, mRepository + '/' +
-        StringReplace(mHead.Branch, ' ', '%20', [rfReplaceAll]), mRepository);
-    except
-      on EAtlasVcsParse do
-      begin
-        Result.Definitions := nil;
-        Result.Externals := nil;
-      end;
+    if (mEntry.Item = 'external') and (mEntry.Path <> '') then
+    begin
+      Result := Result + [mEntry.Path];
     end;
-  try
-    Result.Rows := FromSvn(Result.Root, mHead.Branch, mHead.Revision, Result.Externals, mStatusXml);
-  except
-    on EAtlasVcsParse do
-      Result.Rows := FromSvn(Result.Root, mHead.Branch, mHead.Revision, Result.Externals, '');
   end;
 end;
 

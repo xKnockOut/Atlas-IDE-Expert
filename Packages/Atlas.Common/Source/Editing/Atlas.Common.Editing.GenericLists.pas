@@ -129,40 +129,6 @@ const
 
 { TGenericListConversion }
 
-function TGenericListConversion.Start(ATree: TSyntaxTree; const AText, AFileName: string;
-  ADeclaration: TSyntaxNode; const AName: string): Boolean;
-begin
-  AddSource(ATree, False, AText, AFileName);
-  FTarget.Declaration := ADeclaration;
-  FTarget.DeclarationLine := ADeclaration.StartPos.Line;
-  FTarget.Name := AName;
-  FTarget.UnitName := TUsesClauses.OwnName(ATree.Tokens);
-  ScanDeclaration(FFiles[0]);
-  if not Failed then
-  begin
-    CollectUses(0);
-  end;
-  Result := not Failed;
-end;
-
-function TGenericListConversion.ExternalNames: TArray<string>;
-begin
-  Result := FExternalNames;
-end;
-
-procedure TGenericListConversion.AddFile(const AText, AFileName: string);
-begin
-  if not Failed then
-  begin
-    CollectUses(AddSource(TSyntaxTreeCache.Parse(AText), True, AText, AFileName));
-  end;
-end;
-
-procedure TGenericListConversion.Reject(const AReason: string);
-begin
-  Fail(AReason);
-end;
-
 function TGenericListConversion.DistinctCastTypes: TArray<string>;
 var
   mCast: TGenericListCast;
@@ -299,6 +265,40 @@ begin
     end;
   end;
   Result.Safe := not FUnknown and (Result.FileEdits = nil);
+end;
+
+function TGenericListConversion.Start(ATree: TSyntaxTree; const AText, AFileName: string;
+  ADeclaration: TSyntaxNode; const AName: string): Boolean;
+begin
+  AddSource(ATree, False, AText, AFileName);
+  FTarget.Declaration := ADeclaration;
+  FTarget.DeclarationLine := ADeclaration.StartPos.Line;
+  FTarget.Name := AName;
+  FTarget.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+  ScanDeclaration(FFiles[0]);
+  if not Failed then
+  begin
+    CollectUses(0);
+  end;
+  Result := not Failed;
+end;
+
+function TGenericListConversion.ExternalNames: TArray<string>;
+begin
+  Result := FExternalNames;
+end;
+
+procedure TGenericListConversion.AddFile(const AText, AFileName: string);
+begin
+  if not Failed then
+  begin
+    CollectUses(AddSource(TSyntaxTreeCache.Parse(AText), True, AText, AFileName));
+  end;
+end;
+
+procedure TGenericListConversion.Reject(const AReason: string);
+begin
+  Fail(AReason);
 end;
 
 function TGenericListConversion.Finish(out APlan: TGenericListPlan): Boolean;

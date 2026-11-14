@@ -788,6 +788,8 @@ begin
   end;
 end;
 
+{ TCompilerSwitchState }
+
 function TCompilerSwitchState.Summary: string;
 var
   mEntry: TSwitchEntry;

@@ -69,17 +69,14 @@ implementation
 uses
   System.Math;
 
+{ TAtlasTimeClock }
+
 constructor TAtlasTimeClock.Create(const ANow: TAtlasTimeNow; AIdleMinutes: Integer);
 begin
   inherited Create;
   FNow := ANow;
   FIssue := TAtlasTimeIssue.None;
   SetIdleMinutes(AIdleMinutes);
-end;
-
-procedure TAtlasTimeClock.SetIdleMinutes(AMinutes: Integer);
-begin
-  FIdle := EnsureRange(AMinutes, cMinIdleMinutes, cMaxIdleMinutes) / MinsPerDay;
 end;
 
 procedure TAtlasTimeClock.Close;
@@ -89,6 +86,11 @@ begin
     FDone := FDone + [TAtlasTimeSpan.Create(FIssue, FStart, FLast)];
   end;
   FOpen := False;
+end;
+
+procedure TAtlasTimeClock.SetIdleMinutes(AMinutes: Integer);
+begin
+  FIdle := EnsureRange(AMinutes, cMinIdleMinutes, cMaxIdleMinutes) / MinsPerDay;
 end;
 
 procedure TAtlasTimeClock.SetIssue(const AIssue: TAtlasTimeIssue);

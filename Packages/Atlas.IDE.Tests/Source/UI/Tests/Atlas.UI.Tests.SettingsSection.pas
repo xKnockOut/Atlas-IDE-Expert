@@ -51,16 +51,6 @@ uses
 
 { TAtlasTestsCompilerSection }
 
-function TAtlasTestsCompilerSection.OwnerId: string;
-begin
-  Result := cTestsSettingsOwner;
-end;
-
-function TAtlasTestsCompilerSection.AreaId: string;
-begin
-  Result := 'Compiler';
-end;
-
 procedure TAtlasTestsCompilerSection.BuildRows;
 begin
   ModuleSwitch('tests.enabled');
@@ -98,17 +88,17 @@ begin
   Line('tests.mutation.operators', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsMutationOperators));
 end;
 
-{ TAtlasTestsDebugSection }
-
-function TAtlasTestsDebugSection.OwnerId: string;
+function TAtlasTestsCompilerSection.OwnerId: string;
 begin
   Result := cTestsSettingsOwner;
 end;
 
-function TAtlasTestsDebugSection.AreaId: string;
+function TAtlasTestsCompilerSection.AreaId: string;
 begin
-  Result := 'Debuggen';
+  Result := 'Compiler';
 end;
+
+{ TAtlasTestsDebugSection }
 
 procedure TAtlasTestsDebugSection.BuildRows;
 begin
@@ -122,17 +112,17 @@ begin
     TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFromDebugStopMaxArray));
 end;
 
-{ TAtlasTestsEditorSection }
-
-function TAtlasTestsEditorSection.OwnerId: string;
+function TAtlasTestsDebugSection.OwnerId: string;
 begin
   Result := cTestsSettingsOwner;
 end;
 
-function TAtlasTestsEditorSection.AreaId: string;
+function TAtlasTestsDebugSection.AreaId: string;
 begin
-  Result := 'Editor';
+  Result := 'Debuggen';
 end;
+
+{ TAtlasTestsEditorSection }
 
 procedure TAtlasTestsEditorSection.BuildRows;
 begin
@@ -145,6 +135,16 @@ begin
   Switch('codeLens.untested', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsCodeLensUntested));
   Number('tests.untested.warnPercent', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsUntestedWarnPercent));
   Switch('tests.coverage', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestCoverage));
+end;
+
+function TAtlasTestsEditorSection.OwnerId: string;
+begin
+  Result := cTestsSettingsOwner;
+end;
+
+function TAtlasTestsEditorSection.AreaId: string;
+begin
+  Result := 'Editor';
 end;
 
 end.

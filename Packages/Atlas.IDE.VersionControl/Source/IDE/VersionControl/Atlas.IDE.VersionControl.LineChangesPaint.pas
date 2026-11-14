@@ -55,34 +55,7 @@ uses
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.Navigation;
 
-class function TAtlasLineChangesPaint.OldText(const AChange: TAtlasLineChange): string;
-var
-  mIndex, mShown: Integer;
-begin
-  if AChange.Kind = TAtlasLineChangeKind.Added then
-  begin
-    Exit(TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
-  end;
-  mShown := Min(Length(AChange.OldLines), cMaxOldLines);
-  Result := '';
-  for mIndex := 0 to mShown - 1 do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + sLineBreak;
-    end;
-    Result := Result + AChange.OldLines[mIndex];
-    if AChange.OldLines[mIndex] = '' then
-    begin
-      Result := Result + ' ';
-    end;
-  end;
-  if Length(AChange.OldLines) > mShown then
-  begin
-    Result := Result + sLineBreak + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.ChangeMoreLines,
-      [Length(AChange.OldLines) - mShown]);
-  end;
-end;
+{ TAtlasLineChangesPaint }
 
 class procedure TAtlasLineChangesPaint.FillBar(ADC: HDC; const ABar: TRect; AColor: TAtlasColor);
 var
@@ -153,6 +126,35 @@ end;
 class function TAtlasLineChangesPaint.EndColumn(const ALine: string; ATabWidth: Integer): Integer;
 begin
   Result := Length(TAtlasPairs.DisplayLine(TrimRight(ALine), ATabWidth)) + 1;
+end;
+
+class function TAtlasLineChangesPaint.OldText(const AChange: TAtlasLineChange): string;
+var
+  mIndex, mShown: Integer;
+begin
+  if AChange.Kind = TAtlasLineChangeKind.Added then
+  begin
+    Exit(TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
+  end;
+  mShown := Min(Length(AChange.OldLines), cMaxOldLines);
+  Result := '';
+  for mIndex := 0 to mShown - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + sLineBreak;
+    end;
+    Result := Result + AChange.OldLines[mIndex];
+    if AChange.OldLines[mIndex] = '' then
+    begin
+      Result := Result + ' ';
+    end;
+  end;
+  if Length(AChange.OldLines) > mShown then
+  begin
+    Result := Result + sLineBreak + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.ChangeMoreLines,
+      [Length(AChange.OldLines) - mShown]);
+  end;
 end;
 
 class procedure TAtlasLineChangesPaint.Invalidate;

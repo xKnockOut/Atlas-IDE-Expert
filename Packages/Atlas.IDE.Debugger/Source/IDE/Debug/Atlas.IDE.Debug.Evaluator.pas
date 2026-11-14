@@ -91,16 +91,16 @@ begin
   Done := True;
 end;
 
+procedure TAtlasIdeDebugEvaluator.TWaiter.ModifyComplete(const ExprStr, ResultStr: string; ReturnCode: Integer);
+begin
+end;
+
 procedure TAtlasIdeDebugEvaluator.TWaiter.EvaluateComplete(const ExprStr, ResultStr: string; CanModify: Boolean;
   ResultAddress: TOTAAddress; ResultSize: LongWord; ReturnCode: Integer);
 begin
   Text := ResultStr;
   Self.ReturnCode := ReturnCode;
   Done := True;
-end;
-
-procedure TAtlasIdeDebugEvaluator.TWaiter.ModifyComplete(const ExprStr, ResultStr: string; ReturnCode: Integer);
-begin
 end;
 
 procedure TAtlasIdeDebugEvaluator.TWaiter.Destroyed;
@@ -110,36 +110,6 @@ begin
 end;
 
 { TAtlasIdeDebugEvaluator }
-
-class function TAtlasIdeDebugEvaluator.StoppedThread: IOTAThread;
-var
-  mDebugger: IOTADebuggerServices;
-  mProcess: IOTAProcess;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
-  begin
-    Exit;
-  end;
-  mProcess := mDebugger.CurrentProcess;
-  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
-  begin
-    Exit;
-  end;
-  Result := mProcess.CurrentThread;
-end;
-
-class function TAtlasIdeDebugEvaluator.SideEffects(AEvaluation: TAtlasVisualizerEvaluation): TOTAEvalSideEffects;
-begin
-  case AEvaluation of
-    TAtlasVisualizerEvaluation.Properties:
-      Result := esePropertiesOnly;
-    TAtlasVisualizerEvaluation.Calls:
-      Result := eseAll;
-  else
-    Result := eseNone;
-  end;
-end;
 
 class function TAtlasIdeDebugEvaluator.WaitDeferred(const AThread: IOTAThread;
   const ADebugger: IOTADebuggerServices; ATimeoutMs: Integer; out AText: string): Boolean;
@@ -170,6 +140,36 @@ begin
   if Result then
   begin
     AText := mWaiter.Text;
+  end;
+end;
+
+class function TAtlasIdeDebugEvaluator.StoppedThread: IOTAThread;
+var
+  mDebugger: IOTADebuggerServices;
+  mProcess: IOTAProcess;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
+  begin
+    Exit;
+  end;
+  mProcess := mDebugger.CurrentProcess;
+  if (mProcess = nil) or not (mProcess.ProcessState in [psStopped, psFault, psException]) then
+  begin
+    Exit;
+  end;
+  Result := mProcess.CurrentThread;
+end;
+
+class function TAtlasIdeDebugEvaluator.SideEffects(AEvaluation: TAtlasVisualizerEvaluation): TOTAEvalSideEffects;
+begin
+  case AEvaluation of
+    TAtlasVisualizerEvaluation.Properties:
+      Result := esePropertiesOnly;
+    TAtlasVisualizerEvaluation.Calls:
+      Result := eseAll;
+  else
+    Result := eseNone;
   end;
 end;
 

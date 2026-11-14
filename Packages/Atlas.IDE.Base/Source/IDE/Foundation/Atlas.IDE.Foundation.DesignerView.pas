@@ -281,11 +281,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeDesignerView.CodeInFront(AEditor: TWinControl): Boolean;
-begin
-  Result := (AEditor <> nil) and CodeShown(AEditor) and not Shown(AEditor.Parent);
-end;
-
 class function TAtlasIdeDesignerView.CodeShown(AEditor: TWinControl): Boolean;
 var
   mForm: TCustomForm;
@@ -307,6 +302,11 @@ begin
   GetClassName(mWindow, mClass, Length(mClass));
   TAtlasGuard.Log(Format('Code-Ansicht: Editor ist verdeckt (Fenster der Klasse %s), Code-Leisten aus',
     [string(mClass)]));
+end;
+
+class function TAtlasIdeDesignerView.CodeInFront(AEditor: TWinControl): Boolean;
+begin
+  Result := (AEditor <> nil) and CodeShown(AEditor) and not Shown(AEditor.Parent);
 end;
 
 end.

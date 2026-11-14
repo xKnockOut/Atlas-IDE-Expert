@@ -686,6 +686,8 @@ type
     property Plan: TExtractInterfacePlan read FPlan;
   end;
 
+{ TInterfaceBuilder }
+
 constructor TInterfaceBuilder.Create(ALayout: TClassLayout; const ARequest: TExtractInterfaceRequest;
   AClassOffset: Integer);
 begin
@@ -850,6 +852,18 @@ begin
   end;
 end;
 
+function TInterfaceBuilder.SameUnitEdit: TTextEdit;
+var
+  mText, mLine: string;
+begin
+  mText := '';
+  for mLine in FPlan.Declaration.Split([#10]) do
+  begin
+    mText := mText + FLayout.Indent + mLine + FLayout.LineBreak;
+  end;
+  Result := TClassEdits.InsertBeforeLine(FLayout.FirstLine, mText + FLayout.LineBreak);
+end;
+
 procedure TInterfaceBuilder.Collect(const AChosen: TArray<Integer>);
 var
   mId: Integer;
@@ -871,18 +885,6 @@ begin
   end;
   FPlan.Declaration := FRequest.Name + ' = interface' + #10'  [''' + FRequest.Guid + ''']' + MemberLines(AChosen) +
     #10'end;';
-end;
-
-function TInterfaceBuilder.SameUnitEdit: TTextEdit;
-var
-  mText, mLine: string;
-begin
-  mText := '';
-  for mLine in FPlan.Declaration.Split([#10]) do
-  begin
-    mText := mText + FLayout.Indent + mLine + FLayout.LineBreak;
-  end;
-  Result := TClassEdits.InsertBeforeLine(FLayout.FirstLine, mText + FLayout.LineBreak);
 end;
 
 function TInterfaceBuilder.ClassEdits(ATree: TSyntaxTree; const AText: string; const ALookup: TClassAncestorsLookup;

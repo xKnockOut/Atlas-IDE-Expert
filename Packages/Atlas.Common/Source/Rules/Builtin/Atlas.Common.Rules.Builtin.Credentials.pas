@@ -421,6 +421,8 @@ type
     procedure Walk(AObject: TDfmObject);
   end;
 
+{ TFormWalk }
+
 procedure TFormWalk.Walk(AObject: TDfmObject);
 var
   mProp: TDfmProperty;

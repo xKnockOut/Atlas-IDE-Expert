@@ -659,6 +659,8 @@ begin
   end;
 end;
 
+{ TSetLengthInLoopRule }
+
 function TSetLengthInLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('setlength-in-loop', TRuleSeverity.Hint,

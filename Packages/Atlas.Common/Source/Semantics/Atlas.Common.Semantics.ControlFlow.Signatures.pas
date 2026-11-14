@@ -95,6 +95,8 @@ const
     'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Boolean', 'Char', 'AnsiChar', 'WideChar', 'string',
     'Pointer', 'Double', 'Single', 'Extended', 'Currency', 'LongInt', 'TObject');
 
+{ TFlowSignatures }
+
 class function TFlowSignatures.TryBuiltin(const AName: string; AArgument: Integer;
   out AMode: TFlowArgumentMode): Boolean;
 var
@@ -306,24 +308,6 @@ begin
   end;
 end;
 
-procedure TFlowRoutineTable.AddHeader(AHeader: TSyntaxNode);
-var
-  mModes, mKnown: TArray<TFlowArgumentMode>;
-  mKey: string;
-begin
-  mModes := ParameterModes(AHeader);
-  mKey := LowerCase(Copy(AHeader.Name, LastDelimiter('.', AHeader.Name) + 1, MaxInt));
-  if mKey = '' then
-  begin
-    Exit;
-  end;
-  if FRoutines.TryGetValue(mKey, mKnown) then
-  begin
-    MergeOverload(mKnown, mModes);
-  end;
-  FRoutines.AddOrSetValue(mKey, mModes);
-end;
-
 procedure TFlowRoutineTable.Collect(ANode: TSyntaxNode);
 var
   mHeaders: TList<TSyntaxNode>;
@@ -348,6 +332,24 @@ begin
   finally
     mHeaders.Free;
   end;
+end;
+
+procedure TFlowRoutineTable.AddHeader(AHeader: TSyntaxNode);
+var
+  mModes, mKnown: TArray<TFlowArgumentMode>;
+  mKey: string;
+begin
+  mModes := ParameterModes(AHeader);
+  mKey := LowerCase(Copy(AHeader.Name, LastDelimiter('.', AHeader.Name) + 1, MaxInt));
+  if mKey = '' then
+  begin
+    Exit;
+  end;
+  if FRoutines.TryGetValue(mKey, mKnown) then
+  begin
+    MergeOverload(mKnown, mModes);
+  end;
+  FRoutines.AddOrSetValue(mKey, mModes);
 end;
 
 function TFlowRoutineTable.Find(const AName: string; AArgument: Integer; out AMode: TFlowArgumentMode): Boolean;

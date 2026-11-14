@@ -167,6 +167,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeRegistryAccess }
+
 function TAtlasIdeRegistryAccess.Read(const APath: string): TAtlasRegKey;
 var
   mRegistry: TRegistry;

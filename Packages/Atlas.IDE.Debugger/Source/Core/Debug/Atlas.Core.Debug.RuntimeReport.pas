@@ -201,6 +201,40 @@ begin
   end;
 end;
 
+{ TAtlasRuntimeReports }
+
+class function TAtlasRuntimeReports.ArgumentsJson(const AProject, AText: string): string;
+var
+  mArguments: TJSONArray;
+  mOptions: TJSONObject;
+begin
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TLspUris.FromPath(AProject));
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('text', AText);
+    mArguments.AddElement(mOptions);
+    Result := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+{ Argumente }
+
+class function TAtlasRuntimeReports.ClearArgumentsJson(const AProject: string): string;
+var
+  mArguments: TJSONArray;
+begin
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add(TLspUris.FromPath(AProject));
+    Result := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
 class function TAtlasRuntimeReports.FromJson(const AJson: string; out AReport: TAtlasRuntimeReport): Boolean;
 var
   mRoot, mCrash: TJSONObject;
@@ -235,38 +269,6 @@ begin
     end;
   finally
     mRoot.Free;
-  end;
-end;
-
-{ Argumente }
-
-class function TAtlasRuntimeReports.ArgumentsJson(const AProject, AText: string): string;
-var
-  mArguments: TJSONArray;
-  mOptions: TJSONObject;
-begin
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(TLspUris.FromPath(AProject));
-    mOptions := TJSONObject.Create;
-    mOptions.AddPair('text', AText);
-    mArguments.AddElement(mOptions);
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
-  end;
-end;
-
-class function TAtlasRuntimeReports.ClearArgumentsJson(const AProject: string): string;
-var
-  mArguments: TJSONArray;
-begin
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(TLspUris.FromPath(AProject));
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
   end;
 end;
 

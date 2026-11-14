@@ -242,20 +242,6 @@ begin
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.cHelp, 1)];
 end;
 
-function TAtlasWelcomeLayout.IndexOf(const AId: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(Slots) do
-  begin
-    if SameText(Slots[mIndex].Id, AId) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TAtlasWelcomeLayout.SlotOf(const AId: string; out ASlot: TAtlasWelcomeSlot): Boolean;
 var
   mIndex: Integer;
@@ -270,6 +256,20 @@ begin
   begin
     ASlot := TAtlasWelcomeSlot.Create(AId, 0);
   end;
+end;
+
+function TAtlasWelcomeLayout.IndexOf(const AId: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Slots) do
+  begin
+    if SameText(Slots[mIndex].Id, AId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TAtlasWelcomeLayout.MovedToTop(const AId: string): TAtlasWelcomeLayout;
@@ -329,6 +329,25 @@ begin
   end;
 end;
 
+function TAtlasWelcomeLayout.Arrange(const ASections: TArray<TAtlasWelcomeSection>;
+  AColumns: Integer): TArray<TArray<string>>;
+var
+  mGrid: TAtlasWelcomeCells;
+  mColumn: Integer;
+  mCell: TAtlasWelcomeCell;
+begin
+  Result := nil;
+  mGrid := Cells(ASections, AColumns);
+  SetLength(Result, Length(mGrid));
+  for mColumn := 0 to High(mGrid) do
+  begin
+    for mCell in mGrid[mColumn] do
+    begin
+      Result[mColumn] := Result[mColumn] + [mCell.Id];
+    end;
+  end;
+end;
+
 function TAtlasWelcomeLayout.Cells(const ASections: TArray<TAtlasWelcomeSection>;
   AColumns: Integer): TAtlasWelcomeCells;
 var
@@ -360,25 +379,6 @@ begin
   end;
   // … dann auf die gewünschte Zahl falten.
   Result := FoldedCells(mWide, Clamp(AColumns, cMinColumns, cMaxColumns));
-end;
-
-function TAtlasWelcomeLayout.Arrange(const ASections: TArray<TAtlasWelcomeSection>;
-  AColumns: Integer): TArray<TArray<string>>;
-var
-  mGrid: TAtlasWelcomeCells;
-  mColumn: Integer;
-  mCell: TAtlasWelcomeCell;
-begin
-  Result := nil;
-  mGrid := Cells(ASections, AColumns);
-  SetLength(Result, Length(mGrid));
-  for mColumn := 0 to High(mGrid) do
-  begin
-    for mCell in mGrid[mColumn] do
-    begin
-      Result[mColumn] := Result[mColumn] + [mCell.Id];
-    end;
-  end;
 end;
 
 function TAtlasWelcomeLayout.MovedTo(const AId: string; AColumn: Integer;
@@ -543,6 +543,26 @@ begin
   Result.Columns := Clamp(AColumns, cMinColumns, cMaxColumns);
 end;
 
+function TAtlasWelcomeLayout.Adopted(const AIds: TArray<string>; const AWeight: TAtlasWelcomeWeight;
+  out AAdded: TArray<string>): TAtlasWelcomeLayout;
+var
+  mId: string;
+begin
+  AAdded := nil;
+  Result := Self;
+  Result.Slots := Copy(Slots);
+  for mId in AIds do
+  begin
+    if (mId = '') or (Result.IndexOf(mId) >= 0) then
+    begin
+      Continue;
+    end;
+    // Jeder neue Bereich zählt für den nächsten mit: mehrere neue verteilen sich.
+    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(mId, Result.RoomiestColumn(AWeight))];
+    AAdded := AAdded + [mId];
+  end;
+end;
+
 function TAtlasWelcomeLayout.RoomiestColumn(const AWeight: TAtlasWelcomeWeight): Integer;
 var
   mLoad: TArray<Int64>;
@@ -575,26 +595,6 @@ begin
     begin
       Result := mColumn;
     end;
-  end;
-end;
-
-function TAtlasWelcomeLayout.Adopted(const AIds: TArray<string>; const AWeight: TAtlasWelcomeWeight;
-  out AAdded: TArray<string>): TAtlasWelcomeLayout;
-var
-  mId: string;
-begin
-  AAdded := nil;
-  Result := Self;
-  Result.Slots := Copy(Slots);
-  for mId in AIds do
-  begin
-    if (mId = '') or (Result.IndexOf(mId) >= 0) then
-    begin
-      Continue;
-    end;
-    // Jeder neue Bereich zählt für den nächsten mit: mehrere neue verteilen sich.
-    Result.Slots := Result.Slots + [TAtlasWelcomeSlot.Create(mId, Result.RoomiestColumn(AWeight))];
-    AAdded := AAdded + [mId];
   end;
 end;
 
@@ -774,18 +774,29 @@ begin
   Result := Clamp((AX - AGap div 2) div (mWidth + AGap), 0, ACount - 1);
 end;
 
-class function TAtlasWelcomeFlow.IndexOf(const APlaced: TArray<TAtlasWelcomePlaced>; const AId: string): Integer;
+class function TAtlasWelcomeFlow.DropTarget(const ACells: TAtlasWelcomeCells;
+  const APlaced: TArray<TAtlasWelcomePlaced>; const AArea: TAtlasWelcomeArea; AX, AY: Integer;
+  const ADragged: string): TAtlasWelcomeDrop;
 var
+  mCell: TAtlasWelcomeCell;
   mIndex: Integer;
 begin
-  for mIndex := 0 to High(APlaced) do
+  Result.Before := '';
+  Result.Column := ColumnAt(AX, Length(ACells), AArea.ClientWidth, AArea.Gap, AArea.MinWidth);
+  if Result.Column > High(ACells) then
   begin
-    if SameText(APlaced[mIndex].Id, AId) then
+    Exit;
+  end;
+  for mCell in ACells[Result.Column] do
+  begin
+    mIndex := IndexOf(APlaced, mCell.Id);
+    if not SameText(mCell.Id, ADragged) and (mIndex >= 0) and
+      (AY < APlaced[mIndex].Top + APlaced[mIndex].Height div 2) then
     begin
-      Exit(mIndex);
+      Result.Before := mCell.Id;
+      Exit;
     end;
   end;
-  Result := -1;
 end;
 
 /// <summary>Nächste Spalte zum Platzieren: die mit dem höchsten Ende, die noch Bereiche hat; wartet dort ein
@@ -873,31 +884,6 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeFlow.DropTarget(const ACells: TAtlasWelcomeCells;
-  const APlaced: TArray<TAtlasWelcomePlaced>; const AArea: TAtlasWelcomeArea; AX, AY: Integer;
-  const ADragged: string): TAtlasWelcomeDrop;
-var
-  mCell: TAtlasWelcomeCell;
-  mIndex: Integer;
-begin
-  Result.Before := '';
-  Result.Column := ColumnAt(AX, Length(ACells), AArea.ClientWidth, AArea.Gap, AArea.MinWidth);
-  if Result.Column > High(ACells) then
-  begin
-    Exit;
-  end;
-  for mCell in ACells[Result.Column] do
-  begin
-    mIndex := IndexOf(APlaced, mCell.Id);
-    if not SameText(mCell.Id, ADragged) and (mIndex >= 0) and
-      (AY < APlaced[mIndex].Top + APlaced[mIndex].Height div 2) then
-    begin
-      Result.Before := mCell.Id;
-      Exit;
-    end;
-  end;
-end;
-
 class function TAtlasWelcomeFlow.InsertLine(const ACells: TAtlasWelcomeCells;
   const APlaced: TArray<TAtlasWelcomePlaced>; const AArea: TAtlasWelcomeArea; AColumn: Integer;
   const ABefore: string): TAtlasWelcomeInsertLine;
@@ -961,6 +947,20 @@ begin
       Result := mColumn;
     end;
   end;
+end;
+
+class function TAtlasWelcomeFlow.IndexOf(const APlaced: TArray<TAtlasWelcomePlaced>; const AId: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(APlaced) do
+  begin
+    if SameText(APlaced[mIndex].Id, AId) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 end.

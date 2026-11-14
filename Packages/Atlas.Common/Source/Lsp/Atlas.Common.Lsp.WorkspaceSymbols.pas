@@ -104,15 +104,33 @@ begin
   FIndex := AIndex;
 end;
 
+function TLspWorkspaceSymbols.HandleSymbol(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mQuery: string;
+  mFound: TArray<TWorkspaceSymbol>;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', mQuery)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + cMethod);
+  end;
+  mFound := nil;
+  if Assigned(FBookmarksFor) then
+  begin
+    mFound := SearchBookmarks(FBookmarksFor(), mQuery);
+  end;
+  mFound := mFound + Search(FIndex, mQuery, cMaxResults, ACancellation);
+  if Length(mFound) > cMaxResults then
+  begin
+    SetLength(mFound, cMaxResults);
+  end;
+  Result := ToJson(mFound);
+end;
+
 procedure TLspWorkspaceSymbols.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleSymbol);
-end;
-
-class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string;
-  AMax: Integer): TArray<TWorkspaceSymbol>;
-begin
-  Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
 /// <summary>Deklaration und Implementierung derselben Routine nur einmal: True, wenn ASymbol schon in ASeen
@@ -225,6 +243,12 @@ begin
     mSeen.Free;
     mCandidates.Free;
   end;
+end;
+
+class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string;
+  AMax: Integer): TArray<TWorkspaceSymbol>;
+begin
+  Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
 class function TLspWorkspaceSymbols.SearchBookmarks(const AHits: TArray<TBookmarkHit>;
@@ -342,30 +366,6 @@ begin
     mInfo.AddPair('location', mLocation);
     Result.AddElement(mInfo);
   end;
-end;
-
-function TLspWorkspaceSymbols.HandleSymbol(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mQuery: string;
-  mFound: TArray<TWorkspaceSymbol>;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', mQuery)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + cMethod);
-  end;
-  mFound := nil;
-  if Assigned(FBookmarksFor) then
-  begin
-    mFound := SearchBookmarks(FBookmarksFor(), mQuery);
-  end;
-  mFound := mFound + Search(FIndex, mQuery, cMaxResults, ACancellation);
-  if Length(mFound) > cMaxResults then
-  begin
-    SetLength(mFound, cMaxResults);
-  end;
-  Result := ToJson(mFound);
 end;
 
 initialization

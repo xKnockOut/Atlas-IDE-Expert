@@ -133,6 +133,8 @@ type
     procedure WriteMessage(const AMessage: TJSONObject);
   end;
 
+{ TSilentTransport }
+
 function TSilentTransport.ReadMessage: TJSONObject;
 begin
   raise EJsonRpcTransportClosed.Create('Kein LSP-Client');
@@ -179,6 +181,39 @@ begin
   inherited;
 end;
 
+function TShellWorkspaceGroup.Workspaces: TArray<TShellWorkspace>;
+var
+  mOther: TShellWorkspace;
+begin
+  Result := [FMain];
+  for mOther in FOthers do
+  begin
+    Result := Result + [mOther];
+  end;
+end;
+
+function TShellWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
+var
+  mInput: TLspQueryInput;
+begin
+  mInput.Index := FIndex;
+  mInput.EnsureUnit :=
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end;
+  mInput.Root := FRoot;
+  mInput.Files := AllFiles;
+  mInput.Namespaces := FMain.State.Namespaces;
+  mInput.ReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := Assigned(FReadText) and FReadText(AFileName, AText);
+    end;
+  ASource := TLspQuery.Source(mInput, FMain.Configuration.Settings.References);
+  Result := True;
+end;
+
 procedure TShellWorkspaceGroup.Prepare(AWorkspace: TShellWorkspace);
 begin
   AWorkspace.Setup.ProcessIdentity := FProcessIdentity;
@@ -205,6 +240,49 @@ begin
     begin
       Result := TShellBootstrap.GroupProjects(FRoot, FLogger);
     end;
+end;
+
+function TShellWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
+var
+  mWorkspace: TShellWorkspace;
+  mProject: TRuleProject;
+  mMainSource: string;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    if FRuleProjects.Valid then
+    begin
+      Exit(FRuleProjects.Items);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+  Result := nil;
+  for mWorkspace in Workspaces do
+  begin
+    if mWorkspace.State.RuleProject(mProject, mMainSource) then
+    begin
+      Result := Result + [TRuleProjectFiles.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
+    end;
+  end;
+  System.TMonitor.Enter(FLock);
+  try
+    FRuleProjects.Items := Result;
+    FRuleProjects.Valid := True;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspaceGroup.SetClient(const AClient: string);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  FProcessIdentity.Client := AClient;
+  for mWorkspace in Workspaces do
+  begin
+    mWorkspace.Cache.SetClient(AClient);
+  end;
 end;
 
 procedure TShellWorkspaceGroup.Load(const AGlobalSettings: string);
@@ -246,28 +324,6 @@ begin
     mWorkspace.Stop;
   end;
   FMain.Stop;
-end;
-
-procedure TShellWorkspaceGroup.SetClient(const AClient: string);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  FProcessIdentity.Client := AClient;
-  for mWorkspace in Workspaces do
-  begin
-    mWorkspace.Cache.SetClient(AClient);
-  end;
-end;
-
-function TShellWorkspaceGroup.Workspaces: TArray<TShellWorkspace>;
-var
-  mOther: TShellWorkspace;
-begin
-  Result := [FMain];
-  for mOther in FOthers do
-  begin
-    Result := Result + [mOther];
-  end;
 end;
 
 function TShellWorkspaceGroup.WaitForIndex(ATimeoutMs: Cardinal): Boolean;
@@ -359,48 +415,6 @@ begin
   Result := FMain;
 end;
 
-procedure TShellWorkspaceGroup.Invalidate;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    FRuleProjects.Valid := False;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
-function TShellWorkspaceGroup.RuleProjects: TArray<TRuleProject>;
-var
-  mWorkspace: TShellWorkspace;
-  mProject: TRuleProject;
-  mMainSource: string;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    if FRuleProjects.Valid then
-    begin
-      Exit(FRuleProjects.Items);
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-  Result := nil;
-  for mWorkspace in Workspaces do
-  begin
-    if mWorkspace.State.RuleProject(mProject, mMainSource) then
-    begin
-      Result := Result + [TRuleProjectFiles.ProjectOf(mProject.FileName, mMainSource, mProject.Sources, FReadText)];
-    end;
-  end;
-  System.TMonitor.Enter(FLock);
-  try
-    FRuleProjects.Items := Result;
-    FRuleProjects.Valid := True;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
 function TShellWorkspaceGroup.RuleProject(const AFileName: string): TCheckProject;
 var
   mWorkspace, mOther: TShellWorkspace;
@@ -435,31 +449,14 @@ begin
   Result.Services.Queries := FQueries;
 end;
 
-function TShellWorkspaceGroup.Queries: ICodeQueries;
+function TShellWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
 begin
-  Result := FQueries;
-end;
-
-function TShellWorkspaceGroup.QuerySource(out ASource: TQuerySource): Boolean;
-var
-  mInput: TLspQueryInput;
-begin
-  mInput.Index := FIndex;
-  mInput.EnsureUnit :=
-    function(const AUnitName: string): Boolean
+  Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
+    function(out AReason: string): Boolean
     begin
-      Result := EnsureUnit(AUnitName);
-    end;
-  mInput.Root := FRoot;
-  mInput.Files := AllFiles;
-  mInput.Namespaces := FMain.State.Namespaces;
-  mInput.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := Assigned(FReadText) and FReadText(AFileName, AText);
-    end;
-  ASource := TLspQuery.Source(mInput, FMain.Configuration.Settings.References);
-  Result := True;
+      Result := Ready(AReason);
+    end,
+    UsesGraph);
 end;
 
 function TShellWorkspaceGroup.UsesGraph: TUsesGraphService;
@@ -475,14 +472,19 @@ begin
   Result := FUsesGraph;
 end;
 
-function TShellWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
+function TShellWorkspaceGroup.Queries: ICodeQueries;
 begin
-  Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
-    function(out AReason: string): Boolean
-    begin
-      Result := Ready(AReason);
-    end,
-    UsesGraph);
+  Result := FQueries;
+end;
+
+procedure TShellWorkspaceGroup.Invalidate;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FRuleProjects.Valid := False;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
 end;
 
 end.

@@ -356,6 +356,8 @@ begin
   ALines.Add('');
 end;
 
+{ TAtlasPluginReport }
+
 class function TAtlasPluginReport.Build(const ASnapshot: TAtlasPluginSnapshot): string;
 var
   mLines: TStringList;

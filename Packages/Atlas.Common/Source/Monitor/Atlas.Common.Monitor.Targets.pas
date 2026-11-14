@@ -118,20 +118,6 @@ end;
 
 { TMonitorTargetList }
 
-function TMonitorTargetList.IndexOf(const APath: string): Integer;
-var
-  I: Integer;
-begin
-  for I := 0 to High(Items) do
-  begin
-    if SameText(Items[I].Path, APath) then
-    begin
-      Exit(I);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TMonitorTargetList.Add(const APath: string): Boolean;
 var
   mTarget: TMonitorTarget;
@@ -159,6 +145,20 @@ begin
     Items[I] := Items[I + 1];
   end;
   SetLength(Items, Length(Items) - 1);
+end;
+
+function TMonitorTargetList.IndexOf(const APath: string): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(Items) do
+  begin
+    if SameText(Items[I].Path, APath) then
+    begin
+      Exit(I);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TMonitorTargetList.EnabledPaths: TArray<string>;

@@ -31,6 +31,8 @@ implementation
 uses
   Atlas.Core.CiBuild.Contract;
 
+{ TAtlasCiAddresses }
+
 class function TAtlasCiAddresses.OriginOf(const AUrl: string): string;
 begin
   Result := TAtlasCiJob.Create('', AUrl, '', False, '').Server;

@@ -105,6 +105,8 @@ const
   cButtonGap = 6;
   cChoiceWidth = 180;
 
+{ TAtlasWelcomeSettingsLayouts }
+
 constructor TAtlasWelcomeSettingsLayouts.Create;
 begin
   inherited Create;
@@ -121,44 +123,6 @@ begin
   Result.Top := 0;
   Result.Width := Result.ScaleValue(cButtonWidth);
   Result.OnClick := AClick;
-end;
-
-procedure TAtlasWelcomeSettingsLayouts.Build(const AHost: IAtlasSettingsSectionHost; AOwner: TComponent;
-  AColumns: TCustomEdit; ALeft: Integer);
-var
-  mRow: TWinControl;
-  mCaption: TLabel;
-  mLeft: Integer;
-begin
-  FHost := AHost;
-  FColumns := AColumns;
-  mRow := AHost.AddRow(cRowHeight, TArray<string>.Create(cActiveKey, cLayoutsKey));
-  mCaption := TLabel.Create(AOwner);
-  mCaption.Parent := mRow;
-  mCaption.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeActiveLayout);
-  mCaption.Left := 0;
-  mCaption.Top := mCaption.ScaleValue(5);
-  // Ohne Fenster füllbar (TAtlasChoiceBox): Die IDE lädt die Seite, bevor sie ein übergeordnetes Fenster hat.
-  FChoice := TAtlasChoiceBox.Create(AOwner);
-  FChoice.Parent := mRow;
-  FChoice.Left := ALeft;
-  FChoice.Top := 1;
-  FChoice.Width := FChoice.ScaleValue(cChoiceWidth);
-  FChoice.OnChange := ChoiceChange;
-  mLeft := ALeft + cChoiceWidth + cButtonGap;
-  FNew := AddButton(mRow, AOwner, mLeft, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutNew),
-    NewClick);
-  FRename := AddButton(mRow, AOwner, mLeft + cButtonWidth + cButtonGap,
-    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutRename), RenameClick);
-  FDelete := AddButton(mRow, AOwner, mLeft + 2 * (cButtonWidth + cButtonGap),
-    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutDelete), DeleteClick);
-end;
-
-procedure TAtlasWelcomeSettingsLayouts.Track(const ASwitches: TArray<TAtlasWelcomeSwitch>;
-  AWhatsNew: TAtlasChoiceBox);
-begin
-  FSwitches := ASwitches;
-  FWhatsNew := AWhatsNew;
 end;
 
 function TAtlasWelcomeSettingsLayouts.SwitchOf(const AId: string): TCheckBox;
@@ -279,52 +243,6 @@ begin
   end;
 end;
 
-procedure TAtlasWelcomeSettingsLayouts.Load(const AValues: IAtlasSettingsValues);
-var
-  mLayout: TAtlasWelcomeLayout;
-  mItem: TAtlasWelcomeCatalogItem;
-  mShown: Boolean;
-begin
-  // Wie TAtlasWelcomeCustomizing.Load: Spalten und Sichtbarkeit des aktiven Layouts aus den Einstellungen, die
-  // die Seite in die gebundenen Felder schon geladen hat.
-  FLayouts := TAtlasWelcomeLayouts.FromJson(AValues.ReadString(cLayoutsKey), AValues.ReadString(cActiveKey));
-  mLayout := FLayouts.Current;
-  for mItem in TAtlasWelcomeCustomizing.Catalog do
-  begin
-    if SectionShown(mItem.Id, mShown) and (mLayout.IndexOf(mItem.Id) >= 0) then
-    begin
-      mLayout := mLayout.WithVisible(mItem.Id, mShown);
-    end;
-  end;
-  mLayout := mLayout.WithColumns(AValues.ReadInteger(cColumnsKey));
-  FLayouts := FLayouts.WithCurrent(mLayout);
-  ShowLayouts(False);
-end;
-
-procedure TAtlasWelcomeSettingsLayouts.Save(const AValues: IAtlasSettingsValues);
-begin
-  Keep;
-  AValues.WriteString(cLayoutsKey, FLayouts.ToJson);
-  AValues.WriteString(cActiveKey, FLayouts.ActiveName);
-  AValues.WriteInteger(cColumnsKey, FLayouts.Current.Columns);
-end;
-
-procedure TAtlasWelcomeSettingsLayouts.Select(AIndex: Integer);
-var
-  mLayouts: TAtlasWelcomeLayouts;
-begin
-  if (AIndex < 0) or (AIndex > High(FLayouts.Items)) or (AIndex = FLayouts.Active) then
-  begin
-    Exit;
-  end;
-  Keep;
-  if FLayouts.Activated(FLayouts.Items[AIndex].Name, mLayouts) then
-  begin
-    FLayouts := mLayouts;
-  end;
-  ShowLayouts(True);
-end;
-
 function TAtlasWelcomeSettingsLayouts.AskName(var AName: string): Boolean;
 begin
   if Assigned(FOnAskName) then
@@ -415,6 +333,90 @@ begin
     FLayouts := mLayouts;
     ShowLayouts(True);
   end;
+end;
+
+procedure TAtlasWelcomeSettingsLayouts.Build(const AHost: IAtlasSettingsSectionHost; AOwner: TComponent;
+  AColumns: TCustomEdit; ALeft: Integer);
+var
+  mRow: TWinControl;
+  mCaption: TLabel;
+  mLeft: Integer;
+begin
+  FHost := AHost;
+  FColumns := AColumns;
+  mRow := AHost.AddRow(cRowHeight, TArray<string>.Create(cActiveKey, cLayoutsKey));
+  mCaption := TLabel.Create(AOwner);
+  mCaption.Parent := mRow;
+  mCaption.Caption := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeActiveLayout);
+  mCaption.Left := 0;
+  mCaption.Top := mCaption.ScaleValue(5);
+  // Ohne Fenster füllbar (TAtlasChoiceBox): Die IDE lädt die Seite, bevor sie ein übergeordnetes Fenster hat.
+  FChoice := TAtlasChoiceBox.Create(AOwner);
+  FChoice.Parent := mRow;
+  FChoice.Left := ALeft;
+  FChoice.Top := 1;
+  FChoice.Width := FChoice.ScaleValue(cChoiceWidth);
+  FChoice.OnChange := ChoiceChange;
+  mLeft := ALeft + cChoiceWidth + cButtonGap;
+  FNew := AddButton(mRow, AOwner, mLeft, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutNew),
+    NewClick);
+  FRename := AddButton(mRow, AOwner, mLeft + cButtonWidth + cButtonGap,
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutRename), RenameClick);
+  FDelete := AddButton(mRow, AOwner, mLeft + 2 * (cButtonWidth + cButtonGap),
+    TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.SettingsWelcomeLayoutDelete), DeleteClick);
+end;
+
+procedure TAtlasWelcomeSettingsLayouts.Track(const ASwitches: TArray<TAtlasWelcomeSwitch>;
+  AWhatsNew: TAtlasChoiceBox);
+begin
+  FSwitches := ASwitches;
+  FWhatsNew := AWhatsNew;
+end;
+
+procedure TAtlasWelcomeSettingsLayouts.Load(const AValues: IAtlasSettingsValues);
+var
+  mLayout: TAtlasWelcomeLayout;
+  mItem: TAtlasWelcomeCatalogItem;
+  mShown: Boolean;
+begin
+  // Wie TAtlasWelcomeCustomizing.Load: Spalten und Sichtbarkeit des aktiven Layouts aus den Einstellungen, die
+  // die Seite in die gebundenen Felder schon geladen hat.
+  FLayouts := TAtlasWelcomeLayouts.FromJson(AValues.ReadString(cLayoutsKey), AValues.ReadString(cActiveKey));
+  mLayout := FLayouts.Current;
+  for mItem in TAtlasWelcomeCustomizing.Catalog do
+  begin
+    if SectionShown(mItem.Id, mShown) and (mLayout.IndexOf(mItem.Id) >= 0) then
+    begin
+      mLayout := mLayout.WithVisible(mItem.Id, mShown);
+    end;
+  end;
+  mLayout := mLayout.WithColumns(AValues.ReadInteger(cColumnsKey));
+  FLayouts := FLayouts.WithCurrent(mLayout);
+  ShowLayouts(False);
+end;
+
+procedure TAtlasWelcomeSettingsLayouts.Save(const AValues: IAtlasSettingsValues);
+begin
+  Keep;
+  AValues.WriteString(cLayoutsKey, FLayouts.ToJson);
+  AValues.WriteString(cActiveKey, FLayouts.ActiveName);
+  AValues.WriteInteger(cColumnsKey, FLayouts.Current.Columns);
+end;
+
+procedure TAtlasWelcomeSettingsLayouts.Select(AIndex: Integer);
+var
+  mLayouts: TAtlasWelcomeLayouts;
+begin
+  if (AIndex < 0) or (AIndex > High(FLayouts.Items)) or (AIndex = FLayouts.Active) then
+  begin
+    Exit;
+  end;
+  Keep;
+  if FLayouts.Activated(FLayouts.Items[AIndex].Name, mLayouts) then
+  begin
+    FLayouts := mLayouts;
+  end;
+  ShowLayouts(True);
 end;
 
 procedure TAtlasWelcomeSettingsLayouts.Close;

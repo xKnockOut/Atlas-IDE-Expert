@@ -113,9 +113,10 @@ begin
   ActiveControl := FTrigger;
 end;
 
-class function TAtlasBreakpointRuleDialog.TriggerText(const ATrigger: TAtlasRuleTrigger): string;
+procedure TAtlasBreakpointRuleDialog.DoShow;
 begin
-  Result := Format('%s:%d', [ExtractFileName(ATrigger.FileName.Replace('/', PathDelim)), ATrigger.Line + 1]);
+  inherited;
+  Fill;
 end;
 
 function TAtlasBreakpointRuleDialog.AddCombo(ARow: TPanel; ALeft96, AWidth96: Integer): TComboBox;
@@ -227,6 +228,29 @@ begin
     TAtlasDebugTextId.BreakpointRulesThreadId, TAtlasDebugTextId.BreakpointRulesThreadMain], Ord(FRule.Thread));
 end;
 
+procedure TAtlasBreakpointRuleDialog.ChoiceChange(Sender: TObject);
+begin
+  UpdateFields;
+end;
+
+procedure TAtlasBreakpointRuleDialog.UpdateFields;
+begin
+  FDepend.Enabled := FTrigger.ItemIndex > 0;
+  FHitCount.Enabled := FHit.ItemIndex > Ord(TAtlasHitMode.Any);
+  FThreadText.Enabled := FThread.ItemIndex in [Ord(TAtlasThreadFilter.NameContains),
+    Ord(TAtlasThreadFilter.ThreadId)];
+end;
+
+procedure TAtlasBreakpointRuleDialog.OkClick(Sender: TObject);
+begin
+  ModalResult := mrOk;
+end;
+
+procedure TAtlasBreakpointRuleDialog.ClearClick(Sender: TObject);
+begin
+  ModalResult := cModeRetry;
+end;
+
 procedure TAtlasBreakpointRuleDialog.Fill;
 begin
   if FFilled then
@@ -245,25 +269,6 @@ begin
   begin
     FThreadText.Text := FRule.ThreadText;
   end;
-  UpdateFields;
-end;
-
-procedure TAtlasBreakpointRuleDialog.DoShow;
-begin
-  inherited;
-  Fill;
-end;
-
-procedure TAtlasBreakpointRuleDialog.UpdateFields;
-begin
-  FDepend.Enabled := FTrigger.ItemIndex > 0;
-  FHitCount.Enabled := FHit.ItemIndex > Ord(TAtlasHitMode.Any);
-  FThreadText.Enabled := FThread.ItemIndex in [Ord(TAtlasThreadFilter.NameContains),
-    Ord(TAtlasThreadFilter.ThreadId)];
-end;
-
-procedure TAtlasBreakpointRuleDialog.ChoiceChange(Sender: TObject);
-begin
   UpdateFields;
 end;
 
@@ -301,14 +306,9 @@ begin
   end;
 end;
 
-procedure TAtlasBreakpointRuleDialog.OkClick(Sender: TObject);
+class function TAtlasBreakpointRuleDialog.TriggerText(const ATrigger: TAtlasRuleTrigger): string;
 begin
-  ModalResult := mrOk;
-end;
-
-procedure TAtlasBreakpointRuleDialog.ClearClick(Sender: TObject);
-begin
-  ModalResult := cModeRetry;
+  Result := Format('%s:%d', [ExtractFileName(ATrigger.FileName.Replace('/', PathDelim)), ATrigger.Line + 1]);
 end;
 
 class function TAtlasBreakpointRuleDialog.Execute(const ARule: TAtlasBreakpointRule;

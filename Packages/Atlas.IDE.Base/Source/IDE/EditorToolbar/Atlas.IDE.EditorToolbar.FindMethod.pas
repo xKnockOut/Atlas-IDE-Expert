@@ -76,6 +76,8 @@ begin
     end;
 end;
 
+{ TAtlasIdeFindMethod }
+
 class function TAtlasIdeFindMethod.CaretOf(const AView: IOTAEditView; out ALine, ACharacter: Integer): Boolean;
 var
   mCursor: TOTAEditPos;

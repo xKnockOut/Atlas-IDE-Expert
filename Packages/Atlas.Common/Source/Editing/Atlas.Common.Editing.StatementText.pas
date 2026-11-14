@@ -167,44 +167,6 @@ begin
   end;
 end;
 
-class procedure TStatementText.Span(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean; out AStart,
-  AEnd: Integer);
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex, mEndLine, mPrevious: Integer;
-begin
-  mTokens := ATree.Tokens;
-  // Davor: Kommentare zwischen dem vorigen Code-Token und der Anweisung. Steht ein Kommentar in der Zeile eines
-  // Semikolons, gehört er zur vorigen Anweisung; hinter then, else, begin, do oder einer Marke zum Zweig.
-  AStart := AStatement.StartOffset;
-  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.StartOffset) - 1;
-  mPrevious := PreviousCode(mTokens, mIndex + 1);
-  while (mIndex >= 0) and IsTrivia(mTokens[mIndex]) do
-  begin
-    if (mPrevious >= 0) and mTokens[mPrevious].IsSymbol(';') and
-      (mTokens[mIndex].StartPos.Line = mTokens[mPrevious].EndPos.Line) then
-    begin
-      Break;
-    end;
-    AStart := mTokens[mIndex].Offset;
-    Dec(mIndex);
-  end;
-  // Dahinter, hinter einem Semikolon: in derselben Zeile, bei der letzten Anweisung bis zum Code.
-  AEnd := AStatement.EndOffset;
-  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.EndOffset);
-  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol(';') and (mTokens[mIndex].Offset = AStatement.EndOffset) then
-  begin
-    Inc(mIndex);
-  end;
-  mEndLine := AStatement.EndPos.Line;
-  while (mIndex <= High(mTokens)) and IsTrivia(mTokens[mIndex]) and
-    (ALast or (mTokens[mIndex].StartPos.Line = mEndLine)) do
-  begin
-    AEnd := mTokens[mIndex].Offset + Length(mTokens[mIndex].Text);
-    Inc(mIndex);
-  end;
-end;
-
 class function TStatementText.Text(const AText: string; ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean;
   const AIndent, ALineBreak: string): string;
 var
@@ -247,43 +209,6 @@ begin
   begin
     Result := Result + #0 + mTrailing;
   end;
-end;
-
-class function TStatementText.Uncovered(ATree: TSyntaxTree; AStart, AEnd: Integer;
-  const ASpans: TArray<TStatementSpan>): Boolean;
-var
-  mTokens: TArray<TPascalToken>;
-  mIndex: Integer;
-  mSpan_: TStatementSpan;
-  mCovered: Boolean;
-begin
-  mTokens := ATree.Tokens;
-  mIndex := TRoutineBody.TokenAt(mTokens, AStart);
-  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AEnd) do
-  begin
-    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
-    begin
-      mCovered := False;
-      for mSpan_ in ASpans do
-      begin
-        if (mTokens[mIndex].Offset >= mSpan_.StartOffset) and (mTokens[mIndex].Offset < mSpan_.EndOffset) then
-        begin
-          mCovered := True;
-        end;
-      end;
-      if not mCovered then
-      begin
-        Exit(True);
-      end;
-    end;
-    Inc(mIndex);
-  end;
-  Result := False;
-end;
-
-class function TStatementText.SpanOf(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean): TStatementSpan;
-begin
-  Span(ATree, AStatement, ALast, Result.StartOffset, Result.EndOffset);
 end;
 
 class function TStatementText.Finish(const AStatement, ASuffix: string): string;
@@ -350,6 +275,81 @@ begin
   Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
     List(AText, ATree, AStatements, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) + ALayout.LineBreak +
     ALayout.Indent + 'end';
+end;
+
+class procedure TStatementText.Span(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean; out AStart,
+  AEnd: Integer);
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex, mEndLine, mPrevious: Integer;
+begin
+  mTokens := ATree.Tokens;
+  // Davor: Kommentare zwischen dem vorigen Code-Token und der Anweisung. Steht ein Kommentar in der Zeile eines
+  // Semikolons, gehört er zur vorigen Anweisung; hinter then, else, begin, do oder einer Marke zum Zweig.
+  AStart := AStatement.StartOffset;
+  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.StartOffset) - 1;
+  mPrevious := PreviousCode(mTokens, mIndex + 1);
+  while (mIndex >= 0) and IsTrivia(mTokens[mIndex]) do
+  begin
+    if (mPrevious >= 0) and mTokens[mPrevious].IsSymbol(';') and
+      (mTokens[mIndex].StartPos.Line = mTokens[mPrevious].EndPos.Line) then
+    begin
+      Break;
+    end;
+    AStart := mTokens[mIndex].Offset;
+    Dec(mIndex);
+  end;
+  // Dahinter, hinter einem Semikolon: in derselben Zeile, bei der letzten Anweisung bis zum Code.
+  AEnd := AStatement.EndOffset;
+  mIndex := TRoutineBody.TokenAt(mTokens, AStatement.EndOffset);
+  if (mIndex <= High(mTokens)) and mTokens[mIndex].IsSymbol(';') and (mTokens[mIndex].Offset = AStatement.EndOffset) then
+  begin
+    Inc(mIndex);
+  end;
+  mEndLine := AStatement.EndPos.Line;
+  while (mIndex <= High(mTokens)) and IsTrivia(mTokens[mIndex]) and
+    (ALast or (mTokens[mIndex].StartPos.Line = mEndLine)) do
+  begin
+    AEnd := mTokens[mIndex].Offset + Length(mTokens[mIndex].Text);
+    Inc(mIndex);
+  end;
+end;
+
+class function TStatementText.SpanOf(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean): TStatementSpan;
+begin
+  Span(ATree, AStatement, ALast, Result.StartOffset, Result.EndOffset);
+end;
+
+class function TStatementText.Uncovered(ATree: TSyntaxTree; AStart, AEnd: Integer;
+  const ASpans: TArray<TStatementSpan>): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mSpan_: TStatementSpan;
+  mCovered: Boolean;
+begin
+  mTokens := ATree.Tokens;
+  mIndex := TRoutineBody.TokenAt(mTokens, AStart);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AEnd) do
+  begin
+    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
+      mCovered := False;
+      for mSpan_ in ASpans do
+      begin
+        if (mTokens[mIndex].Offset >= mSpan_.StartOffset) and (mTokens[mIndex].Offset < mSpan_.EndOffset) then
+        begin
+          mCovered := True;
+        end;
+      end;
+      if not mCovered then
+      begin
+        Exit(True);
+      end;
+    end;
+    Inc(mIndex);
+  end;
+  Result := False;
 end;
 
 class function TStatementText.HasComment(ATree: TSyntaxTree; AStart, AEnd: Integer): Boolean;

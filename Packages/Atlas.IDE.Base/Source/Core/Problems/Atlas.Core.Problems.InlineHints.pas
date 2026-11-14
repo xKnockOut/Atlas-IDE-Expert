@@ -165,6 +165,11 @@ begin
   end;
 end;
 
+class function TAtlasInlineDiagnostics.IsShortTest(const AProblem: TAtlasProblem): Boolean;
+begin
+  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and (AProblem.Details <> '');
+end;
+
 class function TAtlasInlineDiagnostics.Caption(const ADiagnostic: TAtlasInlineDiagnostic): string;
 var
   mCut: Integer;
@@ -188,11 +193,6 @@ begin
   begin
     Result := Result + ' (+' + IntToStr(ADiagnostic.More) + ')';
   end;
-end;
-
-class function TAtlasInlineDiagnostics.IsShortTest(const AProblem: TAtlasProblem): Boolean;
-begin
-  Result := SameText(AProblem.Source, TAtlasProblemStore.cTestSource) and (AProblem.Details <> '');
 end;
 
 class function TAtlasInlineDiagnostics.Counts(const AProblems: TArray<TAtlasProblem>): TAtlasProblemCounts;

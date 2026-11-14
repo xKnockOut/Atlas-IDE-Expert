@@ -91,6 +91,8 @@ begin
   end;
 end;
 
+{ TAtlasGitHubBoards }
+
 class function TAtlasGitHubBoards.ParseProjects(const AJson: string; var ASnapshot: TAtlasBoardSnapshot): Boolean;
 var
   mValue, mItem: TJSONValue;

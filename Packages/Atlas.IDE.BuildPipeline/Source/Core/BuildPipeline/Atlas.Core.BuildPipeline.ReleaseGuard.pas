@@ -365,6 +365,8 @@ type
     function Run(const ASource: string): Integer;
   end;
 
+{ TLeakScanner }
+
 function TLeakScanner.Guarded: Boolean;
 var
   mItem: TGuardFrame;
@@ -773,6 +775,57 @@ begin
   inherited;
 end;
 
+function TAtlasReleaseGuardParticipant.CancelCompile(const AProject: TAtlasCompileProject;
+  out AReason: string): Boolean;
+var
+  mSettings: TAtlasReleaseSettings;
+  mOptions: TAtlasReleaseOptions;
+  mFindings: TAtlasReleaseFindings;
+  mOutcome: TAtlasReleaseOutcome;
+  mReason: string;
+begin
+  AReason := '';
+  Result := False;
+  mSettings := FSettings();
+  if not TAtlasReleaseGuard.Applies(mSettings, AProject) or not FRead(AProject, mOptions) then
+  begin
+    Exit;
+  end;
+  if mOptions.Project = '' then
+  begin
+    mOptions.Project := AProject.FileName;
+  end;
+  mFindings := TAtlasReleaseGuard.Evaluate(mSettings, mOptions);
+  mOutcome := OutcomeOf(mSettings, mOptions, mFindings);
+  mReason := FReport(mOptions, mFindings, mOutcome);
+  DropPending(mOptions.Project);
+  if mOutcome = TAtlasReleaseOutcome.Blocked then
+  begin
+    AReason := mReason;
+    Exit(True);
+  end;
+  AddPending(mOptions);
+end;
+
+procedure TAtlasReleaseGuardParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
+  ADurationMs: Int64);
+var
+  mIndex: Integer;
+  mPending: TPending;
+begin
+  mIndex := PendingIndex(AProject.FileName);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  mPending := FPending[mIndex];
+  FPending.Delete(mIndex);
+  if ASucceeded and Assigned(FRemember) then
+  begin
+    FRemember(mPending.Options, mPending.Version);
+  end;
+end;
+
 function TAtlasReleaseGuardParticipant.Now_: Int64;
 begin
   if Assigned(FClock) then
@@ -846,57 +899,6 @@ begin
   if mPending.Version <> '' then
   begin
     FPending.Add(mPending);
-  end;
-end;
-
-function TAtlasReleaseGuardParticipant.CancelCompile(const AProject: TAtlasCompileProject;
-  out AReason: string): Boolean;
-var
-  mSettings: TAtlasReleaseSettings;
-  mOptions: TAtlasReleaseOptions;
-  mFindings: TAtlasReleaseFindings;
-  mOutcome: TAtlasReleaseOutcome;
-  mReason: string;
-begin
-  AReason := '';
-  Result := False;
-  mSettings := FSettings();
-  if not TAtlasReleaseGuard.Applies(mSettings, AProject) or not FRead(AProject, mOptions) then
-  begin
-    Exit;
-  end;
-  if mOptions.Project = '' then
-  begin
-    mOptions.Project := AProject.FileName;
-  end;
-  mFindings := TAtlasReleaseGuard.Evaluate(mSettings, mOptions);
-  mOutcome := OutcomeOf(mSettings, mOptions, mFindings);
-  mReason := FReport(mOptions, mFindings, mOutcome);
-  DropPending(mOptions.Project);
-  if mOutcome = TAtlasReleaseOutcome.Blocked then
-  begin
-    AReason := mReason;
-    Exit(True);
-  end;
-  AddPending(mOptions);
-end;
-
-procedure TAtlasReleaseGuardParticipant.ProjectFinished(const AProject: TAtlasCompileProject; ASucceeded: Boolean;
-  ADurationMs: Int64);
-var
-  mIndex: Integer;
-  mPending: TPending;
-begin
-  mIndex := PendingIndex(AProject.FileName);
-  if mIndex < 0 then
-  begin
-    Exit;
-  end;
-  mPending := FPending[mIndex];
-  FPending.Delete(mIndex);
-  if ASucceeded and Assigned(FRemember) then
-  begin
-    FRemember(mPending.Options, mPending.Version);
   end;
 end;
 

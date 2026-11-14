@@ -116,12 +116,6 @@ begin
   FSplitter.MinSize := MulDiv(40, AParent.CurrentPPI, 96);
 end;
 
-procedure TAtlasDebugExceptionStack.SetShown(AValue: Boolean);
-begin
-  FList.Visible := AValue;
-  FSplitter.Visible := AValue;
-end;
-
 procedure TAtlasDebugExceptionStack.SetJustMyCode(AValue: Boolean);
 begin
   if FJustMyCode = AValue then
@@ -130,38 +124,6 @@ begin
   end;
   FJustMyCode := AValue;
   FExpanded := nil;
-  Fill;
-end;
-
-class function TAtlasDebugExceptionStack.Cells(const AFrames: TAtlasDebugFrames;
-  const ARow: TAtlasDebugStackRow): TArray<string>;
-var
-  mFrame: TAtlasDebugFrame;
-  mWhere: string;
-begin
-  if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
-  begin
-    Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStackLibrary,
-      [ARow.Count]), '');
-    Exit;
-  end;
-  mFrame := AFrames[ARow.First];
-  mWhere := '';
-  if mFrame.HasSource then
-  begin
-    mWhere := ExtractFileName(mFrame.FileName) + ':' + IntToStr(mFrame.Line);
-  end;
-  Result := TArray<string>.Create(mFrame.Header, mWhere);
-end;
-
-procedure TAtlasDebugExceptionStack.ShowFor(const AKey: string; const AFrames: TAtlasDebugFrames);
-begin
-  if (AKey = '') or (AKey <> FKey) then
-  begin
-    FExpanded := nil;
-  end;
-  FKey := AKey;
-  FFrames := AFrames;
   Fill;
 end;
 
@@ -191,6 +153,59 @@ begin
   end;
 end;
 
+function TAtlasDebugExceptionStack.RowFaded(AItem: TListItem): Boolean;
+begin
+  Result := (AItem <> nil) and (AItem.Index <= High(FRows)) and FRows[AItem.Index].Faded;
+end;
+
+procedure TAtlasDebugExceptionStack.ListDblClick(Sender: TObject);
+begin
+  if FList.Selected <> nil then
+  begin
+    OpenRow(FList.Selected.Index);
+  end;
+end;
+
+procedure TAtlasDebugExceptionStack.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if (Key = VK_RETURN) and (FList.Selected <> nil) then
+  begin
+    OpenRow(FList.Selected.Index);
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasDebugExceptionStack.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
+end;
+
+procedure TAtlasDebugExceptionStack.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  DefaultDraw := True;
+  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
+end;
+
+procedure TAtlasDebugExceptionStack.ShowFor(const AKey: string; const AFrames: TAtlasDebugFrames);
+begin
+  if (AKey = '') or (AKey <> FKey) then
+  begin
+    FExpanded := nil;
+  end;
+  FKey := AKey;
+  FFrames := AFrames;
+  Fill;
+end;
+
+procedure TAtlasDebugExceptionStack.SetShown(AValue: Boolean);
+begin
+  FList.Visible := AValue;
+  FSplitter.Visible := AValue;
+end;
+
 procedure TAtlasDebugExceptionStack.OpenRow(AIndex: Integer);
 var
   mRow: TAtlasDebugStackRow;
@@ -216,40 +231,25 @@ begin
   end;
 end;
 
-procedure TAtlasDebugExceptionStack.ListDblClick(Sender: TObject);
+class function TAtlasDebugExceptionStack.Cells(const AFrames: TAtlasDebugFrames;
+  const ARow: TAtlasDebugStackRow): TArray<string>;
+var
+  mFrame: TAtlasDebugFrame;
+  mWhere: string;
 begin
-  if FList.Selected <> nil then
+  if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
   begin
-    OpenRow(FList.Selected.Index);
+    Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStackLibrary,
+      [ARow.Count]), '');
+    Exit;
   end;
-end;
-
-procedure TAtlasDebugExceptionStack.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_RETURN) and (FList.Selected <> nil) then
+  mFrame := AFrames[ARow.First];
+  mWhere := '';
+  if mFrame.HasSource then
   begin
-    OpenRow(FList.Selected.Index);
-    Key := 0;
+    mWhere := ExtractFileName(mFrame.FileName) + ':' + IntToStr(mFrame.Line);
   end;
-end;
-
-function TAtlasDebugExceptionStack.RowFaded(AItem: TListItem): Boolean;
-begin
-  Result := (AItem <> nil) and (AItem.Index <= High(FRows)) and FRows[AItem.Index].Faded;
-end;
-
-procedure TAtlasDebugExceptionStack.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
-end;
-
-procedure TAtlasDebugExceptionStack.ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
-  SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
-begin
-  DefaultDraw := True;
-  RowColors(Sender.Canvas, FList, State, RowFaded(Item));
+  Result := TArray<string>.Create(mFrame.Header, mWhere);
 end;
 
 class procedure TAtlasDebugExceptionStack.RowColors(ACanvas: TCanvas; AList: TListView; AState: TCustomDrawState;

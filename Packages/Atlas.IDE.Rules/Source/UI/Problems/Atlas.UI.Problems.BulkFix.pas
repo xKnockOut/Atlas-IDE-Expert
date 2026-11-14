@@ -84,6 +84,13 @@ begin
   ActiveControl := FFiles;
 end;
 
+procedure TAtlasBulkFixDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster: erst hier füllen.
+  Fill;
+end;
+
 /// <summary>Oben die Zusammenfassung des Servers.</summary>
 procedure TAtlasBulkFixDialog.CreateSummary;
 var
@@ -187,45 +194,6 @@ begin
   end;
 end;
 
-procedure TAtlasBulkFixDialog.Fill;
-var
-  mIndex: Integer;
-begin
-  if FFiles.Items.Count > 0 then
-  begin
-    Exit;
-  end;
-  FUpdating := True;
-  try
-    FFiles.Items.BeginUpdate;
-    try
-      for mIndex := 0 to FPreview.Count - 1 do
-      begin
-        FFiles.Items.Add(FileCaption(mIndex));
-        FFiles.Checked[mIndex] := FPreview.Files[mIndex].Checked;
-        FFiles.ItemEnabled[mIndex] := FPreview.Files[mIndex].Checked;
-      end;
-    finally
-      FFiles.Items.EndUpdate;
-    end;
-  finally
-    FUpdating := False;
-  end;
-  if FFiles.Items.Count > 0 then
-  begin
-    FFiles.ItemIndex := 0;
-  end;
-  ShowDiff;
-  UpdateSelection;
-end;
-
-procedure TAtlasBulkFixDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster: erst hier füllen.
-  Fill;
-end;
-
 procedure TAtlasBulkFixDialog.ShowDiff;
 begin
   if (FFiles.ItemIndex < 0) or (FFiles.ItemIndex >= FPreview.Count) then
@@ -276,6 +244,38 @@ end;
 procedure TAtlasBulkFixDialog.CancelClick(Sender: TObject);
 begin
   ModalResult := mrCancel;
+end;
+
+procedure TAtlasBulkFixDialog.Fill;
+var
+  mIndex: Integer;
+begin
+  if FFiles.Items.Count > 0 then
+  begin
+    Exit;
+  end;
+  FUpdating := True;
+  try
+    FFiles.Items.BeginUpdate;
+    try
+      for mIndex := 0 to FPreview.Count - 1 do
+      begin
+        FFiles.Items.Add(FileCaption(mIndex));
+        FFiles.Checked[mIndex] := FPreview.Files[mIndex].Checked;
+        FFiles.ItemEnabled[mIndex] := FPreview.Files[mIndex].Checked;
+      end;
+    finally
+      FFiles.Items.EndUpdate;
+    end;
+  finally
+    FUpdating := False;
+  end;
+  if FFiles.Items.Count > 0 then
+  begin
+    FFiles.ItemIndex := 0;
+  end;
+  ShowDiff;
+  UpdateSelection;
 end;
 
 class function TAtlasBulkFixDialog.Execute(APreview: TAtlasBulkFixPreview): Boolean;

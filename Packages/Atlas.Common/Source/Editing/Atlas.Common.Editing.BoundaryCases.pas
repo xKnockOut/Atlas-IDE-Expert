@@ -604,28 +604,6 @@ begin
   end;
 end;
 
-procedure TCollector.LengthCondition(AParam: Integer; const AConst: TConstant; ALine: Integer;
-  const ACondition: string);
-var
-  mLength: Int64;
-begin
-  if (Found.Parameters[AParam].Kind <> TBoundaryKind.Text) or (AConst.Kind <> TConstKind.Int) then
-  begin
-    Exit;
-  end;
-  mLength := StrToInt64(AConst.Value);
-  if (mLength < 0) or (mLength > cMaxLength) then
-  begin
-    Exit;
-  end;
-  if mLength > 0 then
-  begin
-    Add(AParam, StringOfChar('a', mLength - 1), Reason(TBoundaryText.LengthBelow, ACondition), ALine);
-  end;
-  Add(AParam, StringOfChar('a', mLength), Reason(TBoundaryText.LengthOn, ACondition), ALine);
-  Add(AParam, StringOfChar('a', mLength + 1), Reason(TBoundaryText.LengthAbove, ACondition), ALine);
-end;
-
 procedure TCollector.Comparison(ANode: TSyntaxNode);
 var
   mLeft, mRight: TSyntaxNode;
@@ -678,36 +656,26 @@ begin
   end;
 end;
 
-procedure TCollector.TextCall(AParam: Integer; const AName, AConst: string; ALine: Integer;
+procedure TCollector.LengthCondition(AParam: Integer; const AConst: TConstant; ALine: Integer;
   const ACondition: string);
+var
+  mLength: Int64;
 begin
-  if MatchText(AName, ['SameText', 'AnsiSameText', 'SameStr', 'AnsiSameStr']) then
-  begin
-    AddTextHit(AParam, AConst, MatchText(AName, ['SameText', 'AnsiSameText']), ACondition, ALine);
-  end
-  else if AConst = '' then
+  if (Found.Parameters[AParam].Kind <> TBoundaryKind.Text) or (AConst.Kind <> TConstKind.Int) then
   begin
     Exit;
-  end
-  else if MatchText(AName, ['StartsText', 'StartsStr', 'AnsiStartsText', 'AnsiStartsStr']) then
-  begin
-    Add(AParam, AConst + cNoMatch, Reason(TBoundaryText.Starts, ACondition), ALine);
-    Add(AParam, Copy(AConst, 1, Length(AConst) - 1), Reason(TBoundaryText.NearMiss, ACondition), ALine);
-  end
-  else if MatchText(AName, ['EndsText', 'EndsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
-  begin
-    Add(AParam, cNoMatch + AConst, Reason(TBoundaryText.Ends, ACondition), ALine);
-    Add(AParam, Copy(AConst, 2, MaxInt), Reason(TBoundaryText.NearMiss, ACondition), ALine);
-  end
-  else
-  begin
-    // ContainsText, ContainsStr, Pos(K, P) > 0.
-    Add(AParam, cNoMatch + AConst + cNoMatch, Reason(TBoundaryText.Contains, ACondition), ALine);
-    if Length(AConst) > 1 then
-    begin
-      Add(AParam, Copy(AConst, 1, Length(AConst) - 1), Reason(TBoundaryText.NearMiss, ACondition), ALine);
-    end;
   end;
+  mLength := StrToInt64(AConst.Value);
+  if (mLength < 0) or (mLength > cMaxLength) then
+  begin
+    Exit;
+  end;
+  if mLength > 0 then
+  begin
+    Add(AParam, StringOfChar('a', mLength - 1), Reason(TBoundaryText.LengthBelow, ACondition), ALine);
+  end;
+  Add(AParam, StringOfChar('a', mLength), Reason(TBoundaryText.LengthOn, ACondition), ALine);
+  Add(AParam, StringOfChar('a', mLength + 1), Reason(TBoundaryText.LengthAbove, ACondition), ALine);
 end;
 
 procedure TCollector.CallCondition(ANode: TSyntaxNode);
@@ -764,6 +732,38 @@ begin
   TextCall(mParam, mName, mConst.Value, ANode.StartPos.Line, mCondition);
 end;
 
+procedure TCollector.TextCall(AParam: Integer; const AName, AConst: string; ALine: Integer;
+  const ACondition: string);
+begin
+  if MatchText(AName, ['SameText', 'AnsiSameText', 'SameStr', 'AnsiSameStr']) then
+  begin
+    AddTextHit(AParam, AConst, MatchText(AName, ['SameText', 'AnsiSameText']), ACondition, ALine);
+  end
+  else if AConst = '' then
+  begin
+    Exit;
+  end
+  else if MatchText(AName, ['StartsText', 'StartsStr', 'AnsiStartsText', 'AnsiStartsStr']) then
+  begin
+    Add(AParam, AConst + cNoMatch, Reason(TBoundaryText.Starts, ACondition), ALine);
+    Add(AParam, Copy(AConst, 1, Length(AConst) - 1), Reason(TBoundaryText.NearMiss, ACondition), ALine);
+  end
+  else if MatchText(AName, ['EndsText', 'EndsStr', 'AnsiEndsText', 'AnsiEndsStr']) then
+  begin
+    Add(AParam, cNoMatch + AConst, Reason(TBoundaryText.Ends, ACondition), ALine);
+    Add(AParam, Copy(AConst, 2, MaxInt), Reason(TBoundaryText.NearMiss, ACondition), ALine);
+  end
+  else
+  begin
+    // ContainsText, ContainsStr, Pos(K, P) > 0.
+    Add(AParam, cNoMatch + AConst + cNoMatch, Reason(TBoundaryText.Contains, ACondition), ALine);
+    if Length(AConst) > 1 then
+    begin
+      Add(AParam, Copy(AConst, 1, Length(AConst) - 1), Reason(TBoundaryText.NearMiss, ACondition), ALine);
+    end;
+  end;
+end;
+
 function TCollector.LabelConstant(AParam: Integer; ALabel: TSyntaxNode; out ALow, AHigh: TConstant): Boolean;
 begin
   if (ALabel.Kind = TSyntaxKind.RangeExpr) and (ALabel.ChildCount = 2) then
@@ -797,6 +797,20 @@ begin
     Result := (ALow.Kind = AHigh.Kind) and (((ALow.Kind = TConstKind.Int) and
       (Found.Parameters[AParam].Kind = TBoundaryKind.Ordinal)) or ((ALow.Kind = TConstKind.Str) and
       (Found.Parameters[AParam].Kind = TBoundaryKind.Text)));
+  end;
+end;
+
+procedure TCollector.ElseMember(AParam: Integer; const ANames: TArray<string>; ALine: Integer);
+var
+  mMember: string;
+begin
+  for mMember in Found.Parameters[AParam].Members do
+  begin
+    if not MatchText(mMember, ANames) then
+    begin
+      Add(AParam, mMember, cTexts[TBoundaryText.CaseElse].Text, ALine);
+      Exit;
+    end;
   end;
 end;
 
@@ -845,20 +859,6 @@ begin
   else if mNames <> nil then
   begin
     ElseMember(AParam, mNames, ALine);
-  end;
-end;
-
-procedure TCollector.ElseMember(AParam: Integer; const ANames: TArray<string>; ALine: Integer);
-var
-  mMember: string;
-begin
-  for mMember in Found.Parameters[AParam].Members do
-  begin
-    if not MatchText(mMember, ANames) then
-    begin
-      Add(AParam, mMember, cTexts[TBoundaryText.CaseElse].Text, ALine);
-      Exit;
-    end;
   end;
 end;
 
@@ -1083,6 +1083,8 @@ type
     EnumMembers: TArray<TArray<string>>;
     procedure Take(ANode: TSyntaxNode);
   end;
+
+{ TUnitConstants }
 
 procedure TUnitConstants.Take(ANode: TSyntaxNode);
 var

@@ -64,6 +64,19 @@ var
   Shared: TRuleCatalog;
   SharedLock: TObject;
 
+{ TFindingPrompt }
+
+class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
+  const ACatalog: TRuleCatalog): string;
+begin
+  Result := Markdown(AFinding, AFileName, AText, ACatalog, cDefaultContext);
+end;
+
+class function TFindingPrompt.GermanCatalog: TRuleCatalog;
+begin
+  Result := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
+end;
+
 class function TFindingPrompt.SharedCatalog: TRuleCatalog;
 begin
   TMonitor.Enter(SharedLock);
@@ -76,17 +89,6 @@ begin
   finally
     TMonitor.Exit(SharedLock);
   end;
-end;
-
-class function TFindingPrompt.GermanCatalog: TRuleCatalog;
-begin
-  Result := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson('de'));
-end;
-
-class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
-  const ACatalog: TRuleCatalog): string;
-begin
-  Result := Markdown(AFinding, AFileName, AText, ACatalog, cDefaultContext);
 end;
 
 /// <summary>Abschnitt "### Code": AContext Zeilen um ALine (ab 0), die Fundzeile mit ">" markiert.</summary>

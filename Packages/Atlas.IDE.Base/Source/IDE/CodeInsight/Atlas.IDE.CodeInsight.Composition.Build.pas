@@ -91,6 +91,8 @@ begin
   Result := CheckOnSaveInstance;
 end;
 
+{ TNotificationsVerdictListener }
+
 procedure TNotificationsVerdictListener.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
 var

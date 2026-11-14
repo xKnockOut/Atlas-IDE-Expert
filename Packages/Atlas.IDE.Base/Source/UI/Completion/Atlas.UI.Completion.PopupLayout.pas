@@ -102,6 +102,16 @@ begin
   Result := FPanel.Collapsed or FPanel.AutoCollapsed;
 end;
 
+function TAtlasCompletionPopupLayout.Logical(APixels: Integer): Integer;
+begin
+  Result := MulDiv(APixels, 96, PPI);
+end;
+
+function TAtlasCompletionPopupLayout.ListWidth: Integer;
+begin
+  Result := TAtlasPopupWidth.Effective(Scale(FManualListWidth), FSessionWidth);
+end;
+
 function TAtlasCompletionPopupLayout.PanelWidth: Integer;
 begin
   if not FPanel.Shown then
@@ -118,14 +128,29 @@ begin
   end;
 end;
 
-function TAtlasCompletionPopupLayout.ListWidth: Integer;
+function TAtlasCompletionPopupLayout.ChipsHeight: Integer;
 begin
-  Result := TAtlasPopupWidth.Effective(Scale(FManualListWidth), FSessionWidth);
+  if not FChips.Visible or FEmpty.Showing then
+  begin
+    Exit(0);
+  end;
+  EnsureMetrics;
+  Result := FMetrics.ChipsHeight;
 end;
 
-function TAtlasCompletionPopupLayout.Logical(APixels: Integer): Integer;
+function TAtlasCompletionPopupLayout.SyntaxHeight: Integer;
 begin
-  Result := MulDiv(APixels, 96, PPI);
+  if FSyntax.Trust = TAtlasSyntaxTrust.Sure then
+  begin
+    Exit(0);
+  end;
+  EnsureMetrics;
+  Result := FMetrics.ChipsHeight;
+end;
+
+function TAtlasCompletionPopupLayout.ListTop: Integer;
+begin
+  Result := Pad + ChipsHeight + SyntaxHeight;
 end;
 
 function TAtlasCompletionPopupLayout.ListLeft: Integer;
@@ -194,11 +219,6 @@ begin
   Result := FPanel.Shown and not Collapsed and not FDetailView.Doc.IsEmpty;
 end;
 
-function TAtlasCompletionPopupLayout.SelectedDocText: string;
-begin
-  Result := FDetailView.Doc.SelectedText;
-end;
-
 procedure TAtlasCompletionPopupLayout.Relayout;
 begin
   // Mit Panel wächst die Höhe nur, damit das Fenster beim Blättern nicht springt.
@@ -213,98 +233,6 @@ begin
   PlaceAt(ListWidth, FSessionHeight);
 end;
 
-procedure TAtlasCompletionPopupLayout.ShowDetails(const ADetails: TAtlasItemDetails);
-begin
-  FDetailView.Details := ADetails;
-  if not FPanel.Shown and ADetails.IsEmpty then
-  begin
-    Exit;
-  end;
-  FPanel.Shown := True;
-  if IsShown then
-  begin
-    Relayout;
-  end;
-  Invalidate;
-end;
-
-function TAtlasCompletionPopupLayout.ChipsHeight: Integer;
-begin
-  if not FChips.Visible or FEmpty.Showing then
-  begin
-    Exit(0);
-  end;
-  EnsureMetrics;
-  Result := FMetrics.ChipsHeight;
-end;
-
-function TAtlasCompletionPopupLayout.SyntaxHeight: Integer;
-begin
-  if FSyntax.Trust = TAtlasSyntaxTrust.Sure then
-  begin
-    Exit(0);
-  end;
-  EnsureMetrics;
-  Result := FMetrics.ChipsHeight;
-end;
-
-function TAtlasCompletionPopupLayout.ListTop: Integer;
-begin
-  Result := Pad + ChipsHeight + SyntaxHeight;
-end;
-
-procedure TAtlasCompletionPopupLayout.SetOverload(AIndex, ACount: Integer);
-begin
-  if (FDetailView.OverloadIndex = AIndex) and (FDetailView.OverloadCount = ACount) then
-  begin
-    Exit;
-  end;
-  FDetailView.OverloadIndex := AIndex;
-  FDetailView.OverloadCount := ACount;
-  if IsShown and FPanel.Shown then
-  begin
-    Relayout;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasCompletionPopupLayout.TogglePanel;
-begin
-  FPanel.Collapsed := not FPanel.Collapsed;
-  if Assigned(FEvents.OnPanelToggled) then
-  begin
-    FEvents.OnPanelToggled(FPanel.Collapsed);
-  end;
-  if IsShown then
-  begin
-    Relayout;
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasCompletionPopupLayout.ClearDetails;
-begin
-  FDetailView.Details := Default(TAtlasItemDetails);
-  if FPanel.Shown then
-  begin
-    Invalidate;
-  end;
-end;
-
-function TAtlasCompletionPopupLayout.PageSize: Integer;
-begin
-  Result := FVisibleRows;
-end;
-
-function TAtlasCompletionPopupLayout.RowRect(ARow: Integer): TRect;
-var
-  mHeight: Integer;
-begin
-  mHeight := RowHeight;
-  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) *
-    mHeight);
-end;
-
 function TAtlasCompletionPopupLayout.RowAt(AX, AY: Integer): Integer;
 begin
   if (AY < ListTop) or (AX < ListLeft) or (AX >= ListRight) then
@@ -316,6 +244,15 @@ begin
   begin
     Result := -1;
   end;
+end;
+
+function TAtlasCompletionPopupLayout.RowRect(ARow: Integer): TRect;
+var
+  mHeight: Integer;
+begin
+  mHeight := RowHeight;
+  Result := Rect(ListLeft + Pad, ListTop + ARow * mHeight, ListRight - Pad - ScrollReserve, ListTop + (ARow + 1) *
+    mHeight);
 end;
 
 procedure TAtlasCompletionPopupLayout.EnsureSelectedVisible;
@@ -335,24 +272,117 @@ begin
   FTop := EnsureRange(FTop, 0, Max(0, Length(FOrder) - FVisibleRows));
 end;
 
-function TAtlasCompletionPopupLayout.TagWidth(const ATag: TAtlasTag): Integer;
+procedure TAtlasCompletionPopupLayout.PlaceAt(AListWidth, AHeight: Integer);
+var
+  mBounds, mArea: TRect;
+  mLeft, mWidth: Integer;
 begin
-  Canvas.Font := UIFont;
-  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.cChipPad);
-  Canvas.Font := Font;
+  mArea := WorkAreaAt(FAnchor.TopLeft);
+  // Die Liste bleibt am Wortanfang; das Panel rechts davon, ohne Platz dort links, ohne Platz auf
+  // beiden Seiten eingeklappt (#428).
+  mLeft := FAnchor.Left;
+  FPanel.AutoCollapsed := False;
+  FPanel.Left := False;
+  if FPanel.Shown then
+  begin
+    if mLeft + AListWidth + PanelWidth > mArea.Right then
+    begin
+      if mLeft - PanelWidth >= mArea.Left then
+      begin
+        FPanel.Left := True;
+      end
+      else if not FPanel.Collapsed then
+      begin
+        FPanel.AutoCollapsed := True;
+        FPanel.Left := mLeft + AListWidth + PanelWidth > mArea.Right;
+      end;
+    end;
+  end;
+  mWidth := AListWidth + PanelWidth;
+  if FPanel.Left then
+  begin
+    Dec(mLeft, PanelWidth);
+  end;
+  mBounds := TRect.Create(Point(mLeft, FAnchor.Bottom + 2), mWidth, AHeight);
+  // Unten kein Platz: über die Zeile.
+  if mBounds.Bottom > mArea.Bottom then
+  begin
+    mBounds.SetLocation(mBounds.Left, FAnchor.Top - AHeight - 2);
+  end;
+  if mBounds.Right > mArea.Right then
+  begin
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
+  end;
+  if mBounds.Top < mArea.Top then
+  begin
+    mBounds.SetLocation(mBounds.Left, mArea.Top);
+  end;
+  ShowAt(mBounds);
 end;
 
-function TAtlasCompletionPopupLayout.ItemTags(const AItem: TAtlasCompletionItem): TAtlasTags;
+function TAtlasCompletionPopupLayout.HitArea(AX, AY: Integer): TAtlasHitArea;
 var
-  mTag: TAtlasTag;
+  mBoundary, mZone: Integer;
 begin
-  Result := nil;
-  for mTag in TAtlasItemPresentation.Tags(AItem) do
+  Result := TAtlasHitArea.None;
+  mZone := Scale(4);
+  if AX >= ClientWidth - mZone then
   begin
-    if FOptions.ShowVariantBranch or (mTag.Id <> TAtlasTagId.VariantBranch) then
+    if AY >= ClientHeight - Scale(16) then
     begin
-      Result := Result + [mTag];
+      Result := TAtlasHitArea.Grip;
+    end
+    else
+    begin
+      Result := TAtlasHitArea.Edge;
     end;
+    Exit;
+  end;
+  if not FPanel.Shown then
+  begin
+    Exit;
+  end;
+  if Collapsed then
+  begin
+    if PtInRect(PanelRect, Point(AX, AY)) then
+    begin
+      Result := TAtlasHitArea.PanelBar;
+    end;
+    Exit;
+  end;
+  if FPanel.Left then
+  begin
+    mBoundary := PanelWidth;
+  end
+  else
+  begin
+    mBoundary := ListRight;
+  end;
+  if Abs(AX - mBoundary) <= mZone then
+  begin
+    Result := TAtlasHitArea.Splitter;
+  end;
+end;
+
+function TAtlasCompletionPopupLayout.StarAt(AX, AY: Integer): Integer;
+var
+  mRow: TRect;
+begin
+  Result := -1;
+  if not FOptions.FavoritesEnabled or FEmpty.Showing then
+  begin
+    Exit;
+  end;
+  Result := RowAt(AX, AY);
+  if (Result < 0) or TAtlasRanking.IsHeader(FOrder[Result]) or
+    not TAtlasFavorites.CanPin(FItems[FOrder[Result]]) then
+  begin
+    Exit(-1);
+  end;
+  mRow := RowRect(Result - FTop);
+  if (AX < mRow.Left) or (AX >= mRow.Left + Scale(cStarWidth + 3)) then
+  begin
+    Result := -1;
   end;
 end;
 
@@ -404,6 +434,27 @@ begin
   Result := TAtlasPopupWidth.Fit(mWidest, Scale(cMinWidth), Scale(cMaxWidth));
 end;
 
+function TAtlasCompletionPopupLayout.TagWidth(const ATag: TAtlasTag): Integer;
+begin
+  Canvas.Font := UIFont;
+  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.cChipPad);
+  Canvas.Font := Font;
+end;
+
+function TAtlasCompletionPopupLayout.ItemTags(const AItem: TAtlasCompletionItem): TAtlasTags;
+var
+  mTag: TAtlasTag;
+begin
+  Result := nil;
+  for mTag in TAtlasItemPresentation.Tags(AItem) do
+  begin
+    if FOptions.ShowVariantBranch or (mTag.Id <> TAtlasTagId.VariantBranch) then
+    begin
+      Result := Result + [mTag];
+    end;
+  end;
+end;
+
 procedure TAtlasCompletionPopupLayout.PlaceAndShow;
 begin
   // Nur wachsen, nie schrumpfen, solange die Sitzung läuft (#416).
@@ -411,125 +462,11 @@ begin
   Relayout;
 end;
 
-procedure TAtlasCompletionPopupLayout.PlaceAt(AListWidth, AHeight: Integer);
-var
-  mBounds, mArea: TRect;
-  mLeft, mWidth: Integer;
-begin
-  mArea := WorkAreaAt(FAnchor.TopLeft);
-  // Die Liste bleibt am Wortanfang; das Panel rechts davon, ohne Platz dort links, ohne Platz auf
-  // beiden Seiten eingeklappt (#428).
-  mLeft := FAnchor.Left;
-  FPanel.AutoCollapsed := False;
-  FPanel.Left := False;
-  if FPanel.Shown then
-  begin
-    if mLeft + AListWidth + PanelWidth > mArea.Right then
-    begin
-      if mLeft - PanelWidth >= mArea.Left then
-      begin
-        FPanel.Left := True;
-      end
-      else if not FPanel.Collapsed then
-      begin
-        FPanel.AutoCollapsed := True;
-        FPanel.Left := mLeft + AListWidth + PanelWidth > mArea.Right;
-      end;
-    end;
-  end;
-  mWidth := AListWidth + PanelWidth;
-  if FPanel.Left then
-  begin
-    Dec(mLeft, PanelWidth);
-  end;
-  mBounds := TRect.Create(Point(mLeft, FAnchor.Bottom + 2), mWidth, AHeight);
-  // Unten kein Platz: über die Zeile.
-  if mBounds.Bottom > mArea.Bottom then
-  begin
-    mBounds.SetLocation(mBounds.Left, FAnchor.Top - AHeight - 2);
-  end;
-  if mBounds.Right > mArea.Right then
-  begin
-    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mWidth), mBounds.Top);
-  end;
-  if mBounds.Top < mArea.Top then
-  begin
-    mBounds.SetLocation(mBounds.Left, mArea.Top);
-  end;
-  ShowAt(mBounds);
-end;
-
-function TAtlasCompletionPopupLayout.StarAt(AX, AY: Integer): Integer;
-var
-  mRow: TRect;
-begin
-  Result := -1;
-  if not FOptions.FavoritesEnabled or FEmpty.Showing then
-  begin
-    Exit;
-  end;
-  Result := RowAt(AX, AY);
-  if (Result < 0) or TAtlasRanking.IsHeader(FOrder[Result]) or
-    not TAtlasFavorites.CanPin(FItems[FOrder[Result]]) then
-  begin
-    Exit(-1);
-  end;
-  mRow := RowRect(Result - FTop);
-  if (AX < mRow.Left) or (AX >= mRow.Left + Scale(cStarWidth + 3)) then
-  begin
-    Result := -1;
-  end;
-end;
-
 procedure TAtlasCompletionPopupLayout.WidthsChanged;
 begin
   if Assigned(FEvents.OnWidthsChanged) then
   begin
     FEvents.OnWidthsChanged(FManualListWidth, FPanel.Width);
-  end;
-end;
-
-function TAtlasCompletionPopupLayout.HitArea(AX, AY: Integer): TAtlasHitArea;
-var
-  mBoundary, mZone: Integer;
-begin
-  Result := TAtlasHitArea.None;
-  mZone := Scale(4);
-  if AX >= ClientWidth - mZone then
-  begin
-    if AY >= ClientHeight - Scale(16) then
-    begin
-      Result := TAtlasHitArea.Grip;
-    end
-    else
-    begin
-      Result := TAtlasHitArea.Edge;
-    end;
-    Exit;
-  end;
-  if not FPanel.Shown then
-  begin
-    Exit;
-  end;
-  if Collapsed then
-  begin
-    if PtInRect(PanelRect, Point(AX, AY)) then
-    begin
-      Result := TAtlasHitArea.PanelBar;
-    end;
-    Exit;
-  end;
-  if FPanel.Left then
-  begin
-    mBoundary := PanelWidth;
-  end
-  else
-  begin
-    mBoundary := ListRight;
-  end;
-  if Abs(AX - mBoundary) <= mZone then
-  begin
-    Result := TAtlasHitArea.Splitter;
   end;
 end;
 
@@ -543,6 +480,69 @@ begin
   Result.Target := FOptions.Target;
   Result.Notice := FNotice;
   Result.Inaccessible := FInaccessible;
+end;
+
+procedure TAtlasCompletionPopupLayout.ShowDetails(const ADetails: TAtlasItemDetails);
+begin
+  FDetailView.Details := ADetails;
+  if not FPanel.Shown and ADetails.IsEmpty then
+  begin
+    Exit;
+  end;
+  FPanel.Shown := True;
+  if IsShown then
+  begin
+    Relayout;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasCompletionPopupLayout.ClearDetails;
+begin
+  FDetailView.Details := Default(TAtlasItemDetails);
+  if FPanel.Shown then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasCompletionPopupLayout.TogglePanel;
+begin
+  FPanel.Collapsed := not FPanel.Collapsed;
+  if Assigned(FEvents.OnPanelToggled) then
+  begin
+    FEvents.OnPanelToggled(FPanel.Collapsed);
+  end;
+  if IsShown then
+  begin
+    Relayout;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasCompletionPopupLayout.SetOverload(AIndex, ACount: Integer);
+begin
+  if (FDetailView.OverloadIndex = AIndex) and (FDetailView.OverloadCount = ACount) then
+  begin
+    Exit;
+  end;
+  FDetailView.OverloadIndex := AIndex;
+  FDetailView.OverloadCount := ACount;
+  if IsShown and FPanel.Shown then
+  begin
+    Relayout;
+  end;
+  Invalidate;
+end;
+
+function TAtlasCompletionPopupLayout.SelectedDocText: string;
+begin
+  Result := FDetailView.Doc.SelectedText;
+end;
+
+function TAtlasCompletionPopupLayout.PageSize: Integer;
+begin
+  Result := FVisibleRows;
 end;
 
 end.

@@ -77,6 +77,11 @@ end;
 
 { TAtlasWndProcHook }
 
+class destructor TAtlasWndProcHook.Destroy;
+begin
+  FreeAndNil(FOrphans);
+end;
+
 constructor TAtlasWndProcHook.Create(AControl: TControl; const AHandler: TWndMethod);
 begin
   inherited Create;
@@ -85,11 +90,6 @@ begin
   FOld := AControl.WindowProc;
   FActive := True;
   AControl.WindowProc := WndProc;
-end;
-
-class destructor TAtlasWndProcHook.Destroy;
-begin
-  FreeAndNil(FOrphans);
 end;
 
 procedure TAtlasWndProcHook.WndProc(var AMessage: TMessage);
@@ -158,11 +158,6 @@ begin
   FreeAndNil(AHook);
 end;
 
-class procedure TAtlasWndProcHook.ForgetOrphansForTests;
-begin
-  FreeAndNil(FOrphans);
-end;
-
 class function TAtlasWndProcHook.OrphanCount: Integer;
 begin
   Result := 0;
@@ -170,6 +165,11 @@ begin
   begin
     Result := FOrphans.Count;
   end;
+end;
+
+class procedure TAtlasWndProcHook.ForgetOrphansForTests;
+begin
+  FreeAndNil(FOrphans);
 end;
 
 end.

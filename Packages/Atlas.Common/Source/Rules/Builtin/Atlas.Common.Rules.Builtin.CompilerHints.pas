@@ -348,19 +348,6 @@ begin
   FReport.Add(MemberNameRange(mMember), cTexts[TCompilerHintsText.PublishedRtti].Fmt([ADecl.Name]));
 end;
 
-function TCompilerHintsCheck.InsideWith(ANode: TSyntaxNode): Boolean;
-begin
-  while ANode <> nil do
-  begin
-    if ANode.Kind = TSyntaxKind.WithStatement then
-    begin
-      Exit(True);
-    end;
-    ANode := ANode.Parent;
-  end;
-  Result := False;
-end;
-
 function TCompilerHintsCheck.BuiltinCallee(ANode: TSyntaxNode; out ACallee, AArgument: TSyntaxNode): Boolean;
 var
   mCandidate: TResolvedSymbol;
@@ -436,6 +423,19 @@ begin
     FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TCompilerHintsText.OnPointer].Fmt(
       [mCallee.Name, mArgument.Name, mArgument.Name, mArgument.Name]));
   end;
+end;
+
+function TCompilerHintsCheck.InsideWith(ANode: TSyntaxNode): Boolean;
+begin
+  while ANode <> nil do
+  begin
+    if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
+      Exit(True);
+    end;
+    ANode := ANode.Parent;
+  end;
+  Result := False;
 end;
 
 procedure TCompilerHintsCheck.VisitDeclarations;

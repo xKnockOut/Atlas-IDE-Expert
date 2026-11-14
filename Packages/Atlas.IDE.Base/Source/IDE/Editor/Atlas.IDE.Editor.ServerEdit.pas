@@ -170,6 +170,28 @@ begin
   end;
 end;
 
+class function TAtlasIdeServerEdit.Appended(const AArgumentsJson: string; AValue: TJSONValue; out AResult: string):
+  Boolean;
+var
+  mArguments: TJSONValue;
+begin
+  AResult := '';
+  mArguments := nil;
+  try
+    mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
+    Result := mArguments is TJSONArray;
+    if Result then
+    begin
+      TJSONArray(mArguments).AddElement(AValue);
+      AValue := nil;
+      AResult := mArguments.ToJSON;
+    end;
+  finally
+    AValue.Free;
+    mArguments.Free;
+  end;
+end;
+
 class function TAtlasIdeServerEdit.Fetch(ASession: TLspSession; const ACommand: TAtlasServerEditCommand;
   const ARead: TAtlasServerEditRead; const AMessage: TProc<string>; out AReply: TAtlasServerEditReply): Boolean;
 var
@@ -191,28 +213,6 @@ begin
     begin
       AMessage(TAtlasStrings.Fmt(ACommand.Failed, [E.Message]));
     end;
-  end;
-end;
-
-class function TAtlasIdeServerEdit.Appended(const AArgumentsJson: string; AValue: TJSONValue; out AResult: string):
-  Boolean;
-var
-  mArguments: TJSONValue;
-begin
-  AResult := '';
-  mArguments := nil;
-  try
-    mArguments := TJSONObject.ParseJSONValue(AArgumentsJson);
-    Result := mArguments is TJSONArray;
-    if Result then
-    begin
-      TJSONArray(mArguments).AddElement(AValue);
-      AValue := nil;
-      AResult := mArguments.ToJSON;
-    end;
-  finally
-    AValue.Free;
-    mArguments.Free;
   end;
 end;
 

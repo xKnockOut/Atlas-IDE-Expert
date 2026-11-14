@@ -39,23 +39,24 @@ begin
   FChoice := -1;
 end;
 
-procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
-var
-  mIndex: Integer;
+function TAtlasChoiceBox.GetChoice: Integer;
 begin
-  SetLength(FChoices, Length(AItems));
-  for mIndex := 0 to High(AItems) do
-  begin
-    FChoices[mIndex] := AItems[mIndex];
-  end;
   if HandleAllocated then
   begin
-    Items.Clear;
-    for mIndex := 0 to High(FChoices) do
-    begin
-      Items.Add(FChoices[mIndex]);
-    end;
-    ItemIndex := FChoice;
+    Result := ItemIndex;
+  end
+  else
+  begin
+    Result := FChoice;
+  end;
+end;
+
+procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
+begin
+  FChoice := AValue;
+  if HandleAllocated then
+  begin
+    ItemIndex := AValue;
   end;
 end;
 
@@ -82,24 +83,23 @@ begin
   inherited DestroyWnd;
 end;
 
-function TAtlasChoiceBox.GetChoice: Integer;
+procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
+var
+  mIndex: Integer;
 begin
-  if HandleAllocated then
+  SetLength(FChoices, Length(AItems));
+  for mIndex := 0 to High(AItems) do
   begin
-    Result := ItemIndex;
-  end
-  else
-  begin
-    Result := FChoice;
+    FChoices[mIndex] := AItems[mIndex];
   end;
-end;
-
-procedure TAtlasChoiceBox.SetChoice(AValue: Integer);
-begin
-  FChoice := AValue;
   if HandleAllocated then
   begin
-    ItemIndex := AValue;
+    Items.Clear;
+    for mIndex := 0 to High(FChoices) do
+    begin
+      Items.Add(FChoices[mIndex]);
+    end;
+    ItemIndex := FChoice;
   end;
 end;
 

@@ -209,105 +209,6 @@ begin
   Constraints.MaxHeight := Height;
 end;
 
-class function TAtlasDebugExceptionBar.BarHeight(APPI: Integer): Integer;
-begin
-  Result := BarHeight(APPI, 3);
-end;
-
-class function TAtlasDebugExceptionBar.BarHeight(APPI, ARows: Integer): Integer;
-begin
-  Result := MulDiv(ARows * cBaseRow + cBarPadding, Max(APPI, 96), 96);
-end;
-
-function TAtlasDebugExceptionBar.ShownLines: Integer;
-begin
-  Result := Min(Length(FExplanation.Lines), cMaxExplanationLines);
-end;
-
-function TAtlasDebugExceptionBar.ExplanationRows: Integer;
-begin
-  Result := 0;
-  if not FExplanation.Active then
-  begin
-    Exit;
-  end;
-  // Ergebniszeile; fertig auch Glieder, „… n weitere“ und die Knöpfe.
-  Result := 1;
-  if FExplanation.Busy then
-  begin
-    Exit;
-  end;
-  Inc(Result, ShownLines);
-  if Length(FExplanation.Lines) > cMaxExplanationLines then
-  begin
-    Inc(Result);
-  end;
-  if (FExplanation.WhereName <> '') or (FExplanation.EvaluateExpression <> '') or (FExplanation.CopyText <> '') then
-  begin
-    Inc(Result);
-  end;
-end;
-
-function TAtlasDebugExceptionBar.Rows: Integer;
-begin
-  Result := 3 + ExplanationRows;
-end;
-
-function TAtlasDebugExceptionBar.RowTop(ARow: Integer): Integer;
-begin
-  Result := Scale(cBarPadding div 2) + ARow * RowHeight;
-end;
-
-procedure TAtlasDebugExceptionBar.ApplyHeight;
-begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
-  Height := BarHeight(CurrentPPI, Rows);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
-end;
-
-procedure TAtlasDebugExceptionBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
-  inherited ChangeScale(M, D, isDpiChange);
-  ApplyHeight;
-  FLaidOut := False;
-end;
-
-function TAtlasDebugExceptionBar.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
-end;
-
-function TAtlasDebugExceptionBar.RowHeight: Integer;
-begin
-  Result := Scale(cBaseRow);
-end;
-
-procedure TAtlasDebugExceptionBar.SetInfo(const AInfo: TAtlasDebugBannerInfo);
-begin
-  FInfo := AInfo;
-  FLaidOut := False;
-  Hint := FInfo.Message;
-  Invalidate;
-end;
-
-procedure TAtlasDebugExceptionBar.SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
-begin
-  FExplanation := AExplanation;
-  ApplyHeight;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasDebugExceptionBar.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
 function TAtlasDebugExceptionBar.DetailText: string;
 var
   mParts: TArray<string>;
@@ -339,6 +240,131 @@ begin
     mParts := mParts + [mPlace];
   end;
   Result := string.Join(' · ', mParts);
+end;
+
+procedure TAtlasDebugExceptionBar.Resize;
+begin
+  inherited Resize;
+  FLaidOut := False;
+end;
+
+procedure TAtlasDebugExceptionBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if Button = mbLeft then
+  begin
+    FDown := ActionAt(X, Y);
+  end;
+end;
+
+procedure TAtlasDebugExceptionBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mAction: TAtlasDebugBarAction;
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mAction := ActionAt(X, Y);
+  if mAction = FDown then
+  begin
+    Trigger(mAction);
+  end;
+  FDown := TAtlasDebugBarAction.None;
+end;
+
+procedure TAtlasDebugExceptionBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: TAtlasDebugBarAction;
+begin
+  inherited MouseMove(Shift, X, Y);
+  mHot := ActionAt(X, Y);
+  if mHot = FHot then
+  begin
+    Exit;
+  end;
+  FHot := mHot;
+  if mHot <> TAtlasDebugBarAction.None then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  Application.CancelHint;
+  if mHot = TAtlasDebugBarAction.Open then
+  begin
+    Hint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerOpenHint);
+  end
+  else
+  begin
+    Hint := FInfo.Message;
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  Constraints.MinHeight := 0;
+  Constraints.MaxHeight := 0;
+  inherited ChangeScale(M, D, isDpiChange);
+  ApplyHeight;
+  FLaidOut := False;
+end;
+
+function TAtlasDebugExceptionBar.Scale(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
+end;
+
+function TAtlasDebugExceptionBar.RowHeight: Integer;
+begin
+  Result := Scale(cBaseRow);
+end;
+
+function TAtlasDebugExceptionBar.ExplanationRows: Integer;
+begin
+  Result := 0;
+  if not FExplanation.Active then
+  begin
+    Exit;
+  end;
+  // Ergebniszeile; fertig auch Glieder, „… n weitere“ und die Knöpfe.
+  Result := 1;
+  if FExplanation.Busy then
+  begin
+    Exit;
+  end;
+  Inc(Result, ShownLines);
+  if Length(FExplanation.Lines) > cMaxExplanationLines then
+  begin
+    Inc(Result);
+  end;
+  if (FExplanation.WhereName <> '') or (FExplanation.EvaluateExpression <> '') or (FExplanation.CopyText <> '') then
+  begin
+    Inc(Result);
+  end;
+end;
+
+function TAtlasDebugExceptionBar.ShownLines: Integer;
+begin
+  Result := Min(Length(FExplanation.Lines), cMaxExplanationLines);
+end;
+
+function TAtlasDebugExceptionBar.RowTop(ARow: Integer): Integer;
+begin
+  Result := Scale(cBarPadding div 2) + ARow * RowHeight;
+end;
+
+procedure TAtlasDebugExceptionBar.ApplyHeight;
+begin
+  Constraints.MinHeight := 0;
+  Constraints.MaxHeight := 0;
+  Height := BarHeight(CurrentPPI, Rows);
+  Constraints.MinHeight := Height;
+  Constraints.MaxHeight := Height;
 end;
 
 procedure TAtlasDebugExceptionBar.Layout;
@@ -395,66 +421,6 @@ begin
   FLaidOut := True;
 end;
 
-procedure TAtlasDebugExceptionBar.Resize;
-begin
-  inherited Resize;
-  FLaidOut := False;
-end;
-
-procedure TAtlasDebugExceptionBar.CMFontChanged(var Message: TMessage);
-begin
-  inherited;
-  FLaidOut := False;
-  Invalidate;
-end;
-
-function TAtlasDebugExceptionBar.ActionRect(AAction: TAtlasDebugBarAction): TRect;
-begin
-  Layout;
-  Result := FRects[AAction];
-end;
-
-function TAtlasDebugExceptionBar.ActionAt(AX, AY: Integer): TAtlasDebugBarAction;
-var
-  mAction: TAtlasDebugBarAction;
-begin
-  Layout;
-  for mAction := Succ(TAtlasDebugBarAction.None) to High(TAtlasDebugBarAction) do
-  begin
-    if not FRects[mAction].IsEmpty and FRects[mAction].Contains(Point(AX, AY)) then
-    begin
-      Exit(mAction);
-    end;
-  end;
-  Result := TAtlasDebugBarAction.None;
-end;
-
-procedure TAtlasDebugExceptionBar.Trigger(AAction: TAtlasDebugBarAction);
-begin
-  if AAction = TAtlasDebugBarAction.None then
-  begin
-    Exit;
-  end;
-  // Ohne Ort gibt es weder „Nur an dieser Stelle ignorieren“ noch den Sprung.
-  if not BarButtonShown(FInfo, AAction) then
-  begin
-    Exit;
-  end;
-  if (AAction = TAtlasDebugBarAction.Open) and not FInfo.HasLocation then
-  begin
-    Exit;
-  end;
-  if (AAction in [TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate,
-    TAtlasDebugBarAction.CopyExplanation]) and not ExplanationHas(FExplanation, AAction) then
-  begin
-    Exit;
-  end;
-  if Assigned(FOnAction) then
-  begin
-    FOnAction(AAction);
-  end;
-end;
-
 procedure TAtlasDebugExceptionBar.DrawButton(AAction: TAtlasDebugBarAction);
 var
   mArea: TRect;
@@ -497,6 +463,57 @@ begin
   end;
   mText := ActionCaption(AAction, FExplanation.WhereName);
   DrawText(Canvas.Handle, PChar(mText), -1, mArea, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+procedure TAtlasDebugExceptionBar.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  FDown := TAtlasDebugBarAction.None;
+  if FHot = TAtlasDebugBarAction.None then
+  begin
+    Exit;
+  end;
+  FHot := TAtlasDebugBarAction.None;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.CMFontChanged(var Message: TMessage);
+begin
+  inherited;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.SetInfo(const AInfo: TAtlasDebugBannerInfo);
+begin
+  FInfo := AInfo;
+  FLaidOut := False;
+  Hint := FInfo.Message;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
+begin
+  FExplanation := AExplanation;
+  ApplyHeight;
+  FLaidOut := False;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+class function TAtlasDebugExceptionBar.BarHeight(APPI: Integer): Integer;
+begin
+  Result := BarHeight(APPI, 3);
+end;
+
+class function TAtlasDebugExceptionBar.BarHeight(APPI, ARows: Integer): Integer;
+begin
+  Result := MulDiv(ARows * cBaseRow + cBarPadding, Max(APPI, 96), 96);
 end;
 
 /// <summary>Zeile 1 der Leiste ABar in AFrame: Klasse und Meldung, rechts der Zähler.</summary>
@@ -702,73 +719,56 @@ begin
   end;
 end;
 
-procedure TAtlasDebugExceptionBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot: TAtlasDebugBarAction;
+function TAtlasDebugExceptionBar.Rows: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  mHot := ActionAt(X, Y);
-  if mHot = FHot then
-  begin
-    Exit;
-  end;
-  FHot := mHot;
-  if mHot <> TAtlasDebugBarAction.None then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  Application.CancelHint;
-  if mHot = TAtlasDebugBarAction.Open then
-  begin
-    Hint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerOpenHint);
-  end
-  else
-  begin
-    Hint := FInfo.Message;
-  end;
-  Invalidate;
+  Result := 3 + ExplanationRows;
 end;
 
-procedure TAtlasDebugExceptionBar.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  FDown := TAtlasDebugBarAction.None;
-  if FHot = TAtlasDebugBarAction.None then
-  begin
-    Exit;
-  end;
-  FHot := TAtlasDebugBarAction.None;
-  Invalidate;
-end;
-
-procedure TAtlasDebugExceptionBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if Button = mbLeft then
-  begin
-    FDown := ActionAt(X, Y);
-  end;
-end;
-
-procedure TAtlasDebugExceptionBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+function TAtlasDebugExceptionBar.ActionAt(AX, AY: Integer): TAtlasDebugBarAction;
 var
   mAction: TAtlasDebugBarAction;
 begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button <> mbLeft then
+  Layout;
+  for mAction := Succ(TAtlasDebugBarAction.None) to High(TAtlasDebugBarAction) do
+  begin
+    if not FRects[mAction].IsEmpty and FRects[mAction].Contains(Point(AX, AY)) then
+    begin
+      Exit(mAction);
+    end;
+  end;
+  Result := TAtlasDebugBarAction.None;
+end;
+
+function TAtlasDebugExceptionBar.ActionRect(AAction: TAtlasDebugBarAction): TRect;
+begin
+  Layout;
+  Result := FRects[AAction];
+end;
+
+procedure TAtlasDebugExceptionBar.Trigger(AAction: TAtlasDebugBarAction);
+begin
+  if AAction = TAtlasDebugBarAction.None then
   begin
     Exit;
   end;
-  mAction := ActionAt(X, Y);
-  if mAction = FDown then
+  // Ohne Ort gibt es weder „Nur an dieser Stelle ignorieren“ noch den Sprung.
+  if not BarButtonShown(FInfo, AAction) then
   begin
-    Trigger(mAction);
+    Exit;
   end;
-  FDown := TAtlasDebugBarAction.None;
+  if (AAction = TAtlasDebugBarAction.Open) and not FInfo.HasLocation then
+  begin
+    Exit;
+  end;
+  if (AAction in [TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate,
+    TAtlasDebugBarAction.CopyExplanation]) and not ExplanationHas(FExplanation, AAction) then
+  begin
+    Exit;
+  end;
+  if Assigned(FOnAction) then
+  begin
+    FOnAction(AAction);
+  end;
 end;
 
 end.

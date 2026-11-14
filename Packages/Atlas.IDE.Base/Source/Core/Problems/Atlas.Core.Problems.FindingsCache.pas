@@ -56,14 +56,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasFindingsCache.Clear;
-begin
-  FItems.Clear;
-  FLastKeys := nil;
-  FLastStamps := nil;
-  FBuilt := False;
-end;
-
 procedure TAtlasFindingsCache.Keep(const AKeys: TArray<string>);
 var
   mNext: TDictionary<string, TItem>;
@@ -130,6 +122,14 @@ begin
     FBuilt := True;
   end;
   Result := TAtlasFindings.Concat(mParts);
+end;
+
+procedure TAtlasFindingsCache.Clear;
+begin
+  FItems.Clear;
+  FLastKeys := nil;
+  FLastStamps := nil;
+  FBuilt := False;
 end;
 
 end.

@@ -251,6 +251,17 @@ end;
 
 { TAtlasSearchCombo }
 
+procedure TAtlasSearchCombo.CNKeyDown(var Message: TWMKeyDown);
+begin
+  // Vor der Prüfung der Tastenkürzel des Formulars (IsMenuKey): Result 0 lässt die Taste als WM_KEYDOWN ins Feld.
+  if KeepsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  begin
+    Message.Result := 0;
+    Exit;
+  end;
+  inherited;
+end;
+
 class function TAtlasSearchCombo.KeepsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   if AShift = [ssCtrl] then
@@ -277,18 +288,43 @@ begin
   end;
 end;
 
-procedure TAtlasSearchCombo.CNKeyDown(var Message: TWMKeyDown);
-begin
-  // Vor der Prüfung der Tastenkürzel des Formulars (IsMenuKey): Result 0 lässt die Taste als WM_KEYDOWN ins Feld.
-  if KeepsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+{ TAtlasSearchInfoLine }
+
+procedure TAtlasSearchInfoLine.Paint;
+var
+  mX, mY: Integer;
+
+  procedure Put(const AText: string; AStyle: TFontStyles);
   begin
-    Message.Result := 0;
+    Canvas.Font.Style := AStyle;
+    Canvas.TextOut(mX, mY, AText);
+    Inc(mX, Canvas.TextWidth(AText));
+  end;
+
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsClear;
+  mY := (Height - Canvas.TextHeight('Ag')) div 2;
+  mX := 0;
+  if FKind = TKind.Error then
+  begin
+    Canvas.Font.Color := cErrorColor;
+    Put(FMessage, []);
     Exit;
   end;
-  inherited;
+  if FHasPreview then
+  begin
+    Put(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ', []);
+    Put(FBefore, [fsStrikeOut]);
+    Put(' → ', []);
+    Put(FAfter, [fsBold]);
+    if FMessage <> '' then
+    begin
+      Put('   ·   ', []);
+    end;
+  end;
+  Put(FMessage, []);
 end;
-
-{ TAtlasSearchInfoLine }
 
 procedure TAtlasSearchInfoLine.ShowError(const AText: string);
 begin
@@ -375,42 +411,6 @@ end;
 function TAtlasSearchInfoLine.HasContent: Boolean;
 begin
   Result := FKind <> TKind.None;
-end;
-
-procedure TAtlasSearchInfoLine.Paint;
-var
-  mX, mY: Integer;
-
-  procedure Put(const AText: string; AStyle: TFontStyles);
-  begin
-    Canvas.Font.Style := AStyle;
-    Canvas.TextOut(mX, mY, AText);
-    Inc(mX, Canvas.TextWidth(AText));
-  end;
-
-begin
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsClear;
-  mY := (Height - Canvas.TextHeight('Ag')) div 2;
-  mX := 0;
-  if FKind = TKind.Error then
-  begin
-    Canvas.Font.Color := cErrorColor;
-    Put(FMessage, []);
-    Exit;
-  end;
-  if FHasPreview then
-  begin
-    Put(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchPreviewLabel) + ' ', []);
-    Put(FBefore, [fsStrikeOut]);
-    Put(' → ', []);
-    Put(FAfter, [fsBold]);
-    if FMessage <> '' then
-    begin
-      Put('   ·   ', []);
-    end;
-  end;
-  Put(FMessage, []);
 end;
 
 { TAtlasSearchBarEvents }
@@ -925,68 +925,6 @@ begin
   UpdateLayout(Self);
 end;
 
-procedure TAtlasSearchBar.CreateWnd;
-begin
-  inherited CreateWnd;
-  FitWidths;
-  if FState.Pending then
-  begin
-    Apply(Self);
-  end;
-end;
-
-procedure TAtlasSearchBar.FitWidths;
-var
-  mBoxes: TArray<TCheckBox>;
-  mBox: TCheckBox;
-  mButtons: TArray<TButton>;
-  mButton: TButton;
-begin
-  Canvas.Font := Font;
-  mBoxes := [FParts.CaseBox, FParts.WholeBox, FParts.IdentifierBox, FParts.RegexBox];
-  for mBox in mBoxes do
-  begin
-    mBox.Width := Canvas.TextWidth(mBox.Caption) + ScaleValue(24);
-  end;
-  mButtons := [FParts.ListButton, FParts.CancelButton, FParts.ReplaceOneButton, FParts.ReplaceAllButton,
-    FParts.ChooseButton];
-  for mButton in mButtons do
-  begin
-    mButton.Width := Canvas.TextWidth(mButton.Caption) + ScaleValue(20);
-  end;
-end;
-
-procedure TAtlasSearchBar.Prepare(const AQuery: TAtlasSearchQuery; const ALevels: TArray<string>;
-  AHasSelection: Boolean);
-begin
-  FState.Query := AQuery;
-  FState.Levels := ALevels;
-  FState.HasSelection := AHasSelection;
-  FState.Pending := True;
-  if HandleAllocated then
-  begin
-    Apply(Self);
-  end;
-end;
-
-class function TAtlasSearchBar.ScopeCaption(AScope: TAtlasSearchScope): string;
-begin
-  case AScope of
-    TAtlasSearchScope.Method:
-      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeMethod);
-    TAtlasSearchScope.Selection:
-      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeSelection);
-    TAtlasSearchScope.OpenFiles:
-      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeOpenFiles);
-    TAtlasSearchScope.Project:
-      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProject);
-    TAtlasSearchScope.ProjectGroup:
-      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProjectGroup);
-  else
-    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeUnit);
-  end;
-end;
-
 procedure TAtlasSearchBar.SetFeatures(const AValue: TAtlasSearchBarFeatures);
 begin
   FState.Features := AValue;
@@ -1022,153 +960,35 @@ begin
   UpdateLayout(Self);
 end;
 
-function TAtlasSearchBar.ReplaceText: string;
+procedure TAtlasSearchBar.CreateWnd;
 begin
-  Result := FParts.ReplaceEdit.Text;
-end;
-
-function TAtlasSearchBar.Query: TAtlasSearchQuery;
-begin
-  Result := FState.Query;
-  Result.Text := FParts.TextEdit.Text;
-  Result.Options := TAtlasSearchOptions.Create(FParts.CaseBox.Checked, FParts.WholeBox.Checked,
-    FParts.IdentifierBox.Checked, FParts.RegexBox.Checked and FState.Features.Regex);
-  Result.Scope := SelectedScope(Self);
-  Result.Level := SelectedLevel(Self);
-  if Result.Level < 0 then
+  inherited CreateWnd;
+  FitWidths;
+  if FState.Pending then
   begin
-    Result.Level := 0;
+    Apply(Self);
   end;
 end;
 
-procedure TAtlasSearchBar.SetCounter(const AText: string);
-begin
-  FParts.CounterLabel.Caption := AText;
-end;
-
-procedure TAtlasSearchBar.SetError(const AText: string);
-begin
-  if AText <> '' then
-  begin
-    FParts.InfoLine.ShowError(AText);
-    FParts.TextFrame.ParentBackground := False;
-    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements - [seClient];
-    FParts.TextFrame.Color := cErrorColor;
-  end
-  else
-  begin
-    FParts.InfoLine.ClearError;
-    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements + [seClient];
-    FParts.TextFrame.ParentColor := True;
-    FParts.TextFrame.ParentBackground := True;
-  end;
-  UpdateLayout(Self);
-end;
-
-function TAtlasSearchBar.HasError: Boolean;
-begin
-  Result := FParts.InfoLine.IsError;
-end;
-
-procedure TAtlasSearchBar.SetPreview(const ABefore, AAfter: string);
-begin
-  FParts.InfoLine.ShowPreview(ABefore, AAfter);
-  UpdateLayout(Self);
-end;
-
-procedure TAtlasSearchBar.ClearPreview;
-begin
-  FParts.InfoLine.ClearPreview;
-  UpdateLayout(Self);
-end;
-
-procedure TAtlasSearchBar.SetNotice(const AText: string);
-begin
-  if FParts.InfoLine.IsError then
-  begin
-    Exit;
-  end;
-  FParts.InfoLine.ShowNotice(AText);
-  UpdateLayout(Self);
-end;
-
-function TAtlasSearchBar.InfoText: string;
-begin
-  Result := FParts.InfoLine.Content;
-end;
-
-procedure TAtlasSearchBar.SetSearching(AValue: Boolean);
-begin
-  FParts.CancelButton.Visible := AValue;
-end;
-
-procedure TAtlasSearchBar.SetListVisible(AValue: Boolean);
-begin
-  FParts.ListButton.Visible := AValue;
-end;
-
-procedure TAtlasSearchBar.SetHistories(ASearch, AReplace: TAtlasSearchHistory);
-begin
-  FParts.TextEdit.History := ASearch;
-  FParts.ReplaceEdit.History := AReplace;
-end;
-
-procedure TAtlasSearchBar.Remember;
-begin
-  if FParts.TextEdit.History <> nil then
-  begin
-    FParts.TextEdit.History.Remember(FParts.TextEdit.Text);
-  end;
-  if FState.ReplaceShown and (FParts.ReplaceEdit.History <> nil) then
-  begin
-    FParts.ReplaceEdit.History.Remember(FParts.ReplaceEdit.Text);
-  end;
-end;
-
-procedure TAtlasSearchBar.HistoryDropDown(Sender: TObject);
+procedure TAtlasSearchBar.FitWidths;
 var
-  mBox: TAtlasSearchCombo;
-  mItem, mText: string;
+  mBoxes: TArray<TCheckBox>;
+  mBox: TCheckBox;
+  mButtons: TArray<TButton>;
+  mButton: TButton;
 begin
-  if not (Sender is TAtlasSearchCombo) then
+  Canvas.Font := Font;
+  mBoxes := [FParts.CaseBox, FParts.WholeBox, FParts.IdentifierBox, FParts.RegexBox];
+  for mBox in mBoxes do
   begin
-    Exit;
+    mBox.Width := Canvas.TextWidth(mBox.Caption) + ScaleValue(24);
   end;
-  mBox := TAtlasSearchCombo(Sender);
-  // Liste erst beim Aufklappen füllen (sie braucht ein Fenster); der Text im Feld bleibt.
-  mText := mBox.Text;
-  FState.Updating := True;
-  try
-    mBox.Items.BeginUpdate;
-    try
-      mBox.Items.Clear;
-      if mBox.History <> nil then
-      begin
-        for mItem in mBox.History.Items do
-        begin
-          mBox.Items.Add(mItem);
-        end;
-      end;
-    finally
-      mBox.Items.EndUpdate;
-    end;
-    mBox.Text := mText;
-  finally
-    FState.Updating := False;
+  mButtons := [FParts.ListButton, FParts.CancelButton, FParts.ReplaceOneButton, FParts.ReplaceAllButton,
+    FParts.ChooseButton];
+  for mButton in mButtons do
+  begin
+    mButton.Width := Canvas.TextWidth(mButton.Caption) + ScaleValue(20);
   end;
-end;
-
-procedure TAtlasSearchBar.FocusText;
-begin
-  FocusBox(FParts.TextEdit);
-end;
-
-function TAtlasSearchBar.HasFocus: Boolean;
-var
-  mFocused: HWND;
-begin
-  mFocused := Winapi.Windows.GetFocus;
-  Result := HandleAllocated and (mFocused <> 0) and ((mFocused = Handle) or IsChild(Handle, mFocused));
 end;
 
 procedure TAtlasSearchBar.Changed(Sender: TObject);
@@ -1246,6 +1066,39 @@ begin
   end;
 end;
 
+procedure TAtlasSearchBar.HistoryDropDown(Sender: TObject);
+var
+  mBox: TAtlasSearchCombo;
+  mItem, mText: string;
+begin
+  if not (Sender is TAtlasSearchCombo) then
+  begin
+    Exit;
+  end;
+  mBox := TAtlasSearchCombo(Sender);
+  // Liste erst beim Aufklappen füllen (sie braucht ein Fenster); der Text im Feld bleibt.
+  mText := mBox.Text;
+  FState.Updating := True;
+  try
+    mBox.Items.BeginUpdate;
+    try
+      mBox.Items.Clear;
+      if mBox.History <> nil then
+      begin
+        for mItem in mBox.History.Items do
+        begin
+          mBox.Items.Add(mItem);
+        end;
+      end;
+    finally
+      mBox.Items.EndUpdate;
+    end;
+    mBox.Text := mText;
+  finally
+    FState.Updating := False;
+  end;
+end;
+
 procedure TAtlasSearchBar.ButtonClick(Sender: TObject);
 var
   mEvent: TProc;
@@ -1270,6 +1123,153 @@ begin
   else if Sender = FParts.CloseButton then
   begin
     TAtlasSearchBarEvents.Fire(FEvents.OnClose);
+  end;
+end;
+
+procedure TAtlasSearchBar.Prepare(const AQuery: TAtlasSearchQuery; const ALevels: TArray<string>;
+  AHasSelection: Boolean);
+begin
+  FState.Query := AQuery;
+  FState.Levels := ALevels;
+  FState.HasSelection := AHasSelection;
+  FState.Pending := True;
+  if HandleAllocated then
+  begin
+    Apply(Self);
+  end;
+end;
+
+function TAtlasSearchBar.Query: TAtlasSearchQuery;
+begin
+  Result := FState.Query;
+  Result.Text := FParts.TextEdit.Text;
+  Result.Options := TAtlasSearchOptions.Create(FParts.CaseBox.Checked, FParts.WholeBox.Checked,
+    FParts.IdentifierBox.Checked, FParts.RegexBox.Checked and FState.Features.Regex);
+  Result.Scope := SelectedScope(Self);
+  Result.Level := SelectedLevel(Self);
+  if Result.Level < 0 then
+  begin
+    Result.Level := 0;
+  end;
+end;
+
+procedure TAtlasSearchBar.SetCounter(const AText: string);
+begin
+  FParts.CounterLabel.Caption := AText;
+end;
+
+procedure TAtlasSearchBar.SetError(const AText: string);
+begin
+  if AText <> '' then
+  begin
+    FParts.InfoLine.ShowError(AText);
+    FParts.TextFrame.ParentBackground := False;
+    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements - [seClient];
+    FParts.TextFrame.Color := cErrorColor;
+  end
+  else
+  begin
+    FParts.InfoLine.ClearError;
+    FParts.TextFrame.StyleElements := FParts.TextFrame.StyleElements + [seClient];
+    FParts.TextFrame.ParentColor := True;
+    FParts.TextFrame.ParentBackground := True;
+  end;
+  UpdateLayout(Self);
+end;
+
+procedure TAtlasSearchBar.SetPreview(const ABefore, AAfter: string);
+begin
+  FParts.InfoLine.ShowPreview(ABefore, AAfter);
+  UpdateLayout(Self);
+end;
+
+procedure TAtlasSearchBar.ClearPreview;
+begin
+  FParts.InfoLine.ClearPreview;
+  UpdateLayout(Self);
+end;
+
+procedure TAtlasSearchBar.SetNotice(const AText: string);
+begin
+  if FParts.InfoLine.IsError then
+  begin
+    Exit;
+  end;
+  FParts.InfoLine.ShowNotice(AText);
+  UpdateLayout(Self);
+end;
+
+function TAtlasSearchBar.InfoText: string;
+begin
+  Result := FParts.InfoLine.Content;
+end;
+
+function TAtlasSearchBar.HasError: Boolean;
+begin
+  Result := FParts.InfoLine.IsError;
+end;
+
+procedure TAtlasSearchBar.SetSearching(AValue: Boolean);
+begin
+  FParts.CancelButton.Visible := AValue;
+end;
+
+procedure TAtlasSearchBar.SetListVisible(AValue: Boolean);
+begin
+  FParts.ListButton.Visible := AValue;
+end;
+
+procedure TAtlasSearchBar.SetHistories(ASearch, AReplace: TAtlasSearchHistory);
+begin
+  FParts.TextEdit.History := ASearch;
+  FParts.ReplaceEdit.History := AReplace;
+end;
+
+procedure TAtlasSearchBar.Remember;
+begin
+  if FParts.TextEdit.History <> nil then
+  begin
+    FParts.TextEdit.History.Remember(FParts.TextEdit.Text);
+  end;
+  if FState.ReplaceShown and (FParts.ReplaceEdit.History <> nil) then
+  begin
+    FParts.ReplaceEdit.History.Remember(FParts.ReplaceEdit.Text);
+  end;
+end;
+
+procedure TAtlasSearchBar.FocusText;
+begin
+  FocusBox(FParts.TextEdit);
+end;
+
+function TAtlasSearchBar.HasFocus: Boolean;
+var
+  mFocused: HWND;
+begin
+  mFocused := Winapi.Windows.GetFocus;
+  Result := HandleAllocated and (mFocused <> 0) and ((mFocused = Handle) or IsChild(Handle, mFocused));
+end;
+
+function TAtlasSearchBar.ReplaceText: string;
+begin
+  Result := FParts.ReplaceEdit.Text;
+end;
+
+class function TAtlasSearchBar.ScopeCaption(AScope: TAtlasSearchScope): string;
+begin
+  case AScope of
+    TAtlasSearchScope.Method:
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeMethod);
+    TAtlasSearchScope.Selection:
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeSelection);
+    TAtlasSearchScope.OpenFiles:
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeOpenFiles);
+    TAtlasSearchScope.Project:
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProject);
+    TAtlasSearchScope.ProjectGroup:
+      Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProjectGroup);
+  else
+    Result := TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeUnit);
   end;
 end;
 

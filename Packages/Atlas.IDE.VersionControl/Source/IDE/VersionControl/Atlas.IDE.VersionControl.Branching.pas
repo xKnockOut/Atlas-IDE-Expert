@@ -137,6 +137,70 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.VersionControl.Service;
 
+{ TAtlasIdeBranching }
+
+class procedure TAtlasIdeBranching.RebuildIndex;
+begin
+  if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.cRebuildCommand) then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Log('Branch anlegen: Externals geändert, Index wird neu aufgebaut');
+  TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchIndexRebuild));
+end;
+
+class function TAtlasIdeBranching.Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts;
+  const ASetup: TAtlasBranchDialogSetup; out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+var
+  mDialog: TAtlasBranchDialog;
+  mFacts: TAtlasVcsBranchFacts;
+  mFolder: string;
+  mOpen: Boolean;
+begin
+  ARequest := Default(TAtlasVcsBranchRequest);
+  ANeverAsk := False;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, AFacts, ASetup);
+  try
+    TAtlasIdeDockWindow.ApplyIdeTheme(mDialog);
+    mOpen := True;
+    if AFacts.NeedsServer then
+    begin
+      mFacts := AFacts;
+      mFolder := AFolder;
+      // Arbeit und Ergebnis teilen sich mFacts; das Ergebnis kommt erst nach der Arbeit, nach dem Schließen nie
+      // an den Dialog.
+      if not TAtlasIdeVcsCore.Run(
+        procedure
+        begin
+          TAtlasVcsBranchPlan.InspectServer(
+            TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cTimeoutMs)), mFacts);
+        end,
+        procedure
+        begin
+          if mOpen then
+          begin
+            mDialog.ServerLoaded(mFacts);
+          end;
+        end) then
+      begin
+        mFacts.ServerChecked := True;
+        mFacts.ServerOutcome := TAtlasVcsOutcome.Failed;
+        mDialog.ServerLoaded(mFacts);
+      end;
+    end;
+    Result := mDialog.ShowModal = mrOk;
+    mOpen := False;
+    if Result then
+    begin
+      ARequest := mDialog.Request;
+      ANeverAsk := mDialog.NeverAsk.Visible and mDialog.NeverAsk.Checked;
+    end;
+  finally
+    mOpen := False;
+    mDialog.Free;
+  end;
+end;
+
 class function TAtlasIdeBranching.Setup(const AName, AMessage, AKey: string;
   const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean): TAtlasBranchDialogSetup;
 begin
@@ -206,82 +270,6 @@ begin
         mActions.OpenProject(mTarget, True);
       end);
   end;
-end;
-
-class function TAtlasIdeBranching.Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts;
-  const ASetup: TAtlasBranchDialogSetup; out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
-var
-  mDialog: TAtlasBranchDialog;
-  mFacts: TAtlasVcsBranchFacts;
-  mFolder: string;
-  mOpen: Boolean;
-begin
-  ARequest := Default(TAtlasVcsBranchRequest);
-  ANeverAsk := False;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, AFacts, ASetup);
-  try
-    TAtlasIdeDockWindow.ApplyIdeTheme(mDialog);
-    mOpen := True;
-    if AFacts.NeedsServer then
-    begin
-      mFacts := AFacts;
-      mFolder := AFolder;
-      // Arbeit und Ergebnis teilen sich mFacts; das Ergebnis kommt erst nach der Arbeit, nach dem Schließen nie
-      // an den Dialog.
-      if not TAtlasIdeVcsCore.Run(
-        procedure
-        begin
-          TAtlasVcsBranchPlan.InspectServer(
-            TAtlasIdeVcsCore.ForFolder(mFolder, TAtlasIdeVcsCore.AtLeast(cTimeoutMs)), mFacts);
-        end,
-        procedure
-        begin
-          if mOpen then
-          begin
-            mDialog.ServerLoaded(mFacts);
-          end;
-        end) then
-      begin
-        mFacts.ServerChecked := True;
-        mFacts.ServerOutcome := TAtlasVcsOutcome.Failed;
-        mDialog.ServerLoaded(mFacts);
-      end;
-    end;
-    Result := mDialog.ShowModal = mrOk;
-    mOpen := False;
-    if Result then
-    begin
-      ARequest := mDialog.Request;
-      ANeverAsk := mDialog.NeverAsk.Visible and mDialog.NeverAsk.Checked;
-    end;
-  finally
-    mOpen := False;
-    mDialog.Free;
-  end;
-end;
-
-class procedure TAtlasIdeBranching.RebuildIndex;
-begin
-  if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.cRebuildCommand) then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Log('Branch anlegen: Externals geändert, Index wird neu aufgebaut');
-  TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchIndexRebuild));
-end;
-
-class procedure TAtlasIdeBranching.StopAsking;
-var
-  mNext: TAtlasPluginSettings;
-begin
-  mNext := TAtlasIdeSettings.Stored;
-  if not mNext.VcsBranchConfirm then
-  begin
-    Exit;
-  end;
-  mNext.VcsBranchConfirm := False;
-  TAtlasIdeSettings.Update(mNext);
-  TAtlasGuard.Log('Branch anlegen: Dialog abgeschaltet (vcs.branch.confirm)');
 end;
 
 class function TAtlasIdeBranching.GitOptions: TAtlasVcsGitBranchOptions;
@@ -382,60 +370,32 @@ begin
     mtConfirmation, [mbYes, mbNo], 0) = mrYes);
 end;
 
-class function TAtlasIdeBranching.Candidates(AKind: TAtlasVcsKind; const AProject: string): TArray<string>;
-begin
-  Result := TAtlasVcsBranchNames.Bases(AKind = TAtlasVcsKind.Svn, TAtlasIdeSettings.Current.IssuesBranchBase,
-    TAtlasIdeVcsCore.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject)));
-end;
-
-class function TAtlasIdeBranching.ProgressText(AKind: TAtlasVcsKind; AIndex, ACount: Integer;
-  const AStep: TAtlasVcsBranchStep): string;
-begin
-  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchProgress, [AIndex + 1, ACount,
-    TAtlasVcsBranchPlan.StepText(AKind, AStep)]);
-end;
-
-class function TAtlasIdeBranching.Progress(AKind: TAtlasVcsKind): TAtlasVcsBranchProgress;
-begin
-  // Eigene Routine: Die Methodenreferenz fängt nur AKind ein.
-  Result :=
-    procedure(AIndex, ACount: Integer; const AStep: TAtlasVcsBranchStep)
-    begin
-      TAtlasIdeVcsCore.Report(ProgressText(AKind, AIndex, ACount, AStep));
-    end;
-end;
-
-class function TAtlasIdeBranching.FailureText(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>;
-  const ARun: TAtlasVcsBranchRun): string;
+class procedure TAtlasIdeBranching.OpenProject(const AFile: string);
 var
-  mDone: TArray<TAtlasVcsBranchStep>;
-  mStep: TAtlasVcsBranchStep;
-  mList: string;
+  mActions: IOTAActionServices;
 begin
-  if (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) then
+  if FileExists(AFile) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
   begin
-    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchStepFailed, [ARun.Failed + 1,
-      TAtlasVcsBranchPlan.StepText(AKind, ASteps[ARun.Failed]), AtlasVcsOutcomeName(ARun.Outcome)]);
-  end
-  else
-  begin
-    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFailed, [AtlasVcsOutcomeName(ARun.Outcome)]);
+    TAtlasGuard.RunIde(
+      procedure
+      begin
+        mActions.OpenProject(AFile, True);
+      end);
   end;
-  mDone := TAtlasVcsBranchPlan.ServerStepsDone(ASteps, ARun.Done);
-  if Length(mDone) = 0 then
+end;
+
+class procedure TAtlasIdeBranching.StopAsking;
+var
+  mNext: TAtlasPluginSettings;
+begin
+  mNext := TAtlasIdeSettings.Stored;
+  if not mNext.VcsBranchConfirm then
   begin
     Exit;
   end;
-  mList := '';
-  for mStep in mDone do
-  begin
-    if mList <> '' then
-    begin
-      mList := mList + '; ';
-    end;
-    mList := mList + TAtlasVcsBranchPlan.StepText(AKind, mStep);
-  end;
-  Result := Result + ' ' + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchServerDone, [mList]);
+  mNext.VcsBranchConfirm := False;
+  TAtlasIdeSettings.Update(mNext);
+  TAtlasGuard.Log('Branch anlegen: Dialog abgeschaltet (vcs.branch.confirm)');
 end;
 
 class procedure TAtlasIdeBranching.CreateFor(const AProject: string; const ADone: TProc);
@@ -498,6 +458,29 @@ begin
   end;
 end;
 
+class function TAtlasIdeBranching.Candidates(AKind: TAtlasVcsKind; const AProject: string): TArray<string>;
+begin
+  Result := TAtlasVcsBranchNames.Bases(AKind = TAtlasVcsKind.Svn, TAtlasIdeSettings.Current.IssuesBranchBase,
+    TAtlasIdeVcsCore.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject)));
+end;
+
+class function TAtlasIdeBranching.ProgressText(AKind: TAtlasVcsKind; AIndex, ACount: Integer;
+  const AStep: TAtlasVcsBranchStep): string;
+begin
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchProgress, [AIndex + 1, ACount,
+    TAtlasVcsBranchPlan.StepText(AKind, AStep)]);
+end;
+
+class function TAtlasIdeBranching.Progress(AKind: TAtlasVcsKind): TAtlasVcsBranchProgress;
+begin
+  // Eigene Routine: Die Methodenreferenz fängt nur AKind ein.
+  Result :=
+    procedure(AIndex, ACount: Integer; const AStep: TAtlasVcsBranchStep)
+    begin
+      TAtlasIdeVcsCore.Report(ProgressText(AKind, AIndex, ACount, AStep));
+    end;
+end;
+
 type
   /// <summary>Ein Lauf von RunCreate: Arbeit im Hintergrund, Meldung im Hauptthread. Beide teilen sich die Felder;
   /// die Meldung kommt erst nach der Arbeit.</summary>
@@ -523,37 +506,14 @@ type
     procedure Finish;
   end;
 
+{ TBranchCreation }
+
 function TBranchCreation.SearchOptions: TAtlasVcsSvnBranchOptions;
 begin
   Result := FSvn;
   if FRequest.Location <> '' then
   begin
     Result.Location := '^/' + FRequest.Location;
-  end;
-end;
-
-procedure TBranchCreation.Work;
-var
-  mVcs: IAtlasVersionControl;
-  mBranching: IAtlasVcsBranching;
-begin
-  mVcs := TAtlasIdeVcsCore.ForFolder(FFolder, TAtlasIdeVcsCore.AtLeast(TAtlasIdeBranching.cTimeoutMs));
-  if (mVcs = nil) or not Supports(mVcs, IAtlasVcsBranching, mBranching) then
-  begin
-    FRun.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
-    FRun.Failed := 0;
-    Exit;
-  end;
-  FRun.Outcome := mBranching.BranchExists(FRequest.Name, SearchOptions, FExists);
-  if (FRun.Outcome <> TAtlasVcsOutcome.Ok) or FExists then
-  begin
-    Exit;
-  end;
-  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
-  FTaken := (FRequest.WorktreeFolder <> '') and DirectoryExists(FRequest.WorktreeFolder);
-  if not FTaken then
-  begin
-    FRun := TAtlasVcsBranchPlan.Execute(mBranching, FRequest, FSteps, TAtlasIdeBranching.Progress(FRequest.Kind));
   end;
 end;
 
@@ -602,6 +562,31 @@ begin
     begin
       TAtlasIdeBranching.OpenProject(mTarget);
     end;
+  end;
+end;
+
+procedure TBranchCreation.Work;
+var
+  mVcs: IAtlasVersionControl;
+  mBranching: IAtlasVcsBranching;
+begin
+  mVcs := TAtlasIdeVcsCore.ForFolder(FFolder, TAtlasIdeVcsCore.AtLeast(TAtlasIdeBranching.cTimeoutMs));
+  if (mVcs = nil) or not Supports(mVcs, IAtlasVcsBranching, mBranching) then
+  begin
+    FRun.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+    FRun.Failed := 0;
+    Exit;
+  end;
+  FRun.Outcome := mBranching.BranchExists(FRequest.Name, SearchOptions, FExists);
+  if (FRun.Outcome <> TAtlasVcsOutcome.Ok) or FExists then
+  begin
+    Exit;
+  end;
+  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
+  FTaken := (FRequest.WorktreeFolder <> '') and DirectoryExists(FRequest.WorktreeFolder);
+  if not FTaken then
+  begin
+    FRun := TAtlasVcsBranchPlan.Execute(mBranching, FRequest, FSteps, TAtlasIdeBranching.Progress(FRequest.Kind));
   end;
 end;
 
@@ -671,18 +656,37 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeBranching.OpenProject(const AFile: string);
+class function TAtlasIdeBranching.FailureText(AKind: TAtlasVcsKind; const ASteps: TArray<TAtlasVcsBranchStep>;
+  const ARun: TAtlasVcsBranchRun): string;
 var
-  mActions: IOTAActionServices;
+  mDone: TArray<TAtlasVcsBranchStep>;
+  mStep: TAtlasVcsBranchStep;
+  mList: string;
 begin
-  if FileExists(AFile) and Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+  if (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) then
   begin
-    TAtlasGuard.RunIde(
-      procedure
-      begin
-        mActions.OpenProject(AFile, True);
-      end);
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchStepFailed, [ARun.Failed + 1,
+      TAtlasVcsBranchPlan.StepText(AKind, ASteps[ARun.Failed]), AtlasVcsOutcomeName(ARun.Outcome)]);
+  end
+  else
+  begin
+    Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchFailed, [AtlasVcsOutcomeName(ARun.Outcome)]);
   end;
+  mDone := TAtlasVcsBranchPlan.ServerStepsDone(ASteps, ARun.Done);
+  if Length(mDone) = 0 then
+  begin
+    Exit;
+  end;
+  mList := '';
+  for mStep in mDone do
+  begin
+    if mList <> '' then
+    begin
+      mList := mList + '; ';
+    end;
+    mList := mList + TAtlasVcsBranchPlan.StepText(AKind, mStep);
+  end;
+  Result := Result + ' ' + TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchServerDone, [mList]);
 end;
 
 end.

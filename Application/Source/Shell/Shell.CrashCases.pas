@@ -294,19 +294,28 @@ begin
   inherited;
 end;
 
-class function TShellCrashCases.DefaultRoot: string;
+procedure TShellCrashCases.CheckSkip(const AMethod, AUri: string);
+var
+  mUri, mText: string;
+  mEntry: TCrashSkipEntry;
+  mChanged: Boolean;
 begin
-  // Wie die Index-Caches (TIndexCacheDirectory.DefaultRoot): Windows %LOCALAPPDATA%\Atlas.
-  Result := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'crash');
-end;
-
-class function TShellCrashCases.SkipText(const AEntry: TCrashSkipEntry): string;
-begin
-  Result := cTexts[TCrashCaseText.SkipText].Fmt([cTexts[TCrashCaseText.Skipped].Text, AEntry.Method,
-    AEntry.Crashes, AEntry.ExceptionClass]);
-  if AEntry.CaseFolder <> '' then
+  mUri := AUri;
+  // Erst jetzt die Prüfsumme: nur für Anfragen, die schon einmal an dieser Datei abgestürzt sind.
+  if not CurrentText(FDocuments, mUri, mText) then
   begin
-    Result := Result + cTexts[TCrashCaseText.SkipCase].Fmt([AEntry.CaseFolder]);
+    mText := '';
+  end;
+  if FSkips.Skip(AMethod, mUri, TCrashSkips.Checksum(mText), mEntry, mChanged) then
+  begin
+    FLogger.Warning(Format('Sicherheitsnetz: %s an %s übersprungen nach Absturz; Fall %s', [AMethod,
+      TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mUri))), TLogMarks.Path(mEntry.CaseFolder)]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, SkipText(mEntry));
+  end;
+  if mChanged then
+  begin
+    SaveSkips;
+    SendSkip(mEntry, False);
   end;
 end;
 
@@ -376,6 +385,21 @@ begin
   FLogger.Warning(Format('Absturzfall gesichert: %s; %s', [TLogMarks.Text(ACase.Summary), TLogMarks.Path(mFolder)]));
 end;
 
+procedure TShellCrashCases.SaveSkips;
+begin
+  try
+    if (FSkips.Count = 0) and not TFile.Exists(SkipsFileOf(FRoot)) then
+    begin
+      Exit;
+    end;
+    TDirectory.CreateDirectory(FRoot);
+    TFile.WriteAllText(SkipsFileOf(FRoot), FSkips.ToJson, TEncoding.UTF8);
+  except
+    on E: Exception do
+      FLogger.Warning('Überspringen: Merker nicht gespeichert: ' + E.ClassName);
+  end;
+end;
+
 procedure TShellCrashCases.SendCase(const ACase: TCrashCase; const AFolder: string; ASkipping: Boolean);
 var
   mParams: TJSONObject;
@@ -439,21 +463,6 @@ begin
   except
     on E: Exception do
       FLogger.Warning('Überspringen: Meldung an den Client fehlgeschlagen: ' + E.ClassName);
-  end;
-end;
-
-procedure TShellCrashCases.SaveSkips;
-begin
-  try
-    if (FSkips.Count = 0) and not TFile.Exists(SkipsFileOf(FRoot)) then
-    begin
-      Exit;
-    end;
-    TDirectory.CreateDirectory(FRoot);
-    TFile.WriteAllText(SkipsFileOf(FRoot), FSkips.ToJson, TEncoding.UTF8);
-  except
-    on E: Exception do
-      FLogger.Warning('Überspringen: Merker nicht gespeichert: ' + E.ClassName);
   end;
 end;
 
@@ -551,29 +560,6 @@ begin
   end;
 end;
 
-// Rekursion ohne Ende mit Platz auf dem Stapel: echter Stapelüberlauf für den Testschalter.
-function Deeper(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- gewollt
-var
-  mPad: array[0..255] of Byte;
-begin
-  FillChar(mPad, SizeOf(mPad), Byte(ADepth));
-  Result := Deeper(ADepth + 1) + mPad[ADepth mod Length(mPad)];
-end;
-
-procedure TShellCrashTest.Check(const ALogger: ILogger; const AMethod: string);
-begin
-  if (Method = '') or not SameText(AMethod, Method) then
-  begin
-    Exit;
-  end;
-  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.cTestVariable, AMethod]));
-  if Overflow then
-  begin
-    Deeper(0);
-  end;
-  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.cTestVariable]));
-end;
-
 procedure TShellCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
 var
   mUri: string;
@@ -588,29 +574,29 @@ begin
   FTest.Check(FLogger, AMethod);
 end;
 
-procedure TShellCrashCases.CheckSkip(const AMethod, AUri: string);
+// Rekursion ohne Ende mit Platz auf dem Stapel: echter Stapelüberlauf für den Testschalter.
+function Deeper(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- gewollt
 var
-  mUri, mText: string;
-  mEntry: TCrashSkipEntry;
-  mChanged: Boolean;
+  mPad: array[0..255] of Byte;
 begin
-  mUri := AUri;
-  // Erst jetzt die Prüfsumme: nur für Anfragen, die schon einmal an dieser Datei abgestürzt sind.
-  if not CurrentText(FDocuments, mUri, mText) then
+  FillChar(mPad, SizeOf(mPad), Byte(ADepth));
+  Result := Deeper(ADepth + 1) + mPad[ADepth mod Length(mPad)];
+end;
+
+{ TShellCrashTest }
+
+procedure TShellCrashTest.Check(const ALogger: ILogger; const AMethod: string);
+begin
+  if (Method = '') or not SameText(AMethod, Method) then
   begin
-    mText := '';
+    Exit;
   end;
-  if FSkips.Skip(AMethod, mUri, TCrashSkips.Checksum(mText), mEntry, mChanged) then
+  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.cTestVariable, AMethod]));
+  if Overflow then
   begin
-    FLogger.Warning(Format('Sicherheitsnetz: %s an %s übersprungen nach Absturz; Fall %s', [AMethod,
-      TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mUri))), TLogMarks.Path(mEntry.CaseFolder)]));
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, SkipText(mEntry));
+    Deeper(0);
   end;
-  if mChanged then
-  begin
-    SaveSkips;
-    SendSkip(mEntry, False);
-  end;
+  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.cTestVariable]));
 end;
 
 procedure TShellCrashCases.DocumentChanged(const AUri, AText: string);
@@ -670,6 +656,22 @@ end;
 function TShellCrashCases.Skipped: TArray<TCrashSkipEntry>;
 begin
   Result := FSkips.Skipped;
+end;
+
+class function TShellCrashCases.DefaultRoot: string;
+begin
+  // Wie die Index-Caches (TIndexCacheDirectory.DefaultRoot): Windows %LOCALAPPDATA%\Atlas.
+  Result := TPath.Combine(TPath.Combine(TPath.GetCachePath, 'Atlas'), 'crash');
+end;
+
+class function TShellCrashCases.SkipText(const AEntry: TCrashSkipEntry): string;
+begin
+  Result := cTexts[TCrashCaseText.SkipText].Fmt([cTexts[TCrashCaseText.Skipped].Text, AEntry.Method,
+    AEntry.Crashes, AEntry.ExceptionClass]);
+  if AEntry.CaseFolder <> '' then
+  begin
+    Result := Result + cTexts[TCrashCaseText.SkipCase].Fmt([AEntry.CaseFolder]);
+  end;
 end;
 
 initialization

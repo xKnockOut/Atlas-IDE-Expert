@@ -43,6 +43,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasVcsPull }
+
 class function TAtlasVcsPull.ChangesBlockPull(const AChanges: TArray<TAtlasVcsChange>): Boolean;
 var
   mChange: TAtlasVcsChange;

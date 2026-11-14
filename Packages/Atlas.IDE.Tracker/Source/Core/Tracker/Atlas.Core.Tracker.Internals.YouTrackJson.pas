@@ -35,6 +35,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Text.Json;
 
+{ TAtlasYouTrackJson }
+
 class function TAtlasYouTrackJson.Shorten(const AText: string; AMax: Integer): string;
 begin
   Result := Trim(StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));

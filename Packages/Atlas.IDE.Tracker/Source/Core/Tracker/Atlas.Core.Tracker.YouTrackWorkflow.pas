@@ -74,6 +74,25 @@ uses
 
 { TAtlasYouTrackWorkflow }
 
+class function TAtlasYouTrackWorkflow.Find(AIssue: TJSONObject; const AField: string): TAtlasTrackerStateRules;
+var
+  mFields, mItem: TJSONValue;
+begin
+  Result := Default(TAtlasTrackerStateRules);
+  mFields := AIssue.Values['customFields'];
+  if (AField = '') or not (mFields is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(mFields) do
+  begin
+    if (mItem is TJSONObject) and SameText(Trim(TJsonRead.Text(TJSONObject(mItem), 'name')), AField) then
+    begin
+      Exit(Parse(TJSONObject(mItem)));
+    end;
+  end;
+end;
+
 class function TAtlasYouTrackWorkflow.Parse(AField: TJSONObject): TAtlasTrackerStateRules;
 var
   mEvents, mItem, mValue: TJSONValue;
@@ -103,25 +122,6 @@ begin
         Result.Transitions := Result.Transitions +
           [TAtlasTrackerTransition.Create(mId, TJsonRead.Text(TJSONObject(mItem), 'presentation'))];
       end;
-    end;
-  end;
-end;
-
-class function TAtlasYouTrackWorkflow.Find(AIssue: TJSONObject; const AField: string): TAtlasTrackerStateRules;
-var
-  mFields, mItem: TJSONValue;
-begin
-  Result := Default(TAtlasTrackerStateRules);
-  mFields := AIssue.Values['customFields'];
-  if (AField = '') or not (mFields is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(mFields) do
-  begin
-    if (mItem is TJSONObject) and SameText(Trim(TJsonRead.Text(TJSONObject(mItem), 'name')), AField) then
-    begin
-      Exit(Parse(TJSONObject(mItem)));
     end;
   end;
 end;

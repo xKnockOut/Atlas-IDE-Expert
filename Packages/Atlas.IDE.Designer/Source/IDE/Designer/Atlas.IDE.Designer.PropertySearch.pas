@@ -217,6 +217,8 @@ type
     function Chain(const ASource: TFormSource): TArray<TArray<TAtlasFormObject>>;
   end;
 
+{ TAncestorIndex }
+
 constructor TAncestorIndex.Create;
 begin
   inherited Create;
@@ -383,6 +385,49 @@ end;
 
 { TAtlasIdePropertySearch }
 
+class procedure TAtlasIdePropertySearch.Say(const AText: string);
+begin
+  TAtlasGuard.Log('Eigenschaftssuche: ' + AText);
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(AText);
+  end;
+end;
+
+class procedure TAtlasIdePropertySearch.OpenHit(const AItemId: string);
+var
+  mIndex: Integer;
+  mFound: TFoundHit;
+  mActions: IOTAActionServices;
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  mIndex := StrToIntDef(AItemId, -1);
+  if (mIndex < 0) or (mIndex > High(GHits)) then
+  begin
+    Exit;
+  end;
+  mFound := GHits[mIndex];
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+      begin
+        mActions.OpenFile(mFound.UnitFile);
+      end;
+      mEditor := TAtlasDesignerAccess.FormEditorOf(mFound.UnitFile);
+      if mEditor = nil then
+      begin
+        Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowNoForm));
+        Exit;
+      end;
+      // Register „Design“; erst danach gibt es das Formular.
+      mEditor.Show;
+      mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
+      TAtlasIdeShowComponent.Show(mEditor, TAtlasIdeShowComponent.FindComponent(mRoot, mFound.Hit.Component));
+    end);
+end;
+
 class procedure TAtlasIdePropertySearch.Install(const AOnMessage: TProc<string>);
 begin
   FOnMessage := AOnMessage;
@@ -393,15 +438,6 @@ begin
   TAtlasIdeResultsWindow.ReleaseItems(cOwner);
   GHits := nil;
   FOnMessage := nil;
-end;
-
-class procedure TAtlasIdePropertySearch.Say(const AText: string);
-begin
-  TAtlasGuard.Log('Eigenschaftssuche: ' + AText);
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
 end;
 
 class function TAtlasIdePropertySearch.Available(const ASettings: TAtlasPluginSettings): Boolean;
@@ -441,40 +477,6 @@ begin
     Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.PropertySearchSkipped, [mSkipped]));
   end;
   TAtlasIdeResultsWindow.ShowItems(ResultList(GOptions.Query));
-end;
-
-class procedure TAtlasIdePropertySearch.OpenHit(const AItemId: string);
-var
-  mIndex: Integer;
-  mFound: TFoundHit;
-  mActions: IOTAActionServices;
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  mIndex := StrToIntDef(AItemId, -1);
-  if (mIndex < 0) or (mIndex > High(GHits)) then
-  begin
-    Exit;
-  end;
-  mFound := GHits[mIndex];
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
-      begin
-        mActions.OpenFile(mFound.UnitFile);
-      end;
-      mEditor := TAtlasDesignerAccess.FormEditorOf(mFound.UnitFile);
-      if mEditor = nil then
-      begin
-        Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerShowNoForm));
-        Exit;
-      end;
-      // Register „Design“; erst danach gibt es das Formular.
-      mEditor.Show;
-      mRoot := TAtlasIdeDesignerView.RootOf(mEditor);
-      TAtlasIdeShowComponent.Show(mEditor, TAtlasIdeShowComponent.FindComponent(mRoot, mFound.Hit.Component));
-    end);
 end;
 
 end.

@@ -42,6 +42,8 @@ uses
   Shell.CrashCases,
   Shell.Composition.ServerCommands;
 
+{ TShellCapabilities }
+
 class function TShellCapabilities.Build: TJSONObject;
 var
   mCommands: TJSONArray;

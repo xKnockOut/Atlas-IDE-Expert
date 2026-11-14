@@ -504,6 +504,8 @@ begin
   AState.CrashedMarker := mLatest.ToJson;
 end;
 
+{ TAtlasSafeMode }
+
 class function TAtlasSafeMode.Decide(var AState: TAtlasSafeState; const ACrashed: TArray<TAtlasSessionMarker>;
   ANow: TDateTime; const AOptions: TAtlasSafeOptions; AKeyDown: TAtlasStartupKey;
   AForced: Boolean): TAtlasSafeDecision;
@@ -542,14 +544,6 @@ begin
   AState.CrashCount := 0;
 end;
 
-class function TAtlasSafeMode.IsSwitchOn(const AEnvironment: string): Boolean;
-var
-  mValue: string;
-begin
-  mValue := Trim(AEnvironment);
-  Result := SameText(mValue, '1') or SameText(mValue, 'true') or SameText(mValue, 'yes');
-end;
-
 class function TAtlasSafeMode.IsForced(const AEnvironment: string; const AArgs: TArray<string>): Boolean;
 var
   mArg: string;
@@ -566,6 +560,14 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TAtlasSafeMode.IsSwitchOn(const AEnvironment: string): Boolean;
+var
+  mValue: string;
+begin
+  mValue := Trim(AEnvironment);
+  Result := SameText(mValue, '1') or SameText(mValue, 'true') or SameText(mValue, 'yes');
 end;
 
 class function TAtlasSafeMode.KeyOf(const AText: string): TAtlasStartupKey;
@@ -669,32 +671,6 @@ begin
   end;
 end;
 
-class function TAtlasSafeMode.LogLinesBetween(const ALines: TArray<string>; AFrom, ATo: TDateTime;
-  AMax: Integer): TArray<string>;
-var
-  mLine: string;
-  mStamp: TDateTime;
-  mInside: Boolean;
-begin
-  Result := nil;
-  mInside := False;
-  for mLine in ALines do
-  begin
-    if LineStamp(mLine, mStamp) then
-    begin
-      mInside := (mStamp >= AFrom) and ((ATo = 0) or (mStamp < ATo));
-    end;
-    if mInside then
-    begin
-      Result := Result + [mLine];
-    end;
-  end;
-  if (AMax >= 0) and (Length(Result) > AMax) then
-  begin
-    Result := Copy(Result, Length(Result) - AMax, AMax);
-  end;
-end;
-
 class function TAtlasSafeMode.Details(const AMarker: TAtlasSessionMarker): TArray<string>;
 var
   mPair: TPair<string, Integer>;
@@ -726,6 +702,32 @@ begin
     begin
       Result := Result + [Format(UiText(TSafeModeText.Errors), [mPair.Key, mPair.Value])];
     end;
+  end;
+end;
+
+class function TAtlasSafeMode.LogLinesBetween(const ALines: TArray<string>; AFrom, ATo: TDateTime;
+  AMax: Integer): TArray<string>;
+var
+  mLine: string;
+  mStamp: TDateTime;
+  mInside: Boolean;
+begin
+  Result := nil;
+  mInside := False;
+  for mLine in ALines do
+  begin
+    if LineStamp(mLine, mStamp) then
+    begin
+      mInside := (mStamp >= AFrom) and ((ATo = 0) or (mStamp < ATo));
+    end;
+    if mInside then
+    begin
+      Result := Result + [mLine];
+    end;
+  end;
+  if (AMax >= 0) and (Length(Result) > AMax) then
+  begin
+    Result := Copy(Result, Length(Result) - AMax, AMax);
   end;
 end;
 
@@ -780,6 +782,8 @@ begin
     end;
   end;
 end;
+
+{ TAtlasSessionFiles }
 
 class function TAtlasSessionFiles.MarkerFile(const AFolder: string; AProcessId: Cardinal): string;
 begin

@@ -112,6 +112,8 @@ begin
   end;
 end;
 
+{ TShellAffectedTestsRequest }
+
 class procedure TShellAffectedTestsRequest.Attach(ADispatcher: TJsonRpcDispatcher;
   const AServices: TShellAffectedTestsServices);
 var

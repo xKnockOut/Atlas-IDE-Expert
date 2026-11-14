@@ -50,6 +50,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasCodeInsightKeys }
+
 class function TAtlasCodeInsightKeys.VersionText(const ABaseKey: string): string;
 var
   mKey: string;

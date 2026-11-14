@@ -734,6 +734,98 @@ begin
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
+procedure TAtlasNotificationsWindow.Paint;
+begin
+  TNotificationsPainter.Create(Self).Paint;
+end;
+
+procedure TAtlasNotificationsWindow.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_ESCAPE then
+  begin
+    Key := 0;
+    Dismiss;
+    Exit;
+  end;
+  if ListKey(Key) then
+  begin
+    Key := 0;
+    Exit;
+  end;
+  inherited;
+end;
+
+procedure TAtlasNotificationsWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mRow, mChip: Integer;
+begin
+  inherited;
+  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
+  if mChip >= 0 then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  if (mRow <> FRows.HotRow) or (mChip <> FRows.HotChip) then
+  begin
+    FRows.HotRow := mRow;
+    FRows.HotChip := mChip;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasNotificationsWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mRow, mChip: Integer;
+  mScreen: TPoint;
+begin
+  inherited;
+  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
+  if mRow < 0 then
+  begin
+    Exit;
+  end;
+  if Button = mbRight then
+  begin
+    FRows.Selected := mRow;
+    Invalidate;
+    BuildMenu(mRow);
+    mScreen := ClientToScreen(Point(X, Y));
+    FState.MenuOpen := True;
+    try
+      FParts.Menu.Popup(mScreen.X, mScreen.Y);
+    finally
+      FState.MenuOpen := False;
+    end;
+    Exit;
+  end;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  if mChip >= 0 then
+  begin
+    ClickAction(mRow, mChip);
+  end
+  else
+  begin
+    ClickRow(mRow);
+  end;
+end;
+
+function TAtlasNotificationsWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  mGeometry: TNotificationsGeometry;
+begin
+  mGeometry := TNotificationsGeometry.Create(Self);
+  FRows.ScrollTo(FRows.Scroll - (WheelDelta div WHEEL_DELTA) * 3 * mGeometry.Line, mGeometry.VisibleHeight);
+  Invalidate;
+  Result := True;
+end;
+
 procedure TAtlasNotificationsWindow.Layout;
 var
   mGeometry: TNotificationsGeometry;
@@ -825,79 +917,38 @@ begin
   end;
 end;
 
-procedure TAtlasNotificationsWindow.Reload;
-var
-  mSelectedId: Integer;
+function TAtlasNotificationsWindow.ListKey(AKey: Word): Boolean;
 begin
-  mSelectedId := FRows.SelectedId;
-  FRows.Items := nil;
-  if FCenter <> nil then
-  begin
-    FRows.Items := FCenter.Items(FFilter.Source);
-  end;
-  FRows.SelectId(mSelectedId);
-  FRows.HotRow := -1;
-  FRows.HotChip := -1;
-  FillFilter;
-  Layout;
-  if Visible then
-  begin
-    SetBounds(FState.Anchor.X, FState.Anchor.Y - Height, Width, Height);
-  end;
-  Invalidate;
-end;
-
-procedure TAtlasNotificationsWindow.SetFilter(const ASource: string);
-begin
-  FFilter.Source := Trim(ASource);
-  FRows.Scroll := 0;
-  Reload;
-end;
-
-procedure TAtlasNotificationsWindow.ShowAbove(const AAnchor: TPoint);
-var
-  mArea: TRect;
-  mLeft, mTop: Integer;
-begin
-  Layout;
-  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
-  mLeft := EnsureRange(AAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width));
-  mTop := Max(mArea.Top, AAnchor.Y - Height);
-  FState.Anchor := Point(mLeft, mTop + Height);
-  SetBounds(mLeft, mTop, Width, Height);
-  Show;
-  // Die Liste hat die Tastatur (Pfeile, Eingabe); Tab führt zu Filter und Knöpfen.
-  ActiveControl := nil;
-  SetFocus;
-end;
-
-procedure TAtlasNotificationsWindow.Dismiss;
-begin
-  if FState.Closing then
+  // Nur ohne Fokus auf Filter oder Knöpfen; dort gelten deren Tasten.
+  Result := (ActiveControl = nil) and (Length(FRows.Items) > 0);
+  if not Result then
   begin
     Exit;
   end;
-  FState.Closing := True;
-  Close;
-  Release;
-end;
-
-procedure TAtlasNotificationsWindow.CloseAndRun(const AProc: TProc);
-begin
-  if FState.Closing then
-  begin
-    Exit;
-  end;
-  Dismiss;
-  // Erst nach dem Schließen ausführen: Die Aktion springt in den Editor oder öffnet ein Fenster.
-  if Assigned(AProc) then
-  begin
-    TAtlasMainThread.ForceQueue(TAtlasFeature.Notifications,
-      procedure
+  case AKey of
+    VK_UP:
+      FRows.Selected := Max(0, FRows.Selected - 1);
+    VK_DOWN:
+      FRows.Selected := Min(High(FRows.Items), FRows.Selected + 1);
+    VK_RETURN, VK_DELETE:
       begin
-        AProc();
-      end);
+        Result := FRows.Valid(FRows.Selected);
+        // Eingabe führt die erste Aktion aus (ohne Aktion: gelesen), Entf markiert als gelesen.
+        if Result and (AKey = VK_RETURN) and (Length(FRows.Items[FRows.Selected].Actions) > 0) then
+        begin
+          ClickAction(FRows.Selected, 0);
+        end
+        else if Result then
+        begin
+          ClickRow(FRows.Selected);
+        end;
+        Exit;
+      end;
+  else
+    Exit(False);
   end;
+  FRows.EnsureVisible(FRows.Selected, TNotificationsGeometry.Create(Self).VisibleHeight);
+  Invalidate;
 end;
 
 procedure TAtlasNotificationsWindow.FormDeactivate(Sender: TObject);
@@ -938,6 +989,117 @@ begin
   FCenter.Clear;
   FRows.Scroll := 0;
   Reload;
+end;
+
+procedure TAtlasNotificationsWindow.MenuClick(Sender: TObject);
+var
+  mTag: Integer;
+  mSource: string;
+  mMode: TAtlasNotificationMode;
+  mHandler: TAtlasNotificationModeEvent;
+begin
+  if not FRows.Valid(FState.MenuRow) or (FCenter = nil) then
+  begin
+    Exit;
+  end;
+  mTag := (Sender as TMenuItem).Tag;
+  if mTag = cMarkReadTag then
+  begin
+    ClickRow(FState.MenuRow);
+    Exit;
+  end;
+  if (mTag < cModeTag) or (mTag > cModeTag + Ord(High(TAtlasNotificationMode))) then
+  begin
+    Exit;
+  end;
+  mSource := FRows.Items[FState.MenuRow].Source;
+  mMode := TAtlasNotificationMode(mTag - cModeTag);
+  FCenter.SetMode(mSource, mMode);
+  mHandler := FOnModeChange;
+  if Assigned(mHandler) then
+  begin
+    mHandler(mSource, mMode);
+  end;
+  Reload;
+end;
+
+procedure TAtlasNotificationsWindow.CloseAndRun(const AProc: TProc);
+begin
+  if FState.Closing then
+  begin
+    Exit;
+  end;
+  Dismiss;
+  // Erst nach dem Schließen ausführen: Die Aktion springt in den Editor oder öffnet ein Fenster.
+  if Assigned(AProc) then
+  begin
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Notifications,
+      procedure
+      begin
+        AProc();
+      end);
+  end;
+end;
+
+procedure TAtlasNotificationsWindow.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  if (FRows.HotRow >= 0) or (FRows.HotChip >= 0) then
+  begin
+    FRows.HotRow := -1;
+    FRows.HotChip := -1;
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasNotificationsWindow.Reload;
+var
+  mSelectedId: Integer;
+begin
+  mSelectedId := FRows.SelectedId;
+  FRows.Items := nil;
+  if FCenter <> nil then
+  begin
+    FRows.Items := FCenter.Items(FFilter.Source);
+  end;
+  FRows.SelectId(mSelectedId);
+  FRows.HotRow := -1;
+  FRows.HotChip := -1;
+  FillFilter;
+  Layout;
+  if Visible then
+  begin
+    SetBounds(FState.Anchor.X, FState.Anchor.Y - Height, Width, Height);
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasNotificationsWindow.ShowAbove(const AAnchor: TPoint);
+var
+  mArea: TRect;
+  mLeft, mTop: Integer;
+begin
+  Layout;
+  mArea := Screen.MonitorFromPoint(AAnchor).WorkareaRect;
+  mLeft := EnsureRange(AAnchor.X, mArea.Left, Max(mArea.Left, mArea.Right - Width));
+  mTop := Max(mArea.Top, AAnchor.Y - Height);
+  FState.Anchor := Point(mLeft, mTop + Height);
+  SetBounds(mLeft, mTop, Width, Height);
+  Show;
+  // Die Liste hat die Tastatur (Pfeile, Eingabe); Tab führt zu Filter und Knöpfen.
+  ActiveControl := nil;
+  SetFocus;
+end;
+
+procedure TAtlasNotificationsWindow.Dismiss;
+begin
+  if FState.Closing then
+  begin
+    Exit;
+  end;
+  FState.Closing := True;
+  Close;
+  Release;
 end;
 
 procedure TAtlasNotificationsWindow.ClickRow(ARow: Integer);
@@ -1021,173 +1183,11 @@ begin
   end;
 end;
 
-procedure TAtlasNotificationsWindow.MenuClick(Sender: TObject);
-var
-  mTag: Integer;
-  mSource: string;
-  mMode: TAtlasNotificationMode;
-  mHandler: TAtlasNotificationModeEvent;
+procedure TAtlasNotificationsWindow.SetFilter(const ASource: string);
 begin
-  if not FRows.Valid(FState.MenuRow) or (FCenter = nil) then
-  begin
-    Exit;
-  end;
-  mTag := (Sender as TMenuItem).Tag;
-  if mTag = cMarkReadTag then
-  begin
-    ClickRow(FState.MenuRow);
-    Exit;
-  end;
-  if (mTag < cModeTag) or (mTag > cModeTag + Ord(High(TAtlasNotificationMode))) then
-  begin
-    Exit;
-  end;
-  mSource := FRows.Items[FState.MenuRow].Source;
-  mMode := TAtlasNotificationMode(mTag - cModeTag);
-  FCenter.SetMode(mSource, mMode);
-  mHandler := FOnModeChange;
-  if Assigned(mHandler) then
-  begin
-    mHandler(mSource, mMode);
-  end;
+  FFilter.Source := Trim(ASource);
+  FRows.Scroll := 0;
   Reload;
-end;
-
-function TAtlasNotificationsWindow.ListKey(AKey: Word): Boolean;
-begin
-  // Nur ohne Fokus auf Filter oder Knöpfen; dort gelten deren Tasten.
-  Result := (ActiveControl = nil) and (Length(FRows.Items) > 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  case AKey of
-    VK_UP:
-      FRows.Selected := Max(0, FRows.Selected - 1);
-    VK_DOWN:
-      FRows.Selected := Min(High(FRows.Items), FRows.Selected + 1);
-    VK_RETURN, VK_DELETE:
-      begin
-        Result := FRows.Valid(FRows.Selected);
-        // Eingabe führt die erste Aktion aus (ohne Aktion: gelesen), Entf markiert als gelesen.
-        if Result and (AKey = VK_RETURN) and (Length(FRows.Items[FRows.Selected].Actions) > 0) then
-        begin
-          ClickAction(FRows.Selected, 0);
-        end
-        else if Result then
-        begin
-          ClickRow(FRows.Selected);
-        end;
-        Exit;
-      end;
-  else
-    Exit(False);
-  end;
-  FRows.EnsureVisible(FRows.Selected, TNotificationsGeometry.Create(Self).VisibleHeight);
-  Invalidate;
-end;
-
-procedure TAtlasNotificationsWindow.KeyDown(var Key: Word; Shift: TShiftState);
-begin
-  if Key = VK_ESCAPE then
-  begin
-    Key := 0;
-    Dismiss;
-    Exit;
-  end;
-  if ListKey(Key) then
-  begin
-    Key := 0;
-    Exit;
-  end;
-  inherited;
-end;
-
-procedure TAtlasNotificationsWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mRow, mChip: Integer;
-begin
-  inherited;
-  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
-  if mChip >= 0 then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  if (mRow <> FRows.HotRow) or (mChip <> FRows.HotChip) then
-  begin
-    FRows.HotRow := mRow;
-    FRows.HotChip := mChip;
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasNotificationsWindow.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  if (FRows.HotRow >= 0) or (FRows.HotChip >= 0) then
-  begin
-    FRows.HotRow := -1;
-    FRows.HotChip := -1;
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasNotificationsWindow.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mRow, mChip: Integer;
-  mScreen: TPoint;
-begin
-  inherited;
-  mRow := TNotificationsGeometry.Create(Self).HitTest(Point(X, Y), mChip);
-  if mRow < 0 then
-  begin
-    Exit;
-  end;
-  if Button = mbRight then
-  begin
-    FRows.Selected := mRow;
-    Invalidate;
-    BuildMenu(mRow);
-    mScreen := ClientToScreen(Point(X, Y));
-    FState.MenuOpen := True;
-    try
-      FParts.Menu.Popup(mScreen.X, mScreen.Y);
-    finally
-      FState.MenuOpen := False;
-    end;
-    Exit;
-  end;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  if mChip >= 0 then
-  begin
-    ClickAction(mRow, mChip);
-  end
-  else
-  begin
-    ClickRow(mRow);
-  end;
-end;
-
-function TAtlasNotificationsWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-var
-  mGeometry: TNotificationsGeometry;
-begin
-  mGeometry := TNotificationsGeometry.Create(Self);
-  FRows.ScrollTo(FRows.Scroll - (WheelDelta div WHEEL_DELTA) * 3 * mGeometry.Line, mGeometry.VisibleHeight);
-  Invalidate;
-  Result := True;
-end;
-
-procedure TAtlasNotificationsWindow.Paint;
-begin
-  TNotificationsPainter.Create(Self).Paint;
 end;
 
 end.

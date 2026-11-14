@@ -155,6 +155,19 @@ procedure TAtlasIdeUnitRename.TProjectNotifier.BeforeSave;
 begin
 end;
 
+procedure TAtlasIdeUnitRename.TProjectNotifier.Destroyed;
+var
+  mOwner: TAtlasIdeUnitRename;
+begin
+  mOwner := FOwner;
+  if mOwner <> nil then
+  begin
+    mOwner.Forget(Self);
+  end;
+  // Zuletzt: Mit dem Abmelden kann die IDE die letzte Referenz freigeben.
+  Detach;
+end;
+
 procedure TAtlasIdeUnitRename.TProjectNotifier.Modified;
 begin
 end;
@@ -197,19 +210,6 @@ begin
     begin
       mOwner.Renamed(mProject, mOldName, mNewName);
     end);
-end;
-
-procedure TAtlasIdeUnitRename.TProjectNotifier.Destroyed;
-var
-  mOwner: TAtlasIdeUnitRename;
-begin
-  mOwner := FOwner;
-  if mOwner <> nil then
-  begin
-    mOwner.Forget(Self);
-  end;
-  // Zuletzt: Mit dem Abmelden kann die IDE die letzte Referenz freigeben.
-  Detach;
 end;
 
 procedure TAtlasIdeUnitRename.TProjectNotifier.Detach;
@@ -332,6 +332,23 @@ begin
   inherited;
 end;
 
+procedure TAtlasIdeUnitRename.Tick(Sender: TObject);
+var
+  mEvent: TAtlasUnitRenameEvent;
+begin
+  FTimer.Enabled := False;
+  try
+    for mEvent in FQueue.Take do
+    begin
+      Offer(mEvent);
+    end;
+  except
+    // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Files, E);
+  end;
+end;
+
 procedure TAtlasIdeUnitRename.Sweep;
 var
   mModules: IOTAModuleServices;
@@ -393,11 +410,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeUnitRename.Forget(ANotifier: TProjectNotifier);
-begin
-  FProjects.Remove(ANotifier);
-end;
-
 procedure TAtlasIdeUnitRename.Renamed(const AProject: IOTAProject; const AOldFileName, ANewFileName: string);
 begin
   if not FQueue.Add(TAtlasUnitRenameEvent.Create(AOldFileName, ANewFileName, AProject.FileName)) then
@@ -410,20 +422,86 @@ begin
   FTimer.Enabled := True;
 end;
 
-procedure TAtlasIdeUnitRename.Tick(Sender: TObject);
-var
-  mEvent: TAtlasUnitRenameEvent;
+procedure TAtlasIdeUnitRename.Forget(ANotifier: TProjectNotifier);
 begin
-  FTimer.Enabled := False;
+  FProjects.Remove(ANotifier);
+end;
+
+function TAtlasIdeUnitRename.FetchAnswer(ASession: TLspSession; const AEvent: TAtlasUnitRenameEvent;
+  const AFiles: TArray<string>; out AAnswer: TAtlasUnitRenameAnswer): Boolean;
+var
+  mReply: TJSONValue;
+begin
+  Result := False;
+  AAnswer := Default(TAtlasUnitRenameAnswer);
+  TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    for mEvent in FQueue.Take do
-    begin
-      Offer(mEvent);
+    mReply := ASession.RunCommand(TAtlasUnitRename.cCommand,
+      TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, AFiles), cTimeoutMs);
+    try
+      AAnswer := TAtlasUnitRename.ReadAnswer(mReply);
+    finally
+      mReply.Free;
     end;
+    Result := True;
   except
-    // Keine Exception an die IDE (#493).
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Files, E);
+    on E: ELspClientError do
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameFailed, [E.Message]));
+    end;
+  end;
+end;
+
+procedure TAtlasIdeUnitRename.Run(const AEvent: TAtlasUnitRenameEvent; AScope: TAtlasUnitRenameScope);
+var
+  mSession: TLspSession;
+  mAnswer: TAtlasUnitRenameAnswer;
+  mReply: TAtlasServerEditReply;
+  mHint: string;
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  if FNotice <> nil then
+  begin
+    FNotice.Dismiss;
+  end;
+  mSession := CurrentSession;
+  if mSession = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  // Neu holen: Seit dem Hinweis kann sich der Text geändert haben.
+  mAnswer := Default(TAtlasUnitRenameAnswer);
+  if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.cCommand,
+    TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), cTimeoutMs,
+    TAtlasTextId.UnitRenameFailed),
+    procedure(const AReply: TJSONObject)
+    begin
+      mAnswer := TAtlasUnitRename.ReadAnswer(AReply);
+    end, Reporter(), mReply) or not mAnswer.Enabled then
+  begin
+    Exit;
+  end;
+  if mReply.Edit.IsEmpty then
+  begin
+    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNothing, [mAnswer.OldName]));
+    Exit;
+  end;
+  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenamePreviewHint, [mAnswer.OldName, mAnswer.NewName,
+    mReply.Edit.EditCount, Length(mReply.Edit.Files)]);
+  // Ablehnen ändert nichts.
+  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), mHint,
+    TAtlasEditorStrings.Text(TAtlasEditorTextId.UnitRenameApply),
+    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+    TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), Reporter(), mOutcome) then
+  begin
+    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameDone, [mAnswer.OldName, mAnswer.NewName, mOutcome.Edits,
+      mOutcome.Files]));
+    if mOutcome.Written > 0 then
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
+    end;
   end;
 end;
 
@@ -435,88 +513,13 @@ begin
   end;
 end;
 
-class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;
-  AScope: TAtlasUnitRenameScope): TProc;
-var
-  mEvent: TAtlasUnitRenameEvent;
+function TAtlasIdeUnitRename.Reporter: TProc<string>;
 begin
-  // Eigene Funktion: Jede Aktion fängt ihren Bereich als Wert ein, nicht die Schleifenvariable.
-  mEvent := AEvent;
   Result :=
-    procedure
+    procedure(AText: string)
     begin
-      if FInstance <> nil then
-      begin
-        FInstance.Run(mEvent, AScope);
-      end;
+      Say(AText);
     end;
-end;
-
-class function TAtlasIdeUnitRename.FilesOf(const AProject: IOTAProject): TArray<string>;
-var
-  mMains: array[0..1] of string;
-  mMain: string;
-  mIndex: Integer;
-  mInfo: IOTAModuleInfo;
-begin
-  Result := nil;
-  if AProject = nil then
-  begin
-    Exit;
-  end;
-  mMains[0] := ChangeFileExt(AProject.FileName, '.dpr');
-  mMains[1] := ChangeFileExt(AProject.FileName, '.dpk');
-  for mMain in mMains do
-  begin
-    if FileExists(mMain) then
-    begin
-      Result := Result + [mMain];
-    end;
-  end;
-  for mIndex := 0 to AProject.GetModuleCount - 1 do
-  begin
-    mInfo := AProject.GetModule(mIndex);
-    if (mInfo <> nil) and (mInfo.FileName <> '') then
-    begin
-      Result := Result + [mInfo.FileName];
-    end;
-  end;
-  Result := TAtlasUnitRename.SourceFiles(Result);
-end;
-
-class function TAtlasIdeUnitRename.ScopeFiles(const AProjectFile: string;
-  AScope: TAtlasUnitRenameScope): TArray<string>;
-var
-  mModules: IOTAModuleServices;
-  mGroup: IOTAProjectGroup;
-  mProject: IOTAProject;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    Exit;
-  end;
-  if AScope = TAtlasUnitRenameScope.Group then
-  begin
-    mGroup := mModules.MainProjectGroup;
-    if mGroup <> nil then
-    begin
-      for mIndex := 0 to mGroup.ProjectCount - 1 do
-      begin
-        Result := Result + FilesOf(mGroup.Projects[mIndex]);
-      end;
-    end;
-    Result := TAtlasUnitRename.SourceFiles(Result);
-  end;
-  // Ohne Gruppe (oder Projekt außerhalb) zählt das Projekt.
-  if (AScope = TAtlasUnitRenameScope.Project) or (Result = nil) then
-  begin
-    if Supports(mModules.FindModule(AProjectFile), IOTAProject, mProject) then
-    begin
-      Result := TAtlasUnitRename.SourceFiles(Result + FilesOf(mProject));
-    end;
-  end;
 end;
 
 /// <summary>Beschriftung des Knopfs für AScope.</summary>
@@ -563,49 +566,6 @@ begin
   else
   begin
     Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNotice, [mShown, AAnswer.OldName]);
-  end;
-end;
-
-function TAtlasIdeUnitRename.CurrentSession: TLspSession;
-begin
-  Result := nil;
-  if Assigned(FSessionOf) then
-  begin
-    Result := FSessionOf();
-  end;
-end;
-
-function TAtlasIdeUnitRename.Reporter: TProc<string>;
-begin
-  Result :=
-    procedure(AText: string)
-    begin
-      Say(AText);
-    end;
-end;
-
-function TAtlasIdeUnitRename.FetchAnswer(ASession: TLspSession; const AEvent: TAtlasUnitRenameEvent;
-  const AFiles: TArray<string>; out AAnswer: TAtlasUnitRenameAnswer): Boolean;
-var
-  mReply: TJSONValue;
-begin
-  Result := False;
-  AAnswer := Default(TAtlasUnitRenameAnswer);
-  TAtlasIdeRename.SyncOpenBuffers(ASession);
-  try
-    mReply := ASession.RunCommand(TAtlasUnitRename.cCommand,
-      TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, AFiles), cTimeoutMs);
-    try
-      AAnswer := TAtlasUnitRename.ReadAnswer(mReply);
-    finally
-      mReply.Free;
-    end;
-    Result := True;
-  except
-    on E: ELspClientError do
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.UnitRenameFailed, [E.Message]));
-    end;
   end;
 end;
 
@@ -696,55 +656,95 @@ begin
   FNotice.ShowNotice(ATitle, AText, mCaptions, mArea);
 end;
 
-procedure TAtlasIdeUnitRename.Run(const AEvent: TAtlasUnitRenameEvent; AScope: TAtlasUnitRenameScope);
-var
-  mSession: TLspSession;
-  mAnswer: TAtlasUnitRenameAnswer;
-  mReply: TAtlasServerEditReply;
-  mHint: string;
-  mOutcome: TAtlasWorkspaceEditResult;
+function TAtlasIdeUnitRename.CurrentSession: TLspSession;
 begin
-  if FNotice <> nil then
+  Result := nil;
+  if Assigned(FSessionOf) then
   begin
-    FNotice.Dismiss;
+    Result := FSessionOf();
   end;
-  mSession := CurrentSession;
-  if mSession = nil then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  // Neu holen: Seit dem Hinweis kann sich der Text geändert haben.
-  mAnswer := Default(TAtlasUnitRenameAnswer);
-  if not TAtlasIdeServerEdit.Fetch(mSession, TAtlasServerEditCommand.Create(TAtlasUnitRename.cCommand,
-    TAtlasUnitRename.Arguments(AEvent.OldFile, AEvent.NewFile, ScopeFiles(AEvent.ProjectFile, AScope)), cTimeoutMs,
-    TAtlasTextId.UnitRenameFailed),
-    procedure(const AReply: TJSONObject)
+end;
+
+class function TAtlasIdeUnitRename.RunAction(const AEvent: TAtlasUnitRenameEvent;
+  AScope: TAtlasUnitRenameScope): TProc;
+var
+  mEvent: TAtlasUnitRenameEvent;
+begin
+  // Eigene Funktion: Jede Aktion fängt ihren Bereich als Wert ein, nicht die Schleifenvariable.
+  mEvent := AEvent;
+  Result :=
+    procedure
     begin
-      mAnswer := TAtlasUnitRename.ReadAnswer(AReply);
-    end, Reporter(), mReply) or not mAnswer.Enabled then
+      if FInstance <> nil then
+      begin
+        FInstance.Run(mEvent, AScope);
+      end;
+    end;
+end;
+
+class function TAtlasIdeUnitRename.FilesOf(const AProject: IOTAProject): TArray<string>;
+var
+  mMains: array[0..1] of string;
+  mMain: string;
+  mIndex: Integer;
+  mInfo: IOTAModuleInfo;
+begin
+  Result := nil;
+  if AProject = nil then
   begin
     Exit;
   end;
-  if mReply.Edit.IsEmpty then
+  mMains[0] := ChangeFileExt(AProject.FileName, '.dpr');
+  mMains[1] := ChangeFileExt(AProject.FileName, '.dpk');
+  for mMain in mMains do
   begin
-    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNothing, [mAnswer.OldName]));
-    Exit;
-  end;
-  mHint := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenamePreviewHint, [mAnswer.OldName, mAnswer.NewName,
-    mReply.Edit.EditCount, Length(mReply.Edit.Files)]);
-  // Ablehnen ändert nichts.
-  if TAtlasIdeServerEdit.Confirm(TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), mHint,
-    TAtlasEditorStrings.Text(TAtlasEditorTextId.UnitRenameApply),
-    mReply.Edit) and TAtlasIdeServerEdit.Apply(mReply.Edit,
-    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-    TAtlasStrings.Text(TAtlasTextId.UnitRenameTitle), Reporter(), mOutcome) then
-  begin
-    Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameDone, [mAnswer.OldName, mAnswer.NewName, mOutcome.Edits,
-      mOutcome.Files]));
-    if mOutcome.Written > 0 then
+    if FileExists(mMain) then
     begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
+      Result := Result + [mMain];
+    end;
+  end;
+  for mIndex := 0 to AProject.GetModuleCount - 1 do
+  begin
+    mInfo := AProject.GetModule(mIndex);
+    if (mInfo <> nil) and (mInfo.FileName <> '') then
+    begin
+      Result := Result + [mInfo.FileName];
+    end;
+  end;
+  Result := TAtlasUnitRename.SourceFiles(Result);
+end;
+
+class function TAtlasIdeUnitRename.ScopeFiles(const AProjectFile: string;
+  AScope: TAtlasUnitRenameScope): TArray<string>;
+var
+  mModules: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+  mProject: IOTAProject;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    Exit;
+  end;
+  if AScope = TAtlasUnitRenameScope.Group then
+  begin
+    mGroup := mModules.MainProjectGroup;
+    if mGroup <> nil then
+    begin
+      for mIndex := 0 to mGroup.ProjectCount - 1 do
+      begin
+        Result := Result + FilesOf(mGroup.Projects[mIndex]);
+      end;
+    end;
+    Result := TAtlasUnitRename.SourceFiles(Result);
+  end;
+  // Ohne Gruppe (oder Projekt außerhalb) zählt das Projekt.
+  if (AScope = TAtlasUnitRenameScope.Project) or (Result = nil) then
+  begin
+    if Supports(mModules.FindModule(AProjectFile), IOTAProject, mProject) then
+    begin
+      Result := TAtlasUnitRename.SourceFiles(Result + FilesOf(mProject));
     end;
   end;
 end;

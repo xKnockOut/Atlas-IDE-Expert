@@ -133,37 +133,6 @@ begin
   end;
 end;
 
-function TJsonRpcTracingTransport.RecentLines(AMinutes: Integer; ANow: TDateTime): TArray<string>;
-var
-  mLine: TRecentLine;
-  mSince: TDateTime;
-  mLines: TList<string>;
-begin
-  if AMinutes > cRecentMinutes then
-  begin
-    AMinutes := cRecentMinutes;
-  end;
-  mSince := ANow - AMinutes / MinsPerDay;
-  mLines := TList<string>.Create;
-  try
-    FLock.Enter;
-    try
-      for mLine in FRecent do
-      begin
-        if mLine.Time >= mSince then
-        begin
-          mLines.Add(mLine.Text);
-        end;
-      end;
-    finally
-      FLock.Leave;
-    end;
-    Result := mLines.ToArray;
-  finally
-    mLines.Free;
-  end;
-end;
-
 procedure TJsonRpcTracingTransport.WriteTrace(const AMarker, AText: string);
 var
   mData: TBytes;
@@ -227,6 +196,37 @@ procedure TJsonRpcTracingTransport.WriteMessage(const AMessage: TJSONObject);
 begin
   WriteTrace(cOutgoingMarker, AMessage.ToJSON);
   FInner.WriteMessage(AMessage);
+end;
+
+function TJsonRpcTracingTransport.RecentLines(AMinutes: Integer; ANow: TDateTime): TArray<string>;
+var
+  mLine: TRecentLine;
+  mSince: TDateTime;
+  mLines: TList<string>;
+begin
+  if AMinutes > cRecentMinutes then
+  begin
+    AMinutes := cRecentMinutes;
+  end;
+  mSince := ANow - AMinutes / MinsPerDay;
+  mLines := TList<string>.Create;
+  try
+    FLock.Enter;
+    try
+      for mLine in FRecent do
+      begin
+        if mLine.Time >= mSince then
+        begin
+          mLines.Add(mLine.Text);
+        end;
+      end;
+    finally
+      FLock.Leave;
+    end;
+    Result := mLines.ToArray;
+  finally
+    mLines.Free;
+  end;
 end;
 
 end.

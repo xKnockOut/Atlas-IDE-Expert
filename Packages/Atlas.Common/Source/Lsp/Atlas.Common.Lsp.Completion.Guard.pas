@@ -110,6 +110,8 @@ begin
   Result.TextEdit := TGuardFree.Edit(ARequest.Text, AOffer, cGuardScopes[AKind], ARequest.Settings.FreeStyle);
 end;
 
+{ TCompletionGuard }
+
 class function TCompletionGuard.GuardItems(ARequest: TCompletionRequest; ANewLine: Boolean;
   out AItems: TCompletionItems): Boolean;
 var

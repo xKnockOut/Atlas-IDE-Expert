@@ -76,6 +76,8 @@ uses
   System.DateUtils,
   System.Generics.Collections;
 
+{ TAtlasBuildInbox }
+
 class function TAtlasBuildInbox.Folder(const ABase: string; APid: Cardinal): string;
 begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-builds'), IntToStr(APid));

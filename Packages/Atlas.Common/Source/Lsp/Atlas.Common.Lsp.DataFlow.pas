@@ -143,16 +143,6 @@ end;
 
 { TLspDataFlow }
 
-function TLspDataFlow.GetNamespaces: TArray<string>;
-begin
-  Result := TLspNamespaces.Read(FNamespaces);
-end;
-
-procedure TLspDataFlow.SetNamespaces(const AValue: TArray<string>);
-begin
-  TLspNamespaces.Write(FNamespaces, AValue);
-end;
-
 constructor TLspDataFlow.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText; const AFiles: TReferenceFilesProvider; const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -164,37 +154,102 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-procedure TLspDataFlow.Attach(ADispatcher: TJsonRpcDispatcher);
+function TLspDataFlow.GetNamespaces: TArray<string>;
 begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, HandleDataFlow);
+  Result := TLspNamespaces.Read(FNamespaces);
 end;
 
-class function TLspDataFlow.Analyze(const ARequest: TDataFlowRequest): TDataFlowResult;
-var
-  mRun: TDataFlowRun;
+procedure TLspDataFlow.SetNamespaces(const AValue: TArray<string>);
 begin
-  mRun := TDataFlowRun.Create(ARequest);
+  TLspNamespaces.Write(FNamespaces, AValue);
+end;
+
+function TLspDataFlow.HandleDataFlow(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri: string;
+  mPosition: TJSONValue;
+  mCancellation: IPascalCancellation;
+  mShared: ISharedSyntaxTree;
+  mTree, mOwnTree: TSyntaxTree;
+  mAnalysis: TDataFlowResult;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDataFlowText.FieldsTextDocumentUriAndPosition].Text + cMethod);
+  end;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mTree := TreeOf(mUri, mCancellation, mShared, mOwnTree);
+  if mTree = nil then
+  begin
+    Exit(TJSONNull.Create);
+  end;
   try
-    Result := mRun.Run(ARequest);
+    mAnalysis := Answer(mTree, mUri, TJSONObject(AParams), ACancellation);
   finally
-    mRun.Free;
+    mOwnTree.Free;
+  end;
+  Result := ToJson(mAnalysis);
+end;
+
+function TLspDataFlow.TreeOf(const AUri: string; const ACancellation: IPascalCancellation;
+  out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
+var
+  mDocument: ITextDocument;
+  mText: string;
+begin
+  Result := nil;
+  AShared := nil;
+  AOwnTree := nil;
+  if FStore.TryGet(AUri, mDocument) then
+  begin
+    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
+    Result := AShared.Tree;
+  end
+  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(AUri), mText) then
+  begin
+    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
+    Result := AOwnTree;
   end;
 end;
 
-class function TLspDataFlow.KindName(AKind: TDataFlowKind): string;
-const
-  cNames: array[TDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input', 'initialization',
-    'loop', 'callerArgument', 'return', 'propertyWrite', 'propertyRead', 'modify', 'argument', 'output', 'use',
-    'constant', 'outside', 'address');
+function TLspDataFlow.Answer(ATree: TSyntaxTree; const AUri: string; AParams: TJSONObject;
+  const ACancellation: IJsonRpcCancellationToken): TDataFlowResult;
+var
+  mRequest: TDataFlowRequest;
+  mPosition: TJSONValue;
 begin
-  Result := cNames[AKind];
+  mRequest := Default(TDataFlowRequest);
+  mRequest.Index := FIndex;
+  mRequest.Tree := ATree;
+  mRequest.FileName := TDocumentUris.ToPath(AUri);
+  if AParams.TryGetValue<TJSONValue>('position', mPosition) then
+  begin
+    mRequest.Position := TLspPositions.ReadPosition(mPosition);
+  end;
+  mRequest.Direction := ReadDirection(AParams);
+  mRequest.Options := ReadOptions(AParams);
+  if Assigned(FFiles) then
+  begin
+    mRequest.Files := FFiles();
+  end;
+  mRequest.ReadText := FReadText;
+  mRequest.Cancellation := ACancellation;
+  ACancellation.ThrowIfCancellationRequested;
+  mRequest.Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mRequest.Resolver.Namespaces := Namespaces;
+    Result := Analyze(mRequest);
+  finally
+    mRequest.Resolver.Free;
+  end;
 end;
 
-class function TLspDataFlow.LeafName(ALeaf: TDataFlowLeaf): string;
-const
-  cNames: array[TDataFlowLeaf] of string = ('', 'constant', 'outside', 'cycle');
+procedure TLspDataFlow.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  Result := cNames[ALeaf];
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleDataFlow);
 end;
 
 function SymbolToJson(const ASymbol: TDataFlowSymbol): TJSONObject;
@@ -209,6 +264,18 @@ begin
   if ASymbol.Leaf <> TDataFlowLeaf.None then
   begin
     Result.AddPair('leaf', TLspDataFlow.LeafName(ASymbol.Leaf));
+  end;
+end;
+
+class function TLspDataFlow.Analyze(const ARequest: TDataFlowRequest): TDataFlowResult;
+var
+  mRun: TDataFlowRun;
+begin
+  mRun := TDataFlowRun.Create(ARequest);
+  try
+    Result := mRun.Run(ARequest);
+  finally
+    mRun.Free;
   end;
 end;
 
@@ -268,87 +335,20 @@ begin
   end;
 end;
 
-function TLspDataFlow.TreeOf(const AUri: string; const ACancellation: IPascalCancellation;
-  out AShared: ISharedSyntaxTree; out AOwnTree: TSyntaxTree): TSyntaxTree;
-var
-  mDocument: ITextDocument;
-  mText: string;
+class function TLspDataFlow.KindName(AKind: TDataFlowKind): string;
+const
+  cNames: array[TDataFlowKind] of string = ('assignment', 'varArgument', 'outArgument', 'input', 'initialization',
+    'loop', 'callerArgument', 'return', 'propertyWrite', 'propertyRead', 'modify', 'argument', 'output', 'use',
+    'constant', 'outside', 'address');
 begin
-  Result := nil;
-  AShared := nil;
-  AOwnTree := nil;
-  if FStore.TryGet(AUri, mDocument) then
-  begin
-    AShared := TSyntaxTreeCache.Get(mDocument, ACancellation);
-    Result := AShared.Tree;
-  end
-  else if Assigned(FReadText) and FReadText(TDocumentUris.ToPath(AUri), mText) then
-  begin
-    AOwnTree := TSyntaxTreeCache.Parse(mText, ACancellation);
-    Result := AOwnTree;
-  end;
+  Result := cNames[AKind];
 end;
 
-function TLspDataFlow.Answer(ATree: TSyntaxTree; const AUri: string; AParams: TJSONObject;
-  const ACancellation: IJsonRpcCancellationToken): TDataFlowResult;
-var
-  mRequest: TDataFlowRequest;
-  mPosition: TJSONValue;
+class function TLspDataFlow.LeafName(ALeaf: TDataFlowLeaf): string;
+const
+  cNames: array[TDataFlowLeaf] of string = ('', 'constant', 'outside', 'cycle');
 begin
-  mRequest := Default(TDataFlowRequest);
-  mRequest.Index := FIndex;
-  mRequest.Tree := ATree;
-  mRequest.FileName := TDocumentUris.ToPath(AUri);
-  if AParams.TryGetValue<TJSONValue>('position', mPosition) then
-  begin
-    mRequest.Position := TLspPositions.ReadPosition(mPosition);
-  end;
-  mRequest.Direction := ReadDirection(AParams);
-  mRequest.Options := ReadOptions(AParams);
-  if Assigned(FFiles) then
-  begin
-    mRequest.Files := FFiles();
-  end;
-  mRequest.ReadText := FReadText;
-  mRequest.Cancellation := ACancellation;
-  ACancellation.ThrowIfCancellationRequested;
-  mRequest.Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mRequest.Resolver.Namespaces := Namespaces;
-    Result := Analyze(mRequest);
-  finally
-    mRequest.Resolver.Free;
-  end;
-end;
-
-function TLspDataFlow.HandleDataFlow(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri: string;
-  mPosition: TJSONValue;
-  mCancellation: IPascalCancellation;
-  mShared: ISharedSyntaxTree;
-  mTree, mOwnTree: TSyntaxTree;
-  mAnalysis: TDataFlowResult;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TDataFlowText.FieldsTextDocumentUriAndPosition].Text + cMethod);
-  end;
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mTree := TreeOf(mUri, mCancellation, mShared, mOwnTree);
-  if mTree = nil then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  try
-    mAnalysis := Answer(mTree, mUri, TJSONObject(AParams), ACancellation);
-  finally
-    mOwnTree.Free;
-  end;
-  Result := ToJson(mAnalysis);
+  Result := cNames[ALeaf];
 end;
 
 initialization

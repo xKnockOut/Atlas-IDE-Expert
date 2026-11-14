@@ -409,6 +409,8 @@ begin
   Result := AMatch.Number > 0;
 end;
 
+{ TAtlasCodeLinks }
+
 class function TAtlasCodeLinks.FindKeys(const APattern: TAtlasIssueKeyPattern; const AText: string):
   TArray<TAtlasIssueKeyMatch>;
 begin
@@ -498,6 +500,8 @@ type
     function InCode: Boolean;
     function Step: Boolean;
   end;
+
+{ TLineScanner }
 
 procedure TLineScanner.Add(AStart, AStop: Integer; APlace: TAtlasCodeLinkPlace);
 var

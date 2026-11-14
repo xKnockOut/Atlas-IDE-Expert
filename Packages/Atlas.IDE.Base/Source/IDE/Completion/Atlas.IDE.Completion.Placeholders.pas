@@ -211,99 +211,6 @@ begin
   inherited Destroy;
 end;
 
-function TAtlasEditorPlaceholders.Active: Boolean;
-begin
-  Result := FSession <> nil;
-end;
-
-procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
-  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
-begin
-  Start(AView, ABefore, ADocument, AOffset, AExpansion, nil);
-end;
-
-procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
-  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion; const ALinked: TArray<TAtlasPlaceholderField>);
-var
-  mField: TAtlasPlaceholderField;
-begin
-  Stop;
-  if (AView = nil) or (AView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  FView := AView;
-  FFileName := AView.Buffer.FileName;
-  FBefore := ABefore;
-  FSession := TAtlasPlaceholderSession.Create(ADocument, AOffset, AExpansion);
-  for mField in ALinked do
-  begin
-    FSession.Link(mField);
-  end;
-  if not AExpansion.HasPlaceholders then
-  begin
-    Finish(True);
-    Exit;
-  end;
-  TAtlasKeyHook.Add(FKeys);
-  SelectCurrent;
-end;
-
-procedure TAtlasEditorPlaceholders.Stop;
-var
-  mWasActive: Boolean;
-begin
-  mWasActive := Active;
-  TAtlasKeyHook.Remove(FKeys);
-  FreeAndNil(FSession);
-  FView := nil;
-  FBefore := '';
-  FMirrorQueued := False;
-  // Rahmen und Fußzeile verschwinden.
-  if mWasActive then
-  begin
-    Invalidate;
-  end;
-end;
-
-procedure TAtlasEditorPlaceholders.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-function TAtlasEditorPlaceholders.EditPos(const AText: string; AOffset: Integer): TOTAEditPos;
-var
-  mLine, mCharacter: Integer;
-begin
-  TAtlasPlaceholderSession.Locate(AText, AOffset, mLine, mCharacter);
-  Result.Line := mLine + 1;
-  Result.Col := TLspSession.IndexToColumn(LineOf(AText, mLine), mCharacter, TAtlasEditorBuffer.TabWidth(FView.Buffer));
-end;
-
-function TAtlasEditorPlaceholders.CursorOffset(const AText: string): Integer;
-var
-  mCursor: TOTAEditPos;
-  mLineText: string;
-begin
-  mCursor := FView.CursorPos;
-  mLineText := TAtlasEditorBuffer.LineText(FView, mCursor.Line);
-  Result := TAtlasEditorBuffer.CharOffset(AText, mCursor.Line - 1,
-    TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(FView.Buffer)));
-end;
-
-procedure TAtlasEditorPlaceholders.MoveTo(AOffset: Integer);
-begin
-  FView.Block.Reset;
-  FView.CursorPos := EditPos(FSession.Text, AOffset);
-  FView.MoveViewToCursor;
-  FView.Paint;
-end;
-
 procedure TAtlasEditorPlaceholders.SelectCurrent;
 var
   mField: TAtlasPlaceholderField;
@@ -326,6 +233,24 @@ begin
   end;
 end;
 
+procedure TAtlasEditorPlaceholders.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+procedure TAtlasEditorPlaceholders.MoveTo(AOffset: Integer);
+begin
+  FView.Block.Reset;
+  FView.CursorPos := EditPos(FSession.Text, AOffset);
+  FView.MoveViewToCursor;
+  FView.Paint;
+end;
+
 procedure TAtlasEditorPlaceholders.Finish(AToEnd: Boolean);
 var
   mCursor: Integer;
@@ -345,6 +270,126 @@ begin
     end;
   end;
   Stop;
+end;
+
+procedure TAtlasEditorPlaceholders.ApplyMirrors;
+var
+  mEdits: TAtlasPlaceholderEdits;
+  mEdit: TAtlasPlaceholderEdit;
+  mText: string;
+  mWriter: IOTAEditWriter;
+  mCursor, mShift: Integer;
+begin
+  FMirrorQueued := False;
+  if not Active or (FView = nil) or (FView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  mText := TAtlasEditorBuffer.Text(FView.Buffer);
+  if not FSession.Update(mText) then
+  begin
+    Stop;
+    Exit;
+  end;
+  mEdits := FSession.MirrorEdits;
+  if Length(mEdits) = 0 then
+  begin
+    Exit;
+  end;
+  mCursor := CursorOffset(mText);
+  mShift := 0;
+  FApplying := True;
+  try
+    // Ein Schreiber schreibt nur vorwärts; die Änderungen sind aufsteigend.
+    mWriter := FView.Buffer.CreateUndoableWriter;
+    for mEdit in mEdits do
+    begin
+      mWriter.CopyTo(ByteOffset(mText, mEdit.Start));
+      mWriter.DeleteTo(ByteOffset(mText, mEdit.Stop));
+      mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.Text)));
+      if mEdit.Stop <= mCursor then
+      begin
+        Inc(mShift, Length(mEdit.Text) - (mEdit.Stop - mEdit.Start));
+      end;
+    end;
+    mWriter := nil;
+  finally
+    FApplying := False;
+  end;
+  FSession.Applied(mEdits);
+  // Der Cursor bleibt an seiner Stelle im Text, auch wenn davor ein verknüpfter Platzhalter wuchs.
+  FView.CursorPos := EditPos(FSession.Text, mCursor + mShift);
+  FView.Paint;
+end;
+
+function TAtlasEditorPlaceholders.CursorOffset(const AText: string): Integer;
+var
+  mCursor: TOTAEditPos;
+  mLineText: string;
+begin
+  mCursor := FView.CursorPos;
+  mLineText := TAtlasEditorBuffer.LineText(FView, mCursor.Line);
+  Result := TAtlasEditorBuffer.CharOffset(AText, mCursor.Line - 1,
+    TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(FView.Buffer)));
+end;
+
+function TAtlasEditorPlaceholders.EditPos(const AText: string; AOffset: Integer): TOTAEditPos;
+var
+  mLine, mCharacter: Integer;
+begin
+  TAtlasPlaceholderSession.Locate(AText, AOffset, mLine, mCharacter);
+  Result.Line := mLine + 1;
+  Result.Col := TLspSession.IndexToColumn(LineOf(AText, mLine), mCharacter, TAtlasEditorBuffer.TabWidth(FView.Buffer));
+end;
+
+function TAtlasEditorPlaceholders.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := Active and ((AKey = VK_TAB) and ((AShift = []) or (AShift = [ssShift])) or
+    ((AKey = VK_ESCAPE) or (AKey = VK_RETURN)) and (AShift = []));
+end;
+
+procedure TAtlasEditorPlaceholders.HandleKey(AKey: Word; AShift: TShiftState);
+begin
+  if not Active then
+  begin
+    Exit;
+  end;
+  // Vor dem Springen noch ausstehende Angleichungen schreiben.
+  ApplyMirrors;
+  if not Active then
+  begin
+    Exit;
+  end;
+  case AKey of
+    VK_TAB:
+      if AShift = [ssShift] then
+      begin
+        FSession.Previous;
+        SelectCurrent;
+      end
+      else if FSession.Next then
+      begin
+        SelectCurrent;
+      end
+      else
+      begin
+        Finish(True);
+      end;
+    VK_RETURN:
+      Finish(True);
+    VK_ESCAPE:
+      Finish(False);
+  end;
+  if Active then
+  begin
+    Invalidate;
+  end;
+end;
+
+procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion);
+begin
+  Start(AView, ABefore, ADocument, AOffset, AExpansion, nil);
 end;
 
 /// <summary>Macht in ABuffer Schritte rückgängig, bis sein Text ATarget ist; AText ist der Text davor. Wird ATarget
@@ -421,48 +466,53 @@ begin
   end;
 end;
 
-function TAtlasEditorPlaceholders.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+procedure TAtlasEditorPlaceholders.Start(const AView: IOTAEditView; const ABefore, ADocument: string;
+  AOffset: Integer; const AExpansion: TAtlasSnippetExpansion; const ALinked: TArray<TAtlasPlaceholderField>);
+var
+  mField: TAtlasPlaceholderField;
 begin
-  Result := Active and ((AKey = VK_TAB) and ((AShift = []) or (AShift = [ssShift])) or
-    ((AKey = VK_ESCAPE) or (AKey = VK_RETURN)) and (AShift = []));
+  Stop;
+  if (AView = nil) or (AView.Buffer = nil) then
+  begin
+    Exit;
+  end;
+  FView := AView;
+  FFileName := AView.Buffer.FileName;
+  FBefore := ABefore;
+  FSession := TAtlasPlaceholderSession.Create(ADocument, AOffset, AExpansion);
+  for mField in ALinked do
+  begin
+    FSession.Link(mField);
+  end;
+  if not AExpansion.HasPlaceholders then
+  begin
+    Finish(True);
+    Exit;
+  end;
+  TAtlasKeyHook.Add(FKeys);
+  SelectCurrent;
 end;
 
-procedure TAtlasEditorPlaceholders.HandleKey(AKey: Word; AShift: TShiftState);
+procedure TAtlasEditorPlaceholders.Stop;
+var
+  mWasActive: Boolean;
 begin
-  if not Active then
-  begin
-    Exit;
-  end;
-  // Vor dem Springen noch ausstehende Angleichungen schreiben.
-  ApplyMirrors;
-  if not Active then
-  begin
-    Exit;
-  end;
-  case AKey of
-    VK_TAB:
-      if AShift = [ssShift] then
-      begin
-        FSession.Previous;
-        SelectCurrent;
-      end
-      else if FSession.Next then
-      begin
-        SelectCurrent;
-      end
-      else
-      begin
-        Finish(True);
-      end;
-    VK_RETURN:
-      Finish(True);
-    VK_ESCAPE:
-      Finish(False);
-  end;
-  if Active then
+  mWasActive := Active;
+  TAtlasKeyHook.Remove(FKeys);
+  FreeAndNil(FSession);
+  FView := nil;
+  FBefore := '';
+  FMirrorQueued := False;
+  // Rahmen und Fußzeile verschwinden.
+  if mWasActive then
   begin
     Invalidate;
   end;
+end;
+
+function TAtlasEditorPlaceholders.Active: Boolean;
+begin
+  Result := FSession <> nil;
 end;
 
 procedure TAtlasEditorPlaceholders.EditorModified(const AView: IOTAEditView);
@@ -495,56 +545,6 @@ begin
         end;
       end);
   end;
-end;
-
-procedure TAtlasEditorPlaceholders.ApplyMirrors;
-var
-  mEdits: TAtlasPlaceholderEdits;
-  mEdit: TAtlasPlaceholderEdit;
-  mText: string;
-  mWriter: IOTAEditWriter;
-  mCursor, mShift: Integer;
-begin
-  FMirrorQueued := False;
-  if not Active or (FView = nil) or (FView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  mText := TAtlasEditorBuffer.Text(FView.Buffer);
-  if not FSession.Update(mText) then
-  begin
-    Stop;
-    Exit;
-  end;
-  mEdits := FSession.MirrorEdits;
-  if Length(mEdits) = 0 then
-  begin
-    Exit;
-  end;
-  mCursor := CursorOffset(mText);
-  mShift := 0;
-  FApplying := True;
-  try
-    // Ein Schreiber schreibt nur vorwärts; die Änderungen sind aufsteigend.
-    mWriter := FView.Buffer.CreateUndoableWriter;
-    for mEdit in mEdits do
-    begin
-      mWriter.CopyTo(ByteOffset(mText, mEdit.Start));
-      mWriter.DeleteTo(ByteOffset(mText, mEdit.Stop));
-      mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.Text)));
-      if mEdit.Stop <= mCursor then
-      begin
-        Inc(mShift, Length(mEdit.Text) - (mEdit.Stop - mEdit.Start));
-      end;
-    end;
-    mWriter := nil;
-  finally
-    FApplying := False;
-  end;
-  FSession.Applied(mEdits);
-  // Der Cursor bleibt an seiner Stelle im Text, auch wenn davor ein verknüpfter Platzhalter wuchs.
-  FView.CursorPos := EditPos(FSession.Text, mCursor + mShift);
-  FView.Paint;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>

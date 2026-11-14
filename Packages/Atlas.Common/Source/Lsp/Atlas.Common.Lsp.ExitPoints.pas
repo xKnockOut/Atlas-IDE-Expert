@@ -112,6 +112,8 @@ begin
   Result.AddPair('endCharacter', TJSONNumber.Create(ARange.EndPos.Character));
 end;
 
+{ TLspExitPoints }
+
 class function TLspExitPoints.Json(const ASet: TExitPointSet): TJSONObject;
 var
   mPoints: TJSONArray;

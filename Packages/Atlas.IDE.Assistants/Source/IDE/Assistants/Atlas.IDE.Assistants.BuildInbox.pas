@@ -59,6 +59,8 @@ var
   /// <summary>Ordner dieses Prozesses schon einmal aufgeräumt?</summary>
   GCleaned: Boolean;
 
+{ TAtlasIdeBuildInbox }
+
 constructor TAtlasIdeBuildInbox.Create(const ARequests: TFunc<IAtlasBuildRequests>;
   const AOnMessage: TAtlasBuildInboxProc);
 begin
@@ -91,20 +93,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeBuildInbox.Clean;
-begin
-  // Reste eines früheren Prozesses mit derselben Nummer.
-  try
-    if TDirectory.Exists(FFolder) then
-    begin
-      TDirectory.Delete(FFolder, True);
-    end;
-  except
-    on Exception do
-      ;
-  end;
-end;
-
 procedure TAtlasIdeBuildInbox.Tick(Sender: TObject);
 var
   mPending: TArray<string>;
@@ -132,6 +120,20 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Build, E);
+  end;
+end;
+
+procedure TAtlasIdeBuildInbox.Clean;
+begin
+  // Reste eines früheren Prozesses mit derselben Nummer.
+  try
+    if TDirectory.Exists(FFolder) then
+    begin
+      TDirectory.Delete(FFolder, True);
+    end;
+  except
+    on Exception do
+      ;
   end;
 end;
 

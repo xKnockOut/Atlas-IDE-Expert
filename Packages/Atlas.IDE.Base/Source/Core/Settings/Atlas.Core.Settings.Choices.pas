@@ -162,17 +162,6 @@ begin
   end;
 end;
 
-class function TAtlasSettingChoices.KnownVersions: TArray<string>;
-var
-  mProduct: TDelphiProduct;
-begin
-  Result := nil;
-  for mProduct in cProducts do
-  begin
-    Result := Result + [mProduct.Version];
-  end;
-end;
-
 class function TAtlasSettingChoices.DelphiVersions(const AInstalled: TArray<string>): TArray<TAtlasSettingChoice>;
 var
   mVersions: TArray<string>;
@@ -211,6 +200,17 @@ begin
     end;
   finally
     mList.Free;
+  end;
+end;
+
+class function TAtlasSettingChoices.KnownVersions: TArray<string>;
+var
+  mProduct: TDelphiProduct;
+begin
+  Result := nil;
+  for mProduct in cProducts do
+  begin
+    Result := Result + [mProduct.Version];
   end;
 end;
 

@@ -136,14 +136,6 @@ begin
   Result := ScaleValue(AValue);
 end;
 
-procedure TAtlasNewIssueFormPanel.ClearHost;
-begin
-  FInputs := nil;
-  FNote := nil;
-  // Die Steuerelemente gehören FHost; mit ihm gehen sie.
-  FreeAndNil(FHost);
-end;
-
 function TAtlasNewIssueFormPanel.AddRow(AHeight: Integer): TPanel;
 begin
   Result := TPanel.Create(FHost);
@@ -217,6 +209,30 @@ begin
   end;
 end;
 
+/// <summary>Klappliste mit einer Auswahl; ohne Pflicht zuerst ein leerer Eintrag (BoxOffset 1).</summary>
+procedure TAtlasNewIssueFormPanel.AddChoice(ARow: TPanel; ATop: Integer; const AField: TAtlasIssueFormField;
+  var AInput: TAtlasNewIssueFormInput);
+var
+  mValues: TArray<string>;
+begin
+  AInput.Box := TAtlasNewIssueBox.Create(FHost);
+  AInput.Box.Style := csDropDownList;
+  AInput.Box.Parent := ARow;
+  AInput.Box.Left := 0;
+  AInput.Box.Top := ATop;
+  AInput.Box.Width := ARow.ClientWidth - Scaled(cGap);
+  AInput.Box.Anchors := [akLeft, akTop, akRight];
+  mValues := AField.Options;
+  // Ohne Pflicht lässt GitHub die Auswahl leer („None“).
+  if not AField.Required then
+  begin
+    mValues := TArray<string>.Create('') + mValues;
+    AInput.BoxOffset := 1;
+  end;
+  AInput.Box.SetValues(mValues);
+  AInput.Focus := AInput.Box;
+end;
+
 /// <summary>Höhe der Zeile eines Felds ohne Beschriftung.</summary>
 function InputHeight(const AField: TAtlasIssueFormField): Integer;
 begin
@@ -249,30 +265,6 @@ begin
   AMemo.TabStop := False;
   AMemo.WordWrap := True;
   AMemo.ScrollBars := ssNone;
-end;
-
-/// <summary>Klappliste mit einer Auswahl; ohne Pflicht zuerst ein leerer Eintrag (BoxOffset 1).</summary>
-procedure TAtlasNewIssueFormPanel.AddChoice(ARow: TPanel; ATop: Integer; const AField: TAtlasIssueFormField;
-  var AInput: TAtlasNewIssueFormInput);
-var
-  mValues: TArray<string>;
-begin
-  AInput.Box := TAtlasNewIssueBox.Create(FHost);
-  AInput.Box.Style := csDropDownList;
-  AInput.Box.Parent := ARow;
-  AInput.Box.Left := 0;
-  AInput.Box.Top := ATop;
-  AInput.Box.Width := ARow.ClientWidth - Scaled(cGap);
-  AInput.Box.Anchors := [akLeft, akTop, akRight];
-  mValues := AField.Options;
-  // Ohne Pflicht lässt GitHub die Auswahl leer („None“).
-  if not AField.Required then
-  begin
-    mValues := TArray<string>.Create('') + mValues;
-    AInput.BoxOffset := 1;
-  end;
-  AInput.Box.SetValues(mValues);
-  AInput.Focus := AInput.Box;
 end;
 
 function TAtlasNewIssueFormPanel.BuildField(const AField: TAtlasIssueFormField): TAtlasNewIssueFormInput;
@@ -388,6 +380,14 @@ begin
       Result.Chosen := Result.Chosen + [mIndex];
     end;
   end;
+end;
+
+procedure TAtlasNewIssueFormPanel.ClearHost;
+begin
+  FInputs := nil;
+  FNote := nil;
+  // Die Steuerelemente gehören FHost; mit ihm gehen sie.
+  FreeAndNil(FHost);
 end;
 
 procedure TAtlasNewIssueFormPanel.ShowForm(const AForm: TAtlasIssueForm; const AAnswers: TAtlasIssueFormAnswers;

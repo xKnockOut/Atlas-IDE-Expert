@@ -92,6 +92,22 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeEvaluateStore.Load;
+begin
+  if FLoaded then
+  begin
+    Exit;
+  end;
+  FLoaded := True;
+  FHistoryKept := not LoadFile(FHistory, cHistoryFileName, cHistoryWhat);
+  FPinnedKept := not LoadFile(FPinned, cPinnedFileName, cPinnedWhat);
+end;
+
+procedure TAtlasIdeEvaluateStore.SavePinned;
+begin
+  SaveFile(FPinned, cPinnedFileName, cPinnedWhat, not FPinnedKept);
+end;
+
 class function TAtlasIdeEvaluateStore.CurrentProject: string;
 var
   mProject: IOTAProject;
@@ -106,17 +122,6 @@ begin
   begin
     Result := mProject.FileName;
   end;
-end;
-
-procedure TAtlasIdeEvaluateStore.Load;
-begin
-  if FLoaded then
-  begin
-    Exit;
-  end;
-  FLoaded := True;
-  FHistoryKept := not LoadFile(FHistory, cHistoryFileName, cHistoryWhat);
-  FPinnedKept := not LoadFile(FPinned, cPinnedFileName, cPinnedWhat);
 end;
 
 class function TAtlasIdeEvaluateStore.LoadFile(AStore: TAtlasExpressionHistory; const AFileName,
@@ -143,11 +148,6 @@ begin
     on E: Exception do
       TAtlasDataFile.ReportNotWritten(AWhat, E);
   end;
-end;
-
-procedure TAtlasIdeEvaluateStore.SavePinned;
-begin
-  SaveFile(FPinned, cPinnedFileName, cPinnedWhat, not FPinnedKept);
 end;
 
 function TAtlasIdeEvaluateStore.HistoryItems: TArray<string>;

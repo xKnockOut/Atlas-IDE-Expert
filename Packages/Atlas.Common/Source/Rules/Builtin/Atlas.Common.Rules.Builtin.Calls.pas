@@ -149,10 +149,28 @@ const
 
 { TArgumentCountMismatchRule }
 
-function TArgumentCountMismatchRule.Descriptor: TRuleDescriptor;
+class function TArgumentCountMismatchRule.MissingText(const ANames: TArray<string>): string;
+var
+  mIndex: Integer;
 begin
-  Result := TRuleDescriptor.Create(cArgumentCountMismatchRuleId, TRuleSeverity.Error,
-    cTexts[TCallsText.Title].Text);
+  Result := '';
+  if Length(ANames) = 0 then
+  begin
+    Exit;
+  end;
+  if Length(ANames) = 1 then
+  begin
+    Exit(ANames[0] + cTexts[TCallsText.IsMissing].Text);
+  end;
+  for mIndex := 0 to High(ANames) - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + ANames[mIndex];
+  end;
+  Result := Result + cTexts[TCallsText.AndWord].Text + ANames[High(ANames)] + cTexts[TCallsText.AreMissing].Text;
 end;
 
 /// <summary>Erste Klammer auf oberster Ebene (außerhalb von Strings und Typargumenten); 0 ohne. Steht ":"
@@ -259,28 +277,10 @@ begin
   end;
 end;
 
-class function TArgumentCountMismatchRule.MissingText(const ANames: TArray<string>): string;
-var
-  mIndex: Integer;
+function TArgumentCountMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := '';
-  if Length(ANames) = 0 then
-  begin
-    Exit;
-  end;
-  if Length(ANames) = 1 then
-  begin
-    Exit(ANames[0] + cTexts[TCallsText.IsMissing].Text);
-  end;
-  for mIndex := 0 to High(ANames) - 1 do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + ANames[mIndex];
-  end;
-  Result := Result + cTexts[TCallsText.AndWord].Text + ANames[High(ANames)] + cTexts[TCallsText.AreMissing].Text;
+  Result := TRuleDescriptor.Create(cArgumentCountMismatchRuleId, TRuleSeverity.Error,
+    cTexts[TCallsText.Title].Text);
 end;
 
 function ArgumentsText(ACount: Integer): string;
@@ -712,11 +712,7 @@ type
     ParameterText: string;
   end;
 
-function TOverloadResolutionRule.Descriptor: TRuleDescriptor;
-begin
-  Result := TRuleDescriptor.Create(cOverloadResolutionRuleId, TRuleSeverity.Error,
-    cTexts[TCallsText.OverloadTitle].Text);
-end;
+{ TOverloadResolutionRule }
 
 class function TOverloadResolutionRule.Fit(AParameter, AArgument: TExpressionCategory): TArgumentFit;
 const
@@ -781,6 +777,12 @@ class function TOverloadResolutionRule.SameTypeName(const A, B: string): Boolean
 
 begin
   Result := (A <> '') and SameText(Normal(A), Normal(B));
+end;
+
+function TOverloadResolutionRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(cOverloadResolutionRuleId, TRuleSeverity.Error,
+    cTexts[TCallsText.OverloadTitle].Text);
 end;
 
 procedure TOverloadResolutionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

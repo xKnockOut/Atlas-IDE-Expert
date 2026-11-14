@@ -95,132 +95,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasIdeUpdateInstaller.Say(const AText: string);
-begin
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeUpdateInstaller.Log(const AText: string);
-begin
-  if Assigned(FOnLog) then
-  begin
-    FOnLog(AText);
-  end;
-end;
-
-procedure TAtlasIdeUpdateInstaller.Start(const AEnvironment: TAtlasUpdateEnvironment; const ARoot: string;
-  const AMessage, ALog: TProc<string>; const AChange: TProc);
-begin
-  FEnvironment := AEnvironment;
-  FRoot := ARoot;
-  FOnMessage := AMessage;
-  FOnLog := ALog;
-  FOnChange := AChange;
-end;
-
-procedure TAtlasIdeUpdateInstaller.DeleteFolder(const ADir: string);
-begin
-  // Gesperrte Dateien (Virenscanner, offenes Protokoll): beim nächsten Start wieder versuchen.
-  try
-    if TDirectory.Exists(ADir) then
-    begin
-      TDirectory.Delete(ADir, True);
-    end;
-  except
-    on E: Exception do
-    begin
-      Log('Update folder not deleted: ' + E.ClassName);
-    end;
-  end;
-end;
-
-function TAtlasIdeUpdateInstaller.Blocked: TAtlasUpdateBlock;
-begin
-  Result := TAtlasUpdateInstall.Blocked(FEnvironment);
-end;
-
-function TAtlasIdeUpdateInstaller.StateFile(const AVersion: string): string;
-begin
-  Result := TUpdateLayout.Join(TAtlasUpdateInstall.StagingDir(FRoot, AVersion), TUpdateLayout.cStateFile);
-end;
-
-function TAtlasIdeUpdateInstaller.TryStage(const AVersion: string; out AStage: TUpdateStage): Boolean;
-var
-  mText: string;
-begin
-  AStage := Default(TUpdateStage);
-  Result := (AVersion <> '') and TAtlasDataFile.TryRead(StateFile(AVersion), mText);
-  if Result then
-  begin
-    AStage := TUpdateStage.FromJson(mText);
-    // Ein anderer Stand im Ordner (von Hand kopiert, halb geschrieben) gilt nicht.
-    Result := AStage.Version = AVersion;
-  end;
-end;
-
-function TAtlasIdeUpdateInstaller.Preparing: Boolean;
-begin
-  Result := FProcess <> 0;
-end;
-
-function TAtlasIdeUpdateInstaller.Launch(const AExe: string; const AArgs: TUpdateArguments;
-  AVisible: Boolean): THandle;
-var
-  mLaunch: TAtlasProcessLaunch;
-  mProcess: TProcessInformation;
-begin
-  Result := 0;
-  // Ohne Standard-Handles: AtlasUpdate erbt nichts.
-  mLaunch := TAtlasProcessLaunch.Create(AExe, TUpdateNames.QuoteArgument(AExe) + ' ' + AArgs.CommandLine,
-    ExtractFileDir(AExe), 0, 0, 0);
-  if AVisible then
-  begin
-    mLaunch.Flags := CREATE_NEW_CONSOLE;
-  end;
-  if not TAtlasProcessLauncher.Launch(mLaunch, mProcess) then
-  begin
-    Log('AtlasUpdate not started: ' + SysErrorMessage(GetLastError));
-    Exit;
-  end;
-  CloseHandle(mProcess.hThread);
-  Result := mProcess.hProcess;
-end;
-
-procedure TAtlasIdeUpdateInstaller.Prepare(const AVersion, AManifestUrl, ANewModules: string);
-var
-  mArgs: TUpdateArguments;
-begin
-  if Preparing or (Blocked <> TAtlasUpdateBlock.None) then
-  begin
-    Exit;
-  end;
-  mArgs := TAtlasUpdateInstall.PrepareArgs(FEnvironment, FRoot, AVersion, AManifestUrl, ANewModules);
-  FProcess := Launch(TAtlasUpdateInstall.UpdaterOf(FEnvironment.PluginDir), mArgs, False);
-  if FProcess = 0 then
-  begin
-    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AVersion,
-      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.cStartFailed, ''), TUpdateChannels.cReleasesUrl]));
-    Exit;
-  end;
-  FPreparing := AVersion;
-  Log('Update ' + AVersion + ': prepare started');
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeUpdateInstaller.ClosePreparation;
-begin
-  FTimer.Enabled := False;
-  if FProcess <> 0 then
-  begin
-    CloseHandle(FProcess);
-  end;
-  FProcess := 0;
-  FPreparing := '';
-end;
-
 procedure TAtlasIdeUpdateInstaller.Poll(Sender: TObject);
 var
   mStage: TUpdateStage;
@@ -264,6 +138,132 @@ begin
     Log('Update ' + AStage.Version + ' ready');
     Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPreparedMessage, [AStage.Version]));
   end;
+end;
+
+procedure TAtlasIdeUpdateInstaller.ClosePreparation;
+begin
+  FTimer.Enabled := False;
+  if FProcess <> 0 then
+  begin
+    CloseHandle(FProcess);
+  end;
+  FProcess := 0;
+  FPreparing := '';
+end;
+
+function TAtlasIdeUpdateInstaller.Launch(const AExe: string; const AArgs: TUpdateArguments;
+  AVisible: Boolean): THandle;
+var
+  mLaunch: TAtlasProcessLaunch;
+  mProcess: TProcessInformation;
+begin
+  Result := 0;
+  // Ohne Standard-Handles: AtlasUpdate erbt nichts.
+  mLaunch := TAtlasProcessLaunch.Create(AExe, TUpdateNames.QuoteArgument(AExe) + ' ' + AArgs.CommandLine,
+    ExtractFileDir(AExe), 0, 0, 0);
+  if AVisible then
+  begin
+    mLaunch.Flags := CREATE_NEW_CONSOLE;
+  end;
+  if not TAtlasProcessLauncher.Launch(mLaunch, mProcess) then
+  begin
+    Log('AtlasUpdate not started: ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  CloseHandle(mProcess.hThread);
+  Result := mProcess.hProcess;
+end;
+
+procedure TAtlasIdeUpdateInstaller.Say(const AText: string);
+begin
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(AText);
+  end;
+end;
+
+procedure TAtlasIdeUpdateInstaller.DeleteFolder(const ADir: string);
+begin
+  // Gesperrte Dateien (Virenscanner, offenes Protokoll): beim nächsten Start wieder versuchen.
+  try
+    if TDirectory.Exists(ADir) then
+    begin
+      TDirectory.Delete(ADir, True);
+    end;
+  except
+    on E: Exception do
+    begin
+      Log('Update folder not deleted: ' + E.ClassName);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeUpdateInstaller.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+  begin
+    FOnLog(AText);
+  end;
+end;
+
+function TAtlasIdeUpdateInstaller.StateFile(const AVersion: string): string;
+begin
+  Result := TUpdateLayout.Join(TAtlasUpdateInstall.StagingDir(FRoot, AVersion), TUpdateLayout.cStateFile);
+end;
+
+procedure TAtlasIdeUpdateInstaller.Start(const AEnvironment: TAtlasUpdateEnvironment; const ARoot: string;
+  const AMessage, ALog: TProc<string>; const AChange: TProc);
+begin
+  FEnvironment := AEnvironment;
+  FRoot := ARoot;
+  FOnMessage := AMessage;
+  FOnLog := ALog;
+  FOnChange := AChange;
+end;
+
+function TAtlasIdeUpdateInstaller.Blocked: TAtlasUpdateBlock;
+begin
+  Result := TAtlasUpdateInstall.Blocked(FEnvironment);
+end;
+
+function TAtlasIdeUpdateInstaller.TryStage(const AVersion: string; out AStage: TUpdateStage): Boolean;
+var
+  mText: string;
+begin
+  AStage := Default(TUpdateStage);
+  Result := (AVersion <> '') and TAtlasDataFile.TryRead(StateFile(AVersion), mText);
+  if Result then
+  begin
+    AStage := TUpdateStage.FromJson(mText);
+    // Ein anderer Stand im Ordner (von Hand kopiert, halb geschrieben) gilt nicht.
+    Result := AStage.Version = AVersion;
+  end;
+end;
+
+function TAtlasIdeUpdateInstaller.Preparing: Boolean;
+begin
+  Result := FProcess <> 0;
+end;
+
+procedure TAtlasIdeUpdateInstaller.Prepare(const AVersion, AManifestUrl, ANewModules: string);
+var
+  mArgs: TUpdateArguments;
+begin
+  if Preparing or (Blocked <> TAtlasUpdateBlock.None) then
+  begin
+    Exit;
+  end;
+  mArgs := TAtlasUpdateInstall.PrepareArgs(FEnvironment, FRoot, AVersion, AManifestUrl, ANewModules);
+  FProcess := Launch(TAtlasUpdateInstall.UpdaterOf(FEnvironment.PluginDir), mArgs, False);
+  if FProcess = 0 then
+  begin
+    Say(TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesPrepareFailedMessage, [AVersion,
+      TAtlasUpdateTexts.ErrorText(TAtlasUpdateInstall.cStartFailed, ''), TUpdateChannels.cReleasesUrl]));
+    Exit;
+  end;
+  FPreparing := AVersion;
+  Log('Update ' + AVersion + ': prepare started');
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeUpdateInstaller.Choose(const AVersion: string; const AChosen: TArray<string>);

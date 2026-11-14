@@ -171,81 +171,15 @@ begin
   FReadText := AReadText;
 end;
 
-class function TMcpIndexTools.KindName(AKind: TIndexSymbolKind): string;
+function TMcpIndexTools.RationaleOptions: TRationaleOptions;
 begin
-  case AKind of
-    TIndexSymbolKind.ClassType: Result := cTexts[TIndexToolsText.ClassText].Text;
-    TIndexSymbolKind.ObjectType: Result := cTexts[TIndexToolsText.ObjectType].Text;
-    TIndexSymbolKind.RecordType: Result := 'Record';
-    TIndexSymbolKind.InterfaceType: Result := 'Interface';
-    TIndexSymbolKind.HelperType: Result := cTexts[TIndexToolsText.Helper].Text;
-    TIndexSymbolKind.EnumType: Result := cTexts[TIndexToolsText.Enumeration].Text;
-    TIndexSymbolKind.TypeAlias: Result := 'Typ';
-    TIndexSymbolKind.EnumMember: Result := cTexts[TIndexToolsText.EnumerationValue].Text;
-    TIndexSymbolKind.Constant: Result := 'Konstante';
-    TIndexSymbolKind.Variable: Result := 'Variable';
-    TIndexSymbolKind.Field: Result := cTexts[TIndexToolsText.Field].Text;
-    TIndexSymbolKind.Property_: Result := 'Property';
-    TIndexSymbolKind.Method: Result := 'Methode';
-    TIndexSymbolKind.Constructor_: Result := cTexts[TIndexToolsText.ConstructorText].Text;
+  if Assigned(FRationaleOptions) then
+  begin
+    Result := FRationaleOptions();
+  end
   else
-    Result := 'Routine';
-  end;
-end;
-
-class function TMcpIndexTools.Location(const ALocation: TSymbolLocation): string;
-begin
-  Result := Format('%s:%d', [ALocation.FileName, ALocation.Symbol.SelectionRange.StartPos.Line + 1]);
-end;
-
-function Describe(const ALocation: TSymbolLocation): string;
-begin
-  Result := Format('%s (%s', [ALocation.Symbol.QualifiedName, TMcpIndexTools.KindName(ALocation.Symbol.Kind)]);
-  if ALocation.Symbol.TypeName <> '' then
   begin
-    Result := Result + ': ' + ALocation.Symbol.TypeName;
-  end;
-  if not ALocation.Symbol.InInterface then
-  begin
-    Result := Result + cTexts[TIndexToolsText.ImplementationOnly].Text;
-  end;
-  Result := Result + Format(') – Unit %s, %s', [ALocation.UnitName, TMcpIndexTools.Location(ALocation)]);
-end;
-
-function TMcpIndexTools.Matches(const AName: string): TArray<TSymbolLocation>;
-var
-  mQuery, mContainer, mName: string;
-  mDot: Integer;
-  mFound: TList<TSymbolLocation>;
-  mLocation: TSymbolLocation;
-begin
-  mQuery := Trim(AName);
-  mName := mQuery;
-  mContainer := '';
-  mDot := LastDelimiter('.', mName);
-  if mDot > 0 then
-  begin
-    mContainer := Copy(mName, 1, mDot - 1);
-    // Unit-Präfix (System.SysUtils.TFoo.Bar) zählt nicht zum Container.
-    if LastDelimiter('.', mContainer) > 0 then
-    begin
-      mContainer := Copy(mContainer, LastDelimiter('.', mContainer) + 1, MaxInt);
-    end;
-    mName := Copy(mName, mDot + 1, MaxInt);
-  end;
-  mFound := TList<TSymbolLocation>.Create;
-  try
-    for mLocation in FIndex.FindSymbols(mName) do
-    begin
-      if (mContainer = '') or SameText(mLocation.Symbol.Container, mContainer) or
-        ((mDot > 0) and SameText(mLocation.UnitName, Copy(mQuery, 1, mDot - 1))) then
-      begin
-        mFound.Add(mLocation);
-      end;
-    end;
-    Result := mFound.ToArray;
-  finally
-    mFound.Free;
+    Result := TRationaleOptions.Default;
   end;
 end;
 
@@ -269,19 +203,40 @@ begin
   end;
 end;
 
-/// <summary>Die exakten Treffer AFound, höchstens MaxResults.</summary>
-procedure AddExact(ALines: TStrings; const AFound: TArray<TSymbolLocation>);
-var
-  mIndex: Integer;
+function Describe(const ALocation: TSymbolLocation): string;
 begin
-  for mIndex := 0 to High(AFound) do
+  Result := Format('%s (%s', [ALocation.Symbol.QualifiedName, TMcpIndexTools.KindName(ALocation.Symbol.Kind)]);
+  if ALocation.Symbol.TypeName <> '' then
   begin
-    if mIndex >= TMcpIndexTools.cMaxResults then
+    Result := Result + ': ' + ALocation.Symbol.TypeName;
+  end;
+  if not ALocation.Symbol.InInterface then
+  begin
+    Result := Result + cTexts[TIndexToolsText.ImplementationOnly].Text;
+  end;
+  Result := Result + Format(') – Unit %s, %s', [ALocation.UnitName, TMcpIndexTools.Location(ALocation)]);
+end;
+
+procedure TMcpIndexTools.AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
+  AVisited: TDictionary<string, Boolean>);
+var
+  mLocation: TSymbolLocation;
+  mKey: string;
+begin
+  if ADepth > cMaxDepth then
+  begin
+    Exit;
+  end;
+  for mLocation in FIndex.Descendants(ATypeName) do
+  begin
+    mKey := LowerCase(mLocation.UnitName + '.' + mLocation.Symbol.QualifiedName);
+    if AVisited.ContainsKey(mKey) then
     begin
-      ALines.Add(cTexts[TIndexToolsText.More].Fmt([Length(AFound) - mIndex]));
-      Break;
+      Continue;
     end;
-    ALines.Add(Describe(AFound[mIndex]));
+    AVisited.Add(mKey, True);
+    ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(mLocation));
+    AddDescendants(ALines, mLocation.Symbol.Name, ADepth + 1, AVisited);
   end;
 end;
 
@@ -314,45 +269,98 @@ begin
   Result := True;
 end;
 
-function TMcpIndexTools.FindSymbol(const AQuery: string): string;
+/// <summary>Die exakten Treffer AFound, höchstens MaxResults.</summary>
+procedure AddExact(ALines: TStrings; const AFound: TArray<TSymbolLocation>);
 var
-  mLines: TStringList;
-  mFound: TArray<TSymbolLocation>;
+  mIndex: Integer;
 begin
-  mLines := TStringList.Create;
-  try
-    mFound := Matches(AQuery);
-    if Length(mFound) > 0 then
+  for mIndex := 0 to High(AFound) do
+  begin
+    if mIndex >= TMcpIndexTools.cMaxResults then
     begin
-      AddExact(mLines, mFound);
-      Result := JoinLines(mLines);
-    end
-    else if not AddSimilar(mLines, AQuery) then
-    begin
-      Result := JoinLines(mLines);
-    end
-    else if mLines.Count = 0 then
-    begin
-      Result := cTexts[TIndexToolsText.NoSymbolInTheIndex].Fmt([AQuery, FIndex.UnitCount]);
-    end
-    else
-    begin
-      Result := cTexts[TIndexToolsText.NoExactMatchSimilarNames].Text + sLineBreak + JoinLines(mLines);
+      ALines.Add(cTexts[TIndexToolsText.More].Fmt([Length(AFound) - mIndex]));
+      Break;
     end;
-  finally
-    mLines.Free;
+    ALines.Add(Describe(AFound[mIndex]));
   end;
 end;
 
-function TMcpIndexTools.RationaleOptions: TRationaleOptions;
+function TMcpIndexTools.AncestorLine(const AFound: TSymbolLocation): string;
+var
+  mCurrent: TSymbolLocation;
+  mParents: TArray<TSymbolLocation>;
+  mChain: TList<string>;
 begin
-  if Assigned(FRationaleOptions) then
+  // Vorfahrenkette über die jeweils erste Basisklasse.
+  Result := AFound.Symbol.Name;
+  mCurrent := AFound;
+  mChain := TList<string>.Create;
+  try
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) and
+      not mChain.Contains(LowerCase(mCurrent.Symbol.Ancestors[0])) do
+    begin
+      mChain.Add(LowerCase(mCurrent.Symbol.Ancestors[0]));
+      Result := Result + ' → ' + mCurrent.Symbol.Ancestors[0];
+      mParents := TypeMatches(mCurrent.Symbol.Ancestors[0]);
+      if Length(mParents) = 0 then
+      begin
+        Break;
+      end;
+      mCurrent := mParents[0];
+    end;
+  finally
+    mChain.Free;
+  end;
+end;
+
+function TMcpIndexTools.PackageLine(const AUnitName: string): string;
+begin
+  Result := '';
+  if Assigned(FPackageOf) then
   begin
-    Result := FRationaleOptions();
-  end
-  else
+    Result := FPackageOf(AUnitName);
+  end;
+  if Result = '' then
   begin
-    Result := TRationaleOptions.Default;
+    Result := cTexts[TIndexToolsText.Unknown].Text;
+  end;
+end;
+
+procedure TMcpIndexTools.AddAncestors(ALines: TStrings; const AFound: TSymbolLocation);
+var
+  mCurrent: TSymbolLocation;
+  mParents: TArray<TSymbolLocation>;
+  mChain: TList<string>;
+  mName: string;
+begin
+  // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
+  ALines.Add(cTexts[TIndexToolsText.Ancestors2].Text);
+  mCurrent := AFound;
+  mChain := TList<string>.Create;
+  try
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) do
+    begin
+      mName := mCurrent.Symbol.Ancestors[0];
+      if mChain.Contains(LowerCase(mName)) then
+      begin
+        Break;
+      end;
+      mChain.Add(LowerCase(mName));
+      mParents := TypeMatches(mName);
+      if Length(mParents) = 0 then
+      begin
+        ALines.Add(cTexts[TIndexToolsText.NotInTheIndex].Fmt([mName]));
+        Break;
+      end;
+      mCurrent := mParents[0];
+      ALines.Add('  - ' + Describe(mCurrent));
+    end;
+    if mChain.Count = 0 then
+    begin
+      ALines.Add(cTexts[TIndexToolsText.None].Text);
+    end;
+  finally
+    mChain.Free;
   end;
 end;
 
@@ -409,39 +417,6 @@ begin
   end;
 end;
 
-function TMcpIndexTools.Declaration(const AQuery: string): string;
-var
-  mLines, mSource: TStringList;
-  mLocation: TSymbolLocation;
-  mCount: Integer;
-  mOptions: TRationaleOptions;
-begin
-  mOptions := RationaleOptions;
-  mLines := TStringList.Create;
-  mSource := TStringList.Create;
-  try
-    mCount := 0;
-    for mLocation in Matches(AQuery) do
-    begin
-      if mCount >= cMaxDeclarations then
-      begin
-        mLines.Add(cTexts[TIndexToolsText.MoreDeclarationsNarrowTheName].Text);
-        Break;
-      end;
-      Inc(mCount);
-      AddDeclaration(mLines, mSource, mLocation, mOptions);
-    end;
-    if mCount = 0 then
-    begin
-      Exit(cTexts[TIndexToolsText.NoSymbolInTheIndex2].Fmt([AQuery]));
-    end;
-    Result := JoinLines(mLines);
-  finally
-    mSource.Free;
-    mLines.Free;
-  end;
-end;
-
 function TMcpIndexTools.SymbolRationale(const AName: string; const AOptions: TRationaleOptions): string;
 var
   mLines: TStringList;
@@ -479,6 +454,43 @@ begin
     end;
   finally
     mLines.Free;
+  end;
+end;
+
+function TMcpIndexTools.Matches(const AName: string): TArray<TSymbolLocation>;
+var
+  mQuery, mContainer, mName: string;
+  mDot: Integer;
+  mFound: TList<TSymbolLocation>;
+  mLocation: TSymbolLocation;
+begin
+  mQuery := Trim(AName);
+  mName := mQuery;
+  mContainer := '';
+  mDot := LastDelimiter('.', mName);
+  if mDot > 0 then
+  begin
+    mContainer := Copy(mName, 1, mDot - 1);
+    // Unit-Präfix (System.SysUtils.TFoo.Bar) zählt nicht zum Container.
+    if LastDelimiter('.', mContainer) > 0 then
+    begin
+      mContainer := Copy(mContainer, LastDelimiter('.', mContainer) + 1, MaxInt);
+    end;
+    mName := Copy(mName, mDot + 1, MaxInt);
+  end;
+  mFound := TList<TSymbolLocation>.Create;
+  try
+    for mLocation in FIndex.FindSymbols(mName) do
+    begin
+      if (mContainer = '') or SameText(mLocation.Symbol.Container, mContainer) or
+        ((mDot > 0) and SameText(mLocation.UnitName, Copy(mQuery, 1, mDot - 1))) then
+      begin
+        mFound.Add(mLocation);
+      end;
+    end;
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
   end;
 end;
 
@@ -538,6 +550,69 @@ begin
   end;
 end;
 
+function TMcpIndexTools.FindSymbol(const AQuery: string): string;
+var
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
+begin
+  mLines := TStringList.Create;
+  try
+    mFound := Matches(AQuery);
+    if Length(mFound) > 0 then
+    begin
+      AddExact(mLines, mFound);
+      Result := JoinLines(mLines);
+    end
+    else if not AddSimilar(mLines, AQuery) then
+    begin
+      Result := JoinLines(mLines);
+    end
+    else if mLines.Count = 0 then
+    begin
+      Result := cTexts[TIndexToolsText.NoSymbolInTheIndex].Fmt([AQuery, FIndex.UnitCount]);
+    end
+    else
+    begin
+      Result := cTexts[TIndexToolsText.NoExactMatchSimilarNames].Text + sLineBreak + JoinLines(mLines);
+    end;
+  finally
+    mLines.Free;
+  end;
+end;
+
+function TMcpIndexTools.Declaration(const AQuery: string): string;
+var
+  mLines, mSource: TStringList;
+  mLocation: TSymbolLocation;
+  mCount: Integer;
+  mOptions: TRationaleOptions;
+begin
+  mOptions := RationaleOptions;
+  mLines := TStringList.Create;
+  mSource := TStringList.Create;
+  try
+    mCount := 0;
+    for mLocation in Matches(AQuery) do
+    begin
+      if mCount >= cMaxDeclarations then
+      begin
+        mLines.Add(cTexts[TIndexToolsText.MoreDeclarationsNarrowTheName].Text);
+        Break;
+      end;
+      Inc(mCount);
+      AddDeclaration(mLines, mSource, mLocation, mOptions);
+    end;
+    if mCount = 0 then
+    begin
+      Exit(cTexts[TIndexToolsText.NoSymbolInTheIndex2].Fmt([AQuery]));
+    end;
+    Result := JoinLines(mLines);
+  finally
+    mSource.Free;
+    mLines.Free;
+  end;
+end;
+
 function TMcpIndexTools.Rationale(const AUnitOrFile, AName: string): string;
 begin
   // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
@@ -555,26 +630,218 @@ begin
   end;
 end;
 
-procedure TMcpIndexTools.AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
-  AVisited: TDictionary<string, Boolean>);
+function TMcpIndexTools.TypeHierarchy(const ATypeName: string): string;
 var
-  mLocation: TSymbolLocation;
-  mKey: string;
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
+  mVisited: TDictionary<string, Boolean>;
+  mIndex: Integer;
 begin
-  if ADepth > cMaxDepth then
+  mFound := TypeMatches(ATypeName);
+  if Length(mFound) = 0 then
   begin
-    Exit;
+    Exit(cTexts[TIndexToolsText.NoTypeInTheIndex].Fmt([ATypeName]));
   end;
-  for mLocation in FIndex.Descendants(ATypeName) do
-  begin
-    mKey := LowerCase(mLocation.UnitName + '.' + mLocation.Symbol.QualifiedName);
-    if AVisited.ContainsKey(mKey) then
+  mLines := TStringList.Create;
+  mVisited := TDictionary<string, Boolean>.Create;
+  try
+    mLines.Add(Describe(mFound[0]));
+    if Length(mFound[0].Symbol.Ancestors) > 1 then
     begin
-      Continue;
+      mLines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(mFound[0].Symbol.Ancestors, 1, MaxInt)));
     end;
-    AVisited.Add(mKey, True);
-    ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(mLocation));
-    AddDescendants(ALines, mLocation.Symbol.Name, ADepth + 1, AVisited);
+    AddAncestors(mLines, mFound[0]);
+    mLines.Add(cTexts[TIndexToolsText.Descendants].Text);
+    mIndex := mLines.Count;
+    AddDescendants(mLines, mFound[0].Symbol.Name, 1, mVisited);
+    if mLines.Count = mIndex then
+    begin
+      mLines.Add(cTexts[TIndexToolsText.NoneInTheIndex].Text);
+    end;
+    if Length(mFound) > 1 then
+    begin
+      mLines.Add(cTexts[TIndexToolsText.NoteTypesOfThisName].Fmt([Length(mFound)]));
+    end;
+    Result := JoinLines(mLines);
+  finally
+    mVisited.Free;
+    mLines.Free;
+  end;
+end;
+
+/// <summary>" (aus TBasis)", wenn AMember nicht in AClassName selbst deklariert ist.</summary>
+function InheritedNote(const AMember: TPublishedMember; const AClassName: string): string;
+begin
+  Result := '';
+  if not SameText(AMember.DeclaringClass, AClassName) then
+  begin
+    Result := cTexts[TIndexToolsText.From].Fmt([AMember.DeclaringClass]);
+  end;
+end;
+
+procedure TMcpIndexTools.AddMembers(ALines: TStrings; const AClassName: string);
+var
+  mReadText: TMemberReadText;
+  mMembers: TArray<TPublishedMember>;
+  mMember: TPublishedMember;
+  mLine, mTail: string;
+begin
+  mReadText :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FReadText(AFileName, AText);
+    end;
+  mMembers := TPublishedMembers.Collect(FIndex, AClassName, mReadText);
+  ALines.Add('Properties:');
+  for mMember in mMembers do
+  begin
+    if not mMember.IsEvent then
+    begin
+      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
+      if TPublishedMembers.DefaultText(mMember) <> '' then
+      begin
+        mLine := mLine + ' ' + TPublishedMembers.DefaultText(mMember);
+      end;
+      ALines.Add(mLine + InheritedNote(mMember, AClassName));
+    end;
+  end;
+  ALines.Add(cTexts[TIndexToolsText.Events].Text);
+  for mMember in mMembers do
+  begin
+    if mMember.IsEvent then
+    begin
+      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
+      if TPublishedMembers.EventTail(FIndex, mReadText, AClassName, mMember.Name, mTail) then
+      begin
+        mLine := mLine + cTexts[TIndexToolsText.Signature].Text + mTail;
+      end;
+      ALines.Add(mLine + InheritedNote(mMember, AClassName));
+    end;
+  end;
+end;
+
+/// <summary>Palettenseiten von AClassName aus den RegisterComponents-Aufrufen in AText, an APages angehängt.
+/// </summary>
+procedure AddPages(var APages: string; const AText, AClassName: string);
+var
+  mRegistration: TComponentRegistration;
+begin
+  for mRegistration in TMcpIndexTools.Registrations(AText) do
+  begin
+    if SameText(mRegistration.ClassName, AClassName) and (Pos(mRegistration.Page, APages) = 0) then
+    begin
+      if APages <> '' then
+      begin
+        APages := APages + ', ';
+      end;
+      APages := APages + mRegistration.Page;
+    end;
+  end;
+end;
+
+function TMcpIndexTools.PaletteLine(const AFound: TSymbolLocation): string;
+var
+  mFiles: TList<string>;
+  mRoutine: TSymbolLocation;
+  mFileName, mText: string;
+begin
+  // Palettenseite: RegisterComponents in der Unit der Klasse und in allen Register-Routinen.
+  Result := '';
+  mFiles := TList<string>.Create;
+  try
+    mFiles.Add(AFound.FileName);
+    for mRoutine in FIndex.FindSymbols('Register') do
+    begin
+      if (mRoutine.Symbol.Container = '') and not mFiles.Contains(mRoutine.FileName) then
+      begin
+        mFiles.Add(mRoutine.FileName);
+      end;
+    end;
+    for mFileName in mFiles do
+    begin
+      if Assigned(FReadText) and FReadText(mFileName, mText) then
+      begin
+        AddPages(Result, mText, AFound.Symbol.Name);
+      end;
+    end;
+  finally
+    mFiles.Free;
+  end;
+  if Result = '' then
+  begin
+    Result := cTexts[TIndexToolsText.None2].Text;
+  end;
+end;
+
+function TMcpIndexTools.UnitOutline(const AUnitOrFile: string): string;
+var
+  mUnitIndex: TUnitIndex;
+  mLines: TStringList;
+  mSymbol: TIndexSymbol;
+  mIndent, mSection: string;
+  mInInterface: Boolean;
+begin
+  if not FIndex.FindUnit(AUnitOrFile, mUnitIndex) and not FIndex.FindFile(AUnitOrFile, mUnitIndex) then
+  begin
+    Exit(cTexts[TIndexToolsText.UnitNotInTheIndex].Fmt([AUnitOrFile]));
+  end;
+  mLines := TStringList.Create;
+  try
+    mLines.Add(Format('unit %s – %s', [mUnitIndex.UnitName, mUnitIndex.FileName]));
+    if Length(mUnitIndex.InterfaceUses) > 0 then
+    begin
+      mLines.Add('uses (interface): ' + string.Join(', ', mUnitIndex.InterfaceUses));
+    end;
+    if Length(mUnitIndex.ImplementationUses) > 0 then
+    begin
+      mLines.Add('uses (implementation): ' + string.Join(', ', mUnitIndex.ImplementationUses));
+    end;
+    mInInterface := False;
+    mSection := '';
+    for mSymbol in mUnitIndex.Symbols do
+    begin
+      if (mSection = '') or (mSymbol.InInterface <> mInInterface) then
+      begin
+        mInInterface := mSymbol.InInterface;
+        mSection := IfThen(mInInterface, 'interface', 'implementation');
+        mLines.Add(mSection + ':');
+      end;
+      mIndent := IfThen(mSymbol.Container = '', '  ', '    ');
+      mLines.Add(cTexts[TIndexToolsText.Line2].Fmt([mIndent, KindName(mSymbol.Kind),
+        IfThen(mSymbol.Container = '', mSymbol.Name, mSymbol.QualifiedName),
+        IfThen(mSymbol.TypeName <> '', ': ' + mSymbol.TypeName, '') +
+        IfThen(Length(mSymbol.Ancestors) > 0, '(' + string.Join(', ', mSymbol.Ancestors) + ')', ''),
+        mSymbol.SelectionRange.StartPos.Line + 1]));
+    end;
+    Result := JoinLines(mLines);
+  finally
+    mLines.Free;
+  end;
+end;
+
+function TMcpIndexTools.ComponentInfo(const AClassName: string): string;
+var
+  mLines: TStringList;
+  mFound: TArray<TSymbolLocation>;
+begin
+  mFound := TypeMatches(AClassName);
+  if Length(mFound) = 0 then
+  begin
+    Exit(cTexts[TIndexToolsText.NoSourcesForInThe].Fmt([AClassName]));
+  end;
+  mLines := TStringList.Create;
+  try
+    mLines.Add(Describe(mFound[0]));
+    mLines.Add(cTexts[TIndexToolsText.Ancestors].Text + AncestorLine(mFound[0]));
+    mLines.Add(cTexts[TIndexToolsText.RegistrationPalettePage].Text + PaletteLine(mFound[0]));
+    mLines.Add('Package: ' + PackageLine(mFound[0].UnitName));
+    if Assigned(FReadText) then
+    begin
+      AddMembers(mLines, mFound[0].Symbol.Name);
+    end;
+    Result := JoinLines(mLines);
+  finally
+    mLines.Free;
   end;
 end;
 
@@ -652,304 +919,37 @@ begin
   end;
 end;
 
-/// <summary>" (aus TBasis)", wenn AMember nicht in AClassName selbst deklariert ist.</summary>
-function InheritedNote(const AMember: TPublishedMember; const AClassName: string): string;
-begin
-  Result := '';
-  if not SameText(AMember.DeclaringClass, AClassName) then
-  begin
-    Result := cTexts[TIndexToolsText.From].Fmt([AMember.DeclaringClass]);
-  end;
-end;
-
-function TMcpIndexTools.AncestorLine(const AFound: TSymbolLocation): string;
-var
-  mCurrent: TSymbolLocation;
-  mParents: TArray<TSymbolLocation>;
-  mChain: TList<string>;
-begin
-  // Vorfahrenkette über die jeweils erste Basisklasse.
-  Result := AFound.Symbol.Name;
-  mCurrent := AFound;
-  mChain := TList<string>.Create;
-  try
-    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) and
-      not mChain.Contains(LowerCase(mCurrent.Symbol.Ancestors[0])) do
-    begin
-      mChain.Add(LowerCase(mCurrent.Symbol.Ancestors[0]));
-      Result := Result + ' → ' + mCurrent.Symbol.Ancestors[0];
-      mParents := TypeMatches(mCurrent.Symbol.Ancestors[0]);
-      if Length(mParents) = 0 then
-      begin
-        Break;
-      end;
-      mCurrent := mParents[0];
-    end;
-  finally
-    mChain.Free;
-  end;
-end;
-
-/// <summary>Palettenseiten von AClassName aus den RegisterComponents-Aufrufen in AText, an APages angehängt.
-/// </summary>
-procedure AddPages(var APages: string; const AText, AClassName: string);
-var
-  mRegistration: TComponentRegistration;
-begin
-  for mRegistration in TMcpIndexTools.Registrations(AText) do
-  begin
-    if SameText(mRegistration.ClassName, AClassName) and (Pos(mRegistration.Page, APages) = 0) then
-    begin
-      if APages <> '' then
-      begin
-        APages := APages + ', ';
-      end;
-      APages := APages + mRegistration.Page;
-    end;
-  end;
-end;
-
-function TMcpIndexTools.PaletteLine(const AFound: TSymbolLocation): string;
-var
-  mFiles: TList<string>;
-  mRoutine: TSymbolLocation;
-  mFileName, mText: string;
-begin
-  // Palettenseite: RegisterComponents in der Unit der Klasse und in allen Register-Routinen.
-  Result := '';
-  mFiles := TList<string>.Create;
-  try
-    mFiles.Add(AFound.FileName);
-    for mRoutine in FIndex.FindSymbols('Register') do
-    begin
-      if (mRoutine.Symbol.Container = '') and not mFiles.Contains(mRoutine.FileName) then
-      begin
-        mFiles.Add(mRoutine.FileName);
-      end;
-    end;
-    for mFileName in mFiles do
-    begin
-      if Assigned(FReadText) and FReadText(mFileName, mText) then
-      begin
-        AddPages(Result, mText, AFound.Symbol.Name);
-      end;
-    end;
-  finally
-    mFiles.Free;
-  end;
-  if Result = '' then
-  begin
-    Result := cTexts[TIndexToolsText.None2].Text;
-  end;
-end;
-
-function TMcpIndexTools.PackageLine(const AUnitName: string): string;
-begin
-  Result := '';
-  if Assigned(FPackageOf) then
-  begin
-    Result := FPackageOf(AUnitName);
-  end;
-  if Result = '' then
-  begin
-    Result := cTexts[TIndexToolsText.Unknown].Text;
-  end;
-end;
-
-procedure TMcpIndexTools.AddMembers(ALines: TStrings; const AClassName: string);
-var
-  mReadText: TMemberReadText;
-  mMembers: TArray<TPublishedMember>;
-  mMember: TPublishedMember;
-  mLine, mTail: string;
-begin
-  mReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := FReadText(AFileName, AText);
-    end;
-  mMembers := TPublishedMembers.Collect(FIndex, AClassName, mReadText);
-  ALines.Add('Properties:');
-  for mMember in mMembers do
-  begin
-    if not mMember.IsEvent then
-    begin
-      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
-      if TPublishedMembers.DefaultText(mMember) <> '' then
-      begin
-        mLine := mLine + ' ' + TPublishedMembers.DefaultText(mMember);
-      end;
-      ALines.Add(mLine + InheritedNote(mMember, AClassName));
-    end;
-  end;
-  ALines.Add(cTexts[TIndexToolsText.Events].Text);
-  for mMember in mMembers do
-  begin
-    if mMember.IsEvent then
-    begin
-      mLine := Format('  %s: %s', [mMember.Name, mMember.TypeName]);
-      if TPublishedMembers.EventTail(FIndex, mReadText, AClassName, mMember.Name, mTail) then
-      begin
-        mLine := mLine + cTexts[TIndexToolsText.Signature].Text + mTail;
-      end;
-      ALines.Add(mLine + InheritedNote(mMember, AClassName));
-    end;
-  end;
-end;
-
-function TMcpIndexTools.ComponentInfo(const AClassName: string): string;
-var
-  mLines: TStringList;
-  mFound: TArray<TSymbolLocation>;
-begin
-  mFound := TypeMatches(AClassName);
-  if Length(mFound) = 0 then
-  begin
-    Exit(cTexts[TIndexToolsText.NoSourcesForInThe].Fmt([AClassName]));
-  end;
-  mLines := TStringList.Create;
-  try
-    mLines.Add(Describe(mFound[0]));
-    mLines.Add(cTexts[TIndexToolsText.Ancestors].Text + AncestorLine(mFound[0]));
-    mLines.Add(cTexts[TIndexToolsText.RegistrationPalettePage].Text + PaletteLine(mFound[0]));
-    mLines.Add('Package: ' + PackageLine(mFound[0].UnitName));
-    if Assigned(FReadText) then
-    begin
-      AddMembers(mLines, mFound[0].Symbol.Name);
-    end;
-    Result := JoinLines(mLines);
-  finally
-    mLines.Free;
-  end;
-end;
-
-procedure TMcpIndexTools.AddAncestors(ALines: TStrings; const AFound: TSymbolLocation);
-var
-  mCurrent: TSymbolLocation;
-  mParents: TArray<TSymbolLocation>;
-  mChain: TList<string>;
-  mName: string;
-begin
-  // Vorfahren über den jeweils ersten Eintrag (Basisklasse bzw. -interface).
-  ALines.Add(cTexts[TIndexToolsText.Ancestors2].Text);
-  mCurrent := AFound;
-  mChain := TList<string>.Create;
-  try
-    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) do
-    begin
-      mName := mCurrent.Symbol.Ancestors[0];
-      if mChain.Contains(LowerCase(mName)) then
-      begin
-        Break;
-      end;
-      mChain.Add(LowerCase(mName));
-      mParents := TypeMatches(mName);
-      if Length(mParents) = 0 then
-      begin
-        ALines.Add(cTexts[TIndexToolsText.NotInTheIndex].Fmt([mName]));
-        Break;
-      end;
-      mCurrent := mParents[0];
-      ALines.Add('  - ' + Describe(mCurrent));
-    end;
-    if mChain.Count = 0 then
-    begin
-      ALines.Add(cTexts[TIndexToolsText.None].Text);
-    end;
-  finally
-    mChain.Free;
-  end;
-end;
-
-function TMcpIndexTools.TypeHierarchy(const ATypeName: string): string;
-var
-  mLines: TStringList;
-  mFound: TArray<TSymbolLocation>;
-  mVisited: TDictionary<string, Boolean>;
-  mIndex: Integer;
-begin
-  mFound := TypeMatches(ATypeName);
-  if Length(mFound) = 0 then
-  begin
-    Exit(cTexts[TIndexToolsText.NoTypeInTheIndex].Fmt([ATypeName]));
-  end;
-  mLines := TStringList.Create;
-  mVisited := TDictionary<string, Boolean>.Create;
-  try
-    mLines.Add(Describe(mFound[0]));
-    if Length(mFound[0].Symbol.Ancestors) > 1 then
-    begin
-      mLines.Add('Implementiert/erweitert: ' + string.Join(', ', Copy(mFound[0].Symbol.Ancestors, 1, MaxInt)));
-    end;
-    AddAncestors(mLines, mFound[0]);
-    mLines.Add(cTexts[TIndexToolsText.Descendants].Text);
-    mIndex := mLines.Count;
-    AddDescendants(mLines, mFound[0].Symbol.Name, 1, mVisited);
-    if mLines.Count = mIndex then
-    begin
-      mLines.Add(cTexts[TIndexToolsText.NoneInTheIndex].Text);
-    end;
-    if Length(mFound) > 1 then
-    begin
-      mLines.Add(cTexts[TIndexToolsText.NoteTypesOfThisName].Fmt([Length(mFound)]));
-    end;
-    Result := JoinLines(mLines);
-  finally
-    mVisited.Free;
-    mLines.Free;
-  end;
-end;
-
-function TMcpIndexTools.UnitOutline(const AUnitOrFile: string): string;
-var
-  mUnitIndex: TUnitIndex;
-  mLines: TStringList;
-  mSymbol: TIndexSymbol;
-  mIndent, mSection: string;
-  mInInterface: Boolean;
-begin
-  if not FIndex.FindUnit(AUnitOrFile, mUnitIndex) and not FIndex.FindFile(AUnitOrFile, mUnitIndex) then
-  begin
-    Exit(cTexts[TIndexToolsText.UnitNotInTheIndex].Fmt([AUnitOrFile]));
-  end;
-  mLines := TStringList.Create;
-  try
-    mLines.Add(Format('unit %s – %s', [mUnitIndex.UnitName, mUnitIndex.FileName]));
-    if Length(mUnitIndex.InterfaceUses) > 0 then
-    begin
-      mLines.Add('uses (interface): ' + string.Join(', ', mUnitIndex.InterfaceUses));
-    end;
-    if Length(mUnitIndex.ImplementationUses) > 0 then
-    begin
-      mLines.Add('uses (implementation): ' + string.Join(', ', mUnitIndex.ImplementationUses));
-    end;
-    mInInterface := False;
-    mSection := '';
-    for mSymbol in mUnitIndex.Symbols do
-    begin
-      if (mSection = '') or (mSymbol.InInterface <> mInInterface) then
-      begin
-        mInInterface := mSymbol.InInterface;
-        mSection := IfThen(mInInterface, 'interface', 'implementation');
-        mLines.Add(mSection + ':');
-      end;
-      mIndent := IfThen(mSymbol.Container = '', '  ', '    ');
-      mLines.Add(cTexts[TIndexToolsText.Line2].Fmt([mIndent, KindName(mSymbol.Kind),
-        IfThen(mSymbol.Container = '', mSymbol.Name, mSymbol.QualifiedName),
-        IfThen(mSymbol.TypeName <> '', ': ' + mSymbol.TypeName, '') +
-        IfThen(Length(mSymbol.Ancestors) > 0, '(' + string.Join(', ', mSymbol.Ancestors) + ')', ''),
-        mSymbol.SelectionRange.StartPos.Line + 1]));
-    end;
-    Result := JoinLines(mLines);
-  finally
-    mLines.Free;
-  end;
-end;
-
 class function TMcpIndexTools.DfmInfo(const AText: string): string;
 begin
   // Gemeinsam mit dem Hover über Formularfelder (#126).
   Result := TFormInfo.Describe(AText);
+end;
+
+class function TMcpIndexTools.KindName(AKind: TIndexSymbolKind): string;
+begin
+  case AKind of
+    TIndexSymbolKind.ClassType: Result := cTexts[TIndexToolsText.ClassText].Text;
+    TIndexSymbolKind.ObjectType: Result := cTexts[TIndexToolsText.ObjectType].Text;
+    TIndexSymbolKind.RecordType: Result := 'Record';
+    TIndexSymbolKind.InterfaceType: Result := 'Interface';
+    TIndexSymbolKind.HelperType: Result := cTexts[TIndexToolsText.Helper].Text;
+    TIndexSymbolKind.EnumType: Result := cTexts[TIndexToolsText.Enumeration].Text;
+    TIndexSymbolKind.TypeAlias: Result := 'Typ';
+    TIndexSymbolKind.EnumMember: Result := cTexts[TIndexToolsText.EnumerationValue].Text;
+    TIndexSymbolKind.Constant: Result := 'Konstante';
+    TIndexSymbolKind.Variable: Result := 'Variable';
+    TIndexSymbolKind.Field: Result := cTexts[TIndexToolsText.Field].Text;
+    TIndexSymbolKind.Property_: Result := 'Property';
+    TIndexSymbolKind.Method: Result := 'Methode';
+    TIndexSymbolKind.Constructor_: Result := cTexts[TIndexToolsText.ConstructorText].Text;
+  else
+    Result := 'Routine';
+  end;
+end;
+
+class function TMcpIndexTools.Location(const ALocation: TSymbolLocation): string;
+begin
+  Result := Format('%s:%d', [ALocation.FileName, ALocation.Symbol.SelectionRange.StartPos.Line + 1]);
 end;
 
 initialization

@@ -266,44 +266,6 @@ end;
 
 { TAtlasModuleNodes }
 
-class function TAtlasModuleNodes.CaptionOf(const AName: string): string;
-begin
-  // Zwei Punkte: Atlas › Module › <Name>.
-  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode) + '.' + AName;
-end;
-
-class function TAtlasModuleNodes.NodeOfSwitch(const ASwitch: string): INTAAddInOptions;
-var
-  mIndex: Integer;
-begin
-  if ASwitch = '' then
-  begin
-    Exit(BaseNode);
-  end;
-  for mIndex := 0 to High(NodeSwitches) do
-  begin
-    if SameText(NodeSwitches[mIndex], ASwitch) then
-    begin
-      Exit(Nodes[mIndex]);
-    end;
-  end;
-  Result := nil;
-end;
-
-class function TAtlasModuleNodes.NameOfSwitch(const ASwitch: string): string;
-var
-  mModule: TAtlasKnownModule;
-begin
-  for mModule in AtlasModuleRegistry.Known do
-  begin
-    if (ASwitch <> '') and SameText(mModule.Info.Switch, ASwitch) then
-    begin
-      Exit(mModule.Info.Name);
-    end;
-  end;
-  Result := '';
-end;
-
 class procedure TAtlasModuleNodes.Start(const ABase: INTAAddInOptions; const AFactory: TAtlasModuleNodeFactory);
 var
   mServices: INTAEnvironmentOptionsServices;
@@ -348,6 +310,44 @@ begin
   BaseNode := nil;
   ListNode := nil;
   Factory := nil;
+end;
+
+class function TAtlasModuleNodes.CaptionOf(const AName: string): string;
+begin
+  // Zwei Punkte: Atlas › Module › <Name>.
+  Result := 'Atlas.' + TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsModulesNode) + '.' + AName;
+end;
+
+class function TAtlasModuleNodes.NodeOfSwitch(const ASwitch: string): INTAAddInOptions;
+var
+  mIndex: Integer;
+begin
+  if ASwitch = '' then
+  begin
+    Exit(BaseNode);
+  end;
+  for mIndex := 0 to High(NodeSwitches) do
+  begin
+    if SameText(NodeSwitches[mIndex], ASwitch) then
+    begin
+      Exit(Nodes[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+class function TAtlasModuleNodes.NameOfSwitch(const ASwitch: string): string;
+var
+  mModule: TAtlasKnownModule;
+begin
+  for mModule in AtlasModuleRegistry.Known do
+  begin
+    if (ASwitch <> '') and SameText(mModule.Info.Switch, ASwitch) then
+    begin
+      Exit(mModule.Info.Name);
+    end;
+  end;
+  Result := '';
 end;
 
 end.

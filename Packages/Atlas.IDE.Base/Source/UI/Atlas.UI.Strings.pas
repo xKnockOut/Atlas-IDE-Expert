@@ -1281,26 +1281,27 @@ begin
   Result := Format(cTexts[TAtlasTextLanguage.Current, AId], AArgs);
 end;
 
-class function TAtlasStrings.FormatKind(AType: Char): string;
+class function TAtlasStrings.Confidence(const AName: string): string;
+var
+  mLevel: TAtlasTextId;
 begin
-  case AType of
-    'd':
-      Result := Text(TAtlasTextId.FormatKindInteger);
-    'u':
-      Result := Text(TAtlasTextId.FormatKindUnsigned);
-    'x':
-      Result := Text(TAtlasTextId.FormatKindHex);
-    'e', 'f', 'g', 'n':
-      Result := Text(TAtlasTextId.FormatKindFloat);
-    'm':
-      Result := Text(TAtlasTextId.FormatKindMoney);
-    's':
-      Result := Text(TAtlasTextId.FormatKindString);
-    'p':
-      Result := Text(TAtlasTextId.FormatKindPointer);
+  if SameText(AName, 'high') then
+  begin
+    mLevel := TAtlasTextId.ConfidenceHigh;
+  end
+  else if SameText(AName, 'medium') then
+  begin
+    mLevel := TAtlasTextId.ConfidenceMedium;
+  end
+  else if SameText(AName, 'low') then
+  begin
+    mLevel := TAtlasTextId.ConfidenceLow;
+  end
   else
-    Result := Text(TAtlasTextId.FormatKindInteger);
+  begin
+    Exit('');
   end;
+  Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(mLevel)]);
 end;
 
 function LiteralKind(const AKind: string): string;
@@ -1329,62 +1330,6 @@ begin
   begin
     Result := TAtlasStrings.Text(TAtlasTextId.FormatLiteralOther);
   end;
-end;
-
-class function TAtlasStrings.SignatureFormatLine(const ALine: TAtlasFormatLine): string;
-begin
-  case ALine.Kind of
-    TAtlasFormatLineKind.Placeholder:
-      Result := Fmt(TAtlasTextId.FormatPlaceholder, [ALine.Placeholder + 1, ALine.Count, FormatKind(ALine.TypeChar)]);
-    TAtlasFormatLineKind.Width:
-      Result := Fmt(TAtlasTextId.FormatWidth, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
-    TAtlasFormatLineKind.Precision:
-      Result := Fmt(TAtlasTextId.FormatPrecision, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
-    TAtlasFormatLineKind.Unused:
-      Result := Fmt(TAtlasTextId.FormatUnused, [ALine.Argument + 1, ALine.Count]);
-    TAtlasFormatLineKind.Problem:
-      case ALine.Problem of
-        TAtlasFormatProblem.Invalid:
-          Result := Fmt(TAtlasTextId.FormatInvalid, [ALine.PlaceholderText]);
-        TAtlasFormatProblem.TooManyArguments:
-          Result := Fmt(TAtlasTextId.FormatTooMany, [ALine.Argument + 1]);
-        TAtlasFormatProblem.TypeConflict:
-          Result := Fmt(TAtlasTextId.FormatConflict, [ALine.Placeholder + 1, ALine.PlaceholderText,
-            FormatKind(ALine.TypeChar), ALine.Argument + 1, LiteralKind(ALine.ProblemKind)]);
-      else
-        Result := '';
-      end;
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasStrings.DocLabels: TAtlasDocLabels;
-begin
-  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
-  Result := TAtlasDocLabels.Current;
-  Result.Params := Text(TAtlasTextId.DocParams);
-  Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
-  Result.Returns := Text(TAtlasTextId.DocReturns);
-  Result.Value := Text(TAtlasTextId.DocValue);
-  Result.Exceptions := Text(TAtlasTextId.DocExceptions);
-  Result.Remarks := Text(TAtlasTextId.DocRemarks);
-  Result.Example := Text(TAtlasTextId.DocExample);
-  Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
-  Result.Undocumented := Text(TAtlasTextId.DocUndocumented);
-  Result.More := Text(TAtlasTextId.DocMore);
-  Result.Less := Text(TAtlasTextId.DocLess);
-  Result.CountParam := Text(TAtlasTextId.DocCountParam);
-  Result.CountParams := Text(TAtlasTextId.DocCountParams);
-  Result.CountTypeParam := Text(TAtlasTextId.DocCountTypeParam);
-  Result.CountTypeParams := Text(TAtlasTextId.DocCountTypeParams);
-  Result.CountException := Text(TAtlasTextId.DocCountException);
-  Result.CountExceptions := Text(TAtlasTextId.DocCountExceptions);
-  Result.ItemReturns := Text(TAtlasTextId.DocItemReturns);
-  Result.ItemValue := Text(TAtlasTextId.DocItemValue);
-  Result.ItemRemarks := Text(TAtlasTextId.DocItemRemarks);
-  Result.ItemExample := Text(TAtlasTextId.DocItemExample);
-  Result.ItemSeeAlso := Text(TAtlasTextId.DocItemSeeAlso);
 end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
@@ -1469,29 +1414,6 @@ begin
   end;
 end;
 
-class function TAtlasStrings.InheritedAbstract(const AMethods: TArray<string>): string;
-begin
-  case Length(AMethods) of
-    0: Result := '';
-    1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
-    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
-  else
-    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
-  end;
-end;
-
-class function TAtlasStrings.CompilerConfirmed(const ACode: string; AShowCode: Boolean): string;
-begin
-  if AShowCode and (ACode <> '') then
-  begin
-    Result := Fmt(TAtlasTextId.ProblemsCompilerConfirmedCode, [ACode]);
-  end
-  else
-  begin
-    Result := Text(TAtlasTextId.ProblemsCompilerConfirmed);
-  end;
-end;
-
 class function TAtlasStrings.UsesCycle(const AChain: string): string;
 var
   mParts: TArray<string>;
@@ -1540,27 +1462,105 @@ begin
   end;
 end;
 
-class function TAtlasStrings.Confidence(const AName: string): string;
-var
-  mLevel: TAtlasTextId;
+class function TAtlasStrings.InheritedAbstract(const AMethods: TArray<string>): string;
 begin
-  if SameText(AName, 'high') then
+  case Length(AMethods) of
+    0: Result := '';
+    1: Result := Fmt(TAtlasTextId.InheritedAbstractOne, [AMethods[0]]);
+    2, 3: Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', AMethods)]);
+  else
+    Result := Fmt(TAtlasTextId.InheritedAbstractMore, [string.Join(', ', Copy(AMethods, 0, 3)) + ', …']);
+  end;
+end;
+
+class function TAtlasStrings.CompilerConfirmed(const ACode: string; AShowCode: Boolean): string;
+begin
+  if AShowCode and (ACode <> '') then
   begin
-    mLevel := TAtlasTextId.ConfidenceHigh;
-  end
-  else if SameText(AName, 'medium') then
-  begin
-    mLevel := TAtlasTextId.ConfidenceMedium;
-  end
-  else if SameText(AName, 'low') then
-  begin
-    mLevel := TAtlasTextId.ConfidenceLow;
+    Result := Fmt(TAtlasTextId.ProblemsCompilerConfirmedCode, [ACode]);
   end
   else
   begin
-    Exit('');
+    Result := Text(TAtlasTextId.ProblemsCompilerConfirmed);
   end;
-  Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(mLevel)]);
+end;
+
+class function TAtlasStrings.DocLabels: TAtlasDocLabels;
+begin
+  // Begründung (Rationale) steht nur in der Grundtabelle; die übrigen Beschriftungen kommen aus Texts.
+  Result := TAtlasDocLabels.Current;
+  Result.Params := Text(TAtlasTextId.DocParams);
+  Result.TypeParams := Text(TAtlasTextId.DocTypeParams);
+  Result.Returns := Text(TAtlasTextId.DocReturns);
+  Result.Value := Text(TAtlasTextId.DocValue);
+  Result.Exceptions := Text(TAtlasTextId.DocExceptions);
+  Result.Remarks := Text(TAtlasTextId.DocRemarks);
+  Result.Example := Text(TAtlasTextId.DocExample);
+  Result.SeeAlso := Text(TAtlasTextId.DocSeeAlso);
+  Result.Undocumented := Text(TAtlasTextId.DocUndocumented);
+  Result.More := Text(TAtlasTextId.DocMore);
+  Result.Less := Text(TAtlasTextId.DocLess);
+  Result.CountParam := Text(TAtlasTextId.DocCountParam);
+  Result.CountParams := Text(TAtlasTextId.DocCountParams);
+  Result.CountTypeParam := Text(TAtlasTextId.DocCountTypeParam);
+  Result.CountTypeParams := Text(TAtlasTextId.DocCountTypeParams);
+  Result.CountException := Text(TAtlasTextId.DocCountException);
+  Result.CountExceptions := Text(TAtlasTextId.DocCountExceptions);
+  Result.ItemReturns := Text(TAtlasTextId.DocItemReturns);
+  Result.ItemValue := Text(TAtlasTextId.DocItemValue);
+  Result.ItemRemarks := Text(TAtlasTextId.DocItemRemarks);
+  Result.ItemExample := Text(TAtlasTextId.DocItemExample);
+  Result.ItemSeeAlso := Text(TAtlasTextId.DocItemSeeAlso);
+end;
+
+class function TAtlasStrings.SignatureFormatLine(const ALine: TAtlasFormatLine): string;
+begin
+  case ALine.Kind of
+    TAtlasFormatLineKind.Placeholder:
+      Result := Fmt(TAtlasTextId.FormatPlaceholder, [ALine.Placeholder + 1, ALine.Count, FormatKind(ALine.TypeChar)]);
+    TAtlasFormatLineKind.Width:
+      Result := Fmt(TAtlasTextId.FormatWidth, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
+    TAtlasFormatLineKind.Precision:
+      Result := Fmt(TAtlasTextId.FormatPrecision, [ALine.Placeholder + 1, ALine.Count, ALine.PlaceholderText]);
+    TAtlasFormatLineKind.Unused:
+      Result := Fmt(TAtlasTextId.FormatUnused, [ALine.Argument + 1, ALine.Count]);
+    TAtlasFormatLineKind.Problem:
+      case ALine.Problem of
+        TAtlasFormatProblem.Invalid:
+          Result := Fmt(TAtlasTextId.FormatInvalid, [ALine.PlaceholderText]);
+        TAtlasFormatProblem.TooManyArguments:
+          Result := Fmt(TAtlasTextId.FormatTooMany, [ALine.Argument + 1]);
+        TAtlasFormatProblem.TypeConflict:
+          Result := Fmt(TAtlasTextId.FormatConflict, [ALine.Placeholder + 1, ALine.PlaceholderText,
+            FormatKind(ALine.TypeChar), ALine.Argument + 1, LiteralKind(ALine.ProblemKind)]);
+      else
+        Result := '';
+      end;
+  else
+    Result := '';
+  end;
+end;
+
+class function TAtlasStrings.FormatKind(AType: Char): string;
+begin
+  case AType of
+    'd':
+      Result := Text(TAtlasTextId.FormatKindInteger);
+    'u':
+      Result := Text(TAtlasTextId.FormatKindUnsigned);
+    'x':
+      Result := Text(TAtlasTextId.FormatKindHex);
+    'e', 'f', 'g', 'n':
+      Result := Text(TAtlasTextId.FormatKindFloat);
+    'm':
+      Result := Text(TAtlasTextId.FormatKindMoney);
+    's':
+      Result := Text(TAtlasTextId.FormatKindString);
+    'p':
+      Result := Text(TAtlasTextId.FormatKindPointer);
+  else
+    Result := Text(TAtlasTextId.FormatKindInteger);
+  end;
 end;
 
 initialization

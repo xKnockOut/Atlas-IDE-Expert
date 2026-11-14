@@ -260,24 +260,6 @@ begin
   end;
 end;
 
-class function TQueryResult.Placeholders(const ATemplate: string): TArray<string>;
-var
-  mStart, mStop: Integer;
-begin
-  Result := nil;
-  mStart := Pos('{', ATemplate);
-  while mStart > 0 do
-  begin
-    mStop := Pos('}', ATemplate, mStart + 1);
-    if mStop = 0 then
-    begin
-      Break;
-    end;
-    Result := Result + [Copy(ATemplate, mStart + 1, mStop - mStart - 1)];
-    mStart := Pos('{', ATemplate, mStop + 1);
-  end;
-end;
-
 function TQueryResult.Message(const ATemplate: string; const ARow: TQueryRow): string;
 var
   mName: string;
@@ -299,6 +281,24 @@ begin
     begin
       Result := StringReplace(Result, '{' + mName + '}', ARow.Path, [rfReplaceAll]);
     end;
+  end;
+end;
+
+class function TQueryResult.Placeholders(const ATemplate: string): TArray<string>;
+var
+  mStart, mStop: Integer;
+begin
+  Result := nil;
+  mStart := Pos('{', ATemplate);
+  while mStart > 0 do
+  begin
+    mStop := Pos('}', ATemplate, mStart + 1);
+    if mStop = 0 then
+    begin
+      Break;
+    end;
+    Result := Result + [Copy(ATemplate, mStart + 1, mStop - mStart - 1)];
+    mStart := Pos('{', ATemplate, mStop + 1);
   end;
 end;
 

@@ -157,11 +157,12 @@ begin
   UpdateHelp;
 end;
 
-procedure TAtlasCodeQueryFrame.SetCatalog(const ACatalog: TAtlasQueryCatalog);
+procedure TAtlasCodeQueryFrame.UpdateButtons;
 begin
-  FInputBar.Catalog := ACatalog;
-  FToolbar.FillSaved(ACatalog);
-  UpdateHelp;
+  FToolbar.RunButton.Enabled := not FRunning;
+  FToolbar.CancelButton.Enabled := FRunning;
+  FToolbar.SaveRuleButton.Enabled := Trim(FInputBar.Edit.Text) <> '';
+  FToolbar.CopyCsvButton.Enabled := FResults.HasAnswer and (Length(FResults.Answer.Rows) > 0);
 end;
 
 /// <summary>Zeile der Hilfe zu einer Menge: Name, Titel, Felder und Prädikate.</summary>
@@ -236,50 +237,40 @@ begin
   UpdateHelp;
 end;
 
-procedure TAtlasCodeQueryFrame.SetAnswer(const AAnswer: TAtlasQueryAnswer);
+procedure TAtlasCodeQueryFrame.SavedChange(Sender: TObject);
+var
+  mIndex: Integer;
 begin
-  FRunning := False;
-  FMessageText := '';
-  FHelpChoice := 0;
-  FResults.SetAnswer(AAnswer);
-  FInputBar.ShowError(FResults.Answer, True);
-  UpdateButtons;
-  UpdateStatus;
-  UpdateHelp;
-end;
-
-procedure TAtlasCodeQueryFrame.SetRunning(ARunning: Boolean);
-begin
-  FRunning := ARunning;
-  if ARunning then
+  mIndex := FToolbar.SavedCombo.ItemIndex - 1;
+  if (mIndex < 0) or (mIndex > High(FInputBar.Catalog.Saved)) then
   begin
-    FMessageText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning);
+    Exit;
   end;
+  FInputBar.ReplaceText(FInputBar.Catalog.Saved[mIndex].Query);
   UpdateButtons;
-  UpdateStatus;
+  Run;
 end;
 
-procedure TAtlasCodeQueryFrame.SetMessage(const AText: string; AKeep: Boolean);
+procedure TAtlasCodeQueryFrame.RunClick(Sender: TObject);
 begin
-  FMessageText := AText;
-  FRunning := False;
-  if not AKeep then
+  Run;
+end;
+
+procedure TAtlasCodeQueryFrame.CancelClick(Sender: TObject);
+begin
+  if FRunning and Assigned(FEvents.OnCancel) then
   begin
-    FHelpChoice := 0;
-    FResults.ClearAnswer;
-    FInputBar.ShowError(FResults.Answer, False);
+    FEvents.OnCancel();
   end;
-  UpdateButtons;
-  UpdateStatus;
-  UpdateHelp;
 end;
 
-procedure TAtlasCodeQueryFrame.UpdateButtons;
+procedure TAtlasCodeQueryFrame.SaveRuleClick(Sender: TObject);
 begin
-  FToolbar.RunButton.Enabled := not FRunning;
-  FToolbar.CancelButton.Enabled := FRunning;
-  FToolbar.SaveRuleButton.Enabled := Trim(FInputBar.Edit.Text) <> '';
-  FToolbar.CopyCsvButton.Enabled := FResults.HasAnswer and (Length(FResults.Answer.Rows) > 0);
+  FInputBar.HideSuggest;
+  if (Trim(FInputBar.Edit.Text) <> '') and Assigned(FEvents.OnSaveRule) then
+  begin
+    FEvents.OnSaveRule(Trim(FInputBar.Edit.Text));
+  end;
 end;
 
 /// <summary>Statuszeile zu einer Antwort: Treffer, Laufzeit, erschlossene Treffer.</summary>
@@ -320,54 +311,6 @@ begin
   end;
 end;
 
-procedure TAtlasCodeQueryFrame.Run;
-var
-  mText: string;
-begin
-  FInputBar.HideSuggest;
-  mText := Trim(FInputBar.Edit.Text);
-  if (mText <> '') and not FRunning and Assigned(FEvents.OnRun) then
-  begin
-    FEvents.OnRun(mText);
-  end;
-end;
-
-procedure TAtlasCodeQueryFrame.SavedChange(Sender: TObject);
-var
-  mIndex: Integer;
-begin
-  mIndex := FToolbar.SavedCombo.ItemIndex - 1;
-  if (mIndex < 0) or (mIndex > High(FInputBar.Catalog.Saved)) then
-  begin
-    Exit;
-  end;
-  FInputBar.ReplaceText(FInputBar.Catalog.Saved[mIndex].Query);
-  UpdateButtons;
-  Run;
-end;
-
-procedure TAtlasCodeQueryFrame.RunClick(Sender: TObject);
-begin
-  Run;
-end;
-
-procedure TAtlasCodeQueryFrame.CancelClick(Sender: TObject);
-begin
-  if FRunning and Assigned(FEvents.OnCancel) then
-  begin
-    FEvents.OnCancel();
-  end;
-end;
-
-procedure TAtlasCodeQueryFrame.SaveRuleClick(Sender: TObject);
-begin
-  FInputBar.HideSuggest;
-  if (Trim(FInputBar.Edit.Text) <> '') and Assigned(FEvents.OnSaveRule) then
-  begin
-    FEvents.OnSaveRule(Trim(FInputBar.Edit.Text));
-  end;
-end;
-
 procedure TAtlasCodeQueryFrame.CopyCsvClick(Sender: TObject);
 var
   mCount: Integer;
@@ -389,6 +332,63 @@ end;
 procedure TAtlasCodeQueryFrame.InputEdited(Sender: TObject);
 begin
   UpdateButtons;
+end;
+
+procedure TAtlasCodeQueryFrame.SetCatalog(const ACatalog: TAtlasQueryCatalog);
+begin
+  FInputBar.Catalog := ACatalog;
+  FToolbar.FillSaved(ACatalog);
+  UpdateHelp;
+end;
+
+procedure TAtlasCodeQueryFrame.SetAnswer(const AAnswer: TAtlasQueryAnswer);
+begin
+  FRunning := False;
+  FMessageText := '';
+  FHelpChoice := 0;
+  FResults.SetAnswer(AAnswer);
+  FInputBar.ShowError(FResults.Answer, True);
+  UpdateButtons;
+  UpdateStatus;
+  UpdateHelp;
+end;
+
+procedure TAtlasCodeQueryFrame.SetRunning(ARunning: Boolean);
+begin
+  FRunning := ARunning;
+  if ARunning then
+  begin
+    FMessageText := TAtlasSearchStrings.Text(TAtlasSearchTextId.QueryRunning);
+  end;
+  UpdateButtons;
+  UpdateStatus;
+end;
+
+procedure TAtlasCodeQueryFrame.SetMessage(const AText: string; AKeep: Boolean);
+begin
+  FMessageText := AText;
+  FRunning := False;
+  if not AKeep then
+  begin
+    FHelpChoice := 0;
+    FResults.ClearAnswer;
+    FInputBar.ShowError(FResults.Answer, False);
+  end;
+  UpdateButtons;
+  UpdateStatus;
+  UpdateHelp;
+end;
+
+procedure TAtlasCodeQueryFrame.Run;
+var
+  mText: string;
+begin
+  FInputBar.HideSuggest;
+  mText := Trim(FInputBar.Edit.Text);
+  if (mText <> '') and not FRunning and Assigned(FEvents.OnRun) then
+  begin
+    FEvents.OnRun(mText);
+  end;
 end;
 
 end.

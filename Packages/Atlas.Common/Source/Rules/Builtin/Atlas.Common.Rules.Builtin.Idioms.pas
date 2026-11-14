@@ -247,6 +247,8 @@ const
     'Gebühr', 'Fee', 'Saldo', 'Balance', 'Lohn', 'Gehalt', 'Salary', 'Kasse', 'MwSt', 'Mehrwertsteuer', 'Tax',
     'Konto', 'Umsatz', 'Revenue');
 
+{ TMoneyAsFloatRule }
+
 function TMoneyAsFloatRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cMoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text);
@@ -327,11 +329,6 @@ begin
       Result := Result + [mPattern];
     end;
   end;
-end;
-
-class function TMoneyAsFloatRule.IsAmbiguousName(const AName: string; const APatterns: TArray<string>): Boolean;
-begin
-  Result := IsMoneyName(AName, APatterns) and not IsMoneyName(AName, UnambiguousPatterns(APatterns));
 end;
 
 procedure TMoneyAsFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -826,6 +823,11 @@ begin
   end;
 end;
 
+class function TMoneyAsFloatRule.IsAmbiguousName(const AName: string; const APatterns: TArray<string>): Boolean;
+begin
+  Result := IsMoneyName(AName, APatterns) and not IsMoneyName(AName, UnambiguousPatterns(APatterns));
+end;
+
 { TStringIfChainRule }
 
 const
@@ -840,6 +842,8 @@ type
     Statement: TSyntaxNode;
     Condition: TSyntaxNode;
   end;
+
+{ TStringIfChainRule }
 
 function TStringIfChainRule.Descriptor: TRuleDescriptor;
 begin

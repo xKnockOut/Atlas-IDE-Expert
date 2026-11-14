@@ -104,52 +104,6 @@ begin
     (ANode.FindChild(TSyntaxKind.GenericArgs) <> nil);
 end;
 
-class function TStepCalls.ReceiverOf(ACallee: TSyntaxNode): TSyntaxNode;
-begin
-  Result := nil;
-  if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.MemberAccess) or (ACallee.ChildCount = 0) then
-  begin
-    Exit;
-  end;
-  if IsGeneric(ACallee) then
-  begin
-    Result := ReceiverOf(ACallee[0]);
-  end
-  else
-  begin
-    Result := ACallee[0];
-  end;
-end;
-
-class function TStepCalls.NamePosition(ACallee: TSyntaxNode; out APosition: TTextPosition): Boolean;
-begin
-  Result := False;
-  if ACallee = nil then
-  begin
-    Exit;
-  end;
-  case ACallee.Kind of
-    TSyntaxKind.Identifier, TSyntaxKind.InheritedExpr:
-      begin
-        APosition := ACallee.StartPos;
-        Result := True;
-      end;
-    TSyntaxKind.MemberAccess:
-      if IsGeneric(ACallee) then
-      begin
-        Result := NamePosition(ACallee[0], APosition);
-      end
-      else if (ACallee.Name <> '') and (ACallee.EndPos.Character >= Length(ACallee.Name)) then
-      begin
-        // Der Name steht am Ende des Knotens (A.B: B endet mit dem Knoten).
-        APosition := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character - Length(ACallee.Name));
-        Result := True;
-      end;
-  else
-    // Übrige Arten: nichts zu tun.
-  end;
-end;
-
 class procedure TStepCalls.AddSite(var ASites: TArray<TStepCallSite>; ANode, ACallee: TSyntaxNode; AAssigned,
   AExplicit: Boolean);
 var
@@ -183,6 +137,98 @@ begin
       end;
   else
     Visit(ACallee, ASites);
+  end;
+end;
+
+class procedure TStepCalls.VisitTarget(ATarget: TSyntaxNode; var ASites: TArray<TStepCallSite>);
+var
+  mIndex: Integer;
+begin
+  case ATarget.Kind of
+    TSyntaxKind.Identifier:
+      AddSite(ASites, ATarget, ATarget, True, False);
+    TSyntaxKind.MemberAccess:
+      begin
+        VisitReceiver(ATarget, ASites);
+        AddSite(ASites, ATarget, ATarget, True, False);
+      end;
+    TSyntaxKind.IndexAccess:
+      if ATarget.ChildCount > 0 then
+      begin
+        VisitReceiver(ATarget[0], ASites);
+        for mIndex := 1 to ATarget.ChildCount - 1 do
+        begin
+          Visit(ATarget[mIndex], ASites);
+        end;
+        AddSite(ASites, ATarget, ATarget[0], True, False);
+      end;
+  else
+    // P^.X := …, (A as TB).C := …: nur die Aufrufe darin.
+    Visit(ATarget, ASites);
+  end;
+end;
+
+class function TStepCalls.NextStatement(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mParent: TSyntaxNode;
+  mIndex, mOwn: Integer;
+begin
+  Result := nil;
+  mParent := ANode.Parent;
+  if mParent = nil then
+  begin
+    Exit;
+  end;
+  mOwn := -1;
+  for mIndex := 0 to mParent.ChildCount - 1 do
+  begin
+    if mParent[mIndex] = ANode then
+    begin
+      mOwn := mIndex;
+      Break;
+    end;
+  end;
+  if mOwn < 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := mOwn + 1 to mParent.ChildCount - 1 do
+  begin
+    if mParent[mIndex].Kind in cStatementKinds then
+    begin
+      Exit(mParent[mIndex]);
+    end
+    else if mParent[mIndex].Kind = TSyntaxKind.Block then
+    begin
+      // begin … end als Anweisung: seine erste Anweisung, sonst weiter.
+      Result := FirstStatement(mParent[mIndex]);
+      if Result <> nil then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
+class function TStepCalls.FirstStatement(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind in cStatementKinds then
+    begin
+      Exit(ANode[mIndex]);
+    end
+    else if ANode[mIndex].Kind = TSyntaxKind.Block then
+    begin
+      Result := FirstStatement(ANode[mIndex]);
+      if Result <> nil then
+      begin
+        Exit;
+      end;
+    end;
   end;
 end;
 
@@ -240,34 +286,6 @@ begin
         Visit(ANode[mIndex], ASites);
       end;
     end;
-  end;
-end;
-
-class procedure TStepCalls.VisitTarget(ATarget: TSyntaxNode; var ASites: TArray<TStepCallSite>);
-var
-  mIndex: Integer;
-begin
-  case ATarget.Kind of
-    TSyntaxKind.Identifier:
-      AddSite(ASites, ATarget, ATarget, True, False);
-    TSyntaxKind.MemberAccess:
-      begin
-        VisitReceiver(ATarget, ASites);
-        AddSite(ASites, ATarget, ATarget, True, False);
-      end;
-    TSyntaxKind.IndexAccess:
-      if ATarget.ChildCount > 0 then
-      begin
-        VisitReceiver(ATarget[0], ASites);
-        for mIndex := 1 to ATarget.ChildCount - 1 do
-        begin
-          Visit(ATarget[mIndex], ASites);
-        end;
-        AddSite(ASites, ATarget, ATarget[0], True, False);
-      end;
-  else
-    // P^.X := …, (A as TB).C := …: nur die Aufrufe darin.
-    Visit(ATarget, ASites);
   end;
 end;
 
@@ -392,67 +410,49 @@ begin
   Result := AStatement.Node <> nil;
 end;
 
-class function TStepCalls.FirstStatement(ANode: TSyntaxNode): TSyntaxNode;
-var
-  mIndex: Integer;
+class function TStepCalls.NamePosition(ACallee: TSyntaxNode; out APosition: TTextPosition): Boolean;
 begin
-  Result := nil;
-  for mIndex := 0 to ANode.ChildCount - 1 do
+  Result := False;
+  if ACallee = nil then
   begin
-    if ANode[mIndex].Kind in cStatementKinds then
-    begin
-      Exit(ANode[mIndex]);
-    end
-    else if ANode[mIndex].Kind = TSyntaxKind.Block then
-    begin
-      Result := FirstStatement(ANode[mIndex]);
-      if Result <> nil then
+    Exit;
+  end;
+  case ACallee.Kind of
+    TSyntaxKind.Identifier, TSyntaxKind.InheritedExpr:
       begin
-        Exit;
+        APosition := ACallee.StartPos;
+        Result := True;
       end;
-    end;
+    TSyntaxKind.MemberAccess:
+      if IsGeneric(ACallee) then
+      begin
+        Result := NamePosition(ACallee[0], APosition);
+      end
+      else if (ACallee.Name <> '') and (ACallee.EndPos.Character >= Length(ACallee.Name)) then
+      begin
+        // Der Name steht am Ende des Knotens (A.B: B endet mit dem Knoten).
+        APosition := TTextPosition.Create(ACallee.EndPos.Line, ACallee.EndPos.Character - Length(ACallee.Name));
+        Result := True;
+      end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 
-class function TStepCalls.NextStatement(ANode: TSyntaxNode): TSyntaxNode;
-var
-  mParent: TSyntaxNode;
-  mIndex, mOwn: Integer;
+class function TStepCalls.ReceiverOf(ACallee: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
-  mParent := ANode.Parent;
-  if mParent = nil then
+  if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.MemberAccess) or (ACallee.ChildCount = 0) then
   begin
     Exit;
   end;
-  mOwn := -1;
-  for mIndex := 0 to mParent.ChildCount - 1 do
+  if IsGeneric(ACallee) then
   begin
-    if mParent[mIndex] = ANode then
-    begin
-      mOwn := mIndex;
-      Break;
-    end;
-  end;
-  if mOwn < 0 then
+    Result := ReceiverOf(ACallee[0]);
+  end
+  else
   begin
-    Exit;
-  end;
-  for mIndex := mOwn + 1 to mParent.ChildCount - 1 do
-  begin
-    if mParent[mIndex].Kind in cStatementKinds then
-    begin
-      Exit(mParent[mIndex]);
-    end
-    else if mParent[mIndex].Kind = TSyntaxKind.Block then
-    begin
-      // begin … end als Anweisung: seine erste Anweisung, sonst weiter.
-      Result := FirstStatement(mParent[mIndex]);
-      if Result <> nil then
-      begin
-        Exit;
-      end;
-    end;
+    Result := ACallee[0];
   end;
 end;
 

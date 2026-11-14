@@ -62,98 +62,6 @@ begin
   GuardFeature := TAtlasFeature.Breadcrumbs;
 end;
 
-class function TAtlasCrumbCardTip.RowCaption(const ARow: TAtlasCardRow): string;
-const
-  cIds: array[TAtlasCardMetric] of TAtlasTextId = (TAtlasTextId.BreadcrumbsMetricsLines,
-    TAtlasTextId.BreadcrumbsMetricsCyclomatic, TAtlasTextId.BreadcrumbsMetricsNesting,
-    TAtlasTextId.BreadcrumbsMetricsParameters, TAtlasTextId.BreadcrumbsMetricsMembers,
-    TAtlasTextId.BreadcrumbsMetricsInheritance);
-begin
-  Result := TAtlasStrings.Text(cIds[ARow.Metric]);
-end;
-
-class function TAtlasCrumbCardTip.RowValue(const ARow: TAtlasCardRow): string;
-begin
-  Result := ARow.ValueText;
-  if ARow.Over then
-  begin
-    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsLimit), [Result, ARow.Limit]);
-  end;
-end;
-
-function TAtlasCrumbCardTip.LineHeight: Integer;
-begin
-  Canvas.Font := UIFont;
-  Result := Canvas.TextHeight('Wg') + Scale(2);
-end;
-
-function TAtlasCrumbCardTip.Measure(const ACard: TAtlasCrumbCard): TSize;
-var
-  mIndex, mWidth, mValueWidth: Integer;
-begin
-  FCard := ACard;
-  SetLength(FCaptions, Length(ACard.Rows));
-  SetLength(FValues, Length(ACard.Rows));
-  for mIndex := 0 to High(ACard.Rows) do
-  begin
-    FCaptions[mIndex] := RowCaption(ACard.Rows[mIndex]);
-    FValues[mIndex] := RowValue(ACard.Rows[mIndex]);
-  end;
-  if not ACard.Available then
-  begin
-    FCaptions := [TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsMissing)];
-    FValues := [''];
-  end;
-  Canvas.Font := UIFont;
-  FCaptionWidth := 0;
-  mValueWidth := 0;
-  for mIndex := 0 to High(FCaptions) do
-  begin
-    FCaptionWidth := Max(FCaptionWidth, Canvas.TextWidth(FCaptions[mIndex]));
-    mValueWidth := Max(mValueWidth, Canvas.TextWidth(FValues[mIndex]));
-  end;
-  mWidth := FCaptionWidth;
-  if mValueWidth > 0 then
-  begin
-    mWidth := FCaptionWidth + Scale(cGap) + mValueWidth;
-  end;
-  mWidth := Min(Max(mWidth, Canvas.TextWidth(ACard.Title)), Scale(cMaxWidth));
-  Result.cx := mWidth + 2 * Scale(cPadding);
-  // Kopfzeile, Abstand 4, je Zeile eine Höhe, Padding unten.
-  Result.cy := Scale(cPadding) + LineHeight + Scale(4) + Length(FCaptions) * LineHeight + Scale(cPadding);
-end;
-
-procedure TAtlasCrumbCardTip.ShowCard(const ACard: TAtlasCrumbCard; const APoint: TPoint);
-var
-  mArea, mBounds: TRect;
-  mSize: TSize;
-  mIndex: Integer;
-  mSpoken: string;
-begin
-  mSize := Measure(ACard);
-  mArea := WorkAreaAt(APoint);
-  mSize.cx := Min(mSize.cx, mArea.Width);
-  mSize.cy := Min(mSize.cy, mArea.Height);
-  mBounds := TRect.Create(APoint, mSize.cx, mSize.cy);
-  if mBounds.Right > mArea.Right then
-  begin
-    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mSize.cx), mBounds.Top);
-  end;
-  if mBounds.Bottom > mArea.Bottom then
-  begin
-    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, mArea.Bottom - mSize.cy));
-  end;
-  SetAccessible(cUiaToolTipControlType, ACard.Title);
-  ShowAt(mBounds);
-  Invalidate;
-  mSpoken := ACard.Title;
-  for mIndex := 0 to High(FCaptions) do
-  begin
-    mSpoken := Trim(mSpoken + '. ' + FCaptions[mIndex] + ' ' + FValues[mIndex]);
-  end;
-  Announce(mSpoken);
-end;
-
 procedure TAtlasCrumbCardTip.Paint;
 var
   mArea: TRect;
@@ -195,6 +103,98 @@ begin
   end;
   Canvas.Brush.Style := bsSolid;
   PaintBorder;
+end;
+
+function TAtlasCrumbCardTip.LineHeight: Integer;
+begin
+  Canvas.Font := UIFont;
+  Result := Canvas.TextHeight('Wg') + Scale(2);
+end;
+
+procedure TAtlasCrumbCardTip.ShowCard(const ACard: TAtlasCrumbCard; const APoint: TPoint);
+var
+  mArea, mBounds: TRect;
+  mSize: TSize;
+  mIndex: Integer;
+  mSpoken: string;
+begin
+  mSize := Measure(ACard);
+  mArea := WorkAreaAt(APoint);
+  mSize.cx := Min(mSize.cx, mArea.Width);
+  mSize.cy := Min(mSize.cy, mArea.Height);
+  mBounds := TRect.Create(APoint, mSize.cx, mSize.cy);
+  if mBounds.Right > mArea.Right then
+  begin
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mSize.cx), mBounds.Top);
+  end;
+  if mBounds.Bottom > mArea.Bottom then
+  begin
+    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, mArea.Bottom - mSize.cy));
+  end;
+  SetAccessible(cUiaToolTipControlType, ACard.Title);
+  ShowAt(mBounds);
+  Invalidate;
+  mSpoken := ACard.Title;
+  for mIndex := 0 to High(FCaptions) do
+  begin
+    mSpoken := Trim(mSpoken + '. ' + FCaptions[mIndex] + ' ' + FValues[mIndex]);
+  end;
+  Announce(mSpoken);
+end;
+
+function TAtlasCrumbCardTip.Measure(const ACard: TAtlasCrumbCard): TSize;
+var
+  mIndex, mWidth, mValueWidth: Integer;
+begin
+  FCard := ACard;
+  SetLength(FCaptions, Length(ACard.Rows));
+  SetLength(FValues, Length(ACard.Rows));
+  for mIndex := 0 to High(ACard.Rows) do
+  begin
+    FCaptions[mIndex] := RowCaption(ACard.Rows[mIndex]);
+    FValues[mIndex] := RowValue(ACard.Rows[mIndex]);
+  end;
+  if not ACard.Available then
+  begin
+    FCaptions := [TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsMissing)];
+    FValues := [''];
+  end;
+  Canvas.Font := UIFont;
+  FCaptionWidth := 0;
+  mValueWidth := 0;
+  for mIndex := 0 to High(FCaptions) do
+  begin
+    FCaptionWidth := Max(FCaptionWidth, Canvas.TextWidth(FCaptions[mIndex]));
+    mValueWidth := Max(mValueWidth, Canvas.TextWidth(FValues[mIndex]));
+  end;
+  mWidth := FCaptionWidth;
+  if mValueWidth > 0 then
+  begin
+    mWidth := FCaptionWidth + Scale(cGap) + mValueWidth;
+  end;
+  mWidth := Min(Max(mWidth, Canvas.TextWidth(ACard.Title)), Scale(cMaxWidth));
+  Result.cx := mWidth + 2 * Scale(cPadding);
+  // Kopfzeile, Abstand 4, je Zeile eine Höhe, Padding unten.
+  Result.cy := Scale(cPadding) + LineHeight + Scale(4) + Length(FCaptions) * LineHeight + Scale(cPadding);
+end;
+
+class function TAtlasCrumbCardTip.RowCaption(const ARow: TAtlasCardRow): string;
+const
+  cIds: array[TAtlasCardMetric] of TAtlasTextId = (TAtlasTextId.BreadcrumbsMetricsLines,
+    TAtlasTextId.BreadcrumbsMetricsCyclomatic, TAtlasTextId.BreadcrumbsMetricsNesting,
+    TAtlasTextId.BreadcrumbsMetricsParameters, TAtlasTextId.BreadcrumbsMetricsMembers,
+    TAtlasTextId.BreadcrumbsMetricsInheritance);
+begin
+  Result := TAtlasStrings.Text(cIds[ARow.Metric]);
+end;
+
+class function TAtlasCrumbCardTip.RowValue(const ARow: TAtlasCardRow): string;
+begin
+  Result := ARow.ValueText;
+  if ARow.Over then
+  begin
+    Result := Format(TAtlasStrings.Text(TAtlasTextId.BreadcrumbsMetricsLimit), [Result, ARow.Limit]);
+  end;
 end;
 
 end.

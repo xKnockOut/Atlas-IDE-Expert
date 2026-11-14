@@ -79,6 +79,41 @@ end;
 
 { TAtlasIdeTestProjects }
 
+class function TAtlasIdeTestProjects.ChoiceFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
+    TAtlasTestProjectChoices.cFileName);
+end;
+
+class procedure TAtlasIdeTestProjects.Apply(const AFiles: TArray<string>; AChosen: Integer;
+  const ASay: TAtlasTestsSayProc; const AThen: TAtlasTestsProjectProc);
+var
+  mProject: IOTAProject;
+  mStored: TArray<TAtlasTestProjectChoice>;
+begin
+  // Das Projekt kann inzwischen geschlossen sein.
+  mProject := ProjectByFile(AFiles[AChosen]);
+  if mProject = nil then
+  begin
+    ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
+    Exit;
+  end;
+  // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben.
+  if TAtlasDataFile.Writable(TAtlasTestProjectChoices.Load(ChoiceFile, mStored)) then
+  begin
+    TAtlasTestProjectChoices.Remember(mStored, AFiles, mProject.FileName);
+    if not TAtlasTestProjectChoices.Save(ChoiceFile, mStored) then
+    begin
+      ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
+    end;
+  end
+  else
+  begin
+    ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
+  end;
+  AThen(mProject);
+end;
+
 class function TAtlasIdeTestProjects.IsTestProject(const AProject: IOTAProject): Boolean;
 var
   mLines: TArray<string>;
@@ -145,61 +180,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeTestProjects.ChoiceFile: string;
-begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TAtlasTestProjectChoices.cFileName);
-end;
-
-class procedure TAtlasIdeTestProjects.Apply(const AFiles: TArray<string>; AChosen: Integer;
-  const ASay: TAtlasTestsSayProc; const AThen: TAtlasTestsProjectProc);
-var
-  mProject: IOTAProject;
-  mStored: TArray<TAtlasTestProjectChoice>;
-begin
-  // Das Projekt kann inzwischen geschlossen sein.
-  mProject := ProjectByFile(AFiles[AChosen]);
-  if mProject = nil then
-  begin
-    ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
-    Exit;
-  end;
-  // Gesperrt gelesene Datei nicht mit dieser einen Wahl überschreiben.
-  if TAtlasDataFile.Writable(TAtlasTestProjectChoices.Load(ChoiceFile, mStored)) then
-  begin
-    TAtlasTestProjectChoices.Remember(mStored, AFiles, mProject.FileName);
-    if not TAtlasTestProjectChoices.Save(ChoiceFile, mStored) then
-    begin
-      ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
-    end;
-  end
-  else
-  begin
-    ASay(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsChoiceSaveFailed));
-  end;
-  AThen(mProject);
-end;
-
-class function TAtlasIdeTestProjects.Known(const AFileName: string): IOTAProject;
-var
-  mFound: TArray<IOTAProject>;
-  mFiles: TArray<string>;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mFound := TestProjects(AFileName);
-  mFiles := nil;
-  for mIndex := 0 to High(mFound) do
-  begin
-    mFiles := mFiles + [mFound[mIndex].FileName];
-  end;
-  mIndex := TAtlasTestProjectChoices.Pick(TAtlasTestProjectChoices.Load(ChoiceFile), mFiles);
-  if mIndex >= 0 then
-  begin
-    Result := mFound[mIndex];
-  end;
-end;
-
 class procedure TAtlasIdeTestProjects.Choose(const ACandidates: TArray<IOTAProject>; const AAlive: TFunc<Boolean>;
   const ASay: TAtlasTestsSayProc; const AThen: TAtlasTestsProjectProc);
 var
@@ -245,6 +225,26 @@ begin
         end);
     end;
   mWindow.ShowOver(TAtlasIdeHost.PopupArea);
+end;
+
+class function TAtlasIdeTestProjects.Known(const AFileName: string): IOTAProject;
+var
+  mFound: TArray<IOTAProject>;
+  mFiles: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mFound := TestProjects(AFileName);
+  mFiles := nil;
+  for mIndex := 0 to High(mFound) do
+  begin
+    mFiles := mFiles + [mFound[mIndex].FileName];
+  end;
+  mIndex := TAtlasTestProjectChoices.Pick(TAtlasTestProjectChoices.Load(ChoiceFile), mFiles);
+  if mIndex >= 0 then
+  begin
+    Result := mFound[mIndex];
+  end;
 end;
 
 end.

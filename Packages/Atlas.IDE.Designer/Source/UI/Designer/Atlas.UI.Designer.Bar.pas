@@ -115,91 +115,6 @@ begin
   Result := 24;
 end;
 
-function TAtlasDesignerBar.IconSize: Integer;
-begin
-  Result := Scale(16);
-end;
-
-procedure TAtlasDesignerBar.ApplyColors(const AColors: TAtlasColors);
-begin
-  SetColors(AColors);
-end;
-
-procedure TAtlasDesignerBar.SetButtons(const AButtons: TArray<TAtlasDesignerButton>);
-var
-  mIndex: Integer;
-  mSame: Boolean;
-begin
-  mSame := Length(AButtons) = Length(FButtons);
-  if mSame then
-  begin
-    for mIndex := 0 to High(AButtons) do
-    begin
-      if not AButtons[mIndex].SameAs(FButtons[mIndex]) then
-      begin
-        mSame := False;
-        Break;
-      end;
-    end;
-  end;
-  if mSame then
-  begin
-    Exit;
-  end;
-  FButtons := Copy(AButtons);
-  Layout;
-  SetHot(cPartNone);
-  Invalidate;
-end;
-
-procedure TAtlasDesignerBar.Layout;
-var
-  mIndex, mX, mSize, mArrow: Integer;
-begin
-  SetLength(FRects, Length(FButtons));
-  SetLength(FArrows, Length(FButtons));
-  // ClientHeight holt ein Fenster; vor dem Einhängen (SetButtons in CreateBar) gibt es keine Eltern.
-  if HandleAllocated then
-  begin
-    mSize := ClientHeight;
-  end
-  else
-  begin
-    mSize := Height;
-  end;
-  mSize := mSize - Scale(2);
-  mArrow := Scale(10);
-  mX := Scale(4);
-  for mIndex := 0 to High(FButtons) do
-  begin
-    if FButtons[mIndex].GapBefore then
-    begin
-      Inc(mX, Scale(9));
-    end;
-    FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + Scale(8), Scale(1) + mSize);
-    mX := FRects[mIndex].Right;
-    if FButtons[mIndex].Menu then
-    begin
-      FArrows[mIndex] := Rect(mX, Scale(1), mX + mArrow, Scale(1) + mSize);
-      mX := FArrows[mIndex].Right;
-    end
-    else
-    begin
-      FArrows[mIndex] := TRect.Empty;
-    end;
-    Inc(mX, Scale(2));
-  end;
-end;
-
-function TAtlasDesignerBar.ButtonOf(APart: Integer): Integer;
-begin
-  Result := -1;
-  if (APart >= 0) and (APart div 2 <= High(FButtons)) then
-  begin
-    Result := APart div 2;
-  end;
-end;
-
 function TAtlasDesignerBar.PartAt(X, Y: Integer): Integer;
 var
   mIndex: Integer;
@@ -263,6 +178,90 @@ begin
   end;
 end;
 
+procedure TAtlasDesignerBar.Paint;
+var
+  mIndex, mX: Integer;
+begin
+  Layout;
+  PaintChrome(False);
+  for mIndex := 0 to High(FButtons) do
+  begin
+    if FButtons[mIndex].GapBefore then
+    begin
+      mX := FRects[mIndex].Left - Scale(5);
+      Canvas.Pen.Color := TColor(Colors.Line);
+      Canvas.MoveTo(mX, Scale(5));
+      Canvas.LineTo(mX, ClientHeight - Scale(5));
+    end;
+    DrawButton(mIndex);
+  end;
+end;
+
+procedure TAtlasDesignerBar.Resize;
+begin
+  inherited Resize;
+  Layout;
+end;
+
+procedure TAtlasDesignerBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  inherited ChangeScale(M, D, isDpiChange);
+  Layout;
+end;
+
+procedure TAtlasDesignerBar.Layout;
+var
+  mIndex, mX, mSize, mArrow: Integer;
+begin
+  SetLength(FRects, Length(FButtons));
+  SetLength(FArrows, Length(FButtons));
+  // ClientHeight holt ein Fenster; vor dem Einhängen (SetButtons in CreateBar) gibt es keine Eltern.
+  if HandleAllocated then
+  begin
+    mSize := ClientHeight;
+  end
+  else
+  begin
+    mSize := Height;
+  end;
+  mSize := mSize - Scale(2);
+  mArrow := Scale(10);
+  mX := Scale(4);
+  for mIndex := 0 to High(FButtons) do
+  begin
+    if FButtons[mIndex].GapBefore then
+    begin
+      Inc(mX, Scale(9));
+    end;
+    FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + Scale(8), Scale(1) + mSize);
+    mX := FRects[mIndex].Right;
+    if FButtons[mIndex].Menu then
+    begin
+      FArrows[mIndex] := Rect(mX, Scale(1), mX + mArrow, Scale(1) + mSize);
+      mX := FArrows[mIndex].Right;
+    end
+    else
+    begin
+      FArrows[mIndex] := TRect.Empty;
+    end;
+    Inc(mX, Scale(2));
+  end;
+end;
+
+function TAtlasDesignerBar.IconSize: Integer;
+begin
+  Result := Scale(16);
+end;
+
+function TAtlasDesignerBar.ButtonOf(APart: Integer): Integer;
+begin
+  Result := -1;
+  if (APart >= 0) and (APart div 2 <= High(FButtons)) then
+  begin
+    Result := APart div 2;
+  end;
+end;
+
 procedure TAtlasDesignerBar.DrawButton(AIndex: Integer);
 var
   mButton: TAtlasDesignerButton;
@@ -320,35 +319,36 @@ begin
   end;
 end;
 
-procedure TAtlasDesignerBar.Paint;
+procedure TAtlasDesignerBar.ApplyColors(const AColors: TAtlasColors);
+begin
+  SetColors(AColors);
+end;
+
+procedure TAtlasDesignerBar.SetButtons(const AButtons: TArray<TAtlasDesignerButton>);
 var
-  mIndex, mX: Integer;
+  mIndex: Integer;
+  mSame: Boolean;
 begin
-  Layout;
-  PaintChrome(False);
-  for mIndex := 0 to High(FButtons) do
+  mSame := Length(AButtons) = Length(FButtons);
+  if mSame then
   begin
-    if FButtons[mIndex].GapBefore then
+    for mIndex := 0 to High(AButtons) do
     begin
-      mX := FRects[mIndex].Left - Scale(5);
-      Canvas.Pen.Color := TColor(Colors.Line);
-      Canvas.MoveTo(mX, Scale(5));
-      Canvas.LineTo(mX, ClientHeight - Scale(5));
+      if not AButtons[mIndex].SameAs(FButtons[mIndex]) then
+      begin
+        mSame := False;
+        Break;
+      end;
     end;
-    DrawButton(mIndex);
   end;
-end;
-
-procedure TAtlasDesignerBar.Resize;
-begin
-  inherited Resize;
+  if mSame then
+  begin
+    Exit;
+  end;
+  FButtons := Copy(AButtons);
   Layout;
-end;
-
-procedure TAtlasDesignerBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
-begin
-  inherited ChangeScale(M, D, isDpiChange);
-  Layout;
+  SetHot(cPartNone);
+  Invalidate;
 end;
 
 function TAtlasDesignerBar.ButtonRect(const AId: string): TRect;

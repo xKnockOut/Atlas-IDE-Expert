@@ -387,6 +387,22 @@ begin
   Result := SameText(Source, cIdeSource);
 end;
 
+function TAtlasProblem.CompilerCodeText: string;
+begin
+  if Confirmed then
+  begin
+    Result := ConfirmedCode;
+  end
+  else if IsCompiler then
+  begin
+    Result := Code;
+  end
+  else
+  begin
+    Result := string.Join(', ', CompilerCodes);
+  end;
+end;
+
 class function TAtlasProblem.WithoutCompilerCode(const AMessage: string): string;
 const
   cOpening = ' (wie ';
@@ -428,22 +444,6 @@ begin
       end;
       mStart := mStop + mIndex;
     end;
-  end;
-end;
-
-function TAtlasProblem.CompilerCodeText: string;
-begin
-  if Confirmed then
-  begin
-    Result := ConfirmedCode;
-  end
-  else if IsCompiler then
-  begin
-    Result := Code;
-  end
-  else
-  begin
-    Result := string.Join(', ', CompilerCodes);
   end;
 end;
 

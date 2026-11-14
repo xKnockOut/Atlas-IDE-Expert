@@ -116,6 +116,8 @@ begin
   end;
 end;
 
+{ TAtlasFileRecursion }
+
 class function TAtlasFileRecursion.FromJson(AValue: TJSONValue): TAtlasFileRecursion;
 var
   mItem: TJSONValue;

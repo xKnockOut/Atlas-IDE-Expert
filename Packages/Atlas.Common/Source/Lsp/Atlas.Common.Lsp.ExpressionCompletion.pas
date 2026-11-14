@@ -175,6 +175,31 @@ begin
   FCompletion := ACompletion;
 end;
 
+function TLspExpressionCompletion.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri, mExpression: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mCharacter: Integer;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
+    TJSONObject(AParams).TryGetValue<string>('expression', mExpression)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mCharacter := Length(mExpression);
+  TJSONObject(AParams).TryGetValue<Integer>('character', mCharacter);
+  Result := Complete(mDocument, TLspPositions.ReadPosition(mPositionValue).Line, mExpression, mCharacter,
+    ACancellation);
+end;
+
 procedure TLspExpressionCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
@@ -323,31 +348,6 @@ begin
   finally
     mCompletion.Free;
   end;
-end;
-
-function TLspExpressionCompletion.Handle(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri, mExpression: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mCharacter: Integer;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
-    TJSONObject(AParams).TryGetValue<string>('expression', mExpression)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mCharacter := Length(mExpression);
-  TJSONObject(AParams).TryGetValue<Integer>('character', mCharacter);
-  Result := Complete(mDocument, TLspPositions.ReadPosition(mPositionValue).Line, mExpression, mCharacter,
-    ACancellation);
 end;
 
 initialization

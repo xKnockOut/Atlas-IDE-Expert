@@ -84,6 +84,8 @@ const
   cThumbInset = 7;
   cThumbEdge = 3;
 
+{ TAtlasHoverMembersPainter }
+
 constructor TAtlasHoverMembersPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
 begin
   inherited Create(AInput, AMeasure);

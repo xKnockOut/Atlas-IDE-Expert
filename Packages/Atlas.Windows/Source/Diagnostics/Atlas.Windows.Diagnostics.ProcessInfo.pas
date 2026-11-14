@@ -24,6 +24,8 @@ uses
   Winapi.TlHelp32,
   System.SysUtils;
 
+{ TProcessInfo }
+
 class function TProcessInfo.ThreadCount: Integer;
 var
   mSnapshot: THandle;
@@ -51,19 +53,6 @@ begin
   end;
 end;
 
-class function TProcessInfo.ThreadCpuMs: Int64;
-var
-  mCreation, mExited, mKernel, mUser: TFileTime;
-begin
-  if not GetThreadTimes(GetCurrentThread, mCreation, mExited, mKernel, mUser) then
-  begin
-    Exit(-1);
-  end;
-  // FILETIME zählt in 100 ns.
-  Result := (Int64(mKernel.dwHighDateTime) shl 32 + mKernel.dwLowDateTime +
-    Int64(mUser.dwHighDateTime) shl 32 + mUser.dwLowDateTime) div 10000;
-end;
-
 class function TProcessInfo.IdentityNames: TArray<string>;
 var
   mName: string;
@@ -77,6 +66,19 @@ begin
       Result := Result + [mName];
     end;
   end;
+end;
+
+class function TProcessInfo.ThreadCpuMs: Int64;
+var
+  mCreation, mExited, mKernel, mUser: TFileTime;
+begin
+  if not GetThreadTimes(GetCurrentThread, mCreation, mExited, mKernel, mUser) then
+  begin
+    Exit(-1);
+  end;
+  // FILETIME zählt in 100 ns.
+  Result := (Int64(mKernel.dwHighDateTime) shl 32 + mKernel.dwLowDateTime +
+    Int64(mUser.dwHighDateTime) shl 32 + mUser.dwLowDateTime) div 10000;
 end;
 
 end.

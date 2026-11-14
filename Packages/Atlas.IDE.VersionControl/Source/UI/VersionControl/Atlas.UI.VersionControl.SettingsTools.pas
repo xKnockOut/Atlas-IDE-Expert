@@ -80,6 +80,30 @@ begin
   AddVcsTool(TAtlasVcsKind.Svn, 'vcs.svn.path', TAtlasVcsTextId.SettingsVcsSvnPath);
 end;
 
+procedure TAtlasSettingsVcsToolsPart.Load(const AValues: IAtlasSettingsValues);
+begin
+  // Die Pfade hat die Seite schon geladen; hier nur der Zustand dazu.
+  RefreshVcsTool(TAtlasVcsKind.Git);
+  RefreshVcsTool(TAtlasVcsKind.Svn);
+end;
+
+procedure TAtlasSettingsVcsToolsPart.Attached(APage: TAtlasVcsSettingsOwner);
+var
+  mKind: TAtlasVcsKind;
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+    begin
+      FVcsPaths[mKind] := nil;
+      FVcsBrowse[mKind] := nil;
+      FVcsCheck[mKind] := nil;
+      FVcsStates[mKind] := nil;
+    end;
+  end;
+end;
+
 procedure TAtlasSettingsVcsToolsPart.AddVcsTool(AKind: TAtlasVcsKind; const AKey: string; ACaption: TAtlasVcsTextId);
 var
   mPanel: TWinControl;
@@ -125,19 +149,72 @@ begin
   Attach(mPanel, mEdit);
 end;
 
-function TAtlasSettingsVcsToolsPart.VcsPath(AKind: TAtlasVcsKind): TEdit;
+procedure TAtlasSettingsVcsToolsPart.VcsPathChange(Sender: TObject);
 begin
-  Result := FVcsPaths[AKind];
+  // Nur Dateiprüfung; „Prüfen“ startet erst auf Klick einen Prozess.
+  RefreshVcsTool(TAtlasVcsKind((Sender as TComponent).Tag));
 end;
 
-function TAtlasSettingsVcsToolsPart.VcsCheckButton(AKind: TAtlasVcsKind): TButton;
+procedure TAtlasSettingsVcsToolsPart.VcsBrowseClick(Sender: TObject);
+var
+  mKind: TAtlasVcsKind;
+  mDialog: TOpenDialog;
 begin
-  Result := FVcsCheck[AKind];
+  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
+  mDialog := TOpenDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
+    mDialog.FileName := Trim(FVcsPaths[mKind].Text);
+    if mDialog.FileName = '' then
+    begin
+      mDialog.FileName := TAtlasVcsTools.ProgramName(mKind) + '.exe';
+    end;
+    if mDialog.Execute then
+    begin
+      FVcsPaths[mKind].Text := mDialog.FileName;
+    end;
+  finally
+    mDialog.Free;
+  end;
 end;
 
-function TAtlasSettingsVcsToolsPart.VcsState(AKind: TAtlasVcsKind): TLabel;
+procedure TAtlasSettingsVcsToolsPart.VcsCheckClick(Sender: TObject);
+var
+  mKind: TAtlasVcsKind;
 begin
-  Result := FVcsStates[AKind];
+  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
+  if not Assigned(FOnVcsCheck) then
+  begin
+    Exit;
+  end;
+  FVcsStates[mKind].Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolChecking);
+  Allow(FVcsCheck[mKind], False);
+  FOnVcsCheck(mKind, Trim(FVcsPaths[mKind].Text));
+end;
+
+procedure TAtlasSettingsVcsToolsPart.RefreshVcsTool(AKind: TAtlasVcsKind);
+begin
+  if FVcsStates[AKind] = nil then
+  begin
+    Exit;
+  end;
+  if not Assigned(FOnVcsLocate) then
+  begin
+    FVcsStates[AKind].Caption := '';
+    Exit;
+  end;
+  FVcsStates[AKind].Caption := VcsLocationText(FOnVcsLocate(AKind, Trim(FVcsPaths[AKind].Text)));
+end;
+
+procedure TAtlasSettingsVcsToolsPart.VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
+begin
+  if (ACheck.Kind = TAtlasVcsKind.None) or (FVcsStates[ACheck.Kind] = nil) then
+  begin
+    Exit;
+  end;
+  FVcsStates[ACheck.Kind].Caption := VcsCheckText(ACheck);
+  Allow(FVcsCheck[ACheck.Kind], True);
 end;
 
 class function TAtlasSettingsVcsToolsPart.VcsSourceText(ASource: TAtlasVcsToolSource): string;
@@ -189,96 +266,19 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsVcsToolsPart.RefreshVcsTool(AKind: TAtlasVcsKind);
+function TAtlasSettingsVcsToolsPart.VcsPath(AKind: TAtlasVcsKind): TEdit;
 begin
-  if FVcsStates[AKind] = nil then
-  begin
-    Exit;
-  end;
-  if not Assigned(FOnVcsLocate) then
-  begin
-    FVcsStates[AKind].Caption := '';
-    Exit;
-  end;
-  FVcsStates[AKind].Caption := VcsLocationText(FOnVcsLocate(AKind, Trim(FVcsPaths[AKind].Text)));
+  Result := FVcsPaths[AKind];
 end;
 
-procedure TAtlasSettingsVcsToolsPart.VcsPathChange(Sender: TObject);
+function TAtlasSettingsVcsToolsPart.VcsCheckButton(AKind: TAtlasVcsKind): TButton;
 begin
-  // Nur Dateiprüfung; „Prüfen“ startet erst auf Klick einen Prozess.
-  RefreshVcsTool(TAtlasVcsKind((Sender as TComponent).Tag));
+  Result := FVcsCheck[AKind];
 end;
 
-procedure TAtlasSettingsVcsToolsPart.VcsBrowseClick(Sender: TObject);
-var
-  mKind: TAtlasVcsKind;
-  mDialog: TOpenDialog;
+function TAtlasSettingsVcsToolsPart.VcsState(AKind: TAtlasVcsKind): TLabel;
 begin
-  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
-  mDialog := TOpenDialog.Create(nil);
-  try
-    mDialog.Filter := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsFilter);
-    mDialog.Options := mDialog.Options + [ofFileMustExist];
-    mDialog.FileName := Trim(FVcsPaths[mKind].Text);
-    if mDialog.FileName = '' then
-    begin
-      mDialog.FileName := TAtlasVcsTools.ProgramName(mKind) + '.exe';
-    end;
-    if mDialog.Execute then
-    begin
-      FVcsPaths[mKind].Text := mDialog.FileName;
-    end;
-  finally
-    mDialog.Free;
-  end;
-end;
-
-procedure TAtlasSettingsVcsToolsPart.VcsCheckClick(Sender: TObject);
-var
-  mKind: TAtlasVcsKind;
-begin
-  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
-  if not Assigned(FOnVcsCheck) then
-  begin
-    Exit;
-  end;
-  FVcsStates[mKind].Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsToolChecking);
-  Allow(FVcsCheck[mKind], False);
-  FOnVcsCheck(mKind, Trim(FVcsPaths[mKind].Text));
-end;
-
-procedure TAtlasSettingsVcsToolsPart.VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
-begin
-  if (ACheck.Kind = TAtlasVcsKind.None) or (FVcsStates[ACheck.Kind] = nil) then
-  begin
-    Exit;
-  end;
-  FVcsStates[ACheck.Kind].Caption := VcsCheckText(ACheck);
-  Allow(FVcsCheck[ACheck.Kind], True);
-end;
-
-procedure TAtlasSettingsVcsToolsPart.Load(const AValues: IAtlasSettingsValues);
-begin
-  // Die Pfade hat die Seite schon geladen; hier nur der Zustand dazu.
-  RefreshVcsTool(TAtlasVcsKind.Git);
-  RefreshVcsTool(TAtlasVcsKind.Svn);
-end;
-
-procedure TAtlasSettingsVcsToolsPart.Attached(APage: TAtlasVcsSettingsOwner);
-var
-  mKind: TAtlasVcsKind;
-begin
-  inherited Attached(APage);
-  if APage = nil then
-  begin
-    for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
-    begin
-      FVcsPaths[mKind] := nil;
-      FVcsBrowse[mKind] := nil;
-      FVcsCheck[mKind] := nil;
-      FVcsStates[mKind] := nil;
-    end;
-  end;
+  Result := FVcsStates[AKind];
 end;
 
 end.

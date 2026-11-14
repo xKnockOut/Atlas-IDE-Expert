@@ -202,12 +202,6 @@ begin
   Result := Copy(FSteps);
 end;
 
-class function TAtlasRestartRun.SecondsText(AMs: UInt64; const AFormat: TFormatSettings): string;
-begin
-  Result := IntToStr(AMs div cMsPerSecond) + AFormat.DecimalSeparator + IntToStr((AMs mod cMsPerSecond) div cTenthMs) +
-    ' s';
-end;
-
 function TAtlasRestartRun.Text(const ACaptions: TAtlasRestartCaptions; const ADone, AFailed: string): string;
 var
   mInfo: TAtlasRestartStepInfo;
@@ -231,6 +225,12 @@ begin
     mParts := mParts + [mPart];
   end;
   Result := string.Join(cStepSeparator, mParts);
+end;
+
+class function TAtlasRestartRun.SecondsText(AMs: UInt64; const AFormat: TFormatSettings): string;
+begin
+  Result := IntToStr(AMs div cMsPerSecond) + AFormat.DecimalSeparator + IntToStr((AMs mod cMsPerSecond) div cTenthMs) +
+    ' s';
 end;
 
 { TAtlasRestartBreakpoints }

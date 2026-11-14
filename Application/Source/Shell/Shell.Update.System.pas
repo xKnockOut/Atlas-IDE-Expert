@@ -34,6 +34,8 @@ uses
   Atlas.Windows.Updates.Adapters.Archive,
   Atlas.Windows.Updates.Adapters.Builder;
 
+{ TShellUpdateSystem }
+
 class procedure TShellUpdateSystem.Say(const AText: string);
 begin
   Writeln(ErrOutput, AText);

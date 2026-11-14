@@ -413,6 +413,8 @@ type
     procedure Take(AChar: Char);
   end;
 
+{ TRowSplitter }
+
 procedure TRowSplitter.Take(AChar: Char);
 begin
   if Escaped then
@@ -671,6 +673,8 @@ type
     procedure Step;
   end;
 
+{ TBlockReader }
+
 function TBlockReader.CurrentLine: string;
 begin
   Result := Lines[Index];
@@ -921,10 +925,9 @@ begin
   Result := mReader.Blocks;
 end;
 
-class function TAtlasTrackerMarkdown.DecodeHtml(const AText: string): string;
+class function TAtlasTrackerMarkdown.InlineRuns(const AText: string): TAtlasDocRuns;
 begin
-  // &nbsp; kennt nur HTML; alles Übrige wie in XML über Atlas.Text.
-  Result := TTextEntities.Decode(StringReplace(AText, '&nbsp;', ' ', [rfReplaceAll]));
+  Result := InlineRuns(AText, False, False);
 end;
 
 { Fließtext }
@@ -943,6 +946,8 @@ type
     procedure AddCode(const AText: string);
     procedure AddBreak;
   end;
+
+{ TInlineBuilder }
 
 procedure TInlineBuilder.Flush;
 var
@@ -1108,6 +1113,8 @@ type
     function TryOther: Boolean;
     procedure Step;
   end;
+
+{ TInlineParser }
 
 function TInlineParser.CharAt(AIndex: Integer): Char;
 begin
@@ -1470,9 +1477,9 @@ begin
   Result := mParser.Builder.Runs;
 end;
 
-class function TAtlasTrackerMarkdown.InlineRuns(const AText: string): TAtlasDocRuns;
+class function TAtlasTrackerMarkdown.ToDoc(const AText: string): TAtlasDoc;
 begin
-  Result := InlineRuns(AText, False, False);
+  Result := ToDoc(AText, TAtlasMarkdownTasks.Boxes);
 end;
 
 function ParagraphRun: TAtlasDocRun;
@@ -1616,11 +1623,6 @@ begin
   Result := (AIndex < High(ABlocks)) and (ABlocks[AIndex + 1].Kind = TAtlasMarkdownBlockKind.Bullet);
 end;
 
-class function TAtlasTrackerMarkdown.ToDoc(const AText: string): TAtlasDoc;
-begin
-  Result := ToDoc(AText, TAtlasMarkdownTasks.Boxes);
-end;
-
 class function TAtlasTrackerMarkdown.ToDoc(const AText: string; ATasks: TAtlasMarkdownTasks): TAtlasDoc;
 var
   mBlocks: TArray<TAtlasMarkdownBlock>;
@@ -1635,22 +1637,6 @@ begin
     mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex), ATasks, mTask);
   end;
   Result := DocOf(mRuns);
-end;
-
-class function TAtlasTrackerMarkdown.TaskTarget(AIndex: Integer): string;
-begin
-  Result := cTaskPrefix + IntToStr(AIndex);
-end;
-
-class function TAtlasTrackerMarkdown.TaskIndexOf(const ATarget: string; out AIndex: Integer): Boolean;
-begin
-  AIndex := -1;
-  Result := StartsStr(cTaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(cTaskPrefix) + 1, MaxInt), AIndex)
-    and (AIndex >= 0);
-  if not Result then
-  begin
-    AIndex := -1;
-  end;
 end;
 
 class function TAtlasTrackerMarkdown.Segments(const AText: string): TArray<TAtlasMarkdownSegment>;
@@ -1703,6 +1689,22 @@ begin
   FlushDoc;
 end;
 
+class function TAtlasTrackerMarkdown.TaskTarget(AIndex: Integer): string;
+begin
+  Result := cTaskPrefix + IntToStr(AIndex);
+end;
+
+class function TAtlasTrackerMarkdown.TaskIndexOf(const ATarget: string; out AIndex: Integer): Boolean;
+begin
+  AIndex := -1;
+  Result := StartsStr(cTaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(cTaskPrefix) + 1, MaxInt), AIndex)
+    and (AIndex >= 0);
+  if not Result then
+  begin
+    AIndex := -1;
+  end;
+end;
+
 class function TAtlasTrackerMarkdown.Links(const AText: string): TArray<TAtlasMarkdownLink>;
 var
   mBlock: TAtlasMarkdownBlock;
@@ -1739,6 +1741,12 @@ begin
       end;
     end;
   end;
+end;
+
+class function TAtlasTrackerMarkdown.DecodeHtml(const AText: string): string;
+begin
+  // &nbsp; kennt nur HTML; alles Übrige wie in XML über Atlas.Text.
+  Result := TTextEntities.Decode(StringReplace(AText, '&nbsp;', ' ', [rfReplaceAll]));
 end;
 
 end.

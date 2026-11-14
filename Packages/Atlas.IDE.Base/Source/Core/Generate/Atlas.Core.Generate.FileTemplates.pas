@@ -263,20 +263,6 @@ begin
   end;
 end;
 
-class function TAtlasFileTemplates.ShortName(const AUnit: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := Trim(AUnit);
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if Result[mIndex] = '.' then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
 class function TAtlasFileTemplates.Render(const ABody, AUnit, AForm, AAncestor, ALineBreak: string): string;
 var
   mForm, mAncestor: string;
@@ -302,6 +288,20 @@ begin
     Delete(Result, Length(Result), 1);
   end;
   Result := StringReplace(Result + #10, #10, ALineBreak, [rfReplaceAll]);
+end;
+
+class function TAtlasFileTemplates.ShortName(const AUnit: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AUnit);
+  for mIndex := Length(Result) downto 1 do
+  begin
+    if Result[mIndex] = '.' then
+    begin
+      Exit(Copy(Result, mIndex + 1, MaxInt));
+    end;
+  end;
 end;
 
 initialization

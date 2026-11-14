@@ -55,16 +55,6 @@ begin
 end;
 { TAtlasFixedCompletionProvider }
 
-constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal);
-begin
-  Create(AItems, ADelayMs, False);
-end;
-
-constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems);
-begin
-  Create(AItems, 0, False);
-end;
-
 constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal;
   AIncomplete: Boolean);
 begin
@@ -73,6 +63,16 @@ begin
   FItems := AItems;
   FDelayMs := ADelayMs;
   FIncomplete := AIncomplete;
+end;
+
+constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal);
+begin
+  Create(AItems, ADelayMs, False);
+end;
+
+constructor TAtlasFixedCompletionProvider.Create(const AItems: TAtlasCompletionItems);
+begin
+  Create(AItems, 0, False);
 end;
 
 function TAtlasFixedCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;

@@ -107,82 +107,14 @@ begin
     end;
 end;
 
+{ TShellRuleContext }
+
 constructor TShellRuleContext.Create(const AServices: TShellRuleContextServices);
 begin
   inherited Create;
   FServices := AServices;
   FRuleChecksState := 1;
   FMemo := TRuleFindingsMemo.Create;
-end;
-
-function TShellRuleContext.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-var
-  mFileName: string;
-  mProjects: TArray<TProjectInfo>;
-  mLibrary: Boolean;
-begin
-  AContext := Default(TRuleCheckContext);
-  mFileName := TDocumentUris.ToPath(AUri);
-  AContext.FileName := mFileName;
-  WorkspaceContext(mFileName, AContext, mProjects, mLibrary);
-  // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
-  if mProjects <> nil then
-  begin
-    ApplyProject(mProjects, mFileName, AContext);
-  end;
-  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
-  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
-  AContext.Rules := nil;
-  if not mLibrary then
-  begin
-    AContext.Rules := BuiltinRules;
-  end;
-  IndexServices(AContext);
-  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
-  // dort diagnostics.usesCycleLive.
-  AContext.Live := True;
-  if SameText(ExtractFileExt(mFileName), '.pas') then
-  begin
-    ReadFormFile(mFileName, AContext);
-  end;
-  AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
-  AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
-  AContext.Memo := FMemo;
-  Result := True;
-end;
-
-procedure TShellRuleContext.LogRuleChecksState(AState: Integer);
-begin
-  if TInterlocked.Exchange(FRuleChecksState, AState) = AState then
-  begin
-    Exit;
-  end;
-  if AState = 0 then
-  begin
-    FServices.Logger.Info('Prüfregeln aus (ruleChecks.enabled): Die Prüfung im Editor meldet nur Syntaxfehler und ' +
-      'Compilermeldungen; --check und MCP prüfen weiter nach atlas.json.');
-  end
-  else
-  begin
-    FServices.Logger.Info('Prüfregeln wieder an (ruleChecks.enabled).');
-  end;
-end;
-
-function TShellRuleContext.LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
-var
-  mState: Integer;
-begin
-  Result := RuleContextFor(AUri, AContext);
-  if not Result then
-  begin
-    Exit;
-  end;
-  mState := Ord(AContext.Settings.RuleChecksEnabled);
-  LogRuleChecksState(mState);
-  if mState = 0 then
-  begin
-    AContext.Rules := nil;
-  end;
 end;
 
 procedure TShellRuleContext.WorkspaceContext(const AFileName: string; var AContext: TRuleCheckContext;
@@ -291,6 +223,76 @@ begin
   else
   begin
     AContext.FormText := '';
+  end;
+end;
+
+procedure TShellRuleContext.LogRuleChecksState(AState: Integer);
+begin
+  if TInterlocked.Exchange(FRuleChecksState, AState) = AState then
+  begin
+    Exit;
+  end;
+  if AState = 0 then
+  begin
+    FServices.Logger.Info('Prüfregeln aus (ruleChecks.enabled): Die Prüfung im Editor meldet nur Syntaxfehler und ' +
+      'Compilermeldungen; --check und MCP prüfen weiter nach atlas.json.');
+  end
+  else
+  begin
+    FServices.Logger.Info('Prüfregeln wieder an (ruleChecks.enabled).');
+  end;
+end;
+
+function TShellRuleContext.RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  mFileName: string;
+  mProjects: TArray<TProjectInfo>;
+  mLibrary: Boolean;
+begin
+  AContext := Default(TRuleCheckContext);
+  mFileName := TDocumentUris.ToPath(AUri);
+  AContext.FileName := mFileName;
+  WorkspaceContext(mFileName, AContext, mProjects, mLibrary);
+  // Anwendungsart, Projektname und Formulare der .dpr (#926, #943, #956, #1055), wie bei MCP und Linter.
+  if mProjects <> nil then
+  begin
+    ApplyProject(mProjects, mFileName, AContext);
+  end;
+  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
+  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
+  AContext.Rules := nil;
+  if not mLibrary then
+  begin
+    AContext.Rules := BuiltinRules;
+  end;
+  IndexServices(AContext);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
+  if SameText(ExtractFileExt(mFileName), '.pas') then
+  begin
+    ReadFormFile(mFileName, AContext);
+  end;
+  AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
+  AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
+  AContext.Memo := FMemo;
+  Result := True;
+end;
+
+function TShellRuleContext.LiveRuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+var
+  mState: Integer;
+begin
+  Result := RuleContextFor(AUri, AContext);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mState := Ord(AContext.Settings.RuleChecksEnabled);
+  LogRuleChecksState(mState);
+  if mState = 0 then
+  begin
+    AContext.Rules := nil;
   end;
 end;
 

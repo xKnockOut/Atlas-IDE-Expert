@@ -247,16 +247,7 @@ type
     procedure Run;
   end;
 
-class function TUnavailableExplainer.Create(const AFacts: TAtlasUnavailableFacts): TUnavailableExplainer;
-begin
-  Result.FFacts := AFacts;
-  Result.FNoSwitch := Default(TAtlasUnavailableSwitch);
-  Result.FNoSwitch.Line := -1;
-  Result.Explanation := Default(TAtlasUnavailableExplanation);
-  Result.Explanation.RoutineName := AFacts.RoutineName;
-  Result.Explanation.Configuration := AFacts.Launch.Configuration;
-  Result.Explanation.Switch := Result.FNoSwitch;
-end;
+{ TUnavailableExplainer }
 
 function TUnavailableExplainer.IsOn(const ASwitch: TAtlasUnavailableSwitch; const ALaunchValue: string;
   ADefault: Boolean): Boolean;
@@ -410,6 +401,17 @@ begin
     Found(TAtlasUnavailableCause.LibraryFrame, FNoSwitch);
     Fix(TAtlasUnavailableFix.DebugDcus);
   end;
+end;
+
+class function TUnavailableExplainer.Create(const AFacts: TAtlasUnavailableFacts): TUnavailableExplainer;
+begin
+  Result.FFacts := AFacts;
+  Result.FNoSwitch := Default(TAtlasUnavailableSwitch);
+  Result.FNoSwitch.Line := -1;
+  Result.Explanation := Default(TAtlasUnavailableExplanation);
+  Result.Explanation.RoutineName := AFacts.RoutineName;
+  Result.Explanation.Configuration := AFacts.Launch.Configuration;
+  Result.Explanation.Switch := Result.FNoSwitch;
 end;
 
 procedure TUnavailableExplainer.Run;

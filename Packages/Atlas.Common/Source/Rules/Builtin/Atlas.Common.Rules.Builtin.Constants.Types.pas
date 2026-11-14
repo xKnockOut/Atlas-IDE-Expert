@@ -200,6 +200,8 @@ begin
     TStringSplitOptions.ExcludeEmpty);
 end;
 
+{ TTypedNames }
+
 constructor TTypedNames.Create(const AContext: TRuleContext; const AWanted: TArray<string>);
 var
   mName: string;
@@ -234,33 +236,6 @@ end;
 function TTypedNames.NodeText(ANode: TSyntaxNode): string;
 begin
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-end;
-
-function TTypedNames.Wanted(const ATypeName: string): Boolean;
-var
-  mKey: string;
-begin
-  mKey := CanonicalTypeName(ATypeName);
-  if FWanted.ContainsKey(mKey) then
-  begin
-    Exit(True);
-  end;
-  if FTypes.TryGetValue(mKey, Result) then
-  begin
-    Exit;
-  end;
-  // Vorläufig False: schützt vor zyklischen Aliasen.
-  FTypes.Add(mKey, False);
-  Result := False;
-  if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
-  begin
-    Result := FIndex.HasSymbol(ATypeName,
-      function(const ASymbol: TIndexSymbol): Boolean
-      begin
-        Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(ASymbol.Signature));
-      end);
-  end;
-  FTypes[mKey] := Result;
 end;
 
 function TTypedNames.Mentions(const AText: string): Boolean;
@@ -349,6 +324,33 @@ begin
   finally
     mPending.Free;
   end;
+end;
+
+function TTypedNames.Wanted(const ATypeName: string): Boolean;
+var
+  mKey: string;
+begin
+  mKey := CanonicalTypeName(ATypeName);
+  if FWanted.ContainsKey(mKey) then
+  begin
+    Exit(True);
+  end;
+  if FTypes.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  // Vorläufig False: schützt vor zyklischen Aliasen.
+  FTypes.Add(mKey, False);
+  Result := False;
+  if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
+  begin
+    Result := FIndex.HasSymbol(ATypeName,
+      function(const ASymbol: TIndexSymbol): Boolean
+      begin
+        Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(ASymbol.Signature));
+      end);
+  end;
+  FTypes[mKey] := Result;
 end;
 
 function TTypedNames.Suspect(const AName: string): Boolean;

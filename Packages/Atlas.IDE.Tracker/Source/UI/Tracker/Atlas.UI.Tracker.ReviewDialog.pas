@@ -263,28 +263,83 @@ begin
   FParts.Send.OnClick := SendClick;
 end;
 
-class function TAtlasTrackerReviewDialog.ResultChoices(const ARules: TAtlasTrackerStateRules;
-  const AStates: TArray<string>; const ACurrent: string): TArray<string>;
+procedure TAtlasTrackerReviewDialog.SwitchClick(Sender: TObject);
 var
-  mTransition: TAtlasTrackerTransition;
-  mState: string;
+  mBranch: string;
 begin
-  Result := TArray<string>.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState));
-  if ARules.StateMachine and (ARules.FieldId <> '') then
+  mBranch := Trim(FParts.Branch.Text);
+  if (mBranch = '') or not Assigned(FEvents.Switch) then
   begin
-    for mTransition in ARules.Transitions do
-    begin
-      Result := Result + [TAtlasTrackerTransitions.ChoiceText(mTransition, AStates)];
-    end;
     Exit;
   end;
-  for mState in AStates do
+  FParts.Switch.Visible := False;
+  FParts.Branch.Enabled := False;
+  ShowNote('');
+  FEvents.Switch(mBranch);
+end;
+
+procedure TAtlasTrackerReviewDialog.SendClick(Sender: TObject);
+var
+  mChange: TAtlasTrackerWrite;
+begin
+  if FSending then
   begin
-    if not SameText(Trim(mState), Trim(ACurrent)) then
-    begin
-      Result := Result + [mState];
-    end;
+    Exit;
   end;
+  mChange := Change;
+  if not mChange.HasWork or not Assigned(FEvents.Send) then
+  begin
+    // Nichts zu schreiben: wie „Später entscheiden“.
+    Close;
+    Exit;
+  end;
+  FSending := True;
+  ShowNote('');
+  UpdateButtons;
+  FEvents.Send(mChange, SendDone);
+end;
+
+procedure TAtlasTrackerReviewDialog.LaterClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TAtlasTrackerReviewDialog.BackClick(Sender: TObject);
+begin
+  UpdateButtons;
+end;
+
+procedure TAtlasTrackerReviewDialog.EditorCancel(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TAtlasTrackerReviewDialog.DialogClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caFree;
+  FireClosed;
+end;
+
+/// <summary>Text des Schritts „Branch gewechselt“ ohne Zeichen davor.</summary>
+function SwitchText(const AState: TAtlasReviewState): string;
+begin
+  case AState.Marks[TAtlasReviewStep.Switched] of
+    TAtlasReviewMark.Running:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitching, [AState.Branch]);
+    TAtlasReviewMark.Done:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitched, [AState.Branch]);
+    TAtlasReviewMark.Failed:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitchFailed, [AState.Branch,
+        AState.SwitchError]);
+  else
+    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSwitchWaiting);
+  end;
+end;
+
+procedure TAtlasTrackerReviewDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  // Während des Schreibens bleibt der Dialog offen (höchstens TAtlasTrackerWorkflow.cWriteTimeoutMs).
+  CanClose := not FSending;
 end;
 
 procedure TAtlasTrackerReviewDialog.FillChoices;
@@ -306,119 +361,52 @@ begin
   FParts.Choice.ItemIndex := 0;
 end;
 
-procedure TAtlasTrackerReviewDialog.SetStates(const AStates: TArray<string>;
-  const ARules: TAtlasTrackerStateRules);
-begin
-  FStates := Copy(AStates);
-  FRules := ARules;
-  FillChoices;
-end;
-
-function TAtlasTrackerReviewDialog.Change: TAtlasTrackerWrite;
-var
-  mIndex: Integer;
-begin
-  mIndex := FParts.Choice.ItemIndex - 1;
-  if FRules.StateMachine and (FRules.FieldId <> '') then
-  begin
-    Result := TAtlasTrackerWorkflow.EndTransition(FOptions, FRules, mIndex, FParts.Editor.Text, False, '');
-    Exit;
-  end;
-  if mIndex >= 0 then
-  begin
-    Result := TAtlasTrackerWorkflow.EndChange(FOptions, FParts.Choice.Items[FParts.Choice.ItemIndex],
-      FParts.Editor.Text, False, '');
-  end
-  else
-  begin
-    Result := TAtlasTrackerWorkflow.EndChange(FOptions, '', FParts.Editor.Text, False, '');
-  end;
-end;
-
-class function TAtlasTrackerReviewDialog.BuildText(const AState: TAtlasReviewState): string;
-var
-  mBuild: TAtlasReviewBuild;
-begin
-  mBuild := AState.Build;
-  case AState.Marks[TAtlasReviewStep.Build] of
-    TAtlasReviewMark.Running:
-      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildRunning);
-    TAtlasReviewMark.Done:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBuildDone, [mBuild.Platform,
-        mBuild.Configuration, mBuild.Errors, mBuild.Warnings, mBuild.Hints]);
-    TAtlasReviewMark.Failed:
-      if mBuild.Errors > 0 then
-      begin
-        Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBuildFailed, [mBuild.Platform,
-          mBuild.Configuration, mBuild.Errors]);
-      end
-      else
-      begin
-        Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildNotStarted);
-      end;
-    TAtlasReviewMark.Skipped:
-      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildSkipped);
-  else
-    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildWaiting);
-  end;
-  Result := Trim(StringReplace(Result, '  ', ' ', [rfReplaceAll]));
-end;
-
-class function TAtlasTrackerReviewDialog.TestsText(const AState: TAtlasReviewState): string;
-begin
-  case AState.Marks[TAtlasReviewStep.Tests] of
-    TAtlasReviewMark.Running:
-      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsRunning);
-    TAtlasReviewMark.Done:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewTestsDone, [AState.TestsPassed]);
-    TAtlasReviewMark.Failed:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewTestsFailed, [AState.TestsFailed,
-        AState.TestsPassed + AState.TestsFailed]);
-    TAtlasReviewMark.Skipped:
-      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsSkipped);
-  else
-    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsWaiting);
-  end;
-end;
-
-/// <summary>Text des Schritts „Branch gewechselt“ ohne Zeichen davor.</summary>
-function SwitchText(const AState: TAtlasReviewState): string;
-begin
-  case AState.Marks[TAtlasReviewStep.Switched] of
-    TAtlasReviewMark.Running:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitching, [AState.Branch]);
-    TAtlasReviewMark.Done:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitched, [AState.Branch]);
-    TAtlasReviewMark.Failed:
-      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSwitchFailed, [AState.Branch,
-        AState.SwitchError]);
-  else
-    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSwitchWaiting);
-  end;
-end;
-
-class function TAtlasTrackerReviewDialog.StepText(const AState: TAtlasReviewState; AStep: TAtlasReviewStep): string;
+/// <summary>Kommentar aus der Vorlage, solange der Benutzer ihn nicht geändert hat.</summary>
+procedure TAtlasTrackerReviewDialog.UpdateComment;
 var
   mText: string;
 begin
-  case AStep of
-    TAtlasReviewStep.Saved:
-      if AState.OwnBranch <> '' then
-      begin
-        mText := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSaved, [AState.OwnBranch]);
-      end
-      else
-      begin
-        mText := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSavedNone);
-      end;
-    TAtlasReviewStep.Switched:
-      mText := SwitchText(AState);
-    TAtlasReviewStep.Build:
-      mText := BuildText(AState);
-  else
-    mText := TestsText(AState);
+  mText := TAtlasTrackerReview.Comment(FTemplate, FState.Key, FState.Branch, BuildText(FState), TestsText(FState));
+  if (FParts.Editor.Text <> FPreset) or (mText = FPreset) then
+  begin
+    Exit;
   end;
-  Result := cMarks[AState.Marks[AStep]] + ' ' + mText;
+  FPreset := mText;
+  FParts.Editor.SetText(mText);
+end;
+
+procedure TAtlasTrackerReviewDialog.UpdateButtons;
+var
+  mWaiting: Boolean;
+begin
+  mWaiting := FState.Marks[TAtlasReviewStep.Switched] = TAtlasReviewMark.Running;
+  FParts.Switch.Enabled := not mWaiting and not FSending;
+  FParts.Branch.Enabled := FParts.Switch.Visible and FParts.Switch.Enabled;
+  FParts.Back.Enabled := FState.CanReturn and not FSending;
+  FParts.Choice.Enabled := not FSending;
+  FParts.Later.Enabled := not FSending;
+  FParts.Send.Enabled := not FSending;
+  if FParts.Back.Enabled and FParts.Back.Checked then
+  begin
+    FParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSendBack);
+  end
+  else
+  begin
+    FParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSend);
+  end;
+end;
+
+procedure TAtlasTrackerReviewDialog.FireClosed;
+var
+  mClosed: TProc<Boolean>;
+begin
+  // Genau einmal: Danach sind die Ereignisse gelöst.
+  mClosed := FEvents.Closed;
+  FEvents := Default(TAtlasReviewDialogEvents);
+  if Assigned(mClosed) then
+  begin
+    mClosed(FParts.Back.Enabled and FParts.Back.Checked);
+  end;
 end;
 
 procedure TAtlasTrackerReviewDialog.ShowState(const AState: TAtlasReviewState);
@@ -470,6 +458,14 @@ begin
   end;
 end;
 
+procedure TAtlasTrackerReviewDialog.SetStates(const AStates: TArray<string>;
+  const ARules: TAtlasTrackerStateRules);
+begin
+  FStates := Copy(AStates);
+  FRules := ARules;
+  FillChoices;
+end;
+
 procedure TAtlasTrackerReviewDialog.ShowNote(const AText: string);
 begin
   if AText = '' then
@@ -482,80 +478,25 @@ begin
   end;
 end;
 
-/// <summary>Kommentar aus der Vorlage, solange der Benutzer ihn nicht geändert hat.</summary>
-procedure TAtlasTrackerReviewDialog.UpdateComment;
+function TAtlasTrackerReviewDialog.Change: TAtlasTrackerWrite;
 var
-  mText: string;
+  mIndex: Integer;
 begin
-  mText := TAtlasTrackerReview.Comment(FTemplate, FState.Key, FState.Branch, BuildText(FState), TestsText(FState));
-  if (FParts.Editor.Text <> FPreset) or (mText = FPreset) then
+  mIndex := FParts.Choice.ItemIndex - 1;
+  if FRules.StateMachine and (FRules.FieldId <> '') then
   begin
+    Result := TAtlasTrackerWorkflow.EndTransition(FOptions, FRules, mIndex, FParts.Editor.Text, False, '');
     Exit;
   end;
-  FPreset := mText;
-  FParts.Editor.SetText(mText);
-end;
-
-procedure TAtlasTrackerReviewDialog.UpdateButtons;
-var
-  mWaiting: Boolean;
-begin
-  mWaiting := FState.Marks[TAtlasReviewStep.Switched] = TAtlasReviewMark.Running;
-  FParts.Switch.Enabled := not mWaiting and not FSending;
-  FParts.Branch.Enabled := FParts.Switch.Visible and FParts.Switch.Enabled;
-  FParts.Back.Enabled := FState.CanReturn and not FSending;
-  FParts.Choice.Enabled := not FSending;
-  FParts.Later.Enabled := not FSending;
-  FParts.Send.Enabled := not FSending;
-  if FParts.Back.Enabled and FParts.Back.Checked then
+  if mIndex >= 0 then
   begin
-    FParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSendBack);
+    Result := TAtlasTrackerWorkflow.EndChange(FOptions, FParts.Choice.Items[FParts.Choice.ItemIndex],
+      FParts.Editor.Text, False, '');
   end
   else
   begin
-    FParts.Send.Caption := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSend);
+    Result := TAtlasTrackerWorkflow.EndChange(FOptions, '', FParts.Editor.Text, False, '');
   end;
-end;
-
-procedure TAtlasTrackerReviewDialog.SwitchClick(Sender: TObject);
-var
-  mBranch: string;
-begin
-  mBranch := Trim(FParts.Branch.Text);
-  if (mBranch = '') or not Assigned(FEvents.Switch) then
-  begin
-    Exit;
-  end;
-  FParts.Switch.Visible := False;
-  FParts.Branch.Enabled := False;
-  ShowNote('');
-  FEvents.Switch(mBranch);
-end;
-
-procedure TAtlasTrackerReviewDialog.BackClick(Sender: TObject);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasTrackerReviewDialog.SendClick(Sender: TObject);
-var
-  mChange: TAtlasTrackerWrite;
-begin
-  if FSending then
-  begin
-    Exit;
-  end;
-  mChange := Change;
-  if not mChange.HasWork or not Assigned(FEvents.Send) then
-  begin
-    // Nichts zu schreiben: wie „Später entscheiden“.
-    Close;
-    Exit;
-  end;
-  FSending := True;
-  ShowNote('');
-  UpdateButtons;
-  FEvents.Send(mChange, SendDone);
 end;
 
 procedure TAtlasTrackerReviewDialog.SendDone(const AResult: TAtlasTrackerWriteResult);
@@ -570,38 +511,97 @@ begin
   UpdateButtons;
 end;
 
-procedure TAtlasTrackerReviewDialog.LaterClick(Sender: TObject);
-begin
-  Close;
-end;
-
-procedure TAtlasTrackerReviewDialog.EditorCancel(Sender: TObject);
-begin
-  Close;
-end;
-
-procedure TAtlasTrackerReviewDialog.DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
-begin
-  // Während des Schreibens bleibt der Dialog offen (höchstens TAtlasTrackerWorkflow.cWriteTimeoutMs).
-  CanClose := not FSending;
-end;
-
-procedure TAtlasTrackerReviewDialog.DialogClose(Sender: TObject; var Action: TCloseAction);
-begin
-  Action := caFree;
-  FireClosed;
-end;
-
-procedure TAtlasTrackerReviewDialog.FireClosed;
+class function TAtlasTrackerReviewDialog.ResultChoices(const ARules: TAtlasTrackerStateRules;
+  const AStates: TArray<string>; const ACurrent: string): TArray<string>;
 var
-  mClosed: TProc<Boolean>;
+  mTransition: TAtlasTrackerTransition;
+  mState: string;
 begin
-  // Genau einmal: Danach sind die Ereignisse gelöst.
-  mClosed := FEvents.Closed;
-  FEvents := Default(TAtlasReviewDialogEvents);
-  if Assigned(mClosed) then
+  Result := TArray<string>.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerEndKeepState));
+  if ARules.StateMachine and (ARules.FieldId <> '') then
   begin
-    mClosed(FParts.Back.Enabled and FParts.Back.Checked);
+    for mTransition in ARules.Transitions do
+    begin
+      Result := Result + [TAtlasTrackerTransitions.ChoiceText(mTransition, AStates)];
+    end;
+    Exit;
+  end;
+  for mState in AStates do
+  begin
+    if not SameText(Trim(mState), Trim(ACurrent)) then
+    begin
+      Result := Result + [mState];
+    end;
+  end;
+end;
+
+class function TAtlasTrackerReviewDialog.StepText(const AState: TAtlasReviewState; AStep: TAtlasReviewStep): string;
+var
+  mText: string;
+begin
+  case AStep of
+    TAtlasReviewStep.Saved:
+      if AState.OwnBranch <> '' then
+      begin
+        mText := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewSaved, [AState.OwnBranch]);
+      end
+      else
+      begin
+        mText := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewSavedNone);
+      end;
+    TAtlasReviewStep.Switched:
+      mText := SwitchText(AState);
+    TAtlasReviewStep.Build:
+      mText := BuildText(AState);
+  else
+    mText := TestsText(AState);
+  end;
+  Result := cMarks[AState.Marks[AStep]] + ' ' + mText;
+end;
+
+class function TAtlasTrackerReviewDialog.BuildText(const AState: TAtlasReviewState): string;
+var
+  mBuild: TAtlasReviewBuild;
+begin
+  mBuild := AState.Build;
+  case AState.Marks[TAtlasReviewStep.Build] of
+    TAtlasReviewMark.Running:
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildRunning);
+    TAtlasReviewMark.Done:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBuildDone, [mBuild.Platform,
+        mBuild.Configuration, mBuild.Errors, mBuild.Warnings, mBuild.Hints]);
+    TAtlasReviewMark.Failed:
+      if mBuild.Errors > 0 then
+      begin
+        Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBuildFailed, [mBuild.Platform,
+          mBuild.Configuration, mBuild.Errors]);
+      end
+      else
+      begin
+        Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildNotStarted);
+      end;
+    TAtlasReviewMark.Skipped:
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildSkipped);
+  else
+    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewBuildWaiting);
+  end;
+  Result := Trim(StringReplace(Result, '  ', ' ', [rfReplaceAll]));
+end;
+
+class function TAtlasTrackerReviewDialog.TestsText(const AState: TAtlasReviewState): string;
+begin
+  case AState.Marks[TAtlasReviewStep.Tests] of
+    TAtlasReviewMark.Running:
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsRunning);
+    TAtlasReviewMark.Done:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewTestsDone, [AState.TestsPassed]);
+    TAtlasReviewMark.Failed:
+      Result := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewTestsFailed, [AState.TestsFailed,
+        AState.TestsPassed + AState.TestsFailed]);
+    TAtlasReviewMark.Skipped:
+      Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsSkipped);
+  else
+    Result := TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.TrackerReviewTestsWaiting);
   end;
 end;
 

@@ -366,15 +366,6 @@ begin
   Result := Assigned(mProvider) and mProvider(AUri, AContext);
 end;
 
-function TSyntaxDiagnosticsProviders.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
-var
-  mProvider: TUsesContextProvider;
-begin
-  mProvider := UsesContext;
-  AContext := Default(TUsesContext);
-  Result := Assigned(mProvider) and mProvider(AUri, AContext);
-end;
-
 function TSyntaxDiagnosticsProviders.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
 var
   mProvider: TCompilerMessagesProvider;
@@ -388,6 +379,15 @@ begin
   begin
     Result := nil;
   end;
+end;
+
+function TSyntaxDiagnosticsProviders.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+var
+  mProvider: TUsesContextProvider;
+begin
+  mProvider := UsesContext;
+  AContext := Default(TUsesContext);
+  Result := Assigned(mProvider) and mProvider(AUri, AContext);
 end;
 
 { TLspSyntaxDiagnostics }
@@ -426,11 +426,6 @@ begin
   inherited;
 end;
 
-procedure TLspSyntaxDiagnostics.Attach;
-begin
-  FStore.Subscribe(HandleDocumentEvent);
-end;
-
 function TLspSyntaxDiagnostics.GetOnError: TProc<Exception>;
 begin
   Result := FDebouncer.OnError;
@@ -440,90 +435,6 @@ procedure TLspSyntaxDiagnostics.SetOnError(const AValue: TProc<Exception>);
 begin
   FDebouncer.OnError := AValue;
   FRefreshDebouncer.OnError := AValue;
-end;
-
-procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
-var
-  mFileName, mUri: string;
-  mDocument: ITextDocument;
-  mItem: TCompilerMessage;
-  mItems: TJSONArray;
-  mParams: TJSONObject;
-begin
-  if FPullMode then
-  begin
-    if Assigned(FOnPullFilesChanged) then
-    begin
-      FOnPullFilesChanged(AFileNames);
-    end
-    else if Assigned(FOnPullChanged) then
-    begin
-      FOnPullChanged();
-    end;
-    Exit;
-  end;
-  for mFileName in AFileNames do
-  begin
-    mUri := TDocumentUris.FromPath(mFileName);
-    if FStore.TryGet(mUri, mDocument) then
-    begin
-      ScheduleParse(mDocument);
-      Continue;
-    end;
-    mItems := TJSONArray.Create;
-    for mItem in FProviders.CurrentCompilerMessages(mFileName) do
-    begin
-      mItems.AddElement(TLspDiagnosticItems.CompilerMessageToJson(mItem, '', False));
-    end;
-    mParams := TJSONObject.Create;
-    mParams.AddPair('uri', mUri);
-    mParams.AddPair('diagnostics', mItems);
-    TMonitor.Enter(FSendLock);
-    try
-      // Inzwischen geöffnet: Das Dokument meldet selbst, mit Zeilentext.
-      if FStore.TryGet(mUri, mDocument) then
-      begin
-        mParams.Free;
-        ScheduleParse(mDocument);
-      end
-      else
-      begin
-        Send(FTransport, mParams);
-      end;
-    finally
-      TMonitor.Exit(FSendLock);
-    end;
-  end;
-end;
-
-procedure TLspSyntaxDiagnostics.Refresh;
-var
-  mDocument: ITextDocument;
-begin
-  if FPullMode then
-  begin
-    if Assigned(FOnPullChanged) then
-    begin
-      FOnPullChanged();
-    end;
-    Exit;
-  end;
-  for mDocument in FStore.Documents do
-  begin
-    if not SameText(ExtractFileExt(mDocument.Uri), '.json') then
-    begin
-      ScheduleParse(mDocument);
-    end;
-  end;
-end;
-
-procedure TLspSyntaxDiagnostics.RefreshLater;
-begin
-  FRefreshDebouncer.Schedule('refresh',
-    procedure
-    begin
-      Refresh;
-    end);
 end;
 
 procedure TLspSyntaxDiagnostics.HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
@@ -562,103 +473,6 @@ begin
     end);
 end;
 
-function TLspSyntaxDiagnostics.IsCurrent(const ADocument: ITextDocument): Boolean;
-var
-  mCurrent: ITextDocument;
-begin
-  Result := FStore.TryGet(ADocument.Uri, mCurrent) and (mCurrent.Version = ADocument.Version);
-end;
-
-function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
-begin
-  Result := Compute(ADocument, nil);
-end;
-
-function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject;
-var
-  mInput: TSyntaxDiagnosticsInput;
-  mIssues: TArray<TPreprocessorIssue>;
-  mIssue: TPreprocessorIssue;
-  mItems: TJSONArray;
-  mHasRules: Boolean;
-begin
-  if TLspDiagnosticItems.TryFormParams(ADocument.Uri, ADocument.Text, Result) then
-  begin
-    Exit;
-  end;
-  mInput := Default(TSyntaxDiagnosticsInput);
-  mIssues := nil;
-  if FProviders.CurrentDefines(ADocument.Uri, mInput.Defines) then
-  begin
-    mInput.Inactive := InactiveOf(ADocument, mInput.Defines, mIssues);
-  end;
-  mHasRules := FProviders.CurrentRules(ADocument.Uri, mInput.Rules);
-  if not mHasRules then
-  begin
-    mInput.Rules := Default(TRuleCheckContext);
-  end;
-  mInput.Rules.Cancelled := ACancelled;
-  mInput.DelphiVersion := FProviders.CurrentVersion(ADocument.Uri);
-  FProviders.CurrentTarget(ADocument.Uri, mInput.Platform, mInput.Config);
-  Result := BuildParams(ADocument, mInput);
-  mItems := Result.GetValue('diagnostics') as TJSONArray;
-  for mIssue in mIssues do
-  begin
-    mItems.AddElement(TLspDiagnosticItems.IssueToJson(mIssue));
-  end;
-  AddUnusedUses(mItems, ADocument, mInput, mHasRules);
-  AddCompilerMessages(mItems, ADocument, FProviders.CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
-end;
-
-/// <summary>Ist die Regel ARuleId für die Datei aus ARules an (Einstellungen, exclude, Gruppen)?</summary>
-function UsesRuleOn(const ARuleId: string; const ARules: TRuleCheckContext): Boolean;
-begin
-  Result := TRuleEngine.RuleOn(ARuleId, ARules.Settings, ARules.RelativePath,
-    ChangeFileExt(ExtractFileName(ARules.FileName), ''));
-end;
-
-procedure TLspSyntaxDiagnostics.AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument;
-  const AInput: TSyntaxDiagnosticsInput; AHasRules: Boolean);
-var
-  mUses: TUsesContext;
-  mTree: ISharedSyntaxTree;
-  mSuppressions: TSuppressions;
-  mShown: TUsesEntryStates;
-begin
-  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135), der Hinweis „nur in der implementation
-  // gebraucht“ die von uses-only-in-implementation (#1136): Mit der Regel aus, für ausgeschlossene Dateien und
-  // unter lsp-ignore bleiben sie weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
-  mShown := [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization, TUsesEntryState.KeptByAllowlist,
-    TUsesEntryState.OnlyImplementation];
-  if AHasRules and not UsesRuleOn(cUnusedUsesRuleId, AInput.Rules) then
-  begin
-    mShown := mShown - [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization,
-      TUsesEntryState.KeptByAllowlist];
-  end;
-  if AHasRules and not UsesRuleOn(cUsesOnlyInImplementationRuleId, AInput.Rules) then
-  begin
-    mShown := mShown - [TUsesEntryState.OnlyImplementation];
-  end;
-  if (mShown = []) or not FProviders.CurrentUses(ADocument.Uri, mUses) then
-  begin
-    Exit;
-  end;
-  // Nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht die Meldungen: Auch mit
-  // abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
-  mTree := TSyntaxTreeCache.GetFor(ADocument, AInput.Defines);
-  if Length(mTree.Tree.Diagnostics) > 0 then
-  begin
-    Exit;
-  end;
-  mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
-  try
-    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
-      mSuppressions, mShown);
-  finally
-    mSuppressions.Free;
-  end;
-end;
-
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
 var
   mParams: TJSONObject;
@@ -688,6 +502,18 @@ begin
   finally
     TMonitor.Exit(FSendLock);
   end;
+end;
+
+function TLspSyntaxDiagnostics.IsCurrent(const ADocument: ITextDocument): Boolean;
+var
+  mCurrent: ITextDocument;
+begin
+  Result := FStore.TryGet(ADocument.Uri, mCurrent) and (mCurrent.Version = ADocument.Version);
+end;
+
+procedure TLspSyntaxDiagnostics.Attach;
+begin
+  FStore.Subscribe(HandleDocumentEvent);
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument): TJSONObject;
@@ -746,26 +572,6 @@ begin
   Result.AddPair('diagnostics', mItems);
 end;
 
-/// <summary>Lauf der Prüfregeln für Obtain.</summary>
-function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
-begin
-  Result :=
-    function: TArray<TRuleFinding>
-    begin
-      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
-    end;
-end;
-
-class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
-  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
-begin
-  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
-  begin
-    Exit(RuleFindings(AText, ATree, ARules));
-  end;
-  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
-end;
-
 class function TLspSyntaxDiagnostics.CachedRuleFindings(const AText: string; ATree: TSyntaxTree;
   const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled; out AFindings: TArray<TRuleFinding>): Boolean;
 begin
@@ -775,6 +581,55 @@ begin
     Exit(True);
   end;
   Result := ARules.Memo.Await(ARules.FileName, AText, AWaitCancelled, AFindings);
+end;
+
+/// <summary>Ist die Regel ARuleId für die Datei aus ARules an (Einstellungen, exclude, Gruppen)?</summary>
+function UsesRuleOn(const ARuleId: string; const ARules: TRuleCheckContext): Boolean;
+begin
+  Result := TRuleEngine.RuleOn(ARuleId, ARules.Settings, ARules.RelativePath,
+    ChangeFileExt(ExtractFileName(ARules.FileName), ''));
+end;
+
+procedure TLspSyntaxDiagnostics.AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument;
+  const AInput: TSyntaxDiagnosticsInput; AHasRules: Boolean);
+var
+  mUses: TUsesContext;
+  mTree: ISharedSyntaxTree;
+  mSuppressions: TSuppressions;
+  mShown: TUsesEntryStates;
+begin
+  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135), der Hinweis „nur in der implementation
+  // gebraucht“ die von uses-only-in-implementation (#1136): Mit der Regel aus, für ausgeschlossene Dateien und
+  // unter lsp-ignore bleiben sie weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
+  mShown := [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization, TUsesEntryState.KeptByAllowlist,
+    TUsesEntryState.OnlyImplementation];
+  if AHasRules and not UsesRuleOn(cUnusedUsesRuleId, AInput.Rules) then
+  begin
+    mShown := mShown - [TUsesEntryState.Unused, TUsesEntryState.KeptForInitialization,
+      TUsesEntryState.KeptByAllowlist];
+  end;
+  if AHasRules and not UsesRuleOn(cUsesOnlyInImplementationRuleId, AInput.Rules) then
+  begin
+    mShown := mShown - [TUsesEntryState.OnlyImplementation];
+  end;
+  if (mShown = []) or not FProviders.CurrentUses(ADocument.Uri, mUses) then
+  begin
+    Exit;
+  end;
+  // Nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht die Meldungen: Auch mit
+  // abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
+  mTree := TSyntaxTreeCache.GetFor(ADocument, AInput.Defines);
+  if Length(mTree.Tree.Diagnostics) > 0 then
+  begin
+    Exit;
+  end;
+  mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
+  try
+    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
+      mSuppressions, mShown);
+  finally
+    mSuppressions.Free;
+  end;
 end;
 
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;
@@ -804,6 +659,151 @@ begin
   mContext.Cancelled := ARules.Cancelled;
   mContext.Live := ARules.Live;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, mContext);
+end;
+
+function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
+begin
+  Result := Compute(ADocument, nil);
+end;
+
+function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject;
+var
+  mInput: TSyntaxDiagnosticsInput;
+  mIssues: TArray<TPreprocessorIssue>;
+  mIssue: TPreprocessorIssue;
+  mItems: TJSONArray;
+  mHasRules: Boolean;
+begin
+  if TLspDiagnosticItems.TryFormParams(ADocument.Uri, ADocument.Text, Result) then
+  begin
+    Exit;
+  end;
+  mInput := Default(TSyntaxDiagnosticsInput);
+  mIssues := nil;
+  if FProviders.CurrentDefines(ADocument.Uri, mInput.Defines) then
+  begin
+    mInput.Inactive := InactiveOf(ADocument, mInput.Defines, mIssues);
+  end;
+  mHasRules := FProviders.CurrentRules(ADocument.Uri, mInput.Rules);
+  if not mHasRules then
+  begin
+    mInput.Rules := Default(TRuleCheckContext);
+  end;
+  mInput.Rules.Cancelled := ACancelled;
+  mInput.DelphiVersion := FProviders.CurrentVersion(ADocument.Uri);
+  FProviders.CurrentTarget(ADocument.Uri, mInput.Platform, mInput.Config);
+  Result := BuildParams(ADocument, mInput);
+  mItems := Result.GetValue('diagnostics') as TJSONArray;
+  for mIssue in mIssues do
+  begin
+    mItems.AddElement(TLspDiagnosticItems.IssueToJson(mIssue));
+  end;
+  AddUnusedUses(mItems, ADocument, mInput, mHasRules);
+  AddCompilerMessages(mItems, ADocument, FProviders.CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
+end;
+
+procedure TLspSyntaxDiagnostics.Refresh;
+var
+  mDocument: ITextDocument;
+begin
+  if FPullMode then
+  begin
+    if Assigned(FOnPullChanged) then
+    begin
+      FOnPullChanged();
+    end;
+    Exit;
+  end;
+  for mDocument in FStore.Documents do
+  begin
+    if not SameText(ExtractFileExt(mDocument.Uri), '.json') then
+    begin
+      ScheduleParse(mDocument);
+    end;
+  end;
+end;
+
+/// <summary>Lauf der Prüfregeln für Obtain.</summary>
+function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
+begin
+  Result :=
+    function: TArray<TRuleFinding>
+    begin
+      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    end;
+end;
+
+class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
+begin
+  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
+  begin
+    Exit(RuleFindings(AText, ATree, ARules));
+  end;
+  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
+end;
+
+procedure TLspSyntaxDiagnostics.RefreshLater;
+begin
+  FRefreshDebouncer.Schedule('refresh',
+    procedure
+    begin
+      Refresh;
+    end);
+end;
+
+procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
+var
+  mFileName, mUri: string;
+  mDocument: ITextDocument;
+  mItem: TCompilerMessage;
+  mItems: TJSONArray;
+  mParams: TJSONObject;
+begin
+  if FPullMode then
+  begin
+    if Assigned(FOnPullFilesChanged) then
+    begin
+      FOnPullFilesChanged(AFileNames);
+    end
+    else if Assigned(FOnPullChanged) then
+    begin
+      FOnPullChanged();
+    end;
+    Exit;
+  end;
+  for mFileName in AFileNames do
+  begin
+    mUri := TDocumentUris.FromPath(mFileName);
+    if FStore.TryGet(mUri, mDocument) then
+    begin
+      ScheduleParse(mDocument);
+      Continue;
+    end;
+    mItems := TJSONArray.Create;
+    for mItem in FProviders.CurrentCompilerMessages(mFileName) do
+    begin
+      mItems.AddElement(TLspDiagnosticItems.CompilerMessageToJson(mItem, '', False));
+    end;
+    mParams := TJSONObject.Create;
+    mParams.AddPair('uri', mUri);
+    mParams.AddPair('diagnostics', mItems);
+    TMonitor.Enter(FSendLock);
+    try
+      // Inzwischen geöffnet: Das Dokument meldet selbst, mit Zeilentext.
+      if FStore.TryGet(mUri, mDocument) then
+      begin
+        mParams.Free;
+        ScheduleParse(mDocument);
+      end
+      else
+      begin
+        Send(FTransport, mParams);
+      end;
+    finally
+      TMonitor.Exit(FSendLock);
+    end;
+  end;
 end;
 
 end.

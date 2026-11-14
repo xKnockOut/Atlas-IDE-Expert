@@ -412,6 +412,8 @@ begin
   Result := Length(GroupNames) > 1;
 end;
 
+{ TClassLayout }
+
 class function TClassLayout.Read(ATree: TSyntaxTree; const AText: string; ADecl: TSyntaxNode): TClassLayout;
 begin
   Result := TClassLayout.Create;
@@ -440,24 +442,6 @@ begin
   end;
   mBody := ANode.FindChild(TSyntaxKind.ClassType);
   Result := mBody <> nil;
-end;
-
-class function TClassLayout.AllDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
-var
-  mFound: TArray<TSyntaxNode>;
-begin
-  mFound := nil;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      // Rümpfe von Routinen enthalten keine Klassen, die ein Umbau anfasst.
-      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-      if Result and IsClassDecl(ANode) then
-      begin
-        mFound := mFound + [ANode];
-      end;
-    end);
-  Result := mFound;
 end;
 
 class function TClassLayout.DeclAt(ATree: TSyntaxTree; ALine: Integer; AInside: Boolean): TSyntaxNode;
@@ -489,24 +473,39 @@ begin
   Result := nil;
 end;
 
-function TClassLayout.TextOf(ANode: TSyntaxNode): string;
+class function TClassLayout.AllDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
+var
+  mFound: TArray<TSyntaxNode>;
 begin
-  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  mFound := nil;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      // Rümpfe von Routinen enthalten keine Klassen, die ein Umbau anfasst.
+      Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+      if Result and IsClassDecl(ANode) then
+      begin
+        mFound := mFound + [ANode];
+      end;
+    end);
+  Result := mFound;
+end;
+
+function TClassLayout.Find(const AName: string): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Members) do
+  begin
+    if SameText(Members[mIndex].Name, AName) then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
 end;
 
 { TClassLayoutReader }
-
-class procedure TClassLayoutReader.Run(ALayout: TClassLayout);
-var
-  mReader: TClassLayoutReader;
-begin
-  mReader := Default(TClassLayoutReader);
-  mReader.FLayout := ALayout;
-  mReader.FTokens := ALayout.FTree.Tokens;
-  mReader.ReadHeader;
-  mReader.ReadMembers;
-  mReader.FindBodies;
-end;
 
 function TClassLayoutReader.NodeText(ANode: TSyntaxNode): string;
 begin
@@ -525,6 +524,16 @@ var
 begin
   mText := NodeText(ANode);
   Result := CollapseSpace(Copy(mText, 2, Length(mText) - 2));
+end;
+
+function TClassLayoutReader.DocStart(ALine: Integer): Integer;
+begin
+  Result := -1;
+  while (ALine > 0) and StartsText('///', Trim(FLayout.FLines[ALine - 1])) do
+  begin
+    Dec(ALine);
+    Result := ALine;
+  end;
 end;
 
 function TClassLayoutReader.TokenRange(AFirstOffset, ALastOffset: Integer; out AFirst, ALast: Integer): Boolean;
@@ -556,16 +565,6 @@ begin
     Dec(mIndex);
   end;
   Result := (mIndex >= 0) and FTokens[mIndex].IsKeyword('class');
-end;
-
-function TClassLayoutReader.DocStart(ALine: Integer): Integer;
-begin
-  Result := -1;
-  while (ALine > 0) and StartsText('///', Trim(FLayout.FLines[ALine - 1])) do
-  begin
-    Dec(ALine);
-    Result := ALine;
-  end;
 end;
 
 /// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist; ALast + 1 ohne.</summary>
@@ -719,6 +718,29 @@ begin
   ReadHeritage;
 end;
 
+function TClassLayoutReader.NewMember(AKind: TClassMemberKind; ANode: TSyntaxNode; const AName: string): TClassMember;
+begin
+  Result := Default(TClassMember);
+  Result.Kind := AKind;
+  Result.Node := ANode;
+  Result.Name := AName;
+  Result.GroupNames := [AName];
+  Result.Visibility := FVisibility;
+  Result.FirstLine := ANode.StartPos.Line;
+  if FPending >= 0 then
+  begin
+    Result.FirstLine := FPending;
+  end;
+  Result.DocLine := DocStart(Result.FirstLine);
+  if Result.DocLine >= 0 then
+  begin
+    Result.FirstLine := Result.DocLine;
+  end;
+  Result.LastLine := ANode.EndPos.Line;
+  Result.BodyFirstLine := -1;
+  Result.BodyLastLine := -1;
+end;
+
 const
   cPropertySpecifiers: array[0..7] of string = ('read', 'write', 'index', 'stored', 'default', 'nodefault',
     'implements', 'dispid');
@@ -827,29 +849,6 @@ begin
     Result := SameText(A[mPosition], B[mPosition]);
     Inc(mPosition);
   end;
-end;
-
-function TClassLayoutReader.NewMember(AKind: TClassMemberKind; ANode: TSyntaxNode; const AName: string): TClassMember;
-begin
-  Result := Default(TClassMember);
-  Result.Kind := AKind;
-  Result.Node := ANode;
-  Result.Name := AName;
-  Result.GroupNames := [AName];
-  Result.Visibility := FVisibility;
-  Result.FirstLine := ANode.StartPos.Line;
-  if FPending >= 0 then
-  begin
-    Result.FirstLine := FPending;
-  end;
-  Result.DocLine := DocStart(Result.FirstLine);
-  if Result.DocLine >= 0 then
-  begin
-    Result.FirstLine := Result.DocLine;
-  end;
-  Result.LastLine := ANode.EndPos.Line;
-  Result.BodyFirstLine := -1;
-  Result.BodyLastLine := -1;
 end;
 
 procedure TClassLayoutReader.Add(const AMember: TClassMember);
@@ -1220,21 +1219,19 @@ begin
   end;
 end;
 
-{ TClassLayout }
-
-function TClassLayout.Find(const AName: string): TArray<Integer>;
+class procedure TClassLayoutReader.Run(ALayout: TClassLayout);
 var
-  mIndex: Integer;
+  mReader: TClassLayoutReader;
 begin
-  Result := nil;
-  for mIndex := 0 to High(Members) do
-  begin
-    if SameText(Members[mIndex].Name, AName) then
-    begin
-      Result := Result + [mIndex];
-    end;
-  end;
+  mReader := Default(TClassLayoutReader);
+  mReader.FLayout := ALayout;
+  mReader.FTokens := ALayout.FTree.Tokens;
+  mReader.ReadHeader;
+  mReader.ReadMembers;
+  mReader.FindBodies;
 end;
+
+{ TClassLayout }
 
 function TClassLayout.MemberAtLine(ALine: Integer): Integer;
 var
@@ -1249,6 +1246,28 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+function TClassLayout.UsersOf(AIndex: Integer): TArray<Integer>;
+var
+  mIndex, mUsed: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Members) do
+  begin
+    if (mIndex = AIndex) or (Members[mIndex].Kind = TClassMemberKind.Other) then
+    begin
+      Continue;
+    end;
+    for mUsed in UsedBy(mIndex) do
+    begin
+      if SameText(Members[mUsed].Name, Members[AIndex].Name) then
+      begin
+        Result := Result + [mIndex];
+        Break;
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Der Bezeichner AIndex kann ein Mitglied der eigenen Klasse meinen: ohne Punkt davor oder hinter
@@ -1331,26 +1350,9 @@ begin
   end;
 end;
 
-function TClassLayout.UsersOf(AIndex: Integer): TArray<Integer>;
-var
-  mIndex, mUsed: Integer;
+function TClassLayout.TextOf(ANode: TSyntaxNode): string;
 begin
-  Result := nil;
-  for mIndex := 0 to High(Members) do
-  begin
-    if (mIndex = AIndex) or (Members[mIndex].Kind = TClassMemberKind.Other) then
-    begin
-      Continue;
-    end;
-    for mUsed in UsedBy(mIndex) do
-    begin
-      if SameText(Members[mUsed].Name, Members[AIndex].Name) then
-      begin
-        Result := Result + [mIndex];
-        Break;
-      end;
-    end;
-  end;
+  Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
 function TClassLayout.Declaration(AIndex: Integer): string;

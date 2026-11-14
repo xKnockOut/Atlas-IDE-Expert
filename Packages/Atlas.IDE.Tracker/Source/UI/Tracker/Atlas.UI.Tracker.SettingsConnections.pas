@@ -129,14 +129,6 @@ begin
   Result := FTables.Connections;
 end;
 
-procedure TAtlasTrackerConnectionsPart.Build;
-begin
-  BuildList;
-  BuildFields;
-  BuildWorkflow;
-  BuildButtons;
-end;
-
 procedure TAtlasTrackerConnectionsPart.BuildList;
 begin
   FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesConnections));
@@ -266,30 +258,6 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerConnectionsPart.Refresh;
-begin
-  if FView.List = nil then
-  begin
-    Exit;
-  end;
-  if Assigned(FHooks.OnTeam) then
-  begin
-    Table.SetTeam(FHooks.OnTeam());
-  end
-  else
-  begin
-    Table.SetTeam(nil);
-  end;
-  // Wie die Liste der Favoriten: ohne Fenster folgt das in WindowReady.
-  if FRows.ListReady(FView.List) then
-  begin
-    FillList;
-  end;
-  FillFields;
-  FTables.ShareNames;
-  FOnChanged;
-end;
-
 procedure TAtlasTrackerConnectionsPart.FillList;
 var
   mRow: TAtlasTrackerConnection;
@@ -317,19 +285,6 @@ begin
   end;
 end;
 
-procedure TAtlasTrackerConnectionsPart.ShowValues(const AConnection: TAtlasTrackerConnection);
-begin
-  FView.Name.Text := AConnection.Name;
-  FView.Url.Text := AConnection.Url;
-  FView.Provider.Choice := Table.ProviderIndex(AConnection.Provider);
-  FView.StateField.Value := AConnection.StateField;
-  FView.AssigneeField.Value := AConnection.AssigneeField;
-  FView.StartState.Value := AConnection.StartState;
-  FView.EndStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndStates);
-  FView.EndFields.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndFields);
-  FView.ReviewStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.ReviewStates);
-end;
-
 procedure TAtlasTrackerConnectionsPart.FillFields;
 var
   mRow: TAtlasTrackerConnection;
@@ -352,6 +307,19 @@ begin
   end;
   AllowFields;
   ShowFields;
+end;
+
+procedure TAtlasTrackerConnectionsPart.ShowValues(const AConnection: TAtlasTrackerConnection);
+begin
+  FView.Name.Text := AConnection.Name;
+  FView.Url.Text := AConnection.Url;
+  FView.Provider.Choice := Table.ProviderIndex(AConnection.Provider);
+  FView.StateField.Value := AConnection.StateField;
+  FView.AssigneeField.Value := AConnection.AssigneeField;
+  FView.StartState.Value := AConnection.StartState;
+  FView.EndStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndStates);
+  FView.EndFields.Text := TAtlasTrackerWorkflow.ListText(AConnection.EndFields);
+  FView.ReviewStates.Text := TAtlasTrackerWorkflow.ListText(AConnection.ReviewStates);
 end;
 
 procedure TAtlasTrackerConnectionsPart.AllowFields;
@@ -537,6 +505,38 @@ begin
     Refresh;
     FHooks.OnCheck(mConnection);
   end;
+end;
+
+procedure TAtlasTrackerConnectionsPart.Build;
+begin
+  BuildList;
+  BuildFields;
+  BuildWorkflow;
+  BuildButtons;
+end;
+
+procedure TAtlasTrackerConnectionsPart.Refresh;
+begin
+  if FView.List = nil then
+  begin
+    Exit;
+  end;
+  if Assigned(FHooks.OnTeam) then
+  begin
+    Table.SetTeam(FHooks.OnTeam());
+  end
+  else
+  begin
+    Table.SetTeam(nil);
+  end;
+  // Wie die Liste der Favoriten: ohne Fenster folgt das in WindowReady.
+  if FRows.ListReady(FView.List) then
+  begin
+    FillList;
+  end;
+  FillFields;
+  FTables.ShareNames;
+  FOnChanged;
 end;
 
 procedure TAtlasTrackerConnectionsPart.ProvidersChanged;

@@ -254,11 +254,6 @@ begin
   Result := Text = '';
 end;
 
-function TAtlasTextInsert.OffsetIn(const AText: string): Integer;
-begin
-  Result := TLineTable.Build(AText).OffsetAt(TTextPosition.Create(Line, Character));
-end;
-
 function TAtlasTextInsert.ApplyTo(const AText: string): string;
 var
   mOffset: Integer;
@@ -269,6 +264,11 @@ begin
   end;
   mOffset := OffsetIn(AText);
   Result := Copy(AText, 1, mOffset) + Text + Copy(AText, mOffset + 1, MaxInt);
+end;
+
+function TAtlasTextInsert.OffsetIn(const AText: string): Integer;
+begin
+  Result := TLineTable.Build(AText).OffsetAt(TTextPosition.Create(Line, Character));
 end;
 
 function TAtlasTextInsert.RevertIn(const AText: string; out AResult: string): Boolean;
@@ -415,21 +415,6 @@ begin
   end;
 end;
 
-class function TAtlasHide.IsOn(const ASettings: TAtlasPluginSettings; const AKey: string): Boolean;
-var
-  mStore: IAtlasMemorySettingsStore;
-begin
-  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
-  if mStore.HasInteger(AKey) then
-  begin
-    Result := mStore.ReadInteger(AKey, 0) <> 0;
-  end
-  else
-  begin
-    Result := (mStore.Text(AKey) <> '') and not SameText(mStore.Text(AKey), 'off');
-  end;
-end;
-
 class function TAtlasHide.SwitchOff(var ASettings: TAtlasPluginSettings; const AKey: string;
   out AOldValue: string): Boolean;
 var
@@ -472,6 +457,21 @@ begin
     mStore.WriteString(AKey, AOldValue);
   end;
   ASettings.Load(mStore);
+end;
+
+class function TAtlasHide.IsOn(const ASettings: TAtlasPluginSettings; const AKey: string): Boolean;
+var
+  mStore: IAtlasMemorySettingsStore;
+begin
+  mStore := TAtlasMemorySettingsStore.FromSettings(ASettings);
+  if mStore.HasInteger(AKey) then
+  begin
+    Result := mStore.ReadInteger(AKey, 0) <> 0;
+  end
+  else
+  begin
+    Result := (mStore.Text(AKey) <> '') and not SameText(mStore.Text(AKey), 'off');
+  end;
 end;
 
 end.

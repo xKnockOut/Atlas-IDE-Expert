@@ -129,6 +129,8 @@ begin
   Result := Length(AtlasModuleRegistry.FindAll(IAtlasVcsService)) > 0;
 end;
 
+{ TAtlasTrackerModule }
+
 function TAtlasTrackerModule.Info: TAtlasModuleInfo;
 begin
   // Lief mit der Willkommensseite schon im abgesicherten Start.
@@ -156,16 +158,6 @@ begin
   Result := TAtlasTrackerParts.Commands;
 end;
 
-procedure TAtlasTrackerModule.ApplySettings;
-begin
-  TAtlasTrackerParts.ApplySettings;
-end;
-
-function TAtlasTrackerModule.PaletteSource: IAtlasPaletteSource;
-begin
-  Result := TAtlasTrackerParts.PaletteSource;
-end;
-
 function TAtlasTrackerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := TAtlasTrackerParts.MenuEntries;
@@ -174,6 +166,16 @@ end;
 function TAtlasTrackerModule.Keys: TArray<TAtlasModuleKey>;
 begin
   Result := TAtlasTrackerParts.Keys;
+end;
+
+procedure TAtlasTrackerModule.ApplySettings;
+begin
+  TAtlasTrackerParts.ApplySettings;
+end;
+
+function TAtlasTrackerModule.PaletteSource: IAtlasPaletteSource;
+begin
+  Result := TAtlasTrackerParts.PaletteSource;
 end;
 
 class function TAtlasTrackerModule.RegisterModule: Boolean;

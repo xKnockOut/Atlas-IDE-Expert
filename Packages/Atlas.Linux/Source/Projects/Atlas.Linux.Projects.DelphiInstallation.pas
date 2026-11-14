@@ -35,6 +35,13 @@ implementation
 
 { TDelphiInstallation }
 
+constructor TDelphiInstallation.Create(const AVersion: string);
+begin
+  inherited Create;
+  FVersion := AVersion;
+  raise EProjectError.CreateFmt('Delphi-Version %s ist nicht installiert', [AVersion]);
+end;
+
 class function TDelphiInstallation.Versions: TArray<string>;
 begin
   Result := nil;
@@ -43,13 +50,6 @@ end;
 class function TDelphiInstallation.Latest: ILibraryPathProvider;
 begin
   Result := nil;
-end;
-
-constructor TDelphiInstallation.Create(const AVersion: string);
-begin
-  inherited Create;
-  FVersion := AVersion;
-  raise EProjectError.CreateFmt('Delphi-Version %s ist nicht installiert', [AVersion]);
 end;
 
 function TDelphiInstallation.LibraryPaths(const APlatform: string): TArray<string>;

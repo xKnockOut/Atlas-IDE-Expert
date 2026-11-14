@@ -390,6 +390,38 @@ begin
   Result := nil;
 end;
 
+class function TSqlText.FromForm(const AFormText, AName: string): string;
+var
+  mDocument: TDfmDocument;
+  mFound: TDfmObject;
+  mProp: TDfmProperty;
+begin
+  Result := '';
+  // Name ohne Datenmodul-Präfix: DM.Q steht in der DFM als Q.
+  mDocument := TDfmParser.Parse(AFormText);
+  try
+    if mDocument.Root = nil then
+    begin
+      Exit;
+    end;
+    mFound := FindObject(mDocument.Root, Copy(AName, LastDelimiter('.', AName) + 1, MaxInt));
+    if mFound = nil then
+    begin
+      Exit;
+    end;
+    for mProp in mFound.Properties do
+    begin
+      if SameText(mProp.Name, 'SQL.Strings') or SameText(mProp.Name, 'CommandText') then
+      begin
+        FormValue(mProp.Value, Result);
+        Exit;
+      end;
+    end;
+  finally
+    mDocument.Free;
+  end;
+end;
+
 class function TSqlText.FormValue(const AValue: string; out AText: string): Boolean;
 var
   mValue, mLine, mPlain, mRest: string;
@@ -428,38 +460,6 @@ begin
     mContinued := EndsStr('+', mLine);
   end;
   Result := True;
-end;
-
-class function TSqlText.FromForm(const AFormText, AName: string): string;
-var
-  mDocument: TDfmDocument;
-  mFound: TDfmObject;
-  mProp: TDfmProperty;
-begin
-  Result := '';
-  // Name ohne Datenmodul-Präfix: DM.Q steht in der DFM als Q.
-  mDocument := TDfmParser.Parse(AFormText);
-  try
-    if mDocument.Root = nil then
-    begin
-      Exit;
-    end;
-    mFound := FindObject(mDocument.Root, Copy(AName, LastDelimiter('.', AName) + 1, MaxInt));
-    if mFound = nil then
-    begin
-      Exit;
-    end;
-    for mProp in mFound.Properties do
-    begin
-      if SameText(mProp.Name, 'SQL.Strings') or SameText(mProp.Name, 'CommandText') then
-      begin
-        FormValue(mProp.Value, Result);
-        Exit;
-      end;
-    end;
-  finally
-    mDocument.Free;
-  end;
 end;
 
 /// <summary>Text des String-Literals an AIndex; False, wenn dort keines steht.</summary>

@@ -83,6 +83,8 @@ begin
     (TJsonRead.TrimmedText(mObject, 'query') <> '');
 end;
 
+{ TAtlasSettingsQueryMigrations }
+
 class function TAtlasSettingsQueryMigrations.WithLegacy(const AJson, ALegacyQuery: string): string;
 var
   mQuery: string;

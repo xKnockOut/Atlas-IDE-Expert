@@ -107,6 +107,8 @@ uses
   Atlas.Core.Tracker.Internals.GitHubJson,
   Atlas.Text.Json;
 
+{ TAtlasGitHubApi }
+
 class function TAtlasGitHubApi.Base(const ATarget: TAtlasTrackerTarget): string;
 var
   mServer: string;
@@ -123,6 +125,39 @@ begin
   else
   begin
     Result := mServer + '/api/v3';
+  end;
+end;
+
+class function TAtlasGitHubApi.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := '';
+  if (ATarget.Server <> '') and (ATarget.Project <> '') and (NumberOfKey(AKey) > 0) then
+  begin
+    Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/issues/' +
+      IntToStr(NumberOfKey(AKey));
+  end;
+end;
+
+class function TAtlasGitHubApi.PostComment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey,
+  AText: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mUrl: string;
+  mResponse: TAtlasCiResponse;
+begin
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or (ASend = nil) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  if not ASend.Send('POST', mUrl + '/comments', CommentJson(AText), ATimeoutMs, mResponse) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
+  end;
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not Answered(mResponse.Status) then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
+      ErrorMessage(mResponse.Text));
   end;
 end;
 
@@ -160,6 +195,23 @@ begin
     '&sort=updated&order=desc';
 end;
 
+function SafeSha(const ASha: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
+  if Result then
+  begin
+    for mIndex := 1 to Length(ASha) do
+    begin
+      if not CharInSet(ASha[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+end;
+
 class function TAtlasGitHubApi.TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
   AMax: Integer): string;
 var
@@ -195,23 +247,6 @@ begin
     IntToStr(cMaxPulls);
 end;
 
-function SafeSha(const ASha: string): Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (Length(ASha) >= 7) and (Length(ASha) <= 64);
-  if Result then
-  begin
-    for mIndex := 1 to Length(ASha) do
-    begin
-      if not CharInSet(ASha[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
-      begin
-        Exit(False);
-      end;
-    end;
-  end;
-end;
-
 class function TAtlasGitHubApi.CheckRunsUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string;
 begin
   Result := Base(ATarget);
@@ -231,6 +266,16 @@ begin
     Exit('');
   end;
   Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/commits/' + ASha + '/status';
+end;
+
+/// <summary>Kennung ohne führende "#" ("#753" → "753"), wie TAtlasTrackerNaming.BranchKey.</summary>
+function NumberText(const AKey: string): string;
+begin
+  Result := Trim(AKey);
+  while (Result <> '') and (Result[1] = '#') do
+  begin
+    Delete(Result, 1, 1);
+  end;
 end;
 
 class function TAtlasGitHubApi.AllPullsUrl(const ATarget: TAtlasTrackerTarget): string;
@@ -261,16 +306,6 @@ begin
   end;
 end;
 
-/// <summary>Kennung ohne führende "#" ("#753" → "753"), wie TAtlasTrackerNaming.BranchKey.</summary>
-function NumberText(const AKey: string): string;
-begin
-  Result := Trim(AKey);
-  while (Result <> '') and (Result[1] = '#') do
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
-
 class function TAtlasGitHubApi.NumberOfKey(const AKey: string): Integer;
 begin
   if not TryStrToInt(NumberText(AKey), Result) or (Result <= 0) then
@@ -278,6 +313,10 @@ begin
     Result := 0;
   end;
 end;
+
+
+const
+  cClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
 
 class function TAtlasGitHubApi.IssueApiUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 var
@@ -303,10 +342,6 @@ begin
     Result := Integer(mRest);
   end;
 end;
-
-
-const
-  cClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
 
 class function TAtlasGitHubApi.WriteResult(ASent: Boolean; const AResponse: TAtlasCiResponse): TAtlasTrackerWriteResult;
 begin
@@ -346,33 +381,6 @@ begin
   AText := '';
   Result := (Remaining(AWatch, ACall.TimeoutMs) > 0)
     and GetText(ACall.Transport, AUrl, Remaining(AWatch, ACall.TimeoutMs), AText, mIgnored);
-end;
-
-class function TAtlasGitHubApi.ClosesIssue(const AState: string): Boolean;
-var
-  mState: string;
-begin
-  Result := False;
-  for mState in cClosingStates do
-  begin
-    if SameText(mState, Trim(AState)) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-class function TAtlasGitHubApi.CommentJson(const AText: string): string;
-var
-  mObject: TJSONObject;
-begin
-  mObject := TJSONObject.Create;
-  try
-    mObject.AddPair('body', AText);
-    Result := mObject.ToJSON;
-  finally
-    mObject.Free;
-  end;
 end;
 
 function IndexOfText(const AItems: TArray<string>; const AText: string): Integer;
@@ -450,23 +458,30 @@ begin
   // Keep: Zuständige bleiben.
 end;
 
-class function TAtlasGitHubApi.CloseReason(const AChange: TAtlasTrackerWrite): string;
+class function TAtlasGitHubApi.ClosesIssue(const AState: string): Boolean;
+var
+  mState: string;
 begin
-  case AChange.Close of
-    TAtlasTrackerClose.Completed:
-      Result := 'completed';
-    TAtlasTrackerClose.NotPlanned:
-      Result := 'not_planned';
-    TAtlasTrackerClose.Duplicate:
-      Result := 'duplicate';
-    TAtlasTrackerClose.KeepOpen:
-      Result := '';
-  else
-    Result := '';
-    if (Trim(AChange.State) <> '') and ClosesIssue(AChange.State) then
+  Result := False;
+  for mState in cClosingStates do
+  begin
+    if SameText(mState, Trim(AState)) then
     begin
-      Result := 'completed';
+      Exit(True);
     end;
+  end;
+end;
+
+class function TAtlasGitHubApi.CommentJson(const AText: string): string;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('body', AText);
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
   end;
 end;
 
@@ -517,6 +532,26 @@ begin
     Result := mObject.ToJSON;
   finally
     mObject.Free;
+  end;
+end;
+
+class function TAtlasGitHubApi.CloseReason(const AChange: TAtlasTrackerWrite): string;
+begin
+  case AChange.Close of
+    TAtlasTrackerClose.Completed:
+      Result := 'completed';
+    TAtlasTrackerClose.NotPlanned:
+      Result := 'not_planned';
+    TAtlasTrackerClose.Duplicate:
+      Result := 'duplicate';
+    TAtlasTrackerClose.KeepOpen:
+      Result := '';
+  else
+    Result := '';
+    if (Trim(AChange.State) <> '') and ClosesIssue(AChange.State) then
+    begin
+      Result := 'completed';
+    end;
   end;
 end;
 
@@ -616,39 +651,6 @@ begin
   if Result <> '' then
   begin
     Result := Result + '/comments';
-  end;
-end;
-
-class function TAtlasGitHubApi.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-begin
-  Result := '';
-  if (ATarget.Server <> '') and (ATarget.Project <> '') and (NumberOfKey(AKey) > 0) then
-  begin
-    Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/issues/' +
-      IntToStr(NumberOfKey(AKey));
-  end;
-end;
-
-class function TAtlasGitHubApi.PostComment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey,
-  AText: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-var
-  mUrl: string;
-  mResponse: TAtlasCiResponse;
-begin
-  mUrl := IssueApiUrl(ATarget, AKey);
-  if (mUrl = '') or (ASend = nil) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  end;
-  if not ASend.Send('POST', mUrl + '/comments', CommentJson(AText), ATimeoutMs, mResponse) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(mResponse.Error, 0, ''));
-  end;
-  Result := TAtlasTrackerWriteResult.Ok;
-  if not Answered(mResponse.Status) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mResponse.Status), mResponse.Status,
-      ErrorMessage(mResponse.Text));
   end;
 end;
 

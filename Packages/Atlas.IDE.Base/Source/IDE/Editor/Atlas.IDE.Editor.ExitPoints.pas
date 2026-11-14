@@ -216,72 +216,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeExitPoints.Install(const ASession: TAtlasExitPointsSessionFunc);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeExitPoints.Create(ASession);
-  end;
-end;
-
-class procedure TAtlasIdeExitPoints.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeExitPoints.Installed: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class procedure TAtlasIdeExitPoints.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
-    SameText(mExtension, '.inc');
-end;
-
-procedure ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
-var
-  mCursor: TOTAEditPos;
-  mLineText: string;
-begin
-  mCursor := AView.CursorPos;
-  ALine := Max(0, mCursor.Line - 1);
-  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
-  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
-    Length(mLineText));
-end;
-
-function HasBlock(const AView: IOTAEditView): Boolean;
-var
-  mBlock: IOTAEditBlock;
-begin
-  mBlock := AView.Block;
-  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
-end;
-
-procedure TAtlasIdeExitPoints.Clear;
-begin
-  FSet := Default(TAtlasExitPointSet);
-  FFileName := '';
-  FVersion := 0;
-  FLines := nil;
-  FAskedKey := '';
-end;
-
 procedure TAtlasIdeExitPoints.TimerTick(Sender: TObject);
 begin
   try
@@ -354,6 +288,35 @@ begin
   end;
 end;
 
+function IsSource(const AFileName: string): Boolean;
+var
+  mExtension: string;
+begin
+  mExtension := ExtractFileExt(AFileName);
+  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
+    SameText(mExtension, '.inc');
+end;
+
+procedure ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
+var
+  mCursor: TOTAEditPos;
+  mLineText: string;
+begin
+  mCursor := AView.CursorPos;
+  ALine := Max(0, mCursor.Line - 1);
+  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
+  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
+    Length(mLineText));
+end;
+
+function HasBlock(const AView: IOTAEditView): Boolean;
+var
+  mBlock: IOTAEditBlock;
+begin
+  mBlock := AView.Block;
+  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
+end;
+
 procedure TAtlasIdeExitPoints.Update;
 var
   mView: IOTAEditView;
@@ -399,92 +362,13 @@ begin
   end;
 end;
 
-/// <summary>Argumente der Anfrage: Datei, Position und Optionen.</summary>
-function ExitPointArguments(const AFileName: string; ALine, ACharacter: Integer; AExceptions,
-  ALoops: Boolean): string;
-var
-  mValues: TJSONArray;
-  mPosition, mOptions: TJSONObject;
+procedure TAtlasIdeExitPoints.Clear;
 begin
-  mValues := TJSONArray.Create;
-  try
-    mValues.Add(TLspSession.PathToUri(AFileName));
-    mPosition := TJSONObject.Create;
-    mPosition.AddPair('line', TJSONNumber.Create(ALine));
-    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
-    mValues.AddElement(mPosition);
-    mOptions := TJSONObject.Create;
-    mOptions.AddPair('exceptions', TJSONBool.Create(AExceptions));
-    mOptions.AddPair('loops', TJSONBool.Create(ALoops));
-    mValues.AddElement(mOptions);
-    Result := mValues.ToJSON;
-  finally
-    mValues.Free;
-  end;
-end;
-
-/// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
-function Asker(ASession: TLspSession; const AArguments: string; ARequest: Integer; const AFileName: string;
-  AVersion: Cardinal): TThread;
-begin
-  Result := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mAnswer: TJSONValue;
-      mFound: TAtlasExitPointSet;
-    begin
-      mFound := Default(TAtlasExitPointSet);
-      try
-        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.cCommand, AArguments, TAtlasIdeExitPoints.cTimeoutMs);
-        try
-          mFound := TAtlasExitPointSet.FromJson(mAnswer);
-        finally
-          mAnswer.Free;
-        end;
-      except
-        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
-        mFound := Default(TAtlasExitPointSet);
-      end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen.
-      TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,
-        procedure
-        begin
-          if TAtlasIdeExitPoints.FInstance <> nil then
-          begin
-            TAtlasGuard.Run(TAtlasFeature.ExitPoints,
-              procedure
-              begin
-                if TAtlasIdeExitPoints.FInstance <> nil then
-                begin
-                  TAtlasIdeExitPoints.FInstance.Accept(ARequest, AFileName, AVersion, mFound);
-                end;
-              end);
-          end;
-        end);
-    end);
-end;
-
-procedure TAtlasIdeExitPoints.Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
-var
-  mSession: TLspSession;
-  mWorker: TThread;
-begin
-  mSession := nil;
-  if Assigned(FSession) then
-  begin
-    mSession := FSession();
-  end;
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
-  mSession.Sync(FFileName, AText);
-  FWorkers.Prune;
-  Inc(FRequest);
-  mWorker := Asker(mSession, ExitPointArguments(FFileName, ALine, ACharacter, AExceptions, ALoops), FRequest,
-    FFileName, FVersion);
-  FWorkers.Start(mWorker);
+  FSet := Default(TAtlasExitPointSet);
+  FFileName := '';
+  FVersion := 0;
+  FLines := nil;
+  FAskedKey := '';
 end;
 
 procedure TAtlasIdeExitPoints.Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal;
@@ -500,11 +384,6 @@ begin
   begin
     Invalidate;
   end;
-end;
-
-class function TAtlasIdeExitPoints.TryJump(ABackward: Boolean): Boolean;
-begin
-  Result := (FInstance <> nil) and not TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) and FInstance.Jump(ABackward);
 end;
 
 function TAtlasIdeExitPoints.Jump(ABackward: Boolean): Boolean;
@@ -628,6 +507,94 @@ begin
     FSet.RoutineLine, AText), mMark, AContext.EditView.TopRow, ARect.Height);
 end;
 
+/// <summary>Argumente der Anfrage: Datei, Position und Optionen.</summary>
+function ExitPointArguments(const AFileName: string; ALine, ACharacter: Integer; AExceptions,
+  ALoops: Boolean): string;
+var
+  mValues: TJSONArray;
+  mPosition, mOptions: TJSONObject;
+begin
+  mValues := TJSONArray.Create;
+  try
+    mValues.Add(TLspSession.PathToUri(AFileName));
+    mPosition := TJSONObject.Create;
+    mPosition.AddPair('line', TJSONNumber.Create(ALine));
+    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
+    mValues.AddElement(mPosition);
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('exceptions', TJSONBool.Create(AExceptions));
+    mOptions.AddPair('loops', TJSONBool.Create(ALoops));
+    mValues.AddElement(mOptions);
+    Result := mValues.ToJSON;
+  finally
+    mValues.Free;
+  end;
+end;
+
+/// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
+function Asker(ASession: TLspSession; const AArguments: string; ARequest: Integer; const AFileName: string;
+  AVersion: Cardinal): TThread;
+begin
+  Result := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mAnswer: TJSONValue;
+      mFound: TAtlasExitPointSet;
+    begin
+      mFound := Default(TAtlasExitPointSet);
+      try
+        mAnswer := ASession.RunCommand(TAtlasIdeExitPoints.cCommand, AArguments, TAtlasIdeExitPoints.cTimeoutMs);
+        try
+          mFound := TAtlasExitPointSet.FromJson(mAnswer);
+        finally
+          mAnswer.Free;
+        end;
+      except
+        // Server beschäftigt, weg oder zu alt (Befehl unbekannt): keine Hervorhebung, der Editor bleibt frei.
+        mFound := Default(TAtlasExitPointSet);
+      end;
+      // Atlas gehört der Eintrag: beim Entladen verworfen.
+      TAtlasMainThread.Queue(TAtlasFeature.ExitPoints,
+        procedure
+        begin
+          if TAtlasIdeExitPoints.FInstance <> nil then
+          begin
+            TAtlasGuard.Run(TAtlasFeature.ExitPoints,
+              procedure
+              begin
+                if TAtlasIdeExitPoints.FInstance <> nil then
+                begin
+                  TAtlasIdeExitPoints.FInstance.Accept(ARequest, AFileName, AVersion, mFound);
+                end;
+              end);
+          end;
+        end);
+    end);
+end;
+
+procedure TAtlasIdeExitPoints.Ask(const AText: string; ALine, ACharacter: Integer; AExceptions, ALoops: Boolean);
+var
+  mSession: TLspSession;
+  mWorker: TThread;
+begin
+  mSession := nil;
+  if Assigned(FSession) then
+  begin
+    mSession := FSession();
+  end;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mSession.Sync(FFileName, AText);
+  FWorkers.Prune;
+  Inc(FRequest);
+  mWorker := Asker(mSession, ExitPointArguments(FFileName, ALine, ACharacter, AExceptions, ALoops), FRequest,
+    FFileName, FVersion);
+  FWorkers.Start(mWorker);
+end;
+
 procedure TAtlasIdeExitPoints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
@@ -665,6 +632,39 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.ExitPoints, E);
   end;
+end;
+
+class procedure TAtlasIdeExitPoints.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+class procedure TAtlasIdeExitPoints.Install(const ASession: TAtlasExitPointsSessionFunc);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeExitPoints.Create(ASession);
+  end;
+end;
+
+class procedure TAtlasIdeExitPoints.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeExitPoints.Installed: Boolean;
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeExitPoints.TryJump(ABackward: Boolean): Boolean;
+begin
+  Result := (FInstance <> nil) and not TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) and FInstance.Jump(ABackward);
 end;
 
 end.

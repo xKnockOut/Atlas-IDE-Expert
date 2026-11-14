@@ -74,6 +74,8 @@ begin
   Result := MulDiv(AValue, Screen.PixelsPerInch, 96);
 end;
 
+{ TMonitorCheckOptions }
+
 constructor TMonitorCheckOptions.Create(AOwner: TComponent; AParent: TWinControl);
 begin
   inherited Create(AOwner);
@@ -124,11 +126,6 @@ begin
   FChecks[AFlag].SetBounds(Px(cGap), FTop, Px(cWidth), Px(cCheckHeight));
   FChecks[AFlag].Parent := FBox;
   FTop := FTop + Px(cCheckHeight);
-end;
-
-function TMonitorCheckOptions.FieldCaption(AField: TMonitorField): string;
-begin
-  Result := TMonitorTexts.Text(cFieldTexts[AField]);
 end;
 
 procedure TMonitorCheckOptions.BuildFields;
@@ -252,6 +249,11 @@ begin
   AState.Options.UpdateBaseline := FChecks[TMonitorFlag.UpdateBaseline].Checked;
   AState.Options.NoIndex := FChecks[TMonitorFlag.NoIndex].Checked;
   AState.Options.Timings := FChecks[TMonitorFlag.Timings].Checked;
+end;
+
+function TMonitorCheckOptions.FieldCaption(AField: TMonitorField): string;
+begin
+  Result := TMonitorTexts.Text(cFieldTexts[AField]);
 end;
 
 end.

@@ -221,6 +221,8 @@ begin
   end;
 end;
 
+{ TMetricsReport }
+
 class function TMetricsReport.Summarize(const AFiles: TArray<TFileMetrics>;
   const ALimits: TMetricLimits): TMetricsSummary;
 var

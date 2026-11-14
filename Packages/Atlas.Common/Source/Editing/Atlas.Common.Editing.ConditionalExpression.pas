@@ -106,6 +106,8 @@ const
     (De: 'In if-Anweisung umwandeln'; En: 'Convert to if statement'),
     (De: 'IfThen durch bedingten Ausdruck ersetzen'; En: 'Replace IfThen with a conditional expression'));
 
+{ TConditionalExpression }
+
 class function TConditionalExpression.ToExpressionTitle: string;
 begin
   Result := cTexts[TConditionalExpressionText.ConvertToConditionalExpression].Text;
@@ -159,29 +161,7 @@ begin
   end;
 end;
 
-class function TConditionalLookup.KindOfType(const AType: TResolvedSymbol): TValueType;
-var
-  mKind: TValueKind;
-begin
-  Result := TValueType.Create(TValueKind.Unknown, '');
-  if not AType.Found then
-  begin
-    Exit;
-  end;
-  mKind := TValueKind.Unknown;
-  if AType.Builtin or SameText(AType.UnitName, 'System') then
-  begin
-    mKind := BuiltinKind(AType.Name);
-  end;
-  if mKind <> TValueKind.Unknown then
-  begin
-    Result := TValueType.Create(mKind, '');
-  end
-  else
-  begin
-    Result := TValueType.Create(TValueKind.Named, AType.Name);
-  end;
-end;
+{ TConditionalLookup }
 
 class function TConditionalLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TConditionalLookup;
@@ -232,6 +212,30 @@ begin
         end;
       end;
     end;
+end;
+
+class function TConditionalLookup.KindOfType(const AType: TResolvedSymbol): TValueType;
+var
+  mKind: TValueKind;
+begin
+  Result := TValueType.Create(TValueKind.Unknown, '');
+  if not AType.Found then
+  begin
+    Exit;
+  end;
+  mKind := TValueKind.Unknown;
+  if AType.Builtin or SameText(AType.UnitName, 'System') then
+  begin
+    mKind := BuiltinKind(AType.Name);
+  end;
+  if mKind <> TValueKind.Unknown then
+  begin
+    Result := TValueType.Create(mKind, '');
+  end
+  else
+  begin
+    Result := TValueType.Create(TValueKind.Named, AType.Name);
+  end;
 end;
 
 { Hilfen }
@@ -472,46 +476,78 @@ end;
 
 { TConditionalExpression }
 
-class function TConditionalExpression.Compatible(const A, B: TValueType): Boolean;
+class function TConditionalExpression.ToStatement(const AText: string; ATree: TSyntaxTree;
+  const APosition: TTextPosition; const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean;
+var
+  mPosition: TTextPosition;
+  mFound: TSyntaxNode;
 begin
-  if (A.Kind = TValueKind.Unknown) or (B.Kind = TValueKind.Unknown) then
+  Result := False;
+  ARewrite := Default(TStatementRewrite);
+  if (ATree = nil) or (ATree.Root = nil) then
   begin
-    Exit(False);
+    Exit;
   end;
-  if (A.Kind in [TValueKind.Whole, TValueKind.Float]) and (B.Kind in [TValueKind.Whole, TValueKind.Float]) then
-  begin
-    Exit(True);
-  end;
-  if (A.Kind = TValueKind.NilValue) and (B.Kind in [TValueKind.NilValue, TValueKind.Named]) then
-  begin
-    Exit(True);
-  end;
-  if (B.Kind = TValueKind.NilValue) and (A.Kind = TValueKind.Named) then
-  begin
-    Exit(True);
-  end;
-  Result := (A.Kind = B.Kind) and ((A.Kind <> TValueKind.Named) or SameText(A.Name, B.Name));
+  mPosition := APosition;
+  mFound := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if not TStatementText.Encloses(ANode, mPosition) then
+      begin
+        Exit(TSyntaxSearchStep.Skip);
+      end;
+      Result := TSyntaxSearchStep.Descend;
+      if ANode.Kind = TSyntaxKind.IfExpr then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end);
+  Result := ToStatement(AText, ATree, mFound, ALayout, ARewrite);
 end;
 
-class function TConditionalExpression.Outermost(ANode: TSyntaxNode): TSyntaxNode;
+class function TConditionalExpression.ReplaceIfThen(const AText: string; ATree: TSyntaxTree;
+  const APosition: TTextPosition; const ALookup: TConditionalLookup; out ARewrite: TStatementRewrite): Boolean;
 var
-  mNode: TSyntaxNode;
+  mPosition: TTextPosition;
+  mCall: TSyntaxNode;
+  mFallback, mElseValue, mExpression: string;
 begin
-  Result := nil;
-  mNode := ANode;
-  while (mNode <> nil) and not TRoutineBody.IsStatement(mNode) do
+  Result := False;
+  ARewrite := Default(TStatementRewrite);
+  if (ATree = nil) or (ATree.Root = nil) or not Assigned(ALookup.IfThen) then
   begin
-    if mNode.Kind = TSyntaxKind.IfExpr then
-    begin
-      Result := mNode;
-    end;
-    // Eine anonyme Methode beginnt einen eigenen Rumpf.
-    if mNode.Kind = TSyntaxKind.AnonymousMethod then
-    begin
-      Break;
-    end;
-    mNode := mNode.Parent;
+    Exit;
   end;
+  mPosition := APosition;
+  mCall := nil;
+  // Der innerste IfThen-Aufruf an der Stelle.
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := TStatementText.Encloses(ANode, mPosition);
+      if Result and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount in [3, 4]) and
+        (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'IfThen') then
+      begin
+        mCall := ANode;
+      end;
+    end);
+  if (mCall = nil) or not ALookup.IfThen(mCall, mFallback) or
+    TStatementText.HasComment(ATree, mCall.StartOffset, mCall.EndOffset) then
+  begin
+    Exit;
+  end;
+  if mCall.ChildCount = 4 then
+  begin
+    mElseValue := TExpressionText.Source(AText, mCall[3]);
+  end
+  else
+  begin
+    mElseValue := mFallback;
+  end;
+  mExpression := 'if ' + Inner(AText, mCall[1]) + ' then ' + Inner(AText, mCall[2]) + ' else ' + mElseValue;
+  ARewrite := TStatementRewrite.Create(IfThenTitle, TTextEdit.Create(TTextRange.Create(mCall.StartPos, mCall.EndPos),
+    TExpressionPart.Create(mExpression, cPrecedenceIfExpr).AtLeast(TExpressionText.ContextPrecedence(mCall))));
+  Result := True;
 end;
 
 /// <summary>Kette lesen: Bedingungen, je eine Anweisung, abschließendes else. False bei anderer Form.</summary>
@@ -792,6 +828,8 @@ type
       out ADeclaration: string): Boolean;
   end;
 
+{ TStatementBuilder }
+
 function TStatementBuilder.Statement(AValue: TSyntaxNode): string;
 begin
   Result := Prefix + TExpressionText.Part(Text, TExpressionText.Strip(AValue)).AtLeast(Context) + Suffix;
@@ -986,78 +1024,46 @@ begin
   Result := True;
 end;
 
-class function TConditionalExpression.ToStatement(const AText: string; ATree: TSyntaxTree;
-  const APosition: TTextPosition; const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean;
-var
-  mPosition: TTextPosition;
-  mFound: TSyntaxNode;
+class function TConditionalExpression.Compatible(const A, B: TValueType): Boolean;
 begin
-  Result := False;
-  ARewrite := Default(TStatementRewrite);
-  if (ATree = nil) or (ATree.Root = nil) then
+  if (A.Kind = TValueKind.Unknown) or (B.Kind = TValueKind.Unknown) then
   begin
-    Exit;
+    Exit(False);
   end;
-  mPosition := APosition;
-  mFound := ATree.Root.Search(
-    function(ANode: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if not TStatementText.Encloses(ANode, mPosition) then
-      begin
-        Exit(TSyntaxSearchStep.Skip);
-      end;
-      Result := TSyntaxSearchStep.Descend;
-      if ANode.Kind = TSyntaxKind.IfExpr then
-      begin
-        Result := TSyntaxSearchStep.Found;
-      end;
-    end);
-  Result := ToStatement(AText, ATree, mFound, ALayout, ARewrite);
+  if (A.Kind in [TValueKind.Whole, TValueKind.Float]) and (B.Kind in [TValueKind.Whole, TValueKind.Float]) then
+  begin
+    Exit(True);
+  end;
+  if (A.Kind = TValueKind.NilValue) and (B.Kind in [TValueKind.NilValue, TValueKind.Named]) then
+  begin
+    Exit(True);
+  end;
+  if (B.Kind = TValueKind.NilValue) and (A.Kind = TValueKind.Named) then
+  begin
+    Exit(True);
+  end;
+  Result := (A.Kind = B.Kind) and ((A.Kind <> TValueKind.Named) or SameText(A.Name, B.Name));
 end;
 
-class function TConditionalExpression.ReplaceIfThen(const AText: string; ATree: TSyntaxTree;
-  const APosition: TTextPosition; const ALookup: TConditionalLookup; out ARewrite: TStatementRewrite): Boolean;
+class function TConditionalExpression.Outermost(ANode: TSyntaxNode): TSyntaxNode;
 var
-  mPosition: TTextPosition;
-  mCall: TSyntaxNode;
-  mFallback, mElseValue, mExpression: string;
+  mNode: TSyntaxNode;
 begin
-  Result := False;
-  ARewrite := Default(TStatementRewrite);
-  if (ATree = nil) or (ATree.Root = nil) or not Assigned(ALookup.IfThen) then
+  Result := nil;
+  mNode := ANode;
+  while (mNode <> nil) and not TRoutineBody.IsStatement(mNode) do
   begin
-    Exit;
-  end;
-  mPosition := APosition;
-  mCall := nil;
-  // Der innerste IfThen-Aufruf an der Stelle.
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
+    if mNode.Kind = TSyntaxKind.IfExpr then
     begin
-      Result := TStatementText.Encloses(ANode, mPosition);
-      if Result and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount in [3, 4]) and
-        (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'IfThen') then
-      begin
-        mCall := ANode;
-      end;
-    end);
-  if (mCall = nil) or not ALookup.IfThen(mCall, mFallback) or
-    TStatementText.HasComment(ATree, mCall.StartOffset, mCall.EndOffset) then
-  begin
-    Exit;
+      Result := mNode;
+    end;
+    // Eine anonyme Methode beginnt einen eigenen Rumpf.
+    if mNode.Kind = TSyntaxKind.AnonymousMethod then
+    begin
+      Break;
+    end;
+    mNode := mNode.Parent;
   end;
-  if mCall.ChildCount = 4 then
-  begin
-    mElseValue := TExpressionText.Source(AText, mCall[3]);
-  end
-  else
-  begin
-    mElseValue := mFallback;
-  end;
-  mExpression := 'if ' + Inner(AText, mCall[1]) + ' then ' + Inner(AText, mCall[2]) + ' else ' + mElseValue;
-  ARewrite := TStatementRewrite.Create(IfThenTitle, TTextEdit.Create(TTextRange.Create(mCall.StartPos, mCall.EndPos),
-    TExpressionPart.Create(mExpression, cPrecedenceIfExpr).AtLeast(TExpressionText.ContextPrecedence(mCall))));
-  Result := True;
 end;
 
 initialization

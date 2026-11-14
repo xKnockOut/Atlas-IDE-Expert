@@ -170,30 +170,6 @@ begin
   FTree.ShowChanges := mSettings.DebugHoverChanges;
 end;
 
-class function TAtlasIdeDebugHoverTree.Context: string;
-var
-  mThread: IOTAThread;
-begin
-  Result := '';
-  mThread := TAtlasIdeDebugValues.StoppedThread;
-  if (mThread = nil) or (mThread.GetCallCount < 1) then
-  begin
-    Exit;
-  end;
-  try
-    // Kopf des obersten Rahmens ohne Argumente: „Unit.TKlasse.Methode“ (Rahmen zählen ab 1).
-    Result := mThread.GetCallHeader(1);
-    if Pos('(', Result) > 0 then
-    begin
-      Result := System.Copy(Result, 1, Pos('(', Result) - 1);
-    end;
-    Result := IntToStr(mThread.OSThreadID) + ':' + Trim(Result);
-  except
-    // Sitzung beim Lesen beendet ("disconnected session"): ohne Kontext kein Vergleich.
-    Result := '';
-  end;
-end;
-
 procedure TAtlasIdeDebugHoverTree.Stopped;
 begin
   Forget(False);
@@ -216,18 +192,29 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugHoverTree.Answered(AGeneration: Integer);
+procedure TAtlasIdeDebugHoverTree.Pump;
+var
+  mRequest, mLast: TAtlasHoverTreeRequest;
 begin
-  if AGeneration <> FGeneration then
+  // Sofortige Antworten (Win32) gehen in einer Schleife; verzögerte (Win64) und der Server melden sich später.
+  mLast := Default(TAtlasHoverTreeRequest);
+  while not FBusy and FTree.NextRequest(mRequest) do
   begin
-    Exit;
+    // Dieselbe Anfrage noch einmal: Die Antwort hat nichts bewegt, nicht im Kreis fragen.
+    if (mRequest.Key = mLast.Key) and (mRequest.Expression = mLast.Expression) then
+    begin
+      Exit;
+    end;
+    mLast := mRequest;
+    if mRequest.Properties then
+    begin
+      Ask(mRequest);
+    end
+    else
+    begin
+      Evaluate(mRequest);
+    end;
   end;
-  FBusy := False;
-  if Assigned(FRefresh) then
-  begin
-    FRefresh();
-  end;
-  Pump;
 end;
 
 procedure TAtlasIdeDebugHoverTree.Evaluate(const ARequest: TAtlasHoverTreeRequest);
@@ -288,28 +275,54 @@ begin
   FBusy := False;
 end;
 
-procedure TAtlasIdeDebugHoverTree.Pump;
-var
-  mRequest, mLast: TAtlasHoverTreeRequest;
+procedure TAtlasIdeDebugHoverTree.Answered(AGeneration: Integer);
 begin
-  // Sofortige Antworten (Win32) gehen in einer Schleife; verzögerte (Win64) und der Server melden sich später.
-  mLast := Default(TAtlasHoverTreeRequest);
-  while not FBusy and FTree.NextRequest(mRequest) do
+  if AGeneration <> FGeneration then
   begin
-    // Dieselbe Anfrage noch einmal: Die Antwort hat nichts bewegt, nicht im Kreis fragen.
-    if (mRequest.Key = mLast.Key) and (mRequest.Expression = mLast.Expression) then
+    Exit;
+  end;
+  FBusy := False;
+  if Assigned(FRefresh) then
+  begin
+    FRefresh();
+  end;
+  Pump;
+end;
+
+class function TAtlasIdeDebugHoverTree.Context: string;
+var
+  mThread: IOTAThread;
+begin
+  Result := '';
+  mThread := TAtlasIdeDebugValues.StoppedThread;
+  if (mThread = nil) or (mThread.GetCallCount < 1) then
+  begin
+    Exit;
+  end;
+  try
+    // Kopf des obersten Rahmens ohne Argumente: „Unit.TKlasse.Methode“ (Rahmen zählen ab 1).
+    Result := mThread.GetCallHeader(1);
+    if Pos('(', Result) > 0 then
     begin
-      Exit;
+      Result := System.Copy(Result, 1, Pos('(', Result) - 1);
     end;
-    mLast := mRequest;
-    if mRequest.Properties then
-    begin
-      Ask(mRequest);
-    end
-    else
-    begin
-      Evaluate(mRequest);
-    end;
+    Result := IntToStr(mThread.OSThreadID) + ':' + Trim(Result);
+  except
+    // Sitzung beim Lesen beendet ("disconnected session"): ohne Kontext kein Vergleich.
+    Result := '';
+  end;
+end;
+
+class procedure TAtlasIdeDebugHoverTree.Copy(const AValue: TAtlasDebugValue);
+begin
+  // Mit Umschalt: „Ausdruck = Wert“.
+  if GetKeyState(VK_SHIFT) < 0 then
+  begin
+    Clipboard.AsText := AValue.Expression + ' = ' + AValue.Text;
+  end
+  else
+  begin
+    Clipboard.AsText := AValue.Text;
   end;
 end;
 
@@ -406,19 +419,6 @@ begin
   begin
     Result := Result + [TAtlasDebugValueFix.Create(cWatchAction,
       TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreeWatch))];
-  end;
-end;
-
-class procedure TAtlasIdeDebugHoverTree.Copy(const AValue: TAtlasDebugValue);
-begin
-  // Mit Umschalt: „Ausdruck = Wert“.
-  if GetKeyState(VK_SHIFT) < 0 then
-  begin
-    Clipboard.AsText := AValue.Expression + ' = ' + AValue.Text;
-  end
-  else
-  begin
-    Clipboard.AsText := AValue.Text;
   end;
 end;
 

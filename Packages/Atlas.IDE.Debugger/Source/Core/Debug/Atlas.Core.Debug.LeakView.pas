@@ -66,6 +66,8 @@ uses
   Atlas.Text.Json,
   Atlas.Core.Lsp.Uris;
 
+{ TAtlasLeakViews }
+
 class function TAtlasLeakViews.CandidateArgumentsJson(const AProjectFile, AReportText: string): string;
 var
   mArguments: TJSONArray;

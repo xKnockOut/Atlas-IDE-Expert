@@ -191,11 +191,24 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeBuildRunner.Debugging: Boolean;
-var
-  mDebugger: IOTADebuggerServices;
+procedure TAtlasIdeBuildRunner.Tick(Sender: TObject);
 begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+  try
+    // Läuft auch in der modalen Schleife des Compilers weiter.
+    if FBuilding then
+    begin
+      TAtlasIdeCheckOnSave.PressProgressOk;
+      Exit;
+    end;
+    if FBusy and (NowMs - FWaitStarted >= cMessagesWaitMs) then
+    begin
+      Finish;
+    end;
+  except
+    // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Build, E);
+  end;
 end;
 
 function ConfigurationKnown(const AConfigurations: IOTAProjectOptionsConfigurations; const AName: string): Boolean;
@@ -212,25 +225,21 @@ begin
   end;
 end;
 
-/// <summary>Grund, aus dem der Läufer gerade nicht baut; '' = bereit.</summary>
-function TAtlasIdeBuildRunner.StateRefusal(const ARequest: TAtlasBuildRequest): string;
+procedure TAtlasIdeBuildRunner.Finish;
+var
+  mDone: TAtlasBuildDoneProc;
 begin
-  Result := '';
-  if FBusy then
+  if not FBusy then
   begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
-  end
-  else if FForeignBuild or FEvents.Background then
+    Exit;
+  end;
+  FBusy := False;
+  FTimer.Enabled := False;
+  mDone := FOnDone;
+  FOnDone := nil;
+  if Assigned(mDone) then
   begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedForeignBuild);
-  end
-  else if Debugging then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedDebugging);
-  end
-  else if not (ARequest.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]) then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedKind);
+    mDone(FReport, '');
   end;
 end;
 
@@ -261,6 +270,35 @@ begin
     (not Supports(AProject, IOTAProjectPlatforms, APlatforms) or not APlatforms.Enabled[ARequest.Platform]) then
   begin
     Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpRefusedPlatform, [ARequest.Platform]);
+  end;
+end;
+
+class function TAtlasIdeBuildRunner.Debugging: Boolean;
+var
+  mDebugger: IOTADebuggerServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+end;
+
+/// <summary>Grund, aus dem der Läufer gerade nicht baut; '' = bereit.</summary>
+function TAtlasIdeBuildRunner.StateRefusal(const ARequest: TAtlasBuildRequest): string;
+begin
+  Result := '';
+  if FBusy then
+  begin
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
+  end
+  else if FForeignBuild or FEvents.Background then
+  begin
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedForeignBuild);
+  end
+  else if Debugging then
+  begin
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedDebugging);
+  end
+  else if not (ARequest.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]) then
+  begin
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedKind);
   end;
 end;
 
@@ -336,14 +374,6 @@ begin
     FOnDone(FReport, AReason);
   end;
   FOnDone := nil;
-end;
-
-procedure TAtlasIdeBuildRunner.Forget(const ARequestedBy: string);
-begin
-  if SameText(FRequestedBy, ARequestedBy) then
-  begin
-    FOnDone := nil;
-  end;
 end;
 
 /// <summary>Build fertig: auf die Meldungen warten oder, wenn sie schon da sind, abschließen.</summary>
@@ -424,41 +454,11 @@ begin
   end;
 end;
 
-procedure TAtlasIdeBuildRunner.Tick(Sender: TObject);
+procedure TAtlasIdeBuildRunner.Forget(const ARequestedBy: string);
 begin
-  try
-    // Läuft auch in der modalen Schleife des Compilers weiter.
-    if FBuilding then
-    begin
-      TAtlasIdeCheckOnSave.PressProgressOk;
-      Exit;
-    end;
-    if FBusy and (NowMs - FWaitStarted >= cMessagesWaitMs) then
-    begin
-      Finish;
-    end;
-  except
-    // Keine Exception an die IDE (#493).
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Build, E);
-  end;
-end;
-
-procedure TAtlasIdeBuildRunner.Finish;
-var
-  mDone: TAtlasBuildDoneProc;
-begin
-  if not FBusy then
+  if SameText(FRequestedBy, ARequestedBy) then
   begin
-    Exit;
-  end;
-  FBusy := False;
-  FTimer.Enabled := False;
-  mDone := FOnDone;
-  FOnDone := nil;
-  if Assigned(mDone) then
-  begin
-    mDone(FReport, '');
+    FOnDone := nil;
   end;
 end;
 

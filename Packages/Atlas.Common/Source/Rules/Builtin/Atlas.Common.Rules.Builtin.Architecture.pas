@@ -236,6 +236,31 @@ begin
     cTexts[TArchitectureText.LayerTitle].Text);
 end;
 
+procedure TForbiddenUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mLayers: TArray<TArchitectureLayer>;
+  mLayer: TArchitectureLayer;
+  mUsed: TUsesReference;
+begin
+  if AContext.Tree = nil then
+  begin
+    Exit;
+  end;
+  mLayers := ParseLayers(AContext.Options);
+  if mLayers = nil then
+  begin
+    Exit;
+  end;
+  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
+  begin
+    if Violates(mLayers, AContext.UnitName, AContext.RelativePath, mUsed.Name, mLayer) then
+    begin
+      AReport.Add(mUsed.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, mUsed.Name,
+        mLayer.From]));
+    end;
+  end;
+end;
+
 class function TForbiddenUsesRule.ParseLayers(const AOptions: string): TArray<TArchitectureLayer>;
 var
   mValue: TJSONValue;
@@ -302,31 +327,6 @@ begin
   Result := False;
 end;
 
-procedure TForbiddenUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mLayers: TArray<TArchitectureLayer>;
-  mLayer: TArchitectureLayer;
-  mUsed: TUsesReference;
-begin
-  if AContext.Tree = nil then
-  begin
-    Exit;
-  end;
-  mLayers := ParseLayers(AContext.Options);
-  if mLayers = nil then
-  begin
-    Exit;
-  end;
-  for mUsed in TUsesClauses.References(AContext.Tree.Tokens) do
-  begin
-    if Violates(mLayers, AContext.UnitName, AContext.RelativePath, mUsed.Name, mLayer) then
-    begin
-      AReport.Add(mUsed.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, mUsed.Name,
-        mLayer.From]));
-    end;
-  end;
-end;
-
 { TArchitectureUnit }
 
 function TArchitectureUnit.Known: Boolean;
@@ -340,11 +340,6 @@ begin
 end;
 
 { TArchitectureMatrix }
-
-class function TArchitectureMatrix.DefaultHostRoles: TArray<string>;
-begin
-  Result := ['Foundation', 'Core', 'Shell', 'Adapters', 'Platform'];
-end;
 
 class function TArchitectureMatrix.LongestPrefix(const AUnitName: string;
   const APrefixes: TArray<string>): string;
@@ -464,6 +459,11 @@ begin
     mKind := cTexts[TArchitectureText.Own].Text;
   end;
   Result := cTexts[TArchitectureText.Describe].Fmt([mKind, cRoleNames[ATarget.Role], cRoleNames[ASource.Role]]);
+end;
+
+class function TArchitectureMatrix.DefaultHostRoles: TArray<string>;
+begin
+  Result := ['Foundation', 'Core', 'Shell', 'Adapters', 'Platform'];
 end;
 
 { TRoleImportRule }

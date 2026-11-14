@@ -101,6 +101,8 @@ begin
   end;
 end;
 
+{ TAtlasProjectContext }
+
 class function TAtlasProjectContext.List(const AValue: string): TArray<string>;
 var
   mItem: string;
@@ -132,11 +134,6 @@ begin
   end;
 end;
 
-class function TAtlasProjectContext.RefersToItself(const AValue, AName: string): Boolean;
-begin
-  Result := Pos(UpperCase('$(' + AName + ')'), UpperCase(AValue)) > 0;
-end;
-
 class function TAtlasProjectContext.Inherit(const AOwn, AName, AParent: string): string;
 begin
   if not RefersToItself(AOwn, AName) then
@@ -144,6 +141,11 @@ begin
     Exit(AOwn);
   end;
   Result := string.Join(';', List(StringReplace(AOwn, '$(' + AName + ')', AParent, [rfReplaceAll, rfIgnoreCase])));
+end;
+
+class function TAtlasProjectContext.RefersToItself(const AValue, AName: string): Boolean;
+begin
+  Result := Pos(UpperCase('$(' + AName + ')'), UpperCase(AValue)) > 0;
 end;
 
 function TAtlasProjectContext.Describe: string;

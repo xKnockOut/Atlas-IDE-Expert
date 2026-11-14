@@ -145,133 +145,6 @@ begin
   inherited;
 end;
 
-class procedure TAtlasIdeMethodPlacement.Install(const ASession: TAtlasMethodPlacementSessionFunc;
-  const AMessage: TProc<string>; const APolicy: TFunc<TAtlasUnopenedPolicy>);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeMethodPlacement.Create(ASession, AMessage, APolicy);
-  end;
-end;
-
-class procedure TAtlasIdeMethodPlacement.Uninstall;
-begin
-  FreeAndNil(FInstance);
-end;
-
-class function TAtlasIdeMethodPlacement.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and not SameText(mSettings.MethodPlacement, 'off');
-end;
-
-class function TAtlasIdeMethodPlacement.Mode: string;
-begin
-  Result := TAtlasIdeSettings.Current.MethodPlacement;
-end;
-
-class function TAtlasIdeMethodPlacement.Texts: TAtlasMethodPlacementTexts;
-begin
-  Result := Default(TAtlasMethodPlacementTexts);
-  Result.Up := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderUp);
-  Result.Down := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderDown);
-  Result.Stays := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderStays);
-  Result.Region := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderRegion);
-  Result.Conditional := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderConditional);
-  Result.SharedLine := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderSharedLine);
-end;
-
-class procedure TAtlasIdeMethodPlacement.Run;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  if not Enabled then
-  begin
-    FInstance.Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderOff));
-    Exit;
-  end;
-  FInstance.Arrange;
-end;
-
-class procedure TAtlasIdeMethodPlacement.Dismiss;
-begin
-  // Die neue Ansicht steht erst nach dem Wechsel fest: Der nächste Takt nimmt ihren Stand.
-  if FInstance <> nil then
-  begin
-    FInstance.FFileName := '';
-    FInstance.FText := '';
-    FInstance.FTimer.Enabled := False;
-    FInstance.FTimer.Enabled := True;
-  end;
-end;
-
-class procedure TAtlasIdeMethodPlacement.EditorModified;
-begin
-  if (FInstance = nil) or FInstance.FWriting or not Enabled then
-  begin
-    Exit;
-  end;
-  FInstance.FTimer.Enabled := False;
-  FInstance.FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeMethodPlacement.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
-function TAtlasIdeMethodPlacement.CurrentSession: TLspSession;
-begin
-  Result := nil;
-  if Assigned(FSession) then
-  begin
-    Result := FSession();
-  end;
-end;
-
-procedure TAtlasIdeMethodPlacement.Snapshot;
-var
-  mView: IOTAEditView;
-begin
-  FFileName := '';
-  FText := '';
-  mView := PascalView;
-  if mView = nil then
-  begin
-    Exit;
-  end;
-  FFileName := mView.Buffer.FileName;
-  FText := TAtlasEditorBuffer.Text(mView.Buffer);
-end;
-
-class procedure TAtlasIdeMethodPlacement.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
-var
-  mRange: TLspTextRange;
-  mWriter: IOTAEditWriter;
-begin
-  if not TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
-  begin
-    Exit;
-  end;
-  // Ein Schreiber = ein Rückgängig-Schritt.
-  mWriter := ABuffer.CreateUndoableWriter;
-  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset)));
-  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset)));
-  if mRange.NewText <> '' then
-  begin
-    mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
-  end;
-  mWriter := nil;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
-end;
-
 procedure TAtlasIdeMethodPlacement.TimerTick(Sender: TObject);
 begin
   FTimer.Enabled := False;
@@ -299,6 +172,181 @@ begin
       end;
       Snapshot;
     end);
+end;
+
+procedure TAtlasIdeMethodPlacement.Snapshot;
+var
+  mView: IOTAEditView;
+begin
+  FFileName := '';
+  FText := '';
+  mView := PascalView;
+  if mView = nil then
+  begin
+    Exit;
+  end;
+  FFileName := mView.Buffer.FileName;
+  FText := TAtlasEditorBuffer.Text(mView.Buffer);
+end;
+
+procedure TAtlasIdeMethodPlacement.WritePlaced(const AView: IOTAEditView; const ABefore, AAfter, AFinal: string;
+  const AReply: TAtlasMethodPlacementReply);
+var
+  mBuffer: IOTAEditBuffer;
+  mCaret: TOTAEditPos;
+  mLine: Integer;
+begin
+  mBuffer := AView.Buffer;
+  mCaret := AView.CursorPos;
+  FWriting := True;
+  try
+    // Ein Schritt mit der Vervollständigung, wenn sich genau sie zurücknehmen lässt.
+    if mBuffer.Undo and (TAtlasEditorBuffer.Text(mBuffer) = ABefore) then
+    begin
+      WriteBuffer(mBuffer, ABefore, AFinal);
+    end
+    else
+    begin
+      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
+      begin
+        mBuffer.Redo;
+      end;
+      // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
+      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
+      begin
+        Exit;
+      end;
+      WriteBuffer(mBuffer, AAfter, AFinal);
+    end;
+    if TAtlasMethodPlacement.CaretLine(AReply.Moves, mCaret.Line - 1, mLine) then
+    begin
+      mCaret.Line := mLine + 1;
+      AView.CursorPos := mCaret;
+      AView.MoveViewToCursor;
+    end;
+    AView.Paint;
+  finally
+    FWriting := False;
+  end;
+end;
+
+procedure TAtlasIdeMethodPlacement.ApplyArranged(const AFileName: string; const AReply: TAtlasMethodPlacementReply);
+var
+  mFiles: TLspFileEdits;
+  mEdit: TLspWorkspaceEdit;
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  mFiles := Default(TLspFileEdits);
+  mFiles.FileName := AFileName;
+  mFiles.Edits := AReply.Edits;
+  mEdit := Default(TLspWorkspaceEdit);
+  mEdit.Files := [mFiles];
+  FWriting := True;
+  try
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, FPolicy(),
+      TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderTitle));
+  finally
+    FWriting := False;
+  end;
+  Snapshot;
+  if mOutcome.Error <> '' then
+  begin
+    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+  end
+  else
+  begin
+    Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderDone, [AReply.Moved]));
+  end;
+end;
+
+procedure TAtlasIdeMethodPlacement.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+function TAtlasIdeMethodPlacement.CurrentSession: TLspSession;
+begin
+  Result := nil;
+  if Assigned(FSession) then
+  begin
+    Result := FSession();
+  end;
+end;
+
+class function TAtlasIdeMethodPlacement.Mode: string;
+begin
+  Result := TAtlasIdeSettings.Current.MethodPlacement;
+end;
+
+class function TAtlasIdeMethodPlacement.Texts: TAtlasMethodPlacementTexts;
+begin
+  Result := Default(TAtlasMethodPlacementTexts);
+  Result.Up := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderUp);
+  Result.Down := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderDown);
+  Result.Stays := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderStays);
+  Result.Region := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderRegion);
+  Result.Conditional := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderConditional);
+  Result.SharedLine := TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderSharedLine);
+end;
+
+class procedure TAtlasIdeMethodPlacement.WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
+var
+  mRange: TLspTextRange;
+  mWriter: IOTAEditWriter;
+begin
+  if not TAtlasMethodPlacement.Difference(AText, ANewText, mRange) then
+  begin
+    Exit;
+  end;
+  // Ein Schreiber = ein Rückgängig-Schritt.
+  mWriter := ABuffer.CreateUndoableWriter;
+  mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.StartOffset)));
+  mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(AText, 1, mRange.EndOffset)));
+  if mRange.NewText <> '' then
+  begin
+    mWriter.Insert(PAnsiChar(UTF8Encode(mRange.NewText)));
+  end;
+  mWriter := nil;
+  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
+end;
+
+class procedure TAtlasIdeMethodPlacement.Install(const ASession: TAtlasMethodPlacementSessionFunc;
+  const AMessage: TProc<string>; const APolicy: TFunc<TAtlasUnopenedPolicy>);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeMethodPlacement.Create(ASession, AMessage, APolicy);
+  end;
+end;
+
+class procedure TAtlasIdeMethodPlacement.Uninstall;
+begin
+  FreeAndNil(FInstance);
+end;
+
+class function TAtlasIdeMethodPlacement.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and not SameText(mSettings.MethodPlacement, 'off');
+end;
+
+class procedure TAtlasIdeMethodPlacement.Run;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  if not Enabled then
+  begin
+    FInstance.Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderOff));
+    Exit;
+  end;
+  FInstance.Arrange;
 end;
 
 /// <summary>Schickt AText von AFileName und fragt den Server mit AArguments; wirft ELspClientError.</summary>
@@ -361,47 +409,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeMethodPlacement.WritePlaced(const AView: IOTAEditView; const ABefore, AAfter, AFinal: string;
-  const AReply: TAtlasMethodPlacementReply);
-var
-  mBuffer: IOTAEditBuffer;
-  mCaret: TOTAEditPos;
-  mLine: Integer;
-begin
-  mBuffer := AView.Buffer;
-  mCaret := AView.CursorPos;
-  FWriting := True;
-  try
-    // Ein Schritt mit der Vervollständigung, wenn sich genau sie zurücknehmen lässt.
-    if mBuffer.Undo and (TAtlasEditorBuffer.Text(mBuffer) = ABefore) then
-    begin
-      WriteBuffer(mBuffer, ABefore, AFinal);
-    end
-    else
-    begin
-      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
-      begin
-        mBuffer.Redo;
-      end;
-      // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
-      if TAtlasEditorBuffer.Text(mBuffer) <> AAfter then
-      begin
-        Exit;
-      end;
-      WriteBuffer(mBuffer, AAfter, AFinal);
-    end;
-    if TAtlasMethodPlacement.CaretLine(AReply.Moves, mCaret.Line - 1, mLine) then
-    begin
-      mCaret.Line := mLine + 1;
-      AView.CursorPos := mCaret;
-      AView.MoveViewToCursor;
-    end;
-    AView.Paint;
-  finally
-    FWriting := False;
-  end;
-end;
-
 procedure TAtlasIdeMethodPlacement.Arrange;
 var
   mView: IOTAEditView;
@@ -451,33 +458,26 @@ begin
   end;
 end;
 
-procedure TAtlasIdeMethodPlacement.ApplyArranged(const AFileName: string; const AReply: TAtlasMethodPlacementReply);
-var
-  mFiles: TLspFileEdits;
-  mEdit: TLspWorkspaceEdit;
-  mOutcome: TAtlasWorkspaceEditResult;
+class procedure TAtlasIdeMethodPlacement.Dismiss;
 begin
-  mFiles := Default(TLspFileEdits);
-  mFiles.FileName := AFileName;
-  mFiles.Edits := AReply.Edits;
-  mEdit := Default(TLspWorkspaceEdit);
-  mEdit.Files := [mFiles];
-  FWriting := True;
-  try
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit, FPolicy(),
-      TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderTitle));
-  finally
-    FWriting := False;
-  end;
-  Snapshot;
-  if mOutcome.Error <> '' then
+  // Die neue Ansicht steht erst nach dem Wechsel fest: Der nächste Takt nimmt ihren Stand.
+  if FInstance <> nil then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
-  end
-  else
-  begin
-    Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderDone, [AReply.Moved]));
+    FInstance.FFileName := '';
+    FInstance.FText := '';
+    FInstance.FTimer.Enabled := False;
+    FInstance.FTimer.Enabled := True;
   end;
+end;
+
+class procedure TAtlasIdeMethodPlacement.EditorModified;
+begin
+  if (FInstance = nil) or FInstance.FWriting or not Enabled then
+  begin
+    Exit;
+  end;
+  FInstance.FTimer.Enabled := False;
+  FInstance.FTimer.Enabled := True;
 end;
 
 end.

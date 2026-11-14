@@ -70,6 +70,8 @@ uses
   Atlas.Common.Localization.Texts,
   Shell.Workspace;
 
+{ TShellSettings }
+
 constructor TShellSettings.Create(AWorkspaces: TShellWorkspaceRegistry;
   const ALanguageLevelFor: TShellSettingsLanguageFunc);
 begin
@@ -77,6 +79,19 @@ begin
   FWorkspaces := AWorkspaces;
   FLanguageLevelFor := ALanguageLevelFor;
   FLooseSettings := TServerSettings.Default;
+end;
+
+/// <summary>Neue Einstellungen ohne Arbeitsbereich; wählt die Sprache der Texte (#1458): language ist global
+/// (settings.json bzw. Editor), sonst die Sprache des Clients.</summary>
+procedure TShellSettings.SetLoose(const ASettings: TServerSettings);
+begin
+  TAtlasLocale.Use(TAtlasLocale.Resolve(ASettings.Language, FClientLocale));
+  System.TMonitor.Enter(FWorkspaces.Lock);
+  try
+    FLooseSettings := ASettings;
+  finally
+    System.TMonitor.Exit(FWorkspaces.Lock);
+  end;
 end;
 
 function TShellSettings.SettingsFor(const AUri: string): TServerSettings;
@@ -112,24 +127,6 @@ begin
   finally
     System.TMonitor.Exit(FWorkspaces.Lock);
   end;
-end;
-
-/// <summary>Neue Einstellungen ohne Arbeitsbereich; wählt die Sprache der Texte (#1458): language ist global
-/// (settings.json bzw. Editor), sonst die Sprache des Clients.</summary>
-procedure TShellSettings.SetLoose(const ASettings: TServerSettings);
-begin
-  TAtlasLocale.Use(TAtlasLocale.Resolve(ASettings.Language, FClientLocale));
-  System.TMonitor.Enter(FWorkspaces.Lock);
-  try
-    FLooseSettings := ASettings;
-  finally
-    System.TMonitor.Exit(FWorkspaces.Lock);
-  end;
-end;
-
-procedure TShellSettings.SetClientLocale(const ALocale: string);
-begin
-  FClientLocale := ALocale;
 end;
 
 function TShellSettings.Loose: TServerSettings;
@@ -175,6 +172,11 @@ begin
   FGlobalSettings := AText;
   mSettings := TConfigurationParser.Parse(TConfigurationScopes.Effective(AText, EditorSettings, ''), mIssues);
   SetLoose(mSettings);
+end;
+
+procedure TShellSettings.SetClientLocale(const ALocale: string);
+begin
+  FClientLocale := ALocale;
 end;
 
 function TShellSettings.Highlight(const AUri: string): THighlightSettings;

@@ -58,6 +58,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Editing.RoutineBody;
 
+{ TOwnershipTree }
+
 class function TOwnershipTree.RoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;

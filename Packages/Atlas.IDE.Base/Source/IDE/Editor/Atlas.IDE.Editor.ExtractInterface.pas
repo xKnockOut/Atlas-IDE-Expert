@@ -49,6 +49,8 @@ const
   // Typen der Signaturen auflösen dauert; wie beim Umbenennen.
   cTimeoutMs = 60000;
 
+{ TAtlasIdeExtractInterface }
+
 class procedure TAtlasIdeExtractInterface.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

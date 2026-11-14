@@ -161,6 +161,17 @@ end;
 
 { TAtlasIdeCheckOnSave.TBinding }
 
+procedure TAtlasIdeCheckOnSave.TBinding.Check(const Context: IOTAKeyContext; KeyCode: TShortCut;
+  var BindingResult: TKeyBindingResult);
+begin
+  BindingResult := krHandled;
+  // Nicht im Tastaturhandler compilieren: der Timer holt es ab.
+  if FOwner <> nil then
+  begin
+    FOwner.FManual := True;
+  end;
+end;
+
 function TAtlasIdeCheckOnSave.TBinding.GetBindingType: TBindingType;
 begin
   Result := btPartial;
@@ -181,17 +192,6 @@ begin
   if (FOwner <> nil) and (FOwner.FKey <> 0) then
   begin
     BindingServices.AddKeyBinding([FOwner.FKey], Check, nil);
-  end;
-end;
-
-procedure TAtlasIdeCheckOnSave.TBinding.Check(const Context: IOTAKeyContext; KeyCode: TShortCut;
-  var BindingResult: TKeyBindingResult);
-begin
-  BindingResult := krHandled;
-  // Nicht im Tastaturhandler compilieren: der Timer holt es ab.
-  if FOwner <> nil then
-  begin
-    FOwner.FManual := True;
   end;
 end;
 
@@ -223,6 +223,118 @@ begin
   FTimer.Enabled := True;
 end;
 
+destructor TAtlasIdeCheckOnSave.Destroy;
+var
+  mKeyboard: IOTAKeyboardServices;
+begin
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+    FTimer.Free;
+  end;
+  if FBinding <> nil then
+  begin
+    FBinding.FOwner := nil;
+  end;
+  if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
+  begin
+    mKeyboard.RemoveKeyboardBinding(FBindingIndex);
+  end;
+  FWatcher.FOwner := nil;
+  FCore.Free;
+  inherited;
+end;
+
+procedure TAtlasIdeCheckOnSave.Tick(Sender: TObject);
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  try
+    // Läuft auch in der modalen Schleife des Compilers weiter.
+    if FChecking then
+    begin
+      PressProgressOk;
+      Exit;
+    end;
+    if FManual then
+    begin
+      FManual := False;
+      CheckNow;
+      Exit;
+    end;
+    mSettings := TAtlasIdeSettings.Current;
+    FCore.DelayMs := mSettings.CheckOnSaveDelayMs;
+    FCore.MaxMs := mSettings.CheckOnSaveMaxMs;
+    if mSettings.CheckOnSave and FCore.Due(NowMs, Debugging) then
+    begin
+      Run(FCore.Take, False);
+    end;
+  except
+    // Keine Exception an die IDE (#493).
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.CheckOnSave, E);
+  end;
+end;
+
+procedure TAtlasIdeCheckOnSave.Run(const AProject: string; AManual: Boolean);
+var
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
+  mStarted, mDuration: Int64;
+  mActivity: IInterface;
+  mText: string;
+begin
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) or
+    not Supports(mServices.FindModule(AProject), IOTAProject, mProject) or (mProject.ProjectBuilder = nil) then
+  begin
+    Exit;
+  end;
+  mActivity := TAtlasActivity.Scope('Compilerprüfung nach dem Speichern');
+  FChecking := True;
+  FEvents.Background := True;
+  mStarted := NowMs;
+  try
+    mProject.ProjectBuilder.BuildProject(cmOTACheck, False, True);
+  finally
+    FEvents.Background := False;
+    FChecking := False;
+  end;
+  mDuration := NowMs - mStarted;
+  if Assigned(FReport) then
+  begin
+    FReport(Format('Compilerprüfung %s: %s, %d ms', [IfThen(AManual, 'von Hand', 'nach dem Speichern'),
+      ExtractFileName(AProject), mDuration]));
+  end;
+  if not AManual and FCore.CheckFinished(AProject, mDuration) then
+  begin
+    mText := TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), mDuration, FCore.MaxMs]);
+    // Benachrichtigungszentrale (#601, Quelle check): Meldungsfenster nur bei „einblenden“.
+    if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cCheck, TAtlasNotificationSeverity.Warning,
+      TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), mText) = TAtlasNotificationMode.Show then
+    begin
+      TAtlasIdeHost.Message(mText);
+    end;
+  end;
+end;
+
+class function TAtlasIdeCheckOnSave.ActiveProject: IOTAProject;
+var
+  mServices: IOTAModuleServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Result := mServices.GetActiveProject;
+  end;
+end;
+
+class function TAtlasIdeCheckOnSave.Debugging: Boolean;
+var
+  mDebugger: IOTADebuggerServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
+end;
+
 procedure TAtlasIdeCheckOnSave.Rebind;
 var
   mKey: Word;
@@ -249,75 +361,6 @@ begin
   else
   begin
     TAtlasIdeKeys.Bind(FBinding, FBindingIndex);
-  end;
-end;
-
-destructor TAtlasIdeCheckOnSave.Destroy;
-var
-  mKeyboard: IOTAKeyboardServices;
-begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-    FTimer.Free;
-  end;
-  if FBinding <> nil then
-  begin
-    FBinding.FOwner := nil;
-  end;
-  if (FBindingIndex >= 0) and Supports(BorlandIDEServices, IOTAKeyboardServices, mKeyboard) then
-  begin
-    mKeyboard.RemoveKeyboardBinding(FBindingIndex);
-  end;
-  FWatcher.FOwner := nil;
-  FCore.Free;
-  inherited;
-end;
-
-class function TAtlasIdeCheckOnSave.ActiveProject: IOTAProject;
-var
-  mServices: IOTAModuleServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Result := mServices.GetActiveProject;
-  end;
-end;
-
-class function TAtlasIdeCheckOnSave.Debugging: Boolean;
-var
-  mDebugger: IOTADebuggerServices;
-begin
-  Result := Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) and (mDebugger.ProcessCount > 0);
-end;
-
-class procedure TAtlasIdeCheckOnSave.PressProgressOk;
-var
-  mIndex, mChild: Integer;
-  mForm: TForm;
-  mButton: TButton;
-begin
-  // Nur der Fortschrittsdialog des Compilers, nur sein OK (nach dem Ende); Abbrechen nie.
-  for mIndex := 0 to Screen.FormCount - 1 do
-  begin
-    mForm := Screen.Forms[mIndex];
-    if not SameText(mForm.ClassName, 'TProgressForm') or not mForm.Visible then
-    begin
-      Continue;
-    end;
-    for mChild := 0 to mForm.ComponentCount - 1 do
-    begin
-      if mForm.Components[mChild] is TButton then
-      begin
-        mButton := TButton(mForm.Components[mChild]);
-        if mButton.Visible and mButton.Enabled and (mButton.ModalResult = mrOk) then
-        begin
-          mButton.Click;
-          Exit;
-        end;
-      end;
-    end;
   end;
 end;
 
@@ -360,37 +403,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCheckOnSave.Tick(Sender: TObject);
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  try
-    // Läuft auch in der modalen Schleife des Compilers weiter.
-    if FChecking then
-    begin
-      PressProgressOk;
-      Exit;
-    end;
-    if FManual then
-    begin
-      FManual := False;
-      CheckNow;
-      Exit;
-    end;
-    mSettings := TAtlasIdeSettings.Current;
-    FCore.DelayMs := mSettings.CheckOnSaveDelayMs;
-    FCore.MaxMs := mSettings.CheckOnSaveMaxMs;
-    if mSettings.CheckOnSave and FCore.Due(NowMs, Debugging) then
-    begin
-      Run(FCore.Take, False);
-    end;
-  except
-    // Keine Exception an die IDE (#493).
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.CheckOnSave, E);
-  end;
-end;
-
 procedure TAtlasIdeCheckOnSave.CheckNow;
 var
   mProject: IOTAProject;
@@ -402,43 +414,31 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCheckOnSave.Run(const AProject: string; AManual: Boolean);
+class procedure TAtlasIdeCheckOnSave.PressProgressOk;
 var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
-  mStarted, mDuration: Int64;
-  mActivity: IInterface;
-  mText: string;
+  mIndex, mChild: Integer;
+  mForm: TForm;
+  mButton: TButton;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) or
-    not Supports(mServices.FindModule(AProject), IOTAProject, mProject) or (mProject.ProjectBuilder = nil) then
+  // Nur der Fortschrittsdialog des Compilers, nur sein OK (nach dem Ende); Abbrechen nie.
+  for mIndex := 0 to Screen.FormCount - 1 do
   begin
-    Exit;
-  end;
-  mActivity := TAtlasActivity.Scope('Compilerprüfung nach dem Speichern');
-  FChecking := True;
-  FEvents.Background := True;
-  mStarted := NowMs;
-  try
-    mProject.ProjectBuilder.BuildProject(cmOTACheck, False, True);
-  finally
-    FEvents.Background := False;
-    FChecking := False;
-  end;
-  mDuration := NowMs - mStarted;
-  if Assigned(FReport) then
-  begin
-    FReport(Format('Compilerprüfung %s: %s, %d ms', [IfThen(AManual, 'von Hand', 'nach dem Speichern'),
-      ExtractFileName(AProject), mDuration]));
-  end;
-  if not AManual and FCore.CheckFinished(AProject, mDuration) then
-  begin
-    mText := TAtlasStrings.Fmt(TAtlasTextId.CheckOnSaveDisabled, [ExtractFileName(AProject), mDuration, FCore.MaxMs]);
-    // Benachrichtigungszentrale (#601, Quelle check): Meldungsfenster nur bei „einblenden“.
-    if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cCheck, TAtlasNotificationSeverity.Warning,
-      TAtlasStrings.Text(TAtlasTextId.NotificationsCheckDisabled), mText) = TAtlasNotificationMode.Show then
+    mForm := Screen.Forms[mIndex];
+    if not SameText(mForm.ClassName, 'TProgressForm') or not mForm.Visible then
     begin
-      TAtlasIdeHost.Message(mText);
+      Continue;
+    end;
+    for mChild := 0 to mForm.ComponentCount - 1 do
+    begin
+      if mForm.Components[mChild] is TButton then
+      begin
+        mButton := TButton(mForm.Components[mChild]);
+        if mButton.Visible and mButton.Enabled and (mButton.ModalResult = mrOk) then
+        begin
+          mButton.Click;
+          Exit;
+        end;
+      end;
     end;
   end;
 end;

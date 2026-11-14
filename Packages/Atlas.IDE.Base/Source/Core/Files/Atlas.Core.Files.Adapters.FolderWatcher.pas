@@ -82,37 +82,6 @@ begin
   CloseHandle(FStopEvent);
 end;
 
-procedure TAtlasFolderWatcher.TWatchThread.Stop;
-begin
-  if Finished then
-  begin
-    Exit;
-  end;
-  Terminate;
-  SetEvent(FStopEvent);
-  WaitFor;
-end;
-
-procedure TAtlasFolderWatcher.TWatchThread.Report(ABuffer: PByte);
-var
-  mEntry: PFileNotifyInformation;
-  mName: string;
-  mStamp: UInt64;
-begin
-  mStamp := TAtlasTicks.Now;
-  mEntry := PFileNotifyInformation(ABuffer);
-  while True do
-  begin
-    SetString(mName, PWideChar(@mEntry^.FileName[0]), mEntry^.FileNameLength div SizeOf(WideChar));
-    FChanges.Add(FRoot + PathDelim + mName, mEntry^.Action, mStamp);
-    if mEntry^.NextEntryOffset = 0 then
-    begin
-      Break;
-    end;
-    mEntry := PFileNotifyInformation(PByte(mEntry) + mEntry^.NextEntryOffset);
-  end;
-end;
-
 procedure TAtlasFolderWatcher.TWatchThread.Execute;
 var
   mDirectory: THandle;
@@ -164,6 +133,37 @@ begin
   end;
 end;
 
+procedure TAtlasFolderWatcher.TWatchThread.Report(ABuffer: PByte);
+var
+  mEntry: PFileNotifyInformation;
+  mName: string;
+  mStamp: UInt64;
+begin
+  mStamp := TAtlasTicks.Now;
+  mEntry := PFileNotifyInformation(ABuffer);
+  while True do
+  begin
+    SetString(mName, PWideChar(@mEntry^.FileName[0]), mEntry^.FileNameLength div SizeOf(WideChar));
+    FChanges.Add(FRoot + PathDelim + mName, mEntry^.Action, mStamp);
+    if mEntry^.NextEntryOffset = 0 then
+    begin
+      Break;
+    end;
+    mEntry := PFileNotifyInformation(PByte(mEntry) + mEntry^.NextEntryOffset);
+  end;
+end;
+
+procedure TAtlasFolderWatcher.TWatchThread.Stop;
+begin
+  if Finished then
+  begin
+    Exit;
+  end;
+  Terminate;
+  SetEvent(FStopEvent);
+  WaitFor;
+end;
+
 { TAtlasFolderWatcher }
 
 constructor TAtlasFolderWatcher.Create(AChanges: TAtlasWatchedChanges);
@@ -178,17 +178,6 @@ begin
   // Freigeben hält jeden Thread an (Stop im Destruktor).
   FThreads.Free;
   inherited;
-end;
-
-function TAtlasFolderWatcher.Roots: TArray<string>;
-var
-  mThread: TWatchThread;
-begin
-  Result := nil;
-  for mThread in FThreads do
-  begin
-    Result := Result + [mThread.Root];
-  end;
 end;
 
 procedure TAtlasFolderWatcher.SetRoots(const ARoots: TArray<string>);
@@ -234,6 +223,17 @@ begin
     begin
       FThreads.Add(TWatchThread.Create(mRoot, FChanges));
     end;
+  end;
+end;
+
+function TAtlasFolderWatcher.Roots: TArray<string>;
+var
+  mThread: TWatchThread;
+begin
+  Result := nil;
+  for mThread in FThreads do
+  begin
+    Result := Result + [mThread.Root];
   end;
 end;
 

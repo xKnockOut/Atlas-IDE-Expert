@@ -125,44 +125,21 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeTestCompare.KeyOf(const AUnitName, AFixture, AMethod, ACaseName: string): string;
-begin
-  Result := AnsiLowerCase(AUnitName + '.' + AFixture + '.' + AMethod);
-  if ACaseName <> '' then
-  begin
-    Result := Result + '.' + AnsiLowerCase(ACaseName);
-  end;
-end;
-
-procedure TAtlasIdeTestCompare.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+function TAtlasIdeTestCompare.AtLine(ALine: Integer; out ACase: TTestCaseResult): Boolean;
 var
-  mCase: TTestCaseResult;
-  mKey: string;
+  mEditors: IOTAEditorServices;
+  mView: IOTAEditView;
+  mSelection: TAtlasTestSelection;
 begin
-  for mCase in ARun.Cases do
+  ACase := Default(TTestCaseResult);
+  mView := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    mKey := KeyOf(mCase.UnitName, mCase.Fixture, mCase.Method, mCase.CaseName);
-    if mCase.IsFailure and Comparable(mCase) then
-    begin
-      FFailures.AddOrSetValue(mKey, mCase);
-      FProjects.AddOrSetValue(mKey, ATarget.Project);
-      FLast := mKey;
-    end
-    else
-    begin
-      FFailures.Remove(mKey);
-      FProjects.Remove(mKey);
-    end;
+    mView := mEditors.TopView;
   end;
-  FLastProject := ATarget.Project;
-  if not FFailures.ContainsKey(FLast) then
-  begin
-    FLast := '';
-  end;
-  if Assigned(FNext) then
-  begin
-    FNext(ATarget, ARun);
-  end;
+  Result := (FFailures.Count > 0) and (mView <> nil) and (mView.Buffer <> nil) and TAtlasTestDebug.SelectAt(
+    TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer))), ALine, mSelection) and
+    Find(mSelection, ACase);
 end;
 
 function TAtlasIdeTestCompare.Find(const ASelection: TAtlasTestSelection; out ACase: TTestCaseResult): Boolean;
@@ -188,36 +165,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-function TAtlasIdeTestCompare.AtLine(ALine: Integer; out ACase: TTestCaseResult): Boolean;
-var
-  mEditors: IOTAEditorServices;
-  mView: IOTAEditView;
-  mSelection: TAtlasTestSelection;
-begin
-  ACase := Default(TTestCaseResult);
-  mView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    mView := mEditors.TopView;
-  end;
-  Result := (FFailures.Count > 0) and (mView <> nil) and (mView.Buffer <> nil) and TAtlasTestDebug.SelectAt(
-    TDUnitXSource.Scan(TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer))), ALine, mSelection) and
-    Find(mSelection, ACase);
-end;
-
-class function TAtlasIdeTestCompare.ApprovalOf(const ACase: TTestCaseResult; out AHit: TAtlasApprovalHit): Boolean;
-begin
-  AHit := Default(TAtlasApprovalHit);
-  Result := TAtlasIdeSettings.Current.TestsApprovalFiles and TAtlasTestApproval.Parse(ACase.Message, AHit);
-end;
-
-class function TAtlasIdeTestCompare.Comparable(const ACase: TTestCaseResult): Boolean;
-var
-  mHit: TAtlasApprovalHit;
-begin
-  Result := ACase.HasValues or ApprovalOf(ACase, mHit);
 end;
 
 procedure TAtlasIdeTestCompare.Open(const ACase: TTestCaseResult);
@@ -285,22 +232,56 @@ begin
   TAtlasIdeResults.Open(mFileName, Max(mLine - 1, 0), 0);
 end;
 
-function TAtlasIdeTestCompare.CaptionOf(const ASelection: TAtlasTestSelection): string;
+class function TAtlasIdeTestCompare.Comparable(const ACase: TTestCaseResult): Boolean;
 var
-  mCase: TTestCaseResult;
   mHit: TAtlasApprovalHit;
 begin
-  Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare);
-  if Find(ASelection, mCase) and ApprovalOf(mCase, mHit) then
+  Result := ACase.HasValues or ApprovalOf(ACase, mHit);
+end;
+
+class function TAtlasIdeTestCompare.ApprovalOf(const ACase: TTestCaseResult; out AHit: TAtlasApprovalHit): Boolean;
+begin
+  AHit := Default(TAtlasApprovalHit);
+  Result := TAtlasIdeSettings.Current.TestsApprovalFiles and TAtlasTestApproval.Parse(ACase.Message, AHit);
+end;
+
+procedure TAtlasIdeTestCompare.Remember(const ATarget: TAtlasTestTarget; const ARun: TTestRunResult);
+var
+  mCase: TTestCaseResult;
+  mKey: string;
+begin
+  for mCase in ARun.Cases do
   begin
-    if mHit.Kind = TAtlasApprovalKind.Added then
+    mKey := KeyOf(mCase.UnitName, mCase.Fixture, mCase.Method, mCase.CaseName);
+    if mCase.IsFailure and Comparable(mCase) then
     begin
-      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensApprovalNew);
+      FFailures.AddOrSetValue(mKey, mCase);
+      FProjects.AddOrSetValue(mKey, ATarget.Project);
+      FLast := mKey;
     end
     else
     begin
-      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensApproval);
+      FFailures.Remove(mKey);
+      FProjects.Remove(mKey);
     end;
+  end;
+  FLastProject := ATarget.Project;
+  if not FFailures.ContainsKey(FLast) then
+  begin
+    FLast := '';
+  end;
+  if Assigned(FNext) then
+  begin
+    FNext(ATarget, ARun);
+  end;
+end;
+
+class function TAtlasIdeTestCompare.KeyOf(const AUnitName, AFixture, AMethod, ACaseName: string): string;
+begin
+  Result := AnsiLowerCase(AUnitName + '.' + AFixture + '.' + AMethod);
+  if ACaseName <> '' then
+  begin
+    Result := Result + '.' + AnsiLowerCase(ACaseName);
   end;
 end;
 
@@ -379,6 +360,25 @@ begin
     Comparable(mCase) then
   begin
     Open(mCase);
+  end;
+end;
+
+function TAtlasIdeTestCompare.CaptionOf(const ASelection: TAtlasTestSelection): string;
+var
+  mCase: TTestCaseResult;
+  mHit: TAtlasApprovalHit;
+begin
+  Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensCompare);
+  if Find(ASelection, mCase) and ApprovalOf(mCase, mHit) then
+  begin
+    if mHit.Kind = TAtlasApprovalKind.Added then
+    begin
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensApprovalNew);
+    end
+    else
+    begin
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensApproval);
+    end;
   end;
 end;
 

@@ -43,6 +43,8 @@ const
   // Aufrufe im Projekt suchen dauert; wie beim Umbenennen.
   cTimeoutMs = 60000;
 
+{ TAtlasIdePropertyFromAccessors }
+
 class procedure TAtlasIdePropertyFromAccessors.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

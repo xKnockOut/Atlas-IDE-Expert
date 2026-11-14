@@ -248,18 +248,18 @@ begin
   Result.StartComment := AStartComment;
 end;
 
-function TAtlasTrackerSyncOptions.WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
-begin
-  Result := Self;
-  Result.EndFields := TAtlasTrackerWorkflow.ParseList(AEndFields);
-  Result.EndTime := AEndTime;
-end;
-
 function TAtlasTrackerSyncOptions.WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
 begin
   Result := Self;
   Result.EndStates := TAtlasTrackerWorkflow.ParseList(AEndStates);
   Result.EndComment := AEndComment;
+end;
+
+function TAtlasTrackerSyncOptions.WithEndSteps(const AEndFields: string; AEndTime: Boolean): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.EndFields := TAtlasTrackerWorkflow.ParseList(AEndFields);
+  Result.EndTime := AEndTime;
 end;
 
 function TAtlasTrackerSyncOptions.WithReview(const AReviewStates: string): TAtlasTrackerSyncOptions;
@@ -495,28 +495,6 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
-class function TAtlasTrackerWorkflow.CommitSubjects(const ACommits: string): string;
-var
-  mLine: string;
-  mLines: TArray<string>;
-  mSpace: Integer;
-begin
-  mLines := nil;
-  for mLine in ACommits.Split([#10]) do
-  begin
-    mSpace := Pos(' ', Trim(mLine));
-    if mSpace > 0 then
-    begin
-      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))];
-    end
-    else if Trim(mLine) <> '' then
-    begin
-      mLines := mLines + [Trim(mLine)];
-    end;
-  end;
-  Result := string.Join(#10, mLines);
-end;
-
 class function TAtlasTrackerWorkflow.CommitBases(const ABranchBase: string): TArray<string>;
 begin
   if Trim(ABranchBase) <> '' then
@@ -691,6 +669,28 @@ begin
   begin
     ADuplicate := '#' + ADuplicate;
   end;
+end;
+
+class function TAtlasTrackerWorkflow.CommitSubjects(const ACommits: string): string;
+var
+  mLine: string;
+  mLines: TArray<string>;
+  mSpace: Integer;
+begin
+  mLines := nil;
+  for mLine in ACommits.Split([#10]) do
+  begin
+    mSpace := Pos(' ', Trim(mLine));
+    if mSpace > 0 then
+    begin
+      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))];
+    end
+    else if Trim(mLine) <> '' then
+    begin
+      mLines := mLines + [Trim(mLine)];
+    end;
+  end;
+  Result := string.Join(#10, mLines);
 end;
 
 class function TAtlasTrackerWorkflow.DurationText(AMinutes: Integer): string;

@@ -25,6 +25,8 @@ implementation
 uses
   Atlas.Common.Index.Adapters.CacheDirectory;
 
+{ TIndexCommands }
+
 class function TIndexCommands.ClearCaches(const ARoot: string; out AFreed: Int64): Integer;
 var
   mBefore: Int64;

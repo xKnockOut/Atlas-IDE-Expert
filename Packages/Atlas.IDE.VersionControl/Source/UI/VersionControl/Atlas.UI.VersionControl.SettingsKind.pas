@@ -62,17 +62,24 @@ begin
   FVcsProvider.Width := FVcsProvider.ScaleValue(220);
 end;
 
-procedure TAtlasSettingsVcsPart.Build2;
-var
-  mPanel: TWinControl;
+procedure TAtlasSettingsVcsPart.WindowReady;
 begin
-  // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
-  AddTitle(TAtlasVcsTextId.SettingsVcsLinksTitle);
-  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
-  mPanel := AddPanel(32);
-  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasVcsTextId.SettingsVcsLinkEditor);
-  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasVcsTextId.SettingsVcsLinkWelcome);
-  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasVcsTextId.SettingsVcsLinkIssues);
+  // Erst jetzt stehen die Abschnitte aller Module.
+  FVcsLinkEditor.Visible := Host.Shows(cEditorTarget);
+  FVcsLinkWelcome.Visible := Host.Shows(cWelcomeTarget);
+  FVcsLinkIssues.Visible := Host.Shows(cIssuesTarget);
+end;
+
+procedure TAtlasSettingsVcsPart.Attached(APage: TAtlasVcsSettingsOwner);
+begin
+  inherited Attached(APage);
+  if APage = nil then
+  begin
+    FVcsProvider := nil;
+    FVcsLinkEditor := nil;
+    FVcsLinkWelcome := nil;
+    FVcsLinkIssues := nil;
+  end;
 end;
 
 function TAtlasSettingsVcsPart.AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasVcsTextId): TButton;
@@ -106,6 +113,19 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsVcsPart.Build2;
+var
+  mPanel: TWinControl;
+begin
+  // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
+  AddTitle(TAtlasVcsTextId.SettingsVcsLinksTitle);
+  AddWrappedLabel(36, TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
+  mPanel := AddPanel(32);
+  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasVcsTextId.SettingsVcsLinkEditor);
+  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasVcsTextId.SettingsVcsLinkWelcome);
+  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasVcsTextId.SettingsVcsLinkIssues);
+end;
+
 class function TAtlasSettingsVcsPart.VcsProviderCaption(const AProvider: string): string;
 begin
   case IndexText(AProvider, ['git', 'svn', 'off']) of
@@ -117,26 +137,6 @@ begin
       Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderOff);
   else
     Result := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProviderAuto);
-  end;
-end;
-
-procedure TAtlasSettingsVcsPart.WindowReady;
-begin
-  // Erst jetzt stehen die Abschnitte aller Module.
-  FVcsLinkEditor.Visible := Host.Shows(cEditorTarget);
-  FVcsLinkWelcome.Visible := Host.Shows(cWelcomeTarget);
-  FVcsLinkIssues.Visible := Host.Shows(cIssuesTarget);
-end;
-
-procedure TAtlasSettingsVcsPart.Attached(APage: TAtlasVcsSettingsOwner);
-begin
-  inherited Attached(APage);
-  if APage = nil then
-  begin
-    FVcsProvider := nil;
-    FVcsLinkEditor := nil;
-    FVcsLinkWelcome := nil;
-    FVcsLinkIssues := nil;
   end;
 end;
 

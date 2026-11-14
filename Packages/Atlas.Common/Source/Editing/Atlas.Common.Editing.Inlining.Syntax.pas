@@ -85,6 +85,8 @@ const
     TSyntaxKind.RepeatStatement];
   cCompoundKinds = [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr, TSyntaxKind.RangeExpr];
 
+{ TInlineSyntax }
+
 class function TInlineSyntax.TokenContaining(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
   mIndex: Integer;

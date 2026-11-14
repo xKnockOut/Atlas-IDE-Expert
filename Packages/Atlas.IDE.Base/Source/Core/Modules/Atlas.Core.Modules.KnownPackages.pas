@@ -122,6 +122,63 @@ begin
   Result := APath.Substring(0, APath.LastDelimiter('\/'));
 end;
 
+class function TAtlasKnownPackages.Contains(const AList: TArray<string>; const AFile: string): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AList do
+  begin
+    if SamePath(mItem, AFile) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasKnownPackages.NamedElsewhere(const AList: TArray<string>; const AFile: string): Boolean;
+var
+  mItem: string;
+begin
+  for mItem in AList do
+  begin
+    if IsAtlasPackage(mItem) and SameText(TUpdateVersions.PackageName(mItem), TUpdateVersions.PackageName(AFile))
+      and not SamePath(mItem, AFile) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasKnownPackages.AtlasEntries(const AValues: TArray<string>): TArray<string>;
+var
+  mValue: string;
+begin
+  Result := nil;
+  for mValue in AValues do
+  begin
+    if IsAtlasPackage(mValue) then
+    begin
+      Result := Result + [mValue];
+    end;
+  end;
+end;
+
+class function TAtlasKnownPackages.Without(const AList, AOther: TArray<string>): TArray<string>;
+var
+  mItem: string;
+begin
+  Result := nil;
+  for mItem in AList do
+  begin
+    if not Contains(AOther, mItem) then
+    begin
+      Result := Result + [mItem];
+    end;
+  end;
+end;
+
 class function TAtlasKnownPackages.ModuleName(const AFile: string): string;
 begin
   Result := TUpdateVersions.PackageName(AFile);
@@ -164,35 +221,6 @@ begin
   Result := not TUpdateVersions.IsRequiredPackage(mName) and not SameText(mName, cLegacyPackage);
 end;
 
-class function TAtlasKnownPackages.Contains(const AList: TArray<string>; const AFile: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if SamePath(mItem, AFile) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TAtlasKnownPackages.NamedElsewhere(const AList: TArray<string>; const AFile: string): Boolean;
-var
-  mItem: string;
-begin
-  for mItem in AList do
-  begin
-    if IsAtlasPackage(mItem) and SameText(TUpdateVersions.PackageName(mItem), TUpdateVersions.PackageName(AFile))
-      and not SamePath(mItem, AFile) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class function TAtlasKnownPackages.Check(const AInput: TAtlasKnownPackagesInput): TAtlasKnownPackagesState;
 var
   mFile: string;
@@ -220,34 +248,6 @@ begin
     else
     begin
       Result.Missing := Result.Missing + [mFile];
-    end;
-  end;
-end;
-
-class function TAtlasKnownPackages.AtlasEntries(const AValues: TArray<string>): TArray<string>;
-var
-  mValue: string;
-begin
-  Result := nil;
-  for mValue in AValues do
-  begin
-    if IsAtlasPackage(mValue) then
-    begin
-      Result := Result + [mValue];
-    end;
-  end;
-end;
-
-class function TAtlasKnownPackages.Without(const AList, AOther: TArray<string>): TArray<string>;
-var
-  mItem: string;
-begin
-  Result := nil;
-  for mItem in AList do
-  begin
-    if not Contains(AOther, mItem) then
-    begin
-      Result := Result + [mItem];
     end;
   end;
 end;

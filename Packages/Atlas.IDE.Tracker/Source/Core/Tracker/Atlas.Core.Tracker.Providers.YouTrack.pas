@@ -198,56 +198,7 @@ uses
   Atlas.Core.Tracker.YouTrackWorkflow,
   Atlas.Core.Tracker.YouTrackFlow;
 
-function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
-begin
-  Result := TAtlasYouTrackApi.IssuePage(ATarget, AKey);
-end;
-
-function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-begin
-  Result := TAtlasYouTrackApi.ApplyChange(ATarget, ATransport, AKey, AChange, ATimeoutMs);
-end;
-
-function TAtlasYouTrackTracker.StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey, AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
-begin
-  Result := TAtlasYouTrackWorkflow.Read(ATarget, ATransport, AKey, AField, ATimeoutMs, ARules);
-end;
-
-function TAtlasYouTrackTracker.FieldValues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey, AField: string; ATimeoutMs: Integer; out AValues: TArray<string>): TAtlasTrackerWriteResult;
-var
-  mProject, mText: string;
-  mError: TAtlasCiFetchError;
-begin
-  AValues := nil;
-  mProject := Trim(ATarget.Project);
-  if mProject = '' then
-  begin
-    mProject := TAtlasYouTrackApi.ProjectOfKey(AKey);
-  end;
-  if (mProject = '') or (ATransport = nil) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  end;
-  if not TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ProjectFieldsUrl(ATarget), ATimeoutMs, mText,
-    mError) then
-  begin
-    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
-  end;
-  Result := TAtlasTrackerWriteResult.Ok;
-  if not TAtlasYouTrackParse.ParseProjectFields(mText, mProject, AField, AValues) then
-  begin
-    Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
-  end;
-end;
-
-function TAtlasYouTrackTracker.SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey, AField, AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
-begin
-  Result := TAtlasYouTrackApi.SetField(ATarget, ATransport, AKey, AField, AValue, ATimeoutMs);
-end;
+{ TAtlasYouTrackTracker }
 
 function TAtlasYouTrackTracker.Name: string;
 begin
@@ -298,6 +249,11 @@ begin
     Exit;
   end;
   Result := True;
+end;
+
+function TAtlasYouTrackTracker.IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := TAtlasYouTrackApi.IssuePage(ATarget, AKey);
 end;
 
 function TAtlasYouTrackTracker.PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
@@ -372,6 +328,12 @@ begin
   Result := True;
 end;
 
+function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+begin
+  Result := TAtlasYouTrackApi.ApplyChange(ATarget, ATransport, AKey, AChange, ATimeoutMs);
+end;
+
 function TAtlasYouTrackTracker.Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
   out AValues: TArray<string>): TAtlasTrackerWriteResult;
@@ -429,9 +391,44 @@ begin
   end;
 end;
 
-function TAtlasYouTrackTracker.IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
+function TAtlasYouTrackTracker.StateRules(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField: string; ATimeoutMs: Integer; out ARules: TAtlasTrackerStateRules): TAtlasTrackerWriteResult;
 begin
-  Result := TAtlasYouTrackApi.TimeTrackingOff(AResult);
+  Result := TAtlasYouTrackWorkflow.Read(ATarget, ATransport, AKey, AField, ATimeoutMs, ARules);
+end;
+
+function TAtlasYouTrackTracker.FieldValues(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField: string; ATimeoutMs: Integer; out AValues: TArray<string>): TAtlasTrackerWriteResult;
+var
+  mProject, mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  AValues := nil;
+  mProject := Trim(ATarget.Project);
+  if mProject = '' then
+  begin
+    mProject := TAtlasYouTrackApi.ProjectOfKey(AKey);
+  end;
+  if (mProject = '') or (ATransport = nil) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  end;
+  if not TAtlasYouTrackApi.GetText(ATransport, TAtlasYouTrackApi.ProjectFieldsUrl(ATarget), ATimeoutMs, mText,
+    mError) then
+  begin
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  end;
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not TAtlasYouTrackParse.ParseProjectFields(mText, mProject, AField, AValues) then
+  begin
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, '');
+  end;
+end;
+
+function TAtlasYouTrackTracker.SetField(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey, AField, AValue: string; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+begin
+  Result := TAtlasYouTrackApi.SetField(ATarget, ATransport, AKey, AField, AValue, ATimeoutMs);
 end;
 
 function TAtlasYouTrackTracker.TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -503,6 +500,11 @@ begin
     Result := TAtlasTrackerWriteResult.Failed(TAtlasYouTrackApi.ErrorOfStatus(mResponse.Status), mResponse.Status,
       TAtlasYouTrackApi.ErrorMessage(mResponse.Text));
   end;
+end;
+
+function TAtlasYouTrackTracker.IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
+begin
+  Result := TAtlasYouTrackApi.TimeTrackingOff(AResult);
 end;
 
 function TAtlasYouTrackTracker.Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;

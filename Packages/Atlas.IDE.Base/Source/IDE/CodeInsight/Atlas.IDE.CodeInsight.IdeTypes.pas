@@ -37,6 +37,8 @@ uses
   ToolsAPI,
   Atlas.IDE.Foundation.Host;
 
+{ TAtlasIdeTypeCollector }
+
 class function TAtlasIdeTypeCollector.SkippedFolders: TArray<string>;
 begin
   // bds.exe liegt in <Installation>\bin; Base und seine Module liegen im Ordner von Base.

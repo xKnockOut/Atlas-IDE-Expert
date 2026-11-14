@@ -27,6 +27,8 @@ uses
   Atlas.Text.Encoding,
   Atlas.Core.Settings.JsonText;
 
+{ TAtlasEncodingDefault }
+
 class function TAtlasEncodingDefault.FromJson(const AText: string): Integer;
 var
   mRoot: TJSONObject;

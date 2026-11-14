@@ -147,34 +147,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeAvUnderline.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-procedure TAtlasIdeAvUnderline.Show(const AFileName: string; ALine, AStart, AEnd: Integer; const AStored: string);
-begin
-  FFileName := AFileName;
-  FLine := ALine;
-  FStart := AStart;
-  FEnd := AEnd;
-  FStored := AStored;
-  FActive := True;
-  Invalidate;
-end;
-
-function TAtlasIdeAvUnderline.Clear: Boolean;
-begin
-  Result := FActive;
-  FActive := False;
-  FStored := '';
-end;
-
 function TAtlasIdeAvUnderline.Span(const AContext: INTACodeEditorPaintContext; out AFirst, ALast: Integer): Boolean;
 var
   mLineState: INTACodeEditorLineState;
@@ -222,6 +194,34 @@ begin
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+  end;
+end;
+
+procedure TAtlasIdeAvUnderline.Show(const AFileName: string; ALine, AStart, AEnd: Integer; const AStored: string);
+begin
+  FFileName := AFileName;
+  FLine := ALine;
+  FStart := AStart;
+  FEnd := AEnd;
+  FStored := AStored;
+  FActive := True;
+  Invalidate;
+end;
+
+function TAtlasIdeAvUnderline.Clear: Boolean;
+begin
+  Result := FActive;
+  FActive := False;
+  FStored := '';
+end;
+
+class procedure TAtlasIdeAvUnderline.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 

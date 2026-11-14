@@ -72,6 +72,8 @@ begin
   end;
 end;
 
+{ TLinterAffectedTests }
+
 class function TLinterAffectedTests.ProgramsOf(const ATarget, AConfigRoot: string; const ASettings: TServerSettings;
   const AAllFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<string>;
 begin

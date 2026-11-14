@@ -196,29 +196,44 @@ begin
   SetProbe(AData.Design);
 end;
 
-function TAtlasFormPreviewWindow.S(AValue: Integer): Integer;
+function TAtlasFormPreviewWindow.FormRect: TRect;
 begin
-  Result := MulDiv(AValue, CurrentPPI, cBasePpi);
+  Result := Bounds(Origin.X, Origin.Y, Px(FProbe.cx), Px(FProbe.cy));
 end;
 
-function TAtlasFormPreviewWindow.Px(AValue: Integer): Integer;
+function TAtlasFormPreviewWindow.GripRect: TRect;
 begin
-  Result := S(AValue);
+  Result := Rect(FormRect.Right - S(cGrip), FormRect.Bottom - S(cGrip), FormRect.Right + S(cGrip) div 2,
+    FormRect.Bottom + S(cGrip) div 2);
 end;
 
-function TAtlasFormPreviewWindow.NodeText(AIndex: Integer): string;
+function TAtlasFormPreviewWindow.NodeAt(const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
 begin
-  Result := FData.Nodes[AIndex].Name;
+  // Kinder stehen hinter ihren Eltern: von hinten das innerste zuerst.
+  for mIndex := High(FData.Nodes) downto 0 do
+  begin
+    if FData.Nodes[mIndex].Visible and NodeRect(mIndex).Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
-function TAtlasFormPreviewWindow.GripResizes: Boolean;
+function TAtlasFormPreviewWindow.HasFinding(AIndex: Integer): Boolean;
+var
+  mFinding: TAtlasLayoutFinding;
 begin
-  Result := True;
-end;
-
-procedure TAtlasFormPreviewWindow.PaintOver;
-begin
-  // Abbild der Probegröße: nichts weiter.
+  for mFinding in FFindings do
+  begin
+    if mFinding.Node = AIndex then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TAtlasFormPreviewWindow.AddButton(const ACaption: string; ATag: Integer): TButton;
@@ -229,42 +244,6 @@ begin
   Result.Tag := ATag;
   Result.OnClick := QuickClick;
   Result.AlignWithMargins := True;
-end;
-
-procedure TAtlasFormPreviewWindow.BuildBar;
-var
-  mLabel: TLabel;
-  mIndex: Integer;
-  mButton: TButton;
-begin
-  mLabel := TLabel.Create(Self);
-  mLabel.Parent := FParts.Bar;
-  mLabel.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeSize);
-  mLabel.AlignWithMargins := True;
-  FParts.WidthEdit := TEdit.Create(Self);
-  FParts.WidthEdit.Parent := FParts.Bar;
-  FParts.WidthEdit.Width := S(cEditWidth);
-  FParts.WidthEdit.NumbersOnly := True;
-  FParts.WidthEdit.AlignWithMargins := True;
-  FParts.WidthEdit.OnChange := SizeEdited;
-  FParts.HeightEdit := TEdit.Create(Self);
-  FParts.HeightEdit.Parent := FParts.Bar;
-  FParts.HeightEdit.Width := S(cEditWidth);
-  FParts.HeightEdit.NumbersOnly := True;
-  FParts.HeightEdit.AlignWithMargins := True;
-  FParts.HeightEdit.OnChange := SizeEdited;
-  mButton := AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeMinimum), cTagMinimum);
-  mButton.Enabled := (FData.MinClient.cx > 0) or (FData.MinClient.cy > 0);
-  if not mButton.Enabled then
-  begin
-    mButton.Hint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeNoMinimum);
-    mButton.ShowHint := True;
-  end;
-  AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeDesign), cTagDesign);
-  for mIndex := 0 to High(FData.Quick) do
-  begin
-    AddButton(Format('%d × %d', [FData.Quick[mIndex].cx, FData.Quick[mIndex].cy]), mIndex);
-  end;
 end;
 
 procedure TAtlasFormPreviewWindow.QuickClick(Sender: TObject);
@@ -300,192 +279,37 @@ begin
   end;
 end;
 
-procedure TAtlasFormPreviewWindow.SetProbe(const ASize: TSize);
-begin
-  FProbe := TAtlasFormLayout.Constrain(TSize.Create(Max(ASize.cx, cMinProbe), Max(ASize.cy, cMinProbe)),
-    FData.MinClient.cx, FData.MinClient.cy, FData.MaxClient.cx, FData.MaxClient.cy);
-  if FParts.WidthEdit = nil then
-  begin
-    Recalculate;
-    Exit;
-  end;
-  FDrag.Updating := True;
-  try
-    if FParts.WidthEdit.Text <> IntToStr(FProbe.cx) then
-    begin
-      FParts.WidthEdit.Text := IntToStr(FProbe.cx);
-    end;
-    if FParts.HeightEdit.Text <> IntToStr(FProbe.cy) then
-    begin
-      FParts.HeightEdit.Text := IntToStr(FProbe.cy);
-    end;
-  finally
-    FDrag.Updating := False;
-  end;
-  Recalculate;
-end;
-
-procedure TAtlasFormPreviewWindow.Recalculate;
-begin
-  FBounds := TAtlasFormLayout.Arrange(FData.Nodes, FData.Design, FProbe);
-  FFindings := TAtlasFormLayout.Problems(FData.Nodes, FBounds, FProbe);
-  FParts.Paint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
-  if Length(FFindings) = 0 then
-  begin
-    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeNone,
-      [FProbe.cx, FProbe.cy]) + ' · ' + TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeKeys);
-  end
-  else
-  begin
-    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeCount, [Length(FFindings),
-      FProbe.cx, FProbe.cy]);
-  end;
-  FParts.Paint.Invalidate;
-end;
-
-function TAtlasFormPreviewWindow.Origin: TPoint;
-begin
-  Result := Point(S(cMargin), S(cMargin));
-end;
-
-function TAtlasFormPreviewWindow.FormRect: TRect;
-begin
-  Result := Bounds(Origin.X, Origin.Y, Px(FProbe.cx), Px(FProbe.cy));
-end;
-
-function TAtlasFormPreviewWindow.GripRect: TRect;
-begin
-  Result := Rect(FormRect.Right - S(cGrip), FormRect.Bottom - S(cGrip), FormRect.Right + S(cGrip) div 2,
-    FormRect.Bottom + S(cGrip) div 2);
-end;
-
-function TAtlasFormPreviewWindow.NodeRect(AIndex: Integer): TRect;
-var
-  mRect: TRect;
-begin
-  mRect := TAtlasFormLayout.InForm(FData.Nodes, FBounds, AIndex);
-  Result := Rect(Origin.X + Px(mRect.Left), Origin.Y + Px(mRect.Top), Origin.X + Px(mRect.Right),
-    Origin.Y + Px(mRect.Bottom));
-end;
-
-function TAtlasFormPreviewWindow.NodeAt(const APoint: TPoint): Integer;
+procedure TAtlasFormPreviewWindow.PaintPreview(Sender: TObject);
 var
   mIndex: Integer;
+  mGrip: TRect;
 begin
-  // Kinder stehen hinter ihren Eltern: von hinten das innerste zuerst.
-  for mIndex := High(FData.Nodes) downto 0 do
+  FParts.Paint.Canvas.Font := Font;
+  FParts.Paint.Canvas.Brush.Style := bsSolid;
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Gutter);
+  FParts.Paint.Canvas.FillRect(FParts.Paint.ClientRect);
+  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
+  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
+  FParts.Paint.Canvas.Rectangle(FormRect);
+  for mIndex := 0 to High(FData.Nodes) do
   begin
-    if FData.Nodes[mIndex].Visible and NodeRect(mIndex).Contains(APoint) then
+    if FData.Nodes[mIndex].Visible then
     begin
-      Exit(mIndex);
+      PaintNode(mIndex);
     end;
   end;
-  Result := -1;
-end;
-
-function TAtlasFormPreviewWindow.HasFinding(AIndex: Integer): Boolean;
-var
-  mFinding: TAtlasLayoutFinding;
-begin
-  for mFinding in FFindings do
+  PaintOver;
+  if not GripResizes then
   begin
-    if mFinding.Node = AIndex then
-    begin
-      Exit(True);
-    end;
+    Exit;
   end;
-  Result := False;
-end;
-
-class function TAtlasFormPreviewWindow.FindingText(const AFinding: TAtlasLayoutFinding;
-  const ANode: TAtlasLayoutNode): string;
-begin
-  case AFinding.Problem of
-    TAtlasLayoutProblem.TooSmall:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTooSmall, [AFinding.Amount]);
-    TAtlasLayoutProblem.OutRight:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutRight, [AFinding.Amount]);
-    TAtlasLayoutProblem.OutBottom:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutBottom, [AFinding.Amount]);
-    TAtlasLayoutProblem.OutLeft:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutLeft, [AFinding.Amount]);
-    TAtlasLayoutProblem.OutTop:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutTop, [AFinding.Amount]);
-    TAtlasLayoutProblem.Overlap:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOverlap, [AFinding.Other]);
-    TAtlasLayoutProblem.TwoClient:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTwoClient, [AFinding.Other]);
-    TAtlasLayoutProblem.Clipped:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleClipped, [AFinding.Amount]);
-    TAtlasLayoutProblem.ScreenWidth:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenWidth, [AFinding.Amount]);
-    TAtlasLayoutProblem.ScreenHeight:
-      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenHeight, [AFinding.Amount]);
-  else
-    Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.LayoutAnchorsAlign);
-  end;
-  // Wer herausragt, ohne mitzuwachsen: Anchors nennen.
-  if (AFinding.Problem in [TAtlasLayoutProblem.OutRight, TAtlasLayoutProblem.OutBottom]) and
-    (ANode.Align = TAtlasLayoutAlign.None) then
-  begin
-    Result := Result + ', ' + TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutAnchored,
-      [AnchorText(ANode.Anchors)]);
-  end;
-end;
-
-function TAtlasFormPreviewWindow.Describe(AIndex: Integer): string;
-var
-  mNode: TAtlasLayoutNode;
-  mFinding: TAtlasLayoutFinding;
-begin
-  mNode := FData.Nodes[AIndex];
-  Result := Format('%s: %s · %d × %d', [mNode.Name, mNode.ClassName, FBounds[AIndex].Width,
-    FBounds[AIndex].Height]);
-  if mNode.Align <> TAtlasLayoutAlign.None then
-  begin
-    Result := Result + ' · ' + cAlignNames[mNode.Align];
-  end
-  else
-  begin
-    Result := Result + ' · [' + AnchorText(mNode.Anchors) + ']';
-  end;
-  for mFinding in FFindings do
-  begin
-    if mFinding.Node = AIndex then
-    begin
-      Result := Result + ' · ' + FindingText(mFinding, mNode);
-    end;
-  end;
-end;
-
-procedure TAtlasFormPreviewWindow.PaintAnchors(AIndex: Integer; const ARect: TRect);
-var
-  mAnchors: TAtlasLayoutAnchors;
-  mMid: TPoint;
-  mPin: Integer;
-begin
-  mAnchors := FData.Nodes[AIndex].Anchors;
-  mMid := ARect.CenterPoint;
-  mPin := S(cPin);
+  // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
+  mGrip := GripRect;
   FParts.Paint.Canvas.Brush.Style := bsSolid;
   FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
   FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  if TAtlasLayoutAnchor.Left in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(ARect.Left, mMid.Y - mPin, ARect.Left + mPin div 2 + 1, mMid.Y + mPin);
-  end;
-  if TAtlasLayoutAnchor.Right in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(ARect.Right - mPin div 2 - 1, mMid.Y - mPin, ARect.Right, mMid.Y + mPin);
-  end;
-  if TAtlasLayoutAnchor.Top in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Top, mMid.X + mPin, ARect.Top + mPin div 2 + 1);
-  end;
-  if TAtlasLayoutAnchor.Bottom in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Bottom - mPin div 2 - 1, mMid.X + mPin, ARect.Bottom);
-  end;
+  FParts.Paint.Canvas.Polygon([Point(mGrip.Right, mGrip.Top), Point(mGrip.Right, mGrip.Bottom),
+    Point(mGrip.Left, mGrip.Bottom)]);
 end;
 
 procedure TAtlasFormPreviewWindow.PaintNode(AIndex: Integer);
@@ -534,37 +358,34 @@ begin
   end;
 end;
 
-procedure TAtlasFormPreviewWindow.PaintPreview(Sender: TObject);
+procedure TAtlasFormPreviewWindow.PaintAnchors(AIndex: Integer; const ARect: TRect);
 var
-  mIndex: Integer;
-  mGrip: TRect;
+  mAnchors: TAtlasLayoutAnchors;
+  mMid: TPoint;
+  mPin: Integer;
 begin
-  FParts.Paint.Canvas.Font := Font;
-  FParts.Paint.Canvas.Brush.Style := bsSolid;
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Gutter);
-  FParts.Paint.Canvas.FillRect(FParts.Paint.ClientRect);
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Rectangle(FormRect);
-  for mIndex := 0 to High(FData.Nodes) do
-  begin
-    if FData.Nodes[mIndex].Visible then
-    begin
-      PaintNode(mIndex);
-    end;
-  end;
-  PaintOver;
-  if not GripResizes then
-  begin
-    Exit;
-  end;
-  // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
-  mGrip := GripRect;
+  mAnchors := FData.Nodes[AIndex].Anchors;
+  mMid := ARect.CenterPoint;
+  mPin := S(cPin);
   FParts.Paint.Canvas.Brush.Style := bsSolid;
   FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
   FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Polygon([Point(mGrip.Right, mGrip.Top), Point(mGrip.Right, mGrip.Bottom),
-    Point(mGrip.Left, mGrip.Bottom)]);
+  if TAtlasLayoutAnchor.Left in mAnchors then
+  begin
+    FParts.Paint.Canvas.Rectangle(ARect.Left, mMid.Y - mPin, ARect.Left + mPin div 2 + 1, mMid.Y + mPin);
+  end;
+  if TAtlasLayoutAnchor.Right in mAnchors then
+  begin
+    FParts.Paint.Canvas.Rectangle(ARect.Right - mPin div 2 - 1, mMid.Y - mPin, ARect.Right, mMid.Y + mPin);
+  end;
+  if TAtlasLayoutAnchor.Top in mAnchors then
+  begin
+    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Top, mMid.X + mPin, ARect.Top + mPin div 2 + 1);
+  end;
+  if TAtlasLayoutAnchor.Bottom in mAnchors then
+  begin
+    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Bottom - mPin div 2 - 1, mMid.X + mPin, ARect.Bottom);
+  end;
 end;
 
 procedure TAtlasFormPreviewWindow.PreviewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
@@ -632,10 +453,189 @@ begin
   end;
 end;
 
+function TAtlasFormPreviewWindow.S(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, CurrentPPI, cBasePpi);
+end;
+
+function TAtlasFormPreviewWindow.Origin: TPoint;
+begin
+  Result := Point(S(cMargin), S(cMargin));
+end;
+
+function TAtlasFormPreviewWindow.NodeRect(AIndex: Integer): TRect;
+var
+  mRect: TRect;
+begin
+  mRect := TAtlasFormLayout.InForm(FData.Nodes, FBounds, AIndex);
+  Result := Rect(Origin.X + Px(mRect.Left), Origin.Y + Px(mRect.Top), Origin.X + Px(mRect.Right),
+    Origin.Y + Px(mRect.Bottom));
+end;
+
+function TAtlasFormPreviewWindow.Px(AValue: Integer): Integer;
+begin
+  Result := S(AValue);
+end;
+
+function TAtlasFormPreviewWindow.NodeText(AIndex: Integer): string;
+begin
+  Result := FData.Nodes[AIndex].Name;
+end;
+
+function TAtlasFormPreviewWindow.GripResizes: Boolean;
+begin
+  Result := True;
+end;
+
+function TAtlasFormPreviewWindow.Describe(AIndex: Integer): string;
+var
+  mNode: TAtlasLayoutNode;
+  mFinding: TAtlasLayoutFinding;
+begin
+  mNode := FData.Nodes[AIndex];
+  Result := Format('%s: %s · %d × %d', [mNode.Name, mNode.ClassName, FBounds[AIndex].Width,
+    FBounds[AIndex].Height]);
+  if mNode.Align <> TAtlasLayoutAlign.None then
+  begin
+    Result := Result + ' · ' + cAlignNames[mNode.Align];
+  end
+  else
+  begin
+    Result := Result + ' · [' + AnchorText(mNode.Anchors) + ']';
+  end;
+  for mFinding in FFindings do
+  begin
+    if mFinding.Node = AIndex then
+    begin
+      Result := Result + ' · ' + FindingText(mFinding, mNode);
+    end;
+  end;
+end;
+
+procedure TAtlasFormPreviewWindow.BuildBar;
+var
+  mLabel: TLabel;
+  mIndex: Integer;
+  mButton: TButton;
+begin
+  mLabel := TLabel.Create(Self);
+  mLabel.Parent := FParts.Bar;
+  mLabel.Caption := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeSize);
+  mLabel.AlignWithMargins := True;
+  FParts.WidthEdit := TEdit.Create(Self);
+  FParts.WidthEdit.Parent := FParts.Bar;
+  FParts.WidthEdit.Width := S(cEditWidth);
+  FParts.WidthEdit.NumbersOnly := True;
+  FParts.WidthEdit.AlignWithMargins := True;
+  FParts.WidthEdit.OnChange := SizeEdited;
+  FParts.HeightEdit := TEdit.Create(Self);
+  FParts.HeightEdit.Parent := FParts.Bar;
+  FParts.HeightEdit.Width := S(cEditWidth);
+  FParts.HeightEdit.NumbersOnly := True;
+  FParts.HeightEdit.AlignWithMargins := True;
+  FParts.HeightEdit.OnChange := SizeEdited;
+  mButton := AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeMinimum), cTagMinimum);
+  mButton.Enabled := (FData.MinClient.cx > 0) or (FData.MinClient.cy > 0);
+  if not mButton.Enabled then
+  begin
+    mButton.Hint := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeNoMinimum);
+    mButton.ShowHint := True;
+  end;
+  AddButton(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeDesign), cTagDesign);
+  for mIndex := 0 to High(FData.Quick) do
+  begin
+    AddButton(Format('%d × %d', [FData.Quick[mIndex].cx, FData.Quick[mIndex].cy]), mIndex);
+  end;
+end;
+
+procedure TAtlasFormPreviewWindow.Recalculate;
+begin
+  FBounds := TAtlasFormLayout.Arrange(FData.Nodes, FData.Design, FProbe);
+  FFindings := TAtlasFormLayout.Problems(FData.Nodes, FBounds, FProbe);
+  FParts.Paint.SetBounds(0, 0, Px(FProbe.cx) + 2 * S(cMargin), Px(FProbe.cy) + 2 * S(cMargin));
+  if Length(FFindings) = 0 then
+  begin
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeNone,
+      [FProbe.cx, FProbe.cy]) + ' · ' + TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ResizeKeys);
+  end
+  else
+  begin
+    FParts.Status.Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeCount, [Length(FFindings),
+      FProbe.cx, FProbe.cy]);
+  end;
+  FParts.Paint.Invalidate;
+end;
+
+procedure TAtlasFormPreviewWindow.PaintOver;
+begin
+  // Abbild der Probegröße: nichts weiter.
+end;
+
+procedure TAtlasFormPreviewWindow.SetProbe(const ASize: TSize);
+begin
+  FProbe := TAtlasFormLayout.Constrain(TSize.Create(Max(ASize.cx, cMinProbe), Max(ASize.cy, cMinProbe)),
+    FData.MinClient.cx, FData.MinClient.cy, FData.MaxClient.cx, FData.MaxClient.cy);
+  if FParts.WidthEdit = nil then
+  begin
+    Recalculate;
+    Exit;
+  end;
+  FDrag.Updating := True;
+  try
+    if FParts.WidthEdit.Text <> IntToStr(FProbe.cx) then
+    begin
+      FParts.WidthEdit.Text := IntToStr(FProbe.cx);
+    end;
+    if FParts.HeightEdit.Text <> IntToStr(FProbe.cy) then
+    begin
+      FParts.HeightEdit.Text := IntToStr(FProbe.cy);
+    end;
+  finally
+    FDrag.Updating := False;
+  end;
+  Recalculate;
+end;
+
 procedure TAtlasFormPreviewWindow.ApplyColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
   FParts.Paint.Invalidate;
+end;
+
+class function TAtlasFormPreviewWindow.FindingText(const AFinding: TAtlasLayoutFinding;
+  const ANode: TAtlasLayoutNode): string;
+begin
+  case AFinding.Problem of
+    TAtlasLayoutProblem.TooSmall:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTooSmall, [AFinding.Amount]);
+    TAtlasLayoutProblem.OutRight:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutRight, [AFinding.Amount]);
+    TAtlasLayoutProblem.OutBottom:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutBottom, [AFinding.Amount]);
+    TAtlasLayoutProblem.OutLeft:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutLeft, [AFinding.Amount]);
+    TAtlasLayoutProblem.OutTop:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOutTop, [AFinding.Amount]);
+    TAtlasLayoutProblem.Overlap:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutOverlap, [AFinding.Other]);
+    TAtlasLayoutProblem.TwoClient:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutTwoClient, [AFinding.Other]);
+    TAtlasLayoutProblem.Clipped:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleClipped, [AFinding.Amount]);
+    TAtlasLayoutProblem.ScreenWidth:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenWidth, [AFinding.Amount]);
+    TAtlasLayoutProblem.ScreenHeight:
+      Result := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ScaleScreenHeight, [AFinding.Amount]);
+  else
+    Result := TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.LayoutAnchorsAlign);
+  end;
+  // Wer herausragt, ohne mitzuwachsen: Anchors nennen.
+  if (AFinding.Problem in [TAtlasLayoutProblem.OutRight, TAtlasLayoutProblem.OutBottom]) and
+    (ANode.Align = TAtlasLayoutAlign.None) then
+  begin
+    Result := Result + ', ' + TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.LayoutAnchored,
+      [AnchorText(ANode.Anchors)]);
+  end;
 end;
 
 end.

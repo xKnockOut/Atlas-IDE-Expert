@@ -68,6 +68,8 @@ begin
   Result := -1;
 end;
 
+{ TResolvedSignatures }
+
 class function TResolvedSignatures.SignatureModes(const ASignature: string; out AModes: TArray<string>): Boolean;
 var
   mOpen, mClose, mDepth, mIndex: Integer;

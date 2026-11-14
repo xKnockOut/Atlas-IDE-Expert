@@ -94,41 +94,15 @@ uses
 
 { TAtlasIdeAffectedTests }
 
-class procedure TAtlasIdeAffectedTests.Install(const AHooks: TAtlasAffectedTestsHooks);
-begin
-  FHooks := AHooks;
-end;
-
-class procedure TAtlasIdeAffectedTests.Uninstall;
-begin
-  // Spätere Antworten verwerfen; beim Entladen bricht TAtlasShutdown die Anfragen ab, dann auf alle warten.
-  Inc(FRequest);
-  Inc(FGeneration);
-  Reap(TAtlasShutdown.Signalled);
-  FHooks := Default(TAtlasAffectedTestsHooks);
-  FReported := nil;
-end;
-
-class function TAtlasIdeAffectedTests.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.TestsAffected and TAtlasIdeSettings.Current.TestRun;
-end;
-
-class function TAtlasIdeAffectedTests.ActiveProject: string;
+class procedure TAtlasIdeAffectedTests.Spawn(const AWork: TProc);
 var
-  mServices: IOTAModuleServices;
-  mProject: IOTAProject;
+  mWorker: TThread;
 begin
-  Result := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
-  begin
-    Exit;
-  end;
-  mProject := mServices.GetActiveProject;
-  if mProject <> nil then
-  begin
-    Result := mProject.FileName;
-  end;
+  Reap(False);
+  mWorker := TThread.CreateAnonymousThread(AWork);
+  mWorker.FreeOnTerminate := False;
+  FWorkers := FWorkers + [mWorker];
+  mWorker.Start;
 end;
 
 class procedure TAtlasIdeAffectedTests.Reap(AWait: Boolean);
@@ -152,15 +126,108 @@ begin
   FWorkers := mRemaining;
 end;
 
-class procedure TAtlasIdeAffectedTests.Spawn(const AWork: TProc);
+class procedure TAtlasIdeAffectedTests.Show(ARequest: Integer; const AFound: TAtlasAffectedTests;
+  const AError: string);
 var
-  mWorker: TThread;
+  mLine: string;
 begin
-  Reap(False);
-  mWorker := TThread.CreateAnonymousThread(AWork);
-  mWorker.FreeOnTerminate := False;
-  FWorkers := FWorkers + [mWorker];
-  mWorker.Start;
+  // Eine neuere Anfrage läuft schon oder das Package wird entladen.
+  if ARequest <> FRequest then
+  begin
+    Exit;
+  end;
+  if AError <> '' then
+  begin
+    TAtlasIdeResults.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFailed, [AError]));
+    Exit;
+  end;
+  for mLine in Lines(AFound) do
+  begin
+    TAtlasIdeResults.Say(mLine);
+  end;
+  if AFound.All then
+  begin
+    if Assigned(FHooks.RunAll) then
+    begin
+      FHooks.RunAll();
+    end;
+  end
+  else if (Length(AFound.Tests) > 0) and Assigned(FHooks.RunTests) then
+  begin
+    // Der Server meldet nur Tests aus Testprogrammen: Eine Datei genügt, um das Testprojekt zu finden.
+    FHooks.RunTests(AFound.Tests[0].FileName, AFound.Run);
+  end;
+end;
+
+class procedure TAtlasIdeAffectedTests.RemoveHook(const AFolder: string);
+begin
+  Spawn(
+    procedure
+    var
+      mVcs: IAtlasVersionControl;
+      mBranching: IAtlasVcsBranching;
+      mHooks, mGitDir: string;
+    begin
+      mVcs := TAtlasIdeVcs.ForFolder(AFolder);
+      if Supports(mVcs, IAtlasVcsBranching, mBranching) and
+        (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) and
+        (TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Own) then
+      begin
+        TAtlasAffectedHook.Uninstall(mHooks, mGitDir);
+      end;
+    end);
+end;
+
+class procedure TAtlasIdeAffectedTests.ReportOnce(const AHooksDir, AText: string);
+var
+  mDir: string;
+begin
+  for mDir in FReported do
+  begin
+    if SameText(mDir, AHooksDir) then
+    begin
+      Exit;
+    end;
+  end;
+  FReported := FReported + [AHooksDir];
+  TAtlasIdeResults.Say(AText);
+end;
+
+class function TAtlasIdeAffectedTests.ActiveProject: string;
+var
+  mServices: IOTAModuleServices;
+  mProject: IOTAProject;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  begin
+    Exit;
+  end;
+  mProject := mServices.GetActiveProject;
+  if mProject <> nil then
+  begin
+    Result := mProject.FileName;
+  end;
+end;
+
+class procedure TAtlasIdeAffectedTests.Install(const AHooks: TAtlasAffectedTestsHooks);
+begin
+  FHooks := AHooks;
+end;
+
+class procedure TAtlasIdeAffectedTests.Uninstall;
+begin
+  // Spätere Antworten verwerfen; beim Entladen bricht TAtlasShutdown die Anfragen ab, dann auf alle warten.
+  Inc(FRequest);
+  Inc(FGeneration);
+  Reap(TAtlasShutdown.Signalled);
+  FHooks := Default(TAtlasAffectedTestsHooks);
+  FReported := nil;
+end;
+
+class function TAtlasIdeAffectedTests.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TestsAffected and TAtlasIdeSettings.Current.TestRun;
 end;
 
 class procedure TAtlasIdeAffectedTests.Run;
@@ -256,89 +323,6 @@ begin
     end);
 end;
 
-class function TAtlasIdeAffectedTests.Lines(const AFound: TAtlasAffectedTests): TArray<string>;
-var
-  mTest: TAtlasAffectedTest;
-begin
-  if AFound.All then
-  begin
-    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedAll, [AFound.AllReason])));
-  end;
-  if Length(AFound.Tests) = 0 then
-  begin
-    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedNone, [AFound.Base])));
-  end;
-  Result := TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFound,
-    [AFound.Base, AFound.Depth, Length(AFound.Tests)]));
-  for mTest in AFound.Tests do
-  begin
-    if Length(mTest.Reasons) > 0 then
-    begin
-      Result := Result + ['  ' + mTest.Name + ' – ' + String.Join('; ', mTest.Reasons)];
-    end
-    else
-    begin
-      Result := Result + ['  ' + mTest.Name];
-    end;
-  end;
-end;
-
-class procedure TAtlasIdeAffectedTests.Show(ARequest: Integer; const AFound: TAtlasAffectedTests;
-  const AError: string);
-var
-  mLine: string;
-begin
-  // Eine neuere Anfrage läuft schon oder das Package wird entladen.
-  if ARequest <> FRequest then
-  begin
-    Exit;
-  end;
-  if AError <> '' then
-  begin
-    TAtlasIdeResults.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFailed, [AError]));
-    Exit;
-  end;
-  for mLine in Lines(AFound) do
-  begin
-    TAtlasIdeResults.Say(mLine);
-  end;
-  if AFound.All then
-  begin
-    if Assigned(FHooks.RunAll) then
-    begin
-      FHooks.RunAll();
-    end;
-  end
-  else if (Length(AFound.Tests) > 0) and Assigned(FHooks.RunTests) then
-  begin
-    // Der Server meldet nur Tests aus Testprogrammen: Eine Datei genügt, um das Testprojekt zu finden.
-    FHooks.RunTests(AFound.Tests[0].FileName, AFound.Run);
-  end;
-end;
-
-class procedure TAtlasIdeAffectedTests.ApplySettings;
-var
-  mProject: string;
-begin
-  if TAtlasIdeSettings.Current.TestsAffectedBeforeCommit and Enabled then
-  begin
-    if Assigned(FHooks.ResolveTarget) then
-    begin
-      FHooks.ResolveTarget(
-        procedure(const ATarget: TAtlasTestTarget)
-        begin
-          InstallHook(ATarget);
-        end);
-    end;
-    Exit;
-  end;
-  mProject := ActiveProject;
-  if mProject <> '' then
-  begin
-    RemoveHook(ExtractFilePath(mProject));
-  end;
-end;
-
 /// <summary>Texte des Hooks in der Sprache der Oberfläche (#1458), im Hauptthread gelesen.</summary>
 function HookTexts: TAtlasAffectedHookTexts;
 begin
@@ -406,38 +390,54 @@ begin
     end);
 end;
 
-class procedure TAtlasIdeAffectedTests.RemoveHook(const AFolder: string);
+class procedure TAtlasIdeAffectedTests.ApplySettings;
+var
+  mProject: string;
 begin
-  Spawn(
-    procedure
-    var
-      mVcs: IAtlasVersionControl;
-      mBranching: IAtlasVcsBranching;
-      mHooks, mGitDir: string;
+  if TAtlasIdeSettings.Current.TestsAffectedBeforeCommit and Enabled then
+  begin
+    if Assigned(FHooks.ResolveTarget) then
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(AFolder);
-      if Supports(mVcs, IAtlasVcsBranching, mBranching) and
-        (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) and
-        (TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Own) then
-      begin
-        TAtlasAffectedHook.Uninstall(mHooks, mGitDir);
-      end;
-    end);
+      FHooks.ResolveTarget(
+        procedure(const ATarget: TAtlasTestTarget)
+        begin
+          InstallHook(ATarget);
+        end);
+    end;
+    Exit;
+  end;
+  mProject := ActiveProject;
+  if mProject <> '' then
+  begin
+    RemoveHook(ExtractFilePath(mProject));
+  end;
 end;
 
-class procedure TAtlasIdeAffectedTests.ReportOnce(const AHooksDir, AText: string);
+class function TAtlasIdeAffectedTests.Lines(const AFound: TAtlasAffectedTests): TArray<string>;
 var
-  mDir: string;
+  mTest: TAtlasAffectedTest;
 begin
-  for mDir in FReported do
+  if AFound.All then
   begin
-    if SameText(mDir, AHooksDir) then
+    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedAll, [AFound.AllReason])));
+  end;
+  if Length(AFound.Tests) = 0 then
+  begin
+    Exit(TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedNone, [AFound.Base])));
+  end;
+  Result := TArray<string>.Create(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsAffectedFound,
+    [AFound.Base, AFound.Depth, Length(AFound.Tests)]));
+  for mTest in AFound.Tests do
+  begin
+    if Length(mTest.Reasons) > 0 then
     begin
-      Exit;
+      Result := Result + ['  ' + mTest.Name + ' – ' + String.Join('; ', mTest.Reasons)];
+    end
+    else
+    begin
+      Result := Result + ['  ' + mTest.Name];
     end;
   end;
-  FReported := FReported + [AHooksDir];
-  TAtlasIdeResults.Say(AText);
 end;
 
 end.

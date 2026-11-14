@@ -104,42 +104,11 @@ begin
   FHooks := AHooks;
 end;
 
-class function TAtlasIdeIssueReopened.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.IssuesReopened;
-end;
-
-class function TAtlasIdeIssueReopened.DoneStates(const ATarget: TAtlasTrackerTarget): TAtlasTrackerDoneStates;
-var
-  mOptions: TAtlasTrackerSyncOptions;
-begin
-  mOptions := TAtlasIdeTrackerSync.Options(ATarget);
-  Result := TAtlasTrackerDoneStates.Create(ATarget.Provider, mOptions.EndStates, mOptions.ReviewStates);
-end;
-
 class function TAtlasIdeIssueReopened.SameTracker(const ATarget, AOther: TAtlasTrackerTarget): Boolean;
 begin
   Result := (TAtlasTrackerNotify.ConnectionId(ATarget) <> '') and
     SameText(TAtlasTrackerNotify.ConnectionId(ATarget), TAtlasTrackerNotify.ConnectionId(AOther)) and
     SameText(TAtlasTrackerNotify.UnseenProject(ATarget), TAtlasTrackerNotify.UnseenProject(AOther));
-end;
-
-procedure TAtlasIdeIssueReopened.EndedIssue(const AProject: string; var AState: TAtlasIssuesState;
-  const AKey, ABranch, AWritten: string);
-var
-  mEntry: TAtlasTrackerEnded;
-begin
-  if not Active or (AKey = '') then
-  begin
-    Exit;
-  end;
-  mEntry := Default(TAtlasTrackerEnded);
-  mEntry.Key := AKey;
-  mEntry.Branch := ABranch;
-  mEntry.At := TAtlasIdeIssuesTargets.NowUtc;
-  mEntry.State := AWritten;
-  mEntry.Done := DoneStates(FContext.TargetOf(AProject)).IsDone(AWritten);
-  TAtlasTrackerReopened.AddEnded(AState.Ended, mEntry);
 end;
 
 function TAtlasIdeIssueReopened.CommentFromPreview(const ATarget: TAtlasTrackerTarget;
@@ -163,6 +132,37 @@ begin
     TAtlasTrackerReopened.TakeComment(AReopen, mComment);
     Result := True;
   end;
+end;
+
+class function TAtlasIdeIssueReopened.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.IssuesReopened;
+end;
+
+class function TAtlasIdeIssueReopened.DoneStates(const ATarget: TAtlasTrackerTarget): TAtlasTrackerDoneStates;
+var
+  mOptions: TAtlasTrackerSyncOptions;
+begin
+  mOptions := TAtlasIdeTrackerSync.Options(ATarget);
+  Result := TAtlasTrackerDoneStates.Create(ATarget.Provider, mOptions.EndStates, mOptions.ReviewStates);
+end;
+
+procedure TAtlasIdeIssueReopened.EndedIssue(const AProject: string; var AState: TAtlasIssuesState;
+  const AKey, ABranch, AWritten: string);
+var
+  mEntry: TAtlasTrackerEnded;
+begin
+  if not Active or (AKey = '') then
+  begin
+    Exit;
+  end;
+  mEntry := Default(TAtlasTrackerEnded);
+  mEntry.Key := AKey;
+  mEntry.Branch := ABranch;
+  mEntry.At := TAtlasIdeIssuesTargets.NowUtc;
+  mEntry.State := AWritten;
+  mEntry.Done := DoneStates(FContext.TargetOf(AProject)).IsDone(AWritten);
+  TAtlasTrackerReopened.AddEnded(AState.Ended, mEntry);
 end;
 
 procedure TAtlasIdeIssueReopened.ListRecorded(const ATarget: TAtlasTrackerTarget; var AState: TAtlasIssuesState);

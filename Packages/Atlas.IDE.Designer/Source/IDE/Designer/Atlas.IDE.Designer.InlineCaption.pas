@@ -430,6 +430,15 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeInlineCaption.ApplyTheme;
+begin
+  if FEditor <> nil then
+  begin
+    FEditor.ApplyColors(TAtlasIdeStyle.Colors);
+  end;
+  inherited ApplyTheme;
+end;
+
 function TAtlasIdeInlineCaption.Target(out AComponent: TComponent; out APath: string): Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -441,29 +450,6 @@ begin
   begin
     APath := PathAt(AComponent, Mouse.CursorPos);
     Result := APath <> '';
-  end;
-end;
-
-function TAtlasIdeInlineCaption.CanEdit: Boolean;
-var
-  mComponent: TComponent;
-  mPath: string;
-begin
-  Result := Target(mComponent, mPath);
-end;
-
-procedure TAtlasIdeInlineCaption.Edit;
-var
-  mComponent: TComponent;
-  mPath: string;
-begin
-  if Target(mComponent, mPath) then
-  begin
-    OpenFor(mComponent, mPath, Mouse.CursorPos);
-  end
-  else
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerCaptionNone));
   end;
 end;
 
@@ -757,6 +743,29 @@ begin
   end;
 end;
 
+procedure TAtlasIdeInlineCaption.Edit;
+var
+  mComponent: TComponent;
+  mPath: string;
+begin
+  if Target(mComponent, mPath) then
+  begin
+    OpenFor(mComponent, mPath, Mouse.CursorPos);
+  end
+  else
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerCaptionNone));
+  end;
+end;
+
+function TAtlasIdeInlineCaption.CanEdit: Boolean;
+var
+  mComponent: TComponent;
+  mPath: string;
+begin
+  Result := Target(mComponent, mPath);
+end;
+
 function TAtlasIdeInlineCaption.CanUndo: Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -804,15 +813,6 @@ begin
   begin
     TAtlasKeyHook.Remove(FKeys);
   end;
-end;
-
-procedure TAtlasIdeInlineCaption.ApplyTheme;
-begin
-  if FEditor <> nil then
-  begin
-    FEditor.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-  inherited ApplyTheme;
 end;
 
 end.

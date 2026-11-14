@@ -55,6 +55,8 @@ uses
   Shell.Workspace,
   Shell.Texts;
 
+{ TShellDfmPropertyRules }
+
 class procedure TShellDfmPropertyRules.Attach(ACommands: TLspCommands;
   const AServices: TShellDfmPropertyRulesServices);
 var
@@ -122,20 +124,6 @@ begin
   end;
 end;
 
-class function TShellDfmPropertyRules.RulesWithId(const ARules: TArray<IRule>; const AId: string): TArray<IRule>;
-var
-  mRule: IRule;
-begin
-  Result := nil;
-  for mRule in ARules do
-  begin
-    if SameText(mRule.Descriptor.Id, AId) then
-    begin
-      Result := Result + [mRule];
-    end;
-  end;
-end;
-
 class function TShellDfmPropertyRules.FindingsFor(const AServices: TShellDfmPropertyRulesServices;
   const AFileName: string; out AFindings: TArray<TRuleFinding>): Boolean;
 var
@@ -158,6 +146,20 @@ begin
     AFindings := TLspSyntaxDiagnostics.RuleFindings(mText, mTree, mContext);
   finally
     mTree.Free;
+  end;
+end;
+
+class function TShellDfmPropertyRules.RulesWithId(const ARules: TArray<IRule>; const AId: string): TArray<IRule>;
+var
+  mRule: IRule;
+begin
+  Result := nil;
+  for mRule in ARules do
+  begin
+    if SameText(mRule.Descriptor.Id, AId) then
+    begin
+      Result := Result + [mRule];
+    end;
   end;
 end;
 

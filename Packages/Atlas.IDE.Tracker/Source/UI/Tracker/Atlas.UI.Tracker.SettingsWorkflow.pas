@@ -122,13 +122,6 @@ begin
   FTables := ATables;
 end;
 
-procedure TAtlasTrackerWorkflowPart.Build;
-begin
-  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesWorkflowTitle));
-  BuildFields;
-  BuildLoad;
-end;
-
 procedure TAtlasTrackerWorkflowPart.BuildFields;
 begin
   FView.SyncState := FRows.AddCheck('issues.syncState',
@@ -194,6 +187,43 @@ begin
   FView.ValuesNote.Caption := '';
 end;
 
+procedure TAtlasTrackerWorkflowPart.LoadValuesClick(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+  mField: string;
+begin
+  if not Assigned(FHooks.OnValues) then
+  begin
+    Exit;
+  end;
+  if not FTables.Connections.ValuesConnection(mConnection) then
+  begin
+    FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesNoConnection);
+    Exit;
+  end;
+  // Zustände zum Feld der Verbindung, sonst zum globalen Feld.
+  mField := mConnection.StateField;
+  if mField = '' then
+  begin
+    mField := FView.StateField.Value;
+  end;
+  // Optionen des Statusfeldes zum Projekt der Verbindung, sonst zum globalen (#2134).
+  if mConnection.GitHubProject = '' then
+  begin
+    mConnection.GitHubProject := Trim(FView.Project.Value);
+  end;
+  FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesLoading);
+  FView.LoadValues.Enabled := False;
+  FHooks.OnValues(mConnection, mField);
+end;
+
+procedure TAtlasTrackerWorkflowPart.Build;
+begin
+  FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesWorkflowTitle));
+  BuildFields;
+  BuildLoad;
+end;
+
 procedure TAtlasTrackerWorkflowPart.Load(const AValues: IAtlasSettingsValues);
 begin
   FView.StateField.Value := AValues.ReadString(cStateFieldKey);
@@ -227,46 +257,6 @@ begin
   AValues.WriteString(cProjectKey, Trim(FView.Project.Value));
 end;
 
-procedure TAtlasTrackerWorkflowPart.LoadValuesClick(Sender: TObject);
-var
-  mConnection: TAtlasTrackerConnection;
-  mField: string;
-begin
-  if not Assigned(FHooks.OnValues) then
-  begin
-    Exit;
-  end;
-  if not FTables.Connections.ValuesConnection(mConnection) then
-  begin
-    FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesNoConnection);
-    Exit;
-  end;
-  // Zustände zum Feld der Verbindung, sonst zum globalen Feld.
-  mField := mConnection.StateField;
-  if mField = '' then
-  begin
-    mField := FView.StateField.Value;
-  end;
-  // Optionen des Statusfeldes zum Projekt der Verbindung, sonst zum globalen (#2134).
-  if mConnection.GitHubProject = '' then
-  begin
-    mConnection.GitHubProject := Trim(FView.Project.Value);
-  end;
-  FView.ValuesNote.Caption := TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesValuesLoading);
-  FView.LoadValues.Enabled := False;
-  FHooks.OnValues(mConnection, mField);
-end;
-
-class function TAtlasTrackerWorkflowPart.StartValues(const AValues: TAtlasTrackerValueSet;
-  AInProject: Boolean): TArray<string>;
-begin
-  Result := AValues.States;
-  if AInProject and (Length(AValues.ProjectStates) > 0) then
-  begin
-    Result := AValues.ProjectStates;
-  end;
-end;
-
 procedure TAtlasTrackerWorkflowPart.ValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
 begin
   FView.LoadValues.Enabled := True;
@@ -282,6 +272,16 @@ begin
   FView.StartState.SetValues(StartValues(AValues, FView.StateTarget.Choice = 0));
   FView.ValuesNote.Caption := TAtlasOptionsStrings.Fmt(TAtlasOptionsTextId.SettingsIssuesValuesLoaded,
     [Length(AValues.States), Length(AValues.StateFields) + Length(AValues.UserFields)]);
+end;
+
+class function TAtlasTrackerWorkflowPart.StartValues(const AValues: TAtlasTrackerValueSet;
+  AInProject: Boolean): TArray<string>;
+begin
+  Result := AValues.States;
+  if AInProject and (Length(AValues.ProjectStates) > 0) then
+  begin
+    Result := AValues.ProjectStates;
+  end;
 end;
 
 end.

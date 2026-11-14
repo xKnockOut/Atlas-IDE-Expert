@@ -243,6 +243,8 @@ begin
   AMap.AddOrSetValue(AKey, mMask or APart);
 end;
 
+{ TUsesActions }
+
 class function TUsesActions.ListsProjectUnits(const ATokens: TArray<TPascalToken>): Boolean;
 var
   mToken: TPascalToken;
@@ -260,16 +262,10 @@ begin
   end;
 end;
 
-class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
-var
-  mPrevious: Integer;
+class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
+  const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>;
 begin
-  mPrevious := AIndex - 1;
-  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-  begin
-    Dec(mPrevious);
-  end;
-  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
+  Result := Entries(ATokens, AInactive, AInfo, AKeep, Default(TUsesResolution));
 end;
 
 /// <summary>Zählt den Bezeichner an AIndex im Teil APart (siehe CollectIdentifiers).</summary>
@@ -417,26 +413,16 @@ begin
   Result := False;
 end;
 
-class function TUsesActions.ActiveTokens(const ATokens: TArray<TPascalToken>;
-  const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
+class function TUsesActions.DotPrecedes(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  mCount, mIndex: Integer;
+  mPrevious: Integer;
 begin
-  if AInactive = nil then
+  mPrevious := AIndex - 1;
+  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
-    Exit(ATokens);
+    Dec(mPrevious);
   end;
-  SetLength(Result, Length(ATokens));
-  mCount := 0;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if not InsideAny(ATokens[mIndex].StartPos, AInactive) then
-    begin
-      Result[mCount] := ATokens[mIndex];
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
+  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
 end;
 
 /// <summary>Liegt ARange zwischen "uses" und dem Semikolon der Liste AClause?</summary>
@@ -472,12 +458,6 @@ begin
     AState := TUsesEntryState.OnlyImplementation;
     Result := AInInterface and (AUsage = cInImplementationPart) and not AInfo.HasInitialization;
   end;
-end;
-
-class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
-  const AInfo: TUsesUnitInfoFunc; const AKeep: TArray<string>): TArray<TUsesEntry>;
-begin
-  Result := Entries(ATokens, AInactive, AInfo, AKeep, Default(TUsesResolution));
 end;
 
 class function TUsesActions.Entries(const ATokens: TArray<TPascalToken>; const AInactive: TArray<TTextRange>;
@@ -528,6 +508,28 @@ begin
   finally
     mIdentifiers.Free;
   end;
+end;
+
+class function TUsesActions.ActiveTokens(const ATokens: TArray<TPascalToken>;
+  const AInactive: TArray<TTextRange>): TArray<TPascalToken>;
+var
+  mCount, mIndex: Integer;
+begin
+  if AInactive = nil then
+  begin
+    Exit(ATokens);
+  end;
+  SetLength(Result, Length(ATokens));
+  mCount := 0;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if not InsideAny(ATokens[mIndex].StartPos, AInactive) then
+    begin
+      Result[mCount] := ATokens[mIndex];
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
 end;
 
 type
@@ -582,6 +584,8 @@ type
     /// <summary>Weder Direktive noch Kommentar vor oder nach dem Eintrag.</summary>
     function Isolated: Boolean;
   end;
+
+{ TEntrySpot }
 
 function TEntrySpot.Isolated: Boolean;
 begin
@@ -906,25 +910,6 @@ begin
   end;
 end;
 
-class function TUsesActions.NamesUsed(const ATokens: TArray<TPascalToken>;
-  const ANames: TArray<string>): TArray<Boolean>;
-var
-  mIdentifiers: TDictionary<string, Integer>;
-  mIndex: Integer;
-begin
-  Result := nil;
-  SetLength(Result, Length(ANames));
-  mIdentifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
-  try
-    for mIndex := 0 to High(ANames) do
-    begin
-      Result[mIndex] := mIdentifiers.ContainsKey(LowerCase(ANames[mIndex]));
-    end;
-  finally
-    mIdentifiers.Free;
-  end;
-end;
-
 class function TUsesActions.InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
   const ANames: TArray<string>): TArray<TUsesInterfaceUsage>;
 var
@@ -983,6 +968,25 @@ begin
     end;
   finally
     mNames.Free;
+  end;
+end;
+
+class function TUsesActions.NamesUsed(const ATokens: TArray<TPascalToken>;
+  const ANames: TArray<string>): TArray<Boolean>;
+var
+  mIdentifiers: TDictionary<string, Integer>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ANames));
+  mIdentifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
+  try
+    for mIndex := 0 to High(ANames) do
+    begin
+      Result[mIndex] := mIdentifiers.ContainsKey(LowerCase(ANames[mIndex]));
+    end;
+  finally
+    mIdentifiers.Free;
   end;
 end;
 

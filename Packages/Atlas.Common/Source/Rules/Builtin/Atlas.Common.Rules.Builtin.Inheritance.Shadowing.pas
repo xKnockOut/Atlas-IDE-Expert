@@ -355,6 +355,8 @@ begin
   end;
 end;
 
+{ TShadowedNameRule }
+
 function TShadowedNameRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('shadowed-name', TRuleSeverity.Hint,

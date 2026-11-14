@@ -434,21 +434,6 @@ end;
 
 { TLspSemanticTokens }
 
-function TLspSemanticTokens.GetNamespaces: TArray<string>;
-begin
-  Result := TLspNamespaces.Read(FNamespaces);
-end;
-
-procedure TLspSemanticTokens.SetNamespaces(const AValue: TArray<string>);
-begin
-  TLspNamespaces.Write(FNamespaces, AValue);
-end;
-
-constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
-begin
-  Create(AStore, AIndex, nil);
-end;
-
 constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc);
 begin
@@ -458,140 +443,19 @@ begin
   FEnsureUnit := AEnsureUnit;
 end;
 
-procedure TLspSemanticTokens.Attach(ADispatcher: TJsonRpcDispatcher);
+constructor TLspSemanticTokens.Create(const AStore: IDocumentStore; const AIndex: ISymbolIndex);
 begin
-  ADispatcher.RegisterConcurrentRequest(cFullMethod, HandleFull);
-  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRange);
+  Create(AStore, AIndex, nil);
 end;
 
-class function TLspSemanticTokens.TypeName(AType: TSemanticTokenType): string;
+function TLspSemanticTokens.GetNamespaces: TArray<string>;
 begin
-  Result := cTypeNames[AType];
+  Result := TLspNamespaces.Read(FNamespaces);
 end;
 
-class function TLspSemanticTokens.Capability: TJSONObject;
-var
-  mLegend: TJSONObject;
-  mTypes, mModifiers: TJSONArray;
-  mTokenType: TSemanticTokenType;
-  mModifier: TSemanticTokenModifier;
+procedure TLspSemanticTokens.SetNamespaces(const AValue: TArray<string>);
 begin
-  mTypes := TJSONArray.Create;
-  for mTokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
-  begin
-    mTypes.Add(cTypeNames[mTokenType]);
-  end;
-  mModifiers := TJSONArray.Create;
-  for mModifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
-  begin
-    mModifiers.Add(cModifierNames[mModifier]);
-  end;
-  mLegend := TJSONObject.Create;
-  mLegend.AddPair('tokenTypes', mTypes);
-  mLegend.AddPair('tokenModifiers', mModifiers);
-  Result := TJSONObject.Create;
-  Result.AddPair('legend', mLegend);
-  Result.AddPair('full', TJSONBool.Create(True));
-  Result.AddPair('range', TJSONBool.Create(True));
-end;
-
-class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string; const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>;
-var
-  mCollect: TSemanticCollect;
-begin
-  Result := nil;
-  if ATree = nil then
-  begin
-    Exit;
-  end;
-  mCollect := TSemanticCollect.Create(AResolver, AIndex, ATree, AFileName);
-  try
-    Result := mCollect.Run(ARange, AWithRange, nil);
-  finally
-    mCollect.Free;
-  end;
-end;
-
-function TLspSemanticTokens.CollectFor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const ARange: TTextRange; AWithRange: Boolean; const ACancellation: IJsonRpcCancellationToken):
-  TArray<TSemanticToken>;
-var
-  mCollect: TSemanticCollect;
-begin
-  mCollect := TSemanticCollect.Create(AResolver, FIndex, ATree, AFileName);
-  try
-    Result := mCollect.Run(ARange, AWithRange, ACancellation);
-  finally
-    mCollect.Free;
-  end;
-end;
-
-class procedure TLspSemanticTokens.MarkReassigned(var ATokens: TArray<TSemanticToken>;
-  const ASymbols: TArray<TReassignedSymbol>);
-var
-  mPlaces: TDictionary<string, Boolean>;
-  mSymbol: TReassignedSymbol;
-  mOccurrence: TReassignedOccurrence;
-  mIndex: Integer;
-begin
-  if ASymbols = nil then
-  begin
-    Exit;
-  end;
-  mPlaces := TDictionary<string, Boolean>.Create;
-  try
-    for mSymbol in ASymbols do
-    begin
-      for mOccurrence in mSymbol.Occurrences do
-      begin
-        mPlaces.AddOrSetValue(IntToStr(mOccurrence.Range.StartPos.Line) + ':' +
-          IntToStr(mOccurrence.Range.StartPos.Character), True);
-      end;
-    end;
-    for mIndex := 0 to High(ATokens) do
-    begin
-      if mPlaces.ContainsKey(IntToStr(ATokens[mIndex].Position.Line) + ':' +
-        IntToStr(ATokens[mIndex].Position.Character)) then
-      begin
-        Include(ATokens[mIndex].Modifiers, TSemanticTokenModifier.Reassigned);
-      end;
-    end;
-  finally
-    mPlaces.Free;
-  end;
-end;
-
-class function TLspSemanticTokens.Encode(const ATokens: TArray<TSemanticToken>): TArray<Integer>;
-var
-  mIndex, mLine, mCharacter, mBits: Integer;
-  mModifier: TSemanticTokenModifier;
-begin
-  SetLength(Result, Length(ATokens) * 5);
-  mLine := 0;
-  mCharacter := 0;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    Result[mIndex * 5] := ATokens[mIndex].Position.Line - mLine;
-    if ATokens[mIndex].Position.Line = mLine then
-    begin
-      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character - mCharacter;
-    end
-    else
-    begin
-      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character;
-    end;
-    Result[mIndex * 5 + 2] := ATokens[mIndex].Length;
-    Result[mIndex * 5 + 3] := Ord(ATokens[mIndex].TokenType);
-    mBits := 0;
-    for mModifier in ATokens[mIndex].Modifiers do
-    begin
-      mBits := mBits or (1 shl Ord(mModifier));
-    end;
-    Result[mIndex * 5 + 4] := mBits;
-    mLine := ATokens[mIndex].Position.Line;
-    mCharacter := ATokens[mIndex].Position.Character;
-  end;
+  TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
 function TLspSemanticTokens.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
@@ -663,6 +527,142 @@ function TLspSemanticTokens.HandleRange(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 begin
   Result := Handle(AParams, ACancellation, True);
+end;
+
+function TLspSemanticTokens.CollectFor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ARange: TTextRange; AWithRange: Boolean; const ACancellation: IJsonRpcCancellationToken):
+  TArray<TSemanticToken>;
+var
+  mCollect: TSemanticCollect;
+begin
+  mCollect := TSemanticCollect.Create(AResolver, FIndex, ATree, AFileName);
+  try
+    Result := mCollect.Run(ARange, AWithRange, ACancellation);
+  finally
+    mCollect.Free;
+  end;
+end;
+
+procedure TLspSemanticTokens.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cFullMethod, HandleFull);
+  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRange);
+end;
+
+class function TLspSemanticTokens.Capability: TJSONObject;
+var
+  mLegend: TJSONObject;
+  mTypes, mModifiers: TJSONArray;
+  mTokenType: TSemanticTokenType;
+  mModifier: TSemanticTokenModifier;
+begin
+  mTypes := TJSONArray.Create;
+  for mTokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
+  begin
+    mTypes.Add(cTypeNames[mTokenType]);
+  end;
+  mModifiers := TJSONArray.Create;
+  for mModifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
+  begin
+    mModifiers.Add(cModifierNames[mModifier]);
+  end;
+  mLegend := TJSONObject.Create;
+  mLegend.AddPair('tokenTypes', mTypes);
+  mLegend.AddPair('tokenModifiers', mModifiers);
+  Result := TJSONObject.Create;
+  Result.AddPair('legend', mLegend);
+  Result.AddPair('full', TJSONBool.Create(True));
+  Result.AddPair('range', TJSONBool.Create(True));
+end;
+
+class function TLspSemanticTokens.TypeName(AType: TSemanticTokenType): string;
+begin
+  Result := cTypeNames[AType];
+end;
+
+class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>;
+var
+  mCollect: TSemanticCollect;
+begin
+  Result := nil;
+  if ATree = nil then
+  begin
+    Exit;
+  end;
+  mCollect := TSemanticCollect.Create(AResolver, AIndex, ATree, AFileName);
+  try
+    Result := mCollect.Run(ARange, AWithRange, nil);
+  finally
+    mCollect.Free;
+  end;
+end;
+
+class procedure TLspSemanticTokens.MarkReassigned(var ATokens: TArray<TSemanticToken>;
+  const ASymbols: TArray<TReassignedSymbol>);
+var
+  mPlaces: TDictionary<string, Boolean>;
+  mSymbol: TReassignedSymbol;
+  mOccurrence: TReassignedOccurrence;
+  mIndex: Integer;
+begin
+  if ASymbols = nil then
+  begin
+    Exit;
+  end;
+  mPlaces := TDictionary<string, Boolean>.Create;
+  try
+    for mSymbol in ASymbols do
+    begin
+      for mOccurrence in mSymbol.Occurrences do
+      begin
+        mPlaces.AddOrSetValue(IntToStr(mOccurrence.Range.StartPos.Line) + ':' +
+          IntToStr(mOccurrence.Range.StartPos.Character), True);
+      end;
+    end;
+    for mIndex := 0 to High(ATokens) do
+    begin
+      if mPlaces.ContainsKey(IntToStr(ATokens[mIndex].Position.Line) + ':' +
+        IntToStr(ATokens[mIndex].Position.Character)) then
+      begin
+        Include(ATokens[mIndex].Modifiers, TSemanticTokenModifier.Reassigned);
+      end;
+    end;
+  finally
+    mPlaces.Free;
+  end;
+end;
+
+class function TLspSemanticTokens.Encode(const ATokens: TArray<TSemanticToken>): TArray<Integer>;
+var
+  mIndex, mLine, mCharacter, mBits: Integer;
+  mModifier: TSemanticTokenModifier;
+begin
+  SetLength(Result, Length(ATokens) * 5);
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    Result[mIndex * 5] := ATokens[mIndex].Position.Line - mLine;
+    if ATokens[mIndex].Position.Line = mLine then
+    begin
+      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character - mCharacter;
+    end
+    else
+    begin
+      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character;
+    end;
+    Result[mIndex * 5 + 2] := ATokens[mIndex].Length;
+    Result[mIndex * 5 + 3] := Ord(ATokens[mIndex].TokenType);
+    mBits := 0;
+    for mModifier in ATokens[mIndex].Modifiers do
+    begin
+      mBits := mBits or (1 shl Ord(mModifier));
+    end;
+    Result[mIndex * 5 + 4] := mBits;
+    mLine := ATokens[mIndex].Position.Line;
+    mCharacter := ATokens[mIndex].Position.Character;
+  end;
 end;
 
 initialization

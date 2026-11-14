@@ -23,6 +23,8 @@ uses
   Atlas.Core.Lsp.Session.Json,
   Atlas.IDE.Foundation.EditorBuffer;
 
+{ TAtlasIdeActiveEditor }
+
 function TAtlasIdeActiveEditor.Caret: TAtlasActiveEditorPos;
 var
   mEditors: IOTAEditorServices;

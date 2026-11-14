@@ -33,6 +33,8 @@ type
 
 implementation
 
+{ TIndexNameFacts }
+
 constructor TIndexNameFacts.Create;
 begin
   inherited Create;

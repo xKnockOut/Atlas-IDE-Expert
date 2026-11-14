@@ -109,6 +109,16 @@ begin
   ParentBackground := True;
 end;
 
+procedure TAtlasWelcomeFrame.CreateWnd;
+begin
+  inherited;
+  if FPendingUpdate then
+  begin
+    FPendingUpdate := False;
+    UpdateContent;
+  end;
+end;
+
 procedure TAtlasWelcomeFrame.UpdateContent;
 begin
   Invalidate;
@@ -129,16 +139,6 @@ begin
   end;
   FPendingUpdate := True;
   Result := False;
-end;
-
-procedure TAtlasWelcomeFrame.CreateWnd;
-begin
-  inherited;
-  if FPendingUpdate then
-  begin
-    FPendingUpdate := False;
-    UpdateContent;
-  end;
 end;
 
 { TAtlasWelcomeSectionFrame }
@@ -164,16 +164,6 @@ begin
   FBody.ParentBackground := True;
 end;
 
-function TAtlasWelcomeSectionFrame.GetShowTitle: Boolean;
-begin
-  Result := FTitleBar.Visible;
-end;
-
-procedure TAtlasWelcomeSectionFrame.SetShowTitle(AValue: Boolean);
-begin
-  FTitleBar.Visible := AValue;
-end;
-
 function TAtlasWelcomeSectionFrame.GetTitle: string;
 begin
   Result := FTitle.Caption;
@@ -182,6 +172,16 @@ end;
 procedure TAtlasWelcomeSectionFrame.SetTitle(const AValue: string);
 begin
   FTitle.Caption := AValue;
+end;
+
+function TAtlasWelcomeSectionFrame.GetShowTitle: Boolean;
+begin
+  Result := FTitleBar.Visible;
+end;
+
+procedure TAtlasWelcomeSectionFrame.SetShowTitle(AValue: Boolean);
+begin
+  FTitleBar.Visible := AValue;
 end;
 
 function TAtlasWelcomeSectionFrame.BodyHeight: Integer;

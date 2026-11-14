@@ -441,6 +441,8 @@ begin
   Result := True;
 end;
 
+{ TAtlasPropertySearch }
+
 class function TAtlasPropertySearch.Search(const AQuery: TAtlasPropertyQuery;
   const AChain: TArray<TArray<TAtlasFormObject>>): TArray<TAtlasPropertyHit>;
 var

@@ -492,6 +492,8 @@ type
     property Team: TAtlasTeamSettings read FTeam;
   end;
 
+{ TTeamReader }
+
 constructor TTeamReader.Create(const AFileName, ARoot: string);
 begin
   inherited Create;
@@ -508,17 +510,6 @@ end;
 procedure TTeamReader.Report(AKind: TAtlasTeamIssueKind; const APath: string);
 begin
   FTeam.Issues := FTeam.Issues + [TAtlasTeamIssue.Create(AKind, APath)];
-end;
-
-procedure TTeamReader.Invalid(ALine, AColumn: Integer);
-var
-  mIssue: TAtlasTeamIssue;
-begin
-  FTeam.Valid := False;
-  mIssue := TAtlasTeamIssue.Create(TAtlasTeamIssueKind.Syntax, '');
-  mIssue.Line := ALine;
-  mIssue.Column := AColumn;
-  FTeam.Issues := FTeam.Issues + [mIssue];
 end;
 
 function TTeamReader.IsCredential(const AKey, APath: string): Boolean;
@@ -741,6 +732,333 @@ begin
   AFunction := TAtlasFormatFunction.Create(mName, mFormatIndex);
 end;
 
+function TTeamReader.ReadParameters(AValue: TJSONValue; const APath: string; out AText: string): Boolean;
+begin
+  Result := ReadString(AValue, APath, AText);
+  if Result and TTextCheckin.ContainsMachinePath(AText) then
+  begin
+    Report(TAtlasTeamIssueKind.AbsolutePath, APath);
+    Result := False;
+  end;
+end;
+
+function TTeamReader.ReadProfileKey(const AKey, APath: string; AValue: TJSONValue;
+  var AProfile: TAtlasStartProfile): Boolean;
+begin
+  Result := True;
+  if IsCredential(AKey, APath) then
+  begin
+    Result := False;
+  end
+  else if AKey = 'name' then
+  begin
+    Result := ReadString(AValue, APath, AProfile.Name);
+  end
+  else if AKey = 'parameters' then
+  begin
+    Result := ReadParameters(AValue, APath, AProfile.Parameters);
+  end
+  else if AKey = 'workingDir' then
+  begin
+    Result := ReadPath(AValue, APath, AProfile.WorkingDir);
+  end
+  else if AKey = 'host' then
+  begin
+    Result := ReadPath(AValue, APath, AProfile.Host);
+  end
+  else if AKey = 'environment' then
+  begin
+    Result := ReadEnvironment(AValue, APath, AProfile.Environment);
+  end
+  else
+  begin
+    Report(TAtlasTeamIssueKind.UnknownKey, APath);
+    ScanCredentials(AValue, APath);
+  end;
+end;
+
+function TTeamReader.ReadHiddenPlace(AItem: TJSONObject; const APath: string; out APlace: TAtlasHiddenPlace): Boolean;
+var
+  mMember: Integer;
+  mKey, mSetting, mFileName, mAnchor: string;
+  mValue: TJSONValue;
+begin
+  mSetting := '';
+  mFileName := '';
+  mAnchor := '';
+  Result := True;
+  for mMember := 0 to AItem.Count - 1 do
+  begin
+    mKey := AItem.Pairs[mMember].JsonString.Value;
+    mValue := AItem.Pairs[mMember].JsonValue;
+    if mKey = 'setting' then
+    begin
+      Result := ReadString(mValue, APath + '.setting', mSetting) and Result;
+    end
+    else if mKey = 'file' then
+    begin
+      Result := ReadPath(mValue, APath + '.file', mFileName) and Result;
+    end
+    else if mKey = 'anchor' then
+    begin
+      Result := ReadString(mValue, APath + '.anchor', mAnchor) and Result;
+    end
+    else
+    begin
+      Report(TAtlasTeamIssueKind.UnknownKey, APath + '.' + mKey);
+    end;
+  end;
+  if Result and ((mSetting = '') or (mFileName = '')) then
+  begin
+    Report(TAtlasTeamIssueKind.InvalidValue, APath);
+    Result := False;
+  end;
+  APlace := TAtlasHiddenPlace.Create(mSetting, mFileName, mAnchor);
+end;
+
+function TTeamReader.ReadChildren(AField: TJSONValue; const APath: string): TArray<string>;
+begin
+  // Liste oder kommagetrennt wie in // atlas-debug-children:
+  if (AField is TJSONString) and not (AField is TJSONNumber) then
+  begin
+    Result := TDebugDisplayText.SplitNames(AField.Value);
+  end
+  else
+  begin
+    Result := TDebugDisplayText.SplitNames(string.Join(',', ReadNames(AField, APath)));
+  end;
+end;
+
+function TTeamReader.ReadDisplayFields(AValue: TJSONObject; const APath: string;
+  var ARule: TAtlasTeamDisplayRule): Boolean;
+var
+  mMember: Integer;
+  mKey: string;
+  mField: TJSONValue;
+begin
+  Result := True;
+  for mMember := 0 to AValue.Count - 1 do
+  begin
+    mKey := AValue.Pairs[mMember].JsonString.Value;
+    mField := AValue.Pairs[mMember].JsonValue;
+    if mKey = 'template' then
+    begin
+      Result := ReadString(mField, APath + '.template', ARule.Template) and Result;
+    end
+    else if mKey = 'children' then
+    begin
+      ARule.Children := ReadChildren(mField, APath + '.children');
+    end
+    else
+    begin
+      Report(TAtlasTeamIssueKind.UnknownKey, APath + '.' + mKey);
+    end;
+  end;
+end;
+
+/// <summary>Ort eines Startprofils in Meldungen: mit Namen, sonst mit Index.</summary>
+function ProfilePath(AEntry: TJSONObject; const APath: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := APath;
+  mValue := AEntry.GetValue('name');
+  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
+  begin
+    Result := Format('startProfiles[%s]', [Trim(TJSONString(mValue).Value)]);
+  end;
+end;
+
+/// <summary>Anbieter in Kleinbuchstaben; False (gemeldet), wenn er nicht in AAllowed steht.</summary>
+function TTeamReader.ReadProvider(AValue: TJSONValue; const APath: string; const AAllowed: array of string;
+  out AProvider: string): Boolean;
+begin
+  Result := ReadString(AValue, APath, AProvider);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AProvider := LowerCase(AProvider);
+  Result := MatchStr(AProvider, AAllowed);
+  if not Result then
+  begin
+    Report(TAtlasTeamIssueKind.InvalidValue, APath);
+  end;
+end;
+
+function TTeamReader.ReadBool(AValue: TJSONValue; const APath: string; var AFlag: Boolean): Boolean;
+begin
+  Result := AValue is TJSONBool;
+  if Result then
+  begin
+    AFlag := TJSONBool(AValue).AsBoolean;
+  end
+  else
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, APath);
+  end;
+end;
+
+function TTeamReader.ReadCiKey(const AKey, APath: string; AValue: TJSONValue; var ACi: TAtlasTeamCi): Boolean;
+begin
+  Result := True;
+  if AKey = 'provider' then
+  begin
+    Result := ReadProvider(AValue, APath, ['jenkins'], ACi.Provider);
+  end
+  else if AKey = 'url' then
+  begin
+    ReadUrl(AValue, APath, ACi.Url);
+  end
+  else if AKey = 'job' then
+  begin
+    ReadString(AValue, APath, ACi.Job);
+  end
+  else if AKey = 'multibranch' then
+  begin
+    ReadBool(AValue, APath, ACi.Multibranch);
+  end
+  else
+  begin
+    Report(TAtlasTeamIssueKind.UnknownKey, APath);
+    ScanCredentials(AValue, APath);
+  end;
+end;
+
+function TTeamReader.ReadTrackerKey(const AKey, APath: string; AValue: TJSONValue;
+  var ATracker: TAtlasTeamTracker): Boolean;
+const
+  cProvider = 0;
+  cUrl = 1;
+  cProject = 2;
+  cTemplateFields = 3;
+begin
+  Result := True;
+  case IndexStr(AKey, ['provider', 'url', 'project', 'templateFields']) of
+    cProvider:
+      Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
+    cUrl:
+      ReadUrl(AValue, APath, ATracker.Url);
+    cProject:
+      ReadString(AValue, APath, ATracker.Project);
+    // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
+    cTemplateFields:
+      ReadEnvironment(AValue, APath, ATracker.TemplateFields);
+  else
+    Report(TAtlasTeamIssueKind.UnknownKey, APath);
+    ScanCredentials(AValue, APath);
+  end;
+end;
+
+function TTeamReader.ReadListKey(const AKey: string; AValue: TJSONValue): Boolean;
+begin
+  Result := True;
+  if AKey = 'snippets' then
+  begin
+    ReadPath(AValue, AKey, FTeam.Snippets);
+  end
+  else if AKey = 'sqlTargets' then
+  begin
+    FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
+  end
+  else if AKey = 'fileMethods' then
+  begin
+    FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
+  end
+  else if AKey = 'mainThreadExceptions' then
+  begin
+    FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TTeamReader.ReadKey(const AKey: string; AValue: TJSONValue);
+begin
+  if ReadListKey(AKey, AValue) then
+  begin
+    Exit;
+  end;
+  if AKey = 'version' then
+  begin
+    ReadVersion(AValue);
+  end
+  else if AKey = 'naming' then
+  begin
+    ReadNaming(AValue);
+  end
+  else if AKey = 'formatFunctions' then
+  begin
+    ReadFormatFunctions(AValue);
+  end
+  else if AKey = 'startProfiles' then
+  begin
+    ReadStartProfiles(AValue);
+  end
+  else if AKey = 'ci' then
+  begin
+    ReadCi(AValue);
+  end
+  else if AKey = 'tracker' then
+  begin
+    ReadTracker(AValue);
+  end
+  else if AKey = 'vcs' then
+  begin
+    ReadVcs(AValue);
+  end
+  else if AKey = TAtlasHiddenPlaces.cKey then
+  begin
+    ReadHidden(AValue);
+  end
+  else if AKey = TAtlasTeamFile.cDisplayRulesKey then
+  begin
+    ReadDisplayRules(AValue);
+  end
+  else if AKey = TAtlasTeamFile.cLaunchGroupsKey then
+  begin
+    ReadLaunchGroups(AValue);
+  end
+  else
+  begin
+    Report(TAtlasTeamIssueKind.UnknownKey, AKey);
+    ScanCredentials(AValue, AKey);
+  end;
+end;
+
+/// <summary>Vorlage oder Kinder, und eine Vorlage muss sich lesen lassen.</summary>
+function DisplayRuleValid(const ARule: TAtlasTeamDisplayRule): Boolean;
+begin
+  if ARule.Template = '' then
+  begin
+    Result := ARule.Children <> nil;
+  end
+  else
+  begin
+    Result := TDebugDisplayTemplate.Parse(ARule.Template).Valid;
+  end;
+end;
+
+/// <summary>Eine Regel aus AValue (Objekt oder nur die Vorlage); False ohne Meldung, wenn der Wert schon falsch
+/// gemeldet ist (AReported).</summary>
+function TTeamReader.ReadDisplayRule(AValue: TJSONValue; const APath: string; var ARule: TAtlasTeamDisplayRule;
+  out AReported: Boolean): Boolean;
+begin
+  AReported := False;
+  if AValue is TJSONObject then
+  begin
+    Result := ReadDisplayFields(TJSONObject(AValue), APath, ARule) and (ARule.TypeName <> '');
+  end
+  else
+  begin
+    AReported := not ReadString(AValue, APath, ARule.Template);
+    Result := not AReported and (ARule.TypeName <> '');
+  end;
+  Result := Result and DisplayRuleValid(ARule);
+end;
+
 procedure TTeamReader.ReadFormatFunctions(AValue: TJSONValue);
 var
   mIndex: Integer;
@@ -805,64 +1123,6 @@ begin
   end;
 end;
 
-function TTeamReader.ReadParameters(AValue: TJSONValue; const APath: string; out AText: string): Boolean;
-begin
-  Result := ReadString(AValue, APath, AText);
-  if Result and TTextCheckin.ContainsMachinePath(AText) then
-  begin
-    Report(TAtlasTeamIssueKind.AbsolutePath, APath);
-    Result := False;
-  end;
-end;
-
-function TTeamReader.ReadProfileKey(const AKey, APath: string; AValue: TJSONValue;
-  var AProfile: TAtlasStartProfile): Boolean;
-begin
-  Result := True;
-  if IsCredential(AKey, APath) then
-  begin
-    Result := False;
-  end
-  else if AKey = 'name' then
-  begin
-    Result := ReadString(AValue, APath, AProfile.Name);
-  end
-  else if AKey = 'parameters' then
-  begin
-    Result := ReadParameters(AValue, APath, AProfile.Parameters);
-  end
-  else if AKey = 'workingDir' then
-  begin
-    Result := ReadPath(AValue, APath, AProfile.WorkingDir);
-  end
-  else if AKey = 'host' then
-  begin
-    Result := ReadPath(AValue, APath, AProfile.Host);
-  end
-  else if AKey = 'environment' then
-  begin
-    Result := ReadEnvironment(AValue, APath, AProfile.Environment);
-  end
-  else
-  begin
-    Report(TAtlasTeamIssueKind.UnknownKey, APath);
-    ScanCredentials(AValue, APath);
-  end;
-end;
-
-/// <summary>Ort eines Startprofils in Meldungen: mit Namen, sonst mit Index.</summary>
-function ProfilePath(AEntry: TJSONObject; const APath: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := APath;
-  mValue := AEntry.GetValue('name');
-  if (mValue is TJSONString) and (Trim(TJSONString(mValue).Value) <> '') then
-  begin
-    Result := Format('startProfiles[%s]', [Trim(TJSONString(mValue).Value)]);
-  end;
-end;
-
 function TTeamReader.ReadStartProfile(AValue: TJSONValue; const APath: string;
   out AProfile: TAtlasStartProfile): Boolean;
 var
@@ -918,227 +1178,6 @@ begin
   end;
 end;
 
-function TTeamReader.ReadHiddenPlace(AItem: TJSONObject; const APath: string; out APlace: TAtlasHiddenPlace): Boolean;
-var
-  mMember: Integer;
-  mKey, mSetting, mFileName, mAnchor: string;
-  mValue: TJSONValue;
-begin
-  mSetting := '';
-  mFileName := '';
-  mAnchor := '';
-  Result := True;
-  for mMember := 0 to AItem.Count - 1 do
-  begin
-    mKey := AItem.Pairs[mMember].JsonString.Value;
-    mValue := AItem.Pairs[mMember].JsonValue;
-    if mKey = 'setting' then
-    begin
-      Result := ReadString(mValue, APath + '.setting', mSetting) and Result;
-    end
-    else if mKey = 'file' then
-    begin
-      Result := ReadPath(mValue, APath + '.file', mFileName) and Result;
-    end
-    else if mKey = 'anchor' then
-    begin
-      Result := ReadString(mValue, APath + '.anchor', mAnchor) and Result;
-    end
-    else
-    begin
-      Report(TAtlasTeamIssueKind.UnknownKey, APath + '.' + mKey);
-    end;
-  end;
-  if Result and ((mSetting = '') or (mFileName = '')) then
-  begin
-    Report(TAtlasTeamIssueKind.InvalidValue, APath);
-    Result := False;
-  end;
-  APlace := TAtlasHiddenPlace.Create(mSetting, mFileName, mAnchor);
-end;
-
-procedure TTeamReader.ReadHidden(AValue: TJSONValue);
-var
-  mIndex: Integer;
-  mItem: TJSONValue;
-  mPath: string;
-  mPlace: TAtlasHiddenPlace;
-begin
-  if not (AValue is TJSONArray) then
-  begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasHiddenPlaces.cKey);
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
-  begin
-    mItem := TJSONArray(AValue).Items[mIndex];
-    mPath := Format('%s[%d]', [TAtlasHiddenPlaces.cKey, mIndex]);
-    if not (mItem is TJSONObject) then
-    begin
-      Report(TAtlasTeamIssueKind.WrongType, mPath);
-    end
-    else if ReadHiddenPlace(TJSONObject(mItem), mPath, mPlace) then
-    begin
-      FTeam.Hidden := FTeam.Hidden + [mPlace];
-    end;
-  end;
-end;
-
-function TTeamReader.ReadChildren(AField: TJSONValue; const APath: string): TArray<string>;
-begin
-  // Liste oder kommagetrennt wie in // atlas-debug-children:
-  if (AField is TJSONString) and not (AField is TJSONNumber) then
-  begin
-    Result := TDebugDisplayText.SplitNames(AField.Value);
-  end
-  else
-  begin
-    Result := TDebugDisplayText.SplitNames(string.Join(',', ReadNames(AField, APath)));
-  end;
-end;
-
-function TTeamReader.ReadDisplayFields(AValue: TJSONObject; const APath: string;
-  var ARule: TAtlasTeamDisplayRule): Boolean;
-var
-  mMember: Integer;
-  mKey: string;
-  mField: TJSONValue;
-begin
-  Result := True;
-  for mMember := 0 to AValue.Count - 1 do
-  begin
-    mKey := AValue.Pairs[mMember].JsonString.Value;
-    mField := AValue.Pairs[mMember].JsonValue;
-    if mKey = 'template' then
-    begin
-      Result := ReadString(mField, APath + '.template', ARule.Template) and Result;
-    end
-    else if mKey = 'children' then
-    begin
-      ARule.Children := ReadChildren(mField, APath + '.children');
-    end
-    else
-    begin
-      Report(TAtlasTeamIssueKind.UnknownKey, APath + '.' + mKey);
-    end;
-  end;
-end;
-
-/// <summary>Vorlage oder Kinder, und eine Vorlage muss sich lesen lassen.</summary>
-function DisplayRuleValid(const ARule: TAtlasTeamDisplayRule): Boolean;
-begin
-  if ARule.Template = '' then
-  begin
-    Result := ARule.Children <> nil;
-  end
-  else
-  begin
-    Result := TDebugDisplayTemplate.Parse(ARule.Template).Valid;
-  end;
-end;
-
-/// <summary>Eine Regel aus AValue (Objekt oder nur die Vorlage); False ohne Meldung, wenn der Wert schon falsch
-/// gemeldet ist (AReported).</summary>
-function TTeamReader.ReadDisplayRule(AValue: TJSONValue; const APath: string; var ARule: TAtlasTeamDisplayRule;
-  out AReported: Boolean): Boolean;
-begin
-  AReported := False;
-  if AValue is TJSONObject then
-  begin
-    Result := ReadDisplayFields(TJSONObject(AValue), APath, ARule) and (ARule.TypeName <> '');
-  end
-  else
-  begin
-    AReported := not ReadString(AValue, APath, ARule.Template);
-    Result := not AReported and (ARule.TypeName <> '');
-  end;
-  Result := Result and DisplayRuleValid(ARule);
-end;
-
-procedure TTeamReader.ReadDisplayRules(AValue: TJSONValue);
-var
-  mIndex: Integer;
-  mPath: string;
-  mRule: TAtlasTeamDisplayRule;
-  mReported: Boolean;
-begin
-  if not (AValue is TJSONObject) then
-  begin
-    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cDisplayRulesKey);
-    Exit;
-  end;
-  for mIndex := 0 to TJSONObject(AValue).Count - 1 do
-  begin
-    mRule := Default(TAtlasTeamDisplayRule);
-    mRule.TypeName := Trim(TJSONObject(AValue).Pairs[mIndex].JsonString.Value);
-    mPath := TAtlasTeamFile.cDisplayRulesKey + '.' + mRule.TypeName;
-    if ReadDisplayRule(TJSONObject(AValue).Pairs[mIndex].JsonValue, mPath, mRule, mReported) then
-    begin
-      FTeam.DisplayRules := FTeam.DisplayRules + [mRule];
-    end
-    else if not mReported then
-    begin
-      Report(TAtlasTeamIssueKind.InvalidValue, mPath);
-    end;
-  end;
-end;
-
-/// <summary>Anbieter in Kleinbuchstaben; False (gemeldet), wenn er nicht in AAllowed steht.</summary>
-function TTeamReader.ReadProvider(AValue: TJSONValue; const APath: string; const AAllowed: array of string;
-  out AProvider: string): Boolean;
-begin
-  Result := ReadString(AValue, APath, AProvider);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AProvider := LowerCase(AProvider);
-  Result := MatchStr(AProvider, AAllowed);
-  if not Result then
-  begin
-    Report(TAtlasTeamIssueKind.InvalidValue, APath);
-  end;
-end;
-
-function TTeamReader.ReadBool(AValue: TJSONValue; const APath: string; var AFlag: Boolean): Boolean;
-begin
-  Result := AValue is TJSONBool;
-  if Result then
-  begin
-    AFlag := TJSONBool(AValue).AsBoolean;
-  end
-  else
-  begin
-    Report(TAtlasTeamIssueKind.WrongType, APath);
-  end;
-end;
-
-function TTeamReader.ReadCiKey(const AKey, APath: string; AValue: TJSONValue; var ACi: TAtlasTeamCi): Boolean;
-begin
-  Result := True;
-  if AKey = 'provider' then
-  begin
-    Result := ReadProvider(AValue, APath, ['jenkins'], ACi.Provider);
-  end
-  else if AKey = 'url' then
-  begin
-    ReadUrl(AValue, APath, ACi.Url);
-  end
-  else if AKey = 'job' then
-  begin
-    ReadString(AValue, APath, ACi.Job);
-  end
-  else if AKey = 'multibranch' then
-  begin
-    ReadBool(AValue, APath, ACi.Multibranch);
-  end
-  else
-  begin
-    Report(TAtlasTeamIssueKind.UnknownKey, APath);
-    ScanCredentials(AValue, APath);
-  end;
-end;
-
 procedure TTeamReader.ReadCi(AValue: TJSONValue);
 var
   mIndex: Integer;
@@ -1164,31 +1203,6 @@ begin
     end;
   end;
   FTeam.Ci := mCi;
-end;
-
-function TTeamReader.ReadTrackerKey(const AKey, APath: string; AValue: TJSONValue;
-  var ATracker: TAtlasTeamTracker): Boolean;
-const
-  cProvider = 0;
-  cUrl = 1;
-  cProject = 2;
-  cTemplateFields = 3;
-begin
-  Result := True;
-  case IndexStr(AKey, ['provider', 'url', 'project', 'templateFields']) of
-    cProvider:
-      Result := ReadProvider(AValue, APath, ['github', 'youtrack'], ATracker.Provider);
-    cUrl:
-      ReadUrl(AValue, APath, ATracker.Url);
-    cProject:
-      ReadString(AValue, APath, ATracker.Project);
-    // Feld-Id → Text wie Umgebungsvariablen: Objekt aus Texten, ohne Zugangsdaten und Pfade (#2137).
-    cTemplateFields:
-      ReadEnvironment(AValue, APath, ATracker.TemplateFields);
-  else
-    Report(TAtlasTeamIssueKind.UnknownKey, APath);
-    ScanCredentials(AValue, APath);
-  end;
 end;
 
 procedure TTeamReader.ReadTracker(AValue: TJSONValue);
@@ -1220,6 +1234,30 @@ begin
     Exit;
   end;
   FTeam.Tracker := mTracker;
+end;
+
+procedure TTeamReader.ReadVcs(AValue: TJSONValue);
+var
+  mIndex: Integer;
+  mKey, mPath: string;
+  mVcs: TAtlasTeamVcs;
+begin
+  if not (AValue is TJSONObject) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, 'vcs');
+    Exit;
+  end;
+  mVcs := Default(TAtlasTeamVcs);
+  for mIndex := 0 to TJSONObject(AValue).Count - 1 do
+  begin
+    mKey := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
+    mPath := 'vcs.' + mKey;
+    if not IsCredential(mKey, mPath) then
+    begin
+      ReadVcsKey(mKey, mPath, TJSONObject(AValue).Pairs[mIndex].JsonValue, mVcs);
+    end;
+  end;
+  FTeam.Vcs := mVcs;
 end;
 
 /// <summary>Leerzeichen und Steuerzeichen gibt es in keinem Branch-Namen; ein solcher Wert gilt nicht.</summary>
@@ -1263,74 +1301,58 @@ begin
   end;
 end;
 
-procedure TTeamReader.ReadVcs(AValue: TJSONValue);
+procedure TTeamReader.ReadHidden(AValue: TJSONValue);
 var
   mIndex: Integer;
-  mKey, mPath: string;
-  mVcs: TAtlasTeamVcs;
+  mItem: TJSONValue;
+  mPath: string;
+  mPlace: TAtlasHiddenPlace;
+begin
+  if not (AValue is TJSONArray) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasHiddenPlaces.cKey);
+    Exit;
+  end;
+  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
+  begin
+    mItem := TJSONArray(AValue).Items[mIndex];
+    mPath := Format('%s[%d]', [TAtlasHiddenPlaces.cKey, mIndex]);
+    if not (mItem is TJSONObject) then
+    begin
+      Report(TAtlasTeamIssueKind.WrongType, mPath);
+    end
+    else if ReadHiddenPlace(TJSONObject(mItem), mPath, mPlace) then
+    begin
+      FTeam.Hidden := FTeam.Hidden + [mPlace];
+    end;
+  end;
+end;
+
+procedure TTeamReader.ReadDisplayRules(AValue: TJSONValue);
+var
+  mIndex: Integer;
+  mPath: string;
+  mRule: TAtlasTeamDisplayRule;
+  mReported: Boolean;
 begin
   if not (AValue is TJSONObject) then
   begin
-    Report(TAtlasTeamIssueKind.WrongType, 'vcs');
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.cDisplayRulesKey);
     Exit;
   end;
-  mVcs := Default(TAtlasTeamVcs);
   for mIndex := 0 to TJSONObject(AValue).Count - 1 do
   begin
-    mKey := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
-    mPath := 'vcs.' + mKey;
-    if not IsCredential(mKey, mPath) then
+    mRule := Default(TAtlasTeamDisplayRule);
+    mRule.TypeName := Trim(TJSONObject(AValue).Pairs[mIndex].JsonString.Value);
+    mPath := TAtlasTeamFile.cDisplayRulesKey + '.' + mRule.TypeName;
+    if ReadDisplayRule(TJSONObject(AValue).Pairs[mIndex].JsonValue, mPath, mRule, mReported) then
     begin
-      ReadVcsKey(mKey, mPath, TJSONObject(AValue).Pairs[mIndex].JsonValue, mVcs);
+      FTeam.DisplayRules := FTeam.DisplayRules + [mRule];
+    end
+    else if not mReported then
+    begin
+      Report(TAtlasTeamIssueKind.InvalidValue, mPath);
     end;
-  end;
-  FTeam.Vcs := mVcs;
-end;
-
-procedure TTeamReader.ReadVersion(AValue: TJSONValue);
-var
-  mVersion: Integer;
-begin
-  if not (AValue is TJSONNumber) then
-  begin
-    Report(TAtlasTeamIssueKind.WrongType, 'version');
-    Exit;
-  end;
-  mVersion := TJSONNumber(AValue).AsInt;
-  if mVersion < 1 then
-  begin
-    Report(TAtlasTeamIssueKind.InvalidValue, 'version');
-    Exit;
-  end;
-  FTeam.Version := mVersion;
-  if mVersion > TAtlasTeamFile.cCurrentVersion then
-  begin
-    Report(TAtlasTeamIssueKind.Version, 'version');
-  end;
-end;
-
-function TTeamReader.ReadListKey(const AKey: string; AValue: TJSONValue): Boolean;
-begin
-  Result := True;
-  if AKey = 'snippets' then
-  begin
-    ReadPath(AValue, AKey, FTeam.Snippets);
-  end
-  else if AKey = 'sqlTargets' then
-  begin
-    FTeam.SqlTargets := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
-  else if AKey = 'fileMethods' then
-  begin
-    FTeam.FileMethods := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
-  else if AKey = 'mainThreadExceptions' then
-  begin
-    FTeam.MainThreadExceptions := TAtlasTeamFile.MergeNames(ReadNames(AValue, AKey), nil);
-  end
-  else
-  begin
-    Result := False;
   end;
 end;
 
@@ -1352,56 +1374,25 @@ begin
   end;
 end;
 
-procedure TTeamReader.ReadKey(const AKey: string; AValue: TJSONValue);
+procedure TTeamReader.ReadVersion(AValue: TJSONValue);
+var
+  mVersion: Integer;
 begin
-  if ReadListKey(AKey, AValue) then
+  if not (AValue is TJSONNumber) then
   begin
+    Report(TAtlasTeamIssueKind.WrongType, 'version');
     Exit;
   end;
-  if AKey = 'version' then
+  mVersion := TJSONNumber(AValue).AsInt;
+  if mVersion < 1 then
   begin
-    ReadVersion(AValue);
-  end
-  else if AKey = 'naming' then
+    Report(TAtlasTeamIssueKind.InvalidValue, 'version');
+    Exit;
+  end;
+  FTeam.Version := mVersion;
+  if mVersion > TAtlasTeamFile.cCurrentVersion then
   begin
-    ReadNaming(AValue);
-  end
-  else if AKey = 'formatFunctions' then
-  begin
-    ReadFormatFunctions(AValue);
-  end
-  else if AKey = 'startProfiles' then
-  begin
-    ReadStartProfiles(AValue);
-  end
-  else if AKey = 'ci' then
-  begin
-    ReadCi(AValue);
-  end
-  else if AKey = 'tracker' then
-  begin
-    ReadTracker(AValue);
-  end
-  else if AKey = 'vcs' then
-  begin
-    ReadVcs(AValue);
-  end
-  else if AKey = TAtlasHiddenPlaces.cKey then
-  begin
-    ReadHidden(AValue);
-  end
-  else if AKey = TAtlasTeamFile.cDisplayRulesKey then
-  begin
-    ReadDisplayRules(AValue);
-  end
-  else if AKey = TAtlasTeamFile.cLaunchGroupsKey then
-  begin
-    ReadLaunchGroups(AValue);
-  end
-  else
-  begin
-    Report(TAtlasTeamIssueKind.UnknownKey, AKey);
-    ScanCredentials(AValue, AKey);
+    Report(TAtlasTeamIssueKind.Version, 'version');
   end;
 end;
 
@@ -1428,22 +1419,18 @@ begin
   end;
 end;
 
+procedure TTeamReader.Invalid(ALine, AColumn: Integer);
+var
+  mIssue: TAtlasTeamIssue;
+begin
+  FTeam.Valid := False;
+  mIssue := TAtlasTeamIssue.Create(TAtlasTeamIssueKind.Syntax, '');
+  mIssue.Line := ALine;
+  mIssue.Column := AColumn;
+  FTeam.Issues := FTeam.Issues + [mIssue];
+end;
+
 { TAtlasTeamFile }
-
-class function TAtlasTeamFile.Empty: TAtlasTeamSettings;
-begin
-  Result := Default(TAtlasTeamSettings);
-  Result.Version := cCurrentVersion;
-end;
-
-class function TAtlasTeamFile.RootOf(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
-begin
-  Result := RepositoryRoot(AFolder, AExists);
-  if Result = '' then
-  begin
-    Result := WithoutTrailing(AFolder);
-  end;
-end;
 
 class function TAtlasTeamFile.Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string;
 begin
@@ -1491,6 +1478,15 @@ begin
   end;
 end;
 
+class function TAtlasTeamFile.RootOf(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
+begin
+  Result := RepositoryRoot(AFolder, AExists);
+  if Result = '' then
+  begin
+    Result := WithoutTrailing(AFolder);
+  end;
+end;
+
 class function TAtlasTeamFile.Parse(const AText, AFileName, ARoot: string): TAtlasTeamSettings;
 var
   mReader: TTeamReader;
@@ -1528,6 +1524,12 @@ begin
   finally
     mReader.Free;
   end;
+end;
+
+class function TAtlasTeamFile.Empty: TAtlasTeamSettings;
+begin
+  Result := Default(TAtlasTeamSettings);
+  Result.Version := cCurrentVersion;
 end;
 
 const

@@ -275,35 +275,6 @@ begin
   Result := SameText(Trim(A), Trim(B));
 end;
 
-class function TAtlasWelcomeContinueIssues.ToJson(const AEntries: TAtlasIssueWorkEntries): string;
-var
-  mSection: TJSONObject;
-begin
-  mSection := SectionJson(AEntries);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
-end;
-
-class function TAtlasWelcomeContinueIssues.FromJson(const AJson: string; out AEntries: TAtlasIssueWorkEntries): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AEntries := nil;
-  mValue := TJsonRead.Parse(AJson);
-  try
-    Result := mValue is TJSONObject;
-    if Result then
-    begin
-      AEntries := EntriesOf(TJSONObject(mValue));
-    end;
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasWelcomeContinueIssues.Read(const ASummary: TAtlasProjectSummary;
   out AEntries: TAtlasIssueWorkEntries): Boolean;
 var
@@ -360,10 +331,33 @@ begin
   end;
 end;
 
-class function TAtlasWelcomeContinueIssues.Limit(const AEntries: TAtlasIssueWorkEntries;
-  ACount: Integer): TAtlasIssueWorkEntries;
+class function TAtlasWelcomeContinueIssues.ToJson(const AEntries: TAtlasIssueWorkEntries): string;
+var
+  mSection: TJSONObject;
 begin
-  Result := Copy(AEntries, 0, ClampCount(ACount));
+  mSection := SectionJson(AEntries);
+  try
+    Result := mSection.ToJSON;
+  finally
+    mSection.Free;
+  end;
+end;
+
+class function TAtlasWelcomeContinueIssues.FromJson(const AJson: string; out AEntries: TAtlasIssueWorkEntries): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AEntries := nil;
+  mValue := TJsonRead.Parse(AJson);
+  try
+    Result := mValue is TJSONObject;
+    if Result then
+    begin
+      AEntries := EntriesOf(TJSONObject(mValue));
+    end;
+  finally
+    mValue.Free;
+  end;
 end;
 
 class function TAtlasWelcomeContinueIssues.Store(const AEntries: TAtlasIssueWorkEntries;
@@ -401,6 +395,12 @@ begin
       Result := Result + [mEntry];
     end;
   end;
+end;
+
+class function TAtlasWelcomeContinueIssues.Limit(const AEntries: TAtlasIssueWorkEntries;
+  ACount: Integer): TAtlasIssueWorkEntries;
+begin
+  Result := Copy(AEntries, 0, ClampCount(ACount));
 end;
 
 class function TAtlasWelcomeContinueIssues.Find(const AEntries: TAtlasIssueWorkEntries; const AKey: string;

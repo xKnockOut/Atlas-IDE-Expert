@@ -63,6 +63,8 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings;
 
+{ TAtlasIssueTip }
+
 class function TAtlasIssueTip.AgeText(ATime, ANow: TDateTime): string;
 var
   mAge: TAtlasIssueAge;

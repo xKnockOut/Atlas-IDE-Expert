@@ -72,6 +72,8 @@ uses
 const
   cGap = 8;
 
+{ TAtlasExportDialogTexts }
+
 class function TAtlasExportDialogTexts.Create(const ATitle, AHint, APreview, ADefaultName, AFilter,
   ADefaultExt: string): TAtlasExportDialogTexts;
 begin
@@ -90,6 +92,8 @@ begin
     TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagExportFilter),
     'zip');
 end;
+
+{ TAtlasDiagnosticExportDialog }
 
 constructor TAtlasDiagnosticExportDialog.CreateDialog(AOwner: TComponent; const AHint, APreview: string);
 begin
@@ -158,13 +162,6 @@ begin
   mMemo.Lines.Text := ATexts.Preview;
 end;
 
-procedure TAtlasDiagnosticExportDialog.FitHint(Sender: TObject);
-begin
-  // AutoSize misst nur beim Setzen neu; nach Breitenänderung (DPI, Größe) die Höhe zum Umbruch passend machen.
-  FHint.AutoSize := False;
-  FHint.AutoSize := True;
-end;
-
 procedure TAtlasDiagnosticExportDialog.SaveClick(Sender: TObject);
 var
   mDialog: TSaveDialog;
@@ -186,9 +183,11 @@ begin
   end;
 end;
 
-class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
+procedure TAtlasDiagnosticExportDialog.FitHint(Sender: TObject);
 begin
-  Result := Execute(TAtlasExportDialogTexts.Diagnostic(AHint, APreview), AFileName, nil);
+  // AutoSize misst nur beim Setzen neu; nach Breitenänderung (DPI, Größe) die Höhe zum Umbruch passend machen.
+  FHint.AutoSize := False;
+  FHint.AutoSize := True;
 end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string;
@@ -197,10 +196,9 @@ begin
   Result := Execute(TAtlasExportDialogTexts.Diagnostic(AHint, APreview), AFileName, APrepare);
 end;
 
-class function TAtlasDiagnosticExportDialog.Execute(const ATexts: TAtlasExportDialogTexts;
-  out AFileName: string): Boolean;
+class function TAtlasDiagnosticExportDialog.Execute(const AHint, APreview: string; out AFileName: string): Boolean;
 begin
-  Result := Execute(ATexts, AFileName, nil);
+  Result := Execute(TAtlasExportDialogTexts.Diagnostic(AHint, APreview), AFileName, nil);
 end;
 
 class function TAtlasDiagnosticExportDialog.Execute(const ATexts: TAtlasExportDialogTexts; out AFileName: string;
@@ -219,6 +217,12 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+class function TAtlasDiagnosticExportDialog.Execute(const ATexts: TAtlasExportDialogTexts;
+  out AFileName: string): Boolean;
+begin
+  Result := Execute(ATexts, AFileName, nil);
 end;
 
 end.

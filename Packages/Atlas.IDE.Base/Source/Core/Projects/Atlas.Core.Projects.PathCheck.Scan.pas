@@ -128,6 +128,8 @@ begin
   end;
 end;
 
+{ TExpressionParser }
+
 constructor TExpressionParser.Create(const AExpression: string; ADefines: TDictionary<string, Boolean>);
 begin
   inherited Create;
@@ -148,17 +150,6 @@ function TExpressionParser.Next: string;
 begin
   Result := Peek;
   Inc(FPos);
-end;
-
-function TExpressionParser.Parse: TAtlasBranchState;
-begin
-  FPos := 0;
-  FFailed := False;
-  Result := ParseOr;
-  if FFailed or (FPos <= High(FTokens)) then
-  begin
-    Result := TAtlasBranchState.Unknown;
-  end;
 end;
 
 function TExpressionParser.ParseOr: TAtlasBranchState;
@@ -252,6 +243,17 @@ begin
   Result := TAtlasBranchState.Unknown;
 end;
 
+function TExpressionParser.Parse: TAtlasBranchState;
+begin
+  FPos := 0;
+  FFailed := False;
+  Result := ParseOr;
+  if FFailed or (FPos <= High(FTokens)) then
+  begin
+    Result := TAtlasBranchState.Unknown;
+  end;
+end;
+
 { Scanner }
 
 type
@@ -303,6 +305,8 @@ type
     destructor Destroy; override;
     function Run: TAtlasSourceScan;
   end;
+
+{ TScanner }
 
 constructor TScanner.Create(const AText: string; const ADefines: TArray<string>);
 var
@@ -418,55 +422,6 @@ begin
   end;
 end;
 
-procedure TScanner.Reference(const AName: string; ALine: Integer);
-var
-  mUse: TAtlasSymbolUse;
-begin
-  if (AName = '') or not TTextChars.IsIdentStart(AName[1]) then
-  begin
-    Exit;
-  end;
-  mUse.Name := AName;
-  mUse.Line := ALine;
-  FResult.Referenced := FResult.Referenced + [mUse];
-end;
-
-procedure TScanner.ReferenceAll(const AExpression: string; ALine: Integer);
-var
-  mTokens: TArray<string>;
-  mIndex: Integer;
-begin
-  mTokens := Tokenize(AExpression);
-  for mIndex := 0 to High(mTokens) - 3 do
-  begin
-    if SameText(mTokens[mIndex], 'defined') and (mTokens[mIndex + 1] = '(') and (mTokens[mIndex + 3] = ')') then
-    begin
-      Reference(mTokens[mIndex + 2], ALine);
-    end;
-  end;
-end;
-
-function FirstWord(const AText: string): string;
-var
-  mIndex: Integer;
-begin
-  mIndex := 1;
-  while (mIndex <= Length(AText)) and TTextChars.IsIdentChar(AText[mIndex]) do
-  begin
-    Inc(mIndex);
-  end;
-  Result := Copy(AText, 1, mIndex - 1);
-end;
-
-function Unquote(const AText: string): string;
-begin
-  Result := Trim(AText);
-  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
-  begin
-    Result := Copy(Result, 2, Length(Result) - 2);
-  end;
-end;
-
 procedure TScanner.IfDef(const ASymbol: string; ADefined: Boolean; ALine: Integer);
 var
   mCondition: TAtlasBranchState;
@@ -499,6 +454,27 @@ begin
   else
   begin
     ElseIf(mCondition);
+  end;
+end;
+
+function FirstWord(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and TTextChars.IsIdentChar(AText[mIndex]) do
+  begin
+    Inc(mIndex);
+  end;
+  Result := Copy(AText, 1, mIndex - 1);
+end;
+
+function Unquote(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2);
   end;
 end;
 
@@ -567,17 +543,32 @@ begin
   end;
 end;
 
-procedure TScanner.Commit;
+procedure TScanner.Reference(const AName: string; ALine: Integer);
+var
+  mUse: TAtlasSymbolUse;
 begin
-  if (FPending.Name <> '') and FInRequires then
+  if (AName = '') or not TTextChars.IsIdentStart(AName[1]) then
   begin
-    FResult.Requires := FResult.Requires + [FPending];
-  end
-  else if FPending.Name <> '' then
-  begin
-    FResult.Units := FResult.Units + [FPending];
+    Exit;
   end;
-  FPending := Default(TAtlasUsedUnit);
+  mUse.Name := AName;
+  mUse.Line := ALine;
+  FResult.Referenced := FResult.Referenced + [mUse];
+end;
+
+procedure TScanner.ReferenceAll(const AExpression: string; ALine: Integer);
+var
+  mTokens: TArray<string>;
+  mIndex: Integer;
+begin
+  mTokens := Tokenize(AExpression);
+  for mIndex := 0 to High(mTokens) - 3 do
+  begin
+    if SameText(mTokens[mIndex], 'defined') and (mTokens[mIndex + 1] = '(') and (mTokens[mIndex + 3] = ')') then
+    begin
+      Reference(mTokens[mIndex + 2], ALine);
+    end;
+  end;
 end;
 
 procedure TScanner.Word(const AWord: string; ALine: Integer);
@@ -667,6 +658,19 @@ begin
     FPending := Default(TAtlasUsedUnit);
     FUses := TUsesState.None;
   end;
+end;
+
+procedure TScanner.Commit;
+begin
+  if (FPending.Name <> '') and FInRequires then
+  begin
+    FResult.Requires := FResult.Requires + [FPending];
+  end
+  else if FPending.Name <> '' then
+  begin
+    FResult.Units := FResult.Units + [FPending];
+  end;
+  FPending := Default(TAtlasUsedUnit);
 end;
 
 procedure TScanner.CountLines(AFrom, ATo: Integer);

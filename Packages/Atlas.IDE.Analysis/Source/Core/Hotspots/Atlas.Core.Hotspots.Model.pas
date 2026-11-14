@@ -386,6 +386,8 @@ begin
   Result := AModel.Pending or ReadData(TJsonRead.Obj(AAnswer, 'data'), AModel);
 end;
 
+{ TAtlasHotspotModel }
+
 class function TAtlasHotspotModel.Parse(const AAnswer: string; out AModel: TAtlasHotspotModel;
   out AEnabled, AHasVcs: Boolean; out AMessage: string): Boolean;
 var
@@ -452,20 +454,6 @@ begin
 end;
 
 { TAtlasHotspotChart }
-
-class procedure TAtlasHotspotChart.Extent(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>;
-  out AMaxChanges, AMaxComplexity: Integer);
-var
-  mIndex: Integer;
-begin
-  AMaxChanges := 1;
-  AMaxComplexity := 1;
-  for mIndex := 0 to Min(Length(AShown), cLimit) - 1 do
-  begin
-    AMaxChanges := Max(AMaxChanges, AEntries[AShown[mIndex]].Changes);
-    AMaxComplexity := Max(AMaxComplexity, AEntries[AShown[mIndex]].Complexity);
-  end;
-end;
 
 class function TAtlasHotspotChart.Layout(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>;
   AWidth, AHeight: Integer; AScale: Double): TArray<TAtlasHotspotBubble>;
@@ -559,6 +547,20 @@ begin
     mGreen := Round(170 * (1 - mScore) * 2);
   end;
   Result := Cardinal(mRed) or (Cardinal(mGreen) shl 8) or (Cardinal(40) shl 16);
+end;
+
+class procedure TAtlasHotspotChart.Extent(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>;
+  out AMaxChanges, AMaxComplexity: Integer);
+var
+  mIndex: Integer;
+begin
+  AMaxChanges := 1;
+  AMaxComplexity := 1;
+  for mIndex := 0 to Min(Length(AShown), cLimit) - 1 do
+  begin
+    AMaxChanges := Max(AMaxChanges, AEntries[AShown[mIndex]].Changes);
+    AMaxComplexity := Max(AMaxComplexity, AEntries[AShown[mIndex]].Complexity);
+  end;
 end;
 
 { TAtlasHotspotCommands }

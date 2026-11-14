@@ -31,6 +31,8 @@ type
 
 implementation
 
+{ TAtlasSnapshotPolicy }
+
 class function TAtlasSnapshotPolicy.MustRead(const AState: TAtlasSnapshotState; ALines: Integer;
   AModified: Boolean; ANow: UInt64): Boolean;
 begin

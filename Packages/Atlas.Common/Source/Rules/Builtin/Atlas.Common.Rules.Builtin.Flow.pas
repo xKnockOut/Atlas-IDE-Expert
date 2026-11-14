@@ -468,6 +468,8 @@ begin
   Result := (mCallee <> nil) and IsName(mCallee, 'Exit');
 end;
 
+{ TNoreturnReturnsRule }
+
 function TNoreturnReturnsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cNoreturnReturnsRuleId, TRuleSeverity.Warning,

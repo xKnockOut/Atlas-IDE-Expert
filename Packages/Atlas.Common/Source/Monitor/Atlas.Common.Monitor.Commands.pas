@@ -114,6 +114,8 @@ const
 
   cAll = 'all';
 
+{ TMonitorCommands }
+
 class function TMonitorCommands.Text(ACommand: TMonitorCommand): string;
 begin
   Result := cTexts[ACommand].Text;
@@ -153,6 +155,8 @@ type
     procedure Value(const ASwitch, AValue: string);
     procedure Flag(const ASwitch: string; AOn: Boolean);
   end;
+
+{ TArgs }
 
 procedure TArgs.Add(const AArgument: string);
 begin

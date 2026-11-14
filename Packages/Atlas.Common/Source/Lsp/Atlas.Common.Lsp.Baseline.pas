@@ -191,6 +191,29 @@ begin
   end;
 end;
 
+function TLspBaseline.Execute(const AArguments: TJSONArray): TJSONValue;
+var
+  mFileName, mText: string;
+  mSource: TLspMetricsSource;
+begin
+  mFileName := '';
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
+  // Auch für eine Quelltextdatei die Dateien ihres Arbeitsbereichs: Die Baseline gilt immer für alle.
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBaselineText.NoWorkspaceFoundForThe].Text);
+  end;
+  mText := Update(mSource);
+  Result := TJSONObject.ParseJSONValue(mText);
+  if Result = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TBaselineText.AnswerOfTheBaselineIs].Text);
+  end;
+end;
+
 function TLspBaseline.Update(const ASource: TLspMetricsSource): string;
 var
   mFileName, mPrevious, mSetAsideFile, mRoot: string;
@@ -226,29 +249,6 @@ begin
     Result := Result + '"setAside": ' + TFindingsOutput.JsonString(mSetAsideFile) + ', ';
   end;
   Result := Result + '"skipped": ' + IntToStr(mSkipped) + ', ' + Copy(mOutcome.CountersJson, 2, MaxInt);
-end;
-
-function TLspBaseline.Execute(const AArguments: TJSONArray): TJSONValue;
-var
-  mFileName, mText: string;
-  mSource: TLspMetricsSource;
-begin
-  mFileName := '';
-  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
-  begin
-    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
-  end;
-  // Auch für eine Quelltextdatei die Dateien ihres Arbeitsbereichs: Die Baseline gilt immer für alle.
-  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBaselineText.NoWorkspaceFoundForThe].Text);
-  end;
-  mText := Update(mSource);
-  Result := TJSONObject.ParseJSONValue(mText);
-  if Result = nil then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TBaselineText.AnswerOfTheBaselineIs].Text);
-  end;
 end;
 
 initialization

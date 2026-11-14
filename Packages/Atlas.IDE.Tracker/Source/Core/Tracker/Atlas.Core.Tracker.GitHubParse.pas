@@ -204,6 +204,8 @@ begin
   AIssue.Labels := IssueLabelsOf(mItem.Values['labels'], TAtlasTrackerIssue.cMaxLabels);
 end;
 
+{ TAtlasGitHubParse }
+
 class function TAtlasGitHubParse.ParseIssues(const AJson: string; AMax: Integer;
   out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
 var

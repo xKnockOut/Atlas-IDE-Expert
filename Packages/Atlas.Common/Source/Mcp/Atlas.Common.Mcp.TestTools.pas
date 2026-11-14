@@ -345,6 +345,8 @@ begin
   Result := cTexts[AOutcome];
 end;
 
+{ TMcpTestProcess }
+
 class function TMcpTestProcess.Make(AExitCode: Integer; const AOutput: TArray<string>): TMcpTestProcess;
 begin
   Result.ExitCode := AExitCode;

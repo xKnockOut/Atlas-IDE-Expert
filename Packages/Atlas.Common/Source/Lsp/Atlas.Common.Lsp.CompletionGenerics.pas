@@ -566,6 +566,8 @@ type
     procedure AddBasic(const AName: string);
   end;
 
+{ TGenericFilter }
+
 function TGenericFilter.Admit(AKind: TTypeArgKind; const ASymbol: TResolvedSymbol): Boolean;
 begin
   Result := ConstraintsAllow(Request.Resolver, AKind, Param.Constraints, ASymbol);

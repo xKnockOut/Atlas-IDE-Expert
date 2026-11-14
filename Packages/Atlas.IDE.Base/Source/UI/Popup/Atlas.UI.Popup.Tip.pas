@@ -33,6 +33,23 @@ uses
 
 { TAtlasTextTip }
 
+procedure TAtlasTextTip.Paint;
+var
+  mText: TRect;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Canvas.Font := Font;
+  Canvas.Font.Color := ToColor(Colors.Text);
+  Canvas.Brush.Style := bsClear;
+  mText := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
+  DrawText(Canvas.Handle, PChar(FText), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  Canvas.Brush.Style := bsSolid;
+  PaintBorder;
+end;
+
 procedure TAtlasTextTip.ShowText(const AText: string; const APoint: TPoint);
 var
   mArea, mBounds: TRect;
@@ -54,23 +71,6 @@ begin
   end;
   ShowAt(mBounds);
   Invalidate;
-end;
-
-procedure TAtlasTextTip.Paint;
-var
-  mText: TRect;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Canvas.Font := Font;
-  Canvas.Font.Color := ToColor(Colors.Text);
-  Canvas.Brush.Style := bsClear;
-  mText := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
-  DrawText(Canvas.Handle, PChar(FText), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
-    DT_END_ELLIPSIS);
-  Canvas.Brush.Style := bsSolid;
-  PaintBorder;
 end;
 
 end.

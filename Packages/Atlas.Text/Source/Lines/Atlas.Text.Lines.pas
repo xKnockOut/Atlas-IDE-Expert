@@ -446,15 +446,6 @@ begin
   end;
 end;
 
-class function TTextLines.IndentLength(const ALine: string): Integer;
-begin
-  Result := 0;
-  while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 class function TTextLines.IndentOf(const ALine: string): string;
 begin
   Result := Copy(ALine, 1, IndentLength(ALine));
@@ -471,6 +462,15 @@ begin
   end;
   Result := IndentOf(Copy(AText, mTable.LineStart(ALine) + 1,
     mTable.LineContentEnd(ALine) - mTable.LineStart(ALine)));
+end;
+
+class function TTextLines.IndentLength(const ALine: string): Integer;
+begin
+  Result := 0;
+  while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
+  begin
+    Inc(Result);
+  end;
 end;
 
 class function TTextLines.StripTrailingCr(const ALine: string): string;

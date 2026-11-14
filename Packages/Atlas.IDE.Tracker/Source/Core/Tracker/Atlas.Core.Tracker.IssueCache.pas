@@ -304,38 +304,6 @@ begin
   inherited;
 end;
 
-class function TAtlasTrackerIssueCache.TrackerId(const ATarget: TAtlasTrackerTarget): string;
-var
-  mText: string;
-  mHash: Cardinal;
-  mIndex: Integer;
-begin
-  // FNV-1a über die UTF-16-Zeichen; nur Unterscheidung, kein Schutz.
-  mText := LowerCase(ATarget.Server + '|' + ATarget.Project);
-  mHash := 2166136261;
-  for mIndex := 1 to Length(mText) do
-  begin
-    mHash := mHash xor Ord(mText[mIndex]);
-    mHash := Cardinal(UInt64(mHash) * 16777619);
-  end;
-  Result := LowerCase(IntToHex(mHash, 8));
-end;
-
-class function TAtlasTrackerIssueCache.SafeName(const AKey: string): string;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 1 to Length(AKey) do
-  begin
-    if CharInSet(AKey[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
-    begin
-      Result := Result + AKey[mIndex];
-    end;
-  end;
-  Result := Copy(Result, 1, 64);
-end;
-
 function TAtlasTrackerIssueCache.FileOf(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 var
   mName: string;
@@ -347,77 +315,6 @@ begin
     Exit;
   end;
   Result := TAtlasTrackerFiles.Join(TAtlasTrackerFiles.Join(FFolder, TrackerId(ATarget)), mName + '.json');
-end;
-
-class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;
-var
-  mRoot: TJSONObject;
-begin
-  mRoot := TJSONObject.Create;
-  try
-    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
-    mRoot.AddPair('key', ADetails.Key);
-    mRoot.AddPair('number', TJSONNumber.Create(ADetails.Number));
-    mRoot.AddPair('title', ADetails.Title);
-    mRoot.AddPair('page', ADetails.Page);
-    mRoot.AddPair('state', ADetails.State);
-    mRoot.AddPair('priority', ADetails.Priority);
-    mRoot.AddPair('kind', ADetails.Kind);
-    mRoot.AddPair('assignee', ADetails.Assignee);
-    mRoot.AddPair('sprint', ADetails.Sprint);
-    mRoot.AddPair('labels', LabelsJson(ADetails.Labels));
-    mRoot.AddPair('created', IsoOf(ADetails.Created));
-    mRoot.AddPair('updated', IsoOf(ADetails.Updated));
-    mRoot.AddPair('description', ADetails.Description);
-    mRoot.AddPair('commentsLoaded', TJSONBool.Create(ADetails.CommentsLoaded));
-    mRoot.AddPair('comments', CommentsJson(ADetails.Comments));
-    mRoot.AddPair('attachments', AttachmentsJson(ADetails.Attachments));
-    mRoot.AddPair('links', LinksJson(ADetails.Links));
-    mRoot.AddPair('fetched', IsoOf(ADetails.Fetched));
-    Result := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-class function TAtlasTrackerIssueCache.FromJson(const AJson: string; out ADetails: TAtlasTrackerDetails): Boolean;
-var
-  mValue: TJSONValue;
-  mRoot: TJSONObject;
-begin
-  ADetails := TAtlasTrackerDetails.Empty;
-  Result := False;
-  try
-    mValue := TJSONObject.ParseJSONValue(AJson);
-  except
-    // Kaputte Datei: als fehlend werten.
-    on Exception do
-      mValue := nil;
-  end;
-  try
-    if not (mValue is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mRoot := TJSONObject(mValue);
-    if mRoot.GetValue<Integer>('version', 0) <> cVersion then
-    begin
-      Exit;
-    end;
-    ADetails.Key := mRoot.GetValue<string>('key', '');
-    if ADetails.Key = '' then
-    begin
-      Exit;
-    end;
-    ReadFields(mRoot, ADetails);
-    ADetails.Labels := LabelsOf(mRoot.Values['labels']);
-    ADetails.Comments := CommentsOf(mRoot.Values['comments']);
-    ADetails.Attachments := AttachmentsOf(mRoot.Values['attachments']);
-    ADetails.Links := LinksOf(mRoot.Values['links']);
-    Result := True;
-  finally
-    mValue.Free;
-  end;
 end;
 
 procedure TAtlasTrackerIssueCache.Shrink;
@@ -499,6 +396,74 @@ begin
   Shrink;
 end;
 
+function TAtlasTrackerIssueCache.Count: Integer;
+begin
+  Result := FEntries.Count;
+end;
+
+class function TAtlasTrackerIssueCache.TrackerId(const ATarget: TAtlasTrackerTarget): string;
+var
+  mText: string;
+  mHash: Cardinal;
+  mIndex: Integer;
+begin
+  // FNV-1a über die UTF-16-Zeichen; nur Unterscheidung, kein Schutz.
+  mText := LowerCase(ATarget.Server + '|' + ATarget.Project);
+  mHash := 2166136261;
+  for mIndex := 1 to Length(mText) do
+  begin
+    mHash := mHash xor Ord(mText[mIndex]);
+    mHash := Cardinal(UInt64(mHash) * 16777619);
+  end;
+  Result := LowerCase(IntToHex(mHash, 8));
+end;
+
+class function TAtlasTrackerIssueCache.SafeName(const AKey: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 1 to Length(AKey) do
+  begin
+    if CharInSet(AKey[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+    begin
+      Result := Result + AKey[mIndex];
+    end;
+  end;
+  Result := Copy(Result, 1, 64);
+end;
+
+class function TAtlasTrackerIssueCache.ToJson(const ADetails: TAtlasTrackerDetails): string;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('version', TJSONNumber.Create(cVersion));
+    mRoot.AddPair('key', ADetails.Key);
+    mRoot.AddPair('number', TJSONNumber.Create(ADetails.Number));
+    mRoot.AddPair('title', ADetails.Title);
+    mRoot.AddPair('page', ADetails.Page);
+    mRoot.AddPair('state', ADetails.State);
+    mRoot.AddPair('priority', ADetails.Priority);
+    mRoot.AddPair('kind', ADetails.Kind);
+    mRoot.AddPair('assignee', ADetails.Assignee);
+    mRoot.AddPair('sprint', ADetails.Sprint);
+    mRoot.AddPair('labels', LabelsJson(ADetails.Labels));
+    mRoot.AddPair('created', IsoOf(ADetails.Created));
+    mRoot.AddPair('updated', IsoOf(ADetails.Updated));
+    mRoot.AddPair('description', ADetails.Description);
+    mRoot.AddPair('commentsLoaded', TJSONBool.Create(ADetails.CommentsLoaded));
+    mRoot.AddPair('comments', CommentsJson(ADetails.Comments));
+    mRoot.AddPair('attachments', AttachmentsJson(ADetails.Attachments));
+    mRoot.AddPair('links', LinksJson(ADetails.Links));
+    mRoot.AddPair('fetched', IsoOf(ADetails.Fetched));
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
 /// <summary>Datei des Caches gilt noch: lesbar, mit Abrufzeit und nicht älter als AMaxAge Tage.</summary>
 function IsFresh(const AFiles: IAtlasTrackerFiles; const AFile: string; ANow: TDateTime; AMaxAge: Integer): Boolean;
 var
@@ -533,9 +498,44 @@ begin
   end;
 end;
 
-function TAtlasTrackerIssueCache.Count: Integer;
+class function TAtlasTrackerIssueCache.FromJson(const AJson: string; out ADetails: TAtlasTrackerDetails): Boolean;
+var
+  mValue: TJSONValue;
+  mRoot: TJSONObject;
 begin
-  Result := FEntries.Count;
+  ADetails := TAtlasTrackerDetails.Empty;
+  Result := False;
+  try
+    mValue := TJSONObject.ParseJSONValue(AJson);
+  except
+    // Kaputte Datei: als fehlend werten.
+    on Exception do
+      mValue := nil;
+  end;
+  try
+    if not (mValue is TJSONObject) then
+    begin
+      Exit;
+    end;
+    mRoot := TJSONObject(mValue);
+    if mRoot.GetValue<Integer>('version', 0) <> cVersion then
+    begin
+      Exit;
+    end;
+    ADetails.Key := mRoot.GetValue<string>('key', '');
+    if ADetails.Key = '' then
+    begin
+      Exit;
+    end;
+    ReadFields(mRoot, ADetails);
+    ADetails.Labels := LabelsOf(mRoot.Values['labels']);
+    ADetails.Comments := CommentsOf(mRoot.Values['comments']);
+    ADetails.Attachments := AttachmentsOf(mRoot.Values['attachments']);
+    ADetails.Links := LinksOf(mRoot.Values['links']);
+    Result := True;
+  finally
+    mValue.Free;
+  end;
 end;
 
 end.

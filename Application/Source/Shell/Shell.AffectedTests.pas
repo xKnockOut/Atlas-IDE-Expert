@@ -108,6 +108,8 @@ const
     En: 'Affected tests are turned off (tests.affected)'),
     (De: 'zu viele Tests für ein --run-Argument'; En: 'too many tests for one --run argument'));
 
+{ TShellAffectedTests }
+
 class function TShellAffectedTests.OffMessage: string;
 begin
   Result := cTexts[TShellAffectedText.Off].Text;
@@ -117,6 +119,8 @@ class function TShellAffectedTests.TooManyForRun: string;
 begin
   Result := cTexts[TShellAffectedText.TooManyForRun].Text;
 end;
+
+{ TShellAffectedSources }
 
 class function TShellAffectedSources.New(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AReadText: TReferenceReadText): TShellAffectedSources;

@@ -251,25 +251,6 @@ begin
   Result := True;
 end;
 
-class function TRuleCodeActions.FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
-var
-  mFinding: TRuleFinding;
-  mFix: TRuleFix;
-begin
-  AAction := Default(TCodeAction);
-  AAction.Title := cTexts[TCodeActionsText.ApplyAllSafe].Text;
-  AAction.Kind := cFixAllKind;
-  for mFinding in AFindings do
-  begin
-    // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
-    if FirstSafeFix(mFinding, mFix) and Fits(mFix.Edits, ExistingEdits(AAction, mFix.FileName)) then
-    begin
-      AddFixEdits(AAction, mFix);
-    end;
-  end;
-  Result := (AAction.Edits <> nil) or (AAction.FileEdits <> nil);
-end;
-
 class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
   const ARange: TTextRange): TArray<TCodeAction>;
 var
@@ -292,6 +273,25 @@ begin
   begin
     Result := Result + [mAction];
   end;
+end;
+
+class function TRuleCodeActions.FixAll(const AFindings: TArray<TRuleFinding>; out AAction: TCodeAction): Boolean;
+var
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
+begin
+  AAction := Default(TCodeAction);
+  AAction.Title := cTexts[TCodeActionsText.ApplyAllSafe].Text;
+  AAction.Kind := cFixAllKind;
+  for mFinding in AFindings do
+  begin
+    // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
+    if FirstSafeFix(mFinding, mFix) and Fits(mFix.Edits, ExistingEdits(AAction, mFix.FileName)) then
+    begin
+      AddFixEdits(AAction, mFix);
+    end;
+  end;
+  Result := (AAction.Edits <> nil) or (AAction.FileEdits <> nil);
 end;
 
 initialization

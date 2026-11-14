@@ -103,6 +103,8 @@ uses
   System.SysUtils,
   Atlas.Common.Diagnostics.RequestScope;
 
+{ TResolverTyping }
+
 constructor TResolverTyping.Create(APlace: TResolverPlace; AUnits: TResolverUnits; ALookup: TResolverLookup);
 begin
   inherited Create;
@@ -130,13 +132,6 @@ begin
     FAncestors.Clear;
     FCacheEpoch := FPlace.CacheEpoch;
   end;
-end;
-
-function TResolverTyping.TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
-var
-  mStart: TResolvedSymbol;
-begin
-  Result := not AResolved.IsTypeParameter and StartType(AResolved, mStart) and FollowAliases(mStart, AType);
 end;
 
 function TResolverTyping.StartType(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
@@ -236,6 +231,88 @@ begin
   end;
   AType := mCurrent;
   Result := True;
+end;
+
+function TResolverTyping.MethodTypeName: string;
+var
+  mRoutines: TArray<TSyntaxNode>;
+  mName: string;
+  mDot: Integer;
+begin
+  Result := '';
+  if FPlace.Tree = nil then
+  begin
+    Exit;
+  end;
+  // Äußerste Routine mit Punkt im Namen: procedure TFoo.Bar
+  mRoutines := FPlace.EnclosingRoutines;
+  if Length(mRoutines) = 0 then
+  begin
+    // Zugriffe einer Property (read FName write SetName, #690) stehen im Bereich ihres Typs: Ohne das blieben
+    // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
+    Exit(FPlace.PropertyClassName);
+  end;
+  mName := mRoutines[High(mRoutines)].Name;
+  mDot := LastDelimiter('.', mName);
+  if mDot > 0 then
+  begin
+    Result := Copy(mName, 1, mDot - 1);
+  end;
+end;
+
+function TResolverTyping.NestedMethodClasses(const ATypeName: string): TArray<TResolvedSymbol>;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+  mCurrent, mInner: TResolvedSymbol;
+begin
+  Result := nil;
+  mParts := ATypeName.Split(['.']);
+  if (Length(mParts) <= 1) or not FLookup.ResolveTypeName(mParts[0], FPlace.Current, True, mCurrent) then
+  begin
+    Exit;
+  end;
+  Result := [mCurrent];
+  for mIndex := 1 to High(mParts) do
+  begin
+    // Der Pfad im Kopf benennt den deklarierenden Typ, unabhängig von seiner Sichtbarkeit (strict private
+    // verschachtelte Typen werden genauso implementiert). FindMember prüfte die Sichtbarkeit über
+    // CurrentClass, das hierher zurückführte.
+    if not NestedType(mCurrent, mParts[mIndex], mInner) then
+    begin
+      Exit(nil);
+    end;
+    mCurrent := mInner;
+    Result := [mCurrent] + Result;
+  end;
+end;
+
+function TResolverTyping.ReachesRoot(const AType: TResolvedSymbol): Boolean;
+var
+  mNext, mAncestor: TResolvedSymbol;
+  mDepth: Integer;
+begin
+  mNext := AType;
+  for mDepth := 0 to cMaxDepth do
+  begin
+    if (Length(mNext.Ancestors) = 0) or TResolverText.IsObjectRoot(mNext.Ancestors[0]) then
+    begin
+      Break;
+    end;
+    if not AncestorOf(mNext, mAncestor) then
+    begin
+      Exit(False);
+    end;
+    mNext := mAncestor;
+  end;
+  Result := True;
+end;
+
+function TResolverTyping.TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
+var
+  mStart: TResolvedSymbol;
+begin
+  Result := not AResolved.IsTypeParameter and StartType(AResolved, mStart) and FollowAliases(mStart, AType);
 end;
 
 function TResolverTyping.AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
@@ -515,60 +592,6 @@ begin
   end;
 end;
 
-function TResolverTyping.MethodTypeName: string;
-var
-  mRoutines: TArray<TSyntaxNode>;
-  mName: string;
-  mDot: Integer;
-begin
-  Result := '';
-  if FPlace.Tree = nil then
-  begin
-    Exit;
-  end;
-  // Äußerste Routine mit Punkt im Namen: procedure TFoo.Bar
-  mRoutines := FPlace.EnclosingRoutines;
-  if Length(mRoutines) = 0 then
-  begin
-    // Zugriffe einer Property (read FName write SetName, #690) stehen im Bereich ihres Typs: Ohne das blieben
-    // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
-    Exit(FPlace.PropertyClassName);
-  end;
-  mName := mRoutines[High(mRoutines)].Name;
-  mDot := LastDelimiter('.', mName);
-  if mDot > 0 then
-  begin
-    Result := Copy(mName, 1, mDot - 1);
-  end;
-end;
-
-function TResolverTyping.NestedMethodClasses(const ATypeName: string): TArray<TResolvedSymbol>;
-var
-  mParts: TArray<string>;
-  mIndex: Integer;
-  mCurrent, mInner: TResolvedSymbol;
-begin
-  Result := nil;
-  mParts := ATypeName.Split(['.']);
-  if (Length(mParts) <= 1) or not FLookup.ResolveTypeName(mParts[0], FPlace.Current, True, mCurrent) then
-  begin
-    Exit;
-  end;
-  Result := [mCurrent];
-  for mIndex := 1 to High(mParts) do
-  begin
-    // Der Pfad im Kopf benennt den deklarierenden Typ, unabhängig von seiner Sichtbarkeit (strict private
-    // verschachtelte Typen werden genauso implementiert). FindMember prüfte die Sichtbarkeit über
-    // CurrentClass, das hierher zurückführte.
-    if not NestedType(mCurrent, mParts[mIndex], mInner) then
-    begin
-      Exit(nil);
-    end;
-    mCurrent := mInner;
-    Result := [mCurrent] + Result;
-  end;
-end;
-
 function TResolverTyping.MethodClasses: TArray<TResolvedSymbol>;
 var
   mTypeName: string;
@@ -587,27 +610,6 @@ begin
   begin
     Result := [mCurrent];
   end;
-end;
-
-function TResolverTyping.ReachesRoot(const AType: TResolvedSymbol): Boolean;
-var
-  mNext, mAncestor: TResolvedSymbol;
-  mDepth: Integer;
-begin
-  mNext := AType;
-  for mDepth := 0 to cMaxDepth do
-  begin
-    if (Length(mNext.Ancestors) = 0) or TResolverText.IsObjectRoot(mNext.Ancestors[0]) then
-    begin
-      Break;
-    end;
-    if not AncestorOf(mNext, mAncestor) then
-    begin
-      Exit(False);
-    end;
-    mNext := mAncestor;
-  end;
-  Result := True;
 end;
 
 function TResolverTyping.HasUnknownAncestor: Boolean;

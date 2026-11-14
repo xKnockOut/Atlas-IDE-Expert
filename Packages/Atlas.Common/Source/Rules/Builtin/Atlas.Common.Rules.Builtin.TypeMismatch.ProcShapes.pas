@@ -225,6 +225,8 @@ begin
   AText := TrimLeft(Copy(AText, mPosition, MaxInt));
 end;
 
+{ TProcShapes }
+
 /// <summary>Kopf "procedure(A: Integer) of object", "reference to function: Boolean" bzw. einer Routine
 /// "class procedure TKlasse.Machen; static;" (mit Namen, AWithName) zerlegen. False, wenn er nicht lesbar ist.
 /// </summary>

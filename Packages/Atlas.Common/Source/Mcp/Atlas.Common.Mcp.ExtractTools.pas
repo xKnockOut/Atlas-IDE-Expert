@@ -141,6 +141,8 @@ begin
   end;
 end;
 
+{ TMcpExtractTools }
+
 class function TMcpExtractTools.ExtractMethod(AEdit: TMcpEditTools; const ARequest: TMcpExtractRequest): string;
 var
   mText, mNote: string;

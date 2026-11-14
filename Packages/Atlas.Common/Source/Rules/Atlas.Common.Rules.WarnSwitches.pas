@@ -87,26 +87,46 @@ begin
   ReadSwitches;
 end;
 
-class function TRuleWarnSwitches.ProjectEntry(const AProperty, AValue: string): string;
+function TRuleWarnSwitches.ProjectValue(const AName: string): string;
 var
-  mName: string;
+  mEntry, mPrefix: string;
 begin
   Result := '';
-  if not StartsText(cPropertyPrefix, AProperty) then
+  mPrefix := UpperCase(AName) + '=';
+  for mEntry in FProjectWarnings do
   begin
-    Exit;
+    if StartsText(mPrefix, mEntry) then
+    begin
+      Result := LowerCase(Copy(mEntry, Length(mPrefix) + 1, MaxInt));
+    end;
   end;
-  mName := UpperCase(Copy(AProperty, Length(cPropertyPrefix) + 1, MaxInt));
-  if (mName <> cWarningsName) and (IndexText(mName, TDirectiveNames.Warnings) < 0) then
-  begin
-    Exit;
-  end;
-  Result := mName + '=' + LowerCase(Trim(AValue));
 end;
 
-class function TRuleWarnSwitches.Reported(AState: TRuleWarnState): Boolean;
+function TRuleWarnSwitches.ProjectState(const AName: string; ADefaultOn: Boolean): TRuleWarnState;
+var
+  mValue: string;
 begin
-  Result := AState in [TRuleWarnState.Enabled, TRuleWarnState.AsError];
+  mValue := ProjectValue(AName);
+  if mValue = 'true' then
+  begin
+    Result := TRuleWarnState.Enabled;
+  end
+  else if mValue = 'error' then
+  begin
+    Result := TRuleWarnState.AsError;
+  end
+  else if mValue = 'false' then
+  begin
+    Result := TRuleWarnState.Disabled;
+  end
+  else if ADefaultOn then
+  begin
+    Result := TRuleWarnState.Enabled;
+  end
+  else
+  begin
+    Result := TRuleWarnState.Disabled;
+  end;
 end;
 
 /// <summary>Text zwischen {$ und } bzw. (*$ und *).</summary>
@@ -193,62 +213,6 @@ begin
   end;
 end;
 
-function TRuleWarnSwitches.ProjectValue(const AName: string): string;
-var
-  mEntry, mPrefix: string;
-begin
-  Result := '';
-  mPrefix := UpperCase(AName) + '=';
-  for mEntry in FProjectWarnings do
-  begin
-    if StartsText(mPrefix, mEntry) then
-    begin
-      Result := LowerCase(Copy(mEntry, Length(mPrefix) + 1, MaxInt));
-    end;
-  end;
-end;
-
-function TRuleWarnSwitches.MentionsAny(const ANames: array of string): Boolean;
-var
-  mSwitch: TWarnSwitch;
-begin
-  for mSwitch in FSwitches do
-  begin
-    if (mSwitch.Name <> '') and MatchText(mSwitch.Name, ANames) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TRuleWarnSwitches.ProjectState(const AName: string; ADefaultOn: Boolean): TRuleWarnState;
-var
-  mValue: string;
-begin
-  mValue := ProjectValue(AName);
-  if mValue = 'true' then
-  begin
-    Result := TRuleWarnState.Enabled;
-  end
-  else if mValue = 'error' then
-  begin
-    Result := TRuleWarnState.AsError;
-  end
-  else if mValue = 'false' then
-  begin
-    Result := TRuleWarnState.Disabled;
-  end
-  else if ADefaultOn then
-  begin
-    Result := TRuleWarnState.Enabled;
-  end
-  else
-  begin
-    Result := TRuleWarnState.Disabled;
-  end;
-end;
-
 function TRuleWarnSwitches.StateAtOffset(const AName: string; ADefaultOn: Boolean;
   AOffset: Integer): TRuleWarnState;
 var
@@ -269,6 +233,42 @@ begin
     end;
   end;
   Result := StateAt(AName, ADefaultOn, mLow);
+end;
+
+function TRuleWarnSwitches.MentionsAny(const ANames: array of string): Boolean;
+var
+  mSwitch: TWarnSwitch;
+begin
+  for mSwitch in FSwitches do
+  begin
+    if (mSwitch.Name <> '') and MatchText(mSwitch.Name, ANames) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TRuleWarnSwitches.Reported(AState: TRuleWarnState): Boolean;
+begin
+  Result := AState in [TRuleWarnState.Enabled, TRuleWarnState.AsError];
+end;
+
+class function TRuleWarnSwitches.ProjectEntry(const AProperty, AValue: string): string;
+var
+  mName: string;
+begin
+  Result := '';
+  if not StartsText(cPropertyPrefix, AProperty) then
+  begin
+    Exit;
+  end;
+  mName := UpperCase(Copy(AProperty, Length(cPropertyPrefix) + 1, MaxInt));
+  if (mName <> cWarningsName) and (IndexText(mName, TDirectiveNames.Warnings) < 0) then
+  begin
+    Exit;
+  end;
+  Result := mName + '=' + LowerCase(Trim(AValue));
 end;
 
 /// <summary>Stand nach einem benannten Schalter; ABase für DEFAULT.</summary>

@@ -63,6 +63,8 @@ const
 function AtlasEnumProcessModulesEx(AProcess: THandle; AModules: Pointer; ASize: DWORD; var ANeeded: DWORD;
   AFilter: DWORD): BOOL; stdcall; external 'psapi.dll' name 'EnumProcessModulesEx';
 
+{ TAtlasIdeDebugModules }
+
 class function TAtlasIdeDebugModules.Snapshot(AProcessId: Cardinal): TAtlasDebugModuleList;
 var
   mProcess: THandle;

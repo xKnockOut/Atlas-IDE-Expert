@@ -32,6 +32,17 @@ uses
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Settings.ModuleNodes;
 
+{ TAtlasIdeSettingsPalette }
+
+class function TAtlasIdeSettingsPalette.Sources(const AOther: IAtlasPaletteSource): IAtlasPaletteSource;
+begin
+  Result := AOther;
+  if TAtlasIdeSettings.Stored.PaletteSettingsPrefix then
+  begin
+    Result := TAtlasPaletteSources.Create(SettingsSource, AOther);
+  end;
+end;
+
 class function TAtlasIdeSettingsPalette.SettingsSource: IAtlasPaletteSource;
 var
   mSource: TAtlasSettingsPaletteSource;
@@ -68,15 +79,6 @@ begin
     begin
       TAtlasIdeQuickToggles.Switch(AName);
     end;
-end;
-
-class function TAtlasIdeSettingsPalette.Sources(const AOther: IAtlasPaletteSource): IAtlasPaletteSource;
-begin
-  Result := AOther;
-  if TAtlasIdeSettings.Stored.PaletteSettingsPrefix then
-  begin
-    Result := TAtlasPaletteSources.Create(SettingsSource, AOther);
-  end;
 end;
 
 end.

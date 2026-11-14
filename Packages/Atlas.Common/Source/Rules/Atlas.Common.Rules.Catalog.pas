@@ -587,11 +587,6 @@ end;
 
 { TRuleCatalog }
 
-constructor TRuleCatalog.Create(const ABase: string);
-begin
-  Create(ABase, '');
-end;
-
 constructor TRuleCatalog.Create(const ABase, AOverlay: string);
 begin
   inherited Create;
@@ -602,6 +597,11 @@ begin
   begin
     ApplyOverlay(AOverlay);
   end;
+end;
+
+constructor TRuleCatalog.Create(const ABase: string);
+begin
+  Create(ABase, '');
 end;
 
 destructor TRuleCatalog.Destroy;

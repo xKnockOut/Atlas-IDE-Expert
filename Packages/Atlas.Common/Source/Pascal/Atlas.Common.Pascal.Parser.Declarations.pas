@@ -283,43 +283,6 @@ begin
   Result := IsIdent and (PeekIsSym(-1, '<') or PeekIsSym(-1, ',') or PeekIsSym(-1, ';'));
 end;
 
-function TDeclarationParser.AttributesBeforeName: Boolean;
-var
-  mDelta, mDepth: Integer;
-  mToken: TPascalToken;
-begin
-  mDelta := 0;
-  while PeekIsSym(mDelta, '[') do
-  begin
-    mDepth := 0;
-    repeat
-      if FIndex + mDelta >= Length(FTokens) then
-      begin
-        Exit(False);
-      end;
-      mToken := PeekToken(mDelta);
-      if mToken.IsSymbol('[') then
-      begin
-        Inc(mDepth);
-      end
-      else if mToken.IsSymbol(']') then
-      begin
-        Dec(mDepth);
-      end;
-      Inc(mDelta);
-    until mDepth = 0;
-  end;
-  mToken := PeekToken(mDelta);
-  Result := (mToken.Kind = TPascalTokenKind.Identifier) and not InWords(mToken.Text, cVisibilityWords);
-end;
-
-function TDeclarationParser.IsDeclStart: Boolean;
-begin
-  // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen, ebenso ein Attribut vor einer Methode.
-  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, cVisibilityWords) and
-    not PeekIsSym(1, ':') and not PeekIsSym(1, ',') and not PeekIsSym(1, '=')));
-end;
-
 procedure TDeclarationParser.ParseConstSection(AParent: TSyntaxNode);
 var
   mStart: Integer;
@@ -388,6 +351,48 @@ begin
   begin
     ParseExpression(AParent);
   end;
+end;
+
+function TDeclarationParser.IsDeclStart: Boolean;
+begin
+  // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen, ebenso ein Attribut vor einer Methode.
+  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, cVisibilityWords) and
+    not PeekIsSym(1, ':') and not PeekIsSym(1, ',') and not PeekIsSym(1, '=')));
+end;
+
+function TDeclarationParser.AttributesBeforeName: Boolean;
+var
+  mDelta, mDepth: Integer;
+  mToken: TPascalToken;
+begin
+  mDelta := 0;
+  while PeekIsSym(mDelta, '[') do
+  begin
+    mDepth := 0;
+    repeat
+      if FIndex + mDelta >= Length(FTokens) then
+      begin
+        Exit(False);
+      end;
+      mToken := PeekToken(mDelta);
+      if mToken.IsSymbol('[') then
+      begin
+        Inc(mDepth);
+      end
+      else if mToken.IsSymbol(']') then
+      begin
+        Dec(mDepth);
+      end;
+      Inc(mDelta);
+    until mDepth = 0;
+  end;
+  mToken := PeekToken(mDelta);
+  Result := (mToken.Kind = TPascalTokenKind.Identifier) and not InWords(mToken.Text, cVisibilityWords);
+end;
+
+function TDeclarationParser.IsDirectiveStart: Boolean;
+begin
+  Result := IsIdent and TDirectiveNames.IsRoutineDirective(Current.Text) or IsKw(['inline', 'library']);
 end;
 
 procedure TDeclarationParser.ParseVarSection(AParent: TSyntaxNode);
@@ -503,6 +508,20 @@ begin
   end;
   ExpectSym(';');
   FinishNode(mNode, mStart);
+end;
+
+procedure TDeclarationParser.ParseRoutine(AParent: TSyntaxNode; AWithBody: Boolean);
+begin
+  if not EnterNesting then
+  begin
+    AParent.Add(TooDeep);
+    Exit;
+  end;
+  try
+    ParseRoutineBody(AParent, AWithBody);
+  finally
+    Dec(FDepth);
+  end;
 end;
 
 function TDeclarationParser.ParseRoutineHeader(AParent: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
@@ -693,11 +712,6 @@ begin
   Advance;
 end;
 
-function TDeclarationParser.IsDirectiveStart: Boolean;
-begin
-  Result := IsIdent and TDirectiveNames.IsRoutineDirective(Current.Text) or IsKw(['inline', 'library']);
-end;
-
 procedure TDeclarationParser.ParseDirectives(AParent: TSyntaxNode);
 var
   mStart: Integer;
@@ -736,20 +750,6 @@ begin
     begin
       Advance;
     end;
-  end;
-end;
-
-procedure TDeclarationParser.ParseRoutine(AParent: TSyntaxNode; AWithBody: Boolean);
-begin
-  if not EnterNesting then
-  begin
-    AParent.Add(TooDeep);
-    Exit;
-  end;
-  try
-    ParseRoutineBody(AParent, AWithBody);
-  finally
-    Dec(FDepth);
   end;
 end;
 

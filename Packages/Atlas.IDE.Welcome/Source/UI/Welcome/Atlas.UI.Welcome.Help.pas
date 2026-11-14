@@ -99,34 +99,17 @@ begin
   UpdateContent;
 end;
 
-class function TAtlasWelcomeHelpFrame.TitleText: string;
-begin
-  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpTitle);
-end;
-
-class function TAtlasWelcomeHelpFrame.ButtonCaption(AButton: TAtlasHelpButton): string;
-begin
-  case AButton of
-    TAtlasHelpButton.Docs:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDocs);
-    TAtlasHelpButton.Keys:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpKeys);
-    TAtlasHelpButton.Donate:
-      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDonate);
-  else
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpReport);
-  end;
-end;
-
-function TAtlasWelcomeHelpFrame.Button(AButton: TAtlasHelpButton): TButton;
-begin
-  Result := FButtons[AButton];
-end;
-
 procedure TAtlasWelcomeHelpFrame.SetSource(const AValue: IAtlasHelpSource);
 begin
   FSource := AValue;
   UpdateContent;
+end;
+
+function TAtlasWelcomeHelpFrame.BodyHeight: Integer;
+begin
+  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
+  Arrange;
+  Result := Max(FContentHeight, ScaleValue(40));
 end;
 
 procedure TAtlasWelcomeHelpFrame.UpdateContent;
@@ -143,19 +126,6 @@ begin
   end;
   Arrange;
   inherited;
-  if mOldHeight <> FContentHeight then
-  begin
-    HeightChanged;
-  end;
-end;
-
-procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
-var
-  mOldHeight: Integer;
-begin
-  mOldHeight := FContentHeight;
-  Arrange;
-  // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
   if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
@@ -204,11 +174,22 @@ begin
   end;
 end;
 
-function TAtlasWelcomeHelpFrame.BodyHeight: Integer;
+procedure TAtlasWelcomeHelpFrame.BodyResize(Sender: TObject);
+var
+  mOldHeight: Integer;
 begin
-  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
+  mOldHeight := FContentHeight;
   Arrange;
-  Result := Max(FContentHeight, ScaleValue(40));
+  // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
+  if mOldHeight <> FContentHeight then
+  begin
+    HeightChanged;
+  end;
+end;
+
+procedure TAtlasWelcomeHelpFrame.ButtonClick(Sender: TObject);
+begin
+  ClickButton(TAtlasHelpButton((Sender as TButton).Tag));
 end;
 
 procedure TAtlasWelcomeHelpFrame.ClickButton(AButton: TAtlasHelpButton);
@@ -237,9 +218,28 @@ begin
     end);
 end;
 
-procedure TAtlasWelcomeHelpFrame.ButtonClick(Sender: TObject);
+function TAtlasWelcomeHelpFrame.Button(AButton: TAtlasHelpButton): TButton;
 begin
-  ClickButton(TAtlasHelpButton((Sender as TButton).Tag));
+  Result := FButtons[AButton];
+end;
+
+class function TAtlasWelcomeHelpFrame.TitleText: string;
+begin
+  Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpTitle);
+end;
+
+class function TAtlasWelcomeHelpFrame.ButtonCaption(AButton: TAtlasHelpButton): string;
+begin
+  case AButton of
+    TAtlasHelpButton.Docs:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDocs);
+    TAtlasHelpButton.Keys:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpKeys);
+    TAtlasHelpButton.Donate:
+      Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpDonate);
+  else
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeHelpReport);
+  end;
 end;
 
 end.

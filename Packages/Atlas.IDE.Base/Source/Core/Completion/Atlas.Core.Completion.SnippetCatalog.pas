@@ -126,6 +126,76 @@ begin
   inherited;
 end;
 
+function TAtlasSnippetCatalog.UniquePrefix(const ABase: string): string;
+var
+  mNumber, mIndex: Integer;
+  mTaken: Boolean;
+begin
+  mNumber := 1;
+  repeat
+    Result := ABase;
+    if mNumber > 1 then
+    begin
+      Result := ABase + IntToStr(mNumber);
+    end;
+    mTaken := False;
+    for mIndex := 0 to FEntries.Count - 1 do
+    begin
+      if SameText(FEntries[mIndex].Snippet.Prefix, Result) then
+      begin
+        mTaken := True;
+      end;
+    end;
+    Inc(mNumber);
+  until not mTaken;
+end;
+
+function TAtlasSnippetCatalog.TargetFile(const AFolder: string; AIndex: Integer): string;
+var
+  mBase, mCandidate: string;
+  mNumber, mIndex: Integer;
+  mTaken: Boolean;
+begin
+  // Vorhandene Dateien behalten ihren Namen, auch wenn sich das Kürzel ändert.
+  if FEntries[AIndex].LoadedFile <> '' then
+  begin
+    Exit(FEntries[AIndex].LoadedFile);
+  end;
+  mBase := ChangeFileExt(TAtlasSnippets.FileNameFor(FEntries[AIndex].Snippet.Prefix), '');
+  mNumber := 1;
+  repeat
+    mCandidate := mBase;
+    if mNumber > 1 then
+    begin
+      mCandidate := mBase + '_' + IntToStr(mNumber);
+    end;
+    Result := TPath.Combine(AFolder, mCandidate + TAtlasSnippets.cFileExtension);
+    mTaken := FileExists(Result) and (FRemovedFiles.IndexOf(Result) < 0);
+    for mIndex := 0 to FEntries.Count - 1 do
+    begin
+      if (mIndex <> AIndex) and SameText(FEntries[mIndex].LoadedFile, Result) then
+      begin
+        mTaken := True;
+      end;
+    end;
+    Inc(mNumber);
+  until not mTaken;
+end;
+
+function TAtlasSnippetCatalog.HasEarlierPrefix(AIndex: Integer; const APrefix: string): Boolean;
+var
+  mOther: Integer;
+begin
+  for mOther := 0 to AIndex - 1 do
+  begin
+    if Editable(mOther) and SameText(FEntries[mOther].Snippet.Prefix, APrefix) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TAtlasSnippetCatalog.Count: Integer;
 begin
   Result := FEntries.Count;
@@ -160,30 +230,6 @@ begin
       end;
     end;
   end;
-end;
-
-function TAtlasSnippetCatalog.UniquePrefix(const ABase: string): string;
-var
-  mNumber, mIndex: Integer;
-  mTaken: Boolean;
-begin
-  mNumber := 1;
-  repeat
-    Result := ABase;
-    if mNumber > 1 then
-    begin
-      Result := ABase + IntToStr(mNumber);
-    end;
-    mTaken := False;
-    for mIndex := 0 to FEntries.Count - 1 do
-    begin
-      if SameText(FEntries[mIndex].Snippet.Prefix, Result) then
-      begin
-        mTaken := True;
-      end;
-    end;
-    Inc(mNumber);
-  until not mTaken;
 end;
 
 function TAtlasSnippetCatalog.AddNew: Integer;
@@ -261,20 +307,6 @@ begin
   FModified := True;
 end;
 
-function TAtlasSnippetCatalog.HasEarlierPrefix(AIndex: Integer; const APrefix: string): Boolean;
-var
-  mOther: Integer;
-begin
-  for mOther := 0 to AIndex - 1 do
-  begin
-    if Editable(mOther) and SameText(FEntries[mOther].Snippet.Prefix, APrefix) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function TAtlasSnippetCatalog.Validate(out AProblems: TArray<TAtlasSnippetProblem>): Boolean;
 var
   mIndex: Integer;
@@ -322,38 +354,6 @@ begin
   end;
   AProblems := mProblems;
   Result := Length(AProblems) = 0;
-end;
-
-function TAtlasSnippetCatalog.TargetFile(const AFolder: string; AIndex: Integer): string;
-var
-  mBase, mCandidate: string;
-  mNumber, mIndex: Integer;
-  mTaken: Boolean;
-begin
-  // Vorhandene Dateien behalten ihren Namen, auch wenn sich das Kürzel ändert.
-  if FEntries[AIndex].LoadedFile <> '' then
-  begin
-    Exit(FEntries[AIndex].LoadedFile);
-  end;
-  mBase := ChangeFileExt(TAtlasSnippets.FileNameFor(FEntries[AIndex].Snippet.Prefix), '');
-  mNumber := 1;
-  repeat
-    mCandidate := mBase;
-    if mNumber > 1 then
-    begin
-      mCandidate := mBase + '_' + IntToStr(mNumber);
-    end;
-    Result := TPath.Combine(AFolder, mCandidate + TAtlasSnippets.cFileExtension);
-    mTaken := FileExists(Result) and (FRemovedFiles.IndexOf(Result) < 0);
-    for mIndex := 0 to FEntries.Count - 1 do
-    begin
-      if (mIndex <> AIndex) and SameText(FEntries[mIndex].LoadedFile, Result) then
-      begin
-        mTaken := True;
-      end;
-    end;
-    Inc(mNumber);
-  until not mTaken;
 end;
 
 procedure TAtlasSnippetCatalog.Save(const AFolder: string);

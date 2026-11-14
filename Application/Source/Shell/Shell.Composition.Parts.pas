@@ -108,6 +108,8 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Shell.Platform;
 
+{ TShellParts }
+
 destructor TShellParts.Destroy;
 var
   mUnfinished: Boolean;

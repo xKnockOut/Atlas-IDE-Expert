@@ -38,6 +38,8 @@ const
     TAtlasDebugTextId.LeaksRatingFieldFreed, TAtlasDebugTextId.LeaksRatingOwned,
     TAtlasDebugTextId.LeaksRatingLocalFreed, TAtlasDebugTextId.LeaksRatingNotInProgram);
 
+{ TAtlasLeakTexts }
+
 class function TAtlasLeakTexts.RatingText(const ARating: string): string;
 var
   mIndex: Integer;
@@ -109,17 +111,6 @@ begin
   end;
 end;
 
-class function TAtlasLeakTexts.LeakCount(const ACapture: TAtlasLeakCapture): Integer;
-var
-  mCount: TLeakCount;
-begin
-  Result := 0;
-  for mCount in ACapture.Report.Counts do
-  begin
-    Inc(Result, mCount.Count);
-  end;
-end;
-
 class function TAtlasLeakTexts.Summary(const ACapture: TAtlasLeakCapture): string;
 var
   mSource: string;
@@ -138,6 +129,17 @@ begin
   end;
   Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksSummary, [LeakCount(ACapture),
     Length(ACapture.Report.Counts), mSource]);
+end;
+
+class function TAtlasLeakTexts.LeakCount(const ACapture: TAtlasLeakCapture): Integer;
+var
+  mCount: TLeakCount;
+begin
+  Result := 0;
+  for mCount in ACapture.Report.Counts do
+  begin
+    Inc(Result, mCount.Count);
+  end;
 end;
 
 end.

@@ -59,6 +59,8 @@ begin
   Result := (A.Left < B.Right) and (B.Left < A.Right) and (A.Top < B.Bottom) and (B.Top < A.Bottom);
 end;
 
+{ TAtlasLayers }
+
 class function TAtlasLayers.Stack(const AItems: TArray<TAtlasLayerItem>; const ARect: TRect): TArray<Integer>;
 var
   mIndex: Integer;

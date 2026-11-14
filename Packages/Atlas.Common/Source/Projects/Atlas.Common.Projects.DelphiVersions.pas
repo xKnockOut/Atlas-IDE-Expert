@@ -96,6 +96,8 @@ begin
   Result := StrToFloatDef(Trim(AText), 0, TFormatSettings.Invariant);
 end;
 
+{ TDelphiVersions }
+
 class function TDelphiVersions.ProjectVersionOf(const ADprojText: string): string;
 var
   mStart, mStop: Integer;

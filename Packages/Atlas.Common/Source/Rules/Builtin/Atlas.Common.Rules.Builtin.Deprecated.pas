@@ -412,46 +412,6 @@ begin
   end;
 end;
 
-function TDeprecatedCheck.Fits(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; const ACandidate: string;
-  AQualified: Boolean): Boolean;
-var
-  mGroup, mDot: Integer;
-  mOwnerType, mTypeSymbol, mFound: TResolvedSymbol;
-begin
-  Result := False;
-  mGroup := KindGroup(ASymbol.Kind);
-  if (mGroup = 0) or SameText(ACandidate, ASymbol.Name) then
-  begin
-    Exit;
-  end;
-  mDot := Pos('.', ACandidate);
-  if ASymbol.Container <> '' then
-  begin
-    // Mitglied: Ersatz im selben Typ (oder seinen Vorfahren).
-    if (mDot > 0) or not FScope.ResolveTypeFrom(AOwner, ASymbol.Container, mOwnerType) or
-      not FScope.DeclaredMember(mOwnerType, ACandidate, mFound) then
-    begin
-      Exit;
-    end;
-  end
-  else if mDot > 0 then
-  begin
-    // TPath.Combine: nur ohne Qualifizierung an der Stelle, Typ aus Sicht der Datei, Mitglied darin.
-    if AQualified or (Pos('.', Copy(ACandidate, mDot + 1, MaxInt)) > 0) or
-      not FScope.ResolveNameFrom(FOwn, Copy(ACandidate, 1, mDot - 1), mTypeSymbol) or
-      (KindGroup(mTypeSymbol.SymbolKind) <> 2) or
-      not FScope.DeclaredMember(mTypeSymbol, Copy(ACandidate, mDot + 1, MaxInt), mFound) then
-    begin
-      Exit;
-    end;
-  end
-  else if AQualified or not FScope.ResolveNameFrom(FOwn, ACandidate, mFound) then
-  begin
-    Exit;
-  end;
-  Result := mFound.Found and (mFound.Kind = TResolvedKind.Symbol) and (KindGroup(mFound.SymbolKind) = mGroup);
-end;
-
 function TDeprecatedCheck.ReplacementOf(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex;
   AQualified: Boolean): string;
 var
@@ -493,6 +453,46 @@ begin
   finally
     mCandidates.Free;
   end;
+end;
+
+function TDeprecatedCheck.Fits(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; const ACandidate: string;
+  AQualified: Boolean): Boolean;
+var
+  mGroup, mDot: Integer;
+  mOwnerType, mTypeSymbol, mFound: TResolvedSymbol;
+begin
+  Result := False;
+  mGroup := KindGroup(ASymbol.Kind);
+  if (mGroup = 0) or SameText(ACandidate, ASymbol.Name) then
+  begin
+    Exit;
+  end;
+  mDot := Pos('.', ACandidate);
+  if ASymbol.Container <> '' then
+  begin
+    // Mitglied: Ersatz im selben Typ (oder seinen Vorfahren).
+    if (mDot > 0) or not FScope.ResolveTypeFrom(AOwner, ASymbol.Container, mOwnerType) or
+      not FScope.DeclaredMember(mOwnerType, ACandidate, mFound) then
+    begin
+      Exit;
+    end;
+  end
+  else if mDot > 0 then
+  begin
+    // TPath.Combine: nur ohne Qualifizierung an der Stelle, Typ aus Sicht der Datei, Mitglied darin.
+    if AQualified or (Pos('.', Copy(ACandidate, mDot + 1, MaxInt)) > 0) or
+      not FScope.ResolveNameFrom(FOwn, Copy(ACandidate, 1, mDot - 1), mTypeSymbol) or
+      (KindGroup(mTypeSymbol.SymbolKind) <> 2) or
+      not FScope.DeclaredMember(mTypeSymbol, Copy(ACandidate, mDot + 1, MaxInt), mFound) then
+    begin
+      Exit;
+    end;
+  end
+  else if AQualified or not FScope.ResolveNameFrom(FOwn, ACandidate, mFound) then
+  begin
+    Exit;
+  end;
+  Result := mFound.Found and (mFound.Kind = TResolvedKind.Symbol) and (KindGroup(mFound.SymbolKind) = mGroup);
 end;
 
 function TDeprecatedCheck.MessageOf(AKind: Integer; const AName: string; const AHint: TDeprecatedHint;
@@ -790,12 +790,6 @@ begin
     cTexts[TDeprecatedText.Title].Text);
 end;
 
-class function TDeprecatedSymbolRule.IsDeprecation(const AMessage: string): Boolean;
-begin
-  // Über die Compilernummer am Ende, nicht über den Text: die Meldung gibt es deutsch und englisch (#1458).
-  Result := EndsStr('W1000).', AMessage) or EndsStr('W1006).', AMessage);
-end;
-
 procedure TDeprecatedSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mCheck: TDeprecatedCheck;
@@ -810,6 +804,12 @@ begin
   finally
     mCheck.Free;
   end;
+end;
+
+class function TDeprecatedSymbolRule.IsDeprecation(const AMessage: string): Boolean;
+begin
+  // Über die Compilernummer am Ende, nicht über den Text: die Meldung gibt es deutsch und englisch (#1458).
+  Result := EndsStr('W1000).', AMessage) or EndsStr('W1006).', AMessage);
 end;
 
 procedure RegisterDeprecatedRules(ARegistry: TRuleRegistry);

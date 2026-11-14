@@ -127,49 +127,9 @@ end;
 
 { TAtlasIdeLogpoints }
 
-class procedure TAtlasIdeLogpoints.Start(const AMessage: TProc<string>);
-begin
-  FMessage := AMessage;
-  if FInputs = nil then
-  begin
-    FInputs := TDictionary<string, TAtlasLogpointInput>.Create;
-  end;
-  if FMarks = nil then
-  begin
-    FMarks := TDictionary<string, TArray<TAtlasIdeLogpointMark>>.Create;
-  end;
-  Refresh(True);
-end;
-
-class procedure TAtlasIdeLogpoints.Release;
-begin
-  FreeAndNil(FMarks);
-  FreeAndNil(FInputs);
-  FMessage := nil;
-  FRefreshedAt := 0;
-end;
-
-class function TAtlasIdeLogpoints.Started: Boolean;
-begin
-  Result := FInputs <> nil;
-end;
-
-class procedure TAtlasIdeLogpoints.Say(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class function TAtlasIdeLogpoints.KeyOf(const AFileName: string; ALine: Integer): string;
 begin
   Result := UpperCase(AFileName) + '|' + IntToStr(ALine);
-end;
-
-class function TAtlasIdeLogpoints.IsLogpoint(const ABreakpoint: IOTABreakpoint): Boolean;
-begin
-  Result := (ABreakpoint <> nil) and SameText(ABreakpoint.GroupName, cGroup);
 end;
 
 class function TAtlasIdeLogpoints.TargetLine(out AFileName: string; out ALine: Integer): Boolean;
@@ -273,6 +233,79 @@ begin
   end;
 end;
 
+class function TAtlasIdeLogpoints.Own: TArray<IOTABreakpoint>;
+var
+  mServices: IOTADebuggerServices;
+  mIndex: Integer;
+  mBreakpoint: IOTABreakpoint;
+begin
+  Result := nil;
+  mServices := TAtlasIdeBreakpoints.Debugger;
+  if mServices = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.SourceBkptCount - 1 do
+  begin
+    mBreakpoint := mServices.SourceBkpts[mIndex];
+    if IsLogpoint(mBreakpoint) then
+    begin
+      Result := Result + [mBreakpoint];
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeLogpoints.Say(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class procedure TAtlasIdeLogpoints.Changed;
+var
+  mEditors: INTACodeEditorServices;
+begin
+  Refresh(True);
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
+  end;
+end;
+
+class procedure TAtlasIdeLogpoints.Start(const AMessage: TProc<string>);
+begin
+  FMessage := AMessage;
+  if FInputs = nil then
+  begin
+    FInputs := TDictionary<string, TAtlasLogpointInput>.Create;
+  end;
+  if FMarks = nil then
+  begin
+    FMarks := TDictionary<string, TArray<TAtlasIdeLogpointMark>>.Create;
+  end;
+  Refresh(True);
+end;
+
+class procedure TAtlasIdeLogpoints.Release;
+begin
+  FreeAndNil(FMarks);
+  FreeAndNil(FInputs);
+  FMessage := nil;
+  FRefreshedAt := 0;
+end;
+
+class function TAtlasIdeLogpoints.Started: Boolean;
+begin
+  Result := FInputs <> nil;
+end;
+
+class function TAtlasIdeLogpoints.IsLogpoint(const ABreakpoint: IOTABreakpoint): Boolean;
+begin
+  Result := (ABreakpoint <> nil) and SameText(ABreakpoint.GroupName, cGroup);
+end;
+
 class procedure TAtlasIdeLogpoints.SetAtCursor;
 var
   mFileName: string;
@@ -312,28 +345,6 @@ begin
     Exit;
   end;
   Changed;
-end;
-
-class function TAtlasIdeLogpoints.Own: TArray<IOTABreakpoint>;
-var
-  mServices: IOTADebuggerServices;
-  mIndex: Integer;
-  mBreakpoint: IOTABreakpoint;
-begin
-  Result := nil;
-  mServices := TAtlasIdeBreakpoints.Debugger;
-  if mServices = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.SourceBkptCount - 1 do
-  begin
-    mBreakpoint := mServices.SourceBkpts[mIndex];
-    if IsLogpoint(mBreakpoint) then
-    begin
-      Result := Result + [mBreakpoint];
-    end;
-  end;
 end;
 
 class procedure TAtlasIdeLogpoints.DisableAll;
@@ -385,17 +396,6 @@ begin
   end;
   Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointSaidDeleted, [Length(mBreakpoints)]));
   Changed;
-end;
-
-class procedure TAtlasIdeLogpoints.Changed;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  Refresh(True);
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
 end;
 
 class procedure TAtlasIdeLogpoints.Refresh(AForce: Boolean);

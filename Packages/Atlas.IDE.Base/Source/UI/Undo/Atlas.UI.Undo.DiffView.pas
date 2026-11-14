@@ -39,6 +39,8 @@ uses
 const
   cViewWidth = 760;
 
+{ TAtlasUndoDiffView }
+
 constructor TAtlasUndoDiffView.CreateView(AOwner: TComponent; const ATitle: string; const ALines: TArray<string>);
 var
   mBottom: TPanel;

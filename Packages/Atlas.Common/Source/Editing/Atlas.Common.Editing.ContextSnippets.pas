@@ -379,6 +379,8 @@ begin
   end;
 end;
 
+{ TContextSnippets }
+
 class function TContextSnippets.At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>;
 var
   mSource: TCommandSource;

@@ -75,6 +75,8 @@ uses
   Atlas.Core.Modules.Contributions,
   Atlas.Text.LogMarks;
 
+{ TAtlasBuildPipeline }
+
 class function TAtlasBuildPipeline.MessagesRead(const AMessages: TArray<TAtlasCompilerMessage>;
   const AProject: TAtlasCompileProject): TArray<string>;
 begin

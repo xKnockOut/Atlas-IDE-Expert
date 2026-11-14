@@ -99,6 +99,19 @@ begin
   Result := Regions(AText, ADefines, '', nil, mIssues);
 end;
 
+class function TLspInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
+  const AFileName: string; const AResolver: TIncludeResolver;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+var
+  mOptions: TPreprocessorOptions;
+begin
+  mOptions := TPreprocessorOptions.Default;
+  mOptions.Defines := ADefines;
+  mOptions.FileName := AFileName;
+  mOptions.ResolveInclude := AResolver;
+  Result := Regions(TPascalPreprocessor.Process(AText, mOptions), Assigned(AResolver), AIssues);
+end;
+
 class function TLspInactiveRegions.RangesOf(const ARegions: TArray<TLspInactiveRegion>): TArray<TTextRange>;
 var
   mIndex: Integer;
@@ -119,19 +132,6 @@ begin
   begin
     Result[mIndex] := TLspInactiveRegion.Create(ARanges[mIndex], '');
   end;
-end;
-
-class function TLspInactiveRegions.Regions(const AText: string; const ADefines: TArray<string>;
-  const AFileName: string; const AResolver: TIncludeResolver;
-  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
-var
-  mOptions: TPreprocessorOptions;
-begin
-  mOptions := TPreprocessorOptions.Default;
-  mOptions.Defines := ADefines;
-  mOptions.FileName := AFileName;
-  mOptions.ResolveInclude := AResolver;
-  Result := Regions(TPascalPreprocessor.Process(AText, mOptions), Assigned(AResolver), AIssues);
 end;
 
 /// <summary>Bedingung des abgeschalteten Zweigs, der bei AStart beginnt; leer, wenn keiner passt.</summary>

@@ -51,6 +51,8 @@ const
      'Atlas: MCP change applied to %s (Ctrl+Z undoes it).',
      'Change through MCP'));
 
+{ TAtlasAssistantsStrings }
+
 class function TAtlasAssistantsStrings.Text(AId: TAtlasAssistantsTextId): string;
 begin
   Result := cTexts[TAtlasStrings.Language, AId];

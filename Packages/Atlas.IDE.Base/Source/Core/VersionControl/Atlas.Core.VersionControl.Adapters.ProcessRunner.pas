@@ -68,6 +68,8 @@ type
     function Bytes: TBytes;
   end;
 
+{ TPipeBuffer }
+
 procedure TPipeBuffer.Append(const ABuffer; ACount: Integer);
 var
   mCapacity: Integer;
@@ -207,6 +209,24 @@ begin
   end;
 end;
 
+function TAtlasVcsProcessRunner.Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
+begin
+  AOutcome := TAtlasVcsOutcome.Ok;
+  if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
+  begin
+    AOutcome := TAtlasVcsOutcome.MainThread;
+  end
+  else if (AExecutable = '') or not FileExists(AExecutable) then
+  begin
+    AOutcome := TAtlasVcsOutcome.ToolMissing;
+  end
+  else if IsCancelled then
+  begin
+    AOutcome := TAtlasVcsOutcome.Cancelled;
+  end;
+  Result := AOutcome <> TAtlasVcsOutcome.Ok;
+end;
+
 class function TAtlasVcsProcessRunner.QuoteArgument(const AArgument: string): string;
 var
   mIndex, mBackslashes: Integer;
@@ -234,24 +254,6 @@ begin
     Result := Result + AArgument[mIndex];
   end;
   Result := Result + StringOfChar('\', mBackslashes) + '"';
-end;
-
-function TAtlasVcsProcessRunner.Refused(const AExecutable: string; out AOutcome: TAtlasVcsOutcome): Boolean;
-begin
-  AOutcome := TAtlasVcsOutcome.Ok;
-  if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
-  begin
-    AOutcome := TAtlasVcsOutcome.MainThread;
-  end
-  else if (AExecutable = '') or not FileExists(AExecutable) then
-  begin
-    AOutcome := TAtlasVcsOutcome.ToolMissing;
-  end
-  else if IsCancelled then
-  begin
-    AOutcome := TAtlasVcsOutcome.Cancelled;
-  end;
-  Result := AOutcome <> TAtlasVcsOutcome.Ok;
 end;
 
 type
@@ -311,6 +313,8 @@ begin
     Result := TAtlasVcsOutcome.TimedOut;
   end;
 end;
+
+{ TChildProcess }
 
 constructor TChildProcess.Create;
 begin

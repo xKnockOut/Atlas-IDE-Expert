@@ -86,60 +86,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdePreviewTool.FrameOf(ARoot: TWinControl): TSize;
-var
-  mScale: TAtlasDesignScale;
-begin
-  mScale := TAtlasDesignScale.ForRoot(ARoot);
-  Result := TSize.Create(mScale.ToDesign(ARoot.Width - ARoot.ClientWidth),
-    mScale.ToDesign(ARoot.Height - ARoot.ClientHeight));
-end;
-
-class function TAtlasIdePreviewTool.FormData(ARoot: TWinControl): TAtlasFormPreviewData;
-var
-  mControls: TArray<TControl>;
-  mScale: TAtlasDesignScale;
-  mFrameX, mFrameY: Integer;
-begin
-  Result := Default(TAtlasFormPreviewData);
-  Result.FormName := ARoot.Name;
-  Result.Nodes := TAtlasDesignerModel.LayoutNodes(ARoot, mControls);
-  Result.Design := TAtlasDesignerModel.ClientOf(ARoot);
-  Result.Quick := TAtlasFormLayout.ParseSizes(TAtlasIdeSettings.Current.DesignerResizePreviewSizes);
-  Result.ShowAnchors := TAtlasIdeSettings.Current.DesignerResizePreviewShowAnchors;
-  mScale := TAtlasDesignScale.ForRoot(ARoot);
-  // Constraints gelten für das ganze Fenster: Rahmen und Titel abziehen.
-  mFrameX := ARoot.Width - ARoot.ClientWidth;
-  mFrameY := ARoot.Height - ARoot.ClientHeight;
-  Result.MinClient := TSize.Create(ClientLimit(ARoot.Constraints.MinWidth, mFrameX, mScale),
-    ClientLimit(ARoot.Constraints.MinHeight, mFrameY, mScale));
-  Result.MaxClient := TSize.Create(ClientLimit(ARoot.Constraints.MaxWidth, mFrameX, mScale),
-    ClientLimit(ARoot.Constraints.MaxHeight, mFrameY, mScale));
-end;
-
-function TAtlasIdePreviewTool.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
-begin
-  if not Enabled(ASettings) then
-  begin
-    CloseWindow;
-    Exit(Default(TAtlasDesignerButton));
-  end;
-  Result := TAtlasDesignerButton.Create(Id, Icon, HintText);
-  Result.Pressed := (FWindow <> nil) and FWindow.Visible;
-end;
-
-procedure TAtlasIdePreviewTool.Toggle;
-begin
-  if (FWindow <> nil) and FWindow.Visible then
-  begin
-    CloseWindow;
-  end
-  else
-  begin
-    Open;
-  end;
-end;
-
 procedure TAtlasIdePreviewTool.Open;
 var
   mEditor: IOTAFormEditor;
@@ -168,6 +114,60 @@ begin
   FWindow := nil;
   mWindow.OnClosed := nil;
   mWindow.Free;
+end;
+
+class function TAtlasIdePreviewTool.FormData(ARoot: TWinControl): TAtlasFormPreviewData;
+var
+  mControls: TArray<TControl>;
+  mScale: TAtlasDesignScale;
+  mFrameX, mFrameY: Integer;
+begin
+  Result := Default(TAtlasFormPreviewData);
+  Result.FormName := ARoot.Name;
+  Result.Nodes := TAtlasDesignerModel.LayoutNodes(ARoot, mControls);
+  Result.Design := TAtlasDesignerModel.ClientOf(ARoot);
+  Result.Quick := TAtlasFormLayout.ParseSizes(TAtlasIdeSettings.Current.DesignerResizePreviewSizes);
+  Result.ShowAnchors := TAtlasIdeSettings.Current.DesignerResizePreviewShowAnchors;
+  mScale := TAtlasDesignScale.ForRoot(ARoot);
+  // Constraints gelten für das ganze Fenster: Rahmen und Titel abziehen.
+  mFrameX := ARoot.Width - ARoot.ClientWidth;
+  mFrameY := ARoot.Height - ARoot.ClientHeight;
+  Result.MinClient := TSize.Create(ClientLimit(ARoot.Constraints.MinWidth, mFrameX, mScale),
+    ClientLimit(ARoot.Constraints.MinHeight, mFrameY, mScale));
+  Result.MaxClient := TSize.Create(ClientLimit(ARoot.Constraints.MaxWidth, mFrameX, mScale),
+    ClientLimit(ARoot.Constraints.MaxHeight, mFrameY, mScale));
+end;
+
+class function TAtlasIdePreviewTool.FrameOf(ARoot: TWinControl): TSize;
+var
+  mScale: TAtlasDesignScale;
+begin
+  mScale := TAtlasDesignScale.ForRoot(ARoot);
+  Result := TSize.Create(mScale.ToDesign(ARoot.Width - ARoot.ClientWidth),
+    mScale.ToDesign(ARoot.Height - ARoot.ClientHeight));
+end;
+
+function TAtlasIdePreviewTool.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+begin
+  if not Enabled(ASettings) then
+  begin
+    CloseWindow;
+    Exit(Default(TAtlasDesignerButton));
+  end;
+  Result := TAtlasDesignerButton.Create(Id, Icon, HintText);
+  Result.Pressed := (FWindow <> nil) and FWindow.Visible;
+end;
+
+procedure TAtlasIdePreviewTool.Toggle;
+begin
+  if (FWindow <> nil) and FWindow.Visible then
+  begin
+    CloseWindow;
+  end
+  else
+  begin
+    Open;
+  end;
 end;
 
 procedure TAtlasIdePreviewTool.ApplyTheme;

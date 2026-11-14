@@ -250,6 +250,8 @@ begin
   end;
 end;
 
+{ TSymbolPathNames }
+
 class function TSymbolPathNames.TypeNamesIn(const AText: string): TArray<string>;
 var
   mIndex: Integer;
@@ -360,9 +362,41 @@ begin
   inherited;
 end;
 
-function TSymbolPathNodeTable.Node(ANode: Integer): TSymbolPathNode;
+function TSymbolPathNodeTable.IndexInUnit(AUnit: TSymbolPathUnit; const ASymbol: TIndexSymbol): Integer;
+var
+  mIndex: Integer;
 begin
-  Result := FNodes[ANode];
+  Result := -1;
+  for mIndex in AUnit.Data.SymbolsNamed(ASymbol.Name) do
+  begin
+    if not SameText(AUnit.Data.Symbols[mIndex].Container, ASymbol.Container) then
+    begin
+      Continue;
+    end;
+    if Result < 0 then
+    begin
+      Result := mIndex;
+    end;
+    if AUnit.Data.Symbols[mIndex].SelectionRange.StartPos = ASymbol.SelectionRange.StartPos then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+function TSymbolPathNodeTable.UnitEndpoint(const AQuery: string; AGraph: TUsesGraph): Integer;
+var
+  mData: TUnitIndex;
+begin
+  Result := -1;
+  if FIndex.FindUnit(AQuery, mData) then
+  begin
+    Result := UnitNode(mData.UnitName);
+  end
+  else if (AGraph <> nil) and (AGraph.IndexOf(AQuery) >= 0) then
+  begin
+    Result := UnitNode(AGraph.Node(AGraph.IndexOf(AQuery)).UnitName);
+  end;
 end;
 
 function TSymbolPathNodeTable.UnitFor(const AUnitName: string): TSymbolPathUnit;
@@ -381,31 +415,6 @@ begin
     Result := TSymbolPathUnit.Create(mData);
     FUnits.Add(mKey, Result);
   end;
-end;
-
-function TSymbolPathNodeTable.UnitNode(const AUnitName: string): Integer;
-var
-  mKey: string;
-  mNode: TSymbolPathNode;
-  mData: TSymbolPathUnit;
-begin
-  mKey := 'U|' + LowerCase(AUnitName);
-  if FKeys.TryGetValue(mKey, Result) then
-  begin
-    Exit;
-  end;
-  mNode := Default(TSymbolPathNode);
-  mNode.IsUnit := True;
-  mNode.UnitName := AUnitName;
-  mData := UnitFor(AUnitName);
-  if mData <> nil then
-  begin
-    mNode.UnitName := mData.Data.UnitName;
-    mNode.FileName := mData.Data.FileName;
-    mNode.Library_ := mData.Data.Library_;
-  end;
-  Result := FNodes.Add(mNode);
-  FKeys.Add(mKey, Result);
 end;
 
 function SameParameters(const ALeft, ARight: TIndexSymbol): Boolean;
@@ -503,6 +512,31 @@ begin
   end;
 end;
 
+function TSymbolPathNodeTable.UnitNode(const AUnitName: string): Integer;
+var
+  mKey: string;
+  mNode: TSymbolPathNode;
+  mData: TSymbolPathUnit;
+begin
+  mKey := 'U|' + LowerCase(AUnitName);
+  if FKeys.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  mNode := Default(TSymbolPathNode);
+  mNode.IsUnit := True;
+  mNode.UnitName := AUnitName;
+  mData := UnitFor(AUnitName);
+  if mData <> nil then
+  begin
+    mNode.UnitName := mData.Data.UnitName;
+    mNode.FileName := mData.Data.FileName;
+    mNode.Library_ := mData.Data.Library_;
+  end;
+  Result := FNodes.Add(mNode);
+  FKeys.Add(mKey, Result);
+end;
+
 function TSymbolPathNodeTable.SymbolNode(AUnit: TSymbolPathUnit; AIndex: Integer): Integer;
 var
   mKey: string;
@@ -522,28 +556,6 @@ begin
   mNode.Library_ := AUnit.Data.Library_;
   Result := FNodes.Add(mNode);
   FKeys.Add(mKey, Result);
-end;
-
-function TSymbolPathNodeTable.IndexInUnit(AUnit: TSymbolPathUnit; const ASymbol: TIndexSymbol): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  for mIndex in AUnit.Data.SymbolsNamed(ASymbol.Name) do
-  begin
-    if not SameText(AUnit.Data.Symbols[mIndex].Container, ASymbol.Container) then
-    begin
-      Continue;
-    end;
-    if Result < 0 then
-    begin
-      Result := mIndex;
-    end;
-    if AUnit.Data.Symbols[mIndex].SelectionRange.StartPos = ASymbol.SelectionRange.StartPos then
-    begin
-      Exit(mIndex);
-    end;
-  end;
 end;
 
 function TSymbolPathNodeTable.NodeOf(const ALocation: TSymbolLocation): Integer;
@@ -635,19 +647,17 @@ begin
   end;
 end;
 
-function TSymbolPathNodeTable.UnitEndpoint(const AQuery: string; AGraph: TUsesGraph): Integer;
-var
-  mData: TUnitIndex;
+function TSymbolPathNodeTable.EdgeTo(ATarget: Integer; AKind: TSymbolPathEdgeKind; AInferred: Boolean;
+  const AFileName: string; const APosition: TTextPosition): TSymbolPathEdge;
 begin
-  Result := -1;
-  if FIndex.FindUnit(AQuery, mData) then
-  begin
-    Result := UnitNode(mData.UnitName);
-  end
-  else if (AGraph <> nil) and (AGraph.IndexOf(AQuery) >= 0) then
-  begin
-    Result := UnitNode(AGraph.Node(AGraph.IndexOf(AQuery)).UnitName);
-  end;
+  Result := Default(TSymbolPathEdge);
+  Result.Target := ATarget;
+  Result.Kind := AKind;
+  Result.Inferred := AInferred;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.SortKey := LowerCase(FNodes[ATarget].Caption) + '|' + LowerCase(FNodes[ATarget].UnitName) + '|' +
+    TSymbolPathNames.PositionKey(FNodes[ATarget].Position);
 end;
 
 function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
@@ -710,17 +720,9 @@ begin
   end;
 end;
 
-function TSymbolPathNodeTable.EdgeTo(ATarget: Integer; AKind: TSymbolPathEdgeKind; AInferred: Boolean;
-  const AFileName: string; const APosition: TTextPosition): TSymbolPathEdge;
+function TSymbolPathNodeTable.Node(ANode: Integer): TSymbolPathNode;
 begin
-  Result := Default(TSymbolPathEdge);
-  Result.Target := ATarget;
-  Result.Kind := AKind;
-  Result.Inferred := AInferred;
-  Result.FileName := AFileName;
-  Result.Position := APosition;
-  Result.SortKey := LowerCase(FNodes[ATarget].Caption) + '|' + LowerCase(FNodes[ATarget].UnitName) + '|' +
-    TSymbolPathNames.PositionKey(FNodes[ATarget].Position);
+  Result := FNodes[ANode];
 end;
 
 { TSymbolPathEdgeList }

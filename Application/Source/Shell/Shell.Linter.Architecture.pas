@@ -80,6 +80,8 @@ begin
     end;
 end;
 
+{ TLinterArchitecture }
+
 class function TLinterArchitecture.OverviewOf(const ATarget: TLinterTarget;
   const ASettings: TServerSettings): TArchitectureOverview;
 var

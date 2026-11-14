@@ -97,6 +97,8 @@ begin
   end;
 end;
 
+{ TAtlasSelectionSearch }
+
 class function TAtlasSelectionSearch.Find(const ALines: TArray<string>; const ANeedle: string;
   const AFrom: TLspTextPosition; ABackward: Boolean; out AFound: TLspRange): Boolean;
 var
@@ -121,6 +123,8 @@ begin
     Inc(mStep);
   end;
 end;
+
+{ TAtlasSelectionSteps }
 
 class function TAtlasSelectionSteps.Expand(const AChain: TArray<TLspRange>; const ACurrent: TLspRange;
   out ANext: TLspRange): Boolean;

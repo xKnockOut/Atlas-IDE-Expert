@@ -227,6 +227,8 @@ begin
   Result := (LastTip > 0) or Never;
 end;
 
+{ TAtlasCommandUsageFormat }
+
 class function TAtlasCommandUsageFormat.IsRarelyByKeyboard(AMouse, AKeyboard: Integer): Boolean;
 var
   mTotal: Integer;
@@ -356,16 +358,6 @@ begin
   Result := mDatePart + mTimePart;
 end;
 
-procedure TAtlasCommandUsage.Clear;
-begin
-  FEntries.Clear;
-  FExtra := '';
-  FWritable := True;
-  FCountsWritable := True;
-  FTipsChanged := False;
-  FCountsChanged := False;
-end;
-
 procedure TAtlasCommandUsage.ClearCounts;
 var
   mKeys: TArray<string>;
@@ -402,6 +394,16 @@ begin
       Exit(True);
     end;
   end;
+end;
+
+procedure TAtlasCommandUsage.Clear;
+begin
+  FEntries.Clear;
+  FExtra := '';
+  FWritable := True;
+  FCountsWritable := True;
+  FTipsChanged := False;
+  FCountsChanged := False;
 end;
 
 /// <summary>Felder oberster Ebene außer "format" und "commands" als JSON-Text eines Objekts; '' ohne.</summary>

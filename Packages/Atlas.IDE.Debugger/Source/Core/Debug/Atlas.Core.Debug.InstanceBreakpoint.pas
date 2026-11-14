@@ -519,6 +519,11 @@ begin
   Result := Combine(WithoutAddress(AExisting), AddressCondition(AAddress, AStyle));
 end;
 
+class function TAtlasInstanceBreakpoint.HasAddressCondition(const ACondition: string): Boolean;
+begin
+  Result := Length(Addresses(ACondition)) > 0;
+end;
+
 class function TAtlasInstanceBreakpoint.Addresses(const ACondition: string): TArray<UInt64>;
 var
   mPart: string;
@@ -532,11 +537,6 @@ begin
       Result := Result + [mAddress];
     end;
   end;
-end;
-
-class function TAtlasInstanceBreakpoint.HasAddressCondition(const ACondition: string): Boolean;
-begin
-  Result := Length(Addresses(ACondition)) > 0;
 end;
 
 class function TAtlasInstanceBreakpoint.WithoutAddress(const ACondition: string): string;

@@ -164,11 +164,6 @@ begin
   FHooks := AHooks;
 end;
 
-procedure TIdeEnvironment.ForgetKeys;
-begin
-  FKeysRead := False;
-end;
-
 function TIdeEnvironment.Keys: TArray<TAtlasSetupKey>;
 begin
   if FKeysRead and (TThread.GetTickCount64 - FKeysAt < TAtlasIdeSetupChecklist.cKeysMaxAgeMs) then
@@ -181,6 +176,11 @@ begin
   FKeysAt := TThread.GetTickCount64;
   FKeysRead := True;
   Result := FKeys;
+end;
+
+procedure TIdeEnvironment.ForgetKeys;
+begin
+  FKeysRead := False;
 end;
 
 /// <summary>Plattform des aktiven Projekts und Namen der .dproj der Projektgruppe.</summary>
@@ -371,22 +371,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeSetupChecklist.Instance: TAtlasIdeSetupChecklist;
-begin
-  Result := FInstance;
-end;
-
-procedure TAtlasIdeSetupChecklist.Start;
-begin
-  FStarting := True;
-  FStartedAt := TThread.GetTickCount64;
-end;
-
-function TAtlasIdeSetupChecklist.WindowVisible: Boolean;
-begin
-  Result := (FWindow <> nil) and FWindow.Visible;
-end;
-
 procedure TAtlasIdeSetupChecklist.TimerTick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Settings,
@@ -455,6 +439,59 @@ begin
   FWindow.SetResults(FController.Results);
 end;
 
+procedure TAtlasIdeSetupChecklist.Fix(const AResult: TAtlasSetupResult);
+var
+  mFix_: TAtlasSetupFix;
+  mCheck_: TAtlasSetupCheck;
+begin
+  // Anonyme Methoden dürfen const-Parameter nicht einfangen.
+  mFix_ := AResult.Fix;
+  mCheck_ := AResult.Check;
+  TAtlasGuard.Run(TAtlasFeature.Settings,
+    procedure
+    begin
+      TAtlasGuard.Log(Format('Einrichtung: Knopf %d für Prüfung %d (#625)', [Ord(mFix_), Ord(mCheck_)]));
+      FController.Apply(mFix_);
+      UpdateLine;
+      UpdateWindow(True);
+    end);
+end;
+
+procedure TAtlasIdeSetupChecklist.CopyReport;
+begin
+  Clipboard.AsText := Report;
+  if FWindow <> nil then
+  begin
+    FWindow.ShowNote(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopied));
+  end;
+end;
+
+procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Stored;
+  if mSettings.SetupChecklist = AValue then
+  begin
+    Exit;
+  end;
+  mSettings.SetupChecklist := AValue;
+  TAtlasIdeSettings.Update(mSettings);
+end;
+
+procedure TAtlasIdeSetupChecklist.MarkSeen;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Stored;
+  if mSettings.SetupChecklistSeen then
+  begin
+    Exit;
+  end;
+  mSettings.SetupChecklistSeen := True;
+  TAtlasIdeSettings.Update(mSettings);
+end;
+
 procedure TAtlasIdeSetupChecklist.DecideAtStart;
 var
   mSettings: TAtlasPluginSettings;
@@ -470,22 +507,6 @@ begin
       end;
     TAtlasSetupStartAction.Skip:
       FStarting := False;
-  end;
-end;
-
-class function TAtlasIdeSetupChecklist.TryKey: string;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  // Eigene Taste der Vervollständigung (#494), sonst die der IDE.
-  mSettings := TAtlasIdeSettings.Current;
-  if mSettings.CompletionKey <> 0 then
-  begin
-    Result := ShortCutToText(TShortCut(mSettings.CompletionKey));
-  end
-  else
-  begin
-    Result := ShortCutToText(TShortCut(TAtlasKeyConflicts.cIdeCompletionKey));
   end;
 end;
 
@@ -536,6 +557,33 @@ begin
     end;
 end;
 
+function TAtlasIdeSetupChecklist.WindowVisible: Boolean;
+begin
+  Result := (FWindow <> nil) and FWindow.Visible;
+end;
+
+class function TAtlasIdeSetupChecklist.TryKey: string;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  // Eigene Taste der Vervollständigung (#494), sonst die der IDE.
+  mSettings := TAtlasIdeSettings.Current;
+  if mSettings.CompletionKey <> 0 then
+  begin
+    Result := ShortCutToText(TShortCut(mSettings.CompletionKey));
+  end
+  else
+  begin
+    Result := ShortCutToText(TShortCut(TAtlasKeyConflicts.cIdeCompletionKey));
+  end;
+end;
+
+procedure TAtlasIdeSetupChecklist.Start;
+begin
+  FStarting := True;
+  FStartedAt := TThread.GetTickCount64;
+end;
+
 procedure TAtlasIdeSetupChecklist.ShowWindow;
 begin
   if FWindow = nil then
@@ -556,82 +604,6 @@ begin
   FWindow.Show;
   FWindow.BringToFront;
   MarkSeen;
-end;
-
-procedure TAtlasIdeSetupChecklist.Fix(const AResult: TAtlasSetupResult);
-var
-  mFix_: TAtlasSetupFix;
-  mCheck_: TAtlasSetupCheck;
-begin
-  // Anonyme Methoden dürfen const-Parameter nicht einfangen.
-  mFix_ := AResult.Fix;
-  mCheck_ := AResult.Check;
-  TAtlasGuard.Run(TAtlasFeature.Settings,
-    procedure
-    begin
-      TAtlasGuard.Log(Format('Einrichtung: Knopf %d für Prüfung %d (#625)', [Ord(mFix_), Ord(mCheck_)]));
-      FController.Apply(mFix_);
-      UpdateLine;
-      UpdateWindow(True);
-    end);
-end;
-
-function TAtlasIdeSetupChecklist.Report: string;
-var
-  mInput: TAtlasSetupReportInput;
-  mResults_: TArray<TAtlasSetupResult>;
-begin
-  mResults_ := FController.Results;
-  mInput := Default(TAtlasSetupReportInput);
-  mInput.Title := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
-  mInput.Summary := TAtlasSetupTexts.ProgressText(mResults_);
-  mInput.AtlasVersion := TAtlasPluginVersion.cVersion;
-  mInput.IdeVersion := TAtlasUpdates.IdeVersion;
-  {$IFDEF WIN64}
-  mInput.Platform := 'Win64';
-  {$ELSE}
-  mInput.Platform := 'Win32';
-  {$ENDIF}
-  mInput.Created := Now;
-  mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
-    GetEnvironmentVariable('USERDOMAIN')];
-  mInput.Lines := TAtlasSetupTexts.ReportLines(mResults_);
-  Result := TAtlasSetupChecklist.Report(mInput);
-end;
-
-procedure TAtlasIdeSetupChecklist.CopyReport;
-begin
-  Clipboard.AsText := Report;
-  if FWindow <> nil then
-  begin
-    FWindow.ShowNote(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopied));
-  end;
-end;
-
-procedure TAtlasIdeSetupChecklist.SaveShowAtStart(AValue: Boolean);
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Stored;
-  if mSettings.SetupChecklist = AValue then
-  begin
-    Exit;
-  end;
-  mSettings.SetupChecklist := AValue;
-  TAtlasIdeSettings.Update(mSettings);
-end;
-
-procedure TAtlasIdeSetupChecklist.MarkSeen;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Stored;
-  if mSettings.SetupChecklistSeen then
-  begin
-    Exit;
-  end;
-  mSettings.SetupChecklistSeen := True;
-  TAtlasIdeSettings.Update(mSettings);
 end;
 
 procedure TAtlasIdeSetupChecklist.RegisterCommands(const ARegistry: IAtlasCommandRegistry);
@@ -663,6 +635,34 @@ end;
 function TAtlasIdeSetupChecklist.Results: TArray<TAtlasSetupResult>;
 begin
   Result := FController.Results;
+end;
+
+function TAtlasIdeSetupChecklist.Report: string;
+var
+  mInput: TAtlasSetupReportInput;
+  mResults_: TArray<TAtlasSetupResult>;
+begin
+  mResults_ := FController.Results;
+  mInput := Default(TAtlasSetupReportInput);
+  mInput.Title := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
+  mInput.Summary := TAtlasSetupTexts.ProgressText(mResults_);
+  mInput.AtlasVersion := TAtlasPluginVersion.cVersion;
+  mInput.IdeVersion := TAtlasUpdates.IdeVersion;
+  {$IFDEF WIN64}
+  mInput.Platform := 'Win64';
+  {$ELSE}
+  mInput.Platform := 'Win32';
+  {$ENDIF}
+  mInput.Created := Now;
+  mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+    GetEnvironmentVariable('USERDOMAIN')];
+  mInput.Lines := TAtlasSetupTexts.ReportLines(mResults_);
+  Result := TAtlasSetupChecklist.Report(mInput);
+end;
+
+class function TAtlasIdeSetupChecklist.Instance: TAtlasIdeSetupChecklist;
+begin
+  Result := FInstance;
 end;
 
 end.

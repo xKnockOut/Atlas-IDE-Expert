@@ -105,15 +105,10 @@ const
 
 { TAtlasRulesChecksSection }
 
-function TAtlasRulesChecksSection.OwnerId: string;
+destructor TAtlasRulesChecksSection.Destroy;
 begin
-  Result := cRulesSettingsOwner;
-end;
-
-function TAtlasRulesChecksSection.AreaId: string;
-begin
-  // Seite (x-page) im Schema, kein angezeigter Text.
-  Result := 'Prüfregeln'; // german-ok
+  FreeAndNil(FControls);
+  inherited Destroy;
 end;
 
 procedure TAtlasRulesChecksSection.BuildRows;
@@ -126,6 +121,33 @@ begin
   AddBaseline;
   AddSuppressions;
   Switch('fix.bulk', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsFixBulk));
+end;
+
+function TAtlasRulesChecksSection.OwnerId: string;
+begin
+  Result := cRulesSettingsOwner;
+end;
+
+function TAtlasRulesChecksSection.AreaId: string;
+begin
+  // Seite (x-page) im Schema, kein angezeigter Text.
+  Result := 'Prüfregeln'; // german-ok
+end;
+
+procedure TAtlasRulesChecksSection.Close;
+begin
+  // Rückwärts zum Aufbau: erst die eigenen Elemente (Klassen des Moduls), dann die Haken zur IDE.
+  FSwitch := nil;
+  FRulesProject := nil;
+  FRulesGlobal := nil;
+  FBaselineInfo := nil;
+  FBaselineUpdate := nil;
+  FBaselineDelete := nil;
+  FSuppressions := nil;
+  FSuppressionsRefresh := nil;
+  FreeAndNil(FControls);
+  FHooks := Default(TAtlasRulesChecksHooks);
+  inherited Close;
 end;
 
 function TAtlasRulesChecksSection.AddRow(AHeight: Integer): TWinControl;
@@ -272,29 +294,16 @@ begin
   end;
 end;
 
-procedure TAtlasRulesChecksSection.Close;
-begin
-  // Rückwärts zum Aufbau: erst die eigenen Elemente (Klassen des Moduls), dann die Haken zur IDE.
-  FSwitch := nil;
-  FRulesProject := nil;
-  FRulesGlobal := nil;
-  FBaselineInfo := nil;
-  FBaselineUpdate := nil;
-  FBaselineDelete := nil;
-  FSuppressions := nil;
-  FSuppressionsRefresh := nil;
-  FreeAndNil(FControls);
-  FHooks := Default(TAtlasRulesChecksHooks);
-  inherited Close;
-end;
-
-destructor TAtlasRulesChecksSection.Destroy;
-begin
-  FreeAndNil(FControls);
-  inherited Destroy;
-end;
-
 { TAtlasRulesEditorSection }
+
+procedure TAtlasRulesEditorSection.BuildRows;
+begin
+  Switch('baseline.update', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsBaselineUpdate));
+  Switch('dfmRules.apply', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsDfmPropertyRules));
+  Switch('editor.ownershipHints', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHints));
+  Switch('editor.ownershipHints.onlyProblems',
+    TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHintsOnlyProblems));
+end;
 
 function TAtlasRulesEditorSection.OwnerId: string;
 begin
@@ -304,15 +313,6 @@ end;
 function TAtlasRulesEditorSection.AreaId: string;
 begin
   Result := 'Editor';
-end;
-
-procedure TAtlasRulesEditorSection.BuildRows;
-begin
-  Switch('baseline.update', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsBaselineUpdate));
-  Switch('dfmRules.apply', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsDfmPropertyRules));
-  Switch('editor.ownershipHints', TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHints));
-  Switch('editor.ownershipHints.onlyProblems',
-    TAtlasRulesStrings.Text(TAtlasRulesTextId.SettingsOwnershipHintsOnlyProblems));
 end;
 
 end.

@@ -212,94 +212,6 @@ begin
   inherited;
 end;
 
-procedure TAtlasWindowsProfileSampler.Release;
-begin
-  if FWorker <> nil then
-  begin
-    FWorker.Terminate;
-    FWorker.WaitFor;
-    FreeAndNil(FWorker);
-  end;
-  FThreads.Clear;
-  if FProcess <> 0 then
-  begin
-    SamplerSymCleanup(FProcess);
-    CloseHandle(FProcess);
-    FProcess := 0;
-  end;
-end;
-
-function TAtlasWindowsProfileSampler.Start(AProcessId: Cardinal; AIntervalMs: Integer; out AError: string): Boolean;
-var
-  mWow64: BOOL;
-begin
-  AError := '';
-  FProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ or SYNCHRONIZE, False, AProcessId);
-  if FProcess = 0 then
-  begin
-    AError := SysErrorMessage(GetLastError);
-    Exit(False);
-  end;
-  FProcessId := AProcessId;
-  FIntervalMs := AIntervalMs;
-  mWow64 := False;
-  FWow64 := SamplerIsWow64Process(FProcess, mWow64) and mWow64;
-  LoadModules;
-  if FMainModule < 0 then
-  begin
-    AError := 'EnumProcessModulesEx: ' + SysErrorMessage(GetLastError);
-    Release;
-    Exit(False);
-  end;
-  // dbghelp braucht die Module des Ziels für die Abwicklungstabellen unter Win64 (SymFunctionTableAccess64).
-  SamplerSymInitialize(FProcess, nil, True);
-  FStacks.Clear;
-  FSamples := 0;
-  FEnded := 0;
-  FLastRefresh := 0;
-  FWatch := TStopwatch.StartNew;
-  FWorker := TWorker.Create(Self);
-  Result := True;
-end;
-
-function TAtlasWindowsProfileSampler.Stop: TAtlasSampleRun;
-begin
-  if FWorker <> nil then
-  begin
-    FWorker.Terminate;
-    FWorker.WaitFor;
-    FreeAndNil(FWorker);
-  end;
-  Result := Default(TAtlasSampleRun);
-  Result.Modules := FModules;
-  Result.MainModule := FMainModule;
-  Result.Stacks := FStacks.ToArray;
-  Result.DurationMs := FWatch.ElapsedMilliseconds;
-  Release;
-  FStacks.Clear;
-  FModules := nil;
-  FMainModule := -1;
-end;
-
-function TAtlasWindowsProfileSampler.Running: Boolean;
-begin
-  Result := (FWorker <> nil) and (AtomicCmpExchange(FEnded, 0, 0) = 0);
-end;
-
-function TAtlasWindowsProfileSampler.Samples: Integer;
-begin
-  Result := AtomicCmpExchange(FSamples, 0, 0);
-end;
-
-function TAtlasWindowsProfileSampler.MainFileName: string;
-begin
-  Result := '';
-  if (FMainModule >= 0) and (FMainModule <= High(FModules)) then
-  begin
-    Result := FModules[FMainModule].FileName;
-  end;
-end;
-
 procedure TAtlasWindowsProfileSampler.LoadModules;
 var
   mHandles: array of HMODULE;
@@ -507,6 +419,94 @@ begin
     SampleThread(mThread);
   end;
   Result := True;
+end;
+
+procedure TAtlasWindowsProfileSampler.Release;
+begin
+  if FWorker <> nil then
+  begin
+    FWorker.Terminate;
+    FWorker.WaitFor;
+    FreeAndNil(FWorker);
+  end;
+  FThreads.Clear;
+  if FProcess <> 0 then
+  begin
+    SamplerSymCleanup(FProcess);
+    CloseHandle(FProcess);
+    FProcess := 0;
+  end;
+end;
+
+function TAtlasWindowsProfileSampler.Start(AProcessId: Cardinal; AIntervalMs: Integer; out AError: string): Boolean;
+var
+  mWow64: BOOL;
+begin
+  AError := '';
+  FProcess := OpenProcess(PROCESS_QUERY_INFORMATION or PROCESS_VM_READ or SYNCHRONIZE, False, AProcessId);
+  if FProcess = 0 then
+  begin
+    AError := SysErrorMessage(GetLastError);
+    Exit(False);
+  end;
+  FProcessId := AProcessId;
+  FIntervalMs := AIntervalMs;
+  mWow64 := False;
+  FWow64 := SamplerIsWow64Process(FProcess, mWow64) and mWow64;
+  LoadModules;
+  if FMainModule < 0 then
+  begin
+    AError := 'EnumProcessModulesEx: ' + SysErrorMessage(GetLastError);
+    Release;
+    Exit(False);
+  end;
+  // dbghelp braucht die Module des Ziels für die Abwicklungstabellen unter Win64 (SymFunctionTableAccess64).
+  SamplerSymInitialize(FProcess, nil, True);
+  FStacks.Clear;
+  FSamples := 0;
+  FEnded := 0;
+  FLastRefresh := 0;
+  FWatch := TStopwatch.StartNew;
+  FWorker := TWorker.Create(Self);
+  Result := True;
+end;
+
+function TAtlasWindowsProfileSampler.Stop: TAtlasSampleRun;
+begin
+  if FWorker <> nil then
+  begin
+    FWorker.Terminate;
+    FWorker.WaitFor;
+    FreeAndNil(FWorker);
+  end;
+  Result := Default(TAtlasSampleRun);
+  Result.Modules := FModules;
+  Result.MainModule := FMainModule;
+  Result.Stacks := FStacks.ToArray;
+  Result.DurationMs := FWatch.ElapsedMilliseconds;
+  Release;
+  FStacks.Clear;
+  FModules := nil;
+  FMainModule := -1;
+end;
+
+function TAtlasWindowsProfileSampler.Running: Boolean;
+begin
+  Result := (FWorker <> nil) and (AtomicCmpExchange(FEnded, 0, 0) = 0);
+end;
+
+function TAtlasWindowsProfileSampler.Samples: Integer;
+begin
+  Result := AtomicCmpExchange(FSamples, 0, 0);
+end;
+
+function TAtlasWindowsProfileSampler.MainFileName: string;
+begin
+  Result := '';
+  if (FMainModule >= 0) and (FMainModule <= High(FModules)) then
+  begin
+    Result := FModules[FMainModule].FileName;
+  end;
 end;
 
 end.

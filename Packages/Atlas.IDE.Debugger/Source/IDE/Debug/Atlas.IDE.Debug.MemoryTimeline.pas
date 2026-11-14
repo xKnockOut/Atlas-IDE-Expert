@@ -126,6 +126,144 @@ end;
 
 { TAtlasIdeDebugMemoryTimeline }
 
+class function TAtlasIdeDebugMemoryTimeline.NowMs: Int64;
+begin
+  Result := Int64(GetTickCount64 - FSession.StartTicks);
+end;
+
+class function TAtlasIdeDebugMemoryTimeline.EnsureOpen: Boolean;
+var
+  mProcess: IOTAProcess;
+begin
+  Result := FCounters.IsOpen;
+  if Result then
+  begin
+    Exit;
+  end;
+  mProcess := TAtlasIdeDebugSession.Process;
+  if (mProcess = nil) or (mProcess.ProcessId = 0) then
+  begin
+    Exit;
+  end;
+  Result := FCounters.Open(mProcess.ProcessId);
+  if (not Result) and (not FSession.Reported) and Assigned(FMessage) then
+  begin
+    FSession.Reported := True;
+    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryNoAccess,
+      [mProcess.ProcessId, SysErrorMessage(FCounters.LastError)]));
+  end;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.Sample;
+var
+  mSample: TAtlasMemorySample;
+begin
+  if (FTimeline = nil) or not EnsureOpen then
+  begin
+    Exit;
+  end;
+  mSample := Default(TAtlasMemorySample);
+  if not FCounters.Read(mSample.Values) then
+  begin
+    Exit;
+  end;
+  mSample.AtMs := NowMs;
+  FTimeline.AddSample(mSample);
+  RefreshWindow;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.AddMark(AKind: TAtlasMemoryMarkKind; const AName: string);
+begin
+  if FTimeline = nil then
+  begin
+    Exit;
+  end;
+  FTimeline.AddMark(NowMs, AKind, AName);
+  // Gleich messen: Die Marke steht dann bei einem Wert, auch während das Programm angehalten ist.
+  Sample;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.RefreshWindow;
+var
+  mFrame: TAtlasDebugMemoryFrame;
+begin
+  mFrame := TAtlasIdeDebugMemoryWindow.ExistingFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.Refresh;
+  end;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.WireFrame(AFrame: TAtlasDebugMemoryFrame);
+begin
+  if AFrame = nil then
+  begin
+    Exit;
+  end;
+  AFrame.OnMark := MarkNow;
+  AFrame.OnCopyCsv := CopyCsv;
+  AFrame.OnClear := ClearTimeline;
+  AFrame.SetTimeline(FTimeline);
+  TAtlasIdeDebugObjectCount.Wire(AFrame.ObjectCount);
+  AFrame.ShowObjectCount(TAtlasIdeSettings.Current.DebugMemoryTimelineObjectCount);
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.CopyCsv;
+begin
+  if (FTimeline = nil) or (FTimeline.Count = 0) then
+  begin
+    Exit;
+  end;
+  Clipboard.AsText := FTimeline.ToCsv;
+  if Assigned(FMessage) then
+  begin
+    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryCopied, [FTimeline.Count]));
+  end;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.ClearTimeline;
+begin
+  if FTimeline = nil then
+  begin
+    Exit;
+  end;
+  FTimeline.Clear;
+  FSession.NextMark := 0;
+  RefreshWindow;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.SessionStarted;
+begin
+  FCounters.Close;
+  FTimeline.Clear;
+  FSession := Default(TSessionState);
+  FSession.StartTicks := GetTickCount64;
+  TAtlasIdeDebugObjectCount.Reset;
+  FTimer.Interval := TAtlasIdeSettings.Current.DebugMemoryTimelineIntervalMs;
+  FTimer.Enabled := True;
+  Sample;
+  RefreshWindow;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.SessionStopped(AStop: TAtlasDebugStop);
+begin
+  if AStop = TAtlasDebugStop.Paused then
+  begin
+    AddMark(TAtlasMemoryMarkKind.Stop, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkStop));
+  end
+  else
+  begin
+    AddMark(TAtlasMemoryMarkKind.Exception, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkException));
+  end;
+end;
+
+class procedure TAtlasIdeDebugMemoryTimeline.SessionEnded;
+begin
+  FTimer.Enabled := False;
+  FCounters.Close;
+  RefreshWindow;
+end;
+
 class procedure TAtlasIdeDebugMemoryTimeline.Start(const AMessage: TProc<string>);
 begin
   FMessage := AMessage;
@@ -202,11 +340,6 @@ begin
   Result := FListener <> nil;
 end;
 
-class function TAtlasIdeDebugMemoryTimeline.Timeline: TAtlasMemoryTimeline;
-begin
-  Result := FTimeline;
-end;
-
 class procedure TAtlasIdeDebugMemoryTimeline.ApplySettings;
 begin
   if FTimer <> nil then
@@ -245,88 +378,6 @@ begin
   WireFrame(mFrame);
 end;
 
-class procedure TAtlasIdeDebugMemoryTimeline.WireFrame(AFrame: TAtlasDebugMemoryFrame);
-begin
-  if AFrame = nil then
-  begin
-    Exit;
-  end;
-  AFrame.OnMark := MarkNow;
-  AFrame.OnCopyCsv := CopyCsv;
-  AFrame.OnClear := ClearTimeline;
-  AFrame.SetTimeline(FTimeline);
-  TAtlasIdeDebugObjectCount.Wire(AFrame.ObjectCount);
-  AFrame.ShowObjectCount(TAtlasIdeSettings.Current.DebugMemoryTimelineObjectCount);
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.RefreshWindow;
-var
-  mFrame: TAtlasDebugMemoryFrame;
-begin
-  mFrame := TAtlasIdeDebugMemoryWindow.ExistingFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.Refresh;
-  end;
-end;
-
-class function TAtlasIdeDebugMemoryTimeline.NowMs: Int64;
-begin
-  Result := Int64(GetTickCount64 - FSession.StartTicks);
-end;
-
-class function TAtlasIdeDebugMemoryTimeline.EnsureOpen: Boolean;
-var
-  mProcess: IOTAProcess;
-begin
-  Result := FCounters.IsOpen;
-  if Result then
-  begin
-    Exit;
-  end;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if (mProcess = nil) or (mProcess.ProcessId = 0) then
-  begin
-    Exit;
-  end;
-  Result := FCounters.Open(mProcess.ProcessId);
-  if (not Result) and (not FSession.Reported) and Assigned(FMessage) then
-  begin
-    FSession.Reported := True;
-    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryNoAccess,
-      [mProcess.ProcessId, SysErrorMessage(FCounters.LastError)]));
-  end;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.Sample;
-var
-  mSample: TAtlasMemorySample;
-begin
-  if (FTimeline = nil) or not EnsureOpen then
-  begin
-    Exit;
-  end;
-  mSample := Default(TAtlasMemorySample);
-  if not FCounters.Read(mSample.Values) then
-  begin
-    Exit;
-  end;
-  mSample.AtMs := NowMs;
-  FTimeline.AddSample(mSample);
-  RefreshWindow;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.AddMark(AKind: TAtlasMemoryMarkKind; const AName: string);
-begin
-  if FTimeline = nil then
-  begin
-    Exit;
-  end;
-  FTimeline.AddMark(NowMs, AKind, AName);
-  // Gleich messen: Die Marke steht dann bei einem Wert, auch während das Programm angehalten ist.
-  Sample;
-end;
-
 class procedure TAtlasIdeDebugMemoryTimeline.MarkNow;
 begin
   if (FTimeline = nil) or (FTimeline.Count = 0) then
@@ -338,60 +389,9 @@ begin
     [FSession.NextMark]));
 end;
 
-class procedure TAtlasIdeDebugMemoryTimeline.CopyCsv;
+class function TAtlasIdeDebugMemoryTimeline.Timeline: TAtlasMemoryTimeline;
 begin
-  if (FTimeline = nil) or (FTimeline.Count = 0) then
-  begin
-    Exit;
-  end;
-  Clipboard.AsText := FTimeline.ToCsv;
-  if Assigned(FMessage) then
-  begin
-    FMessage(TAtlasMemoryStrings.Fmt(TAtlasMemoryTextId.MemoryCopied, [FTimeline.Count]));
-  end;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.ClearTimeline;
-begin
-  if FTimeline = nil then
-  begin
-    Exit;
-  end;
-  FTimeline.Clear;
-  FSession.NextMark := 0;
-  RefreshWindow;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.SessionStarted;
-begin
-  FCounters.Close;
-  FTimeline.Clear;
-  FSession := Default(TSessionState);
-  FSession.StartTicks := GetTickCount64;
-  TAtlasIdeDebugObjectCount.Reset;
-  FTimer.Interval := TAtlasIdeSettings.Current.DebugMemoryTimelineIntervalMs;
-  FTimer.Enabled := True;
-  Sample;
-  RefreshWindow;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.SessionStopped(AStop: TAtlasDebugStop);
-begin
-  if AStop = TAtlasDebugStop.Paused then
-  begin
-    AddMark(TAtlasMemoryMarkKind.Stop, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkStop));
-  end
-  else
-  begin
-    AddMark(TAtlasMemoryMarkKind.Exception, TAtlasMemoryStrings.Text(TAtlasMemoryTextId.MemoryMarkException));
-  end;
-end;
-
-class procedure TAtlasIdeDebugMemoryTimeline.SessionEnded;
-begin
-  FTimer.Enabled := False;
-  FCounters.Close;
-  RefreshWindow;
+  Result := FTimeline;
 end;
 
 end.

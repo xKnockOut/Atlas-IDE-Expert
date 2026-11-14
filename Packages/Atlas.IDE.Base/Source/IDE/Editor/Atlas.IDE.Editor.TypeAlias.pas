@@ -43,6 +43,8 @@ const
   cApplyCommand = 'atlas.server.typeAlias';
   cInlineApplyCommand = 'atlas.server.inlineTypeAlias';
 
+{ TAtlasIdeTypeAlias }
+
 class procedure TAtlasIdeTypeAlias.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var

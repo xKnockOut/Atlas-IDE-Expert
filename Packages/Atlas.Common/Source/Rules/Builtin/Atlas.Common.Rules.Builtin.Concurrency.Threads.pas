@@ -539,6 +539,8 @@ const
   cThreadWaitCalls: array[0..6] of string = ('Sleep', 'WaitFor', 'WaitForSingleObject', 'WaitForMultipleObjects',
     'MsgWaitForMultipleObjects', 'Wait', 'Yield');
 
+{ TThreadLoopWithoutTerminatedRule }
+
 function TThreadLoopWithoutTerminatedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-loop-without-terminated', TRuleSeverity.Warning,
@@ -909,8 +911,8 @@ begin
   end;
 end;
 
-{ TAnonymousThreadNotStartedRule }
 
+{ TAnonymousThreadNotStartedRule }
 
 function TAnonymousThreadNotStartedRule.Descriptor: TRuleDescriptor;
 begin

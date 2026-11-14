@@ -74,6 +74,21 @@ begin
   FServices := AServices;
 end;
 
+procedure TAtlasTrackerIssueWork.LookUp(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  FServices.Preview.Lookups.Lookup(ATarget, AKey,
+    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
+    var
+      mWork: IAtlasIssueWork;
+    begin
+      // Nur ein neuer Stand zeichnet neu; ein Fehlschlag fragt erst nach TAtlasIdeIssueLookups.MissingMs wieder.
+      if ASucceeded and TAtlasTrackerIssueWorkLink.Work(mWork) then
+      begin
+        mWork.StatusesChanged;
+      end;
+    end);
+end;
+
 procedure TAtlasTrackerIssueWork.Detach;
 begin
   FContext := nil;
@@ -91,21 +106,6 @@ begin
     mActiveProject := TAtlasIdeFiles.ActiveProjectFile;
     Result := (mActiveProject <> '') and TAtlasTrackerIssueWorkLink.ActiveOf(FContext, mActiveProject, AIssue);
   end;
-end;
-
-procedure TAtlasTrackerIssueWork.LookUp(const ATarget: TAtlasTrackerTarget; const AKey: string);
-begin
-  FServices.Preview.Lookups.Lookup(ATarget, AKey,
-    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
-    var
-      mWork: IAtlasIssueWork;
-    begin
-      // Nur ein neuer Stand zeichnet neu; ein Fehlschlag fragt erst nach TAtlasIdeIssueLookups.MissingMs wieder.
-      if ASucceeded and TAtlasTrackerIssueWorkLink.Work(mWork) then
-      begin
-        mWork.StatusesChanged;
-      end;
-    end);
 end;
 
 function TAtlasTrackerIssueWork.Statuses(const AProject: string;

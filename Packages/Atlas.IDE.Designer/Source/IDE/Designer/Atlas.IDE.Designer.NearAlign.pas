@@ -487,11 +487,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeNearAlign.Baseline(AControl: TControl; ACanvas: TCanvas): Integer;
-begin
-  Result := BaselineOf(AControl, ACanvas);
-end;
-
 procedure TAtlasIdeNearAlign.Execute(ACommand: TAtlasNearCommand);
 begin
   case ACommand of
@@ -517,6 +512,11 @@ end;
 function TAtlasIdeNearAlign.CanUndo: Boolean;
 begin
   Result := FSnapshot.CanRestore;
+end;
+
+class function TAtlasIdeNearAlign.Baseline(AControl: TControl; ACanvas: TCanvas): Integer;
+begin
+  Result := BaselineOf(AControl, ACanvas);
 end;
 
 end.

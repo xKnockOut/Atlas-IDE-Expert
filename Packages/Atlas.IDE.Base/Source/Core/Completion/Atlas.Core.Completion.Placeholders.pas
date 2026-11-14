@@ -231,12 +231,16 @@ begin
   FPrimary := FirstOf(FOrder[0]);
 end;
 
-procedure TAtlasPlaceholderSession.Link(const AField: TAtlasPlaceholderField);
+procedure TAtlasPlaceholderSession.Shift(AFrom, ADelta, AExcept: Integer);
+var
+  mIndex: Integer;
 begin
-  // Hinten anhängen: FirstOf findet zuerst die Platzhalter der Vorlage, dort steht der Cursor.
-  if (AField.Number > 0) and (FirstOf(AField.Number) >= 0) then
+  for mIndex := 0 to High(FFields) do
   begin
-    FFields := FFields + [AField];
+    if (mIndex <> AExcept) and (FFields[mIndex].Start >= AFrom) then
+    begin
+      Inc(FFields[mIndex].Start, ADelta);
+    end;
   end;
 end;
 
@@ -252,6 +256,15 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+procedure TAtlasPlaceholderSession.Link(const AField: TAtlasPlaceholderField);
+begin
+  // Hinten anhängen: FirstOf findet zuerst die Platzhalter der Vorlage, dort steht der Cursor.
+  if (AField.Number > 0) and (FirstOf(AField.Number) >= 0) then
+  begin
+    FFields := FFields + [AField];
+  end;
 end;
 
 function TAtlasPlaceholderSession.CurrentNumber: Integer;
@@ -310,46 +323,6 @@ begin
     Dec(FCurrent);
   end;
   FPrimary := FirstOf(FOrder[FCurrent]);
-end;
-
-function TAtlasPlaceholderSession.FieldText(const AField: TAtlasPlaceholderField): string;
-begin
-  Result := Copy(FText, AField.Start + 1, AField.Length);
-end;
-
-class procedure TAtlasPlaceholderSession.Locate(const AText: string; AOffset: Integer; out ALine,
-  ACharacter: Integer);
-var
-  mIndex, mLineStart: Integer;
-begin
-  ALine := 0;
-  mLineStart := 0;
-  if AOffset > Length(AText) then
-  begin
-    AOffset := Length(AText);
-  end;
-  for mIndex := 1 to AOffset do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(ALine);
-      mLineStart := mIndex;
-    end;
-  end;
-  ACharacter := AOffset - mLineStart;
-end;
-
-procedure TAtlasPlaceholderSession.Shift(AFrom, ADelta, AExcept: Integer);
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FFields) do
-  begin
-    if (mIndex <> AExcept) and (FFields[mIndex].Start >= AFrom) then
-    begin
-      Inc(FFields[mIndex].Start, ADelta);
-    end;
-  end;
 end;
 
 function TAtlasPlaceholderSession.Update(const ADocument: string): Boolean;
@@ -441,6 +414,33 @@ begin
       end;
     end;
   end;
+end;
+
+function TAtlasPlaceholderSession.FieldText(const AField: TAtlasPlaceholderField): string;
+begin
+  Result := Copy(FText, AField.Start + 1, AField.Length);
+end;
+
+class procedure TAtlasPlaceholderSession.Locate(const AText: string; AOffset: Integer; out ALine,
+  ACharacter: Integer);
+var
+  mIndex, mLineStart: Integer;
+begin
+  ALine := 0;
+  mLineStart := 0;
+  if AOffset > Length(AText) then
+  begin
+    AOffset := Length(AText);
+  end;
+  for mIndex := 1 to AOffset do
+  begin
+    if AText[mIndex] = #10 then
+    begin
+      Inc(ALine);
+      mLineStart := mIndex;
+    end;
+  end;
+  ACharacter := AOffset - mLineStart;
 end;
 
 end.

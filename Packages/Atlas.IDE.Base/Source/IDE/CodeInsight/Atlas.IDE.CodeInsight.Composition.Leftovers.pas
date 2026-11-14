@@ -33,6 +33,8 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   end;
 
+{ TLeftoverTracker }
+
 procedure TLeftoverTracker.Notification(AComponent: TComponent; Operation: TOperation);
 begin
   inherited Notification(AComponent, Operation);

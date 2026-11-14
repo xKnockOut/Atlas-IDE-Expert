@@ -322,6 +322,85 @@ end;
 
 { TAtlasTrackerTestResultsText }
 
+class function TAtlasTrackerTestResultsText.CiHead(const ARow: TAtlasTestRow; ANowUtc: TDateTime): TArray<string>;
+var
+  mHead: string;
+  mFinished: TDateTime;
+begin
+  mHead := TAtlasTestResults.ProviderCaption(ARow.Job.Provider);
+  if ARow.Ci.HasBuild then
+  begin
+    Result := [mHead + ' #' + IntToStr(ARow.Ci.Build.Number), BuildText(ARow.Ci.Build)];
+    mFinished := FinishedUtc(ARow);
+    if mFinished > 0 then
+    begin
+      Result := Result + [AgoText(mFinished, ANowUtc)];
+    end;
+  end
+  else if ARow.CiQuerying then
+  begin
+    Result := [mHead, TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiQuerying)];
+  end
+  else
+  begin
+    Result := [mHead, ErrorText(ARow.Ci.Error)];
+  end;
+end;
+
+class function TAtlasTrackerTestResultsText.FinishedUtc(const ARow: TAtlasTestRow): TDateTime;
+begin
+  Result := ARow.Ci.Build.StartedUtc;
+  if (Result > 0) and (ARow.Ci.Build.DurationMs > 0) then
+  begin
+    Result := Result + ARow.Ci.Build.DurationMs / MSecsPerDay;
+  end;
+  if Result <= 0 then
+  begin
+    Result := ARow.Ci.At;
+  end;
+end;
+
+class function TAtlasTrackerTestResultsText.CiTail(const ARow: TAtlasTestRow): string;
+begin
+  Result := '';
+  if ARow.CiStale and (ARow.Ci.At > 0) then
+  begin
+    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsStale,
+      [FormatDateTime(cDateTimeFormat, TTimeZone.Local.ToLocalTime(ARow.Ci.At), FormatSettings)]);
+  end
+  else if ARow.CiQuerying and ARow.Ci.HasBuild then
+  begin
+    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiQuerying);
+  end;
+end;
+
+class function TAtlasTrackerTestResultsText.RunText(const ARow: TAtlasTestRow): string;
+var
+  mRun: string;
+begin
+  mRun := string.Join(' ', [ARow.Local.Configuration, ARow.Local.Platform]).Trim;
+  if mRun <> '' then
+  begin
+    mRun := '(' + mRun + ')';
+  end;
+  Result := Trim(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsHintLocal, [ARow.Local.Passed,
+    ARow.Local.Failed + ARow.Local.Errors, ARow.Local.Skipped, mRun]));
+end;
+
+class function TAtlasTrackerTestResultsText.FileNameOnly(const APath: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := APath;
+  for mIndex := Length(Result) downto 1 do
+  begin
+    if CharInSet(Result[mIndex], ['\', '/']) then
+    begin
+      Exit(Copy(Result, mIndex + 1, MaxInt));
+    end;
+  end;
+end;
+
 class function TAtlasTrackerTestResultsText.NowUtc: TDateTime;
 begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
@@ -345,80 +424,6 @@ begin
       end;
   else
     Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsNoLocalRun);
-  end;
-end;
-
-class function TAtlasTrackerTestResultsText.DurationText(AMs: Int64): string;
-var
-  mSeconds: Int64;
-begin
-  if AMs < cMsPerMinute then
-  begin
-    Result := FormatFloat('0.0', AMs / MSecsPerSec, FormatSettings) + ' s';
-  end
-  else
-  begin
-    mSeconds := AMs div MSecsPerSec;
-    Result := Format(cMinutesFormat, [mSeconds div SecsPerMin, mSeconds mod SecsPerMin]);
-  end;
-end;
-
-class function TAtlasTrackerTestResultsText.WhenText(AUtc, ANowUtc: TDateTime): string;
-var
-  mAtLocal, mNowLocal: TDateTime;
-begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  mAtLocal := TTimeZone.Local.ToLocalTime(AUtc);
-  mNowLocal := TTimeZone.Local.ToLocalTime(ANowUtc);
-  if Trunc(mAtLocal) = Trunc(mNowLocal) then
-  begin
-    Result := FormatDateTime('t', mAtLocal);
-  end
-  else if Trunc(mAtLocal) = Trunc(mNowLocal) - 1 then
-  begin
-    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsYesterday);
-  end
-  else
-  begin
-    Result := FormatDateTime('ddddd', mAtLocal);
-  end;
-end;
-
-class function TAtlasTrackerTestResultsText.AgoText(AUtc, ANowUtc: TDateTime): string;
-var
-  mMinutes, mDays: Int64;
-begin
-  Result := '';
-  if AUtc <= 0 then
-  begin
-    Exit;
-  end;
-  mMinutes := Max(Int64(0), Trunc((ANowUtc - AUtc) * MinsPerDay));
-  mDays := Trunc(TTimeZone.Local.ToLocalTime(ANowUtc)) - Trunc(TTimeZone.Local.ToLocalTime(AUtc));
-  if mMinutes < 1 then
-  begin
-    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsJustNow);
-  end
-  else if mMinutes < cMinutesPerHour then
-  begin
-    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsMinutesAgo, [mMinutes]);
-  end
-  else if mDays <= 0 then
-  begin
-    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsHoursAgo,
-      [mMinutes div cMinutesPerHour]);
-  end
-  else if mDays = 1 then
-  begin
-    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsYesterday);
-  end
-  else
-  begin
-    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsDaysAgo, [mDays]);
   end;
 end;
 
@@ -451,6 +456,50 @@ begin
     mParts := mParts + [WhenText(ARow.Local.At, ANowUtc)];
   end;
   Result := string.Join(cSeparator, mParts);
+end;
+
+class function TAtlasTrackerTestResultsText.CiText(const ARow: TAtlasTestRow; ANowUtc: TDateTime): string;
+var
+  mParts: TArray<string>;
+  mTail: string;
+begin
+  Result := '';
+  if not ARow.HasCi then
+  begin
+    Exit;
+  end;
+  mParts := CiHead(ARow, ANowUtc);
+  // Branch des Multibranch-Jobs, sonst der Job.
+  if ARow.Job.JobBranch <> '' then
+  begin
+    mParts := mParts + [ARow.Job.JobBranch];
+  end
+  else
+  begin
+    mParts := mParts + [ARow.Job.Job];
+  end;
+  mTail := CiTail(ARow);
+  if mTail <> '' then
+  begin
+    mParts := mParts + [mTail];
+  end;
+  Result := string.Join(cSeparator, mParts);
+end;
+
+class function TAtlasTrackerTestResultsText.MismatchText(AMismatch: TAtlasTestMismatch): string;
+begin
+  case AMismatch of
+    TAtlasTestMismatch.LocalGreenServerRed:
+      begin
+        Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsLocalGreenServerRed);
+      end;
+    TAtlasTestMismatch.LocalRedServerGreen:
+      begin
+        Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsLocalRedServerGreen);
+      end;
+  else
+    Result := '';
+  end;
 end;
 
 class function TAtlasTrackerTestResultsText.BuildText(const ABuild: TAtlasCiBuild): string;
@@ -525,113 +574,77 @@ begin
   end;
 end;
 
-class function TAtlasTrackerTestResultsText.FinishedUtc(const ARow: TAtlasTestRow): TDateTime;
-begin
-  Result := ARow.Ci.Build.StartedUtc;
-  if (Result > 0) and (ARow.Ci.Build.DurationMs > 0) then
-  begin
-    Result := Result + ARow.Ci.Build.DurationMs / MSecsPerDay;
-  end;
-  if Result <= 0 then
-  begin
-    Result := ARow.Ci.At;
-  end;
-end;
-
-class function TAtlasTrackerTestResultsText.CiHead(const ARow: TAtlasTestRow; ANowUtc: TDateTime): TArray<string>;
+class function TAtlasTrackerTestResultsText.DurationText(AMs: Int64): string;
 var
-  mHead: string;
-  mFinished: TDateTime;
+  mSeconds: Int64;
 begin
-  mHead := TAtlasTestResults.ProviderCaption(ARow.Job.Provider);
-  if ARow.Ci.HasBuild then
+  if AMs < cMsPerMinute then
   begin
-    Result := [mHead + ' #' + IntToStr(ARow.Ci.Build.Number), BuildText(ARow.Ci.Build)];
-    mFinished := FinishedUtc(ARow);
-    if mFinished > 0 then
-    begin
-      Result := Result + [AgoText(mFinished, ANowUtc)];
-    end;
-  end
-  else if ARow.CiQuerying then
-  begin
-    Result := [mHead, TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiQuerying)];
+    Result := FormatFloat('0.0', AMs / MSecsPerSec, FormatSettings) + ' s';
   end
   else
   begin
-    Result := [mHead, ErrorText(ARow.Ci.Error)];
+    mSeconds := AMs div MSecsPerSec;
+    Result := Format(cMinutesFormat, [mSeconds div SecsPerMin, mSeconds mod SecsPerMin]);
   end;
 end;
 
-class function TAtlasTrackerTestResultsText.CiTail(const ARow: TAtlasTestRow): string;
-begin
-  Result := '';
-  if ARow.CiStale and (ARow.Ci.At > 0) then
-  begin
-    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsStale,
-      [FormatDateTime(cDateTimeFormat, TTimeZone.Local.ToLocalTime(ARow.Ci.At), FormatSettings)]);
-  end
-  else if ARow.CiQuerying and ARow.Ci.HasBuild then
-  begin
-    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsCiQuerying);
-  end;
-end;
-
-class function TAtlasTrackerTestResultsText.CiText(const ARow: TAtlasTestRow; ANowUtc: TDateTime): string;
+class function TAtlasTrackerTestResultsText.WhenText(AUtc, ANowUtc: TDateTime): string;
 var
-  mParts: TArray<string>;
-  mTail: string;
+  mAtLocal, mNowLocal: TDateTime;
 begin
   Result := '';
-  if not ARow.HasCi then
+  if AUtc <= 0 then
   begin
     Exit;
   end;
-  mParts := CiHead(ARow, ANowUtc);
-  // Branch des Multibranch-Jobs, sonst der Job.
-  if ARow.Job.JobBranch <> '' then
+  mAtLocal := TTimeZone.Local.ToLocalTime(AUtc);
+  mNowLocal := TTimeZone.Local.ToLocalTime(ANowUtc);
+  if Trunc(mAtLocal) = Trunc(mNowLocal) then
   begin
-    mParts := mParts + [ARow.Job.JobBranch];
+    Result := FormatDateTime('t', mAtLocal);
+  end
+  else if Trunc(mAtLocal) = Trunc(mNowLocal) - 1 then
+  begin
+    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsYesterday);
   end
   else
   begin
-    mParts := mParts + [ARow.Job.Job];
-  end;
-  mTail := CiTail(ARow);
-  if mTail <> '' then
-  begin
-    mParts := mParts + [mTail];
-  end;
-  Result := string.Join(cSeparator, mParts);
-end;
-
-class function TAtlasTrackerTestResultsText.MismatchText(AMismatch: TAtlasTestMismatch): string;
-begin
-  case AMismatch of
-    TAtlasTestMismatch.LocalGreenServerRed:
-      begin
-        Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsLocalGreenServerRed);
-      end;
-    TAtlasTestMismatch.LocalRedServerGreen:
-      begin
-        Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsLocalRedServerGreen);
-      end;
-  else
-    Result := '';
+    Result := FormatDateTime('ddddd', mAtLocal);
   end;
 end;
 
-class function TAtlasTrackerTestResultsText.FileNameOnly(const APath: string): string;
+class function TAtlasTrackerTestResultsText.AgoText(AUtc, ANowUtc: TDateTime): string;
 var
-  mIndex: Integer;
+  mMinutes, mDays: Int64;
 begin
-  Result := APath;
-  for mIndex := Length(Result) downto 1 do
+  Result := '';
+  if AUtc <= 0 then
   begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
+    Exit;
+  end;
+  mMinutes := Max(Int64(0), Trunc((ANowUtc - AUtc) * MinsPerDay));
+  mDays := Trunc(TTimeZone.Local.ToLocalTime(ANowUtc)) - Trunc(TTimeZone.Local.ToLocalTime(AUtc));
+  if mMinutes < 1 then
+  begin
+    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsJustNow);
+  end
+  else if mMinutes < cMinutesPerHour then
+  begin
+    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsMinutesAgo, [mMinutes]);
+  end
+  else if mDays <= 0 then
+  begin
+    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsHoursAgo,
+      [mMinutes div cMinutesPerHour]);
+  end
+  else if mDays = 1 then
+  begin
+    Result := TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.WelcomeTestsYesterday);
+  end
+  else
+  begin
+    Result := TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsDaysAgo, [mDays]);
   end;
 end;
 
@@ -739,19 +752,6 @@ begin
   end;
 end;
 
-class function TAtlasTrackerTestResultsText.RunText(const ARow: TAtlasTestRow): string;
-var
-  mRun: string;
-begin
-  mRun := string.Join(' ', [ARow.Local.Configuration, ARow.Local.Platform]).Trim;
-  if mRun <> '' then
-  begin
-    mRun := '(' + mRun + ')';
-  end;
-  Result := Trim(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsHintLocal, [ARow.Local.Passed,
-    ARow.Local.Failed + ARow.Local.Errors, ARow.Local.Skipped, mRun]));
-end;
-
 class function TAtlasTrackerTestResultsText.RowHint(const ARow: TAtlasTestRow): string;
 var
   mLines: TArray<string>;
@@ -804,64 +804,6 @@ end;
 function TAtlasTrackerTestResultsPainter.Limit: Integer;
 begin
   Result := FOwner.PaintBox.Width - Scaled(cIndent);
-end;
-
-function TAtlasTrackerTestResultsPainter.RowHeight(AIndex: Integer): Integer;
-begin
-  Result := Scaled(cLineHeight) + Scaled(cRowGap);
-  if (AIndex >= 0) and (AIndex <= High(FOwner.View.Rows)) and FOwner.View.Rows[AIndex].HasCi then
-  begin
-    Inc(Result, Scaled(cCiLineHeight));
-  end;
-end;
-
-function TAtlasTrackerTestResultsPainter.RowTop(AIndex: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := Scaled(cIndent) div 2;
-  for mIndex := 0 to AIndex - 1 do
-  begin
-    Inc(Result, RowHeight(mIndex));
-  end;
-end;
-
-function TAtlasTrackerTestResultsPainter.ListTop: Integer;
-begin
-  Result := RowTop(Length(FOwner.View.Rows)) + Scaled(cListGap);
-end;
-
-function TAtlasTrackerTestResultsPainter.FailureTop(AIndex: Integer): Integer;
-begin
-  Result := ListTop + AIndex * Scaled(cFailureHeight);
-end;
-
-function TAtlasTrackerTestResultsPainter.SlowTop(AIndex: Integer): Integer;
-begin
-  Result := FailureTop(Length(FOwner.View.Failures));
-  if FOwner.View.More > 0 then
-  begin
-    Inc(Result, Scaled(cMoreHeight));
-  end;
-  if Length(FOwner.View.Slowest) > 0 then
-  begin
-    Inc(Result, Scaled(cMoreHeight));
-  end;
-  Inc(Result, AIndex * Scaled(cSlowHeight));
-end;
-
-function TAtlasTrackerTestResultsPainter.ButtonsTop: Integer;
-begin
-  Result := SlowTop(Length(FOwner.View.Slowest));
-end;
-
-function TAtlasTrackerTestResultsPainter.Height: Integer;
-begin
-  if FOwner.View.Empty then
-  begin
-    Exit(Scaled(cLineHeight) * 2 + Scaled(cIndent));
-  end;
-  Result := ButtonsTop + Scaled(cButtonsHeight) + Scaled(cIndent) div 2;
 end;
 
 procedure TAtlasTrackerTestResultsPainter.PaintDot(ACanvas: TCanvas; const AArea: TRect; AColor: TColor);
@@ -950,28 +892,6 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
-procedure TAtlasTrackerTestResultsPainter.PaintMismatch(ACanvas: TCanvas; const ARow: TAtlasTestRow; ALeft,
-  ATop: Integer);
-var
-  mText: string;
-begin
-  mText := TAtlasTrackerTestResultsText.MismatchText(ARow.Mismatch);
-  if (mText = '') or (ALeft >= Limit) then
-  begin
-    Exit;
-  end;
-  ACanvas.Font.Style := [fsBold];
-  if ARow.Mismatch = TAtlasTestMismatch.LocalGreenServerRed then
-  begin
-    ACanvas.Font.Color := TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed);
-  end
-  else
-  begin
-    ACanvas.Font.Color := TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Warning);
-  end;
-  ACanvas.TextRect(Rect(ALeft, ATop + Scaled(1), Limit, ATop + Scaled(cCiLineHeight)), ALeft, ATop + Scaled(1), mText);
-end;
-
 procedure TAtlasTrackerTestResultsPainter.PaintCiLine(ACanvas: TCanvas; AIndex: Integer; ANowUtc: TDateTime);
 var
   mRow: TAtlasTestRow;
@@ -998,6 +918,28 @@ begin
   ACanvas.TextRect(Rect(mLeft, mTop + Scaled(1), Limit, mTop + Scaled(cCiLineHeight)), mLeft, mTop + Scaled(1), mText);
   PaintMismatch(ACanvas, mRow, mLeft + ACanvas.TextWidth(mText) + Scaled(10), mTop);
   ACanvas.Font.Assign(FOwner.Font);
+end;
+
+procedure TAtlasTrackerTestResultsPainter.PaintMismatch(ACanvas: TCanvas; const ARow: TAtlasTestRow; ALeft,
+  ATop: Integer);
+var
+  mText: string;
+begin
+  mText := TAtlasTrackerTestResultsText.MismatchText(ARow.Mismatch);
+  if (mText = '') or (ALeft >= Limit) then
+  begin
+    Exit;
+  end;
+  ACanvas.Font.Style := [fsBold];
+  if ARow.Mismatch = TAtlasTestMismatch.LocalGreenServerRed then
+  begin
+    ACanvas.Font.Color := TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Failed);
+  end
+  else
+  begin
+    ACanvas.Font.Color := TAtlasTrackerTestResultsText.LevelColor(TAtlasTestLevel.Warning);
+  end;
+  ACanvas.TextRect(Rect(ALeft, ATop + Scaled(1), Limit, ATop + Scaled(cCiLineHeight)), ALeft, ATop + Scaled(1), mText);
 end;
 
 procedure TAtlasTrackerTestResultsPainter.PaintFailure(ACanvas: TCanvas; AIndex: Integer);
@@ -1144,33 +1086,6 @@ begin
   ACanvas.Font.Assign(FOwner.Font);
 end;
 
-procedure TAtlasTrackerTestResultsPainter.Paint(ACanvas: TCanvas);
-var
-  mIndex: Integer;
-  mStamp: TDateTime;
-begin
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Font.Assign(FOwner.Font);
-  if FOwner.View.Empty then
-  begin
-    PaintEmpty(ACanvas);
-    Exit;
-  end;
-  mStamp := TAtlasTrackerTestResultsText.NowUtc;
-  for mIndex := 0 to High(FOwner.View.Rows) do
-  begin
-    PaintLocalLine(ACanvas, mIndex, mStamp);
-    PaintCiLine(ACanvas, mIndex, mStamp);
-  end;
-  for mIndex := 0 to High(FOwner.View.Failures) do
-  begin
-    PaintFailure(ACanvas, mIndex);
-  end;
-  PaintMore(ACanvas);
-  PaintSlowest(ACanvas);
-  PaintButtons(ACanvas);
-end;
-
 function TAtlasTrackerTestResultsPainter.ButtonHit(const APoint: TPoint): TAtlasTestResultsHit;
 const
   cKinds: array[TAtlasTestResultsButton] of TAtlasTestResultsHitKind = (TAtlasTestResultsHitKind.Rerun,
@@ -1185,19 +1100,6 @@ begin
     begin
       Result := TAtlasTestResultsHit.Create(cKinds[mButton], -1);
     end;
-  end;
-end;
-
-function TAtlasTrackerTestResultsPainter.HitTest(AX, AY: Integer): TAtlasTestResultsHit;
-begin
-  Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.None, -1);
-  if not FOwner.View.Empty then
-  begin
-    Result := ListHit(AY);
-  end;
-  if (Result.Kind = TAtlasTestResultsHitKind.None) and not FOwner.View.Empty then
-  begin
-    Result := ButtonHit(Point(AX, AY));
   end;
 end;
 
@@ -1231,6 +1133,104 @@ begin
   begin
     Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.More, -1);
   end;
+end;
+
+procedure TAtlasTrackerTestResultsPainter.Paint(ACanvas: TCanvas);
+var
+  mIndex: Integer;
+  mStamp: TDateTime;
+begin
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Assign(FOwner.Font);
+  if FOwner.View.Empty then
+  begin
+    PaintEmpty(ACanvas);
+    Exit;
+  end;
+  mStamp := TAtlasTrackerTestResultsText.NowUtc;
+  for mIndex := 0 to High(FOwner.View.Rows) do
+  begin
+    PaintLocalLine(ACanvas, mIndex, mStamp);
+    PaintCiLine(ACanvas, mIndex, mStamp);
+  end;
+  for mIndex := 0 to High(FOwner.View.Failures) do
+  begin
+    PaintFailure(ACanvas, mIndex);
+  end;
+  PaintMore(ACanvas);
+  PaintSlowest(ACanvas);
+  PaintButtons(ACanvas);
+end;
+
+function TAtlasTrackerTestResultsPainter.HitTest(AX, AY: Integer): TAtlasTestResultsHit;
+begin
+  Result := TAtlasTestResultsHit.Create(TAtlasTestResultsHitKind.None, -1);
+  if not FOwner.View.Empty then
+  begin
+    Result := ListHit(AY);
+  end;
+  if (Result.Kind = TAtlasTestResultsHitKind.None) and not FOwner.View.Empty then
+  begin
+    Result := ButtonHit(Point(AX, AY));
+  end;
+end;
+
+function TAtlasTrackerTestResultsPainter.RowHeight(AIndex: Integer): Integer;
+begin
+  Result := Scaled(cLineHeight) + Scaled(cRowGap);
+  if (AIndex >= 0) and (AIndex <= High(FOwner.View.Rows)) and FOwner.View.Rows[AIndex].HasCi then
+  begin
+    Inc(Result, Scaled(cCiLineHeight));
+  end;
+end;
+
+function TAtlasTrackerTestResultsPainter.RowTop(AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := Scaled(cIndent) div 2;
+  for mIndex := 0 to AIndex - 1 do
+  begin
+    Inc(Result, RowHeight(mIndex));
+  end;
+end;
+
+function TAtlasTrackerTestResultsPainter.ListTop: Integer;
+begin
+  Result := RowTop(Length(FOwner.View.Rows)) + Scaled(cListGap);
+end;
+
+function TAtlasTrackerTestResultsPainter.FailureTop(AIndex: Integer): Integer;
+begin
+  Result := ListTop + AIndex * Scaled(cFailureHeight);
+end;
+
+function TAtlasTrackerTestResultsPainter.SlowTop(AIndex: Integer): Integer;
+begin
+  Result := FailureTop(Length(FOwner.View.Failures));
+  if FOwner.View.More > 0 then
+  begin
+    Inc(Result, Scaled(cMoreHeight));
+  end;
+  if Length(FOwner.View.Slowest) > 0 then
+  begin
+    Inc(Result, Scaled(cMoreHeight));
+  end;
+  Inc(Result, AIndex * Scaled(cSlowHeight));
+end;
+
+function TAtlasTrackerTestResultsPainter.ButtonsTop: Integer;
+begin
+  Result := SlowTop(Length(FOwner.View.Slowest));
+end;
+
+function TAtlasTrackerTestResultsPainter.Height: Integer;
+begin
+  if FOwner.View.Empty then
+  begin
+    Exit(Scaled(cLineHeight) * 2 + Scaled(cIndent));
+  end;
+  Result := ButtonsTop + Scaled(cButtonsHeight) + Scaled(cIndent) div 2;
 end;
 
 { TAtlasTrackerTestResultsMenu }
@@ -1353,6 +1353,11 @@ begin
   end;
 end;
 
+function TAtlasTrackerTestResultsView.BodyHeight: Integer;
+begin
+  Result := FPainter.Height;
+end;
+
 procedure TAtlasTrackerTestResultsView.UpdateContent;
 var
   mOldHeight: Integer;
@@ -1389,105 +1394,53 @@ begin
   end;
 end;
 
-function TAtlasTrackerTestResultsView.BodyHeight: Integer;
-begin
-  Result := FPainter.Height;
-end;
-
 procedure TAtlasTrackerTestResultsView.BoxPaint(Sender: TObject);
 begin
   FPainter.Paint(FBox.Canvas);
 end;
 
-function TAtlasTrackerTestResultsView.HitTest(AX, AY: Integer): TAtlasTestResultsHit;
-begin
-  Result := FPainter.HitTest(AX, AY);
-end;
-
-function TAtlasTrackerTestResultsView.SelectedFailure(out AItem: TAtlasTestFailureItem): Boolean;
+procedure TAtlasTrackerTestResultsView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
 var
-  mIndex: Integer;
+  mHit: TAtlasTestResultsHit;
+  mKey: string;
 begin
-  AItem := Default(TAtlasTestFailureItem);
-  if (FFailure >= 0) and (FFailure <= High(FView.Failures)) then
+  mHit := HitTest(AX, AY);
+  FBox.Cursor := crDefault;
+  if mHit.Kind in [TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
+    TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
   begin
-    AItem := FView.Failures[FFailure];
-    Exit(True);
+    FBox.Cursor := crHandPoint;
   end;
-  // Ohne Wahl: der erste Fehlschlag (zuerst lokale, sie haben Datei und Zeile).
-  for mIndex := High(FView.Failures) downto 0 do
+  mKey := IntToStr(Ord(mHit.Kind)) + ':' + IntToStr(mHit.Index);
+  if mKey <> FHintKey then
   begin
-    if FView.Failures[mIndex].Local or ((mIndex = 0) and not AItem.Local) then
-    begin
-      AItem := FView.Failures[mIndex];
-    end;
-  end;
-  Result := Length(FView.Failures) > 0;
-end;
-
-function TAtlasTrackerTestResultsView.ButtonVisible(AButton: TAtlasTestResultsButton): Boolean;
-var
-  mRow: TAtlasTestRow;
-  mItem: TAtlasTestFailureItem;
-begin
-  Result := FView.SelectedRow(mRow);
-  if Result and (AButton = TAtlasTestResultsButton.Browse) then
-  begin
-    Result := mRow.HasCi;
-  end
-  else if Result and (AButton = TAtlasTestResultsButton.Compare) then
-  begin
-    // Nur, wenn das Modul Tests erwartet und erhalten des gewählten Fehlschlags kennt (#1779).
-    Result := (FSource <> nil) and SelectedFailure(mItem) and FSource.CanCompare(mItem);
+    FHintKey := mKey;
+    FBox.Hint := HintOf(mHit);
+    Application.CancelHint;
   end;
 end;
 
-function TAtlasTrackerTestResultsView.ButtonEnabled(AButton: TAtlasTestResultsButton): Boolean;
-var
-  mRow: TAtlasTestRow;
-  mItem: TAtlasTestFailureItem;
+procedure TAtlasTrackerTestResultsView.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
+  AY: Integer);
 begin
-  Result := (FSource <> nil) and ButtonVisible(AButton) and FView.SelectedRow(mRow);
-  if Result then
-  begin
-    case AButton of
-      TAtlasTestResultsButton.Rerun:
-        begin
-          Result := Length(FView.Rerun) > 0;
-        end;
-      TAtlasTestResultsButton.Debug, TAtlasTestResultsButton.Compare:
-        begin
-          Result := SelectedFailure(mItem);
-        end;
-    else
-      Result := mRow.Ci.HasBuild;
-    end;
-  end;
+  FLastMouse := Point(AX, AY);
+  FDoubleDown := ssDouble in Shift;
 end;
 
-class procedure TAtlasTrackerTestResultsView.Post(const AAction: TThreadProcedure);
+procedure TAtlasTrackerTestResultsView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
+  AY: Integer);
 begin
-  // Die Quelle füllt die Kachel danach neu: nicht im eigenen Maus- bzw. Menüereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
+  // Der zweite Klick eines Doppelklicks löst nichts noch einmal aus: BoxDblClick öffnet.
+  if (Button = mbLeft) and not FDoubleDown then
+  begin
+    ClickAt(HitTest(AX, AY));
+  end;
+  FDoubleDown := False;
 end;
 
-procedure TAtlasTrackerTestResultsView.SendRow(const ARow: TAtlasTestRow; const AAction: TAtlasTestResultsRowAction);
-var
-  mSource: IAtlasTestResultsSource;
-  mRow: TAtlasTestRow;
-  mAction: TAtlasTestResultsRowAction;
+procedure TAtlasTrackerTestResultsView.BoxDblClick(Sender: TObject);
 begin
-  mSource := FSource;
-  mRow := ARow;
-  mAction := AAction;
-  if mSource <> nil then
-  begin
-    Post(
-      procedure
-      begin
-        mAction(mSource, mRow);
-      end);
-  end;
+  DoubleClickAt(HitTest(FLastMouse.X, FLastMouse.Y));
 end;
 
 procedure TAtlasTrackerTestResultsView.ClickRow(AIndex: Integer);
@@ -1551,6 +1504,37 @@ begin
         ASource.Browse(ARow);
       end);
   end;
+end;
+
+function TAtlasTrackerTestResultsView.HintOf(const AHit: TAtlasTestResultsHit): string;
+begin
+  case AHit.Kind of
+    TAtlasTestResultsHitKind.Row:
+      begin
+        Result := TAtlasTrackerTestResultsText.RowHint(FView.Rows[AHit.Index]);
+      end;
+    TAtlasTestResultsHitKind.Failure:
+      begin
+        Result := TAtlasTrackerTestResultsText.FailureHint(FView.Failures[AHit.Index]);
+      end;
+    TAtlasTestResultsHitKind.Slow:
+      begin
+        Result := FView.Slowest[AHit.Index].Test;
+      end;
+  else
+    Result := '';
+  end;
+end;
+
+class procedure TAtlasTrackerTestResultsView.Post(const AAction: TThreadProcedure);
+begin
+  // Die Quelle füllt die Kachel danach neu: nicht im eigenen Maus- bzw. Menüereignis.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
+end;
+
+function TAtlasTrackerTestResultsView.HitTest(AX, AY: Integer): TAtlasTestResultsHit;
+begin
+  Result := FPainter.HitTest(AX, AY);
 end;
 
 procedure TAtlasTrackerTestResultsView.ClickAt(const AHit: TAtlasTestResultsHit);
@@ -1625,68 +1609,84 @@ begin
   end;
 end;
 
-function TAtlasTrackerTestResultsView.HintOf(const AHit: TAtlasTestResultsHit): string;
-begin
-  case AHit.Kind of
-    TAtlasTestResultsHitKind.Row:
-      begin
-        Result := TAtlasTrackerTestResultsText.RowHint(FView.Rows[AHit.Index]);
-      end;
-    TAtlasTestResultsHitKind.Failure:
-      begin
-        Result := TAtlasTrackerTestResultsText.FailureHint(FView.Failures[AHit.Index]);
-      end;
-    TAtlasTestResultsHitKind.Slow:
-      begin
-        Result := FView.Slowest[AHit.Index].Test;
-      end;
-  else
-    Result := '';
-  end;
-end;
-
-procedure TAtlasTrackerTestResultsView.BoxMouseMove(Sender: TObject; Shift: TShiftState; AX, AY: Integer);
+function TAtlasTrackerTestResultsView.ButtonEnabled(AButton: TAtlasTestResultsButton): Boolean;
 var
-  mHit: TAtlasTestResultsHit;
-  mKey: string;
+  mRow: TAtlasTestRow;
+  mItem: TAtlasTestFailureItem;
 begin
-  mHit := HitTest(AX, AY);
-  FBox.Cursor := crDefault;
-  if mHit.Kind in [TAtlasTestResultsHitKind.Rerun, TAtlasTestResultsHitKind.Debug, TAtlasTestResultsHitKind.Browse,
-    TAtlasTestResultsHitKind.Compare, TAtlasTestResultsHitKind.Row, TAtlasTestResultsHitKind.Failure] then
+  Result := (FSource <> nil) and ButtonVisible(AButton) and FView.SelectedRow(mRow);
+  if Result then
   begin
-    FBox.Cursor := crHandPoint;
-  end;
-  mKey := IntToStr(Ord(mHit.Kind)) + ':' + IntToStr(mHit.Index);
-  if mKey <> FHintKey then
-  begin
-    FHintKey := mKey;
-    FBox.Hint := HintOf(mHit);
-    Application.CancelHint;
+    case AButton of
+      TAtlasTestResultsButton.Rerun:
+        begin
+          Result := Length(FView.Rerun) > 0;
+        end;
+      TAtlasTestResultsButton.Debug, TAtlasTestResultsButton.Compare:
+        begin
+          Result := SelectedFailure(mItem);
+        end;
+    else
+      Result := mRow.Ci.HasBuild;
+    end;
   end;
 end;
 
-procedure TAtlasTrackerTestResultsView.BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
-  AY: Integer);
+function TAtlasTrackerTestResultsView.ButtonVisible(AButton: TAtlasTestResultsButton): Boolean;
+var
+  mRow: TAtlasTestRow;
+  mItem: TAtlasTestFailureItem;
 begin
-  FLastMouse := Point(AX, AY);
-  FDoubleDown := ssDouble in Shift;
-end;
-
-procedure TAtlasTrackerTestResultsView.BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; AX,
-  AY: Integer);
-begin
-  // Der zweite Klick eines Doppelklicks löst nichts noch einmal aus: BoxDblClick öffnet.
-  if (Button = mbLeft) and not FDoubleDown then
+  Result := FView.SelectedRow(mRow);
+  if Result and (AButton = TAtlasTestResultsButton.Browse) then
   begin
-    ClickAt(HitTest(AX, AY));
+    Result := mRow.HasCi;
+  end
+  else if Result and (AButton = TAtlasTestResultsButton.Compare) then
+  begin
+    // Nur, wenn das Modul Tests erwartet und erhalten des gewählten Fehlschlags kennt (#1779).
+    Result := (FSource <> nil) and SelectedFailure(mItem) and FSource.CanCompare(mItem);
   end;
-  FDoubleDown := False;
 end;
 
-procedure TAtlasTrackerTestResultsView.BoxDblClick(Sender: TObject);
+function TAtlasTrackerTestResultsView.SelectedFailure(out AItem: TAtlasTestFailureItem): Boolean;
+var
+  mIndex: Integer;
 begin
-  DoubleClickAt(HitTest(FLastMouse.X, FLastMouse.Y));
+  AItem := Default(TAtlasTestFailureItem);
+  if (FFailure >= 0) and (FFailure <= High(FView.Failures)) then
+  begin
+    AItem := FView.Failures[FFailure];
+    Exit(True);
+  end;
+  // Ohne Wahl: der erste Fehlschlag (zuerst lokale, sie haben Datei und Zeile).
+  for mIndex := High(FView.Failures) downto 0 do
+  begin
+    if FView.Failures[mIndex].Local or ((mIndex = 0) and not AItem.Local) then
+    begin
+      AItem := FView.Failures[mIndex];
+    end;
+  end;
+  Result := Length(FView.Failures) > 0;
+end;
+
+procedure TAtlasTrackerTestResultsView.SendRow(const ARow: TAtlasTestRow; const AAction: TAtlasTestResultsRowAction);
+var
+  mSource: IAtlasTestResultsSource;
+  mRow: TAtlasTestRow;
+  mAction: TAtlasTestResultsRowAction;
+begin
+  mSource := FSource;
+  mRow := ARow;
+  mAction := AAction;
+  if mSource <> nil then
+  begin
+    Post(
+      procedure
+      begin
+        mAction(mSource, mRow);
+      end);
+  end;
 end;
 
 end.

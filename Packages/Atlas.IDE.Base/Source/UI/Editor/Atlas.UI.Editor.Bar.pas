@@ -125,34 +125,6 @@ begin
   FixHeight(96);
 end;
 
-class function TAtlasEditorBar.BaseHeight: Integer;
-begin
-  Result := 22;
-end;
-
-class function TAtlasEditorBar.BarHeight(APPI: Integer): Integer;
-begin
-  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
-end;
-
-function TAtlasEditorBar.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
-end;
-
-procedure TAtlasEditorBar.FixHeight(APPI: Integer);
-begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
-  if not FFixedHeight then
-  begin
-    Exit;
-  end;
-  Height := BarHeight(APPI);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
-end;
-
 procedure TAtlasEditorBar.SetFixedHeight(AValue: Boolean);
 begin
   if AValue = FFixedHeight then
@@ -163,116 +135,14 @@ begin
   FixHeight(CurrentPPI);
 end;
 
-procedure TAtlasEditorBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+procedure TAtlasEditorBar.SetEnabled(Value: Boolean);
 begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
-  inherited ChangeScale(M, D, isDpiChange);
-  FixHeight(CurrentPPI);
-end;
-
-procedure TAtlasEditorBar.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
-procedure TAtlasEditorBar.PaintChrome(ALineAtTop: Boolean);
-var
-  mLine: Integer;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := TColor(FColors.Gutter);
-  Canvas.FillRect(ClientRect);
-  Canvas.Pen.Color := TColor(FColors.Line);
-  mLine := ClientHeight - 1;
-  if ALineAtTop then
+  // Vor dem Sperren melden: Der Aufrufer steht dann noch auf dem Stapel.
+  if not Value and Enabled and Assigned(FOnDisabled) then
   begin
-    mLine := 0;
+    FOnDisabled(Self);
   end;
-  Canvas.MoveTo(0, mLine);
-  Canvas.LineTo(ClientWidth, mLine);
-end;
-
-function TAtlasEditorBar.PartAt(AX, AY: Integer): Integer;
-begin
-  Result := cPartNone;
-end;
-
-function TAtlasEditorBar.PartHint(APart: Integer): string;
-begin
-  Result := '';
-end;
-
-function TAtlasEditorBar.PartEnabled(APart: Integer): Boolean;
-begin
-  Result := APart <> cPartNone;
-end;
-
-procedure TAtlasEditorBar.PartClicked(APart: Integer; AShift: TShiftState; AX, AY: Integer);
-begin
-  // Ohne Elemente nichts zu tun.
-end;
-
-procedure TAtlasEditorBar.ContextMenu(const APoint: TPoint; APart: Integer);
-begin
-  // Vorgabe: kein Menü; das des Editors darf trotzdem nicht kommen (siehe WMContextMenu).
-end;
-
-function TAtlasEditorBar.KeyboardMenuPoint: TPoint;
-begin
-  Result := Point(0, ClientHeight);
-end;
-
-procedure TAtlasEditorBar.HotChanged;
-begin
-  Invalidate;
-end;
-
-procedure TAtlasEditorBar.SetHot(APart: Integer);
-begin
-  if APart = FHot then
-  begin
-    Exit;
-  end;
-  FHot := APart;
-  HotChanged;
-end;
-
-procedure TAtlasEditorBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mHot: Integer;
-begin
-  inherited MouseMove(Shift, X, Y);
-  mHot := PartAt(X, Y);
-  if mHot = FHot then
-  begin
-    Exit;
-  end;
-  FHot := mHot;
-  if (mHot <> cPartNone) and PartEnabled(mHot) then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-  Application.CancelHint;
-  Hint := PartHint(mHot);
-  HotChanged;
-end;
-
-procedure TAtlasEditorBar.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
-  if FHot = cPartNone then
-  begin
-    Exit;
-  end;
-  FHot := cPartNone;
-  HotChanged;
+  inherited SetEnabled(Value);
 end;
 
 procedure TAtlasEditorBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -313,6 +183,63 @@ begin
   FDown := cPartNone;
 end;
 
+procedure TAtlasEditorBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHot: Integer;
+begin
+  inherited MouseMove(Shift, X, Y);
+  mHot := PartAt(X, Y);
+  if mHot = FHot then
+  begin
+    Exit;
+  end;
+  FHot := mHot;
+  if (mHot <> cPartNone) and PartEnabled(mHot) then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+  Application.CancelHint;
+  Hint := PartHint(mHot);
+  HotChanged;
+end;
+
+procedure TAtlasEditorBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
+begin
+  Constraints.MinHeight := 0;
+  Constraints.MaxHeight := 0;
+  inherited ChangeScale(M, D, isDpiChange);
+  FixHeight(CurrentPPI);
+end;
+
+procedure TAtlasEditorBar.FixHeight(APPI: Integer);
+begin
+  Constraints.MinHeight := 0;
+  Constraints.MaxHeight := 0;
+  if not FFixedHeight then
+  begin
+    Exit;
+  end;
+  Height := BarHeight(APPI);
+  Constraints.MinHeight := Height;
+  Constraints.MaxHeight := Height;
+end;
+
+procedure TAtlasEditorBar.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
+  if FHot = cPartNone then
+  begin
+    Exit;
+  end;
+  FHot := cPartNone;
+  HotChanged;
+end;
+
 procedure TAtlasEditorBar.WMContextMenu(var Message: TWMContextMenu);
 var
   mPosition: TPoint;
@@ -330,16 +257,6 @@ begin
   ContextMenu(mPosition, PartAt(mPosition.X, mPosition.Y));
 end;
 
-procedure TAtlasEditorBar.SetEnabled(Value: Boolean);
-begin
-  // Vor dem Sperren melden: Der Aufrufer steht dann noch auf dem Stapel.
-  if not Value and Enabled and Assigned(FOnDisabled) then
-  begin
-    FOnDisabled(Self);
-  end;
-  inherited SetEnabled(Value);
-end;
-
 procedure TAtlasEditorBar.WMEnable(var Message: TWMEnable);
 begin
   inherited;
@@ -349,6 +266,89 @@ begin
   begin
     FOnDisabled(Self);
   end;
+end;
+
+class function TAtlasEditorBar.BaseHeight: Integer;
+begin
+  Result := 22;
+end;
+
+function TAtlasEditorBar.Scale(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
+end;
+
+function TAtlasEditorBar.PartAt(AX, AY: Integer): Integer;
+begin
+  Result := cPartNone;
+end;
+
+function TAtlasEditorBar.PartHint(APart: Integer): string;
+begin
+  Result := '';
+end;
+
+function TAtlasEditorBar.PartEnabled(APart: Integer): Boolean;
+begin
+  Result := APart <> cPartNone;
+end;
+
+procedure TAtlasEditorBar.PartClicked(APart: Integer; AShift: TShiftState; AX, AY: Integer);
+begin
+  // Ohne Elemente nichts zu tun.
+end;
+
+procedure TAtlasEditorBar.ContextMenu(const APoint: TPoint; APart: Integer);
+begin
+  // Vorgabe: kein Menü; das des Editors darf trotzdem nicht kommen (siehe WMContextMenu).
+end;
+
+function TAtlasEditorBar.KeyboardMenuPoint: TPoint;
+begin
+  Result := Point(0, ClientHeight);
+end;
+
+procedure TAtlasEditorBar.HotChanged;
+begin
+  Invalidate;
+end;
+
+procedure TAtlasEditorBar.PaintChrome(ALineAtTop: Boolean);
+var
+  mLine: Integer;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(FColors.Gutter);
+  Canvas.FillRect(ClientRect);
+  Canvas.Pen.Color := TColor(FColors.Line);
+  mLine := ClientHeight - 1;
+  if ALineAtTop then
+  begin
+    mLine := 0;
+  end;
+  Canvas.MoveTo(0, mLine);
+  Canvas.LineTo(ClientWidth, mLine);
+end;
+
+procedure TAtlasEditorBar.SetHot(APart: Integer);
+begin
+  if APart = FHot then
+  begin
+    Exit;
+  end;
+  FHot := APart;
+  HotChanged;
+end;
+
+procedure TAtlasEditorBar.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+class function TAtlasEditorBar.BarHeight(APPI: Integer): Integer;
+begin
+  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
 end;
 
 end.

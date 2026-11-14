@@ -79,156 +79,6 @@ begin
   GuardFeature := TAtlasFeature.Notes;
 end;
 
-function TAtlasTitledTip.TextFlags: Cardinal;
-begin
-  Result := DT_LEFT or DT_TOP or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS;
-end;
-
-function TAtlasTitledTip.MeasureText(AWidth: Integer): TRect;
-var
-  mShown: string;
-begin
-  mShown := FText;
-  if mShown = '' then
-  begin
-    mShown := ' ';
-  end;
-  Result := Rect(0, 0, AWidth, 0);
-  Canvas.Font := UIFont;
-  DrawText(Canvas.Handle, PChar(mShown), -1, Result, TextFlags or DT_CALCRECT);
-end;
-
-function TAtlasTitledTip.TitleArea(AClientWidth: Integer): TRect;
-begin
-  Canvas.Font := UIFont;
-  Result := Rect(Scale(cPadding), Scale(cPadding) - Scale(2), AClientWidth - Scale(cPadding),
-    Scale(cPadding) - Scale(2) + Canvas.TextHeight('Wg'));
-end;
-
-function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
-begin
-  Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(cPadding),
-    ASize.cy - Scale(cPadding));
-end;
-
-function TAtlasTitledTip.Measure(const ATitle, AText: string): TSize;
-begin
-  Result := Measure(ATitle, AText, nil);
-end;
-
-function TAtlasTitledTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
-var
-  mBody: TRect;
-  mTitleWidth, mWidth, mLinkWidth, mLineHeight: Integer;
-  mLink: string;
-begin
-  FTitle := ATitle;
-  FLinks := ALinks;
-  FLinkRects := nil;
-  // Zeilenumbrüche der Notiz als Windows-Umbrüche, damit DrawText sie einhält.
-  FText := AText.Replace(#13#10, #10).Replace(#10, #13#10);
-  Canvas.Font := UIFont;
-  mTitleWidth := Canvas.TextWidth(FTitle);
-  mBody := MeasureText(Scale(cMaxWidth));
-  FBodyHeight := mBody.Height;
-  mWidth := Max(mTitleWidth, mBody.Width);
-  mLineHeight := Canvas.TextHeight('Wg');
-  for mLink in FLinks do
-  begin
-    mLinkWidth := Canvas.TextWidth(mLink);
-    if mLinkWidth > mWidth then
-    begin
-      mWidth := mLinkWidth;
-    end;
-  end;
-  Result.cx := Min(mWidth, Scale(cMaxWidth)) + 2 * Scale(cPadding);
-  // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand 4, Text, Padding unten.
-  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + mBody.Height + Scale(cPadding);
-  if Length(FLinks) > 0 then
-  begin
-    Inc(Result.cy, Scale(6) + Length(FLinks) * (mLineHeight + Scale(2)));
-  end;
-end;
-
-procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const APoint: TPoint);
-begin
-  ShowNote(ATitle, AText, nil, APoint);
-end;
-
-procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint);
-var
-  mArea, mBounds: TRect;
-  mSize: TSize;
-begin
-  mSize := Measure(ATitle, AText, ALinks);
-  mArea := WorkAreaAt(APoint);
-  mSize.cx := Min(mSize.cx, mArea.Width);
-  mSize.cy := Min(mSize.cy, mArea.Height);
-  mBounds := TRect.Create(APoint, mSize.cx, mSize.cy);
-  if mBounds.Right > mArea.Right then
-  begin
-    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mSize.cx), mBounds.Top);
-  end;
-  if mBounds.Bottom > mArea.Bottom then
-  begin
-    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, mArea.Bottom - mSize.cy));
-  end;
-  SetAccessible(cUiaToolTipControlType, ATitle);
-  ShowAt(mBounds);
-  Invalidate;
-  if Length(ALinks) > 0 then
-  begin
-    Announce(ATitle + '. ' + AText + '. ' + string.Join(', ', ALinks));
-  end
-  else
-  begin
-    Announce(ATitle + '. ' + AText);
-  end;
-end;
-
-function TAtlasTitledTip.LinkAt(AX, AY: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(FLinkRects) do
-  begin
-    if PtInRect(FLinkRects[mIndex], Point(AX, AY)) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
-procedure TAtlasTitledTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  mIndex := LinkAt(X, Y);
-  if (Button = mbLeft) and (mIndex >= 0) and Assigned(FOnLink) then
-  begin
-    TAtlasGuard.Run(GuardFeature,
-      procedure
-      begin
-        FOnLink(mIndex);
-      end);
-  end;
-end;
-
-procedure TAtlasTitledTip.MouseMove(Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseMove(Shift, X, Y);
-  if LinkAt(X, Y) >= 0 then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
-  end;
-end;
-
 procedure TAtlasTitledTip.Paint;
 var
   mArea, mLinkArea: TRect;
@@ -272,6 +122,156 @@ begin
   end;
   Canvas.Brush.Style := bsSolid;
   PaintBorder;
+end;
+
+procedure TAtlasTitledTip.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  mIndex := LinkAt(X, Y);
+  if (Button = mbLeft) and (mIndex >= 0) and Assigned(FOnLink) then
+  begin
+    TAtlasGuard.Run(GuardFeature,
+      procedure
+      begin
+        FOnLink(mIndex);
+      end);
+  end;
+end;
+
+procedure TAtlasTitledTip.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseMove(Shift, X, Y);
+  if LinkAt(X, Y) >= 0 then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+end;
+
+function TAtlasTitledTip.TextFlags: Cardinal;
+begin
+  Result := DT_LEFT or DT_TOP or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS;
+end;
+
+function TAtlasTitledTip.MeasureText(AWidth: Integer): TRect;
+var
+  mShown: string;
+begin
+  mShown := FText;
+  if mShown = '' then
+  begin
+    mShown := ' ';
+  end;
+  Result := Rect(0, 0, AWidth, 0);
+  Canvas.Font := UIFont;
+  DrawText(Canvas.Handle, PChar(mShown), -1, Result, TextFlags or DT_CALCRECT);
+end;
+
+function TAtlasTitledTip.TitleArea(AClientWidth: Integer): TRect;
+begin
+  Canvas.Font := UIFont;
+  Result := Rect(Scale(cPadding), Scale(cPadding) - Scale(2), AClientWidth - Scale(cPadding),
+    Scale(cPadding) - Scale(2) + Canvas.TextHeight('Wg'));
+end;
+
+procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const APoint: TPoint);
+begin
+  ShowNote(ATitle, AText, nil, APoint);
+end;
+
+procedure TAtlasTitledTip.ShowNote(const ATitle, AText: string; const ALinks: TArray<string>; const APoint: TPoint);
+var
+  mArea, mBounds: TRect;
+  mSize: TSize;
+begin
+  mSize := Measure(ATitle, AText, ALinks);
+  mArea := WorkAreaAt(APoint);
+  mSize.cx := Min(mSize.cx, mArea.Width);
+  mSize.cy := Min(mSize.cy, mArea.Height);
+  mBounds := TRect.Create(APoint, mSize.cx, mSize.cy);
+  if mBounds.Right > mArea.Right then
+  begin
+    mBounds.SetLocation(Max(mArea.Left, mArea.Right - mSize.cx), mBounds.Top);
+  end;
+  if mBounds.Bottom > mArea.Bottom then
+  begin
+    mBounds.SetLocation(mBounds.Left, Max(mArea.Top, mArea.Bottom - mSize.cy));
+  end;
+  SetAccessible(cUiaToolTipControlType, ATitle);
+  ShowAt(mBounds);
+  Invalidate;
+  if Length(ALinks) > 0 then
+  begin
+    Announce(ATitle + '. ' + AText + '. ' + string.Join(', ', ALinks));
+  end
+  else
+  begin
+    Announce(ATitle + '. ' + AText);
+  end;
+end;
+
+function TAtlasTitledTip.Measure(const ATitle, AText: string): TSize;
+begin
+  Result := Measure(ATitle, AText, nil);
+end;
+
+function TAtlasTitledTip.Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize;
+var
+  mBody: TRect;
+  mTitleWidth, mWidth, mLinkWidth, mLineHeight: Integer;
+  mLink: string;
+begin
+  FTitle := ATitle;
+  FLinks := ALinks;
+  FLinkRects := nil;
+  // Zeilenumbrüche der Notiz als Windows-Umbrüche, damit DrawText sie einhält.
+  FText := AText.Replace(#13#10, #10).Replace(#10, #13#10);
+  Canvas.Font := UIFont;
+  mTitleWidth := Canvas.TextWidth(FTitle);
+  mBody := MeasureText(Scale(cMaxWidth));
+  FBodyHeight := mBody.Height;
+  mWidth := Max(mTitleWidth, mBody.Width);
+  mLineHeight := Canvas.TextHeight('Wg');
+  for mLink in FLinks do
+  begin
+    mLinkWidth := Canvas.TextWidth(mLink);
+    if mLinkWidth > mWidth then
+    begin
+      mWidth := mLinkWidth;
+    end;
+  end;
+  Result.cx := Min(mWidth, Scale(cMaxWidth)) + 2 * Scale(cPadding);
+  // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand 4, Text, Padding unten.
+  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + mBody.Height + Scale(cPadding);
+  if Length(FLinks) > 0 then
+  begin
+    Inc(Result.cy, Scale(6) + Length(FLinks) * (mLineHeight + Scale(2)));
+  end;
+end;
+
+function TAtlasTitledTip.LinkAt(AX, AY: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FLinkRects) do
+  begin
+    if PtInRect(FLinkRects[mIndex], Point(AX, AY)) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
+begin
+  Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(cPadding),
+    ASize.cy - Scale(cPadding));
 end;
 
 end.

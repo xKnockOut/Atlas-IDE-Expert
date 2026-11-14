@@ -73,39 +73,6 @@ end;
 
 { TParticipant }
 
-function TParticipant.Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
-var
-  mProcess: TAtlasRunningProcess;
-begin
-  AReason := '';
-  for mProcess in APlan.Processes do
-  begin
-    if not TAtlasIdeRunningProcesses.Stop(mProcess.Pid, TAtlasRunningProgram.cGraceMs) then
-    begin
-      AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.RunningProgramNotStopped, [mProcess.Name, mProcess.Pid]);
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TParticipant.Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
-begin
-  AReason := '';
-  case TAtlasRunningPrompt.Ask(APlan.ProgramName, APlan.ProcessNames) of
-    TAtlasRunningPromptChoice.Stop:
-      Result := Stop(APlan, AReason);
-    TAtlasRunningPromptChoice.Always:
-      begin
-        RememberAlways;
-        Result := Stop(APlan, AReason);
-      end;
-  else
-    // Nein: der Build läuft wie bisher.
-    Result := False;
-  end;
-end;
-
 function TParticipant.CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean;
 var
   mMode: TAtlasStopRunningMode;
@@ -138,6 +105,39 @@ begin
     TAtlasRunningProgramAction.Notice:
       TAtlasIdeHost.Message(TAtlasBuildStrings.Fmt(TAtlasBuildTextId.RunningProgramPackageLoaded,
         [mPlan.ProgramName, mPlan.ProcessNames]));
+  end;
+end;
+
+function TParticipant.Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
+var
+  mProcess: TAtlasRunningProcess;
+begin
+  AReason := '';
+  for mProcess in APlan.Processes do
+  begin
+    if not TAtlasIdeRunningProcesses.Stop(mProcess.Pid, TAtlasRunningProgram.cGraceMs) then
+    begin
+      AReason := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.RunningProgramNotStopped, [mProcess.Name, mProcess.Pid]);
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TParticipant.Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
+begin
+  AReason := '';
+  case TAtlasRunningPrompt.Ask(APlan.ProgramName, APlan.ProcessNames) of
+    TAtlasRunningPromptChoice.Stop:
+      Result := Stop(APlan, AReason);
+    TAtlasRunningPromptChoice.Always:
+      begin
+        RememberAlways;
+        Result := Stop(APlan, AReason);
+      end;
+  else
+    // Nein: der Build läuft wie bisher.
+    Result := False;
   end;
 end;
 

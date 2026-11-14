@@ -261,19 +261,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeCompileEvents.KindOf(AMode: TOTACompileMode): TAtlasCompileKind;
-begin
-  case AMode of
-    cmOTABuild: Result := TAtlasCompileKind.Build;
-    cmOTACheck: Result := TAtlasCompileKind.Check;
-    cmOTAMakeUnit: Result := TAtlasCompileKind.MakeUnit;
-    cmOTAClean: Result := TAtlasCompileKind.Clean;
-    cmOTALink: Result := TAtlasCompileKind.Link;
-  else
-    Result := TAtlasCompileKind.Make;
-  end;
-end;
-
 function TAtlasIdeCompileEvents.ProjectInfo(const AProject: IOTAProject): TAtlasCompileProject;
 var
   mOptions: IOTAProjectOptions;
@@ -307,6 +294,19 @@ begin
   end;
   mMessages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.CompileCancelled, [AReason]), mGroup);
   mMessages.ShowMessageView(mGroup);
+end;
+
+class function TAtlasIdeCompileEvents.KindOf(AMode: TOTACompileMode): TAtlasCompileKind;
+begin
+  case AMode of
+    cmOTABuild: Result := TAtlasCompileKind.Build;
+    cmOTACheck: Result := TAtlasCompileKind.Check;
+    cmOTAMakeUnit: Result := TAtlasCompileKind.MakeUnit;
+    cmOTAClean: Result := TAtlasCompileKind.Clean;
+    cmOTALink: Result := TAtlasCompileKind.Link;
+  else
+    Result := TAtlasCompileKind.Make;
+  end;
 end;
 
 end.

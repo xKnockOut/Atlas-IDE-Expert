@@ -215,17 +215,6 @@ begin
   FOwner := AOwner;
 end;
 
-procedure TInterfaceCostState.Cancel;
-begin
-  Inc(FRequest);
-end;
-
-procedure TInterfaceCostState.SetHandler(const AShow: TAtlasInterfaceCostShow);
-begin
-  Hide;
-  FShow := AShow;
-end;
-
 procedure TInterfaceCostState.SetText(const AText, AHint: string);
 begin
   // Nur bei Änderungen: Der Zeitgeber fragt viermal je Sekunde.
@@ -239,14 +228,6 @@ begin
   begin
     FShow(AText, AHint);
   end;
-end;
-
-procedure TInterfaceCostState.Hide;
-begin
-  SetText('', '');
-  FFile := '';
-  FKnown := False;
-  FInInterface := False;
 end;
 
 procedure TInterfaceCostState.Show;
@@ -276,6 +257,19 @@ begin
   SetText(mText, TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.InterfaceCostHint, [FCost.UnitName, mUnits]));
 end;
 
+procedure TInterfaceCostState.Request;
+begin
+  Inc(FRequest);
+  FPending := True;
+  FAsked := TAtlasTicks.Now;
+  if not FRun(TAtlasInterfaceCostModel.cCommand, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
+    cTimeoutMs, AnswerHandler(FRequest)) then
+  begin
+    // Kein Server: in CostRefreshMs noch einmal.
+    FPending := False;
+  end;
+end;
+
 function TInterfaceCostState.AnswerHandler(ANumber: Integer): TProc<TJSONValue>;
 var
   mOwner: TObject;
@@ -300,19 +294,6 @@ begin
       end;
       Show;
     end;
-end;
-
-procedure TInterfaceCostState.Request;
-begin
-  Inc(FRequest);
-  FPending := True;
-  FAsked := TAtlasTicks.Now;
-  if not FRun(TAtlasInterfaceCostModel.cCommand, TAtlasInterfaceCostModel.Arguments(TLspSession.PathToUri(FFile)),
-    cTimeoutMs, AnswerHandler(FRequest)) then
-  begin
-    // Kein Server: in CostRefreshMs noch einmal.
-    FPending := False;
-  end;
 end;
 
 procedure TInterfaceCostState.Locate(const AView: IOTAEditView);
@@ -341,6 +322,25 @@ begin
     FPending := False;
     FAsked := TAtlasTicks.Now - cCostRefreshMs;
   end;
+end;
+
+procedure TInterfaceCostState.Cancel;
+begin
+  Inc(FRequest);
+end;
+
+procedure TInterfaceCostState.SetHandler(const AShow: TAtlasInterfaceCostShow);
+begin
+  Hide;
+  FShow := AShow;
+end;
+
+procedure TInterfaceCostState.Hide;
+begin
+  SetText('', '');
+  FFile := '';
+  FKnown := False;
+  FInInterface := False;
 end;
 
 procedure TInterfaceCostState.Update;
@@ -418,11 +418,22 @@ begin
   inherited Destroy;
 end;
 
-procedure TUnitRelationsState.Reset;
+procedure TUnitRelationsState.Tick(Sender: TObject);
 begin
-  FFileName := '';
-  FLastJson := '';
-  FShownMessage := False;
+  if not Active then
+  begin
+    FCost.Hide;
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
+    procedure
+    begin
+      if TAtlasIdeUnitRelationsWindow.Visible then
+      begin
+        Update;
+      end;
+      FCost.Update;
+    end);
 end;
 
 procedure TUnitRelationsState.Wire(AFrame: TAtlasUnitRelationsFrame);
@@ -492,27 +503,6 @@ begin
   end;
   FPinned := '';
   Result := mEditor;
-end;
-
-procedure TUnitRelationsState.Pin(const AFileName: string);
-begin
-  FPinned := AFileName;
-  FPinnedEditor := EditorFile;
-end;
-
-procedure TUnitRelationsState.Unpin;
-begin
-  FPinned := '';
-end;
-
-procedure TUnitRelationsState.SetCostHandler(const AShow: TAtlasInterfaceCostShow);
-begin
-  FCost.SetHandler(AShow);
-end;
-
-procedure TUnitRelationsState.HideCost;
-begin
-  FCost.Hide;
 end;
 
 procedure TUnitRelationsState.ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
@@ -620,48 +610,6 @@ begin
   end;
 end;
 
-procedure TUnitRelationsState.Update;
-var
-  mFrame: TAtlasUnitRelationsFrame;
-  mFileName, mJson: string;
-begin
-  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  mFileName := Target;
-  if mFileName = '' then
-  begin
-    if (FFileName <> '') or not FShownMessage then
-    begin
-      FFileName := '';
-      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoFile);
-    end;
-    Exit;
-  end;
-  if not SameText(mFileName, FFileName) then
-  begin
-    // Dateiwechsel: gemerkter Stand sofort, die Antwort des Servers folgt.
-    FFileName := mFileName;
-    FLastJson := '';
-    if FCache.TryGet(mFileName, FAllLevels, mJson) then
-    begin
-      ShowJson(mFrame, mJson);
-    end
-    else
-    begin
-      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsLoading);
-    end;
-    Request;
-    Exit;
-  end;
-  if not FPending and (TAtlasTicks.Since(FAsked) >= cRefreshMs) then
-  begin
-    Request;
-  end;
-end;
-
 procedure TUnitRelationsState.ChangeDepth(AAllLevels: Boolean);
 var
   mFrame: TAtlasUnitRelationsFrame;
@@ -753,22 +701,74 @@ begin
   end;
 end;
 
-procedure TUnitRelationsState.Tick(Sender: TObject);
+procedure TUnitRelationsState.Reset;
 begin
-  if not Active then
+  FFileName := '';
+  FLastJson := '';
+  FShownMessage := False;
+end;
+
+procedure TUnitRelationsState.Update;
+var
+  mFrame: TAtlasUnitRelationsFrame;
+  mFileName, mJson: string;
+begin
+  mFrame := TAtlasIdeUnitRelationsWindow.ExistingFrame;
+  if mFrame = nil then
   begin
-    FCost.Hide;
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
-    procedure
+  mFileName := Target;
+  if mFileName = '' then
+  begin
+    if (FFileName <> '') or not FShownMessage then
     begin
-      if TAtlasIdeUnitRelationsWindow.Visible then
-      begin
-        Update;
-      end;
-      FCost.Update;
-    end);
+      FFileName := '';
+      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoFile);
+    end;
+    Exit;
+  end;
+  if not SameText(mFileName, FFileName) then
+  begin
+    // Dateiwechsel: gemerkter Stand sofort, die Antwort des Servers folgt.
+    FFileName := mFileName;
+    FLastJson := '';
+    if FCache.TryGet(mFileName, FAllLevels, mJson) then
+    begin
+      ShowJson(mFrame, mJson);
+    end
+    else
+    begin
+      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsLoading);
+    end;
+    Request;
+    Exit;
+  end;
+  if not FPending and (TAtlasTicks.Since(FAsked) >= cRefreshMs) then
+  begin
+    Request;
+  end;
+end;
+
+procedure TUnitRelationsState.Pin(const AFileName: string);
+begin
+  FPinned := AFileName;
+  FPinnedEditor := EditorFile;
+end;
+
+procedure TUnitRelationsState.Unpin;
+begin
+  FPinned := '';
+end;
+
+procedure TUnitRelationsState.SetCostHandler(const AShow: TAtlasInterfaceCostShow);
+begin
+  FCost.SetHandler(AShow);
+end;
+
+procedure TUnitRelationsState.HideCost;
+begin
+  FCost.Hide;
 end;
 
 { TAtlasIdeUnitRelations }
@@ -783,11 +783,6 @@ class procedure TAtlasIdeUnitRelations.Uninstall;
 begin
   FreeAndNil(FState);
   TAtlasIdeUnitRelationsWindow.Release;
-end;
-
-class function TAtlasIdeUnitRelations.Enabled: Boolean;
-begin
-  Result := Active;
 end;
 
 class procedure TAtlasIdeUnitRelations.ShowWindow;
@@ -842,6 +837,14 @@ begin
   if Result then
   begin
     ACount := Length(mRelations.UsedBy);
+  end;
+end;
+
+class procedure TAtlasIdeUnitRelations.SetCostHandler(const AShow: TAtlasInterfaceCostShow);
+begin
+  if FState <> nil then
+  begin
+    TUnitRelationsState(FState).SetCostHandler(AShow);
   end;
 end;
 
@@ -914,14 +917,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeUnitRelations.SetCostHandler(const AShow: TAtlasInterfaceCostShow);
-begin
-  if FState <> nil then
-  begin
-    TUnitRelationsState(FState).SetCostHandler(AShow);
-  end;
-end;
-
 class procedure TAtlasIdeUnitRelations.ApplySettings;
 begin
   if FState = nil then
@@ -946,6 +941,11 @@ begin
   begin
     mFrame.Tree.Invalidate;
   end;
+end;
+
+class function TAtlasIdeUnitRelations.Enabled: Boolean;
+begin
+  Result := Active;
 end;
 
 end.

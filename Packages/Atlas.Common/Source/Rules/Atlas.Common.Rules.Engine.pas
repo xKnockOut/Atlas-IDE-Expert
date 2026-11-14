@@ -354,21 +354,6 @@ begin
   FFindings.Add(mFinding);
 end;
 
-procedure TRuleReport.AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
-  AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
-var
-  mFinding: TRuleFinding;
-begin
-  mFinding.RuleId := FRuleId;
-  mFinding.Range := ARange;
-  mFinding.Message := AMessage;
-  mFinding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
-  mFinding.Confidence := AConfidence;
-  mFinding.Fixes := AFixes;
-  mFinding.Details := ADetails;
-  FFindings.Add(mFinding);
-end;
-
 procedure TRuleReport.AddWithSeverity(const ARange: TTextRange; const AMessage: string; ASeverity: TRuleSeverity;
   const AFixes: TArray<TRuleFix>);
 var
@@ -392,6 +377,21 @@ begin
   mFinding.Confidence := TRuleConfidence.High;
   mFinding.Fixes := AFixes;
   mFinding.Details := '';
+  FFindings.Add(mFinding);
+end;
+
+procedure TRuleReport.AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string;
+  AConfidence: TRuleConfidence; const AFixes: TArray<TRuleFix>);
+var
+  mFinding: TRuleFinding;
+begin
+  mFinding.RuleId := FRuleId;
+  mFinding.Range := ARange;
+  mFinding.Message := AMessage;
+  mFinding.Severity := TRuleEngine.CapSeverity(FSeverity, AConfidence);
+  mFinding.Confidence := AConfidence;
+  mFinding.Fixes := AFixes;
+  mFinding.Details := ADetails;
   FFindings.Add(mFinding);
 end;
 
@@ -492,6 +492,20 @@ begin
   end;
 end;
 
+class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
+var
+  mRule: TRuleSetting;
+begin
+  for mRule in ASettings.Rules do
+  begin
+    if SameText(mRule.Id, ARuleId) then
+    begin
+      Exit(mRule.Options);
+    end;
+  end;
+  Result := '';
+end;
+
 class function TRuleEngine.CapSeverity(ASeverity: TRuleSeverity; AConfidence: TRuleConfidence): TRuleSeverity;
 var
   mLimit: TRuleSeverity;
@@ -512,20 +526,6 @@ begin
   begin
     Result := ASeverity;
   end;
-end;
-
-class function TRuleEngine.RuleOptions(const ARuleId: string; const ASettings: TServerSettings): string;
-var
-  mRule: TRuleSetting;
-begin
-  for mRule in ASettings.Rules do
-  begin
-    if SameText(mRule.Id, ARuleId) then
-    begin
-      Exit(mRule.Options);
-    end;
-  end;
-  Result := '';
 end;
 
 class function TRuleEngine.IsExceptedByOptions(const AOptions, ARelativePath, AUnitName: string): Boolean;
@@ -601,6 +601,32 @@ begin
   end;
 end;
 
+class function TRuleEngine.NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const AContext: TRuleContext): TPascalNamePrefixes;
+var
+  mRule: IRule;
+  mSource: IRuleNewNames;
+  mSeverity: TRuleSeverity;
+  mContext: TRuleContext;
+begin
+  Result := TPascalNamePrefixes.None;
+  for mRule in ARules do
+  begin
+    // Dieselben Bedingungen wie für den Lauf der Regel: Schweregrad, experimentell, Ausnahmen der Optionen.
+    if not Supports(mRule, IRuleNewNames, mSource) or
+      not SeverityIfOn(mRule.Descriptor, ASettings, AContext.RelativePath, mSeverity) then
+    begin
+      Continue;
+    end;
+    mContext := AContext;
+    mContext.Options := RuleOptions(mRule.Descriptor.Id, ASettings);
+    if not IsExceptedByOptions(mContext.Options, mContext.RelativePath, mContext.UnitName) then
+    begin
+      Exit(mSource.NewNames(mContext));
+    end;
+  end;
+end;
+
 class function TRuleEngine.OverridingRule(const ARuleId: string; const ARules: TArray<IRule>;
   const ASettings: TServerSettings; const ARelativePath, AUnitName: string): string;
 var
@@ -636,32 +662,6 @@ begin
     not IsExceptedByOptions(RuleOptions(mDescriptor.Id, ASettings), ARelativePath, AUnitName);
 end;
 
-class function TRuleEngine.NewNames(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const AContext: TRuleContext): TPascalNamePrefixes;
-var
-  mRule: IRule;
-  mSource: IRuleNewNames;
-  mSeverity: TRuleSeverity;
-  mContext: TRuleContext;
-begin
-  Result := TPascalNamePrefixes.None;
-  for mRule in ARules do
-  begin
-    // Dieselben Bedingungen wie für den Lauf der Regel: Schweregrad, experimentell, Ausnahmen der Optionen.
-    if not Supports(mRule, IRuleNewNames, mSource) or
-      not SeverityIfOn(mRule.Descriptor, ASettings, AContext.RelativePath, mSeverity) then
-    begin
-      Continue;
-    end;
-    mContext := AContext;
-    mContext.Options := RuleOptions(mRule.Descriptor.Id, ASettings);
-    if not IsExceptedByOptions(mContext.Options, mContext.RelativePath, mContext.UnitName) then
-    begin
-      Exit(mSource.NewNames(mContext));
-    end;
-  end;
-end;
-
 class function TRuleEngine.Run(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext): TArray<TRuleFinding>;
 var
@@ -687,19 +687,6 @@ begin
 end;
 
 { TRuleRun }
-
-class function TRuleRun.Applies(const ASettings: TServerSettings; const AContext: TRuleContext;
-  out AEffective: TServerSettings): Boolean;
-begin
-  AEffective := ASettings;
-  Result := (AContext.RelativePath = '') or not ASettings.IsExcluded(AContext.RelativePath);
-  if Result and (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
-    TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
-  begin
-    Result := not ASettings.ExcludeTests;
-    AEffective.Profile := ASettings.TestProfile;
-  end;
-end;
 
 constructor TRuleRun.Create(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const AContext: TRuleContext);
@@ -760,39 +747,6 @@ begin
   inherited;
 end;
 
-function TRuleRun.Execute: TArray<TRuleFinding>;
-var
-  mRule: IRule;
-  mDeferred: TDeferredRule;
-begin
-  for mRule in FRules do
-  begin
-    RunRule(mRule);
-  end;
-  // Nach allen Regeln, mit den rohen Treffern (#297).
-  for mDeferred in FDeferred do
-  begin
-    RunDeferred(mDeferred);
-  end;
-  if FContext.Tree <> nil then
-  begin
-    FSuppressions := TSuppressions.Create(FContext.Tree.Tokens);
-  end;
-  KeepUnsuppressed;
-  if FSuppressions <> nil then
-  begin
-    KeepUnusedSuppressions;
-    KeepUnknownRuleIds;
-  end;
-  Result := SortedFindings(FKept.ToArray);
-end;
-
-function TRuleRun.Runs(const ADescriptor: TRuleDescriptor; out ASeverity: TRuleSeverity): Boolean;
-begin
-  Result := SeverityIfOn(ADescriptor, FSettings, FContext.RelativePath, ASeverity) and
-    (TRuleEngine.OverridingRule(ADescriptor.Id, FRules, FSettings, FContext.RelativePath, FContext.UnitName) = '');
-end;
-
 function TRuleRun.RuleContext(const ARuleId: string): TRuleContext;
 begin
   Result := FShared;
@@ -824,12 +778,10 @@ begin
   Result.UsesKeep := FSettings.UsesKeep;
 end;
 
-procedure TRuleRun.CheckCancelled;
+function TRuleRun.Runs(const ADescriptor: TRuleDescriptor; out ASeverity: TRuleSeverity): Boolean;
 begin
-  if Assigned(FContext.Cancelled) and FContext.Cancelled() then
-  begin
-    raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
-  end;
+  Result := SeverityIfOn(ADescriptor, FSettings, FContext.RelativePath, ASeverity) and
+    (TRuleEngine.OverridingRule(ADescriptor.Id, FRules, FSettings, FContext.RelativePath, FContext.UnitName) = '');
 end;
 
 function TRuleRun.MustRaise(AError: Exception): Boolean;
@@ -843,6 +795,14 @@ begin
   FFindings.Count := ABefore;
   TStackGuard.AfterError(AError);
   TRequestDiagnostics.RuleFailed(ARuleId, AError.ClassName);
+end;
+
+procedure TRuleRun.CheckCancelled;
+begin
+  if Assigned(FContext.Cancelled) and FContext.Cancelled() then
+  begin
+    raise ERuleCheckCancelled.Create(cTexts[TEngineText.Cancelled].Text);
+  end;
 end;
 
 function TRuleRun.Checked(const ARule: IRule; const ARuleId: string; ASeverity: TRuleSeverity;
@@ -990,18 +950,6 @@ begin
   end;
 end;
 
-procedure TRuleRun.NoteUncertain(const ARule: IRule; const ARuleId: string; const AContext: TRuleContext);
-var
-  mUncertain: TUncertainRule;
-begin
-  if Supports(ARule, IRuleLineCertainty, mUncertain.Certainty) then
-  begin
-    mUncertain.Id := LowerCase(ARuleId);
-    mUncertain.Context := AContext;
-    FUncertain.Add(mUncertain);
-  end;
-end;
-
 /// <summary>Konnte jede genannte Regel mit IRuleLineCertainty die Zeile von AEntry entscheiden? Gefragt wird
 /// erst hier, also nur bei Kommentaren ohne Wirkung.</summary>
 function TRuleRun.AllDecided(const AEntry: TSuppressionEntry): Boolean;
@@ -1017,6 +965,62 @@ begin
     end;
   end;
   Result := True;
+end;
+
+procedure TRuleRun.NoteUncertain(const ARule: IRule; const ARuleId: string; const AContext: TRuleContext);
+var
+  mUncertain: TUncertainRule;
+begin
+  if Supports(ARule, IRuleLineCertainty, mUncertain.Certainty) then
+  begin
+    mUncertain.Id := LowerCase(ARuleId);
+    mUncertain.Context := AContext;
+    FUncertain.Add(mUncertain);
+  end;
+end;
+
+function TRuleRun.KnownRuleIds: TArray<string>;
+var
+  mCatalog: TArray<string>;
+  mIndex: Integer;
+begin
+  mCatalog := TRuleProfiles.KnownRuleIds;
+  SetLength(Result, Length(mCatalog) + Length(FRules));
+  for mIndex := 0 to High(mCatalog) do
+  begin
+    Result[mIndex] := mCatalog[mIndex];
+  end;
+  for mIndex := 0 to High(FRules) do
+  begin
+    Result[Length(mCatalog) + mIndex] := LowerCase(FRules[mIndex].Descriptor.Id);
+  end;
+end;
+
+function TRuleRun.Execute: TArray<TRuleFinding>;
+var
+  mRule: IRule;
+  mDeferred: TDeferredRule;
+begin
+  for mRule in FRules do
+  begin
+    RunRule(mRule);
+  end;
+  // Nach allen Regeln, mit den rohen Treffern (#297).
+  for mDeferred in FDeferred do
+  begin
+    RunDeferred(mDeferred);
+  end;
+  if FContext.Tree <> nil then
+  begin
+    FSuppressions := TSuppressions.Create(FContext.Tree.Tokens);
+  end;
+  KeepUnsuppressed;
+  if FSuppressions <> nil then
+  begin
+    KeepUnusedSuppressions;
+    KeepUnknownRuleIds;
+  end;
+  Result := SortedFindings(FKept.ToArray);
 end;
 
 /// <summary>Hinweis unused-suppression für AEntry mit Korrektur zum Entfernen (#147).</summary>
@@ -1061,20 +1065,16 @@ begin
   end;
 end;
 
-function TRuleRun.KnownRuleIds: TArray<string>;
-var
-  mCatalog: TArray<string>;
-  mIndex: Integer;
+class function TRuleRun.Applies(const ASettings: TServerSettings; const AContext: TRuleContext;
+  out AEffective: TServerSettings): Boolean;
 begin
-  mCatalog := TRuleProfiles.KnownRuleIds;
-  SetLength(Result, Length(mCatalog) + Length(FRules));
-  for mIndex := 0 to High(mCatalog) do
+  AEffective := ASettings;
+  Result := (AContext.RelativePath = '') or not ASettings.IsExcluded(AContext.RelativePath);
+  if Result and (ASettings.ExcludeTests or (ASettings.TestProfile <> '')) and (AContext.Tree <> nil) and
+    TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
   begin
-    Result[mIndex] := mCatalog[mIndex];
-  end;
-  for mIndex := 0 to High(FRules) do
-  begin
-    Result[Length(mCatalog) + mIndex] := LowerCase(FRules[mIndex].Descriptor.Id);
+    Result := not ASettings.ExcludeTests;
+    AEffective.Profile := ASettings.TestProfile;
   end;
 end;
 

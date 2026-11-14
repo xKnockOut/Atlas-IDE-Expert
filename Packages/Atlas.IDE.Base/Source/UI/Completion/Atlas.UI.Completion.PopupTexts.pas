@@ -96,95 +96,6 @@ uses
 
 { TAtlasCompletionTexts }
 
-class function TAtlasCompletionTexts.TagText(const ATag: TAtlasTag): string;
-begin
-  case ATag.Id of
-    TAtlasTagId.Recent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagRecent);
-    TAtlasTagId.Frequent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagFrequent);
-    TAtlasTagId.Cycle: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesCycleTag);
-    TAtlasTagId.SameParams: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedSameTag);
-    TAtlasTagId.Overload: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedOverloadTag);
-    TAtlasTagId.Active: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameActiveTag);
-    TAtlasTagId.VariantBranch: Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TagVariantBranch,
-      [ATag.Arg]);
-  else
-    Result := ATag.Text;
-  end;
-end;
-
-class function TAtlasCompletionTexts.DetailText(const AItem: TAtlasCompletionItem): string;
-begin
-  if AItem.UsesElsewhere = 'interface' then
-  begin
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInInterface);
-  end
-  else if AItem.UsesElsewhere = 'implementation' then
-  begin
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInImplementation);
-  end
-  else
-  begin
-    Result := TAtlasItemPresentation.Detail(AItem);
-  end;
-end;
-
-class function TAtlasCompletionTexts.KindText(AKind: TAtlasItemKind): string;
-begin
-  case AKind of
-    TAtlasItemKind.Method, TAtlasItemKind.Function_, TAtlasItemKind.Procedure_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindMethod);
-    TAtlasItemKind.Constructor_, TAtlasItemKind.Destructor_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindConstructor);
-    TAtlasItemKind.Property_, TAtlasItemKind.Event:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindProperty);
-    TAtlasItemKind.Field:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindField);
-    TAtlasItemKind.Variable, TAtlasItemKind.Parameter:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindVariable);
-    TAtlasItemKind.Constant:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindConstant);
-    TAtlasItemKind.Type_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindType);
-    TAtlasItemKind.Class_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindClass);
-    TAtlasItemKind.Interface_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindInterface);
-    TAtlasItemKind.Record_:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindRecord);
-    TAtlasItemKind.Enum:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindEnum);
-    TAtlasItemKind.EnumMember:
-      Result := TAtlasStrings.Text(TAtlasTextId.KindEnumMember);
-  else
-    Result := '';
-  end;
-end;
-
-class function TAtlasCompletionTexts.HeaderText(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
-  APosition: Integer): string;
-begin
-  // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
-  // mit erwartetem Typ (#417, #444) „Passt zu …“ bzw. „Weitere“.
-  if AOrder[APosition] = TAtlasRanking.cTypoHeader then
-  begin
-    // Tippfehler-Treffer (#485).
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.DidYouMean);
-  end
-  else if AOrder[APosition] = TAtlasRanking.cRestHeader then
-  begin
-    // Rest der Liste ohne Treffer (#497).
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.CompletionRestHeader);
-  end
-  else if (APosition < High(AOrder)) and (AOrder[APosition + 1] >= 0) then
-  begin
-    Result := NextHeader(AItems, AOrder, APosition);
-  end
-  else
-  begin
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedPlain);
-  end;
-end;
-
 class function TAtlasCompletionTexts.NextHeader(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   APosition: Integer): string;
 var
@@ -360,6 +271,18 @@ begin
   end;
 end;
 
+class function TAtlasCompletionTexts.KeysText(const AList: TAtlasCompletionList): string;
+begin
+  if (AList.Target <> '') and HasCondition(AList) then
+  begin
+    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TargetFooter, [AList.Target]);
+  end
+  else
+  begin
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys);
+  end;
+end;
+
 class function TAtlasCompletionTexts.HasCondition(const AList: TAtlasCompletionList): Boolean;
 var
   mIndex: Integer;
@@ -374,36 +297,6 @@ begin
   end;
 end;
 
-class function TAtlasCompletionTexts.KeysText(const AList: TAtlasCompletionList): string;
-begin
-  if (AList.Target <> '') and HasCondition(AList) then
-  begin
-    Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TargetFooter, [AList.Target]);
-  end
-  else
-  begin
-    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FooterKeys);
-  end;
-end;
-
-class function TAtlasCompletionTexts.FooterLeftText(const AList: TAtlasCompletionList): string;
-begin
-  // Hinweis zu den Favoriten (#458) hat Vorrang, dann nicht sichtbare Treffer (#2108).
-  Result := AList.Notice;
-  if Result = '' then
-  begin
-    Result := InaccessibleText(AList.Inaccessible);
-  end;
-  if Result = '' then
-  begin
-    Result := HiddenText(AList.Items);
-  end;
-  if Result = '' then
-  begin
-    Result := KeysText(AList);
-  end;
-end;
-
 class function TAtlasCompletionTexts.FittingCount(const AList: TAtlasCompletionList): Integer;
 var
   mIndex: Integer;
@@ -415,6 +308,95 @@ begin
     begin
       Inc(Result);
     end;
+  end;
+end;
+
+class function TAtlasCompletionTexts.TagText(const ATag: TAtlasTag): string;
+begin
+  case ATag.Id of
+    TAtlasTagId.Recent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagRecent);
+    TAtlasTagId.Frequent: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.TagFrequent);
+    TAtlasTagId.Cycle: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesCycleTag);
+    TAtlasTagId.SameParams: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedSameTag);
+    TAtlasTagId.Overload: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedOverloadTag);
+    TAtlasTagId.Active: Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.SameNameActiveTag);
+    TAtlasTagId.VariantBranch: Result := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.TagVariantBranch,
+      [ATag.Arg]);
+  else
+    Result := ATag.Text;
+  end;
+end;
+
+class function TAtlasCompletionTexts.DetailText(const AItem: TAtlasCompletionItem): string;
+begin
+  if AItem.UsesElsewhere = 'interface' then
+  begin
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInInterface);
+  end
+  else if AItem.UsesElsewhere = 'implementation' then
+  begin
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.UsesInImplementation);
+  end
+  else
+  begin
+    Result := TAtlasItemPresentation.Detail(AItem);
+  end;
+end;
+
+class function TAtlasCompletionTexts.KindText(AKind: TAtlasItemKind): string;
+begin
+  case AKind of
+    TAtlasItemKind.Method, TAtlasItemKind.Function_, TAtlasItemKind.Procedure_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindMethod);
+    TAtlasItemKind.Constructor_, TAtlasItemKind.Destructor_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindConstructor);
+    TAtlasItemKind.Property_, TAtlasItemKind.Event:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindProperty);
+    TAtlasItemKind.Field:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindField);
+    TAtlasItemKind.Variable, TAtlasItemKind.Parameter:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindVariable);
+    TAtlasItemKind.Constant:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindConstant);
+    TAtlasItemKind.Type_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindType);
+    TAtlasItemKind.Class_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindClass);
+    TAtlasItemKind.Interface_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindInterface);
+    TAtlasItemKind.Record_:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindRecord);
+    TAtlasItemKind.Enum:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindEnum);
+    TAtlasItemKind.EnumMember:
+      Result := TAtlasStrings.Text(TAtlasTextId.KindEnumMember);
+  else
+    Result := '';
+  end;
+end;
+
+class function TAtlasCompletionTexts.HeaderText(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
+  APosition: Integer): string;
+begin
+  // Überschrift einer Gruppe geerbter Member (#419): Klasse des nächsten Eintrags;
+  // mit erwartetem Typ (#417, #444) „Passt zu …“ bzw. „Weitere“.
+  if AOrder[APosition] = TAtlasRanking.cTypoHeader then
+  begin
+    // Tippfehler-Treffer (#485).
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.DidYouMean);
+  end
+  else if AOrder[APosition] = TAtlasRanking.cRestHeader then
+  begin
+    // Rest der Liste ohne Treffer (#497).
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.CompletionRestHeader);
+  end
+  else if (APosition < High(AOrder)) and (AOrder[APosition + 1] >= 0) then
+  begin
+    Result := NextHeader(AItems, AOrder, APosition);
+  end
+  else
+  begin
+    Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.InheritedPlain);
   end;
 end;
 
@@ -454,6 +436,24 @@ begin
   if AList.Limited then
   begin
     Result := TAtlasCompletionStrings.Text(TAtlasCompletionTextId.CompletionLimited) + ' · ' + Result;
+  end;
+end;
+
+class function TAtlasCompletionTexts.FooterLeftText(const AList: TAtlasCompletionList): string;
+begin
+  // Hinweis zu den Favoriten (#458) hat Vorrang, dann nicht sichtbare Treffer (#2108).
+  Result := AList.Notice;
+  if Result = '' then
+  begin
+    Result := InaccessibleText(AList.Inaccessible);
+  end;
+  if Result = '' then
+  begin
+    Result := HiddenText(AList.Items);
+  end;
+  if Result = '' then
+  begin
+    Result := KeysText(AList);
   end;
 end;
 

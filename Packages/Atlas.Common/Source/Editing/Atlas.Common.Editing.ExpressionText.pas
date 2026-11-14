@@ -119,6 +119,26 @@ begin
   end;
 end;
 
+class function TExpressionText.Precedence(ANode: TSyntaxNode): Integer;
+begin
+  case ANode.Kind of
+    TSyntaxKind.BinaryExpr:
+    begin
+      Result := OperatorPrecedence(ANode.Name);
+      if Result < 0 then
+      begin
+        Result := cPrecedenceRelational;
+      end;
+    end;
+    TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
+      Result := cPrecedenceUnary;
+    TSyntaxKind.IfExpr:
+      Result := cPrecedenceIfExpr;
+  else
+    Result := cPrecedenceOperand;
+  end;
+end;
+
 class function TExpressionText.OperatorPrecedence(const AOperator: string): Integer;
 var
   mOp: string;
@@ -139,26 +159,6 @@ begin
   else
   begin
     Result := -1;
-  end;
-end;
-
-class function TExpressionText.Precedence(ANode: TSyntaxNode): Integer;
-begin
-  case ANode.Kind of
-    TSyntaxKind.BinaryExpr:
-    begin
-      Result := OperatorPrecedence(ANode.Name);
-      if Result < 0 then
-      begin
-        Result := cPrecedenceRelational;
-      end;
-    end;
-    TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
-      Result := cPrecedenceUnary;
-    TSyntaxKind.IfExpr:
-      Result := cPrecedenceIfExpr;
-  else
-    Result := cPrecedenceOperand;
   end;
 end;
 
@@ -190,6 +190,21 @@ begin
   end;
 end;
 
+class function TExpressionText.Simplify(const AText: string; ANode: TSyntaxNode): TExpressionPart;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := Strip(ANode);
+  if (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) then
+  begin
+    Result := Negate(AText, mNode[0]);
+  end
+  else
+  begin
+    Result := Part(AText, mNode);
+  end;
+end;
+
 class function TExpressionText.InvertedComparison(const AOperator: string): string;
 begin
   case IndexStr(AOperator, ['=', '<>', '<', '>=', '>', '<=']) of
@@ -202,12 +217,6 @@ begin
   else
     Result := '';
   end;
-end;
-
-class function TExpressionText.IsBooleanLiteral(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
-    (SameText(ANode.Name, 'True') or SameText(ANode.Name, 'False'));
 end;
 
 /// <summary>Vorrang, den ANode als Operand des binären Ausdrucks AParent braucht. Wie Combine: links derselbe
@@ -225,39 +234,9 @@ begin
   end;
 end;
 
-class function TExpressionText.ContextPrecedence(ANode: TSyntaxNode): Integer;
-var
-  mParent: TSyntaxNode;
+class function TExpressionText.Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean;
 begin
-  Result := cPrecedenceIfExpr;
-  mParent := ANode.Parent;
-  if mParent = nil then
-  begin
-    Exit;
-  end;
-  case mParent.Kind of
-    TSyntaxKind.BinaryExpr:
-      if mParent.ChildCount = 2 then
-      begin
-        Result := BinaryContextPrecedence(mParent, ANode);
-      end;
-    TSyntaxKind.UnaryExpr:
-      Result := cPrecedenceUnary;
-    TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
-      if mParent[0] = ANode then
-      begin
-        Result := cPrecedenceOperand;
-      end;
-    // Bedingung und Wert vor else eines Bedingungsausdrucks: ein innerer Bedingungsausdruck in Klammern
-    // (sonst gehörte das else zum inneren).
-    TSyntaxKind.IfExpr:
-      if (mParent.ChildCount = 3) and (mParent[2] <> ANode) then
-      begin
-        Result := cPrecedenceIfExpr + 1;
-      end;
-  else
-    // Übrige Arten: nichts zu tun.
-  end;
+  Result := (A <> nil) and (B <> nil) and (Normalized(ATree, A) = Normalized(ATree, B));
 end;
 
 /// <summary>Verneinung eines binären Ausdrucks: Vergleich umkehren, and/or nach De Morgan (die Reihenfolge
@@ -339,21 +318,6 @@ begin
   end;
 end;
 
-class function TExpressionText.Simplify(const AText: string; ANode: TSyntaxNode): TExpressionPart;
-var
-  mNode: TSyntaxNode;
-begin
-  mNode := Strip(ANode);
-  if (mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not') and (mNode.ChildCount = 1) then
-  begin
-    Result := Negate(AText, mNode[0]);
-  end
-  else
-  begin
-    Result := Part(AText, mNode);
-  end;
-end;
-
 class function TExpressionText.Normalized(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
 var
   mNode: TSyntaxNode;
@@ -384,11 +348,6 @@ begin
   end;
 end;
 
-class function TExpressionText.Same(ATree: TSyntaxTree; A, B: TSyntaxNode): Boolean;
-begin
-  Result := (A <> nil) and (B <> nil) and (Normalized(ATree, A) = Normalized(ATree, B));
-end;
-
 class function TExpressionText.IsSideEffectFree(ANode: TSyntaxNode): Boolean;
 begin
   // Search statt Rekursion.
@@ -417,6 +376,47 @@ begin
         // Übrige Arten: nichts zu tun.
       end;
     end) = nil;
+end;
+
+class function TExpressionText.IsBooleanLiteral(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
+    (SameText(ANode.Name, 'True') or SameText(ANode.Name, 'False'));
+end;
+
+class function TExpressionText.ContextPrecedence(ANode: TSyntaxNode): Integer;
+var
+  mParent: TSyntaxNode;
+begin
+  Result := cPrecedenceIfExpr;
+  mParent := ANode.Parent;
+  if mParent = nil then
+  begin
+    Exit;
+  end;
+  case mParent.Kind of
+    TSyntaxKind.BinaryExpr:
+      if mParent.ChildCount = 2 then
+      begin
+        Result := BinaryContextPrecedence(mParent, ANode);
+      end;
+    TSyntaxKind.UnaryExpr:
+      Result := cPrecedenceUnary;
+    TSyntaxKind.AddressOf, TSyntaxKind.Call, TSyntaxKind.IndexAccess, TSyntaxKind.MemberAccess:
+      if mParent[0] = ANode then
+      begin
+        Result := cPrecedenceOperand;
+      end;
+    // Bedingung und Wert vor else eines Bedingungsausdrucks: ein innerer Bedingungsausdruck in Klammern
+    // (sonst gehörte das else zum inneren).
+    TSyntaxKind.IfExpr:
+      if (mParent.ChildCount = 3) and (mParent[2] <> ANode) then
+      begin
+        Result := cPrecedenceIfExpr + 1;
+      end;
+  else
+    // Übrige Arten: nichts zu tun.
+  end;
 end;
 
 end.

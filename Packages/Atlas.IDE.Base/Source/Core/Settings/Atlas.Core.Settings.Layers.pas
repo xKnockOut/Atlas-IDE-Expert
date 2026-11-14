@@ -227,21 +227,6 @@ begin
   FCurrent[AIndex] := '';
 end;
 
-function TAtlasSettingsModel.Changes: TArray<TPair<string, string>>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to High(FFields) do
-  begin
-    if FCurrent[mIndex] <> FOriginal[mIndex] then
-    begin
-      Result := Result + [TPair<string, string>.Create(FFields[mIndex].Path, FCurrent[mIndex])];
-    end;
-  end;
-  Result := Result + FPaths;
-end;
-
 procedure TAtlasSettingsModel.SetPath(const APath, AJson: string);
 var
   mIndex: Integer;
@@ -255,6 +240,21 @@ begin
     end;
   end;
   FPaths := FPaths + [TPair<string, string>.Create(APath, AJson)];
+end;
+
+function TAtlasSettingsModel.Changes: TArray<TPair<string, string>>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(FFields) do
+  begin
+    if FCurrent[mIndex] <> FOriginal[mIndex] then
+    begin
+      Result := Result + [TPair<string, string>.Create(FFields[mIndex].Path, FCurrent[mIndex])];
+    end;
+  end;
+  Result := Result + FPaths;
 end;
 
 function TAtlasSettingsModel.Modified: Boolean;

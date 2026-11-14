@@ -65,11 +65,6 @@ begin
   FLookup := ALookup;
 end;
 
-procedure TAtlasTrackerWelcomeLink.Release;
-begin
-  FLookup := Default(TAtlasTrackerWelcomeLookup);
-end;
-
 function TAtlasTrackerWelcomeLink.ProjectsService: IAtlasWelcomeProjects;
 begin
   Result := nil;
@@ -194,6 +189,11 @@ begin
   begin
     mBoard.TileInfoChanged(AId);
   end;
+end;
+
+procedure TAtlasTrackerWelcomeLink.Release;
+begin
+  FLookup := Default(TAtlasTrackerWelcomeLookup);
 end;
 
 end.

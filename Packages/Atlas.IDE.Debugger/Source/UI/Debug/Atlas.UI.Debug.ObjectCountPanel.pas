@@ -169,16 +169,6 @@ begin
   FControls.Grid.Cells[cColBytes, 0] := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.ObjectCountColumnBytes);
 end;
 
-function TAtlasDebugObjectCountPanel.Rows: TArray<TAtlasObjectCountRow>;
-begin
-  Result := nil;
-  if FCounts.HasCurrent then
-  begin
-    Result := TAtlasObjectCountCompare.Rows(FCounts.Base, FCounts.Current, FCounts.HasBase,
-      FControls.Filter.Text);
-  end;
-end;
-
 procedure TAtlasDebugObjectCountPanel.FillGrid;
 var
   mRows: TArray<TAtlasObjectCountRow>;
@@ -199,6 +189,19 @@ begin
     end;
     FControls.Grid.Cells[cColBytes, mIndex + 1] := TAtlasMemoryFormat.Bytes(mRows[mIndex].Bytes, FormatSettings);
   end;
+end;
+
+procedure TAtlasDebugObjectCountPanel.CountClick(Sender: TObject);
+begin
+  if Assigned(FOnCount) then
+  begin
+    FOnCount();
+  end;
+end;
+
+procedure TAtlasDebugObjectCountPanel.FilterChange(Sender: TObject);
+begin
+  FillGrid;
 end;
 
 procedure TAtlasDebugObjectCountPanel.SetCounts(const ABase, ACurrent: TAtlasObjectCount; AHasBase: Boolean);
@@ -231,17 +234,14 @@ begin
   FControls.Summary.Caption := AText;
 end;
 
-procedure TAtlasDebugObjectCountPanel.CountClick(Sender: TObject);
+function TAtlasDebugObjectCountPanel.Rows: TArray<TAtlasObjectCountRow>;
 begin
-  if Assigned(FOnCount) then
+  Result := nil;
+  if FCounts.HasCurrent then
   begin
-    FOnCount();
+    Result := TAtlasObjectCountCompare.Rows(FCounts.Base, FCounts.Current, FCounts.HasBase,
+      FControls.Filter.Text);
   end;
-end;
-
-procedure TAtlasDebugObjectCountPanel.FilterChange(Sender: TObject);
-begin
-  FillGrid;
 end;
 
 end.

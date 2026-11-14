@@ -380,48 +380,21 @@ end;
 
 { TInlineAccessor }
 
-class function TInlineAccessor.LocalInterfaceDeclares(ATree: TSyntaxTree; const AInterface,
-  AMethod: string): TInterfaceAnswer;
+class function TInlineAccessor.InClass(ALayout: TClassLayout; const AOptions: TInlineAccessorOptions;
+  const AInterfaces: TInterfaceDeclares): TArray<TTrivialAccessor>;
 var
-  mFound: TSyntaxNode;
-  mName: string;
-  mDeclared: Boolean;
+  mIndex: Integer;
+  mAccessor: TTrivialAccessor;
+  mReason: string;
 begin
-  mFound := nil;
-  mName := StripGenerics(AInterface);
-  if Pos('.', mName) > 0 then
+  Result := nil;
+  for mIndex := 0 to High(ALayout.Members) do
   begin
-    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
-  end;
-  ATree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
+    if ALayout.Members[mIndex].IsMethod and Check(ALayout, mIndex, AOptions, AInterfaces, mAccessor, mReason) then
     begin
-      if (mFound = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(StripGenerics(ANode.Name), mName) and
-        (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
-      begin
-        mFound := ANode;
-      end;
-      Result := mFound = nil;
-    end);
-  if mFound = nil then
-  begin
-    Exit(TInterfaceAnswer.Unknown);
+      Result := Result + [mAccessor];
+    end;
   end;
-  mDeclared := False;
-  mFound.FindChild(TSyntaxKind.InterfaceType).Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      if (ANode.Kind = TSyntaxKind.RoutineHeader) and SameText(ANode.Name, AMethod) then
-      begin
-        mDeclared := True;
-      end;
-      Result := not mDeclared;
-    end);
-  if mDeclared then
-  begin
-    Exit(TInterfaceAnswer.Yes);
-  end;
-  Result := TInterfaceAnswer.No;
 end;
 
 /// <summary>Properties, die AName als read- bzw. write-Methode nennen; AReads und AWrites zählen sie.</summary>
@@ -716,21 +689,35 @@ begin
   end;
 end;
 
-class function TInlineAccessor.InClass(ALayout: TClassLayout; const AOptions: TInlineAccessorOptions;
-  const AInterfaces: TInterfaceDeclares): TArray<TTrivialAccessor>;
+class function TInlineAccessor.Edits(ALayout: TClassLayout;
+  const AAccessors: TArray<TTrivialAccessor>): TArray<TTextEdit>;
 var
-  mIndex: Integer;
   mAccessor: TTrivialAccessor;
-  mReason: string;
+  mIndex: Integer;
+  mRemoved: TArray<Integer>;
+  mEdit: TTextEdit;
+  mKeyword: string;
 begin
   Result := nil;
-  for mIndex := 0 to High(ALayout.Members) do
+  mRemoved := nil;
+  for mAccessor in AAccessors do
   begin
-    if ALayout.Members[mIndex].IsMethod and Check(ALayout, mIndex, AOptions, AInterfaces, mAccessor, mReason) then
+    mKeyword := 'write';
+    if mAccessor.IsGetter then
     begin
-      Result := Result + [mAccessor];
+      mKeyword := 'read';
     end;
+    for mIndex in mAccessor.Properties do
+    begin
+      if TClassEdits.ReplaceAccessor(ALayout, mIndex, mKeyword, mAccessor.Field, mEdit) then
+      begin
+        Result := Result + [mEdit];
+      end;
+    end;
+    mRemoved := mRemoved + [mAccessor.Member];
   end;
+  Result := Result + TClassEdits.DeleteMembers(ALayout, mRemoved, True) +
+    TMemberTransfer.EmptiedSections(ALayout, mRemoved);
 end;
 
 /// <summary>Mitglied in Zeile ALine bzw. Methode, in deren Rumpf ALine liegt; -1 ohne.</summary>
@@ -831,37 +818,6 @@ begin
   end;
 end;
 
-class function TInlineAccessor.Edits(ALayout: TClassLayout;
-  const AAccessors: TArray<TTrivialAccessor>): TArray<TTextEdit>;
-var
-  mAccessor: TTrivialAccessor;
-  mIndex: Integer;
-  mRemoved: TArray<Integer>;
-  mEdit: TTextEdit;
-  mKeyword: string;
-begin
-  Result := nil;
-  mRemoved := nil;
-  for mAccessor in AAccessors do
-  begin
-    mKeyword := 'write';
-    if mAccessor.IsGetter then
-    begin
-      mKeyword := 'read';
-    end;
-    for mIndex in mAccessor.Properties do
-    begin
-      if TClassEdits.ReplaceAccessor(ALayout, mIndex, mKeyword, mAccessor.Field, mEdit) then
-      begin
-        Result := Result + [mEdit];
-      end;
-    end;
-    mRemoved := mRemoved + [mAccessor.Member];
-  end;
-  Result := Result + TClassEdits.DeleteMembers(ALayout, mRemoved, True) +
-    TMemberTransfer.EmptiedSections(ALayout, mRemoved);
-end;
-
 class function TInlineAccessor.IsOwnReference(ALayout: TClassLayout; const AAccessor: TTrivialAccessor;
   const APosition: TTextPosition): Boolean;
 var
@@ -887,6 +843,50 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TInlineAccessor.LocalInterfaceDeclares(ATree: TSyntaxTree; const AInterface,
+  AMethod: string): TInterfaceAnswer;
+var
+  mFound: TSyntaxNode;
+  mName: string;
+  mDeclared: Boolean;
+begin
+  mFound := nil;
+  mName := StripGenerics(AInterface);
+  if Pos('.', mName) > 0 then
+  begin
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  end;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (mFound = nil) and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(StripGenerics(ANode.Name), mName) and
+        (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
+      begin
+        mFound := ANode;
+      end;
+      Result := mFound = nil;
+    end);
+  if mFound = nil then
+  begin
+    Exit(TInterfaceAnswer.Unknown);
+  end;
+  mDeclared := False;
+  mFound.FindChild(TSyntaxKind.InterfaceType).Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.RoutineHeader) and SameText(ANode.Name, AMethod) then
+      begin
+        mDeclared := True;
+      end;
+      Result := not mDeclared;
+    end);
+  if mDeclared then
+  begin
+    Exit(TInterfaceAnswer.Yes);
+  end;
+  Result := TInterfaceAnswer.No;
 end;
 
 /// <summary>Name des Interfaces ohne generische Argumente und Unit (System.IFoo&lt;T&gt; wird IFoo).</summary>
@@ -994,6 +994,11 @@ begin
     end;
 end;
 
+class function TInlineAccessor.IsResolution(ALayout: TClassLayout; const AMethod: string): Boolean;
+begin
+  Result := HasResolution(ALayout, AMethod);
+end;
+
 class function TInlineAccessor.Title(const AAccessors: TArray<TTrivialAccessor>): string;
 begin
   if Length(AAccessors) = 1 then
@@ -1006,11 +1011,6 @@ begin
     Result := cTexts[TEditingInlineAccessorText.ReplaceAccessorsAndWithThe].Fmt([AAccessors[0].Name,
       AAccessors[1].Name]);
   end;
-end;
-
-class function TInlineAccessor.IsResolution(ALayout: TClassLayout; const AMethod: string): Boolean;
-begin
-  Result := HasResolution(ALayout, AMethod);
 end;
 
 initialization

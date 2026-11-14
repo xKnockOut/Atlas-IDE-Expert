@@ -371,79 +371,15 @@ begin
   UpdateContent;
 end;
 
-class function TAtlasWelcomeWhatsNewFrame.TitleFor(AView: TAtlasWhatsNewView;
-  const AVersions: TAtlasWhatsNewVersions): string;
+function TAtlasWelcomeWhatsNewFrame.BodyHeight: Integer;
 begin
-  if (AView <> TAtlasWhatsNewView.All) and (Length(AVersions) = 1) then
+  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
+  Arrange;
+  Result := FContentHeight;
+  if Result < ScaleValue(40) then
   begin
-    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsTitle, [AVersions[0].Version]);
-  end
-  else
-  begin
-    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTitlePlain);
+    Result := ScaleValue(40);
   end;
-end;
-
-class function TAtlasWelcomeWhatsNewFrame.HeadingText(const AVersion: string; ACollapsible,
-  AExpanded: Boolean): string;
-begin
-  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsVersion, [AVersion]);
-  if not ACollapsible then
-  begin
-    Exit;
-  end;
-  if AExpanded then
-  begin
-    Result := #$25BE' ' + Result;
-  end
-  else
-  begin
-    Result := #$25B8' ' + Result;
-  end;
-end;
-
-function TAtlasWelcomeWhatsNewFrame.Collapsible: Boolean;
-begin
-  Result := FView = TAtlasWhatsNewView.All;
-end;
-
-function TAtlasWelcomeWhatsNewFrame.IsExpanded(const AVersion: string): Boolean;
-begin
-  if not Collapsible then
-  begin
-    Exit(True);
-  end;
-  if not FExpanded.TryGetValue(AVersion, Result) then
-  begin
-    Result := False;
-  end;
-end;
-
-procedure TAtlasWelcomeWhatsNewFrame.Toggle(const AVersion: string);
-begin
-  if not Collapsible then
-  begin
-    Exit;
-  end;
-  FExpanded.AddOrSetValue(AVersion, not IsExpanded(AVersion));
-  Build;
-  HeightChanged;
-end;
-
-procedure TAtlasWelcomeWhatsNewFrame.Clear;
-begin
-  FRows := nil;
-  FHeadings := nil;
-  FHeadingVersions := nil;
-  FDismiss := nil;
-  FControls.Clear;
-end;
-
-function TAtlasWelcomeWhatsNewFrame.Add<T>(AControl: T): T;
-begin
-  Result := AControl;
-  Result.Parent := FScroll;
-  FControls.Add(Result);
 end;
 
 procedure TAtlasWelcomeWhatsNewFrame.UpdateContent;
@@ -476,6 +412,22 @@ begin
   inherited;
 end;
 
+procedure TAtlasWelcomeWhatsNewFrame.Clear;
+begin
+  FRows := nil;
+  FHeadings := nil;
+  FHeadingVersions := nil;
+  FDismiss := nil;
+  FControls.Clear;
+end;
+
+function TAtlasWelcomeWhatsNewFrame.Add<T>(AControl: T): T;
+begin
+  Result := AControl;
+  Result.Parent := FScroll;
+  FControls.Add(Result);
+end;
+
 procedure TAtlasWelcomeWhatsNewFrame.Build;
 var
   mVersion: TAtlasWhatsNewVersion;
@@ -503,11 +455,6 @@ begin
   finally
     FUpdating := False;
   end;
-  Arrange;
-end;
-
-procedure TAtlasWelcomeWhatsNewFrame.ScrollResize(Sender: TObject);
-begin
   Arrange;
 end;
 
@@ -606,15 +553,9 @@ begin
   end;
 end;
 
-function TAtlasWelcomeWhatsNewFrame.BodyHeight: Integer;
+procedure TAtlasWelcomeWhatsNewFrame.ScrollResize(Sender: TObject);
 begin
-  // Für die aktuelle Breite: Der Frame „Atlas“ setzt erst die Breite, dann die Höhe.
   Arrange;
-  Result := FContentHeight;
-  if Result < ScaleValue(40) then
-  begin
-    Result := ScaleValue(40);
-  end;
 end;
 
 procedure TAtlasWelcomeWhatsNewFrame.HeadingClick(Sender: TObject);
@@ -687,6 +628,65 @@ begin
     begin
       mSource.Dismiss;
     end);
+end;
+
+function TAtlasWelcomeWhatsNewFrame.Collapsible: Boolean;
+begin
+  Result := FView = TAtlasWhatsNewView.All;
+end;
+
+procedure TAtlasWelcomeWhatsNewFrame.Toggle(const AVersion: string);
+begin
+  if not Collapsible then
+  begin
+    Exit;
+  end;
+  FExpanded.AddOrSetValue(AVersion, not IsExpanded(AVersion));
+  Build;
+  HeightChanged;
+end;
+
+function TAtlasWelcomeWhatsNewFrame.IsExpanded(const AVersion: string): Boolean;
+begin
+  if not Collapsible then
+  begin
+    Exit(True);
+  end;
+  if not FExpanded.TryGetValue(AVersion, Result) then
+  begin
+    Result := False;
+  end;
+end;
+
+class function TAtlasWelcomeWhatsNewFrame.TitleFor(AView: TAtlasWhatsNewView;
+  const AVersions: TAtlasWhatsNewVersions): string;
+begin
+  if (AView <> TAtlasWhatsNewView.All) and (Length(AVersions) = 1) then
+  begin
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsTitle, [AVersions[0].Version]);
+  end
+  else
+  begin
+    Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeNewsTitlePlain);
+  end;
+end;
+
+class function TAtlasWelcomeWhatsNewFrame.HeadingText(const AVersion: string; ACollapsible,
+  AExpanded: Boolean): string;
+begin
+  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsVersion, [AVersion]);
+  if not ACollapsible then
+  begin
+    Exit;
+  end;
+  if AExpanded then
+  begin
+    Result := #$25BE' ' + Result;
+  end
+  else
+  begin
+    Result := #$25B8' ' + Result;
+  end;
 end;
 
 initialization

@@ -1425,40 +1425,6 @@ begin
   ApplyTabs(Self);
 end;
 
-procedure TAtlasIssueFrame.CMShowingChanged(var AMessage: TMessage);
-begin
-  inherited;
-  // Das X versteckt die Form samt Frame: wie Schließen.
-  FireIf(not Showing, FEvents.Hidden);
-end;
-
-procedure TAtlasIssueFrame.WMDeferred(var AMessage: TMessage);
-var
-  mTask: Integer;
-begin
-  if FState.PendingRebuild then
-  begin
-    FState.PendingRebuild := False;
-    Rebuild(Self);
-  end;
-  if FState.HasPendingLink then
-  begin
-    FState.HasPendingLink := False;
-    if Assigned(FEvents.OpenLink) then
-    begin
-      FEvents.OpenLink(FState.PendingLink);
-    end;
-  end;
-  mTask := FState.PendingTask;
-  FState.PendingTask := -1;
-  if (mTask >= 0) and Assigned(FEvents.ToggleTask) then
-  begin
-    FEvents.ToggleTask(mTask);
-  end;
-  FireIf(FState.PendingAdd, FEvents.AddTask);
-  FState.PendingAdd := False;
-end;
-
 procedure TAtlasIssueFrame.ControlClick(Sender: TObject);
 var
   mTag: NativeInt;
@@ -1495,20 +1461,38 @@ begin
   Handled := True;
 end;
 
-procedure TAtlasIssueFrame.SetFlag(AFlag: TAtlasIssueFlag; AValue: Boolean);
+procedure TAtlasIssueFrame.WMDeferred(var AMessage: TMessage);
 var
-  mChanged: Boolean;
+  mTask: Integer;
 begin
-  mChanged := (AFlag in FFlags) <> AValue;
-  if AValue then
+  if FState.PendingRebuild then
   begin
-    Include(FFlags, AFlag);
-  end
-  else
-  begin
-    Exclude(FFlags, AFlag);
+    FState.PendingRebuild := False;
+    Rebuild(Self);
   end;
-  ApplyFlag(Self, AFlag, AValue, mChanged);
+  if FState.HasPendingLink then
+  begin
+    FState.HasPendingLink := False;
+    if Assigned(FEvents.OpenLink) then
+    begin
+      FEvents.OpenLink(FState.PendingLink);
+    end;
+  end;
+  mTask := FState.PendingTask;
+  FState.PendingTask := -1;
+  if (mTask >= 0) and Assigned(FEvents.ToggleTask) then
+  begin
+    FEvents.ToggleTask(mTask);
+  end;
+  FireIf(FState.PendingAdd, FEvents.AddTask);
+  FState.PendingAdd := False;
+end;
+
+procedure TAtlasIssueFrame.CMShowingChanged(var AMessage: TMessage);
+begin
+  inherited;
+  // Das X versteckt die Form samt Frame: wie Schließen.
+  FireIf(not Showing, FEvents.Hidden);
 end;
 
 procedure TAtlasIssueFrame.ShowEmpty;
@@ -1518,6 +1502,11 @@ begin
   FParts.Status.Visible := False;
   Rebuild(Self);
   UpdateButtons(Self);
+end;
+
+procedure TAtlasIssueFrame.SetAnchor(AAnchor: TDateTime);
+begin
+  FState.Anchor := AAnchor;
 end;
 
 /// <summary>Kopf des hervorgehobenen Kommentars oben ins Bild; gefunden (nicht nur der letzte als Ersatz), hat
@@ -1577,69 +1566,9 @@ begin
   UpdateButtons(Self);
 end;
 
-procedure TAtlasIssueFrame.ReplaceDescription(const AText: string);
-var
-  mPosition: Integer;
-begin
-  if not FState.HasDetails then
-  begin
-    Exit;
-  end;
-  mPosition := FParts.Scroll.VertScrollBar.Position;
-  FState.Details.Description := AText;
-  Rebuild(Self);
-  FParts.Scroll.VertScrollBar.Position := mPosition;
-end;
-
 procedure TAtlasIssueFrame.ShowNotice(const AText: string);
 begin
   ShowError(AText, TAtlasIssueFix.None);
-end;
-
-procedure TAtlasIssueFrame.RevealChecklist;
-begin
-  FState.RevealTasks := True;
-  if FState.HasDetails then
-  begin
-    ScrollToTasks(Self);
-  end;
-end;
-
-procedure TAtlasIssueFrame.SetAnchor(AAnchor: TDateTime);
-begin
-  FState.Anchor := AAnchor;
-end;
-
-function FixCaption(AFix: TAtlasIssueFix): string;
-begin
-  Result := '';
-  case AFix of
-    TAtlasIssueFix.EnterToken:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixToken);
-    TAtlasIssueFix.Settings:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
-    TAtlasIssueFix.Browser:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse);
-    TAtlasIssueFix.Retry:
-      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixRetry);
-    TAtlasIssueFix.None:
-      begin
-        // Kein Knopf.
-      end;
-  end;
-end;
-
-procedure TAtlasIssueFrame.ShowError(const AText: string; AFix: TAtlasIssueFix);
-begin
-  FState.FixKind := AFix;
-  FParts.StatusLabel.Caption := AText;
-  FParts.Fix.Visible := AFix <> TAtlasIssueFix.None;
-  if FParts.Fix.Visible then
-  begin
-    FParts.Fix.Caption := FixCaption(AFix);
-  end;
-  FParts.Status.Visible := True;
-  UpdateButtons(Self);
 end;
 
 procedure TAtlasIssueFrame.SetImage(const AUrl: string; AGraphic: TGraphic);
@@ -1699,6 +1628,61 @@ begin
   end;
 end;
 
+function FixCaption(AFix: TAtlasIssueFix): string;
+begin
+  Result := '';
+  case AFix of
+    TAtlasIssueFix.EnterToken:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixToken);
+    TAtlasIssueFix.Settings:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixSettings);
+    TAtlasIssueFix.Browser:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse);
+    TAtlasIssueFix.Retry:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewFixRetry);
+    TAtlasIssueFix.None:
+      begin
+        // Kein Knopf.
+      end;
+  end;
+end;
+
+procedure TAtlasIssueFrame.ShowError(const AText: string; AFix: TAtlasIssueFix);
+begin
+  FState.FixKind := AFix;
+  FParts.StatusLabel.Caption := AText;
+  FParts.Fix.Visible := AFix <> TAtlasIssueFix.None;
+  if FParts.Fix.Visible then
+  begin
+    FParts.Fix.Caption := FixCaption(AFix);
+  end;
+  FParts.Status.Visible := True;
+  UpdateButtons(Self);
+end;
+
+procedure TAtlasIssueFrame.ReplaceDescription(const AText: string);
+var
+  mPosition: Integer;
+begin
+  if not FState.HasDetails then
+  begin
+    Exit;
+  end;
+  mPosition := FParts.Scroll.VertScrollBar.Position;
+  FState.Details.Description := AText;
+  Rebuild(Self);
+  FParts.Scroll.VertScrollBar.Position := mPosition;
+end;
+
+procedure TAtlasIssueFrame.RevealChecklist;
+begin
+  FState.RevealTasks := True;
+  if FState.HasDetails then
+  begin
+    ScrollToTasks(Self);
+  end;
+end;
+
 procedure TAtlasIssueFrame.ApplyColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
@@ -1710,6 +1694,22 @@ begin
   FParts.CommentNote.Font.Color := ToColor(AColors.Muted);
   FParts.Comment.Preview.ApplyColors(AColors);
   RebuildShown(Self);
+end;
+
+procedure TAtlasIssueFrame.SetFlag(AFlag: TAtlasIssueFlag; AValue: Boolean);
+var
+  mChanged: Boolean;
+begin
+  mChanged := (AFlag in FFlags) <> AValue;
+  if AValue then
+  begin
+    Include(FFlags, AFlag);
+  end
+  else
+  begin
+    Exclude(FFlags, AFlag);
+  end;
+  ApplyFlag(Self, AFlag, AValue, mChanged);
 end;
 
 procedure TAtlasIssueFrame.SetMonoFont(AValue: TFont);

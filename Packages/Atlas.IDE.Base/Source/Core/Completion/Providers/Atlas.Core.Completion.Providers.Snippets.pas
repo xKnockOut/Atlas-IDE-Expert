@@ -92,6 +92,33 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasSnippetCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
+begin
+  AData := nil;
+  Result := FEnabled and (AContext.Kind = TAtlasContextKind.Identifier) and (AContext.Trigger = '');
+end;
+
+function TAtlasSnippetCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
+    out AState: TAtlasFetchState): TAtlasCompletionItems;
+var
+  mSnippets: TAtlasSnippetList;
+begin
+  AState := Default(TAtlasFetchState);
+  Result := nil;
+  if not IsSnippetContext(Copy(LineOf(AContext.Text, AContext.Line), 1, AContext.Character), AContext.Prefix) then
+  begin
+    Exit;
+  end;
+  FSnippetLock.Enter;
+  try
+    mSnippets := FSnippets;
+  finally
+    FSnippetLock.Leave;
+  end;
+  Result := Items(mSnippets);
+end;
+
 procedure TAtlasSnippetCompletionProvider.SetSnippets(const ASnippets: TAtlasSnippetList);
 begin
   FSnippetLock.Enter;
@@ -167,33 +194,6 @@ begin
     mItem.Rank := cSnippetRank + mIndex;
     Result := Result + [mItem];
   end;
-end;
-
-function TAtlasSnippetCompletionProvider.Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean;
-begin
-  AData := nil;
-  Result := FEnabled and (AContext.Kind = TAtlasContextKind.Identifier) and (AContext.Trigger = '');
-end;
-
-function TAtlasSnippetCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc;
-    out AState: TAtlasFetchState): TAtlasCompletionItems;
-var
-  mSnippets: TAtlasSnippetList;
-begin
-  AState := Default(TAtlasFetchState);
-  Result := nil;
-  if not IsSnippetContext(Copy(LineOf(AContext.Text, AContext.Line), 1, AContext.Character), AContext.Prefix) then
-  begin
-    Exit;
-  end;
-  FSnippetLock.Enter;
-  try
-    mSnippets := FSnippets;
-  finally
-    FSnippetLock.Leave;
-  end;
-  Result := Items(mSnippets);
 end;
 
 end.

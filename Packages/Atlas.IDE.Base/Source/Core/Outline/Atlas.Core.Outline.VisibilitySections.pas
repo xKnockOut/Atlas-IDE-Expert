@@ -145,40 +145,36 @@ begin
   Result.Character := AToken.Character;
 end;
 
+{ TAtlasVisibilitySectionFinder }
+
+class function TAtlasVisibilitySectionFinder.At(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  ALine, ACharacter: Integer): TAtlasVisibilityPlace;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasVisibilityPlace);
+  Result.Current := -1;
+  Result.TypeNode := TypeAt(ANodes, ALines, ALine, ACharacter);
+  if Result.TypeNode < 0 then
+  begin
+    Exit;
+  end;
+  Result.Sections := SectionsOf(ANodes, ALines, Result.TypeNode);
+  Result.Implicit := ImplicitOf(ANodes, ALines, Result.TypeNode);
+  // Auch auf der Zeile des Schlüsselworts gilt schon sein Abschnitt.
+  for mIndex := 0 to High(Result.Sections) do
+  begin
+    if Result.Sections[mIndex].Line <= ALine then
+    begin
+      Result.Current := mIndex;
+    end;
+  end;
+end;
+
 class function TAtlasVisibilitySectionFinder.HasSections(const ANode: TAtlasOutlineNode): Boolean;
 begin
   Result := (ANode.Category = TAtlasOutlineCategory.TypeDecl) and
     TAtlasTypeText.IsOneOf(LowerCase(ANode.Detail), ['class', 'record', 'object', 'helper']);
-end;
-
-class function TAtlasVisibilitySectionFinder.SectionsOf(const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; AType: Integer): TAtlasVisibilitySections;
-var
-  mTokens: TAtlasTypeTokens;
-  mIndex: Integer;
-  mKeyword: string;
-  mStart: TAtlasTypeToken;
-begin
-  Result := nil;
-  if (AType < 0) or (AType > High(ANodes)) then
-  begin
-    Exit;
-  end;
-  mTokens := TAtlasTypeText.Tokens(ANodes, ALines, AType);
-  mIndex := 0;
-  while mIndex <= High(mTokens) do
-  begin
-    if IsKeywordAt(mTokens, mIndex) then
-    begin
-      mStart := mTokens[mIndex];
-      mKeyword := mStart.Text;
-      if (mKeyword <> 'strict') or ReadStrict(mTokens, mIndex, mKeyword) then
-      begin
-        Result := Result + [NewSection(mKeyword, mStart)];
-      end;
-    end;
-    Inc(mIndex);
-  end;
 end;
 
 /// <summary>Direktive {$M+}/{$TYPEINFO ON} in der Zeile: 1 an, -1 aus, 0 keine.</summary>
@@ -290,17 +286,33 @@ begin
   end;
 end;
 
-class function TAtlasVisibilitySectionFinder.ImplicitOf(const ANodes: TAtlasOutlineNodes;
-  const ALines: TArray<string>; AType: Integer): string;
+class function TAtlasVisibilitySectionFinder.SectionsOf(const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>; AType: Integer): TAtlasVisibilitySections;
+var
+  mTokens: TAtlasTypeTokens;
+  mIndex: Integer;
+  mKeyword: string;
+  mStart: TAtlasTypeToken;
 begin
-  Result := cPublic;
-  if (AType < 0) or (AType > High(ANodes)) or not SameText(ANodes[AType].Detail, 'class') then
+  Result := nil;
+  if (AType < 0) or (AType > High(ANodes)) then
   begin
     Exit;
   end;
-  if TypeInfoOn(ALines, ANodes[AType].StartLine) or IsPersistent(ANodes, ALines, AType) then
+  mTokens := TAtlasTypeText.Tokens(ANodes, ALines, AType);
+  mIndex := 0;
+  while mIndex <= High(mTokens) do
   begin
-    Result := cPublished;
+    if IsKeywordAt(mTokens, mIndex) then
+    begin
+      mStart := mTokens[mIndex];
+      mKeyword := mStart.Text;
+      if (mKeyword <> 'strict') or ReadStrict(mTokens, mIndex, mKeyword) then
+      begin
+        Result := Result + [NewSection(mKeyword, mStart)];
+      end;
+    end;
+    Inc(mIndex);
   end;
 end;
 
@@ -331,27 +343,17 @@ begin
   Result := -1;
 end;
 
-class function TAtlasVisibilitySectionFinder.At(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
-  ALine, ACharacter: Integer): TAtlasVisibilityPlace;
-var
-  mIndex: Integer;
+class function TAtlasVisibilitySectionFinder.ImplicitOf(const ANodes: TAtlasOutlineNodes;
+  const ALines: TArray<string>; AType: Integer): string;
 begin
-  Result := Default(TAtlasVisibilityPlace);
-  Result.Current := -1;
-  Result.TypeNode := TypeAt(ANodes, ALines, ALine, ACharacter);
-  if Result.TypeNode < 0 then
+  Result := cPublic;
+  if (AType < 0) or (AType > High(ANodes)) or not SameText(ANodes[AType].Detail, 'class') then
   begin
     Exit;
   end;
-  Result.Sections := SectionsOf(ANodes, ALines, Result.TypeNode);
-  Result.Implicit := ImplicitOf(ANodes, ALines, Result.TypeNode);
-  // Auch auf der Zeile des Schlüsselworts gilt schon sein Abschnitt.
-  for mIndex := 0 to High(Result.Sections) do
+  if TypeInfoOn(ALines, ANodes[AType].StartLine) or IsPersistent(ANodes, ALines, AType) then
   begin
-    if Result.Sections[mIndex].Line <= ALine then
-    begin
-      Result.Current := mIndex;
-    end;
+    Result := cPublished;
   end;
 end;
 

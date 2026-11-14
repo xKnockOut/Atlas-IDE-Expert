@@ -1608,24 +1608,6 @@ begin
   BuildComparison(Self);
 end;
 
-procedure TAtlasArchitectureFrame.CreateWnd;
-var
-  mSheet: TTabSheet;
-begin
-  inherited CreateWnd;
-  for mSheet in FParts.Sheets do
-  begin
-    mSheet.TabVisible := True;
-  end;
-  if (FParts.Pages.ActivePage = nil) and (Length(FParts.Sheets) > 0) then
-  begin
-    FParts.Pages.ActivePage := FParts.Sheets[0];
-  end;
-  // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
-  FillScope(Self);
-  FillAll(Self);
-end;
-
 procedure TAtlasArchitectureFrame.SetScopeValue(const AValue: string);
 begin
   FState.ScopeValue := cScopeValues[Ord(AValue = cScopeValues[1])];
@@ -1660,6 +1642,24 @@ begin
   FParts.ResolutionCaption.Visible := AValue;
   FParts.Resolution.Visible := AValue;
   FParts.ResolutionInfo.Visible := AValue;
+end;
+
+procedure TAtlasArchitectureFrame.CreateWnd;
+var
+  mSheet: TTabSheet;
+begin
+  inherited CreateWnd;
+  for mSheet in FParts.Sheets do
+  begin
+    mSheet.TabVisible := True;
+  end;
+  if (FParts.Pages.ActivePage = nil) and (Length(FParts.Sheets) > 0) then
+  begin
+    FParts.Pages.ActivePage := FParts.Sheets[0];
+  end;
+  // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
+  FillScope(Self);
+  FillAll(Self);
 end;
 
 procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);

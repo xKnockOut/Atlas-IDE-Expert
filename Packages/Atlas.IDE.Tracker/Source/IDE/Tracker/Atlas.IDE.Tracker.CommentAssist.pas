@@ -178,38 +178,6 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeCommentService.Active: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.IssuesCommentEditor;
-end;
-
-class function TAtlasIdeCommentService.NowMs: UInt64;
-begin
-  Result := GetTickCount64;
-end;
-
-procedure TAtlasIdeCommentService.Stop;
-begin
-  if not FStarted then
-  begin
-    Exit;
-  end;
-  FStarted := False;
-  ReleaseThreads(True);
-  FUsers.Clear;
-  FHooks := Default(TAtlasCommentAssistHooks);
-end;
-
-procedure TAtlasIdeCommentService.ReleaseThreads(AWait: Boolean);
-begin
-  FWorkers.Release(AWait);
-end;
-
-procedure TAtlasIdeCommentService.AddWorker(AThread: TThread);
-begin
-  FWorkers.Start(AThread);
-end;
-
 function TAtlasIdeCommentService.DraftFile: string;
 begin
   Result := '';
@@ -247,13 +215,14 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCommentService.DeleteDraft(const ATarget: TAtlasTrackerTarget; const AKey, AField: string);
+procedure TAtlasIdeCommentService.ReleaseThreads(AWait: Boolean);
 begin
-  LoadDrafts;
-  if FDrafts.Delete(TAtlasCommentDrafts.TrackerKey(ATarget), AKey, AField) then
-  begin
-    SaveDrafts;
-  end;
+  FWorkers.Release(AWait);
+end;
+
+procedure TAtlasIdeCommentService.AddWorker(AThread: TThread);
+begin
+  FWorkers.Start(AThread);
 end;
 
 function TAtlasIdeCommentService.CachedUsers(const AKey: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean;
@@ -318,6 +287,23 @@ begin
   end;
 end;
 
+class function TAtlasIdeCommentService.NowMs: UInt64;
+begin
+  Result := GetTickCount64;
+end;
+
+procedure TAtlasIdeCommentService.Stop;
+begin
+  if not FStarted then
+  begin
+    Exit;
+  end;
+  FStarted := False;
+  ReleaseThreads(True);
+  FUsers.Clear;
+  FHooks := Default(TAtlasCommentAssistHooks);
+end;
+
 function TAtlasIdeCommentService.Assist(const ATarget: TAtlasTrackerTarget; const AKey, AField: string):
   IAtlasCommentAssist;
 begin
@@ -326,6 +312,20 @@ begin
   begin
     Result := TAtlasIdeCommentAssist.Create(Self, ATarget, AKey, AField);
   end;
+end;
+
+procedure TAtlasIdeCommentService.DeleteDraft(const ATarget: TAtlasTrackerTarget; const AKey, AField: string);
+begin
+  LoadDrafts;
+  if FDrafts.Delete(TAtlasCommentDrafts.TrackerKey(ATarget), AKey, AField) then
+  begin
+    SaveDrafts;
+  end;
+end;
+
+class function TAtlasIdeCommentService.Active: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.IssuesCommentEditor;
 end;
 
 { TAtlasIdeCommentAssist }
@@ -349,21 +349,6 @@ begin
   inherited;
 end;
 
-function TAtlasIdeCommentAssist.Alive: Boolean;
-begin
-  Result := (FService <> nil) and FService.FStarted;
-end;
-
-function TAtlasIdeCommentAssist.Target: TAtlasTrackerTarget;
-begin
-  Result := FTarget;
-end;
-
-function TAtlasIdeCommentAssist.Snippets: TArray<TAtlasCommentSnippet>;
-begin
-  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets, TAtlasWorkflowStrings.English);
-end;
-
 procedure TAtlasIdeCommentAssist.CancelUsers;
 begin
   Inc(FUserGeneration);
@@ -384,11 +369,75 @@ begin
   FIssueCancel := nil;
 end;
 
-procedure TAtlasIdeCommentAssist.Cancel;
+procedure TAtlasIdeCommentAssist.UsersAnswered(AGeneration: Integer; const AKey: string; ASucceeded: Boolean;
+  const AUsers: TArray<TAtlasTrackerUser>; AError: TAtlasCiFetchError; const ADone: TAtlasCommentUsersDone);
 begin
-  CancelUsers;
-  CancelIssues;
-  Inc(FValueGeneration);
+  if Alive then
+  begin
+    FService.ReleaseThreads(False);
+  end;
+  // Weitergetippt, abgebrochen oder Dienst beendet: diese Antwort zählt nicht.
+  if not Alive or (AGeneration <> FUserGeneration) then
+  begin
+    Exit;
+  end;
+  FUserCancel := nil;
+  if not ASucceeded then
+  begin
+    if AError <> TAtlasCiFetchError.Cancelled then
+    begin
+      TAtlasGuard.Log('Kommentar-Editor: Benutzer ' + FTarget.Provider + ' ohne Antwort (' +
+        TAtlasCiBuild.ErrorKey(AError) + ')');
+    end;
+    ADone(nil);
+    Exit;
+  end;
+  FService.CacheUsers(AKey, AUsers);
+  ADone(AUsers);
+end;
+
+procedure TAtlasIdeCommentAssist.IssuesAnswered(AGeneration: Integer; ASucceeded: Boolean;
+  const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError; const ADone: TAtlasCommentIssuesDone);
+begin
+  if Alive then
+  begin
+    FService.ReleaseThreads(False);
+  end;
+  if not Alive or (AGeneration <> FIssueGeneration) then
+  begin
+    Exit;
+  end;
+  FIssueCancel := nil;
+  if not ASucceeded then
+  begin
+    if (AError <> TAtlasCiFetchError.Cancelled) and (AError <> TAtlasCiFetchError.NotFound) then
+    begin
+      TAtlasGuard.Log('Kommentar-Editor: Issue-Suche ' + FTarget.Provider + ' ohne Antwort (' +
+        TAtlasCiBuild.ErrorKey(AError) + ')');
+    end;
+    ADone(nil);
+    Exit;
+  end;
+  ADone(AIssues);
+end;
+
+procedure TAtlasIdeCommentAssist.ValuesAnswered(AGeneration: Integer; const AValues: TAtlasCommentValues;
+  const ADone: TAtlasCommentValuesDone);
+begin
+  if not Alive or (AGeneration <> FValueGeneration) then
+  begin
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
+    procedure
+    begin
+      ADone(AValues);
+    end);
+end;
+
+function TAtlasIdeCommentAssist.Alive: Boolean;
+begin
+  Result := (FService <> nil) and FService.FStarted;
 end;
 
 type
@@ -451,69 +500,28 @@ begin
     end;
 end;
 
-procedure TAtlasIdeCommentAssist.FindUsers(const AText: string; const ADone: TAtlasCommentUsersDone);
+function TAtlasIdeCommentAssist.VersionValue: string;
 var
-  mJob: TUserJob;
-  mUsers: TArray<TAtlasTrackerUser>;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
 begin
-  CancelUsers;
-  mJob := Default(TUserJob);
-  mJob.Generation := FUserGeneration;
-  if not Alive then
+  // Version des aktiven Projekts in der aktiven Konfiguration und Plattform; '' ohne Versionsinformationen.
+  Result := '';
+  mProject := nil;
+  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  begin
+    mProject := mModules.GetActiveProject;
+  end;
+  if mProject = nil then
   begin
     Exit;
   end;
-  mJob.Text := AText;
-  mJob.CacheKey := TAtlasCommentDrafts.TrackerKey(FTarget) + '|' + AnsiLowerCase(AText);
-  // Rücktaste und neu getippt: dieselbe Liste ohne Netz.
-  if FService.CachedUsers(mJob.CacheKey, mUsers) then
-  begin
-    ADone(mUsers);
-    Exit;
-  end;
-  // Der Transport entsteht hier, damit die nächste Eingabe ihn abbrechen kann; er liest das Token ohne Dialog.
-  if Supports(FService.ProviderOf(FTarget), IAtlasTrackerPeople, mJob.People) then
-  begin
-    mJob.Transport := FService.TransportOf(FService.ProviderOf(FTarget), FTarget);
-  end;
-  if mJob.Transport = nil then
-  begin
-    ADone(nil);
-    Exit;
-  end;
-  if not Supports(mJob.Transport, IAtlasCiCancel, FUserCancel) then
-  begin
-    FUserCancel := nil;
-  end;
-  mJob.Target := FTarget;
-  FService.AddWorker(TThread.CreateAnonymousThread(UsersWorker(Self, Self, mJob, ADone)));
+  Result := TAtlasIdeProjectContext.Version(mProject, mProject.CurrentConfiguration, mProject.CurrentPlatform);
 end;
 
-procedure TAtlasIdeCommentAssist.UsersAnswered(AGeneration: Integer; const AKey: string; ASucceeded: Boolean;
-  const AUsers: TArray<TAtlasTrackerUser>; AError: TAtlasCiFetchError; const ADone: TAtlasCommentUsersDone);
+function TAtlasIdeCommentAssist.Target: TAtlasTrackerTarget;
 begin
-  if Alive then
-  begin
-    FService.ReleaseThreads(False);
-  end;
-  // Weitergetippt, abgebrochen oder Dienst beendet: diese Antwort zählt nicht.
-  if not Alive or (AGeneration <> FUserGeneration) then
-  begin
-    Exit;
-  end;
-  FUserCancel := nil;
-  if not ASucceeded then
-  begin
-    if AError <> TAtlasCiFetchError.Cancelled then
-    begin
-      TAtlasGuard.Log('Kommentar-Editor: Benutzer ' + FTarget.Provider + ' ohne Antwort (' +
-        TAtlasCiBuild.ErrorKey(AError) + ')');
-    end;
-    ADone(nil);
-    Exit;
-  end;
-  FService.CacheUsers(AKey, AUsers);
-  ADone(AUsers);
+  Result := FTarget;
 end;
 
 type
@@ -592,6 +600,49 @@ begin
     end;
 end;
 
+function TAtlasIdeCommentAssist.Snippets: TArray<TAtlasCommentSnippet>;
+begin
+  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets, TAtlasWorkflowStrings.English);
+end;
+
+procedure TAtlasIdeCommentAssist.FindUsers(const AText: string; const ADone: TAtlasCommentUsersDone);
+var
+  mJob: TUserJob;
+  mUsers: TArray<TAtlasTrackerUser>;
+begin
+  CancelUsers;
+  mJob := Default(TUserJob);
+  mJob.Generation := FUserGeneration;
+  if not Alive then
+  begin
+    Exit;
+  end;
+  mJob.Text := AText;
+  mJob.CacheKey := TAtlasCommentDrafts.TrackerKey(FTarget) + '|' + AnsiLowerCase(AText);
+  // Rücktaste und neu getippt: dieselbe Liste ohne Netz.
+  if FService.CachedUsers(mJob.CacheKey, mUsers) then
+  begin
+    ADone(mUsers);
+    Exit;
+  end;
+  // Der Transport entsteht hier, damit die nächste Eingabe ihn abbrechen kann; er liest das Token ohne Dialog.
+  if Supports(FService.ProviderOf(FTarget), IAtlasTrackerPeople, mJob.People) then
+  begin
+    mJob.Transport := FService.TransportOf(FService.ProviderOf(FTarget), FTarget);
+  end;
+  if mJob.Transport = nil then
+  begin
+    ADone(nil);
+    Exit;
+  end;
+  if not Supports(mJob.Transport, IAtlasCiCancel, FUserCancel) then
+  begin
+    FUserCancel := nil;
+  end;
+  mJob.Target := FTarget;
+  FService.AddWorker(TThread.CreateAnonymousThread(UsersWorker(Self, Self, mJob, ADone)));
+end;
+
 procedure TAtlasIdeCommentAssist.FindIssues(const AQuery: TAtlasIssueSearchQuery;
   const ADone: TAtlasCommentIssuesDone);
 var
@@ -632,50 +683,6 @@ begin
   mJob.Target := FTarget;
   mJob.Query := AQuery;
   FService.AddWorker(TThread.CreateAnonymousThread(IssuesWorker(Self, Self, mJob, ADone)));
-end;
-
-procedure TAtlasIdeCommentAssist.IssuesAnswered(AGeneration: Integer; ASucceeded: Boolean;
-  const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError; const ADone: TAtlasCommentIssuesDone);
-begin
-  if Alive then
-  begin
-    FService.ReleaseThreads(False);
-  end;
-  if not Alive or (AGeneration <> FIssueGeneration) then
-  begin
-    Exit;
-  end;
-  FIssueCancel := nil;
-  if not ASucceeded then
-  begin
-    if (AError <> TAtlasCiFetchError.Cancelled) and (AError <> TAtlasCiFetchError.NotFound) then
-    begin
-      TAtlasGuard.Log('Kommentar-Editor: Issue-Suche ' + FTarget.Provider + ' ohne Antwort (' +
-        TAtlasCiBuild.ErrorKey(AError) + ')');
-    end;
-    ADone(nil);
-    Exit;
-  end;
-  ADone(AIssues);
-end;
-
-function TAtlasIdeCommentAssist.VersionValue: string;
-var
-  mModules: IOTAModuleServices;
-  mProject: IOTAProject;
-begin
-  // Version des aktiven Projekts in der aktiven Konfiguration und Plattform; '' ohne Versionsinformationen.
-  Result := '';
-  mProject := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-  begin
-    mProject := mModules.GetActiveProject;
-  end;
-  if mProject = nil then
-  begin
-    Exit;
-  end;
-  Result := TAtlasIdeProjectContext.Version(mProject, mProject.CurrentConfiguration, mProject.CurrentPlatform);
 end;
 
 procedure TAtlasIdeCommentAssist.Values(const ADone: TAtlasCommentValuesDone);
@@ -722,18 +729,11 @@ begin
   end;
 end;
 
-procedure TAtlasIdeCommentAssist.ValuesAnswered(AGeneration: Integer; const AValues: TAtlasCommentValues;
-  const ADone: TAtlasCommentValuesDone);
+procedure TAtlasIdeCommentAssist.Cancel;
 begin
-  if not Alive or (AGeneration <> FValueGeneration) then
-  begin
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.Tracker,
-    procedure
-    begin
-      ADone(AValues);
-    end);
+  CancelUsers;
+  CancelIssues;
+  Inc(FValueGeneration);
 end;
 
 function TAtlasIdeCommentAssist.LoadDraft(out AText: string; out ASaved: TDateTime): Boolean;

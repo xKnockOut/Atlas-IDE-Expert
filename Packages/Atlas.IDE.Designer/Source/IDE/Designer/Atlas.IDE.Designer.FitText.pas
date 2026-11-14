@@ -124,6 +124,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeFitText }
+
 class function TAtlasIdeFitText.TextWidth(AControl: TControl; const ASources: string): Integer;
 var
   mFont: TFont;

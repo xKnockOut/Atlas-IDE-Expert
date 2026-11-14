@@ -389,40 +389,13 @@ begin
   inherited Destroy;
 end;
 
-procedure TStickyState.ApplySettings;
-var
-  mSettings: TAtlasPluginSettings;
-  mWas: Boolean;
+procedure TStickyState.Tick(Sender: TObject);
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  mWas := FOn;
-  FOn := mSettings.Enabled and mSettings.StickyScroll and not TAtlasGuard.Disabled(TAtlasFeature.StickyScroll);
-  FMaxLines := TAtlasStickyScroll.ClampLines(mSettings.StickyScrollMaxLines);
-  StickyShown := FOn;
-  // Paarfarben an oder aus: beim nächsten Takt neu analysieren.
-  FStamp := 0;
-  FRowsTop := -1;
-  if not FOn then
-  begin
-    Clear;
-  end;
-  if mWas or FOn then
-  begin
-    InvalidateEditor;
-  end;
-end;
-
-procedure TStickyState.ThemeChanged;
-begin
-  // Farbschema (Hintergrund, Syntaxfarben) beim nächsten Takt neu lesen: Die IDE schreibt es mit dem Wechsel.
-  FStamp := 0;
-  FRowsTop := -1;
-  // Der abgetastete Hintergrund ist der des alten Themas; bis zum nächsten Abtasten die eigene Zeile nehmen.
-  FBackKnown := False;
-  FSchemeBackKnown := False;
-  if FOn then
-  begin
-    InvalidateEditor;
+  try
+    Update;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
 end;
 
@@ -437,32 +410,6 @@ begin
   FRows := nil;
   FRowsTop := -1;
   FPaintedRows := 0;
-end;
-
-procedure TStickyState.QueueInvalidate;
-begin
-  if InvalidatePending then
-  begin
-    Exit;
-  end;
-  InvalidatePending := True;
-  // Nicht während des Malens: nach dem laufenden Ereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
-    procedure
-    begin
-      InvalidatePending := False;
-      InvalidateEditor;
-    end);
-end;
-
-procedure TStickyState.Tick(Sender: TObject);
-begin
-  try
-    Update;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
-  end;
 end;
 
 procedure TStickyState.Update;
@@ -518,6 +465,74 @@ begin
     // Bildlauf ohne Malen der oberen Zeilen (z. B. per Rollrad): ganz neu zeichnen.
     InvalidateEditor;
   end;
+end;
+
+procedure TStickyState.QueueInvalidate;
+begin
+  if InvalidatePending then
+  begin
+    Exit;
+  end;
+  InvalidatePending := True;
+  // Nicht während des Malens: nach dem laufenden Ereignis.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.StickyScroll,
+    procedure
+    begin
+      InvalidatePending := False;
+      InvalidateEditor;
+    end);
+end;
+
+procedure TStickyState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
+  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+var
+  mView: IOTAEditView;
+  mTop, mRow, mHeight: Integer;
+begin
+  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FOn or (FFileName = '') then
+  begin
+    Exit;
+  end;
+  try
+    mView := Context.EditView;
+    mHeight := Rect.Bottom - Rect.Top;
+    if (mView = nil) or (mView.Buffer = nil) or not SameText(Context.FileName, FFileName) or (mHeight <= 0) then
+    begin
+      Exit;
+    end;
+    mTop := mView.TopRow - 1;
+    UpdateRows(mView, mTop);
+    if Painted(mTop, mHeight) then
+    begin
+      QueueInvalidate;
+    end;
+    mRow := (Rect.Top + mHeight div 2) div mHeight;
+    if mRow >= Length(FRows) then
+    begin
+      // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.
+      SampleBack(Rect, Context);
+    end
+    else
+    begin
+      // Mit jedem neu gezeichneten Kopf neu sammeln (DrawGuides).
+      if mRow = 0 then
+      begin
+        FTaperColumns := nil;
+      end;
+      PaintRow(Rect, mRow, Context);
+    end;
+  except
+    // Zeichnen darf die IDE nie stören.
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
+  end;
+end;
+
+procedure TStickyState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
+begin
+  FPointer.X := X;
+  FPointer.Y := Y;
+  FPointer.Known := True;
 end;
 
 /// <summary>Wort ab AIndex (0-basiert) in ALine, klein.</summary>
@@ -610,6 +625,8 @@ begin
   end;
 end;
 
+{ TStickyData }
+
 procedure TStickyData.AnalyzePairs(const AText: string);
 var
   mSettings: TAtlasPluginSettings;
@@ -664,6 +681,8 @@ begin
   end;
 end;
 
+{ TStickyPainter }
+
 procedure TStickyPainter.UpdateRows(const AView: IOTAEditView; ATop: Integer);
 var
   mSettings: TAtlasPluginSettings;
@@ -682,6 +701,14 @@ begin
   FRowsMax := FMaxLines;
 end;
 
+function TStickyPainter.Painted(ATop, AHeight: Integer): Boolean;
+begin
+  Result := (FPaintedTop >= 0) and (ATop <> FPaintedTop) and ((FPaintedRows > 0) or (Length(FRows) > 0));
+  FPaintedTop := ATop;
+  FPaintedRows := Length(FRows);
+  FRowHeight := AHeight;
+end;
+
 procedure TStickyPainter.SampleBack(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
 var
   mSample: COLORREF;
@@ -694,67 +721,42 @@ begin
   end;
 end;
 
-function TStickyPainter.Painted(ATop, AHeight: Integer): Boolean;
-begin
-  Result := (FPaintedTop >= 0) and (ATop <> FPaintedTop) and ((FPaintedRows > 0) or (Length(FRows) > 0));
-  FPaintedTop := ATop;
-  FPaintedRows := Length(FRows);
-  FRowHeight := AHeight;
-end;
-
-function TStickyPainter.RowAt(AX, AY: Integer; out ARow: Integer): Boolean;
-begin
-  ARow := -1;
-  Result := (FPaintedRows > 0) and (FRowHeight > 0) and (AY >= 0) and (AX >= FCodeLeft);
-  if Result then
-  begin
-    ARow := AY div FRowHeight;
-    Result := (ARow < FPaintedRows) and (ARow <= High(FRows));
-  end;
-end;
-
-procedure TStickyState.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-  var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+function TStickyPainter.RowBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
 var
-  mView: IOTAEditView;
-  mTop, mRow, mHeight: Integer;
+  mSample: COLORREF;
 begin
-  if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FOn or (FFileName = '') then
+  if FSchemeBackKnown then
   begin
-    Exit;
-  end;
-  try
-    mView := Context.EditView;
-    mHeight := Rect.Bottom - Rect.Top;
-    if (mView = nil) or (mView.Buffer = nil) or not SameText(Context.FileName, FFileName) or (mHeight <= 0) then
+    Result := FSchemeBack;
+  end
+  else if FBackKnown then
+  begin
+    Result := FBack;
+  end
+  else
+  begin
+    mSample := GetPixel(ACanvas.Handle, ARect.Right - 2, ARect.Top + 1);
+    if mSample = CLR_INVALID then
     begin
-      Exit;
-    end;
-    mTop := mView.TopRow - 1;
-    UpdateRows(mView, mTop);
-    if Painted(mTop, mHeight) then
-    begin
-      QueueInvalidate;
-    end;
-    mRow := (Rect.Top + mHeight div 2) div mHeight;
-    if mRow >= Length(FRows) then
-    begin
-      // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.
-      SampleBack(Rect, Context);
+      Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
     end
     else
     begin
-      // Mit jedem neu gezeichneten Kopf neu sammeln (DrawGuides).
-      if mRow = 0 then
-      begin
-        FTaperColumns := nil;
-      end;
-      PaintRow(Rect, mRow, Context);
+      Result := TAtlasColor(mSample);
     end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
+  end;
+end;
+
+function TStickyState.HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
+var
+  mRow: Integer;
+begin
+  ARow := Default(TAtlasStickyRow);
+  // Nur der Kopf, der so gezeichnet steht: gleiche Datei, nicht gescrollt (wie beim Klick).
+  Result := FOn and SameText(FFileName, AFileName) and (ATopRow - 1 = FPaintedTop) and RowAt(AX, AY, mRow);
+  if Result then
+  begin
+    ARow := FRows[mRow];
   end;
 end;
 
@@ -871,86 +873,30 @@ begin
   end;
 end;
 
-procedure TStickyPainter.DrawGuide(const APaint: TGuidePaint; const AGuide: TAtlasGuide; ARowIndex: Integer);
-var
-  mStart: TAtlasStickyGuideStart;
-  mCell: TRect;
-  X: Integer;
-  mLineColor: TAtlasColor;
+function TStickyPainter.RowAt(AX, AY: Integer; out ARow: Integer): Boolean;
 begin
-  // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner). Ohne
-  // Kopfzeile blendet die Linie in der letzten Kopfzeile ein, sonst käme sie ohne Anfang darunter hervor.
-  mStart := TAtlasStickyScroll.GuideStart(FRows, AGuide.FirstLine);
-  if (mStart.Row < 0) or (ARowIndex < mStart.Row) then
+  ARow := -1;
+  Result := (FPaintedRows > 0) and (FRowHeight > 0) and (AY >= 0) and (AX >= FCodeLeft);
+  if Result then
   begin
-    Exit;
-  end;
-  mCell := APaint.Context.EditorState.GetCharacterPosPx(AGuide.Column, APaint.Context.EditorLineNum);
-  X := GuideX(APaint, mCell);
-  mLineColor := GuideColor(APaint, AGuide);
-  if not mStart.FadeIn then
-  begin
-    if ARowIndex = mStart.Row then
-    begin
-      DrawStroke(APaint, X, Max(3, mCell.Width div 2), mLineColor);
-    end
-    else
-    begin
-      DrawStroke(APaint, X, 0, mLineColor);
-    end;
-  end
-  // Oben spitz zulaufend, ab der Oberkante der letzten Kopfzeile wie die Linie eines Elements
-  // mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die Blocklinien
-  // des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand geschoben (GuideX).
-  else if X + APaint.Width > APaint.Context.EditorState.GetCharacterPosPx(FRows[mStart.Row].Indent,
-    APaint.Context.EditorLineNum).Left then
-  begin
-    if not HasColumn(FTaperColumns, AGuide.Column) then
-    begin
-      FTaperColumns := FTaperColumns + [AGuide.Column];
-    end;
-  end
-  else
-  begin
-    DrawFade(APaint, X, mLineColor);
+    ARow := AY div FRowHeight;
+    Result := (ARow < FPaintedRows) and (ARow <= High(FRows));
   end;
 end;
 
-procedure TStickyPainter.DrawGuides(const ARect: TRect; ARowIndex: Integer; const AContext: INTACodeEditorPaintContext;
-  ABack: TAtlasColor);
+function TStickyPainter.RowSpans(const ARow: TAtlasStickyRow): TArray<TAtlasPairSpan>;
 var
   mSettings: TAtlasPluginSettings;
-  mPaint: TGuidePaint;
-  mGuide: TAtlasGuide;
-  mBelow, mSaved: Integer;
 begin
+  Result := nil;
   mSettings := TAtlasIdeSettings.Current;
-  if not (mSettings.PairColors and mSettings.PairGuides) or (Length(FBlocks) = 0) or NoEditor(AContext) or
-    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairGuides, FFileName) then
+  if (ARow.Line < 0) or (ARow.Line > High(FPairs)) or (ARow.Line > High(FLines)) or not mSettings.PairColors or
+    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, FFileName) then
   begin
     Exit;
   end;
-  EnsureGuides(TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer),
+  Result := TAtlasPairs.Spans(ARow.Text, FLines[ARow.Line], FPairs[ARow.Line],
     mSettings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
-  mPaint := GuidePaintOf(AContext, ARect, ABack, mSettings);
-  // Erste Zeile unter dem Kopf: Nur Linien, die dort weiterlaufen, reichen in den Kopf.
-  mBelow := FRowsTop + Length(FRows);
-  mSaved := SaveDC(mPaint.DC);
-  try
-    if mPaint.Code.Right > mPaint.Code.Left then
-    begin
-      IntersectClipRect(mPaint.DC, mPaint.Code.Left - cGuideMargin, ARect.Top, ARect.Right, ARect.Bottom);
-    end;
-    for mGuide in FGuides do
-    begin
-      if (mGuide.FirstLine < mBelow) and (mGuide.LastLine >= mBelow) then
-      begin
-        DrawGuide(mPaint, mGuide, ARowIndex);
-      end;
-    end;
-  finally
-    RestoreDC(mPaint.DC, mSaved);
-  end;
 end;
 
 function RegistryTrue(ARegistry: TRegistry; const AName: string): Boolean;
@@ -1126,53 +1072,89 @@ begin
   end;
 end;
 
-function TStickyPainter.RowSpans(const ARow: TAtlasStickyRow): TArray<TAtlasPairSpan>;
+procedure TStickyPainter.DrawGuide(const APaint: TGuidePaint; const AGuide: TAtlasGuide; ARowIndex: Integer);
 var
-  mSettings: TAtlasPluginSettings;
+  mStart: TAtlasStickyGuideStart;
+  mCell: TRect;
+  X: Integer;
+  mLineColor: TAtlasColor;
 begin
-  Result := nil;
-  mSettings := TAtlasIdeSettings.Current;
-  if (ARow.Line < 0) or (ARow.Line > High(FPairs)) or (ARow.Line > High(FLines)) or not mSettings.PairColors or
-    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, FFileName) then
+  // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner). Ohne
+  // Kopfzeile blendet die Linie in der letzten Kopfzeile ein, sonst käme sie ohne Anfang darunter hervor.
+  mStart := TAtlasStickyScroll.GuideStart(FRows, AGuide.FirstLine);
+  if (mStart.Row < 0) or (ARowIndex < mStart.Row) then
   begin
     Exit;
   end;
-  Result := TAtlasPairs.Spans(ARow.Text, FLines[ARow.Line], FPairs[ARow.Line],
-    mSettings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
+  mCell := APaint.Context.EditorState.GetCharacterPosPx(AGuide.Column, APaint.Context.EditorLineNum);
+  X := GuideX(APaint, mCell);
+  mLineColor := GuideColor(APaint, AGuide);
+  if not mStart.FadeIn then
+  begin
+    if ARowIndex = mStart.Row then
+    begin
+      DrawStroke(APaint, X, Max(3, mCell.Width div 2), mLineColor);
+    end
+    else
+    begin
+      DrawStroke(APaint, X, 0, mLineColor);
+    end;
+  end
+  // Oben spitz zulaufend, ab der Oberkante der letzten Kopfzeile wie die Linie eines Elements
+  // mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die Blocklinien
+  // des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand geschoben (GuideX).
+  else if X + APaint.Width > APaint.Context.EditorState.GetCharacterPosPx(FRows[mStart.Row].Indent,
+    APaint.Context.EditorLineNum).Left then
+  begin
+    if not HasColumn(FTaperColumns, AGuide.Column) then
+    begin
+      FTaperColumns := FTaperColumns + [AGuide.Column];
+    end;
+  end
+  else
+  begin
+    DrawFade(APaint, X, mLineColor);
+  end;
 end;
 
-procedure TStickyPainter.DrawHeader(ACanvas: TCanvas; ALeft, ATop: Integer; const ARow: TAtlasStickyRow;
-  const AColors: TAtlasColors; ATextColor: TColor);
+procedure TStickyPainter.DrawGuides(const ARect: TRect; ARowIndex: Integer; const AContext: INTACodeEditorPaintContext;
+  ABack: TAtlasColor);
 var
-  mSpans: TArray<TAtlasPairSpan>;
-  mCharColors: TArray<TColor>;
-  mCharStyles: TArray<TFontStyles>;
-  mIndex: Integer;
+  mSettings: TAtlasPluginSettings;
+  mPaint: TGuidePaint;
+  mGuide: TAtlasGuide;
+  mBelow, mSaved: Integer;
 begin
-  if ARow.Summary or (ARow.Text = '') then
+  mSettings := TAtlasIdeSettings.Current;
+  if not (mSettings.PairColors and mSettings.PairGuides) or (Length(FBlocks) = 0) or NoEditor(AContext) or
+    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairGuides, FFileName) then
   begin
-    // Zusammenfassung „A › B“: gedämpft wie bisher, ohne Hervorhebung.
-    ACanvas.Font.Color := ATextColor;
-    ACanvas.TextOut(ALeft, ATop, ARow.Text);
     Exit;
   end;
-  // Hervorhebung wie im Editor (Farbschema, fett, kursiv), je Zeichen.
-  SetLength(mCharColors, Length(ARow.Text));
-  SetLength(mCharStyles, Length(ARow.Text));
-  for mIndex := 0 to High(mCharColors) do
-  begin
-    mCharColors[mIndex] := ATextColor;
-    mCharStyles[mIndex] := [];
+  EnsureGuides(TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer),
+    mSettings.PairOwners and not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, FFileName));
+  mPaint := GuidePaintOf(AContext, ARect, ABack, mSettings);
+  // Erste Zeile unter dem Kopf: Nur Linien, die dort weiterlaufen, reichen in den Kopf.
+  mBelow := FRowsTop + Length(FRows);
+  mSaved := SaveDC(mPaint.DC);
+  try
+    if mPaint.Code.Right > mPaint.Code.Left then
+    begin
+      IntersectClipRect(mPaint.DC, mPaint.Code.Left - cGuideMargin, ARect.Top, ARect.Right, ARect.Bottom);
+    end;
+    for mGuide in FGuides do
+    begin
+      if (mGuide.FirstLine < mBelow) and (mGuide.LastLine >= mBelow) then
+      begin
+        DrawGuide(mPaint, mGuide, ARowIndex);
+      end;
+    end;
+  finally
+    RestoreDC(mPaint.DC, mSaved);
   end;
-  ApplySyntax(ARow.Text, FSyntax, mCharColors, mCharStyles);
-  // Paarfarben wie im Editor (#1229).
-  mSpans := RowSpans(ARow);
-  if Length(mSpans) > 0 then
-  begin
-    ApplySpans(mSpans, TAtlasRoutineNesting.PairPalette(AColors, TAtlasIdeSettings.Current), mCharColors);
-  end;
-  DrawRuns(ACanvas, ALeft, ATop, ARow.Text, mCharColors, mCharStyles);
 end;
+
+{ TSavedTools }
 
 class function TSavedTools.Save(ACanvas: TCanvas): TSavedTools;
 begin
@@ -1211,30 +1193,37 @@ begin
   end;
 end;
 
-function TStickyPainter.RowBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
+procedure TStickyPainter.DrawHeader(ACanvas: TCanvas; ALeft, ATop: Integer; const ARow: TAtlasStickyRow;
+  const AColors: TAtlasColors; ATextColor: TColor);
 var
-  mSample: COLORREF;
+  mSpans: TArray<TAtlasPairSpan>;
+  mCharColors: TArray<TColor>;
+  mCharStyles: TArray<TFontStyles>;
+  mIndex: Integer;
 begin
-  if FSchemeBackKnown then
+  if ARow.Summary or (ARow.Text = '') then
   begin
-    Result := FSchemeBack;
-  end
-  else if FBackKnown then
-  begin
-    Result := FBack;
-  end
-  else
-  begin
-    mSample := GetPixel(ACanvas.Handle, ARect.Right - 2, ARect.Top + 1);
-    if mSample = CLR_INVALID then
-    begin
-      Result := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-    end
-    else
-    begin
-      Result := TAtlasColor(mSample);
-    end;
+    // Zusammenfassung „A › B“: gedämpft wie bisher, ohne Hervorhebung.
+    ACanvas.Font.Color := ATextColor;
+    ACanvas.TextOut(ALeft, ATop, ARow.Text);
+    Exit;
   end;
+  // Hervorhebung wie im Editor (Farbschema, fett, kursiv), je Zeichen.
+  SetLength(mCharColors, Length(ARow.Text));
+  SetLength(mCharStyles, Length(ARow.Text));
+  for mIndex := 0 to High(mCharColors) do
+  begin
+    mCharColors[mIndex] := ATextColor;
+    mCharStyles[mIndex] := [];
+  end;
+  ApplySyntax(ARow.Text, FSyntax, mCharColors, mCharStyles);
+  // Paarfarben wie im Editor (#1229).
+  mSpans := RowSpans(ARow);
+  if Length(mSpans) > 0 then
+  begin
+    ApplySpans(mSpans, TAtlasRoutineNesting.PairPalette(AColors, TAtlasIdeSettings.Current), mCharColors);
+  end;
+  DrawRuns(ACanvas, ALeft, ATop, ARow.Text, mCharColors, mCharStyles);
 end;
 
 /// <summary>Hintergrund der Kopfzeile in AArea, Schrift für Text oder (ASummary) Zusammenfassung.</summary>
@@ -1416,23 +1405,40 @@ begin
   end;
 end;
 
-procedure TStickyState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
+procedure TStickyState.ApplySettings;
+var
+  mSettings: TAtlasPluginSettings;
+  mWas: Boolean;
 begin
-  FPointer.X := X;
-  FPointer.Y := Y;
-  FPointer.Known := True;
+  mSettings := TAtlasIdeSettings.Current;
+  mWas := FOn;
+  FOn := mSettings.Enabled and mSettings.StickyScroll and not TAtlasGuard.Disabled(TAtlasFeature.StickyScroll);
+  FMaxLines := TAtlasStickyScroll.ClampLines(mSettings.StickyScrollMaxLines);
+  StickyShown := FOn;
+  // Paarfarben an oder aus: beim nächsten Takt neu analysieren.
+  FStamp := 0;
+  FRowsTop := -1;
+  if not FOn then
+  begin
+    Clear;
+  end;
+  if mWas or FOn then
+  begin
+    InvalidateEditor;
+  end;
 end;
 
-function TStickyState.HeaderAt(const AFileName: string; ATopRow, AX, AY: Integer; out ARow: TAtlasStickyRow): Boolean;
-var
-  mRow: Integer;
+procedure TStickyState.ThemeChanged;
 begin
-  ARow := Default(TAtlasStickyRow);
-  // Nur der Kopf, der so gezeichnet steht: gleiche Datei, nicht gescrollt (wie beim Klick).
-  Result := FOn and SameText(FFileName, AFileName) and (ATopRow - 1 = FPaintedTop) and RowAt(AX, AY, mRow);
-  if Result then
+  // Farbschema (Hintergrund, Syntaxfarben) beim nächsten Takt neu lesen: Die IDE schreibt es mit dem Wechsel.
+  FStamp := 0;
+  FRowsTop := -1;
+  // Der abgetastete Hintergrund ist der des alten Themas; bis zum nächsten Abtasten die eigene Zeile nehmen.
+  FBackKnown := False;
+  FSchemeBackKnown := False;
+  if FOn then
   begin
-    ARow := FRows[mRow];
+    InvalidateEditor;
   end;
 end;
 
@@ -1465,6 +1471,14 @@ begin
   begin
     TStickyState(FState).ThemeChanged;
   end;
+end;
+
+class function TAtlasIdeStickyScroll.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.StickyScroll;
 end;
 
 class function TAtlasIdeStickyScroll.CoveredRows(const AFileName: string): Integer;
@@ -1558,14 +1572,6 @@ begin
   Result := (mState.FPointer.CtrlFile <> '') and SameText(mState.FPointer.CtrlFile, AFileName) and
     (GetTickCount64 - mState.FPointer.CtrlTick < cCtrlClickMs);
   mState.FPointer.CtrlFile := '';
-end;
-
-class function TAtlasIdeStickyScroll.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.StickyScroll;
 end;
 
 end.

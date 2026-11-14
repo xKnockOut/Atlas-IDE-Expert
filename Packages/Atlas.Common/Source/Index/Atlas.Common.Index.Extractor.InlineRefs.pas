@@ -443,17 +443,10 @@ begin
   end;
 end;
 
-function TIndexInlineRefs.RefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
-var
-  mCollector: TInlineRefCollector;
+function TIndexInlineRefs.IsCandidate(ANode: TSyntaxNode): Boolean;
 begin
-  mCollector := TInlineRefCollector.Create(FSymbols, AContainer, AContainerParams,
-    ANode.FindChild(TSyntaxKind.RoutineHeader));
-  try
-    Result := mCollector.Collect(ANode);
-  finally
-    mCollector.Free;
-  end;
+  Result := (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) and
+    (ANode.FindChild(TSyntaxKind.Block) <> nil) and not FReader.IsConstructor(ANode);
 end;
 
 function TIndexInlineRefs.ContainerParams(const AContainer: string): string;
@@ -474,21 +467,6 @@ begin
       Exit(mSymbol.TypeParams);
     end;
   end;
-end;
-
-procedure TIndexInlineRefs.SetRefs(APosition: Integer; const ARefs: TArray<string>);
-var
-  mSymbol: TIndexSymbol;
-begin
-  mSymbol := FSymbols[APosition];
-  mSymbol.InlineRefs := ARefs;
-  FSymbols[APosition] := mSymbol;
-end;
-
-function TIndexInlineRefs.IsCandidate(ANode: TSyntaxNode): Boolean;
-begin
-  Result := (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.RoutineHeader) <> nil) and
-    (ANode.FindChild(TSyntaxKind.Block) <> nil) and not FReader.IsConstructor(ANode);
 end;
 
 function TIndexInlineRefs.FindDeclaration(ANode: TSyntaxNode; const AName, AContainer: string): Integer;
@@ -533,6 +511,15 @@ begin
     ReadInlineDirectives(FSymbols[AFound].Directives, Result, mSkip);
   end;
   Result := Result and not mSkip;
+end;
+
+procedure TIndexInlineRefs.SetRefs(APosition: Integer; const ARefs: TArray<string>);
+var
+  mSymbol: TIndexSymbol;
+begin
+  mSymbol := FSymbols[APosition];
+  mSymbol.InlineRefs := ARefs;
+  FSymbols[APosition] := mSymbol;
 end;
 
 procedure TIndexInlineRefs.StoreRefs(ANode: TSyntaxNode; const AName: string; AFound: Integer;
@@ -586,6 +573,19 @@ begin
     begin
       AddRoutine(ASection[mIndex]);
     end;
+  end;
+end;
+
+function TIndexInlineRefs.RefsOf(ANode: TSyntaxNode; const AContainer, AContainerParams: string): TArray<string>;
+var
+  mCollector: TInlineRefCollector;
+begin
+  mCollector := TInlineRefCollector.Create(FSymbols, AContainer, AContainerParams,
+    ANode.FindChild(TSyntaxKind.RoutineHeader));
+  try
+    Result := mCollector.Collect(ANode);
+  finally
+    mCollector.Free;
   end;
 end;
 

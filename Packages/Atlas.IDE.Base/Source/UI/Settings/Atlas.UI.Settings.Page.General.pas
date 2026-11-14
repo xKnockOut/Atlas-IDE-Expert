@@ -92,6 +92,145 @@ uses
 
 { TAtlasSettingsGeneralPart }
 
+procedure TAtlasSettingsGeneralPart.SetDefaultServerPath(const AValue: string);
+begin
+  FDefaultServerPath := AValue;
+  ServerPathChange(nil);
+end;
+
+procedure TAtlasSettingsGeneralPart.SetOnServerVersion(const AValue: TFunc<string, string>);
+begin
+  FOnServerVersion := AValue;
+  ServerPathChange(nil);
+end;
+
+procedure TAtlasSettingsGeneralPart.Load(const ASettings: TAtlasPluginSettings);
+begin
+  FServerPath.Text := ASettings.ServerPath;
+  ServerPathChange(nil);
+  FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
+  if not ASettings.StatusTogglesOnDoubleClick then
+  begin
+    FStatusToggles.Choice := 1;
+  end
+  else if not ASettings.StatusTogglesOnRightClick then
+  begin
+    FStatusToggles.Choice := 2;
+  end
+  else
+  begin
+    FStatusToggles.Choice := 0;
+  end;
+  if SameText(ASettings.IndexProgressPlace, 'menu') then
+  begin
+    FIndexProgress.Choice := 1;
+  end
+  else if SameText(ASettings.IndexProgressPlace, 'off') then
+  begin
+    FIndexProgress.Choice := 2;
+  end
+  else
+  begin
+    FIndexProgress.Choice := 0;
+  end;
+  FStatusHidden.Text := ASettings.StatusFieldHidden;
+end;
+
+procedure TAtlasSettingsGeneralPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.ServerPath := Trim(FServerPath.Text);
+  ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
+    Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
+  case FStatusToggles.Choice of
+    1:
+      ASettings.StatusFieldToggles := 'rightClick';
+    2:
+      ASettings.StatusFieldToggles := 'doubleClick';
+  else
+    ASettings.StatusFieldToggles := 'both';
+  end;
+  case FIndexProgress.Choice of
+    1:
+      ASettings.IndexProgressPlace := 'menu';
+    2:
+      ASettings.IndexProgressPlace := 'off';
+  else
+    ASettings.IndexProgressPlace := 'statusField';
+  end;
+  ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
+end;
+
+procedure TAtlasSettingsGeneralPart.BindMarks;
+begin
+  FPage.Marks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
+  FPage.Marks.Bind(FStatusToggles, ['StatusFieldToggles']);
+  FPage.Marks.Bind(FIndexProgress, ['IndexProgressPlace']);
+  FPage.Marks.Bind(FStatusHidden, ['StatusFieldHidden']);
+end;
+
+procedure TAtlasSettingsGeneralPart.ServerBrowseClick(Sender: TObject);
+var
+  mDialog: TOpenDialog;
+begin
+  mDialog := TOpenDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
+    if Trim(FServerPath.Text) <> '' then
+    begin
+      mDialog.FileName := Trim(FServerPath.Text);
+    end
+    else if FDefaultServerPath <> '' then
+    begin
+      mDialog.InitialDir := ExtractFilePath(FDefaultServerPath);
+    end;
+    if mDialog.Execute then
+    begin
+      FServerPath.Text := mDialog.FileName;
+    end;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsGeneralPart.ServerPathChange(Sender: TObject);
+var
+  mPath, mVersion: string;
+begin
+  mPath := Trim(FServerPath.Text);
+  if mPath = '' then
+  begin
+    mPath := FDefaultServerPath;
+  end;
+  if mPath = '' then
+  begin
+    FServerStatus.Caption := '';
+  end
+  else if FileExists(mPath) then
+  begin
+    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerFound, [mPath]);
+  end
+  else
+  begin
+    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerMissing, [mPath]);
+  end;
+  // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
+  mVersion := '';
+  if Assigned(FOnServerVersion) and (mPath <> '') and FileExists(mPath) then
+  begin
+    mVersion := FOnServerVersion(mPath);
+    if mVersion = '' then
+    begin
+      mVersion := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerVersionUnknown);
+    end
+    else
+    begin
+      mVersion := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerVersion, [mVersion]);
+    end;
+  end;
+  FServerVersion.Caption := mVersion;
+end;
+
 procedure TAtlasSettingsGeneralPart.Build;
 var
   mPanel: TWinControl;
@@ -181,154 +320,7 @@ begin
       TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShortcutTipsAll)]);
 end;
 
-procedure TAtlasSettingsGeneralPart.BindMarks;
-begin
-  FPage.Marks.Bind(FShortcutTipsScope, ['ShortcutTipsScope']);
-  FPage.Marks.Bind(FStatusToggles, ['StatusFieldToggles']);
-  FPage.Marks.Bind(FIndexProgress, ['IndexProgressPlace']);
-  FPage.Marks.Bind(FStatusHidden, ['StatusFieldHidden']);
-end;
-
-procedure TAtlasSettingsGeneralPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  FServerPath.Text := ASettings.ServerPath;
-  ServerPathChange(nil);
-  FShortcutTipsScope.Choice := Ord(TAtlasShortcutTips.ScopeOf(ASettings.ShortcutTipsScope));
-  if not ASettings.StatusTogglesOnDoubleClick then
-  begin
-    FStatusToggles.Choice := 1;
-  end
-  else if not ASettings.StatusTogglesOnRightClick then
-  begin
-    FStatusToggles.Choice := 2;
-  end
-  else
-  begin
-    FStatusToggles.Choice := 0;
-  end;
-  if SameText(ASettings.IndexProgressPlace, 'menu') then
-  begin
-    FIndexProgress.Choice := 1;
-  end
-  else if SameText(ASettings.IndexProgressPlace, 'off') then
-  begin
-    FIndexProgress.Choice := 2;
-  end
-  else
-  begin
-    FIndexProgress.Choice := 0;
-  end;
-  FStatusHidden.Text := ASettings.StatusFieldHidden;
-end;
-
-procedure TAtlasSettingsGeneralPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  ASettings.ServerPath := Trim(FServerPath.Text);
-  ASettings.ShortcutTipsScope := TAtlasShortcutTips.ScopeName(TAtlasTipScope(EnsureRange(FShortcutTipsScope.Choice,
-    Ord(Low(TAtlasTipScope)), Ord(High(TAtlasTipScope)))));
-  case FStatusToggles.Choice of
-    1:
-      ASettings.StatusFieldToggles := 'rightClick';
-    2:
-      ASettings.StatusFieldToggles := 'doubleClick';
-  else
-    ASettings.StatusFieldToggles := 'both';
-  end;
-  case FIndexProgress.Choice of
-    1:
-      ASettings.IndexProgressPlace := 'menu';
-    2:
-      ASettings.IndexProgressPlace := 'off';
-  else
-    ASettings.IndexProgressPlace := 'statusField';
-  end;
-  ASettings.StatusFieldHidden := Trim(FStatusHidden.Text);
-end;
-
-procedure TAtlasSettingsGeneralPart.SetDefaultServerPath(const AValue: string);
-begin
-  FDefaultServerPath := AValue;
-  ServerPathChange(nil);
-end;
-
-procedure TAtlasSettingsGeneralPart.ServerPathChange(Sender: TObject);
-var
-  mPath, mVersion: string;
-begin
-  mPath := Trim(FServerPath.Text);
-  if mPath = '' then
-  begin
-    mPath := FDefaultServerPath;
-  end;
-  if mPath = '' then
-  begin
-    FServerStatus.Caption := '';
-  end
-  else if FileExists(mPath) then
-  begin
-    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerFound, [mPath]);
-  end
-  else
-  begin
-    FServerStatus.Caption := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerMissing, [mPath]);
-  end;
-  // Version des Servers (#227): aus der Datei bzw. vom laufenden Server.
-  mVersion := '';
-  if Assigned(FOnServerVersion) and (mPath <> '') and FileExists(mPath) then
-  begin
-    mVersion := FOnServerVersion(mPath);
-    if mVersion = '' then
-    begin
-      mVersion := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsServerVersionUnknown);
-    end
-    else
-    begin
-      mVersion := TAtlasSettingsStrings.Fmt(TAtlasSettingsTextId.SettingsServerVersion, [mVersion]);
-    end;
-  end;
-  FServerVersion.Caption := mVersion;
-end;
-
-procedure TAtlasSettingsGeneralPart.SetOnServerVersion(const AValue: TFunc<string, string>);
-begin
-  FOnServerVersion := AValue;
-  ServerPathChange(nil);
-end;
-
-procedure TAtlasSettingsGeneralPart.ServerBrowseClick(Sender: TObject);
-var
-  mDialog: TOpenDialog;
-begin
-  mDialog := TOpenDialog.Create(nil);
-  try
-    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsServerFilter);
-    mDialog.Options := mDialog.Options + [ofFileMustExist];
-    if Trim(FServerPath.Text) <> '' then
-    begin
-      mDialog.FileName := Trim(FServerPath.Text);
-    end
-    else if FDefaultServerPath <> '' then
-    begin
-      mDialog.InitialDir := ExtractFilePath(FDefaultServerPath);
-    end;
-    if mDialog.Execute then
-    begin
-      FServerPath.Text := mDialog.FileName;
-    end;
-  finally
-    mDialog.Free;
-  end;
-end;
-
 { TAtlasSettingsNotificationsPart }
-
-procedure TAtlasSettingsNotificationsPart.Build;
-begin
-  // Benachrichtigungszentrale (#601); Taste auf dem Reiter Befehle.
-  BindCheck('Notifications', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotifications)));
-  FNotificationsMax := AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotificationsMax));
-  AddNotificationSources;
-end;
 
 procedure TAtlasSettingsNotificationsPart.Load(const ASettings: TAtlasPluginSettings);
 begin
@@ -413,6 +405,14 @@ begin
   end;
   FNotificationsSpec := TAtlasNotificationSources.WithMode(FNotificationsSpec, mKnown[FNotificationSource.Choice],
     TAtlasNotificationMode(FNotificationMode.Choice));
+end;
+
+procedure TAtlasSettingsNotificationsPart.Build;
+begin
+  // Benachrichtigungszentrale (#601); Taste auf dem Reiter Befehle.
+  BindCheck('Notifications', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotifications)));
+  FNotificationsMax := AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsNotificationsMax));
+  AddNotificationSources;
 end;
 
 end.

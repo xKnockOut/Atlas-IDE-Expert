@@ -169,6 +169,168 @@ end;
 
 { TAtlasIdeDebugParallelStacks }
 
+class procedure TAtlasIdeDebugParallelStacks.Refresh;
+begin
+  if (FTimer = nil) or (ShownFrame = nil) then
+  begin
+    Exit;
+  end;
+  FTimer.Enabled := False;
+  FStacks := nil;
+  FNext := 0;
+  FRetries := 0;
+  ReadStep;
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.ReadStep;
+var
+  mProcess: IOTAProcess;
+  mChunk: TAtlasDebugThreadStacks;
+  mCount: Integer;
+begin
+  FTimer.Enabled := False;
+  mProcess := TAtlasIdeDebugSession.Process;
+  if (mProcess = nil) or (TAtlasIdeDebugSession.StoppedThread = nil) or (ShownFrame = nil) then
+  begin
+    Exit;
+  end;
+  mCount := TAtlasIdeSettings.Current.DebugParallelStacksMaxThreads;
+  mChunk := nil;
+  if TAtlasIdeDebugThreads.ReadRange(mProcess, FNext, mCount, mChunk) and (FRetries < cRetries) then
+  begin
+    // Der Debugger liefert noch: denselben Abschnitt gleich noch einmal lesen.
+    Inc(FRetries);
+    FTimer.Enabled := True;
+    Exit;
+  end;
+  FRetries := 0;
+  FStacks := FStacks + mChunk;
+  FNext := FNext + Length(mChunk);
+  if (mChunk <> nil) and (FNext < mProcess.ThreadCount) then
+  begin
+    Rebuild(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksReading, [FNext, mProcess.ThreadCount]));
+    FTimer.Enabled := True;
+    Exit;
+  end;
+  Rebuild('');
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.Rebuild(const AStatus: string);
+var
+  mFrame: TAtlasDebugParallelStacksFrame;
+  mProcess: IOTAProcess;
+  mCurrent: Integer;
+begin
+  mFrame := ShownFrame;
+  if mFrame = nil then
+  begin
+    Exit;
+  end;
+  mCurrent := -1;
+  mProcess := TAtlasIdeDebugSession.Process;
+  if mProcess <> nil then
+  begin
+    mCurrent := TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks);
+  end;
+  FTree := TAtlasDebugStackTree.Build(FStacks, mCurrent,
+    TAtlasDebugStackTree.ParseRoutines(TAtlasIdeSettings.Current.DebugParallelStacksWaitRoutines), mFrame.Filter);
+  mFrame.SetTree(FStacks, FTree, AStatus);
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.ShowRunning;
+var
+  mFrame: TAtlasDebugParallelStacksFrame;
+begin
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
+  end;
+  FStacks := nil;
+  FTree := Default(TAtlasDebugStackTree);
+  mFrame := ShownFrame;
+  if mFrame <> nil then
+  begin
+    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksRunning));
+  end;
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.Open(ANode: Integer);
+begin
+  Pick(ANode, False);
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.Pick(ANode: Integer; AFlag: Boolean);
+var
+  mThread: Integer;
+  mThreads: TArray<Integer>;
+  mFlagged: TAtlasDebugThreadSet;
+  mItem: TMenuItem;
+begin
+  if (ANode < 0) or (ANode > High(FTree.Nodes)) then
+  begin
+    Exit;
+  end;
+  // Markierte Threads (#852) oben und mit ⚑.
+  mFlagged := TAtlasIdeDebugThreadsInSource.Flagged;
+  mThreads := TAtlasDebugThreadMarks.Ordered(FStacks, FTree.Nodes[ANode].Threads, mFlagged);
+  if Length(mThreads) = 1 then
+  begin
+    if AFlag then
+    begin
+      TAtlasIdeDebugThreadsInSource.ToggleFlag(FStacks[mThreads[0]]);
+    end
+    else
+    begin
+      Jump(mThreads[0], ANode);
+    end;
+    Exit;
+  end;
+  // Mehrere Threads: Auswahlliste an der Maus.
+  FreeAndNil(FMenu);
+  FMenu := TPopupMenu.Create(nil);
+  FPickNode := ANode;
+  FPickFlag := AFlag;
+  for mThread in mThreads do
+  begin
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := TAtlasThreadMarkTexts.ThreadLabel(FStacks[mThread],
+      mFlagged.Contains(FStacks[mThread].ThreadId));
+    mItem.Tag := mThread;
+    mItem.OnClick := FTicker.PickThread;
+    FMenu.Items.Add(mItem);
+  end;
+  FMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.AddFlagMenu(AFrame: TAtlasDebugParallelStacksFrame);
+var
+  mMenu: TPopupMenu;
+  mItem: TMenuItem;
+begin
+  // Gehört dem Frame und geht mit ihm.
+  mMenu := TPopupMenu.Create(AFrame);
+  mItem := TMenuItem.Create(mMenu);
+  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksFlagCommand);
+  mItem.OnClick := FTicker.FlagSelected;
+  mMenu.Items.Add(mItem);
+  mMenu.OnPopup := FTicker.TreePopup;
+  AFrame.Tree.RightClickSelect := True;
+  AFrame.Tree.PopupMenu := mMenu;
+end;
+
+class procedure TAtlasIdeDebugParallelStacks.Jump(AThread, ANode: Integer);
+begin
+  if (AThread < 0) or (AThread > High(FStacks)) or (ANode < 0) or (ANode > High(FTree.Nodes)) then
+  begin
+    Exit;
+  end;
+  TAtlasIdeDebugThreads.Select(FStacks[AThread].ThreadId);
+  if FTree.Nodes[ANode].Frame.HasSource then
+  begin
+    TAtlasIdeNavigation.MarkLine(FTree.Nodes[ANode].Frame.FileName, FTree.Nodes[ANode].Frame.Line - 1);
+  end;
+end;
+
 class procedure TAtlasIdeDebugParallelStacks.Start;
 begin
   if FTicker = nil then
@@ -253,168 +415,6 @@ end;
 class procedure TAtlasIdeDebugParallelStacks.ThemeChanged;
 begin
   TAtlasIdeDebugParallelStacksWindow.ApplyTheme;
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.ShowRunning;
-var
-  mFrame: TAtlasDebugParallelStacksFrame;
-begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  FStacks := nil;
-  FTree := Default(TAtlasDebugStackTree);
-  mFrame := ShownFrame;
-  if mFrame <> nil then
-  begin
-    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksRunning));
-  end;
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.Refresh;
-begin
-  if (FTimer = nil) or (ShownFrame = nil) then
-  begin
-    Exit;
-  end;
-  FTimer.Enabled := False;
-  FStacks := nil;
-  FNext := 0;
-  FRetries := 0;
-  ReadStep;
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.ReadStep;
-var
-  mProcess: IOTAProcess;
-  mChunk: TAtlasDebugThreadStacks;
-  mCount: Integer;
-begin
-  FTimer.Enabled := False;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if (mProcess = nil) or (TAtlasIdeDebugSession.StoppedThread = nil) or (ShownFrame = nil) then
-  begin
-    Exit;
-  end;
-  mCount := TAtlasIdeSettings.Current.DebugParallelStacksMaxThreads;
-  mChunk := nil;
-  if TAtlasIdeDebugThreads.ReadRange(mProcess, FNext, mCount, mChunk) and (FRetries < cRetries) then
-  begin
-    // Der Debugger liefert noch: denselben Abschnitt gleich noch einmal lesen.
-    Inc(FRetries);
-    FTimer.Enabled := True;
-    Exit;
-  end;
-  FRetries := 0;
-  FStacks := FStacks + mChunk;
-  FNext := FNext + Length(mChunk);
-  if (mChunk <> nil) and (FNext < mProcess.ThreadCount) then
-  begin
-    Rebuild(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksReading, [FNext, mProcess.ThreadCount]));
-    FTimer.Enabled := True;
-    Exit;
-  end;
-  Rebuild('');
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.Rebuild(const AStatus: string);
-var
-  mFrame: TAtlasDebugParallelStacksFrame;
-  mProcess: IOTAProcess;
-  mCurrent: Integer;
-begin
-  mFrame := ShownFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  mCurrent := -1;
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess <> nil then
-  begin
-    mCurrent := TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks);
-  end;
-  FTree := TAtlasDebugStackTree.Build(FStacks, mCurrent,
-    TAtlasDebugStackTree.ParseRoutines(TAtlasIdeSettings.Current.DebugParallelStacksWaitRoutines), mFrame.Filter);
-  mFrame.SetTree(FStacks, FTree, AStatus);
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.AddFlagMenu(AFrame: TAtlasDebugParallelStacksFrame);
-var
-  mMenu: TPopupMenu;
-  mItem: TMenuItem;
-begin
-  // Gehört dem Frame und geht mit ihm.
-  mMenu := TPopupMenu.Create(AFrame);
-  mItem := TMenuItem.Create(mMenu);
-  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksFlagCommand);
-  mItem.OnClick := FTicker.FlagSelected;
-  mMenu.Items.Add(mItem);
-  mMenu.OnPopup := FTicker.TreePopup;
-  AFrame.Tree.RightClickSelect := True;
-  AFrame.Tree.PopupMenu := mMenu;
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.Open(ANode: Integer);
-begin
-  Pick(ANode, False);
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.Pick(ANode: Integer; AFlag: Boolean);
-var
-  mThread: Integer;
-  mThreads: TArray<Integer>;
-  mFlagged: TAtlasDebugThreadSet;
-  mItem: TMenuItem;
-begin
-  if (ANode < 0) or (ANode > High(FTree.Nodes)) then
-  begin
-    Exit;
-  end;
-  // Markierte Threads (#852) oben und mit ⚑.
-  mFlagged := TAtlasIdeDebugThreadsInSource.Flagged;
-  mThreads := TAtlasDebugThreadMarks.Ordered(FStacks, FTree.Nodes[ANode].Threads, mFlagged);
-  if Length(mThreads) = 1 then
-  begin
-    if AFlag then
-    begin
-      TAtlasIdeDebugThreadsInSource.ToggleFlag(FStacks[mThreads[0]]);
-    end
-    else
-    begin
-      Jump(mThreads[0], ANode);
-    end;
-    Exit;
-  end;
-  // Mehrere Threads: Auswahlliste an der Maus.
-  FreeAndNil(FMenu);
-  FMenu := TPopupMenu.Create(nil);
-  FPickNode := ANode;
-  FPickFlag := AFlag;
-  for mThread in mThreads do
-  begin
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasThreadMarkTexts.ThreadLabel(FStacks[mThread],
-      mFlagged.Contains(FStacks[mThread].ThreadId));
-    mItem.Tag := mThread;
-    mItem.OnClick := FTicker.PickThread;
-    FMenu.Items.Add(mItem);
-  end;
-  FMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
-end;
-
-class procedure TAtlasIdeDebugParallelStacks.Jump(AThread, ANode: Integer);
-begin
-  if (AThread < 0) or (AThread > High(FStacks)) or (ANode < 0) or (ANode > High(FTree.Nodes)) then
-  begin
-    Exit;
-  end;
-  TAtlasIdeDebugThreads.Select(FStacks[AThread].ThreadId);
-  if FTree.Nodes[ANode].Frame.HasSource then
-  begin
-    TAtlasIdeNavigation.MarkLine(FTree.Nodes[ANode].Frame.FileName, FTree.Nodes[ANode].Frame.Line - 1);
-  end;
 end;
 
 end.

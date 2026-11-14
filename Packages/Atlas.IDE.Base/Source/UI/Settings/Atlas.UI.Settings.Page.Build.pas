@@ -33,29 +33,6 @@ uses
 
 { TAtlasSettingsBuildPart }
 
-procedure TAtlasSettingsBuildPart.Build;
-begin
-  // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
-  // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
-  AddSheet(TAtlasTextId.SettingsTabCompiler);
-  BindCheck('Problems', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblems)));
-  BindCheck('ProblemsStatusCounter',
-    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsStatusCounter)));
-  // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
-  FAfterSave := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckOnSave),
-    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveNone),
-    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCheck),
-    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCompile)]);
-  BindText('CheckOnSaveDelayMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckDelay)));
-  BindText('CheckOnSaveMaxMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckMax)));
-  BindCheck('ShowInterfaceCost', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShowInterfaceCost)));
-end;
-
-procedure TAtlasSettingsBuildPart.BindMarks;
-begin
-  FPage.Marks.Bind(FAfterSave, ['CheckOnSave', 'CompileOnSave']);
-end;
-
 procedure TAtlasSettingsBuildPart.Load(const ASettings: TAtlasPluginSettings);
 begin
   FAfterSave.Choice := 0;
@@ -73,6 +50,29 @@ procedure TAtlasSettingsBuildPart.Save(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.CheckOnSave := FAfterSave.Choice = 1;
   ASettings.CompileOnSave := FAfterSave.Choice = 2;
+end;
+
+procedure TAtlasSettingsBuildPart.BindMarks;
+begin
+  FPage.Marks.Bind(FAfterSave, ['CheckOnSave', 'CompileOnSave']);
+end;
+
+procedure TAtlasSettingsBuildPart.Build;
+begin
+  // Probleme im Editor und eine Aktion nach dem Speichern (#398, #548): Syntaxprüfung der IDE oder
+  // Kompilieren durch den Server (compiler.onSave in settings.json), nie beides.
+  AddSheet(TAtlasTextId.SettingsTabCompiler);
+  BindCheck('Problems', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblems)));
+  BindCheck('ProblemsStatusCounter',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsProblemsStatusCounter)));
+  // Reihenfolge: nichts, Syntaxprüfung (CheckOnSave), Kompilieren (CompileOnSave).
+  FAfterSave := AddChoice(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckOnSave),
+    [TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveNone),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCheck),
+    TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAfterSaveCompile)]);
+  BindText('CheckOnSaveDelayMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckDelay)));
+  BindText('CheckOnSaveMaxMs', AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsCheckMax)));
+  BindCheck('ShowInterfaceCost', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsShowInterfaceCost)));
 end;
 
 end.

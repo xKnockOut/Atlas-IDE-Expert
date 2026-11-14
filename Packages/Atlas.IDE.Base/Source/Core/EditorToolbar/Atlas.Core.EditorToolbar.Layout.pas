@@ -166,19 +166,7 @@ begin
     end;
   end;
 end;
-class function TAtlasToolbarLayout.FullWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
-var
-  mShown: TArray<Boolean>;
-  mIndex: Integer;
-begin
-  SetLength(mShown, Length(ASlots));
-  for mIndex := 0 to High(mShown) do
-  begin
-    mShown[mIndex] := True;
-  end;
-  HideLoneSeparators(ASlots, mShown);
-  Result := WidthOf(ASlots, mShown);
-end;
+{ TAtlasToolbarLayout }
 
 class function TAtlasToolbarLayout.Fit(const ASlots: TArray<TAtlasToolbarSlot>; AAvailable,
   AMoreWidth: Integer): TAtlasToolbarFit;
@@ -204,6 +192,20 @@ begin
     // Nur Trennstriche im Menü wären kein Grund für ».
     Result.More := Length(Result.Overflow) > 0;
   end;
+end;
+
+class function TAtlasToolbarLayout.FullWidth(const ASlots: TArray<TAtlasToolbarSlot>): Integer;
+var
+  mShown: TArray<Boolean>;
+  mIndex: Integer;
+begin
+  SetLength(mShown, Length(ASlots));
+  for mIndex := 0 to High(mShown) do
+  begin
+    mShown[mIndex] := True;
+  end;
+  HideLoneSeparators(ASlots, mShown);
+  Result := WidthOf(ASlots, mShown);
 end;
 
 end.

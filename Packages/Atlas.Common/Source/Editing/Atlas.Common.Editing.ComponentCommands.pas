@@ -363,6 +363,8 @@ type
     function NewSetter(const ABody: string; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
   end;
 
+{ TChangedTarget }
+
 function TChangedTarget.Field: string;
 begin
   Result := Accessor(Declaration, 'read');
@@ -811,6 +813,8 @@ type
     function Prepare(const AContext: TSlashContext; out AReason: string): Boolean;
     function HandlerEdits: TArray<TTextEdit>;
   end;
+
+{ TEventPlan }
 
 /// <summary>Typ der Komponente: Feld der Klasse, ohne Komponente die Klasse selbst.</summary>
 function TEventPlan.FindComponentType(out AReason: string): Boolean;

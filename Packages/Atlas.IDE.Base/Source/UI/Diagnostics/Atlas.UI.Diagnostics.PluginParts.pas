@@ -174,22 +174,6 @@ begin
   Height := MulDiv(26, CurrentPPI, 96);
 end;
 
-class function TAtlasDiagnosticTabs.Caption(APage: TAtlasDiagnosticPage): string;
-begin
-  case APage of
-    TAtlasDiagnosticPage.MainThread:
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabMainThread);
-    TAtlasDiagnosticPage.Server:
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabServer);
-    TAtlasDiagnosticPage.Background:
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabBackground);
-    TAtlasDiagnosticPage.Hangs:
-      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabHangs);
-  else
-    Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabCompletion);
-  end;
-end;
-
 procedure TAtlasDiagnosticTabs.SetActive(AValue: TAtlasDiagnosticPage);
 begin
   FActive := AValue;
@@ -200,37 +184,6 @@ procedure TAtlasDiagnosticTabs.SetColors(const AValue: TAtlasColors);
 begin
   FColors := AValue;
   Invalidate;
-end;
-
-function TAtlasDiagnosticTabs.PageAt(AX, AY: Integer; out APage: TAtlasDiagnosticPage): Boolean;
-var
-  mPage: TAtlasDiagnosticPage;
-begin
-  APage := FActive;
-  for mPage := Low(TAtlasDiagnosticPage) to High(TAtlasDiagnosticPage) do
-  begin
-    if PtInRect(FRects[mPage], Point(AX, AY)) then
-    begin
-      APage := mPage;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-procedure TAtlasDiagnosticTabs.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mPage: TAtlasDiagnosticPage;
-begin
-  inherited;
-  if PageAt(X, Y, mPage) and (mPage <> FActive) then
-  begin
-    Active := mPage;
-    if Assigned(FOnChange) then
-    begin
-      FOnChange(Self);
-    end;
-  end;
 end;
 
 procedure TAtlasDiagnosticTabs.Paint;
@@ -265,24 +218,59 @@ begin
   end;
 end;
 
+procedure TAtlasDiagnosticTabs.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mPage: TAtlasDiagnosticPage;
+begin
+  inherited;
+  if PageAt(X, Y, mPage) and (mPage <> FActive) then
+  begin
+    Active := mPage;
+    if Assigned(FOnChange) then
+    begin
+      FOnChange(Self);
+    end;
+  end;
+end;
+
+class function TAtlasDiagnosticTabs.Caption(APage: TAtlasDiagnosticPage): string;
+begin
+  case APage of
+    TAtlasDiagnosticPage.MainThread:
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabMainThread);
+    TAtlasDiagnosticPage.Server:
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabServer);
+    TAtlasDiagnosticPage.Background:
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabBackground);
+    TAtlasDiagnosticPage.Hangs:
+      Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabHangs);
+  else
+    Result := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagTabCompletion);
+  end;
+end;
+
+function TAtlasDiagnosticTabs.PageAt(AX, AY: Integer; out APage: TAtlasDiagnosticPage): Boolean;
+var
+  mPage: TAtlasDiagnosticPage;
+begin
+  APage := FActive;
+  for mPage := Low(TAtlasDiagnosticPage) to High(TAtlasDiagnosticPage) do
+  begin
+    if PtInRect(FRects[mPage], Point(AX, AY)) then
+    begin
+      APage := mPage;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 { TAtlasBusySpark }
 
 constructor TAtlasBusySpark.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColors := TAtlasColors.Light;
-end;
-
-procedure TAtlasBusySpark.SetValues(const AValues: TArray<Double>);
-begin
-  FValues := AValues;
-  Invalidate;
-end;
-
-procedure TAtlasBusySpark.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
 end;
 
 procedure TAtlasBusySpark.Paint;
@@ -312,6 +300,18 @@ begin
       Canvas.LineTo(mX, mY);
     end;
   end;
+end;
+
+procedure TAtlasBusySpark.SetValues(const AValues: TArray<Double>);
+begin
+  FValues := AValues;
+  Invalidate;
+end;
+
+procedure TAtlasBusySpark.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
 end;
 
 { TAtlasDiagnosticBar }
@@ -349,60 +349,6 @@ begin
   Arrange;
 end;
 
-function TAtlasDiagnosticBar.RowHeight: Integer;
-begin
-  Result := MulDiv(32, CurrentPPI, 96);
-end;
-
-function TAtlasDiagnosticBar.InfoWidth: Integer;
-var
-  mControl: TControl;
-begin
-  Result := 0;
-  for mControl in TArray<TControl>.Create(FBusy, FSpark, FThreshold, FNote) do
-  begin
-    // Ein leerer Hinweis braucht keinen Platz.
-    if (mControl <> FNote) or (FNote.Caption <> '') then
-    begin
-      Inc(Result, mControl.Width + mControl.Margins.Left + mControl.Margins.Right);
-    end;
-  end;
-end;
-
-class function TAtlasDiagnosticBar.NeedsTwoRows(AInfoWidth, AButtonsWidth, AClientWidth: Integer): Boolean;
-begin
-  Result := (AClientWidth > 0) and (AInfoWidth + AButtonsWidth > AClientWidth);
-end;
-
-procedure TAtlasDiagnosticBar.Arrange;
-var
-  mTwoRows: Boolean;
-begin
-  if FArranging or (FButtons = nil) or not HandleAllocated then
-  begin
-    Exit;
-  end;
-  FArranging := True;
-  try
-    mTwoRows := NeedsTwoRows(InfoWidth, FButtonsWidth, ClientWidth);
-    if mTwoRows then
-    begin
-      // Knöpfe rechtsbündig in der zweiten Zeile; die Angaben behalten die erste ganz.
-      FButtons.Align := alBottom;
-      FButtons.Height := RowHeight;
-      Height := 2 * RowHeight;
-    end
-    else
-    begin
-      FButtons.Align := alRight;
-      FButtons.Width := FButtonsWidth;
-      Height := RowHeight;
-    end;
-  finally
-    FArranging := False;
-  end;
-end;
-
 procedure TAtlasDiagnosticBar.CreateWnd;
 begin
   inherited;
@@ -436,6 +382,84 @@ begin
   Result.Layout := tlCenter;
 end;
 
+function TAtlasDiagnosticBar.RowHeight: Integer;
+begin
+  Result := MulDiv(32, CurrentPPI, 96);
+end;
+
+function TAtlasDiagnosticBar.InfoWidth: Integer;
+var
+  mControl: TControl;
+begin
+  Result := 0;
+  for mControl in TArray<TControl>.Create(FBusy, FSpark, FThreshold, FNote) do
+  begin
+    // Ein leerer Hinweis braucht keinen Platz.
+    if (mControl <> FNote) or (FNote.Caption <> '') then
+    begin
+      Inc(Result, mControl.Width + mControl.Margins.Left + mControl.Margins.Right);
+    end;
+  end;
+end;
+
+procedure TAtlasDiagnosticBar.Arrange;
+var
+  mTwoRows: Boolean;
+begin
+  if FArranging or (FButtons = nil) or not HandleAllocated then
+  begin
+    Exit;
+  end;
+  FArranging := True;
+  try
+    mTwoRows := NeedsTwoRows(InfoWidth, FButtonsWidth, ClientWidth);
+    if mTwoRows then
+    begin
+      // Knöpfe rechtsbündig in der zweiten Zeile; die Angaben behalten die erste ganz.
+      FButtons.Align := alBottom;
+      FButtons.Height := RowHeight;
+      Height := 2 * RowHeight;
+    end
+    else
+    begin
+      FButtons.Align := alRight;
+      FButtons.Width := FButtonsWidth;
+      Height := RowHeight;
+    end;
+  finally
+    FArranging := False;
+  end;
+end;
+
+procedure TAtlasDiagnosticBar.PauseClick(Sender: TObject);
+begin
+  if Assigned(FOnPause) then
+  begin
+    FOnPause(not FPaused);
+  end;
+end;
+
+procedure TAtlasDiagnosticBar.ResetClick(Sender: TObject);
+begin
+  if Assigned(FOnReset) then
+  begin
+    FOnReset();
+  end;
+end;
+
+procedure TAtlasDiagnosticBar.CopyClick(Sender: TObject);
+begin
+  if Assigned(FOnCopy) then
+  begin
+    FOnCopy();
+  end;
+end;
+
+class function TAtlasDiagnosticBar.NeedsTwoRows(AInfoWidth, AButtonsWidth, AClientWidth: Integer): Boolean;
+begin
+  Result := (AClientWidth > 0) and (AInfoWidth + AButtonsWidth > AClientWidth);
+end;
+
 procedure TAtlasDiagnosticBar.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot);
 begin
   FSpark.SetValues(ASnapshot.Busy);
@@ -461,30 +485,6 @@ procedure TAtlasDiagnosticBar.ShowNote(const AText: string);
 begin
   FNote.Caption := AText;
   Arrange;
-end;
-
-procedure TAtlasDiagnosticBar.PauseClick(Sender: TObject);
-begin
-  if Assigned(FOnPause) then
-  begin
-    FOnPause(not FPaused);
-  end;
-end;
-
-procedure TAtlasDiagnosticBar.ResetClick(Sender: TObject);
-begin
-  if Assigned(FOnReset) then
-  begin
-    FOnReset();
-  end;
-end;
-
-procedure TAtlasDiagnosticBar.CopyClick(Sender: TObject);
-begin
-  if Assigned(FOnCopy) then
-  begin
-    FOnCopy();
-  end;
 end;
 
 { TAtlasTablePage }

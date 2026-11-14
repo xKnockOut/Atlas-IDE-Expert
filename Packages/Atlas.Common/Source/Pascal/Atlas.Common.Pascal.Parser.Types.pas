@@ -95,84 +95,6 @@ const
 
 { TTypeParser }
 
-function TTypeParser.ParseTypeReference(AParent: TSyntaxNode): TSyntaxNode;
-begin
-  if not EnterNesting then
-  begin
-    Result := TooDeep;
-    AParent.Add(Result);
-    Exit;
-  end;
-  try
-    Result := ParseTypeReferenceBody(AParent);
-  finally
-    Dec(FDepth);
-  end;
-end;
-
-function TTypeParser.ParseTypeName(AReference: TSyntaxNode): string;
-begin
-  if IsKw(['string', 'file']) or IsIdent then
-  begin
-    Result := Current.Text;
-    Advance;
-  end
-  else if IsKw('const') then
-  begin
-    Result := 'const';
-    Advance;
-  end
-  else
-  begin
-    Result := '';
-    DiagnoseUnexpected('Typ');
-  end;
-  repeat
-    if IsSym('<') and LooksLikeGenericArgs(True) then
-    begin
-      ParseGenericArgs(AReference);
-    end;
-    if IsSym('.') and (PeekToken(1).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-    begin
-      Advance;
-      Result := Result + '.' + Current.Text;
-      Advance;
-    end
-    else
-    begin
-      Break;
-    end;
-  until False;
-end;
-
-function TTypeParser.ParseTypeReferenceBody(AParent: TSyntaxNode): TSyntaxNode;
-var
-  mStart: Integer;
-  mName: string;
-begin
-  // Name, Unit.Name, TList<Integer>, string, string[20], file, array of const
-  mStart := NodeStart;
-  Result := StartNode(TSyntaxKind.TypeReference);
-  AParent.Add(Result);
-  mName := ParseTypeName(Result);
-  if SameWord(mName, 'string') and IsSym('[') then
-  begin
-    // ShortString-Länge: string[20]
-    Advance;
-    ParseExpression(Result);
-    ExpectSym(']');
-  end
-  else if SameWord(mName, 'AnsiString') and IsSym('(') then
-  begin
-    // Codepage: type AnsiString(CP_WINANSI) bzw. AnsiString(1200) (#1140).
-    Advance;
-    ParseExpression(Result);
-    ExpectSym(')');
-  end;
-  Result.Name := mName;
-  FinishNode(Result, mStart);
-end;
-
 function TTypeParser.ParseType(AParent: TSyntaxNode): TSyntaxNode;
 begin
   if not EnterNesting then
@@ -183,6 +105,21 @@ begin
   end;
   try
     Result := ParseTypeBody(AParent);
+  finally
+    Dec(FDepth);
+  end;
+end;
+
+function TTypeParser.ParseTypeReference(AParent: TSyntaxNode): TSyntaxNode;
+begin
+  if not EnterNesting then
+  begin
+    Result := TooDeep;
+    AParent.Add(Result);
+    Exit;
+  end;
+  try
+    Result := ParseTypeReferenceBody(AParent);
   finally
     Dec(FDepth);
   end;
@@ -467,47 +404,67 @@ begin
   end;
 end;
 
-procedure TTypeParser.ParseProcedureType(ANode: TSyntaxNode);
+function TTypeParser.ParseTypeReferenceBody(AParent: TSyntaxNode): TSyntaxNode;
+var
+  mStart: Integer;
+  mName: string;
 begin
-  // procedure(A: Integer) of object; function: Boolean; reference to procedure
-  if IsKw(['procedure', 'function']) then
+  // Name, Unit.Name, TList<Integer>, string, string[20], file, array of const
+  mStart := NodeStart;
+  Result := StartNode(TSyntaxKind.TypeReference);
+  AParent.Add(Result);
+  mName := ParseTypeName(Result);
+  if SameWord(mName, 'string') and IsSym('[') then
   begin
+    // ShortString-Länge: string[20]
+    Advance;
+    ParseExpression(Result);
+    ExpectSym(']');
+  end
+  else if SameWord(mName, 'AnsiString') and IsSym('(') then
+  begin
+    // Codepage: type AnsiString(CP_WINANSI) bzw. AnsiString(1200) (#1140).
+    Advance;
+    ParseExpression(Result);
+    ExpectSym(')');
+  end;
+  Result.Name := mName;
+  FinishNode(Result, mStart);
+end;
+
+function TTypeParser.ParseTypeName(AReference: TSyntaxNode): string;
+begin
+  if IsKw(['string', 'file']) or IsIdent then
+  begin
+    Result := Current.Text;
+    Advance;
+  end
+  else if IsKw('const') then
+  begin
+    Result := 'const';
     Advance;
   end
   else
   begin
-    DiagnoseUnexpected('"procedure"');
+    Result := '';
+    DiagnoseUnexpected('Typ');
   end;
-  if IsSym('(') then
-  begin
-    ParseParameters(ANode);
-  end;
-  if AcceptSym(':') then
-  begin
-    ParseTypeReference(ANode);
-  end;
-  if IsKw('of') and SameWord(PeekToken(1).Text, 'object') then
-  begin
-    Advance;
-    Advance;
-  end;
-  // Aufrufkonventionen mit oder ohne Semikolon davor: procedure stdcall; procedure; cdecl
-  while True do
-  begin
-    if IsIdent and InWords(Current.Text, cCallingConventions) then
+  repeat
+    if IsSym('<') and LooksLikeGenericArgs(True) then
+    begin
+      ParseGenericArgs(AReference);
+    end;
+    if IsSym('.') and (PeekToken(1).Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
       Advance;
-    end
-    else if IsSym(';') and (PeekToken(1).Kind = TPascalTokenKind.Identifier) and
-      InWords(PeekToken(1).Text, cCallingConventions) then
-    begin
+      Result := Result + '.' + Current.Text;
       Advance;
     end
     else
     begin
       Break;
     end;
-  end;
+  until False;
 end;
 
 procedure TTypeParser.ParseClassBody(ANode: TSyntaxNode; AKind: TSyntaxKind);
@@ -686,37 +643,6 @@ begin
   end;
 end;
 
-procedure TTypeParser.ParseFieldDecl(AParent: TSyntaxNode);
-begin
-  ParseFieldDecl(AParent, False);
-end;
-
-procedure TTypeParser.ParseFieldDecl(AParent: TSyntaxNode; AInVariant: Boolean);
-var
-  mStart: Integer;
-  mNode: TSyntaxNode;
-  mNames: string;
-begin
-  mStart := NodeStart;
-  mNode := StartNode(TSyntaxKind.Field);
-  AParent.Add(mNode);
-  mNames := ExpectIdent;
-  while AcceptSym(',') do
-  begin
-    mNames := mNames + ',' + ExpectIdent;
-  end;
-  mNode.Name := mNames;
-  ExpectSym(':');
-  ParseType(mNode);
-  ParseHints;
-  // Das letzte Feld darf vor end bzw. vor der ")" eines varianten Zweigs ohne Semikolon stehen (#849).
-  if not IsKw('end') and (not AInVariant or not IsSym(')')) then
-  begin
-    ExpectSym(';');
-  end;
-  FinishNode(mNode, mStart);
-end;
-
 procedure TTypeParser.ParseProperty(AParent: TSyntaxNode);
 var
   mStart, mDirectiveStart: Integer;
@@ -758,6 +684,37 @@ begin
     Advance;
     FinishNode(mDirective, mDirectiveStart);
     Advance;
+  end;
+  FinishNode(mNode, mStart);
+end;
+
+procedure TTypeParser.ParseFieldDecl(AParent: TSyntaxNode);
+begin
+  ParseFieldDecl(AParent, False);
+end;
+
+procedure TTypeParser.ParseFieldDecl(AParent: TSyntaxNode; AInVariant: Boolean);
+var
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mNames: string;
+begin
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.Field);
+  AParent.Add(mNode);
+  mNames := ExpectIdent;
+  while AcceptSym(',') do
+  begin
+    mNames := mNames + ',' + ExpectIdent;
+  end;
+  mNode.Name := mNames;
+  ExpectSym(':');
+  ParseType(mNode);
+  ParseHints;
+  // Das letzte Feld darf vor end bzw. vor der ")" eines varianten Zweigs ohne Semikolon stehen (#849).
+  if not IsKw('end') and (not AInVariant or not IsSym(')')) then
+  begin
+    ExpectSym(';');
   end;
   FinishNode(mNode, mStart);
 end;
@@ -899,6 +856,49 @@ begin
     if FIndex = mBefore then
     begin
       Advance;
+    end;
+  end;
+end;
+
+procedure TTypeParser.ParseProcedureType(ANode: TSyntaxNode);
+begin
+  // procedure(A: Integer) of object; function: Boolean; reference to procedure
+  if IsKw(['procedure', 'function']) then
+  begin
+    Advance;
+  end
+  else
+  begin
+    DiagnoseUnexpected('"procedure"');
+  end;
+  if IsSym('(') then
+  begin
+    ParseParameters(ANode);
+  end;
+  if AcceptSym(':') then
+  begin
+    ParseTypeReference(ANode);
+  end;
+  if IsKw('of') and SameWord(PeekToken(1).Text, 'object') then
+  begin
+    Advance;
+    Advance;
+  end;
+  // Aufrufkonventionen mit oder ohne Semikolon davor: procedure stdcall; procedure; cdecl
+  while True do
+  begin
+    if IsIdent and InWords(Current.Text, cCallingConventions) then
+    begin
+      Advance;
+    end
+    else if IsSym(';') and (PeekToken(1).Kind = TPascalTokenKind.Identifier) and
+      InWords(PeekToken(1).Text, cCallingConventions) then
+    begin
+      Advance;
+    end
+    else
+    begin
+      Break;
     end;
   end;
 end;

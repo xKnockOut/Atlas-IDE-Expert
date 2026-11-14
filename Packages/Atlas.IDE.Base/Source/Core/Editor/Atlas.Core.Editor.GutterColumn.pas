@@ -160,6 +160,8 @@ begin
   end;
 end;
 
+{ TAtlasFileOverrides }
+
 class function TAtlasFileOverrides.FromJson(AValue: TJSONValue;
   const AToPath: TFunc<string, string>): TAtlasFileOverrides;
 var

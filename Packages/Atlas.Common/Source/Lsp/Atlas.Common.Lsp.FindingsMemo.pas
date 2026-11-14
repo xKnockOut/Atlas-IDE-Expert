@@ -89,6 +89,8 @@ type
 
 implementation
 
+{ TRuleFindingsMemo }
+
 constructor TRuleFindingsMemo.Create;
 begin
   inherited Create;
@@ -125,28 +127,6 @@ begin
   FEntries.Remove(mOldest);
 end;
 
-procedure TRuleFindingsMemo.Put(const AFileName, AText: string; const AFindings: TArray<TRuleFinding>);
-var
-  mKey: string;
-  mEntry: TEntry;
-begin
-  mKey := AnsiUpperCase(AFileName);
-  mEntry.Text := AText;
-  mEntry.Findings := Copy(AFindings);
-  System.TMonitor.Enter(FLock);
-  try
-    Inc(FClock);
-    mEntry.Used := FClock;
-    if not FEntries.ContainsKey(mKey) and (FEntries.Count >= cMaxEntries) then
-    begin
-      DropOldest;
-    end;
-    FEntries.AddOrSetValue(mKey, mEntry);
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
-end;
-
 function TRuleFindingsMemo.Lookup(const AKey, AText: string; out AFindings: TArray<TRuleFinding>): Boolean;
 var
   mEntry: TEntry;
@@ -159,16 +139,6 @@ begin
     mEntry.Used := FClock;
     FEntries[AKey] := mEntry;
     AFindings := Copy(mEntry.Findings);
-  end;
-end;
-
-function TRuleFindingsMemo.TryGet(const AFileName, AText: string; out AFindings: TArray<TRuleFinding>): Boolean;
-begin
-  System.TMonitor.Enter(FLock);
-  try
-    Result := Lookup(AnsiUpperCase(AFileName), AText, AFindings);
-  finally
-    System.TMonitor.Exit(FLock);
   end;
 end;
 
@@ -203,6 +173,38 @@ begin
     end;
     // Wartende auf denselben Text finden jetzt die Treffer (oder rechnen selbst, wenn der Lauf scheiterte).
     System.TMonitor.PulseAll(FLock);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TRuleFindingsMemo.Put(const AFileName, AText: string; const AFindings: TArray<TRuleFinding>);
+var
+  mKey: string;
+  mEntry: TEntry;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  mEntry.Text := AText;
+  mEntry.Findings := Copy(AFindings);
+  System.TMonitor.Enter(FLock);
+  try
+    Inc(FClock);
+    mEntry.Used := FClock;
+    if not FEntries.ContainsKey(mKey) and (FEntries.Count >= cMaxEntries) then
+    begin
+      DropOldest;
+    end;
+    FEntries.AddOrSetValue(mKey, mEntry);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TRuleFindingsMemo.TryGet(const AFileName, AText: string; out AFindings: TArray<TRuleFinding>): Boolean;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Result := Lookup(AnsiUpperCase(AFileName), AText, AFindings);
   finally
     System.TMonitor.Exit(FLock);
   end;

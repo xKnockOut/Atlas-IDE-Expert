@@ -27,6 +27,8 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Diff;
 
+{ TAtlasTextDiff }
+
 class function TAtlasTextDiff.Lines(const AOld, ANew: string): TArray<string>;
 begin
   Result := TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), cMaxLines);

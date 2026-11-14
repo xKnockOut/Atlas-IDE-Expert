@@ -220,52 +220,67 @@ begin
   inherited Destroy;
 end;
 
-procedure TStatusBarState.Reset;
-begin
-  ApplyTheme;
-  // Umzug des Atlas-Felds folgt editor.statusBar und dem Element status.
-  RefreshField;
-end;
-
-procedure TStatusBarState.RefreshField;
+procedure TStatusBarState.Tick(Sender: TObject);
 var
-  mField: TAtlasStatusField;
+  mOn_, mWasHidden: Boolean;
 begin
-  mField := CurrentField;
-  if mField <> nil then
+  mOn_ := TAtlasIdeStatusBar.Enabled;
+  mWasHidden := FHost.Hidden;
+  if not FHost.Guard then
   begin
-    mField.RequestRefresh;
-  end;
-end;
-
-procedure TStatusBarState.ApplyTheme;
-var
-  mColors: TAtlasColors;
-begin
-  mColors := BarColors;
-  FHost.ForEach(
-    procedure(ABar: TControl)
+    // Sicherung ausgelöst: Leisten weg (Host), das Atlas-Feld zurück in die Statuszeile.
+    if not mWasHidden then
     begin
-      TAtlasEditorStatusBar(ABar).SetColors(mColors);
-    end);
-end;
-
-procedure TStatusBarState.Want(AOn: Boolean);
-begin
-  if AOn = FWanted then
-  begin
+      Want(False);
+      RefreshField;
+    end;
     Exit;
   end;
-  FWanted := AOn;
-  if Assigned(TAtlasIdeStatusBar.FHooks.WantMetrics) then
+  if mWasHidden then
   begin
-    TAtlasIdeStatusBar.FHooks.WantMetrics(AOn);
+    RefreshField;
   end;
-end;
-
-function TStatusBarState.TopBar: TAtlasEditorStatusBar;
-begin
-  Result := TAtlasEditorStatusBar(FHost.ActiveBar);
+  if not mOn_ then
+  begin
+    Want(False);
+    if FHost.Count > 0 then
+    begin
+      FHost.Clear;
+    end;
+    Exit;
+  end;
+  TAtlasGuard.Run(TAtlasFeature.StatusBar,
+    procedure
+    var
+      Items: TArray<string>;
+      Top, Bar: TAtlasEditorStatusBar;
+      Control: TControl;
+      View: TAtlasStatusBarView;
+    begin
+      Items := TAtlasStatusBarItems.Parse(TAtlasIdeSettings.Current.EditorStatusBarItems);
+      Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.cMethod));
+      // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
+      FHost.Ensure;
+      Top := TopBar;
+      for Control in FHost.Bars do
+      begin
+        Bar := TAtlasEditorStatusBar(Control);
+        if Bar = Top then
+        begin
+          Continue;
+        end;
+        // Andere Fenster: nur Status und Belegung, der Rest bleibt vom letzten Mal, als sie oben waren.
+        View := Bar.View;
+        View.Items := Items;
+        TAtlasStatusBarViews.StatusInto(CurrentField, View);
+        Bar.SetView(View);
+      end;
+      if Top <> nil then
+      begin
+        Top.SetView(TAtlasStatusBarViews.ViewFor(TAtlasEditorBuffer.ActiveView, Items, CurrentField,
+          TAtlasIdeStatusBar.FHooks.Metrics, FTarget));
+      end;
+    end);
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -374,67 +389,17 @@ begin
     end);
 end;
 
-procedure TStatusBarState.Tick(Sender: TObject);
-var
-  mOn_, mWasHidden: Boolean;
+procedure TStatusBarState.Want(AOn: Boolean);
 begin
-  mOn_ := TAtlasIdeStatusBar.Enabled;
-  mWasHidden := FHost.Hidden;
-  if not FHost.Guard then
+  if AOn = FWanted then
   begin
-    // Sicherung ausgelöst: Leisten weg (Host), das Atlas-Feld zurück in die Statuszeile.
-    if not mWasHidden then
-    begin
-      Want(False);
-      RefreshField;
-    end;
     Exit;
   end;
-  if mWasHidden then
+  FWanted := AOn;
+  if Assigned(TAtlasIdeStatusBar.FHooks.WantMetrics) then
   begin
-    RefreshField;
+    TAtlasIdeStatusBar.FHooks.WantMetrics(AOn);
   end;
-  if not mOn_ then
-  begin
-    Want(False);
-    if FHost.Count > 0 then
-    begin
-      FHost.Clear;
-    end;
-    Exit;
-  end;
-  TAtlasGuard.Run(TAtlasFeature.StatusBar,
-    procedure
-    var
-      Items: TArray<string>;
-      Top, Bar: TAtlasEditorStatusBar;
-      Control: TControl;
-      View: TAtlasStatusBarView;
-    begin
-      Items := TAtlasStatusBarItems.Parse(TAtlasIdeSettings.Current.EditorStatusBarItems);
-      Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.cMethod));
-      // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
-      FHost.Ensure;
-      Top := TopBar;
-      for Control in FHost.Bars do
-      begin
-        Bar := TAtlasEditorStatusBar(Control);
-        if Bar = Top then
-        begin
-          Continue;
-        end;
-        // Andere Fenster: nur Status und Belegung, der Rest bleibt vom letzten Mal, als sie oben waren.
-        View := Bar.View;
-        View.Items := Items;
-        TAtlasStatusBarViews.StatusInto(CurrentField, View);
-        Bar.SetView(View);
-      end;
-      if Top <> nil then
-      begin
-        Top.SetView(TAtlasStatusBarViews.ViewFor(TAtlasEditorBuffer.ActiveView, Items, CurrentField,
-          TAtlasIdeStatusBar.FHooks.Metrics, FTarget));
-      end;
-    end);
 end;
 
 /// <summary>Erst nach dem Klick ausführen; nur, wenn der Zustand dann noch lebt.</summary>
@@ -533,6 +498,41 @@ begin
     end;
 end;
 
+procedure TStatusBarState.RefreshField;
+var
+  mField: TAtlasStatusField;
+begin
+  mField := CurrentField;
+  if mField <> nil then
+  begin
+    mField.RequestRefresh;
+  end;
+end;
+
+procedure TStatusBarState.Reset;
+begin
+  ApplyTheme;
+  // Umzug des Atlas-Felds folgt editor.statusBar und dem Element status.
+  RefreshField;
+end;
+
+procedure TStatusBarState.ApplyTheme;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := BarColors;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorStatusBar(ABar).SetColors(mColors);
+    end);
+end;
+
+function TStatusBarState.TopBar: TAtlasEditorStatusBar;
+begin
+  Result := TAtlasEditorStatusBar(FHost.ActiveBar);
+end;
+
 procedure TStatusBarState.JumpToFinding(AKind: TAtlasFindingKind);
 var
   mView: IOTAEditView;
@@ -619,11 +619,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeStatusBar.Enabled: Boolean;
-begin
-  Result := TAtlasIdeSettings.Current.EditorStatusBar;
-end;
-
 class procedure TAtlasIdeStatusBar.Install(const AHooks: THooks);
 begin
   FreeAndNil(FState);
@@ -652,6 +647,11 @@ begin
   begin
     State.ApplyTheme;
   end;
+end;
+
+class function TAtlasIdeStatusBar.Enabled: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.EditorStatusBar;
 end;
 
 class function TAtlasIdeStatusBar.Anchor(out APoint: TPoint): Boolean;

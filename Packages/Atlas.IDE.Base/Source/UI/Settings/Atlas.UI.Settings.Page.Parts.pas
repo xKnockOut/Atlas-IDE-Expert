@@ -36,6 +36,8 @@ uses
   Atlas.UI.Settings.Page.Transfer,
   Atlas.UI.Settings.Page.Sections;
 
+{ TAtlasSettingsPageParts }
+
 class procedure TAtlasSettingsPageParts.CreateParts(APage: TAtlasSettingsPageHost);
 begin
   APage.AddPart(TAtlasSettingsGeneralPart.Create(APage));

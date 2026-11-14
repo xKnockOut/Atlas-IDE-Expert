@@ -336,6 +336,8 @@ type
     function Run: TSignatureFormat;
   end;
 
+{ TFormatAnalysis }
+
 constructor TFormatAnalysis.Create(const ACall: TSignatureFormatCall; const ARoutine: TFormatRoutine);
 begin
   inherited Create;
@@ -620,6 +622,8 @@ begin
   CheckProblems;
   Result := FResult;
 end;
+
+{ TSignatureFormats }
 
 class function TSignatureFormats.Analyze(const ACall: TSignatureFormatCall;
   const ARoutine: TFormatRoutine): TSignatureFormat;

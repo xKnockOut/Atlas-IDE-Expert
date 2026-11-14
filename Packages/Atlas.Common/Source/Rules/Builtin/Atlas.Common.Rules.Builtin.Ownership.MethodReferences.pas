@@ -147,6 +147,8 @@ type
     procedure Run;
   end;
 
+{ TSelfCycleScan }
+
 constructor TSelfCycleScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   inherited Create;
@@ -330,6 +332,8 @@ begin
     Result := Copy(Result, Result.LastIndexOf('.') + 2, MaxInt);
   end;
 end;
+
+{ TEventHookScan }
 
 constructor TEventHookScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin

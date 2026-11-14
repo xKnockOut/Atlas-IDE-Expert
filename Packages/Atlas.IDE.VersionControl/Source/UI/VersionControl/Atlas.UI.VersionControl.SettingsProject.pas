@@ -131,46 +131,28 @@ begin
   FWatch.OnTimer := WatchTimer;
 end;
 
-class function TAtlasSettingsVcsProjectPart.VcsProjectText(const AState: TAtlasVcsProjectState): string;
-var
-  mName, mKind, mSource, mProblem: string;
+procedure TAtlasSettingsVcsProjectPart.Attached(APage: TAtlasVcsSettingsOwner);
 begin
-  if AState.ProjectFile = '' then
+  inherited Attached(APage);
+  if APage = nil then
   begin
-    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
-  end;
-  mName := ExtractFileName(AState.ProjectFile);
-  mSource := VcsSourceText(AState);
-  mKind := AtlasVcsKindName(AState.WorkingCopy.Kind);
-  mProblem := VcsOutcomeText(AState, mName, mKind);
-  if mProblem <> '' then
+    // Der Zeitgeber gehört dem Besitzer und geht mit ihm.
+    FWatch := nil;
+    FVcsProjectInfo := nil;
+  end
+  else
   begin
-    Exit(mProblem + sLineBreak + mSource);
+    FVcsProjectAsked := False;
   end;
-  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
-    sLineBreak + VcsHeadText(AState) + sLineBreak + mSource;
 end;
 
-procedure TAtlasSettingsVcsProjectPart.RefreshVcsProject;
+procedure TAtlasSettingsVcsProjectPart.WatchTimer(Sender: TObject);
 begin
-  FVcsProjectAsked := True;
-  if not Assigned(FOnVcsProject) or (FVcsProjectInfo = nil) then
+  CheckShown;
+  if FVcsProjectAsked then
   begin
-    Exit;
+    FWatch.Enabled := False;
   end;
-  FVcsProjectInfo.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying);
-  FOnVcsProject();
-end;
-
-procedure TAtlasSettingsVcsProjectPart.VcsProjectDone(const AState: TAtlasVcsProjectState);
-begin
-  if FVcsProjectInfo <> nil then
-  begin
-    FVcsProjectInfo.Caption := VcsProjectText(AState);
-  end;
-  // Für „Aktuelles Projekt hinzufügen“: die erkannte Art vorbelegen.
-  FVcsDetectedProject := AState.ProjectFile;
-  FVcsDetectedKind := AState.WorkingCopy.Kind;
 end;
 
 function TAtlasSettingsVcsProjectPart.InfoShown: Boolean;
@@ -203,28 +185,46 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsVcsProjectPart.WatchTimer(Sender: TObject);
+procedure TAtlasSettingsVcsProjectPart.VcsProjectDone(const AState: TAtlasVcsProjectState);
 begin
-  CheckShown;
-  if FVcsProjectAsked then
+  if FVcsProjectInfo <> nil then
   begin
-    FWatch.Enabled := False;
+    FVcsProjectInfo.Caption := VcsProjectText(AState);
   end;
+  // Für „Aktuelles Projekt hinzufügen“: die erkannte Art vorbelegen.
+  FVcsDetectedProject := AState.ProjectFile;
+  FVcsDetectedKind := AState.WorkingCopy.Kind;
 end;
 
-procedure TAtlasSettingsVcsProjectPart.Attached(APage: TAtlasVcsSettingsOwner);
+procedure TAtlasSettingsVcsProjectPart.RefreshVcsProject;
 begin
-  inherited Attached(APage);
-  if APage = nil then
+  FVcsProjectAsked := True;
+  if not Assigned(FOnVcsProject) or (FVcsProjectInfo = nil) then
   begin
-    // Der Zeitgeber gehört dem Besitzer und geht mit ihm.
-    FWatch := nil;
-    FVcsProjectInfo := nil;
-  end
-  else
-  begin
-    FVcsProjectAsked := False;
+    Exit;
   end;
+  FVcsProjectInfo.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectQuerying);
+  FOnVcsProject();
+end;
+
+class function TAtlasSettingsVcsProjectPart.VcsProjectText(const AState: TAtlasVcsProjectState): string;
+var
+  mName, mKind, mSource, mProblem: string;
+begin
+  if AState.ProjectFile = '' then
+  begin
+    Exit(TAtlasVcsStrings.Text(TAtlasVcsTextId.SettingsVcsProjectNone));
+  end;
+  mName := ExtractFileName(AState.ProjectFile);
+  mSource := VcsSourceText(AState);
+  mKind := AtlasVcsKindName(AState.WorkingCopy.Kind);
+  mProblem := VcsOutcomeText(AState, mName, mKind);
+  if mProblem <> '' then
+  begin
+    Exit(mProblem + sLineBreak + mSource);
+  end;
+  Result := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
+    sLineBreak + VcsHeadText(AState) + sLineBreak + mSource;
 end;
 
 end.

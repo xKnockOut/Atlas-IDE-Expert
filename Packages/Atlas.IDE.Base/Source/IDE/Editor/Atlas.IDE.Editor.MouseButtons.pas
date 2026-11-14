@@ -45,6 +45,8 @@ type
     constructor Create(AOwner: TComponent); override;
   end;
 
+{ TMouseEvents }
+
 constructor TMouseEvents.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -77,6 +79,8 @@ begin
     end);
   AHandled := mTaken;
 end;
+
+{ TAtlasIdeMouseButtons }
 
 class procedure TAtlasIdeMouseButtons.Install;
 begin

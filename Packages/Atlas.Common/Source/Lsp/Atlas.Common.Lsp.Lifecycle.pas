@@ -85,13 +85,16 @@ begin
   inherited;
 end;
 
-procedure TLspLifecycle.Attach(ADispatcher: TJsonRpcDispatcher);
+function TLspLifecycle.GetExitCode: Integer;
 begin
-  ADispatcher.RegisterRequest(TLspLifecycleMethod.cInitializeRequest, HandleInitialize);
-  ADispatcher.RegisterNotification(TLspLifecycleMethod.cInitializedNotification, HandleInitialized);
-  ADispatcher.RegisterRequest(TLspLifecycleMethod.cShutdownRequest, HandleShutdown);
-  ADispatcher.RegisterNotification(TLspLifecycleMethod.cExitNotification, HandleExit);
-  ADispatcher.Guard := CheckState;
+  if FShutdownReceived then
+  begin
+    Result := 0;
+  end
+  else
+  begin
+    Result := 1;
+  end;
 end;
 
 /// <summary>Fehler für AMethod im Zustand AState; '' = erlaubt. exit ist in jedem Zustand erlaubt.</summary>
@@ -119,18 +122,6 @@ begin
       Result := cTexts[TLifecycleText.ServerIsShuttingDown].Text;
     TLspServerState.Exited:
       Result := cTexts[TLifecycleText.ServerHasShutDown].Text;
-  end;
-end;
-
-procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
-var
-  mCode: Integer;
-  mMessage: string;
-begin
-  mMessage := StateError(FState, AMethod, mCode);
-  if mMessage <> '' then
-  begin
-    raise EJsonRpcError.Create(mCode, mMessage);
   end;
 end;
 
@@ -193,16 +184,25 @@ begin
   end;
 end;
 
-function TLspLifecycle.GetExitCode: Integer;
+procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
+var
+  mCode: Integer;
+  mMessage: string;
 begin
-  if FShutdownReceived then
+  mMessage := StateError(FState, AMethod, mCode);
+  if mMessage <> '' then
   begin
-    Result := 0;
-  end
-  else
-  begin
-    Result := 1;
+    raise EJsonRpcError.Create(mCode, mMessage);
   end;
+end;
+
+procedure TLspLifecycle.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterRequest(TLspLifecycleMethod.cInitializeRequest, HandleInitialize);
+  ADispatcher.RegisterNotification(TLspLifecycleMethod.cInitializedNotification, HandleInitialized);
+  ADispatcher.RegisterRequest(TLspLifecycleMethod.cShutdownRequest, HandleShutdown);
+  ADispatcher.RegisterNotification(TLspLifecycleMethod.cExitNotification, HandleExit);
+  ADispatcher.Guard := CheckState;
 end;
 
 initialization

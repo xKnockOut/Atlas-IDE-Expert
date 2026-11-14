@@ -103,15 +103,6 @@ begin
   inherited;
 end;
 
-class function TCodeQueryService.ScopeKey(const ASource: TQuerySource): string;
-var
-  mFiles: TArray<string>;
-begin
-  mFiles := Copy(ASource.Files);
-  TArray.Sort<string>(mFiles);
-  Result := LowerCase(ASource.Root + #1 + string.Join(#2, mFiles) + #1 + string.Join(#2, ASource.Namespaces));
-end;
-
 function TCodeQueryService.Execute(const ARequest: TQueryRequest): TQueryResult;
 var
   mSource: TQuerySource;
@@ -172,6 +163,15 @@ begin
   finally
     System.TMonitor.Exit(FLock);
   end;
+end;
+
+class function TCodeQueryService.ScopeKey(const ASource: TQuerySource): string;
+var
+  mFiles: TArray<string>;
+begin
+  mFiles := Copy(ASource.Files);
+  TArray.Sort<string>(mFiles);
+  Result := LowerCase(ASource.Root + #1 + string.Join(#2, mFiles) + #1 + string.Join(#2, ASource.Namespaces));
 end;
 
 initialization

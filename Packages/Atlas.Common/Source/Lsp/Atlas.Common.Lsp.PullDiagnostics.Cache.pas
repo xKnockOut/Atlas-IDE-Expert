@@ -53,6 +53,8 @@ implementation
 uses
   Atlas.Common.Lsp.CompactJson;
 
+{ TPullReportCache }
+
 constructor TPullReportCache.Create;
 begin
   inherited Create;

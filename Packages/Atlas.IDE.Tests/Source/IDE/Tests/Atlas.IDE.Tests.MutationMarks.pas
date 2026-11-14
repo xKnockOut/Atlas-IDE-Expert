@@ -89,17 +89,6 @@ begin
   Result := TAtlasIdeSettings.Current.TestsMutation and (TAtlasIdeMutationRun.Current <> nil);
 end;
 
-procedure TAtlasIdeMutationMarks.Refresh;
-begin
-  FMarks := nil;
-  if TAtlasIdeMutationRun.Current = nil then
-  begin
-    Exit;
-  end;
-  FMarks := TAtlasIdeMutationRun.Current.MarksOf(FFileName, FLines);
-  FVersion := TAtlasIdeMutationRun.Current.Version;
-end;
-
 procedure TAtlasIdeMutationMarks.Track(const AFileName, AText: string; AOpened: Boolean);
 begin
   FFileName := AFileName;
@@ -119,27 +108,6 @@ begin
     Refresh;
   end;
   Result := Length(FMarks) > 0;
-end;
-
-function TAtlasIdeMutationMarks.MarkOf(const AFileName: string; ALine: Integer;
-  out AMark: TAtlasMutationLineMark): Boolean;
-var
-  mMark: TAtlasMutationLineMark;
-begin
-  AMark := Default(TAtlasMutationLineMark);
-  if not HasMarks(AFileName) then
-  begin
-    Exit(False);
-  end;
-  for mMark in FMarks do
-  begin
-    if mMark.Line = ALine then
-    begin
-      AMark := mMark;
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function TAtlasIdeMutationMarks.MarkAt(const AFileName: string; ALine: Integer; const ALineText: string;
@@ -202,6 +170,38 @@ begin
   AText := string.Join(#10, mLines);
   ATitle := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationTipTitle, [mTotals.Killed + mTotals.TimedOut,
     mTotals.Survived]);
+end;
+
+procedure TAtlasIdeMutationMarks.Refresh;
+begin
+  FMarks := nil;
+  if TAtlasIdeMutationRun.Current = nil then
+  begin
+    Exit;
+  end;
+  FMarks := TAtlasIdeMutationRun.Current.MarksOf(FFileName, FLines);
+  FVersion := TAtlasIdeMutationRun.Current.Version;
+end;
+
+function TAtlasIdeMutationMarks.MarkOf(const AFileName: string; ALine: Integer;
+  out AMark: TAtlasMutationLineMark): Boolean;
+var
+  mMark: TAtlasMutationLineMark;
+begin
+  AMark := Default(TAtlasMutationLineMark);
+  if not HasMarks(AFileName) then
+  begin
+    Exit(False);
+  end;
+  for mMark in FMarks do
+  begin
+    if mMark.Line = ALine then
+    begin
+      AMark := mMark;
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class procedure TAtlasIdeMutationMarks.ProvideIn(const AScope: IAtlasModuleScope);

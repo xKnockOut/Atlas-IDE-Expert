@@ -90,6 +90,8 @@ const
   // Feldnamen in YouTrack, keine Oberflächentexte.
   cAssigneeNames: array[0..3] of string = ('Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich'); // german-ok
 
+{ TAtlasYouTrackFlow }
+
 class function TAtlasYouTrackFlow.ProjectQuery(const ATarget: TAtlasTrackerTarget): string;
 var
   mProject: string;
@@ -396,6 +398,8 @@ type
     Error: TAtlasCiFetchError;
     function Get(const AUrl: string; out AText: string): Boolean;
   end;
+
+{ TFlowFetch }
 
 function TFlowFetch.Get(const AUrl: string; out AText: string): Boolean;
 var

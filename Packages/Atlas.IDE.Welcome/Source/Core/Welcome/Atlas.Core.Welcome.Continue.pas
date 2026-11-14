@@ -611,51 +611,6 @@ end;
 
 { TAtlasWelcomeContinue }
 
-class function TAtlasWelcomeContinue.SameFile(const A, B: string): Boolean;
-begin
-  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
-end;
-
-class function TAtlasWelcomeContinue.FileNameOf(const APath: string): string;
-var
-  mIndex: Integer;
-begin
-  // Ohne ExtractFileName: Die Pfade haben „\“, auch wenn die Tests nicht unter Windows laufen.
-  Result := Trim(APath);
-  for mIndex := Length(Result) downto 1 do
-  begin
-    if CharInSet(Result[mIndex], ['\', '/']) then
-    begin
-      Exit(Copy(Result, mIndex + 1, MaxInt));
-    end;
-  end;
-end;
-
-class function TAtlasWelcomeContinue.ToJson(const AState: TAtlasWorkState): string;
-var
-  mSection: TJSONObject;
-begin
-  mSection := SectionJson(AState);
-  try
-    Result := mSection.ToJSON;
-  finally
-    mSection.Free;
-  end;
-end;
-
-class function TAtlasWelcomeContinue.FromJson(const AJson: string; out AState: TAtlasWorkState): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  AState := TAtlasWorkState.Empty;
-  mValue := TJsonRead.Parse(AJson);
-  try
-    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
-  finally
-    mValue.Free;
-  end;
-end;
-
 class function TAtlasWelcomeContinue.Read(const ASummary: TAtlasProjectSummary; out AState: TAtlasWorkState): Boolean;
 var
   mValue: TJSONValue;
@@ -697,6 +652,31 @@ begin
     ASummary.Raw := mRoot.ToJSON;
   finally
     mRoot.Free;
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasWelcomeContinue.ToJson(const AState: TAtlasWorkState): string;
+var
+  mSection: TJSONObject;
+begin
+  mSection := SectionJson(AState);
+  try
+    Result := mSection.ToJSON;
+  finally
+    mSection.Free;
+  end;
+end;
+
+class function TAtlasWelcomeContinue.FromJson(const AJson: string; out AState: TAtlasWorkState): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AState := TAtlasWorkState.Empty;
+  mValue := TJsonRead.Parse(AJson);
+  try
+    Result := (mValue is TJSONObject) and StateOf(TJSONObject(mValue), AState);
+  finally
     mValue.Free;
   end;
 end;
@@ -786,57 +766,6 @@ begin
   end;
 end;
 
-/// <summary>Beschriftung eines Reiters ohne Markierungen (z. B. „*“ für geändert) und Leerraum.</summary>
-function CaptionName(const ACaption: string): string;
-begin
-  Result := Trim(ACaption);
-  while (Result <> '') and CharInSet(Result[Length(Result)], ['*', ' ']) do
-  begin
-    Delete(Result, Length(Result), 1);
-  end;
-  while (Result <> '') and CharInSet(Result[1], ['*', ' ', '&']) do
-  begin
-    Delete(Result, 1, 1);
-  end;
-end;
-
-class function TAtlasWelcomeContinue.OrderByTabs(const AFiles, ACaptions: TArray<string>): TArray<string>;
-var
-  mUsed: TArray<Boolean>;
-  mCaption, mName: string;
-  mIndex: Integer;
-begin
-  Result := nil;
-  SetLength(mUsed, Length(AFiles));
-  for mCaption in ACaptions do
-  begin
-    mName := CaptionName(mCaption);
-    if mName = '' then
-    begin
-      Continue;
-    end;
-    // Gleich benannte Dateien in verschiedenen Ordnern: die erste noch nicht vergebene. Die IDE zeigt Units
-    // auch ohne Endung („Kunde“ statt „Kunde.pas“).
-    for mIndex := 0 to High(AFiles) do
-    begin
-      if not mUsed[mIndex] and (SameText(FileNameOf(AFiles[mIndex]), mName) or
-        SameText(ChangeFileExt(FileNameOf(AFiles[mIndex]), ''), mName)) then
-      begin
-        mUsed[mIndex] := True;
-        Result := Result + [AFiles[mIndex]];
-        Break;
-      end;
-    end;
-  end;
-  for mIndex := 0 to High(AFiles) do
-  begin
-    if not mUsed[mIndex] then
-    begin
-      Result := Result + [AFiles[mIndex]];
-    end;
-  end;
-end;
-
 class function TAtlasWelcomeContinue.Plan(const AProject: string; const AState: TAtlasWorkState;
   const AExists: TAtlasContinueFileExists): TAtlasContinuePlan;
 var
@@ -901,6 +830,57 @@ begin
     Exit(TAtlasContinueAge.Yesterday);
   end;
   Result := TAtlasContinueAge.Date;
+end;
+
+/// <summary>Beschriftung eines Reiters ohne Markierungen (z. B. „*“ für geändert) und Leerraum.</summary>
+function CaptionName(const ACaption: string): string;
+begin
+  Result := Trim(ACaption);
+  while (Result <> '') and CharInSet(Result[Length(Result)], ['*', ' ']) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+  while (Result <> '') and CharInSet(Result[1], ['*', ' ', '&']) do
+  begin
+    Delete(Result, 1, 1);
+  end;
+end;
+
+class function TAtlasWelcomeContinue.OrderByTabs(const AFiles, ACaptions: TArray<string>): TArray<string>;
+var
+  mUsed: TArray<Boolean>;
+  mCaption, mName: string;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(mUsed, Length(AFiles));
+  for mCaption in ACaptions do
+  begin
+    mName := CaptionName(mCaption);
+    if mName = '' then
+    begin
+      Continue;
+    end;
+    // Gleich benannte Dateien in verschiedenen Ordnern: die erste noch nicht vergebene. Die IDE zeigt Units
+    // auch ohne Endung („Kunde“ statt „Kunde.pas“).
+    for mIndex := 0 to High(AFiles) do
+    begin
+      if not mUsed[mIndex] and (SameText(FileNameOf(AFiles[mIndex]), mName) or
+        SameText(ChangeFileExt(FileNameOf(AFiles[mIndex]), ''), mName)) then
+      begin
+        mUsed[mIndex] := True;
+        Result := Result + [AFiles[mIndex]];
+        Break;
+      end;
+    end;
+  end;
+  for mIndex := 0 to High(AFiles) do
+  begin
+    if not mUsed[mIndex] then
+    begin
+      Result := Result + [AFiles[mIndex]];
+    end;
+  end;
 end;
 
 class function TAtlasWelcomeContinue.Select(const ACommits: TArray<TAtlasVcsIncomingCommit>;
@@ -981,6 +961,26 @@ class function TAtlasWelcomeContinue.ProbeIncoming(const AVcs, AFetchVcs: IAtlas
   out AResult: TAtlasContinueIncoming): Boolean;
 begin
   Result := ProbeIncoming(AVcs, AFetchVcs, TAtlasContinueProbe.Create(AProject, '', AState, ANowUtc), AResult);
+end;
+
+class function TAtlasWelcomeContinue.SameFile(const A, B: string): Boolean;
+begin
+  Result := TAtlasProjectSummaries.NormalizedPath(A) = TAtlasProjectSummaries.NormalizedPath(B);
+end;
+
+class function TAtlasWelcomeContinue.FileNameOf(const APath: string): string;
+var
+  mIndex: Integer;
+begin
+  // Ohne ExtractFileName: Die Pfade haben „\“, auch wenn die Tests nicht unter Windows laufen.
+  Result := Trim(APath);
+  for mIndex := Length(Result) downto 1 do
+  begin
+    if CharInSet(Result[mIndex], ['\', '/']) then
+    begin
+      Exit(Copy(Result, mIndex + 1, MaxInt));
+    end;
+  end;
 end;
 
 function ResolvedOf(const AIncoming: IAtlasVcsIncoming; const ARevision: string; out AResolved: string): Boolean;

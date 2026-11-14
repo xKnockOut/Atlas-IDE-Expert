@@ -113,6 +113,94 @@ begin
   end;
 end;
 
+{ TAtlasIdeSearchAcrossFiles }
+
+class procedure TAtlasIdeSearchAcrossFiles.FileFound(const AHits: TAtlasFileHits);
+begin
+  if TAtlasIdeSearchSession.Files.List = nil then
+  begin
+    Exit;
+  end;
+  TAtlasIdeSearchSession.Files.List.Add(AHits);
+  if TAtlasIdeSearchSession.Files.Listed then
+  begin
+    TAtlasIdeSearchMessages.AddFile(AHits.FileName, TAtlasSearchResults.Entries(AHits.Lines, AHits.Hits,
+      TAtlasIdeSearchEditor.TabWidth));
+  end;
+  TAtlasIdeSearchCounter.Update;
+  RefreshReplaceWindow('');
+end;
+
+class procedure TAtlasIdeSearchAcrossFiles.Done(const ASummary: TAtlasFileSearchSummary);
+begin
+  if TAtlasIdeSearchSession.Files.List = nil then
+  begin
+    Exit;
+  end;
+  TAtlasIdeSearchSession.Files.Done := True;
+  if TAtlasIdeSearchSession.Bar <> nil then
+  begin
+    TAtlasIdeSearchSession.Bar.SetSearching(False);
+  end;
+  if TAtlasIdeSearchSession.Files.Listed then
+  begin
+    ListSummary(ASummary);
+  end;
+  TAtlasIdeSearchCounter.Update;
+  if ASummary.Cancelled and (TAtlasIdeSearchSession.Bar <> nil) then
+  begin
+    TAtlasIdeSearchSession.Bar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled,
+      [ASummary.Files]));
+  end;
+  RefreshReplaceWindow('');
+  // Was auf die fertige Suche gewartet hat (Alle ersetzen, F3); nicht nach einem Abbruch.
+  if ASummary.Cancelled then
+  begin
+    TAtlasIdeSearchSession.Files.After := nil;
+  end;
+  RunAfter;
+end;
+
+class procedure TAtlasIdeSearchAcrossFiles.ListSummary(const ASummary: TAtlasFileSearchSummary);
+begin
+  TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesDone,
+    [ASummary.Hits, ASummary.FilesWithHits, ASummary.Files]));
+  if ASummary.Skipped > 0 then
+  begin
+    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesSkipped,
+      [ASummary.Skipped]));
+  end;
+  if ASummary.Cancelled then
+  begin
+    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled,
+      [ASummary.Files]));
+  end;
+end;
+
+/// <summary>Keine Datei im Bereich (kein Projekt geöffnet): fertig mit nichts.</summary>
+class procedure TAtlasIdeSearchAcrossFiles.NoFiles;
+begin
+  TAtlasIdeSearchSession.Files.Done := True;
+  if TAtlasIdeSearchSession.Files.Listed then
+  begin
+    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
+  end;
+  if TAtlasIdeSearchSession.Bar <> nil then
+  begin
+    TAtlasIdeSearchSession.Bar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
+  end;
+  RunAfter;
+end;
+
+class procedure TAtlasIdeSearchAcrossFiles.StartListing;
+var
+  mLast: TAtlasSearchQuery;
+begin
+  mLast := TAtlasIdeSearchSession.Last;
+  TAtlasIdeSearchMessages.Start(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesTitle,
+    [mLast.Text, TAtlasIdeSearchSession.IdentifierMode, TAtlasSearchBar.ScopeCaption(mLast.Scope)]));
+end;
+
 class procedure TAtlasIdeSearchAcrossFiles.Tick;
 begin
   StopTimer;
@@ -140,30 +228,6 @@ begin
   begin
     TAtlasIdeSearchSession.Files.Timer.Enabled := True;
   end;
-end;
-
-class procedure TAtlasIdeSearchAcrossFiles.StartListing;
-var
-  mLast: TAtlasSearchQuery;
-begin
-  mLast := TAtlasIdeSearchSession.Last;
-  TAtlasIdeSearchMessages.Start(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesTitle,
-    [mLast.Text, TAtlasIdeSearchSession.IdentifierMode, TAtlasSearchBar.ScopeCaption(mLast.Scope)]));
-end;
-
-/// <summary>Keine Datei im Bereich (kein Projekt geöffnet): fertig mit nichts.</summary>
-class procedure TAtlasIdeSearchAcrossFiles.NoFiles;
-begin
-  TAtlasIdeSearchSession.Files.Done := True;
-  if TAtlasIdeSearchSession.Files.Listed then
-  begin
-    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
-  end;
-  if TAtlasIdeSearchSession.Bar <> nil then
-  begin
-    TAtlasIdeSearchSession.Bar.SetCounter(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchNoFiles));
-  end;
-  RunAfter;
 end;
 
 class procedure TAtlasIdeSearchAcrossFiles.Start(AListed: Boolean; const AThen: TProc);
@@ -203,68 +267,6 @@ begin
     TAtlasIdeSearchSession.Bar.SetSearching(True);
   end;
   TAtlasIdeSearchCounter.Update;
-end;
-
-class procedure TAtlasIdeSearchAcrossFiles.FileFound(const AHits: TAtlasFileHits);
-begin
-  if TAtlasIdeSearchSession.Files.List = nil then
-  begin
-    Exit;
-  end;
-  TAtlasIdeSearchSession.Files.List.Add(AHits);
-  if TAtlasIdeSearchSession.Files.Listed then
-  begin
-    TAtlasIdeSearchMessages.AddFile(AHits.FileName, TAtlasSearchResults.Entries(AHits.Lines, AHits.Hits,
-      TAtlasIdeSearchEditor.TabWidth));
-  end;
-  TAtlasIdeSearchCounter.Update;
-  RefreshReplaceWindow('');
-end;
-
-class procedure TAtlasIdeSearchAcrossFiles.ListSummary(const ASummary: TAtlasFileSearchSummary);
-begin
-  TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesDone,
-    [ASummary.Hits, ASummary.FilesWithHits, ASummary.Files]));
-  if ASummary.Skipped > 0 then
-  begin
-    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesSkipped,
-      [ASummary.Skipped]));
-  end;
-  if ASummary.Cancelled then
-  begin
-    TAtlasIdeSearchMessages.AddTitle(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled,
-      [ASummary.Files]));
-  end;
-end;
-
-class procedure TAtlasIdeSearchAcrossFiles.Done(const ASummary: TAtlasFileSearchSummary);
-begin
-  if TAtlasIdeSearchSession.Files.List = nil then
-  begin
-    Exit;
-  end;
-  TAtlasIdeSearchSession.Files.Done := True;
-  if TAtlasIdeSearchSession.Bar <> nil then
-  begin
-    TAtlasIdeSearchSession.Bar.SetSearching(False);
-  end;
-  if TAtlasIdeSearchSession.Files.Listed then
-  begin
-    ListSummary(ASummary);
-  end;
-  TAtlasIdeSearchCounter.Update;
-  if ASummary.Cancelled and (TAtlasIdeSearchSession.Bar <> nil) then
-  begin
-    TAtlasIdeSearchSession.Bar.SetCounter(TAtlasSearchStrings.Fmt(TAtlasSearchTextId.SearchFilesCancelled,
-      [ASummary.Files]));
-  end;
-  RefreshReplaceWindow('');
-  // Was auf die fertige Suche gewartet hat (Alle ersetzen, F3); nicht nach einem Abbruch.
-  if ASummary.Cancelled then
-  begin
-    TAtlasIdeSearchSession.Files.After := nil;
-  end;
-  RunAfter;
 end;
 
 class procedure TAtlasIdeSearchAcrossFiles.List;
@@ -330,32 +332,6 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSearchAcrossFiles.OpenHit(const AFileName: string; ALine, ACharacter: Integer);
-var
-  mView: IOTAEditView;
-  mLines: TArray<string>;
-  mHits: TArray<TAtlasSearchHit>;
-  mIndex: Integer;
-  mWrapped: Boolean;
-begin
-  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, 0);
-  if not TAtlasIdeSearchEditor.TopView(mView) or not SameText(mView.Buffer.FileName, AFileName) then
-  begin
-    Exit;
-  end;
-  // Mit dem aktuellen Text: Der Treffer kann sich seit der Suche verschoben haben.
-  mLines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer));
-  mHits := TAtlasTextSearch.FindAll(mLines, TAtlasIdeSearchSession.Last.Text, TAtlasIdeSearchSession.Last.Options,
-    TAtlasSearchArea.Whole(mLines));
-  if Length(mHits) = 0 then
-  begin
-    Exit;
-  end;
-  mIndex := TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(ALine, ACharacter), False, mWrapped);
-  TAtlasIdeSearchEditor.SelectHit(mView, mLines, mHits[mIndex]);
-  TAtlasIdeSearchSession.Repaint;
-end;
-
 class function TAtlasIdeSearchAcrossFiles.Next(ABackward: Boolean): Boolean;
 var
   mView: IOTAEditView;
@@ -411,6 +387,32 @@ begin
   begin
     OpenHit(mResults[mLocation.FileIndex].FileName, mHit.Line, mHit.Character);
   end;
+end;
+
+class procedure TAtlasIdeSearchAcrossFiles.OpenHit(const AFileName: string; ALine, ACharacter: Integer);
+var
+  mView: IOTAEditView;
+  mLines: TArray<string>;
+  mHits: TArray<TAtlasSearchHit>;
+  mIndex: Integer;
+  mWrapped: Boolean;
+begin
+  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, 0);
+  if not TAtlasIdeSearchEditor.TopView(mView) or not SameText(mView.Buffer.FileName, AFileName) then
+  begin
+    Exit;
+  end;
+  // Mit dem aktuellen Text: Der Treffer kann sich seit der Suche verschoben haben.
+  mLines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(mView.Buffer));
+  mHits := TAtlasTextSearch.FindAll(mLines, TAtlasIdeSearchSession.Last.Text, TAtlasIdeSearchSession.Last.Options,
+    TAtlasSearchArea.Whole(mLines));
+  if Length(mHits) = 0 then
+  begin
+    Exit;
+  end;
+  mIndex := TAtlasTextSearch.Next(mHits, TAtlasSearchPos.Create(ALine, ACharacter), False, mWrapped);
+  TAtlasIdeSearchEditor.SelectHit(mView, mLines, mHits[mIndex]);
+  TAtlasIdeSearchSession.Repaint;
 end;
 
 end.

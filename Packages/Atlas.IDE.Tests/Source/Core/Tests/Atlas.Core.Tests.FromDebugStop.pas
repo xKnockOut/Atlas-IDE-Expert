@@ -169,6 +169,8 @@ begin
   end;
 end;
 
+{ TAtlasTestFromDebugStop }
+
 class function TAtlasTestFromDebugStop.HeaderArguments(const AHeader: string): TArray<string>;
 var
   mIndex, mDepth, mStart: Integer;

@@ -271,6 +271,8 @@ type
     procedure CheckBetween(const AAttributes: TArray<TSyntaxNode>);
   end;
 
+{ TTableReader }
+
 procedure TTableReader.Refuse(const AReason: string);
 begin
   if Table.Editable then
@@ -392,6 +394,8 @@ begin
   mReader.Table.Indent := TTextLines.IndentOf(AText, mReader.First.StartPos.Line);
   ATable := mReader.Table;
 end;
+
+{ TTestCaseTables }
 
 class function TTestCaseTables.All(ATree: TSyntaxTree; const AText: string): TArray<TTestCaseTable>;
 var

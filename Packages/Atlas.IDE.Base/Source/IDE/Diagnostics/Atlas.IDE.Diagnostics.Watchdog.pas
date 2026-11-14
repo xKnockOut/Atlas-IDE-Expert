@@ -95,24 +95,6 @@ function InternalGetWindowText(AHWnd: HWND; APString: PWideChar; ACchMaxCount: I
 
 { TAtlasWatchdog.TWatchThread }
 
-function TAtlasWatchdog.TWatchThread.AwaitPong(ASeq: Integer; ASentAt: Int64; out AHang: TAtlasHang): Boolean;
-begin
-  Result := False;
-  AHang := Default(TAtlasHang);
-  while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> ASeq) do
-  begin
-    FOwner.FWake.WaitFor(25);
-    if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
-    begin
-      Result := True;
-      AHang.At := Now;
-      AHang.Activity := TAtlasActivity.Running;
-      AHang.Window := ForegroundWindowText;
-      FOwner.Capture;
-    end;
-  end;
-end;
-
 procedure TAtlasWatchdog.TWatchThread.Execute;
 var
   mSeq: Integer;
@@ -185,6 +167,24 @@ begin
     end);
 end;
 
+function TAtlasWatchdog.TWatchThread.AwaitPong(ASeq: Integer; ASentAt: Int64; out AHang: TAtlasHang): Boolean;
+begin
+  Result := False;
+  AHang := Default(TAtlasHang);
+  while not Terminated and (TInterlocked.CompareExchange(FOwner.FPong, 0, 0) <> ASeq) do
+  begin
+    FOwner.FWake.WaitFor(25);
+    if not Result and (NowMs - ASentAt >= TInterlocked.CompareExchange(FOwner.FThresholdMs, 0, 0)) and Running then
+    begin
+      Result := True;
+      AHang.At := Now;
+      AHang.Activity := TAtlasActivity.Running;
+      AHang.Window := ForegroundWindowText;
+      FOwner.Capture;
+    end;
+  end;
+end;
+
 { TAtlasWatchdog }
 
 constructor TAtlasWatchdog.Create(const AThreshold: TFunc<Integer>);
@@ -232,16 +232,6 @@ begin
   end;
   FWake.Free;
   inherited;
-end;
-
-class function TAtlasWatchdog.NowMs: Int64;
-begin
-  Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
-end;
-
-class function TAtlasWatchdog.Timestamp: Int64;
-begin
-  Result := NowMs;
 end;
 
 procedure TAtlasWatchdog.WndProc(var AMessage: TMessage);
@@ -328,6 +318,11 @@ begin
   end;
 end;
 
+class function TAtlasWatchdog.NowMs: Int64;
+begin
+  Result := TStopwatch.GetTimeStamp div (TStopwatch.Frequency div 1000);
+end;
+
 class function TAtlasWatchdog.ForegroundWindowText: string;
 var
   mWindow: HWND;
@@ -346,6 +341,11 @@ begin
   begin
     SetString(Result, PWideChar(@mBuffer[0]), mLength_);
   end;
+end;
+
+class function TAtlasWatchdog.Timestamp: Int64;
+begin
+  Result := NowMs;
 end;
 
 end.

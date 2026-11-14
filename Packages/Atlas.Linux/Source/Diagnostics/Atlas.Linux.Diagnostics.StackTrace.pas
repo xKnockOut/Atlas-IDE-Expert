@@ -32,6 +32,8 @@ implementation
 var
   GInstalled: Boolean;
 
+{ TStackTrace }
+
 class procedure TStackTrace.Install;
 begin
   GInstalled := True;
@@ -45,11 +47,6 @@ end;
 class function TStackTrace.Installed: Boolean;
 begin
   Result := GInstalled;
-end;
-
-class function TStackTrace.DescribeAddress(AAddress: Pointer): string;
-begin
-  Result := Trim(string(BackTraceStrFunc(AAddress)));
 end;
 
 class function TStackTrace.Current: string;
@@ -81,6 +78,11 @@ begin
   begin
     Result := Result + DescribeAddress(mFrames[mIndex]) + sLineBreak;
   end;
+end;
+
+class function TStackTrace.DescribeAddress(AAddress: Pointer): string;
+begin
+  Result := Trim(string(BackTraceStrFunc(AAddress)));
 end;
 
 end.

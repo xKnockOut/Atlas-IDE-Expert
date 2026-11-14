@@ -340,6 +340,8 @@ begin
   Result.Column := AColumn;
 end;
 
+{ TAtlasSmartPaste }
+
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
 begin
   if SameText(AValue, cModeBoth) then

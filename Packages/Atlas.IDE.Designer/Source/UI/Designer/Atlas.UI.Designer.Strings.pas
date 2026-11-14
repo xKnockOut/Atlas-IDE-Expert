@@ -1179,14 +1179,14 @@ begin
   Result := cTexts[TAtlasStrings.Language, AId];
 end;
 
-class function TAtlasDesignerStrings.TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerTextId): string;
-begin
-  Result := cTexts[ALanguage, AId];
-end;
-
 class function TAtlasDesignerStrings.Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string;
 begin
   Result := Format(cTexts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+class function TAtlasDesignerStrings.TextIn(ALanguage: TAtlasLanguage; AId: TAtlasDesignerTextId): string;
+begin
+  Result := cTexts[ALanguage, AId];
 end;
 
 end.

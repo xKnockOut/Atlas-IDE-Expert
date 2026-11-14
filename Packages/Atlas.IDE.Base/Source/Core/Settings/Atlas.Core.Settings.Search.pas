@@ -208,39 +208,6 @@ end;
 
 { TAtlasSettingsSearch }
 
-class function TAtlasSettingsSearch.Words(const AText: string): TArray<string>;
-begin
-  Result := LowerCase(Trim(AText)).Split([' '], TStringSplitOptions.ExcludeEmpty);
-end;
-
-class function TAtlasSettingsSearch.CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string;
-begin
-  if AEnglish then
-  begin
-    Result := AEntry.CaptionEn;
-    if Result = '' then
-    begin
-      Result := AEntry.Caption;
-    end;
-  end
-  else
-  begin
-    Result := AEntry.Caption;
-    if Result = '' then
-    begin
-      Result := AEntry.CaptionEn;
-    end;
-  end;
-  if Result = '' then
-  begin
-    Result := FirstSentence(AEntry.Description);
-  end;
-  if Result = '' then
-  begin
-    Result := AEntry.Key;
-  end;
-end;
-
 class function TAtlasSettingsSearch.TextScore(const AWord, AText: string): Integer;
 var
   mText, mPart: string;
@@ -323,6 +290,57 @@ begin
       end;
     end;
   end;
+end;
+
+class function TAtlasSettingsSearch.InheritedKeywords(ACatalog: TAtlasSettingsCatalog;
+  AGroups: TAtlasSettingsGroups; const AName: string): TArray<string>;
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mName in AGroups.AncestorsOf(AName) do
+  begin
+    mIndex := ACatalog.IndexOfName(mName);
+    if mIndex >= 0 then
+    begin
+      Result := Result + ACatalog[mIndex].Keywords;
+    end;
+  end;
+  mIndex := ACatalog.IndexOfName(AName);
+  if (mIndex >= 0) and (ACatalog[mIndex].Format = 'shortcut') then
+  begin
+    for mName in cShortcutKeywords do
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
+class function TAtlasSettingsSearch.HitOf(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
+  const AEntry: TAtlasCatalogEntry; AEnglish: Boolean; const ALabel: string): TAtlasSettingHit;
+var
+  mNode: string;
+begin
+  Result := Default(TAtlasSettingHit);
+  Result.Name := AEntry.Name;
+  Result.Key := AEntry.Key;
+  Result.Caption := ALabel;
+  if Result.Caption = '' then
+  begin
+    Result.Caption := CaptionOf(AEntry, AEnglish);
+  end;
+  Result.Module := TAtlasSettingsNodeScope.ModuleOf(ACatalog, AGroups, AEntry.Name);
+  Result.AreaCaption := ACatalog.AreaCaption(AEntry.Area, AEnglish);
+  mNode := AGroups.NodeOf(AEntry.Name);
+  if mNode <> '' then
+  begin
+    Result.NodeCaption := AGroups.NodeCaption(mNode, AEnglish);
+  end;
+  Result.Experimental := AGroups.IsExperimental(AEntry.Name);
+  Result.QuickToggle := AEntry.QuickToggle and (AEntry.Kind = akBoolean);
+  Result.TeamPath := AEntry.TeamPath;
+  Result.ProjectPath := AEntry.ProjectPath;
 end;
 
 /// <summary>Unterscheiden sich AWord und APart (ohne Groß-/Kleinschreibung) nur durch zwei vertauschte
@@ -446,29 +464,28 @@ begin
   end;
 end;
 
-class function TAtlasSettingsSearch.InheritedKeywords(ACatalog: TAtlasSettingsCatalog;
-  AGroups: TAtlasSettingsGroups; const AName: string): TArray<string>;
+class procedure TAtlasSettingsSearch.SortHits(var AHits: TArray<TAtlasSettingHit>);
 var
-  mName: string;
-  mIndex: Integer;
+  mIndex, mPlace: Integer;
+  mHit: TAtlasSettingHit;
 begin
-  Result := nil;
-  for mName in AGroups.AncestorsOf(AName) do
+  // Einfügen von hinten: stabil, bei gleicher Punktzahl bleibt die Katalogreihenfolge.
+  for mIndex := 1 to High(AHits) do
   begin
-    mIndex := ACatalog.IndexOfName(mName);
-    if mIndex >= 0 then
+    mHit := AHits[mIndex];
+    mPlace := mIndex;
+    while (mPlace > 0) and (AHits[mPlace - 1].Score < mHit.Score) do
     begin
-      Result := Result + ACatalog[mIndex].Keywords;
+      AHits[mPlace] := AHits[mPlace - 1];
+      Dec(mPlace);
     end;
+    AHits[mPlace] := mHit;
   end;
-  mIndex := ACatalog.IndexOfName(AName);
-  if (mIndex >= 0) and (ACatalog[mIndex].Format = 'shortcut') then
-  begin
-    for mName in cShortcutKeywords do
-    begin
-      Result := Result + [mName];
-    end;
-  end;
+end;
+
+class function TAtlasSettingsSearch.Words(const AText: string): TArray<string>;
+begin
+  Result := LowerCase(Trim(AText)).Split([' '], TStringSplitOptions.ExcludeEmpty);
 end;
 
 class function TAtlasSettingsSearch.Score(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
@@ -493,57 +510,6 @@ begin
     end;
     Inc(Result, mPoints);
   end;
-end;
-
-class function TAtlasSettingsSearch.HitOf(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
-  const AEntry: TAtlasCatalogEntry; AEnglish: Boolean; const ALabel: string): TAtlasSettingHit;
-var
-  mNode: string;
-begin
-  Result := Default(TAtlasSettingHit);
-  Result.Name := AEntry.Name;
-  Result.Key := AEntry.Key;
-  Result.Caption := ALabel;
-  if Result.Caption = '' then
-  begin
-    Result.Caption := CaptionOf(AEntry, AEnglish);
-  end;
-  Result.Module := TAtlasSettingsNodeScope.ModuleOf(ACatalog, AGroups, AEntry.Name);
-  Result.AreaCaption := ACatalog.AreaCaption(AEntry.Area, AEnglish);
-  mNode := AGroups.NodeOf(AEntry.Name);
-  if mNode <> '' then
-  begin
-    Result.NodeCaption := AGroups.NodeCaption(mNode, AEnglish);
-  end;
-  Result.Experimental := AGroups.IsExperimental(AEntry.Name);
-  Result.QuickToggle := AEntry.QuickToggle and (AEntry.Kind = akBoolean);
-  Result.TeamPath := AEntry.TeamPath;
-  Result.ProjectPath := AEntry.ProjectPath;
-end;
-
-class procedure TAtlasSettingsSearch.SortHits(var AHits: TArray<TAtlasSettingHit>);
-var
-  mIndex, mPlace: Integer;
-  mHit: TAtlasSettingHit;
-begin
-  // Einfügen von hinten: stabil, bei gleicher Punktzahl bleibt die Katalogreihenfolge.
-  for mIndex := 1 to High(AHits) do
-  begin
-    mHit := AHits[mIndex];
-    mPlace := mIndex;
-    while (mPlace > 0) and (AHits[mPlace - 1].Score < mHit.Score) do
-    begin
-      AHits[mPlace] := AHits[mPlace - 1];
-      Dec(mPlace);
-    end;
-    AHits[mPlace] := mHit;
-  end;
-end;
-
-class function TAtlasSettingsSearch.Find(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
-  const AText: string; AEnglish: Boolean; AMax: Integer): TArray<TAtlasSettingHit>;
-begin
-  Result := Find(ACatalog, AGroups, AText, AEnglish, AMax, TAtlasSettingsSearchHooks.Create(nil, nil));
 end;
 
 class function TAtlasSettingsSearch.Find(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
@@ -590,6 +556,12 @@ begin
   begin
     SetLength(Result, Larger(AMax, 0));
   end;
+end;
+
+class function TAtlasSettingsSearch.Find(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
+  const AText: string; AEnglish: Boolean; AMax: Integer): TArray<TAtlasSettingHit>;
+begin
+  Result := Find(ACatalog, AGroups, AText, AEnglish, AMax, TAtlasSettingsSearchHooks.Create(nil, nil));
 end;
 
 class procedure TAtlasSettingsSearch.Annotate(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
@@ -660,6 +632,34 @@ begin
     mParts := mParts + [Format(UiText(TSearchText.Project), [AHit.ProjectPath])];
   end;
   Result := string.Join(UiText(TSearchText.Separator), mParts);
+end;
+
+class function TAtlasSettingsSearch.CaptionOf(const AEntry: TAtlasCatalogEntry; AEnglish: Boolean): string;
+begin
+  if AEnglish then
+  begin
+    Result := AEntry.CaptionEn;
+    if Result = '' then
+    begin
+      Result := AEntry.Caption;
+    end;
+  end
+  else
+  begin
+    Result := AEntry.Caption;
+    if Result = '' then
+    begin
+      Result := AEntry.CaptionEn;
+    end;
+  end;
+  if Result = '' then
+  begin
+    Result := FirstSentence(AEntry.Description);
+  end;
+  if Result = '' then
+  begin
+    Result := AEntry.Key;
+  end;
 end;
 
 initialization

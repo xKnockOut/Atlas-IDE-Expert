@@ -126,34 +126,6 @@ end;
 
 { TAtlasBugReport }
 
-class function TAtlasBugReport.AnonymizePaths(const AText: string; const ARoots, AIdentity: TArray<string>): string;
-begin
-  Result := TTextAnonymizer.AnonymizePaths(AText, ARoots, AIdentity);
-end;
-
-class function TAtlasBugReport.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;
-begin
-  Result := TTextAnonymizer.AnonymizeLogLine(ALine, ARoots, AIdentity);
-end;
-
-class function TAtlasBugReport.ServerArguments(const AInput: TAtlasBugReportInput): string;
-var
-  mOptions: TJSONObject;
-  mArguments: TJSONArray;
-begin
-  mArguments := TJSONArray.Create;
-  try
-    mOptions := TJSONObject.Create;
-    mArguments.AddElement(mOptions);
-    mOptions.AddPair('anonymize', TJSONBool.Create(AInput.Anonymize));
-    mOptions.AddPair('client', Format('Atlas-Plugin %s, IDE %s, %s', [AInput.PluginVersion, AInput.IdeVersion,
-      AInput.Platform]));
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
-  end;
-end;
-
 class procedure TAtlasBugReport.AppendPlugin(ABuilder: TStringBuilder; const AInput: TAtlasBugReportInput);
 begin
   ABuilder.Append('## Plugin').Append(sLineBreak).Append(sLineBreak);
@@ -223,6 +195,34 @@ begin
     mText := '#' + mText;
   end;
   ABuilder.Append(mText.TrimRight).Append(sLineBreak);
+end;
+
+class function TAtlasBugReport.ServerArguments(const AInput: TAtlasBugReportInput): string;
+var
+  mOptions: TJSONObject;
+  mArguments: TJSONArray;
+begin
+  mArguments := TJSONArray.Create;
+  try
+    mOptions := TJSONObject.Create;
+    mArguments.AddElement(mOptions);
+    mOptions.AddPair('anonymize', TJSONBool.Create(AInput.Anonymize));
+    mOptions.AddPair('client', Format('Atlas-Plugin %s, IDE %s, %s', [AInput.PluginVersion, AInput.IdeVersion,
+      AInput.Platform]));
+    Result := mArguments.ToJSON;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+class function TAtlasBugReport.AnonymizePaths(const AText: string; const ARoots, AIdentity: TArray<string>): string;
+begin
+  Result := TTextAnonymizer.AnonymizePaths(AText, ARoots, AIdentity);
+end;
+
+class function TAtlasBugReport.AnonymizeLogLine(const ALine: string; const ARoots, AIdentity: TArray<string>): string;
+begin
+  Result := TTextAnonymizer.AnonymizeLogLine(ALine, ARoots, AIdentity);
 end;
 
 /// <summary>Zusatz zur Überschrift des Plugin-Protokolls: geschrieben mit Klarnamen (#1478).</summary>

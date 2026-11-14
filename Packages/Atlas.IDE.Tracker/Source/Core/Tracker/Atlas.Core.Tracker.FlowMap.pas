@@ -288,6 +288,8 @@ type
     procedure AddStay(const AState: string; AFrom, ATo: TDateTime);
   end;
 
+{ TFlowBuild }
+
 function TFlowBuild.StateIndex(const AName: string): Integer;
 var
   mState: TAtlasFlowState;
@@ -694,6 +696,8 @@ begin
     end;
   end;
 end;
+
+{ TAtlasFlowMap }
 
 class function TAtlasFlowMap.Build(const AData: TAtlasFlowData; ANow: TDateTime; AStuckDays: Integer): TAtlasFlowMap;
 var

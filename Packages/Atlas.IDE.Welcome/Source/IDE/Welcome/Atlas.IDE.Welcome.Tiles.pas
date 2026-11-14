@@ -163,6 +163,24 @@ begin
   inherited Destroy;
 end;
 
+function TAtlasWelcomeTileFrame.BodyHeight: Integer;
+begin
+  Result := 0;
+  if FView <> nil then
+  begin
+    Result := FView.BodyHeight;
+  end;
+end;
+
+procedure TAtlasWelcomeTileFrame.UpdateContent;
+begin
+  if FView <> nil then
+  begin
+    FView.UpdateContent;
+  end;
+  inherited UpdateContent;
+end;
+
 procedure TAtlasWelcomeTileFrame.Attach(const AView: IAtlasWelcomeTileView);
 var
   mControl: TWinControl;
@@ -198,24 +216,6 @@ end;
 function TAtlasWelcomeTileFrame.HasView: Boolean;
 begin
   Result := FView <> nil;
-end;
-
-function TAtlasWelcomeTileFrame.BodyHeight: Integer;
-begin
-  Result := 0;
-  if FView <> nil then
-  begin
-    Result := FView.BodyHeight;
-  end;
-end;
-
-procedure TAtlasWelcomeTileFrame.UpdateContent;
-begin
-  if FView <> nil then
-  begin
-    FView.UpdateContent;
-  end;
-  inherited UpdateContent;
 end;
 
 { TAtlasIdeWelcomeTiles.TBoard }
@@ -308,96 +308,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeWelcomeTiles.Start(const AProjects: TAtlasWelcomeProjectsAccess);
-begin
-  if FWatch <> nil then
-  begin
-    Exit;
-  end;
-  FWatch := TAtlasProvidedWatch.Create(FRegistry, IAtlasWelcomeTile);
-  FWatch.OnChanged := Sync;
-  Sync;
-  ProvideServices(AProjects);
-end;
-
-procedure TAtlasIdeWelcomeTiles.Stop;
-var
-  mId: string;
-  mFrame: TAtlasWelcomeTileFrame;
-begin
-  if FWatch = nil then
-  begin
-    Exit;
-  end;
-  RevokeServices;
-  FreeAndNil(FWatch);
-  for mId in FTiles.Keys.ToArray do
-  begin
-    Withdraw(mId);
-  end;
-  // Die Rahmen gehören der Seite und leben weiter; sie melden sich nicht mehr hier ab.
-  for mFrame in FFrames do
-  begin
-    mFrame.FTiles := nil;
-  end;
-  FFrames.Clear;
-end;
-
-procedure TAtlasIdeWelcomeTiles.ProvideServices(const AProjects: TAtlasWelcomeProjectsAccess);
-begin
-  if (FRegistry = nil) or not Assigned(FProvide) then
-  begin
-    Exit;
-  end;
-  FBoard := TBoard.Create;
-  FBoard.FOwner := Self;
-  FBoardRef := FBoard;
-  FProjects := TProjects.Create;
-  FProjects.FAccess := AProjects;
-  FProjectsRef := FProjects;
-  FProvided := [FProvide(IAtlasWelcomeBoard, FBoardRef), FProvide(IAtlasWelcomeProjects, FProjectsRef)];
-end;
-
-procedure TAtlasIdeWelcomeTiles.RevokeServices;
-var
-  mIndex: Integer;
-begin
-  // Zuerst kappen: Wer Board oder Projekte noch hält, erreicht nichts mehr.
-  if FBoard <> nil then
-  begin
-    FBoard.FOwner := nil;
-  end;
-  if FProjects <> nil then
-  begin
-    FProjects.FStopped := True;
-    FProjects.FAccess := Default(TAtlasWelcomeProjectsAccess);
-  end;
-  for mIndex := High(FProvided) downto 0 do
-  begin
-    FProvided[mIndex].Revoke;
-  end;
-  FProvided := nil;
-  FBoard := nil;
-  FBoardRef := nil;
-  FProjects := nil;
-  FProjectsRef := nil;
-end;
-
-function TAtlasIdeWelcomeTiles.Current: TDictionary<string, IAtlasWelcomeTile>;
-var
-  mItem: IInterface;
-  mTile: IAtlasWelcomeTile;
-begin
-  Result := TDictionary<string, IAtlasWelcomeTile>.Create;
-  for mItem in FWatch.Items do
-  begin
-    if Supports(mItem, IAtlasWelcomeTile, mTile) then
-    begin
-      Result.AddOrSetValue(mTile.Info.Id, mTile);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeWelcomeTiles.Sync;
 var
   mNow: TDictionary<string, IAtlasWelcomeTile>;
@@ -426,6 +336,21 @@ begin
     end;
   finally
     mNow.Free;
+  end;
+end;
+
+function TAtlasIdeWelcomeTiles.Current: TDictionary<string, IAtlasWelcomeTile>;
+var
+  mItem: IInterface;
+  mTile: IAtlasWelcomeTile;
+begin
+  Result := TDictionary<string, IAtlasWelcomeTile>.Create;
+  for mItem in FWatch.Items do
+  begin
+    if Supports(mItem, IAtlasWelcomeTile, mTile) then
+    begin
+      Result.AddOrSetValue(mTile.Info.Id, mTile);
+    end;
   end;
 end;
 
@@ -480,6 +405,87 @@ begin
   FFrames.Remove(AFrame);
 end;
 
+procedure TAtlasIdeWelcomeTiles.ProvideServices(const AProjects: TAtlasWelcomeProjectsAccess);
+begin
+  if (FRegistry = nil) or not Assigned(FProvide) then
+  begin
+    Exit;
+  end;
+  FBoard := TBoard.Create;
+  FBoard.FOwner := Self;
+  FBoardRef := FBoard;
+  FProjects := TProjects.Create;
+  FProjects.FAccess := AProjects;
+  FProjectsRef := FProjects;
+  FProvided := [FProvide(IAtlasWelcomeBoard, FBoardRef), FProvide(IAtlasWelcomeProjects, FProjectsRef)];
+end;
+
+procedure TAtlasIdeWelcomeTiles.RevokeServices;
+var
+  mIndex: Integer;
+begin
+  // Zuerst kappen: Wer Board oder Projekte noch hält, erreicht nichts mehr.
+  if FBoard <> nil then
+  begin
+    FBoard.FOwner := nil;
+  end;
+  if FProjects <> nil then
+  begin
+    FProjects.FStopped := True;
+    FProjects.FAccess := Default(TAtlasWelcomeProjectsAccess);
+  end;
+  for mIndex := High(FProvided) downto 0 do
+  begin
+    FProvided[mIndex].Revoke;
+  end;
+  FProvided := nil;
+  FBoard := nil;
+  FBoardRef := nil;
+  FProjects := nil;
+  FProjectsRef := nil;
+end;
+
+procedure TAtlasIdeWelcomeTiles.Start(const AProjects: TAtlasWelcomeProjectsAccess);
+begin
+  if FWatch <> nil then
+  begin
+    Exit;
+  end;
+  FWatch := TAtlasProvidedWatch.Create(FRegistry, IAtlasWelcomeTile);
+  FWatch.OnChanged := Sync;
+  Sync;
+  ProvideServices(AProjects);
+end;
+
+procedure TAtlasIdeWelcomeTiles.Stop;
+var
+  mId: string;
+  mFrame: TAtlasWelcomeTileFrame;
+begin
+  if FWatch = nil then
+  begin
+    Exit;
+  end;
+  RevokeServices;
+  FreeAndNil(FWatch);
+  for mId in FTiles.Keys.ToArray do
+  begin
+    Withdraw(mId);
+  end;
+  // Die Rahmen gehören der Seite und leben weiter; sie melden sich nicht mehr hier ab.
+  for mFrame in FFrames do
+  begin
+    mFrame.FTiles := nil;
+  end;
+  FFrames.Clear;
+end;
+
+function TAtlasIdeWelcomeTiles.TileIds: TArray<string>;
+begin
+  Result := FTiles.Keys.ToArray;
+  TArray.Sort<string>(Result);
+end;
+
 function TAtlasIdeWelcomeTiles.FramesOf(const AId: string): TArray<TAtlasWelcomeTileFrame>;
 var
   mFrame: TAtlasWelcomeTileFrame;
@@ -492,12 +498,6 @@ begin
       Result := Result + [mFrame];
     end;
   end;
-end;
-
-function TAtlasIdeWelcomeTiles.TileIds: TArray<string>;
-begin
-  Result := FTiles.Keys.ToArray;
-  TArray.Sort<string>(Result);
 end;
 
 class function TAtlasIdeWelcomeTiles.SectionOf(const ATile: IAtlasWelcomeTile): TAtlasWelcomeSection;

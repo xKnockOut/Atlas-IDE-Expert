@@ -1080,6 +1080,8 @@ begin
   end;
 end;
 
+{ TCompilerWarningsDisabledRule }
+
 function TCompilerWarningsDisabledRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cCompilerWarningsDisabledRuleId, TRuleSeverity.Warning,
@@ -1337,6 +1339,8 @@ function IncludeKey(const AName: string): string;
 begin
   Result := LowerCase(StringReplace(AName, '/', '\', [rfReplaceAll]));
 end;
+
+{ TCompilerDirectiveInvalidRule }
 
 function TCompilerDirectiveInvalidRule.Descriptor: TRuleDescriptor;
 begin

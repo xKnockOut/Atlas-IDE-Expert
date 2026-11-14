@@ -134,6 +134,8 @@ begin
   end;
 end;
 
+{ TMcpReportTools }
+
 class function TMcpReportTools.ParseAddresses(const AText: string): TArray<TMcpAddress>;
 var
   mPart: string;
@@ -217,18 +219,6 @@ begin
   end;
 end;
 
-class function TMcpReportTools.MapStatus(const ASymbols: TReportSymbols): string;
-const
-  cMatchTexts: array[TMapImageMatch] of TReportToolsText = (TReportToolsText.MapUnchecked,
-    TReportToolsText.MapMatches, TReportToolsText.MapEntryDiffers, TReportToolsText.MapSizeDiffers);
-begin
-  Result := '';
-  if ASymbols.Map <> nil then
-  begin
-    Result := cTexts[TReportToolsText.MapLine].Fmt([ASymbols.MapName, cTexts[cMatchTexts[ASymbols.Match]].Text]);
-  end;
-end;
-
 class function TMcpReportTools.ResolveAddresses(const AAddresses: TArray<TMcpAddress>; const ASymbols: TReportSymbols;
   const AFileOf: TReportUnitFileFunc): string;
 var
@@ -250,6 +240,18 @@ begin
     Result := mBuilder.ToString.TrimRight;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TMcpReportTools.MapStatus(const ASymbols: TReportSymbols): string;
+const
+  cMatchTexts: array[TMapImageMatch] of TReportToolsText = (TReportToolsText.MapUnchecked,
+    TReportToolsText.MapMatches, TReportToolsText.MapEntryDiffers, TReportToolsText.MapSizeDiffers);
+begin
+  Result := '';
+  if ASymbols.Map <> nil then
+  begin
+    Result := cTexts[TReportToolsText.MapLine].Fmt([ASymbols.MapName, cTexts[cMatchTexts[ASymbols.Match]].Text]);
   end;
 end;
 

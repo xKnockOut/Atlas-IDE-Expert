@@ -43,6 +43,8 @@ type
 
 implementation
 
+{ TUnitAliases }
+
 class function TUnitAliases.Defaults: TArray<TUnitAlias>;
 begin
   Result := Parse('WinTypes=Winapi.Windows;WinProcs=Winapi.Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE');

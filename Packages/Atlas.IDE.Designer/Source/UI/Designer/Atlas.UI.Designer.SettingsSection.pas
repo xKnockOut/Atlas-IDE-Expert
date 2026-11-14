@@ -48,16 +48,6 @@ uses
 
 { TAtlasDesignerSettingsSection }
 
-function TAtlasDesignerSettingsSection.OwnerId: string;
-begin
-  Result := cOwnerId;
-end;
-
-function TAtlasDesignerSettingsSection.AreaId: string;
-begin
-  Result := cAreaId;
-end;
-
 procedure TAtlasDesignerSettingsSection.BuildRows;
 begin
   ModuleSwitch('designer.enabled');
@@ -116,41 +106,14 @@ begin
   BuildButtonRows;
 end;
 
-procedure TAtlasDesignerSettingsSection.BuildViewRows;
+function TAtlasDesignerSettingsSection.OwnerId: string;
 begin
-  Switch('designer.measureDistances',
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureDistances));
-  Switch('designer.measureAltKey', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureAltKey));
-  Switch('designer.resizePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizePreview));
-  Line('designer.resizePreviewSizes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeSizes));
-  Switch('designer.resizePreviewShowAnchors',
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeAnchors));
-  Switch('designer.scalePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScalePreview));
-  Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
-  Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
-  Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
-  Switch('designer.nameSuggest', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSuggest));
-  Line('designer.nameSuggestSources', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSources));
-  Choice('designer.nameSuggestUmlauts', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameUmlauts),
-    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameReplace),
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameRemove)], ['replace', 'remove']);
-  Switch('designer.nameSuggestRenameHandlers',
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
-  Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
-  Switch('designer.structure', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStructure));
-  Switch('designer.structureHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStHide));
-  Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
-  Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
-  Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
-  // Eigenes Desktop-Layout im Designer (#2079).
-  Switch('designer.layout', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopLayout));
-  Line('designer.layout.name', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName));
-  Choice('designer.layout.returnTo', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopReturn),
-    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopPrevious),
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopDefault)],
-    [TAtlasPluginSettings.cDesignerLayoutPrevious, TAtlasPluginSettings.cDesignerLayoutDefault]);
-  Switch('designer.layout.skipWhileDebugging',
-    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopSkipDebug));
+  Result := cOwnerId;
+end;
+
+function TAtlasDesignerSettingsSection.AreaId: string;
+begin
+  Result := cAreaId;
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildArrangeRows;
@@ -200,6 +163,43 @@ begin
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesOnInsert));
   Switch('designer.defaultSizes.markDeviations',
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.SettingsDesignerSizesMark));
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildViewRows;
+begin
+  Switch('designer.measureDistances',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureDistances));
+  Switch('designer.measureAltKey', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsMeasureAltKey));
+  Switch('designer.resizePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizePreview));
+  Line('designer.resizePreviewSizes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeSizes));
+  Switch('designer.resizePreviewShowAnchors',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsResizeAnchors));
+  Switch('designer.scalePreview', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScalePreview));
+  Line('designer.scalePreviewLevels', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleLevels));
+  Line('designer.scalePreviewScreens', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsScaleScreens));
+  Number('designer.longTextFactor', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsLongTextFactor));
+  Switch('designer.nameSuggest', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSuggest));
+  Line('designer.nameSuggestSources', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameSources));
+  Choice('designer.nameSuggestUmlauts', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameUmlauts),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameReplace),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameRemove)], ['replace', 'remove']);
+  Switch('designer.nameSuggestRenameHandlers',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNameHandlers));
+  Line('designer.nameSuggestPrefixes', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsNamePrefixes));
+  Switch('designer.structure', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStructure));
+  Switch('designer.structureHideOnForm', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsStHide));
+  Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
+  Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
+  Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
+  // Eigenes Desktop-Layout im Designer (#2079).
+  Switch('designer.layout', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopLayout));
+  Line('designer.layout.name', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName));
+  Choice('designer.layout.returnTo', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopReturn),
+    [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopPrevious),
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopDefault)],
+    [TAtlasPluginSettings.cDesignerLayoutPrevious, TAtlasPluginSettings.cDesignerLayoutDefault]);
+  Switch('designer.layout.skipWhileDebugging',
+    TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopSkipDebug));
 end;
 
 procedure TAtlasDesignerSettingsSection.BuildToolRows;

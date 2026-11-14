@@ -110,13 +110,6 @@ end;
 
 { TScanner }
 
-procedure TScanner.Init(const AText: string);
-begin
-  FText := AText;
-  FLength := Length(AText);
-  FPos := 0;
-end;
-
 function TScanner.Peek(ADelta: Integer): Char;
 begin
   // FPos zählt ab 0, der string ab 1.
@@ -195,24 +188,6 @@ begin
   Result := False;
 end;
 
-function TScanner.QuoteRun(ADelta: Integer): Integer;
-begin
-  Result := 0;
-  while Peek(ADelta + Result) = '''' do
-  begin
-    Inc(Result);
-  end;
-end;
-
-function TScanner.BlankRun(ADelta: Integer): Integer;
-begin
-  Result := 0;
-  while CharInSet(Peek(ADelta + Result), [' ', #9]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 function TScanner.TryScanMultilineString(out ATerminated: Boolean): Boolean;
 var
   mQuoteCount: Integer;
@@ -260,65 +235,21 @@ begin
   end;
 end;
 
-procedure TScanner.ScanDigits(const AAllowed: TSysCharSet);
+function TScanner.QuoteRun(ADelta: Integer): Integer;
 begin
-  while CharInSet(Peek, AAllowed) do
+  Result := 0;
+  while Peek(ADelta + Result) = '''' do
   begin
-    Inc(FPos);
+    Inc(Result);
   end;
 end;
 
-function TScanner.ScanDecimal: Boolean;
+function TScanner.BlankRun(ADelta: Integer): Integer;
 begin
-  Result := True;
-  ScanDigits(['0'..'9', '_']);
-  // Nachkommastellen, aber nicht bei 1..2 (Bereich).
-  if (Peek = '.') and CharInSet(Peek(1), ['0'..'9']) then
+  Result := 0;
+  while CharInSet(Peek(ADelta + Result), [' ', #9]) do
   begin
-    Inc(FPos);
-    ScanDigits(['0'..'9', '_']);
-  end;
-  if CharInSet(Peek, ['e', 'E']) and
-    (CharInSet(Peek(1), ['0'..'9']) or (CharInSet(Peek(1), ['+', '-']) and CharInSet(Peek(2), ['0'..'9']))) then
-  begin
-    Inc(FPos, 2);
-    ScanDigits(['0'..'9']);
-  end
-  else if CharInSet(Peek, ['e', 'E']) and not IsIdentifierPart(Peek(1)) and not CharInSet(Peek(1), ['+', '-']) then
-  begin
-    // 1.5e: Delphi liest das e als Teil der Zahl. Mit Buchstaben dahinter (1Eh im asm-Block) bleibt es beim
-    // Bezeichner.
-    Inc(FPos);
-    Result := False;
-  end;
-end;
-
-procedure TScanner.ScanIdentifier;
-begin
-  while IsIdentifierPart(Peek) do
-  begin
-    Inc(FPos);
-  end;
-end;
-
-function TScanner.ScanSymbol: Boolean;
-var
-  mPair: string;
-  mSymbol: string;
-begin
-  mPair := Peek + Peek(1);
-  for mSymbol in cTwoCharSymbols do
-  begin
-    if mPair = mSymbol then
-    begin
-      Inc(FPos, 2);
-      Exit(True);
-    end;
-  end;
-  Result := Pos(Peek, cOneCharSymbols) > 0;
-  if Result then
-  begin
-    Inc(FPos);
+    Inc(Result);
   end;
 end;
 
@@ -471,6 +402,75 @@ begin
   end;
 end;
 
+procedure TScanner.ScanDigits(const AAllowed: TSysCharSet);
+begin
+  while CharInSet(Peek, AAllowed) do
+  begin
+    Inc(FPos);
+  end;
+end;
+
+function TScanner.ScanDecimal: Boolean;
+begin
+  Result := True;
+  ScanDigits(['0'..'9', '_']);
+  // Nachkommastellen, aber nicht bei 1..2 (Bereich).
+  if (Peek = '.') and CharInSet(Peek(1), ['0'..'9']) then
+  begin
+    Inc(FPos);
+    ScanDigits(['0'..'9', '_']);
+  end;
+  if CharInSet(Peek, ['e', 'E']) and
+    (CharInSet(Peek(1), ['0'..'9']) or (CharInSet(Peek(1), ['+', '-']) and CharInSet(Peek(2), ['0'..'9']))) then
+  begin
+    Inc(FPos, 2);
+    ScanDigits(['0'..'9']);
+  end
+  else if CharInSet(Peek, ['e', 'E']) and not IsIdentifierPart(Peek(1)) and not CharInSet(Peek(1), ['+', '-']) then
+  begin
+    // 1.5e: Delphi liest das e als Teil der Zahl. Mit Buchstaben dahinter (1Eh im asm-Block) bleibt es beim
+    // Bezeichner.
+    Inc(FPos);
+    Result := False;
+  end;
+end;
+
+procedure TScanner.ScanIdentifier;
+begin
+  while IsIdentifierPart(Peek) do
+  begin
+    Inc(FPos);
+  end;
+end;
+
+function TScanner.ScanSymbol: Boolean;
+var
+  mPair: string;
+  mSymbol: string;
+begin
+  mPair := Peek + Peek(1);
+  for mSymbol in cTwoCharSymbols do
+  begin
+    if mPair = mSymbol then
+    begin
+      Inc(FPos, 2);
+      Exit(True);
+    end;
+  end;
+  Result := Pos(Peek, cOneCharSymbols) > 0;
+  if Result then
+  begin
+    Inc(FPos);
+  end;
+end;
+
+procedure TScanner.Init(const AText: string);
+begin
+  FText := AText;
+  FLength := Length(AText);
+  FPos := 0;
+end;
+
 function TScanner.Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
 var
   mStart: Integer;
@@ -515,6 +515,8 @@ type
     function PositionAt(AOffset: Integer): TTextPosition;
   end;
 
+{ TPositionTracker }
+
 procedure TPositionTracker.Init(const AText: string);
 begin
   FText := AText;
@@ -551,9 +553,44 @@ end;
 
 { TPascalLexer }
 
+class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
+var
+  mScanner: TScanner;
+  mTracker: TPositionTracker;
+  mTokens: TList<TPascalToken>;
+  mToken: TPascalToken;
+  mEndOffset: Integer;
+begin
+  mScanner.Init(AText);
+  mTracker.Init(AText);
+  mTokens := TList<TPascalToken>.Create;
+  try
+    while mScanner.Next(mToken, mEndOffset) do
+    begin
+      mToken.StartPos := mTracker.PositionAt(mToken.Offset);
+      mToken.EndPos := mTracker.PositionAt(mEndOffset);
+      mTokens.Add(mToken);
+    end;
+    Result := mTokens.ToArray;
+  finally
+    mTokens.Free;
+  end;
+end;
+
 class function TPascalLexer.IsReservedWord(const AWord: string): Boolean;
 begin
   Result := ReservedWordSet.ContainsKey(LowerCase(AWord));
+end;
+
+class function TPascalLexer.ReservedWordList: TArray<string>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(cReservedWords));
+  for mIndex := 0 to High(cReservedWords) do
+  begin
+    Result[mIndex] := cReservedWords[mIndex];
+  end;
 end;
 
 class function TPascalLexer.DirectiveName(const AText: string): string;
@@ -609,41 +646,6 @@ begin
   else
   begin
     Result := AName;
-  end;
-end;
-
-class function TPascalLexer.ReservedWordList: TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(cReservedWords));
-  for mIndex := 0 to High(cReservedWords) do
-  begin
-    Result[mIndex] := cReservedWords[mIndex];
-  end;
-end;
-
-class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
-var
-  mScanner: TScanner;
-  mTracker: TPositionTracker;
-  mTokens: TList<TPascalToken>;
-  mToken: TPascalToken;
-  mEndOffset: Integer;
-begin
-  mScanner.Init(AText);
-  mTracker.Init(AText);
-  mTokens := TList<TPascalToken>.Create;
-  try
-    while mScanner.Next(mToken, mEndOffset) do
-    begin
-      mToken.StartPos := mTracker.PositionAt(mToken.Offset);
-      mToken.EndPos := mTracker.PositionAt(mEndOffset);
-      mTokens.Add(mToken);
-    end;
-    Result := mTokens.ToArray;
-  finally
-    mTokens.Free;
   end;
 end;
 

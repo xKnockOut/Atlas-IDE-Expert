@@ -113,6 +113,8 @@ begin
   end;
 end;
 
+{ TUpdateKnownPackages }
+
 class function TUpdateKnownPackages.SamePath(const A, B: string): Boolean;
 begin
   Result := NormalPath(A) = NormalPath(B);

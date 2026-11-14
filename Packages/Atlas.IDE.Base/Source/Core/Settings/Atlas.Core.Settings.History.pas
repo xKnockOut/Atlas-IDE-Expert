@@ -273,23 +273,6 @@ begin
   Result := FSnapshots[AIndex];
 end;
 
-class function TAtlasSettingsHistory.Differences(const ALeft, ARight: TAtlasPluginSettings): TArray<string>;
-var
-  mLeft, mRight: IAtlasMemorySettingsStore;
-  mName: string;
-begin
-  mLeft := TAtlasMemorySettingsStore.FromSettings(ALeft);
-  mRight := TAtlasMemorySettingsStore.FromSettings(ARight);
-  Result := nil;
-  for mName in mLeft.Names do
-  begin
-    if mLeft.Text(mName) <> mRight.Text(mName) then
-    begin
-      Result := Result + [mName];
-    end;
-  end;
-end;
-
 procedure TAtlasSettingsHistory.Push(const ABefore, AAfter: TAtlasPluginSettings; AChangedAt: TDateTime;
   AKeep: Integer);
 var
@@ -412,6 +395,23 @@ begin
   finally
     mCatalog.Free;
     mRoot.Free;
+  end;
+end;
+
+class function TAtlasSettingsHistory.Differences(const ALeft, ARight: TAtlasPluginSettings): TArray<string>;
+var
+  mLeft, mRight: IAtlasMemorySettingsStore;
+  mName: string;
+begin
+  mLeft := TAtlasMemorySettingsStore.FromSettings(ALeft);
+  mRight := TAtlasMemorySettingsStore.FromSettings(ARight);
+  Result := nil;
+  for mName in mLeft.Names do
+  begin
+    if mLeft.Text(mName) <> mRight.Text(mName) then
+    begin
+      Result := Result + [mName];
+    end;
   end;
 end;
 

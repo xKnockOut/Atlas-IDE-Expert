@@ -265,18 +265,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeSelectionSets.UpdateKeys(AWanted: Boolean);
-begin
-  if AWanted and TAtlasIdeSettings.Current.DesignerSelectionSets then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
-  end;
-end;
-
 function TAtlasIdeSelectionSets.StoreFile(const AFormFile: string): string;
 begin
   if Shared then
@@ -460,6 +448,25 @@ begin
   end;
 end;
 
+procedure TAtlasIdeSelectionSets.MenuClick(Sender: TObject);
+var
+  mTag: Integer;
+begin
+  mTag := TMenuItem(Sender).Tag;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      if mTag < 0 then
+      begin
+        SaveSelection;
+      end
+      else
+      begin
+        Run(ClickAction(mTag mod cActionCount), mTag div cActionCount);
+      end;
+    end);
+end;
+
 procedure TAtlasIdeSelectionSets.FillMenu(AParent: TMenuItem);
 var
   mEditor: IOTAFormEditor;
@@ -490,25 +497,6 @@ begin
   begin
     AddSetMenu(AParent, mSets[mIndex], mIndex, mRoot);
   end;
-end;
-
-procedure TAtlasIdeSelectionSets.MenuClick(Sender: TObject);
-var
-  mTag: Integer;
-begin
-  mTag := TMenuItem(Sender).Tag;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      if mTag < 0 then
-      begin
-        SaveSelection;
-      end
-      else
-      begin
-        Run(ClickAction(mTag mod cActionCount), mTag div cActionCount);
-      end;
-    end);
 end;
 
 procedure TAtlasIdeSelectionSets.SaveSelection;
@@ -551,6 +539,18 @@ end;
 procedure TAtlasIdeSelectionSets.Restore(AIndex: Integer);
 begin
   Run(cRestore, AIndex);
+end;
+
+procedure TAtlasIdeSelectionSets.UpdateKeys(AWanted: Boolean);
+begin
+  if AWanted and TAtlasIdeSettings.Current.DesignerSelectionSets then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
 end;
 
 /// <summary>Komponenten zu ANames im Formular ARoot; fehlende fallen weg.</summary>

@@ -69,38 +69,7 @@ begin
   end;
 end;
 
-class function TLspUnwrap.ToJson(const ACandidates: TArray<TUnwrapCandidate>): TJSONObject;
-var
-  mCandidates, mVariants: TJSONArray;
-  mCandidate: TUnwrapCandidate;
-  mChoice: TUnwrapVariant;
-  mItem, mVariantItem: TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  mCandidates := TJSONArray.Create;
-  Result.AddPair('candidates', mCandidates);
-  for mCandidate in ACandidates do
-  begin
-    mItem := TJSONObject.Create;
-    mCandidates.AddElement(mItem);
-    mItem.AddPair('kind', TUnwrap.KindName(mCandidate.Kind));
-    mItem.AddPair('range', TLspPositions.RangeToJson(mCandidate.Range));
-    mItem.AddPair('note', TUnwrap.NoteName(mCandidate.Note));
-    mItem.AddPair('noteText', mCandidate.NoteText);
-    mVariants := TJSONArray.Create;
-    mItem.AddPair('variants', mVariants);
-    for mChoice in mCandidate.Variants do
-    begin
-      mVariantItem := TJSONObject.Create;
-      mVariants.AddElement(mVariantItem);
-      mVariantItem.AddPair('kind', TUnwrap.VariantName(mChoice.Kind));
-      mVariantItem.AddPair('branch', TJSONNumber.Create(mChoice.Branch));
-      mVariantItem.AddPair('edits', EditsToJson(mChoice.Edits));
-      mVariantItem.AddPair('keep', RangesToJson(mChoice.Keep));
-      mVariantItem.AddPair('remove', RangesToJson(mChoice.Remove));
-    end;
-  end;
-end;
+{ TLspUnwrap }
 
 class function TLspUnwrap.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; AIndentWidth: Integer): TJSONObject;
@@ -135,6 +104,39 @@ begin
       end;
   end;
   Result := ToJson(TUnwrap.Candidates(AText, ATree, APosition, mOptions));
+end;
+
+class function TLspUnwrap.ToJson(const ACandidates: TArray<TUnwrapCandidate>): TJSONObject;
+var
+  mCandidates, mVariants: TJSONArray;
+  mCandidate: TUnwrapCandidate;
+  mChoice: TUnwrapVariant;
+  mItem, mVariantItem: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  mCandidates := TJSONArray.Create;
+  Result.AddPair('candidates', mCandidates);
+  for mCandidate in ACandidates do
+  begin
+    mItem := TJSONObject.Create;
+    mCandidates.AddElement(mItem);
+    mItem.AddPair('kind', TUnwrap.KindName(mCandidate.Kind));
+    mItem.AddPair('range', TLspPositions.RangeToJson(mCandidate.Range));
+    mItem.AddPair('note', TUnwrap.NoteName(mCandidate.Note));
+    mItem.AddPair('noteText', mCandidate.NoteText);
+    mVariants := TJSONArray.Create;
+    mItem.AddPair('variants', mVariants);
+    for mChoice in mCandidate.Variants do
+    begin
+      mVariantItem := TJSONObject.Create;
+      mVariants.AddElement(mVariantItem);
+      mVariantItem.AddPair('kind', TUnwrap.VariantName(mChoice.Kind));
+      mVariantItem.AddPair('branch', TJSONNumber.Create(mChoice.Branch));
+      mVariantItem.AddPair('edits', EditsToJson(mChoice.Edits));
+      mVariantItem.AddPair('keep', RangesToJson(mChoice.Keep));
+      mVariantItem.AddPair('remove', RangesToJson(mChoice.Remove));
+    end;
+  end;
 end;
 
 end.

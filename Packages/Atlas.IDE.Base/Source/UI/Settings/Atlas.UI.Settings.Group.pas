@@ -55,6 +55,8 @@ implementation
 uses
   Vcl.Themes;
 
+{ TAtlasSettingsGroup }
+
 constructor TAtlasSettingsGroup.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -75,6 +77,59 @@ begin
   FReason.WordWrap := True;
   FReason.Font.Style := [fsItalic];
   FReason.Visible := False;
+end;
+
+procedure TAtlasSettingsGroup.Paint;
+var
+  mRadius: Integer;
+begin
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Color := StyleServices.GetSystemColor(clBtnShadow);
+  mRadius := 6 * CurrentPPI div 96;
+  Canvas.RoundRect(0, 0, Width, Height, mRadius, mRadius);
+end;
+
+procedure TAtlasSettingsGroup.AlignControls(AControl: TControl; var Rect: TRect);
+var
+  mNeeded: Integer;
+begin
+  inherited AlignControls(AControl, Rect);
+  if FAdjusting then
+  begin
+    Exit;
+  end;
+  mNeeded := ContentHeight;
+  if mNeeded = Height then
+  begin
+    Exit;
+  end;
+  FAdjusting := True;
+  try
+    Height := mNeeded;
+  finally
+    FAdjusting := False;
+  end;
+end;
+
+function TAtlasSettingsGroup.ContentHeight: Integer;
+var
+  mIndex: Integer;
+  mControl: TControl;
+begin
+  Result := Padding.Top + Padding.Bottom;
+  for mIndex := 0 to ControlCount - 1 do
+  begin
+    mControl := Controls[mIndex];
+    if not mControl.Visible then
+    begin
+      Continue;
+    end;
+    Inc(Result, mControl.Height);
+    if mControl.AlignWithMargins then
+    begin
+      Inc(Result, mControl.Margins.Top + mControl.Margins.Bottom);
+    end;
+  end;
 end;
 
 procedure TAtlasSettingsGroup.SetMaster(AControl: TControl; const AName: string);
@@ -104,27 +159,6 @@ begin
   FReason.Visible := AText <> '';
 end;
 
-function TAtlasSettingsGroup.ContentHeight: Integer;
-var
-  mIndex: Integer;
-  mControl: TControl;
-begin
-  Result := Padding.Top + Padding.Bottom;
-  for mIndex := 0 to ControlCount - 1 do
-  begin
-    mControl := Controls[mIndex];
-    if not mControl.Visible then
-    begin
-      Continue;
-    end;
-    Inc(Result, mControl.Height);
-    if mControl.AlignWithMargins then
-    begin
-      Inc(Result, mControl.Margins.Top + mControl.Margins.Bottom);
-    end;
-  end;
-end;
-
 procedure TAtlasSettingsGroup.AdjustHeight;
 var
   mIndex: Integer;
@@ -143,38 +177,6 @@ begin
   finally
     FAdjusting := False;
   end;
-end;
-
-procedure TAtlasSettingsGroup.AlignControls(AControl: TControl; var Rect: TRect);
-var
-  mNeeded: Integer;
-begin
-  inherited AlignControls(AControl, Rect);
-  if FAdjusting then
-  begin
-    Exit;
-  end;
-  mNeeded := ContentHeight;
-  if mNeeded = Height then
-  begin
-    Exit;
-  end;
-  FAdjusting := True;
-  try
-    Height := mNeeded;
-  finally
-    FAdjusting := False;
-  end;
-end;
-
-procedure TAtlasSettingsGroup.Paint;
-var
-  mRadius: Integer;
-begin
-  Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Color := StyleServices.GetSystemColor(clBtnShadow);
-  mRadius := 6 * CurrentPPI div 96;
-  Canvas.RoundRect(0, 0, Width, Height, mRadius, mRadius);
 end;
 
 end.

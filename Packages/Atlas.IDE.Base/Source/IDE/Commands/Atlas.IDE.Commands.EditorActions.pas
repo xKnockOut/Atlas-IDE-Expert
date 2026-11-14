@@ -151,6 +151,142 @@ begin
   end;
 end;
 
+{ TAtlasEditorActionCommands }
+
+class procedure TAtlasEditorActionCommands.Apply(const AAction: TLspCodeAction);
+var
+  mOutcome: TAtlasWorkspaceEditResult;
+  mAction: TLspCodeAction;
+begin
+  mAction := AAction;
+  if mAction.Disabled <> '' then
+  begin
+    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [mAction.Title, mAction.Disabled]));
+    Exit;
+  end;
+  // Abwählbare Teile (#2054): erst wählen, dann die gewohnte Vorschau der übrigen Änderungen.
+  if not ChooseParts(mAction) then
+  begin
+    Exit;
+  end;
+  // LSP: erst die Änderung, dann der Befehl.
+  if not mAction.Edit.IsEmpty then
+  begin
+    if (mAction.Preview <> '') and not ConfirmPreview(mAction) then
+    begin
+      Exit;
+    end;
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mAction.Edit,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      mAction.Title);
+    if mOutcome.Error <> '' then
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+      Exit;
+    end;
+    if mOutcome.Written > 0 then
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
+    end;
+  end;
+  if mAction.Edit.Unsupported > 0 then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [mAction.Edit.Unsupported]));
+  end;
+  if mAction.Command <> '' then
+  begin
+    RunCommand(mAction.Command, mAction.ArgumentsJson);
+  end;
+end;
+
+class function TAtlasEditorActionCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
+var
+  mPreview: TArray<TAtlasResultEntry>;
+  mOpen: TAtlasResultsOpen;
+begin
+  mPreview := TAtlasResults.RenamePreview(AAction.Edit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  mOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+    end;
+  Result := TAtlasRenamePreview.Execute(AAction.Title, AAction.Preview, TAtlasResults.Group(mPreview), mOpen);
+end;
+
+class function TAtlasEditorActionCommands.ChooseParts(var AAction: TLspCodeAction): Boolean;
+var
+  mTitles: TArray<string>;
+  mChoice: TLspCodeActionChoice;
+  mChosen: TArray<Boolean>;
+begin
+  Result := True;
+  if AAction.Choices = nil then
+  begin
+    Exit;
+  end;
+  mTitles := nil;
+  for mChoice in AAction.Choices do
+  begin
+    mTitles := mTitles + [mChoice.Title];
+  end;
+  Result := TAtlasActionChoicesDialog.Choose(AAction.Title, AAction.Preview, mTitles, mChosen);
+  if Result then
+  begin
+    AAction := AAction.WithChoices(mChosen);
+  end;
+end;
+
+class procedure TAtlasEditorActionCommands.RunCommand(const ACommand, AArgumentsJson: string);
+var
+  mHost: TAtlasClientCommandHost;
+  mRunning: TLspSession;
+  mAnswer: TJSONValue;
+begin
+  mHost.Session :=
+    function: TLspSession
+    begin
+      Result := Session;
+    end;
+  mHost.Say :=
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end;
+  mHost.SignatureHelp := FOnSignatureHelp;
+  mHost.UnitRelations := FOnUnitRelations;
+  mHost.Placeholders := FOnPlaceholders;
+  if TAtlasClientCommands.TryRun(ACommand, AArgumentsJson, mHost) then
+  begin
+    Exit;
+  end;
+  mRunning := Session;
+  if mRunning = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  try
+    mAnswer := mRunning.RunCommand(ACommand, AArgumentsJson, cCommandTimeoutMs);
+    // Ein workspace/applyEdit des Servers (#397) läuft erst nach dieser Antwort im Hauptthread.
+    // Eine Antwort als Text zeigen.
+    try
+      if (mAnswer is TJSONString) and (mAnswer.Value <> '') then
+      begin
+        Say(mAnswer.Value);
+      end;
+    finally
+      mAnswer.Free;
+    end;
+  except
+    on E: ELspClientError do
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
+  end;
+end;
+
 class function TAtlasEditorActionCommands.FetchActions(const AFileName: string; const ARange: TLspRange;
   out AFound: TArray<TLspCodeAction>): Boolean;
 begin
@@ -262,140 +398,6 @@ begin
     end;
   end;
   Say(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.UsesActionMissing));
-end;
-
-class function TAtlasEditorActionCommands.ChooseParts(var AAction: TLspCodeAction): Boolean;
-var
-  mTitles: TArray<string>;
-  mChoice: TLspCodeActionChoice;
-  mChosen: TArray<Boolean>;
-begin
-  Result := True;
-  if AAction.Choices = nil then
-  begin
-    Exit;
-  end;
-  mTitles := nil;
-  for mChoice in AAction.Choices do
-  begin
-    mTitles := mTitles + [mChoice.Title];
-  end;
-  Result := TAtlasActionChoicesDialog.Choose(AAction.Title, AAction.Preview, mTitles, mChosen);
-  if Result then
-  begin
-    AAction := AAction.WithChoices(mChosen);
-  end;
-end;
-
-class function TAtlasEditorActionCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
-var
-  mPreview: TArray<TAtlasResultEntry>;
-  mOpen: TAtlasResultsOpen;
-begin
-  mPreview := TAtlasResults.RenamePreview(AAction.Edit,
-    function(const AFileName: string): string
-    begin
-      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
-    end);
-  mOpen :=
-    procedure(const AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
-    end;
-  Result := TAtlasRenamePreview.Execute(AAction.Title, AAction.Preview, TAtlasResults.Group(mPreview), mOpen);
-end;
-
-class procedure TAtlasEditorActionCommands.Apply(const AAction: TLspCodeAction);
-var
-  mOutcome: TAtlasWorkspaceEditResult;
-  mAction: TLspCodeAction;
-begin
-  mAction := AAction;
-  if mAction.Disabled <> '' then
-  begin
-    Say(TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.EditorActionDisabled, [mAction.Title, mAction.Disabled]));
-    Exit;
-  end;
-  // Abwählbare Teile (#2054): erst wählen, dann die gewohnte Vorschau der übrigen Änderungen.
-  if not ChooseParts(mAction) then
-  begin
-    Exit;
-  end;
-  // LSP: erst die Änderung, dann der Befehl.
-  if not mAction.Edit.IsEmpty then
-  begin
-    if (mAction.Preview <> '') and not ConfirmPreview(mAction) then
-    begin
-      Exit;
-    end;
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mAction.Edit,
-      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      mAction.Title);
-    if mOutcome.Error <> '' then
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
-      Exit;
-    end;
-    if mOutcome.Written > 0 then
-    begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditWritten, [mOutcome.Written]));
-    end;
-  end;
-  if mAction.Edit.Unsupported > 0 then
-  begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditUnsupported, [mAction.Edit.Unsupported]));
-  end;
-  if mAction.Command <> '' then
-  begin
-    RunCommand(mAction.Command, mAction.ArgumentsJson);
-  end;
-end;
-
-class procedure TAtlasEditorActionCommands.RunCommand(const ACommand, AArgumentsJson: string);
-var
-  mHost: TAtlasClientCommandHost;
-  mRunning: TLspSession;
-  mAnswer: TJSONValue;
-begin
-  mHost.Session :=
-    function: TLspSession
-    begin
-      Result := Session;
-    end;
-  mHost.Say :=
-    procedure(AText: string)
-    begin
-      Say(AText);
-    end;
-  mHost.SignatureHelp := FOnSignatureHelp;
-  mHost.UnitRelations := FOnUnitRelations;
-  mHost.Placeholders := FOnPlaceholders;
-  if TAtlasClientCommands.TryRun(ACommand, AArgumentsJson, mHost) then
-  begin
-    Exit;
-  end;
-  mRunning := Session;
-  if mRunning = nil then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
-    Exit;
-  end;
-  try
-    mAnswer := mRunning.RunCommand(ACommand, AArgumentsJson, cCommandTimeoutMs);
-    // Ein workspace/applyEdit des Servers (#397) läuft erst nach dieser Antwort im Hauptthread.
-    // Eine Antwort als Text zeigen.
-    try
-      if (mAnswer is TJSONString) and (mAnswer.Value <> '') then
-      begin
-        Say(mAnswer.Value);
-      end;
-    finally
-      mAnswer.Free;
-    end;
-  except
-    on E: ELspClientError do
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-  end;
 end;
 
 end.

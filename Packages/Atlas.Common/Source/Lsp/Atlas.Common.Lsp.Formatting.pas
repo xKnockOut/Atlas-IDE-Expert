@@ -125,35 +125,6 @@ begin
   FReadFile := AReadFile;
 end;
 
-procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, HandleFormatting);
-  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRangeFormatting);
-  ADispatcher.RegisterConcurrentRequest(cOnTypeMethod, HandleOnType);
-end;
-
-class function TLspFormatting.OnTypeCapability: TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('firstTriggerCharacter', #10);
-  Result.AddPair('moreTriggerCharacter', TJSONArray.Create.Add('/'));
-end;
-
-/// <summary>Bearbeitungen AEdits als TextEdit[] nach AResult.</summary>
-procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TRuleEdit>);
-var
-  mEdit: TRuleEdit;
-  mItem: TJSONObject;
-begin
-  for mEdit in AEdits do
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
-    mItem.AddPair('newText', mEdit.NewText);
-    AResult.AddElement(mItem);
-  end;
-end;
-
 function TLspFormatting.StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
 var
   mConfigured: TFormatStyle;
@@ -169,6 +140,55 @@ begin
     mOptions := nil;
   end;
   Result := Resolve(mOptions, TDocumentUris.ToPath(AUri), mConfigured, FReadFile);
+end;
+
+function TLspFormatting.HandleOnType(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mUri, mCharacter: string;
+  mDocument: ITextDocument;
+  mPositionValue: TJSONValue;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TFormattingText.FieldsTextDocumentUriAndPosition].Text);
+  end;
+  Result := TJSONArray.Create;
+  try
+    if not TJSONObject(AParams).TryGetValue<string>('ch', mCharacter) or not FStore.TryGet(mUri, mDocument) then
+    begin
+      Exit;
+    end;
+    if mCharacter = '/' then
+    begin
+      AddDocComment(mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation, TJSONArray(Result));
+    end
+    else if mCharacter = #10 then
+    begin
+      AddSlashCommand(TJSONObject(AParams), mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation,
+        TJSONArray(Result));
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+/// <summary>Bearbeitungen AEdits als TextEdit[] nach AResult.</summary>
+procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TRuleEdit>);
+var
+  mEdit: TRuleEdit;
+  mItem: TJSONObject;
+begin
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    AResult.AddElement(mItem);
+  end;
 end;
 
 procedure TLspFormatting.AddDocComment(const ADocument: ITextDocument; const AUri: string;
@@ -223,38 +243,16 @@ begin
   end;
 end;
 
-function TLspFormatting.HandleOnType(const AParams: TJSONValue;
+function TLspFormatting.HandleFormatting(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mUri, mCharacter: string;
-  mDocument: ITextDocument;
-  mPositionValue: TJSONValue;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TFormattingText.FieldsTextDocumentUriAndPosition].Text);
-  end;
-  Result := TJSONArray.Create;
-  try
-    if not TJSONObject(AParams).TryGetValue<string>('ch', mCharacter) or not FStore.TryGet(mUri, mDocument) then
-    begin
-      Exit;
-    end;
-    if mCharacter = '/' then
-    begin
-      AddDocComment(mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation, TJSONArray(Result));
-    end
-    else if mCharacter = #10 then
-    begin
-      AddSlashCommand(TJSONObject(AParams), mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation,
-        TJSONArray(Result));
-    end;
-  except
-    Result.Free;
-    raise;
-  end;
+  Result := Handle(AParams, False, ACancellation);
+end;
+
+function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+begin
+  Result := Handle(AParams, True, ACancellation);
 end;
 
 /// <summary>Einstellungen aus den FormattingOptions des Editors (AOptions, nil = keine).</summary>
@@ -333,24 +331,11 @@ begin
   end;
 end;
 
-class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;
-  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
+procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  Result := EditorStyle(AOptions);
-  if Assigned(AReadFile) and (AFileName <> '') then
-  begin
-    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
-  end;
-  ApplyGivenLayout(Result, AConfigured);
-  ApplyGivenSpacing(Result, AConfigured);
-  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
-  Result.Reindent := AConfigured.Reindent;
-  Result.BeginPlacement := AConfigured.BeginPlacement;
-  Result.ElsePlacement := AConfigured.ElsePlacement;
-  Result.AlignAssignments := AConfigured.AlignAssignments;
-  Result.AlignDeclarations := AConfigured.AlignDeclarations;
-  Result.AlignComments := AConfigured.AlignComments;
-  Result.Given := AConfigured.Given;
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleFormatting);
+  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRangeFormatting);
+  ADispatcher.RegisterConcurrentRequest(cOnTypeMethod, HandleOnType);
 end;
 
 /// <summary>Zeilen des Felds "range" von rangeFormatting; ein Bereich bis zum Anfang einer Zeile schließt diese
@@ -405,16 +390,31 @@ begin
     mFirstLine, mLastLine));
 end;
 
-function TLspFormatting.HandleFormatting(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+class function TLspFormatting.OnTypeCapability: TJSONObject;
 begin
-  Result := Handle(AParams, False, ACancellation);
+  Result := TJSONObject.Create;
+  Result.AddPair('firstTriggerCharacter', #10);
+  Result.AddPair('moreTriggerCharacter', TJSONArray.Create.Add('/'));
 end;
 
-function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;
+  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
 begin
-  Result := Handle(AParams, True, ACancellation);
+  Result := EditorStyle(AOptions);
+  if Assigned(AReadFile) and (AFileName <> '') then
+  begin
+    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
+  end;
+  ApplyGivenLayout(Result, AConfigured);
+  ApplyGivenSpacing(Result, AConfigured);
+  // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
+  Result.Reindent := AConfigured.Reindent;
+  Result.BeginPlacement := AConfigured.BeginPlacement;
+  Result.ElsePlacement := AConfigured.ElsePlacement;
+  Result.AlignAssignments := AConfigured.AlignAssignments;
+  Result.AlignDeclarations := AConfigured.AlignDeclarations;
+  Result.AlignComments := AConfigured.AlignComments;
+  Result.Given := AConfigured.Given;
 end;
 
 initialization

@@ -123,6 +123,8 @@ const
      En: 'The IDE accepted the build but did not report in time.'),
     (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'));
 
+{ TMcpIdeBuilds }
+
 class function TMcpIdeBuilds.InboxOf(const ABase: string; APid: Cardinal): string;
 begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-builds'), IntToStr(APid));
@@ -314,6 +316,8 @@ begin
       ;
   end;
 end;
+
+{ TMcpIdeBuildWaiting }
 
 class function TMcpIdeBuildWaiting.Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs,
   ABuildMs: Int64): TMcpIdeBuildWaiting;

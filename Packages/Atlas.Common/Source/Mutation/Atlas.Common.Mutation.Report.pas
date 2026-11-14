@@ -144,6 +144,8 @@ begin
   end;
 end;
 
+{ TMutationReport }
+
 class function TMutationReport.Describe(const AMutant: TMutant): string;
 begin
   if AMutant.Replacement = '' then

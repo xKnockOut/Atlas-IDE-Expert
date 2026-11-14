@@ -377,79 +377,6 @@ begin
   FList.Parent := mPanel;
 end;
 
-procedure TMonitorTargetsView.Activate;
-begin
-  FList.HandleNeeded;
-  Fill;
-end;
-
-procedure TMonitorTargetsView.Fill;
-var
-  mTarget: TMonitorTarget;
-  mItem: TListItem;
-begin
-  if not FList.HandleAllocated then
-  begin
-    Exit;
-  end;
-  FFilling := True;
-  FList.Items.BeginUpdate;
-  try
-    FList.Items.Clear;
-    for mTarget in FTargets.Items do
-    begin
-      mItem := FList.Items.Add;
-      mItem.Caption := mTarget.Path;
-      mItem.SubItems.Add(mTarget.KindText);
-      mItem.SubItems.Add('');
-      mItem.Checked := mTarget.Enabled;
-    end;
-  finally
-    FList.Items.EndUpdate;
-    FFilling := False;
-  end;
-end;
-
-procedure TMonitorTargetsView.ShowStates(const AQueue: TMonitorRunQueue);
-var
-  mRun: TMonitorRun;
-  mIndex: Integer;
-begin
-  for mRun in AQueue.Runs do
-  begin
-    mIndex := FTargets.IndexOf(mRun.Target);
-    if (mIndex >= 0) and (mIndex < FList.Items.Count) then
-    begin
-      FList.Items[mIndex].SubItems[1] := TMonitorRunQueue.StateText(AQueue.Command, mRun);
-    end;
-  end;
-end;
-
-function TMonitorTargetsView.SelectedPath: string;
-begin
-  Result := '';
-  if FList.Selected <> nil then
-  begin
-    Result := FList.Selected.Caption;
-  end;
-end;
-
-procedure TMonitorTargetsView.TargetChecked(ASender: TObject; AItem: TListItem);
-begin
-  if not FFilling and (AItem.Index <= High(FTargets.Items)) then
-  begin
-    FTargets.Items[AItem.Index].Enabled := AItem.Checked;
-  end;
-end;
-
-procedure TMonitorTargetsView.TargetSelected(ASender: TObject; AItem: TListItem; ASelected: Boolean);
-begin
-  if ASelected then
-  begin
-    FOnSelect();
-  end;
-end;
-
 procedure TMonitorTargetsView.AddFolderClick(ASender: TObject);
 var
   mDialog: TFileOpenDialog;
@@ -535,6 +462,79 @@ begin
   end;
 end;
 
+procedure TMonitorTargetsView.TargetChecked(ASender: TObject; AItem: TListItem);
+begin
+  if not FFilling and (AItem.Index <= High(FTargets.Items)) then
+  begin
+    FTargets.Items[AItem.Index].Enabled := AItem.Checked;
+  end;
+end;
+
+procedure TMonitorTargetsView.TargetSelected(ASender: TObject; AItem: TListItem; ASelected: Boolean);
+begin
+  if ASelected then
+  begin
+    FOnSelect();
+  end;
+end;
+
+procedure TMonitorTargetsView.Activate;
+begin
+  FList.HandleNeeded;
+  Fill;
+end;
+
+procedure TMonitorTargetsView.Fill;
+var
+  mTarget: TMonitorTarget;
+  mItem: TListItem;
+begin
+  if not FList.HandleAllocated then
+  begin
+    Exit;
+  end;
+  FFilling := True;
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mTarget in FTargets.Items do
+    begin
+      mItem := FList.Items.Add;
+      mItem.Caption := mTarget.Path;
+      mItem.SubItems.Add(mTarget.KindText);
+      mItem.SubItems.Add('');
+      mItem.Checked := mTarget.Enabled;
+    end;
+  finally
+    FList.Items.EndUpdate;
+    FFilling := False;
+  end;
+end;
+
+procedure TMonitorTargetsView.ShowStates(const AQueue: TMonitorRunQueue);
+var
+  mRun: TMonitorRun;
+  mIndex: Integer;
+begin
+  for mRun in AQueue.Runs do
+  begin
+    mIndex := FTargets.IndexOf(mRun.Target);
+    if (mIndex >= 0) and (mIndex < FList.Items.Count) then
+    begin
+      FList.Items[mIndex].SubItems[1] := TMonitorRunQueue.StateText(AQueue.Command, mRun);
+    end;
+  end;
+end;
+
+function TMonitorTargetsView.SelectedPath: string;
+begin
+  Result := '';
+  if FList.Selected <> nil then
+  begin
+    Result := FList.Selected.Caption;
+  end;
+end;
+
 { TMonitorFindingsView }
 
 constructor TMonitorFindingsView.Create(AOwner: TComponent; AParent: TWinControl; const AAll: TMonitorFindingsFunc;
@@ -594,6 +594,46 @@ begin
   inherited;
 end;
 
+procedure TMonitorFindingsView.Fill;
+begin
+  if FList.HandleAllocated then
+  begin
+    FList.Items.Count := Length(FShown);
+    FList.Invalidate;
+  end;
+end;
+
+procedure TMonitorFindingsView.FilterChange(ASender: TObject);
+begin
+  Refilter;
+end;
+
+procedure TMonitorFindingsView.FindingData(ASender: TObject; AItem: TListItem);
+var
+  mCells: TArray<string>;
+  I: Integer;
+begin
+  if AItem.Index > High(FShown) then
+  begin
+    Exit;
+  end;
+  mCells := TMonitorResults.Columns(FShown[AItem.Index]);
+  AItem.Caption := mCells[0];
+  AItem.SubItems.Clear;
+  for I := 1 to High(mCells) do
+  begin
+    AItem.SubItems.Add(mCells[I]);
+  end;
+end;
+
+procedure TMonitorFindingsView.FindingDblClick(ASender: TObject);
+begin
+  if (FList.Selected <> nil) and (FList.Selected.Index <= High(FShown)) then
+  begin
+    FOnOpen(FShown[FList.Selected.Index]);
+  end;
+end;
+
 procedure TMonitorFindingsView.Activate;
 var
   I: Integer;
@@ -637,46 +677,6 @@ end;
 function TMonitorFindingsView.Text: string;
 begin
   Result := FTextView.Text;
-end;
-
-procedure TMonitorFindingsView.Fill;
-begin
-  if FList.HandleAllocated then
-  begin
-    FList.Items.Count := Length(FShown);
-    FList.Invalidate;
-  end;
-end;
-
-procedure TMonitorFindingsView.FilterChange(ASender: TObject);
-begin
-  Refilter;
-end;
-
-procedure TMonitorFindingsView.FindingData(ASender: TObject; AItem: TListItem);
-var
-  mCells: TArray<string>;
-  I: Integer;
-begin
-  if AItem.Index > High(FShown) then
-  begin
-    Exit;
-  end;
-  mCells := TMonitorResults.Columns(FShown[AItem.Index]);
-  AItem.Caption := mCells[0];
-  AItem.SubItems.Clear;
-  for I := 1 to High(mCells) do
-  begin
-    AItem.SubItems.Add(mCells[I]);
-  end;
-end;
-
-procedure TMonitorFindingsView.FindingDblClick(ASender: TObject);
-begin
-  if (FList.Selected <> nil) and (FList.Selected.Index <= High(FShown)) then
-  begin
-    FOnOpen(FShown[FList.Selected.Index]);
-  end;
 end;
 
 { TMonitorCheckExport }
@@ -866,6 +866,22 @@ begin
   inherited;
 end;
 
+procedure TMonitorCheckPage.BuildResults(AParent: TWinControl);
+var
+  mResults: TPanel;
+begin
+  mResults := TPanel.Create(Self);
+  mResults.Align := alClient;
+  mResults.BevelOuter := bvNone;
+  mResults.Parent := AParent;
+  BuildToolbar(mResults);
+  FFindings := TMonitorFindingsView.Create(Self, mResults,
+    function: TArray<TMonitorFinding>
+    begin
+      Result := FQueue.AllFindings;
+    end, OpenFinding);
+end;
+
 procedure TMonitorCheckPage.BuildToolbar(AParent: TWinControl);
 var
   mBar: TPanel;
@@ -887,50 +903,40 @@ begin
   FSummary.Parent := mBar;
 end;
 
-procedure TMonitorCheckPage.BuildResults(AParent: TWinControl);
-var
-  mResults: TPanel;
-begin
-  mResults := TPanel.Create(Self);
-  mResults.Align := alClient;
-  mResults.BevelOuter := bvNone;
-  mResults.Parent := AParent;
-  BuildToolbar(mResults);
-  FFindings := TMonitorFindingsView.Create(Self, mResults,
-    function: TArray<TMonitorFinding>
-    begin
-      Result := FQueue.AllFindings;
-    end, OpenFinding);
-end;
-
-procedure TMonitorCheckPage.Activate;
-begin
-  FTab.TabVisible := True;
-  FTargets.Activate;
-  FFindings.Activate;
-  FOptions.Activate(FState);
-end;
-
-function TMonitorCheckPage.Busy: Boolean;
-begin
-  Result := FQueue.Busy;
-end;
-
-function TMonitorCheckPage.State: TMonitorCheckState;
-begin
-  FOptions.Store(FState);
-  FState.Targets := FTargets.Targets;
-  Result := FState;
-end;
-
-
 procedure TMonitorCheckPage.UpdateTargetStates;
 begin
   FTargets.ShowStates(FQueue);
   FSummary.Caption := FQueue.Summary;
 end;
 
-{ Läufe }
+/// <summary>Zeigt das Ergebnis von Lauf AIndex: Befundliste aller Läufe, Text des Laufs oder seine HTML-Seite.
+/// </summary>
+procedure TMonitorCheckPage.ShowRun(AIndex: Integer);
+var
+  mKind: TMonitorOutputKind;
+  mRun: TMonitorRun;
+  mText: string;
+begin
+  if (AIndex < 0) or (AIndex > High(FQueue.Runs)) then
+  begin
+    Exit;
+  end;
+  mRun := FQueue.Runs[AIndex];
+  mKind := TMonitorCommands.OutputKind(FQueue.Command);
+  if (mKind = TMonitorOutputKind.Findings) and (mRun.ErrorText = '') then
+  begin
+    FFindings.ShowList;
+    Exit;
+  end;
+  mText := Trim(TMonitorRunQueue.StateText(FQueue.Command, mRun) + sLineBreak + mRun.ErrorText +
+    sLineBreak + ReadText(mRun.OutputFile) + sLineBreak + ReadText(TMonitorCommands.TimingsFileOf(mRun.OutputFile)));
+  if (mKind = TMonitorOutputKind.Html) and (mRun.State = TMonitorRunState.Done) then
+  begin
+    mText := TMonitorRunQueue.StateText(FQueue.Command, mRun);
+    FReport.ShowFile(mRun.OutputFile);
+  end;
+  FFindings.ShowText(mText);
+end;
 
 function TMonitorCheckPage.Validate: Boolean;
 var
@@ -974,27 +980,6 @@ begin
     TMonitorText.ConfirmWrite, [TMonitorCommands.Text(FState.Command), Length(FState.Targets.EnabledPaths)]));
 end;
 
-procedure TMonitorCheckPage.RunClick(ASender: TObject);
-var
-  mError: string;
-begin
-  FState := State;
-  if Busy or not Validate then
-  begin
-    Exit;
-  end;
-  if not PrepareWorkFolder(FWorkFolder, mError) then
-  begin
-    FOnInform(TMonitorTexts.Fmt(TMonitorText.StartFailed, [mError]));
-    Exit;
-  end;
-  FQueue := TMonitorRunQueue.Create(FState.Command, FState.Targets.EnabledPaths);
-  FFindings.Clear;
-  FRunButton.Enabled := False;
-  FCancelButton.Enabled := True;
-  FTimer.Enabled := True;
-  StartNext;
-end;
 
 procedure TMonitorCheckPage.StartNext;
 var
@@ -1033,6 +1018,8 @@ begin
   UpdateTargetStates;
 end;
 
+{ Läufe }
+
 procedure TMonitorCheckPage.FinishRun(AIndex, AExitCode: Integer);
 begin
   FQueue.Finish(AIndex, AExitCode);
@@ -1040,6 +1027,59 @@ begin
   if TMonitorCommands.OutputKind(FQueue.Command) = TMonitorOutputKind.Findings then
   begin
     FFindings.Refilter;
+  end;
+end;
+
+procedure TMonitorCheckPage.RunsDone;
+var
+  mIndex: Integer;
+begin
+  FRunButton.Enabled := True;
+  FCancelButton.Enabled := False;
+  UpdateTargetStates;
+  // Ergebnis des ersten Ziels zeigen; ein Klick auf ein Ziel zeigt dessen.
+  mIndex := SelectedRun;
+  if mIndex < 0 then
+  begin
+    mIndex := 0;
+  end;
+  ShowRun(mIndex);
+end;
+
+function TMonitorCheckPage.SelectedRun: Integer;
+var
+  I: Integer;
+  mPath: string;
+begin
+  Result := -1;
+  mPath := FTargets.SelectedPath;
+  if mPath = '' then
+  begin
+    Exit;
+  end;
+  for I := 0 to High(FQueue.Runs) do
+  begin
+    if SameText(FQueue.Runs[I].Target, mPath) then
+    begin
+      Result := I;
+    end;
+  end;
+end;
+
+/// <summary>Doppelklick auf einen Befund: Stelle im Editor bzw. im zugeordneten Programm öffnen.</summary>
+procedure TMonitorCheckPage.OpenFinding(const AFinding: TMonitorFinding);
+var
+  mCommand: string;
+begin
+  FOptions.Store(FState);
+  mCommand := TMonitorCheckState.EditorCommand(FState.Editor, AFinding.FileName, AFinding.Line, AFinding.Column);
+  if mCommand <> '' then
+  begin
+    TMonitorSystem.Launch(mCommand);
+  end
+  else
+  begin
+    TMonitorSystem.OpenFile(AFinding.FileName);
   end;
 end;
 
@@ -1067,101 +1107,32 @@ begin
   UpdateTargetStates;
 end;
 
-procedure TMonitorCheckPage.RunsDone;
+procedure TMonitorCheckPage.RunClick(ASender: TObject);
 var
-  mIndex: Integer;
+  mError: string;
 begin
-  FRunButton.Enabled := True;
-  FCancelButton.Enabled := False;
-  UpdateTargetStates;
-  // Ergebnis des ersten Ziels zeigen; ein Klick auf ein Ziel zeigt dessen.
-  mIndex := SelectedRun;
-  if mIndex < 0 then
+  FState := State;
+  if Busy or not Validate then
   begin
-    mIndex := 0;
+    Exit;
   end;
-  ShowRun(mIndex);
-end;
-
-procedure TMonitorCheckPage.CancelRuns;
-begin
-  FChild.Terminate;
-  FExport.Cancel;
-  FQueue.CancelAll;
+  if not PrepareWorkFolder(FWorkFolder, mError) then
+  begin
+    FOnInform(TMonitorTexts.Fmt(TMonitorText.StartFailed, [mError]));
+    Exit;
+  end;
+  FQueue := TMonitorRunQueue.Create(FState.Command, FState.Targets.EnabledPaths);
+  FFindings.Clear;
+  FRunButton.Enabled := False;
+  FCancelButton.Enabled := True;
+  FTimer.Enabled := True;
+  StartNext;
 end;
 
 procedure TMonitorCheckPage.CancelClick(ASender: TObject);
 begin
   CancelRuns;
   RunsDone;
-end;
-
-{ Ergebnisse }
-
-function TMonitorCheckPage.SelectedRun: Integer;
-var
-  I: Integer;
-  mPath: string;
-begin
-  Result := -1;
-  mPath := FTargets.SelectedPath;
-  if mPath = '' then
-  begin
-    Exit;
-  end;
-  for I := 0 to High(FQueue.Runs) do
-  begin
-    if SameText(FQueue.Runs[I].Target, mPath) then
-    begin
-      Result := I;
-    end;
-  end;
-end;
-
-/// <summary>Zeigt das Ergebnis von Lauf AIndex: Befundliste aller Läufe, Text des Laufs oder seine HTML-Seite.
-/// </summary>
-procedure TMonitorCheckPage.ShowRun(AIndex: Integer);
-var
-  mKind: TMonitorOutputKind;
-  mRun: TMonitorRun;
-  mText: string;
-begin
-  if (AIndex < 0) or (AIndex > High(FQueue.Runs)) then
-  begin
-    Exit;
-  end;
-  mRun := FQueue.Runs[AIndex];
-  mKind := TMonitorCommands.OutputKind(FQueue.Command);
-  if (mKind = TMonitorOutputKind.Findings) and (mRun.ErrorText = '') then
-  begin
-    FFindings.ShowList;
-    Exit;
-  end;
-  mText := Trim(TMonitorRunQueue.StateText(FQueue.Command, mRun) + sLineBreak + mRun.ErrorText +
-    sLineBreak + ReadText(mRun.OutputFile) + sLineBreak + ReadText(TMonitorCommands.TimingsFileOf(mRun.OutputFile)));
-  if (mKind = TMonitorOutputKind.Html) and (mRun.State = TMonitorRunState.Done) then
-  begin
-    mText := TMonitorRunQueue.StateText(FQueue.Command, mRun);
-    FReport.ShowFile(mRun.OutputFile);
-  end;
-  FFindings.ShowText(mText);
-end;
-
-/// <summary>Doppelklick auf einen Befund: Stelle im Editor bzw. im zugeordneten Programm öffnen.</summary>
-procedure TMonitorCheckPage.OpenFinding(const AFinding: TMonitorFinding);
-var
-  mCommand: string;
-begin
-  FOptions.Store(FState);
-  mCommand := TMonitorCheckState.EditorCommand(FState.Editor, AFinding.FileName, AFinding.Line, AFinding.Column);
-  if mCommand <> '' then
-  begin
-    TMonitorSystem.Launch(mCommand);
-  end
-  else
-  begin
-    TMonitorSystem.OpenFile(AFinding.FileName);
-  end;
 end;
 
 procedure TMonitorCheckPage.CopyCallClick(ASender: TObject);
@@ -1190,6 +1161,8 @@ begin
   FOnInform(TMonitorTexts.Text(TMonitorText.CallCopied));
 end;
 
+{ Ergebnisse }
+
 procedure TMonitorCheckPage.ExportClick(ASender: TObject);
 begin
   if Busy or (FQueue.Runs = nil) then
@@ -1207,6 +1180,33 @@ begin
   else
     FExport.Text(FQueue, FFindings.Text);
   end;
+end;
+
+procedure TMonitorCheckPage.Activate;
+begin
+  FTab.TabVisible := True;
+  FTargets.Activate;
+  FFindings.Activate;
+  FOptions.Activate(FState);
+end;
+
+function TMonitorCheckPage.Busy: Boolean;
+begin
+  Result := FQueue.Busy;
+end;
+
+procedure TMonitorCheckPage.CancelRuns;
+begin
+  FChild.Terminate;
+  FExport.Cancel;
+  FQueue.CancelAll;
+end;
+
+function TMonitorCheckPage.State: TMonitorCheckState;
+begin
+  FOptions.Store(FState);
+  FState.Targets := FTargets.Targets;
+  Result := FState;
 end;
 
 end.

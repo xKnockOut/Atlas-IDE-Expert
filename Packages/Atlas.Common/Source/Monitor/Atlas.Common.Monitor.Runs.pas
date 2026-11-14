@@ -98,6 +98,8 @@ const
   cReplayReproduced = 1;
   cFirstFailureCode = 3;
 
+{ TMonitorRunQueue }
+
 class function TMonitorRunQueue.Create(ACommand: TMonitorCommand; const ATargets: TArray<string>): TMonitorRunQueue;
 var
   I: Integer;
@@ -118,20 +120,6 @@ begin
   end;
 end;
 
-function TMonitorRunQueue.RunningIndex: Integer;
-var
-  I: Integer;
-begin
-  for I := 0 to High(Runs) do
-  begin
-    if Runs[I].State = TMonitorRunState.Running then
-    begin
-      Exit(I);
-    end;
-  end;
-  Result := -1;
-end;
-
 function TMonitorRunQueue.NextIndex: Integer;
 var
   I: Integer;
@@ -148,6 +136,20 @@ begin
       Exit(I);
     end;
   end;
+end;
+
+function TMonitorRunQueue.RunningIndex: Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to High(Runs) do
+  begin
+    if Runs[I].State = TMonitorRunState.Running then
+    begin
+      Exit(I);
+    end;
+  end;
+  Result := -1;
 end;
 
 function TMonitorRunQueue.Busy: Boolean;
@@ -177,18 +179,6 @@ begin
   end;
 end;
 
-class function TMonitorRunQueue.IsFailure(ACommand: TMonitorCommand; AExitCode: Integer): Boolean;
-begin
-  case ACommand of
-    TMonitorCommand.Check:
-      Result := AExitCode <> 0;
-    TMonitorCommand.Replay:
-      Result := (AExitCode < 0) or (AExitCode > cReplayReproduced);
-  else
-    Result := (AExitCode < 0) or (AExitCode >= cFirstFailureCode);
-  end;
-end;
-
 procedure TMonitorRunQueue.Finish(AIndex, AExitCode: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(Runs)) then
@@ -214,6 +204,18 @@ begin
   for mRun in Runs do
   begin
     Result := Result + mRun.Findings;
+  end;
+end;
+
+class function TMonitorRunQueue.IsFailure(ACommand: TMonitorCommand; AExitCode: Integer): Boolean;
+begin
+  case ACommand of
+    TMonitorCommand.Check:
+      Result := AExitCode <> 0;
+    TMonitorCommand.Replay:
+      Result := (AExitCode < 0) or (AExitCode > cReplayReproduced);
+  else
+    Result := (AExitCode < 0) or (AExitCode >= cFirstFailureCode);
   end;
 end;
 

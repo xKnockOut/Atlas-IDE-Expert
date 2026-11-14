@@ -106,6 +106,8 @@ begin
   Result := AMap.Split([',', ';']);
 end;
 
+{ TAtlasInlineCaption }
+
 class function TAtlasInlineCaption.PropertyFor(const AClassChain: TArray<string>; AHasCaption: Boolean;
   const AMap: string): string;
 var

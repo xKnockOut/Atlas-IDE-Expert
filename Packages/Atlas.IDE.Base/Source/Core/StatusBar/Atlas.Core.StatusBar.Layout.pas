@@ -125,18 +125,7 @@ begin
   end;
 end;
 
-class function TAtlasStatusBarLayout.FullWidth(const ASlots: TArray<TAtlasStatusSlot>; AGap: Integer): Integer;
-var
-  mWidths: TArray<Integer>;
-  mIndex: Integer;
-begin
-  SetLength(mWidths, Length(ASlots));
-  for mIndex := 0 to High(ASlots) do
-  begin
-    mWidths[mIndex] := ASlots[mIndex].Width;
-  end;
-  Result := Total(mWidths, AGap);
-end;
+{ TAtlasStatusBarLayout }
 
 class function TAtlasStatusBarLayout.Fit(const ASlots: TArray<TAtlasStatusSlot>; AAvailable,
   AGap: Integer): TArray<Integer>;
@@ -183,6 +172,19 @@ begin
     end;
     Result[mIndex] := 0;
   end;
+end;
+
+class function TAtlasStatusBarLayout.FullWidth(const ASlots: TArray<TAtlasStatusSlot>; AGap: Integer): Integer;
+var
+  mWidths: TArray<Integer>;
+  mIndex: Integer;
+begin
+  SetLength(mWidths, Length(ASlots));
+  for mIndex := 0 to High(ASlots) do
+  begin
+    mWidths[mIndex] := ASlots[mIndex].Width;
+  end;
+  Result := Total(mWidths, AGap);
 end;
 
 class function TAtlasStatusBarLayout.Place(const AWidths: TArray<Integer>; ALeft,

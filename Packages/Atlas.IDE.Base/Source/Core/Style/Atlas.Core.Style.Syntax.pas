@@ -170,6 +170,8 @@ type
     function Done: TAtlasTokens;
   end;
 
+{ TTokenList }
+
 procedure TTokenList.Emit(AStart, AStop: Integer; AKind: TAtlasTokenKind);
 begin
   if AStop <= AStart then
@@ -377,6 +379,8 @@ type
     procedure Close(AIndex: Integer);
     procedure Take(const ASignature: string; AIndex: Integer);
   end;
+
+{ TDefaultScan }
 
 procedure TDefaultScan.Close(AIndex: Integer);
 begin

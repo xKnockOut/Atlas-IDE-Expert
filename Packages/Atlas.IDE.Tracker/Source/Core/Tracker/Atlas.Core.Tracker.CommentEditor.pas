@@ -643,11 +643,6 @@ begin
   inherited;
 end;
 
-class function TAtlasCommentDrafts.TrackerKey(const ATarget: TAtlasTrackerTarget): string;
-begin
-  Result := TAtlasRecentIssues.TrackerKey(ATarget);
-end;
-
 function TAtlasCommentDrafts.IndexOf(const ATracker, AIssue, AField: string): Integer;
 var
   mIndex: Integer;
@@ -754,6 +749,25 @@ begin
   end;
 end;
 
+function TAtlasCommentDrafts.LoadFromFile(const AFileName: string): TAtlasDataLoad;
+begin
+  FEntries.Clear;
+  FKept := '';
+  Result := TAtlasDataFile.Load(AFileName, FKind,
+    function(const AText: string): Boolean
+    begin
+      Result := Parse(AText);
+    end);
+  if not TAtlasDataFile.Writable(Result) then
+  begin
+    FKept := AFileName;
+  end;
+  if Result <> TAtlasDataLoad.Loaded then
+  begin
+    FEntries.Clear;
+  end;
+end;
+
 /// <summary>Pflichtfelder eines Entwurfs aus AObject; False, wenn eines fehlt.</summary>
 function ReadDraftFields(AObject: TJSONObject; var AEntry: TAtlasCommentDrafts.TEntry): Boolean;
 begin
@@ -823,25 +837,6 @@ begin
   end;
 end;
 
-function TAtlasCommentDrafts.LoadFromFile(const AFileName: string): TAtlasDataLoad;
-begin
-  FEntries.Clear;
-  FKept := '';
-  Result := TAtlasDataFile.Load(AFileName, FKind,
-    function(const AText: string): Boolean
-    begin
-      Result := Parse(AText);
-    end);
-  if not TAtlasDataFile.Writable(Result) then
-  begin
-    FKept := AFileName;
-  end;
-  if Result <> TAtlasDataLoad.Loaded then
-  begin
-    FEntries.Clear;
-  end;
-end;
-
 function TAtlasCommentDrafts.SaveToFile(const AFileName: string): Boolean;
 begin
   Result := not SameFileName(AFileName, FKept);
@@ -849,6 +844,11 @@ begin
   begin
     TAtlasDataFile.Write(AFileName, ToJson);
   end;
+end;
+
+class function TAtlasCommentDrafts.TrackerKey(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := TAtlasRecentIssues.TrackerKey(ATarget);
 end;
 
 end.

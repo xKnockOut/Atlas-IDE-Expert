@@ -401,6 +401,8 @@ begin
   Result := mText;
 end;
 
+{ TPublishedMembers }
+
 class function TPublishedMembers.IsEventType(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
   const ATypeName: string): Boolean;
 var
@@ -590,6 +592,8 @@ type
     destructor Destroy; override;
     function Run(const AClassName: string): TArray<TPublishedMember>;
   end;
+
+{ TMemberCollect }
 
 constructor TMemberCollect.Create(const AIndex: ISymbolIndex; const AReadText: TMemberReadText);
 begin
@@ -1255,31 +1259,6 @@ begin
   end;
 end;
 
-class function TPublishedMembers.CachedText(const AIndex: ISymbolIndex; const AKey: string;
-  const AReadText: TMemberReadText; const AProduce: TFunc<TMemberReadText, string>): string;
-var
-  mKey: string;
-  mEntry: TPublishedCacheEntry;
-  mLog: TReadLog;
-begin
-  if not CacheActive(AIndex) then
-  begin
-    Exit(AProduce(AReadText));
-  end;
-  mKey := CacheKey(AIndex, 'text', AKey);
-  if CachedEntry(mKey, AReadText, mEntry) then
-  begin
-    Exit(mEntry.Text);
-  end;
-  mLog := TReadLog.Create;
-  try
-    Result := AProduce(Recording(AReadText, mLog));
-    StoreEntry(mKey, mLog, nil, Result);
-  finally
-    mLog.Free;
-  end;
-end;
-
 class function TPublishedMembers.DefaultProperty(const AIndex: ISymbolIndex; const AClassName: string;
   const AReadText: TMemberReadText): string;
 var
@@ -1299,6 +1278,31 @@ begin
   mLog := TReadLog.Create;
   try
     Result := DefaultPropertyUncached(AIndex, AClassName, Recording(AReadText, mLog));
+    StoreEntry(mKey, mLog, nil, Result);
+  finally
+    mLog.Free;
+  end;
+end;
+
+class function TPublishedMembers.CachedText(const AIndex: ISymbolIndex; const AKey: string;
+  const AReadText: TMemberReadText; const AProduce: TFunc<TMemberReadText, string>): string;
+var
+  mKey: string;
+  mEntry: TPublishedCacheEntry;
+  mLog: TReadLog;
+begin
+  if not CacheActive(AIndex) then
+  begin
+    Exit(AProduce(AReadText));
+  end;
+  mKey := CacheKey(AIndex, 'text', AKey);
+  if CachedEntry(mKey, AReadText, mEntry) then
+  begin
+    Exit(mEntry.Text);
+  end;
+  mLog := TReadLog.Create;
+  try
+    Result := AProduce(Recording(AReadText, mLog));
     StoreEntry(mKey, mLog, nil, Result);
   finally
     mLog.Free;

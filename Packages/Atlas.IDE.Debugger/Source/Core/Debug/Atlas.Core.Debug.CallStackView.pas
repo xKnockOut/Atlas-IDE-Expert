@@ -245,29 +245,6 @@ begin
   end;
 end;
 
-class function TAtlasDebugStackView.AreaOf(const AUnitName: string): string;
-const
-  cPrefixes: array[0..6] of string = ('Vcl', 'FMX', 'System', 'SysInit', 'Winapi', 'Data', 'Xml');
-  cAreas: array[0..6] of string = ('VCL', 'FMX', 'RTL', 'RTL', 'Windows', 'Data', 'XML');
-var
-  mFirst: string;
-  mIndex: Integer;
-begin
-  mFirst := AUnitName;
-  if Pos('.', mFirst) > 0 then
-  begin
-    mFirst := Copy(mFirst, 1, Pos('.', mFirst) - 1);
-  end;
-  for mIndex := 0 to High(cPrefixes) do
-  begin
-    if SameText(mFirst, cPrefixes[mIndex]) then
-    begin
-      Exit(cAreas[mIndex]);
-    end;
-  end;
-  Result := mFirst;
-end;
-
 function TAtlasDebugStackView.Area(const ARow: TAtlasDebugStackRow): string;
 var
   mIndex: Integer;
@@ -348,6 +325,29 @@ begin
       Result := Result + [mRow.First];
     end;
   end;
+end;
+
+class function TAtlasDebugStackView.AreaOf(const AUnitName: string): string;
+const
+  cPrefixes: array[0..6] of string = ('Vcl', 'FMX', 'System', 'SysInit', 'Winapi', 'Data', 'Xml');
+  cAreas: array[0..6] of string = ('VCL', 'FMX', 'RTL', 'RTL', 'Windows', 'Data', 'XML');
+var
+  mFirst: string;
+  mIndex: Integer;
+begin
+  mFirst := AUnitName;
+  if Pos('.', mFirst) > 0 then
+  begin
+    mFirst := Copy(mFirst, 1, Pos('.', mFirst) - 1);
+  end;
+  for mIndex := 0 to High(cPrefixes) do
+  begin
+    if SameText(mFirst, cPrefixes[mIndex]) then
+    begin
+      Exit(cAreas[mIndex]);
+    end;
+  end;
+  Result := mFirst;
 end;
 
 /// <summary>Vergleichswert eines Parameters: der ausgewertete Wert, wenn beide einen haben, sonst der der IDE.

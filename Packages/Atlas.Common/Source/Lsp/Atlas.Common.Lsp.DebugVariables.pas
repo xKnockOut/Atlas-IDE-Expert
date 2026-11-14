@@ -156,13 +156,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TLspDebugVariables.Reset;
-begin
-  FFound.Clear;
-  FSeen.Clear;
-  FCalls := nil;
-end;
-
 function TLspDebugVariables.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := '';
@@ -239,6 +232,51 @@ begin
   end;
   FSeen.Add(mKey, True);
   FFound.Add(AText);
+end;
+
+procedure TLspDebugVariables.AddAll(const ATexts: TArray<string>);
+var
+  mText: string;
+begin
+  for mText in ATexts do
+  begin
+    Add(mText);
+  end;
+end;
+
+/// <summary>Parameter und Result aus dem Kopf AHeader einer Routine.</summary>
+procedure TLspDebugVariables.AddHeaderNames(AHeader: TSyntaxNode);
+var
+  mParams: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams <> nil then
+  begin
+    for mIndex := 0 to mParams.ChildCount - 1 do
+    begin
+      AddAll(NamesOf(mParams.Children[mIndex]));
+    end;
+  end;
+  // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
+  if AHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
+  begin
+    Add('Result');
+  end;
+end;
+
+/// <summary>Variablen des var-Abschnitts ASection.</summary>
+procedure TLspDebugVariables.AddVarNames(ASection: TSyntaxNode);
+var
+  mDecl: Integer;
+begin
+  for mDecl := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection.Children[mDecl].Kind = TSyntaxKind.VarDecl then
+    begin
+      AddAll(NamesOf(ASection.Children[mDecl]));
+    end;
+  end;
 end;
 
 function TLspDebugVariables.TryAddChain(ANode: TSyntaxNode): Boolean;
@@ -389,70 +427,6 @@ begin
   Result := nil;
 end;
 
-function TLspDebugVariables.Autos(ALine, APreviousLine: Integer): TArray<string>;
-var
-  mCurrent, mPrevious, mRoutine, mPreviousRoutine: TSyntaxNode;
-begin
-  Reset;
-  mCurrent := StatementAt(ALine, mRoutine);
-  CollectStatement(mCurrent);
-  if APreviousLine <> ALine then
-  begin
-    mPrevious := StatementAt(APreviousLine, mPreviousRoutine);
-    // Die vorige Anweisung nur aus derselben Routine: Nach einem Rücksprung sind ihre Variablen weg.
-    if (mPrevious <> nil) and (mPrevious <> mCurrent) and (mRoutine <> nil) and (mPreviousRoutine = mRoutine) then
-    begin
-      CollectStatement(mPrevious);
-    end;
-  end;
-  Result := FFound.ToArray;
-end;
-
-procedure TLspDebugVariables.AddAll(const ATexts: TArray<string>);
-var
-  mText: string;
-begin
-  for mText in ATexts do
-  begin
-    Add(mText);
-  end;
-end;
-
-/// <summary>Parameter und Result aus dem Kopf AHeader einer Routine.</summary>
-procedure TLspDebugVariables.AddHeaderNames(AHeader: TSyntaxNode);
-var
-  mParams: TSyntaxNode;
-  mIndex: Integer;
-begin
-  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
-  if mParams <> nil then
-  begin
-    for mIndex := 0 to mParams.ChildCount - 1 do
-    begin
-      AddAll(NamesOf(mParams.Children[mIndex]));
-    end;
-  end;
-  // Ergebnistyp direkt am Kopf: Funktion bzw. Operator.
-  if AHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
-  begin
-    Add('Result');
-  end;
-end;
-
-/// <summary>Variablen des var-Abschnitts ASection.</summary>
-procedure TLspDebugVariables.AddVarNames(ASection: TSyntaxNode);
-var
-  mDecl: Integer;
-begin
-  for mDecl := 0 to ASection.ChildCount - 1 do
-  begin
-    if ASection.Children[mDecl].Kind = TSyntaxKind.VarDecl then
-    begin
-      AddAll(NamesOf(ASection.Children[mDecl]));
-    end;
-  end;
-end;
-
 procedure TLspDebugVariables.AddLocalsOf(ARoutine: TSyntaxNode);
 var
   mHeader: TSyntaxNode;
@@ -502,6 +476,32 @@ begin
         AddAll(NamesOf(ANode));
       end;
     end);
+end;
+
+procedure TLspDebugVariables.Reset;
+begin
+  FFound.Clear;
+  FSeen.Clear;
+  FCalls := nil;
+end;
+
+function TLspDebugVariables.Autos(ALine, APreviousLine: Integer): TArray<string>;
+var
+  mCurrent, mPrevious, mRoutine, mPreviousRoutine: TSyntaxNode;
+begin
+  Reset;
+  mCurrent := StatementAt(ALine, mRoutine);
+  CollectStatement(mCurrent);
+  if APreviousLine <> ALine then
+  begin
+    mPrevious := StatementAt(APreviousLine, mPreviousRoutine);
+    // Die vorige Anweisung nur aus derselben Routine: Nach einem Rücksprung sind ihre Variablen weg.
+    if (mPrevious <> nil) and (mPrevious <> mCurrent) and (mRoutine <> nil) and (mPreviousRoutine = mRoutine) then
+    begin
+      CollectStatement(mPrevious);
+    end;
+  end;
+  Result := FFound.ToArray;
 end;
 
 function TLspDebugVariables.Locals(ALine: Integer): TArray<string>;

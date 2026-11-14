@@ -194,6 +194,8 @@ begin
   Result := Length(AVersion.Items) > 0;
 end;
 
+{ TAtlasWhatsNew }
+
 class function TAtlasWhatsNew.Parse(const AJson: string): TAtlasWhatsNewVersions;
 var
   mRoot, mVersions: TJSONValue;
@@ -393,6 +395,19 @@ begin
   end;
 end;
 
+class function TAtlasWhatsNew.Latest(const AVersions: TAtlasWhatsNewVersions;
+  const ACurrent: string): TAtlasWhatsNewVersions;
+var
+  mAll: TAtlasWhatsNewVersions;
+begin
+  mAll := UpTo(AVersions, ACurrent);
+  Result := nil;
+  if Length(mAll) > 0 then
+  begin
+    Result := [mAll[0]];
+  end;
+end;
+
 class function TAtlasWhatsNew.UpTo(const AVersions: TAtlasWhatsNewVersions;
   const ACurrent: string): TAtlasWhatsNewVersions;
 var
@@ -405,19 +420,6 @@ begin
     begin
       Result := Result + [mVersion];
     end;
-  end;
-end;
-
-class function TAtlasWhatsNew.Latest(const AVersions: TAtlasWhatsNewVersions;
-  const ACurrent: string): TAtlasWhatsNewVersions;
-var
-  mAll: TAtlasWhatsNewVersions;
-begin
-  mAll := UpTo(AVersions, ACurrent);
-  Result := nil;
-  if Length(mAll) > 0 then
-  begin
-    Result := [mAll[0]];
   end;
 end;
 

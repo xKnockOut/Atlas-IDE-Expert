@@ -190,6 +190,8 @@ type
 var
   Logins: TLoginWatch;
 
+{ TLoginWatch }
+
 constructor TLoginWatch.Create;
 begin
   inherited Create;
@@ -216,13 +218,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TLoginWatch.Add(AProcess: THandle; const AClosed: TProc);
-begin
-  FProcesses.Add(AProcess);
-  FClosed.Add(AClosed);
-  FTimer.Enabled := True;
-end;
-
 procedure TLoginWatch.Tick(Sender: TObject);
 var
   mIndex: Integer;
@@ -243,6 +238,13 @@ begin
     end;
   end;
   FTimer.Enabled := FProcesses.Count > 0;
+end;
+
+procedure TLoginWatch.Add(AProcess: THandle; const AClosed: TProc);
+begin
+  FProcesses.Add(AProcess);
+  FClosed.Add(AClosed);
+  FTimer.Enabled := True;
 end;
 
 function ReadSettings(const AFileName: string): TVcsSettings;
@@ -292,6 +294,39 @@ begin
   end;
 end;
 
+{ TAtlasIdeVcsCore }
+
+class procedure TAtlasIdeVcsCore.Stop;
+begin
+  if Assigned(Backend.SetToolMissing) then
+  begin
+    Backend.SetToolMissing(nil);
+  end;
+  Message_ := nil;
+  if Worker <> nil then
+  begin
+    Worker.Stop(TAtlasShutdown.cStopMs);
+  end;
+  FreeAndNil(Worker);
+  Runner := nil;
+  FreeAndNil(Logins);
+end;
+
+class procedure TAtlasIdeVcsCore.Report(const AText: string);
+var
+  mText: string;
+begin
+  mText := AText;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      if Assigned(Message_) and not TAtlasShutdown.Signalled then
+      begin
+        Message_(mText);
+      end;
+    end);
+end;
+
 class function TAtlasIdeVcsCore.Provider: TAtlasVcsProvider;
 begin
   Result := Current.Provider;
@@ -300,29 +335,6 @@ end;
 class function TAtlasIdeVcsCore.TimeoutMs: Cardinal;
 begin
   Result := Current.TimeoutMs;
-end;
-
-class function TAtlasIdeVcsCore.AtLeast(AMinimumMs: Cardinal): Cardinal;
-begin
-  Result := TimeoutMs;
-  if AMinimumMs > Result then
-  begin
-    Result := AMinimumMs;
-  end;
-end;
-
-class procedure TAtlasIdeVcsCore.Reload;
-begin
-  // Hauptthread: ob die .atlas gilt, kann sich mit den Einstellungen geändert haben.
-  TeamFileOn := TAtlasIdeTeamFile.Wanted;
-  Lock.Enter;
-  try
-    CachedAge := -1;
-    TeamCache.Clear;
-  finally
-    Lock.Leave;
-  end;
-  Current;
 end;
 
 function TeamPathExists(const APath: string): Boolean;
@@ -382,9 +394,32 @@ begin
   end;
 end;
 
-class function TAtlasIdeVcsCore.Projects: TArray<TAtlasVcsProjectMapping>;
+class function TAtlasIdeVcsCore.AtLeast(AMinimumMs: Cardinal): Cardinal;
 begin
-  Result := Current.Projects;
+  Result := TimeoutMs;
+  if AMinimumMs > Result then
+  begin
+    Result := AMinimumMs;
+  end;
+end;
+
+class procedure TAtlasIdeVcsCore.Reload;
+begin
+  // Hauptthread: ob die .atlas gilt, kann sich mit den Einstellungen geändert haben.
+  TeamFileOn := TAtlasIdeTeamFile.Wanted;
+  Lock.Enter;
+  try
+    CachedAge := -1;
+    TeamCache.Clear;
+  finally
+    Lock.Leave;
+  end;
+  Current;
+end;
+
+class function TAtlasIdeVcsCore.ForFolder(const AFolder: string): IAtlasVersionControl;
+begin
+  Result := ForFolder(AFolder, 0);
 end;
 
 class function TAtlasIdeVcsCore.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
@@ -396,27 +431,6 @@ begin
   mTeam := TeamVcsOf(AFolder);
   Result := TAtlasVcsProjects.ResolveFolder(mTeam.Provider, mTeam.MainBranch, mSettings.Projects,
     mSettings.Provider, AFolder);
-end;
-
-class function TAtlasIdeVcsCore.ForProjectResolution(const AProjectFile,
-  AGroupFile: string): TAtlasVcsProjectResolution;
-var
-  mSettings: TVcsSettings;
-  mTeam: TAtlasTeamVcs;
-begin
-  mSettings := Current;
-  mTeam := TeamVcsOf(ExtractFileDir(AProjectFile));
-  Result := TAtlasVcsProjects.Resolve(mTeam.Provider, mTeam.MainBranch, mSettings.Projects, mSettings.Provider,
-    AProjectFile, AGroupFile);
-end;
-
-class function TAtlasIdeVcsCore.MainBranchOf(const AProjectFile, AGroupFile: string): string;
-begin
-  Result := '';
-  if AProjectFile <> '' then
-  begin
-    Result := ForProjectResolution(AProjectFile, AGroupFile).MainBranch;
-  end;
 end;
 
 /// <summary>Umsetzung für AFolder mit der Art AProvider; nil vor dem ersten Start.</summary>
@@ -490,46 +504,36 @@ begin
   Backend.SetToolMissing(ToolMissing);
 end;
 
-class procedure TAtlasIdeVcsCore.Stop;
-begin
-  if Assigned(Backend.SetToolMissing) then
-  begin
-    Backend.SetToolMissing(nil);
-  end;
-  Message_ := nil;
-  if Worker <> nil then
-  begin
-    Worker.Stop(TAtlasShutdown.cStopMs);
-  end;
-  FreeAndNil(Worker);
-  Runner := nil;
-  FreeAndNil(Logins);
-end;
-
-class procedure TAtlasIdeVcsCore.Report(const AText: string);
-var
-  mText: string;
-begin
-  mText := AText;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
-    procedure
-    begin
-      if Assigned(Message_) and not TAtlasShutdown.Signalled then
-      begin
-        Message_(mText);
-      end;
-    end);
-end;
-
-class function TAtlasIdeVcsCore.ForFolder(const AFolder: string): IAtlasVersionControl;
-begin
-  Result := ForFolder(AFolder, 0);
-end;
-
 class function TAtlasIdeVcsCore.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
 begin
   // Vor dem ersten Start ist keine Umsetzung eingesetzt. Art je Ordner (#1286): „Aus“ liefert die leere Umsetzung.
   Result := OpenFolder(AFolder, ForFolderResolution(AFolder).Provider, ATimeoutMs);
+end;
+
+class function TAtlasIdeVcsCore.ForProjectResolution(const AProjectFile,
+  AGroupFile: string): TAtlasVcsProjectResolution;
+var
+  mSettings: TVcsSettings;
+  mTeam: TAtlasTeamVcs;
+begin
+  mSettings := Current;
+  mTeam := TeamVcsOf(ExtractFileDir(AProjectFile));
+  Result := TAtlasVcsProjects.Resolve(mTeam.Provider, mTeam.MainBranch, mSettings.Projects, mSettings.Provider,
+    AProjectFile, AGroupFile);
+end;
+
+class function TAtlasIdeVcsCore.MainBranchOf(const AProjectFile, AGroupFile: string): string;
+begin
+  Result := '';
+  if AProjectFile <> '' then
+  begin
+    Result := ForProjectResolution(AProjectFile, AGroupFile).MainBranch;
+  end;
+end;
+
+class function TAtlasIdeVcsCore.Projects: TArray<TAtlasVcsProjectMapping>;
+begin
+  Result := Current.Projects;
 end;
 
 class function TAtlasIdeVcsCore.Run(const AWork, ADone: TProc): Boolean;

@@ -237,44 +237,6 @@ begin
   inherited;
 end;
 
-procedure TInlineCallees.Prepare(const AOwn: TUnitIndex; const AOwnName: string);
-begin
-  FOwn := AOwn;
-  FOwnName := AOwnName;
-  FOwnInline.Clear;
-  FOwnCandidates.Clear;
-  FCandidates.Clear;
-  CollectOwnCandidates;
-end;
-
-class function TInlineCallees.SameUnit(const AName, AOwnName: string; const ANamespaces: TArray<string>): Boolean;
-var
-  mNamespace: string;
-begin
-  if SameText(AName, AOwnName) then
-  begin
-    Exit(True);
-  end;
-  for mNamespace in ANamespaces do
-  begin
-    if SameText(mNamespace + '.' + AName, AOwnName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-function TInlineCallees.IsOwnUnit(const AName: string): Boolean;
-begin
-  Result := SameUnit(AName, FOwnName, FNamespaces);
-end;
-
-class function TInlineCallees.IsWithoutRefs(const ASymbol: TIndexSymbol): Boolean;
-begin
-  Result := (Length(ASymbol.InlineRefs) = 1) and (ASymbol.InlineRefs[0] = TIndexSymbol.cInlineWithoutRefs);
-end;
-
 function TInlineCallees.IsImplicitAlias(const AResolved: TResolvedSymbol): Boolean;
 var
   mUnit: TUnitIndex;
@@ -354,51 +316,6 @@ begin
   end;
 end;
 
-function TInlineCallees.NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
-var
-  mKey, mRef, mUnitName: string;
-  mOwner: TResolvedSymbol;
-  mHasOwner: Boolean;
-  mUnits: TList<string>;
-begin
-  mKey := UpperCase(ACallee.OwnerUnit.UnitName + '|' + ACallee.Symbol.QualifiedName + '|' +
-    IntToStr(ACallee.Symbol.SelectionRange.StartPos.Line));
-  if FNeeds.TryGetValue(mKey, Result) then
-  begin
-    Exit;
-  end;
-  Result := Default(TInlineNeeds);
-  mOwner := Default(TResolvedSymbol);
-  mHasOwner := (ACallee.Symbol.Container <> '') and
-    FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.Container, mOwner);
-  mUnits := TList<string>.Create;
-  try
-    for mRef in ACallee.Symbol.InlineRefs do
-    begin
-      // strict private-Mitglied der eigenen Klasse: Delphi 13 bettet trotzdem ein (#1383, Cm.H2440b).
-      if (mRef = '') or (mRef[1] = '!') then
-      begin
-        Continue;
-      end;
-      mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, Result.External);
-      if (mUnitName = '') or SameText(mUnitName, ACallee.OwnerUnit.UnitName) or
-        (IndexText(mUnitName, cImplicitUnits) >= 0) then
-      begin
-        Continue;
-      end;
-      Result.External := True;
-      if mUnits.IndexOf(mUnitName) < 0 then
-      begin
-        mUnits.Add(mUnitName);
-      end;
-    end;
-    Result.Units := mUnits.ToArray;
-  finally
-    mUnits.Free;
-  end;
-  FNeeds.Add(mKey, Result);
-end;
-
 function TInlineCallees.HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
 var
   mName, mContainer: string;
@@ -449,6 +366,97 @@ begin
       FOwnCandidates.AddOrSetValue(LowerCase(mSymbol.Name), True);
     end;
   end;
+end;
+
+function TInlineCallees.Accessor(const ACallee: TInlineCallee; AWrite: Boolean; out AResult: TInlineCallee): Boolean;
+var
+  mName: string;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  mName := AccessorName(ACallee.Symbol.Signature, AWrite);
+  if (mName = '') or (Pos('.', mName) > 0) then
+  begin
+    Exit;
+  end;
+  for mSymbol in ACallee.OwnerUnit.Symbols do
+  begin
+    if SameText(mSymbol.Name, mName) and SameText(mSymbol.Container, ACallee.Symbol.Container) and
+      (mSymbol.Kind = TIndexSymbolKind.Method) and mSymbol.InInterface then
+    begin
+      AResult.OwnerUnit := ACallee.OwnerUnit;
+      AResult.Symbol := mSymbol;
+      Exit(True);
+    end;
+  end;
+end;
+
+function TInlineCallees.EnumeratorCallees(const AEnumerator: TInlineCallee): TArray<TInlineCallee>;
+var
+  mEnumType, mMember: TResolvedSymbol;
+  mTarget, mGetter: TInlineCallee;
+  mName: string;
+begin
+  Result := nil;
+  if (AEnumerator.Symbol.TypeName = '') or
+    not FCallee.ResolveTypeTextFrom(AEnumerator.OwnerUnit, AEnumerator.Symbol.TypeName, mEnumType) then
+  begin
+    Exit;
+  end;
+  for mName in cEnumeratorMembers do
+  begin
+    if not FCallee.DeclaredMember(mEnumType, mName, mMember) or not CalleeOf(mMember, mTarget) then
+    begin
+      Continue;
+    end;
+    if mTarget.Symbol.Kind = TIndexSymbolKind.Property_ then
+    begin
+      if not Accessor(mTarget, False, mGetter) then
+      begin
+        Continue;
+      end;
+      mTarget := mGetter;
+    end;
+    Result := Result + [mTarget];
+  end;
+end;
+
+procedure TInlineCallees.Prepare(const AOwn: TUnitIndex; const AOwnName: string);
+begin
+  FOwn := AOwn;
+  FOwnName := AOwnName;
+  FOwnInline.Clear;
+  FOwnCandidates.Clear;
+  FCandidates.Clear;
+  CollectOwnCandidates;
+end;
+
+class function TInlineCallees.SameUnit(const AName, AOwnName: string; const ANamespaces: TArray<string>): Boolean;
+var
+  mNamespace: string;
+begin
+  if SameText(AName, AOwnName) then
+  begin
+    Exit(True);
+  end;
+  for mNamespace in ANamespaces do
+  begin
+    if SameText(mNamespace + '.' + AName, AOwnName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TInlineCallees.IsOwnUnit(const AName: string): Boolean;
+begin
+  Result := SameUnit(AName, FOwnName, FNamespaces);
+end;
+
+class function TInlineCallees.IsWithoutRefs(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (Length(ASymbol.InlineRefs) = 1) and (ASymbol.InlineRefs[0] = TIndexSymbol.cInlineWithoutRefs);
 end;
 
 function TInlineCallees.IsCandidate(const AName: string): Boolean;
@@ -513,29 +521,6 @@ begin
   end;
 end;
 
-function TInlineCallees.Accessor(const ACallee: TInlineCallee; AWrite: Boolean; out AResult: TInlineCallee): Boolean;
-var
-  mName: string;
-  mSymbol: TIndexSymbol;
-begin
-  Result := False;
-  mName := AccessorName(ACallee.Symbol.Signature, AWrite);
-  if (mName = '') or (Pos('.', mName) > 0) then
-  begin
-    Exit;
-  end;
-  for mSymbol in ACallee.OwnerUnit.Symbols do
-  begin
-    if SameText(mSymbol.Name, mName) and SameText(mSymbol.Container, ACallee.Symbol.Container) and
-      (mSymbol.Kind = TIndexSymbolKind.Method) and mSymbol.InInterface then
-    begin
-      AResult.OwnerUnit := ACallee.OwnerUnit;
-      AResult.Symbol := mSymbol;
-      Exit(True);
-    end;
-  end;
-end;
-
 function TInlineCallees.CalleeAt(const AResolved: TResolvedSymbol; const ATokens: TArray<TPascalToken>;
   ATokenIndex: Integer; out ACallee: TInlineCallee): Boolean;
 var
@@ -567,36 +552,6 @@ begin
   end;
 end;
 
-function TInlineCallees.EnumeratorCallees(const AEnumerator: TInlineCallee): TArray<TInlineCallee>;
-var
-  mEnumType, mMember: TResolvedSymbol;
-  mTarget, mGetter: TInlineCallee;
-  mName: string;
-begin
-  Result := nil;
-  if (AEnumerator.Symbol.TypeName = '') or
-    not FCallee.ResolveTypeTextFrom(AEnumerator.OwnerUnit, AEnumerator.Symbol.TypeName, mEnumType) then
-  begin
-    Exit;
-  end;
-  for mName in cEnumeratorMembers do
-  begin
-    if not FCallee.DeclaredMember(mEnumType, mName, mMember) or not CalleeOf(mMember, mTarget) then
-    begin
-      Continue;
-    end;
-    if mTarget.Symbol.Kind = TIndexSymbolKind.Property_ then
-    begin
-      if not Accessor(mTarget, False, mGetter) then
-      begin
-        Continue;
-      end;
-      mTarget := mGetter;
-    end;
-    Result := Result + [mTarget];
-  end;
-end;
-
 function TInlineCallees.ForInCallees(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
   out AExpr: TSyntaxNode): TArray<TInlineCallee>;
 var
@@ -616,6 +571,51 @@ begin
     Exit;
   end;
   Result := [mCallee] + EnumeratorCallees(mCallee);
+end;
+
+function TInlineCallees.NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
+var
+  mKey, mRef, mUnitName: string;
+  mOwner: TResolvedSymbol;
+  mHasOwner: Boolean;
+  mUnits: TList<string>;
+begin
+  mKey := UpperCase(ACallee.OwnerUnit.UnitName + '|' + ACallee.Symbol.QualifiedName + '|' +
+    IntToStr(ACallee.Symbol.SelectionRange.StartPos.Line));
+  if FNeeds.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := Default(TInlineNeeds);
+  mOwner := Default(TResolvedSymbol);
+  mHasOwner := (ACallee.Symbol.Container <> '') and
+    FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.Container, mOwner);
+  mUnits := TList<string>.Create;
+  try
+    for mRef in ACallee.Symbol.InlineRefs do
+    begin
+      // strict private-Mitglied der eigenen Klasse: Delphi 13 bettet trotzdem ein (#1383, Cm.H2440b).
+      if (mRef = '') or (mRef[1] = '!') then
+      begin
+        Continue;
+      end;
+      mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, Result.External);
+      if (mUnitName = '') or SameText(mUnitName, ACallee.OwnerUnit.UnitName) or
+        (IndexText(mUnitName, cImplicitUnits) >= 0) then
+      begin
+        Continue;
+      end;
+      Result.External := True;
+      if mUnits.IndexOf(mUnitName) < 0 then
+      begin
+        mUnits.Add(mUnitName);
+      end;
+    end;
+    Result.Units := mUnits.ToArray;
+  finally
+    mUnits.Free;
+  end;
+  FNeeds.Add(mKey, Result);
 end;
 
 end.

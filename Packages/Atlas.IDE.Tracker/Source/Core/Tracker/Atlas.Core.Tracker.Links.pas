@@ -236,6 +236,8 @@ begin
   end;
 end;
 
+{ TAtlasTrackerLinks }
+
 class function TAtlasTrackerLinks.YouTrackKind(const AName, ASourceToTarget, ATargetToSource, ADirection: string;
   AAggregation: Boolean): TAtlasTrackerLinkKind;
 var
@@ -265,12 +267,6 @@ begin
   else
     Result := TAtlasTrackerLinkKind.Other;
   end;
-end;
-
-class function TAtlasTrackerLinks.Collapsed(AKind: TAtlasTrackerLinkKind): Boolean;
-begin
-  Result := not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks,
-    TAtlasTrackerLinkKind.Subtask, TAtlasTrackerLinkKind.Parent]);
 end;
 
 class function TAtlasTrackerLinks.Groups(const ALinks: TArray<TAtlasTrackerLink>): TArray<TAtlasTrackerLinkGroup>;
@@ -303,6 +299,12 @@ begin
       Result := Result + [mGroup];
     end;
   end;
+end;
+
+class function TAtlasTrackerLinks.Collapsed(AKind: TAtlasTrackerLinkKind): Boolean;
+begin
+  Result := not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks,
+    TAtlasTrackerLinkKind.Subtask, TAtlasTrackerLinkKind.Parent]);
 end;
 
 class function TAtlasTrackerLinks.Progress(const ALinks: TArray<TAtlasTrackerLink>; out ADone,

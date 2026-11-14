@@ -88,6 +88,8 @@ type
     class function Create(AMeaning: TNameMeaning; ADecl, ATypeNode: TSyntaxNode): TNameResolution; static;
   end;
 
+{ TNameResolution }
+
 class function TNameResolution.Create(AMeaning: TNameMeaning; ADecl, ATypeNode: TSyntaxNode): TNameResolution;
 begin
   Result.Meaning := AMeaning;
@@ -366,6 +368,8 @@ begin
   end;
   Result := False;
 end;
+
+{ TTypeInfoInvalidRule }
 
 function TTypeInfoInvalidRule.Descriptor: TRuleDescriptor;
 begin

@@ -112,6 +112,8 @@ type
     class function Read(const AArguments: TJSONArray): TMethodOrderArguments; static;
   end;
 
+{ TMethodOrderArguments }
+
 class function TMethodOrderArguments.Read(const AArguments: TJSONArray): TMethodOrderArguments;
 var
   mOptions: TJSONObject;

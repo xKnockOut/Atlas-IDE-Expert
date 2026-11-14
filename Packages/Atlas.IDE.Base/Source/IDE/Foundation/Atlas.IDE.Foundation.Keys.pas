@@ -113,6 +113,18 @@ uses
 
 { TAtlasIdeKeyBinding.TBinding }
 
+procedure TAtlasIdeKeyBinding.TBinding.Execute(const Context: IOTAKeyContext; KeyCode: TShortCut;
+  var BindingResult: TKeyBindingResult);
+begin
+  BindingResult := krHandled;
+  // Denselben Tastendruck nicht ein zweites Mal ausführen, wenn ihn das Kontextmenü über sein Kürzel schon nahm.
+  if (FOwner <> nil) and Assigned(FOwner.FAction) and TAtlasKeyStroke.Claim(KeyCode, Cardinal(GetMessageTime)) then
+  begin
+    // Keine Exception an die IDE (#493).
+    TAtlasGuard.Run(FOwner.FFeature, FOwner.FAction);
+  end;
+end;
+
 function TAtlasIdeKeyBinding.TBinding.GetBindingType: TBindingType;
 begin
   Result := btPartial;
@@ -147,18 +159,6 @@ begin
   if (FOwner <> nil) and (FOwner.FKey <> 0) then
   begin
     BindingServices.AddKeyBinding([FOwner.FKey], Execute, nil);
-  end;
-end;
-
-procedure TAtlasIdeKeyBinding.TBinding.Execute(const Context: IOTAKeyContext; KeyCode: TShortCut;
-  var BindingResult: TKeyBindingResult);
-begin
-  BindingResult := krHandled;
-  // Denselben Tastendruck nicht ein zweites Mal ausführen, wenn ihn das Kontextmenü über sein Kürzel schon nahm.
-  if (FOwner <> nil) and Assigned(FOwner.FAction) and TAtlasKeyStroke.Claim(KeyCode, Cardinal(GetMessageTime)) then
-  begin
-    // Keine Exception an die IDE (#493).
-    TAtlasGuard.Run(FOwner.FFeature, FOwner.FAction);
   end;
 end;
 
@@ -242,88 +242,6 @@ end;
 
 { TAtlasIdeKeys }
 
-class procedure TAtlasIdeKeys.WatchPackages(const AChanged: TProc);
-var
-  mServices: IOTAServices;
-begin
-  UnwatchPackages;
-  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    Exit;
-  end;
-  FWatch := TPackageWatch.Create;
-  FWatch.FChanged := AChanged;
-  FWatchIndex := mServices.AddNotifier(FWatch);
-end;
-
-class procedure TAtlasIdeKeys.UnwatchPackages;
-var
-  mServices: IOTAServices;
-begin
-  if FWatch = nil then
-  begin
-    Exit;
-  end;
-  FWatch.FChanged := nil;
-  // RemoveNotifier gibt die Referenz der IDE frei und damit FWatch.
-  if Supports(BorlandIDEServices, IOTAServices, mServices) then
-  begin
-    mServices.RemoveNotifier(FWatchIndex);
-  end;
-  FWatch := nil;
-end;
-
-/// <summary>Liegt AShortCut als Haupt- oder Zweittaste auf AAction?</summary>
-function HasShortCut(AAction: TCustomAction; AShortCut: Word): Boolean;
-var
-  mSecondary: Integer;
-begin
-  Result := AAction.ShortCut = AShortCut;
-  for mSecondary := 0 to AAction.SecondaryShortCuts.Count - 1 do
-  begin
-    Result := Result or (AAction.SecondaryShortCuts.ShortCuts[mSecondary] = AShortCut);
-  end;
-end;
-
-/// <summary>Name der IDE-Aktion (nicht von Atlas) mit AShortCut; '' ohne.</summary>
-function ActionOwner(AShortCut: Word): string;
-var
-  mServices: INTAServices;
-  mIndex: Integer;
-  mAction: TCustomAction;
-begin
-  Result := '';
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
-  begin
-    if mServices.ActionList.Actions[mIndex] is TCustomAction then
-    begin
-      mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
-      if not SameText(mAction.Category, 'Atlas') and HasShortCut(mAction, AShortCut) then
-      begin
-        Exit(StripHotkey(mAction.Caption));
-      end;
-    end;
-  end;
-end;
-
-class function TAtlasIdeKeys.Owner(AShortCut: Word): string;
-begin
-  Result := '';
-  if AShortCut = 0 then
-  begin
-    Exit;
-  end;
-  Result := ActionOwner(AShortCut);
-  if Result = '' then
-  begin
-    Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
-  end;
-end;
-
 class procedure TAtlasIdeKeys.CollectOwners(AOwners: TDictionary<Word, string>);
 var
   mServices: INTAServices;
@@ -377,6 +295,57 @@ begin
   end;
 end;
 
+/// <summary>Liegt AShortCut als Haupt- oder Zweittaste auf AAction?</summary>
+function HasShortCut(AAction: TCustomAction; AShortCut: Word): Boolean;
+var
+  mSecondary: Integer;
+begin
+  Result := AAction.ShortCut = AShortCut;
+  for mSecondary := 0 to AAction.SecondaryShortCuts.Count - 1 do
+  begin
+    Result := Result or (AAction.SecondaryShortCuts.ShortCuts[mSecondary] = AShortCut);
+  end;
+end;
+
+/// <summary>Name der IDE-Aktion (nicht von Atlas) mit AShortCut; '' ohne.</summary>
+function ActionOwner(AShortCut: Word): string;
+var
+  mServices: INTAServices;
+  mIndex: Integer;
+  mAction: TCustomAction;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
+  begin
+    if mServices.ActionList.Actions[mIndex] is TCustomAction then
+    begin
+      mAction := TCustomAction(mServices.ActionList.Actions[mIndex]);
+      if not SameText(mAction.Category, 'Atlas') and HasShortCut(mAction, AShortCut) then
+      begin
+        Exit(StripHotkey(mAction.Caption));
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasIdeKeys.Owner(AShortCut: Word): string;
+begin
+  Result := '';
+  if AShortCut = 0 then
+  begin
+    Exit;
+  end;
+  Result := ActionOwner(AShortCut);
+  if Result = '' then
+  begin
+    Result := TAtlasKeyConflicts.OwnerOf(AShortCut, TAtlasKeyConflicts.KnownIdeKeys);
+  end;
+end;
+
 class function TAtlasIdeKeys.Decide(AShortCut: Word; APriority: Boolean; const AWhat: string): Boolean;
 var
   mHolder, mKey, mSeen: string;
@@ -399,28 +368,6 @@ begin
   TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.KeyConflict,
     [ShortCutToText(AShortCut), mHolder, AWhat]));
   MarkReported(AShortCut);
-end;
-
-class function TAtlasIdeKeys.Reported(AShortCut: Word): Boolean;
-var
-  mKey: Word;
-begin
-  Result := False;
-  for mKey in FReportedKeys do
-  begin
-    if mKey = AShortCut then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-class procedure TAtlasIdeKeys.MarkReported(AShortCut: Word);
-begin
-  if not Reported(AShortCut) then
-  begin
-    FReportedKeys := FReportedKeys + [AShortCut];
-  end;
 end;
 
 class procedure TAtlasIdeKeys.Bind(const ABinding: IOTAKeyboardBinding; var AIndex: Integer);
@@ -491,6 +438,59 @@ begin
     FForeignReported := FForeignReported + [mExtension];
     TAtlasIdeHost.Message(TAtlasFoundationStrings.Fmt(TAtlasFoundationTextId.ForeignCompletion, [mExtension]));
   end;
+end;
+
+class function TAtlasIdeKeys.Reported(AShortCut: Word): Boolean;
+var
+  mKey: Word;
+begin
+  Result := False;
+  for mKey in FReportedKeys do
+  begin
+    if mKey = AShortCut then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class procedure TAtlasIdeKeys.MarkReported(AShortCut: Word);
+begin
+  if not Reported(AShortCut) then
+  begin
+    FReportedKeys := FReportedKeys + [AShortCut];
+  end;
+end;
+
+class procedure TAtlasIdeKeys.WatchPackages(const AChanged: TProc);
+var
+  mServices: IOTAServices;
+begin
+  UnwatchPackages;
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    Exit;
+  end;
+  FWatch := TPackageWatch.Create;
+  FWatch.FChanged := AChanged;
+  FWatchIndex := mServices.AddNotifier(FWatch);
+end;
+
+class procedure TAtlasIdeKeys.UnwatchPackages;
+var
+  mServices: IOTAServices;
+begin
+  if FWatch = nil then
+  begin
+    Exit;
+  end;
+  FWatch.FChanged := nil;
+  // RemoveNotifier gibt die Referenz der IDE frei und damit FWatch.
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
+  begin
+    mServices.RemoveNotifier(FWatchIndex);
+  end;
+  FWatch := nil;
 end;
 
 end.

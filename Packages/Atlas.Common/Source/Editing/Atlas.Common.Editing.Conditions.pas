@@ -75,6 +75,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TConditions }
+
 class function TConditions.InvertTitle: string;
 begin
   Result := cTexts[TConditionsText.InvertCondition].Text;
@@ -280,6 +282,8 @@ type
       const ALayout: TStatementLayout): Boolean;
     procedure Plain(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode; const ALayout: TStatementLayout);
   end;
+
+{ TEarlyExitCode }
 
 /// <summary>Der Schleifenrumpf wird zum Block: die Ersetzung beginnt hinter do. False ohne do davor.</summary>
 function TEarlyExitCode.Wrapped(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode;

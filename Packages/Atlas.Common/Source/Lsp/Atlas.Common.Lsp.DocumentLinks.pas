@@ -60,15 +60,7 @@ const
 
 {$SCOPEDENUMS OFF}
 
-constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
-begin
-  Create(AStore, ASearchPaths, nil);
-end;
-
-constructor TLspDocumentLinks.Create(const AStore: IDocumentStore);
-begin
-  Create(AStore, nil, nil);
-end;
+{ TLspDocumentLinks }
 
 constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider;
   const AFileExists: TFileExistsFunc);
@@ -87,30 +79,14 @@ begin
   end;
 end;
 
-procedure TLspDocumentLinks.Attach(ADispatcher: TJsonRpcDispatcher);
+constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
 begin
-  ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinks);
+  Create(AStore, ASearchPaths, nil);
 end;
 
-class function TLspDocumentLinks.Capability: TJSONObject;
+constructor TLspDocumentLinks.Create(const AStore: IDocumentStore);
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('resolveProvider', TJSONBool.Create(False));
-end;
-
-class function TLspDocumentLinks.LinkToJson(const ALink: TDocumentLink): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('range', TLspPositions.RangeToJson(ALink.Range));
-  if ALink.IsUrl then
-  begin
-    Result.AddPair('target', ALink.Target);
-  end
-  else
-  begin
-    Result.AddPair('target', TDocumentUris.FromPath(ALink.Target));
-    Result.AddPair('tooltip', ALink.Target);
-  end;
+  Create(AStore, nil, nil);
 end;
 
 function TLspDocumentLinks.HandleLinks(const AParams: TJSONValue;
@@ -143,6 +119,32 @@ begin
   for mLink in mLinks do
   begin
     TJSONArray(Result).AddElement(LinkToJson(mLink));
+  end;
+end;
+
+procedure TLspDocumentLinks.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinks);
+end;
+
+class function TLspDocumentLinks.Capability: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('resolveProvider', TJSONBool.Create(False));
+end;
+
+class function TLspDocumentLinks.LinkToJson(const ALink: TDocumentLink): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('range', TLspPositions.RangeToJson(ALink.Range));
+  if ALink.IsUrl then
+  begin
+    Result.AddPair('target', ALink.Target);
+  end
+  else
+  begin
+    Result.AddPair('target', TDocumentUris.FromPath(ALink.Target));
+    Result.AddPair('tooltip', ALink.Target);
   end;
 end;
 

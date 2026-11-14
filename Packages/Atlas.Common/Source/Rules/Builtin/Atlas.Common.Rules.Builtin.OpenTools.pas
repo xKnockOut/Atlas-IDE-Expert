@@ -853,6 +853,19 @@ begin
     ACall.Pair.Close]), TRuleConfidence.Medium, mFixes);
 end;
 
+procedure TOtaNotifierScan.CheckPairs(const APosition: Integer);
+var
+  mPair: TRegisterPair;
+begin
+  for mPair in FRegisterPairs do
+  begin
+    if SameText(Token(APosition).Text, mPair.Open) then
+    begin
+      CheckCall(APosition, mPair);
+    end;
+  end;
+end;
+
 procedure TOtaNotifierScan.Run;
 var
   mIndex: Integer;
@@ -877,19 +890,6 @@ begin
     if IsWord(mIndex) and Token(mIndex + 1).IsSymbol('(') then
     begin
       CheckPairs(mIndex);
-    end;
-  end;
-end;
-
-procedure TOtaNotifierScan.CheckPairs(const APosition: Integer);
-var
-  mPair: TRegisterPair;
-begin
-  for mPair in FRegisterPairs do
-  begin
-    if SameText(Token(APosition).Text, mPair.Open) then
-    begin
-      CheckCall(APosition, mPair);
     end;
   end;
 end;

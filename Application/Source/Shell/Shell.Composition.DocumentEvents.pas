@@ -60,56 +60,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Compiler.Backend;
 
-class procedure TShellDocumentEvents.Attach(const ADocuments: IDocumentStore;
-  const AServices: TShellDocumentEventServices);
-var
-  mServices: TShellDocumentEventServices;
-begin
-  mServices := AServices;
-  ADocuments.Subscribe(
-    procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument)
-    begin
-      Handle(mServices, AKind, ADocument);
-    end);
-end;
-
-class procedure TShellDocumentEvents.Handle(const AServices: TShellDocumentEventServices; AKind: TDocumentEventKind;
-  const ADocument: ITextDocument);
-var
-  mCrashCases: TShellCrashCases;
-  mFileName: string;
-begin
-  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
-  mCrashCases := AServices.CrashCases();
-  if (mCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
-  begin
-    mCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
-  end;
-  mFileName := TDocumentUris.ToPath(ADocument.Uri);
-  if StartsText('file:', ADocument.Uri) then
-  begin
-    IndexEvent(AServices, AKind, mFileName, ADocument.Text);
-  end;
-  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
-  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
-  begin
-    SourceSaved(AServices, mFileName);
-  end
-  else if IsConfigurationFileName(ExtractFileName(mFileName)) then
-  begin
-    AServices.Core().Configuration.DocumentEvent(AKind, ADocument);
-  end;
-end;
-
-class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace;
-begin
-  System.TMonitor.Enter(ACore.Workspaces.Lock);
-  try
-    Result := ACore.Workspaces.WorkspaceOf(AFileName);
-  finally
-    System.TMonitor.Exit(ACore.Workspaces.Lock);
-  end;
-end;
+{ TShellDocumentEvents }
 
 class procedure TShellDocumentEvents.IndexEvent(const AServices: TShellDocumentEventServices;
   AKind: TDocumentEventKind; const AFileName, AText: string);
@@ -165,6 +116,57 @@ begin
   if mOnSave then
   begin
     AServices.Compile().Start(AFileName, False, mChoice);
+  end;
+end;
+
+class function TShellDocumentEvents.LockedWorkspaceOf(ACore: TShellCore; const AFileName: string): TShellWorkspace;
+begin
+  System.TMonitor.Enter(ACore.Workspaces.Lock);
+  try
+    Result := ACore.Workspaces.WorkspaceOf(AFileName);
+  finally
+    System.TMonitor.Exit(ACore.Workspaces.Lock);
+  end;
+end;
+
+class procedure TShellDocumentEvents.Attach(const ADocuments: IDocumentStore;
+  const AServices: TShellDocumentEventServices);
+var
+  mServices: TShellDocumentEventServices;
+begin
+  mServices := AServices;
+  ADocuments.Subscribe(
+    procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument)
+    begin
+      Handle(mServices, AKind, ADocument);
+    end);
+end;
+
+class procedure TShellDocumentEvents.Handle(const AServices: TShellDocumentEventServices; AKind: TDocumentEventKind;
+  const ADocument: ITextDocument);
+var
+  mCrashCases: TShellCrashCases;
+  mFileName: string;
+begin
+  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
+  mCrashCases := AServices.CrashCases();
+  if (mCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
+  begin
+    mCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
+  end;
+  mFileName := TDocumentUris.ToPath(ADocument.Uri);
+  if StartsText('file:', ADocument.Uri) then
+  begin
+    IndexEvent(AServices, AKind, mFileName, ADocument.Text);
+  end;
+  // Nach dem Speichern einer Quelldatei kompilieren (#40), abschaltbar über compiler.onSave.
+  if (AKind = TDocumentEventKind.Saved) and MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
+  begin
+    SourceSaved(AServices, mFileName);
+  end
+  else if IsConfigurationFileName(ExtractFileName(mFileName)) then
+  begin
+    AServices.Core().Configuration.DocumentEvent(AKind, ADocument);
   end;
 end;
 

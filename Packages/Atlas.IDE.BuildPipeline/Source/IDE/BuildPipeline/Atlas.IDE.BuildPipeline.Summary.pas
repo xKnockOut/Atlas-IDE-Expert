@@ -40,6 +40,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.BuildPipeline.Strings;
 
+{ TAtlasIdeBuildSummary }
+
 class function TAtlasIdeBuildSummary.Headline(const AProject: string; const AVerdict: TAtlasBuildVerdict): string;
 var
   mName, mCounts: string;

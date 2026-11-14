@@ -345,212 +345,111 @@ begin
   inherited;
 end;
 
-function TAtlasEditorCompletion.WantsKey(AKey: TAtlasNavigationKey): Boolean;
-begin
-  // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
-  if AKey = TAtlasNavigationKey.Toggle then
-  begin
-    Result := FController.Visible and FController.SetMode;
-  end
-  // Nur Deklarationen eines unbekannten Namens, nichts gewählt (#471): Enter gehört dem Editor.
-  else if (AKey = TAtlasNavigationKey.Accept) and FController.Passive then
-  begin
-    FController.Close;
-    Result := False;
-  end
-  else
-  begin
-    Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
-  end;
-end;
-
-function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+procedure TAtlasEditorCompletion.Recheck;
 var
-  mItem: TAtlasCompletionItem;
-begin
-  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654), Strg+D Favorit
-  // (#458; bei offener Liste nie an den Editor).
-  Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
-    ((AKey = Ord('D')) and (AShift = [ssCtrl]) and (FController.Favorites <> nil)) or
-    ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
-    (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(mItem) and
-      (mItem.OverloadCount > 1)) or
-    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt]))) or
-    // Zweites Strg+Leertaste (#2108): nicht sichtbare Treffer zeigen, auch im leeren Zustand.
-    ((AKey = VK_SPACE) and (AShift = [ssCtrl]) and FController.CanRevealInaccessible);
-end;
-
-procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
-begin
-  if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
-  begin
-    FPopup.TogglePanel;
-  end
-  else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
-  begin
-    Clipboard.AsText := FPopup.SelectedDocText;
-  end
-  else if (AKey = Ord('D')) and (AShift = [ssCtrl]) then
-  begin
-    ToggleFavorite(-1);
-  end
-  else if (AKey = VK_UP) and (AShift = [ssAlt]) then
-  begin
-    ChangeOverload(-1);
-  end
-  else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
-  begin
-    ChangeOverload(1);
-  end
-  else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
-  begin
-    FController.SelectChipAt(AKey - Ord('1'));
-  end
-  else if AKey = VK_SPACE then
-  begin
-    FController.RevealInaccessible;
-  end;
-end;
-
-procedure TAtlasEditorCompletion.ToggleFavorite(APosition: Integer);
-var
-  mItem: TAtlasCompletionItem;
-  mOutcome: TAtlasFavoriteToggle;
-begin
-  if APosition < 0 then
-  begin
-    mOutcome := FController.ToggleSelectedFavorite(mItem);
-  end
-  else
-  begin
-    mOutcome := FController.ToggleFavorite(APosition, mItem);
-  end;
-  case mOutcome of
-    TAtlasFavoriteToggle.Added:
-      begin
-        TAtlasIdeFavorites.Save;
-        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritePinned, [mItem.Name]));
-      end;
-    TAtlasFavoriteToggle.Removed:
-      begin
-        TAtlasIdeFavorites.Save;
-        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoriteUnpinned, [mItem.Name]));
-      end;
-    // Ein sechster Favorit ersetzt keinen (#458).
-    TAtlasFavoriteToggle.Full:
-      FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
-        TAtlasFavorites.TypeNameOf(mItem)]));
-  else
-    if FController.Favorites <> nil then
-    begin
-      FPopup.ShowNotice(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FavoriteNotAllowed));
-    end;
-  end;
-  ActiveChanged;
-end;
-
-function TAtlasEditorCompletion.HandleKey(AKey: TAtlasNavigationKey): Boolean;
-begin
-  Result := FController.HandleKey(AKey);
-  ActiveChanged;
-end;
-
-procedure TAtlasEditorCompletion.SetPending(AFromGuard, AValue: Boolean);
-begin
-  if AFromGuard then
-  begin
-    FGuard.NewLine := AValue;
-  end
-  else
-  begin
-    FCall.Opened := AValue;
-  end;
-end;
-
-procedure TAtlasEditorCompletion.QueueInvoke(const AView: IOTAEditView; AFromGuard: Boolean);
-var
-  mView: IOTAEditView;
-begin
-  mView := AView;
-  // Nicht im Benachrichtigungsaufruf selbst, sondern gleich danach.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
-    procedure
-    begin
-      if (mView.Buffer <> nil) and not FController.Active then
-      begin
-        SetPending(AFromGuard, True);
-        if not Invoke(mView, True) then
-        begin
-          SetPending(AFromGuard, False);
-        end;
-      end;
-    end);
-end;
-
-procedure TAtlasEditorCompletion.CheckCallOpened(const AView: IOTAEditView);
-var
+  mCursor: TOTAEditPos;
   mLineText: string;
-  mLine, mCharacter: Integer;
+  mCharacter, mIndex: Integer;
+  mReason: TAtlasCloseReason;
 begin
-  mLine := AView.CursorPos.Line;
-  mLineText := TAtlasEditorBuffer.LineText(AView, mLine);
-  mCharacter := TLspSession.ColumnToIndex(mLineText, AView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  if not TAtlasParentheses.CallOpened(mLineText, mCharacter) then
+  if not FController.Active or (FOpen.View = nil) then
+  begin
+    ActiveChanged;
+    Exit;
+  end;
+  if WindowLeft then
   begin
     Exit;
   end;
-  if (FCall.Line = mLine) and (FCall.Character = mCharacter) and SameText(FCall.FileName, AView.Buffer.FileName) then
+  mCursor := FOpen.View.CursorPos;
+  mLineText := '';
+  mCharacter := 0;
+  if mCursor.Line = FOpen.Line then
   begin
+    mLineText := TAtlasEditorBuffer.LineText(FOpen.View, mCursor.Line);
+    mCharacter := TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(FOpen.View.Buffer));
+  end;
+  // Andere Zeile, Cursor vor dem Wortanfang oder ein Zeichen, das kein Bezeichner ist: Wort verlassen.
+  mReason := TAtlasCloseRules.PopupWord(mCursor.Line = FOpen.Line, mLineText, FOpen.WordStart, mCharacter, mIndex);
+  if mReason <> TAtlasCloseReason.None then
+  begin
+    LeaveWord(mReason, mLineText, mIndex, mCharacter);
     Exit;
   end;
-  FCall.FileName := AView.Buffer.FileName;
-  FCall.Line := mLine;
-  FCall.Character := mCharacter;
-  QueueInvoke(AView, False);
+  Refilter(mLineText, mCursor.Line, mCharacter);
+  ActiveChanged;
 end;
 
-procedure TAtlasEditorCompletion.TrackAutoParen(const AView: IOTAEditView);
+function TAtlasEditorCompletion.WindowLeft: Boolean;
 var
-  mRemoveAt: Integer;
+  mReason: TAtlasCloseReason;
 begin
-  if AView.CursorPos.Line <> FAutoParen.Line then
+  mReason := TAtlasCloseRules.Popup(FOpen.Opened, WindowState(FOpen.View, FOpen.Window, GetFocus));
+  Result := mReason <> TAtlasCloseReason.None;
+  if Result then
   begin
-    FAutoParen.Stop;
-    Exit;
-  end;
-  FAutoParen.Update(TAtlasEditorBuffer.LineText(AView, FAutoParen.Line), mRemoveAt);
-  if mRemoveAt >= 0 then
-  begin
-    SkipAutoParen(AView, mRemoveAt);
+    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(mReason));
+    Close;
   end;
 end;
 
-procedure TAtlasEditorCompletion.EditorModified(const AView: IOTAEditView);
-var
-  mHasBuffer: Boolean;
+procedure TAtlasEditorCompletion.LeaveWord(AReason: TAtlasCloseReason; const ALineText: string; AIndex,
+  ACharacter: Integer);
 begin
-  if FController.Active then
+  if AReason <> TAtlasCloseReason.NonIdentifier then
   begin
-    Recheck;
+    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(AReason));
+    Close;
+    Exit;
   end;
-  if FPlaceholders <> nil then
+  // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
+  if TAtlasIdeSettings.Current.CommitCharacters and (AIndex = ACharacter) and
+    CharInSet(ALineText[AIndex], ['(', ';', '.']) and FController.CanCommitOnCharacter then
   begin
-    FPlaceholders.EditorModified(AView);
+    FCommitChar.WordEnd := ACharacter - 1;
+    FCommitChar.SuffixBytes := TEncoding.UTF8.GetByteCount(string(ALineText[AIndex]));
+    try
+      FController.CommitSelected;
+    finally
+      FCommitChar.WordEnd := -1;
+    end;
+    ActiveChanged;
+    Exit;
   end;
-  mHasBuffer := (AView <> nil) and (AView.Buffer <> nil);
-  // Enter am Ende der Zeile eines übernommenen Konstruktors (#489): nach dem Zeilenende anbieten.
-  if not FController.Active and GuardNewLine(AView) then
+  Log(Format('Vervollständigung geschlossen: Zeichen #%d getippt', [Ord(ALineText[AIndex])]));
+  Close;
+end;
+
+procedure TAtlasEditorCompletion.Refilter(const ALineText: string; ALine, ACharacter: Integer);
+var
+  mPrefix: string;
+begin
+  mPrefix := Copy(ALineText, FOpen.WordStart + 1, ACharacter - FOpen.WordStart);
+  // Gekürzte Liste (#431) oder Wort nicht mehr Fortsetzung der Anfrage (Rücktaste, #616): lokal weiterfiltern
+  // und im Hintergrund neu fragen. Sonst nur lokal; der Server wird beim Tippen nicht mehr gefragt.
+  if (mPrefix <> FController.Prefix) and FController.NeedsQuery(mPrefix) then
   begin
-    FGuard.Line := 0;
-    QueueInvoke(AView, True);
+    FController.Requery(ContextAt(FOpen.View, ALineText, ALine, ACharacter, FOpen.WordStart));
   end
-  else if not FController.Active and mHasBuffer then
+  else
   begin
-    CheckCallOpened(AView);
+    FController.UpdatePrefix(mPrefix);
   end;
-  if FAutoParen.Active and mHasBuffer then
-  begin
-    TrackAutoParen(AView);
+end;
+
+procedure TAtlasEditorCompletion.TimerTick(Sender: TObject);
+begin
+  try
+    Recheck;
+    UpdateDetails;
+    UpdatePreview;
+  except
+    on E: Exception do
+    begin
+      Log('Vervollständigung: ' + E.Message);
+      TAtlasGuard.Report(TAtlasFeature.Completion, E);
+      Close;
+    end;
   end;
 end;
 
@@ -666,6 +565,25 @@ begin
   UpdateDetails;
 end;
 
+procedure TAtlasEditorCompletion.UpdatePreview;
+var
+  mText: string;
+begin
+  if FPreview = nil then
+  begin
+    Exit;
+  end;
+  mText := PreviewText;
+  if mText = '' then
+  begin
+    FPreview.Clear;
+  end
+  else
+  begin
+    FPreview.Show(FOpen.View.Buffer.FileName, FOpen.Line, FOpen.View.CursorPos.Col, mText);
+  end;
+end;
+
 function TAtlasEditorCompletion.PreviewText: string;
 var
   mItem: TAtlasCompletionItem;
@@ -687,131 +605,213 @@ begin
   Result := TAtlasPreview.RestOf(mItem.Name, FController.Prefix, Copy(mLineText, mCharacter + 1, MaxInt));
 end;
 
-procedure TAtlasEditorCompletion.UpdatePreview;
-var
-  mText: string;
+function TAtlasEditorCompletion.WantsKey(AKey: TAtlasNavigationKey): Boolean;
 begin
-  if FPreview = nil then
+  // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
+  if AKey = TAtlasNavigationKey.Toggle then
   begin
-    Exit;
-  end;
-  mText := PreviewText;
-  if mText = '' then
+    Result := FController.Visible and FController.SetMode;
+  end
+  // Nur Deklarationen eines unbekannten Namens, nichts gewählt (#471): Enter gehört dem Editor.
+  else if (AKey = TAtlasNavigationKey.Accept) and FController.Passive then
   begin
-    FPreview.Clear;
+    FController.Close;
+    Result := False;
   end
   else
   begin
-    FPreview.Show(FOpen.View.Buffer.FileName, FOpen.Line, FOpen.View.CursorPos.Col, mText);
+    Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
   end;
 end;
 
-procedure TAtlasEditorCompletion.TimerTick(Sender: TObject);
+procedure TAtlasEditorCompletion.ToggleFavorite(APosition: Integer);
+var
+  mItem: TAtlasCompletionItem;
+  mOutcome: TAtlasFavoriteToggle;
 begin
-  try
-    Recheck;
-    UpdateDetails;
-    UpdatePreview;
-  except
-    on E: Exception do
+  if APosition < 0 then
+  begin
+    mOutcome := FController.ToggleSelectedFavorite(mItem);
+  end
+  else
+  begin
+    mOutcome := FController.ToggleFavorite(APosition, mItem);
+  end;
+  case mOutcome of
+    TAtlasFavoriteToggle.Added:
+      begin
+        TAtlasIdeFavorites.Save;
+        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritePinned, [mItem.Name]));
+      end;
+    TAtlasFavoriteToggle.Removed:
+      begin
+        TAtlasIdeFavorites.Save;
+        FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoriteUnpinned, [mItem.Name]));
+      end;
+    // Ein sechster Favorit ersetzt keinen (#458).
+    TAtlasFavoriteToggle.Full:
+      FPopup.ShowNotice(TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.FavoritesFull, [TAtlasFavorites.cMaxPerType,
+        TAtlasFavorites.TypeNameOf(mItem)]));
+  else
+    if FController.Favorites <> nil then
     begin
-      Log('Vervollständigung: ' + E.Message);
-      TAtlasGuard.Report(TAtlasFeature.Completion, E);
-      Close;
+      FPopup.ShowNotice(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.FavoriteNotAllowed));
     end;
   end;
+  ActiveChanged;
 end;
 
-function TAtlasEditorCompletion.WindowLeft: Boolean;
+procedure TAtlasEditorCompletion.QueueInvoke(const AView: IOTAEditView; AFromGuard: Boolean);
 var
-  mReason: TAtlasCloseReason;
+  mView: IOTAEditView;
 begin
-  mReason := TAtlasCloseRules.Popup(FOpen.Opened, WindowState(FOpen.View, FOpen.Window, GetFocus));
-  Result := mReason <> TAtlasCloseReason.None;
-  if Result then
-  begin
-    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(mReason));
-    Close;
-  end;
+  mView := AView;
+  // Nicht im Benachrichtigungsaufruf selbst, sondern gleich danach.
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
+    procedure
+    begin
+      if (mView.Buffer <> nil) and not FController.Active then
+      begin
+        SetPending(AFromGuard, True);
+        if not Invoke(mView, True) then
+        begin
+          SetPending(AFromGuard, False);
+        end;
+      end;
+    end);
 end;
 
-procedure TAtlasEditorCompletion.LeaveWord(AReason: TAtlasCloseReason; const ALineText: string; AIndex,
-  ACharacter: Integer);
+procedure TAtlasEditorCompletion.SetPending(AFromGuard, AValue: Boolean);
 begin
-  if AReason <> TAtlasCloseReason.NonIdentifier then
+  if AFromGuard then
   begin
-    Log('Vervollständigung geschlossen: ' + TAtlasCloseRules.Name(AReason));
-    Close;
-    Exit;
-  end;
-  // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
-  if TAtlasIdeSettings.Current.CommitCharacters and (AIndex = ACharacter) and
-    CharInSet(ALineText[AIndex], ['(', ';', '.']) and FController.CanCommitOnCharacter then
-  begin
-    FCommitChar.WordEnd := ACharacter - 1;
-    FCommitChar.SuffixBytes := TEncoding.UTF8.GetByteCount(string(ALineText[AIndex]));
-    try
-      FController.CommitSelected;
-    finally
-      FCommitChar.WordEnd := -1;
-    end;
-    ActiveChanged;
-    Exit;
-  end;
-  Log(Format('Vervollständigung geschlossen: Zeichen #%d getippt', [Ord(ALineText[AIndex])]));
-  Close;
-end;
-
-procedure TAtlasEditorCompletion.Refilter(const ALineText: string; ALine, ACharacter: Integer);
-var
-  mPrefix: string;
-begin
-  mPrefix := Copy(ALineText, FOpen.WordStart + 1, ACharacter - FOpen.WordStart);
-  // Gekürzte Liste (#431) oder Wort nicht mehr Fortsetzung der Anfrage (Rücktaste, #616): lokal weiterfiltern
-  // und im Hintergrund neu fragen. Sonst nur lokal; der Server wird beim Tippen nicht mehr gefragt.
-  if (mPrefix <> FController.Prefix) and FController.NeedsQuery(mPrefix) then
-  begin
-    FController.Requery(ContextAt(FOpen.View, ALineText, ALine, ACharacter, FOpen.WordStart));
+    FGuard.NewLine := AValue;
   end
   else
   begin
-    FController.UpdatePrefix(mPrefix);
+    FCall.Opened := AValue;
   end;
 end;
 
-procedure TAtlasEditorCompletion.Recheck;
+procedure TAtlasEditorCompletion.CheckCallOpened(const AView: IOTAEditView);
 var
-  mCursor: TOTAEditPos;
   mLineText: string;
-  mCharacter, mIndex: Integer;
-  mReason: TAtlasCloseReason;
+  mLine, mCharacter: Integer;
 begin
-  if not FController.Active or (FOpen.View = nil) then
-  begin
-    ActiveChanged;
-    Exit;
-  end;
-  if WindowLeft then
+  mLine := AView.CursorPos.Line;
+  mLineText := TAtlasEditorBuffer.LineText(AView, mLine);
+  mCharacter := TLspSession.ColumnToIndex(mLineText, AView.CursorPos.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  if not TAtlasParentheses.CallOpened(mLineText, mCharacter) then
   begin
     Exit;
   end;
-  mCursor := FOpen.View.CursorPos;
-  mLineText := '';
-  mCharacter := 0;
-  if mCursor.Line = FOpen.Line then
+  if (FCall.Line = mLine) and (FCall.Character = mCharacter) and SameText(FCall.FileName, AView.Buffer.FileName) then
   begin
-    mLineText := TAtlasEditorBuffer.LineText(FOpen.View, mCursor.Line);
-    mCharacter := TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(FOpen.View.Buffer));
-  end;
-  // Andere Zeile, Cursor vor dem Wortanfang oder ein Zeichen, das kein Bezeichner ist: Wort verlassen.
-  mReason := TAtlasCloseRules.PopupWord(mCursor.Line = FOpen.Line, mLineText, FOpen.WordStart, mCharacter, mIndex);
-  if mReason <> TAtlasCloseReason.None then
-  begin
-    LeaveWord(mReason, mLineText, mIndex, mCharacter);
     Exit;
   end;
-  Refilter(mLineText, mCursor.Line, mCharacter);
+  FCall.FileName := AView.Buffer.FileName;
+  FCall.Line := mLine;
+  FCall.Character := mCharacter;
+  QueueInvoke(AView, False);
+end;
+
+procedure TAtlasEditorCompletion.TrackAutoParen(const AView: IOTAEditView);
+var
+  mRemoveAt: Integer;
+begin
+  if AView.CursorPos.Line <> FAutoParen.Line then
+  begin
+    FAutoParen.Stop;
+    Exit;
+  end;
+  FAutoParen.Update(TAtlasEditorBuffer.LineText(AView, FAutoParen.Line), mRemoveAt);
+  if mRemoveAt >= 0 then
+  begin
+    SkipAutoParen(AView, mRemoveAt);
+  end;
+end;
+
+function TAtlasEditorCompletion.HandleKey(AKey: TAtlasNavigationKey): Boolean;
+begin
+  Result := FController.HandleKey(AKey);
   ActiveChanged;
+end;
+
+function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+var
+  mItem: TAtlasCompletionItem;
+begin
+  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654), Strg+D Favorit
+  // (#458; bei offener Liste nie an den Editor).
+  Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
+    ((AKey = Ord('D')) and (AShift = [ssCtrl]) and (FController.Favorites <> nil)) or
+    ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
+    (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(mItem) and
+      (mItem.OverloadCount > 1)) or
+    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt]))) or
+    // Zweites Strg+Leertaste (#2108): nicht sichtbare Treffer zeigen, auch im leeren Zustand.
+    ((AKey = VK_SPACE) and (AShift = [ssCtrl]) and FController.CanRevealInaccessible);
+end;
+
+procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
+begin
+  if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
+  begin
+    FPopup.TogglePanel;
+  end
+  else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
+  begin
+    Clipboard.AsText := FPopup.SelectedDocText;
+  end
+  else if (AKey = Ord('D')) and (AShift = [ssCtrl]) then
+  begin
+    ToggleFavorite(-1);
+  end
+  else if (AKey = VK_UP) and (AShift = [ssAlt]) then
+  begin
+    ChangeOverload(-1);
+  end
+  else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
+  begin
+    ChangeOverload(1);
+  end
+  else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
+  begin
+    FController.SelectChipAt(AKey - Ord('1'));
+  end
+  else if AKey = VK_SPACE then
+  begin
+    FController.RevealInaccessible;
+  end;
+end;
+
+procedure TAtlasEditorCompletion.EditorModified(const AView: IOTAEditView);
+var
+  mHasBuffer: Boolean;
+begin
+  if FController.Active then
+  begin
+    Recheck;
+  end;
+  if FPlaceholders <> nil then
+  begin
+    FPlaceholders.EditorModified(AView);
+  end;
+  mHasBuffer := (AView <> nil) and (AView.Buffer <> nil);
+  // Enter am Ende der Zeile eines übernommenen Konstruktors (#489): nach dem Zeilenende anbieten.
+  if not FController.Active and GuardNewLine(AView) then
+  begin
+    FGuard.Line := 0;
+    QueueInvoke(AView, True);
+  end
+  else if not FController.Active and mHasBuffer then
+  begin
+    CheckCallOpened(AView);
+  end;
+  if FAutoParen.Active and mHasBuffer then
+  begin
+    TrackAutoParen(AView);
+  end;
 end;
 
 end.

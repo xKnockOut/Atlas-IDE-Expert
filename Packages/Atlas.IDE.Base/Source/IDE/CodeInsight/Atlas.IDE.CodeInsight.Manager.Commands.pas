@@ -162,6 +162,152 @@ begin
     end);
 end;
 
+{ TAtlasCodeInsightCommands }
+
+procedure TAtlasCodeInsightCommands.RunInBackground(ASession: TLspSession;
+  const AWork: TFunc<TLspSession, TJSONValue>; const ADone: TProc<TJSONValue>);
+var
+  mSession: TLspSession;
+  mIdle: TEvent;
+  mWork: TFunc<TLspSession, TJSONValue>;
+  mDone: TProc<TJSONValue>;
+begin
+  mDone := ADone;
+  mSession := ASession;
+  if mSession = nil then
+  begin
+    if Assigned(mDone) then
+    begin
+      mDone(nil);
+    end;
+    Exit;
+  end;
+  mWork := AWork;
+  if AtomicIncrement(FServerCommands) = 1 then
+  begin
+    FServerCommandsIdle.ResetEvent;
+  end;
+  mIdle := FServerCommandsIdle;
+  FThreads.Start(
+    procedure
+    begin
+      try
+        DeliverJson(WorkJson(mSession, mWork), mDone);
+      finally
+        // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
+        if AtomicDecrement(FServerCommands) = 0 then
+        begin
+          mIdle.SetEvent;
+        end;
+      end;
+    end);
+end;
+
+procedure TAtlasCodeInsightCommands.NotifyServer(const AMethod: string; AParams: TJSONObject);
+begin
+  // Nur eine laufende Sitzung; für eine Meldung startet der Server nicht.
+  if (FSession = nil) or not FSession.Initialized then
+  begin
+    AParams.Free;
+    Exit;
+  end;
+  try
+    FSession.Notify(AMethod, AParams);
+  except
+    on E: Exception do
+    begin
+      Diagnose(Format('%s nicht gesendet: %s', [AMethod, E.Message]));
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightCommands.NotifySaved(const AFileName: string);
+begin
+  if (FSession = nil) or not FSession.Initialized then
+  begin
+    Exit;
+  end;
+  try
+    FSession.Saved(AFileName);
+  except
+    on E: Exception do
+    begin
+      Diagnose('didSave nicht gesendet: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightCommands.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
+  const ADone: TProc<TJSONValue>);
+var
+  mCommand: string;
+  mTimeout: Cardinal;
+begin
+  mCommand := ACommand;
+  mTimeout := ATimeoutMs;
+  // Start gehört dem Hauptthread; ohne Server gleich die Antwort „keine“.
+  RunInBackground(SessionOrNil,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.ExecuteCommand(mCommand, mTimeout);
+    end, ADone);
+end;
+
+function TAtlasCodeInsightCommands.RunServerCommand(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  mSession: TLspSession;
+begin
+  Result := nil;
+  mSession := RunningSession;
+  if mSession = nil then
+  begin
+    Exit;
+  end;
+  try
+    Result := mSession.RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
+  except
+    on E: Exception do
+    begin
+      Diagnose('Befehl ' + ACommand + ' fehlgeschlagen: ' + E.ClassName);
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightCommands.RunServerCommandAsync(const ACommand, AArgumentsJson: string;
+  ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
+var
+  mCommand, mArguments: string;
+  mTimeout: Cardinal;
+begin
+  mCommand := ACommand;
+  mArguments := AArgumentsJson;
+  mTimeout := ATimeoutMs;
+  RunInBackground(RunningSession,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.RunCommand(mCommand, mArguments, mTimeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightCommands.RunServerRequestAsync(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>; const ADone: TProc<TJSONValue>);
+var
+  mMethod, mParams: string;
+  mTimeout: Cardinal;
+  mCancelled: TFunc<Boolean>;
+begin
+  mMethod := AMethod;
+  mParams := AParamsJson;
+  mTimeout := ATimeoutMs;
+  mCancelled := ACancelled;
+  RunInBackground(RunningSession,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.RunRequest(mMethod, mParams, mTimeout, mCancelled);
+    end, ADone);
+end;
+
 function TAtlasCodeInsightCommands.QueryStatusAsync(const ADone: TProc<string>): Boolean;
 var
   mSession: TLspSession;
@@ -267,150 +413,6 @@ begin
       end;
     end);
   Result := True;
-end;
-
-procedure TAtlasCodeInsightCommands.ExecuteServerCommandAsync(const ACommand: string; ATimeoutMs: Cardinal;
-  const ADone: TProc<TJSONValue>);
-var
-  mCommand: string;
-  mTimeout: Cardinal;
-begin
-  mCommand := ACommand;
-  mTimeout := ATimeoutMs;
-  // Start gehört dem Hauptthread; ohne Server gleich die Antwort „keine“.
-  RunInBackground(SessionOrNil,
-    function(ASession: TLspSession): TJSONValue
-    begin
-      Result := ASession.ExecuteCommand(mCommand, mTimeout);
-    end, ADone);
-end;
-
-procedure TAtlasCodeInsightCommands.RunServerCommandAsync(const ACommand, AArgumentsJson: string;
-  ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>);
-var
-  mCommand, mArguments: string;
-  mTimeout: Cardinal;
-begin
-  mCommand := ACommand;
-  mArguments := AArgumentsJson;
-  mTimeout := ATimeoutMs;
-  RunInBackground(RunningSession,
-    function(ASession: TLspSession): TJSONValue
-    begin
-      Result := ASession.RunCommand(mCommand, mArguments, mTimeout);
-    end, ADone);
-end;
-
-procedure TAtlasCodeInsightCommands.RunServerRequestAsync(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
-  const ACancelled: TFunc<Boolean>; const ADone: TProc<TJSONValue>);
-var
-  mMethod, mParams: string;
-  mTimeout: Cardinal;
-  mCancelled: TFunc<Boolean>;
-begin
-  mMethod := AMethod;
-  mParams := AParamsJson;
-  mTimeout := ATimeoutMs;
-  mCancelled := ACancelled;
-  RunInBackground(RunningSession,
-    function(ASession: TLspSession): TJSONValue
-    begin
-      Result := ASession.RunRequest(mMethod, mParams, mTimeout, mCancelled);
-    end, ADone);
-end;
-
-procedure TAtlasCodeInsightCommands.RunInBackground(ASession: TLspSession;
-  const AWork: TFunc<TLspSession, TJSONValue>; const ADone: TProc<TJSONValue>);
-var
-  mSession: TLspSession;
-  mIdle: TEvent;
-  mWork: TFunc<TLspSession, TJSONValue>;
-  mDone: TProc<TJSONValue>;
-begin
-  mDone := ADone;
-  mSession := ASession;
-  if mSession = nil then
-  begin
-    if Assigned(mDone) then
-    begin
-      mDone(nil);
-    end;
-    Exit;
-  end;
-  mWork := AWork;
-  if AtomicIncrement(FServerCommands) = 1 then
-  begin
-    FServerCommandsIdle.ResetEvent;
-  end;
-  mIdle := FServerCommandsIdle;
-  FThreads.Start(
-    procedure
-    begin
-      try
-        DeliverJson(WorkJson(mSession, mWork), mDone);
-      finally
-        // Danach nichts mehr am Manager: StopSession wartet genau auf dieses Signal.
-        if AtomicDecrement(FServerCommands) = 0 then
-        begin
-          mIdle.SetEvent;
-        end;
-      end;
-    end);
-end;
-
-function TAtlasCodeInsightCommands.RunServerCommand(const ACommand, AArgumentsJson: string;
-  ATimeoutMs: Cardinal): TJSONValue;
-var
-  mSession: TLspSession;
-begin
-  Result := nil;
-  mSession := RunningSession;
-  if mSession = nil then
-  begin
-    Exit;
-  end;
-  try
-    Result := mSession.RunCommand(ACommand, AArgumentsJson, ATimeoutMs);
-  except
-    on E: Exception do
-    begin
-      Diagnose('Befehl ' + ACommand + ' fehlgeschlagen: ' + E.ClassName);
-    end;
-  end;
-end;
-
-procedure TAtlasCodeInsightCommands.NotifySaved(const AFileName: string);
-begin
-  if (FSession = nil) or not FSession.Initialized then
-  begin
-    Exit;
-  end;
-  try
-    FSession.Saved(AFileName);
-  except
-    on E: Exception do
-    begin
-      Diagnose('didSave nicht gesendet: ' + E.Message);
-    end;
-  end;
-end;
-
-procedure TAtlasCodeInsightCommands.NotifyServer(const AMethod: string; AParams: TJSONObject);
-begin
-  // Nur eine laufende Sitzung; für eine Meldung startet der Server nicht.
-  if (FSession = nil) or not FSession.Initialized then
-  begin
-    AParams.Free;
-    Exit;
-  end;
-  try
-    FSession.Notify(AMethod, AParams);
-  except
-    on E: Exception do
-    begin
-      Diagnose(Format('%s nicht gesendet: %s', [AMethod, E.Message]));
-    end;
-  end;
 end;
 
 end.

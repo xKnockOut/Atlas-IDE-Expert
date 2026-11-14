@@ -270,35 +270,6 @@ begin
   Result := Declaration <> '';
 end;
 
-function THoverInfo.ToAtlasJson: TJSONObject;
-var
-  mMembers: TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('declaration', Declaration);
-  AddText(Result, 'unit', UnitName);
-  // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
-  AddDocumentation(Result, Self);
-  AddText(Result, 'value', Value);
-  if Deprecation <> '' then
-  begin
-    Result.AddPair('deprecation', StripMarkdown(Deprecation));
-  end;
-  AddText(Result, 'kind', Kind);
-  AddText(Result, 'origin', Origin);
-  AddLocation(Result, Self);
-  AddText(Result, 'docWiki', DocWikiUrl);
-  AddLinks(Result, Links);
-  // published-Properties und Ereignisse (#110).
-  mMembers := TPublishedMembers.ToJson(PublishedItems, DefaultProperty);
-  if mMembers <> nil then
-  begin
-    Result.AddPair('published', mMembers);
-  end;
-  AddAncestors(Result, Self);
-  AddReassigned(Result, Self);
-end;
-
 function THoverInfo.ToMarkdown: string;
 begin
   Result := '```pascal' + #10 + Declaration + #10 + '```';
@@ -395,6 +366,35 @@ begin
   begin
     Result := Result + #10#10 + StripMarkdown(Messages);
   end;
+end;
+
+function THoverInfo.ToAtlasJson: TJSONObject;
+var
+  mMembers: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('declaration', Declaration);
+  AddText(Result, 'unit', UnitName);
+  // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
+  AddDocumentation(Result, Self);
+  AddText(Result, 'value', Value);
+  if Deprecation <> '' then
+  begin
+    Result.AddPair('deprecation', StripMarkdown(Deprecation));
+  end;
+  AddText(Result, 'kind', Kind);
+  AddText(Result, 'origin', Origin);
+  AddLocation(Result, Self);
+  AddText(Result, 'docWiki', DocWikiUrl);
+  AddLinks(Result, Links);
+  // published-Properties und Ereignisse (#110).
+  mMembers := TPublishedMembers.ToJson(PublishedItems, DefaultProperty);
+  if mMembers <> nil then
+  begin
+    Result.AddPair('published', mMembers);
+  end;
+  AddAncestors(Result, Self);
+  AddReassigned(Result, Self);
 end;
 
 end.

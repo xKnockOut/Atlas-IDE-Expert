@@ -209,33 +209,6 @@ begin
   inherited Destroy;
 end;
 
-function TLspHotspots.Jobs: Integer;
-begin
-  System.TMonitor.Enter(FJobLock);
-  try
-    Result := FJobs;
-  finally
-    System.TMonitor.Exit(FJobLock);
-  end;
-end;
-
-procedure TLspHotspots.WaitIdle;
-var
-  mWorker: TThread;
-begin
-  System.TMonitor.Enter(FJobLock);
-  try
-    mWorker := FWorker;
-  finally
-    System.TMonitor.Exit(FJobLock);
-  end;
-  // Nur dieser Thread startet und gibt Arbeiter frei (unter FJobLock in StartJob); warten ohne Sperre.
-  if mWorker <> nil then
-  begin
-    mWorker.WaitFor;
-  end;
-end;
-
 function TLspHotspots.JobProc(const AKey: string; const ARequest: THotspotRequest; const AVcs: IHotspotVcs;
   AOnce: Boolean): TProc;
 var
@@ -289,98 +262,6 @@ begin
   FWorker := TThread.CreateAnonymousThread(JobProc(AKey, ARequest, AVcs, AOnce));
   FWorker.FreeOnTerminate := False;
   FWorker.Start;
-end;
-
-procedure TLspHotspots.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  // git log über ein Jahr und git log -L je Methode dauern Sekunden: nebenläufig, damit Editoranfragen nicht warten.
-  ADispatcher.RegisterConcurrentRequest(cMethod,
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      Result := Request(AParams);
-    end);
-end;
-
-class function TLspHotspots.TryParseFormat(const AText: string; out AFormat: TLspHotspotFormat): Boolean;
-begin
-  Result := True;
-  if (AText = '') or SameText(AText, 'json') then
-  begin
-    AFormat := TLspHotspotFormat.Json;
-  end
-  else if SameText(AText, 'markdown') then
-  begin
-    AFormat := TLspHotspotFormat.Markdown;
-  end
-  else if SameText(AText, 'html') then
-  begin
-    AFormat := TLspHotspotFormat.Html;
-  end
-  else if SameText(AText, 'text') then
-  begin
-    AFormat := TLspHotspotFormat.Text;
-  end
-  else
-  begin
-    AFormat := TLspHotspotFormat.Json;
-    Result := False;
-  end;
-end;
-
-class function TLspHotspots.ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
-  out AError: string): Boolean;
-var
-  mLevel: THotspotLevel;
-  mMonths: Integer;
-begin
-  AError := '';
-  if not THotspots.TryLevelOf(TJsonRead.TrimmedText(AParams, 'level'), mLevel) then
-  begin
-    AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
-    Exit(False);
-  end;
-  ARequest.Level := mLevel;
-  if not IntegerOf(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
-  begin
-    AError := cTexts[THotspotsText.MonthsIsAWholeNumber].Text;
-    Exit(False);
-  end;
-  ARequest.Options.Months := mMonths;
-  Result := True;
-end;
-
-class function TLspHotspots.Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult;
-begin
-  Result := AResult;
-  if ALimit <= 0 then
-  begin
-    Exit;
-  end;
-  if Length(Result.Units) > ALimit then
-  begin
-    Result.Units := Copy(Result.Units, 0, ALimit);
-  end;
-  if Length(Result.Methods) > ALimit then
-  begin
-    Result.Methods := Copy(Result.Methods, 0, ALimit);
-  end;
-  if Length(Result.Coupling) > ALimit then
-  begin
-    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
-  end;
-end;
-
-/// <summary>Wert von "refresh" in AParams; False ohne Angabe.</summary>
-function RefreshOf(const AParams: TJSONObject): Boolean;
-var
-  mValue: TJSONValue;
-begin
-  Result := False;
-  if AParams <> nil then
-  begin
-    mValue := AParams.GetValue('refresh');
-    Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
-  end;
 end;
 
 function TLspHotspots.Prepare(const AParams: TJSONObject; var AOutcome: TLspHotspotOutcome;
@@ -445,6 +326,82 @@ begin
   end;
 end;
 
+function TLspHotspots.Jobs: Integer;
+begin
+  System.TMonitor.Enter(FJobLock);
+  try
+    Result := FJobs;
+  finally
+    System.TMonitor.Exit(FJobLock);
+  end;
+end;
+
+procedure TLspHotspots.WaitIdle;
+var
+  mWorker: TThread;
+begin
+  System.TMonitor.Enter(FJobLock);
+  try
+    mWorker := FWorker;
+  finally
+    System.TMonitor.Exit(FJobLock);
+  end;
+  // Nur dieser Thread startet und gibt Arbeiter frei (unter FJobLock in StartJob); warten ohne Sperre.
+  if mWorker <> nil then
+  begin
+    mWorker.WaitFor;
+  end;
+end;
+
+procedure TLspHotspots.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  // git log über ein Jahr und git log -L je Methode dauern Sekunden: nebenläufig, damit Editoranfragen nicht warten.
+  ADispatcher.RegisterConcurrentRequest(cMethod,
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      Result := Request(AParams);
+    end);
+end;
+
+class function TLspHotspots.TryParseFormat(const AText: string; out AFormat: TLspHotspotFormat): Boolean;
+begin
+  Result := True;
+  if (AText = '') or SameText(AText, 'json') then
+  begin
+    AFormat := TLspHotspotFormat.Json;
+  end
+  else if SameText(AText, 'markdown') then
+  begin
+    AFormat := TLspHotspotFormat.Markdown;
+  end
+  else if SameText(AText, 'html') then
+  begin
+    AFormat := TLspHotspotFormat.Html;
+  end
+  else if SameText(AText, 'text') then
+  begin
+    AFormat := TLspHotspotFormat.Text;
+  end
+  else
+  begin
+    AFormat := TLspHotspotFormat.Json;
+    Result := False;
+  end;
+end;
+
+/// <summary>Wert von "refresh" in AParams; False ohne Angabe.</summary>
+function RefreshOf(const AParams: TJSONObject): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  Result := False;
+  if AParams <> nil then
+  begin
+    mValue := AParams.GetValue('refresh');
+    Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
+  end;
+end;
+
 function TLspHotspots.ResultFor(const AParams: TJSONObject): TLspHotspotOutcome;
 var
   mRequest: THotspotRequest;
@@ -458,6 +415,49 @@ begin
     mHead := mVcs.Head;
     mKey := THotspots.KindName(mVcs.Kind) + #1 + mVcs.Root + #1 + mHead + #1 + mRequest.Key;
     TakeOrStart(mKey, mRequest, mVcs, RefreshOf(AParams), mHead = '', Result);
+  end;
+end;
+
+class function TLspHotspots.ApplyOptions(const AParams: TJSONObject; var ARequest: THotspotRequest;
+  out AError: string): Boolean;
+var
+  mLevel: THotspotLevel;
+  mMonths: Integer;
+begin
+  AError := '';
+  if not THotspots.TryLevelOf(TJsonRead.TrimmedText(AParams, 'level'), mLevel) then
+  begin
+    AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
+    Exit(False);
+  end;
+  ARequest.Level := mLevel;
+  if not IntegerOf(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
+  begin
+    AError := cTexts[THotspotsText.MonthsIsAWholeNumber].Text;
+    Exit(False);
+  end;
+  ARequest.Options.Months := mMonths;
+  Result := True;
+end;
+
+class function TLspHotspots.Limited(const AResult: THotspotResult; ALimit: Integer): THotspotResult;
+begin
+  Result := AResult;
+  if ALimit <= 0 then
+  begin
+    Exit;
+  end;
+  if Length(Result.Units) > ALimit then
+  begin
+    Result.Units := Copy(Result.Units, 0, ALimit);
+  end;
+  if Length(Result.Methods) > ALimit then
+  begin
+    Result.Methods := Copy(Result.Methods, 0, ALimit);
+  end;
+  if Length(Result.Coupling) > ALimit then
+  begin
+    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
   end;
 end;
 

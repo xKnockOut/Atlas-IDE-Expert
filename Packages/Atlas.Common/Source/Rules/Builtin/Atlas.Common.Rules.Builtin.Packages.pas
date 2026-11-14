@@ -164,36 +164,6 @@ begin
   FPending.Enqueue(mItem);
 end;
 
-procedure TImplicitImportWalk.Run;
-var
-  mIndex: Integer;
-  mItem: TPending;
-  mIndexed: TUnitIndex;
-  mName: string;
-begin
-  for mIndex := 0 to High(FSource.Contains) do
-  begin
-    FSeen.AddOrSetValue(UpperCase(FSource.Contains[mIndex].Name), True);
-    Enqueue(FSource.Contains[mIndex].Name, mIndex);
-  end;
-  while FPending.Count > 0 do
-  begin
-    mItem := FPending.Dequeue;
-    if Assigned(FContext.Cancelled) and FContext.Cancelled() then
-    begin
-      Exit;
-    end;
-    // Bibliotheks-Units gehören zu Packages der Installation; ihnen wird nicht gefolgt.
-    if FindIndexed(FContext, mItem.UnitName, mIndexed) and not mIndexed.Library_ then
-    begin
-      for mName in mIndexed.InterfaceUses + mIndexed.ImplementationUses do
-      begin
-        Consider(mItem, mName);
-      end;
-    end;
-  end;
-end;
-
 procedure TImplicitImportWalk.Consider(const AItem: TPending; const AName: string);
 var
   mUsed: TUnitIndex;
@@ -241,6 +211,36 @@ begin
     TPackageReader.ContainsInsertion(AName, mPath, TTextLines.LineBreakOf(FContext.Text)))]);
   FReport.Add(FSource.Contains[AItem.Origin].Range,
     cTexts[TPackagesText.Implicit].Fmt([AName, AItem.UnitName, AName]), [mFix]);
+end;
+
+procedure TImplicitImportWalk.Run;
+var
+  mIndex: Integer;
+  mItem: TPending;
+  mIndexed: TUnitIndex;
+  mName: string;
+begin
+  for mIndex := 0 to High(FSource.Contains) do
+  begin
+    FSeen.AddOrSetValue(UpperCase(FSource.Contains[mIndex].Name), True);
+    Enqueue(FSource.Contains[mIndex].Name, mIndex);
+  end;
+  while FPending.Count > 0 do
+  begin
+    mItem := FPending.Dequeue;
+    if Assigned(FContext.Cancelled) and FContext.Cancelled() then
+    begin
+      Exit;
+    end;
+    // Bibliotheks-Units gehören zu Packages der Installation; ihnen wird nicht gefolgt.
+    if FindIndexed(FContext, mItem.UnitName, mIndexed) and not mIndexed.Library_ then
+    begin
+      for mName in mIndexed.InterfaceUses + mIndexed.ImplementationUses do
+      begin
+        Consider(mItem, mName);
+      end;
+    end;
+  end;
 end;
 
 { TImplicitPackageImportRule }

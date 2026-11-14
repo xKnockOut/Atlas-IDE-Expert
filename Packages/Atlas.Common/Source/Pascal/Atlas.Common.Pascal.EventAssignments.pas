@@ -88,6 +88,8 @@ begin
     ATokens[mIndex].IsKeyword('end') or ATokens[mIndex].IsKeyword('else'));
 end;
 
+{ TEventAssignments }
+
 class function TEventAssignments.IsEventName(const AName: string): Boolean;
 begin
   Result := (Length(AName) > 2) and StartsText('On', AName) and CharInSet(AName[3], ['A'..'Z']);

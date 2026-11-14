@@ -73,6 +73,8 @@ const
     (De: '%d Einträge der älteren Baseline um die Routine ergänzt';
     En: '%d entries of the older baseline completed with the routine'));
 
+{ TLinterBaseline }
+
 class function TLinterBaseline.PathOf(const AOptions: TCommandLineOptions; const AConfigRoot: string): string;
 begin
   Result := AOptions.BaselineFile;

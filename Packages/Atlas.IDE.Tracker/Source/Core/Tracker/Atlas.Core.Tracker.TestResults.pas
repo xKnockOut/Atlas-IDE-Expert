@@ -210,75 +210,6 @@ end;
 
 { TAtlasTestResults }
 
-class function TAtlasTestResults.LocalLevel(const ATests: TAtlasProjectTests): TAtlasTestLevel;
-begin
-  if not ATests.Known then
-  begin
-    Result := TAtlasTestLevel.Unknown;
-  end
-  else if (ATests.Failed > 0) or (ATests.Errors > 0) or (Length(ATests.Failures) > 0) then
-  begin
-    Result := TAtlasTestLevel.Failed;
-  end
-  else if ATests.Passed > 0 then
-  begin
-    Result := TAtlasTestLevel.Passed;
-  end
-  else
-  begin
-    Result := TAtlasTestLevel.Warning;
-  end;
-end;
-
-class function TAtlasTestResults.CiLevel(const ABuild: TAtlasCiBuild): TAtlasTestLevel;
-begin
-  if ABuild.Number <= 0 then
-  begin
-    Exit(TAtlasTestLevel.Unknown);
-  end;
-  if (ABuild.TestsKnown and ((ABuild.Failed > 0) or (Length(ABuild.Failures) > 0))) or
-    (ABuild.Outcome = TAtlasCiOutcome.Failure) then
-  begin
-    Exit(TAtlasTestLevel.Failed);
-  end;
-  case ABuild.Outcome of
-    TAtlasCiOutcome.Success:
-      Result := TAtlasTestLevel.Passed;
-  else
-    Result := TAtlasTestLevel.Warning;
-  end;
-end;
-
-class function TAtlasTestResults.Compare(ALocal, AServer: TAtlasTestLevel): TAtlasTestMismatch;
-begin
-  Result := TAtlasTestMismatch.None;
-  if (ALocal = TAtlasTestLevel.Passed) and (AServer = TAtlasTestLevel.Failed) then
-  begin
-    Result := TAtlasTestMismatch.LocalGreenServerRed;
-  end
-  else if (ALocal = TAtlasTestLevel.Failed) and (AServer = TAtlasTestLevel.Passed) then
-  begin
-    Result := TAtlasTestMismatch.LocalRedServerGreen;
-  end;
-end;
-
-class function TAtlasTestResults.SameTest(const AA, AB: string): Boolean;
-
-  function EndsWithName(const ALong, AShort: string): Boolean;
-  begin
-    Result := (Length(ALong) > Length(AShort)) and
-      SameText(Copy(ALong, Length(ALong) - Length(AShort), MaxInt), '.' + AShort);
-  end;
-
-begin
-  if (AA = '') or (AB = '') then
-  begin
-    Exit(False);
-  end;
-  // Der JUnit-Bericht von DUnitX kann den Unit-Namen weglassen; dann passt das Ende.
-  Result := SameText(AA, AB) or EndsWithName(AA, AB) or EndsWithName(AB, AA);
-end;
-
 class function TAtlasTestResults.IndexOfTest(const AItems: TArray<TAtlasTestFailureItem>; const ATest: string;
   ASame: Boolean): Integer;
 var
@@ -374,6 +305,117 @@ begin
   begin
     Inc(Result, AServer.Failed - Length(AServer.Failures));
   end;
+end;
+
+class function TAtlasTestResults.RowKey(const ARow: TAtlasTestRow): string;
+begin
+  // Eine Projektgruppe und ihr Testprojekt tragen denselben Lauf: nur einmal zeigen.
+  if ARow.Local.Known and (ARow.TestProject <> '') then
+  begin
+    Result := LowerCase(ARow.TestProject);
+  end
+  else
+  begin
+    Result := LowerCase(ARow.Project);
+  end;
+  if ARow.HasCi then
+  begin
+    Result := Result + cKeySeparator + ARow.Job.Key;
+  end;
+end;
+
+class function TAtlasTestResults.Rows(const AProjects: TArray<TAtlasTestProject>;
+  ACiEnabled: Boolean): TArray<TAtlasTestRow>;
+var
+  mProject: TAtlasTestProject;
+  mItem: TAtlasTestRow;
+  mKeys: TArray<string>;
+  mKey: string;
+begin
+  Result := nil;
+  mKeys := nil;
+  for mProject in AProjects do
+  begin
+    mItem := Row(mProject, ACiEnabled);
+    if mItem.Local.Known or mItem.HasCi then
+    begin
+      mKey := RowKey(mItem);
+      if IndexStr(mKey, mKeys) < 0 then
+      begin
+        mKeys := mKeys + [mKey];
+        Result := Result + [mItem];
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasTestResults.LocalLevel(const ATests: TAtlasProjectTests): TAtlasTestLevel;
+begin
+  if not ATests.Known then
+  begin
+    Result := TAtlasTestLevel.Unknown;
+  end
+  else if (ATests.Failed > 0) or (ATests.Errors > 0) or (Length(ATests.Failures) > 0) then
+  begin
+    Result := TAtlasTestLevel.Failed;
+  end
+  else if ATests.Passed > 0 then
+  begin
+    Result := TAtlasTestLevel.Passed;
+  end
+  else
+  begin
+    Result := TAtlasTestLevel.Warning;
+  end;
+end;
+
+class function TAtlasTestResults.CiLevel(const ABuild: TAtlasCiBuild): TAtlasTestLevel;
+begin
+  if ABuild.Number <= 0 then
+  begin
+    Exit(TAtlasTestLevel.Unknown);
+  end;
+  if (ABuild.TestsKnown and ((ABuild.Failed > 0) or (Length(ABuild.Failures) > 0))) or
+    (ABuild.Outcome = TAtlasCiOutcome.Failure) then
+  begin
+    Exit(TAtlasTestLevel.Failed);
+  end;
+  case ABuild.Outcome of
+    TAtlasCiOutcome.Success:
+      Result := TAtlasTestLevel.Passed;
+  else
+    Result := TAtlasTestLevel.Warning;
+  end;
+end;
+
+class function TAtlasTestResults.Compare(ALocal, AServer: TAtlasTestLevel): TAtlasTestMismatch;
+begin
+  Result := TAtlasTestMismatch.None;
+  if (ALocal = TAtlasTestLevel.Passed) and (AServer = TAtlasTestLevel.Failed) then
+  begin
+    Result := TAtlasTestMismatch.LocalGreenServerRed;
+  end
+  else if (ALocal = TAtlasTestLevel.Failed) and (AServer = TAtlasTestLevel.Passed) then
+  begin
+    Result := TAtlasTestMismatch.LocalRedServerGreen;
+  end;
+end;
+
+class function TAtlasTestResults.SameTest(const AA, AB: string): Boolean;
+
+  function EndsWithName(const ALong, AShort: string): Boolean;
+  begin
+    Result := (Length(ALong) > Length(AShort)) and
+      SameText(Copy(ALong, Length(ALong) - Length(AShort), MaxInt), '.' + AShort);
+  end;
+
+begin
+  if (AA = '') or (AB = '') then
+  begin
+    Exit(False);
+  end;
+  // Der JUnit-Bericht von DUnitX kann den Unit-Namen weglassen; dann passt das Ende.
+  Result := SameText(AA, AB) or EndsWithName(AA, AB) or EndsWithName(AB, AA);
 end;
 
 class function TAtlasTestResults.MergeFailures(const ALocal: TAtlasProjectTests;
@@ -490,27 +532,6 @@ begin
   end;
 end;
 
-class function TAtlasTestResults.TurnedRed(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
-  const ANew: TAtlasCiBuild): Boolean;
-begin
-  Result := AOld.Matches(AJob) and AOld.HasBuild and (ANew.Number > 0) and
-    (ANew.Number <> AOld.Build.Number) and (CiLevel(AOld.Build) <> TAtlasTestLevel.Failed) and
-    (CiLevel(ANew) = TAtlasTestLevel.Failed);
-end;
-
-class function TAtlasTestResults.CiFor(const ASummary: TAtlasProjectSummary;
-  const AJob: TAtlasCiJob): TAtlasProjectCi;
-begin
-  if ASummary.Ci.Matches(AJob) then
-  begin
-    Result := ASummary.Ci;
-  end
-  else
-  begin
-    Result := TAtlasProjectCi.Empty;
-  end;
-end;
-
 function NameOfPath(const APath: string): string;
 var
   mIndex: Integer;
@@ -532,6 +553,27 @@ begin
       Result := Copy(Result, 1, mIndex - 1);
       Break;
     end;
+  end;
+end;
+
+class function TAtlasTestResults.TurnedRed(const AOld: TAtlasProjectCi; const AJob: TAtlasCiJob;
+  const ANew: TAtlasCiBuild): Boolean;
+begin
+  Result := AOld.Matches(AJob) and AOld.HasBuild and (ANew.Number > 0) and
+    (ANew.Number <> AOld.Build.Number) and (CiLevel(AOld.Build) <> TAtlasTestLevel.Failed) and
+    (CiLevel(ANew) = TAtlasTestLevel.Failed);
+end;
+
+class function TAtlasTestResults.CiFor(const ASummary: TAtlasProjectSummary;
+  const AJob: TAtlasCiJob): TAtlasProjectCi;
+begin
+  if ASummary.Ci.Matches(AJob) then
+  begin
+    Result := ASummary.Ci;
+  end
+  else
+  begin
+    Result := TAtlasProjectCi.Empty;
   end;
 end;
 
@@ -566,48 +608,6 @@ begin
     Result.CiStale := Result.Ci.Error <> TAtlasCiFetchError.None;
   end;
   Result.Mismatch := Compare(Result.LocalLevel, Result.CiLevel);
-end;
-
-class function TAtlasTestResults.RowKey(const ARow: TAtlasTestRow): string;
-begin
-  // Eine Projektgruppe und ihr Testprojekt tragen denselben Lauf: nur einmal zeigen.
-  if ARow.Local.Known and (ARow.TestProject <> '') then
-  begin
-    Result := LowerCase(ARow.TestProject);
-  end
-  else
-  begin
-    Result := LowerCase(ARow.Project);
-  end;
-  if ARow.HasCi then
-  begin
-    Result := Result + cKeySeparator + ARow.Job.Key;
-  end;
-end;
-
-class function TAtlasTestResults.Rows(const AProjects: TArray<TAtlasTestProject>;
-  ACiEnabled: Boolean): TArray<TAtlasTestRow>;
-var
-  mProject: TAtlasTestProject;
-  mItem: TAtlasTestRow;
-  mKeys: TArray<string>;
-  mKey: string;
-begin
-  Result := nil;
-  mKeys := nil;
-  for mProject in AProjects do
-  begin
-    mItem := Row(mProject, ACiEnabled);
-    if mItem.Local.Known or mItem.HasCi then
-    begin
-      mKey := RowKey(mItem);
-      if IndexStr(mKey, mKeys) < 0 then
-      begin
-        mKeys := mKeys + [mKey];
-        Result := Result + [mItem];
-      end;
-    end;
-  end;
 end;
 
 class function TAtlasTestResults.View(const AProjects: TArray<TAtlasTestProject>; const ASelected: string;

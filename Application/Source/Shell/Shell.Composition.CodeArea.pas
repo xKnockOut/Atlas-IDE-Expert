@@ -123,6 +123,8 @@ uses
   Atlas.Common.Rules.Builtin.DeadCode,
   Shell.Workspace.Jobs;
 
+{ TShellCodeArea }
+
 constructor TShellCodeArea.Create(ACore: TShellCore; const AServices: TShellCodeAreaServices);
 begin
   inherited Create;
@@ -173,13 +175,6 @@ end;
 function TShellCodeArea.RefactoringContextFor(const AUri: string): TRefactoringContext;
 begin
   Result := FRefactorings.ContextFor(AUri);
-end;
-
-function TShellCodeArea.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
-begin
-  AContext := Default(TUsesContext);
-  // Die Code-Aktionen entstehen zuletzt: Bis dahin gibt es keinen uses-Kontext.
-  Result := (FCodeActions <> nil) and FCodeActions.UsesContextOf(AUri, AContext);
 end;
 
 function TShellCodeArea.TestUnitServices: TShellTestUnitServices;
@@ -506,6 +501,13 @@ begin
   begin
     Result := mUnit.FileName;
   end;
+end;
+
+function TShellCodeArea.UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  // Die Code-Aktionen entstehen zuletzt: Bis dahin gibt es keinen uses-Kontext.
+  Result := (FCodeActions <> nil) and FCodeActions.UsesContextOf(AUri, AContext);
 end;
 
 end.

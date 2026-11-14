@@ -314,6 +314,8 @@ begin
   ABuilder.AddWords(ARun.Text, mFace, TAtlasDocColor.Accent, mLinkIndex >= 0, mLinkIndex);
 end;
 
+{ TLayoutBuilder }
+
 constructor TLayoutBuilder.Create(AWidth: Integer; const AMetrics: TAtlasDocMetrics;
   const AMeasure: TAtlasDocMeasure);
 begin
@@ -321,47 +323,6 @@ begin
   FWidth := Max(1, AWidth);
   FMetrics := AMetrics;
   FMeasure := AMeasure;
-end;
-
-function TLayoutBuilder.LineCount: Integer;
-begin
-  Result := Length(FLines);
-end;
-
-function HeightOf(const AFace: TAtlasDocFace; const AMetrics: TAtlasDocMetrics): Integer;
-begin
-  if AFace.Font = TAtlasDocFont.Mono then
-  begin
-    Result := AMetrics.MonoHeight;
-  end
-  else
-  begin
-    Result := AMetrics.LineHeight;
-  end;
-end;
-
-procedure TLayoutBuilder.SetBase(ALeft: Integer);
-begin
-  FBase := ALeft;
-  FLeft := ALeft;
-  FHang := ALeft;
-  FNextStart := ALeft;
-end;
-
-procedure TLayoutBuilder.NewLine;
-begin
-  FOpen := False;
-  FNextStart := FLeft;
-end;
-
-procedure TLayoutBuilder.Gap(AValue: Integer);
-begin
-  NewLine;
-  // Kein Abstand vor der ersten Zeile.
-  if Length(FLines) > 0 then
-  begin
-    FPendingGap := Max(FPendingGap, AValue);
-  end;
 end;
 
 procedure TLayoutBuilder.OpenLine;
@@ -377,53 +338,16 @@ begin
   FX := FNextStart;
 end;
 
-function TLayoutBuilder.AddLink(const ALink: TAtlasDocLink): Integer;
+function HeightOf(const AFace: TAtlasDocFace; const AMetrics: TAtlasDocMetrics): Integer;
 begin
-  FLinks := FLinks + [ALink];
-  Result := High(FLinks);
-end;
-
-procedure TLayoutBuilder.AddSpan(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
-  AUnderline: Boolean; ALink: Integer);
-var
-  mSpan: TAtlasDocSpan;
-  mWidth, mLast: Integer;
-begin
-  if AText = '' then
+  if AFace.Font = TAtlasDocFont.Mono then
   begin
-    Exit;
-  end;
-  if not FOpen then
+    Result := AMetrics.MonoHeight;
+  end
+  else
   begin
-    OpenLine;
+    Result := AMetrics.LineHeight;
   end;
-  mWidth := FMeasure(AText, AFace);
-  mLast := High(FLines);
-  // Gleich gestaltetes Stück direkt davor verlängern.
-  if Length(FLines[mLast].Spans) > 0 then
-  begin
-    mSpan := FLines[mLast].Spans[High(FLines[mLast].Spans)];
-    if CanExtend(mSpan, FX, AFace, AColor, AUnderline, ALink) then
-    begin
-      mSpan.Text := mSpan.Text + AText;
-      mSpan.Width := FMeasure(mSpan.Text, AFace);
-      FLines[mLast].Spans[High(FLines[mLast].Spans)] := mSpan;
-      FX := mSpan.Right;
-      FLines[mLast].Height := Max(FLines[mLast].Height, HeightOf(AFace, FMetrics));
-      Exit;
-    end;
-  end;
-  mSpan := Default(TAtlasDocSpan);
-  mSpan.Text := AText;
-  mSpan.Left := FX;
-  mSpan.Width := mWidth;
-  mSpan.Face := AFace;
-  mSpan.Color := AColor;
-  mSpan.Underline := AUnderline;
-  mSpan.Link := ALink;
-  FLines[mLast].Spans := FLines[mLast].Spans + [mSpan];
-  FLines[mLast].Height := Max(FLines[mLast].Height, HeightOf(AFace, FMetrics));
-  Inc(FX, mWidth);
 end;
 
 procedure TLayoutBuilder.AddPill(const AText: string; const AFace: TAtlasDocFace);
@@ -467,9 +391,35 @@ begin
   end;
 end;
 
-procedure TLayoutBuilder.AddWords(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor);
+procedure TLayoutBuilder.FlowCode(const AText: string; AHighlight: Boolean);
+var
+  mCodeLine: string;
+  mToken: TAtlasToken;
+  mKind: TAtlasTokenKind;
+  mCode: TCodeArea;
 begin
-  AddWords(AText, AFace, AColor, False, -1);
+  // Schattierte, gerahmte Fläche ab dem linken Rand; Text um CodePad eingerückt.
+  mCode.Inner := FLeft + FMetrics.CodePad;
+  mCode.Right := Max(mCode.Inner + 1, FWidth - FMetrics.CodePad);
+  Gap(FMetrics.ParagraphGap);
+  for mCodeLine in AText.Split([#10]) do
+  begin
+    StartCodeLine(mCode.Inner, FLeft);
+    for mToken in TAtlasSyntax.Tokens(mCodeLine) do
+    begin
+      mKind := mToken.Kind;
+      if not AHighlight then
+      begin
+        mKind := TAtlasTokenKind.Plain;
+      end;
+      // Schlüsselwörter halbfett wie in der Deklaration (TAtlasStyledText).
+      AddCodePiece(Copy(mCodeLine, mToken.Start + 1, mToken.Stop - mToken.Start),
+        TAtlasDocFace.Create(TAtlasDocFont.Mono, mKind = TAtlasTokenKind.Keyword), TokenColor(mKind), mCode);
+    end;
+  end;
+  FOpen := False;
+  FNextStart := FLeft;
+  Gap(FMetrics.ParagraphGap);
 end;
 
 procedure TLayoutBuilder.WrapLine;
@@ -531,38 +481,6 @@ begin
   AddSpan(mWord, AFace, AColor, AUnderline, ALink);
 end;
 
-procedure TLayoutBuilder.AddWords(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
-  AUnderline: Boolean; ALink: Integer);
-var
-  mIndex, mStart: Integer;
-begin
-  mIndex := 1;
-  while mIndex <= Length(AText) do
-  begin
-    // Wort samt folgender Leerzeichen.
-    mStart := mIndex;
-    while (mIndex <= Length(AText)) and (AText[mIndex] <> ' ') do
-    begin
-      Inc(mIndex);
-    end;
-    while (mIndex <= Length(AText)) and (AText[mIndex] = ' ') do
-    begin
-      Inc(mIndex);
-    end;
-    AddWord(Copy(AText, mStart, mIndex - mStart), AFace, AColor, AUnderline, ALink);
-  end;
-end;
-
-procedure TLayoutBuilder.AddWhole(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
-  ALink: Integer);
-begin
-  if FOpen and (FX > FNextStart) and (FX + FMeasure(AText, AFace) > FWidth) then
-  begin
-    WrapLine;
-  end;
-  AddSpan(AText, AFace, AColor, False, ALink);
-end;
-
 procedure TLayoutBuilder.StartCodeLine(AStart, AShade: Integer);
 begin
   FOpen := False;
@@ -607,35 +525,147 @@ begin
   end;
 end;
 
-procedure TLayoutBuilder.FlowCode(const AText: string; AHighlight: Boolean);
+procedure TLayoutBuilder.FlowBullet(const ARun: TAtlasDocRun);
 var
-  mCodeLine: string;
-  mToken: TAtlasToken;
-  mKind: TAtlasTokenKind;
-  mCode: TCodeArea;
+  mLink: TAtlasDocLink;
+  mLinkIndex: Integer;
+  mColor: TAtlasDocColor;
 begin
-  // Schattierte, gerahmte Fläche ab dem linken Rand; Text um CodePad eingerückt.
-  mCode.Inner := FLeft + FMetrics.CodePad;
-  mCode.Right := Max(mCode.Inner + 1, FWidth - FMetrics.CodePad);
-  Gap(FMetrics.ParagraphGap);
-  for mCodeLine in AText.Split([#10]) do
+  NewLine;
+  FLeft := FBase + (Max(1, ARun.Level) - 1) * FMetrics.Indent;
+  FHang := FLeft;
+  FNextStart := FLeft;
+  OpenLine;
+  if ARun.Text = '' then
   begin
-    StartCodeLine(mCode.Inner, FLeft);
-    for mToken in TAtlasSyntax.Tokens(mCodeLine) do
-    begin
-      mKind := mToken.Kind;
-      if not AHighlight then
-      begin
-        mKind := TAtlasTokenKind.Plain;
-      end;
-      // Schlüsselwörter halbfett wie in der Deklaration (TAtlasStyledText).
-      AddCodePiece(Copy(mCodeLine, mToken.Start + 1, mToken.Stop - mToken.Start),
-        TAtlasDocFace.Create(TAtlasDocFont.Mono, mKind = TAtlasTokenKind.Keyword), TokenColor(mKind), mCode);
-    end;
+    Exit;
   end;
+  // Marke mit Ziel (Kästchen einer Checkliste, #1273): anklickbar in Akzentfarbe, ohne Unterstrich.
+  mLinkIndex := -1;
+  mColor := TAtlasDocColor.Muted;
+  if ARun.Target <> '' then
+  begin
+    mLink := Default(TAtlasDocLink);
+    mLink.Kind := TAtlasDocLinkKind.Url;
+    mLink.Url := ARun.Target;
+    mLinkIndex := AddLink(mLink);
+    mColor := TAtlasDocColor.Accent;
+  end;
+  AddSpan(ARun.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, ARun.Bold), mColor, False, mLinkIndex);
+  // Fester Platz für die Marke, damit die Texte der Punkte bündig stehen.
+  FX := FLeft + Max(FMeasure(ARun.Text + ' ', TAtlasDocFace.Create(TAtlasDocFont.UI, ARun.Bold)),
+    FMeasure('00. ', TAtlasDocFace.Create(TAtlasDocFont.UI)));
+  FHang := FX;
+end;
+
+procedure TLayoutBuilder.NewLine;
+begin
   FOpen := False;
   FNextStart := FLeft;
-  Gap(FMetrics.ParagraphGap);
+end;
+
+procedure TLayoutBuilder.Gap(AValue: Integer);
+begin
+  NewLine;
+  // Kein Abstand vor der ersten Zeile.
+  if Length(FLines) > 0 then
+  begin
+    FPendingGap := Max(FPendingGap, AValue);
+  end;
+end;
+
+procedure TLayoutBuilder.SetBase(ALeft: Integer);
+begin
+  FBase := ALeft;
+  FLeft := ALeft;
+  FHang := ALeft;
+  FNextStart := ALeft;
+end;
+
+procedure TLayoutBuilder.AddSpan(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
+  AUnderline: Boolean; ALink: Integer);
+var
+  mSpan: TAtlasDocSpan;
+  mWidth, mLast: Integer;
+begin
+  if AText = '' then
+  begin
+    Exit;
+  end;
+  if not FOpen then
+  begin
+    OpenLine;
+  end;
+  mWidth := FMeasure(AText, AFace);
+  mLast := High(FLines);
+  // Gleich gestaltetes Stück direkt davor verlängern.
+  if Length(FLines[mLast].Spans) > 0 then
+  begin
+    mSpan := FLines[mLast].Spans[High(FLines[mLast].Spans)];
+    if CanExtend(mSpan, FX, AFace, AColor, AUnderline, ALink) then
+    begin
+      mSpan.Text := mSpan.Text + AText;
+      mSpan.Width := FMeasure(mSpan.Text, AFace);
+      FLines[mLast].Spans[High(FLines[mLast].Spans)] := mSpan;
+      FX := mSpan.Right;
+      FLines[mLast].Height := Max(FLines[mLast].Height, HeightOf(AFace, FMetrics));
+      Exit;
+    end;
+  end;
+  mSpan := Default(TAtlasDocSpan);
+  mSpan.Text := AText;
+  mSpan.Left := FX;
+  mSpan.Width := mWidth;
+  mSpan.Face := AFace;
+  mSpan.Color := AColor;
+  mSpan.Underline := AUnderline;
+  mSpan.Link := ALink;
+  FLines[mLast].Spans := FLines[mLast].Spans + [mSpan];
+  FLines[mLast].Height := Max(FLines[mLast].Height, HeightOf(AFace, FMetrics));
+  Inc(FX, mWidth);
+end;
+
+function TLayoutBuilder.AddLink(const ALink: TAtlasDocLink): Integer;
+begin
+  FLinks := FLinks + [ALink];
+  Result := High(FLinks);
+end;
+
+procedure TLayoutBuilder.AddWords(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor);
+begin
+  AddWords(AText, AFace, AColor, False, -1);
+end;
+
+procedure TLayoutBuilder.AddWords(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
+  AUnderline: Boolean; ALink: Integer);
+var
+  mIndex, mStart: Integer;
+begin
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    // Wort samt folgender Leerzeichen.
+    mStart := mIndex;
+    while (mIndex <= Length(AText)) and (AText[mIndex] <> ' ') do
+    begin
+      Inc(mIndex);
+    end;
+    while (mIndex <= Length(AText)) and (AText[mIndex] = ' ') do
+    begin
+      Inc(mIndex);
+    end;
+    AddWord(Copy(AText, mStart, mIndex - mStart), AFace, AColor, AUnderline, ALink);
+  end;
+end;
+
+procedure TLayoutBuilder.AddWhole(const AText: string; const AFace: TAtlasDocFace; AColor: TAtlasDocColor;
+  ALink: Integer);
+begin
+  if FOpen and (FX > FNextStart) and (FX + FMeasure(AText, AFace) > FWidth) then
+  begin
+    WrapLine;
+  end;
+  AddSpan(AText, AFace, AColor, False, ALink);
 end;
 
 /// <summary>Breite der Läufe [AFrom, ATo) in einer Zeile ohne Umbruch.</summary>
@@ -689,37 +719,6 @@ begin
       ALine.Spans[High(ALine.Spans)].Link := ATarget.AddLink(ASource.Links[mSpan.Link]);
     end;
   end;
-end;
-
-procedure TLayoutBuilder.Merge(const ABuilders: TArray<TLayoutBuilder>; const ALefts: TArray<Integer>;
-  AGap: Integer);
-var
-  mRow, mCount, mColumn: Integer;
-  mLine: TAtlasDocLine;
-  mSource: TLayoutBuilder;
-begin
-  // Zeilen der Spalten nebeneinander; Links der Spalten werden übernommen.
-  mCount := 0;
-  for mSource in ABuilders do
-  begin
-    mCount := Max(mCount, mSource.LineCount);
-  end;
-  NewLine;
-  for mRow := 0 to mCount - 1 do
-  begin
-    mLine := Default(TAtlasDocLine);
-    mLine.Height := FMetrics.LineHeight;
-    if (mRow = 0) and (Length(FLines) > 0) then
-    begin
-      mLine.GapBefore := Max(FPendingGap, AGap);
-    end;
-    for mColumn := 0 to High(ABuilders) do
-    begin
-      MergeColumn(mLine, Self, ABuilders[mColumn], mRow, ALefts[mColumn]);
-    end;
-    FLines := FLines + [mLine];
-  end;
-  FPendingGap := 0;
 end;
 
 procedure TLayoutBuilder.LayoutTable(const ARuns: TAtlasDocRuns; var AIndex: Integer;
@@ -778,37 +777,35 @@ begin
   NewLine;
 end;
 
-procedure TLayoutBuilder.FlowBullet(const ARun: TAtlasDocRun);
+procedure TLayoutBuilder.Merge(const ABuilders: TArray<TLayoutBuilder>; const ALefts: TArray<Integer>;
+  AGap: Integer);
 var
-  mLink: TAtlasDocLink;
-  mLinkIndex: Integer;
-  mColor: TAtlasDocColor;
+  mRow, mCount, mColumn: Integer;
+  mLine: TAtlasDocLine;
+  mSource: TLayoutBuilder;
 begin
+  // Zeilen der Spalten nebeneinander; Links der Spalten werden übernommen.
+  mCount := 0;
+  for mSource in ABuilders do
+  begin
+    mCount := Max(mCount, mSource.LineCount);
+  end;
   NewLine;
-  FLeft := FBase + (Max(1, ARun.Level) - 1) * FMetrics.Indent;
-  FHang := FLeft;
-  FNextStart := FLeft;
-  OpenLine;
-  if ARun.Text = '' then
+  for mRow := 0 to mCount - 1 do
   begin
-    Exit;
+    mLine := Default(TAtlasDocLine);
+    mLine.Height := FMetrics.LineHeight;
+    if (mRow = 0) and (Length(FLines) > 0) then
+    begin
+      mLine.GapBefore := Max(FPendingGap, AGap);
+    end;
+    for mColumn := 0 to High(ABuilders) do
+    begin
+      MergeColumn(mLine, Self, ABuilders[mColumn], mRow, ALefts[mColumn]);
+    end;
+    FLines := FLines + [mLine];
   end;
-  // Marke mit Ziel (Kästchen einer Checkliste, #1273): anklickbar in Akzentfarbe, ohne Unterstrich.
-  mLinkIndex := -1;
-  mColor := TAtlasDocColor.Muted;
-  if ARun.Target <> '' then
-  begin
-    mLink := Default(TAtlasDocLink);
-    mLink.Kind := TAtlasDocLinkKind.Url;
-    mLink.Url := ARun.Target;
-    mLinkIndex := AddLink(mLink);
-    mColor := TAtlasDocColor.Accent;
-  end;
-  AddSpan(ARun.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, ARun.Bold), mColor, False, mLinkIndex);
-  // Fester Platz für die Marke, damit die Texte der Punkte bündig stehen.
-  FX := FLeft + Max(FMeasure(ARun.Text + ' ', TAtlasDocFace.Create(TAtlasDocFont.UI, ARun.Bold)),
-    FMeasure('00. ', TAtlasDocFace.Create(TAtlasDocFont.UI)));
-  FHang := FX;
+  FPendingGap := 0;
 end;
 
 procedure TLayoutBuilder.FlowRuns(const ARuns: TAtlasDocRuns; ABaseColor: TAtlasDocColor);
@@ -938,6 +935,11 @@ begin
   NewLine;
 end;
 
+function TLayoutBuilder.LineCount: Integer;
+begin
+  Result := Length(FLines);
+end;
+
 type
   TSectionKinds = set of TAtlasDocSectionKind;
 
@@ -962,6 +964,8 @@ begin
   end;
   Result := mRationale > TAtlasDocLayout.cMaxRationale;
 end;
+
+{ TAtlasDocTypeset }
 
 class function TAtlasDocTypeset.IsCollapsible(const ADoc: TAtlasDoc): Boolean;
 begin
@@ -1271,13 +1275,15 @@ begin
   end;
 end;
 
-procedure TDocSections.Summary;
+procedure TDocSections.NamedRows(const ASections: TArray<TAtlasDocSection>; ACount: Integer);
 var
-  mSection: TAtlasDocSection;
+  mNameWidth, mIndex: Integer;
 begin
-  for mSection in SectionsOf(FDoc, TAtlasDocSectionKind.Summary) do
+  mNameWidth := NameColumn(ASections, ACount, FName, TAtlasDocLayout.cNameColumnPercent);
+  for mIndex := 0 to Min(ACount, Length(ASections)) - 1 do
   begin
-    FBuilder.Section(mSection, TAtlasDocColor.Text);
+    FBuilder.Columns([TDocCell.OfText(ASections[mIndex].Name, FName, TAtlasDocColor.Accent),
+      TDocCell.OfRuns(ASections[mIndex].Runs, TAtlasDocColor.Text)], [mNameWidth]);
   end;
 end;
 
@@ -1302,18 +1308,6 @@ begin
   for mSection in mSections do
   begin
     ParamRow(mSection.Name, '', mSection.Runs, TAtlasDocColor.Accent, TAtlasDocColor.Text);
-  end;
-end;
-
-procedure TDocSections.NamedRows(const ASections: TArray<TAtlasDocSection>; ACount: Integer);
-var
-  mNameWidth, mIndex: Integer;
-begin
-  mNameWidth := NameColumn(ASections, ACount, FName, TAtlasDocLayout.cNameColumnPercent);
-  for mIndex := 0 to Min(ACount, Length(ASections)) - 1 do
-  begin
-    FBuilder.Columns([TDocCell.OfText(ASections[mIndex].Name, FName, TAtlasDocColor.Accent),
-      TDocCell.OfRuns(ASections[mIndex].Runs, TAtlasDocColor.Text)], [mNameWidth]);
   end;
 end;
 
@@ -1413,6 +1407,16 @@ begin
     FBuilder.FlowRuns(mSections[mIndex].Runs, TAtlasDocColor.Text);
   end;
   FBuilder.NewLine;
+end;
+
+procedure TDocSections.Summary;
+var
+  mSection: TAtlasDocSection;
+begin
+  for mSection in SectionsOf(FDoc, TAtlasDocSectionKind.Summary) do
+  begin
+    FBuilder.Section(mSection, TAtlasDocColor.Text);
+  end;
 end;
 
 procedure TDocSections.Details(AGap: Integer);

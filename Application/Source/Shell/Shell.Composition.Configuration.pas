@@ -77,6 +77,8 @@ uses
   Shell.Workspace,
   Atlas.Text.LogMarks;
 
+{ TShellConfiguration }
+
 constructor TShellConfiguration.Create(const AServices: TShellConfigurationServices);
 begin
   inherited Create;
@@ -94,6 +96,37 @@ begin
   StopWatching;
   FreeAndNil(FLooseConfiguration);
   inherited Destroy;
+end;
+
+procedure TShellConfiguration.LogGlobalIssues(const AText: string);
+var
+  mSettings: TServerSettings;
+  mIssues, mMisplaced: TArray<TConfigurationIssue>;
+  mIssue: TConfigurationIssue;
+begin
+  mSettings := TConfigurationParser.Parse(AText, mIssues);
+  // Projekt-Schlüssel in der globalen Datei wirken nicht; das Log nennt sie.
+  TConfigurationScopes.Filter(AText, TConfigurationScope.Global, mMisplaced);
+  // "delphiVersion" ist global: Fehlt die Version, steht die Warnung mit Stelle in settings.json im Log
+  // (#47); die Projekte nehmen dann die automatisch gewählte Version.
+  mMisplaced := mMisplaced + TDelphiVersions.ConfigurationIssues(mSettings, TDelphiInstallation.Versions);
+  FServices.Logger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(mIssues) + Length(mMisplaced)]));
+  for mIssue in mMisplaced do
+  begin
+    FServices.Logger.Warning(Format('%s(%d,%d): %s', [TLogMarks.Path(ExtractFileName(FGlobalSettingsFile)),
+      mIssue.Range.StartPos.Line + 1, mIssue.Range.StartPos.Character + 1, TLogMarks.Text(mIssue.Message)]));
+  end;
+end;
+
+procedure TShellConfiguration.DidChangeConfiguration(const AParams: TJSONValue);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  FServices.Settings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
+  for mWorkspace in FServices.Workspaces.Items.ToArray do
+  begin
+    mWorkspace.Configuration.SetEditorSettings(FServices.Settings.EditorSettings);
+  end;
 end;
 
 procedure TShellConfiguration.Attach(ADispatcher: TJsonRpcDispatcher);
@@ -126,17 +159,6 @@ begin
   FreeAndNil(FFileWatcher);
 end;
 
-procedure TShellConfiguration.DidChangeConfiguration(const AParams: TJSONValue);
-var
-  mWorkspace: TShellWorkspace;
-begin
-  FServices.Settings.SetEditorSettings(TLspConfiguration.EditorSettingsFromParams(AParams));
-  for mWorkspace in FServices.Workspaces.Items.ToArray do
-  begin
-    mWorkspace.Configuration.SetEditorSettings(FServices.Settings.EditorSettings);
-  end;
-end;
-
 procedure TShellConfiguration.LoadGlobalSettings;
 var
   mText: string;
@@ -155,26 +177,6 @@ begin
   for mWorkspace in FServices.Workspaces.Items.ToArray do
   begin
     mWorkspace.Configuration.SetGlobalSettings(FServices.Settings.GlobalSettings);
-  end;
-end;
-
-procedure TShellConfiguration.LogGlobalIssues(const AText: string);
-var
-  mSettings: TServerSettings;
-  mIssues, mMisplaced: TArray<TConfigurationIssue>;
-  mIssue: TConfigurationIssue;
-begin
-  mSettings := TConfigurationParser.Parse(AText, mIssues);
-  // Projekt-Schlüssel in der globalen Datei wirken nicht; das Log nennt sie.
-  TConfigurationScopes.Filter(AText, TConfigurationScope.Global, mMisplaced);
-  // "delphiVersion" ist global: Fehlt die Version, steht die Warnung mit Stelle in settings.json im Log
-  // (#47); die Projekte nehmen dann die automatisch gewählte Version.
-  mMisplaced := mMisplaced + TDelphiVersions.ConfigurationIssues(mSettings, TDelphiInstallation.Versions);
-  FServices.Logger.Info(Format('Globale Einstellungen gelesen (%d Meldungen)', [Length(mIssues) + Length(mMisplaced)]));
-  for mIssue in mMisplaced do
-  begin
-    FServices.Logger.Warning(Format('%s(%d,%d): %s', [TLogMarks.Path(ExtractFileName(FGlobalSettingsFile)),
-      mIssue.Range.StartPos.Line + 1, mIssue.Range.StartPos.Character + 1, TLogMarks.Text(mIssue.Message)]));
   end;
 end;
 

@@ -99,6 +99,8 @@ uses
   Atlas.Common.Editing.MethodWithoutSelf.Texts,
   Atlas.Common.Editing.MethodWithoutSelf.Analysis;
 
+{ TMethodWithoutSelf }
+
 class function TMethodWithoutSelf.ClassMethodTitle: string;
 begin
   Result := cTexts[TEditingMethodWithoutSelfText.ConvertToClassMethod].Text;
@@ -158,6 +160,8 @@ type
     Names: TArray<string>;
     constructor Create(const ASource: TMethodSource; ADeclaring: Boolean);
   end;
+
+{ TFileWork }
 
 constructor TFileWork.Create(const ASource: TMethodSource; ADeclaring: Boolean);
 begin
@@ -272,6 +276,8 @@ type
     function WorkIssue(AWork: TFileWork; out AItem: TMethodFileEdits): string;
     function Finish(out AResult: TMethodResult; out AReason: string): Boolean;
   end;
+
+{ TMethodBuild }
 
 constructor TMethodBuild.Create(APlan: TMethodPlan);
 begin
@@ -480,14 +486,17 @@ begin
   end;
 end;
 
-function TMethodBuild.QualifyStatics: TArray<TOffsetEdit>;
-var
-  mNode: TSyntaxNode;
+function TMethodBuild.DeclaringEdits(out AReason: string): Boolean;
 begin
-  Result := nil;
-  for mNode in Plan.Statics do
-  begin
-    Result := Result + [TOffsetEdit.Create(mNode.StartOffset, mNode.StartOffset, Plan.Target.ClassName + '.')];
+  case Conversion of
+    TMethodConversion.Routine:
+      Result := RoutineEdits(AReason);
+    TMethodConversion.Helper:
+      Result := HelperEdits(AReason);
+  else
+    // class-Methode gelingt immer.
+    ClassMethodEdits;
+    Result := True;
   end;
 end;
 
@@ -642,147 +651,6 @@ begin
     end);
 end;
 
-function TMethodBuild.ExistingHelperIssue(AFound: TSyntaxNode): string;
-var
-  mInterface: TSyntaxNode;
-begin
-  Result := '';
-  mInterface := Plan.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if CalledOutside and ((mInterface = nil) or not TRoutineBody.Within(AFound, mInterface)) then
-  begin
-    Exit(cTexts[TEditingMethodWithoutSelfText.TheHelperIsInThe].Fmt([AFound.Parent.Name]));
-  end;
-  HelperNode := AFound;
-  HelperName := AFound.Parent.Name;
-end;
-
-function TMethodBuild.NewHelperIssue(const AVisible: string): string;
-var
-  mBase: string;
-begin
-  Result := '';
-  if CalledOutside and not Plan.ClassInInterface then
-  begin
-    Exit(cTexts[TEditingMethodWithoutSelfText.OtherUnitsCallItBut].Text);
-  end;
-  mBase := TMethodWithoutSelf.HelperNameFor(Plan.Target.HelperType);
-  // Den Namen eines sichtbaren Helpers (TStringHelper der RTL) nicht verdecken: THauptStringHelper.
-  if SameText(mBase, AVisible) or (Assigned(Plan.Lookup.NameVisible) and Plan.Lookup.NameVisible(mBase,
-    Plan.Routine.StartOffset)) then
-  begin
-    mBase := 'T' + Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
-      MaxInt);
-  end;
-  HelperName := TRoutineParts.FreeName(mBase, TRoutineParts.UnitNames(Plan.Tree.Root));
-end;
-
-function TMethodBuild.ChooseHelper(out AReason: string): Boolean;
-var
-  mFound: TSyntaxNode;
-  mTypeName, mVisible: string;
-begin
-  mTypeName := Plan.Target.HelperType;
-  mFound := ExistingHelper(Plan.Tree, mTypeName);
-  mVisible := '';
-  if Assigned(Plan.Lookup.VisibleHelper) then
-  begin
-    mVisible := Plan.Lookup.VisibleHelper(mTypeName, Plan.Routine.StartOffset);
-  end;
-  if mFound <> nil then
-  begin
-    AReason := ExistingHelperIssue(mFound);
-  end
-  else
-  begin
-    AReason := NewHelperIssue(mVisible);
-  end;
-  if AReason <> '' then
-  begin
-    Exit(False);
-  end;
-  if (mVisible <> '') and not SameText(mVisible, HelperName) then
-  begin
-    Warn(cTexts[TEditingMethodWithoutSelfText.IsAlreadyVisibleFor].Fmt([mTypeName, mVisible, HelperName, mVisible]));
-  end;
-  Result := True;
-end;
-
-/// <summary>Letztes end im Bereich von ANode; -1 ohne.</summary>
-function LastEndToken(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := -1;
-  mIndex := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
-  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
-  begin
-    if ATokens[mIndex].IsKeyword('end') then
-    begin
-      Result := mIndex;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
-/// <summary>Deklaration vor das end des vorhandenen Helpers.</summary>
-function TMethodBuild.InsertIntoHelper(const ADecl, AInner: string): string;
-var
-  mEndToken, mLine: Integer;
-begin
-  Result := '';
-  mEndToken := LastEndToken(Plan.Tokens, HelperNode);
-  if mEndToken < 0 then
-  begin
-    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperNot].Text);
-  end;
-  mLine := Plan.Tokens[mEndToken].StartPos.Line;
-  if Trim(Copy(LineText(Plan.Text, Plan.Lines, mLine), 1, Plan.Tokens[mEndToken].StartPos.Character)) <> '' then
-  begin
-    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperIs].Text);
-  end;
-  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(mLine),
-    Plan.Lines.LineStart(mLine), IndentAt(Plan.Text, Plan.Lines, mLine) + AInner + ADecl + LineBreak)];
-end;
-
-/// <summary>Neuer Helper hinter der Klasse, im selben type-Abschnitt.</summary>
-procedure TMethodBuild.AddHelperAfterClass(const ADecl, AInner: string);
-var
-  mTypeDecl: TSyntaxNode;
-  mIndent, mBlock: string;
-  mAt: Integer;
-begin
-  mTypeDecl := Plan.TypeBody.Parent;
-  mIndent := IndentAt(Plan.Text, Plan.Lines, mTypeDecl.StartPos.Line);
-  mBlock := LineBreak + mIndent + HelperName + ' = record helper for ' + Plan.Target.HelperType + LineBreak +
-    mIndent + AInner + ADecl + LineBreak + mIndent + 'end;' + LineBreak;
-  mAt := Plan.Lines.LineStart(mTypeDecl.EndPos.Line + 1);
-  if mTypeDecl.EndPos.Line + 1 >= Plan.Lines.LineCount then
-  begin
-    mAt := Length(Plan.Text);
-  end;
-  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(mAt, mAt, mBlock)];
-end;
-
-/// <summary>Neuer Helper am Anfang von implementation, hinter dessen uses.</summary>
-procedure TMethodBuild.AddHelperInImplementation(const ADecl, AInner: string);
-var
-  mImplementation, mClause: TSyntaxNode;
-  mLine, mAt: Integer;
-  mBlock: string;
-begin
-  mImplementation := Plan.Routine.Parent;
-  mClause := mImplementation.FindChild(TSyntaxKind.UsesClause);
-  mLine := mImplementation.StartPos.Line + 1;
-  if mClause <> nil then
-  begin
-    mLine := mClause.EndPos.Line + 1;
-  end;
-  mBlock := LineBreak + 'type' + LineBreak + AInner + HelperName + ' = record helper for ' +
-    Plan.Target.HelperType + LineBreak + AInner + AInner + ADecl + LineBreak + AInner + 'end;' + LineBreak;
-  mAt := Plan.Lines.LineStart(mLine);
-  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(mAt, mAt, mBlock)];
-end;
-
 function TMethodBuild.HelperEdits(out AReason: string): Boolean;
 var
   mWork: TFileWork;
@@ -827,18 +695,156 @@ begin
   Result := True;
 end;
 
-function TMethodBuild.DeclaringEdits(out AReason: string): Boolean;
+/// <summary>Neuer Helper hinter der Klasse, im selben type-Abschnitt.</summary>
+procedure TMethodBuild.AddHelperAfterClass(const ADecl, AInner: string);
+var
+  mTypeDecl: TSyntaxNode;
+  mIndent, mBlock: string;
+  mAt: Integer;
 begin
-  case Conversion of
-    TMethodConversion.Routine:
-      Result := RoutineEdits(AReason);
-    TMethodConversion.Helper:
-      Result := HelperEdits(AReason);
-  else
-    // class-Methode gelingt immer.
-    ClassMethodEdits;
-    Result := True;
+  mTypeDecl := Plan.TypeBody.Parent;
+  mIndent := IndentAt(Plan.Text, Plan.Lines, mTypeDecl.StartPos.Line);
+  mBlock := LineBreak + mIndent + HelperName + ' = record helper for ' + Plan.Target.HelperType + LineBreak +
+    mIndent + AInner + ADecl + LineBreak + mIndent + 'end;' + LineBreak;
+  mAt := Plan.Lines.LineStart(mTypeDecl.EndPos.Line + 1);
+  if mTypeDecl.EndPos.Line + 1 >= Plan.Lines.LineCount then
+  begin
+    mAt := Length(Plan.Text);
   end;
+  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(mAt, mAt, mBlock)];
+end;
+
+/// <summary>Neuer Helper am Anfang von implementation, hinter dessen uses.</summary>
+procedure TMethodBuild.AddHelperInImplementation(const ADecl, AInner: string);
+var
+  mImplementation, mClause: TSyntaxNode;
+  mLine, mAt: Integer;
+  mBlock: string;
+begin
+  mImplementation := Plan.Routine.Parent;
+  mClause := mImplementation.FindChild(TSyntaxKind.UsesClause);
+  mLine := mImplementation.StartPos.Line + 1;
+  if mClause <> nil then
+  begin
+    mLine := mClause.EndPos.Line + 1;
+  end;
+  mBlock := LineBreak + 'type' + LineBreak + AInner + HelperName + ' = record helper for ' +
+    Plan.Target.HelperType + LineBreak + AInner + AInner + ADecl + LineBreak + AInner + 'end;' + LineBreak;
+  mAt := Plan.Lines.LineStart(mLine);
+  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(mAt, mAt, mBlock)];
+end;
+
+/// <summary>Letztes end im Bereich von ANode; -1 ohne.</summary>
+function LastEndToken(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  mIndex := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if ATokens[mIndex].IsKeyword('end') then
+    begin
+      Result := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Deklaration vor das end des vorhandenen Helpers.</summary>
+function TMethodBuild.InsertIntoHelper(const ADecl, AInner: string): string;
+var
+  mEndToken, mLine: Integer;
+begin
+  Result := '';
+  mEndToken := LastEndToken(Plan.Tokens, HelperNode);
+  if mEndToken < 0 then
+  begin
+    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperNot].Text);
+  end;
+  mLine := Plan.Tokens[mEndToken].StartPos.Line;
+  if Trim(Copy(LineText(Plan.Text, Plan.Lines, mLine), 1, Plan.Tokens[mEndToken].StartPos.Character)) <> '' then
+  begin
+    Exit(cTexts[TEditingMethodWithoutSelfText.EndOfTheHelperIs].Text);
+  end;
+  Works[0].Edits := Works[0].Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(mLine),
+    Plan.Lines.LineStart(mLine), IndentAt(Plan.Text, Plan.Lines, mLine) + AInner + ADecl + LineBreak)];
+end;
+
+function TMethodBuild.QualifyStatics: TArray<TOffsetEdit>;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  for mNode in Plan.Statics do
+  begin
+    Result := Result + [TOffsetEdit.Create(mNode.StartOffset, mNode.StartOffset, Plan.Target.ClassName + '.')];
+  end;
+end;
+
+function TMethodBuild.ChooseHelper(out AReason: string): Boolean;
+var
+  mFound: TSyntaxNode;
+  mTypeName, mVisible: string;
+begin
+  mTypeName := Plan.Target.HelperType;
+  mFound := ExistingHelper(Plan.Tree, mTypeName);
+  mVisible := '';
+  if Assigned(Plan.Lookup.VisibleHelper) then
+  begin
+    mVisible := Plan.Lookup.VisibleHelper(mTypeName, Plan.Routine.StartOffset);
+  end;
+  if mFound <> nil then
+  begin
+    AReason := ExistingHelperIssue(mFound);
+  end
+  else
+  begin
+    AReason := NewHelperIssue(mVisible);
+  end;
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  if (mVisible <> '') and not SameText(mVisible, HelperName) then
+  begin
+    Warn(cTexts[TEditingMethodWithoutSelfText.IsAlreadyVisibleFor].Fmt([mTypeName, mVisible, HelperName, mVisible]));
+  end;
+  Result := True;
+end;
+
+function TMethodBuild.ExistingHelperIssue(AFound: TSyntaxNode): string;
+var
+  mInterface: TSyntaxNode;
+begin
+  Result := '';
+  mInterface := Plan.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if CalledOutside and ((mInterface = nil) or not TRoutineBody.Within(AFound, mInterface)) then
+  begin
+    Exit(cTexts[TEditingMethodWithoutSelfText.TheHelperIsInThe].Fmt([AFound.Parent.Name]));
+  end;
+  HelperNode := AFound;
+  HelperName := AFound.Parent.Name;
+end;
+
+function TMethodBuild.NewHelperIssue(const AVisible: string): string;
+var
+  mBase: string;
+begin
+  Result := '';
+  if CalledOutside and not Plan.ClassInInterface then
+  begin
+    Exit(cTexts[TEditingMethodWithoutSelfText.OtherUnitsCallItBut].Text);
+  end;
+  mBase := TMethodWithoutSelf.HelperNameFor(Plan.Target.HelperType);
+  // Den Namen eines sichtbaren Helpers (TStringHelper der RTL) nicht verdecken: THauptStringHelper.
+  if SameText(mBase, AVisible) or (Assigned(Plan.Lookup.NameVisible) and Plan.Lookup.NameVisible(mBase,
+    Plan.Routine.StartOffset)) then
+  begin
+    mBase := 'T' + Capitalized(Plan.UnitName.Substring(Plan.UnitName.LastIndexOf('.') + 1)) + Copy(mBase, 2,
+      MaxInt);
+  end;
+  HelperName := TRoutineParts.FreeName(mBase, TRoutineParts.UnitNames(Plan.Tree.Root));
 end;
 
 /// <summary>Überschneiden sich zwei Bearbeitungen (gleiche Einfügestelle zählt nicht)?</summary>

@@ -53,6 +53,8 @@ implementation
 uses
   Atlas.Text.LogMarks;
 
+{ TAtlasModuleContributions }
+
 class function TAtlasModuleContributions.Active(const ARegistry: IAtlasModuleRegistry;
   const AIID: TGUID): TArray<IInterface>;
 var
@@ -228,6 +230,28 @@ begin
   end;
 end;
 
+class function TAtlasModuleContributions.ThemeChanged(const ARegistry: IAtlasModuleRegistry): TArray<string>;
+var
+  mItem: IInterface;
+  mListener: IAtlasFollowsTheme;
+begin
+  Result := nil;
+  if ARegistry = nil then
+  begin
+    Exit;
+  end;
+  for mItem in Active(ARegistry, IAtlasFollowsTheme) do
+  begin
+    if Supports(mItem, IAtlasFollowsTheme, mListener) then
+      try
+        mListener.ThemeChanged;
+      except
+        on mError: Exception do
+          Result := Result + ['IAtlasFollowsTheme: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
+      end;
+  end;
+end;
+
 class function TAtlasModuleContributions.FileSaved(const ARegistry: IAtlasModuleRegistry;
   const AFileName: string): TArray<string>;
 var
@@ -247,28 +271,6 @@ begin
       except
         on mError: Exception do
           Result := Result + ['IAtlasFollowsSaves: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
-      end;
-  end;
-end;
-
-class function TAtlasModuleContributions.ThemeChanged(const ARegistry: IAtlasModuleRegistry): TArray<string>;
-var
-  mItem: IInterface;
-  mListener: IAtlasFollowsTheme;
-begin
-  Result := nil;
-  if ARegistry = nil then
-  begin
-    Exit;
-  end;
-  for mItem in Active(ARegistry, IAtlasFollowsTheme) do
-  begin
-    if Supports(mItem, IAtlasFollowsTheme, mListener) then
-      try
-        mListener.ThemeChanged;
-      except
-        on mError: Exception do
-          Result := Result + ['IAtlasFollowsTheme: ' + mError.ClassName + ': ' + TLogMarks.Text(mError.Message)];
       end;
   end;
 end;

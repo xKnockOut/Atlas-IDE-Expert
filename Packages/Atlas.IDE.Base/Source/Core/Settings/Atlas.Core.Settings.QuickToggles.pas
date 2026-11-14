@@ -348,11 +348,6 @@ begin
   Result := AtlasPluginSchemaJson;
 end;
 
-class function TAtlasQuickToggles.Build(const APluginCatalog, AProjectSchema: string): TArray<TAtlasQuickToggle>;
-begin
-  Result := Build(APluginCatalog, AProjectSchema, False);
-end;
-
 class function TAtlasQuickToggles.Build(const APluginCatalog, AProjectSchema: string;
   AEnglish: Boolean): TArray<TAtlasQuickToggle>;
 var
@@ -376,6 +371,11 @@ begin
   begin
     Result := Result + mGroup.Toggles;
   end;
+end;
+
+class function TAtlasQuickToggles.Build(const APluginCatalog, AProjectSchema: string): TArray<TAtlasQuickToggle>;
+begin
+  Result := Build(APluginCatalog, AProjectSchema, False);
 end;
 
 class function TAtlasQuickToggles.Groups(const AToggles: TArray<TAtlasQuickToggle>): TArray<TAtlasQuickToggleGroup>;

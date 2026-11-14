@@ -64,6 +64,8 @@ begin
   end;
 end;
 
+{ TAtlasOpenBuildSettings }
+
 class function TAtlasOpenBuildSettings.StripProjectExt(const AFileName: string): string;
 var
   mExt: string;

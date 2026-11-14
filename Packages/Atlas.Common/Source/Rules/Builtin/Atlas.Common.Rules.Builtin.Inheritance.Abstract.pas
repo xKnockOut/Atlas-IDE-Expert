@@ -344,20 +344,6 @@ begin
   end;
 end;
 
-class function TInheritedAbstractCallRule.IsAbstractSignature(const ASignature: string): Boolean;
-var
-  mParts: TArray<string>;
-  mIndex: Integer;
-begin
-  mParts := WithoutParameters(ASignature).Split([';']);
-  // Der erste Teil ist der Kopf selbst, die Direktiven folgen hinter Semikolons.
-  Result := False;
-  for mIndex := 1 to High(mParts) do
-  begin
-    Result := Result or SameText(Trim(mParts[mIndex]), 'abstract');
-  end;
-end;
-
 procedure TInheritedAbstractCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mCheck: TInheritedAbstractCheck;
@@ -371,6 +357,20 @@ begin
     mCheck.Run;
   finally
     mCheck.Free;
+  end;
+end;
+
+class function TInheritedAbstractCallRule.IsAbstractSignature(const ASignature: string): Boolean;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  mParts := WithoutParameters(ASignature).Split([';']);
+  // Der erste Teil ist der Kopf selbst, die Direktiven folgen hinter Semikolons.
+  Result := False;
+  for mIndex := 1 to High(mParts) do
+  begin
+    Result := Result or SameText(Trim(mParts[mIndex]), 'abstract');
   end;
 end;
 

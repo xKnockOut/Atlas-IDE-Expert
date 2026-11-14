@@ -252,38 +252,7 @@ begin
   end;
 end;
 
-function TWorkspaceStatus.Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
-begin
-  Result := Self;
-  Result.Name := MappedValue(AMap, TLogMarkKind.Name, Name);
-  Result.Project := MappedValue(AMap, TLogMarkKind.Path, Project);
-  Result.CacheFile := MappedValue(AMap, TLogMarkKind.Path, CacheFile);
-  Result.LibraryCacheFile := MappedValue(AMap, TLogMarkKind.Path, LibraryCacheFile);
-  // Debug, Release und die Plattformen verraten nichts; eigene Konfigurationen tragen oft Kundennamen.
-  if not TTextAnonymizer.IsKeyword(Config) then
-  begin
-    Result.Config := MappedValue(AMap, TLogMarkKind.Name, Config);
-  end;
-end;
-
-function TServerStatus.Mapped(const AMap: TLogMarkMap): TServerStatus;
-var
-  mIndex: Integer;
-  mMap: TLogMarkMap;
-begin
-  Result := Self;
-  Result.Workspaces := Copy(Workspaces);
-  for mIndex := 0 to High(Result.Workspaces) do
-  begin
-    Result.Workspaces[mIndex] := Workspaces[mIndex].Mapped(AMap);
-  end;
-  mMap := AMap;
-  Result.CheckRun := CheckRun.Anonymized(
-    function(const AName: string): string
-    begin
-      Result := MappedValue(mMap, TLogMarkKind.Name, AName);
-    end);
-end;
+{ TWorkspaceStatus }
 
 function TWorkspaceStatus.ProjectText: string;
 begin
@@ -310,28 +279,6 @@ begin
   end;
 end;
 
-{ TServerMemory }
-
-function TServerMemory.Estimated: Int64;
-begin
-  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents + Packages;
-end;
-
-function TServerMemory.Rest: Int64;
-begin
-  Result := 0;
-  if Total > Estimated then
-  begin
-    Result := Total - Estimated;
-  end;
-end;
-
-function TServerMemory.OverBudget(ACompactUnits, AOffloadedUnits: Integer): Boolean;
-begin
-  Result := (Budget > 0) and ((Symbols + Usages + LibraryUnits > Budget) or (ACompactUnits > 0) or
-    (AOffloadedUnits > 0));
-end;
-
 { TServerStatus }
 
 class function TServerStatus.CacheHitPercent(const AWorkspaces: TArray<TWorkspaceStatus>): Integer;
@@ -356,6 +303,44 @@ begin
   Result := Round(mCached * 100 / mLoaded);
 end;
 
+function TWorkspaceStatus.Mapped(const AMap: TLogMarkMap): TWorkspaceStatus;
+begin
+  Result := Self;
+  Result.Name := MappedValue(AMap, TLogMarkKind.Name, Name);
+  Result.Project := MappedValue(AMap, TLogMarkKind.Path, Project);
+  Result.CacheFile := MappedValue(AMap, TLogMarkKind.Path, CacheFile);
+  Result.LibraryCacheFile := MappedValue(AMap, TLogMarkKind.Path, LibraryCacheFile);
+  // Debug, Release und die Plattformen verraten nichts; eigene Konfigurationen tragen oft Kundennamen.
+  if not TTextAnonymizer.IsKeyword(Config) then
+  begin
+    Result.Config := MappedValue(AMap, TLogMarkKind.Name, Config);
+  end;
+end;
+
+{ TServerMemory }
+
+function TServerMemory.Rest: Int64;
+begin
+  Result := 0;
+  if Total > Estimated then
+  begin
+    Result := Total - Estimated;
+  end;
+end;
+
+function TServerMemory.Estimated: Int64;
+begin
+  Result := Symbols + Usages + LibraryUnits + TreeCache + Documents + Packages;
+end;
+
+function TServerMemory.OverBudget(ACompactUnits, AOffloadedUnits: Integer): Boolean;
+begin
+  Result := (Budget > 0) and ((Symbols + Usages + LibraryUnits > Budget) or (ACompactUnits > 0) or
+    (AOffloadedUnits > 0));
+end;
+
+{ TServerStatus }
+
 function TServerStatus.StateText: string;
 begin
   if State = cStateLoading then
@@ -370,6 +355,25 @@ begin
   begin
     Result := cTexts[TStatusText.Ready].Text;
   end;
+end;
+
+function TServerStatus.Mapped(const AMap: TLogMarkMap): TServerStatus;
+var
+  mIndex: Integer;
+  mMap: TLogMarkMap;
+begin
+  Result := Self;
+  Result.Workspaces := Copy(Workspaces);
+  for mIndex := 0 to High(Result.Workspaces) do
+  begin
+    Result.Workspaces[mIndex] := Workspaces[mIndex].Mapped(AMap);
+  end;
+  mMap := AMap;
+  Result.CheckRun := CheckRun.Anonymized(
+    function(const AName: string): string
+    begin
+      Result := MappedValue(mMap, TLogMarkKind.Name, AName);
+    end);
 end;
 
 /// <summary>Zeile je Arbeitsbereich für TServerStatus.ToMarkdown.</summary>
@@ -513,6 +517,99 @@ begin
   Result.AddPair('oldestWaitMs', TJSONNumber.Create(AQueue.OldestWaitMs));
 end;
 
+function TServerStatus.ToJson: TJSONObject;
+var
+  mItem: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('units', TJSONNumber.Create(Units));
+  Result.AddPair('symbols', TJSONNumber.Create(Symbols));
+  Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
+  Result.AddPair('indexBytes', TJSONNumber.Create(IndexBytes));
+  Result.AddPair('compactUnits', TJSONNumber.Create(CompactUnits));
+  Result.AddPair('offloadedUnits', TJSONNumber.Create(OffloadedUnits));
+  Result.AddPair('diskBytes', TJSONNumber.Create(DiskBytes));
+  Result.AddPair('budgetBytes', TJSONNumber.Create(BudgetBytes));
+  Result.AddPair('documentBytes', TJSONNumber.Create(DocumentBytes));
+  Result.AddPair('workspaces', WorkspacesJson(Workspaces));
+  Result.AddPair('requests', RequestsJson(Requests));
+  if Compiler <> '' then
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('status', Compiler);
+    mItem.AddPair('backend', CompilerBackend);
+    mItem.AddPair('reason', CompilerReason);
+    Result.AddPair('compiler', mItem);
+  end;
+  if ProcessId <> 0 then
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('pid', TJSONNumber.Create(ProcessId));
+    mItem.AddPair('version', Version);
+    mItem.AddPair('started', DateText(Started));
+    mItem.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
+    mItem.AddPair('state', State);
+    Result.AddPair('process', mItem);
+    Result.AddPair('memory', MemoryJson(Memory, Memory.OverBudget(CompactUnits, OffloadedUnits)));
+    Result.AddPair('checkRun', CheckRun.ToJson);
+    Result.AddPair('queue', QueueJson(Queue));
+    mItem := TJSONObject.Create;
+    mItem.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
+    mItem.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
+    mItem.AddPair('treeCount', TJSONNumber.Create(TreeCacheTrees));
+    Result.AddPair('cacheHits', mItem);
+  end;
+  Result.AddPair('markdown', ToMarkdown);
+end;
+
+function TServerStatus.ToMarkdown: string;
+var
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append('**Atlas**').Append(#10#10);
+    mBuilder.Append(cTexts[TStatusText.IndexUnitsSymbols].Fmt([Units, Symbols])).Append(#10);
+    if MemoryBytes >= 0 then
+    begin
+      mBuilder.Append(cTexts[TStatusText.Memory].Text).Append(MegaBytes(MemoryBytes)).Append(#10);
+    end;
+    mBuilder.Append(cTexts[TStatusText.OfThisSymbolIndex].Text).Append(MegaBytes(IndexBytes));
+    if BudgetBytes > 0 then
+    begin
+      mBuilder.Append(cTexts[TStatusText.OfText].Text).Append(MegaBytes(BudgetBytes));
+    end;
+    if CompactUnits > 0 then
+    begin
+      mBuilder.Append(cTexts[TStatusText.UnitsCompact].Fmt([CompactUnits]));
+    end;
+    if OffloadedUnits > 0 then
+    begin
+      mBuilder.Append(cTexts[TStatusText.UsesOfUnitsSwappedOut].Fmt([OffloadedUnits]));
+    end;
+    mBuilder.Append(#10);
+    mBuilder.Append(cTexts[TStatusText.CachesOnDisk].Text).Append(MegaBytes(DiskBytes)).Append(#10);
+    mBuilder.Append(cTexts[TStatusText.OfTheseOpenDocuments].Text).Append(MegaBytes(DocumentBytes)).Append(#10);
+    if Compiler <> '' then
+    begin
+      mBuilder.Append('- ').Append(Compiler).Append(#10);
+      if CompilerReason <> '' then
+      begin
+        mBuilder.Append('  ').Append(CompilerReason).Append(#10);
+      end;
+    end;
+    AppendWorkspaces(mBuilder, Workspaces);
+    if ProcessId <> 0 then
+    begin
+      AppendDiagnostics(mBuilder);
+    end;
+    AppendRequests(mBuilder, Requests);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
 procedure TServerStatus.AppendDiagnostics(ABuilder: TStringBuilder);
 var
   mProfile: string;
@@ -567,99 +664,6 @@ begin
   begin
     ABuilder.Append(#10).Append(mProfile);
   end;
-end;
-
-function TServerStatus.ToMarkdown: string;
-var
-  mBuilder: TStringBuilder;
-begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mBuilder.Append('**Atlas**').Append(#10#10);
-    mBuilder.Append(cTexts[TStatusText.IndexUnitsSymbols].Fmt([Units, Symbols])).Append(#10);
-    if MemoryBytes >= 0 then
-    begin
-      mBuilder.Append(cTexts[TStatusText.Memory].Text).Append(MegaBytes(MemoryBytes)).Append(#10);
-    end;
-    mBuilder.Append(cTexts[TStatusText.OfThisSymbolIndex].Text).Append(MegaBytes(IndexBytes));
-    if BudgetBytes > 0 then
-    begin
-      mBuilder.Append(cTexts[TStatusText.OfText].Text).Append(MegaBytes(BudgetBytes));
-    end;
-    if CompactUnits > 0 then
-    begin
-      mBuilder.Append(cTexts[TStatusText.UnitsCompact].Fmt([CompactUnits]));
-    end;
-    if OffloadedUnits > 0 then
-    begin
-      mBuilder.Append(cTexts[TStatusText.UsesOfUnitsSwappedOut].Fmt([OffloadedUnits]));
-    end;
-    mBuilder.Append(#10);
-    mBuilder.Append(cTexts[TStatusText.CachesOnDisk].Text).Append(MegaBytes(DiskBytes)).Append(#10);
-    mBuilder.Append(cTexts[TStatusText.OfTheseOpenDocuments].Text).Append(MegaBytes(DocumentBytes)).Append(#10);
-    if Compiler <> '' then
-    begin
-      mBuilder.Append('- ').Append(Compiler).Append(#10);
-      if CompilerReason <> '' then
-      begin
-        mBuilder.Append('  ').Append(CompilerReason).Append(#10);
-      end;
-    end;
-    AppendWorkspaces(mBuilder, Workspaces);
-    if ProcessId <> 0 then
-    begin
-      AppendDiagnostics(mBuilder);
-    end;
-    AppendRequests(mBuilder, Requests);
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
-end;
-
-function TServerStatus.ToJson: TJSONObject;
-var
-  mItem: TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('units', TJSONNumber.Create(Units));
-  Result.AddPair('symbols', TJSONNumber.Create(Symbols));
-  Result.AddPair('memoryBytes', TJSONNumber.Create(MemoryBytes));
-  Result.AddPair('indexBytes', TJSONNumber.Create(IndexBytes));
-  Result.AddPair('compactUnits', TJSONNumber.Create(CompactUnits));
-  Result.AddPair('offloadedUnits', TJSONNumber.Create(OffloadedUnits));
-  Result.AddPair('diskBytes', TJSONNumber.Create(DiskBytes));
-  Result.AddPair('budgetBytes', TJSONNumber.Create(BudgetBytes));
-  Result.AddPair('documentBytes', TJSONNumber.Create(DocumentBytes));
-  Result.AddPair('workspaces', WorkspacesJson(Workspaces));
-  Result.AddPair('requests', RequestsJson(Requests));
-  if Compiler <> '' then
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('status', Compiler);
-    mItem.AddPair('backend', CompilerBackend);
-    mItem.AddPair('reason', CompilerReason);
-    Result.AddPair('compiler', mItem);
-  end;
-  if ProcessId <> 0 then
-  begin
-    mItem := TJSONObject.Create;
-    mItem.AddPair('pid', TJSONNumber.Create(ProcessId));
-    mItem.AddPair('version', Version);
-    mItem.AddPair('started', DateText(Started));
-    mItem.AddPair('uptimeMs', TJSONNumber.Create(UptimeMs));
-    mItem.AddPair('state', State);
-    Result.AddPair('process', mItem);
-    Result.AddPair('memory', MemoryJson(Memory, Memory.OverBudget(CompactUnits, OffloadedUnits)));
-    Result.AddPair('checkRun', CheckRun.ToJson);
-    Result.AddPair('queue', QueueJson(Queue));
-    mItem := TJSONObject.Create;
-    mItem.AddPair('index', TJSONNumber.Create(IndexCacheHitPercent));
-    mItem.AddPair('trees', TJSONNumber.Create(TreeCacheHitPercent));
-    mItem.AddPair('treeCount', TJSONNumber.Create(TreeCacheTrees));
-    Result.AddPair('cacheHits', mItem);
-  end;
-  Result.AddPair('markdown', ToMarkdown);
 end;
 
 initialization

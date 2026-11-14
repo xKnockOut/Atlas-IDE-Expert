@@ -213,44 +213,67 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
+function TLspLinkedEditing.HandleLinkedEditing(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mFound: TArray<TTextRange>;
+  mConflicts: TArray<TLinkedConflict>;
+  mResolver: TNameResolver;
+  mLocalsOnly: Boolean;
+  mPosition: TTextPosition;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + cMethod);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  ACancellation.ThrowIfCancellationRequested;
+  mPosition := TLspPositions.ReadPosition(mPositionValue);
+  if not TJSONObject(AParams).TryGetValue<Boolean>('atlasLocals', mLocalsOnly) then
+  begin
+    mLocalsOnly := False;
+  end;
+  // Erst lokale Bezeichner (#658), dann Methoden und Routinen (#39).
+  if FIndex <> nil then
+  begin
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      mResolver.Namespaces := Namespaces;
+      mFound := LocalRanges(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri), mPosition, mConflicts);
+    finally
+      mResolver.Free;
+    end;
+    if Length(mFound) > 0 then
+    begin
+      Exit(ToJson(mFound, mConflicts));
+    end;
+  end;
+  if mLocalsOnly then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  mFound := Ranges(mTree, TDocumentUris.ToPath(mUri), mPosition);
+  Result := ToJson(mFound);
+end;
+
 procedure TLspLinkedEditing.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinkedEditing);
-end;
-
-class function TLspLinkedEditing.Ranges(ATree: TSyntaxTree; const AFileName: string;
-  const APosition: TTextPosition): TArray<TTextRange>;
-var
-  mUnitIndex: TUnitIndex;
-  mSymbol, mTarget: TIndexSymbol;
-begin
-  Result := nil;
-  mUnitIndex := TIndexExtractor.Extract(ATree, AFileName);
-  mTarget := Default(TIndexSymbol);
-  for mSymbol in mUnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind in cRoutineKinds) and Contains(mSymbol.SelectionRange, APosition) then
-    begin
-      mTarget := mSymbol;
-      Break;
-    end;
-  end;
-  if mTarget.Name = '' then
-  begin
-    Exit;
-  end;
-  for mSymbol in mUnitIndex.Symbols do
-  begin
-    if (mSymbol.Kind = mTarget.Kind) and SameText(mSymbol.Name, mTarget.Name) and
-      SameText(mSymbol.Container, mTarget.Container) then
-    begin
-      Result := Result + [mSymbol.SelectionRange];
-    end;
-  end;
-  if Length(Result) <> 2 then
-  begin
-    Result := nil;
-  end;
 end;
 
 /// <summary>Lokale Variable oder Konstante der Datei AFileName, die man verknüpft umbenennen kann. Result gehört
@@ -375,6 +398,41 @@ begin
   end;
 end;
 
+class function TLspLinkedEditing.Ranges(ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): TArray<TTextRange>;
+var
+  mUnitIndex: TUnitIndex;
+  mSymbol, mTarget: TIndexSymbol;
+begin
+  Result := nil;
+  mUnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  mTarget := Default(TIndexSymbol);
+  for mSymbol in mUnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind in cRoutineKinds) and Contains(mSymbol.SelectionRange, APosition) then
+    begin
+      mTarget := mSymbol;
+      Break;
+    end;
+  end;
+  if mTarget.Name = '' then
+  begin
+    Exit;
+  end;
+  for mSymbol in mUnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind = mTarget.Kind) and SameText(mSymbol.Name, mTarget.Name) and
+      SameText(mSymbol.Container, mTarget.Container) then
+    begin
+      Result := Result + [mSymbol.SelectionRange];
+    end;
+  end;
+  if Length(Result) <> 2 then
+  begin
+    Result := nil;
+  end;
+end;
+
 class function TLspLinkedEditing.ToJson(const ARanges: TArray<TTextRange>): TJSONValue;
 var
   mItems: TJSONArray;
@@ -417,64 +475,6 @@ begin
     mItem.AddPair('detail', mConflict.Detail);
     mItems.AddElement(mItem);
   end;
-end;
-
-function TLspLinkedEditing.HandleLinkedEditing(const AParams: TJSONValue;
-  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mPositionValue: TJSONValue;
-  mDocument: ITextDocument;
-  mTree: TSyntaxTree;
-  mShared: ISharedSyntaxTree;
-  mFound: TArray<TTextRange>;
-  mConflicts: TArray<TLinkedConflict>;
-  mResolver: TNameResolver;
-  mLocalsOnly: Boolean;
-  mPosition: TTextPosition;
-begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + cMethod);
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  mTree := mShared.Tree;
-  ACancellation.ThrowIfCancellationRequested;
-  mPosition := TLspPositions.ReadPosition(mPositionValue);
-  if not TJSONObject(AParams).TryGetValue<Boolean>('atlasLocals', mLocalsOnly) then
-  begin
-    mLocalsOnly := False;
-  end;
-  // Erst lokale Bezeichner (#658), dann Methoden und Routinen (#39).
-  if FIndex <> nil then
-  begin
-    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      mResolver.Namespaces := Namespaces;
-      mFound := LocalRanges(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri), mPosition, mConflicts);
-    finally
-      mResolver.Free;
-    end;
-    if Length(mFound) > 0 then
-    begin
-      Exit(ToJson(mFound, mConflicts));
-    end;
-  end;
-  if mLocalsOnly then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  mFound := Ranges(mTree, TDocumentUris.ToPath(mUri), mPosition);
-  Result := ToJson(mFound);
 end;
 
 initialization

@@ -59,6 +59,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TWriteLock }
+
 constructor TWriteLock.Create(AStream: TStream);
 begin
   inherited Create;
@@ -121,6 +123,13 @@ begin
   end;
 end;
 
+function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
+var
+  mError: string;
+begin
+  Result := WriteBytes(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText), mError);
+end;
+
 function TDiskIndexFileSystem.ReadBytes(const AFileName: string; out ABytes: TBytes): Boolean;
 begin
   // Ohne Datei keine Ausnahme: Der erste Start hat noch keinen Cache.
@@ -144,13 +153,6 @@ begin
   begin
     ABytes := nil;
   end;
-end;
-
-function TDiskIndexFileSystem.WriteText(const AFileName, AText: string): Boolean;
-var
-  mError: string;
-begin
-  Result := WriteBytes(AFileName, TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(AText), mError);
 end;
 
 function TDiskIndexFileSystem.WriteBytes(const AFileName: string; const ABytes: TBytes; out AError: string): Boolean;

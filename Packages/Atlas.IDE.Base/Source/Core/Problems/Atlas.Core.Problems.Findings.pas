@@ -380,6 +380,34 @@ end;
 
 { TAtlasFindings }
 
+class function TAtlasFindings.UnitKey(const AFileName: string): string;
+var
+  mExtension: string;
+begin
+  Result := AnsiLowerCase(AFileName);
+  mExtension := ExtractFileExt(Result);
+  if (mExtension = '.dfm') or (mExtension = '.fmx') then
+  begin
+    Result := ChangeFileExt(Result, '.pas');
+  end;
+end;
+
+class function TAtlasFindings.TryParseClosedUnits(const AText: string; out AValue: TAtlasClosedUnits): Boolean;
+var
+  mValue: TAtlasClosedUnits;
+begin
+  for mValue := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
+  begin
+    if SameText(AText, cClosedUnitsNames[mValue]) then
+    begin
+      AValue := mValue;
+      Exit(True);
+    end;
+  end;
+  AValue := TAtlasClosedUnits.Dimmed;
+  Result := False;
+end;
+
 class function TAtlasFindings.KindOf(ASeverity: TAtlasProblemSeverity): TAtlasFindingKind;
 begin
   case ASeverity of
@@ -410,57 +438,6 @@ begin
   Result := TAtlasFindingCategory.Other;
 end;
 
-class function TAtlasFindings.IsFinding(const AProblem: TAtlasProblem): Boolean;
-begin
-  Result := not AProblem.Unnecessary and not AProblem.IsUses and
-    not SameText(AProblem.Source, TAtlasProblemStore.cTestSource);
-end;
-
-class function TAtlasFindings.FromProblems(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
-  const ALines: TArray<string>): TArray<TAtlasFinding>;
-var
-  mProblem: TAtlasProblem;
-  mFinding: TAtlasFinding;
-  mSeen: TDictionary<string, Integer>;
-  mBase: string;
-  mNumber, mCount: Integer;
-begin
-  SetLength(Result, Length(AProblems));
-  mCount := 0;
-  mSeen := TDictionary<string, Integer>.Create;
-  try
-    for mProblem in AProblems do
-    begin
-      if not IsFinding(mProblem) then
-      begin
-        Continue;
-      end;
-      mFinding := Default(TAtlasFinding);
-      mFinding.FileName := AFileName;
-      mFinding.Problem := mProblem;
-      mFinding.Kind := KindOf(mProblem.Severity);
-      mFinding.Category := CategoryOf(mProblem);
-      if (mProblem.StartLine >= 0) and (mProblem.StartLine < Length(ALines)) then
-      begin
-        mFinding.LineText := ALines[mProblem.StartLine].Trim;
-      end;
-      mBase := AnsiLowerCase(AFileName) + '|' + mProblem.Source + '|' + mProblem.Code + '|' + mProblem.Message;
-      if not mSeen.TryGetValue(mBase, mNumber) then
-      begin
-        mNumber := 0;
-      end;
-      Inc(mNumber);
-      mSeen.AddOrSetValue(mBase, mNumber);
-      mFinding.Key := mBase + '|' + IntToStr(mNumber);
-      Result[mCount] := mFinding;
-      Inc(mCount);
-    end;
-  finally
-    mSeen.Free;
-  end;
-  SetLength(Result, mCount);
-end;
-
 type
   /// <summary>Zeilen einer Datei von der Platte, höchstens einmal gelesen (Hänger mit vielen Befunden).</summary>
   TDiskLines = record
@@ -470,6 +447,8 @@ type
     Read: Boolean;
     function Line(AIndex: Integer): string;
   end;
+
+{ TDiskLines }
 
 function TDiskLines.Line(AIndex: Integer): string;
 begin
@@ -498,6 +477,32 @@ begin
   begin
     Result := Max(Result, mProblem.StartLine);
   end;
+end;
+
+class function TAtlasFindings.IsFinding(const AProblem: TAtlasProblem): Boolean;
+begin
+  Result := not AProblem.Unnecessary and not AProblem.IsUses and
+    not SameText(AProblem.Source, TAtlasProblemStore.cTestSource);
+end;
+
+class function TAtlasFindings.FromStore(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
+  const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>;
+var
+  mFiles: TArray<string>;
+  mParts: TArray<TArray<TAtlasFinding>>;
+  mIndex: Integer;
+begin
+  mFiles := AFiles;
+  if mFiles = nil then
+  begin
+    mFiles := AStore.Files;
+  end;
+  SetLength(mParts, Length(mFiles));
+  for mIndex := 0 to High(mFiles) do
+  begin
+    mParts[mIndex] := FromStoreFile(AStore, mFiles[mIndex], AReadLines);
+  end;
+  Result := Concat(mParts);
 end;
 
 class function TAtlasFindings.FromStoreFile(AStore: TAtlasProblemStore; const AFileName: string;
@@ -560,24 +565,49 @@ begin
   end;
 end;
 
-class function TAtlasFindings.FromStore(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
-  const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>;
+class function TAtlasFindings.FromProblems(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
+  const ALines: TArray<string>): TArray<TAtlasFinding>;
 var
-  mFiles: TArray<string>;
-  mParts: TArray<TArray<TAtlasFinding>>;
-  mIndex: Integer;
+  mProblem: TAtlasProblem;
+  mFinding: TAtlasFinding;
+  mSeen: TDictionary<string, Integer>;
+  mBase: string;
+  mNumber, mCount: Integer;
 begin
-  mFiles := AFiles;
-  if mFiles = nil then
-  begin
-    mFiles := AStore.Files;
+  SetLength(Result, Length(AProblems));
+  mCount := 0;
+  mSeen := TDictionary<string, Integer>.Create;
+  try
+    for mProblem in AProblems do
+    begin
+      if not IsFinding(mProblem) then
+      begin
+        Continue;
+      end;
+      mFinding := Default(TAtlasFinding);
+      mFinding.FileName := AFileName;
+      mFinding.Problem := mProblem;
+      mFinding.Kind := KindOf(mProblem.Severity);
+      mFinding.Category := CategoryOf(mProblem);
+      if (mProblem.StartLine >= 0) and (mProblem.StartLine < Length(ALines)) then
+      begin
+        mFinding.LineText := ALines[mProblem.StartLine].Trim;
+      end;
+      mBase := AnsiLowerCase(AFileName) + '|' + mProblem.Source + '|' + mProblem.Code + '|' + mProblem.Message;
+      if not mSeen.TryGetValue(mBase, mNumber) then
+      begin
+        mNumber := 0;
+      end;
+      Inc(mNumber);
+      mSeen.AddOrSetValue(mBase, mNumber);
+      mFinding.Key := mBase + '|' + IntToStr(mNumber);
+      Result[mCount] := mFinding;
+      Inc(mCount);
+    end;
+  finally
+    mSeen.Free;
   end;
-  SetLength(mParts, Length(mFiles));
-  for mIndex := 0 to High(mFiles) do
-  begin
-    mParts[mIndex] := FromStoreFile(AStore, mFiles[mIndex], AReadLines);
-  end;
-  Result := Concat(mParts);
+  SetLength(Result, mCount);
 end;
 
 class function TAtlasFindings.Shorten(const AText: string; AMax: Integer): string;
@@ -587,26 +617,6 @@ begin
   begin
     Result := Copy(Result, 1, AMax - 1).TrimRight + '…';
   end;
-end;
-
-class function TAtlasFindings.CheckedCount(AStore: TAtlasProblemStore; const AProjectFiles: TArray<string>): Integer;
-var
-  mFileName: string;
-begin
-  Result := 0;
-  for mFileName in AProjectFiles do
-  begin
-    if AStore.Contains(mFileName) then
-    begin
-      Inc(Result);
-    end;
-  end;
-end;
-
-class function TAtlasFindings.IsMandatory(AColumn: TAtlasFindingColumn): Boolean;
-begin
-  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule, TAtlasFindingColumn.Compiler,
-    TAtlasFindingColumn.Source]);
 end;
 
 /// <summary>Teil einer Spaltenliste („-rule:120“): Name, Breite (0 ohne) und ob ausgeblendet.</summary>
@@ -644,6 +654,20 @@ begin
     end;
   end;
   Result := False;
+end;
+
+class function TAtlasFindings.CheckedCount(AStore: TAtlasProblemStore; const AProjectFiles: TArray<string>): Integer;
+var
+  mFileName: string;
+begin
+  Result := 0;
+  for mFileName in AProjectFiles do
+  begin
+    if AStore.Contains(mFileName) then
+    begin
+      Inc(Result);
+    end;
+  end;
 end;
 
 class function TAtlasFindings.ParseColumns(const AText: string): TArray<TAtlasFindingColumnState>;
@@ -699,6 +723,12 @@ begin
   end;
 end;
 
+class function TAtlasFindings.IsMandatory(AColumn: TAtlasFindingColumn): Boolean;
+begin
+  Result := not (AColumn in [TAtlasFindingColumn.Message, TAtlasFindingColumn.Rule, TAtlasFindingColumn.Compiler,
+    TAtlasFindingColumn.Source]);
+end;
+
 class function TAtlasFindings.TryParseScope(const AText: string; out AScope: TAtlasFindingScope): Boolean;
 var
   mScope: TAtlasFindingScope;
@@ -731,39 +761,6 @@ begin
   Result := False;
 end;
 
-class function TAtlasFindings.UnitKey(const AFileName: string): string;
-var
-  mExtension: string;
-begin
-  Result := AnsiLowerCase(AFileName);
-  mExtension := ExtractFileExt(Result);
-  if (mExtension = '.dfm') or (mExtension = '.fmx') then
-  begin
-    Result := ChangeFileExt(Result, '.pas');
-  end;
-end;
-
-class function TAtlasFindings.TryParseClosedUnits(const AText: string; out AValue: TAtlasClosedUnits): Boolean;
-var
-  mValue: TAtlasClosedUnits;
-begin
-  for mValue := Low(TAtlasClosedUnits) to High(TAtlasClosedUnits) do
-  begin
-    if SameText(AText, cClosedUnitsNames[mValue]) then
-    begin
-      AValue := mValue;
-      Exit(True);
-    end;
-  end;
-  AValue := TAtlasClosedUnits.Dimmed;
-  Result := False;
-end;
-
-class function TAtlasFindings.CategoryName(ACategory: TAtlasFindingCategory): string;
-begin
-  Result := cCategoryNames[ACategory];
-end;
-
 class function TAtlasFindings.AsText(const AFindings: TArray<TAtlasFinding>): string;
 const
   cKindWords: array[TAtlasFindingKind] of string = ('error', 'warning', 'info');
@@ -790,6 +787,11 @@ begin
   finally
     mBuilder.Free;
   end;
+end;
+
+class function TAtlasFindings.CategoryName(ACategory: TAtlasFindingCategory): string;
+begin
+  Result := cCategoryNames[ACategory];
 end;
 
 end.

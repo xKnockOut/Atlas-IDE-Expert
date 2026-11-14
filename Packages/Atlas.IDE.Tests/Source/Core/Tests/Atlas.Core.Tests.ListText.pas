@@ -48,6 +48,8 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasTestListText }
+
 class function TAtlasTestListText.RuleText(const ARule: TAtlasTestListRule; const ATexts: TAtlasTestListTexts): string;
 var
   mValue: string;

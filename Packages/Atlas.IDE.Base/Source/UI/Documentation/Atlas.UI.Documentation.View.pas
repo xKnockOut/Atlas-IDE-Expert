@@ -216,16 +216,6 @@ begin
   FSmallHeight := HeightOf(ACanvas, TAtlasDocFace.Heading);
 end;
 
-function TAtlasDocFontSet.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, FPPI, 96);
-end;
-
-function TAtlasDocFontSet.LineStep: Integer;
-begin
-  Result := FUIHeight + Scale(2);
-end;
-
 function TAtlasDocFontSet.FontOf(const AFace: TAtlasDocFace): TFont;
 var
   mStyle: TFontStyles;
@@ -310,6 +300,16 @@ begin
     end;
 end;
 
+function TAtlasDocFontSet.Scale(AValue: Integer): Integer;
+begin
+  Result := MulDiv(AValue, FPPI, 96);
+end;
+
+function TAtlasDocFontSet.LineStep: Integer;
+begin
+  Result := FUIHeight + Scale(2);
+end;
+
 { TAtlasDocView }
 
 constructor TAtlasDocView.Create;
@@ -326,6 +326,35 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasDocView.ClampScroll;
+begin
+  FScroll := EnsureRange(FScroll, 0, Max(0, FLayout.Height - FViewport));
+end;
+
+procedure TAtlasDocView.Relayout(ACanvas: TCanvas);
+begin
+  FLayout := TAtlasDocTypeset.Build(FContent, FWidth, FMetrics, FFonts.MeasureOn(ACanvas), FLabels);
+  FViewport := FLayout.Height;
+  ClampScroll;
+  FSelection := TAtlasDocSelection.None;
+  FHotLink := -1;
+end;
+
+procedure TAtlasDocView.PaintThumb(ACanvas: TCanvas; const AColors: TAtlasColors; ALeft, ATop: Integer);
+var
+  mThumb, mThumbTop: Integer;
+begin
+  // Lage im Text: schmaler Balken rechts neben dem Ausschnitt.
+  if not CanScroll then
+  begin
+    Exit;
+  end;
+  mThumb := Max(FFonts.Scale(16), MulDiv(FViewport, FViewport, FLayout.Height));
+  mThumbTop := ATop + MulDiv(FViewport - mThumb, FScroll, Max(1, FLayout.Height - FViewport));
+  TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + FFonts.Scale(4), mThumbTop, ALeft + FWidth + FFonts.Scale(7),
+    mThumbTop + mThumb), AColors, 0);
+end;
+
 procedure TAtlasDocView.Build(ACanvas: TCanvas; const AContent: TAtlasDocContent; AWidth: Integer;
   const AFonts: TAtlasDocFonts; const ALabels: TAtlasDocLabels);
 begin
@@ -336,15 +365,6 @@ begin
   FLabels := ALabels;
   Relayout(ACanvas);
   FScroll := 0;
-end;
-
-procedure TAtlasDocView.Relayout(ACanvas: TCanvas);
-begin
-  FLayout := TAtlasDocTypeset.Build(FContent, FWidth, FMetrics, FFonts.MeasureOn(ACanvas), FLabels);
-  FViewport := FLayout.Height;
-  ClampScroll;
-  FSelection := TAtlasDocSelection.None;
-  FHotLink := -1;
 end;
 
 function TAtlasDocView.Toggle(ACanvas: TCanvas): Boolean;
@@ -385,31 +405,6 @@ begin
   Result := FViewport;
 end;
 
-procedure TAtlasDocView.ClampScroll;
-begin
-  FScroll := EnsureRange(FScroll, 0, Max(0, FLayout.Height - FViewport));
-end;
-
-function TAtlasDocView.CanScroll: Boolean;
-begin
-  Result := FLayout.Height > FViewport;
-end;
-
-function TAtlasDocView.WheelStep: Integer;
-begin
-  Result := 3 * FFonts.LineStep;
-end;
-
-function TAtlasDocView.ScrollBy(ADelta: Integer): Boolean;
-var
-  mOld: Integer;
-begin
-  mOld := FScroll;
-  Inc(FScroll, ADelta);
-  ClampScroll;
-  Result := FScroll <> mOld;
-end;
-
 function TAtlasDocView.LinkAt(AX, AY: Integer): Integer;
 begin
   if (AY < 0) or (AY >= FViewport) or (AX < 0) or (AX >= FWidth) then
@@ -422,6 +417,26 @@ end;
 function TAtlasDocView.Link(AIndex: Integer): TAtlasDocLink;
 begin
   Result := FLayout.Links[AIndex];
+end;
+
+function TAtlasDocView.ScrollBy(ADelta: Integer): Boolean;
+var
+  mOld: Integer;
+begin
+  mOld := FScroll;
+  Inc(FScroll, ADelta);
+  ClampScroll;
+  Result := FScroll <> mOld;
+end;
+
+function TAtlasDocView.WheelStep: Integer;
+begin
+  Result := 3 * FFonts.LineStep;
+end;
+
+function TAtlasDocView.CanScroll: Boolean;
+begin
+  Result := FLayout.Height > FViewport;
 end;
 
 procedure TAtlasDocView.StartSelection(ACanvas: TCanvas; AX, AY: Integer);
@@ -461,18 +476,6 @@ end;
 function TAtlasDocView.HasSelection: Boolean;
 begin
   Result := (FSelection.Anchor >= 0) and (FSelection.Caret >= 0) and (FSelection.Anchor <> FSelection.Caret);
-end;
-
-function TAtlasDocView.SelectedText: string;
-begin
-  if HasSelection then
-  begin
-    Result := FLayout.Selected(FSelection.Anchor, FSelection.Caret);
-  end
-  else
-  begin
-    Result := '';
-  end;
 end;
 
 function ColorOf(const AColors: TAtlasColors; AColor: TAtlasDocColor): TAtlasColor;
@@ -524,6 +527,8 @@ type
     procedure Span(const ASpan: TAtlasDocSpan; const ALine: TAtlasDocLine; AY: Integer);
     procedure Line(AIndex: Integer);
   end;
+
+{ TAtlasDocPainter }
 
 procedure TAtlasDocPainter.Shade(AIndex, AY: Integer);
 var
@@ -691,19 +696,16 @@ begin
   ACanvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasDocView.PaintThumb(ACanvas: TCanvas; const AColors: TAtlasColors; ALeft, ATop: Integer);
-var
-  mThumb, mThumbTop: Integer;
+function TAtlasDocView.SelectedText: string;
 begin
-  // Lage im Text: schmaler Balken rechts neben dem Ausschnitt.
-  if not CanScroll then
+  if HasSelection then
   begin
-    Exit;
+    Result := FLayout.Selected(FSelection.Anchor, FSelection.Caret);
+  end
+  else
+  begin
+    Result := '';
   end;
-  mThumb := Max(FFonts.Scale(16), MulDiv(FViewport, FViewport, FLayout.Height));
-  mThumbTop := ATop + MulDiv(FViewport - mThumb, FScroll, Max(1, FLayout.Height - FViewport));
-  TAtlasDraw.Thumb(ACanvas, Rect(ALeft + FWidth + FFonts.Scale(4), mThumbTop, ALeft + FWidth + FFonts.Scale(7),
-    mThumbTop + mThumb), AColors, 0);
 end;
 
 end.

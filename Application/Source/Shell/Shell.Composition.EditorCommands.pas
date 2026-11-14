@@ -91,6 +91,8 @@ uses
   Atlas.Common.Lsp.ValueEdit,
   Atlas.Common.Lsp.StringLiteralCommands;
 
+{ TShellEditorCommands }
+
 constructor TShellEditorCommands.Create(const AServices: TShellEditorCommandServices);
 begin
   inherited Create;
@@ -100,38 +102,6 @@ end;
 function TShellEditorCommands.ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := FServices.ReadText(AFileName, AText);
-end;
-
-procedure TShellEditorCommands.RegisterMarkCommands(ACommands: TLspCommands);
-begin
-  // Alle Markierungen lesen nur Dokumente und Index wie Hover und Hervorhebung: nebenläufig.
-  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
-  ACommands.RegisterConcurrent(TLspExitPoints.cCommand, RunExitPoints);
-  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712); rechnet bis zur ganzen Datei und bricht
-  // deshalb beim Zeitlimit des Plugins ab, statt weiterzulaufen.
-  ACommands.RegisterConcurrentCancellable(TLspReassigned.cCommand, RunReassigned);
-  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
-  ACommands.RegisterConcurrent(TLspExpressionType.cCommand, RunExpressionType);
-  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  ACommands.RegisterConcurrent(TLspMethodOrder.cCommand, RunMethodOrder);
-  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
-  ACommands.RegisterConcurrent(TLspOverrideMarks.cCommand, RunOverrideMarks);
-  ACommands.RegisterConcurrent(TLspInterfaceMethods.cCommand, RunInterfaceMethods);
-end;
-
-procedure TShellEditorCommands.RegisterTextCommands(ACommands: TLspCommands);
-begin
-  // Nebenläufig bis auf den Ressourcenstring, der die Datei schreibt.
-  ACommands.RegisterConcurrent(TQualifiedNames.cCommand, RunQualifiedNames);
-  ACommands.RegisterConcurrent(TEnumValueCommands.cCommand, RunEnumValue);
-  // Werte ändern beim Debuggen (#868): Typ und Art der Eingabe.
-  ACommands.RegisterConcurrent(TLspValueEdit.cCommand, RunValueEdit);
-  ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
-  ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
-  ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
-  ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cSuggestCommand, RunSuggestNext);
-  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cListCommand, RunLearnedPatterns);
 end;
 
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
@@ -236,6 +206,38 @@ end;
 function TShellEditorCommands.RunLearnedPatterns(const AArguments: TJSONArray): TJSONValue;
 begin
   Result := TLspLearnedSuggestions.ExecuteList(FServices.Index, FServices.LearnedOptionsFor, AArguments);
+end;
+
+procedure TShellEditorCommands.RegisterMarkCommands(ACommands: TLspCommands);
+begin
+  // Alle Markierungen lesen nur Dokumente und Index wie Hover und Hervorhebung: nebenläufig.
+  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
+  ACommands.RegisterConcurrent(TLspExitPoints.cCommand, RunExitPoints);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712); rechnet bis zur ganzen Datei und bricht
+  // deshalb beim Zeitlimit des Plugins ab, statt weiterzulaufen.
+  ACommands.RegisterConcurrentCancellable(TLspReassigned.cCommand, RunReassigned);
+  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
+  ACommands.RegisterConcurrent(TLspExpressionType.cCommand, RunExpressionType);
+  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
+  ACommands.RegisterConcurrent(TLspMethodOrder.cCommand, RunMethodOrder);
+  // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
+  ACommands.RegisterConcurrent(TLspOverrideMarks.cCommand, RunOverrideMarks);
+  ACommands.RegisterConcurrent(TLspInterfaceMethods.cCommand, RunInterfaceMethods);
+end;
+
+procedure TShellEditorCommands.RegisterTextCommands(ACommands: TLspCommands);
+begin
+  // Nebenläufig bis auf den Ressourcenstring, der die Datei schreibt.
+  ACommands.RegisterConcurrent(TQualifiedNames.cCommand, RunQualifiedNames);
+  ACommands.RegisterConcurrent(TEnumValueCommands.cCommand, RunEnumValue);
+  // Werte ändern beim Debuggen (#868): Typ und Art der Eingabe.
+  ACommands.RegisterConcurrent(TLspValueEdit.cCommand, RunValueEdit);
+  ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
+  ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
+  ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
+  ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cSuggestCommand, RunSuggestNext);
+  ACommands.RegisterConcurrent(TLspLearnedSuggestions.cListCommand, RunLearnedPatterns);
 end;
 
 end.

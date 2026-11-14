@@ -130,6 +130,8 @@ begin
   end;
 end;
 
+{ TAtlasYouTrackParse }
+
 /// <summary>Ein Eintrag von /api/issues mit den Feldern aus Fields; False ohne Kennung.</summary>
 class function TAtlasYouTrackParse.IssueOf(AItem: TJSONObject; out AIssue: TAtlasTrackerIssue): Boolean;
 var

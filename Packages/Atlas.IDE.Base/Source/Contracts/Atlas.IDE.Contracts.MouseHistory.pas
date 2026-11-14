@@ -30,6 +30,8 @@ type
 
 implementation
 
+{ TAtlasMouseHistory }
+
 class function TAtlasMouseHistory.Register(const AHandler: TAtlasMouseHistoryHandler): Integer;
 begin
   for Result := 0 to High(FHandlers) do

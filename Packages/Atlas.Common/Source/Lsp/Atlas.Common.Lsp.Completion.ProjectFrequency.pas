@@ -24,6 +24,8 @@ type
 
 implementation
 
+{ TCompletionProjectFrequency }
+
 class procedure TCompletionProjectFrequency.Apply(ARequest: TCompletionRequest;
   var AItems: TArray<TCompletionItem>);
 begin

@@ -369,6 +369,8 @@ begin
   end;
 end;
 
+{ TCompletionDeclarations }
+
 class function TCompletionDeclarations.PropertyItems(ARequest: TCompletionRequest;
   out AItems: TCompletionItems): Boolean;
 var

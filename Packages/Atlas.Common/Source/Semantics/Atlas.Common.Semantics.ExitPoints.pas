@@ -353,22 +353,12 @@ begin
   Result := (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.TypeReference) <> nil);
 end;
 
-class function TExitPoints.PlainCallee(ACallee: TSyntaxNode): string;
+{ TExitPoints }
+
+class function TExitPoints.Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
+  const AOptions: TExitPointOptions): TExitPointSet;
 begin
-  Result := '';
-  if ACallee = nil then
-  begin
-    Exit;
-  end;
-  if ACallee.Kind = TSyntaxKind.Identifier then
-  begin
-    Result := ACallee.Name;
-  end
-  else if (ACallee.Kind = TSyntaxKind.MemberAccess) and (ACallee.ChildCount = 1) and
-    (ACallee[0].Kind = TSyntaxKind.Identifier) and SameText(ACallee[0].Name, 'Self') then
-  begin
-    Result := ACallee.Name;
-  end;
+  Result := Find(ATree, APosition, AOptions, TreeExceptions(ATree, ALines), TreeClassTest(ATree));
 end;
 
 /// <summary>Ziel eines Aufrufs: bei CallStatement der Ausdruck (bzw. dessen Ziel, wenn es ein Aufruf mit
@@ -493,6 +483,8 @@ type
     destructor Destroy; override;
     function Contains(const AName: string): Boolean;
   end;
+
+{ TRaisingRoutines }
 
 constructor TRaisingRoutines.Create(ATree: TSyntaxTree);
 var
@@ -1107,10 +1099,22 @@ end;
 
 { TExitPoints }
 
-class function TExitPoints.Find(ATree: TSyntaxTree; const ALines: TArray<string>; const APosition: TTextPosition;
-  const AOptions: TExitPointOptions): TExitPointSet;
+class function TExitPoints.PlainCallee(ACallee: TSyntaxNode): string;
 begin
-  Result := Find(ATree, APosition, AOptions, TreeExceptions(ATree, ALines), TreeClassTest(ATree));
+  Result := '';
+  if ACallee = nil then
+  begin
+    Exit;
+  end;
+  if ACallee.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := ACallee.Name;
+  end
+  else if (ACallee.Kind = TSyntaxKind.MemberAccess) and (ACallee.ChildCount = 1) and
+    (ACallee[0].Kind = TSyntaxKind.Identifier) and SameText(ACallee[0].Name, 'Self') then
+  begin
+    Result := ACallee.Name;
+  end;
 end;
 
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt; nil sonst.</summary>

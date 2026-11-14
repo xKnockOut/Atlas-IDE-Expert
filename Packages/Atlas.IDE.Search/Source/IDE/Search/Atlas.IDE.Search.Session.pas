@@ -71,6 +71,8 @@ uses
   Atlas.Core.Search.Scopes,
   Atlas.IDE.Search.Editor;
 
+{ TAtlasIdeSearchSession }
+
 class procedure TAtlasIdeSearchSession.Say(const AText: string);
 begin
   if Assigned(OnMessage) then

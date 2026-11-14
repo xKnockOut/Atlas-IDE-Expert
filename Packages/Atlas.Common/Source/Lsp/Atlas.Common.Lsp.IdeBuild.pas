@@ -95,16 +95,12 @@ begin
   inherited;
 end;
 
-procedure TLspIdeBuild.Attach(ADispatcher: TJsonRpcDispatcher);
+procedure TLspIdeBuild.Changed;
 begin
-  // Der Beginn zählt nur für Compiling (#1247); das Ende und die Meldungen tragen alles Nötige.
-  ADispatcher.RegisterNotification(cStartedMethod,
-    procedure(const AParams: TJSONValue)
-    begin
-      Track(AParams, True);
-    end);
-  ADispatcher.RegisterNotification(cFinishedMethod, HandleFinished);
-  ADispatcher.RegisterNotification(cMessagesMethod, HandleMessages);
+  if Assigned(FOnChanged) then
+  begin
+    FOnChanged(LastBuild);
+  end;
 end;
 
 function SeverityOf(const AText: string): TCompilerSeverity;
@@ -125,123 +121,6 @@ begin
   begin
     Result := TCompilerSeverity.Hint;
   end;
-end;
-
-class function TLspIdeBuild.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
-var
-  mItems: TJSONArray;
-  mValue: TJSONValue;
-  mItem: TJSONObject;
-  mMessage: TCompilerMessage;
-begin
-  Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('messages', mItems)) then
-  begin
-    Exit;
-  end;
-  for mValue in mItems do
-  begin
-    if not (mValue is TJSONObject) then
-    begin
-      Continue;
-    end;
-    mItem := TJSONObject(mValue);
-    mMessage := Default(TCompilerMessage);
-    mMessage.FileName := mItem.GetValue<string>('file', '');
-    mMessage.Line := mItem.GetValue<Integer>('line', 0) - 1;
-    mMessage.Column := mItem.GetValue<Integer>('column', 0) - 1;
-    if mMessage.Line < 0 then
-    begin
-      mMessage.Column := -1;
-    end;
-    mMessage.Severity := SeverityOf(mItem.GetValue<string>('severity', ''));
-    mMessage.Code := mItem.GetValue<string>('code', '');
-    mMessage.Text := mItem.GetValue<string>('text', '');
-    Result := Result + [mMessage];
-  end;
-end;
-
-procedure TLspIdeBuild.HandleFinished(const AParams: TJSONValue);
-var
-  mParams: TJSONObject;
-begin
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  Track(AParams, False);
-  mParams := TJSONObject(AParams);
-  if mParams.GetValue<Boolean>('background', False) then
-  begin
-    Exit;
-  end;
-  // Der Gruppenlauf hat kein Projekt; dann bleibt das Projekt des letzten Laufs.
-  TMonitor.Enter(FLock);
-  try
-    FLast.Known := True;
-    if mParams.GetValue<string>('project', '') <> '' then
-    begin
-      FLast.Project := mParams.GetValue<string>('project', '');
-      FLast.Configuration := mParams.GetValue<string>('configuration', '');
-      FLast.Platform := mParams.GetValue<string>('platform', '');
-      FLast.RequestedBy := mParams.GetValue<string>('requestedBy', '');
-    end;
-    FLast.Kind := mParams.GetValue<string>('kind', FLast.Kind);
-    FLast.Success := mParams.GetValue<Boolean>('success', False);
-    FLast.DurationMs := mParams.GetValue<Int64>('durationMs', 0);
-    FLast.FinishedAt := Now;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  Changed;
-end;
-
-procedure TLspIdeBuild.Changed;
-begin
-  if Assigned(FOnChanged) then
-  begin
-    FOnChanged(LastBuild);
-  end;
-end;
-
-procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
-var
-  mMessages: TArray<TCompilerMessage>;
-begin
-  mMessages := ParseMessages(AParams);
-  if (AParams is TJSONObject) and TJSONObject(AParams).GetValue<Boolean>('background', False) then
-  begin
-    if Assigned(FOnMessages) then
-    begin
-      FOnMessages(mMessages);
-    end;
-    Exit;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    FLast.Known := True;
-    FLast.Messages := mMessages;
-    if AParams is TJSONObject then
-    begin
-      if TJSONObject(AParams).GetValue<string>('project', '') <> '' then
-      begin
-        FLast.Project := TJSONObject(AParams).GetValue<string>('project', '');
-      end;
-      FLast.Platform := TJSONObject(AParams).GetValue<string>('platform', FLast.Platform);
-      FLast.Success := TJSONObject(AParams).GetValue<Boolean>('success', FLast.Success);
-    end;
-    if FLast.FinishedAt = 0 then
-    begin
-      FLast.FinishedAt := Now;
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  if Assigned(FOnMessages) then
-  begin
-    FOnMessages(mMessages);
-  end;
-  Changed;
 end;
 
 procedure TLspIdeBuild.Track(const AParams: TJSONValue; ARunning: Boolean);
@@ -291,13 +170,124 @@ begin
   end;
 end;
 
-function TLspIdeBuild.Compiling: Boolean;
+procedure TLspIdeBuild.HandleFinished(const AParams: TJSONValue);
+var
+  mParams: TJSONObject;
 begin
+  if not (AParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  Track(AParams, False);
+  mParams := TJSONObject(AParams);
+  if mParams.GetValue<Boolean>('background', False) then
+  begin
+    Exit;
+  end;
+  // Der Gruppenlauf hat kein Projekt; dann bleibt das Projekt des letzten Laufs.
   TMonitor.Enter(FLock);
   try
-    Result := FRunning.Count > 0;
+    FLast.Known := True;
+    if mParams.GetValue<string>('project', '') <> '' then
+    begin
+      FLast.Project := mParams.GetValue<string>('project', '');
+      FLast.Configuration := mParams.GetValue<string>('configuration', '');
+      FLast.Platform := mParams.GetValue<string>('platform', '');
+      FLast.RequestedBy := mParams.GetValue<string>('requestedBy', '');
+    end;
+    FLast.Kind := mParams.GetValue<string>('kind', FLast.Kind);
+    FLast.Success := mParams.GetValue<Boolean>('success', False);
+    FLast.DurationMs := mParams.GetValue<Int64>('durationMs', 0);
+    FLast.FinishedAt := Now;
   finally
     TMonitor.Exit(FLock);
+  end;
+  Changed;
+end;
+
+procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
+var
+  mMessages: TArray<TCompilerMessage>;
+begin
+  mMessages := ParseMessages(AParams);
+  if (AParams is TJSONObject) and TJSONObject(AParams).GetValue<Boolean>('background', False) then
+  begin
+    if Assigned(FOnMessages) then
+    begin
+      FOnMessages(mMessages);
+    end;
+    Exit;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    FLast.Known := True;
+    FLast.Messages := mMessages;
+    if AParams is TJSONObject then
+    begin
+      if TJSONObject(AParams).GetValue<string>('project', '') <> '' then
+      begin
+        FLast.Project := TJSONObject(AParams).GetValue<string>('project', '');
+      end;
+      FLast.Platform := TJSONObject(AParams).GetValue<string>('platform', FLast.Platform);
+      FLast.Success := TJSONObject(AParams).GetValue<Boolean>('success', FLast.Success);
+    end;
+    if FLast.FinishedAt = 0 then
+    begin
+      FLast.FinishedAt := Now;
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Assigned(FOnMessages) then
+  begin
+    FOnMessages(mMessages);
+  end;
+  Changed;
+end;
+
+procedure TLspIdeBuild.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  // Der Beginn zählt nur für Compiling (#1247); das Ende und die Meldungen tragen alles Nötige.
+  ADispatcher.RegisterNotification(cStartedMethod,
+    procedure(const AParams: TJSONValue)
+    begin
+      Track(AParams, True);
+    end);
+  ADispatcher.RegisterNotification(cFinishedMethod, HandleFinished);
+  ADispatcher.RegisterNotification(cMessagesMethod, HandleMessages);
+end;
+
+class function TLspIdeBuild.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
+var
+  mItems: TJSONArray;
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mMessage: TCompilerMessage;
+begin
+  Result := nil;
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('messages', mItems)) then
+  begin
+    Exit;
+  end;
+  for mValue in mItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject(mValue);
+    mMessage := Default(TCompilerMessage);
+    mMessage.FileName := mItem.GetValue<string>('file', '');
+    mMessage.Line := mItem.GetValue<Integer>('line', 0) - 1;
+    mMessage.Column := mItem.GetValue<Integer>('column', 0) - 1;
+    if mMessage.Line < 0 then
+    begin
+      mMessage.Column := -1;
+    end;
+    mMessage.Severity := SeverityOf(mItem.GetValue<string>('severity', ''));
+    mMessage.Code := mItem.GetValue<string>('code', '');
+    mMessage.Text := mItem.GetValue<string>('text', '');
+    Result := Result + [mMessage];
   end;
 end;
 
@@ -306,6 +296,16 @@ begin
   TMonitor.Enter(FLock);
   try
     Result := FLast;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TLspIdeBuild.Compiling: Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FRunning.Count > 0;
   finally
     TMonitor.Exit(FLock);
   end;

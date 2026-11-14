@@ -164,6 +164,28 @@ end;
 
 { TAtlasIdeTaskOutput }
 
+constructor TAtlasIdeTaskOutput.Create;
+begin
+  inherited Create;
+  FEntries := TObjectList<TEntry>.Create(True);
+end;
+
+destructor TAtlasIdeTaskOutput.Destroy;
+begin
+  FEntries.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasIdeTaskOutput.SetOnlyFindings(AValue: Boolean);
+begin
+  if FOnlyFindings = AValue then
+  begin
+    Exit;
+  end;
+  FOnlyFindings := AValue;
+  Render;
+end;
+
 function TAtlasIdeTaskOutput.Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
 var
   mName: string;
@@ -180,18 +202,6 @@ begin
   end;
 end;
 
-constructor TAtlasIdeTaskOutput.Create;
-begin
-  inherited Create;
-  FEntries := TObjectList<TEntry>.Create(True);
-end;
-
-destructor TAtlasIdeTaskOutput.Destroy;
-begin
-  FEntries.Free;
-  inherited Destroy;
-end;
-
 function TAtlasIdeTaskOutput.Find(AId: Integer): TEntry;
 var
   mEntry: TEntry;
@@ -204,16 +214,6 @@ begin
     end;
   end;
   Result := nil;
-end;
-
-procedure TAtlasIdeTaskOutput.SetOnlyFindings(AValue: Boolean);
-begin
-  if FOnlyFindings = AValue then
-  begin
-    Exit;
-  end;
-  FOnlyFindings := AValue;
-  Render;
 end;
 
 procedure TAtlasIdeTaskOutput.AddHeader(AEntry: TEntry);

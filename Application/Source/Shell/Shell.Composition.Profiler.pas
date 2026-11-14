@@ -33,6 +33,8 @@ uses
   Atlas.Text.Profile,
   Shell.Platform;
 
+{ TShellProfiler }
+
 constructor TShellProfiler.Create(const AServices: TShellRefactoringServices);
 begin
   inherited Create(AServices);

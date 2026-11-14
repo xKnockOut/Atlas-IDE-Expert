@@ -98,11 +98,6 @@ begin
   FAccess := TAtlasIdeRegistryAccess.Create;
 end;
 
-class function TAtlasIdeWelcomeIdeLayout.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := ASettings.WelcomePage and ASettings.WelcomePageIdePage;
-end;
-
 function TAtlasIdeWelcomeIdeLayout.WelcomeKey: string;
 begin
   Result := TAtlasWelcomeBackup.WelcomeKey(TAtlasIdeRegistryAccess.IdeBaseKey);
@@ -149,9 +144,9 @@ begin
   end;
 end;
 
-procedure TAtlasIdeWelcomeIdeLayout.ClearPending;
+class function TAtlasIdeWelcomeIdeLayout.Wanted(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  System.SysUtils.DeleteFile(PendingFile);
+  Result := ASettings.WelcomePage and ASettings.WelcomePageIdePage;
 end;
 
 procedure TAtlasIdeWelcomeIdeLayout.CheckPending;
@@ -222,6 +217,11 @@ begin
         FMessage(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeRetired));
       end;
     end);
+end;
+
+procedure TAtlasIdeWelcomeIdeLayout.ClearPending;
+begin
+  System.SysUtils.DeleteFile(PendingFile);
 end;
 
 function TAtlasIdeWelcomeIdeLayout.Place(AReport: Boolean): Boolean;

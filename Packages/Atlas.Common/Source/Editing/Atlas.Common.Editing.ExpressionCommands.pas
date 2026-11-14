@@ -245,18 +245,7 @@ begin
     not StartsStr('$', AToken.Text);
 end;
 
-function TIncStatement.SidesMatch: Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := (Assign > 0) and (2 * Assign + 2 <= High(Tokens));
-  mIndex := 0;
-  while Result and (mIndex < Assign) do
-  begin
-    Result := SameText(Tokens[mIndex].Text, Tokens[Assign + 1 + mIndex].Text);
-    Inc(mIndex);
-  end;
-end;
+{ TIncStatement }
 
 function TIncStatement.Parse: string;
 begin
@@ -272,6 +261,19 @@ begin
   if (Tokens[Operator_].IsSymbol('+') or Tokens[Operator_].IsSymbol('-')) and (Stop > Operator_) then
   begin
     Result := AmountProblem;
+  end;
+end;
+
+function TIncStatement.SidesMatch: Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (Assign > 0) and (2 * Assign + 2 <= High(Tokens));
+  mIndex := 0;
+  while Result and (mIndex < Assign) do
+  begin
+    Result := SameText(Tokens[mIndex].Text, Tokens[Assign + 1 + mIndex].Text);
+    Inc(mIndex);
   end;
 end;
 
@@ -356,6 +358,27 @@ type
     function Replacement: string;
   end;
 
+{ TIifStatement }
+
+function TIifStatement.Parse: string;
+begin
+  Result := cTexts[TExpressionCommandsText.ExpectedIsIfBThen].Text;
+  if not FindParts then
+  begin
+    Exit;
+  end;
+  // Beide Zweige weisen demselben Ziel zu und enthalten keine weiteren Anweisungen.
+  if not SameText(Slice(Text, Tokens, ThenAt + 1, FirstAssign - 1),
+    Slice(Text, Tokens, ElseAt + 1, SecondAssign - 1)) then
+  begin
+    Exit(cTexts[TExpressionCommandsText.IifNeedsTheSameTarget].Text);
+  end;
+  if BranchesSimple then
+  begin
+    Result := '';
+  end;
+end;
+
 function TIifStatement.FindParts: Boolean;
 begin
   Tokens := CodeTokens(Text);
@@ -386,25 +409,6 @@ begin
     Result := not (Tokens[mIndex].IsKeyword('begin') or Tokens[mIndex].IsKeyword('if') or
       Tokens[mIndex].IsSymbol(';'));
     Inc(mIndex);
-  end;
-end;
-
-function TIifStatement.Parse: string;
-begin
-  Result := cTexts[TExpressionCommandsText.ExpectedIsIfBThen].Text;
-  if not FindParts then
-  begin
-    Exit;
-  end;
-  // Beide Zweige weisen demselben Ziel zu und enthalten keine weiteren Anweisungen.
-  if not SameText(Slice(Text, Tokens, ThenAt + 1, FirstAssign - 1),
-    Slice(Text, Tokens, ElseAt + 1, SecondAssign - 1)) then
-  begin
-    Exit(cTexts[TExpressionCommandsText.IifNeedsTheSameTarget].Text);
-  end;
-  if BranchesSimple then
-  begin
-    Result := '';
   end;
 end;
 
@@ -685,6 +689,8 @@ type
     function Replacement: string;
   end;
 
+{ TConcatenation }
+
 constructor TConcatenation.Create(ASource: TCommandSource; const ATokens: TTokens; AHit: Integer);
 begin
   inherited Create;
@@ -703,6 +709,23 @@ begin
   inherited;
 end;
 
+procedure TConcatenation.AddOperand(AFirst, ALast: Integer);
+var
+  mOperand, mPlain: string;
+begin
+  mOperand := Slice(FLine, FTokens, AFirst, ALast);
+  // Nur Zeichenkonstanten: als Literal lesen.
+  if TStringLiterals.PlainText(mOperand, mPlain) or TStringLiterals.PlainText(''''' + ' + mOperand, mPlain) then
+  begin
+    FMask := FMask + StringReplace(mPlain, '%', '%%', [rfReplaceAll]);
+    Inc(FLiterals);
+  end
+  else
+  begin
+    AddArgument(mOperand);
+  end;
+end;
+
 procedure TConcatenation.AddArgument(const AOperand: string);
 var
   mArgument: string;
@@ -719,23 +742,6 @@ begin
     FUnknown := FUnknown + IfThen(FUnknown <> '', ', ', '') + AOperand;
   end;
   Inc(FOthers);
-end;
-
-procedure TConcatenation.AddOperand(AFirst, ALast: Integer);
-var
-  mOperand, mPlain: string;
-begin
-  mOperand := Slice(FLine, FTokens, AFirst, ALast);
-  // Nur Zeichenkonstanten: als Literal lesen.
-  if TStringLiterals.PlainText(mOperand, mPlain) or TStringLiterals.PlainText(''''' + ' + mOperand, mPlain) then
-  begin
-    FMask := FMask + StringReplace(mPlain, '%', '%%', [rfReplaceAll]);
-    Inc(FLiterals);
-  end
-  else
-  begin
-    AddArgument(mOperand);
-  end;
 end;
 
 function TConcatenation.TopLevel(AIndex: Integer; var AStart: Integer): string;

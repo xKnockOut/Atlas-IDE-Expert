@@ -219,11 +219,6 @@ end;
 
 { TAtlasXmlDocCompletionProvider }
 
-class function TAtlasXmlDocCompletionProvider.ProviderTitle: string;
-begin
-  Result := UiText(TXmlDocText.CompletionXMLDoc);
-end;
-
 constructor TAtlasXmlDocCompletionProvider.Create;
 begin
   inherited Create;
@@ -248,6 +243,11 @@ begin
     Exit;
   end;
   Result := TAtlasXmlDoc.TagItems(TAtlasXmlDoc.FollowingDeclaration(AContext.Text, AContext.Line));
+end;
+
+class function TAtlasXmlDocCompletionProvider.ProviderTitle: string;
+begin
+  Result := UiText(TXmlDocText.CompletionXMLDoc);
 end;
 
 initialization

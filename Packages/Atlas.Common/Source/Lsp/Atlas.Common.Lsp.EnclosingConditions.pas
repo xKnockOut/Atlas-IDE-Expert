@@ -188,16 +188,6 @@ begin
   FCallsAt := ACallsAt;
 end;
 
-class function TLspEnclosingConditions.ClampDepth(ADepth: Integer): Integer;
-begin
-  Result := ADepth;
-  if Result <= 0 then
-  begin
-    Result := cDefaultDepth;
-  end;
-  Result := Min(Result, cMaxDepth);
-end;
-
 function TLspEnclosingConditions.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := '';
@@ -361,6 +351,27 @@ begin
   end;
 end;
 
+function TLspEnclosingConditions.BlockOf(ANode, AThrough, ANext: TSyntaxNode;
+  out ABlock: TLspEnclosingBlock): Boolean;
+begin
+  ABlock := Default(TLspEnclosingBlock);
+  ABlock.Start := ANode.StartPos;
+  case ANode.Kind of
+    TSyntaxKind.IfStatement:
+      Result := IfBlock(ANode, AThrough, ABlock);
+    TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement:
+      Result := LoopBlock(ANode, AThrough, ABlock);
+    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
+      Result := ForBlock(ANode, AThrough, ABlock);
+    TSyntaxKind.CaseStatement:
+      Result := CaseBlock(ANode, AThrough, ANext, ABlock);
+    TSyntaxKind.WithStatement:
+      Result := WithBlock(ANode, AThrough, ABlock);
+  else
+    Result := False;
+  end;
+end;
+
 function TLspEnclosingConditions.IfBlock(ANode, AThrough: TSyntaxNode; var ABlock: TLspEnclosingBlock): Boolean;
 var
   mIndex: Integer;
@@ -501,27 +512,6 @@ begin
   end;
 end;
 
-function TLspEnclosingConditions.BlockOf(ANode, AThrough, ANext: TSyntaxNode;
-  out ABlock: TLspEnclosingBlock): Boolean;
-begin
-  ABlock := Default(TLspEnclosingBlock);
-  ABlock.Start := ANode.StartPos;
-  case ANode.Kind of
-    TSyntaxKind.IfStatement:
-      Result := IfBlock(ANode, AThrough, ABlock);
-    TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement:
-      Result := LoopBlock(ANode, AThrough, ABlock);
-    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
-      Result := ForBlock(ANode, AThrough, ABlock);
-    TSyntaxKind.CaseStatement:
-      Result := CaseBlock(ANode, AThrough, ANext, ABlock);
-    TSyntaxKind.WithStatement:
-      Result := WithBlock(ANode, AThrough, ABlock);
-  else
-    Result := False;
-  end;
-end;
-
 function TLspEnclosingConditions.Answer(ALine, ADepth: Integer): TLspEnclosingBlocks;
 var
   mPath: TArray<TSyntaxNode>;
@@ -611,6 +601,16 @@ begin
       mParts.AddElement(PartToJson(mPart));
     end;
   end;
+end;
+
+class function TLspEnclosingConditions.ClampDepth(ADepth: Integer): Integer;
+begin
+  Result := ADepth;
+  if Result <= 0 then
+  begin
+    Result := cDefaultDepth;
+  end;
+  Result := Min(Result, cMaxDepth);
 end;
 
 end.

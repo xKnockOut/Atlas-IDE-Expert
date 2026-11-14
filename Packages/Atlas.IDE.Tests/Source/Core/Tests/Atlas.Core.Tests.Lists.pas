@@ -246,6 +246,8 @@ begin
   Result.Node := -1;
 end;
 
+{ TAtlasTestListModel }
+
 class function TAtlasTestListModel.Items(const AUnits: TArray<TDUnitXUnit>): TAtlasTestListItems;
 var
   mUnit, mFixture, mTest, mCase: Integer;
@@ -460,6 +462,8 @@ type
     procedure AddPartial(AFixture: Integer);
     procedure Build;
   end;
+
+{ TRunNames }
 
 procedure TRunNames.Prepare;
 var
@@ -776,9 +780,19 @@ end;
 
 { Ablage }
 
-class function TAtlasTestListModel.StateName(AState: TAtlasTestListState): string;
+class function TAtlasTestListModel.OfStore(const ALists: TAtlasTestLists;
+  AStore: TAtlasTestListStore): TAtlasTestLists;
+var
+  mList: TAtlasTestList;
 begin
-  Result := cStateNames[AState];
+  Result := nil;
+  for mList in ALists do
+  begin
+    if mList.Store = AStore then
+    begin
+      Result := Result + [mList];
+    end;
+  end;
 end;
 
 /// <summary>Regel aus AObject; False bei unbekannter oder leerer.</summary>
@@ -973,21 +987,6 @@ begin
   Result := ArrayJson(mParts, AIndent);
 end;
 
-class function TAtlasTestListModel.OfStore(const ALists: TAtlasTestLists;
-  AStore: TAtlasTestListStore): TAtlasTestLists;
-var
-  mList: TAtlasTestList;
-begin
-  Result := nil;
-  for mList in ALists do
-  begin
-    if mList.Store = AStore then
-    begin
-      Result := Result + [mList];
-    end;
-  end;
-end;
-
 class function TAtlasTestListModel.IndexOf(const ALists: TAtlasTestLists; const AName: string): Integer;
 var
   mIndex: Integer;
@@ -1058,6 +1057,11 @@ begin
   end;
   Result := Length(AList.Tests) - Length(mKept);
   AList.Tests := mKept;
+end;
+
+class function TAtlasTestListModel.StateName(AState: TAtlasTestListState): string;
+begin
+  Result := cStateNames[AState];
 end;
 
 end.

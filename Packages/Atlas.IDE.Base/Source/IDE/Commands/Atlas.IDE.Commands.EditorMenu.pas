@@ -148,53 +148,6 @@ begin
   AMenu.Add('-', nil, nil);
 end;
 
-class procedure TAtlasEditorMenu.AddEditing(AMenu: TAtlasIdeContextMenu);
-begin
-  AMenu.BeginGroup(UiText(TEditorMenuText.Edit), GroupKey(TAtlasContextMenuGroup.Edit), nil);
-  AMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
-    function: Integer
-    begin
-      Result := TAtlasIdeSettings.Current.ExpandKey;
-    end,
-    procedure
-    begin
-      TAtlasEditorActionCommands.ExpandSelection;
-    end);
-  AMenu.Add('Atlas.ShrinkSelection', TAtlasStrings.Text(TAtlasTextId.EditorShrink),
-    function: Integer
-    begin
-      Result := TAtlasIdeSettings.Current.ShrinkKey;
-    end,
-    procedure
-    begin
-      TAtlasEditorActionCommands.ShrinkSelection;
-    end);
-  AMenu.Add('-', nil, nil);
-  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
-  AMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
-    function: Integer
-    begin
-      Result := 0;
-      if TAtlasIdeSettings.Current.FormatCode then
-      begin
-        Result := TAtlasIdeSettings.Current.FormatCodeKey;
-      end;
-    end,
-    procedure
-    begin
-      TAtlasEditorActionCommands.FormatCode;
-    end);
-  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
-  AMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
-    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
-    procedure
-    begin
-      TAtlasIdeMethodPlacement.Run;
-    end);
-  AddTools(AMenu);
-  AMenu.EndGroup;
-end;
-
 class procedure TAtlasEditorMenu.AddNavigation(AMenu: TAtlasIdeContextMenu);
 begin
   AMenu.BeginGroup(TAtlasStrings.Text(TAtlasTextId.MenuGroupNavigation), GroupKey(TAtlasContextMenuGroup.Navigation),
@@ -292,35 +245,50 @@ begin
     end);
 end;
 
-class procedure TAtlasEditorMenu.AddLookups(AMenu: TAtlasIdeContextMenu);
+class procedure TAtlasEditorMenu.AddEditing(AMenu: TAtlasIdeContextMenu);
 begin
-  AMenu.BeginGroup(UiText(TEditorMenuText.Analysis), GroupKey(TAtlasContextMenuGroup.Analysis), nil);
-  AMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
-    procedure
+  AMenu.BeginGroup(UiText(TEditorMenuText.Edit), GroupKey(TAtlasContextMenuGroup.Edit), nil);
+  AMenu.Add('Atlas.ExpandSelection', TAtlasStrings.Text(TAtlasTextId.EditorExpand),
+    function: Integer
     begin
-      TAtlasIdeResults.FindReferences;
-    end);
-  // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
-  // nächsten Start; Palette und Menü Atlas folgen sofort.
-  if TAtlasIdeResults.CallDiagramAllowed then
-  begin
-    AMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
-      TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
-      procedure
-      begin
-        TAtlasIdeResults.ShowCallDiagram;
-      end);
-  end;
-  // Auswirkungen anzeigen (#1120), nur mit navigation.impact.
-  AMenu.AddWhen(TAtlasFeature.Results, 'Atlas.Impact', TAtlasStrings.Text(TAtlasTextId.ImpactCommand), nil,
-    procedure
-    begin
-      TAtlasIdeImpact.ShowAtCursor;
+      Result := TAtlasIdeSettings.Current.ExpandKey;
     end,
-    function: Boolean
+    procedure
     begin
-      Result := TAtlasIdeImpact.Enabled;
+      TAtlasEditorActionCommands.ExpandSelection;
     end);
+  AMenu.Add('Atlas.ShrinkSelection', TAtlasStrings.Text(TAtlasTextId.EditorShrink),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.ShrinkKey;
+    end,
+    procedure
+    begin
+      TAtlasEditorActionCommands.ShrinkSelection;
+    end);
+  AMenu.Add('-', nil, nil);
+  // Formatieren (#43); aus = ohne Kürzel, der Aufruf meldet, dass es abgeschaltet ist.
+  AMenu.Add('Atlas.FormatCode', TAtlasStrings.Text(TAtlasTextId.FormatCodeCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.FormatCode then
+      begin
+        Result := TAtlasIdeSettings.Current.FormatCodeKey;
+      end;
+    end,
+    procedure
+    begin
+      TAtlasEditorActionCommands.FormatCode;
+    end);
+  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
+  AMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Run;
+    end);
+  AddTools(AMenu);
   AMenu.EndGroup;
 end;
 
@@ -357,6 +325,38 @@ begin
     begin
       TAtlasIdeUndo.RedoLast;
     end);
+end;
+
+class procedure TAtlasEditorMenu.AddLookups(AMenu: TAtlasIdeContextMenu);
+begin
+  AMenu.BeginGroup(UiText(TEditorMenuText.Analysis), GroupKey(TAtlasContextMenuGroup.Analysis), nil);
+  AMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
+    procedure
+    begin
+      TAtlasIdeResults.FindReferences;
+    end);
+  // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
+  // nächsten Start; Palette und Menü Atlas folgen sofort.
+  if TAtlasIdeResults.CallDiagramAllowed then
+  begin
+    AMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
+      TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
+      procedure
+      begin
+        TAtlasIdeResults.ShowCallDiagram;
+      end);
+  end;
+  // Auswirkungen anzeigen (#1120), nur mit navigation.impact.
+  AMenu.AddWhen(TAtlasFeature.Results, 'Atlas.Impact', TAtlasStrings.Text(TAtlasTextId.ImpactCommand), nil,
+    procedure
+    begin
+      TAtlasIdeImpact.ShowAtCursor;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeImpact.Enabled;
+    end);
+  AMenu.EndGroup;
 end;
 
 class procedure TAtlasEditorMenu.AddProblems(AMenu: TAtlasIdeContextMenu);

@@ -368,6 +368,8 @@ begin
   end;
 end;
 
+{ TCompletionMethods }
+
 class function TCompletionMethods.EventItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean;
 var
   mTarget: TEventTarget;

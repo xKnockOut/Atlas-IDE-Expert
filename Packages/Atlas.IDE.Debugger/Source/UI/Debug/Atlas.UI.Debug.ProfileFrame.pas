@@ -175,6 +175,14 @@ begin
   SetRunning(False);
 end;
 
+procedure TAtlasDebugProfileFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  // Auswahlliste und Items.Count der virtuellen Liste brauchen ein Fenster.
+  FillRuns;
+  FillRows;
+end;
+
 procedure TAtlasDebugProfileFrame.CreateTopBar;
 var
   mBar: TPanel;
@@ -265,21 +273,6 @@ begin
   end;
 end;
 
-procedure TAtlasDebugProfileFrame.CreateWnd;
-begin
-  inherited CreateWnd;
-  // Auswahlliste und Items.Count der virtuellen Liste brauchen ein Fenster.
-  FillRuns;
-  FillRows;
-end;
-
-procedure TAtlasDebugProfileFrame.SetRuns(const ATitles: TArray<string>; AIndex: Integer);
-begin
-  FShown.Runs := ATitles;
-  FShown.RunIndex := AIndex;
-  FillRuns;
-end;
-
 procedure TAtlasDebugProfileFrame.FillRuns;
 var
   mTitle: string;
@@ -305,17 +298,6 @@ begin
   FControls.RunBox.ItemIndex := FShown.RunIndex;
 end;
 
-procedure TAtlasDebugProfileFrame.ShowRows(const ARows: TArray<TAtlasProfileRow>; ACompare: Boolean);
-begin
-  if ACompare <> FShown.Compare then
-  begin
-    SetColumns(ACompare);
-  end;
-  FShown.Compare := ACompare;
-  FShown.Rows := ARows;
-  FillRows;
-end;
-
 procedure TAtlasDebugProfileFrame.FillRows;
 begin
   if not FControls.List.HandleAllocated then
@@ -331,56 +313,6 @@ begin
   FControls.List.Invalidate;
 end;
 
-procedure TAtlasDebugProfileFrame.SetSummary(const AText: string);
-begin
-  FControls.Summary.Caption := AText;
-end;
-
-procedure TAtlasDebugProfileFrame.SetRunning(ARunning: Boolean);
-begin
-  if ARunning then
-  begin
-    FControls.Toggle.Caption := TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileStop);
-  end
-  else
-  begin
-    FControls.Toggle.Caption := TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileStart);
-  end;
-end;
-
-function TAtlasDebugProfileFrame.RunIndex: Integer;
-begin
-  Result := FShown.RunIndex;
-end;
-
-function TAtlasDebugProfileFrame.OwnOnly: Boolean;
-begin
-  Result := FControls.OwnOnly.Checked;
-end;
-
-function TAtlasDebugProfileFrame.CompareWanted: Boolean;
-begin
-  Result := FControls.Compare.Checked;
-end;
-
-function TAtlasDebugProfileFrame.RowCount: Integer;
-begin
-  Result := Length(FShown.Rows);
-end;
-
-function TAtlasDebugProfileFrame.TryRow(AIndex: Integer; out ARow: TAtlasProfileRow): Boolean;
-begin
-  Result := (AIndex >= 0) and (AIndex <= High(FShown.Rows));
-  if Result then
-  begin
-    ARow := FShown.Rows[AIndex];
-  end
-  else
-  begin
-    ARow := Default(TAtlasProfileRow);
-  end;
-end;
-
 procedure TAtlasDebugProfileFrame.ListData(Sender: TObject; Item: TListItem);
 var
   mRow: TAtlasProfileRow;
@@ -394,20 +326,6 @@ begin
   for mIndex := 1 to High(mRow.Cells) do
   begin
     Item.SubItems.Add(mRow.Cells[mIndex]);
-  end;
-end;
-
-procedure TAtlasDebugProfileFrame.OpenSelected;
-var
-  mRow: TAtlasProfileRow;
-begin
-  if (FControls.List.Selected = nil) or not TryRow(FControls.List.Selected.Index, mRow) then
-  begin
-    Exit;
-  end;
-  if Assigned(FEvents.Open) then
-  begin
-    FEvents.Open(mRow);
   end;
 end;
 
@@ -456,6 +374,88 @@ begin
   begin
     FEvents.Reload();
   end;
+end;
+
+procedure TAtlasDebugProfileFrame.OpenSelected;
+var
+  mRow: TAtlasProfileRow;
+begin
+  if (FControls.List.Selected = nil) or not TryRow(FControls.List.Selected.Index, mRow) then
+  begin
+    Exit;
+  end;
+  if Assigned(FEvents.Open) then
+  begin
+    FEvents.Open(mRow);
+  end;
+end;
+
+procedure TAtlasDebugProfileFrame.SetRuns(const ATitles: TArray<string>; AIndex: Integer);
+begin
+  FShown.Runs := ATitles;
+  FShown.RunIndex := AIndex;
+  FillRuns;
+end;
+
+procedure TAtlasDebugProfileFrame.ShowRows(const ARows: TArray<TAtlasProfileRow>; ACompare: Boolean);
+begin
+  if ACompare <> FShown.Compare then
+  begin
+    SetColumns(ACompare);
+  end;
+  FShown.Compare := ACompare;
+  FShown.Rows := ARows;
+  FillRows;
+end;
+
+procedure TAtlasDebugProfileFrame.SetSummary(const AText: string);
+begin
+  FControls.Summary.Caption := AText;
+end;
+
+procedure TAtlasDebugProfileFrame.SetRunning(ARunning: Boolean);
+begin
+  if ARunning then
+  begin
+    FControls.Toggle.Caption := TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileStop);
+  end
+  else
+  begin
+    FControls.Toggle.Caption := TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileStart);
+  end;
+end;
+
+function TAtlasDebugProfileFrame.RunIndex: Integer;
+begin
+  Result := FShown.RunIndex;
+end;
+
+function TAtlasDebugProfileFrame.OwnOnly: Boolean;
+begin
+  Result := FControls.OwnOnly.Checked;
+end;
+
+function TAtlasDebugProfileFrame.CompareWanted: Boolean;
+begin
+  Result := FControls.Compare.Checked;
+end;
+
+function TAtlasDebugProfileFrame.TryRow(AIndex: Integer; out ARow: TAtlasProfileRow): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FShown.Rows));
+  if Result then
+  begin
+    ARow := FShown.Rows[AIndex];
+  end
+  else
+  begin
+    ARow := Default(TAtlasProfileRow);
+  end;
+end;
+
+function TAtlasDebugProfileFrame.RowCount: Integer;
+begin
+  Result := Length(FShown.Rows);
 end;
 
 end.

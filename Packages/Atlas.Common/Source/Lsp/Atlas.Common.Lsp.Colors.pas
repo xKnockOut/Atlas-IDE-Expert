@@ -58,10 +58,7 @@ const
 
 {$SCOPEDENUMS OFF}
 
-constructor TLspColors.Create(const AStore: IDocumentStore);
-begin
-  Create(AStore, nil);
-end;
+{ TLspColors }
 
 constructor TLspColors.Create(const AStore: IDocumentStore; const ASystemColors: TSystemColorProvider);
 begin
@@ -70,36 +67,9 @@ begin
   FSystemColors := ASystemColors;
 end;
 
-procedure TLspColors.Attach(ADispatcher: TJsonRpcDispatcher);
+constructor TLspColors.Create(const AStore: IDocumentStore);
 begin
-  ADispatcher.RegisterConcurrentRequest(cColorMethod, HandleColors);
-  ADispatcher.RegisterConcurrentRequest(cPresentationMethod, HandlePresentation);
-end;
-
-class function TLspColors.ColorToJson(const AColor: TRgbColor): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('red', TJSONNumber.Create(AColor.R / 255));
-  Result.AddPair('green', TJSONNumber.Create(AColor.G / 255));
-  Result.AddPair('blue', TJSONNumber.Create(AColor.B / 255));
-  Result.AddPair('alpha', TJSONNumber.Create(1));
-end;
-
-function Channel(AValue: Double): Byte;
-begin
-  Result := Round(EnsureRange(AValue, 0, 1) * 255);
-end;
-
-class function TLspColors.TryReadColor(AValue: TJSONValue; out AColor: TRgbColor): Boolean;
-var
-  mRed, mGreen, mBlue: Double;
-begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Double>('red', mRed) and
-    TJSONObject(AValue).TryGetValue<Double>('green', mGreen) and TJSONObject(AValue).TryGetValue<Double>('blue', mBlue);
-  if Result then
-  begin
-    AColor := TRgbColor.Create(Channel(mRed), Channel(mGreen), Channel(mBlue));
-  end;
+  Create(AStore, nil);
 end;
 
 function TLspColors.HandleColors(const AParams: TJSONValue;
@@ -176,6 +146,38 @@ begin
     mEdit.AddPair('newText', mPresentation.Text);
     mItem.AddPair('textEdit', mEdit);
     TJSONArray(Result).AddElement(mItem);
+  end;
+end;
+
+function Channel(AValue: Double): Byte;
+begin
+  Result := Round(EnsureRange(AValue, 0, 1) * 255);
+end;
+
+procedure TLspColors.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  ADispatcher.RegisterConcurrentRequest(cColorMethod, HandleColors);
+  ADispatcher.RegisterConcurrentRequest(cPresentationMethod, HandlePresentation);
+end;
+
+class function TLspColors.ColorToJson(const AColor: TRgbColor): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('red', TJSONNumber.Create(AColor.R / 255));
+  Result.AddPair('green', TJSONNumber.Create(AColor.G / 255));
+  Result.AddPair('blue', TJSONNumber.Create(AColor.B / 255));
+  Result.AddPair('alpha', TJSONNumber.Create(1));
+end;
+
+class function TLspColors.TryReadColor(AValue: TJSONValue; out AColor: TRgbColor): Boolean;
+var
+  mRed, mGreen, mBlue: Double;
+begin
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Double>('red', mRed) and
+    TJSONObject(AValue).TryGetValue<Double>('green', mGreen) and TJSONObject(AValue).TryGetValue<Double>('blue', mBlue);
+  if Result then
+  begin
+    AColor := TRgbColor.Create(Channel(mRed), Channel(mGreen), Channel(mBlue));
   end;
 end;
 

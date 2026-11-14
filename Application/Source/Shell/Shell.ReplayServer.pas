@@ -48,6 +48,8 @@ begin
   end;
 end;
 
+{ TShellReplayServer }
+
 class function TShellReplayServer.Server: TReplayServer;
 begin
   Result := RunComposition;

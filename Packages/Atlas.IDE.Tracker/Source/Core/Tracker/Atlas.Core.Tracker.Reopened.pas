@@ -145,6 +145,11 @@ begin
   Result.ReviewStates := Copy(AReviewStates);
 end;
 
+function TAtlasTrackerDoneStates.IsDone(const AState: string): Boolean;
+begin
+  Result := IsReview(AState) or TAtlasTrackerIssueStates.IsResolvedState(Provider, AState, EndStates);
+end;
+
 function TAtlasTrackerDoneStates.IsReview(const AState: string): Boolean;
 var
   mName: string;
@@ -161,11 +166,6 @@ begin
       Exit(True);
     end;
   end;
-end;
-
-function TAtlasTrackerDoneStates.IsDone(const AState: string): Boolean;
-begin
-  Result := IsReview(AState) or TAtlasTrackerIssueStates.IsResolvedState(Provider, AState, EndStates);
 end;
 
 { TAtlasTrackerReopened }
@@ -185,21 +185,6 @@ class function TAtlasTrackerReopened.IsReopen(const ADone: TAtlasTrackerDoneStat
   const APrevious, AState: string): Boolean;
 begin
   Result := (Trim(AState) <> '') and ADone.IsDone(APrevious) and not ADone.IsDone(AState);
-end;
-
-class function TAtlasTrackerReopened.IndexOfEnded(const AEnded: TArray<TAtlasTrackerEnded>;
-  const AKey: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AEnded) do
-  begin
-    if SameText(AEnded[mIndex].Key, AKey) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 class function TAtlasTrackerReopened.Concerns(const AEnded: TArray<TAtlasTrackerEnded>;
@@ -266,6 +251,27 @@ begin
   Delete(AEnded, mIndex, 1);
 end;
 
+class procedure TAtlasTrackerReopened.AddEnded(var AEnded: TArray<TAtlasTrackerEnded>;
+  const AEntry: TAtlasTrackerEnded);
+var
+  mIndex: Integer;
+begin
+  if Trim(AEntry.Key) = '' then
+  begin
+    Exit;
+  end;
+  mIndex := IndexOfEnded(AEnded, AEntry.Key);
+  if mIndex >= 0 then
+  begin
+    Delete(AEnded, mIndex, 1);
+  end;
+  AEnded := AEnded + [AEntry];
+  if Length(AEnded) > cMaxEntries then
+  begin
+    AEnded := Copy(AEnded, Length(AEnded) - cMaxEntries, cMaxEntries);
+  end;
+end;
+
 /// <summary>Eintrag von AKey in AItems; False ohne.</summary>
 function FindItem(const AItems: TArray<TAtlasTrackerIssue>; const AKey: string; out AItem: TAtlasTrackerIssue):
   Boolean;
@@ -319,57 +325,19 @@ begin
   end;
 end;
 
-class procedure TAtlasTrackerReopened.AddEnded(var AEnded: TArray<TAtlasTrackerEnded>;
-  const AEntry: TAtlasTrackerEnded);
-var
-  mIndex: Integer;
-begin
-  if Trim(AEntry.Key) = '' then
-  begin
-    Exit;
-  end;
-  mIndex := IndexOfEnded(AEnded, AEntry.Key);
-  if mIndex >= 0 then
-  begin
-    Delete(AEnded, mIndex, 1);
-  end;
-  AEnded := AEnded + [AEntry];
-  if Length(AEnded) > cMaxEntries then
-  begin
-    AEnded := Copy(AEnded, Length(AEnded) - cMaxEntries, cMaxEntries);
-  end;
-end;
-
-class function TAtlasTrackerReopened.IndexOf(const AReopened: TArray<TAtlasTrackerReopen>;
+class function TAtlasTrackerReopened.IndexOfEnded(const AEnded: TArray<TAtlasTrackerEnded>;
   const AKey: string): Integer;
 var
   mIndex: Integer;
 begin
-  for mIndex := 0 to High(AReopened) do
+  for mIndex := 0 to High(AEnded) do
   begin
-    if SameText(AReopened[mIndex].Key, AKey) then
+    if SameText(AEnded[mIndex].Key, AKey) then
     begin
       Exit(mIndex);
     end;
   end;
   Result := -1;
-end;
-
-class function TAtlasTrackerReopened.Find(const AReopened: TArray<TAtlasTrackerReopen>; const AKey: string;
-  out AReopen: TAtlasTrackerReopen): Boolean;
-var
-  mIndex: Integer;
-begin
-  mIndex := IndexOf(AReopened, AKey);
-  Result := mIndex >= 0;
-  if Result then
-  begin
-    AReopen := AReopened[mIndex];
-  end
-  else
-  begin
-    AReopen := Default(TAtlasTrackerReopen);
-  end;
 end;
 
 class procedure TAtlasTrackerReopened.Mark(var AReopened: TArray<TAtlasTrackerReopen>;
@@ -404,6 +372,38 @@ begin
   if Length(AReopened) > cMaxEntries then
   begin
     AReopened := Copy(AReopened, Length(AReopened) - cMaxEntries, cMaxEntries);
+  end;
+end;
+
+class function TAtlasTrackerReopened.IndexOf(const AReopened: TArray<TAtlasTrackerReopen>;
+  const AKey: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AReopened) do
+  begin
+    if SameText(AReopened[mIndex].Key, AKey) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+class function TAtlasTrackerReopened.Find(const AReopened: TArray<TAtlasTrackerReopen>; const AKey: string;
+  out AReopen: TAtlasTrackerReopen): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexOf(AReopened, AKey);
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    AReopen := AReopened[mIndex];
+  end
+  else
+  begin
+    AReopen := Default(TAtlasTrackerReopen);
   end;
 end;
 

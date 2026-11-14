@@ -254,53 +254,58 @@ begin
   Result := FormatDateTime('yyyy"-"mm"-"dd"_"hhnnss', ATime) + '_' + IntToStr(AProcessId);
 end;
 
-class function TCrashCases.IsSecretKey(const AName: string): Boolean;
+class function TCrashCases.Write(const ARoot: string; const ACase: TCrashCase): string;
 var
-  mName, mPart: string;
+  mBase: string;
+  mNumber: Integer;
+  mSetting: TCrashCaseSetting;
+  mText: string;
 begin
-  mName := LowerCase(AName);
-  for mPart in cSecretParts do
+  mBase := TPath.Combine(ARoot, FolderName(ACase.Time, ACase.ProcessId));
+  Result := mBase;
+  mNumber := 1;
+  while TDirectory.Exists(Result) do
   begin
-    if Pos(mPart, mName) > 0 then
+    Inc(mNumber);
+    Result := mBase + '-' + IntToStr(mNumber);
+  end;
+  TDirectory.CreateDirectory(Result);
+  if ACase.HasText then
+  begin
+    TFile.WriteAllText(TPath.Combine(Result, ACase.SnapshotName), ACase.Text, TEncoding.UTF8);
+  end;
+  for mSetting in ACase.Settings do
+  begin
+    // Nicht lesbar: lieber ohne die Datei als mit möglichen Zugangsdaten.
+    mText := Redact(mSetting.Text);
+    if mText <> '' then
     begin
-      Exit(True);
+      TFile.WriteAllText(TPath.Combine(Result, mSetting.Name), mText, TEncoding.UTF8);
     end;
   end;
-  Result := False;
+  TFile.WriteAllText(TPath.Combine(Result, cStackName), StackText(ACase), TEncoding.UTF8);
+  // Ohne BOM: cmd.exe liest sonst „ï»¿@echo“ als Befehl.
+  TFile.WriteAllBytes(TPath.Combine(Result, cReplayName), TEncoding.ANSI.GetBytes(ReplayScript(ACase)));
+  // Zuletzt: Ein Ordner gilt erst mit anfrage.json als Fall (Folders).
+  TFile.WriteAllText(TPath.Combine(Result, cRequestName), RequestJson(ACase), TEncoding.UTF8);
+  Prune(ARoot, cMaxCases);
 end;
 
-class function TCrashCases.WithoutUserInfo(const AText: string): string;
+class procedure TCrashCases.Prune(const ARoot: string; AKeep: Integer);
 var
-  mScheme, mAt, mEnd, mIndex: Integer;
+  mFolders: TArray<string>;
+  mIndex: Integer;
 begin
-  Result := AText;
-  mScheme := Pos('://', Result);
-  while mScheme > 0 do
-  begin
-    // Ende der Autorität: erstes /, ?, # oder Leerraum nach dem Schema.
-    mEnd := Length(Result) + 1;
-    for mIndex := mScheme + 3 to Length(Result) do
-    begin
-      if CharInSet(Result[mIndex], ['/', '?', '#', ' ', #9, #10, #13, '"']) then
-      begin
-        mEnd := mIndex;
-        Break;
-      end;
+  mFolders := Folders(ARoot);
+  for mIndex := 0 to Length(mFolders) - AKeep - 1 do
+    try
+      TDirectory.Delete(mFolders[mIndex], True);
+    except
+      // Gesperrt (etwa im Explorer offen) oder schon weg: beim nächsten Fall erneut.
+      // lsp-ignore: catch-all-without-raise -- Aufräumen nach Kräften, nächster Fall versucht es erneut
+      on Exception do
+        ;
     end;
-    mAt := 0;
-    for mIndex := mScheme + 3 to mEnd - 1 do
-    begin
-      if Result[mIndex] = '@' then
-      begin
-        mAt := mIndex;
-      end;
-    end;
-    if mAt > 0 then
-    begin
-      Delete(Result, mScheme + 3, mAt - mScheme - 2);
-    end;
-    mScheme := Pos('://', Result, mScheme + 3);
-  end;
 end;
 
 /// <summary>Entfernt geheime Schlüssel aus dem Paar AIndex von AObject und Benutzerangaben aus Adressen darin.
@@ -333,94 +338,102 @@ begin
   end;
 end;
 
-class procedure TCrashCases.RedactValue(const AValue: TJSONValue);
+class function TCrashCases.Folders(const ARoot: string): TArray<string>;
 var
-  mIndex: Integer;
-  mArray: TJSONArray;
+  mList: TList<string>;
+  mFolder: string;
 begin
-  if AValue is TJSONObject then
-  begin
-    for mIndex := TJSONObject(AValue).Count - 1 downto 0 do
-    begin
-      RedactPair(TJSONObject(AValue), mIndex);
-    end;
-  end
-  else if AValue is TJSONArray then
-  begin
-    mArray := TJSONArray(AValue);
-    for mIndex := 0 to mArray.Count - 1 do
-    begin
-      RedactValue(mArray.Items[mIndex]);
-    end;
-  end;
-end;
-
-class function TCrashCases.Redact(const AJsonText: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  if Trim(AJsonText) = '' then
+  Result := nil;
+  if (ARoot = '') or not TDirectory.Exists(ARoot) then
   begin
     Exit;
   end;
-  mValue := TJsonRead.Parse(TJsoncScanner.StripComments(AJsonText));
-  if mValue = nil then
-  begin
-    Exit;
-  end;
+  mList := TList<string>.Create;
   try
-    RedactValue(mValue);
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
-class function TCrashCases.DocumentOf(const AParams: TJSONValue; out AUri: string; out ALine: Integer): Boolean;
-var
-  mDocument, mPosition, mRange: TJSONValue;
-  mLine: TJSONValue;
-begin
-  AUri := '';
-  ALine := -1;
-  Result := False;
-  if not (AParams is TJSONObject) then
-  begin
-    Exit;
-  end;
-  mDocument := TJSONObject(AParams).GetValue('textDocument');
-  if mDocument is TJSONObject then
-  begin
-    mDocument := TJSONObject(mDocument).GetValue('uri');
-    if mDocument is TJSONString then
+    for mFolder in TDirectory.GetDirectories(ARoot) do
     begin
-      AUri := mDocument.Value;
-    end;
-  end;
-  mPosition := TJSONObject(AParams).GetValue('position');
-  mLine := nil;
-  if mPosition is TJSONObject then
-  begin
-    mLine := TJSONObject(mPosition).GetValue('line');
-  end
-  else
-  begin
-    mRange := TJSONObject(AParams).GetValue('range');
-    if mRange is TJSONObject then
-    begin
-      mRange := TJSONObject(mRange).GetValue('start');
-      if mRange is TJSONObject then
+      if TFile.Exists(TPath.Combine(mFolder, cRequestName)) then
       begin
-        mLine := TJSONObject(mRange).GetValue('line');
+        mList.Add(mFolder);
       end;
     end;
+    // Der Name beginnt mit dem Zeitpunkt; gleiche Namen gibt es nicht (Write hängt -2, -3 an).
+    mList.Sort(TComparer<string>.Construct(
+      function(const ALeft, ARight: string): Integer
+      begin
+        Result := CompareStr(ExtractFileName(ALeft), ExtractFileName(ARight));
+      end));
+    Result := mList.ToArray;
+  finally
+    mList.Free;
   end;
-  if mLine is TJSONNumber then
+end;
+
+class function TCrashCases.StackText(const ACase: TCrashCase): string;
+var
+  mLines: TStringBuilder;
+begin
+  mLines := TStringBuilder.Create;
+  try
+    mLines.Append(cTexts[TCrashCaseText.AtlasCrashCase].Text).Append(FolderName(ACase.Time,
+      ACase.ProcessId)).Append(sLineBreak);
+    mLines.Append(ACase.Summary).Append(sLineBreak).Append(sLineBreak);
+    if ACase.Kind = TCrashCaseKind.Timeout then
+    begin
+      mLines.Append(cTexts[TCrashCaseText.KindAbortedByTheWatchdog].Text).Append(sLineBreak);
+    end
+    else
+    begin
+      mLines.Append(cTexts[TCrashCaseText.KindUnhandledException].Text).Append(sLineBreak);
+    end;
+    mLines.Append(cTexts[TCrashCaseText.Exception].Text).Append(ACase.ExceptionClass).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.Message].Text).Append(WithoutUserInfo(ACase.ExceptionMessage))
+      .Append(sLineBreak);
+    mLines.Append('Methode: ').Append(ACase.Method).Append(sLineBreak);
+    if ACase.FileName <> '' then
+    begin
+      mLines.Append(cTexts[TCrashCaseText.FileText].Text).Append(ACase.FileName).Append(sLineBreak);
+    end;
+    if ACase.Line >= 0 then
+    begin
+      mLines.Append(cTexts[TCrashCaseText.Line].Text).Append(IntToStr(ACase.Line + 1)).Append(sLineBreak);
+    end;
+    mLines.Append('Atlas: ').Append(ACase.AtlasVersion).Append(sLineBreak);
+    mLines.Append(cTexts[TCrashCaseText.BuiltWith].Text).Append(ACase.BuildCompiler).Append(sLineBreak);
+    if ACase.Client <> '' then
+    begin
+      mLines.Append('Client: ').Append(ACase.Client).Append(sLineBreak);
+    end;
+    mLines.Append(sLineBreak).Append(cTexts[TCrashCaseText.CallStack].Text).Append(sLineBreak);
+    if Trim(ACase.Stack) <> '' then
+    begin
+      mLines.Append(ACase.Stack).Append(sLineBreak);
+    end
+    else
+    begin
+      mLines.Append(cTexts[TCrashCaseText.NoneWithoutDebugInformationOr].Text).Append(sLineBreak);
+    end;
+    Result := mLines.ToString;
+  finally
+    mLines.Free;
+  end;
+end;
+
+class function TCrashCases.ReplayScript(const ACase: TCrashCase): string;
+var
+  mServer: string;
+begin
+  mServer := ACase.ServerPath;
+  if mServer = '' then
   begin
-    ALine := TJSONNumber(mLine).AsInt;
+    mServer := 'AtlasServer';
   end;
-  Result := AUri <> '';
+  Result := '@echo off' + sLineBreak +
+    'rem Atlas-Absturzfall nachstellen (#1355): Exit-Code 1 = reproduziert, 0 = nicht reproduziert.' + sLineBreak +
+    'cd /d "%~dp0"' + sLineBreak +
+    '"' + mServer + '" --replay ' + cRequestName + sLineBreak +
+    'echo Exit-Code %ERRORLEVEL%' + sLineBreak +
+    'pause' + sLineBreak;
 end;
 
 /// <summary>JSON-Text AText (ohne geheime Werte) als Wert; nil, wenn leer oder nicht lesbar.</summary>
@@ -551,156 +564,143 @@ begin
   end;
 end;
 
-class function TCrashCases.StackText(const ACase: TCrashCase): string;
+class function TCrashCases.IsSecretKey(const AName: string): Boolean;
 var
-  mLines: TStringBuilder;
+  mName, mPart: string;
 begin
-  mLines := TStringBuilder.Create;
-  try
-    mLines.Append(cTexts[TCrashCaseText.AtlasCrashCase].Text).Append(FolderName(ACase.Time,
-      ACase.ProcessId)).Append(sLineBreak);
-    mLines.Append(ACase.Summary).Append(sLineBreak).Append(sLineBreak);
-    if ACase.Kind = TCrashCaseKind.Timeout then
-    begin
-      mLines.Append(cTexts[TCrashCaseText.KindAbortedByTheWatchdog].Text).Append(sLineBreak);
-    end
-    else
-    begin
-      mLines.Append(cTexts[TCrashCaseText.KindUnhandledException].Text).Append(sLineBreak);
-    end;
-    mLines.Append(cTexts[TCrashCaseText.Exception].Text).Append(ACase.ExceptionClass).Append(sLineBreak);
-    mLines.Append(cTexts[TCrashCaseText.Message].Text).Append(WithoutUserInfo(ACase.ExceptionMessage))
-      .Append(sLineBreak);
-    mLines.Append('Methode: ').Append(ACase.Method).Append(sLineBreak);
-    if ACase.FileName <> '' then
-    begin
-      mLines.Append(cTexts[TCrashCaseText.FileText].Text).Append(ACase.FileName).Append(sLineBreak);
-    end;
-    if ACase.Line >= 0 then
-    begin
-      mLines.Append(cTexts[TCrashCaseText.Line].Text).Append(IntToStr(ACase.Line + 1)).Append(sLineBreak);
-    end;
-    mLines.Append('Atlas: ').Append(ACase.AtlasVersion).Append(sLineBreak);
-    mLines.Append(cTexts[TCrashCaseText.BuiltWith].Text).Append(ACase.BuildCompiler).Append(sLineBreak);
-    if ACase.Client <> '' then
-    begin
-      mLines.Append('Client: ').Append(ACase.Client).Append(sLineBreak);
-    end;
-    mLines.Append(sLineBreak).Append(cTexts[TCrashCaseText.CallStack].Text).Append(sLineBreak);
-    if Trim(ACase.Stack) <> '' then
-    begin
-      mLines.Append(ACase.Stack).Append(sLineBreak);
-    end
-    else
-    begin
-      mLines.Append(cTexts[TCrashCaseText.NoneWithoutDebugInformationOr].Text).Append(sLineBreak);
-    end;
-    Result := mLines.ToString;
-  finally
-    mLines.Free;
-  end;
-end;
-
-class function TCrashCases.ReplayScript(const ACase: TCrashCase): string;
-var
-  mServer: string;
-begin
-  mServer := ACase.ServerPath;
-  if mServer = '' then
+  mName := LowerCase(AName);
+  for mPart in cSecretParts do
   begin
-    mServer := 'AtlasServer';
+    if Pos(mPart, mName) > 0 then
+    begin
+      Exit(True);
+    end;
   end;
-  Result := '@echo off' + sLineBreak +
-    'rem Atlas-Absturzfall nachstellen (#1355): Exit-Code 1 = reproduziert, 0 = nicht reproduziert.' + sLineBreak +
-    'cd /d "%~dp0"' + sLineBreak +
-    '"' + mServer + '" --replay ' + cRequestName + sLineBreak +
-    'echo Exit-Code %ERRORLEVEL%' + sLineBreak +
-    'pause' + sLineBreak;
+  Result := False;
 end;
 
-class function TCrashCases.Folders(const ARoot: string): TArray<string>;
+class function TCrashCases.WithoutUserInfo(const AText: string): string;
 var
-  mList: TList<string>;
-  mFolder: string;
+  mScheme, mAt, mEnd, mIndex: Integer;
 begin
-  Result := nil;
-  if (ARoot = '') or not TDirectory.Exists(ARoot) then
+  Result := AText;
+  mScheme := Pos('://', Result);
+  while mScheme > 0 do
+  begin
+    // Ende der Autorität: erstes /, ?, # oder Leerraum nach dem Schema.
+    mEnd := Length(Result) + 1;
+    for mIndex := mScheme + 3 to Length(Result) do
+    begin
+      if CharInSet(Result[mIndex], ['/', '?', '#', ' ', #9, #10, #13, '"']) then
+      begin
+        mEnd := mIndex;
+        Break;
+      end;
+    end;
+    mAt := 0;
+    for mIndex := mScheme + 3 to mEnd - 1 do
+    begin
+      if Result[mIndex] = '@' then
+      begin
+        mAt := mIndex;
+      end;
+    end;
+    if mAt > 0 then
+    begin
+      Delete(Result, mScheme + 3, mAt - mScheme - 2);
+    end;
+    mScheme := Pos('://', Result, mScheme + 3);
+  end;
+end;
+
+class function TCrashCases.Redact(const AJsonText: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  if Trim(AJsonText) = '' then
   begin
     Exit;
   end;
-  mList := TList<string>.Create;
+  mValue := TJsonRead.Parse(TJsoncScanner.StripComments(AJsonText));
+  if mValue = nil then
+  begin
+    Exit;
+  end;
   try
-    for mFolder in TDirectory.GetDirectories(ARoot) do
+    RedactValue(mValue);
+    Result := mValue.ToJSON;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class procedure TCrashCases.RedactValue(const AValue: TJSONValue);
+var
+  mIndex: Integer;
+  mArray: TJSONArray;
+begin
+  if AValue is TJSONObject then
+  begin
+    for mIndex := TJSONObject(AValue).Count - 1 downto 0 do
     begin
-      if TFile.Exists(TPath.Combine(mFolder, cRequestName)) then
+      RedactPair(TJSONObject(AValue), mIndex);
+    end;
+  end
+  else if AValue is TJSONArray then
+  begin
+    mArray := TJSONArray(AValue);
+    for mIndex := 0 to mArray.Count - 1 do
+    begin
+      RedactValue(mArray.Items[mIndex]);
+    end;
+  end;
+end;
+
+class function TCrashCases.DocumentOf(const AParams: TJSONValue; out AUri: string; out ALine: Integer): Boolean;
+var
+  mDocument, mPosition, mRange: TJSONValue;
+  mLine: TJSONValue;
+begin
+  AUri := '';
+  ALine := -1;
+  Result := False;
+  if not (AParams is TJSONObject) then
+  begin
+    Exit;
+  end;
+  mDocument := TJSONObject(AParams).GetValue('textDocument');
+  if mDocument is TJSONObject then
+  begin
+    mDocument := TJSONObject(mDocument).GetValue('uri');
+    if mDocument is TJSONString then
+    begin
+      AUri := mDocument.Value;
+    end;
+  end;
+  mPosition := TJSONObject(AParams).GetValue('position');
+  mLine := nil;
+  if mPosition is TJSONObject then
+  begin
+    mLine := TJSONObject(mPosition).GetValue('line');
+  end
+  else
+  begin
+    mRange := TJSONObject(AParams).GetValue('range');
+    if mRange is TJSONObject then
+    begin
+      mRange := TJSONObject(mRange).GetValue('start');
+      if mRange is TJSONObject then
       begin
-        mList.Add(mFolder);
+        mLine := TJSONObject(mRange).GetValue('line');
       end;
     end;
-    // Der Name beginnt mit dem Zeitpunkt; gleiche Namen gibt es nicht (Write hängt -2, -3 an).
-    mList.Sort(TComparer<string>.Construct(
-      function(const ALeft, ARight: string): Integer
-      begin
-        Result := CompareStr(ExtractFileName(ALeft), ExtractFileName(ARight));
-      end));
-    Result := mList.ToArray;
-  finally
-    mList.Free;
   end;
-end;
-
-class procedure TCrashCases.Prune(const ARoot: string; AKeep: Integer);
-var
-  mFolders: TArray<string>;
-  mIndex: Integer;
-begin
-  mFolders := Folders(ARoot);
-  for mIndex := 0 to Length(mFolders) - AKeep - 1 do
-    try
-      TDirectory.Delete(mFolders[mIndex], True);
-    except
-      // Gesperrt (etwa im Explorer offen) oder schon weg: beim nächsten Fall erneut.
-      // lsp-ignore: catch-all-without-raise -- Aufräumen nach Kräften, nächster Fall versucht es erneut
-      on Exception do
-        ;
-    end;
-end;
-
-class function TCrashCases.Write(const ARoot: string; const ACase: TCrashCase): string;
-var
-  mBase: string;
-  mNumber: Integer;
-  mSetting: TCrashCaseSetting;
-  mText: string;
-begin
-  mBase := TPath.Combine(ARoot, FolderName(ACase.Time, ACase.ProcessId));
-  Result := mBase;
-  mNumber := 1;
-  while TDirectory.Exists(Result) do
+  if mLine is TJSONNumber then
   begin
-    Inc(mNumber);
-    Result := mBase + '-' + IntToStr(mNumber);
+    ALine := TJSONNumber(mLine).AsInt;
   end;
-  TDirectory.CreateDirectory(Result);
-  if ACase.HasText then
-  begin
-    TFile.WriteAllText(TPath.Combine(Result, ACase.SnapshotName), ACase.Text, TEncoding.UTF8);
-  end;
-  for mSetting in ACase.Settings do
-  begin
-    // Nicht lesbar: lieber ohne die Datei als mit möglichen Zugangsdaten.
-    mText := Redact(mSetting.Text);
-    if mText <> '' then
-    begin
-      TFile.WriteAllText(TPath.Combine(Result, mSetting.Name), mText, TEncoding.UTF8);
-    end;
-  end;
-  TFile.WriteAllText(TPath.Combine(Result, cStackName), StackText(ACase), TEncoding.UTF8);
-  // Ohne BOM: cmd.exe liest sonst „ï»¿@echo“ als Befehl.
-  TFile.WriteAllBytes(TPath.Combine(Result, cReplayName), TEncoding.ANSI.GetBytes(ReplayScript(ACase)));
-  // Zuletzt: Ein Ordner gilt erst mit anfrage.json als Fall (Folders).
-  TFile.WriteAllText(TPath.Combine(Result, cRequestName), RequestJson(ACase), TEncoding.UTF8);
-  Prune(ARoot, cMaxCases);
+  Result := AUri <> '';
 end;
 
 /// <summary>Wert AName aus AObject als JSON-Text; '' ohne Wert und bei null.</summary>

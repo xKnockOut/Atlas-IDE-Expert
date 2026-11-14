@@ -278,6 +278,8 @@ begin
   Result := RoutesOf(TJsonRead.Items(AData, 'routes'), AModel);
 end;
 
+{ TAtlasSymbolPathAnswer }
+
 class function TAtlasSymbolPathAnswer.Parse(const AAnswer: string; out AModel: TAtlasSymbolPathAnswer): Boolean;
 var
   mData: TJSONObject;

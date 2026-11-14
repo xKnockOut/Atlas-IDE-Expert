@@ -282,28 +282,6 @@ begin
   end;
 end;
 
-function TAtlasIdeDefaultSizes.CanUndo: Boolean;
-begin
-  Result := FSnapshot.CanRestore;
-end;
-
-function TAtlasIdeDefaultSizes.ClassSize(AControl: TControl): TSize;
-var
-  mFresh: TControl;
-begin
-  if FClassSizes.TryGetValue(AControl.ClassType, Result) then
-  begin
-    Exit;
-  end;
-  mFresh := TControlClass(AControl.ClassType).Create(nil);
-  try
-    Result := TSize.Create(mFresh.Width, mFresh.Height);
-  finally
-    mFresh.Free;
-  end;
-  FClassSizes.Add(AControl.ClassType, Result);
-end;
-
 procedure TAtlasIdeDefaultSizes.Inserted(AItem: TPersistent);
 var
   mSettings: TAtlasPluginSettings;
@@ -373,6 +351,23 @@ begin
   end;
 end;
 
+function TAtlasIdeDefaultSizes.ClassSize(AControl: TControl): TSize;
+var
+  mFresh: TControl;
+begin
+  if FClassSizes.TryGetValue(AControl.ClassType, Result) then
+  begin
+    Exit;
+  end;
+  mFresh := TControlClass(AControl.ClassType).Create(nil);
+  try
+    Result := TSize.Create(mFresh.Width, mFresh.Height);
+  finally
+    mFresh.Free;
+  end;
+  FClassSizes.Add(AControl.ClassType, Result);
+end;
+
 procedure TAtlasIdeDefaultSizes.DoApply;
 var
   mEditor: IOTAFormEditor;
@@ -431,6 +426,27 @@ begin
   if Length(mSkipped) > 0 then
   begin
     Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerSizesSkipped, [string.Join(', ', mSkipped)]));
+  end;
+end;
+
+procedure TAtlasIdeDefaultSizes.Execute(ACommand: TAtlasSizesCommand);
+begin
+  if not TAtlasIdeSettings.Current.DesignerDefaultSizes then
+  begin
+    Exit;
+  end;
+  case ACommand of
+    TAtlasSizesCommand.Apply:
+      DoApply;
+    TAtlasSizesCommand.Learn:
+      DoLearn;
+    TAtlasSizesCommand.Show:
+      DoShow;
+    TAtlasSizesCommand.Undo:
+      if FSnapshot.Restore then
+      begin
+        Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesUndone));
+      end;
   end;
 end;
 
@@ -562,25 +578,9 @@ begin
   FTimer.Enabled := True;
 end;
 
-procedure TAtlasIdeDefaultSizes.Execute(ACommand: TAtlasSizesCommand);
+function TAtlasIdeDefaultSizes.CanUndo: Boolean;
 begin
-  if not TAtlasIdeSettings.Current.DesignerDefaultSizes then
-  begin
-    Exit;
-  end;
-  case ACommand of
-    TAtlasSizesCommand.Apply:
-      DoApply;
-    TAtlasSizesCommand.Learn:
-      DoLearn;
-    TAtlasSizesCommand.Show:
-      DoShow;
-    TAtlasSizesCommand.Undo:
-      if FSnapshot.Restore then
-      begin
-        Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSizesUndone));
-      end;
-  end;
+  Result := FSnapshot.CanRestore;
 end;
 
 end.

@@ -242,16 +242,26 @@ end;
 
 { TAtlasMainMenuItems }
 
-procedure TAtlasMainMenuItems.UpdateImage;
-var
-  mItem: TMenuItem;
-  mImage: Integer;
+function TAtlasMainMenuItems.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
 begin
-  mImage := TAtlasIdeSymbol.MenuImage;
-  for mItem in FImageItems do
-  begin
-    mItem.ImageIndex := mImage;
-  end;
+  Result := AddItem(TAtlasStrings.Text(AText), ATag, AOnClick);
+end;
+
+function TAtlasMainMenuItems.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(FRoot);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.OnClick := AOnClick;
+  FParent.Add(Result);
+end;
+
+function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
+begin
+  Result := TMenuItem.Create(FRoot);
+  Result.Caption := TAtlasStrings.Text(AText);
+  FRoot.Add(Result);
+  FParent := Result;
 end;
 
 procedure TAtlasMainMenuItems.UpdateRegionItems;
@@ -334,26 +344,16 @@ begin
   end;
 end;
 
-function TAtlasMainMenuItems.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+procedure TAtlasMainMenuItems.UpdateImage;
+var
+  mItem: TMenuItem;
+  mImage: Integer;
 begin
-  Result := AddItem(TAtlasStrings.Text(AText), ATag, AOnClick);
-end;
-
-function TAtlasMainMenuItems.AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
-begin
-  Result := TMenuItem.Create(FRoot);
-  Result.Caption := ACaption;
-  Result.Tag := ATag;
-  Result.OnClick := AOnClick;
-  FParent.Add(Result);
-end;
-
-function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
-begin
-  Result := TMenuItem.Create(FRoot);
-  Result.Caption := TAtlasStrings.Text(AText);
-  FRoot.Add(Result);
-  FParent := Result;
+  mImage := TAtlasIdeSymbol.MenuImage;
+  for mItem in FImageItems do
+  begin
+    mItem.ImageIndex := mImage;
+  end;
 end;
 
 { TAtlasMainMenu }
@@ -388,6 +388,16 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 500;
   FTimer.OnTimer := TimerTick;
+end;
+
+destructor TAtlasMainMenu.Destroy;
+begin
+  FreeAndNil(FTimer);
+  FImageItems := nil;
+  FreeAndNil(FModules);
+  // Freigeben nimmt den Eintrag auch aus dem Hauptmenü.
+  FreeAndNil(FRoot);
+  inherited;
 end;
 
 procedure TAtlasMainMenu.AddTopItems;
@@ -540,58 +550,71 @@ begin
   end;
 end;
 
-destructor TAtlasMainMenu.Destroy;
+procedure TAtlasMainMenu.RenameClick(Sender: TObject);
 begin
-  FreeAndNil(FTimer);
-  FImageItems := nil;
-  FreeAndNil(FModules);
-  // Freigeben nimmt den Eintrag auch aus dem Hauptmenü.
-  FreeAndNil(FRoot);
-  inherited;
+  TAtlasIdeShortcutTips.Invoked('Atlas.Rename');
+  if Assigned(FOnRename) then
+  begin
+    TAtlasGuard.Run(TAtlasFeature.Menu,
+      procedure
+      begin
+        FOnRename();
+      end);
+  end;
 end;
 
-class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
+procedure TAtlasMainMenu.ResultsClick(Sender: TObject);
 begin
-  Result := cToggleKeys[AToggle];
+  TAtlasMenuActions.RunResults(TMenuItem(Sender).Tag);
 end;
 
-procedure TAtlasMainMenu.RootClick(Sender: TObject);
-var
-  mToggle: TAtlasToggle;
-  mNames: string;
+procedure TAtlasMainMenu.EditorClick(Sender: TObject);
 begin
-  try
-    // Falls der Themenwechsel nicht gemeldet wurde.
-    UpdateImage;
-    UpdateKeyMap;
-    FModules.Update;
-    for mToggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+  TAtlasMenuActions.RunEditor(TMenuItem(Sender).Tag);
+end;
+
+procedure TAtlasMainMenu.SectionClick(Sender: TObject);
+begin
+  TAtlasMenuActions.RunSection(TMenuItem(Sender).Tag);
+end;
+
+procedure TAtlasMainMenu.UndoClick(Sender: TObject);
+begin
+  TAtlasMenuActions.RunUndo(TMenuItem(Sender).Tag);
+end;
+
+procedure TAtlasMainMenu.OutlineClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Outline');
+  TAtlasGuard.Run(TAtlasFeature.Outline,
+    procedure
     begin
-      FToggles[mToggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(mToggle));
-    end;
-    // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
-    FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
-    mNames := DisabledNames;
-    FEnableAll.Visible := mNames <> '';
-    FEnableAll.Caption := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.MenuEnableAll, [mNames]);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Menu, E);
-  end;
+      TAtlasIdeOutline.ShowWindow;
+    end);
 end;
 
-procedure TAtlasMainMenu.ToggleClick(Sender: TObject);
-var
-  mToggle: TAtlasToggle;
+procedure TAtlasMainMenu.ProblemsClick(Sender: TObject);
 begin
-  try
-    mToggle := TAtlasToggle(TMenuItem(Sender).Tag);
-    // Speichert wie die Optionsseite, gleicht die Strukturhervorhebung ab und zeichnet neu (#604).
-    TAtlasIdeQuickToggles.Switch(ToggleKey(mToggle));
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Menu, E);
-  end;
+  TAtlasIdeShortcutTips.Invoked('Atlas.ProblemsWindow');
+  TAtlasGuard.Run(TAtlasFeature.Problems,
+    procedure
+    begin
+      TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.ViewAtlasClick(Sender: TObject);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FModules.UpdateView;
+    end);
+end;
+
+procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
+begin
+  TAtlasGuard.EnableAll;
 end;
 
 procedure TAtlasMainMenu.TimerTick(Sender: TObject);
@@ -744,71 +767,43 @@ begin
   end;
 end;
 
-procedure TAtlasMainMenu.RenameClick(Sender: TObject);
+procedure TAtlasMainMenu.RootClick(Sender: TObject);
+var
+  mToggle: TAtlasToggle;
+  mNames: string;
 begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.Rename');
-  if Assigned(FOnRename) then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Menu,
-      procedure
-      begin
-        FOnRename();
-      end);
+  try
+    // Falls der Themenwechsel nicht gemeldet wurde.
+    UpdateImage;
+    UpdateKeyMap;
+    FModules.Update;
+    for mToggle := Low(TAtlasToggle) to High(TAtlasToggle) do
+    begin
+      FToggles[mToggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(mToggle));
+    end;
+    // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
+    FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
+    mNames := DisabledNames;
+    FEnableAll.Visible := mNames <> '';
+    FEnableAll.Caption := TAtlasCommandsStrings.Fmt(TAtlasCommandsTextId.MenuEnableAll, [mNames]);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Menu, E);
   end;
 end;
 
-procedure TAtlasMainMenu.ResultsClick(Sender: TObject);
+procedure TAtlasMainMenu.ToggleClick(Sender: TObject);
+var
+  mToggle: TAtlasToggle;
 begin
-  TAtlasMenuActions.RunResults(TMenuItem(Sender).Tag);
-end;
-
-procedure TAtlasMainMenu.EditorClick(Sender: TObject);
-begin
-  TAtlasMenuActions.RunEditor(TMenuItem(Sender).Tag);
-end;
-
-procedure TAtlasMainMenu.SectionClick(Sender: TObject);
-begin
-  TAtlasMenuActions.RunSection(TMenuItem(Sender).Tag);
-end;
-
-procedure TAtlasMainMenu.UndoClick(Sender: TObject);
-begin
-  TAtlasMenuActions.RunUndo(TMenuItem(Sender).Tag);
-end;
-
-procedure TAtlasMainMenu.ProblemsClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.ProblemsWindow');
-  TAtlasGuard.Run(TAtlasFeature.Problems,
-    procedure
-    begin
-      TAtlasIdeProblems.ShowWindow;
-    end);
-end;
-
-procedure TAtlasMainMenu.ViewAtlasClick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Menu,
-    procedure
-    begin
-      FModules.UpdateView;
-    end);
-end;
-
-procedure TAtlasMainMenu.OutlineClick(Sender: TObject);
-begin
-  TAtlasIdeShortcutTips.Invoked('Atlas.Outline');
-  TAtlasGuard.Run(TAtlasFeature.Outline,
-    procedure
-    begin
-      TAtlasIdeOutline.ShowWindow;
-    end);
-end;
-
-procedure TAtlasMainMenu.EnableAllClick(Sender: TObject);
-begin
-  TAtlasGuard.EnableAll;
+  try
+    mToggle := TAtlasToggle(TMenuItem(Sender).Tag);
+    // Speichert wie die Optionsseite, gleicht die Strukturhervorhebung ab und zeichnet neu (#604).
+    TAtlasIdeQuickToggles.Switch(ToggleKey(mToggle));
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.Menu, E);
+  end;
 end;
 
 procedure TAtlasMainMenu.ProjectClick(Sender: TObject);
@@ -836,6 +831,11 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Settings, E);
   end;
+end;
+
+class function TAtlasMainMenu.ToggleKey(AToggle: TAtlasToggle): string;
+begin
+  Result := cToggleKeys[AToggle];
 end;
 
 end.

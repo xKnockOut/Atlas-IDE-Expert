@@ -158,58 +158,6 @@ end;
 
 { TAtlasIdeBreakpointAnchors }
 
-class procedure TAtlasIdeBreakpointAnchors.Start(const AMessage: TProc<string>);
-var
-  mTimer: TTimer;
-begin
-  FMessage := AMessage;
-  FAnchors := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
-  FStored := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
-  FFiles := TDictionary<string, TAtlasAnchorFileSeen>.Create;
-  FLoaded := False;
-  FStarted := True;
-  mTimer := TTimer.Create(nil);
-  mTimer.Interval := cTickMs;
-  mTimer.OnTimer := Tick;
-  FTimer := mTimer;
-end;
-
-class procedure TAtlasIdeBreakpointAnchors.Release;
-begin
-  FreeAndNil(FTimer);
-  if FStarted and FDirty then
-  begin
-    Save;
-  end;
-  FStarted := False;
-  FreeAndNil(FAnchors);
-  FreeAndNil(FStored);
-  FreeAndNil(FFiles);
-  FUndo := nil;
-  FOrphans := nil;
-  FMessage := nil;
-  FBusy := False;
-  FDirty := False;
-end;
-
-class function TAtlasIdeBreakpointAnchors.Started: Boolean;
-begin
-  Result := FStarted;
-end;
-
-class function TAtlasIdeBreakpointAnchors.Enabled: Boolean;
-begin
-  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugBreakpointAnchors;
-end;
-
-class procedure TAtlasIdeBreakpointAnchors.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class procedure TAtlasIdeBreakpointAnchors.Tick(Sender: TObject);
 begin
   if FBusy or not Enabled then
@@ -254,33 +202,6 @@ begin
     end;
   finally
     mFiles.Free;
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointAnchors.KeepAnchors(const AFileName: string; const ALines: TArray<Integer>;
-  var ABatch: TAtlasAnchorBatch);
-var
-  mLine: Integer;
-  mItem: TAtlasAnchoredBreakpoint;
-begin
-  for mLine in ALines do
-  begin
-    if FAnchors.TryGetValue(TAtlasBreakpointAnchors.Key(AFileName, mLine), mItem) then
-    begin
-      ABatch.Next.AddOrSetValue(TAtlasBreakpointAnchors.Key(AFileName, mLine), mItem);
-    end;
-  end;
-end;
-
-class function TAtlasIdeBreakpointAnchors.NeedsWork(const AFileName: string; const ALines: TArray<Integer>;
-  AChanged: Boolean): Boolean;
-var
-  mLine: Integer;
-begin
-  Result := AChanged;
-  for mLine in ALines do
-  begin
-    Result := Result or not FAnchors.ContainsKey(TAtlasBreakpointAnchors.Key(AFileName, mLine));
   end;
 end;
 
@@ -371,6 +292,33 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeBreakpointAnchors.KeepAnchors(const AFileName: string; const ALines: TArray<Integer>;
+  var ABatch: TAtlasAnchorBatch);
+var
+  mLine: Integer;
+  mItem: TAtlasAnchoredBreakpoint;
+begin
+  for mLine in ALines do
+  begin
+    if FAnchors.TryGetValue(TAtlasBreakpointAnchors.Key(AFileName, mLine), mItem) then
+    begin
+      ABatch.Next.AddOrSetValue(TAtlasBreakpointAnchors.Key(AFileName, mLine), mItem);
+    end;
+  end;
+end;
+
+class function TAtlasIdeBreakpointAnchors.NeedsWork(const AFileName: string; const ALines: TArray<Integer>;
+  AChanged: Boolean): Boolean;
+var
+  mLine: Integer;
+begin
+  Result := AChanged;
+  for mLine in ALines do
+  begin
+    Result := Result or not FAnchors.ContainsKey(TAtlasBreakpointAnchors.Key(AFileName, mLine));
+  end;
+end;
+
 class procedure TAtlasIdeBreakpointAnchors.Finish(const ABatch: TAtlasAnchorBatch);
 var
   mMoved: Integer;
@@ -453,20 +401,6 @@ begin
   FOrphans := FOrphans + ANew;
 end;
 
-class procedure TAtlasIdeBreakpointAnchors.Undo;
-var
-  mMoved: Integer;
-begin
-  if FUndo = nil then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNothingToUndo));
-    Exit;
-  end;
-  mMoved := ApplyMoves(TAtlasBreakpointAnchors.Reversed(FUndo), True);
-  FUndo := nil;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsUndone, [mMoved]));
-end;
-
 class function TAtlasIdeBreakpointAnchors.OrphanAction(const AOrphan: TAtlasAnchorOrphan; ADelete: Boolean): Boolean;
 var
   mBreakpoints: TArray<IOTABreakpoint>;
@@ -493,28 +427,6 @@ begin
     TAtlasIdeBreakpointRules.Moved(AOrphan.Item.FileName, AOrphan.Item.Line, AOrphan.Suggestion);
     Relocate(AOrphan.Item.FileName, AOrphan.Item.Line, AOrphan.Suggestion);
   end;
-end;
-
-class procedure TAtlasIdeBreakpointAnchors.ShowOrphans;
-var
-  mOrphans: TAtlasAnchorOrphans;
-  mOrphan: TAtlasAnchorOrphan;
-begin
-  mOrphans := nil;
-  for mOrphan in FOrphans do
-  begin
-    if TAtlasIdeBreakpoints.Find(mOrphan.Item.FileName, mOrphan.Item.Line) <> nil then
-    begin
-      mOrphans := mOrphans + [mOrphan];
-    end;
-  end;
-  FOrphans := mOrphans;
-  if FOrphans = nil then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNoOrphans));
-    Exit;
-  end;
-  FOrphans := TAtlasBreakpointOrphanDialog.Execute(FOrphans, OrphanAction);
 end;
 
 class function TAtlasIdeBreakpointAnchors.StateFile: string;
@@ -558,6 +470,94 @@ begin
     on E: Exception do
       Report(E.Message);
   end;
+end;
+
+class procedure TAtlasIdeBreakpointAnchors.Report(const AText: string);
+begin
+  if Assigned(FMessage) then
+  begin
+    FMessage(AText);
+  end;
+end;
+
+class procedure TAtlasIdeBreakpointAnchors.Start(const AMessage: TProc<string>);
+var
+  mTimer: TTimer;
+begin
+  FMessage := AMessage;
+  FAnchors := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
+  FStored := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
+  FFiles := TDictionary<string, TAtlasAnchorFileSeen>.Create;
+  FLoaded := False;
+  FStarted := True;
+  mTimer := TTimer.Create(nil);
+  mTimer.Interval := cTickMs;
+  mTimer.OnTimer := Tick;
+  FTimer := mTimer;
+end;
+
+class procedure TAtlasIdeBreakpointAnchors.Release;
+begin
+  FreeAndNil(FTimer);
+  if FStarted and FDirty then
+  begin
+    Save;
+  end;
+  FStarted := False;
+  FreeAndNil(FAnchors);
+  FreeAndNil(FStored);
+  FreeAndNil(FFiles);
+  FUndo := nil;
+  FOrphans := nil;
+  FMessage := nil;
+  FBusy := False;
+  FDirty := False;
+end;
+
+class function TAtlasIdeBreakpointAnchors.Started: Boolean;
+begin
+  Result := FStarted;
+end;
+
+class function TAtlasIdeBreakpointAnchors.Enabled: Boolean;
+begin
+  Result := Started and TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugBreakpointAnchors;
+end;
+
+class procedure TAtlasIdeBreakpointAnchors.Undo;
+var
+  mMoved: Integer;
+begin
+  if FUndo = nil then
+  begin
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNothingToUndo));
+    Exit;
+  end;
+  mMoved := ApplyMoves(TAtlasBreakpointAnchors.Reversed(FUndo), True);
+  FUndo := nil;
+  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsUndone, [mMoved]));
+end;
+
+class procedure TAtlasIdeBreakpointAnchors.ShowOrphans;
+var
+  mOrphans: TAtlasAnchorOrphans;
+  mOrphan: TAtlasAnchorOrphan;
+begin
+  mOrphans := nil;
+  for mOrphan in FOrphans do
+  begin
+    if TAtlasIdeBreakpoints.Find(mOrphan.Item.FileName, mOrphan.Item.Line) <> nil then
+    begin
+      mOrphans := mOrphans + [mOrphan];
+    end;
+  end;
+  FOrphans := mOrphans;
+  if FOrphans = nil then
+  begin
+    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNoOrphans));
+    Exit;
+  end;
+  FOrphans := TAtlasBreakpointOrphanDialog.Execute(FOrphans, OrphanAction);
 end;
 
 end.

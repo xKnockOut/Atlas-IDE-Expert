@@ -140,6 +140,8 @@ const
     (De: 'Die Unit für resourcestrings'; En: 'The unit for resourcestrings'),
     (De: 'Testunits sind hier nicht verfügbar'; En: 'Test units are not available here'));
 
+{ TShellSlashSources }
+
 class function TShellSlashSources.New(const AWorkspaceOf: TWorkspaceOfFunc; const AReadText: TReadTextFunc;
   const AHeaderTemplate: THeaderTemplateFunc): TShellSlashSources;
 begin
@@ -147,6 +149,19 @@ begin
   Result.WorkspaceOf := AWorkspaceOf;
   Result.ReadText := AReadText;
   Result.HeaderTemplate := AHeaderTemplate;
+end;
+
+{ TShellSlashHost }
+
+constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
+  const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>);
+begin
+  inherited Create;
+  FSources := ASources;
+  FTransport := ATransport;
+  FLogger := ALogger;
+  FDispatcher := ADispatcher;
+  FClientAppliesEdits := AClientAppliesEdits;
 end;
 
 constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
@@ -161,33 +176,28 @@ begin
   Create(ASources, ATransport, ALogger, nil, nil);
 end;
 
-constructor TShellSlashHost.Create(const ASources: TShellSlashSources; const ATransport: IJsonRpcTransport;
-  const ALogger: ILogger; ADispatcher: TJsonRpcDispatcher; const AClientAppliesEdits: TFunc<Boolean>);
+function TShellSlashHost.ClientWrites: Boolean;
 begin
-  inherited Create;
-  FSources := ASources;
-  FTransport := ATransport;
-  FLogger := ALogger;
-  FDispatcher := ADispatcher;
-  FClientAppliesEdits := AClientAppliesEdits;
+  Result := (FDispatcher <> nil) and Assigned(FClientAppliesEdits) and FClientAppliesEdits();
 end;
 
-function TShellSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
+procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+begin
+  SendEdit(AUri, ADescription, AEdit, AAfter, True);
+end;
+
+function TShellSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
 var
-  mWorkspace: TShellWorkspace;
+  mOldText: string;
+  mFileFormat: TFileFormat;
 begin
-  mWorkspace := FSources.WorkspaceOf(AUri);
-  Result := (mWorkspace <> nil) and mWorkspace.State.Project(AProject);
-end;
-
-function TShellSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
-begin
-  Result := FSources.ReadText(AFileName, AText);
-end;
-
-function TShellSlashHost.DirectoryExists(const APath: string): Boolean;
-begin
-  Result := System.SysUtils.DirectoryExists(APath);
+  Result := ClientWrites;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mOldText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, mOldText, AText), nil);
 end;
 
 var
@@ -215,14 +225,24 @@ begin
   end;
 end;
 
-function TShellSlashHost.ClientWrites: Boolean;
+procedure TShellSlashHost.InLoop(const AWork: TProc);
 begin
-  Result := (FDispatcher <> nil) and Assigned(FClientAppliesEdits) and FClientAppliesEdits();
+  if Assigned(FRunInLoop) then
+  begin
+    FRunInLoop(AWork);
+  end
+  else
+  begin
+    AWork();
+  end;
 end;
 
-procedure TShellSlashHost.SendEdit(const AUri, ADescription: string; AEdit: TJSONObject; const AAfter: TProc);
+function TShellSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
+var
+  mWorkspace: TShellWorkspace;
 begin
-  SendEdit(AUri, ADescription, AEdit, AAfter, True);
+  mWorkspace := FSources.WorkspaceOf(AUri);
+  Result := (mWorkspace <> nil) and mWorkspace.State.Project(AProject);
 end;
 
 type
@@ -255,6 +275,8 @@ begin
     mMessage.Free;
   end;
 end;
+
+{ TSlashEditAnswer }
 
 procedure TSlashEditAnswer.Handle(const AResponse: TJSONObject);
 var
@@ -323,44 +345,14 @@ begin
   end;
 end;
 
-function TShellSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
-var
-  mOldText: string;
-  mFileFormat: TFileFormat;
+function TShellSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := ClientWrites;
-  if not Result then
-  begin
-    Exit;
-  end;
-  mOldText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, mOldText, AText), nil);
+  Result := FSources.ReadText(AFileName, AText);
 end;
 
-procedure TShellSlashHost.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
-var
-  mFileFormat: TFileFormat;
+function TShellSlashHost.DirectoryExists(const APath: string): Boolean;
 begin
-  if ClientWrites then
-  begin
-    SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
-    Exit;
-  end;
-  TFileEncoding.LoadFromFile(AFileName, mFileFormat);
-  TFileEncoding.SaveToFile(AFileName, ANewText, mFileFormat);
-  FLogger.Info('resourcestring eingetragen');
-end;
-
-procedure TShellSlashHost.InLoop(const AWork: TProc);
-begin
-  if Assigned(FRunInLoop) then
-  begin
-    FRunInLoop(AWork);
-  end
-  else
-  begin
-    AWork();
-  end;
+  Result := System.SysUtils.DirectoryExists(APath);
 end;
 
 procedure TShellSlashHost.WriteProject(const AUri, AText: string);
@@ -457,25 +449,6 @@ begin
   end;
 end;
 
-function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
-begin
-  AIds := nil;
-  Result := Assigned(FSources.RuleIdsOf) and FSources.RuleIdsOf(AUri, AText, ALine, AIds);
-end;
-
-function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
-begin
-  AContext := Default(TUsesContext);
-  Result := Assigned(FSources.UsesContextOf) and FSources.UsesContextOf(AUri, AContext);
-end;
-
-function TShellSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
-  out AFindings: TArray<TSlashFinding>): Boolean;
-begin
-  AFindings := nil;
-  Result := Assigned(FSources.FindingsOf) and FSources.FindingsOf(AUri, AText, ALine, AFindings);
-end;
-
 function TShellSlashHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
 begin
   ATarget := Default(TSlashTestUnit);
@@ -527,6 +500,39 @@ begin
     begin
       SendShowDocument(mTransport, mFileName, mTarget);
     end);
+end;
+
+function TShellSlashHost.RuleIdsAt(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean;
+begin
+  AIds := nil;
+  Result := Assigned(FSources.RuleIdsOf) and FSources.RuleIdsOf(AUri, AText, ALine, AIds);
+end;
+
+function TShellSlashHost.UsesContext(const AUri: string; out AContext: TUsesContext): Boolean;
+begin
+  AContext := Default(TUsesContext);
+  Result := Assigned(FSources.UsesContextOf) and FSources.UsesContextOf(AUri, AContext);
+end;
+
+function TShellSlashHost.FindingsAt(const AUri, AText: string; ALine: Integer;
+  out AFindings: TArray<TSlashFinding>): Boolean;
+begin
+  AFindings := nil;
+  Result := Assigned(FSources.FindingsOf) and FSources.FindingsOf(AUri, AText, ALine, AFindings);
+end;
+
+procedure TShellSlashHost.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
+var
+  mFileFormat: TFileFormat;
+begin
+  if ClientWrites then
+  begin
+    SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
+    Exit;
+  end;
+  TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  TFileEncoding.SaveToFile(AFileName, ANewText, mFileFormat);
+  FLogger.Info('resourcestring eingetragen');
 end;
 
 /// <summary>Format einer neuen Datei (#299, #121): Kodierung der Datei AUri, sonst UTF-8 mit BOM; Zeilenende

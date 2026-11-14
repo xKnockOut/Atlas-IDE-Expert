@@ -635,6 +635,14 @@ begin
   end;
 end;
 
+class function TAtlasStartProfiles.OptionsOf(const AEntry: TAtlasStartProfileEntry): TAtlasStartOptions;
+begin
+  Result.Parameters := AEntry.Profile.Parameters;
+  Result.WorkingDir := ResolvePath(AEntry.BaseFolder, AEntry.Profile.WorkingDir);
+  Result.Host := ResolvePath(AEntry.BaseFolder, AEntry.Profile.Host);
+  Result.Environment := EnvironmentValue(AEntry.Profile.Environment);
+end;
+
 class function TAtlasStartProfiles.ResolvePath(const ABase, APath: string): string;
 var
   mPath: string;
@@ -645,14 +653,6 @@ begin
     Exit(mPath);
   end;
   Result := TAtlasTeamFile.Combine(ABase, mPath);
-end;
-
-class function TAtlasStartProfiles.OptionsOf(const AEntry: TAtlasStartProfileEntry): TAtlasStartOptions;
-begin
-  Result.Parameters := AEntry.Profile.Parameters;
-  Result.WorkingDir := ResolvePath(AEntry.BaseFolder, AEntry.Profile.WorkingDir);
-  Result.Host := ResolvePath(AEntry.BaseFolder, AEntry.Profile.Host);
-  Result.Environment := EnvironmentValue(AEntry.Profile.Environment);
 end;
 
 class function TAtlasStartProfiles.EncodeEnvironment(const AVariables: TArray<TAtlasTeamVariable>): string;

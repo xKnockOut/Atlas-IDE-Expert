@@ -62,6 +62,8 @@ begin
   Result := LowerCase(Copy(ALine, ACharacter + 1, mStop - ACharacter - 1));
 end;
 
+{ TAtlasSearchScopes }
+
 class function TAtlasSearchScopes.Routines(const AText: string): TArray<TAtlasSearchRoutine>;
 var
   mLines: TArray<string>;

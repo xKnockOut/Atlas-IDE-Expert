@@ -102,6 +102,8 @@ uses
   System.Diagnostics,
   Atlas.Common.Diagnostics.RequestScope;
 
+{ TResolverUnits }
+
 constructor TResolverUnits.Create(APlace: TResolverPlace; const AEnsureUnit: TEnsureUnitFunc);
 begin
   inherited Create;
@@ -150,17 +152,6 @@ begin
   end;
 end;
 
-function TResolverUnits.HoldUnit(const AUnit: TUnitIndex): TUnitHolder;
-begin
-  if FUnitHolders = nil then
-  begin
-    FUnitHolders := TObjectList<TUnitHolder>.Create(True);
-  end;
-  Result := TUnitHolder.Create;
-  Result.FValue := AUnit;
-  FUnitHolders.Add(Result);
-end;
-
 function TResolverUnits.UnitAnswer(const AName: string): TUnitAnswer;
 var
   mKey: string;
@@ -184,55 +175,15 @@ begin
   FUnitAnswers.Add(mKey, Result);
 end;
 
-function TResolverUnits.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
-var
-  mAnswer: TUnitAnswer;
+function TResolverUnits.HoldUnit(const AUnit: TUnitIndex): TUnitHolder;
 begin
-  // Die eigene Unit zuerst und nie gemerkt: Current wechselt mit PinTree.
-  if SameText(AName, FPlace.Current.UnitName) then
+  if FUnitHolders = nil then
   begin
-    AUnit := FPlace.Current;
-    Exit(True);
+    FUnitHolders := TObjectList<TUnitHolder>.Create(True);
   end;
-  // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
-  if FPlace.Index = nil then
-  begin
-    Exit(False);
-  end;
-  mAnswer := UnitAnswer(AName);
-  Result := mAnswer.Found;
-  if Result then
-  begin
-    AUnit := mAnswer.Holder.FValue;
-  end
-  else
-  begin
-    AUnit := Default(TUnitIndex);
-  end;
-end;
-
-function TResolverUnits.FindUnitRef(const AName: string; out AUnit: PUnitIndex): Boolean;
-var
-  mAnswer: TUnitAnswer;
-begin
-  AUnit := nil;
-  // Die eigene Unit als Momentaufnahme: Current kann sich während einer verschachtelten Abfrage ändern, der
-  // Verweis darf das nicht.
-  if SameText(AName, FPlace.Current.UnitName) then
-  begin
-    AUnit := @HoldUnit(FPlace.Current).FValue;
-    Exit(True);
-  end;
-  if FPlace.Index = nil then
-  begin
-    Exit(False);
-  end;
-  mAnswer := UnitAnswer(AName);
-  Result := mAnswer.Found;
-  if Result then
-  begin
-    AUnit := @mAnswer.Holder.FValue;
-  end;
+  Result := TUnitHolder.Create;
+  Result.FValue := AUnit;
+  FUnitHolders.Add(Result);
 end;
 
 function TResolverUnits.SearchIndex(const AName: string; out AUnit: TUnitIndex): Boolean;
@@ -297,43 +248,6 @@ begin
   TRequestDiagnostics.ResolveFailed('unitNotFound');
 end;
 
-function TResolverUnits.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
-var
-  mKey: string;
-  mAnswer: TUnitAnswer;
-begin
-  // Die eigene Unit nie gemerkt (wie in FindUnit); sonst hängt die Antwort an der aktuellen Unit und am Abschnitt
-  // (uses von interface bzw. implementation).
-  if SameText(AName, FPlace.Current.UnitName) then
-  begin
-    AUnit := FPlace.Current;
-    Exit(True);
-  end;
-  mKey := UpperCase(AName) + '|' + FPlace.Current.FileName + '|' + FPlace.Current.UnitName + '|' +
-    BoolToStr(FPlace.InImplementation);
-  if FQualifierAnswers = nil then
-  begin
-    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create;
-  end
-  else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
-  begin
-    AUnit := Default(TUnitIndex);
-    if mAnswer.Found then
-    begin
-      AUnit := mAnswer.Holder.FValue;
-    end;
-    Exit(mAnswer.Found);
-  end;
-  mAnswer.Found := SearchQualifierUnit(AName, AUnit);
-  mAnswer.Holder := nil;
-  if mAnswer.Found then
-  begin
-    mAnswer.Holder := HoldUnit(AUnit);
-  end;
-  FQualifierAnswers.Add(mKey, mAnswer);
-  Result := mAnswer.Found;
-end;
-
 function TResolverUnits.IsUsed(const AName: string): Boolean;
 var
   mUsed, mNamespace: string;
@@ -371,6 +285,94 @@ begin
   end;
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   Result := (FPlace.Index <> nil) and SearchIndex(AName, AUnit);
+end;
+
+function TResolverUnits.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  mAnswer: TUnitAnswer;
+begin
+  // Die eigene Unit zuerst und nie gemerkt: Current wechselt mit PinTree.
+  if SameText(AName, FPlace.Current.UnitName) then
+  begin
+    AUnit := FPlace.Current;
+    Exit(True);
+  end;
+  // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
+  if FPlace.Index = nil then
+  begin
+    Exit(False);
+  end;
+  mAnswer := UnitAnswer(AName);
+  Result := mAnswer.Found;
+  if Result then
+  begin
+    AUnit := mAnswer.Holder.FValue;
+  end
+  else
+  begin
+    AUnit := Default(TUnitIndex);
+  end;
+end;
+
+function TResolverUnits.FindUnitRef(const AName: string; out AUnit: PUnitIndex): Boolean;
+var
+  mAnswer: TUnitAnswer;
+begin
+  AUnit := nil;
+  // Die eigene Unit als Momentaufnahme: Current kann sich während einer verschachtelten Abfrage ändern, der
+  // Verweis darf das nicht.
+  if SameText(AName, FPlace.Current.UnitName) then
+  begin
+    AUnit := @HoldUnit(FPlace.Current).FValue;
+    Exit(True);
+  end;
+  if FPlace.Index = nil then
+  begin
+    Exit(False);
+  end;
+  mAnswer := UnitAnswer(AName);
+  Result := mAnswer.Found;
+  if Result then
+  begin
+    AUnit := @mAnswer.Holder.FValue;
+  end;
+end;
+
+function TResolverUnits.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  mKey: string;
+  mAnswer: TUnitAnswer;
+begin
+  // Die eigene Unit nie gemerkt (wie in FindUnit); sonst hängt die Antwort an der aktuellen Unit und am Abschnitt
+  // (uses von interface bzw. implementation).
+  if SameText(AName, FPlace.Current.UnitName) then
+  begin
+    AUnit := FPlace.Current;
+    Exit(True);
+  end;
+  mKey := UpperCase(AName) + '|' + FPlace.Current.FileName + '|' + FPlace.Current.UnitName + '|' +
+    BoolToStr(FPlace.InImplementation);
+  if FQualifierAnswers = nil then
+  begin
+    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create;
+  end
+  else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
+  begin
+    AUnit := Default(TUnitIndex);
+    if mAnswer.Found then
+    begin
+      AUnit := mAnswer.Holder.FValue;
+    end;
+    Exit(mAnswer.Found);
+  end;
+  mAnswer.Found := SearchQualifierUnit(AName, AUnit);
+  mAnswer.Holder := nil;
+  if mAnswer.Found then
+  begin
+    mAnswer.Holder := HoldUnit(AUnit);
+  end;
+  FQualifierAnswers.Add(mKey, mAnswer);
+  Result := mAnswer.Found;
 end;
 
 function TResolverUnits.UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;

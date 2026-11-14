@@ -88,6 +88,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeSavedPlaces }
+
 function TAtlasIdeSavedPlaces.Places(const AProjects: TArray<string>): TAtlasSavedPlaces;
 begin
   Result := TAtlasBookmarksSavedPlaces.FromNotes(LoadNotes) +

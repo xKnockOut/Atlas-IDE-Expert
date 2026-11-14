@@ -69,6 +69,8 @@ begin
   end;
 end;
 
+{ THoverValues }
+
 class function THoverValues.TryParseNumber(const AText: string; out AValue: Int64): Boolean;
 var
   mText: string;
@@ -275,25 +277,6 @@ begin
   Result := False;
 end;
 
-class function THoverValues.ConstantExpression(const ADeclaration: string): string;
-var
-  mEquals: Integer;
-  mParts: TArray<string>;
-begin
-  Result := '';
-  mEquals := PosTop('=', ADeclaration);
-  if mEquals = 0 then
-  begin
-    Exit;
-  end;
-  // Bis zum ersten ";" auf oberster Ebene; die Hinweise stehen davor oder dahinter.
-  mParts := SplitTop(Copy(ADeclaration, mEquals + 1, MaxInt), ';');
-  Result := mParts[0];
-  // Angehängte Direktiven wie "deprecated 'Grund'" gehören nicht zum Wert.
-  repeat
-  until not StripHintWord(Result);
-end;
-
 class function THoverValues.ConstantValue(const ADeclaration: string): string;
 var
   mExpression: string;
@@ -314,6 +297,25 @@ begin
   begin
     Result := StringValue(mExpression);
   end;
+end;
+
+class function THoverValues.ConstantExpression(const ADeclaration: string): string;
+var
+  mEquals: Integer;
+  mParts: TArray<string>;
+begin
+  Result := '';
+  mEquals := PosTop('=', ADeclaration);
+  if mEquals = 0 then
+  begin
+    Exit;
+  end;
+  // Bis zum ersten ";" auf oberster Ebene; die Hinweise stehen davor oder dahinter.
+  mParts := SplitTop(Copy(ADeclaration, mEquals + 1, MaxInt), ';');
+  Result := mParts[0];
+  // Angehängte Direktiven wie "deprecated 'Grund'" gehören nicht zum Wert.
+  repeat
+  until not StripHintWord(Result);
 end;
 
 /// <summary>Ordinalwert eines Zahlen- oder Zeichenliterals ('a', #65, 10); False sonst.</summary>

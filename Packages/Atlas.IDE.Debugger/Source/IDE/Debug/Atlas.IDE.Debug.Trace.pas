@@ -182,6 +182,26 @@ begin
   end;
 end;
 
+class procedure TAtlasIdeDebugTrace.Notify(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
+var
+  mHandlers: TArray<THandler>;
+  mHandler: THandler;
+begin
+  // Kopie: Ein Empfänger darf sich dabei abmelden.
+  mHandlers := Copy(FHandlers);
+  for mHandler in mHandlers do
+  begin
+    if Assigned(mHandler.Event) then
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Debugger,
+        procedure
+        begin
+          mHandler.Event(AKind, AOrigin);
+        end);
+    end;
+  end;
+end;
+
 class procedure TAtlasIdeDebugTrace.Hook;
 var
   mKind: TAtlasTraceKind;
@@ -250,26 +270,6 @@ begin
   if Length(FHandlers) = 0 then
   begin
     Unhook;
-  end;
-end;
-
-class procedure TAtlasIdeDebugTrace.Notify(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin);
-var
-  mHandlers: TArray<THandler>;
-  mHandler: THandler;
-begin
-  // Kopie: Ein Empfänger darf sich dabei abmelden.
-  mHandlers := Copy(FHandlers);
-  for mHandler in mHandlers do
-  begin
-    if Assigned(mHandler.Event) then
-    begin
-      TAtlasGuard.Run(TAtlasFeature.Debugger,
-        procedure
-        begin
-          mHandler.Event(AKind, AOrigin);
-        end);
-    end;
   end;
 end;
 

@@ -90,6 +90,8 @@ uses
   Shell.Linter.Index,
   Shell.Linter.Reports;
 
+{ TLinterCheck }
+
 constructor TLinterCheck.Create(const AOptions: TCommandLineOptions; const AConfigRoot: string);
 begin
   inherited Create;

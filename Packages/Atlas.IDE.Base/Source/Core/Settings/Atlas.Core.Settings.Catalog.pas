@@ -388,6 +388,8 @@ begin
   end;
 end;
 
+{ TAtlasCatalogEntry }
+
 function TAtlasCatalogEntry.Transferable: Boolean;
 begin
   Result := not State and not Machine;
@@ -475,9 +477,14 @@ begin
   inherited;
 end;
 
-class function TAtlasSettingsCatalog.CreateDefault: TAtlasSettingsCatalog;
+function TAtlasSettingsCatalog.GetCount: Integer;
 begin
-  Result := TAtlasSettingsCatalog.Create(AtlasPluginSchemaJson, AtlasSchemaJson);
+  Result := FEntries.Count;
+end;
+
+function TAtlasSettingsCatalog.GetEntry(AIndex: Integer): TAtlasCatalogEntry;
+begin
+  Result := FEntries[AIndex];
 end;
 
 procedure TAtlasSettingsCatalog.ReadPlugin(const AText: string);
@@ -506,6 +513,43 @@ begin
       if mPair.JsonValue is TJSONObject then
       begin
         FEntries.Add(PluginEntry(mPair.JsonString.Value, TJSONObject(mPair.JsonValue)));
+      end;
+    end;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+procedure TAtlasSettingsCatalog.ReadServer(const AText: string);
+var
+  mRoot, mProperties, mMembers, mSchema: TJSONObject;
+  mPair: TJSONPair;
+begin
+  FProjectPaths := nil;
+  mRoot := TAtlasJsonText.Parse(AText);
+  if mRoot = nil then
+  begin
+    Exit;
+  end;
+  try
+    if not mRoot.TryGetValue<TJSONObject>('properties', mProperties) then
+    begin
+      Exit;
+    end;
+    for mPair in mProperties do
+    begin
+      if not (mPair.JsonValue is TJSONObject) or (mPair.JsonString.Value = '$schema') then
+      begin
+        Continue;
+      end;
+      mSchema := TJSONObject(mPair.JsonValue);
+      if mSchema.TryGetValue<TJSONObject>('properties', mMembers) then
+      begin
+        AddServerMembers(mPair.JsonString.Value, mSchema, mMembers, TJsonRead.Text(mSchema, 'x-scope'));
+      end
+      else
+      begin
+        AddServerKey(mPair.JsonString.Value, TJsonRead.Text(mSchema, 'x-scope'), mSchema, nil);
       end;
     end;
   finally
@@ -613,51 +657,9 @@ begin
   end;
 end;
 
-procedure TAtlasSettingsCatalog.ReadServer(const AText: string);
-var
-  mRoot, mProperties, mMembers, mSchema: TJSONObject;
-  mPair: TJSONPair;
+class function TAtlasSettingsCatalog.CreateDefault: TAtlasSettingsCatalog;
 begin
-  FProjectPaths := nil;
-  mRoot := TAtlasJsonText.Parse(AText);
-  if mRoot = nil then
-  begin
-    Exit;
-  end;
-  try
-    if not mRoot.TryGetValue<TJSONObject>('properties', mProperties) then
-    begin
-      Exit;
-    end;
-    for mPair in mProperties do
-    begin
-      if not (mPair.JsonValue is TJSONObject) or (mPair.JsonString.Value = '$schema') then
-      begin
-        Continue;
-      end;
-      mSchema := TJSONObject(mPair.JsonValue);
-      if mSchema.TryGetValue<TJSONObject>('properties', mMembers) then
-      begin
-        AddServerMembers(mPair.JsonString.Value, mSchema, mMembers, TJsonRead.Text(mSchema, 'x-scope'));
-      end
-      else
-      begin
-        AddServerKey(mPair.JsonString.Value, TJsonRead.Text(mSchema, 'x-scope'), mSchema, nil);
-      end;
-    end;
-  finally
-    mRoot.Free;
-  end;
-end;
-
-function TAtlasSettingsCatalog.GetCount: Integer;
-begin
-  Result := FEntries.Count;
-end;
-
-function TAtlasSettingsCatalog.GetEntry(AIndex: Integer): TAtlasCatalogEntry;
-begin
-  Result := FEntries[AIndex];
+  Result := TAtlasSettingsCatalog.Create(AtlasPluginSchemaJson, AtlasSchemaJson);
 end;
 
 function TAtlasSettingsCatalog.IndexOfKey(const AKey: string): Integer;

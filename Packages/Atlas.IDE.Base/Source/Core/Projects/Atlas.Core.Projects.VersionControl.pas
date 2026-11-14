@@ -234,6 +234,8 @@ begin
   end;
 end;
 
+{ TAtlasVcsProjects }
+
 class function TAtlasVcsProjects.ProviderText(const AText: string): string;
 begin
   Result := LowerCase(Trim(AText));

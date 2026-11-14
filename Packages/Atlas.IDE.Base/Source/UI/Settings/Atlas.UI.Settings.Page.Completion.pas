@@ -95,6 +95,72 @@ uses
 
 { TAtlasSettingsCompletionPart }
 
+procedure TAtlasSettingsCompletionPart.Load(const ASettings: TAtlasPluginSettings);
+begin
+  FListWidth := ASettings.ListWidth;
+  FPanelWidth := ASettings.PanelWidth;
+  FRowsUpDown.Position := ASettings.VisibleRows;
+  FAutoWidth.OnClick := nil;
+  FAutoWidth.Checked := ASettings.ListWidth = 0;
+  FAutoWidth.OnClick := AutoWidthClick;
+  FListMode.Choice := Ord(TAtlasListModes.ModeOf(ASettings.CompletionListMode));
+  FListScope.Choice := Ord(TAtlasListModes.ScopeOf(ASettings.CompletionListScope));
+end;
+
+procedure TAtlasSettingsCompletionPart.Save(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.ListWidth := FListWidth;
+  ASettings.PanelWidth := FPanelWidth;
+  ASettings.VisibleRows := FRowsUpDown.Position;
+  if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
+  begin
+    ASettings.CompletionListMode := TAtlasListModes.cModeNames[TAtlasListMode(FListMode.Choice)];
+  end;
+  if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
+  begin
+    ASettings.CompletionListScope := TAtlasListModes.cScopeNames[TAtlasListScope(FListScope.Choice)];
+  end;
+end;
+
+procedure TAtlasSettingsCompletionPart.BindMarks;
+begin
+  FPage.Marks.Bind(FRows, ['VisibleRows']);
+  FPage.Marks.Bind(FListMode, ['CompletionListMode']);
+  FPage.Marks.Bind(FListScope, ['CompletionListScope']);
+end;
+
+procedure TAtlasSettingsCompletionPart.ResetHistoryClick(Sender: TObject);
+begin
+  if Assigned(FOnResetHistory) then
+  begin
+    FOnResetHistory();
+  end;
+  Allow(FResetHistory, False);
+end;
+
+procedure TAtlasSettingsCompletionPart.ResetWidthsClick(Sender: TObject);
+begin
+  FListWidth := TAtlasPluginSettings.Defaults.ListWidth;
+  FPanelWidth := TAtlasPluginSettings.Defaults.PanelWidth;
+  FAutoWidth.OnClick := nil;
+  FAutoWidth.Checked := FListWidth = 0;
+  FAutoWidth.OnClick := AutoWidthClick;
+  Allow(FResetWidths, False);
+end;
+
+procedure TAtlasSettingsCompletionPart.AutoWidthClick(Sender: TObject);
+begin
+  // Automatisch: gezogene Breite vergessen; aus: die zuletzt gezogene bzw. die Vorgabe.
+  if FAutoWidth.Checked then
+  begin
+    FListWidth := 0;
+  end
+  else if FListWidth = 0 then
+  begin
+    FListWidth := TAtlasPluginSettings.cMinListWidth + 160;
+  end;
+end;
+
 procedure TAtlasSettingsCompletionPart.Build;
 var
   mPanel: TWinControl;
@@ -165,73 +231,53 @@ begin
   FResetWidths.OnClick := ResetWidthsClick;
 end;
 
-procedure TAtlasSettingsCompletionPart.BindMarks;
-begin
-  FPage.Marks.Bind(FRows, ['VisibleRows']);
-  FPage.Marks.Bind(FListMode, ['CompletionListMode']);
-  FPage.Marks.Bind(FListScope, ['CompletionListScope']);
-end;
-
-procedure TAtlasSettingsCompletionPart.Load(const ASettings: TAtlasPluginSettings);
-begin
-  FListWidth := ASettings.ListWidth;
-  FPanelWidth := ASettings.PanelWidth;
-  FRowsUpDown.Position := ASettings.VisibleRows;
-  FAutoWidth.OnClick := nil;
-  FAutoWidth.Checked := ASettings.ListWidth = 0;
-  FAutoWidth.OnClick := AutoWidthClick;
-  FListMode.Choice := Ord(TAtlasListModes.ModeOf(ASettings.CompletionListMode));
-  FListScope.Choice := Ord(TAtlasListModes.ScopeOf(ASettings.CompletionListScope));
-end;
-
-procedure TAtlasSettingsCompletionPart.Save(var ASettings: TAtlasPluginSettings);
-begin
-  ASettings.ListWidth := FListWidth;
-  ASettings.PanelWidth := FPanelWidth;
-  ASettings.VisibleRows := FRowsUpDown.Position;
-  if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
-  begin
-    ASettings.CompletionListMode := TAtlasListModes.cModeNames[TAtlasListMode(FListMode.Choice)];
-  end;
-  if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
-  begin
-    ASettings.CompletionListScope := TAtlasListModes.cScopeNames[TAtlasListScope(FListScope.Choice)];
-  end;
-end;
-
-procedure TAtlasSettingsCompletionPart.AutoWidthClick(Sender: TObject);
-begin
-  // Automatisch: gezogene Breite vergessen; aus: die zuletzt gezogene bzw. die Vorgabe.
-  if FAutoWidth.Checked then
-  begin
-    FListWidth := 0;
-  end
-  else if FListWidth = 0 then
-  begin
-    FListWidth := TAtlasPluginSettings.cMinListWidth + 160;
-  end;
-end;
-
-procedure TAtlasSettingsCompletionPart.ResetHistoryClick(Sender: TObject);
-begin
-  if Assigned(FOnResetHistory) then
-  begin
-    FOnResetHistory();
-  end;
-  Allow(FResetHistory, False);
-end;
-
-procedure TAtlasSettingsCompletionPart.ResetWidthsClick(Sender: TObject);
-begin
-  FListWidth := TAtlasPluginSettings.Defaults.ListWidth;
-  FPanelWidth := TAtlasPluginSettings.Defaults.PanelWidth;
-  FAutoWidth.OnClick := nil;
-  FAutoWidth.Checked := FListWidth = 0;
-  FAutoWidth.OnClick := AutoWidthClick;
-  Allow(FResetWidths, False);
-end;
-
 { TAtlasSettingsFavoritesPart }
+
+procedure TAtlasSettingsFavoritesPart.SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
+begin
+  FOnFavorites := AValue;
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsFavoritesPart.WindowReady;
+begin
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsFavoritesPart.FavoritesRemoveClick(Sender: TObject);
+var
+  mKeys: TArray<string>;
+  mIndex: Integer;
+begin
+  if not Assigned(FOnRemoveFavorites) then
+  begin
+    Exit;
+  end;
+  mKeys := nil;
+  for mIndex := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
+  begin
+    if FFavoritesList.Selected[mIndex] then
+    begin
+      mKeys := mKeys + [FFavoriteKeys[mIndex]];
+    end;
+  end;
+  if Length(mKeys) = 0 then
+  begin
+    Exit;
+  end;
+  FOnRemoveFavorites(mKeys);
+  RefreshFavorites;
+end;
+
+procedure TAtlasSettingsFavoritesPart.FavoritesRemoveAllClick(Sender: TObject);
+begin
+  if not Assigned(FOnRemoveFavorites) or (Length(FFavoriteKeys) = 0) then
+  begin
+    Exit;
+  end;
+  FOnRemoveFavorites(Copy(FFavoriteKeys));
+  RefreshFavorites;
+end;
 
 procedure TAtlasSettingsFavoritesPart.Build;
 var
@@ -262,17 +308,6 @@ begin
   FFavoritesRemoveAll.OnClick := FavoritesRemoveAllClick;
   Attach(FFavoritesList.Parent, mFavorites);
   Attach(mPanel, mFavorites);
-end;
-
-procedure TAtlasSettingsFavoritesPart.WindowReady;
-begin
-  RefreshFavorites;
-end;
-
-procedure TAtlasSettingsFavoritesPart.SetOnFavorites(const AValue: TFunc<TArray<TAtlasFavorite>>);
-begin
-  FOnFavorites := AValue;
-  RefreshFavorites;
 end;
 
 procedure TAtlasSettingsFavoritesPart.RefreshFavorites;
@@ -311,41 +346,6 @@ begin
   Allow(FFavoritesList, mAny);
   Allow(FFavoritesRemove, mAny and Assigned(FOnRemoveFavorites));
   Allow(FFavoritesRemoveAll, mAny and Assigned(FOnRemoveFavorites));
-end;
-
-procedure TAtlasSettingsFavoritesPart.FavoritesRemoveClick(Sender: TObject);
-var
-  mKeys: TArray<string>;
-  mIndex: Integer;
-begin
-  if not Assigned(FOnRemoveFavorites) then
-  begin
-    Exit;
-  end;
-  mKeys := nil;
-  for mIndex := 0 to Min(FFavoritesList.Items.Count, Length(FFavoriteKeys)) - 1 do
-  begin
-    if FFavoritesList.Selected[mIndex] then
-    begin
-      mKeys := mKeys + [FFavoriteKeys[mIndex]];
-    end;
-  end;
-  if Length(mKeys) = 0 then
-  begin
-    Exit;
-  end;
-  FOnRemoveFavorites(mKeys);
-  RefreshFavorites;
-end;
-
-procedure TAtlasSettingsFavoritesPart.FavoritesRemoveAllClick(Sender: TObject);
-begin
-  if not Assigned(FOnRemoveFavorites) or (Length(FFavoriteKeys) = 0) then
-  begin
-    Exit;
-  end;
-  FOnRemoveFavorites(Copy(FFavoriteKeys));
-  RefreshFavorites;
 end;
 
 end.

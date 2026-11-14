@@ -291,6 +291,8 @@ begin
   end;
 end;
 
+{ TUnitLookup }
+
 constructor TUnitLookup.Create(const ASetup: TUnitLookupSetup);
 var
   mUnit: TProjectUnit;
@@ -328,6 +330,46 @@ begin
   FListings.Free;
   FLock.Free;
   inherited;
+end;
+
+function TUnitLookup.InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
+var
+  mKey, mFolder, mName: string;
+begin
+  // Die Ordnerlisten ändern sich nach dem ersten Lesen nicht: die Antwort je Unit merken statt sie für jeden
+  // uses-Eintrag über alle Ordner und Namespaces neu zu suchen (#1342).
+  mKey := LowerCase(AUnitName);
+  TMonitor.Enter(FLock);
+  try
+    if FFolderAnswers.TryGetValue(mKey, Result) then
+    begin
+      Exit;
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := False;
+  for mFolder in FProjectFolders do
+  begin
+    for mName in ANames do
+    begin
+      if InFolder(mFolder, mName) then
+      begin
+        Result := True;
+        Break;
+      end;
+    end;
+    if Result then
+    begin
+      Break;
+    end;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    FFolderAnswers.AddOrSetValue(mKey, Result);
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 function TUnitLookup.Listing(const AFolder: string): TDictionary<string, string>;
@@ -389,46 +431,6 @@ begin
     begin
       Result := Result + [mNamespace + '.' + mTarget];
     end;
-  end;
-end;
-
-function TUnitLookup.InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
-var
-  mKey, mFolder, mName: string;
-begin
-  // Die Ordnerlisten ändern sich nach dem ersten Lesen nicht: die Antwort je Unit merken statt sie für jeden
-  // uses-Eintrag über alle Ordner und Namespaces neu zu suchen (#1342).
-  mKey := LowerCase(AUnitName);
-  TMonitor.Enter(FLock);
-  try
-    if FFolderAnswers.TryGetValue(mKey, Result) then
-    begin
-      Exit;
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  Result := False;
-  for mFolder in FProjectFolders do
-  begin
-    for mName in ANames do
-    begin
-      if InFolder(mFolder, mName) then
-      begin
-        Result := True;
-        Break;
-      end;
-    end;
-    if Result then
-    begin
-      Break;
-    end;
-  end;
-  TMonitor.Enter(FLock);
-  try
-    FFolderAnswers.AddOrSetValue(mKey, Result);
-  finally
-    TMonitor.Exit(FLock);
   end;
 end;
 
@@ -502,20 +504,6 @@ begin
   end;
 end;
 
-function TUnitLookup.InFolderAny(const AFolder: string; const ANames: TArray<string>): Boolean;
-var
-  mName: string;
-begin
-  Result := False;
-  for mName in ANames do
-  begin
-    if InFolder(AFolder, mName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 function TUnitLookup.FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
 var
   mNames: TArray<string>;
@@ -531,6 +519,28 @@ begin
   begin
     AUnsure := True;
   end;
+end;
+
+function TUnitLookup.FindInAtlas(const AUnitName: string): Boolean;
+var
+  mName, mFolder: string;
+begin
+  Result := True;
+  for mName in Candidates(AUnitName) do
+  begin
+    if Assigned(FSetup.IndexKnows) and FSetup.IndexKnows(mName) then
+    begin
+      Exit;
+    end;
+    for mFolder in FSetup.BrowsingPaths do
+    begin
+      if InFolder(mFolder, mName) then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 function TUnitLookup.BuiltByGroup(const ANames: TArray<string>): Boolean;
@@ -557,23 +567,21 @@ begin
   end;
 end;
 
-function TUnitLookup.FindInAtlas(const AUnitName: string): Boolean;
+function TUnitLookup.PackageInGroup(const APackage: string): Boolean;
 var
-  mName, mFolder: string;
+  mOutputs: TArray<TUnitLookupGroupOutput>;
+  mOutput: TUnitLookupGroupOutput;
 begin
-  Result := True;
-  for mName in Candidates(AUnitName) do
+  mOutputs := FSetup.GroupOutputs;
+  if Assigned(FSetup.GroupOutputsOf) then
   begin
-    if Assigned(FSetup.IndexKnows) and FSetup.IndexKnows(mName) then
+    mOutputs := mOutputs + FSetup.GroupOutputsOf();
+  end;
+  for mOutput in mOutputs do
+  begin
+    if (mOutput.ProjectName <> '') and SameText(mOutput.ProjectName, APackage) then
     begin
-      Exit;
-    end;
-    for mFolder in FSetup.BrowsingPaths do
-    begin
-      if InFolder(mFolder, mName) then
-      begin
-        Exit;
-      end;
+      Exit(True);
     end;
   end;
   Result := False;
@@ -603,6 +611,37 @@ begin
   if not TProjectPaths.IsAbsolute(Result) and (AFromFile <> '') then
   begin
     Result := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), Result);
+  end;
+end;
+
+function TUnitLookup.InFolderAny(const AFolder: string; const ANames: TArray<string>): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames do
+  begin
+    if InFolder(AFolder, mName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TUnitLookup.ExistsInFileFolders(const AFileName, AFromFile: string): Boolean;
+var
+  mFolder: string;
+begin
+  Result := (AFromFile <> '') and FSetup.FileExists(TProjectPaths.Normalize(
+    TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), AFileName)));
+  for mFolder in FFileFolders do
+  begin
+    if Result then
+    begin
+      Break;
+    end;
+    Result := not HasMacro(mFolder) and
+      FSetup.FileExists(TProjectPaths.Normalize(TProjectPaths.Combine(mFolder, AFileName)));
   end;
 end;
 
@@ -636,26 +675,6 @@ begin
   end;
 end;
 
-function TUnitLookup.PackageInGroup(const APackage: string): Boolean;
-var
-  mOutputs: TArray<TUnitLookupGroupOutput>;
-  mOutput: TUnitLookupGroupOutput;
-begin
-  mOutputs := FSetup.GroupOutputs;
-  if Assigned(FSetup.GroupOutputsOf) then
-  begin
-    mOutputs := mOutputs + FSetup.GroupOutputsOf();
-  end;
-  for mOutput in mOutputs do
-  begin
-    if (mOutput.ProjectName <> '') and SameText(mOutput.ProjectName, APackage) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 function TUnitLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
 begin
   // Ein Package derselben Projektgruppe entsteht beim Bauen der Gruppe, auch wenn seine .dcp noch fehlt.
@@ -672,23 +691,6 @@ begin
     Exit(TRuleUnitAnswer.Found);
   end;
   Result := TRuleUnitAnswer.Missing;
-end;
-
-function TUnitLookup.ExistsInFileFolders(const AFileName, AFromFile: string): Boolean;
-var
-  mFolder: string;
-begin
-  Result := (AFromFile <> '') and FSetup.FileExists(TProjectPaths.Normalize(
-    TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), AFileName)));
-  for mFolder in FFileFolders do
-  begin
-    if Result then
-    begin
-      Break;
-    end;
-    Result := not HasMacro(mFolder) and
-      FSetup.FileExists(TProjectPaths.Normalize(TProjectPaths.Combine(mFolder, AFileName)));
-  end;
 end;
 
 function TUnitLookup.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
@@ -834,16 +836,16 @@ begin
   end;
 end;
 
-class function TUnitLookup.DcuOutputOf(const AProject: TProjectInfo): string;
-begin
-  Result := DcuOutput(AProject);
-end;
-
 function TUnitLookup.ReadProject(out AFileName, AText: string): Boolean;
 begin
   AFileName := FSetup.Project.FileName;
   AText := '';
   Result := (AFileName <> '') and Assigned(FSetup.ReadText) and FSetup.ReadText(AFileName, AText);
+end;
+
+class function TUnitLookup.DcuOutputOf(const AProject: TProjectInfo): string;
+begin
+  Result := DcuOutput(AProject);
 end;
 
 end.

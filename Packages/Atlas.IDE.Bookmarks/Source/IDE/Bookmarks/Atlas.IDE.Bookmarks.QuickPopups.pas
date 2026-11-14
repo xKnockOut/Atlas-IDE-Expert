@@ -201,6 +201,32 @@ begin
   AParent.Add(Result);
 end;
 
+procedure TAtlasIdeQuickMenu.MenuClick(Sender: TObject);
+var
+  mCommand, mLine: Integer;
+  mFileName: string;
+begin
+  mCommand := TMenuItem(Sender).Tag;
+  mFileName := FFileName;
+  mLine := FLine;
+  TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
+    procedure
+    begin
+      case mCommand of
+        1..TAtlasQuickBookmarks.cMaxNumber:
+          TAtlasIdeQuickBookmarks.ColumnAssign(mFileName, mLine, mCommand);
+        cMenuName:
+          TAtlasIdeQuickBookmarks.ColumnName(mFileName, mLine);
+        cMenuRemove:
+          TAtlasIdeQuickBookmarks.ColumnRemove(mFileName, mLine);
+        cMenuRemoveFile:
+          TAtlasIdeQuickBookmarks.ColumnRemoveFile(mFileName);
+        cMenuWindow:
+          TAtlasIdeBookmarks.ShowWindow;
+      end;
+    end);
+end;
+
 procedure TAtlasIdeQuickMenu.Show(const AFileName: string; ALine: Integer; const AMarks: TArray<TAtlasBookmark>;
   const APoint: TPoint);
 var
@@ -243,32 +269,6 @@ begin
   AddItem(FMenu.Items, '-', -1).OnClick := nil;
   AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuWindow), cMenuWindow);
   FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasIdeQuickMenu.MenuClick(Sender: TObject);
-var
-  mCommand, mLine: Integer;
-  mFileName: string;
-begin
-  mCommand := TMenuItem(Sender).Tag;
-  mFileName := FFileName;
-  mLine := FLine;
-  TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-    procedure
-    begin
-      case mCommand of
-        1..TAtlasQuickBookmarks.cMaxNumber:
-          TAtlasIdeQuickBookmarks.ColumnAssign(mFileName, mLine, mCommand);
-        cMenuName:
-          TAtlasIdeQuickBookmarks.ColumnName(mFileName, mLine);
-        cMenuRemove:
-          TAtlasIdeQuickBookmarks.ColumnRemove(mFileName, mLine);
-        cMenuRemoveFile:
-          TAtlasIdeQuickBookmarks.ColumnRemoveFile(mFileName);
-        cMenuWindow:
-          TAtlasIdeBookmarks.ShowWindow;
-      end;
-    end);
 end;
 
 end.

@@ -575,38 +575,6 @@ begin
   inherited;
 end;
 
-function TSiteAnalysis.Analyze(out AReason: string): Boolean;
-begin
-  AReason := LocateReason;
-  if AReason = '' then
-  begin
-    AReason := ContentReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := ClassReason;
-  end;
-  if AReason = '' then
-  begin
-    AReason := ParameterReason;
-  end;
-  if AReason = '' then
-  begin
-    FSite.Cache := TLocalsCache.Create(FSite.Input.Text, FSite.Input.Tree);
-    AReason := CollectCaptured;
-  end;
-  if AReason = '' then
-  begin
-    ClassifyUse;
-    AReason := ChooseForm;
-  end;
-  Result := AReason = '';
-  if Result then
-  begin
-    FSite.Suggested := SuggestName;
-  end;
-end;
-
 /// <summary>Anonyme Methode an der Stelle und äußere Routine.</summary>
 function TSiteAnalysis.LocateReason: string;
 var
@@ -1092,6 +1060,38 @@ begin
   end;
 end;
 
+function TSiteAnalysis.Analyze(out AReason: string): Boolean;
+begin
+  AReason := LocateReason;
+  if AReason = '' then
+  begin
+    AReason := ContentReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := ClassReason;
+  end;
+  if AReason = '' then
+  begin
+    AReason := ParameterReason;
+  end;
+  if AReason = '' then
+  begin
+    FSite.Cache := TLocalsCache.Create(FSite.Input.Text, FSite.Input.Tree);
+    AReason := CollectCaptured;
+  end;
+  if AReason = '' then
+  begin
+    ClassifyUse;
+    AReason := ChooseForm;
+  end;
+  Result := AReason = '';
+  if Result then
+  begin
+    FSite.Suggested := SuggestName;
+  end;
+end;
+
 { TSiteBuilder }
 
 constructor TSiteBuilder.Create(const ASite: TAnonymousSite; const AName: string);
@@ -1100,55 +1100,6 @@ begin
   FSite := ASite;
   FName := AName;
   FLineBreak := TTextLines.LineBreakOf(ASite.Input.Text);
-end;
-
-function TSiteBuilder.Build(ACheckName: Boolean; out AResult: TAnonymousResult; out AReason: string): Boolean;
-var
-  mMoved: string;
-begin
-  AResult := Default(TAnonymousResult);
-  AReason := '';
-  if ACheckName then
-  begin
-    AReason := NameReason;
-  end;
-  FParameters := FSite.Parameters;
-  if FSite.Form = TAnonymousForm.Forwarding then
-  begin
-    AddForwardParameters;
-  end;
-  if FSite.Form = TAnonymousForm.Fields then
-  begin
-    NameFields;
-  end;
-  if (AReason <> '') or not MethodText(mMoved, AReason) then
-  begin
-    Exit(False);
-  end;
-  FEdits := nil;
-  // Felder vor der Anweisung füllen.
-  if FSite.Form = TAnonymousForm.Fields then
-  begin
-    AddFieldAssignments;
-  end;
-  FEdits := FEdits + [TTextEdit.Create(TTextRange.Create(FSite.Anonymous.StartPos, FSite.Anonymous.EndPos),
-    CallSite)];
-  if FSite.IsMethod then
-  begin
-    AReason := AddMethodEdits(mMoved);
-  end
-  else
-  begin
-    AddRoutineEdit(mMoved);
-  end;
-  Result := AReason = '';
-  if Result then
-  begin
-    AResult.Edits := FEdits;
-    AResult.Form := FSite.Form;
-    AResult.Preview := Preview;
-    AResult.Warnings := Warnings;
-  end;
 end;
 
 function TSiteBuilder.NameReason: string;
@@ -1591,6 +1542,55 @@ begin
   end;
 end;
 
+function TSiteBuilder.Build(ACheckName: Boolean; out AResult: TAnonymousResult; out AReason: string): Boolean;
+var
+  mMoved: string;
+begin
+  AResult := Default(TAnonymousResult);
+  AReason := '';
+  if ACheckName then
+  begin
+    AReason := NameReason;
+  end;
+  FParameters := FSite.Parameters;
+  if FSite.Form = TAnonymousForm.Forwarding then
+  begin
+    AddForwardParameters;
+  end;
+  if FSite.Form = TAnonymousForm.Fields then
+  begin
+    NameFields;
+  end;
+  if (AReason <> '') or not MethodText(mMoved, AReason) then
+  begin
+    Exit(False);
+  end;
+  FEdits := nil;
+  // Felder vor der Anweisung füllen.
+  if FSite.Form = TAnonymousForm.Fields then
+  begin
+    AddFieldAssignments;
+  end;
+  FEdits := FEdits + [TTextEdit.Create(TTextRange.Create(FSite.Anonymous.StartPos, FSite.Anonymous.EndPos),
+    CallSite)];
+  if FSite.IsMethod then
+  begin
+    AReason := AddMethodEdits(mMoved);
+  end
+  else
+  begin
+    AddRoutineEdit(mMoved);
+  end;
+  Result := AReason = '';
+  if Result then
+  begin
+    AResult.Edits := FEdits;
+    AResult.Form := FSite.Form;
+    AResult.Preview := Preview;
+    AResult.Warnings := Warnings;
+  end;
+end;
+
 { TAnonymousMethods }
 
 class function TAnonymousMethods.ToMethodTitle: string;
@@ -1608,26 +1608,16 @@ begin
   Result := Atlas.Common.Editing.AnonymousMethods.Shared.EmbedTitle;
 end;
 
-class function TAnonymousMethods.KindOfTypeText(const ATypeText: string): TProcTypeKind;
+class function TAnonymousMethods.Embed(const AInput: TAnonymousInput; out AAction: TCodeAction;
+  out AReason: string): Boolean;
 var
-  mName: string;
+  mEmbedding: TAnonymousEmbedding;
 begin
-  mName := Trim(ATypeText);
-  if StartsText('reference ', mName) then
-  begin
-    Result := TProcTypeKind.Reference;
-  end
-  else if ContainsText(mName, ' of object') then
-  begin
-    Result := TProcTypeKind.MethodPointer;
-  end
-  else if StartsText('procedure', mName) or StartsText('function', mName) then
-  begin
-    Result := TProcTypeKind.Plain;
-  end
-  else
-  begin
-    Result := KindOfTypeName(mName);
+  mEmbedding := TAnonymousEmbedding.Create(AInput);
+  try
+    Result := mEmbedding.Run(AAction, AReason);
+  finally
+    mEmbedding.Free;
   end;
 end;
 
@@ -1681,16 +1671,26 @@ begin
   end;
 end;
 
-class function TAnonymousMethods.Embed(const AInput: TAnonymousInput; out AAction: TCodeAction;
-  out AReason: string): Boolean;
+class function TAnonymousMethods.KindOfTypeText(const ATypeText: string): TProcTypeKind;
 var
-  mEmbedding: TAnonymousEmbedding;
+  mName: string;
 begin
-  mEmbedding := TAnonymousEmbedding.Create(AInput);
-  try
-    Result := mEmbedding.Run(AAction, AReason);
-  finally
-    mEmbedding.Free;
+  mName := Trim(ATypeText);
+  if StartsText('reference ', mName) then
+  begin
+    Result := TProcTypeKind.Reference;
+  end
+  else if ContainsText(mName, ' of object') then
+  begin
+    Result := TProcTypeKind.MethodPointer;
+  end
+  else if StartsText('procedure', mName) or StartsText('function', mName) then
+  begin
+    Result := TProcTypeKind.Plain;
+  end
+  else
+  begin
+    Result := KindOfTypeName(mName);
   end;
 end;
 

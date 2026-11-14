@@ -116,6 +116,8 @@ type
     Character: Integer;
   end;
 
+{ TUsagesKeys }
+
 function TUsagesKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
   mSettings: TAtlasPluginSettings;
@@ -167,6 +169,8 @@ type
     destructor Destroy; override;
     function Lines(const AFileName: string): TArray<string>;
   end;
+
+{ TLineCache }
 
 constructor TLineCache.Create;
 begin
@@ -344,6 +348,43 @@ end;
 
 { TAtlasIdeDesignerUsages }
 
+class procedure TAtlasIdeDesignerUsages.Say(const AText: string);
+begin
+  TAtlasGuard.Log('Verwendungen im Code: ' + AText);
+  if Assigned(FOnMessage) then
+  begin
+    FOnMessage(AText);
+  end;
+end;
+
+class procedure TAtlasIdeDesignerUsages.ClearStatus;
+begin
+  if FShown then
+  begin
+    TAtlasIdeHost.SetStatusField(cStatusField, '', '', nil);
+    FShown := False;
+  end;
+  FWatched := '';
+  FAsked := '';
+  Inc(FGeneration);
+end;
+
+class procedure TAtlasIdeDesignerUsages.UpdateKeys(const ASettings: TAtlasPluginSettings);
+begin
+  if FKeys = nil then
+  begin
+    Exit;
+  end;
+  if ASettings.DesignerUsages and (ASettings.DesignerUsagesKey <> 0) then
+  begin
+    TAtlasKeyHook.Add(FKeys);
+  end
+  else
+  begin
+    TAtlasKeyHook.Remove(FKeys);
+  end;
+end;
+
 class procedure TAtlasIdeDesignerUsages.Install(const AScopeOf: TFunc<IAtlasModuleScope>;
   const AOnMessage: TProc<string>);
 begin
@@ -363,34 +404,6 @@ begin
   TAtlasIdeResultsWindow.ReleaseItems(cOwner);
   FScopeOf := nil;
   FOnMessage := nil;
-end;
-
-class procedure TAtlasIdeDesignerUsages.Say(const AText: string);
-begin
-  TAtlasGuard.Log('Verwendungen im Code: ' + AText);
-  if Assigned(FOnMessage) then
-  begin
-    FOnMessage(AText);
-  end;
-end;
-
-class function TAtlasIdeDesignerUsages.Available(const ASettings: TAtlasPluginSettings): Boolean;
-begin
-  Result := ASettings.DesignerUsages;
-end;
-
-class function TAtlasIdeDesignerUsages.Button: TAtlasDesignerButton;
-var
-  mHint: string;
-  mKey: Integer;
-begin
-  mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesHint);
-  mKey := TAtlasIdeSettings.Current.DesignerUsagesKey;
-  if mKey <> 0 then
-  begin
-    mHint := mHint + ' (' + ShortCutToText(TShortCut(mKey)) + ')';
-  end;
-  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Usages, mHint);
 end;
 
 /// <summary>Felddeklarationen der Auswahl; ANames listet die Komponenten mit Feld. Ohne Feld eine Meldung.</summary>
@@ -462,40 +475,9 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeDesignerUsages.Run;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mSession: TLspSession;
-  mCache: TLineCache;
-  mTargets: TArray<TTarget>;
-  mUsages: TArray<TAtlasUsage>;
-  mNames: string;
+class function TAtlasIdeDesignerUsages.Available(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  if not TAtlasDesignerAccess.Current(mEditor, mRoot) or
-    (Length(TAtlasDesignerAccess.Selection(mEditor, mRoot)) = 0) then
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNoSelection));
-    Exit;
-  end;
-  mSession := TAtlasIdeHost.ActiveSession;
-  if mSession = nil then
-  begin
-    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNoServer));
-    Exit;
-  end;
-  mCache := TLineCache.Create;
-  try
-    mTargets := TargetsOf(mEditor, mRoot, mCache, mNames);
-    if (mTargets <> nil) and QueryUsages(mSession, mTargets, mCache, mUsages) then
-    begin
-      TAtlasIdeResultsWindow.ShowItems(UsageList(mNames, mUsages,
-        EventGroup(mTargets, mRoot, TAtlasDesignerAccess.DesignerOf(mEditor), mCache),
-        BindingGroup(mTargets, mRoot, mCache)));
-    end;
-  finally
-    mCache.Free;
-  end;
+  Result := ASettings.DesignerUsages;
 end;
 
 /// <summary>„1 Verwendung, 2 Ereignisse, 3 Bindungen“ bzw. „keine Verwendung, keine Ereignisse“.</summary>
@@ -534,18 +516,6 @@ end;
 procedure StatusClicked(APoint: TPoint);
 begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, TAtlasIdeDesignerUsages.Run);
-end;
-
-class procedure TAtlasIdeDesignerUsages.ClearStatus;
-begin
-  if FShown then
-  begin
-    TAtlasIdeHost.SetStatusField(cStatusField, '', '', nil);
-    FShown := False;
-  end;
-  FWatched := '';
-  FAsked := '';
-  Inc(FGeneration);
 end;
 
 class procedure TAtlasIdeDesignerUsages.ShowCount(const AName: string; const AJson: string;
@@ -592,6 +562,20 @@ begin
   FShown := True;
 end;
 
+class function TAtlasIdeDesignerUsages.Button: TAtlasDesignerButton;
+var
+  mHint: string;
+  mKey: Integer;
+begin
+  mHint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesHint);
+  mKey := TAtlasIdeSettings.Current.DesignerUsagesKey;
+  if mKey <> 0 then
+  begin
+    mHint := mHint + ' (' + ShortCutToText(TShortCut(mKey)) + ')';
+  end;
+  Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Usages, mHint);
+end;
+
 /// <summary>Parameter für textDocument/references an der Felddeklaration.</summary>
 function ReferenceParams(const ATarget: TTarget): string;
 var
@@ -612,22 +596,6 @@ begin
     Result := mParams.ToJSON([]);
   finally
     mParams.Free;
-  end;
-end;
-
-class procedure TAtlasIdeDesignerUsages.UpdateKeys(const ASettings: TAtlasPluginSettings);
-begin
-  if FKeys = nil then
-  begin
-    Exit;
-  end;
-  if ASettings.DesignerUsages and (ASettings.DesignerUsagesKey <> 0) then
-  begin
-    TAtlasKeyHook.Add(FKeys);
-  end
-  else
-  begin
-    TAtlasKeyHook.Remove(FKeys);
   end;
 end;
 
@@ -671,6 +639,42 @@ begin
     // Ohne laufenden Server kein Zähler; der Befehl startet ihn. Bis zum nächsten Auswahlwechsel nicht erneut.
     TAtlasIdeHost.SetStatusField(cStatusField, '', '', nil);
     FShown := False;
+  end;
+end;
+
+class procedure TAtlasIdeDesignerUsages.Run;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mSession: TLspSession;
+  mCache: TLineCache;
+  mTargets: TArray<TTarget>;
+  mUsages: TArray<TAtlasUsage>;
+  mNames: string;
+begin
+  if not TAtlasDesignerAccess.Current(mEditor, mRoot) or
+    (Length(TAtlasDesignerAccess.Selection(mEditor, mRoot)) = 0) then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNoSelection));
+    Exit;
+  end;
+  mSession := TAtlasIdeHost.ActiveSession;
+  if mSession = nil then
+  begin
+    Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNoServer));
+    Exit;
+  end;
+  mCache := TLineCache.Create;
+  try
+    mTargets := TargetsOf(mEditor, mRoot, mCache, mNames);
+    if (mTargets <> nil) and QueryUsages(mSession, mTargets, mCache, mUsages) then
+    begin
+      TAtlasIdeResultsWindow.ShowItems(UsageList(mNames, mUsages,
+        EventGroup(mTargets, mRoot, TAtlasDesignerAccess.DesignerOf(mEditor), mCache),
+        BindingGroup(mTargets, mRoot, mCache)));
+    end;
+  finally
+    mCache.Free;
   end;
 end;
 

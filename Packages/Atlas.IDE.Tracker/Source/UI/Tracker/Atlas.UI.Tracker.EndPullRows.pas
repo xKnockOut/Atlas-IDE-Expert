@@ -125,18 +125,6 @@ begin
   end;
 end;
 
-function TAtlasEndPullRows.Px(AValue96: Integer): Integer;
-begin
-  Result := AValue96 * FDialog.CurrentPPI div cDesignPpi;
-end;
-
-/// <summary>Zeile mit Beschriftung links.</summary>
-function TAtlasEndPullRows.AddCaptionRow(AHeight96: Integer; const ACaption: string): TPanel;
-begin
-  Result := FDialog.AddRow(AHeight96);
-  FDialog.AddLabel(Result, ACaption).Top := Px(cLabelTop);
-end;
-
 procedure TAtlasEndPullRows.AddRows;
 var
   mRow: TPanel;
@@ -202,14 +190,11 @@ begin
   Lock(False, False);
 end;
 
-/// <summary>Ein offener Pull Request steht in „Von → nach“.</summary>
-procedure TAtlasEndPullRows.ShowOpen;
+/// <summary>Zeile mit Beschriftung links.</summary>
+function TAtlasEndPullRows.AddCaptionRow(AHeight96: Integer; const ACaption: string): TPanel;
 begin
-  if FOffer.Existing <> '' then
-  begin
-    FParts.Route.Caption := FParts.Route.Caption + '   ' +
-      TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.EndPullExisting, [FOffer.Existing]);
-  end;
+  Result := FDialog.AddRow(AHeight96);
+  FDialog.AddLabel(Result, ACaption).Top := Px(cLabelTop);
 end;
 
 procedure TAtlasEndPullRows.CheckClick(Sender: TObject);
@@ -224,6 +209,21 @@ end;
 procedure TAtlasEndPullRows.TitleChange(Sender: TObject);
 begin
   FTitleTouched := FParts.Title.Focused;
+end;
+
+/// <summary>Ein offener Pull Request steht in „Von → nach“.</summary>
+procedure TAtlasEndPullRows.ShowOpen;
+begin
+  if FOffer.Existing <> '' then
+  begin
+    FParts.Route.Caption := FParts.Route.Caption + '   ' +
+      TAtlasGitHubStrings.Fmt(TAtlasGitHubTextId.EndPullExisting, [FOffer.Existing]);
+  end;
+end;
+
+function TAtlasEndPullRows.Px(AValue96: Integer): Integer;
+begin
+  Result := AValue96 * FDialog.CurrentPPI div cDesignPpi;
 end;
 
 function TAtlasEndPullRows.Wanted: Boolean;

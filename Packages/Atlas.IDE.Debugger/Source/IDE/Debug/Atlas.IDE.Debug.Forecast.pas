@@ -87,6 +87,13 @@ begin
   inherited Destroy;
 end;
 
+procedure TAtlasIdeDebugForecast.OffClick(Sender: TObject);
+begin
+  FOff := True;
+  Clear;
+  TAtlasDebugLineEnd.Invalidate;
+end;
+
 class function TAtlasIdeDebugForecast.Enabled: Boolean;
 var
   mSettings: TAtlasPluginSettings;
@@ -164,13 +171,6 @@ begin
     FMenu.Items.Add(mItem);
   end;
   FMenu.Popup(APoint.X, APoint.Y);
-end;
-
-procedure TAtlasIdeDebugForecast.OffClick(Sender: TObject);
-begin
-  FOff := True;
-  Clear;
-  TAtlasDebugLineEnd.Invalidate;
 end;
 
 end.

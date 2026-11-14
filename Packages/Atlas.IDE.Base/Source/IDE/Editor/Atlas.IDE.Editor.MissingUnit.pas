@@ -94,6 +94,8 @@ begin
   end;
 end;
 
+{ TAtlasIdeMissingUnit }
+
 class procedure TAtlasIdeMissingUnit.AddSearchPath(const AArgumentsJson: string; const AMessage: TProc<string>);
 var
   mRequest: TAtlasSearchPathRequest;

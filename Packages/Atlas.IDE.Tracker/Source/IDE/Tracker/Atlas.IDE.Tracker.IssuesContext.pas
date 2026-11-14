@@ -284,31 +284,6 @@ end;
 
 { TAtlasIdeIssuesTargets }
 
-class function TAtlasIdeIssuesTargets.IssuesOptions(APreviewAvailable: Boolean): TAtlasIssuesOptions;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(mSettings.IssuesStart),
-    mSettings.IssuesBranchPattern, mSettings.IssuesBranchBase,
-    mSettings.IssuesCommitPattern);
-  Result.Preview := mSettings.IssuesPreview and APreviewAvailable;
-end;
-
-class function TAtlasIdeIssuesTargets.ConnectionTargets: TArray<TAtlasTrackerTarget>;
-var
-  mConnection: TAtlasTrackerConnection;
-begin
-  Result := nil;
-  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
-  begin
-    if mConnection.Target.Server <> '' then
-    begin
-      Result := Result + [mConnection.Target];
-    end;
-  end;
-end;
-
 class function TAtlasIdeIssuesTargets.Resolve(const AProject: string): TAtlasIssuesCachedTarget;
 var
   mTeam: TAtlasTeamSettings;
@@ -397,6 +372,31 @@ begin
   end;
 end;
 
+class function TAtlasIdeIssuesTargets.IssuesOptions(APreviewAvailable: Boolean): TAtlasIssuesOptions;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasIssuesOptions.Create(TAtlasMyIssues.StartOf(mSettings.IssuesStart),
+    mSettings.IssuesBranchPattern, mSettings.IssuesBranchBase,
+    mSettings.IssuesCommitPattern);
+  Result.Preview := mSettings.IssuesPreview and APreviewAvailable;
+end;
+
+class function TAtlasIdeIssuesTargets.ConnectionTargets: TArray<TAtlasTrackerTarget>;
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  Result := nil;
+  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
+  begin
+    if mConnection.Target.Server <> '' then
+    begin
+      Result := Result + [mConnection.Target];
+    end;
+  end;
+end;
+
 /// <summary>Aktives Projekt der IDE als Projektdatei; '' ohne bzw. wenn es nicht lesbar ist.</summary>
 function IdeProject: string;
 begin
@@ -437,6 +437,78 @@ begin
   FHeads.Stop;
   FHeads := nil;
   inherited;
+end;
+
+function TAtlasIdeIssuesSelection.CurrentProject: string;
+var
+  mKey, mProject: string;
+  mChoices: TArray<TAtlasTrackerChoice>;
+  mIndex: Integer;
+begin
+  Result := '';
+  if not FOwner.Started then
+  begin
+    Exit;
+  end;
+  // „Alle“ (#1928): die zuletzt bediente Gruppe, sonst die erste.
+  if AllMode then
+  begin
+    for mProject in Projects do
+    begin
+      if (Result = '') or SameText(mProject, FFocus) then
+      begin
+        Result := mProject;
+      end;
+    end;
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+  // Fest gewähltes Tracker-Projekt (#1927): Zustand und Auflösung über den Pfad seiner Zeile.
+  mKey := ChosenKey;
+  if (mKey <> '') and (mKey <> TAtlasTrackerProjects.cAllKey) then
+  begin
+    mChoices := Choices;
+    mIndex := TAtlasTrackerProjects.IndexOfChoice(mChoices, mKey);
+    if mIndex >= 0 then
+    begin
+      Exit(mChoices[mIndex].Match);
+    end;
+  end;
+  Result := AutomaticProject;
+end;
+
+function TAtlasIdeIssuesSelection.AutomaticProject: string;
+var
+  mProjects: TArray<TAtlasWelcomeProject>;
+  mProject: TAtlasWelcomeProject;
+  mActive: string;
+begin
+  Result := '';
+  if FOwner.Started and (FOwner.Welcome <> nil) then
+  begin
+    Result := FOwner.Welcome.Selected;
+  end;
+  if not FOwner.Started or (FOwner.Welcome = nil) or (Result <> '') then
+  begin
+    Exit;
+  end;
+  mProjects := FOwner.Welcome.Projects;
+  mActive := IdeProject;
+  Result := mActive;
+  for mProject in mProjects do
+  begin
+    if (mActive <> '') and (TAtlasProjectSummaries.NormalizedPath(mProject.Project) =
+      TAtlasProjectSummaries.NormalizedPath(mActive)) then
+    begin
+      Exit(mProject.Project);
+    end;
+  end;
+  if (mActive = '') and (Length(mProjects) > 0) then
+  begin
+    Result := mProjects[0].Project;
+  end;
 end;
 
 function TAtlasIdeIssuesSelection.Choices: TArray<TAtlasTrackerChoice>;
@@ -522,78 +594,6 @@ end;
 procedure TAtlasIdeIssuesSelection.Focus(const AProject: string);
 begin
   FFocus := AProject;
-end;
-
-function TAtlasIdeIssuesSelection.CurrentProject: string;
-var
-  mKey, mProject: string;
-  mChoices: TArray<TAtlasTrackerChoice>;
-  mIndex: Integer;
-begin
-  Result := '';
-  if not FOwner.Started then
-  begin
-    Exit;
-  end;
-  // „Alle“ (#1928): die zuletzt bediente Gruppe, sonst die erste.
-  if AllMode then
-  begin
-    for mProject in Projects do
-    begin
-      if (Result = '') or SameText(mProject, FFocus) then
-      begin
-        Result := mProject;
-      end;
-    end;
-    if Result <> '' then
-    begin
-      Exit;
-    end;
-  end;
-  // Fest gewähltes Tracker-Projekt (#1927): Zustand und Auflösung über den Pfad seiner Zeile.
-  mKey := ChosenKey;
-  if (mKey <> '') and (mKey <> TAtlasTrackerProjects.cAllKey) then
-  begin
-    mChoices := Choices;
-    mIndex := TAtlasTrackerProjects.IndexOfChoice(mChoices, mKey);
-    if mIndex >= 0 then
-    begin
-      Exit(mChoices[mIndex].Match);
-    end;
-  end;
-  Result := AutomaticProject;
-end;
-
-function TAtlasIdeIssuesSelection.AutomaticProject: string;
-var
-  mProjects: TArray<TAtlasWelcomeProject>;
-  mProject: TAtlasWelcomeProject;
-  mActive: string;
-begin
-  Result := '';
-  if FOwner.Started and (FOwner.Welcome <> nil) then
-  begin
-    Result := FOwner.Welcome.Selected;
-  end;
-  if not FOwner.Started or (FOwner.Welcome = nil) or (Result <> '') then
-  begin
-    Exit;
-  end;
-  mProjects := FOwner.Welcome.Projects;
-  mActive := IdeProject;
-  Result := mActive;
-  for mProject in mProjects do
-  begin
-    if (mActive <> '') and (TAtlasProjectSummaries.NormalizedPath(mProject.Project) =
-      TAtlasProjectSummaries.NormalizedPath(mActive)) then
-    begin
-      Exit(mProject.Project);
-    end;
-  end;
-  if (mActive = '') and (Length(mProjects) > 0) then
-  begin
-    Result := mProjects[0].Project;
-  end;
 end;
 
 function TAtlasIdeIssuesSelection.VcsKindOf(const AProject: string): TAtlasVcsKind;

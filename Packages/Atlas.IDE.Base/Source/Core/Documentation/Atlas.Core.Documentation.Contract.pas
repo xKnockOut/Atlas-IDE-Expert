@@ -182,17 +182,17 @@ end;
 
 { TAtlasDocRun }
 
-class function TAtlasDocRun.Create(AKind: TAtlasDocRunKind; const AText: string): TAtlasDocRun;
-begin
-  Result := Create(AKind, AText, '');
-end;
-
 class function TAtlasDocRun.Create(AKind: TAtlasDocRunKind; const AText, ATarget: string): TAtlasDocRun;
 begin
   Result := Default(TAtlasDocRun);
   Result.Kind := AKind;
   Result.Text := AText;
   Result.Target := ATarget;
+end;
+
+class function TAtlasDocRun.Create(AKind: TAtlasDocRunKind; const AText: string): TAtlasDocRun;
+begin
+  Result := Create(AKind, AText, '');
 end;
 
 function TAtlasDocRun.IsDelphiCode: Boolean;
@@ -269,6 +269,57 @@ begin
   end;
 end;
 
+class function TAtlasDoc.FromText(const AText: string): TAtlasDoc;
+var
+  mSection: TAtlasDocSection;
+  mLine: string;
+  mPending: TAtlasDocRunKind;
+  mHasPending: Boolean;
+  mLast: Integer;
+begin
+  Result := Default(TAtlasDoc);
+  if Trim(AText) = '' then
+  begin
+    Exit;
+  end;
+  mSection := Default(TAtlasDocSection);
+  mSection.Kind := TAtlasDocSectionKind.Summary;
+  mHasPending := False;
+  mPending := TAtlasDocRunKind.LineBreak;
+  for mLine in Trim(StringReplace(AText, #13#10, #10, [rfReplaceAll])).Split([#10]) do
+  begin
+    if Trim(mLine) = '' then
+    begin
+      mPending := TAtlasDocRunKind.Paragraph;
+      mHasPending := Length(mSection.Runs) > 0;
+      Continue;
+    end;
+    mLast := High(mSection.Runs);
+    // Eingerückte Zeilen (Code, Beispiele) als Codeblock mit Einrückung; aufeinanderfolgende in einem.
+    if mLine.StartsWith(' ') and (mLast >= 0) and (mSection.Runs[mLast].Kind = TAtlasDocRunKind.CodeBlock) and
+      (mPending = TAtlasDocRunKind.LineBreak) then
+    begin
+      mSection.Runs[mLast].Text := mSection.Runs[mLast].Text + #10 + TrimRight(mLine);
+      Continue;
+    end;
+    if mHasPending then
+    begin
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(mPending, '')];
+    end;
+    if mLine.StartsWith(' ') then
+    begin
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(mLine))];
+    end
+    else
+    begin
+      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.Text, TrimRight(mLine))];
+    end;
+    mHasPending := True;
+    mPending := TAtlasDocRunKind.LineBreak;
+  end;
+  Result.Sections := [mSection];
+end;
+
 class function TAtlasDoc.TryParseRunKind(const AName: string; out AKind: TAtlasDocRunKind): Boolean;
 var
   mKind: TAtlasDocRunKind;
@@ -276,21 +327,6 @@ begin
   for mKind := Low(TAtlasDocRunKind) to High(TAtlasDocRunKind) do
   begin
     if SameText(cRunKindNames[mKind], AName) then
-    begin
-      AKind := mKind;
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-class function TAtlasDoc.TryParseSectionKind(const AName: string; out AKind: TAtlasDocSectionKind): Boolean;
-var
-  mKind: TAtlasDocSectionKind;
-begin
-  for mKind := Low(TAtlasDocSectionKind) to High(TAtlasDocSectionKind) do
-  begin
-    if SameText(cSectionKindNames[mKind], AName) then
     begin
       AKind := mKind;
       Exit(True);
@@ -384,55 +420,19 @@ begin
   end;
 end;
 
-class function TAtlasDoc.FromText(const AText: string): TAtlasDoc;
+class function TAtlasDoc.TryParseSectionKind(const AName: string; out AKind: TAtlasDocSectionKind): Boolean;
 var
-  mSection: TAtlasDocSection;
-  mLine: string;
-  mPending: TAtlasDocRunKind;
-  mHasPending: Boolean;
-  mLast: Integer;
+  mKind: TAtlasDocSectionKind;
 begin
-  Result := Default(TAtlasDoc);
-  if Trim(AText) = '' then
+  for mKind := Low(TAtlasDocSectionKind) to High(TAtlasDocSectionKind) do
   begin
-    Exit;
+    if SameText(cSectionKindNames[mKind], AName) then
+    begin
+      AKind := mKind;
+      Exit(True);
+    end;
   end;
-  mSection := Default(TAtlasDocSection);
-  mSection.Kind := TAtlasDocSectionKind.Summary;
-  mHasPending := False;
-  mPending := TAtlasDocRunKind.LineBreak;
-  for mLine in Trim(StringReplace(AText, #13#10, #10, [rfReplaceAll])).Split([#10]) do
-  begin
-    if Trim(mLine) = '' then
-    begin
-      mPending := TAtlasDocRunKind.Paragraph;
-      mHasPending := Length(mSection.Runs) > 0;
-      Continue;
-    end;
-    mLast := High(mSection.Runs);
-    // Eingerückte Zeilen (Code, Beispiele) als Codeblock mit Einrückung; aufeinanderfolgende in einem.
-    if mLine.StartsWith(' ') and (mLast >= 0) and (mSection.Runs[mLast].Kind = TAtlasDocRunKind.CodeBlock) and
-      (mPending = TAtlasDocRunKind.LineBreak) then
-    begin
-      mSection.Runs[mLast].Text := mSection.Runs[mLast].Text + #10 + TrimRight(mLine);
-      Continue;
-    end;
-    if mHasPending then
-    begin
-      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(mPending, '')];
-    end;
-    if mLine.StartsWith(' ') then
-    begin
-      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.CodeBlock, TrimRight(mLine))];
-    end
-    else
-    begin
-      mSection.Runs := mSection.Runs + [TAtlasDocRun.Create(TAtlasDocRunKind.Text, TrimRight(mLine))];
-    end;
-    mHasPending := True;
-    mPending := TAtlasDocRunKind.LineBreak;
-  end;
-  Result.Sections := [mSection];
+  Result := False;
 end;
 
 { TAtlasDocDisplay }
@@ -440,30 +440,13 @@ end;
 const
   cExpandNames: array[TAtlasDocExpand] of string = ('collapsed', 'last', 'expanded');
 
+{ TAtlasDocDisplay }
+
 class function TAtlasDocDisplay.Create(AExpand: TAtlasDocExpand; AMaxLines: Integer): TAtlasDocDisplay;
 begin
   Result.Known := False;
   Result.Expand := AExpand;
   Result.MaxLines := EnsureRange(AMaxLines, 0, cMaxMaxLines);
-end;
-
-class function TAtlasDocDisplay.ExpandOf(const AName: string): TAtlasDocExpand;
-var
-  mExpand: TAtlasDocExpand;
-begin
-  for mExpand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
-  begin
-    if SameText(cExpandNames[mExpand], Trim(AName)) then
-    begin
-      Exit(mExpand);
-    end;
-  end;
-  Result := TAtlasDocExpand.Last;
-end;
-
-class function TAtlasDocDisplay.ExpandName(AExpand: TAtlasDocExpand): string;
-begin
-  Result := cExpandNames[AExpand];
 end;
 
 class function TAtlasDocDisplay.FromJson(const AValue: TJSONValue;
@@ -499,6 +482,25 @@ begin
   end;
   Result.MaxLines := EnsureRange(TJSONObject(AValue).GetValue<Integer>('maxLines', AFallback.MaxLines), 0,
     cMaxMaxLines);
+end;
+
+class function TAtlasDocDisplay.ExpandOf(const AName: string): TAtlasDocExpand;
+var
+  mExpand: TAtlasDocExpand;
+begin
+  for mExpand := Low(TAtlasDocExpand) to High(TAtlasDocExpand) do
+  begin
+    if SameText(cExpandNames[mExpand], Trim(AName)) then
+    begin
+      Exit(mExpand);
+    end;
+  end;
+  Result := TAtlasDocExpand.Last;
+end;
+
+class function TAtlasDocDisplay.ExpandName(AExpand: TAtlasDocExpand): string;
+begin
+  Result := cExpandNames[AExpand];
 end;
 
 { TAtlasDocParam }

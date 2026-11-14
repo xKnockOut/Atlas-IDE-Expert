@@ -263,73 +263,6 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeDebugInlineValues.Start(const ASession: TAtlasInlineValuesSessionFunc);
-begin
-  if FInstance = nil then
-  begin
-    FInstance := TAtlasIdeDebugInlineValues.Create(ASession);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
-  end;
-  TAtlasIdeDebugSession.Start;
-  // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
-  if TAtlasIdeDebugSession.StoppedThread <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-class procedure TAtlasIdeDebugInlineValues.Release;
-var
-  mInstance: TAtlasIdeDebugInlineValues;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  mInstance := FInstance;
-  FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
-  mInstance.Free;
-  Invalidate;
-end;
-
-class function TAtlasIdeDebugInlineValues.Started: Boolean;
-begin
-  Result := FInstance <> nil;
-end;
-
-class function TAtlasIdeDebugInlineValues.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
-begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugInlineValues;
-end;
-
-class procedure TAtlasIdeDebugInlineValues.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-procedure TAtlasIdeDebugInlineValues.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
-  end;
-end;
-
 procedure TAtlasIdeDebugInlineValues.Drop(AForget: Boolean);
 var
   mHad: Boolean;
@@ -362,19 +295,6 @@ begin
   end;
 end;
 
-procedure ReevaluateInlineValues;
-begin
-  if (TAtlasIdeDebugInlineValues.FInstance <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) then
-  begin
-    TAtlasIdeDebugInlineValues.FInstance.Stopped;
-  end;
-end;
-
-function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
-begin
-  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
-end;
-
 procedure TAtlasIdeDebugInlineValues.Stopped;
 begin
   Drop(False);
@@ -389,6 +309,41 @@ begin
   if ReadLocation then
   begin
     Ask;
+  end;
+end;
+
+procedure TAtlasIdeDebugInlineValues.Tick(Sender: TObject);
+begin
+  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
+  begin
+    FTimer.Enabled := False;
+    Exit;
+  end;
+  try
+    case FProgress.Phase of
+      TPhase.Location:
+        begin
+          FTimer.Enabled := False;
+          if not StillStopped then
+          begin
+            FProgress.Phase := TPhase.Idle;
+          end
+          else if ReadLocation then
+          begin
+            Ask;
+          end;
+        end;
+      TPhase.Evaluate:
+        EvaluateSlice;
+    else
+      FTimer.Enabled := False;
+    end;
+  except
+    on E: Exception do
+    begin
+      FTimer.Enabled := False;
+      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+    end;
   end;
 end;
 
@@ -525,41 +480,6 @@ begin
   EvaluateSlice;
 end;
 
-procedure TAtlasIdeDebugInlineValues.Tick(Sender: TObject);
-begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped then
-          begin
-            FProgress.Phase := TPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            Ask;
-          end;
-        end;
-      TPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeDebugInlineValues.EvaluateSlice;
 var
   mStartedAt: UInt64;
@@ -595,6 +515,14 @@ begin
   if mChanged then
   begin
     Invalidate;
+  end;
+end;
+
+procedure ReevaluateInlineValues;
+begin
+  if (TAtlasIdeDebugInlineValues.FInstance <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) then
+  begin
+    TAtlasIdeDebugInlineValues.FInstance.Stopped;
   end;
 end;
 
@@ -666,6 +594,20 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasIdeDebugInlineValues.EndInternal;
+begin
+  if FInternal then
+  begin
+    FInternal := False;
+    TAtlasIdeDebugSession.EndInternal;
+  end;
+end;
+
+function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
+begin
+  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+end;
+
 procedure TAtlasIdeDebugInlineValues.ReapWorkers(AWait: Boolean);
 var
   mIndex: Integer;
@@ -683,6 +625,64 @@ begin
       FWorkers.Delete(mIndex);
     end;
   end;
+end;
+
+class procedure TAtlasIdeDebugInlineValues.Invalidate;
+var
+  mServices: INTACodeEditorServices;
+begin
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+end;
+
+class procedure TAtlasIdeDebugInlineValues.Start(const ASession: TAtlasInlineValuesSessionFunc);
+begin
+  if FInstance = nil then
+  begin
+    FInstance := TAtlasIdeDebugInlineValues.Create(ASession);
+    FInstance.FListener := TListener.Create;
+    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+  end;
+  TAtlasIdeDebugSession.Start;
+  // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
+  if TAtlasIdeDebugSession.StoppedThread <> nil then
+  begin
+    FInstance.Stopped;
+  end;
+end;
+
+class procedure TAtlasIdeDebugInlineValues.Release;
+var
+  mInstance: TAtlasIdeDebugInlineValues;
+begin
+  if FInstance = nil then
+  begin
+    Exit;
+  end;
+  mInstance := FInstance;
+  FInstance := nil;
+  if mInstance.FListener <> nil then
+  begin
+    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
+  end;
+  mInstance.FListener := nil;
+  mInstance.Free;
+  Invalidate;
+end;
+
+class function TAtlasIdeDebugInlineValues.Started: Boolean;
+begin
+  Result := FInstance <> nil;
+end;
+
+class function TAtlasIdeDebugInlineValues.Enabled: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugInlineValues;
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>

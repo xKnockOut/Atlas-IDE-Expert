@@ -393,28 +393,6 @@ begin
   Result := ExpectStrings(ANode, AName, cTexts[TReaderText.MustBeAListOf].Fmt([AName]), AItems);
 end;
 
-function TConfigurationReader.ExpectStrings(ANode: TJsonNode; const AName, AMessage: string;
-  out AItems: TArray<string>): Boolean;
-var
-  mIndex: Integer;
-  mValue: string;
-begin
-  AItems := nil;
-  Result := ANode.Kind = TJsonKind.Array_;
-  if not Result then
-  begin
-    ReportNode(ANode, AMessage);
-    Exit;
-  end;
-  for mIndex := 0 to ANode.Count - 1 do
-  begin
-    if ExpectString(ANode[mIndex], AName, mValue) then
-    begin
-      AItems := AItems + [mValue];
-    end;
-  end;
-end;
-
 function TConfigurationReader.ExpectChoice(ANode: TJsonNode; const AName: string; const AValues: array of string;
   const AMessage: string; out AIndex: Integer): Boolean;
 var
@@ -466,6 +444,28 @@ begin
   end;
 end;
 
+function TConfigurationReader.ExpectStrings(ANode: TJsonNode; const AName, AMessage: string;
+  out AItems: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+  mValue: string;
+begin
+  AItems := nil;
+  Result := ANode.Kind = TJsonKind.Array_;
+  if not Result then
+  begin
+    ReportNode(ANode, AMessage);
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if ExpectString(ANode[mIndex], AName, mValue) then
+    begin
+      AItems := AItems + [mValue];
+    end;
+  end;
+end;
+
 function TConfigurationReader.ExpectInteger(ANode: TJsonNode; AMin, AMax: Integer; const AMessage: string;
   var AValue: Integer): Boolean;
 var
@@ -486,6 +486,32 @@ end;
 function TConfigurationReader.NodeText(ANode: TJsonNode): string;
 begin
   Result := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+end;
+
+procedure TConfigurationReader.ReadObject(ANode: TJsonNode; const ASection: string;
+  const AFlags: array of TFlagOption; const AMembers: array of TMemberOption; var ASettings: TServerSettings);
+begin
+  ReadObject(ANode, ASection, AFlags, [], AMembers, ASettings);
+end;
+
+procedure TConfigurationReader.ReadObject(ANode: TJsonNode; const ASection: string;
+  const AFlags: array of TFlagOption; const AChoices: array of TChoiceOption;
+  const AMembers: array of TMemberOption; var ASettings: TServerSettings);
+var
+  mIndex: Integer;
+begin
+  if not ExpectObject(ANode, ASection) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if not ReadFlag(ANode, mIndex, AFlags) and not ReadChoice(ANode, mIndex, ASection, AChoices) and
+      not ReadMember(ANode, mIndex, AMembers, ASettings) then
+    begin
+      ReportUnknown(ANode, mIndex, ASection);
+    end;
+  end;
 end;
 
 function TConfigurationReader.ReadFlag(ANode: TJsonNode; AIndex: Integer;
@@ -539,32 +565,6 @@ begin
     end;
   end;
   Result := False;
-end;
-
-procedure TConfigurationReader.ReadObject(ANode: TJsonNode; const ASection: string;
-  const AFlags: array of TFlagOption; const AMembers: array of TMemberOption; var ASettings: TServerSettings);
-begin
-  ReadObject(ANode, ASection, AFlags, [], AMembers, ASettings);
-end;
-
-procedure TConfigurationReader.ReadObject(ANode: TJsonNode; const ASection: string;
-  const AFlags: array of TFlagOption; const AChoices: array of TChoiceOption;
-  const AMembers: array of TMemberOption; var ASettings: TServerSettings);
-var
-  mIndex: Integer;
-begin
-  if not ExpectObject(ANode, ASection) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to ANode.Count - 1 do
-  begin
-    if not ReadFlag(ANode, mIndex, AFlags) and not ReadChoice(ANode, mIndex, ASection, AChoices) and
-      not ReadMember(ANode, mIndex, AMembers, ASettings) then
-    begin
-      ReportUnknown(ANode, mIndex, ASection);
-    end;
-  end;
 end;
 
 function TConfigurationReader.Issues: TArray<TConfigurationIssue>;

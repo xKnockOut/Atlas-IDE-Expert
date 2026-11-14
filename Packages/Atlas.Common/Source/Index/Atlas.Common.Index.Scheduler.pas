@@ -275,83 +275,6 @@ begin
   inherited;
 end;
 
-function TIndexScheduler.Register(APriority: Integer): IIndexTurn;
-var
-  mEntry: TEntry;
-  mTicket: Int64;
-begin
-  mEntry.Priority := APriority;
-  mEntry.Stage := TIndexStage.Project;
-  mEntry.WaitingSince := 0;
-  TMonitor.Enter(FLock);
-  try
-    Inc(FNextTicket);
-    mTicket := FNextTicket;
-    FEntries.Add(mTicket, mEntry);
-  finally
-    TMonitor.Exit(FLock);
-  end;
-  Result := TIndexTurn.Create(Self, mTicket);
-end;
-
-function TIndexScheduler.Count: Integer;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FEntries.Count;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-function TIndexScheduler.Queue: TIndexSchedulerQueue;
-var
-  mPair: TPair<Int64, TEntry>;
-  mNow: UInt64;
-begin
-  Result := Default(TIndexSchedulerQueue);
-  mNow := TThread.GetTickCount64;
-  TMonitor.Enter(FLock);
-  try
-    if FRunning <> 0 then
-    begin
-      Result.Running := 1;
-    end;
-    for mPair in FEntries do
-    begin
-      if mPair.Value.WaitingSince <> 0 then
-      begin
-        Inc(Result.Waiting);
-        if Int64(mNow - mPair.Value.WaitingSince) > Result.OldestWaitMs then
-        begin
-          Result.OldestWaitMs := Int64(mNow - mPair.Value.WaitingSince);
-        end;
-      end;
-    end;
-  finally
-    TMonitor.Exit(FLock);
-  end;
-end;
-
-procedure TIndexScheduler.SetWaiting(ATicket: Int64; AWaiting: Boolean);
-var
-  mEntry: TEntry;
-begin
-  if not FEntries.TryGetValue(ATicket, mEntry) then
-  begin
-    Exit;
-  end;
-  if AWaiting then
-  begin
-    mEntry.WaitingSince := TThread.GetTickCount64;
-  end
-  else
-  begin
-    mEntry.WaitingSince := 0;
-  end;
-  FEntries[ATicket] := mEntry;
-end;
-
 function TIndexScheduler.MayRun(ATicket: Int64; const AEntry: TEntry): Boolean;
 var
   mOther: TPair<Int64, TEntry>;
@@ -378,6 +301,25 @@ begin
     end;
   end;
   Result := True;
+end;
+
+procedure TIndexScheduler.SetWaiting(ATicket: Int64; AWaiting: Boolean);
+var
+  mEntry: TEntry;
+begin
+  if not FEntries.TryGetValue(ATicket, mEntry) then
+  begin
+    Exit;
+  end;
+  if AWaiting then
+  begin
+    mEntry.WaitingSince := TThread.GetTickCount64;
+  end
+  else
+  begin
+    mEntry.WaitingSince := 0;
+  end;
+  FEntries[ATicket] := mEntry;
 end;
 
 function TIndexScheduler.Enter(ATicket: Int64; AStage: TIndexStage; const ACancelled: TIndexCancelled): Boolean;
@@ -444,6 +386,64 @@ begin
       FRunning := 0;
     end;
     TMonitor.PulseAll(FLock);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexScheduler.Register(APriority: Integer): IIndexTurn;
+var
+  mEntry: TEntry;
+  mTicket: Int64;
+begin
+  mEntry.Priority := APriority;
+  mEntry.Stage := TIndexStage.Project;
+  mEntry.WaitingSince := 0;
+  TMonitor.Enter(FLock);
+  try
+    Inc(FNextTicket);
+    mTicket := FNextTicket;
+    FEntries.Add(mTicket, mEntry);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := TIndexTurn.Create(Self, mTicket);
+end;
+
+function TIndexScheduler.Count: Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FEntries.Count;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexScheduler.Queue: TIndexSchedulerQueue;
+var
+  mPair: TPair<Int64, TEntry>;
+  mNow: UInt64;
+begin
+  Result := Default(TIndexSchedulerQueue);
+  mNow := TThread.GetTickCount64;
+  TMonitor.Enter(FLock);
+  try
+    if FRunning <> 0 then
+    begin
+      Result.Running := 1;
+    end;
+    for mPair in FEntries do
+    begin
+      if mPair.Value.WaitingSince <> 0 then
+      begin
+        Inc(Result.Waiting);
+        if Int64(mNow - mPair.Value.WaitingSince) > Result.OldestWaitMs then
+        begin
+          Result.OldestWaitMs := Int64(mNow - mPair.Value.WaitingSince);
+        end;
+      end;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

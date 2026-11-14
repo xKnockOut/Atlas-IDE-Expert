@@ -108,6 +108,8 @@ begin
   end;
 end;
 
+{ TAtlasProblemsList }
+
 procedure TAtlasProblemsList.Update(AStore: TAtlasProblemStore);
 var
   mMessages: IOTAMessageServices;
@@ -146,16 +148,6 @@ begin
   end;
 end;
 
-class procedure TAtlasProblemsList.ShowList;
-var
-  mMessages: IOTAMessageServices;
-begin
-  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
-  begin
-    mMessages.ShowMessageView(Group(mMessages, False));
-  end;
-end;
-
 procedure TAtlasProblemsList.Clear;
 var
   mMessages: IOTAMessageServices;
@@ -174,6 +166,16 @@ begin
   if mTarget <> nil then
   begin
     mMessages.RemoveMessageGroup(mTarget);
+  end;
+end;
+
+class procedure TAtlasProblemsList.ShowList;
+var
+  mMessages: IOTAMessageServices;
+begin
+  if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
+  begin
+    mMessages.ShowMessageView(Group(mMessages, False));
   end;
 end;
 

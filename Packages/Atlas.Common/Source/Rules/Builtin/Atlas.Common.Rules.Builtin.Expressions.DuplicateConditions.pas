@@ -70,6 +70,8 @@ const
     'Random', 'Execute', 'ExecSQL', 'GetTickCount', 'Now');
   cFloatTypes: array[0..4] of string = ('Double', 'Single', 'Extended', 'Real', 'TDateTime');
 
+{ TDuplicateConditionRule }
+
 function TDuplicateConditionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cDuplicateConditionRuleId, TRuleSeverity.Warning,

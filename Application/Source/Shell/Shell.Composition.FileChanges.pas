@@ -82,6 +82,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Text.LogMarks;
 
+{ TShellFileChanges }
+
 constructor TShellFileChanges.Create(const AServices: TShellFileChangesServices);
 begin
   inherited Create;
@@ -98,22 +100,6 @@ begin
   StopRefresh;
   FreeAndNil(FWatchedFiles);
   inherited Destroy;
-end;
-
-procedure TShellFileChanges.Attach(ADispatcher: TJsonRpcDispatcher);
-begin
-  FWatchedFiles.Attach(ADispatcher);
-end;
-
-procedure TShellFileChanges.RegisterWatchers(const AInitializeParams: TJSONObject);
-begin
-  FWatchedFiles.RegisterWatchers(AInitializeParams);
-end;
-
-procedure TShellFileChanges.StopRefresh;
-begin
-  FreeAndNil(FIndexRefresh);
-  FreeAndNil(FUsesChanges);
 end;
 
 procedure TShellFileChanges.ApplyTypedText(const AFileName, AText: string);
@@ -152,53 +138,6 @@ end;
 procedure TShellFileChanges.RefreshFailed(E: Exception);
 begin
   FServices.Logger.Warning('Index nach Tipp-Pause: ' + TLogMarks.Text(E.Message));
-end;
-
-procedure TShellFileChanges.DocumentEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
-begin
-  if FIndexRefresh = nil then
-  begin
-    Exit;
-  end;
-  case AKind of
-    TDocumentEventKind.Changed:
-      begin
-        FIndexRefresh.Changed(AFileName, AText);
-        FServices.Typed();
-      end;
-    TDocumentEventKind.Closed:
-      if TLspIndexRefresh.Applies(AFileName) then
-      begin
-        FIndexRefresh.Closed(AFileName);
-        FUsesChanges.Forget(AFileName);
-        Handle(TArray<TFileChange>.Create(TFileChange.Create(AFileName, TFileChangeKind.Changed)));
-      end;
-  else
-    // Übrige Werte bewusst ohne Wirkung.
-  end;
-end;
-
-procedure TShellFileChanges.Handle(const AChanges: TArray<TFileChange>);
-var
-  mChange: TFileChange;
-  mSources: TArray<TFileChange>;
-  mReload: TList<TShellWorkspace>;
-begin
-  mSources := nil;
-  mReload := TList<TShellWorkspace>.Create;
-  try
-    for mChange in AChanges do
-    begin
-      Classify(mChange, mReload, mSources);
-    end;
-    ReloadWorkspaces(mReload);
-  finally
-    mReload.Free;
-  end;
-  if Length(mSources) > 0 then
-  begin
-    ApplySources(mSources);
-  end;
 end;
 
 procedure TShellFileChanges.Classify(const AChange: TFileChange; AReload: TList<TShellWorkspace>;
@@ -275,6 +214,69 @@ begin
     mNames := mNames + [mChange.FileName];
   end;
   FServices.Affected(mNames);
+end;
+
+procedure TShellFileChanges.Attach(ADispatcher: TJsonRpcDispatcher);
+begin
+  FWatchedFiles.Attach(ADispatcher);
+end;
+
+procedure TShellFileChanges.RegisterWatchers(const AInitializeParams: TJSONObject);
+begin
+  FWatchedFiles.RegisterWatchers(AInitializeParams);
+end;
+
+procedure TShellFileChanges.StopRefresh;
+begin
+  FreeAndNil(FIndexRefresh);
+  FreeAndNil(FUsesChanges);
+end;
+
+procedure TShellFileChanges.Handle(const AChanges: TArray<TFileChange>);
+var
+  mChange: TFileChange;
+  mSources: TArray<TFileChange>;
+  mReload: TList<TShellWorkspace>;
+begin
+  mSources := nil;
+  mReload := TList<TShellWorkspace>.Create;
+  try
+    for mChange in AChanges do
+    begin
+      Classify(mChange, mReload, mSources);
+    end;
+    ReloadWorkspaces(mReload);
+  finally
+    mReload.Free;
+  end;
+  if Length(mSources) > 0 then
+  begin
+    ApplySources(mSources);
+  end;
+end;
+
+procedure TShellFileChanges.DocumentEvent(AKind: TDocumentEventKind; const AFileName, AText: string);
+begin
+  if FIndexRefresh = nil then
+  begin
+    Exit;
+  end;
+  case AKind of
+    TDocumentEventKind.Changed:
+      begin
+        FIndexRefresh.Changed(AFileName, AText);
+        FServices.Typed();
+      end;
+    TDocumentEventKind.Closed:
+      if TLspIndexRefresh.Applies(AFileName) then
+      begin
+        FIndexRefresh.Closed(AFileName);
+        FUsesChanges.Forget(AFileName);
+        Handle(TArray<TFileChange>.Create(TFileChange.Create(AFileName, TFileChangeKind.Changed)));
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
 end;
 
 end.

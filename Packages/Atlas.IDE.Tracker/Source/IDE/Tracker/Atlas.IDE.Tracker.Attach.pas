@@ -224,9 +224,141 @@ begin
   inherited;
 end;
 
-class function TAtlasIdeIssueAttach.Active: Boolean;
+procedure TAtlasIdeIssueAttach.Report(const AText: string);
 begin
-  Result := TAtlasIdeSettings.Current.IssuesAttach;
+  if Assigned(FHooks.Report) then
+  begin
+    FHooks.Report(AText);
+  end;
+end;
+
+procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
+  const AOutcome: TAtlasAttachOutcome);
+var
+  mState: string;
+begin
+  FCancel := nil;
+  FWorker.Prune;
+  // Die Dateien sind gesendet bzw. gescheitert: der Ordner des Laufs geht in jedem Fall.
+  DropTemp;
+  if AOutcome.Succeeded then
+  begin
+    mState := 'gesendet';
+  end
+  else
+  begin
+    mState := 'nicht gesendet (' + TAtlasCiBuild.ErrorKey(AOutcome.Error) + ')';
+  end;
+  TAtlasGuard.Log(Format('Anhängen: %s, %d Dateien, %s', [AProvider.Name, Length(ARequest.Files), mState]));
+  if AOutcome.Error = TAtlasCiFetchError.Cancelled then
+  begin
+    Exit;
+  end;
+  if not AOutcome.Succeeded then
+  begin
+    if AOutcome.Uploaded > 0 then
+    begin
+      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommentFailed, [ARequest.Key,
+        TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
+    end
+    else
+    begin
+      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFailed, [ARequest.Key,
+        TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
+    end;
+    Exit;
+  end;
+  if AOutcome.Fallback then
+  begin
+    Fallback(ARequest, AOutcome);
+    Exit;
+  end;
+  if (AOutcome.Uploaded > 0) and AOutcome.Commented then
+  begin
+    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
+  end
+  else if AOutcome.Uploaded > 0 then
+  begin
+    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
+  end
+  else if AOutcome.Commented then
+  begin
+    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+  end;
+end;
+
+procedure TAtlasIdeIssueAttach.Fallback(const ARequest: TAtlasAttachRequest; const AOutcome: TAtlasAttachOutcome);
+var
+  mBitmaps: TArray<TBitmap>;
+  mBitmap, mStacked: TBitmap;
+  mImage: TAtlasAttachFile;
+  mText: string;
+begin
+  if AOutcome.Commented then
+  begin
+    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+  end;
+  if Length(AOutcome.Images) > 0 then
+  begin
+    mBitmaps := nil;
+    try
+      for mImage in AOutcome.Images do
+      begin
+        mBitmap := TAtlasAttachImages.FromPng(mImage.Data);
+        if mBitmap <> nil then
+        begin
+          mBitmaps := mBitmaps + [mBitmap];
+        end;
+      end;
+      mStacked := TAtlasAttachImages.Stacked(mBitmaps, cImageGap);
+      try
+        if mStacked <> nil then
+        begin
+          Clipboard.Assign(mStacked);
+        end;
+      finally
+        mStacked.Free;
+      end;
+    finally
+      for mBitmap in mBitmaps do
+      begin
+        mBitmap.Free;
+      end;
+    end;
+    // Erst der Hinweis, dann der Browser: Der Nutzer weiß, was er dort tun soll.
+    mText := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachPasteHint, [Length(mBitmaps), ARequest.Key]);
+    Report(mText);
+    MessageDlg(mText, mtInformation, [mbOK], 0);
+  end;
+  TAtlasIssuePreview.Browse(AOutcome.Page);
+end;
+
+procedure TAtlasIdeIssueAttach.DropTemp;
+begin
+  if FTemp = nil then
+  begin
+    Exit;
+  end;
+  FTemp.Cleanup;
+  FreeAndNil(FTemp);
+end;
+
+
+function TAtlasIdeIssueAttach.ProjectFile: string;
+var
+  mReport: IAtlasDebugReportSource;
+begin
+  // Beim Debuggen das gestartete Projekt, sonst das aktive.
+  Result := '';
+  mReport := DebugReport;
+  if mReport <> nil then
+  begin
+    Result := mReport.LaunchProject;
+  end;
+  if (Result = '') and Assigned(FHooks.Project) then
+  begin
+    Result := FHooks.Project();
+  end;
 end;
 
 procedure TAtlasIdeIssueAttach.Start;
@@ -260,73 +392,19 @@ begin
   FHooks := Default(TAtlasIssueAttachHooks);
 end;
 
+procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  Execute(ATarget, AKey, nil);
+end;
+
 function TAtlasIdeIssueAttach.Busy: Boolean;
 begin
   Result := FWorker.Busy;
 end;
 
-
-procedure TAtlasIdeIssueAttach.DropTemp;
+class function TAtlasIdeIssueAttach.Active: Boolean;
 begin
-  if FTemp = nil then
-  begin
-    Exit;
-  end;
-  FTemp.Cleanup;
-  FreeAndNil(FTemp);
-end;
-
-procedure TAtlasIdeIssueAttach.Report(const AText: string);
-begin
-  if Assigned(FHooks.Report) then
-  begin
-    FHooks.Report(AText);
-  end;
-end;
-
-function TAtlasIdeIssueAttach.ProjectFile: string;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  // Beim Debuggen das gestartete Projekt, sonst das aktive.
-  Result := '';
-  mReport := DebugReport;
-  if mReport <> nil then
-  begin
-    Result := mReport.LaunchProject;
-  end;
-  if (Result = '') and Assigned(FHooks.Project) then
-  begin
-    Result := FHooks.Project();
-  end;
-end;
-
-class function TAtlasIdeIssueAttach.DebugNote(out AMarkdown, AFileName: string): Boolean;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  AMarkdown := '';
-  AFileName := '';
-  mReport := DebugReport;
-  Result := (mReport <> nil) and mReport.DebugNote(AMarkdown, AFileName);
-end;
-
-class function TAtlasIdeIssueAttach.ExceptionsText(out ACount: Integer): string;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  Result := '';
-  ACount := 0;
-  mReport := DebugReport;
-  if mReport <> nil then
-  begin
-    Result := mReport.ExceptionsText(cMaxExceptions, ACount);
-  end;
-end;
-
-procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
-begin
-  Execute(ATarget, AKey, nil);
+  Result := TAtlasIdeSettings.Current.IssuesAttach;
 end;
 
 /// <summary>Eingaben des Dialogs: Tracker, Vorschläge, Kennung, Prozess, Protokolle, Debug-Notiz, Exceptions,
@@ -521,105 +599,27 @@ begin
   FWorker.Start(TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest)));
 end;
 
-procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
-  const AOutcome: TAtlasAttachOutcome);
+class function TAtlasIdeIssueAttach.DebugNote(out AMarkdown, AFileName: string): Boolean;
 var
-  mState: string;
+  mReport: IAtlasDebugReportSource;
 begin
-  FCancel := nil;
-  FWorker.Prune;
-  // Die Dateien sind gesendet bzw. gescheitert: der Ordner des Laufs geht in jedem Fall.
-  DropTemp;
-  if AOutcome.Succeeded then
-  begin
-    mState := 'gesendet';
-  end
-  else
-  begin
-    mState := 'nicht gesendet (' + TAtlasCiBuild.ErrorKey(AOutcome.Error) + ')';
-  end;
-  TAtlasGuard.Log(Format('Anhängen: %s, %d Dateien, %s', [AProvider.Name, Length(ARequest.Files), mState]));
-  if AOutcome.Error = TAtlasCiFetchError.Cancelled then
-  begin
-    Exit;
-  end;
-  if not AOutcome.Succeeded then
-  begin
-    if AOutcome.Uploaded > 0 then
-    begin
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommentFailed, [ARequest.Key,
-        TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
-    end
-    else
-    begin
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFailed, [ARequest.Key,
-        TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
-    end;
-    Exit;
-  end;
-  if AOutcome.Fallback then
-  begin
-    Fallback(ARequest, AOutcome);
-    Exit;
-  end;
-  if (AOutcome.Uploaded > 0) and AOutcome.Commented then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
-  end
-  else if AOutcome.Uploaded > 0 then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
-  end
-  else if AOutcome.Commented then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
-  end;
+  AMarkdown := '';
+  AFileName := '';
+  mReport := DebugReport;
+  Result := (mReport <> nil) and mReport.DebugNote(AMarkdown, AFileName);
 end;
 
-procedure TAtlasIdeIssueAttach.Fallback(const ARequest: TAtlasAttachRequest; const AOutcome: TAtlasAttachOutcome);
+class function TAtlasIdeIssueAttach.ExceptionsText(out ACount: Integer): string;
 var
-  mBitmaps: TArray<TBitmap>;
-  mBitmap, mStacked: TBitmap;
-  mImage: TAtlasAttachFile;
-  mText: string;
+  mReport: IAtlasDebugReportSource;
 begin
-  if AOutcome.Commented then
+  Result := '';
+  ACount := 0;
+  mReport := DebugReport;
+  if mReport <> nil then
   begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+    Result := mReport.ExceptionsText(cMaxExceptions, ACount);
   end;
-  if Length(AOutcome.Images) > 0 then
-  begin
-    mBitmaps := nil;
-    try
-      for mImage in AOutcome.Images do
-      begin
-        mBitmap := TAtlasAttachImages.FromPng(mImage.Data);
-        if mBitmap <> nil then
-        begin
-          mBitmaps := mBitmaps + [mBitmap];
-        end;
-      end;
-      mStacked := TAtlasAttachImages.Stacked(mBitmaps, cImageGap);
-      try
-        if mStacked <> nil then
-        begin
-          Clipboard.Assign(mStacked);
-        end;
-      finally
-        mStacked.Free;
-      end;
-    finally
-      for mBitmap in mBitmaps do
-      begin
-        mBitmap.Free;
-      end;
-    end;
-    // Erst der Hinweis, dann der Browser: Der Nutzer weiß, was er dort tun soll.
-    mText := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachPasteHint, [Length(mBitmaps), ARequest.Key]);
-    Report(mText);
-    MessageDlg(mText, mtInformation, [mbOK], 0);
-  end;
-  TAtlasIssuePreview.Browse(AOutcome.Page);
 end;
 
 end.

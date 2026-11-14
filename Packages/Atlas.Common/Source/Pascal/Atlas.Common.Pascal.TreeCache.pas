@@ -373,31 +373,15 @@ end;
 
 { TSyntaxTreeCache }
 
-class function TSyntaxTreeCache.Get(const ADocument: ITextDocument): ISharedSyntaxTree;
-begin
-  Result := Get(ADocument, nil);
-end;
-
-class function TSyntaxTreeCache.GetFor(const ADocument: ITextDocument;
-  const ADefines: TArray<string>): ISharedSyntaxTree;
-begin
-  Result := GetFor(ADocument, ADefines, nil);
-end;
-
-class function TSyntaxTreeCache.GetAll(const ADocument: ITextDocument): ISharedSyntaxTree;
-begin
-  Result := GetAll(ADocument, nil);
-end;
-
-class function TSyntaxTreeCache.Parse(const AText: string): TSyntaxTree;
-begin
-  Result := Parse(AText, nil);
-end;
-
 class function TSyntaxTreeCache.Get(const ADocument: ITextDocument;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 begin
   Result := GetFor(ADocument, DefinesOf(ADocument.Uri), ACancellation);
+end;
+
+class function TSyntaxTreeCache.Get(const ADocument: ITextDocument): ISharedSyntaxTree;
+begin
+  Result := Get(ADocument, nil);
 end;
 
 class function TSyntaxTreeCache.GetFor(const ADocument: ITextDocument; const ADefines: TArray<string>;
@@ -412,6 +396,12 @@ begin
   Result := GetShared(ADocument, mMode, ACancellation);
 end;
 
+class function TSyntaxTreeCache.GetFor(const ADocument: ITextDocument;
+  const ADefines: TArray<string>): ISharedSyntaxTree;
+begin
+  Result := GetFor(ADocument, ADefines, nil);
+end;
+
 class function TSyntaxTreeCache.GetAll(const ADocument: ITextDocument;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
@@ -422,6 +412,11 @@ begin
   mMode.FileName := '';
   mMode.Resolver := nil;
   Result := GetShared(ADocument, mMode, ACancellation);
+end;
+
+class function TSyntaxTreeCache.GetAll(const ADocument: ITextDocument): ISharedSyntaxTree;
+begin
+  Result := GetAll(ADocument, nil);
 end;
 
 class function TSyntaxTreeCache.DefinesOf(const AUri: string): TArray<string>;
@@ -486,6 +481,11 @@ end;
 class function TSyntaxTreeCache.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 begin
   Result := TPascalParser.Parse(AText, ACancellation);
+end;
+
+class function TSyntaxTreeCache.Parse(const AText: string): TSyntaxTree;
+begin
+  Result := Parse(AText, nil);
 end;
 
 class function TSyntaxTreeCache.ParseActive(const AText: string; const AOptions: TPreprocessorOptions;

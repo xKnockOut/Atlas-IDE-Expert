@@ -488,11 +488,6 @@ begin
   inherited Destroy;
 end;
 
-function TCollector.Chains: TArray<TAccessChain>;
-begin
-  Result := FChains.ToArray;
-end;
-
 function TCollector.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := SingleLine(Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
@@ -550,25 +545,6 @@ begin
   Result := SingleLine(mText);
 end;
 
-function TCollector.NameOf(ANode: TSyntaxNode): string;
-begin
-  case ANode.Kind of
-    TSyntaxKind.Dereference:
-      if ANode.ChildCount > 0 then
-      begin
-        Result := NameOf(ANode[0]);
-      end
-      else
-      begin
-        Result := '';
-      end;
-    TSyntaxKind.ParenExpr:
-      Result := TextOf(ANode);
-  else
-    Result := ANode.Name;
-  end;
-end;
-
 function TCollector.NamePositionOf(ANode: TSyntaxNode): TTextPosition;
 begin
   case ANode.Kind of
@@ -589,6 +565,25 @@ begin
       end;
   else
     Result := ANode.StartPos;
+  end;
+end;
+
+function TCollector.NameOf(ANode: TSyntaxNode): string;
+begin
+  case ANode.Kind of
+    TSyntaxKind.Dereference:
+      if ANode.ChildCount > 0 then
+      begin
+        Result := NameOf(ANode[0]);
+      end
+      else
+      begin
+        Result := '';
+      end;
+    TSyntaxKind.ParenExpr:
+      Result := TextOf(ANode);
+  else
+    Result := ANode.Name;
   end;
 end;
 
@@ -988,6 +983,49 @@ begin
   FillMember(AStep, ATarget, ALink);
 end;
 
+function TCollector.VisitSimpleStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := ANode.StartPos.Line = ALine;
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind in cExpressionKinds then
+    begin
+      VisitExpression(ANode[mIndex]);
+    end;
+  end;
+end;
+
+function TCollector.VisitStatementHead(ANode: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    mChild := ANode[mIndex];
+    if not ((mChild.Kind in cExpressionKinds) and (mChild.StartPos.Line = ALine)) then
+    begin
+      Continue;
+    end;
+    Result := True;
+    if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
+      VisitWithElement(mChild);
+    end
+    else
+    begin
+      VisitExpression(mChild);
+    end;
+  end;
+end;
+
 procedure TCollector.AddChain(ATop: TSyntaxNode; AWithElement: Boolean);
 var
   mPath: TArray<TSyntaxNode>;
@@ -1090,47 +1128,9 @@ begin
   end;
 end;
 
-function TCollector.VisitSimpleStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
-var
-  mIndex: Integer;
+function TCollector.Chains: TArray<TAccessChain>;
 begin
-  Result := ANode.StartPos.Line = ALine;
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    if ANode[mIndex].Kind in cExpressionKinds then
-    begin
-      VisitExpression(ANode[mIndex]);
-    end;
-  end;
-end;
-
-function TCollector.VisitStatementHead(ANode: TSyntaxNode; ALine: Integer): Boolean;
-var
-  mIndex: Integer;
-  mChild: TSyntaxNode;
-begin
-  Result := False;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    mChild := ANode[mIndex];
-    if not ((mChild.Kind in cExpressionKinds) and (mChild.StartPos.Line = ALine)) then
-    begin
-      Continue;
-    end;
-    Result := True;
-    if ANode.Kind = TSyntaxKind.WithStatement then
-    begin
-      VisitWithElement(mChild);
-    end
-    else
-    begin
-      VisitExpression(mChild);
-    end;
-  end;
+  Result := FChains.ToArray;
 end;
 
 function TCollector.VisitStatement(ANode: TSyntaxNode; ALine: Integer): Boolean;
@@ -1171,16 +1171,51 @@ begin
   TLspNamespaces.Write(FNamespaces, AValue);
 end;
 
+function TLspAccessChains.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+var
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mSource: TAccessChainSource;
+begin
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<Integer>('line', mLine)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TAccessChainsText.FieldsTextDocumentUriAndLine].Text + cMethod);
+  end;
+  mSource := Default(TAccessChainSource);
+  if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', mSource.PointerSize) then
+  begin
+    mSource.PointerSize := 4;
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
+    Exit(TJSONNull.Create);
+  end;
+  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  ACancellation.ThrowIfCancellationRequested;
+  mSource.Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  try
+    mSource.Resolver.Namespaces := Namespaces;
+    mSource.Index := FIndex;
+    mSource.ReadText := FReadText;
+    mSource.Tree := mShared.Tree;
+    mSource.Text := mDocument.GetText;
+    mSource.FileName := TDocumentUris.ToPath(mUri);
+    Result := ToJson(Collect(mSource, mLine));
+  finally
+    mSource.Resolver.Free;
+  end;
+end;
+
 procedure TLspAccessChains.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
-end;
-
-class function TLspAccessChains.KindName(AKind: TAccessLinkKind): string;
-const
-  cNames: array[TAccessLinkKind] of string = ('unknown', 'class', 'interface', 'pointer', 'dynArray');
-begin
-  Result := cNames[AKind];
 end;
 
 class function TLspAccessChains.Collect(const ASource: TAccessChainSource; ALine: Integer): TAccessChainsResult;
@@ -1263,46 +1298,11 @@ begin
   end;
 end;
 
-function TLspAccessChains.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-var
-  mCancellation: IPascalCancellation;
-  mUri: string;
-  mLine: Integer;
-  mDocument: ITextDocument;
-  mShared: ISharedSyntaxTree;
-  mSource: TAccessChainSource;
+class function TLspAccessChains.KindName(AKind: TAccessLinkKind): string;
+const
+  cNames: array[TAccessLinkKind] of string = ('unknown', 'class', 'interface', 'pointer', 'dynArray');
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
-    TJSONObject(AParams).TryGetValue<Integer>('line', mLine)) then
-  begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
-      cTexts[TAccessChainsText.FieldsTextDocumentUriAndLine].Text + cMethod);
-  end;
-  mSource := Default(TAccessChainSource);
-  if not TJSONObject(AParams).TryGetValue<Integer>('pointerSize', mSource.PointerSize) then
-  begin
-    mSource.PointerSize := 4;
-  end;
-  if not FStore.TryGet(mUri, mDocument) then
-  begin
-    Exit(TJSONNull.Create);
-  end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  mCancellation := TRequestCancellation.Create(ACancellation);
-  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
-  ACancellation.ThrowIfCancellationRequested;
-  mSource.Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-  try
-    mSource.Resolver.Namespaces := Namespaces;
-    mSource.Index := FIndex;
-    mSource.ReadText := FReadText;
-    mSource.Tree := mShared.Tree;
-    mSource.Text := mDocument.GetText;
-    mSource.FileName := TDocumentUris.ToPath(mUri);
-    Result := ToJson(Collect(mSource, mLine));
-  finally
-    mSource.Resolver.Free;
-  end;
+  Result := cNames[AKind];
 end;
 
 initialization

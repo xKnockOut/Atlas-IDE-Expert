@@ -101,6 +101,8 @@ begin
     end;
 end;
 
+{ TShellFixRefactorings }
+
 procedure TShellFixRefactorings.Register(ACommands: TLspCommands);
 begin
   ACommands.Register(TLspDisableWarning.cApplyCommand, DisableWarning);

@@ -72,20 +72,7 @@ const
   cChoiceTexts: array[TAtlasLeakChoice] of TAtlasTestsTextId = (TAtlasTestsTextId.LeakChoiceSimple,
     TAtlasTestsTextId.LeakChoiceFastMM4, TAtlasTestsTextId.LeakChoiceFastMM5);
 
-class function TAtlasLeakSetupDialog.StatusText(const AStatus: TAtlasLeakStatus): string;
-var
-  mMark: string;
-begin
-  if AStatus.Ok then
-  begin
-    mMark := cOkMark;
-  end
-  else
-  begin
-    mMark := cMissingMark;
-  end;
-  Result := mMark + ' ' + TAtlasTestsStrings.Fmt(cStatusTexts[AStatus.Line][AStatus.Ok], [AStatus.Value]);
-end;
+{ TAtlasLeakSetupDialog }
 
 constructor TAtlasLeakSetupDialog.CreateFor(AOwner: TComponent; const AInfo: TAtlasLeakSetupInfo);
 var
@@ -161,20 +148,6 @@ begin
   FFileReport.Checked := AInfo.FileReport;
 end;
 
-function TAtlasLeakSetupDialog.Chosen: TAtlasLeakChoice;
-var
-  mChoice: TAtlasLeakChoice;
-begin
-  Result := TAtlasLeakChoice.Simple;
-  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
-  begin
-    if FChoices[mChoice].Checked then
-    begin
-      Result := mChoice;
-    end;
-  end;
-end;
-
 procedure TAtlasLeakSetupDialog.ChoiceClick(Sender: TObject);
 var
   mAny: Boolean;
@@ -188,6 +161,20 @@ begin
   // Bericht als Datei gibt es nur mit FastMM; der Speichermanager der RTL zeigt immer ein Meldungsfenster.
   FFileReport.Enabled := mAny and (Chosen <> TAtlasLeakChoice.Simple);
   FSetUp.Enabled := mAny;
+end;
+
+function TAtlasLeakSetupDialog.Chosen: TAtlasLeakChoice;
+var
+  mChoice: TAtlasLeakChoice;
+begin
+  Result := TAtlasLeakChoice.Simple;
+  for mChoice := Low(TAtlasLeakChoice) to High(TAtlasLeakChoice) do
+  begin
+    if FChoices[mChoice].Checked then
+    begin
+      Result := mChoice;
+    end;
+  end;
 end;
 
 class function TAtlasLeakSetupDialog.Execute(const AInfo: TAtlasLeakSetupInfo; out AChoice: TAtlasLeakChoice;
@@ -208,6 +195,21 @@ begin
   finally
     mDialog.Free;
   end;
+end;
+
+class function TAtlasLeakSetupDialog.StatusText(const AStatus: TAtlasLeakStatus): string;
+var
+  mMark: string;
+begin
+  if AStatus.Ok then
+  begin
+    mMark := cOkMark;
+  end
+  else
+  begin
+    mMark := cMissingMark;
+  end;
+  Result := mMark + ' ' + TAtlasTestsStrings.Fmt(cStatusTexts[AStatus.Line][AStatus.Ok], [AStatus.Value]);
 end;
 
 end.

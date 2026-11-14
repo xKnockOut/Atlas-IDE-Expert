@@ -44,6 +44,8 @@ begin
   end;
 end;
 
+{ TAtlasIconAlpha }
+
 class function TAtlasIconAlpha.Combine(const ABlack, AWhite: TArray<Cardinal>): TArray<Cardinal>;
 var
   i, mShift, mAlpha, mSpread: Integer;

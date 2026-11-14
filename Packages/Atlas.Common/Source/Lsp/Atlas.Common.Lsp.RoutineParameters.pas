@@ -88,13 +88,6 @@ begin
   end;
 end;
 
-class function TLspRoutineParameters.ModifierText(AModifier: TParameterModifier): string;
-const
-  cTexts: array[TParameterModifier] of string = ('', 'const', 'var', 'out', 'constref');
-begin
-  Result := cTexts[AModifier];
-end;
-
 function TLspRoutineParameters.RoutineAt(ALine: Integer): TSyntaxNode;
 var
   mNode, mNext: TSyntaxNode;
@@ -217,6 +210,13 @@ begin
     mItem.AddPair('type', mParameter.TypeName);
     mItem.AddPair('modifier', mParameter.Modifier);
   end;
+end;
+
+class function TLspRoutineParameters.ModifierText(AModifier: TParameterModifier): string;
+const
+  cTexts: array[TParameterModifier] of string = ('', 'const', 'var', 'out', 'constref');
+begin
+  Result := cTexts[AModifier];
 end;
 
 end.

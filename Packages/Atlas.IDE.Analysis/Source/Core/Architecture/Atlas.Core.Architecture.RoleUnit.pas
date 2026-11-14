@@ -134,6 +134,8 @@ begin
   Result.Thing := Trim(AInput.Thing);
 end;
 
+{ TAtlasRoleUnit }
+
 class function TAtlasRoleUnit.RoleName(ARole: TAtlasArchitectureRole): string;
 begin
   Result := cRoleNames[ARole];
@@ -227,28 +229,6 @@ begin
   Result := mInput.Prefix + '.' + mInput.Feature + '.' + RoleName(TAtlasArchitectureRole.Contract);
 end;
 
-class function TAtlasRoleUnit.RoleList(const ARoles: TArray<TAtlasArchitectureRole>; const ARootName: string):
-  string;
-var
-  mRole: TAtlasArchitectureRole;
-  mName: string;
-begin
-  Result := '';
-  for mRole in ARoles do
-  begin
-    mName := RoleName(mRole);
-    if mRole = TAtlasArchitectureRole.Root then
-    begin
-      mName := ARootName;
-    end;
-    if Result <> '' then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + mName;
-  end;
-end;
-
 class function TAtlasRoleUnit.UnitText(const AInput: TAtlasRoleUnitInput; AContractExists: Boolean;
   const AOwnText, AForeignText, ALineBreak: string): string;
 var
@@ -275,6 +255,28 @@ begin
     Result := Result + 'uses' + ALineBreak + '  ' + mContract + ';' + ALineBreak + ALineBreak;
   end;
   Result := Result + 'implementation' + ALineBreak + ALineBreak + 'end.' + ALineBreak;
+end;
+
+class function TAtlasRoleUnit.RoleList(const ARoles: TArray<TAtlasArchitectureRole>; const ARootName: string):
+  string;
+var
+  mRole: TAtlasArchitectureRole;
+  mName: string;
+begin
+  Result := '';
+  for mRole in ARoles do
+  begin
+    mName := RoleName(mRole);
+    if mRole = TAtlasArchitectureRole.Root then
+    begin
+      mName := ARootName;
+    end;
+    if Result <> '' then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + mName;
+  end;
 end;
 
 class function TAtlasRoleUnit.Prefixes(const ARulesJson: string): TArray<string>;

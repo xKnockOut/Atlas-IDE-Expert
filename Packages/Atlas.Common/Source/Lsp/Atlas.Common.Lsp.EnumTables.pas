@@ -162,6 +162,8 @@ type
       static;
   end;
 
+{ TEnumSource }
+
 class function TEnumSource.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string):
   TEnumSource;
 begin
@@ -232,6 +234,8 @@ begin
   end;
   Result := TEnumTableValues.Create(mElement, mName, ATable.IndexType.Name);
 end;
+
+{ TLspEnumTables }
 
 class function TLspEnumTables.Actions(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
@@ -387,6 +391,8 @@ type
     destructor Destroy; override;
   end;
 
+{ TSyncFile }
+
 destructor TSyncFile.Destroy;
 begin
   if OwnsTree then
@@ -417,6 +423,8 @@ type
     procedure CheckRange(ARange: TSyntaxNode);
     procedure CheckItem(AItem: TSyntaxNode);
   end;
+
+{ TCaseLabels }
 
 procedure TCaseLabels.Check(ALabel: TSyntaxNode);
 begin
@@ -558,6 +566,8 @@ type
     procedure Run(const ADocument: TEnumTablesDocument);
     function Answer: TJSONObject;
   end;
+
+{ TEnumSync }
 
 constructor TEnumSync.Create(AResolver: TNameResolver; const AContext: TEnumTablesContext;
   const ATarget: TEnumTarget; const AOwnUnit: string);

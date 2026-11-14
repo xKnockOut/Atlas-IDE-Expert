@@ -169,6 +169,8 @@ begin
   end;
 end;
 
+{ TAtlasLinkedEditing }
+
 class function TAtlasLinkedEditing.FromJson(const AValue: TJSONValue; out ARanges: TAtlasLinkedRanges;
   out AConflicts: TAtlasLinkedConflicts): Boolean;
 var

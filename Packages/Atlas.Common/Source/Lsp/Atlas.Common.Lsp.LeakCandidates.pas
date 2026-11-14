@@ -78,6 +78,8 @@ const
 
 {$SCOPEDENUMS OFF}
 
+{ TLspLeakCandidates }
+
 constructor TLspLeakCandidates.Create(const AFiles: ILeakCandidateFiles);
 begin
   inherited Create;

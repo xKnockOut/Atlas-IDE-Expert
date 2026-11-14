@@ -686,6 +686,174 @@ begin
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
+procedure TAtlasGenerateWindow.Paint;
+var
+  mPainter: TAtlasGeneratePainter;
+  mTitle: TRect;
+  mRow: Integer;
+begin
+  mPainter.Window := Self;
+  mPainter.Metrics.Window := Self;
+  Canvas.Font := Font;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  mTitle := mPainter.Title;
+  if FStep.Active then
+  begin
+    mPainter.Input(mTitle);
+  end;
+  Canvas.Brush.Style := bsSolid;
+  for mRow := 0 to Min(cVisibleRows, RowCount - FTop) - 1 do
+  begin
+    if FStep.Active then
+    begin
+      mPainter.StepRow(mRow);
+    end
+    else
+    begin
+      mPainter.ListRow(mRow);
+    end;
+  end;
+  if RowCount = 0 then
+  begin
+    mPainter.Empty;
+  end;
+  mPainter.Footer;
+  // Rahmen des Fensters.
+  Canvas.Pen.Color := ToColor(FColors.Accent);
+  Canvas.Rectangle(ClientRect);
+  Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasGenerateWindow.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_ESCAPE:
+      if FStep.Active then
+      begin
+        LeaveStep;
+      end
+      else
+      begin
+        FormDeactivate(Self);
+      end;
+    VK_RETURN:
+      if FStep.Active then
+      begin
+        ConfirmStep;
+      end
+      else
+      begin
+        ChooseRow(FSelected);
+      end;
+    VK_UP:
+      Step(-1);
+    VK_DOWN:
+      Step(1);
+    VK_PRIOR:
+      Step(-cVisibleRows);
+    VK_NEXT:
+      Step(cVisibleRows);
+    VK_HOME:
+      Step(-RowCount);
+    VK_END:
+      Step(RowCount);
+    VK_DELETE:
+      HideSelected;
+    VK_BACK:
+      Backspace(Shift);
+  else
+    Exit;
+  end;
+  Key := 0;
+end;
+
+procedure TAtlasGenerateWindow.KeyPress(var Key: Char);
+var
+  mRow: Integer;
+begin
+  if Key < ' ' then
+  begin
+    Key := #0;
+    Exit;
+  end;
+  if FStep.Active then
+  begin
+    // Leertaste schaltet bei Mehrfachauswahl, solange nichts getippt ist.
+    if (Key = ' ') and FStep.Entry.Multi and (FStep.Text = '') then
+    begin
+      if FStep.Toggle(FSelected) then
+      begin
+        Invalidate;
+      end;
+    end
+    else
+    begin
+      FStep.Text := FStep.Text + Key;
+      RefilterChoices;
+    end;
+    Key := #0;
+    Exit;
+  end;
+  if CharInSet(Key, ['1'..'9']) then
+  begin
+    mRow := TAtlasGenerateMenu.RowOfDigit(FRows, Ord(Key) - Ord('0'));
+    if mRow >= 0 then
+    begin
+      ChooseRow(mRow);
+    end;
+  end
+  else if Key <> ' ' then
+  begin
+    FPattern := FPattern + Key;
+    Rebuild;
+    UpdateHeight;
+  end;
+  Key := #0;
+end;
+
+procedure TAtlasGenerateWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mMetrics: TAtlasGenerateMetrics;
+  mRow: Integer;
+begin
+  inherited;
+  mMetrics.Window := Self;
+  if (Y < mMetrics.ListTop) or (Y >= ClientHeight - mMetrics.FooterHeight) then
+  begin
+    Exit;
+  end;
+  mRow := FTop + (Y - mMetrics.ListTop) div mMetrics.RowHeight;
+  if mRow >= RowCount then
+  begin
+    Exit;
+  end;
+  if not FStep.Active then
+  begin
+    ChooseRow(mRow);
+    Exit;
+  end;
+  SelectRow(mRow);
+  if FStep.Entry.Multi and (mRow <= High(FStep.Order)) then
+  begin
+    if FStep.Toggle(FSelected) then
+    begin
+      Invalidate;
+    end;
+  end
+  else
+  begin
+    ConfirmStep;
+  end;
+end;
+
+function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+begin
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
+  Invalidate;
+  Result := True;
+end;
+
 function TAtlasGenerateWindow.RowCount: Integer;
 begin
   if FStep.Active then
@@ -696,16 +864,6 @@ begin
   begin
     Result := Length(FRows);
   end;
-end;
-
-procedure TAtlasGenerateWindow.UpdateHeight;
-var
-  mMetrics: TAtlasGenerateMetrics;
-  mVisible: Integer;
-begin
-  mMetrics.Window := Self;
-  mVisible := EnsureRange(RowCount, 1, cVisibleRows);
-  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight + ScaleValue(4);
 end;
 
 procedure TAtlasGenerateWindow.Rebuild;
@@ -727,35 +885,6 @@ begin
   end;
   UpdateHeight;
   Invalidate;
-end;
-
-procedure TAtlasGenerateWindow.ShowAt(const ACaret: TRect);
-var
-  mArea: TRect;
-  mLeft, mTop: Integer;
-begin
-  Width := ScaleValue(440);
-  UpdateHeight;
-  mArea := Screen.MonitorFromPoint(ACaret.TopLeft, mdNearest).WorkareaRect;
-  mLeft := EnsureRange(ACaret.Left, mArea.Left, Max(mArea.Left, mArea.Right - Width));
-  mTop := ACaret.Bottom + ScaleValue(2);
-  // Unten kein Platz: über die Zeile.
-  if mTop + Height > mArea.Bottom then
-  begin
-    mTop := Max(mArea.Top, ACaret.Top - Height - ScaleValue(2));
-  end;
-  SetBounds(mLeft, mTop, Width, Height);
-  Show;
-  SetFocus;
-end;
-
-procedure TAtlasGenerateWindow.ShowOver(const AArea: TRect);
-begin
-  Width := Min(ScaleValue(440), AArea.Width - ScaleValue(40));
-  UpdateHeight;
-  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(60), Width, Height);
-  Show;
-  SetFocus;
 end;
 
 procedure TAtlasGenerateWindow.SelectRow(ARow: Integer);
@@ -950,6 +1079,16 @@ begin
   end;
 end;
 
+procedure TAtlasGenerateWindow.UpdateHeight;
+var
+  mMetrics: TAtlasGenerateMetrics;
+  mVisible: Integer;
+begin
+  mMetrics.Window := Self;
+  mVisible := EnsureRange(RowCount, 1, cVisibleRows);
+  ClientHeight := mMetrics.TitleHeight + mVisible * mMetrics.RowHeight + mMetrics.FooterHeight + ScaleValue(4);
+end;
+
 procedure TAtlasGenerateWindow.FormDeactivate(Sender: TObject);
 begin
   if not FDone then
@@ -960,172 +1099,33 @@ begin
   end;
 end;
 
-procedure TAtlasGenerateWindow.KeyDown(var Key: Word; Shift: TShiftState);
-begin
-  case Key of
-    VK_ESCAPE:
-      if FStep.Active then
-      begin
-        LeaveStep;
-      end
-      else
-      begin
-        FormDeactivate(Self);
-      end;
-    VK_RETURN:
-      if FStep.Active then
-      begin
-        ConfirmStep;
-      end
-      else
-      begin
-        ChooseRow(FSelected);
-      end;
-    VK_UP:
-      Step(-1);
-    VK_DOWN:
-      Step(1);
-    VK_PRIOR:
-      Step(-cVisibleRows);
-    VK_NEXT:
-      Step(cVisibleRows);
-    VK_HOME:
-      Step(-RowCount);
-    VK_END:
-      Step(RowCount);
-    VK_DELETE:
-      HideSelected;
-    VK_BACK:
-      Backspace(Shift);
-  else
-    Exit;
-  end;
-  Key := 0;
-end;
-
-procedure TAtlasGenerateWindow.KeyPress(var Key: Char);
+procedure TAtlasGenerateWindow.ShowAt(const ACaret: TRect);
 var
-  mRow: Integer;
+  mArea: TRect;
+  mLeft, mTop: Integer;
 begin
-  if Key < ' ' then
+  Width := ScaleValue(440);
+  UpdateHeight;
+  mArea := Screen.MonitorFromPoint(ACaret.TopLeft, mdNearest).WorkareaRect;
+  mLeft := EnsureRange(ACaret.Left, mArea.Left, Max(mArea.Left, mArea.Right - Width));
+  mTop := ACaret.Bottom + ScaleValue(2);
+  // Unten kein Platz: über die Zeile.
+  if mTop + Height > mArea.Bottom then
   begin
-    Key := #0;
-    Exit;
+    mTop := Max(mArea.Top, ACaret.Top - Height - ScaleValue(2));
   end;
-  if FStep.Active then
-  begin
-    // Leertaste schaltet bei Mehrfachauswahl, solange nichts getippt ist.
-    if (Key = ' ') and FStep.Entry.Multi and (FStep.Text = '') then
-    begin
-      if FStep.Toggle(FSelected) then
-      begin
-        Invalidate;
-      end;
-    end
-    else
-    begin
-      FStep.Text := FStep.Text + Key;
-      RefilterChoices;
-    end;
-    Key := #0;
-    Exit;
-  end;
-  if CharInSet(Key, ['1'..'9']) then
-  begin
-    mRow := TAtlasGenerateMenu.RowOfDigit(FRows, Ord(Key) - Ord('0'));
-    if mRow >= 0 then
-    begin
-      ChooseRow(mRow);
-    end;
-  end
-  else if Key <> ' ' then
-  begin
-    FPattern := FPattern + Key;
-    Rebuild;
-    UpdateHeight;
-  end;
-  Key := #0;
+  SetBounds(mLeft, mTop, Width, Height);
+  Show;
+  SetFocus;
 end;
 
-procedure TAtlasGenerateWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mMetrics: TAtlasGenerateMetrics;
-  mRow: Integer;
+procedure TAtlasGenerateWindow.ShowOver(const AArea: TRect);
 begin
-  inherited;
-  mMetrics.Window := Self;
-  if (Y < mMetrics.ListTop) or (Y >= ClientHeight - mMetrics.FooterHeight) then
-  begin
-    Exit;
-  end;
-  mRow := FTop + (Y - mMetrics.ListTop) div mMetrics.RowHeight;
-  if mRow >= RowCount then
-  begin
-    Exit;
-  end;
-  if not FStep.Active then
-  begin
-    ChooseRow(mRow);
-    Exit;
-  end;
-  SelectRow(mRow);
-  if FStep.Entry.Multi and (mRow <= High(FStep.Order)) then
-  begin
-    if FStep.Toggle(FSelected) then
-    begin
-      Invalidate;
-    end;
-  end
-  else
-  begin
-    ConfirmStep;
-  end;
-end;
-
-function TAtlasGenerateWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
-begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
-  Invalidate;
-  Result := True;
-end;
-
-procedure TAtlasGenerateWindow.Paint;
-var
-  mPainter: TAtlasGeneratePainter;
-  mTitle: TRect;
-  mRow: Integer;
-begin
-  mPainter.Window := Self;
-  mPainter.Metrics.Window := Self;
-  Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
-  Canvas.FillRect(ClientRect);
-  mTitle := mPainter.Title;
-  if FStep.Active then
-  begin
-    mPainter.Input(mTitle);
-  end;
-  Canvas.Brush.Style := bsSolid;
-  for mRow := 0 to Min(cVisibleRows, RowCount - FTop) - 1 do
-  begin
-    if FStep.Active then
-    begin
-      mPainter.StepRow(mRow);
-    end
-    else
-    begin
-      mPainter.ListRow(mRow);
-    end;
-  end;
-  if RowCount = 0 then
-  begin
-    mPainter.Empty;
-  end;
-  mPainter.Footer;
-  // Rahmen des Fensters.
-  Canvas.Pen.Color := ToColor(FColors.Accent);
-  Canvas.Rectangle(ClientRect);
-  Canvas.Brush.Style := bsSolid;
+  Width := Min(ScaleValue(440), AArea.Width - ScaleValue(40));
+  UpdateHeight;
+  SetBounds(AArea.Left + (AArea.Width - Width) div 2, AArea.Top + ScaleValue(60), Width, Height);
+  Show;
+  SetFocus;
 end;
 
 end.

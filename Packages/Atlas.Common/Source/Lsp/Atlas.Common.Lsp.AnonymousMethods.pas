@@ -272,6 +272,8 @@ begin
 end;
 
 
+{ TLspAnonymousMethods }
+
 class function TLspAnonymousMethods.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TAnonymousLookup;
 var

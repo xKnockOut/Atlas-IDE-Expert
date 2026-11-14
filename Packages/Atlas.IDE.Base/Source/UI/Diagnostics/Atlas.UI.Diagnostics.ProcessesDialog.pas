@@ -242,6 +242,15 @@ begin
   ShowDirty;
 end;
 
+destructor TAtlasProcessesDialog.Destroy;
+begin
+  // Spät eintreffende Antworten fassen das Fenster nicht mehr an.
+  FAlive.Alive := False;
+  FAliveRef := nil;
+  FWorkspaces := nil;
+  inherited Destroy;
+end;
+
 procedure TAtlasProcessesDialog.CreateTop;
 var
   mHead, mInfo: TPanel;
@@ -346,85 +355,22 @@ begin
   AddColumn(FParts.List, TAtlasTextId.ProcessesColumnState, 160);
 end;
 
-destructor TAtlasProcessesDialog.Destroy;
+procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);
 begin
-  // Spät eintreffende Antworten fassen das Fenster nicht mehr an.
-  FAlive.Alive := False;
-  FAliveRef := nil;
-  FWorkspaces := nil;
-  inherited Destroy;
+  ShowWorkspace(FParts.Choice.ItemIndex);
 end;
 
-procedure TAtlasProcessesDialog.Reload;
-var
-  mAlive: TAtlasProcessesAlive;
-  mKeep: IInterface;
+procedure TAtlasProcessesDialog.RefreshClick(Sender: TObject);
 begin
-  FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesAsking);
-  ShowDirty;
-  if not Assigned(FActions.Fetch) then
-  begin
-    Exit;
-  end;
-  mAlive := FAlive;
-  mKeep := FAliveRef;
-  FActions.Fetch(
-    procedure(AAnswer: TJSONValue)
-    begin
-      // Keep hält die Marke am Leben, bis die Antwort da ist.
-      if Assigned(mKeep) and mAlive.Alive then
-      begin
-        ShowAnswer(AAnswer);
-      end;
-    end);
+  Reload;
 end;
 
-procedure TAtlasProcessesDialog.ShowAnswer(const AAnswer: TJSONValue);
-var
-  mIndex: Integer;
+procedure TAtlasProcessesDialog.CopyClick(Sender: TObject);
 begin
-  FWorkspaces := TAtlasProcessesView.Parse(AAnswer);
-  FMarkdown := TAtlasProcessesView.Markdown(AAnswer);
-  FParts.CopyButton.Enabled := FMarkdown <> '';
-  if AAnswer = nil then
+  if Assigned(FActions.CopyText) and (FMarkdown <> '') then
   begin
-    FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
-  end
-  else if Length(FWorkspaces) = 0 then
-  begin
-    FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesEmpty);
-  end
-  else
-  begin
-    FParts.Status.Caption := '';
+    FActions.CopyText(FMarkdown);
   end;
-  if TAtlasProcessesView.GroupName(FWorkspaces) = '' then
-  begin
-    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
-  end
-  else
-  begin
-    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesTitle,
-      [TAtlasProcessesView.GroupName(FWorkspaces)]);
-  end;
-  Caption := FParts.Heading.Caption;
-  FParts.Choice.Items.BeginUpdate;
-  try
-    FParts.Choice.Items.Clear;
-    for mIndex := 0 to High(FWorkspaces) do
-    begin
-      FParts.Choice.Items.Add(FWorkspaces[mIndex].Name);
-    end;
-  finally
-    FParts.Choice.Items.EndUpdate;
-  end;
-  FParts.Choice.Visible := Length(FWorkspaces) > 1;
-  if Length(FWorkspaces) > 0 then
-  begin
-    FParts.Choice.ItemIndex := 0;
-  end;
-  ShowWorkspace(0);
-  ShowDirty;
 end;
 
 procedure TAtlasProcessesDialog.ShowWorkspace(AIndex: Integer);
@@ -537,22 +483,76 @@ begin
   end;
 end;
 
-procedure TAtlasProcessesDialog.ChoiceChange(Sender: TObject);
+procedure TAtlasProcessesDialog.Reload;
+var
+  mAlive: TAtlasProcessesAlive;
+  mKeep: IInterface;
 begin
-  ShowWorkspace(FParts.Choice.ItemIndex);
-end;
-
-procedure TAtlasProcessesDialog.RefreshClick(Sender: TObject);
-begin
-  Reload;
-end;
-
-procedure TAtlasProcessesDialog.CopyClick(Sender: TObject);
-begin
-  if Assigned(FActions.CopyText) and (FMarkdown <> '') then
+  FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesAsking);
+  ShowDirty;
+  if not Assigned(FActions.Fetch) then
   begin
-    FActions.CopyText(FMarkdown);
+    Exit;
   end;
+  mAlive := FAlive;
+  mKeep := FAliveRef;
+  FActions.Fetch(
+    procedure(AAnswer: TJSONValue)
+    begin
+      // Keep hält die Marke am Leben, bis die Antwort da ist.
+      if Assigned(mKeep) and mAlive.Alive then
+      begin
+        ShowAnswer(AAnswer);
+      end;
+    end);
+end;
+
+procedure TAtlasProcessesDialog.ShowAnswer(const AAnswer: TJSONValue);
+var
+  mIndex: Integer;
+begin
+  FWorkspaces := TAtlasProcessesView.Parse(AAnswer);
+  FMarkdown := TAtlasProcessesView.Markdown(AAnswer);
+  FParts.CopyButton.Enabled := FMarkdown <> '';
+  if AAnswer = nil then
+  begin
+    FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer);
+  end
+  else if Length(FWorkspaces) = 0 then
+  begin
+    FParts.Status.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesEmpty);
+  end
+  else
+  begin
+    FParts.Status.Caption := '';
+  end;
+  if TAtlasProcessesView.GroupName(FWorkspaces) = '' then
+  begin
+    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ProcessesTitleNone);
+  end
+  else
+  begin
+    FParts.Heading.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ProcessesTitle,
+      [TAtlasProcessesView.GroupName(FWorkspaces)]);
+  end;
+  Caption := FParts.Heading.Caption;
+  FParts.Choice.Items.BeginUpdate;
+  try
+    FParts.Choice.Items.Clear;
+    for mIndex := 0 to High(FWorkspaces) do
+    begin
+      FParts.Choice.Items.Add(FWorkspaces[mIndex].Name);
+    end;
+  finally
+    FParts.Choice.Items.EndUpdate;
+  end;
+  FParts.Choice.Visible := Length(FWorkspaces) > 1;
+  if Length(FWorkspaces) > 0 then
+  begin
+    FParts.Choice.ItemIndex := 0;
+  end;
+  ShowWorkspace(0);
+  ShowDirty;
 end;
 
 class procedure TAtlasProcessesDialog.Execute(const AActions: TAtlasProcessesActions);

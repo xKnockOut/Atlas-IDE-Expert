@@ -98,11 +98,6 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasIdeTaskShortcuts.StatusId(const AName: string): string;
-begin
-  Result := 'atlas.task.' + AnsiLowerCase(AName);
-end;
-
 procedure TAtlasIdeTaskShortcuts.Clear;
 var
   mLine: TAtlasStatusLine;
@@ -159,6 +154,11 @@ begin
       mLine.Update(AText, AState, '', AName, ABrief);
     end;
   end;
+end;
+
+class function TAtlasIdeTaskShortcuts.StatusId(const AName: string): string;
+begin
+  Result := 'atlas.task.' + AnsiLowerCase(AName);
 end;
 
 end.

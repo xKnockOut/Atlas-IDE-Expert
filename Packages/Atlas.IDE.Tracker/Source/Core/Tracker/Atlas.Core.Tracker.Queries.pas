@@ -105,6 +105,8 @@ begin
   end;
 end;
 
+{ TAtlasTrackerQueries }
+
 class function TAtlasTrackerQueries.Read(const AJson: string): TArray<TAtlasTrackerQuery>;
 var
   mRoot: TJSONValue;

@@ -70,6 +70,8 @@ uses
   Atlas.Text.Chars,
   Atlas.Core.Editor.Pairs;
 
+{ TAtlasSearchResults }
+
 class function TAtlasSearchResults.IndexAt(const AHits: TArray<TAtlasSearchHit>;
   const APos: TAtlasSearchPos): Integer;
 var

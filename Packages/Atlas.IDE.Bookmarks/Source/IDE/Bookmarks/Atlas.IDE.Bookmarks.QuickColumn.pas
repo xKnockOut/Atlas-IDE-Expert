@@ -718,25 +718,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeQuickColumn.CheckPainted;
-begin
-  // Dem Dienst melden, ob die Spalte zeichnet; erst dann übernimmt er die IDE-Lesezeichen (#1281).
-  TAtlasIdeBookmarks.ColumnPainted(FLog.Painted);
-  if FLog.Painted then
-  begin
-    TAtlasIdeQuickBookmarks.ImportIde(FTrack.FileName);
-    Exit;
-  end;
-  if (FSlot.Column < 0) or FLog.NotPainted or (FTrack.FileName = '') or
-    (TThread.GetTickCount64 - FLog.RequestedAt < cPaintWaitMs) then
-  begin
-    Exit;
-  end;
-  FLog.NotPainted := True;
-  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte %d seit %d ms angefordert, die IDE hat sie aber noch nie ' +
-    'gezeichnet', [FSlot.Column, cPaintWaitMs]));
-end;
-
 procedure TAtlasIdeQuickColumn.Tick(Sender: TObject);
 begin
   try
@@ -804,6 +785,171 @@ begin
   if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
   begin
     InvalidateTop;
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.CheckPainted;
+begin
+  // Dem Dienst melden, ob die Spalte zeichnet; erst dann übernimmt er die IDE-Lesezeichen (#1281).
+  TAtlasIdeBookmarks.ColumnPainted(FLog.Painted);
+  if FLog.Painted then
+  begin
+    TAtlasIdeQuickBookmarks.ImportIde(FTrack.FileName);
+    Exit;
+  end;
+  if (FSlot.Column < 0) or FLog.NotPainted or (FTrack.FileName = '') or
+    (TThread.GetTickCount64 - FLog.RequestedAt < cPaintWaitMs) then
+  begin
+    Exit;
+  end;
+  FLog.NotPainted := True;
+  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte %d seit %d ms angefordert, die IDE hat sie aber noch nie ' +
+    'gezeichnet', [FSlot.Column, cPaintWaitMs]));
+end;
+
+function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; AX, AY: Integer; out ARow: TRow): Boolean;
+const
+  /// <summary>Geschätzte Zeile zuerst, dann die Nachbarn (Rundung an der Zeilengrenze).</summary>
+  cSteps: array[0..2] of Integer = (0, -1, 1);
+var
+  mPainted: TPainted;
+  mPlace: TEditorPlace;
+  mGuess, mStep, mCandidate: Integer;
+begin
+  ARow := Default(TRow);
+  Result := False;
+  if (FSlot.Column < 0) or not FArea.Rows.TryGetValue(AWnd, mPainted) or
+    not EditorAt(AWnd, mPlace) then
+  begin
+    Exit;
+  end;
+  // Die Zeile schätzt die Zeilenhöhe der zuletzt gezeichneten; ob der Punkt wirklich in der Spalte dieser
+  // Zeile liegt, sagt die IDE (auch nach dem Scrollen oder bei geänderter Breite der Rinne).
+  mGuess := TAtlasQuickBookmarks.RowGuess(mPainted.EditorLine, mPainted.Rect.Top, mPainted.Rect.Height, AY);
+  for mStep in cSteps do
+  begin
+    mCandidate := mGuess + mStep;
+    if (mCandidate < FArea.FirstLine) or (mCandidate > FArea.LastLine) then
+    begin
+      Continue;
+    end;
+    case LineRow(mPlace, FSlot.Column, mCandidate, Point(AX, AY), ARow) of
+      TLineHit.Miss:
+        ;
+      TLineHit.Found:
+        begin
+          ARow.Wnd := AWnd;
+          Exit(True);
+        end;
+      TLineHit.Stop:
+        begin
+          ARow := Default(TRow);
+          Exit;
+        end;
+    end;
+  end;
+end;
+
+function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean;
+var
+  mWnd: HWND;
+  mLocal: TPoint;
+begin
+  ARow := Default(TRow);
+  Result := False;
+  for mWnd in FArea.Rows.Keys do
+  begin
+    if (mWnd = 0) or not Related(mWnd, AWnd) then
+    begin
+      Continue;
+    end;
+    mLocal := APoint;
+    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) then
+    begin
+      Continue;
+    end;
+    if RowAt(mWnd, mLocal.X, mLocal.Y, ARow) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.ClickRow(const ARow: TRow);
+var
+  mFileName: string;
+  mLine: Integer;
+begin
+  HideTip;
+  mFileName := ARow.FileName;
+  mLine := ARow.Line;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
+        procedure
+        begin
+          TAtlasIdeQuickBookmarks.ColumnClick(mFileName, mLine);
+        end);
+    end);
+end;
+
+procedure TAtlasIdeQuickColumn.LogMiss(AWnd: HWND; const APoint: TPoint);
+var
+  mWnd: HWND;
+  mLocal: TPoint;
+  mPainted: TPainted;
+begin
+  if FLog.Miss then
+  begin
+    Exit;
+  end;
+  for mWnd in FArea.Rows.Keys do
+  begin
+    if not Related(mWnd, AWnd) then
+    begin
+      Continue;
+    end;
+    mLocal := APoint;
+    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) or not FArea.Rows.TryGetValue(mWnd, mPainted) or
+      (mLocal.X < mPainted.Rect.Left) or (mLocal.X >= mPainted.Rect.Right) then
+    begin
+      Continue;
+    end;
+    FLog.Miss := True;
+    TAtlasGuard.Log(Format('Schnelle Lesezeichen: Klick in die Spalte (%d, %d) ohne Zeile; zuletzt gezeichnet ' +
+      'Editorzeile %d bei %d..%d, gezeichnet %d..%d', [mLocal.X, mLocal.Y, mPainted.EditorLine, mPainted.Rect.Top,
+      mPainted.Rect.Bottom, FArea.FirstLine, FArea.LastLine]));
+    Exit;
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  mRow: TRow;
+begin
+  try
+    if (Button <> mbLeft) or (Editor = nil) or not Editor.HandleAllocated then
+    begin
+      Exit;
+    end;
+    // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
+    if not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
+      (TThread.GetTickCount64 - FLog.ClickedAt < 500) or not RowAt(Editor.Handle, X, Y, mRow) then
+    begin
+      Exit;
+    end;
+    if not FLog.EditorClick then
+    begin
+      TAtlasGuard.Log('Schnelle Lesezeichen: Klick in die Spalte kam nicht über Application.OnMessage, ' +
+        'sondern über das Mausereignis des Editors');
+    end;
+    FLog.EditorClick := True;
+    ClickRow(mRow);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
   end;
 end;
 
@@ -882,174 +1028,6 @@ begin
   end;
 end;
 
-function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; AX, AY: Integer; out ARow: TRow): Boolean;
-const
-  /// <summary>Geschätzte Zeile zuerst, dann die Nachbarn (Rundung an der Zeilengrenze).</summary>
-  cSteps: array[0..2] of Integer = (0, -1, 1);
-var
-  mPainted: TPainted;
-  mPlace: TEditorPlace;
-  mGuess, mStep, mCandidate: Integer;
-begin
-  ARow := Default(TRow);
-  Result := False;
-  if (FSlot.Column < 0) or not FArea.Rows.TryGetValue(AWnd, mPainted) or
-    not EditorAt(AWnd, mPlace) then
-  begin
-    Exit;
-  end;
-  // Die Zeile schätzt die Zeilenhöhe der zuletzt gezeichneten; ob der Punkt wirklich in der Spalte dieser
-  // Zeile liegt, sagt die IDE (auch nach dem Scrollen oder bei geänderter Breite der Rinne).
-  mGuess := TAtlasQuickBookmarks.RowGuess(mPainted.EditorLine, mPainted.Rect.Top, mPainted.Rect.Height, AY);
-  for mStep in cSteps do
-  begin
-    mCandidate := mGuess + mStep;
-    if (mCandidate < FArea.FirstLine) or (mCandidate > FArea.LastLine) then
-    begin
-      Continue;
-    end;
-    case LineRow(mPlace, FSlot.Column, mCandidate, Point(AX, AY), ARow) of
-      TLineHit.Miss:
-        ;
-      TLineHit.Found:
-        begin
-          ARow.Wnd := AWnd;
-          Exit(True);
-        end;
-      TLineHit.Stop:
-        begin
-          ARow := Default(TRow);
-          Exit;
-        end;
-    end;
-  end;
-end;
-
-function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean;
-var
-  mWnd: HWND;
-  mLocal: TPoint;
-begin
-  ARow := Default(TRow);
-  Result := False;
-  for mWnd in FArea.Rows.Keys do
-  begin
-    if (mWnd = 0) or not Related(mWnd, AWnd) then
-    begin
-      Continue;
-    end;
-    mLocal := APoint;
-    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) then
-    begin
-      Continue;
-    end;
-    if RowAt(mWnd, mLocal.X, mLocal.Y, ARow) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.LogMiss(AWnd: HWND; const APoint: TPoint);
-var
-  mWnd: HWND;
-  mLocal: TPoint;
-  mPainted: TPainted;
-begin
-  if FLog.Miss then
-  begin
-    Exit;
-  end;
-  for mWnd in FArea.Rows.Keys do
-  begin
-    if not Related(mWnd, AWnd) then
-    begin
-      Continue;
-    end;
-    mLocal := APoint;
-    if not Winapi.Windows.ScreenToClient(mWnd, mLocal) or not FArea.Rows.TryGetValue(mWnd, mPainted) or
-      (mLocal.X < mPainted.Rect.Left) or (mLocal.X >= mPainted.Rect.Right) then
-    begin
-      Continue;
-    end;
-    FLog.Miss := True;
-    TAtlasGuard.Log(Format('Schnelle Lesezeichen: Klick in die Spalte (%d, %d) ohne Zeile; zuletzt gezeichnet ' +
-      'Editorzeile %d bei %d..%d, gezeichnet %d..%d', [mLocal.X, mLocal.Y, mPainted.EditorLine, mPainted.Rect.Top,
-      mPainted.Rect.Bottom, FArea.FirstLine, FArea.LastLine]));
-    Exit;
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.ClickRow(const ARow: TRow);
-var
-  mFileName: string;
-  mLine: Integer;
-begin
-  HideTip;
-  mFileName := ARow.FileName;
-  mLine := ARow.Line;
-  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
-    procedure
-    begin
-      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-        procedure
-        begin
-          TAtlasIdeQuickBookmarks.ColumnClick(mFileName, mLine);
-        end);
-    end);
-end;
-
-procedure TAtlasIdeQuickColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-var
-  mRow: TRow;
-begin
-  try
-    if (Button <> mbLeft) or (Editor = nil) or not Editor.HandleAllocated then
-    begin
-      Exit;
-    end;
-    // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
-    if not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
-      (TThread.GetTickCount64 - FLog.ClickedAt < 500) or not RowAt(Editor.Handle, X, Y, mRow) then
-    begin
-      Exit;
-    end;
-    if not FLog.EditorClick then
-    begin
-      TAtlasGuard.Log('Schnelle Lesezeichen: Klick in die Spalte kam nicht über Application.OnMessage, ' +
-        'sondern über das Mausereignis des Editors');
-    end;
-    FLog.EditorClick := True;
-    ClickRow(mRow);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.SetHover(const ARow: TRow; AOn: Boolean);
-var
-  mChanged: Boolean;
-begin
-  mChanged := AOn <> FHover.Hovering;
-  if AOn and FHover.Hovering then
-  begin
-    mChanged := (ARow.Wnd <> FHover.Row.Wnd) or (ARow.Line <> FHover.Row.Line) or
-      not SameText(ARow.FileName, FHover.Row.FileName);
-  end;
-  if not mChanged then
-  begin
-    Exit;
-  end;
-  HideTip;
-  FHover.Hovering := AOn;
-  FHover.Row := ARow;
-  FHover.Since := TThread.GetTickCount64;
-  // Umriss auf freiem Platz folgt der Maus.
-  InvalidateTop;
-end;
-
 procedure TAtlasIdeQuickColumn.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
   mRow: TRow;
@@ -1066,32 +1044,6 @@ begin
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.CheckHover;
-begin
-  if not FHover.Hovering then
-  begin
-    Exit;
-  end;
-  // Maus hat die Spalte verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-  if not PtInRect(FHover.ScreenRect, Mouse.CursorPos) and not FTip.Contains(Mouse.CursorPos) then
-  begin
-    SetHover(Default(TRow), False);
-    Exit;
-  end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= cHoverMs) then
-  begin
-    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
-  end;
-end;
-
-procedure TAtlasIdeQuickColumn.HideTip;
-begin
-  if FTip <> nil then
-  begin
-    FTip.Hide;
   end;
 end;
 
@@ -1150,6 +1102,54 @@ begin
   FPress.SwallowUp := WM_LBUTTONUP;
   FLog.ClickedAt := TThread.GetTickCount64;
   ClickRow(mRow);
+end;
+
+procedure TAtlasIdeQuickColumn.CheckHover;
+begin
+  if not FHover.Hovering then
+  begin
+    Exit;
+  end;
+  // Maus hat die Spalte verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
+  if not PtInRect(FHover.ScreenRect, Mouse.CursorPos) and not FTip.Contains(Mouse.CursorPos) then
+  begin
+    SetHover(Default(TRow), False);
+    Exit;
+  end;
+  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= cHoverMs) then
+  begin
+    FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.HideTip;
+begin
+  if FTip <> nil then
+  begin
+    FTip.Hide;
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.SetHover(const ARow: TRow; AOn: Boolean);
+var
+  mChanged: Boolean;
+begin
+  mChanged := AOn <> FHover.Hovering;
+  if AOn and FHover.Hovering then
+  begin
+    mChanged := (ARow.Wnd <> FHover.Row.Wnd) or (ARow.Line <> FHover.Row.Line) or
+      not SameText(ARow.FileName, FHover.Row.FileName);
+  end;
+  if not mChanged then
+  begin
+    Exit;
+  end;
+  HideTip;
+  FHover.Hovering := AOn;
+  FHover.Row := ARow;
+  FHover.Since := TThread.GetTickCount64;
+  // Umriss auf freiem Platz folgt der Maus.
+  InvalidateTop;
 end;
 
 end.

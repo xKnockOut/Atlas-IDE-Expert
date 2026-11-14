@@ -83,40 +83,6 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasOptionsSelector.Start;
-begin
-  FTries := 0;
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasOptionsSelector.Stop;
-begin
-  FTimer.Enabled := False;
-end;
-
-class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TCustomTreeView;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to AParent.ControlCount - 1 do
-  begin
-    // TCustomTreeView: Delphi 13 nimmt eine eigene Ableitung statt TTreeView (#1903).
-    if AParent.Controls[mIndex] is TCustomTreeView then
-    begin
-      Exit(TCustomTreeView(AParent.Controls[mIndex]));
-    end;
-    if AParent.Controls[mIndex] is TWinControl then
-    begin
-      Result := FindTree(TWinControl(AParent.Controls[mIndex]));
-      if Result <> nil then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-end;
-
 procedure TAtlasOptionsSelector.Tick(Sender: TObject);
 var
   mForm: TCustomForm;
@@ -169,6 +135,40 @@ begin
   end;
 end;
 
+procedure TAtlasOptionsSelector.Start;
+begin
+  FTries := 0;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasOptionsSelector.Stop;
+begin
+  FTimer.Enabled := False;
+end;
+
+class function TAtlasOptionsSelector.FindTree(AParent: TWinControl): TCustomTreeView;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AParent.ControlCount - 1 do
+  begin
+    // TCustomTreeView: Delphi 13 nimmt eine eigene Ableitung statt TTreeView (#1903).
+    if AParent.Controls[mIndex] is TCustomTreeView then
+    begin
+      Exit(TCustomTreeView(AParent.Controls[mIndex]));
+    end;
+    if AParent.Controls[mIndex] is TWinControl then
+    begin
+      Result := FindTree(TWinControl(AParent.Controls[mIndex]));
+      if Result <> nil then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 /// <summary>Klassen der Steuerelemente unter AParent, deren Name „Tree“ enthält (Protokoll, wenn kein Baum passt).
 /// </summary>
 function TreeLikeClasses(AParent: TWinControl): string;
@@ -208,6 +208,8 @@ begin
     Result := Result.getNextSibling;
   end;
 end;
+
+{ TAtlasIdeOptionsDialog }
 
 class function TAtlasIdeOptionsDialog.SelectNode(const APath: TArray<string>): Boolean;
 var

@@ -192,38 +192,6 @@ begin
   end;
 end;
 
-class function TAtlasUnwrapWindow.EntryCaption(const AEntry: TAtlasUnwrapEntry): string;
-var
-  mSuffix: string;
-begin
-  Result := KindCaption(AEntry);
-  mSuffix := VariantSuffix(AEntry);
-  if mSuffix <> '' then
-  begin
-    Result := Result + cDash + mSuffix;
-  end;
-end;
-
-class function TAtlasUnwrapWindow.EntryNote(const AEntry: TAtlasUnwrapEntry): string;
-begin
-  if AEntry.Note = 'multipleRaise' then
-  begin
-    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapRaiseNote, [AEntry.NoteText]);
-  end
-  else if AEntry.Note = 'loopVariable' then
-  begin
-    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapLoopNote, [AEntry.NoteText]);
-  end
-  else if AEntry.Note = 'withUnresolved' then
-  begin
-    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapWithNote, [AEntry.NoteText]);
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 function TAtlasUnwrapWindow.Title: string;
 begin
   if FCompact and (Length(FEntries) = 1) then
@@ -236,13 +204,105 @@ begin
   end;
 end;
 
-procedure TAtlasUnwrapWindow.Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
+procedure TAtlasUnwrapWindow.Paint;
 begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(Colors.Surface);
+  Canvas.FillRect(ClientRect);
+  Layout(True);
+  PaintBorder;
+end;
+
+procedure TAtlasUnwrapWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mPoint: TPoint;
+begin
+  inherited;
+  if Button <> mbLeft then
+  begin
+    Exit;
+  end;
+  mPoint := TPoint.Create(X, Y);
+  if PtInRect(FAcceptRect, mPoint) then
+  begin
+    Accept;
+    Exit;
+  end;
+  if PtInRect(FCancelRect, mPoint) then
+  begin
+    Cancel;
+    Exit;
+  end;
+  for mIndex := 0 to High(FRowRects) do
+  begin
+    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
+    begin
+      Select(mIndex);
+      Accept;
+      Exit;
+    end;
+  end;
+end;
+
+procedure TAtlasUnwrapWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mHot: Boolean;
+  mPoint: TPoint;
+begin
+  inherited;
+  mPoint := TPoint.Create(X, Y);
+  mHot := PtInRect(FAcceptRect, mPoint) or PtInRect(FCancelRect, mPoint);
+  // Überfahren wählt den Eintrag und wechselt die Vorschau.
+  for mIndex := 0 to High(FRowRects) do
+  begin
+    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
+    begin
+      mHot := True;
+      Select(mIndex);
+    end;
+  end;
+  if mHot then
+  begin
+    Cursor := crHandPoint;
+  end
+  else
+  begin
+    Cursor := crDefault;
+  end;
+end;
+
+function TAtlasUnwrapWindow.Layout(ADraw: Boolean): TSize;
+var
+  mY, mWidth, mIndex, mTextHeight: Integer;
+  mTitle: string;
+begin
+  Canvas.Font := UIFont;
+  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
-    Canvas.Font.Color := ToColor(AColor);
-    Canvas.TextOut(AX, AY, AText);
+    Canvas.Brush.Style := bsClear;
   end;
+  mY := Scale(cPad);
+  mTitle := Title;
+  Canvas.Font.Style := [fsBold];
+  Put(ADraw, Scale(cPad), mY, mTitle, Colors.Text);
+  mWidth := Scale(cPad) + Canvas.TextWidth(mTitle);
+  Canvas.Font.Style := [];
+  SetLength(FRowRects, Length(FEntries));
+  for mIndex := 0 to High(FEntries) do
+  begin
+    LayoutEntry(ADraw, mIndex, mTextHeight, mY, mWidth);
+  end;
+  mY := mY + mTextHeight + Scale(cRowGap) * 2;
+  LayoutFooter(ADraw, mY, mTextHeight, mWidth);
+  if ADraw then
+  begin
+    Canvas.Brush.Style := bsSolid;
+  end;
+  Result.cx := mWidth + Scale(cPad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 /// <summary>Zeile von Eintrag AIndex unter AY: Beschriftung (gewählt mit Marke) und Zeilennummer.</summary>
@@ -331,36 +391,45 @@ begin
   AWidth := Max(AWidth, FCancelRect.Right);
 end;
 
-function TAtlasUnwrapWindow.Layout(ADraw: Boolean): TSize;
-var
-  mY, mWidth, mIndex, mTextHeight: Integer;
-  mTitle: string;
+procedure TAtlasUnwrapWindow.Put(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
 begin
-  Canvas.Font := UIFont;
-  mTextHeight := Canvas.TextHeight('Wg');
   if ADraw then
   begin
-    Canvas.Brush.Style := bsClear;
+    Canvas.Font.Color := ToColor(AColor);
+    Canvas.TextOut(AX, AY, AText);
   end;
-  mY := Scale(cPad);
-  mTitle := Title;
-  Canvas.Font.Style := [fsBold];
-  Put(ADraw, Scale(cPad), mY, mTitle, Colors.Text);
-  mWidth := Scale(cPad) + Canvas.TextWidth(mTitle);
-  Canvas.Font.Style := [];
-  SetLength(FRowRects, Length(FEntries));
-  for mIndex := 0 to High(FEntries) do
+end;
+
+class function TAtlasUnwrapWindow.EntryCaption(const AEntry: TAtlasUnwrapEntry): string;
+var
+  mSuffix: string;
+begin
+  Result := KindCaption(AEntry);
+  mSuffix := VariantSuffix(AEntry);
+  if mSuffix <> '' then
   begin
-    LayoutEntry(ADraw, mIndex, mTextHeight, mY, mWidth);
+    Result := Result + cDash + mSuffix;
   end;
-  mY := mY + mTextHeight + Scale(cRowGap) * 2;
-  LayoutFooter(ADraw, mY, mTextHeight, mWidth);
-  if ADraw then
+end;
+
+class function TAtlasUnwrapWindow.EntryNote(const AEntry: TAtlasUnwrapEntry): string;
+begin
+  if AEntry.Note = 'multipleRaise' then
   begin
-    Canvas.Brush.Style := bsSolid;
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapRaiseNote, [AEntry.NoteText]);
+  end
+  else if AEntry.Note = 'loopVariable' then
+  begin
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapLoopNote, [AEntry.NoteText]);
+  end
+  else if AEntry.Note = 'withUnresolved' then
+  begin
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapWithNote, [AEntry.NoteText]);
+  end
+  else
+  begin
+    Result := '';
   end;
-  Result.cx := mWidth + Scale(cPad);
-  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasUnwrapWindow.ShowFor(const AEntries: TArray<TAtlasUnwrapEntry>; const APoint: TPoint);
@@ -402,6 +471,18 @@ begin
   HidePopup;
 end;
 
+function TAtlasUnwrapWindow.MoveRow(ADelta: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  mNext := TAtlasUnwrap.NextAvailable(FEntries, FRow + ADelta, ADelta);
+  Result := mNext >= 0;
+  if Result then
+  begin
+    Select(mNext);
+  end;
+end;
+
 procedure TAtlasUnwrapWindow.Select(AIndex: Integer);
 begin
   if (AIndex < 0) or (AIndex > High(FEntries)) or not FEntries[AIndex].Available or (AIndex = FRow) then
@@ -414,18 +495,6 @@ begin
   if Assigned(FOnSelect) then
   begin
     FOnSelect(FRow);
-  end;
-end;
-
-function TAtlasUnwrapWindow.MoveRow(ADelta: Integer): Boolean;
-var
-  mNext: Integer;
-begin
-  mNext := TAtlasUnwrap.NextAvailable(FEntries, FRow + ADelta, ADelta);
-  Result := mNext >= 0;
-  if Result then
-  begin
-    Select(mNext);
   end;
 end;
 
@@ -465,75 +534,6 @@ begin
   if Assigned(FOnCancel) then
   begin
     FOnCancel();
-  end;
-end;
-
-procedure TAtlasUnwrapWindow.Paint;
-begin
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Colors.Surface);
-  Canvas.FillRect(ClientRect);
-  Layout(True);
-  PaintBorder;
-end;
-
-procedure TAtlasUnwrapWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-  mPoint: TPoint;
-begin
-  inherited;
-  if Button <> mbLeft then
-  begin
-    Exit;
-  end;
-  mPoint := TPoint.Create(X, Y);
-  if PtInRect(FAcceptRect, mPoint) then
-  begin
-    Accept;
-    Exit;
-  end;
-  if PtInRect(FCancelRect, mPoint) then
-  begin
-    Cancel;
-    Exit;
-  end;
-  for mIndex := 0 to High(FRowRects) do
-  begin
-    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
-    begin
-      Select(mIndex);
-      Accept;
-      Exit;
-    end;
-  end;
-end;
-
-procedure TAtlasUnwrapWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  mIndex: Integer;
-  mHot: Boolean;
-  mPoint: TPoint;
-begin
-  inherited;
-  mPoint := TPoint.Create(X, Y);
-  mHot := PtInRect(FAcceptRect, mPoint) or PtInRect(FCancelRect, mPoint);
-  // Überfahren wählt den Eintrag und wechselt die Vorschau.
-  for mIndex := 0 to High(FRowRects) do
-  begin
-    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
-    begin
-      mHot := True;
-      Select(mIndex);
-    end;
-  end;
-  if mHot then
-  begin
-    Cursor := crHandPoint;
-  end
-  else
-  begin
-    Cursor := crDefault;
   end;
 end;
 

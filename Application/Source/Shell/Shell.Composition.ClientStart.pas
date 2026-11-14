@@ -30,40 +30,7 @@ uses
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.Completion.Details;
 
-class procedure TShellClientStart.Initialized(AParts: TShellParts);
-var
-  mParams: TJSONObject;
-  mFolders: TArray<TWorkspaceFolder>;
-  mFolder: TWorkspaceFolder;
-begin
-  mParams := AParts.Protocol.Lifecycle.InitializeParams;
-  AParts.Session.WatchParent(mParams);
-  ApplyClientInfo(AParts, mParams);
-  mFolders := TLspWorkspaceFolders.FromInitialize(mParams);
-  // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
-  AParts.IdeArea.Ide.Project.LoadInitialize(mParams);
-  // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
-  // Projekte weiter einen abgeleiteten Arbeitsbereich.
-  AParts.DeriveWorkspaces := True;
-  for mFolder in mFolders do
-  begin
-    if mFolder.ProjectFile = '' then
-    begin
-      AParts.DeriveWorkspaces := False;
-    end;
-  end;
-  if Length(mFolders) = 0 then
-  begin
-    AParts.Channel.Logger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
-  end;
-  AParts.Core.Configuration.Start;
-  for mFolder in mFolders do
-  begin
-    AParts.Core.Folders.Add(mFolder);
-  end;
-  AParts.Core.Configuration.UpdateWatchedFiles;
-  AParts.IdeArea.FileChanges.RegisterWatchers(mParams);
-end;
+{ TShellClientStart }
 
 class procedure TShellClientStart.ApplyClientInfo(AParts: TShellParts; const AParams: TJSONObject);
 begin
@@ -97,6 +64,41 @@ begin
   AParts.CodeArea.Completion.Completion.Hooks.SnippetSupport := TLspCompletion.ClientSupportsSnippets(AParams);
   AParts.CodeArea.Completion.Completion.Hooks.DocumentationMarkdown :=
     TCompletionDetails.ClientPrefersMarkdown(AParams);
+end;
+
+class procedure TShellClientStart.Initialized(AParts: TShellParts);
+var
+  mParams: TJSONObject;
+  mFolders: TArray<TWorkspaceFolder>;
+  mFolder: TWorkspaceFolder;
+begin
+  mParams := AParts.Protocol.Lifecycle.InitializeParams;
+  AParts.Session.WatchParent(mParams);
+  ApplyClientInfo(AParts, mParams);
+  mFolders := TLspWorkspaceFolders.FromInitialize(mParams);
+  // Vor dem ersten Laden, damit die Projekte nicht zweimal indiziert werden (#396).
+  AParts.IdeArea.Ide.Project.LoadInitialize(mParams);
+  // Meldet der Client nur Projektdateien (IDE-Plugin, #648), bekommen Dateien außerhalb dieser
+  // Projekte weiter einen abgeleiteten Arbeitsbereich.
+  AParts.DeriveWorkspaces := True;
+  for mFolder in mFolders do
+  begin
+    if mFolder.ProjectFile = '' then
+    begin
+      AParts.DeriveWorkspaces := False;
+    end;
+  end;
+  if Length(mFolders) = 0 then
+  begin
+    AParts.Channel.Logger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
+  end;
+  AParts.Core.Configuration.Start;
+  for mFolder in mFolders do
+  begin
+    AParts.Core.Folders.Add(mFolder);
+  end;
+  AParts.Core.Configuration.UpdateWatchedFiles;
+  AParts.IdeArea.FileChanges.RegisterWatchers(mParams);
 end;
 
 end.

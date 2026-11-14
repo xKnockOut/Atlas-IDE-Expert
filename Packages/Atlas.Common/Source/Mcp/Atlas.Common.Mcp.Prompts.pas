@@ -202,9 +202,16 @@ begin
   FSettings := ASettings;
 end;
 
-procedure TMcpPrompts.UseLanguage;
+function TMcpPrompts.Say(const AGerman, AEnglish: string): string;
 begin
-  FEnglish := SameText(FSettings().McpPromptLanguage, 'en');
+  if FEnglish then
+  begin
+    Result := AEnglish;
+  end
+  else
+  begin
+    Result := AGerman;
+  end;
 end;
 
 /// <summary>Deutscher oder englischer Text je nach mcp.promptLanguage.</summary>
@@ -275,76 +282,43 @@ begin
     'into your answer.');
 end;
 
-function TMcpPrompts.Say(const AGerman, AEnglish: string): string;
-begin
-  if FEnglish then
-  begin
-    Result := AEnglish;
-  end
-  else
-  begin
-    Result := AGerman;
-  end;
-end;
-
-class function TMcpPrompts.Limit(const AText: string; AMaxBytes: Integer; const ATool: string): string;
+function TMcpPrompts.ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string;
 var
-  mNote: string;
-  mCount, mBytes, mTarget, mBreak: Integer;
+  mText: string;
 begin
-  if Utf8Length(AText) <= AMaxBytes then
-  begin
-    Exit(AText);
-  end;
-  if ATool <> '' then
-  begin
-    mNote := Format(sLineBreak + sLineBreak + '… gekürzt auf %d KB; vollständig mit %s.', [AMaxBytes div 1024, ATool]);
-  end
-  else
-  begin
-    mNote := Format(sLineBreak + sLineBreak + '… gekürzt auf %d KB.', [AMaxBytes div 1024]);
-  end;
-  mTarget := AMaxBytes - Utf8Length(mNote);
-  mCount := Length(AText);
-  if mCount > mTarget then
-  begin
-    mCount := mTarget;
-  end;
-  mBytes := Utf8Length(Copy(AText, 1, mCount));
-  while (mCount > 0) and (mBytes > mTarget) do
-  begin
-    // Umlaute und andere Zeichen brauchen mehr als ein Byte: in Schritten an das Ziel heran.
-    if (mBytes - mTarget) div 2 > 1 then
+  try
+    if FServer.InvokeTool(ATool, AArguments, mText) then
     begin
-      Dec(mCount, (mBytes - mTarget) div 2);
+      Result := '## ' + ATitle + ' (' + ATool + ')' + sLineBreak + sLineBreak +
+        Limit(TrimRight(mText), cMaxSectionBytes, ATool);
     end
     else
     begin
-      Dec(mCount);
+      Result := '## ' + ATitle + ' (' + ATool + ')' + sLineBreak + sLineBreak +
+        Say('Nicht verfügbar: ', 'Not available: ') + mText;
     end;
-    mBytes := Utf8Length(Copy(AText, 1, mCount));
+  finally
+    AArguments.Free;
   end;
-  // Keine halbe Zeile am Ende.
-  mBreak := mCount;
-  while (mBreak > 0) and (AText[mBreak] <> #10) do
-  begin
-    Dec(mBreak);
-  end;
-  if mBreak > 0 then
-  begin
-    mCount := mBreak - 1;
-  end;
-  Result := TrimRight(Copy(AText, 1, mCount)) + mNote;
 end;
 
-class function TMcpPrompts.Substitute(const AText: string; const AArguments: TDictionary<string, string>): string;
-var
-  mPair: TPair<string, string>;
+function TMcpPrompts.ToolSection(const ATitle, ATool, AName, AValue: string): string;
 begin
-  Result := AText;
-  for mPair in AArguments do
+  Result := ToolSection(ATitle, ATool, StringArgs(AName, AValue));
+end;
+
+function TMcpPrompts.ConventionsSection: string;
+var
+  mText: string;
+begin
+  if FServer.ReadResourceText(cConventionsUri, mText) then
   begin
-    Result := StringReplace(Result, '{' + mPair.Key + '}', mPair.Value, [rfReplaceAll]);
+    Result := Section(Say('Projektkonventionen', 'Project conventions') + ' (' + cConventionsUri + ')', mText);
+  end
+  else
+  begin
+    Result := Section(Say('Projektkonventionen', 'Project conventions'),
+      Say('Nicht verfügbar.', 'Not available.'));
   end;
 end;
 
@@ -368,25 +342,25 @@ begin
   end;
 end;
 
-class function TMcpPrompts.InterfacePart(const AText: string): string;
+function TMcpPrompts.FormFile(const AFile: string): string;
 var
-  mTree: TSyntaxTree;
-  mSection: TSyntaxNode;
+  mText: string;
 begin
-  Result := '';
-  mTree := TSyntaxTreeCache.Parse(AText);
-  try
-    if (mTree = nil) or (mTree.Root = nil) then
+  Result := CheckedFile(FResolveFile, AFile);
+  if SameText(ExtractFileExt(Result), '.pas') then
+  begin
+    if Assigned(FReadText) and FReadText(ChangeFileExt(Result, '.dfm'), mText) then
     begin
-      Exit;
-    end;
-    mSection := mTree.Root.FindChild(TSyntaxKind.InterfaceSection);
-    if mSection <> nil then
+      Result := ChangeFileExt(Result, '.dfm');
+    end
+    else
     begin
-      Result := LinesOf(TTextLines.SplitLines(AText), mSection.StartPos.Line, mSection.EndPos.Line);
+      Result := ChangeFileExt(Result, '.fmx');
     end;
-  finally
-    mTree.Free;
+  end;
+  if not TDfmParser.IsFormFile(Result) then
+  begin
+    raise EMcpToolError.CreateFmt('"%s" ist keine Formulardatei (.dfm, .fmx oder die .pas dazu)', [AFile]);
   end;
 end;
 
@@ -460,54 +434,39 @@ begin
     .Append('```');
 end;
 
-class function TMcpPrompts.HandlerBodies(const AFormText, AUnitText: string): string;
+function TMcpPrompts.UnitReview(const AArguments: TDictionary<string, string>): string;
 var
-  mDocument: TDfmDocument;
-  mTree: TSyntaxTree;
-  mSection: TSyntaxNode;
-  mHandlers: TList<string>;
-  mUses: TDictionary<string, string>;
-  mLines: TArray<string>;
-  mBuilder: TStringBuilder;
-  mHandler: string;
+  mUnit, mFile, mSteps: string;
 begin
-  mDocument := TDfmParser.Parse(AFormText);
-  mHandlers := TList<string>.Create;
-  mUses := TDictionary<string, string>.Create;
-  mBuilder := TStringBuilder.Create;
-  mTree := nil;
-  try
-    if mDocument.Root <> nil then
-    begin
-      CollectEvents(mDocument.Root, mHandlers, mUses);
-    end;
-    if mHandlers.Count = 0 then
-    begin
-      Exit('');
-    end;
-    mLines := TTextLines.SplitLines(AUnitText);
-    mSection := nil;
-    if AUnitText <> '' then
-    begin
-      mTree := TSyntaxTreeCache.Parse(AUnitText);
-    end;
-    if (mTree <> nil) and (mTree.Root <> nil) then
-    begin
-      mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    end;
-    for mHandler in mHandlers do
-    begin
-      AppendHandler(mBuilder, mHandler, mUses[LowerCase(mHandler)],
-        FindRoutine(mSection, mDocument.Root.TypeName + '.' + mHandler), mLines);
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mTree.Free;
-    mBuilder.Free;
-    mUses.Free;
-    mHandlers.Free;
-    mDocument.Free;
+  UseLanguage;
+  mUnit := Argument(AArguments, 'unit');
+  mFile := UnitFile(FResolveUnit, mUnit);
+  mSteps := Say(
+    '1. Ordne die Punkte nach Schweregrad: Fehler, Warnungen, dann Hinweise und Stil. Fasse gleichartige zusammen.' +
+    sLineBreak +
+    '2. Nenne je Punkt Datei:Zeile, die Ursache und einen konkreten Vorschlag mit Codeausschnitt.' + sLineBreak +
+    '3. Beziehe Metriken über dem Grenzwert, ungenutzten Code und die Projektkonventionen ein.' + sLineBreak,
+    '1. Order the points by severity: errors, warnings, then hints and style. Group similar ones.' + sLineBreak +
+    '2. For each point give file:line, the cause and a concrete suggestion with a code snippet.' + sLineBreak +
+    '3. Take methods above the metric limits, unused code and the project conventions into account.' + sLineBreak);
+  if FServer.Restricted then
+  begin
+    mSteps := mSteps + '4. ' + ReadOnlyNote(FEnglish) + Say(' Prüfe jeden Vorschlag mit check_code.',
+      ' Check every suggestion with check_code.');
+  end
+  else
+  begin
+    mSteps := mSteps + Say('4. Prüfe jede Änderung vor dem Schreiben mit check_code und ändere erst nach Rückfrage.',
+      '4. Check every change with check_code before writing it, and only change code after asking.');
   end;
+  Result := Intro(FEnglish, Format(Say('Führe ein Code-Review der Unit %s (%s) durch.', 'Review the unit %s (%s).'),
+    [mUnit, mFile])) + sLineBreak + sLineBreak + mSteps + sLineBreak + sLineBreak +
+    ToolSection(Say('Gliederung', 'Outline'), 'get_unit_outline', 'unit', mFile) + sLineBreak + sLineBreak +
+    ToolSection(Say('Befunde', 'Findings'), 'get_diagnostics', 'file', mFile) + sLineBreak + sLineBreak +
+    ToolSection(Say('Metriken über Grenzwert', 'Metrics above limits'), 'get_metrics', 'file', mFile) +
+    sLineBreak + sLineBreak +
+    ToolSection(Say('Ungenutzter Code', 'Unused code'), 'find_unused_code', 'file', mFile) + sLineBreak +
+    sLineBreak + ConventionsSection;
 end;
 
 /// <summary>Bindet die Eigenschaft eine Komponente an Daten? Datenbank-Steuerelemente, Datenmengen und
@@ -557,211 +516,6 @@ begin
   begin
     CollectBindings(mChild, ABuilder);
   end;
-end;
-
-class function TMcpPrompts.DataBindings(const AFormText: string): string;
-var
-  mDocument: TDfmDocument;
-  mBuilder: TStringBuilder;
-begin
-  mDocument := TDfmParser.Parse(AFormText);
-  mBuilder := TStringBuilder.Create;
-  try
-    if mDocument.Root <> nil then
-    begin
-      CollectBindings(mDocument.Root, mBuilder);
-    end;
-    Result := TrimRight(mBuilder.ToString);
-  finally
-    mBuilder.Free;
-    mDocument.Free;
-  end;
-end;
-
-class function TMcpPrompts.Snippet(const ALines: TArray<string>; ALine, AContext: Integer): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex, mFirst, mLast: Integer;
-  mMarker: string;
-begin
-  mFirst := ALine - AContext;
-  if mFirst < 1 then
-  begin
-    mFirst := 1;
-  end;
-  mLast := ALine + AContext;
-  if mLast > Length(ALines) then
-  begin
-    mLast := Length(ALines);
-  end;
-  mBuilder := TStringBuilder.Create;
-  try
-    for mIndex := mFirst to mLast do
-    begin
-      mMarker := ' ';
-      if mIndex = ALine then
-      begin
-        mMarker := '>';
-      end;
-      mBuilder.Append(Format('%s%5d  %s', [mMarker, mIndex, ALines[mIndex - 1]])).Append(sLineBreak);
-    end;
-    Result := TrimRight(mBuilder.ToString);
-  finally
-    mBuilder.Free;
-  end;
-end;
-
-class function TMcpPrompts.ChangeReport(const AChanges: TMcpChangeSet; AEnglish: Boolean): string;
-var
-  mBuilder: TStringBuilder;
-  mFile: TMcpChangedFile;
-  mFinding: TRuleFinding;
-  mCount: Integer;
-begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mCount := 0;
-    for mFile in AChanges.Files do
-    begin
-      Inc(mCount, Length(mFile.Findings));
-    end;
-    if AEnglish then
-    begin
-      mBuilder.Append(Format('%s, compared with %s: %d changed files, %d new findings in changed lines.',
-        [AChanges.Vcs, AChanges.Base, Length(AChanges.Files), mCount]));
-    end
-    else
-    begin
-      mBuilder.Append(Format('%s, verglichen mit %s: %d geänderte Dateien, %d neue Befunde in geänderten Zeilen.',
-        [AChanges.Vcs, AChanges.Base, Length(AChanges.Files), mCount]));
-    end;
-    mBuilder.Append(sLineBreak);
-    for mFile in AChanges.Files do
-    begin
-      mBuilder.Append(sLineBreak).Append('- ').Append(mFile.Path);
-      for mFinding in mFile.Findings do
-      begin
-        mBuilder.Append(sLineBreak).Append(Format('  - %d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
-          mFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId,
-          mFinding.Message]));
-      end;
-    end;
-    Result := TrimRight(mBuilder.ToString);
-  finally
-    mBuilder.Free;
-  end;
-end;
-
-function TMcpPrompts.ToolSection(const ATitle, ATool: string; const AArguments: TJSONObject): string;
-var
-  mText: string;
-begin
-  try
-    if FServer.InvokeTool(ATool, AArguments, mText) then
-    begin
-      Result := '## ' + ATitle + ' (' + ATool + ')' + sLineBreak + sLineBreak +
-        Limit(TrimRight(mText), cMaxSectionBytes, ATool);
-    end
-    else
-    begin
-      Result := '## ' + ATitle + ' (' + ATool + ')' + sLineBreak + sLineBreak +
-        Say('Nicht verfügbar: ', 'Not available: ') + mText;
-    end;
-  finally
-    AArguments.Free;
-  end;
-end;
-
-function TMcpPrompts.ToolSection(const ATitle, ATool, AName, AValue: string): string;
-begin
-  Result := ToolSection(ATitle, ATool, StringArgs(AName, AValue));
-end;
-
-function TMcpPrompts.ToolText(const ATool: string; const AArguments: TJSONObject): string;
-begin
-  try
-    if not FServer.InvokeTool(ATool, AArguments, Result) then
-    begin
-      raise EMcpToolError.Create(Result);
-    end;
-  finally
-    AArguments.Free;
-  end;
-end;
-
-function TMcpPrompts.ConventionsSection: string;
-var
-  mText: string;
-begin
-  if FServer.ReadResourceText(cConventionsUri, mText) then
-  begin
-    Result := Section(Say('Projektkonventionen', 'Project conventions') + ' (' + cConventionsUri + ')', mText);
-  end
-  else
-  begin
-    Result := Section(Say('Projektkonventionen', 'Project conventions'),
-      Say('Nicht verfügbar.', 'Not available.'));
-  end;
-end;
-
-
-function TMcpPrompts.FormFile(const AFile: string): string;
-var
-  mText: string;
-begin
-  Result := CheckedFile(FResolveFile, AFile);
-  if SameText(ExtractFileExt(Result), '.pas') then
-  begin
-    if Assigned(FReadText) and FReadText(ChangeFileExt(Result, '.dfm'), mText) then
-    begin
-      Result := ChangeFileExt(Result, '.dfm');
-    end
-    else
-    begin
-      Result := ChangeFileExt(Result, '.fmx');
-    end;
-  end;
-  if not TDfmParser.IsFormFile(Result) then
-  begin
-    raise EMcpToolError.CreateFmt('"%s" ist keine Formulardatei (.dfm, .fmx oder die .pas dazu)', [AFile]);
-  end;
-end;
-
-
-
-function TMcpPrompts.UnitReview(const AArguments: TDictionary<string, string>): string;
-var
-  mUnit, mFile, mSteps: string;
-begin
-  UseLanguage;
-  mUnit := Argument(AArguments, 'unit');
-  mFile := UnitFile(FResolveUnit, mUnit);
-  mSteps := Say(
-    '1. Ordne die Punkte nach Schweregrad: Fehler, Warnungen, dann Hinweise und Stil. Fasse gleichartige zusammen.' +
-    sLineBreak +
-    '2. Nenne je Punkt Datei:Zeile, die Ursache und einen konkreten Vorschlag mit Codeausschnitt.' + sLineBreak +
-    '3. Beziehe Metriken über dem Grenzwert, ungenutzten Code und die Projektkonventionen ein.' + sLineBreak,
-    '1. Order the points by severity: errors, warnings, then hints and style. Group similar ones.' + sLineBreak +
-    '2. For each point give file:line, the cause and a concrete suggestion with a code snippet.' + sLineBreak +
-    '3. Take methods above the metric limits, unused code and the project conventions into account.' + sLineBreak);
-  if FServer.Restricted then
-  begin
-    mSteps := mSteps + '4. ' + ReadOnlyNote(FEnglish) + Say(' Prüfe jeden Vorschlag mit check_code.',
-      ' Check every suggestion with check_code.');
-  end
-  else
-  begin
-    mSteps := mSteps + Say('4. Prüfe jede Änderung vor dem Schreiben mit check_code und ändere erst nach Rückfrage.',
-      '4. Check every change with check_code before writing it, and only change code after asking.');
-  end;
-  Result := Intro(FEnglish, Format(Say('Führe ein Code-Review der Unit %s (%s) durch.', 'Review the unit %s (%s).'),
-    [mUnit, mFile])) + sLineBreak + sLineBreak + mSteps + sLineBreak + sLineBreak +
-    ToolSection(Say('Gliederung', 'Outline'), 'get_unit_outline', 'unit', mFile) + sLineBreak + sLineBreak +
-    ToolSection(Say('Befunde', 'Findings'), 'get_diagnostics', 'file', mFile) + sLineBreak + sLineBreak +
-    ToolSection(Say('Metriken über Grenzwert', 'Metrics above limits'), 'get_metrics', 'file', mFile) +
-    sLineBreak + sLineBreak +
-    ToolSection(Say('Ungenutzter Code', 'Unused code'), 'find_unused_code', 'file', mFile) + sLineBreak +
-    sLineBreak + ConventionsSection;
 end;
 
 function TMcpPrompts.ExplainForm(const AArguments: TDictionary<string, string>): string;
@@ -908,6 +662,179 @@ begin
     Result := Result + sLineBreak + sLineBreak + ToolSection(Say('Verfügbare Korrekturen', 'Available fixes'),
       'apply_code_action', FindingArgs(mFile, mLine, ''));
   end;
+end;
+
+function TMcpPrompts.RunCustom(const APrompt: TMcpCustomPrompt;
+  const AArguments: TDictionary<string, string>): string;
+var
+  mInclude: string;
+begin
+  UseLanguage;
+  Result := Substitute(APrompt.Text, AArguments);
+  if FServer.Restricted then
+  begin
+    Result := Result + sLineBreak + sLineBreak + ReadOnlyNote(FEnglish);
+  end;
+  for mInclude in APrompt.Include do
+  begin
+    Result := Result + sLineBreak + sLineBreak + IncludeSection(mInclude, AArguments);
+  end;
+end;
+
+function TMcpPrompts.UnitResource(const AName: string): string;
+var
+  mFile, mText, mInterface: string;
+begin
+  UseLanguage;
+  mFile := UnitFile(FResolveUnit, AName);
+  Result := '# Unit ' + AName + sLineBreak + sLineBreak + mFile + sLineBreak + sLineBreak + '## ' +
+    Say('Gliederung', 'Outline') + sLineBreak + sLineBreak + ToolText('get_unit_outline', StringArgs('unit', mFile));
+  if Assigned(FReadText) and FReadText(mFile, mText) then
+  begin
+    mInterface := InterfacePart(mText);
+    if mInterface <> '' then
+    begin
+      Result := Result + sLineBreak + sLineBreak + '## interface' + sLineBreak + sLineBreak + '```pascal' +
+        sLineBreak + mInterface + sLineBreak + '```';
+    end;
+  end;
+  Result := Limit(Result, cMaxResourceBytes, 'get_unit_outline / get_declaration');
+end;
+
+function TMcpPrompts.FormResource(const AFile: string): string;
+var
+  mFile: string;
+begin
+  UseLanguage;
+  mFile := FormFile(AFile);
+  Result := Limit('# ' + Say('Formular ', 'Form ') + mFile + sLineBreak + sLineBreak +
+    ToolText('get_dfm_info', StringArgs('file', mFile)), cMaxResourceBytes, 'get_dfm_info');
+end;
+
+function TMcpPrompts.FindingsResource(const AFile: string): string;
+var
+  mFile: string;
+begin
+  UseLanguage;
+  mFile := CheckedFile(FResolveFile, AFile);
+  Result := Limit('# ' + Say('Befunde ', 'Findings ') + mFile + sLineBreak + sLineBreak +
+    ToolText('get_diagnostics', StringArgs('file', mFile)), cMaxResourceBytes, 'get_diagnostics');
+end;
+
+
+function TMcpPrompts.BuildResource: string;
+begin
+  UseLanguage;
+  Result := Limit('# ' + Say('Letzter Build', 'Last build') + sLineBreak + sLineBreak +
+    ToolText('get_last_build', TJSONObject.Create), cMaxResourceBytes, 'get_last_build');
+end;
+
+
+
+function TMcpPrompts.ToolText(const ATool: string; const AArguments: TJSONObject): string;
+begin
+  try
+    if not FServer.InvokeTool(ATool, AArguments, Result) then
+    begin
+      raise EMcpToolError.Create(Result);
+    end;
+  finally
+    AArguments.Free;
+  end;
+end;
+
+procedure TMcpPrompts.UseLanguage;
+begin
+  FEnglish := SameText(FSettings().McpPromptLanguage, 'en');
+end;
+
+procedure TMcpPrompts.Register;
+begin
+  FServer.OnPrompts :=
+    function: TArray<TMcpPrompt>
+    begin
+      UseLanguage;
+      Result := Builtin + Custom;
+    end;
+  FServer.OnPromptsEnabled :=
+    function: Boolean
+    begin
+      Result := FSettings().McpPrompts;
+    end;
+  FServer.AddResourceTemplate('delphi://unit/{name}', 'Unit',
+    'Gliederung und interface-Teil einer Unit des Projekts als Markdown (höchstens 64 KB).', 'text/markdown',
+    function(const AValue: string): string
+    begin
+      Result := UnitResource(AValue);
+    end);
+  FServer.AddResourceTemplate('delphi://form/{file}', 'Formular',
+    'Komponentenbaum eines Formulars (.dfm/.fmx oder die .pas dazu) als Markdown.', 'text/markdown',
+    function(const AValue: string): string
+    begin
+      Result := FormResource(AValue);
+    end);
+  FServer.AddResourceTemplate('delphi://findings/{file}', 'Befunde',
+    'Syntaxfehler und Befunde der Prüfregeln einer Datei als Markdown.', 'text/markdown',
+    function(const AValue: string): string
+    begin
+      Result := FindingsResource(AValue);
+    end);
+  FServer.AddPromptResource('delphi://build/last', 'Letzter Build',
+    'Ergebnis und Compilermeldungen des letzten Builds in der IDE wie get_last_build.', 'text/markdown',
+    function: string
+    begin
+      Result := BuildResource;
+    end);
+end;
+
+class function TMcpPrompts.Limit(const AText: string; AMaxBytes: Integer; const ATool: string): string;
+var
+  mNote: string;
+  mCount, mBytes, mTarget, mBreak: Integer;
+begin
+  if Utf8Length(AText) <= AMaxBytes then
+  begin
+    Exit(AText);
+  end;
+  if ATool <> '' then
+  begin
+    mNote := Format(sLineBreak + sLineBreak + '… gekürzt auf %d KB; vollständig mit %s.', [AMaxBytes div 1024, ATool]);
+  end
+  else
+  begin
+    mNote := Format(sLineBreak + sLineBreak + '… gekürzt auf %d KB.', [AMaxBytes div 1024]);
+  end;
+  mTarget := AMaxBytes - Utf8Length(mNote);
+  mCount := Length(AText);
+  if mCount > mTarget then
+  begin
+    mCount := mTarget;
+  end;
+  mBytes := Utf8Length(Copy(AText, 1, mCount));
+  while (mCount > 0) and (mBytes > mTarget) do
+  begin
+    // Umlaute und andere Zeichen brauchen mehr als ein Byte: in Schritten an das Ziel heran.
+    if (mBytes - mTarget) div 2 > 1 then
+    begin
+      Dec(mCount, (mBytes - mTarget) div 2);
+    end
+    else
+    begin
+      Dec(mCount);
+    end;
+    mBytes := Utf8Length(Copy(AText, 1, mCount));
+  end;
+  // Keine halbe Zeile am Ende.
+  mBreak := mCount;
+  while (mBreak > 0) and (AText[mBreak] <> #10) do
+  begin
+    Dec(mBreak);
+  end;
+  if mBreak > 0 then
+  begin
+    mCount := mBreak - 1;
+  end;
+  Result := TrimRight(Copy(AText, 1, mCount)) + mNote;
 end;
 
 /// <summary>Schritte von prepare_commit: Befunde, Tests, Commit-Nachricht (mit APrefix) und Freigabe.</summary>
@@ -1101,20 +1028,14 @@ begin
   end;
 end;
 
-function TMcpPrompts.RunCustom(const APrompt: TMcpCustomPrompt;
-  const AArguments: TDictionary<string, string>): string;
+class function TMcpPrompts.Substitute(const AText: string; const AArguments: TDictionary<string, string>): string;
 var
-  mInclude: string;
+  mPair: TPair<string, string>;
 begin
-  UseLanguage;
-  Result := Substitute(APrompt.Text, AArguments);
-  if FServer.Restricted then
+  Result := AText;
+  for mPair in AArguments do
   begin
-    Result := Result + sLineBreak + sLineBreak + ReadOnlyNote(FEnglish);
-  end;
-  for mInclude in APrompt.Include do
-  begin
-    Result := Result + sLineBreak + sLineBreak + IncludeSection(mInclude, AArguments);
+    Result := StringReplace(Result, '{' + mPair.Key + '}', mPair.Value, [rfReplaceAll]);
   end;
 end;
 
@@ -1218,90 +1139,169 @@ begin
   end;
 end;
 
-function TMcpPrompts.UnitResource(const AName: string): string;
+class function TMcpPrompts.InterfacePart(const AText: string): string;
 var
-  mFile, mText, mInterface: string;
+  mTree: TSyntaxTree;
+  mSection: TSyntaxNode;
 begin
-  UseLanguage;
-  mFile := UnitFile(FResolveUnit, AName);
-  Result := '# Unit ' + AName + sLineBreak + sLineBreak + mFile + sLineBreak + sLineBreak + '## ' +
-    Say('Gliederung', 'Outline') + sLineBreak + sLineBreak + ToolText('get_unit_outline', StringArgs('unit', mFile));
-  if Assigned(FReadText) and FReadText(mFile, mText) then
-  begin
-    mInterface := InterfacePart(mText);
-    if mInterface <> '' then
+  Result := '';
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    if (mTree = nil) or (mTree.Root = nil) then
     begin
-      Result := Result + sLineBreak + sLineBreak + '## interface' + sLineBreak + sLineBreak + '```pascal' +
-        sLineBreak + mInterface + sLineBreak + '```';
+      Exit;
     end;
+    mSection := mTree.Root.FindChild(TSyntaxKind.InterfaceSection);
+    if mSection <> nil then
+    begin
+      Result := LinesOf(TTextLines.SplitLines(AText), mSection.StartPos.Line, mSection.EndPos.Line);
+    end;
+  finally
+    mTree.Free;
   end;
-  Result := Limit(Result, cMaxResourceBytes, 'get_unit_outline / get_declaration');
 end;
 
-function TMcpPrompts.FormResource(const AFile: string): string;
+class function TMcpPrompts.HandlerBodies(const AFormText, AUnitText: string): string;
 var
-  mFile: string;
+  mDocument: TDfmDocument;
+  mTree: TSyntaxTree;
+  mSection: TSyntaxNode;
+  mHandlers: TList<string>;
+  mUses: TDictionary<string, string>;
+  mLines: TArray<string>;
+  mBuilder: TStringBuilder;
+  mHandler: string;
 begin
-  UseLanguage;
-  mFile := FormFile(AFile);
-  Result := Limit('# ' + Say('Formular ', 'Form ') + mFile + sLineBreak + sLineBreak +
-    ToolText('get_dfm_info', StringArgs('file', mFile)), cMaxResourceBytes, 'get_dfm_info');
+  mDocument := TDfmParser.Parse(AFormText);
+  mHandlers := TList<string>.Create;
+  mUses := TDictionary<string, string>.Create;
+  mBuilder := TStringBuilder.Create;
+  mTree := nil;
+  try
+    if mDocument.Root <> nil then
+    begin
+      CollectEvents(mDocument.Root, mHandlers, mUses);
+    end;
+    if mHandlers.Count = 0 then
+    begin
+      Exit('');
+    end;
+    mLines := TTextLines.SplitLines(AUnitText);
+    mSection := nil;
+    if AUnitText <> '' then
+    begin
+      mTree := TSyntaxTreeCache.Parse(AUnitText);
+    end;
+    if (mTree <> nil) and (mTree.Root <> nil) then
+    begin
+      mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
+    end;
+    for mHandler in mHandlers do
+    begin
+      AppendHandler(mBuilder, mHandler, mUses[LowerCase(mHandler)],
+        FindRoutine(mSection, mDocument.Root.TypeName + '.' + mHandler), mLines);
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mTree.Free;
+    mBuilder.Free;
+    mUses.Free;
+    mHandlers.Free;
+    mDocument.Free;
+  end;
 end;
 
-function TMcpPrompts.FindingsResource(const AFile: string): string;
+class function TMcpPrompts.DataBindings(const AFormText: string): string;
 var
-  mFile: string;
+  mDocument: TDfmDocument;
+  mBuilder: TStringBuilder;
 begin
-  UseLanguage;
-  mFile := CheckedFile(FResolveFile, AFile);
-  Result := Limit('# ' + Say('Befunde ', 'Findings ') + mFile + sLineBreak + sLineBreak +
-    ToolText('get_diagnostics', StringArgs('file', mFile)), cMaxResourceBytes, 'get_diagnostics');
+  mDocument := TDfmParser.Parse(AFormText);
+  mBuilder := TStringBuilder.Create;
+  try
+    if mDocument.Root <> nil then
+    begin
+      CollectBindings(mDocument.Root, mBuilder);
+    end;
+    Result := TrimRight(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+    mDocument.Free;
+  end;
 end;
 
-function TMcpPrompts.BuildResource: string;
+class function TMcpPrompts.Snippet(const ALines: TArray<string>; ALine, AContext: Integer): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex, mFirst, mLast: Integer;
+  mMarker: string;
 begin
-  UseLanguage;
-  Result := Limit('# ' + Say('Letzter Build', 'Last build') + sLineBreak + sLineBreak +
-    ToolText('get_last_build', TJSONObject.Create), cMaxResourceBytes, 'get_last_build');
+  mFirst := ALine - AContext;
+  if mFirst < 1 then
+  begin
+    mFirst := 1;
+  end;
+  mLast := ALine + AContext;
+  if mLast > Length(ALines) then
+  begin
+    mLast := Length(ALines);
+  end;
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := mFirst to mLast do
+    begin
+      mMarker := ' ';
+      if mIndex = ALine then
+      begin
+        mMarker := '>';
+      end;
+      mBuilder.Append(Format('%s%5d  %s', [mMarker, mIndex, ALines[mIndex - 1]])).Append(sLineBreak);
+    end;
+    Result := TrimRight(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
 end;
 
-procedure TMcpPrompts.Register;
+class function TMcpPrompts.ChangeReport(const AChanges: TMcpChangeSet; AEnglish: Boolean): string;
+var
+  mBuilder: TStringBuilder;
+  mFile: TMcpChangedFile;
+  mFinding: TRuleFinding;
+  mCount: Integer;
 begin
-  FServer.OnPrompts :=
-    function: TArray<TMcpPrompt>
+  mBuilder := TStringBuilder.Create;
+  try
+    mCount := 0;
+    for mFile in AChanges.Files do
     begin
-      UseLanguage;
-      Result := Builtin + Custom;
+      Inc(mCount, Length(mFile.Findings));
     end;
-  FServer.OnPromptsEnabled :=
-    function: Boolean
+    if AEnglish then
     begin
-      Result := FSettings().McpPrompts;
+      mBuilder.Append(Format('%s, compared with %s: %d changed files, %d new findings in changed lines.',
+        [AChanges.Vcs, AChanges.Base, Length(AChanges.Files), mCount]));
+    end
+    else
+    begin
+      mBuilder.Append(Format('%s, verglichen mit %s: %d geänderte Dateien, %d neue Befunde in geänderten Zeilen.',
+        [AChanges.Vcs, AChanges.Base, Length(AChanges.Files), mCount]));
     end;
-  FServer.AddResourceTemplate('delphi://unit/{name}', 'Unit',
-    'Gliederung und interface-Teil einer Unit des Projekts als Markdown (höchstens 64 KB).', 'text/markdown',
-    function(const AValue: string): string
+    mBuilder.Append(sLineBreak);
+    for mFile in AChanges.Files do
     begin
-      Result := UnitResource(AValue);
-    end);
-  FServer.AddResourceTemplate('delphi://form/{file}', 'Formular',
-    'Komponentenbaum eines Formulars (.dfm/.fmx oder die .pas dazu) als Markdown.', 'text/markdown',
-    function(const AValue: string): string
-    begin
-      Result := FormResource(AValue);
-    end);
-  FServer.AddResourceTemplate('delphi://findings/{file}', 'Befunde',
-    'Syntaxfehler und Befunde der Prüfregeln einer Datei als Markdown.', 'text/markdown',
-    function(const AValue: string): string
-    begin
-      Result := FindingsResource(AValue);
-    end);
-  FServer.AddPromptResource('delphi://build/last', 'Letzter Build',
-    'Ergebnis und Compilermeldungen des letzten Builds in der IDE wie get_last_build.', 'text/markdown',
-    function: string
-    begin
-      Result := BuildResource;
-    end);
+      mBuilder.Append(sLineBreak).Append('- ').Append(mFile.Path);
+      for mFinding in mFile.Findings do
+      begin
+        mBuilder.Append(sLineBreak).Append(Format('  - %d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
+          mFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId,
+          mFinding.Message]));
+      end;
+    end;
+    Result := TrimRight(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
 end;
 
 end.

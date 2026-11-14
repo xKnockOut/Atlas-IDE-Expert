@@ -59,27 +59,12 @@ implementation
 uses
   System.SysUtils;
 
+{ TAtlasHoverHistory }
+
 constructor TAtlasHoverHistory.Create(const AFetch: TAtlasHoverFetch);
 begin
   inherited Create;
   FFetch := AFetch;
-end;
-
-procedure TAtlasHoverHistory.Start(const AData: TAtlasHoverData);
-begin
-  FItems := [AData];
-  FPinned := False;
-end;
-
-procedure TAtlasHoverHistory.Clear;
-begin
-  FItems := nil;
-  FPinned := False;
-end;
-
-function TAtlasHoverHistory.GetCount: Integer;
-begin
-  Result := Length(FItems);
 end;
 
 function TAtlasHoverHistory.GetCurrent: TAtlasHoverData;
@@ -94,9 +79,26 @@ begin
   end;
 end;
 
+function TAtlasHoverHistory.GetCount: Integer;
+begin
+  Result := Length(FItems);
+end;
+
 function TAtlasHoverHistory.GetItem(AIndex: Integer): TAtlasHoverData;
 begin
   Result := FItems[AIndex];
+end;
+
+procedure TAtlasHoverHistory.Start(const AData: TAtlasHoverData);
+begin
+  FItems := [AData];
+  FPinned := False;
+end;
+
+procedure TAtlasHoverHistory.Clear;
+begin
+  FItems := nil;
+  FPinned := False;
 end;
 
 function TAtlasHoverHistory.Open(const ARef: TAtlasHoverTypeRef): Boolean;
@@ -130,11 +132,6 @@ begin
   Result := True;
 end;
 
-function TAtlasHoverHistory.CanGoBack: Boolean;
-begin
-  Result := Length(FItems) > 1;
-end;
-
 function TAtlasHoverHistory.Back: Boolean;
 begin
   Result := CanGoBack;
@@ -151,6 +148,11 @@ begin
   begin
     SetLength(FItems, AIndex + 1);
   end;
+end;
+
+function TAtlasHoverHistory.CanGoBack: Boolean;
+begin
+  Result := Length(FItems) > 1;
 end;
 
 function TAtlasHoverHistory.Path: TArray<TAtlasHoverPathItem>;

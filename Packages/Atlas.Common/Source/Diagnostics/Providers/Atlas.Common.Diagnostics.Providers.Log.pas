@@ -145,32 +145,6 @@ begin
   end;
 end;
 
-class function TDiagnosticLog.FormatRequest(const ARequest: TDiagnosticRequest): string;
-var
-  mBuilder: TStringBuilder;
-  mNote: string;
-begin
-  mBuilder := TStringBuilder.Create(256);
-  try
-    mBuilder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
-    mBuilder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
-    if ARequest.QueueMs > 0 then
-    begin
-      mBuilder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
-    end;
-    AppendOutcome(mBuilder, ARequest);
-    AppendLocation(mBuilder, ARequest);
-    for mNote in ARequest.Notes do
-    begin
-      mBuilder.Append(' ').Append(mNote);
-    end;
-    AppendIndex(mBuilder, ARequest);
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
-end;
-
 procedure TDiagnosticLog.Emit(const ALine: string);
 begin
   if not FFilter.Accept(ALine) then
@@ -212,18 +186,6 @@ begin
 end;
 
 procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
-  const AException: string);
-begin
-  LogEnd(AReason, AExitCode, AProcess, AException, '');
-end;
-
-procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer;
-  const AProcess: TDiagnosticProcess);
-begin
-  LogEnd(AReason, AExitCode, AProcess, '', '');
-end;
-
-procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
   const AException, AStack: string);
 var
   mLine: string;
@@ -241,6 +203,18 @@ begin
   begin
     Emit('  at ' + TDiagnosticFilter.StackFrame(mFrame));
   end;
+end;
+
+procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
+  const AException: string);
+begin
+  LogEnd(AReason, AExitCode, AProcess, AException, '');
+end;
+
+procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer;
+  const AProcess: TDiagnosticProcess);
+begin
+  LogEnd(AReason, AExitCode, AProcess, '', '');
 end;
 
 procedure TDiagnosticLog.LogEvent(const AText: string);
@@ -272,6 +246,16 @@ begin
   end;
 end;
 
+function TDiagnosticLog.Enabled: Boolean;
+begin
+  Result := FEnabled;
+end;
+
+function TDiagnosticLog.Dropped: Integer;
+begin
+  Result := FFilter.Dropped;
+end;
+
 procedure TDiagnosticLog.Flush;
 begin
   TMonitor.Enter(FLock);
@@ -285,14 +269,30 @@ begin
   end;
 end;
 
-function TDiagnosticLog.Enabled: Boolean;
+class function TDiagnosticLog.FormatRequest(const ARequest: TDiagnosticRequest): string;
+var
+  mBuilder: TStringBuilder;
+  mNote: string;
 begin
-  Result := FEnabled;
-end;
-
-function TDiagnosticLog.Dropped: Integer;
-begin
-  Result := FFilter.Dropped;
+  mBuilder := TStringBuilder.Create(256);
+  try
+    mBuilder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
+    mBuilder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
+    if ARequest.QueueMs > 0 then
+    begin
+      mBuilder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
+    end;
+    AppendOutcome(mBuilder, ARequest);
+    AppendLocation(mBuilder, ARequest);
+    for mNote in ARequest.Notes do
+    begin
+      mBuilder.Append(' ').Append(mNote);
+    end;
+    AppendIndex(mBuilder, ARequest);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
 end;
 
 end.

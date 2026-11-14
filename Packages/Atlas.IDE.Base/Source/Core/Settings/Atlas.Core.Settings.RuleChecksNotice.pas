@@ -47,6 +47,20 @@ uses
 
 { TAtlasRuleChecksNotice }
 
+function TAtlasRuleChecksNotice.WasShown(const AConfigFile: string): Boolean;
+var
+  mFile: string;
+begin
+  Result := False;
+  for mFile in FShown do
+  begin
+    if SameText(mFile, AConfigFile) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 class function TAtlasRuleChecksNotice.HasRules(const AJsonText: string): Boolean;
 var
   mRoot: TJSONObject;
@@ -95,20 +109,6 @@ begin
       Exit;
     end;
     mFolder := mParent;
-  end;
-end;
-
-function TAtlasRuleChecksNotice.WasShown(const AConfigFile: string): Boolean;
-var
-  mFile: string;
-begin
-  Result := False;
-  for mFile in FShown do
-  begin
-    if SameText(mFile, AConfigFile) then
-    begin
-      Exit(True);
-    end;
   end;
 end;
 

@@ -233,18 +233,43 @@ begin
   Result := Error <> '';
 end;
 
-function TAtlasQueryAnswer.ColumnOf(const AName: string): Integer;
+function TAtlasQueryAnswer.Csv: string;
 var
+  mBuilder: TStringBuilder;
+  mRow: TAtlasQueryRow;
   mIndex: Integer;
 begin
-  for mIndex := 0 to High(Columns) do
-  begin
-    if SameText(Columns[mIndex], AName) then
+  mBuilder := TStringBuilder.Create;
+  try
+    for mIndex := 0 to High(Columns) do
     begin
-      Exit(mIndex);
+      mBuilder.Append(CsvCell(Columns[mIndex])).Append(';');
     end;
+    mBuilder.Append('path;inferred').Append(sLineBreak);
+    for mRow in Rows do
+    begin
+      for mIndex := 0 to High(Columns) do
+      begin
+        if mIndex <= High(mRow.Cells) then
+        begin
+          mBuilder.Append(CsvCell(mRow.Cells[mIndex].Text)).Append(';');
+        end
+        else
+        begin
+          mBuilder.Append(';');
+        end;
+      end;
+      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
+      if mRow.Inferred then
+      begin
+        mBuilder.Append('erschlossen');
+      end;
+      mBuilder.Append(sLineBreak);
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
   end;
-  Result := -1;
 end;
 
 /// <summary>Texte aller Einträge (leer ohne Array).</summary>
@@ -416,43 +441,18 @@ begin
   TArray.Sort<TAtlasQueryRow>(Rows, RowComparer(AColumn, ADescending));
 end;
 
-function TAtlasQueryAnswer.Csv: string;
+function TAtlasQueryAnswer.ColumnOf(const AName: string): Integer;
 var
-  mBuilder: TStringBuilder;
-  mRow: TAtlasQueryRow;
   mIndex: Integer;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    for mIndex := 0 to High(Columns) do
+  for mIndex := 0 to High(Columns) do
+  begin
+    if SameText(Columns[mIndex], AName) then
     begin
-      mBuilder.Append(CsvCell(Columns[mIndex])).Append(';');
+      Exit(mIndex);
     end;
-    mBuilder.Append('path;inferred').Append(sLineBreak);
-    for mRow in Rows do
-    begin
-      for mIndex := 0 to High(Columns) do
-      begin
-        if mIndex <= High(mRow.Cells) then
-        begin
-          mBuilder.Append(CsvCell(mRow.Cells[mIndex].Text)).Append(';');
-        end
-        else
-        begin
-          mBuilder.Append(';');
-        end;
-      end;
-      mBuilder.Append(CsvCell(mRow.Path)).Append(';');
-      if mRow.Inferred then
-      begin
-        mBuilder.Append('erschlossen');
-      end;
-      mBuilder.Append(sLineBreak);
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
   end;
+  Result := -1;
 end;
 
 { TAtlasQueryCatalog }
@@ -530,6 +530,8 @@ begin
     end;
   end;
 end;
+
+{ TAtlasQueryCatalog }
 
 class function TAtlasQueryCatalog.Parse(const AJson: string; out ACatalog: TAtlasQueryCatalog): Boolean;
 var
@@ -712,6 +714,8 @@ type
     procedure AddFields(const AFields: TArray<TAtlasQueryField>);
   end;
 
+{ TSuggestionList }
+
 procedure TSuggestionList.Add(const AName, ADetail: string);
 begin
   Items := Items + [Suggestion(AName, ADetail)];
@@ -829,6 +833,8 @@ begin
     AList.AddKeywords(['and', 'or', 'order', 'limit']);
   end;
 end;
+
+{ TAtlasQueryCompletion }
 
 class function TAtlasQueryCompletion.Suggest(const ACatalog: TAtlasQueryCatalog; const AText: string;
   ACursor: Integer; out AStart: Integer): TArray<TAtlasQuerySuggestion>;

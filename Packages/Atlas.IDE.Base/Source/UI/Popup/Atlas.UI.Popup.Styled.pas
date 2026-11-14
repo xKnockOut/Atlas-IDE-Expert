@@ -127,14 +127,40 @@ end;
 
 { TAtlasStyledText }
 
-class function TAtlasStyledText.Create(const AText: string): TAtlasStyledText;
+function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
+var
+  mToken: TAtlasToken;
+  mCuts: TArray<Integer>;
+  mCutCount, mCount, mIndex: Integer;
 begin
-  Result.Text := AText;
-  Result.Tokens := TAtlasSyntax.Tokens(AText);
-  Result.ActiveStart := -1;
-  Result.ActiveStop := -1;
-  Result.ActiveFill := True;
-  Result.MutedRanges := TAtlasSyntax.DefaultRanges(AText);
+  Result := nil;
+  mCount := 0;
+  // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
+  mCuts := nil;
+  SetLength(mCuts, 4 + 2 * Length(MutedRanges));
+  for mToken in Tokens do
+  begin
+    if Min(ATill, mToken.Stop) <= Max(AFrom, mToken.Start) then
+    begin
+      Continue;
+    end;
+    // Innerhalb des Tokens an den Grenzen des aktiven und der gedämpften Bereiche schneiden.
+    mCutCount := CutsWithin(Max(AFrom, mToken.Start), Min(ATill, mToken.Stop), mCuts);
+    for mIndex := 0 to mCutCount - 2 do
+    begin
+      if mCuts[mIndex + 1] = mCuts[mIndex] then
+      begin
+        Continue;
+      end;
+      if mCount = Length(Result) then
+      begin
+        SetLength(Result, 2 * mCount + 8);
+      end;
+      Result[mCount] := PieceOf(mCuts[mIndex], mCuts[mIndex + 1], mToken.Kind);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
 end;
 
 function TAtlasStyledText.CutsWithin(AFrom, ATill: Integer; var ACuts: TArray<Integer>): Integer;
@@ -190,42 +216,6 @@ begin
   Result := Copy(Text, APiece.Start + 1, APiece.Stop - APiece.Start);
 end;
 
-function TAtlasStyledText.Pieces(AFrom, ATill: Integer): TArray<TPiece>;
-var
-  mToken: TAtlasToken;
-  mCuts: TArray<Integer>;
-  mCutCount, mCount, mIndex: Integer;
-begin
-  Result := nil;
-  mCount := 0;
-  // Höchstens Anfang, Ende, zwei aktive Grenzen und zwei je gedämpftem Bereich.
-  mCuts := nil;
-  SetLength(mCuts, 4 + 2 * Length(MutedRanges));
-  for mToken in Tokens do
-  begin
-    if Min(ATill, mToken.Stop) <= Max(AFrom, mToken.Start) then
-    begin
-      Continue;
-    end;
-    // Innerhalb des Tokens an den Grenzen des aktiven und der gedämpften Bereiche schneiden.
-    mCutCount := CutsWithin(Max(AFrom, mToken.Start), Min(ATill, mToken.Stop), mCuts);
-    for mIndex := 0 to mCutCount - 2 do
-    begin
-      if mCuts[mIndex + 1] = mCuts[mIndex] then
-      begin
-        Continue;
-      end;
-      if mCount = Length(Result) then
-      begin
-        SetLength(Result, 2 * mCount + 8);
-      end;
-      Result[mCount] := PieceOf(mCuts[mIndex], mCuts[mIndex + 1], mToken.Kind);
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-end;
-
 function TAtlasStyledText.PieceWidths(ACanvas: TCanvas; const APieces: TArray<TPiece>): TArray<Integer>;
 var
   mIndex: Integer;
@@ -250,6 +240,16 @@ begin
   begin
     ACanvas.Font.Style := [];
   end;
+end;
+
+class function TAtlasStyledText.Create(const AText: string): TAtlasStyledText;
+begin
+  Result.Text := AText;
+  Result.Tokens := TAtlasSyntax.Tokens(AText);
+  Result.ActiveStart := -1;
+  Result.ActiveStop := -1;
+  Result.ActiveFill := True;
+  Result.MutedRanges := TAtlasSyntax.DefaultRanges(AText);
 end;
 
 function TAtlasStyledText.Width(ACanvas: TCanvas; AFrom, ATill: Integer): Integer;

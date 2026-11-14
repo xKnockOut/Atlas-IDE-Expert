@@ -89,6 +89,8 @@ begin
   end;
 end;
 
+{ TAtlasPageOptions }
+
 class procedure TAtlasPageOptions.ConnectIndex(APage: TAtlasSettingsPage; const ARun: TAtlasIndexRun);
 begin
   APage.Part<TAtlasSettingsIndexPart>.OnIndexMetrics :=
@@ -192,6 +194,26 @@ begin
     end;
 end;
 
+class procedure TAtlasPageOptions.ConnectHelp(APage: TAtlasSettingsPage);
+begin
+  TAtlasIdeHelp.AddKey(APage,
+    function(out ATopic: TAtlasHelpTopic): Boolean
+    var
+      mKey: string;
+    begin
+      mKey := SettingKeyAt(APage, Screen.ActiveControl);
+      if mKey <> '' then
+      begin
+        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Setting, mKey);
+      end
+      else
+      begin
+        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Window, TAtlasIdeHelp.cOptionsWindow);
+      end;
+      Result := True;
+    end);
+end;
+
 class function TAtlasPageOptions.SettingKeyAt(APage: TAtlasSettingsPage; AControl: TControl): string;
 var
   mControl: TControl;
@@ -212,26 +234,6 @@ begin
     end;
     mControl := mControl.Parent;
   end;
-end;
-
-class procedure TAtlasPageOptions.ConnectHelp(APage: TAtlasSettingsPage);
-begin
-  TAtlasIdeHelp.AddKey(APage,
-    function(out ATopic: TAtlasHelpTopic): Boolean
-    var
-      mKey: string;
-    begin
-      mKey := SettingKeyAt(APage, Screen.ActiveControl);
-      if mKey <> '' then
-      begin
-        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Setting, mKey);
-      end
-      else
-      begin
-        ATopic := TAtlasIdeHelp.Topic(TAtlasHelpKind.Window, TAtlasIdeHelp.cOptionsWindow);
-      end;
-      Result := True;
-    end);
 end;
 
 end.

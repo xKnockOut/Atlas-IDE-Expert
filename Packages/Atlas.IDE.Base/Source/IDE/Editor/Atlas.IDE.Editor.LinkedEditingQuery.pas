@@ -111,51 +111,10 @@ begin
   inherited Destroy;
 end;
 
-class procedure TAtlasIdeLinkedEditingQuery.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
-var
-  mCursor: TOTAEditPos;
-  mLineText: string;
-begin
-  mCursor := AView.CursorPos;
-  ALine := Max(0, mCursor.Line - 1);
-  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
-  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
-    Length(mLineText));
-end;
-
 function TAtlasIdeLinkedEditingQuery.Covers(const AFileName: string; ALine, ACharacter: Integer): Boolean;
 begin
   Result := FCandidate.Valid and SameText(FCandidate.FileName, AFileName) and
     (TAtlasLinkedEditing.IndexAt(FCandidate.Ranges, ALine, ACharacter) >= 0);
-end;
-
-procedure TAtlasIdeLinkedEditingQuery.Watch(const AView: IOTAEditView);
-var
-  mLine, mCharacter: Integer;
-  mLineText, mKey: string;
-begin
-  if (AView = nil) or (AView.Buffer = nil) or AView.Buffer.IsReadOnly then
-  begin
-    Exit;
-  end;
-  ReadCaret(AView, mLine, mCharacter);
-  mLineText := TAtlasEditorBuffer.LineText(AView, mLine + 1);
-  mKey := Format('%s|%d|%d|', [AView.Buffer.FileName, mLine, mCharacter]) + mLineText;
-  if mKey <> FIdleKey then
-  begin
-    FIdleKey := mKey;
-    FIdleCount := 0;
-    Exit;
-  end;
-  Inc(FIdleCount);
-  // Die letzte Antwort deckt den Cursor noch ab; jede Änderung am Text verwirft sie (Forget).
-  if (FIdleCount = cIdleTicks) and (mKey <> FAskedKey) and NearIdentifier(mLineText, mCharacter) and
-    not Covers(AView.Buffer.FileName, mLine, mCharacter) then
-  begin
-    FAskedKey := mKey;
-    FCandidate.Valid := False;
-    Ask(AView, mLine, mCharacter);
-  end;
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Ask(const AView: IOTAEditView; ALine, ACharacter: Integer);
@@ -215,6 +174,47 @@ begin
         end);
     end);
   FWorkers.Start(mWorker);
+end;
+
+class procedure TAtlasIdeLinkedEditingQuery.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
+var
+  mCursor: TOTAEditPos;
+  mLineText: string;
+begin
+  mCursor := AView.CursorPos;
+  ALine := Max(0, mCursor.Line - 1);
+  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
+  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
+    Length(mLineText));
+end;
+
+procedure TAtlasIdeLinkedEditingQuery.Watch(const AView: IOTAEditView);
+var
+  mLine, mCharacter: Integer;
+  mLineText, mKey: string;
+begin
+  if (AView = nil) or (AView.Buffer = nil) or AView.Buffer.IsReadOnly then
+  begin
+    Exit;
+  end;
+  ReadCaret(AView, mLine, mCharacter);
+  mLineText := TAtlasEditorBuffer.LineText(AView, mLine + 1);
+  mKey := Format('%s|%d|%d|', [AView.Buffer.FileName, mLine, mCharacter]) + mLineText;
+  if mKey <> FIdleKey then
+  begin
+    FIdleKey := mKey;
+    FIdleCount := 0;
+    Exit;
+  end;
+  Inc(FIdleCount);
+  // Die letzte Antwort deckt den Cursor noch ab; jede Änderung am Text verwirft sie (Forget).
+  if (FIdleCount = cIdleTicks) and (mKey <> FAskedKey) and NearIdentifier(mLineText, mCharacter) and
+    not Covers(AView.Buffer.FileName, mLine, mCharacter) then
+  begin
+    FAskedKey := mKey;
+    FCandidate.Valid := False;
+    Ask(AView, mLine, mCharacter);
+  end;
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Accept(ARequest: Integer; const AFileName, AText: string;

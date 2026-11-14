@@ -315,6 +315,8 @@ type
     function Run(const ADelphiVersion: string): THoverInfo;
   end;
 
+{ THoverLookupRun }
+
 constructor THoverLookupRun.Create(const ASource: THoverSource; ATree: TSyntaxTree; const ATreeText,
   AFileName: string; const APosition: TTextPosition);
 begin

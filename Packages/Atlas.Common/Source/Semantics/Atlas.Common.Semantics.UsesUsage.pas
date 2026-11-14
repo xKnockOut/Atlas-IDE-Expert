@@ -178,34 +178,6 @@ begin
   inherited;
 end;
 
-procedure TUsageRun.IndexEntry(const AEntry: TUsageEntry; APosition: Integer);
-var
-  mName, mKey, mNamespace: string;
-  mList: TArray<Integer>;
-begin
-  FByUnit.AddOrSetValue(LowerCase(AEntry.Name), APosition);
-  for mNamespace in FSource.Namespaces do
-  begin
-    mKey := LowerCase(mNamespace + '.' + AEntry.Name);
-    if not FByUnit.ContainsKey(mKey) then
-    begin
-      FByUnit.Add(mKey, APosition);
-    end;
-  end;
-  for mName in AEntry.Names do
-  begin
-    mKey := LowerCase(mName);
-    if not FByName.TryGetValue(mKey, mList) then
-    begin
-      mList := nil;
-    end;
-    if (Length(mList) = 0) or (mList[High(mList)] <> APosition) then
-    begin
-      FByName.AddOrSetValue(mKey, mList + [APosition]);
-    end;
-  end;
-end;
-
 procedure TUsageRun.AddEntries(const AInfo: TUsesUnitInfoFunc);
 var
   mReference: TUsesReference;
@@ -232,6 +204,34 @@ begin
     FEntries := FEntries + [mEntry];
     Inc(FOpen);
     IndexEntry(mEntry, mPosition);
+  end;
+end;
+
+procedure TUsageRun.IndexEntry(const AEntry: TUsageEntry; APosition: Integer);
+var
+  mName, mKey, mNamespace: string;
+  mList: TArray<Integer>;
+begin
+  FByUnit.AddOrSetValue(LowerCase(AEntry.Name), APosition);
+  for mNamespace in FSource.Namespaces do
+  begin
+    mKey := LowerCase(mNamespace + '.' + AEntry.Name);
+    if not FByUnit.ContainsKey(mKey) then
+    begin
+      FByUnit.Add(mKey, APosition);
+    end;
+  end;
+  for mName in AEntry.Names do
+  begin
+    mKey := LowerCase(mName);
+    if not FByName.TryGetValue(mKey, mList) then
+    begin
+      mList := nil;
+    end;
+    if (Length(mList) = 0) or (mList[High(mList)] <> APosition) then
+    begin
+      FByName.AddOrSetValue(mKey, mList + [APosition]);
+    end;
   end;
 end;
 
@@ -343,33 +343,6 @@ begin
   end;
 end;
 
-procedure TUsageRun.FindParts;
-var
-  mIndex: Integer;
-  mFirst: Boolean;
-begin
-  FImplementation := -1;
-  FIsUnit := False;
-  mFirst := True;
-  for mIndex := 0 to High(FTokens) do
-  begin
-    if FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Continue;
-    end;
-    if mFirst then
-    begin
-      FIsUnit := FTokens[mIndex].IsKeyword('unit');
-      mFirst := False;
-    end;
-    if FTokens[mIndex].IsKeyword('implementation') then
-    begin
-      FImplementation := FTokens[mIndex].Offset;
-      Exit;
-    end;
-  end;
-end;
-
 function TUsageRun.PartAt(AOffset: Integer): Integer;
 begin
   if FIsUnit and ((FImplementation < 0) or (AOffset < FImplementation)) then
@@ -380,20 +353,6 @@ begin
   begin
     Result := TUsesResolution.cImplementationPart;
   end;
-end;
-
-function TUsageRun.InlineOff: Boolean;
-var
-  mToken: TPascalToken;
-begin
-  for mToken in FTokens do
-  begin
-    if (mToken.Kind = TPascalTokenKind.Directive) and ContainsText(mToken.Text, 'INLINE OFF') then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 procedure TUsageRun.MarkNeeds(const ACallee: TInlineCallee; APart: Integer);
@@ -491,6 +450,47 @@ begin
   finally
     mForIns.Free;
   end;
+end;
+
+procedure TUsageRun.FindParts;
+var
+  mIndex: Integer;
+  mFirst: Boolean;
+begin
+  FImplementation := -1;
+  FIsUnit := False;
+  mFirst := True;
+  for mIndex := 0 to High(FTokens) do
+  begin
+    if FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    if mFirst then
+    begin
+      FIsUnit := FTokens[mIndex].IsKeyword('unit');
+      mFirst := False;
+    end;
+    if FTokens[mIndex].IsKeyword('implementation') then
+    begin
+      FImplementation := FTokens[mIndex].Offset;
+      Exit;
+    end;
+  end;
+end;
+
+function TUsageRun.InlineOff: Boolean;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in FTokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.Directive) and ContainsText(mToken.Text, 'INLINE OFF') then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 function TUsageRun.Run(const AInactive: TArray<TTextRange>; const AInfo: TUsesUnitInfoFunc): TUsesResolution;
@@ -601,6 +601,8 @@ begin
       (mSymbol.Kind = TIndexSymbolKind.Variable));
   end;
 end;
+
+{ TUsesUsage }
 
 class function TUsesUsage.UnitInfo(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
   const AModules: TArray<string>): TUsesUnitInfoFunc;

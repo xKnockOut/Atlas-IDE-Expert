@@ -48,56 +48,12 @@ const
   cGlyphOpen = '▾ ';
   cOldArrow = '← ';
 
+{ TAtlasHoverDebugPainter }
+
 constructor TAtlasHoverDebugPainter.Create(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure);
 begin
   inherited Create(AInput, AMeasure);
   FDebugRows := TAtlasHoverScroll.None;
-end;
-
-class function TAtlasHoverDebugPainter.ToggleGlyph(AExpandable, AExpanded: Boolean): string;
-begin
-  Result := '';
-  if AExpandable and AExpanded then
-  begin
-    Result := cGlyphOpen;
-  end
-  else if AExpandable then
-  begin
-    Result := cGlyphClosed;
-  end;
-end;
-
-procedure TAtlasHoverDebugPainter.OldValue(const AOldText: string);
-var
-  mFace: TAtlasHoverFace;
-begin
-  if AOldText = '' then
-  begin
-    Exit;
-  end;
-  mFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
-  AddText(FLeft, FY, Clipped(mFace, cOldArrow + AOldText, FRight - FLeft), mFace, FColors.Muted);
-  Inc(FY, Height(mFace) + Scale(cRowGap));
-end;
-
-procedure TAtlasHoverDebugPainter.RowBack(ATop, AFirstItem: Integer; ASelected, AChanged: Boolean);
-var
-  mItem: TAtlasHoverItem;
-begin
-  if not ASelected and not AChanged then
-  begin
-    Exit;
-  end;
-  // Vor die Texte der Zeile: Bausteine zeichnet das Fenster in Reihenfolge.
-  if ASelected then
-  begin
-    mItem := NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft - Scale(2), ATop, FRight, FY), FColors.Selection);
-  end
-  else
-  begin
-    mItem := NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft - Scale(2), ATop, FRight, FY), FColors.WarnSoft);
-  end;
-  Insert(AFirstItem, mItem);
 end;
 
 procedure TAtlasHoverDebugPainter.DebugRow(const ARow: TAtlasDebugValueRow; AIndex: Integer);
@@ -140,6 +96,52 @@ begin
   Inc(FY, Height(mFace) + Scale(cRowGap));
   RowBack(mTop, mFirst, AIndex + 1 = FInput.DebugSelectedRow, ARow.OldText <> '');
   AddHit(TAtlasHoverHitKind.DebugRow, AIndex, Rect(FLeft, mTop, FRight, FY));
+end;
+
+procedure TAtlasHoverDebugPainter.RowBack(ATop, AFirstItem: Integer; ASelected, AChanged: Boolean);
+var
+  mItem: TAtlasHoverItem;
+begin
+  if not ASelected and not AChanged then
+  begin
+    Exit;
+  end;
+  // Vor die Texte der Zeile: Bausteine zeichnet das Fenster in Reihenfolge.
+  if ASelected then
+  begin
+    mItem := NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft - Scale(2), ATop, FRight, FY), FColors.Selection);
+  end
+  else
+  begin
+    mItem := NewItem(TAtlasHoverItemKind.Fill, Rect(FLeft - Scale(2), ATop, FRight, FY), FColors.WarnSoft);
+  end;
+  Insert(AFirstItem, mItem);
+end;
+
+class function TAtlasHoverDebugPainter.ToggleGlyph(AExpandable, AExpanded: Boolean): string;
+begin
+  Result := '';
+  if AExpandable and AExpanded then
+  begin
+    Result := cGlyphOpen;
+  end
+  else if AExpandable then
+  begin
+    Result := cGlyphClosed;
+  end;
+end;
+
+procedure TAtlasHoverDebugPainter.OldValue(const AOldText: string);
+var
+  mFace: TAtlasHoverFace;
+begin
+  if AOldText = '' then
+  begin
+    Exit;
+  end;
+  mFace := TAtlasHoverFace.Create(TAtlasHoverFont.SmallMono, False, False);
+  AddText(FLeft, FY, Clipped(mFace, cOldArrow + AOldText, FRight - FLeft), mFace, FColors.Muted);
+  Inc(FY, Height(mFace) + Scale(cRowGap));
 end;
 
 procedure TAtlasHoverDebugPainter.DebugRows(const AValue: TAtlasDebugValue);

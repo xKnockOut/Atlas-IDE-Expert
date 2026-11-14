@@ -682,30 +682,6 @@ end;
 
 { TAtlasBranchGitPart }
 
-procedure TAtlasBranchGitPart.Build(const AOptions: TAtlasVcsGitBranchOptions; const AKey: string);
-begin
-  FOptions := AOptions;
-  FKey := AKey;
-  FBox := TGroupBox.Create(FDialog);
-  FBox.Parent := FDialog;
-  Stack(FBox);
-  FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
-  FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
-  FBox.Height := FBox.ScaleValue(120);
-  FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
-  // Einträge der Auswahllisten erst mit Fenster (FillChoices).
-  AddFetchAndPush;
-  AddUncommitted;
-  AddPlace;
-  FError := ErrorLabel(FDialog, FBox, 0);
-  if FBox.Visible then
-  begin
-    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
-    FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + 176;
-  end;
-end;
-
 procedure TAtlasBranchGitPart.AddFetchAndPush;
 var
   mPanel: TPanel;
@@ -749,6 +725,16 @@ begin
   FWorktreeEdit := RowEdit(FDialog, FWorktreePanel, WorktreeChanged);
 end;
 
+procedure TAtlasBranchGitPart.WorktreeChanged(Sender: TObject);
+begin
+  // Von Hand geändert: folgt dem Namen nicht mehr.
+  if not FDialog.FFilling then
+  begin
+    FWorktreeEdited := True;
+  end;
+  FDialog.Changed(Sender);
+end;
+
 /// <summary>Eintrag 1 bei AOn, sonst 0.</summary>
 function OnOffIndex(AOn: Boolean): Integer;
 begin
@@ -759,44 +745,53 @@ begin
   end;
 end;
 
-procedure TAtlasBranchGitPart.FillChoices;
+procedure TAtlasBranchGitPart.UpdateHeight;
+var
+  mHeight: Integer;
 begin
-  // Vorbelegung aus vcs.branch.git.*; „nachfragen“ lässt die Auswahl leer.
-  if FPushBox.Items.Count = 0 then
+  if not FBox.Visible then
   begin
-    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushLater));
-    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushNow));
-    FPushBox.ItemIndex := OnOffIndex(FOptions.PushNow);
+    Exit;
   end;
-  if FUncommittedBox.Items.Count = 0 then
+  // Höhe nach den sichtbaren Zeilen: Überschrift, Abrufen, Server, Ablage, ggf. Änderungen, Ordner, Hinweis.
+  mHeight := 24 + 28 + 2 * 32;
+  if FUncommittedPanel.Visible then
   begin
-    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCarry));
-    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchStash));
-    case FOptions.Uncommitted of
-      TAtlasVcsGitUncommitted.Carry:
-        FUncommittedBox.ItemIndex := 0;
-      TAtlasVcsGitUncommitted.Stash:
-        FUncommittedBox.ItemIndex := 1;
-    else
-      FUncommittedBox.ItemIndex := -1;
-    end;
+    Inc(mHeight, 32);
   end;
-  if FPlaceBox.Items.Count = 0 then
+  if FWorktreePanel.Visible then
   begin
-    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceSwitch));
-    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceWorktree));
-    FPlaceBox.ItemIndex := OnOffIndex(FOptions.Worktree);
+    Inc(mHeight, 32);
   end;
+  if FError.Visible then
+  begin
+    Inc(mHeight, 36);
+  end;
+  FBox.Height := mHeight;
 end;
 
-procedure TAtlasBranchGitPart.WorktreeChanged(Sender: TObject);
+procedure TAtlasBranchGitPart.Build(const AOptions: TAtlasVcsGitBranchOptions; const AKey: string);
 begin
-  // Von Hand geändert: folgt dem Namen nicht mehr.
-  if not FDialog.FFilling then
+  FOptions := AOptions;
+  FKey := AKey;
+  FBox := TGroupBox.Create(FDialog);
+  FBox.Parent := FDialog;
+  Stack(FBox);
+  FBox.AlignWithMargins := True;
+  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
+  FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchGit);
+  FBox.Height := FBox.ScaleValue(120);
+  FBox.Visible := FDialog.FFacts.Kind = TAtlasVcsKind.Git;
+  // Einträge der Auswahllisten erst mit Fenster (FillChoices).
+  AddFetchAndPush;
+  AddUncommitted;
+  AddPlace;
+  FError := ErrorLabel(FDialog, FBox, 0);
+  if FBox.Visible then
   begin
-    FWorktreeEdited := True;
+    FDialog.Height := FDialog.Height + FDialog.ScaleValue(176);
+    FDialog.Constraints.MinHeight := FDialog.Constraints.MinHeight + 176;
   end;
-  FDialog.Changed(Sender);
 end;
 
 /// <summary>Zeile einblenden bzw. ausblenden; eingeblendet direkt unter AAfter (alTop ordnet nach Top).</summary>
@@ -838,29 +833,34 @@ begin
   end;
 end;
 
-procedure TAtlasBranchGitPart.UpdateHeight;
-var
-  mHeight: Integer;
+procedure TAtlasBranchGitPart.FillChoices;
 begin
-  if not FBox.Visible then
+  // Vorbelegung aus vcs.branch.git.*; „nachfragen“ lässt die Auswahl leer.
+  if FPushBox.Items.Count = 0 then
   begin
-    Exit;
+    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushLater));
+    FPushBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPushNow));
+    FPushBox.ItemIndex := OnOffIndex(FOptions.PushNow);
   end;
-  // Höhe nach den sichtbaren Zeilen: Überschrift, Abrufen, Server, Ablage, ggf. Änderungen, Ordner, Hinweis.
-  mHeight := 24 + 28 + 2 * 32;
-  if FUncommittedPanel.Visible then
+  if FUncommittedBox.Items.Count = 0 then
   begin
-    Inc(mHeight, 32);
+    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchCarry));
+    FUncommittedBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchStash));
+    case FOptions.Uncommitted of
+      TAtlasVcsGitUncommitted.Carry:
+        FUncommittedBox.ItemIndex := 0;
+      TAtlasVcsGitUncommitted.Stash:
+        FUncommittedBox.ItemIndex := 1;
+    else
+      FUncommittedBox.ItemIndex := -1;
+    end;
   end;
-  if FWorktreePanel.Visible then
+  if FPlaceBox.Items.Count = 0 then
   begin
-    Inc(mHeight, 32);
+    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceSwitch));
+    FPlaceBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchPlaceWorktree));
+    FPlaceBox.ItemIndex := OnOffIndex(FOptions.Worktree);
   end;
-  if FError.Visible then
-  begin
-    Inc(mHeight, 36);
-  end;
-  FBox.Height := mHeight;
 end;
 
 procedure TAtlasBranchGitPart.Refresh;
@@ -919,25 +919,6 @@ end;
 
 { TAtlasBranchSvnPart }
 
-procedure TAtlasBranchSvnPart.Build(const AMessage: string; const AOptions: TAtlasVcsSvnBranchOptions);
-var
-  mSvn: Boolean;
-begin
-  FOptions := AOptions;
-  mSvn := FDialog.FFacts.Kind = TAtlasVcsKind.Svn;
-  AddMessage(AMessage);
-  AddLocation;
-  AddAfterAndFolder;
-  AddMixed;
-  // Nur svn copy hat eine Nachricht; Ort und Danach nur für SVN.
-  FMessagePanel.Visible := mSvn;
-  FLocationPanel.Visible := mSvn;
-  FAfterPanel.Visible := mSvn;
-  FFolderPanel.Visible := False;
-  FLocationError.Visible := False;
-  FMixedLabel.Visible := False;
-end;
-
 procedure TAtlasBranchSvnPart.AddMessage(const AMessage: string);
 begin
   FMessagePanel := Row(FDialog, FDialog, TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchMessage), 28);
@@ -966,17 +947,6 @@ begin
   FMixedLabel.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchMixed, [FDialog.FFacts.Revision]);
 end;
 
-procedure TAtlasBranchSvnPart.FillChoices;
-begin
-  if FAfterBox.Items.Count = 0 then
-  begin
-    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterSwitch));
-    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterCheckout));
-    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterNone));
-    FAfterBox.ItemIndex := Ord(FOptions.After);
-  end;
-end;
-
 procedure TAtlasBranchSvnPart.LocationChanged(Sender: TObject);
 begin
   if not FDialog.FFilling then
@@ -993,6 +963,36 @@ begin
     FFolderEdited := True;
   end;
   FDialog.Changed(Sender);
+end;
+
+procedure TAtlasBranchSvnPart.Build(const AMessage: string; const AOptions: TAtlasVcsSvnBranchOptions);
+var
+  mSvn: Boolean;
+begin
+  FOptions := AOptions;
+  mSvn := FDialog.FFacts.Kind = TAtlasVcsKind.Svn;
+  AddMessage(AMessage);
+  AddLocation;
+  AddAfterAndFolder;
+  AddMixed;
+  // Nur svn copy hat eine Nachricht; Ort und Danach nur für SVN.
+  FMessagePanel.Visible := mSvn;
+  FLocationPanel.Visible := mSvn;
+  FAfterPanel.Visible := mSvn;
+  FFolderPanel.Visible := False;
+  FLocationError.Visible := False;
+  FMixedLabel.Visible := False;
+end;
+
+procedure TAtlasBranchSvnPart.FillChoices;
+begin
+  if FAfterBox.Items.Count = 0 then
+  begin
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterSwitch));
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterCheckout));
+    FAfterBox.Items.Add(TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchAfterNone));
+    FAfterBox.ItemIndex := Ord(FOptions.After);
+  end;
 end;
 
 /// <summary>Ort für AName als "^/…"; '' ohne Namen oder ohne erkennbares Layout.</summary>
@@ -1080,62 +1080,6 @@ end;
 
 { TAtlasBranchExternalsPart }
 
-procedure TAtlasBranchExternalsPart.Build;
-var
-  mScroll: TScrollBox;
-  mFacts: TAtlasVcsBranchFacts;
-  mIndex, mWidth: Integer;
-begin
-  mFacts := FDialog.FFacts;
-  FBox := TGroupBox.Create(FDialog);
-  FBox.Parent := FDialog;
-  Stack(FBox);
-  FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
-  FBox.Visible := (mFacts.Kind = TAtlasVcsKind.Svn) and mFacts.Externals;
-  FHint := TLabel.Create(FDialog);
-  FHint.Parent := FBox;
-  FHint.Align := alBottom;
-  FHint.AlignWithMargins := True;
-  FHint.WordWrap := True;
-  FBoxes := nil;
-  FChoices := nil;
-  FDefaults := nil;
-  // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
-  if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
-  begin
-    FBox.Height := FBox.ScaleValue(56);
-    FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
-    FHint.Align := alClient;
-    FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
-    Exit;
-  end;
-  FBox.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
-  FHint.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
-  // Mit seFont übergeht der Stil Font.Color.
-  FHint.StyleElements := FHint.StyleElements - [seFont];
-  FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
-  FHint.Visible := False;
-  FBox.Height := FBox.ScaleValue(cExternalsFrame + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) *
-    cExternalRow);
-  // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
-  mWidth := FDialog.Width - 4 * cGap - 20;
-  AddHeader(mWidth);
-  mScroll := TScrollBox.Create(FDialog);
-  mScroll.Parent := FBox;
-  mScroll.Width := mWidth;
-  mScroll.Align := alClient;
-  mScroll.BorderStyle := bsNone;
-  mScroll.VertScrollBar.Increment := mScroll.ScaleValue(cExternalRow);
-  FDefaults := TAtlasVcsBranchPlan.DefaultActions(mFacts, FDialog.FSvn.Options);
-  SetLength(FBoxes, Length(mFacts.SvnExternals));
-  SetLength(FChoices, Length(mFacts.SvnExternals));
-  for mIndex := 0 to High(mFacts.SvnExternals) do
-  begin
-    AddRow(mScroll, mIndex, mWidth);
-  end;
-end;
-
 procedure TAtlasBranchExternalsPart.AddHeader(AWidth: Integer);
 var
   mHeader: TPanel;
@@ -1194,6 +1138,62 @@ begin
   FBoxes[AIndex].SetBounds(mRow.Width - cChoiceWidth - cGap, 1, cChoiceWidth, 23);
   FBoxes[AIndex].Anchors := [akTop, akRight];
   FBoxes[AIndex].OnChange := FDialog.Changed;
+end;
+
+procedure TAtlasBranchExternalsPart.Build;
+var
+  mScroll: TScrollBox;
+  mFacts: TAtlasVcsBranchFacts;
+  mIndex, mWidth: Integer;
+begin
+  mFacts := FDialog.FFacts;
+  FBox := TGroupBox.Create(FDialog);
+  FBox.Parent := FDialog;
+  Stack(FBox);
+  FBox.AlignWithMargins := True;
+  FBox.Margins.SetBounds(cGap, 4, cGap, 4);
+  FBox.Visible := (mFacts.Kind = TAtlasVcsKind.Svn) and mFacts.Externals;
+  FHint := TLabel.Create(FDialog);
+  FHint.Parent := FBox;
+  FHint.Align := alBottom;
+  FHint.AlignWithMargins := True;
+  FHint.WordWrap := True;
+  FBoxes := nil;
+  FChoices := nil;
+  FDefaults := nil;
+  // Nicht gelesen (propget gescheitert): Hinweis wie vor #1291, die Externals gehen unverändert mit.
+  if (mFacts.Kind <> TAtlasVcsKind.Svn) or (Length(mFacts.SvnExternals) = 0) then
+  begin
+    FBox.Height := FBox.ScaleValue(56);
+    FBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternals);
+    FHint.Align := alClient;
+    FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsKept);
+    Exit;
+  end;
+  FBox.Caption := TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExternalsCount, [Length(mFacts.SvnExternals)]);
+  FHint.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+  // Mit seFont übergeht der Stil Font.Color.
+  FHint.StyleElements := FHint.StyleElements - [seFont];
+  FHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchExternalsChoose);
+  FHint.Visible := False;
+  FBox.Height := FBox.ScaleValue(cExternalsFrame + Min(Integer(Length(mFacts.SvnExternals)), cExternalRowsVisible) *
+    cExternalRow);
+  // Breite vorab wie im fertigen Dialog (ohne Fenster richtet alTop nicht aus); Anker gleichen den Rest aus.
+  mWidth := FDialog.Width - 4 * cGap - 20;
+  AddHeader(mWidth);
+  mScroll := TScrollBox.Create(FDialog);
+  mScroll.Parent := FBox;
+  mScroll.Width := mWidth;
+  mScroll.Align := alClient;
+  mScroll.BorderStyle := bsNone;
+  mScroll.VertScrollBar.Increment := mScroll.ScaleValue(cExternalRow);
+  FDefaults := TAtlasVcsBranchPlan.DefaultActions(mFacts, FDialog.FSvn.Options);
+  SetLength(FBoxes, Length(mFacts.SvnExternals));
+  SetLength(FChoices, Length(mFacts.SvnExternals));
+  for mIndex := 0 to High(mFacts.SvnExternals) do
+  begin
+    AddRow(mScroll, mIndex, mWidth);
+  end;
 end;
 
 procedure TAtlasBranchExternalsPart.FillChoices;
@@ -1305,22 +1305,6 @@ end;
 { TAtlasBranchDialog }
 
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
-  const AName, AMessage: string; AOfferNeverAsk: Boolean);
-begin
-  CreateDialog(AOwner, AFacts, TAtlasBranchDialogSetup.Make(AName, AMessage, '', AOfferNeverAsk));
-end;
-
-constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
-  const AName, AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean);
-var
-  mSetup: TAtlasBranchDialogSetup;
-begin
-  mSetup := TAtlasBranchDialogSetup.Make(AName, AMessage, '', AOfferNeverAsk);
-  mSetup.Svn := ASvn;
-  CreateDialog(AOwner, AFacts, mSetup);
-end;
-
-constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const ASetup: TAtlasBranchDialogSetup);
 begin
   inherited CreateDialog(AOwner, '', 0);
@@ -1352,6 +1336,22 @@ begin
   FNames.FillBases(PreferredBase(AFacts, ASetup));
 end;
 
+constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
+  const AName, AMessage: string; AOfferNeverAsk: Boolean);
+begin
+  CreateDialog(AOwner, AFacts, TAtlasBranchDialogSetup.Make(AName, AMessage, '', AOfferNeverAsk));
+end;
+
+constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
+  const AName, AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean);
+var
+  mSetup: TAtlasBranchDialogSetup;
+begin
+  mSetup := TAtlasBranchDialogSetup.Make(AName, AMessage, '', AOfferNeverAsk);
+  mSetup.Svn := ASvn;
+  CreateDialog(AOwner, AFacts, mSetup);
+end;
+
 destructor TAtlasBranchDialog.Destroy;
 begin
   // Ab hier baut Changed nichts mehr neu, auch wenn ein Steuerelement beim Abbau noch meldet.
@@ -1362,6 +1362,25 @@ begin
   FreeAndNil(FGit);
   FreeAndNil(FNames);
   inherited;
+end;
+
+procedure TAtlasBranchDialog.CreateWnd;
+var
+  mFilling: Boolean;
+begin
+  inherited;
+  // Combobox-Einträge brauchen ein Fenster: erst hier füllen (#1290). Das Fenster entsteht schon im
+  // Konstruktor, sobald FillBases die Basen einträgt; FFilling bleibt dann gesetzt, Changed folgt dort.
+  if not FControlsReady then
+  begin
+    Exit;
+  end;
+  mFilling := FFilling;
+  FillChoices;
+  if not mFilling then
+  begin
+    Changed(nil);
+  end;
 end;
 
 procedure TAtlasBranchDialog.SetupForm;
@@ -1407,25 +1426,6 @@ begin
   mCancel.ModalResult := mrCancel;
 end;
 
-procedure TAtlasBranchDialog.CreateWnd;
-var
-  mFilling: Boolean;
-begin
-  inherited;
-  // Combobox-Einträge brauchen ein Fenster: erst hier füllen (#1290). Das Fenster entsteht schon im
-  // Konstruktor, sobald FillBases die Basen einträgt; FFilling bleibt dann gesetzt, Changed folgt dort.
-  if not FControlsReady then
-  begin
-    Exit;
-  end;
-  mFilling := FFilling;
-  FillChoices;
-  if not mFilling then
-  begin
-    Changed(nil);
-  end;
-end;
-
 procedure TAtlasBranchDialog.FillChoices;
 var
   mFilling: Boolean;
@@ -1439,39 +1439,6 @@ begin
   finally
     FFilling := mFilling;
   end;
-end;
-
-procedure TAtlasBranchDialog.ServerLoaded(const AFacts: TAtlasVcsBranchFacts);
-var
-  mKind: TAtlasVcsBranchBaseKind;
-begin
-  mKind := FNames.SelectedKind(TAtlasVcsBranchBaseKind.Head);
-  FFacts := AFacts;
-  FNames.FillBases(mKind);
-end;
-
-function TAtlasBranchDialog.Request: TAtlasVcsBranchRequest;
-var
-  mBase: TAtlasVcsBranchBase;
-begin
-  FNames.SelectedBase(mBase);
-  Result := TAtlasVcsBranchRequest.Make(FFacts.Kind, FNames.NameEdit.Text, mBase, FSvn.MessageEdit.Text);
-  if FFacts.Kind = TAtlasVcsKind.Git then
-  begin
-    FGit.ApplyTo(mBase, Result);
-  end
-  else if FFacts.Kind = TAtlasVcsKind.Svn then
-  begin
-    FSvn.ApplyTo(Result);
-  end;
-end;
-
-function TAtlasBranchDialog.CanCreate: Boolean;
-var
-  mText: string;
-begin
-  Result := FNames.NameState(mText) and FGit.State(mText) and not FFacts.NeedsServer and
-    (FNames.BaseBox.ItemIndex >= 0) and (Length(FSteps.Steps) > 0) and FExternals.Chosen;
 end;
 
 procedure TAtlasBranchDialog.Changed(Sender: TObject);
@@ -1508,6 +1475,39 @@ begin
   begin
     ModalResult := mrOk;
   end;
+end;
+
+procedure TAtlasBranchDialog.ServerLoaded(const AFacts: TAtlasVcsBranchFacts);
+var
+  mKind: TAtlasVcsBranchBaseKind;
+begin
+  mKind := FNames.SelectedKind(TAtlasVcsBranchBaseKind.Head);
+  FFacts := AFacts;
+  FNames.FillBases(mKind);
+end;
+
+function TAtlasBranchDialog.Request: TAtlasVcsBranchRequest;
+var
+  mBase: TAtlasVcsBranchBase;
+begin
+  FNames.SelectedBase(mBase);
+  Result := TAtlasVcsBranchRequest.Make(FFacts.Kind, FNames.NameEdit.Text, mBase, FSvn.MessageEdit.Text);
+  if FFacts.Kind = TAtlasVcsKind.Git then
+  begin
+    FGit.ApplyTo(mBase, Result);
+  end
+  else if FFacts.Kind = TAtlasVcsKind.Svn then
+  begin
+    FSvn.ApplyTo(Result);
+  end;
+end;
+
+function TAtlasBranchDialog.CanCreate: Boolean;
+var
+  mText: string;
+begin
+  Result := FNames.NameState(mText) and FGit.State(mText) and not FFacts.NeedsServer and
+    (FNames.BaseBox.ItemIndex >= 0) and (Length(FSteps.Steps) > 0) and FExternals.Chosen;
 end;
 
 end.

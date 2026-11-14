@@ -157,22 +157,6 @@ begin
   end;
 end;
 
-procedure TAtlasTestsBoundaryDialog.FillUse(AIndex: Integer);
-begin
-  if not FSuggestion.Cases[AIndex].TestCase then
-  begin
-    FGrid.Cells[0, AIndex + 1] := cNoUseMark;
-  end
-  else if FSuggestion.Cases[AIndex].Use then
-  begin
-    FGrid.Cells[0, AIndex + 1] := cUseMark;
-  end
-  else
-  begin
-    FGrid.Cells[0, AIndex + 1] := '';
-  end;
-end;
-
 procedure TAtlasTestsBoundaryDialog.Fill;
 var
   mRow, mCol: Integer;
@@ -213,6 +197,22 @@ begin
     end;
   finally
     FFilling := False;
+  end;
+end;
+
+procedure TAtlasTestsBoundaryDialog.FillUse(AIndex: Integer);
+begin
+  if not FSuggestion.Cases[AIndex].TestCase then
+  begin
+    FGrid.Cells[0, AIndex + 1] := cNoUseMark;
+  end
+  else if FSuggestion.Cases[AIndex].Use then
+  begin
+    FGrid.Cells[0, AIndex + 1] := cUseMark;
+  end
+  else
+  begin
+    FGrid.Cells[0, AIndex + 1] := '';
   end;
 end;
 

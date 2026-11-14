@@ -95,43 +95,42 @@ const
     // Aus SysInit, das der Compiler immer einbindet.
     'HInstance');
 
-class function TUnresolvedNames.IsIntrinsic(const AName: string): Boolean;
+{ TUnresolvedNames }
+
+class function TUnresolvedNames.Available(const AIndex: ISymbolIndex): Boolean;
 var
-  mName: string;
+  mSystemUnit: TUnitIndex;
 begin
-  // Dieselbe Liste wie Hover und Namensauflösung: Sqr, Pi, Int … fehlten hier und galten als nicht deklariert.
-  if TSystemIntrinsics.IsKnown(AName) then
-  begin
-    Exit(True);
-  end;
-  for mName in cIntrinsics do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := (AIndex <> nil) and AIndex.FindUnit('System', mSystemUnit);
 end;
 
-class function TUnresolvedNames.Describe(const AName: TUnresolvedName): string;
+class function TUnresolvedNames.UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
+  const AEnsureUnit: TEnsureUnitFunc): Boolean;
+var
+  mName, mNamespace: string;
+  mFound: TUnitIndex;
+  mKnown: Boolean;
 begin
-  if AName.Code = 'E2601' then
+  for mName in AUnits do
   begin
-    Result := cTexts[TUnresolvedNamesText.IsNotAConstructorOf].Fmt([AName.Name, AName.Owner]);
-  end
-  else if AName.Code = 'E2602' then
-  begin
-    Result := cTexts[TUnresolvedNamesText.IsNotADestructorOf].Fmt([AName.Name, AName.Owner]);
-  end
-  else if AName.Code = 'E2078' then
-  begin
-    Result := cTexts[TUnresolvedNamesText.FailIsOnlyAllowedIn].Text;
-  end
-  else
-  begin
-    Result := '';
+    mKnown := AIndex.FindUnit(mName, mFound);
+    for mNamespace in ANamespaces do
+    begin
+      if not mKnown then
+      begin
+        mKnown := AIndex.FindUnit(mNamespace + '.' + mName, mFound);
+      end;
+    end;
+    if not mKnown and Assigned(AEnsureUnit) then
+    begin
+      mKnown := AEnsureUnit(mName);
+    end;
+    if not mKnown then
+    begin
+      Exit(False);
+    end;
   end;
+  Result := True;
 end;
 
 /// <summary>Name hinter "^" in der Signatur eines Zeigertyps (PAltObjekt = ^TAltObjekt); False ohne gültigen Namen.
@@ -214,11 +213,23 @@ begin
   Result := False;
 end;
 
-class function TUnresolvedNames.Available(const AIndex: ISymbolIndex): Boolean;
+class function TUnresolvedNames.IsIntrinsic(const AName: string): Boolean;
 var
-  mSystemUnit: TUnitIndex;
+  mName: string;
 begin
-  Result := (AIndex <> nil) and AIndex.FindUnit('System', mSystemUnit);
+  // Dieselbe Liste wie Hover und Namensauflösung: Sqr, Pi, Int … fehlten hier und galten als nicht deklariert.
+  if TSystemIntrinsics.IsKnown(AName) then
+  begin
+    Exit(True);
+  end;
+  for mName in cIntrinsics do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 type
@@ -232,35 +243,6 @@ function UnresolvedEntry(ANode: TSyntaxNode; AInStatements: Boolean): TUnresolve
 begin
   Result.Node := ANode;
   Result.InStatements := AInStatements;
-end;
-
-class function TUnresolvedNames.UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
-  const AEnsureUnit: TEnsureUnitFunc): Boolean;
-var
-  mName, mNamespace: string;
-  mFound: TUnitIndex;
-  mKnown: Boolean;
-begin
-  for mName in AUnits do
-  begin
-    mKnown := AIndex.FindUnit(mName, mFound);
-    for mNamespace in ANamespaces do
-    begin
-      if not mKnown then
-      begin
-        mKnown := AIndex.FindUnit(mNamespace + '.' + mName, mFound);
-      end;
-    end;
-    if not mKnown and Assigned(AEnsureUnit) then
-    begin
-      mKnown := AEnsureUnit(mName);
-    end;
-    if not mKnown then
-    begin
-      Exit(False);
-    end;
-  end;
-  Result := True;
 end;
 
 class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -499,6 +481,26 @@ begin
   finally
     mMembers.Free;
     mDeclared.Free;
+  end;
+end;
+
+class function TUnresolvedNames.Describe(const AName: TUnresolvedName): string;
+begin
+  if AName.Code = 'E2601' then
+  begin
+    Result := cTexts[TUnresolvedNamesText.IsNotAConstructorOf].Fmt([AName.Name, AName.Owner]);
+  end
+  else if AName.Code = 'E2602' then
+  begin
+    Result := cTexts[TUnresolvedNamesText.IsNotADestructorOf].Fmt([AName.Name, AName.Owner]);
+  end
+  else if AName.Code = 'E2078' then
+  begin
+    Result := cTexts[TUnresolvedNamesText.FailIsOnlyAllowedIn].Text;
+  end
+  else
+  begin
+    Result := '';
   end;
 end;
 

@@ -159,6 +159,8 @@ begin
   end;
 end;
 
+{ TTestCommandTexts }
+
 class function TTestCommandTexts.SplitValues(const AText: string; out AValues: TArray<string>): Boolean;
 var
   mIndex: Integer;
@@ -356,6 +358,8 @@ type
     Names: TArray<string>;
     procedure Add(const AMockName, ADeclaration, ALineBreak: string);
   end;
+
+{ TMockParts }
 
 procedure TMockParts.Add(const AMockName, ADeclaration, ALineBreak: string);
 var

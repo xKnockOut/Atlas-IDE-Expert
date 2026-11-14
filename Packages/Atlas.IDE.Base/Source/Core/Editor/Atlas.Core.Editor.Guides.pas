@@ -71,12 +71,6 @@ begin
 end;
 
 class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
-  ATabWidth: Integer): TArray<TAtlasGuide>;
-begin
-  Result := FromBlocks(ALines, ABlocks, ATabWidth, False);
-end;
-
-class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
   ATabWidth: Integer; AOwners: Boolean): TArray<TAtlasGuide>;
 var
   mBlock: TAtlasPairBlock;
@@ -112,6 +106,12 @@ begin
     mGuide.Routine := mBlock.Routine;
     Result := Result + [mGuide];
   end;
+end;
+
+class function TAtlasGuides.FromBlocks(const ALines: TArray<string>; const ABlocks: TArray<TAtlasPairBlock>;
+  ATabWidth: Integer): TArray<TAtlasGuide>;
+begin
+  Result := FromBlocks(ALines, ABlocks, ATabWidth, False);
 end;
 
 class function TAtlasGuides.PenWidth(AWidth, ACellHeight, ABaseCellHeight: Integer): Integer;

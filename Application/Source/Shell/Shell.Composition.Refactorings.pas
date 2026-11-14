@@ -36,6 +36,8 @@ uses
   Shell.Composition.MethodBreakpoints,
   Shell.Composition.Profiler;
 
+{ TShellRefactorings }
+
 constructor TShellRefactorings.Create(const AServices: TShellRefactoringServices);
 begin
   inherited Create(AServices);

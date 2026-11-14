@@ -47,14 +47,30 @@ const
   /// <summary>Abstand in Zeichen hinter dem letzten Zeichen der Zeile.</summary>
   cGapColumns = 2;
 
-class procedure TAtlasDebugLineEnd.Invalidate;
+{ TAtlasDebugLineEnd }
+
+class function TAtlasDebugLineEnd.Start(AOwner: TObject; const AContext: INTACodeEditorPaintContext;
+  const ARect: TRect; const ALineText: string; AStyle: TAtlasInlineValuePainter; out AKey: string): Integer;
 var
-  mServices: INTACodeEditorServices;
+  mCell: TRect;
+  mSample: COLORREF;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  // Spalten 1-basiert: erste Spalte hinter dem letzten Zeichen plus Abstand.
+  mCell := AContext.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(TrimRight(ALineText),
+    TabWidth(AContext))) + 1 + cGapColumns, AContext.EditorLineNum);
+  AKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  Result := TAtlasLineTail.Start(AOwner, AKey, mCell.Left);
+  mSample := GetPixel(AContext.Canvas.Handle, Result, ARect.Top + 1);
+  if mSample = CLR_INVALID then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
   end;
+  AStyle.Ensure(mSample, AContext.Canvas.Font);
+end;
+
+class procedure TAtlasDebugLineEnd.Finish(AOwner: TObject; const AKey: string; ARight: Integer);
+begin
+  TAtlasLineTail.Finish(AOwner, AKey, ARight);
 end;
 
 class function TAtlasDebugLineEnd.TabWidth(const AContext: INTACodeEditorPaintContext): Integer;
@@ -81,28 +97,14 @@ begin
   end;
 end;
 
-class function TAtlasDebugLineEnd.Start(AOwner: TObject; const AContext: INTACodeEditorPaintContext;
-  const ARect: TRect; const ALineText: string; AStyle: TAtlasInlineValuePainter; out AKey: string): Integer;
+class procedure TAtlasDebugLineEnd.Invalidate;
 var
-  mCell: TRect;
-  mSample: COLORREF;
+  mServices: INTACodeEditorServices;
 begin
-  // Spalten 1-basiert: erste Spalte hinter dem letzten Zeichen plus Abstand.
-  mCell := AContext.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(TrimRight(ALineText),
-    TabWidth(AContext))) + 1 + cGapColumns, AContext.EditorLineNum);
-  AKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
-  Result := TAtlasLineTail.Start(AOwner, AKey, mCell.Left);
-  mSample := GetPixel(AContext.Canvas.Handle, Result, ARect.Top + 1);
-  if mSample = CLR_INVALID then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    mSample := COLORREF(ColorToRGB(AContext.Canvas.Brush.Color));
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
-  AStyle.Ensure(mSample, AContext.Canvas.Font);
-end;
-
-class procedure TAtlasDebugLineEnd.Finish(AOwner: TObject; const AKey: string; ARight: Integer);
-begin
-  TAtlasLineTail.Finish(AOwner, AKey, ARight);
 end;
 
 end.

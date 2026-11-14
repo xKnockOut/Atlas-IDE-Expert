@@ -187,18 +187,6 @@ begin
   AllDescendants := FTypes[Index].AllDescendants;
 end;
 
-procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean;
-  var IsGeneric: Boolean);
-begin
-  if (Index < 0) or (Index > High(FTypes)) then
-  begin
-    Exit;
-  end;
-  TypeName := FTypes[Index].TypeName;
-  AllDescendants := FTypes[Index].AllDescendants;
-  IsGeneric := FTypes[Index].IsGeneric;
-end;
-
 function TAtlasIdeVisualizer.GetVisualizerIdentifier: string;
 begin
   Result := cIdentifierPrefix + TAtlasVisualizerSettings.cKindNames[FKind];
@@ -212,6 +200,18 @@ end;
 function TAtlasIdeVisualizer.GetVisualizerDescription: string;
 begin
   Result := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerDescription), [KindCaption(FKind)]);
+end;
+
+procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean;
+  var IsGeneric: Boolean);
+begin
+  if (Index < 0) or (Index > High(FTypes)) then
+  begin
+    Exit;
+  end;
+  TypeName := FTypes[Index].TypeName;
+  AllDescendants := FTypes[Index].AllDescendants;
+  IsGeneric := FTypes[Index].IsGeneric;
 end;
 
 function TAtlasIdeVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
@@ -343,6 +343,11 @@ begin
   end;
 end;
 
+procedure TAtlasIdeViewerUpdater.SetClosedCallback(ClosedProc: TOTAVisualizerClosedProcedure);
+begin
+  FClosed := ClosedProc;
+end;
+
 procedure TAtlasIdeViewerUpdater.Shutdown;
 var
   mForm: TAtlasDebugViewer;
@@ -364,12 +369,36 @@ begin
   end;
 end;
 
-procedure TAtlasIdeViewerUpdater.SetClosedCallback(ClosedProc: TOTAVisualizerClosedProcedure);
+{ TAtlasIdeVisualizers }
+
+class function TAtlasIdeVisualizers.SettingsSignature: string;
 begin
-  FClosed := ClosedProc;
+  // Angemeldet wird je Art; nur Schalter und Arten verlangen eine neue Anmeldung, der Rest wird je Wert gelesen.
+  Result := BoolToStr(TAtlasIdeSettings.Current.DebugVisualizers, True) + '|' +
+    TAtlasIdeSettings.Current.DebugVisualizerTypes;
 end;
 
-{ TAtlasIdeVisualizers }
+class procedure TAtlasIdeVisualizers.Unregister;
+var
+  mDebugger: IOTADebuggerServices;
+  mVisualizer: IOTADebuggerVisualizer;
+begin
+  if FRegistered = nil then
+  begin
+    Exit;
+  end;
+  if Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
+  begin
+    for mVisualizer in FRegistered do
+      try
+        mDebugger.UnregisterDebugVisualizer(mVisualizer);
+      except
+        on E: Exception do
+          TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+      end;
+  end;
+  FreeAndNil(FRegistered);
+end;
 
 class function TAtlasIdeVisualizers.Options: TAtlasVisualizerOptions;
 var
@@ -382,13 +411,6 @@ begin
   Result.MaxLength := mSettings.DebugVisualizerMaxLength;
   Result.Evaluation := TAtlasVisualizerSettings.ParseEvaluation(mSettings.DebugVisualizerEvaluation);
   Result.MaxImagePixels := mSettings.DebugVisualizerMaxImagePixels;
-end;
-
-class function TAtlasIdeVisualizers.SettingsSignature: string;
-begin
-  // Angemeldet wird je Art; nur Schalter und Arten verlangen eine neue Anmeldung, der Rest wird je Wert gelesen.
-  Result := BoolToStr(TAtlasIdeSettings.Current.DebugVisualizers, True) + '|' +
-    TAtlasIdeSettings.Current.DebugVisualizerTypes;
 end;
 
 class function TAtlasIdeVisualizers.Started: Boolean;
@@ -432,62 +454,6 @@ begin
         TAtlasGuard.Report(TAtlasFeature.Debugger, E);
     end;
   end;
-end;
-
-class procedure TAtlasIdeVisualizers.Unregister;
-var
-  mDebugger: IOTADebuggerServices;
-  mVisualizer: IOTADebuggerVisualizer;
-begin
-  if FRegistered = nil then
-  begin
-    Exit;
-  end;
-  if Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
-  begin
-    for mVisualizer in FRegistered do
-      try
-        mDebugger.UnregisterDebugVisualizer(mVisualizer);
-      except
-        on E: Exception do
-          TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-      end;
-  end;
-  FreeAndNil(FRegistered);
-end;
-
-class procedure TAtlasIdeVisualizers.CloseViewers(AGroup: TAtlasViewerGroup);
-var
-  mViewers: TArray<TAtlasIdeViewerUpdater>;
-  mViewer: TAtlasIdeViewerUpdater;
-begin
-  // Sofort freigeben: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe sie erst über eine
-  // eingereihte Nachricht frei.
-  if FViewers = nil then
-  begin
-    Exit;
-  end;
-  mViewers := FViewers.ToArray;
-  for mViewer in mViewers do
-  begin
-    if mViewer.Group = AGroup then
-    begin
-      mViewer.Shutdown;
-    end;
-  end;
-  if FViewers.Count = 0 then
-  begin
-    FreeAndNil(FViewers);
-  end;
-end;
-
-class function TAtlasIdeVisualizers.KindSource(AKind: TAtlasVisualizerKind): TAtlasViewSource;
-begin
-  Result :=
-    function(const AExpression, ATypeName, AEvalResult: string): TAtlasVisualizerView
-    begin
-      Result := ViewOf(AKind, AExpression, ATypeName, AEvalResult);
-    end;
 end;
 
 class procedure TAtlasIdeVisualizers.Stop;
@@ -548,6 +514,40 @@ class function TAtlasIdeVisualizers.ViewOf(AKind: TAtlasVisualizerKind; const AE
 begin
   Result := TAtlasVisualizers.View(AKind, AExpression, ATypeName, AEvalResult, Options,
     TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs * cViewBudgetFactor));
+end;
+
+class function TAtlasIdeVisualizers.KindSource(AKind: TAtlasVisualizerKind): TAtlasViewSource;
+begin
+  Result :=
+    function(const AExpression, ATypeName, AEvalResult: string): TAtlasVisualizerView
+    begin
+      Result := ViewOf(AKind, AExpression, ATypeName, AEvalResult);
+    end;
+end;
+
+class procedure TAtlasIdeVisualizers.CloseViewers(AGroup: TAtlasViewerGroup);
+var
+  mViewers: TArray<TAtlasIdeViewerUpdater>;
+  mViewer: TAtlasIdeViewerUpdater;
+begin
+  // Sofort freigeben: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe sie erst über eine
+  // eingereihte Nachricht frei.
+  if FViewers = nil then
+  begin
+    Exit;
+  end;
+  mViewers := FViewers.ToArray;
+  for mViewer in mViewers do
+  begin
+    if mViewer.Group = AGroup then
+    begin
+      mViewer.Shutdown;
+    end;
+  end;
+  if FViewers.Count = 0 then
+  begin
+    FreeAndNil(FViewers);
+  end;
 end;
 
 class procedure TAtlasIdeVisualizers.ViewerOpened(AViewer: TAtlasIdeViewerUpdater);

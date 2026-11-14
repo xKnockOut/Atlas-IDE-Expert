@@ -499,11 +499,6 @@ begin
   inherited Create(AOnMessage);
 end;
 
-class procedure TAtlasIdeDuplicateRow.CopyProperties(ASource, ATarget: TComponent; AShare: Boolean);
-begin
-  CopyProps(ASource, ATarget, AShare);
-end;
-
 procedure TAtlasIdeDuplicateRow.ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
 var
   mArea: TRect;
@@ -533,6 +528,15 @@ begin
   begin
     Outlines.HideOutlines;
   end;
+end;
+
+function TAtlasIdeDuplicateRow.CanUndo: Boolean;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+begin
+  Result := (Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
+    SameText(mEditor.FileName, FLastFile) and (mRoot.FindComponent(FCreated[0]) <> nil);
 end;
 
 /// <summary>Vorschau zu AOptions: Umrisse im Designer, Zeile „Kopien: …“ und Hinweis im Dialog.</summary>
@@ -664,15 +668,6 @@ begin
     string.Join(', ', FCreated)]));
 end;
 
-function TAtlasIdeDuplicateRow.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-begin
-  Result := (Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FLastFile) and (mRoot.FindComponent(FCreated[0]) <> nil);
-end;
-
 procedure TAtlasIdeDuplicateRow.Undo;
 var
   mEditor: IOTAFormEditor;
@@ -711,6 +706,11 @@ begin
     TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   end;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerDuplicateUndone, [mCount]));
+end;
+
+class procedure TAtlasIdeDuplicateRow.CopyProperties(ASource, ATarget: TComponent; AShare: Boolean);
+begin
+  CopyProps(ASource, ATarget, AShare);
 end;
 
 end.

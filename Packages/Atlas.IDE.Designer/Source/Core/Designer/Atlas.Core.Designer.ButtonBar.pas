@@ -129,9 +129,23 @@ end;
 
 { TAtlasButtonBar }
 
-class function TAtlasButtonBar.RoleName(ARole: TAtlasButtonRole): string;
+class function TAtlasButtonBar.RoleOf(const AName, ACaption: string; AModalResult: Integer;
+  const ATerms: string): TAtlasButtonRole;
+var
+  mCaption: string;
 begin
-  Result := cRoleNames[ARole];
+  case AModalResult of
+    cMrOk, cMrYes:
+      Exit(TAtlasButtonRole.Ok);
+    cMrCancel, cMrNo:
+      Exit(TAtlasButtonRole.Cancel);
+  end;
+  // Ganze Begriffe: „Übernehmen“ allein ist apply, „Übernehmen und schließen“ ist ok.
+  mCaption := Trim(StripAccel(ACaption));
+  if not CustomRole(ATerms + ';' + cNameTerms, AName, mCaption, Result) then
+  begin
+    Result := TAtlasButtonRole.Other;
+  end;
 end;
 
 class function TAtlasButtonBar.TryParseRole(const AText: string; out ARole: TAtlasButtonRole): Boolean;
@@ -150,6 +164,11 @@ begin
   Result := False;
 end;
 
+class function TAtlasButtonBar.RoleName(ARole: TAtlasButtonRole): string;
+begin
+  Result := cRoleNames[ARole];
+end;
+
 class function TAtlasButtonBar.PositionOf(const AText: string): TAtlasButtonBarPosition;
 var
   mPosition: TAtlasButtonBarPosition;
@@ -162,25 +181,6 @@ begin
     end;
   end;
   Result := TAtlasButtonBarPosition.BottomRight;
-end;
-
-class function TAtlasButtonBar.RoleOf(const AName, ACaption: string; AModalResult: Integer;
-  const ATerms: string): TAtlasButtonRole;
-var
-  mCaption: string;
-begin
-  case AModalResult of
-    cMrOk, cMrYes:
-      Exit(TAtlasButtonRole.Ok);
-    cMrCancel, cMrNo:
-      Exit(TAtlasButtonRole.Cancel);
-  end;
-  // Ganze Begriffe: „Übernehmen“ allein ist apply, „Übernehmen und schließen“ ist ok.
-  mCaption := Trim(StripAccel(ACaption));
-  if not CustomRole(ATerms + ';' + cNameTerms, AName, mCaption, Result) then
-  begin
-    Result := TAtlasButtonRole.Other;
-  end;
 end;
 
 /// <summary>Rang einer Rolle nach AOrder; „other“ unmittelbar vor help bzw. am Ende.</summary>

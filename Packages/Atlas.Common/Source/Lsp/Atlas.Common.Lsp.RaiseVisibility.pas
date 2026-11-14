@@ -41,6 +41,8 @@ uses
   Atlas.Common.Editing.RaiseVisibility,
   Atlas.Common.Lsp.CodeActions;
 
+{ TLspRaiseVisibility }
+
 class function TLspRaiseVisibility.Actions(const AUri, AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange): TArray<TJSONObject>;
 var

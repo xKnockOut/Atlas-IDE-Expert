@@ -136,9 +136,18 @@ end;
 
 { TAtlasLaunchGroups }
 
-class function TAtlasLaunchGroups.WaitName(AKind: TAtlasLaunchWaitKind): string;
+class function TAtlasLaunchGroups.IndexOf(const AGroups: TAtlasLaunchGroupList; const AName: string): Integer;
+var
+  mIndex: Integer;
 begin
-  Result := cWaitNames[AKind];
+  for mIndex := 0 to High(AGroups) do
+  begin
+    if SameText(AGroups[mIndex].Name, AName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 function WaitOf(const AName: string; out AKind: TAtlasLaunchWaitKind): Boolean;
@@ -372,20 +381,6 @@ begin
   end;
 end;
 
-class function TAtlasLaunchGroups.IndexOf(const AGroups: TAtlasLaunchGroupList; const AName: string): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(AGroups) do
-  begin
-    if SameText(AGroups[mIndex].Name, AName) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 class function TAtlasLaunchGroups.Evaluate(const AItem: TAtlasLaunchItem; AElapsedMs: UInt64;
   APortOpen, AWindowFound: Boolean): TAtlasLaunchWaitState;
 var
@@ -411,6 +406,11 @@ begin
   begin
     Result := TAtlasLaunchWaitState.TimedOut;
   end;
+end;
+
+class function TAtlasLaunchGroups.WaitName(AKind: TAtlasLaunchWaitKind): string;
+begin
+  Result := cWaitNames[AKind];
 end;
 
 { TAtlasLaunchRun }

@@ -163,6 +163,8 @@ begin
   Result := Parse(AText).ToText;
 end;
 
+{ TAtlasBuildPipelineSettings }
+
 class function TAtlasBuildPipelineSettings.GateOf(const AText: string): TAtlasBuildGate;
 var
   mGate: TAtlasBuildGate;

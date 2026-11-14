@@ -35,10 +35,7 @@ implementation
 uses
   Atlas.Core.Build.Verdict;
 
-class function TAtlasIdeLastBuildMessages.Current: TAtlasIdeLastBuildMessages;
-begin
-  Result := FCurrent;
-end;
+{ TAtlasIdeLastBuildMessages }
 
 constructor TAtlasIdeLastBuildMessages.Create;
 begin
@@ -55,6 +52,11 @@ begin
   end;
   FLast.Free;
   inherited;
+end;
+
+class function TAtlasIdeLastBuildMessages.Current: TAtlasIdeLastBuildMessages;
+begin
+  Result := FCurrent;
 end;
 
 procedure TAtlasIdeLastBuildMessages.Remember(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>);

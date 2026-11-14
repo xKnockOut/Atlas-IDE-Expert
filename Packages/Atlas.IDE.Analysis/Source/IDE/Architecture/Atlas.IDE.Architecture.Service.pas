@@ -200,6 +200,47 @@ begin
   inherited Destroy;
 end;
 
+procedure TArchitectureState.Wire(AFrame: TAtlasArchitectureFrame);
+begin
+  AFrame.ScopeValue := FScope;
+  AFrame.IncludeLibrary := FIncludeLibrary;
+  AFrame.ResolutionValue := FResolution;
+  AFrame.ShowResolution := FShowResolution;
+  WireCommands(AFrame);
+  WireOptions(AFrame);
+  AFrame.OnOpenUnit :=
+    procedure(AFileName: string)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
+    end;
+  AFrame.OnOpenLocation :=
+    procedure(AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, ACharacter - 1);
+    end;
+  AFrame.OnUnitRelations :=
+    procedure(AFileName: string)
+    begin
+      if Assigned(TAtlasIdeArchitecture.OnUnitRelations) then
+      begin
+        TAtlasIdeArchitecture.OnUnitRelations(AFileName);
+      end
+      else
+      begin
+        TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
+      end;
+    end;
+  // Vom Desktop wiederhergestellt: rechnen, sobald der Aufbau durch ist (dann ist meist auch das Projekt da).
+  TAtlasMainThread.Queue(TAtlasFeature.Architecture,
+    procedure
+    begin
+      if (TAtlasIdeArchitecture.FState = Self) and Active and TAtlasIdeArchitectureWindow.Visible then
+      begin
+        EnsureData;
+      end;
+    end);
+end;
+
 procedure TArchitectureState.WireCommands(AFrame: TAtlasArchitectureFrame);
 begin
   AFrame.OnRefresh :=
@@ -274,56 +315,52 @@ begin
     end;
 end;
 
-procedure TArchitectureState.Wire(AFrame: TAtlasArchitectureFrame);
+procedure TArchitectureState.ShowAnswer(ARequest: Integer; AParsed, AEnabled: Boolean;
+  const AModel: TAtlasArchitectureModel);
+var
+  mCurrent: TAtlasArchitectureFrame;
 begin
-  AFrame.ScopeValue := FScope;
-  AFrame.IncludeLibrary := FIncludeLibrary;
-  AFrame.ResolutionValue := FResolution;
-  AFrame.ShowResolution := FShowResolution;
-  WireCommands(AFrame);
-  WireOptions(AFrame);
-  AFrame.OnOpenUnit :=
-    procedure(AFileName: string)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
-    end;
-  AFrame.OnOpenLocation :=
-    procedure(AFileName: string; ALine, ACharacter: Integer)
-    begin
-      TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, ACharacter - 1);
-    end;
-  AFrame.OnUnitRelations :=
-    procedure(AFileName: string)
-    begin
-      if Assigned(TAtlasIdeArchitecture.OnUnitRelations) then
-      begin
-        TAtlasIdeArchitecture.OnUnitRelations(AFileName);
-      end
-      else
-      begin
-        TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
-      end;
-    end;
-  // Vom Desktop wiederhergestellt: rechnen, sobald der Aufbau durch ist (dann ist meist auch das Projekt da).
-  TAtlasMainThread.Queue(TAtlasFeature.Architecture,
-    procedure
-    begin
-      if (TAtlasIdeArchitecture.FState = Self) and Active and TAtlasIdeArchitectureWindow.Visible then
-      begin
-        EnsureData;
-      end;
-    end);
+  if (TAtlasIdeArchitecture.FState <> Self) or (ARequest <> FRequest) then
+  begin
+    Exit;
+  end;
+  FPending := False;
+  mCurrent := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mCurrent = nil then
+  begin
+    Exit;
+  end;
+  if not AParsed then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False);
+  end
+  else if not AEnabled then
+  begin
+    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False);
+  end
+  else
+  begin
+    mCurrent.SetModel(AModel);
+    ApplyRoute;
+  end;
 end;
 
-procedure TArchitectureState.EnsureData;
-var
-  mFrame: TAtlasArchitectureFrame;
+function TArchitectureState.AnswerHandler(ARequest: Integer): TProc<string>;
 begin
-  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if (mFrame <> nil) and not mFrame.HasModel and not FPending then
-  begin
-    Refresh;
-  end;
+  Result :=
+    procedure(AAnswer: string)
+    var
+      mModel: TAtlasArchitectureModel;
+      mEnabled, mParsed: Boolean;
+    begin
+      // Im Hintergrund lesen: Bei einigen tausend Units dauert das spürbar.
+      mParsed := TAtlasArchitectureModel.Parse(AAnswer, mModel, mEnabled);
+      TAtlasMainThread.Queue(TAtlasFeature.Architecture,
+        procedure
+        begin
+          ShowAnswer(ARequest, mParsed, mEnabled, mModel);
+        end);
+    end;
 end;
 
 function TArchitectureState.ProjectUri(out AUri: string): Boolean;
@@ -361,15 +398,6 @@ begin
   Refresh;
 end;
 
-function TArchitectureState.ReadGrouping: Boolean;
-var
-  mResolution: Double;
-begin
-  TAtlasArchitectureGroupingSettings.Read(TAtlasIdeSettings.GlobalText, mResolution, FShowResolution);
-  Result := not TAtlasArchResolution.Same(mResolution, FResolution);
-  FResolution := mResolution;
-end;
-
 procedure TArchitectureState.ChangeResolution(AValue: Double);
 begin
   FResolution := TAtlasArchResolution.Clamp(AValue);
@@ -378,6 +406,15 @@ begin
   TAtlasIdeSettings.SaveGlobalText(TAtlasArchitectureGroupingSettings.WithResolution(TAtlasIdeSettings.GlobalText,
     FResolution));
   Refresh;
+end;
+
+function TArchitectureState.ReadGrouping: Boolean;
+var
+  mResolution: Double;
+begin
+  TAtlasArchitectureGroupingSettings.Read(TAtlasIdeSettings.GlobalText, mResolution, FShowResolution);
+  Result := not TAtlasArchResolution.Same(mResolution, FResolution);
+  FResolution := mResolution;
 end;
 
 function TArchitectureState.Options: TAtlasArchitectureOptions;
@@ -400,12 +437,6 @@ begin
   Refresh;
 end;
 
-procedure TArchitectureState.RenameSubsystems;
-begin
-  FRename := True;
-  Refresh;
-end;
-
 procedure TArchitectureState.ClearComparison;
 begin
   FCompareWith := '';
@@ -413,52 +444,10 @@ begin
   Refresh;
 end;
 
-function TArchitectureState.AnswerHandler(ARequest: Integer): TProc<string>;
+procedure TArchitectureState.RenameSubsystems;
 begin
-  Result :=
-    procedure(AAnswer: string)
-    var
-      mModel: TAtlasArchitectureModel;
-      mEnabled, mParsed: Boolean;
-    begin
-      // Im Hintergrund lesen: Bei einigen tausend Units dauert das spürbar.
-      mParsed := TAtlasArchitectureModel.Parse(AAnswer, mModel, mEnabled);
-      TAtlasMainThread.Queue(TAtlasFeature.Architecture,
-        procedure
-        begin
-          ShowAnswer(ARequest, mParsed, mEnabled, mModel);
-        end);
-    end;
-end;
-
-procedure TArchitectureState.ShowAnswer(ARequest: Integer; AParsed, AEnabled: Boolean;
-  const AModel: TAtlasArchitectureModel);
-var
-  mCurrent: TAtlasArchitectureFrame;
-begin
-  if (TAtlasIdeArchitecture.FState <> Self) or (ARequest <> FRequest) then
-  begin
-    Exit;
-  end;
-  FPending := False;
-  mCurrent := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if mCurrent = nil then
-  begin
-    Exit;
-  end;
-  if not AParsed then
-  begin
-    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureFailed), False);
-  end
-  else if not AEnabled then
-  begin
-    mCurrent.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureDisabled), False);
-  end
-  else
-  begin
-    mCurrent.SetModel(AModel);
-    ApplyRoute;
-  end;
+  FRename := True;
+  Refresh;
 end;
 
 procedure TArchitectureState.Refresh;
@@ -488,6 +477,17 @@ begin
   begin
     FPending := False;
     mFrame.SetMessage(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureNoServer), True);
+  end;
+end;
+
+procedure TArchitectureState.EnsureData;
+var
+  mFrame: TAtlasArchitectureFrame;
+begin
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (mFrame <> nil) and not mFrame.HasModel and not FPending then
+  begin
+    Refresh;
   end;
 end;
 
@@ -543,6 +543,33 @@ begin
   end;
 end;
 
+procedure TArchitectureState.ApplySettings;
+var
+  mFrame: TAtlasArchitectureFrame;
+  mChanged: Boolean;
+begin
+  mChanged := (FScope <> TAtlasIdeSettings.Current.ArchitectureScope) or
+    (FIncludeLibrary <> TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits);
+  // Feinheit und Regler (#1366) stehen in settings.json (Dialog der globalen Einstellungen).
+  mChanged := ReadGrouping or mChanged;
+  FScope := TAtlasIdeSettings.Current.ArchitectureScope;
+  FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
+  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if mFrame = nil then
+  begin
+    Exit;
+  end;
+  mFrame.ScopeValue := FScope;
+  mFrame.IncludeLibrary := FIncludeLibrary;
+  mFrame.ResolutionValue := FResolution;
+  mFrame.ShowResolution := FShowResolution;
+  // Umfang oder Bibliotheks-Units auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
+  if mChanged and TAtlasIdeArchitectureWindow.Visible then
+  begin
+    Refresh;
+  end;
+end;
+
 procedure TArchitectureState.ShowRoute(const AUnits: TArray<string>);
 begin
   FRoute := AUnits;
@@ -572,33 +599,6 @@ begin
   mFrame.Parts.Pages.ActivePageIndex := 0;
 end;
 
-procedure TArchitectureState.ApplySettings;
-var
-  mFrame: TAtlasArchitectureFrame;
-  mChanged: Boolean;
-begin
-  mChanged := (FScope <> TAtlasIdeSettings.Current.ArchitectureScope) or
-    (FIncludeLibrary <> TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits);
-  // Feinheit und Regler (#1366) stehen in settings.json (Dialog der globalen Einstellungen).
-  mChanged := ReadGrouping or mChanged;
-  FScope := TAtlasIdeSettings.Current.ArchitectureScope;
-  FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
-  mFrame := TAtlasIdeArchitectureWindow.ExistingFrame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  mFrame.ScopeValue := FScope;
-  mFrame.IncludeLibrary := FIncludeLibrary;
-  mFrame.ResolutionValue := FResolution;
-  mFrame.ShowResolution := FShowResolution;
-  // Umfang oder Bibliotheks-Units auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
-  if mChanged and TAtlasIdeArchitectureWindow.Visible then
-  begin
-    Refresh;
-  end;
-end;
-
 { TAtlasIdeArchitecture }
 
 class procedure TAtlasIdeArchitecture.Install(const ARun: TAtlasArchitectureRun);
@@ -612,11 +612,6 @@ begin
   OnUnitRelations := nil;
   FreeAndNil(FState);
   TAtlasIdeArchitectureWindow.Release;
-end;
-
-class function TAtlasIdeArchitecture.Enabled: Boolean;
-begin
-  Result := Active;
 end;
 
 class procedure TAtlasIdeArchitecture.ShowWindow;
@@ -687,6 +682,11 @@ begin
   begin
     mFrame.Map.Invalidate;
   end;
+end;
+
+class function TAtlasIdeArchitecture.Enabled: Boolean;
+begin
+  Result := Active;
 end;
 
 end.

@@ -126,47 +126,28 @@ begin
   end;
 end;
 
-procedure TAtlasIdeQuickToggles.Rebind;
-var
-  mSettings: TAtlasPluginSettings;
+procedure TAtlasIdeQuickToggles.Refresh;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  FKey.Rebind(Word(mSettings.QuickToggleKey), mSettings.QuickToggleKeyPriority,
-    TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey));
-end;
-
-class function TAtlasIdeQuickToggles.Items: TArray<TAtlasQuickToggleItem>;
-var
-  mProject: TJSONObject;
-begin
-  mProject := nil;
-  try
-    try
-      mProject := TAtlasProjectSettings.ReadProject;
-    except
-      // Unlesbare Datei: Schalter ohne Projektwerte.
-      on Exception do
-        mProject := nil;
-    end;
-    Result := TAtlasQuickToggles.Items(TAtlasIdeSettings.QuickToggles, TAtlasIdeSettings.Stored,
-      TAtlasIdeSettings.Session, mProject);
-  finally
-    mProject.Free;
-  end;
-end;
-
-class function TAtlasIdeQuickToggles.Checked(const AKey: string): Boolean;
-var
-  mItem: TAtlasQuickToggleItem;
-begin
-  for mItem in Items do
+  if FWindow <> nil then
   begin
-    if SameText(mItem.Toggle.Key, AKey) then
-    begin
-      Exit(mItem.Checked);
-    end;
+    FWindow.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
   end;
-  Result := False;
+end;
+
+class procedure TAtlasIdeQuickToggles.Applied;
+var
+  mServices: INTACodeEditorServices;
+begin
+  // Wie beim Schließen der Optionsseite: Strukturhervorhebung der IDE abgleichen, dann neu zeichnen.
+  TAtlasIdeStructureSwitch.Sync;
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  begin
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+  end;
+  if FInstance <> nil then
+  begin
+    FInstance.Refresh;
+  end;
 end;
 
 class function TAtlasIdeQuickToggles.AskTarget(const AItem: TAtlasQuickToggleItem;
@@ -204,6 +185,40 @@ begin
     end;
   finally
     mDialog.Free;
+  end;
+end;
+
+class function TAtlasIdeQuickToggles.Items: TArray<TAtlasQuickToggleItem>;
+var
+  mProject: TJSONObject;
+begin
+  mProject := nil;
+  try
+    try
+      mProject := TAtlasProjectSettings.ReadProject;
+    except
+      // Unlesbare Datei: Schalter ohne Projektwerte.
+      on Exception do
+        mProject := nil;
+    end;
+    Result := TAtlasQuickToggles.Items(TAtlasIdeSettings.QuickToggles, TAtlasIdeSettings.Stored,
+      TAtlasIdeSettings.Session, mProject);
+  finally
+    mProject.Free;
+  end;
+end;
+
+class procedure TAtlasIdeQuickToggles.Switch(const AKey: string);
+var
+  mItem: TAtlasQuickToggleItem;
+begin
+  for mItem in Items do
+  begin
+    if SameText(mItem.Toggle.Key, AKey) then
+    begin
+      SwitchItem(mItem);
+      Exit;
+    end;
   end;
 end;
 
@@ -248,20 +263,6 @@ begin
   Applied;
 end;
 
-class procedure TAtlasIdeQuickToggles.Switch(const AKey: string);
-var
-  mItem: TAtlasQuickToggleItem;
-begin
-  for mItem in Items do
-  begin
-    if SameText(mItem.Toggle.Key, AKey) then
-    begin
-      SwitchItem(mItem);
-      Exit;
-    end;
-  end;
-end;
-
 class procedure TAtlasIdeQuickToggles.ToggleAllOff;
 var
   mSession: TAtlasToggleSession;
@@ -272,28 +273,27 @@ begin
   Applied;
 end;
 
-class procedure TAtlasIdeQuickToggles.Applied;
+class function TAtlasIdeQuickToggles.Checked(const AKey: string): Boolean;
 var
-  mServices: INTACodeEditorServices;
+  mItem: TAtlasQuickToggleItem;
 begin
-  // Wie beim Schließen der Optionsseite: Strukturhervorhebung der IDE abgleichen, dann neu zeichnen.
-  TAtlasIdeStructureSwitch.Sync;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
+  for mItem in Items do
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
+    if SameText(mItem.Toggle.Key, AKey) then
+    begin
+      Exit(mItem.Checked);
+    end;
   end;
-  if FInstance <> nil then
-  begin
-    FInstance.Refresh;
-  end;
+  Result := False;
 end;
 
-procedure TAtlasIdeQuickToggles.Refresh;
+procedure TAtlasIdeQuickToggles.Rebind;
+var
+  mSettings: TAtlasPluginSettings;
 begin
-  if FWindow <> nil then
-  begin
-    FWindow.SetItems(Items, TAtlasIdeSettings.Session.AllOff);
-  end;
+  mSettings := TAtlasIdeSettings.Current;
+  FKey.Rebind(Word(mSettings.QuickToggleKey), mSettings.QuickToggleKeyPriority,
+    TAtlasStrings.Text(TAtlasTextId.SettingsQuickToggleKey));
 end;
 
 procedure TAtlasIdeQuickToggles.Show(const AAnchor: TPoint);

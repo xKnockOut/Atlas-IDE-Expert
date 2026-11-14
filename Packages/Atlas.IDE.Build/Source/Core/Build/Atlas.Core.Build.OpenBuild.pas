@@ -141,24 +141,6 @@ begin
   inherited;
 end;
 
-class function TAtlasOpenBuild.KeyOf(const AFileName: string): string;
-begin
-  Result := TAtlasOpenBuildSettings.StripProjectExt(LowerCase(Trim(AFileName)));
-end;
-
-class function TAtlasOpenBuild.IsGroupFile(const AFileName: string): Boolean;
-begin
-  Result := SameText(ExtractFileExt(AFileName), '.groupproj');
-end;
-
-class function TAtlasOpenBuild.IsProjectFile(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.dproj') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.groupproj');
-end;
-
 function TAtlasOpenBuild.PendingIndex(const AFileName: string): Integer;
 var
   mIndex: Integer;
@@ -296,24 +278,6 @@ begin
   FRunning := True;
 end;
 
-function TAtlasOpenBuild.InRun(const AFileName: string): Boolean;
-var
-  mProject: string;
-begin
-  Result := False;
-  if not FRunning then
-  begin
-    Exit;
-  end;
-  for mProject in FRunProjects do
-  begin
-    if KeyOf(mProject) = KeyOf(AFileName) then
-    begin
-      Exit(True);
-    end;
-  end;
-end;
-
 procedure TAtlasOpenBuild.ProjectFinished(const AFileName: string; ASucceeded: Boolean);
 begin
   if InRun(AFileName) then
@@ -334,6 +298,24 @@ begin
   end;
   // Abgebrochen zählt als „nicht gebaut“: kein Eintrag in FRunResults.
   FRunResults.Remove(KeyOf(AFileName));
+end;
+
+function TAtlasOpenBuild.InRun(const AFileName: string): Boolean;
+var
+  mProject: string;
+begin
+  Result := False;
+  if not FRunning then
+  begin
+    Exit;
+  end;
+  for mProject in FRunProjects do
+  begin
+    if KeyOf(mProject) = KeyOf(AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 function TAtlasOpenBuild.RunComplete: Boolean;
@@ -384,6 +366,24 @@ begin
   FRunProjects.Clear;
   FRunResults.Clear;
   FCancelReason := '';
+end;
+
+class function TAtlasOpenBuild.KeyOf(const AFileName: string): string;
+begin
+  Result := TAtlasOpenBuildSettings.StripProjectExt(LowerCase(Trim(AFileName)));
+end;
+
+class function TAtlasOpenBuild.IsGroupFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.groupproj');
+end;
+
+class function TAtlasOpenBuild.IsProjectFile(const AFileName: string): Boolean;
+var
+  mExt: string;
+begin
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.dproj') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.groupproj');
 end;
 
 end.

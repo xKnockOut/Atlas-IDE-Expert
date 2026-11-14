@@ -45,6 +45,8 @@ uses
   System.StrUtils,
   Atlas.Common.Editing.UsesClause;
 
+{ TCompletionSameNames }
+
 class function TCompletionSameNames.IsFmx(const AUnitName: string): Boolean;
 begin
   Result := SameText(AUnitName, 'FMX') or StartsText('FMX.', AUnitName);

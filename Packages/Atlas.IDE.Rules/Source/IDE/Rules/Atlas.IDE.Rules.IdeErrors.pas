@@ -50,6 +50,8 @@ begin
   Result := True;
 end;
 
+{ TAtlasIdeRulesIdeErrors }
+
 function TAtlasIdeRulesIdeErrors.ErrorsOf(const AFileName: string; out AErrors: TArray<TAtlasIdeError>): Boolean;
 var
   mList: TOTAErrors;

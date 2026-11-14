@@ -164,6 +164,8 @@ begin
   Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9']);
 end;
 
+{ TAtlasNameSuggest }
+
 class function TAtlasNameSuggest.IsDefaultName(const AName, AClassName: string): Boolean;
 var
   mBase: string;

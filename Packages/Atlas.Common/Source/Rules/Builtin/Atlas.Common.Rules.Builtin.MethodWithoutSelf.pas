@@ -65,6 +65,8 @@ const
 const
   cMethodWithoutSelfRuleId = 'method-without-self';
 
+{ TMethodWithoutSelfRule }
+
 function TMethodWithoutSelfRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(cMethodWithoutSelfRuleId, TRuleSeverity.Hint,

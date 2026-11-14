@@ -84,6 +84,17 @@ begin
   ActiveControl := FList;
 end;
 
+procedure TAtlasProcessChoiceDialog.DoShow;
+begin
+  inherited;
+  // Die Liste braucht ein Fenster; nach dem Thema (VisibleChanging) ist es da.
+  if not FFilled then
+  begin
+    FFilled := True;
+    Fill;
+  end;
+end;
+
 procedure TAtlasProcessChoiceDialog.Fill;
 var
   mProcess: TAtlasReattachProcess;
@@ -108,17 +119,6 @@ begin
   begin
     FList.Items[0].Selected := True;
     FList.Items[0].Focused := True;
-  end;
-end;
-
-procedure TAtlasProcessChoiceDialog.DoShow;
-begin
-  inherited;
-  // Die Liste braucht ein Fenster; nach dem Thema (VisibleChanging) ist es da.
-  if not FFilled then
-  begin
-    FFilled := True;
-    Fill;
   end;
 end;
 

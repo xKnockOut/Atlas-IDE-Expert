@@ -103,6 +103,160 @@ const
 
 { TTypeIdentity }
 
+class function TTypeIdentity.Parts(const AText: string; const AResolve: TTypeChainResolver; AResolver: TNameResolver;
+  ADepth: Integer): TArray<TPart>;
+var
+  mTokens: TArray<TPascalToken>;
+  mNames: TArray<string>;
+  mIndex: Integer;
+  mPart: TPart;
+begin
+  Result := nil;
+  mTokens := TPascalLexer.Tokenize(AText);
+  mIndex := 0;
+  while mIndex <= High(mTokens) do
+  begin
+    if mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Inc(mIndex);
+      Continue;
+    end;
+    // Namenskette A.B.C; string ist ein Schlüsselwort, steht aber wie ein Name (System.string).
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) or mTokens[mIndex].IsKeyword('string') then
+    begin
+      mNames := [TPascalLexer.PlainName(mTokens[mIndex].Text)];
+      Inc(mIndex);
+      while (mIndex + 1 <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') and
+        ((mTokens[mIndex + 1].Kind = TPascalTokenKind.Identifier) or mTokens[mIndex + 1].IsKeyword('string')) do
+      begin
+        mNames := mNames + [TPascalLexer.PlainName(mTokens[mIndex + 1].Text)];
+        Inc(mIndex, 2);
+      end;
+      Result := Result + NamePart(mNames, AResolve, AResolver, ADepth);
+      Continue;
+    end;
+    mPart.Text := LowerCase(mTokens[mIndex].Text);
+    mPart.Origin := '';
+    mPart.IsName := False;
+    mPart.Known := True;
+    Result := Result + [mPart];
+    Inc(mIndex);
+  end;
+end;
+
+class function TTypeIdentity.NamePart(const ANames: TArray<string>; const AResolve: TTypeChainResolver;
+  AResolver: TNameResolver; ADepth: Integer): TArray<TPart>;
+var
+  mType: TResolvedSymbol;
+  mPart: TPart;
+begin
+  mPart.IsName := True;
+  mPart.Origin := '';
+  mPart.Known := False;
+  if Assigned(AResolve) and AResolve(ANames, mType) and mType.IsType then
+  begin
+    if Followed(mType, AResolver, ADepth, Result) then
+    begin
+      Exit;
+    end;
+    mPart.Text := LowerCase(BuiltinName(mType.Name));
+    mPart.Known := True;
+    if not mType.Builtin and not SameText(mType.UnitName, 'System') then
+    begin
+      mPart.Origin := LowerCase(mType.UnitName);
+      if mType.Container <> '' then
+      begin
+        mPart.Origin := mPart.Origin + '.' + LowerCase(mType.Container);
+      end;
+    end;
+  end
+  else
+  begin
+    mPart.Text := LowerCase(BuiltinName(ANames[High(ANames)]));
+    // Eingebaute Typen sind auch ohne Index bekannt.
+    mPart.Known := TResolverText.IsBuiltinTypeName(ANames[High(ANames)]) or
+      not SameText(mPart.Text, ANames[High(ANames)]);
+  end;
+  Result := [mPart];
+end;
+
+class function TTypeIdentity.CompareParts(const ALeft, ARight: TArray<TPart>): TTypeMatch;
+var
+  mIndex: Integer;
+begin
+  if Length(ALeft) <> Length(ARight) then
+  begin
+    Exit(TTypeMatch.Different);
+  end;
+  Result := TTypeMatch.Same;
+  for mIndex := 0 to High(ALeft) do
+  begin
+    if ALeft[mIndex].IsName <> ARight[mIndex].IsName then
+    begin
+      Exit(TTypeMatch.Different);
+    end;
+    if ALeft[mIndex].Text <> ARight[mIndex].Text then
+    begin
+      // Ein unbekannter Name kann ein Alias des anderen sein.
+      if ALeft[mIndex].IsName and (not ALeft[mIndex].Known or not ARight[mIndex].Known) then
+      begin
+        Result := TTypeMatch.Unknown;
+      end
+      else
+      begin
+        Exit(TTypeMatch.Different);
+      end;
+    end
+    else if (ALeft[mIndex].Origin <> '') and (ARight[mIndex].Origin <> '') and
+      (ALeft[mIndex].Origin <> ARight[mIndex].Origin) then
+    begin
+      // Gleicher Name aus verschiedenen Units: Vcl.Graphics.TBitmap ist nicht FMX.Graphics.TBitmap.
+      Exit(TTypeMatch.Different);
+    end;
+  end;
+end;
+
+/// <summary>AType ist ein schlichter Alias, der sich in Tiefe ADepth noch verfolgen lässt.</summary>
+function IsPlainAlias(const AType: TResolvedSymbol; ADepth: Integer): Boolean;
+begin
+  Result := not AType.Builtin and (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and (AType.TypeName <> '') and
+    (ADepth < cMaxDepth) and not TTypeIdentity.IsDistinctAlias(AType.Signature);
+end;
+
+class function TTypeIdentity.Followed(const AType: TResolvedSymbol; AResolver: TNameResolver; ADepth: Integer;
+  out AParts: TArray<TPart>): Boolean;
+var
+  mUnit: TUnitIndex;
+  mTarget, mBody: string;
+  mResolver: TNameResolver;
+begin
+  // Nur ein schlichter Alias A = B bzw. A = B<C> wird verfolgt; Zeiger (^B), Mengen, Arrays und A = type B
+  // bleiben eigene Typen.
+  AParts := nil;
+  Result := False;
+  if not IsPlainAlias(AType, ADepth) or (AResolver = nil) or not AResolver.DeclaringUnit(AType, mUnit) then
+  begin
+    Exit;
+  end;
+  mTarget := AType.TypeName;
+  if AType.TypeArgs <> '' then
+  begin
+    mTarget := mTarget + '<' + AType.TypeArgs + '>';
+  end;
+  mBody := Clean(Copy(AType.Signature, Pos('=', AType.Signature) + 1, MaxInt));
+  if not SameText(mBody, Clean(mTarget)) then
+  begin
+    Exit;
+  end;
+  mResolver := AResolver;
+  AParts := Parts(mTarget,
+    function(const ANames: TArray<string>; out AResolved: TResolvedSymbol): Boolean
+    begin
+      Result := mResolver.ResolveTypeTextFrom(mUnit, string.Join('.', ANames), AResolved);
+    end, AResolver, ADepth + 1);
+  Result := True;
+end;
+
 class function TTypeIdentity.Clean(const ATypeText: string): string;
 var
   mToken: TPascalToken;
@@ -152,160 +306,6 @@ var
 begin
   mEquals := Pos('=', ASignature);
   Result := (mEquals > 0) and StartsText('type ', Clean(Copy(ASignature, mEquals + 1, MaxInt)) + ' ');
-end;
-
-/// <summary>AType ist ein schlichter Alias, der sich in Tiefe ADepth noch verfolgen lässt.</summary>
-function IsPlainAlias(const AType: TResolvedSymbol; ADepth: Integer): Boolean;
-begin
-  Result := not AType.Builtin and (AType.SymbolKind = TIndexSymbolKind.TypeAlias) and (AType.TypeName <> '') and
-    (ADepth < cMaxDepth) and not TTypeIdentity.IsDistinctAlias(AType.Signature);
-end;
-
-class function TTypeIdentity.Followed(const AType: TResolvedSymbol; AResolver: TNameResolver; ADepth: Integer;
-  out AParts: TArray<TPart>): Boolean;
-var
-  mUnit: TUnitIndex;
-  mTarget, mBody: string;
-  mResolver: TNameResolver;
-begin
-  // Nur ein schlichter Alias A = B bzw. A = B<C> wird verfolgt; Zeiger (^B), Mengen, Arrays und A = type B
-  // bleiben eigene Typen.
-  AParts := nil;
-  Result := False;
-  if not IsPlainAlias(AType, ADepth) or (AResolver = nil) or not AResolver.DeclaringUnit(AType, mUnit) then
-  begin
-    Exit;
-  end;
-  mTarget := AType.TypeName;
-  if AType.TypeArgs <> '' then
-  begin
-    mTarget := mTarget + '<' + AType.TypeArgs + '>';
-  end;
-  mBody := Clean(Copy(AType.Signature, Pos('=', AType.Signature) + 1, MaxInt));
-  if not SameText(mBody, Clean(mTarget)) then
-  begin
-    Exit;
-  end;
-  mResolver := AResolver;
-  AParts := Parts(mTarget,
-    function(const ANames: TArray<string>; out AResolved: TResolvedSymbol): Boolean
-    begin
-      Result := mResolver.ResolveTypeTextFrom(mUnit, string.Join('.', ANames), AResolved);
-    end, AResolver, ADepth + 1);
-  Result := True;
-end;
-
-class function TTypeIdentity.NamePart(const ANames: TArray<string>; const AResolve: TTypeChainResolver;
-  AResolver: TNameResolver; ADepth: Integer): TArray<TPart>;
-var
-  mType: TResolvedSymbol;
-  mPart: TPart;
-begin
-  mPart.IsName := True;
-  mPart.Origin := '';
-  mPart.Known := False;
-  if Assigned(AResolve) and AResolve(ANames, mType) and mType.IsType then
-  begin
-    if Followed(mType, AResolver, ADepth, Result) then
-    begin
-      Exit;
-    end;
-    mPart.Text := LowerCase(BuiltinName(mType.Name));
-    mPart.Known := True;
-    if not mType.Builtin and not SameText(mType.UnitName, 'System') then
-    begin
-      mPart.Origin := LowerCase(mType.UnitName);
-      if mType.Container <> '' then
-      begin
-        mPart.Origin := mPart.Origin + '.' + LowerCase(mType.Container);
-      end;
-    end;
-  end
-  else
-  begin
-    mPart.Text := LowerCase(BuiltinName(ANames[High(ANames)]));
-    // Eingebaute Typen sind auch ohne Index bekannt.
-    mPart.Known := TResolverText.IsBuiltinTypeName(ANames[High(ANames)]) or
-      not SameText(mPart.Text, ANames[High(ANames)]);
-  end;
-  Result := [mPart];
-end;
-
-class function TTypeIdentity.Parts(const AText: string; const AResolve: TTypeChainResolver; AResolver: TNameResolver;
-  ADepth: Integer): TArray<TPart>;
-var
-  mTokens: TArray<TPascalToken>;
-  mNames: TArray<string>;
-  mIndex: Integer;
-  mPart: TPart;
-begin
-  Result := nil;
-  mTokens := TPascalLexer.Tokenize(AText);
-  mIndex := 0;
-  while mIndex <= High(mTokens) do
-  begin
-    if mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-    begin
-      Inc(mIndex);
-      Continue;
-    end;
-    // Namenskette A.B.C; string ist ein Schlüsselwort, steht aber wie ein Name (System.string).
-    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) or mTokens[mIndex].IsKeyword('string') then
-    begin
-      mNames := [TPascalLexer.PlainName(mTokens[mIndex].Text)];
-      Inc(mIndex);
-      while (mIndex + 1 <= High(mTokens)) and mTokens[mIndex].IsSymbol('.') and
-        ((mTokens[mIndex + 1].Kind = TPascalTokenKind.Identifier) or mTokens[mIndex + 1].IsKeyword('string')) do
-      begin
-        mNames := mNames + [TPascalLexer.PlainName(mTokens[mIndex + 1].Text)];
-        Inc(mIndex, 2);
-      end;
-      Result := Result + NamePart(mNames, AResolve, AResolver, ADepth);
-      Continue;
-    end;
-    mPart.Text := LowerCase(mTokens[mIndex].Text);
-    mPart.Origin := '';
-    mPart.IsName := False;
-    mPart.Known := True;
-    Result := Result + [mPart];
-    Inc(mIndex);
-  end;
-end;
-
-class function TTypeIdentity.CompareParts(const ALeft, ARight: TArray<TPart>): TTypeMatch;
-var
-  mIndex: Integer;
-begin
-  if Length(ALeft) <> Length(ARight) then
-  begin
-    Exit(TTypeMatch.Different);
-  end;
-  Result := TTypeMatch.Same;
-  for mIndex := 0 to High(ALeft) do
-  begin
-    if ALeft[mIndex].IsName <> ARight[mIndex].IsName then
-    begin
-      Exit(TTypeMatch.Different);
-    end;
-    if ALeft[mIndex].Text <> ARight[mIndex].Text then
-    begin
-      // Ein unbekannter Name kann ein Alias des anderen sein.
-      if ALeft[mIndex].IsName and (not ALeft[mIndex].Known or not ARight[mIndex].Known) then
-      begin
-        Result := TTypeMatch.Unknown;
-      end
-      else
-      begin
-        Exit(TTypeMatch.Different);
-      end;
-    end
-    else if (ALeft[mIndex].Origin <> '') and (ARight[mIndex].Origin <> '') and
-      (ALeft[mIndex].Origin <> ARight[mIndex].Origin) then
-    begin
-      // Gleicher Name aus verschiedenen Units: Vcl.Graphics.TBitmap ist nicht FMX.Graphics.TBitmap.
-      Exit(TTypeMatch.Different);
-    end;
-  end;
 end;
 
 class function TTypeIdentity.Same(const ALeft, ARight: string): Boolean;

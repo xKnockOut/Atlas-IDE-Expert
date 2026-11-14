@@ -85,13 +85,6 @@ begin
   Result := FTables.Snippets;
 end;
 
-procedure TAtlasTrackerSnippetsPart.Build;
-begin
-  BuildList;
-  BuildFields;
-  BuildButtons;
-end;
-
 procedure TAtlasTrackerSnippetsPart.BuildList;
 begin
   FRows.AddTitle(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetsTitle));
@@ -134,19 +127,6 @@ begin
     TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetDefaults), DefaultsClick);
   FRows.Attach(mPanel, FAnchor);
   FRows.AddHint(TAtlasOptionsStrings.Text(TAtlasOptionsTextId.SettingsIssuesSnippetsHint), FAnchor);
-end;
-
-procedure TAtlasTrackerSnippetsPart.Refresh;
-begin
-  if FView.List = nil then
-  begin
-    Exit;
-  end;
-  if FRows.ListReady(FView.List) then
-  begin
-    FillList;
-  end;
-  FillFields;
 end;
 
 procedure TAtlasTrackerSnippetsPart.FillList;
@@ -270,6 +250,26 @@ procedure TAtlasTrackerSnippetsPart.DefaultsClick(Sender: TObject);
 begin
   Table.Defaults;
   Refresh;
+end;
+
+procedure TAtlasTrackerSnippetsPart.Build;
+begin
+  BuildList;
+  BuildFields;
+  BuildButtons;
+end;
+
+procedure TAtlasTrackerSnippetsPart.Refresh;
+begin
+  if FView.List = nil then
+  begin
+    Exit;
+  end;
+  if FRows.ListReady(FView.List) then
+  begin
+    FillList;
+  end;
+  FillFields;
 end;
 
 end.

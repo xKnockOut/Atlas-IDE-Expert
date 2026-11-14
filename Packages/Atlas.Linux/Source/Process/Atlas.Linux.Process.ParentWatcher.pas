@@ -36,15 +36,6 @@ uses
 
 { TParentWatcher }
 
-class function TParentWatcher.Running(APid: Cardinal): Boolean;
-begin
-  if APid = 0 then
-  begin
-    Exit(False);
-  end;
-  Result := (FpKill(TPid(APid), 0) = 0) or (FpGetErrno = ESysEPERM);
-end;
-
 constructor TParentWatcher.Create(AProcessId: Cardinal; const AOnExited: TProc);
 var
   mStop: TEvent;
@@ -92,6 +83,15 @@ end;
 class function TParentWatcher.CurrentProcessId: Cardinal;
 begin
   Result := Cardinal(FpGetPid);
+end;
+
+class function TParentWatcher.Running(APid: Cardinal): Boolean;
+begin
+  if APid = 0 then
+  begin
+    Exit(False);
+  end;
+  Result := (FpKill(TPid(APid), 0) = 0) or (FpGetErrno = ESysEPERM);
 end;
 
 end.

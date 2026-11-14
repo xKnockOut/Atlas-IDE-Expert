@@ -79,11 +79,14 @@ begin
   FLock.Free;
 end;
 
-class procedure TSharedUnitListings.Clear;
+class function TSharedUnitListings.Cached(const AKey: string; AStamp: TDateTime; out AFiles: TArray<string>): Boolean;
+var
+  mListing: TListing;
 begin
   TMonitor.Enter(FLock);
   try
-    FListings.Clear;
+    Result := FListings.TryGetValue(AKey, mListing) and (mListing.Stamp = AStamp);
+    AFiles := mListing.Files;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -97,19 +100,6 @@ end;
 class function TSharedUnitListings.ListUnitFiles(AFolder: string): TArray<string>;
 begin
   Result := Listed(AFolder, '*.pas') + Listed(AFolder, '*.dcu');
-end;
-
-class function TSharedUnitListings.Cached(const AKey: string; AStamp: TDateTime; out AFiles: TArray<string>): Boolean;
-var
-  mListing: TListing;
-begin
-  TMonitor.Enter(FLock);
-  try
-    Result := FListings.TryGetValue(AKey, mListing) and (mListing.Stamp = AStamp);
-    AFiles := mListing.Files;
-  finally
-    TMonitor.Exit(FLock);
-  end;
 end;
 
 class function TSharedUnitListings.Listed(const AFolder, APattern: string): TArray<string>;
@@ -144,6 +134,16 @@ begin
   end;
 end;
 
+class procedure TSharedUnitListings.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FListings.Clear;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 class function TSharedUnitListings.ListFunc: TFunc<string, TArray<string>>;
 begin
   Result :=
@@ -163,42 +163,6 @@ begin
 end;
 
 { TShellFileAccess }
-
-class function TShellFileAccess.FoldersFunc: TFunc<string, TArray<string>>;
-begin
-  Result :=
-    function(AFolder: string): TArray<string>
-    begin
-      Result := Folders(AFolder);
-    end;
-end;
-
-class function TShellFileAccess.PasFilesFunc: TIndexListUnits;
-begin
-  Result :=
-    function(const AFolder: string): TArray<string>
-    begin
-      Result := PasFiles(AFolder);
-    end;
-end;
-
-class function TShellFileAccess.ExistsFunc: TFunc<string, Boolean>;
-begin
-  Result :=
-    function(AFileName: string): Boolean
-    begin
-      Result := Exists(AFileName);
-    end;
-end;
-
-class function TShellFileAccess.ReadTextFunc: TUnitLookupReadText;
-begin
-  Result :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := ReadText(AFileName, AText);
-    end;
-end;
 
 class function TShellFileAccess.Folders(AFolder: string): TArray<string>;
 begin
@@ -247,6 +211,42 @@ begin
     on Exception do
       Result := False;
   end;
+end;
+
+class function TShellFileAccess.FoldersFunc: TFunc<string, TArray<string>>;
+begin
+  Result :=
+    function(AFolder: string): TArray<string>
+    begin
+      Result := Folders(AFolder);
+    end;
+end;
+
+class function TShellFileAccess.PasFilesFunc: TIndexListUnits;
+begin
+  Result :=
+    function(const AFolder: string): TArray<string>
+    begin
+      Result := PasFiles(AFolder);
+    end;
+end;
+
+class function TShellFileAccess.ExistsFunc: TFunc<string, Boolean>;
+begin
+  Result :=
+    function(AFileName: string): Boolean
+    begin
+      Result := Exists(AFileName);
+    end;
+end;
+
+class function TShellFileAccess.ReadTextFunc: TUnitLookupReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadText(AFileName, AText);
+    end;
 end;
 
 end.

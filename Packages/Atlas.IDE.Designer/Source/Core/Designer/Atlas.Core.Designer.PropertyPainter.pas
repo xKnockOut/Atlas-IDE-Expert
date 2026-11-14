@@ -123,6 +123,8 @@ begin
   end;
 end;
 
+{ TAtlasPropertyPainter }
+
 class function TAtlasPropertyPainter.GroupOf(const AProperty: TAtlasPaintProperty): TAtlasPaintGroup;
 var
   mHead: string;

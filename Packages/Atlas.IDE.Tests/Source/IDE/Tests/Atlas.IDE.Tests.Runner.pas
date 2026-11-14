@@ -306,63 +306,106 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeTests.Say(const AText: string);
+procedure TAtlasIdeTests.SetDebugging(AValue: Boolean);
 begin
-  FOutput.Say(AText);
-end;
-
-procedure TAtlasIdeTests.ResolveProject(const AFileName: string; const AThen: TAtlasTestsProjectProc);
-var
-  mFound: TArray<IOTAProject>;
-begin
-  mFound := nil;
-  // Testunit der Code Lens bzw. am Cursor: ihre Testprojekte.
-  if AFileName <> '' then
+  if FDebugging = AValue then
   begin
-    mFound := TAtlasIdeTestProjects.TestProjects(AFileName);
-  end;
-  if Length(mFound) = 0 then
-  begin
-    if TAtlasIdeTestProjects.IsTestProject(GetActiveProject) then
-    begin
-      AThen(GetActiveProject);
-      Exit;
-    end;
-    mFound := TAtlasIdeTestProjects.TestProjects('');
-  end;
-  if Length(mFound) = 0 then
-  begin
-    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
     Exit;
   end;
-  TAtlasIdeTestProjects.Choose(mFound, AliveCheck(FAlive, FAliveRef), SayProc(Self), AThen);
+  FDebugging := AValue;
+  Inc(FVersion);
 end;
 
-class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
+procedure TAtlasIdeTests.Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
 var
-  mProject: IOTAProject;
-  mIndex: Integer;
-  mFileName: string;
+  mTarget: TAtlasTestTarget;
+  mReason: string;
+  mAlive: TAlive;
+  mKeep: IInterface;
 begin
-  Result := '';
-  mProject := ProjectByFile(AProjectFile);
-  if mProject <> nil then
+  if Busy then
   begin
-    for mIndex := 0 to mProject.GetModuleCount - 1 do
+    Refuse(FOutput, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
+    Exit;
+  end;
+  mTarget := TargetOf(AProject, ATests);
+  if not TAtlasTestRun.CanRun(mTarget.Platform) then
+  begin
+    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(mTarget.Project),
+      mTarget.Platform]));
+    Exit;
+  end;
+  if not ABuildFirst or not Assigned(FHooks.OnBuild) then
+  begin
+    Execute(mTarget);
+    Exit;
+  end;
+  FBusy := True;
+  Inc(FVersion);
+  mAlive := FAlive;
+  mKeep := FAliveRef;
+  if not FHooks.OnBuild(mTarget.Project,
+    procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
     begin
-      mFileName := mProject.GetModule(mIndex).FileName;
-      if SameText(ExtractFileExt(mFileName), '.pas') and SameText(ProjectName(mFileName), AUnitName) then
+      // Keep hält den Merker am Leben, auch wenn der Läufer schon frei ist.
+      if (mKeep = nil) or not mAlive.Alive then
       begin
-        Exit(mFileName);
+        Exit;
       end;
-    end;
-  end;
-  // Nicht im Projekt eingetragen: neben der .dproj.
-  mFileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
-  if FileExists(mFileName) then
+      FBusy := False;
+      Inc(FVersion);
+      if BuildRefusal(mTarget.Project, ASucceeded, AError) <> '' then
+      begin
+        Refuse(FOutput, BuildRefusal(mTarget.Project, ASucceeded, AError));
+        Exit;
+      end;
+      if AOutputFile <> '' then
+      begin
+        mTarget.Executable := AOutputFile;
+      end;
+      Execute(mTarget);
+    end, mReason) then
   begin
-    Result := mFileName;
+    FBusy := False;
+    Inc(FVersion);
+    Refuse(FOutput, BuildRefusal(mTarget.Project, False, mReason));
   end;
+end;
+
+procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
+  const AExe: TAtlasTestsExeOutput);
+var
+  mRun: TTestRunResult;
+  mLine: string;
+begin
+  FBusy := False;
+  Inc(FVersion);
+  if AOutcome = TAtlasVcsOutcome.Cancelled then
+  begin
+    // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
+    FOutput.EndQuiet(False, Default(TTestRunResult));
+    Exit;
+  end;
+  if AOutcome = TAtlasVcsOutcome.TimedOut then
+  begin
+    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
+      TAtlasTestRun.cTimeoutMs div 1000]));
+    Exit;
+  end;
+  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AExe.Xml), TAtlasIdeSettings.Current.TestsLeaks);
+  if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
+  begin
+    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
+    for mLine in AExe.Lines do
+    begin
+      FOutput.Tell('  ' + mLine);
+    end;
+    FOutput.EndQuiet(False, mRun);
+    Exit;
+  end;
+  mRun.Output := AExe.Output;
+  mRun.LogFile := AExe.LogFile;
+  Report(ATarget, mRun, AExe.LeakText);
 end;
 
 procedure TAtlasIdeTests.RunAll;
@@ -489,6 +532,39 @@ begin
   Start(mProject, nil, False);
 end;
 
+function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>;
+  const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
+begin
+  Result := TAtlasTestRun.TallyOf(FCases, AUnitName, AFixture, AKeys, AStale);
+end;
+
+procedure TAtlasIdeTests.ResolveProject(const AFileName: string; const AThen: TAtlasTestsProjectProc);
+var
+  mFound: TArray<IOTAProject>;
+begin
+  mFound := nil;
+  // Testunit der Code Lens bzw. am Cursor: ihre Testprojekte.
+  if AFileName <> '' then
+  begin
+    mFound := TAtlasIdeTestProjects.TestProjects(AFileName);
+  end;
+  if Length(mFound) = 0 then
+  begin
+    if TAtlasIdeTestProjects.IsTestProject(GetActiveProject) then
+    begin
+      AThen(GetActiveProject);
+      Exit;
+    end;
+    mFound := TAtlasIdeTestProjects.TestProjects('');
+  end;
+  if Length(mFound) = 0 then
+  begin
+    Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsNoProject));
+    Exit;
+  end;
+  TAtlasIdeTestProjects.Choose(mFound, AliveCheck(FAlive, FAliveRef), SayProc(Self), AThen);
+end;
+
 class function TAtlasIdeTests.TargetOf(const AProject: IOTAProject;
   const ATests: TArray<string>): TAtlasTestTarget;
 var
@@ -506,16 +582,16 @@ begin
   end;
 end;
 
-function TAtlasIdeTests.CanBuild: Boolean;
-begin
-  Result := Assigned(FHooks.OnBuild);
-end;
-
 function TAtlasIdeTests.BuildProject(const AProject: string; const ADone: TAtlasTestsBuildDone;
   out AReason: string): Boolean;
 begin
   AReason := '';
   Result := Assigned(FHooks.OnBuild) and FHooks.OnBuild(AProject, ADone, AReason);
+end;
+
+function TAtlasIdeTests.CanBuild: Boolean;
+begin
+  Result := Assigned(FHooks.OnBuild);
 end;
 
 procedure TAtlasIdeTests.ReportRun(const ATarget: TAtlasTestTarget; const AXml: string);
@@ -531,74 +607,30 @@ begin
   Finish(ATarget, TAtlasVcsOutcome.Ok, 0, mExe);
 end;
 
-function TAtlasIdeTests.Busy: Boolean;
-begin
-  Result := FBusy or FDebugging;
-end;
-
-procedure TAtlasIdeTests.SetDebugging(AValue: Boolean);
-begin
-  if FDebugging = AValue then
-  begin
-    Exit;
-  end;
-  FDebugging := AValue;
-  Inc(FVersion);
-end;
-
-procedure TAtlasIdeTests.Start(const AProject: IOTAProject; const ATests: TArray<string>; ABuildFirst: Boolean);
+class function TAtlasIdeTests.UnitFileOf(const AProjectFile, AUnitName: string): string;
 var
-  mTarget: TAtlasTestTarget;
-  mReason: string;
-  mAlive: TAlive;
-  mKeep: IInterface;
+  mProject: IOTAProject;
+  mIndex: Integer;
+  mFileName: string;
 begin
-  if Busy then
+  Result := '';
+  mProject := ProjectByFile(AProjectFile);
+  if mProject <> nil then
   begin
-    Refuse(FOutput, TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsBusy));
-    Exit;
-  end;
-  mTarget := TargetOf(AProject, ATests);
-  if not TAtlasTestRun.CanRun(mTarget.Platform) then
-  begin
-    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsPlatform, [ProjectName(mTarget.Project),
-      mTarget.Platform]));
-    Exit;
-  end;
-  if not ABuildFirst or not Assigned(FHooks.OnBuild) then
-  begin
-    Execute(mTarget);
-    Exit;
-  end;
-  FBusy := True;
-  Inc(FVersion);
-  mAlive := FAlive;
-  mKeep := FAliveRef;
-  if not FHooks.OnBuild(mTarget.Project,
-    procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
+    for mIndex := 0 to mProject.GetModuleCount - 1 do
     begin
-      // Keep hält den Merker am Leben, auch wenn der Läufer schon frei ist.
-      if (mKeep = nil) or not mAlive.Alive then
+      mFileName := mProject.GetModule(mIndex).FileName;
+      if SameText(ExtractFileExt(mFileName), '.pas') and SameText(ProjectName(mFileName), AUnitName) then
       begin
-        Exit;
+        Exit(mFileName);
       end;
-      FBusy := False;
-      Inc(FVersion);
-      if BuildRefusal(mTarget.Project, ASucceeded, AError) <> '' then
-      begin
-        Refuse(FOutput, BuildRefusal(mTarget.Project, ASucceeded, AError));
-        Exit;
-      end;
-      if AOutputFile <> '' then
-      begin
-        mTarget.Executable := AOutputFile;
-      end;
-      Execute(mTarget);
-    end, mReason) then
+    end;
+  end;
+  // Nicht im Projekt eingetragen: neben der .dproj.
+  mFileName := TPath.Combine(ExtractFileDir(AProjectFile), AUnitName + '.pas');
+  if FileExists(mFileName) then
   begin
-    FBusy := False;
-    Inc(FVersion);
-    Refuse(FOutput, BuildRefusal(mTarget.Project, False, mReason));
+    Result := mFileName;
   end;
 end;
 
@@ -785,40 +817,9 @@ begin
     end;
 end;
 
-procedure TAtlasIdeTests.Finish(const ATarget: TAtlasTestTarget; AOutcome: TAtlasVcsOutcome; AExitCode: Integer;
-  const AExe: TAtlasTestsExeOutput);
-var
-  mRun: TTestRunResult;
-  mLine: string;
+procedure TAtlasIdeTests.Say(const AText: string);
 begin
-  FBusy := False;
-  Inc(FVersion);
-  if AOutcome = TAtlasVcsOutcome.Cancelled then
-  begin
-    // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
-    FOutput.EndQuiet(False, Default(TTestRunResult));
-    Exit;
-  end;
-  if AOutcome = TAtlasVcsOutcome.TimedOut then
-  begin
-    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
-      TAtlasTestRun.cTimeoutMs div 1000]));
-    Exit;
-  end;
-  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AExe.Xml), TAtlasIdeSettings.Current.TestsLeaks);
-  if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
-  begin
-    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
-    for mLine in AExe.Lines do
-    begin
-      FOutput.Tell('  ' + mLine);
-    end;
-    FOutput.EndQuiet(False, mRun);
-    Exit;
-  end;
-  mRun.Output := AExe.Output;
-  mRun.LogFile := AExe.LogFile;
-  Report(ATarget, mRun, AExe.LeakText);
+  FOutput.Say(AText);
 end;
 
 /// <summary>Warnungen am Methodenkopf für die bestandenen Tests mit Leck in ACases (#1774).</summary>
@@ -911,10 +912,9 @@ begin
   FOutput.EndQuiet(True, ARun);
 end;
 
-function TAtlasIdeTests.TallyOf(const AUnitName, AFixture: string; const AKeys: TArray<TAtlasTestKey>;
-  const AStale: TAtlasTestStaleFunc): TAtlasTestTally;
+function TAtlasIdeTests.Busy: Boolean;
 begin
-  Result := TAtlasTestRun.TallyOf(FCases, AUnitName, AFixture, AKeys, AStale);
+  Result := FBusy or FDebugging;
 end;
 
 end.
