@@ -846,6 +846,10 @@ begin
     'nicht verwenden (wie E2441).',
     Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10'function Frei: Integer; inline;'#10,
     'const'#10'  Start: Integer = 2;'#10'function Frei: Integer;'#10'begin'#10'  Result := Start;'#10'end;'#10))));
+  // Werte einer anonymen Aufzählung (set of (…)) im implementation-Teil zählen wie benannte.
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10 +
+    'function Frei: Boolean; inline;'#10, 'type'#10'  TArten = set of (arEins, arZwei);'#10 +
+    'function Frei: Boolean;'#10'begin'#10'  Result := arZwei in [arEins];'#10'end;'#10))));
 end;
 
 procedure TTypeRestrictionViolatedTests.ThreadVars;

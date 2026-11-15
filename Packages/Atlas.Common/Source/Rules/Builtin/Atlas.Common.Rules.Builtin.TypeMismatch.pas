@@ -164,7 +164,10 @@ type
     function ValueOfType(const AType: TResolvedSymbol): TValueType;
     function DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
     function ValueOfSymbol(const ASymbol, AType: TResolvedSymbol): TValueType;
-    function TypeValueFrom(const AUnit: TUnitIndex; const ATypeText: string): TValueType;
+    /// <summary>Wert des Typs ATypeText, wie er in AUnit gemeint ist; im Typ von AOwner (Methode, Property)
+    /// verschachtelte Typen zuerst.</summary>
+    function TypeValueFrom(const AUnit: TUnitIndex; const AOwner: TResolvedSymbol;
+      const ATypeText: string): TValueType;
     function DescribedValue(ANode: TSyntaxNode): TValueType;
     function LeafValue(ANode: TSyntaxNode): TValueType;
     function ComputeValue(ANode: TSyntaxNode): TValueType;
@@ -502,7 +505,8 @@ function TTypeMismatchCheck.ValueOfType(const AType: TResolvedSymbol): TValueTyp
     mUnit: TUnitIndex;
   begin
     Result := FScope.Resolver.DeclaringUnit(ACurrent, mUnit) and (Pos('.', ABody) = 0) and
-      FScope.Resolver.ResolveNameFrom(mUnit, ABody, ANext) and ANext.IsType;
+      (FScope.Resolver.MemberNestedType(ACurrent, ABody, ANext) or
+      FScope.Resolver.ResolveNameFrom(mUnit, ABody, ANext)) and ANext.IsType;
     if not Result and TResolverText.IsBuiltinTypeName(ABody) then
     begin
       ANext := BuiltinSymbol(ABody);
@@ -614,9 +618,10 @@ begin
     begin
       Exit;
     end;
-    // ResolveNameFrom liefert den Alias selbst, ResolveTypeFrom schon sein Ziel.
-    if (Pos('.', mText) > 0) or not FScope.Resolver.ResolveNameFrom(mUnit, mText, mDeclared) or
-      not mDeclared.IsType then
+    // ResolveNameFrom liefert den Alias selbst, ResolveTypeFrom schon sein Ziel. Ein im Typ des Felds
+    // verschachtelter Typ verdeckt einen gleichnamigen der Unit-Ebene.
+    if (Pos('.', mText) > 0) or (not FScope.Resolver.MemberNestedType(ASymbol, mText, mDeclared) and
+      not FScope.Resolver.ResolveNameFrom(mUnit, mText, mDeclared)) or not mDeclared.IsType then
     begin
       Exit;
     end;
@@ -638,7 +643,8 @@ begin
   end;
 end;
 
-function TTypeMismatchCheck.TypeValueFrom(const AUnit: TUnitIndex; const ATypeText: string): TValueType;
+function TTypeMismatchCheck.TypeValueFrom(const AUnit: TUnitIndex; const AOwner: TResolvedSymbol;
+  const ATypeText: string): TValueType;
 var
   mType: TResolvedSymbol;
   mText: string;
@@ -651,7 +657,8 @@ begin
     Exit;
   end;
   // Den Alias selbst (ResolveNameFrom), damit ValueOfType bedingte Glieder der Kette sieht.
-  if FScope.Resolver.ResolveNameFrom(AUnit, mText, mType) and mType.IsType then
+  if (FScope.Resolver.MemberNestedType(AOwner, mText, mType) or
+    FScope.Resolver.ResolveNameFrom(AUnit, mText, mType)) and mType.IsType then
   begin
     Result := ValueOfType(mType);
   end
@@ -1346,7 +1353,7 @@ begin
   begin
     Exit;
   end;
-  mTarget := TypeValueFrom(FLocal, TIndexExtractor.TypeText(mTypeNode));
+  mTarget := TypeValueFrom(FLocal, Default(TResolvedSymbol), TIndexExtractor.TypeText(mTypeNode));
   if not mTarget.Known then
   begin
     Exit;
@@ -1402,7 +1409,8 @@ var
     mTarget: TProcShape;
     mName: string;
   begin
-    Result := FScope.Resolver.ResolveTypeTextFrom(mUnit, AParam.TypeName, mType);
+    Result := FScope.Resolver.MemberNestedType(mCandidate, AParam.TypeName, mType) or
+      FScope.Resolver.ResolveTypeTextFrom(mUnit, AParam.TypeName, mType);
     if not Result then
     begin
       // TProc<string> ohne RTL im Index (#2309).
@@ -1427,6 +1435,8 @@ var
       TIndexSymbolKind.Property_]);
     Result := Result and FScope.DeclarationSure(mSymbol, mCallee) and not HiddenMember(mCallee, mSymbol);
     Result := Result and DeclaredType(mSymbol, mType, mUnit) and ProceduralTarget(mSymbol, mType, mShape, mName);
+    // Parametertypen gelten im prozeduralen Typ (auch dessen verschachtelte Nachbarn).
+    mCandidate := mType;
   end;
 
   procedure CheckArgument(AArgument: TSyntaxNode; const AParam: TSignatureParameter);
@@ -1439,7 +1449,7 @@ var
     begin
       Exit;
     end;
-    mFormal := TypeValueFrom(mUnit, AParam.TypeName);
+    mFormal := TypeValueFrom(mUnit, mCandidate, AParam.TypeName);
     if not mFormal.Known then
     begin
       Exit;
@@ -1463,6 +1473,7 @@ begin
     Exit;
   end;
   mCallee := ANode[0];
+  mCandidate := Default(TResolvedSymbol);
   if not IsPlainCallee(mCallee) then
   begin
     Exit;
@@ -1618,7 +1629,7 @@ begin
   end;
   for mIndex := 1 to ANode.ChildCount - 1 do
   begin
-    mFormal := TypeValueFrom(mUnit, mSymbol.ParamTypes[mIndex - 1]);
+    mFormal := TypeValueFrom(mUnit, mSymbol, mSymbol.ParamTypes[mIndex - 1]);
     mActual := ValueOf(ANode[mIndex]);
     if TTypeCompatibility.AssignIncompatible(mFormal, mActual) then
     begin

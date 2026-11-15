@@ -60,6 +60,8 @@ type
     [Test]
     procedure MagicNumberSilentCases;
     [Test]
+    procedure MagicNumberFixesInLargeUnit;
+    [Test]
     procedure LineLengthIssueExample;
     [Test]
     procedure LineLengthOptions;
@@ -489,6 +491,29 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, mSource,
     '{ "minConfidence": "low", "rules": { "magic-number": { "severity": "hint", "exclude": ["Tests/*.pas"] } } }',
     'Tests/U.pas'))));
+end;
+
+procedure TStyleRulesTests.MagicNumberFixesInLargeUnit;
+var
+  mSource, mBody: string;
+  mIndex: Integer;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Viele Literale in einer Datei (Header-Übersetzungen): Jede Korrektur bekommt denselben freien Namen; Zeilentabelle
+  // und Namenssuche entstehen einmal je Datei statt je Literal (vorher quadratisch).
+  mBody := '';
+  for mIndex := 1 to 3000 do
+  begin
+    mBody := mBody + '  Warten(1000);'#10;
+  end;
+  mSource := InRoutine('  NewConstant: Integer;', mBody);
+  mFindings := TRuleAssert.Findings(TMagicNumberRule.Create, mSource, cMagicOn);
+  Assert.AreEqual(3000, Integer(Length(mFindings)));
+  Assert.AreEqual('NewConstant2', mFindings[0].Fixes[0].Edits[1].NewText);
+  Assert.AreEqual('NewConstant2', mFindings[2999].Fixes[0].Edits[1].NewText);
+  Assert.AreEqual(3006, mFindings[2999].Fixes[0].Edits[1].Range.StartPos.Line);
+  mSource := '';
+  mBody := '';
 end;
 
 procedure TStyleRulesTests.MagicNumberSilentCases;

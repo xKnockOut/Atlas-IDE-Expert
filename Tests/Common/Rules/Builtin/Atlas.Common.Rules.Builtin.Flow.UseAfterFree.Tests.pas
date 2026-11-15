@@ -29,6 +29,11 @@ type
     procedure WithMemberOfSameNameIsSilent;
     [Test]
     procedure NestedRoutineOrAbsoluteMayReassign;
+    /// <summary>while Assigned(FErster) do FErster.Free: Der Destruktor hängt das Objekt aus der Liste und setzt
+    /// FErster neu (PasVulkan.Framework, PasVulkan.TextEditor); bei einer lokalen Variablen bleibt der Befund.
+    /// </summary>
+    [Test]
+    procedure LoopUntilFieldChangesIsSilent;
   end;
 
 
@@ -82,6 +87,23 @@ begin
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  if Assigned(L) then'#10 +
     '    Merke(nil);'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
+end;
+
+procedure TFlowUseAfterFreeTests.LoopUntilFieldChangesIsSilent;
+const
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10'  private'#10'    FErster: TKnoten;'#10 +
+    '  public'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'destructor TListe.Destroy;'#10'begin'#10;
+begin
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  while Assigned(FErster) do'#10'    FErster.Free;'#10 +
+    '  repeat'#10'    try'#10'      FErster.Leeren;'#10'    finally'#10'      FErster.Free;'#10'    end;'#10 +
+    '  until FErster = nil;'#10'  inherited;'#10'end;'#10'end.');
+  // Weist die Schleife selbst zu, gilt der Weg wie sonst.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead +
+    '  while Assigned(FErster) do'#10'  begin'#10'    FErster.Free;'#10'    FErster.Leeren;'#10 +
+    '    FErster := nil;'#10'  end;'#10'end;'#10'end.'))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  while Assigned(L) do'#10'    L.Free;')))));
 end;
 
 procedure TFlowUseAfterFreeTests.OwnMethodMayReassignField;

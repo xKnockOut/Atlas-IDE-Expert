@@ -147,16 +147,80 @@ begin
   Result := mFound;
 end;
 
+/// <summary>Bedeutet "ACondition ist wahr", dass der Merker AName wahr (1) oder falsch (-1) ist? Zählt AName selbst,
+/// not, Klammern und jeden Teil einer and-Kette ((not HaveToken) and (GetLastError = …) ergibt -1); 0 sonst.</summary>
+function ImpliedFlag(ACondition: TSyntaxNode; const AName: string): Integer;
+var
+  mPending: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mSign: Integer;
+begin
+  Result := 0;
+  mPending := [ACondition];
+  // Iterativ (lange and-Ketten sind tiefe Bäume).
+  while mPending <> nil do
+  begin
+    mNode := mPending[High(mPending)];
+    SetLength(mPending, Length(mPending) - 1);
+    mSign := 1;
+    while (mNode.ChildCount = 1) and ((mNode.Kind = TSyntaxKind.ParenExpr) or
+      ((mNode.Kind = TSyntaxKind.UnaryExpr) and SameText(mNode.Name, 'not'))) do
+    begin
+      if mNode.Kind = TSyntaxKind.UnaryExpr then
+      begin
+        mSign := -mSign;
+      end;
+      mNode := mNode[0];
+    end;
+    if (mSign = 1) and (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and
+      SameText(mNode.Name, 'and') then
+    begin
+      mPending := mPending + [mNode[0], mNode[1]];
+    end
+    else if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
+    begin
+      if Result = -mSign then
+      begin
+        Exit(0);
+      end;
+      Result := mSign;
+    end;
+  end;
+end;
+
+/// <summary>Läuft AAssign nur, wenn der Merker AName sagt, dass das Öffnen misslang? Dazu liegt AAssign im
+/// then-Zweig eines if hinter AFirst, dessen Bedingung den Merker mit diesem Wert verlangt (AFlagSuccess: Bedeutung
+/// von "Merker wahr"). HaveToken := OpenThreadToken(…, Token); if not HaveToken then HaveToken :=
+/// OpenProcessToken(…, Token): die zweite Zuweisung ändert nichts an einem schon offenen Handle.</summary>
+function RunsOnlyOnFailure(ABody, AAssign, AFirst: TSyntaxNode; const AName: string; AFlagSuccess: Integer): Boolean;
+var
+  mNode, mCondition, mThen: TSyntaxNode;
+begin
+  Result := False;
+  mNode := AAssign.Parent;
+  while not Result and (mNode <> nil) and (mNode <> ABody) and (mNode.StartOffset > AFirst.EndOffset) do
+  begin
+    if mNode.Kind = TSyntaxKind.IfStatement then
+    begin
+      SplitIf(mNode, mCondition, mThen);
+      Result := (mCondition <> nil) and InRange(AAssign, mThen) and
+        (ImpliedFlag(mCondition, AName) * AFlagSuccess < 0);
+    end;
+    mNode := mNode.Parent;
+  end;
+end;
+
 /// <summary>Merker als Bedingung (#1519): Result := H &lt;&gt; INVALID_HANDLE_VALUE; if Result then …. Die
-/// Bedingung ist eine Variable (auch not X oder in Klammern), der ABody zwischen dem Öffnen und dem if genau
-/// einmal einen Ausdruck zuweist; dann gilt dessen Bedeutung. Das gilt auch für die Zuweisung, die selbst öffnet
-/// (Result := OpenProcessToken(…, Token); if not Result then Exit). Spätere Zuweisungen (im then-Zweig) zählen
+/// Bedingung ist eine Variable (auch not X oder in Klammern), der ABody zwischen dem Öffnen und dem if einen
+/// Ausdruck zuweist; dann gilt dessen Bedeutung. Das gilt auch für die Zuweisung, die selbst öffnet
+/// (Result := OpenProcessToken(…, Token); if not Result then Exit). Weitere Zuweisungen davor zählen nur, wenn sie
+/// allein nach misslungenem Öffnen laufen (zweiter Versuch mit OpenProcessToken); spätere (im then-Zweig) zählen
 /// nicht. 0 sonst.</summary>
 function FlagSuccess(ABody, AIf, ACondition: TSyntaxNode; const AHandle: TOpenedHandle;
   AOpenCall: TSyntaxNode): Integer;
 var
   mNode: TSyntaxNode;
-  mSign: Integer;
+  mSign, mIndex: Integer;
   mAssignments: TArray<TSyntaxNode>;
 begin
   Result := 0;
@@ -176,9 +240,115 @@ begin
     Exit;
   end;
   mAssignments := AssignmentsTo(ABody, mNode.Name, AOpenCall.StartOffset, AIf.StartOffset);
-  if Length(mAssignments) = 1 then
+  if mAssignments = nil then
   begin
-    Result := mSign * OpenSuccess(mAssignments[0][1], AHandle, AOpenCall);
+    Exit;
+  end;
+  Result := OpenSuccess(mAssignments[0][1], AHandle, AOpenCall);
+  for mIndex := 1 to High(mAssignments) do
+  begin
+    if not RunsOnlyOnFailure(ABody, mAssignments[mIndex], mAssignments[0], mNode.Name, Result) then
+    begin
+      Exit(0);
+    end;
+  end;
+  Result := mSign * Result;
+end;
+
+/// <summary>Zweig else einer if-Anweisung (zweite Anweisung); nil ohne.</summary>
+function ElsePart(AIf: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+  mSeen: Boolean;
+begin
+  Result := nil;
+  mSeen := False;
+  for mIndex := 0 to AIf.ChildCount - 1 do
+  begin
+    if AIf[mIndex].Kind in cFlowStatementKinds then
+    begin
+      if mSeen then
+      begin
+        Exit(AIf[mIndex]);
+      end;
+      mSeen := True;
+    end;
+  end;
+end;
+
+/// <summary>Bedingung ohne Leerraum und Kommentare, für den Vergleich zweier Bedingungen.</summary>
+function ConditionKey(const AText: string; ACondition: TSyntaxNode): string;
+var
+  mChar: Char;
+begin
+  Result := '';
+  for mChar in SourceText(AText, ACondition) do
+  begin
+    if mChar > ' ' then
+    begin
+      Result := Result + mChar;
+    end;
+  end;
+end;
+
+/// <summary>Ändert ABody zwischen AFrom und ATo nichts an der Bedingung ACondition? Aufrufe mit Klammern gelten als
+/// veränderlich, Variablen dürfen nicht zugewiesen werden.</summary>
+function ConditionUnchanged(ABody, ACondition: TSyntaxNode; AFrom, ATo: Integer): Boolean;
+var
+  mNames: TArray<string>;
+  mName: string;
+  mHasCall: Boolean;
+begin
+  mNames := nil;
+  mHasCall := False;
+  ACondition.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if ANode.Kind = TSyntaxKind.Call then
+      begin
+        mHasCall := True;
+      end
+      else if ANode.Kind = TSyntaxKind.Identifier then
+      begin
+        mNames := mNames + [ANode.Name];
+      end;
+    end);
+  Result := not mHasCall;
+  for mName in mNames do
+  begin
+    Result := Result and (AssignmentsTo(ABody, mName, AFrom, ATo) = nil);
+  end;
+end;
+
+/// <summary>Wiederholte Bedingung: Das Öffnen steht in einem Zweig eines früheren if mit derselben, seither
+/// unveränderten Bedingung (if IsNT then H := Open…; … if IsNT then CloseHandle(H)). Dann nimmt AIf denselben
+/// Zweig: 1 für then, -1 für else; 0 sonst.</summary>
+function RepeatedCondition(const AText: string; ABody, AIf, ACondition, AOpenCall: TSyntaxNode): Integer;
+var
+  mNode, mEarlier, mThen: TSyntaxNode;
+begin
+  Result := 0;
+  mNode := AOpenCall.Parent;
+  while (Result = 0) and (mNode <> nil) and (mNode <> ABody) do
+  begin
+    if (mNode.Kind = TSyntaxKind.IfStatement) and (mNode.EndOffset <= AIf.StartOffset) then
+    begin
+      SplitIf(mNode, mEarlier, mThen);
+      if (mEarlier <> nil) and (ConditionKey(AText, mEarlier) = ConditionKey(AText, ACondition)) and
+        ConditionUnchanged(ABody, mEarlier, mNode.StartOffset, AIf.StartOffset) then
+      begin
+        if InRange(AOpenCall, mThen) then
+        begin
+          Result := 1;
+        end
+        else if InRange(AOpenCall, ElsePart(mNode)) then
+        begin
+          Result := -1;
+        end;
+      end;
+    end;
+    mNode := mNode.Parent;
   end;
 end;
 
@@ -432,6 +602,11 @@ begin
   if (Result = 0) and (mCondition <> nil) then
   begin
     Result := FlagSuccess(FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, mCondition, AHandle, AOpenCall);
+  end;
+  if (Result = 0) and (mCondition <> nil) then
+  begin
+    Result := RepeatedCondition(FContext.Text, FRoutine.FindChild(TSyntaxKind.Block), ANode.Syntax, mCondition,
+      AOpenCall);
   end;
 end;
 

@@ -43,6 +43,10 @@ type
     procedure IfThenSideEffectReported;
     [Test]
     procedure IfThenWithoutSideEffectSilent;
+    /// <summary>Typumwandlungen in den Zweigen (TFlags(0), Integer(X), Typ aus einer anderen Unit) sind keine Aufrufe
+    /// (PasVulkan: IfThen(B, TVkImageUsageFlags(…), TVkImageUsageFlags(0))).</summary>
+    [Test]
+    procedure IfThenWithTypeCastsSilent;
     [Test]
     procedure RandomWithoutRandomize;
     [Test]
@@ -345,6 +349,26 @@ begin
     '  S := IfThen(Length(L) > 0, ''('' + string.Join('', '', L) + '')'', '''');'));
   // Methode eines Objekts bleibt ein möglicher Seiteneffekt.
   TRuleAssert.Reports(TIfThenSideEffectRule.Create, InRoutine('  S := IfThen(B, List.Join(''x''), '''');'));
+end;
+
+procedure TRtlPatternRulesTests.IfThenWithTypeCastsSilent;
+var
+  mIndex: ISymbolIndex;
+begin
+  TRuleAssert.Silent(TIfThenSideEffectRule.Create, 'unit U;'#10'interface'#10'type'#10'  TFlags = Cardinal;'#10 +
+    'implementation'#10'procedure P(B: Boolean);'#10'var'#10'  N: Integer;'#10'begin'#10 +
+    '  N := IfThen(B, Integer(TFlags(4)), Integer(0));'#10'end;'#10'end.');
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Vk;'#10'interface'#10'type'#10'  TVkFlags = Cardinal;'#10 +
+    'function Lade(A: Integer): TVkFlags;'#10'implementation'#10'function Lade(A: Integer): TVkFlags;'#10 +
+    'begin'#10'  Result := A;'#10'end;'#10'end.', 'C:\P\Vk.pas', nil));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TIfThenSideEffectRule.Create, 'unit U;'#10 +
+    'interface'#10'uses'#10'  Vk;'#10'implementation'#10'procedure P(B: Boolean);'#10'var'#10'  F: TVkFlags;'#10 +
+    'begin'#10'  F := IfThen(B, TVkFlags(2), TVkFlags(0));'#10'end;'#10'end.', mIndex, '', 'U.pas'))));
+  // Eine Funktion aus der anderen Unit bleibt ein möglicher Seiteneffekt.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TIfThenSideEffectRule.Create, 'unit U;'#10 +
+    'interface'#10'uses'#10'  Vk;'#10'implementation'#10'procedure P(B: Boolean);'#10'var'#10'  F: TVkFlags;'#10 +
+    'begin'#10'  F := IfThen(B, Lade(2), TVkFlags(0));'#10'end;'#10'end.', mIndex, '', 'U.pas'))));
 end;
 
 procedure TRtlPatternRulesTests.RandomWithoutRandomize;

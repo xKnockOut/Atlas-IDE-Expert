@@ -156,6 +156,11 @@ type
     class function IsBuiltinName(const AName: string): Boolean; static;
     /// <summary>Eingebauter Typ ohne Deklaration im Index (string, Integer, PChar …).</summary>
     class function IsBuiltinTypeName(const AName: string): Boolean; static;
+    /// <summary>Ziel des eingebauten Alias AName der Unit System (Longint → Integer, IUnknown → IInterface,
+    /// UnicodeString → string …); sonst AName unverändert.</summary>
+    class function BuiltinAlias(const AName: string): string; static;
+    /// <summary>Ist "type A = type B" (eigener Typ) die Deklaration ASignature eines Alias?</summary>
+    class function IsDistinctAlias(const ASignature: string): Boolean; static;
     /// <summary>string, UnicodeString, AnsiString, WideString oder ShortString.</summary>
     class function IsStringName(const AName: string): Boolean; static;
     /// <summary>Gleiche Typfamilie (string/UnicodeString, Ganzzahlen ...).</summary>
@@ -225,6 +230,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Localization.Texts;
 
 type
@@ -251,6 +257,26 @@ const
   /// <summary>Nehmen ein String-Literal und nil an (#498).</summary>
   cPCharTypes: array[0..2] of string = ('PChar', 'PWideChar', 'PAnsiChar');
   cWordChars = ['A'..'Z', 'a'..'z', '_', '0'..'9', '.'];
+  // Eingebaute Aliase der Unit System als Paare Alias, Ziel. LongInt und LongWord sind unter Windows dieselben
+  // Typen wie Integer und Cardinal.
+  cBuiltinAliases: array[0..33] of string = (
+    'LongInt', 'Integer',
+    'Int32', 'Integer',
+    'FixedInt', 'Integer',
+    'LongWord', 'Cardinal',
+    'UInt32', 'Cardinal',
+    'FixedUInt', 'Cardinal',
+    'Int8', 'ShortInt',
+    'UInt8', 'Byte',
+    'Int16', 'SmallInt',
+    'UInt16', 'Word',
+    'IntPtr', 'NativeInt',
+    'UIntPtr', 'NativeUInt',
+    'UnicodeString', 'string',
+    'IUnknown', 'IInterface',
+    'Real', 'Double',
+    'Char', 'WideChar',
+    'PChar', 'PWideChar');
 
 /// <summary>Ersatz für AWord aus den Bindungen Name=Typ; die letzte passende gewinnt, sonst AWord.</summary>
 function BoundType(const AWord: string; const ABindings: TArray<string>): string;
@@ -568,6 +594,43 @@ end;
 class function TResolverText.IsBuiltinTypeName(const AName: string): Boolean;
 begin
   Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar']);
+end;
+
+class function TResolverText.BuiltinAlias(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := 0;
+  while mIndex < High(cBuiltinAliases) do
+  begin
+    if SameText(AName, cBuiltinAliases[mIndex]) then
+    begin
+      Exit(cBuiltinAliases[mIndex + 1]);
+    end;
+    Inc(mIndex, 2);
+  end;
+  Result := AName;
+end;
+
+class function TResolverText.IsDistinctAlias(const ASignature: string): Boolean;
+var
+  mEquals: Integer;
+  mToken: TPascalToken;
+begin
+  Result := False;
+  mEquals := Pos('=', ASignature);
+  if mEquals = 0 then
+  begin
+    Exit;
+  end;
+  // Erstes Token nach dem Gleichheitszeichen, Kommentare und Direktiven übersprungen.
+  for mToken in TPascalLexer.Tokenize(Copy(ASignature, mEquals + 1, MaxInt)) do
+  begin
+    if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      Exit(mToken.IsKeyword('type'));
+    end;
+  end;
 end;
 
 class function TResolverText.IsStringName(const AName: string): Boolean;

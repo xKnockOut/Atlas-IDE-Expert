@@ -204,6 +204,8 @@ begin
       AskNext;
     TPhase.Values:
       EvaluateNext;
+  else
+    // Ruhend bzw. wartend: nichts weiterzuführen.
   end;
 end;
 

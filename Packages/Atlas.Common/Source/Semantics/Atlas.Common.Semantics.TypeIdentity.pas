@@ -73,33 +73,12 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer;
 
 const
   // Wie weit Aliase verfolgt werden (Schutz vor Zyklen A = B, B = A).
   cMaxDepth = 16;
-  // Eingebaute Aliase der Unit System als Paare Alias, Ziel. LongInt und LongWord sind unter Windows dieselben
-  // Typen wie Integer und Cardinal.
-  cBuiltinAliases: array[0..33] of string = (
-    'LongInt', 'Integer',
-    'Int32', 'Integer',
-    'FixedInt', 'Integer',
-    'LongWord', 'Cardinal',
-    'UInt32', 'Cardinal',
-    'FixedUInt', 'Cardinal',
-    'Int8', 'ShortInt',
-    'UInt8', 'Byte',
-    'Int16', 'SmallInt',
-    'UInt16', 'Word',
-    'IntPtr', 'NativeInt',
-    'UIntPtr', 'NativeUInt',
-    'UnicodeString', 'string',
-    'IUnknown', 'IInterface',
-    'Real', 'Double',
-    'Char', 'WideChar',
-    'PChar', 'PWideChar');
 
 { TTypeIdentity }
 
@@ -285,27 +264,13 @@ begin
 end;
 
 class function TTypeIdentity.BuiltinName(const AName: string): string;
-var
-  mIndex: Integer;
 begin
-  mIndex := 0;
-  while mIndex < High(cBuiltinAliases) do
-  begin
-    if SameText(AName, cBuiltinAliases[mIndex]) then
-    begin
-      Exit(cBuiltinAliases[mIndex + 1]);
-    end;
-    Inc(mIndex, 2);
-  end;
-  Result := AName;
+  Result := TResolverText.BuiltinAlias(AName);
 end;
 
 class function TTypeIdentity.IsDistinctAlias(const ASignature: string): Boolean;
-var
-  mEquals: Integer;
 begin
-  mEquals := Pos('=', ASignature);
-  Result := (mEquals > 0) and StartsText('type ', Clean(Copy(ASignature, mEquals + 1, MaxInt)) + ' ');
+  Result := TResolverText.IsDistinctAlias(ASignature);
 end;
 
 class function TTypeIdentity.Same(const ALeft, ARight: string): Boolean;

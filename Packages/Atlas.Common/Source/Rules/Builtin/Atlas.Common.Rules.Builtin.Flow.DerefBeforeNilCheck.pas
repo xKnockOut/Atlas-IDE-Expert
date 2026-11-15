@@ -2,7 +2,8 @@
 
 // Regel deref-before-nil-check aus Atlas.Common.Rules.Builtin.Flow (#269): X.… oder X^ steht vor der ersten
 // Abfrage X = nil, X &lt;&gt; nil, Assigned(X) oder X is T auf demselben Weg, ohne dass X dazwischen geändert wird.
-// Die Korrektur zieht eine direkt folgende if-Abfrage vor den Zugriff.
+// Die Korrektur zieht eine direkt folgende if-Abfrage vor den Zugriff. Hat jeder Weg X zuvor mit New oder einem
+// Konstruktor gesetzt, ist X nie nil: keine Meldung.
 
 interface
 
@@ -247,6 +248,35 @@ begin
   Result := mNames;
 end;
 
+/// <summary>Setzt AStatement APath auf einen Wert, der nie nil ist: New(X) oder X := T.Create(…)?</summary>
+function CreatesPath(AStatement: TSyntaxNode; const APath: string): Boolean;
+var
+  mValue: TSyntaxNode;
+begin
+  Result := False;
+  if AStatement = nil then
+  begin
+    Exit;
+  end;
+  if (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) and
+    SameText(FreedPath(AStatement[0]), APath) then
+  begin
+    mValue := AStatement[1];
+    if (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount > 0) then
+    begin
+      mValue := mValue[0];
+    end;
+    Result := (mValue.Kind = TSyntaxKind.MemberAccess) and (mValue.ChildCount > 0) and SameText(mValue.Name, 'Create');
+  end
+  else if (AStatement.Kind = TSyntaxKind.CallStatement) and (AStatement.ChildCount > 0) then
+  begin
+    mValue := AStatement[0];
+    Result := (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount = 2) and
+      (mValue[0].Kind = TSyntaxKind.Identifier) and SameText(mValue[0].Name, 'New') and
+      SameText(FreedPath(mValue[1]), APath);
+  end;
+end;
+
 /// <summary>Folgt ANext im selben Block direkt auf AStatement?</summary>
 function FollowsDirectly(AStatement, ANext: TSyntaxNode): Boolean;
 var
@@ -298,6 +328,7 @@ type
     FDone: TArray<string>;
     FLineBreak: string;
     function CheckedBefore(ANode: TFlowNode; const APath: string): Boolean;
+    function CreatedBefore(ANode: TFlowNode; const APath: string): Boolean;
     function CheckAfter(ANode: TFlowNode; const APath: string; ALocal: Boolean): TFlowNode;
     function FreesToNil(ANode: TFlowNode; const APath: string): Boolean;
     function AssignedOnWay(AFrom, ATo: TFlowNode; const APath: string): Boolean;
@@ -351,6 +382,34 @@ begin
       begin
         QueuePredecessors(mCurrent, mVisited, mQueue);
       end;
+    end;
+  end;
+end;
+
+/// <summary>Setzt jeder Weg zu ANode APath zuletzt mit New oder einem Konstruktor? Dann ist APath beim Zugriff nie
+/// nil, die spätere Abfrage (meist im finally vor dem Freigeben) ist nur Vorsicht (PasVulkan.FileFormats.FBX:
+/// New(Tree); try FillChar(Tree^, …); … finally if Assigned(Tree) then Dispose(Tree)).</summary>
+function TDerefCheck.CreatedBefore(ANode: TFlowNode; const APath: string): Boolean;
+var
+  mVisited: TArray<Boolean>;
+  mQueue: TArray<TFlowNode>;
+  mHead: Integer;
+  mCurrent: TFlowNode;
+begin
+  SetLength(mVisited, FGraph.Nodes.Count);
+  mQueue := ANode.Predecessors.ToArray;
+  Result := Length(mQueue) > 0;
+  mHead := 0;
+  while Result and (mHead < Length(mQueue)) do
+  begin
+    mCurrent := mQueue[mHead];
+    Inc(mHead);
+    if not mVisited[mCurrent.Index] and not CreatesPath(mCurrent.Syntax, APath) then
+    begin
+      mVisited[mCurrent.Index] := True;
+      // Eine andere Zuweisung oder der Anfang der Routine: Der Wert kann nil sein.
+      Result := not AssignsPath(mCurrent, APath) and (mCurrent.Predecessors.Count > 0);
+      QueuePredecessors(mCurrent, mVisited, mQueue);
     end;
   end;
 end;
@@ -546,7 +605,7 @@ begin
     Exit;
   end;
   mKey := LowerCase(mPath) + '@' + IntToStr(mCheck.Index);
-  if MatchText(mKey, FDone) or CheckedBefore(ANode, mPath) then
+  if MatchText(mKey, FDone) or CheckedBefore(ANode, mPath) or CreatedBefore(ANode, mPath) then
   begin
     Exit;
   end;

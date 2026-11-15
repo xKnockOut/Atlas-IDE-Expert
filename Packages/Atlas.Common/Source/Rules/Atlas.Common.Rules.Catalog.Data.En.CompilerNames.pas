@@ -78,10 +78,10 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "A class lists an interface but does not implement all of its methods, including those of ancestor interfaces (like E2291). A method of the class with the same name but a differen' +
-    't signature is reported at that method (like E2211). Methods inherited from ancestor classes, method resolution clauses (procedure IFoo.Bar = Baz) and properties with implements count; public TObject ' +
-    'methods and IInterface methods of TInterfacedObject and similar RTL bases count as well. If the chain of ancestor classes ends at an unknown class or the interface is unknown, the rule stays silent. A' +
-    ' method resolution clause for an interface the class does not list is reported too (like E2265). Classes inside {$IF} blocks are skipped. Quick fix: declare the missing methods and create empty bodies' +
-    ' (not offered when a header differs).",',
+    't signature is reported at that method (like E2211); plain type aliases (TText = string) count as their target, an alias with type (TText = type string) as a distinct type. Methods inherited from ance' +
+    'stor classes, method resolution clauses (procedure IFoo.Bar = Baz) and properties with implements count; public TObject methods and IInterface methods of TInterfacedObject and similar RTL bases count ' +
+    'as well. If the chain of ancestor classes ends at an unknown class or the interface is unknown, the rule stays silent. A method resolution clause for an interface the class does not list is reported t' +
+    'oo (like E2265). Classes inside {$IF} blocks are skipped. Quick fix: declare the missing methods and create empty bodies (not offered when a header differs).",',
     '      "bad": "TDateiLog = class(TInterfacedObject, ILogger)\npublic\n  procedure Info(const Text: string);\nend;",',
     '      "good": "TDateiLog = class(TInterfacedObject, ILogger)\npublic\n  procedure Info(const Text: string);\n  procedure Warnung(const Text: string);\n  procedure Fehler(const Text: string);\nend;",',
     '      "compilerCodes": [',

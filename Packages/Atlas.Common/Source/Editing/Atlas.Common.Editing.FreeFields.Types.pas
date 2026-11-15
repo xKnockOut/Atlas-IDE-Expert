@@ -11,6 +11,7 @@
 interface
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree;
 
@@ -23,6 +24,10 @@ type
     FTree: TSyntaxTree;
     FText: string;
     FIndex: ISymbolIndex;
+    // Typdeklarationen der Datei je Name (klein) in Vorordnung, beim ersten Bedarf in einem Lauf gesammelt: Je
+    // Feld den ganzen Baum zu durchsuchen war quadratisch (große Header-Units).
+    FDecls: TDictionary<string, TArray<TSyntaxNode>>;
+    function DeclsNamed(const AName: string): TArray<TSyntaxNode>;
     function FromFile(const AName: string; out AAlias: string): TTypeGuess;
     function IndexGuess(const ABase: string; AGeneric: Boolean; out AAlias: string): TTypeGuess;
     function FileAncestor(const AName: string; out ANext: string): Boolean;
@@ -39,6 +44,7 @@ type
     /// <summary>Quelltext eines Knotens mit zusammengefasstem Leerraum.</summary>
     class function CodeOf(const AText: string; ANode: TSyntaxNode): string; static;
     constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+    destructor Destroy; override;
     function TypeGuess(const ATypeName: string): TTypeGuess;
     function ComponentChain(const ATypeName: string; out AEndsKnown: Boolean): TArray<string>;
     function IsComponent(const ATypeName: string): Boolean;
@@ -85,6 +91,46 @@ begin
   FTree := ATree;
   FText := AText;
   FIndex := AIndex;
+end;
+
+destructor TFreeFieldTypes.Destroy;
+begin
+  FDecls.Free;
+  inherited;
+end;
+
+function TFreeFieldTypes.DeclsNamed(const AName: string): TArray<TSyntaxNode>;
+var
+  mDecls: TDictionary<string, TArray<TSyntaxNode>>;
+begin
+  if FDecls = nil then
+  begin
+    mDecls := TDictionary<string, TArray<TSyntaxNode>>.Create;
+    FDecls := mDecls;
+    FTree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      var
+        mKey: string;
+        mList: TArray<TSyntaxNode>;
+      begin
+        Result := True;
+        if ANode.Kind = TSyntaxKind.TypeDecl then
+        begin
+          mKey := LowerCase(ANode.Name);
+          if not mDecls.TryGetValue(mKey, mList) then
+          begin
+            mList := nil;
+          end;
+          SetLength(mList, Length(mList) + 1);
+          mList[High(mList)] := ANode;
+          mDecls.AddOrSetValue(mKey, mList);
+        end;
+      end);
+  end;
+  if not FDecls.TryGetValue(LowerCase(AName), Result) then
+  begin
+    Result := nil;
+  end;
 end;
 
 function TFreeFieldTypes.IndexAncestor(const AName: string; out ANext: string): Boolean;
@@ -249,66 +295,47 @@ end;
 
 function TFreeFieldTypes.FromFile(const AName: string; out AAlias: string): TTypeGuess;
 var
-  mGuess: TTypeGuess;
-  mFound, mName: string;
+  mDecl: TSyntaxNode;
+  mIndex: Integer;
 begin
-  // out-Parameter lassen sich nicht in der anonymen Methode verwenden.
-  mGuess := tgUnknown;
-  mFound := '';
-  mName := AName;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      mIndex: Integer;
+  // Gleichnamige Deklarationen der Reihe nach, bis eine die Art verrät; Alias ist der erste Verweis.
+  Result := tgUnknown;
+  AAlias := '';
+  for mDecl in DeclsNamed(AName) do
+  begin
+    for mIndex := 0 to mDecl.ChildCount - 1 do
     begin
-      Result := mGuess = tgUnknown;
-      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
+      if KindGuess(mDecl[mIndex].Kind) <> tgUnknown then
       begin
-        Exit;
-      end;
-      for mIndex := 0 to ANode.ChildCount - 1 do
+        Result := KindGuess(mDecl[mIndex].Kind);
+      end
+      else if (mDecl[mIndex].Kind = TSyntaxKind.TypeReference) and (AAlias = '') then
       begin
-        if KindGuess(ANode[mIndex].Kind) <> tgUnknown then
-        begin
-          mGuess := KindGuess(ANode[mIndex].Kind);
-        end
-        else if (ANode[mIndex].Kind = TSyntaxKind.TypeReference) and (mFound = '') then
-        begin
-          mFound := ANode[mIndex].Name;
-        end;
+        AAlias := mDecl[mIndex].Name;
       end;
-    end);
-  AAlias := mFound;
-  Result := mGuess;
+    end;
+    if Result <> tgUnknown then
+    begin
+      Exit;
+    end;
+  end;
 end;
 
 function TFreeFieldTypes.FileAncestor(const AName: string; out ANext: string): Boolean;
 var
-  mName, mNext: string;
-  mDeclared: Boolean;
+  mDecl, mKind: TSyntaxNode;
 begin
-  mName := AName;
-  mNext := '';
-  mDeclared := False;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      mKind: TSyntaxNode;
+  ANext := '';
+  for mDecl in DeclsNamed(AName) do
+  begin
+    mKind := mDecl.FindChild(TSyntaxKind.ClassType);
+    if mKind <> nil then
     begin
-      Result := not mDeclared;
-      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
-      begin
-        Exit;
-      end;
-      mKind := ANode.FindChild(TSyntaxKind.ClassType);
-      if mKind <> nil then
-      begin
-        mDeclared := True;
-        mNext := FirstAncestor(mKind);
-      end;
-    end);
-  ANext := mNext;
-  Result := mDeclared;
+      ANext := FirstAncestor(mKind);
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Alias der obersten Ebene mit Ziel (TPos = Werk.Lage.TLage)?</summary>
@@ -358,34 +385,20 @@ end;
 
 function TFreeFieldTypes.FileFieldTypes(const AClassName: string; out ADeclared: Boolean): TArray<string>;
 var
-  mFound: TArray<string>;
-  mDeclared: Boolean;
-  mName, mText: string;
+  mDecl, mClassNode: TSyntaxNode;
 begin
-  // out- und Result-Werte lassen sich nicht in der anonymen Methode füllen.
-  mFound := nil;
-  mDeclared := False;
-  mName := AClassName;
-  mText := FText;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      mClassNode: TSyntaxNode;
+  Result := nil;
+  ADeclared := False;
+  for mDecl in DeclsNamed(AClassName) do
+  begin
+    mClassNode := mDecl.FindChild(TSyntaxKind.ClassType);
+    if mClassNode <> nil then
     begin
-      Result := not mDeclared;
-      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
-      begin
-        Exit;
-      end;
-      mClassNode := ANode.FindChild(TSyntaxKind.ClassType);
-      if mClassNode <> nil then
-      begin
-        mDeclared := True;
-        mFound := FieldTypesOf(mClassNode, mText);
-      end;
-    end);
-  ADeclared := mDeclared;
-  Result := mFound;
+      ADeclared := True;
+      Result := FieldTypesOf(mClassNode, FText);
+      Exit;
+    end;
+  end;
 end;
 
 function TFreeFieldTypes.IndexFieldTypes(const AClassName: string): TArray<string>;
@@ -410,34 +423,25 @@ end;
 
 function TFreeFieldTypes.FileMemberType(const ATypeName, AMember: string): string;
 var
-  mFound, mName, mMember, mText: string;
+  mDecl, mTypeNode: TSyntaxNode;
 begin
-  // Result lässt sich nicht in der anonymen Methode füllen.
-  mFound := '';
-  mName := ATypeName;
-  mMember := AMember;
-  mText := FText;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    var
-      mTypeNode: TSyntaxNode;
+  Result := '';
+  for mDecl in DeclsNamed(ATypeName) do
+  begin
+    mTypeNode := mDecl.FindChild(TSyntaxKind.RecordType);
+    if mTypeNode = nil then
     begin
-      Result := mFound = '';
-      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, mName) then
+      mTypeNode := mDecl.FindChild(TSyntaxKind.ClassType);
+    end;
+    if mTypeNode <> nil then
+    begin
+      Result := MemberTypeOf(mTypeNode, FText, AMember);
+      if Result <> '' then
       begin
         Exit;
       end;
-      mTypeNode := ANode.FindChild(TSyntaxKind.RecordType);
-      if mTypeNode = nil then
-      begin
-        mTypeNode := ANode.FindChild(TSyntaxKind.ClassType);
-      end;
-      if mTypeNode <> nil then
-      begin
-        mFound := MemberTypeOf(mTypeNode, mText, mMember);
-      end;
-    end);
-  Result := mFound;
+    end;
+  end;
 end;
 
 function TFreeFieldTypes.IndexMemberType(const ATypeName, AMember: string): string;

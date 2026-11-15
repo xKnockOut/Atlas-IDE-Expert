@@ -30,6 +30,8 @@ type
     procedure MemberTypeOfRecordAndClass;
     [Test]
     procedure TextHelpers;
+    [Test]
+    procedure ManyTypesInLargeUnit;
   end;
 
 implementation
@@ -212,6 +214,39 @@ end;
 procedure TFreeFieldTypesTests.TextHelpers;
 begin
   Assert.AreEqual('TObjectList', TFreeFieldTypes.BaseName(' TObjectList<TOrder> '));
+end;
+
+procedure TFreeFieldTypesTests.ManyTypesInLargeUnit;
+var
+  mSource: string;
+  mIndex: Integer;
+  mTree: TSyntaxTree;
+  mTypes: TFreeFieldTypes;
+begin
+  // Viele Typen in einer Datei (Header-Übersetzungen): Die Deklarationen werden einmal gesammelt statt je Anfrage
+  // im ganzen Baum gesucht (vorher quadratisch). Gleichnamige Typen zählen in Dateireihenfolge.
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TDoppelt = Fremd.TDoppelt;'#10'  TDoppelt = class'#10 +
+    '    FWert: Integer;'#10'  end;'#10;
+  for mIndex := 0 to 2999 do
+  begin
+    mSource := mSource + Format('  T%d = record X: Integer; end;'#10, [mIndex]);
+  end;
+  mSource := mSource + 'implementation'#10'end.';
+  mTree := TPascalParser.Parse(mSource);
+  mTypes := TFreeFieldTypes.Create(mTree, mSource, nil);
+  try
+    for mIndex := 0 to 2999 do
+    begin
+      Assert.AreEqual<TTypeGuess>(tgRecord, mTypes.TypeGuess(Format('T%d', [mIndex])));
+    end;
+    Assert.AreEqual('Integer', mTypes.MemberType('T2999', 'X'));
+    Assert.AreEqual<TTypeGuess>(tgClass, mTypes.TypeGuess('TDoppelt'));
+    Assert.AreEqual('Integer', mTypes.MemberType('TDoppelt', 'FWert'));
+  finally
+    mTypes.Free;
+    mTree.Free;
+  end;
+  mSource := '';
 end;
 
 initialization

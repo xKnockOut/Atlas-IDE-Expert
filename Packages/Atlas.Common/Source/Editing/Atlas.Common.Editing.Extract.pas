@@ -49,6 +49,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
@@ -64,6 +65,28 @@ type
   TProbedType = Atlas.Common.Editing.Extract.Shared.TProbedType;
   TTypeProbe = Atlas.Common.Editing.Extract.Shared.TTypeProbe;
   TExtractOptions = Atlas.Common.Editing.Extract.Shared.TExtractOptions;
+
+  /// <summary>Plant „Konstante extrahieren“; für viele Literale derselben Datei wiederverwendbar (Zeilentabelle und
+  /// freier Name einmal je Datei, Prüfregel magic-number auf großen Units).</summary>
+  TConstantExtractor = class
+  private
+    FText: string;
+    FTree: TSyntaxTree;
+    FOptions: TExtractOptions;
+    FLines: TLineTable;
+    FHasLines: Boolean;
+    FName: string;
+    FRoutine: TSyntaxNode;
+    FLiteral: TSyntaxNode;
+    function Find(const ARange: TTextRange): Boolean;
+    /// <summary>const-Abschnitt vor der äußersten Routine, in der das Literal steht.</summary>
+    function UnitConstant(const AName, AValue: string): TTextEdit;
+  public
+    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
+    /// <summary>„Konstante extrahieren“ für das Literal in ARange; AUnit wie TExtractRefactoring.ExtractConstant.
+    /// </summary>
+    function Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
+  end;
 
   TExtractRefactoring = class
   public const
@@ -110,7 +133,6 @@ implementation
 uses
   System.StrUtils,
   System.Generics.Collections,
-  Atlas.Text.Lines,
   Atlas.Common.Semantics.ControlFlow.Signatures,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
@@ -496,26 +518,9 @@ begin
   end;
 end;
 
-type
-  /// <summary>Plant „Konstante extrahieren“.</summary>
-  TConstantExtraction = class
-  private
-    FText: string;
-    FTree: TSyntaxTree;
-    FOptions: TExtractOptions;
-    FRoutine: TSyntaxNode;
-    FLiteral: TSyntaxNode;
-    function Find(const ARange: TTextRange): Boolean;
-    /// <summary>const-Abschnitt vor der äußersten Routine, in der das Literal steht.</summary>
-    function UnitConstant(const AName, AValue: string): TTextEdit;
-  public
-    constructor Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
-    function Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
-  end;
+{ TConstantExtractor }
 
-{ TConstantExtraction }
-
-constructor TConstantExtraction.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
+constructor TConstantExtractor.Create(const AText: string; ATree: TSyntaxTree; const AOptions: TExtractOptions);
 begin
   inherited Create;
   FText := AText;
@@ -523,11 +528,24 @@ begin
   FOptions := AOptions;
 end;
 
-function TConstantExtraction.Find(const ARange: TTextRange): Boolean;
+function TConstantExtractor.Find(const ARange: TTextRange): Boolean;
 var
   mFirst, mLast, mStart, mEnd: Integer;
 begin
-  if (FTree = nil) or not TExtractSupport.OffsetRange(FText, ARange, mFirst, mLast) then
+  FRoutine := nil;
+  FLiteral := nil;
+  if FTree = nil then
+  begin
+    Exit(False);
+  end;
+  if not FHasLines then
+  begin
+    FLines := TLineTable.Build(FText);
+    FHasLines := True;
+  end;
+  mFirst := FLines.OffsetAt(ARange.StartPos);
+  mLast := FLines.OffsetAt(ARange.EndPos);
+  if mFirst > mLast then
   begin
     Exit(False);
   end;
@@ -538,7 +556,6 @@ begin
     Exit(False);
   end;
   FRoutine := TRoutineBody.RoutineAt(FTree, mStart);
-  FLiteral := nil;
   if FRoutine <> nil then
   begin
     FLiteral := LiteralNode(TRoutineBody.BodyOf(FRoutine), mStart, mEnd, mFirst <> mLast);
@@ -546,7 +563,7 @@ begin
   Result := FLiteral <> nil;
 end;
 
-function TConstantExtraction.UnitConstant(const AName, AValue: string): TTextEdit;
+function TConstantExtractor.UnitConstant(const AName, AValue: string): TTextEdit;
 var
   mOuter: TSyntaxNode;
   mLine: Integer;
@@ -564,7 +581,7 @@ begin
     TRoutineBody.IndentUnit(FOptions.Style) + AName + ' = ' + AValue + ';' + mLineBreak + mLineBreak);
 end;
 
-function TConstantExtraction.Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
+function TConstantExtractor.Run(const ARange: TTextRange; AUnit: Boolean; out AAction: TCodeAction): Boolean;
 var
   mName, mValue: string;
   mEdit: TTextEdit;
@@ -575,7 +592,12 @@ begin
   begin
     Exit;
   end;
-  mName := TRoutineBody.UniqueName(FTree.Tokens, FOptions.Names.Constant(TExtractRefactoring.cConstantName));
+  // Der Text ändert sich zwischen den Aufrufen nicht: Der freie Name gilt für jedes Literal.
+  if FName = '' then
+  begin
+    FName := TRoutineBody.UniqueName(FTree.Tokens, FOptions.Names.Constant(TExtractRefactoring.cConstantName));
+  end;
+  mName := FName;
   mValue := TRoutineBody.TextOf(FText, FLiteral);
   if AUnit then
   begin
@@ -594,9 +616,9 @@ end;
 class function TExtractRefactoring.ExtractConstant(const AText: string; ATree: TSyntaxTree;
   const ARange: TTextRange; const AOptions: TExtractOptions; AUnit: Boolean; out AAction: TCodeAction): Boolean;
 var
-  mExtraction: TConstantExtraction;
+  mExtraction: TConstantExtractor;
 begin
-  mExtraction := TConstantExtraction.Create(AText, ATree, AOptions);
+  mExtraction := TConstantExtractor.Create(AText, ATree, AOptions);
   try
     Result := mExtraction.Run(ARange, AUnit, AAction);
   finally
