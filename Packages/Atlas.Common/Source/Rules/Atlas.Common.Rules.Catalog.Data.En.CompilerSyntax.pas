@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..685] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..697] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -715,6 +715,22 @@ const
     '      ],',
     '      "level": "A",',
     '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "stream-write-nativeint",',
+    '      "name": "Write without NativeInt overload",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "A class overrides Write(const Buffer; Count: Longint): Longint of TStream but not the overload Write(const Buffer; Count: NativeInt): NativeInt that exists from Delphi 13 on. Und' +
+    'er Win64, WriteBuffer and CopyFrom call the NativeInt overload and bypass the own version, without any compiler message: a limit or count in the Longint version no longer applies. The second version i' +
+    's searched in the whole text of the class, also in {$IF} branches. Not reported when delphiVersion is set to a version before Delphi 13. Under Win32 both signatures are the same, so the NativeInt vers' +
+    'ion belongs inside {$IF RTLVersion >= 37.0} and {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.",',
+    '      "bad": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; override;\nend;",',
+    '      "good": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; overload; override;\n{$IF RTLVersion >= 37.0}\n  {$IF SizeOf(Longint) <> SizeOf(NativeInt' +
+    ')}\n  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;\n  {$IFEND}\n{$IFEND}\nend;",',
+    '      "level": "A",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

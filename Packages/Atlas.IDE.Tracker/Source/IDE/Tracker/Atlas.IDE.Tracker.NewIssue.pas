@@ -81,6 +81,7 @@ uses
   Atlas.Core.Tracker.Files,
   Atlas.Core.Tracker.IssueForms,
   Atlas.Core.Tracker.NewIssueGitHub,
+  Atlas.Core.Tracker.NewIssuePlan,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -88,7 +89,6 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Connections,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.NewIssue.Strings,
@@ -184,61 +184,25 @@ begin
   mThread.Start;
 end;
 
-function CaptionOf(const AConnection: string; const ATarget: TAtlasTrackerTarget): string;
-var
-  mProvider: string;
-begin
-  if SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) then
-  begin
-    mProvider := 'GitHub';
-  end
-  else
-  begin
-    mProvider := 'YouTrack';
-  end;
-  Result := mProvider + ' · ' + ATarget.Server;
-  if AConnection <> '' then
-  begin
-    Result := AConnection + ' (' + Result + ')';
-  end;
-end;
-
 /// <summary>Tracker des aktiven Projekts zuerst, dahinter die übrigen Verbindungen.</summary>
 function TrackersOf(const AProject: string; out AIndex: Integer): TArray<TAtlasNewIssueTracker>;
 var
-  mResolved, mTarget: TAtlasTrackerTarget;
+  mResolved: TAtlasTrackerTarget;
   mConnection: string;
-  mItem: TAtlasTrackerConnection;
+  mChoice: TAtlasNewIssueChoice;
 begin
   Result := nil;
-  AIndex := -1;
   mResolved := TAtlasIdeIssuesTargets.TrackerOf(AProject, mConnection);
-  mResolved.Language := TAtlasTrackerConnections.LanguageOf(
-    TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections), mResolved);
-  if mResolved.Provider <> '' then
+  for mChoice in TAtlasNewIssuePlan.ChoicesFor(mResolved, mConnection, TAtlasIdeSettings.Current.IssuesConnections,
+    AIndex) do
   begin
-    Result := [TAtlasNewIssueTracker.Create(CaptionOf(mConnection, mResolved), mResolved)];
-    AIndex := 0;
-  end;
-  for mItem in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
-  begin
-    if (mConnection <> '') and SameText(mItem.Name, mConnection) then
-    begin
-      Continue;
-    end;
-    mTarget := TAtlasTrackerTarget.Create(mItem.Provider, mItem.Url, '', '');
-    mTarget.Language := mItem.Language;
-    Result := Result + [TAtlasNewIssueTracker.Create(CaptionOf(mItem.Name, mTarget), mTarget)];
-  end;
-  if (AIndex < 0) and (Length(Result) > 0) then
-  begin
-    AIndex := 0;
+    Result := Result + [TAtlasNewIssueTracker.Create(mChoice.Caption, mChoice.Target)];
   end;
 end;
 
 procedure OpenPage(const APage: string);
 begin
-  if APage.StartsWith('https://', True) then
+  if TAtlasNewIssuePlan.Opens(APage) then
   begin
     TAtlasTrackerFiles.Shell.Open(APage);
   end;
@@ -285,11 +249,6 @@ begin
   end;
 end;
 
-function SameTracker(const A, B: TAtlasTrackerTarget): Boolean;
-begin
-  Result := SameText(A.Provider, B.Provider) and SameText(A.Server, B.Server) and SameText(A.Project, B.Project);
-end;
-
 /// <summary>Ordner, ab dem die Vorlagen der Arbeitskopie gesucht werden: der des Projekts, wenn ATarget dessen
 /// Tracker ist; sonst '' (Vorlagen aus dem Repository).</summary>
 function TemplateStart(const ATarget: TAtlasTrackerTarget): string;
@@ -297,9 +256,9 @@ var
   mConnection: string;
 begin
   Result := '';
-  if (DialogProject <> '') and SameText(ATarget.Provider, TAtlasTrackerTarget.cGitHub) and
-    TAtlasIdeSettings.Current.IssuesCreateTemplates and
-    SameTracker(TAtlasIdeIssuesTargets.TrackerOf(DialogProject, mConnection), ATarget) then
+  if TAtlasNewIssuePlan.TemplatesPossible(DialogProject <> '', TAtlasIdeSettings.Current.IssuesCreateTemplates,
+    ATarget) and TAtlasNewIssuePlan.SameTracker(TAtlasIdeIssuesTargets.TrackerOf(DialogProject, mConnection),
+    ATarget) then
   begin
     Result := ExtractFileDir(DialogProject);
   end;
