@@ -340,6 +340,8 @@ procedure TFileRulesTests.FilenameCompareSilentCases;
 begin
   Assert.AreEqual(0, CompareCount('ExtractFileExt(Datei) = '''''));
   Assert.AreEqual(0, CompareCount('OpenDialog.FileName <> '''''));
+  Assert.AreEqual(0, CompareCount('OpenDialog.FileName = EmptyStr'));
+  Assert.AreEqual(0, CompareCount('System.SysUtils.EmptyStr <> OpenDialog.FileName'));
   Assert.AreEqual(0, CompareCount('ExtractFilePath(Datei) = ''\'''));
   Assert.AreEqual(0, CompareCount('ExtractFileDir(Datei) = Datei'));
   Assert.AreEqual(0, CompareCount('Datei = ExtractFileDir(Datei)'));

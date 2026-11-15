@@ -794,12 +794,12 @@ begin
   Result := EndsText('FileName', mName) or SameText(mName, 'ExeName');
 end;
 
-/// <summary>Kann ANode als Vergleichspartner eines Dateinamens Groß-/Kleinschreibung haben? Leertext,
-/// nil, Zahlen und Literale ohne Buchstaben nicht.</summary>
+/// <summary>Kann ANode als Vergleichspartner eines Dateinamens Groß-/Kleinschreibung haben? Leertext (auch
+/// EmptyStr aus System.SysUtils), nil, Zahlen und Literale ohne Buchstaben nicht.</summary>
 function HasCase(ANode: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
-  mPlain: string;
+  mPlain, mName, mQualifier: string;
   C: Char;
 begin
   mNode := Unwrapped(ANode);
@@ -818,7 +818,12 @@ begin
     end;
     Exit(False);
   end;
-  Result := not ((mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, 'nil'));
+  if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, 'nil') then
+  begin
+    Exit(False);
+  end;
+  Result := not (CalleeName(mNode, mName, mQualifier) and SameText(mName, 'EmptyStr') and
+    ((mQualifier = '') or QualifierIs(mQualifier, 'SysUtils')));
 end;
 
 /// <summary>Ist eine Seite aus der anderen abgeleitet (ExtractFileDir(X) = X, die Wurzel ist erreicht)? Dann

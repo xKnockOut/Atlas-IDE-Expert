@@ -474,6 +474,33 @@ begin
   end;
 end;
 
+/// <summary>Bytes der Datei AFileName (neben der Unit) über ReadFile; False, wenn sie nicht lesbar ist.</summary>
+function ReadBytes(const AContext: TRuleContext; const AFileName: string; out ABytes: TBytes): Boolean;
+begin
+  ABytes := nil;
+  Result := (AFileName <> '') and Assigned(AContext.ReadFile) and
+    AContext.ReadFile(ExtractFileName(StringReplace(AFileName, '/', '\', [rfReplaceAll])), ABytes);
+end;
+
+/// <summary>Ist die Unit eine ANSI-Datei (ohne BOM, kein gültiges UTF-8)? Ihre Codepage kennt nur der Rechner, auf
+/// dem dcc läuft.</summary>
+function IsAnsiFile(const AContext: TRuleContext): Boolean;
+var
+  mBytes: TBytes;
+begin
+  Result := ReadBytes(AContext, AContext.RelativePath, mBytes) and not TFileEncoding.IsBinaryForm(mBytes) and
+    (TFileEncoding.DetectEncoding(mBytes) = TFileEncodingKind.Ansi1252);
+end;
+
+/// <summary>U+00AD neben einem anderen Nicht-ASCII-Zeichen einer ANSI-Datei: In einer Codepage mit zwei Bytes je
+/// Zeichen (GBK, Big5, Shift-JIS) ist das Byte $AD Teil eines Zeichens, kein weiches Trennzeichen. Gelesen als
+/// Windows-1252 sieht es aus wie U+00AD.</summary>
+function IsMultiByteTrail(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (Ord(AText[AIndex]) = $00AD) and (((AIndex > 1) and (Ord(AText[AIndex - 1]) > $7F)) or
+    ((AIndex < Length(AText)) and (Ord(AText[AIndex + 1]) > $7F)));
+end;
+
 /// <summary>Zusammenhängende Bereiche: gleiche Stelle (Ort), Zeichen direkt hintereinander.</summary>
 function RunsOf(ARule: TCharRule; const AContext: TRuleContext): TArray<TRun>;
 var
@@ -483,8 +510,10 @@ var
   mIndex, mLine, mColumn, mCode: Integer;
   mConfidence: TRuleConfidence;
   mBuilder: TRunBuilder;
+  mAnsi: Boolean;
 begin
   mPlaces := PlacesOf(AContext, mMultiLine, mTokenStart, mTokenEnd);
+  mAnsi := (ARule = TCharRule.Invisible) and (Pos(Char($00AD), AContext.Text) > 0) and IsAnsiFile(AContext);
   mLine := 0;
   mColumn := 0;
   mBuilder := TRunBuilder.Create;
@@ -492,7 +521,7 @@ begin
     for mIndex := 1 to Length(AContext.Text) do
     begin
       mCode := Ord(AContext.Text[mIndex]);
-      if Flagged(ARule, mCode, mIndex) then
+      if Flagged(ARule, mCode, mIndex) and not (mAnsi and IsMultiByteTrail(AContext.Text, mIndex)) then
       begin
         mConfidence := ConfidenceOf(ARule, mCode, mPlaces[mIndex],
           BalancedRtl(AContext.Text, mTokenStart[mIndex], mTokenEnd[mIndex]));
@@ -1092,14 +1121,6 @@ end;
 function WithoutCr(const AText: string): string;
 begin
   Result := StringReplace(AText, #13, '', [rfReplaceAll]);
-end;
-
-/// <summary>Bytes der Datei AFileName (neben der Unit) über ReadFile; False, wenn sie nicht lesbar ist.</summary>
-function ReadBytes(const AContext: TRuleContext; const AFileName: string; out ABytes: TBytes): Boolean;
-begin
-  ABytes := nil;
-  Result := (AFileName <> '') and Assigned(AContext.ReadFile) and
-    AContext.ReadFile(ExtractFileName(StringReplace(AFileName, '/', '\', [rfReplaceAll])), ABytes);
 end;
 
 /// <summary>Fehlstellen in den Bytes von AFileName, wenn ihr Text AText ist; sonst nil.</summary>
