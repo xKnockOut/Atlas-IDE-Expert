@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.ManagedTypes.Tests;
 
-// Tests für die Auflösung verwalteter Typen der Prüfregeln (#921, #1071).
+// Tests für die Auflösung verwalteter Typen der Prüfregeln (#921, #1071); tief verschachtelte Records ohne
+// exponentielle Laufzeit.
 
 interface
 
@@ -21,6 +22,8 @@ type
     procedure TypesFromIndex;
     [Test]
     procedure UnknownTypesAreUnmanaged;
+    [Test]
+    procedure NestedRecordChains;
   end;
 
 implementation
@@ -135,6 +138,35 @@ begin
       Assert.IsFalse(ATypes.CustomManaged('TUnbekannt', 0));
       Assert.AreEqual('', ATypes.Managed('TList<string>', 0));
     end);
+end;
+
+procedure TManagedTypesTests.NestedRecordChains;
+var
+  mSource: string;
+  mIndex: Integer;
+  mTree: TSyntaxTree;
+  mTypes: TManagedTypes;
+begin
+  // Je vier Felder des vorigen Records: ohne gemerkte Antworten 4^16 Durchläufe bis zur Tiefengrenze (Hänger in
+  // Header-Übersetzungen). TS hat einen String ganz unten, TP nur Zahlen.
+  mSource := 'unit U;'#10'interface'#10'type'#10'  TS0 = record S: string; end;'#10'  TP0 = record N: Integer; end;'#10;
+  for mIndex := 1 to 30 do
+  begin
+    mSource := mSource + Format('  TS%0:d = record A, B, C: Integer; D: TS%1:d; end;'#10, [mIndex, mIndex - 1]) +
+      Format('  TP%0:d = record A: TP%1:d; B: TP%1:d; C: TP%1:d; D: TP%1:d; end;'#10, [mIndex, mIndex - 1]);
+  end;
+  mSource := mSource + 'implementation'#10'end.';
+  mTree := TPascalParser.Parse(mSource);
+  mTypes := TManagedTypes.Create(mTree, mSource, nil);
+  try
+    Assert.AreEqual('Strings', mTypes.Managed('TS10', 0));
+    Assert.AreEqual('', mTypes.Managed('TP30', 0));
+    Assert.IsFalse(mTypes.CustomManaged('TP30', 0));
+  finally
+    mTypes.Free;
+    mTree.Free;
+  end;
+  mSource := '';
 end;
 
 initialization

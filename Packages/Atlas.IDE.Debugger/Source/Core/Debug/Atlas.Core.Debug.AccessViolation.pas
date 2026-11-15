@@ -691,6 +691,8 @@ begin
           Finish;
         end;
       end;
+  else
+    // Fertig: keine weitere Anfrage.
   end;
 end;
 
@@ -880,6 +882,8 @@ begin
       AnswerHeader(AOk, AText);
     TPhase.Offsets:
       AnswerOffset(AOk, AText);
+  else
+    // In den übrigen Phasen steht keine Antwort aus.
   end;
 end;
 

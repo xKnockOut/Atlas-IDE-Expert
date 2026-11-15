@@ -6,7 +6,8 @@
 // beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen. Ebenso
 // beenden ihn eine Zuweisung an eine Variable, die mit absolute auf X liegt (oder X auf ihr), und der Aufruf einer
 // lokalen Routine: Sie kann die Variablen der umgebenden Routine neu setzen. Im Rumpf eines with kann X ein Mitglied
-// des with-Objekts sein: dort keine Meldung (außer Self.X).
+// des with-Objekts sein: dort keine Meldung (außer Self.X). Ein Feld, das eine Schleife bis zu seiner Änderung
+// freigibt (while Assigned(FErster) do FErster.Free), setzt der Destruktor neu.
 
 interface
 
@@ -546,6 +547,54 @@ begin
   FUses := nil;
 end;
 
+/// <summary>Gibt es unter ARoot einen Knoten mit dem Pfad APath (AAssigned: als Ziel einer Zuweisung)?</summary>
+function HasPath(ARoot: TSyntaxNode; const APath: string; AAssigned: Boolean): Boolean;
+begin
+  Result := ARoot.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if AAssigned and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+        SameText(FreedPath(ANode[0]), APath) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end
+      else if not AAssigned and SameText(FreedPath(ANode), APath) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+/// <summary>Steht AFree in einer while- oder repeat-Schleife, deren Bedingung APath liest, ohne dass die Schleife
+/// APath zuweist? Dann ändert die Freigabe selbst APath (der Destruktor hängt das Objekt aus der Liste des
+/// Besitzers: while Assigned(FErster) do FErster.Free), sonst endete die Schleife nie.</summary>
+function LoopWaitsForFree(AFree: TSyntaxNode; const APath: string): Boolean;
+var
+  mLoop: TSyntaxNode;
+  mCondition: TSyntaxNode;
+begin
+  Result := False;
+  mLoop := AFree.Parent;
+  while (mLoop <> nil) and not IsRoutineBody(mLoop) and (mLoop.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mCondition := nil;
+    if (mLoop.Kind = TSyntaxKind.WhileStatement) and (mLoop.ChildCount = 2) then
+    begin
+      mCondition := mLoop[0];
+    end
+    else if (mLoop.Kind = TSyntaxKind.RepeatStatement) and (mLoop.ChildCount > 0) then
+    begin
+      mCondition := mLoop[mLoop.ChildCount - 1];
+    end;
+    if (mCondition <> nil) and HasPath(mCondition, APath, False) then
+    begin
+      Exit(not HasPath(mLoop, APath, True));
+    end;
+    mLoop := mLoop.Parent;
+  end;
+end;
+
 procedure TUseAfterFreeCheck.CheckGraph;
 var
   mNode: TFlowNode;
@@ -555,8 +604,10 @@ begin
   for mNode in FGraph.Nodes do
   begin
     // Pop.Free mit einer Funktion Pop der eigenen Klasse gibt bei jedem Aufruf ein anderes Objekt frei.
+    // Ein Feld oder Mitglied eines anderen Objekts kann der Destruktor neu setzen; eine lokale Variable nicht.
     if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) and
-      not IsMember(mPath, FMethods) then
+      not IsMember(mPath, FMethods) and not ((IsMember(mPath, FFields) or (Pos('.', mPath) > 0)) and
+      LoopWaitsForFree(mNode.Syntax, mPath)) then
     begin
       Follow(mNode, mPath, mToNil);
     end;

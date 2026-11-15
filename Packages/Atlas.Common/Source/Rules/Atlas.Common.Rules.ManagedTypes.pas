@@ -8,17 +8,41 @@
 interface
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree;
 
 type
+  /// <summary>Gemerkte Antwort zu einem Typnamen; CutDepth: Tiefe, ab der die an der Tiefengrenze
+  /// abgeschnittene Antwort gilt (-1: vollständig, gilt immer).</summary>
+  TManagedAnswer = record
+    Kind: string;
+    Custom: Boolean;
+    CutDepth: Integer;
+  end;
+
   /// <summary>Löst Typnamen der Datei und des Index auf und sagt, ob sie verwaltete Teile enthalten.</summary>
   TManagedTypes = class
   private
     FTree: TSyntaxTree;
     FText: string;
     FIndex: ISymbolIndex;
+    // Typdeklarationen der Datei (erste je Name in Vorordnung), beim ersten Bedarf einmal gesammelt; dazu die
+    // Antworten je Typname: Verschachtelte Records ohne verwaltete Teile (Header-Übersetzungen) wurden sonst
+    // bis zur Tiefengrenze exponentiell oft neu durchlaufen. FCut: Die laufende Antwort stieß an die
+    // Tiefengrenze; sie gilt dann nur für Anfragen ab derselben Tiefe.
+    FTypeDecls: TDictionary<string, TSyntaxNode>;
+    FManagedNames: TDictionary<string, TManagedAnswer>;
+    FCustomNames: TDictionary<string, TManagedAnswer>;
+    FCut: Boolean;
+    function Remembered(ANames: TDictionary<string, TManagedAnswer>; const AKey: string; ADepth: Integer;
+      out AAnswer: TManagedAnswer): Boolean;
+    procedure Remember(ANames: TDictionary<string, TManagedAnswer>; const AKey: string; ADepth: Integer;
+      const AKind: string; ACustom: Boolean);
     function TypeDecl(const AName: string): TSyntaxNode;
+    function DepthExceeded(ADepth: Integer): Boolean;
+    function NameManaged(const AName: string; ADepth: Integer): string;
+    function NameCustomManaged(const AName: string; ADepth: Integer): Boolean;
     function FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
     function IndexManaged(const AName: string; ADepth: Integer): string;
     function FieldsCustomManaged(ARecord: TSyntaxNode; ADepth: Integer): Boolean;
@@ -30,6 +54,7 @@ type
     function SymbolCustomManaged(const ASymbol: TIndexSymbol; ADepth: Integer): Boolean;
   public
     constructor Create(ATree: TSyntaxTree; const AText: string; const AIndex: ISymbolIndex);
+    destructor Destroy; override;
     /// <summary>'Strings', 'Interfaces', 'Methodenreferenzen', 'dynamische Arrays' oder 'Variants', wenn
     /// ATypeName solche Teile hat; '' sonst oder wenn der Typ unbekannt ist.</summary>
     function Managed(const ATypeName: string; ADepth: Integer): string;
@@ -49,7 +74,6 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -82,25 +106,71 @@ begin
   FTree := ATree;
   FText := AText;
   FIndex := AIndex;
+  FManagedNames := TDictionary<string, TManagedAnswer>.Create;
+  FCustomNames := TDictionary<string, TManagedAnswer>.Create;
+end;
+
+destructor TManagedTypes.Destroy;
+begin
+  FCustomNames.Free;
+  FManagedNames.Free;
+  FTypeDecls.Free;
+  inherited;
 end;
 
 function TManagedTypes.TypeDecl(const AName: string): TSyntaxNode;
 var
-  mFound: TSyntaxNode;
-  mName: string;
+  mDecls: TDictionary<string, TSyntaxNode>;
 begin
-  mFound := nil;
-  mName := AName;
-  FTree.Root.Walk(
-    function(ANode: TSyntaxNode): Boolean
-    begin
-      Result := mFound = nil;
-      if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, mName) then
+  if FTypeDecls = nil then
+  begin
+    mDecls := TDictionary<string, TSyntaxNode>.Create;
+    FTypeDecls := mDecls;
+    FTree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
       begin
-        mFound := ANode;
-      end;
-    end);
-  Result := mFound;
+        Result := True;
+        if (ANode.Kind = TSyntaxKind.TypeDecl) and not mDecls.ContainsKey(LowerCase(ANode.Name)) then
+        begin
+          mDecls.Add(LowerCase(ANode.Name), ANode);
+        end;
+      end);
+  end;
+  if not FTypeDecls.TryGetValue(LowerCase(AName), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TManagedTypes.Remembered(ANames: TDictionary<string, TManagedAnswer>; const AKey: string; ADepth: Integer;
+  out AAnswer: TManagedAnswer): Boolean;
+begin
+  // Eine abgeschnittene Antwort gilt nur, wenn die Anfrage nicht mehr Tiefe übrig hat als ihre Rechnung.
+  Result := ANames.TryGetValue(AKey, AAnswer) and ((AAnswer.CutDepth < 0) or (ADepth >= AAnswer.CutDepth));
+end;
+
+procedure TManagedTypes.Remember(ANames: TDictionary<string, TManagedAnswer>; const AKey: string; ADepth: Integer;
+  const AKind: string; ACustom: Boolean);
+var
+  mAnswer: TManagedAnswer;
+begin
+  mAnswer.Kind := AKind;
+  mAnswer.Custom := ACustom;
+  mAnswer.CutDepth := -1;
+  if FCut then
+  begin
+    mAnswer.CutDepth := ADepth;
+  end;
+  ANames.AddOrSetValue(AKey, mAnswer);
+end;
+
+function TManagedTypes.DepthExceeded(ADepth: Integer): Boolean;
+begin
+  Result := ADepth > 16;
+  if Result then
+  begin
+    FCut := True;
+  end;
 end;
 
 // Iterativ (tiefe Bäume sprengen den Stapel nicht).
@@ -364,12 +434,11 @@ end;
 function TManagedTypes.Managed(const ATypeName: string; ADepth: Integer): string;
 var
   mName: string;
-  mDecl: TSyntaxNode;
   mIndex: Integer;
 begin
   Result := '';
   mName := Trim(ATypeName);
-  if (mName = '') or (ADepth > 16) then
+  if (mName = '') or DepthExceeded(ADepth) then
   begin
     Exit;
   end;
@@ -386,16 +455,37 @@ begin
   end
   else if not StartsText('array', mName) and (Pos('<', mName) = 0) then
   begin
-    mDecl := TypeDecl(mName);
-    if mDecl = nil then
-    begin
-      Result := IndexManaged(mName, ADepth);
-    end
-    else
-    begin
-      Result := DeclManaged(mDecl, ADepth);
-    end;
+    Result := NameManaged(mName, ADepth);
   end;
+end;
+
+function TManagedTypes.NameManaged(const AName: string; ADepth: Integer): string;
+var
+  mKey: string;
+  mDecl: TSyntaxNode;
+  mOuterCut: Boolean;
+  mAnswer: TManagedAnswer;
+begin
+  mKey := LowerCase(AName);
+  if Remembered(FManagedNames, mKey, ADepth, mAnswer) then
+  begin
+    Exit(mAnswer.Kind);
+  end;
+  mOuterCut := FCut;
+  FCut := False;
+  // Bis zum Ende der Antwort zählt ein Kreis über diesen Namen als nicht verwaltet.
+  Remember(FManagedNames, mKey, ADepth, '', False);
+  mDecl := TypeDecl(AName);
+  if mDecl = nil then
+  begin
+    Result := IndexManaged(AName, ADepth);
+  end
+  else
+  begin
+    Result := DeclManaged(mDecl, ADepth);
+  end;
+  Remember(FManagedNames, mKey, ADepth, Result, False);
+  FCut := FCut or mOuterCut;
 end;
 
 function TManagedTypes.Pointee(const ATypeName: string): string;
@@ -441,12 +531,11 @@ end;
 function TManagedTypes.CustomManaged(const ATypeName: string; ADepth: Integer): Boolean;
 var
   mName: string;
-  mDecl, mBody: TSyntaxNode;
   mIndex: Integer;
 begin
   Result := False;
   mName := Trim(ATypeName);
-  if (mName = '') or (ADepth > 16) or (Pos('<', mName) > 0) or StartsText('array of', mName) then
+  if (mName = '') or DepthExceeded(ADepth) or (Pos('<', mName) > 0) or StartsText('array of', mName) then
   begin
     Exit;
   end;
@@ -459,20 +548,44 @@ begin
     end;
     Exit;
   end;
-  mDecl := TypeDecl(mName);
+  Result := NameCustomManaged(mName, ADepth);
+end;
+
+function TManagedTypes.NameCustomManaged(const AName: string; ADepth: Integer): Boolean;
+var
+  mKey: string;
+  mDecl, mBody: TSyntaxNode;
+  mOuterCut: Boolean;
+  mAnswer: TManagedAnswer;
+begin
+  mKey := LowerCase(AName);
+  if Remembered(FCustomNames, mKey, ADepth, mAnswer) then
+  begin
+    Exit(mAnswer.Custom);
+  end;
+  mOuterCut := FCut;
+  FCut := False;
+  Remember(FCustomNames, mKey, ADepth, '', False);
+  Result := False;
+  mDecl := TypeDecl(AName);
   if mDecl = nil then
   begin
-    Exit(IndexCustomManaged(mName, ADepth));
-  end;
-  mBody := mDecl.FindChild(TSyntaxKind.RecordType);
-  if mBody <> nil then
+    Result := IndexCustomManaged(AName, ADepth);
+  end
+  else
   begin
-    Exit(FieldsCustomManaged(mBody, ADepth));
+    mBody := mDecl.FindChild(TSyntaxKind.RecordType);
+    if mBody <> nil then
+    begin
+      Result := FieldsCustomManaged(mBody, ADepth);
+    end
+    else if (mDecl.FindChild(TSyntaxKind.TypeReference) <> nil) or (mDecl.FindChild(TSyntaxKind.ArrayType) <> nil) then
+    begin
+      Result := CustomManaged(NodeTypeText(mDecl), ADepth + 1);
+    end;
   end;
-  if (mDecl.FindChild(TSyntaxKind.TypeReference) <> nil) or (mDecl.FindChild(TSyntaxKind.ArrayType) <> nil) then
-  begin
-    Result := CustomManaged(NodeTypeText(mDecl), ADepth + 1);
-  end;
+  Remember(FCustomNames, mKey, ADepth, '', Result);
+  FCut := FCut or mOuterCut;
 end;
 
 function TManagedTypes.NodeTypeText(ANode: TSyntaxNode): string;

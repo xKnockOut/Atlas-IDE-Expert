@@ -104,6 +104,13 @@ type
     Uniform: Boolean;
   end;
 
+  /// <summary>Gemerkte Größe eines benannten Typs; CutDepth: Tiefe, ab der die an der Tiefengrenze abgeschnittene
+  /// Rechnung gilt (-1: vollständig, gilt immer).</summary>
+  TNamedSize = record
+    Size: TTypeSize;
+    CutDepth: Integer;
+  end;
+
   /// <summary>Rechnet Typgrößen aus den Deklarationen der Datei und dem Index (#1083).</summary>
   TTypeSizes = class
   private
@@ -114,6 +121,11 @@ type
     FConstants: TDictionary<string, TSyntaxNode>;
     FEnumValues: TDictionary<string, Int64>;
     FDepth: Integer;
+    // Größen benannter Typen (klein geschrieben), damit verschachtelte Records nicht exponentiell oft neu
+    // gerechnet werden; FCut: Die laufende Rechnung stieß an die Tiefengrenze, sie gilt dann nur für Anfragen ab
+    // derselben Tiefe.
+    FNamedSizes: TDictionary<string, TNamedSize>;
+    FCut: Boolean;
     procedure Collect(ARoot: TSyntaxNode);
     procedure AddDeclaration(ANode: TSyntaxNode);
     procedure AddEnumValues(AEnum: TSyntaxNode);
@@ -126,6 +138,9 @@ type
       var ASize: TTypeSize);
     procedure AddVariant(var ASum: TFieldSum; AVariant: TSyntaxNode; const AParams, AArgs: TArray<string>;
       var ASize: TTypeSize);
+    function DepthExceeded: Boolean;
+    procedure RememberSize(const AKey: string; const ASize: TTypeSize);
+    function NamedSize(const AName: string): TTypeSize;
     function IndexSize(const AName: string): TTypeSize;
     function RecordIndexSize(const AFileName, AName: string): TTypeSize;
     function SymbolSize(const ALocation: TSymbolLocation; const AName: string): TTypeSize;
@@ -156,11 +171,13 @@ begin
   FTypes := TDictionary<string, TSyntaxNode>.Create;
   FConstants := TDictionary<string, TSyntaxNode>.Create;
   FEnumValues := TDictionary<string, Int64>.Create;
+  FNamedSizes := TDictionary<string, TNamedSize>.Create;
   Collect(ATree.Root);
 end;
 
 destructor TTypeSizes.Destroy;
 begin
+  FNamedSizes.Free;
   FEnumValues.Free;
   FConstants.Free;
   FTypes.Free;
@@ -238,7 +255,7 @@ var
   mLookup: TOrdinalNameLookup;
 begin
   AValue := 0;
-  if FDepth > 32 then
+  if DepthExceeded then
   begin
     Exit(False);
   end;
@@ -333,7 +350,7 @@ begin
   end;
   AExact := False;
   Result := 0;
-  if (FDepth > 32) or not FTypes.TryGetValue(LowerCase(AName), mDecl) then
+  if DepthExceeded or not FTypes.TryGetValue(LowerCase(AName), mDecl) then
   begin
     Exit;
   end;
@@ -421,7 +438,7 @@ var
   mLocation: TSymbolLocation;
 begin
   Result := Default(TTypeSize);
-  if (FIndex = nil) or (FDepth > 32) then
+  if (FIndex = nil) or DepthExceeded then
   begin
     Exit;
   end;
@@ -595,7 +612,7 @@ end;
 function TTypeSizes.OfNode(ANode: TSyntaxNode; const AParams, AArgs: TArray<string>): TTypeSize;
 begin
   Result := Default(TTypeSize);
-  if (ANode = nil) or (FDepth > 32) then
+  if (ANode = nil) or DepthExceeded then
   begin
     Exit;
   end;
@@ -669,7 +686,9 @@ end;
 function TTypeSizes.OfName(const AName: string; const AParams, AArgs: TArray<string>): TTypeSize;
 var
   mIndex: Integer;
-  mDecl: TSyntaxNode;
+  mKey: string;
+  mOuterCut: Boolean;
+  mKnown: TNamedSize;
 begin
   Result := Default(TTypeSize);
   mIndex := IndexText(AName, AParams);
@@ -684,10 +703,52 @@ begin
     Result.Exact := mIndex < cFirstInexactSize;
     Exit;
   end;
-  if FDepth > 32 then
+  mKey := LowerCase(AName);
+  // Eine abgeschnittene Größe gilt nur, wenn die Anfrage nicht mehr Tiefe übrig hat als ihre Rechnung.
+  if FNamedSizes.TryGetValue(mKey, mKnown) and ((mKnown.CutDepth < 0) or (FDepth >= mKnown.CutDepth)) then
+  begin
+    Exit(mKnown.Size);
+  end;
+  if DepthExceeded then
   begin
     Exit;
   end;
+  mOuterCut := FCut;
+  FCut := False;
+  // Bis zum Ende der Rechnung zählt ein Kreis über diesen Namen 0.
+  RememberSize(mKey, Default(TTypeSize));
+  Result := NamedSize(AName);
+  RememberSize(mKey, Result);
+  FCut := FCut or mOuterCut;
+end;
+
+procedure TTypeSizes.RememberSize(const AKey: string; const ASize: TTypeSize);
+var
+  mKnown: TNamedSize;
+begin
+  mKnown.Size := ASize;
+  mKnown.CutDepth := -1;
+  if FCut then
+  begin
+    mKnown.CutDepth := FDepth;
+  end;
+  FNamedSizes.AddOrSetValue(AKey, mKnown);
+end;
+
+function TTypeSizes.DepthExceeded: Boolean;
+begin
+  Result := FDepth > 32;
+  if Result then
+  begin
+    FCut := True;
+  end;
+end;
+
+function TTypeSizes.NamedSize(const AName: string): TTypeSize;
+var
+  mDecl: TSyntaxNode;
+begin
+  Result := Default(TTypeSize);
   if FTypes.TryGetValue(LowerCase(AName), mDecl) and (mDecl.FindChild(TSyntaxKind.GenericParams) = nil) and
     (TypeNodeOf(mDecl) <> nil) then
   begin
