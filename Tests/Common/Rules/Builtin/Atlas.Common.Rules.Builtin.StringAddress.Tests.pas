@@ -36,6 +36,8 @@ type
     procedure OffAndExclude;
     [Test]
     procedure ShortStringAliasIsSilent;
+    [Test]
+    procedure ShortStringAliasChainFromIndexIsSilent;
   end;
 
 
@@ -157,6 +159,22 @@ begin
     '  PWord(@Result[1])^ := AWert;'#10'end;'#10'procedure Fuellen(var AText: TKurz);'#10'var'#10 +
     '  mPuffer: string[10];'#10'begin'#10'  PByte(@AText[1])^ := 1;'#10'  PByte(@mPuffer[1])^ := 1;'#10 +
     'end;'#10'end.');
+end;
+
+procedure TFirstCharAddressTests.ShortStringAliasChainFromIndexIsSilent;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  // FP mORMot2: TShortGuid = TShort39 = string[39] aus einer anderen Unit, Alias über einen Alias.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Basis;'#10'interface'#10'type'#10'  TKurz39 = string[39];'#10 +
+    '  TKennung = TKurz39;'#10'implementation'#10'end.', 'C:\Projekt\Basis.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TFirstCharAddressRule.Create, 'unit Text;'#10'interface'#10'uses'#10 +
+    '  Basis;'#10'function Kennung: TKennung;'#10'implementation'#10'procedure Fuellen(P: PAnsiChar);'#10 +
+    'begin'#10'end;'#10'function Kennung: TKennung;'#10'begin'#10'  Result[0] := #36;'#10 +
+    '  Fuellen(@Result[1]);'#10'end;'#10'end.', mIndex, '', 'Text.pas');
+  Assert.AreEqual(0, Integer(Length(mFound)));
 end;
 
 procedure TFirstCharAddressTests.NoFixWithoutConst;

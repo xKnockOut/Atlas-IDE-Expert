@@ -786,7 +786,8 @@ begin
     FActive := TTypeInfoClasses.ActiveTokens(FContext.Text);
     FActiveRead := True;
   end;
-  if (ATypeBody.Parent <> nil) and TTypeInfoClasses.SwitchAt(FActive, ATypeBody.Parent.StartPos) then
+  if (ATypeBody.Parent <> nil) and TTypeInfoClasses.ClassSwitchAt(FActive, ATypeBody.Parent.Name,
+    ATypeBody.Parent.StartPos) then
   begin
     Exit(True);
   end;
