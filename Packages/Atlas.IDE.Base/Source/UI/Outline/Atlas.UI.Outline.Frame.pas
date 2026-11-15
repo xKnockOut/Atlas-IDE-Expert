@@ -48,7 +48,7 @@ type
     FKindMenu: TPopupMenu;
     FListMenu: TPopupMenu;
     FFollowItem: TMenuItem;
-    function NewButton: TButton;
+    function NewButton(AWidth: Integer): TButton;
     function AddMenuItem(AMenu: TPopupMenu; const ACaption: string; ATag: Integer; AClick: TNotifyEvent): TMenuItem;
     function Scale(AValue: Integer): Integer;
     /// <summary>Die Liste hat ein Fenster oder kann eins bekommen (Formular darüber).</summary>
@@ -183,7 +183,8 @@ const
   cExpanderPx = 14;
   cRowPx = 20;
   /// <summary>Feste Breite des Suchfelds bei 96 dpi; in der fließenden Leiste bricht es um.</summary>
-  cSearchWidth = 200;
+  cButtonWidth = 92;
+  cSortButtonWidth = 150;
   /// <summary>Höhe der Knöpfe der Leiste bei 96 dpi.</summary>
   cButtonHeight = 24;
   /// <summary>Tag der Menüeinträge „Alle zeigen“.</summary>
@@ -241,33 +242,36 @@ end;
 /// <summary>Obere Leiste: Suchfeld und die Knöpfe Sichtbarkeit, Art, Sortierung (fließend).</summary>
 procedure TAtlasOutlineFrame.BuildBar;
 begin
-  // Fließende Leiste: Reihenfolge = Erzeugungsreihenfolge (Suche, Sichtbarkeit, Art, Sortierung wie bisher von
-  // links nach rechts); bei schmalem Fenster brechen die Knöpfe in weitere Zeilen um.
+  // Suchfeld oben über die ganze Breite, darunter die Knöpfe in einer fließenden Leiste (brechen bei schmalem
+  // Fenster um). Vorher stand das Suchfeld mit fester Breite in der Leiste und der Sortierknopf war abgeschnitten.
+  FSearch := TEdit.Create(Self);
+  FSearch.Top := 0;
+  FSearch.Align := alTop;
+  FSearch.AlignWithMargins := True;
+  FSearch.Parent := Self;
+  FSearch.TextHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSearchHint);
+  FSearch.OnChange := SearchChange;
+  FSearch.OnKeyDown := SearchKeyDown;
+  FSearch.OnKeyPress := SearchKeyPress;
+
   FTop := TFlowPanel.Create(Self);
-  FTop.Parent := Self;
+  FTop.Top := FSearch.Top + FSearch.Height + 1;
   FTop.Align := alTop;
+  FTop.Parent := Self;
   FTop.BevelOuter := bvNone;
   FTop.ShowCaption := False;
   FTop.ParentBackground := True;
   FTop.AutoWrap := True;
   FTop.AutoSize := True;
 
-  FSearch := TEdit.Create(Self);
-  FSearch.Parent := FTop;
-  FSearch.AlignWithMargins := True;
-  FSearch.Width := Scale(cSearchWidth);
-  FSearch.TextHint := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineSearchHint);
-  FSearch.OnChange := SearchChange;
-  FSearch.OnKeyDown := SearchKeyDown;
-  FSearch.OnKeyPress := SearchKeyPress;
-
-  FVisibilityButton := NewButton;
+  FVisibilityButton := NewButton(cButtonWidth);
   FVisibilityButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineVisibilityButton) + ' ▾';
   FVisibilityButton.OnClick := VisibilityClick;
-  FKindButton := NewButton;
+  FKindButton := NewButton(cButtonWidth);
   FKindButton.Caption := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineKindButton) + ' ▾';
   FKindButton.OnClick := KindClick;
-  FSortButton := NewButton;
+  // Breiter: „Quelltextreihenfolge“ passte in 92 px nicht.
+  FSortButton := NewButton(cSortButtonWidth);
   FSortButton.OnClick := SortClick;
 end;
 
@@ -317,12 +321,12 @@ end;
 
 { TAtlasOutlineFrameParts }
 
-function TAtlasOutlineFrameParts.NewButton: TButton;
+function TAtlasOutlineFrameParts.NewButton(AWidth: Integer): TButton;
 begin
   Result := TButton.Create(Self);
   Result.Parent := FTop;
   Result.AlignWithMargins := True;
-  Result.Width := Scale(92);
+  Result.Width := Scale(AWidth);
   Result.Height := Scale(cButtonHeight);
 end;
 
