@@ -19,7 +19,10 @@
 // Was dcc beim Einbetten außerdem verlangt (#2309, aus dem Delphi-13-Bau):
 // - die Unit der Routine selbst, sobald ihr Rumpf Verweise hat: Wer
 //   TListView.Columns.Count ohne System.Classes liest, bekommt H2443 für
-//   TCollection.GetCount, auch ohne Vcl.ComCtrls im uses;
+//   TCollection.GetCount, auch ohne Vcl.ComCtrls im uses. Nicht bei System
+//   und SysInit (stehen implizit im uses: TMonitor.Enter, Pos) und nicht bei
+//   Mitgliedern generischer Typen (FListe[I] auf ein TObjectList<T>-Feld
+//   braucht kein System.Generics.Collections);
 // - die Unit hinter einem Alias als Ergebnistyp (TFont.GetStyle: TFontStyles =
 //   System.UITypes.TFontStyles verlangt System.UITypes);
 // - bei einem Feld eines instanziierten generischen Typs (FItems:
@@ -94,6 +97,12 @@ type
     /// <summary>Unit hinter dem Alias des Ergebnistyps von ACallee (TFontStyles = System.UITypes.TFontStyles);
     /// '' ohne.</summary>
     function ResultAliasUnit(const ACallee: TInlineCallee): string;
+    /// <summary>Braucht ein direkter Aufruf von ACallee dessen eigene Unit im uses? Nur bei einem Rumpf mit
+    /// Verweisen, nicht für System und SysInit und nicht für Mitglieder generischer Typen.</summary>
+    class function OwnUnitNeeded(const ACallee: TInlineCallee): Boolean; static;
+    /// <summary>Gehört ACallee zu einem generischen Typ (auch über einen umgebenden Typ) oder ist selbst
+    /// generisch?</summary>
+    class function IsGenericMember(const ACallee: TInlineCallee): Boolean; static;
     function HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
     /// <summary>Füllt FOwnInline und FOwnCandidates aus den Symbolen der eigenen Unit.</summary>
     procedure CollectOwnCandidates;
@@ -411,14 +420,19 @@ begin
   begin
     Exit;
   end;
-  // Dessen Bedarf enthält bei einem Rumpf mit Verweisen auch seine Unit (TList<T>.GetItem:
-  // System.Generics.Collections).
+  // Dessen Bedarf und, bei einem Rumpf mit Verweisen, seine Unit (TList<T>.GetItem: System.Generics.Collections).
+  // Direkt gerufen braucht ein Mitglied eines generischen Typs seine Unit nicht (OwnUnitNeeded), aus dem
+  // eingebetteten Rumpf einer anderen Unit heraus schon (TJSONArray.GetValue).
   for mUnitName in NeedsOf(mTarget).Units do
   begin
     if AUnits.IndexOf(mUnitName) < 0 then
     begin
       AUnits.Add(mUnitName);
     end;
+  end;
+  if not IsWithoutRefs(mTarget.Symbol) and (AUnits.IndexOf(mTarget.OwnerUnit.UnitName) < 0) then
+  begin
+    AUnits.Add(mTarget.OwnerUnit.UnitName);
   end;
 end;
 
@@ -461,6 +475,47 @@ begin
       end;
       Result := UnitOfResolved(mTarget);
       Exit;
+    end;
+  end;
+end;
+
+class function TInlineCallees.OwnUnitNeeded(const ACallee: TInlineCallee): Boolean;
+begin
+  // System und SysInit stehen implizit in jedem uses (TMonitor.Enter, Pos, UpCase). Mitglieder generischer Typen
+  // bettet dcc ohne ihre Unit ein: FListe[I] auf ein TObjectList<T>-Feld einer anderen Unit gibt in Delphi 13
+  // kein H2443 für TList<T>.GetItem, auch ohne System.Generics.Collections im uses.
+  Result := not IsWithoutRefs(ACallee.Symbol) and (IndexText(ACallee.OwnerUnit.UnitName, cImplicitUnits) < 0) and
+    not IsGenericMember(ACallee);
+end;
+
+class function TInlineCallees.IsGenericMember(const ACallee: TInlineCallee): Boolean;
+var
+  mContainer, mName: string;
+  mPosition, mDot: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  Result := ACallee.Symbol.TypeParams <> '';
+  mContainer := ACallee.Symbol.Container;
+  // Von innen nach außen: TDictionary.TKeyCollection gehört über TDictionary<TKey,TValue> zu einem generischen Typ.
+  while not Result and (mContainer <> '') do
+  begin
+    mDot := mContainer.LastIndexOf('.');
+    mName := mContainer.Substring(mDot + 1);
+    if mDot < 0 then
+    begin
+      mContainer := '';
+    end
+    else
+    begin
+      mContainer := mContainer.Substring(0, mDot);
+    end;
+    for mPosition in ACallee.OwnerUnit.SymbolsNamed(mName) do
+    begin
+      mSymbol := ACallee.OwnerUnit.Symbols[mPosition];
+      if SameText(mSymbol.Container, mContainer) and (mSymbol.TypeParams <> '') then
+      begin
+        Result := True;
+      end;
     end;
   end;
 end;
@@ -772,8 +827,9 @@ begin
       end;
     end;
     Result.External := Result.External or (mUnits.Count > 0);
-    // Mit Verweisen braucht der Aufrufer auch die Unit der Routine (TCollection.GetCount, #2309).
-    if not IsWithoutRefs(ACallee.Symbol) and (mUnits.IndexOf(ACallee.OwnerUnit.UnitName) < 0) then
+    // Mit Verweisen braucht der Aufrufer auch die Unit der Routine (TCollection.GetCount, #2309), außer System
+    // und bei Mitgliedern generischer Typen (OwnUnitNeeded).
+    if OwnUnitNeeded(ACallee) and (mUnits.IndexOf(ACallee.OwnerUnit.UnitName) < 0) then
     begin
       mUnits.Add(ACallee.OwnerUnit.UnitName);
     end;
