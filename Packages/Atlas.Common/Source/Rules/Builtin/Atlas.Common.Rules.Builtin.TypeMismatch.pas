@@ -38,7 +38,15 @@
 //                     - Parameterlose Funktion, deren Ergebnis genau den
 //                       prozeduralen Typ des Ziels hat, ohne () zugewiesen oder
 //                       übergeben (#1899, wie E2010): Delphi nimmt dann die
-//                       Funktion selbst. Korrektur: () ergänzen.
+//                       Funktion selbst. Korrektur: () ergänzen. Auch als
+//                       Argument einer Variablen, eines Felds oder einer
+//                       Property von prozeduralem Typ (FOnTree(A, Refresh),
+//                       #2309).
+//                     TProc, TFunc und TPredicate aus System.SysUtils gelten
+//                     auch ohne RTL im Index (Cloud, CI; #2309), wenn die Unit
+//                     des Typs System.SysUtils einbindet und keine Unit
+//                     dahinter einen gleichnamigen Typ deklarieren kann (jede
+//                     ist im Index oder eine Unit von Embarcadero).
 //                     Sonst keine Korrektur: Welche Seite falsch ist, weiß nur
 //                     der Entwickler.
 
@@ -74,10 +82,12 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
+  Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes;
@@ -163,6 +173,12 @@ type
     function ProceduralText(const ASymbol, AType: TResolvedSymbol): string;
     function ProceduralTarget(const ASymbol, AType: TResolvedSymbol; out AShape: TProcShape;
       out AName: string): Boolean;
+    /// <summary>ATypeText als Typ aus System.SysUtils (TProc&lt;string&gt;), wenn der Index ihn aus AFrom nicht
+    /// auflöst, AFrom System.SysUtils einbindet und keine Unit dahinter ihn verdecken kann (#2309).</summary>
+    function RtlType(const AFrom: TUnitIndex; const ATypeText: string; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Typ der Variablen, des Felds bzw. der Property ASymbol; aus System.SysUtils, wenn der Index ihn
+    /// nicht kennt. AUnit: die Unit, aus der seine Parametertypen aufzulösen sind.</summary>
+    function DeclaredType(const ASymbol: TResolvedSymbol; var AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
     function NotCalled(ASource: TSyntaxNode; const ATargetName: string): Boolean;
     function RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
     procedure Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
@@ -981,6 +997,89 @@ begin
   end;
 end;
 
+/// <summary>Kann die Unit AUnitName, die nicht im Index steht, einen Typ TProc, TFunc oder TPredicate deklarieren?
+/// Die Units von Embarcadero außer System.SysUtils tun es nicht; diese steht davor.</summary>
+function MayDeclareRtlName(const AUnitName: string): Boolean;
+const
+  cPrefixes: array[0..11] of string = ('System.', 'Winapi.', 'Vcl.', 'FMX.', 'Data.', 'Xml.', 'Web.', 'Soap.',
+    'REST.', 'FireDAC.', 'Datasnap.', 'IBX.');
+  cUnits: array[0..4] of string = ('System', 'ToolsAPI', 'DesignIntf', 'DesignEditors', 'PaletteAPI');
+var
+  mPrefix: string;
+begin
+  Result := IndexText(AUnitName, cUnits) < 0;
+  for mPrefix in cPrefixes do
+  begin
+    Result := Result and not StartsText(mPrefix, AUnitName);
+  end;
+end;
+
+function TTypeMismatchCheck.RtlType(const AFrom: TUnitIndex; const ATypeText: string;
+  out AType: TResolvedSymbol): Boolean;
+var
+  mReference: TRtlMethodReference;
+  mKnown: TResolvedSymbol;
+  mUnit: TUnitIndex;
+  mUses: TArray<string>;
+  mIndex, mSysUtils: Integer;
+begin
+  AType := Default(TResolvedSymbol);
+  Result := TRtlMethodReferences.Find(ATypeText, mReference) and
+    not FScope.Resolver.ResolveTypeTextFrom(AFrom, ATypeText, mKnown);
+  if not Result then
+  begin
+    Exit;
+  end;
+  // dcc sucht von hinten: Was nach System.SysUtils eingebunden ist, verdeckt dessen Typen.
+  mUses := AFrom.InterfaceUses + AFrom.ImplementationUses;
+  mSysUtils := -1;
+  for mIndex := 0 to High(mUses) do
+  begin
+    if TRtlMethodReferences.IsSysUtils(mUses[mIndex]) then
+    begin
+      mSysUtils := mIndex;
+    end;
+  end;
+  Result := mSysUtils >= 0;
+  for mIndex := mSysUtils + 1 to High(mUses) do
+  begin
+    Result := Result and (((FContext.Index <> nil) and FContext.Index.FindUnit(mUses[mIndex], mUnit)) or
+      not MayDeclareRtlName(mUses[mIndex]));
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  AType.Kind := TResolvedKind.Symbol;
+  AType.SymbolKind := TIndexSymbolKind.TypeAlias;
+  AType.Name := mReference.Name;
+  AType.Signature := mReference.Signature;
+  AType.Bindings := mReference.Bindings;
+end;
+
+function TTypeMismatchCheck.DeclaredType(const ASymbol: TResolvedSymbol; var AType: TResolvedSymbol;
+  out AUnit: TUnitIndex): Boolean;
+var
+  mTypeUnit: TUnitIndex;
+begin
+  if not FScope.Resolver.DeclaringUnit(ASymbol, AUnit) then
+  begin
+    AUnit := FLocal;
+  end;
+  Result := AType.Name <> '';
+  if Result then
+  begin
+    // Parametertypen eines eigenen prozeduralen Typs gelten aus dessen Unit.
+    if FScope.Resolver.DeclaringUnit(AType, mTypeUnit) then
+    begin
+      AUnit := mTypeUnit;
+    end;
+    Exit;
+  end;
+  Result := (ProceduralText(ASymbol, AType) = '') and RtlType(AUnit, TResolverText.FullType(ASymbol.TypeName,
+    ASymbol.TypeArgs), AType);
+end;
+
 function TTypeMismatchCheck.NotCalled(ASource: TSyntaxNode; const ATargetName: string): Boolean;
 var
   mCandidates: TArray<TResolvedSymbol>;
@@ -1055,6 +1154,7 @@ var
   mSymbol, mType: TResolvedSymbol;
   mProcedural: string;
   mShape: TProcShape;
+  mUnit: TUnitIndex;
 
   procedure CheckValue(ASource: TSyntaxNode);
   var
@@ -1084,6 +1184,8 @@ begin
   begin
     Exit;
   end;
+  // TProc<string> ohne RTL im Index (#2309).
+  DeclaredType(mSymbol, mType, mUnit);
   if ProceduralTarget(mSymbol, mType, mShape, mProcedural) then
   begin
     CheckProcedural(Unwrapped(ANode[1]), mShape, mProcedural);
@@ -1279,12 +1381,31 @@ var
     mTarget: TProcShape;
     mName: string;
   begin
-    Result := FScope.Resolver.ResolveTypeTextFrom(mUnit, AParam.TypeName, mType) and
-      ProceduralTarget(Default(TResolvedSymbol), mType, mTarget, mName);
+    Result := FScope.Resolver.ResolveTypeTextFrom(mUnit, AParam.TypeName, mType);
+    if not Result then
+    begin
+      // TProc<string> ohne RTL im Index (#2309).
+      Result := RtlType(mUnit, AParam.TypeName, mType);
+    end;
+    Result := Result and ProceduralTarget(Default(TResolvedSymbol), mType, mTarget, mName);
     if Result and not MatchText(TProcShapes.NormalizedModifier(AParam.Modifier), ['var', 'out']) then
     begin
       CheckProcedural(Unwrapped(AArgument), mTarget, mName);
     end;
+  end;
+
+  // Variable, Feld oder Property von prozeduralem Typ (FOnTree(A, Refresh), #2309): Parameter aus dem Typ.
+  function ProceduralCallee: Boolean;
+  var
+    mSymbol, mType: TResolvedSymbol;
+    mFound: Boolean;
+    mName: string;
+  begin
+    Result := FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, mCallee, mSymbol, mType, mFound) and
+      not mSymbol.IsType and (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+      TIndexSymbolKind.Property_]);
+    Result := Result and FScope.DeclarationSure(mSymbol, mCallee) and not HiddenMember(mCallee, mSymbol);
+    Result := Result and DeclaredType(mSymbol, mType, mUnit) and ProceduralTarget(mSymbol, mType, mShape, mName);
   end;
 
   procedure CheckArgument(AArgument: TSyntaxNode; const AParam: TSignatureParameter);
@@ -1321,13 +1442,19 @@ begin
     Exit;
   end;
   mCallee := ANode[0];
-  if not IsPlainCallee(mCallee) or not SingleRoutine(mCandidate) then
+  if not IsPlainCallee(mCallee) then
   begin
     Exit;
   end;
-  if not TProcShapes.ParseShape(StringReplace(mCandidate.Signature, 'constructor', 'procedure', [rfIgnoreCase]), True,
-    mShape) or
-    (ANode.ChildCount - 1 > Length(mShape.Params)) or not FScope.Resolver.DeclaringUnit(mCandidate, mUnit) then
+  if not ProceduralCallee then
+  begin
+    if not SingleRoutine(mCandidate) or not TProcShapes.ParseShape(StringReplace(mCandidate.Signature, 'constructor',
+      'procedure', [rfIgnoreCase]), True, mShape) or not FScope.Resolver.DeclaringUnit(mCandidate, mUnit) then
+    begin
+      Exit;
+    end;
+  end;
+  if ANode.ChildCount - 1 > Length(mShape.Params) then
   begin
     Exit;
   end;

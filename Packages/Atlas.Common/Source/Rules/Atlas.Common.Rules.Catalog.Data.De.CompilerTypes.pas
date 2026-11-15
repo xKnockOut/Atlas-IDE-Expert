@@ -123,10 +123,11 @@ const
     'leitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozedurale' +
     'n Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference' +
     ' to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument, ebenso eine anonyme Methode wie procedure(const S: strin' +
-    'g) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst).' +
-    ' Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen ' +
-    'immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohn' +
-    'e (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler."',
+    'g) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst),' +
+    ' auch als Argument einer Variablen, eines Felds oder einer Property von prozeduralem Typ (FOnTree(A, Refresh)). TProc, TFunc und TPredicate aus System.SysUtils kennt die Regel auch ohne Quelltext der ' +
+    'RTL im Index, wenn die Unit System.SysUtils einbindet und keine fremde Unit dahinter den Typ verdecken kann. Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben' +
+    ' lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, T' +
+    'eilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler."',
     '    },',
     '{',
     '      "id": "for-in-not-enumerable",',

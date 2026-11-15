@@ -170,6 +170,8 @@ uses
   Atlas.Common.Lsp.SignatureHelp.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureHelp.Tests.pas',
   Atlas.Common.Lsp.SignatureFormat.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas',
   Atlas.Common.Lsp.NestedOverloads.Tests in 'Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas',
+  Atlas.Common.Semantics.FreeRoutineMembers.Tests in 'Common\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.Tests.pas',
+  Atlas.Common.Semantics.RtlMethodReferences.Tests in 'Common\Semantics\Atlas.Common.Semantics.RtlMethodReferences.Tests.pas',
   Atlas.Common.Semantics.SystemIntrinsics.Tests in 'Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas',
   Atlas.Common.Semantics.TypeIdentity.Tests in 'Common\Semantics\Atlas.Common.Semantics.TypeIdentity.Tests.pas',
   Atlas.Common.Semantics.TypeKinds.Tests in 'Common\Semantics\Atlas.Common.Semantics.TypeKinds.Tests.pas',

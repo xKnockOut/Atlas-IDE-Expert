@@ -645,6 +645,8 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.RtlMethodReferences.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
