@@ -4,7 +4,9 @@
 //   empty-statement   Semikolon direkt nach then, do oder else (#912): die
 //                     folgende Zeile läuft immer bzw. die Schleife dreht leer.
 //                     Leere Blöcke begin … end nach then, do oder else ebenso,
-//                     außer mit Kommentar darin (Option allowCommented).
+//                     außer mit Kommentar darin (Option allowCommented) oder
+//                     mit bedingtem Code darin ({$IF …}: Zweige anderer
+//                     Plattformen, Alcinoe-FMX).
 //   destroy-called-directly
 //                     Obj.Destroy als Anweisung statt Obj.Free (#920): bei nil
 //                     knallt es. inherited Destroy und Destroy mit Argumenten
@@ -146,20 +148,24 @@ var
       mTokens[ANext].EndPos), '')])]);
   end;
 
-  // begin end ohne Anweisung ab Token ANext, mit Kommentar darin nur bei allowCommented = false.
+  // begin end ohne Anweisung ab Token ANext, mit Kommentar darin nur bei allowCommented = false. Mit bedingtem
+  // Code darin ({$IF …} bzw. {$ELSE}) ist der Block nur auf dieser Plattform leer: still.
   procedure InspectEmptyBlock(AKeyword, ANext: Integer; ABody: TSyntaxNode);
   var
     mIndex: Integer;
-    mHasComment: Boolean;
+    mHasComment, mConditional: Boolean;
   begin
     mHasComment := False;
+    mConditional := False;
     mIndex := ANext + 1;
     while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ABody.EndOffset) do
     begin
       mHasComment := mHasComment or (mTokens[mIndex].Kind = TPascalTokenKind.Comment);
+      mConditional := mConditional or ((mTokens[mIndex].Kind = TPascalTokenKind.Directive) and
+        (StartsText('{$IF', mTokens[mIndex].Text) or StartsText('{$ELSE', mTokens[mIndex].Text)));
       Inc(mIndex);
     end;
-    if not (mHasComment and mAllowCommented) then
+    if not mConditional and not (mHasComment and mAllowCommented) then
     begin
       mReport.Add(TTextRange.Create(mTokens[AKeyword].StartPos, mTokens[mIndex - 1].EndPos),
         cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(mTokens[AKeyword].Text)]),

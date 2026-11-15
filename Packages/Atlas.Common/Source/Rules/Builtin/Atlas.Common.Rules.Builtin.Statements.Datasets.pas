@@ -11,7 +11,9 @@
 //                     oder CheckBrowseMode in der Routine (#964); still, wenn
 //                     eine andere Routine der Unit Q postet oder Q weitergegeben wird,
 //                     und wenn Q sicher nicht von TDataSet abstammt (#1326: Insert
-//                     und Edit eines ActiveRecord, eines Records oder einer Liste).
+//                     und Edit eines ActiveRecord, eines Records oder einer Liste); ein
+//                     Typparameter hat den Typ seiner Klassen-Einschränkung
+//                     (TMVCRepository<T: TMVCActiveRecord>).
 //   transaction-without-rollback
 //                     StartTransaction (BeginTransaction, BeginTrans) ohne Rollback
 //                     im except des unmittelbar folgenden try (#965); Paare aus der
@@ -66,6 +68,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -560,10 +563,52 @@ var
   mCache: IRuleDerivedCache;
   mFileName: string;
 
+  /// <summary>Typ, den der Typparameter ATypeName der Klasse von ARoutine mindestens hat: bei
+  /// TAblage&lt;T: TSatz&gt; ist ein T ein TSatz. False ohne genau eine Typ-Einschränkung.</summary>
+  function ConstraintType(ARoutine: TSyntaxNode; const ATypeName: string; out AType: TResolvedSymbol): Boolean;
+  var
+    mOwner: string;
+    mUnit: TUnitIndex;
+    mHeader, mParams: TSyntaxNode;
+    mGeneric: TResolvedSymbol;
+    mParam: TGenericParam;
+    mConstraints: TArray<string>;
+  begin
+    Result := False;
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    mParams := nil;
+    if mHeader <> nil then
+    begin
+      mParams := mHeader.FindChild(TSyntaxKind.GenericParams);
+    end;
+    // Der Name trägt keine Typparameter (TAblage.Neu); die erste Gruppe gehört zur Klasse. Gehört sie zur Methode,
+    // passt die Zahl der Typparameter nicht und der Typ bleibt unbekannt.
+    if (ATypeName = '') or (mParams = nil) or (LastDelimiter('.', ARoutine.Name) = 0) then
+    begin
+      Exit;
+    end;
+    mOwner := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1) +
+      Copy(AContext.Text, mParams.StartOffset + 1, mParams.EndOffset - mParams.StartOffset);
+    mUnit := mResolver.ExtractedUnit(AContext.Tree, mFileName);
+    if not mResolver.ResolveTypeTextFrom(mUnit, mOwner, mGeneric) then
+    begin
+      Exit;
+    end;
+    for mParam in TGenericConstraintViolatedRule.ParseParams(mGeneric.Signature) do
+    begin
+      if SameText(mParam.Name, ATypeName) then
+      begin
+        mConstraints := mParam.TypeConstraints;
+        Exit((Length(mConstraints) = 1) and mResolver.ResolveTypeTextFrom(mUnit, mConstraints[0], AType));
+      end;
+    end;
+  end;
+
   /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
   /// ist und die Vorfahrenkette ohne TDataSet vollständig endet oder er keine Klasse ist; bei unbekanntem Typ
-  /// oder abgebrochener Kette ja, wie bisher.</summary>
-  function MayBeDataSet(AStatement: TSyntaxNode): Boolean;
+  /// oder abgebrochener Kette ja, wie bisher. Ein Typparameter der Klasse von ARoutine hat den Typ seiner
+  /// Einschränkung (TMVCRepository&lt;T: TMVCActiveRecord&gt;).</summary>
+  function MayBeDataSet(AStatement, ARoutine: TSyntaxNode): Boolean;
   var
     mTarget: TSyntaxNode;
     mSymbol, mTypeInfo: TResolvedSymbol;
@@ -587,8 +632,11 @@ var
       mResolver := TRuleDerived.Resolver(mCache, AContext);
       mResolver.PinTree(AContext.Tree, mFileName);
     end;
-    if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
-      not mTypeFound then
+    if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) then
+    begin
+      Exit;
+    end;
+    if not mTypeFound and not ConstraintType(ARoutine, mSymbol.TypeName, mTypeInfo) then
     begin
       Exit;
     end;
@@ -808,7 +856,7 @@ var
     Result := (AReceiver <> '') and (mArguments = 0) and MatchText(AName, cDatasetEditMethods);
     Result := Result and not Ends(ARoutine, AReceiver, ANode.EndOffset) and
       not Escapes(ARoutine, AReceiver, ANode.EndOffset);
-    Result := Result and not EndedElsewhere(ARoutine, AReceiver) and MayBeDataSet(ANode);
+    Result := Result and not EndedElsewhere(ARoutine, AReceiver) and MayBeDataSet(ANode, ARoutine);
   end;
 
   procedure CheckCall(ANode, ARoutine: TSyntaxNode);

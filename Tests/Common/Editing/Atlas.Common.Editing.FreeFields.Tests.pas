@@ -233,7 +233,7 @@ const
     '    FButton: TButton;'#10 +
     '    FPanel: TPanel2;'#10 +
     '    FLog: ILog;'#10 +
-    '    FList, FOther: TStringList;'#10 +
+    '    FList, FOther, FEigen: TStringList;'#10 +
     '    FLater: TStringList;'#10 +
     '  public'#10 +
     '    constructor Create(AOwner: TComponent); override;'#10 +
@@ -248,17 +248,19 @@ const
     '  FLog := TFileLog.Create;'#10 +
     '  FList := TStringList.Create;'#10 +
     '  Self.FOther := TStringList.Create;'#10 +
+    '  FEigen := TStringList.Create;'#10 +
     'end;'#10 +
     'destructor TView.Destroy;'#10 +
     'begin'#10 +
     '  FList.Free;'#10 +
     '  FreeAndNil(Self.FOther);'#10 +
+    '  ALFreeAndNil(FEigen, True);'#10 +
     '  inherited;'#10 +
     'end;'#10 +
     'end.';
 begin
   // TButton: Owner Self; TPanel2: TComponent-Nachfahr mit Owner; ILog: Interface; FList, FOther: freigegeben;
-  // FLater: nicht erzeugt.
+  // FEigen: über eine eigene Fassung von FreeAndNil freigegeben (Alcinoe); FLater: nicht erzeugt.
   Assert.AreEqual(0, Integer(Length(Analyze(cText))));
 end;
 

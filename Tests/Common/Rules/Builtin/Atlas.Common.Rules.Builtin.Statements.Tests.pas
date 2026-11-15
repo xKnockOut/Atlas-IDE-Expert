@@ -39,6 +39,8 @@ type
     [Test]
     procedure EmptyBlockDependsOnComment;
     [Test]
+    procedure BlockWithCodeOfOtherPlatformsIsSilent;
+    [Test]
     procedure CorrectFormsAreSilent;
     [Test]
     procedure NestedIfElseBelongsToInner;
@@ -115,6 +117,10 @@ type
     /// an Records und Listen; gemeldet bleibt die Datenmenge und der unbekannte Typ.</summary>
     [Test]
     procedure DatasetEditOnlyOnDataSets;
+    /// <summary>Typparameter mit Klassen-Einschränkung (DMVC TMVCRepository&lt;T: TMVCActiveRecord&gt;): Insert
+    /// auf T ist das der Einschränkung; ohne Einschränkung oder mit Datenmenge bleibt der Befund.</summary>
+    [Test]
+    procedure DatasetEditOnTypeParameters;
     [Test]
     procedure DatasetEditOffAndExclude;
     [Test]
@@ -313,6 +319,21 @@ begin
     '{"rules": {"empty-statement": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Daten.pas'))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, Body(cSource),
     '{"rules": {"empty-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
+end;
+
+procedure TStatementRulesTests.BlockWithCodeOfOtherPlatformsIsSilent;
+var
+  mSource: string;
+begin
+  // Wie die FMX-Units von Alcinoe: Der Block enthält nur Code für andere Plattformen, unter Win32 ist er leer.
+  mSource := Body('  if Fertig then'#10'  begin'#10'    {$REGION ''ANDROID''}'#10'    {$IF defined(ANDROID)}'#10 +
+    '    Fertig := False;'#10'    {$ENDIF}'#10'    {$ENDREGION}'#10'  end'#10'  else'#10'  begin'#10 +
+    '    {$IFDEF IOS}'#10'    Fertig := True;'#10'    {$ELSE}'#10'    {$ENDIF}'#10'  end;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, mSource,
+    '{"rules": {"empty-statement": {"allowCommented": false}}}', 'Daten.pas'))));
+  // Nur {$REGION} macht den Block nicht voll.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create,
+    Body('  if Fertig then'#10'  begin'#10'    {$REGION ''Leer''}'#10'    {$ENDREGION}'#10'  end;'#10)))));
 end;
 
 procedure TStatementRulesTests.AllowCommentedMustBeBoolean;
@@ -933,6 +954,24 @@ begin
   Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[0].Message);
   Assert.AreEqual(28, mFindings[1].Range.StartPos.Line);
   Assert.AreEqual('Nach Insert fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[1].Message);
+end;
+
+procedure TStatementPatternRulesTests.DatasetEditOnTypeParameters;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, 'unit Ablage;'#10'interface'#10 +
+    'type'#10'  TDataSet = class'#10'  public'#10'    procedure Insert;'#10'    procedure Post;'#10'  end;'#10 +
+    '  TSatz = class'#10'  public'#10'    procedure Insert;'#10'  end;'#10 +
+    '  TAblage<T: TSatz> = class'#10'    procedure Neu(const AEintrag: T);'#10'  end;'#10 +
+    '  TMengen<T: TDataSet> = class'#10'    procedure Neu(const AMenge: T);'#10'  end;'#10 +
+    '  TFrei<T> = class'#10'    procedure Neu(const AWert: T);'#10'  end;'#10'implementation'#10 +
+    'procedure TAblage<T>.Neu(const AEintrag: T);'#10'begin'#10'  AEintrag.Insert;'#10'end;'#10 +
+    'procedure TMengen<T>.Neu(const AMenge: T);'#10'begin'#10'  AMenge.Insert;'#10'end;'#10 +
+    'procedure TFrei<T>.Neu(const AWert: T);'#10'begin'#10'  AWert.Insert;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(28, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(32, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TStatementPatternRulesTests.DatasetEditOffAndExclude;

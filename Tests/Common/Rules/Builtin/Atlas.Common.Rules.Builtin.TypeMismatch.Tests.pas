@@ -375,6 +375,9 @@ begin
     OnlyMessage(Body(cVars + '  mAdresse: Pointer;'#10, '  mAdresse := Ptr(mText);'#10)));
   AssertSilent(Body(cVars + '  mAdresse: Pointer;'#10, '  Inc(mZahl, 2);'#10'  Dec(mZahl);'#10 +
     '  mAdresse := Ptr(mZahl);'#10));
+  // Dezimalzahlen über High(Int64) sind UInt64, keine Gleitkommazahlen (Alcinoe: FNV-Startwert, Dec um 10^19).
+  AssertSilent(Body(cVars, '  mGross := Int64(14695981039346656037);'#10 +
+    '  Dec(mGross, 10000000000000000000);'#10));
 end;
 
 procedure TTypeMismatchTests.ProceduralTypes;

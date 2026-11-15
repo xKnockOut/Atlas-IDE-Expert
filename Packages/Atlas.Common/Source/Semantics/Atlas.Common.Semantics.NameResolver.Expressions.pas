@@ -69,6 +69,9 @@ type
     function ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     /// <summary>Symbol, für das der Ausdruck ANode steht; bei Werten das Symbol, dessen Typ der Wert hat.</summary>
     function ExprSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Ruft ANode eine von mehreren gleich gut passenden Überladungen mit verschiedenen Ergebnistypen auf
+    /// (Argumenttyp unbekannt)? Dann ist der Typ des Werts offen, auch wenn ExprSymbol die erste liefert.</summary>
+    function AmbiguousResult(ANode: TSyntaxNode): Boolean;
     /// <summary>Typnamen der Argumente von ANode ab dem Kind AFirst; '' = unbekannt.</summary>
     function ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
     /// <summary>Überladungen, die zu AArgCount Argumenten der Typen AArgTypes passen; die mit den meisten genau
@@ -90,6 +93,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
+  System.StrUtils,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Extractor;
 
@@ -150,6 +154,13 @@ begin
       Result := Result + [AFitting[mIndex]];
     end;
   end;
+end;
+
+/// <summary>Ob AParam und AArg derselbe Typ sind; string und UnicodeString gelten als gleich.</summary>
+function SameType(const AParam, AArg: string): Boolean;
+begin
+  Result := SameText(AParam, AArg) or
+    (MatchText(AParam, ['string', 'UnicodeString']) and MatchText(AArg, ['string', 'UnicodeString']));
 end;
 
 { TResolverExpressions }
@@ -527,6 +538,11 @@ begin
     begin
       Inc(Result);
     end;
+    // Gleicher Typ zählt mehr als gleiche Familie: Kopie(AnsiString)/Kopie(string) mit string-Argument.
+    if mSame and SameType(ACandidate.ParamTypes[mArg], AArgTypes[mArg]) then
+    begin
+      Inc(Result);
+    end;
   end;
 end;
 
@@ -590,6 +606,31 @@ begin
     Result := NodeSymbol(ANode, AResult);
   finally
     FPlace.InferDepth := FPlace.InferDepth - 1;
+  end;
+end;
+
+function TResolverExpressions.AmbiguousResult(ANode: TSyntaxNode): Boolean;
+var
+  mCandidates: TArray<TResolvedSymbol>;
+  mCandidate: TResolvedSymbol;
+begin
+  Result := False;
+  if (ANode = nil) or (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  mCandidates := ExprCandidates(ANode[0]);
+  if (Length(mCandidates) < 2) or mCandidates[0].IsType then
+  begin
+    Exit;
+  end;
+  mCandidates := SelectOverloads(mCandidates, ANode.ChildCount - 1, ArgTypes(ANode, 1));
+  for mCandidate in mCandidates do
+  begin
+    if not SameText(mCandidate.TypeName, mCandidates[0].TypeName) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

@@ -29,8 +29,9 @@ const
     '      "group": "database",',
     '      "description": "After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on' +
     ' scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save b' +
-    'utton) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end' +
-    ' of the try part and Cancel; raise; in the except part.",',
+    'utton) and when the dataset is passed on after Edit (argument, assignment, with). A type parameter with a class constraint (TStore<T: TRecord>) has the type of its constraint; if that does not descend' +
+    ' from TDataSet, the rule stays silent. Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the ' +
+    'except part.",',
     '      "bad": "tblKunde.Edit;\ntblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\nProtokollieren;",',
     '      "good": "tblKunde.Edit;\ntry\n  tblKunde.FieldByName(''Status'').AsInteger := Ord(ksAktiv);\n  tblKunde.Post;\nexcept\n  tblKunde.Cancel;\n  raise;\nend;\nProtokollieren;",',
     '      "safeFix": false',

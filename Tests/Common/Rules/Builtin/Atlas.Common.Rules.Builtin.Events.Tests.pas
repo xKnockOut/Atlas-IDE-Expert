@@ -163,6 +163,12 @@ begin
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  Writeln(Assigned(FBusy) and FBusy());'#10));
   TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if not Assigned(FBusy) or not FBusy() then'#10'    Inc(FWert);'#10));
+  // Mit Klammern um die Glieder (Alcinoe: "(not assigned(RetrieveCachedData)) or (not RetrieveCachedData(…))").
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if (FWert = 0) or (not Assigned(FBusy)) or (not FBusy()) then'#10 +
+    '    Inc(FWert);'#10));
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if (FBusy <> nil) and (FBusy()) then'#10'    Inc(FWert);'#10));
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if Assigned(FOnChange) and FBusy() then'#10'    Inc(FWert);'#10));
   // Falsche Richtung: gemeldet.

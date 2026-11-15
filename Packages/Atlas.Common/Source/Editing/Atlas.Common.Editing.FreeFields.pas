@@ -7,7 +7,8 @@
 //     privaten Methode der Klasse, die er (auch über weitere private Methoden)
 //     aufruft. Die Reihenfolge der ersten Erzeugung zählt.
 //   - Freigegeben: FFeld.Free, FFeld.Destroy, FFeld.DisposeOf oder
-//     FreeAndNil(FFeld) in irgendeiner Methode der Klasse.
+//     FreeAndNil(FFeld) in irgendeiner Methode der Klasse, ebenso eigene
+//     Fassungen wie ALFreeAndNil(FFeld, …) (Name endet auf FreeAndNil).
 //   - Ausgenommen: Felder vom Interface-, Record- oder anderem Nicht-Klassentyp,
 //     Records mit Create (TStopwatch.Create), Komponenten mit einem Owner
 //     ungleich nil (TComponent-Nachfahren laut Datei, Index und einer Liste
@@ -816,13 +817,16 @@ end;
 
 procedure TClassAnalyzer.CheckCall(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
 begin
-  if (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) then
+  // Eigene Fassungen von FreeAndNil mit weiteren Parametern geben ihr erstes Argument ebenso frei
+  // (Alcinoe: ALFreeAndNil(FFeld[, ADelayed])).
+  if (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and
+    EndsText('FreeAndNil', ANode[0].Name) then
   begin
-    if SameText(ANode[0].Name, 'FreeAndNil') then
-    begin
-      MarkFreed(FreedRef(ANode[1]), AFreed);
-    end
-    else if SameText(ANode[0].Name, 'Exit') then
+    MarkFreed(FreedRef(ANode[1]), AFreed);
+  end
+  else if (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    if SameText(ANode[0].Name, 'Exit') then
     begin
       SetUnclear(FieldRef(ANode[1]), cTexts[TFreeFieldsText.IsReturnedBy].Fmt([AMethod]));
     end;

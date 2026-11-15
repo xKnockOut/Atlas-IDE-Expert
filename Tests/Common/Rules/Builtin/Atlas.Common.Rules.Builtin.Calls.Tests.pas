@@ -25,6 +25,10 @@ type
     procedure StatementWithoutParentheses;
     [Test]
     procedure NestedRoutine;
+    /// <summary>Eine freie Routine im implementation-Teil ist erst ab ihrer Deklaration sichtbar: Aufrufe davor
+    /// meinen die gleichnamige aus uses bzw. System (DelphiAST: Delete mit TArray weiter unten).</summary>
+    [Test]
+    procedure RoutineDeclaredAfterCall;
     [Test]
     procedure RoutineFromIndex;
     [Test]
@@ -223,6 +227,26 @@ begin
     '  procedure Teilen(Wert: Integer); overload;'#10'  begin'#10'  end;'#10 +
     '  procedure Teilen(Wert, Rest: Integer); overload;'#10'  begin'#10'  end;'#10 +
     'begin'#10'  Teilen(7);'#10'  Teilen(7, 1);'#10'end;'#10'end.');
+end;
+
+procedure TCallRulesTests.RoutineDeclaredAfterCall;
+const
+  cLater = 'procedure Teilen(var Werte: TArray<string>; Index: Integer);'#10'begin'#10'end;'#10;
+begin
+  Silent('unit Spaeter;'#10'interface'#10'implementation'#10'procedure Lesen(var S: string);'#10'begin'#10 +
+    '  Teilen(S, 1, 2);'#10'end;'#10 + cLater + 'end.');
+  // Dahinter gilt sie; ebenso überall, wenn sie im interface-Teil steht oder vorwärts deklariert ist.
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'implementation'#10 + cLater + 'procedure Lesen(var S: TArray<string>);'#10 +
+    'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10'end.'));
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'procedure Teilen(var Werte: TArray<string>; Index: Integer);'#10 +
+    'implementation'#10'procedure Lesen(var S: TArray<string>);'#10'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10 +
+    cLater + 'end.'));
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'implementation'#10 +
+    'procedure Teilen(var Werte: TArray<string>; Index: Integer); forward;'#10 +
+    'procedure Lesen(var S: TArray<string>);'#10'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10 + cLater + 'end.'));
 end;
 
 procedure TCallRulesTests.RoutineFromIndex;

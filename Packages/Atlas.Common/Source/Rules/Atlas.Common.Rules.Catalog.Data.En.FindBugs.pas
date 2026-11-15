@@ -148,7 +148,8 @@ const
     '      "severity": "error",',
     '      "group": "find-bugs",',
     '      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name wi' +
-    'th a different header is reported by signature-mismatch instead.",',
+    'th a different header is reported by signature-mismatch instead. Bodies in include files of the implementation section ({$I}, {$INCLUDE}, also nested) count as well; if one cannot be read, the confide' +
+    'nce drops to medium.",',
     '      "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",',
     '      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend.",',
     '      "safeFix": false',
@@ -478,10 +479,11 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "find-bugs",',
-    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf): a memory l' +
-    'eak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObjectList and TObjectDictionary fields are normal fields. Me' +
-    'dium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inheri' +
-    'ted in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; settings and suppressions with that id still apply.",',
+    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil or a routine ending in FreeAndNil ' +
+    'such as ALFreeAndNil, Destroy or DisposeOf): a memory leak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObject' +
+    'List and TObjectDictionary fields are normal fields. Medium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with over' +
+    'ride and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; setting' +
+    's and suppressions with that id still apply.",',
     '      "bad": "constructor TImport.Create;\nbegin\n  FZeilen := TStringList.Create;\n  FFehler := TStringList.Create;\nend;\n\ndestructor TImport.Destroy;\nbegin\n  FZeilen.Free;\n  inherited;\nend;",',
     '      "good": "destructor TImport.Destroy;\nbegin\n  FFehler.Free;\n  FZeilen.Free;\n  inherited;\nend;",',
     '      "options": [',
@@ -527,7 +529,8 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "A semicolon right after then, do or else ends the statement: the following line always runs, or the loop spins empty. An empty begin … end after then, do or else is reported too,' +
-    ' unless it contains an explanatory comment (option allowCommented). A semicolon right before end, until, except or finally changes nothing and is not reported. Quick fix: remove the semicolon.",',
+    ' unless it contains an explanatory comment (option allowCommented) or code for other platforms in {$IFDEF}/{$ELSE}. A semicolon right before end, until, except or finally changes nothing and is not re' +
+    'ported. Quick fix: remove the semicolon.",',
     '      "bad": "if Liste.Count = 0 then;\n  raise EKeineDaten.Create(''Keine Daten'');",',
     '      "good": "if Liste.Count = 0 then\n  raise EKeineDaten.Create(''Keine Daten'');",',
     '      "options": [',
@@ -971,10 +974,10 @@ const
     '      "group": "find-bugs",',
     '      "description": "FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation foll' +
     'ows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural type' +
-    's of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call, or \"if not Assigned(F) then Exit/' +
-    'raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadTex' +
-    't := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a statement of its own in a ' +
-    'block.",',
+    's of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call (also in parentheses), or \"if not ' +
+    'Assigned(F) then Exit/raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected depende' +
+    'ncies such as FReadText := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a stat' +
+    'ement of its own in a block.",',
     '      "bad": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  FOnChange(Self);\nend;",',
     '      "good": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  if Assigned(FOnChange) then\n    FOnChange(Self);\nend;",',
     '      "safeFix": false',

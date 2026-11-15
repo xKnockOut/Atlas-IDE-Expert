@@ -383,6 +383,28 @@ begin
   end;
 end;
 
+/// <summary>Stehen alle Kandidaten erst hinter dem Aufruf ACallee, als freie Routinen außerhalb des
+/// interface-Teils derselben Datei? Dort sind sie noch nicht sichtbar: dcc nimmt die gleichnamige Routine aus
+/// uses bzw. System (DelphiAST: Delete(var TArray&lt;string&gt;; Index) weiter unten, darüber System.Delete).</summary>
+function DeclaredAfterCall(const ACandidates: TArray<TResolvedSymbol>; const AFileName: string;
+  ACallee: TSyntaxNode): Boolean;
+var
+  mCandidate: TResolvedSymbol;
+  mStart: TTextPosition;
+begin
+  Result := ACandidates <> nil;
+  for mCandidate in ACandidates do
+  begin
+    mStart := mCandidate.Range.StartPos;
+    if not SameText(mCandidate.FileName, AFileName) or (mCandidate.Container <> '') or mCandidate.InInterface or
+      (mStart.Line < ACallee.StartPos.Line) or
+      ((mStart.Line = ACallee.StartPos.Line) and (mStart.Character <= ACallee.StartPos.Character)) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
 procedure TArgumentCountMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
@@ -524,7 +546,8 @@ var
     AParameters := '';
     mCallPath := PathOf(ACallee.StartPos);
     mCandidates := mResolver.CallCandidates(AContext.Tree, mFileName, ACallee);
-    if (Length(mCandidates) = 0) or mResolver.MayBeHiddenMember(AContext.Tree, mFileName, ACallee, mCandidates[0]) then
+    if (Length(mCandidates) = 0) or mResolver.MayBeHiddenMember(AContext.Tree, mFileName, ACallee, mCandidates[0]) or
+      DeclaredAfterCall(mCandidates, mFileName, ACallee) then
     begin
       Exit;
     end;
