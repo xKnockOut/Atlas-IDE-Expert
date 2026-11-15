@@ -15,12 +15,16 @@
 //     „nicht ausgewertet“. Zum nil-Glied einer Klasse sucht Atlas das Feld, dessen Versatz die Adresse ist:
 //     geschätzt vom Server, nachgeprüft über NativeInt(@TKlasse(nil).FFeld).
 //   - Ergebnis: genau eine Ursache, sonst „nicht eindeutig“ mit allen geprüften Gliedern.
+//   - TAtlasAvStop: Ablauf am Halt ohne IDE (#1967): Ort und Kopfzeile, nur das Modul der Fehleradresse (#1820),
+//     Warten auf das Ende des Dialogs der IDE, Fehlschlag der Zerlegung, unterstrichener Bereich.
 
 interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Lsp.AccessChains;
+  Atlas.Core.Lsp.AccessChains,
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Exceptions;
 
 type
   {$SCOPEDENUMS ON}
@@ -161,6 +165,44 @@ type
     /// <summary>Liegt AValue nahe hinter einem Füllmuster (Feld eines freigegebenen Objekts)?</summary>
     class function NearFreedPattern(AValue: UInt64; APointerSize: Integer): Boolean; static;
     class function HexText(AValue: UInt64): string; static;
+  end;
+
+  {$SCOPEDENUMS ON}
+  /// <summary>Warten auf den Dialog der IDE: verwerfen, weiter warten, erklären.</summary>
+  TAtlasAvWaitStep = (Drop, Wait, Go);
+
+  /// <summary>Zerlegung ohne Ergebnis: Server antwortet nicht bzw. keine Ketten in der Zeile.</summary>
+  TAtlasAvFailure = (None, NoServer, NoChains);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Unterstrichener Bereich: Zeile (0-basiert) und Zeichen von bis.</summary>
+  TAtlasAvUnderlineRange = record
+    Line: Integer;
+    StartCharacter: Integer;
+    EndCharacter: Integer;
+  end;
+
+  TAtlasAvStop = class
+  public const
+    /// <summary>So viele ruhige Takte ohne modalen Dialog, bevor Atlas erklärt.</summary>
+    cQuietTicks = 2;
+  public
+    /// <summary>„Datei:Zeile“ (Zeile 0-basiert); ohne Zeile nur der Name.</summary>
+    class function Place(const AFileName: string; ALine: Integer): string; static;
+    /// <summary>„Klasse: Meldung (Ort)“.</summary>
+    class function Header(const AException: TAtlasDebugException; const APlace: string): string; static;
+    /// <summary>Nur das Modul nennen: oberster Rahmen fehlt, ohne Quelltext oder nicht eigener Code.</summary>
+    class function ModuleOnly(const AFrames: TAtlasDebugFrames): Boolean; static;
+    /// <summary>Ein Takt des Wartens: weitergelaufen oder zu lange (AElapsedMs über ALimitMs) verwerfen; solange
+    /// ein modaler Dialog offen ist, AQuiet auf 0; nach cQuietTicks ruhigen Takten erklären.</summary>
+    class function WaitStep(AStillStopped: Boolean; AElapsedMs, ALimitMs: UInt64; AModal: Boolean;
+      var AQuiet: Integer): TAtlasAvWaitStep; static;
+    /// <summary>Warum die Zerlegung AChains nichts liefert; None, wenn es Ketten gibt.</summary>
+    class function Failure(const AChains: TAtlasAvChains): TAtlasAvFailure; static;
+    /// <summary>Schuldiges Glied in seiner ersten Zeile aus ALines; über mehrere Zeilen bis zum Zeilenende ohne
+    /// Leerzeichen. False ohne Glied oder Zeile.</summary>
+    class function Underline(const AVerdict: TAtlasAvVerdict; const ALines: TArray<string>;
+      out ARange: TAtlasAvUnderlineRange): Boolean; static;
   end;
 
 implementation
@@ -871,6 +913,95 @@ end;
 function TAtlasAvAnalysis.LinkOf(ACheck: Integer): TAtlasAvLink;
 begin
   Result := FChains.Chains[FChecks[ACheck].Chain].Links[FChecks[ACheck].Link];
+end;
+
+{ TAtlasAvStop }
+
+class function TAtlasAvStop.Place(const AFileName: string; ALine: Integer): string;
+begin
+  // Ohne Zeile (nur das Modul bekannt, #1820) nur der Name.
+  if ALine < 0 then
+  begin
+    Exit(ExtractFileName(AFileName));
+  end;
+  Result := Format('%s:%d', [ExtractFileName(AFileName), ALine + 1]);
+end;
+
+class function TAtlasAvStop.Header(const AException: TAtlasDebugException; const APlace: string): string;
+begin
+  Result := AException.ExceptionClass;
+  if AException.Message <> '' then
+  begin
+    Result := Result + ': ' + AException.Message;
+  end;
+  Result := Result + ' (' + APlace + ')';
+end;
+
+class function TAtlasAvStop.ModuleOnly(const AFrames: TAtlasDebugFrames): Boolean;
+begin
+  Result := (Length(AFrames) = 0) or not AFrames[0].HasSource or not AFrames[0].Own;
+end;
+
+class function TAtlasAvStop.WaitStep(AStillStopped: Boolean; AElapsedMs, ALimitMs: UInt64; AModal: Boolean;
+  var AQuiet: Integer): TAtlasAvWaitStep;
+begin
+  if not AStillStopped or (AElapsedMs > ALimitMs) then
+  begin
+    Exit(TAtlasAvWaitStep.Drop);
+  end;
+  // Solange ein Dialog offen ist, könnte der Benutzer noch fortsetzen.
+  if AModal then
+  begin
+    AQuiet := 0;
+    Exit(TAtlasAvWaitStep.Wait);
+  end;
+  Inc(AQuiet);
+  if AQuiet < cQuietTicks then
+  begin
+    Exit(TAtlasAvWaitStep.Wait);
+  end;
+  Result := TAtlasAvWaitStep.Go;
+end;
+
+class function TAtlasAvStop.Failure(const AChains: TAtlasAvChains): TAtlasAvFailure;
+begin
+  if not AChains.Found then
+  begin
+    Result := TAtlasAvFailure.NoServer;
+  end
+  else if AChains.Chains = nil then
+  begin
+    Result := TAtlasAvFailure.NoChains;
+  end
+  else
+  begin
+    Result := TAtlasAvFailure.None;
+  end;
+end;
+
+class function TAtlasAvStop.Underline(const AVerdict: TAtlasAvVerdict; const ALines: TArray<string>;
+  out ARange: TAtlasAvUnderlineRange): Boolean;
+var
+  mCulprit: TAtlasAvLink;
+begin
+  ARange := Default(TAtlasAvUnderlineRange);
+  mCulprit := AVerdict.Culprit;
+  Result := AVerdict.HasCulprit and (ALines <> nil) and (mCulprit.StartLine >= 0) and
+    (mCulprit.StartLine <= High(ALines));
+  if not Result then
+  begin
+    Exit;
+  end;
+  ARange.Line := mCulprit.StartLine;
+  ARange.StartCharacter := mCulprit.StartCharacter;
+  if mCulprit.EndLine = mCulprit.StartLine then
+  begin
+    ARange.EndCharacter := mCulprit.EndCharacter;
+  end
+  else
+  begin
+    ARange.EndCharacter := Length(TrimRight(ALines[mCulprit.StartLine]));
+  end;
 end;
 
 end.

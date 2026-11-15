@@ -144,6 +144,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
+  Atlas.Core.Debug.StepFilterEdit,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Strings,
   Atlas.IDE.Foundation.Settings,
@@ -285,21 +286,25 @@ class procedure TAtlasIdeDebugStepFilter.Traced(AKind: TAtlasTraceKind; AOrigin:
 var
   mDepth: Integer;
 begin
-  if (AKind = TAtlasTraceKind.TraceToSource) or FStep.Bypass then
-  begin
-    // Umschalt+F7 bzw. „Trotzdem hineinspringen“: einmal ohne Filter.
-    FStep.Bypass := False;
-    FRun.Cancel;
-    Exit;
-  end;
-  if AOrigin = TAtlasTraceOrigin.Atlas then
-  begin
-    // Atlas springt nach „Bis zur Rückkehr“ selbst wieder hinein: derselbe Lauf, der nächste Halt gehört dazu.
-    if FRun.Phase <> TAtlasStepFilterPhase.Idle then
-    begin
-      FStep.Stop := TAtlasIdeDebugSession.StopCount;
-    end;
-    Exit;
+  case TAtlasStepFilterEdit.Trace(AKind = TAtlasTraceKind.TraceToSource, FStep.Bypass,
+    AOrigin = TAtlasTraceOrigin.Atlas) of
+    TAtlasStepTrace.Bypass:
+      begin
+        // Umschalt+F7 bzw. „Trotzdem hineinspringen“: einmal ohne Filter.
+        FStep.Bypass := False;
+        FRun.Cancel;
+        Exit;
+      end;
+    TAtlasStepTrace.OwnStep:
+      begin
+        // Atlas springt nach „Bis zur Rückkehr“ selbst wieder hinein: derselbe Lauf, der nächste Halt gehört dazu.
+        if FRun.Phase <> TAtlasStepFilterPhase.Idle then
+        begin
+          FStep.Stop := TAtlasIdeDebugSession.StopCount;
+        end;
+        Exit;
+      end;
+    TAtlasStepTrace.UserStep: ;
   end;
   FRun.Cancel;
   if not Options.Enabled then
@@ -322,7 +327,7 @@ begin
     Exit;
   end;
   // Nur der Halt direkt nach dem Schritt bzw. nach „Bis zur Rückkehr“ gehört dazu.
-  if TAtlasIdeDebugSession.StopCount <> FStep.Stop + 1 then
+  if not TAtlasStepFilterEdit.BelongsToRun(TAtlasIdeDebugSession.StopCount, FStep.Stop) then
   begin
     FRun.Cancel;
     Exit;
@@ -399,22 +404,28 @@ class function TAtlasIdeDebugStepFilter.HasBreakpoint(const AFileName, AResolved
 var
   mServices: IOTADebuggerServices;
   mBreakpoint: IOTASourceBreakpoint;
-  mIndex: Integer;
+  mIndex, mCount: Integer;
+  mBreakpoints: TArray<TAtlasStepBreakpoint>;
 begin
   Result := False;
   if not Supports(BorlandIDEServices, IOTADebuggerServices, mServices) then
   begin
     Exit;
   end;
+  SetLength(mBreakpoints, mServices.SourceBkptCount);
+  mCount := 0;
   for mIndex := 0 to mServices.SourceBkptCount - 1 do
   begin
     mBreakpoint := mServices.SourceBkpts[mIndex];
-    if (mBreakpoint <> nil) and mBreakpoint.Enabled and (mBreakpoint.LineNumber = ALine + 1) and
-      (SameText(mBreakpoint.FileName, AFileName) or SameText(mBreakpoint.FileName, AResolved)) then
+    if mBreakpoint <> nil then
     begin
-      Exit(True);
+      mBreakpoints[mCount] := TAtlasStepBreakpoint.Create(mBreakpoint.FileName, mBreakpoint.LineNumber,
+        mBreakpoint.Enabled);
+      Inc(mCount);
     end;
   end;
+  SetLength(mBreakpoints, mCount);
+  Result := TAtlasStepFilterEdit.BreakpointAt(mBreakpoints, AFileName, AResolved, ALine);
 end;
 
 class function TAtlasIdeDebugStepFilter.Lookup(const AFileName: string; ALine: Integer;
@@ -768,7 +779,7 @@ class procedure TAtlasIdeDebugStepFilter.SkipAtCursor;
 var
   mRoutine: TAtlasStepRoutine;
   mOptions: TAtlasStepFilterOptions;
-  mVerdict: TAtlasStepVerdict;
+  mEdit: TAtlasStepSkipEdit;
   mStored: TAtlasPluginSettings;
 begin
   if not RoutineAtCursor(mRoutine) then
@@ -777,17 +788,16 @@ begin
   end;
   mStored := TAtlasIdeSettings.Stored;
   mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
-  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
-  if mVerdict.Filtered then
-  begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
-      [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
-  end
-  else
-  begin
-    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, TStepFilterNames.WithPattern(mOptions.Patterns,
-      mRoutine.Name));
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
+  mEdit := TAtlasStepFilterEdit.Skip(mOptions, mRoutine);
+  case mEdit.Outcome of
+    TAtlasStepSkipOutcome.Already:
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAlready,
+        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mEdit.Verdict)]));
+    TAtlasStepSkipOutcome.Added:
+      begin
+        SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, mEdit.Patterns);
+        Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterAdded, [mRoutine.Name]));
+      end;
   end;
   if not mStored.DebugStepFilters then
   begin
@@ -799,9 +809,8 @@ class procedure TAtlasIdeDebugStepFilter.UnskipAtCursor;
 var
   mRoutine: TAtlasStepRoutine;
   mOptions: TAtlasStepFilterOptions;
-  mVerdict: TAtlasStepVerdict;
+  mEdit: TAtlasStepUnskipEdit;
   mStored: TAtlasPluginSettings;
-  mRemoved: Boolean;
 begin
   if not RoutineAtCursor(mRoutine) then
   begin
@@ -809,29 +818,22 @@ begin
   end;
   mStored := TAtlasIdeSettings.Stored;
   mOptions := TAtlasStepFilterOptions.Create(True, mStored.DebugStepFilterKinds, mStored.DebugStepFilterPatterns);
-  mRemoved := TStepFilterNames.IndexOfPattern(mOptions.Patterns, mRoutine.Name) >= 0;
-  if mRemoved then
+  mEdit := TAtlasStepFilterEdit.Unskip(mOptions, mRoutine);
+  if mEdit.Changed then
   begin
-    mOptions.Patterns := TStepFilterNames.WithoutPattern(mOptions.Patterns, mRoutine.Name);
-    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, mOptions.Patterns);
+    SaveOptions(mStored.DebugStepFilters, mOptions.Kinds, mEdit.Patterns);
   end;
-  // Weitere Muster oder Arten bleiben, wie sie sind: Der Benutzer erfährt, was noch filtert.
-  mVerdict := TAtlasStepFilter.Verdict(mOptions, mRoutine);
-  case mVerdict.Kind of
-    TAtlasStepVerdictKind.Pattern:
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern, [mRoutine.Name, mVerdict.Pattern]));
-    TAtlasStepVerdictKind.Kind:
+  case mEdit.Outcome of
+    TAtlasStepUnskipOutcome.StillByPattern:
+      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByPattern,
+        [mRoutine.Name, mEdit.Verdict.Pattern]));
+    TAtlasStepUnskipOutcome.StillByKind:
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterStillByKind,
-        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mVerdict)]));
-  else
-    if mRemoved then
-    begin
+        [mRoutine.Name, TAtlasStepFilterTexts.VerdictText(mEdit.Verdict)]));
+    TAtlasStepUnskipOutcome.Removed:
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterRemoved, [mRoutine.Name]));
-    end
-    else
-    begin
+    TAtlasStepUnskipOutcome.NotSkipped:
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterNotSkipped, [mRoutine.Name]));
-    end;
   end;
 end;
 

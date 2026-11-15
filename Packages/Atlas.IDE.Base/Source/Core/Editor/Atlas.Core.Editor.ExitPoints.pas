@@ -20,7 +20,9 @@ interface
 
 uses
   System.SysUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette;
 
 {$SCOPEDENUMS ON}
 
@@ -89,6 +91,11 @@ type
     /// <summary>Text der Marke; AOne für einen Austritt, AMany mit %d, AMissing wird mit " · " angehängt.
     /// </summary>
     class function BadgeText(const ASet: TAtlasExitPointSet; const AOne, AMany, AMissing: string): string; static;
+    /// <summary>Austrittspunkte gibt es in Pascal-Quelltexten (.pas, .dpr, .dpk, .inc).</summary>
+    class function Handles(const AFileName: string): Boolean; static;
+    /// <summary>Farbe einer Stelle: Zuweisung grün, fehlendes Ergebnis und Quelle rot, Schleife im Akzent, sonst
+    /// Warnfarbe.</summary>
+    class function RoleColor(const AColors: TAtlasColors; ARole: TAtlasExitPointRole): TAtlasColor; static;
   end;
 
 {$SCOPEDENUMS OFF}
@@ -96,6 +103,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.Generics.Collections,
   Atlas.Text.Chars;
 
@@ -402,6 +410,26 @@ begin
   if ASet.ResultMissing then
   begin
     Result := Result + ' ' + #$00B7 + ' ' + AMissing;
+  end;
+end;
+
+
+class function TAtlasExitPoints.Handles(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
+end;
+
+class function TAtlasExitPoints.RoleColor(const AColors: TAtlasColors; ARole: TAtlasExitPointRole): TAtlasColor;
+begin
+  case ARole of
+    TAtlasExitPointRole.Assign:
+      Result := AColors.Add;
+    TAtlasExitPointRole.Missing, TAtlasExitPointRole.Source:
+      Result := AColors.Error;
+    TAtlasExitPointRole.Loop:
+      Result := AColors.Accent;
+  else
+    Result := AColors.Warn;
   end;
 end;
 

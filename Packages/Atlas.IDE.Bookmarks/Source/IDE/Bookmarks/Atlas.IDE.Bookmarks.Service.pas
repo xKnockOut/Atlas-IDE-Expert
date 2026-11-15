@@ -149,6 +149,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Bookmarks.Quick,
+  Atlas.Core.Bookmarks.Plan,
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.UI.Bookmarks.Dialog,
@@ -167,7 +168,7 @@ const
 
 function Key(const APath: string): string;
 begin
-  Result := LowerCase(Trim(APath)).Replace('/', '\');
+  Result := TAtlasBookmarksPlan.Key(APath);
 end;
 
 function NowUtc: TDateTime;
@@ -186,8 +187,8 @@ end;
 
 function Available(AReport: Boolean): Boolean;
 begin
-  Result := (TAtlasIdeBookmarks.FState.Lists <> nil) and (TAtlasIdeSettings.Current.BookmarksNamed or
-    TAtlasIdeSettings.Current.QuickBookmarks);
+  Result := (TAtlasIdeBookmarks.FState.Lists <> nil) and
+    TAtlasBookmarksPlan.Available(TAtlasIdeSettings.Current.BookmarksNamed, TAtlasIdeSettings.Current.QuickBookmarks);
   if not Result and AReport and (TAtlasIdeBookmarks.FState.Lists <> nil) then
   begin
     TAtlasIdeBookmarks.Say(TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksDisabled));
@@ -463,7 +464,7 @@ begin
   // Schnelle Lesezeichen gehören in ihre Spalte, nummerierte benannte ebenfalls, solange sie sichtbar ist.
   for mMark in mCurrent.AtLine(AFileName, ALine) do
   begin
-    if (mMark.Kind = TAtlasBookmarkKind.Named) and not (ColumnShown and (mMark.Number > 0)) then
+    if TAtlasBookmarksPlan.InNamedGutter(mMark.Kind = TAtlasBookmarkKind.Named, mMark.Number, ColumnShown) then
     begin
       Result := Result + [mMark];
     end;
@@ -652,7 +653,7 @@ end;
 
 class procedure TAtlasIdeBookmarks.ExpireStatus;
 begin
-  if (FState.StatusAt = 0) or (TThread.GetTickCount64 - FState.StatusAt < cStatusMs) then
+  if not TAtlasBookmarksPlan.StatusExpired(FState.StatusAt, TThread.GetTickCount64, cStatusMs) then
   begin
     Exit;
   end;
@@ -706,8 +707,8 @@ end;
 class function TAtlasIdeBookmarks.ColumnShown: Boolean;
 begin
   // Nicht allein die Einstellung: Fehlt die Spalte, blieben Marker sonst ganz unsichtbar (#1281).
-  Result := FState.ColumnPainted and TAtlasIdeSettings.Current.QuickBookmarks and
-    TAtlasIdeSettings.Current.QuickBookmarksGutter;
+  Result := TAtlasBookmarksPlan.ColumnShown(FState.ColumnPainted, TAtlasIdeSettings.Current.QuickBookmarks,
+    TAtlasIdeSettings.Current.QuickBookmarksGutter);
 end;
 
 class function TAtlasIdeBookmarks.PrepareFile(const AFileName: string; out AProject, AText: string;
@@ -740,11 +741,7 @@ begin
   begin
     mCommand := Default(TAtlasCommand);
     mCommand.Id := mMark.Id;
-    mCommand.Caption := mMark.DisplayName;
-    if mMark.Number > 0 then
-    begin
-      mCommand.Caption := IntToStr(mMark.Number) + ' · ' + mCommand.Caption;
-    end;
+    mCommand.Caption := TAtlasBookmarksPlan.PaletteCaption(mMark.Number, mMark.DisplayName);
     mCommand.Path := TAtlasBookmarks.Location(mMark);
     if mMark.Lost then
     begin

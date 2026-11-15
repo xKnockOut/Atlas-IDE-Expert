@@ -118,6 +118,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.JSON,
   System.Types,
   Vcl.Forms,
@@ -136,14 +137,6 @@ uses
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.ServerEdit;
-
-function IsProjectFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.dproj') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.groupproj');
-end;
 
 { TAtlasIdeUnitRename.TProjectNotifier }
 
@@ -239,7 +232,7 @@ var
 begin
   mOwner := FOwner;
   if (mOwner = nil) or not ((NotifyCode = ofnFileOpened) or (NotifyCode = ofnFileClosing)) or
-    not IsProjectFile(FileName) then
+    not TAtlasSourceFiles.IsProjectFile(FileName) then
   begin
     Exit;
   end;
@@ -535,30 +528,12 @@ begin
   end;
 end;
 
-/// <summary>Angebotene Bereiche: Projekt, wenn dort Units betroffen sind; Gruppe, wenn sie mehr betrifft.</summary>
-function OfferScopes(AInProject, AInGroup: Integer): TArray<TAtlasUnitRenameScope>;
-begin
-  Result := nil;
-  if AInProject > 0 then
-  begin
-    Result := Result + [TAtlasUnitRenameScope.Project];
-  end;
-  if AInGroup > AInProject then
-  begin
-    Result := Result + [TAtlasUnitRenameScope.Group];
-  end;
-end;
-
 /// <summary>Überschrift des Hinweises: Zahl im Projekt, ohne Treffer dort die der Gruppe.</summary>
 function OfferTitle(const AAnswer: TAtlasUnitRenameAnswer; AInProject, AInGroup: Integer): string;
 var
   mShown: Integer;
 begin
-  mShown := AInProject;
-  if mShown = 0 then
-  begin
-    mShown := AInGroup;
-  end;
+  mShown := TAtlasUnitRename.ShownCount(AInProject, AInGroup);
   if mShown = 1 then
   begin
     Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameNoticeOne, [AAnswer.OldName]);
@@ -601,7 +576,7 @@ begin
   begin
     mText := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnitRenameGroupCount, [mInGroup]);
   end;
-  mScopes := OfferScopes(mInProject, mInGroup);
+  mScopes := TAtlasUnitRename.Scopes(mInProject, mInGroup);
   mActions := nil;
   for mScope in mScopes do
   begin

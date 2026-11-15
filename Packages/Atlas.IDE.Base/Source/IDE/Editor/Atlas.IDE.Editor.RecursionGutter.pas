@@ -84,20 +84,13 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.Generics.Collections,
   System.Math,
   ToolsAPI,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
-
-function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
-end;
 
 { TAtlasIdeRecursionGutter }
 
@@ -151,7 +144,7 @@ begin
   begin
     Result := mEditors.TopView;
   end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
+  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasSourceFiles.IsCompiled(Result.Buffer.FileName)) then
   begin
     Result := nil;
   end;
