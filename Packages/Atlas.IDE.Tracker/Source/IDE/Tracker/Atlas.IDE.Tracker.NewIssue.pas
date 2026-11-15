@@ -97,7 +97,6 @@ uses
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.NewIssuePlace,
   Atlas.IDE.Contracts.VersionControl,
-  Atlas.Core.Settings.TeamFile, // TAtlasTeamSettings
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Files;
 
@@ -444,25 +443,6 @@ begin
   end;
 end;
 
-/// <summary>issues.github.templateFields, ergänzt und überschrieben von tracker.templateFields der .atlas.
-/// </summary>
-function MappingsOf(const AProject: string): TAtlasIssueFormMappings;
-var
-  mTeam: TAtlasIssueFormMappings;
-  mIndex: Integer;
-  mSettings: TAtlasTeamSettings;
-begin
-  Result := TAtlasIssueForms.ParseMapping(TAtlasIdeSettings.Current.IssuesGitHubTemplateFields);
-  mSettings := TAtlasIdeTeamFile.ForProject(AProject);
-  SetLength(mTeam, Length(mSettings.Tracker.TemplateFields));
-  for mIndex := 0 to High(mTeam) do
-  begin
-    mTeam[mIndex] := TAtlasIssueFormMapping.Create(mSettings.Tracker.TemplateFields[mIndex].Name,
-      mSettings.Tracker.TemplateFields[mIndex].Value);
-  end;
-  Result := TAtlasIssueForms.Merge(Result, mTeam);
-end;
-
 function NewSetup(const AProject: string): TAtlasNewIssueSetup;
 begin
   Result := TAtlasNewIssueSetup.Empty;
@@ -471,7 +451,8 @@ begin
   Result.IncludeCode := TAtlasIdeSettings.Current.IssuesCreateIncludeCode;
   Result.CanStart := (Issues <> nil) and Issues.Context.CanStart;
   Result.Facts := TAtlasIssueFormFacts.Create(CompilerVersion, cIdeBits);
-  Result.Mappings := MappingsOf(AProject);
+  Result.Mappings := TAtlasIssueForms.MappingsOf(TAtlasIdeSettings.Current.IssuesGitHubTemplateFields,
+    TAtlasIdeTeamFile.ForProject(AProject).Tracker.TemplateFields);
   Result.OnBrowse :=
     procedure(AUrl: string)
     begin

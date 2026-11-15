@@ -2,7 +2,7 @@
 
 // Texte des Fensters „Atlas-Lecks“ (#1875): Statuszeile, Zeile je Name mit
 // Vergleich zum letzten Lauf, Kandidat mit Bewertung, Gruppe mit
-// Erzeugungsstelle, Hinweis bei Strings. Sprache aus Atlas.UI.Debug.Strings.
+// Erzeugungsstelle, Hinweis bei Strings. Sprache aus Atlas.UI.Debug.Leaks.Strings.
 
 interface
 
@@ -28,15 +28,15 @@ implementation
 uses
   System.SysUtils,
   Atlas.Text.LeakReport,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Leaks.Strings;
 
 const
   cRatings: array[0..6] of string = ('neverFreed', 'returned', 'passed', 'fieldFreed', 'owned', 'localFreed',
     'notInProgram');
-  cRatingIds: array[0..6] of TAtlasDebugTextId = (TAtlasDebugTextId.LeaksRatingNeverFreed,
-    TAtlasDebugTextId.LeaksRatingReturned, TAtlasDebugTextId.LeaksRatingPassed,
-    TAtlasDebugTextId.LeaksRatingFieldFreed, TAtlasDebugTextId.LeaksRatingOwned,
-    TAtlasDebugTextId.LeaksRatingLocalFreed, TAtlasDebugTextId.LeaksRatingNotInProgram);
+  cRatingIds: array[0..6] of TAtlasLeaksTextId = (TAtlasLeaksTextId.LeaksRatingNeverFreed,
+    TAtlasLeaksTextId.LeaksRatingReturned, TAtlasLeaksTextId.LeaksRatingPassed,
+    TAtlasLeaksTextId.LeaksRatingFieldFreed, TAtlasLeaksTextId.LeaksRatingOwned,
+    TAtlasLeaksTextId.LeaksRatingLocalFreed, TAtlasLeaksTextId.LeaksRatingNotInProgram);
 
 { TAtlasLeakTexts }
 
@@ -48,7 +48,7 @@ begin
   begin
     if SameText(cRatings[mIndex], ARating) then
     begin
-      Exit(TAtlasDebugStrings.Text(cRatingIds[mIndex]));
+      Exit(TAtlasLeaksStrings.Text(cRatingIds[mIndex]));
     end;
   end;
   Result := ARating;
@@ -60,26 +60,26 @@ begin
   Result := '';
   if AEntry.IsNew and (AEntry.PreviousCount = 0) then
   begin
-    Result := '  (' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksNew) + ')';
+    Result := '  (' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksNew) + ')';
   end
   else if AEntry.IsNew then
   begin
-    Result := '  (' + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksMore,
+    Result := '  (' + TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksMore,
       [AEntry.Count - AEntry.PreviousCount]) + ')';
   end;
   if AEntry.Known then
   begin
-    Result := Result + '  [' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksKnownMark) + ']';
+    Result := Result + '  [' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksKnownMark) + ']';
   end;
 end;
 
 function NameText(const ARow: TAtlasLeakRow): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksNameLine, [ARow.Entry.Name, ARow.Entry.Count]) +
+  Result := TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksNameLine, [ARow.Entry.Name, ARow.Entry.Count]) +
     Marks(ARow.Entry);
   if (ARow.Entry.Kind = TLeakKind.Instance) and (ARow.PlaceCount = 0) then
   begin
-    Result := Result + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksNoPlaces);
+    Result := Result + '  ·  ' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksNoPlaces);
   end;
 end;
 
@@ -89,10 +89,10 @@ var
 begin
   if ARow.Group.Site < 0 then
   begin
-    Exit(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksGroupNoSite, [ARow.Group.Count]));
+    Exit(TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksGroupNoSite, [ARow.Group.Count]));
   end;
   mFrame := ARow.Group.Frames[ARow.Group.Site];
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksGroupLine, [ExtractFileName(mFrame.FileName), mFrame.Line,
+  Result := TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksGroupLine, [ExtractFileName(mFrame.FileName), mFrame.Line,
     mFrame.Routine, ARow.Group.Count]);
 end;
 
@@ -100,12 +100,12 @@ class function TAtlasLeakTexts.RowText(const ARow: TAtlasLeakRow): string;
 begin
   case ARow.Kind of
     TAtlasLeakRowKind.Place:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksPlaceLine, [ExtractFileName(ARow.Place.FileName),
+      Result := TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksPlaceLine, [ExtractFileName(ARow.Place.FileName),
         ARow.Place.Line + 1, ARow.Place.Routine, RatingText(ARow.Place.Rating)]);
     TAtlasLeakRowKind.Group:
       Result := GroupText(ARow);
     TAtlasLeakRowKind.Hint:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksFollowsFromObjects);
+      Result := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksFollowsFromObjects);
   else
     Result := NameText(ARow);
   end;
@@ -117,17 +117,17 @@ var
 begin
   if ACapture.IsEmpty then
   begin
-    Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksEmpty));
+    Exit(TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksEmpty));
   end;
   if ACapture.Source = TAtlasLeakSource.LogFile then
   begin
-    mSource := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksFromLogFile, [ExtractFileName(ACapture.FileName)]);
+    mSource := TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksFromLogFile, [ExtractFileName(ACapture.FileName)]);
   end
   else
   begin
-    mSource := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksFromMessageBox);
+    mSource := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksFromMessageBox);
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksSummary, [LeakCount(ACapture),
+  Result := TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksSummary, [LeakCount(ACapture),
     Length(ACapture.Report.Counts), mSource]);
 end;
 

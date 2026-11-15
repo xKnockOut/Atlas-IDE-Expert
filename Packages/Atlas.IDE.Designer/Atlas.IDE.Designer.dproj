@@ -173,6 +173,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.PropertySearch.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Usages.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.OpenWatch.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.NonVisualAction.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.UndoApply.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas"/>

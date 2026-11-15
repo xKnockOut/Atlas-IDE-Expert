@@ -59,6 +59,7 @@ uses
   Atlas.Core.Settings.FolderList,
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
+  Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
@@ -279,9 +280,9 @@ begin
   // Was wartet worauf? (#587).
   Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
   // Leckbericht am Programmende (#1875).
-  Switch('debug.leakReport', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReport));
-  Switch('debug.leakReport.compare', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReportCompare));
-  Switch('debug.leakReport.window', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLeakReportWindow));
+  Switch('debug.leakReport', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReport));
+  Switch('debug.leakReport.compare', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReportCompare));
+  Switch('debug.leakReport.window', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReportWindow));
   // Parallele Aufrufstapel (#837).
   Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
   // Fenster „Aufrufstapel“ (#843).

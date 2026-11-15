@@ -344,8 +344,7 @@ begin
     Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
       ShowDebugParallelStacks, DebugParallelStacksVisible),
     // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
-    Command('Atlas.DebugLeaks', TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCommand), ShowDebugLeaks,
-      DebugLeaksVisible)];
+    Command('Atlas.DebugLeaks', DebugLeaksCommandText, ShowDebugLeaks, DebugLeaksVisible)];
   // Fenster „Auswerten“ (#784) mit dem Dialog der IDE daneben und Fenster „Variablen“ (#853).
   Result := Result + WindowCommands;
   // Threads im Quelltext (#852): markieren, einfrieren, auftauen; Atlas-Aufrufstapel (#843).

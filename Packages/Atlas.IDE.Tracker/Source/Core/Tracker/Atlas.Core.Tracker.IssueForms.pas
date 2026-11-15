@@ -24,7 +24,8 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Settings.TeamFile;
 
 type
 {$SCOPEDENUMS ON}
@@ -184,6 +185,10 @@ type
     class function ParseMapping(const AText: string): TAtlasIssueFormMappings; static;
     /// <summary>AOver ersetzt Einträge gleicher Id in ABase und kommt sonst dazu.</summary>
     class function Merge(const ABase, AOver: TAtlasIssueFormMappings): TAtlasIssueFormMappings; static;
+    /// <summary>Vorbelegung aus AGitHubFields (issues.github.templateFields, wie ParseMapping), ergänzt und
+    /// überschrieben von ATeamFields (tracker.templateFields der .atlas).</summary>
+    class function MappingsOf(const AGitHubFields: string; const ATeamFields: TArray<TAtlasTeamVariable>):
+      TAtlasIssueFormMappings; static;
     /// <summary>Platzhalter in ATemplate ersetzen; ARendered: Ziel ist ein Codeblock (render).</summary>
     class function Expand(const ATemplate: string; const AFacts: TAtlasIssueFormFacts; ARendered: Boolean): string;
       static;
@@ -833,6 +838,20 @@ begin
       Result := Result + [mItem];
     end;
   end;
+end;
+
+class function TAtlasIssueForms.MappingsOf(const AGitHubFields: string;
+  const ATeamFields: TArray<TAtlasTeamVariable>): TAtlasIssueFormMappings;
+var
+  mTeam: TAtlasIssueFormMappings;
+  mIndex: Integer;
+begin
+  SetLength(mTeam, Length(ATeamFields));
+  for mIndex := 0 to High(mTeam) do
+  begin
+    mTeam[mIndex] := TAtlasIssueFormMapping.Create(ATeamFields[mIndex].Name, ATeamFields[mIndex].Value);
+  end;
+  Result := Merge(ParseMapping(AGitHubFields), mTeam);
 end;
 
 /// <summary>Codeblock "pascal" um ACode; enthält ACode selbst ```, dann mit ~~~.</summary>

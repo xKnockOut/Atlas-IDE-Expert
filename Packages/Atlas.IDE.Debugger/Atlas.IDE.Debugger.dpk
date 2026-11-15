@@ -147,6 +147,7 @@ contains
   Atlas.UI.Debug.Deadlocks in 'Source\UI\Debug\Atlas.UI.Debug.Deadlocks.pas',
   Atlas.UI.Debug.ParallelStacks in 'Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas',
   Atlas.UI.Debug.Leaks in 'Source\UI\Debug\Atlas.UI.Debug.Leaks.pas',
+  Atlas.UI.Debug.Leaks.Strings in 'Source\UI\Debug\Atlas.UI.Debug.Leaks.Strings.pas',
   Atlas.UI.Debug.ThreadMarks in 'Source\UI\Debug\Atlas.UI.Debug.ThreadMarks.pas',
   Atlas.UI.Debug.AsyncOrigin in 'Source\UI\Debug\Atlas.UI.Debug.AsyncOrigin.pas',
   Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',

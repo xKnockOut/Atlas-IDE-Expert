@@ -252,6 +252,15 @@ begin
   Result := string.Join(', ', mNames);
 end;
 
+/// <summary>AItem zeigen oder verbergen; ohne Eintrag (nil) nichts.</summary>
+procedure ShowItem(AItem: TMenuItem; AVisible: Boolean);
+begin
+  if AItem <> nil then
+  begin
+    AItem.Visible := AVisible;
+  end;
+end;
+
 { TAtlasMainMenuItems }
 
 function TAtlasMainMenuItems.AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
@@ -296,68 +305,32 @@ procedure TAtlasMainMenuItems.UpdateKeyMap;
 var
   mItem: TMenuItem;
 begin
-  if FKeyMapItem <> nil then
-  begin
-    FKeyMapItem.Visible := TAtlasIdeSettings.Current.KeyOverview;
-  end;
+  ShowItem(FKeyMapItem, TAtlasIdeSettings.Current.KeyOverview);
   // Prozesse am Projekt (#62) nach diagnostics.processes.
-  if FProcessesItem <> nil then
-  begin
-    FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
-  end;
+  ShowItem(FProcessesItem, TAtlasIdeSettings.Current.DiagnosticsProcesses);
   // Fenster „Atlas-Server“ (#1356) nach server.statusWindow.
-  if FServerStatusItem <> nil then
-  begin
-    FServerStatusItem.Visible := TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus);
-  end;
+  ShowItem(FServerStatusItem, TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus));
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
-  if FCallDiagramItem <> nil then
-  begin
-    FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
-  end;
+  ShowItem(FCallDiagramItem, TAtlasIdeSettings.Current.CallHierarchyDiagram);
   // Erzeugen-Menü (#719) nach keys.generateMenu.
-  if FGenerateItem <> nil then
-  begin
-    FGenerateItem.Visible := TAtlasIdeSettings.Current.GenerateMenu;
-  end;
+  ShowItem(FGenerateItem, TAtlasIdeSettings.Current.GenerateMenu);
   // Formatieren (#43) nach editor.format.
-  if FFormatItem <> nil then
-  begin
-    FFormatItem.Visible := TAtlasIdeSettings.Current.FormatCode;
-  end;
+  ShowItem(FFormatItem, TAtlasIdeSettings.Current.FormatCode);
   // Methodenreihenfolge (#660) nach editor.methodPlacement.
-  if FMethodOrderItem <> nil then
-  begin
-    FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
-  end;
+  ShowItem(FMethodOrderItem, TAtlasIdeMethodPlacement.Enabled);
   if (FCodeGroup <> nil) and (FGenerateItem <> nil) and (FMethodOrderItem <> nil) then
   begin
     FCodeGroup.Visible := FGenerateItem.Visible or FMethodOrderItem.Visible;
   end;
   UpdateRegionItems;
   // Gliederung (#537) nach outline.enabled.
-  if FOutlineItem <> nil then
-  begin
-    FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
-  end;
+  ShowItem(FOutlineItem, TAtlasIdeSettings.Current.Outline);
   // Atlas-Prüfung (#909) nach problems.window.
-  if FProblemsItem <> nil then
-  begin
-    FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
-  end;
-  if FViewProblems <> nil then
-  begin
-    FViewProblems.Visible := TAtlasIdeProblems.Enabled;
-  end;
-  if FViewAtlas <> nil then
-  begin
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasMenuModuleItems.HasViewItems;
-  end;
+  ShowItem(FProblemsItem, TAtlasIdeProblems.Enabled);
+  ShowItem(FViewProblems, TAtlasIdeProblems.Enabled);
+  ShowItem(FViewAtlas, TAtlasIdeProblems.Enabled or TAtlasMenuModuleItems.HasViewItems);
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
-  if FImpactItem <> nil then
-  begin
-    FImpactItem.Visible := TAtlasIdeImpact.Enabled;
-  end;
+  ShowItem(FImpactItem, TAtlasIdeImpact.Enabled);
   // Datenfluss (#690) nach navigation.dataFlow.
   for mItem in FDataFlowItems do
   begin
