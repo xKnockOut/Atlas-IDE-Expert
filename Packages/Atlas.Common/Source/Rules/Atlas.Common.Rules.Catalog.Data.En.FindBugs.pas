@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1194] of string = (
+  cCatalogLinesEnFindBugs: array[0..1249] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -28,6 +28,79 @@ const
     '      "description": "A local variable is read on a path where it was never assigned.",',
     '      "bad": "var I: Integer;\nbegin\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",',
     '      "good": "var I: Integer;\nbegin\n  I := 0;\n  if Ok then\n    I := 1;\n  Writeln(I);\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "managed-result-read-before-set",',
+    '      "name": "Result read before it is set",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A function whose result is a dynamic array or a string reads Result before assigning it: SetLength(Result, N) followed by a read of an element (if Result[I], Inc(Result[I])), Set' +
+    'Length(Result, Length(Result) + 1), Result := Result + ..., Length(Result), for X in Result, Insert, Delete or Copy on Result. Delphi passes a managed Result as the caller''s variable (A := F(...) hand' +
+    's over A), so SetLength keeps the caller''s old values and Result + ... appends to them; Free Pascal starts with an empty value, so tests stay green there. Writing elements after SetLength, Length afte' +
+    'r SetLength, Result as an argument of another routine (it may be a var or out parameter) and anonymous methods stay silent. Medium confidence. Quick fix: Result := nil (or '''') before the statement.",',
+    '      "bad": "function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;\nvar\n  I: Integer;\nbegin\n  SetLength(Result, Length(A));\n  for I := 0 to High(A) do\n    if not Result[I] then\n      Re' +
+    'sult[I] := A[I] > 0;\nend;",',
+    '      "good": "function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;\nvar\n  I: Integer;\nbegin\n  Result := nil;\n  SetLength(Result, Length(A));\n  for I := 0 to High(A) do\n    if not Resul' +
+    't[I] then\n      Result[I] := A[I] > 0;\nend;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "trygetvalue-out-default",',
+    '      "name": "TryGetValue overwrites the preset value",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "TryGetValue (TDictionary, TJSONValue.TryGetValue<T> and others) is called as a statement, its result is discarded, and the out argument got a value earlier in the routine that is' +
+    ' not the default value (not nil, '''', 0, False, [] or Default(T)). Delphi sets the out argument to the default value even when the key is missing, so the preset is lost; Free Pascal leaves it unchanged' +
+    ', so tests stay green there. A preset with the default value, an evaluated result (if not D.TryGetValue(K, V) then V := ...) and an argument without a preset stay silent. Medium confidence. Fix: read ' +
+    'into a variable of its own and take it over only when TryGetValue returns True.",',
+    '      "bad": "Result.Top := cVorgabe;\nArgumente.TryGetValue<Integer>(''top'', Result.Top);",',
+    '      "good": "if Argumente.TryGetValue<Integer>(''top'', mTop) then\n  Result.Top := mTop;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "record-array-shared",',
+    '      "name": "Copied record shares its array",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A record is copied with B := A (names, fields and indexes, no call), and later in the routine an element of a dynamic array field of B or A is written in place (B.Items[0] := ...' +
+    ', B.Items[0].State := ...). Dynamic arrays are references without copy-on-write in Delphi: the copy and the original share the array, the write changes both. The rule needs the symbol index and report' +
+    's only when name resolution knows the record and the dynamic array for sure. A new array for the field before the write (Copy, SetLength, a new assignment), static arrays, string fields, classes and a' +
+    ' record assigned again stay silent. Quick fix: B.Items := Copy(B.Items) before the write.",',
+    '      "bad": "mKopie := Ansicht;\nmKopie.Extras[0].State := Rot;",',
+    '      "good": "mKopie := Ansicht;\nmKopie.Extras := Copy(mKopie.Extras);\nmKopie.Extras[0].State := Rot;",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "extractfile-forward-slash",',
+    '      "name": "File name with / split",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt or ExtractFileDrive gets a path with ''/'': a literal with ''/'', a concatenation with such a literal, StringReplace(' +
+    'X, ''\\'', ''/'', ...) or X.Replace(''\\'', ''/''), or a local variable whose last assignment in the routine is one of these. These routines split only at PathDelim and DriveDelim, which is ''\\'' on Windows an' +
+    'd ''/'' on Linux, so the path stays in one piece on Windows. PathDelim as the replacement, ''\\'' and other variables stay silent. Quick fix for StringReplace(..., ''/'', ...): replace with PathDelim.",',
+    '      "bad": "Name := ExtractFileName(StringReplace(Pfad, ''\\'', ''/'', [rfReplaceAll]));",',
+    '      "good": "Name := ExtractFileName(StringReplace(Pfad, ''/'', PathDelim, [rfReplaceAll]));",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "hash-overflow-checked",',
+    '      "name": "Intended overflow with overflow checking",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "A multiplication with an FNV prime (16777619 or 1099511628211, as a literal, $-hex number or constant of the unit, also inside UInt64(...)) that overflows is in a place where ove' +
+    'rflow checking applies: no {$Q-} or {$OVERFLOWCHECKS OFF} before it. In a debug build with {$Q+} the intended overflow of the hash stops with EIntOverflow; typical is a {$IFOPT Q+}...{$Q-}{$ENDIF} bra' +
+    'cket around the wrong routine. The directives of the file count in order, {$PUSHOPT}/{$POPOPT} included; the project setting is not known, so overflow checking counts as on. A 32-bit product with UInt' +
+    '64(...) or Int64(...) on the other side does not overflow and stays silent. Fix: enclose the routine in {$IFOPT Q+}{$DEFINE X}{$Q-}{$ENDIF} ... {$IFDEF X}{$Q+}{$UNDEF X}{$ENDIF}.",',
+    '      "bad": "function Pruefsumme(const A: string): UInt64;\nvar\n  C: Char;\nbegin\n  Result := UInt64($CBF29CE484222325);\n  for C in A do\n    Result := (Result xor Ord(C)) * UInt64($00000100000001' +
+    'B3);\nend;",',
+    '      "good": "{$IFOPT Q+}{$DEFINE HASH_UEBERLAUF}{$Q-}{$ENDIF}\nfunction Pruefsumme(const A: string): UInt64;\nvar\n  C: Char;\nbegin\n  Result := UInt64($CBF29CE484222325);\n  for C in A do\n    Res' +
+    'ult := (Result xor Ord(C)) * UInt64($00000100000001B3);\nend;\n{$IFDEF HASH_UEBERLAUF}{$Q+}{$UNDEF HASH_UEBERLAUF}{$ENDIF}",',
     '      "safeFix": false',
     '    },',
     '{',

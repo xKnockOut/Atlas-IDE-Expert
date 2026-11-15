@@ -250,13 +250,12 @@ end;
 
 class function TAtlasInlayPlan.SameLine(const AEditorLine, AStored: string; ATabWidth: Integer): Boolean;
 begin
-  Result := TrimRight(TAtlasPairs.DisplayLine(AEditorLine, ATabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(AStored, ATabWidth));
+  Result := TAtlasPairs.SameDisplayLine(AEditorLine, AStored, ATabWidth);
 end;
 
 class function TAtlasInlayPlan.ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
 begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
+  Result := TAtlasPairs.DisplayColumn(ALine, ACharacter, ATabWidth);
 end;
 
 class function TAtlasInlayPlan.TailColumn(const AStored: string; ATabWidth: Integer): Integer;

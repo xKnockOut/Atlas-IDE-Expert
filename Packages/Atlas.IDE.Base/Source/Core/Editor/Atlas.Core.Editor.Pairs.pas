@@ -94,6 +94,11 @@ type
     class function RunMatches(const ADisplayLine, ARun: string; AColumn: Integer): Boolean; static;
     /// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
     class function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer; static;
+    /// <summary>Editorspalte (1-basiert) hinter den ersten ACharacter Zeichen von ALine wie in DisplayLine (#13
+    /// zählt nicht, hinter dem Zeilenende keine Spalte mehr).</summary>
+    class function DisplayColumn(const ALine: string; ACharacter, ATabWidth: Integer): Integer; static;
+    /// <summary>Zeigt der Editor AEditorLine wie AModelLine? Tabs aufgelöst, Leerzeichen am Ende egal.</summary>
+    class function SameDisplayLine(const AEditorLine, AModelLine: string; ATabWidth: Integer): Boolean; static;
   end;
 
 implementation
@@ -996,6 +1001,16 @@ begin
       Inc(Result);
     end;
   end;
+end;
+
+class function TAtlasPairs.DisplayColumn(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
+begin
+  Result := Length(DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
+end;
+
+class function TAtlasPairs.SameDisplayLine(const AEditorLine, AModelLine: string; ATabWidth: Integer): Boolean;
+begin
+  Result := TrimRight(DisplayLine(AEditorLine, ATabWidth)) = TrimRight(DisplayLine(AModelLine, ATabWidth));
 end;
 
 end.

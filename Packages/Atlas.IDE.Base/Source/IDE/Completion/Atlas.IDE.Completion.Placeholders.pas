@@ -109,31 +109,12 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
+  Atlas.Core.Editor.PlaceholderPlan,
+  Atlas.Core.Lsp.TextOffsets,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Completion.Strings,
   Atlas.IDE.Foundation.EditorRefresh;
-
-/// <summary>Zeile ALine (0-basiert) aus AText ohne Zeilenende.</summary>
-function LineOf(const AText: string; ALine: Integer): string;
-var
-  mLines: TArray<string>;
-begin
-  mLines := AText.Replace(#13, '').Split([#10]);
-  if (ALine >= 0) and (ALine <= High(mLines)) then
-  begin
-    Result := mLines[ALine];
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
-function ByteOffset(const AText: string; AOffset: Integer): Integer;
-begin
-  Result := TEncoding.UTF8.GetByteCount(Copy(AText, 1, AOffset));
-end;
 
 { TAtlasEditorPlaceholders.TEvents }
 
@@ -297,20 +278,16 @@ begin
     Exit;
   end;
   mCursor := CursorOffset(mText);
-  mShift := 0;
+  mShift := TAtlasPlaceholderPlan.CursorShift(mEdits, mCursor);
   FApplying := True;
   try
     // Ein Schreiber schreibt nur vorwärts; die Änderungen sind aufsteigend.
     mWriter := FView.Buffer.CreateUndoableWriter;
     for mEdit in mEdits do
     begin
-      mWriter.CopyTo(ByteOffset(mText, mEdit.Start));
-      mWriter.DeleteTo(ByteOffset(mText, mEdit.Stop));
+      mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Start));
+      mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(mText, mEdit.Stop));
       mWriter.Insert(PAnsiChar(UTF8Encode(mEdit.Text)));
-      if mEdit.Stop <= mCursor then
-      begin
-        Inc(mShift, Length(mEdit.Text) - (mEdit.Stop - mEdit.Start));
-      end;
     end;
     mWriter := nil;
   finally
@@ -339,13 +316,13 @@ var
 begin
   TAtlasPlaceholderSession.Locate(AText, AOffset, mLine, mCharacter);
   Result.Line := mLine + 1;
-  Result.Col := TLspSession.IndexToColumn(LineOf(AText, mLine), mCharacter, TAtlasEditorBuffer.TabWidth(FView.Buffer));
+  Result.Col := TLspSession.IndexToColumn(TAtlasTextOffsets.LineOf(AText, mLine), mCharacter,
+    TAtlasEditorBuffer.TabWidth(FView.Buffer));
 end;
 
 function TAtlasEditorPlaceholders.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := Active and ((AKey = VK_TAB) and ((AShift = []) or (AShift = [ssShift])) or
-    ((AKey = VK_ESCAPE) or (AKey = VK_RETURN)) and (AShift = []));
+  Result := TAtlasPlaceholderPlan.Key(AKey, AShift, Active) <> TAtlasPlaceholderKey.None;
 end;
 
 procedure TAtlasEditorPlaceholders.HandleKey(AKey: Word; AShift: TShiftState);
@@ -360,14 +337,17 @@ begin
   begin
     Exit;
   end;
-  case AKey of
-    VK_TAB:
-      if AShift = [ssShift] then
+  case TAtlasPlaceholderPlan.Key(AKey, AShift, True) of
+    // Kommt nicht vor: WantsKey hat die Taste nicht gewollt.
+    TAtlasPlaceholderKey.None:
+      Exit;
+    TAtlasPlaceholderKey.Previous:
       begin
         FSession.Previous;
         SelectCurrent;
-      end
-      else if FSession.Next then
+      end;
+    TAtlasPlaceholderKey.Next:
+      if FSession.Next then
       begin
         SelectCurrent;
       end
@@ -375,10 +355,10 @@ begin
       begin
         Finish(True);
       end;
-    VK_RETURN:
+    TAtlasPlaceholderKey.Accept:
       Finish(True);
-    VK_ESCAPE:
-      Finish(False);
+  else
+    Finish(False);
   end;
   if Active then
   begin
@@ -426,7 +406,7 @@ end;
 procedure TAtlasEditorPlaceholders.CollapseUndo;
 var
   mFinal: string;
-  mPrefix, mSuffix: Integer;
+  mReplacement: TAtlasPlaceholderReplacement;
   mWriter: IOTAEditWriter;
 begin
   if (FSession = nil) or (FView = nil) or (FView.Buffer = nil) or (FBefore = '') then
@@ -445,21 +425,12 @@ begin
       Exit;
     end;
     // Gemeinsamer Anfang und gemeinsames Ende; dazwischen ersetzt ein Schreiber.
-    mPrefix := 0;
-    while (mPrefix < Length(FBefore)) and (mPrefix < Length(mFinal)) and (FBefore[mPrefix + 1] = mFinal[mPrefix + 1]) do
-    begin
-      Inc(mPrefix);
-    end;
-    mSuffix := 0;
-    while (mSuffix < Length(FBefore) - mPrefix) and (mSuffix < Length(mFinal) - mPrefix) and
-      (FBefore[Length(FBefore) - mSuffix] = mFinal[Length(mFinal) - mSuffix]) do
-    begin
-      Inc(mSuffix);
-    end;
+    mReplacement := TAtlasPlaceholderPlan.Replacement(FBefore, mFinal);
     mWriter := FView.Buffer.CreateUndoableWriter;
-    mWriter.CopyTo(ByteOffset(FBefore, mPrefix));
-    mWriter.DeleteTo(ByteOffset(FBefore, Length(FBefore) - mSuffix));
-    mWriter.Insert(PAnsiChar(UTF8Encode(Copy(mFinal, mPrefix + 1, Length(mFinal) - mPrefix - mSuffix))));
+    mWriter.CopyTo(TAtlasTextOffsets.BytesBefore(FBefore, mReplacement.Prefix));
+    mWriter.DeleteTo(TAtlasTextOffsets.BytesBefore(FBefore, Length(FBefore) - mReplacement.Suffix));
+    mWriter.Insert(PAnsiChar(UTF8Encode(Copy(mFinal, mReplacement.Prefix + 1,
+      Length(mFinal) - mReplacement.Prefix - mReplacement.Suffix))));
     mWriter := nil;
   finally
     FApplying := False;
@@ -547,12 +518,6 @@ begin
   end;
 end;
 
-/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
 /// <summary>Zeichnet PaintLine für AContext: Modus läuft, Ansicht mit Puffer, Datei des Modus.</summary>
 function PaintsLine(ASession: TAtlasPlaceholderSession; const AFileName: string;
   const AContext: INTACodeEditorPaintContext): Boolean;
@@ -588,49 +553,38 @@ type
 
 function TPlaceholderPaint.Matches: Boolean;
 begin
-  Result := TrimRight(TAtlasPairs.DisplayLine(Context.LineState.Text, TabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(Text, TabWidth));
+  Result := TAtlasPairs.SameDisplayLine(Context.LineState.Text, Text, TabWidth);
 end;
 
 function TPlaceholderPaint.Pixel(ACharacter: Integer): Integer;
 begin
-  Result := Context.EditorState.GetCharacterPosPx(ColumnOf(Text, ACharacter, TabWidth), Context.EditorLineNum).Left;
+  Result := Context.EditorState.GetCharacterPosPx(TAtlasPairs.DisplayColumn(Text, ACharacter, TabWidth),
+    Context.EditorLineNum).Left;
 end;
 
 procedure TPlaceholderPaint.Frame(const AField, ACurrent: TAtlasPlaceholderField);
+const
+  cPenStyle: array[TAtlasPlaceholderFrame] of Integer = (PS_SOLID, PS_DASH, PS_DOT);
 var
-  mStartLine, mStartChar, mEndLine, mEndChar, mLeft, mRight, mPenStyle: Integer;
+  mSpan: TAtlasPlaceholderSpan;
+  mFrame: TAtlasPlaceholderFrame;
+  mLeft, mRight: Integer;
   mColor: TColor;
   mPen, mOldPen: HGDIOBJ;
 begin
-  TAtlasPlaceholderSession.Locate(Session.Text, AField.Start, mStartLine, mStartChar);
-  TAtlasPlaceholderSession.Locate(Session.Text, AField.Stop, mEndLine, mEndChar);
-  if mStartLine <> Line then
+  if not TAtlasPlaceholderPlan.SpanOn(Session.Text, AField, Line, Text, mSpan) then
   begin
     Exit;
   end;
-  if mEndLine <> Line then
+  mLeft := Pixel(mSpan.Start) - 1;
+  mRight := Max(Pixel(mSpan.Stop) + 1, mLeft + 2);
+  mFrame := TAtlasPlaceholderPlan.FrameOf(AField, ACurrent);
+  mColor := TColor(Colors.Accent);
+  if mFrame = TAtlasPlaceholderFrame.Other then
   begin
-    mEndChar := Length(Text);
-  end;
-  mLeft := Pixel(mStartChar) - 1;
-  mRight := Max(Pixel(mEndChar) + 1, mLeft + 2);
-  if (AField.Start = ACurrent.Start) and (AField.Number = ACurrent.Number) then
-  begin
-    mPenStyle := PS_SOLID;
-    mColor := TColor(Colors.Accent);
-  end
-  else if AField.Number = ACurrent.Number then
-  begin
-    mPenStyle := PS_DASH;
-    mColor := TColor(Colors.Accent);
-  end
-  else
-  begin
-    mPenStyle := PS_DOT;
     mColor := TColor(Colors.Muted);
   end;
-  mPen := CreatePen(mPenStyle, 1, ColorToRGB(mColor));
+  mPen := CreatePen(cPenStyle[mFrame], 1, ColorToRGB(mColor));
   mOldPen := SelectObject(DC, mPen);
   try
     Winapi.Windows.Rectangle(DC, mLeft, Area.Top, mRight, Area.Bottom);
@@ -656,19 +610,18 @@ end;
 
 procedure TPlaceholderPaint.Footer;
 var
-  mStartLine, mStartChar, mLeft: Integer;
+  mLeft: Integer;
   mHint: string;
   mOldFont: TColor;
   mOldBrushStyle: TBrushStyle;
 begin
-  TAtlasPlaceholderSession.Locate(Session.Text, Session.Current.Start, mStartLine, mStartChar);
-  if mStartLine <> Line then
+  if not TAtlasPlaceholderPlan.FooterOn(Session.Text, Session.Current, Line) then
   begin
     Exit;
   end;
   mHint := Format(TAtlasCompletionStrings.Text(TAtlasCompletionTextId.PlaceholderFooter), [Session.Position,
     Session.Count]);
-  mLeft := Context.EditorState.GetCharacterPosPx(Length(TAtlasPairs.DisplayLine(Text, TabWidth)) + 4,
+  mLeft := Context.EditorState.GetCharacterPosPx(TAtlasPlaceholderPlan.FooterColumn(Text, TabWidth),
     Context.EditorLineNum).Left;
   mOldFont := Context.Canvas.Font.Color;
   mOldBrushStyle := Context.Canvas.Brush.Style;
@@ -697,7 +650,7 @@ begin
     mPaint.Context := Context;
     mPaint.Area := Rect;
     mPaint.Line := Context.LogicalLineNum - 1;
-    mPaint.Text := LineOf(FSession.Text, mPaint.Line);
+    mPaint.Text := TAtlasTextOffsets.LineOf(FSession.Text, mPaint.Line);
     mPaint.TabWidth := TAtlasEditorBuffer.TabWidth(Context.EditView.Buffer);
     if not mPaint.Matches then
     begin

@@ -22,6 +22,14 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Zeile über den Einträgen des Menüs: keine, Lesen gescheitert, keine Übergänge.</summary>
+  TAtlasIssueStateMenuNote = (None, Failed, Empty);
+  /// <summary>Was ein neuer Stand aus „Meine Issues“ bewirkt: anderes Issue (neu lesen), neuerer Zustand aus der
+  /// Liste, einmal nachlesen (erst später eingeschaltet), nichts.</summary>
+  TAtlasIssueStateUpdate = (NewIssue, NewState, ReadLate, Keep);
+{$SCOPEDENUMS OFF}
+
   /// <summary>Eintrag des Menüs: ein Übergang (Transition.Id gesetzt) oder ein Wert des Zustandsfeldes (State).
   /// </summary>
   TAtlasIssueStateEntry = record
@@ -65,6 +73,24 @@ type
     /// <summary>Zustand nach AEntry: der Wert bzw. das bekannte Ziel des Übergangs unter AStates; '' unbekannt.
     /// </summary>
     class function After(const AEntry: TAtlasIssueStateEntry; const AStates: TArray<string>): string; static;
+    /// <summary>Kennung im Feld: das Issue AIssueKey, sonst das der Zeiterfassung ATimeKey.</summary>
+    class function FieldKey(const AIssueKey, ATimeKey: string): string; static;
+    /// <summary>Bleibt das Feld leer? Ohne Kennung AKey oder ohne Zustand AState und ohne Zeiterfassung ATimeKey.
+    /// </summary>
+    class function Hidden(const AKey, AState, ATimeKey: string): Boolean; static;
+    /// <summary>Zeile über den Einträgen: Lesen gescheitert (ASucceeded False) oder keine Einträge (ACount 0).
+    /// </summary>
+    class function MenuNote(ASucceeded: Boolean; ACount: Integer): TAtlasIssueStateMenuNote; static;
+    /// <summary>Eintrag AIndex aus AEntries; außerhalb (auch -1: keiner gewählt) ein leerer Eintrag.</summary>
+    class function EntryAt(const AEntries: TArray<TAtlasIssueStateEntry>; AIndex: Integer): TAtlasIssueStateEntry;
+      static;
+    /// <summary>Texte der Einträge für die Auswahl im Dialog.</summary>
+    class function Captions(const AEntries: TArray<TAtlasIssueStateEntry>): TArray<string>; static;
+    /// <summary>Neuer Stand aus „Meine Issues“: ASame dasselbe Issue, AListState/AState gemerkter und neuer
+    /// Zustand der Liste (ohne Groß-/Kleinschreibung), ANeverRead noch nie gelesen, APending laufende Lesevorgänge,
+    /// AShows Zustand eingeschaltet.</summary>
+    class function Update(ASame: Boolean; const AListState, AState: string; ANeverRead: Boolean; APending: Integer;
+      AShows: Boolean): TAtlasIssueStateUpdate; static;
   end;
 
 implementation
@@ -225,6 +251,79 @@ begin
   if AEntry.Transition.Id <> '' then
   begin
     Result := TAtlasTrackerTransitions.TargetOf(AEntry.Transition, AStates);
+  end;
+end;
+
+class function TAtlasIssueStatus.FieldKey(const AIssueKey, ATimeKey: string): string;
+begin
+  Result := AIssueKey;
+  if Result = '' then
+  begin
+    Result := ATimeKey;
+  end;
+end;
+
+class function TAtlasIssueStatus.Hidden(const AKey, AState, ATimeKey: string): Boolean;
+begin
+  Result := (AKey = '') or ((AState = '') and (ATimeKey = ''));
+end;
+
+class function TAtlasIssueStatus.MenuNote(ASucceeded: Boolean; ACount: Integer): TAtlasIssueStateMenuNote;
+begin
+  if not ASucceeded then
+  begin
+    Result := TAtlasIssueStateMenuNote.Failed;
+  end
+  else if ACount = 0 then
+  begin
+    Result := TAtlasIssueStateMenuNote.Empty;
+  end
+  else
+  begin
+    Result := TAtlasIssueStateMenuNote.None;
+  end;
+end;
+
+class function TAtlasIssueStatus.EntryAt(const AEntries: TArray<TAtlasIssueStateEntry>;
+  AIndex: Integer): TAtlasIssueStateEntry;
+begin
+  Result := Default(TAtlasIssueStateEntry);
+  if (AIndex >= 0) and (AIndex <= High(AEntries)) then
+  begin
+    Result := AEntries[AIndex];
+  end;
+end;
+
+class function TAtlasIssueStatus.Captions(const AEntries: TArray<TAtlasIssueStateEntry>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AEntries));
+  for mIndex := 0 to High(AEntries) do
+  begin
+    Result[mIndex] := AEntries[mIndex].Caption;
+  end;
+end;
+
+class function TAtlasIssueStatus.Update(ASame: Boolean; const AListState, AState: string; ANeverRead: Boolean;
+  APending: Integer; AShows: Boolean): TAtlasIssueStateUpdate;
+begin
+  if not ASame then
+  begin
+    Result := TAtlasIssueStateUpdate.NewIssue;
+  end
+  else if not SameText(AListState, AState) then
+  begin
+    Result := TAtlasIssueStateUpdate.NewState;
+  end
+  else if ANeverRead and (APending = 0) and AShows then
+  begin
+    Result := TAtlasIssueStateUpdate.ReadLate;
+  end
+  else
+  begin
+    Result := TAtlasIssueStateUpdate.Keep;
   end;
 end;
 

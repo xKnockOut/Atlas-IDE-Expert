@@ -775,6 +775,8 @@ contains
   Atlas.Common.Rules.Builtin.Testing.TestCases in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCaseTable in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas',
+  Atlas.Common.Rules.Builtin.CompilerTraps.Rtl in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.pas',
+  Atlas.Common.Rules.Builtin.DelphiSemantics in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.pas',
   Atlas.Common.Rules.Builtin.IgnoredResult in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas',
   Atlas.Common.Rules.Builtin.Events in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas',
   Atlas.Common.Rules.Builtin.Ownership in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Ownership.pas',
