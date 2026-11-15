@@ -187,8 +187,8 @@ begin
   end;
   mSettings := TAtlasIdeSettings.Current;
   // Mit hideWhenClean kann der Bereich erscheinen oder verschwinden: dann neu einrichten.
-  if mSettings.WelcomePageUnsaved and mSettings.WelcomePageUnsavedHideWhenClean and
-    (FVisible = CurrentView.Clean) then
+  if TAtlasUnsavedSession.Reorder(mSettings.WelcomePageUnsaved, mSettings.WelcomePageUnsavedHideWhenClean,
+    FVisible, CurrentView.Clean) then
   begin
     TAtlasWelcomeSections.Default.Changed;
   end
@@ -292,6 +292,7 @@ procedure TAtlasIdeUnsaved.Refresh(AForce: Boolean);
 var
   mItem: TAtlasUnsavedProject;
   mLast, mNow_: UInt64;
+  mKnown: Boolean;
 begin
   if FStopped or not TAtlasIdeSettings.Current.WelcomePageUnsaved then
   begin
@@ -300,8 +301,8 @@ begin
   mNow_ := GetTickCount64;
   for mItem in Projects do
   begin
-    if AForce or not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(mItem.Project), mLast) or
-      (mNow_ - mLast >= TAtlasWelcomeUnsaved.cRefreshMs) then
+    mKnown := FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(mItem.Project), mLast);
+    if TAtlasUnsavedSession.Due(AForce, mKnown, mLast, mNow_) then
     begin
       Query(mItem.Project);
     end;
@@ -311,10 +312,11 @@ end;
 function TAtlasIdeUnsaved.Querying(const AKey: string): Boolean;
 var
   mStarted: UInt64;
+  mKnown: Boolean;
 begin
   // Eine Abfrage, die nicht binnen QueryLimitMs zurückkam, gilt als beendet.
-  Result := FQuerying.TryGetValue(AKey, mStarted) and (GetTickCount64 >= mStarted) and
-    (GetTickCount64 - mStarted < TAtlasWelcomeUnsaved.cQueryLimitMs);
+  mKnown := FQuerying.TryGetValue(AKey, mStarted);
+  Result := TAtlasUnsavedSession.Running(mKnown, mStarted, GetTickCount64);
   if not Result then
   begin
     FQuerying.Remove(AKey);
@@ -396,16 +398,16 @@ end;
 
 class function TAtlasIdeUnsaved.KindText(AKind: Integer): string;
 begin
-  case TAtlasVcsChangeKind(AKind) of
-    TAtlasVcsChangeKind.Added:
+  case TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind(AKind)) of
+    TAtlasUnsavedChangeText.Added:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindAdded);
-    TAtlasVcsChangeKind.Untracked:
+    TAtlasUnsavedChangeText.Untracked:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindUntracked);
-    TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Missing:
+    TAtlasUnsavedChangeText.Deleted:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindDeleted);
-    TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied:
+    TAtlasUnsavedChangeText.Renamed:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindRenamed);
-    TAtlasVcsChangeKind.Conflicted:
+    TAtlasUnsavedChangeText.Conflicted:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindConflicted);
   else
     Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeUnsavedKindModified);
@@ -479,7 +481,7 @@ begin
   Result := TAtlasUnsavedQuery.Create(ADir, AStamp, AFileTime,
     function: Boolean
     begin
-      Result := GetTickCount64 - AStarted >= TAtlasWelcomeUnsaved.cTimeLimitMs;
+      Result := TAtlasUnsavedSession.TimedOut(AStarted, GetTickCount64);
     end);
   Result.WorkingCopies := AWorkingCopies;
 end;
@@ -813,11 +815,7 @@ function PushReport(const AName: string; const APlans: TArray<TAtlasUnsavedPush>
 var
   mOutcome: TAtlasVcsOutcome;
 begin
-  mOutcome := TAtlasVcsOutcome.Failed;
-  if AIndex <= High(AOutcomes) then
-  begin
-    mOutcome := AOutcomes[AIndex];
-  end;
+  mOutcome := TAtlasUnsavedSession.OutcomeAt(AOutcomes, AIndex);
   if mOutcome = TAtlasVcsOutcome.Ok then
   begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushDone, [AName, APlans[AIndex].Branch,

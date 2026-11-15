@@ -54,6 +54,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.Diagnostics,
+  Atlas.Text.CommandLine,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Development,
   Atlas.Core.VersionControl.Contract,
@@ -567,7 +568,7 @@ var
   mInput, mOutput: THandle;
   mStartup: TStartupInfo;
   mProcess: TProcessInformation;
-  mLine, mArgument: string;
+  mLine: string;
 begin
   mSecurity.nLength := SizeOf(mSecurity);
   mSecurity.lpSecurityDescriptor := nil;
@@ -587,11 +588,7 @@ begin
     mStartup.hStdInput := mInput;
     mStartup.hStdOutput := mOutput;
     mStartup.hStdError := mOutput;
-    mLine := TAtlasVcsProcessRunner.QuoteArgument(AExecutable);
-    for mArgument in AArguments do
-    begin
-      mLine := mLine + ' ' + TAtlasVcsProcessRunner.QuoteArgument(mArgument);
-    end;
+    mLine := TTextCommandLine.Join(AExecutable, AArguments);
     UniqueString(mLine);
     if not CreateProcess(PChar(AExecutable), PChar(mLine), nil, nil, True, CREATE_NO_WINDOW, nil,
       PChar(AWorkingDir), mStartup, mProcess) then

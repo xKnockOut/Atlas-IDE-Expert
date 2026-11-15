@@ -37,7 +37,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.Text.UpdateRun,
+  Atlas.Text.CommandLine,
   Atlas.WinBase.Process;
 
 type
@@ -134,14 +134,8 @@ begin
 end;
 
 function CommandLineOf(const AProgram: string; const AArguments: TArray<string>): string;
-var
-  mArgument: string;
 begin
-  Result := TUpdateNames.QuoteArgument(AProgram);
-  for mArgument in AArguments do
-  begin
-    Result := Result + ' ' + TUpdateNames.QuoteArgument(mArgument);
-  end;
+  Result := TTextCommandLine.Join(AProgram, AArguments);
   UniqueString(Result);
 end;
 

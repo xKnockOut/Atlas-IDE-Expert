@@ -650,6 +650,11 @@ begin
   begin
     Exit;
   end;
+  // Wie nach der Farbauswahl: Auswahl neu ermitteln, die gemerkten Controls können inzwischen freigegeben sein.
+  if not FindControls then
+  begin
+    Exit;
+  end;
   if not TAtlasSelectionBar.TryFontSize(mText, mSize) then
   begin
     Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.BarSizeInvalid,

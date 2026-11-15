@@ -37,6 +37,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Pull;
@@ -93,6 +94,8 @@ type
       out ANote: TAtlasPullNote): TAtlasQuickActionState;
     /// <summary>Ein Testlauf endete ohne Ergebnis: läuft nicht mehr oder die Schonzeit AGraceMs ist um.</summary>
     function TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
+    /// <summary>Stand nach einem Testlauf mit APassed bestandenen und AFailed fehlgeschlagenen Tests.</summary>
+    function AfterTests(APassed, AFailed: Integer): TAtlasQuickActionState;
   end;
 
   /// <summary>Konfigurationen (ohne „Base“) und eingeschaltete Plattformen einer .dproj in Dateireihenfolge.</summary>
@@ -178,6 +181,32 @@ type
     class procedure AskExternals(var AButtons: TAtlasQuickActionButtons); static;
     /// <summary>„a\..\b“ und doppelte Trenner auflösen (Windows-Pfade, auch unter Linux in den Tests).</summary>
     class function CombinePath(const AFolder, ARelative: string): string; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Nach dem Bauen eines Projekts der Zeile: abgelehnt (mit Grund), fehlgeschlagen, nächstes Projekt der
+  /// Gruppe bauen oder fertig.</summary>
+  TAtlasQuickBuildStep = (Refused, Failed, Next, Done);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Entscheidungen der Schnellaktionen in der IDE (Zeiten und Stände von außen).</summary>
+  TAtlasQuickActionSteps = class
+  public
+    /// <summary>Gezeigte Knöpfe: ohne „Tests ausführen“ (#69) kein Knopf „Tests“, „Aufgaben ▾“ nur mit Aufgaben im
+    /// Projekt (AHasTasks, schon mit eingeschalteten Projektaufgaben, #900).</summary>
+    class function ShownItems(AItems: TAtlasQuickActions; ATestRun, AHasTasks: Boolean): TAtlasQuickActions;
+      static;
+    /// <summary>Eine laufende Aktion eines anderen Projekts (Schlüssel ungleich AOwnKey) braucht die IDE.</summary>
+    class function OtherUsesIde(AStates: TDictionary<string, TAtlasQuickActionState>;
+      const AOwnKey: string): Boolean; static;
+    /// <summary>Ergebnis des Bauens von Projekt AIndex (ab 0) aus ACount: AError nicht leer = abgelehnt.</summary>
+    class function AfterBuild(const AError: string; ASucceeded: Boolean; AIndex, ACount: Integer):
+      TAtlasQuickBuildStep; static;
+    /// <summary>Kam der Aufruf über die Taste (vor weniger als AWindowMs, AKeyAt 0 = nie)? Dann zählt die
+    /// Beobachtung der Tastatur (#600) die Nutzung schon.</summary>
+    class function ByKey(ANowMs, AKeyAt, AWindowMs: UInt64): Boolean; static;
+    /// <summary>Ersatz, wenn AProgram nicht startet: cmd.exe nur für die Vorgabe wt.exe.</summary>
+    class function ConsoleFallback(const AProgram: string; out AFallback: string): Boolean; static;
   end;
 
 implementation
@@ -372,6 +401,20 @@ end;
 function TAtlasQuickActionState.TestEnded(ANowMs, AGraceMs: UInt64): Boolean;
 begin
   Result := not Running or (ANowMs >= StartedMs + AGraceMs);
+end;
+
+function TAtlasQuickActionState.AfterTests(APassed, AFailed: Integer): TAtlasQuickActionState;
+begin
+  Result := Self;
+  Result.Action := TAtlasQuickAction.Tests;
+  Result.Passed := APassed;
+  Result.Failed := AFailed;
+  Result.Detail := '';
+  Result.Phase := TAtlasQuickActionPhase.Succeeded;
+  if AFailed > 0 then
+  begin
+    Result.Phase := TAtlasQuickActionPhase.Failed;
+  end;
 end;
 
 { TAtlasProjectTargets }
@@ -898,6 +941,73 @@ begin
   if Copy(mJoined, 1, 2) = '\\' then
   begin
     Result := cDelimiter + Result;
+  end;
+end;
+
+{ TAtlasQuickActionSteps }
+
+class function TAtlasQuickActionSteps.ShownItems(AItems: TAtlasQuickActions; ATestRun,
+  AHasTasks: Boolean): TAtlasQuickActions;
+begin
+  Result := AItems;
+  if not ATestRun then
+  begin
+    Exclude(Result, TAtlasQuickAction.Tests);
+  end;
+  if not AHasTasks then
+  begin
+    Exclude(Result, TAtlasQuickAction.Tasks);
+  end;
+end;
+
+class function TAtlasQuickActionSteps.OtherUsesIde(AStates: TDictionary<string, TAtlasQuickActionState>;
+  const AOwnKey: string): Boolean;
+var
+  mPair: TPair<string, TAtlasQuickActionState>;
+begin
+  Result := False;
+  for mPair in AStates do
+  begin
+    if (mPair.Key <> AOwnKey) and mPair.Value.Running and TAtlasWelcomeQuickActions.UsesIde(mPair.Value.Action) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+class function TAtlasQuickActionSteps.AfterBuild(const AError: string; ASucceeded: Boolean; AIndex,
+  ACount: Integer): TAtlasQuickBuildStep;
+begin
+  if AError <> '' then
+  begin
+    Result := TAtlasQuickBuildStep.Refused;
+  end
+  else if not ASucceeded then
+  begin
+    Result := TAtlasQuickBuildStep.Failed;
+  end
+  else if AIndex < ACount - 1 then
+  begin
+    Result := TAtlasQuickBuildStep.Next;
+  end
+  else
+  begin
+    Result := TAtlasQuickBuildStep.Done;
+  end;
+end;
+
+class function TAtlasQuickActionSteps.ByKey(ANowMs, AKeyAt, AWindowMs: UInt64): Boolean;
+begin
+  Result := ANowMs - AKeyAt < AWindowMs;
+end;
+
+class function TAtlasQuickActionSteps.ConsoleFallback(const AProgram: string; out AFallback: string): Boolean;
+begin
+  AFallback := '';
+  Result := SameText(AProgram, TAtlasWelcomeQuickActions.cDefaultConsole);
+  if Result then
+  begin
+    AFallback := TAtlasWelcomeQuickActions.cFallbackConsole;
   end;
 end;
 

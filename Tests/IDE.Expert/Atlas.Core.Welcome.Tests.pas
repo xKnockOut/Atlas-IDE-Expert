@@ -29,6 +29,19 @@ type
     procedure PluginIdsRoundTrip;
   end;
 
+  /// <summary>Plugins auf der Willkommensseite der IDE und gesammelte Meldungen (#1967).</summary>
+  [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
+  TAtlasWelcomePluginsTests = class
+  public
+    [Test]
+    procedure WantedFollowsPageLayoutAndHeader;
+    [Test]
+    procedure StaleAreRegisteredButNotWanted;
+    [Test]
+    procedure MarkCollectsEachIdOnce;
+  end;
+
   [TestFixture]
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeLayoutTests = class
@@ -1333,8 +1346,54 @@ begin
   AssertWelcomeLoaded(mLoaded);
 end;
 
+{ TAtlasWelcomePluginsTests }
+
+procedure TAtlasWelcomePluginsTests.WantedFollowsPageLayoutAndHeader;
+var
+  mSections, mWanted: TArray<string>;
+begin
+  mSections := TArray<string>.Create(TAtlasWelcomeIds.cState, TAtlasWelcomeIds.cHelp);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomePlugins.Wanted(False, False, True, mSections))), 'Seite aus');
+  mWanted := TAtlasWelcomePlugins.Wanted(True, True, True, mSections);
+  Assert.AreEqual(1, Integer(Length(mWanted)), 'Atlas-Layout: nur die Tafel');
+  Assert.AreEqual(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard), mWanted[0]);
+  mWanted := TAtlasWelcomePlugins.Wanted(True, False, True, mSections);
+  Assert.AreEqual(3, Integer(Length(mWanted)));
+  Assert.AreEqual(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader), mWanted[0]);
+  Assert.AreEqual(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHelp), mWanted[2]);
+  mWanted := TAtlasWelcomePlugins.Wanted(True, False, False, mSections);
+  Assert.AreEqual(2, Integer(Length(mWanted)), 'ohne Kopf');
+  Assert.AreEqual(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cState), mWanted[0]);
+end;
+
+procedure TAtlasWelcomePluginsTests.StaleAreRegisteredButNotWanted;
+var
+  mStale: TArray<string>;
+begin
+  mStale := TAtlasWelcomePlugins.Stale(TArray<string>.Create('Atlas.Welcome.state', 'Atlas.Welcome.help'),
+    TArray<string>.Create('ATLAS.WELCOME.STATE'));
+  Assert.AreEqual(1, Integer(Length(mStale)));
+  Assert.AreEqual('Atlas.Welcome.help', mStale[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomePlugins.Stale(nil, mStale))));
+end;
+
+procedure TAtlasWelcomePluginsTests.MarkCollectsEachIdOnce;
+var
+  mIds: TArray<string>;
+begin
+  mIds := nil;
+  Assert.IsTrue(TAtlasWelcomePlugins.Mark(mIds, TAtlasWelcomeIds.cState));
+  Assert.IsFalse(TAtlasWelcomePlugins.Mark(mIds, 'ATLAS.STATE'), 'schon vorgemerkt');
+  Assert.IsFalse(TAtlasWelcomePlugins.NeedsSync(mIds));
+  Assert.IsTrue(TAtlasWelcomePlugins.Mark(mIds, ''));
+  Assert.IsTrue(TAtlasWelcomePlugins.NeedsSync(mIds), 'Meldung für alle');
+  Assert.AreEqual(2, Integer(Length(mIds)));
+  mIds := nil;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeSectionsTests);
+  TDUnitX.RegisterTestFixture(TAtlasWelcomePluginsTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeLayoutTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeGreetingTests);
   TDUnitX.RegisterTestFixture(TAtlasWelcomeBackupTests);
