@@ -44,6 +44,10 @@ type
     /// <summary>Ende einer automatischen Prüfung; True, wenn die Automatik für AProject jetzt abschaltet.</summary>
     function CheckFinished(const AProject: string; ADurationMs: Int64): Boolean;
     function IsDisabled(const AProject: string): Boolean;
+    /// <summary>Gehört die gespeicherte Datei AFileName zum Projekt AProjectFile mit den Moduldateien AModules?
+    /// Auch .dpr bzw. .dpk neben der Projektdatei.</summary>
+    class function Belongs(const AProjectFile: string; const AModules: TArray<string>;
+      const AFileName: string): Boolean; static;
     property DelayMs: Integer read FDelayMs write FDelayMs;
     property MaxMs: Integer read FMaxMs write FMaxMs;
     property BuildRunning: Boolean read FBuildRunning;
@@ -121,6 +125,30 @@ end;
 function TAtlasCheckOnSave.IsDisabled(const AProject: string): Boolean;
 begin
   Result := FDisabled.ContainsKey(UpperCase(AProject));
+end;
+
+class function TAtlasCheckOnSave.Belongs(const AProjectFile: string; const AModules: TArray<string>;
+  const AFileName: string): Boolean;
+const
+  cSources: array[0..1] of string = ('.dpr', '.dpk');
+var
+  mModule, mExtension: string;
+begin
+  for mModule in AModules do
+  begin
+    if SameText(mModule, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  for mExtension in cSources do
+  begin
+    if SameText(ChangeFileExt(AProjectFile, mExtension), AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 end.

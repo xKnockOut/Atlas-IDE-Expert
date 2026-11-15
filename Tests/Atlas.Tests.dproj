@@ -2031,6 +2031,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Marks.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Marks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas"/>

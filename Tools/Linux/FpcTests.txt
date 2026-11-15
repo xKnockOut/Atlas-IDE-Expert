@@ -388,6 +388,7 @@ Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests
 Atlas.Core.Editor.StickyPlan.Tests
 Atlas.Core.Problems.Plan.Tests
+Atlas.Core.Problems.Marks.Tests
 Atlas.Core.Status.FieldPlan.Tests
 Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests

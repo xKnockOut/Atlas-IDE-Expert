@@ -3,7 +3,8 @@
 // Entscheidungen der Brotkrumenleiste (#590) ohne VCL und Open Tools API:
 // welche zusätzlichen Glieder die Einstellungen verlangen, wovon der gezeigte
 // Pfad abhängt (neu bilden, wenn sich Stand oder Einstellungen ändern) und
-// wohin ein Sprung auf ein Glied führt. Leisten, Takt, Menüs und Karte
+// wohin ein Sprung auf ein Glied führt; im Menü der Sprungziele (#1764, #1768)
+// Text, Pfadart und Wirkung eines Eintrags. Leisten, Takt, Menüs und Karte
 // bleiben in Atlas.IDE.Outline.Breadcrumbs.
 
 {$SCOPEDENUMS ON}
@@ -41,7 +42,31 @@ type
     Character: Integer;
   end;
 
+  /// <summary>Wirkung eines Eintrags im Menü der Sprungziele: nichts (unlesbare Kennung), springen, Zeile am Ende
+  /// eines Abschnitts anhängen, fehlenden Abschnitt anlegen (#1768).</summary>
+  TAtlasCrumbPlaceAction = (None, Jump, Append, AddSection);
+
+  TAtlasCrumbPlaceChoice = record
+    Action: TAtlasCrumbPlaceAction;
+    /// <summary>Sprungziel bzw. Abschnitt (Append; cNoSection, wenn unlesbar).</summary>
+    Index: Integer;
+    /// <summary>Schlüsselwort des neuen Abschnitts (AddSection).</summary>
+    Keyword: string;
+  end;
+
+  /// <summary>Zweite Spalte eines Sprungziels: Abschnitt mit einem bzw. mehreren Mitgliedern, Gruppe mit Zeile, nur
+  /// Zeile.</summary>
+  TAtlasCrumbPlacePath = (SectionOne, SectionCount, Group, LineOnly);
+
   TAtlasCrumbPlan = record
+  public const
+    /// <summary>Kennungen der Menüeinträge „Neue Zeile am Ende von …“ und „Abschnitt anlegen“ (#1768).</summary>
+    cAppendId = 'append:';
+    cCreateId = 'create:';
+    /// <summary>Einrückung je Verschachtelungstiefe einer Region im Menü (#1764), in Zeichen.</summary>
+    cPlaceIndent = 4;
+    /// <summary>Abschnitt einer unlesbaren Kennung: keiner (-1 heißt „vor dem ersten Schlüsselwort“).</summary>
+    cNoSection = -2;
   public
     /// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
     /// </summary>
@@ -50,6 +75,13 @@ type
     /// seinem gewählten Schlüsselwort, sonst zur Implementierung bzw. (ADeclaration) zur Deklaration.</summary>
     class function Jump(const ANodes: TAtlasOutlineNodes; const ACrumb: TAtlasCrumb;
       ADeclaration: Boolean): TAtlasCrumbJump; static;
+    /// <summary>Text eines Sprungziels im Menü: eingerückt nach Tiefe, mit Marke vor dem Abschnitt (ACounts).
+    /// </summary>
+    class function PlaceCaption(const APlace: TAtlasCrumbPlace; const AText: string; ACounts: Boolean): string;
+      static;
+    class function PlacePath(const APlace: TAtlasCrumbPlace; ACounts: Boolean): TAtlasCrumbPlacePath; static;
+    /// <summary>Wirkung des Eintrags AId bei ACount Sprungzielen.</summary>
+    class function PlaceChoice(const AId: string; ACount: Integer): TAtlasCrumbPlaceChoice; static;
   end;
 
 implementation
@@ -142,6 +174,62 @@ begin
     Result.Kind := TAtlasCrumbJumpKind.Place;
     Result.Line := ANodes[mTarget].NameLine;
     Result.Character := ANodes[mTarget].NameCharacter;
+  end;
+end;
+
+class function TAtlasCrumbPlan.PlaceCaption(const APlace: TAtlasCrumbPlace; const AText: string;
+  ACounts: Boolean): string;
+begin
+  Result := StringOfChar(' ', cPlaceIndent * APlace.Depth) + AText;
+  if ACounts and (APlace.Mark <> '') then
+  begin
+    Result := APlace.Mark + ' ' + Result;
+  end;
+end;
+
+class function TAtlasCrumbPlan.PlacePath(const APlace: TAtlasCrumbPlace; ACounts: Boolean): TAtlasCrumbPlacePath;
+begin
+  if ACounts and (APlace.Mark <> '') then
+  begin
+    if APlace.Count = 1 then
+    begin
+      Result := TAtlasCrumbPlacePath.SectionOne;
+    end
+    else
+    begin
+      Result := TAtlasCrumbPlacePath.SectionCount;
+    end;
+  end
+  else if APlace.Group <> '' then
+  begin
+    Result := TAtlasCrumbPlacePath.Group;
+  end
+  else
+  begin
+    Result := TAtlasCrumbPlacePath.LineOnly;
+  end;
+end;
+
+class function TAtlasCrumbPlan.PlaceChoice(const AId: string; ACount: Integer): TAtlasCrumbPlaceChoice;
+begin
+  Result := Default(TAtlasCrumbPlaceChoice);
+  if AId.StartsWith(cAppendId) then
+  begin
+    Result.Action := TAtlasCrumbPlaceAction.Append;
+    Result.Index := StrToIntDef(AId.Substring(Length(cAppendId)), cNoSection);
+  end
+  else if AId.StartsWith(cCreateId) then
+  begin
+    Result.Action := TAtlasCrumbPlaceAction.AddSection;
+    Result.Keyword := AId.Substring(Length(cCreateId));
+  end
+  else
+  begin
+    Result.Index := StrToIntDef(AId, -1);
+    if (Result.Index >= 0) and (Result.Index < ACount) then
+    begin
+      Result.Action := TAtlasCrumbPlaceAction.Jump;
+    end;
   end;
 end;
 

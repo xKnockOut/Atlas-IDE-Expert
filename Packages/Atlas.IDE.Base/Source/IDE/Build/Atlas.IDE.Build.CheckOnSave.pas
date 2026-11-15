@@ -368,7 +368,7 @@ procedure TAtlasIdeCheckOnSave.Saved(const AFileName: string);
 var
   mProject: IOTAProject;
   mIndex: Integer;
-  mBelongs: Boolean;
+  mModules: TArray<string>;
 begin
   try
     if FChecking or not TAtlasIdeSettings.Current.CheckOnSave then
@@ -380,20 +380,12 @@ begin
     begin
       Exit;
     end;
-    mBelongs := False;
+    mModules := nil;
     for mIndex := 0 to mProject.GetModuleCount - 1 do
     begin
-      if SameText(mProject.GetModule(mIndex).FileName, AFileName) then
-      begin
-        mBelongs := True;
-      end;
+      mModules := mModules + [mProject.GetModule(mIndex).FileName];
     end;
-    if SameText(ChangeFileExt(mProject.FileName, '.dpr'), AFileName) or
-      SameText(ChangeFileExt(mProject.FileName, '.dpk'), AFileName) then
-    begin
-      mBelongs := True;
-    end;
-    if mBelongs then
+    if TAtlasCheckOnSave.Belongs(mProject.FileName, mModules, AFileName) then
     begin
       FCore.Saved(mProject.FileName, NowMs);
     end;

@@ -1893,6 +1893,8 @@ uses
   Atlas.Core.Problems.AtCaret.Tests in 'IDE.Expert\Atlas.Core.Problems.AtCaret.Tests.pas',
   Atlas.Core.Problems.Plan in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Plan.pas',
   Atlas.Core.Problems.Plan.Tests in 'IDE.Expert\Atlas.Core.Problems.Plan.Tests.pas',
+  Atlas.Core.Problems.Marks in '..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Marks.pas',
+  Atlas.Core.Problems.Marks.Tests in 'IDE.Expert\Atlas.Core.Problems.Marks.Tests.pas',
   Atlas.Core.Problems.BulkFix.Tests in 'IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas',
   Atlas.Core.Editor.Recursion.Tests in 'IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas',
   Atlas.Core.Editor.GutterColumn.Tests in 'IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas',
