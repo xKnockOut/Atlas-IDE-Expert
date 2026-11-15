@@ -72,6 +72,8 @@ type
     FHandlers: TAtlasTestsExplorerHandlers;
     function Scaled96(AValue: Integer): Integer;
     function NewPanel(ATop, AHeight: Integer): TPanel;
+    function NewFlow(ATop: Integer): TFlowPanel;
+    function TextWidth(const AText: string): Integer;
     function NewButton(AParent: TWinControl; ALeft: Integer; const ACaption: string): TButton;
     procedure BuildProjectRow;
     function BuildButtonRow(ATop: Integer): Integer;
@@ -154,6 +156,10 @@ uses
 
 {$R *.dfm}
 
+type
+  /// <summary>Zugriff auf die geschützte Schrift des Frames (E2362).</summary>
+  TControlAccess = class(TControl);
+
 const
   cBarHeight = 30;
   cGap = 6;
@@ -161,6 +167,9 @@ const
   cComboWidth = 240;
   cButtonWidth = 140;
   cCheckWidth = 110;
+  /// <summary>Kästchen eines Häkchens samt Abstand zum Text, logische Pixel.</summary>
+  cCheckBox = 24;
+
   cSearchWidth = 180;
   cDetailsHeight = 140;
   cDotSize = 16;
@@ -216,10 +225,39 @@ begin
   Result.Parent := FFrame;
 end;
 
+/// <summary>Fließende Leiste (alTop, wächst mit Umbrüchen): Knöpfe, Filter und Suche brechen bei schmalem Fenster
+/// in weitere Zeilen um, statt sich zu überdecken.</summary>
+function TAtlasTestsExplorerBar.NewFlow(ATop: Integer): TFlowPanel;
+begin
+  Result := TFlowPanel.Create(FFrame);
+  Result.Top := ATop;
+  Result.BevelOuter := bvNone;
+  Result.ShowCaption := False;
+  Result.AutoWrap := True;
+  Result.AutoSize := True;
+  Result.Align := alTop;
+  Result.Parent := FFrame;
+end;
+
+/// <summary>Breite von AText in der Schrift des Frames.</summary>
+function TAtlasTestsExplorerBar.TextWidth(const AText: string): Integer;
+var
+  mBitmap: TBitmap;
+begin
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font := TControlAccess(FFrame).Font;
+    Result := mBitmap.Canvas.TextWidth(AText);
+  finally
+    mBitmap.Free;
+  end;
+end;
+
 function TAtlasTestsExplorerBar.NewButton(AParent: TWinControl; ALeft: Integer; const ACaption: string): TButton;
 begin
   Result := TButton.Create(FFrame);
   Result.Caption := ACaption;
+  Result.AlignWithMargins := True;
   Result.SetBounds(ALeft, Scaled96(cGap) div 2, Scaled96(cButtonWidth), Scaled96(cBarHeight - cGap));
   Result.OnClick := ButtonClick;
   Result.Parent := AParent;
@@ -247,10 +285,10 @@ end;
 
 function TAtlasTestsExplorerBar.BuildButtonRow(ATop: Integer): Integer;
 var
-  mBar: TPanel;
+  mBar: TFlowPanel;
   mLeft: Integer;
 begin
-  mBar := NewPanel(ATop, Scaled96(cBarHeight));
+  mBar := NewFlow(ATop);
   mLeft := Scaled96(cGap);
   FRunAll := NewButton(mBar, mLeft, TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerRunAll));
   Inc(mLeft, FRunAll.Width + Scaled96(cGap));
@@ -268,24 +306,27 @@ const
     TAtlasTestsTextId.ExplorerFilterNotRun, TAtlasTestsTextId.ExplorerFilterStale,
     TAtlasTestsTextId.ExplorerFilterSlow, TAtlasTestsTextId.ExplorerFilterFlaky);
 var
-  mBar: TPanel;
+  mBar: TFlowPanel;
   mLeft: Integer;
   mFilter: TAtlasTestFilter;
 begin
-  mBar := NewPanel(ATop, Scaled96(cBarHeight));
+  mBar := NewFlow(ATop);
   mLeft := Scaled96(cGap);
   for mFilter := Low(TAtlasTestFilter) to High(TAtlasTestFilter) do
   begin
     FFilterChecks[mFilter] := TCheckBox.Create(FFrame);
     FFilterChecks[mFilter].Caption := TAtlasTestsStrings.Text(cFilterTexts[mFilter]);
-    FFilterChecks[mFilter].SetBounds(mLeft, Scaled96(cGap) div 2, Scaled96(cCheckWidth),
-      Scaled96(cBarHeight - cGap));
+    // Breite nach dem Text (vorher fest, „Nicht gelaufen“ lief in den nächsten Filter).
+    FFilterChecks[mFilter].AlignWithMargins := True;
+    FFilterChecks[mFilter].SetBounds(mLeft, Scaled96(cGap) div 2,
+      TextWidth(FFilterChecks[mFilter].Caption) + Scaled96(cCheckBox), Scaled96(cBarHeight - cGap));
     FFilterChecks[mFilter].OnClick := FilterChange;
     FFilterChecks[mFilter].Parent := mBar;
     Inc(mLeft, Scaled96(cCheckWidth));
   end;
   FSearch := TEdit.Create(FFrame);
   FSearch.TextHint := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerSearchHint);
+  FSearch.AlignWithMargins := True;
   FSearch.SetBounds(mLeft, Scaled96(cGap) div 2, Scaled96(cSearchWidth), Scaled96(cBarHeight - cGap));
   FSearch.OnChange := FilterChange;
   FSearch.Parent := mBar;
