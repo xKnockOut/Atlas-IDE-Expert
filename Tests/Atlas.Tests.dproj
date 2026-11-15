@@ -2696,6 +2696,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.KeptComponents.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Designer.KeptComponents.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas"/>

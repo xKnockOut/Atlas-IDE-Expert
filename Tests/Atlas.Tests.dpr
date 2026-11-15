@@ -2120,6 +2120,8 @@ uses
   Atlas.Core.Designer.Similar.Tests in 'IDE.Expert\Atlas.Core.Designer.Similar.Tests.pas',
   Atlas.Core.Designer.Gaps in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Gaps.pas',
   Atlas.Core.Designer.Gaps.Tests in 'IDE.Expert\Atlas.Core.Designer.Gaps.Tests.pas',
+  Atlas.Core.Designer.KeptComponents in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.KeptComponents.pas',
+  Atlas.Core.Designer.KeptComponents.Tests in 'IDE.Expert\Atlas.Core.Designer.KeptComponents.Tests.pas',
   Atlas.Core.Designer.MultiResize in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas',
   Atlas.Core.Designer.SelectionBar in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas',
   Atlas.Core.Designer.Magnifier in '..\Packages\Atlas.IDE.Designer\Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas',

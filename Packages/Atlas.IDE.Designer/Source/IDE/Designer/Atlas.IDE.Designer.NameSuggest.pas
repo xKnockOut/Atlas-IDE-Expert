@@ -64,6 +64,7 @@ uses
   Atlas.UI.Designer.NameDialog,
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Model,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.DockWindow,
@@ -432,6 +433,8 @@ var
   mRows: TArray<TAtlasNameRow>;
   mCanUndo: Boolean;
   mDesigner: IDesigner;
+  mKept: TAtlasDesignerKept;
+  mResult: TAtlasNameDialogResult;
 begin
   mDesigner := nil;
   if TAtlasDesignerAccess.Current(mEditor, mRoot) and (mRoot is TWinControl) then
@@ -450,19 +453,32 @@ begin
     FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.NameNone, [mRoot.Name]));
     Exit;
   end;
-  case TAtlasNameDialog.Execute(mRoot.Name, mRows, mCanUndo,
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mResult := TAtlasNameDialog.Execute(mRoot.Name, mRows, mCanUndo,
     procedure(AForm: TForm)
     begin
       TAtlasIdeDockWindow.ApplyIdeTheme(AForm);
-    end) of
-    TAtlasNameDialogResult.Apply:
-      ApplyRows(mEditor, mRoot, mRows, FOnMessage, FLast, FLastForm);
-    TAtlasNameDialogResult.Undo:
-      begin
-        UndoLast(mEditor, mRoot, FLast, FOnMessage);
-        FLast := nil;
-      end;
+    end);
+  if mResult = TAtlasNameDialogResult.Cancel then
+  begin
+    Exit;
+  end;
+  // Während des Dialogs kann das Formular neu geladen worden sein: mRoot und mDesigner gehören dann zum alten.
+  if not mKept.Holds then
+  begin
+    FOnMessage(TAtlasDesignerKept.LostText);
+    Exit;
+  end;
+  if mResult = TAtlasNameDialogResult.Apply then
+  begin
+    ApplyRows(mEditor, mRoot, mRows, FOnMessage, FLast, FLastForm);
+  end
+  else
+  begin
+    UndoLast(mEditor, mRoot, FLast, FOnMessage);
+    FLast := nil;
   end;
 end;
+
 
 end.

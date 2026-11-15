@@ -18,6 +18,10 @@
 //   bleibt.
 // - Eine Beschriftung zeigt „180 → 260 px (3×)“.
 // - Jeder Zug ist ein Schritt für „Größen rückgängig“ (TAtlasIdeHandleTool).
+// - Auswahl, Elternelemente und Nachbarn sind über den Zug gemerkt
+//   (TAtlasDesignerKept); lädt währenddessen etwas das Formular neu oder
+//   löscht eine Komponente, bricht der Zug vor dem nächsten Schreiben ab.
+//   Nachbarn, die nicht über Components am Formular hängen, rücken nicht mit.
 // Nur im Hauptthread.
 
 interface
@@ -31,7 +35,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Handles,
-  Atlas.IDE.Designer.HandleTool;
+  Atlas.IDE.Designer.HandleTool,
+  Atlas.IDE.Designer.KeptForm;
 
 type
   TAtlasIdeMultiResize = class(TAtlasIdeHandleTool)
@@ -40,6 +45,7 @@ type
   private
     FRoot: TWinControl;
     FControls: TArray<TControl>;
+    FKept: TAtlasDesignerKept;
     FItems: TArray<TAtlasResizeItem>;
     FParents: TArray<TWinControl>;
     FNeighbours: TArray<TControl>;
@@ -79,6 +85,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.EditorToolbar.Icons,
+  Atlas.Core.Designer.KeptComponents,
   Atlas.UI.Designer.ToolStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.Settings;
@@ -129,6 +136,11 @@ begin
   begin
     Exit;
   end;
+  if not FKept.Holds then
+  begin
+    Lost;
+    Exit;
+  end;
   mDrag.Dragged := FDragged;
   mDrag.Edge := FEdge;
   mDrag.Delta := ADelta;
@@ -164,6 +176,11 @@ end;
 
 procedure TAtlasIdeMultiResize.Up;
 begin
+  if InStep and not FKept.Holds then
+  begin
+    Lost;
+    Exit;
+  end;
   CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.ResizeDone, [FCount]), False);
   FLabel := '';
   Tick;
@@ -209,7 +226,8 @@ begin
   ShowItems;
 end;
 
-/// <summary>Markierte Steuerelemente des aktiven Formulars (Felder FRoot, FControls, FItems, FParents).</summary>
+/// <summary>Markierte Steuerelemente des aktiven Formulars (Felder FRoot, FControls, FItems, FParents, FKept).
+/// </summary>
 function TAtlasIdeMultiResize.FindItems: Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -220,6 +238,7 @@ begin
   FControls := nil;
   FItems := nil;
   FParents := nil;
+  FKept := Default(TAtlasDesignerKept);
   if not Application.Active or not TAtlasDesignerAccess.Current(mEditor, mRoot) or not (mRoot is TWinControl) then
   begin
     Exit(False);
@@ -237,6 +256,8 @@ begin
       mControl.Constraints.MinHeight, IsFixed(mControl), GroupOf(mControl.Parent))];
   end;
   Result := Length(FControls) >= 2;
+  FKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  FKept.Add(FControls);
 end;
 
 /// <summary>Mitte des Griffs an der Kante AEdge von ARect; Ecke unten rechts.</summary>
@@ -285,13 +306,15 @@ begin
   Result := High(FParents);
 end;
 
-/// <summary>Nicht markierte Steuerelemente in den Elternelementen der Auswahl.</summary>
+/// <summary>Nicht markierte Steuerelemente in den Elternelementen der Auswahl; sie und die Elternelemente kommen
+/// zu FKept.</summary>
 procedure TAtlasIdeMultiResize.CollectNeighbours;
 var
   mGroup, mIndex: Integer;
   mControl: TControl;
   mSelected: Boolean;
   mItem: TControl;
+  mParent: TWinControl;
 begin
   FNeighbours := nil;
   FNeighbourItems := nil;
@@ -305,13 +328,18 @@ begin
       begin
         mSelected := mSelected or (mItem = mControl);
       end;
-      if not mSelected and (mControl.Align = alNone) then
+      if not mSelected and (mControl.Align = alNone) and TAtlasKeptComponents.Reachable(FRoot, mControl) then
       begin
         FNeighbours := FNeighbours + [mControl];
         FNeighbourItems := FNeighbourItems + [TAtlasResizeNeighbour.Create(mControl.BoundsRect, mGroup)];
       end;
     end;
   end;
+  for mParent in FParents do
+  begin
+    FKept.Add(mParent);
+  end;
+  FKept.Add(FNeighbours);
 end;
 
 function TAtlasIdeMultiResize.HandlesOf(const AOrigin: TPoint): TArray<TAtlasHandle>;
