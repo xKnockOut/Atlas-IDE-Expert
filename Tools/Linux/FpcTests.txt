@@ -555,3 +555,4 @@ Atlas.Core.Debug.AccessViolation.Stop.Tests
 Atlas.Core.Search.BarPlan.Tests
 Atlas.Core.UnitSearch.Plan.Tests
 Atlas.Core.Rules.OwnershipPlan.Tests
+Atlas.Core.BuildPipeline.Plan.Tests

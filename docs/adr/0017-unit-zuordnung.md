@@ -1747,6 +1747,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.BuildPipeline.Gate` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Gate.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.Core.BuildPipeline.ReleaseGuard` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas` | Ordner `Core/BuildPipeline` |
+| `Atlas.Core.BuildPipeline.Plan` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Plan.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Gate` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Gate.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.ReleaseGuard` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.ReleaseGuard.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Runner` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas` | Ordner `IDE/BuildPipeline` |

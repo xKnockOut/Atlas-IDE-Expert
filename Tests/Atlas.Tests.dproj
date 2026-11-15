@@ -2081,6 +2081,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.SettingsSection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Verdict.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.Gate.Tests.pas"/>

@@ -1941,6 +1941,8 @@ uses
   Atlas.UI.Assistants.SettingsSection.Tests in 'IDE.Expert\Atlas.UI.Assistants.SettingsSection.Tests.pas',
   Atlas.Core.BuildPipeline.ReleaseGuard in '..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas',
   Atlas.Core.BuildPipeline.ReleaseGuard.Tests in 'IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas',
+  Atlas.Core.BuildPipeline.Plan in '..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Plan.pas',
+  Atlas.Core.BuildPipeline.Plan.Tests in 'IDE.Expert\Atlas.Core.BuildPipeline.Plan.Tests.pas',
   Atlas.Core.BuildPipeline.Gate in '..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas',
   Atlas.Core.Build.Verdict in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Verdict.pas',
   Atlas.Core.BuildPipeline.Gate.Tests in 'IDE.Expert\Atlas.Core.BuildPipeline.Gate.Tests.pas',

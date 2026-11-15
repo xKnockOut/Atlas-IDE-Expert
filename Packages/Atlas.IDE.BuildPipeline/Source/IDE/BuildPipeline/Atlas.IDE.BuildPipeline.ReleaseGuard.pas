@@ -60,6 +60,7 @@ implementation
 uses
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
+  Atlas.Core.BuildPipeline.Plan,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.TextFile,
@@ -307,27 +308,15 @@ end;
 
 class function TAtlasIdeReleaseGuard.RulesOf(const AFindings: TAtlasReleaseFindings): TArray<string>;
 var
-  mFinding: TAtlasReleaseFinding;
-  mRule, mKnown: string;
-  mSeen: Boolean;
+  mRules: TArray<string>;
+  mIndex: Integer;
 begin
-  Result := nil;
-  for mFinding in AFindings do
+  SetLength(mRules, Length(AFindings));
+  for mIndex := 0 to High(AFindings) do
   begin
-    mRule := TAtlasReleaseGuard.cRuleIds[mFinding.Check];
-    mSeen := False;
-    for mKnown in Result do
-    begin
-      if mKnown = mRule then
-      begin
-        mSeen := True;
-      end;
-    end;
-    if not mSeen then
-    begin
-      Result := Result + [mRule];
-    end;
+    mRules[mIndex] := TAtlasReleaseGuard.cRuleIds[AFindings[mIndex].Check];
   end;
+  Result := TAtlasBuildPipelinePlan.UniqueRules(mRules);
 end;
 
 /// <summary>Projekt-Zusammenfassung (#592): letzte Prüfung, auch ohne Befund.</summary>
@@ -444,28 +433,15 @@ end;
 /// build.releaseConfigs, die das Projekt hat; '' ohne.</summary>
 function CheckConfiguration(const AProject: IOTAProject; const ASettings: TAtlasReleaseSettings): string;
 var
-  mName: string;
+  mSettings: TAtlasReleaseSettings;
 begin
-  Result := AProject.CurrentConfiguration;
-  if ASettings.IsRelease(Result) then
-  begin
-    Exit;
-  end;
-  for mName in TAtlasIdeProjectContext.Configurations(AProject) do
-  begin
-    if SameText(mName, TAtlasBuildPipelineSettings.cReleaseConfiguration) then
+  mSettings := ASettings;
+  Result := TAtlasBuildPipelinePlan.CheckConfiguration(AProject.CurrentConfiguration,
+    TAtlasIdeProjectContext.Configurations(AProject), TAtlasBuildPipelineSettings.cReleaseConfiguration,
+    function(AName: string): Boolean
     begin
-      Exit(mName);
-    end;
-  end;
-  for mName in TAtlasIdeProjectContext.Configurations(AProject) do
-  begin
-    if ASettings.IsRelease(mName) then
-    begin
-      Exit(mName);
-    end;
-  end;
-  Result := '';
+      Result := mSettings.IsRelease(AName);
+    end);
 end;
 
 class procedure TAtlasIdeReleaseGuard.CheckActive(const AFolder: string; const ASettings: TAtlasReleaseSettings);
