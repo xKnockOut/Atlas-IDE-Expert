@@ -89,6 +89,10 @@ begin
   // FP-Prüfung 28.10.2026: Eine eigene Methode zwischen Free und Zugriff kann das Feld neu belegen.
   TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Neu;'#10'  FListe.Add(nil);'#10 +
     '  FListe.Free;'#10'  Self.Neu;'#10'  FListe.Add(nil);'#10'end;'#10'end.');
+  // inherited ruft eine Methode für Self auf (ACBr TACBrECFVirtualClass: FreeAndNil(fpAliquotas);
+  // inherited CarregaAliquotas; fpAliquotas.Add(…)).
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  FreeAndNil(FListe);'#10'  inherited Laden;'#10 +
+    '  FListe.Add(nil);'#10'end;'#10'end.');
   // Eine fremde Routine belegt das Feld nicht neu.
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Melden;'#10 +
     '  FListe.Add(nil);'#10'end;'#10'end.');

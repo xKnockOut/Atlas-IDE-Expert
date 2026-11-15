@@ -3,7 +3,7 @@
 // Regel use-after-free aus Atlas.Common.Rules.Builtin.Flow (#269): Nach X.Free, X.Destroy, X.DisposeOf,
 // FreeAndNil(X) oder Dispose(X) liest ein Weg des Kontrollflusses X wieder. Eine Zuweisung an X, die Übergabe als
 // Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn. Bei einem Feld der Klasse
-// beendet auch der Aufruf einer eigenen Methode den Weg: Sie kann das Feld neu belegen.
+// beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen.
 
 interface
 
@@ -98,8 +98,8 @@ begin
   FReport := AReport;
 end;
 
-/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
-/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
+/// <summary>Ruft AStatement eine Methode der eigenen Klasse oder geerbt auf (Reset; Self.Reset(1); inherited Reset)?
+/// Sie kann ein Feld neu belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
 function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
 var
   mTarget: TSyntaxNode;
@@ -117,6 +117,12 @@ begin
     if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
     begin
       mTarget := mTarget[0];
+    end;
+    // inherited Laden; ruft die Methode des Vorfahren für Self auf (ACBr: FreeAndNil(FListe); inherited
+    // CarregaAliquotas; FListe.Add(…)).
+    if mTarget.Kind = TSyntaxKind.InheritedExpr then
+    begin
+      Exit(True);
     end;
     // Name oder Self.Name.
     mName := FreedPath(mTarget);
