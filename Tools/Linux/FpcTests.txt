@@ -510,3 +510,5 @@ Atlas.Core.Tests.Lists.Tests
 Atlas.Core.Tests.ListText.Tests
 Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
+Atlas.Core.Debug.EvaluateRows.Tests
+Atlas.Core.Debug.DialogInput.Tests
