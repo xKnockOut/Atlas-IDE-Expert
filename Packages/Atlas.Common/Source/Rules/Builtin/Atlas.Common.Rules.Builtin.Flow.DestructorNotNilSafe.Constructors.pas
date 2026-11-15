@@ -180,9 +180,15 @@ var
   mIndex: Integer;
 begin
   Result := nil;
+  // try … except: Der Handler kann die Ausnahme schlucken, der Rest des Rumpfs fehlt dann (keine Teile, also
+  // nicht auf jedem Weg). try … finally: Eine Ausnahme verlässt den Konstruktor (Fall „wirft“, nicht „bedingt“).
+  if (ANode.Kind = TSyntaxKind.TryStatement) and (ANode.FindChild(TSyntaxKind.FinallyBlock) = nil) then
+  begin
+    Exit;
+  end;
   for mIndex := 0 to ANode.ChildCount - 1 do
     case ANode.Kind of
-      TSyntaxKind.Block:
+      TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock:
         Result := Result + [ANode[mIndex]];
       TSyntaxKind.IfStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse:
         if ANode[mIndex].Kind in cFlowStatementKinds then
@@ -213,7 +219,7 @@ begin
     AValues.Push((ANode.ChildCount = 2) and SameText(FreedPath(ANode[0]), AField));
   end
   else if ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
-    TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
+    TSyntaxKind.CaseItem, TSyntaxKind.CaseElse, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock] then
   begin
     APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
     mParts := AlwaysParts(ANode);
@@ -260,7 +266,8 @@ begin
   end;
 end;
 
-/// <summary>Weist ANode dem Feld AField auf jedem Weg zu (if mit beiden Zweigen, case mit else, begin … end)?
+/// <summary>Weist ANode dem Feld AField auf jedem Weg zu (if mit beiden Zweigen, case mit else, begin … end,
+/// try … finally)?
 /// </summary>
 function AssignsAlways(ANode: TSyntaxNode; const AField: string): Boolean;
 var

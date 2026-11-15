@@ -18,6 +18,10 @@ type
     procedure QuietCreationIsNoRaiser;
     [Test]
     procedure ConditionalCreationIsRisky;
+    /// <summary>Im Rumpf von try … finally angelegt ist nicht bedingt (Fehlalarm in PasVulkan.Scene3D); im Rumpf von
+    /// try … except schon, der Handler kann die Ausnahme schlucken.</summary>
+    [Test]
+    procedure CreationInTryFinallyIsNotConditional;
     [Test]
     procedure LaterFieldImpliesEarlier;
   end;
@@ -118,6 +122,23 @@ var
   mImplications: TArray<TGuardImplication>;
 begin
   mRisky := Scanned('  if Datei <> '''' then'#10'    FZeilen := TStringList.Create;', mImplications);
+  Assert.AreEqual(1, Integer(Length(mRisky)));
+  Assert.IsTrue(mRisky[0].Conditional);
+end;
+
+procedure TFlowDestructorConstructorsTests.CreationInTryFinallyIsNotConditional;
+var
+  mRisky: TArray<TNilAtDestroy>;
+  mImplications: TArray<TGuardImplication>;
+begin
+  mRisky := Scanned('  try'#10'    FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
+    '    FZeilen := TStringList.Create;'#10'  finally'#10'    Melde;'#10'  end;', mImplications);
+  Assert.AreEqual(1, Integer(Length(mRisky)));
+  Assert.AreEqual('FZeilen', mRisky[0].Field);
+  Assert.IsFalse(mRisky[0].Conditional);
+  Assert.AreEqual('TFileStream.Create', mRisky[0].Raiser);
+  mRisky := Scanned('  try'#10'    FZeilen := TStringList.Create;'#10'  except'#10'    Melde;'#10'  end;',
+    mImplications);
   Assert.AreEqual(1, Integer(Length(mRisky)));
   Assert.IsTrue(mRisky[0].Conditional);
 end;
