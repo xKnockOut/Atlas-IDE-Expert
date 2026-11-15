@@ -5506,6 +5506,48 @@
       "safeFix": false
     },
     {
+      "id": "winapi-declaration-missing",
+      "name": "Missing from Delphi's Winapi.Windows",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The unit uses Winapi.Windows (or Windows) and names an identifier that Free Pascal's Windows unit declares but Delphi's Winapi.Windows does not: OpenThread, THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal compiles it, Delphi reports E2003. Not reported when the file declares the name itself or when name resolution finds it in a unit other than Free Pascal's Windows (for example a project unit, or Delphi's Winapi.Windows from the symbol index). Names after a dot, in comments and in strings stay silent. One finding per name and file; the message gives the declaration to add.",
+      "bad": "uses\n  Winapi.Windows;\n…\n  mThread := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);",
+      "good": "uses\n  Winapi.Windows;\nconst\n  THREAD_SUSPEND_RESUME = $0002;\nfunction OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;\n  external kernel32 name 'OpenThread';",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "B",
+      "safeFix": false
+    },
+    {
+      "id": "winapi-uses-missing",
+      "name": "Winapi.Windows missing from uses",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A routine that Delphi only declares in Winapi.Windows (GetTickCount64, GetTickCount, MulDiv) is called while Winapi.Windows (or Windows) is not in uses. Free Pascal also finds these routines in SysUtils and compiles the unit; Delphi reports E2003. TThread.GetTickCount64 and other names after a dot do not count, nor do routines the file or a project unit declares itself. One finding per file. Quick fix: add Winapi.Windows to the uses of that section (watch uses-order-hides-type if the unit also uses Vcl.Graphics).",
+      "bad": "uses\n  System.SysUtils;\n…\n  mStart := GetTickCount64;",
+      "good": "uses\n  Winapi.Windows, System.SysUtils;\n…\n  mStart := GetTickCount64;",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "B",
+      "safeFix": false
+    },
+    {
+      "id": "stream-write-nativeint",
+      "name": "Write without NativeInt overload",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A class overrides Write(const Buffer; Count: Longint): Longint of TStream but not the overload Write(const Buffer; Count: NativeInt): NativeInt that exists from Delphi 13 on. Under Win64, WriteBuffer and CopyFrom call the NativeInt overload and bypass the own version, without any compiler message: a limit or count in the Longint version no longer applies. The second version is searched in the whole text of the class, also in {$IF} branches. Not reported when delphiVersion is set to a version before Delphi 13. Under Win32 both signatures are the same, so the NativeInt version belongs inside {$IF RTLVersion >= 37.0} and {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.",
+      "bad": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; override;\nend;",
+      "good": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; overload; override;\n{$IF RTLVersion >= 37.0}\n  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}\n  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;\n  {$IFEND}\n{$IFEND}\nend;",
+      "level": "A",
+      "safeFix": false
+    },
+    {
       "id": "unresolved-type",
       "name": "Type in a declaration not found",
       "category": "bug",

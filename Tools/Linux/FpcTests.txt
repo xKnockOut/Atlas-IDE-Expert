@@ -267,6 +267,7 @@ Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
+Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests
 Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
@@ -514,6 +515,9 @@ Atlas.Core.Tracker.Internals.GitHubPulls.Tests
 Atlas.Core.Tracker.EndPull.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
+Atlas.Core.Tracker.SettingsPlan.Tests
+Atlas.Core.Tracker.NewIssuePlan.Tests
+Atlas.Core.Tracker.AttachPlan.Tests
 Atlas.Core.Tracker.CodeLinkPlan.Tests
 Atlas.Core.Tracker.BlamePlan.Tests
 Atlas.Core.Tracker.SprintLoad.Tests
