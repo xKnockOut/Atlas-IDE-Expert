@@ -85,6 +85,14 @@ type
     /// Parameter, lokale Variablen und Namen der umgebenden Routine sind dort bekannt.</summary>
     [Test]
     procedure ChecksAnonymousMethodBodies;
+    /// <summary>Werte einer Aufzählung aus dem type-Abschnitt einer Routine sind dort und in verschachtelten
+    /// Routinen bekannt (Fehlalarm in cnwizards/cnvcl).</summary>
+    [Test]
+    procedure KnowsLocalEnumValues;
+    /// <summary>Mit &amp; maskierte Bezeichner (&amp;Type, &amp;Message, &amp;if) als Mitglied und als Routine
+    /// (Fehlalarm in Alcinoe und DMVCFramework).</summary>
+    [Test]
+    procedure KnowsEscapedNames;
   end;
 
 implementation
@@ -748,6 +756,75 @@ begin
     mTree.Free;
     mFound := nil;
   end;
+end;
+
+procedure TUnresolvedNamesTests.KnowsLocalEnumValues;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'type'#10 +
+    '  TArt = (taEins, taZwei);'#10 +
+    'var'#10 +
+    '  A: TArt;'#10 +
+    '  procedure Innen;'#10 +
+    '  begin'#10 +
+    '    A := taEins;'#10 +
+    '  end;'#10 +
+    'begin'#10 +
+    '  A := taZwei;'#10 +
+    '  Innen;'#10 +
+    'end;'#10 +
+    'end.'));
+  // Außerhalb der Routine gilt der lokale Typ nicht.
+  Assert.AreEqual('taZwei@12:8;', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses'#10 +
+    '  Basis;'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'type'#10 +
+    '  TArt = (taEins, taZwei);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure Q;'#10 +
+    'begin'#10 +
+    '  Melde(taZwei);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsEscapedNames;
+begin
+  Assert.AreEqual('', Coded(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TParam = class'#10 +
+    '    &Type: Integer;'#10 +
+    '    procedure &Message;'#10 +
+    '  end;'#10 +
+    'procedure &if(A: Integer);'#10 +
+    'implementation'#10 +
+    'procedure TParam.&Message;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure &if(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure P;'#10 +
+    'var'#10 +
+    '  mParam: TParam;'#10 +
+    'begin'#10 +
+    '  mParam := nil;'#10 +
+    '  mParam.&Type := 1;'#10 +
+    '  &if(mParam.&Type);'#10 +
+    '  mParam.&Message;'#10 +
+    'end;'#10 +
+    'end.'));
 end;
 
 procedure TUnresolvedNamesTests.KnowsMembersAndUncertainReceivers;

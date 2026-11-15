@@ -1,0 +1,2 @@
+### Behoben
+- Namensauflösung: Typen aus dem `type`-Abschnitt einer Routine verdecken gleichnamige Typen der Unit, ihre Aufzählungswerte sind in der Routine bekannt (Fehlalarme `type-mismatch` in `Vcl.Forms` und `unresolved-identifier`). In Methodenköpfen, Feldern und Properties gilt der Bereich des umgebenden Typs: Ein verschachtelter Typ geht einem gleichnamigen Typ aus dem `uses` vor (`signature-mismatch` wie E2037). Mit `&` maskierte Bezeichner (`P.&Type`, `&if(…)`) werden als Mitglied, Routine und lokaler Name gefunden (`unresolved-identifier`).

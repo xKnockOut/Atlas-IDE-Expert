@@ -26,6 +26,9 @@ type
     /// Variable oder Konstante davor heißt schon so; AFinal: weitere Einträge zählen nicht mehr.</summary>
     function LookupInChild(AChild: TSyntaxNode; const AName: string; AFoundBefore: Boolean;
       out AFound: TResolvedSymbol; out AFinal: Boolean): Boolean;
+    /// <summary>Wert AName der Aufzählung, die der lokale Typ ADecl deklariert (type TArt = (taEins, taZwei)).
+    /// </summary>
+    function LocalEnumValue(ADecl: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Inline-Variable bzw. for-var-Variable ANode namens AName, wenn die Stelle darin liegt.</summary>
     function InlineDeclaration(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>for var I := ...: das Wort nach "for" ist "var".</summary>
@@ -49,6 +52,10 @@ type
     /// <summary>Knoten ANode des Baums als lokaler Name AName.</summary>
     function FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
       AIsParameter: Boolean): TResolvedSymbol;
+    /// <summary>Lokaler Typ ATypeName, wie er an der Deklaration des lokalen Namens ALocal gilt (type-Abschnitt
+    /// der Routine oder einer umgebenden Routine). False bei Namen außerhalb der Datei der Stelle, qualifizierten
+    /// oder generischen Typtexten und Typparametern.</summary>
+    function LocalType(const ALocal: TResolvedSymbol; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Lokaler Name AName an der Stelle, innerste Routine zuerst.</summary>
     function LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Deklarationsteil von ANode: Wie dcc gilt bei doppelt deklarierten Variablen die letzte (#1369).
@@ -73,7 +80,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.Lexer;
 
 /// <summary>Hat die Deklaration ADeclared dieselben Parametertypen wie die Routine ARoutine des Baums? Dann ist
 /// sie dieselbe Routine und keine andere Überladung.</summary>
@@ -148,9 +156,10 @@ var
 begin
   for mName in ANode.Name.Split([',']) do
   begin
-    if SameText(mName.Trim, AName) then
+    // Deklarierte Namen tragen im Baum das Escape-& (&Type: string), gesucht wird ohne.
+    if SameText(TPascalLexer.PlainName(mName.Trim), AName) then
     begin
-      AResult := FromNode(ANode, mName.Trim, AKind, AIsParameter);
+      AResult := FromNode(ANode, TPascalLexer.PlainName(mName.Trim), AKind, AIsParameter);
       Exit(True);
     end;
   end;
@@ -172,25 +181,111 @@ begin
       Result := NamedLocal(AChild, AName, TResolverNodes.DeclarationKind(AChild), False, AFound);
     TSyntaxKind.TypeDecl:
       begin
-        Result := not AFoundBefore and SameText(AChild.Name, AName);
-        AFinal := Result;
+        Result := not AFoundBefore and SameText(TPascalLexer.PlainName(AChild.Name), AName);
         if Result then
         begin
-          AFound := FromNode(AChild, AChild.Name, TIndexSymbolKind.TypeAlias, False);
+          AFound := FromNode(AChild, AName, TIndexSymbolKind.TypeAlias, False);
+        end
+        else
+        begin
+          Result := not AFoundBefore and LocalEnumValue(AChild, AName, AFound);
         end;
+        AFinal := Result;
       end;
     TSyntaxKind.RoutineDecl:
       begin
-        Result := not AFoundBefore and SameText(AChild.Name, AName);
+        Result := not AFoundBefore and SameText(TPascalLexer.PlainName(AChild.Name), AName);
         AFinal := Result;
         if Result then
         begin
-          AFound := FromNode(AChild, AChild.Name, TIndexSymbolKind.Routine, False);
+          AFound := FromNode(AChild, AName, TIndexSymbolKind.Routine, False);
         end;
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
+end;
+
+function TResolverLocals.LocalEnumValue(ADecl: TSyntaxNode; const AName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  mBody, mValue: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mBody := ADecl.FindChild(TSyntaxKind.EnumType);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mBody.ChildCount - 1 do
+  begin
+    mValue := mBody[mIndex];
+    if (mValue.Kind = TSyntaxKind.Identifier) and SameText(TPascalLexer.PlainName(mValue.Name), AName) then
+    begin
+      AResult := FromNode(mValue, AName, TIndexSymbolKind.EnumMember, False);
+      // Typ des Werts ist der lokale Typ; LocalType findet ihn an dieser Stelle.
+      AResult.TypeName := ADecl.Name;
+      AResult.TypeArgs := '';
+      AResult.Initializer := nil;
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Offset des ersten Tokens ab APosition in ATree; -1 ohne.</summary>
+function OffsetAt(ATree: TSyntaxTree; const APosition: TTextPosition): Integer;
+var
+  mTokens: TArray<TPascalToken>;
+  mLow, mHigh, mMiddle: Integer;
+begin
+  mTokens := ATree.Tokens;
+  // Binäre Suche: Die Tokens liegen nach Position sortiert.
+  mLow := 0;
+  mHigh := High(mTokens);
+  Result := -1;
+  while mLow <= mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if (mTokens[mMiddle].StartPos.Line < APosition.Line) or ((mTokens[mMiddle].StartPos.Line = APosition.Line) and
+      (mTokens[mMiddle].StartPos.Character < APosition.Character)) then
+    begin
+      mLow := mMiddle + 1;
+    end
+    else
+    begin
+      Result := mTokens[mMiddle].Offset;
+      mHigh := mMiddle - 1;
+    end;
+  end;
+end;
+
+function TResolverLocals.LocalType(const ALocal: TResolvedSymbol; const ATypeName: string;
+  out AResult: TResolvedSymbol): Boolean;
+var
+  mOffset, mSavedOffset: Integer;
+begin
+  Result := False;
+  if (ALocal.Kind <> TResolvedKind.Local) or (FPlace.Tree = nil) or not FPlace.IsCurrentFile(ALocal.FileName) or
+    (ATypeName = '') or (Pos('.', ATypeName) > 0) or (Pos('<', ATypeName) > 0) then
+  begin
+    Exit;
+  end;
+  mOffset := OffsetAt(FPlace.Tree, ALocal.Range.StartPos);
+  if mOffset < 0 then
+  begin
+    Exit;
+  end;
+  // Gesucht wird an der Deklaration: Eine verschachtelte Routine an der Stelle kann einen gleichnamigen Typ haben.
+  mSavedOffset := FPlace.Offset;
+  FPlace.Offset := mOffset;
+  try
+    Result := LookupLocal(ATypeName, AResult);
+  finally
+    FPlace.Offset := mSavedOffset;
+  end;
+  Result := Result and (AResult.SymbolKind = TIndexSymbolKind.TypeAlias) and not AResult.IsTypeParameter and
+    not (AResult.Range.StartPos = ALocal.Range.StartPos);
 end;
 
 function TResolverLocals.InlineDeclaration(ANode: TSyntaxNode; const AName: string;
@@ -202,10 +297,11 @@ begin
   end;
   // for var I := ... und for var X in ... (#1239): gilt nur in der Schleife.
   Result := (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
-    TResolverNodes.Contains(ANode, FPlace.Offset) and SameText(ANode.Name, AName) and IsForVar(ANode);
+    TResolverNodes.Contains(ANode, FPlace.Offset) and SameText(TPascalLexer.PlainName(ANode.Name), AName) and
+    IsForVar(ANode);
   if Result then
   begin
-    AResult := FromNode(ANode, ANode.Name, TIndexSymbolKind.Variable, False);
+    AResult := FromNode(ANode, AName, TIndexSymbolKind.Variable, False);
   end;
 end;
 
@@ -472,7 +568,7 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       if (AVisited.Kind = TSyntaxKind.RoutineDecl) and (AVisited.StartPos = mStartPos) and
-        SameText(AVisited.Name, mName) then
+        SameText(TPascalLexer.PlainName(AVisited.Name), mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -499,9 +595,10 @@ begin
     begin
       TResolvedSymbol.AddDistinct(Result, ASymbol);
     end
-    else if (mSibling.Kind = TSyntaxKind.RoutineDecl) and SameText(mSibling.Name, ASymbol.Name) then
+    else if (mSibling.Kind = TSyntaxKind.RoutineDecl) and
+      SameText(TPascalLexer.PlainName(mSibling.Name), ASymbol.Name) then
     begin
-      TResolvedSymbol.AddDistinct(Result, FromNode(mSibling, mSibling.Name, TIndexSymbolKind.Routine, False));
+      TResolvedSymbol.AddDistinct(Result, FromNode(mSibling, ASymbol.Name, TIndexSymbolKind.Routine, False));
     end;
   end;
 end;

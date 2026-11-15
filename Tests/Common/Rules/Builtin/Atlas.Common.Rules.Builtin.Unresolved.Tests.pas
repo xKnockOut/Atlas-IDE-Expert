@@ -700,8 +700,10 @@ procedure TUnresolvedTypeTests.DeclarationKinds;
 var
   mFound: TArray<TRuleFinding>;
 begin
-  // Vorfahr, Feld, Parameter, Ergebnis, globale Variable; ohne Kandidaten im Index ohne Korrektur.
+  // Vorfahr, Feld, Parameter, Ergebnis, globale Variable; ohne Kandidaten im Index ohne Korrektur. Die Mitglieder
+  // stehen in einer eigenen Klasse: In TSonder kann der unbekannte Vorfahr TBasiz die Typen deklarieren.
   mFound := TypeFindings(KundenUnit('System.SysUtils', '  TSonder = class(TBasiz)'#10'    FAdresse: TAdresse;'#10 +
+    '  end;'#10'  TAndere = class'#10'    FAdresse: TAdresse;'#10 +
     '    function Pruefe(A: TAnschrift): TErgebnis;'#10'  end;'#10'var'#10'  Aktuell: TKundeX;'#10));
   Assert.AreEqual(5, Integer(Length(mFound)));
   Assert.AreEqual('Typ TBasiz ist nicht deklariert (wie E2003).', mFound[0].Message);

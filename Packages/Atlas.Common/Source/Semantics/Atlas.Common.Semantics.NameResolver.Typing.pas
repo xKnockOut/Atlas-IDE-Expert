@@ -12,7 +12,8 @@ uses
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Semantics.NameResolver.Place,
   Atlas.Common.Semantics.NameResolver.Units,
-  Atlas.Common.Semantics.NameResolver.Lookup;
+  Atlas.Common.Semantics.NameResolver.Lookup,
+  Atlas.Common.Semantics.NameResolver.Locals;
 
 type
   TResolverTyping = class
@@ -21,6 +22,7 @@ type
     FUnits: TResolverUnits;
     FLookup: TResolverLookup;
     FInfer: TResolverInferFunc;
+    FLocals: TResolverLocals;
     // Je Baum: Helfer je Typname und aufgelöste Vorfahren je Typ (Diagnoselog 15.10.2026: Jeder Mitgliedszugriff
     // lief die ganze Vererbungskette neu durch). Gelten, solange FCacheEpoch dem Stand der Stelle entspricht.
     FHelpers: TDictionary<string, TResolvedSymbol>;
@@ -41,6 +43,10 @@ type
     function InferredType(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Deklarierter Typ samt Typargumenten, in der Unit der Deklaration aufgelöst.</summary>
     function DeclaredType(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Typtext AText eines Typs oder Namens AResolved: lokaler Typ der Routine, verschachtelter Typ des
+    /// Mitglieds, sonst in der Unit AFromUnit aufgelöst.</summary>
+    function ResolveDeclared(const AResolved: TResolvedSymbol; const AText: string; const AFromUnit: TUnitIndex;
+      AWithImplementation: Boolean; out AType: TResolvedSymbol): Boolean;
     /// <summary>Verfolgt Aliase von AStart bis zum Grundtyp.</summary>
     function FollowAliases(const AStart: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Name des Typs der umgebenden Methode (TFoo in TFoo.Bar) bzw. der Property-Deklaration; ''
@@ -99,6 +105,9 @@ type
     function AncestorNames(const AClass: TResolvedSymbol; out AComplete: Boolean): TArray<string>;
     /// <summary>Typ eines Ausdrucks für Inline-Variablen ohne Typangabe (TResolverExpressions.ExprSymbol).</summary>
     property Infer: TResolverInferFunc read FInfer write FInfer;
+    /// <summary>Lokale Namen: Typen aus dem type-Abschnitt einer Routine verdecken gleichnamige Typen der Unit.
+    /// </summary>
+    property Locals: TResolverLocals read FLocals write FLocals;
   end;
 
 implementation
@@ -211,9 +220,18 @@ begin
       (FPlace.IsCurrentFile(mFromUnit.FileName) and FPlace.InImplementation);
     mText := TResolverText.Substitute(TResolverText.FullType(AResolved.TypeName, AResolved.TypeArgs),
       AResolved.Bindings);
-    Result := MemberNestedType(AResolved, mText, AType) or
-      FLookup.ResolveTypeText(mText, mFromUnit, mWithImplementation, AType);
+    Result := ResolveDeclared(AResolved, mText, mFromUnit, mWithImplementation, AType);
   end;
+end;
+
+function TResolverTyping.ResolveDeclared(const AResolved: TResolvedSymbol; const AText: string;
+  const AFromUnit: TUnitIndex; AWithImplementation: Boolean; out AType: TResolvedSymbol): Boolean;
+begin
+  // Lokaler type-Abschnitt (procedure P; type TArt = (...); var A: TArt): Wie bei dcc verdeckt der lokale Typ einen
+  // gleichnamigen Typ der Unit.
+  Result := ((FLocals <> nil) and FLocals.LocalType(AResolved, AText, AType)) or
+    MemberNestedType(AResolved, AText, AType) or
+    FLookup.ResolveTypeText(AText, AFromUnit, AWithImplementation, AType);
 end;
 
 function TResolverTyping.FollowAliases(const AStart: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
@@ -231,8 +249,8 @@ begin
     // Eigene Variable: der out-Parameter würde mCurrent.TypeName vor dem Aufruf leeren.
     mText := TResolverText.Substitute(TResolverText.FullType(mCurrent.TypeName, mCurrent.TypeArgs),
       mCurrent.Bindings);
-    if not FUnits.UnitOf(mCurrent, mFromUnit) or (not MemberNestedType(mCurrent, mText, mNext) and
-      not FLookup.ResolveTypeText(mText, mFromUnit, FPlace.IsCurrentFile(mFromUnit.FileName), mNext)) then
+    if not FUnits.UnitOf(mCurrent, mFromUnit) or
+      not ResolveDeclared(mCurrent, mText, mFromUnit, FPlace.IsCurrentFile(mFromUnit.FileName), mNext) then
     begin
       Exit(False);
     end;
@@ -258,9 +276,10 @@ begin
   mRoutines := FPlace.EnclosingRoutines;
   if Length(mRoutines) = 0 then
   begin
-    // Zugriffe einer Property (read FName write SetName, #690) stehen im Bereich ihres Typs: Ohne das blieben
-    // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
-    Exit(FPlace.PropertyClassName);
+    // Zugriffe einer Property (read FName write SetName, #690) und Typen in Mitgliedsdeklarationen stehen im
+    // Bereich ihres Typs: Ohne das blieben Zugriffe unaufgelöst, und ein gleichnamiger Typ der Unit verdeckte einen
+    // verschachtelten Typ des umgebenden Typs (signature-mismatch wie E2037).
+    Exit(FPlace.MemberClassName);
   end;
   mName := mRoutines[High(mRoutines)].Name;
   mDot := LastDelimiter('.', mName);

@@ -67,6 +67,7 @@ begin
   FCandidates := TResolverCandidates.Create(FParts, FExpressions, FChains);
   FQueries := TResolverQueries.Create(FParts, FExpressions, FChains);
   FParts.Typing.Infer := InferFunc();
+  FParts.Typing.Locals := FParts.Locals;
 end;
 
 destructor TResolverCore.Destroy;
@@ -74,6 +75,7 @@ begin
   if FParts.Typing <> nil then
   begin
     FParts.Typing.Infer := nil;
+    FParts.Typing.Locals := nil;
   end;
   FQueries.Free;
   FCandidates.Free;
