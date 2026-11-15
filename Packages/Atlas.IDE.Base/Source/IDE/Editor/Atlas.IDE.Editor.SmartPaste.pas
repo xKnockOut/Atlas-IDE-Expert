@@ -109,7 +109,6 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   System.JSON,
   Vcl.Controls,
@@ -164,23 +163,6 @@ begin
   begin
     Inc(Result.Y, 16);
     Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
-function ReadNames(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(AValue) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [mItem.Value];
-      end;
-    end;
   end;
 end;
 
@@ -425,8 +407,8 @@ begin
       if mAnswer is TJSONObject then
       begin
         AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
-        AAdded := ReadNames(TJSONObject(mAnswer).GetValue('added'));
-        AMoved := ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
+        AAdded := TAtlasSmartPaste.ReadNames(TJSONObject(mAnswer).GetValue('added'));
+        AMoved := TAtlasSmartPaste.ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
       end;
     finally
       mAnswer.Free;

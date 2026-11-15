@@ -1,2 +1,0 @@
-### Geändert
-- Herkunft eingereihter Methoden (#859, experimentell) steht jetzt im Fenster „Atlas-Aufrufstapel“ (#843) unter dem Rahmen der anonymen Methode: Überschrift „Eingereiht mit TThread.Queue von Thread 4120“, darunter kursiv der Stapel der Einreihung mit Suche, Kopieren und Sprung zur Zeile. Das Ergebnisfenster dient nur noch, wenn das Fenster nicht offen ist. Die Herkunft zählt beim Vergleich mit dem letzten Halt nicht mit und wird nicht gemerkt.

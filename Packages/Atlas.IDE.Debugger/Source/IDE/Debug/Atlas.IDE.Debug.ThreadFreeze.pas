@@ -42,9 +42,9 @@ uses
 
 // Fehlen in Delphis Winapi.Windows (FPC kennt beide): selbst deklariert.
 const
-  THREAD_SUSPEND_RESUME = $0002;
+  cTHREAD_SUSPEND_RESUME = $0002;
 
-function OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;
+function OpenThread(ADesiredAccess: DWORD; AInheritHandle: BOOL; AThreadId: DWORD): THandle; stdcall;
   external kernel32 name 'OpenThread';
 
 { TAtlasIdeDebugThreadFreeze }
@@ -74,7 +74,7 @@ begin
   begin
     Exit;
   end;
-  mHandle := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);
+  mHandle := OpenThread(cTHREAD_SUSPEND_RESUME, False, AThreadId);
   if mHandle = 0 then
   begin
     Exit;

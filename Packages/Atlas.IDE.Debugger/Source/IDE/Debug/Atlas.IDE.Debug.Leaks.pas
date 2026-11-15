@@ -100,13 +100,13 @@ uses
   Atlas.IDE.Debug.RuntimeReport,
   Atlas.UI.Debug.LeaksFrame,
   Atlas.UI.Debug.Leaks,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Leaks.Strings;
 
 const
   cDialogClass = '#32770';
   cMaxText = 8192;
   // Fehlt in Delphis Winapi.Windows (FPC kennt sie): selbst deklariert.
-  PROCESS_QUERY_LIMITED_INFORMATION = $1000;
+  cPROCESS_QUERY_LIMITED_INFORMATION = $1000;
 
 function QueryFullProcessImageNameW(AProcess: THandle; AFlags: DWORD; AExeName: PWideChar;
   var ASize: DWORD): BOOL; stdcall; external kernel32 name 'QueryFullProcessImageNameW';
@@ -169,7 +169,7 @@ var
   mSize: DWORD;
 begin
   Result := '';
-  mProcess := OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, AProcessId);
+  mProcess := OpenProcess(cPROCESS_QUERY_LIMITED_INFORMATION, False, AProcessId);
   if mProcess = 0 then
   begin
     Exit;
@@ -341,12 +341,12 @@ begin
       FStatus := TAtlasLeakTexts.Summary(FCapture);
       Refresh;
     end;
-  FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksSearching);
+  FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksSearching);
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Debugger,
     TAtlasLeakViews.cCandidatesCommand, TAtlasLeakViews.CandidateArgumentsJson(FProject, FCapture.Text), cTimeoutMs,
     mDone) then
   begin
-    FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksNoServer);
+    FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksNoServer);
   end;
   Refresh;
 end;
@@ -454,7 +454,7 @@ begin
   FStatus := TAtlasLeakTexts.Summary(FCapture);
   if Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LeaksFound, [TAtlasLeakTexts.LeakCount(FCapture)]));
+    FMessage(TAtlasLeaksStrings.Fmt(TAtlasLeaksTextId.LeaksFound, [TAtlasLeakTexts.LeakCount(FCapture)]));
   end;
   if TAtlasIdeSettings.Current.DebugLeakReportWindow then
   begin
