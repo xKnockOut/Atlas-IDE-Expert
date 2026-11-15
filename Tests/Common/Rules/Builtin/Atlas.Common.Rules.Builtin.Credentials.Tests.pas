@@ -22,6 +22,8 @@ type
     [Test]
     procedure GitHubTokenIsHighConfidence;
     [Test]
+    procedure PemArmorLineAloneIsSilent;
+    [Test]
     procedure ResourceStringReportsOnlyKeyFormats;
     [Test]
     procedure CommentsAreSilent;
@@ -129,7 +131,16 @@ begin
   // Zu kurz für das Format.
   TRuleAssert.Silent(Rule, Body('  mWert := ''ghp_abc'';'));
   TRuleAssert.Reports(Rule, Body('  mWert := ''AKIAIOSFODNN7EXAMPLE'';'));
-  TRuleAssert.Reports(Rule, Body('  mWert := ''-----BEGIN RSA PRIVATE KEY-----'';'));
+  TRuleAssert.Reports(Rule, Body('  mWert := ''-----BEGIN RSA PRIVATE KEY-----'' + #10 + ''MIIEowIBAAKCAQEA'';'));
+  TRuleAssert.Reports(Rule, Body('  mWert := ''-----BEGIN RSA PRIVATE KEY-----''#10''MIIEowIBAAKCAQEA'';'));
+end;
+
+procedure TCredentialRuleTests.PemArmorLineAloneIsSilent;
+begin
+  // Nur Kopf- oder Fußzeile als Marke zum Zerlegen von PEM-Text, ohne Schlüssel.
+  TRuleAssert.Silent(Rule, Declarations('const'#10'  PEM_RSA_PRIVATE_HEAD = ''-----BEGIN RSA PRIVATE KEY-----'';'));
+  TRuleAssert.Silent(Rule, Declarations('const'#10'  PEM_RSA_PRIVATE_TAIL = ''-----END RSA PRIVATE KEY-----'';'));
+  TRuleAssert.Silent(Rule, Body('  FPrivateKey := ''-----BEGIN PRIVATE KEY-----'';'));
 end;
 
 procedure TCredentialRuleTests.ResourceStringReportsOnlyKeyFormats;

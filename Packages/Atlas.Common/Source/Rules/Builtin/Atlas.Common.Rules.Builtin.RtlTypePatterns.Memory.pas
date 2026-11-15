@@ -72,6 +72,8 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
   Atlas.Common.Localization.Texts;
@@ -704,6 +706,9 @@ const
   cPassThroughCasts: array[0..9] of string = ('LPARAM', 'WPARAM', 'NativeInt', 'NativeUInt', 'Pointer', 'Integer',
     'Cardinal', 'Int64', 'UInt64', 'IntPtr');
   cStringCasts: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString');
+  // Eingebaute Funktionen mit Zahlenergebnis: SizeOf(…) in PAnsiChar(NativeUInt(P) + SizeOf(T)) ist kein String.
+  cNumberIntrinsics: array[0..9] of string = ('SizeOf', 'Length', 'High', 'Low', 'Ord', 'Succ', 'Pred', 'Round',
+    'Trunc', 'Abs');
   // Asynchrone Nachrichten: der Empfänger liest den Zeiger erst nach der Anweisung.
   cAsyncMessages: array[0..3] of string = ('PostMessage', 'PostThreadMessage', 'SendNotifyMessage',
     'SendMessageCallback');
@@ -716,6 +721,12 @@ begin
     cTexts[TRtlTypePatternsMemoryText.PCharTitle].Text);
 end;
 
+/// <summary>Umwandlung in einen Zeigertyp wie PByte(…) oder PInteger(…) (P und ein Großbuchstabe)?</summary>
+function IsPointerCast(const AName: string): Boolean;
+begin
+  Result := (Length(AName) > 1) and (AName[1] = 'P') and CharInSet(AName[2], ['A'..'Z']) and (Pos('.', AName) = 0);
+end;
+
 /// <summary>Ist ANode selbst ein String: String-Literal, Bezeichner mit String-Typ oder Aufruf einer Funktion (keine
 /// Umwandlung nach PChar oder durch LPARAM(…) und Verwandte)?</summary>
 function IsStringLeaf(ATypes: TDeclaredTypes; ANode: TSyntaxNode): Boolean;
@@ -726,7 +737,8 @@ begin
     TSyntaxKind.Identifier:
       Result := MatchText(ATypes.DeclaredType(ANode.Name, ANode.StartPos), cStringCasts);
     TSyntaxKind.Call:
-      Result := not MatchText(ANode.Name, cPCharCasts) and not MatchText(ANode.Name, cPassThroughCasts);
+      Result := not MatchText(ANode.Name, cPCharCasts) and not MatchText(ANode.Name, cPassThroughCasts) and
+        not MatchText(ANode.Name, cNumberIntrinsics) and not IsPointerCast(ANode.Name);
   else
     Result := False;
   end;
@@ -782,10 +794,42 @@ var
   mTypes: TDeclaredTypes;
   mTokens: TTokens;
   mLineBreak: string;
+  mCache: IRuleDerivedCache;
+  mResolver: TNameResolver;
+  mFileName: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  end;
+
+  // Ein Aufruf, den der Index als Umwandlung in einen Typ ohne String (TCnNativeUInt(P)) oder als Funktion mit
+  // Zahlen- bzw. Zeigerergebnis kennt (LocalAlloc), liefert keinen String.
+  function KnownNonString(ANode: TSyntaxNode): Boolean;
+  var
+    mSymbol: TResolvedSymbol;
+  begin
+    Result := False;
+    if (ANode.Kind <> TSyntaxKind.Call) or (Pos('.', ANode.Name) > 0) or (mResolver = nil) then
+    begin
+      Exit;
+    end;
+    mSymbol := mResolver.Resolve(AContext.Tree, mFileName, ANode.StartPos);
+    if mSymbol.Kind = TResolvedKind.None then
+    begin
+      Exit;
+    end;
+    case mSymbol.SymbolKind of
+      TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType:
+        Result := True;
+      TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
+        Result := TDeclaredTypes.IsInt32(mSymbol.TypeName) or TDeclaredTypes.IsInt64(mSymbol.TypeName) or
+          MatchText(mSymbol.TypeName, cPassThroughCasts) or MatchText(mSymbol.TypeName, ['Pointer', 'THandle']) or
+          IsPointerCast(mSymbol.TypeName) or (Copy(mSymbol.TypeName, 1, 1) = '^');
+    else
+      Result := False;
+    end;
   end;
 
   // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die
@@ -802,7 +846,7 @@ var
       while not Result and (mPending.Count > 0) do
       begin
         mNode := mPending.Pop;
-        Result := IsStringLeaf(mTypes, mNode);
+        Result := IsStringLeaf(mTypes, mNode) and not KnownNonString(mNode);
         PushStringParts(mPending, mNode);
       end;
     finally
@@ -1037,11 +1081,28 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mFileName := AContext.RelativePath;
+  if mFileName = '' then
+  begin
+    mFileName := AContext.UnitName + '.pas';
+  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache. Ohne Index nur die Namensmuster.
+  mResolver := nil;
+  if AContext.Index <> nil then
+  begin
+    mCache := TRuleDerived.Open(AContext);
+    mResolver := TRuleDerived.Resolver(mCache, AContext);
+    mResolver.PinTree(AContext.Tree, mFileName);
+  end;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     Visit(AContext.Tree.Root, nil, nil);
   finally
     mTypes.Free;
+    if mResolver <> nil then
+    begin
+      mResolver.UnpinTree;
+    end;
   end;
 end;
 
