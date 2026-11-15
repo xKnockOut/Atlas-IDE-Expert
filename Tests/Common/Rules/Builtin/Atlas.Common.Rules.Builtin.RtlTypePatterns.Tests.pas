@@ -70,6 +70,10 @@ type
     /// ergibt keinen String (CnPack: PAnsiChar(TCnNativeUInt(P) + SizeOf(T)), PAnsiChar(LocalAlloc(…))).</summary>
     [Test]
     procedure PCharOfPointerArithmeticIsSilent;
+    /// <summary>Ergebnistyp über Aliase bzw. Methoden eines Objekts: HLOCAL von LocalAlloc (CnRS232), Pointer von
+    /// Image.RvaToVa (JclPeImage) sind keine Strings; ein Alias auf string bleibt temporär.</summary>
+    [Test]
+    procedure PCharOfAliasedResultType;
     [Test]
     procedure StringListUnsortedIssueExample;
     [Test]
@@ -700,6 +704,32 @@ begin
     'U.pas'))));
   // Eine Funktion mit String-Ergebnis bleibt temporär.
   mSource := Format(cSource, ['  Z := PAnsiChar(AnsiString(IntToStr(4)));']);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TPCharOfTemporaryRule.Create, mSource, mIndex, '',
+    'U.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.PCharOfAliasedResultType;
+const
+  cSource = 'unit U;'#10'interface'#10'type'#10'  THandle = NativeUInt;'#10'  HLOCAL = THandle;'#10 +
+    '  TText = string;'#10'  TImage = class'#10'    function RvaToVa(N: Cardinal): Pointer;'#10'  end;'#10 +
+    'function LocalAlloc(F, N: Cardinal): HLOCAL;'#10'function Lies: TText;'#10 +
+    'implementation'#10'function TImage.RvaToVa(N: Cardinal): Pointer;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'function LocalAlloc(F, N: Cardinal): HLOCAL;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'function Lies: TText;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
+    'procedure P(Image: TImage);'#10'var'#10'  Z: PAnsiChar;'#10'begin'#10'%s'#10'  if Z = nil then'#10 +
+    '    Exit;'#10'end;'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  mSource := Format(cSource, ['  Z := PAnsiChar(LocalAlloc(0, 10));'#10'  Z := PAnsiChar(Image.RvaToVa(4));']);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(mSource, 'C:\P\U.pas', nil));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TPCharOfTemporaryRule.Create, mSource, mIndex, '',
+    'U.pas'))));
+  mSource := Format(cSource, ['  Z := PAnsiChar(AnsiString(Lies()));']);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(mSource, 'C:\P\U.pas', nil));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TPCharOfTemporaryRule.Create, mSource, mIndex, '',
     'U.pas'))));
 end;

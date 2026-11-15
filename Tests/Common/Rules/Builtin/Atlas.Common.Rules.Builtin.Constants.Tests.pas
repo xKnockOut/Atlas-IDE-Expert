@@ -695,6 +695,15 @@ begin
   Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Malen(Farben: TFarben = [Rot]; ' +
     'Bits: TBits = [1, 5]);'#10, '').Replace('  TPost = class'#10, '  TFarbe = (Rot, Gruen, Blau);'#10 +
     '  TFarben = set of TFarbe;'#10'  TBits = set of 0..31;'#10'  TPost = class'#10)))));
+  // Verschachtelte Aufzählung in einem Record: der ganze Name zählt, nicht der Record (Alcinoe.Cipher,
+  // THashSHA2.TSHA2Version); ein verschachtelter Record bleibt E2268.
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Hashen(V: THash.TVersion = ' +
+    'THash.TVersion.SHA256);'#10, '').Replace('  TPost = class'#10, '  THash = record'#10'  type'#10 +
+    '    TVersion = (SHA224, SHA256);'#10'  end;'#10'  TPost = class'#10)))));
+  Assert.AreEqual('Parameter vom Typ THuelle.TInnen können keinen Standardwert haben (wie E2268).',
+    OnlyDefaultMessage(Post('    procedure Zeigen(const W: THuelle.TInnen = nil);'#10, '').Replace(
+    '  TPost = class'#10, '  THuelle = class'#10'  type'#10'    TInnen = record'#10'      X: Integer;'#10 +
+    '    end;'#10'  end;'#10'  TPost = class'#10)));
   // Prozedurtypen gelten genauso.
   Assert.AreEqual('B braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).',
     OnlyDefaultMessage(Post('', '').Replace('  TPost = class'#10,

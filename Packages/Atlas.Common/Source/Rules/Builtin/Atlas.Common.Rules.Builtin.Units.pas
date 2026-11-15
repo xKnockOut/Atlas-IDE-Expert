@@ -20,7 +20,7 @@
 //                       E2272), oder {$NOINCLUDE X} nennt eine Unit, die die
 //                       Unit-Suche sicher nicht findet (wie E2242).
 //   implicit-variants-unit  Variant oder OleVariant als Typ ohne System.Variants
-//                       in uses (#1082, wie W1040); experimentell, also nur
+//                       in uses (#1082; dcc 13 meldet kein W1040); experimentell, also nur
 //                       eingeschaltet aktiv.
 //
 // Die Regeln lesen nur den Text der Datei und, für "in '…'", die genannte
@@ -199,11 +199,11 @@ const
     (De: '%s verwenden'; En: 'Use %s'),
     (De: '{$NOINCLUDE %s}: %s ist keine bekannte Unit (wie E2242).';
      En: '{$NOINCLUDE %s}: %s is not a known unit (like E2242).'),
-    (De: 'Variant ohne System.Variants in uses (wie W1040)';
-     En: 'Variant without System.Variants in uses (like W1040)'),
+    (De: 'Variant ohne System.Variants in uses';
+     En: 'Variant without System.Variants in uses'),
     (De: '%s in uses aufnehmen'; En: 'Add %s to uses'),
-    (De: '%s wird ohne System.Variants in uses verwendet (wie W1040).';
-     En: '%s is used without System.Variants in uses (like W1040).'));
+    (De: '%s wird ohne System.Variants in uses verwendet.';
+     En: '%s is used without System.Variants in uses.'));
 
 {$SCOPEDENUMS OFF}
 

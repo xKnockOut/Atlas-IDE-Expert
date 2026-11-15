@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerNames: array[0..808] of string = (
+  cCatalogLinesEnCompilerNames: array[0..775] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Deprecated or bound symbol",',
@@ -257,27 +257,6 @@ const
     '      ],',
     '      "level": "B",',
     '      "safeFix": false',
-    '    },',
-    '{',
-    '      "id": "implicit-variants-unit",',
-    '      "name": "Variant without System.Variants in uses",',
-    '      "category": "code-smell",',
-    '      "severity": "hint",',
-    '      "group": "compiler",',
-    '      "description": "The unit uses Variant or OleVariant as a type without System.Variants in uses. The compiler then adds the unit silently (like W1040) and so changes the initialization order. The ' +
-    'rule counts type references in the syntax tree (variables, fields, parameters, results, type arguments); Variants in uses also counts inside an {$IF…} branch and without namespace. Silent in System, S' +
-    'ysInit and Variants themselves, when the file declares its own type Variant, and after {$WARN IMPLICIT_VARIANTS OFF}. Off by default (strict profile). Quick fix: add System.Variants to uses (Variants ' +
-    'when the unit names SysUtils or Classes without namespace).",',
-    '      "bad": "uses\n  System.SysUtils;\n…\nvar Wert: Variant;",',
-    '      "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",',
-    '      "compilerCodes": [',
-    '        "W1040"',
-    '      ],',
-    '      "level": "B",',
-    '      "safeFix": true,',
-    '      "profiles": [',
-    '        "strict"',
-    '      ]',
     '    },',
     '{',
     '      "id": "anonymous-capture-invalid",',
@@ -955,26 +934,6 @@ const
     '        "E2005",',
     '        "E2003",',
     '        "E2007"',
-    '      ],',
-    '      "level": "B",',
-    '      "safeFix": false',
-    '    },',
-    '{',
-    '      "id": "class-reference-nonvirtual-constructor",',
-    '      "name": "Constructor called through a class reference is not virtual",',
-    '      "category": "bug",',
-    '      "severity": "warning",',
-    '      "group": "compiler",',
-    '      "description": "Create called through a class reference (class of TBasis) whose constructor is not virtual. On Win32 and Win64 this compiles silently but always runs the constructor of TBasis: f' +
-    'ields that descendants set up in their own constructors stay empty (like E2391). The receiver may be a variable, field, parameter or function result whose type is a class reference; the constructor is' +
-    ' resolved by name resolution in the nearest class that declares it, including overloads by argument count. The rule stays silent when a matching overload is virtual, dynamic, override or abstract, whe' +
-    'n a declaration lies in another branch of conditional compilation, and when a type cannot be resolved. Quick fix when the constructor is declared in this file: virtual on it and override on the constr' +
-    'uctors with the same signature in descendants in this file.",',
-    '      "bad": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create;\n  end;\n...\n  P := Klasse.Create;",',
-    '      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P ' +
-    ':= Klasse.Create;",',
-    '      "compilerCodes": [',
-    '        "E2391"',
     '      ],',
     '      "level": "B",',
     '      "safeFix": false',

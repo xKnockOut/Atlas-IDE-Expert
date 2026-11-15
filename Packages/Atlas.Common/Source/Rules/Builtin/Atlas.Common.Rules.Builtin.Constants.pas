@@ -1415,6 +1415,7 @@ var
   function ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
   var
     mName: string;
+    mChain: TResolvedSymbol;
   begin
     Result := False;
     mName := LowerCase(ATypeNode.Name);
@@ -1427,6 +1428,13 @@ var
       Exit;
     end;
     EnsureResolver;
+    // THash.TVersion: der ganze Name, nicht nur sein erster Teil (der umschließende Record, Alcinoe.Cipher).
+    if Pos('.', mName) > 0 then
+    begin
+      mChain := mResolver.ResolveChain(AContext.Tree, mFileName, ATypeNode.Name.Split(['.']), ATypeNode.StartOffset);
+      Result := mChain.Found and mResolver.TypeOf(mChain, AType) and AType.Found;
+      Exit;
+    end;
     AType := mResolver.ResolveType(AContext.Tree, mFileName, ATypeNode.StartPos);
     Result := AType.Found;
   end;
