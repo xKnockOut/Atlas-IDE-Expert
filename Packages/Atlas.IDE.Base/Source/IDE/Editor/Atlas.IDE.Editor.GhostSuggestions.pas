@@ -129,8 +129,9 @@ type
 implementation
 
 uses
-  Winapi.Windows,
+  Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Editor.GhostKeys,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.SmartIndent,
   Atlas.Core.Lsp.Session,
@@ -148,22 +149,21 @@ const
 
 function TAtlasIdeGhostSuggestions.TKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := Visible and AtSuggestion and ((((AKey = VK_TAB) or (AKey = VK_ESCAPE)) and (AShift = [])) or
-    ((AKey = VK_RIGHT) and (AShift = [ssCtrl])));
+  Result := Visible and AtSuggestion and (TAtlasGhostKeys.KeyOf(AKey, AShift) <> TAtlasGhostKey.None);
 end;
 
 procedure TAtlasIdeGhostSuggestions.TKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
-  mKey: Word;
+  mKey: TAtlasGhostKey;
 begin
-  mKey := AKey;
+  mKey := TAtlasGhostKeys.KeyOf(AKey, AShift);
   TAtlasGuard.Run(TAtlasFeature.LearnedSuggestions,
     procedure
     begin
       case mKey of
-        VK_TAB:
+        TAtlasGhostKey.AcceptAll:
           AcceptAll;
-        VK_RIGHT:
+        TAtlasGhostKey.AcceptWord:
           AcceptWord;
       else
         Reject;
@@ -370,11 +370,7 @@ begin
     Exit;
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mLineBreak := #10;
-  if Pos(#13#10, mText) > 0 then
-  begin
-    mLineBreak := #13#10;
-  end;
+  mLineBreak := TTextLines.LineBreakOf(mText);
   mBlock := string.Join(mLineBreak, AProposal.Lines);
   mWritten := TAtlasLearnedSuggestions.Written(mBlock, AAsked.LineText);
   FReplace := 0;

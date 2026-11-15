@@ -87,6 +87,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
@@ -103,19 +104,11 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.WorkspaceEdit;
 
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
-end;
-
 /// <summary>Aktive Ansicht einer Pascal-Datei; nil ohne.</summary>
 function PascalView: IOTAEditView;
 begin
   Result := TAtlasEditorBuffer.ActiveView;
-  if (Result <> nil) and ((Result.Buffer = nil) or not IsPascal(Result.Buffer.FileName)) then
+  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasSourceFiles.IsPascal(Result.Buffer.FileName)) then
   begin
     Result := nil;
   end;

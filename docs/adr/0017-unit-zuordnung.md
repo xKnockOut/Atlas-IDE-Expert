@@ -174,6 +174,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Documentation.Layout` | `Core/Documentation/Atlas.Core.Documentation.Layout.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Documentation.Typeset` | `Core/Documentation/Atlas.Core.Documentation.Typeset.pas` | Ordner `Core/Documentation` |
 | `Atlas.Core.Editor.BlockComment` | `Core/Editor/Atlas.Core.Editor.BlockComment.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.CaretSteps` | `Core/Editor/Atlas.Core.Editor.CaretSteps.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ChangeSignature` | `Core/Editor/Atlas.Core.Editor.ChangeSignature.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ClassExtraction` | `Core/Editor/Atlas.Core.Editor.ClassExtraction.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.CloseRules` | `Core/Editor/Atlas.Core.Editor.CloseRules.pas` | Ordner `Core/Editor` |
@@ -183,12 +184,17 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Conditionals` | `Core/Editor/Atlas.Core.Editor.Conditionals.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.DisableWarning` | `Core/Editor/Atlas.Core.Editor.DisableWarning.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Elements` | `Core/Editor/Atlas.Core.Editor.Elements.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.ExitPointAsk` | `Core/Editor/Atlas.Core.Editor.ExitPointAsk.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ExitPoints` | `Core/Editor/Atlas.Core.Editor.ExitPoints.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.ExpressionType` | `Core/Editor/Atlas.Core.Editor.ExpressionType.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.FormatLog` | `Core/Editor/Atlas.Core.Editor.FormatLog.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.GhostKeys` | `Core/Editor/Atlas.Core.Editor.GhostKeys.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Guides` | `Core/Editor/Atlas.Core.Editor.Guides.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.GuideStroke` | `Core/Editor/Atlas.Core.Editor.GuideStroke.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.GutterColumn` | `Core/Editor/Atlas.Core.Editor.GutterColumn.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.GutterPanel` | `Core/Editor/Atlas.Core.Editor.GutterPanel.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Hide` | `Core/Editor/Atlas.Core.Editor.Hide.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.LinkedKeys` | `Core/Editor/Atlas.Core.Editor.LinkedKeys.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodAnchor` | `Core/Editor/Atlas.Core.Editor.MethodAnchor.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineAnchor` | `Core/Editor/Atlas.Core.Editor.LineAnchor.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineChanges` | `Core/Editor/Atlas.Core.Editor.LineChanges.pas` | Ordner `Core/Editor` |
@@ -198,6 +204,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LinkedEditing` | `Core/Editor/Atlas.Core.Editor.LinkedEditing.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Match` | `Core/Editor/Atlas.Core.Editor.Match.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodPlacement` | `Core/Editor/Atlas.Core.Editor.MethodPlacement.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.MultiCursorKeys` | `Core/Editor/Atlas.Core.Editor.MultiCursorKeys.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.RegionFolds` | `Core/Editor/Atlas.Core.Editor.RegionFolds.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodToggle` | `Core/Editor/Atlas.Core.Editor.MethodToggle.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LensAsk` | `Core/Editor/Atlas.Core.Editor.LensAsk.pas` | Ordner `Core/Editor`; ausstehende Frage einer Code Lens im Hintergrund, Antwort nur für die jüngste Frage |
@@ -225,6 +232,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.SmartIndent` | `Core/Editor/Atlas.Core.Editor.SmartIndent.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SmartPaste` | `Core/Editor/Atlas.Core.Editor.SmartPaste.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SnapshotPolicy` | `Core/Editor/Atlas.Core.Editor.SnapshotPolicy.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.SourceFiles` | `Core/Editor/Atlas.Core.Editor.SourceFiles.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.StatementCompletion` | `Core/Editor/Atlas.Core.Editor.StatementCompletion.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.TestUnit` | `Core/Editor/Atlas.Core.Editor.TestUnit.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Unwrap` | `Core/Editor/Atlas.Core.Editor.Unwrap.pas` | Ordner `Core/Editor` |

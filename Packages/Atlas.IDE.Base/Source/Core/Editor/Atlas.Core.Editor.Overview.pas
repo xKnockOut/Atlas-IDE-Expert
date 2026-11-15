@@ -24,7 +24,9 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.Settings.OverviewKinds;
+  Atlas.Core.Settings.OverviewKinds,
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Editor.LineChanges;
 
 type
   /// <summary>Gruppe für editor.overviewRulerKinds (bei den Einstellungen, damit der Parser ohne diesen Kern
@@ -104,6 +106,15 @@ type
     class function SearchTerm(const ASelection: string; out ATerm: string): Boolean; static;
     /// <summary>Gleiche Marken (für „nur bei Änderungen neu zeichnen“).</summary>
     class function Same(const A, B: TAtlasOverviewMarks): Boolean; static;
+    /// <summary>Marke eines Befunds nach seiner Schwere (Fehler, Warnung, sonst Info), über alle seine Zeilen.
+    /// </summary>
+    class function ProblemMark(const AProblem: TAtlasProblem): TAtlasOverviewMark; static;
+    /// <summary>Marken der Befunde ohne inaktive Zweige und uses-Einträge (die sind keine Befunde).</summary>
+    class function ProblemMarks(const AProblems: TArray<TAtlasProblem>): TAtlasOverviewMarks; static;
+    /// <summary>Marke einer Änderung mit dem Text ihrer Art; Gelöschtes auf eine Zeile im Stand mit ALineCount
+    /// Zeilen.</summary>
+    class function ChangeMark(const AChange: TAtlasLineChange; ALineCount: Integer; const AAdded, AModified,
+      ADeleted: string): TAtlasOverviewMark; static;
   end;
 
 implementation
@@ -394,6 +405,50 @@ begin
     begin
       Exit(False);
     end;
+  end;
+end;
+
+class function TAtlasOverview.ProblemMark(const AProblem: TAtlasProblem): TAtlasOverviewMark;
+var
+  mKind: TAtlasOverviewMarkKind;
+begin
+  case AProblem.Severity of
+    TAtlasProblemSeverity.Error:
+      mKind := TAtlasOverviewMarkKind.Error;
+    TAtlasProblemSeverity.Warning:
+      mKind := TAtlasOverviewMarkKind.Warning;
+  else
+    mKind := TAtlasOverviewMarkKind.Info;
+  end;
+  Result := TAtlasOverviewMark.Create(mKind, AProblem.StartLine, Max(1, AProblem.EndLine - AProblem.StartLine + 1),
+    AProblem.Message);
+end;
+
+class function TAtlasOverview.ProblemMarks(const AProblems: TArray<TAtlasProblem>): TAtlasOverviewMarks;
+var
+  mProblem: TAtlasProblem;
+begin
+  Result := nil;
+  for mProblem in AProblems do
+  begin
+    if not mProblem.Unnecessary and (mProblem.UsesUnit = '') then
+    begin
+      Result := Result + [ProblemMark(mProblem)];
+    end;
+  end;
+end;
+
+class function TAtlasOverview.ChangeMark(const AChange: TAtlasLineChange; ALineCount: Integer; const AAdded,
+  AModified, ADeleted: string): TAtlasOverviewMark;
+begin
+  case AChange.Kind of
+    TAtlasLineChangeKind.Added:
+      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, AChange.Line, AChange.Count, AAdded);
+    TAtlasLineChangeKind.Modified:
+      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, AChange.Line, AChange.Count, AModified);
+  else
+    Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted, Min(AChange.Line, Max(0, ALineCount - 1)), 1,
+      ADeleted);
   end;
 end;
 

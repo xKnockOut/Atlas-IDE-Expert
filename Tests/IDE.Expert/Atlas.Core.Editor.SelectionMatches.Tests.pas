@@ -25,6 +25,8 @@ type
     [Test]
     procedure TermNeedsSingleLineMinLengthAndText;
     [Test]
+    procedure KeyChangesWithEveryOption;
+    [Test]
     procedure IgnoresCaseAndFindsPartsByDefault;
     [Test]
     procedure CaseSensitive;
@@ -88,6 +90,17 @@ end;
 procedure TAtlasSelectionMatchesTests.TearDown;
 begin
   FLines := nil;
+end;
+
+procedure TAtlasSelectionMatchesTests.KeyChangesWithEveryOption;
+var
+  mOptions: TAtlasSelectionMatchOptions;
+begin
+  mOptions := TAtlasSelectionMatchOptions.Defaults;
+  Assert.AreEqual('3|0|0|1000', mOptions.Key);
+  mOptions.WholeWord := True;
+  mOptions.CaseSensitive := True;
+  Assert.AreEqual('3|1|1|1000', mOptions.Key);
 end;
 
 procedure TAtlasSelectionMatchesTests.TermNeedsSingleLineMinLengthAndText;

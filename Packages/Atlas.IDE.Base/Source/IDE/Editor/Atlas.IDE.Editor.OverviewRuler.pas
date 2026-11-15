@@ -330,8 +330,7 @@ begin
   AKey := '';
   if AMatching then
   begin
-    AKey := Format('%d|%d|%d|%d', [AOptions.MinLength, Ord(AOptions.CaseSensitive), Ord(AOptions.WholeWord),
-      AOptions.MaxMatches]);
+    AKey := AOptions.Key;
   end;
   if not (TAtlasOverviewKind.Search in AKinds) then
   begin
