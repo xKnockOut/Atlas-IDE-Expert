@@ -53,6 +53,8 @@ type
     procedure UsableSkipsNone;
     [Test]
     procedure DisplayNameOfStoredLayout;
+    [Test]
+    procedure IndexOfStoredName;
   end;
 
 implementation
