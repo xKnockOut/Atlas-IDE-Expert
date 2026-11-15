@@ -4,4 +4,4 @@
 - Willkommensseite: Formatversion des Index-Caches wie im Server (34); die Suche fand sonst keinen Cache.
 
 ### Tests
-- Methoden-Haltepunkte: einmaliger Speicher der VCL beim ersten Dialog mit gefüllter Liste wird vorab angelegt (Leckmonitor).
+- Methoden-Haltepunkte, Formular-Eigenschaften und Objektzählung: einmaliger Speicher der RTL/VCL bei erster Benutzung wird in `[SetupFixture]` vorab angelegt, der Leckmonitor schrieb ihn je nach Teil des Gesamtlaufs dem ersten Test zu.
