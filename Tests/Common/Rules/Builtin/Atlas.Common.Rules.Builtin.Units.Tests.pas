@@ -708,7 +708,7 @@ begin
   mSource := Speicher('System.SysUtils', 'var Wert: Variant;'#10);
   mFound := VariantFindings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual('Variant wird ohne System.Variants in uses verwendet (wie W1040).', mFound[0].Message);
+  Assert.AreEqual('Variant wird ohne System.Variants in uses verwendet.', mFound[0].Message);
   Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(10, mFound[0].Range.StartPos.Character);
   Assert.AreEqual('System.Variants in uses aufnehmen', mFound[0].Fixes[0].Title);
@@ -719,7 +719,7 @@ begin
   mFound := VariantFindings('unit Speicher;'#10'interface'#10'procedure Setzen(const AWert: OleVariant);'#10 +
     'implementation'#10'procedure Setzen(const AWert: OleVariant);'#10'begin'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual('OleVariant wird ohne System.Variants in uses verwendet (wie W1040).', mFound[0].Message);
+  Assert.AreEqual('OleVariant wird ohne System.Variants in uses verwendet.', mFound[0].Message);
   Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(VariantFindings(Speicher('System.Generics.Collections',
     'var Liste: TList<Variant>;'#10)))));
@@ -773,7 +773,7 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, mSource,
     '{"rules": {"implicit-variants-unit": "off"}}', 'Src/Speicher.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, mSource,
-    '{"rules": {"implicit-variants-unit": "hint", "group:compiler": "off"}}', 'Src/Speicher.pas'))));
+    '{"rules": {"implicit-variants-unit": "hint", "group:robustness": "off"}}', 'Src/Speicher.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TImplicitVariantsUnitRule.Create, mSource,
     '{"rules": {"implicit-variants-unit": {"severity": "hint", "exclude": ["Src/*.pas"]}}}', 'Src/Speicher.pas'))));
 end;

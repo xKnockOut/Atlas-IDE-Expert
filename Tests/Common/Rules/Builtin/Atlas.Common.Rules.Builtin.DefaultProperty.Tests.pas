@@ -19,6 +19,9 @@ type
     procedure IssueExample;
     [Test]
     procedure SecondDefaultProperty;
+    /// <summary>IList und IList&lt;T&gt; sind zwei Typen mit je eigener default-Property (JclContainerIntf).</summary>
+    [Test]
+    procedure GenericAndPlainTypeOfSameName;
     [Test]
     procedure IndexWithoutDefaultProperty;
     [Test]
@@ -108,6 +111,15 @@ begin
     '    function GetItem(I: Integer): string;'#10'  public'#10 +
     '    property Items[I: Integer]: string read GetItem; default;'#10 +
     '    property Zahl: Integer read FZahl default 0;'#10, ''));
+end;
+
+procedure TDefaultPropertyRulesTests.GenericAndPlainTypeOfSameName;
+begin
+  Silent('unit Listen;'#10'interface'#10'type'#10'  IList = interface'#10 +
+    '    function GetObject(K: Integer): TObject;'#10 +
+    '    property Objects[K: Integer]: TObject read GetObject; default;'#10'  end;'#10 +
+    '  IList<T> = interface'#10'    function GetItem(K: Integer): T;'#10 +
+    '    property Items[K: Integer]: T read GetItem; default;'#10'  end;'#10'implementation'#10'end.');
 end;
 
 procedure TDefaultPropertyRulesTests.SecondDefaultProperty;

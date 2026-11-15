@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..606] of string = (
+  cCatalogLinesDeFindBugs: array[0..611] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -874,6 +874,15 @@ const
     '          "description": "Weitere Funktionen ohne Seiteneffekte, die wie die Standardroutinen gemeldet werden, als Name, Klasse.Name oder Unit.Name."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "class-reference-nonvirtual-constructor",',
+    '      "name": "Konstruktor über Klassenreferenz nicht virtuell",',
+    '      "description": "Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor' +
+    ' von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer. Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer Klassenrefer' +
+    'enz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynamic, override' +
+    ' oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an' +
+    ' ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei."',
     '    }');
 
 implementation

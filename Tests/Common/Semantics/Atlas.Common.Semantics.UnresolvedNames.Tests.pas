@@ -64,6 +64,14 @@ type
     procedure FirstUsesEntryOfProgram;
     [Test]
     procedure KnowsTextFile;
+    /// <summary>Werte anonymer Aufzählungen (set of (…), Feld und Variable mit (…)) sind in der Unit sichtbar,
+    /// in einer anderen auch über uses (jvcl, cnvcl, Alcinoe; dcc 13 übersetzt).</summary>
+    [Test]
+    procedure KnowsAnonymousEnumValues;
+    /// <summary>Intrinsics ohne Deklaration in System.pas: GetDir, VarClear, VarArrayRedim,
+    /// AddressOfReturnAddress (dcc 13 übersetzt ohne System.Variants).</summary>
+    [Test]
+    procedure KnowsDirectoryAndVariantIntrinsics;
     [Test]
     procedure KnowsFileRoutines;
     [Test]
@@ -283,6 +291,54 @@ begin
     '  begin'#10 +
     '    Writeln(mKunde);'#10 +
     '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsAnonymousEnumValues;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Modi;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDatei = class'#10 +
+    '    fMode: (mUnknown, mRead, mWrite);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\P\Modi.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TUnitFlags = set of (ufImpl, ufDLL);'#10 +
+    '  TAufzaehlung = record'#10 +
+    '    Art: (raEins, raZwei);'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  GStufe: (stAus, stAn);'#10 +
+    'implementation'#10 +
+    'uses Modi;'#10 +
+    'function Q(const AFlags: TUnitFlags; const A: TAufzaehlung; D: TDatei): Boolean;'#10 +
+    'begin'#10 +
+    '  Result := (ufDLL in AFlags) and (A.Art = raZwei) and (GStufe = stAn) and (D.fMode <> mWrite);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsDirectoryAndVariantIntrinsics;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'function Q(var V: Variant): Pointer;'#10 +
+    'var'#10 +
+    '  S: string;'#10 +
+    'begin'#10 +
+    '  GetDir(0, S);'#10 +
+    '  VarArrayRedim(V, 3);'#10 +
+    '  VarClear(V);'#10 +
+    '  Result := AddressOfReturnAddress;'#10 +
     'end;'#10 +
     'end.'));
 end;
