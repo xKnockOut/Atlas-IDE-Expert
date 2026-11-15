@@ -128,14 +128,6 @@ begin
   Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
-end;
-
 /// <summary>Schreibmarke in Bildschirmkoordinaten; ohne Schreibmarke eine Zeile an der Maus.</summary>
 function CaretRect: TRect;
 var
@@ -290,7 +282,7 @@ function TAtlasIdeExpressionType.Ready(out AView: IOTAEditView; out ASession: TL
 begin
   ASession := nil;
   AView := TAtlasEditorBuffer.ActiveView;
-  Result := (AView <> nil) and (AView.Buffer <> nil) and IsPascal(AView.Buffer.FileName);
+  Result := (AView <> nil) and (AView.Buffer <> nil) and TAtlasExpressionType.Handles(AView.Buffer.FileName);
   if Result and Assigned(FSession) then
   begin
     ASession := FSession();

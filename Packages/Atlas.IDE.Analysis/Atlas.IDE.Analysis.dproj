@@ -101,6 +101,7 @@
         <DCCReference Include="Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
         <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
         <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
+        <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.Plan.pas"/>
         <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas"/>
         <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas"/>
         <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.RoleUnit.pas"/>

@@ -66,6 +66,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.Contract,
+  Atlas.Core.Hover.Plan,
   Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Hover.EditorContent;
@@ -141,11 +142,11 @@ type
     procedure RequestHover(ASession: TLspSession);
     procedure HideTimerTick(Sender: TObject);
     procedure WatchTimerTick(Sender: TObject);
+    /// <summary>Zustand des Tooltips für die Tastenauswahl (TAtlasHoverKeys).</summary>
+    function KeyState: TAtlasHoverKeyState;
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean;
-    /// <summary>Kürzel, die nur gelten, wenn der Tooltip gemeint ist (angeheftet oder Maus darüber).</summary>
-    function WantsTipKey(AKey: Word; AShift: TShiftState): Boolean;
-    /// <summary>Pfeile im aufgeklappten Debug-Wert (#895): wählen, → auf-, ← zuklappen; False sonst.</summary>
-    function DebugTreeKey(AKey: Word; AShift: TShiftState): Boolean;
+    /// <summary>Pfeile im aufgeklappten Debug-Wert (#895): wählen, → auf-, ← zuklappen.</summary>
+    procedure DebugTreeKey(ACommand: TAtlasHoverKeyCommand);
     procedure HandleKey(AKey: Word; AShift: TShiftState);
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
@@ -169,7 +170,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   Vcl.Forms,
-  Atlas.Core.Completion.Word,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Hover.View,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -201,8 +201,7 @@ begin
   Result := FOwner.WantsKey(AKey, AShift);
   {$IF CompilerVersion < 37.0}
   // Ohne Tastatur-Ereignisse des Editors: andere Tasten schließen nach der Verarbeitung (wie EditorKeyDown).
-  if not Result and (AKey <> VK_SHIFT) and (AKey <> VK_CONTROL) and (AKey <> VK_MENU) and
-    not FOwner.FHistory.Pinned then
+  if TAtlasHoverKeys.ClosesAfter(AKey, Result, FOwner.FHistory.Pinned) then
   begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
       procedure
@@ -221,30 +220,6 @@ begin
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
   end;
-end;
-
-/// <summary>Zurück im angehefteten Tooltip: Rücktaste oder Alt+Links.</summary>
-function IsBackKey(AKey: Word; AShift: TShiftState): Boolean;
-begin
-  Result := ((AKey = VK_BACK) and (AShift = [])) or ((AKey = VK_LEFT) and (AShift = [ssAlt]));
-end;
-
-/// <summary>Pfeiltaste ohne Umschalter: bewegt im aufgeklappten Debug-Wert (#895).</summary>
-function IsTreeKey(AKey: Word; AShift: TShiftState): Boolean;
-begin
-  Result := (AShift = []) and ((AKey = VK_UP) or (AKey = VK_DOWN) or (AKey = VK_LEFT) or (AKey = VK_RIGHT));
-end;
-
-function NoneOrShift(AShift: TShiftState): Boolean;
-begin
-  Result := (AShift = []) or (AShift = [ssShift]);
-end;
-
-/// <summary>Kürzel der Aktionsleiste mit Fundort: F12/Umschalt+F12, Strg+C, F1 nur mit Hilfe.</summary>
-function ActionKey(AKey: Word; AShift: TShiftState; AHasHelp: Boolean): Boolean;
-begin
-  Result := ((AKey = VK_F12) and NoneOrShift(AShift)) or ((AKey = Ord('C')) and (AShift = [ssCtrl])) or
-    ((AKey = VK_F1) and (AShift = []) and AHasHelp);
 end;
 
 { TAtlasEditorHover }
@@ -456,14 +431,11 @@ var
   mFirst, mLast: TRect;
 begin
   Result := '';
-  if (APos.Index >= Length(APos.Text)) or not TAtlasWord.IsIdentifierChar(APos.Text[APos.Index + 1]) or
-    CharInSet(APos.Text[TAtlasWord.StartBefore(APos.Text, APos.Index + 1) + 1], ['0'..'9']) then
+  if not TAtlasHoverPlan.WordAt(APos.Text, APos.Index, mStart, mStop) then
   begin
     Exit;
   end;
-  mStart := TAtlasWord.StartBefore(APos.Text, APos.Index + 1);
-  mStop := TAtlasWord.EndAfter(APos.Text, APos.Index);
-  Result := Format('%s|%d|%d', [APos.View.Buffer.FileName, APos.Line, mStart]);
+  Result := TAtlasHoverPlan.WordKey(APos.View.Buffer.FileName, APos.Line, mStart);
   if Result = FKey then
   begin
     Exit;
@@ -496,7 +468,7 @@ begin
     Exit;
   end;
   // Kein Bezeichner, aber ein Problem (etwa ein fehlendes Semikolon): nur das Problem zeigen.
-  Result := Format('%s|%d|p%d', [APos.View.Buffer.FileName, APos.Line, APos.Index]);
+  Result := TAtlasHoverPlan.ProblemKey(APos.View.Buffer.FileName, APos.Line, APos.Index);
   if Result = FKey then
   begin
     Exit;
@@ -515,23 +487,23 @@ end;
 
 procedure TAtlasEditorHover.TrackKey(const AKey: string);
 begin
-  if AKey = '' then
-  begin
-    // Kein Bezeichner: offenen Tooltip nach 300 ms schließen, wartenden verwerfen.
-    FShowTimer.Enabled := False;
-    FKey := '';
-    FHideTimer.Enabled := FHideTimer.Enabled or FTip.IsShown;
-  end
-  else if AKey = FShownKey then
-  begin
-    FHideTimer.Enabled := False;
-  end
-  else if AKey <> FKey then
-  begin
-    FKey := AKey;
-    FShowTimer.Enabled := False;
-    FShowTimer.Enabled := True;
-    FHideTimer.Enabled := FHideTimer.Enabled or FTip.IsShown;
+  case TAtlasHoverKeys.Track(AKey, FShownKey, FKey) of
+    TAtlasHoverTrack.Leave:
+      begin
+        // Kein Bezeichner: offenen Tooltip nach 300 ms schließen, wartenden verwerfen.
+        FShowTimer.Enabled := False;
+        FKey := '';
+        FHideTimer.Enabled := FHideTimer.Enabled or FTip.IsShown;
+      end;
+    TAtlasHoverTrack.Stay:
+      FHideTimer.Enabled := False;
+    TAtlasHoverTrack.Restart:
+      begin
+        FKey := AKey;
+        FShowTimer.Enabled := False;
+        FShowTimer.Enabled := True;
+        FHideTimer.Enabled := FHideTimer.Enabled or FTip.IsShown;
+      end;
   end;
 end;
 
@@ -572,7 +544,7 @@ begin
   begin
     Exit;
   end;
-  if not AData.Found and (Length(FProblems) = 0) and not FDebugValue.Visible then
+  if not TAtlasHoverPlan.HasContent(AData.Found, Length(FProblems), FDebugValue.Visible) then
   begin
     Hide;
     Exit;
@@ -714,15 +686,12 @@ begin
   try
     FHideTimer.Enabled := False;
     // Angeheftet bleibt der Tooltip; sonst darf die Maus in den Tooltip wandern (#442).
-    if FTip.IsShown and (FHistory.Pinned or MouseOverTip) and Application.Active then
-    begin
-      if not FHistory.Pinned then
-      begin
+    case TAtlasHoverKeys.HideStep(FTip.IsShown, FHistory.Pinned, MouseOverTip, Application.Active) of
+      TAtlasHoverHideStep.Close:
+        Hide;
+      TAtlasHoverHideStep.Recheck:
         FHideTimer.Enabled := True;
-      end;
-      Exit;
     end;
-    Hide;
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
@@ -749,50 +718,42 @@ begin
   end;
 end;
 
-function TAtlasEditorHover.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
-begin
-  if not FTip.IsShown then
-  begin
-    Exit(False);
-  end;
-  Result := ((AKey = VK_ESCAPE) and (AShift = [])) or
-    (FHistory.Pinned and FHistory.CanGoBack and IsBackKey(AKey, AShift));
-  // Kürzel der Aktionsleiste nur, wenn der Tooltip gemeint ist: angeheftet oder mit der Maus darüber.
-  Result := Result or ((FHistory.Pinned or MouseOverTip) and WantsTipKey(AKey, AShift));
-end;
-
-function TAtlasEditorHover.WantsTipKey(AKey: Word; AShift: TShiftState): Boolean;
+function TAtlasEditorHover.KeyState: TAtlasHoverKeyState;
 var
   mData: TAtlasHoverData;
 begin
-  // Markierter Doku-Text lässt sich auch ohne Fundort kopieren (#654).
-  Result := FTip.HasSelection and (AKey = Ord('C')) and (AShift = [ssCtrl]);
-  // Aktionen unter Befunden (#909), auch ohne Fundort (Hover nur mit Problem).
-  Result := Result or ((AKey = VK_RETURN) and (AShift = [ssAlt]) and FTip.HasFix);
-  Result := Result or ((AKey = VK_TAB) and NoneOrShift(AShift) and FTip.HasProblemActions);
-  Result := Result or ((AKey = VK_RETURN) and (AShift = []) and FTip.ProblemActionMarked);
-  Result := Result or (FTip.View.DebugValue.Expandable and IsTreeKey(AKey, AShift));
-  if Result then
+  Result := Default(TAtlasHoverKeyState);
+  Result.Shown := FTip.IsShown;
+  if not Result.Shown then
   begin
     Exit;
   end;
   mData := FHistory.Current;
-  Result := mData.Location.HasLocation and ActionKey(AKey, AShift, mData.DocWiki <> '');
+  Result.Pinned := FHistory.Pinned;
+  Result.CanGoBack := FHistory.CanGoBack;
+  Result.MouseOverTip := MouseOverTip;
+  Result.HasSelection := FTip.HasSelection;
+  Result.HasFix := FTip.HasFix;
+  Result.HasProblemActions := FTip.HasProblemActions;
+  Result.ProblemActionMarked := FTip.ProblemActionMarked;
+  Result.DebugExpandable := FTip.View.DebugValue.Expandable;
+  Result.HasLocation := mData.Location.HasLocation;
+  Result.HasHelp := mData.DocWiki <> '';
 end;
 
-function TAtlasEditorHover.DebugTreeKey(AKey: Word; AShift: TShiftState): Boolean;
+function TAtlasEditorHover.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := FTip.View.DebugValue.Expandable and IsTreeKey(AKey, AShift);
-  if not Result then
-  begin
-    Exit;
-  end;
-  case AKey of
-    VK_UP:
+  Result := TAtlasHoverKeys.Command(AKey, AShift, KeyState) <> TAtlasHoverKeyCommand.None;
+end;
+
+procedure TAtlasEditorHover.DebugTreeKey(ACommand: TAtlasHoverKeyCommand);
+begin
+  case ACommand of
+    TAtlasHoverKeyCommand.DebugUp:
       FTip.MoveDebugSelection(-1);
-    VK_DOWN:
+    TAtlasHoverKeyCommand.DebugDown:
       FTip.MoveDebugSelection(1);
-    VK_RIGHT:
+    TAtlasHoverKeyCommand.DebugExpand:
       FTip.ToggleDebugSelection(True);
   else
     FTip.ToggleDebugSelection(False);
@@ -807,7 +768,7 @@ procedure TAtlasEditorHover.EditorKeyDown(const Editor: TWinControl; Key: Word; 
 begin
   try
     // Umschalt, Strg und Alt allein schließen nicht: Strg+Klick und die Kürzel brauchen sie.
-    if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+    if TAtlasHoverKeys.IsModifier(Key) then
     begin
       Exit;
     end;
@@ -820,43 +781,38 @@ end;
 {$ENDIF}
 
 procedure TAtlasEditorHover.HandleKey(AKey: Word; AShift: TShiftState);
+var
+  mCommand: TAtlasHoverKeyCommand;
 begin
-  if DebugTreeKey(AKey, AShift) then
+  mCommand := TAtlasHoverKeys.Command(AKey, AShift, KeyState);
+  if mCommand = TAtlasHoverKeyCommand.None then
   begin
     Exit;
   end;
-  case AKey of
-    VK_ESCAPE:
+  case mCommand of
+    TAtlasHoverKeyCommand.Close:
       Hide;
-    VK_BACK, VK_LEFT:
+    TAtlasHoverKeyCommand.Back:
       TipBack(nil);
-    VK_F12:
-      if ssShift in AShift then
-      begin
-        Execute(TAtlasHoverAction.Usages);
-      end
-      else
-      begin
-        Execute(TAtlasHoverAction.Navigate);
-      end;
-    VK_F1:
+    TAtlasHoverKeyCommand.Navigate:
+      Execute(TAtlasHoverAction.Navigate);
+    TAtlasHoverKeyCommand.Usages:
+      Execute(TAtlasHoverAction.Usages);
+    TAtlasHoverKeyCommand.Help:
       Execute(TAtlasHoverAction.Help);
-    VK_TAB:
-      FTip.StepProblemAction(not (ssShift in AShift));
-    VK_RETURN:
-      if ssAlt in AShift then
-      begin
-        FTip.ApplyFix;
-      end
-      else
-      begin
-        FTip.ActivateProblemAction;
-      end;
-  else
-    if AKey = Ord('C') then
-    begin
+    TAtlasHoverKeyCommand.Copy:
       Execute(TAtlasHoverAction.Copy);
-    end;
+    TAtlasHoverKeyCommand.NextAction:
+      FTip.StepProblemAction(True);
+    TAtlasHoverKeyCommand.PreviousAction:
+      FTip.StepProblemAction(False);
+    TAtlasHoverKeyCommand.ApplyFix:
+      FTip.ApplyFix;
+    TAtlasHoverKeyCommand.ActivateAction:
+      FTip.ActivateProblemAction;
+  else
+    // DebugUp, DebugDown, DebugExpand, DebugCollapse.
+    DebugTreeKey(mCommand);
   end;
 end;
 

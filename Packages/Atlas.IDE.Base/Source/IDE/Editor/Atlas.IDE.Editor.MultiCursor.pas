@@ -131,10 +131,10 @@ implementation
 
 uses
   Atlas.Core.Editor.MultiCursor,
+  Atlas.Core.Editor.MultiCursorKeys,
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,
-  Vcl.Menus,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
@@ -149,31 +149,7 @@ const
   // Fehlt in älteren Fassungen von Winapi.Windows.
   cSpiGetClientAreaAnimation = $1042;
 
-{$SCOPEDENUMS ON}
-
 type
-  /// <summary>Was eine Taste an allen Marken auslöst.</summary>
-  TKeyAction = (None, Finish, Skip, Chord, Backspace, Delete, NewLine, Cut, Copy, Paste, Move);
-
-{$SCOPEDENUMS OFF}
-
-type
-  TKeyCommand = record
-    Action: TKeyAction;
-    Move: TAtlasCaretMove;
-    Extend: Boolean;
-  end;
-
-  /// <summary>Tastenregel: Key mit Mods (Exact: genau diese Umschalttasten, sonst Umschalt erweitert die
-  /// Markierung) löst Action aus.</summary>
-  TKeyRule = record
-    Key: Word;
-    Mods: TShiftState;
-    Exact: Boolean;
-    Action: TKeyAction;
-    Move: TAtlasCaretMove;
-  end;
-
   /// <summary>Was eine Zeile zum Zeichnen der Zusatzmarken braucht.</summary>
   TPaintRun = record
     Context: INTACodeEditorPaintContext;
@@ -185,46 +161,6 @@ type
     Color: COLORREF;
     Brush: HBRUSH;
   end;
-
-const
-  // Tasten, die Atlas abfängt, solange Zusatzmarken bestehen; alle anderen gehen an die IDE.
-  cKeyRules: array[0..17] of TKeyRule = (
-    (Key: VK_ESCAPE; Mods: []; Exact: True; Action: TKeyAction.Finish;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_BACK; Mods: []; Exact: False; Action: TKeyAction.Backspace;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_DELETE; Mods: []; Exact: True; Action: TKeyAction.Delete;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_DELETE; Mods: [ssShift]; Exact: True; Action: TKeyAction.Cut;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_RETURN; Mods: []; Exact: False; Action: TKeyAction.NewLine;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_LEFT; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_LEFT; Mods: [ssCtrl]; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.WordLeft),
-    (Key: VK_RIGHT; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.Right),
-    (Key: VK_RIGHT; Mods: [ssCtrl]; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.WordRight),
-    (Key: VK_UP; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.Up),
-    (Key: VK_DOWN; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.Down),
-    (Key: VK_HOME; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.LineStart),
-    (Key: VK_END; Mods: []; Exact: False; Action: TKeyAction.Move;
-      Move: TAtlasCaretMove.LineEnd),
-    (Key: VK_INSERT; Mods: [ssCtrl]; Exact: True; Action: TKeyAction.Copy;
-      Move: TAtlasCaretMove.Left),
-    (Key: VK_INSERT; Mods: [ssShift]; Exact: True; Action: TKeyAction.Paste;
-      Move: TAtlasCaretMove.Left),
-    (Key: Ord('C'); Mods: [ssCtrl]; Exact: True; Action: TKeyAction.Copy;
-      Move: TAtlasCaretMove.Left),
-    (Key: Ord('X'); Mods: [ssCtrl]; Exact: True; Action: TKeyAction.Cut;
-      Move: TAtlasCaretMove.Left),
-    (Key: Ord('V'); Mods: [ssCtrl]; Exact: True; Action: TKeyAction.Paste;
-      Move: TAtlasCaretMove.Left));
 
 function CurrentShift: TShiftState;
 begin
@@ -293,15 +229,11 @@ end;
 function ClickWanted(AShift: TShiftState): Boolean;
 var
   mSettings: TAtlasPluginSettings;
-  mWanted: TShiftState;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  mWanted := [ssAlt];
-  if mSettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl then
-  begin
-    mWanted := [ssCtrl];
-  end;
-  Result := (AShift = mWanted) and mSettings.Enabled and mSettings.MultiCursor;
+  Result := TAtlasMultiCursorKeys.ClickWanted(AShift,
+    mSettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl,
+    mSettings.Enabled and mSettings.MultiCursor);
 end;
 
 /// <summary>Datei, Zeile (0-basiert) und Spalte des Editors unter dem Klick AMsg; False außerhalb des Textes.
@@ -332,70 +264,6 @@ begin
   begin
     AFileName := mState.View.Buffer.FileName;
   end;
-end;
-
-/// <summary>Regel für AKey mit AShift; Action None, wenn die Taste der IDE bleibt.</summary>
-function KeyCommand(AKey: Word; AShift: TShiftState): TKeyCommand;
-var
-  mRule: TKeyRule;
-  mMods: TShiftState;
-begin
-  Result := Default(TKeyCommand);
-  for mRule in cKeyRules do
-  begin
-    mMods := AShift - [ssShift];
-    if mRule.Exact then
-    begin
-      mMods := AShift;
-    end;
-    if (mRule.Key = AKey) and (mMods = mRule.Mods) then
-    begin
-      Result.Action := mRule.Action;
-      Result.Move := mRule.Move;
-      Result.Extend := ssShift in AShift;
-      Exit;
-    end;
-  end;
-end;
-
-/// <summary>Strg+K, dann die Taste fürs Überspringen (ASkipKey, 0 = aus); jede andere Taste danach wirkt normal.
-/// Skip, Chord oder None.</summary>
-function ChordAction(var AChord: Boolean; AKey: Word; AShift: TShiftState;
-  ASkipKey: Integer): TKeyAction;
-begin
-  Result := TKeyAction.None;
-  if ASkipKey = 0 then
-  begin
-    AChord := False;
-    Exit;
-  end;
-  if AChord and (ShortCut(AKey, AShift) = TShortCut(ASkipKey)) then
-  begin
-    Result := TKeyAction.Skip;
-  end
-  else if (AKey = Ord('K')) and (AShift = [ssCtrl]) then
-  begin
-    Result := TKeyAction.Chord;
-  end;
-  AChord := Result = TKeyAction.Chord;
-end;
-
-/// <summary>Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR: Ein hohes Surrogat wartet in AHigh
-/// (False), sonst steht in AText, was einzufügen ist.</summary>
-function Compose(var AHigh: Char; ATyped: Char; out AText: string): Boolean;
-begin
-  AText := ATyped;
-  Result := (ATyped < #$D800) or (ATyped > #$DBFF);
-  if not Result then
-  begin
-    AHigh := ATyped;
-    Exit;
-  end;
-  if (AHigh <> #0) and (ATyped >= #$DC00) and (ATyped <= #$DFFF) then
-  begin
-    AText := AHigh + ATyped;
-  end;
-  AHigh := #0;
 end;
 
 /// <summary>ARect halb durchsichtig mit AColor überziehen; der Text bleibt lesbar.</summary>
@@ -479,29 +347,29 @@ begin
 end;
 
 /// <summary>ACommand an allen Marken von AOwner ausführen; False gibt die Taste an die IDE.</summary>
-function Perform(AOwner: TAtlasIdeMultiCursor; const ACommand: TKeyCommand): Boolean;
+function Perform(AOwner: TAtlasIdeMultiCursor; const ACommand: TAtlasMultiCursorKeyCommand): Boolean;
 begin
   Result := True;
   case ACommand.Action of
-    TKeyAction.Finish:
+    TAtlasMultiCursorKeyAction.Finish:
       AOwner.Finish;
-    TKeyAction.Skip:
+    TAtlasMultiCursorKeyAction.Skip:
       AOwner.FState.DoSkip;
-    TKeyAction.Chord:
+    TAtlasMultiCursorKeyAction.Chord:
       ;
-    TKeyAction.Backspace:
+    TAtlasMultiCursorKeyAction.Backspace:
       AOwner.FState.DoEdit(TAtlasCaretEditKind.Backspace, '');
-    TKeyAction.Delete:
+    TAtlasMultiCursorKeyAction.Delete:
       AOwner.FState.DoEdit(TAtlasCaretEditKind.Delete, '');
-    TKeyAction.NewLine:
+    TAtlasMultiCursorKeyAction.NewLine:
       AOwner.FState.DoEdit(TAtlasCaretEditKind.NewLine, '');
-    TKeyAction.Cut:
+    TAtlasMultiCursorKeyAction.Cut:
       AOwner.FState.DoCut;
-    TKeyAction.Copy:
+    TAtlasMultiCursorKeyAction.Copy:
       Result := AOwner.FState.DoCopy;
-    TKeyAction.Paste:
+    TAtlasMultiCursorKeyAction.Paste:
       AOwner.FState.DoPaste;
-    TKeyAction.Move:
+    TAtlasMultiCursorKeyAction.Move:
       AOwner.FState.DoMove(ACommand.Move, ACommand.Extend);
   else
     Result := False;
@@ -650,7 +518,7 @@ var
   mKey: Word;
   mShift: TShiftState;
   mSettings: TAtlasPluginSettings;
-  mCommand: TKeyCommand;
+  mCommand: TAtlasMultiCursorKeyCommand;
 begin
   mKey := Word(AMsg.wParam);
   if not IsEditorWindow(AMsg.hwnd) or IsBusy or (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
@@ -664,11 +532,11 @@ begin
     Exit;
   end;
   mShift := CurrentShift;
-  mCommand := Default(TKeyCommand);
-  mCommand.Action := ChordAction(FInput.Chord, mKey, mShift, mSettings.MultiCursorSkipKey);
-  if mCommand.Action = TKeyAction.None then
+  mCommand := Default(TAtlasMultiCursorKeyCommand);
+  mCommand.Action := TAtlasMultiCursorKeys.Chord(FInput.Chord, mKey, mShift, mSettings.MultiCursorSkipKey);
+  if mCommand.Action = TAtlasMultiCursorKeyAction.None then
   begin
-    mCommand := KeyCommand(mKey, mShift);
+    mCommand := TAtlasMultiCursorKeys.Command(mKey, mShift);
   end;
   AHandled := Perform(Self, mCommand);
 end;
@@ -680,12 +548,12 @@ var
 begin
   mTyped := Char(AMsg.wParam);
   // Steuerzeichen (Strg+Buchstabe, Rücktaste, Enter, Tab) nicht: Tab übernimmt die IDE, Mirror zieht nach.
-  if not IsEditorWindow(AMsg.hwnd) or IsBusy or (mTyped < ' ') or (mTyped = #127) then
+  if not IsEditorWindow(AMsg.hwnd) or IsBusy or TAtlasMultiCursorKeys.IsControlChar(mTyped) then
   begin
     Exit;
   end;
   AHandled := True;
-  if not Compose(FInput.HighSurrogate, mTyped, mText) then
+  if not TAtlasMultiCursorKeys.Compose(FInput.HighSurrogate, mTyped, mText) then
   begin
     Exit;
   end;

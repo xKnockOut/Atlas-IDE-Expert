@@ -26,6 +26,8 @@ type
     procedure FuzzyFindsLettersInOrder;
     [Test]
     procedure StepStopsAtEdges;
+    [Test]
+    procedure EventMethodPrefersOnClick;
   end;
 
   [TestFixture]
@@ -52,6 +54,8 @@ type
     procedure SpaceKeepsOuter;
     [Test]
     procedure NeedsEnoughControls;
+    [Test]
+    procedure MenuGroups;
   end;
 
 implementation
@@ -318,6 +322,33 @@ begin
   mOut := TAtlasDesignerAlign.Apply(TAtlasAlignKind.SpaceH, TArray<TRect>.Create(Rect(0, 0, 10, 10),
     Rect(50, 0, 60, 10)), Rect(0, 0, 200, 200));
   Assert.AreEqual(50, mOut[1].Left, 'zu wenige: unverändert');
+end;
+
+procedure TAtlasDesignerSearchTests.EventMethodPrefersOnClick;
+begin
+  Assert.AreEqual('ButtonClick', TAtlasDesignerSearch.EventMethod(TArray<string>.Create('OnEnter = ButtonEnter',
+    'OnClick = ButtonClick')));
+  Assert.AreEqual('ButtonEnter', TAtlasDesignerSearch.EventMethod(TArray<string>.Create('OnEnter = ButtonEnter')));
+  Assert.AreEqual('', TAtlasDesignerSearch.EventMethod(nil));
+  Assert.AreEqual('', TAtlasDesignerSearch.EventMethod(TArray<string>.Create('OnEnter')));
+end;
+
+procedure TAtlasDesignerAlignTests.MenuGroups;
+var
+  mKind: TAtlasAlignKind;
+  mGroups: Integer;
+begin
+  mGroups := 0;
+  for mKind := Low(TAtlasAlignKind) to High(TAtlasAlignKind) do
+  begin
+    if TAtlasDesignerAlign.StartsGroup(mKind) then
+    begin
+      Inc(mGroups);
+    end;
+  end;
+  Assert.AreEqual(4, mGroups);
+  Assert.IsFalse(TAtlasDesignerAlign.StartsGroup(TAtlasAlignKind.Lefts));
+  Assert.IsTrue(TAtlasDesignerAlign.StartsGroup(TAtlasAlignKind.SameWidth));
 end;
 
 initialization

@@ -84,6 +84,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Diagnostics.Guard,
@@ -202,14 +203,6 @@ begin
     not TAtlasGuard.Disabled(TAtlasFeature.CodeLens);
 end;
 
-function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk');
-end;
-
 procedure InvalidateEditor;
 var
   mServices: INTACodeEditorServices;
@@ -231,7 +224,7 @@ begin
       Exit;
     end;
     mView := TAtlasLensPoll.TopView;
-    if (mView <> nil) and (mView.Buffer <> nil) and IsSource(mView.Buffer.FileName) and
+    if (mView <> nil) and (mView.Buffer <> nil) and TAtlasSourceFiles.IsCompiled(mView.Buffer.FileName) and
       FPoll.Due(mView, cQuietMs, cRefreshMs) then
     begin
       Fetch;

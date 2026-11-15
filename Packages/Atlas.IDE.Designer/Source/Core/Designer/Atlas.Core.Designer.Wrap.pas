@@ -16,10 +16,13 @@
 //   Felddeklaration „Name: TKlasse;“ und ohne Kommentarzeilen.
 // - Namenspräfix je Containerklasse (pnl, gbx, …); unbekannte Klassen: die
 //   ersten drei Buchstaben ohne „T“, klein.
+// - TAtlasWrapOrder: freie Namen, Z-Reihenfolge nach Einpacken und Auflösen,
+//   TabOrder des Containers, Menü der Klassen und Text der Verweise.
 
 interface
 
 uses
+  System.SysUtils,
   System.Types,
   Atlas.Core.Designer.Anchors;
 
@@ -53,10 +56,39 @@ type
     class function PrefixFor(const AClassName: string): string; static;
   end;
 
+  /// <summary>Namen, Reihenfolgen und Texte rund um Einpacken und Auflösen.</summary>
+  TAtlasWrapOrder = class
+  public
+    /// <summary>Kommt AName (ohne Groß-/Kleinschreibung) in ANames vor?</summary>
+    class function Contains(const ANames: TArray<string>; const AName: string): Boolean; static;
+    /// <summary>AName, sonst AName2, AName3, … bis AExists den Namen nicht kennt.</summary>
+    class function UniqueName(const AName: string; const AExists: TFunc<string, Boolean>): string; static;
+    /// <summary>Vorschlag für die Seite eines neuen PageControls: Präfix der Seite und, was im Namen des
+    /// Containers nach dessen Präfix steht (pgcDaten → tshDaten).</summary>
+    class function SheetName(const AContainerName, AContainerClass: string): string; static;
+    /// <summary>Menü: eingebaute Klassen, dann die aus AExtra (Komma oder Semikolon) ohne Doppelte.</summary>
+    class function ClassNames(const ABuiltIn: array of string; const AExtra: string): TArray<string>; static;
+    /// <summary>Z-Reihenfolge nach dem Einpacken: der Container an der Stelle des obersten Kinds, die Kinder
+    /// nicht mehr im Parent.</summary>
+    class function WrapStack(const AStack, AChildren: TArray<string>; const AContainer: string): TArray<string>;
+      static;
+    /// <summary>Z-Reihenfolge nach dem Auflösen: an der Stelle des Containers seine Kinder.</summary>
+    class function UnwrapStack(const AStack, AChildren: TArray<string>; const AContainer: string): TArray<string>;
+      static;
+    /// <summary>TabOrder des neuen Containers: die kleinste der Kinder (-1 ohne).</summary>
+    class function ContainerTabOrder(const AChildTabs: TArray<Integer>): Integer; static;
+    /// <summary>Kinder mit TabOrder (ATabs[i] >= 0): Namen und TabOrder in ihrer Reihenfolge.</summary>
+    class procedure TabbedChildren(const ANames: TArray<string>; const ATabs: TArray<Integer>;
+      out ATabbedNames: TArray<string>; out ATabbedTabs: TArray<Integer>); static;
+    /// <summary>Zeilen ALines (ab 1) aus ASource als „Zeile: Text“, je in einer neuen Zeile, höchstens
+    /// AMax.</summary>
+    class function ReferenceText(const ASource: string; const ALines: TArray<Integer>; AMax: Integer): string;
+      static;
+  end;
+
 implementation
 
 uses
-  System.SysUtils,
   System.Math,
   System.Character;
 
@@ -318,6 +350,153 @@ begin
     Result := Copy(Result, 2, MaxInt);
   end;
   Result := LowerCase(Copy(Result, 1, cPrefixLength));
+end;
+
+{ TAtlasWrapOrder }
+
+class function TAtlasWrapOrder.Contains(const ANames: TArray<string>; const AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in ANames do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasWrapOrder.UniqueName(const AName: string; const AExists: TFunc<string, Boolean>): string;
+var
+  mNumber: Integer;
+begin
+  Result := AName;
+  mNumber := 1;
+  while AExists(Result) do
+  begin
+    Inc(mNumber);
+    Result := AName + IntToStr(mNumber);
+  end;
+end;
+
+class function TAtlasWrapOrder.SheetName(const AContainerName, AContainerClass: string): string;
+begin
+  Result := TAtlasContainerWrap.PrefixFor('TTabSheet') +
+    Copy(AContainerName, Length(TAtlasContainerWrap.PrefixFor(AContainerClass)) + 1, MaxInt);
+end;
+
+class function TAtlasWrapOrder.ClassNames(const ABuiltIn: array of string; const AExtra: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in ABuiltIn do
+  begin
+    Result := Result + [mName];
+  end;
+  for mName in AExtra.Split([',', ';']) do
+  begin
+    if (Trim(mName) <> '') and not Contains(Result, Trim(mName)) then
+    begin
+      Result := Result + [Trim(mName)];
+    end;
+  end;
+end;
+
+class function TAtlasWrapOrder.WrapStack(const AStack, AChildren: TArray<string>;
+  const AContainer: string): TArray<string>;
+var
+  mTop, mIndex: Integer;
+begin
+  mTop := -1;
+  for mIndex := 0 to High(AStack) do
+  begin
+    if Contains(AChildren, AStack[mIndex]) then
+    begin
+      mTop := mIndex;
+    end;
+  end;
+  Result := nil;
+  for mIndex := 0 to High(AStack) do
+  begin
+    if mIndex = mTop then
+    begin
+      Result := Result + [AContainer];
+    end
+    else if not Contains(AChildren, AStack[mIndex]) then
+    begin
+      Result := Result + [AStack[mIndex]];
+    end;
+  end;
+end;
+
+class function TAtlasWrapOrder.UnwrapStack(const AStack, AChildren: TArray<string>;
+  const AContainer: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := nil;
+  for mName in AStack do
+  begin
+    if SameText(mName, AContainer) then
+    begin
+      Result := Result + AChildren;
+    end
+    else
+    begin
+      Result := Result + [mName];
+    end;
+  end;
+end;
+
+class function TAtlasWrapOrder.ContainerTabOrder(const AChildTabs: TArray<Integer>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex in TAtlasContainerWrap.ByTabOrder(AChildTabs) do
+  begin
+    if (Result < 0) and (AChildTabs[mIndex] >= 0) then
+    begin
+      Result := AChildTabs[mIndex];
+    end;
+  end;
+end;
+
+class procedure TAtlasWrapOrder.TabbedChildren(const ANames: TArray<string>; const ATabs: TArray<Integer>;
+  out ATabbedNames: TArray<string>; out ATabbedTabs: TArray<Integer>);
+var
+  mIndex: Integer;
+begin
+  ATabbedNames := nil;
+  ATabbedTabs := nil;
+  for mIndex := 0 to High(ANames) do
+  begin
+    if ATabs[mIndex] >= 0 then
+    begin
+      ATabbedNames := ATabbedNames + [ANames[mIndex]];
+      ATabbedTabs := ATabbedTabs + [ATabs[mIndex]];
+    end;
+  end;
+end;
+
+class function TAtlasWrapOrder.ReferenceText(const ASource: string; const ALines: TArray<Integer>;
+  AMax: Integer): string;
+var
+  mLines: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mLines := ASource.Replace(#13#10, #10).Split([#10]);
+  for mIndex := 0 to Min(High(ALines), AMax - 1) do
+  begin
+    if (ALines[mIndex] >= 1) and (ALines[mIndex] <= Length(mLines)) then
+    begin
+      Result := Result + sLineBreak + IntToStr(ALines[mIndex]) + ': ' + Trim(mLines[ALines[mIndex] - 1]);
+    end;
+  end;
 end;
 
 end.

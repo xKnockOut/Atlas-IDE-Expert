@@ -25,11 +25,9 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Editor.LineChanges,
   Atlas.UI.Strings,
@@ -71,37 +69,16 @@ begin
   AMarks := nil;
 end;
 
-function ProblemKind(ASeverity: TAtlasProblemSeverity): TAtlasOverviewMarkKind;
-begin
-  case ASeverity of
-    TAtlasProblemSeverity.Error:
-      Result := TAtlasOverviewMarkKind.Error;
-    TAtlasProblemSeverity.Warning:
-      Result := TAtlasOverviewMarkKind.Warning;
-  else
-    Result := TAtlasOverviewMarkKind.Info;
-  end;
-end;
-
 /// <summary>Befunde der Datei ohne inaktive Zweige und uses-Einträge (die sind keine Befunde).</summary>
 function DiagnosticMarks(const AFileName: string): TAtlasOverviewMarks;
 var
   mStore: TAtlasProblemStore;
-  mProblem: TAtlasProblem;
 begin
   Result := nil;
   mStore := TAtlasProblemsController.Current;
-  if mStore = nil then
+  if mStore <> nil then
   begin
-    Exit;
-  end;
-  for mProblem in mStore.ForFile(AFileName) do
-  begin
-    if not mProblem.Unnecessary and (mProblem.UsesUnit = '') then
-    begin
-      Result := Result + [TAtlasOverviewMark.Create(ProblemKind(mProblem.Severity), mProblem.StartLine,
-        Max(1, mProblem.EndLine - mProblem.StartLine + 1), mProblem.Message)];
-    end;
+    Result := TAtlasOverview.ProblemMarks(mStore.ForFile(AFileName));
   end;
 end;
 
@@ -117,21 +94,6 @@ begin
   end;
 end;
 
-function ChangeMark(const AChange: TAtlasLineChange; ALineCount: Integer): TAtlasOverviewMark;
-begin
-  case AChange.Kind of
-    TAtlasLineChangeKind.Added:
-      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Added, AChange.Line, AChange.Count,
-        TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle));
-    TAtlasLineChangeKind.Modified:
-      Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Modified, AChange.Line, AChange.Count,
-        TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewModified));
-  else
-    Result := TAtlasOverviewMark.Create(TAtlasOverviewMarkKind.Deleted, Min(AChange.Line, Max(0, ALineCount - 1)), 1,
-      TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewDeleted));
-  end;
-end;
-
 /// <summary>Änderungen, wenn sie zum Stand mit ALineCount Zeilen gehören.</summary>
 function ChangeMarks(const AFileName: string; ALineCount: Integer): TAtlasOverviewMarks;
 var
@@ -144,7 +106,10 @@ begin
   begin
     for mChange in mChanges do
     begin
-      Result := Result + [ChangeMark(mChange, ALineCount)];
+      Result := Result + [TAtlasOverview.ChangeMark(mChange, ALineCount,
+        TAtlasStrings.Text(TAtlasTextId.ChangeAddedTitle),
+        TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewModified),
+        TAtlasEditorStrings.Text(TAtlasEditorTextId.OverviewDeleted))];
     end;
   end;
 end;

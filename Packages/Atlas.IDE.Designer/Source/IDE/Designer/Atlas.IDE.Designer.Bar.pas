@@ -272,32 +272,6 @@ begin
   mDesigner.Modified;
 end;
 
-/// <summary>Methode zum Ereignis OnClick, sonst zum ersten belegten Ereignis; '' ohne.</summary>
-function EventMethod(const AEvents: TArray<string>): string;
-var
-  mEvent, mItem: string;
-  mPos: Integer;
-begin
-  Result := '';
-  if Length(AEvents) = 0 then
-  begin
-    Exit;
-  end;
-  mEvent := AEvents[0];
-  for mItem in AEvents do
-  begin
-    if mItem.StartsWith('OnClick ', True) then
-    begin
-      mEvent := mItem;
-    end;
-  end;
-  mPos := Pos(' = ', mEvent);
-  if mPos > 0 then
-  begin
-    Result := Copy(mEvent, mPos + 3, MaxInt);
-  end;
-end;
-
 /// <summary>Auswahl ohne das Formular selbst und ohne AComponent, dahinter AComponent (#539).</summary>
 function SelectionPlus(const AEditor: IOTAFormEditor; ARoot, AComponent: TComponent): TArray<TComponent>;
 var
@@ -348,7 +322,7 @@ begin
   end
   else if AAction = TAtlasComponentSearchAction.Event then
   begin
-    mMethod := EventMethod(AItem.Events);
+    mMethod := TAtlasDesignerSearch.EventMethod(AItem.Events);
     if mMethod = '' then
     begin
       Exit;
@@ -698,9 +672,7 @@ begin
   FAlignMenu.Items.Clear;
   for mKind := Low(TAtlasAlignKind) to High(TAtlasAlignKind) do
   begin
-    // Gruppen: Kanten, Mitten, im Elternelement, Größe, Abstände.
-    if mKind in [TAtlasAlignKind.CentersH, TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.SameWidth,
-      TAtlasAlignKind.SpaceH] then
+    if TAtlasDesignerAlign.StartsGroup(mKind) then
     begin
       mItem := TMenuItem.Create(FAlignMenu);
       mItem.Caption := '-';

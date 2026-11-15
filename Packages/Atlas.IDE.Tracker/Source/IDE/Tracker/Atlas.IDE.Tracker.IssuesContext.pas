@@ -260,8 +260,6 @@ const
   cAppFolder = 'Atlas';
   cIssuesFolder = 'issues';
   cLocalAppData = 'LOCALAPPDATA';
-  cHttps = 'https://';
-  cHttp = 'http://';
 
 { TAtlasIssuesCachedTarget }
 
@@ -366,7 +364,7 @@ end;
 class procedure TAtlasIdeIssuesTargets.OpenPage(const AUrl: string);
 begin
   // Nur Web-Adressen aus der eingetragenen Adresse, nie etwas aus der Antwort des Trackers.
-  if AUrl.StartsWith(cHttps, True) or AUrl.StartsWith(cHttp, True) then
+  if TAtlasTrackerProjectPick.IsWebPage(AUrl) then
   begin
     TAtlasTrackerFiles.Shell.Open(AUrl);
   end;
@@ -384,17 +382,9 @@ begin
 end;
 
 class function TAtlasIdeIssuesTargets.ConnectionTargets: TArray<TAtlasTrackerTarget>;
-var
-  mConnection: TAtlasTrackerConnection;
 begin
-  Result := nil;
-  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
-  begin
-    if mConnection.Target.Server <> '' then
-    begin
-      Result := Result + [mConnection.Target];
-    end;
-  end;
+  Result := TAtlasTrackerProjectPick.ServerTargets(TAtlasTrackerConnections.Read(
+    TAtlasIdeSettings.Current.IssuesConnections));
 end;
 
 /// <summary>Aktives Projekt der IDE als Projektdatei; '' ohne bzw. wenn es nicht lesbar ist.</summary>
@@ -440,10 +430,6 @@ begin
 end;
 
 function TAtlasIdeIssuesSelection.CurrentProject: string;
-var
-  mKey, mProject: string;
-  mChoices: TArray<TAtlasTrackerChoice>;
-  mIndex: Integer;
 begin
   Result := '';
   if not FOwner.Started then
@@ -453,30 +439,17 @@ begin
   // „Alle“ (#1928): die zuletzt bediente Gruppe, sonst die erste.
   if AllMode then
   begin
-    for mProject in Projects do
-    begin
-      if (Result = '') or SameText(mProject, FFocus) then
-      begin
-        Result := mProject;
-      end;
-    end;
+    Result := TAtlasTrackerProjectPick.FocusedProject(Projects, FFocus);
     if Result <> '' then
     begin
       Exit;
     end;
   end;
   // Fest gewähltes Tracker-Projekt (#1927): Zustand und Auflösung über den Pfad seiner Zeile.
-  mKey := ChosenKey;
-  if (mKey <> '') and (mKey <> TAtlasTrackerProjects.cAllKey) then
+  if not TAtlasTrackerProjectPick.ChosenProject(Choices, ChosenKey, Result) then
   begin
-    mChoices := Choices;
-    mIndex := TAtlasTrackerProjects.IndexOfChoice(mChoices, mKey);
-    if mIndex >= 0 then
-    begin
-      Exit(mChoices[mIndex].Match);
-    end;
+    Result := AutomaticProject;
   end;
-  Result := AutomaticProject;
 end;
 
 function TAtlasIdeIssuesSelection.AutomaticProject: string;
@@ -531,25 +504,18 @@ end;
 function TAtlasIdeIssuesSelection.ChosenKey: string;
 var
   mSettings: TAtlasPluginSettings;
+  mChoices: TArray<TAtlasTrackerChoice>;
 begin
-  Result := '';
   mSettings := TAtlasIdeSettings.Current;
-  if not mSettings.IssuesProjectPicker or (mSettings.IssuesWelcomeProject = '') then
+  mChoices := nil;
+  // Die Zeilen nur lesen, wenn eine einzelne gemerkt ist.
+  if mSettings.IssuesProjectPicker and (mSettings.IssuesWelcomeProject <> '') and
+    (mSettings.IssuesWelcomeProject <> TAtlasTrackerProjects.cAllKey) then
   begin
-    Exit;
+    mChoices := Choices;
   end;
-  if mSettings.IssuesWelcomeProject = TAtlasTrackerProjects.cAllKey then
-  begin
-    if mSettings.IssuesAllProjects then
-    begin
-      Result := TAtlasTrackerProjects.cAllKey;
-    end;
-    Exit;
-  end;
-  if TAtlasTrackerProjects.IndexOfChoice(Choices, mSettings.IssuesWelcomeProject) >= 0 then
-  begin
-    Result := mSettings.IssuesWelcomeProject;
-  end;
+  Result := TAtlasTrackerProjectPick.ChosenKey(mSettings.IssuesProjectPicker, mSettings.IssuesWelcomeProject,
+    mSettings.IssuesAllProjects, mChoices);
 end;
 
 procedure TAtlasIdeIssuesSelection.Choose(const AKey: string);
@@ -573,22 +539,13 @@ begin
 end;
 
 function TAtlasIdeIssuesSelection.Projects: TArray<string>;
-var
-  mChoice: TAtlasTrackerChoice;
 begin
-  Result := nil;
-  if not AllMode then
+  if AllMode then
   begin
-    if CurrentProject <> '' then
-    begin
-      Result := [CurrentProject];
-    end;
+    Result := TAtlasTrackerProjectPick.Projects(TAtlasTrackerProjects.cAllKey, '', Choices);
     Exit;
   end;
-  for mChoice in Choices do
-  begin
-    Result := Result + [mChoice.Match];
-  end;
+  Result := TAtlasTrackerProjectPick.Projects('', CurrentProject, nil);
 end;
 
 procedure TAtlasIdeIssuesSelection.Focus(const AProject: string);
