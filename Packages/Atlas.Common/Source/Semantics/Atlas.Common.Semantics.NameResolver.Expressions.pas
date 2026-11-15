@@ -43,7 +43,7 @@ type
     function IdentifierCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     function AccessCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     function UnitMemberCandidates(const AOwner: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
-    function TypeMemberCandidates(const AOwner, AType: TResolvedSymbol; const AName: string;
+    function TypeMemberCandidates(const AType: TResolvedSymbol; const AName: string;
       AIsValue: Boolean): TArray<TResolvedSymbol>;
     function NodeSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
     function FirstCandidate(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
@@ -286,7 +286,7 @@ begin
   begin
     // Eine Typumwandlung TFoo(X) liefert den Typ als Symbol, ist aber ein Wert (#2309:
     // TControlClass(AControl.ClassType).Create(nil) ruft den Konstruktor von TControl, nicht TObject.Create).
-    Result := TypeMemberCandidates(mOwner, mType, ANode.Name, not mOwner.IsType or
+    Result := TypeMemberCandidates(mType, ANode.Name, not mOwner.IsType or
       (ANode[0].Kind = TSyntaxKind.Call));
   end;
 end;
@@ -305,7 +305,7 @@ begin
   end;
 end;
 
-function TResolverExpressions.TypeMemberCandidates(const AOwner, AType: TResolvedSymbol; const AName: string;
+function TResolverExpressions.TypeMemberCandidates(const AType: TResolvedSymbol; const AName: string;
   AIsValue: Boolean): TArray<TResolvedSymbol>;
 var
   mTarget: TResolvedSymbol;
