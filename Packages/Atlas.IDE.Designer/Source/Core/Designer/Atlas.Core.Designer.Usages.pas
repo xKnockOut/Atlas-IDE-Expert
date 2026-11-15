@@ -12,7 +12,11 @@
 // - Bindings findet Eigenschaften anderer Komponenten, die in der DFM auf die
 //   Komponente zeigen (PopupMenu, Menu, Images, DataSource …).
 // - InScope filtert nach Suchbereich: Unit des Formulars, Projekt,
-//   Projektgruppe.
+//   Projektgruppe; ScopeOf liest ihn aus der Einstellung, CountInScope zählt.
+// - GroupCaption, HandlerOf, BindingOwner und FormOf bauen die Einträge des
+//   Ergebnisfensters und den Text des Zählers.
+// - TAtlasUsageWatch entprellt den Zähler im Statusfeld nach einem
+//   Auswahlwechsel.
 
 interface
 
@@ -23,6 +27,8 @@ type
 {$SCOPEDENUMS ON}
   TAtlasUsageKind = (Reads, Writes, Passes, Event);
   TAtlasUsageScope = (UnitOnly, Project, ProjectGroup);
+  /// <summary>Wortform eines Zählers: keiner, einer, mehrere.</summary>
+  TAtlasUsageForm = (None, One, Many);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Ein Zugriff auf eine Komponente im Code; Line und Character 0-basiert.</summary>
@@ -55,6 +61,39 @@ type
     /// <summary>Bindungen aus der DFM: Eigenschaften von ARoot und seinen Komponenten, die auf ATarget zeigen
     /// („Panel1.PopupMenu“, „Form1.Menu“); nur Eigenschaften, die direkt ein Feld lesen.</summary>
     class function Bindings(ARoot, ATarget: TComponent): TArray<string>; static;
+    /// <summary>Suchbereich aus dem Wert der Einstellung; AUnitKey und AGroupKey: Werte für Unit bzw.
+    /// Projektgruppe, alles andere ist Projekt.</summary>
+    class function ScopeOf(const AValue, AUnitKey, AGroupKey: string): TAtlasUsageScope; static;
+    /// <summary>Zahl der Dateien aus AFiles im Bereich (je Fundort ein Eintrag).</summary>
+    class function CountInScope(AScope: TAtlasUsageScope; const AFiles: TArray<string>; const AFormUnit: string;
+      const AProjectFiles: TArray<string>): Integer; static;
+    /// <summary>Überschrift der Gruppe „Komponente · Datei · Methode“; AOutside für Fundorte außerhalb einer
+    /// Methode.</summary>
+    class function GroupCaption(const AUsage: TAtlasUsage; const AOutside: string): string; static;
+    /// <summary>Methode aus „OnClick = Klick“.</summary>
+    class function HandlerOf(const AEvent: string): string; static;
+    /// <summary>Bindende Komponente aus „Panel1.PopupMenu“.</summary>
+    class function BindingOwner(const ABinding: string): string; static;
+    class function FormOf(ACount: Integer): TAtlasUsageForm; static;
+  end;
+
+  /// <summary>Entprellte Auswahl des Zählers: erst fragen, wenn dieselbe Auswahl cDebounceMs steht, und je
+  /// Auswahl nur einmal.</summary>
+  TAtlasUsageWatch = record
+  public const
+    cDebounceMs = 400;
+  public
+    /// <summary>Zuletzt gesehene Auswahl („Unit|Komponente“) und seit wann.</summary>
+    Watched: string;
+    Since: UInt64;
+    /// <summary>Auswahl, für die der Zähler gefragt ist bzw. steht.</summary>
+    Asked: string;
+    class function KeyOf(const AUnitFile, AComponent: string): string; static;
+    /// <summary>Auswahl AKey zur Zeit ANow gesehen; True, wenn jetzt zu fragen ist (merkt sie als gefragt).</summary>
+    function Ask(const AKey: string; ANow: UInt64): Boolean;
+    /// <summary>Unit der gefragten Auswahl.</summary>
+    function AskedUnit: string;
+    procedure Clear;
   end;
 
 implementation
@@ -70,6 +109,10 @@ uses
 const
   /// <summary>Vorsilbe eines Ereignisnamens.</summary>
   cEventPrefix = 'On';
+  /// <summary>Trenner zwischen Ereignis und Methode („OnClick = Klick“).</summary>
+  cEventAssign = ' = ';
+  cCaptionSeparator = ' · ';
+  cKeySeparator = '|';
 
 /// <summary>Leerzeichen ab APos (1-basiert) überspringen.</summary>
 function SkipBlanks(const ALine: string; APos: Integer): Integer;
@@ -391,6 +434,108 @@ begin
       CollectBindings(ARoot.Components[i], ATarget, ARoot.Components[i].Name, Result);
     end;
   end;
+end;
+
+class function TAtlasDesignerUsages.ScopeOf(const AValue, AUnitKey, AGroupKey: string): TAtlasUsageScope;
+begin
+  if SameText(AValue, AUnitKey) then
+  begin
+    Result := TAtlasUsageScope.UnitOnly;
+  end
+  else if SameText(AValue, AGroupKey) then
+  begin
+    Result := TAtlasUsageScope.ProjectGroup;
+  end
+  else
+  begin
+    Result := TAtlasUsageScope.Project;
+  end;
+end;
+
+class function TAtlasDesignerUsages.CountInScope(AScope: TAtlasUsageScope; const AFiles: TArray<string>;
+  const AFormUnit: string; const AProjectFiles: TArray<string>): Integer;
+var
+  mFile: string;
+begin
+  Result := 0;
+  for mFile in AFiles do
+  begin
+    if InScope(AScope, mFile, AFormUnit, AProjectFiles) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+class function TAtlasDesignerUsages.GroupCaption(const AUsage: TAtlasUsage; const AOutside: string): string;
+var
+  mMethod: string;
+begin
+  mMethod := AUsage.Method;
+  if mMethod = '' then
+  begin
+    mMethod := AOutside;
+  end;
+  Result := AUsage.Component + cCaptionSeparator + ExtractFileName(AUsage.FileName) + cCaptionSeparator + mMethod;
+end;
+
+class function TAtlasDesignerUsages.HandlerOf(const AEvent: string): string;
+begin
+  Result := Copy(AEvent, Pos(cEventAssign, AEvent) + Length(cEventAssign), MaxInt);
+end;
+
+class function TAtlasDesignerUsages.BindingOwner(const ABinding: string): string;
+begin
+  Result := Copy(ABinding, 1, Pos('.', ABinding) - 1);
+end;
+
+class function TAtlasDesignerUsages.FormOf(ACount: Integer): TAtlasUsageForm;
+begin
+  if ACount = 1 then
+  begin
+    Result := TAtlasUsageForm.One;
+  end
+  else if ACount > 1 then
+  begin
+    Result := TAtlasUsageForm.Many;
+  end
+  else
+  begin
+    Result := TAtlasUsageForm.None;
+  end;
+end;
+
+{ TAtlasUsageWatch }
+
+class function TAtlasUsageWatch.KeyOf(const AUnitFile, AComponent: string): string;
+begin
+  Result := AUnitFile + cKeySeparator + AComponent;
+end;
+
+function TAtlasUsageWatch.Ask(const AKey: string; ANow: UInt64): Boolean;
+begin
+  Result := False;
+  if AKey <> Watched then
+  begin
+    Watched := AKey;
+    Since := ANow;
+  end
+  else if (Asked <> AKey) and (ANow - Since >= cDebounceMs) then
+  begin
+    Asked := AKey;
+    Result := True;
+  end;
+end;
+
+function TAtlasUsageWatch.AskedUnit: string;
+begin
+  Result := Copy(Asked, 1, Pos(cKeySeparator, Asked) - 1);
+end;
+
+procedure TAtlasUsageWatch.Clear;
+begin
+  Watched := '';
+  Asked := '';
 end;
 
 end.
