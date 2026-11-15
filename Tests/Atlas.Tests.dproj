@@ -2018,6 +2018,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Definitions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Matchers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Runs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Picker.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Picker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Commands.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas"/>
@@ -2025,6 +2027,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Reports.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.PreBuild.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.OutputGroup.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tasks.Texts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas"/>
