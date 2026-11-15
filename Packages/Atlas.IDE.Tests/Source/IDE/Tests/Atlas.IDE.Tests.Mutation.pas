@@ -495,44 +495,28 @@ var
   mStatus: TAtlasMutationStatus;
 begin
   mStatus := TAtlasMutationPlan.StatusOf(ATimedOut, AExitCode, AXml, mBy);
-  if (FState.Position < 0) and (mStatus <> TAtlasMutationStatus.Survived) then
-  begin
-    // Rot oder nicht bewertbar schon ohne Mutation: Jeder Mutant wäre „erkannt“.
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBaselineFailed, [ProjectName(FState.Target.Project),
-      StatusText(mStatus, mBy)]));
-    Exit;
-  end;
   Rate(mStatus, mBy);
 end;
 
 procedure TAtlasIdeMutationRun.Rate(AStatus: TAtlasMutationStatus; const ABy: string);
 var
   mJob: TAtlasMutationJob;
-  mOutcome: TAtlasMutationOutcome;
 begin
+  // Rot, nicht gebaut oder nicht bewertbar schon ohne Mutation: Jeder Mutant wäre „erkannt“.
+  if TAtlasMutationSteps.BaselineFailed(FState.Position, AStatus) then
+  begin
+    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBaselineFailed, [ProjectName(FState.Target.Project),
+      StatusText(AStatus, ABy)]));
+    Exit;
+  end;
   if FState.Position < 0 then
   begin
-    if AStatus = TAtlasMutationStatus.BuildFailed then
-    begin
-      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBaselineFailed,
-        [ProjectName(FState.Target.Project), StatusText(AStatus, ABy)]));
-      Exit;
-    end;
     Advance;
     Exit;
   end;
   mJob := FState.Jobs[FState.Position];
-  mOutcome := Default(TAtlasMutationOutcome);
-  mOutcome.Index := mJob.Index;
-  mOutcome.OperatorId := mJob.Mutant.OperatorId;
-  mOutcome.Original := mJob.Mutant.Original;
-  mOutcome.Replacement := mJob.Mutant.Replacement;
-  mOutcome.Description := mJob.Mutant.Description;
-  mOutcome.Line := mJob.Mutant.Line - 1 - mJob.Routine.Line;
-  mOutcome.Status := AStatus;
-  mOutcome.By := ABy;
-  mOutcome.Milliseconds := Integer(TThread.GetTickCount64 - FState.StartedAt);
-  FState.Outcomes[FState.Position] := mOutcome;
+  FState.Outcomes[FState.Position] := TAtlasMutationSteps.OutcomeOf(mJob, AStatus, ABy,
+    Integer(TThread.GetTickCount64 - FState.StartedAt));
   FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationOutcome, [FState.Position + 1,
     Length(FState.Jobs), mJob.Routine.Name, mJob.Mutant.Line, mJob.Mutant.Original, mJob.Mutant.Replacement,
     StatusText(AStatus, ABy)]));
@@ -692,17 +676,13 @@ begin
   CloseShadow;
   Remember;
   SaveResults;
-  mTotals := Default(TAtlasMutationTotals);
-  for mIndex := 0 to Done - 1 do
+  mTotals := TAtlasMutationSteps.Totals(FState.Outcomes, Done);
+  for mIndex in TAtlasMutationSteps.Survivors(FState.Outcomes, Done) do
   begin
-    mTotals.Add(FState.Outcomes[mIndex].Status);
-    if FState.Outcomes[mIndex].Status = TAtlasMutationStatus.Survived then
-    begin
-      FOutput.Jump(FState.FileName, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationSurvivor,
-        [FState.Jobs[mIndex].Routine.Name, FState.Jobs[mIndex].Mutant.Line, FState.Jobs[mIndex].Mutant.Original,
-        FState.Jobs[mIndex].Mutant.Replacement, FState.Jobs[mIndex].Mutant.OperatorId]),
-        FState.Jobs[mIndex].Mutant.Line - 1, FState.Jobs[mIndex].Mutant.Character - 1);
-    end;
+    FOutput.Jump(FState.FileName, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationSurvivor,
+      [FState.Jobs[mIndex].Routine.Name, FState.Jobs[mIndex].Mutant.Line, FState.Jobs[mIndex].Mutant.Original,
+      FState.Jobs[mIndex].Mutant.Replacement, FState.Jobs[mIndex].Mutant.OperatorId]),
+      FState.Jobs[mIndex].Mutant.Line - 1, FState.Jobs[mIndex].Mutant.Character - 1);
   end;
   if ACancelled then
   begin
@@ -735,11 +715,7 @@ end;
 
 function TAtlasIdeMutationRun.Done: Integer;
 begin
-  Result := FState.Position;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
+  Result := TAtlasMutationSteps.Done(FState.Position);
 end;
 
 procedure TAtlasIdeMutationRun.Start(AScope: TAtlasMutationScope);
@@ -769,47 +745,19 @@ begin
   FTests.ResolveProject(mFileName, ChosenProc(Self, FAlive, FAliveRef));
 end;
 
-/// <summary>Ergebnis der Routine von AJobs[AFirst] aus allen Mutanten dieser Routine; AComplete, wenn alle vor
-/// ADone liegen (geprüft sind).</summary>
-function RoutineResult(const AJobs: TArray<TAtlasMutationJob>; const AOutcomes: TArray<TAtlasMutationOutcome>;
-  AFirst, ADone: Integer; out AComplete: Boolean): TAtlasMutationRoutineResult;
-var
-  mIndex: Integer;
-begin
-  Result := Default(TAtlasMutationRoutineResult);
-  Result.Routine := AJobs[AFirst].Routine.Name;
-  Result.Line := AJobs[AFirst].Routine.Line;
-  Result.EndLine := AJobs[AFirst].Routine.EndLine;
-  AComplete := True;
-  // Eine lokale Routine kann die Mutanten der äußeren teilen: nach Namen sammeln, nicht nach Nachbarschaft.
-  for mIndex := AFirst to High(AJobs) do
-  begin
-    if AJobs[mIndex].Routine.Name = Result.Routine then
-    begin
-      AComplete := AComplete and (mIndex < ADone);
-      Result.Outcomes := Result.Outcomes + [AOutcomes[mIndex]];
-    end;
-  end;
-end;
-
 procedure TAtlasIdeMutationRun.Remember;
 var
-  mIndex, mOther: Integer;
+  mIndex: Integer;
   mResult: TAtlasMutationRoutineResult;
-  mComplete, mSeen: Boolean;
+  mComplete: Boolean;
 begin
   for mIndex := 0 to High(FState.Jobs) do
   begin
-    mSeen := False;
-    for mOther := 0 to mIndex - 1 do
-    begin
-      mSeen := mSeen or (FState.Jobs[mOther].Routine.Name = FState.Jobs[mIndex].Routine.Name);
-    end;
-    if mSeen then
+    if not TAtlasMutationSteps.FirstOfRoutine(FState.Jobs, mIndex) then
     begin
       Continue;
     end;
-    mResult := RoutineResult(FState.Jobs, FState.Outcomes, mIndex, Done, mComplete);
+    mResult := TAtlasMutationSteps.RoutineResult(FState.Jobs, FState.Outcomes, mIndex, Done, mComplete);
     mResult.FileName := FState.FileName;
     mResult.Body := TAtlasMutants.RoutineBody(FState.Lines, FState.Jobs[mIndex].Routine);
     mResult.AtUtc := TTimeZone.Local.ToUniversalTime(Now);
@@ -903,17 +851,13 @@ class function TAtlasIdeMutationRun.StatusText(AStatus: TAtlasMutationStatus; co
 begin
   case AStatus of
     TAtlasMutationStatus.Killed:
-      if StrToIntDef(ABy, 0) <> 0 then
-      begin
+      case TAtlasMutationSteps.KilledText(ABy) of
         // Ohne Bericht: der Exitcode (Absturz).
-        Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStatusKilledExit, [ABy]);
-      end
-      else if ABy <> '' then
-      begin
-        Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStatusKilledBy, [ABy]);
-      end
+        TAtlasMutationKilledText.ExitCode:
+          Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStatusKilledExit, [ABy]);
+        TAtlasMutationKilledText.ByTest:
+          Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStatusKilledBy, [ABy]);
       else
-      begin
         Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.MutationStatusKilled);
       end;
     TAtlasMutationStatus.Survived:

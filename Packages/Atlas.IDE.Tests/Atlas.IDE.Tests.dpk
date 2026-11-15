@@ -56,6 +56,7 @@ contains
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Stale in 'Source\Core\Tests\Atlas.Core.Tests.Stale.pas',
   Atlas.Core.Tests.CoveredBy in 'Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas',
+  Atlas.Core.Tests.Lens in 'Source\Core\Tests\Atlas.Core.Tests.Lens.pas',
   Atlas.Core.Tests.Untested in 'Source\Core\Tests\Atlas.Core.Tests.Untested.pas',
   Atlas.Core.Tests.OnSave in 'Source\Core\Tests\Atlas.Core.Tests.OnSave.pas',
   Atlas.Core.Tests.Leaks in 'Source\Core\Tests\Atlas.Core.Tests.Leaks.pas',
