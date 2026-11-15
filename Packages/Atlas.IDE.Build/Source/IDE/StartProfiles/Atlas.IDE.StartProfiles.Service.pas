@@ -97,7 +97,6 @@ type
 implementation
 
 uses
-  System.Types,
   Vcl.Forms,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
@@ -105,6 +104,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.StartOptions,
   Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.UI.Commands.Palette;
 
@@ -534,22 +534,6 @@ begin
     end;
 end;
 
-function PickerArea: TRect;
-begin
-  if Screen.ActiveForm <> nil then
-  begin
-    Result := Screen.ActiveForm.BoundsRect;
-  end
-  else if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.BoundsRect;
-  end
-  else
-  begin
-    Result := Screen.WorkAreaRect;
-  end;
-end;
-
 class procedure TAtlasIdeStartProfiles.Stop;
 begin
   FreeAndNil(FInstance);
@@ -658,7 +642,7 @@ begin
     TAtlasIdeStyle.Colors);
   mWindow.KeepOrder := True;
   mWindow.OnExecute := PickedHandler(mProject.FileName);
-  mWindow.ShowOver(PickerArea);
+  mWindow.ShowOver(TAtlasIdeHost.PopupArea);
 end;
 
 class procedure TAtlasIdeStartProfiles.SetStatusHandler(const AValue: TAtlasStartProfileStatus);
