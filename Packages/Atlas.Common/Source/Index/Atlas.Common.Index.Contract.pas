@@ -82,7 +82,8 @@ type
     DeprecatedText: string;
     /// <summary>Nur bei inline-Routinen (#1017): was der Rumpf aus anderen Units braucht, aufgelöst im Bereich
     /// der deklarierenden Unit. "Name" = Bezeichner, der nicht in dieser Unit deklariert ist; ":Typ" = Typ eines
-    /// Felds oder einer Variablen, dessen Mitglieder der Rumpf benutzt (FListe.Count), bzw. ein Typverweis;
+    /// Felds oder einer Variablen, dessen Mitglieder der Rumpf benutzt, mit dem Mitglied hinter cInlineMemberMark
+    /// (":TList<TKunde>#Count" bei FListe.Count, "#[]" bei FListe[I]), bzw. ein Typverweis;
     /// "!Name" = Zugriff auf ein strict private-Mitglied der eigenen Klasse. Eine einbettbare inline-Routine ohne
     /// solche Verweise trägt genau den Eintrag InlineWithoutRefs (#1381: sonst sah die Regel inline-not-expanded
     /// sie nicht, H2445, H2456 und H2457 hängen nicht am Rumpf). nil = keine inline-Routine oder nicht einbettbar
@@ -106,6 +107,8 @@ type
     cMaxSummary = 200;
     /// <summary>Einziger Eintrag in InlineRefs einer einbettbaren inline-Routine ohne Verweise (#1381).</summary>
     cInlineWithoutRefs = '';
+    /// <summary>Trennt in InlineRefs den Typ vom benutzten Mitglied (":TList<TKunde>#Count").</summary>
+    cInlineMemberMark = '#';
   end;
 
   /// <summary>Verwendungen eines Bezeichners in einer Unit (#492, für #470): alle Stellen außer der

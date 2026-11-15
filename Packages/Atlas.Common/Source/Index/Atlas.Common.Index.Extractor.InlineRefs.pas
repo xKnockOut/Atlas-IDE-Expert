@@ -126,12 +126,22 @@ begin
     (mParent.ChildCount > 0) and (mParent[0] = AIdent) and (mParent.FindChild(TSyntaxKind.GenericArgs) = nil);
 end;
 
-function TypeRefOf(const ASymbol: TIndexSymbol): string;
+/// <summary>Typverweis auf den Typ von ASymbol samt dem Mitglied, das der Rumpf an AIdent benutzt:
+/// ":TList<TKunde>#Count" bei FListe.Count, ":TList<TKunde>#[]" bei FListe[I] (Default-Property, #2309).</summary>
+function TypeRefOf(AIdent: TSyntaxNode; const ASymbol: TIndexSymbol): string;
 begin
   Result := ':' + ASymbol.TypeName;
   if ASymbol.TypeArgs <> '' then
   begin
     Result := Result + '<' + ASymbol.TypeArgs + '>';
+  end;
+  if AIdent.Parent.Kind = TSyntaxKind.IndexAccess then
+  begin
+    Result := Result + TIndexSymbol.cInlineMemberMark + '[]';
+  end
+  else if AIdent.Parent.Name <> '' then
+  begin
+    Result := Result + TIndexSymbol.cInlineMemberMark + TPascalLexer.PlainName(AIdent.Parent.Name);
   end;
 end;
 
@@ -316,7 +326,7 @@ begin
   if IsDereferenced(AIdent) and (AMember.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
     (AMember.TypeName <> '') then
   begin
-    AddRef(TypeRefOf(AMember));
+    AddRef(TypeRefOf(AIdent, AMember));
   end;
 end;
 
@@ -325,7 +335,7 @@ begin
   if IsDereferenced(AIdent) and (ASymbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
     (ASymbol.TypeName <> '') then
   begin
-    AddRef(TypeRefOf(ASymbol));
+    AddRef(TypeRefOf(AIdent, ASymbol));
   end;
 end;
 

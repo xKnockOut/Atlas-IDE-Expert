@@ -2,7 +2,7 @@
 
 // Tests der Regel dunitx-areequal-length (#1937): die Fälle aus dem Issue (Length eines dynamischen Arrays,
 // mit Meldungstext und verschachtelten Klammern), High und AreNotEqual, NativeInt-Variable, Korrektur
-// Integer(...), stille Fälle (Integer(...) schon da, String, statisches Array, beide NativeInt, Typargument,
+// Integer(...), Rechnungen mit Length(..) ± 1 (#2309), stille Fälle (Integer(...) schon da, String, statisches Array, beide NativeInt, Typargument,
 // Delphi vor 12) und die Anmeldung.
 
 interface
@@ -18,6 +18,8 @@ type
     procedure IssueExampleWithFix;
     [Test]
     procedure HighNativeIntAndMessageArgument;
+    [Test]
+    procedure ArithmeticWithLength;
     [Test]
     procedure SilentCases;
     [Test]
@@ -96,6 +98,34 @@ begin
   // High, AreNotEqual, NativeInt auf der linken Seite.
   Assert.AreEqual(2, Integer(Length(Findings(TestUnit('  mWerte: TArray<Integer>;'#10'  mAnzahl: NativeInt;'#10,
     '  Assert.AreNotEqual(High(mWerte), 3);'#10'  Assert.AreEqual(mAnzahl, 2);'#10)))));
+end;
+
+procedure TDUnitXAreEqualLengthTests.ArithmeticWithLength;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fundstelle aus Atlas.Core.Tests.Mutants.Tests: NativeInt - Integer bleibt NativeInt (E2532).
+  mSource := TestUnit('  mZeilen, mNeu: TArray<string>;'#10,
+    '  Assert.AreEqual(Length(mZeilen) - 1, Integer(Length(mNeu)));'#10 +
+    '  Assert.AreEqual(Length(mZeilen) + 1, Integer(Length(mNeu)));'#10 +
+    '  Assert.AreEqual(2 * (High(mZeilen) + 1), 4);'#10);
+  mFound := Findings(mSource);
+  Assert.AreEqual('13: Assert.AreEqual vergleicht eine Ganzzahl mit Length(mZeilen) - 1 (NativeInt): Keine ' +
+    'Überladung passt eindeutig, AreEqual<T> kann T nicht ableiten (wie E2532 unter Delphi). Integer(...) darum ' +
+    'setzen. | 14: Assert.AreEqual vergleicht eine Ganzzahl mit Length(mZeilen) + 1 (NativeInt): Keine Überladung ' +
+    'passt eindeutig, AreEqual<T> kann T nicht ableiten (wie E2532 unter Delphi). Integer(...) darum setzen. | 15: ' +
+    'Assert.AreEqual vergleicht eine Ganzzahl mit 2 * (High(mZeilen) + 1) (NativeInt): Keine Überladung passt ' +
+    'eindeutig, AreEqual<T> kann T nicht ableiten (wie E2532 unter Delphi). Integer(...) darum setzen.',
+    Messages(mFound));
+  mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
+  Assert.IsTrue(Pos('Assert.AreEqual(Integer(Length(mZeilen) - 1), Integer(Length(mNeu)));', mFixed) > 0, mFixed);
+  // Strings und Rechnungen nur mit Ganzzahlen bleiben still, ebenso unbekannte Seiten.
+  Assert.AreEqual('', Messages(Findings(TestUnit('  mText: string;'#10'  mZeilen: TArray<string>;'#10 +
+    '  mFremd: TFremd;'#10, '  Assert.AreEqual(Length(mText) - 1, 3);'#10 +
+    '  Assert.AreEqual(Integer(Length(mZeilen) - 1), 3);'#10'  Assert.AreEqual(Length(mZeilen) - mFremd, 3);'#10 +
+    '  Assert.AreEqual(Length(mZeilen) - 1, Length(mZeilen));'#10))));
+  mFound := nil;
 end;
 
 procedure TDUnitXAreEqualLengthTests.SilentCases;
