@@ -16,15 +16,16 @@ uses
   System.SysUtils,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Debug.Unavailable;
+  Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.UnavailableNote;
 
 type
   TAtlasIdeDebugUnavailableFixes = class
   public const
     /// <summary>Konfiguration, die „Mit Debug neu starten“ zuerst wählt.</summary>
     cDebugConfiguration = 'Debug';
-    cDebugDcusOption = 'DCC_DebugDCUs';
-    cDebugInfoOption = 'DCC_DebugInformation';
+    cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
+    cDebugInfoOption = TAtlasUnavailableNote.cDebugInfoOption;
   private
     class function HasDebugInfo(const AProject: IOTAProject; const AName: string): Boolean; static;
     /// <summary>„Debug“ mit Debug-Informationen, sonst die erste mit (ohne „Base“); '' ohne.</summary>
