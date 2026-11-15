@@ -157,11 +157,21 @@ begin
   mScan.Run;
 end;
 
+/// <summary>Steht ATypeText für einen Methodenzeiger oder eine Methodenreferenz (procedure … of object, reference to
+/// …)? Ein einfacher Funktionszeiger (xFunc: function(A: PAnsiChar): Integer; cdecl; aus einer DLL) ist kein
+/// Ereignis: Den belegt der Lader, nicht ein optionaler Handler.</summary>
+function IsMethodPointerText(const ATypeText: string): Boolean;
+begin
+  Result := TRegEx.IsMatch(ATypeText, cProceduralPattern, [roIgnoreCase]) and
+    (TRegEx.IsMatch(ATypeText, '^\s*reference\s+to\b', [roIgnoreCase]) or
+    TRegEx.IsMatch(ATypeText, '\bof\s+object\b', [roIgnoreCase]));
+end;
+
 class function TEventCallWithoutAssignedRule.IsKnownEventType(const ATypeName: string): Boolean;
 var
   mName: string;
 begin
-  if TRegEx.IsMatch(ATypeName, cProceduralPattern, [roIgnoreCase]) then
+  if IsMethodPointerText(ATypeName) then
   begin
     Exit(True);
   end;
@@ -394,7 +404,7 @@ begin
     begin
       mText := NodeText(mDecl);
       mText := Copy(mText, Pos('=', mText) + 1, MaxInt);
-      Exit(TRegEx.IsMatch(mText, cProceduralPattern, [roIgnoreCase]));
+      Exit(IsMethodPointerText(mText));
     end;
   end;
   if FContext.Index <> nil then
@@ -500,6 +510,10 @@ begin
   if AMember.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
   begin
     Result := AMember.FindChild(TSyntaxKind.ProcedureType);
+    if (Result <> nil) and not IsMethodPointerText(NodeText(Result)) then
+    begin
+      Exit(nil);
+    end;
     if Result = nil then
     begin
       Result := AMember.FindChild(TSyntaxKind.TypeReference);
