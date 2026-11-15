@@ -540,6 +540,9 @@ Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.DialogInput.Tests
+Atlas.Core.Tasks.Plan.Tests
+Atlas.Core.StartProfiles.Picker.Tests
+Atlas.Core.Build.OpenBuild.Tests
 Atlas.Core.Debug.VariablesFlow.Tests
 Atlas.Core.Debug.LaunchProcesses.Tests
 Atlas.Core.Debug.StepFilterEdit.Tests
