@@ -26,6 +26,10 @@ type
     procedure ClassMethodSilentCases;
     [Test]
     procedure PrivateAndProtectedOfOtherUnit;
+    /// <summary>Fundstelle aus Atlas.IDE.Debug.Reattach (#2309): private statische Klassenmethode einer anderen
+    /// Unit hinter einem public const-Abschnitt, gerufen aus einer Klassenmethode mit verschachteltem Typ.</summary>
+    [Test]
+    procedure PrivateStaticClassMethodOfOtherUnit;
     [Test]
     procedure DescendantsAndLocalClassesSeeProtected;
     [Test]
@@ -203,6 +207,32 @@ begin
   Assert.AreEqual('TBasis.Schuetzen ist protected und hier nicht sichtbar (wie E2362).', mFound[1].Message);
   Assert.AreEqual('TBasis.StrengSchuetzen ist strict protected und hier nicht sichtbar (wie E2362).',
     mFound[2].Message);
+end;
+
+procedure TInaccessibleMemberTests.PrivateStaticClassMethodOfOtherUnit;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Korrekturen;'#10'interface'#10'type'#10 +
+    '  TKorrekturen = class'#10'  public const'#10'    cName = ''Debug'';'#10'  private'#10 +
+    '    class function Confirm(const AText: string): Boolean; static;'#10'  public'#10 +
+    '    class function FixText: string; static;'#10'  end;'#10'implementation'#10 +
+    'class function TKorrekturen.Confirm(const AText: string): Boolean;'#10'begin'#10'  Result := AText <> '''';'#10 +
+    'end;'#10'class function TKorrekturen.FixText: string;'#10'begin'#10'  Result := '''';'#10'end;'#10'end.',
+    'C:\Projekt\Korrekturen.pas', nil));
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TAnhaengen = class'#10'  public const'#10 +
+    '    cDatei = ''a.json'';'#10'  private type'#10'    THandler = class'#10'    end;'#10'  public'#10 +
+    '    class procedure Anbieten(const APfad: string); static;'#10'  end;'#10'implementation'#10'uses'#10 +
+    '  Korrekturen;'#10'class procedure TAnhaengen.Anbieten(const APfad: string);'#10'begin'#10 +
+    '  if TKorrekturen.Confirm(APfad + TKorrekturen.FixText) then'#10'    Exit;'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, mIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TKorrekturen.Confirm ist private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  mFound := nil;
 end;
 
 procedure TInaccessibleMemberTests.DescendantsAndLocalClassesSeeProtected;

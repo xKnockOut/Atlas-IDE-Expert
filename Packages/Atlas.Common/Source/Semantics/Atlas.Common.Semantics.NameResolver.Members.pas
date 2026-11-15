@@ -305,6 +305,7 @@ var
   mAncestor, mInherited: TResolvedSymbol;
   mCandidates: TArray<TResolvedSymbol>;
   mRead, mWrite: string;
+  mDepth: Integer;
 begin
   Result := AOwn;
   if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
@@ -315,12 +316,18 @@ begin
   // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
   // ebenso zusammen.
   mCandidates := FindMembers(mAncestor, AOwn.Name);
-  if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
-    (mCandidates[0].TypeName = '') then
+  if (Length(mCandidates) > 0) and (mCandidates[0].SymbolKind = TIndexSymbolKind.Property_) and
+    (mCandidates[0].TypeName <> '') then
+  begin
+    mInherited := mCandidates[0];
+  end
+  // Die Neudeklaration hebt meist gerade die Sichtbarkeit an: TControl.Caption ist protected, TLabel macht sie
+  // published (#2309). Aus einer anderen Unit sieht FindMembers die geerbte dann nicht; Typ und Zugriffe gelten
+  // trotzdem.
+  else if not TypedProperty(mAncestor, AOwn.Name, mInherited, mDepth) then
   begin
     Exit;
   end;
-  mInherited := mCandidates[0];
   Result.TypeName := mInherited.TypeName;
   Result.TypeArgs := mInherited.TypeArgs;
   Result.MinArgs := mInherited.MinArgs;
@@ -424,12 +431,12 @@ begin
       Exit(False);
     end;
     mTypeName := mCurrent.QualifiedName;
-    for mPosition := 0 to High(mOwnerUnit.Symbols) do
+    // Über die Namenstabelle: MergedProperty fragt bei jeder neu deklarierten Property (System.Classes, Vcl.*).
+    for mPosition in mOwnerUnit.SymbolsNamed(AName) do
     begin
       if (mOwnerUnit.Symbols[mPosition].Kind = TIndexSymbolKind.Property_) and
         (mOwnerUnit.Symbols[mPosition].TypeName <> '') and
-        SameText(mOwnerUnit.Symbols[mPosition].Container, mTypeName) and
-        SameText(mOwnerUnit.Symbols[mPosition].Name, AName) then
+        SameText(mOwnerUnit.Symbols[mPosition].Container, mTypeName) then
       begin
         AProperty := TResolvedSymbol.FromIndex(mOwnerUnit, mOwnerUnit.Symbols[mPosition]);
         ADepth := mDepth;
