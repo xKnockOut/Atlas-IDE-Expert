@@ -95,10 +95,10 @@ end;
 
 function IntParam(const AParams: TJSONObject; const AName: string; ADefault: Integer): Integer;
 begin
-  Result := ADefault;
-  if AParams <> nil then
+  // TryGetValue setzt Result auch ohne Schlüssel (auf 0); die Vorgabe gilt nur, wenn er fehlt.
+  if (AParams = nil) or not AParams.TryGetValue<Integer>(AName, Result) then
   begin
-    AParams.TryGetValue<Integer>(AName, Result);
+    Result := ADefault;
   end;
 end;
 

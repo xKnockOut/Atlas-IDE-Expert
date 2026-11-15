@@ -626,6 +626,7 @@ function PairsPerLine(const ATokens: TArray<TAtlasPairToken>; ALineCount: Intege
 var
   mToken: TAtlasPairToken;
 begin
+  Result := nil;
   SetLength(Result, ALineCount);
   for mToken in ATokens do
   begin

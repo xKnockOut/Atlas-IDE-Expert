@@ -18,6 +18,7 @@
 interface
 
 uses
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry;
 
@@ -52,6 +53,19 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+/// <summary>Name ohne Unit-Vorsatz: System.TArray&lt;T&gt; ergibt TArray&lt;T&gt;.</summary>
+function WithoutUnit(const AName: string): string;
+
+/// <summary>Ergebnistyp der Routine ARoutine wie im Quelltext; '' ohne.</summary>
+function ResultTypeText(const AText: string; ARoutine: TSyntaxNode): string;
+
+/// <summary>Ist ATypeText ein dynamisches Array: TArray&lt;T&gt;, array of T, ein bekannter Typ wie TBytes oder ein
+/// Typ der Datei, der so deklariert ist?</summary>
+function IsDynamicArrayType(const AContext: TRuleContext; const ATypeText: string): Boolean;
+
+/// <summary>Routine, deren Rumpf ANode enthält; nil in anonymen Methoden.</summary>
+function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
+
 /// <summary>Meldet die vier Regeln in ARegistry an.</summary>
 procedure RegisterCompilerTrapRules(const ARegistry: TRuleRegistry);
 
@@ -64,7 +78,6 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.UsesClause,
@@ -126,7 +139,6 @@ const
   cWindowsUnits: array[0..1] of string = ('Winapi.Windows', 'Windows');
   cGraphicsUnits: array[0..2] of string = ('Vcl.Graphics', 'FMX.Graphics', 'Graphics');
 
-/// <summary>Name ohne Unit-Vorsatz: System.TArray&lt;T&gt; ergibt TArray&lt;T&gt;.</summary>
 function WithoutUnit(const AName: string): string;
 var
   mBracket, mDot: Integer;
@@ -168,7 +180,6 @@ begin
   Result := TRuleDescriptor.Create(cExitArrayLiteralRuleId, TRuleSeverity.Error, cTexts[TTrapText.ExitTitle].Text);
 end;
 
-/// <summary>Ergebnistyp der Routine ARoutine wie im Quelltext; '' ohne.</summary>
 function ResultTypeText(const AText: string; ARoutine: TSyntaxNode): string;
 var
   mHeader, mChild: TSyntaxNode;
@@ -190,8 +201,6 @@ begin
   end;
 end;
 
-/// <summary>Ist ATypeText ein dynamisches Array: TArray&lt;T&gt;, array of T, ein bekannter Typ wie TBytes oder ein
-/// Typ der Datei, der so deklariert ist?</summary>
 function IsDynamicArrayType(const AContext: TRuleContext; const ATypeText: string): Boolean;
 var
   mType: string;
@@ -230,7 +239,6 @@ begin
   Result := mFound;
 end;
 
-/// <summary>Routine, deren Rumpf ANode enthält; nil in anonymen Methoden.</summary>
 function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode.Parent;

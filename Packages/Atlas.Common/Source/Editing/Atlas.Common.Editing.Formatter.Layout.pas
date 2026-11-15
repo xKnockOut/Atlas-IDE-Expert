@@ -134,6 +134,7 @@ function TokensByLine(const ATokens: TArray<TPascalToken>; ACount: Integer): TAr
 var
   mIndex, mLine: Integer;
 begin
+  Result := nil;
   SetLength(Result, ACount);
   for mIndex := 0 to High(ATokens) do
   begin

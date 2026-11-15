@@ -314,6 +314,7 @@ var
   mIndex, mCurrent, mPrevious: Integer;
   mFirst: Boolean;
 begin
+  Result := nil;
   SetLength(Result, Length(AStops));
   mJumps := OutOfOrder(AStops, ARightToLeft);
   for mIndex := 0 to High(AStops) do

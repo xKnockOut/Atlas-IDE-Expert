@@ -8,7 +8,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 82 |
+| [Fehler finden](#gruppe-find-bugs) | 87 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
@@ -31,6 +31,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`result-not-set`](#result-not-set) | Funktionsergebnis eventuell nicht gesetzt | Bug | Warnung |
 | [`possibly-uninitialized`](#possibly-uninitialized) | Variable eventuell nicht initialisiert | Bug | Warnung |
+| [`managed-result-read-before-set`](#managed-result-read-before-set) | Result gelesen, bevor es gesetzt ist | Bug | Warnung |
+| [`trygetvalue-out-default`](#trygetvalue-out-default) | TryGetValue überschreibt die Vorbelegung | Bug | Warnung |
+| [`record-array-shared`](#record-array-shared) | Kopierter Record teilt sein Array | Bug | Warnung |
+| [`extractfile-forward-slash`](#extractfile-forward-slash) | Dateiname mit / zerlegt | Bug | Warnung |
+| [`hash-overflow-checked`](#hash-overflow-checked) | Gewollter Überlauf mit Überlaufprüfung | Bug | Warnung |
 | [`unreachable-code`](#unreachable-code) | Unerreichbarer Code | Bug | Warnung |
 | [`duplicate-assignment`](#duplicate-assignment) | Feld oder Property wird zweimal gesetzt | Bug | Warnung |
 | [`declared-not-implemented`](#declared-not-implemented) | Deklariert, aber nicht implementiert | Bug | Fehler |
@@ -1042,6 +1047,139 @@ begin
     I := 1;
   Writeln(I);
 end;
+```
+
+<a id="managed-result-read-before-set"></a>
+### managed-result-read-before-set
+
+**Result gelesen, bevor es gesetzt ist** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Funktion, deren Ergebnis ein dynamisches Array oder ein String ist, liest Result, bevor sie es setzt: SetLength(Result, N) und danach ein Element gelesen (if Result[I], Inc(Result[I])), SetLength(Result, Length(Result) + 1), Result := Result + ..., Length(Result), for X in Result, Insert, Delete oder Copy auf Result. Delphi übergibt ein verwaltetes Result als Variable des Aufrufers (A := F(...) reicht A durch): SetLength behält dann dessen alte Werte, Result + ... hängt an sie an; Free Pascal beginnt leer, die Tests sind dort grün. Elemente nach SetLength schreiben, Length nach SetLength, Result als Argument einer anderen Routine (kann ein var- oder out-Parameter sein) und anonyme Methoden bleiben still. Konfidenz mittel. Schnellkorrektur: Result := nil (bzw. '') vor die Anweisung.
+
+Mit Treffer:
+
+```pascal
+function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;
+var
+  I: Integer;
+begin
+  SetLength(Result, Length(A));
+  for I := 0 to High(A) do
+    if not Result[I] then
+      Result[I] := A[I] > 0;
+end;
+```
+
+Richtig:
+
+```pascal
+function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;
+var
+  I: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(A));
+  for I := 0 to High(A) do
+    if not Result[I] then
+      Result[I] := A[I] > 0;
+end;
+```
+
+<a id="trygetvalue-out-default"></a>
+### trygetvalue-out-default
+
+**TryGetValue überschreibt die Vorbelegung** · Bug · Warnung · Gruppe Fehler finden
+
+TryGetValue (TDictionary, TJSONValue.TryGetValue<T> und andere) steht als Anweisung, das Ergebnis wird verworfen, und das out-Argument bekam vorher in der Routine einen Wert, der nicht der Vorgabe entspricht (nicht nil, '', 0, False, [] oder Default(T)). Delphi setzt das out-Argument auch ohne Schlüssel auf den Vorgabewert, die Vorbelegung geht verloren; Free Pascal lässt sie stehen, die Tests sind dort grün. Eine Vorbelegung mit dem Vorgabewert, ein ausgewertetes Ergebnis (if not D.TryGetValue(K, V) then V := ...) und ein Argument ohne Vorbelegung bleiben still. Konfidenz mittel. Korrektur: in eine eigene Variable lesen und nur übernehmen, wenn TryGetValue True liefert.
+
+Mit Treffer:
+
+```pascal
+Result.Top := cVorgabe;
+Argumente.TryGetValue<Integer>('top', Result.Top);
+```
+
+Richtig:
+
+```pascal
+if Argumente.TryGetValue<Integer>('top', mTop) then
+  Result.Top := mTop;
+```
+
+<a id="record-array-shared"></a>
+### record-array-shared
+
+**Kopierter Record teilt sein Array** · Bug · Warnung · Gruppe Fehler finden
+
+Ein Record wird mit B := A kopiert (Namen, Felder und Indizes, kein Aufruf), und später in der Routine wird ein Element eines Felds vom Typ dynamisches Array von B oder A in place geschrieben (B.Items[0] := ..., B.Items[0].State := ...). Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write: Kopie und Original teilen das Array, das Schreiben ändert beide. Die Regel braucht den Symbolindex und meldet nur, wenn die Namensauflösung Record und dynamisches Array sicher kennt. Ein neues Array für das Feld vor dem Schreiben (Copy, SetLength, neue Zuweisung), statische Arrays, String-Felder, Klassen und ein neu zugewiesener Record bleiben still. Schnellkorrektur: B.Items := Copy(B.Items) vor das Schreiben.
+
+Mit Treffer:
+
+```pascal
+mKopie := Ansicht;
+mKopie.Extras[0].State := Rot;
+```
+
+Richtig:
+
+```pascal
+mKopie := Ansicht;
+mKopie.Extras := Copy(mKopie.Extras);
+mKopie.Extras[0].State := Rot;
+```
+
+<a id="extractfile-forward-slash"></a>
+### extractfile-forward-slash
+
+**Dateiname mit / zerlegt** · Bug · Warnung · Gruppe Fehler finden
+
+ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt oder ExtractFileDrive bekommt einen Pfad mit '/': ein Literal mit '/', eine Verkettung mit einem solchen Literal, StringReplace(X, '\', '/', ...) bzw. X.Replace('\', '/') oder eine lokale Variable, deren letzte Zuweisung in der Routine so etwas ist. Die Routinen trennen nur an PathDelim und DriveDelim, unter Windows '\', unter Linux '/': Unter Windows bleibt der Pfad ungeteilt. PathDelim als Ersatz, '\' und andere Variablen bleiben still. Schnellkorrektur für StringReplace(..., '/', ...): durch PathDelim ersetzen.
+
+Mit Treffer:
+
+```pascal
+Name := ExtractFileName(StringReplace(Pfad, '\', '/', [rfReplaceAll]));
+```
+
+Richtig:
+
+```pascal
+Name := ExtractFileName(StringReplace(Pfad, '/', PathDelim, [rfReplaceAll]));
+```
+
+<a id="hash-overflow-checked"></a>
+### hash-overflow-checked
+
+**Gewollter Überlauf mit Überlaufprüfung** · Bug · Warnung · Gruppe Fehler finden
+
+Eine Multiplikation mit einer FNV-Primzahl (16777619 oder 1099511628211, als Literal, $-Hexzahl oder Konstante der Unit, auch in UInt64(...)), die überläuft, steht an einer Stelle mit Überlaufprüfung: kein {$Q-} bzw. {$OVERFLOWCHECKS OFF} davor. Im Debug-Build mit {$Q+} bricht der gewollte Überlauf des Hashs mit EIntOverflow ab; typisch ist eine {$IFOPT Q+}...{$Q-}{$ENDIF}-Klammer um die falsche Routine. Die Direktiven der Datei zählen der Reihe nach, {$PUSHOPT}/{$POPOPT} eingeschlossen; die Projekteinstellung ist nicht bekannt, die Überlaufprüfung gilt deshalb als an. Ein 32-Bit-Produkt mit UInt64(...) bzw. Int64(...) auf der anderen Seite läuft nicht über und bleibt still. Korrektur: die Routine in {$IFOPT Q+}{$DEFINE X}{$Q-}{$ENDIF} ... {$IFDEF X}{$Q+}{$UNDEF X}{$ENDIF} klammern.
+
+Mit Treffer:
+
+```pascal
+function Pruefsumme(const A: string): UInt64;
+var
+  C: Char;
+begin
+  Result := UInt64($CBF29CE484222325);
+  for C in A do
+    Result := (Result xor Ord(C)) * UInt64($00000100000001B3);
+end;
+```
+
+Richtig:
+
+```pascal
+{$IFOPT Q+}{$DEFINE HASH_UEBERLAUF}{$Q-}{$ENDIF}
+function Pruefsumme(const A: string): UInt64;
+var
+  C: Char;
+begin
+  Result := UInt64($CBF29CE484222325);
+  for C in A do
+    Result := (Result xor Ord(C)) * UInt64($00000100000001B3);
+end;
+{$IFDEF HASH_UEBERLAUF}{$Q+}{$UNDEF HASH_UEBERLAUF}{$ENDIF}
 ```
 
 <a id="unreachable-code"></a>
