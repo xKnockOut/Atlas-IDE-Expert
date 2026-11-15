@@ -784,6 +784,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Painter.Tests.pas"/>
@@ -2413,10 +2415,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DialogInput.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DialogInput.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvaluateRows.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>
