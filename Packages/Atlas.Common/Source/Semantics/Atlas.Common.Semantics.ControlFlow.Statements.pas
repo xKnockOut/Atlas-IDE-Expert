@@ -3,7 +3,7 @@
 // Was der Kontrollfluss (Semantics.ControlFlow) an den Knoten einer Anweisung abliest: ob ein Knoten eine
 // Anweisung ist, ob eine Schleife eine konstante Bedingung hat (while True, until False, #1109) und ob eine
 // for-Schleife sicher einmal läuft (for I := 0 to 64, auch for I := 1 to cVersuche mit cVersuche = 3 in
-// derselben Unit), wie Delphi es für W1035 wertet.
+// derselben Unit oder for I := Low(cTabelle) to High(cTabelle)), wie Delphi es für W1035 und W1036 wertet.
 
 interface
 
@@ -23,7 +23,9 @@ type
     class function LiteralBounds(AFor: TSyntaxNode; out AFrom, ATo: Int64): Boolean; static;
     /// <summary>Wert der Grenze ABound: Zahlenliteral oder Name einer Konstanten ohne Typ (cVersuche = 3), die
     /// im Baum genau einmal deklariert ist und deren Name sonst nirgends deklariert wird (Variable, Parameter,
-    /// Feld, Routine, Typ, Inline-Variable). Delphi kennt solche Werte beim Übersetzen und warnt dann nicht.
+    /// Feld, Routine, Typ, Inline-Variable). Dazu Low(X) und High(X) eines statischen Arrays X der Unit mit
+    /// solchen Grenzen (for I := Low(cTabelle) to High(cTabelle)). Delphi kennt solche Werte beim Übersetzen und
+    /// warnt dann nicht.
     /// </summary>
     class function ConstantBound(ABound: TSyntaxNode; out AValue: Int64): Boolean; static;
     /// <summary>Läuft die for-Schleife AFor sicher mindestens einmal? Nur bei bekannten Grenzen (LiteralBounds);
@@ -135,9 +137,9 @@ begin
   end;
 end;
 
-/// <summary>Die einzige Deklaration von AName im Baum unter ARoot, wenn sie eine Konstante ist; sonst nil.
+/// <summary>Die einzige Deklaration von AName im Baum unter ARoot (Konstante, Variable, Typ …); sonst nil.
 /// </summary>
-function SoleConstant(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+function SoleDeclaration(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
 var
   mFound: TSyntaxNode;
   mCount: Integer;
@@ -155,9 +157,79 @@ begin
       Result := mCount < 2;
     end);
   Result := nil;
-  if (mCount = 1) and (mFound.Kind = TSyntaxKind.ConstDecl) then
+  if mCount = 1 then
   begin
     Result := mFound;
+  end;
+end;
+
+/// <summary>Die einzige Deklaration von AName im Baum unter ARoot, wenn sie eine Konstante ist; sonst nil.
+/// </summary>
+function SoleConstant(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+begin
+  Result := SoleDeclaration(ARoot, AName);
+  if (Result <> nil) and (Result.Kind <> TSyntaxKind.ConstDecl) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Statischer Array-Typ hinter der Deklaration ADecl: direkt (A: array[0..2] of …, TFeld = array[…]
+/// of …) oder über einen benannten Typ derselben Unit (A: TFeld); sonst nil.</summary>
+function ArrayTypeOf(ADecl: TSyntaxNode): TSyntaxNode;
+var
+  mReference: TSyntaxNode;
+begin
+  Result := ADecl.FindChild(TSyntaxKind.ArrayType);
+  mReference := ADecl.FindChild(TSyntaxKind.TypeReference);
+  if (Result = nil) and (ADecl.Kind <> TSyntaxKind.TypeDecl) and (mReference <> nil) then
+  begin
+    mReference := SoleDeclaration(RootOf(ADecl), mReference.Name);
+    if (mReference <> nil) and (mReference.Kind = TSyntaxKind.TypeDecl) then
+    begin
+      Result := mReference.FindChild(TSyntaxKind.ArrayType);
+    end;
+  end;
+end;
+
+/// <summary>Low(X) bzw. High(X) für ein statisches Array X der Unit mit bekannten Grenzen (Konstante, Variable
+/// oder Typ, auch über einen benannten Array-Typ): array[0..2] of … liefert 0 bzw. 2. Delphi rechnet das beim
+/// Übersetzen aus, auch für typisierte Array-Konstanten, deren Grenzen am Typ hängen.</summary>
+function ArrayBound(ACall: TSyntaxNode; out AValue: Int64): Boolean;
+var
+  mDeclaration, mArray, mRange: TSyntaxNode;
+  mHigh: Boolean;
+begin
+  AValue := 0;
+  Result := (ACall.ChildCount = 2) and (ACall.Children[0].Kind = TSyntaxKind.Identifier) and
+    (ACall.Children[1].Kind = TSyntaxKind.Identifier);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mHigh := SameText(ACall.Children[0].Name, 'High');
+  mDeclaration := SoleDeclaration(RootOf(ACall), ACall.Children[1].Name);
+  Result := (mHigh or SameText(ACall.Children[0].Name, 'Low')) and (mDeclaration <> nil) and
+    (mDeclaration.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.TypeDecl]);
+  mArray := nil;
+  if Result then
+  begin
+    mArray := ArrayTypeOf(mDeclaration);
+  end;
+  // Erstes Kind des Array-Typs: der Bereich der ersten Dimension; dynamische Arrays haben keinen.
+  Result := (mArray <> nil) and (mArray.ChildCount > 1) and
+    (mArray.Children[0].Kind = TSyntaxKind.SubrangeType) and (mArray.Children[0].ChildCount = 2);
+  if Result then
+  begin
+    mRange := mArray.Children[0];
+    if mHigh then
+    begin
+      Result := TFlowStatements.ConstantBound(mRange.Children[1], AValue);
+    end
+    else
+    begin
+      Result := TFlowStatements.ConstantBound(mRange.Children[0], AValue);
+    end;
   end;
 end;
 
@@ -169,6 +241,10 @@ begin
   if ABound.Kind = TSyntaxKind.Literal then
   begin
     Exit(TOrdinalConstants.TryNumber(ABound.Name, AValue));
+  end;
+  if ABound.Kind = TSyntaxKind.Call then
+  begin
+    Exit(ArrayBound(ABound, AValue));
   end;
   if ABound.Kind <> TSyntaxKind.Identifier then
   begin

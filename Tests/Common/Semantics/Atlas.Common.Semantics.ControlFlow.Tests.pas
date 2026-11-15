@@ -28,6 +28,8 @@ type
     [Test]
     procedure ForWithConstantBoundRunsAtLeastOnce;
     [Test]
+    procedure ForOverStaticArrayBoundsRunsAtLeastOnce;
+    [Test]
     procedure ExitWithValueSetsResult;
     [Test]
     procedure BreakLeavesLoop;
@@ -336,6 +338,37 @@ begin
     cLoop));
   Assert.IsTrue(MayEndWithoutResult('const cAttempts = 3;'#13#10 +
     'procedure G(cAttempts: Integer);'#13#10'begin'#13#10'end;', cLoop));
+end;
+
+/// <summary>Low und High eines statischen Arrays der Unit sind beim Übersetzen bekannt (typisierte Konstante,
+/// Variable, Typ, auch über einen benannten Array-Typ); dynamische Arrays und unbekannte Namen nicht.</summary>
+procedure TControlFlowTests.ForOverStaticArrayBoundsRunsAtLeastOnce;
+
+  function MayEndWithoutResult(const ADeclarations, ABody: string): Boolean;
+  var
+    mFixture: TFlowFixture;
+  begin
+    mFixture := FlowWith(ADeclarations, ABody);
+    try
+      Result := mFixture.Graph.MayEndWithout('Result') = TFlowAnswer.Yes;
+    finally
+      mFixture.Free;
+    end;
+  end;
+
+const
+  cLoop = '  for I := Low(cTabelle) to High(cTabelle) do'#13#10'    Result := I;';
+begin
+  Assert.IsFalse(MayEndWithoutResult('const cTabelle: array[0..2] of Integer = (1, 2, 3);', cLoop));
+  Assert.IsFalse(MayEndWithoutResult('const cTabelle: array[0..2] of Integer = (1, 2, 3);',
+    '  for I := High(cTabelle) downto Low(cTabelle) do'#13#10'    Result := I;'));
+  Assert.IsFalse(MayEndWithoutResult('type TFeld = array[1..cAnzahl] of Byte;'#13#10'const cAnzahl = 4;'#13#10 +
+    'var cTabelle: TFeld;', cLoop));
+  Assert.IsFalse(MayEndWithoutResult('type cTabelle = array[1..4] of Byte;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('var cTabelle: array of Integer;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('const cTabelle: array[0..2] of Integer = (1, 2, 3);',
+    '  for I := High(cTabelle) to Low(cTabelle) do'#13#10'    Result := I;'));
 end;
 
 procedure TControlFlowTests.ExitWithValueSetsResult;
