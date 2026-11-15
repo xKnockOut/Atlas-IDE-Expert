@@ -89,6 +89,9 @@ type
     procedure ReportsProjectStageBeforeSearchPaths;
     [Test]
     procedure SkipsUnitIndexedUnderOtherName;
+    /// <summary>Gleichnamige Units: die Projektdatei (in-Pfad der dpr) gilt, nicht die zuletzt gelesene.</summary>
+    [Test]
+    procedure ProjectUnitWinsOverSameNamedSearchUnit;
     [Test]
     procedure ReadsInstallationUnitsWithoutProjectDefines;
     [Test]
@@ -1140,6 +1143,35 @@ begin
   Assert.IsFalse(U.Library_, 'Suchpfad-Units gehören zum Projekt');
   Assert.IsTrue(FIndex.FindUnit('E', U));
   Assert.IsTrue(U.Library_, 'Bibliotheks-Units sind Bibliothek');
+end;
+
+procedure TIndexBuilderTests.ProjectUnitWinsOverSameNamedSearchUnit;
+var
+  mBuilder: TIndexBuilder;
+  U, mOther: TUnitIndex;
+begin
+  // JclContainerIntf (common/prototypes): beide Ordner im Suchpfad, die dpr bindet den einen mit in ein.
+  FFiles.Put('C:\P\Q.dpr', 'program Q;'#10'uses X in ''a\X.pas'';'#10'begin end.', 1);
+  FFiles.Put('C:\P\a\X.pas', 'unit X;'#10'interface'#10'type IFoo = interface end;'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\P\b\X.pas', 'unit X;'#10'interface'#10'implementation'#10'end.', 1);
+  FFiles.Put('C:\Lib\X.pas', 'unit X;'#10'interface'#10'implementation'#10'end.', 1);
+  mBuilder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    mBuilder.Build(['C:\P\Q.dpr', 'C:\P\a\X.pas'], ['C:\P\b\X.pas'], ['C:\Lib\X.pas'], nil, nil, nil);
+  finally
+    mBuilder.Free;
+  end;
+  Assert.IsTrue(FIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\a\X.pas', U.FileName);
+  // Erneut gelesen (Speichern) bleibt sie vorn; gelöscht übernimmt der nächste Suchpfad.
+  Assert.IsTrue(FIndex.FindFile('C:\P\b\X.pas', mOther));
+  FIndex.AddUnit(U);
+  FIndex.AddUnit(mOther);
+  Assert.IsTrue(FIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\a\X.pas', U.FileName);
+  FIndex.RemoveFile('C:\P\a\X.pas');
+  Assert.IsTrue(FIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\b\X.pas', U.FileName);
 end;
 
 procedure TIndexBuilderTests.ReportsProjectStageBeforeSearchPaths;

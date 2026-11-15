@@ -73,6 +73,8 @@ type
     procedure AddNames(ANode: TSyntaxNode; const AContainer: string; AKind: TIndexSymbolKind);
     procedure AddTypeSymbol(ADecl, ABody: TSyntaxNode; const AContainer: string);
     procedure AddEnumMembers(ABody: TSyntaxNode; const AQualified: string);
+    /// <summary>Werte anonymer Aufzählungen im Typ von ANode (set of (a, b), Feld F: (a, b)).</summary>
+    procedure AddAnonymousEnums(ANode: TSyntaxNode);
     /// <summary>Mitglieder des Rumpfs ABody; ACount: Nummer des Typs in FSymbols.</summary>
     procedure AddBodyMembers(ABody: TSyntaxNode; const AQualified: string; ACount: Integer);
     procedure AddType(ADecl: TSyntaxNode; const AContainer: string);
@@ -483,6 +485,27 @@ begin
   end;
 end;
 
+procedure TIndexExtractor.AddAnonymousEnums(ANode: TSyntaxNode);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  // Wie dcc: Die Werte sind ohne Typnamen in der Unit sichtbar. Ohne Container haben sie keinen Typ und keine
+  // Position, die Namensauflösung findet sie aber (set of (ufImpl, ufDLL); if ufDLL in AFlags).
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    mChild := ANode[mIndex];
+    case mChild.Kind of
+      TSyntaxKind.EnumType:
+        AddEnumMembers(mChild, '');
+      TSyntaxKind.SetType, TSyntaxKind.ArrayType:
+        AddAnonymousEnums(mChild);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+end;
+
 procedure TIndexExtractor.AddBodyMembers(ABody: TSyntaxNode; const AQualified: string; ACount: Integer);
 var
   mVisibility: TIndexVisibility;
@@ -524,6 +547,10 @@ begin
   else if mBody.Kind in cMemberBodies then
   begin
     AddBodyMembers(mBody, QualifiedOf(AContainer, ADecl.Name), mCount);
+  end
+  else
+  begin
+    AddAnonymousEnums(ADecl);
   end;
 end;
 
@@ -606,7 +633,10 @@ begin
     TSyntaxKind.ConstDecl:
       Add(AChild, AChild.Name, AContainer, TIndexSymbolKind.Constant, nil);
     TSyntaxKind.VarDecl, TSyntaxKind.Field:
-      AddNames(AChild, AContainer, TIndexSymbolKind.Field);
+      begin
+        AddNames(AChild, AContainer, TIndexSymbolKind.Field);
+        AddAnonymousEnums(AChild);
+      end;
     TSyntaxKind.PropertyDecl:
       Add(AChild, AChild.Name, AContainer, TIndexSymbolKind.Property_, nil);
     TSyntaxKind.RoutineHeader:
@@ -642,7 +672,10 @@ begin
       TSyntaxKind.ConstDecl:
         Add(mChild, mChild.Name, '', TIndexSymbolKind.Constant, nil);
       TSyntaxKind.VarDecl:
-        AddNames(mChild, '', TIndexSymbolKind.Variable);
+        begin
+          AddNames(mChild, '', TIndexSymbolKind.Variable);
+          AddAnonymousEnums(mChild);
+        end;
       TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl:
         AddRoutine(mChild);
     else
