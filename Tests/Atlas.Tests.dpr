@@ -1764,6 +1764,8 @@ uses
   Atlas.Core.Commands.Palette.Tests in 'IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas',
   Atlas.Core.Commands.QuickOpen in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.QuickOpen.pas',
   Atlas.Core.Commands.QuickOpen.Tests in 'IDE.Expert\Atlas.Core.Commands.QuickOpen.Tests.pas',
+  Atlas.Core.Commands.QuickOpenTarget in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.QuickOpenTarget.pas',
+  Atlas.Core.Commands.QuickOpenTarget.Tests in 'IDE.Expert\Atlas.Core.Commands.QuickOpenTarget.Tests.pas',
   Atlas.Core.Editor.Pairs in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas',
   Atlas.Core.Editor.SnapshotPolicy in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas',
   Atlas.Core.Editor.CloseRules in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas',
