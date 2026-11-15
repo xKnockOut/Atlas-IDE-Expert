@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 Alle nennenswerten Änderungen an Atlas (Server und VS-Code-Erweiterung).
 Format nach [Keep a Changelog](https://keepachangelog.com/de/1.1.0/), Versionen nach [SemVer](https://semver.org/lang/de/).
@@ -6,7 +6,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
-## [2.2.0] - 2026-11-15
+## [2.2.0-rc.1] - 2026-11-15
 
 ### Neu
 - Mutationslauf in der IDE (#1460, experimentell, `tests.mutation`): „Mutationen der Methode prüfen“, „… der Unit“ und „… geänderter Methoden“ bauen je Mutant ein Schattenprojekt neben dem Testprojekt (Original, DCUs und aktives Projekt bleiben unberührt), prüfen vorher die Tests ohne Mutation und führen sie je Mutant mit Zeitlimit aus. Meldungsansicht mit Zahlen, Mutation-Score und anklickbaren Überlebenden; Punkte in der Rinne (grün erkannt, rot überlebt) mit Tooltip, gültig, solange die Methode unverändert ist.
