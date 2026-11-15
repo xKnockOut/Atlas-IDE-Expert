@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -126,7 +126,7 @@ type
     FListener: IAtlasIdeDebugListener;
     FHandler: Integer;
     FTimer: TTimer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FEvaluator: TAtlasIdeDebugValues;
     FAnalysis: TAtlasAvAnalysis;
     FProgress: TProgress;
@@ -155,7 +155,6 @@ type
     procedure RunAction(AAction: TAtlasDebugBarAction);
     procedure EndInternal;
     function StillStopped: Boolean;
-    procedure ReapWorkers(AWait: Boolean);
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasAvSessionFunc; const AMessage: TProc<string>); static;
@@ -227,7 +226,7 @@ begin
   FHooks.Session := ASession;
   FHooks.Message := AMessage;
   FEvaluator := TAtlasIdeDebugValues.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cTickMs;
@@ -242,7 +241,10 @@ begin
   FEvaluator.Cancel;
   EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FreeAndNil(FEvaluator);
   FreeAndNil(FAnalysis);
@@ -276,7 +278,7 @@ begin
   FFacts.Lines := nil;
   FFacts.Note := Default(TAtlasDebugModuleNote);
   FFacts.ModuleOnly := False;
-  ReapWorkers(False);
+  FWorkers.Prune;
   if (FUnderline <> nil) and FUnderline.Clear then
   begin
     TAtlasIdeAvUnderline.Invalidate;
@@ -487,7 +489,7 @@ begin
   mFileName := FFacts.FileName;
   mLine := FFacts.Line;
   mPointerSize := FFacts.PointerSize;
-  ReapWorkers(False);
+  FWorkers.Prune;
   Inc(FProgress.Request);
   mRequest := FProgress.Request;
   FProgress.Phase := TPhase.Request;
@@ -520,9 +522,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 /// <summary>debug.moduleOfAddress (#1820) zusätzlich zu debug.explainAccessViolation?</summary>
@@ -682,25 +682,6 @@ end;
 function TAtlasIdeDebugAccessViolation.StillStopped: Boolean;
 begin
   Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
-end;
-
-procedure TAtlasIdeDebugAccessViolation.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 class procedure TAtlasIdeDebugAccessViolation.Start(const ASession: TAtlasAvSessionFunc;
