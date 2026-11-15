@@ -71,12 +71,12 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.JSON,
-  System.Generics.Collections,
   Vcl.ActnList,
   ToolsAPI,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Editor.TestUnit,
+  Atlas.Core.UnitSearch.Plan,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
   Atlas.UI.Search.Strings,
@@ -113,27 +113,6 @@ begin
     begin
       Result := Result + [mServices.Modules[mIndex].FileName];
     end;
-  end;
-end;
-
-procedure MarkOpen(var AEntries: TAtlasUnitEntries);
-var
-  mFiles: TDictionary<string, Boolean>;
-  mFileName: string;
-  mIndex: Integer;
-begin
-  mFiles := TDictionary<string, Boolean>.Create;
-  try
-    for mFileName in OpenModules do
-    begin
-      mFiles.AddOrSetValue(LowerCase(mFileName), True);
-    end;
-    for mIndex := 0 to High(AEntries) do
-    begin
-      AEntries[mIndex].IsOpen := mFiles.ContainsKey(LowerCase(AEntries[mIndex].FileName));
-    end;
-  finally
-    mFiles.Free;
   end;
 end;
 
@@ -175,21 +154,6 @@ begin
       mFormEditor.Show;
       Exit(True);
     end;
-  end;
-end;
-
-function UnitList(const AEntries: TArray<TAtlasUnitEntry>): string;
-var
-  mEntry: TAtlasUnitEntry;
-begin
-  Result := '';
-  for mEntry in AEntries do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + mEntry.Name;
   end;
 end;
 
@@ -275,8 +239,7 @@ end;
 
 class function TAtlasIdeUnitSearchActions.UsesTarget(const AFileName: string): Boolean;
 begin
-  Result := (AFileName <> '') and (SameText(ExtractFileExt(AFileName), '.pas') or
-    SameText(ExtractFileExt(AFileName), '.dpr') or SameText(ExtractFileExt(AFileName), '.dpk'));
+  Result := TAtlasUnitSearchPlan.UsesTarget(AFileName);
 end;
 
 /// <summary>Antwort von atlas.server.units als Einträge; False ohne Antwort.</summary>
@@ -299,7 +262,7 @@ begin
   finally
     mAnswer.Free;
   end;
-  MarkOpen(AEntries);
+  TAtlasUnitSearchPlan.MarkOpen(AEntries, OpenModules);
   Result := True;
 end;
 
@@ -337,21 +300,9 @@ end;
 
 /// <summary>Argumente von atlas.server.unitPreview: Uri und die gewünschten Teile.</summary>
 function PreviewArguments(const AFileName: string): string;
-var
-  mArguments: TJSONArray;
-  mFlags: TJSONObject;
 begin
-  mArguments := TJSONArray.Create;
-  try
-    mArguments.Add(TLspSession.PathToUri(AFileName));
-    mFlags := TJSONObject.Create;
-    mFlags.AddPair('form', TJSONBool.Create(TAtlasIdeSettings.Current.UnitSearchPreviewForm));
-    mFlags.AddPair('usedBy', TJSONBool.Create(TAtlasIdeSettings.Current.UnitSearchPreviewUsedBy));
-    mArguments.Add(mFlags);
-    Result := mArguments.ToJSON;
-  finally
-    mArguments.Free;
-  end;
+  Result := TAtlasUnitSearchPlan.PreviewArguments(TLspSession.PathToUri(AFileName),
+    TAtlasIdeSettings.Current.UnitSearchPreviewForm, TAtlasIdeSettings.Current.UnitSearchPreviewUsedBy);
 end;
 
 class function TAtlasIdeUnitSearchActions.Preview(const AEntry: TAtlasUnitEntry): TAtlasUnitPreview;
@@ -472,21 +423,6 @@ begin
   end;
 end;
 
-/// <summary>Namen ohne Include-Dateien.</summary>
-function UsesNames(const AEntries: TArray<TAtlasUnitEntry>): TArray<string>;
-var
-  mEntry: TAtlasUnitEntry;
-begin
-  Result := nil;
-  for mEntry in AEntries do
-  begin
-    if mEntry.Kind <> TAtlasUnitKind.Include then
-    begin
-      Result := Result + [mEntry.Name];
-    end;
-  end;
-end;
-
 /// <summary>atlas.server.addUses mit AArguments ausführen und als ein Rückgängig-Schritt anwenden.</summary>
 procedure RunAddUses(ALive: TLspSession; const AEntries: TArray<TAtlasUnitEntry>; const ATarget,
   AArguments: string);
@@ -529,7 +465,7 @@ begin
   end;
   mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit,
     TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + UnitList(AEntries));
+    TAtlasSearchStrings.Text(TAtlasSearchTextId.UnitSearchAddUses) + ': ' + TAtlasUnitSearchPlan.UnitList(AEntries));
   if mOutcome.Error <> '' then
   begin
     TAtlasIdeUnitSearchActions.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
@@ -561,8 +497,6 @@ end;
 
 procedure AddUses(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string);
 var
-  mValues, mNames: TJSONArray;
-  mName, mArguments: string;
   mLive: TLspSession;
 begin
   mLive := AddUsesSession(ATarget);
@@ -570,20 +504,8 @@ begin
   begin
     Exit;
   end;
-  mValues := TJSONArray.Create;
-  try
-    mValues.Add(TLspSession.PathToUri(ATarget));
-    mNames := TJSONArray.Create;
-    for mName in UsesNames(AEntries) do
-    begin
-      mNames.Add(mName);
-    end;
-    mValues.AddElement(mNames);
-    mArguments := mValues.ToJSON;
-  finally
-    mValues.Free;
-  end;
-  RunAddUses(mLive, AEntries, ATarget, mArguments);
+  RunAddUses(mLive, AEntries, ATarget, TAtlasUnitSearchPlan.AddUsesArguments(TLspSession.PathToUri(ATarget),
+    TAtlasUnitSearchPlan.UsesNames(AEntries)));
 end;
 
 class procedure TAtlasIdeUnitSearchActions.UseUnits(const AEntries: TArray<TAtlasUnitEntry>; const ATarget: string;
@@ -600,7 +522,7 @@ begin
   if mLive <> nil then
   begin
     RunAddUses(mLive, AEntries, ATarget, TAtlasUseUnit.AddUsesArguments(TLspSession.PathToUri(ATarget),
-      UsesNames(AEntries), ASection));
+      TAtlasUnitSearchPlan.UsesNames(AEntries), ASection));
   end;
 end;
 

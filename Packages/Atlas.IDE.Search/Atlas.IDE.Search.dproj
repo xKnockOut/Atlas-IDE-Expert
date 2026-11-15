@@ -101,10 +101,12 @@
         <DCCReference Include="Source\Core\Search\Atlas.Core.Search.ReplaceList.pas"/>
         <DCCReference Include="Source\Core\Search\Atlas.Core.Search.Results.pas"/>
         <DCCReference Include="Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
+        <DCCReference Include="Source\Core\Search\Atlas.Core.Search.BarPlan.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas"/>
+        <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Plan.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Service.pas"/>
         <DCCReference Include="Source\IDE\Query\Atlas.IDE.Query.Window.pas"/>
         <DCCReference Include="Source\IDE\Search\Atlas.IDE.Search.Editor.pas"/>

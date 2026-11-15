@@ -1589,6 +1589,7 @@ var
   mGap, mComma: Integer;
   mComment: TGapComment;
 begin
+  Result := nil;
   SetLength(Result, FCount);
   for mGap := 0 to FCount do
   begin

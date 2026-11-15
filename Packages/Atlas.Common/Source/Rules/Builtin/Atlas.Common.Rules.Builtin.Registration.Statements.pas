@@ -31,6 +31,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeMismatch,
   Atlas.Common.Rules.Builtin.CompilerTraps,
   Atlas.Common.Rules.Builtin.CompilerTraps.Rtl,
+  Atlas.Common.Rules.Builtin.DelphiSemantics,
   Atlas.Common.Rules.Builtin.IgnoredResult,
   Atlas.Common.Rules.Builtin.Conditions,
   Atlas.Common.Rules.Builtin.Idioms,
@@ -63,6 +64,7 @@ begin
   RegisterTypeMismatchRules(ARegistry);
   RegisterCompilerTrapRules(ARegistry);
   RegisterCompilerTrapRtlRules(ARegistry);
+  RegisterDelphiSemanticsRules(ARegistry);
   RegisterIgnoredResultRules(ARegistry);
   RegisterConditionRules(ARegistry);
   RegisterIdiomRules(ARegistry);

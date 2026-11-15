@@ -88,6 +88,7 @@ type
 implementation
 
 uses
+  Atlas.Core.CodeInsight.Plan,
   Winapi.Windows,
   System.JSON,
   Atlas.Core.Lsp.Client,
@@ -368,11 +369,7 @@ end;
 
 function TAtlasCodeInsightManager.EditorTokenValidChars(PreValidating: Boolean): TSysCharSet;
 begin
-  Result := ['A'..'Z', 'a'..'z', '0'..'9', '_', '&'];
-  if PreValidating then
-  begin
-    Include(Result, '.');
-  end;
+  Result := TAtlasCodeInsightPlan.TokenChars(PreValidating);
 end;
 
 procedure TAtlasCodeInsightManager.AllowCodeInsight(var Allow: Boolean; const Key: Char);
@@ -383,7 +380,7 @@ begin
     // (Strg+Klick), #3 Symbolhinweis; #1 Parameterhilfe (Strg+Umschalt+Leer), "(" und ",".
     // "<" nur für XMLDoc-Tags in ///-Kommentaren (#435), siehe GetCodeInsightType. "[" für Mengen (#448): Der
     // Server liefert nur in einem Mengenkonstruktor etwas, sonst bleibt das Popup zu.
-    Allow := CharInSet(Key, [#0, '.', #1, '(', ',', #2, #3, '<', '[']);
+    Allow := TAtlasCodeInsightPlan.AllowsKey(Key);
     Diagnose(Format('AllowCodeInsight(#%d) = %s', [Ord(Key), BoolToStr(Allow, True)]));
   except
     on E: Exception do

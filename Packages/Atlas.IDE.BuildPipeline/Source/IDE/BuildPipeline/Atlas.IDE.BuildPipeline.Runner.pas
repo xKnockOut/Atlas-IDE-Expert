@@ -101,6 +101,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Core.BuildPipeline.Plan,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Build.CheckOnSave,
@@ -283,22 +284,17 @@ end;
 /// <summary>Grund, aus dem der Läufer gerade nicht baut; '' = bereit.</summary>
 function TAtlasIdeBuildRunner.StateRefusal(const ARequest: TAtlasBuildRequest): string;
 begin
-  Result := '';
-  if FBusy then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
-  end
-  else if FForeignBuild or FEvents.Background then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedForeignBuild);
-  end
-  else if Debugging then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedDebugging);
-  end
-  else if not (ARequest.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]) then
-  begin
-    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedKind);
+  case TAtlasBuildPipelinePlan.Refusal(FBusy, FForeignBuild or FEvents.Background, Debugging, ARequest.Kind) of
+    TAtlasBuildRefusal.Busy:
+      Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
+    TAtlasBuildRefusal.ForeignBuild:
+      Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedForeignBuild);
+    TAtlasBuildRefusal.Debugging:
+      Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedDebugging);
+    TAtlasBuildRefusal.Kind:
+      Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedKind);
+  else
+    Result := '';
   end;
 end;
 

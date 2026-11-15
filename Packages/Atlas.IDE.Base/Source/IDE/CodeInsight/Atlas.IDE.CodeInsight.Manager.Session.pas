@@ -98,6 +98,7 @@ type
 implementation
 
 uses
+  Atlas.Core.CodeInsight.Plan,
   Winapi.Windows,
   System.SysUtils,
   ToolsAPI,
@@ -136,11 +137,10 @@ const
     ('Server not found: %s (the built-in Code Insight stays active)',
      'Server not found: %s',
      'AtlasServer.exe not found'));
-  /// <summary>Höchstens so oft die Projektgruppe, die Projektkontexte bzw. den Pfad des Servers neu lesen.
-  /// </summary>
+  /// <summary>Höchstens so oft die Projektgruppe bzw. die Projektkontexte neu lesen (den Pfad des Servers:
+  /// TAtlasCodeInsightPlan.cServerCheckMs).</summary>
   cProjectsCheckMs = 2000;
   cContextsCheckMs = 1000;
-  cServerCheckMs = 5000;
 
 /// <summary>Text AId in der Sprache der Oberfläche.</summary>
 function UiText(AId: TSessionText): string;
@@ -176,18 +176,26 @@ end;
 
 function TAtlasCodeInsightSession.EnsureSession: Boolean;
 var
-  mMain: Boolean;
+  mState: TAtlasSessionState;
+  mStep: TAtlasSessionEnsure;
 begin
   // Start und Stopp gehören dem Hauptthread: Zeitlimit-Arbeiter, Lese-Thread und Hintergrund-Threads
   // bekommen nur, was schon läuft. Abgebaut, aber von der IDE noch gehalten (#886): im Hauptthread keinen Server
   // mehr. Verschachtelt aus StopSession oder StartSession (Warten auf Threads arbeitet eingereihte Aufrufe ab):
   // weder neu starten noch die gleich freigegebene Sitzung herausgeben.
-  mMain := TAtlasMainThread.IsMain;
-  if not mMain or FShutDown or FStopping or FStarting then
+  mState.Main := TAtlasMainThread.IsMain;
+  mState.ShutDown := FShutDown;
+  mState.Stopping := FStopping;
+  mState.Starting := FStarting;
+  mState.Running := RunningSession <> nil;
+  mState.Ready := ReadySession <> nil;
+  mState.Held := FCrashes.Held;
+  mStep := TAtlasCodeInsightPlan.Ensure(mState);
+  if mStep = TAtlasSessionEnsure.Nested then
   begin
-    Exit((RunningSession <> nil) and not (mMain and FShutDown));
+    Exit(TAtlasCodeInsightPlan.NestedResult(mState));
   end;
-  if ReadySession <> nil then
+  if mStep = TAtlasSessionEnsure.Ready then
   begin
     RefreshContexts;
     RefreshProjects;
@@ -196,7 +204,7 @@ begin
   end;
   // Zweimal gleich abgestürzt: kein stiller Neustart; „Server neu starten“ hebt das auf.
   Result := False;
-  if not FCrashes.Held then
+  if mStep = TAtlasSessionEnsure.Start then
   begin
     FStarting := True;
     try
@@ -215,7 +223,7 @@ var
   mPreviousStart: TDateTime;
 begin
   // Vom Server selbst beendet (nicht von Atlas): für den Eintrag „Server neu gestartet“ (#601).
-  mCrashed := (FPhase.Phase = TAtlasServerPhase.Stopped) and not FPhase.Ended;
+  mCrashed := TAtlasCodeInsightPlan.Crashed(FPhase.Phase = TAtlasServerPhase.Stopped, FPhase.Ended);
   mPreviousStart := FStartedAt;
   // Der neue Server meldet nach initialized, was er weiter überspringt (#1355).
   if FCrashSkips.Count > 0 then
@@ -480,6 +488,7 @@ var
   mActive: string;
   mIndex: Integer;
   mFileName: string;
+  mSaved: TArray<string>;
 begin
   Result := nil;
   mGroup := nil;
@@ -496,18 +505,16 @@ begin
   begin
     mActive := mGroup.ActiveProject.FileName;
   end;
-  if (mActive <> '') and SavedProject(mActive) then
-  begin
-    Result := [mActive];
-  end;
+  mSaved := nil;
   for mIndex := 0 to mGroup.ProjectCount - 1 do
   begin
     mFileName := mGroup.Projects[mIndex].FileName;
-    if SavedProject(mFileName) and not SameText(mFileName, mActive) then
+    if SavedProject(mFileName) then
     begin
-      Result := Result + [mFileName];
+      mSaved := mSaved + [mFileName];
     end;
   end;
+  Result := TAtlasCodeInsightPlan.ProjectOrder(mActive, (mActive <> '') and SavedProject(mActive), mSaved);
 end;
 
 procedure TAtlasCodeInsightSession.FlushFileChanges;
@@ -661,7 +668,7 @@ function TAtlasCodeInsightSession.ServerAvailable: Boolean;
 var
   mArguments, mPath: string;
 begin
-  if (FServerChecked = 0) or (TAtlasTicks.Since(FServerChecked) > cServerCheckMs) then
+  if TAtlasCodeInsightPlan.ServerCheckDue(FServerChecked <> 0, TAtlasTicks.Since(FServerChecked)) then
   begin
     FServerChecked := TAtlasTicks.Now;
     mPath := TAtlasCodeInsightPaths.ServerPath(mArguments);
@@ -675,8 +682,6 @@ begin
 end;
 
 function TAtlasCodeInsightSession.Handles(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
   // Nach Shutdown (abgemeldet, die IDE hält den Manager noch): nichts mehr übernehmen (#886).
   Result := False;
@@ -684,11 +689,9 @@ begin
   begin
     Exit;
   end;
-  mExtension := LowerCase(ExtractFileExt(AFileName));
   // Hauptschalter (#407): ausgeschaltet übernimmt die eingebaute Code Insight; ebenso ohne Server.
   Result := TAtlasIdeSettings.Current.Enabled and not TAtlasGuard.Disabled(TAtlasFeature.Completion) and
-    ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc')) and
-    ServerAvailable;
+    TAtlasCodeInsightPlan.HandlesExtension(AFileName) and ServerAvailable;
 end;
 
 function TAtlasCodeInsightSession.ActiveSession: TLspSession;
@@ -716,11 +719,7 @@ end;
 
 function TAtlasCodeInsightSession.ServerRestarts: Integer;
 begin
-  Result := AtomicCmpExchange(FStarts, 0, 0) - 1;
-  if Result < 0 then
-  begin
-    Result := 0;
-  end;
+  Result := TAtlasCodeInsightPlan.Restarts(AtomicCmpExchange(FStarts, 0, 0));
 end;
 
 initialization
