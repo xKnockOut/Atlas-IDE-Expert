@@ -24,6 +24,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.MethodToggle,
+  Atlas.Core.Debug.RunToColumnFlow,
   Atlas.UI.Popup.TitledTip;
 
 type
@@ -35,13 +36,7 @@ type
       function AllowedGutterStages: TPaintGutterStages; override;
     end;
     /// <summary>Gezeichnete Zeile der Spalte (Koordinaten des Editors).</summary>
-    TRow = record
-      FileName: string;
-      /// <summary>0-basiert.</summary>
-      Line: Integer;
-      Rect: TRect;
-      TopRow: Integer;
-    end;
+    TRow = TAtlasRunToRow;
   private const
     cHoverMs = 400;
     cTickMs = 100;
@@ -146,7 +141,6 @@ var
   mBack: TAtlasColor;
   mOldBrush: TBrush;
   mOldPen: TPen;
-  mSize, mLeft, mTop: Integer;
 begin
   mSample := GetPixel(ACanvas.Handle, ARect.Left + 1, ARect.Top + 1);
   mBack := TAtlasColor(mSample);
@@ -154,9 +148,6 @@ begin
   begin
     mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
   end;
-  mSize := Max(cMinArrow, Min(ARect.Width, ARect.Height) - cArrowPad);
-  mLeft := ARect.Left + (ARect.Width - mSize) div 2;
-  mTop := ARect.Top + (ARect.Height - mSize) div 2;
   mOldBrush := TBrush.Create;
   mOldPen := TPen.Create;
   try
@@ -166,8 +157,7 @@ begin
     ACanvas.Pen.Color := TColor(TAtlasColors.ForBackground(mBack).Accent);
     ACanvas.Brush.Color := ACanvas.Pen.Color;
     ACanvas.Brush.Style := bsSolid;
-    ACanvas.Polygon([Point(mLeft, mTop), Point(mLeft + mSize - 1, mTop + mSize div 2),
-      Point(mLeft, mTop + mSize - 1)]);
+    ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
   finally
     ACanvas.Brush.Assign(mOldBrush);
     ACanvas.Pen.Assign(mOldPen);
@@ -259,7 +249,7 @@ begin
   begin
     FWantedWidth := TAtlasGutterColumn.Width(MulDiv(TAtlasGutterColumn.cBaseWidth, Screen.PixelsPerInch, 96));
   end;
-  if (FColumn >= 0) and (FWidth = FWantedWidth) then
+  if not TAtlasRunToColumnFlow.NeedsColumn(FColumn, FWidth, FWantedWidth) then
   begin
     Exit;
   end;
@@ -319,8 +309,8 @@ var
   mText: string;
 begin
   mView := TopView;
-  if (mView = nil) or (mView.Buffer = nil) or
-    (SameText(FCodeFile, mView.Buffer.FileName) and (TThread.GetTickCount64 - FCodeReadAt < cTextMs)) then
+  if (mView = nil) or (mView.Buffer = nil) or not TAtlasRunToColumnFlow.ReadDue(SameText(FCodeFile,
+    mView.Buffer.FileName), TThread.GetTickCount64, FCodeReadAt, cTextMs) then
   begin
     Exit;
   end;
@@ -358,7 +348,7 @@ begin
     if (mRow.Line >= 0) and PtInRect(mRow.Rect, Point(AX, AY)) then
     begin
       // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
-      Result := SameText(mRow.FileName, mView.Buffer.FileName) and (mRow.TopRow = mView.TopRow);
+      Result := TAtlasRunToColumnFlow.StillThere(mRow, mView.Buffer.FileName, mView.TopRow);
       ARow := mRow;
       Exit;
     end;
@@ -390,8 +380,8 @@ begin
     mRow.TopRow := Context.EditView.TopRow;
     mRow.Rect := Context.EditorState.GetGutterColumnRect(Context.EditControl, Context.EditorLineNum, FColumn);
     FRows.AddOrSetValue(Context.EditorLineNum, mRow);
-    if FHovering and SameText(FHover.FileName, mRow.FileName) and (FHover.Line = mRow.Line) and
-      not mRow.Rect.IsEmpty and IsCode(mRow.FileName, mRow.Line) then
+    if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, mRow) and not mRow.Rect.IsEmpty and
+      IsCode(mRow.FileName, mRow.Line) then
     begin
       PaintArrow(Context.Canvas, mRow.Rect);
     end;
@@ -412,7 +402,7 @@ begin
       Leave;
       Exit;
     end;
-    if FHovering and SameText(FHover.FileName, mRow.FileName) and (FHover.Line = mRow.Line) then
+    if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, mRow) then
     begin
       Exit;
     end;
@@ -466,7 +456,7 @@ begin
   begin
     Leave;
   end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= cHoverMs) then
+  else if TAtlasRunToColumnFlow.TipDue(FTip.IsShown, TThread.GetTickCount64, FHoverSince, cHoverMs) then
   begin
     TAtlasIdeStyle.Apply(FTip, FHoverScreen);
     FTip.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToTipTitle),

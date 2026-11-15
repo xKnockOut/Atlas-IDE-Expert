@@ -152,7 +152,7 @@ type
     procedure AddRow(var ARows: TArray<TAtlasDebugValueRow>; const ARow: TAtlasDebugValueRow;
       ANode: TAtlasHoverTreeNode; AMore: Boolean);
     /// <summary>Zeile ohne Knoten („…“, „weitere …“) unter ANode.</summary>
-    function PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow;
+    class function PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow; static;
     function RowOf(ANode: TAtlasHoverTreeNode): TAtlasDebugValueRow;
   public
     /// <summary>AChanges vergleicht mit früheren Halten (nicht übernommen, nil = ohne).</summary>
@@ -567,7 +567,7 @@ begin
   FRowMore[High(FRowMore)] := AMore;
 end;
 
-function TAtlasHoverTree.PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow;
+class function TAtlasHoverTree.PlainRow(ANode: TAtlasHoverTreeNode; const AText: string): TAtlasDebugValueRow;
 begin
   Result := Default(TAtlasDebugValueRow);
   Result.Text := AText;

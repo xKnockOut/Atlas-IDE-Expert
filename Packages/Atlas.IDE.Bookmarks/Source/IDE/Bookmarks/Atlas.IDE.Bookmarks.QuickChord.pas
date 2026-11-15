@@ -62,7 +62,7 @@ type
     FPassAt: UInt64;
     procedure Tick(Sender: TObject);
     procedure Finish;
-    procedure Toggle;
+    class procedure Toggle; static;
     procedure PassOn(AKey: Word);
   protected
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
@@ -172,7 +172,7 @@ begin
   end;
 end;
 
-procedure TChordState.Toggle;
+class procedure TChordState.Toggle;
 begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
     procedure

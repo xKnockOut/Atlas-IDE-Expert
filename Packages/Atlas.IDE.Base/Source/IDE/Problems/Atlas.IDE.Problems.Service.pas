@@ -263,29 +263,21 @@ end;
 procedure SaveLayout(AFrame: TAtlasProblemsFrame);
 var
   mNext: TAtlasPluginSettings;
+  mStored, mLayout: TAtlasFindingsLayout;
 begin
   if AFrame = nil then
   begin
     Exit;
   end;
   mNext := TAtlasIdeSettings.Stored;
-  mNext.ProblemsWindowScope := TAtlasFindings.cScopeNames[AFrame.Scope];
-  // Das Einzelprojekt (#1843) bleibt gemerkt, solange ein anderer Bereich gilt.
-  if AFrame.Scope = TAtlasFindingScope.Project then
-  begin
-    mNext.ProblemsWindowScopeProject := AFrame.ScopeProject;
-  end;
-  mNext.ProblemsWindowGroupBy := TAtlasFindings.cGroupingNames[AFrame.Grouping];
-  mNext.ProblemsWindowColumns := AFrame.ColumnsText;
-  mNext.ProblemsWindowOpenFirst := AFrame.OpenFirst;
-  if (mNext.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
-    (mNext.ProblemsWindowScopeProject = TAtlasIdeSettings.Stored.ProblemsWindowScopeProject) and
-    (mNext.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
-    (mNext.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
-    (mNext.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
+  mStored := TAtlasFindingsLayout.FromSettings(mNext);
+  mLayout := TAtlasFindingsLayout.Create(mStored, AFrame.Scope, AFrame.ScopeProject, AFrame.Grouping,
+    AFrame.ColumnsText, AFrame.OpenFirst);
+  if mLayout.Same(mStored) then
   begin
     Exit;
   end;
+  mLayout.ApplyTo(mNext);
   TAtlasIdeSettings.Update(mNext);
 end;
 
@@ -331,8 +323,7 @@ begin
   // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
   Result.Checked := (AStore <> nil) and (Result.Current <> '') and (AStore.Contains(Result.Current) or
     AStore.Contains(ChangeFileExt(Result.Current, '.pas')));
-  Result.Key := Ord(AFrame.Scope).ToString + '|' + Result.Current + '|' + mFilesKey + '|' +
-    string.Join(';', Result.Opened) + '|' + BoolToStr(Result.Checked, True);
+  Result.Key := TAtlasFindingsWindow.InputsKey(AFrame.Scope, Result.Current, mFilesKey, Result.Opened, Result.Checked);
 end;
 
 /// <summary>Befunde neu aus dem Speicher, wenn sich Speicher oder Eingaben geändert haben.</summary>
@@ -367,11 +358,7 @@ begin
     end;
   // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
   // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
-  mFiles := AInputs.Files;
-  if AFrame.Scope = TAtlasFindingScope.CurrentFile then
-  begin
-    mFiles := TArray<string>.Create(AInputs.Current);
-  end;
+  mFiles := TAtlasFindingsWindow.ShownFiles(AFrame.Scope, AInputs.Current, AInputs.Files);
   mFindings := State.Findings.Build(AStore, mFiles, mReadLines, mChanged);
   if mChanged or mInputsChanged then
   begin
@@ -946,7 +933,7 @@ begin
   begin
     Exit(False);
   end;
-  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= cRefreshMs) then
+  if TAtlasFindingsWindow.ProgressDue(ProgressAt, TThread.GetTickCount64, cRefreshMs) then
   begin
     ProgressFiles := TAtlasIdeProblemFiles.ActiveFiles;
     ProgressAt := TThread.GetTickCount64;

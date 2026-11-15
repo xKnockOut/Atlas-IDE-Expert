@@ -3,9 +3,13 @@
 // Bezeichner, die sich nicht auflösen lassen (#178), für das MCP-Werkzeug
 // check_code. Bewusst vorsichtig, weil die Namensauflösung nur die
 // Grundstufe kennt:
-// - geprüft wird nur der erste Name einer Kette (A in A.B.C) in
-//   Anweisungen, nicht in Deklarationen;
-// - with-Blöcke, asm und anonyme Methoden werden übersprungen;
+// - geprüft wird der erste Name einer Kette (A in A.B.C) in Anweisungen,
+//   nicht in Deklarationen; ein weiterer Name (B) nur, wenn der Typ davor
+//   sicher und vollständig bekannt ist (Klasse, object, Record, Interface
+//   oder Aufzählung aus dem Index, nicht generisch, Vorfahren bekannt) und
+//   er ihn auch unsichtbar nicht hat (#2309, wie E2003);
+// - with-Blöcke und asm werden übersprungen; in anonymen Methoden zählt
+//   nur der Rumpf (Kopf, Parameter und lokale Deklarationen nicht, #2309);
 // - Compiler-Intrinsics (Length, Inc, Exit, …) gelten als bekannt;
 // - ohne Unit System im Index wird gar nichts gemeldet, weil dann jeder
 //   RTL-Name fehlen würde.
@@ -34,9 +38,10 @@ type
     /// </summary>
     Suggestion: string;
     /// <summary>'' für einen nicht deklarierten Namen (E2003); E2601 bzw. E2602 für einen fehlenden Konstruktor
-    /// bzw. Destruktor in New/Dispose, E2078 für Fail außerhalb eines Konstruktors (#1382).</summary>
+    /// bzw. Destruktor in New/Dispose, E2078 für Fail außerhalb eines Konstruktors (#1382), E2003 für ein
+    /// Mitglied A.B, das der sicher bekannte Typ von A nicht hat (#2309).</summary>
     Code: string;
-    /// <summary>Bei E2601 und E2602 der object-Typ hinter dem Zeiger.</summary>
+    /// <summary>Bei E2601 und E2602 der object-Typ hinter dem Zeiger, bei E2003 der Typ des Empfängers.</summary>
     Owner: string;
   end;
 
@@ -69,7 +74,7 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TUnresolvedNamesText = (IsNotAConstructorOf, IsNotADestructorOf, FailIsOnlyAllowedIn);
+  TUnresolvedNamesText = (IsNotAConstructorOf, IsNotADestructorOf, FailIsOnlyAllowedIn, IsNotAMemberOf);
 
 const
   cTexts: array[TUnresolvedNamesText] of TAtlasText = (
@@ -78,7 +83,8 @@ const
     (De: '"%s" ist kein Destruktor von %s; Dispose braucht einen Destruktor des object-Typs (wie E2602).';
      En: '"%s" is not a destructor of %s; Dispose needs a destructor of the object type (like E2602).'),
     (De: 'Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).';
-     En: 'Fail is only allowed in the constructor of an object type (like E2078).'));
+     En: 'Fail is only allowed in the constructor of an object type (like E2078).'),
+    (De: '"%s" ist kein Mitglied von %s (wie E2003).'; En: '"%s" is not a member of %s (like E2003).'));
 
 const
   // Sonderfälle zusätzlich zu TSystemIntrinsics (dort die Bezeichner von System ohne Quelltext, #880).
@@ -398,6 +404,58 @@ var
     end;
   end;
 
+  /// <summary>Ist der Typ des Empfängers ANode sicher bekannt und vollständig: Klasse, object, Record, Interface
+  /// oder Aufzählung aus dem Index, nicht generisch, ohne Bedingung, Vorfahrenkette ohne unbekannten Typ?
+  /// Zeiger, Klassenreferenzen (class of), eingebaute Typen (Helfer der RTL) und Units bleiben außen vor.</summary>
+  function CheckableReceiver(ANode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+  const
+    cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType];
+  var
+    mReceiver: TResolvedSymbol;
+    mTypeFound, mComplete: Boolean;
+  begin
+    Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      AResolver.NodeType(ATree, AFileName, ANode, mReceiver, AType, mTypeFound) and mTypeFound;
+    Result := Result and (mReceiver.Kind <> TResolvedKind.UnitName) and not AType.Builtin and
+      not AType.IsTypeParameter and (AType.TypeParams = '') and (AType.TypeArgs = '') and (AType.Condition = '') and
+      (AType.SymbolKind in cKinds) and not ContainsText(AType.Signature, 'class of');
+    if Result and (AType.SymbolKind <> TIndexSymbolKind.EnumType) then
+    begin
+      AResolver.Queries.AncestorNames(AType, mComplete);
+      Result := mComplete and not AResolver.HasUnknownAncestor;
+    end;
+  end;
+
+  /// <summary>Mitglied A.B (#2309), das es im sicher bekannten Typ von A samt Vorfahren und Helfern nicht gibt,
+  /// auch nicht unsichtbar (das meldet inaccessible-member): wie E2003 (IOTAProcessModule.FileName,
+  /// TAufzaehlung.None, Feld.Handle eines eigenen Typs ohne Handle).</summary>
+  procedure CheckMember(ANode: TSyntaxNode);
+  var
+    mSymbol, mType, mReceiverType, mFound: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mItem: TUnresolvedName;
+  begin
+    if (ANode.ChildCount <> 1) or (ANode.Name = '') or
+      AResolver.NodeType(ATree, AFileName, ANode, mSymbol, mType, mTypeFound) or
+      not CheckableReceiver(ANode[0], mReceiverType) then
+    begin
+      Exit;
+    end;
+    if AResolver.FindMember(mReceiverType, ANode.Name, mFound) or
+      AResolver.DeclaredMember(mReceiverType, ANode.Name, mFound) then
+    begin
+      Exit;
+    end;
+    mItem := Default(TUnresolvedName);
+    mItem.Name := ANode.Name;
+    mItem.Range := TTextRange.Create(ANode.EndPos, ANode.EndPos);
+    mItem.Range.StartPos.Character := ANode.EndPos.Character - Length(ANode.Name);
+    mItem.Code := 'E2003';
+    mItem.Owner := mReceiverType.Name;
+    Result := Result + [mItem];
+  end;
+
   /// <summary>Anweisungen stehen in Blöcken von Routinen und in initialization/finalization.</summary>
   function InStatementsAt(ANode: TSyntaxNode; AInStatements: Boolean): Boolean;
   begin
@@ -407,7 +465,7 @@ var
       Result := True;
     end
     else if ANode.Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection,
-      TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters, TSyntaxKind.GenericArgs] then
+      TSyntaxKind.RoutineHeader, TSyntaxKind.Parameters, TSyntaxKind.GenericArgs, TSyntaxKind.AnonymousMethod] then
     begin
       Result := False;
     end;
@@ -419,6 +477,10 @@ var
     if ANode.Kind = TSyntaxKind.Call then
     begin
       CheckAllocation(ANode);
+    end
+    else if ANode.Kind = TSyntaxKind.MemberAccess then
+    begin
+      CheckMember(ANode);
     end
     else if (ANode.Kind = TSyntaxKind.Identifier) and (ANode.Name <> '') then
     begin
@@ -442,8 +504,7 @@ var
       while (mPending.Count > 0) and (Length(Result) < cMaxNames) do
       begin
         mEntry := mPending.Pop;
-        if mEntry.Node.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock, TSyntaxKind.AnonymousMethod,
-          TSyntaxKind.Error] then
+        if mEntry.Node.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock, TSyntaxKind.Error] then
         begin
           Continue;
         end;
@@ -497,6 +558,10 @@ begin
   else if AName.Code = 'E2078' then
   begin
     Result := cTexts[TUnresolvedNamesText.FailIsOnlyAllowedIn].Text;
+  end
+  else if AName.Code = 'E2003' then
+  begin
+    Result := cTexts[TUnresolvedNamesText.IsNotAMemberOf].Fmt([AName.Name, AName.Owner]);
   end
   else
   begin

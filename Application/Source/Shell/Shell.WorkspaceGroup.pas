@@ -240,6 +240,15 @@ begin
     begin
       Result := TShellBootstrap.GroupProjects(FRoot, FLogger);
     end;
+  // requires-Packages als Quelle bei den Projekten der Gruppe suchen (#46), auch wenn --check nur ein Projekt der
+  // Gruppe prüft und die Gruppe darüber liegt (Packages/<Modul>/<Modul>.dproj): Sonst fehlen beim Prüfen eines
+  // Moduls alle Units des Basis-Packages im Index (#2309).
+  AWorkspace.Setup.OnPackageFolders :=
+    function: TArray<string>
+    begin
+      Result := TShellBootstrap.ProjectFolders(TShellBootstrap.GroupProjects(FRoot, FLogger) +
+        TShellBootstrap.EnclosingGroupProjects(AWorkspace.Setup.ProjectFile, FLogger));
+    end;
 end;
 
 function TShellWorkspaceGroup.RuleProjects: TArray<TRuleProject>;

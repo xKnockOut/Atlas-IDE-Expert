@@ -362,6 +362,19 @@ begin
     'constructor TFehler.Create(const AText: string);'#10'begin'#10'end;'#10 +
     'procedure Test(AKlasse: TFehlerKlasse);'#10'begin'#10'  AKlasse.Create(''x'').Free;'#10 +
     '  TFehler.Create(''y'');'#10'end;'#10'end.');
+  // #2309 (Atlas.IDE.Designer.DefaultSizes, Wrap): Umwandlung in eine Klassenreferenz, Konstruktor eines Vorfahren
+  // mit Owner (TControlClass(AControl.ClassType).Create(nil)).
+  Silent('unit Lokal;'#10'interface'#10'type'#10'  TObject = class'#10'    constructor Create;'#10 +
+    '    function ClassType: TClass;'#10'  end;'#10'  TClass = class of TObject;'#10 +
+    '  TComponent = class(TObject)'#10'    constructor Create(AOwner: TComponent); virtual;'#10'  end;'#10 +
+    '  TControl = class(TComponent)'#10'  end;'#10'  TControlClass = class of TControl;'#10 +
+    '  TComponentClass = class of TComponent;'#10'implementation'#10'constructor TObject.Create;'#10'begin'#10 +
+    'end;'#10'function TObject.ClassType: TClass;'#10'begin'#10'end;'#10 +
+    'constructor TComponent.Create(AOwner: TComponent);'#10'begin'#10'end;'#10 +
+    'procedure Test(AControl: TControl);'#10'var'#10'  mFresh: TControl;'#10'  mTemplate: TComponent;'#10 +
+    'begin'#10'  mFresh := TControlClass(AControl.ClassType).Create(nil);'#10 +
+    '  mTemplate := TComponentClass(AControl.ClassType).Create(nil);'#10 +
+    '  mTemplate := TComponentClass(AControl).Create(nil);'#10'end;'#10'end.');
 end;
 
 procedure TCallRulesTests.SilentCases;

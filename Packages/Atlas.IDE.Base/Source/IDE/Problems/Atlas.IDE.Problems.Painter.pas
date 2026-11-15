@@ -97,9 +97,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.Hide,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Problems.InlineHints,
+  Atlas.Core.Problems.Marks,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
   Atlas.Core.Diagnostics.Deadline;
@@ -212,12 +212,6 @@ begin
     not TAtlasIdeElements.Hidden(TAtlasDrawnElement.Problems, AContext.FileName, AText);
 end;
 
-/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
 procedure TAtlasProblemsPainter.PaintInline(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
 const
@@ -247,7 +241,8 @@ begin
     Exit;
   end;
   // Zwei Zeichen hinter dem letzten Zeichen, hinter Inlay-Hints und Beschriftungen derselben Zeile.
-  mCell := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, Length(TrimRight(AText)), ATabWidth) + 2,
+  mCell := AContext.EditorState.GetCharacterPosPx(
+    TAtlasProblemMarks.Column(AText, Length(TrimRight(AText)), ATabWidth) + 2,
     AContext.EditorLineNum);
   mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   X := TAtlasLineTail.Start(Self, mKey, mCell.Left);
@@ -281,32 +276,6 @@ begin
   TAtlasIdeElements.Painted(
     TAtlasIdeElements.Target(TAtlasDrawnElement.InlineDiagnostics, AContext.FileName, AContext.LogicalLineNum - 1,
     AText), TRect.Create(X, mTop, X + mSize.cx, mTop + mSize.cy), AContext.EditView.TopRow, ARect.Height);
-end;
-
-/// <summary>Zeichenbereich [AFrom, ATill) des Problems in der Zeile ALine; leer wird ein Zeichen, am Zeilenende
-/// das letzte.</summary>
-procedure CharRange(const AProblem: TAtlasProblem; ALine: Integer; const AText: string; out AFrom, ATill: Integer);
-begin
-  AFrom := 0;
-  ATill := Length(AText);
-  if ALine = AProblem.StartLine then
-  begin
-    AFrom := AProblem.StartCharacter;
-  end;
-  if ALine = AProblem.EndLine then
-  begin
-    ATill := AProblem.EndCharacter;
-  end;
-  AFrom := EnsureRange(AFrom, 0, Length(AText));
-  ATill := EnsureRange(ATill, 0, Length(AText));
-  if ATill <= AFrom then
-  begin
-    if AFrom >= Length(AText) then
-    begin
-      AFrom := Max(0, Length(AText) - 1);
-    end;
-    ATill := AFrom + 1;
-  end;
 end;
 
 const
@@ -383,22 +352,6 @@ begin
   end;
 end;
 
-/// <summary>Befund mit Regel des Servers: Kommentar über der ersten Zeile; sonst Eintrag für diese Codezeile.
-/// </summary>
-function HideTargetOf(const AFileName: string; const AProblem: TAtlasProblem; ALine: Integer;
-  const AText: string): TAtlasHideTarget;
-begin
-  if not AProblem.IsCompiler and (AProblem.Code <> '') then
-  begin
-    Result := TAtlasHideTarget.Finding(AFileName, AProblem.StartLine, AProblem.Code, AText);
-  end
-  else
-  begin
-    Result := TAtlasHideTarget.Finding(AFileName, ALine, '', AText);
-  end;
-  Result.Caption := AProblem.Caption;
-end;
-
 procedure TAtlasProblemsPainter.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AProblems: TArray<TAtlasProblem>; ALine: Integer; const AText: string; ATabWidth: Integer);
 var
@@ -421,13 +374,15 @@ begin
     end;
     for mProblem in AProblems do
     begin
-      CharRange(mProblem, ALine, AText, mFrom, mTill);
-      mFirst := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mFrom, ATabWidth), AContext.EditorLineNum);
-      mLast := AContext.EditorState.GetCharacterPosPx(ColumnOf(AText, mTill, ATabWidth), AContext.EditorLineNum);
+      TAtlasProblemMarks.CharRange(mProblem, ALine, AText, mFrom, mTill);
+      mFirst := AContext.EditorState.GetCharacterPosPx(TAtlasProblemMarks.Column(AText, mFrom, ATabWidth),
+        AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(TAtlasProblemMarks.Column(AText, mTill, ATabWidth),
+        AContext.EditorLineNum);
       mLeft := mFirst.Left;
       mRight := Max(mLast.Left, mLeft + Max(cMinMarkWidth, mFirst.Width));
       DrawMark(mDC, TColor(ProblemColor(mColors, mProblem)), mProblem, mLeft, mRight, ARect);
-      TAtlasIdeElements.Painted(HideTargetOf(AContext.FileName, mProblem, mLine, AText),
+      TAtlasIdeElements.Painted(TAtlasProblemMarks.HideTarget(AContext.FileName, mProblem, mLine, AText),
         TRect.Create(mLeft, ARect.Top, mRight, ARect.Bottom), AContext.EditView.TopRow, ARect.Height);
     end;
   finally
@@ -474,31 +429,6 @@ begin
 end;
 
 /// <summary>Zeilen, die die Befunde AProblems berühren (je Befund höchstens die ersten 64).</summary>
-function LinesOf(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;
-const
-  cMaxSpan = 64;
-  cFirstCapacity = 16;
-var
-  mProblem: TAtlasProblem;
-  mLine, mCount: Integer;
-begin
-  Result := nil;
-  mCount := 0;
-  for mProblem in AProblems do
-  begin
-    for mLine := mProblem.StartLine to Min(mProblem.EndLine, mProblem.StartLine + cMaxSpan - 1) do
-    begin
-      if mCount = Length(Result) then
-      begin
-        SetLength(Result, Max(cFirstCapacity, 2 * mCount));
-      end;
-      Result[mCount] := mLine;
-      Inc(mCount);
-    end;
-  end;
-  SetLength(Result, mCount);
-end;
-
 function TAtlasProblemsPainter.Tracked(const AContext: INTACodeEditorPaintContext): TAtlasTrackedLines;
 var
   mStore: TAtlasProblemStore;
@@ -514,7 +444,7 @@ begin
   Result := TAtlasIdeLineTracker.Follow(AContext.EditView, TAtlasLineTracking.cProblems, mStore.Stamp(mFileName),
     function: TArray<Integer>
     begin
-      Result := LinesOf(mStore.ForFile(mFileName));
+      Result := TAtlasProblemMarks.Lines(mStore.ForFile(mFileName));
     end,
     function: string
     begin

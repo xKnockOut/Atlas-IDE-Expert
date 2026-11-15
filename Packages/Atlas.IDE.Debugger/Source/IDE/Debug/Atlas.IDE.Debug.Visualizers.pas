@@ -138,7 +138,7 @@ implementation
 uses
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Debug.VisualizerFlow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Debug.Evaluator,
@@ -147,10 +147,6 @@ uses
 
 const
   cIdentifierPrefix = 'Atlas.Visualizer.';
-  /// <summary>Arten mit Ansichtsfenster; TGUID und Geometrie haben nur den Ersatztext.</summary>
-  cViewerKinds = [TAtlasVisualizerKind.Lists, TAtlasVisualizerKind.Dictionaries, TAtlasVisualizerKind.DataSets,
-    TAtlasVisualizerKind.Bytes, TAtlasVisualizerKind.Json, TAtlasVisualizerKind.Colors,
-    TAtlasVisualizerKind.Graphics];
 
 function KindCaption(AKind: TAtlasVisualizerKind): string;
 const
@@ -179,7 +175,7 @@ end;
 
 procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean);
 begin
-  if (Index < 0) or (Index > High(FTypes)) then
+  if not TAtlasVisualizerFlow.ValidType(Index, Length(FTypes)) then
   begin
     Exit;
   end;
@@ -205,7 +201,7 @@ end;
 procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean;
   var IsGeneric: Boolean);
 begin
-  if (Index < 0) or (Index > High(FTypes)) then
+  if not TAtlasVisualizerFlow.ValidType(Index, Length(FTypes)) then
   begin
     Exit;
   end;
@@ -217,22 +213,17 @@ end;
 function TAtlasIdeVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
 var
   mOptions: TAtlasVisualizerOptions;
-  mText: string;
 begin
   // '' wäre ein leerer Wert in der Liste der IDE: ohne eigenen Text bleibt der der IDE.
   Result := EvalResult;
   try
     mOptions := TAtlasIdeVisualizers.Options;
-    if not TAtlasIdeSettings.Current.DebugVisualizers or not (FKind in mOptions.Kinds) then
+    if not TAtlasVisualizerFlow.Wants(TAtlasIdeSettings.Current.DebugVisualizers, FKind, mOptions.Kinds) then
     begin
       Exit;
     end;
-    mText := TAtlasVisualizers.Replacement(FKind, Expression, TypeName, EvalResult, mOptions,
-      TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs));
-    if mText <> '' then
-    begin
-      Result := mText;
-    end;
+    Result := TAtlasVisualizerFlow.Shown(TAtlasVisualizers.Replacement(FKind, Expression, TypeName, EvalResult,
+      mOptions, TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs)), EvalResult);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -373,9 +364,7 @@ end;
 
 class function TAtlasIdeVisualizers.SettingsSignature: string;
 begin
-  // Angemeldet wird je Art; nur Schalter und Arten verlangen eine neue Anmeldung, der Rest wird je Wert gelesen.
-  Result := BoolToStr(TAtlasIdeSettings.Current.DebugVisualizers, True) + '|' +
-    TAtlasIdeSettings.Current.DebugVisualizerTypes;
+  Result := TAtlasVisualizerFlow.Signature(TAtlasIdeSettings.Current);
 end;
 
 class procedure TAtlasIdeVisualizers.Unregister;
@@ -401,16 +390,8 @@ begin
 end;
 
 class function TAtlasIdeVisualizers.Options: TAtlasVisualizerOptions;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := TAtlasVisualizerOptions.Defaults;
-  Result.Kinds := TAtlasVisualizerSettings.ParseKinds(mSettings.DebugVisualizerTypes);
-  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(mSettings.DebugVisualizerNameFields);
-  Result.MaxLength := mSettings.DebugVisualizerMaxLength;
-  Result.Evaluation := TAtlasVisualizerSettings.ParseEvaluation(mSettings.DebugVisualizerEvaluation);
-  Result.MaxImagePixels := mSettings.DebugVisualizerMaxImagePixels;
+  Result := TAtlasVisualizerFlow.OptionsOf(TAtlasIdeSettings.Current);
 end;
 
 class function TAtlasIdeVisualizers.Started: Boolean;
@@ -438,7 +419,7 @@ begin
     begin
       Continue;
     end;
-    if mKind in cViewerKinds then
+    if TAtlasVisualizerFlow.HasViewer(mKind) then
     begin
       mVisualizer := TAtlasIdeViewerVisualizer.Create(mKind);
     end
@@ -471,7 +452,7 @@ begin
     Exit;
   end;
   // Arten geändert: neu anmelden. Nicht gestartet: Das übernimmt RegisterFeatures.
-  if Started and (FSignature <> SettingsSignature) then
+  if TAtlasVisualizerFlow.NeedsReregister(Started, FSignature, SettingsSignature) then
   begin
     Unregister;
     Start;
@@ -492,7 +473,7 @@ begin
     Exit;
   end;
   mWanted := Options;
-  if not (mKind in mWanted.Kinds) then
+  if not TAtlasVisualizerFlow.Wants(True, mKind, mWanted.Kinds) then
   begin
     Exit;
   end;

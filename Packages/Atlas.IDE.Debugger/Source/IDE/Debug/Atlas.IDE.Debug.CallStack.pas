@@ -108,7 +108,7 @@ uses
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.CallStackParams,
-  Atlas.Core.Debug.OwnCode,
+  Atlas.Core.Debug.CallStackFlow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
@@ -221,8 +221,7 @@ begin
     mFrames) of
     TAtlasDebugStackRead.Wait:
       begin
-        Inc(FRetries);
-        if FRetries <= cRetries then
+        if TAtlasCallStackFlow.Retry(FRetries, cRetries) then
         begin
           Schedule(TPhase.Read);
           Exit;
@@ -295,7 +294,7 @@ var
   mDeclared: TAtlasCallStackDeclaredList;
 begin
   // Nur die jüngste Antwort, und nur, solange derselbe Halt besteht.
-  if (ARequest <> FRequest) or (FPhase <> TPhase.Waiting) or (AFrame > High(FStack.Entries)) then
+  if not TAtlasCallStackFlow.Accepts(ARequest, FRequest, FPhase = TPhase.Waiting, AFrame, FStack) then
   begin
     Exit;
   end;
@@ -314,42 +313,24 @@ end;
 
 class procedure TAtlasIdeDebugCallStack.EvaluateNext;
 var
-  mRows: TAtlasDebugStackRows;
-  mRow: TAtlasDebugStackRow;
-  mParam: Integer;
+  mFrame, mParam: Integer;
   mValue: string;
 begin
-  if not TAtlasIdeSettings.Current.DebugCallStackWindowEvaluateParams then
+  if not TAtlasIdeSettings.Current.DebugCallStackWindowEvaluateParams or
+    not TAtlasCallStackFlow.NextParam(FStack, ShownFrame.Rows, mFrame, mParam) then
   begin
     Schedule(TPhase.Idle);
     Exit;
   end;
-  mRows := ShownFrame.Rows;
-  for mRow in mRows do
+  // Einer je Schritt; dazwischen bedient die IDE Tasten und Zeichnen.
+  FStack.Entries[mFrame].Params[mParam].Done := True;
+  mValue := EvaluateParam(mFrame, mParam);
+  if mValue <> '' then
   begin
-    if mRow.Kind <> TAtlasDebugStackRowKind.Frame then
-    begin
-      Continue;
-    end;
-    for mParam := 0 to High(FStack.Entries[mRow.First].Params) do
-    begin
-      if TAtlasCallStackParams.ExpressionFor(FStack.Entries[mRow.First].Params[mParam], mRow.First = 0) = '' then
-      begin
-        Continue;
-      end;
-      // Einer je Schritt; dazwischen bedient die IDE Tasten und Zeichnen.
-      FStack.Entries[mRow.First].Params[mParam].Done := True;
-      mValue := EvaluateParam(mRow.First, mParam);
-      if mValue <> '' then
-      begin
-        FStack.Entries[mRow.First].Params[mParam].Value := mValue;
-        ShowUpdate;
-      end;
-      Schedule(TPhase.Values);
-      Exit;
-    end;
+    FStack.Entries[mFrame].Params[mParam].Value := mValue;
+    ShowUpdate;
   end;
-  Schedule(TPhase.Idle);
+  Schedule(TPhase.Values);
 end;
 
 class function TAtlasIdeDebugCallStack.EvaluateParam(AFrame, AParam: Integer): string;
@@ -382,13 +363,10 @@ begin
       Exit;
     end;
     // Objekt: Klasse laut Deklaration und, falls vorhanden, das Namensfeld.
-    if TAtlasCallStackParams.IsAddress(mParam.Raw) or (AFrame = 0) then
+    if TAtlasCallStackFlow.AsksName(mParam.Raw, AFrame) then
     begin
-      if not TAtlasIdeDebugEvaluator.Evaluate(mExpression + '.Name', TAtlasVisualizerEvaluation.Fields,
-        cEvaluateTimeoutMs, mName) or not mName.StartsWith('''') then
-      begin
-        mName := '';
-      end;
+      mName := TAtlasCallStackFlow.NameOf(TAtlasIdeDebugEvaluator.Evaluate(mExpression + '.Name',
+        TAtlasVisualizerEvaluation.Fields, cEvaluateTimeoutMs, mText), mText);
       Result := TAtlasCallStackParams.ObjectText(mParam.TypeName, mName, mParam.Raw);
     end;
   finally
@@ -456,7 +434,7 @@ end;
 
 class procedure TAtlasIdeDebugCallStack.OpenFrame(AIndex: Integer);
 begin
-  if (AIndex < 0) or (AIndex > High(FStack.Entries)) or not FStack.Entries[AIndex].Frame.HasSource then
+  if not TAtlasCallStackFlow.CanOpen(FStack, AIndex) then
   begin
     Exit;
   end;
