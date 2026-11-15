@@ -51,6 +51,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Peek,
+  Atlas.Core.Editor.PeekPlan,
   Atlas.UI.Results.Strings,
   Atlas.UI.Popup.Window,
   Atlas.UI.Editor.Peek,
@@ -145,14 +146,14 @@ end;
 
 function TPeekKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
-  Result := (FOwner.Window <> nil) and FOwner.Window.IsShown and (FOwner.Window.View <> nil) and (AShift = []) and
-    ((AKey = VK_ESCAPE) or (AKey = VK_RETURN) or (AKey = VK_UP) or (AKey = VK_DOWN) or (AKey = VK_PRIOR) or
-    (AKey = VK_NEXT));
+  Result := (FOwner.Window <> nil) and FOwner.Window.IsShown and (FOwner.Window.View <> nil) and
+    (TAtlasPeekPlan.KeyOf(AKey, AShift, FOwner.Window.View.Count) <> TAtlasPeekKey.None);
 end;
 
 procedure TPeekKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
   mView: TAtlasPeekView;
+  mKey: TAtlasPeekKey;
 begin
   try
     if (FOwner.Window = nil) or (FOwner.Window.View = nil) then
@@ -160,35 +161,28 @@ begin
       Exit;
     end;
     mView := FOwner.Window.View;
-    case AKey of
-      VK_ESCAPE:
+    mKey := TAtlasPeekPlan.KeyOf(AKey, AShift, mView.Count);
+    case mKey of
+      TAtlasPeekKey.None:
+        Exit;
+      TAtlasPeekKey.Close:
         FOwner.Hide;
-      VK_RETURN:
+      TAtlasPeekKey.Open:
         FOwner.Open;
-      VK_UP:
-        if mView.Count > 1 then
-        begin
-          mView.SelectPrevious;
-        end
-        else
-        begin
-          mView.ScrollBy(-1);
-        end;
-      VK_DOWN:
-        if mView.Count > 1 then
-        begin
-          mView.SelectNext;
-        end
-        else
-        begin
-          mView.ScrollBy(1);
-        end;
-      VK_PRIOR:
+      TAtlasPeekKey.Previous:
+        mView.SelectPrevious;
+      TAtlasPeekKey.Next:
+        mView.SelectNext;
+      TAtlasPeekKey.ScrollUp:
+        mView.ScrollBy(-1);
+      TAtlasPeekKey.ScrollDown:
+        mView.ScrollBy(1);
+      TAtlasPeekKey.PageUp:
         mView.PageUp;
-      VK_NEXT:
+      TAtlasPeekKey.PageDown:
         mView.PageDown;
     end;
-    if (AKey <> VK_ESCAPE) and (AKey <> VK_RETURN) and (FOwner.Window.View <> nil) then
+    if TAtlasPeekPlan.Stays(mKey) and (FOwner.Window.View <> nil) then
     begin
       FOwner.Window.ViewChanged;
     end;
@@ -305,16 +299,7 @@ begin
   mArea := TAtlasPopupWindow.WorkAreaAt(mCaret.CenterPoint);
   mHeight := Window.HeightForLines(TAtlasIdeSettings.Current.PeekHeightLines);
   // Unter der Cursorzeile, sonst darüber; nie größer als der Platz.
-  if (mCaret.Bottom + mHeight <= mArea.Bottom) or (mCaret.Top - mArea.Top < mArea.Bottom - mCaret.Bottom) then
-  begin
-    mBounds := Rect(mEditor.Left, mCaret.Bottom + 1, mEditor.Right, Min(mArea.Bottom, mCaret.Bottom + 1 + mHeight));
-  end
-  else
-  begin
-    mBounds := Rect(mEditor.Left, Max(mArea.Top, mCaret.Top - 1 - mHeight), mEditor.Right, mCaret.Top - 1);
-  end;
-  mBounds.Left := Max(mBounds.Left, mArea.Left);
-  mBounds.Right := Min(mBounds.Right, mArea.Right);
+  mBounds := TAtlasPeekPlan.Bounds(mCaret, mEditor, mArea, mHeight);
   ShownView := Pointer(mView);
   ShownCursor := mView.CursorPos;
   ShownTop := mView.TopRow;

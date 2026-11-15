@@ -22,6 +22,8 @@ type
     [Test]
     procedure ModuleOfFollowsMasterSwitch;
     [Test]
+    procedure SwitchOfKeyByNameKeyOrPrefix;
+    [Test]
     procedure MergeKeepsChangesOfOtherNode;
     [Test]
     procedure MergeWritesNothingWithoutChange;
@@ -106,6 +108,41 @@ begin
           mCatalog[mIndex].Name);
       end;
     end;
+  finally
+    mGroups.Free;
+    mCatalog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsNodeScopeTests.SwitchOfKeyByNameKeyOrPrefix;
+var
+  mCatalog: TAtlasSettingsCatalog;
+  mGroups: TAtlasSettingsGroups;
+  mIndex: Integer;
+  mKey, mName: string;
+begin
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
+  mGroups := TAtlasSettingsGroups.Create(mCatalog);
+  try
+    mKey := '';
+    mName := '';
+    for mIndex := 0 to mCatalog.Count - 1 do
+    begin
+      if (mCatalog[mIndex].Module = 'tests') and (mCatalog[mIndex].Key <> '') and
+        not SameText(mCatalog[mIndex].Key, mCatalog[mIndex].Name) then
+      begin
+        mKey := mCatalog[mIndex].Key;
+        mName := mCatalog[mIndex].Name;
+        Break;
+      end;
+    end;
+    Assert.AreNotEqual('', mKey, 'Schlüssel des Moduls Tests im Katalog');
+    Assert.AreEqual('tests', TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups, mKey));
+    Assert.AreEqual('tests', TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups, mName));
+    Assert.AreEqual('', TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups, 'Enabled'));
+    Assert.AreEqual(TAtlasSettingsNodeScope.cVcsSwitch, TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups,
+      'VcsProjects'));
+    Assert.AreEqual('', TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups, 'GibtEsNicht'));
   finally
     mGroups.Free;
     mCatalog.Free;

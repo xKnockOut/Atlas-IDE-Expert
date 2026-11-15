@@ -259,6 +259,7 @@ uses
   ToolsAPI,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Status.FieldPlan,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.StatusBarItems,
   Atlas.Core.Diagnostics.Guard,
@@ -355,14 +356,7 @@ end;
 
 function BadgeText(ACount: Integer): string;
 begin
-  if ACount > 99 then
-  begin
-    Result := '99+';
-  end
-  else
-  begin
-    Result := IntToStr(ACount);
-  end;
+  Result := TAtlasStatusFieldPlan.BadgeText(ACount);
 end;
 
 /// <summary>Breite der Plakette samt Abstand in Gerätepixeln; 0 ohne.</summary>
@@ -381,7 +375,7 @@ end;
 /// </summary>
 function PanelShown: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.StatusField and not TAtlasStatusField.Relocated;
+  Result := TAtlasStatusFieldPlan.PanelShown(TAtlasIdeSettings.Current, TAtlasStatusField.Relocated);
 end;
 
 /// <summary>Was das Feld nach den Einstellungen zeigt; der Tooltip nennt auch die Plakette.</summary>
@@ -400,15 +394,8 @@ begin
     mProgressId := TAtlasStatusLines.cIndexId;
   end;
   Result.Text := TAtlasStatusSummary.FieldText(Result.Items, mSettings.StatusFieldSummary, mProgressId);
-  Result.Tooltip := TAtlasStatusSummary.Tooltip(Result.Items);
-  if (ABadge.Count > 0) and (ABadge.Hint <> '') then
-  begin
-    if Result.Tooltip <> '' then
-    begin
-      Result.Tooltip := Result.Tooltip + sLineBreak;
-    end;
-    Result.Tooltip := Result.Tooltip + ABadge.Hint;
-  end;
+  Result.Tooltip := TAtlasStatusFieldPlan.Tooltip(TAtlasStatusSummary.Tooltip(Result.Items), ABadge.Count,
+    ABadge.Hint);
 end;
 
 /// <summary>Statusleiste des obersten Editorfensters; nil ohne.</summary>
@@ -785,11 +772,7 @@ var
   mItem: TFieldPanel;
 begin
   // In die Atlas-Statusleiste umgezogen: Die Zusatzfelder stehen dort hinter dem Status.
-  mCount := Length(Field.FExtras);
-  if TAtlasStatusField.Relocated then
-  begin
-    mCount := 0;
-  end;
+  mCount := TAtlasStatusFieldPlan.ExtraPanels(Length(Field.FExtras), TAtlasStatusField.Relocated);
   while Extras.Count > mCount do
   begin
     DropPanel(Extras.Last);
@@ -990,30 +973,26 @@ end;
 function TAtlasStatusField.THook.Click(AZone, AX: Integer): Boolean;
 begin
   Result := True;
-  // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
-  if (AZone = 0) and (Field.FBadge.Count > 0) and Assigned(Field.FBadge.OnClick) and
-    (AX >= PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) then
-  begin
-    if Field.FWindow <> nil then
-    begin
-      Field.FWindow.Dismiss;
-    end;
-    RunClick(Field.FBadge.OnClick, ScreenCorner(PanelRect));
-  end
-  else if AZone = 0 then
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Status,
-      procedure
+  case TAtlasStatusFieldPlan.Click(AZone, Length(Field.FExtras), Field.FBadge.Count, Assigned(Field.FBadge.OnClick),
+    AX, PanelRect.Right - BadgeWidth(Bar, Field.FBadge.Count)) of
+    TAtlasStatusFieldClick.Badge:
       begin
-        OpenWindow;
-      end);
-  end
-  else if (AZone > 0) and (AZone <= Length(Field.FExtras)) then
-  begin
-    RunClick(Field.FExtras[AZone - 1].OnClick, ScreenCorner(PanelRect(Extras[AZone - 1])));
-  end
+        // Klick auf die Plakette (#601): Liste der Benachrichtigungen statt Statusfenster.
+        if Field.FWindow <> nil then
+        begin
+          Field.FWindow.Dismiss;
+        end;
+        RunClick(Field.FBadge.OnClick, ScreenCorner(PanelRect));
+      end;
+    TAtlasStatusFieldClick.Window:
+      TAtlasGuard.Run(TAtlasFeature.Status,
+        procedure
+        begin
+          OpenWindow;
+        end);
+    TAtlasStatusFieldClick.Extra:
+      RunClick(Field.FExtras[AZone - 1].OnClick, ScreenCorner(PanelRect(Extras[AZone - 1])));
   else
-  begin
     Result := False;
   end;
 end;
@@ -1021,7 +1000,7 @@ end;
 function TAtlasStatusField.THook.Swallow(var AMessage: TMessage): Boolean;
 var
   mPosition: TPoint;
-  mContext: Boolean;
+  mContext, mKeyboard, mInPanel: Boolean;
 begin
   Result := False;
   mContext := Assigned(Field.FEvents.OnContext);
@@ -1030,18 +1009,23 @@ begin
       // Ging das Loslassen nach einem Doppelklick verloren, gilt der nächste Klick wieder.
       SkipUp := False;
     WM_RBUTTONDOWN, WM_RBUTTONUP:
-      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
+      Result := TAtlasStatusFieldPlan.OpensToggles(TAtlasStatusFieldGesture.RightButton, TAtlasIdeSettings.Current,
+        mContext, PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos)), False);
     WM_LBUTTONDBLCLK:
-      Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnDoubleClick and
-        PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos));
+      Result := TAtlasStatusFieldPlan.OpensToggles(TAtlasStatusFieldGesture.DoubleClick, TAtlasIdeSettings.Current,
+        mContext, PtInRect(PanelRect, SmallPointToPoint(TWMMouse(AMessage).Pos)), False);
     WM_CONTEXTMENU:
-      // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
-      if (TWMContextMenu(AMessage).XPos <> -1) or (TWMContextMenu(AMessage).YPos <> -1) then
       begin
-        mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(AMessage).Pos));
-        Result := mContext and TAtlasIdeSettings.Current.StatusTogglesOnRightClick and
-          PtInRect(PanelRect, mPosition);
+        // -1/-1 kommt von der Tastatur (Umschalt+F10): der IDE überlassen.
+        mKeyboard := (TWMContextMenu(AMessage).XPos = -1) and (TWMContextMenu(AMessage).YPos = -1);
+        mInPanel := False;
+        if not mKeyboard then
+        begin
+          mPosition := Bar.ScreenToClient(SmallPointToPoint(TWMContextMenu(AMessage).Pos));
+          mInPanel := PtInRect(PanelRect, mPosition);
+        end;
+        Result := TAtlasStatusFieldPlan.OpensToggles(TAtlasStatusFieldGesture.ContextMenu, TAtlasIdeSettings.Current,
+          mContext, mInPanel, mKeyboard);
       end;
   end;
   if not Result then

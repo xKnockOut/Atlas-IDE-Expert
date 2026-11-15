@@ -79,7 +79,7 @@ uses
   Vcl.Forms,
   ToolsAPI,
   Atlas.Core.Lsp.Client,
-  Atlas.Core.Completion.Word,
+  Atlas.Core.Results.Plan,
   Atlas.Core.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Results.Strings,
@@ -161,28 +161,6 @@ begin
   except
     on ELspClientError do
       Result := nil;
-  end;
-end;
-
-/// <summary>Zeilen der Symbolsuche; die Kennung ist der Index in ASymbols.</summary>
-function SymbolCommands(const ASymbols: TArray<TAtlasSymbol>): TArray<TAtlasCommand>;
-var
-  mIndex: Integer;
-  mCommand: TAtlasCommand;
-begin
-  Result := nil;
-  for mIndex := 0 to High(ASymbols) do
-  begin
-    mCommand := Default(TAtlasCommand);
-    mCommand.Id := IntToStr(mIndex);
-    mCommand.Caption := ASymbols[mIndex].Name;
-    mCommand.Path := ExtractFileName(ASymbols[mIndex].FileName);
-    if ASymbols[mIndex].Container <> '' then
-    begin
-      mCommand.Path := ASymbols[mIndex].Container + ' · ' + mCommand.Path;
-    end;
-    mCommand.ShortCut := TAtlasResults.SymbolBadge(ASymbols[mIndex].Kind);
-    Result := Result + [mCommand];
   end;
 end;
 
@@ -365,9 +343,7 @@ var
   mEditors: IOTAEditorServices;
   mView: IOTAEditView;
   mText: string;
-  mLines: TArray<string>;
-  mCursor: TOTAEditPos;
-  mFirst, mLast: Integer;
+  mSpot: TAtlasResultsSpot;
 begin
   Result := False;
   AFileName := '';
@@ -395,18 +371,15 @@ begin
   TAtlasIdeRename.SyncOpenBuffers(mCurrent);
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
   mCurrent.Sync(AFileName, mText);
-  mLines := mText.Split([#13#10, #10]);
-  mCursor := mView.CursorPos;
-  if (mCursor.Line < 1) or (mCursor.Line > Length(mLines)) then
+  if not TAtlasResultsPlan.Spot(mText, mView.CursorPos.Line, mView.CursorPos.Col,
+    TAtlasEditorBuffer.TabWidth(mView.Buffer), mSpot) then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  ALine := mCursor.Line - 1;
-  ACharacter := TLspSession.ColumnToIndex(mLines[ALine], mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer));
-  mFirst := TAtlasWord.StartBefore(mLines[ALine], ACharacter);
-  mLast := TAtlasWord.EndAfter(mLines[ALine], ACharacter);
-  AName := Copy(mLines[ALine], mFirst + 1, mLast - mFirst);
+  ALine := mSpot.Line;
+  ACharacter := mSpot.Character;
+  AName := mSpot.Name;
   Result := True;
 end;
 
@@ -446,18 +419,15 @@ begin
     Screen.Cursor := crDefault;
   end;
   // Genau eine Implementierung: gleich hinspringen wie „Gehe zu“.
-  if Length(mFound) = 1 then
-  begin
-    Open(mFound[0].FileName, mFound[0].Line, mFound[0].Character);
-    Exit;
+  case TAtlasResultsPlan.Found(Length(mFound)) of
+    TAtlasResultsFound.Jump:
+      Open(mFound[0].FileName, mFound[0].Line, mFound[0].Character);
+    TAtlasResultsFound.Nothing:
+      Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+  else
+    TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsImplementations,
+      [mName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
   end;
-  if Length(mFound) = 0 then
-  begin
-    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
-    Exit;
-  end;
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ResultsImplementations,
-    [mName, Length(mFound), Length(TAtlasResults.Group(mFound))]), mFound);
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection);
@@ -576,7 +546,7 @@ begin
     function(APattern: string): TArray<TAtlasCommand>
     begin
       mSymbols := QuerySymbols(APattern);
-      Result := SymbolCommands(mSymbols);
+      Result := TAtlasResultsPlan.SymbolCommands(mSymbols);
     end;
   mWindow.OnExecute :=
     procedure(ACommand: TAtlasCommand)

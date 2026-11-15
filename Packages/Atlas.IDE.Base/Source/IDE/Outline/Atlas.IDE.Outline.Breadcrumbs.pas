@@ -125,6 +125,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Style.Palette,
   Atlas.Core.Outline.Breadcrumbs,
+  Atlas.Core.Outline.CrumbPlan,
   Atlas.Core.Outline.Interfaces,
   Atlas.Core.Editor.CrumbCard,
   Atlas.UI.Outline.Strings,
@@ -147,11 +148,8 @@ const
 type
   /// <summary>Wovon der gezeigte Pfad abhängt: Stand der Gliederung und Einstellungen der Leiste.</summary>
   TBreadcrumbsKey = record
-    Stamp: Cardinal;
     Status: TAtlasOutlineStatus;
-    WithInterfaces: Boolean;
-    ShowUnit: Boolean;
-    Parts: TAtlasCrumbParts;
+    Path: TAtlasCrumbKey;
   end;
 
   TBreadcrumbsState = class
@@ -493,45 +491,6 @@ begin
   ABar.Parent := AParent;
 end;
 
-/// <summary>Zusätzliche Glieder nach den Einstellungen (#1759, #1767, #1765, #1766, #1763, #1764, #1769, #1784).
-/// </summary>
-function CrumbParts: TAtlasCrumbParts;
-begin
-  Result := [];
-  if TAtlasIdeSettings.Current.BreadcrumbsVisibility then
-  begin
-    Include(Result, TAtlasCrumbPart.Visibility);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsMemberBlocks then
-  begin
-    Include(Result, TAtlasCrumbPart.MemberBlocks);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsVisibilityMark then
-  begin
-    Include(Result, TAtlasCrumbPart.VisibilityMark);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsDeclarationBlocks then
-  begin
-    Include(Result, TAtlasCrumbPart.DeclarationBlocks);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsConditionals then
-  begin
-    Include(Result, TAtlasCrumbPart.Conditionals);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsRegions then
-  begin
-    Include(Result, TAtlasCrumbPart.Regions);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsStatements then
-  begin
-    Include(Result, TAtlasCrumbPart.Statements);
-  end;
-  if TAtlasIdeSettings.Current.BreadcrumbsOverloads then
-  begin
-    Include(Result, TAtlasCrumbPart.Overloads);
-  end;
-end;
-
 procedure TBreadcrumbsState.Open(AList: TAtlasCrumbList; ABar: TAtlasBreadcrumbBar; AIndex: Integer;
   const APoint: TPoint);
 begin
@@ -594,37 +553,22 @@ end;
 
 procedure TBreadcrumbsState.Jump(ABar: TAtlasBreadcrumbBar; AIndex: Integer; ADeclaration: Boolean);
 var
-  mCrumb: TAtlasCrumb;
-  mTarget: Integer;
+  mJump: TAtlasCrumbJump;
 begin
   if (ABar <> FActiveBar) or (AIndex < 0) or (AIndex > High(ABar.Crumbs)) or (FSource.FileName = '') then
   begin
     Exit;
   end;
-  mCrumb := ABar.Crumbs[AIndex];
   TAtlasGuard.Log(Format('Brotkrumen: Sprung zu Glied %d', [AIndex]));
-  if mCrumb.Node < 0 then
-  begin
-    // Unit-Glied: an den Anfang der Datei.
-    if mCrumb.Badge.Kind = TAtlasBadgeKind.Unit_ then
-    begin
+  mJump := TAtlasCrumbPlan.Jump(FSource.Nodes, ABar.Crumbs[AIndex], ADeclaration);
+  case mJump.Kind of
+    TAtlasCrumbJumpKind.FileStart:
       TAtlasIdeNavigation.GoToLocation(FSource.FileName, 0, 0);
-    end
-    else if (mCrumb.Current >= 0) and (mCrumb.Current <= High(mCrumb.Places)) then
-    begin
-      // Abschnittsglied: zu seinem Schlüsselwort.
-      TAtlasIdeNavigation.GoToLocation(FSource.FileName, mCrumb.Places[mCrumb.Current].Line,
-        mCrumb.Places[mCrumb.Current].Character);
-    end;
-    Exit;
+    TAtlasCrumbJumpKind.Place:
+      TAtlasIdeNavigation.GoToLocation(FSource.FileName, mJump.Line, mJump.Character);
+  else
+    // None: kein Ziel.
   end;
-  mTarget := TAtlasBreadcrumbs.Target(FSource.Nodes, mCrumb.Node, not ADeclaration);
-  if mTarget < 0 then
-  begin
-    Exit;
-  end;
-  TAtlasIdeNavigation.GoToLocation(FSource.FileName, FSource.Nodes[mTarget].NameLine,
-    FSource.Nodes[mTarget].NameCharacter);
 end;
 
 /// <summary>Menü erst nach dem Klick öffnen: Die IDE holt den Fokus in den Editor zurück; ein sofort geöffnetes
@@ -673,20 +617,15 @@ end;
 /// geändert hat (dann ist der Pfad neu zu bilden).</summary>
 function TBreadcrumbsState.Remember(ABar: TAtlasBreadcrumbBar; const ASnapshot: TAtlasOutlineSnapshot): Boolean;
 var
-  mShowUnit, mWithInterfaces: Boolean;
-  mParts: TAtlasCrumbParts;
+  mKey: TAtlasCrumbKey;
   mLines: TArray<string>;
 begin
-  mShowUnit := TAtlasIdeSettings.Current.BreadcrumbsShowUnit;
-  mWithInterfaces := TAtlasIdeSettings.Current.BreadcrumbsInterfaces;
-  mParts := CrumbParts;
-  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or
-    not SameText(ASnapshot.FileName, FSource.FileName) or (ASnapshot.Stamp <> FKey.Stamp) or
-    (mShowUnit <> FKey.ShowUnit) or (mParts <> FKey.Parts) or (mWithInterfaces <> FKey.WithInterfaces);
-  if (ASnapshot.Stamp <> FKey.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
+  mKey := TAtlasCrumbKey.Create(ASnapshot.FileName, ASnapshot.Stamp, TAtlasIdeSettings.Current);
+  Result := not FShown or (ABar <> FActiveBar) or (ASnapshot.Status <> FKey.Status) or not mKey.Same(FKey.Path);
+  if (ASnapshot.Stamp <> FKey.Path.Stamp) or (Pointer(ASnapshot.Nodes) <> Pointer(FSource.Nodes)) then
   begin
     mLines := FSource.Lines;
-    if ASnapshot.Stamp <> FKey.Stamp then
+    if ASnapshot.Stamp <> FKey.Path.Stamp then
     begin
       mLines := TTextLines.SplitLines(ASnapshot.Text);
     end;
@@ -697,10 +636,7 @@ begin
   FActiveBar := ABar;
   FKey.Status := ASnapshot.Status;
   FSource.FileName := ASnapshot.FileName;
-  FKey.Stamp := ASnapshot.Stamp;
-  FKey.ShowUnit := mShowUnit;
-  FKey.Parts := mParts;
-  FKey.WithInterfaces := mWithInterfaces;
+  FKey.Path := mKey;
   FSource.Nodes := ASnapshot.Nodes;
   FInterfaces := ASnapshot.Interfaces;
 end;
@@ -719,7 +655,7 @@ var
   mHide: Boolean;
 begin
   FSource.FileName := '';
-  FKey.Stamp := 0;
+  FKey.Path.Stamp := 0;
   FShown := False;
   HideCard;
   FSource.Line := -1;
@@ -768,9 +704,9 @@ begin
   FSource.Character := mCharacter;
   mBar.EmptyText := TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsEmpty);
   mRequest := TAtlasCrumbRequest.Create(FSource.Line, FSource.Character,
-    ChangeFileExt(ExtractFileName(FSource.FileName), ''), FKey.ShowUnit, FKey.Parts);
+    ChangeFileExt(ExtractFileName(FSource.FileName), ''), FKey.Path.ShowUnit, FKey.Path.Parts);
   mInterfaces := nil;
-  if FKey.WithInterfaces then
+  if FKey.Path.WithInterfaces then
   begin
     mInterfaces := FInterfaces;
   end;
