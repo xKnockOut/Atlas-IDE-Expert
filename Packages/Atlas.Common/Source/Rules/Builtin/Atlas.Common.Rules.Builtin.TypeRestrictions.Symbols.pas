@@ -150,6 +150,27 @@ begin
   Result := mNames;
 end;
 
+/// <summary>Werte der Aufzählungen im Typ von ADecl, auch anonymer (set of (a, b), V: (a, b)).</summary>
+function EnumValueNames(ADecl: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  Result := nil;
+  for mIndex := 0 to ADecl.ChildCount - 1 do
+  begin
+    mChild := ADecl[mIndex];
+    case mChild.Kind of
+      TSyntaxKind.EnumType:
+        Result := Result + NamesBelow(mChild);
+      TSyntaxKind.SetType, TSyntaxKind.ArrayType:
+        Result := Result + EnumValueNames(mChild);
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+end;
+
 /// <summary>Namen, die der Abschnitt ASection auf oberster Ebene deklariert (Typen, Werte der Aufzählungen,
 /// Konstanten, Variablen, Routinen ohne Punkt).</summary>
 function SectionNames(ASection: TSyntaxNode): TArray<string>;
@@ -171,10 +192,9 @@ begin
         begin
           mDecl := mChild[mInner];
           Result := Result + DeclaredNames(mDecl);
-          if (mDecl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(mDecl) <> nil) and
-            (TypeOfDecl(mDecl).Kind = TSyntaxKind.EnumType) then
+          if mDecl.Kind = TSyntaxKind.TypeDecl then
           begin
-            Result := Result + NamesBelow(TypeOfDecl(mDecl));
+            Result := Result + EnumValueNames(mDecl);
           end;
         end;
       TSyntaxKind.RoutineDecl:
@@ -210,21 +230,15 @@ end;
 function TypeAndEnumNames(ATypeSection: TSyntaxNode): TArray<string>;
 var
   mIndex: Integer;
-  mDecl, mType: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   Result := nil;
   for mIndex := 0 to ATypeSection.ChildCount - 1 do
   begin
     mDecl := ATypeSection[mIndex];
-    if mDecl.Kind <> TSyntaxKind.TypeDecl then
+    if mDecl.Kind = TSyntaxKind.TypeDecl then
     begin
-      Continue;
-    end;
-    Result := Result + DeclaredNames(mDecl);
-    mType := TypeOfDecl(mDecl);
-    if (mType <> nil) and (mType.Kind = TSyntaxKind.EnumType) then
-    begin
-      Result := Result + NamesBelow(mType);
+      Result := Result + DeclaredNames(mDecl) + EnumValueNames(mDecl);
     end;
   end;
 end;

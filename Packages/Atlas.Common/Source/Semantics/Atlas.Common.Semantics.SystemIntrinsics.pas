@@ -55,9 +55,10 @@ uses
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
-  cEntries: array[0..146] of string = (
+  cEntries: array[0..150] of string = (
     'Abs|R|function Abs(X): <Typ von X>;|Betrag einer Zahl.',
     'Addr|R|function Addr(var X): Pointer;|Adresse einer Variablen oder Routine (wie @).',
+    'AddressOfReturnAddress|R|function AddressOfReturnAddress: Pointer;|Adresse, an der die Rücksprungadresse der aktuellen Routine liegt.', // german-ok (englisch in cEnglishDocumentation)
     'Append|R|procedure Append(var F: Text);|Öffnet eine Textdatei zum Anhängen.',
     'ArcTan|R|function ArcTan(const X: Extended): Extended;|Arkustangens im Bogenmaß.',
     'Assert|R|procedure Assert(Condition: Boolean);|Löst EAssertionFailed aus, wenn Condition False ist.',
@@ -101,6 +102,7 @@ const
     'Flush|R|procedure Flush(var F: Text);|Schreibt den Puffer einer Textdatei.',
     'Frac|R|function Frac(const X: Extended): Extended;|Nachkommateil einer Zahl.',
     'FreeMem|R|procedure FreeMem(var P: Pointer; Size: NativeInt = 0);|Gibt mit GetMem oder AllocMem angelegten Speicher frei.',
+    'GetDir|R|procedure GetDir(D: Byte; var S: string);|Aktuelles Verzeichnis des Laufwerks D (0 = aktuelles Laufwerk, 1 = A …).', // german-ok (englisch in cEnglishDocumentation)
     'GetMem|R|procedure GetMem(var P: Pointer; Size: NativeInt);|Legt Size Bytes Speicher an und setzt P darauf (Inhalt nicht initialisiert).',
     'GetTypeKind|R|function GetTypeKind(T): TTypeKind;|Art des Typs T, zur Übersetzungszeit ausgewertet.',
     'Halt|R|procedure Halt(ExitCode: Integer = 0);|Beendet das Programm.',
@@ -157,6 +159,8 @@ const
     'TypeInfo|R|function TypeInfo(T): Pointer;|Zeiger auf die RTTI des Typs T.',
     'TypeOf|R|function TypeOf(X): Pointer;|Zeiger auf die VMT eines Objekttyps.',
     'Val|R|procedure Val(const S: string; var V; var Code: Integer);|Wandelt einen String in eine Zahl; Code ist die Fehlerstelle oder 0.',
+    'VarArrayRedim|R|procedure VarArrayRedim(var A: Variant; HighBound: Integer);|Ändert die obere Grenze eines Variant-Arrays.', // german-ok (englisch in cEnglishDocumentation)
+    'VarClear|R|procedure VarClear(var V: Variant);|Setzt V auf Unassigned und gibt seinen Inhalt frei (auch ohne System.Variants).', // german-ok (englisch in cEnglishDocumentation)
     'Write|R|procedure Write(var F: Text; const P1);|Schreibt Werte in eine Datei bzw. auf die Konsole.',
     'Writeln|R|procedure Writeln(var F: Text; const P1);|Schreibt Werte und einen Zeilenumbruch.',
     'Boolean|T|type Boolean = (False, True);|Wahrheitswert.',
@@ -206,9 +210,10 @@ const
     'CompilerVersion|C|const CompilerVersion: Extended;|Version des Compilers (Delphi 13: 37.0), für $IF CompilerVersion >= … und im Code.');
 
   // Beschreibungen auf Englisch, in derselben Reihenfolge wie Entries (#1458).
-  cEnglishDocumentation: array[0..146] of string = (
+  cEnglishDocumentation: array[0..150] of string = (
     'Absolute value of a number.',
     'Address of a variable or routine (like @).',
+    'Address where the return address of the current routine is stored.',
     'Opens a text file for appending.',
     'Arc tangent in radians.',
     'Raises EAssertionFailed if Condition is False.',
@@ -252,6 +257,7 @@ const
     'Writes the buffer of a text file.',
     'Fractional part of a number.',
     'Frees memory allocated with GetMem or AllocMem.',
+    'Current directory of drive D (0 = current drive, 1 = A …).',
     'Allocates Size bytes of memory and points P to it (contents not initialized).',
     'Kind of type T, evaluated at compile time.',
     'Ends the program.',
@@ -308,6 +314,8 @@ const
     'Pointer to the RTTI of type T.',
     'Pointer to the VMT of an object type.',
     'Converts a string to a number; Code is the error position or 0.',
+    'Changes the upper bound of a variant array.',
+    'Sets V to Unassigned and frees its content (also without System.Variants).',
     'Writes values to a file or the console.',
     'Writes values and a line break.',
     'Boolean value.',
