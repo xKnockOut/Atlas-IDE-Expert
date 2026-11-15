@@ -29,6 +29,9 @@
 //   Tracker-Projekt die erste Zeile; ChoiceKey „projekt@verbindung“ merkt
 //   die Wahl (issues.welcomeProject). Als „Projekt“ gilt dann der Pfad aus
 //   „Gilt für“ der Zeile; Resolve nimmt für genau diesen Pfad genau diese Zeile.
+// - TAtlasTrackerProjectPick (#1967, vorher in der IDE): welche Wahl gilt,
+//   welches Projekt daraus folgt („Alle“ #1928: die zuletzt bediente Gruppe),
+//   die Ziele aller Verbindungen mit Server.
 // Ohne Netz, ohne Dateizugriff.
 
 interface
@@ -163,6 +166,32 @@ type
     class function IndexOfChoice(const AChoices: TArray<TAtlasTrackerChoice>; const AKey: string): Integer; static;
   end;
 
+  /// <summary>Wahl des Projekts in „Meine Issues“ (#1927, #1928) aus den Einstellungen.</summary>
+  TAtlasTrackerProjectPick = class
+  public
+    /// <summary>Gültige Wahl: mit issues.projectPicker die gemerkte AStored (cAllKey nur mit issues.allProjects,
+    /// sonst nur eine, die es in AChoices noch gibt); '' = automatisch.</summary>
+    class function ChosenKey(APicker: Boolean; const AStored: string; AAllProjects: Boolean;
+      const AChoices: TArray<TAtlasTrackerChoice>): string; static;
+    /// <summary>„Alle“: AFocus (die zuletzt bediente Gruppe), wenn sie in AProjects steht, sonst das erste; ''
+    /// ohne.</summary>
+    class function FocusedProject(const AProjects: TArray<string>; const AFocus: string): string; static;
+    /// <summary>Fest gewählte Zeile AKey (nicht „Alle“): ihr Pfad aus „Gilt für“; False ohne passende Zeile.
+    /// </summary>
+    class function ChosenProject(const AChoices: TArray<TAtlasTrackerChoice>; const AKey: string;
+      out AProject: string): Boolean; static;
+    /// <summary>Projekte der Kachel: mit „Alle“ (AKey = cAllKey) der Pfad jeder Zeile, sonst ACurrent (leer ohne).
+    /// </summary>
+    class function Projects(const AKey, ACurrent: string; const AChoices: TArray<TAtlasTrackerChoice>):
+      TArray<string>; static;
+    /// <summary>Ziele aller Verbindungen mit eingetragenem Server.</summary>
+    class function ServerTargets(const AConnections: TArray<TAtlasTrackerConnection>): TArray<TAtlasTrackerTarget>;
+      static;
+    /// <summary>Darf als Seite geöffnet werden: nur http(s), nie etwas anderes aus der Antwort des Trackers.
+    /// </summary>
+    class function IsWebPage(const AUrl: string): Boolean; static;
+  end;
+
 implementation
 
 uses
@@ -171,6 +200,8 @@ uses
   Atlas.Text.Json;
 
 const
+  cHttps = 'https://';
+  cHttp = 'http://';
   // Länge der kürzesten Wurzel mit Trenner („C:\“).
   cRootLength = 3;
   cKeyMatch = 'match';
@@ -601,6 +632,109 @@ begin
       Exit(mIndex);
     end;
   end;
+end;
+
+{ TAtlasTrackerProjectPick }
+
+class function TAtlasTrackerProjectPick.ChosenKey(APicker: Boolean; const AStored: string; AAllProjects: Boolean;
+  const AChoices: TArray<TAtlasTrackerChoice>): string;
+begin
+  Result := '';
+  if not APicker or (AStored = '') then
+  begin
+    Exit;
+  end;
+  if AStored = TAtlasTrackerProjects.cAllKey then
+  begin
+    if AAllProjects then
+    begin
+      Result := TAtlasTrackerProjects.cAllKey;
+    end;
+    Exit;
+  end;
+  if TAtlasTrackerProjects.IndexOfChoice(AChoices, AStored) >= 0 then
+  begin
+    Result := AStored;
+  end;
+end;
+
+class function TAtlasTrackerProjectPick.FocusedProject(const AProjects: TArray<string>; const AFocus: string): string;
+var
+  mProject: string;
+begin
+  Result := '';
+  for mProject in AProjects do
+  begin
+    if (Result = '') or SameText(mProject, AFocus) then
+    begin
+      Result := mProject;
+    end;
+  end;
+end;
+
+class function TAtlasTrackerProjectPick.ChosenProject(const AChoices: TArray<TAtlasTrackerChoice>; const AKey: string;
+  out AProject: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  AProject := '';
+  Result := False;
+  if (AKey = '') or (AKey = TAtlasTrackerProjects.cAllKey) then
+  begin
+    Exit;
+  end;
+  mIndex := TAtlasTrackerProjects.IndexOfChoice(AChoices, AKey);
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    AProject := AChoices[mIndex].Match;
+  end;
+end;
+
+class function TAtlasTrackerProjectPick.Projects(const AKey, ACurrent: string;
+  const AChoices: TArray<TAtlasTrackerChoice>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if AKey <> TAtlasTrackerProjects.cAllKey then
+  begin
+    if ACurrent <> '' then
+    begin
+      Result := TArray<string>.Create(ACurrent);
+    end;
+    Exit;
+  end;
+  SetLength(Result, Length(AChoices));
+  for mIndex := 0 to High(AChoices) do
+  begin
+    Result[mIndex] := AChoices[mIndex].Match;
+  end;
+end;
+
+class function TAtlasTrackerProjectPick.ServerTargets(
+  const AConnections: TArray<TAtlasTrackerConnection>): TArray<TAtlasTrackerTarget>;
+var
+  mConnection: TAtlasTrackerConnection;
+  mCount: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AConnections));
+  mCount := 0;
+  for mConnection in AConnections do
+  begin
+    if mConnection.Target.Server <> '' then
+    begin
+      Result[mCount] := mConnection.Target;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TAtlasTrackerProjectPick.IsWebPage(const AUrl: string): Boolean;
+begin
+  Result := AUrl.StartsWith(cHttps, True) or AUrl.StartsWith(cHttp, True);
 end;
 
 end.
