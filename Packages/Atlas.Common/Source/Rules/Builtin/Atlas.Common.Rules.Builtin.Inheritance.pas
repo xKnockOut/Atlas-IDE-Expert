@@ -20,7 +20,7 @@
 //                                       läuft in EAbstractError; Delphi 13 übersetzt das ohne E2373
 //                                       (#1383). Die Methode löst TNameResolver samt Überladungen auf
 //   class-reference-nonvirtual-constructor  Create über eine Klassenreferenz (class of TBasis), deren
-//                                       Konstruktor nicht virtuell ist (E2391, #1032); läuft immer der
+//                                       Konstruktor nicht virtuell ist (#1032); läuft immer der
 //                                       Konstruktor der Basisklasse
 //   member-hides-ancestor               Property heißt wie ein Feld des Vorfahren (W1009), Feld wie ein
 //                                       Feld oder eine Property, nicht virtuelle Methode wie eine gleich
@@ -259,14 +259,15 @@ begin
 end;
 
 /// <summary>AMethod verdeckt die virtuelle Methode AFound: virtual bei gleicher Signatur prüft
-/// virtual-instead-of-override; eine Überladung mit anderer Signatur verdeckt nichts.</summary>
+/// virtual-instead-of-override. Bei anderer Signatur entscheidet wie bei dcc (W1010) die verdeckte Methode:
+/// Trägt sie overload, ergänzt der Nachfahr die Überladungen; overload nur am Nachfahren verdeckt weiter.</summary>
 function HidesVirtual(const AMethod: TMethodDecl; const AFound: TInherited): Boolean;
 var
   mIsVirtual: Boolean;
 begin
   mIsVirtual := AMethod.Has('virtual') or AMethod.Has('dynamic');
   Result := AFound.Found and not (mIsVirtual and AFound.SameSignature);
-  Result := Result and not (AMethod.Has('overload') and not AFound.SameSignature);
+  Result := Result and not (MatchText('overload', AFound.Symbol.Directives) and not AFound.SameSignature);
 end;
 
 /// <summary>Meldet hides-virtual mit override (nur bei gleicher Signatur) und reintroduce als Korrekturen.</summary>

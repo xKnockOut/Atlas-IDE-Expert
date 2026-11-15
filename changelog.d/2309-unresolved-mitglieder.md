@@ -1,4 +1,0 @@
-### Behoben
-- `unresolved-identifier` meldet Mitglieder, die der sicher bekannte Typ des Empfängers nicht hat, wie E2003 (#2309): `Feld.Handle` eines eigenen Typs ohne `Handle`, Aufzählungswerte mit Typ davor (`TSignalKind.None`), Mitglieder von Interfaces (`IOTAProcessModule.FileName`). Rümpfe anonymer Methoden werden jetzt mitgeprüft (Merge-Reste wie ein gelöschtes `ResultsOfProject`).
-- `--check <Modul>.dproj` findet die Quelle der Packages aus `requires` auch in der Projektgruppe darüber (`Packages/<Modul>/<Modul>.dproj` unter `Atlas.groupproj`); der Server sucht sie bei allen Projekten der Gruppe, nicht nur den geladenen (#2309). `unresolved-identifier` schweigt wie `unresolved-type`, solange eine Unit aus `uses` im Index fehlt, statt jeden ihrer Namen als nicht deklariert zu melden.
-- `argument-count-mismatch`: kein Fehlalarm mehr bei `TControlClass(X.ClassType).Create(nil)`; eine Umwandlung in eine Klassenreferenz ruft den Konstruktor der Zielklasse (#2309).

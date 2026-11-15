@@ -1,2 +1,0 @@
-### Behoben
-- Linux-Server: `TRegEx.Escape` lieferte unter Free Pascal ein Muster aus halb ungesetztem Speicher. Je nach Speicherlage (etwa der Länge des Dateipfads) fielen dadurch alle Treffer von `message-handler-without-inherited` in einer Datei weg, und die Code-Aktionen Try/Finally, Felder zuweisen, Freigabe absichern sowie die Prüfung der Projektpfade scheiterten mit einem Regex-Fehler. Gefunden beim Lauf über fremde Delphi-Projekte (cnvcl).

@@ -107,7 +107,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.Attributes;
+  Atlas.Common.Semantics.Attributes,
+  Atlas.Common.Pascal.Lexer;
 
 /// <summary>&amp;Begin → Begin.</summary>
 function CleanName(const AText: string): string;
@@ -122,16 +123,18 @@ begin
   end;
 end;
 
-/// <summary>Namen der Kette, die an ATokens[AIndex] endet; AFirst: Platz des ersten Namens.</summary>
+/// <summary>Namen der Kette, die an ATokens[AIndex] endet, wie im Quelltext (mit Escape-&amp;); AFirst: Platz des
+/// ersten Namens. ResolveNames nimmt das Escape-&amp; ab; vorher entfernt, machte es aus &amp;&amp;op_Equality
+/// op_Equality.</summary>
 function NamesBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AFirst: Integer): TArray<string>;
 begin
-  Result := TArray<string>.Create(CleanName(ATokens[AIndex].Text));
+  Result := TArray<string>.Create(ATokens[AIndex].Text);
   AFirst := AIndex;
   while (AFirst >= 2) and ATokens[AFirst - 1].IsSymbol('.') and
     (ATokens[AFirst - 2].Kind = TPascalTokenKind.Identifier) do
   begin
     Dec(AFirst, 2);
-    Result := TArray<string>.Create(CleanName(ATokens[AFirst].Text)) + Result;
+    Result := TArray<string>.Create(ATokens[AFirst].Text) + Result;
   end;
 end;
 
@@ -336,7 +339,7 @@ begin
   // die folgenden Teile ergänzen und den längsten passenden Unit-Namen nehmen.
   Result := False;
   mLast := AAt.Index;
-  mUnitName := string.Join('.', AAt.Names);
+  mUnitName := TPascalLexer.PlainName(string.Join('.', AAt.Names));
   while (mLast + 2 < Length(AAt.Tokens)) and AAt.Tokens[mLast + 1].IsSymbol('.') and
     (AAt.Tokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
   begin
@@ -466,17 +469,24 @@ end;
 function TResolverChains.ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
   AOffset: Integer; const AStart: TResolverChainStart): TArray<TResolvedSymbol>;
 var
-  mConsumed: Integer;
+  mConsumed, mIndex: Integer;
   mCandidates: TArray<TResolvedSymbol>;
+  mNames: TArray<string>;
 begin
   Result := nil;
   if (ATree = nil) or (Length(ANames) = 0) then
   begin
     Exit;
   end;
+  // Namen aus dem Baum tragen das Escape-& (&Type, &if); Index und lokale Namen führen sie ohne.
+  SetLength(mNames, Length(ANames));
+  for mIndex := 0 to High(ANames) do
+  begin
+    mNames[mIndex] := TPascalLexer.PlainName(ANames[mIndex]);
+  end;
   FPlace.MoveTo(ATree, AFileName, AOffset);
-  if not StartCandidates(ANames, AStart, mConsumed, mCandidates) or
-    not FollowChain(ANames, mConsumed, mCandidates) then
+  if not StartCandidates(mNames, AStart, mConsumed, mCandidates) or
+    not FollowChain(mNames, mConsumed, mCandidates) then
   begin
     Exit;
   end;
@@ -633,7 +643,7 @@ begin
     Exit;
   end;
   FPlace.MoveTo(ATree, AFileName, ACallee.StartOffset);
-  if WithDecides(ACallee.Name, Result) then
+  if WithDecides(TPascalLexer.PlainName(ACallee.Name), Result) then
   begin
     Exit;
   end;

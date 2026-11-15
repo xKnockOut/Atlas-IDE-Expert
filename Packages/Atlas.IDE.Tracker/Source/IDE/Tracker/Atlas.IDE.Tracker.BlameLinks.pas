@@ -36,7 +36,6 @@ uses
   Vcl.AppEvnts,
   Vcl.Menus,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.BlamePlan,
   Atlas.Core.Tracker.CodeLinks,
@@ -103,6 +102,7 @@ type
 implementation
 
 uses
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.BlameLinks,
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,

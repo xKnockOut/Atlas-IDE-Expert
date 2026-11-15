@@ -843,6 +843,12 @@ type
     /// <summary>Token "default" hinter dem Semikolon der Property ASymbol; -1 ohne.</summary>
     function DefaultToken(const ASymbol: TIndexSymbol): Integer;
     function SameIndexTypes(const A, B: TIndexSymbol): Boolean;
+    /// <summary>Anfang der Typdeklaration, in der ASymbol steht (die innerste mit dem Namen seines Containers);
+    /// False ohne.</summary>
+    function OwnerStart(const ASymbol: TIndexSymbol; out AStart: TTextPosition): Boolean;
+    /// <summary>Stehen beide Properties im selben Typ? IList und IList&lt;T&gt; (JclContainerIntf) haben denselben
+    /// Containernamen, sind aber zwei Typen mit je eigener default-Property.</summary>
+    function SameOwner(const A, B: TIndexSymbol): Boolean;
     /// <summary>Meldet E2131, wenn ASymbol mit der früheren default-Property AEarlier kollidiert.</summary>
     function ReportsConflict(const ARange: TTextRange; const AEarlier, ASymbol: TIndexSymbol): Boolean;
     procedure CheckDeclaration(const ASymbol: TIndexSymbol; var ASeen: TArray<TIndexSymbol>);
@@ -920,10 +926,40 @@ begin
   end;
 end;
 
+function TDefaultPropertyScan.OwnerStart(const ASymbol: TIndexSymbol; out AStart: TTextPosition): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  AStart := Default(TTextPosition);
+  for mSymbol in FAncestry.Local.Symbols do
+  begin
+    if (mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(mSymbol.Name, ASymbol.Container) and
+      mSymbol.Range.Contains(ASymbol.Range.StartPos) and (not Result or (mSymbol.Range.StartPos.Line > AStart.Line) or
+      ((mSymbol.Range.StartPos.Line = AStart.Line) and (mSymbol.Range.StartPos.Character > AStart.Character))) then
+    begin
+      AStart := mSymbol.Range.StartPos;
+      Result := True;
+    end;
+  end;
+end;
+
+function TDefaultPropertyScan.SameOwner(const A, B: TIndexSymbol): Boolean;
+var
+  mStartA, mStartB: TTextPosition;
+begin
+  Result := True;
+  if OwnerStart(A, mStartA) and OwnerStart(B, mStartB) then
+  begin
+    Result := (mStartA.Line = mStartB.Line) and (mStartA.Character = mStartB.Character);
+  end;
+end;
+
 function TDefaultPropertyScan.ReportsConflict(const ARange: TTextRange; const AEarlier,
   ASymbol: TIndexSymbol): Boolean;
 begin
-  Result := Comparable(AEarlier, ASymbol);
+  Result := Comparable(AEarlier, ASymbol) and SameOwner(AEarlier, ASymbol);
   if not Result then
   begin
     Exit;

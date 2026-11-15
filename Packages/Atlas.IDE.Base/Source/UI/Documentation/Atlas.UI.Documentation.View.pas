@@ -16,7 +16,6 @@ uses
   System.Types,
   Vcl.Graphics,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Documentation.Contract,
   Atlas.Core.Documentation.Layout,
   Atlas.Core.Documentation.Typeset;
 
@@ -128,6 +127,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Documentation.Contract,
   Atlas.Core.Style.Color,
   Atlas.UI.Popup.Draw,
   System.SysUtils,

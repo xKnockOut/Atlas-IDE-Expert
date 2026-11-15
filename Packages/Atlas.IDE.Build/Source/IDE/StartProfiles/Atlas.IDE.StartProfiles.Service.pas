@@ -39,7 +39,6 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
-  Atlas.Core.StartProfiles.Picker,
   Atlas.UI.Strings,
   Atlas.UI.Build.Strings;
 
@@ -99,6 +98,7 @@ implementation
 uses
   Vcl.Forms,
   Vcl.Dialogs,
+  Atlas.Core.StartProfiles.Picker,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,

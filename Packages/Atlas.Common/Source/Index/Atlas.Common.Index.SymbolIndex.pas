@@ -125,6 +125,10 @@ type
     FFiles: TDictionary<string, TUnitIndex>;
     // Unit-Name (groß) → Dateiname (groß)
     FUnitFiles: TDictionary<string, string>;
+    // Dateischlüssel → Reihenfolge der ersten Aufnahme. Gibt es eine Unit in mehreren Dateien, gilt wie bei dcc
+    // die zuerst gefundene: Projektdateien (mit in-Pfad der dpr) vor den Suchpfaden, diese in ihrer Reihenfolge.
+    FArrival: TDictionary<string, Int64>;
+    FArrivalSerial: Int64;
     // Zählerstände und Speicherschätzung aller abgelegten Units.
     FTotals: TSymbolIndexTotals;
     FPool: TStringPool;
@@ -143,7 +147,13 @@ type
     /// <summary>Verkleinert die Unit AKey im Durchgang APass: 0 Bibliothek kompakt halten, 1 Verwendungen der
     /// Projekt-Units auslagern, 2 Projekt-Units kompakt halten.</summary>
     procedure ShrinkUnitLocked(APass: Integer; const AKey: string);
-    procedure RemoveFileLocked(const AFileKey: string);
+    /// <summary>Nimmt AFileKey heraus; ARemap: Zeigte der Unit-Name auf die Datei, gilt danach die nächstbeste
+    /// gleichnamige.</summary>
+    procedure RemoveFileLocked(const AFileKey: string; ARemap: Boolean);
+    /// <summary>Geht AKey bei gleichem Unit-Namen AOtherKey vor? Projekt vor Bibliothek, sonst die frühere.</summary>
+    function RanksBeforeLocked(const AKey, AOtherKey: string): Boolean;
+    /// <summary>Ordnet AUnitName der vorrangigen Datei mit dieser Unit zu (nach dem Herausnehmen).</summary>
+    procedure MapUnitLocked(const AUnitName: string);
     /// <summary>Baut die Tabellen neu, wenn die toten Verweise überwiegen.</summary>
     procedure CleanRefsLocked;
   public
@@ -216,6 +226,7 @@ begin
   FUnavailable := TDictionary<string, Boolean>.Create;
   FFiles := TDictionary<string, TUnitIndex>.Create;
   FUnitFiles := TDictionary<string, string>.Create;
+  FArrival := TDictionary<string, Int64>.Create;
   FPool := TStringPool.Create;
   FRefs := TSymbolRefTables.Create;
   FShrinkable := TDictionary<string, Boolean>.Create;
@@ -231,6 +242,7 @@ begin
   FShrinkable.Free;
   FRefs.Free;
   FPool.Free;
+  FArrival.Free;
   FUnitFiles.Free;
   FFiles.Free;
   FUnavailable.Free;
@@ -241,6 +253,7 @@ end;
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
 var
   mStored: TUnitIndex;
+  mName, mCurrent: string;
 begin
   // Jede abgelegte Fassung bekommt ihre eigene Namenstabelle (Diagnoselog 15.10.2026); FindUnit und
   // FindFile geben sie mit, die Namensauflösung sucht darüber statt linear.
@@ -253,7 +266,12 @@ begin
     FUnavailable.AddOrSetValue(AKey, True);
   end;
   Inc(FGeneration);
-  FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
+  // Gleichnamige Unit in einer anderen Datei: nicht die zuletzt gelesene gewinnt, sondern die vorrangige (wie dcc).
+  mName := UpperCase(AUnit.UnitName);
+  if not FUnitFiles.TryGetValue(mName, mCurrent) or (mCurrent = AKey) or RanksBeforeLocked(AKey, mCurrent) then
+  begin
+    FUnitFiles.AddOrSetValue(mName, AKey);
+  end;
   FTotals.Count(AUnit, 1);
   if not AUnit.Compact or (Length(AUnit.Usages) > 0) then
   begin
@@ -521,13 +539,13 @@ begin
   begin
     if Length(mExisting.Usages) > 0 then
     begin
-      RemoveFileLocked(AKey);
+      RemoveFileLocked(AKey, False);
       AddLocked(AKey, TIndexMemory.WithoutUsages(mExisting));
     end;
   end
   else if not mExisting.Compact and ((APass = 2) or mExisting.Library_) then
   begin
-    RemoveFileLocked(AKey);
+    RemoveFileLocked(AKey, False);
     AddLocked(AKey, TIndexMemory.Compacted(TIndexMemory.WithoutUsages(mExisting)));
   end;
 end;
@@ -537,7 +555,7 @@ begin
   Result := (ABudget > 0) and (Bytes > ABudget);
 end;
 
-procedure TSymbolIndex.RemoveFileLocked(const AFileKey: string);
+procedure TSymbolIndex.RemoveFileLocked(const AFileKey: string; ARemap: Boolean);
 var
   mExisting: TUnitIndex;
   mUnitFile: string;
@@ -556,6 +574,57 @@ begin
   if FUnitFiles.TryGetValue(UpperCase(mExisting.UnitName), mUnitFile) and (mUnitFile = AFileKey) then
   begin
     FUnitFiles.Remove(UpperCase(mExisting.UnitName));
+    if ARemap then
+    begin
+      MapUnitLocked(mExisting.UnitName);
+    end;
+  end;
+end;
+
+function TSymbolIndex.RanksBeforeLocked(const AKey, AOtherKey: string): Boolean;
+var
+  mUnit, mOther: TUnitIndex;
+  mArrival, mOtherArrival: Int64;
+begin
+  if not FFiles.TryGetValue(AOtherKey, mOther) then
+  begin
+    Exit(True);
+  end;
+  if not FFiles.TryGetValue(AKey, mUnit) then
+  begin
+    Exit(False);
+  end;
+  if mUnit.Library_ <> mOther.Library_ then
+  begin
+    Exit(not mUnit.Library_);
+  end;
+  if not FArrival.TryGetValue(AKey, mArrival) then
+  begin
+    mArrival := High(Int64);
+  end;
+  if not FArrival.TryGetValue(AOtherKey, mOtherArrival) then
+  begin
+    mOtherArrival := High(Int64);
+  end;
+  Result := mArrival < mOtherArrival;
+end;
+
+procedure TSymbolIndex.MapUnitLocked(const AUnitName: string);
+var
+  mPair: TPair<string, TUnitIndex>;
+  mBest: string;
+begin
+  mBest := '';
+  for mPair in FFiles do
+  begin
+    if SameText(mPair.Value.UnitName, AUnitName) and ((mBest = '') or RanksBeforeLocked(mPair.Key, mBest)) then
+    begin
+      mBest := mPair.Key;
+    end;
+  end;
+  if mBest <> '' then
+  begin
+    FUnitFiles.AddOrSetValue(UpperCase(AUnitName), mBest);
   end;
 end;
 
@@ -577,7 +646,8 @@ end;
 procedure TSymbolIndex.AddUnit(const AUnit: TUnitIndex);
 var
   mKey: string;
-  mPooled: TUnitIndex;
+  mPooled, mOld: TUnitIndex;
+  mRemap: Boolean;
 begin
   mKey := AnsiUpperCase(AUnit.FileName);
   mPooled := AUnit;
@@ -592,7 +662,15 @@ begin
   FPool.InternUnit(mPooled);
   FLock.Enter;
   try
-    RemoveFileLocked(mKey);
+    if not FArrival.ContainsKey(mKey) then
+    begin
+      Inc(FArrivalSerial);
+      FArrival.Add(mKey, FArrivalSerial);
+    end;
+    // Gleicher Name und gleiche Art: AddLocked ordnet die Datei gleich wieder zu, kein Suchen nötig.
+    mRemap := FFiles.TryGetValue(mKey, mOld) and
+      (not SameText(mOld.UnitName, mPooled.UnitName) or (mOld.Library_ <> mPooled.Library_));
+    RemoveFileLocked(mKey, mRemap);
     AddLocked(mKey, mPooled);
     // Vor ShrinkLocked: Danach können die Verwendungen schon ausgelagert sein.
     FUsageCounts.Replace(mKey, mPooled);
@@ -607,7 +685,8 @@ procedure TSymbolIndex.RemoveFile(const AFileName: string);
 begin
   FLock.Enter;
   try
-    RemoveFileLocked(AnsiUpperCase(AFileName));
+    RemoveFileLocked(AnsiUpperCase(AFileName), True);
+    FArrival.Remove(AnsiUpperCase(AFileName));
     FUsageCounts.Remove(AnsiUpperCase(AFileName));
     CleanRefsLocked;
   finally

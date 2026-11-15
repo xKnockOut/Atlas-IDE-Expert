@@ -95,7 +95,8 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.Lexer;
 
 /// <summary>Setzt bei allen Konstruktoren in AList den erzeugten Typ AType.</summary>
 procedure MarkConstructed(var AList: TArray<TResolvedSymbol>; const AType: TResolvedSymbol);
@@ -271,7 +272,7 @@ begin
   mSavedOffset := FPlace.Offset;
   FPlace.Offset := ANode.StartOffset;
   try
-    if not ResolveFirstAll([ANode.Name], mConsumed, Result) then
+    if not ResolveFirstAll([TPascalLexer.PlainName(ANode.Name)], mConsumed, Result) then
     begin
       Result := nil;
     end;
@@ -291,13 +292,13 @@ begin
   end;
   if mOwner.Kind = TResolvedKind.UnitName then
   begin
-    Result := UnitMemberCandidates(mOwner, ANode.Name);
+    Result := UnitMemberCandidates(mOwner, TPascalLexer.PlainName(ANode.Name));
   end
   else if FTyping.TypeOf(mOwner, mType) then
   begin
     // Eine Typumwandlung TFoo(X) liefert den Typ als Symbol, ist aber ein Wert (#2309:
     // TControlClass(AControl.ClassType).Create(nil) ruft den Konstruktor von TControl, nicht TObject.Create).
-    Result := TypeMemberCandidates(mType, ANode.Name, not mOwner.IsType or
+    Result := TypeMemberCandidates(mType, TPascalLexer.PlainName(ANode.Name), not mOwner.IsType or
       (ANode[0].Kind = TSyntaxKind.Call));
   end;
 end;

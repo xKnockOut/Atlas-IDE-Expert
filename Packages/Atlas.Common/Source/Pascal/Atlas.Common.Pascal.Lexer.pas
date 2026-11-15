@@ -627,6 +627,11 @@ var
   mIndex: Integer;
   mAtStart: Boolean;
 begin
+  // Fast immer ohne &: kein neuer String (die Namensauflösung ruft das je Nachschlagen auf).
+  if Pos('&', AName) = 0 then
+  begin
+    Exit(AName);
+  end;
   Result := '';
   mAtStart := True;
   for mIndex := 1 to Length(AName) do

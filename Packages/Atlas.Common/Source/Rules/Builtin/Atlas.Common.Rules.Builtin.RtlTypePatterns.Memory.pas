@@ -706,6 +706,8 @@ const
   cPassThroughCasts: array[0..9] of string = ('LPARAM', 'WPARAM', 'NativeInt', 'NativeUInt', 'Pointer', 'Integer',
     'Cardinal', 'Int64', 'UInt64', 'IntPtr');
   cStringCasts: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString');
+  // Weitere String-Typen als Ergebnis eines Aufrufs (nach Aliasen).
+  cOtherStrings: array[0..2] of string = ('UTF8String', 'ShortString', 'Variant');
   // Eingebaute Funktionen mit Zahlenergebnis: SizeOf(…) in PAnsiChar(NativeUInt(P) + SizeOf(T)) ist kein String.
   cNumberIntrinsics: array[0..9] of string = ('SizeOf', 'Length', 'High', 'Low', 'Ord', 'Succ', 'Pred', 'Round',
     'Trunc', 'Abs');
@@ -803,6 +805,21 @@ var
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   end;
 
+  // Ist der Typ des Aufrufs ANode samt Aliasen bekannt? Dann sagt ANonString, ob er kein String ist.
+  function KnownResultType(ANode: TSyntaxNode; out ANonString: Boolean): Boolean;
+  var
+    mSymbol, mType: TResolvedSymbol;
+    mTypeFound: Boolean;
+  begin
+    ANonString := False;
+    Result := mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mType, mTypeFound) and mTypeFound and
+      (mType.Name <> '');
+    if Result then
+    begin
+      ANonString := not MatchText(mType.Name, cStringCasts) and not MatchText(mType.Name, cOtherStrings);
+    end;
+  end;
+
   // Ein Aufruf, den der Index als Umwandlung in einen Typ ohne String (TCnNativeUInt(P)) oder als Funktion mit
   // Zahlen- bzw. Zeigerergebnis kennt (LocalAlloc), liefert keinen String.
   function KnownNonString(ANode: TSyntaxNode): Boolean;
@@ -810,7 +827,13 @@ var
     mSymbol: TResolvedSymbol;
   begin
     Result := False;
-    if (ANode.Kind <> TSyntaxKind.Call) or (Pos('.', ANode.Name) > 0) or (mResolver = nil) then
+    if (ANode.Kind <> TSyntaxKind.Call) or (mResolver = nil) then
+    begin
+      Exit;
+    end;
+    // Ergebnistyp samt Aliasen bekannt (HLOCAL von LocalAlloc, Image.RvaToVa: Pointer): String nur bei
+    // String-Typen.
+    if KnownResultType(ANode, Result) or (Pos('.', ANode.Name) > 0) then
     begin
       Exit;
     end;

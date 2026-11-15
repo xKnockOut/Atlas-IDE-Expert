@@ -92,6 +92,10 @@ type
     procedure FindsUnitsAndSymbols;
     [Test]
     procedure ReplacesUnitOfSameFile;
+    /// <summary>Gleichnamige Units in zwei Dateien: die zuerst aufgenommene gilt, Projekt vor Bibliothek; ohne
+    /// sie die nächste.</summary>
+    [Test]
+    procedure SameNamedUnitsKeepFirstFile;
     [Test]
     procedure FindsDescendants;
     [Test]
@@ -839,6 +843,34 @@ begin
   mIndex.RemoveFile('C:\A.PAS');
   Assert.AreEqual(0, mIndex.UnitCount);
   Assert.IsFalse(mIndex.FindUnit('A', U));
+end;
+
+procedure TSymbolIndexTests.SameNamedUnitsKeepFirstFile;
+var
+  mIndex: ISymbolIndex;
+  mLibrary: TUnitIndex;
+  U: TUnitIndex;
+begin
+  mIndex := TSymbolIndex.Create;
+  mLibrary := MakeUnit('X', 'C:\Lib\X.pas', ['TBib']);
+  mLibrary.Library_ := True;
+  mIndex.AddUnit(mLibrary);
+  mIndex.AddUnit(MakeUnit('X', 'C:\P\a\X.pas', ['IFoo']));
+  mIndex.AddUnit(MakeUnit('X', 'C:\P\b\X.pas', ['TB']));
+  Assert.IsTrue(mIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\a\X.pas', U.FileName);
+  // Neu gelesen bleibt die Reihenfolge; umbenannt gibt die Datei den Namen frei.
+  mIndex.AddUnit(MakeUnit('X', 'C:\P\b\X.pas', ['TB2']));
+  mIndex.AddUnit(MakeUnit('X', 'C:\P\a\X.pas', ['IFoo']));
+  Assert.IsTrue(mIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\a\X.pas', U.FileName);
+  mIndex.AddUnit(MakeUnit('Y', 'C:\P\a\X.pas', ['IFoo']));
+  Assert.IsTrue(mIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\P\b\X.pas', U.FileName);
+  mIndex.RemoveFile('C:\P\b\X.pas');
+  Assert.IsTrue(mIndex.FindUnit('X', U));
+  Assert.AreEqual('C:\Lib\X.pas', U.FileName);
+  Assert.IsTrue(mIndex.FindUnit('Y', U));
 end;
 
 procedure TSymbolIndexTests.FindsDescendants;

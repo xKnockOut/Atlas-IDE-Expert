@@ -58,7 +58,6 @@ uses
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.PipelineSettings,
-  Atlas.Core.BuildPipeline.ReleaseGuard,
   Atlas.Core.BuildPipeline.Gate;
 
 const

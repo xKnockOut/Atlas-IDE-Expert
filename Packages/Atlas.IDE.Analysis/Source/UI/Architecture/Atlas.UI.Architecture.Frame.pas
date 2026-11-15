@@ -54,7 +54,6 @@ uses
   Vcl.ComCtrls,
   Vcl.Forms,
   Vcl.Menus,
-  Atlas.Core.Architecture.MapState,
   Atlas.Core.Architecture.Model,
   Atlas.UI.Architecture.Map,
   Atlas.UI.Architecture.Slider;
@@ -257,6 +256,7 @@ uses
   System.Types,
   Vcl.Dialogs,
   Vcl.Themes,
+  Atlas.Core.Architecture.MapState,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Architecture.Assignment,

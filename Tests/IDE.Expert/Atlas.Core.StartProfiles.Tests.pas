@@ -9,8 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.Core.Settings.TeamFile,
-  Atlas.Core.StartProfiles.Store;
+  Atlas.Core.Settings.TeamFile;
 
 type
   [TestFixture]
@@ -63,6 +62,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  Atlas.Core.StartProfiles.Store,
   Atlas.Core.Files.DataFile;
 
 const

@@ -34,7 +34,6 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Tracker.BoardPlan,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
@@ -130,6 +129,7 @@ implementation
 uses
   Winapi.Windows,
   System.DateUtils,
+  Atlas.Core.Tracker.BoardPlan,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,

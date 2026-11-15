@@ -545,8 +545,6 @@ begin
     'und darf THilfe aus dem implementation-Teil nicht verwenden (wie E2506).|' +
     '24: TListe.Pruefen gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf Hilf ' +
     'aus dem implementation-Teil nicht verwenden (wie E2506).|' +
-    '24: TListe.Pruefen gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf ' +
-    'Grenze aus dem implementation-Teil nicht verwenden (wie E2506).|' +
     '32: TWerkzeug.Neu gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und darf Hilf ' +
     'aus dem implementation-Teil nicht verwenden (wie E2506).', Messages(GenericFindings(mSource)));
   // Gleichnamige Mitglieder, lokale Namen, Deklarationen im interface-Teil, with und nicht generische Typen.
@@ -557,6 +555,13 @@ begin
     '  with Self do'#10'    Hilf := Grenze;'#10'end;'#10 +
     'procedure TFest.Pruefen;'#10'begin'#10'  if Hilf > Grenze then'#10'    Exit;'#10'end;'#10);
   Assert.AreEqual('', Messages(GenericFindings(mSource)));
+  // Echte Konstanten setzt dcc ein (Grenze oben, DMVC FLUSH_THRESHOLD_BYTES = 64 * 1024); eine typisierte
+  // Konstante bleibt E2506 (dcc-Probe Delphi 13).
+  mSource := GenericUnit('  TListe<T> = class'#10'    function Wert: Integer;'#10'  end;'#10,
+    'const'#10'  cSchwelle = 64 * 1024;'#10'  cTyp: Integer = 7;'#10 +
+    'function TListe<T>.Wert: Integer;'#10'begin'#10'  Result := cSchwelle + cTyp;'#10'end;'#10);
+  Assert.AreEqual('13: TListe.Wert gehört zu einem generischen Typ bzw. ist generisch, steht im interface-Teil und ' +
+    'darf cTyp aus dem implementation-Teil nicht verwenden (wie E2506).', Messages(GenericFindings(mSource)));
 end;
 
 /// <summary>Index mit der Unit Klassen (TBasis, TZweite, IZeigbar, TZahl als Alias).</summary>
@@ -841,6 +846,10 @@ begin
     'nicht verwenden (wie E2441).',
     Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10'function Frei: Integer; inline;'#10,
     'const'#10'  Start: Integer = 2;'#10'function Frei: Integer;'#10'begin'#10'  Result := Start;'#10'end;'#10))));
+  // Werte einer anonymen Aufzählung (set of (…)) im implementation-Teil zählen wie benannte.
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10 +
+    'function Frei: Boolean; inline;'#10, 'type'#10'  TArten = set of (arEins, arZwei);'#10 +
+    'function Frei: Boolean;'#10'begin'#10'  Result := arZwei in [arEins];'#10'end;'#10))));
 end;
 
 procedure TTypeRestrictionViolatedTests.ThreadVars;

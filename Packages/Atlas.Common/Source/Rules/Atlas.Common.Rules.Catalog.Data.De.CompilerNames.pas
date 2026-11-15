@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerNames: array[0..232] of string = (
+  cCatalogLinesDeCompilerNames: array[0..222] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Veraltetes oder gebundenes Symbol",',
@@ -115,14 +115,6 @@ const
     'braucht die Regel die Unit-Suche des Projekts und schweigt ohne sichere Antwort. Die Quellen der RTL (source/rtl) prüft sie nicht. Nicht gemeldet: E2447, W1051 und X2421 gehören zu den Namensräumen de' +
     'r .NET-Metadaten, die dcc32/dcc64 nicht erzeugt; für E2399 nennt die Dokumentation keine Bedingung, und eine Unit Kunden neben Kunden.Daten übersetzt Delphi ohne Fehler (Spring.pas neben Spring.Collec' +
     'tions.pas). Schnellkorrektur für {$NOINCLUDE}: eine ähnlich geschriebene bekannte Unit einsetzen."',
-    '    },',
-    '{',
-    '      "id": "implicit-variants-unit",',
-    '      "name": "Variant ohne System.Variants in uses",',
-    '      "description": "Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisi' +
-    'erungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in Syst' +
-    'em, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in us' +
-    'es aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt)."',
     '    },',
     '{',
     '      "id": "anonymous-capture-invalid",',
@@ -400,15 +392,6 @@ const
     'en, die der Compiler ohne Deklaration in System.pas kennt (Text, TextFile, Real48, OpenString …), gelten als deklariert. Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingun' +
     'gen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und ' +
     'Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen."',
-    '    },',
-    '{',
-    '      "id": "class-reference-nonvirtual-constructor",',
-    '      "name": "Konstruktor über Klassenreferenz nicht virtuell",',
-    '      "description": "Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor' +
-    ' von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer ' +
-    'Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynam' +
-    'ic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht' +
-    ': virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei."',
     '    }');
 
 implementation

@@ -64,6 +64,14 @@ type
     procedure FirstUsesEntryOfProgram;
     [Test]
     procedure KnowsTextFile;
+    /// <summary>Werte anonymer Aufzählungen (set of (…), Feld und Variable mit (…)) sind in der Unit sichtbar,
+    /// in einer anderen auch über uses (jvcl, cnvcl, Alcinoe; dcc 13 übersetzt).</summary>
+    [Test]
+    procedure KnowsAnonymousEnumValues;
+    /// <summary>Intrinsics ohne Deklaration in System.pas: GetDir, VarClear, VarArrayRedim,
+    /// AddressOfReturnAddress (dcc 13 übersetzt ohne System.Variants).</summary>
+    [Test]
+    procedure KnowsDirectoryAndVariantIntrinsics;
     [Test]
     procedure KnowsFileRoutines;
     [Test]
@@ -85,6 +93,14 @@ type
     /// Parameter, lokale Variablen und Namen der umgebenden Routine sind dort bekannt.</summary>
     [Test]
     procedure ChecksAnonymousMethodBodies;
+    /// <summary>Werte einer Aufzählung aus dem type-Abschnitt einer Routine sind dort und in verschachtelten
+    /// Routinen bekannt (Fehlalarm in cnwizards/cnvcl).</summary>
+    [Test]
+    procedure KnowsLocalEnumValues;
+    /// <summary>Mit &amp; maskierte Bezeichner (&amp;Type, &amp;Message, &amp;if) als Mitglied und als Routine
+    /// (Fehlalarm in Alcinoe und DMVCFramework).</summary>
+    [Test]
+    procedure KnowsEscapedNames;
   end;
 
 implementation
@@ -275,6 +291,54 @@ begin
     '  begin'#10 +
     '    Writeln(mKunde);'#10 +
     '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsAnonymousEnumValues;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(
+    'unit Modi;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDatei = class'#10 +
+    '    fMode: (mUnknown, mRead, mWrite);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.', 'C:\P\Modi.pas', nil));
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TUnitFlags = set of (ufImpl, ufDLL);'#10 +
+    '  TAufzaehlung = record'#10 +
+    '    Art: (raEins, raZwei);'#10 +
+    '  end;'#10 +
+    'var'#10 +
+    '  GStufe: (stAus, stAn);'#10 +
+    'implementation'#10 +
+    'uses Modi;'#10 +
+    'function Q(const AFlags: TUnitFlags; const A: TAufzaehlung; D: TDatei): Boolean;'#10 +
+    'begin'#10 +
+    '  Result := (ufDLL in AFlags) and (A.Art = raZwei) and (GStufe = stAn) and (D.fMode <> mWrite);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsDirectoryAndVariantIntrinsics;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'function Q(var V: Variant): Pointer;'#10 +
+    'var'#10 +
+    '  S: string;'#10 +
+    'begin'#10 +
+    '  GetDir(0, S);'#10 +
+    '  VarArrayRedim(V, 3);'#10 +
+    '  VarClear(V);'#10 +
+    '  Result := AddressOfReturnAddress;'#10 +
     'end;'#10 +
     'end.'));
 end;
@@ -748,6 +812,75 @@ begin
     mTree.Free;
     mFound := nil;
   end;
+end;
+
+procedure TUnresolvedNamesTests.KnowsLocalEnumValues;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'type'#10 +
+    '  TArt = (taEins, taZwei);'#10 +
+    'var'#10 +
+    '  A: TArt;'#10 +
+    '  procedure Innen;'#10 +
+    '  begin'#10 +
+    '    A := taEins;'#10 +
+    '  end;'#10 +
+    'begin'#10 +
+    '  A := taZwei;'#10 +
+    '  Innen;'#10 +
+    'end;'#10 +
+    'end.'));
+  // Außerhalb der Routine gilt der lokale Typ nicht.
+  Assert.AreEqual('taZwei@12:8;', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses'#10 +
+    '  Basis;'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'type'#10 +
+    '  TArt = (taEins, taZwei);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure Q;'#10 +
+    'begin'#10 +
+    '  Melde(taZwei);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsEscapedNames;
+begin
+  Assert.AreEqual('', Coded(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TParam = class'#10 +
+    '    &Type: Integer;'#10 +
+    '    procedure &Message;'#10 +
+    '  end;'#10 +
+    'procedure &if(A: Integer);'#10 +
+    'implementation'#10 +
+    'procedure TParam.&Message;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure &if(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'procedure P;'#10 +
+    'var'#10 +
+    '  mParam: TParam;'#10 +
+    'begin'#10 +
+    '  mParam := nil;'#10 +
+    '  mParam.&Type := 1;'#10 +
+    '  &if(mParam.&Type);'#10 +
+    '  mParam.&Message;'#10 +
+    'end;'#10 +
+    'end.'));
 end;
 
 procedure TUnresolvedNamesTests.KnowsMembersAndUncertainReceivers;

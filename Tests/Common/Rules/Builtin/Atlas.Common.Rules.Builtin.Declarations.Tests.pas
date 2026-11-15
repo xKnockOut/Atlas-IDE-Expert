@@ -88,6 +88,10 @@ type
     procedure SignatureMismatchConditionalHeader;
     [Test]
     procedure SignatureMismatchAliasesFromIndex;
+    /// <summary>Im Methodenkopf eines verschachtelten Typs gilt wie bei dcc zuerst der verschachtelte Typ des
+    /// umgebenden Typs, nicht der gleichnamige Typ aus dem uses (TTrack.TThumb vor Fremd.TThumb).</summary>
+    [Test]
+    procedure SignatureMismatchNestedTypeHidesUsedType;
     [Test]
     procedure SignatureMismatchUnitRoutine;
     [Test]
@@ -670,6 +674,30 @@ begin
   Assert.AreEqual(2, Integer(Length(mFindings)));
   Assert.AreEqual('C weicht von der Deklaration ab: E Integer statt TEigen (wie E2037).', mFindings[0].Message);
   Assert.AreEqual('E weicht von der Deklaration ab: X Int64 statt Integer (wie E2037).', mFindings[1].Message);
+  mIndex := nil;
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchNestedTypeHidesUsedType;
+const
+  cFremd = 'unit Fremd;'#10'interface'#10'type'#10'  TThumb = class'#10'  end;'#10'implementation'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFremd, 'C:\P\Fremd.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Fremd;'#10'type'#10'  TTrack = class'#10'  type'#10 +
+    '    TThumb = class'#10'    type'#10'      TStyles = class'#10'        function GetParent: TThumb;'#10 +
+    '        function GetFremd: Fremd.TThumb;'#10'      end;'#10'    end;'#10'  end;'#10'implementation'#10 +
+    'function TTrack.TThumb.TStyles.GetParent: TTrack.TThumb;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'function TTrack.TThumb.TStyles.GetFremd: TTrack.TThumb;'#10'begin'#10'  Result := nil;'#10'end;'#10'end.';
+  mFindings := TRuleAssert.IndexFindings(TSignatureMismatchRule.Create, mSource, mIndex, '', '');
+  // Nur GetFremd weicht ab: Die Deklaration nennt ausdrücklich den Typ aus Fremd.
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(
+    'GetFremd weicht von der Deklaration ab: Ergebnis TTrack.TThumb statt Fremd.TThumb (wie E2037).',
+    mFindings[0].Message);
   mIndex := nil;
 end;
 

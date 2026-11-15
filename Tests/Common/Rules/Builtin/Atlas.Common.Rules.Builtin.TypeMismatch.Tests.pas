@@ -82,6 +82,10 @@ type
     /// PasVulkan.Collections).</summary>
     [Test]
     procedure NestedTypeHidesUsedType;
+    /// <summary>Ein Typ aus dem type-Abschnitt der Routine verdeckt den gleichnamigen Typ der Unit: TExceptionEvent
+    /// mit nur einem Parameter (Fehlalarm in Vcl.Forms, TApplication.ShowException).</summary>
+    [Test]
+    procedure LocalTypeHidesUnitType;
   end;
 
 implementation
@@ -560,6 +564,21 @@ begin
   // Nur das Feld von TAndere hat das statische Array aus Typen.
   Assert.AreEqual('33: Inkompatible Typen: ''TBytes8'' und ''Pointer'' (wie E2010).',
     Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, cKarte, mIndex, '', 'Fall.pas')));
+end;
+
+procedure TTypeMismatchTests.LocalTypeHidesUnitType;
+const
+  cKlasse = 'type'#10'  TEreignis = procedure(Sender: TObject; E: TObject) of object;'#10'  TAnwendung = class'#10 +
+    '    procedure Zeige(E: TObject);'#10'    procedure Fertig;'#10'  end;'#10;
+  cRuempfe = 'procedure TAnwendung.Zeige(E: TObject);'#10'begin'#10'end;'#10;
+  cFertig = 'procedure TAnwendung.Fertig;'#10'%s'#10'var'#10'  mEreignis: TEreignis;'#10'begin'#10 +
+    '  mEreignis := Zeige;'#10'end;'#10;
+begin
+  Assert.AreEqual('', OnlyMessage(UnitText(cKlasse, cRuempfe + Format(cFertig,
+    ['type'#10'  TEreignis = procedure(E: TObject) of object;']))));
+  // Gegenprobe ohne lokalen Typ: Die Parameterliste des Typs der Unit passt nicht.
+  Assert.AreEqual('Inkompatible Typen: ''Liste der Parameter ist unterschiedlich''; Zeige passt nicht zum ' +
+    'prozeduralen Typ (wie E2009).', OnlyMessage(UnitText(cKlasse, cRuempfe + Format(cFertig, ['']))));
 end;
 
 procedure TTypeMismatchTests.ProceduralCalleeArguments;
