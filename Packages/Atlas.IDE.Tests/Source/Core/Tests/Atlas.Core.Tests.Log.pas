@@ -588,15 +588,22 @@ class function TAtlasTestLog.Reference(const AText: string; const AUnits: TArray
 var
   mUnit: TAtlasTestLogUnit;
   mLine, mLongest: Integer;
-  mRoutine: string;
+  mRoutine, mLower: string;
 begin
   AFileName := '';
   ALine := -1;
   ARoutine := '';
   mLongest := -1;
   // „Rechner“ steht auch in „Rechner.Tests 42“: der längste passende Unitname gilt, eine Zeile vor der Routine.
+  mLower := AnsiLowerCase(AText);
   for mUnit in AUnits do
   begin
+    // Schnelle Vorprüfung: Steht der Unitname gar nicht im Text, gibt es weder Zeile noch Routine. Ohne sie lief
+    // für jede Protokollzeile die volle Suche über alle Testunits (Fenster „Atlas-Tests“ hing bei großen Läufen).
+    if Pos(AnsiLowerCase(mUnit.UnitName), mLower) = 0 then
+    begin
+      Continue;
+    end;
     mLine := LineOf(AText, mUnit);
     mRoutine := '';
     if mLine < 0 then

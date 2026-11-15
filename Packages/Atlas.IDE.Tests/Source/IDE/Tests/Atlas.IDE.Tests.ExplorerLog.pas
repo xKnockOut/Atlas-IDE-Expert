@@ -110,15 +110,25 @@ begin
   end;
 end;
 
-/// <summary>Zeile der Anzeige mit Sprungziel; Routinen ohne Zeile werden hier aufgelöst.</summary>
-function StackLineOf(const ARow: TAtlasTestLogRow): TAtlasTestStackLine;
+/// <summary>Zeile der Anzeige mit Sprungziel; Routinen ohne Zeile werden hier aufgelöst. AKnown merkt Datei und
+/// Routine → Zeile für einen Aufbau: Vorher las jede Protokollzeile die Unit neu von der Platte.</summary>
+function StackLineOf(const ARow: TAtlasTestLogRow; AKnown: TDictionary<string, Integer>): TAtlasTestStackLine;
+var
+  mKey: string;
+  mLine: Integer;
 begin
   Result.Text := ARow.Text;
   Result.FileName := ARow.FileName;
   Result.Line := ARow.Line;
   if (Result.FileName <> '') and (Result.Line < 0) then
   begin
-    Result.Line := RoutineLineOf(Result.FileName, ARow.Routine);
+    mKey := AnsiLowerCase(Result.FileName) + '|' + AnsiLowerCase(ARow.Routine);
+    if not AKnown.TryGetValue(mKey, mLine) then
+    begin
+      mLine := RoutineLineOf(Result.FileName, ARow.Routine);
+      AKnown.Add(mKey, mLine);
+    end;
+    Result.Line := mLine;
   end;
 end;
 
@@ -129,6 +139,7 @@ var
   mUnits: TArray<TAtlasTestLogUnit>;
   mIndex: Integer;
   mRows: TArray<TAtlasTestLogRow>;
+  mKnown: TDictionary<string, Integer>;
 begin
   Result := nil;
   ACount := 0;
@@ -145,9 +156,14 @@ begin
   ACount := TAtlasTestLog.CountOf(mRun, AName);
   mRows := TAtlasTestLog.Rows(mRun, AName, mUnits, Texts);
   SetLength(Result, Length(mRows));
-  for mIndex := 0 to High(mRows) do
-  begin
-    Result[mIndex] := StackLineOf(mRows[mIndex]);
+  mKnown := TDictionary<string, Integer>.Create;
+  try
+    for mIndex := 0 to High(mRows) do
+    begin
+      Result[mIndex] := StackLineOf(mRows[mIndex], mKnown);
+    end;
+  finally
+    mKnown.Free;
   end;
 end;
 
