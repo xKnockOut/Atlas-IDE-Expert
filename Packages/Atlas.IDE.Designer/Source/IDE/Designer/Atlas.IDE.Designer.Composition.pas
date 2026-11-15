@@ -282,10 +282,21 @@ begin
   Result := [mKey];
 end;
 
+/// <summary>Layouts der IDE für die Auswahlliste „Layout für den Designer“ (#2079).</summary>
+function DesktopLayoutNames: TFunc<TArray<string>>;
+begin
+  Result :=
+    function: TArray<string>
+    begin
+      Result := TAtlasIdeDesktopLayout.Names;
+    end;
+end;
+
 /// <summary>Abschnitte des Moduls im Optionsdialog (#1456): ab der Anmeldung, damit sich das Modul auch
 /// ausgeschaltet einstellen lässt.</summary>
 procedure ProvideSettingsSections;
 begin
+  TAtlasDesignerSettingsSection.LayoutNames := DesktopLayoutNames();
   TAtlasDesignerSettingsSection.ProvideIn(GScope);
 end;
 
@@ -332,6 +343,7 @@ end;
 class procedure TAtlasDesignerModule.UnregisterModule;
 begin
   TAtlasModuleHost.Unregister(GScope, cModuleId, HInstance, nil);
+  TAtlasDesignerSettingsSection.LayoutNames := nil;
 end;
 
 initialization

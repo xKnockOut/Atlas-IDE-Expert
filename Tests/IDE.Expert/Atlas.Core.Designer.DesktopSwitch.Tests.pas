@@ -53,6 +53,8 @@ type
     procedure UsableSkipsNone;
     [Test]
     procedure DisplayNameOfStoredLayout;
+    [Test]
+    procedure IndexOfStoredName;
   end;
 
 implementation
@@ -299,6 +301,18 @@ begin
   Assert.AreEqual('Default Layout', TAtlasDesktopLayouts.DisplayName(mEnglish, 'Default Layout'));
   Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mEnglish, 'Fehlt'));
   Assert.AreEqual('', TAtlasDesktopLayouts.DisplayName(mGerman, ''));
+end;
+
+procedure TAtlasDesktopSwitchTests.IndexOfStoredName;
+var
+  mLayouts: TArray<string>;
+begin
+  mLayouts := TArray<string>.Create('Debug-Layout', 'Designer', 'Standard-Layout');
+  Assert.AreEqual(1, TAtlasDesktopLayouts.IndexOf(mLayouts, 'Designer'));
+  Assert.AreEqual(2, TAtlasDesktopLayouts.IndexOf(mLayouts, '  standard-layout '));
+  Assert.AreEqual(-1, TAtlasDesktopLayouts.IndexOf(mLayouts, 'Fehlt'));
+  Assert.AreEqual(-1, TAtlasDesktopLayouts.IndexOf(mLayouts, ''));
+  Assert.AreEqual(-1, TAtlasDesktopLayouts.IndexOf(nil, 'Designer'));
 end;
 
 initialization
