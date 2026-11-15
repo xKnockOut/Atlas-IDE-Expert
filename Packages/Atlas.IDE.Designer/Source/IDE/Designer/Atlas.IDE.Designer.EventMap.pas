@@ -393,21 +393,23 @@ var
   mDesigner: IDesigner;
   mName: string;
 begin
-  if not TAtlasDesignerAccess.Current(mEditor, mRoot) or not SameText(mRoot.Name, FRootName) then
-  begin
-    FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ToolNoForm));
-    Exit;
-  end;
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
   mName := ARow.Handler;
-  if (mDesigner = nil) or not InputQuery(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmRenameTitle),
-    TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EmRenamePrompt, [ARow.Handler]), mName) then
+  if not InputQuery(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmRenameTitle),
+    TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.EmRenamePrompt, [ARow.Handler]), mName) or
+    SameText(Trim(mName), ARow.Handler) then
   begin
     Exit;
   end;
   mName := Trim(mName);
-  if SameText(mName, ARow.Handler) then
+  // Designer erst nach dem Dialog holen: Währenddessen kann das Formular neu geladen worden sein.
+  mDesigner := nil;
+  if TAtlasDesignerAccess.Current(mEditor, mRoot) and SameText(mRoot.Name, FRootName) then
   begin
+    mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
+  end;
+  if mDesigner = nil then
+  begin
+    FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ToolNoForm));
     Exit;
   end;
   if not IsValidIdent(mName) or mDesigner.MethodExists(mName) or not mDesigner.MethodExists(ARow.Handler) then

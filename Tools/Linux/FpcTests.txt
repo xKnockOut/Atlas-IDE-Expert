@@ -618,3 +618,4 @@ Atlas.Core.Debug.ThreadsInSourceFlow.Tests
 Atlas.Core.Debug.RunToColumnFlow.Tests
 Atlas.Core.Debug.ExceptionDialogFlow.Tests
 Atlas.Core.Debug.AsyncOriginFlow.Tests
+Atlas.Core.Designer.KeptComponents.Tests
