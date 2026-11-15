@@ -11,6 +11,7 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Core.Settings.Contract,
   Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Section;
@@ -21,6 +22,10 @@ type
     cOwnerId = 'atlas.designer';
     cAreaId = 'Editor';
     cLayoutNameKey = 'designer.layout.name';
+  private
+    /// <summary>Layouts der IDE; setzt die Composition des Moduls (Atlas.UI kennt die Open Tools API nicht).
+    /// </summary>
+    class var FLayoutNames: TFunc<TArray<string>>;
   private
     /// <summary>Layout für den Designer (#2079): Auswahl aus den Layouts der IDE, freie Eingabe möglich.</summary>
     FLayoutName: TAtlasChoiceBox;
@@ -48,16 +53,16 @@ type
     procedure Load(const AValues: IAtlasSettingsValues); override;
     procedure Save(const AValues: IAtlasSettingsValues); override;
     procedure Close; override;
+    /// <summary>Quelle der Layouts der IDE für die Auswahlliste; nil = leere Liste.</summary>
+    class property LayoutNames: TFunc<TArray<string>> read FLayoutNames write FLayoutNames;
   end;
 
 implementation
 
 uses
-  System.SysUtils,
   Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Designer.DesktopSwitch,
-  Atlas.IDE.Designer.DesktopLayout,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.ToolStrings,
   Atlas.UI.Designer.ViewStrings;
@@ -249,7 +254,11 @@ end;
 procedure TAtlasDesignerSettingsSection.BuildLayoutRows;
 begin
   Switch('designer.layout', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopLayout));
-  FLayouts := TAtlasIdeDesktopLayout.Names;
+  FLayouts := nil;
+  if Assigned(FLayoutNames) then
+  begin
+    FLayouts := FLayoutNames();
+  end;
   FLayoutName := OwnChoice(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName), FLayouts,
     TArray<string>.Create(cLayoutNameKey));
   if FLayoutName <> nil then
