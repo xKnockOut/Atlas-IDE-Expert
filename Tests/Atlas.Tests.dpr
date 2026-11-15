@@ -1387,6 +1387,8 @@ uses
   Atlas.Core.Build.PipelineSettings in '..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas',
   Atlas.Core.Welcome.Projects.Tests in 'IDE.Expert\Atlas.Core.Welcome.Projects.Tests.pas',
   Atlas.Core.Projects.Recording.Tests in 'IDE.Expert\Atlas.Core.Projects.Recording.Tests.pas',
+  Atlas.Core.Projects.VcsQueries in '..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas',
+  Atlas.Core.Projects.VcsQueries.Tests in 'IDE.Expert\Atlas.Core.Projects.VcsQueries.Tests.pas',
   Atlas.Core.Versions.Project.Tests in 'IDE.Expert\Atlas.Core.Versions.Project.Tests.pas',
   Atlas.Core.Build.Pipeline.Tests in 'IDE.Expert\Atlas.Core.Build.Pipeline.Tests.pas',
   Atlas.Core.Welcome.Trends in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas',

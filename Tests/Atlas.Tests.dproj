@@ -1523,6 +1523,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Projects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Recording.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VcsQueries.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Versions.Project.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Pipeline.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>

@@ -697,6 +697,7 @@ contains
   Atlas.IDE.Foundation.EditorBarHost in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas',
   Atlas.IDE.Foundation.EditorBarDock in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas',
   Atlas.Core.Projects.Recording in 'Source\Core\Projects\Atlas.Core.Projects.Recording.pas',
+  Atlas.Core.Projects.VcsQueries in 'Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas',
   Atlas.Core.Build.PipelineSettings in 'Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas',
   Atlas.Core.Build.Pipeline in 'Source\Core\Build\Atlas.Core.Build.Pipeline.pas',
   Atlas.Core.Versions.Project in 'Source\Core\Versions\Atlas.Core.Versions.Project.pas',

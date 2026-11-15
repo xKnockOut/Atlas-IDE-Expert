@@ -347,6 +347,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck.Scan` | `Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
+| `Atlas.Core.Projects.VcsQueries` | `Core/Projects/Atlas.Core.Projects.VcsQueries.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Setup` | `Core/Projects/Atlas.Core.Projects.Setup.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary.Json` | `Core/Projects/Atlas.Core.Projects.Summary.Json.pas` | Ordner `Core/Projects` |
