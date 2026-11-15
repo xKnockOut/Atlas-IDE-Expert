@@ -228,6 +228,48 @@ type
     class function FileNameOf(const APath: string): string; static;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Schließen eines Projekts: nichts schreiben (eben geschrieben), die beim ersten Schließen einer
+  /// Datei festgehaltenen Reiter nehmen oder die Reiter jetzt festhalten.</summary>
+  TAtlasContinueCloseStep = (Skip, UseHeld, TakeNew);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Zeitpunkte (GetTickCount64, 0 = keiner) des Mitschreibens in der IDE.</summary>
+  TAtlasContinueTicks = record
+    /// <summary>Letztes Schließen einer Datei; 0 = nichts festgehalten.</summary>
+    Held: UInt64;
+    /// <summary>Letzter geschriebener Stand.</summary>
+    Written: UInt64;
+  end;
+
+  /// <summary>Entscheidungen des Mitschreibens und der Abfragen in der IDE (Zeiten von außen).</summary>
+  TAtlasContinueSession = class
+  public const
+    /// <summary>So lange nach dem ersten Schließen einer Datei gelten die festgehaltenen Reiter.</summary>
+    cBatchMs = 5000;
+  public
+    /// <summary>AStamp liegt weniger als AWindowMs vor ANow; AStamp 0 = nie.</summary>
+    class function Recent(AStamp, ANow, AWindowMs: UInt64): Boolean; static;
+    /// <summary>Beim Schließen einer Datei: Reiter neu festhalten (erste Datei einer Folge).</summary>
+    class function HoldTabs(const ATicks: TAtlasContinueTicks; ANow: UInt64): Boolean; static;
+    /// <summary>Beim Schließen eines Projekts (Gruppe und ihre Projekte melden sich einzeln).</summary>
+    class function CloseStep(const ATicks: TAtlasContinueTicks; ANow: UInt64): TAtlasContinueCloseStep; static;
+    /// <summary>Beim Beenden der IDE: Stand des noch offenen Projekts schreiben.</summary>
+    class function WriteOnStop(const ATicks: TAtlasContinueTicks; ANow: UInt64): Boolean; static;
+    /// <summary>Eingehende Commits neu abfragen: AFresh ist das letzte Ergebnis zum selben obersten Eintrag
+    /// (ASameKey); ohne AForce erst nach TAtlasWelcomeContinue.cRefreshMs.</summary>
+    class function IncomingDue(AForce, ASameKey: Boolean; AFresh, ANow: UInt64): Boolean; static;
+    /// <summary>Gespeicherte eingehende Commits (zu ADataProject, abgefragt für AKey) gelten für den obersten
+    /// Eintrag ATop.</summary>
+    class function IncomingFits(const ATop, AKey, ADataProject: string): Boolean; static;
+    /// <summary>Dateinamen ohne Pfad, mit Komma getrennt; '' ohne.</summary>
+    class function MissingNames(const AMissing: TArray<string>): string; static;
+    /// <summary>AFiles mit den Dateien aus AOwn zuerst, sonst in ihrer Reihenfolge.</summary>
+    class function OwnFirst(const AOwn, AFiles: TArray<string>): TArray<string>; static;
+    /// <summary>Zuerst aktiver Reiter des Plans liegt in AOpenCount Reitern.</summary>
+    class function ActiveInPlan(AActive, AOpenCount: Integer): Boolean; static;
+  end;
+
 implementation
 
 uses
@@ -1108,6 +1150,96 @@ begin
   begin
     Result := CollectIncoming(mIncoming, AProbe, mHead, AResult);
   end;
+end;
+
+{ TAtlasContinueSession }
+
+class function TAtlasContinueSession.Recent(AStamp, ANow, AWindowMs: UInt64): Boolean;
+begin
+  Result := (AStamp > 0) and (ANow - AStamp < AWindowMs);
+end;
+
+class function TAtlasContinueSession.HoldTabs(const ATicks: TAtlasContinueTicks; ANow: UInt64): Boolean;
+begin
+  Result := not Recent(ATicks.Held, ANow, cBatchMs);
+end;
+
+class function TAtlasContinueSession.CloseStep(const ATicks: TAtlasContinueTicks;
+  ANow: UInt64): TAtlasContinueCloseStep;
+begin
+  if Recent(ATicks.Written, ANow, cBatchMs) then
+  begin
+    Result := TAtlasContinueCloseStep.Skip;
+  end
+  else if Recent(ATicks.Held, ANow, cBatchMs) then
+  begin
+    Result := TAtlasContinueCloseStep.UseHeld;
+  end
+  else
+  begin
+    Result := TAtlasContinueCloseStep.TakeNew;
+  end;
+end;
+
+class function TAtlasContinueSession.WriteOnStop(const ATicks: TAtlasContinueTicks; ANow: UInt64): Boolean;
+begin
+  Result := not Recent(ATicks.Written, ANow, cBatchMs);
+end;
+
+class function TAtlasContinueSession.IncomingDue(AForce, ASameKey: Boolean; AFresh, ANow: UInt64): Boolean;
+begin
+  Result := AForce or not ASameKey or not Recent(AFresh, ANow, TAtlasWelcomeContinue.cRefreshMs);
+end;
+
+class function TAtlasContinueSession.IncomingFits(const ATop, AKey, ADataProject: string): Boolean;
+begin
+  Result := (ATop <> '') and (TAtlasProjectSummaries.NormalizedPath(ATop) = AKey) and
+    (TAtlasProjectSummaries.NormalizedPath(ADataProject) = AKey);
+end;
+
+class function TAtlasContinueSession.MissingNames(const AMissing: TArray<string>): string;
+var
+  mNames: TArray<string>;
+  mName: string;
+begin
+  mNames := nil;
+  for mName in AMissing do
+  begin
+    mNames := mNames + [TAtlasWelcomeContinue.FileNameOf(mName)];
+  end;
+  Result := string.Join(', ', mNames);
+end;
+
+class function TAtlasContinueSession.OwnFirst(const AOwn, AFiles: TArray<string>): TArray<string>;
+var
+  mFileName, mOwn: string;
+  mMine: Boolean;
+  mFirst, mRest: TArray<string>;
+begin
+  mFirst := nil;
+  mRest := nil;
+  for mFileName in AFiles do
+  begin
+    mMine := False;
+    for mOwn in AOwn do
+    begin
+      mMine := mMine or TAtlasWelcomeContinue.SameFile(mOwn, mFileName);
+    end;
+    if mMine then
+    begin
+      mFirst := mFirst + [mFileName];
+    end
+    else
+    begin
+      mRest := mRest + [mFileName];
+    end;
+  end;
+  Result := mFirst + mRest;
+end;
+
+class function TAtlasContinueSession.ActiveInPlan(AActive, AOpenCount: Integer): Boolean;
+begin
+  Result := (AActive >= 0) and (AActive < AOpenCount);
 end;
 
 end.

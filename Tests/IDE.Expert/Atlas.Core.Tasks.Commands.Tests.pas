@@ -23,8 +23,6 @@ type
     [Test]
     procedure EnvironmentIsOverwrittenAndExtended;
     [Test]
-    procedure ArgumentsAreQuoted;
-    [Test]
     procedure BatchFilesRunThroughCmd;
   end;
 
@@ -108,18 +106,6 @@ begin
   Assert.AreEqual('PATH=C:\Tools', mMerged[1], 'ohne Groß-/Kleinschreibung ersetzt');
   Assert.AreEqual('TEMP=C:\t', mMerged[2]);
   Assert.AreEqual('ATLAS_CI=1', mMerged[3], 'neu angehängt; leere Namen entfallen');
-end;
-
-procedure TAtlasTaskCommandsTests.ArgumentsAreQuoted;
-begin
-  Assert.AreEqual('-File', TAtlasTaskCommands.QuoteArgument('-File'));
-  Assert.AreEqual('""', TAtlasTaskCommands.QuoteArgument(''));
-  Assert.AreEqual('"C:\Program Files\x"', TAtlasTaskCommands.QuoteArgument('C:\Program Files\x'));
-  Assert.AreEqual('"a\"b"', TAtlasTaskCommands.QuoteArgument('a"b'));
-  Assert.AreEqual('"C:\my dir\\"', TAtlasTaskCommands.QuoteArgument('C:\my dir\'),
-    'Backslash vor dem schließenden Anführungszeichen verdoppelt');
-  Assert.AreEqual('"a\\\"b c"', TAtlasTaskCommands.QuoteArgument('a\"b c'));
-  Assert.AreEqual('C:\a\b', TAtlasTaskCommands.QuoteArgument('C:\a\b'), 'Backslashes ohne Anführungszeichen');
 end;
 
 procedure TAtlasTaskCommandsTests.BatchFilesRunThroughCmd;

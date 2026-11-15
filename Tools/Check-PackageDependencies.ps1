@@ -14,7 +14,7 @@
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
     - Atlas.Core.VersionControl.* (Versionsverwaltung, #571): übersetzt auch der Server
-        mit; darum nur RTL, Winapi, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
+        mit; darum nur RTL, Winapi, Atlas.Text.*, Atlas.WinBase.* und eigene Atlas.Core.VersionControl.*-Units
 
     Atlas.Text und Atlas.WinBase im Plugin: Das Plugin requiret
     beide nicht, sondern übersetzt deren Units selbst mit (contains … in
@@ -26,7 +26,8 @@
 
     Kopien-Sperre: Außerhalb von Packages/Atlas.Text darf im
     implementation-Teil keine Routine wie LineBreakOf, SplitLines, IndentOf,
-    IsWordChar, IsIdentChar, IsUtf8, PercentDecode usw. neu entstehen. Erlaubt
+    IsWordChar, IsIdentChar, IsUtf8, PercentDecode, QuoteArgument (Befehlszeilen:
+    TTextCommandLine) usw. neu entstehen. Erlaubt
     sind nur die Fassaden und Sonderfälle in $AllowedLocal, jeweils mit Grund.
     Ebenso für die Token-Helfer (#1979): Innerhalb von Packages/Atlas.Common
     definiert nur Atlas.Common.Pascal.TokenCursor Routinen wie TokenFrom,
@@ -236,8 +237,8 @@ function Get-ClauseEntries([string] $Text, [string] $Keyword) {
 
 # Kopien-Sperre: Namen, die nur Atlas.Text definieren soll.
 $CopyLockNames = @('LineBreakOf', 'LineBreakIn', 'DetectLineBreak', 'SplitLines', 'StripCr', 'IndentOf', 'IsWordChar',
-    'IsIdentChar', 'IsIdentStart', 'DecodeEntities', 'PercentDecode', 'PercentEncode', 'IsUtf8', 'CheckUtf8', 'HasPrefix',
-    'Collapse', 'CollapseSpace')
+    'IsIdentChar', 'IsIdentStart', 'DecodeEntities', 'PercentDecode', 'PercentEncode', 'IsUtf8', 'CheckUtf8',
+    'HasPrefix', 'QuoteArgument', 'Collapse', 'CollapseSpace')
 
 # Erlaubte lokale Definitionen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedLocal = @{
@@ -534,13 +535,14 @@ foreach ($package in $Packages) {
         $layer = $Layers | Where-Object { $ownUnit.StartsWith($_.UnitPrefix, [StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
 
         foreach ($unit in Get-ClauseEntries $text 'uses') {
-            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature und Atlas.WinBase.*
-            # (Server und Plugin haben es beide).
+            # Geteilte Units (#571): nur Atlas.Core.VersionControl.* aus dem eigenen Feature, Atlas.Text.* und
+            # Atlas.WinBase.* (Server und Plugin haben beide).
             if ($ownUnit.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
                 $unit.Name.StartsWith('Atlas.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.Core.VersionControl.', [StringComparison]::OrdinalIgnoreCase) -and
+                -not $unit.Name.StartsWith('Atlas.Text.', [StringComparison]::OrdinalIgnoreCase) -and
                 -not $unit.Name.StartsWith('Atlas.WinBase.', [StringComparison]::OrdinalIgnoreCase)) {
-                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.* und Atlas.WinBase.* verwenden"
+                $violations += "${relative}:$($unit.Line): uses $($unit.Name) – Atlas.Core.VersionControl.* übersetzt auch der Server mit und darf nur Atlas.Core.VersionControl.*, Atlas.Text.* und Atlas.WinBase.* verwenden"
             }
             $prefixHit = $package.ForbiddenPrefix | Where-Object { $unit.Name.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
             $unitHit = $package.ForbiddenUnits | Where-Object { $unit.Name -ieq $_ }
