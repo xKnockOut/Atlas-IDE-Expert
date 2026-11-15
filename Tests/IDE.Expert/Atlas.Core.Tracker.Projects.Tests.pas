@@ -59,6 +59,12 @@ type
     /// <summary>Gewählt: Der Pfad der Zeile (.groupproj oder Ordner) löst genau diese Zeile auf.</summary>
     [Test]
     procedure ResolveTakesExactRow;
+    /// <summary>Wahl in „Meine Issues“: gemerkte Zeile nur mit Klappliste und solange es sie gibt, „Alle“ nur mit
+    /// issues.allProjects; das Projekt der Wahl bzw. die zuletzt bediente Gruppe.</summary>
+    [Test]
+    procedure PickFollowsSettings;
+    [Test]
+    procedure PickTargetsAndPages;
   end;
 
 implementation
@@ -403,6 +409,56 @@ begin
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'C:\Projekte', '');
   Assert.AreEqual(1, mResult.Index);
   mRows := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.PickFollowsSettings;
+var
+  mChoices: TArray<TAtlasTrackerChoice>;
+  mProject: string;
+begin
+  mChoices := TAtlasTrackerProjects.Choices(TAtlasTrackerProjects.Read('[{"match": ' +
+    '"C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", "project": "KASSE"}, {"match": ' +
+    '"C:\\Projekte\\Atlas", "connection": "GitHub", "project": "owner/repo"}]'), Connections);
+  Assert.AreEqual('KASSE@Firma', TAtlasTrackerProjectPick.ChosenKey(True, 'KASSE@Firma', False, mChoices));
+  Assert.AreEqual('', TAtlasTrackerProjectPick.ChosenKey(False, 'KASSE@Firma', False, mChoices), 'ohne Klappliste');
+  Assert.AreEqual('', TAtlasTrackerProjectPick.ChosenKey(True, 'ALT@Weg', False, mChoices), 'Zeile entfernt');
+  Assert.AreEqual('', TAtlasTrackerProjectPick.ChosenKey(True, TAtlasTrackerProjects.cAllKey, False, mChoices));
+  Assert.AreEqual(TAtlasTrackerProjects.cAllKey, TAtlasTrackerProjectPick.ChosenKey(True,
+    TAtlasTrackerProjects.cAllKey, True, nil));
+  Assert.IsTrue(TAtlasTrackerProjectPick.ChosenProject(mChoices, 'KASSE@Firma', mProject));
+  Assert.AreEqual(cKasseGroup, mProject);
+  Assert.IsFalse(TAtlasTrackerProjectPick.ChosenProject(mChoices, TAtlasTrackerProjects.cAllKey, mProject));
+  Assert.IsFalse(TAtlasTrackerProjectPick.ChosenProject(mChoices, '', mProject), 'automatisch');
+  Assert.AreEqual('', mProject);
+  Assert.AreEqual(cKasseGroup + '|C:\Projekte\Atlas', string.Join('|', TAtlasTrackerProjectPick.Projects(
+    TAtlasTrackerProjects.cAllKey, 'C:\anderes.dproj', mChoices)));
+  Assert.AreEqual(cBonProject, string.Join('|', TAtlasTrackerProjectPick.Projects('', cBonProject, mChoices)));
+  Assert.AreEqual(Integer(0), Integer(Length(TAtlasTrackerProjectPick.Projects('', '', mChoices))));
+  Assert.AreEqual('C:\Projekte\Atlas', TAtlasTrackerProjectPick.FocusedProject(TArray<string>.Create(cKasseGroup,
+    'C:\Projekte\Atlas'), 'c:\projekte\atlas'), 'zuletzt bediente Gruppe');
+  Assert.AreEqual(cKasseGroup, TAtlasTrackerProjectPick.FocusedProject(TArray<string>.Create(cKasseGroup,
+    'C:\Projekte\Atlas'), ''), 'sonst die erste');
+  Assert.AreEqual('', TAtlasTrackerProjectPick.FocusedProject(nil, cKasseGroup));
+  mChoices := nil;
+end;
+
+procedure TAtlasTrackerProjectsTests.PickTargetsAndPages;
+var
+  mTargets: TArray<TAtlasTrackerTarget>;
+  mConnections: TArray<TAtlasTrackerConnection>;
+begin
+  mConnections := Connections;
+  SetLength(mConnections, Length(mConnections) + 1);
+  mConnections[High(mConnections)] := Default(TAtlasTrackerConnection);
+  mConnections[High(mConnections)].Name := 'Leer';
+  mTargets := TAtlasTrackerProjectPick.ServerTargets(mConnections);
+  Assert.AreEqual(Integer(Length(Connections)), Integer(Length(mTargets)), 'ohne Server kein Ziel');
+  Assert.IsTrue(TAtlasTrackerProjectPick.IsWebPage('https://youtrack.example/issue/ATL-1'));
+  Assert.IsTrue(TAtlasTrackerProjectPick.IsWebPage('HTTPS://intranet/issue'));
+  Assert.IsFalse(TAtlasTrackerProjectPick.IsWebPage('file:///C:/Windows/calc.exe'));
+  Assert.IsFalse(TAtlasTrackerProjectPick.IsWebPage(''));
+  mTargets := nil;
+  mConnections := nil;
 end;
 
 initialization

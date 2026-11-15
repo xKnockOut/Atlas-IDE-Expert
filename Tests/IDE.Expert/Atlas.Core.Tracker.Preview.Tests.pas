@@ -39,6 +39,12 @@ type
     [Test]
     procedure FixPerError;
     [Test]
+    procedure MissingTransportPerCause;
+    [Test]
+    procedure LoadStepPendingFirst;
+    [Test]
+    procedure LinkOpenPreviewPageOrIssue;
+    [Test]
     procedure KeyFromInput;
     [Test]
     procedure SafeFileNames;
@@ -284,6 +290,42 @@ begin
   Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Retry, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Timeout));
   Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.Retry, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.Network));
   Assert.AreEqual<TAtlasIssueFix>(TAtlasIssueFix.None, TAtlasIssuePreview.FixOf(TAtlasCiFetchError.None));
+end;
+
+procedure TAtlasIssuePreviewTests.MissingTransportPerCause;
+begin
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, TAtlasIssuePreview.MissingTransport(False,
+    True));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.NotConfigured, TAtlasIssuePreview.MissingTransport(True,
+    False));
+  Assert.AreEqual<TAtlasCiFetchError>(TAtlasCiFetchError.Unauthorized, TAtlasIssuePreview.MissingTransport(True, True),
+    'Anbieter da, Token fehlt');
+end;
+
+procedure TAtlasIssuePreviewTests.LoadStepPendingFirst;
+begin
+  Assert.AreEqual<TAtlasIssueLoadStep>(TAtlasIssueLoadStep.Pending, TAtlasIssuePreview.LoadStep(True, 1, 2, True));
+  Assert.AreEqual<TAtlasIssueLoadStep>(TAtlasIssueLoadStep.Outdated, TAtlasIssuePreview.LoadStep(False, 1, 2, True));
+  Assert.AreEqual<TAtlasIssueLoadStep>(TAtlasIssueLoadStep.Show, TAtlasIssuePreview.LoadStep(False, 2, 2, True));
+  Assert.AreEqual<TAtlasIssueLoadStep>(TAtlasIssueLoadStep.Fail, TAtlasIssuePreview.LoadStep(False, 2, 2, False));
+end;
+
+procedure TAtlasIssuePreviewTests.LinkOpenPreviewPageOrIssue;
+var
+  mLink: TAtlasTrackerLink;
+begin
+  mLink := Default(TAtlasTrackerLink);
+  mLink.Key := 'ATL-9';
+  mLink.Local := True;
+  mLink.Page := 'https://youtrack.example/issue/ATL-9';
+  Assert.AreEqual<TAtlasIssueLinkOpen>(TAtlasIssueLinkOpen.Preview, TAtlasIssuePreview.LinkOpen(mLink, True));
+  Assert.AreEqual<TAtlasIssueLinkOpen>(TAtlasIssueLinkOpen.Page, TAtlasIssuePreview.LinkOpen(mLink, False),
+    'Vorschau aus');
+  mLink.Page := '';
+  Assert.AreEqual<TAtlasIssueLinkOpen>(TAtlasIssueLinkOpen.IssuePage, TAtlasIssuePreview.LinkOpen(mLink, False));
+  mLink.Local := False;
+  Assert.AreEqual<TAtlasIssueLinkOpen>(TAtlasIssueLinkOpen.IssuePage, TAtlasIssuePreview.LinkOpen(mLink, True),
+    'fremdes Issue ohne Seite');
 end;
 
 procedure TAtlasIssuePreviewTests.KeyFromInput;

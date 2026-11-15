@@ -16,7 +16,11 @@
 //   wird nur, was beim Server des Tokens liegt (sonst ginge eine Anfrage an
 //   einen Rechner aus dem Issue-Text). Anderes bleibt ein Link.
 // - Fehler: Art und Befehl zum Beheben (Token hinterlegen, Einstellungen,
-//   Im Browser öffnen, erneut versuchen).
+//   Im Browser öffnen, erneut versuchen); ohne Transport: nicht eingetragen
+//   bzw. ohne Token (#1967, vorher in der IDE).
+// - Laden (#1967): ein späterer Wunsch gilt vor dem Ergebnis, ein veraltetes
+//   Ergebnis wird nicht gezeigt. Verknüpftes Issue in der Vorschau, sonst seine
+//   Seite, sonst die Seite aus der eingetragenen Adresse.
 
 interface
 
@@ -58,6 +62,11 @@ type
   TAtlasIssueAgeUnit = (JustNow, Minutes, Hours, Days, Months, Years);
   /// <summary>Was das Fenster bei einem Fehler anbietet.</summary>
   TAtlasIssueFix = (None, EnterToken, Settings, Browser, Retry);
+  /// <summary>Ergebnis eines Ladens: ein weiterer Wunsch wartet (der zählt), veraltet (ein neuerer läuft),
+  /// zeigen bzw. Fehler zeigen.</summary>
+  TAtlasIssueLoadStep = (Pending, Outdated, Show, Fail);
+  /// <summary>Verknüpftes Issue öffnen: in der Vorschau, seine Seite, Seite aus der eingetragenen Adresse.</summary>
+  TAtlasIssueLinkOpen = (Preview, Page, IssuePage);
 {$SCOPEDENUMS OFF}
 
   TAtlasIssueBadge = record
@@ -116,6 +125,14 @@ type
     /// <summary>Geladenen Anhang öffnen; Ausführbares (IsRisky) nur im Explorer zeigen.</summary>
     class function OpenDownloaded(const AFileName: string): Boolean; static;
     class function FixOf(AError: TAtlasCiFetchError): TAtlasIssueFix; static;
+    /// <summary>Fehler, wenn kein Transport entsteht: ohne Anbieter bzw. ohne Anmeldespeicher nicht eingetragen,
+    /// sonst fehlt das Token.</summary>
+    class function MissingTransport(AHasProvider, ACanTransport: Boolean): TAtlasCiFetchError; static;
+    /// <summary>Was mit dem Ergebnis des Ladens AGeneration geschieht; ACurrent ist der jüngste Wunsch.</summary>
+    class function LoadStep(AHasPending: Boolean; AGeneration, ACurrent: Integer;
+      ASucceeded: Boolean): TAtlasIssueLoadStep; static;
+    /// <summary>ALink öffnen; APreview: die Vorschau läuft und ist eingeschaltet.</summary>
+    class function LinkOpen(const ALink: TAtlasTrackerLink; APreview: Boolean): TAtlasIssueLinkOpen; static;
     /// <summary>Kennung aus einer Eingabe ("ATL-12", "#753", "753", Adresse eines Issues); '' ungültig.
     /// </summary>
     class function KeyOf(const AProvider, AInput: string): string; static;
@@ -383,6 +400,47 @@ begin
     Exit(TAtlasTrackerFiles.Shell.Reveal(AFileName));
   end;
   Result := TAtlasTrackerFiles.Shell.OpenFile(AFileName);
+end;
+
+class function TAtlasIssuePreview.MissingTransport(AHasProvider, ACanTransport: Boolean): TAtlasCiFetchError;
+begin
+  Result := TAtlasCiFetchError.Unauthorized;
+  if not AHasProvider or not ACanTransport then
+  begin
+    Result := TAtlasCiFetchError.NotConfigured;
+  end;
+end;
+
+class function TAtlasIssuePreview.LoadStep(AHasPending: Boolean; AGeneration, ACurrent: Integer;
+  ASucceeded: Boolean): TAtlasIssueLoadStep;
+begin
+  if AHasPending then
+  begin
+    Exit(TAtlasIssueLoadStep.Pending);
+  end;
+  if AGeneration <> ACurrent then
+  begin
+    Exit(TAtlasIssueLoadStep.Outdated);
+  end;
+  if ASucceeded then
+  begin
+    Exit(TAtlasIssueLoadStep.Show);
+  end;
+  Result := TAtlasIssueLoadStep.Fail;
+end;
+
+class function TAtlasIssuePreview.LinkOpen(const ALink: TAtlasTrackerLink; APreview: Boolean): TAtlasIssueLinkOpen;
+begin
+  if ALink.Local and APreview then
+  begin
+    Exit(TAtlasIssueLinkOpen.Preview);
+  end;
+  if ALink.Page <> '' then
+  begin
+    Exit(TAtlasIssueLinkOpen.Page);
+  end;
+  // Nur die Seite aus der eingetragenen Adresse.
+  Result := TAtlasIssueLinkOpen.IssuePage;
 end;
 
 class function TAtlasIssuePreview.FixOf(AError: TAtlasCiFetchError): TAtlasIssueFix;

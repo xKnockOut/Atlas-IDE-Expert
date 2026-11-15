@@ -1168,6 +1168,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.EndSteps` | `Core/Tracker/Atlas.Core.Tracker.EndSteps.pas` | Ordner `Core/Tracker`; Plan und Schritte des Beendens in Workflow-Reihenfolge (Zeit, Felder, Kommentar, Übergang) mit Fortsetzen nach Ablehnung (#2123) |
 | `Atlas.Core.Tracker.StatusState` | `Core/Tracker/Atlas.Core.Tracker.StatusState.pas` | Ordner `Core/Tracker`; Feldtext, Menüeinträge und Palettenzeilen für den Zustand des aktuellen Issues im Statusfeld (#2124) |
 | `Atlas.Core.Tracker.SprintStart` | `Core/Tracker/Atlas.Core.Tracker.SprintStart.pas` | Ordner `Core/Tracker`; laufender Sprint ohne das Issue beim Beginnen (#2128) |
+| `Atlas.Core.Tracker.StartPlan` | `Core/Tracker/Atlas.Core.Tracker.StartPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Beginnen“ in „Meine Issues“ ohne IDE (#765, #1967) |
+| `Atlas.Core.Tracker.SyncPlan` | `Core/Tracker/Atlas.Core.Tracker.SyncPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Tracker nachführen“ ohne IDE (#1266, #1967) |
 | `Atlas.Core.Tracker.Transitions` | `Core/Tracker/Atlas.Core.Tracker.Transitions.pas` | Ordner `Core/Tracker`; Zuordnung der Übergänge einer Zustandsmaschine für Board, Beginnen, Beenden und Statusfeld (#2122) |
 | `Atlas.IDE.Tracker.Access` | `IDE/Tracker/Atlas.IDE.Tracker.Access.pas` | Ordner `IDE/Tracker`, Zugang zu Issue-Tracker und Build-Server aus der Kompositionswurzel, #1455 |
 | `Atlas.IDE.Tracker.Attach` | `IDE/Tracker/Atlas.IDE.Tracker.Attach.pas` | Ordner `IDE/Tracker` |

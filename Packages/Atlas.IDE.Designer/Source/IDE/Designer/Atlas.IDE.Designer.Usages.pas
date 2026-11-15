@@ -24,6 +24,7 @@ uses
   ToolsAPI,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Designer.Usages,
   Atlas.UI.Designer.Bar,
   Atlas.IDE.Foundation.KeyHook;
 
@@ -36,11 +37,8 @@ type
     FOnMessage: TProc<string>;
     FScopeOf: TFunc<IAtlasModuleScope>;
     FKeys: TAtlasKeyClient;
-    /// <summary>Zuletzt gesehene Auswahl („Unit|Komponente“) und seit wann.</summary>
-    FWatched: string;
-    FSince: UInt64;
-    /// <summary>Auswahl, für die der Zähler gefragt ist bzw. steht.</summary>
-    FAsked: string;
+    /// <summary>Entprellte Auswahl des Zählers.</summary>
+    FWatch: TAtlasUsageWatch;
     /// <summary>Zählt jede Frage des Zählers; eine Antwort mit anderer Nummer ist überholt.</summary>
     FGeneration: Integer;
     FShown: Boolean;
@@ -81,7 +79,6 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Designer.CodeLink,
-  Atlas.Core.Designer.Usages,
   Atlas.UI.Results.Items,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Foundation.Host,
@@ -94,10 +91,6 @@ uses
 
 const
   cKeyPriority = 44;
-  /// <summary>Trenner zwischen Ereignis und Methode in TAtlasDesignerSearchItems.Events („OnClick = Klick“).</summary>
-  cEventAssign = ' = ';
-  /// <summary>So lange muss die Auswahl stehen, bevor der Zähler fragt.</summary>
-  cDebounceMs = 400;
   cCountTimeoutMs = 10000;
   cStatusField = 'designer.usages';
 
@@ -134,18 +127,8 @@ end;
 
 function ScopeOf(const ASettings: TAtlasPluginSettings): TAtlasUsageScope;
 begin
-  if SameText(ASettings.DesignerUsagesScope, TAtlasPluginSettings.cDesignerUsagesUnit) then
-  begin
-    Result := TAtlasUsageScope.UnitOnly;
-  end
-  else if SameText(ASettings.DesignerUsagesScope, TAtlasPluginSettings.cDesignerUsagesGroup) then
-  begin
-    Result := TAtlasUsageScope.ProjectGroup;
-  end
-  else
-  begin
-    Result := TAtlasUsageScope.Project;
-  end;
+  Result := TAtlasDesignerUsages.ScopeOf(ASettings.DesignerUsagesScope, TAtlasPluginSettings.cDesignerUsagesUnit,
+    TAtlasPluginSettings.cDesignerUsagesGroup);
 end;
 
 function KindText(AKind: TAtlasUsageKind): string;
@@ -261,17 +244,13 @@ procedure AddUsageGroups(var AList: TAtlasResultsItemList; const AUsages: TArray
 var
   mGroup: TAtlasResultsItemGroup;
   mUsage: TAtlasUsage;
-  mCaption, mMethod: string;
+  mCaption: string;
 begin
   mGroup := Default(TAtlasResultsItemGroup);
   for mUsage in TAtlasDesignerUsages.Sorted(AUsages) do
   begin
-    mMethod := mUsage.Method;
-    if mMethod = '' then
-    begin
-      mMethod := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesOutside);
-    end;
-    mCaption := mUsage.Component + ' · ' + ExtractFileName(mUsage.FileName) + ' · ' + mMethod;
+    mCaption := TAtlasDesignerUsages.GroupCaption(mUsage,
+      TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesOutside));
     if mCaption <> mGroup.Caption then
     begin
       if mGroup.Items <> nil then
@@ -298,7 +277,7 @@ function EventGroup(const ATargets: TArray<TTarget>; ARoot: TComponent; const AD
 var
   mTarget: TTarget;
   mEvent, mMethod: string;
-  mPos, mLine: Integer;
+  mLine: Integer;
 begin
   Result := Default(TAtlasResultsItemGroup);
   Result.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesEventsGroup);
@@ -306,8 +285,7 @@ begin
   begin
     for mEvent in TAtlasDesignerSearchItems.Events(mTarget.Component, ADesigner) do
     begin
-      mPos := Pos(cEventAssign, mEvent);
-      mMethod := Copy(mEvent, mPos + Length(cEventAssign), MaxInt);
+      mMethod := TAtlasDesignerUsages.HandlerOf(mEvent);
       // Ohne Implementierung (Handler gelöscht) an den Anfang der Unit.
       mLine := TAtlasDesignerUsages.HandlerLine(ACache.Lines(mTarget.UnitFile), ARoot.ClassName, mMethod);
       if mLine < 0 then
@@ -335,7 +313,7 @@ begin
     for mBinding in TAtlasDesignerUsages.Bindings(ARoot, mTarget.Component) do
     begin
       mLine := TAtlasDesignerUsages.FieldLine(ACache.Lines(mTarget.UnitFile), ARoot.ClassName,
-        Copy(mBinding, 1, Pos('.', mBinding) - 1), mCharacter);
+        TAtlasDesignerUsages.BindingOwner(mBinding), mCharacter);
       if mLine < 0 then
       begin
         mLine := 0;
@@ -364,8 +342,7 @@ begin
     TAtlasIdeHost.SetStatusField(cStatusField, '', '', nil);
     FShown := False;
   end;
-  FWatched := '';
-  FAsked := '';
+  FWatch.Clear;
   Inc(FGeneration);
 end;
 
@@ -487,7 +464,7 @@ begin
   begin
     Exit(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesNone));
   end;
-  if AUsages = 1 then
+  if TAtlasDesignerUsages.FormOf(AUsages) = TAtlasUsageForm.One then
   begin
     Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesOne);
   end
@@ -495,21 +472,17 @@ begin
   begin
     Result := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesMany, [AUsages]);
   end;
-  if AEvents = 1 then
-  begin
-    Result := Result + ', ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesEventOne);
-  end
-  else if AEvents > 1 then
-  begin
-    Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesEventMany, [AEvents]);
+  case TAtlasDesignerUsages.FormOf(AEvents) of
+    TAtlasUsageForm.One:
+      Result := Result + ', ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesEventOne);
+    TAtlasUsageForm.Many:
+      Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesEventMany, [AEvents]);
   end;
-  if ABindings = 1 then
-  begin
-    Result := Result + ', ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesBindingOne);
-  end
-  else if ABindings > 1 then
-  begin
-    Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesBindingMany, [ABindings]);
+  case TAtlasDesignerUsages.FormOf(ABindings) of
+    TAtlasUsageForm.One:
+      Result := Result + ', ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesBindingOne);
+    TAtlasUsageForm.Many:
+      Result := Result + ', ' + TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UsagesBindingMany, [ABindings]);
   end;
 end;
 
@@ -524,10 +497,8 @@ var
   mValue: TJSONValue;
   mLocations: TArray<TLspLocation>;
   mLocation: TLspLocation;
-  mUnit: string;
+  mFiles: TArray<string>;
   mCount: Integer;
-  mScope: TAtlasUsageScope;
-  mProjectFiles: TArray<string>;
 begin
   if AGeneration <> FGeneration then
   begin
@@ -546,17 +517,13 @@ begin
   finally
     mValue.Free;
   end;
-  mUnit := Copy(FAsked, 1, Pos('|', FAsked) - 1);
-  mScope := ScopeOf(TAtlasIdeSettings.Current);
-  mProjectFiles := TAtlasDesignerAccess.ProjectUnits(False, False);
-  mCount := 0;
+  mFiles := nil;
   for mLocation in mLocations do
   begin
-    if TAtlasDesignerUsages.InScope(mScope, mLocation.FileName, mUnit, mProjectFiles) then
-    begin
-      Inc(mCount);
-    end;
+    mFiles := mFiles + [mLocation.FileName];
   end;
+  mCount := TAtlasDesignerUsages.CountInScope(ScopeOf(TAtlasIdeSettings.Current), mFiles, FWatch.AskedUnit,
+    TAtlasDesignerAccess.ProjectUnits(False, False));
   TAtlasIdeHost.SetStatusField(cStatusField, AName + ' · ' + CountText(mCount, AEvents, ABindings),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UsagesStatusHint), StatusClicked);
   FShown := True;
@@ -699,15 +666,9 @@ begin
     ClearStatus;
     Exit;
   end;
-  mKey := mEditor.Module.FileName + '|' + mSelected[0].Name;
-  if mKey <> FWatched then
+  mKey := TAtlasUsageWatch.KeyOf(mEditor.Module.FileName, mSelected[0].Name);
+  if FWatch.Ask(mKey, TThread.GetTickCount64) then
   begin
-    FWatched := mKey;
-    FSince := TThread.GetTickCount64;
-  end
-  else if (FAsked <> mKey) and (TThread.GetTickCount64 - FSince >= cDebounceMs) then
-  begin
-    FAsked := mKey;
     AskCount(mEditor, mRoot, mSelected[0]);
   end;
 end;
