@@ -138,7 +138,6 @@ procedure ReevaluateInlineValues;
 implementation
 
 uses
-  System.UITypes,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
