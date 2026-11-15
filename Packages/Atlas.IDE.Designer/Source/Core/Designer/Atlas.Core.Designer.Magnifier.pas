@@ -10,6 +10,9 @@
 // - Farben: HexOf (#RRGGBB) und StandardName (VCL-Name der festen Farben
 //   wie clWhite); NamesOf sucht in einer Liste (Systemfarben, die die IDE zur
 //   Laufzeit ermittelt). Farben hier immer als $RRGGBB.
+// - RefreshDue: neu holen nur bei Mausbewegung oder nach cRefreshMs; Crosses
+//   wählt die Kanten, die den Ausschnitt schneiden; Zooms listet die Stufen
+//   fürs Menü.
 
 interface
 
@@ -31,6 +34,8 @@ type
     cDefaultZoom = 4;
     /// <summary>Ab dieser Stufe gibt es ein Pixelraster.</summary>
     cGridZoom = 4;
+    /// <summary>Spätestens so oft neu holen, auch ohne Mausbewegung (Designer geändert).</summary>
+    cRefreshMs = 300;
   public
     /// <summary>Bildschirmpixel in Pixel der DFM: AValue × ADesignPpi / ACurrentPpi, gerundet.</summary>
     class function ToDesign(AValue, ACurrentPpi, ADesignPpi: Integer): Integer; static;
@@ -48,6 +53,15 @@ type
     class function StandardName(ARgb: Cardinal): string; static;
     /// <summary>Namen aller Einträge mit diesem Wert, in der Reihenfolge der Liste.</summary>
     class function NamesOf(ARgb: Cardinal; const AColors: TArray<TAtlasNamedColor>): TArray<string>; static;
+    /// <summary>$RRGGBB aus den Anteilen.</summary>
+    class function RgbOf(ARed, AGreen, ABlue: Byte): Cardinal; static;
+    /// <summary>Ausschnitt neu holen? AForce, Maus bewegt oder seit ALast cRefreshMs vergangen.</summary>
+    class function RefreshDue(AForce, AMoved: Boolean; ANow, ALast: UInt64): Boolean; static;
+    /// <summary>Schneidet der Umriss ARect (Bildschirm) den Ausschnitt ASource? Rechte und untere Kante liegen
+    /// hinter dem letzten Pixel.</summary>
+    class function Crosses(const ARect, ASource: TRect): Boolean; static;
+    /// <summary>Alle Stufen von cMinZoom bis cMaxZoom.</summary>
+    class function Zooms: TArray<Integer>; static;
   end;
 
 implementation
@@ -167,6 +181,35 @@ begin
     begin
       Result := Result + [mColor.Name];
     end;
+  end;
+end;
+
+class function TAtlasMagnifier.RgbOf(ARed, AGreen, ABlue: Byte): Cardinal;
+begin
+  Result := (Cardinal(ARed) shl 16) or (Cardinal(AGreen) shl 8) or ABlue;
+end;
+
+class function TAtlasMagnifier.RefreshDue(AForce, AMoved: Boolean; ANow, ALast: UInt64): Boolean;
+begin
+  Result := AForce or AMoved or (ANow - ALast >= cRefreshMs);
+end;
+
+class function TAtlasMagnifier.Crosses(const ARect, ASource: TRect): Boolean;
+begin
+  Result := not ((ARect.Bottom < ASource.Top) or (ARect.Top > ASource.Bottom) or (ARect.Right < ASource.Left) or
+    (ARect.Left > ASource.Right));
+end;
+
+class function TAtlasMagnifier.Zooms: TArray<Integer>;
+var
+  mZoom: Integer;
+begin
+  Result := nil;
+  mZoom := cMinZoom;
+  while mZoom <= cMaxZoom do
+  begin
+    Result := Result + [mZoom];
+    mZoom := mZoom * 2;
   end;
 end;
 
