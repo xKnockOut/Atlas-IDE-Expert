@@ -96,7 +96,7 @@ type
     procedure OpenChanged;
     procedure Tick;
     function DefaultLayout(ANow: UInt64): string;
-    procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
+    class procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction); static;
   public
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -385,7 +385,7 @@ begin
   Result := FDefaultLayout;
 end;
 
-procedure TRunner.Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
+class procedure TRunner.Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
 var
   mIndex: Integer;
   mEditor: IOTAFormEditor;

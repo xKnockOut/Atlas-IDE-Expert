@@ -238,11 +238,12 @@ const
     '{',
     '      "id": "unresolved-identifier",',
     '      "name": "Nicht deklarierter Bezeichner",',
-    '      "description": "Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, as' +
-    'm und anonyme Methoden werden übersprungen. Alte object-Syntax: In New(P, Init) und Dispose(P, Done) ist das zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P; fehlt er dort, me' +
-    'ldet die Regel wie E2601 bzw. E2602, Fail außerhalb eines Konstruktors wie E2078. Ein Mitglied einer Klasse dieser Datei ohne Objekt in einer freien Routine (List.OnSelectItem := ListSelectItem in pro' +
-    'cedure CreateList(AFrame: TFrame)) meldet sie eigens, auch ohne System im Index, dann aber nur für Methoden, die als Wert stehen; Korrektur: den Parameter vom Typ der Klasse davorsetzen (AFrame.ListSe' +
-    'lectItem)."',
+    '      "description": "Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke und' +
+    ' asm werden übersprungen. Hinter einem Punkt meldet die Regel auch ein Mitglied, das der Typ davor nicht hat, auch nicht unsichtbar (wie E2003), wenn dieser Typ sicher und vollständig bekannt ist: Kla' +
+    'sse, object, Record, Interface oder Aufzählung aus dem Index, nicht generisch, mit bekannten Vorfahren. Solange eine Unit aus uses im Index fehlt, schweigt die Regel bis auf Mitglieder ohne Objekt (si' +
+    'ehe unten). Alte object-Syntax: In New(P, Init) und Dispose(P, Done) ist das zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P; fehlt er dort, meldet die Regel wie E2601 bzw. E2' +
+    '602, Fail außerhalb eines Konstruktors wie E2078. Ein Mitglied einer Klasse dieser Datei ohne Objekt in einer freien Routine (List.OnSelectItem := ListSelectItem in procedure CreateList(AFrame: TFrame' +
+    ')) meldet sie eigens, auch ohne System im Index, dann aber nur für Methoden, die als Wert stehen; Korrektur: den Parameter vom Typ der Klasse davorsetzen (AFrame.ListSelectItem)."',
     '    },',
     '{',
     '      "id": "type-used-before-declaration",',

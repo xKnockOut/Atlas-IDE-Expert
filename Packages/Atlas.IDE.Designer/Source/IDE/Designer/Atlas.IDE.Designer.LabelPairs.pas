@@ -79,7 +79,7 @@ type
     procedure Execute(ACommand: TAtlasPairsCommand);
     function CanUndo: Boolean;
     /// <summary>Gibt es in der Auswahl ein Feld ohne Label?</summary>
-    function CanCreate: Boolean;
+    class function CanCreate: Boolean; static;
   end;
 
 implementation
@@ -834,7 +834,7 @@ begin
     SameText(mEditor.FileName, FCreatedFile));
 end;
 
-function TAtlasIdeLabelPairs.CanCreate: Boolean;
+class function TAtlasIdeLabelPairs.CanCreate: Boolean;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;

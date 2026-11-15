@@ -33,7 +33,7 @@ type
     FStep: TAtlasDesignerSnapshot;
     FChanged: Boolean;
     procedure MenuClick(Sender: TObject);
-    procedure RunGuarded(const AAction: TProc);
+    class procedure RunGuarded(const AAction: TProc); static;
   protected
     /// <summary>Griff-Fenster anlegen und verdrahten.</summary>
     procedure EnsureOverlay;
@@ -137,7 +137,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
+class procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
 begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, AAction);
 end;

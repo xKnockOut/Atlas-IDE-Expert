@@ -65,7 +65,7 @@ type
     /// <summary>Ohne Bedarf: Stand vergessen (beim Öffnen sofort fragen), Statusfeld leeren.</summary>
     procedure Rest;
     /// <summary>Fenster sichtbar oder Statusfeld an.</summary>
-    function Wanted: Boolean;
+    class function Wanted: Boolean; static;
     procedure Ask;
     procedure Accept(ARequest: Integer; const AFileName: string; ALine: Integer;
       const AView: TAtlasCompilerSwitchView; AKnown: Boolean);
@@ -216,7 +216,7 @@ begin
   UpdateStatus;
 end;
 
-function TAtlasIdeCompilerSwitches.Wanted: Boolean;
+class function TAtlasIdeCompilerSwitches.Wanted: Boolean;
 begin
   Result := TAtlasIdeBuildSwitchesWindow.Visible or TAtlasIdeSettings.Current.BuildSwitchesInStatusBar;
 end;

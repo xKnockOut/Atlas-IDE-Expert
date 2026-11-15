@@ -43,7 +43,8 @@ type
     function IdentifierCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     function AccessCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     function UnitMemberCandidates(const AOwner: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
-    function TypeMemberCandidates(const AOwner, AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
+    function TypeMemberCandidates(const AType: TResolvedSymbol; const AName: string;
+      AIsValue: Boolean): TArray<TResolvedSymbol>;
     function NodeSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
     function FirstCandidate(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
     function MemberSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
@@ -283,7 +284,10 @@ begin
   end
   else if FTyping.TypeOf(mOwner, mType) then
   begin
-    Result := TypeMemberCandidates(mOwner, mType, ANode.Name);
+    // Eine Typumwandlung TFoo(X) liefert den Typ als Symbol, ist aber ein Wert (#2309:
+    // TControlClass(AControl.ClassType).Create(nil) ruft den Konstruktor von TControl, nicht TObject.Create).
+    Result := TypeMemberCandidates(mType, ANode.Name, not mOwner.IsType or
+      (ANode[0].Kind = TSyntaxKind.Call));
   end;
 end;
 
@@ -301,15 +305,15 @@ begin
   end;
 end;
 
-function TResolverExpressions.TypeMemberCandidates(const AOwner, AType: TResolvedSymbol;
-  const AName: string): TArray<TResolvedSymbol>;
+function TResolverExpressions.TypeMemberCandidates(const AType: TResolvedSymbol; const AName: string;
+  AIsValue: Boolean): TArray<TResolvedSymbol>;
 var
   mTarget: TResolvedSymbol;
 begin
   // Wert einer Klassenreferenz (FError: ExceptClass): Mitglieder der Zielklasse, FError.Create ist
   // Exception.Create und liefert ein Exception. Die Referenz selbst hat im Index keine Vorfahren, ohne
   // diesen Schritt fände FindMembers nur TObject.Create.
-  if not AOwner.IsType and FTyping.ClassRefTargetOf(AType, mTarget) then
+  if AIsValue and FTyping.ClassRefTargetOf(AType, mTarget) then
   begin
     Result := FMembers.FindMembers(mTarget, AName);
     MarkConstructed(Result, mTarget);
@@ -317,7 +321,7 @@ begin
   end;
   Result := FMembers.FindMembers(AType, AName);
   // TKunde.Create liefert TKunde, auch wenn Create aus TObject stammt.
-  if AOwner.IsType then
+  if not AIsValue then
   begin
     MarkConstructed(Result, AType);
   end;

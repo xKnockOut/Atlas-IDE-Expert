@@ -36,6 +36,13 @@ type
     procedure GroupProjects_TwoGroups_Empty;
     [Test]
     procedure LoadGroup_Invalid_LogsWarning;
+    /// <summary>#2309: Ordner der Projekte ohne Doppelte, in Reihenfolge.</summary>
+    [Test]
+    procedure ProjectFolders_DistinctInOrder;
+    /// <summary>#2309: --check Packages/Modul/Modul.dproj findet die Gruppe zwei Ebenen darüber, aber nur, wenn
+    /// sie das Projekt enthält.</summary>
+    [Test]
+    procedure EnclosingGroupProjects_FindsGroupAbove;
     [Test]
     procedure GlobalSettingsFile_UnderAppData;
     [Test]
@@ -227,6 +234,44 @@ begin
   Write('A.groupproj', cGroup);
   Write('B.groupproj', cGroup);
   Assert.AreEqual(0, Integer(Length(TShellBootstrap.GroupProjects(FFolder, nil))));
+end;
+
+procedure TShellBootstrapTests.ProjectFolders_DistinctInOrder;
+var
+  mFolders: TArray<string>;
+begin
+  mFolders := TShellBootstrap.ProjectFolders(TArray<string>.Create(TPath.Combine(FFolder, 'B' + PathDelim + 'B.dproj'),
+    TPath.Combine(FFolder, 'A' + PathDelim + 'A.dproj'), TPath.Combine(FFolder, 'B' + PathDelim + 'C.dproj'),
+    'Ohne.dproj'));
+  Assert.AreEqual(2, Integer(Length(mFolders)));
+  Assert.AreEqual(TPath.Combine(FFolder, 'B'), mFolders[0]);
+  Assert.AreEqual(TPath.Combine(FFolder, 'A'), mFolders[1]);
+end;
+
+procedure TShellBootstrapTests.EnclosingGroupProjects_FindsGroupAbove;
+const
+  cModules =
+    '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <ItemGroup>'#13#10 +
+    '    <Projects Include="Packages\Base\Base.dproj"><Dependencies/></Projects>'#13#10 +
+    '    <Projects Include="Packages\Modul\Modul.dproj"><Dependencies/></Projects>'#13#10 +
+    '  </ItemGroup>'#13#10 +
+    '</Project>';
+var
+  mModule, mOther: string;
+  mProjects: TArray<string>;
+begin
+  TDirectory.CreateDirectory(TPath.Combine(FFolder, 'Packages' + PathDelim + 'Modul'));
+  TDirectory.CreateDirectory(TPath.Combine(FFolder, 'Packages' + PathDelim + 'Fremd'));
+  Write('Gruppe.groupproj', cModules);
+  mModule := Write('Packages' + PathDelim + 'Modul' + PathDelim + 'Modul.dproj', '<Project/>');
+  mOther := Write('Packages' + PathDelim + 'Fremd' + PathDelim + 'Fremd.dproj', '<Project/>');
+  mProjects := TShellBootstrap.EnclosingGroupProjects(mModule, nil);
+  Assert.AreEqual(2, Integer(Length(mProjects)));
+  Assert.IsTrue(mProjects[0].EndsWith('Base.dproj'), mProjects[0]);
+  // Gruppe ohne das Projekt und ohne Projekt: nichts.
+  Assert.AreEqual(0, Integer(Length(TShellBootstrap.EnclosingGroupProjects(mOther, nil))));
+  Assert.AreEqual(0, Integer(Length(TShellBootstrap.EnclosingGroupProjects('', nil))));
 end;
 
 procedure TShellBootstrapTests.LoadGroup_Invalid_LogsWarning;

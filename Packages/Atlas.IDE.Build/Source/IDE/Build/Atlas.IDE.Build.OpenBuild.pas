@@ -127,7 +127,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.IDE.Foundation.Settings,

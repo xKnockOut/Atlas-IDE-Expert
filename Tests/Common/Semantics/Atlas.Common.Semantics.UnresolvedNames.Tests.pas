@@ -72,6 +72,19 @@ type
     procedure ReportsMissingConstructorAndDestructor;
     [Test]
     procedure ReportsFailOutsideConstructor;
+    /// <summary>#2309: Mitglied, das der sicher bekannte Typ des Empfängers nicht hat (E2003): Feld eines eigenen
+    /// Typs (FFont.Handle), Aufzählungswert mit Typ davor (TSignalKind.None), Interface-Mitglied
+    /// (IOTAProcessModule.FileName).</summary>
+    [Test]
+    procedure ReportsMissingMembers;
+    /// <summary>#2309: Gefundene Mitglieder (geerbt, über Helfer, Varianten-Record, Zeiger auf Record) und
+    /// Empfänger, deren Typ nicht sicher oder nicht vollständig bekannt ist, bleiben still.</summary>
+    [Test]
+    procedure KnowsMembersAndUncertainReceivers;
+    /// <summary>#2309 (Atlas.IDE.Tests.Explorer, ResultsOfProject): Rümpfe anonymer Methoden werden geprüft;
+    /// Parameter, lokale Variablen und Namen der umgebenden Routine sind dort bekannt.</summary>
+    [Test]
+    procedure ChecksAnonymousMethodBodies;
   end;
 
 implementation
@@ -96,6 +109,8 @@ const
     'type'#10 +
     '  Integer = -2147483648..2147483647;'#10 +
     '  TObject = class'#10 +
+    '  end;'#10 +
+    '  IInterface = interface'#10 +
     '  end;'#10 +
     '  Exception = class(TObject)'#10 +
     '  end;'#10 +
@@ -644,6 +659,134 @@ begin
     mTree.Free;
     mFound := nil;
   end;
+end;
+
+const
+  cUnitWerkzeug =
+    'unit Werkzeug;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TSignalKind = (skInfo, skWarnung);'#10 +
+    '  {$SCOPEDENUMS ON}'#10 +
+    '  TStufe = (Leicht, Schwer);'#10 +
+    '  {$SCOPEDENUMS OFF}'#10 +
+    '  TSignalKindHelfer = record helper for TSignalKind'#10 +
+    '    function Text: string;'#10 +
+    '  end;'#10 +
+    '  TEditorFont = class'#10 +
+    '  public'#10 +
+    '    Size: Integer;'#10 +
+    '    const cStandard = 10;'#10 +
+    '    type TArt = (faNormal, faFett);'#10 +
+    '    function Font: TObject;'#10 +
+    '    property Groesse: Integer read Size;'#10 +
+    '  end;'#10 +
+    '  TEditorFontHelfer = class helper for TEditorFont'#10 +
+    '    function Breite: Integer;'#10 +
+    '  end;'#10 +
+    '  TBreitFont = class(TEditorFont)'#10 +
+    '    Breit: Boolean;'#10 +
+    '  end;'#10 +
+    '  IOTAModuleBase = interface(IInterface)'#10 +
+    '    function GetModuleFileName: string;'#10 +
+    '  end;'#10 +
+    '  IOTAProcessModule = interface(IOTAModuleBase)'#10 +
+    '    function GetModuleName: string;'#10 +
+    '  end;'#10 +
+    '  TPunkt = record'#10 +
+    '    X: Integer;'#10 +
+    '    case Integer of'#10 +
+    '      0: (Y: Integer);'#10 +
+    '      1: (Z: Double);'#10 +
+    '  end;'#10 +
+    '  PPunkt = ^TPunkt;'#10 +
+    '  TEditorFontClass = class of TEditorFont;'#10 +
+    '  TListe<T> = class'#10 +
+    '    procedure Add(const AItem: T);'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+
+/// <summary>Unit Haupt mit uses Werkzeug; AVars als lokale Variablen, ABody im Rumpf der Methode TBesitzer.Lauf.
+/// </summary>
+function MemberUnit(const AVars, ABody: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'uses'#10'  Werkzeug;'#10'type'#10'  TBesitzer = class'#10 +
+    '  private'#10'    FFont: TEditorFont;'#10'  public'#10'    procedure Lauf;'#10'  end;'#10 +
+    'implementation'#10'procedure TBesitzer.Lauf;'#10'var'#10'  mZahl: Integer;'#10 + AVars + 'begin'#10 + ABody +
+    'end;'#10'end.';
+end;
+
+procedure TUnresolvedNamesTests.ReportsMissingMembers;
+var
+  mTree: TSyntaxTree;
+  mFound: TArray<TUnresolvedName>;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  // Atlas.UI.Debug.InlineValuePainter: FFont ist TAtlasEditorFont, nicht TFont.
+  Assert.AreEqual('Handle=E2003/TEditorFont;', Coded(MemberUnit('', '  mZahl := FFont.Handle;'#10)));
+  // Atlas.UI.Debug.LogpointDialog: TAtlasSignalKind.None gibt es nicht.
+  Assert.AreEqual('None=E2003/TSignalKind;', Coded(MemberUnit('  mArt: TSignalKind;'#10,
+    '  mArt := TSignalKind.None;'#10)));
+  Assert.AreEqual('Mittel=E2003/TStufe;', Coded(MemberUnit('  mStufe: TStufe;'#10,
+    '  mStufe := TStufe.Mittel;'#10)));
+  // Atlas.IDE.Debug.EventLog: IOTAProcessModule hat kein FileName (nur GetModuleFileName des Vorfahren).
+  Assert.AreEqual('FileName=E2003/IOTAProcessModule;', Coded(MemberUnit('  mModul: IOTAProcessModule;'#10 +
+    '  mText: string;'#10, '  mText := mModul.GetModuleFileName + mModul.FileName;'#10)));
+  // Geerbter Typ, Kette über ein Mitglied: nur das erste fehlende Glied, nicht die Folgen.
+  Assert.AreEqual('Hoehe=E2003/TBreitFont;', Coded(MemberUnit('  mBreit: TBreitFont;'#10,
+    '  mZahl := mBreit.Hoehe.Wert;'#10)));
+  mTree := TPascalParser.Parse(MemberUnit('', '  mZahl := FFont.Handle;'#10));
+  try
+    mFound := TUnresolvedNames.Find(FResolver, mTree, 'C:\P\Haupt.pas');
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('"Handle" ist kein Mitglied von TEditorFont (wie E2003).', TUnresolvedNames.Describe(mFound[0]));
+    Assert.AreEqual(16, mFound[0].Range.StartPos.Line);
+    Assert.AreEqual(17, mFound[0].Range.StartPos.Character);
+    Assert.AreEqual(23, mFound[0].Range.EndPos.Character);
+  finally
+    mTree.Free;
+    mFound := nil;
+  end;
+end;
+
+procedure TUnresolvedNamesTests.KnowsMembersAndUncertainReceivers;
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(cUnitWerkzeug, 'C:\P\Werkzeug.pas', nil));
+  // Eigene, geerbte, über Helfer sichtbare Mitglieder; Konstante, verschachtelter Typ, Property.
+  Assert.AreEqual('', Coded(MemberUnit('  mBreit: TBreitFont;'#10'  mArt: TEditorFont.TArt;'#10,
+    '  mZahl := FFont.Size + FFont.Groesse + FFont.Breite + TEditorFont.cStandard + mBreit.Size;'#10 +
+    '  mArt := TEditorFont.TArt.faFett;'#10'  FFont.Font;'#10'  Self.FFont.Size := 1;'#10)));
+  // Aufzählungswerte mit Typ davor, Helfer einer Aufzählung.
+  Assert.AreEqual('', Coded(MemberUnit('  mArt: TSignalKind;'#10'  mStufe: TStufe;'#10'  mText: string;'#10,
+    '  mArt := TSignalKind.skInfo;'#10'  mStufe := TStufe.Schwer;'#10'  mText := mArt.Text;'#10)));
+  // Interface: Mitglieder des Vorfahren.
+  Assert.AreEqual('', Coded(MemberUnit('  mModul: IOTAProcessModule;'#10'  mText: string;'#10,
+    '  mText := mModul.GetModuleFileName + mModul.GetModuleName;'#10)));
+  // Varianten-Record, Zeiger auf Record, Klassenreferenz, generischer Typ.
+  Assert.AreEqual('', Coded(MemberUnit('  mPunkt: TPunkt;'#10'  mZeiger: PPunkt;'#10 +
+    '  mKlasse: TEditorFontClass;'#10'  mListe: TListe<Integer>;'#10,
+    '  mPunkt.Z := mPunkt.Y + mPunkt.X;'#10'  mZahl := mZeiger.Unbekannt;'#10 +
+    '  mZahl := mKlasse.Unbekannt;'#10'  mKlasse.Create;'#10'  mListe.Add(1);'#10'  mListe.Unbekannt;'#10)));
+  // Unbekannter Vorfahr, unbekannter Typ des Empfängers, Unit davor, with.
+  FIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'uses'#10'  Weg;'#10'type'#10 +
+    '  TFremd = class(TUnbekannt)'#10'  end;'#10'implementation'#10'end.', 'C:\P\Fremd.pas', nil));
+  Assert.AreEqual('', Coded('unit Haupt;'#10'interface'#10'implementation'#10'uses'#10'  Fremd, Werkzeug;'#10 +
+    'procedure Lauf(AFremd: TFremd; AFont: TEditorFont);'#10'var'#10'  mZahl: Integer;'#10'begin'#10 +
+    '  mZahl := AFremd.Irgendwas;'#10'  Werkzeug.TEditorFont.cStandard;'#10'  with AFont do'#10 +
+    '    mZahl := Size;'#10'end;'#10'end.'));
+end;
+
+procedure TUnresolvedNamesTests.ChecksAnonymousMethodBodies;
+const
+  cKopf = 'unit Haupt;'#10'interface'#10'type'#10'  TPruefen = reference to function(AWert: Integer): Integer;'#10 +
+    '  TKunde = class'#10'  private'#10'    FZahl: Integer;'#10'  public'#10'    procedure Lauf;'#10'  end;'#10 +
+    'implementation'#10'uses'#10'  Basis;'#10'procedure Nimm(const AFunk: TPruefen);'#10'begin'#10'end;'#10;
+begin
+  Assert.AreEqual('ResultsOfProject@27:16;', Names(cKopf + 'procedure TKunde.Lauf;'#10'var'#10'  mAussen: Integer;'#10 +
+    'begin'#10'  Nimm('#10'    function(AWert: Integer): Integer'#10'    var'#10'      mInnen: Integer;'#10 +
+    '    begin'#10'      mInnen := AWert + mAussen + FZahl;'#10'      Melde(mInnen);'#10 +
+    '      Result := ResultsOfProject;'#10'    end);'#10'end;'#10'end.'));
 end;
 
 initialization

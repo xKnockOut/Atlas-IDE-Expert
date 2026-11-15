@@ -97,7 +97,7 @@ type
     procedure Cancelled(const AProject: string);
     procedure Prepared(const AJob: TAtlasIssueStartJob);
     class function DefaultChoice(var AJob: TAtlasIssueStartJob; var AAsked: Boolean): Boolean; static;
-    function DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
+    class function DialogChoice(var AJob: TAtlasIssueStartJob): Boolean; static;
     function ConfirmChanges(const AJob: TAtlasIssueStartJob; AAsked: Boolean): Boolean;
     procedure Run(const AJob: TAtlasIssueStartJob);
     procedure Executed(const AJob: TAtlasIssueStartJob);
@@ -574,7 +574,7 @@ begin
   end;
 end;
 
-function TAtlasIdeIssueStart.DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
+class function TAtlasIdeIssueStart.DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
 var
   mNeverAsk: Boolean;
   mAsk: TAtlasVcsBranchAsk;
