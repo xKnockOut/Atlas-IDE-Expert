@@ -66,6 +66,25 @@ type
     procedure SettingsDefaultsAndLimits;
   end;
 
+  /// <summary>Entscheidungen des Bereichs in der IDE (#1967).</summary>
+  [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
+  TAtlasUnsavedSessionTests = class
+  public
+    [Test]
+    procedure ReorderOnlyWhenHidingChanges;
+    [Test]
+    procedure DueWhenForcedUnknownOrStale;
+    [Test]
+    procedure RunningWithinLimit;
+    [Test]
+    procedure TimedOutAfterLimit;
+    [Test]
+    procedure MissingOutcomeCountsAsFailed;
+    [Test]
+    procedure ChangeTextsGroupKinds;
+  end;
+
 implementation
 
 uses
@@ -980,7 +999,65 @@ begin
   Assert.AreEqual(TAtlasWelcomeUnsaved.cMaxHours, mSettings.WelcomePageUnsavedAlertHours, 'rot nie vor gelb');
 end;
 
+{ TAtlasUnsavedSessionTests }
+
+procedure TAtlasUnsavedSessionTests.ReorderOnlyWhenHidingChanges;
+begin
+  Assert.IsTrue(TAtlasUnsavedSession.Reorder(True, True, True, True), 'gezeigt, jetzt sauber: verschwindet');
+  Assert.IsTrue(TAtlasUnsavedSession.Reorder(True, True, False, False), 'versteckt, jetzt Arbeit: erscheint');
+  Assert.IsFalse(TAtlasUnsavedSession.Reorder(True, True, True, False));
+  Assert.IsFalse(TAtlasUnsavedSession.Reorder(True, False, True, True), 'ohne hideWhenClean');
+  Assert.IsFalse(TAtlasUnsavedSession.Reorder(False, True, True, True), 'Bereich aus');
+end;
+
+procedure TAtlasUnsavedSessionTests.DueWhenForcedUnknownOrStale;
+begin
+  Assert.IsFalse(TAtlasUnsavedSession.Due(False, True, 100000, 110000));
+  Assert.IsTrue(TAtlasUnsavedSession.Due(True, True, 100000, 110000));
+  Assert.IsTrue(TAtlasUnsavedSession.Due(False, False, 0, 110000));
+  Assert.IsTrue(TAtlasUnsavedSession.Due(False, True, 100000, 100000 + TAtlasWelcomeUnsaved.cRefreshMs));
+end;
+
+procedure TAtlasUnsavedSessionTests.RunningWithinLimit;
+begin
+  Assert.IsTrue(TAtlasUnsavedSession.Running(True, 1000, 2000));
+  Assert.IsFalse(TAtlasUnsavedSession.Running(False, 1000, 2000), 'keine Abfrage');
+  Assert.IsFalse(TAtlasUnsavedSession.Running(True, 1000, 1000 + TAtlasWelcomeUnsaved.cQueryLimitMs), 'zu lang');
+  Assert.IsFalse(TAtlasUnsavedSession.Running(True, 5000, 1000), 'Zähler zurückgesetzt');
+end;
+
+procedure TAtlasUnsavedSessionTests.TimedOutAfterLimit;
+begin
+  Assert.IsFalse(TAtlasUnsavedSession.TimedOut(1000, 1000 + TAtlasWelcomeUnsaved.cTimeLimitMs - 1));
+  Assert.IsTrue(TAtlasUnsavedSession.TimedOut(1000, 1000 + TAtlasWelcomeUnsaved.cTimeLimitMs));
+end;
+
+procedure TAtlasUnsavedSessionTests.MissingOutcomeCountsAsFailed;
+var
+  mOutcomes: TArray<TAtlasVcsOutcome>;
+begin
+  mOutcomes := TArray<TAtlasVcsOutcome>.Create(TAtlasVcsOutcome.Ok);
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, TAtlasUnsavedSession.OutcomeAt(mOutcomes, 0));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, TAtlasUnsavedSession.OutcomeAt(mOutcomes, 1));
+  Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Failed, TAtlasUnsavedSession.OutcomeAt(nil, 0));
+end;
+
+procedure TAtlasUnsavedSessionTests.ChangeTextsGroupKinds;
+begin
+  Assert.AreEqual<TAtlasUnsavedChangeText>(TAtlasUnsavedChangeText.Deleted,
+    TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind.Missing));
+  Assert.AreEqual<TAtlasUnsavedChangeText>(TAtlasUnsavedChangeText.Renamed,
+    TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind.Copied));
+  Assert.AreEqual<TAtlasUnsavedChangeText>(TAtlasUnsavedChangeText.Conflicted,
+    TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind.Conflicted));
+  Assert.AreEqual<TAtlasUnsavedChangeText>(TAtlasUnsavedChangeText.Modified,
+    TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind.TypeChanged));
+  Assert.AreEqual<TAtlasUnsavedChangeText>(TAtlasUnsavedChangeText.Untracked,
+    TAtlasUnsavedSession.ChangeText(TAtlasVcsChangeKind.Untracked));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeUnsavedTests);
+  TDUnitX.RegisterTestFixture(TAtlasUnsavedSessionTests);
 
 end.
