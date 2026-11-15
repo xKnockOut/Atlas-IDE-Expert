@@ -100,7 +100,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 {$SCOPEDENUMS ON}
 
@@ -375,7 +376,7 @@ end;
 
 function SameType(const A, B: string): Boolean;
 begin
-  Result := (A <> '') and SameText(CollapseSpace(A), CollapseSpace(B));
+  Result := (A <> '') and SameText(TTextLines.CollapseSpace(A), TTextLines.CollapseSpace(B));
 end;
 
 { TInlineAccessor }

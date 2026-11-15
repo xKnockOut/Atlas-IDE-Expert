@@ -256,6 +256,11 @@ end;
 function TRawMemoryScan.DataType(AName: Integer; AAsPointer: Boolean): string;
 begin
   Result := FTypes.DeclaredType(FTokens[AName].Text, FTokens[AName].StartPos);
+  // Offener Array-Parameter: FillChar(A, ...) trifft die Elemente wie bei einem statischen Array.
+  if not AAsPointer and FTypes.IsOpenArrayParameter(FTokens[AName].Text, FTokens[AName].StartPos) then
+  begin
+    Result := 'array[0..0] of ' + Trim(Copy(Result, Length('array of') + 1, MaxInt));
+  end;
   if AAsPointer then
   begin
     Result := FManaged.Pointee(Result);
@@ -338,7 +343,8 @@ begin
   end;
   mFixes := nil;
   // FillChar(X, SizeOf(X), 0) bzw. ZeroMemory(@X, SizeOf(X)): X := Default(T).
-  if IsStatement and not mDeref and IsSizeOf(1, FTokens[mName].Text, mTypeName) and
+  if IsStatement and not mDeref and not StartsText('array[0..0] of ', mTypeName) and
+    IsSizeOf(1, FTokens[mName].Text, mTypeName) and
     (SameText(FRoutine, 'ZeroMemory') or IsZero(2)) then
   begin
     mFixes := [TRuleFix.Create(Format('%s := Default(%s)', [FTokens[mName].Text, mTypeName]),

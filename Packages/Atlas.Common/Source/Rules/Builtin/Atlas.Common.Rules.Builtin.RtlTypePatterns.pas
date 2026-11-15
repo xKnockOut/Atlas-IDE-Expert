@@ -257,7 +257,7 @@ begin
       Continue;
     end;
     mTypeName := DeclaredTypeAt(ATypes, ATokens, mName);
-    if (mTypeName <> '') and TDeclaredTypes.IsReference(mTypeName) then
+    if (mTypeName <> '') and ATypes.IsPointerSized(mTypeName) then
     begin
       AReport.Add(RangeOf(ATokens, mInner, mSizeClose),
         cTexts[TRtlTypePatternsText.SizeOfPointer].Fmt([ATokens[mName].Text, mTypeName]),

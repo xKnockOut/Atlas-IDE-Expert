@@ -26,10 +26,14 @@ uses
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Run,
-  Atlas.Core.Tests.Flaky;
+  Atlas.Core.Tests.Flaky,
+  Atlas.Core.Tests.Debug,
+  Atlas.Core.Tests.Series;
 
 type
 {$SCOPEDENUMS ON}
+  /// <summary>Statuszeile des Fensters: Lauf im Gange, kein Testprojekt, keine Tests oder die Zahlen.</summary>
+  TAtlasTestExplorerStatus = (Running, NoProject, NoTests, Summary);
   /// <summary>Ebene eines Knotens.</summary>
   TAtlasTestNodeKind = (TestUnit, Fixture, Test, TestCase);
   /// <summary>Farbe des Punkts: grün, rot, gelb (Teilstand), grau (nicht gelaufen bzw. veraltet).</summary>
@@ -175,10 +179,39 @@ type
       const ATexts: TAtlasTestFlakyTexts): TArray<TAtlasTestStackLine>; static;
   end;
 
+  /// <summary>Auswahl im Fenster „Atlas-Tests“: Testprojekt, Statuszeile, Einzelheiten, Debuggen und Serien
+  /// (#1782) der gewählten Knoten AChosen (Indizes in ANodes, nicht leer).</summary>
+  TAtlasTestExplorerChoice = class
+  public
+    /// <summary>Gewähltes Testprojekt: ACurrent, solange es in AProjects steht; sonst das aktive AActive, wenn es
+    /// ein Testprojekt ist, sonst das erste; '' ohne Testprojekte.</summary>
+    class function Project(const ACurrent: string; const AProjects: TArray<string>;
+      const AActive: string): string; static;
+    /// <summary>Was die Statuszeile zeigt.</summary>
+    class function Status(ABusy: Boolean; const AProject: string; ANodeCount: Integer): TAtlasTestExplorerStatus;
+      static;
+    /// <summary>Tests mit veraltetem Ergebnis (#1770) unter ANodes.</summary>
+    class function StaleCount(const ANodes: TArray<TAtlasTestNode>): Integer; static;
+    /// <summary>Voller Name des Knotens AIndex für Einzelheiten und Protokoll; '' ohne Knoten und für eine Testunit.
+    /// </summary>
+    class function DetailName(const ANodes: TArray<TAtlasTestNode>; AIndex: Integer): string; static;
+    /// <summary>Auswahl zum Debuggen: benannt nach dem ersten Knoten (eine ganze Testunit über ihre erste Fixture),
+    /// mit den Namen aller; mehrere Knoten oder eine Testunit ohne einmaligen Haltepunkt.</summary>
+    class function DebugSelection(const AUnits: TArray<TAtlasTestUnitInput>; const ANodes: TArray<TAtlasTestNode>;
+      const AChosen: TArray<Integer>): TAtlasTestSelection; static;
+    /// <summary>Gegenstand einer Serie: der Knoten ANode in AUnit.</summary>
+    class function SubjectOf(const AUnit: TDUnitXUnit; const ANode: TAtlasTestNode): TAtlasTestSeriesSubject; static;
+    /// <summary>Namen für „In zufälliger Reihenfolge ausführen“: je Test bzw. Fall der gewählten Knoten ein Name.
+    /// </summary>
+    class function ShuffleNames(const AUnits: TArray<TAtlasTestUnitInput>; const ANodes: TArray<TAtlasTestNode>;
+      const AChosen: TArray<Integer>): TArray<string>; static;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Math,
   System.Generics.Defaults,
   System.Generics.Collections,
@@ -804,6 +837,126 @@ begin
   if AFlaky.LastMessage <> '' then
   begin
     Result := Result + [TextLine(Format(ATexts.Message, [FirstLine(AFlaky.LastMessage)]))];
+  end;
+end;
+
+{ TAtlasTestExplorerChoice }
+
+class function TAtlasTestExplorerChoice.Project(const ACurrent: string; const AProjects: TArray<string>;
+  const AActive: string): string;
+begin
+  if (ACurrent <> '') and (IndexText(ACurrent, AProjects) >= 0) then
+  begin
+    Exit(ACurrent);
+  end;
+  // Vorwahl: das aktive Testprojekt, sonst das erste.
+  Result := '';
+  if (AActive <> '') and (IndexText(AActive, AProjects) >= 0) then
+  begin
+    Result := AActive;
+  end
+  else if Length(AProjects) > 0 then
+  begin
+    Result := AProjects[0];
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.Status(ABusy: Boolean; const AProject: string;
+  ANodeCount: Integer): TAtlasTestExplorerStatus;
+begin
+  if ABusy then
+  begin
+    Result := TAtlasTestExplorerStatus.Running;
+  end
+  else if AProject = '' then
+  begin
+    Result := TAtlasTestExplorerStatus.NoProject;
+  end
+  else if ANodeCount = 0 then
+  begin
+    Result := TAtlasTestExplorerStatus.NoTests;
+  end
+  else
+  begin
+    Result := TAtlasTestExplorerStatus.Summary;
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.StaleCount(const ANodes: TArray<TAtlasTestNode>): Integer;
+var
+  mNode: TAtlasTestNode;
+begin
+  Result := 0;
+  for mNode in ANodes do
+  begin
+    if (mNode.Kind = TAtlasTestNodeKind.Test) and
+      (TAtlasTestExplorer.StateOf(mNode) = TAtlasTestNodeState.Stale) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.DetailName(const ANodes: TArray<TAtlasTestNode>; AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex <= High(ANodes)) and (ANodes[AIndex].Kind <> TAtlasTestNodeKind.TestUnit) then
+  begin
+    Result := ANodes[AIndex].FullName;
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.DebugSelection(const AUnits: TArray<TAtlasTestUnitInput>;
+  const ANodes: TArray<TAtlasTestNode>; const AChosen: TArray<Integer>): TAtlasTestSelection;
+var
+  mNode: TAtlasTestNode;
+begin
+  mNode := ANodes[AChosen[0]];
+  // Eine ganze Testunit: über ihre erste Fixture benennen, die Namen decken alle ab.
+  Result := TAtlasTestDebug.Selection(AUnits[mNode.UnitIndex].Found, Max(mNode.FixtureIndex, 0), mNode.TestIndex,
+    mNode.CaseIndex);
+  Result.Names := TAtlasTestExplorer.RunNames(AUnits, ANodes, AChosen);
+  if (Length(AChosen) > 1) or (mNode.Kind = TAtlasTestNodeKind.TestUnit) then
+  begin
+    // Mehrere Tests: kein einmaliger Haltepunkt am Anfang eines davon.
+    Result.BreakLine := -1;
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.SubjectOf(const AUnit: TDUnitXUnit;
+  const ANode: TAtlasTestNode): TAtlasTestSeriesSubject;
+var
+  mFixture: TDUnitXFixture;
+begin
+  Result := TAtlasTestSeriesSubject.Make(AUnit.UnitName, '', '', '');
+  if (ANode.FixtureIndex < 0) or (ANode.FixtureIndex > High(AUnit.Fixtures)) then
+  begin
+    Exit;
+  end;
+  mFixture := AUnit.Fixtures[ANode.FixtureIndex];
+  Result.Fixture := mFixture.Name;
+  if (ANode.TestIndex >= 0) and (ANode.TestIndex <= High(mFixture.Tests)) then
+  begin
+    Result.Method := mFixture.Tests[ANode.TestIndex].Method;
+    if (ANode.CaseIndex >= 0) and (ANode.CaseIndex <= High(mFixture.Tests[ANode.TestIndex].Cases)) then
+    begin
+      Result.CaseName := mFixture.Tests[ANode.TestIndex].Cases[ANode.CaseIndex];
+    end;
+  end;
+end;
+
+class function TAtlasTestExplorerChoice.ShuffleNames(const AUnits: TArray<TAtlasTestUnitInput>;
+  const ANodes: TArray<TAtlasTestNode>; const AChosen: TArray<Integer>): TArray<string>;
+var
+  mIndex: Integer;
+  mNode: TAtlasTestNode;
+begin
+  Result := nil;
+  for mIndex in AChosen do
+  begin
+    mNode := ANodes[mIndex];
+    Result := Result + TAtlasTestShuffle.SingleNames(AUnits[mNode.UnitIndex].Found, mNode.FixtureIndex,
+      mNode.TestIndex, mNode.CaseIndex);
   end;
 end;
 

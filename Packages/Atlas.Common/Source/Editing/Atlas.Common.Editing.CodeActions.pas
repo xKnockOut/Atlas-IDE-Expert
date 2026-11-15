@@ -266,32 +266,6 @@ begin
   Result := -1;
 end;
 
-/// <summary>Leerraum und Zeilenumbrüche zu je einem Leerzeichen zusammengefasst.</summary>
-function CollapseSpace(const AText: string): string;
-var
-  mIndex: Integer;
-  mSpace: Boolean;
-begin
-  Result := '';
-  mSpace := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
-    begin
-      mSpace := True;
-    end
-    else
-    begin
-      if mSpace and (Result <> '') then
-      begin
-        Result := Result + ' ';
-      end;
-      mSpace := False;
-      Result := Result + AText[mIndex];
-    end;
-  end;
-end;
-
 function SourceOf(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -487,7 +461,7 @@ var
   mMatch: TMatch;
 begin
   // Leerraum und Zeilenumbrüche zusammenfassen: Der Aufruf darf über mehrere Zeilen gehen.
-  mMatch := TRegEx.Match(CollapseSpace(SourceOf(FText, FStatement)), cCreatePattern, [roIgnoreCase]);
+  mMatch := TRegEx.Match(TTextLines.CollapseSpace(SourceOf(FText, FStatement)), cCreatePattern, [roIgnoreCase]);
   Result := mMatch.Success;
   if Result then
   begin

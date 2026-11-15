@@ -256,6 +256,7 @@ Atlas.Common.Pascal.PureRoutines.Tests
 Atlas.Common.Pascal.RoutineSignatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
+Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests
@@ -274,8 +275,10 @@ Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
 Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests
+Atlas.Common.Rules.Builtin.Constants.Tests
 Atlas.Common.Rules.Builtin.Constants.Types.Tests
 Atlas.Common.Rules.Builtin.Credentials.Tests
+Atlas.Common.Rules.Builtin.DataBinding.Tests
 Atlas.Common.Rules.Builtin.Database.Statements.Tests
 Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests
 Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests

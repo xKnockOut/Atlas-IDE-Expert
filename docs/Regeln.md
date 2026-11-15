@@ -1977,7 +1977,7 @@ MasterSource = dsKunden; MasterFields = 'KundenID'
 
 **Pflichtfeld ohne sichtbares Eingabe-Control** · Bug · Warnung · Gruppe Formulare und Daten
 
-Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht füllen, Post schlägt fehl.
+Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder, LiveBindings mit FieldName und Control ebenso). Der Anwender kann es nicht füllen, Post schlägt fehl. Zeigt kein Control der Formulardatei das Dataset überhaupt (Datenmodul, Eingabe in einem anderen Formular), meldet die Regel nichts.
 
 Mit Treffer:
 

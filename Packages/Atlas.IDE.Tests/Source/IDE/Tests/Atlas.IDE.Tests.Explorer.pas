@@ -187,45 +187,20 @@ function StatusOf(AExplorer: TAtlasIdeTestExplorer): string;
 var
   mTotal, mPassed, mFailed, mNotRun: Integer;
 begin
-  if AExplorer.FTests.Busy then
-  begin
-    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
+  case TAtlasTestExplorerChoice.Status(AExplorer.FTests.Busy, AExplorer.FProject, Length(AExplorer.FNodes)) of
+    TAtlasTestExplorerStatus.Running:
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning);
+    TAtlasTestExplorerStatus.NoProject:
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject);
+    TAtlasTestExplorerStatus.NoTests:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(AExplorer.FProject)]);
+  else
+    TAtlasTestExplorer.Totals(AExplorer.FNodes, mTotal, mPassed, mFailed, mNotRun);
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
   end;
-  if AExplorer.FProject = '' then
-  begin
-    Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject));
-  end;
-  if Length(AExplorer.FNodes) = 0 then
-  begin
-    Exit(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(AExplorer.FProject)]));
-  end;
-  TAtlasTestExplorer.Totals(AExplorer.FNodes, mTotal, mPassed, mFailed, mNotRun);
-  Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
 end;
 
 { Serien (#1782): freie Routinen, weil TAtlasIdeTestExplorer keine weiteren Mitglieder aufnimmt. }
-
-/// <summary>Gegenstand der Serie: der erste gewählte Knoten.</summary>
-function SubjectOfNode(const AUnit: TDUnitXUnit; const ANode: TAtlasTestNode): TAtlasTestSeriesSubject;
-var
-  mFixture: TDUnitXFixture;
-begin
-  Result := TAtlasTestSeriesSubject.Make(AUnit.UnitName, '', '', '');
-  if (ANode.FixtureIndex < 0) or (ANode.FixtureIndex > High(AUnit.Fixtures)) then
-  begin
-    Exit;
-  end;
-  mFixture := AUnit.Fixtures[ANode.FixtureIndex];
-  Result.Fixture := mFixture.Name;
-  if (ANode.TestIndex >= 0) and (ANode.TestIndex <= High(mFixture.Tests)) then
-  begin
-    Result.Method := mFixture.Tests[ANode.TestIndex].Method;
-    if (ANode.CaseIndex >= 0) and (ANode.CaseIndex <= High(mFixture.Tests[ANode.TestIndex].Cases)) then
-    begin
-      Result.CaseName := mFixture.Tests[ANode.TestIndex].Cases[ANode.CaseIndex];
-    end;
-  end;
-end;
 
 /// <summary>Gewählte Knoten des Fensters als Serie: Datei, Gegenstand und Namen (AShuffle: je Test bzw. Fall ein
 /// Name). False ohne Auswahl.</summary>
@@ -233,7 +208,6 @@ function SeriesChoice(AExplorer: TAtlasIdeTestExplorer; AShuffle: Boolean; out A
   out ASubject: TAtlasTestSeriesSubject; out ANames: TArray<string>): Boolean;
 var
   mChosen: TArray<Integer>;
-  mIndex: Integer;
   mNode: TAtlasTestNode;
 begin
   AFileName := '';
@@ -247,17 +221,14 @@ begin
   end;
   mNode := AExplorer.FNodes[mChosen[0]];
   AFileName := mNode.FileName;
-  ASubject := SubjectOfNode(AExplorer.FUnits[mNode.UnitIndex].Found, mNode);
-  if not AShuffle then
+  ASubject := TAtlasTestExplorerChoice.SubjectOf(AExplorer.FUnits[mNode.UnitIndex].Found, mNode);
+  if AShuffle then
+  begin
+    ANames := TAtlasTestExplorerChoice.ShuffleNames(AExplorer.FUnits, AExplorer.FNodes, mChosen);
+  end
+  else
   begin
     ANames := TAtlasTestExplorer.RunNames(AExplorer.FUnits, AExplorer.FNodes, mChosen);
-    Exit;
-  end;
-  for mIndex in mChosen do
-  begin
-    mNode := AExplorer.FNodes[mIndex];
-    ANames := ANames + TAtlasTestShuffle.SingleNames(AExplorer.FUnits[mNode.UnitIndex].Found, mNode.FixtureIndex,
-      mNode.TestIndex, mNode.CaseIndex);
   end;
 end;
 
@@ -480,30 +451,19 @@ end;
 procedure TAtlasIdeTestExplorer.ReadProjects;
 var
   mProject: IOTAProject;
-  mActive: IOTAProject;
-  mFound: Boolean;
+  mActive: string;
 begin
   FProjects := nil;
   for mProject in TAtlasIdeTestProjects.TestProjects('') do
   begin
     FProjects := FProjects + [mProject.FileName];
   end;
-  mFound := (FProject <> '') and (IndexText(FProject, FProjects) >= 0);
-  if mFound then
+  mActive := '';
+  if GetActiveProject <> nil then
   begin
-    Exit;
+    mActive := GetActiveProject.FileName;
   end;
-  // Vorwahl: das aktive Testprojekt, sonst das erste.
-  FProject := '';
-  mActive := GetActiveProject;
-  if (mActive <> nil) and (IndexText(mActive.FileName, FProjects) >= 0) then
-  begin
-    FProject := mActive.FileName;
-  end
-  else if Length(FProjects) > 0 then
-  begin
-    FProject := FProjects[0];
-  end;
+  FProject := TAtlasTestExplorerChoice.Project(FProject, FProjects, mActive);
 end;
 
 procedure TAtlasIdeTestExplorer.ReadUnits;
@@ -646,7 +606,6 @@ end;
 procedure TAtlasIdeTestExplorer.DebugSelected;
 var
   mChosen: TArray<Integer>;
-  mNode: TAtlasTestNode;
   mSelection: TAtlasTestSelection;
 begin
   mChosen := Chosen;
@@ -654,19 +613,10 @@ begin
   begin
     Exit;
   end;
-  mNode := FNodes[mChosen[0]];
-  // Eine ganze Testunit: über ihre erste Fixture benennen, die Namen decken alle ab.
-  mSelection := TAtlasTestDebug.Selection(FUnits[mNode.UnitIndex].Found, Max(mNode.FixtureIndex, 0),
-    mNode.TestIndex, mNode.CaseIndex);
-  mSelection.Names := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
-  if (Length(mChosen) > 1) or (mNode.Kind = TAtlasTestNodeKind.TestUnit) then
-  begin
-    // Mehrere Tests: kein einmaliger Haltepunkt am Anfang eines davon.
-    mSelection.BreakLine := -1;
-  end;
+  mSelection := TAtlasTestExplorerChoice.DebugSelection(FUnits, FNodes, mChosen);
   if Length(mSelection.Names) > 0 then
   begin
-    FDebugger.Debug(mNode.FileName, mSelection);
+    FDebugger.Debug(FNodes[mChosen[0]].FileName, mSelection);
   end;
 end;
 
@@ -755,11 +705,7 @@ begin
   begin
     Exit;
   end;
-  mName := '';
-  if (ANode >= 0) and (ANode <= High(FNodes)) and (FNodes[ANode].Kind <> TAtlasTestNodeKind.TestUnit) then
-  begin
-    mName := FNodes[ANode].FullName;
-  end;
+  mName := TAtlasTestExplorerChoice.DetailName(FNodes, ANode);
   mFrame.SetLog(FLogs.Lines(FProject, mName, FRefs, mCount), mCount, TAtlasIdeSettings.Current.TestsLog);
   if mName = '' then
   begin
@@ -825,7 +771,6 @@ end;
 function TAtlasIdeTestExplorer.StatusInput(const AProject: string): TAtlasTestStatusInput;
 var
   mRun: TProjectRun;
-  mNode: TAtlasTestNode;
 begin
   Result := Default(TAtlasTestStatusInput);
   Result.Busy := FTests.Busy;
@@ -840,14 +785,7 @@ begin
   begin
     Exit;
   end;
-  Result.Stale := 0;
-  for mNode in FNodes do
-  begin
-    if (mNode.Kind = TAtlasTestNodeKind.Test) and (TAtlasTestExplorer.StateOf(mNode) = TAtlasTestNodeState.Stale) then
-    begin
-      Inc(Result.Stale);
-    end;
-  end;
+  Result.Stale := TAtlasTestExplorerChoice.StaleCount(FNodes);
 end;
 
 end.
