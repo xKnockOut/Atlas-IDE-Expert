@@ -407,7 +407,7 @@ begin
   begin
     if AHeader[mIndex].Kind = TSyntaxKind.Directive then
     begin
-      Result := Result + [CollapseSpace(ALayout.TextOf(AHeader[mIndex]))];
+      Result := Result + [TTextLines.CollapseSpace(ALayout.TextOf(AHeader[mIndex]))];
     end;
   end;
 end;
