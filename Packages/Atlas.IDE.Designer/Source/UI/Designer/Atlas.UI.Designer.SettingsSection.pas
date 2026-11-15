@@ -11,6 +11,8 @@
 interface
 
 uses
+  Atlas.Core.Settings.Contract,
+  Atlas.UI.Settings.ChoiceBox,
   Atlas.UI.Settings.Section;
 
 type
@@ -18,7 +20,14 @@ type
   public const
     cOwnerId = 'atlas.designer';
     cAreaId = 'Editor';
+    cLayoutNameKey = 'designer.layout.name';
   private
+    /// <summary>Layout für den Designer (#2079): Auswahl aus den Layouts der IDE, freie Eingabe möglich.</summary>
+    FLayoutName: TAtlasChoiceBox;
+    /// <summary>Layouts der IDE in der Reihenfolge der Auswahlliste.</summary>
+    FLayouts: TArray<string>;
+    /// <summary>Zeilen des eigenen Desktop-Layouts im Designer (#2079).</summary>
+    procedure BuildLayoutRows;
     /// <summary>Zeilen der Befehle im Menü „Anordnen“ (#730 ff.).</summary>
     procedure BuildArrangeRows;
     /// <summary>Zeilen der eigenen Knöpfe der Designer-Leiste (#605 ff.).</summary>
@@ -36,12 +45,19 @@ type
   public
     function OwnerId: string; override;
     function AreaId: string; override;
+    procedure Load(const AValues: IAtlasSettingsValues); override;
+    procedure Save(const AValues: IAtlasSettingsValues); override;
+    procedure Close; override;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  Vcl.StdCtrls,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Designer.DesktopSwitch,
+  Atlas.IDE.Designer.DesktopLayout,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.ToolStrings,
   Atlas.UI.Designer.ViewStrings;
@@ -104,6 +120,42 @@ begin
   BuildArrangeRows;
   BuildToolRows;
   BuildButtonRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.Load(const AValues: IAtlasSettingsValues);
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  if Closed or (FLayoutName = nil) then
+  begin
+    Exit;
+  end;
+  mName := Trim(AValues.ReadString(cLayoutNameKey));
+  mIndex := TAtlasDesktopLayouts.IndexOf(FLayouts, mName);
+  FLayoutName.Choice := mIndex;
+  // Text auch bei einem Eintrag setzen: Ohne Fenster liest Save sonst einen leeren Text.
+  if mIndex >= 0 then
+  begin
+    mName := FLayouts[mIndex];
+  end;
+  FLayoutName.Text := mName;
+end;
+
+procedure TAtlasDesignerSettingsSection.Save(const AValues: IAtlasSettingsValues);
+begin
+  if Closed or (FLayoutName = nil) then
+  begin
+    Exit;
+  end;
+  AValues.WriteString(cLayoutNameKey, Trim(FLayoutName.Text));
+end;
+
+procedure TAtlasDesignerSettingsSection.Close;
+begin
+  FLayoutName := nil;
+  FLayouts := nil;
+  inherited Close;
 end;
 
 function TAtlasDesignerSettingsSection.OwnerId: string;
@@ -191,9 +243,19 @@ begin
   Switch('designer.dataBindings', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDataBindings));
   Switch('designer.extractFrame', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsExtractFrame));
   Switch('designer.eventMap', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsEventMap));
-  // Eigenes Desktop-Layout im Designer (#2079).
+  BuildLayoutRows;
+end;
+
+procedure TAtlasDesignerSettingsSection.BuildLayoutRows;
+begin
   Switch('designer.layout', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopLayout));
-  Line('designer.layout.name', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName));
+  FLayouts := TAtlasIdeDesktopLayout.Names;
+  FLayoutName := OwnChoice(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopName), FLayouts,
+    TArray<string>.Create(cLayoutNameKey));
+  if FLayoutName <> nil then
+  begin
+    FLayoutName.Style := csDropDown;
+  end;
   Choice('designer.layout.returnTo', TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopReturn),
     [TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopPrevious),
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.SettingsDesktopDefault)],

@@ -86,6 +86,9 @@ type
   public
     /// <summary>Gibt es AName in ALayouts (ohne Groß-/Kleinschreibung)?</summary>
     class function Contains(const ALayouts: TArray<string>; const AName: string): Boolean; static;
+    /// <summary>Stelle von AName in ALayouts (ohne Groß-/Kleinschreibung, ohne Leerzeichen an den Enden); -1, wenn
+    /// AName fehlt oder leer ist. Die Auswahlliste der Optionsseite wählt damit den gespeicherten Namen.</summary>
+    class function IndexOf(const ALayouts: TArray<string>; const AName: string): Integer; static;
     /// <summary>Echte Layouts aus den Einträgen des Desktop-Auswahlfelds: ohne leere und ohne „&lt;kein&gt;“.</summary>
     class function Usable(const AItems: TArray<string>): TArray<string>; static;
     /// <summary>Anzeigename in ALayouts zum gespeicherten Namen AStored (Registry Session\DefaultDesktopName).
@@ -148,6 +151,26 @@ begin
     if SameText(mLayout, AName) then
     begin
       Exit(True);
+    end;
+  end;
+end;
+
+class function TAtlasDesktopLayouts.IndexOf(const ALayouts: TArray<string>; const AName: string): Integer;
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := -1;
+  mName := Trim(AName);
+  if mName = '' then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(ALayouts) do
+  begin
+    if SameText(Trim(ALayouts[mIndex]), mName) then
+    begin
+      Exit(mIndex);
     end;
   end;
 end;

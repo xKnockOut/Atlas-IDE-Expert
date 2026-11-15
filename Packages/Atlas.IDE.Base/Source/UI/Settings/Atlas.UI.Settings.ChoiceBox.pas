@@ -11,13 +11,17 @@ uses
 
 type
   /// <summary>Auswahlliste, die Einträge und Auswahl ohne Fensterhandle hält: Die IDE erzeugt und lädt die
-  /// Optionsseiten, bevor sie ein übergeordnetes Fenster haben; Items.Add bräuchte dann schon eins.</summary>
+  /// Optionsseiten, bevor sie ein übergeordnetes Fenster haben; Items.Add bräuchte dann schon eins. Mit
+  /// Style = csDropDown (freie Eingabe) bleibt ein Text ohne passenden Eintrag (Choice = -1) beim Anlegen des
+  /// Fensters und beim Füllen der Einträge stehen.</summary>
   TAtlasChoiceBox = class(TComboBox)
   private
     FChoices: TArray<string>;
     FChoice: Integer;
     function GetChoice: Integer;
     procedure SetChoice(AValue: Integer);
+    /// <summary>Freie Eingabe AText wieder zeigen, wenn kein Eintrag gewählt ist (nur csDropDown).</summary>
+    procedure KeepFreeText(const AText: string);
   protected
     procedure CreateWnd; override;
     procedure DestroyWnd; override;
@@ -63,7 +67,10 @@ end;
 procedure TAtlasChoiceBox.CreateWnd;
 var
   mItem: string;
+  mText: string;
 begin
+  // Ohne Fenster liest Text den gemerkten Wert (auch den, den DestroyWnd beim RecreateWnd sichert).
+  mText := Text;
   inherited CreateWnd;
   if Items.Count = 0 then
   begin
@@ -73,6 +80,16 @@ begin
     end;
   end;
   ItemIndex := FChoice;
+  KeepFreeText(mText);
+end;
+
+procedure TAtlasChoiceBox.KeepFreeText(const AText: string);
+begin
+  // ItemIndex := -1 und Items.Clear leeren das Eingabefeld.
+  if (Style = csDropDown) and (FChoice < 0) and (Text <> AText) then
+  begin
+    Text := AText;
+  end;
 end;
 
 procedure TAtlasChoiceBox.DestroyWnd;
@@ -86,6 +103,7 @@ end;
 procedure TAtlasChoiceBox.SetChoices(const AItems: array of string);
 var
   mIndex: Integer;
+  mText: string;
 begin
   SetLength(FChoices, Length(AItems));
   for mIndex := 0 to High(AItems) do
@@ -94,12 +112,14 @@ begin
   end;
   if HandleAllocated then
   begin
+    mText := Text;
     Items.Clear;
     for mIndex := 0 to High(FChoices) do
     begin
       Items.Add(FChoices[mIndex]);
     end;
     ItemIndex := FChoice;
+    KeepFreeText(mText);
   end;
 end;
 
