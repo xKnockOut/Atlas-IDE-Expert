@@ -587,6 +587,8 @@ uses
   Atlas.Core.Hover.Layout.DebugTree in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas',
   Atlas.Core.Hover.Texts in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.View in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.View.pas',
+  Atlas.Core.Hover.Plan in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Plan.pas',
+  Atlas.Core.Hover.Plan.Tests in 'IDE.Expert\Atlas.Core.Hover.Plan.Tests.pas',
   Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
   Atlas.Core.Hover.Layout.TestSupport in 'IDE.Expert\Atlas.Core.Hover.Layout.TestSupport.pas',
   Atlas.Core.Hover.Layout.Painter.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Painter.Tests.pas',

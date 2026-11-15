@@ -262,6 +262,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.Layout.DebugTree` | `Core/Hover/Atlas.Core.Hover.Layout.DebugTree.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Texts` | `Core/Hover/Atlas.Core.Hover.Texts.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.View` | `Core/Hover/Atlas.Core.Hover.View.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Plan` | `Core/Hover/Atlas.Core.Hover.Plan.pas` | Ordner `Core/Hover`; Entscheidungen des Hover-Tooltips (Tasten, Zeitgeber, Aktionen), #1967 |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
 | `Atlas.Core.Localization.Language` | `Core/Localization/Atlas.Core.Localization.Language.pas` | Sprache der Plugin-Texte für Core und UI, Texttabellen der Units (#1458) |
 | `Atlas.Core.Lsp.AccessChains` | `Core/Lsp/Atlas.Core.Lsp.AccessChains.pas` | Ordner `Core/Lsp` |

@@ -784,6 +784,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Painter.Tests.pas"/>
