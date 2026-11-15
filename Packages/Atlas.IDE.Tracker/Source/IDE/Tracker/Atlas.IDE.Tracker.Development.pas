@@ -53,8 +53,6 @@ type
     cVcsTimeoutMs = 10000;
     /// <summary>Zeitgrenze für den Tracker.</summary>
     cTrackerTimeoutMs = 10000;
-    /// <summary>Höchstens so viele Dateien im Diff eines Commits.</summary>
-    cMaxDiffFiles = 30;
   private
     FHooks: TAtlasIssueDevelopmentHooks;
     FCache: TAtlasIssueDevelopmentCache;
@@ -101,12 +99,10 @@ type
     class function Active: Boolean; static;
     /// <summary>Projekte der Projektgruppe mit ihren Dateien (Hauptthread).</summary>
     class function GroupProjects: TArray<TAtlasIssueProject>; static;
-    /// <summary>Basis-Branches zum Vergleich: issues.branchBase, sonst main, master.</summary>
-    class function Bases(const ABranchBase: string): TArray<string>; static;
     /// <summary>Inhalt einer Datei im Commit bzw. davor als Text (Kodierung erkannt).</summary>
     class function ReadContent(const AHistory: IAtlasVcsHistory; const ARevision: string;
       const AFile: TAtlasVcsLogFile; ABefore: Boolean; out AText: string): TAtlasVcsOutcome; static;
-    /// <summary>Diff aller Dateien eines Commits (höchstens MaxDiffFiles, Text in der Arbeitskopie bzw. im
+    /// <summary>Diff aller Dateien eines Commits (höchstens cMaxDiffFiles, Text in der Arbeitskopie bzw. im
     /// Repository); im Hintergrund.</summary>
     class function CommitDiff(const AHistory: IAtlasVcsHistory; const AEntry: TAtlasVcsLogEntry;
       out AFiles: TArray<TAtlasIssueFileDiff>): TAtlasVcsOutcome; static;
@@ -117,6 +113,7 @@ implementation
 uses
   Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Tracker.DevelopmentPlan,
   Atlas.Core.Tracker.Preview,
   ToolsAPI,
   System.DateUtils,
@@ -243,11 +240,7 @@ var
   mLines: TArray<string>;
   mShort: string;
 begin
-  mShort := AEntry.Revision;
-  if Length(mShort) > 10 then
-  begin
-    mShort := Copy(mShort, 1, 7);
-  end;
+  mShort := TAtlasIssueDevelopmentPlan.ShortRevision(AEntry.Revision);
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
     Notice(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevDiffFailed, [mShort, AtlasVcsOutcomeName(AOutcome)]));
@@ -424,7 +417,8 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssueDevelopment;
 begin
-  if (AChanges > 0) and (MessageDlg(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevSwitchAsk,
+  if TAtlasIssueDevelopmentPlan.AsksSwitch(AChanges) and
+    (MessageDlg(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevSwitchAsk,
     [AChanges, ABranch.Name]),
     mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
@@ -521,20 +515,16 @@ end;
 /// <summary>Zeile zum Tracker, wenn er nicht geantwortet hat; '' sonst.</summary>
 function TrackerNote(const ADevelopment: TAtlasIssueDevelopment): string;
 begin
-  Result := '';
-  if ADevelopment.TrackerLoaded or (ADevelopment.TrackerError in [TAtlasCiFetchError.None,
-    TAtlasCiFetchError.Cancelled]) then
-  begin
-    Exit;
-  end;
-  case ADevelopment.TrackerError of
-    TAtlasCiFetchError.Unauthorized:
+  case TAtlasIssueDevelopmentPlan.NoteOf(ADevelopment) of
+    TAtlasIssueDevNote.None:
+      Result := '';
+    TAtlasIssueDevNote.Token:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.Timeout:
+    TAtlasIssueDevNote.Timeout:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
-    TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
+    TAtlasIssueDevNote.Config:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig);
-    TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server, TAtlasCiFetchError.NotFound:
+    TAtlasIssueDevNote.Invalid:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   else
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
@@ -610,14 +600,9 @@ var
   mDevelopment: TAtlasTrackerDevelopment;
   mError: TAtlasCiFetchError;
 begin
-  if AJob.Provider = nil then
+  AResult.TrackerError := TAtlasIssueDevelopmentPlan.Unreachable(AJob.Provider <> nil, AJob.Transport <> nil);
+  if AResult.TrackerError <> TAtlasCiFetchError.None then
   begin
-    AResult.TrackerError := TAtlasCiFetchError.NotConfigured;
-    Exit;
-  end;
-  if AJob.Transport = nil then
-  begin
-    AResult.TrackerError := TAtlasCiFetchError.Unauthorized;
     Exit;
   end;
   try
@@ -708,7 +693,7 @@ begin
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Target := FTarget;
   mJob.Request := TAtlasIssueDevelopmentRequest.Create(FTarget.Provider, FTarget.Project, FKey,
-    Bases(TAtlasIdeSettings.Current.IssuesBranchBase), GroupProjects);
+    TAtlasIssueDevelopmentPlan.Bases(TAtlasIdeSettings.Current.IssuesBranchBase), GroupProjects);
   FForce := False;
   mView.ShowLoading;
   // Der Transport entsteht hier, damit „Abbrechen“ ihn erreicht; er liest das Token ohne Dialog.
@@ -745,7 +730,7 @@ procedure TAtlasIdeIssueDevelopment.Select(const ATarget: TAtlasTrackerTarget; c
 var
   mFrame: TAtlasIssueFrame;
 begin
-  if FHasCurrent and SameText(FTarget.Key, ATarget.Key) and SameText(FKey, AKey) then
+  if TAtlasIssueDevelopmentPlan.SameIssue(FHasCurrent, FTarget, FKey, ATarget, AKey) then
   begin
     Exit;
   end;
@@ -854,19 +839,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeIssueDevelopment.Bases(const ABranchBase: string): TArray<string>;
-begin
-  // SVN vergleicht nicht (Distance = -1); trunk liegt nicht unter ^/branches.
-  if Trim(ABranchBase) <> '' then
-  begin
-    Result := TArray<string>.Create(Trim(ABranchBase));
-  end
-  else
-  begin
-    Result := TArray<string>.Create('main', 'master');
-  end;
-end;
-
 class function TAtlasIdeIssueDevelopment.ReadContent(const AHistory: IAtlasVcsHistory; const ARevision: string;
   const AFile: TAtlasVcsLogFile; ABefore: Boolean; out AText: string): TAtlasVcsOutcome;
 var
@@ -880,37 +852,26 @@ begin
   end;
 end;
 
+/// <summary>Inhalt einer Datei von ARevision aus AHistory; eigene Routine, damit die Methodenreferenz nur diese
+/// Werte hält.</summary>
+function ContentOf(const AHistory: IAtlasVcsHistory; const ARevision: string): TAtlasIssueDevContent;
+var
+  mHistory: IAtlasVcsHistory;
+  mRevision: string;
+begin
+  mHistory := AHistory;
+  mRevision := ARevision;
+  Result :=
+    function(const AFile: TAtlasVcsLogFile; ABefore: Boolean; out AText: string): TAtlasVcsOutcome
+    begin
+      Result := TAtlasIdeIssueDevelopment.ReadContent(mHistory, mRevision, AFile, ABefore, AText);
+    end;
+end;
+
 class function TAtlasIdeIssueDevelopment.CommitDiff(const AHistory: IAtlasVcsHistory;
   const AEntry: TAtlasVcsLogEntry; out AFiles: TArray<TAtlasIssueFileDiff>): TAtlasVcsOutcome;
-var
-  mFile: TAtlasVcsLogFile;
-  mDiff: TAtlasIssueFileDiff;
 begin
-  AFiles := nil;
-  Result := TAtlasVcsOutcome.Ok;
-  for mFile in AEntry.Files do
-  begin
-    if Length(AFiles) >= cMaxDiffFiles then
-    begin
-      Break;
-    end;
-    mDiff := Default(TAtlasIssueFileDiff);
-    mDiff.Caption := mFile.RepositoryPath;
-    if mDiff.Caption = '' then
-    begin
-      mDiff.Caption := mFile.Path;
-    end;
-    Result := ReadContent(AHistory, AEntry.Revision, mFile, True, mDiff.Before);
-    if Result = TAtlasVcsOutcome.Ok then
-    begin
-      Result := ReadContent(AHistory, AEntry.Revision, mFile, False, mDiff.After);
-    end;
-    if Result <> TAtlasVcsOutcome.Ok then
-    begin
-      Exit;
-    end;
-    AFiles := AFiles + [mDiff];
-  end;
+  Result := TAtlasIssueDevelopmentPlan.CommitDiff(AEntry, ContentOf(AHistory, AEntry.Revision), AFiles);
 end;
 
 end.
