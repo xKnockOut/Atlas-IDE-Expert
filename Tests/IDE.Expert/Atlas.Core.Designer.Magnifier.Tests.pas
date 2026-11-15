@@ -35,6 +35,12 @@ type
     procedure HexAndStandardNames;
     [Test]
     procedure SystemNamesFirstInListOrder;
+    [Test]
+    procedure RefreshOnlyWhenDue;
+    [Test]
+    procedure EdgesCrossingSource;
+    [Test]
+    procedure MenuZoomsAndRgb;
   end;
 
 implementation
@@ -133,6 +139,37 @@ begin
   Assert.AreEqual('clHighlightText', mNames[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasMagnifier.NamesOf($010203, [TAtlasNamedColor.Create('clWindow',
     $FFFFFF)]))));
+end;
+
+procedure TAtlasMagnifierTests.RefreshOnlyWhenDue;
+begin
+  Assert.IsTrue(TAtlasMagnifier.RefreshDue(True, False, 1000, 1000), 'erzwungen');
+  Assert.IsTrue(TAtlasMagnifier.RefreshDue(False, True, 1000, 1000), 'Maus bewegt');
+  Assert.IsFalse(TAtlasMagnifier.RefreshDue(False, False, 1000 + TAtlasMagnifier.cRefreshMs - 1, 1000));
+  Assert.IsTrue(TAtlasMagnifier.RefreshDue(False, False, 1000 + TAtlasMagnifier.cRefreshMs, 1000));
+end;
+
+procedure TAtlasMagnifierTests.EdgesCrossingSource;
+var
+  mSource: TRect;
+begin
+  mSource := Rect(100, 100, 140, 130);
+  Assert.IsTrue(TAtlasMagnifier.Crosses(Rect(90, 90, 110, 110), mSource), 'überlappt');
+  Assert.IsTrue(TAtlasMagnifier.Crosses(Rect(140, 100, 150, 110), mSource), 'linke Kante auf rechtem Rand');
+  Assert.IsFalse(TAtlasMagnifier.Crosses(Rect(141, 100, 150, 110), mSource), 'rechts daneben');
+  Assert.IsFalse(TAtlasMagnifier.Crosses(Rect(100, 50, 140, 99), mSource), 'darüber');
+end;
+
+procedure TAtlasMagnifierTests.MenuZoomsAndRgb;
+var
+  mZooms: TArray<Integer>;
+begin
+  mZooms := TAtlasMagnifier.Zooms;
+  Assert.AreEqual(3, Integer(Length(mZooms)));
+  Assert.AreEqual(2, mZooms[0]);
+  Assert.AreEqual(4, mZooms[1]);
+  Assert.AreEqual(8, mZooms[2]);
+  Assert.AreEqual(Cardinal($123456), TAtlasMagnifier.RgbOf($12, $34, $56));
 end;
 
 initialization

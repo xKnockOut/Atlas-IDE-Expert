@@ -27,6 +27,7 @@ uses
   Vcl.Controls,
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
+  Atlas.Core.Designer.InlineCaption,
   Atlas.UI.Designer.CaptionEditor,
   Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Designer.Tool;
@@ -41,16 +42,6 @@ type
   protected
     function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
-  end;
-
-  /// <summary>Eine Übernahme: alter Text und, wenn die Breite mitwuchs, die alte Lage.</summary>
-  TAtlasCaptionChange = record
-    FormFile: string;
-    Component: string;
-    Path: string;
-    OldText: string;
-    OldBounds: TRect;
-    Resized: Boolean;
   end;
 
   /// <summary>Die Komponente in Bearbeitung bzw. die zuletzt geklickte.</summary>
@@ -72,7 +63,7 @@ type
     FHideTimer: TTimer;
     FClick: TAtlasCaptionSpot;
     FEdit: TAtlasCaptionSpot;
-    FUndo: TArray<TAtlasCaptionChange>;
+    FUndo: TAtlasCaptionHistory;
     function Target(out AComponent: TComponent; out APath: string): Boolean;
     procedure OpenFor(AComponent: TComponent; const APath: string; const APoint: TPoint);
     procedure Queue(AEnd: TAtlasCaptionEnd; const AText: string);
@@ -114,7 +105,6 @@ uses
   Vcl.ComCtrls,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Designer.InlineCaption,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
@@ -190,11 +180,7 @@ begin
   mStart := Ord(ContainsText(mOptions, 'dgIndicator')) * MulDiv(cIndicatorWidth, AGrid.CurrentPPI, 96);
   mLine := Ord(ContainsText(mOptions, 'dgColLines'));
   AIndex := Max(0, TAtlasInlineCaption.ColumnAt(AGrid.ScreenToClient(AScreen).X, mWidths, mStart, mLine));
-  mLeft := mStart;
-  for mStart := 0 to AIndex - 1 do
-  begin
-    mLeft := mLeft + mWidths[mStart] + mLine;
-  end;
+  mLeft := TAtlasCaptionLayout.ColumnLeft(mWidths, mStart, mLine, AIndex);
   Result := Rect(mLeft, 0, mLeft + mWidths[AIndex],
     Abs(TControlAccess(AGrid).Font.Height) + MulDiv(cBandExtra, AGrid.CurrentPPI, 96));
 end;
@@ -245,27 +231,29 @@ end;
 function EditorRect(AHolder: TControl; const APath: string; const APoint: TPoint): TRect;
 var
   mBand, mIndex: Integer;
+  mKind: TAtlasCaptionHolder;
 begin
-  Result := ScreenRect(AHolder);
-  mBand := Abs(TControlAccess(AHolder).Font.Height) + MulDiv(cBandExtra, AHolder.CurrentPPI, 96);
-  if Pos('Columns[', APath) = 1 then
+  if TAtlasCaptionLayout.IsColumn(APath) then
   begin
     Result := GridTitle(AHolder, APoint, mIndex);
     Result.SetLocation(AHolder.ClientToScreen(Result.TopLeft));
-  end
-  else if AHolder is TCustomGroupBox then
+    Exit;
+  end;
+  mBand := Abs(TControlAccess(AHolder).Font.Height) + MulDiv(cBandExtra, AHolder.CurrentPPI, 96);
+  mKind := TAtlasCaptionHolder.Other;
+  if AHolder is TCustomGroupBox then
   begin
-    Result := Rect(Result.Left + cGroupIndent, Result.Top, Result.Right - cGroupIndent, Result.Top + mBand);
+    mKind := TAtlasCaptionHolder.GroupBox;
   end
   else if AHolder is TTabSheet then
   begin
-    Result := Rect(Result.Left, Result.Top - mBand, Result.Right, Result.Top);
+    mKind := TAtlasCaptionHolder.TabSheet;
   end
-  else if not (AHolder is TCustomLabel) and not (AHolder is TCustomEdit) and (Result.Height > mBand) then
+  else if (AHolder is TCustomLabel) or (AHolder is TCustomEdit) then
   begin
-    Result.Top := Result.Top + (Result.Height - mBand) div 2;
-    Result.Height := mBand;
+    mKind := TAtlasCaptionHolder.TextControl;
   end;
+  Result := TAtlasCaptionLayout.EditorBand(ScreenRect(AHolder), mKind, mBand, cGroupIndent);
 end;
 
 function AlignmentOf(AHolder: TControl): TAlignment;
@@ -286,7 +274,7 @@ var
   mObject: TObject;
 begin
   Result := TControlAccess(AHolder).Font;
-  if Pos('Columns[', APath) = 1 then
+  if TAtlasCaptionLayout.IsColumn(APath) then
   begin
     mObject := ObjectOf(AHolder, 'TitleFont');
     if mObject is TFont then
@@ -548,7 +536,7 @@ begin
   mChange.Path := FEdit.Path;
   mChange.Resized := False;
   FitWidth(TControl(mComponent), mRoot, mChange);
-  FUndo := FUndo + [mChange];
+  FUndo.Push(mChange);
   if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
   begin
     TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
@@ -561,7 +549,7 @@ var
   mWidth: Integer;
 begin
   if not TAtlasIdeSettings.Current.DesignerInlineCaptionAutoWidth or FlagOf(AControl, 'AutoSize') or
-    (Pos('Columns[', AChange.Path) = 1) then
+    TAtlasCaptionLayout.IsColumn(AChange.Path) then
   begin
     Exit;
   end;
@@ -572,14 +560,8 @@ begin
   end;
   AChange.Resized := True;
   AChange.OldBounds := AControl.BoundsRect;
-  if (akRight in AControl.Anchors) and not (akLeft in AControl.Anchors) then
-  begin
-    AControl.SetBounds(AControl.Left - (mWidth - AControl.Width), AControl.Top, mWidth, AControl.Height);
-  end
-  else
-  begin
-    AControl.Width := mWidth;
-  end;
+  AControl.BoundsRect := TAtlasCaptionLayout.Fitted(AControl.BoundsRect, mWidth,
+    (akRight in AControl.Anchors) and not (akLeft in AControl.Anchors));
 end;
 
 procedure TAtlasIdeInlineCaption.ShowDuplicates(AControl: TControl; ARoot: TComponent);
@@ -708,8 +690,8 @@ var
   mPoint: TPoint;
 begin
   mPoint := Mouse.CursorPos;
-  if FClick.Armed and (Abs(mPoint.X - FClick.Point.X) <= GetSystemMetrics(SM_CXDRAG)) and
-    (Abs(mPoint.Y - FClick.Point.Y) <= GetSystemMetrics(SM_CYDRAG)) then
+  if FClick.Armed and TAtlasCaptionLayout.WithinDrag(FClick.Point, mPoint, GetSystemMetrics(SM_CXDRAG),
+    GetSystemMetrics(SM_CYDRAG)) then
   begin
     // Folgt kein Doppelklick, war es der langsame zweite Klick.
     FClickTimer.Interval := GetDoubleClickTime;
@@ -771,8 +753,7 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
 begin
-  Result := (Length(FUndo) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(FUndo[High(FUndo)].FormFile, mEditor.FileName);
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and FUndo.CanUndo(mEditor.FileName);
 end;
 
 procedure TAtlasIdeInlineCaption.Undo;
@@ -781,12 +762,10 @@ var
   mRoot, mComponent: TComponent;
   mChange: TAtlasCaptionChange;
 begin
-  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) or not FUndo.Pop(mChange) then
   begin
     Exit;
   end;
-  mChange := FUndo[High(FUndo)];
-  SetLength(FUndo, Length(FUndo) - 1);
   mComponent := mRoot.FindComponent(mChange.Component);
   if (mComponent = nil) or not TAtlasFormTextProps.Write(mComponent, mChange.Path, mChange.OldText) then
   begin
