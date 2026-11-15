@@ -20,7 +20,11 @@ type
     [Test]
     procedure PassedPartIsSilent;
     [Test]
+    procedure InheritedPassesParameters;
+    [Test]
     procedure SecondNameIsChecked;
+    [Test]
+    procedure RecordMethodCallIsSilent;
     [Test]
     procedure FixReplacesDeclarationAndImplementation;
   end;
@@ -28,6 +32,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Flow.OutParamRead,
   Atlas.Tests.RuleAssert;
@@ -74,6 +79,20 @@ begin
     '  R.Left := R.Right;'));
 end;
 
+procedure TFlowOutParamReadTests.InheritedPassesParameters;
+const
+  cUnit = 'unit U;'#10'interface'#10'type'#10'  TB = class'#10 +
+    '    procedure Up(var A: Integer; out F: Integer); virtual;'#10'  end;'#10'  TC = class(TB)'#10 +
+    '    procedure Up(var A: Integer; out F: Integer); override;'#10'  end;'#10'implementation'#10 +
+    'procedure TB.Up(var A: Integer; out F: Integer);'#10'begin'#10'  F := A;'#10'end;'#10 +
+    'procedure TC.Up(var A: Integer; out F: Integer);'#10'begin'#10'%s'#10'end;'#10'end.';
+begin
+  // inherited; ohne Argumente reicht F an den Vorfahren weiter, der ihn setzt.
+  TRuleAssert.Silent(TOutParamReadRule.Create, Format(cUnit, ['  inherited;'#10'  if F = 1 then'#10'    A := 2;']));
+  // Vor dem inherited ist F noch undefiniert; inherited Up(A, F) prüft die Signatur wie jeder Aufruf.
+  TRuleAssert.Reports(TOutParamReadRule.Create, Format(cUnit, ['  if F = 1 then'#10'    A := 2;'#10'  inherited;']));
+end;
+
 procedure TFlowOutParamReadTests.SecondNameIsChecked;
 var
   mFindings: TArray<TRuleFinding>;
@@ -83,6 +102,25 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('out-Parameter B wird gelesen, bevor er gesetzt ist; sein Wert ist hier undefiniert.',
     mFindings[0].Message);
+end;
+
+/// <summary>Unit mit dem Typ ATypeDecl (Methode Init, Feld Anzahl) und "procedure P(out D: TDok)".</summary>
+function DokRoutine(const AKind, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TDok = ' + AKind + #10'    Anzahl: Integer;'#10 +
+    '    procedure Init;'#10'  end;'#10'procedure P(out D: TDok);'#10'implementation'#10 +
+    'procedure TDok.Init;'#10'begin'#10'  Anzahl := 0;'#10'end;'#10'procedure P(out D: TDok);'#10'begin'#10 +
+    ABody + #10'end;'#10'end.';
+end;
+
+procedure TFlowOutParamReadTests.RecordMethodCallIsSilent;
+begin
+  // Eine Methode des Records bekommt ihn als var-Self und legt ihn an (Result.InitFast, Dest.Init(…)).
+  TRuleAssert.Silent(TOutParamReadRule.Create, DokRoutine('record', '  D.Init;'#10'  D.Anzahl := D.Anzahl + 1;'));
+  TRuleAssert.Silent(TOutParamReadRule.Create, DokRoutine('object', '  D.Init;'));
+  // Bei einer Klasse liest D.Init die undefinierte Referenz; ein Feld des Records lesen bleibt gemeldet.
+  TRuleAssert.Reports(TOutParamReadRule.Create, DokRoutine('class', '  D.Init;'), 1);
+  TRuleAssert.Reports(TOutParamReadRule.Create, DokRoutine('record', '  if D.Anzahl > 0 then'#10'    Exit;'), 1);
 end;
 
 procedure TFlowOutParamReadTests.FixReplacesDeclarationAndImplementation;

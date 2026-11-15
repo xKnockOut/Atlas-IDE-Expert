@@ -44,7 +44,8 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Semantics.ExitPoints;
+  Atlas.Common.Semantics.ExitPoints,
+  Atlas.Common.Pascal.TokenCursor;
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -475,28 +476,6 @@ end;
 
 { Hilfen }
 
-function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    mToken := ATokens[mIndex];
-    if (mToken.StartPos.Line > APosition.Line) or
-      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
-    begin
-      Break;
-    end;
-    if (mToken.EndPos.Line = APosition.Line) and (APosition.Character <= mToken.EndPos.Character) and
-      (mToken.Kind <> TPascalTokenKind.Symbol) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
-
 function IndexOfOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 begin
   // Binär statt ab Dateianfang (#1342).
@@ -833,7 +812,8 @@ begin
     Exit;
   end;
   mQuery.Tree := ATree;
-  mQuery.Index := TokenAt(ATree.Tokens, APosition);
+  mQuery.Index := TokenTouching(ATree.Tokens, APosition, [Low(TPascalTokenKind)..High(TPascalTokenKind)] -
+    [TPascalTokenKind.Symbol]);
   mQuery.Position := APosition;
   mQuery.Settings := ASettings;
   if mQuery.Index < 0 then

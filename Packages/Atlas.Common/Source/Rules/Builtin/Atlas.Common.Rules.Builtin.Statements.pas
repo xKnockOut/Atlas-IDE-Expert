@@ -261,10 +261,33 @@ var
     end;
   end;
 
+  // Ruft ein Ausdruck vor do von with etwas auf (with CL.Add(TX) do begin end;)? Dann geschieht dort etwas.
+  function WithCalls(ANode: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+    mFound: Boolean;
+  begin
+    mFound := False;
+    for mIndex := 0 to ANode.ChildCount - 2 do
+    begin
+      ANode[mIndex].Walk(
+        function(AChild: TSyntaxNode): Boolean
+        begin
+          mFound := mFound or (AChild.Kind = TSyntaxKind.Call);
+          Result := not mFound;
+        end);
+    end;
+    Result := mFound;
+  end;
+
   procedure VisitLoop(ANode: TSyntaxNode; AStop: Integer);
   var
     mDo: Integer;
   begin
+    if (ANode.Kind = TSyntaxKind.WithStatement) and WithCalls(ANode) then
+    begin
+      Exit;
+    end;
     mDo := OwnKeyword(ANode, TokenFrom(mTokens, ANode.StartOffset), AStop, 'do');
     if mDo >= 0 then
     begin

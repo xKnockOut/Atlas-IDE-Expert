@@ -216,8 +216,6 @@ type
     class function InsertBeforeLine(ALine: Integer; const ANewText: string): TTextEdit; static;
   end;
 
-/// <summary>Leerraum zusammenfassen und am Rand entfernen.</summary>
-function CollapseSpace(const AText: string): string;
 /// <summary>Bezeichner nach Delphi-Regeln (Buchstabe oder _, danach auch Ziffern, optional &amp; davor).
 /// </summary>
 function IsIdentifier(const AName: string): Boolean;
@@ -235,37 +233,6 @@ uses
 
 const
   cVirtualDirectives: array[0..3] of string = ('virtual', 'dynamic', 'override', 'abstract');
-
-function CollapseSpace(const AText: string): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex: Integer;
-  mSpace: Boolean;
-begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mSpace := False;
-    for mIndex := 1 to Length(AText) do
-    begin
-      if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
-      begin
-        mSpace := True;
-      end
-      else
-      begin
-        if mSpace and (mBuilder.Length > 0) then
-        begin
-          mBuilder.Append(' ');
-        end;
-        mSpace := False;
-        mBuilder.Append(AText[mIndex]);
-      end;
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
-end;
 
 function IsIdentifier(const AName: string): Boolean;
 var
@@ -514,7 +481,7 @@ end;
 
 function TClassLayoutReader.CollapsedText(ANode: TSyntaxNode): string;
 begin
-  Result := CollapseSpace(NodeText(ANode));
+  Result := TTextLines.CollapseSpace(NodeText(ANode));
 end;
 
 /// <summary>Text eines Knotens ohne das erste und letzte Zeichen (Klammern), Leerraum zusammengefasst.</summary>
@@ -523,7 +490,7 @@ var
   mText: string;
 begin
   mText := NodeText(ANode);
-  Result := CollapseSpace(Copy(mText, 2, Length(mText) - 2));
+  Result := TTextLines.CollapseSpace(Copy(mText, 2, Length(mText) - 2));
 end;
 
 function TClassLayoutReader.DocStart(ALine: Integer): Integer;
@@ -1370,7 +1337,7 @@ begin
     end;
     Exit;
   end;
-  Result := CollapseSpace(TextOf(mMember.Node));
+  Result := TTextLines.CollapseSpace(TextOf(mMember.Node));
   if mMember.IsClassMember and (mMember.Kind = TClassMemberKind.Property_) then
   begin
     Result := 'class ' + Result;
@@ -1422,7 +1389,7 @@ begin
       Break;
     end;
   end;
-  Result := CollapseSpace(Copy(FText, mNode.StartOffset + 1, mStop - mNode.StartOffset));
+  Result := TTextLines.CollapseSpace(Copy(FText, mNode.StartOffset + 1, mStop - mNode.StartOffset));
   if not Result.EndsWith(';') then
   begin
     Result := Result + ';';
@@ -1464,7 +1431,7 @@ class function TClassEdits.VisibilityOf(const AName: string): TClassVisibility;
 var
   mName: string;
 begin
-  mName := LowerCase(CollapseSpace(AName));
+  mName := LowerCase(TTextLines.CollapseSpace(AName));
   if mName = 'strict private' then
   begin
     Result := TClassVisibility.StrictPrivate;

@@ -95,8 +95,6 @@ type
   public
     /// <summary>Parameter aus dem Text zwischen den Klammern.</summary>
     class function ParseParameters(const AText: string): TArray<TSignatureParameter>; static;
-    /// <summary>Index des Bezeichners an APosition; -1 ohne.</summary>
-    class function NameTokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer; static;
     /// <summary>Kopf zur Routine, deren Name bei ANameToken steht; False, wenn dort keine beginnt.</summary>
     class function ReadHeader(const AText: string; const ATokens: TArray<TPascalToken>; ANameToken: Integer;
       out AHeader: TSignatureHeader): Boolean; static;
@@ -263,32 +261,6 @@ begin
   end;
   Result := Copy(AText, ATokens[AFirst].Offset + 1,
     ATokens[ALast].Offset + Length(ATokens[ALast].Text) - ATokens[AFirst].Offset);
-end;
-
-/// <summary>Leerraum zusammenfassen (Zeilenumbrüche in Typen und Standardwerten).</summary>
-function Collapse(const AText: string): string;
-var
-  mIndex: Integer;
-  mSpace: Boolean;
-begin
-  Result := '';
-  mSpace := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
-    begin
-      mSpace := True;
-    end
-    else
-    begin
-      if mSpace and (Result <> '') then
-      begin
-        Result := Result + ' ';
-      end;
-      mSpace := False;
-      Result := Result + AText[mIndex];
-    end;
-  end;
 end;
 
 /// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
@@ -499,7 +471,7 @@ begin
   mGroupIndex := 0;
   for mGroup in SplitTopLevel(AText, ';') do
   begin
-    mRest := Collapse(mGroup);
+    mRest := TTextLines.CollapseSpace(mGroup);
     if mRest = '' then
     begin
       Continue;
@@ -517,29 +489,6 @@ begin
       end;
     end;
   end;
-end;
-
-class function TChangeSignature.NameTokenAt(const ATokens: TArray<TPascalToken>;
-  const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    mToken := ATokens[mIndex];
-    if (mToken.StartPos.Line > APosition.Line) or
-      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
-    begin
-      Break;
-    end;
-    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
-      (APosition.Character <= mToken.EndPos.Character) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Liest die Parameterliste ab ACurrent, falls dort "(" steht, und setzt ACurrent dahinter; False, wenn
@@ -590,7 +539,7 @@ begin
   Result := mNext >= 0;
   if Result then
   begin
-    AHeader.ResultType := Collapse(SliceText(AText, ATokens, NextToken(ATokens, ACurrent),
+    AHeader.ResultType := TTextLines.CollapseSpace(SliceText(AText, ATokens, NextToken(ATokens, ACurrent),
       PreviousCode(ATokens, mNext)));
     ACurrent := mNext;
   end;
@@ -614,7 +563,7 @@ begin
     begin
       Break;
     end;
-    AHeader.Directives := AHeader.Directives + [LowerCase(Collapse(SliceText(AText, ATokens, mNext,
+    AHeader.Directives := AHeader.Directives + [LowerCase(TTextLines.CollapseSpace(SliceText(AText, ATokens, mNext,
       PreviousCode(ATokens, mLast))))];
     AHeader.LastToken := mLast;
     mNext := NextToken(ATokens, mLast);
@@ -747,8 +696,8 @@ begin
     AHeader.IsClass := True;
     AHeader.StartToken := mBefore;
   end;
-  AHeader.QualifiedName := StringReplace(Collapse(SliceText(AText, ATokens, NextToken(ATokens, mCurrent),
-    ANameToken)), ' ', '', [rfReplaceAll]);
+  AHeader.QualifiedName := StringReplace(TTextLines.CollapseSpace(SliceText(AText, ATokens,
+    NextToken(ATokens, mCurrent), ANameToken)), ' ', '', [rfReplaceAll]);
   // Generische Methode Bar<T>(...): Bleibt die Klammer offen, scheitert ReadTail am fehlenden ";".
   Result := ReadTail(AText, ATokens, SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken)), AHeader, True);
 end;

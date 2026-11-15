@@ -46,6 +46,22 @@ type
     procedure FlakyDetailLines;
   end;
 
+  [TestFixture]
+  [Category('Atlas.IDE.Tests')]
+  TAtlasTestExplorerChoiceTests = class
+  public
+    [Test]
+    procedure ProjectKeepsChoiceThenActiveThenFirst;
+    [Test]
+    procedure StatusInOrder;
+    [Test]
+    procedure StaleCountAndDetailName;
+    [Test]
+    procedure DebugSelectionOfOneAndMany;
+    [Test]
+    procedure SeriesSubjectAndShuffleNames;
+  end;
+
 implementation
 
 uses
@@ -55,6 +71,8 @@ uses
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Stale,
   Atlas.Core.Tests.Flaky,
+  Atlas.Core.Tests.Debug,
+  Atlas.Core.Tests.Series,
   Atlas.Core.Tests.Explorer;
 
 const
@@ -483,4 +501,84 @@ begin
   Assert.AreEqual(2, Integer(Length(TAtlasTestExplorer.FlakyLines(mFlaky, '', mTexts))), 'ohne Zeitpunkt');
 end;
 
+
+{ TAtlasTestExplorerChoiceTests }
+
+procedure TAtlasTestExplorerChoiceTests.ProjectKeepsChoiceThenActiveThenFirst;
+var
+  mProjects: TArray<string>;
+begin
+  mProjects := TArray<string>.Create('A.dproj', 'B.dproj');
+  Assert.AreEqual('b.dproj', TAtlasTestExplorerChoice.Project('b.dproj', mProjects, 'A.dproj'), 'Wahl bleibt');
+  Assert.AreEqual('B.dproj', TAtlasTestExplorerChoice.Project('Weg.dproj', mProjects, 'B.dproj'), 'aktives');
+  Assert.AreEqual('A.dproj', TAtlasTestExplorerChoice.Project('', mProjects, 'Kein.dproj'), 'sonst das erste');
+  Assert.AreEqual('', TAtlasTestExplorerChoice.Project('A.dproj', nil, 'A.dproj'), 'ohne Testprojekte');
+end;
+
+procedure TAtlasTestExplorerChoiceTests.StatusInOrder;
+begin
+  Assert.AreEqual<TAtlasTestExplorerStatus>(TAtlasTestExplorerStatus.Running,
+    TAtlasTestExplorerChoice.Status(True, '', 0), 'Lauf geht vor');
+  Assert.AreEqual<TAtlasTestExplorerStatus>(TAtlasTestExplorerStatus.NoProject,
+    TAtlasTestExplorerChoice.Status(False, '', 3));
+  Assert.AreEqual<TAtlasTestExplorerStatus>(TAtlasTestExplorerStatus.NoTests,
+    TAtlasTestExplorerChoice.Status(False, 'A.dproj', 0));
+  Assert.AreEqual<TAtlasTestExplorerStatus>(TAtlasTestExplorerStatus.Summary,
+    TAtlasTestExplorerChoice.Status(False, 'A.dproj', 3));
+end;
+
+procedure TAtlasTestExplorerChoiceTests.StaleCountAndDetailName;
+var
+  mNodes: TArray<TAtlasTestNode>;
+begin
+  mNodes := TAtlasTestExplorer.Build(TArray<TAtlasTestUnitInput>.Create(DemoUnit(
+    TArray<string>.Create(TAtlasTestStamps.KeyOf('Demo.Tests', 'TRechnerTests', 'Addiert')))), DemoResults);
+  Assert.AreEqual(1, TAtlasTestExplorerChoice.StaleCount(mNodes));
+  Assert.AreEqual(0, TAtlasTestExplorerChoice.StaleCount(DemoNodes));
+  Assert.AreEqual('', TAtlasTestExplorerChoice.DetailName(mNodes, cUnitNode), 'Testunit ohne Einzelheiten');
+  Assert.AreEqual(mNodes[cAddiert].FullName, TAtlasTestExplorerChoice.DetailName(mNodes, cAddiert));
+  Assert.AreEqual('', TAtlasTestExplorerChoice.DetailName(mNodes, Length(mNodes)));
+  Assert.AreEqual('', TAtlasTestExplorerChoice.DetailName(mNodes, -1));
+end;
+
+procedure TAtlasTestExplorerChoiceTests.DebugSelectionOfOneAndMany;
+var
+  mUnits: TArray<TAtlasTestUnitInput>;
+  mNodes: TArray<TAtlasTestNode>;
+  mSelection: TAtlasTestSelection;
+begin
+  mUnits := TArray<TAtlasTestUnitInput>.Create(DemoUnit(nil));
+  mNodes := TAtlasTestExplorer.Build(mUnits, nil);
+  mSelection := TAtlasTestExplorerChoice.DebugSelection(mUnits, mNodes, TArray<Integer>.Create(cAddiert));
+  Assert.AreEqual('Addiert', mSelection.Method);
+  Assert.IsTrue(mSelection.BreakLine >= 0, 'ein Test: Haltepunkt am Anfang');
+  Assert.AreEqual(1, Integer(Length(mSelection.Names)));
+  mSelection := TAtlasTestExplorerChoice.DebugSelection(mUnits, mNodes, TArray<Integer>.Create(cAddiert, cEins));
+  Assert.AreEqual(-1, mSelection.BreakLine, 'mehrere Tests: kein Haltepunkt');
+  Assert.AreEqual(2, Integer(Length(mSelection.Names)));
+  mSelection := TAtlasTestExplorerChoice.DebugSelection(mUnits, mNodes, TArray<Integer>.Create(cUnitNode));
+  Assert.AreEqual('TRechnerTests', mSelection.Fixture, 'Testunit über ihre erste Fixture');
+  Assert.AreEqual(-1, mSelection.BreakLine);
+end;
+
+procedure TAtlasTestExplorerChoiceTests.SeriesSubjectAndShuffleNames;
+var
+  mUnits: TArray<TAtlasTestUnitInput>;
+  mNodes: TArray<TAtlasTestNode>;
+  mSubject: TAtlasTestSeriesSubject;
+  mNames: TArray<string>;
+begin
+  mUnits := TArray<TAtlasTestUnitInput>.Create(DemoUnit(nil));
+  mNodes := TAtlasTestExplorer.Build(mUnits, nil);
+  mSubject := TAtlasTestExplorerChoice.SubjectOf(mUnits[0].Found, mNodes[cEins]);
+  Assert.AreEqual('Demo.Tests', mSubject.UnitName);
+  Assert.AreEqual('TRechnerTests', mSubject.Fixture);
+  Assert.AreEqual('Teilt', mSubject.Method);
+  Assert.AreEqual('Eins', mSubject.CaseName);
+  mSubject := TAtlasTestExplorerChoice.SubjectOf(mUnits[0].Found, mNodes[cUnitNode]);
+  Assert.AreEqual('', mSubject.Fixture, 'ganze Testunit');
+  // Je Test bzw. Fall ein Name: Teilt bringt beide Fälle, Spaeter ist ignoriert.
+  mNames := TAtlasTestExplorerChoice.ShuffleNames(mUnits, mNodes, TArray<Integer>.Create(cAddiert, cTeilt));
+  Assert.AreEqual(3, Integer(Length(mNames)));
+end;
 end.

@@ -41,6 +41,8 @@ type
     [Test]
     procedure BlockWithCodeOfOtherPlatformsIsSilent;
     [Test]
+    procedure EmptyWithAfterCallIsSilent;
+    [Test]
     procedure CorrectFormsAreSilent;
     [Test]
     procedure NestedIfElseBelongsToInner;
@@ -183,6 +185,10 @@ type
     /// vom Vorfahren.</summary>
     [Test]
     procedure RedeclaredPropertyInheritsAccessors;
+    /// <summary>Kurzform function TDb.Query; ohne Parameter und Ergebnistyp: Result ist das Funktionsergebnis,
+    /// nicht die Eigenschaft Result der Klasse.</summary>
+    [Test]
+    procedure ShortFormResultIsNotProperty;
     [Test]
     procedure OffAndExclude;
   end;
@@ -283,6 +289,15 @@ begin
   mFindings := TRuleAssert.Findings(TEmptyStatementRule.Create, mSource,
     '{"rules": {"empty-statement": {"allowCommented": false}}}', 'Daten.pas');
   Assert.AreEqual(2, Integer(Length(mFindings)), 'mit allowCommented = false auch der kommentierte Block');
+end;
+
+procedure TStatementRulesTests.EmptyWithAfterCallIsSilent;
+begin
+  // Registrierung wie in PascalScript: der Aufruf vor do wirkt, der Block bleibt leer.
+  TRuleAssert.Silent(TEmptyStatementRule.Create,
+    Body('  with Liste.Add(TEintrag) do'#10'  begin'#10'  end;'#10 +
+    '  with Hole(''A'', ''B''), Liste do'#10'  begin'#10'  end;'#10));
+  TRuleAssert.Reports(TEmptyStatementRule.Create, Body('  with Liste do'#10'  begin'#10'  end;'#10));
 end;
 
 procedure TStatementRulesTests.CorrectFormsAreSilent;
@@ -1568,6 +1583,20 @@ begin
   // Gleichnamige lokale Variable verdeckt die Property.
   Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Kundenliste('  Count := 0;'#10).Replace('begin'#10,
     'var'#10'  Count: Integer;'#10'begin'#10)))));
+end;
+
+procedure TReadonlyPropertyAssignedTests.ShortFormResultIsNotProperty;
+const
+  cUnit = 'unit Kunden;'#10'interface'#10'type'#10'  TDb = class'#10'  private'#10'    function GetOne: string;'#10 +
+    '  public'#10'    function Query(const S: string): Boolean;'#10'    procedure Leeren;'#10 +
+    '    property Result: string read GetOne;'#10'  end;'#10'implementation'#10 +
+    'function TDb.GetOne: string;'#10'begin'#10'  Result := '''';'#10'end;'#10'%s'#10'begin'#10'%s'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Integer(Length(ReadonlyFindings(Format(cUnit, ['function TDb.Query;',
+    '  Result := False;'])))));
+  // In einer Prozedur bleibt Result die Eigenschaft.
+  Assert.AreEqual(1, Integer(Length(ReadonlyFindings(Format(cUnit, ['procedure TDb.Leeren;',
+    '  Result := '''';'])))));
 end;
 
 procedure TReadonlyPropertyAssignedTests.RedeclaredPropertyInheritsAccessors;

@@ -26,6 +26,8 @@ type
     [Test]
     procedure AccessorCase;
     [Test]
+    procedure AccessorReferenceAndLowerCaseProperty;
+    [Test]
     procedure InlineAccessesLowerVisibility;
     [Test]
     procedure InlineSilentCases;
@@ -211,6 +213,23 @@ begin
   Silent(Kunden('', '  private'#10'    fName: string;'#10'    function GetWert: Integer;'#10 +
     '    function LiesText: string;'#10'  public'#10'    property Name: string read fName;'#10 +
     '    property Wert: Integer read GetWert;'#10'    property Text: string read LiesText;'#10, ''));
+end;
+
+/// <summary>Verglichen wird die Deklaration des Getters, nicht die Schreibweise hinter read (FP mORMot2:
+/// „GetPasswordPlain sollte GetPasswordPlain heißen“); eine Property mit kleinem Anfang (isVoid) erlaubt GetIsVoid und
+/// schlägt bei getIsVoid die große Form vor.</summary>
+procedure TOverrideCaseRulesTests.AccessorReferenceAndLowerCaseProperty;
+begin
+  Silent(Kunden('', '  private'#10'    function GetKennwort: string;'#10'  public'#10 +
+    '    property Kennwort: string read GetKennWort;'#10,
+    'function TKunde.GetKennwort: string;'#10'begin'#10'  Result := '''';'#10'end;'#10));
+  Silent(Kunden('', '  private'#10'    function GetIstLeer: Boolean;'#10'  public'#10 +
+    '    property istLeer: Boolean read GetIstLeer;'#10,
+    'function TKunde.GetIstLeer: Boolean;'#10'begin'#10'  Result := False;'#10'end;'#10));
+  Assert.AreEqual('Die Zugriffsmethode TKunde.getIstLeer sollte TKunde.GetIstLeer geschrieben werden.',
+    OnlyMessage(Kunden('', '  private'#10'    function getIstLeer: Boolean;'#10'  public'#10 +
+    '    property istLeer: Boolean read getIstLeer;'#10,
+    'function TKunde.getIstLeer: Boolean;'#10'begin'#10'  Result := False;'#10'end;'#10)));
 end;
 
 procedure TOverrideCaseRulesTests.InlineAccessesLowerVisibility;

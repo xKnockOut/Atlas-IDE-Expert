@@ -18,6 +18,8 @@ type
     [Test]
     procedure MismatchSilentCases;
     [Test]
+    procedure MismatchPathWithUmlauts;
+    [Test]
     procedure MismatchWarnDirective;
     [Test]
     procedure MismatchUsesInFile;
@@ -313,6 +315,25 @@ begin
   Assert.AreEqual(0, Integer(Length(Run(mRule, 'package Werkzeug;'#10'end.', 'Projekt1.pas'))));
   // Halb getippter Kopf.
   Assert.AreEqual(0, Integer(Length(Run(mRule, 'unit ', 'Kunden.pas'))));
+end;
+
+procedure TUnitRulesTests.MismatchPathWithUmlauts;
+var
+  mRule: IRule;
+  mCodePage: Integer;
+begin
+  mRule := TUnitNameMismatchRule.Create;
+  // Umlaute im Ordner verschieben den Dateinamen nicht. Der Linux-Server rechnet mit UTF-8 als Codepage; dort
+  // zählte LastDelimiter (unter FPC nur für AnsiString) Bytes statt Zeichen.
+  mCodePage := DefaultSystemCodePage;
+  DefaultSystemCodePage := CP_UTF8;
+  try
+    Assert.AreEqual('Unt_Liste', TUnitNameMismatchRule.ExpectedName('Übungen\Größen/Unt_Liste.pas'));
+    Assert.AreEqual(0, Integer(Length(Run(mRule, 'unit Unt_Liste;'#10'interface'#10 +
+      'implementation'#10'end.', 'Prüfung/Übersicht/Unt_Liste.pas'))));
+  finally
+    DefaultSystemCodePage := mCodePage;
+  end;
 end;
 
 procedure TUnitRulesTests.MismatchWarnDirective;

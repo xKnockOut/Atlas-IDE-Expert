@@ -19,6 +19,8 @@ type
     procedure AllowsLibraryPaths;
     [Test]
     procedure UsesCanonicalizer;
+    [Test]
+    procedure ContainsNormalizesBothPaths;
   end;
 
 implementation
@@ -93,6 +95,17 @@ begin
   finally
     mGuard.Free;
   end;
+end;
+
+procedure TMcpPathGuardTests.ContainsNormalizesBothPaths;
+begin
+  Assert.IsTrue(TMcpPathGuard.Contains('C:\Projekte\App\', 'C:\Projekte\App\Source\Main.pas'));
+  Assert.IsTrue(TMcpPathGuard.Contains('C:\Projekte\App', 'c:\projekte\app\Main.pas'), 'ohne Groß-/Kleinschreibung');
+  Assert.IsTrue(TMcpPathGuard.Contains('C:\Projekte\App\Source\..', 'C:\Projekte\App\Main.pas'));
+  Assert.IsFalse(TMcpPathGuard.Contains('C:\Projekte\App', 'C:\Projekte\App\..\Fremd\Main.pas'), '".." führt hinaus');
+  Assert.IsFalse(TMcpPathGuard.Contains('C:\Projekte\App', 'C:\Projekte\AppAlt\Main.pas'), 'gleicher Anfang');
+  Assert.IsFalse(TMcpPathGuard.Contains('', 'C:\Projekte\App\Main.pas'));
+  Assert.IsFalse(TMcpPathGuard.Contains('C:\Projekte\App', ''));
 end;
 
 initialization

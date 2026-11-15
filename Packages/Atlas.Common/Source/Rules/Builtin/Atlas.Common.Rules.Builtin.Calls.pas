@@ -107,7 +107,8 @@ uses
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -326,30 +327,6 @@ begin
   end;
 end;
 
-/// <summary>Letztes Token, das an oder vor APosition beginnt; -1 ohne.</summary>
-function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  Result := -1;
-  mLow := 0;
-  mHigh := Length(ATokens) - 1;
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
-      (ATokens[mMiddle].StartPos.Character <= APosition.Character)) then
-    begin
-      Result := mMiddle;
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle - 1;
-    end;
-  end;
-end;
-
 /// <summary>Signaturhilfe in den Klammern vor ")"; ohne Klammern erst () hinter den Namen.</summary>
 function SignatureFix(ANode, ACallee: TSyntaxNode): TRuleFix;
 var
@@ -417,7 +394,7 @@ var
     Result := '';
     if mPaths <> nil then
     begin
-      Result := TConditionalBranches.PathAt(mPaths, TokenAt(AContext.Tree.Tokens, APosition));
+      Result := TConditionalBranches.PathAt(mPaths, TokenUpToPosition(AContext.Tree.Tokens, APosition));
     end;
   end;
 
@@ -828,7 +805,7 @@ var
     Result := '';
     if mPaths <> nil then
     begin
-      Result := TConditionalBranches.PathAt(mPaths, TokenAt(AContext.Tree.Tokens, APosition));
+      Result := TConditionalBranches.PathAt(mPaths, TokenUpToPosition(AContext.Tree.Tokens, APosition));
     end;
   end;
 

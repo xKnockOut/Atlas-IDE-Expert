@@ -1121,7 +1121,7 @@ var
   mStop: Integer;
 begin
   // Text vom Anfang der Routine bis zum Block; der Kopfknoten generischer Klassen deckt nicht alles ab.
-  mHeader := TFreeFieldTypes.Collapse(Copy(AText, AConstructor.StartOffset + 1,
+  mHeader := TTextLines.CollapseSpace(Copy(AText, AConstructor.StartOffset + 1,
     AConstructor.FindChild(TSyntaxKind.Block).StartOffset - AConstructor.StartOffset));
   // "constructor" bzw. "class constructor" (#971) abschneiden.
   mHeader := Trim(Copy(mHeader, Pos('constructor', LowerCase(mHeader)) + Length('constructor'), MaxInt));

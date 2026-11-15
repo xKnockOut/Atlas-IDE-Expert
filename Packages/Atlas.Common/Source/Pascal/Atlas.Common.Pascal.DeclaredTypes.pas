@@ -28,6 +28,8 @@ type
     FText: string;
     FUnitScope: TScope;
     FClassScopes: TObjectDictionary<string, TScope>;
+    /// <summary>Namen der hier als record oder object deklarierten Typen (klein geschrieben).</summary>
+    FValueTypes: TScope;
     FRoutineScopes: TObjectDictionary<TSyntaxNode, TScope>;
     FRoutines: TList<TSyntaxNode>;
     FInlineVars: TList<TSyntaxNode>;
@@ -62,6 +64,10 @@ type
     /// <summary>Typ der Kette AChain an APosition ("FParts.Menu", "Self.FList"): erstes Glied über
     /// DeclaredType, die weiteren als Felder (FieldType); '' sobald ein Glied unbekannt ist.</summary>
     function ChainType(const AChain: string; const APosition: TTextPosition): string;
+    /// <summary>Ist AName an APosition ein offener Array-Parameter (A: array of T) der umgebenden Routine?
+    /// DeclaredType liefert dafür wie für ein dynamisches Array "array of T"; als Parameter ist das aber immer
+    /// ein offenes Array: die Elemente selbst, keine verwaltete Referenz.</summary>
+    function IsOpenArrayParameter(const AName: string; const APosition: TTextPosition): Boolean;
     /// <summary>Ganzzahltyp mit höchstens 32 Bit?</summary>
     class function IsInt32(const AType: string): Boolean; static;
     /// <summary>Int64 oder UInt64?</summary>
@@ -72,6 +78,9 @@ type
     class function IsChar(const AType: string): Boolean; static;
     /// <summary>Zeiger, String oder dynamisches Array: SizeOf liefert die Größe des Zeigers.</summary>
     class function IsReference(const AType: string): Boolean; static;
+    /// <summary>Wie IsReference, aber ein in der Datei als record oder object deklarierter Typ zählt nie als Zeiger,
+    /// auch wenn sein Name wie ein Zeigertyp mit P beginnt (PROCESS_INFO = record).</summary>
+    function IsPointerSized(const AType: string): Boolean;
   end;
 
 implementation
@@ -92,6 +101,7 @@ begin
   FText := AText;
   FUnitScope := TScope.Create;
   FClassScopes := TObjectDictionary<string, TScope>.Create([doOwnsValues]);
+  FValueTypes := TScope.Create;
   FRoutineScopes := TObjectDictionary<TSyntaxNode, TScope>.Create([doOwnsValues]);
   FRoutines := TList<TSyntaxNode>.Create;
   FInlineVars := TList<TSyntaxNode>.Create;
@@ -107,6 +117,7 @@ begin
   FRoutines.Free;
   FRoutineScopes.Free;
   FClassScopes.Free;
+  FValueTypes.Free;
   FUnitScope.Free;
   inherited;
 end;
@@ -194,8 +205,13 @@ begin
   case AChild.Kind of
     TSyntaxKind.TypeDecl:
       Enter(AFrames, AChild, AChild.Name);
-    TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
+    TSyntaxKind.ClassType:
       VisitClassType(AFrames, AChild, AOwnerClass);
+    TSyntaxKind.RecordType, TSyntaxKind.ObjectType:
+      begin
+        FValueTypes.AddOrSetValue(LowerCase(AOwnerClass), '');
+        VisitClassType(AFrames, AChild, AOwnerClass);
+      end;
     TSyntaxKind.Field:
       if FClassScopes.TryGetValue(LowerCase(AOwnerClass), mScope) then
       begin
@@ -432,6 +448,65 @@ begin
   end;
 end;
 
+/// <summary>Hat die Routine ARoutine einen Parameter AName?</summary>
+function HasParameter(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mHeader, mParams: TSyntaxNode;
+  mInner: Integer;
+  mName: string;
+begin
+  Result := False;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mParams := nil;
+  if mHeader <> nil then
+  begin
+    mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  end;
+  if mParams = nil then
+  begin
+    Exit;
+  end;
+  for mInner := 0 to mParams.ChildCount - 1 do
+  begin
+    if mParams[mInner].Kind <> TSyntaxKind.Parameter then
+    begin
+      Continue;
+    end;
+    for mName in SplitString(mParams[mInner].Name, ',') do
+    begin
+      if SameText(Trim(mName), AName) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
+function TDeclaredTypes.IsOpenArrayParameter(const AName: string; const APosition: TTextPosition): Boolean;
+var
+  mRoutine: TSyntaxNode;
+  mType: string;
+begin
+  Result := False;
+  mRoutine := RoutineAt(APosition);
+  if InlineVarType(AName, APosition, mRoutine) <> '' then
+  begin
+    Exit;
+  end;
+  while mRoutine <> nil do
+  begin
+    if RoutineScopeType(mRoutine, LowerCase(AName), mType) then
+    begin
+      Exit(StartsText('array of', mType) and HasParameter(mRoutine, AName));
+    end;
+    mRoutine := mRoutine.Parent;
+    while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
+    begin
+      mRoutine := mRoutine.Parent;
+    end;
+  end;
+end;
+
 class function TDeclaredTypes.IsInt32(const AType: string): Boolean;
 begin
   Result := MatchText(AType, ['Integer', 'Cardinal', 'LongInt', 'LongWord', 'Int32', 'UInt32', 'SmallInt',
@@ -460,6 +535,11 @@ begin
     'UTF8String', 'TBytes', 'PChar', 'PByte']) or StartsText('TArray<', AType) or
     StartsText('array of', AType) or StartsStr('^', AType) or
     ((Length(AType) > 1) and (AType[1] = 'P') and CharInSet(AType[2], ['A'..'Z']));
+end;
+
+function TDeclaredTypes.IsPointerSized(const AType: string): Boolean;
+begin
+  Result := IsReference(AType) and not FValueTypes.ContainsKey(LowerCase(AType));
 end;
 
 end.
