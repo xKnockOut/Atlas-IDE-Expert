@@ -94,7 +94,6 @@ type
     procedure ShowStatus(const AStatus: string);
     procedure ShowGroup(const AGroup: TAtlasPaletteGroup);
     procedure CancelRequest;
-    function IssueOf(const AItem: TAtlasCommand; out AIssue: TAtlasTrackerIssue): Boolean;
     function ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
     procedure Browse(const AKey: string);
     procedure Report(const AText: string);
@@ -117,11 +116,11 @@ implementation
 
 uses
   Winapi.Windows,
-  System.StrUtils,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
@@ -203,7 +202,7 @@ end;
 procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
   ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 var
-  mName, mState: string;
+  mName: string;
 begin
   FWorkers.Release(False);
   // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
@@ -217,28 +216,20 @@ begin
   begin
     mName := FProvider.Name;
   end;
-  if ASucceeded then
-  begin
-    mState := IntToStr(Length(AIssues)) + ' Treffer';
-  end
-  else
-  begin
-    mState := 'keine Antwort (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  TAtlasGuard.Log(TAtlasIssuePaletteSearchPlan.AnswerLog(mName, ASucceeded, Length(AIssues), AError));
+  case TAtlasIssuePaletteSearchPlan.AnswerOf(ASucceeded, AError) of
+    TAtlasIssueSearchAnswer.Show:
+      begin
+        FLastQuery := AQuery;
+        FLastIssues := AIssues;
+        FHasLast := True;
+        ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
+      end;
+    TAtlasIssueSearchAnswer.Ignore:
+      ; // Abgebrochen: Eine neuere Eingabe zeigt ihr eigenes Ergebnis.
+    TAtlasIssueSearchAnswer.Error:
+      ShowStatus(ErrorText(AError, AQuery));
   end;
-  TAtlasGuard.Log(Format('Palettensuche: %s, %s', [mName, mState]));
-  if ASucceeded then
-  begin
-    FLastQuery := AQuery;
-    FLastIssues := AIssues;
-    FHasLast := True;
-    ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
-    Exit;
-  end;
-  if AError = TAtlasCiFetchError.Cancelled then
-  begin
-    Exit;
-  end;
-  ShowStatus(ErrorText(AError, AQuery));
 end;
 
 procedure TAtlasIdeIssueSearch.ShowIssues(const ATitle: string; const AQuery: TAtlasIssueSearchQuery;
@@ -284,46 +275,24 @@ begin
   FCancel := nil;
 end;
 
-function TAtlasIdeIssueSearch.IssueOf(const AItem: TAtlasCommand; out AIssue: TAtlasTrackerIssue): Boolean;
-var
-  mIssue: TAtlasTrackerIssue;
-begin
-  for mIssue in FIssues do
-  begin
-    if SameText(mIssue.Key, AItem.Id) then
-    begin
-      AIssue := mIssue;
-      Exit(True);
-    end;
-  end;
-  AIssue := TAtlasTrackerIssue.Empty;
-  AIssue.Key := AItem.Id;
-  AIssue.Title := AItem.Description;
-  Result := AItem.Id <> '';
-end;
-
 function TAtlasIdeIssueSearch.ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
 begin
-  case AError of
-    TAtlasCiFetchError.NotConfigured:
+  Result := '';
+  case TAtlasIssuePaletteSearchPlan.ErrorOf(AError, AQuery.Kind) of
+    TAtlasIssueSearchError.Config:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorConfig);
-    TAtlasCiFetchError.Unauthorized:
+    TAtlasIssueSearchError.Token:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.NotFound:
-      if AQuery.Kind = TAtlasIssueSearchKind.Key then
-      begin
-        Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewErrorNotFound, [AQuery.Key]);
-      end
-      else
-      begin
-        Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNone);
-      end;
-    TAtlasCiFetchError.Timeout:
+    TAtlasIssueSearchError.KeyNotFound:
+      Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewErrorNotFound, [AQuery.Key]);
+    TAtlasIssueSearchError.NoneFound:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNone);
+    TAtlasIssueSearchError.Timeout:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesTimeout);
-    TAtlasCiFetchError.Network:
+    TAtlasIssueSearchError.Network:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
-  else
-    Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
+    TAtlasIssueSearchError.Invalid:
+      Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   end;
 end;
 
@@ -350,7 +319,7 @@ end;
 /// <summary>Ohne Tracker gehört "#…" trotzdem nicht zu den Befehlen: Hinweis statt stiller Leere.</summary>
 procedure ShowNoTracker(AOwner: TAtlasIdeIssueSearch; const APattern: string);
 begin
-  if TAtlasIdeIssueSearch.Active and StartsStr('#', TrimLeft(APattern)) then
+  if TAtlasIdeIssueSearch.Active and TAtlasIssuePaletteSearchPlan.IsIssueInput(APattern) then
   begin
     AOwner.ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNoTracker));
   end
@@ -392,7 +361,7 @@ begin
   else
   begin
     AOwner.ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesSearching));
-    AOwner.FDebounce.Input(AQuery.Key + '|' + AQuery.Text, TAtlasIdeIssueSearch.NowMs);
+    AOwner.FDebounce.Input(TAtlasIssuePaletteSearchPlan.InputKey(AQuery), TAtlasIdeIssueSearch.NowMs);
     AOwner.Schedule;
   end;
 end;
@@ -626,7 +595,7 @@ end;
 /// True, wenn AItem von dort stammt.</summary>
 function RanState(AOwner: TAtlasIdeIssueSearch; const AItem: TAtlasCommand; AAction: TAtlasPaletteAction): Boolean;
 begin
-  Result := AOwner.FStarted and (AAction in [TAtlasPaletteAction.Open, TAtlasPaletteAction.Start]) and
+  Result := AOwner.FStarted and TAtlasIssuePaletteSearchPlan.RunsState(AAction) and
     Assigned(AOwner.FHooks.StateRun) and AOwner.FHooks.StateRun(AItem.Id);
 end;
 
@@ -634,7 +603,8 @@ procedure TAtlasIdeIssueSearch.Execute(const AItem: TAtlasCommand; AAction: TAtl
 var
   mIssue: TAtlasTrackerIssue;
 begin
-  if RanState(Self, AItem, AAction) or not FStarted or not IssueOf(AItem, mIssue) then
+  if RanState(Self, AItem, AAction) or not FStarted or
+    not TAtlasIssuePaletteSearchPlan.IssueOf(FIssues, AItem, mIssue) then
   begin
     Exit;
   end;

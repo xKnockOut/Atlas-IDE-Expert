@@ -1274,6 +1274,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SprintStart.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearchPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.PaletteSearchPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CodeLinkPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CodeLinkPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BlamePlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BlamePlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintLoad.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SprintLoad.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommentPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CommentPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NotifyPlan.pas"/>

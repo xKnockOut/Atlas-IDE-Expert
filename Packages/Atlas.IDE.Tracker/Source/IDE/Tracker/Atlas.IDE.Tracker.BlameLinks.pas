@@ -38,25 +38,18 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.BlamePlan,
   Atlas.Core.Tracker.CodeLinks,
-  Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Contracts.LineChanges,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameScope;
 
 type
   TAtlasIdeBlameLinks = class
-  private const
-    cMenuShow = 1;
-    cMenuBrowse = 2;
-    cMenuCopy = 3;
-    cMenuScope = 4;
-    /// <summary>Menüeinträge tragen Kennung * MenuStride + Befehl.</summary>
-    cMenuStride = 8;
   private type
     /// <summary>Stand einer Kennung im Hover, solange der Zwischenspeicher nichts hat.</summary>
     TKeyState = record
-      State: TAtlasIssueTipState;
+      State: TAtlasBlameKeyState;
       Error: TAtlasCiFetchError;
     end;
   private class var
@@ -111,6 +104,7 @@ implementation
 
 uses
   Atlas.Core.Tracker.BlameLinks,
+  Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Tracker.IssuePreview,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
@@ -119,6 +113,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.IssueLookups;
+
+const
+  cTipStates: array[TAtlasBlameKeyState] of TAtlasIssueTipState = (TAtlasIssueTipState.Loading,
+    TAtlasIssueTipState.Found, TAtlasIssueTipState.NotFound, TAtlasIssueTipState.Failed);
 
 type
   /// <summary>Alles für das Zählen der Issues eines Bereichs im Hintergrund.</summary>
@@ -252,7 +250,7 @@ begin
   mMatches := MessageMatches(mPattern, ACommit);
   if (AIndex >= 0) and (AIndex < Length(mMatches)) then
   begin
-    Act(ACommit, cMenuShow, AIndex);
+    Act(ACommit, TAtlasBlamePlan.cMenuShow, AIndex);
   end
   else
   begin
@@ -267,7 +265,7 @@ var
   mMatches: TArray<TAtlasIssueKeyMatch>;
   mMatch: TAtlasIssueKeyMatch;
 begin
-  if ACommand = cMenuScope then
+  if ACommand = TAtlasBlamePlan.cMenuScope then
   begin
     FScope.ShowAt(ACommit.FileName, ACommit.Line);
     Exit;
@@ -283,17 +281,17 @@ begin
   end;
   mMatch := mMatches[AKey];
   case ACommand of
-    cMenuShow:
+    TAtlasBlamePlan.cMenuShow:
       if Assigned(FHooks.Show) then
       begin
         FHooks.Show(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    cMenuBrowse:
+    TAtlasBlamePlan.cMenuBrowse:
       if Assigned(FHooks.Browse) then
       begin
         FHooks.Browse(mMatch.IssueTarget(mTarget), mMatch.IssueKey);
       end;
-    cMenuCopy:
+    TAtlasBlamePlan.cMenuCopy:
       Clipboard.AsText := mMatch.Key;
   end;
 end;
@@ -301,7 +299,7 @@ end;
 /// <summary>Schlüssel des Stands einer Kennung im Hover (Muster|Kennung).</summary>
 function StateKey(const APattern: TAtlasIssueKeyPattern; const AMatch: TAtlasIssueKeyMatch): string;
 begin
-  Result := APattern.Key + #1 + UpperCase(AMatch.Key);
+  Result := TAtlasBlamePlan.StateKey(APattern.Key, AMatch.Key);
 end;
 
 procedure TAtlasIdeBlameLinks.Ask(const ATarget: TAtlasTrackerTarget; const APattern: TAtlasIssueKeyPattern;
@@ -325,7 +323,7 @@ begin
   begin
     Exit;
   end;
-  mState.State := TAtlasIssueTipState.Loading;
+  mState.State := TAtlasBlameKeyState.Loading;
   mState.Error := TAtlasCiFetchError.None;
   FKeyStates.Add(mKey, mState);
   mSerial := FSerialOf;
@@ -339,18 +337,7 @@ begin
         Exit;
       end;
       mDone.Error := AError;
-      if ASucceeded then
-      begin
-        mDone.State := TAtlasIssueTipState.Found;
-      end
-      else if AError = TAtlasCiFetchError.NotFound then
-      begin
-        mDone.State := TAtlasIssueTipState.NotFound;
-      end
-      else
-      begin
-        mDone.State := TAtlasIssueTipState.Failed;
-      end;
+      mDone.State := TAtlasBlamePlan.LookupState(ASucceeded, AError);
       FInstance.FKeyStates[mKey] := mDone;
       // Kam die Antwort sofort (aus Describe heraus), baut Describe den Text selbst.
       if not FInstance.FDescribing then
@@ -367,6 +354,7 @@ var
   mDetails: TAtlasTrackerDetails;
   mState: TKeyState;
   mKnown, mCached: Boolean;
+  mShown: TAtlasBlameKeyState;
 begin
   mPreview := TAtlasIdeBlameScope.Preview(FHooks);
   mCached := False;
@@ -376,23 +364,14 @@ begin
     mCached := mPreview.Lookups.Peek(AMatch.IssueTarget(ATarget), AMatch.IssueKey, mDetails);
   end;
   mKnown := FKeyStates.TryGetValue(StateKey(APattern, AMatch), mState);
-  if mKnown and (mState.State = TAtlasIssueTipState.NotFound) then
+  if not mKnown then
   begin
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.NotFound, mDetails, mState.Error);
-  end
-  else if mCached then
-  begin
-    // Ohne Netz bleibt ein vorhandener Stand stehen.
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None);
-  end
-  else if mKnown and (mState.State = TAtlasIssueTipState.Failed) then
-  begin
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Failed, mDetails, mState.Error);
-  end
-  else
-  begin
-    Result := TAtlasIssueTip.KeyLine(AMatch.Key, TAtlasIssueTipState.Loading, mDetails, TAtlasCiFetchError.None);
+    mState.Error := TAtlasCiFetchError.None;
   end;
+  // Ohne Netz bleibt ein vorhandener Stand stehen.
+  mShown := TAtlasBlamePlan.ShownState(mKnown, mState.State, mCached);
+  Result := TAtlasIssueTip.KeyLine(AMatch.Key, cTipStates[mShown], mDetails,
+    TAtlasBlamePlan.ShownError(mShown, mState.Error));
 end;
 
 procedure TAtlasIdeBlameLinks.ShowMenu(const ACommit: TAtlasBlameCommit; const APoint: TPoint);
@@ -424,12 +403,12 @@ begin
       mParent.OnClick := nil;
     end;
     AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow),
-      mIndex * cMenuStride + cMenuShow).Default :=
+      TAtlasBlamePlan.MenuTag(mIndex, TAtlasBlamePlan.cMenuShow)).Default :=
       True;
     AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse),
-      mIndex * cMenuStride + cMenuBrowse);
+      TAtlasBlamePlan.MenuTag(mIndex, TAtlasBlamePlan.cMenuBrowse));
     AddMenuItem(mParent, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey),
-      mIndex * cMenuStride + cMenuCopy);
+      TAtlasBlamePlan.MenuTag(mIndex, TAtlasBlamePlan.cMenuCopy));
   end;
   if Length(mMatches) > 0 then
   begin
@@ -437,16 +416,14 @@ begin
   end;
   mMethod := TAtlasIdeBlameScope.BufferLines(ACommit.FileName, mLines, mText) and
     TAtlasBlameLinks.Scope(mText, ACommit.Line, mFirst, mLast, mName);
-  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), cMenuScope);
+  AddMenuItem(FMenu.Items, TAtlasIssueTip.ScopeLink(mMethod, -1), TAtlasBlamePlan.cMenuScope);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
 function CountKey(const AFileName: string; AFirst, ALast: Integer; const AName: string;
   const AVcs: IAtlasVersionControl; const APattern: TAtlasIssueKeyPattern): string;
 begin
-  // Gezählt je Bereich und Stand der Arbeitskopie; ein Commit oder Wechsel des Branchs zählt neu.
-  Result := AFileName + #1 + IntToStr(AFirst) + #1 + IntToStr(ALast) + #1 + AName + #1 + AVcs.ChangeMarker + #1 +
-    APattern.Key;
+  Result := TAtlasBlamePlan.CountKey(AFileName, AFirst, ALast, AName, AVcs.ChangeMarker, APattern.Key);
 end;
 
 /// <summary>Gezählt (Hauptthread): Zahl merken und den Hover neu zeichnen, solange der Bereich derselbe ist.
@@ -545,7 +522,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.BlameIssues,
     procedure
     begin
-      Act(mCommit, mTag mod cMenuStride, mTag div cMenuStride);
+      Act(mCommit, TAtlasBlamePlan.MenuCommand(mTag), TAtlasBlamePlan.MenuKey(mTag));
     end);
 end;
 
@@ -619,8 +596,8 @@ end;
 /// <summary>Strg+Klick oder Rechtsklick ohne Umschalt (Umschalt+Rechtsklick: Kontextmenü der IDE)?</summary>
 function IsBlameClick(const AMsg: TMsg): Boolean;
 begin
-  Result := ((AMsg.message = WM_LBUTTONDOWN) and ((AMsg.wParam and MK_CONTROL) <> 0)) or
-    ((AMsg.message = WM_RBUTTONDOWN) and ((AMsg.wParam and MK_SHIFT) = 0));
+  Result := TAtlasBlamePlan.Catches(AMsg.message = WM_LBUTTONDOWN, AMsg.message = WM_RBUTTONDOWN,
+    (AMsg.wParam and MK_CONTROL) <> 0, (AMsg.wParam and MK_SHIFT) <> 0);
 end;
 
 /// <summary>Klick auf die Randanzeige: Strg+Klick öffnet Vorschau bzw. Browser für die erste Kennung
@@ -653,11 +630,7 @@ begin
   else
   begin
     AOwner.FSwallowUp := WM_LBUTTONUP;
-    mCommand := TAtlasIdeBlameLinks.cMenuShow;
-    if (AMsg.wParam and MK_SHIFT) <> 0 then
-    begin
-      mCommand := TAtlasIdeBlameLinks.cMenuBrowse;
-    end;
+    mCommand := TAtlasBlamePlan.ClickCommand((AMsg.wParam and MK_SHIFT) <> 0);
     QueueAct(mCommit, mCommand, AOwner.FSerialOf);
   end;
 end;
