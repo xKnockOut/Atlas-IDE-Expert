@@ -26,6 +26,8 @@ type
     [Test]
     procedure SizeOfPointer;
     [Test]
+    procedure SizeOfRecordWithPointerName;
+    [Test]
     procedure CharToPChar;
     [Test]
     procedure FloatEquality;
@@ -49,6 +51,8 @@ type
     procedure ManagedRawMemoryMoveAndPointers;
     [Test]
     procedure ManagedRawMemorySilentCases;
+    [Test]
+    procedure ManagedRawMemoryOpenArrayParameter;
     [Test]
     procedure ManagedRawMemoryOffAndExclude;
     [Test]
@@ -245,6 +249,21 @@ begin
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFindings[0].Severity));
   TRuleAssert.Silent(TSizeOfPointerRule.Create, InRoutine('  R: TPoint;'#10'  A: array[0..9] of Byte;',
     '  FillChar(R, SizeOf(R), 0);'#10'  FillChar(A, SizeOf(A), 0);'#10'  FillChar(R, SizeOf(TPoint), 0);'));
+end;
+
+procedure TRtlTypePatternRulesTests.SizeOfRecordWithPointerName;
+const
+  cUnit = 'unit U;'#10'interface'#10'type'#10'  PROCESS_INFO = record'#10'    Id: Cardinal;'#10'  end;'#10 +
+    '  PPROCESS_INFO = ^PROCESS_INFO;'#10'implementation'#10'procedure Leeren;'#10'var'#10 +
+    '  Info: PROCESS_INFO;'#10'  Zeiger: PPROCESS_INFO;'#10'begin'#10'  FillChar(Info, SizeOf(Info), 0);'#10 +
+    '  FillChar(Zeiger^, SizeOf(Zeiger), 0);'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Ein hier als record deklarierter Typ zählt trotz P-Präfix nicht als Zeiger; der echte Zeigertyp schon.
+  mFindings := TRuleAssert.Findings(TSizeOfPointerRule.Create, cUnit);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(14, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TRtlTypePatternRulesTests.CharToPChar;
@@ -515,6 +534,30 @@ begin
   // Ein anderer Zeiger oder ein anderer Füllwert bleibt ein Treffer.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes(cAdresse,
     '  P, Q: PAdresse;', '  New(P);'#10'  FillChar(Q^, SizeOf(TAdresse), 0);'#10'  Dispose(P);')))));
+end;
+
+procedure TRtlTypePatternRulesTests.ManagedRawMemoryOpenArrayParameter;
+const
+  cUnit = 'unit U;'#10'interface'#10'implementation'#10'procedure Leeren(var Daten: array of %s);'#10 +
+    'var'#10'  Liste: array of %0:s;'#10'begin'#10'  %s(%s, SizeOf(Byte), 0);'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Offener Array-Parameter: FillChar trifft die Elemente, keine Referenz eines dynamischen Arrays (DES-Routinen
+  // mit "var outData: array of Byte").
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, Format(cUnit, ['Byte', 'FillChar', 'Daten']));
+  // Elemente verwaltet: bleibt ein Treffer, ohne Korrektur über Default.
+  mFindings := TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, Format(cUnit, ['string', 'FillChar', 'Daten']));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+  // Die gleich geschriebene lokale Variable ist ein dynamisches Array.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create,
+    Format(cUnit, ['Byte', 'FillChar', 'Liste'])))));
+  // TWin32FindData hat nur statische Zeichen-Arrays, TSearchRec einen String.
+  TRuleAssert.Silent(TManagedTypeRawMemoryRule.Create, WithTypes('', '  Daten: TWin32FindData;',
+    '  FillChar(Daten, SizeOf(Daten), 0);'));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TManagedTypeRawMemoryRule.Create, WithTypes('',
+    '  Suche: TSearchRec;', '  FillChar(Suche, SizeOf(Suche), 0);')))));
 end;
 
 procedure TRtlTypePatternRulesTests.ManagedRawMemoryOffAndExclude;

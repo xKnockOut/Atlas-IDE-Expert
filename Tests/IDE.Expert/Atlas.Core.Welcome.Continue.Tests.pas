@@ -59,6 +59,32 @@ type
     procedure ProbeHeadStoresHeadAndUpstream;
   end;
 
+  /// <summary>Mitschreiben und Abfragen in der IDE (#1967): Zeitfenster, Schließen von Dateien und Projekten,
+  /// Beenden, eingehende Commits, Hinweis auf fehlende Dateien und Reihenfolge der Commit-Dateien.</summary>
+  [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
+  TAtlasContinueSessionTests = class
+  public
+    [Test]
+    procedure RecentNeedsStampInsideWindow;
+    [Test]
+    procedure FirstClosedFileHoldsTabs;
+    [Test]
+    procedure ProjectCloseSkipsUsesHeldOrTakesNew;
+    [Test]
+    procedure StopWritesUnlessJustWritten;
+    [Test]
+    procedure IncomingDueWhenForcedOtherOrStale;
+    [Test]
+    procedure IncomingFitsOnlySameTop;
+    [Test]
+    procedure MissingNamesWithoutPath;
+    [Test]
+    procedure OwnFilesComeFirst;
+    [Test]
+    procedure ActiveMustLieInPlan;
+  end;
+
 implementation
 
 uses
@@ -776,7 +802,99 @@ begin
   Assert.IsFalse(TAtlasWelcomeContinue.ProbeHead(nil, mState));
 end;
 
+function Ticks(AHeld, AWritten: UInt64): TAtlasContinueTicks;
+begin
+  Result := Default(TAtlasContinueTicks);
+  Result.Held := AHeld;
+  Result.Written := AWritten;
+end;
+
+{ TAtlasContinueSessionTests }
+
+procedure TAtlasContinueSessionTests.RecentNeedsStampInsideWindow;
+begin
+  Assert.IsTrue(TAtlasContinueSession.Recent(1000, 5999, 5000));
+  Assert.IsFalse(TAtlasContinueSession.Recent(1000, 6000, 5000), 'Fenster vorbei');
+  Assert.IsFalse(TAtlasContinueSession.Recent(0, 10, 5000), '0 = nie');
+end;
+
+procedure TAtlasContinueSessionTests.FirstClosedFileHoldsTabs;
+begin
+  Assert.IsTrue(TAtlasContinueSession.HoldTabs(Ticks(0, 0), 100000), 'nichts festgehalten');
+  Assert.IsFalse(TAtlasContinueSession.HoldTabs(Ticks(98000, 0), 100000), 'zweite Datei derselben Folge');
+  Assert.IsTrue(TAtlasContinueSession.HoldTabs(Ticks(90000, 0), 100000), 'neue Folge');
+end;
+
+procedure TAtlasContinueSessionTests.ProjectCloseSkipsUsesHeldOrTakesNew;
+begin
+  Assert.AreEqual<TAtlasContinueCloseStep>(TAtlasContinueCloseStep.Skip,
+    TAtlasContinueSession.CloseStep(Ticks(99000, 98000), 100000), 'Gruppe eben geschrieben');
+  Assert.AreEqual<TAtlasContinueCloseStep>(TAtlasContinueCloseStep.UseHeld,
+    TAtlasContinueSession.CloseStep(Ticks(99000, 0), 100000));
+  Assert.AreEqual<TAtlasContinueCloseStep>(TAtlasContinueCloseStep.TakeNew,
+    TAtlasContinueSession.CloseStep(Ticks(80000, 10000), 100000));
+end;
+
+procedure TAtlasContinueSessionTests.StopWritesUnlessJustWritten;
+begin
+  Assert.IsTrue(TAtlasContinueSession.WriteOnStop(Ticks(0, 0), 100000));
+  Assert.IsFalse(TAtlasContinueSession.WriteOnStop(Ticks(0, 97000), 100000));
+  Assert.IsTrue(TAtlasContinueSession.WriteOnStop(Ticks(0, 90000), 100000));
+end;
+
+procedure TAtlasContinueSessionTests.IncomingDueWhenForcedOtherOrStale;
+var
+  mNow: UInt64;
+begin
+  mNow := 1000000;
+  Assert.IsFalse(TAtlasContinueSession.IncomingDue(False, True, mNow - 1000, mNow), 'frisch');
+  Assert.IsTrue(TAtlasContinueSession.IncomingDue(True, True, mNow - 1000, mNow), 'erzwungen');
+  Assert.IsTrue(TAtlasContinueSession.IncomingDue(False, False, mNow - 1000, mNow), 'anderer Eintrag');
+  Assert.IsTrue(TAtlasContinueSession.IncomingDue(False, True, mNow - TAtlasWelcomeContinue.cRefreshMs, mNow),
+    'veraltet');
+  Assert.IsTrue(TAtlasContinueSession.IncomingDue(False, True, 0, mNow), 'nie abgefragt');
+end;
+
+procedure TAtlasContinueSessionTests.IncomingFitsOnlySameTop;
+var
+  mKey: string;
+begin
+  mKey := TAtlasProjectSummaries.NormalizedPath(cRoot + '\Kasse.dproj');
+  Assert.IsTrue(TAtlasContinueSession.IncomingFits(cRoot + '\kasse.dproj', mKey, cRoot + '\Kasse.dproj'));
+  Assert.IsFalse(TAtlasContinueSession.IncomingFits('', mKey, cRoot + '\Kasse.dproj'), 'kein Eintrag');
+  Assert.IsFalse(TAtlasContinueSession.IncomingFits(cRoot + '\Lager.dproj', mKey, cRoot + '\Kasse.dproj'),
+    'anderer oberster Eintrag');
+  Assert.IsFalse(TAtlasContinueSession.IncomingFits(cRoot + '\Kasse.dproj', mKey, ''), 'Ergebnis noch leer');
+end;
+
+procedure TAtlasContinueSessionTests.MissingNamesWithoutPath;
+begin
+  Assert.AreEqual('', TAtlasContinueSession.MissingNames(nil));
+  Assert.AreEqual('Alt.pas, Weg.pas', TAtlasContinueSession.MissingNames(
+    TArray<string>.Create(cRoot + '\Alt.pas', cRoot + '/Src/Weg.pas')));
+end;
+
+procedure TAtlasContinueSessionTests.OwnFilesComeFirst;
+var
+  mOrdered: TArray<string>;
+begin
+  mOrdered := TAtlasContinueSession.OwnFirst(TArray<string>.Create(cRoot + '\b.pas'),
+    TArray<string>.Create(cRoot + '\a.pas', cRoot + '\B.pas', cRoot + '\c.pas'));
+  Assert.AreEqual(3, Integer(Length(mOrdered)));
+  Assert.AreEqual(cRoot + '\B.pas', mOrdered[0]);
+  Assert.AreEqual(cRoot + '\a.pas', mOrdered[1]);
+  Assert.AreEqual(cRoot + '\c.pas', mOrdered[2]);
+end;
+
+procedure TAtlasContinueSessionTests.ActiveMustLieInPlan;
+begin
+  Assert.IsTrue(TAtlasContinueSession.ActiveInPlan(0, 1));
+  Assert.IsFalse(TAtlasContinueSession.ActiveInPlan(1, 1));
+  Assert.IsFalse(TAtlasContinueSession.ActiveInPlan(-1, 3));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeContinueTests);
+  TDUnitX.RegisterTestFixture(TAtlasContinueSessionTests);
 
 end.

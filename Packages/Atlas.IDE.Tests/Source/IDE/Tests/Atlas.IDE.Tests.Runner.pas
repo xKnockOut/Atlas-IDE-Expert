@@ -187,7 +187,6 @@ implementation
 
 uses
   System.IOUtils,
-  System.Math,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -197,6 +196,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Leaks,
   Atlas.Core.Tests.Log,
   Atlas.IDE.Foundation.Files;
@@ -267,14 +267,13 @@ end;
 /// fehlgeschlagen); '' nach einem erfolgreichen Build.</summary>
 function BuildRefusal(const AProject: string; ASucceeded: Boolean; const AError: string): string;
 begin
-  Result := '';
-  if AError <> '' then
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(AProject), AError]);
-  end
-  else if not ASucceeded then
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(AProject)]);
+  case TAtlasTestDebug.BuildStep(ASucceeded, AError) of
+    TAtlasTestBuildStep.Refused:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(AProject), AError]);
+    TAtlasTestBuildStep.Failed:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(AProject)]);
+  else
+    Result := '';
   end;
 end;
 
@@ -380,32 +379,34 @@ var
 begin
   FBusy := False;
   Inc(FVersion);
-  if AOutcome = TAtlasVcsOutcome.Cancelled then
+  mRun := Default(TTestRunResult);
+  // Abgebrochen oder Zeitgrenze: kein Bericht zu lesen.
+  if (AOutcome <> TAtlasVcsOutcome.Cancelled) and (AOutcome <> TAtlasVcsOutcome.TimedOut) then
   begin
-    // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
-    FOutput.EndQuiet(False, Default(TTestRunResult));
-    Exit;
+    mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AExe.Xml), TAtlasIdeSettings.Current.TestsLeaks);
   end;
-  if AOutcome = TAtlasVcsOutcome.TimedOut then
-  begin
-    Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
-      TAtlasTestRun.cTimeoutMs div 1000]));
-    Exit;
+  case TAtlasTestRun.FinishOf(AOutcome, mRun.Valid) of
+    TAtlasTestFinish.Cancelled:
+      // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
+      FOutput.EndQuiet(False, Default(TTestRunResult));
+    TAtlasTestFinish.TimedOut:
+      Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
+        TAtlasTestRun.cTimeoutMs div 1000]));
+    TAtlasTestFinish.NoReport:
+      begin
+        FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project),
+          AExitCode]));
+        for mLine in AExe.Lines do
+        begin
+          FOutput.Tell('  ' + mLine);
+        end;
+        FOutput.EndQuiet(False, mRun);
+      end;
+  else
+    mRun.Output := AExe.Output;
+    mRun.LogFile := AExe.LogFile;
+    Report(ATarget, mRun, AExe.LeakText);
   end;
-  mRun := TAtlasTestLeaks.Shown(TTestResults.Parse(AExe.Xml), TAtlasIdeSettings.Current.TestsLeaks);
-  if (AOutcome <> TAtlasVcsOutcome.Ok) or not mRun.Valid then
-  begin
-    FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project), AExitCode]));
-    for mLine in AExe.Lines do
-    begin
-      FOutput.Tell('  ' + mLine);
-    end;
-    FOutput.EndQuiet(False, mRun);
-    Exit;
-  end;
-  mRun.Output := AExe.Output;
-  mRun.LogFile := AExe.LogFile;
-  Report(ATarget, mRun, AExe.LeakText);
 end;
 
 procedure TAtlasIdeTests.RunAll;
@@ -620,7 +621,7 @@ begin
     for mIndex := 0 to mProject.GetModuleCount - 1 do
     begin
       mFileName := mProject.GetModule(mIndex).FileName;
-      if SameText(ExtractFileExt(mFileName), '.pas') and SameText(ProjectName(mFileName), AUnitName) then
+      if TAtlasTestRun.IsUnitFile(mFileName, AUnitName) then
       begin
         Exit(mFileName);
       end;
@@ -687,8 +688,6 @@ function ReadExeOutput(const ARun: TAtlasVcsRunResult; const AResultFile, ASideF
   ALeakBefore: TDateTime): TAtlasTestsExeOutput;
 var
   mText: string;
-  mLines: TArray<string>;
-  mIndex: Integer;
 begin
   Result := Default(TAtlasTestsExeOutput);
   if FileExists(AResultFile) then
@@ -704,12 +703,8 @@ begin
       Result.LogFile := TFile.ReadAllText(ASideFile, TEncoding.UTF8);
     end;
   end;
-  mLines := TTextLines.SplitLines(mText);
   Result.LeakText := ShutdownLeakText(ALeakFile, ALeakBefore, mText);
-  for mIndex := Max(0, Length(mLines) - cOutputLines) to High(mLines) do
-  begin
-    Result.Lines := Result.Lines + [mLines[mIndex]];
-  end;
+  Result.Lines := TAtlasTestRun.LastLines(TTextLines.SplitLines(mText), cOutputLines);
 end;
 
 /// <summary>Test-EXE von ATarget mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs). Mit ALog (#2168)

@@ -57,6 +57,9 @@ type
     /// <summary>Typknoten des Parameters AParameter (TypeReference, ArrayType …); nil bei untypisierten
     /// Parametern.</summary>
     class function ParameterType(AParameter: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Standardwert (Ausdruck hinter "=") des Parameters AParameter; nil ohne. Attribute wie [ref]
+    /// sind ebenfalls Kinder des Parameters und zählen nicht.</summary>
+    class function ParameterDefault(AParameter: TSyntaxNode): TSyntaxNode; static;
     /// <summary>Name ohne Typparameterlisten auf jeder Ebene: "TList&lt;T&gt;.Add" ergibt "TList.Add".
     /// </summary>
     class function WithoutTypeParams(const AName: string): string; static;
@@ -519,6 +522,25 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+class function TRoutineSignatures.ParameterDefault(AParameter: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+  mType: TSyntaxNode;
+  mAfterType: Boolean;
+begin
+  Result := nil;
+  mType := ParameterType(AParameter);
+  mAfterType := False;
+  for mIndex := 0 to AParameter.ChildCount - 1 do
+  begin
+    if mAfterType and (AParameter[mIndex].Kind <> TSyntaxKind.Attribute) then
+    begin
+      Exit(AParameter[mIndex]);
+    end;
+    mAfterType := mAfterType or ((mType <> nil) and (AParameter[mIndex] = mType));
+  end;
 end;
 
 class function TRoutineSignatures.WithoutTypeParams(const AName: string): string;

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Pascal.TokenCursor.Tests;
 
 // Tests des Token-Cursors der Prüfregeln: Ränder des Token-Arrays (Index -1, Length, leeres Array), Suche nach
-// Offset, Code-Token über Kommentare und Direktiven hinweg, passende Klammern (unpaarig, in Strings, eckig).
+// Offset und nach Position, Token und Bezeichner unter dem Cursor, Code-Token über Kommentare und Direktiven
+// hinweg, passende Klammern (unpaarig, in Strings, eckig, im Text).
 
 interface
 
@@ -36,12 +37,25 @@ type
     procedure EmptyArrayIsNeverAnError;
     [Test]
     procedure IsKeywordInChecksKind;
+    [Test]
+    procedure TokenFromPositionFindsFirstTokenAtOrAfter;
+    [Test]
+    procedure TokenUpToPositionFindsLastTokenAtOrBefore;
+    [Test]
+    procedure IdentifierAtFindsWordUnderOrBeforeCursor;
+    [Test]
+    procedure TokenTouchingPrefersFrontTokenAndKeepsLine;
+    [Test]
+    procedure IdentifierAtMatchesLinearSearch;
+    [Test]
+    procedure MatchingParenInText;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor;
@@ -239,6 +253,131 @@ begin
   Assert.IsFalse(IsKeywordIn(mTokens[1], ['x']), 'Bezeichner ist kein Schlüsselwort');
   Assert.IsFalse(IsKeywordIn(mTokens[2], ['end']), 'String ist kein Schlüsselwort');
   Assert.IsFalse(IsKeywordIn(mTokens[0], []));
+end;
+
+function At(ALine, ACharacter: Integer): TTextPosition;
+begin
+  Result := TTextPosition.Create(ALine, ACharacter);
+end;
+
+procedure TTokenCursorTests.TokenFromPositionFindsFirstTokenAtOrAfter;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  // a := b  (a 0–1, := 2–4, b 5–6)
+  mTokens := TPascalLexer.Tokenize('a := b');
+  Assert.AreEqual(0, TokenFromPosition(mTokens, At(0, 0)));
+  Assert.AreEqual(1, TokenFromPosition(mTokens, At(0, 1)));
+  Assert.AreEqual(1, TokenFromPosition(mTokens, At(0, 2)));
+  Assert.AreEqual(2, TokenFromPosition(mTokens, At(0, 3)));
+  Assert.AreEqual(3, TokenFromPosition(mTokens, At(0, 6)), 'dahinter: Length');
+  Assert.AreEqual(3, TokenFromPosition(mTokens, At(1, 0)));
+  Assert.AreEqual(0, TokenFromPosition(nil, At(0, 0)));
+end;
+
+procedure TTokenCursorTests.TokenUpToPositionFindsLastTokenAtOrBefore;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  // _a := b  (a 1–2, := 3–5, b 6–7)
+  mTokens := TPascalLexer.Tokenize(' a := b');
+  Assert.AreEqual(-1, TokenUpToPosition(mTokens, At(0, 0)), 'vor dem ersten Token');
+  Assert.AreEqual(0, TokenUpToPosition(mTokens, At(0, 1)));
+  Assert.AreEqual(0, TokenUpToPosition(mTokens, At(0, 2)));
+  Assert.AreEqual(1, TokenUpToPosition(mTokens, At(0, 3)));
+  Assert.AreEqual(2, TokenUpToPosition(mTokens, At(0, 9)));
+  Assert.AreEqual(2, TokenUpToPosition(mTokens, At(3, 0)));
+  Assert.AreEqual(-1, TokenUpToPosition(nil, At(0, 0)));
+end;
+
+procedure TTokenCursorTests.IdentifierAtFindsWordUnderOrBeforeCursor;
+var
+  mTokens: TArray<TPascalToken>;
+begin
+  // a.bc := x  (a 0–1, . 1–2, bc 2–4, := 5–7, x 8–9)
+  mTokens := TPascalLexer.Tokenize('a.bc := x');
+  Assert.AreEqual(0, IdentifierAt(mTokens, At(0, 0)));
+  Assert.AreEqual(0, IdentifierAt(mTokens, At(0, 1)), 'direkt hinter a gilt das vordere Token');
+  Assert.AreEqual(2, IdentifierAt(mTokens, At(0, 2)));
+  Assert.AreEqual(2, IdentifierAt(mTokens, At(0, 3)));
+  Assert.AreEqual(2, IdentifierAt(mTokens, At(0, 4)), 'direkt hinter dem Wort');
+  Assert.AreEqual(-1, IdentifierAt(mTokens, At(0, 5)), 'auf dem Symbol');
+  Assert.AreEqual(4, IdentifierAt(mTokens, At(0, 9)));
+  Assert.AreEqual(-1, IdentifierAt(mTokens, At(1, 0)));
+  Assert.AreEqual(-1, IdentifierAt(nil, At(0, 0)));
+end;
+
+procedure TTokenCursorTests.TokenTouchingPrefersFrontTokenAndKeepsLine;
+var
+  mTokens: TArray<TPascalToken>;
+  mAll: TPascalTokenKinds;
+begin
+  mAll := [Low(TPascalTokenKind)..High(TPascalTokenKind)];
+  // F(b)  (F 0–1, ( 1–2, b 2–3, ) 3–4)
+  mTokens := TPascalLexer.Tokenize('F(b)');
+  Assert.AreEqual(0, TokenTouching(mTokens, At(0, 1), mAll), 'F und ( grenzen aneinander: das vordere');
+  Assert.AreEqual(1, TokenTouching(mTokens, At(0, 1), mAll - [TPascalTokenKind.Identifier]));
+  // Kommentar über zwei Zeilen: { x LF y } z  (Kommentar (0,0)–(1,3), z (1,4)–(1,5))
+  mTokens := TPascalLexer.Tokenize('{ x'#10'y } z');
+  Assert.AreEqual(-1, TokenTouching(mTokens, At(0, 1), mAll), 'endet nicht in der Zeile des Cursors');
+  Assert.AreEqual(0, TokenTouching(mTokens, At(1, 2), mAll));
+  Assert.AreEqual(1, TokenTouching(mTokens, At(1, 4), mAll));
+  Assert.AreEqual(-1, TokenTouching(mTokens, At(1, 4), [TPascalTokenKind.Comment]));
+end;
+
+/// <summary>Die frühere lineare Suche der LSP-Funktionen (References, Rename, Dokument-Hervorhebung,
+/// Signatur ändern), als Vergleich für IdentifierAt.</summary>
+function LinearIdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  mIndex: Integer;
+  mToken: TPascalToken;
+begin
+  for mIndex := 0 to High(ATokens) do
+  begin
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
+    begin
+      Break;
+    end;
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
+      (APosition.Character <= mToken.EndPos.Character) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TTokenCursorTests.IdentifierAtMatchesLinearSearch;
+const
+  cText = 'unit U;'#13#10'{ Kommentar'#13#10'  über Zeilen } procedure A.Bc(x: Integer);'#10 +
+    'begin'#13#10'  Foo(x,y);  // Ende'#13#10'  s := ''a''#13+Bar;'#13#10'end.';
+var
+  mTokens: TArray<TPascalToken>;
+  mLine, mCharacter: Integer;
+begin
+  mTokens := TPascalLexer.Tokenize(cText);
+  for mLine := 0 to 7 do
+  begin
+    for mCharacter := 0 to 50 do
+    begin
+      Assert.AreEqual(LinearIdentifierAt(mTokens, At(mLine, mCharacter)), IdentifierAt(mTokens,
+        At(mLine, mCharacter)), Format('Zeile %d, Spalte %d', [mLine, mCharacter]));
+    end;
+  end;
+end;
+
+procedure TTokenCursorTests.MatchingParenInText;
+begin
+  // F(a(b), c) x: ( an 2 und 4, ) an 6 und 10
+  Assert.AreEqual(10, MatchingParen('F(a(b), c) x', 2));
+  Assert.AreEqual(6, MatchingParen('F(a(b), c) x', 4));
+  Assert.AreEqual(0, MatchingParen('F(a(b), c) x', 1), 'keine öffnende Klammer');
+  Assert.AreEqual(0, MatchingParen('(a', 1), 'ohne Gegenstück');
+  Assert.AreEqual(0, MatchingParen('(a)', 0));
+  Assert.AreEqual(0, MatchingParen('(a)', 4));
+  Assert.AreEqual(0, MatchingParen('', 1));
 end;
 
 initialization

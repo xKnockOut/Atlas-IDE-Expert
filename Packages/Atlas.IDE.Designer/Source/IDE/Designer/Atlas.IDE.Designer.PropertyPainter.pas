@@ -87,6 +87,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.PaintDialog,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -368,6 +369,7 @@ var
   mChecked: TArray<Boolean>;
   mRemembered: TArray<string>;
   mHas: Boolean;
+  mKept: TAtlasDesignerKept;
 begin
   mSettings := TAtlasIdeSettings.Current;
   if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
@@ -380,6 +382,8 @@ begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerPaintNeedOne));
     Exit;
   end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mSelected);
   FSourceProperties := PropertiesOf(mSelected[0], True);
   mRows := TAtlasPropertyPainter.Rows(FSourceProperties);
   mMemory := LoadMemory;
@@ -389,6 +393,11 @@ begin
       TAtlasPropertyPainter.ParseGroups(mSettings.DesignerPropertyPainterDefaultGroups), mRemembered, mHas);
     if not TAtlasPaintDialog.Execute(mSelected[0].Name, mRows, mChecked) then
     begin
+      Exit;
+    end;
+    if not mKept.Holds then
+    begin
+      Say(TAtlasDesignerKept.LostText);
       Exit;
     end;
     FChosen := TAtlasPropertyPainter.Chosen(mRows, mChecked);

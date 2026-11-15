@@ -75,7 +75,8 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -563,7 +564,7 @@ begin
   Result := (AHit.Unit_ <> nil) and (AHit.Unit_.Tree <> nil);
   if Result then
   begin
-    AHit.Token := TChangeSignature.NameTokenAt(AHit.Unit_.Tree.Tokens, ALocation.Range.StartPos);
+    AHit.Token := IdentifierAt(AHit.Unit_.Tree.Tokens, ALocation.Range.StartPos);
     Result := (AHit.Token >= 0) and not TPropertyFromAccessors.IsHeaderName(AHit.Unit_.Tree.Tokens, AHit.Token);
   end;
   if Result then
