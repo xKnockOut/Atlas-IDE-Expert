@@ -85,18 +85,13 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.UnitSearch.Model,
+  Atlas.Core.UnitSearch.Plan,
   Atlas.Core.UnitSearch.State,
   Atlas.UI.Search.Strings,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
-
-const
-  // Aktionen der IDE je Modus (#777, #786) und ihre Standardtasten als Ersatz.
-  cIdeActionNames: array[TAtlasUnitSearchMode] of string = ('ViewUnitCommand', 'FileUseUnitCommand',
-    'ViewFormCommand');
-  cIdeActionKeys: array[TAtlasUnitSearchMode] of string = ('Ctrl+F12', 'Alt+F11', 'Shift+F12');
 
 type
   /// <summary>Hängt sich an OnExecute der IDE-Aktion „Units“, „Unit verwenden“ oder „Formulare“ und gibt sie
@@ -146,13 +141,13 @@ begin
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
-    if SameText(mAction.Name, cIdeActionNames[AMode]) then
+    if SameText(mAction.Name, TAtlasUnitSearchPlan.IdeActionName(AMode)) then
     begin
       Exit(mAction);
     end;
   end;
   // Ersatz: die Aktion mit der Standardtaste.
-  mKey := TextToShortCut(cIdeActionKeys[AMode]);
+  mKey := TextToShortCut(TAtlasUnitSearchPlan.IdeActionKey(AMode));
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
@@ -166,12 +161,8 @@ end;
 /// <summary>Übernimmt Atlas die IDE-Aktion des Modus (unitSearch.replace…)?</summary>
 function Replaces(const APlugin: TAtlasPluginSettings; AMode: TAtlasUnitSearchMode): Boolean;
 begin
-  case AMode of
-    TAtlasUnitSearchMode.UseUnit: Result := APlugin.UnitSearchReplaceUseUnitDialog;
-    TAtlasUnitSearchMode.Forms: Result := APlugin.UnitSearchReplaceFormsDialog;
-  else
-    Result := APlugin.UnitSearchReplaceIdeDialog;
-  end;
+  Result := TAtlasUnitSearchPlan.Replaces(AMode, APlugin.UnitSearchReplaceIdeDialog,
+    APlugin.UnitSearchReplaceUseUnitDialog, APlugin.UnitSearchReplaceFormsDialog);
 end;
 
 function Settings: TAtlasPluginSettings;
@@ -219,14 +210,10 @@ begin
     Exit;
   end;
   mPlugin := Settings;
-  // Umschalttaste (etwa beim Klick ins Menü Ansicht) holt den IDE-Dialog.
-  if not mPlugin.UnitSearchEnabled or not Replaces(mPlugin, FMode) or (GetKeyState(VK_SHIFT) < 0) then
-  begin
-    RunOriginal;
-    Exit;
-  end;
-  // Abgeschaltet nach Fehlern (#493) oder Fehler beim Öffnen: Die Taste darf nie ins Leere gehen.
-  if TAtlasGuard.Disabled(TAtlasFeature.UnitSearch) then
+  // Umschalttaste (etwa beim Klick ins Menü Ansicht) holt den IDE-Dialog; abgeschaltet nach Fehlern (#493) oder
+  // Fehler beim Öffnen ebenso: Die Taste darf nie ins Leere gehen.
+  if not TAtlasUnitSearchPlan.TakesAction(mPlugin.UnitSearchEnabled, Replaces(mPlugin, FMode),
+    GetKeyState(VK_SHIFT) < 0, TAtlasGuard.Disabled(TAtlasFeature.UnitSearch)) then
   begin
     RunOriginal;
     Exit;
@@ -281,32 +268,24 @@ var
   mServices: IOTAModuleServices;
   mGroup: IOTAProjectGroup;
   mProject: IOTAProject;
+  mGroupFile, mProjectFile: string;
 begin
-  AGroupFile := '';
-  AActiveProject := '';
-  ARoot := '';
-  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+  mGroupFile := '';
+  mProjectFile := '';
+  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
-    Exit;
-  end;
-  mGroup := mServices.MainProjectGroup;
-  if mGroup <> nil then
-  begin
-    AGroupFile := mGroup.FileName;
-  end;
-  mProject := mServices.GetActiveProject;
-  if mProject <> nil then
-  begin
-    AActiveProject := ChangeFileExt(ExtractFileName(mProject.FileName), '');
-    if AGroupFile = '' then
+    mGroup := mServices.MainProjectGroup;
+    if mGroup <> nil then
     begin
-      AGroupFile := mProject.FileName;
+      mGroupFile := mGroup.FileName;
+    end;
+    mProject := mServices.GetActiveProject;
+    if mProject <> nil then
+    begin
+      mProjectFile := mProject.FileName;
     end;
   end;
-  if AGroupFile <> '' then
-  begin
-    ARoot := ExtractFileDir(AGroupFile);
-  end;
+  TAtlasUnitSearchPlan.GroupInfo(mGroupFile, mProjectFile, AGroupFile, AActiveProject, ARoot);
 end;
 
 function TopFile: string;
@@ -349,7 +328,7 @@ begin
     end
     else
     begin
-      TAtlasGuard.Log('Units suchen: IDE-Aktion für ' + cIdeActionKeys[mMode] + ' nicht gefunden');
+      TAtlasGuard.Log('Units suchen: IDE-Aktion für ' + TAtlasUnitSearchPlan.IdeActionKey(mMode) + ' nicht gefunden');
     end;
   end;
 end;
@@ -404,7 +383,7 @@ begin
   end
   else
   begin
-    TAtlasIdeUnitSearchActions.RunNamedAction(cIdeActionNames[AMode]);
+    TAtlasIdeUnitSearchActions.RunNamedAction(TAtlasUnitSearchPlan.IdeActionName(AMode));
   end;
 end;
 
@@ -455,10 +434,7 @@ begin
   Result.DefaultOrigins := TAtlasUnitSearch.OriginsForScope(mPlugin.UnitSearchDefaultScope);
   GroupInfo(Result.GroupFile, Result.ActiveProject, Result.Root);
   Result.Mode := AMode;
-  if AMode = TAtlasUnitSearchMode.UseUnit then
-  begin
-    Result.TargetUnit := ChangeFileExt(ExtractFileName(ATargetFile), '');
-  end;
+  Result.TargetUnit := TAtlasUnitSearchPlan.TargetUnit(AMode, ATargetFile);
 end;
 
 /// <summary>Derselbe Modus für dieselbe Unit: offenes Fenster nach vorn holen (True); ein anderes offenes
@@ -470,8 +446,7 @@ begin
   begin
     Exit;
   end;
-  Result := (Current.Mode = AMode) and ((AMode <> TAtlasUnitSearchMode.UseUnit) or
-    SameText(Current.Target, ATargetFile));
+  Result := TAtlasUnitSearchPlan.KeepsWindow(Current.Mode, AMode, Current.Target, ATargetFile);
   if Result then
   begin
     Current.Window.Show;

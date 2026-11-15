@@ -131,6 +131,7 @@ uses
   System.DateUtils,
   Atlas.Text.Lines,
   Atlas.Core.Files.TextFile,
+  Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
@@ -142,8 +143,6 @@ uses
   Atlas.IDE.Contracts.VersionControl;
 
 const
-  /// <summary>Tipp-Pause vor dem Vergleich.</summary>
-  cQuietMs = 300;
   /// <summary>So oft prüft Atlas Commit (ChangeMarker) und Speichern (Zeitstempel der Datei).</summary>
   cPollMs = 1000;
 
@@ -282,7 +281,7 @@ begin
     FBlame.Wanted := True;
   end;
   // Issues in der Zeilenhistorie eingeschaltet oder Tracker jetzt da (#1275): Nachrichten nachladen.
-  if FBlame.Ok and not FBlame.MessagesWanted and MessagesWanted then
+  if TAtlasLineChangesPlan.ReloadsForMessages(FBlame.Ok, FBlame.MessagesWanted, MessagesWanted) then
   begin
     FBlame.Wanted := True;
   end;
@@ -298,8 +297,8 @@ begin
   begin
     LoadBlame;
   end;
-  if FHead.Ok and not FDiff.Busy and (FText <> FDiff.Text) and
-    (TThread.GetTickCount64 - FChangedAt >= cQuietMs) then
+  if TAtlasLineChangesPlan.ComparesNow(FHead.Ok, FDiff.Busy, FText, FDiff.Text, FChangedAt,
+    TThread.GetTickCount64) then
   begin
     Compare;
   end;
@@ -479,24 +478,8 @@ begin
 end;
 
 function TAtlasIdeLineChangesData.EntryOf(ADiskLine: Integer): Integer;
-var
-  mIndex: Integer;
 begin
-  // blame liefert die Zeilen der Reihe nach; sonst suchen.
-  if (ADiskLine <= High(FBlame.Lines)) and (FBlame.Lines[ADiskLine].Line = ADiskLine + 1) then
-  begin
-    Exit(ADiskLine);
-  end;
-  Result := -1;
-  mIndex := 0;
-  while (Result < 0) and (mIndex <= High(FBlame.Lines)) do
-  begin
-    if FBlame.Lines[mIndex].Line = ADiskLine + 1 then
-    begin
-      Result := mIndex;
-    end;
-    Inc(mIndex);
-  end;
+  Result := TAtlasLineChangesPlan.EntryOf(FBlame.Lines, ADiskLine);
 end;
 
 class function TAtlasIdeLineChangesData.Generation: Integer;
@@ -562,7 +545,7 @@ end;
 
 function TAtlasIdeLineChangesData.Fresh: Boolean;
 begin
-  Result := FHead.Ok and (FDiff.Text = FText) and (FDiff.Lines <> nil);
+  Result := TAtlasLineChangesPlan.Fresh(FHead.Ok, FDiff.Text, FText, FDiff.Lines <> nil);
 end;
 
 function TAtlasIdeLineChangesData.BlameCaption(ABufferLine: Integer; out AEntry: Integer;

@@ -17,6 +17,8 @@
 //   Reihenfolge ihres besten Treffers.
 // - TAtlasDesignerAlign: Ausrichten der Auswahl (experimentell). Bezug ist die
 //   zuerst gewählte Komponente; Abstände verteilen hält die äußeren fest.
+//   StartsGroup gliedert das Menü am Pfeil.
+// - EventMethod: Methode, die „zum Ereignis springen“ im Suchfenster zeigt.
 
 interface
 
@@ -77,6 +79,8 @@ type
       AFields: TAtlasDesignerFields; AKind: TAtlasDesignerKind): TArray<Integer>; overload; static;
     /// <summary>Nächster Index von AIndex aus um ADelta, am Rand stehen bleiben; -1 ohne Zeilen.</summary>
     class function Step(AIndex, ACount, ADelta: Integer): Integer; static;
+    /// <summary>Methode zum Ereignis OnClick, sonst zum ersten belegten Ereignis („OnX = Methode“); '' ohne.</summary>
+    class function EventMethod(const AEvents: TArray<string>): string; static;
   end;
 
   /// <summary>Zeile der Trefferliste: Gruppenkopf (Item = -1) oder Komponente.</summary>
@@ -105,6 +109,9 @@ type
       static;
     /// <summary>Wirkt AKind auf ACount gewählte Steuerelemente?</summary>
     class function Applicable(AKind: TAtlasAlignKind; ACount: Integer): Boolean; static;
+    /// <summary>Beginnt mit AKind eine neue Gruppe im Menü (Kanten, Mitten, im Elternelement, Größe,
+    /// Abstände)? Davor steht ein Trennstrich.</summary>
+    class function StartsGroup(AKind: TAtlasAlignKind): Boolean; static;
   end;
 
 implementation
@@ -371,6 +378,33 @@ begin
   Result := EnsureRange(AIndex + ADelta, 0, ACount - 1);
 end;
 
+class function TAtlasDesignerSearch.EventMethod(const AEvents: TArray<string>): string;
+const
+  cAssign = ' = ';
+var
+  mEvent, mItem: string;
+  mPos: Integer;
+begin
+  Result := '';
+  if Length(AEvents) = 0 then
+  begin
+    Exit;
+  end;
+  mEvent := AEvents[0];
+  for mItem in AEvents do
+  begin
+    if mItem.StartsWith('OnClick ', True) then
+    begin
+      mEvent := mItem;
+    end;
+  end;
+  mPos := Pos(cAssign, mEvent);
+  if mPos > 0 then
+  begin
+    Result := Copy(mEvent, mPos + Length(cAssign), MaxInt);
+  end;
+end;
+
 { TAtlasDesignerGroups }
 
 function ItemRow(AItem: Integer): TAtlasDesignerRow;
@@ -472,6 +506,12 @@ begin
 end;
 
 { TAtlasDesignerAlign }
+
+class function TAtlasDesignerAlign.StartsGroup(AKind: TAtlasAlignKind): Boolean;
+begin
+  Result := AKind in [TAtlasAlignKind.CentersH, TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.SameWidth,
+    TAtlasAlignKind.SpaceH];
+end;
 
 class function TAtlasDesignerAlign.Applicable(AKind: TAtlasAlignKind; ACount: Integer): Boolean;
 begin

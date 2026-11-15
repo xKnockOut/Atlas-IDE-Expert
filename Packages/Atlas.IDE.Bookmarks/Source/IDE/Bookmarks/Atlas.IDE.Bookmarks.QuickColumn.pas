@@ -59,6 +59,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Bookmarks.Store,
+  Atlas.Core.Bookmarks.ColumnPlan,
   Atlas.IDE.Bookmarks.QuickPopups;
 
 type
@@ -104,13 +105,6 @@ type
       FirstLine: Integer;
       LastLine: Integer;
     end;
-    /// <summary>Oberer Editor und Tipp-Pause.</summary>
-    TTrack = record
-      FileName: string;
-      Text: string;
-      ChangedAt: UInt64;
-      Done: Boolean;
-    end;
     /// <summary>Überfahrene Zeile.</summary>
     THover = record
       Row: TRow;
@@ -152,7 +146,7 @@ type
     FMenu: TAtlasIdeQuickMenu;
     FAppEvents: TApplicationEvents;
     FArea: TArea;
-    FTrack: TTrack;
+    FTrack: TAtlasQuickTrack;
     FHover: THover;
     FPress: TPress;
     FLog: TLog;
@@ -201,7 +195,6 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
-  Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorSnapshot,
@@ -267,19 +260,6 @@ begin
   end;
 end;
 
-/// <summary>Ziffer auf dem Marker: Schwarz oder Weiß, je nachdem, was sich stärker von AFill abhebt.</summary>
-function DigitColor(AFill: TAtlasColor): TAtlasColor;
-const
-  cBlack = TAtlasColor($000000);
-  cWhite = TAtlasColor($FFFFFF);
-begin
-  Result := cBlack;
-  if TAtlasColorMath.Contrast(cWhite, AFill) > TAtlasColorMath.Contrast(cBlack, AFill) then
-  begin
-    Result := cWhite;
-  end;
-end;
-
 /// <summary>Band mit Kerbe unten wie bei den benannten Lesezeichen (#622); liefert die Höhe der Kerbe.</summary>
 function PaintBand(ACanvas: TCanvas; const ABand: TRect; AFill, ALine: TAtlasColor): Integer;
 begin
@@ -318,6 +298,12 @@ begin
   end;
 end;
 
+const
+  /// <summary>Anteil der Warnfarbe in der Fläche eines Markers.</summary>
+  cMarkFill = 0.85;
+  /// <summary>Anteil der Ziffernfarbe auf dem blassen Vorschlag.</summary>
+  cFreeDigit = 0.7;
+
 procedure PaintMarks(ACanvas: TCanvas; const ARow: TAtlasIdeQuickColumn.TRow; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
@@ -327,7 +313,7 @@ begin
   // Band mit Kerbe unten wie bei den benannten Lesezeichen (#622), etwas breiter für die Ziffer.
   mBand := ARow.Rect;
   InflateRect(mBand, -1, -1);
-  mNotch := PaintBand(ACanvas, mBand, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85), AColors.Warn);
+  mNotch := PaintBand(ACanvas, mBand, TAtlasColorMath.Mix(AColors.Warn, ABack, cMarkFill), AColors.Warn);
   // Mehr als ein Marker: gefüllte Ecke oben rechts.
   if Length(ARow.Marks) > 1 then
   begin
@@ -339,7 +325,7 @@ begin
   if ARow.Marks[0].Number > 0 then
   begin
     PaintDigit(ACanvas, mBand, mNotch, ARow.Marks[0].Number,
-      DigitColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85)));
+      TAtlasQuickColumnPlan.DigitColor(TAtlasColorMath.Mix(AColors.Warn, ABack, cMarkFill)));
   end;
 end;
 
@@ -358,7 +344,8 @@ begin
   mNotch := PaintBand(ACanvas, mBand, mFill, TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
   if ANumber > 0 then
   begin
-    PaintDigit(ACanvas, mBand, mNotch, ANumber, TAtlasColorMath.Mix(DigitColor(mFill), mFill, 0.7));
+    PaintDigit(ACanvas, mBand, mNotch, ANumber, TAtlasColorMath.Mix(TAtlasQuickColumnPlan.DigitColor(mFill), mFill,
+      cFreeDigit));
   end;
 end;
 
@@ -444,15 +431,16 @@ end;
 /// <summary>Stufe der Zeilennummern: die, deren Rechteck ARect rechts an die Spalte AColumn grenzt.</summary>
 function IsLineNumberStage(AStage: TPaintGutterStage; const ARect, AColumn: TRect): Boolean;
 begin
-  Result := (AStage <> Low(TPaintGutterStage)) and (ARect.Left >= AColumn.Right - 1) and
-    (ARect.Left <= AColumn.Right + 2) and (ARect.Width > 0);
+  Result := TAtlasQuickColumnPlan.IsLineNumberStage(AStage = Low(TPaintGutterStage), ARect.Left, ARect.Width,
+    AColumn.Right);
 end;
 
 /// <summary>Zeigt die Zeile ARow den blassen Vorschlag (überfahren, Klick setzt ein Lesezeichen)?</summary>
 function HoverShowsFree(const AHover: TAtlasIdeQuickColumn.THover; const ARow: TAtlasIdeQuickColumn.TRow): Boolean;
 begin
-  Result := AHover.Hovering and TAtlasIdeSettings.Current.QuickBookmarksGutterClick and (AHover.Row.Wnd = ARow.Wnd) and
-    (AHover.Row.Line = ARow.Line) and SameText(AHover.Row.FileName, ARow.FileName);
+  Result := AHover.Hovering and TAtlasIdeSettings.Current.QuickBookmarksGutterClick and
+    TAtlasQuickColumnPlan.SameRow(AHover.Row.Wnd, AHover.Row.Line, AHover.Row.FileName, ARow.Wnd, ARow.Line,
+    ARow.FileName);
 end;
 
 /// <summary>Marker der Zeile, wie die Spalte sie zeigt: nur, solange die Zeile zum Anker passt und das
@@ -462,7 +450,7 @@ function VisibleMarks(const AFileName: string; ALine: Integer; const ALineText: 
 begin
   Result := TAtlasIdeQuickBookmarks.ColumnMarksAt(AFileName, ALine);
   // Nur, wenn die Zeile im Editor noch zum Anker passt; nach dem Tippen folgt das Wiederfinden.
-  if (Length(Result) > 0) and AHasText and (TAtlasLineAnchors.Normalize(ALineText) <> Result[0].Anchor.Text) then
+  if (Length(Result) > 0) and not TAtlasQuickColumnPlan.KeepsMarks(AHasText, ALineText, Result[0].Anchor.Text) then
   begin
     Result := nil;
   end;
@@ -726,8 +714,7 @@ begin
     begin
       SetHover(Default(TRow), False);
       DropColumn;
-      FTrack.FileName := '';
-      FTrack.Text := '';
+      FTrack.Reset;
       Exit;
     end;
     Track;
@@ -751,40 +738,30 @@ end;
 procedure TAtlasIdeQuickColumn.Track;
 var
   mView: IOTAEditView;
-  mText: string;
+  mFileName, mText: string;
 begin
   mView := TopView;
-  if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
+  mFileName := '';
+  mText := '';
+  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
   begin
-    Exit;
+    mFileName := mView.Buffer.FileName;
+    mText := TAtlasEditorSnapshots.Get(mView).Text;
   end;
-  mText := TAtlasEditorSnapshots.Get(mView).Text;
-  if not SameText(FTrack.FileName, mView.Buffer.FileName) then
-  begin
-    // Neue Datei vorn: gleich wiederfinden und einmal je Sitzung die IDE-Lesezeichen übernehmen.
-    FTrack.FileName := mView.Buffer.FileName;
-    FTrack.Text := mText;
-    TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
-    // Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte zeichnet (#1281).
-    FTrack.Done := True;
-    InvalidateTop;
-    Exit;
-  end;
-  if FTrack.Text <> mText then
-  begin
-    FTrack.Text := mText;
-    FTrack.ChangedAt := TThread.GetTickCount64;
-    FTrack.Done := False;
-    Exit;
-  end;
-  if FTrack.Done or (TThread.GetTickCount64 - FTrack.ChangedAt < cQuietMs) then
-  begin
-    Exit;
-  end;
-  FTrack.Done := True;
-  if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
-  begin
-    InvalidateTop;
+  case FTrack.Step(mFileName, mText, TThread.GetTickCount64, cQuietMs) of
+    TAtlasQuickTrackStep.NewFile:
+      begin
+        // Neue Datei vorn: gleich wiederfinden. Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte
+        // zeichnet (#1281).
+        TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text);
+        InvalidateTop;
+      end;
+    TAtlasQuickTrackStep.Settled:
+      if TAtlasIdeBookmarks.Track(FTrack.FileName, FTrack.Text) then
+      begin
+        InvalidateTop;
+      end;
+    TAtlasQuickTrackStep.Idle, TAtlasQuickTrackStep.Changed: ;
   end;
 end;
 
@@ -797,8 +774,8 @@ begin
     TAtlasIdeQuickBookmarks.ImportIde(FTrack.FileName);
     Exit;
   end;
-  if (FSlot.Column < 0) or FLog.NotPainted or (FTrack.FileName = '') or
-    (TThread.GetTickCount64 - FLog.RequestedAt < cPaintWaitMs) then
+  if not TAtlasQuickColumnPlan.ReportNotPainted(FSlot.Column, FLog.NotPainted, FTrack.FileName, FLog.RequestedAt,
+    TThread.GetTickCount64, cPaintWaitMs) then
   begin
     Exit;
   end;
@@ -936,7 +913,8 @@ begin
     end;
     // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
     if not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
-      (TThread.GetTickCount64 - FLog.ClickedAt < 500) or not RowAt(Editor.Handle, X, Y, mRow) then
+      TAtlasQuickColumnPlan.RecentlyTaken(FLog.ClickedAt, TThread.GetTickCount64) or
+      not RowAt(Editor.Handle, X, Y, mRow) then
     begin
       Exit;
     end;
@@ -1116,7 +1094,7 @@ begin
     SetHover(Default(TRow), False);
     Exit;
   end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= cHoverMs) then
+  if TAtlasQuickColumnPlan.TipDue(FTip.IsShown, FHover.Since, TThread.GetTickCount64, cHoverMs) then
   begin
     FTip.Show(FHover.Row.Marks, Point(FHover.ScreenRect.Right + 4, FHover.ScreenRect.Bottom + 2));
   end;
@@ -1137,8 +1115,8 @@ begin
   mChanged := AOn <> FHover.Hovering;
   if AOn and FHover.Hovering then
   begin
-    mChanged := (ARow.Wnd <> FHover.Row.Wnd) or (ARow.Line <> FHover.Row.Line) or
-      not SameText(ARow.FileName, FHover.Row.FileName);
+    mChanged := not TAtlasQuickColumnPlan.SameRow(ARow.Wnd, ARow.Line, ARow.FileName, FHover.Row.Wnd,
+      FHover.Row.Line, FHover.Row.FileName);
   end;
   if not mChanged then
   begin

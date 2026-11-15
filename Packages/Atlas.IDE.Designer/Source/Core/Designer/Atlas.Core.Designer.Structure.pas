@@ -107,6 +107,23 @@ type
     class function FreePosition(const AOccupied: TArray<TPoint>; const AClient: TSize): TPoint; static;
   end;
 
+  /// <summary>Stand des Formulars für das Fenster: Signatur, Namen und Lage der Symbole.</summary>
+  TAtlasStructureModel = class
+  public
+    /// <summary>Signatur von Namen, Klassen, Elternelementen und Verweisen: Neu füllen nur bei Änderung.</summary>
+    class function Signature(const AItems: TArray<TAtlasStructureItem>; const ARootName: string): string; static;
+    /// <summary>Name als Ziel eines Verweises: aus einem eingebetteten Frame (AForeign, AOwnerName nicht leer)
+    /// mit dem Frame davor („Frame1.Button1“).</summary>
+    class function QualifiedName(const AName, AOwnerName: string; AForeign: Boolean): string; static;
+    /// <summary>Lagen der Symbole aller nichtvisuellen Komponenten.</summary>
+    class function Occupied(const AItems: TArray<TAtlasStructureItem>): TArray<TPoint>; static;
+    /// <summary>Lage des Symbols aus TComponent.DesignInfo (Left im unteren, Top im oberen Wort, mit
+    /// Vorzeichen).</summary>
+    class function PositionOf(ADesignInfo: Integer): TPoint; static;
+    /// <summary>DesignInfo für die Lage APoint (Gegenstück zu PositionOf).</summary>
+    class function DesignInfoOf(const APoint: TPoint): Integer; static;
+  end;
+
 implementation
 
 uses
@@ -541,6 +558,69 @@ begin
   end;
   // Kein Platz (sehr kleines oder volles Formular): links oben.
   Result := TPoint.Create(cMargin, cMargin);
+end;
+
+{ TAtlasStructureModel }
+
+class function TAtlasStructureModel.Signature(const AItems: TArray<TAtlasStructureItem>;
+  const ARootName: string): string;
+var
+  mItem: TAtlasStructureItem;
+  mRef: TAtlasStructureRef;
+  mBuilder: TStringBuilder;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append(ARootName);
+    for mItem in AItems do
+    begin
+      mBuilder.Append('|').Append(mItem.Name).Append(':').Append(mItem.ClassName).Append('<').Append(mItem.Parent);
+      for mRef in mItem.Refs do
+      begin
+        mBuilder.Append(',').Append(mRef.Prop).Append('=').Append(mRef.Target);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+class function TAtlasStructureModel.QualifiedName(const AName, AOwnerName: string; AForeign: Boolean): string;
+begin
+  Result := AName;
+  if AForeign and (AOwnerName <> '') then
+  begin
+    Result := AOwnerName + '.' + AName;
+  end;
+end;
+
+class function TAtlasStructureModel.Occupied(const AItems: TArray<TAtlasStructureItem>): TArray<TPoint>;
+var
+  mItem: TAtlasStructureItem;
+begin
+  Result := nil;
+  for mItem in AItems do
+  begin
+    if not mItem.IsControl then
+    begin
+      Result := Result + [mItem.Position];
+    end;
+  end;
+end;
+
+class function TAtlasStructureModel.PositionOf(ADesignInfo: Integer): TPoint;
+begin
+  Result := TPoint.Create(SmallInt(LongRec(ADesignInfo).Lo), SmallInt(LongRec(ADesignInfo).Hi));
+end;
+
+class function TAtlasStructureModel.DesignInfoOf(const APoint: TPoint): Integer;
+var
+  mValue: LongRec;
+begin
+  mValue.Lo := Word(APoint.X);
+  mValue.Hi := Word(APoint.Y);
+  Result := Integer(mValue);
 end;
 
 end.

@@ -136,6 +136,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.GutterPanel,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
@@ -195,22 +196,6 @@ begin
   end;
 end;
 
-function SymbolColor(ASymbol: TAtlasGutterSymbol; const AColors: TAtlasColors; ABack: TAtlasColor): TColor;
-begin
-  case ASymbol of
-    TAtlasGutterSymbol.Error:
-      Result := TColor(TAtlasColorMath.Mix(AColors.Error, ABack, 0.95));
-    TAtlasGutterSymbol.Warning:
-      Result := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.95));
-    TAtlasGutterSymbol.Hint:
-      Result := TColor(TAtlasColorMath.Mix(AColors.Muted, ABack, 0.9));
-    TAtlasGutterSymbol.Action:
-      Result := TColor(TAtlasColorMath.Mix(AColors.Accent, ABack, 0.95));
-  else
-    Result := TColor(TAtlasColorMath.Mix(AColors.Add, ABack, 0.95));
-  end;
-end;
-
 /// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
 var
@@ -243,7 +228,7 @@ var
   mQuarter: Integer;
 begin
   mBox := TSymbolBox.Create(ARect);
-  mColor := SymbolColor(ASymbol, TAtlasColors.ForBackground(ABack), ABack);
+  mColor := TColor(TAtlasGutterPanel.SymbolColor(ASymbol, TAtlasColors.ForBackground(ABack), ABack));
   ACanvas.Pen.Color := mColor;
   ACanvas.Pen.Width := mBox.Pen;
   ACanvas.Brush.Color := mColor;
@@ -363,7 +348,7 @@ begin
   end;
   for mFix in AFixes do
   begin
-    if (mFix.Disabled = '') and mFix.Kind.StartsWith('quickfix') then
+    if TAtlasGutterPanel.IsQuickFix(mFix.Kind, mFix.Disabled) then
     begin
       APanel.AddLink(mFix.Title, FixAction(AApply, mFix));
     end;
@@ -595,7 +580,7 @@ begin
     ALineText := mLineState.Text;
   end;
   Result.Symbol := TAtlasGutterSymbol.None;
-  if TAtlasIdeGutterColumnState.IsSource(AContext.FileName) and (Result.Line >= 0) and not Result.Rect.IsEmpty then
+  if TAtlasGutterColumn.Handles(AContext.FileName) and (Result.Line >= 0) and not Result.Rect.IsEmpty then
   begin
     Result.Symbol := TAtlasGutterColumn.Choose(FState.LineOf(AContext.FileName, Result.Line, ALineText,
       mLineState <> nil, mOverrides), FState.Options);
@@ -754,16 +739,16 @@ var
   mShown: Boolean;
 begin
   mPanel := Default(TPanel);
-  case ARow.Symbol of
-    TAtlasGutterSymbol.Error, TAtlasGutterSymbol.Warning, TAtlasGutterSymbol.Hint:
+  case TAtlasGutterPanel.PanelOf(ARow.Symbol) of
+    TAtlasGutterPanelKind.Problem:
       mShown := ProblemPanel(ARow, AFetchFixes, mPanel);
-    TAtlasGutterSymbol.Action:
+    TAtlasGutterPanelKind.Action:
       begin
         mPanel.Title := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterActionTitle);
         mPanel.Text := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterActionText);
         mShown := True;
       end;
-    TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
+    TAtlasGutterPanelKind.Overrides:
       mShown := OverridesPanel(ARow, mPanel);
   else
     mShown := False;
@@ -782,7 +767,7 @@ end;
 function TAtlasIdeGutterColumn.ProblemPanel(const ARow: TRow; AFetchFixes: Boolean; var APanel: TPanel): Boolean;
 var
   mProblems: TArray<TAtlasProblem>;
-  mProblem: TAtlasProblem;
+  mLine: string;
   mFixes: TArray<TLspCodeAction>;
   mError: string;
 begin
@@ -793,16 +778,9 @@ begin
     Exit;
   end;
   APanel.Title := TAtlasGutterColumn.ProblemTitle(mProblems[0], SeverityText(mProblems[0].Severity));
-  for mProblem in mProblems do
+  for mLine in TAtlasGutterPanel.ProblemLines(mProblems) do
   begin
-    if (mProblem.Code <> '') and (Length(mProblems) > 1) then
-    begin
-      APanel.AddLine(mProblem.Code + ': ' + mProblem.Message);
-    end
-    else
-    begin
-      APanel.AddLine(mProblem.Message);
-    end;
+    APanel.AddLine(mLine);
   end;
   if AFetchFixes then
   begin
@@ -831,12 +809,8 @@ begin
     APanel.Title := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverriddenTitle);
   end;
   // Beide Richtungen: Pfeile vor den Zielen und im Text.
-  mUp := '';
-  mDown := '';
-  if (Length(mEntry.Overrides) > 0) and (Length(mEntry.Overridden) > 0) then
+  if TAtlasGutterPanel.Arrows(mEntry, mUp, mDown) then
   begin
-    mUp := '↑ ';
-    mDown := '↓ ';
     APanel.Text := TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverridesTitle) + ' ↑ · ' +
       TAtlasEditorStrings.Text(TAtlasEditorTextId.GutterOverriddenTitle) + ' ↓';
   end;
@@ -848,24 +822,21 @@ procedure TAtlasIdeGutterColumn.Click(const ARow: TRow);
 var
   mTargets: TArray<TAtlasGutterTarget>;
 begin
-  case ARow.Symbol of
-    TAtlasGutterSymbol.Action:
+  mTargets := nil;
+  if TAtlasGutterPanel.PanelOf(ARow.Symbol) = TAtlasGutterPanelKind.Overrides then
+  begin
+    mTargets := FState.TargetsOf(ARow.FileName, ARow.Line);
+  end;
+  // Ein Ziel: gleich hin; mehrere: Liste mit Datei und Zeile.
+  case TAtlasGutterPanel.ClickOf(ARow.Symbol, Length(mTargets)) of
+    TAtlasGutterClick.OpenActions:
       OpenActions(ARow);
-    TAtlasGutterSymbol.Overrides, TAtlasGutterSymbol.Overridden:
-      begin
-        // Ein Ziel: gleich hin; mehrere: Liste mit Datei und Zeile.
-        mTargets := FState.TargetsOf(ARow.FileName, ARow.Line);
-        if Length(mTargets) = 1 then
-        begin
-          TAtlasIdeNavigation.GoToLocation(mTargets[0].FileName, mTargets[0].Line, mTargets[0].Character);
-        end
-        else
-        begin
-          ShowPanel(ARow, False);
-        end;
-      end;
-  else
-    ShowPanel(ARow, True);
+    TAtlasGutterClick.GoToTarget:
+      TAtlasIdeNavigation.GoToLocation(mTargets[0].FileName, mTargets[0].Line, mTargets[0].Character);
+    TAtlasGutterClick.ShowPanel:
+      ShowPanel(ARow, False);
+    TAtlasGutterClick.ShowPanelWithFixes:
+      ShowPanel(ARow, True);
   end;
 end;
 
@@ -873,8 +844,6 @@ procedure TAtlasIdeGutterColumn.OpenActions(const ARow: TRow);
 var
   mView: IOTAEditView;
   mPosition: TOTAEditPos;
-  mText: string;
-  mColumn: Integer;
 begin
   mView := TopView;
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, ARow.FileName) then
@@ -882,14 +851,8 @@ begin
     Exit;
   end;
   // Cursor an den Anfang des Codes der Zeile, dann die Code-Aktionen wie über das Kontextmenü.
-  mText := TAtlasEditorBuffer.LineText(mView, ARow.Line + 1);
-  mColumn := 1;
-  while (mColumn <= Length(mText)) and CharInSet(mText[mColumn], [' ', #9]) do
-  begin
-    Inc(mColumn);
-  end;
   mPosition.Line := ARow.Line + 1;
-  mPosition.Col := mColumn;
+  mPosition.Col := TAtlasGutterPanel.CodeStart(TAtlasEditorBuffer.LineText(mView, ARow.Line + 1));
   mView.CursorPos := mPosition;
   mView.MoveViewToCursor;
   mView.Paint;

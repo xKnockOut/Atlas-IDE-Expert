@@ -96,6 +96,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Debug.EventLogFlow,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.EvaluateStore,
@@ -244,8 +245,7 @@ begin
   begin
     mKind := TAtlasEventLog.Classify(mLine, mText, mThread);
     // Module, Threads und Prozess meldet der Notifier; aus dem Fenster nur, wenn er fehlt.
-    if (GWatchIndex >= 0) and (mKind in [TAtlasEventKind.Module, TAtlasEventKind.Thread,
-      TAtlasEventKind.Process]) then
+    if TAtlasEventLogFlow.SkipFromWindow(GWatchIndex >= 0, mKind) then
     begin
       Continue;
     end;
@@ -259,7 +259,6 @@ end;
 class function TAtlasIdeDebugEventLog.MergeLogpoint(var AKind: TAtlasEventKind; var AText: string): Boolean;
 var
   mPrefix, mOutput: string;
-  mIsLogpoint: Boolean;
 begin
   Result := False;
   if not TAtlasIdeSettings.Current.DebugLogpoints then
@@ -267,23 +266,22 @@ begin
     Exit;
   end;
   mPrefix := TAtlasIdeSettings.Current.DebugLogpointPrefix;
-  if (FMerger = nil) or (FMerger.Prefix <> mPrefix) then
+  if TAtlasEventLogFlow.NeedsMerger(FMerger, mPrefix) then
   begin
     FreeAndNil(FMerger);
     FMerger := TAtlasLogpointMerger.Create(mPrefix);
   end;
-  // Logpunkte (#583): Meldung mit „{0}“ wartet auf die Zeile mit dem Wert.
-  if (AKind <> TAtlasEventKind.Breakpoint) and not FMerger.Pending then
-  begin
-    Exit;
+  case TAtlasEventLogFlow.LogpointStep(FMerger, AKind, AText, mOutput) of
+    TAtlasLogpointStep.Merged:
+      begin
+        AKind := TAtlasEventKind.Logpoint;
+        AText := mOutput;
+      end;
+    TAtlasLogpointStep.Drop:
+      Result := True;
+    TAtlasLogpointStep.Keep:
+      Result := False;
   end;
-  if FMerger.Feed(AText, mOutput, mIsLogpoint) then
-  begin
-    AKind := TAtlasEventKind.Logpoint;
-    AText := mOutput;
-    Exit(False);
-  end;
-  Result := mIsLogpoint;
 end;
 
 class procedure TAtlasIdeDebugEventLog.Refresh;
@@ -345,7 +343,7 @@ begin
   try
     mDialog.Filter := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFileTypes);
     mDialog.DefaultExt := 'txt';
-    mDialog.FileName := ChangeFileExt(ExtractFileName(TAtlasIdeEvaluateStore.CurrentProject), '') + '-events.txt';
+    mDialog.FileName := TAtlasEventLogFlow.SaveName(TAtlasIdeEvaluateStore.CurrentProject);
     mDialog.Options := mDialog.Options + [ofOverwritePrompt];
     if not mDialog.Execute then
     begin
@@ -515,31 +513,17 @@ end;
 /// <summary>Symbol, dessen Name und Container zu ASymbol ("Unit.Routine", "Klasse.Methode") passen.</summary>
 function TryFindSymbol(const ASession: TLspSession; const ASymbol: string; out AFound: TAtlasSymbol): Boolean;
 var
-  mName: string;
-  mCandidate: TAtlasSymbol;
   mSymbols: TArray<TAtlasSymbol>;
 begin
   Result := False;
   AFound := Default(TAtlasSymbol);
-  mName := ASymbol.Substring(ASymbol.LastIndexOf('.') + 1);
   try
-    mSymbols := ASession.WorkspaceSymbols(mName, cSymbolTimeoutMs);
+    mSymbols := ASession.WorkspaceSymbols(TAtlasEventLogFlow.SymbolName(ASymbol), cSymbolTimeoutMs);
   except
     on ELspClientError do
       Exit;
   end;
-  for mCandidate in mSymbols do
-  begin
-    if SameText(mCandidate.Name, mName) and (mCandidate.FileName <> '') then
-    begin
-      // Ganzer Name gleich am Ende ("TForm1.Button1Click" passt zu "Main.TForm1.Button1Click") gewinnt.
-      if ASymbol.ToUpper.EndsWith((mCandidate.Container + '.' + mCandidate.Name).ToUpper) or not Result then
-      begin
-        AFound := mCandidate;
-        Result := True;
-      end;
-    end;
-  end;
+  Result := TAtlasEventLogFlow.FindSymbol(mSymbols, ASymbol, AFound);
 end;
 
 class procedure TAtlasIdeDebugEventLog.OpenEntry(const AEntry: TAtlasEventEntry);
@@ -584,19 +568,12 @@ begin
 end;
 
 class procedure TAtlasIdeDebugEventLog.AddEntry(AKind: TAtlasEventKind; const AThread, AText: string);
-var
-  mElapsed: Int64;
 begin
   if FLog = nil then
   begin
     Exit;
   end;
-  mElapsed := 0;
-  if FStartTick > 0 then
-  begin
-    mElapsed := Int64(GetTickCount64 - FStartTick);
-  end;
-  FLog.Add(TAtlasEventEntry.Create(mElapsed, AKind, AThread, AText));
+  FLog.Add(TAtlasEventEntry.Create(TAtlasEventLogFlow.Elapsed(FStartTick, GetTickCount64), AKind, AThread, AText));
   FDirty := True;
   if (FTimer <> nil) and not FTimer.Enabled then
   begin

@@ -161,6 +161,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
+  Atlas.Core.Tracker.NotifyPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.UI.Popup.Window,
@@ -236,7 +237,7 @@ begin
   begin
     TAtlasGuard.Log(Format('Issue-Meldungen: %s nicht abgefragt (%s)', [AOutcome.Job.Target.Provider,
       TAtlasCiBuild.ErrorKey(AOutcome.Error)]));
-    if mSchedule.Failed and (AOutcome.Error <> TAtlasCiFetchError.Cancelled) then
+    if TAtlasNotifyPlan.ReportsError(mSchedule.Failed, AOutcome.Error) then
     begin
       NotifyError(AOutcome.Job, AOutcome.Error);
     end;
@@ -282,6 +283,7 @@ var
   mIndex: Integer;
   mMode: TAtlasNotificationMode;
   mReopen: TAtlasTrackerReopen;
+  mReopened: Boolean;
   mAnchor: TDateTime;
 begin
   mCenter := TAtlasNotificationCenter.Default;
@@ -295,27 +297,17 @@ begin
   for mIndex := High(ANotices) downto 0 do
   begin
     mNotice := ANotices[mIndex];
-    mTarget := AJob.Target;
     // GitHub: das Repository der Meldung, nicht das des Projekts.
-    if mNotice.Project <> '' then
-    begin
-      mTarget.Project := mNotice.Project;
-    end;
+    mTarget := TAtlasNotifyPlan.NoticeTarget(AJob.Target, mNotice);
     // Wieder geöffnet (#2127): eigener Titel mit Grund, Sprung zum Kommentar.
-    if Assigned(FHooks.Reopened) and FHooks.Reopened(mTarget, mNotice, mReopen) then
+    mReopen := Default(TAtlasTrackerReopen);
+    mReopened := Assigned(FHooks.Reopened) and FHooks.Reopened(mTarget, mNotice, mReopen);
+    mTitle := TAtlasTrackerNoticeText.Title(mNotice);
+    if mReopened then
     begin
       mTitle := TAtlasTrackerNoticeText.ReopenedTitle(mReopen);
-      mAnchor := mNotice.Anchor;
-      if mReopen.CommentAt > 0 then
-      begin
-        mAnchor := mReopen.CommentAt;
-      end;
-    end
-    else
-    begin
-      mTitle := TAtlasTrackerNoticeText.Title(mNotice);
-      mAnchor := mNotice.Anchor;
     end;
+    mAnchor := TAtlasNotifyPlan.NoticeAnchor(mNotice, mReopened, mReopen);
     mOpen := OpenAction(Self, Self, mTarget, mNotice.Key, mAnchor);
     mMode := mCenter.Notify(TAtlasNotificationSources.cIssues, TAtlasNotificationSeverity.Info, mTitle, mNotice.Title,
       [TAtlasNotificationCenter.Action(mCaption, mOpen)]);
@@ -399,25 +391,14 @@ begin
 end;
 
 function TAtlasIdeIssueNotify.SyncEnabled: Boolean;
-var
-  mIndex: Integer;
-  mNow: TDateTime;
 begin
   EnsureLoaded;
   Result := Active;
-  if Result = FFile.Enabled then
+  // Eingeschaltet: Was vorher geschah, ist nicht neu. Ausgeschaltet: Punkte verschwinden mit der Funktion.
+  if not TAtlasNotifyPlan.Switch(FFile, Result, NowUtc) then
   begin
     Exit;
   end;
-  // Eingeschaltet: Was vorher geschah, ist nicht neu. Ausgeschaltet: Punkte verschwinden mit der Funktion.
-  mNow := NowUtc;
-  for mIndex := 0 to High(FFile.Connections) do
-  begin
-    FFile.Connections[mIndex].Since := mNow;
-    FFile.Connections[mIndex].LastModified := '';
-    FFile.Connections[mIndex].Unseen := nil;
-  end;
-  FFile.Enabled := Result;
   FSchedules.Clear;
   Inc(FGeneration);
   SaveFile;
@@ -454,20 +435,6 @@ begin
         AOwner.Delivered(AOutcome);
       end;
     end);
-end;
-
-/// <summary>Ist die Verbindung fällig? Auf Anfrage nach eigener Regel, sonst nach issues.notifyInterval und
-/// Aktivität des Benutzers.</summary>
-function IsDue(var ASchedule: TAtlasTrackerNotifySchedule; AOnDemand, AActive: Boolean; ANowMs: UInt64): Boolean;
-begin
-  if AOnDemand then
-  begin
-    Result := ASchedule.DueOnDemand(ANowMs);
-  end
-  else
-  begin
-    Result := ASchedule.Due(ANowMs, AActive, TAtlasIdeSettings.Current.IssuesNotifyIntervalMinutes);
-  end;
 end;
 
 /// <summary>Abfrage einer Verbindung ab ihrem Stand.</summary>
@@ -510,7 +477,8 @@ begin
       end;
       mIds.Add(mJob.Id);
       mSchedule := ScheduleOf(mJob.Id);
-      if IsDue(mSchedule, AOnDemand, mActive, mNowMs) then
+      if TAtlasNotifyPlan.IsDue(mSchedule, AOnDemand, mActive, mNowMs,
+        TAtlasIdeSettings.Current.IssuesNotifyIntervalMinutes) then
       begin
         mJob.Provider := FHooks.Provider(mTarget.Provider);
       end;
@@ -578,7 +546,7 @@ begin
   begin
     Exit;
   end;
-  if (Result.Job.Poll.Me = '') and (AJob.Provider.ProbeUrl(AJob.Target) <> '') and
+  if TAtlasNotifyPlan.AsksLogin(Result.Job.Poll.Me, AJob.Provider.ProbeUrl(AJob.Target)) and
     mTransport.Get(AJob.Provider.ProbeUrl(AJob.Target), TAtlasTrackerNotify.cTimeoutMs, mStatus, mText,
     mIgnored) and (mStatus = 200) then
   begin
@@ -708,7 +676,6 @@ end;
 function TAtlasIdeIssueNotify.Unseen(const ATarget: TAtlasTrackerTarget): TArray<string>;
 var
   mConnection: TAtlasTrackerNotifyConnection;
-  mItem: TAtlasTrackerUnseen;
 begin
   Result := nil;
   if not FStarted or not Active then
@@ -716,34 +683,21 @@ begin
     Exit;
   end;
   EnsureLoaded;
-  if not FFile.Enabled or not FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  if FFile.Enabled and FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
   begin
-    Exit;
-  end;
-  for mItem in mConnection.Unseen do
-  begin
-    if SameText(mItem.Project, TAtlasTrackerNotify.UnseenProject(ATarget)) then
-    begin
-      Result := Result + [mItem.Key];
-    end;
+    Result := TAtlasNotifyPlan.UnseenKeys(mConnection, ATarget);
   end;
 end;
 
 function TAtlasIdeIssueNotify.AnchorOf(const ATarget: TAtlasTrackerTarget; const AKey: string): TDateTime;
 var
   mConnection: TAtlasTrackerNotifyConnection;
-  mIndex: Integer;
 begin
   Result := 0;
   EnsureLoaded;
-  if not FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
+  if FFile.Find(TAtlasTrackerNotify.ConnectionId(ATarget), mConnection) then
   begin
-    Exit;
-  end;
-  mIndex := mConnection.IndexOfUnseen(AKey, TAtlasTrackerNotify.UnseenProject(ATarget));
-  if mIndex >= 0 then
-  begin
-    Result := mConnection.Unseen[mIndex].Anchor;
+    Result := TAtlasNotifyPlan.UnseenAnchor(mConnection, ATarget, AKey);
   end;
 end;
 

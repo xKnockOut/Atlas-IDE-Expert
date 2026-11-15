@@ -26,10 +26,10 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Projects.Baseline,
+  Atlas.Core.Projects.VcsQueries,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
   Atlas.Core.Problems.Store;
@@ -60,11 +60,8 @@ type
     FStopped: Boolean;
     // Probleme, die das Plugin vom Server hat (#398); nil ohne.
     FProblems: TFunc<TAtlasProblemStore>;
-    // Normierter Pfad → Zeitpunkt (GetTickCount64) bzw. Ergebnis der letzten Abfrage in dieser Sitzung.
-    FFresh: TDictionary<string, UInt64>;
-    FLive: TDictionary<string, TAtlasProjectVcs>;
-    // Normierter Pfad → Start der laufenden Abfrage (GetTickCount64).
-    FQuerying: TDictionary<string, UInt64>;
+    // Laufende, frische und gelungene Abfragen der Versionsverwaltung in dieser Sitzung (Zeiten GetTickCount64).
+    FQueries: TAtlasProjectVcsQueries;
     procedure Changed(const AProject: string);
     procedure Opened(const AProject: string);
     procedure Closing(const AProject: string);
@@ -75,10 +72,9 @@ type
     /// dieses Builds (#758).</summary>
     class procedure StoreVcs(const ARoot, AProject: string; const AState: TAtlasProjectVcs;
       ABuildUtc: TDateTime); static;
-    function QueryingKey(const AKey: string): Boolean;
     procedure RecordRules(const AProject: string; ANowUtc: TDateTime);
-    procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
-      const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime);
+    class procedure RecordInto(const AProject: string; const AMessages: TArray<TAtlasCompilerMessage>;
+      const AInfo: TAtlasCompileProject; ASucceeded: Boolean; ADurationMs: Int64; ANowUtc: TDateTime); static;
     procedure RecordTrend(const AProject: string; ANowUtc: TDateTime);
     class function TrendsOn: Boolean; static;
     class function IsProjectFile(const AFileName: string): Boolean; static;
@@ -201,9 +197,7 @@ begin
   inherited Create;
   FProblems := AProblems;
   FNotifierIndex := -1;
-  FFresh := TDictionary<string, UInt64>.Create;
-  FLive := TDictionary<string, TAtlasProjectVcs>.Create;
-  FQuerying := TDictionary<string, UInt64>.Create;
+  FQueries := TAtlasProjectVcsQueries.Create;
   FCurrent := Self;
 end;
 
@@ -214,9 +208,7 @@ begin
   begin
     FCurrent := nil;
   end;
-  FQuerying.Free;
-  FLive.Free;
-  FFresh.Free;
+  FQueries.Free;
   inherited;
 end;
 
@@ -299,13 +291,10 @@ var
   mState: TAtlasProjectVcs;
   mStarted: UInt64;
 begin
-  mKey := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FStopped or QueryingKey(mKey) then
+  if FStopped or not FQueries.TryStart(AProject, GetTickCount64, mKey, mStarted) then
   begin
     Exit;
   end;
-  mStarted := GetTickCount64;
-  FQuerying.AddOrSetValue(mKey, mStarted);
   mProject := AProject;
   mDir := ExtractFileDir(AProject);
   mRoot := Folder;
@@ -323,31 +312,20 @@ begin
         mDir, mStamp, mState);
     end,
     procedure
-    var
-      mCurrent: UInt64;
     begin
       if FStopped then
       begin
         Exit;
       end;
-      // Nur die eigene Abfrage beenden, nicht eine neuere nach Ablauf des Zeitlimits.
-      if FQuerying.TryGetValue(mKey, mCurrent) and (mCurrent = mStarted) then
-      begin
-        FQuerying.Remove(mKey);
-      end;
-      FFresh.AddOrSetValue(mKey, GetTickCount64);
+      FQueries.Finish(mKey, mStarted, GetTickCount64, mOk, mState);
       if mOk then
       begin
-        FLive.AddOrSetValue(mKey, mState);
         StoreVcs(mRoot, mProject, mState, mBuildStamp);
       end;
       Changed(mProject);
     end) then
   begin
-    // Nicht gestartet (Versionsverwaltung noch nicht bereit oder beendet): kein „wird abgefragt …“, nicht
-    // bei jedem Zeichnen neu versuchen.
-    FQuerying.Remove(mKey);
-    FFresh.AddOrSetValue(mKey, GetTickCount64);
+    FQueries.NotStarted(mKey, GetTickCount64);
   end;
 end;
 
@@ -369,18 +347,6 @@ begin
         TAtlasProjectTrendLog.Fill(ASummary, mBuildStamp);
       end;
     end);
-end;
-
-function TAtlasIdeProjectSummaries.QueryingKey(const AKey: string): Boolean;
-var
-  mStarted: UInt64;
-begin
-  // Eine Abfrage, die nicht binnen VcsQueryLimitMs zurückkam, gilt als beendet.
-  Result := FQuerying.TryGetValue(AKey, mStarted) and TAtlasProjectRecording.QueryRunning(mStarted, GetTickCount64);
-  if not Result then
-  begin
-    FQuerying.Remove(AKey);
-  end;
 end;
 
 procedure TAtlasIdeProjectSummaries.RecordRules(const AProject: string; ANowUtc: TDateTime);
@@ -407,7 +373,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeProjectSummaries.RecordInto(const AProject: string;
+class procedure TAtlasIdeProjectSummaries.RecordInto(const AProject: string;
   const AMessages: TArray<TAtlasCompilerMessage>; const AInfo: TAtlasCompileProject; ASucceeded: Boolean;
   ADurationMs: Int64; ANowUtc: TDateTime);
 var
@@ -421,12 +387,7 @@ begin
   mInfo := AInfo;
   mSucceeded := ASucceeded;
   mStamp := ANowUtc;
-  // Mehr als 24 Tage gibt es nicht; ungültige Werte als unbekannt.
-  mDuration := 0;
-  if (ADurationMs > 0) and (ADurationMs < MaxInt) then
-  begin
-    mDuration := Integer(ADurationMs);
-  end;
+  mDuration := TAtlasProjectRecording.BuildDurationMs(ADurationMs);
   TAtlasProjectSummaries.Update(Folder, AProject,
     procedure(var ASummary: TAtlasProjectSummary)
     begin
@@ -512,7 +473,6 @@ procedure TAtlasIdeProjectSummaries.Recorded(const AMessages: TArray<TAtlasCompi
   const AProject: TAtlasCompileProject; ASucceeded, AReadable: Boolean; AAtUtc: TDateTime);
 var
   mGroup: string;
-  mGroupDuration: Int64;
   mTrends: Boolean;
 begin
   if FStopped or not AReadable or (AProject.FileName = '') then
@@ -530,13 +490,8 @@ begin
   mGroup := GroupOf(AProject.FileName);
   if mGroup <> '' then
   begin
-    // Die Gruppe misst den ganzen Lauf („Alle erzeugen“); ohne Angabe die Dauer des Projekts.
-    mGroupDuration := AProject.GroupDurationMs;
-    if mGroupDuration <= 0 then
-    begin
-      mGroupDuration := AProject.DurationMs;
-    end;
-    RecordInto(mGroup, AMessages, AProject, ASucceeded, mGroupDuration, AAtUtc);
+    RecordInto(mGroup, AMessages, AProject, ASucceeded,
+      TAtlasProjectRecording.GroupDurationMs(AProject.GroupDurationMs, AProject.DurationMs), AAtUtc);
     RecordRules(mGroup, AAtUtc);
     if mTrends then
     begin
@@ -710,24 +665,21 @@ end;
 function TAtlasIdeProjectSummaries.LiveVcs(const AProject: string; out AVcs: TAtlasProjectVcs): Boolean;
 begin
   AVcs := TAtlasProjectVcs.Empty;
-  Result := not FStopped and FLive.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), AVcs);
+  Result := not FStopped and FQueries.Live(AProject, AVcs);
 end;
 
 function TAtlasIdeProjectSummaries.Querying(const AProject: string): Boolean;
 begin
-  Result := not FStopped and QueryingKey(TAtlasProjectSummaries.NormalizedPath(AProject));
+  Result := not FStopped and FQueries.Querying(AProject, GetTickCount64);
 end;
 
 procedure TAtlasIdeProjectSummaries.QueryIfStale(const AProject: string);
-var
-  mLast: UInt64;
 begin
   if FStopped or (AProject = '') then
   begin
     Exit;
   end;
-  if not FFresh.TryGetValue(TAtlasProjectSummaries.NormalizedPath(AProject), mLast) or
-    (GetTickCount64 - mLast >= TAtlasProjectRecording.cVcsRefreshMs) then
+  if FQueries.IsStale(AProject, GetTickCount64) then
   begin
     Query(AProject, 0);
   end;
@@ -740,7 +692,7 @@ begin
     Exit;
   end;
   // Auch ohne welcomePage.refreshVcs: Der Benutzer hat gerade geholt, der alte Stand wäre falsch.
-  FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(AProject));
+  FQueries.Forget(AProject);
   Query(AProject, 0);
 end;
 

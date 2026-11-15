@@ -11,7 +11,9 @@
 //   W1062  Stringkonstante mit Zeichen, die die ANSI-Codepage nicht kennt, an
 //          AnsiString (dcc meldet dazu W1058; beides steht in einer Meldung)
 //   W1050  WideChar in einem Mengenausdruck aus Zeichenliteralen
-//          (C in ['0'..'9']); Korrektur CharInSet samt System.SysUtils
+//          (C in ['0'..'9']) oder ein Zeichen bzw. Zeichenliteral in einer
+//          Menge vom Typ TSysCharSet (set of AnsiChar, '}' in AStops, #2309);
+//          Korrektur CharInSet samt System.SysUtils
 //   W1068  Zeichen eines string direkt geändert (S[1] := 'x')
 //
 // Implizit heißt: Zuweisung, Inline-Variable mit Typ und Argument an einen
@@ -682,14 +684,69 @@ var
     end;
   end;
 
-  /// <summary>C in ['a'..'z'] mit C: Char (W1050); Korrektur CharInSet.</summary>
+  /// <summary>Ist ASet ein Ausdruck vom Typ TSysCharSet aus System.SysUtils (set of AnsiChar)? Ohne RTL im Index
+  /// zählt der Typname der Deklaration, wenn die Datei System.SysUtils verwendet.</summary>
+  function IsSysCharSet(ASet: TSyntaxNode): Boolean;
+  var
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mUsed: TArray<string>;
+  begin
+    Result := (ASet.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ASet, mSymbol, mTypeInfo, mTypeFound) and
+      not mSymbol.IsType and (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+      TIndexSymbolKind.Property_, TIndexSymbolKind.Constant]) and mScope.DeclarationSure(mSymbol, ASet);
+    if not Result then
+    begin
+      Exit;
+    end;
+    if mTypeFound then
+    begin
+      Exit(SameText(mTypeInfo.Name, 'TSysCharSet') and MatchText(mTypeInfo.UnitName, ['System.SysUtils',
+        'SysUtils']));
+    end;
+    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
+    Result := MatchText(mSymbol.TypeName, ['TSysCharSet', 'System.SysUtils.TSysCharSet', 'SysUtils.TSysCharSet']) and
+      (TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) or
+      TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces));
+  end;
+
+  /// <summary>Zeichenliteral wie '}' oder #9; in Ausdrücken hat es den Typ Char.</summary>
+  function IsCharLiteral(ANode: TSyntaxNode): Boolean;
+  var
+    mValue: string;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.Literal) and ConstantString(ANode, mValue) and (Length(mValue) = 1);
+  end;
+
+  /// <summary>Links ein Zeichen, rechts eine Menge, die es auf ein Byte kürzt: Mengenkonstruktor aus
+  /// Zeichenliteralen bei Char, TSysCharSet bei Char und Zeichenliteralen.</summary>
+  function TruncatingMembership(ANode: TSyntaxNode; out ADisplay: string): Boolean;
+  var
+    mLeft, mRight: TSyntaxNode;
+  begin
+    mLeft := Unwrapped(ANode[0]);
+    mRight := Unwrapped(ANode[1]);
+    if AsciiCharSet(mRight) then
+    begin
+      Exit(IsUnicodeChar(mLeft, ADisplay));
+    end;
+    if not IsSysCharSet(mRight) then
+    begin
+      Exit(False);
+    end;
+    ADisplay := 'Char';
+    Result := IsCharLiteral(mLeft) or IsUnicodeChar(mLeft, ADisplay);
+  end;
+
+  /// <summary>C in ['a'..'z'] mit C: Char, '}' in AStops mit AStops: TSysCharSet (W1050); Korrektur CharInSet.
+  /// </summary>
   procedure CheckSetMembership(ANode: TSyntaxNode);
   var
     mDisplay, mMessage: string;
     mEdits: TArray<TTextEdit>;
   begin
-    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not AsciiCharSet(Unwrapped(ANode[1])) or
-      not IsUnicodeChar(Unwrapped(ANode[0]), mDisplay) then
+    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not TruncatingMembership(ANode, mDisplay) then
     begin
       Exit;
     end;

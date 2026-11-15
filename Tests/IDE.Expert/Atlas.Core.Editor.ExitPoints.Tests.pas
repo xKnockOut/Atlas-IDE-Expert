@@ -27,6 +27,10 @@ type
     procedure RolesAndBadge;
     [Test]
     procedure SettingsDefaultsAndElement;
+    [Test]
+    procedure HandlesPascalSources;
+    [Test]
+    procedure RoleColorsFollowTheRole;
   end;
 
 implementation
@@ -34,6 +38,7 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Editor.ExitPoints,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Settings.Plugin;
@@ -210,6 +215,29 @@ begin
   Assert.AreEqual<TAtlasDrawnElement>(TAtlasDrawnElement.ExitPoints, mElement);
   Assert.IsTrue(TAtlasDrawnElements.Info(mElement).Overlay);
   Assert.IsFalse(TAtlasDrawnElements.Info(mElement).Gutter);
+end;
+
+procedure TAtlasExitPointsTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasExitPoints.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasExitPoints.Handles('defines.inc'));
+  Assert.IsFalse(TAtlasExitPoints.Handles('Main.dfm'));
+end;
+
+procedure TAtlasExitPointsTests.RoleColorsFollowTheRole;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := Default(TAtlasColors);
+  mColors.Add := 1;
+  mColors.Error := 2;
+  mColors.Accent := 3;
+  mColors.Warn := 4;
+  Assert.AreEqual(Cardinal(1), Cardinal(TAtlasExitPoints.RoleColor(mColors, TAtlasExitPointRole.Assign)));
+  Assert.AreEqual(Cardinal(2), Cardinal(TAtlasExitPoints.RoleColor(mColors, TAtlasExitPointRole.Missing)));
+  Assert.AreEqual(Cardinal(2), Cardinal(TAtlasExitPoints.RoleColor(mColors, TAtlasExitPointRole.Source)));
+  Assert.AreEqual(Cardinal(3), Cardinal(TAtlasExitPoints.RoleColor(mColors, TAtlasExitPointRole.Loop)));
+  Assert.AreEqual(Cardinal(4), Cardinal(TAtlasExitPoints.RoleColor(mColors, TAtlasExitPointRole.Leave)));
 end;
 
 initialization

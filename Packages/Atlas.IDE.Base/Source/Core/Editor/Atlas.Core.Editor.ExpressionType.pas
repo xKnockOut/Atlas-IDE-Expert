@@ -137,11 +137,14 @@ type
     /// <summary>Teil von Zeile ALine (ab 0, Länge ALength), den ARange deckt; False ohne.</summary>
     class function SpanOnLine(const ARange: TLspRange; ALine, ALength: Integer;
       out ASpan: TAtlasExpressionTypeSpan): Boolean; static;
+    /// <summary>Typ des Ausdrucks gibt es in Pascal-Quelltexten (.pas, .dpr, .dpk, .inc).</summary>
+    class function Handles(const AFileName: string): Boolean; static;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   Atlas.Text.Json;
 
 function ReadPosition(const AValue: TJSONValue; out APosition: TLspTextPosition): Boolean;
@@ -464,6 +467,11 @@ begin
     ASpan.Stop := ALength;
   end;
   Result := ASpan.Stop > ASpan.Start;
+end;
+
+class function TAtlasExpressionType.Handles(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
 end;
 
 end.
