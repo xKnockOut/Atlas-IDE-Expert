@@ -39,6 +39,11 @@ type
     /// abschaltbar.</summary>
     [Test]
     procedure InlayHintNamesUsedIncludeSymbols;
+    /// <summary>Bringt ein {$I} Code an einer Stelle, die die Unit gliedert (unit X; {$I win.inc} end.), fehlt
+    /// dem Baum dieser Teil: keine Syntaxfehler ab dort, wohl aber davor. Includes nur mit Defines und {$I} an
+    /// der Stelle eines Werts schneiden nichts ab.</summary>
+    [Test]
+    procedure CodeIncludeDropsFollowingSyntaxErrors;
   end;
 
 implementation
@@ -84,6 +89,28 @@ begin
       AFileName := 'C:\P\defs.inc';
       AText := DefsText;
     end;
+end;
+
+/// <summary>Zeilen der Syntaxfehler von AText unter Resolver; Defs ist der Inhalt von defs.inc.</summary>
+function DiagnosticLines(const AText, ADefs: string): string;
+var
+  mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mDiagnostic: TSyntaxDiagnostic;
+begin
+  DefsText := ADefs;
+  Result := '';
+  mTree := TPascalParser.ParseActive(AText, TPascalPreprocessor.EditorOptions(nil, cMainFile, Resolver()), nil,
+    mProcessed);
+  try
+    for mDiagnostic in mTree.Diagnostics do
+    begin
+      Result := Result + IntToStr(mDiagnostic.StartPos.Line) + ' ';
+    end;
+  finally
+    mTree.Free;
+  end;
+  Result := Trim(Result);
 end;
 
 function DiagnosticCount(const AText: string; const AOptions: TPreprocessorOptions): Integer;
@@ -268,6 +295,20 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+
+procedure TIncludeDefinesTests.CodeIncludeDropsFollowingSyntaxErrors;
+const
+  cStructure = 'unit U;'#10'{$IFDEF MSWINDOWS}'#10'  {$I defs.inc}'#10'{$ENDIF}'#10'end.';
+  cErrorBefore = 'unit U;'#10'interface'#10'uses ;'#10'{$I defs.inc}'#10'end.';
+  cDefinesOnly = 'unit U;'#10'{$I defs.inc}'#10'interface'#10'uses ;'#10'implementation'#10'end.';
+  cValue = 'unit U;'#10'interface'#10'const V = {$I defs.inc};'#10'W = ;'#10'implementation'#10'end.';
+begin
+  Assert.AreEqual('', DiagnosticLines(cStructure, 'interface'#10'implementation'), 'Teil der Unit im Include');
+  Assert.AreEqual('2', DiagnosticLines(cErrorBefore, 'implementation'), 'Fehler vor dem Include bleibt');
+  Assert.AreEqual('3', DiagnosticLines(cDefinesOnly, '{$DEFINE FOO}'), 'Include nur mit Defines');
+  Assert.AreEqual('3', DiagnosticLines(cValue, '42'), 'Include als Wert');
 end;
 
 initialization

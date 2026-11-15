@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..697] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..696] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -667,17 +667,16 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' +
-    'like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only sma' +
-    'll sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in' +
-    ' the matching declaration or implementation header of the same file (calls are not changed).",',
+    'like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Sets of any size may have a default value; Delphi 13 does not repo' +
+    'rt E2146 for them. Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declarat' +
+    'ion or implementation header of the same file (calls are not changed).",',
     '      "bad": "procedure Senden(const Text: string = ''''; Ziel: TZiel);",',
     '      "good": "procedure Senden(Ziel: TZiel; const Text: string = '''');",',
     '      "compilerCodes": [',
     '        "E2237",',
     '        "E2238",',
     '        "E2239",',
-    '        "E2268",',
-    '        "E2146"',
+    '        "E2268"',
     '      ],',
     '      "level": "A",',
     '      "safeFix": false',

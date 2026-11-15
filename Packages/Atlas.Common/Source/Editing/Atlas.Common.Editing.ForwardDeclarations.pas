@@ -7,9 +7,10 @@
 //     (TA = TB) und Zeiger (^T, im selben Block erlaubt) zählen nicht, ebenso
 //     Klassenreferenzen (TXClass = class of TX) auf eine Klasse im selben
 //     type-Block: Die löst dcc wie Zeiger erst am Blockende auf (#1328).
-//     Ebenso ein Name, der weiter unten nur als Alias des gleichnamigen Typs
-//     einer anderen Unit steht (TX = UnitY.TX): Bis dahin gilt der Typ aus
-//     der uses-Liste, die frühere Verwendung übersetzt.
+//     Ebenso ein Name, der weiter unten nur als Alias oder Nachfahr des
+//     gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX,
+//     TX = class(UnitY.TX)): Bis dahin gilt der Typ aus der uses-Liste, die
+//     frühere Verwendung übersetzt.
 //   - Korrektur je nach Lage:
 //       Klasse/Interface im selben type-Block   Forward-Deklaration am Blockanfang
 //       Forward-Deklaration steht weiter unten   sie nach oben verschieben
@@ -255,8 +256,27 @@ begin
   end;
 end;
 
-/// <summary>TX = UnitY.TX: Alias des gleichnamigen Typs einer anderen Unit. Diese Unit steht in uses, ihr TX ist
-/// also schon vor dem Alias sichtbar.</summary>
+/// <summary>Erster Vorfahr einer Klasse oder eines Interfaces (TypeReference), sonst nil.</summary>
+function FirstAncestor(AType: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if not (AType.Kind in [TSyntaxKind.ClassType, TSyntaxKind.InterfaceType]) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    if AType[mIndex].Kind = TSyntaxKind.TypeReference then
+    begin
+      Exit(AType[mIndex]);
+    end;
+  end;
+end;
+
+/// <summary>TX = UnitY.TX oder TX = class(UnitY.TX): Alias oder Nachfahr des gleichnamigen Typs einer anderen
+/// Unit. Diese Unit steht in uses, ihr TX ist also schon vor der Deklaration sichtbar.</summary>
 function IsSameNameAlias(ADecl: TSyntaxNode): Boolean;
 var
   mNode: TSyntaxNode;
@@ -264,7 +284,15 @@ var
 begin
   mNode := TypeNode(ADecl);
   Result := False;
-  if (mNode = nil) or (mNode.Kind <> TSyntaxKind.TypeReference) or (mNode.ChildCount > 0) then
+  if mNode = nil then
+  begin
+    Exit;
+  end;
+  if mNode.Kind <> TSyntaxKind.TypeReference then
+  begin
+    mNode := FirstAncestor(mNode);
+  end;
+  if (mNode = nil) or (mNode.ChildCount > 0) then
   begin
     Exit;
   end;

@@ -397,6 +397,50 @@ begin
   end;
 end;
 
+/// <summary>Ist der Bezeichner ANode eine Konstante dieser Unit, deren Text nicht mit einem Namenszeichen beginnt
+/// (cIni = '\Programm.ini')? Dann bringt sie das Trennzeichen selbst mit; bei mehreren Fassungen ({$IFDEF})
+/// genügt eine.</summary>
+function IsConstantWithDelimiter(ANode: TSyntaxNode): Boolean;
+var
+  mRoot: TSyntaxNode;
+  mName: string;
+  mFound: Boolean;
+begin
+  Result := False;
+  if ANode.Kind <> TSyntaxKind.Identifier then
+  begin
+    Exit;
+  end;
+  mRoot := ANode;
+  while mRoot.Parent <> nil do
+  begin
+    mRoot := mRoot.Parent;
+  end;
+  mName := ANode.Name;
+  mFound := False;
+  mRoot.Walk(
+    function(ADecl: TSyntaxNode): Boolean
+    var
+      mIndex: Integer;
+      mText: string;
+    begin
+      if (ADecl.Kind = TSyntaxKind.ConstDecl) and SameText(ADecl.Name, mName) then
+      begin
+        for mIndex := 0 to ADecl.ChildCount - 1 do
+        begin
+          if (ADecl[mIndex].Kind = TSyntaxKind.Literal) and StartsStr('''', ADecl[mIndex].Name) and
+            TStringLiterals.PlainText(ADecl[mIndex].Name, mText) and (mText <> '') and
+            not TTextChars.IsIdentChar(mText[1]) then
+          begin
+            mFound := True;
+          end;
+        end;
+      end;
+      Result := not mFound;
+    end);
+  Result := mFound;
+end;
+
 /// <summary>Ist ANode ein Datei- oder Ordnername (Literal, das mit einem Buchstaben, einer Ziffer oder _ beginnt,
 /// oder ein Bezeichner, der kein Trennzeichen und keine Endung ist)? AText: Klartext des Literals.</summary>
 function IsNamePart(ANode: TSyntaxNode; out AIsLiteral: Boolean; out AText: string): Boolean;
@@ -416,7 +460,7 @@ begin
     Result := TTextChars.IsIdentChar(AText[1]);
     Exit;
   end;
-  if not CalleeName(ANode, mName, mQualifier) or MatchText(mName, cNotNames) then
+  if not CalleeName(ANode, mName, mQualifier) or MatchText(mName, cNotNames) or IsConstantWithDelimiter(ANode) then
   begin
     Exit;
   end;

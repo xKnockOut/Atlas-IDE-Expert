@@ -59,6 +59,8 @@ type
     [Test]
     procedure CorrectLoopsAreSilent;
     [Test]
+    procedure CountVariableIsNotListCount;
+    [Test]
     procedure StringLoopsAndZeroIndex;
     [Test]
     procedure ZeroBasedStringsDirective;
@@ -107,6 +109,10 @@ type
     procedure DatasetLoopVariants;
     [Test]
     procedure DatasetLoopSilentCases;
+    /// <summary>Eof eines Lesers, der sicher kein TDataSet ist (CSV-Stream mit ReadLine): still; Datenmenge und
+    /// unbekannter Typ bleiben Treffer.</summary>
+    [Test]
+    procedure DatasetLoopOnlyOnDataSets;
     [Test]
     procedure DatasetLoopOffAndExclude;
     [Test]
@@ -464,6 +470,21 @@ begin
     mFindings[0].Message);
   Assert.AreEqual('High(FZahlen) verwenden', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('High(FZahlen)', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TStatementRulesTests.CountVariableIsNotListCount;
+const
+  cHeader = 'unit Zeitleiste;'#10'interface'#10'type'#10'  TLeiste = class'#10 +
+    '    function GetItem(AIndex: Integer): TObject;'#10'    function GetCount: Integer;'#10 +
+    '    property Items[AIndex: Integer]: TObject read GetItem;'#10'    property Count: Integer read GetCount;'#10 +
+    '    procedure Ordnen;'#10'  end;'#10'implementation'#10'procedure TLeiste.Ordnen;'#10'var'#10;
+begin
+  // Lokale Variable Count hält schon Items.Count - 1.
+  TRuleAssert.Silent(TLoopOffByOneRule.Create, cHeader + '  I, Count: Integer;'#10'begin'#10 +
+    '  Count := Items.Count - 1;'#10'  for I := 0 to Count do'#10'    Items[I].Free;'#10'end;'#10'end.');
+  // Ohne Variable ist Count die eigene Property: weiter gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, cHeader + '  I: Integer;'#10 +
+    'begin'#10'  for I := 0 to Count do'#10'    Items[I].Free;'#10'end;'#10'end.'))));
 end;
 
 procedure TStatementRulesTests.CorrectLoopsAreSilent;
@@ -884,6 +905,22 @@ begin
     '    end;'#10'  end;'#10'  while not Q.Eof do'#10'    Verarbeiten(Q);'#10 +
     '  while not Q.Eof do'#10'    with Q do'#10'      Next;'#10'  while not Fertig do'#10'    Lesen;'#10 +
     '  while not Q.Eof do'#10'    raise EAbbruch.Create(''x'');'#10));
+end;
+
+procedure TStatementPatternRulesTests.DatasetLoopOnlyOnDataSets;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, 'unit Leser;'#10'interface'#10 +
+    'type'#10'  TDataSet = class'#10'  public'#10'    function Eof: Boolean;'#10'  end;'#10 +
+    '  TAbfrage = class(TDataSet)'#10'  end;'#10'  TZeilenLeser = class(TObject)'#10'  public'#10 +
+    '    function Eof: Boolean;'#10'    function ReadLine: string;'#10'  end;'#10'implementation'#10 +
+    'procedure Test(ALeser: TZeilenLeser; AAbfrage: TAbfrage; AFremd: TFremd);'#10'begin'#10 +
+    '  while not ALeser.Eof do'#10'    Verarbeite(ALeser.ReadLine);'#10'  while not AAbfrage.Eof do'#10 +
+    '    Lesen;'#10'  while not AFremd.Eof do'#10'    Lesen;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TStatementPatternRulesTests.DatasetLoopOffAndExclude;

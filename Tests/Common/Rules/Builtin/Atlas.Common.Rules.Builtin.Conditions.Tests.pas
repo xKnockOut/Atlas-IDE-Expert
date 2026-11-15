@@ -106,6 +106,8 @@ type
     procedure AllowFirstElementOption;
     [Test]
     procedure OffAndExclude;
+    [Test]
+    procedure RaisingMethodOfOtherObjectIsSilent;
   end;
 
 implementation
@@ -667,6 +669,28 @@ begin
   Assert.AreEqual('Jeder Durchlauf endet mit einem Sprung: Die Schleife prüft nur das erste Element von ' +
     'FKunden.', mFound[0].Message);
   Assert.AreEqual('Jeder Durchlauf endet mit Exit: Die Schleife läuft höchstens einmal.', mFound[1].Message);
+end;
+
+procedure TLoopRunsAtMostOnceTests.RaisingMethodOfOtherObjectIsSilent;
+const
+  cUnit = 'unit Pfade;'#10'interface'#10'type'#10'  TPfad = class'#10'    procedure Assign(A: TPfad);'#10 +
+    '    procedure Pruefen(A: TPfad);'#10'  end;'#10'  TZiel = class'#10'    procedure Write(A: Integer);'#10 +
+    '    procedure Kopieren(AQuelle: TPfad);'#10'  end;'#10'  TListe = class'#10'    procedure Assign(A: TListe);'#10 +
+    '  end;'#10'implementation'#10'procedure TPfad.Assign(A: TPfad);'#10'begin'#10 +
+    '  raise Exception.Create(''offen'');'#10'end;'#10'procedure TPfad.Pruefen(A: TPfad);'#10'var'#10 +
+    '  I: Integer;'#10'begin'#10'  for I := 0 to 9 do'#10'    Assign(A);'#10'end;'#10 +
+    'procedure TListe.Assign(A: TListe);'#10'begin'#10'end;'#10'procedure TZiel.Write(A: Integer);'#10'begin'#10 +
+    '  raise Exception.Create(''offen'');'#10'end;'#10'procedure TZiel.Kopieren(AQuelle: TPfad);'#10'var'#10 +
+    '  I: Integer;'#10'  mStrom: TZiel;'#10'begin'#10'  mStrom := nil;'#10'  for I := 0 to 9 do'#10 +
+    '    mStrom.Write(I);'#10'  for I := 0 to 9 do'#10'    Self.Write(I);'#10'end;'#10'end.';
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // TPfad.Assign löst immer aus, TListe.Assign nicht: Assign ist kein Sprung. Write gibt es nur als immer
+  // auslösende Methode; mStrom.Write gehört einem anderen Objekt, Self.Write bleibt ein Treffer.
+  mFound := OnceFindings(cUnit);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(41, mFound[0].Range.StartPos.Line);
 end;
 
 procedure TLoopRunsAtMostOnceTests.SomePathContinuesIsSilent;

@@ -377,7 +377,8 @@ begin
 end;
 
 /// <summary>@P mit P einer Variablen oder eines Felds prozeduralen Typs? Das ist bei dcc selbst eine Variable
-/// (@P := GetProcAddress(…)) und geht an einen var-Pointer-Parameter (JCL: HookImport(…, @OldProc)).</summary>
+/// (@P := GetProcAddress(…)) und geht an einen var-Pointer-Parameter (JCL: HookImport(…, @OldProc); ACBr:
+/// LoadFunc('Name', @xFunc)).</summary>
 function TVarArgumentScan.IsProcedureVariableAddress(AAddress: TSyntaxNode): Boolean;
 var
   mSymbol: TResolvedSymbol;
@@ -386,7 +387,7 @@ begin
   Result := False;
   if (AAddress.ChildCount <> 1) or not (AAddress[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
     not Resolve(AAddress[0], mSymbol) or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable,
-    TIndexSymbolKind.Field]) or (mSymbol.TypeName = '') then
+    TIndexSymbolKind.Field]) then
   begin
     Exit;
   end;
@@ -394,7 +395,8 @@ begin
   begin
     mFromUnit := FLocal;
   end;
-  Result := IsPlainProcedureType(FResolver, FContext, mFromUnit, mSymbol.TypeName);
+  // Auch ein Typ direkt an der Variablen (xFunc: function: Integer; ACBr lädt so DLL-Routinen).
+  Result := IsPlainProcedureType(FResolver, FContext, mFromUnit, DeclaredTypeText(FContext, mSymbol));
 end;
 
 function TVarArgumentScan.Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;

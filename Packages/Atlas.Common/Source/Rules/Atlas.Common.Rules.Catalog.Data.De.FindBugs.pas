@@ -251,9 +251,9 @@ const
     '      "name": "Typ vor seiner Deklaration benutzt",',
     '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' +
     'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selb' +
-    'en type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forwar' +
-    'd-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender ve' +
-    'rschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
+    'en type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias oder Nachfahr des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX oder TX = class(UnitY.TX): davor gilt UnitY.' +
+    'TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder ein' +
+    'en Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
     '    },',
     '{',
     '      "id": "field-not-freed",',

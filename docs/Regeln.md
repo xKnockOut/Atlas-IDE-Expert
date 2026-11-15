@@ -3373,7 +3373,7 @@ end.
 
 **Typ vor seiner Deklaration benutzt** · Bug · Fehler · Gruppe Fehler finden
 
-Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
+Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias oder Nachfahr des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX oder TX = class(UnitY.TX): davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
 
 Mit Treffer:
 
@@ -8747,9 +8747,9 @@ const
 
 **Unzulässiger Standardwert eines Parameters** · Bug · Fehler · Gruppe Compiler vorab
 
-Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardwert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur kleine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht).
+Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardwert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Mengen jeder Größe dürfen einen Standardwert haben; Delphi 13 meldet dort kein E2146. Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht).
 
-Entspricht der Compilermeldung `E2237`, `E2238`, `E2239`, `E2268`, `E2146`.
+Entspricht der Compilermeldung `E2237`, `E2238`, `E2239`, `E2268`.
 
 Stufe A (Parser genügt).
 
