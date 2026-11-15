@@ -1369,6 +1369,8 @@ uses
   Atlas.Core.Status.Registry in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas',
   Atlas.Core.Files.Format in '..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas',
   Atlas.Core.Status.Lines in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Lines.pas',
+  Atlas.Core.CodeInsight.Plan in '..\Packages\Atlas.IDE.Base\Source\Core\CodeInsight\Atlas.Core.CodeInsight.Plan.pas',
+  Atlas.Core.CodeInsight.Plan.Tests in 'IDE.Expert\Atlas.Core.CodeInsight.Plan.Tests.pas',
   Atlas.Core.Status.IndexStore in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.IndexStore.pas',
   Atlas.Core.Status.Tests in 'IDE.Expert\Atlas.Core.Status.Tests.pas',
   Atlas.Core.Status.Server in '..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Server.pas',

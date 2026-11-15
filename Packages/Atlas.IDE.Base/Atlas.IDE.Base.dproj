@@ -574,6 +574,7 @@
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Format.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Lines.pas"/>
+        <DCCReference Include="Source\Core\CodeInsight\Atlas.Core.CodeInsight.Plan.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Server.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.IndexStore.pas"/>
         <DCCReference Include="Source\UI\Status\Atlas.UI.Status.Window.pas"/>

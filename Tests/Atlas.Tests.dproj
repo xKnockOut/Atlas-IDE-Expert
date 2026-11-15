@@ -1505,6 +1505,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Lines.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\CodeInsight\Atlas.Core.CodeInsight.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.CodeInsight.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.IndexStore.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Server.pas"/>
