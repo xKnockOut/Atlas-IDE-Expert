@@ -108,6 +108,27 @@ type
     class function IndexIn(const AList: TArray<string>; const AId: string): Integer; static;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>„Ausprobieren“: Beispieldatei öffnen, Beispiel fehlt (Hinweis), Befehl ausführen oder Befehl fehlt
+  /// (Hinweis).</summary>
+  TAtlasDiscoverTry = (OpenSample, NoSample, RunCommand, NoCommand);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Entscheidungen der Karte in der IDE.</summary>
+  TAtlasDiscoverSteps = class
+  public
+    /// <summary>AHasSample: Beispieldatei gefunden; ASample: Name aus tips.json ('' = keine); ACanRun: Befehl
+    /// ausführbar.</summary>
+    class function TryOf(AHasSample: Boolean; const ASample: string; ACanRun: Boolean): TAtlasDiscoverTry; static;
+    /// <summary>Über die Palette ausführbar: AFound in der Palette (bzw. Atlas-Taste) und ein Atlas-Befehl
+    /// (AIsAtlas) oder die Palette selbst (APalette).</summary>
+    class function Runnable(const AId: string; AFound, AIsAtlas, APalette: Boolean): Boolean; static;
+    /// <summary>Zeile bzw. Spalte des Editors (ab 0) zu tips.json (ab 1).</summary>
+    class function EditorIndex(AValue: Integer): Integer; static;
+    /// <summary>Nach dem Sperren von AId: ANext, außer es ist AId selbst (der einzige Tipp).</summary>
+    class function AfterBlock(const ANext, AId: string): string; static;
+  end;
+
 implementation
 
 uses
@@ -527,6 +548,52 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+{ TAtlasDiscoverSteps }
+
+class function TAtlasDiscoverSteps.TryOf(AHasSample: Boolean; const ASample: string;
+  ACanRun: Boolean): TAtlasDiscoverTry;
+begin
+  if AHasSample then
+  begin
+    Result := TAtlasDiscoverTry.OpenSample;
+  end
+  else if ASample <> '' then
+  begin
+    Result := TAtlasDiscoverTry.NoSample;
+  end
+  else if ACanRun then
+  begin
+    Result := TAtlasDiscoverTry.RunCommand;
+  end
+  else
+  begin
+    Result := TAtlasDiscoverTry.NoCommand;
+  end;
+end;
+
+class function TAtlasDiscoverSteps.Runnable(const AId: string; AFound, AIsAtlas, APalette: Boolean): Boolean;
+begin
+  Result := (AId <> '') and AFound and (AIsAtlas or APalette);
+end;
+
+class function TAtlasDiscoverSteps.EditorIndex(AValue: Integer): Integer;
+begin
+  Result := AValue - 1;
+  if Result < 0 then
+  begin
+    Result := 0;
+  end;
+end;
+
+class function TAtlasDiscoverSteps.AfterBlock(const ANext, AId: string): string;
+begin
+  Result := ANext;
+  if SameText(ANext, AId) then
+  begin
+    Result := '';
+  end;
 end;
 
 end.

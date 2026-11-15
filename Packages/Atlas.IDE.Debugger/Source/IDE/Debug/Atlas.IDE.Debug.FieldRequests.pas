@@ -13,7 +13,7 @@ interface
 
 uses
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session;
 
 type
@@ -24,7 +24,7 @@ type
   public const
     cTimeoutMs = 3000;
   private
-    FThreads: TList<TThread>;
+    FThreads: TAtlasWorkerSlot;
   public
     constructor Create;
     /// <summary>Wartet laufende Anfragen ab.</summary>
@@ -68,7 +68,7 @@ end;
 constructor TAtlasIdeDebugFieldRequests.Create;
 begin
   inherited Create;
-  FThreads := TList<TThread>.Create;
+  FThreads := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasIdeDebugFieldRequests.Destroy;
@@ -82,17 +82,14 @@ begin
 end;
 
 procedure TAtlasIdeDebugFieldRequests.Reap(AWait: Boolean);
-var
-  mIndex: Integer;
 begin
-  for mIndex := FThreads.Count - 1 downto 0 do
+  if AWait then
   begin
-    if AWait or FThreads[mIndex].Finished then
-    begin
-      FThreads[mIndex].WaitFor;
-      FThreads[mIndex].Free;
-      FThreads.Delete(mIndex);
-    end;
+    FThreads.Stop(TAtlasWorkerSlot.cWaitForever);
+  end
+  else
+  begin
+    FThreads.Prune;
   end;
 end;
 
@@ -103,7 +100,6 @@ var
   mArrived: TAtlasDebugFieldsArrived;
   mWorker: TThread;
 begin
-  Reap(False);
   mFileName := AFileName;
   mExpression := AExpression;
   mArrived := AArrived;
@@ -112,9 +108,7 @@ begin
     begin
       Deliver(mArrived, Query(ASession, mFileName, ALine, mExpression, AWithProperties));
     end);
-  mWorker.FreeOnTerminate := False;
-  FThreads.Add(mWorker);
-  mWorker.Start;
+  FThreads.Start(mWorker);
 end;
 
 class function TAtlasIdeDebugFieldRequests.Query(ASession: TLspSession; const AFileName: string; ALine: Integer;

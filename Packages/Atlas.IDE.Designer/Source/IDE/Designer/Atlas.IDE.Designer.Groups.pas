@@ -132,6 +132,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Deadline;
 
@@ -647,12 +648,15 @@ var
   mRoot: TComponent;
   mSelected: TArray<TComponent>;
   mName: string;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
   mSelected := TAtlasDesignerAccess.Selection(mEditor, mRoot);
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mSelected);
   if (Length(mSelected) < TAtlasDesignerGroups.cMinMembers) or
     not TAtlasDesignerGroups.SameParent(ParentNames(mSelected)) then
   begin
@@ -663,6 +667,11 @@ begin
   if not InputQuery(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsTitle),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerGroupsPrompt), mName) or (Trim(mName) = '') then
   begin
+    Exit;
+  end;
+  if not mKept.Holds then
+  begin
+    Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
   KeepUndo(mEditor.FileName);

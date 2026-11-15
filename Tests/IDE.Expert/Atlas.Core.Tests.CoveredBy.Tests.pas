@@ -33,13 +33,25 @@ type
     procedure TestUnitHasFixtures;
     [Test]
     procedure StaleKeysReadEachFileOnce;
+    [Test]
+    procedure AllTestsInOrderOfMethods;
+    [Test]
+    procedure AskStepSkipWaitTestUnitAsk;
+    [Test]
+    procedure HeaderShowsShortName;
+    [Test]
+    procedure CountAndClickFollowTests;
+    [Test]
+    procedure ToneAndHitIndex;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Types,
   System.JSON,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Text.DUnitX,
   Atlas.Core.Tests.Run,
@@ -238,6 +250,93 @@ begin
   Assert.AreEqual('stale:U.pas', mKeys[0]);
   Assert.AreEqual('stale:V.pas', mKeys[1]);
   Assert.AreEqual(0, Integer(Length(TAtlasCoveredBy.StaleKeysOf(mTests, nil, nil))));
+end;
+
+procedure TAtlasCoveredByTests.AllTestsInOrderOfMethods;
+var
+  mUnit: TAtlasCoveredUnit;
+  mTests: TArray<TAtlasCoveredTest>;
+begin
+  mUnit := Default(TAtlasCoveredUnit);
+  SetLength(mUnit.Methods, 3);
+  mUnit.Methods[0].Tests := TArray<TAtlasCoveredTest>.Create(Covered('U.F.Eins'), Covered('U.F.Zwei'));
+  mUnit.Methods[2].Tests := TArray<TAtlasCoveredTest>.Create(Covered('U.F.Drei'));
+  mTests := mUnit.AllTests;
+  Assert.AreEqual(3, Integer(Length(mTests)));
+  Assert.AreEqual('U.F.Eins', mTests[0].Name);
+  Assert.AreEqual('U.F.Zwei', mTests[1].Name);
+  Assert.AreEqual('U.F.Drei', mTests[2].Name);
+  Assert.AreEqual(0, Integer(Length(Default(TAtlasCoveredUnit).AllTests)));
+end;
+
+procedure TAtlasCoveredByTests.AskStepSkipWaitTestUnitAsk;
+const
+  cTestUnit =
+    'unit Basis.Tests;'#13#10'interface'#13#10'uses DUnitX.TestFramework;'#13#10'type'#13#10 +
+    '  [TestFixture]'#13#10'  TBasisTests = class'#13#10'  public'#13#10'    [Test]'#13#10'    procedure Eins;'#13#10 +
+    '  end;'#13#10'implementation'#13#10'procedure TBasisTests.Eins;'#13#10'begin'#13#10'end;'#13#10'end.';
+  cText = 'unit Basis;'#13#10'interface'#13#10'implementation'#13#10'end.';
+var
+  mAsked: TAtlasCoveredByAsked;
+  mKey, mFile: string;
+begin
+  mKey := TAtlasCoveredBy.AskKey(2, True);
+  Assert.AreNotEqual(mKey, TAtlasCoveredBy.AskKey(2, False), 'private Methoden ändern die Kennung');
+  Assert.AreNotEqual(mKey, TAtlasCoveredBy.AskKey(1, True), 'die Tiefe ändert die Kennung');
+  mAsked := Default(TAtlasCoveredByAsked);
+  mFile := 'C:\P\Basis.pas';
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Ask,
+    TAtlasCoveredBy.AskStep(mAsked, mFile, cText, mKey, 0), 'nie gefragt');
+  mAsked.FileName := mFile;
+  mAsked.Text := cText;
+  mAsked.Key := mKey;
+  mAsked.At := 1;
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Skip,
+    TAtlasCoveredBy.AskStep(mAsked, LowerCase(mFile), cText, mKey, 0), 'derselbe Stand');
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Ask,
+    TAtlasCoveredBy.AskStep(mAsked, mFile, cText + ' ', mKey, 0), 'Text geändert');
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Ask,
+    TAtlasCoveredBy.AskStep(mAsked, mFile, cText, TAtlasCoveredBy.AskKey(1, True), 0), 'Einstellung geändert');
+  // Ohne Server: erst nach der Pause.
+  mAsked.FileName := '';
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Wait,
+    TAtlasCoveredBy.AskStep(mAsked, mFile, cText, mKey, TAtlasCoveredBy.cRetryMs - 1));
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.Ask,
+    TAtlasCoveredBy.AskStep(mAsked, mFile, cText, mKey, TAtlasCoveredBy.cRetryMs));
+  Assert.AreEqual<TAtlasCoveredByAsk>(TAtlasCoveredByAsk.TestUnit,
+    TAtlasCoveredBy.AskStep(mAsked, 'C:\P\Basis.Tests.pas', cTestUnit, mKey, TAtlasCoveredBy.cRetryMs));
+end;
+
+procedure TAtlasCoveredByTests.HeaderShowsShortName;
+begin
+  Assert.IsTrue(TAtlasCoveredBy.HeaderShows('TBaseline.Match', '    function Match(const A: string): Boolean;'));
+  Assert.IsTrue(TAtlasCoveredBy.HeaderShows('Pruefe', 'procedure PRUEFE;'), 'ohne Klasse, Groß/klein egal');
+  Assert.IsFalse(TAtlasCoveredBy.HeaderShows('TBaseline.Match', '    procedure Anderes;'));
+end;
+
+procedure TAtlasCoveredByTests.CountAndClickFollowTests;
+begin
+  Assert.AreEqual<TAtlasCoveredByCount>(TAtlasCoveredByCount.None, TAtlasCoveredBy.CountOf(0));
+  Assert.AreEqual<TAtlasCoveredByCount>(TAtlasCoveredByCount.One, TAtlasCoveredBy.CountOf(1));
+  Assert.AreEqual<TAtlasCoveredByCount>(TAtlasCoveredByCount.Many, TAtlasCoveredBy.CountOf(2));
+  Assert.AreEqual<TAtlasCoveredByClick>(TAtlasCoveredByClick.SwitchTestUnit,
+    TAtlasCoveredBy.ClickOf(0, True));
+  Assert.AreEqual<TAtlasCoveredByClick>(TAtlasCoveredByClick.List, TAtlasCoveredBy.ClickOf(1, True));
+  Assert.AreEqual<TAtlasCoveredByClick>(TAtlasCoveredByClick.Run, TAtlasCoveredBy.ClickOf(3, False));
+end;
+
+procedure TAtlasCoveredByTests.ToneAndHitIndex;
+var
+  mColors: TAtlasColors;
+begin
+  mColors := Default(TAtlasColors);
+  mColors.Error := 1;
+  mColors.Muted := 4;
+  Assert.AreEqual(9, Integer(TAtlasCoveredBy.ToneOf(mColors, 9, Default(TAtlasTestTally))), 'ohne Ergebnis');
+  Assert.AreEqual(1, Integer(TAtlasCoveredBy.ToneOf(mColors, 9, Tally(1, 0, 1))), 'rot');
+  Assert.AreEqual(1, TAtlasCoveredBy.HitIndex(TArray<TRect>.Create(TRect.Create(0, 0, 0, 0),
+    TRect.Create(0, 0, 10, 10)), TPoint.Create(0, 0)), 'leere Rechtecke zählen nicht');
+  Assert.AreEqual(-1, TAtlasCoveredBy.HitIndex(nil, TPoint.Create(0, 0)));
 end;
 
 initialization
