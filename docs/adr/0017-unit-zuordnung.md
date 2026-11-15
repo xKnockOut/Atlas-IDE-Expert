@@ -102,6 +102,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyStroke` | `Core/Commands/Atlas.Core.Commands.KeyStroke.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuSlots` | `Core/Commands/Atlas.Core.Commands.MenuSlots.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuContext` | `Core/Commands/Atlas.Core.Commands.MenuContext.pas` | Ordner `Core/Commands` |
@@ -109,7 +110,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Commands.Palette` | `Core/Commands/Atlas.Core.Commands.Palette.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.SettingsPalette` | `Core/Commands/Atlas.Core.Commands.SettingsPalette.pas` | Ordner `Core/Commands`; Einstellungen mit @ in der Befehlspalette (#1884) |
 | `Atlas.Core.Commands.QuickOpen` | `Core/Commands/Atlas.Core.Commands.QuickOpen.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.QuickOpenTarget` | `Core/Commands/Atlas.Core.Commands.QuickOpenTarget.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.ShortcutTips` | `Core/Commands/Atlas.Core.Commands.ShortcutTips.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.ShortcutTable` | `Core/Commands/Atlas.Core.Commands.ShortcutTable.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Tips` | `Core/Commands/Atlas.Core.Commands.Tips.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Usage` | `Core/Commands/Atlas.Core.Commands.Usage.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Completion.Composite` | `Core/Completion/Atlas.Core.Completion.Composite.pas` | Ordner `Core/Completion` |
@@ -346,6 +349,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck.Scan` | `Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
+| `Atlas.Core.Projects.VcsQueries` | `Core/Projects/Atlas.Core.Projects.VcsQueries.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Setup` | `Core/Projects/Atlas.Core.Projects.Setup.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary.Json` | `Core/Projects/Atlas.Core.Projects.Summary.Json.pas` | Ordner `Core/Projects` |

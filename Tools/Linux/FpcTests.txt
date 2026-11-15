@@ -413,6 +413,7 @@ Atlas.Core.Designer.Magnifier.Tests
 Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
+Atlas.Core.Commands.QuickOpenTarget.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests
 Atlas.Core.Debug.Modules.Tests
 Atlas.Core.Debug.Threads.Tests
