@@ -9,7 +9,9 @@ interface
 
 type
   TAtlasCommandsTextId = (AttachCommand, BoardCommand, BoardViewMenu, FlowCommand, FlowViewMenu, BlameIssuesCommand,
-    IssuePreviewCommand, TrackerLoginCommand, CiLoginCommand, TimeOpenCommand);
+    IssuePreviewCommand, TrackerLoginCommand, CiLoginCommand, TimeOpenCommand,
+    // Untermenü im Hauptmenü Atlas.
+    MenuGroupTracker);
 
   TAtlasCommandsStrings = class
   public
@@ -32,7 +34,8 @@ const
      'Issue anzeigen …',
      'Zugang zum Issue-Tracker hinterlegen …',
      'Zugang zum Build-Server hinterlegen …',
-     'Offene Zeitbuchungen …'),
+     'Offene Zeitbuchungen …',
+     'Issue-Tracker'),
     ('Attach to issue …',
      'Board',
      'Board',
@@ -42,7 +45,8 @@ const
      'Show issue…',
      'Store issue tracker access …',
      'Store build server access …',
-     'Pending time entries …'));
+     'Pending time entries …',
+     'Issue tracker'));
 
 { TAtlasCommandsStrings }
 

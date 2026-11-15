@@ -608,6 +608,8 @@ type
       write FCodeActions.EditorContextMenuContextual;
     property EditorContextMenuGroups: string read FCodeActions.EditorContextMenuGroups
       write FCodeActions.EditorContextMenuGroups;
+    property AtlasMenuContextual: Boolean read FCodeActions.AtlasMenuContextual
+      write FCodeActions.AtlasMenuContextual;
     property GenerateMenuKey: Integer read FEditingKeys.GenerateMenuKey write FEditingKeys.GenerateMenuKey;
     property GenerateMenuGroups: string read FCodeActions.GenerateMenuGroups write FCodeActions.GenerateMenuGroups;
     property GenerateMenuHidden: string read FCodeActions.GenerateMenuHidden write FCodeActions.GenerateMenuHidden;

@@ -205,7 +205,9 @@ type
     LeaksRatingReturned, LeaksRatingPassed, LeaksRatingFieldFreed, LeaksRatingOwned, LeaksRatingLocalFreed,
     LeaksRatingNotInProgram, LeaksFooter, LeaksFound,
     DebugBannerCreateTest, SettingsDebugHoverExpand, SettingsDebugHoverChanges, SettingsDebugHoverMaxChildren,
-    HoverTreeEvaluate, HoverTreePending, HoverTreeMore, HoverTreeCopy, HoverTreeWatch);
+    HoverTreeEvaluate, HoverTreePending, HoverTreeMore, HoverTreeCopy, HoverTreeWatch,
+    // Untermenü „Haltepunkte“ im Hauptmenü Atlas.
+    MenuGroupBreakpoints);
 
   TAtlasDebugStrings = class
   public
@@ -1101,7 +1103,8 @@ const
      'wird ausgewertet …',
      'weitere %d …',
      'Kopieren',
-     'Beobachten'),
+     'Beobachten',
+     'Haltepunkte'),
     ('Atlas: %s',
      'Shows %s on one line and in the Atlas viewer (#835).',
      'Show with Atlas …',
@@ -1975,7 +1978,8 @@ const
      'evaluating …',
      '%d more …',
      'Copy',
-     'Watch'));
+     'Watch',
+     'Breakpoints'));
 
 { TAtlasDebugStrings }
 

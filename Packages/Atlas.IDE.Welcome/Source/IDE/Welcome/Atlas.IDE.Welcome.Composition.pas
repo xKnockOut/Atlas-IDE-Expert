@@ -239,6 +239,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.MenuGroupWelcome);
+end;
+
 { TAtlasWelcomeModule }
 
 class function TAtlasWelcomeModule.Parts: TArray<IAtlasFeaturePart>;
@@ -292,12 +299,11 @@ end;
 
 function TAtlasWelcomeModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  // Atlas-Start auch unter Ansicht › Atlas; Atlas-Menü mit Trennlinie vor den Einträgen der Seite.
+  // Atlas-Start auch unter Ansicht › Atlas; im Atlas-Menü im Untermenü Willkommensseite.
   Result := [
-    MenuEntry('-', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.WelcomeStart', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.WelcomeApply', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.WelcomeReset', TAtlasMenuPlace.AtlasMenu),
+    AtlasEntry('Atlas.WelcomeStart'),
+    AtlasEntry('Atlas.WelcomeApply'),
+    AtlasEntry('Atlas.WelcomeReset'),
     MenuEntry('Atlas.WelcomeStart', TAtlasMenuPlace.ViewMenu)];
 end;
 

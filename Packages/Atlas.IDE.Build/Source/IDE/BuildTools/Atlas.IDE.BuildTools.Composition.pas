@@ -7,8 +7,8 @@
 // bei der Registry von Base an und stellt über dessen Scope bereit:
 // - die Teile der Feature-Tabelle (OpenBuild, Tasks, StartProfiles,
 //   CompilerSwitches),
-// - Befehle (Palette), Einträge im Atlas-Menü („Compiler-Schalter“, Untermenü
-//   „Aufgaben“ mit einem Eintrag je Aufgabe),
+// - Befehle (Palette), Einträge im Atlas-Menü (Untermenü „Build“ mit
+//   „Compiler-Schalter“ und einem Eintrag je Aufgabe),
 // - Hörer für Einstellungen und Thema,
 // - für andere Module Startprofile und Projektaufgaben
 //   (IAtlasBuildToolsSource, Atlas.IDE.Contracts.BuildTools); das Ende einer Aufgabe
@@ -92,7 +92,7 @@ uses
 const
   cStartProfileExtra = 'startProfile';
   cCompilerSwitchesExtra = 'compilerSwitches';
-  /// <summary>Kennung der Einträge je Aufgabe im Untermenü „Aufgaben“.</summary>
+  /// <summary>Kennung der Einträge je Aufgabe im Untermenü „Build“.</summary>
   cTaskEntryPrefix = 'Atlas.Task:';
 
 var
@@ -522,18 +522,19 @@ begin
   Result := FActive;
 end;
 
+/// <summary>Eintrag im Untermenü „Build“ des Atlas-Menüs („-“ = Trennlinie).</summary>
 function MenuEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := Default(TAtlasMenuEntry);
   Result.CommandId := ACommandId;
   Result.Place := TAtlasMenuPlace.AtlasMenu;
+  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupBuild);
 end;
 
-/// <summary>Eintrag ohne Befehl im Untermenü „Aufgaben“; ARun nil = ausgegraut.</summary>
+/// <summary>Eintrag ohne Befehl für eine Projektaufgabe im Untermenü „Build“; ARun nil = ausgegraut.</summary>
 function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
 begin
   Result := MenuEntry(AId);
-  Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupTasks);
   Result.Caption := ACaption;
   Result.Run := ARun;
 end;
@@ -564,11 +565,13 @@ var
 begin
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
   Result := [MenuEntry('Atlas.CompilerSwitches')];
-  // Untermenü „Aufgaben“ (#900): ohne Läufer bzw. mit tasks.enabled aus fehlt es; Base fragt bei jedem Öffnen.
+  // Projektaufgaben (#900) hinter einer Trennlinie: ohne Läufer bzw. mit tasks.enabled aus fehlen sie; Base fragt
+  // bei jedem Öffnen.
   if not TasksVisible then
   begin
     Exit;
   end;
+  Result := Result + [MenuEntry('-')];
   mItems := nil;
   TAtlasGuard.Run(TAtlasFeature.Tasks,
     procedure

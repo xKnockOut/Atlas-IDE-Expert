@@ -229,7 +229,7 @@ Settings: `diagnostics.usesCycleLive`, `diagnostics.usesCycleImplementation`
 
 ## Path between symbols
 
-*Atlas › Path between symbols …*, command palette, editor context menu *Path from here to …*; switch: `navigation.symbolPath`.
+*Atlas › Analysis › Path between symbols …*, command palette, editor context menu *Path from here to …*; switch: `navigation.symbolPath`.
 
 - How is `TCustomerForm` connected to `TDatabase`?
 - Atlas finds the shortest chain over uses, inheritance, interface implementations, fields, parameters, results, calls and members

@@ -214,7 +214,7 @@ Einstellungen: `diagnostics.librarySources`
 
 ## Weg zwischen Symbolen
 
-Aufruf: *Atlas › Weg zwischen Symbolen …*, Befehlspalette, Kontextmenü im Editor *Weg von hier nach …*.
+Aufruf: *Atlas › Analyse › Weg zwischen Symbolen …*, Befehlspalette, Kontextmenü im Editor *Weg von hier nach …*.
 
 - Wie hängt `TKundenForm` mit `TDatenbank` zusammen?
 - Atlas findet die kürzeste Kette über uses, Vererbung, Interface-Umsetzungen, Felder, Parameter, Ergebnisse, Aufrufe und Mitglieder.

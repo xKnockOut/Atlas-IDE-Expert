@@ -480,6 +480,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.MenuGroupAnalysis);
+end;
+
 /// <summary>Eintrag unter Ansicht › Atlas mit eigenem Text.</summary>
 function ViewEntry(const ACommandId: string; ACaption: TAtlasAnalysisTextId): TAtlasMenuEntry;
 begin
@@ -526,10 +533,10 @@ end;
 function TAtlasAnalysisModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
-    MenuEntry('Atlas.Architecture', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.Hotspots', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.UnitRelations', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.SymbolPath', TAtlasMenuPlace.AtlasMenu),
+    AtlasEntry('Atlas.Architecture'),
+    AtlasEntry('Atlas.Hotspots'),
+    AtlasEntry('Atlas.UnitRelations'),
+    AtlasEntry('Atlas.SymbolPath'),
     ViewEntry('Atlas.Architecture', TAtlasAnalysisTextId.ArchitectureViewMenu),
     ViewEntry('Atlas.Hotspots', TAtlasAnalysisTextId.HotspotsViewMenu),
     ViewEntry('Atlas.UnitRelations', TAtlasAnalysisTextId.UnitRelationsViewMenu),

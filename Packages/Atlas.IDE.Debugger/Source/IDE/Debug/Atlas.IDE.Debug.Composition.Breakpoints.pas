@@ -401,16 +401,8 @@ end;
 
 function BreakpointMenuEntries: TArray<TAtlasMenuEntry>;
 begin
+  // Die Einträge im Atlas-Menü ordnet Atlas.IDE.Debug.Composition (Untermenü Haltepunkte).
   Result := [
-    MenuEntry('Atlas.CheckBreakpoints', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.MethodBreakpoints', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.MethodBreakpointGroups', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointSetSave', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointSetSwitch', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointsWindow', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointAnchorsOrphans', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointAnchorsUndo', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.BreakpointRules', TAtlasMenuPlace.AtlasMenu),
     // Bis hier ausführen (#851): die ersten beiden nur in einer Debug-Sitzung, der einmalige Haltepunkt immer.
     ContextEntry('Atlas.RunToHere', WhileDebugging),
     ContextEntry('Atlas.RunToHereSkip', WhileDebugging),

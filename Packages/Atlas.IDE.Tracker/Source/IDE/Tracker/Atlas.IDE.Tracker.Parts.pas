@@ -680,6 +680,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuGroupTracker);
+end;
+
 class function TAtlasTrackerParts.MenuEntries: TArray<TAtlasMenuEntry>;
 var
   mBoard, mFlow: TAtlasMenuEntry;
@@ -691,7 +698,7 @@ begin
   mFlow := MenuEntry('Atlas.FlowMap', TAtlasMenuPlace.ViewMenu);
   mFlow.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.FlowViewMenu);
   Result := [
-    MenuEntry('Atlas.IssueAttach', TAtlasMenuPlace.AtlasMenu),
+    AtlasEntry('Atlas.IssueAttach'),
     mBoard,
     mFlow,
     // Issue anlegen (#1268): aus Auswahl bzw. TODO an der Schreibmarke, nur mit issues.create.

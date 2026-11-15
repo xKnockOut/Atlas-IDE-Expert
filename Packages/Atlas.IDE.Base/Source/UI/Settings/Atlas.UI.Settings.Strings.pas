@@ -142,6 +142,8 @@ type
     SettingsEditorContextMenuContextual, SettingsEditorContextMenuGroups, SettingsContextGroupNavigation,
     SettingsContextGroupEdit, SettingsContextGroupAnalysis, SettingsContextGroupFindings, SettingsContextGroupDebug,
     SettingsContextGroupTests, SettingsContextGroupNotes,
+    // Hauptmenü Atlas: nur passende Einträge.
+    SettingsAtlasMenuContextual,
     // Compilermeldungen im Hover erklären (#54).
     SettingsHoverExplainMessages,
     // Beispiel falsch/richtig im Befund-Hover (#145).
@@ -705,6 +707,7 @@ const
      'Debuggen',
      'Tests',
      'Notizen und Lesezeichen',
+     'Menü Atlas: Debuggen und Haltepunkte nur zeigen, wenn ein Projekt offen ist',
      'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“',
      'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)',
      'Teststand in der Statusleiste („Tests 41/42“ mit Ampel für das Testprojekt der aktuellen Datei)'),
@@ -1248,6 +1251,7 @@ const
      'Debugging',
      'Tests',
      'Notes and bookmarks',
+     'Atlas menu: show Debug and Breakpoints only while a project is open',
      'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"',
      'Link "Show example" below findings in the hover (description and example from the rule catalog)',
      'Test status in the status bar ("Tests 41/42" with a traffic light for the test project of the current file)'));

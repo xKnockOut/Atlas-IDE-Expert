@@ -3708,8 +3708,8 @@
     },
     "tasks": {
       "type": "array",
-      "description": "Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Aufgaben, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}.",
-      "x-description-en": "Project tasks (#900): commands of the project that the plugin starts via command palette, menu Atlas › Tasks, key, status field or quick action; the output goes to the tab \"Atlas Tasks\", detected locations as findings in the problem list and editor. Project before global for the same name. Variables in command, args, cwd and env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}.",
+      "description": "Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Build, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}.",
+      "x-description-en": "Project tasks (#900): commands of the project that the plugin starts via command palette, menu Atlas › Build, key, status field or quick action; the output goes to the tab \"Atlas Tasks\", detected locations as findings in the problem list and editor. Project before global for the same name. Variables in command, args, cwd and env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}.",
       "items": {
         "type": "object",
         "additionalProperties": false,

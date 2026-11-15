@@ -51,7 +51,9 @@ type
     SettingsSearchReplaceBar, SettingsSearchRegex, SettingsSearchHistory, SettingsSearchMultiFile,
     SettingsSearchFromFirst, SettingsQuery,
     UnitSearchGroupProject, UnitSearchGroupFolder, UnitSearchGroupNone, UnitSearchOriginActive,
-    UnitSearchOriginGroup, UnitSearchOriginSearchPath, UnitSearchOriginLibrary);
+    UnitSearchOriginGroup, UnitSearchOriginSearchPath, UnitSearchOriginLibrary,
+    // Untermenü im Hauptmenü Atlas.
+    MenuGroupUnits);
 
   TAtlasSearchStrings = class
   public
@@ -275,7 +277,8 @@ const
      'Aktives Projekt',
      'Projektgruppe',
      'Suchpfad',
-     'Bibliothek'),
+     'Bibliothek',
+     'Units und Abfragen'),
     ('IDE dialog Search units',
      'Search unit …  p:project  t:form  -t:test',
      'Unit',
@@ -483,7 +486,8 @@ const
      'Active project',
      'Project group',
      'Search path',
-     'Library'));
+     'Library',
+     'Units and queries'));
 
 { TAtlasSearchStrings }
 

@@ -30,6 +30,8 @@ uses
 type
   TAtlasIdeFlakyTests = class
   private const
+    /// <summary>So lange gilt die ermittelte Liste der Testprojekte für FlakyIn.</summary>
+    cProjectsMs = 5000;
     cFolderName = 'tests-history';
     cKind = 'Testverlauf';
   private
@@ -40,6 +42,10 @@ type
     /// <summary>Testprojekte (Schlüssel klein), deren Datei vorhanden, aber nicht lesbar war: nicht überschreiben.
     /// </summary>
     FKept: TArray<string>;
+    /// <summary>Zeitpunkt (GetTickCount64), zu dem die Verläufe der Testprojekte zuletzt geladen wurden: FlakyIn
+    /// läuft beim Neuladen des Test-Explorers je Testunit; jedes Mal alle Projektquellen nach DUnitX zu lesen,
+    /// hielt die IDE bei großen Gruppen minutenlang an.</summary>
+    FProjectsReadAt: UInt64;
     /// <summary>Verlauf von AProject; beim ersten Mal aus der Datei.</summary>
     function HistoryOf(const AProject: string): TAtlasTestHistory;
     procedure Save(const AProject: string; AHistory: TAtlasTestHistory);
@@ -65,6 +71,7 @@ type
 implementation
 
 uses
+  System.Classes, // TThread.GetTickCount64
   System.SysUtils,
   System.StrUtils,
   System.IOUtils,
@@ -225,10 +232,15 @@ begin
   begin
     Exit;
   end;
-  // Verläufe der Testprojekte der Projektgruppe: nach einem Neustart beim ersten Bedarf aus der Datei.
-  for mProject in TAtlasIdeTestProjects.TestProjects('') do
+  // Verläufe der Testprojekte der Projektgruppe: nach einem Neustart beim ersten Bedarf aus der Datei. Die Liste
+  // der Testprojekte höchstens alle cProjectsMs neu ermitteln (liest jede Projektquelle).
+  if (FProjectsReadAt = 0) or (TThread.GetTickCount64 - FProjectsReadAt >= cProjectsMs) then
   begin
-    HistoryOf(mProject.FileName);
+    for mProject in TAtlasIdeTestProjects.TestProjects('') do
+    begin
+      HistoryOf(mProject.FileName);
+    end;
+    FProjectsReadAt := TThread.GetTickCount64;
   end;
   mKeys := nil;
   for mHistory in FHistories.Values do

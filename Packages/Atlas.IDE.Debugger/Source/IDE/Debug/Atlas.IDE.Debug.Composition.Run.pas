@@ -310,13 +310,8 @@ end;
 
 function RunMenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  Result := [MenuEntry('Atlas.DebugEventLog', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cLogpointCommand, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cLogpointCommand, TAtlasMenuPlace.EditorContext),
-    MenuEntry(cRestartCommand, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cRuntimeReportCommand, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cLaunchGroupsCommand, TAtlasMenuPlace.AtlasMenu)];
-  Result := Result + ProfilerMenuEntries;
+  // Die Einträge im Atlas-Menü ordnet Atlas.IDE.Debug.Composition (Untermenüs Debuggen und Haltepunkte).
+  Result := [MenuEntry(cLogpointCommand, TAtlasMenuPlace.EditorContext)];
 end;
 
 /// <summary>Umschalt+F5 setzt einen Logpunkt, solange debug.logpoints an ist; sonst geht die Taste an die IDE.

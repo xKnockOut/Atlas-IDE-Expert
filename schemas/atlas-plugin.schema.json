@@ -3058,7 +3058,7 @@
       "x-caption": "Projektaufgaben",
       "x-captionEn": "Project tasks",
       "x-control": "Kontrollkästchen",
-      "description": "Aufgaben aus dem Abschnitt „tasks“ von atlas.json anbieten: Befehle „Aufgabe ausführen …“, „Alle Prüfungen ausführen“, „Letzte Aufgabe wiederholen“, Menü Atlas › Aufgaben, Taste je Aufgabe, Statusfeld und Schnellaktion; aus = nichts davon und kein Lauf vor dem Build",
+      "description": "Aufgaben aus dem Abschnitt „tasks“ von atlas.json anbieten: Befehle „Aufgabe ausführen …“, „Alle Prüfungen ausführen“, „Letzte Aufgabe wiederholen“, Menü Atlas › Build, Taste je Aufgabe, Statusfeld und Schnellaktion; aus = nichts davon und kein Lauf vor dem Build",
       "x-issue": "#900",
       "x-parent": "buildTools.enabled"
     },
@@ -5149,6 +5149,18 @@
       "x-page": "Befehle",
       "x-parent": "commands.editorContextMenu.contextual",
       "x-control": "Kontrollkästchen je Art",
+      "x-issue": "#2102"
+    },
+    "AtlasMenuContextual": {
+      "type": "boolean",
+      "default": true,
+      "description": "Hauptmenü Atlas: Einträge mit Bedingung nur zeigen, wenn sie passen; die Untermenüs Debuggen und Haltepunkte erscheinen nur, wenn ein Projekt offen ist. Aus = alle Einträge immer.",
+      "x-key": "commands.atlasMenu.contextual",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Menü Atlas: Debuggen und Haltepunkte nur mit offenem Projekt",
+      "x-captionEn": "Atlas menu: Debug and Breakpoints only with an open project",
       "x-issue": "#2102"
     },
     "Snippets": {

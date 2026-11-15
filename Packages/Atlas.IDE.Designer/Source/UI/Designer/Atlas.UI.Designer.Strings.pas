@@ -131,7 +131,9 @@ type
     UndoChanged, UndoChangedMany, UndoInserted, UndoDeleted, UndoRenamed, UndoMovedMany, UndoSeveral, UndoDefault,
     UndoNothing, UndoNotRestored, UndoMethodMissing, UndoFailed, UndoReasonDelete, UndoReasonMissing,
     UndoReasonClass, UndoReasonValue, UndoReasonInherited, SettingsDesignerUndo,
-    SettingsDesignerUndoSteps);
+    SettingsDesignerUndoSteps,
+    // Untermenü im Hauptmenü Atlas.
+    MenuGroupDesigner);
 
   TAtlasDesignerStrings = class
   public
@@ -660,7 +662,8 @@ const
      '%s nicht hergestellt',
      'geerbt oder in einem Frame',
      'Rückgängig im Designer mit Strg+Z und Strg+Umschalt+Z (experimentell)',
-     'Schritte je Formular'),
+     'Schritte je Formular',
+     'Designer'),
     ('Show or hide non-visual components (Ctrl+H of the IDE)',
      'The IDE offers no showing and hiding of non-visual components here.',
      'Select parent',
@@ -1170,7 +1173,8 @@ const
      '%s not restored',
      'inherited or in a frame',
      'Undo in the designer with Ctrl+Z and Ctrl+Shift+Z (experimental)',
-     'Steps per form'));
+     'Steps per form',
+     'Designer'));
 
 { TAtlasDesignerStrings }
 

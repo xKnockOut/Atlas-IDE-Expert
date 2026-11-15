@@ -24,6 +24,12 @@ type
     procedure AppliesOnlyWithKnownContextAndSetting;
     [Test]
     procedure CountedCaption;
+    /// <summary>Lage des Atlas-Menüs: nur Projekt offen und Debug-Sitzung; Bedingung „Projekt offen“ wirkt.</summary>
+    [Test]
+    procedure MainMenuContextHasProjectAndDebugging;
+    /// <summary>Im Atlas-Menü ohne „Atlas: “ vorn; andere Texte und der nackte Vorsatz bleiben.</summary>
+    [Test]
+    procedure MenuCaptionDropsAtlasPrefix;
     /// <summary>Keine Linie am Anfang, am Ende oder doppelt; Befehle behalten ihre Sichtbarkeit.</summary>
     [Test]
     procedure SeparatorsOnlyBetweenVisibleEntries;
@@ -39,6 +45,12 @@ uses
 function WhileDebugging(const AContext: TAtlasMenuContext): Boolean;
 begin
   Result := AContext.Debugging;
+end;
+
+/// <summary>Bedingung „Projekt offen“ für die Tests.</summary>
+function WithProject(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.ProjectOpen;
 end;
 
 /// <summary>Sichtbarkeit als Text: x = sichtbar, - = aus.</summary>
@@ -103,6 +115,30 @@ procedure TAtlasMenuContextRulesTests.CountedCaption;
 begin
   Assert.AreEqual('Befunde (3)', TAtlasMenuContextRules.CountedCaption('Befunde', 3));
   Assert.AreEqual('Findings', TAtlasMenuContextRules.CountedCaption('Findings', 0));
+end;
+
+procedure TAtlasMenuContextRulesTests.MainMenuContextHasProjectAndDebugging;
+var
+  mContext: TAtlasMenuContext;
+begin
+  mContext := TAtlasMenuContextRules.MainMenu(True, False);
+  Assert.IsTrue(mContext.ProjectOpen);
+  Assert.IsFalse(mContext.Debugging);
+  Assert.AreEqual('', mContext.FileName);
+  Assert.IsTrue(TAtlasMenuContextRules.Applies(True, True, WithProject, mContext), 'mit Projekt');
+  mContext := TAtlasMenuContextRules.MainMenu(False, True);
+  Assert.IsTrue(mContext.Debugging);
+  Assert.IsFalse(TAtlasMenuContextRules.Applies(True, True, WithProject, mContext), 'ohne Projekt');
+  Assert.IsTrue(TAtlasMenuContextRules.Applies(True, False, WithProject, mContext), 'Einstellung aus');
+end;
+
+procedure TAtlasMenuContextRulesTests.MenuCaptionDropsAtlasPrefix;
+begin
+  Assert.AreEqual('Compiler-Schalter', TAtlasMenuContextRules.MenuCaption('Atlas: Compiler-Schalter'));
+  Assert.AreEqual('Atlas-Tests', TAtlasMenuContextRules.MenuCaption('Atlas-Tests'));
+  Assert.AreEqual('Haltepunkte (Atlas) …', TAtlasMenuContextRules.MenuCaption('Haltepunkte (Atlas) …'));
+  Assert.AreEqual('Atlas: ', TAtlasMenuContextRules.MenuCaption('Atlas: '));
+  Assert.AreEqual('', TAtlasMenuContextRules.MenuCaption(''));
 end;
 
 procedure TAtlasMenuContextRulesTests.SeparatorsOnlyBetweenVisibleEntries;

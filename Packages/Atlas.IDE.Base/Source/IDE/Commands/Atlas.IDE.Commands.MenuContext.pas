@@ -10,6 +10,8 @@
 // Die Einstellungen commands.editorContextMenu.contextual (nur passende
 // Einträge) und commands.editorContextMenu.groups (gezeigte Untermenüs) fragt
 // das Kontextmenü hier ab.
+// Das Hauptmenü „Atlas“ fragt MainMenuApplies: Lage aus „Projekt offen“
+// (TAtlasIdeOpenWatch) und „Debug-Sitzung“, nach commands.atlasMenu.contextual.
 
 interface
 
@@ -29,6 +31,9 @@ type
     /// <summary>Passt ein Eintrag mit der Bedingung AWhen? Ohne Lage oder mit abgeschalteter Einstellung immer.
     /// </summary>
     class function Applies(const AWhen: TAtlasMenuWhen): Boolean; static;
+    /// <summary>Passt ein Eintrag des Hauptmenüs „Atlas“ mit der Bedingung AWhen? Lage aus „Projekt offen“ und
+    /// „Debug-Sitzung“, jedes Mal neu gelesen; mit commands.atlasMenu.contextual aus immer.</summary>
+    class function MainMenuApplies(const AWhen: TAtlasMenuWhen): Boolean; static;
     /// <summary>Zeigt commands.editorContextMenu.groups das Untermenü mit der Kennung AKey?</summary>
     class function GroupShown(const AKey: string): Boolean; static;
     /// <summary>Zahl der Befunde der Datei, wenn nur Passendes gezeigt wird und die Lage bekannt ist; sonst 0.
@@ -46,6 +51,7 @@ uses
   Atlas.Core.Settings.ContextMenuGroups,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Commands.EditorContext;
 
 /// <summary>Hat das Modul ein Formular (DFM bzw. FMX im Designer)?</summary>
@@ -110,6 +116,7 @@ begin
       mForm := ModuleHasForm(mView.Buffer.Module);
     end;
     FContext := TAtlasMenuContextRules.Read(mFileName, mText, mForm, Debugging, ProblemsOf(mFileName));
+    FContext.ProjectOpen := TAtlasIdeOpenWatch.ProjectOpen;
     FKnown := True;
   except
     on E: Exception do
@@ -126,6 +133,24 @@ class function TAtlasIdeMenuContext.Applies(const AWhen: TAtlasMenuWhen): Boolea
 begin
   Result := TAtlasMenuContextRules.Applies(FKnown, TAtlasIdeSettings.Current.EditorContextMenuContextual, AWhen,
     FContext);
+end;
+
+class function TAtlasIdeMenuContext.MainMenuApplies(const AWhen: TAtlasMenuWhen): Boolean;
+var
+  mContext: TAtlasMenuContext;
+begin
+  if not Assigned(AWhen) or not TAtlasIdeSettings.Current.AtlasMenuContextual then
+  begin
+    Exit(True);
+  end;
+  Result := True;
+  try
+    mContext := TAtlasMenuContextRules.MainMenu(TAtlasIdeOpenWatch.ProjectOpen, Debugging);
+    Result := TAtlasMenuContextRules.Applies(True, True, AWhen, mContext);
+  except
+    on E: Exception do
+      TAtlasGuard.Log('Atlas menu: cannot read the IDE state: ' + E.Message);
+  end;
 end;
 
 class function TAtlasIdeMenuContext.GroupShown(const AKey: string): Boolean;

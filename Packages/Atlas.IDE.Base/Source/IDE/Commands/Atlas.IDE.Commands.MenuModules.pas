@@ -6,7 +6,11 @@
 // Trennlinien aus „-“); Update baut sie hinter der unsichtbaren Marke bei jedem
 // Öffnen des Menüs neu auf, UpdateView beim Öffnen von Ansicht › Atlas. So kommen
 // und gehen sie mit ihrem Modul (Regel 2); beim Klick wird der Befehl neu gesucht
-// (Regel 3). Ein Untermenü ohne sichtbaren Eintrag fehlt.
+// (Regel 3). Ein Untermenü ohne sichtbaren Eintrag fehlt. Den Namen des Untermenüs
+// liefert das Modul in Section aus seinen Texten (Base kennt keine Modulnamen);
+// Untermenüs stehen in der Reihenfolge ihres ersten Eintrags. Texte der Befehle
+// stehen ohne „Atlas: “ vorn; When blendet Einträge aus, die nicht zur Lage
+// passen (etwa Debuggen ohne Projekt, commands.atlasMenu.contextual).
 
 interface
 
@@ -60,6 +64,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
+  Atlas.Core.Commands.MenuContext,
+  Atlas.IDE.Commands.MenuContext,
   Atlas.IDE.Commands.ShortcutTips;
 
 /// <summary>Einträge der Module für APlace.</summary>
@@ -139,10 +145,13 @@ begin
   else if TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, AEntry.CommandId, mCommand) then
   begin
     Result := TMenuItem.Create(FRoot);
-    Result.Caption := mCommand.Caption;
+    // Im Atlas-Menü ohne „Atlas: “ vorn; die Palette behält den Text des Befehls.
+    Result.Caption := TAtlasMenuContextRules.MenuCaption(mCommand.Caption);
     Result.Tag := Length(FIds);
     Result.OnClick := ItemClick;
-    Result.Visible := TAtlasModuleContributions.IsVisible(mCommand);
+    // Bedingung des Eintrags (etwa „Projekt offen“) nach commands.atlasMenu.contextual.
+    Result.Visible := TAtlasModuleContributions.IsVisible(mCommand) and
+      TAtlasIdeMenuContext.MainMenuApplies(AEntry.When);
     FIds := FIds + [mCommand.Id];
   end
   else if AEntry.Caption <> '' then
@@ -153,6 +162,7 @@ begin
     Result.Tag := Length(FIds);
     Result.OnClick := ItemClick;
     Result.Enabled := Assigned(AEntry.Run);
+    Result.Visible := TAtlasIdeMenuContext.MainMenuApplies(AEntry.When);
     FIds := FIds + [AEntry.CommandId];
   end;
 end;

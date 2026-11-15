@@ -387,17 +387,52 @@ begin
   Result.When := WhileDebugging;
 end;
 
+/// <summary>Ist ein Projekt geladen? Ohne Projekt gibt es nichts zu debuggen.</summary>
+function WithProject(const AContext: TAtlasMenuContext): Boolean;
+begin
+  Result := AContext.ProjectOpen;
+end;
+
+/// <summary>Eintrag im Untermenü ASection des Atlas-Menüs („-“ = Trennlinie); nur mit offenem Projekt.</summary>
+function AtlasEntry(const ACommandId: string; ASection: TAtlasDebugTextId): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasDebugStrings.Text(ASection);
+  Result.When := WithProject;
+end;
+
+/// <summary>Einträge AIds („-“ = Trennlinie) im Untermenü ASection des Atlas-Menüs.</summary>
+function AtlasEntries(const AIds: array of string; ASection: TAtlasDebugTextId): TArray<TAtlasMenuEntry>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AIds));
+  for mIndex := 0 to High(AIds) do
+  begin
+    Result[mIndex] := AtlasEntry(AIds[mIndex], ASection);
+  end;
+end;
+
+/// <summary>Einträge im Atlas-Menü: Untermenü Debuggen (Fenster; Was wartet worauf?; Neu starten und
+/// Startverbünde; Profiler; Bericht einfügen) und Untermenü Haltepunkte, je Gruppe durch Trennlinien getrennt.
+/// </summary>
+function AtlasMenuEntries: TArray<TAtlasMenuEntry>;
+begin
+  Result := AtlasEntries(['Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
+    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
+    'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
+    'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste'],
+    TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
+    '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
+    'Atlas.BreakpointSetSave', 'Atlas.BreakpointSetSwitch', '-', 'Atlas.BreakpointAnchorsOrphans',
+    'Atlas.BreakpointAnchorsUndo'], TAtlasDebugTextId.MenuGroupBreakpoints);
+end;
+
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  Result := [
-    MenuEntry('Atlas.DebugExceptions', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugEvaluate', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugMemory', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugVariables', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugDeadlocks', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugParallelStacks', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugCallStack', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.DebugLeaks', TAtlasMenuPlace.AtlasMenu),
+  Result := AtlasMenuEntries;
+  Result := Result + [
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
     ContextEntry('Atlas.StepFilterSkip'),

@@ -159,8 +159,9 @@ type
   end;
 
   /// <summary>Lage beim Öffnen des Kontextmenüs im Editor: Datei der obersten Editoransicht, ob sie eine DUnitX-
-  /// Testunit ist, Regionen ({$REGION}) oder ein Formular hat, ob ein Prozess debuggt wird, Zahl ihrer Befunde.
-  /// Base liest sie bei jedem Öffnen neu.</summary>
+  /// Testunit ist, Regionen ({$REGION}) oder ein Formular hat, ob ein Prozess debuggt wird, Zahl ihrer Befunde,
+  /// ob ein Projekt geladen ist. Base liest sie bei jedem Öffnen neu. Beim Öffnen des Atlas-Menüs sind nur
+  /// Debugging und ProjectOpen gesetzt.</summary>
   TAtlasMenuContext = record
     FileName: string;
     TestUnit: Boolean;
@@ -168,6 +169,7 @@ type
     HasForm: Boolean;
     Debugging: Boolean;
     ProblemCount: Integer;
+    ProjectOpen: Boolean;
   end;
 
   /// <summary>Passt ein Eintrag im Kontextmenü des Editors zur Lage AContext? Ein Typ für Base und Module.
@@ -181,15 +183,18 @@ type
   end;
 
   /// <summary>Ein Eintrag im Atlas-Menü bzw. im Kontextmenü des Editors (Place): Befehl CommandId (aus einer
-  /// IAtlasCommandSource) im Untermenü Section ('' = oberste Ebene; nur im Atlas-Menü); Text und Sichtbarkeit kommen
-  /// vom Befehl. CommandId „-“ ist eine Trennlinie, sichtbar nur zwischen sichtbaren Einträgen. Unter Ansicht › Atlas
+  /// IAtlasCommandSource) im Untermenü Section ('' = oberste Ebene; im Atlas-Menü der Name des Untermenüs, den das
+  /// Modul aus seinen Texten liefert, etwa „Debuggen“); Text und Sichtbarkeit kommen vom Befehl, im Atlas-Menü ohne
+  /// „Atlas: “ vorn. CommandId „-“ ist eine Trennlinie, sichtbar nur zwischen sichtbaren Einträgen. Unter Ansicht › Atlas
   /// (ViewMenu) ersetzt eine gesetzte Caption den Text des Befehls.
   /// Eintrag ohne Befehl (nur im Atlas-Menü): CommandId ist eine eindeutige Kennung, Caption der Text, Run die
   /// Aktion (nil = ausgegraut), etwa je Projektaufgabe; Base fragt die Einträge bei jedem Öffnen und beim Klick
   /// neu (Regel 3).
   /// Nur im Kontextmenü des Editors: Group ist die feste Kennung des Untermenüs für
   /// commands.editorContextMenu.groups (z. B. „debug“; '' = immer gezeigt), When blendet den Eintrag aus, solange er
-  /// nicht zur Lage passt (nil = passt immer; gilt nur mit commands.editorContextMenu.contextual).</summary>
+  /// nicht zur Lage passt (nil = passt immer; gilt nur mit commands.editorContextMenu.contextual).
+  /// Im Atlas-Menü blendet When den Eintrag ebenso aus (Lage mit Debugging und ProjectOpen; gilt nur mit
+  /// commands.atlasMenu.contextual).</summary>
   TAtlasMenuEntry = record
     CommandId: string;
     Section: string;

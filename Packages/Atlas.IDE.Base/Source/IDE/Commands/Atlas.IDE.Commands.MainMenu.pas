@@ -51,8 +51,13 @@
 // (Befehl oder eigener Eintrag, Untermenü; etwa „Compiler-Schalter“ und das
 // Untermenü „Aufgaben“ des Moduls Build); RootClick baut sie bei jedem Öffnen neu auf, so
 // kommen und gehen sie mit ihrem Modul.
-// Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
-// Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
+// Aufbau: häufige Befehle direkt (Umbenennen, Code-Aktionen, Formatieren,
+// Symbolsuche, Atlas-Prüfung), dann das Untermenü Code (Erzeugen,
+// Methodenreihenfolge), dann die Untermenüs der Module nach ihrer Section
+// (etwa Debuggen, Haltepunkte, Designer, Tests; Debuggen und Haltepunkte nur
+// mit offenem Projekt, commands.atlasMenu.contextual), dann die Untermenüs von
+// Base (Navigation, Suchen, Kopieren, Änderungen, Anzeige mit den Schaltern,
+// Index, Hilfe und Diagnose), am Ende Einstellungen und Optionen.
 
 interface
 
@@ -97,6 +102,8 @@ type
     FFormatItem: TMenuItem;
     /// <summary>„implementation wie Klasse ordnen“ (#660), nur mit editor.methodPlacement.</summary>
     FMethodOrderItem: TMenuItem;
+    /// <summary>Untermenü Code mit Erzeugen und Methodenreihenfolge; fehlt, wenn beide aus sind.</summary>
+    FCodeGroup: TMenuItem;
     /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off.</summary>
     FRegionItems: TArray<TMenuItem>;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
@@ -116,7 +123,8 @@ type
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
-    function AddGroup(AText: TAtlasTextId): TMenuItem;
+    function AddGroup(AText: TAtlasTextId): TMenuItem; overload;
+    function AddGroup(const ACaption: string): TMenuItem; overload;
     /// <summary>„Alle Regionen zu-/aufklappen“ (#1814) nach editor.regionFolds ein- oder ausblenden.</summary>
     procedure UpdateRegionItems;
   public
@@ -262,8 +270,13 @@ end;
 
 function TAtlasMainMenuItems.AddGroup(AText: TAtlasTextId): TMenuItem;
 begin
+  Result := AddGroup(TAtlasStrings.Text(AText));
+end;
+
+function TAtlasMainMenuItems.AddGroup(const ACaption: string): TMenuItem;
+begin
   Result := TMenuItem.Create(FRoot);
-  Result.Caption := TAtlasStrings.Text(AText);
+  Result.Caption := ACaption;
   FRoot.Add(Result);
   FParent := Result;
 end;
@@ -316,6 +329,10 @@ begin
   if FMethodOrderItem <> nil then
   begin
     FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
+  end;
+  if (FCodeGroup <> nil) and (FGenerateItem <> nil) and (FMethodOrderItem <> nil) then
+  begin
+    FCodeGroup.Visible := FGenerateItem.Visible or FMethodOrderItem.Visible;
   end;
   UpdateRegionItems;
   // Gliederung (#537) nach outline.enabled.
@@ -411,16 +428,16 @@ begin
   AddItem(TAtlasTextId.RenameMenu, 0, RenameClick);
   // Editorbefehle (#399) und Ergebnisfenster (#400); Tag wählt den Befehl in EditorClick bzw. ResultsClick.
   AddItem(TAtlasTextId.EditorActions, 0, EditorClick);
-  // Erzeugen-Menü (#719).
-  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
   // Formatieren (#43).
   FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
-  // Methodenrümpfe wie die Klasse ordnen (#660).
-  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
-  // Einträge der Module (#1455), z. B. Architektur und Hotspots der Analyse, Exception-Verlauf und „Auswerten“ des
-  // Debuggers.
+  // Untermenü Code: Erzeugen-Menü (#719), Methodenrümpfe wie die Klasse ordnen (#660).
+  FCodeGroup := AddGroup(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.MenuGroupCode));
+  FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
+  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
+  FParent := FRoot;
+  // Einträge der Module (#1455) in ihren Untermenüs (Section), z. B. Debuggen, Haltepunkte, Designer, Tests.
   mAnchor := AddItem('', 0, nil);
   mAnchor.Visible := False;
   FModules := TAtlasMenuModuleItems.Create(FRoot, mAnchor);

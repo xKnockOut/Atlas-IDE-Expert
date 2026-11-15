@@ -672,6 +672,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im Untermenü „Tests“ des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsEditorMenuGroup);
+end;
+
 /// <summary>Ist die Datei eine DUnitX-Testunit?</summary>
 function InTestUnit(const AContext: TAtlasMenuContext): Boolean;
 begin
@@ -718,19 +725,25 @@ begin
   Result := [
     // Fenster „Atlas-Tests“ (#1776) unter Ansicht › Atlas und im Atlas-Menü.
     MenuEntry('Atlas.TestExplorer', TAtlasMenuPlace.ViewMenu),
-    MenuEntry('Atlas.TestExplorer', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.RunAffectedTests', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.RunStaleTests', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.CompareTestValues', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.LoadTestCoverage', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.ClearTestCoverage', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.MutateUnit', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.MutateChanged', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.CancelMutation', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.ShowSlowestTests', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.ShowFlakyTests', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.CleanApprovalFiles', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.ListUntestedMethods', TAtlasMenuPlace.AtlasMenu),
+    // Untermenü Tests im Atlas-Menü: Fenster; ausführen; Auswertungen; Mutationen; vergleichen; aufräumen.
+    AtlasEntry('Atlas.TestExplorer'),
+    AtlasEntry('-'),
+    AtlasEntry('Atlas.RunAffectedTests'),
+    AtlasEntry('Atlas.RunStaleTests'),
+    AtlasEntry('-'),
+    AtlasEntry('Atlas.ShowSlowestTests'),
+    AtlasEntry('Atlas.ShowFlakyTests'),
+    AtlasEntry('Atlas.LoadTestCoverage'),
+    AtlasEntry('Atlas.ClearTestCoverage'),
+    AtlasEntry('Atlas.ListUntestedMethods'),
+    AtlasEntry('-'),
+    AtlasEntry('Atlas.MutateUnit'),
+    AtlasEntry('Atlas.MutateChanged'),
+    AtlasEntry('Atlas.CancelMutation'),
+    AtlasEntry('-'),
+    AtlasEntry('Atlas.CompareTestValues'),
+    AtlasEntry('-'),
+    AtlasEntry('Atlas.CleanApprovalFiles'),
     // Test am Cursor (#585) im Untermenü „Atlas“ des Editors.
     ContextEntry('Atlas.RunTest'),
     ContextEntry('Atlas.DebugTest'),

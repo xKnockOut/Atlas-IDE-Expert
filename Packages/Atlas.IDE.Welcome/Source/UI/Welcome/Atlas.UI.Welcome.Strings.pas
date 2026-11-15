@@ -121,7 +121,9 @@ type
     BaselineUpdateModuleOff, WelcomeIssuesTab, WelcomeIssuesLast, WelcomeIssuesBranch, WelcomeIssuesStateUnknown,
     WelcomeIssuesHintResume, WelcomeIssuesEmpty, WelcomeIssuesRestorePrompt, WelcomeIssuesSwitchPrompt,
     WelcomeIssuesSwitchFailed, WelcomeIssuesBranchMissing, SettingsWelcomeContinueIssues,
-    SettingsWelcomeContinueIssuesCount);
+    SettingsWelcomeContinueIssuesCount,
+    // Untermenü im Hauptmenü Atlas.
+    MenuGroupWelcome);
 
   TAtlasWelcomeStrings = class
   public
@@ -595,7 +597,8 @@ const
      'Weiterarbeiten: Wechsel auf den Branch %s gescheitert (%s), nur Reiter geöffnet.',
      'Weiterarbeiten: Branch %s nicht mehr vorhanden, nur Reiter.',
      'Reiter „Issues“ (Arbeitsstand je aktivem Issue merken)',
-     'Anzahl der Arbeitsstände je Issue (1–30)'),
+     'Anzahl der Arbeitsstände je Issue (1–30)',
+     'Willkommensseite'),
     ('Good night',
      'Good morning',
      'Good afternoon',
@@ -1053,7 +1056,8 @@ const
      'Continue working: switching to branch %s failed (%s), only the tabs were opened.',
      'Continue working: branch %s no longer exists, only tabs.',
      '"Issues" tab (remember the work state per active issue)',
-     'Number of work states per issue (1–30)'));
+     'Number of work states per issue (1–30)',
+     'Welcome page'));
 
 { TAtlasWelcomeStrings }
 

@@ -75,7 +75,9 @@ type
     RoleUnitRootShort, RoleUnitPreview, RoleUnitOwn, RoleUnitForeign, RoleUnitCreate, RoleUnitCancel,
     RoleUnitNoPrefix, RoleUnitBadPrefix, RoleUnitNoFeature, RoleUnitBadFeature, RoleUnitReservedFeature,
     RoleUnitBadThing, RoleUnitReservedThing, RoleUnitFailed,
-    ArchitectureScopeProject, ArchitectureScopeGroup);
+    ArchitectureScopeProject, ArchitectureScopeGroup,
+    // Untermenü im Hauptmenü Atlas.
+    MenuGroupAnalysis);
 
   TAtlasAnalysisStrings = class
   public
@@ -366,7 +368,8 @@ const
      'Sache: Rollenbezeichner (Contract, Core …) sind reserviert.',
      'Unit nach Architekturrolle: %s',
      'Projekt',
-     'Projektgruppe'),
+     'Projektgruppe',
+     'Analyse'),
     ('Atlas Architecture',
      'Architecture overview',
      'Architecture',
@@ -640,7 +643,8 @@ const
      'Thing: role names (Contract, Core …) are reserved.',
      'Unit by architecture role: %s',
      'Project',
-     'Project group'));
+     'Project group',
+     'Analysis'));
 
 { TAtlasAnalysisStrings }
 

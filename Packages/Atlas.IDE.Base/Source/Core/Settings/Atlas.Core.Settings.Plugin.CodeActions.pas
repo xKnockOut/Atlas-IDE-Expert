@@ -40,6 +40,9 @@ type
     /// <summary>Gezeigte Untermenüs im Kontextmenü Atlas des Editors (commands.editorContextMenu.groups),
     /// kommagetrennt: navigation, edit, analysis, findings, debug, tests, notes.</summary>
     EditorContextMenuGroups: string;
+    /// <summary>Hauptmenü Atlas: Einträge mit Bedingung nur, wenn sie passen, etwa Debuggen und Haltepunkte nur mit
+    /// offenem Projekt (commands.atlasMenu.contextual).</summary>
+    AtlasMenuContextual: Boolean;
     /// <summary>Vorgaben.</summary>
     class function Defaults: TAtlasPluginCodeActionsSettings; static;
     /// <summary>Werte in ihre Grenzen bringen.</summary>
@@ -69,6 +72,7 @@ begin
   Result.GalleryWizards := True;
   Result.EditorContextMenuContextual := True;
   Result.EditorContextMenuGroups := TAtlasContextMenuGroupNames.Text(TAtlasContextMenuGroupNames.cAll);
+  Result.AtlasMenuContextual := True;
 end;
 
 procedure TAtlasPluginCodeActionsSettings.Normalize;
@@ -91,6 +95,7 @@ begin
   AIo.Flag('GalleryWizards', GalleryWizards);
   AIo.Flag('EditorContextMenuContextual', EditorContextMenuContextual);
   AIo.Text('EditorContextMenuGroups', EditorContextMenuGroups);
+  AIo.Flag('AtlasMenuContextual', AtlasMenuContextual);
 end;
 
 end.

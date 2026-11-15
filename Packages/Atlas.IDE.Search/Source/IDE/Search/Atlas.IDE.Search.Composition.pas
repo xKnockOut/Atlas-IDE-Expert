@@ -351,6 +351,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasSearchStrings.Text(TAtlasSearchTextId.MenuGroupUnits);
+end;
+
 function TAtlasSearchModule.Commands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
@@ -382,10 +389,10 @@ end;
 function TAtlasSearchModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [
-    MenuEntry('Atlas.UnitSearch', TAtlasMenuPlace.AtlasMenu),
+    AtlasEntry('Atlas.UnitSearch'),
     // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
-    MenuEntry('Atlas.UnitSearchIde', TAtlasMenuPlace.AtlasMenu),
-    MenuEntry('Atlas.Query', TAtlasMenuPlace.AtlasMenu),
+    AtlasEntry('Atlas.UnitSearchIde'),
+    AtlasEntry('Atlas.Query'),
     MenuEntry('Atlas.Query', TAtlasMenuPlace.ViewMenu)];
 end;
 

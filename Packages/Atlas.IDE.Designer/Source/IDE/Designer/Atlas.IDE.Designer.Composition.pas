@@ -216,6 +216,13 @@ begin
   Result.Place := APlace;
 end;
 
+/// <summary>Eintrag im eigenen Untermenü des Atlas-Menüs („-“ = Trennlinie).</summary>
+function AtlasEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
+  Result.Section := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.MenuGroupDesigner);
+end;
+
 /// <summary>Hat die Unit ein Formular?</summary>
 function WithForm(const AContext: TAtlasMenuContext): Boolean;
 begin
@@ -248,10 +255,11 @@ end;
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
   Result := [ShowInDesignerContextEntry,
-    MenuEntry(cShowCommandId, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cPropertySearchCommandId, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cUsagesCommandId, TAtlasMenuPlace.AtlasMenu),
-    MenuEntry(cSaveLayoutCommandId, TAtlasMenuPlace.AtlasMenu)];
+    AtlasEntry(cShowCommandId),
+    AtlasEntry(cPropertySearchCommandId),
+    AtlasEntry(cUsagesCommandId),
+    AtlasEntry('-'),
+    AtlasEntry(cSaveLayoutCommandId)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

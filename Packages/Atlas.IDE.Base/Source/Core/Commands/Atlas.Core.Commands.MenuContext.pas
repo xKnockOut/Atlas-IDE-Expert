@@ -7,6 +7,9 @@
 // welche hat, die Zahl der Befunde am Untermenü „Befunde“. Dazu Trennlinien
 // nur zwischen sichtbaren Einträgen, weil ausgeblendete Einträge sonst doppelte
 // Linien hinterlassen.
+// Im Hauptmenü „Atlas“ gelten dieselben Bedingungen (commands.atlasMenu.contextual)
+// mit einer Lage aus „Projekt offen“ und „Debug-Sitzung“ (MainMenu); Texte der
+// Befehle stehen dort ohne „Atlas: “ (MenuCaption).
 // Ohne VCL und Open Tools API; die IDE-Seite liest die Lage in
 // Atlas.IDE.Commands.MenuContext.
 
@@ -29,6 +32,11 @@ type
     /// ohne Bedingung immer, sonst nach AWhen.</summary>
     class function Applies(AKnown, AContextual: Boolean; const AWhen: TAtlasMenuWhen;
       const AContext: TAtlasMenuContext): Boolean; static;
+    /// <summary>Lage beim Öffnen des Atlas-Menüs: nur ob ein Projekt geladen ist und ob debuggt wird.</summary>
+    class function MainMenu(AProjectOpen, ADebugging: Boolean): TAtlasMenuContext; static;
+    /// <summary>Text eines Befehls im Atlas-Menü: ohne „Atlas: “ vorn, das dort nichts unterscheidet (die
+    /// Befehlspalette behält den Text des Befehls).</summary>
+    class function MenuCaption(const ACaption: string): string; static;
     /// <summary>Name eines Untermenüs mit Zahl, etwa „Befunde (3)“; ACount 0 = nur der Name.</summary>
     class function CountedCaption(const ACaption: string; ACount: Integer): string; static;
     /// <summary>Sichtbarkeit einer Liste von Einträgen (AIsLine = Trennlinie): Befehle behalten AVisible, eine
@@ -73,6 +81,24 @@ begin
   if AKnown and AContextual and Assigned(AWhen) then
   begin
     Result := AWhen(AContext);
+  end;
+end;
+
+class function TAtlasMenuContextRules.MainMenu(AProjectOpen, ADebugging: Boolean): TAtlasMenuContext;
+begin
+  Result := Default(TAtlasMenuContext);
+  Result.ProjectOpen := AProjectOpen;
+  Result.Debugging := ADebugging;
+end;
+
+class function TAtlasMenuContextRules.MenuCaption(const ACaption: string): string;
+const
+  cPrefix = 'Atlas: ';
+begin
+  Result := ACaption;
+  if StartsStr(cPrefix, Result) and (Length(Result) > Length(cPrefix)) then
+  begin
+    Result := Copy(Result, Length(cPrefix) + 1, MaxInt);
   end;
 end;
 

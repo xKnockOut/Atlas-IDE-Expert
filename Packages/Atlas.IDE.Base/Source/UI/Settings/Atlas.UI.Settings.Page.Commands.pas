@@ -124,6 +124,9 @@ begin
   begin
     FContextGroups[mGroup] := AddCheck(TAtlasSettingsStrings.Text(cTexts[mGroup]));
   end;
+  // Hauptmenü Atlas: Debuggen und Haltepunkte nur mit offenem Projekt.
+  BindCheck('AtlasMenuContextual',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasMenuContextual)));
 end;
 
 procedure TAtlasSettingsCommandsPart.Build;

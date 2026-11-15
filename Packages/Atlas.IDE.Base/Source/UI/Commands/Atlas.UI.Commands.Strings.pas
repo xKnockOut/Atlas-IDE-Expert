@@ -24,7 +24,9 @@ type
     NotificationsTipText, UsesActionMissing, ProblemNoneInFile, QuickOpenPrompt, QuickOpenOriginProject,
     QuickOpenOriginSearchPath, QuickOpenOriginLibrary, QuickOpenLine, QuickOpenLineHint, QuickOpenBuilding,
     QuickOpenNoEditor, FormatCodeNothing, FormatCodeOff, UndoActionFormat, ProblemsViewMenuAtlas,
-    ProblemsViewMenuWindow, ProjectMenuCheck);
+    ProblemsViewMenuWindow, ProjectMenuCheck,
+    // Untermenü „Code“ im Hauptmenü Atlas (Erzeugen, Methodenreihenfolge).
+    MenuGroupCode);
 
   TAtlasCommandsStrings = class
   public
@@ -120,7 +122,8 @@ const
      'Formatieren',
      'Atlas',
      'Prüfung',
-     'Mit Atlas prüfen'),
+     'Mit Atlas prüfen',
+     'Code'),
     ('Project settings (atlas.json)…',
      'Atlas',
      'Options…',
@@ -199,7 +202,8 @@ const
      'Format',
      'Atlas',
      'Findings',
-     'Check with Atlas'));
+     'Check with Atlas',
+     'Code'));
 
 { TAtlasCommandsStrings }
 

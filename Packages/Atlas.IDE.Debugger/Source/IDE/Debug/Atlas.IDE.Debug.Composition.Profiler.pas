@@ -2,8 +2,8 @@
 
 // Modul Debugger, Teil der Komposition: Stichproben-Profiler (#2057). Liefert
 // das Teil der Feature-Tabelle (nur mit debug.profiler), die Befehle
-// „Profil“ (Fenster), „Mit Profil ausführen“ und „Profil starten/beenden“,
-// ihre Einträge im Atlas-Menü und das Weiterreichen von Einstellungen und
+// „Profil“ (Fenster), „Mit Profil ausführen“ und „Profil starten/beenden“
+// (im Atlas-Menü über Atlas.IDE.Debug.Composition) und das Weiterreichen von Einstellungen und
 // Thema; Atlas.IDE.Debug.Composition stellt sie über den Scope des Moduls
 // bereit.
 
@@ -16,7 +16,6 @@ uses
 /// <summary>AScopeOf liefert den Scope des Moduls für Antworten des Servers.</summary>
 function ProfilerParts(const AScopeOf: TFunc<IAtlasModuleScope>): TArray<IAtlasFeaturePart>;
 function ProfilerCommands: TArray<TAtlasModuleCommand>;
-function ProfilerMenuEntries: TArray<TAtlasMenuEntry>;
 procedure ApplyProfilerSettings;
 procedure ProfilerThemeChanged;
 
@@ -87,18 +86,6 @@ begin
       ProfilerVisible),
     ProfilerCommand(cToggleCommand, TAtlasProfileTextId.ProfileToggleCommand, TAtlasIdeDebugProfiler.Toggle,
       ProfilerVisible)];
-end;
-
-function AtlasMenuEntry(const ACommandId: string): TAtlasMenuEntry;
-begin
-  Result := Default(TAtlasMenuEntry);
-  Result.CommandId := ACommandId;
-  Result.Place := TAtlasMenuPlace.AtlasMenu;
-end;
-
-function ProfilerMenuEntries: TArray<TAtlasMenuEntry>;
-begin
-  Result := [AtlasMenuEntry(cWindowCommand), AtlasMenuEntry(cRunCommand), AtlasMenuEntry(cToggleCommand)];
 end;
 
 procedure ApplyProfilerSettings;
