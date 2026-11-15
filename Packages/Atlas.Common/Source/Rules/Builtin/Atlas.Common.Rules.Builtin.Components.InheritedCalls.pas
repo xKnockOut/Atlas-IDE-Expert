@@ -1185,6 +1185,32 @@ var
     end;
   end;
 
+  // Die Klasse ersetzt die gerufene Methode selbst, ohne den Vorfahren aufzurufen (sortierte Menge: das eigene Insert
+  // ist gesperrt, Add fügt über inherited Insert an der sortierten Stelle ein). Dann umgeht inherited sie bewusst;
+  // ruft die eigene Fassung dagegen inherited auf, überspringt der Aufruf ihre Ergänzung und bleibt verdächtig.
+  function BypassesOwn(const AClassName, ACalled: string): Boolean;
+  var
+    mOwn: TMethodImpl;
+    mIgnored: TArray<TSyntaxNode>;
+    mCallsItself: Boolean;
+  begin
+    Result := False;
+    for mOwn in mModel.Methods do
+    begin
+      if SameText(mOwn.ClassName, AClassName) and SameText(mOwn.MethodName, ACalled) and (mOwn.Block <> nil) then
+      begin
+        mIgnored := nil;
+        mCallsItself := False;
+        CollectCalls(mOwn.Block, mIgnored, mCallsItself, ACalled);
+        if mCallsItself then
+        begin
+          Exit(False);
+        end;
+        Result := True;
+      end;
+    end;
+  end;
+
 var
   mMethod: TMethodImpl;
   mInfo: TClassInfo;
@@ -1218,7 +1244,7 @@ begin
     end;
     for mCall in mCalls do
     begin
-      if not Allowed(mPairs, mMethod.MethodName, mCall.Name) then
+      if not BypassesOwn(mMethod.ClassName, mCall.Name) and not Allowed(mPairs, mMethod.MethodName, mCall.Name) then
       begin
         ReportWrongCall(mMethod, mCall, AReport);
       end;

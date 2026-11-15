@@ -701,8 +701,9 @@ const
     '      "group": "find-bugs",',
     '      "description": "In the overridden method Speichern there is inherited Laden(…) instead of inherited Speichern(…), usually after copying a method. Only calls count (inherited Name as a statement ' +
     'or with parentheses); inherited Caption without parentheses may be a property. Silent in constructors (inherited Create(nil), CreateNew), in methods without override and when the method also calls its' +
-    'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Pairs from the option allowed stay silent. High confidence. Quick fix: replace the name with the method' +
-    '''s own, when the number of arguments matches its parameters.",',
+    'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Also silent when the class overrides the called method itself without calling the ancestor there: inher' +
+    'ited then bypasses it on purpose (sorted set: its own Insert is blocked, Add inserts through inherited Insert at the sorted position). Pairs from the option allowed stay silent. High confidence. Quick' +
+    ' fix: replace the name with the method''s own, when the number of arguments matches its parameters.",',
     '      "bad": "procedure TKundenForm.Speichern;\nbegin\n  inherited Laden;\n  Protokollieren;\nend;",',
     '      "good": "procedure TKundenForm.Speichern;\nbegin\n  inherited Speichern;\n  Protokollieren;\nend;",',
     '      "options": [',
@@ -1309,8 +1310,9 @@ const
     'hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, Create' +
     'Pen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or captu' +
     'ring it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (se' +
-    'e pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the c' +
-    'lose call, or append the close call when the open is the last statement.",',
+    'e pair-without-finally) do not count. The same holds when a flag carries the result, including a second attempt only on failure (Ok := OpenThreadToken(…); if not Ok then Ok := OpenProcessToken(…); if ' +
+    'Ok then CloseHandle(…)), and when an earlier condition that has not changed since is repeated (if IsNT then open; … if IsNT then close). The option pairs adds your own pairs. Medium confidence. Quick ' +
+    'fix when the handle is never closed: wrap the statements after the open in try … finally with the close call, or append the close call when the open is the last statement.",',
     '      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",',
     '      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil' +
     ');\nfinally\n  CloseHandle(H);\nend;",',
