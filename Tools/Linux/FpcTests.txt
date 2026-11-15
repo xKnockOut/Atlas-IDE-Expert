@@ -380,6 +380,14 @@ Atlas.Common.Updates.Tests
 Atlas.Core.Assistants.EditPlan.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
+Atlas.Core.Outline.CrumbPlan.Tests
+Atlas.Core.Editor.StickyPlan.Tests
+Atlas.Core.Problems.Plan.Tests
+Atlas.Core.Status.FieldPlan.Tests
+Atlas.Core.EditorToolbar.Plan.Tests
+Atlas.Core.Editor.PeekPlan.Tests
+Atlas.Core.Settings.NodeScope.Tests
+Atlas.Core.Problems.Findings.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests

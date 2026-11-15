@@ -21,6 +21,11 @@ uses
 
 type
   TAtlasSettingsNodeScope = record
+  public const
+    /// <summary>Vorsilbe der Schlüssel, die nur die Seite der Versionsverwaltung kennt („VcsProjects“).</summary>
+    cVcsPrefix = 'Vcs';
+    cVcsSwitch = 'vcs';
+  public
     /// <summary>Id des Moduls (z. B. „atlas.tests“); '' = Base.</summary>
     ModuleId: string;
     /// <summary>Modulschalter (x-module) des Moduls, z. B. „tests“; '' ohne.</summary>
@@ -36,6 +41,10 @@ type
     /// darüber, der einen hat; '' = Base.</summary>
     class function ModuleOf(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
       const AName: string): string; static;
+    /// <summary>Modulschalter des Knotens, in dem die Einstellung AKey steht (Name oder Schlüssel im Katalog);
+    /// Schlüssel, die nur die Seite kennt, nach ihrer Vorsilbe; '' = Base.</summary>
+    class function SwitchOfKey(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
+      const AKey: string): string; static;
   end;
 
   TAtlasSettingsMerge = class
@@ -119,6 +128,28 @@ begin
     end;
   end;
   Result := '';
+end;
+
+class function TAtlasSettingsNodeScope.SwitchOfKey(ACatalog: TAtlasSettingsCatalog; AGroups: TAtlasSettingsGroups;
+  const AKey: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  if ACatalog.IndexOfName(AKey) >= 0 then
+  begin
+    Result := ModuleOf(ACatalog, AGroups, AKey);
+    Exit;
+  end;
+  mIndex := ACatalog.IndexOfKey(AKey);
+  if mIndex >= 0 then
+  begin
+    Result := ModuleOf(ACatalog, AGroups, ACatalog[mIndex].Name);
+  end
+  else if AKey.StartsWith(cVcsPrefix, True) then
+  begin
+    Result := cVcsSwitch;
+  end;
 end;
 
 { TAtlasSettingsMerge }

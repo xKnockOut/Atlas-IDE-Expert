@@ -212,6 +212,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Pairs` | `Core/Editor/Atlas.Core.Editor.Pairs.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.PatternContinuation` | `Core/Editor/Atlas.Core.Editor.PatternContinuation.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Peek` | `Core/Editor/Atlas.Core.Editor.Peek.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.PeekPlan` | `Core/Editor/Atlas.Core.Editor.PeekPlan.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Reassigned` | `Core/Editor/Atlas.Core.Editor.Reassigned.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Recursion` | `Core/Editor/Atlas.Core.Editor.Recursion.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.RoutineNesting` | `Core/Editor/Atlas.Core.Editor.RoutineNesting.pas` | Ordner `Core/Editor` |
@@ -222,6 +223,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.SmartIndent` | `Core/Editor/Atlas.Core.Editor.SmartIndent.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SmartPaste` | `Core/Editor/Atlas.Core.Editor.SmartPaste.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SnapshotPolicy` | `Core/Editor/Atlas.Core.Editor.SnapshotPolicy.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.StickyPlan` | `Core/Editor/Atlas.Core.Editor.StickyPlan.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.StatementCompletion` | `Core/Editor/Atlas.Core.Editor.StatementCompletion.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.TestUnit` | `Core/Editor/Atlas.Core.Editor.TestUnit.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Unwrap` | `Core/Editor/Atlas.Core.Editor.Unwrap.pas` | Ordner `Core/Editor` |
@@ -232,6 +234,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.EditorToolbar.Layout` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.Layout.pas` | Ordner `Core/EditorToolbar` |
 | `Atlas.Core.EditorToolbar.ReturnPoint` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.ReturnPoint.pas` | Ordner `Core/EditorToolbar` |
 | `Atlas.Core.EditorToolbar.Sections` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.Sections.pas` | Ordner `Core/EditorToolbar` |
+| `Atlas.Core.EditorToolbar.Plan` | `Core/EditorToolbar/Atlas.Core.EditorToolbar.Plan.pas` | Ordner `Core/EditorToolbar` |
 | `Atlas.Core.Files.Adapters.FolderWatcher` | `Core/Files/Atlas.Core.Files.Adapters.FolderWatcher.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.Contract` | `Core/Files/Atlas.Core.Files.Contract.pas` | Ordner `Core/Files` |
 | `Atlas.Core.Files.DataFile` | `Core/Files/Atlas.Core.Files.DataFile.pas` | Ordner `Core/Files` |
@@ -310,6 +313,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Notifications.Contract` | `Core/Notifications/Atlas.Core.Notifications.Contract.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Notifications.Sources` | `Core/Notifications/Atlas.Core.Notifications.Sources.pas` | Ordner `Core/Notifications` |
 | `Atlas.Core.Outline.Breadcrumbs` | `Core/Outline/Atlas.Core.Outline.Breadcrumbs.pas` | Ordner `Core/Outline` |
+| `Atlas.Core.Outline.CrumbPlan` | `Core/Outline/Atlas.Core.Outline.CrumbPlan.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.Conditionals` | `Core/Outline/Atlas.Core.Outline.Conditionals.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.CrumbMenu` | `Core/Outline/Atlas.Core.Outline.CrumbMenu.pas` | Ordner `Core/Outline` |
 | `Atlas.Core.Outline.DeclarationBlocks` | `Core/Outline/Atlas.Core.Outline.DeclarationBlocks.pas` | Ordner `Core/Outline` |
@@ -338,6 +342,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Store` | `Core/Problems/Atlas.Core.Problems.Store.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.AtCaret` | `Core/Problems/Atlas.Core.Problems.AtCaret.pas` | Ordner `Core/Problems`: Befund unter der Schreibmarke, ohne IDE testbar (#1967) |
+| `Atlas.Core.Problems.Plan` | `Core/Problems/Atlas.Core.Problems.Plan.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
@@ -358,6 +363,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Results.CallDiagramTemplate` | `Core/Results/Atlas.Core.Results.CallDiagramTemplate.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.DataFlow` | `Core/Results/Atlas.Core.Results.DataFlow.pas` | Ordner `Core/Results` |
 | `Atlas.Core.Results.Model` | `Core/Results/Atlas.Core.Results.Model.pas` | Ordner `Core/Results` |
+| `Atlas.Core.Results.Plan` | `Core/Results/Atlas.Core.Results.Plan.pas` | Ordner `Core/Results` |
 | `Atlas.Core.SavedPlaces.Contract` | `Core/SavedPlaces/Atlas.Core.SavedPlaces.Contract.pas` | Gemerkte Stellen als Daten und Quelle (Lesezeichen → Willkommensseite), #1456 |
 | `Atlas.Core.Settings.Baseline` | `Core/Settings/Atlas.Core.Settings.Baseline.pas` | Format der Baseline-Datei; Einstellungsdialog und Stand der Datei, #1455 |
 | `Atlas.Core.Settings.Catalog` | `Core/Settings/Atlas.Core.Settings.Catalog.pas` | Ordner `Core/Settings` |
@@ -425,6 +431,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Status.Lines` | `Core/Status/Atlas.Core.Status.Lines.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Registry` | `Core/Status/Atlas.Core.Status.Registry.pas` | Ordner `Core/Status` |
 | `Atlas.Core.Status.Server` | `Core/Status/Atlas.Core.Status.Server.pas` | Ordner `Core/Status` |
+| `Atlas.Core.Status.FieldPlan` | `Core/Status/Atlas.Core.Status.FieldPlan.pas` | Ordner `Core/Status` |
 | `Atlas.Core.StatusBar.Content` | `Core/StatusBar/Atlas.Core.StatusBar.Content.pas` | Ordner `Core/StatusBar` |
 | `Atlas.Core.StatusBar.Layout` | `Core/StatusBar/Atlas.Core.StatusBar.Layout.pas` | Ordner `Core/StatusBar` |
 | `Atlas.Core.Style.Color` | `Core/Style/Atlas.Core.Style.Color.pas` | Ordner `Core/Style` |
@@ -658,6 +665,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Outline.SectionEdit` | `IDE/Outline/Atlas.IDE.Outline.SectionEdit.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Service` | `IDE/Outline/Atlas.IDE.Outline.Service.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.StickyScroll` | `IDE/Outline/Atlas.IDE.Outline.StickyScroll.pas` | Ordner `IDE/Outline` |
+| `Atlas.IDE.Outline.StickyPaint` | `IDE/Outline/Atlas.IDE.Outline.StickyPaint.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Outline.Window` | `IDE/Outline/Atlas.IDE.Outline.Window.pas` | Ordner `IDE/Outline` |
 | `Atlas.IDE.Problems.Caret` | `IDE/Problems/Atlas.IDE.Problems.Caret.pas` | Ordner `IDE/Problems`: Befund unter der Einfügemarke für F1 (#1886) |
 | `Atlas.IDE.Problems.Controller` | `IDE/Problems/Atlas.IDE.Problems.Controller.pas` | Ordner `IDE/Problems` |
