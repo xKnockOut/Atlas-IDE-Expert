@@ -268,7 +268,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
   FActions := TClassActionContext.Default;
   FActions.Index := AContext.Index;
@@ -868,7 +868,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FFileName := AContext.FileName;
   if FFileName = '' then
   begin
@@ -1400,7 +1400,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAllowed := TRuleOptions.Strings(AContext.Options, 'allowAttributes', nil);
 end;
 
