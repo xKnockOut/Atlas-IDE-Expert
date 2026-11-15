@@ -207,7 +207,8 @@ begin
     for mIndex := 0 to mCount - 1 do
     begin
       mProp := mList[mIndex];
-      if (mProp.SetProc <> nil) and not TAtlasDuplicateRow.SkippedProperty(string(mProp.Name)) and IsStoredProp(ASource, mProp) then
+      if (mProp.SetProc <> nil) and not TAtlasDuplicateRow.SkippedProperty(string(mProp.Name)) and
+        IsStoredProp(ASource, mProp) then
       begin
         CopyProp(ASource, ATarget, mProp, AShare);
       end;
