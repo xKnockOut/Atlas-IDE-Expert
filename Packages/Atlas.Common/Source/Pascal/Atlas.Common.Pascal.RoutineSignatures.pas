@@ -31,7 +31,8 @@ type
   TRoutineSignatures = class
   public
     /// <summary>Kopf bis zum ersten ";" außerhalb von Klammern und Typparameterlisten, ohne doppelte
-    /// Leerzeichen; ARest ist der Text dahinter (Direktiven).</summary>
+    /// Leerzeichen; ARest ist der Text dahinter (Direktiven) ohne Kommentare: virtual; // abstract; ist nicht
+    /// abstrakt. Compilerdirektiven ({$IFDEF …}) bleiben stehen.</summary>
     class function Head(const AText: string; out ARest: string): string; static;
     /// <summary>Parameterliste des Kopfs AHead ohne Leerzeichen und Standardwerte in Kleinbuchstaben, ein
     /// Parameter je Eintrag, z. B. "(consta:integer;b:string)"; '' ohne Klammern und bei "()".</summary>
@@ -230,6 +231,58 @@ end;
 
 { TRoutineSignatures }
 
+/// <summary>AText ohne Kommentare (//, { }, (* *)); Zeichenketten und Compilerdirektiven bleiben.</summary>
+function WithoutComments(const AText: string): string;
+var
+  mIndex, mStop: Integer;
+begin
+  Result := '';
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    mStop := mIndex;
+    if AText[mIndex] = '''' then
+    begin
+      mStop := PosEx('''', AText, mIndex + 1);
+      if mStop = 0 then
+      begin
+        mStop := Length(AText);
+      end;
+      Result := Result + Copy(AText, mIndex, mStop - mIndex + 1);
+    end
+    else if Copy(AText, mIndex, 2) = '//' then
+    begin
+      mStop := PosEx(#10, AText, mIndex);
+      if mStop = 0 then
+      begin
+        mStop := Length(AText);
+      end;
+      Result := Result + ' ';
+    end
+    else if (Copy(AText, mIndex, 2) = '(*') or ((AText[mIndex] = '{') and (Copy(AText, mIndex, 2) <> '{$')) then
+    begin
+      if AText[mIndex] = '{' then
+      begin
+        mStop := PosEx('}', AText, mIndex);
+      end
+      else
+      begin
+        mStop := PosEx('*)', AText, mIndex + 2) + 1;
+      end;
+      if mStop <= 1 then
+      begin
+        mStop := Length(AText);
+      end;
+      Result := Result + ' ';
+    end
+    else
+    begin
+      Result := Result + AText[mIndex];
+    end;
+    mIndex := mStop + 1;
+  end;
+end;
+
 class function TRoutineSignatures.Head(const AText: string; out ARest: string): string;
 var
   mIndex, mDepth, mAngles: Integer;
@@ -265,7 +318,7 @@ begin
     Inc(mIndex);
   end;
   Result := Trim(Copy(AText, 1, mIndex - 1));
-  ARest := Copy(AText, mIndex + 1, MaxInt);
+  ARest := WithoutComments(Copy(AText, mIndex + 1, MaxInt));
   while Pos('  ', Result) > 0 do
   begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);

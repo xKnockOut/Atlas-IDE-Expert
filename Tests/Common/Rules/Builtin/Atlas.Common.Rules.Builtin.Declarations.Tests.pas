@@ -40,6 +40,8 @@ type
     [Test]
     procedure ImplementedMethodIsSilent;
     [Test]
+    procedure CommentedOutAbstractIsNotAbstract;
+    [Test]
     procedure MissingOverloadIsReported;
     [Test]
     procedure AbstractAndExternalAreSilent;
@@ -273,6 +275,16 @@ begin
     ClassUnit('    procedure Lauf(A: Integer);', 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'));
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
     ClassUnit('    procedure Lauf(A: Integer);', 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'));
+end;
+
+procedure TDeclarationRulesTests.CommentedOutAbstractIsNotAbstract;
+begin
+  // virtual;// abstract; ist eine gewöhnliche virtuelle Methode: Der Rumpf gehört zur Deklaration.
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
+    ClassUnit('    procedure Lauf(A: Integer); virtual;//  abstract;',
+      'procedure TFoo.Lauf('#10'  A: Integer);'#10'begin'#10'end;'));
+  TRuleAssert.Reports(TDeclaredNotImplementedRule.Create,
+    ClassUnit('    procedure Lauf(A: Integer); virtual; { abstract; }', ''));
 end;
 
 procedure TDeclarationRulesTests.MissingOverloadIsReported;

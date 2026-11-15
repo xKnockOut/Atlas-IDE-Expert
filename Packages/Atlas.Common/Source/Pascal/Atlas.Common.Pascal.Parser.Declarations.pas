@@ -334,23 +334,8 @@ begin
 end;
 
 procedure TDeclarationParser.ParseInitializer(AParent: TSyntaxNode);
-var
-  mStart: Integer;
-  mNode: TSyntaxNode;
 begin
-  if IsSym('(') and PeekToken(1).IsSymbol(')') then
-  begin
-    mStart := NodeStart;
-    mNode := StartNode(TSyntaxKind.ParenExpr);
-    AParent.Add(mNode);
-    Advance;
-    Advance;
-    FinishNode(mNode, mStart);
-  end
-  else
-  begin
-    ParseExpression(AParent);
-  end;
+  ParseParenElement(AParent);
 end;
 
 function TDeclarationParser.IsDeclStart: Boolean;

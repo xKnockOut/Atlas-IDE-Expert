@@ -29,6 +29,8 @@ type
     [Test]
     procedure FormResourceParsesDirectives;
     [Test]
+    procedure FolderFilesIgnoreCase;
+    [Test]
     procedure AutoCreateIssueExample;
     [Test]
     procedure AutoCreateFixRemovesCreateForm;
@@ -70,6 +72,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
@@ -80,6 +83,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Forms,
+  Atlas.Common.Rules.Checker,
   Atlas.Tests.RuleAssert;
 
 const
@@ -378,6 +382,32 @@ begin
   end;
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TFormResourceMissingRule.Create,
     FormContext(mFixed, cKundeForm, 'C:\P\Kunde.dfm', ['Kunde.dfm']), ''))));
+end;
+
+procedure TFormRulesTests.FolderFilesIgnoreCase;
+var
+  mFolder, mFound: string;
+  mData: TBytes;
+begin
+  // {$R *.DFM} neben Kunde.dfm: dcc findet die Datei unter Windows, auch auf Dateisystemen mit Groß-/Kleinschreibung
+  // soll die Prüfung sie finden.
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasFolderFiles' + IntToStr(Random(MaxInt)));
+  TDirectory.CreateDirectory(mFolder);
+  try
+    TFile.WriteAllText(TPath.Combine(mFolder, 'Kunde.DFM'), 'object frmKunde: TfrmKunde'#13#10'end');
+    mFound := TRuleFolderFiles.OnDisk(TPath.Combine(mFolder, 'Kunde.dfm'));
+    Assert.IsTrue(SameText(TPath.Combine(mFolder, 'Kunde.dfm'), mFound), mFound);
+    Assert.IsTrue(TFile.Exists(mFound), mFound);
+    Assert.IsTrue(TRuleFolderFiles.Reader(mFolder)('kunde.dfm', mData));
+    Assert.IsTrue(Length(mData) > 0);
+    Assert.IsTrue(TRuleFolderFiles.Exists(mFolder)('KUNDE.dfm'));
+    // Fehlende Dateien bleiben fehlend.
+    Assert.AreEqual(TPath.Combine(mFolder, 'Fehlt.dfm'), TRuleFolderFiles.OnDisk(TPath.Combine(mFolder, 'Fehlt.dfm')));
+    Assert.IsFalse(TRuleFolderFiles.Reader(mFolder)('Fehlt.dfm', mData));
+    Assert.IsFalse(TRuleFolderFiles.Exists(mFolder)('Fehlt.dfm'));
+  finally
+    TDirectory.Delete(mFolder, True);
+  end;
 end;
 
 procedure TFormRulesTests.ResourceIncludedIsSilent;

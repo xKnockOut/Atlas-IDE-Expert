@@ -194,6 +194,8 @@ type
     FTryDepth: Integer;
     FLookup: TFlowSignatureLookup;
     FNoReturn: TFlowNoReturnLookup;
+    /// <summary>var- und out-Parameter der Routine: inherited; ohne Namen reicht sie weiter.</summary>
+    FPassedOn: TArray<string>;
     procedure Analyze(ANode: TFlowNode);
     function NewNode(AKind: TFlowNodeKind; ASyntax: TSyntaxNode): TFlowNode;
     function NewTarget: TJumpTarget;
@@ -929,6 +931,7 @@ type
   private
     FNode: TFlowNode;
     FLookup: TFlowSignatureLookup;
+    FPassedOn: TArray<string>;
     FPending: TStack<TAnalyzeStep>;
     FSteps: TList<TAnalyzeStep>;
     procedure Touch(const AName: string; AMaybeRead: Boolean);
@@ -940,6 +943,9 @@ type
     procedure AddChainParts(AExpression: TSyntaxNode);
     procedure AddAddressOf(AExpression: TSyntaxNode);
     procedure AddCall(AExpression: TSyntaxNode);
+    /// <summary>inherited; ohne Namen und Argumente übergibt alle Parameter der Routine: var und out kann der
+    /// Vorfahr setzen.</summary>
+    procedure AddInherited(AExpression: TSyntaxNode);
     procedure AddNode(AExpression: TSyntaxNode);
     /// <summary>Liest die Namen in ARoot; mit AChainParts nur die Teile einer Kette.</summary>
     procedure Visit(ARoot: TSyntaxNode; AChainParts: Boolean);
@@ -947,18 +953,20 @@ type
     /// </summary>
     procedure VisitTarget(ATarget: TSyntaxNode);
   public
-    constructor Create(ANode: TFlowNode; const ALookup: TFlowSignatureLookup);
+    constructor Create(ANode: TFlowNode; const ALookup: TFlowSignatureLookup; const APassedOn: TArray<string>);
     destructor Destroy; override;
     procedure Run;
   end;
 
 { TFlowAnalyzer }
 
-constructor TFlowAnalyzer.Create(ANode: TFlowNode; const ALookup: TFlowSignatureLookup);
+constructor TFlowAnalyzer.Create(ANode: TFlowNode; const ALookup: TFlowSignatureLookup;
+  const APassedOn: TArray<string>);
 begin
   inherited Create;
   FNode := ANode;
   FLookup := ALookup;
+  FPassedOn := APassedOn;
   FPending := TStack<TAnalyzeStep>.Create;
   FSteps := TList<TAnalyzeStep>.Create;
 end;
@@ -1104,6 +1112,23 @@ begin
   end;
 end;
 
+procedure TFlowAnalyzer.AddInherited(AExpression: TSyntaxNode);
+var
+  mName: string;
+begin
+  if (AExpression.Name = '') and (AExpression.ChildCount = 0) then
+  begin
+    for mName in FPassedOn do
+    begin
+      Touch(mName, True);
+    end;
+  end
+  else
+  begin
+    AddChildren(AExpression, 0);
+  end;
+end;
+
 procedure TFlowAnalyzer.AddNode(AExpression: TSyntaxNode);
 begin
   case AExpression.Kind of
@@ -1117,6 +1142,8 @@ begin
       AddAddressOf(AExpression);
     TSyntaxKind.Call:
       AddCall(AExpression);
+    TSyntaxKind.InheritedExpr:
+      AddInherited(AExpression);
   else
     AddChildren(AExpression, 0);
   end;
@@ -1227,11 +1254,43 @@ procedure TFlowBuilder.Analyze(ANode: TFlowNode);
 var
   mAnalyzer: TFlowAnalyzer;
 begin
-  mAnalyzer := TFlowAnalyzer.Create(ANode, FLookup);
+  mAnalyzer := TFlowAnalyzer.Create(ANode, FLookup, FPassedOn);
   try
     mAnalyzer.Run;
   finally
     mAnalyzer.Free;
+  end;
+end;
+
+/// <summary>Namen der var- und out-Parameter im Kopf von ARoutine; leer ohne Kopf.</summary>
+function VarAndOutParameters(ARoutine: TSyntaxNode): TArray<string>;
+var
+  mHeader, mParams, mParam: TSyntaxNode;
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
+  begin
+    Exit;
+  end;
+  mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mParams.ChildCount - 1 do
+  begin
+    mParam := mParams[mIndex];
+    if (mParam.Kind = TSyntaxKind.Parameter) and
+      (mParam.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam]) then
+    begin
+      for mName in mParam.Name.Split([',']) do
+      begin
+        Result := Result + [Trim(mName)];
+      end;
+    end;
   end;
 end;
 
@@ -1264,6 +1323,7 @@ begin
       end;
     end;
   end;
+  FPassedOn := VarAndOutParameters(ARoutine);
   if mBody = nil then
   begin
     FGraph.FComplete := False;

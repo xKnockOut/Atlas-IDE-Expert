@@ -20,6 +20,8 @@ type
     [Test]
     procedure PassedPartIsSilent;
     [Test]
+    procedure InheritedPassesParameters;
+    [Test]
     procedure SecondNameIsChecked;
     [Test]
     procedure FixReplacesDeclarationAndImplementation;
@@ -28,6 +30,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Flow.OutParamRead,
   Atlas.Tests.RuleAssert;
@@ -72,6 +75,20 @@ procedure TFlowOutParamReadTests.PassedPartIsSilent;
 begin
   TRuleAssert.Silent(TOutParamReadRule.Create, Routine('R: TRect', '  Lies(R.TopLeft);'#10 +
     '  R.Left := R.Right;'));
+end;
+
+procedure TFlowOutParamReadTests.InheritedPassesParameters;
+const
+  cUnit = 'unit U;'#10'interface'#10'type'#10'  TB = class'#10 +
+    '    procedure Up(var A: Integer; out F: Integer); virtual;'#10'  end;'#10'  TC = class(TB)'#10 +
+    '    procedure Up(var A: Integer; out F: Integer); override;'#10'  end;'#10'implementation'#10 +
+    'procedure TB.Up(var A: Integer; out F: Integer);'#10'begin'#10'  F := A;'#10'end;'#10 +
+    'procedure TC.Up(var A: Integer; out F: Integer);'#10'begin'#10'%s'#10'end;'#10'end.';
+begin
+  // inherited; ohne Argumente reicht F an den Vorfahren weiter, der ihn setzt.
+  TRuleAssert.Silent(TOutParamReadRule.Create, Format(cUnit, ['  inherited;'#10'  if F = 1 then'#10'    A := 2;']));
+  // Vor dem inherited ist F noch undefiniert; inherited Up(A, F) prüft die Signatur wie jeder Aufruf.
+  TRuleAssert.Reports(TOutParamReadRule.Create, Format(cUnit, ['  if F = 1 then'#10'    A := 2;'#10'  inherited;']));
 end;
 
 procedure TFlowOutParamReadTests.SecondNameIsChecked;
