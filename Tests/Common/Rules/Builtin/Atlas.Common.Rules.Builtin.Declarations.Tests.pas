@@ -380,7 +380,8 @@ begin
     '    TInnen<T> = class'#10'      procedure Weiter;'#10'    end;'#10'  public'#10 +
     '    function Lauf: Integer;'#10'    procedure Rest;'#10'  end;'#10'implementation'#10 +
     '{$IFDEF FPC}'#10'  {$include Teile.fpc.inc}'#10'{$ELSE}'#10'  {$include Teile.delphi.inc}'#10'{$ENDIF}'#10'end.';
-  mContext.ReadFile := IncludeReader;
+  // Mit (): ohne Klammern nimmt Delphi die Funktion selbst statt ihres Ergebnisses (E2010).
+  mContext.ReadFile := IncludeReader();
   mFindings := TRuleAssert.ContextFindings(TDeclaredNotImplementedRule.Create, mContext, '');
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.Contains(mFindings[0].Message, 'TFoo.Rest');

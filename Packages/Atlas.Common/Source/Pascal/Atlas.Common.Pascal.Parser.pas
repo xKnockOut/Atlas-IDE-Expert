@@ -104,6 +104,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   System.Generics.Collections,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser.Cursor,
