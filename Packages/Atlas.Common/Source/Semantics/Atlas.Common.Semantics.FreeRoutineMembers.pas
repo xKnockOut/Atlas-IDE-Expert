@@ -11,8 +11,8 @@
 // Ist der Index unvollständig (System oder eine Unit aus uses fehlt, etwa ohne RTL in Cloud und CI), könnte eine
 // fehlende Unit eine gleichnamige freie Routine deklarieren (Trim, Format). Dann zählt nur eine Methode, die als
 // Wert steht (rechts einer Zuweisung oder als Argument): Eine freie Routine gleichen Namens dort ist selten.
-// with-Blöcke, Assembler, anonyme Methoden und Intrinsics bleiben außen vor. Hat die Routine einen Parameter vom
-// Typ der Klasse, nennt der Eintrag ihn (AFrame.ListSelectItem).
+// with-Blöcke, Assembler, anonyme Methoden, Intrinsics und Init/Done in New(P, Init)/Dispose(P, Done) bleiben
+// außen vor. Hat die Routine einen Parameter vom Typ der Klasse, nennt der Eintrag ihn (AFrame.ListSelectItem).
 
 interface
 
@@ -217,6 +217,18 @@ begin
     (mParent[0] <> ANode)));
 end;
 
+/// <summary>Steht ANode hinter dem Zeiger in New(P, Init) bzw. Dispose(P, Done)? Dort meint der Name den
+/// Konstruktor bzw. Destruktor des Objekttyps von P, nicht ein Mitglied von Self.</summary>
+function IsAllocationMember(ANode: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 2) and
+    (mParent[0].Kind = TSyntaxKind.Identifier) and (SameText(mParent[0].Name, 'New') or
+    SameText(mParent[0].Name, 'Dispose')) and (mParent[0] <> ANode) and (mParent[1] <> ANode);
+end;
+
 /// <summary>Name des Parameters von ARoutine, dessen Typ AOwner heißt; '' ohne.</summary>
 function OwnerParameter(ARoutine: TSyntaxNode; const AOwner: string): string;
 var
@@ -291,7 +303,8 @@ var
   begin
     mItem := Default(TFreeRoutineMember);
     if mLocal.ContainsKey(UpperCase(ANode.Name)) or TUnresolvedNames.IsIntrinsic(ANode.Name) or
-      TResolverText.IsBuiltinTypeName(ANode.Name) or not mFile.MemberOwner(ANode.Name, mItem.Owner) then
+      TResolverText.IsBuiltinTypeName(ANode.Name) or IsAllocationMember(ANode) or
+      not mFile.MemberOwner(ANode.Name, mItem.Owner) then
     begin
       Exit;
     end;

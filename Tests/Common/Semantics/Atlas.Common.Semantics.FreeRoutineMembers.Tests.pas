@@ -125,7 +125,8 @@ const
   cFall = 'procedure FFertig;'#10'begin'#10'end;'#10 +
     'procedure TRahmen.Baue;'#10'  procedure Innen;'#10'  begin'#10'    FOnWahl := ListSelect;'#10'  end;'#10 +
     'begin'#10'  FOnWahl := ListSelect;'#10'  Innen;'#10'end;'#10 +
-    'procedure Frei(AFrame: TRahmen; ListSelect: TMeldung);'#10'var'#10'  FOnWahl: TMeldung;'#10'begin'#10 +
+    'procedure Frei(AFrame: TRahmen; ListSelect: TMeldung);'#10'var'#10'  FOnWahl: TMeldung;'#10 +
+    '  mZeiger: Pointer;'#10'begin'#10'  New(mZeiger, Baue);'#10'  Dispose(mZeiger, Baue);'#10 +
     '  FOnWahl := ListSelect;'#10'  FFertig;'#10'  with AFrame do'#10'    FOnWahl := Baue;'#10 +
     '  AFrame.FOnWahl := AFrame.ListSelect;'#10'end;'#10;
 begin
