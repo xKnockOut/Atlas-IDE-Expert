@@ -11,6 +11,7 @@ interface
 uses
   ToolsAPI,
   Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.CommitPlan,
   Atlas.Core.Completion.Snippets,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.EditorOpen;
@@ -22,6 +23,11 @@ type
   TAtlasEditorCompletionCommit = class(TAtlasEditorCompletionOpen)
   private
     FOnOfferActions: TAtlasOfferActionsProc;
+    /// <summary>Stand des Editors AView fürs Übernehmen (TAtlasCommitPlan).</summary>
+    function CommitContext(const AView: IOTAEditView): TAtlasCommitContext;
+    /// <summary>AEdits mit einem Schreiber in den Puffer von AView.</summary>
+    procedure WriteEdits(const AView: IOTAEditView; const AEdits: TAtlasCommitEdits;
+      const AContext: TAtlasCommitContext);
   protected
     procedure Commit(const AItem: TAtlasCompletionItem);
     /// <summary>Setzt die Vorlage von AItem statt des Worts bis AEnd (0-basiert) ein.</summary>
@@ -57,16 +63,11 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math,
   System.JSON,
   System.Generics.Collections,
-  System.Generics.Defaults,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Completion.Word,
-  Atlas.Core.Completion.Matching,
   Atlas.Core.Completion.Parentheses,
-  Atlas.Core.Completion.Placeholders,
   Atlas.Core.Lsp.Client,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -76,401 +77,95 @@ const
   /// <summary>Wartezeit auf den Befehl eines Eintrags (#473); der Server antwortet, bevor er applyEdit schickt.
   /// </summary>
   cCommandTimeoutMs = 3000;
-  /// <summary>Stelle des Cursors im Einfügetext.</summary>
-  cCaretMarker = '$0';
 
-type
-  TPendingEdit = record
-    Start: Integer;
-    Stop: Integer;
-    Text: string;
-    IsWord: Boolean;
-    /// <summary>Stelle des entfernten "$0" in Text (ab 1) bei Zusatzänderungen (#472); 0 ohne.</summary>
-    Marker: Integer;
-    /// <summary>Verknüpfte Platzhalter in Text (#473), Offsets ab dem Anfang von Text.</summary>
-    Stops: TArray<TAtlasSnippetStop>;
-    /// <summary>Zeichenoffsets von Start und Stop im Text vor dem Einsetzen.</summary>
-    CharStart: Integer;
-    CharStop: Integer;
-  end;
-
-  /// <summary>Ein Übernehmen (ohne Vorlage): Text, Änderungen und Lage des Cursors danach.</summary>
-  TCommitRun = record
-    Owner: TAtlasEditorCompletionCommit;
-    Item: TAtlasCompletionItem;
-    View: IOTAEditView;
-    /// <summary>Puffertext und Zeile des Cursors vor dem Übernehmen.</summary>
-    Text: string;
-    LineText: string;
-    Cursor: TOTAEditPos;
-    /// <summary>Ende des ersetzten Worts (0-basiert).</summary>
-    Character: Integer;
-    NewText: string;
-    /// <summary>Stelle des entfernten "$0" in NewText (ab 1); 0 ohne.</summary>
-    CaretMarker: Integer;
-    AutoParen: Boolean;
-    /// <summary>Cursor danach als Byteoffset im Puffer; -1 ohne.</summary>
-    CursorByte: Integer;
-    class function Create(AOwner: TAtlasEditorCompletionCommit; const AView: IOTAEditView;
-      const AItem: TAtlasCompletionItem): TCommitRun; static;
-    procedure PrepareText;
-    function WordEdit: TPendingEdit;
-    function ExtraEdit(const ATextEdit: TAtlasTextEdit): TPendingEdit;
-    procedure AddEdits(AEdits: TList<TPendingEdit>);
-    procedure TrackCursor(const AEdit: TPendingEdit; AShift: Integer; var ABodyByte: Integer);
-    procedure Write;
-    procedure PlaceCursor;
-  end;
-
-  /// <summary>Eine Code-Vorlage einsetzen (#51): Änderungen, verknüpfte Platzhalter und Verschiebung davor.
-  /// </summary>
-  TSnippetRun = record
-    Item: TAtlasCompletionItem;
-    Text: string;
-    LineBreak: string;
-    /// <summary>Anfang der Vorlage im Text vor dem Einsetzen (Zeichen).</summary>
-    SnippetChar: Integer;
-    /// <summary>Verschiebung der Vorlage durch davor liegende Zusatzänderungen (Zeichen).</summary>
-    CharShift: Integer;
-    Fields: TArray<TAtlasPlaceholderField>;
-    function MainEdit(const AExpansion: TAtlasSnippetExpansion; ALine, AWordStart, AEnd: Integer): TPendingEdit;
-    function ExtraEdit(const ATextEdit: TAtlasTextEdit): TPendingEdit;
-    procedure AddEdits(AEdits: TList<TPendingEdit>; const AMain: TPendingEdit);
-    procedure Write(const AView: IOTAEditView; AEdits: TList<TPendingEdit>);
-  end;
-
-function ByStart(const A, B: TPendingEdit): Integer;
-begin
-  Result := A.Start - B.Start;
-end;
-
-/// <summary>Byte-Länge von AText in UTF-8.</summary>
-function Utf8Length(const AText: string): Integer;
-begin
-  Result := Length(UTF8Encode(AText));
-end;
-
-/// <summary>Schreibt AEdits aufsteigend; ein Schreiber = ein Undo-Schritt, er schreibt nur vorwärts.</summary>
-procedure WriteEdit(const AWriter: IOTAEditWriter; const AEdit: TPendingEdit);
+procedure WriteEdit(const AWriter: IOTAEditWriter; const AEdit: TAtlasCommitEdit);
 begin
   AWriter.CopyTo(AEdit.Start);
   AWriter.DeleteTo(AEdit.Stop);
   AWriter.Insert(PAnsiChar(UTF8Encode(AEdit.Text)));
 end;
 
-{ TCommitRun }
+{ TAtlasEditorCompletionCommit }
 
-class function TCommitRun.Create(AOwner: TAtlasEditorCompletionCommit; const AView: IOTAEditView;
-  const AItem: TAtlasCompletionItem): TCommitRun;
-begin
-  Result := Default(TCommitRun);
-  Result.Owner := AOwner;
-  Result.Item := AItem;
-  Result.View := AView;
-  Result.CursorByte := -1;
-  Result.Text := TAtlasEditorBuffer.Text(AView.Buffer);
-  Result.Cursor := AView.CursorPos;
-  Result.LineText := TAtlasEditorBuffer.LineText(AView, Result.Cursor.Line);
-  Result.Character := TLspSession.ColumnToIndex(Result.LineText, Result.Cursor.Col,
-    TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  // Über ein Commit-Zeichen: Das Wort endet davor, das Zeichen bleibt stehen.
-  if AOwner.FCommitChar.WordEnd >= 0 then
-  begin
-    Result.Character := AOwner.FCommitChar.WordEnd;
-  end
-  else
-  begin
-    // Mitten im Wort: bis zu seinem Ende ersetzen, sonst bliebe der Rest stehen.
-    Result.Character := TAtlasWord.EndAfter(Result.LineText, Result.Character);
-  end;
-end;
-
-procedure TCommitRun.PrepareText;
-var
-  mWordStart: Integer;
-  mNextChar: Char;
-begin
-  NewText := Item.InsertText;
-  if NewText = '' then
-  begin
-    NewText := Item.Name;
-  end;
-  // Schreibweise (#433): abgeschaltet bleibt das Getippte, nur der Rest kommt dazu.
-  mWordStart := Owner.FOpen.WordStart;
-  if (mWordStart >= 0) and (Character >= mWordStart) then
-  begin
-    NewText := TAtlasCompletionMatcher.CommitText(Copy(LineText, mWordStart + 1, Character - mWordStart), NewText,
-      TAtlasIdeSettings.Current.FixCase);
-  end;
-  if Item.HasTextEdit then
-  begin
-    NewText := Item.TextEdit.NewText;
-  end;
-  // Klammern (#430): Methode mit Parametern, nicht über ein Commit-Zeichen, keine "(" dahinter.
-  mNextChar := #0;
-  if Character < Length(LineText) then
-  begin
-    mNextChar := LineText[Character + 1];
-  end;
-  AutoParen := TAtlasIdeSettings.Current.AutoParentheses and (Owner.FCommitChar.WordEnd < 0) and
-    (Pos(cCaretMarker, NewText) = 0) and not Item.HasTextEdit and
-    TAtlasParentheses.Wanted(Item.Kind in [TAtlasItemKind.Method, TAtlasItemKind.Function_,
-      TAtlasItemKind.Procedure_, TAtlasItemKind.Constructor_], Item.HasParameters, mNextChar);
-  if AutoParen then
-  begin
-    NewText := NewText + '(' + cCaretMarker + ')';
-  end;
-  // "$0" im Einfügetext (XMLDoc-Tags, #435, Klammern): dort steht der Cursor danach.
-  CaretMarker := Pos(cCaretMarker, NewText);
-  if CaretMarker > 0 then
-  begin
-    Delete(NewText, CaretMarker, Length(cCaretMarker));
-  end;
-end;
-
-function TCommitRun.WordEdit: TPendingEdit;
-begin
-  Result := Default(TPendingEdit);
-  // Das getippte Wort durch den Eintrag ersetzen; mit textEdit ab dessen Anfang (Postfix-Vorlagen, #188).
-  if Item.HasTextEdit then
-  begin
-    Result.Start := TAtlasEditorBuffer.ByteOffset(Text, Item.TextEdit.StartLine, Item.TextEdit.StartCharacter);
-  end
-  else
-  begin
-    Result.Start := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, Owner.FOpen.WordStart);
-  end;
-  Result.Stop := TAtlasEditorBuffer.ByteOffset(Text, Cursor.Line - 1, Character);
-  // Reicht der textEdit über das Wort hinaus (Mengenklammer bis "]", #448), bis zu seinem Ende ersetzen.
-  if Item.HasTextEdit then
-  begin
-    Result.Stop := Max(Result.Stop, TAtlasEditorBuffer.ByteOffset(Text, Item.TextEdit.EndLine,
-      Item.TextEdit.EndCharacter));
-  end;
-  Result.Text := NewText;
-  Result.IsWord := True;
-end;
-
-function TCommitRun.ExtraEdit(const ATextEdit: TAtlasTextEdit): TPendingEdit;
-begin
-  Result := Default(TPendingEdit);
-  Result.Start := TAtlasEditorBuffer.ByteOffset(Text, ATextEdit.StartLine, ATextEdit.StartCharacter);
-  Result.Stop := TAtlasEditorBuffer.ByteOffset(Text, ATextEdit.EndLine, ATextEdit.EndCharacter);
-  Result.Text := ATextEdit.NewText;
-  // "$0" im neuen Rumpf (#472): Dort steht der Cursor danach, sofern der Haupttext keinen hat.
-  Result.Marker := Pos(cCaretMarker, Result.Text);
-  if Result.Marker > 0 then
-  begin
-    Delete(Result.Text, Result.Marker, Length(cCaretMarker));
-  end;
-  if CaretMarker > 0 then
-  begin
-    Result.Marker := 0;
-  end;
-end;
-
-procedure TCommitRun.AddEdits(AEdits: TList<TPendingEdit>);
-var
-  mTextEdit: TAtlasTextEdit;
-begin
-  AEdits.Add(WordEdit);
-  // uses-Ergänzung u. ä. (#180); abschaltbar auf der Optionsseite (ARG-046). Einträge, die Code erzeugen
-  // (Methode anlegen, deklarieren), brauchen ihre Zusatzänderungen immer.
-  if TAtlasIdeSettings.Current.AutoUses or Item.IsAction then
-  begin
-    for mTextEdit in Item.AdditionalEdits do
-    begin
-      AEdits.Add(ExtraEdit(mTextEdit));
-    end;
-  end;
-  AEdits.Sort(TComparer<TPendingEdit>.Construct(ByStart));
-end;
-
-procedure TCommitRun.TrackCursor(const AEdit: TPendingEdit; AShift: Integer; var ABodyByte: Integer);
-begin
-  if AEdit.IsWord then
-  begin
-    if CaretMarker > 0 then
-    begin
-      CursorByte := AEdit.Start + AShift + Utf8Length(Copy(AEdit.Text, 1, CaretMarker - 1));
-    end
-    else
-    begin
-      CursorByte := AEdit.Start + AShift + Utf8Length(AEdit.Text);
-    end;
-    if Owner.FCommitChar.WordEnd >= 0 then
-    begin
-      Inc(CursorByte, Owner.FCommitChar.SuffixBytes);
-    end;
-  end
-  else if (AEdit.Marker > 0) and (ABodyByte < 0) then
-  begin
-    ABodyByte := AEdit.Start + AShift + Utf8Length(Copy(AEdit.Text, 1, AEdit.Marker - 1));
-  end;
-end;
-
-procedure TCommitRun.Write;
-var
-  mEdits: TList<TPendingEdit>;
-  mEdit: TPendingEdit;
-  mWriter: IOTAEditWriter;
-  mShift, mBodyByte: Integer;
-begin
-  mEdits := TList<TPendingEdit>.Create;
-  try
-    AddEdits(mEdits);
-    mWriter := View.Buffer.CreateUndoableWriter;
-    mShift := 0;
-    mBodyByte := -1;
-    for mEdit in mEdits do
-    begin
-      Owner.Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): %d Zeichen',
-        [mEdit.Start, mEdit.Stop, Owner.FOpen.WordStart, Cursor.Line, Character, Length(mEdit.Text)]));
-      WriteEdit(mWriter, mEdit);
-      TrackCursor(mEdit, mShift, mBodyByte);
-      Inc(mShift, Utf8Length(mEdit.Text) - (mEdit.Stop - mEdit.Start));
-    end;
-    mWriter := nil;
-    if mBodyByte >= 0 then
-    begin
-      CursorByte := mBodyByte;
-    end;
-  finally
-    mEdits.Free;
-  end;
-end;
-
-procedure TCommitRun.PlaceCursor;
+function TAtlasEditorCompletionCommit.CommitContext(const AView: IOTAEditView): TAtlasCommitContext;
 var
   mCursor: TOTAEditPos;
-  mCharPos: TOTACharPos;
+  mCharacter: Integer;
 begin
-  // Cursor hinter den übernommenen Namen.
-  mCursor := Cursor;
-  mCharPos := View.PosToCharPos(CursorByte);
-  View.ConvertPos(False, mCursor, mCharPos);
-  View.CursorPos := mCursor;
-  View.MoveViewToCursor;
-  View.Paint;
+  Result := Default(TAtlasCommitContext);
+  Result.Text := TAtlasEditorBuffer.Text(AView.Buffer);
+  mCursor := AView.CursorPos;
+  Result.Line := mCursor.Line;
+  Result.LineText := TAtlasEditorBuffer.LineText(AView, mCursor.Line);
+  mCharacter := TLspSession.ColumnToIndex(Result.LineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
+  // Mitten im Wort ersetzt Atlas das ganze Wort; beim Commit-Zeichen nur bis davor.
+  Result.Character := TAtlasCommitPlan.WordEnd(Result.LineText, mCharacter, FCommitChar.WordEnd);
+  Result.WordStart := FOpen.WordStart;
+  Result.CommitWordEnd := FCommitChar.WordEnd;
+  Result.CommitSuffixBytes := FCommitChar.SuffixBytes;
+  Result.FixCase := TAtlasIdeSettings.Current.FixCase;
+  Result.AutoParentheses := TAtlasIdeSettings.Current.AutoParentheses;
+  Result.AutoUses := TAtlasIdeSettings.Current.AutoUses;
 end;
 
-{ TSnippetRun }
-
-function TSnippetRun.MainEdit(const AExpansion: TAtlasSnippetExpansion; ALine, AWordStart,
-  AEnd: Integer): TPendingEdit;
-begin
-  Result := Default(TPendingEdit);
-  Result.Start := TAtlasEditorBuffer.ByteOffset(Text, ALine - 1, AWordStart);
-  Result.Stop := TAtlasEditorBuffer.ByteOffset(Text, ALine - 1, AEnd);
-  Result.Text := AExpansion.Text;
-  Result.IsWord := True;
-  Result.CharStart := SnippetChar;
-  Result.CharStop := TAtlasEditorBuffer.CharOffset(Text, ALine - 1, AEnd);
-  // Reicht der textEdit über das Wort hinaus (das ganze Literal, #473), bis zu seinem Ende ersetzen.
-  if Item.HasTextEdit and (TAtlasEditorBuffer.ByteOffset(Text, Item.TextEdit.EndLine,
-    Item.TextEdit.EndCharacter) > Result.Stop) then
-  begin
-    Result.Stop := TAtlasEditorBuffer.ByteOffset(Text, Item.TextEdit.EndLine, Item.TextEdit.EndCharacter);
-    Result.CharStop := TAtlasEditorBuffer.CharOffset(Text, Item.TextEdit.EndLine, Item.TextEdit.EndCharacter);
-  end;
-end;
-
-function TSnippetRun.ExtraEdit(const ATextEdit: TAtlasTextEdit): TPendingEdit;
-var
-  mLinked: TAtlasSnippetExpansion;
-begin
-  Result := Default(TPendingEdit);
-  Result.Start := TAtlasEditorBuffer.ByteOffset(Text, ATextEdit.StartLine, ATextEdit.StartCharacter);
-  Result.Stop := TAtlasEditorBuffer.ByteOffset(Text, ATextEdit.EndLine, ATextEdit.EndCharacter);
-  Result.CharStart := TAtlasEditorBuffer.CharOffset(Text, ATextEdit.StartLine, ATextEdit.StartCharacter);
-  Result.CharStop := TAtlasEditorBuffer.CharOffset(Text, ATextEdit.EndLine, ATextEdit.EndCharacter);
-  Result.Text := ATextEdit.NewText;
-  // Verknüpfte Platzhalter (#473): ohne Einrückung, Zeilenumbrüche wie im Puffer.
-  if Item.LinkedEdits then
-  begin
-    mLinked := TAtlasSnippets.Expand(ATextEdit.NewText, '', LineBreak);
-    Result.Text := mLinked.Text;
-    Result.Stops := mLinked.Stops;
-  end;
-end;
-
-procedure TSnippetRun.AddEdits(AEdits: TList<TPendingEdit>; const AMain: TPendingEdit);
-var
-  mTextEdit: TAtlasTextEdit;
-  mEdit: TPendingEdit;
-begin
-  AEdits.Add(AMain);
-  // Setter-Deklaration und -Rumpf der Vorlage „prop“ u. ä.; davor liegende verschieben den Platzhalter-Text.
-  CharShift := 0;
-  for mTextEdit in Item.AdditionalEdits do
-  begin
-    mEdit := ExtraEdit(mTextEdit);
-    AEdits.Add(mEdit);
-    if mEdit.Start < AMain.Start then
-    begin
-      Inc(CharShift, Length(mEdit.Text) - (mEdit.CharStop - mEdit.CharStart));
-    end;
-  end;
-  AEdits.Sort(TComparer<TPendingEdit>.Construct(ByStart));
-end;
-
-procedure TSnippetRun.Write(const AView: IOTAEditView; AEdits: TList<TPendingEdit>);
+procedure TAtlasEditorCompletionCommit.WriteEdits(const AView: IOTAEditView; const AEdits: TAtlasCommitEdits;
+  const AContext: TAtlasCommitContext);
 var
   mWriter: IOTAEditWriter;
-  mEdit: TPendingEdit;
-  mStop: TAtlasSnippetStop;
-  mField: TAtlasPlaceholderField;
-  mShift: Integer;
+  mEdit: TAtlasCommitEdit;
 begin
-  // Ein Schreiber = ein Undo-Schritt für das Einsetzen; er schreibt nur vorwärts.
+  // Ein Schreiber, ein Undo-Schritt; er schreibt nur vorwärts, die Änderungen sind aufsteigend.
   mWriter := AView.Buffer.CreateUndoableWriter;
-  Fields := nil;
-  mShift := 0;
   for mEdit in AEdits do
   begin
+    Log(Format('  Änderung Byte %d bis %d (Wortanfang %d, Zeile %d, Ende %d): %d Zeichen',
+      [mEdit.Start, mEdit.Stop, AContext.WordStart, AContext.Line, AContext.Character, Length(mEdit.Text)]));
     WriteEdit(mWriter, mEdit);
-    // Lage der verknüpften Platzhalter im Text danach (Zeichen).
-    for mStop in mEdit.Stops do
-    begin
-      mField.Number := mStop.Number;
-      mField.Start := mEdit.CharStart + mShift + mStop.Start;
-      mField.Length := mStop.Length;
-      Fields := Fields + [mField];
-    end;
-    Inc(mShift, Length(mEdit.Text) - (mEdit.CharStop - mEdit.CharStart));
   end;
 end;
-
-{ TAtlasEditorCompletionCommit }
 
 procedure TAtlasEditorCompletionCommit.Commit(const AItem: TAtlasCompletionItem);
 var
-  mRun: TCommitRun;
+  mView: IOTAEditView;
+  mCursor: TOTAEditPos;
+  mCharPos: TOTACharPos;
+  mContext: TAtlasCommitContext;
+  mText: TAtlasCommitText;
+  mEdits: TAtlasCommitEdits;
+  mCursorByte: Integer;
 begin
   if (FOpen.View = nil) or (FOpen.View.Buffer = nil) then
   begin
     Exit;
   end;
-  mRun := TCommitRun.Create(Self, FOpen.View, AItem);
+  mView := FOpen.View;
+  mCursor := mView.CursorPos;
+  mContext := CommitContext(mView);
   // Code-Vorlage (#51): eigener Weg mit Einrückung und Platzhaltern.
   if AItem.Snippet <> '' then
   begin
-    CommitSnippet(mRun.View, AItem, mRun.Text, mRun.LineText, mRun.Cursor.Line, mRun.Character);
+    CommitSnippet(mView, AItem, mContext.Text, mContext.LineText, mContext.Line, mContext.Character);
     ActiveChanged;
     Exit;
   end;
-  mRun.PrepareText;
-  mRun.Write;
-  if mRun.CursorByte >= 0 then
+  mText := TAtlasCommitPlan.TextOf(AItem, mContext);
+  mEdits := TAtlasCommitPlan.Edits(AItem, mContext, mText);
+  WriteEdits(mView, mEdits, mContext);
+  mCursorByte := TAtlasCommitPlan.CursorByte(mEdits, mContext, mText.CaretMarker);
+  if mCursorByte >= 0 then
   begin
-    mRun.PlaceCursor;
-    if mRun.AutoParen then
+    mCharPos := mView.PosToCharPos(mCursorByte);
+    mView.ConvertPos(False, mCursor, mCharPos);
+    mView.CursorPos := mCursor;
+    mView.MoveViewToCursor;
+    mView.Paint;
+    if mText.AutoParen then
     begin
-      WatchAutoParen(mRun.View);
+      WatchAutoParen(mView);
     end;
   end;
   Log(Format('Übernommen: %d Zeichen (%d weitere Änderungen)', [Length(AItem.Name), Length(AItem.AdditionalEdits)]));
-  WatchGuard(mRun.View, AItem, mRun.LineText);
+  WatchGuard(mView, AItem, mContext.LineText);
   RunCommand(AItem);
   ActiveChanged;
 end;
@@ -478,33 +173,34 @@ end;
 procedure TAtlasEditorCompletionCommit.CommitSnippet(const AView: IOTAEditView; const AItem: TAtlasCompletionItem;
   const AText, ALineText: string; ALine, AEnd: Integer);
 var
-  mRun: TSnippetRun;
+  mLineBreak: string;
   mExpansion: TAtlasSnippetExpansion;
-  mEdits: TList<TPendingEdit>;
-  mWordStart: Integer;
+  mPlace: TAtlasCommitSnippetPlace;
+  mEdits: TAtlasCommitEdits;
+  mEdit: TAtlasCommitEdit;
+  mWriter: IOTAEditWriter;
+  mWordStart, mSnippetChar, mShift: Integer;
 begin
-  mRun := Default(TSnippetRun);
-  mRun.Item := AItem;
-  mRun.Text := AText;
   // Zeilenumbrüche wie im Puffer, Einrückung wie die aktuelle Zeile.
-  mRun.LineBreak := TTextLines.LineBreakOf(AText);
-  mExpansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), mRun.LineBreak);
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mExpansion := TAtlasSnippets.Expand(AItem.Snippet, TAtlasSnippets.IndentOf(ALineText), mLineBreak);
   // Vorlage des Servers (#51): ab dem Anfang ihres Bereichs; sonst das getippte Wort.
-  mWordStart := FOpen.WordStart;
-  if AItem.HasTextEdit and (AItem.TextEdit.StartLine = ALine - 1) then
+  mWordStart := TAtlasCommitPlan.SnippetWordStart(AItem, ALine, FOpen.WordStart);
+  mSnippetChar := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, mWordStart);
+  mPlace.Text := AText;
+  mPlace.LineBreak := mLineBreak;
+  mPlace.Line := ALine;
+  mPlace.WordStart := mWordStart;
+  mPlace.WordEnd := AEnd;
+  mEdits := TAtlasCommitPlan.SnippetEdits(AItem, mPlace, mExpansion, mShift);
+  mWriter := AView.Buffer.CreateUndoableWriter;
+  for mEdit in mEdits do
   begin
-    mWordStart := AItem.TextEdit.StartCharacter;
+    WriteEdit(mWriter, mEdit);
   end;
-  mRun.SnippetChar := TAtlasEditorBuffer.CharOffset(AText, ALine - 1, mWordStart);
-  mEdits := TList<TPendingEdit>.Create;
-  try
-    mRun.AddEdits(mEdits, mRun.MainEdit(mExpansion, ALine, mWordStart, AEnd));
-    mRun.Write(AView, mEdits);
-  finally
-    mEdits.Free;
-  end;
-  FPlaceholders.Start(AView, AText, TAtlasEditorBuffer.Text(AView.Buffer), mRun.SnippetChar + mRun.CharShift,
-    mExpansion, mRun.Fields);
+  mWriter := nil;
+  FPlaceholders.Start(AView, AText, TAtlasEditorBuffer.Text(AView.Buffer), mSnippetChar + mShift, mExpansion,
+    TAtlasCommitPlan.LinkedFields(mEdits));
   RunCommand(AItem);
   Log(Format('Code-Vorlage eingesetzt: %d Platzhalter, %d weitere Änderungen',
     [Integer(Length(mExpansion.Stops)), Integer(Length(AItem.AdditionalEdits))]));
@@ -609,17 +305,18 @@ procedure TAtlasEditorCompletionCommit.WatchGuard(const AView: IOTAEditView; con
   const ALineText: string);
 var
   mView: IOTAEditView;
+  mGuard: TAtlasCommitGuard;
 begin
   // Kam das ";" als Commit-Zeichen (#429), steht es schon da; dann gleich fragen.
   FGuard.Line := 0;
-  if AItem.Kind <> TAtlasItemKind.Constructor_ then
+  mGuard := TAtlasCommitPlan.Guard(AItem.Kind, ALineText, FCommitChar.WordEnd);
+  if mGuard = TAtlasCommitGuard.None then
   begin
     Exit;
   end;
   FGuard.Line := AView.CursorPos.Line;
   FGuard.FileName := AView.Buffer.FileName;
-  if (FCommitChar.WordEnd >= 0) and (FCommitChar.WordEnd < Length(ALineText)) and
-    (ALineText[FCommitChar.WordEnd + 1] = ';') then
+  if mGuard = TAtlasCommitGuard.InvokeNow then
   begin
     mView := AView;
     TAtlasMainThread.ForceQueue(TAtlasFeature.Completion,
@@ -658,7 +355,7 @@ var
   mItem: TAtlasCompletionItem;
   mText, mLineText, mPad: string;
   mCursor: TOTAEditPos;
-  mTabWidth, mCharacter, mEndColumn: Integer;
+  mTabWidth, mCharacter: Integer;
 begin
   if (AView = nil) or (AView.Buffer = nil) or (ASnippet.Body = '') then
   begin
@@ -672,15 +369,8 @@ begin
   mCharacter := TLspSession.ColumnToIndex(mLineText, mCursor.Col, mTabWidth);
   // Leere Zeile mit dem Cursor hinter ihrem Ende (virtueller Platz): bis zum Cursor einrücken, damit die
   // Vorlage dort beginnt, wo der Cursor steht; die Folgezeilen bekommen dieselbe Einrückung.
-  mPad := '';
-  if Trim(mLineText) = '' then
-  begin
-    mEndColumn := TLspSession.IndexToColumn(mLineText, Length(mLineText), mTabWidth);
-    if mCursor.Col > mEndColumn then
-    begin
-      mPad := StringOfChar(' ', mCursor.Col - mEndColumn);
-    end;
-  end;
+  mPad := TAtlasCommitPlan.SnippetPad(mLineText, mCursor.Col, TLspSession.IndexToColumn(mLineText, Length(mLineText),
+    mTabWidth));
   mItem := Default(TAtlasCompletionItem);
   mItem.Name := ASnippet.Prefix;
   mItem.Kind := TAtlasItemKind.Snippet;
