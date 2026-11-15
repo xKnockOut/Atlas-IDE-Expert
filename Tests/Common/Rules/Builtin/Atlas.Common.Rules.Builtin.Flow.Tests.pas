@@ -120,6 +120,9 @@ type
     /// gewählt wurde; ein Bitmap in einem anderen Gerätekontext bleibt ein Leck.</summary>
     [Test]
     procedure HandleLeakDeletedWhenSelectedBack;
+    /// <summary>ExtractIcon mit Index -1 zählt die Icons und öffnet kein Handle.</summary>
+    [Test]
+    procedure HandleLeakIconCountIsSilent;
     [Test]
     procedure HandleLeakPairsAndOff;
   end;
@@ -1222,6 +1225,17 @@ begin
   TRuleAssert.Reports(THandleLeakRule.Create, Datei(cVars + '  Anderer: THandle;'#10,
     '  Bmp := CreateCompatibleBitmap(Wnd, 10, 10);'#10'  Alt := SelectObject(DC, Bmp);'#10'  Malen(DC);'#10 +
     '  DeleteObject(SelectObject(Anderer, Alt));'));
+end;
+
+procedure TFlowRulesTests.HandleLeakIconCountIsSilent;
+const
+  cVars = '  Anzahl: THandle;'#10;
+begin
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei(cVars,
+    '  Anzahl := ExtractIcon(HInstance, PChar(Datei), Cardinal(-1));'));
+  // Gegentest: Index 0 liefert ein Icon, das DestroyIcon braucht.
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei(cVars,
+    '  Anzahl := ExtractIcon(HInstance, PChar(Datei), 0);'), 1);
 end;
 
 procedure TFlowRulesTests.HandleLeakPairsAndOff;

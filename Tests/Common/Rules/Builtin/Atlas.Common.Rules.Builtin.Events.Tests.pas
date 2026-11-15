@@ -33,6 +33,9 @@ type
     /// <summary>Aufruf in einem inaktiven Zweig ({$IFDEF} ohne gesetztes Symbol) übersetzt dcc nicht.</summary>
     [Test]
     procedure InactiveBranchIsSilent;
+    /// <summary>Lokale Routine gleichen Namens verdeckt die Event-Property.</summary>
+    [Test]
+    procedure NestedRoutineShadowsEvent;
     [Test]
     procedure IsKnownEventType;
   end;
@@ -360,6 +363,18 @@ begin
   mContext.InactiveRanges := [TTextRange.Create(15, 16, 17, 0)];
   Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TEventCallWithoutAssignedRule.Create, mContext,
     ''))));
+end;
+
+procedure TEventRulesTests.NestedRoutineShadowsEvent;
+var
+  mSource: string;
+begin
+  mSource := Body('  OnChange(Self);'#10);
+  // Gegentest: ohne lokale Routine ist OnChange die Property.
+  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, mSource, 1);
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, StringReplace(mSource,
+    'procedure TZaehler.Erhoehen;'#10, 'procedure TZaehler.Erhoehen;'#10#10 +
+    '  procedure OnChange(ASender: TObject);'#10'  begin'#10'    FWert := 0;'#10'  end;'#10#10, []));
 end;
 
 procedure TEventRulesTests.OffAndExclude;
