@@ -545,10 +545,13 @@ Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.InlayHints.Store.Tests
 Atlas.Core.Editor.InlayPlan.Tests
+Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.DialogInput.Tests
+Atlas.Core.Signature.EditorPlan.Tests
+Atlas.Core.CodeInsight.Plan.Tests
 Atlas.Core.Problems.Switches.Tests
 Atlas.Core.Forms.PropertyValues.Tests
 Atlas.Core.Editor.GutterMarks.Tests

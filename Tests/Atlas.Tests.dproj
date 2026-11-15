@@ -822,6 +822,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Documentation.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.EditorPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Signature.EditorPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Format.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
@@ -1466,6 +1468,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Todos.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.InlayPlan.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.PlaceholderPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.PlaceholderPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.InlayPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.Model.pas"/>
@@ -1535,6 +1539,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Files\Atlas.Core.Files.Format.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Lines.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\CodeInsight\Atlas.Core.CodeInsight.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.CodeInsight.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.IndexStore.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Status.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Status\Atlas.Core.Status.Server.pas"/>
