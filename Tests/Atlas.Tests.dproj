@@ -2655,6 +2655,22 @@
         </DCCReference>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MultiCursorKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MultiCursorKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GuideStroke.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GuideStroke.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CaretSteps.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CaretSteps.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GutterPanel.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterPanel.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SourceFiles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SourceFiles.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ExitPointAsk.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ExitPointAsk.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GhostKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GhostKeys.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

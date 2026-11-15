@@ -38,6 +38,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExitPoints,
+  Atlas.Core.Editor.ExitPointAsk,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.UI.Foundation.EditorFont;
@@ -77,9 +78,7 @@ type
     FWorkers: TAtlasWorkerSlot;
     FFont: TAtlasEditorFont;
     FRequest: Integer;
-    FIdleKey: string;
-    FIdleCount: Integer;
-    FAskedKey: string;
+    FAsk: TAtlasExitPointAsk;
     // Stand der Hervorhebung: Datei, Pufferstand, Zeilen und Antwort.
     FFileName: string;
     FVersion: Cardinal;
@@ -117,7 +116,6 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   System.JSON,
   Atlas.Text.Lines,
@@ -133,20 +131,6 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.PaintedLine;
-
-function RoleColor(const AColors: TAtlasColors; ARole: TAtlasExitPointRole): TAtlasColor;
-begin
-  case ARole of
-    TAtlasExitPointRole.Assign:
-      Result := AColors.Add;
-    TAtlasExitPointRole.Missing, TAtlasExitPointRole.Source:
-      Result := AColors.Error;
-    TAtlasExitPointRole.Loop:
-      Result := AColors.Accent;
-  else
-    Result := AColors.Warn;
-  end;
-end;
 
 { TAtlasIdeExitPoints.TEvents }
 
@@ -257,7 +241,7 @@ end;
 /// <summary>Steht die Schreibmarke lange genug auf einem Wort, nach dem noch nicht gefragt wurde?</summary>
 function TAtlasIdeExitPoints.Due(ALine, ACharacter: Integer; AExceptions, ALoops: Boolean): Boolean;
 var
-  mLineText, mKey: string;
+  mLineText: string;
   mStart, mStop: Integer;
 begin
   Result := False;
@@ -269,33 +253,11 @@ begin
   if not TAtlasExitPoints.Triggers(mLineText, ACharacter) or
     not TAtlasExitPoints.WordAt(mLineText, ACharacter, mStart, mStop) then
   begin
-    FIdleKey := '';
-    FAskedKey := '';
+    FAsk.Reset;
     Exit;
   end;
   // Je Wort eine Anfrage: Cursorbewegungen innerhalb des Worts ändern den Schlüssel nicht.
-  mKey := Format('%s|%d|%d|%d|%d|%d', [FFileName, FVersion, ALine, mStart, Ord(AExceptions), Ord(ALoops)]);
-  if mKey <> FIdleKey then
-  begin
-    FIdleKey := mKey;
-    FIdleCount := 0;
-    Exit;
-  end;
-  Inc(FIdleCount);
-  Result := (FIdleCount >= cIdleTicks) and (mKey <> FAskedKey);
-  if Result then
-  begin
-    FAskedKey := mKey;
-  end;
-end;
-
-function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
-    SameText(mExtension, '.inc');
+  Result := FAsk.Due(TAtlasExitPointAsk.KeyOf(FFileName, FVersion, ALine, mStart, AExceptions, ALoops), cIdleTicks);
 end;
 
 procedure ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
@@ -332,7 +294,8 @@ begin
   begin
     mView := TAtlasEditorBuffer.ActiveView;
   end;
-  if (mView = nil) or (mView.Buffer = nil) or not IsSource(mView.Buffer.FileName) or HasBlock(mView) then
+  if (mView = nil) or (mView.Buffer = nil) or not TAtlasExitPoints.Handles(mView.Buffer.FileName) or
+    HasBlock(mView) then
   begin
     Forget;
     Exit;
@@ -369,7 +332,7 @@ begin
   FFileName := '';
   FVersion := 0;
   FLines := nil;
-  FAskedKey := '';
+  FAsk.ForgetAsked;
 end;
 
 procedure TAtlasIdeExitPoints.Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal;
@@ -454,7 +417,7 @@ begin
       mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mPoint.EndCharacter, FTabWidth),
         AContext.EditorLineNum);
       TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom),
-        COLORREF(ColorToRGB(TColor(RoleColor(mColors, mPoint.Role)))), cPointAlpha);
+        COLORREF(ColorToRGB(TColor(TAtlasExitPoints.RoleColor(mColors, mPoint.Role)))), cPointAlpha);
     end;
   finally
     RestoreDC(mDC, mSaved);
@@ -506,30 +469,6 @@ begin
   TAtlasLineTail.Finish(Self, mKey, mMark.Right);
   TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.ExitPoints, AContext.FileName,
     FSet.RoutineLine, AText), mMark, AContext.EditView.TopRow, ARect.Height);
-end;
-
-/// <summary>Argumente der Anfrage: Datei, Position und Optionen.</summary>
-function ExitPointArguments(const AFileName: string; ALine, ACharacter: Integer; AExceptions,
-  ALoops: Boolean): string;
-var
-  mValues: TJSONArray;
-  mPosition, mOptions: TJSONObject;
-begin
-  mValues := TJSONArray.Create;
-  try
-    mValues.Add(TLspSession.PathToUri(AFileName));
-    mPosition := TJSONObject.Create;
-    mPosition.AddPair('line', TJSONNumber.Create(ALine));
-    mPosition.AddPair('character', TJSONNumber.Create(ACharacter));
-    mValues.AddElement(mPosition);
-    mOptions := TJSONObject.Create;
-    mOptions.AddPair('exceptions', TJSONBool.Create(AExceptions));
-    mOptions.AddPair('loops', TJSONBool.Create(ALoops));
-    mValues.AddElement(mOptions);
-    Result := mValues.ToJSON;
-  finally
-    mValues.Free;
-  end;
 end;
 
 /// <summary>Faden, der ASession fragt und die Antwort im Hauptthread an die laufende Hervorhebung gibt.</summary>
@@ -591,8 +530,8 @@ begin
   mSession.Sync(FFileName, AText);
   FWorkers.Prune;
   Inc(FRequest);
-  mWorker := Asker(mSession, ExitPointArguments(FFileName, ALine, ACharacter, AExceptions, ALoops), FRequest,
-    FFileName, FVersion);
+  mWorker := Asker(mSession, TAtlasExitPointAsk.Arguments(TLspSession.PathToUri(FFileName), ALine, ACharacter,
+    AExceptions, ALoops), FRequest, FFileName, FVersion);
   FWorkers.Start(mWorker);
 end;
 

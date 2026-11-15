@@ -30,6 +30,8 @@ type
     procedure ReadsNames;
     [Test]
     procedure BuildsArguments;
+    [Test]
+    procedure HandlesPascalSources;
   end;
 
 implementation
@@ -215,6 +217,15 @@ begin
     TAtlasSmartPaste.Arguments('file:///c%3A/p/A.pas', 3, 2, 5, 7));
   Assert.AreEqual('["u",{"start":{"line":0,"character":0},"end":{"line":1,"character":0}},["System.JSON"]]',
     TAtlasSmartPaste.Arguments('u', 0, 0, 1, 0, ['System.JSON']));
+end;
+
+procedure TAtlasSmartPasteTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasSmartPaste.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasSmartPaste.Handles('defines.INC'));
+  Assert.IsFalse(TAtlasSmartPaste.Handles('Main.dfm'));
+  Assert.IsTrue(TAtlasSmartPaste.OffersUses('Projekt.dpr'));
+  Assert.IsFalse(TAtlasSmartPaste.OffersUses('defines.inc'), 'Include-Dateien haben kein uses');
 end;
 
 initialization
