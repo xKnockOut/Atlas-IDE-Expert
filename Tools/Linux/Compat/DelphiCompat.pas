@@ -48,7 +48,38 @@ type
     function GetPreamble: TBytes; override;
   end;
 
+// FPC bringt LastDelimiter, IsDelimiter und AnsiPos nur für AnsiString mit: Ein UnicodeString wird nach UTF-8
+// umgewandelt, das Ergebnis zählt dann Bytes statt Zeichen und verrutscht hinter jedem Nicht-ASCII-Zeichen
+// (Pfad „Programação/Unt_X.pas“ ergab den Dateinamen „t_X.pas“). Convert-ForFpc.py ruft deshalb diese
+// Fassungen auf, die wie in Delphi in UTF-16-Zeichen zählen.
+
+/// <summary>Wie SysUtils.LastDelimiter in Delphi: Position (ab 1) des letzten Zeichens aus ADelimiters, sonst 0.</summary>
+function LastDelimiter(const ADelimiters, AText: UnicodeString): Integer;
+/// <summary>Wie SysUtils.IsDelimiter in Delphi: True, wenn AText[AIndex] in ADelimiters steht.</summary>
+function IsDelimiter(const ADelimiters, AText: UnicodeString; AIndex: Integer): Boolean;
+/// <summary>Wie SysUtils.AnsiPos in Delphi: Position (ab 1) von ASubstr in AText, sonst 0.</summary>
+function AnsiPos(const ASubstr, AText: UnicodeString): Integer;
+
 implementation
+
+function LastDelimiter(const ADelimiters, AText: UnicodeString): Integer;
+begin
+  Result := Length(AText);
+  while (Result > 0) and (Pos(AText[Result], ADelimiters) = 0) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+function IsDelimiter(const ADelimiters, AText: UnicodeString; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 1) and (AIndex <= Length(AText)) and (Pos(AText[AIndex], ADelimiters) > 0);
+end;
+
+function AnsiPos(const ASubstr, AText: UnicodeString): Integer;
+begin
+  Result := Pos(ASubstr, AText);
+end;
 
 function TUTF8NoBomEncoding.GetPreamble: TBytes;
 begin

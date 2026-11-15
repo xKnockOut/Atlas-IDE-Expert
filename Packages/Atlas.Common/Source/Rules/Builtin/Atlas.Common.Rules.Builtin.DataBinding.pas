@@ -432,34 +432,71 @@ begin
   end;
 end;
 
+/// <summary>Feld, das AControl zeigt: DataField eines datensensitiven Controls oder FieldName einer LiveBinding-
+/// Verknüpfung (TLinkControlToField: DataSource, FieldName, Control); '' ohne.</summary>
+function BoundFieldName(AModel: TBindingModel; AControl: TDfmObject): string;
+begin
+  Result := Unquote(AModel.Value(AControl, 'DataField'));
+  if (Result = '') and (AModel.Value(AControl, 'Control') <> '') then
+  begin
+    Result := Unquote(AModel.Value(AControl, 'FieldName'));
+  end;
+end;
+
+/// <summary>Ist AControl an das Dataset ADataSet gebunden (über DataSource, bei LiveBindings über TBindSourceDB)
+/// und zeigt ein Feld oder als Gitter ohne Feld alle?</summary>
+function ShowsDataSet(AModel: TBindingModel; AControl, ADataSet: TDfmObject): Boolean;
+begin
+  Result := (AModel.DataSetOf(AModel.Value(AControl, 'DataSource')) = ADataSet) and
+    ((BoundFieldName(AModel, AControl) <> '') or ContainsText(AControl.TypeName, 'Grid'));
+end;
+
 /// <summary>Zeigt AControl das Feld AFieldName des Datasets ADataSet? Gitter ohne DataField zeigen alle Felder.
 /// </summary>
 function ShowsField(AModel: TBindingModel; AControl, ADataSet: TDfmObject; const AFieldName: string): Boolean;
+var
+  mFieldName: string;
 begin
-  Result := (AModel.DataSetOf(AModel.Value(AControl, 'DataSource')) = ADataSet) and
-    (SameText(Unquote(AModel.Value(AControl, 'DataField')), AFieldName) or
-    ContainsText(AControl.TypeName, 'Grid') and (AModel.Value(AControl, 'DataField') = ''));
+  mFieldName := BoundFieldName(AModel, AControl);
+  Result := ShowsDataSet(AModel, AControl, ADataSet) and (SameText(mFieldName, AFieldName) or (mFieldName = ''));
 end;
 
-/// <summary>Meldet das Pflichtfeld AField von ADataSet, wenn kein sichtbares Control es zeigt.</summary>
+/// <summary>Sichtbarkeit des Controls, das AControl zeigt: bei LiveBindings das Control hinter "Control".</summary>
+function IsShownControl(AModel: TBindingModel; AControl: TDfmObject): Boolean;
+var
+  mTarget: TDfmObject;
+begin
+  mTarget := AModel.Find(AModel.Value(AControl, 'Control'));
+  if mTarget = nil then
+  begin
+    mTarget := AControl;
+  end;
+  Result := IsVisible(AModel, mTarget);
+end;
+
+/// <summary>Meldet das Pflichtfeld AField von ADataSet, wenn kein sichtbares Control es zeigt. Ist in der
+/// Formulardatei gar kein Control an ADataSet gebunden (Datenmodul, Oberfläche in einem anderen Formular), gibt es
+/// keine Aussage.</summary>
 procedure CheckRequiredField(AModel: TBindingModel; ADataSet, AField: TDfmObject; const AReport: IRuleReport);
 var
   mControl: TDfmObject;
   mFieldName: string;
-  mBound, mShown: Boolean;
+  mAnyBound, mBound, mShown: Boolean;
 begin
   mFieldName := Unquote(AModel.Value(AField, 'FieldName'));
+  mAnyBound := False;
   mBound := False;
   mShown := False;
   for mControl in AModel.Objects do
   begin
+    mAnyBound := mAnyBound or ShowsDataSet(AModel, mControl, ADataSet);
     if ShowsField(AModel, mControl, ADataSet, mFieldName) then
     begin
       mBound := True;
-      mShown := mShown or IsVisible(AModel, mControl);
+      mShown := mShown or IsShownControl(AModel, mControl);
     end;
   end;
-  if not mShown then
+  if mAnyBound and not mShown then
   begin
     AReport.Add(AModel.Anchor, cTexts[TDataBindingText.RequiredField].Fmt([ADataSet.Name, mFieldName,
       IfThen(mBound, cTexts[TDataBindingText.OnlyInvisible].Text, cTexts[TDataBindingText.NoControl].Text)]));
