@@ -150,6 +150,10 @@
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.StateDialog.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueState.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearchPlan.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CodeLinkPlan.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.BlamePlan.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.SprintLoad.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommentPlan.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NotifyPlan.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TestFetch.pas"/>
