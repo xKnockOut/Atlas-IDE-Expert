@@ -256,6 +256,7 @@ Atlas.Common.Pascal.PureRoutines.Tests
 Atlas.Common.Pascal.RoutineSignatures.Tests
 Atlas.Common.Pascal.SyntaxChecks.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
+Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.WarningCodes.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests

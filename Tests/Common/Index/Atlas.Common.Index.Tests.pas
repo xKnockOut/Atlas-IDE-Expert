@@ -119,6 +119,10 @@ type
     /// <summary>InternUnit außerhalb der Index-Sperre; parallele AddUnit verlieren nichts.</summary>
     [Test]
     procedure AddUnitConcurrentKeepsAllUnits;
+    /// <summary>Declared(X) in {$IF}: Routinen und Typen auf oberster Ebene ja, Mitglieder und Fehlendes nein.
+    /// </summary>
+    [Test]
+    procedure DeclaredInSeesTopLevelSymbols;
   end;
 
   [TestFixture]
@@ -203,6 +207,7 @@ uses
   System.SyncObjs,
   System.Diagnostics,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Cache,
@@ -1152,6 +1157,23 @@ begin
   Assert.IsTrue(mIndex.FindUnit('U0_1', mFirst));
   Assert.IsTrue(mIndex.FindUnit('U3_100', mLast));
   Assert.AreEqual<Pointer>(Pointer(mLast.Symbols[0].Name), Pointer(mFirst.Symbols[0].Name));
+end;
+
+procedure TSymbolIndexTests.DeclaredInSeesTopLevelSymbols;
+var
+  mIndex: ISymbolIndex;
+  mDeclared: TDeclaredFunc;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Kodierung;'#10'interface'#10 +
+    'type'#10'  THelfer = class'#10'    procedure Mitglied;'#10'  end;'#10 +
+    'function Kodiere(const AText: string): string;'#10'implementation'#10'end.', 'C:\P\Kodierung.pas', nil));
+  mDeclared := TSymbolIndex.DeclaredIn(mIndex);
+  Assert.IsTrue(mDeclared('Kodiere'));
+  Assert.IsTrue(mDeclared('kodiere'));
+  Assert.IsTrue(mDeclared('THelfer'));
+  Assert.IsFalse(mDeclared('Mitglied'));
+  Assert.IsFalse(mDeclared('Dekodiere'));
 end;
 
 { TIndexCacheTests }

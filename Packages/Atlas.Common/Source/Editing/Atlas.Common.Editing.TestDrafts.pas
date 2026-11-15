@@ -130,7 +130,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -254,7 +255,7 @@ class function TTestDrafts.HeaderOf(const AText: string; const ATokens: TArray<T
 var
   mNameToken: Integer;
 begin
-  mNameToken := TChangeSignature.NameTokenAt(ATokens, ADeclaration.SelectionRange.StartPos);
+  mNameToken := IdentifierAt(ATokens, ADeclaration.SelectionRange.StartPos);
   Result := TChangeSignature.ReadHeader(AText, ATokens, mNameToken, AHeader);
 end;
 

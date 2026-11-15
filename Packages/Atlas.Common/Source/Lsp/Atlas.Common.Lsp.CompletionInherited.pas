@@ -82,7 +82,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor;
 
 function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
 var
@@ -108,30 +109,6 @@ begin
     end;
   end;
   Result := Result + [Copy(AText, mStart, MaxInt)];
-end;
-
-/// <summary>Stelle der schließenden Klammer zur öffnenden bei AOpen; 0 ohne.</summary>
-function MatchingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mIndex, mDepth: Integer;
-begin
-  mDepth := 0;
-  for mIndex := AOpen to Length(AText) do
-  begin
-    if AText[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-  Result := 0;
 end;
 
 function StripModifier(const AText: string): string;

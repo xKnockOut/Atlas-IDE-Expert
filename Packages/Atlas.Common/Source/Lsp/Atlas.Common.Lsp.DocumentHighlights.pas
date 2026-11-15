@@ -84,7 +84,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.KeywordHighlights,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -110,29 +111,6 @@ begin
   begin
     Result := AText;
   end;
-end;
-
-function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    mToken := ATokens[mIndex];
-    if (mToken.StartPos.Line > APosition.Line) or
-      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
-    begin
-      Break;
-    end;
-    // Cursor auf oder direkt hinter dem Bezeichner.
-    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
-      (APosition.Character <= mToken.EndPos.Character) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 function SameTarget(const A, B: TDefinitionTarget): Boolean;
@@ -298,7 +276,7 @@ var
 begin
   Result := nil;
   mTokens := ATree.Tokens;
-  mIndex := TokenAt(mTokens, APosition);
+  mIndex := IdentifierAt(mTokens, APosition);
   if mIndex < 0 then
   begin
     Exit;

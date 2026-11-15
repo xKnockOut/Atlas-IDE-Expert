@@ -131,7 +131,8 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -272,7 +273,7 @@ begin
     begin
       Continue;
     end;
-    if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, TChangeSignature.NameTokenAt(AUnit.Tokens,
+    if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), mHeader) or not IsBodyOf(mHeader, AMember.Decl) then
     begin
       Continue;
@@ -301,7 +302,7 @@ begin
   Result.Name := ADecl.Name;
   Result.IsRoot := AIsRoot;
   Result.BodyLast := -1;
-  if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, TChangeSignature.NameTokenAt(AUnit.Tokens,
+  if not TChangeSignature.ReadHeader(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
     ADecl.SelectionRange.StartPos), Result.Decl) then
   begin
     raise SignatureError(cTexts[TCollectorText.TheHeaderOfCannotBe].Fmt([ADecl.QualifiedName]));
@@ -362,7 +363,7 @@ begin
     AMember.FileName := AUnit.FileName;
     AMember.Name := AEventType;
     AMember.BodyLast := -1;
-    if TChangeSignature.ReadProcedureType(AUnit.Text, AUnit.Tokens, TChangeSignature.NameTokenAt(AUnit.Tokens,
+    if TChangeSignature.ReadProcedureType(AUnit.Text, AUnit.Tokens, IdentifierAt(AUnit.Tokens,
       mSymbol.SelectionRange.StartPos), AMember.Decl) then
     begin
       Exit(True);
@@ -957,7 +958,7 @@ begin
   mToken := -1;
   if (mOther <> nil) and (mOther.Tree <> nil) then
   begin
-    mToken := TChangeSignature.NameTokenAt(mOther.Tokens, ALocation.Range.StartPos);
+    mToken := IdentifierAt(mOther.Tokens, ALocation.Range.StartPos);
   end;
   if mToken < 0 then
   begin

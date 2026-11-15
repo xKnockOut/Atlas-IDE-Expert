@@ -64,6 +64,10 @@ type
     procedure OpenArraysSliceAndExpressions;
     [Test]
     procedure AddressOfExpression;
+    /// <summary>@P einer Variablen prozeduralen Typs an einen var-Pointer-Parameter ist bei dcc eine Variable (JCL:
+    /// HookImport(…, @OldProc)).</summary>
+    [Test]
+    procedure AddressOfProcedureVariableIsVariable;
     [Test]
     procedure PropertyFixWritesBack;
     [Test]
@@ -654,6 +658,15 @@ begin
   // Variablen, Elemente, Felder, Routinen und Dereferenzierung haben eine Adresse.
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  if (@Zahl = nil) or (@(Zahl) = nil) or (@Feld[1] = nil) ' +
     'or (@Doppelt = nil) or (@S[1] = nil) or (@Zeile.FText = nil) then;'#10)))));
+end;
+
+procedure TInvalidVarArgumentTests.AddressOfProcedureVariableIsVariable;
+begin
+  Assert.AreEqual(0, Integer(Length(VarFindings('unit Haken;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TOeffnen = function(A: Integer): Boolean; stdcall;'#10'var'#10'  Alt: TOeffnen;'#10 +
+    'procedure Einhaengen(Neu: Pointer; var Original: Pointer);'#10'begin'#10'end;'#10 +
+    'function Oeffne(A: Integer): Boolean; stdcall;'#10'begin'#10'  Result := False;'#10'end;'#10 +
+    'procedure Lauf;'#10'begin'#10'  Einhaengen(@Oeffne, @Alt);'#10'end;'#10'end.'))));
 end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;
