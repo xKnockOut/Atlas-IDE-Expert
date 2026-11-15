@@ -7,7 +7,8 @@
 //   out-Open-Array übersetzt dcc (Spring4D TArray.Sort<T>, IV1-IV4; dcc-Lauf vom 29.10.2026, #1328): Slice übergibt
 //   den Speicher des Arrays. Nur bei eindeutiger Routine ohne Überladungen und ohne eingebaute Routinen (Inc, Move
 //   ... nehmen mehr an). Ein String-Element (S[I]) an einen var-Zeichen-Parameter übersetzt dcc ebenfalls (E2354
-//   gab es nur unter .NET; Cm.E2354, #1383). Korrektur: über eine lokale Variable übergeben, bei Properties mit
+//   gab es nur unter .NET; Cm.E2354, #1383). @P einer Variablen prozeduralen Typs ist bei dcc eine Variable und
+//   geht an var-Pointer (JCL). Korrektur: über eine lokale Variable übergeben, bei Properties mit
 //   write mit Rückschreiben.
 
 interface
@@ -106,7 +107,7 @@ type
     procedure ClassifyCall(AArgument: TSyntaxNode; AOpenArray: Boolean; var AResult: TVarArgument);
     procedure ClassifyConstant(const ASymbol: TResolvedSymbol; AOpenArray: Boolean; var AResult: TVarArgument);
     procedure ClassifySymbol(AArgument: TSyntaxNode; AOpenArray: Boolean; var AResult: TVarArgument);
-    function AddressMayBeVariable(AAddress: TSyntaxNode): Boolean;
+    function IsProcedureVariableAddress(AAddress: TSyntaxNode): Boolean;
     function Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;
     function FixHost(ACall: TSyntaxNode): TSyntaxNode;
     function KnownParamType(const AParamType: string): Boolean;
@@ -375,42 +376,27 @@ begin
   end;
 end;
 
-function IsProceduralText(const AText: string): Boolean;
-begin
-  Result := StartsText('procedure', AText) or StartsText('function', AText) or StartsText('reference', AText);
-end;
-
-function TVarArgumentScan.AddressMayBeVariable(AAddress: TSyntaxNode): Boolean;
+/// <summary>@P mit P einer Variablen oder eines Felds prozeduralen Typs? Das ist bei dcc selbst eine Variable
+/// (@P := GetProcAddress(…)) und geht an einen var-Pointer-Parameter (JCL: HookImport(…, @OldProc); ACBr:
+/// LoadFunc('Name', @xFunc)).</summary>
+function TVarArgumentScan.IsProcedureVariableAddress(AAddress: TSyntaxNode): Boolean;
 var
-  mSymbol, mType: TResolvedSymbol;
-  mTypeFound: Boolean;
-  mTypeText: string;
+  mSymbol: TResolvedSymbol;
+  mFromUnit: TUnitIndex;
 begin
-  // @F einer prozeduralen Variablen ist selbst eine Variable vom Typ Pointer (@F := GetProcAddress(...)) und
-  // geht an var P: Pointer (LoadFunction('Name', @xFunc)). Ausdruck nur bei bekanntem anderem Typ.
   Result := False;
-  if (AAddress.ChildCount <> 1) or not (AAddress[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  if (AAddress.ChildCount <> 1) or not (AAddress[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+    not Resolve(AAddress[0], mSymbol) or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable,
+    TIndexSymbolKind.Field]) then
   begin
     Exit;
   end;
-  if not FResolver.NodeType(FContext.Tree, FFileName, AAddress[0], mSymbol, mType, mTypeFound) then
+  if not FResolver.DeclaringUnit(mSymbol, mFromUnit) then
   begin
-    Exit(True);
+    mFromUnit := FLocal;
   end;
-  if not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
-  begin
-    Exit;
-  end;
-  mTypeText := DeclaredTypeText(FContext, mSymbol);
-  if IsProceduralText(mTypeText) then
-  begin
-    Exit(True);
-  end;
-  if mTypeFound and (Pos('=', mType.Signature) > 0) then
-  begin
-    Exit(IsProceduralText(Trim(Copy(mType.Signature, Pos('=', mType.Signature) + 1, MaxInt))));
-  end;
-  Result := not mTypeFound and not TResolverText.IsBuiltinTypeName(mTypeText);
+  // Auch ein Typ direkt an der Variablen (xFunc: function: Integer; ACBr lädt so DLL-Routinen).
+  Result := IsPlainProcedureType(FResolver, FContext, mFromUnit, DeclaredTypeText(FContext, mSymbol));
 end;
 
 function TVarArgumentScan.Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;
@@ -442,7 +428,7 @@ begin
         Result.Kind := TVarArgumentKind.Expression;
       end;
     TSyntaxKind.AddressOf:
-      if not AddressMayBeVariable(AArgument) then
+      if not IsProcedureVariableAddress(AArgument) then
       begin
         Result.Kind := TVarArgumentKind.Expression;
       end;

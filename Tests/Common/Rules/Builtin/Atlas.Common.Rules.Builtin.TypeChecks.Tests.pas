@@ -68,6 +68,10 @@ type
     /// (Laden('Name', @xFunc)); @ einer Integer-Variablen nicht.</summary>
     [Test]
     procedure ProceduralAddressIsVariable;
+    /// <summary>@P einer Variablen prozeduralen Typs an einen var-Pointer-Parameter ist bei dcc eine Variable (JCL:
+    /// HookImport(…, @OldProc)).</summary>
+    [Test]
+    procedure AddressOfProcedureVariableIsVariable;
     [Test]
     procedure PropertyFixWritesBack;
     [Test]
@@ -672,6 +676,15 @@ begin
     '  Laden(''Zahl'', @Zahl);'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(16, mFound[0].Range.StartPos.Line, '@Zahl');
+end;
+
+procedure TInvalidVarArgumentTests.AddressOfProcedureVariableIsVariable;
+begin
+  Assert.AreEqual(0, Integer(Length(VarFindings('unit Haken;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TOeffnen = function(A: Integer): Boolean; stdcall;'#10'var'#10'  Alt: TOeffnen;'#10 +
+    'procedure Einhaengen(Neu: Pointer; var Original: Pointer);'#10'begin'#10'end;'#10 +
+    'function Oeffne(A: Integer): Boolean; stdcall;'#10'begin'#10'  Result := False;'#10'end;'#10 +
+    'procedure Lauf;'#10'begin'#10'  Einhaengen(@Oeffne, @Alt);'#10'end;'#10'end.'))));
 end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;

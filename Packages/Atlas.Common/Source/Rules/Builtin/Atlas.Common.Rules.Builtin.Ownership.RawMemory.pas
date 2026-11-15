@@ -6,7 +6,8 @@
 //                     Syntaxbaum nach oben eingeordnet (Belegung, Freigabe, Zugriff, Weitergabe als Ergebnis,
 //                     Zuweisung, @P, Add/Insert…, anonyme Methode, lokale Routine). Lesen und Füllen über ein
 //                     Argument ist erlaubt; Routinen mit Free, Frei, Release, Dispose, Destroy oder Dealloc im Namen
-//                     gelten als Freigabe. Korrektur: try … finally mit FreeMem, Dispose bzw. StrDispose.
+//                     gelten als Freigabe. Nur die Routinen von System, keine gleichnamigen Methoden
+//                     (TDocVariant.New(V)). Korrektur: try … finally mit FreeMem, Dispose bzw. StrDispose.
 
 interface
 
@@ -155,7 +156,22 @@ begin
     ((Length(mName) > 1) and CharInSet(mName[1], ['P', 'T']) and CharInSet(mName[2], ['A'..'Z']));
 end;
 
-// Art des Vorkommens ANode (Bezeichner der Variablen) vom Knoten aus nach oben bis zur Anweisung.
+/// <summary>True, wenn ACall eine der Speicherroutinen ANames von System aufruft: ohne Qualifizierer oder als
+/// System.New; TDocVariant.New(V) oder Liste.New ist eine eigene Methode.</summary>
+function IsRawAllocator(ACall: TSyntaxNode; const ANames: array of string): Boolean;
+var
+  mCallee: TSyntaxNode;
+begin
+  Result := False;
+  if (ACall.ChildCount = 0) or not MatchText(ACall.Name, ANames) then
+  begin
+    Exit;
+  end;
+  mCallee := ACall[0];
+  Result := (mCallee.Kind = TSyntaxKind.Identifier) or ((mCallee.Kind = TSyntaxKind.MemberAccess) and
+    (mCallee.ChildCount = 1) and (mCallee[0].Kind = TSyntaxKind.Identifier) and SameText(mCallee[0].Name, 'System'));
+end;
+
 /// <summary>Belegung an ACall mit der Variablen als erstem Argument; ReallocMem(P, 0) gibt frei.</summary>
 function AllocUse(ACall: TSyntaxNode): TRawMemoryUse;
 begin
@@ -177,7 +193,7 @@ begin
   begin
     AUse := TRawMemoryUse.Use;
   end
-  else if ADirect and (ACall[1] = ACurrent) and MatchText(ACall.Name, cRawAllocCalls) then
+  else if ADirect and (ACall[1] = ACurrent) and IsRawAllocator(ACall, cRawAllocCalls) then
   begin
     AUse := AllocUse(ACall);
   end
@@ -220,7 +236,7 @@ begin
   end;
   // Neue Zuweisung (P := Q, P := nil): Herkunft unklar.
   Result := TRawMemoryUse.Escape;
-  if (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and MatchText(mValue.Name, cRawAllocFunctions) then
+  if (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and IsRawAllocator(mValue, cRawAllocFunctions) then
   begin
     Result := TRawMemoryUse.Alloc;
   end;

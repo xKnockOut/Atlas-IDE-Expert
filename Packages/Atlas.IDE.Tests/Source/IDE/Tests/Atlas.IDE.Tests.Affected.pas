@@ -21,7 +21,8 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Tests.Run;
+  Atlas.Core.Tests.Run,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Testlauf: Datei aus dem Testprojekt und Namen für --run.</summary>
@@ -43,7 +44,7 @@ type
 
   TAtlasIdeAffectedTests = class
   private class var
-    FWorkers: TArray<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     /// <summary>Zählt Uninstall: Antworten von Determine aus einer früheren Installation verfallen.</summary>
     FGeneration: Integer;
@@ -51,8 +52,9 @@ type
     /// <summary>Hook-Ordner, für die Atlas schon gemeldet hat (einmal je Sitzung).</summary>
     FReported: TArray<string>;
   private
+    class constructor Create;
+    class destructor Destroy;
     class procedure Spawn(const AWork: TProc); static;
-    class procedure Reap(AWait: Boolean); static;
     class procedure Show(ARequest: Integer; const AFound: TAtlasAffectedTests; const AError: string); static;
     class procedure InstallHook(const ATarget: TAtlasTestTarget); static;
     class procedure RemoveHook(const AFolder: string); static;
@@ -94,36 +96,19 @@ uses
 
 { TAtlasIdeAffectedTests }
 
-class procedure TAtlasIdeAffectedTests.Spawn(const AWork: TProc);
-var
-  mWorker: TThread;
+class constructor TAtlasIdeAffectedTests.Create;
 begin
-  Reap(False);
-  mWorker := TThread.CreateAnonymousThread(AWork);
-  mWorker.FreeOnTerminate := False;
-  FWorkers := FWorkers + [mWorker];
-  mWorker.Start;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
 end;
 
-class procedure TAtlasIdeAffectedTests.Reap(AWait: Boolean);
-var
-  mIndex: Integer;
-  mRemaining: TArray<TThread>;
+class destructor TAtlasIdeAffectedTests.Destroy;
 begin
-  mRemaining := nil;
-  for mIndex := 0 to High(FWorkers) do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-    end
-    else
-    begin
-      mRemaining := mRemaining + [FWorkers[mIndex]];
-    end;
-  end;
-  FWorkers := mRemaining;
+  FreeAndNil(FWorkers);
+end;
+
+class procedure TAtlasIdeAffectedTests.Spawn(const AWork: TProc);
+begin
+  FWorkers.Start(TThread.CreateAnonymousThread(AWork));
 end;
 
 class procedure TAtlasIdeAffectedTests.Show(ARequest: Integer; const AFound: TAtlasAffectedTests;
@@ -220,7 +205,7 @@ begin
   // Spätere Antworten verwerfen; beim Entladen bricht TAtlasShutdown die Anfragen ab, dann auf alle warten.
   Inc(FRequest);
   Inc(FGeneration);
-  Reap(TAtlasShutdown.Signalled);
+  FWorkers.Release(TAtlasShutdown.Signalled);
   FHooks := Default(TAtlasAffectedTestsHooks);
   FReported := nil;
 end;

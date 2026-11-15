@@ -70,6 +70,7 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="Source\Process\Atlas.WinBase.Process.pas"/>
+        <DCCReference Include="Source\Files\Atlas.WinBase.Files.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

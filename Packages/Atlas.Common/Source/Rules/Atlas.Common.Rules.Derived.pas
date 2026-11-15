@@ -171,6 +171,13 @@ begin
   begin
     Exit;
   end;
+  // System.SysUtils.Abort löst immer EAbort aus, auch ohne noreturn an der Deklaration (vor Delphi 13); nur eine
+  // Routine der Datei gleichen Namens (oben) verdeckt es.
+  if mKey = 'abort' then
+  begin
+    Exit(True);
+  end;
+
   Result := (Index <> nil) and
     Index.HasSymbol(mKey,
       function(const ASymbol: TIndexSymbol): Boolean

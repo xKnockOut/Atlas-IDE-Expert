@@ -479,29 +479,30 @@ begin
   Result := Result + BodyHeadEdits(AName, AExpected);
 end;
 
-/// <summary>Der Zugriff bei AIndex ("read Name"/"write Name") nennt Get&lt;Property&gt; bzw. Set&lt;Property&gt;
-/// anders geschrieben.</summary>
+/// <summary>Die Methode hinter dem Zugriff bei AIndex ("read Name"/"write Name") heißt Get&lt;Property&gt; bzw.
+/// Set&lt;Property&gt;, ist aber anders deklariert. Verglichen wird die Deklaration, nicht die Schreibweise im
+/// read/write. Bei einer Property mit kleinem Anfang (isVoid) passt auch der große (GetIsVoid).</summary>
 procedure TOverrideCaseCheck.CheckAccessor(const AProperty: TIndexSymbol; AIndex: Integer);
 var
-  mExpected, mName: string;
+  mExpected, mName, mPrefix, mCapital: string;
   mMethod: TIndexSymbol;
 begin
   mName := FTokens[AIndex + 1].Text;
+  mPrefix := 'Set';
   if SameText(FTokens[AIndex].Text, 'read') then
   begin
-    mExpected := 'Get' + AProperty.Name;
-  end
-  else
-  begin
-    mExpected := 'Set' + AProperty.Name;
+    mPrefix := 'Get';
   end;
-  if not AccessorMethod(mName, FMembers, mMethod) or not SameText(mName, mExpected) or (mName = mExpected) then
+  mExpected := mPrefix + AProperty.Name;
+  mCapital := mPrefix + UpperCase(Copy(AProperty.Name, 1, 1)) + Copy(AProperty.Name, 2, MaxInt);
+  if not AccessorMethod(mName, FMembers, mMethod) or not SameText(mMethod.Name, mExpected) or
+    (mMethod.Name = mExpected) or (mMethod.Name = mCapital) then
   begin
     Exit;
   end;
   FReport.Add(TokenRange(AIndex + 1), cTexts[TInheritanceOverrideCaseText.AccessorName].Fmt(
-    [FClass.Name, mMethod.Name, FClass.Name, mExpected]), TRuleConfidence.High,
-    [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.RenameTo].Fmt([mExpected]), RenameEdits(mName, mExpected))]);
+    [FClass.Name, mMethod.Name, FClass.Name, mCapital]), TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.RenameTo].Fmt([mCapital]), RenameEdits(mName, mCapital))]);
 end;
 
 /// <summary>Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.

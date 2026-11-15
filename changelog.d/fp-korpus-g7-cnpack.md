@@ -1,0 +1,13 @@
+### Behoben
+- Fehlalarme aus dem Korpuslauf über CnWizards und CnVCL:
+  - `invisible-char` meldet in ANSI-Dateien mit Mehrbyte-Codepage (GBK, Big5) das Folgebyte 0xAD nicht mehr als weiches Trennzeichen.
+  - Im Rumpf der Kurzform `function TX.F;` ist `Result` das Funktionsergebnis, nicht eine gleichnamige Eigenschaft der Klasse (`readonly-property-assigned`, `type-mismatch`, `condition-not-boolean`).
+  - `implemented-not-declared`: auskommentierte Direktiven hinter der Deklaration (`virtual;// abstract;`) zählen nicht mehr.
+  - `pchar-of-temporary`: Zeigerarithmetik (`PAnsiChar(NativeUInt(P) + N)`) und Umwandlungen von Zeigern und Zahlen sind kein temporärer String.
+  - `security-hardcoded-credential`: Eine Konstante mit nur der PEM-Kopf- oder Fußzeile (`'-----BEGIN RSA PRIVATE KEY-----'`) ist kein Schlüssel.
+  - `filename-compare-case`: Vergleich mit `EmptyStr` wird nicht mehr gemeldet.
+  - `out-param-read`: Ein `inherited;` ohne Argumente reicht var- und out-Parameter weiter und setzt sie.
+  - `possibly-uninitialized`: Namen im Rumpf von `with X do` können Mitglieder von X sein und gelten nicht als die gleichnamige lokale Variable.
+  - `empty-statement`: `with F(…) do begin end;` ruft F auf und wird nicht mehr als leerer Block gemeldet.
+  - `form-resource-missing` unter Linux: `{$R *.DFM}` findet `X.dfm` wie unter Windows ohne Rücksicht auf Groß-/Kleinschreibung; ebenso die Formulardatei neben der Unit.
+  - Parser: leere Record-Konstante `()` als Element einer Array- oder Record-Konstante.

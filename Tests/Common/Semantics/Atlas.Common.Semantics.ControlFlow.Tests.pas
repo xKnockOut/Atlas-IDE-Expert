@@ -11,6 +11,10 @@ type
   public
     [Test]
     procedure FindsCodeAfterExitUnreachable;
+    /// <summary>repeat, dessen Rumpf immer mit Break oder raise endet: nur until ist unerreichbar, das ist keine
+    /// unerreichbare Anweisung (Indy). Hinter einem Exit ist das ganze repeat unerreichbar.</summary>
+    [Test]
+    procedure RepeatEndingInJumpIsNotUnreachable;
     [Test]
     procedure IfWithoutElseFallsThrough;
     [Test]
@@ -189,6 +193,28 @@ begin
     Assert.IsTrue(F.Graph.Complete);
     Assert.AreEqual(1, Integer(Length(F.Graph.UnreachableStatements)));
     Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TControlFlowTests.RepeatEndingInJumpIsNotUnreachable;
+var
+  F: TFlowFixture;
+begin
+  F := Flow('  repeat'#13#10'    try'#13#10'      Verbinde;'#13#10'      Break;'#13#10'    except'#13#10 +
+    '      raise;'#13#10'    end;'#13#10'  until False;'#13#10'  Weiter;');
+  try
+    Assert.IsTrue(F.Graph.Complete);
+    Assert.AreEqual(0, Integer(Length(F.Graph.UnreachableStatements)));
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.Yes, F.Graph.IsReachable(NodeNamed(F, 'Weiter')));
+  finally
+    F.Free;
+  end;
+  F := Flow('  Exit;'#13#10'  repeat'#13#10'    Dead;'#13#10'  until Fertig;');
+  try
+    Assert.AreEqual<TFlowAnswer>(TFlowAnswer.No, F.Graph.IsReachable(NodeNamed(F, 'Dead')));
+    Assert.IsTrue(Length(F.Graph.UnreachableStatements) > 0);
   finally
     F.Free;
   end;

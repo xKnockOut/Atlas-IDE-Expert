@@ -117,21 +117,13 @@ end;
 
 /// <summary>Hinweis auf fehlende Dateien beim Fortsetzen; '' ohne.</summary>
 function MissingFilesText(const AMissing: TArray<string>): string;
-var
-  mNames: TArray<string>;
-  mIndex: Integer;
 begin
   Result := '';
-  if Length(AMissing) = 0 then
+  if Length(AMissing) > 0 then
   begin
-    Exit;
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing,
+      [TAtlasContinueSession.MissingNames(AMissing)]);
   end;
-  SetLength(mNames, Length(AMissing));
-  for mIndex := 0 to High(AMissing) do
-  begin
-    mNames[mIndex] := TAtlasWelcomeContinue.FileNameOf(AMissing[mIndex]);
-  end;
-  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing, [string.Join(', ', mNames)]);
 end;
 
 /// <summary>Im Hintergrund: ausgecheckter Branch und ob es AStored gibt; AKnown False, wenn die Versionsverwaltung
@@ -189,20 +181,11 @@ begin
 end;
 
 function TAtlasIdeContinueIssues.SinceChanges: TArray<TAtlasWorkTab>;
-var
-  mTab: TAtlasWorkTab;
 begin
   Result := nil;
-  if FChanges = nil then
+  if FChanges <> nil then
   begin
-    Exit;
-  end;
-  for mTab in FChanges.Values do
-  begin
-    if (FSince <= 0) or (mTab.ChangedAt >= FSince) then
-    begin
-      Result := Result + [mTab];
-    end;
+    Result := TAtlasWelcomeContinueIssues.ChangesSince(FChanges.Values.ToArray, FSince);
   end;
 end;
 
@@ -210,30 +193,21 @@ function TAtlasIdeContinueIssues.StatesOf(const AProject: string;
   const AKeys: TArray<string>): TArray<TAtlasIssueStateKind>;
 var
   mSource: IAtlasIssueWorkSource;
-  mInfos: TArray<TAtlasIssueWorkInfo>;
-  mIndex, mFound: Integer;
+  mInfo: TAtlasIssueWorkInfo;
+  mFoundKeys: TArray<string>;
+  mFoundStates: TArray<TAtlasIssueStateKind>;
 begin
-  SetLength(Result, Length(AKeys));
-  for mIndex := 0 to High(Result) do
+  mFoundKeys := nil;
+  mFoundStates := nil;
+  if (Length(AKeys) > 0) and TAtlasWelcomeNeighbors.IssueWorkSource(mSource) then
   begin
-    Result[mIndex] := TAtlasIssueStateKind.Unknown;
-  end;
-  if (Length(AKeys) = 0) or not TAtlasWelcomeNeighbors.IssueWorkSource(mSource) then
-  begin
-    Exit;
-  end;
-  mInfos := mSource.Statuses(AProject, AKeys);
-  for mIndex := 0 to High(AKeys) do
-  begin
-    for mFound := 0 to High(mInfos) do
+    for mInfo in mSource.Statuses(AProject, AKeys) do
     begin
-      if TAtlasWelcomeContinueIssues.SameKey(mInfos[mFound].Key, AKeys[mIndex]) then
-      begin
-        Result[mIndex] := StateKindOf(mInfos[mFound].Status);
-        Break;
-      end;
+      mFoundKeys := mFoundKeys + [mInfo.Key];
+      mFoundStates := mFoundStates + [StateKindOf(mInfo.Status)];
     end;
   end;
+  Result := TAtlasWelcomeContinueIssues.MatchStates(AKeys, mFoundKeys, mFoundStates);
 end;
 
 function TAtlasIdeContinueIssues.FindEntry(const AProject, AKey: string; out ATarget: string;
@@ -289,16 +263,9 @@ begin
   begin
     mOld := TAtlasIssueWorkEntry.Create(AIssue.Key, '', '', TAtlasWorkState.Empty);
   end;
-  mEntry := TAtlasIssueWorkEntry.Create(AIssue.Key, AIssue.Title, AIssue.Branch,
-    TAtlasWelcomeContinue.Build(ASnapshot.Tabs, ASnapshot.Active, SinceChanges, mOld.State, NowUtc));
-  if mEntry.Title = '' then
-  begin
-    mEntry.Title := mOld.Title;
-  end;
-  if mEntry.Branch = '' then
-  begin
-    mEntry.Branch := mOld.Branch;
-  end;
+  mEntry := TAtlasWelcomeContinueIssues.KeepNames(TAtlasIssueWorkEntry.Create(AIssue.Key, AIssue.Title,
+    AIssue.Branch, TAtlasWelcomeContinue.Build(ASnapshot.Tabs, ASnapshot.Active, SinceChanges, mOld.State, NowUtc)),
+    mOld);
   // Behobene Issues fallen beim Speichern heraus.
   mResolved := TAtlasWelcomeContinueIssues.ResolvedKeys(TAtlasWelcomeContinueIssues.Keys(mEntries),
     StatesOf(ATarget, TAtlasWelcomeContinueIssues.Keys(mEntries)));
@@ -410,7 +377,7 @@ begin
       begin
         TAtlasIdeContinueEditor.OpenTab(Tab);
       end;
-      if (Plan.Active >= 0) and (Plan.Active <= High(Plan.Open)) then
+      if TAtlasContinueSession.ActiveInPlan(Plan.Active, Length(Plan.Open)) then
       begin
         TAtlasIdeContinueEditor.OpenTab(Plan.Open[Plan.Active]);
       end;

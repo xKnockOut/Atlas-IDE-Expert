@@ -38,6 +38,13 @@ type
     procedure BranchStepAsksOnlyForOtherExistingBranch;
     [Test]
     procedure PlanOpensTabsOfIssueAndNamesMissingFile;
+    /// <summary>#1967: Änderungen seit dem letzten Speichern unter einem Issue.</summary>
+    [Test]
+    procedure ChangesSinceKeepsNewerOnes;
+    [Test]
+    procedure MatchStatesByKeyOtherwiseUnknown;
+    [Test]
+    procedure KeepNamesFillsEmptyTitleAndBranch;
   end;
 
 implementation
@@ -326,6 +333,53 @@ begin
   Assert.AreEqual(1, Integer(Length(mPlan.Missing)));
   Assert.AreEqual(Path('Alt.pas'), mPlan.Missing[0]);
   Assert.AreEqual(1, mPlan.Active, 'aktiver Reiter nach dem Überspringen');
+end;
+
+procedure TAtlasWelcomeContinueIssuesTests.ChangesSinceKeepsNewerOnes;
+var
+  mOld, mNew: TAtlasWorkTab;
+  mSince: TDateTime;
+  mTabs: TArray<TAtlasWorkTab>;
+begin
+  mSince := EncodeDateTime(2026, 11, 15, 10, 0, 0, 0);
+  mOld := TAtlasWorkTab.Create(Path('Alt.pas'), 3, 1);
+  mOld.ChangedAt := mSince - OneMinute;
+  mNew := TAtlasWorkTab.Create(Path('Neu.pas'), 5, 1);
+  mNew.ChangedAt := mSince;
+  mTabs := TAtlasWelcomeContinueIssues.ChangesSince(TArray<TAtlasWorkTab>.Create(mOld, mNew), mSince);
+  Assert.AreEqual(1, Integer(Length(mTabs)));
+  Assert.AreEqual(Path('Neu.pas'), mTabs[0].FileName);
+  Assert.AreEqual(2, Integer(Length(TAtlasWelcomeContinueIssues.ChangesSince(
+    TArray<TAtlasWorkTab>.Create(mOld, mNew), 0))), 'ohne Zeitpunkt alle');
+end;
+
+procedure TAtlasWelcomeContinueIssuesTests.MatchStatesByKeyOtherwiseUnknown;
+var
+  mStates: TArray<TAtlasIssueStateKind>;
+begin
+  mStates := TAtlasWelcomeContinueIssues.MatchStates(TArray<string>.Create('#12', 'ATL-7', '#3'),
+    TArray<string>.Create('atl-7', '#12'), TArray<TAtlasIssueStateKind>.Create(TAtlasIssueStateKind.Resolved,
+    TAtlasIssueStateKind.Open));
+  Assert.AreEqual(3, Integer(Length(mStates)));
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Open, mStates[0]);
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Resolved, mStates[1]);
+  Assert.AreEqual<TAtlasIssueStateKind>(TAtlasIssueStateKind.Unknown, mStates[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasWelcomeContinueIssues.MatchStates(nil, nil, nil))));
+end;
+
+procedure TAtlasWelcomeContinueIssuesTests.KeepNamesFillsEmptyTitleAndBranch;
+var
+  mOld, mEntry: TAtlasIssueWorkEntry;
+begin
+  mOld := TAtlasIssueWorkEntry.Create('#12', 'Absturz beim Speichern', 'feature/12', TAtlasWorkState.Empty);
+  mEntry := TAtlasWelcomeContinueIssues.KeepNames(TAtlasIssueWorkEntry.Create('#12', '', '', TAtlasWorkState.Empty),
+    mOld);
+  Assert.AreEqual('Absturz beim Speichern', mEntry.Title);
+  Assert.AreEqual('feature/12', mEntry.Branch);
+  mEntry := TAtlasWelcomeContinueIssues.KeepNames(TAtlasIssueWorkEntry.Create('#12', 'Neu', 'fix/12',
+    TAtlasWorkState.Empty), mOld);
+  Assert.AreEqual('Neu', mEntry.Title);
+  Assert.AreEqual('fix/12', mEntry.Branch);
 end;
 
 end.

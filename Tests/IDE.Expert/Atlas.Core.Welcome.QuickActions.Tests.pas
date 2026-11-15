@@ -68,12 +68,32 @@ type
     procedure AfterPullDecidesPhaseAndNote;
     [Test]
     procedure TestEndedWhenStoppedOrGraceOver;
+    [Test]
+    procedure AfterTestsFailsWithFailedTests;
+  end;
+
+  /// <summary>Entscheidungen der Schnellaktionen in der IDE (#1967).</summary>
+  [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
+  TAtlasQuickActionStepsTests = class
+  public
+    [Test]
+    procedure ShownItemsDropTestsAndTasks;
+    [Test]
+    procedure OtherRunningIdeActionBlocks;
+    [Test]
+    procedure AfterBuildRefusedFailedNextDone;
+    [Test]
+    procedure ByKeyOnlyRightAfterKey;
+    [Test]
+    procedure ConsoleFallbackOnlyForDefault;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Core.Projects.Summary,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Pull,
@@ -577,7 +597,84 @@ begin
   Assert.IsTrue(mState.TestEnded(1500, 1000), 'läuft nicht mehr');
 end;
 
+procedure TAtlasWelcomeQuickActionsTests.AfterTestsFailsWithFailedTests;
+var
+  mState: TAtlasQuickActionState;
+begin
+  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Tests, 100);
+  mState.Detail := 'läuft';
+  mState := mState.AfterTests(12, 0);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Succeeded, mState.Phase);
+  Assert.AreEqual(12, mState.Passed);
+  Assert.AreEqual('', mState.Detail);
+  Assert.AreEqual<UInt64>(100, mState.StartedMs, 'Beginn bleibt');
+  mState := mState.AfterTests(10, 2);
+  Assert.AreEqual<TAtlasQuickActionPhase>(TAtlasQuickActionPhase.Failed, mState.Phase);
+  Assert.AreEqual(2, mState.Failed);
+end;
+
+{ TAtlasQuickActionStepsTests }
+
+procedure TAtlasQuickActionStepsTests.ShownItemsDropTestsAndTasks;
+var
+  mAll: TAtlasQuickActions;
+begin
+  mAll := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.cDefaultItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.ItemsText(mAll),
+    TAtlasWelcomeQuickActions.ItemsText(TAtlasQuickActionSteps.ShownItems(mAll, True, True)));
+  Assert.IsFalse(TAtlasQuickAction.Tests in TAtlasQuickActionSteps.ShownItems(mAll, False, True));
+  Assert.IsTrue(TAtlasQuickAction.Tasks in TAtlasQuickActionSteps.ShownItems(mAll, False, True));
+  Assert.IsFalse(TAtlasQuickAction.Tasks in TAtlasQuickActionSteps.ShownItems(mAll, True, False));
+  Assert.IsTrue(TAtlasQuickAction.Pull in TAtlasQuickActionSteps.ShownItems(mAll, False, False));
+end;
+
+procedure TAtlasQuickActionStepsTests.OtherRunningIdeActionBlocks;
+var
+  mStates: TDictionary<string, TAtlasQuickActionState>;
+begin
+  mStates := TDictionary<string, TAtlasQuickActionState>.Create;
+  try
+    mStates.Add('A', TAtlasQuickActionState.Started(TAtlasQuickAction.Build, 1));
+    mStates.Add('B', TAtlasQuickActionState.Started(TAtlasQuickAction.Pull, 1));
+    Assert.IsFalse(TAtlasQuickActionSteps.OtherUsesIde(mStates, 'A'), 'eigener Bau, fremder Pull');
+    Assert.IsTrue(TAtlasQuickActionSteps.OtherUsesIde(mStates, 'B'), 'fremder Bau');
+    mStates['A'] := mStates['A'].AfterTests(1, 0);
+    Assert.IsFalse(TAtlasQuickActionSteps.OtherUsesIde(mStates, 'B'), 'Bau fertig');
+  finally
+    mStates.Free;
+  end;
+end;
+
+procedure TAtlasQuickActionStepsTests.AfterBuildRefusedFailedNextDone;
+begin
+  Assert.AreEqual<TAtlasQuickBuildStep>(TAtlasQuickBuildStep.Refused,
+    TAtlasQuickActionSteps.AfterBuild('kein Läufer', True, 0, 2));
+  Assert.AreEqual<TAtlasQuickBuildStep>(TAtlasQuickBuildStep.Failed,
+    TAtlasQuickActionSteps.AfterBuild('', False, 0, 2));
+  Assert.AreEqual<TAtlasQuickBuildStep>(TAtlasQuickBuildStep.Next, TAtlasQuickActionSteps.AfterBuild('', True, 0, 2));
+  Assert.AreEqual<TAtlasQuickBuildStep>(TAtlasQuickBuildStep.Done, TAtlasQuickActionSteps.AfterBuild('', True, 1, 2));
+  Assert.AreEqual<TAtlasQuickBuildStep>(TAtlasQuickBuildStep.Done, TAtlasQuickActionSteps.AfterBuild('', True, 0, 1));
+end;
+
+procedure TAtlasQuickActionStepsTests.ByKeyOnlyRightAfterKey;
+begin
+  Assert.IsTrue(TAtlasQuickActionSteps.ByKey(10500, 10000, 1000));
+  Assert.IsFalse(TAtlasQuickActionSteps.ByKey(11000, 10000, 1000));
+  Assert.IsFalse(TAtlasQuickActionSteps.ByKey(50000, 0, 1000), 'nie über die Taste');
+end;
+
+procedure TAtlasQuickActionStepsTests.ConsoleFallbackOnlyForDefault;
+var
+  mFallback: string;
+begin
+  Assert.IsTrue(TAtlasQuickActionSteps.ConsoleFallback('WT.exe', mFallback));
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cFallbackConsole, mFallback);
+  Assert.IsFalse(TAtlasQuickActionSteps.ConsoleFallback('pwsh.exe', mFallback));
+  Assert.AreEqual('', mFallback);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasWelcomeQuickActionsTests);
+  TDUnitX.RegisterTestFixture(TAtlasQuickActionStepsTests);
 
 end.

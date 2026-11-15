@@ -339,12 +339,6 @@ begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-/// <summary>Leerraum zusammenfassen.</summary>
-function Collapse(const AText: string): string;
-begin
-  Result := Trim(TRegEx.Replace(AText, '\s+', ' '));
-end;
-
 { TPropertyFromAccessorsOptions }
 
 class function TPropertyFromAccessorsOptions.Default: TPropertyFromAccessorsOptions;
@@ -553,7 +547,7 @@ begin
     mChild := ANode[mIndex];
     if mChild.Kind = TSyntaxKind.TypeReference then
     begin
-      AInfo.ResultType := Collapse(NodeText(AText, mChild));
+      AInfo.ResultType := TTextLines.CollapseSpace(NodeText(AText, mChild));
     end
     else if (mChild.Kind = TSyntaxKind.Directive) and (IndexText(mChild.Name, cVirtualDirectives) >= 0) then
     begin
@@ -576,7 +570,7 @@ begin
     AInfo.PlainParameters := False;
     Exit;
   end;
-  mTypeName := Collapse(NodeText(AText, mTypeRef));
+  mTypeName := TTextLines.CollapseSpace(NodeText(AText, mTypeRef));
   mModifier := '';
   if AParameter.Modifier = TParameterModifier.ConstParam then
   begin
@@ -757,7 +751,7 @@ begin
     mTypeRef := AChild.FindChild(TSyntaxKind.TypeReference);
     if mTypeRef <> nil then
     begin
-      FFields.AddOrSetValue(UpperCase(AChild.Name), Collapse(NodeText(FText, mTypeRef)));
+      FFields.AddOrSetValue(UpperCase(AChild.Name), TTextLines.CollapseSpace(NodeText(FText, mTypeRef)));
     end;
   end
   else if AChild.Kind = TSyntaxKind.RoutineHeader then

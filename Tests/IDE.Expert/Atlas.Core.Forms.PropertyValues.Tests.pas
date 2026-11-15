@@ -60,6 +60,8 @@ type
     FRoot: TComponent;
     FControl: TSampleControl;
   public
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -151,6 +153,19 @@ begin
 end;
 
 { TAtlasFormPropertyValuesTests }
+
+procedure TAtlasFormPropertyValuesTests.WarmUpFirstUse;
+begin
+  // Unter Delphi legen die RTL-Routinen beim ersten Aufruf einmalig 88 Byte an (Monitor-Datensatz einer globalen
+  // Liste): vorab, damit der Leckmonitor sie nicht den ersten Tests zuschreibt.
+  SetUp;
+  try
+    ResolvesNestedPath;
+    RejectsBadValues;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasFormPropertyValuesTests.SetUp;
 begin

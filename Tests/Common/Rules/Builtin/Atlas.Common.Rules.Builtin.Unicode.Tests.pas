@@ -94,6 +94,9 @@ type
     procedure InvalidUtf8InAnsiLookingUtf8File;
     [Test]
     procedure PlainAnsiFileIsNoInvalidUtf8;
+    /// <summary>GBK- oder Big5-Datei: Das Folgebyte $AD eines Zeichens ist kein weiches Trennzeichen.</summary>
+    [Test]
+    procedure MultiByteAnsiTrailIsNoSoftHyphen;
     [Test]
     procedure InvalidUtf8InForm;
     /// <summary>Minimalfall F15 (#1327): ANSI mit Umlauten und einem zufällig gültigen UTF-8-Paar.</summary>
@@ -501,6 +504,27 @@ begin
     Ord('U'), Ord(';')]);
   mSource := TFileEncoding.Decode(mData, mFormat);
   Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
+end;
+
+procedure TUnicodeEncodingRuleTests.MultiByteAnsiTrailIsNoSoftHyphen;
+var
+  mData: TBytes;
+  mSource: string;
+  mFormat: TFileFormat;
+begin
+  // Zwei GBK-Zeichen $D2 $D1 und $BE $AD im Kommentar; das letzte Byte liest Windows-1252 als U+00AD.
+  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), $D2, $D1, $BE, $AD, 13, 10, Ord('u'), Ord('n'), Ord('i'), Ord('t'),
+    Ord(' '), Ord('U'), Ord(';')]);
+  mSource := TFileEncoding.Decode(mData, mFormat);
+  Assert.AreEqual(0, Integer(Length(Run(TInvisibleCharRule.Create, mSource, '', mData, nil, ''))));
+  // Zwischen ASCII-Zeichen bleibt $AD auch in einer ANSI-Datei ein weiches Trennzeichen.
+  mData := Bytes([Ord('/'), Ord('/'), Ord(' '), Ord('a'), $AD, Ord('b'), 13, 10, Ord('u'), Ord('n'), Ord('i'),
+    Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
+  mSource := TFileEncoding.Decode(mData, mFormat);
+  Assert.AreEqual(1, Integer(Length(Run(TInvisibleCharRule.Create, mSource, '', mData, nil, ''))));
+  // Ohne lesbare Datei (Puffer im Editor) gilt der Text wie bisher.
+  Assert.AreEqual(1, Integer(Length(Run(TInvisibleCharRule.Create, '// ' + Char($00E4) + Char($00AD) + #10 +
+    'unit U;', '', nil, nil, ''))));
 end;
 
 procedure TUnicodeEncodingRuleTests.InvalidUtf8InForm;

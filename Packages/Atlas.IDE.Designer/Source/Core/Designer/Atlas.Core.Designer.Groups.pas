@@ -480,10 +480,18 @@ class function TAtlasGroupRules.Frame(const ABounds: TArray<TRect>; AGap: Intege
 var
   mBounds: TRect;
 begin
+  // Delphis TRect.Union nimmt ein leeres Self mit (0, 0) in die Hülle auf (FPC nicht): beim ersten Rechteck beginnen.
   Result := TRect.Empty;
   for mBounds in ABounds do
   begin
-    Result.Union(mBounds);
+    if Result.IsEmpty then
+    begin
+      Result := mBounds;
+    end
+    else
+    begin
+      Result.Union(mBounds);
+    end;
   end;
   if not Result.IsEmpty then
   begin
