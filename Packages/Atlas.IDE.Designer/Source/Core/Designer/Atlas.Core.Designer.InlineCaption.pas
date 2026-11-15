@@ -449,6 +449,9 @@ begin
         Result.Top := ABounds.Top + (ABounds.Height - ABand) div 2;
         Result.Bottom := Result.Top + ABand;
       end;
+    TAtlasCaptionHolder.TextControl:
+      // Das Eingabefeld deckt das ganze Steuerelement.
+      Result := ABounds;
   end;
 end;
 

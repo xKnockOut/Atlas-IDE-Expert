@@ -71,6 +71,9 @@ uses
   System.Math;
 
 const
+  /// <summary>Lage der Anteile in $RRGGBB.</summary>
+  cRedShift = 16;
+  cGreenShift = 8;
   cStandardNames: array[0..19] of string = ('clBlack', 'clMaroon', 'clGreen', 'clOlive', 'clNavy', 'clPurple',
     'clTeal', 'clGray', 'clSilver', 'clRed', 'clLime', 'clYellow', 'clBlue', 'clFuchsia', 'clAqua', 'clWhite',
     'clMoneyGreen', 'clSkyBlue', 'clCream', 'clMedGray');
@@ -186,7 +189,7 @@ end;
 
 class function TAtlasMagnifier.RgbOf(ARed, AGreen, ABlue: Byte): Cardinal;
 begin
-  Result := (Cardinal(ARed) shl 16) or (Cardinal(AGreen) shl 8) or ABlue;
+  Result := (Cardinal(ARed) shl cRedShift) or (Cardinal(AGreen) shl cGreenShift) or ABlue;
 end;
 
 class function TAtlasMagnifier.RefreshDue(AForce, AMoved: Boolean; ANow, ALast: UInt64): Boolean;

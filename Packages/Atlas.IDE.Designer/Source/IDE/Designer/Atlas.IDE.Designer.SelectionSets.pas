@@ -60,8 +60,6 @@ type
     FSeen: TDictionary<TComponent, TPair<string, string>>;
     FWatch: TAtlasSelectionSetWatch;
     FKeys: TAtlasSelectionSetKeys;
-    function StoreFile(const AFormFile: string): string;
-    function FormKey(const AFormFile: string): string;
     function Store(const AFormFile: string): TAtlasSelectionSets;
     procedure Save(const AFormFile: string);
     procedure Watch(ARoot: TComponent; const AFormFile: string);
@@ -111,6 +109,17 @@ function Shared: Boolean;
 begin
   Result := SameText(TAtlasIdeSettings.Current.DesignerSelectionSetsStorage,
     TAtlasPluginSettings.cDesignerSetsShared);
+end;
+
+function StoreFile(const AFormFile: string): string;
+begin
+  Result := TAtlasSelectionSets.StorePath(AFormFile, Shared, GetEnvironmentVariable('LOCALAPPDATA'),
+    TPath.GetTempPath);
+end;
+
+function FormKey(const AFormFile: string): string;
+begin
+  Result := TAtlasSelectionSets.FormKey(AFormFile, Shared);
 end;
 
 function Names(const AComponents: TArray<TComponent>): TArray<string>;
@@ -227,17 +236,6 @@ begin
   FKept.Free;
   FStores.Free;
   inherited Destroy;
-end;
-
-function TAtlasIdeSelectionSets.StoreFile(const AFormFile: string): string;
-begin
-  Result := TAtlasSelectionSets.StorePath(AFormFile, Shared, GetEnvironmentVariable('LOCALAPPDATA'),
-    TPath.GetTempPath);
-end;
-
-function TAtlasIdeSelectionSets.FormKey(const AFormFile: string): string;
-begin
-  Result := TAtlasSelectionSets.FormKey(AFormFile, Shared);
 end;
 
 function TAtlasIdeSelectionSets.Store(const AFormFile: string): TAtlasSelectionSets;
@@ -533,6 +531,9 @@ var
   mName: string;
 begin
   case AAction of
+    TAtlasSetAction.Restore, TAtlasSetAction.Add, TAtlasSetAction.Remove:
+      // Ändern die Auswahl, nicht den Satz (Run).
+      Exit;
     TAtlasSetAction.Overwrite:
       ASets.Replace(AKey, AIndex, ASelected);
     TAtlasSetAction.Extend:
