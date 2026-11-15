@@ -62,7 +62,6 @@ uses
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Editor.InlayPlan,
-  Atlas.Core.Editor.Elements,
   Atlas.Core.Diagnostics.Deadline;
 
 type
@@ -171,6 +170,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
+  Atlas.Core.Editor.Elements,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.CodeView;
