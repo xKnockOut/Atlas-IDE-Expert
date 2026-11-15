@@ -610,6 +610,8 @@ contains
   Atlas.Common.Pascal.PureRoutines in 'Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas',
   Atlas.Common.Pascal.EventAssignments in 'Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas',
   Atlas.Common.Pascal.TokenCursor in 'Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas',
+  Atlas.Common.Semantics.FreeRoutineMembers in 'Source\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.pas',
+  Atlas.Common.Semantics.RtlMethodReferences in 'Source\Semantics\Atlas.Common.Semantics.RtlMethodReferences.pas',
   Atlas.Common.Semantics.SystemIntrinsics in 'Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas',
   Atlas.Common.Semantics.TypeIdentity in 'Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas',
   Atlas.Common.Semantics.TypeKinds in 'Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas',

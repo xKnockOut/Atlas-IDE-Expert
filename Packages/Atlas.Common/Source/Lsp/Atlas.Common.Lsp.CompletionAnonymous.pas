@@ -7,7 +7,8 @@
 // - Parse liest die Deklaration aus der Signatur des Index ("TPredicate<T> = reference to function(Arg1: T):
 //   Boolean;"); ein Alias ("TKundenFilter = TPredicate<TKunde>;") liefert sein Ziel.
 // - Typparameter werden durch die Typargumente des erwarteten Typs ersetzt (TPredicate<TKunde> → Arg1: TKunde).
-// - Fehlt die Deklaration im Index, gelten die von System.SysUtils (TProc, TProc<…>, TFunc<…>, TPredicate<T>).
+// - Fehlt die Deklaration im Index, gelten die von System.SysUtils (TProc, TProc<…>, TFunc<…>, TPredicate<T>;
+//   Atlas.Common.Semantics.RtlMethodReferences).
 // - Parameter Arg1, Arg2 … der generischen RTL-Typen heißen um (#452): allein Value, sonst nach dem Typ
 //   (Kunde) bzw. Value1, Value2; dazu const und das Präfix der Parameter im Projekt. Eigene Namen bleiben.
 // - Gerüst: begin/end eine Ebene tiefer als die Zeile, Caret im Rumpf, bei Funktionen "Result := ".
@@ -44,14 +45,8 @@ type
     /// Typen (dann ATarget '').</summary>
     class function Parse(const ASignature: string; out ATypeParams: TArray<string>; out AMethodRef: TMethodRef;
       out ATarget: string): Boolean; static;
-    /// <summary>"TFunc&lt;TKunde, Boolean&gt;" → ABase "TFunc", Ergebnis [TKunde, Boolean]; ohne spitze Klammern leer.
-    /// </summary>
-    class function TypeArgs(const ATypeText: string; out ABase: string): TArray<string>; static;
     /// <summary>Ersetzt ganze Wörter ANames[i] durch AValues[i] (ohne Groß-/Kleinschreibung).</summary>
     class function Substitute(const AText: string; const ANames, AValues: TArray<string>): string; static;
-    /// <summary>Deklaration aus System.SysUtils für ABase (ohne oder mit Unit) und AArgCount Typargumente; ''
-    /// ohne.</summary>
-    class function RtlDeclaration(const ABase: string; AArgCount: Integer): string; static;
     /// <summary>Parameter Arg1, Arg2 … umbenennen (siehe oben); APrefix ist das Parameterpräfix des Projekts.
     /// </summary>
     class function Named(const AMethodRef: TMethodRef; const APrefix: string): TMethodRef; static;
@@ -396,38 +391,6 @@ begin
   end;
 end;
 
-class function TCompletionAnonymous.TypeArgs(const ATypeText: string; out ABase: string): TArray<string>;
-var
-  mOpen, mIndex, mDepth, mStart: Integer;
-  mText: string;
-begin
-  Result := nil;
-  mText := Trim(ATypeText);
-  mOpen := Pos('<', mText);
-  if (mOpen = 0) or not EndsStr('>', mText) then
-  begin
-    ABase := mText;
-    Exit;
-  end;
-  ABase := Trim(Copy(mText, 1, mOpen - 1));
-  mDepth := 0;
-  mStart := mOpen + 1;
-  for mIndex := mOpen + 1 to Length(mText) - 1 do
-    case mText[mIndex] of
-      '<', '(', '[':
-        Inc(mDepth);
-      '>', ')', ']':
-        Dec(mDepth);
-      ',':
-        if mDepth = 0 then
-        begin
-          Result := Result + [Trim(Copy(mText, mStart, mIndex - mStart))];
-          mStart := mIndex + 1;
-        end;
-    end;
-  Result := Result + [Trim(Copy(mText, mStart, Length(mText) - mStart))];
-end;
-
 /// <summary>Wert des Typparameters AWord aus ANames/AValues in AValue; False, wenn AWord keiner ist.</summary>
 function TypeParamValue(const AWord: string; const ANames, AValues: TArray<string>; out AValue: string): Boolean;
 var
@@ -475,104 +438,6 @@ begin
     begin
       Result := Result + mWord;
     end;
-  end;
-end;
-
-/// <summary>ABase ohne System.SysUtils. bzw. SysUtils. davor.</summary>
-function RtlName(const ABase: string): string;
-begin
-  Result := ABase;
-  if StartsText('System.SysUtils.', Result) then
-  begin
-    Result := Copy(Result, Length('System.SysUtils.') + 1, MaxInt);
-  end
-  else if StartsText('SysUtils.', Result) then
-  begin
-    Result := Copy(Result, Length('SysUtils.') + 1, MaxInt);
-  end;
-end;
-
-/// <summary>Zahl der Parameter von TProc bzw. TFunc mit AArgCount Typargumenten; -1 bei anderen Typen.</summary>
-function RtlParamCount(const AName: string; AArgCount: Integer): Integer;
-begin
-  Result := -1;
-  if SameText(AName, 'TProc') then
-  begin
-    Result := AArgCount;
-  end
-  else if SameText(AName, 'TFunc') then
-  begin
-    Result := AArgCount - 1;
-  end;
-end;
-
-/// <summary>Parameterliste "(Arg1: T1; Arg2: T2)" und Typparameter "T1, T2" für ACount Parameter.</summary>
-procedure RtlLists(ACount: Integer; out AParams, AGeneric: string);
-var
-  mIndex: Integer;
-begin
-  AParams := '';
-  AGeneric := '';
-  for mIndex := 1 to ACount do
-  begin
-    if mIndex > 1 then
-    begin
-      AParams := AParams + '; ';
-      AGeneric := AGeneric + ', ';
-    end;
-    if ACount = 1 then
-    begin
-      AParams := AParams + 'Arg1: T';
-      AGeneric := AGeneric + 'T';
-    end
-    else
-    begin
-      AParams := AParams + Format('Arg%d: T%d', [mIndex, mIndex]);
-      AGeneric := AGeneric + Format('T%d', [mIndex]);
-    end;
-  end;
-  if AParams <> '' then
-  begin
-    AParams := '(' + AParams + ')';
-  end;
-end;
-
-class function TCompletionAnonymous.RtlDeclaration(const ABase: string; AArgCount: Integer): string;
-var
-  mName, mParams, mGeneric: string;
-  mCount: Integer;
-begin
-  Result := '';
-  mName := RtlName(ABase);
-  if SameText(mName, 'TPredicate') then
-  begin
-    if AArgCount = 1 then
-    begin
-      Result := 'TPredicate<T> = reference to function(Arg1: T): Boolean;';
-    end;
-    Exit;
-  end;
-  mCount := RtlParamCount(mName, AArgCount);
-  if (mCount < 0) or (mCount > 4) then
-  begin
-    Exit;
-  end;
-  RtlLists(mCount, mParams, mGeneric);
-  if SameText(mName, 'TProc') then
-  begin
-    if mGeneric <> '' then
-    begin
-      mGeneric := '<' + mGeneric + '>';
-    end;
-    Result := 'TProc' + mGeneric + ' = reference to procedure' + mParams + ';';
-  end
-  else
-  begin
-    if mGeneric <> '' then
-    begin
-      mGeneric := mGeneric + ', ';
-    end;
-    Result := 'TFunc<' + mGeneric + 'TResult> = reference to function' + mParams + ': TResult;';
   end;
 end;
 

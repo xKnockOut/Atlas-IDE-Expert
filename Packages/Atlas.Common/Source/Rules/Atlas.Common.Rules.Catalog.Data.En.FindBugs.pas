@@ -444,7 +444,9 @@ const
     '      "group": "find-bugs",',
     '      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm an' +
     'd anonymous methods are skipped. Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule' +
-    ' reports like E2601 or E2602, and Fail outside a constructor like E2078.",',
+    ' reports like E2601 or E2602, and Fail outside a constructor like E2078. A member of a class of this file used without an object in a free routine (List.OnSelectItem := ListSelectItem in procedure Cre' +
+    'ateList(AFrame: TFrame)) gets its own message, even without System in the index, but then only for methods used as a value; quick fix: put the parameter of the class type in front (AFrame.ListSelectIt' +
+    'em).",',
     '      "bad": "procedure Foo;\nbegin\n  Lst.Add(''x'');\nend;",',
     '      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add(''x'');\nend;",',
     '      "compilerCodes": [',

@@ -2369,6 +2369,8 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Hotspots.pas"/>
         <DCCReference Include="Application\Shell\Shell.Hotspots.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.RtlMethodReferences.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeIdentity.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeKinds.Tests.pas"/>

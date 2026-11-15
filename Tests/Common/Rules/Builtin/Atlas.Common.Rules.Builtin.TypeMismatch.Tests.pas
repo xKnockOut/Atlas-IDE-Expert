@@ -55,6 +55,14 @@ type
     procedure FunctionReturningReferenceWithoutParens;
     [Test]
     procedure MethodReferencesThatFitAreSilent;
+    /// <summary>#2309: TProc und TFunc aus System.SysUtils ohne RTL im Index (Cloud, CI); still ohne
+    /// System.SysUtils in uses und wenn eine fremde Unit dahinter den Typ verdecken kann.</summary>
+    [Test]
+    procedure RtlReferencesWithoutIndex;
+    /// <summary>#2309: Argumente beim Aufruf einer Variablen, eines Felds bzw. einer Property von prozeduralem Typ
+    /// (Hover: FOnDebugTree(…, DebugTreeRefresh)).</summary>
+    [Test]
+    procedure ProceduralCalleeArguments;
     [Test]
     procedure ConditionalDeclarationsAndWithAreSilent;
     [Test]
@@ -466,6 +474,54 @@ begin
     '  GTest := Passt;'#10'  GProc := Hoere;'#10'  GProc := GBox.Nimm;'#10'  GProc := Gib();'#10 +
     '  GZahl := Zahl;'#10'  Frage(''Weiter?'', Hoere);'#10'  Frage(''Weiter?'', Gib());'#10 +
     '  Frage(''Weiter?'', procedure(AText: string)'#10'    begin'#10'    end);'#10)));
+end;
+
+/// <summary>Befunde in einer Unit mit AUses, deren Index nur System kennt (ohne RTL-Quelltext).</summary>
+function WithoutRtlFindings(const AUses, ADeclarations, AStatements: string): TArray<TRuleFinding>;
+begin
+  Result := TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10'uses'#10 + AUses +
+    ';'#10'implementation'#10'var'#10'  GProc: TProc<string>;'#10'  GFunc: System.SysUtils.TFunc<Integer>;'#10 +
+    ADeclarations + 'procedure Fall;'#10'begin'#10 + AStatements + 'end;'#10'end.', SystemIndex, '', 'Fall.pas');
+end;
+
+procedure TTypeMismatchTests.RtlReferencesWithoutIndex;
+const
+  cRoutinen = 'function Gib: TProc<string>;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'function Zahl: TFunc<Integer>;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure Merke(var AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Frage(const AText: string; const AAntwort: TProc<string>);'#10'begin'#10'end;'#10;
+  cAnweisungen = '  GProc := Gib;'#10'  Frage(''Weiter?'', Gib);'#10'  GFunc := Zahl;'#10'  GProc := Merke;'#10;
+  cOhne = ', ohne () steht der Name aber für die Funktion selbst (wie E2010).';
+begin
+  // Fall aus Atlas.IDE.Debug.RuntimeReport: RunServerCommandAsync(…, ReportAnswer).
+  Assert.AreEqual('25: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; Gib liefert TProc<string>' + cOhne +
+    ' | 26: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; Gib liefert TProc<string>' + cOhne +
+    ' | 27: Inkompatible Typen: ''TFunc<Integer>'' und ''Procedure''; Zahl liefert TFunc<Integer>' + cOhne +
+    ' | 28: Inkompatible Typen: ''TProc<string>'' und ''Procedure''; die Parameter von Merke passen nicht zur ' +
+    'Methodenreferenz (Zahl, const/var/out oder Typ, wie E2010).',
+    Messages(WithoutRtlFindings('  System.SysUtils,'#10'  Vcl.Forms', cRoutinen, cAnweisungen)));
+  Assert.AreEqual('', Messages(WithoutRtlFindings('  System.SysUtils', cRoutinen,
+    '  GProc := Gib();'#10'  Frage(''Weiter?'', Gib());'#10'  GFunc := Zahl();'#10)));
+  // Eine fremde Unit hinter System.SysUtils kann TProc verdecken; ohne System.SysUtils gibt es keinen.
+  Assert.AreEqual('', Messages(WithoutRtlFindings('  System.SysUtils,'#10'  Fremd', cRoutinen, cAnweisungen)));
+  Assert.AreEqual('', Messages(WithoutRtlFindings('  System.Classes', cRoutinen, cAnweisungen)));
+end;
+
+procedure TTypeMismatchTests.ProceduralCalleeArguments;
+const
+  cTypen = 'type'#10'  TBaum = reference to function(const AText: string; const ANeu: TProc): string;'#10 +
+    '  TAnsicht = class'#10'    FBaum: TBaum;'#10'    FAuch: TFunc<string, TProc, string>;'#10 +
+    '    FZahl: TProc<Integer>;'#10'    function Neu: TProc;'#10'    procedure Zeige;'#10'  end;'#10;
+  cRuempfe = 'function TAnsicht.Neu: TProc;'#10'begin'#10'  Result := nil;'#10'end;'#10;
+  cOhne = 'Inkompatible Typen: ''TProc'' und ''Procedure''; Neu liefert TProc, ohne () steht der Name aber für die ' +
+    'Funktion selbst (wie E2010).';
+begin
+  Assert.AreEqual('22: ' + cOhne + ' | 23: ' + cOhne + ' | 24: Inkompatible Typen: ''Integer'' und ''Char'' ' +
+    '(wie E2010).', Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, 'unit Fall;'#10'interface'#10'uses'#10 +
+    '  System.SysUtils;'#10 + cTypen + 'implementation'#10 + cRuempfe + 'procedure TAnsicht.Zeige;'#10'var'#10 +
+    '  mText: string;'#10'begin'#10'  mText := FBaum(''a'', Neu);'#10'  mText := FAuch(''a'', Neu);'#10 +
+    '  FZahl(''a'');'#10'  mText := FBaum(''a'', Neu());'#10'  FZahl(1);'#10'end;'#10'end.', SysUtilsIndex, '',
+    'Fall.pas')));
 end;
 
 procedure TTypeMismatchTests.ConditionalDeclarationsAndWithAreSilent;
