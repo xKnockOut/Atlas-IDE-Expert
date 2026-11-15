@@ -402,6 +402,15 @@ Atlas.Core.Designer.EventMap.Tests
 Atlas.Core.Designer.FormUnit.Tests
 Atlas.Core.Designer.Undo.Tests
 Atlas.Core.Designer.DesktopSwitch.Tests
+Atlas.Core.Designer.SelectionBar.Tests
+Atlas.Core.Designer.Components.Tests
+Atlas.Core.Designer.Wrap.Tests
+Atlas.Core.Designer.LabelPairs.Tests
+Atlas.Core.Designer.TabOrder.Tests
+Atlas.Core.Designer.InlineCaption.Tests
+Atlas.Core.Designer.DuplicateRow.Tests
+Atlas.Core.Designer.Magnifier.Tests
+Atlas.Core.Designer.SelectionSets.Tests
 Atlas.Core.Tracker.IssueWork.Tests
 Atlas.Core.Commands.MenuContext.Tests
 Atlas.Core.Settings.ContextMenuGroups.Tests

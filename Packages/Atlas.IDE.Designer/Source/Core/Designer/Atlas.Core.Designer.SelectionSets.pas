@@ -9,14 +9,24 @@
 // - Umbenannte Komponenten bleiben im Satz, gelöschte fallen heraus; ein
 //   leerer Satz bleibt stehen.
 // - Ablage als JSON {"version":1,"forms":{"<Schlüssel>":[{"name":…,
-//   "members":[…]}]}}; die DFM bleibt unberührt.
+//   "members":[…]}]}}; die DFM bleibt unberührt. StorePath und FormKey
+//   wählen Datei und Schlüssel (lokal je Pfad, gemeinsam je Dateiname).
+// - TAtlasSetMenu: Aktionen im Untermenü eines Satzes (Tag, gesperrt,
+//   Trennlinie), Umschalt/Strg beim Klick, Tasten 1…9 und die neue Auswahl
+//   beim Wiederherstellen, Hinzufügen und Entfernen.
 
 interface
 
 uses
+  System.Classes,
   System.Generics.Collections;
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Aktionen im Untermenü eines Satzes, in der Reihenfolge des Menüs.</summary>
+  TAtlasSetAction = (Restore, Add, Remove, Overwrite, Extend, Rename, Up, Down, Delete);
+{$SCOPEDENUMS OFF}
+
   TAtlasSelectionSet = record
     Name: string;
     Members: TArray<string>;
@@ -63,13 +73,48 @@ type
     class function SuggestName(const AMembers: TArray<string>): string; static;
     /// <summary>Mitglieder von ASet, die in AExisting fehlen (ohne Groß-/Kleinschreibung).</summary>
     class function Missing(const ASet: TAtlasSelectionSet; const AExisting: TArray<string>): TArray<string>; static;
+    /// <summary>Ablagedatei: gemeinsam im Ordner des Formulars, sonst unter ALocalData\Atlas (ohne ALocalData
+    /// unter ATemp).</summary>
+    class function StorePath(const AFormFile: string; AShared: Boolean; const ALocalData, ATemp: string): string;
+      static;
+    /// <summary>Schlüssel des Formulars: gemeinsam nur der Dateiname, sonst der Pfad.</summary>
+    class function FormKey(const AFormFile: string; AShared: Boolean): string; static;
+  end;
+
+  TAtlasSetMenu = class
+  public const
+    /// <summary>Tag des Eintrags „Auswahl speichern …“.</summary>
+    cSaveTag = -1;
+  public
+    /// <summary>Tag eines Eintrags: Index · Zahl der Aktionen + Aktion.</summary>
+    class function TagOf(AIndex: Integer; AAction: TAtlasSetAction): Integer; static;
+    /// <summary>Satz und Aktion aus einem Tag; False für cSaveTag und Unbekanntes.</summary>
+    class function TryDecode(ATag: Integer; out AIndex: Integer; out AAction: TAtlasSetAction): Boolean; static;
+    /// <summary>Klick auf „Wiederherstellen“: Umschalt fügt hinzu, Strg entfernt; sonst AAction.</summary>
+    class function ClickAction(AAction: TAtlasSetAction; AShift, ACtrl: Boolean): TAtlasSetAction; static;
+    /// <summary>Ändert die Aktion die Auswahl (statt den Satz)?</summary>
+    class function Selects(AAction: TAtlasSetAction): Boolean; static;
+    /// <summary>Leerer Satz: grau, nur noch pflegen.</summary>
+    class function Enabled(AAction: TAtlasSetAction; AMemberCount: Integer): Boolean; static;
+    /// <summary>Trennlinie vor der Aktion.</summary>
+    class function BreakBefore(AAction: TAtlasSetAction): Boolean; static;
+    /// <summary>Satz zur Taste Strg+Umschalt+1…9 (AKey = Ord('1') …); -1 ohne.</summary>
+    class function ShortcutIndex(AKey: Word; ACtrlShift: Boolean): Integer; static;
+    /// <summary>Neue Auswahl: Satz allein, dazu oder ohne ihn; für die Pflege-Aktionen ACurrent ohne ASet.</summary>
+    class function Combined(const ACurrent, ASet: TArray<TComponent>; AAction: TAtlasSetAction): TArray<TComponent>;
+      static;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   System.JSON;
+
+const
+  cLocalFile = 'designer-selection-sets.json';
+  cSharedFile = '.atlas-selection-sets.json';
 
 { TAtlasSelectionSet }
 
@@ -478,6 +523,139 @@ begin
     if IndexOfText(AExisting, mMember) < 0 then
     begin
       Result := Result + [mMember];
+    end;
+  end;
+end;
+
+class function TAtlasSelectionSets.StorePath(const AFormFile: string; AShared: Boolean;
+  const ALocalData, ATemp: string): string;
+var
+  mLocal: string;
+begin
+  if AShared then
+  begin
+    Exit(TPath.Combine(ExtractFilePath(AFormFile), cSharedFile));
+  end;
+  mLocal := ALocalData;
+  if mLocal = '' then
+  begin
+    mLocal := ATemp;
+  end;
+  Result := TPath.Combine(TPath.Combine(mLocal, 'Atlas'), cLocalFile);
+end;
+
+class function TAtlasSelectionSets.FormKey(const AFormFile: string; AShared: Boolean): string;
+begin
+  Result := AFormFile;
+  if AShared then
+  begin
+    Result := ExtractFileName(AFormFile);
+  end;
+end;
+
+{ TAtlasSetMenu }
+
+class function TAtlasSetMenu.TagOf(AIndex: Integer; AAction: TAtlasSetAction): Integer;
+begin
+  Result := AIndex * (Ord(High(TAtlasSetAction)) + 1) + Ord(AAction);
+end;
+
+class function TAtlasSetMenu.TryDecode(ATag: Integer; out AIndex: Integer; out AAction: TAtlasSetAction): Boolean;
+var
+  mCount: Integer;
+begin
+  mCount := Ord(High(TAtlasSetAction)) + 1;
+  AIndex := -1;
+  AAction := TAtlasSetAction.Restore;
+  Result := ATag >= 0;
+  if Result then
+  begin
+    AIndex := ATag div mCount;
+    AAction := TAtlasSetAction(ATag mod mCount);
+  end;
+end;
+
+class function TAtlasSetMenu.ClickAction(AAction: TAtlasSetAction; AShift, ACtrl: Boolean): TAtlasSetAction;
+begin
+  Result := AAction;
+  if AAction <> TAtlasSetAction.Restore then
+  begin
+    Exit;
+  end;
+  if AShift then
+  begin
+    Result := TAtlasSetAction.Add;
+  end
+  else if ACtrl then
+  begin
+    Result := TAtlasSetAction.Remove;
+  end;
+end;
+
+class function TAtlasSetMenu.Selects(AAction: TAtlasSetAction): Boolean;
+begin
+  Result := AAction in [TAtlasSetAction.Restore, TAtlasSetAction.Add, TAtlasSetAction.Remove];
+end;
+
+class function TAtlasSetMenu.Enabled(AAction: TAtlasSetAction; AMemberCount: Integer): Boolean;
+begin
+  Result := (AMemberCount > 0) or not Selects(AAction);
+end;
+
+class function TAtlasSetMenu.BreakBefore(AAction: TAtlasSetAction): Boolean;
+begin
+  Result := AAction in [TAtlasSetAction.Overwrite, TAtlasSetAction.Up];
+end;
+
+class function TAtlasSetMenu.ShortcutIndex(AKey: Word; ACtrlShift: Boolean): Integer;
+begin
+  Result := -1;
+  if ACtrlShift and (AKey >= Ord('1')) and (AKey <= Ord('9')) then
+  begin
+    Result := AKey - Ord('1');
+  end;
+end;
+
+function ContainsComponent(const AList: TArray<TComponent>; AComponent: TComponent): Boolean;
+var
+  mItem: TComponent;
+begin
+  for mItem in AList do
+  begin
+    if mItem = AComponent then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasSetMenu.Combined(const ACurrent, ASet: TArray<TComponent>;
+  AAction: TAtlasSetAction): TArray<TComponent>;
+var
+  mComponent: TComponent;
+begin
+  if AAction = TAtlasSetAction.Restore then
+  begin
+    Result := ASet;
+    Exit;
+  end;
+  Result := nil;
+  for mComponent in ACurrent do
+  begin
+    if (AAction = TAtlasSetAction.Add) or not ContainsComponent(ASet, mComponent) then
+    begin
+      Result := Result + [mComponent];
+    end;
+  end;
+  if AAction = TAtlasSetAction.Add then
+  begin
+    for mComponent in ASet do
+    begin
+      if not ContainsComponent(Result, mComponent) then
+      begin
+        Result := Result + [mComponent];
+      end;
     end;
   end;
 end;
