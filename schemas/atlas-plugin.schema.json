@@ -6762,10 +6762,11 @@
       "x-issue": "#2079"
     },
     "DesignerLayoutName": {
-      "description": "Name des Layouts für den Designer, wie er im Desktop-Auswahlfeld der IDE steht (Ansicht › Desktops › Desktop speichern …). Fehlt das Layout, meldet Atlas das einmal in der Meldungsansicht und schaltet nicht um. Leer = keine Wirkung.",
+      "description": "Name des Layouts für den Designer, wie er im Desktop-Auswahlfeld der IDE steht (Ansicht › Desktops › Desktop speichern …). Die Optionsseite bietet die Layouts der IDE in einer Klappliste an; ein anderer Name lässt sich eintippen. Fehlt das Layout, meldet Atlas das einmal in der Meldungsansicht und schaltet nicht um. Leer = keine Wirkung.",
       "type": "string",
       "default": "",
       "x-key": "designer.layout.name",
+      "x-control": "Klappliste mit den Desktop-Layouts der IDE, freie Eingabe möglich",
       "x-area": "editor",
       "x-page": "Editor",
       "x-parent": "designer.layout",

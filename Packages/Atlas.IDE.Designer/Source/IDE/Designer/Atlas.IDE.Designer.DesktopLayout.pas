@@ -33,6 +33,9 @@ type
     class procedure SaveCurrent; static;
     /// <summary>Ist designer.layout an?</summary>
     class function Enabled: Boolean; static;
+    /// <summary>Layouts im Desktop-Auswahlfeld der IDE (Anzeigenamen, ohne „&lt;kein&gt;“) für die Auswahlliste der
+    /// Optionsseite; leer ohne Auswahlfeld.</summary>
+    class function Names: TArray<string>; static;
   end;
 
 implementation
@@ -441,6 +444,18 @@ end;
 class function TAtlasIdeDesktopLayout.Enabled: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DesignerLayout;
+end;
+
+class function TAtlasIdeDesktopLayout.Names: TArray<string>;
+var
+  mCombo: TCustomComboBox;
+begin
+  Result := nil;
+  mCombo := DesktopCombo;
+  if mCombo <> nil then
+  begin
+    Result := ItemsOf(mCombo);
+  end;
 end;
 
 end.
