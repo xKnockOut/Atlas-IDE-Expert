@@ -446,6 +446,9 @@ var
   mIndex, mUses: Integer;
 begin
   Result := AUnit;
+  // Eigenes Array: Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write, sonst änderte das Schreiben
+  // unten auch AUnit.Lines des Aufrufers.
+  Result.Lines := Copy(Result.Lines);
   mUses := -1;
   for mIndex := 0 to Result.ImplementationLine - 1 do
   begin

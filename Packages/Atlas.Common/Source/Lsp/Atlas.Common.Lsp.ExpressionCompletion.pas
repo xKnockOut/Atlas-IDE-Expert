@@ -194,8 +194,11 @@ begin
   begin
     Exit(TJSONNull.Create);
   end;
-  mCharacter := Length(mExpression);
-  TJSONObject(AParams).TryGetValue<Integer>('character', mCharacter);
+  // TryGetValue setzt mCharacter auch ohne Schlüssel (auf 0); dann gilt das Ende des Ausdrucks.
+  if not TJSONObject(AParams).TryGetValue<Integer>('character', mCharacter) then
+  begin
+    mCharacter := Length(mExpression);
+  end;
   Result := Complete(mDocument, TLspPositions.ReadPosition(mPositionValue).Line, mExpression, mCharacter,
     ACancellation);
 end;

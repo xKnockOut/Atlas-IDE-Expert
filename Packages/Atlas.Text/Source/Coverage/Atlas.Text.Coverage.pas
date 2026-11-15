@@ -262,6 +262,7 @@ begin
         Result := ALeft.Hits - ARight.Hits;
       end;
     end));
+  Result := nil;
   SetLength(Result, Length(mSorted));
   mCount := 0;
   for mLine in mSorted do
