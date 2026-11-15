@@ -61,10 +61,6 @@ type
   TAtlasIdeTrackerTime = class(TInterfacedObject)
   public const
     cTickMs = 5000;
-    /// <summary>Alle so viele Takte in die Datei (eine Minute).</summary>
-    cSaveTicks = 12;
-    /// <summary>Weniger Zeit bietet Atlas nicht zum Buchen an.</summary>
-    cMinOfferSeconds = 60;
   private
     FSync: TAtlasIdeTrackerSync;
     FProvider: TAtlasIdeTimeProvider;
@@ -148,6 +144,7 @@ uses
   ToolsAPI,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Tracker.TimePlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,  Atlas.UI.Tracker.Time.Strings,
@@ -238,12 +235,8 @@ begin
         Exit;
       end;
       // GitHub: Aufwand als Kommentar, die Beschreibung darunter.
-      mComment := TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeBookComment,
-        [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
-      if AItem.Text <> '' then
-      begin
-        mComment := mComment + #10#10 + AItem.Text;
-      end;
+      mComment := TAtlasTimePlan.BookComment(TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeBookComment,
+        [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]), AItem.Text);
       mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
     end;
 end;
@@ -339,11 +332,7 @@ begin
     Exit;
   end;
   // 0 ist erlaubt (wie Zurücksetzen ohne Rückfrage); sonst muss die Dauer lesbar sein.
-  if (Trim(mText) = '0') or (Trim(mText) = '0:00') then
-  begin
-    mMinutes := 0;
-  end
-  else if not TAtlasTimeRounding.ParseDuration(mText, mMinutes) then
+  if not TAtlasTimePlan.CorrectedMinutes(mText, mMinutes) then
   begin
     MessageDlg(TAtlasTimeStrings.Fmt(TAtlasTimeTextId.TimeCorrectInvalid, [mText]), mtWarning, [mbOK], 0);
     Exit;
@@ -409,7 +398,7 @@ begin
       Detect;
       FClock.Tick;
       Inc(FTicks);
-      if FTicks mod cSaveTicks = 0 then
+      if TAtlasTimePlan.SavesOnTick(FTicks) then
       begin
         Flush;
       end;
@@ -428,6 +417,8 @@ procedure TAtlasIdeTrackerTime.Detect;
 var
   mInput: Cardinal;
   mAge: Cardinal;
+  mKnown: Boolean;
+  mStep: TAtlasTimeInput;
 begin
   if FClock.Issue.IsEmpty then
   begin
@@ -438,18 +429,19 @@ begin
   begin
     FClock.Activity;
   end;
-  if not TAtlasUserIdle.LastInput(mInput) or (mInput = FLastInput) then
+  // Nur Eingaben in der IDE: Sie muss vorn sein.
+  mKnown := TAtlasUserIdle.LastInput(mInput);
+  mStep := TAtlasTimePlan.InputOf(mKnown, mInput, FLastInput, Application.Active);
+  if mStep = TAtlasTimeInput.Same then
   begin
     Exit;
   end;
   FLastInput := mInput;
-  // Nur Eingaben in der IDE: Sie muss vorn sein.
-  if not Application.Active then
+  if mStep = TAtlasTimeInput.Ide then
   begin
-    Exit;
+    mAge := TAtlasUserIdle.Since(mInput);
+    FClock.Activity(TAtlasTimePlan.InputAt(Now, mAge));
   end;
-  mAge := TAtlasUserIdle.Since(mInput);
-  FClock.Activity(Now - mAge / MSecsPerDay);
 end;
 
 procedure TAtlasIdeTrackerTime.Flush;
@@ -511,17 +503,8 @@ begin
 end;
 
 function TAtlasIdeTrackerTime.CurrentTotal: Int64;
-var
-  mSpan: TAtlasTimeSpan;
 begin
-  Result := FSaved + FClock.Unsaved;
-  for mSpan in FPending do
-  begin
-    if mSpan.Issue.Same(FClock.Issue) then
-    begin
-      Inc(Result, mSpan.Seconds);
-    end;
-  end;
+  Result := TAtlasTimePlan.Total(FSaved, FClock.Unsaved, FPending, FClock.Issue);
 end;
 
 procedure TAtlasIdeTrackerTime.UpdateStatus;
@@ -639,7 +622,7 @@ begin
   begin
     Exit;
   end;
-  if (AFolder = '') or (ABranch = '') then
+  if not TAtlasTimePlan.ReadsCommits(AFolder, ABranch) then
   begin
     ShowBook(AIssue, '');
     Exit;
@@ -752,7 +735,7 @@ begin
   begin
     FSaved := SavedTotal(AIssue);
   end;
-  if not mOld.IsEmpty and not AIssue.IsEmpty then
+  if TAtlasTimePlan.OffersOnSwitch(mOld, AIssue) then
   begin
     FOfferNext := mOld;
   end;
@@ -773,16 +756,12 @@ begin
   Flush;
   UpdateStatus;
   // Schon im Beenden-Dialog gebucht: Was seitdem dazukam, bleibt für „Offene Zeitbuchungen …“.
-  if SameText(FBookedOnEnd, AIssue.Key) then
-  begin
-    FBookedOnEnd := '';
-    Exit;
+  case TAtlasTimePlan.EndStep(AIssue.Key, FBookedOnEnd, AOffer) of
+    TAtlasTimeEndStep.BookedOnEnd:
+      FBookedOnEnd := '';
+    TAtlasTimeEndStep.Offer:
+      Offer(AIssue, AFolder, ABranch, ABase);
   end;
-  if not AOffer then
-  begin
-    Exit;
-  end;
-  Offer(AIssue, AFolder, ABranch, ABase);
 end;
 
 /// <summary>Work Item, wenn der Anbieter Zeit buchen kann, sonst Kommentar (GitHub).</summary>
@@ -811,7 +790,7 @@ begin
   end;
   Flush;
   mTotal := SavedTotal(AIssue);
-  if mTotal < cMinOfferSeconds then
+  if not TAtlasTimePlan.Offers(mTotal) then
   begin
     Exit;
   end;
@@ -899,8 +878,7 @@ end;
 class function TAtlasIdeTrackerIssueTime.Seconds(ATime: TAtlasIdeTrackerTime; const AKey: string): Int64;
 begin
   Result := 0;
-  if (ATime = nil) or ATime.FStopped or not ATime.Active or ATime.FClock.Issue.IsEmpty or
-    not SameText(ATime.FClock.Issue.Key, AKey) then
+  if (ATime = nil) or ATime.FStopped or not ATime.Active or not TAtlasTimePlan.IsCurrent(ATime.FClock.Issue, AKey) then
   begin
     Exit;
   end;
@@ -915,7 +893,7 @@ end;
 
 class procedure TAtlasIdeTrackerIssueTime.Booked(ATime: TAtlasIdeTrackerTime; const AKey: string; ASeconds: Int64);
 begin
-  if (ATime = nil) or ATime.FStopped or ATime.FClock.Issue.IsEmpty or not SameText(ATime.FClock.Issue.Key, AKey) then
+  if (ATime = nil) or ATime.FStopped or not TAtlasTimePlan.IsCurrent(ATime.FClock.Issue, AKey) then
   begin
     Exit;
   end;
