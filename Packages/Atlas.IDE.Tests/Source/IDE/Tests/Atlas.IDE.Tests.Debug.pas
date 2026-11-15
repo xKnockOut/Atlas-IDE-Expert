@@ -183,19 +183,22 @@ begin
 end;
 
 procedure TAtlasIdeTestDebugger.TickStarting(const AServices: IOTADebuggerServices);
+var
+  mProcesses: Integer;
 begin
-  if (AServices <> nil) and (AServices.ProcessCount > 0) then
+  mProcesses := 0;
+  if AServices <> nil then
   begin
-    FPhase := TPhase.Running;
-  end
-  // Schneller als ein Takt gelaufen: der Bericht ist schon da.
-  else if (FXmlFile <> '') and FileExists(FXmlFile) then
-  begin
-    Finish(True);
-  end
-  else if TAtlasTicks.Since(FStartedAt) > TAtlasTestDebug.cStartTimeoutMs then
-  begin
-    Finish(False);
+    mProcesses := AServices.ProcessCount;
+  end;
+  case TAtlasTestDebug.WaitStep(mProcesses, (FXmlFile <> '') and FileExists(FXmlFile),
+    TAtlasTicks.Since(FStartedAt)) of
+    TAtlasTestDebugWait.Running:
+      FPhase := TPhase.Running;
+    TAtlasTestDebugWait.Finished:
+      Finish(True);
+    TAtlasTestDebugWait.TimedOut:
+      Finish(False);
   end;
 end;
 
@@ -281,18 +284,18 @@ var
   mOutputFile: string;
 begin
   mOutputFile := AOutputFile;
-  if AError <> '' then
-  begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
-    Finish(False);
-  end
-  else if not ASucceeded then
-  begin
-    Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
-    Finish(False);
-  end
+  case TAtlasTestDebug.BuildStep(ASucceeded, AError) of
+    TAtlasTestBuildStep.Refused:
+      begin
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildRefused, [ProjectName(FTarget.Project), AError]));
+        Finish(False);
+      end;
+    TAtlasTestBuildStep.Failed:
+      begin
+        Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsBuildFailed, [ProjectName(FTarget.Project)]));
+        Finish(False);
+      end;
   else
-  begin
     TAtlasGuard.Run(TAtlasFeature.Build,
       procedure
       begin
@@ -610,7 +613,6 @@ function TAtlasIdeTestDebugger.DebugByName(const AProject, AFullName: string; ou
 var
   mProject: IOTAProject;
   mName, mUnitName, mFileName: string;
-  mIndex: Integer;
   mLines: TArray<string>;
   mSelection: TAtlasTestSelection;
 begin
@@ -629,13 +631,8 @@ begin
   end;
   // Der Unitname kann Punkte enthalten: jede Teilung von hinten versuchen (Unit.Fixture.Methode[.Fall]).
   mName := Trim(AFullName);
-  for mIndex := Length(mName) downto 1 do
+  for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    if mName[mIndex] <> '.' then
-    begin
-      Continue;
-    end;
-    mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(mProject.FileName, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin
@@ -661,7 +658,7 @@ class function TAtlasIdeTestDebugger.LocateByName(const AProject, AFullName: str
   out ALine: Integer): Boolean;
 var
   mName, mUnitName, mFileName: string;
-  mIndex, mLine: Integer;
+  mLine: Integer;
   mLines: TArray<string>;
   mFound: TDUnitXUnit;
   mSelection: TAtlasTestSelection;
@@ -671,13 +668,8 @@ begin
   Result := False;
   mName := Trim(AFullName);
   // Wie DebugByName: jede Teilung von hinten als Unitname versuchen.
-  for mIndex := Length(mName) downto 1 do
+  for mUnitName in TAtlasTestDebug.UnitNamesOf(mName) do
   begin
-    if mName[mIndex] <> '.' then
-    begin
-      Continue;
-    end;
-    mUnitName := Copy(mName, 1, mIndex - 1);
     mFileName := TAtlasIdeTests.UnitFileOf(AProject, mUnitName);
     if (mFileName = '') or not TAtlasIdeFiles.ReadLines(mFileName, mLines) then
     begin

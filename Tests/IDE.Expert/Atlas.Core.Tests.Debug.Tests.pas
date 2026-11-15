@@ -29,6 +29,12 @@ type
     procedure ParametersReplaceFilterAndKeepOthers;
     [Test]
     procedure SwitchesFollowSettings;
+    [Test]
+    procedure BuildStepRefusedFailedGo;
+    [Test]
+    procedure WaitStepAfterStart;
+    [Test]
+    procedure UnitNamesFromTheBack;
   end;
 
 implementation
@@ -225,6 +231,41 @@ begin
   mSelection.Method := 'Addiert';
   mSettings.TestBreakAtStart := False;
   Assert.IsFalse(TAtlasTestDebug.BreakWanted(mSettings, mSelection));
+end;
+
+procedure TAtlasTestDebugTests.BuildStepRefusedFailedGo;
+begin
+  Assert.AreEqual<TAtlasTestBuildStep>(TAtlasTestBuildStep.Go, TAtlasTestDebug.BuildStep(True, ''));
+  Assert.AreEqual<TAtlasTestBuildStep>(TAtlasTestBuildStep.Failed, TAtlasTestDebug.BuildStep(False, ''));
+  // Abgelehnt geht vor dem Ergebnis: Der Build lief gar nicht.
+  Assert.AreEqual<TAtlasTestBuildStep>(TAtlasTestBuildStep.Refused, TAtlasTestDebug.BuildStep(True, 'belegt'));
+  Assert.AreEqual<TAtlasTestBuildStep>(TAtlasTestBuildStep.Refused, TAtlasTestDebug.BuildStep(False, 'belegt'));
+end;
+
+procedure TAtlasTestDebugTests.WaitStepAfterStart;
+const
+  cLate = TAtlasTestDebug.cStartTimeoutMs + 1;
+begin
+  Assert.AreEqual<TAtlasTestDebugWait>(TAtlasTestDebugWait.Wait, TAtlasTestDebug.WaitStep(0, False, 10));
+  Assert.AreEqual<TAtlasTestDebugWait>(TAtlasTestDebugWait.Running, TAtlasTestDebug.WaitStep(1, True, cLate),
+    'Prozess geht vor');
+  Assert.AreEqual<TAtlasTestDebugWait>(TAtlasTestDebugWait.Finished, TAtlasTestDebug.WaitStep(0, True, cLate),
+    'Bericht schon da');
+  Assert.AreEqual<TAtlasTestDebugWait>(TAtlasTestDebugWait.TimedOut, TAtlasTestDebug.WaitStep(0, False, cLate));
+  Assert.AreEqual<TAtlasTestDebugWait>(TAtlasTestDebugWait.Wait,
+    TAtlasTestDebug.WaitStep(0, False, TAtlasTestDebug.cStartTimeoutMs), 'Grenze selbst wartet noch');
+end;
+
+procedure TAtlasTestDebugTests.UnitNamesFromTheBack;
+var
+  mNames: TArray<string>;
+begin
+  mNames := TAtlasTestDebug.UnitNamesOf(' Rechner.Tests.TRechnerTests.Summe ');
+  Assert.AreEqual(3, Integer(Length(mNames)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests', mNames[0]);
+  Assert.AreEqual('Rechner.Tests', mNames[1]);
+  Assert.AreEqual('Rechner', mNames[2]);
+  Assert.AreEqual(0, Integer(Length(TAtlasTestDebug.UnitNamesOf('OhnePunkt'))));
 end;
 
 initialization

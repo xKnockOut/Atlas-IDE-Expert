@@ -1250,6 +1250,8 @@ uses
   Atlas.Core.Tests.Stale.Tests in 'IDE.Expert\Atlas.Core.Tests.Stale.Tests.pas',
   Atlas.Core.Tests.CoveredBy in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.CoveredBy.pas',
   Atlas.Core.Tests.CoveredBy.Tests in 'IDE.Expert\Atlas.Core.Tests.CoveredBy.Tests.pas',
+  Atlas.Core.Tests.Lens in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Lens.pas',
+  Atlas.Core.Tests.Lens.Tests in 'IDE.Expert\Atlas.Core.Tests.Lens.Tests.pas',
   Atlas.Core.Tests.Untested in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Untested.pas',
   Atlas.Core.Tests.Untested.Tests in 'IDE.Expert\Atlas.Core.Tests.Untested.Tests.pas',
   Atlas.Core.Tests.OnSave in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.OnSave.pas',

@@ -62,15 +62,6 @@ type
       Generation: Integer;
     end;
 
-    /// <summary>Zuletzt gefragter Stand: Datei, Text, Tiefe und private Methoden; At für den neuen Versuch ohne
-    /// Server (FileName leer).</summary>
-    TAsked = record
-      FileName: string;
-      Text: string;
-      Key: string;
-      At: UInt64;
-    end;
-
     /// <summary>Gezeichnete Marke einer Methode (Koordinaten des Editors) und oberste Zeile dabei.</summary>
     TPainted = record
       Rect: TRect;
@@ -94,7 +85,7 @@ type
     FFileName: string;
     FText: string;
     FChangedAt: UInt64;
-    FAsked: TAsked;
+    FAsked: TAtlasCoveredByAsked;
     /// <summary>Stand, zu dem FUnit gehört.</summary>
     FShownFile: string;
     FUnit: TAtlasCoveredUnit;
@@ -158,7 +149,6 @@ uses
 
 const
   cQuietMs = 800;
-  cRetryMs = 5000;
   cTimeoutMs = 20000;
   cTickMs = 250;
 
@@ -190,12 +180,6 @@ end;
 function UriToPath(AUri: string): string;
 begin
   Result := TLspSessionJson.UriToPath(AUri);
-end;
-
-/// <summary>Kurzname der Methode (Bar aus TFoo.Bar): Er muss in der Kopfzeile stehen.</summary>
-function ShortName(const AName: string): string;
-begin
-  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
 end;
 
 /// <summary>Abbruch der Anfrage: Lens weg oder eine neuere Anfrage gestellt; eigene Routine, damit die Referenz nur
@@ -335,20 +319,17 @@ end;
 procedure TAtlasIdeCoveredByLens.AskIfChanged(const ASettings: TAtlasPluginSettings);
 var
   mKey: string;
+  mStep: TAtlasCoveredByAsk;
 begin
-  mKey := Format('%d|%s', [ASettings.TestsCoveredByDepth, BoolToStr(ASettings.TestsCoveredByPrivate, True)]);
-  if SameText(FAsked.FileName, FFileName) and (FAsked.Text = FText) and (FAsked.Key = mKey) then
-  begin
-    Exit;
-  end;
-  // Ohne laufenden Server (FAsked.FileName leer) erst nach einer Pause erneut.
-  if (FAsked.FileName = '') and (FAsked.At <> 0) and (TAtlasTicks.Since(FAsked.At) < cRetryMs) then
+  mKey := TAtlasCoveredBy.AskKey(ASettings.TestsCoveredByDepth, ASettings.TestsCoveredByPrivate);
+  mStep := TAtlasCoveredBy.AskStep(FAsked, FFileName, FText, mKey, TAtlasTicks.Since(FAsked.At));
+  if mStep in [TAtlasCoveredByAsk.Skip, TAtlasCoveredByAsk.Wait] then
   begin
     Exit;
   end;
   FAsked.At := TAtlasTicks.Now;
   // Testunits bekommen keine Marken (dort zeigt die Test-Lens den Stand): ohne Anfrage.
-  if TAtlasCoveredBy.IsTestUnit(FText) then
+  if mStep = TAtlasCoveredByAsk.TestUnit then
   begin
     FAsked.FileName := FFileName;
     FAsked.Text := FText;
@@ -466,21 +447,13 @@ begin
 end;
 
 procedure TAtlasIdeCoveredByLens.UpdateStale;
-var
-  mMethod: TAtlasCoveredMethod;
-  mTests: TArray<TAtlasCoveredTest>;
 begin
   FStale := nil;
   if not Assigned(FStaleKeys) or not FShowing or FTests.Busy then
   begin
     Exit;
   end;
-  mTests := nil;
-  for mMethod in FUnit.Methods do
-  begin
-    mTests := mTests + mMethod.Tests;
-  end;
-  FStale := TAtlasCoveredBy.StaleKeysOf(mTests, ReadLines, FStaleKeys);
+  FStale := TAtlasCoveredBy.StaleKeysOf(FUnit.AllTests, ReadLines, FStaleKeys);
 end;
 
 procedure TAtlasIdeCoveredByLens.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
@@ -513,26 +486,22 @@ function WithStatus(const ACount: string; const ATally: TAtlasTestTally; var ATo
   const AColors: TAtlasColors): string;
 begin
   Result := ACount;
+  // Grün, rot, gelb bei Teilstand (#1762), grau bei veraltetem Ergebnis (#1770).
+  ATone := TAtlasCoveredBy.ToneOf(AColors, ATone, ATally);
   if ATally.Shown = TAtlasTestStatus.Failed then
   begin
-    ATone := AColors.Error;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.CoveredByFailed, [ACount]);
   end
   else if ATally.Shown = TAtlasTestStatus.Passed then
   begin
-    ATone := AColors.Add;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.CoveredByPassed, [ACount]);
   end
   else if ATally.Shown = TAtlasTestStatus.Partial then
   begin
-    // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
-    ATone := AColors.Warn;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.CoveredByPartial, [ACount, ATally.FreshPassed, ATally.Total]);
   end;
-  // Veraltet (#1770): alter Stand grau mit „(veraltet)“.
   if ATally.IsStale then
   begin
-    ATone := AColors.Muted;
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
   end;
 end;
@@ -541,9 +510,11 @@ function TAtlasIdeCoveredByLens.Caption(const AMethod: TAtlasCoveredMethod; cons
   out ATone: TAtlasColor; out AStale: Boolean): string;
 var
   mTally: TAtlasTestTally;
+  mCount: TAtlasCoveredByCount;
 begin
   AStale := False;
-  if Length(AMethod.Tests) = 0 then
+  mCount := TAtlasCoveredBy.CountOf(Length(AMethod.Tests));
+  if mCount = TAtlasCoveredByCount.None then
   begin
     ATone := AColors.Muted;
     Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.CoveredByNone);
@@ -551,7 +522,7 @@ begin
   else
   begin
     ATone := AColors.Accent;
-    if Length(AMethod.Tests) = 1 then
+    if mCount = TAtlasCoveredByCount.One then
     begin
       Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.CoveredByOne);
     end
@@ -588,7 +559,7 @@ begin
   ALine := mLineState.Text;
   Result := FUnit.MethodAt(AContext.LogicalLineNum - 1);
   // Text seit der Antwort verschoben: keine Marke an einer Zeile ohne den Namen der Methode.
-  if (Result >= 0) and (Pos(LowerCase(ShortName(FUnit.Methods[Result].Name)), LowerCase(ALine)) = 0) then
+  if (Result >= 0) and not TAtlasCoveredBy.HeaderShows(FUnit.Methods[Result].Name, ALine) then
   begin
     Result := -1;
   end;
@@ -657,16 +628,15 @@ end;
 /// <summary>Index der Marke unter (AX, AY); -1 ohne.</summary>
 function HitIn(const APainted: TArray<TAtlasIdeCoveredByLens.TPainted>; AX, AY: Integer): Integer;
 var
+  mRects: TArray<TRect>;
   mIndex: Integer;
 begin
+  SetLength(mRects, Length(APainted));
   for mIndex := 0 to High(APainted) do
   begin
-    if not APainted[mIndex].Rect.IsEmpty and PtInRect(APainted[mIndex].Rect, Point(AX, AY)) then
-    begin
-      Exit(mIndex);
-    end;
+    mRects[mIndex] := APainted[mIndex].Rect;
   end;
-  Result := -1;
+  Result := TAtlasCoveredBy.HitIndex(mRects, Point(AX, AY));
 end;
 
 procedure TAtlasIdeCoveredByLens.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton;
@@ -726,17 +696,13 @@ var
   mFileName: string;
   mNames: TArray<string>;
 begin
-  if Length(AMethod.Tests) = 0 then
-  begin
-    // Kein Test: Testunit öffnen bzw. anlegen wie „Zur Testunit wechseln“.
-    TAtlasIdeHost.ExecuteCommand('Atlas.SwitchTestUnit');
-  end
-  else if AList then
-  begin
-    FList.Show(AMethod.Tests, AAt);
-  end
+  case TAtlasCoveredBy.ClickOf(Length(AMethod.Tests), AList) of
+    TAtlasCoveredByClick.SwitchTestUnit:
+      // Kein Test: Testunit öffnen bzw. anlegen wie „Zur Testunit wechseln“.
+      TAtlasIdeHost.ExecuteCommand('Atlas.SwitchTestUnit');
+    TAtlasCoveredByClick.List:
+      FList.Show(AMethod.Tests, AAt);
   else
-  begin
     mTests := FTests;
     mFileName := AMethod.Tests[0].FileName;
     mNames := TAtlasCoveredBy.RunNames(AMethod.Tests);

@@ -34,13 +34,17 @@ uses
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Stale,
   Atlas.Core.Tests.Durations,
-  Atlas.Core.Tests.Flaky;
+  Atlas.Core.Tests.Flaky,
+  Atlas.Core.VersionControl.Contract;
 
 type
 {$SCOPEDENUMS ON}
   /// <summary>Stand eines Tests bzw. einer Fixture nach dem letzten Lauf. Partial: Von mehreren Tests (Fixture,
   /// [TestCase]-Methode) lief erst ein Teil, keiner schlug fehl.</summary>
   TAtlasTestStatus = (Unknown, Passed, Failed, Partial);
+  /// <summary>Ende eines Laufs der Test-EXE: abgebrochen (Serie, #1782), Zeitgrenze, ohne gültigen Bericht oder mit
+  /// Bericht.</summary>
+  TAtlasTestFinish = (Cancelled, TimedOut, NoReport, Report);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Texte der Dauer an der Marke (#1772); deklariert in Atlas.Core.Tests.Durations.</summary>
@@ -215,6 +219,13 @@ type
     /// ('' = alle) in Berichtsreihenfolge (Fenster „Atlas-Tests“, #1776).</summary>
     class function ResultsOf(const ACases: TArray<TTestCaseResult>; const AUnitName, AFixture, AMethod,
       ACaseName: string): TArray<TTestCaseResult>; static;
+    /// <summary>Ende des Laufs mit Ausgang AOutcome des Prozessläufers; AValid: Der Bericht ließ sich lesen.
+    /// </summary>
+    class function FinishOf(AOutcome: TAtlasVcsOutcome; AValid: Boolean): TAtlasTestFinish; static;
+    /// <summary>Die letzten ACount Zeilen von ALines (alle, wenn es weniger sind).</summary>
+    class function LastLines(const ALines: TArray<string>; ACount: Integer): TArray<string>; static;
+    /// <summary>Ist AFileName die Datei der Unit AUnitName (.pas, Name ohne Groß-/Kleinschreibung)?</summary>
+    class function IsUnitFile(const AFileName, AUnitName: string): Boolean; static;
   end;
 
 implementation
@@ -818,6 +829,43 @@ begin
       Result := Result + [mItem];
     end;
   end;
+end;
+
+class function TAtlasTestRun.FinishOf(AOutcome: TAtlasVcsOutcome; AValid: Boolean): TAtlasTestFinish;
+begin
+  if AOutcome = TAtlasVcsOutcome.Cancelled then
+  begin
+    Result := TAtlasTestFinish.Cancelled;
+  end
+  else if AOutcome = TAtlasVcsOutcome.TimedOut then
+  begin
+    Result := TAtlasTestFinish.TimedOut;
+  end
+  else if (AOutcome <> TAtlasVcsOutcome.Ok) or not AValid then
+  begin
+    Result := TAtlasTestFinish.NoReport;
+  end
+  else
+  begin
+    Result := TAtlasTestFinish.Report;
+  end;
+end;
+
+class function TAtlasTestRun.LastLines(const ALines: TArray<string>; ACount: Integer): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := Max(0, Length(ALines) - ACount) to High(ALines) do
+  begin
+    Result := Result + [ALines[mIndex]];
+  end;
+end;
+
+class function TAtlasTestRun.IsUnitFile(const AFileName, AUnitName: string): Boolean;
+begin
+  Result := SameText(ExtractFileExt(AFileName), '.pas') and
+    SameText(ChangeFileExt(ExtractFileName(AFileName), ''), AUnitName);
 end;
 
 end.

@@ -21,6 +21,9 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasMutationScope = (Routine, WholeUnit, Changed);
+  /// <summary>Wie ein erkannter Mutant beschrieben wird: ohne Angabe, mit dem Exitcode (Absturz ohne Bericht) oder
+  /// mit dem ersten fehlgeschlagenen Test.</summary>
+  TAtlasMutationKilledText = (Plain, ExitCode, ByTest);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Ausgewählte Mutanten mit ihrer Routine und Nummer darin.</summary>
@@ -54,11 +57,43 @@ type
       TAtlasMutationStatus; static;
   end;
 
+  /// <summary>Ablauf eines Mutationslaufs: Lauf ohne Mutation, Ausgang je Mutant, Zahlen und Ergebnisse je Routine.
+  /// APosition ist -1 für den Lauf ohne Mutation, sonst der Index in den Jobs.</summary>
+  TAtlasMutationSteps = class
+  public
+    /// <summary>Geprüfte Mutanten beim Stand APosition.</summary>
+    class function Done(APosition: Integer): Integer; static;
+    /// <summary>Scheitert der Lauf ohne Mutation mit AStatus? Rot, nicht gebaut oder nicht bewertbar: Jeder Mutant
+    /// wäre sonst „erkannt“. Bei APosition ab 0 immer False.</summary>
+    class function BaselineFailed(APosition: Integer; AStatus: TAtlasMutationStatus): Boolean; static;
+    /// <summary>Ausgang des Mutanten AJob mit AStatus, ABy und der Dauer AMilliseconds; die Zeile gilt relativ zum
+    /// Kopf der Routine.</summary>
+    class function OutcomeOf(const AJob: TAtlasMutationJob; AStatus: TAtlasMutationStatus; const ABy: string;
+      AMilliseconds: Integer): TAtlasMutationOutcome; static;
+    /// <summary>Zahlen über die ersten ADone Ausgänge.</summary>
+    class function Totals(const AOutcomes: TArray<TAtlasMutationOutcome>; ADone: Integer): TAtlasMutationTotals;
+      static;
+    /// <summary>Indizes der überlebenden unter den ersten ADone Ausgängen.</summary>
+    class function Survivors(const AOutcomes: TArray<TAtlasMutationOutcome>; ADone: Integer): TArray<Integer>;
+      static;
+    /// <summary>Ist AJobs[AIndex] der erste Job seiner Routine (nach Namen)?</summary>
+    class function FirstOfRoutine(const AJobs: TArray<TAtlasMutationJob>; AIndex: Integer): Boolean; static;
+    /// <summary>Ergebnis der Routine von AJobs[AFirst] aus allen Mutanten dieser Routine; AComplete, wenn alle vor
+    /// ADone liegen (geprüft sind). Eine lokale Routine kann die Mutanten der äußeren teilen: nach Namen, nicht
+    /// nach Nachbarschaft.</summary>
+    class function RoutineResult(const AJobs: TArray<TAtlasMutationJob>;
+      const AOutcomes: TArray<TAtlasMutationOutcome>; AFirst, ADone: Integer;
+      out AComplete: Boolean): TAtlasMutationRoutineResult; static;
+    /// <summary>Beschreibung eines erkannten Mutanten nach ABy aus StatusOf.</summary>
+    class function KilledText(const ABy: string): TAtlasMutationKilledText; static;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   System.JSON,
   System.Generics.Collections,
   Atlas.Text.TestResults;
@@ -216,6 +251,115 @@ begin
   else
   begin
     Result := TAtlasMutationStatus.Invalid;
+  end;
+end;
+
+{ TAtlasMutationSteps }
+
+class function TAtlasMutationSteps.Done(APosition: Integer): Integer;
+begin
+  Result := APosition;
+  if Result < 0 then
+  begin
+    Result := 0;
+  end;
+end;
+
+class function TAtlasMutationSteps.BaselineFailed(APosition: Integer; AStatus: TAtlasMutationStatus): Boolean;
+begin
+  Result := (APosition < 0) and (AStatus <> TAtlasMutationStatus.Survived);
+end;
+
+class function TAtlasMutationSteps.OutcomeOf(const AJob: TAtlasMutationJob; AStatus: TAtlasMutationStatus;
+  const ABy: string; AMilliseconds: Integer): TAtlasMutationOutcome;
+begin
+  Result := Default(TAtlasMutationOutcome);
+  Result.Index := AJob.Index;
+  Result.OperatorId := AJob.Mutant.OperatorId;
+  Result.Original := AJob.Mutant.Original;
+  Result.Replacement := AJob.Mutant.Replacement;
+  Result.Description := AJob.Mutant.Description;
+  Result.Line := AJob.Mutant.Line - 1 - AJob.Routine.Line;
+  Result.Status := AStatus;
+  Result.By := ABy;
+  Result.Milliseconds := AMilliseconds;
+end;
+
+class function TAtlasMutationSteps.Totals(const AOutcomes: TArray<TAtlasMutationOutcome>;
+  ADone: Integer): TAtlasMutationTotals;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasMutationTotals);
+  for mIndex := 0 to Min(ADone, Length(AOutcomes)) - 1 do
+  begin
+    Result.Add(AOutcomes[mIndex].Status);
+  end;
+end;
+
+class function TAtlasMutationSteps.Survivors(const AOutcomes: TArray<TAtlasMutationOutcome>;
+  ADone: Integer): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Min(ADone, Length(AOutcomes)) - 1 do
+  begin
+    if AOutcomes[mIndex].Status = TAtlasMutationStatus.Survived then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+class function TAtlasMutationSteps.FirstOfRoutine(const AJobs: TArray<TAtlasMutationJob>; AIndex: Integer): Boolean;
+var
+  mOther: Integer;
+begin
+  Result := True;
+  for mOther := 0 to AIndex - 1 do
+  begin
+    if AJobs[mOther].Routine.Name = AJobs[AIndex].Routine.Name then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+class function TAtlasMutationSteps.RoutineResult(const AJobs: TArray<TAtlasMutationJob>;
+  const AOutcomes: TArray<TAtlasMutationOutcome>; AFirst, ADone: Integer;
+  out AComplete: Boolean): TAtlasMutationRoutineResult;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasMutationRoutineResult);
+  Result.Routine := AJobs[AFirst].Routine.Name;
+  Result.Line := AJobs[AFirst].Routine.Line;
+  Result.EndLine := AJobs[AFirst].Routine.EndLine;
+  AComplete := True;
+  for mIndex := AFirst to High(AJobs) do
+  begin
+    if AJobs[mIndex].Routine.Name = Result.Routine then
+    begin
+      AComplete := AComplete and (mIndex < ADone);
+      Result.Outcomes := Result.Outcomes + [AOutcomes[mIndex]];
+    end;
+  end;
+end;
+
+class function TAtlasMutationSteps.KilledText(const ABy: string): TAtlasMutationKilledText;
+begin
+  if StrToIntDef(ABy, 0) <> 0 then
+  begin
+    Result := TAtlasMutationKilledText.ExitCode;
+  end
+  else if ABy <> '' then
+  begin
+    Result := TAtlasMutationKilledText.ByTest;
+  end
+  else
+  begin
+    Result := TAtlasMutationKilledText.Plain;
   end;
 end;
 
