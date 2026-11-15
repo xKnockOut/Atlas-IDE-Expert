@@ -160,6 +160,7 @@
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas"/>
+        <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.EditorPlan.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Controller.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Format.pas"/>
         <DCCReference Include="Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>

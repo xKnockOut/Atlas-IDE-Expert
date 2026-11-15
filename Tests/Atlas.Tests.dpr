@@ -619,6 +619,8 @@ uses
   Atlas.Core.Documentation.Typeset in '..\Packages\Atlas.IDE.Base\Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas',
   Atlas.Core.Documentation.Tests in 'IDE.Expert\Atlas.Core.Documentation.Tests.pas',
   Atlas.Core.Signature.CallScanner in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.CallScanner.pas',
+  Atlas.Core.Signature.EditorPlan in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.EditorPlan.pas',
+  Atlas.Core.Signature.EditorPlan.Tests in 'IDE.Expert\Atlas.Core.Signature.EditorPlan.Tests.pas',
   Atlas.Core.Signature.Controller in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Controller.pas',
   Atlas.Core.Signature.Format in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Format.pas',
   Atlas.Core.Signature.Providers.Server in '..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas',

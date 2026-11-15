@@ -527,3 +527,4 @@ Atlas.Core.Lsp.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.DialogInput.Tests
+Atlas.Core.Signature.EditorPlan.Tests
