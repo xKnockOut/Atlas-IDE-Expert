@@ -66,13 +66,6 @@ const
   cLogCheckAborted = 'Issue-Tracker: Prüfung mit %s abgebrochen';
   cLogValuesAborted = 'Issue-Tracker: Werte mit %s abgebrochen';
   cLogQueryAborted = 'Issue-Tracker: Test der Abfrage mit %s abgebrochen';
-  cLogValuesLoaded = 'Issue-Tracker: Werte geladen (%s, %d Zustände)';
-  cLogChecked = 'Issue-Tracker: Verbindung geprüft (%s)';
-  cLogQueryTested = 'Issue-Tracker: Abfrage getestet (%s, %s)';
-  cTrackerStateKeys: array[TAtlasTrackerTokenState] of string = ('missing', 'saved', 'verified', 'rejected',
-    'unreachable', 'unexpected');
-  cOutcomeKeys: array[TAtlasTrackerQueryOutcome] of string = ('found', 'empty', 'noToken', 'notConfigured',
-    'rejected', 'projectUnknown', 'queryRejected', 'unreadable', 'serverError', 'unreachable');
 
 type
   /// <summary>Arbeit eines Hintergrundthreads; AThread ist der Thread selbst.</summary>
@@ -253,7 +246,7 @@ begin
     FStates := TDictionary<string, TAtlasTrackerTokenStatus>.Create;
   end;
   FStates.AddOrSetValue(AKey, AStatus);
-  TAtlasGuard.Log(Format(cLogChecked, [cTrackerStateKeys[AStatus.State]], TFormatSettings.Invariant));
+  TAtlasGuard.Log(TAtlasTrackerSettingsPlan.CheckedLog(AStatus.State));
 end;
 
 class function TAtlasTrackerChecks.CheckedDone(const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
@@ -285,8 +278,7 @@ begin
   Result :=
     procedure
     begin
-      TAtlasGuard.Log(Format(cLogValuesLoaded, [TAtlasCiBuild.ErrorKey(mValues.Outcome.Error),
-        Length(mValues.States)], TFormatSettings.Invariant));
+      TAtlasGuard.Log(TAtlasTrackerSettingsPlan.ValuesLog(mValues.Outcome.Error, Length(mValues.States)));
       mDone(mValues, TAtlasTrackerEndDialog.ErrorText('', mValues.Outcome));
     end;
 end;
@@ -304,8 +296,7 @@ begin
   Result :=
     procedure
     begin
-      TAtlasGuard.Log(Format(cLogQueryTested, [mProviderName, cOutcomeKeys[mResult.Outcome]],
-        TFormatSettings.Invariant));
+      TAtlasGuard.Log(TAtlasTrackerSettingsPlan.QueryLog(mProviderName, mResult.Outcome));
       mDone(mResult);
     end;
 end;
@@ -314,24 +305,22 @@ class function TAtlasTrackerChecks.State(const AAccess: IAtlasTrackerAccess;
   const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
 var
   mTarget: TAtlasTrackerTarget;
+  mHasToken, mKnown: Boolean;
+  mKnownStatus: TAtlasTrackerTokenStatus;
 begin
   mTarget := AConnection.Target;
-  if (AAccess = nil) or not AAccess.HasToken(mTarget) then
-  begin
-    Exit(TAtlasTrackerTokenStatus.Stored(False));
-  end;
-  if (FStates <> nil) and FStates.TryGetValue(LowerCase(mTarget.CredentialTarget), Result) then
-  begin
-    Exit;
-  end;
-  Result := TAtlasTrackerTokenStatus.Stored(True);
+  mHasToken := (AAccess <> nil) and AAccess.HasToken(mTarget);
+  mKnownStatus := Default(TAtlasTrackerTokenStatus);
+  mKnown := mHasToken and (FStates <> nil) and FStates.TryGetValue(TAtlasTrackerSettingsPlan.StateKey(mTarget),
+    mKnownStatus);
+  Result := TAtlasTrackerSettingsPlan.StateOf(mHasToken, mKnown, mKnownStatus);
 end;
 
 class procedure TAtlasTrackerChecks.Forget(const AConnection: TAtlasTrackerConnection);
 begin
   if FStates <> nil then
   begin
-    FStates.Remove(LowerCase(AConnection.Target.CredentialTarget));
+    FStates.Remove(TAtlasTrackerSettingsPlan.StateKey(AConnection.Target));
   end;
 end;
 
@@ -347,7 +336,7 @@ begin
   mAccess := AAccess;
   mTarget := AConnection.Target;
   mProvider := AAccess.Provider(AConnection.Provider);
-  mKey := LowerCase(mTarget.CredentialTarget);
+  mKey := TAtlasTrackerSettingsPlan.StateKey(mTarget);
   mDone := ADone;
   Launch(
     procedure(AThread: TThread)
@@ -437,13 +426,10 @@ function TrackerValuesTarget(const AConnection: TAtlasTrackerConnection): TAtlas
 var
   mProject: string;
   mTeamTarget: TAtlasTrackerTarget;
+  mConfigured: Boolean;
 begin
-  Result := AConnection.Target;
-  if TeamTracker(mProject, mTeamTarget) and SameText(mTeamTarget.Provider, Result.Provider) and
-    SameText(mTeamTarget.Server, Result.Server) then
-  begin
-    Result := mTeamTarget;
-  end;
+  mConfigured := TeamTracker(mProject, mTeamTarget);
+  Result := TAtlasTrackerSettingsPlan.ValuesTarget(AConnection.Target, mConfigured, mTeamTarget);
 end;
 
 /// <summary>Verbindung aus dem Abschnitt tracker der .atlas des aktiven Projekts (#486); leer ohne.</summary>
@@ -456,7 +442,7 @@ begin
   if TeamTracker(mProject, mTarget) then
   begin
     Result := TArray<TAtlasTrackerConnection>.Create(
-      TAtlasTrackerConnection.FromTeamFile(ChangeFileExt(ExtractFileName(mProject), ''), mTarget));
+      TAtlasTrackerConnection.FromTeamFile(TAtlasTrackerSettingsPlan.TeamName(mProject), mTarget));
   end;
 end;
 

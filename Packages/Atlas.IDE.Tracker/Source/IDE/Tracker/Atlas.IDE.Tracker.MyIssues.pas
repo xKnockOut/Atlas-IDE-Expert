@@ -200,12 +200,16 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Reopened,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Tracker.Queries,
+  Atlas.Core.Tracker.MyIssuesPlan,
   Atlas.Core.Tracker.Templates,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Tracker.Workflow;
+
+const
+  cRowActions: array[TAtlasIssueAction] of TAtlasIssueRowAction = (TAtlasIssueRowAction.Continue,
+    TAtlasIssueRowAction.Dismiss, TAtlasIssueRowAction.Reason, TAtlasIssueRowAction.Review);
 
 /// <summary>Fußzeile: die gesendete Abfrage, bei der Vorgabe die des Anbieters.</summary>
 function QueryTextOf(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): string;
@@ -344,65 +348,22 @@ begin
   FCommands.SetFilter(ACaption, AIssues);
 end;
 
-/// <summary>Abfragen aus AQueries, die es (nach Name) auch in AOther gibt.</summary>
-function CommonQueries(const AQueries, AOther: TArray<TAtlasTrackerQuery>): TArray<TAtlasTrackerQuery>;
-var
-  mQuery, mOther: TAtlasTrackerQuery;
-begin
-  Result := nil;
-  for mQuery in AQueries do
-  begin
-    for mOther in AOther do
-    begin
-      if SameText(mQuery.Name, mOther.Name) then
-      begin
-        Result := Result + [mQuery];
-        Break;
-      end;
-    end;
-  end;
-end;
-
 /// <summary>„Alle Tracker-Projekte“ (#1928): Gruppen aus der Ansicht ABase des gezeigten Projekts.</summary>
 function AllView(AIssues: TAtlasIdeIssues; const ABase: TAtlasIssuesView): TAtlasIssuesView;
 var
   mChoice: TAtlasTrackerChoice;
-  mGroup: TAtlasIssuesView;
-  mPerGroup, mIndex: Integer;
-  mSelected: string;
+  mGroups: TArray<TAtlasIssuesGroupView>;
+  mGroup: TAtlasIssuesGroupView;
 begin
-  Result := ABase;
-  Result.Items := nil;
-  Result.Unseen := nil;
-  Result.Groups := nil;
-  // Der Filter der Sprint-Kachel gilt nur für ein Board.
-  Result.Filter := '';
-  Result.Querying := False;
-  Result.Status := TAtlasIssuesStatus.NotConfigured;
-  mSelected := '';
-  if (ABase.QueryIndex >= 0) and (ABase.QueryIndex <= High(ABase.Queries)) then
-  begin
-    mSelected := ABase.Queries[ABase.QueryIndex].Name;
-  end;
-  mPerGroup := TAtlasIdeSettings.Current.IssuesAllProjectsPerGroup;
+  mGroups := nil;
   for mChoice in AIssues.Context.Selection.Choices do
   begin
-    mGroup := AIssues.ViewOf(mChoice.Match);
-    TAtlasMyIssues.AddGroup(Result, mChoice.Caption, mChoice.Match, mGroup, mPerGroup);
-    Result.Querying := Result.Querying or mGroup.Querying;
-    Result.Status := TAtlasIssuesStatus.Ready;
-    // Eine Abfrage für alle: nur Abfragen, die jedes Tracker-Projekt kennt.
-    Result.Queries := CommonQueries(Result.Queries, mGroup.Queries);
+    mGroup.Caption := mChoice.Caption;
+    mGroup.Project := mChoice.Match;
+    mGroup.View := AIssues.ViewOf(mChoice.Match);
+    mGroups := mGroups + [mGroup];
   end;
-  Result.QueryCounts := nil;
-  Result.QueryIndex := -1;
-  for mIndex := 0 to High(Result.Queries) do
-  begin
-    if SameText(Result.Queries[mIndex].Name, mSelected) then
-    begin
-      Result.QueryIndex := mIndex;
-    end;
-  end;
+  Result := TAtlasMyIssuesPlan.AllView(ABase, mGroups, TAtlasIdeSettings.Current.IssuesAllProjectsPerGroup);
 end;
 
 function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
@@ -436,7 +397,7 @@ begin
   Result.QueryCounts := TAtlasMyIssues.QueryCounts(FContext.StateOf(AProject), mCached.Queries);
   Result.Picker := TAtlasIdeSettings.Current.IssuesQueryPicker;
   Result.QueryText := QueryTextOf(mProvider, mTarget);
-  Result.Querying := (FContext.QueryProject <> '') and SameText(FContext.QueryProject, AProject);
+  Result.Querying := TAtlasMyIssuesPlan.SameProject(FContext.QueryProject, AProject);
   Result.Starting := FContext.StartProject <> '';
   if SameText(FContext.Notice.Project, AProject) then
   begin
@@ -447,7 +408,7 @@ begin
   Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
   Result.VcsKind := FContext.Selection.VcsKindOf(AProject);
   // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
-  if (FContext.Filter.Caption <> '') and SameText(FContext.Filter.Project, AProject) then
+  if TAtlasMyIssuesPlan.FilterApplies(FContext.Filter.Caption, FContext.Filter.Project, AProject) then
   begin
     Result.Filter := FContext.Filter.Caption;
     Result.Items := FContext.Filter.Issues;
@@ -589,34 +550,28 @@ var
 begin
   FocusIssue(AIssue);
   mProject := FContext.Selection.CurrentProject;
-  if AAction = TAtlasIssueAction.Review then
-  begin
-    // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
-    if FServices.Review <> nil then
-    begin
-      FServices.Review.Review(AIssue, FServices.Options);
-    end;
-  end
-  else if AAction = TAtlasIssueAction.Continue then
-  begin
-    // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
-    if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
-    begin
-      mReopen := Default(TAtlasTrackerReopen);
-    end;
-    FStarter.Resume(AIssue, mReopen.Branch);
-  end
-  else if FServices.Reopened = nil then
-  begin
-    Exit;
-  end
-  else if AAction = TAtlasIssueAction.Dismiss then
-  begin
-    FServices.Reopened.Dismiss(mProject, AIssue.Key);
-  end
-  else
-  begin
-    FServices.Reopened.ShowComment(mProject, AIssue.Key);
+  case TAtlasMyIssuesPlan.StepOf(cRowActions[AAction], FServices.Reopened <> nil) of
+    TAtlasIssueRowStep.Review:
+      // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
+      if FServices.Review <> nil then
+      begin
+        FServices.Review.Review(AIssue, FServices.Options);
+      end;
+    TAtlasIssueRowStep.Resume:
+      begin
+        // Ohne Marke (schon ausgeblendet): Weiterarbeiten ohne gemerkten Branch, wie „Beginnen“.
+        if (FServices.Reopened = nil) or not FServices.Reopened.Find(mProject, AIssue.Key, mReopen) then
+        begin
+          mReopen := Default(TAtlasTrackerReopen);
+        end;
+        FStarter.Resume(AIssue, mReopen.Branch);
+      end;
+    TAtlasIssueRowStep.Dismiss:
+      FServices.Reopened.Dismiss(mProject, AIssue.Key);
+    TAtlasIssueRowStep.Reason:
+      FServices.Reopened.ShowComment(mProject, AIssue.Key);
+    TAtlasIssueRowStep.Skip:
+      ; // Ohne Dienst der wieder geöffneten Issues gibt es keine Marke.
   end;
 end;
 
