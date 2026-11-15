@@ -103,6 +103,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
@@ -116,11 +117,13 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ThreadMarks.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.AsyncOrigin.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionCapture.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MemoryTimeline.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Profiler.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ObjectCount.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InlineValuesFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
@@ -128,7 +131,10 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MethodBreakpoints.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointSetFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepIntoJump.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StopProgress.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Visualizers.Format.pas"/>
@@ -170,6 +176,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.InlineValues.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.WhyHereFlow.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Pins.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Pins.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.WhyHere.pas"/>

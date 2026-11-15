@@ -61,36 +61,20 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.InlayHints.Store,
-  Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.InlayPlan,
   Atlas.Core.Diagnostics.Deadline;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasInlayHintsSessionFunc = reference to function: TLspSession;
 
-  /// <summary>Gezeichnete Blockende-Beschriftung (#620) oder Marke „braucht kein Self“ (#686) mit Ziel des
-  /// Klicks.</summary>
-  TAtlasInlayPillHit = record
-    FileName: string;
-    Line: Integer;
-    TopRow: Integer;
-    Rect: TRect;
-    TargetLine: Integer;
-    TargetCharacter: Integer;
-    /// <summary>Marke einer Methode ohne Self: nach dem Sprung die Code-Aktionen öffnen.</summary>
-    Actions: Boolean;
-  end;
-
   /// <summary>Klickbare Marken: Ein Linksklick auf eine Blockende-Beschriftung springt zum Blockanfang, einer auf die
   /// Marke „braucht kein Self“ ans Ende des Methodenkopfs und öffnet dort die Code-Aktionen.</summary>
   TAtlasInlayHintClicks = class
-  private const
-    /// <summary>Mehr gemerkte Flächen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
-    cMaxHits = 500;
   private
     FStore: TAtlasInlayHintStore;
     FMethodActions: TProc;
-    FHits: TArray<TAtlasInlayPillHit>;
+    FHits: TAtlasInlayPillHits;
     /// <summary>Ist die Art von AHit noch an, und steht eine Marke „braucht kein Self“ noch im Speicher?</summary>
     function StillShown(const AHit: TAtlasInlayPillHit): Boolean;
     /// <summary>Gemerkte Fläche unter X, Y in der Ansicht AView, die noch gilt.</summary>
@@ -114,27 +98,7 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    /// <summary>Eine Pille je Art: das Element für .atlas und die Beschriftungen.</summary>
-    TPillRow = record
-      Element: TAtlasDrawnElement;
-      Labels: TArray<string>;
-    end;
-
-    /// <summary>Marken einer Zeile: Pillen und die Blockende-Beschriftung.</summary>
-    TLineHints = record
-      Line: Integer;
-      Stored: string;
-      TabWidth: Integer;
-      Rows: TArray<TPillRow>;
-      ShowEnd: Boolean;
-      EndText: string;
-      EndLabel: string;
-      EndHint: TAtlasInlayHint;
-      /// <summary>Stelle der Marke „braucht kein Self“ (Ende des Kopfs, 0-basiert).</summary>
-      MethodCharacter: Integer;
-    end;
   private const
-    cQuietMs = 300;
     cTimeoutMs = 5000;
     cRetryMs = 5000;
   private
@@ -178,7 +142,8 @@ type
       const AHints: TArray<TAtlasInlayHint>);
     /// <summary>Stift, Pinsel, Schrift und Textfarbe der Pillen in ADC wählen.</summary>
     procedure SelectHintStyle(ADC: HDC);
-    procedure DrawHints(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AHints: TLineHints);
+    procedure DrawHints(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
+      const AHints: TAtlasInlayLine);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -198,7 +163,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
@@ -206,6 +170,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.LineTail,
+  Atlas.Core.Editor.Elements,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.CodeView;
@@ -311,17 +276,9 @@ begin
     Exit;
   end;
   FHintFont.Assign(AEditorFont);
-  FHintFont.Size := Max(6, AEditorFont.Size - 1);
+  FHintFont.Size := TAtlasInlayPlan.FontSize(AEditorFont.Size);
   FHintFont.Style := [];
   FFontKey := mKey;
-end;
-
-function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
 end;
 
 /// <summary>Ist eine der Arten eingeschaltet (Namen, Typen, Include-Symbole, Steuerzeichen, ohne Self,
@@ -344,7 +301,7 @@ begin
   begin
     Result := mEditors.TopView;
   end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
+  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasInlayPlan.IsSource(Result.Buffer.FileName)) then
   begin
     Result := nil;
   end;
@@ -406,8 +363,8 @@ begin
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
     // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
-    if (mView <> nil) and not SnapshotChanged(mView) and (TAtlasTicks.Since(FChangedAt) >= cQuietMs) and
-      FRetryAt.Reached and TAtlasIdeCodeView.InFront then
+    if (mView <> nil) and TAtlasInlayPlan.FetchDue(True, SnapshotChanged(mView), TAtlasTicks.Since(FChangedAt),
+      FRetryAt.Reached, TAtlasIdeCodeView.InFront) then
     begin
       Fetch(mView);
     end;
@@ -456,12 +413,6 @@ begin
   end;
 end;
 
-/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
 procedure TAtlasEditorInlayHints.Fetch(const AView: IOTAEditView);
 var
   mSession: TLspSession;
@@ -470,8 +421,7 @@ var
   mHints: TArray<TAtlasInlayHint>;
 begin
   FStore.SetText(FFileName, FText);
-  mFirst := AView.TopRow - 1;
-  mLast := mFirst + AView.ViewSize.cy;
+  TAtlasInlayPlan.VisibleLines(AView.TopRow, AView.ViewSize.cy, mFirst, mLast);
   if FRequest.Busy or not FStore.Missing(FFileName, mFirst, mLast, mFrom, mTill) then
   begin
     Exit;
@@ -528,98 +478,61 @@ begin
   SetBkMode(ADC, TRANSPARENT);
 end;
 
-type
-  TPillRow = TAtlasEditorInlayHints.TPillRow;
-  TLineHints = TAtlasEditorInlayHints.TLineHints;
+/// <summary>Texte der Marken in der Sprache der IDE.</summary>
+function InlayTexts: TAtlasInlayTexts;
+begin
+  Result.MethodWithoutSelf := TAtlasStrings.Text(TAtlasTextId.InlayMethodWithoutSelf);
+  Result.DefineFormat := TAtlasStrings.Text(TAtlasTextId.InlayDefinesLabel);
+end;
 
-procedure AddRow(var AHints: TLineHints; AElement: TAtlasDrawnElement; const ALabels: TArray<string>);
+const
+  /// <summary>Gezeichnetes Element jeder Art für .atlas (#628) und die Elementliste.</summary>
+  cDrawnElement: array[TAtlasInlayKind] of TAtlasDrawnElement = (TAtlasDrawnElement.InlayHints,
+    TAtlasDrawnElement.InlayTypeHints, TAtlasDrawnElement.InlayDefineHints, TAtlasDrawnElement.InlayCharHints,
+    TAtlasDrawnElement.InlayMethodHints, TAtlasDrawnElement.BlockEndLabels);
+
+/// <summary>Eingeschaltete Arten der Pillen.</summary>
+function KindsOn: TAtlasInlayKinds;
+begin
+  Result := [];
+  if TAtlasIdeSettings.InlayHintsOn then
+  begin
+    Include(Result, TAtlasInlayKind.Parameters);
+  end;
+  if TAtlasIdeSettings.InlayTypeHintsOn then
+  begin
+    Include(Result, TAtlasInlayKind.InferredTypes);
+  end;
+  if TAtlasIdeSettings.InlayDefineHintsOn then
+  begin
+    Include(Result, TAtlasInlayKind.Defines);
+  end;
+  if TAtlasIdeSettings.InlayCharHintsOn then
+  begin
+    Include(Result, TAtlasInlayKind.Chars);
+  end;
+  if TAtlasIdeSettings.InlayMethodHintsOn then
+  begin
+    Include(Result, TAtlasInlayKind.Method);
+  end;
+end;
+
+/// <summary>In .atlas ausgeblendet (#628) in der Datei AFileName.</summary>
+function HiddenIn(const AFileName: string): TAtlasInlayHiddenFunc;
 var
-  mRow: TPillRow;
+  mFileName: string;
 begin
-  if Length(ALabels) = 0 then
-  begin
-    Exit;
-  end;
-  mRow.Element := AElement;
-  mRow.Labels := ALabels;
-  AHints.Rows := AHints.Rows + [mRow];
-end;
-
-/// <summary>Include-Symbole (#860): „definiert COMPLIB_VCL“ in der Sprache der IDE.</summary>
-function DefineLabels(const ADefines: TArray<string>): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(ADefines));
-  for mIndex := 0 to High(ADefines) do
-  begin
-    Result[mIndex] := TAtlasStrings.Fmt(TAtlasTextId.InlayDefinesLabel, [ADefines[mIndex]]);
-  end;
-end;
-
-/// <summary>Marken der Zeile aus dem Speicher, ohne Einstellungen; False, wenn es keine gibt.</summary>
-function StoredHints(AStore: TAtlasInlayHintStore; const AFileName: string; ALine: Integer;
-  out AHints: TLineHints): Boolean;
-begin
-  AHints := Default(TLineHints);
-  AHints.Line := ALine;
-  AddRow(AHints, TAtlasDrawnElement.InlayHints, AStore.OnLine(AFileName, ALine));
-  // Typmarken (#453): „: TStringList“ in derselben Pille.
-  AddRow(AHints, TAtlasDrawnElement.InlayTypeHints, AStore.TypesOnLine(AFileName, ALine));
-  AddRow(AHints, TAtlasDrawnElement.InlayDefineHints, DefineLabels(AStore.DefinesOnLine(AFileName, ALine)));
-  // Steuerzeichen (#862): „#3“ hinter ^C.
-  AddRow(AHints, TAtlasDrawnElement.InlayCharHints, AStore.CharsOnLine(AFileName, ALine));
-  // Methode ohne Self (#686): „braucht kein Self“ in der Sprache der IDE hinter dem Kopf.
-  if AStore.MethodOnLine(AFileName, ALine, AHints.MethodCharacter) then
-  begin
-    AddRow(AHints, TAtlasDrawnElement.InlayMethodHints,
-      TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.InlayMethodWithoutSelf)));
-  end;
-  AHints.ShowEnd := AStore.EndLabelOn(AFileName, ALine, AHints.EndText, AHints.EndLabel, AHints.EndHint);
-  Result := (Length(AHints.Rows) > 0) or AHints.ShowEnd;
-end;
-
-function ElementOn(AElement: TAtlasDrawnElement): Boolean;
-begin
-  case AElement of
-    TAtlasDrawnElement.InlayHints:
-      Result := TAtlasIdeSettings.InlayHintsOn;
-    TAtlasDrawnElement.InlayTypeHints:
-      Result := TAtlasIdeSettings.InlayTypeHintsOn;
-    TAtlasDrawnElement.InlayDefineHints:
-      Result := TAtlasIdeSettings.InlayDefineHintsOn;
-    TAtlasDrawnElement.InlayCharHints:
-      Result := TAtlasIdeSettings.InlayCharHintsOn;
-  else
-    Result := TAtlasIdeSettings.InlayMethodHintsOn;
-  end;
-end;
-
-/// <summary>Nur eingeschaltete Arten, die in .atlas nicht ausgeblendet sind (#628): Inlay-Hints an dieser
-/// Codezeile, Beschriftung mit diesem Text. AWithHidden prüft zusätzlich .atlas. True, wenn etwas bleibt.</summary>
-function KeepShown(var AHints: TLineHints; const AFileName: string; AWithHidden: Boolean): Boolean;
-var
-  mKept: TArray<TPillRow>;
-  mRow: TPillRow;
-begin
-  mKept := nil;
-  for mRow in AHints.Rows do
-  begin
-    if ElementOn(mRow.Element) and
-      not (AWithHidden and TAtlasIdeElements.Hidden(mRow.Element, AFileName, AHints.Stored)) then
+  mFileName := AFileName;
+  Result :=
+    function(AKind: TAtlasInlayKind; const AText: string): Boolean
     begin
-      mKept := mKept + [mRow];
+      Result := TAtlasIdeElements.Hidden(cDrawnElement[AKind], mFileName, AText);
     end;
-  end;
-  AHints.Rows := mKept;
-  AHints.ShowEnd := AHints.ShowEnd and TAtlasIdeSettings.BlockEndLabelsOn and
-    not (AWithHidden and TAtlasIdeElements.Hidden(TAtlasDrawnElement.BlockEndLabels, AFileName, AHints.EndText));
-  Result := (Length(AHints.Rows) > 0) or AHints.ShowEnd;
 end;
 
 /// <summary>Nur, wenn die Zeile im Editor der im Speicher entspricht; setzt Stored und TabWidth.</summary>
 function LineMatches(AStore: TAtlasInlayHintStore; const AContext: INTACodeEditorPaintContext;
-  var AHints: TLineHints): Boolean;
+  var AHints: TAtlasInlayLine): Boolean;
 var
   mLineState: INTACodeEditorLineState;
 begin
@@ -631,8 +544,7 @@ begin
     Exit;
   end;
   AHints.TabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
-  Result := TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, AHints.TabWidth)) =
-    TrimRight(TAtlasPairs.DisplayLine(AHints.Stored, AHints.TabWidth));
+  Result := TAtlasInlayPlan.SameLine(mLineState.Text, AHints.Stored, AHints.TabWidth);
 end;
 
 /// <summary>Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen; liefert ihre Fläche.
@@ -649,7 +561,8 @@ end;
 procedure TAtlasEditorInlayHints.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  mHints: TLineHints;
+  mHints: TAtlasInlayLine;
+  mOn: TAtlasInlayKinds;
 begin
   // Durch die Sicherung abgeschaltet (#493).
   if TAtlasGuard.Disabled(TAtlasFeature.InlayHints) or BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) then
@@ -658,9 +571,15 @@ begin
   end;
   try
     // Einstellungen erst, wenn die Zeile Marken hat: die meisten Zeilen haben keine.
-    if StoredHints(FStore, Context.FileName, Context.LogicalLineNum - 1, mHints) and
-      KeepShown(mHints, Context.FileName, False) and LineMatches(FStore, Context, mHints) and
-      KeepShown(mHints, Context.FileName, True) then
+    if not TAtlasInlayPlan.StoredLine(FStore, Context.FileName, Context.LogicalLineNum - 1, InlayTexts, mHints) then
+    begin
+      Exit;
+    end;
+    mOn := KindsOn;
+    // .atlas erst, wenn die Zeile im Editor der im Speicher entspricht (Stored ist dann gesetzt).
+    if TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, nil) and
+      LineMatches(FStore, Context, mHints) and
+      TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, HiddenIn(Context.FileName)) then
     begin
       DrawHints(Rect, Context, mHints);
     end;
@@ -685,7 +604,7 @@ begin
 end;
 
 procedure TAtlasEditorInlayHints.DrawHints(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
-  const AHints: TLineHints);
+  const AHints: TAtlasInlayLine);
 var
   mDC: HDC;
   mCell, mPill: TRect;
@@ -693,12 +612,12 @@ var
   mX, mTop, mHeight, mSaved: Integer;
   mSample: COLORREF;
   mSize: TSize;
-  mRow: TPillRow;
+  mRow: TAtlasInlayPillRow;
 begin
   mDC := AContext.Canvas.Handle;
   // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
-  mCell := AContext.EditorState.GetCharacterPosPx(ColumnOf(AHints.Stored, Length(TrimRight(AHints.Stored)),
-    AHints.TabWidth) + 2, AContext.EditorLineNum);
+  mCell := AContext.EditorState.GetCharacterPosPx(TAtlasInlayPlan.TailColumn(AHints.Stored, AHints.TabWidth),
+    AContext.EditorLineNum);
   mTailKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
   mX := TAtlasLineTail.Start(Self, mTailKey, mCell.Left);
   // Hintergrund des Editor-Farbschemas an der Stelle des Hinweises (hinter dem Zeilenende), nicht das
@@ -720,10 +639,10 @@ begin
     for mRow in AHints.Rows do
     begin
       mPill := DrawPills(mDC, mRow.Labels, mTop, mHeight, mX);
-      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(mRow.Element, AContext.FileName, AHints.Line,
+      TAtlasIdeElements.Painted(TAtlasIdeElements.Target(cDrawnElement[mRow.Kind], AContext.FileName, AHints.Line,
         AHints.Stored), mPill, AContext.EditView.TopRow, ARect.Height);
       // Marke „braucht kein Self“ (#686): Ein Klick öffnet die Umwandlungen am Ende des Kopfs.
-      if mRow.Element = TAtlasDrawnElement.InlayMethodHints then
+      if mRow.Kind = TAtlasInlayKind.Method then
       begin
         FClicks.Remember(PillHit(AContext, AHints.Line, mPill, AHints.Line, AHints.MethodCharacter, True));
       end;
@@ -779,32 +698,24 @@ end;
 function TAtlasInlayHintClicks.StillShown(const AHit: TAtlasInlayPillHit): Boolean;
 var
   mCharacter: Integer;
+  mStored: Boolean;
 begin
-  if not AHit.Actions then
-  begin
-    Exit(TAtlasIdeSettings.BlockEndLabelsOn);
-  end;
-  // Nach einer Änderung bleibt die alte Fläche gemerkt, bis die Zeile neu gezeichnet wird.
-  Result := TAtlasIdeSettings.InlayMethodHintsOn and FStore.MethodOnLine(AHit.FileName, AHit.Line, mCharacter) and
-    (mCharacter = AHit.TargetCharacter);
+  mCharacter := -1;
+  mStored := AHit.Actions and FStore.MethodOnLine(AHit.FileName, AHit.Line, mCharacter);
+  Result := TAtlasInlayPlan.HitStillShown(AHit, TAtlasIdeSettings.BlockEndLabelsOn,
+    TAtlasIdeSettings.InlayMethodHintsOn, mStored, mCharacter);
 end;
 
 function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; AX, AY: Integer; out AHit: TAtlasInlayPillHit): Boolean;
 var
-  mHit: TAtlasInlayPillHit;
+  mOwner: TAtlasInlayHintClicks;
 begin
-  for mHit in FHits do
-  begin
-    // Nur, wenn die Marke noch dort steht (gleiche Datei, nicht gescrollt) und ihre Art noch an ist.
-    if SameText(mHit.FileName, AView.Buffer.FileName) and (mHit.TopRow = AView.TopRow) and
-      PtInRect(mHit.Rect, Point(AX, AY)) and StillShown(mHit) then
+  mOwner := Self;
+  Result := FHits.Find(AView.Buffer.FileName, AView.TopRow, Point(AX, AY),
+    function(const AHit: TAtlasInlayPillHit): Boolean
     begin
-      AHit := mHit;
-      Exit(True);
-    end;
-  end;
-  AHit := Default(TAtlasInlayPillHit);
-  Result := False;
+      Result := mOwner.StillShown(AHit);
+    end, AHit);
 end;
 
 procedure TAtlasInlayHintClicks.Open(const AHit: TAtlasInlayPillHit);
@@ -831,28 +742,13 @@ begin
 end;
 
 procedure TAtlasInlayHintClicks.Remember(const AHit: TAtlasInlayPillHit);
-var
-  mIndex: Integer;
 begin
-  for mIndex := 0 to High(FHits) do
-  begin
-    if (FHits[mIndex].Line = AHit.Line) and (FHits[mIndex].Actions = AHit.Actions) and
-      SameText(FHits[mIndex].FileName, AHit.FileName) then
-    begin
-      FHits[mIndex] := AHit;
-      Exit;
-    end;
-  end;
-  if Length(FHits) >= cMaxHits then
-  begin
-    FHits := nil;
-  end;
-  FHits := FHits + [AHit];
+  FHits.Remember(AHit);
 end;
 
 procedure TAtlasInlayHintClicks.Clear;
 begin
-  FHits := nil;
+  FHits.Clear;
 end;
 
 procedure TAtlasInlayHintClicks.Click(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);
@@ -861,7 +757,7 @@ var
   mView: IOTAEditView;
   mHit: TAtlasInlayPillHit;
 begin
-  if (AButton <> mbLeft) or (AShift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FHits) = 0) then
+  if not TAtlasInlayPlan.CountsAsClick(AButton = mbLeft, AShift) or (FHits.Count = 0) then
   begin
     Exit;
   end;

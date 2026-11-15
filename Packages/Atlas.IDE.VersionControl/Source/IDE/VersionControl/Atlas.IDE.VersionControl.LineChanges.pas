@@ -103,6 +103,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.VersionControl.LineChangesPlan,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
@@ -121,7 +122,6 @@ uses
 
 const
   cTickMs = 150;
-  cHoverMs = 400;
   /// <summary>Abstand des Hinweises zum alten Text hinter dem Zeilenende, in Spalten.</summary>
   cTipColumnGap = 3;
   /// <summary>Abstand des Hinweises zur Markierung am Rand, in Pixeln.</summary>
@@ -213,7 +213,8 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  Result := (mSettings.GitGutter or mSettings.GitBlame) and not TAtlasGuard.Disabled(TAtlasFeature.LineChanges);
+  Result := TAtlasLineChangesPlan.Active(mSettings.GitGutter, mSettings.GitBlame,
+    TAtlasGuard.Disabled(TAtlasFeature.LineChanges));
 end;
 
 function Current: TLineChangesState;
@@ -394,14 +395,11 @@ begin
   if FTip.IsShown and (FTipChange >= 0) then
   begin
     // Fenster „alter Stand“: zu, sobald die Maus es nach dem Betreten wieder verlässt.
-    mInside := PtInRect(FTip.BoundsRect, Mouse.CursorPos);
-    if mInside then
-    begin
-      FTipEntered := True;
-    end
-    else if FTipEntered then
-    begin
-      HideTip;
+    case TAtlasLineChangesPlan.ChangeTipStep(PtInRect(FTip.BoundsRect, Mouse.CursorPos), FTipEntered) of
+      TAtlasChangeTipStep.Entered:
+        FTipEntered := True;
+      TAtlasChangeTipStep.Close:
+        HideTip;
     end;
     Exit;
   end;
@@ -411,14 +409,14 @@ begin
   end;
   mInside := PtInRect(FHoverScreen, Mouse.CursorPos) or
     (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
-  if not mInside then
-  begin
-    FHovering := False;
-    HideTip;
-  end
-  else if not FTip.IsShown and (TThread.GetTickCount64 - FHoverSince >= cHoverMs) then
-  begin
-    ShowCommit;
+  case TAtlasLineChangesPlan.BlameHoverStep(mInside, FTip.IsShown, FHoverSince, TThread.GetTickCount64) of
+    TAtlasBlameHoverStep.Close:
+      begin
+        FHovering := False;
+        HideTip;
+      end;
+    TAtlasBlameHoverStep.Show:
+      ShowCommit;
   end;
 end;
 
@@ -456,7 +454,8 @@ var
   mLink: TAtlasBlameLinkHook;
   mGen: Integer;
 begin
-  FHovering := not FBlame.Unsaved and FData.HasEntry(FBlame.Entry) and not FData.Entry(FBlame.Entry).Uncommitted;
+  FHovering := TAtlasLineChangesPlan.CommitShown(FBlame.Unsaved, FData.HasEntry(FBlame.Entry),
+    FData.HasEntry(FBlame.Entry) and FData.Entry(FBlame.Entry).Uncommitted);
   if not FHovering then
   begin
     Exit;
@@ -577,7 +576,7 @@ var
   mLineText: string;
 begin
   mColors := TAtlasColors.ForBackground(TAtlasIdeStyle.SampleBack(AContext.Canvas, ARect.Left + 1, ARect.Top + 1));
-  mWidth := Max(3, MulDiv(3, ARect.Height, 16));
+  mWidth := TAtlasLineChangesPlan.BarWidth(ARect.Height);
   // Rechts in der Rinne, mit einem Pixel Abstand zum Code.
   mLeft := ARect.Right - mWidth - 2;
   mBar := TRect.Create(mLeft, ARect.Top, mLeft + mWidth, ARect.Bottom);
@@ -596,7 +595,7 @@ begin
     if ADeleted >= 0 then
     begin
       // Über der Zeile, am Dateiende unter der letzten Zeile.
-      mSize := Max(4, ARect.Height div 3);
+      mSize := TAtlasLineChangesPlan.DeletedSize(ARect.Height);
       TAtlasLineChangesPaint.PaintDeleted(mDC, mLeft, mSize, ARect,
         FData.Changes[ADeleted].Line >= FData.LineCount, mColors.Error);
       mBar.Right := Max(mBar.Right, mLeft + mSize);
@@ -665,9 +664,9 @@ function TLineChangesState.BlameWanted(AStage: TPaintLineStage; ABeforeEvent: Bo
 begin
   // Nur die Cursorzeile, nur zum aktuellen Vergleich.
   Result := not ABeforeEvent and (AStage = plsEndPaint) and (AContext <> nil) and (AContext.EditView <> nil) and
-    FBlameOn and FData.BlameOk and (AContext.EditView.CursorPos.Line = AContext.LogicalLineNum) and
-    not TAtlasGuard.Disabled(TAtlasFeature.LineChanges) and SameText(AContext.FileName, FData.FileName) and
-    FData.Fresh;
+    TAtlasLineChangesPlan.BlameOnLine(FBlameOn and not TAtlasGuard.Disabled(TAtlasFeature.LineChanges), FData.BlameOk,
+    SameText(AContext.FileName, FData.FileName), FData.Fresh, AContext.EditView.CursorPos.Line,
+    AContext.LogicalLineNum);
 end;
 
 function TLineChangesState.PaintBlame(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
@@ -710,8 +709,8 @@ begin
     end;
   end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  Result := Result and SameText(ARow.FileName, mView.Buffer.FileName) and (ARow.TopRow = mView.TopRow) and
-    (ARow.Change >= 0) and (ARow.Change <= High(FData.Changes));
+  Result := Result and TAtlasLineChangesPlan.MarkStillThere(ARow.FileName, mView.Buffer.FileName, ARow.TopRow,
+    mView.TopRow, ARow.Change, High(FData.Changes));
 end;
 
 procedure TLineChangesState.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
@@ -759,8 +758,8 @@ begin
   try
     HideTip;
     FHovering := False;
-    if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FGutterOn or not FData.Fresh or
-      not MarkAt(X, Y, mRow) then
+    if not TAtlasLineChangesPlan.OpensChange(Button = mbLeft, Shift * [ssShift, ssCtrl, ssAlt] <> [], FGutterOn,
+      FData.Fresh) or not MarkAt(X, Y, mRow) then
     begin
       Exit;
     end;

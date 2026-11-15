@@ -39,6 +39,7 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.StartProfiles.Store,
+  Atlas.Core.StartProfiles.Picker,
   Atlas.UI.Strings,
   Atlas.UI.Build.Strings;
 
@@ -109,12 +110,6 @@ uses
 
 const
   cCheckMs = 1000;
-  // Einträge der Auswahl, die kein Profil sind.
-  cNoneId = 'atlas:none';
-  cSaveId = 'atlas:save';
-  cEditPersonalId = 'atlas:personal';
-  cEditTeamId = 'atlas:team';
-  cProfilePrefix = 'profile:';
 
 { TAtlasIdeStartProfiles }
 
@@ -157,12 +152,29 @@ begin
     end);
 end;
 
+/// <summary>Änderungszeit von AFileName für den Stempel.</summary>
+function AgeOf(const AFileName: string): TAtlasStartProfileFileAge;
+var
+  mAge: TDateTime;
+begin
+  mAge := 0;
+  Result := TAtlasStartProfileFileAge.Make((AFileName <> '') and FileAge(AFileName, mAge), mAge);
+end;
+
+/// <summary>Stempel des geöffneten AProject samt .atlas und lokaler Datei.</summary>
+function StampOf(const AProject: IOTAProject): string;
+var
+  mTeamFile: string;
+begin
+  mTeamFile := TAtlasIdeStartProfiles.Team(AProject.FileName).FileName;
+  Result := TAtlasStartProfilePicker.Stamp(AProject.FileName, AProject.CurrentConfiguration, AProject.CurrentPlatform,
+    mTeamFile, AgeOf(mTeamFile), AgeOf(TAtlasStartProfiles.FileFor(TAtlasIdeStartOptions.Folder, AProject.FileName)));
+end;
+
 procedure TAtlasIdeStartProfiles.Check(AForce: Boolean);
 var
   mProject: IOTAProject;
-  mFileName, mPersonal, mStamp, mActive, mReason: string;
-  mTeamSettings: TAtlasTeamSettings;
-  mAge: TDateTime;
+  mFileName, mStamp, mActive, mReason: string;
   mEntry: TAtlasStartProfileEntry;
 begin
   mProject := TAtlasIdeStartOptions.ActiveProject;
@@ -171,18 +183,7 @@ begin
   if mProject <> nil then
   begin
     mFileName := mProject.FileName;
-    mTeamSettings := Team(mFileName);
-    mPersonal := TAtlasStartProfiles.FileFor(TAtlasIdeStartOptions.Folder, mFileName);
-    mStamp := mFileName + '|' + mProject.CurrentConfiguration + '|' + mProject.CurrentPlatform + '|' +
-      mTeamSettings.FileName;
-    if (mTeamSettings.FileName <> '') and FileAge(mTeamSettings.FileName, mAge) then
-    begin
-      mStamp := mStamp + '|' + FloatToStr(mAge, TFormatSettings.Invariant);
-    end;
-    if FileAge(mPersonal, mAge) then
-    begin
-      mStamp := mStamp + '|' + FloatToStr(mAge, TFormatSettings.Invariant);
-    end;
+    mStamp := StampOf(mProject);
   end;
   if not AForce and (mStamp = FStamp) then
   begin
@@ -216,33 +217,31 @@ begin
   end;
   mText := '';
   mHint := '';
-  if AProject <> '' then
-  begin
-    mEntries := Profiles(AProject);
-    mActive := ActiveName(AProject);
-    if mActive = '' then
-    begin
-      // Ohne Profile kein Feld; mit Profilen zeigt es „–“.
-      if Length(mEntries) > 0 then
+  mEntries := Profiles(AProject);
+  mActive := ActiveName(AProject);
+  mEntry := Default(TAtlasStartProfileEntry);
+  case TAtlasStartProfilePicker.StatusKind(AProject, Length(mEntries), mActive,
+    (mActive <> '') and TAtlasStartProfiles.Find(mEntries, mActive, mEntry)) of
+    TAtlasStartProfileStatusKind.Hidden: ;
+    TAtlasStartProfileStatusKind.NoneActive:
       begin
         mText := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesStatusNone);
         mHint := TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesHintNone);
       end;
-    end
-    else if TAtlasStartProfiles.Find(mEntries, mActive, mEntry) then
-    begin
-      mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatus, [mEntry.Profile.Name]);
-      mHint := Describe(mEntry);
-    end
-    else
-    begin
-      mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatusMissing, [mActive]);
-      mHint := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHintMissing, [mActive]);
-    end;
-    if mText <> '' then
-    begin
-      mHint := mHint + sLineBreak + TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesHintClick);
-    end;
+    TAtlasStartProfileStatusKind.Active:
+      begin
+        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatus, [mEntry.Profile.Name]);
+        mHint := Describe(mEntry);
+      end;
+    TAtlasStartProfileStatusKind.Missing:
+      begin
+        mText := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesStatusMissing, [mActive]);
+        mHint := TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHintMissing, [mActive]);
+      end;
+  end;
+  if mText <> '' then
+  begin
+    mHint := mHint + sLineBreak + TAtlasBuildStrings.Text(TAtlasBuildTextId.StartProfilesHintClick);
   end;
   FOnStatus(mText, mHint);
 end;
@@ -256,7 +255,6 @@ end;
 class function TAtlasIdeStartProfiles.Summary(const AOptions: TAtlasStartOptions): string;
 var
   mParts: TArray<string>;
-  mVariable: TAtlasTeamVariable;
   mNames: string;
 begin
   mParts := nil;
@@ -276,15 +274,7 @@ begin
   begin
     mParts := mParts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesHost, [AOptions.Host])];
   end;
-  mNames := '';
-  for mVariable in TAtlasStartProfiles.DecodeEnvironment(AOptions.Environment) do
-  begin
-    if mNames <> '' then
-    begin
-      mNames := mNames + ', ';
-    end;
-    mNames := mNames + mVariable.Name + '=' + mVariable.Value;
-  end;
+  mNames := TAtlasStartProfilePicker.EnvironmentText(TAtlasStartProfiles.DecodeEnvironment(AOptions.Environment));
   if mNames <> '' then
   begin
     mParts := mParts + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.StartProfilesEnvironment, [mNames])];
@@ -436,7 +426,7 @@ end;
 function ProfileCommand(const AEntry: TAtlasStartProfileEntry; const AActive: string): TAtlasCommand;
 begin
   Result := Default(TAtlasCommand);
-  Result.Id := cProfilePrefix + AEntry.Profile.Name;
+  Result.Id := TAtlasStartProfilePicker.ProfileId(AEntry.Profile.Name);
   Result.Caption := AEntry.Profile.Name;
   if AEntry.Source = TAtlasStartProfileSource.Team then
   begin
@@ -465,13 +455,17 @@ begin
   begin
     Result := Result + [ProfileCommand(mEntry, mActive)];
   end;
-  if mActive <> '' then
+  if TAtlasStartProfilePicker.OffersNone(mActive) then
   begin
-    Result := Result + [TAtlasIdeStartProfiles.ActionCommand(cNoneId, TAtlasBuildTextId.StartProfilesNone)];
+    Result := Result + [TAtlasIdeStartProfiles.ActionCommand(TAtlasStartProfilePicker.cNoneId,
+      TAtlasBuildTextId.StartProfilesNone)];
   end;
-  Result := Result + [TAtlasIdeStartProfiles.ActionCommand(cSaveId, TAtlasBuildTextId.StartProfilesSaveCurrent),
-    TAtlasIdeStartProfiles.ActionCommand(cEditPersonalId, TAtlasBuildTextId.StartProfilesEditPersonal),
-    TAtlasIdeStartProfiles.ActionCommand(cEditTeamId, TAtlasBuildTextId.StartProfilesEditTeam)];
+  Result := Result + [TAtlasIdeStartProfiles.ActionCommand(TAtlasStartProfilePicker.cSaveId,
+    TAtlasBuildTextId.StartProfilesSaveCurrent),
+    TAtlasIdeStartProfiles.ActionCommand(TAtlasStartProfilePicker.cEditPersonalId,
+    TAtlasBuildTextId.StartProfilesEditPersonal),
+    TAtlasIdeStartProfiles.ActionCommand(TAtlasStartProfilePicker.cEditTeamId,
+    TAtlasBuildTextId.StartProfilesEditTeam)];
 end;
 
 procedure ActivateOrSay(const AFileName, AName: string);
@@ -500,32 +494,27 @@ end;
 procedure ExecutePicked(const AFileName, AId: string);
 var
   mCurrent: IOTAProject;
+  mName: string;
 begin
   // Das Projekt kann inzwischen geschlossen sein.
   mCurrent := TAtlasIdeStartOptions.FindProject(AFileName);
   if mCurrent = nil then
   begin
     TAtlasIdeStartOptions.Say(TAtlasStrings.Fmt(TAtlasTextId.StartProfilesNotOpen, [ExtractFileName(AFileName)]));
-  end
-  else if AId = cNoneId then
-  begin
-    ActivateOrSay(AFileName, '');
-  end
-  else if AId = cSaveId then
-  begin
-    TAtlasIdeStartProfiles.SaveCurrent(mCurrent);
-  end
-  else if AId = cEditPersonalId then
-  begin
-    TAtlasIdeStartProfiles.EditPersonal(AFileName);
-  end
-  else if AId = cEditTeamId then
-  begin
-    OpenTeamFile;
-  end
-  else if Copy(AId, 1, Length(cProfilePrefix)) = cProfilePrefix then
-  begin
-    ActivateOrSay(AFileName, Copy(AId, Length(cProfilePrefix) + 1, MaxInt));
+    Exit;
+  end;
+  case TAtlasStartProfilePicker.Parse(AId, mName) of
+    TAtlasStartProfilePick.NoProfile:
+      ActivateOrSay(AFileName, '');
+    TAtlasStartProfilePick.SaveCurrent:
+      TAtlasIdeStartProfiles.SaveCurrent(mCurrent);
+    TAtlasStartProfilePick.EditPersonal:
+      TAtlasIdeStartProfiles.EditPersonal(AFileName);
+    TAtlasStartProfilePick.EditTeam:
+      OpenTeamFile;
+    TAtlasStartProfilePick.Profile:
+      ActivateOrSay(AFileName, mName);
+    TAtlasStartProfilePick.Unknown: ;
   end;
 end;
 

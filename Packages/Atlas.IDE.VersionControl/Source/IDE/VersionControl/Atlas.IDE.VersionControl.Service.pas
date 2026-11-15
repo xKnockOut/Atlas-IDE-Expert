@@ -135,6 +135,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.VersionControl.Detection,
+  Atlas.Core.VersionControl.Plan,
   Atlas.Core.VersionControl.Worker,
   System.Generics.Collections,
   Winapi.Windows,
@@ -404,11 +405,7 @@ end;
 
 class function TAtlasIdeVcsCore.AtLeast(AMinimumMs: Cardinal): Cardinal;
 begin
-  Result := TimeoutMs;
-  if AMinimumMs > Result then
-  begin
-    Result := AMinimumMs;
-  end;
+  Result := TAtlasVcsPlan.AtLeast(TimeoutMs, AMinimumMs);
 end;
 
 class procedure TAtlasIdeVcsCore.Reload;
@@ -675,25 +672,19 @@ end;
 
 /// <summary>Art, Wurzel und Outcome ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.</summary>
 procedure LocalState(const AFolder: string; const AVcs: IAtlasVersionControl; var AState: TAtlasVcsProjectState);
+var
+  mVcsKind: TAtlasVcsKind;
 begin
-  if AState.Provider = TAtlasVcsProvider.Off then
+  if AState.Provider <> TAtlasVcsProvider.Off then
   begin
-    AState.Outcome := TAtlasVcsOutcome.Disabled;
-    Exit;
+    AState.WorkingCopy := TAtlasVcsDetection.Find(AFolder, AState.Provider);
   end;
-  AState.WorkingCopy := TAtlasVcsDetection.Find(AFolder, AState.Provider);
-  if AState.WorkingCopy.Kind = TAtlasVcsKind.None then
+  mVcsKind := TAtlasVcsKind.None;
+  if AVcs <> nil then
   begin
-    AState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
-  end
-  else if (AVcs = nil) or (AVcs.Kind = TAtlasVcsKind.None) then
-  begin
-    AState.Outcome := TAtlasVcsOutcome.ToolMissing;
-  end
-  else
-  begin
-    AState.Outcome := TAtlasVcsOutcome.Ok;
+    mVcsKind := AVcs.Kind;
   end;
+  AState.Outcome := TAtlasVcsPlan.LocalOutcome(AState.Provider, AState.WorkingCopy.Kind, mVcsKind);
 end;
 
 class function TAtlasIdeVcsCore.QueryProject(const AProjectFile, AGroupFile: string;

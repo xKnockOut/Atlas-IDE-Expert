@@ -82,6 +82,7 @@ uses
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Debug.BreakpointSetFlow,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Switches,
   Atlas.IDE.Contracts.VersionControl,
@@ -201,10 +202,7 @@ end;
 
 class procedure TAtlasIdeBreakpointSets.ReadPlaces;
 var
-  mFolder, mKey: string;
-  mSet: TAtlasBreakpointSet;
-  mItem: TAtlasResolvedBreakpoint;
-  mIndex: Integer;
+  mFolder: string;
 begin
   if FPlaces = nil then
   begin
@@ -212,29 +210,9 @@ begin
   end;
   FPlaces.Clear;
   FPlacesAt := TThread.GetTickCount64;
-  if not ProjectFolder(mFolder) then
+  if ProjectFolder(mFolder) then
   begin
-    Exit;
-  end;
-  for mSet in LoadSets(mFolder) do
-  begin
-    for mItem in TAtlasBreakpointSets.Resolve(mSet.Entries, SourceTextFunc()) do
-    begin
-      if not mItem.Found then
-      begin
-        Continue;
-      end;
-      mKey := LowerCase(mItem.Entry.FileName) + '|' + IntToStr(mItem.Line);
-      mIndex := FPlaces.IndexOfName(mKey);
-      if mIndex < 0 then
-      begin
-        FPlaces.Add(mKey + '=' + mSet.Name);
-      end
-      else
-      begin
-        FPlaces.ValueFromIndex[mIndex] := FPlaces.ValueFromIndex[mIndex] + #9 + mSet.Name;
-      end;
-    end;
+    TAtlasBreakpointSetFlow.FillPlaces(FPlaces, LoadSets(mFolder), SourceTextFunc());
   end;
 end;
 
@@ -311,7 +289,6 @@ class function TAtlasIdeBreakpointSets.AskSet(const AFolder: string; var ASet: T
 var
   mName, mBranch: string;
   mSets: TAtlasBreakpointSetList;
-  mIndex: Integer;
 begin
   mSets := LoadSets(AFolder);
   Result := TAtlasBreakpointSetDialog.Execute(TAtlasBreakpointSetMode.Save, mSets, FBranch, FActiveName, mName,
@@ -327,15 +304,7 @@ begin
     Exit;
   end;
   ASet.Name := Trim(mName);
-  ASet.Branch := mBranch;
-  // Ohne neue Kopplung bleibt der Branch eines vorhandenen Satzes gleichen Namens.
-  for mIndex := 0 to High(mSets) do
-  begin
-    if SameText(mSets[mIndex].Name, ASet.Name) and (ASet.Branch = '') and (FBranch = '') then
-    begin
-      ASet.Branch := mSets[mIndex].Branch;
-    end;
-  end;
+  ASet.Branch := TAtlasBreakpointSetFlow.KeepBranch(mSets, ASet.Name, mBranch, FBranch);
 end;
 
 class function TAtlasIdeBreakpointSets.WriteSet(const AFolder: string; const ASet: TAtlasBreakpointSet): Boolean;
@@ -352,26 +321,6 @@ begin
     begin
       Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetNotSaved, [ASet.Name, E.Message]));
       Result := False;
-    end;
-  end;
-end;
-
-/// <summary>Einträge aller Sätze außer ASets[AIndex]; nil ohne AExclusive.</summary>
-function OthersOf(const ASets: TAtlasBreakpointSetList; AIndex: Integer;
-  AExclusive: Boolean): TAtlasBreakpointSetEntries;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not AExclusive then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to High(ASets) do
-  begin
-    if mIndex <> AIndex then
-    begin
-      Result := Result + ASets[mIndex].Entries;
     end;
   end;
 end;
@@ -428,7 +377,7 @@ begin
   mCounts := Default(TApplyCounts);
   mText := SourceTextFunc();
   for mAction in TAtlasBreakpointSets.Plan(mPlaces, TAtlasBreakpointSets.Resolve(ASets[AIndex].Entries, mText),
-    TAtlasBreakpointSets.Resolve(OthersOf(ASets, AIndex, AExclusive), mText), AExclusive) do
+    TAtlasBreakpointSets.Resolve(TAtlasBreakpointSetFlow.OthersOf(ASets, AIndex, AExclusive), mText), AExclusive) do
   begin
     if mAction.Kind = TAtlasBreakpointSetActionKind.Missing then
     begin
@@ -457,7 +406,6 @@ class function TAtlasIdeBreakpointSets.Choose(AMode: TAtlasBreakpointSetMode; ou
   out ASets: TAtlasBreakpointSetList; out AIndex: Integer): Boolean;
 var
   mName, mBranch: string;
-  mIndex: Integer;
 begin
   Result := False;
   AIndex := -1;
@@ -478,14 +426,8 @@ begin
   begin
     Exit;
   end;
-  for mIndex := 0 to High(ASets) do
-  begin
-    if SameText(ASets[mIndex].Name, mName) then
-    begin
-      AIndex := mIndex;
-      Exit(True);
-    end;
-  end;
+  AIndex := TAtlasBreakpointSetFlow.IndexOfName(ASets, mName);
+  Result := AIndex >= 0;
 end;
 
 class procedure TAtlasIdeBreakpointSets.Tick(Sender: TObject);
@@ -661,19 +603,12 @@ begin
 end;
 
 class function TAtlasIdeBreakpointSets.SetNamesAt(const AFileName: string; ALine: Integer): TArray<string>;
-var
-  mNames: string;
 begin
-  if (FPlaces = nil) or (TThread.GetTickCount64 - FPlacesAt >= cPlacesMs) then
+  if TAtlasBreakpointSetFlow.PlacesStale(FPlaces <> nil, TThread.GetTickCount64, FPlacesAt, cPlacesMs) then
   begin
     ReadPlaces;
   end;
-  mNames := FPlaces.Values[LowerCase(AFileName) + '|' + IntToStr(ALine)];
-  Result := nil;
-  if mNames <> '' then
-  begin
-    Result := mNames.Split([#9]);
-  end;
+  Result := TAtlasBreakpointSetFlow.NamesAt(FPlaces, AFileName, ALine);
 end;
 
 end.
