@@ -5,7 +5,8 @@
 //   W1055  published in einer Klasse ohne RTTI: Der Compiler schaltet für sie
 //          {$M+} ein. Gemeldet am ersten Mitglied hinter dem ersten
 //          ausdrücklichen published (wie dcc), einmal je Klasse. Still bei
-//          {$M+} bzw. {$TYPEINFO ON} an der Deklaration, bei einem Vorfahren
+//          {$M+} bzw. {$TYPEINFO ON} an der Deklaration oder einer forward-
+//          Deklaration davor (TX = class; unter {$M+}), bei einem Vorfahren
 //          mit RTTI (bekannte Nachfahren von TPersistent, {$M+} an seiner
 //          Deklaration oder eigene published-Mitglieder), nach {$WARN
 //          TYPEINFO_IMPLICITLY_ADDED OFF} oder {$WARNINGS OFF}. Ein Vorfahr,
@@ -269,7 +270,7 @@ begin
     begin
       Exit;
     end;
-    if TTypeInfoClasses.SwitchAt(mTokens, mLocation.Symbol.Range.StartPos) or HasPublishedMembers(mLocation) then
+    if TTypeInfoClasses.ClassSwitchAt(mTokens, mLocation.Symbol.Name, mLocation.Symbol.Range.StartPos) or HasPublishedMembers(mLocation) then
     begin
       AKnown := True;
       Exit(True);
@@ -335,7 +336,7 @@ begin
   begin
     Exit;
   end;
-  if TTypeInfoClasses.SwitchAt(FActive, ADecl.StartPos) or
+  if TTypeInfoClasses.ClassSwitchAt(FActive, ADecl.Name, ADecl.StartPos) or
     not WarningEnabled(FTokens, cTypeInfoWarning, mMember.StartOffset) then
   begin
     Exit;
