@@ -159,7 +159,7 @@ uses
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Settings.StatusBarItems,
+  Atlas.Core.Problems.Switches,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings;
@@ -615,22 +615,13 @@ end;
 class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;
 begin
   EnsureLoaded;
-  if GState.Effective.Enabled and GState.Effective.Problems then
-  begin
-    Result := TAtlasInlineDiagnostics.ModeOf(GState.Effective.InlineDiagnostics);
-  end
-  else
-  begin
-    Result := TAtlasInlineDiagnosticsMode.Off;
-  end;
+  Result := TAtlasProblemSwitches.InlineDiagnostics(GState.Effective);
 end;
 
 class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
 begin
   EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.Problems and GState.Effective.ProblemsStatusCounter and
-    not (GState.Effective.EditorStatusBar and TAtlasStatusBarItems.Contains(
-    TAtlasStatusBarItems.Parse(GState.Effective.EditorStatusBarItems), TAtlasStatusBarItems.cFindings));
+  Result := TAtlasProblemSwitches.ProblemsStatusCounter(GState.Effective);
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);

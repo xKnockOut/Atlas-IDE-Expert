@@ -558,6 +558,7 @@
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.BarDock.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.GutterMarks.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.ExitPoints.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Reassigned.pas"/>
@@ -755,6 +756,7 @@
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Bindings.pas"/>
         <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
+        <DCCReference Include="Source\Core\Forms\Atlas.Core.Forms.PropertyValues.pas"/>
         <DCCReference Include="Source\IDE\Forms\Atlas.IDE.Forms.Designer.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Adapters.FolderWatcher.pas"/>
         <DCCReference Include="Source\IDE\Problems\Atlas.IDE.Problems.Painter.pas"/>
@@ -912,6 +914,7 @@
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.FindMethod.pas"/>
         <DCCReference Include="Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
+        <DCCReference Include="Source\Core\Problems\Atlas.Core.Problems.Switches.pas"/>
         <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
         <DCCReference Include="Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas"/>
         <DCCReference Include="Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas"/>
