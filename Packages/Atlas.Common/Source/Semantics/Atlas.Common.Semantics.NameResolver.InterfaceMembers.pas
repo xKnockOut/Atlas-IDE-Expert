@@ -37,7 +37,8 @@ type
     FList: TList<TResolvedSymbol>;
     FComplete: Boolean;
     function Unqualified(const ABindings: TArray<string>): TArray<string>;
-    function KeyOf(const ASymbol: TIndexSymbol; const ABindings: TArray<string>): string;
+    function AliasTarget(const ATypeText: string; const AUnit: TUnitIndex): string;
+    function KeyOf(const ASymbol: TIndexSymbol; const ABindings: TArray<string>; const AUnit: TUnitIndex): string;
     function AddRoot(const ABase: string): Boolean;
     procedure AddDelegated(const AName: string; const AUnit: TUnitIndex);
     procedure AddResolutions(const ASymbol: TIndexSymbol);
@@ -216,17 +217,62 @@ begin
   end;
 end;
 
-function TResolverInterfaceMembers.KeyOf(const ASymbol: TIndexSymbol; const ABindings: TArray<string>): string;
+/// <summary>Ist AText eine schlichte Namenskette (A, A.B), kein Typausdruck mit Typargumenten, array oder ^?</summary>
+function IsNameChain(const AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AText <> '') and CharInSet(AText[1], cIdentifierStart);
+  for mIndex := 2 to Length(AText) do
+  begin
+    Result := Result and CharInSet(AText[mIndex], cIdentifierChars);
+  end;
+end;
+
+function TResolverInterfaceMembers.AliasTarget(const ATypeText: string; const AUnit: TUnitIndex): string;
+var
+  mCurrent, mNext: TResolvedSymbol;
+  mFrom: TUnitIndex;
+  mDepth: Integer;
+begin
+  // Typname, auf den der schlichte Alias ATypeText (in AUnit) zeigt: TV = Integer ist Integer, TW = UnicodeString
+  // ist string (E2211 im Korpus: Parameter der Klasse mit Alias, im Interface mit dem Ziel). "TV = type Integer"
+  // ist ein eigener Typ und bleibt, ebenso unbekannte Namen.
+  Result := TResolverText.BuiltinAlias(ATypeText);
+  if not IsNameChain(ATypeText) or TResolverText.IsBuiltinTypeName(ATypeText) or
+    not FParts.Lookup.ResolveTypeText(ATypeText, AUnit, True, mCurrent) then
+  begin
+    Exit;
+  end;
+  mDepth := 0;
+  while not mCurrent.Builtin and (mCurrent.SymbolKind = TIndexSymbolKind.TypeAlias) and (mCurrent.TypeName <> '') and
+    (mCurrent.TypeArgs = '') and IsNameChain(mCurrent.TypeName) and
+    not TResolverText.IsDistinctAlias(mCurrent.Signature) and (mDepth < cMaxDepth) do
+  begin
+    if not FParts.Units.UnitOf(mCurrent, mFrom) or
+      not FParts.Lookup.ResolveTypeText(mCurrent.TypeName, mFrom, True, mNext) then
+    begin
+      // Ziel ohne Index (eingebauter Typ wie WideString): sein Name.
+      Exit(TResolverText.BuiltinAlias(TResolverText.LastPart(mCurrent.TypeName)));
+    end;
+    mCurrent := mNext;
+    Inc(mDepth);
+  end;
+  Result := TResolverText.BuiltinAlias(mCurrent.Name);
+end;
+
+function TResolverInterfaceMembers.KeyOf(const ASymbol: TIndexSymbol; const ABindings: TArray<string>;
+  const AUnit: TUnitIndex): string;
 var
   mTypes: TArray<string>;
   mIndex: Integer;
 begin
-  // Signaturschlüssel mit eingesetzten Typargumenten.
+  // Signaturschlüssel mit eingesetzten Typargumenten; schlichte Aliase zählen als ihr Ziel.
   mTypes := Copy(ASymbol.ParamTypes);
   for mIndex := 0 to High(mTypes) do
   begin
-    mTypes[mIndex] := TResolverUnqualify.TypeText(FParts.Place.Index,
-      TResolverText.Substitute(mTypes[mIndex], ABindings), '');
+    mTypes[mIndex] := AliasTarget(TResolverUnqualify.TypeText(FParts.Place.Index,
+      TResolverText.Substitute(mTypes[mIndex], ABindings), ''), AUnit);
   end;
   Result := SignatureKey(ASymbol.Name, mTypes);
 end;
@@ -297,7 +343,7 @@ begin
   begin
     if SameText(mSymbol.Container, AClass.QualifiedName) and (mSymbol.Kind in cRoutineKinds) then
     begin
-      FImplemented.AddOrSetValue(KeyOf(mSymbol, mBindings), True);
+      FImplemented.AddOrSetValue(KeyOf(mSymbol, mBindings, AUnit), True);
     end
     else if SameText(mSymbol.QualifiedName, AClass.QualifiedName) then
     begin
@@ -384,7 +430,7 @@ begin
     begin
       Continue;
     end;
-    mKey := KeyOf(mSymbol, mBindings);
+    mKey := KeyOf(mSymbol, mBindings, AUnit);
     if IsCovered(mKey, AIntf, mSymbol) then
     begin
       Continue;

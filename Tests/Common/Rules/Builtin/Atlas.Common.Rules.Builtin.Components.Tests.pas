@@ -106,6 +106,8 @@ type
     [Test]
     procedure SilentCases;
     [Test]
+    procedure OwnReplacementBypassed;
+    [Test]
     procedure AllowedOption;
     [Test]
     procedure OffAndExclude;
@@ -951,6 +953,33 @@ begin
     '    procedure Neu;'#10'    constructor Create;'#10, 'procedure TKundenForm.Neu;'#10'begin'#10 +
     '  inherited Laden;'#10'end;'#10'constructor TKundenForm.Create;'#10'begin'#10'  inherited CreateNew(nil);'#10 +
     'end;'#10));
+end;
+
+/// <summary>Sortierte Menge über einer Liste: Add fügt über inherited Insert ein; AInsert ist der Rumpf des eigenen
+/// Insert.</summary>
+function SortierteMenge(const AInsert: string): string;
+begin
+  Result := 'unit Mengen;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10 +
+    '    function Add(const AWert: string): Integer; virtual;'#10 +
+    '    procedure Insert(AIndex: Integer; const AWert: string); virtual;'#10'  end;'#10 +
+    '  TMenge = class(TListe)'#10'  public'#10'    function Add(const AWert: string): Integer; override;'#10 +
+    '    procedure Insert(AIndex: Integer; const AWert: string); override;'#10'  end;'#10'implementation'#10 +
+    'function TMenge.Add(const AWert: string): Integer;'#10'begin'#10'  Result := Suche(AWert);'#10 +
+    '  inherited Insert(Result, AWert);'#10'end;'#10 +
+    'procedure TMenge.Insert(AIndex: Integer; const AWert: string);'#10'begin'#10 + AInsert + 'end;'#10'end.';
+end;
+
+procedure TInheritedWrongMethodTests.OwnReplacementBypassed;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Das eigene Insert ist gesperrt: Add erreicht das geerbte nur über inherited Insert, also gewollt.
+  TRuleAssert.Silent(TInheritedWrongMethodRule.Create, SortierteMenge('  raise ENichtErlaubt.Create;'#10));
+  // Das eigene Insert ergänzt das geerbte: inherited Insert überspringt die Ergänzung, weiter gemeldet.
+  mFindings := TRuleAssert.Findings(TInheritedWrongMethodRule.Create,
+    SortierteMenge('  inherited;'#10'  Protokollieren;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Add ruft inherited Insert auf; gemeint ist vermutlich inherited Add.', mFindings[0].Message);
 end;
 
 procedure TInheritedWrongMethodTests.AllowedOption;

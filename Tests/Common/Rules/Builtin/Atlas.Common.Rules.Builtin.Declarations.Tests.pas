@@ -6,7 +6,8 @@
 // Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen;
 // Typaliase, Qualifizierer, Kommentare, Attribute und {$IFDEF} im Kopf (#1324);
 // interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
-// abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
+// abweichender Kopf (E2211, schlichte Typaliase gelten als ihr Ziel),
+// Zuordnung ohne Interface (E2265), geerbte
 // Methoden, Zuordnungen, implements und unbekannte Vorfahren.
 // field-after-method (#986): Beispiel mit beiden Korrekturen, Attribute und
 // Kommentare wandern mit, Records mit var zuerst, Feld neben anderem auf der
@@ -97,6 +98,8 @@ type
     procedure InterfaceUnknownAncestorIsSilent;
     [Test]
     procedure InterfaceDifferentSignature;
+    [Test]
+    procedure InterfaceAliasParameters;
     /// <summary>Typargumente des Interfaces in der Vorfahrenliste werden vor dem Vergleich eingesetzt, auch an
     /// zweiter Stelle, verschachtelt, mit mehreren Typparametern und über geerbte Interfaces.</summary>
     [Test]
@@ -788,6 +791,24 @@ begin
   Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', mFindings[0].Message);
   Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.InterfaceAliasParameters;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Schlichte Aliase sind derselbe Typ wie ihr Ziel, auch über eine Kette und eingebaute Aliase (UnicodeString).
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TText = string;'#10'  TWort = UnicodeString;'#10'  TKette = TText;'#10 +
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure Info(const Text: TText);'#10 +
+    '    procedure Warnung(const Text: TWort);'#10'    procedure Fehler(const Text: TKette);'#10'  end;', ''));
+  // "type string" ist ein eigener Typ: weiter E2211.
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TEigen = type string;'#10'  TLog = class(TInterfacedObject, ILogger)'#10 +
+    '    procedure Info(const Text: TEigen);'#10'    procedure Warnung(const Text: string);'#10 +
+    '    procedure Fehler(const Text: string);'#10'  end;', ''));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', mFindings[0].Message);
 end;
 
 function GenericUnit(const AClass: string): string;

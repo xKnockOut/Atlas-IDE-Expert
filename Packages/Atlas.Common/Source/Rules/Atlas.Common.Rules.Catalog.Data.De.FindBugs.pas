@@ -381,8 +381,9 @@ const
     '      "name": "inherited ruft eine andere Methode",',
     '      "description": "In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anwei' +
     'sung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich se' +
-    'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch ' +
-    'den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",',
+    'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Still auch, wenn die Klasse die gerufene Methode selbst überschreibt, ohne dort den Vorfahren ' +
+    'aufzurufen: Dann umgeht inherited sie bewusst (sortierte Menge: das eigene Insert ist gesperrt, Add fügt über inherited Insert an der sortierten Stelle ein). Paare aus der Option allowed bleiben still' +
+    '. Konfidenz hoch. Schnellkorrektur: den Namen durch den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",',
     '      "options": [',
     '        {',
     '          "name": "allowed",',
@@ -744,8 +745,10 @@ const
     'ocess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ' +
     'ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an ' +
     'eine unbekannte Routine, Speichern in einem Array ([H] in einem Ausdruck) und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang' +
-    ' (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorr' +
-    'ektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",',
+    ' (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Das gilt auch, wenn ein Merker das Ergebnis trägt, samt zweitem Vers' +
+    'uch nur bei Misserfolg (Ok := OpenThreadToken(…); if not Ok then Ok := OpenProcessToken(…); if Ok then CloseHandle(…)), und wenn sich eine frühere, seither unveränderte Bedingung wiederholt (if IsNT t' +
+    'hen öffnen; … if IsNT then schließen). Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally' +
+    ' mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",',
     '      "options": [',
     '        {',
     '          "name": "pairs",',
