@@ -51,6 +51,7 @@ uses
   Atlas.Common.Lsp.CompletionCollector,
   Atlas.Common.Lsp.Completion.TypeConversions,
   Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Localization.Texts,
   Atlas.Text.Lines;
 
@@ -413,7 +414,7 @@ function RefSignature(AResolver: TNameResolver; const AFromUnit: TUnitIndex; con
 var
   mBase: string;
 begin
-  AArgs := TCompletionAnonymous.TypeArgs(ATypeText, mBase);
+  AArgs := TRtlMethodReferences.TypeArgs(ATypeText, mBase);
   Result := '';
   AResolved := Default(TResolvedSymbol);
   if (AResolver <> nil) and AResolver.ResolveTypeTextFrom(AFromUnit, ATypeText, AResolved) and
@@ -423,7 +424,7 @@ begin
   end;
   if Result = '' then
   begin
-    Result := TCompletionAnonymous.RtlDeclaration(mBase, Length(AArgs));
+    Result := TRtlMethodReferences.Declaration(mBase, Length(AArgs));
   end;
 end;
 

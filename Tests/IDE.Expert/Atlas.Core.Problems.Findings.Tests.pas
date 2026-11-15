@@ -115,6 +115,21 @@ type
     procedure CacheWithManyFindingsIsFast;
   end;
 
+  [TestFixture]
+  TAtlasFindingsWindowTests = class
+  public
+    [Test]
+    procedure ShownFilesForCurrentFileScope;
+    [Test]
+    procedure InputsKeyChangesWithEachInput;
+    [Test]
+    procedure ProgressDueAfterRefreshTime;
+    [Test]
+    procedure LayoutKeepsSingleProjectOutsideProjectScope;
+    [Test]
+    procedure LayoutSameAndApply;
+  end;
+
 implementation
 
 uses
@@ -122,6 +137,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.Findings,
   Atlas.Core.Problems.FindingsView,
   Atlas.Core.Problems.FindingsCache,
@@ -1326,9 +1342,85 @@ begin
   end;
 end;
 
+{ TAtlasFindingsWindowTests }
+
+procedure TAtlasFindingsWindowTests.ShownFilesForCurrentFileScope;
+var
+  mFiles: TArray<string>;
+begin
+  mFiles := TAtlasFindingsWindow.ShownFiles(TAtlasFindingScope.CurrentFile, 'A.pas',
+    TArray<string>.Create('B.pas', 'C.pas'));
+  Assert.AreEqual(1, Integer(Length(mFiles)));
+  Assert.AreEqual('A.pas', mFiles[0]);
+  mFiles := TAtlasFindingsWindow.ShownFiles(TAtlasFindingScope.Group, 'A.pas', TArray<string>.Create('B.pas', 'C.pas'));
+  Assert.AreEqual(2, Integer(Length(mFiles)));
+  Assert.AreEqual('C.pas', mFiles[1]);
+end;
+
+procedure TAtlasFindingsWindowTests.InputsKeyChangesWithEachInput;
+var
+  mKey: string;
+begin
+  mKey := TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'A.pas', 'A.pas;B.pas',
+    TArray<string>.Create('A.pas'), True);
+  Assert.AreEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'A.pas', 'A.pas;B.pas',
+    TArray<string>.Create('A.pas'), True));
+  Assert.AreNotEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Group, 'A.pas', 'A.pas;B.pas',
+    TArray<string>.Create('A.pas'), True));
+  Assert.AreNotEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'B.pas', 'A.pas;B.pas',
+    TArray<string>.Create('A.pas'), True));
+  Assert.AreNotEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'A.pas', 'A.pas',
+    TArray<string>.Create('A.pas'), True));
+  Assert.AreNotEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'A.pas', 'A.pas;B.pas', nil,
+    True));
+  Assert.AreNotEqual(mKey, TAtlasFindingsWindow.InputsKey(TAtlasFindingScope.Project, 'A.pas', 'A.pas;B.pas',
+    TArray<string>.Create('A.pas'), False));
+end;
+
+procedure TAtlasFindingsWindowTests.ProgressDueAfterRefreshTime;
+begin
+  Assert.IsTrue(TAtlasFindingsWindow.ProgressDue(0, 500, 2000));
+  Assert.IsFalse(TAtlasFindingsWindow.ProgressDue(1000, 2999, 2000));
+  Assert.IsTrue(TAtlasFindingsWindow.ProgressDue(1000, 3000, 2000));
+end;
+
+procedure TAtlasFindingsWindowTests.LayoutKeepsSingleProjectOutsideProjectScope;
+var
+  mBefore, mLayout: TAtlasFindingsLayout;
+begin
+  mBefore := Default(TAtlasFindingsLayout);
+  mBefore.ScopeProject := 'Kasse.dproj';
+  mLayout := TAtlasFindingsLayout.Create(mBefore, TAtlasFindingScope.Group, 'Lager.dproj',
+    TAtlasFindingGrouping.ByRule, 'rule,line', True);
+  Assert.AreEqual(TAtlasFindings.cScopeNames[TAtlasFindingScope.Group], mLayout.Scope);
+  Assert.AreEqual('Kasse.dproj', mLayout.ScopeProject);
+  Assert.AreEqual(TAtlasFindings.cGroupingNames[TAtlasFindingGrouping.ByRule], mLayout.GroupBy);
+  Assert.AreEqual('rule,line', mLayout.Columns);
+  Assert.IsTrue(mLayout.OpenFirst);
+  mLayout := TAtlasFindingsLayout.Create(mBefore, TAtlasFindingScope.Project, 'Lager.dproj',
+    TAtlasFindingGrouping.None, '', False);
+  Assert.AreEqual('Lager.dproj', mLayout.ScopeProject);
+end;
+
+procedure TAtlasFindingsWindowTests.LayoutSameAndApply;
+var
+  mSettings: TAtlasPluginSettings;
+  mStored, mLayout: TAtlasFindingsLayout;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mStored := TAtlasFindingsLayout.FromSettings(mSettings);
+  Assert.IsTrue(mStored.Same(TAtlasFindingsLayout.FromSettings(mSettings)));
+  mLayout := mStored;
+  mLayout.Columns := mLayout.Columns + ',extra';
+  Assert.IsFalse(mLayout.Same(mStored));
+  mLayout.ApplyTo(mSettings);
+  Assert.IsTrue(mLayout.Same(TAtlasFindingsLayout.FromSettings(mSettings)));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasFindingsTests);
   TDUnitX.RegisterTestFixture(TAtlasFindingsTierTests);
+  TDUnitX.RegisterTestFixture(TAtlasFindingsWindowTests);
 
 
 end.

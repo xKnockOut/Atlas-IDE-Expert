@@ -645,6 +645,8 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.EventAssignments.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.TokenCursor.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.FreeRoutineMembers.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.RtlMethodReferences.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
@@ -810,6 +812,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.IgnoredResult.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Events.pas"/>

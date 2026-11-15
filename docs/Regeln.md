@@ -12,7 +12,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 95 |
+| [Compiler vorab](#gruppe-compiler) | 98 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
@@ -254,6 +254,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`caption-string-helper`](#caption-string-helper) | String-Helfer auf TCaption | Bug | Fehler |
 | [`uses-order-hides-type`](#uses-order-hides-type) | Unit verdeckt einen Typ | Bug | Fehler |
 | [`interface-uses-missing`](#interface-uses-missing) | Unit nur im uses des implementation-Teils | Bug | Fehler |
+| [`winapi-declaration-missing`](#winapi-declaration-missing) | Fehlt in Delphis Winapi.Windows | Bug | Fehler |
+| [`winapi-uses-missing`](#winapi-uses-missing) | Winapi.Windows fehlt in uses | Bug | Fehler |
+| [`stream-write-nativeint`](#stream-write-nativeint) | Write ohne NativeInt-Überladung | Bug | Warnung |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -3285,7 +3288,7 @@ RegisterComponents('Samples', [TMyButton]);
 
 **Nicht deklarierter Bezeichner** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke und asm werden übersprungen. Hinter einem Punkt meldet die Regel auch ein Mitglied, das der Typ davor nicht hat, auch nicht unsichtbar (wie E2003), wenn dieser Typ sicher und vollständig bekannt ist: Klasse, object, Record, Interface oder Aufzählung aus dem Index, nicht generisch, mit bekannten Vorfahren. Solange eine Unit aus uses im Index fehlt, schweigt die Regel. Alte object-Syntax: In New(P, Init) und Dispose(P, Done) ist das zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P; fehlt er dort, meldet die Regel wie E2601 bzw. E2602, Fail außerhalb eines Konstruktors wie E2078.
+Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke und asm werden übersprungen. Hinter einem Punkt meldet die Regel auch ein Mitglied, das der Typ davor nicht hat, auch nicht unsichtbar (wie E2003), wenn dieser Typ sicher und vollständig bekannt ist: Klasse, object, Record, Interface oder Aufzählung aus dem Index, nicht generisch, mit bekannten Vorfahren. Solange eine Unit aus uses im Index fehlt, schweigt die Regel bis auf Mitglieder ohne Objekt (siehe unten). Alte object-Syntax: In New(P, Init) und Dispose(P, Done) ist das zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P; fehlt er dort, meldet die Regel wie E2601 bzw. E2602, Fail außerhalb eines Konstruktors wie E2078. Ein Mitglied einer Klasse dieser Datei ohne Objekt in einer freien Routine (List.OnSelectItem := ListSelectItem in procedure CreateList(AFrame: TFrame)) meldet sie eigens, auch ohne System im Index, dann aber nur für Methoden, die als Wert stehen; Korrektur: den Parameter vom Typ der Klasse davorsetzen (AFrame.ListSelectItem).
 
 Entspricht der Compilermeldung `E2003`, `E2601`, `E2602`, `E2078`.
 
@@ -9018,7 +9021,7 @@ if Liste.Count > 0 then
 
 **Inkompatible Typen** · Bug · Fehler · Gruppe Compiler vorab
 
-Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument, ebenso eine anonyme Methode wie procedure(const S: string) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst). Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
+Zuweisung, Argument, var-Parameter, Operator, Typumwandlung oder prozeduraler Typ mit unverträglichen Typen, beide sicher bekannt: Integer := 'abc', ein Klassenparameter mit Standardwert 0, ein statisches Array := nil, eine Prozedur ohne Ergebnis als Wert, string + Integer oder [1] + ['a'] (wie E2010); ein Operator, der für einen Operanden nicht definiert ist, etwa string - Char, Double div 2, not 'a' oder X is Integer (wie E2015); ein var-Argument mit anderem Typ als der Parameter, etwa Byte für Integer (wie E2033); Byte(S) eines langen Strings und die Umwandlung einer Gleitkommazahl in einen Ordinaltyp (wie E2089); Inc/Dec mit einer Gleitkommazahl oder einem String als Schrittweite und Ptr(S) (wie E2008); eine Routine mit anderer Parameterliste für einen prozeduralen Typ bzw. eine Methode für einen Typ ohne of object und umgekehrt (wie E2009); von überladenen Routinen passt keine zum prozeduralen Typ (wie E2010); eine Routine für eine Methodenreferenz (reference to, auch generisch wie TFunc<string, TArray<string>>), deren Parameter in Zahl, const/var/out oder Typ abweichen, als Zuweisung oder Argument, ebenso eine anonyme Methode wie procedure(const S: string) für TProc<string> (wie E2010); eine parameterlose Funktion, deren Ergebnis genau den prozeduralen Typ des Ziels hat, ohne () zugewiesen oder übergeben (wie E2010: Delphi nimmt die Funktion selbst), auch als Argument einer Variablen, eines Felds oder einer Property von prozeduralem Typ (FOnTree(A, Refresh)). TProc, TFunc und TPredicate aus System.SysUtils kennt die Regel auch ohne Quelltext der RTL im Index, wenn die Unit System.SysUtils einbindet und keine fremde Unit dahinter den Typ verdecken kann. Wie bei dcc hat Result den Typ aus dem interface-Teil, und von zwei Deklarationen desselben lokalen Namens gilt die letzte. Gemeldet nur, wenn beide Seiten sicher bekannt sind und ihre Deklarationen immer mit der Stelle übersetzt werden; Records (class operator Implicit), Variant, Zeiger, Teilbereiche, Generics, überladene Routinen und with-Blöcke bleiben still. Korrektur nur für die Funktion ohne (): () ergänzen. Sonst keine Korrektur: Welche Seite falsch ist, weiß nur der Entwickler.
 
 Entspricht der Compilermeldung `E2010`, `E2008`, `E2009`, `E2015`, `E2033`, `E2089`.
 
@@ -9406,6 +9409,98 @@ type
     FListe: TStringList;
   end;
 implementation
+```
+
+<a id="winapi-declaration-missing"></a>
+### winapi-declaration-missing
+
+**Fehlt in Delphis Winapi.Windows** · Bug · Fehler · Gruppe Compiler vorab
+
+Die Unit bindet Winapi.Windows (bzw. Windows) ein und nennt einen Bezeichner, den Free Pascals Unit Windows deklariert, Delphis Winapi.Windows aber nicht: OpenThread, THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal übersetzt das, Delphi meldet E2003. Still, wenn die Datei den Namen selbst deklariert oder die Namensauflösung ihn in einer anderen Unit als Free Pascals Windows findet (etwa einer Projekt-Unit oder Delphis Winapi.Windows aus dem Symbolindex). Namen hinter einem Punkt, in Kommentaren und in Strings bleiben still. Eine Meldung je Name und Datei; sie nennt die Deklaration, die anzulegen ist.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+uses
+  Winapi.Windows;
+…
+  mThread := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);
+```
+
+Richtig:
+
+```pascal
+uses
+  Winapi.Windows;
+const
+  THREAD_SUSPEND_RESUME = $0002;
+function OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;
+  external kernel32 name 'OpenThread';
+```
+
+<a id="winapi-uses-missing"></a>
+### winapi-uses-missing
+
+**Winapi.Windows fehlt in uses** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Routine, die Delphi nur in Winapi.Windows deklariert (GetTickCount64, GetTickCount, MulDiv), wird aufgerufen, ohne dass Winapi.Windows (bzw. Windows) in uses steht. Free Pascal findet diese Routinen auch in SysUtils und übersetzt die Unit; Delphi meldet E2003. TThread.GetTickCount64 und andere Namen hinter einem Punkt zählen nicht, ebenso Routinen, die die Datei oder eine Projekt-Unit selbst deklariert. Eine Meldung je Datei. Korrektur: Winapi.Windows ins uses des Abschnitts aufnehmen (bei Vcl.Graphics in uses auf uses-order-hides-type achten).
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+uses
+  System.SysUtils;
+…
+  mStart := GetTickCount64;
+```
+
+Richtig:
+
+```pascal
+uses
+  Winapi.Windows, System.SysUtils;
+…
+  mStart := GetTickCount64;
+```
+
+<a id="stream-write-nativeint"></a>
+### stream-write-nativeint
+
+**Write ohne NativeInt-Überladung** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream, aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab Delphi 13 gibt. Unter Win64 rufen WriteBuffer und CopyFrom die NativeInt-Überladung auf und gehen an der eigenen Fassung vorbei, ohne Compilermeldung: Eine Grenze oder Zählung in der Longint-Fassung greift nicht mehr. Die zweite Fassung wird im ganzen Text der Klasse gesucht, auch in {$IF}-Zweigen. Still, wenn delphiVersion eine Version vor Delphi 13 nennt. Unter Win32 sind beide Signaturen gleich; die NativeInt-Fassung gehört deshalb in {$IF RTLVersion >= 37.0} und {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+TGrenze = class(TBytesStream)
+public
+  function Write(const Buffer; Count: Longint): Longint; override;
+end;
+```
+
+Richtig:
+
+```pascal
+TGrenze = class(TBytesStream)
+public
+  function Write(const Buffer; Count: Longint): Longint; overload; override;
+{$IF RTLVersion >= 37.0}
+  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;
+  {$IFEND}
+{$IFEND}
+end;
 ```
 
 <a id="unresolved-type"></a>

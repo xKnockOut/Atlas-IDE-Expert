@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerNames: array[0..222] of string = (
+  cCatalogLinesDeCompilerNames: array[0..232] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Veraltetes oder gebundenes Symbol",',
@@ -376,6 +376,21 @@ const
     '      "description": "Ein Typ im interface-Teil (Feld, Parameter, Ergebnis, Property, Vorfahr) kommt aus einer Unit, die nur im uses des implementation-Teils steht. Dort ist der Name noch nicht bekann' +
     't (wie E2003). Gemeldet, wenn der Name im interface-Teil nicht aufgelöst wird und genau eine solche Unit ihn in ihrem interface-Teil deklariert; je Unit einmal pro Datei. Korrektur: Unit ins uses des ' +
     'interface-Teils verschieben (angeboten, wenn der interface-Teil ein uses hat)."',
+    '    },',
+    '{',
+    '      "id": "winapi-declaration-missing",',
+    '      "name": "Fehlt in Delphis Winapi.Windows",',
+    '      "description": "Die Unit bindet Winapi.Windows (bzw. Windows) ein und nennt einen Bezeichner, den Free Pascals Unit Windows deklariert, Delphis Winapi.Windows aber nicht: OpenThread, THREAD_SUSP' +
+    'END_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal übersetzt das, Delphi meldet E2003. Still, wenn die Datei den Namen selbst dek' +
+    'lariert oder die Namensauflösung ihn in einer anderen Unit als Free Pascals Windows findet (etwa einer Projekt-Unit oder Delphis Winapi.Windows aus dem Symbolindex). Namen hinter einem Punkt, in Komme' +
+    'ntaren und in Strings bleiben still. Eine Meldung je Name und Datei; sie nennt die Deklaration, die anzulegen ist."',
+    '    },',
+    '{',
+    '      "id": "winapi-uses-missing",',
+    '      "name": "Winapi.Windows fehlt in uses",',
+    '      "description": "Eine Routine, die Delphi nur in Winapi.Windows deklariert (GetTickCount64, GetTickCount, MulDiv), wird aufgerufen, ohne dass Winapi.Windows (bzw. Windows) in uses steht. Free Pas' +
+    'cal findet diese Routinen auch in SysUtils und übersetzt die Unit; Delphi meldet E2003. TThread.GetTickCount64 und andere Namen hinter einem Punkt zählen nicht, ebenso Routinen, die die Datei oder ein' +
+    'e Projekt-Unit selbst deklariert. Eine Meldung je Datei. Korrektur: Winapi.Windows ins uses des Abschnitts aufnehmen (bei Vcl.Graphics in uses auf uses-order-hides-type achten)."',
     '    },',
     '{',
     '      "id": "unresolved-type",',

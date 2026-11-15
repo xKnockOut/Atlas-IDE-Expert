@@ -25,15 +25,11 @@ uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Threads,
   Atlas.Core.Debug.ThreadMarks,
+  Atlas.Core.Debug.ThreadsInSourceFlow,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.Strings;
 
 type
-  /// <summary>Was ein Eintrag der Auswahlliste mit dem gewählten Thread tut.</summary>
-  {$SCOPEDENUMS ON}
-  TAtlasThreadAction = (Switch, Flag, Freeze, Thaw);
-  {$SCOPEDENUMS OFF}
-
   TAtlasIdeDebugThreadsInSource = class
   public const
     cIntervalMs = 150;
@@ -43,7 +39,7 @@ type
     cStatusId = 'atlas.debug.frozenThreads';
     cStatusOrder = 86;
     /// <summary>Tag des Eintrags „Alle Threads dieser Zeile“.</summary>
-    cAllTag = -1;
+    cAllTag = TAtlasThreadsInSourceFlow.cAllTag;
   private type
     TListener = class(TAtlasIdeDebugListener)
     public
@@ -180,12 +176,7 @@ begin
     var
       mThread: Integer;
     begin
-      if mTag <> TAtlasIdeDebugThreadsInSource.cAllTag then
-      begin
-        TAtlasIdeDebugThreadsInSource.Apply(TAtlasIdeDebugThreadsInSource.FPickAction, mTag);
-        Exit;
-      end;
-      for mThread in TAtlasIdeDebugThreadsInSource.FPickThreads do
+      for mThread in TAtlasThreadsInSourceFlow.Targets(mTag, TAtlasIdeDebugThreadsInSource.FPickThreads) do
       begin
         TAtlasIdeDebugThreadsInSource.Apply(TAtlasIdeDebugThreadsInSource.FPickAction, mThread);
       end;
@@ -210,7 +201,7 @@ begin
   mStacks := nil;
   mPending := TAtlasIdeDebugThreads.ReadRange(mProcess, 0, cMaxThreads, mStacks);
   Inc(FRetries);
-  Result := (not mPending) or (FRetries > cRetries);
+  Result := TAtlasThreadsInSourceFlow.ReadDone(mPending, FRetries, cRetries);
   FStacks := mStacks;
 end;
 
@@ -293,34 +284,29 @@ class function TAtlasIdeDebugThreadsInSource.ContextThreads: TArray<Integer>;
 var
   mView: IOTAEditView;
   mFileName: string;
-  mLine, mMark, mCurrent: Integer;
+  mLine: Integer;
   mProcess: IOTAProcess;
 begin
-  Result := nil;
+  mFileName := '';
+  mLine := 0;
   mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
+  if (mView <> nil) and (mView.Buffer <> nil) then
   begin
     mFileName := mView.Buffer.FileName;
-    if not TAtlasIdeGutterMarks.TakeLine(mFileName, mLine) then
+    if (mFileName <> '') and not TAtlasIdeGutterMarks.TakeLine(mFileName, mLine) then
     begin
       mLine := mView.CursorPos.Line - 1;
     end;
-    mMark := FMarks.IndexAt(mFileName, mLine + 1);
-    if mMark >= 0 then
-    begin
-      Exit(FMarks.Marks[mMark].Threads);
-    end;
   end;
-  // Kein anderer Thread an der Zeile: der aktuelle.
-  mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess = nil then
+  Result := TAtlasThreadsInSourceFlow.ThreadsAt(FMarks, mFileName, mLine + 1);
+  if Result <> nil then
   begin
     Exit;
   end;
-  mCurrent := TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks);
-  if mCurrent >= 0 then
+  mProcess := TAtlasIdeDebugSession.Process;
+  if mProcess <> nil then
   begin
-    Result := [mCurrent];
+    Result := TAtlasThreadsInSourceFlow.CurrentOnly(TAtlasIdeDebugThreads.CurrentIndex(mProcess, FStacks));
   end;
 end;
 
@@ -329,25 +315,27 @@ var
   mThread: Integer;
   mItem: TMenuItem;
 begin
-  if (FStacks = nil) or (TAtlasIdeDebugSession.StoppedThread = nil) then
-  begin
-    if Assigned(FMessage) then
-    begin
-      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
-    end;
-    Exit;
-  end;
-  if AThreads = nil then
-  begin
-    Exit;
-  end;
-  if Length(AThreads) = 1 then
-  begin
-    Apply(AAction, AThreads[0]);
-    Exit;
+  case TAtlasThreadsInSourceFlow.PickOf(FStacks <> nil, TAtlasIdeDebugSession.StoppedThread <> nil,
+    Length(AThreads)) of
+    TAtlasThreadPick.NotStopped:
+      begin
+        if Assigned(FMessage) then
+        begin
+          FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
+        end;
+        Exit;
+      end;
+    TAtlasThreadPick.Nothing:
+      Exit;
+    TAtlasThreadPick.Direct:
+      begin
+        Apply(AAction, AThreads[0]);
+        Exit;
+      end;
+    TAtlasThreadPick.Menu:
+      FreeAndNil(FMenu);
   end;
   // Mehrere Threads: Auswahlliste an der Maus, markierte oben (Reihenfolge der Marke).
-  FreeAndNil(FMenu);
   FMenu := TPopupMenu.Create(nil);
   FPickAction := AAction;
   FPickThreads := AThreads;
@@ -360,7 +348,7 @@ begin
     mItem.OnClick := FTicker.Pick;
     FMenu.Items.Add(mItem);
   end;
-  if AAction <> TAtlasThreadAction.Switch then
+  if TAtlasThreadsInSourceFlow.OffersAll(AAction) then
   begin
     mItem := TMenuItem.Create(FMenu);
     mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksAllHere);
@@ -375,7 +363,7 @@ class procedure TAtlasIdeDebugThreadsInSource.Apply(AAction: TAtlasThreadAction;
 var
   mStack: TAtlasDebugThreadStack;
 begin
-  if (AThread < 0) or (AThread > High(FStacks)) then
+  if not TAtlasThreadsInSourceFlow.ValidThread(AThread, Length(FStacks)) then
   begin
     Exit;
   end;
@@ -483,7 +471,7 @@ class procedure TAtlasIdeDebugThreadsInSource.Switch(AThread: Integer);
 var
   mJump: Integer;
 begin
-  if (AThread < 0) or (AThread > High(FStacks)) then
+  if not TAtlasThreadsInSourceFlow.ValidThread(AThread, Length(FStacks)) then
   begin
     Exit;
   end;
