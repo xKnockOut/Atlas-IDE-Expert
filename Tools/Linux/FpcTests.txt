@@ -529,3 +529,5 @@ Atlas.Core.StartProfiles.Picker.Tests
 Atlas.Core.Build.OpenBuild.Tests
 Atlas.Core.Bookmarks.ColumnPlan.Tests
 Atlas.Core.Bookmarks.Plan.Tests
+Atlas.Core.VersionControl.LineChangesPlan.Tests
+Atlas.Core.VersionControl.Plan.Tests

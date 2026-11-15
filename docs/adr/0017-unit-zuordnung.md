@@ -866,6 +866,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.VersionControl.Composition` | `Core/VersionControl/Atlas.Core.VersionControl.Composition.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Detection` | `Core/VersionControl/Atlas.Core.VersionControl.Detection.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.Plan` | `Core/VersionControl/Atlas.Core.VersionControl.Plan.pas` | Ordner `Core/VersionControl` |
+| `Atlas.Core.VersionControl.LineChangesPlan` | `Core/VersionControl/Atlas.Core.VersionControl.LineChangesPlan.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Internals.GitParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.GitParser.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Internals.LineTrace` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.LineTrace.pas` | Ordner `Core/VersionControl` |
 | `Atlas.Core.VersionControl.Internals.SvnParser` | `Core/VersionControl/Atlas.Core.VersionControl.Internals.SvnParser.pas` | Ordner `Core/VersionControl` |
