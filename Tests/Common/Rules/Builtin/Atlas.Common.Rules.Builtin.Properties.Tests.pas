@@ -21,6 +21,8 @@ type
     [Test]
     procedure AccessorPrefersNestedType;
     [Test]
+    procedure AccessorInGenericTypeBesideNonGeneric;
+    [Test]
     procedure AccessorValidFormsAreSilent;
     [Test]
     procedure AccessorMissingFixes;
@@ -38,6 +40,10 @@ type
     procedure AccessorFormsDccAccepts;
     [Test]
     procedure AccessorOptions;
+    /// <summary>read {$IFDEF BCB}GetObj{$ELSE}GetObject{$ENDIF} (JsonDataObjects): Der inaktive Zweig zählt nicht;
+    /// ist er aktiv (MSWINDOWS unter Win32), meldet die Regel GetObj.</summary>
+    [Test]
+    procedure AccessorInInactiveBranch;
     [Test]
     procedure WriteOnlyReported;
     [Test]
@@ -61,7 +67,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Rules.Profiles,
+  Atlas.Common.Rules.Checker;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
 function Kunden(const AMembers, ABodies: string): string;
@@ -147,6 +154,20 @@ begin
   Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);', mFixed) > 0, mFixed);
   Silent(mFixed);
+end;
+
+procedure TPropertyRulesTests.AccessorInGenericTypeBesideNonGeneric;
+begin
+  // TListe und TListe<T> in einer Unit: Die Property gehört zu TListe<T>, die Zugriffsmethoden stehen in deren
+  // Vorfahr (PascalCoin, AbstractMem: TAbstractMemTList<T>).
+  Silent('unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10'    procedure Sperren;'#10 +
+    '  end;'#10'  TBasis<T> = class'#10'  protected'#10'    function GetItem(AIndex: Integer): T; virtual;'#10 +
+    '    procedure SetItem(AIndex: Integer; const AItem: T); virtual;'#10'  end;'#10 +
+    '  TListe<T> = class(TBasis<T>)'#10'  public'#10 +
+    '    property Item[AIndex: Integer]: T read GetItem write SetItem;'#10'  end;'#10'implementation'#10 +
+    'procedure TListe.Sperren;'#10'begin'#10'end;'#10'function TBasis<T>.GetItem(AIndex: Integer): T;'#10 +
+    'begin'#10'  Result := Default(T);'#10'end;'#10'procedure TBasis<T>.SetItem(AIndex: Integer; const AItem: T);'#10 +
+    'begin'#10'end;'#10'end.');
 end;
 
 procedure TPropertyRulesTests.AccessorPrefersNestedType;
@@ -307,6 +328,10 @@ begin
     '(wie E2461).', OnlyMessage(mTypes + '    property Laenge: Double read FPunkt.Laenge;'#10'  end;'#10 +
     'implementation'#10'end.'));
   Silent(mTypes + '    property Y: Integer read FPunkt.Y write FPunkt.Y;'#10'  end;'#10'implementation'#10'end.');
+  // Old-style object ist wie ein Record (FP mORMot SynSM: property cx read VObject.fcx mit TSMObject = object).
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TZaehler = object'#10'    Wert: Integer;'#10'  end;'#10 +
+    '  TKunde = class'#10'  private'#10'    FZaehler: TZaehler;'#10'  public'#10 +
+    '    property Wert: Integer read FZaehler.Wert;'#10'  end;'#10'implementation'#10'end.');
   // Klassen-Properties: kein Feldselektor, auch über einen Record (Cm.E2459, #1380).
   Assert.AreEqual('Die Klassen-Property X darf hinter read keinen Feldselektor haben; FMitte.X geht nur an ' +
     'Instanz-Properties (wie E2459).', OnlyMessage(mTypes + '    class var FMitte: TPunkt;'#10 +
@@ -443,6 +468,31 @@ begin
   TConfigurationParser.Parse('{"rules": {"write-only-property": {"allowAttributes": "Geheim"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('"allowAttributes" muss eine Liste von Texten sein', mIssues[0].Message);
+end;
+
+
+procedure TPropertyRulesTests.AccessorInInactiveBranch;
+
+  function Count(const ACondition: string): Integer;
+  var
+    mFinding: TRuleFinding;
+  begin
+    Result := 0;
+    for mFinding in TFileChecker.CheckText([TPropertyAccessorInvalidRule.Create as IRule], TServerSettings.Default,
+      'Kunden.pas', Kunden('  private'#10'    function GetObject(I: Integer): TObject;'#10'  public'#10 +
+      '    property O[I: Integer]: TObject read {$IFDEF ' + ACondition + '}GetObj{$ELSE}GetObject{$ENDIF};'#10,
+      'function TKunde.GetObject(I: Integer): TObject;'#10'begin'#10'  Result := nil;'#10'end;'#10)) do
+    begin
+      if mFinding.RuleId = cPropertyAccessorInvalidRuleId then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+
+begin
+  Assert.AreEqual(0, Count('BCB'), 'inaktiver Zweig');
+  Assert.AreEqual(1, Count('MSWINDOWS'), 'aktiver Zweig');
 end;
 
 initialization

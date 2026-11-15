@@ -23,8 +23,17 @@ type
     procedure AssignedAfterFreeIsReported;
     [Test]
     procedure OwnMethodMayReassignField;
+    /// <summary>Im Rumpf eines with kann der Name ein Mitglied des with-Objekts sein (ACBr: NFSe.Free; … with
+    /// Liste.New do NFSe.Numero := …): still; der with-Ausdruck selbst bleibt ein Zugriff.</summary>
+    [Test]
+    procedure WithMemberOfSameNameIsSilent;
     [Test]
     procedure NestedRoutineOrAbsoluteMayReassign;
+    /// <summary>while Assigned(FErster) do FErster.Free: Der Destruktor hängt das Objekt aus der Liste und setzt
+    /// FErster neu (PasVulkan.Framework, PasVulkan.TextEditor); bei einer lokalen Variablen bleibt der Befund.
+    /// </summary>
+    [Test]
+    procedure LoopUntilFieldChangesIsSilent;
   end;
 
 
@@ -80,6 +89,23 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
 end;
 
+procedure TFlowUseAfterFreeTests.LoopUntilFieldChangesIsSilent;
+const
+  cHead = 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10'  private'#10'    FErster: TKnoten;'#10 +
+    '  public'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'destructor TListe.Destroy;'#10'begin'#10;
+begin
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  while Assigned(FErster) do'#10'    FErster.Free;'#10 +
+    '  repeat'#10'    try'#10'      FErster.Leeren;'#10'    finally'#10'      FErster.Free;'#10'    end;'#10 +
+    '  until FErster = nil;'#10'  inherited;'#10'end;'#10'end.');
+  // Weist die Schleife selbst zu, gilt der Weg wie sonst.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead +
+    '  while Assigned(FErster) do'#10'  begin'#10'    FErster.Free;'#10'    FErster.Leeren;'#10 +
+    '    FErster := nil;'#10'  end;'#10'end;'#10'end.'))));
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TUseAfterFreeRule.Create,
+    Routine('  while Assigned(L) do'#10'    L.Free;')))));
+end;
+
 procedure TFlowUseAfterFreeTests.OwnMethodMayReassignField;
 const
   cHead = 'unit U;'#10'interface'#10'type'#10'  TLader = class'#10'  private'#10'    FListe: TList;'#10 +
@@ -92,10 +118,30 @@ begin
   // FP-Prüfung 28.10.2026: Eine eigene Methode zwischen Free und Zugriff kann das Feld neu belegen.
   TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Neu;'#10'  FListe.Add(nil);'#10 +
     '  FListe.Free;'#10'  Self.Neu;'#10'  FListe.Add(nil);'#10'end;'#10'end.');
+  // inherited ruft eine Methode für Self auf (ACBr TACBrECFVirtualClass: FreeAndNil(fpAliquotas);
+  // inherited CarregaAliquotas; fpAliquotas.Add(…)).
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, cHead + '  FreeAndNil(FListe);'#10'  inherited Laden;'#10 +
+    '  FListe.Add(nil);'#10'end;'#10'end.');
   // Eine fremde Routine belegt das Feld nicht neu.
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Melden;'#10 +
     '  FListe.Add(nil);'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFindings)));
+  // inherited belegt nur Felder neu, keine lokale Variable.
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Copy(cHead, 1, Length(cHead) - Length('begin'#10)) +
+    'var'#10'  L: TList;'#10'begin'#10'  L := TList.Create;'#10'  L.Free;'#10'  inherited Laden;'#10'  L.Add(nil);'#10 +
+    'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'lokal nach inherited');
+  mFindings := nil;
+end;
+
+procedure TFlowUseAfterFreeTests.WithMemberOfSameNameIsSilent;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  with Merke2 do'#10'  begin'#10 +
+    '    L.Add(''x'');'#10'  end;'));
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  with L do'#10'    Clear;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'with L');
   mFindings := nil;
 end;
 

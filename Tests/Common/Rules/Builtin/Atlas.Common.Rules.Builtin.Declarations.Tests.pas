@@ -6,7 +6,8 @@
 // Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen;
 // Typaliase, Qualifizierer, Kommentare, Attribute und {$IFDEF} im Kopf (#1324);
 // interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
-// abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
+// abweichender Kopf (E2211, schlichte Typaliase gelten als ihr Ziel),
+// Zuordnung ohne Interface (E2265), geerbte
 // Methoden, Zuordnungen, implements und unbekannte Vorfahren.
 // field-after-method (#986): Beispiel mit beiden Korrekturen, Attribute und
 // Kommentare wandern mit, Records mit var zuerst, Feld neben anderem auf der
@@ -56,6 +57,8 @@ type
     [Test]
     procedure IncludeLowersConfidence;
     [Test]
+    procedure BodiesInIncludeFilesCount;
+    [Test]
     procedure BodyWithoutDeclarationReports;
     [Test]
     procedure FixAddsDeclarationToExistingPrivate;
@@ -95,6 +98,8 @@ type
     procedure InterfaceUnknownAncestorIsSilent;
     [Test]
     procedure InterfaceDifferentSignature;
+    [Test]
+    procedure InterfaceAliasParameters;
     /// <summary>Typargumente des Interfaces in der Vorfahrenliste werden vor dem Vergleich eingesetzt, auch an
     /// zweiter Stelle, verschachtelt, mit mehreren Typparametern und über geerbte Interfaces.</summary>
     [Test]
@@ -339,6 +344,51 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+end;
+
+/// <summary>Liest Teile.delphi.inc (Rumpf TFoo.Lauf, bindet Tiefer.inc ein) und Tiefer.inc (Rumpf
+/// TFoo.TInnen&lt;T&gt;.Weiter); Teile.fpc.inc fehlt.</summary>
+function IncludeReader: TRuleFileReader;
+begin
+  Result :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := True;
+      if SameText(AName, 'Teile.delphi.inc') then
+      begin
+        AData := TEncoding.UTF8.GetBytes('{$I Tiefer.inc}'#10'function TFoo.Lauf: Integer;'#10'begin'#10 +
+          '  Result := 1;'#10'end;'#10);
+      end
+      else if SameText(AName, 'Tiefer.inc') then
+      begin
+        AData := TEncoding.UTF8.GetBytes('procedure TFoo.TInnen<T>.Weiter;'#10'begin'#10'end;'#10);
+      end
+      else
+      begin
+        Result := False;
+      end;
+    end;
+end;
+
+procedure TDeclarationRulesTests.BodiesInIncludeFilesCount;
+var
+  mContext: TRuleContext;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Wie mORMot: Rümpfe in einer Include-Datei des implementation-Teils, je Compiler eine eigene.
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := 'U.pas';
+  mContext.FileName := 'C:\P\U.pas';
+  mContext.Text := 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public type'#10 +
+    '    TInnen<T> = class'#10'      procedure Weiter;'#10'    end;'#10'  public'#10 +
+    '    function Lauf: Integer;'#10'    procedure Rest;'#10'  end;'#10'implementation'#10 +
+    '{$IFDEF FPC}'#10'  {$include Teile.fpc.inc}'#10'{$ELSE}'#10'  {$include Teile.delphi.inc}'#10'{$ENDIF}'#10'end.';
+  // Mit (): ohne Klammern nimmt Delphi die Funktion selbst statt ihres Ergebnisses (E2010).
+  mContext.ReadFile := IncludeReader();
+  mFindings := TRuleAssert.ContextFindings(TDeclaredNotImplementedRule.Create, mContext, '');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'TFoo.Rest');
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TDeclarationRulesTests.BodyWithoutDeclarationReports;
@@ -742,6 +792,24 @@ begin
   Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', mFindings[0].Message);
   Assert.AreEqual(9, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
+end;
+
+procedure TDeclarationRulesTests.InterfaceAliasParameters;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Schlichte Aliase sind derselbe Typ wie ihr Ziel, auch über eine Kette und eingebaute Aliase (UnicodeString).
+  TRuleAssert.Silent(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TText = string;'#10'  TWort = UnicodeString;'#10'  TKette = TText;'#10 +
+    '  TLog = class(TInterfacedObject, ILogger)'#10'    procedure Info(const Text: TText);'#10 +
+    '    procedure Warnung(const Text: TWort);'#10'    procedure Fehler(const Text: TKette);'#10'  end;', ''));
+  // "type string" ist ein eigener Typ: weiter E2211.
+  mFindings := TRuleAssert.Findings(TInterfaceNotImplementedRule.Create, LoggerUnit(
+    '  TEigen = type string;'#10'  TLog = class(TInterfacedObject, ILogger)'#10 +
+    '    procedure Info(const Text: TEigen);'#10'    procedure Warnung(const Text: string);'#10 +
+    '    procedure Fehler(const Text: string);'#10'  end;', ''));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Info weicht von der Deklaration in ILogger ab (wie E2211).', mFindings[0].Message);
 end;
 
 function GenericUnit(const AClass: string): string;

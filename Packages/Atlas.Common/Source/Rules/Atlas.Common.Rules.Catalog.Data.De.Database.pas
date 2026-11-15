@@ -20,8 +20,9 @@ const
     '      "name": "Edit oder Append ohne Post",',
     '      "description": "Nach Edit, Append oder Insert (ohne Argumente) einer Datenmenge ruft dieselbe Routine weder Post noch Cancel (noch CheckBrowseMode) auf. Die Änderung bleibt offen und geht beim S' +
     'crollen still verloren oder wird später unerwartet gespeichert; bei einer Exception dazwischen bricht sie niemand ab. Still, wenn eine andere Routine der Unit dieselbe Datenmenge postet oder abbricht ' +
-    '(Bearbeiten-Knopf mit eigenem Speichern-Knopf), und wenn die Datenmenge nach Edit weitergegeben wird (Argument, Zuweisung, with). Konfidenz mittel. Korrektur: die folgenden Anweisungen, die die Datenm' +
-    'enge benutzen, in try … except einschließen, mit Post am Ende des try-Teils und Cancel; raise; im except-Teil."',
+    '(Bearbeiten-Knopf mit eigenem Speichern-Knopf), und wenn die Datenmenge nach Edit weitergegeben wird (Argument, Zuweisung, with). Ein Typparameter mit Klassen-Einschränkung (TAblage<T: TSatz>) hat den' +
+    ' Typ der Einschränkung; stammt sie nicht von TDataSet ab, bleibt die Regel still. Konfidenz mittel. Korrektur: die folgenden Anweisungen, die die Datenmenge benutzen, in try … except einschließen, mit' +
+    ' Post am Ende des try-Teils und Cancel; raise; im except-Teil."',
     '    },',
     '{',
     '      "id": "transaction-without-rollback",',

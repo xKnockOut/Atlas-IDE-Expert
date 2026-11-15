@@ -169,6 +169,12 @@ begin
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  Writeln(Assigned(FBusy) and FBusy());'#10));
   TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if not Assigned(FBusy) or not FBusy() then'#10'    Inc(FWert);'#10));
+  // Mit Klammern um die Glieder (Alcinoe: "(not assigned(RetrieveCachedData)) or (not RetrieveCachedData(…))").
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if (FWert = 0) or (not Assigned(FBusy)) or (not FBusy()) then'#10 +
+    '    Inc(FWert);'#10));
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if (FBusy <> nil) and (FBusy()) then'#10'    Inc(FWert);'#10));
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FBusy: TFunc<Boolean>;'#10, '  if Assigned(FOnChange) and FBusy() then'#10'    Inc(FWert);'#10));
   // Falsche Richtung: gemeldet.
@@ -256,6 +262,7 @@ const
     '  TWertProc = reference to procedure(AWert: Integer);'#10 +
     '  TFormat = function(AWert: Integer): string of object;'#10 +
     '  TListe = array of Integer;'#10 +
+    '  TDllRechnen = function(AWert: Integer): Integer; stdcall;'#10 +
     '  TZaehler = class'#10 +
     '  private'#10 +
     '    FMelden: TWertProc;'#10 +
@@ -263,6 +270,10 @@ const
     '    FBerechnen: procedure(AWert: Integer) of object;'#10 +
     '    FAenderung: TZaehlerChangeEvent;'#10 +
     '    FListe: TListe;'#10 +
+    // Funktionszeiger aus einer DLL (ACBr: xSAT_EnviarDadosVenda: function(...): PAnsiChar; cdecl;) sind keine
+    // Ereignisse.
+    '    xRechnen: function(AWert: Integer): Integer; cdecl;'#10 +
+    '    xDll: TDllRechnen;'#10 +
     '    function Wert(A: Integer): Integer;'#10 +
     '    procedure Erhoehen;'#10 +
     '  end;'#10 +
@@ -279,6 +290,8 @@ const
     '  FAenderung(Self, 4);'#10 +
     '  Writeln(Wert(5));'#10 +
     '  FListe[0] := 6;'#10 +
+    '  Writeln(xRechnen(7));'#10 +
+    '  Writeln(xDll(8));'#10 +
     'end;'#10 +
     'end.';
 begin

@@ -247,6 +247,8 @@ begin
         ReadPublic(mParts);
       TSection.Lines:
         ReadLineNumbers(mParts);
+    else
+      // Segmente und übrige Abschnitte liest die Map-Datei nicht aus.
     end;
   end;
   FCurrentUnit := '';

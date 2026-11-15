@@ -23,6 +23,8 @@ type
     [Test]
     procedure NewerFormsOfDUnitX;
     [Test]
+    procedure TwoArgumentsWithSeparatorLikeValues;
+    [Test]
     procedure SilentCases;
     [Test]
     procedure SplitAndDecodeLikeDUnitX;
@@ -119,6 +121,18 @@ begin
   Assert.AreEqual('10: [DUnitX.TestFramework.TestCaseAttribute(''A'', ''1'')] hat 1 Werte, Pruefe erwartet 2 ' +
     'Parameter.', Messages(TestUnit('    [DUnitX.TestFramework.TestCaseAttribute(''A'', ''1'')]'#10,
     '(A, B: Integer)')));
+end;
+
+procedure TDUnitXTestCaseMismatchTests.TwoArgumentsWithSeparatorLikeValues;
+begin
+  // TestCase('Name', 'Werte') älterer DUnitX-Stände mit Werten ohne Buchstaben und Ziffern: Die neue Lesart
+  // (Werte '4', Trenner '],{,}') passt nicht, die alte schon; welche Fassung gilt, ist unbekannt.
+  Assert.AreEqual('', Messages(TestUnit('    [TestCase(''4'', ''],{,}'')]'#10'    [TestCase(''6'', ''=,;,&'')]'#10,
+    '(const A, B, C: string)')));
+  Assert.AreEqual('', Messages(TestUnit('    [TestCase(''url "/"'', ''/'')]'#10, '(const AUrl: string)')));
+  // Passt keine Lesart, bleibt die Meldung der neuen Form.
+  Assert.AreEqual('10: [TestCase(''4'', ''],{'')] hat 1 Werte, Pruefe erwartet 3 Parameter.',
+    Messages(TestUnit('    [TestCase(''4'', ''],{'')]'#10, '(const A, B, C: string)')));
 end;
 
 procedure TDUnitXTestCaseMismatchTests.SilentCases;

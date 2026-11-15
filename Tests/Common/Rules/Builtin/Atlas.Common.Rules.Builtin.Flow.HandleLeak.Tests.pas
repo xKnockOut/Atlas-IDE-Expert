@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Flow.HandleLeak.Tests;
 
-// Tests der Teilunit handle-leak: Leck, Schließen, Weitergabe, Prüfung des Öffnens (auch über einen Merker),
-// Korrektur.
+// Tests der Teilunit handle-leak: Leck, Schließen, Weitergabe, Prüfung des Öffnens (auch über einen Merker mit
+// zweitem Versuch und über eine wiederholte Bedingung), Korrektur.
 
 interface
 
@@ -30,6 +30,14 @@ type
     procedure FlagFromOpeningCallIsSilent;
     [Test]
     procedure WrongBranchOfOpeningFlagIsReported;
+    [Test]
+    procedure SecondAttemptOnFailureIsSilent;
+    [Test]
+    procedure UnguardedSecondAssignmentIsReported;
+    [Test]
+    procedure RepeatedConditionIsSilent;
+    [Test]
+    procedure ChangedConditionIsReported;
   end;
 
 implementation
@@ -140,6 +148,45 @@ begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
     FlagRoutine('  Result := OpenProcessToken(0, 8, H);'#10'  if not Result then'#10'  begin'#10 +
     '    CloseHandle(H);'#10'  end;')))));
+end;
+
+procedure TFlowHandleLeakTests.SecondAttemptOnFailureIsSilent;
+begin
+  // Zweiter Versuch nur, wenn der erste misslang: Der Merker sagt weiter, ob H offen ist (JclSecurity).
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  Ok := OpenThreadToken(0, 8, True, H);'#10 +
+    '  if (not Ok) and (GetLastError = 1008) then'#10'    Ok := OpenProcessToken(0, 8, H);'#10'  if Ok then'#10 +
+    '    CloseHandle(H);'#10'  Result := Ok;'));
+end;
+
+procedure TFlowHandleLeakTests.UnguardedSecondAssignmentIsReported;
+begin
+  // Die zweite Zuweisung hängt nicht am Misserfolg: Der Merker sagt nichts mehr über H.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  Ok := OpenThreadToken(0, 8, True, H);'#10'  if GetLastError = 5 then'#10'    Ok := False;'#10 +
+    '  if Ok then'#10'    CloseHandle(H);'#10'  Result := Ok;')))));
+end;
+
+procedure TFlowHandleLeakTests.RepeatedConditionIsSilent;
+begin
+  // Geöffnet und geschlossen unter derselben, dazwischen unveränderten Bedingung (IdGlobalProtocols).
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  if IstNT = 2 then'#10'  begin'#10 +
+    '    if not OpenProcessToken(0, 8, H) then'#10'      Exit;'#10'  end;'#10'  Result := True;'#10 +
+    '  if IstNT  =  2 then'#10'    CloseHandle(H);'));
+  // Geöffnet im else-Zweig, geschlossen im else-Zweig derselben Bedingung.
+  TRuleAssert.Silent(THandleLeakRule.Create, FlagRoutine('  if IstNT then'#10'    Ok := False'#10'  else'#10 +
+    '    H := OpenProcess(0, False, 1);'#10'  Result := True;'#10'  if IstNT then'#10'    Ok := True'#10 +
+    '  else'#10'    CloseHandle(H);'));
+end;
+
+procedure TFlowHandleLeakTests.ChangedConditionIsReported;
+begin
+  // Die Bedingung ändert sich dazwischen bzw. enthält einen Aufruf: Der zweite Zweig kann ein anderer sein.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  if IstNT then'#10'    H := OpenProcess(0, False, 1);'#10'  IstNT := False;'#10 +
+    '  if IstNT then'#10'    CloseHandle(H);'#10'  Result := True;')))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(THandleLeakRule.Create,
+    FlagRoutine('  if IstNT() then'#10'    H := OpenProcess(0, False, 1);'#10'  Result := True;'#10 +
+    '  if IstNT() then'#10'    CloseHandle(H);')))));
 end;
 
 initialization

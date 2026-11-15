@@ -49,8 +49,9 @@ const
     'TTI auf, Vorgabewerte zählen nicht), ein Wert passt nicht zum Typ seines Parameters, oder die Methode hat gar keine Parameter. Geteilt wird wie bei DUnitX: an jedem Zeichen des Trennzeichens (drittes ' +
     'Argument, Vorgabe Komma; keine Anführungszeichen), ein leerer Text ergibt keinen Wert. Geprüfte Typen: Ganzzahlen (dezimal oder hex, $FF, 0xFF), Gleitkomma (Punkt oder Komma als Dezimaltrenner, DUnitX' +
     ' macht aus dem Komma einen Punkt), Boolean (True oder False) und Aufzählungen derselben Datei (über ihre Namen); andere Typen prüft die Regel nicht, ebenso Werte, die kein String-Literal sind (eine Ko' +
-    'nstante, ''a'' + ''b''). Neben TestCase(''Name'', ''Werte''[, ''Trenner'']) kennt sie die neueren Formen TestCase(''Werte''[, ''Trenner''[, Trim]]) und NamedTestCase(''Name'', ''Werte''). Nur in Testunits (uses DUnitX.' +
-    'TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Was gemeint war, ist offen."',
+    'nstante, ''a'' + ''b''). Neben TestCase(''Name'', ''Werte''[, ''Trenner'']) kennt sie die neueren Formen TestCase(''Werte''[, ''Trenner''[, Trim]]) und NamedTestCase(''Name'', ''Werte''). Zwei Argumente ohne Boolean si' +
+    'nd mehrdeutig, wenn das zweite weder Buchstaben noch Ziffern enthält (''],{,}'', ''/''): Ältere DUnitX-Stände kennen nur TestCase(''Name'', ''Werte''), es zählt die Lesart, deren Zahl der Werte zur Methode pa' +
+    'sst. Nur in Testunits (uses DUnitX.TestFramework, TestFramework oder TestInsight.*). Sicherheit hoch. Keine Schnellkorrektur: Was gemeint war, ist offen."',
     '    },',
     '{',
     '      "id": "dunitx-fixture-not-registered",',

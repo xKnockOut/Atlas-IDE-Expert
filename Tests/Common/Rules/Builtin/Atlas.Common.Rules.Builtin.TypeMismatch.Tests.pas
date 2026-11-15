@@ -45,6 +45,8 @@ type
     procedure IncAndPtr;
     [Test]
     procedure ProceduralTypes;
+    [Test]
+    procedure ConditionalParameterModifierIsSilent;
     /// <summary>#1897: Routine an TFunc/TProc mit const-Parameter statt Wertparameter, als Zuweisung und
     /// Argument.</summary>
     [Test]
@@ -75,6 +77,11 @@ type
     /// </summary>
     [Test]
     procedure OverloadsFromSeveralUnitsAreSilent;
+    /// <summary>Ein im Typ des Felds (oder einem umgebenden Typ) verschachtelter Typ verdeckt einen gleichnamigen
+    /// aus dem uses: TKarte.TBytes8 ist ein dynamisches Array, Typen.TBytes8 ein statisches (Fehlalarm in
+    /// PasVulkan.Collections).</summary>
+    [Test]
+    procedure NestedTypeHidesUsedType;
   end;
 
 implementation
@@ -294,6 +301,14 @@ begin
     OnlyMessage(UnitText('type'#10'  TListe = class'#10'    procedure Setzen(AZahl: Integer);'#10'  end;'#10,
     'procedure TListe.Setzen(AZahl: Integer);'#10'begin'#10'end;'#10'procedure Fall(AListe: TListe);'#10 +
     'begin'#10'  AListe.Setzen(''x'');'#10'end;'#10)));
+  // string[N] an var ShortString: mit {$P+} sind das offene Strings (FP mORMot2 AppendShort(LF, line)).
+  AssertSilent(UnitText('', 'procedure Anhaengen(const AQuelle: ShortString; var AZiel: ShortString);'#10 +
+    'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mZeile: string[87];'#10'begin'#10 +
+    '  Anhaengen(''x'', mZeile);'#10'end;'#10));
+  // string[N] an var string bleibt ein Fehler.
+  Assert.AreEqual(1, Integer(Length(Findings(UnitText('', 'procedure Fuellen(var AText: string);'#10 +
+    'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mZeile: string[87];'#10'begin'#10 +
+    '  Fuellen(mZeile);'#10'end;'#10)))));
 end;
 
 procedure TTypeMismatchTests.ArgumentsThatFitAreSilent;
@@ -375,6 +390,9 @@ begin
     OnlyMessage(Body(cVars + '  mAdresse: Pointer;'#10, '  mAdresse := Ptr(mText);'#10)));
   AssertSilent(Body(cVars + '  mAdresse: Pointer;'#10, '  Inc(mZahl, 2);'#10'  Dec(mZahl);'#10 +
     '  mAdresse := Ptr(mZahl);'#10));
+  // Dezimalzahlen über High(Int64) sind UInt64, keine Gleitkommazahlen (Alcinoe: FNV-Startwert, Dec um 10^19).
+  AssertSilent(Body(cVars, '  mGross := Int64(14695981039346656037);'#10 +
+    '  Dec(mGross, 10000000000000000000);'#10));
 end;
 
 procedure TTypeMismatchTests.ProceduralTypes;
@@ -413,6 +431,21 @@ begin
     'Parameter von Frei passen nicht zur Methodenreferenz (Zahl, const/var/out oder Typ, wie E2010).',
     OnlyMessage(UnitText(cKlasse, cRuempfe + 'procedure Fall;'#10'var'#10 +
     '  mReferenz: reference to procedure(AWert: Integer);'#10'begin'#10'  mReferenz := Frei;'#10'end;'#10)));
+end;
+
+procedure TTypeMismatchTests.ConditionalParameterModifierIsSilent;
+const
+  cTypen = 'type'#10'  TAuswahl = record'#10'    A: Integer;'#10'  end;'#10 +
+    '  TAuswahlEreignis = procedure(Sender: TObject; const AWahl: TAuswahl) of object;'#10 +
+    '  TBeobachter = class'#10'  public'#10 +
+    '    procedure Gewaehlt(Sender: TObject; {$IFDEF FPC}constref{$ELSE}const{$ENDIF} AWahl: TAuswahl);'#10 +
+    '  end;'#10;
+begin
+  // Der Kopf der Methode hängt an einer bedingten Direktive; dcc sieht const (PascalCoin: OnSelection).
+  AssertSilent(UnitText(cTypen, 'procedure TBeobachter.Gewaehlt(Sender: TObject; ' +
+    '{$IFDEF FPC}constref{$ELSE}const{$ENDIF} AWahl: TAuswahl);'#10'begin'#10'end;'#10 +
+    'procedure Fall(ABeobachter: TBeobachter);'#10'var'#10'  mEreignis: TAuswahlEreignis;'#10'begin'#10 +
+    '  mEreignis := ABeobachter.Gewaehlt;'#10'end;'#10));
 end;
 
 procedure TTypeMismatchTests.MethodReferenceParameters;
@@ -505,6 +538,28 @@ begin
   // Eine fremde Unit hinter System.SysUtils kann TProc verdecken; ohne System.SysUtils gibt es keinen.
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.SysUtils,'#10'  Fremd', cRoutinen, cAnweisungen)));
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.Classes', cRoutinen, cAnweisungen)));
+end;
+
+procedure TTypeMismatchTests.NestedTypeHidesUsedType;
+const
+  cKarte = 'unit Fall;'#10'interface'#10'uses'#10'  Typen;'#10'type'#10'  TKarte = class'#10'  public'#10 +
+    '    type'#10'      TBytes8 = array of Byte;'#10'      TListe = TBytes8;'#10'      TInnen = class'#10 +
+    '        FInnen: TBytes8;'#10'      end;'#10'  private'#10'    FDaten: TBytes8;'#10'    FListe: TListe;'#10 +
+    '    FFremd: TAndere;'#10'  public'#10'    procedure Leeren;'#10'    procedure Setze(const A: TBytes8);'#10'  end;'#10 +
+    '  TAndere = class'#10 +
+    '    FDaten: TBytes8;'#10'  end;'#10'implementation'#10 +
+    'procedure TKarte.Leeren;'#10'var'#10'  mInnen: TInnen;'#10'begin'#10'  FDaten := nil;'#10 +
+    '  FListe := nil;'#10'  mInnen := nil;'#10'  mInnen.FInnen := nil;'#10'  FFremd.FDaten := nil;'#10'  Setze(FDaten);'#10'end;'#10 +
+    'procedure TKarte.Setze(const A: TBytes8);'#10'begin'#10'end;'#10'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Typen;'#10'interface'#10'type'#10 +
+    '  TBytes8 = array[0..65535] of Byte;'#10'implementation'#10'end.', 'Typen.pas', nil));
+  // Nur das Feld von TAndere hat das statische Array aus Typen.
+  Assert.AreEqual('33: Inkompatible Typen: ''TBytes8'' und ''Pointer'' (wie E2010).',
+    Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, cKarte, mIndex, '', 'Fall.pas')));
 end;
 
 procedure TTypeMismatchTests.ProceduralCalleeArguments;

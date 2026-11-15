@@ -300,6 +300,18 @@ begin
     'procedure Ausgeben(const AText: string); overload;'#10'begin'#10'end;'#10 +
     'procedure Ausgeben(const AText: AnsiString); overload;'#10'begin'#10'end;'#10 +
     'procedure Pruefen(A: AnsiString);'#10'begin'#10'  Ausgeben(A);'#10'end;'#10'end.')));
+  // Ergebnis einer Überladung: die mit genau passendem Parametertyp, nicht die erste (Alcinoe ALCopyStr).
+  Assert.AreEqual('', Messages(Findings('unit Texte;'#10'interface'#10'implementation'#10 +
+    'function Kopie(const S: AnsiString): AnsiString; overload;'#10'begin'#10'end;'#10 +
+    'function Kopie(const S: string): string; overload;'#10'begin'#10'end;'#10 +
+    'procedure Pruefen(S: string);'#10'var'#10'  T: string;'#10'begin'#10'  T := Kopie(S);'#10 +
+    '  var W := Kopie(S);'#10'  T := W;'#10'end;'#10'end.')));
+  // Argumenttyp unbekannt: beide Überladungen passen gleich gut, der Ergebnistyp ist offen.
+  Assert.AreEqual('', Messages(Findings('unit Texte;'#10'interface'#10'implementation'#10 +
+    'function Kopie(const S: AnsiString): AnsiString; overload;'#10'begin'#10'end;'#10 +
+    'function Kopie(const S: string): string; overload;'#10'begin'#10'end;'#10 +
+    'procedure Pruefen;'#10'var'#10'  T: string;'#10'begin'#10'  T := Kopie(Unbekannt.Text);'#10 +
+    '  var W := Kopie(Unbekannt.Text);'#10'  T := W;'#10'end;'#10'end.')));
 end;
 
 procedure TStringConversionTests.SystemStringTypes;

@@ -1837,7 +1837,9 @@ begin
     begin
       mKey := LowerCase(ShortName(mRoutine.Name));
       mBlock := mRoutine.FindChild(TSyntaxKind.Block);
-      if (mBlock <> nil) and not FBlocked.ContainsKey(mKey) and (Leaves(mBlock, mMixed) <> '') then
+      // Exit irgendwo im Rumpf kehrt normal zurück, auch wenn er mit raise endet (repeat … Exit … until; raise).
+      if (mBlock <> nil) and not FBlocked.ContainsKey(mKey) and (Leaves(mBlock, mMixed) <> '') and
+        not HasExitCall(mBlock) then
       begin
         mFree := False;
         FRaising.TryGetValue(mKey, mFree);

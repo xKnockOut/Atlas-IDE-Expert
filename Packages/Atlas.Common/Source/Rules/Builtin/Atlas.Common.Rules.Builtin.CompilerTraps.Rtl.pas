@@ -161,8 +161,31 @@ begin
   Result := (mBefore >= 0) and ATokens[mBefore].IsSymbol('.');
 end;
 
-/// <summary>Indizes der ersten Tokens je Name aus ANames, ohne Punkt davor und außerhalb der uses-Listen.</summary>
-function FirstMentions(const ATokens: TArray<TPascalToken>; const ANames: array of string): TArray<Integer>;
+/// <summary>Liegt A vor B?</summary>
+function PositionBefore(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or (A.Line = B.Line) and (A.Character < B.Character);
+end;
+
+/// <summary>Steht APos in einem der inaktiven Zweige AInactive?</summary>
+function InInactive(const APos: TTextPosition; const AInactive: TArray<TTextRange>): Boolean;
+var
+  mRange: TTextRange;
+begin
+  Result := False;
+  for mRange in AInactive do
+  begin
+    if not PositionBefore(APos, mRange.StartPos) and PositionBefore(APos, mRange.EndPos) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Indizes der ersten Tokens je Name aus ANames, ohne Punkt davor, außerhalb der uses-Listen und der
+/// inaktiven Zweige AInactive (GetTickCount64 unter {$IFDEF FPC} sieht dcc nicht).</summary>
+function FirstMentions(const ATokens: TArray<TPascalToken>; const ANames: array of string;
+  const AInactive: TArray<TTextRange>): TArray<Integer>;
 var
   mClauses: TArray<TUsesClauseInfo>;
   mSeen: TArray<string>;
@@ -175,7 +198,8 @@ begin
   begin
     if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and MatchText(ATokens[mIndex].Text, ANames) and
       not MatchText(ATokens[mIndex].Text, mSeen) and not AfterDot(ATokens, mIndex) and
-      not TUsesClauses.InClause(ATokens, mClauses, ATokens[mIndex].Offset) then
+      not TUsesClauses.InClause(ATokens, mClauses, ATokens[mIndex].Offset) and
+      not InInactive(ATokens[mIndex].StartPos, AInactive) then
     begin
       mSeen := mSeen + [ATokens[mIndex].Text];
       Result := Result + [mIndex];
@@ -260,7 +284,7 @@ begin
   begin
     Exit;
   end;
-  mMentions := FirstMentions(AContext.Tree.Tokens, MissingNames);
+  mMentions := FirstMentions(AContext.Tree.Tokens, MissingNames, AContext.InactiveRanges);
   if mMentions = nil then
   begin
     Exit;
@@ -312,7 +336,7 @@ begin
   begin
     Exit;
   end;
-  mMentions := FirstMentions(AContext.Tree.Tokens, cWindowsOnlyRoutines);
+  mMentions := FirstMentions(AContext.Tree.Tokens, cWindowsOnlyRoutines, AContext.InactiveRanges);
   if mMentions = nil then
   begin
     Exit;

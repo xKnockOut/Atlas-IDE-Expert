@@ -153,12 +153,15 @@ procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.Classes,
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Pascal.TokenCursor,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
@@ -347,6 +350,151 @@ begin
   end;
 end;
 
+const
+  /// <summary>Tiefe verschachtelter Include-Dateien, die IncludedBodies verfolgt.</summary>
+  cMaxIncludeDepth = 8;
+
+/// <summary>Dateiname aus {$I datei} bzw. {$INCLUDE 'datei'}; '' bei anderen Direktiven ({$I+}, {$IF …}).</summary>
+function IncludeName(const ADirective: string): string;
+var
+  mText: string;
+begin
+  Result := '';
+  mText := UpperCase(ADirective);
+  if not StartsStr('{$INCLUDE ', mText) and not StartsStr('{$I ', mText) then
+  begin
+    Exit;
+  end;
+  Result := Trim(Copy(ADirective, Pos(' ', ADirective) + 1, MaxInt));
+  if EndsStr('}', Result) then
+  begin
+    Result := Trim(Copy(Result, 1, Length(Result) - 1));
+  end;
+  if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
+    Result := Copy(Result, 2, Length(Result) - 2);
+  end;
+end;
+
+/// <summary>Letzte zwei Teile eines Methodennamens ohne Typparameter, klein: 'TAussen.TInnen&lt;T&gt;' und 'Lies'
+/// ergeben 'tinnen.lies'.</summary>
+function BodyKey(const ATypeName, AMethod: string): string;
+var
+  mType: string;
+begin
+  mType := ATypeName;
+  if Pos('<', mType) > 0 then
+  begin
+    mType := Copy(mType, 1, Pos('<', mType) - 1);
+  end;
+  if Pos('.', mType) > 0 then
+  begin
+    mType := Copy(mType, LastDelimiter('.', mType) + 1, MaxInt);
+  end;
+  Result := LowerCase(mType + '.' + AMethod);
+end;
+
+/// <summary>Hängt die Rümpfe "Typ.Methode" der Tokens ATokens an ABodies an; Include-Dateien darin
+/// (bis cMaxIncludeDepth Ebenen) liest CollectInclude.</summary>
+procedure CollectBodies(const ATokens: TArray<TPascalToken>; const AContext: TRuleContext; ADepth: Integer;
+  ABodies: TStrings); forward;
+
+/// <summary>Liest die Include-Datei AName neben der Unit und sammelt ihre Rümpfe; lässt sie sich nicht lesen,
+/// bleibt es bei der mittleren Konfidenz (Confidence).</summary>
+procedure CollectInclude(const AName: string; const AContext: TRuleContext; ADepth: Integer; ABodies: TStrings);
+var
+  mBytes: TBytes;
+  mFormat: TFileFormat;
+begin
+  if (AName <> '') and (ADepth < cMaxIncludeDepth) and Assigned(AContext.ReadFile) and
+    AContext.ReadFile(AName, mBytes) then
+  begin
+    CollectBodies(TPascalLexer.Tokenize(TFileEncoding.Decode(mBytes, mFormat)), AContext, ADepth + 1, ABodies);
+  end;
+end;
+
+procedure CollectBodies(const ATokens: TArray<TPascalToken>; const AContext: TRuleContext; ADepth: Integer;
+  ABodies: TStrings);
+var
+  mIndex, mDepth: Integer;
+  mParts: TArray<string>;
+begin
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
+    begin
+      CollectInclude(IncludeName(ATokens[mIndex].Text), AContext, ADepth, ABodies);
+    end;
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Keyword) and
+      MatchText(ATokens[mIndex].Text, ['procedure', 'function', 'constructor', 'destructor', 'operator']) then
+    begin
+      mParts := nil;
+      mDepth := 0;
+      Inc(mIndex);
+      while mIndex <= High(ATokens) do
+      begin
+        if ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+        begin
+          Inc(mIndex);
+          Continue;
+        end;
+        if ATokens[mIndex].Text = '<' then
+        begin
+          Inc(mDepth);
+        end
+        else if ATokens[mIndex].Text = '>' then
+        begin
+          Dec(mDepth);
+        end
+        else if (mDepth = 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) then
+        begin
+          mParts := mParts + [ATokens[mIndex].Text];
+        end
+        else if (mDepth = 0) and (ATokens[mIndex].Text <> '.') then
+        begin
+          Break;
+        end;
+        Inc(mIndex);
+      end;
+      if Length(mParts) >= 2 then
+      begin
+        ABodies.Add(BodyKey(mParts[High(mParts) - 1], mParts[High(mParts)]));
+      end;
+      Continue;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Methodenrümpfe in Include-Dateien des implementation-Teils als 'typ.methode' (klein, mORMot legt
+/// sie in mormot.core.rtti.delphi.inc).</summary>
+function IncludedBodies(const AContext: TRuleContext): TStringList;
+var
+  mIndex: Integer;
+  mTokens: TArray<TPascalToken>;
+  mInImplementation: Boolean;
+begin
+  Result := TStringList.Create;
+  Result.Sorted := True;
+  Result.Duplicates := dupIgnore;
+  Result.CaseSensitive := False;
+  mTokens := AContext.Tree.Tokens;
+  mInImplementation := False;
+  // Rümpfe der Datei selbst ordnet TClassCompletion zu (auch Überladungen); hier zählen nur die Include-Dateien.
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Keyword) and SameText(mTokens[mIndex].Text, 'implementation') then
+    begin
+      mInImplementation := True;
+    end
+    else if mInImplementation and (mTokens[mIndex].Kind = TPascalTokenKind.Directive) then
+    begin
+      CollectInclude(IncludeName(mTokens[mIndex].Text), AContext, 0, Result);
+    end;
+  end;
+end;
+
 { TDeclaredNotImplementedRule }
 
 function TDeclaredNotImplementedRule.Descriptor: TRuleDescriptor;
@@ -363,6 +511,7 @@ var
   mAction: TCodeAction;
   mFixes: TArray<TRuleFix>;
   mLevel: TRuleConfidence;
+  mIncluded: TStringList;
 begin
   if AContext.Tree = nil then
   begin
@@ -371,20 +520,26 @@ begin
   mLines := ConditionalLines(AContext);
   mLevel := Confidence(AContext);
   mPairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
-  for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
-  begin
-    if not mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) then
+  mIncluded := IncludedBodies(AContext);
+  try
+    for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
     begin
-      Continue;
+      if not mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) or
+        (mIncluded.IndexOf(BodyKey(mMethod.TypeName, mMethod.Symbol.Name)) >= 0) then
+      begin
+        Continue;
+      end;
+      mFixes := nil;
+      if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, mMethod.Symbol.SelectionRange.StartPos,
+        AContext.ClassCompletion, AContext.Formatting, mAction) then
+      begin
+        mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
+      end;
+      AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TDeclarationsText.NotImplemented].Fmt(
+        [mMethod.TypeName, mMethod.Symbol.Name]), mLevel, mFixes);
     end;
-    mFixes := nil;
-    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, mMethod.Symbol.SelectionRange.StartPos,
-      AContext.ClassCompletion, AContext.Formatting, mAction) then
-    begin
-      mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
-    end;
-    AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TDeclarationsText.NotImplemented].Fmt(
-      [mMethod.TypeName, mMethod.Symbol.Name]), mLevel, mFixes);
+  finally
+    mIncluded.Free;
   end;
 end;
 

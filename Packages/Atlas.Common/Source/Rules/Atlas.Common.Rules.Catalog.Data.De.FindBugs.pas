@@ -85,7 +85,8 @@ const
     '      "id": "declared-not-implemented",',
     '      "name": "Deklariert, aber nicht implementiert",',
     '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). E' +
-    'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch."',
+    'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch. Rümpfe in Include-Dateien des implementation-Teils ({$I}, {$INCLUDE}, auch verschachtelt) zählen mit; lässt sich eine' +
+    ' nicht lesen, sinkt die Konfidenz auf mittel."',
     '    },',
     '{',
     '      "id": "implemented-not-declared",',
@@ -257,11 +258,11 @@ const
     '{',
     '      "id": "field-not-freed",',
     '      "name": "Feld erzeugt, aber nie freigegeben",',
-    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, De' +
-    'stroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus der Option ignoreTypes; TObjectList- und TObjectD' +
-    'ictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override ' +
-    'und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle). Bis #918 hieß die Regel owned-field-not-freed; ' +
-    'Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.",',
+    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil ode' +
+    'r eine Routine auf FreeAndNil wie ALFreeAndNil, Destroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus' +
+    ' der Option ignoreTypes; TObjectList- und TObjectDictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse frei' +
+    'geben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle' +
+    '). Bis #918 hieß die Regel owned-field-not-freed; Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.",',
     '      "options": [',
     '        {',
     '          "name": "ignoreTypes",',
@@ -287,8 +288,8 @@ const
     '      "id": "empty-statement",',
     '      "name": "Leere Anweisung nach then, do oder else",',
     '      "description": "Ein Semikolon direkt nach then, do oder else beendet die Anweisung: Die folgende Zeile läuft dann immer bzw. die Schleife dreht leer. Ein leerer Block begin … end nach then, do o' +
-    'der else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented). Ein Semikolon direkt vor end, until, except oder finally ändert nichts und bleibt unbeanstandet.' +
-    ' Schnellkorrektur: Semikolon entfernen.",',
+    'der else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented) oder Code anderer Plattformen in {$IFDEF}/{$ELSE}. Ein Semikolon direkt vor end, until, except od' +
+    'er finally ändert nichts und bleibt unbeanstandet. Schnellkorrektur: Semikolon entfernen.",',
     '      "options": [',
     '        {',
     '          "name": "allowCommented",',
@@ -380,8 +381,9 @@ const
     '      "name": "inherited ruft eine andere Methode",',
     '      "description": "In der überschriebenen Methode Speichern steht inherited Laden(…) statt inherited Speichern(…), meist nach Kopieren einer Methode. Es zählen nur Aufrufe (inherited Name als Anwei' +
     'sung oder mit Klammern); inherited Caption ohne Klammern kann eine Property sein. Still in Konstruktoren (inherited Create(nil), CreateNew), in Methoden ohne override und wenn die Methode auch sich se' +
-    'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Paare aus der Option allowed bleiben still. Konfidenz hoch. Schnellkorrektur: den Namen durch ' +
-    'den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",',
+    'lbst im Vorfahren aufruft (inherited; bzw. inherited Speichern), denn dann ist der andere Aufruf gewollt. Still auch, wenn die Klasse die gerufene Methode selbst überschreibt, ohne dort den Vorfahren ' +
+    'aufzurufen: Dann umgeht inherited sie bewusst (sortierte Menge: das eigene Insert ist gesperrt, Add fügt über inherited Insert an der sortierten Stelle ein). Paare aus der Option allowed bleiben still' +
+    '. Konfidenz hoch. Schnellkorrektur: den Namen durch den eigenen ersetzen, wenn die Zahl der Argumente zu ihren Parametern passt.",',
     '      "options": [',
     '        {',
     '          "name": "allowed",',
@@ -543,10 +545,10 @@ const
     '      "name": "Ereignis ohne Assigned-Prüfung aufgerufen",',
     '      "description": "FOnChange(Self) oder OnChange(Self) wird in einer Methode der Klasse aufgerufen, ohne dass Assigned(FOnChange) oder FOnChange <> nil den Aufruf schützt: Ohne Handler folgt eine Z' +
     'ugriffsverletzung. Ereignisse sind Felder und Properties der Klasse mit Methodenzeiger- oder Referenztyp (procedure … of object, reference to …, TNotifyEvent, TProc/TFunc, Typen auf Event, prozedurale' +
-    ' Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf oder \"if not Assigned(F) then Ex' +
-    'it/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert belegt (eingereichte Ab' +
-    'hängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als eigene Anweisung ' +
-    'in einem Block steht."',
+    ' Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf (auch geklammert) oder \"if not A' +
+    'ssigned(F) then Exit/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert beleg' +
+    't (eingereichte Abhängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als' +
+    ' eigene Anweisung in einem Block steht."',
     '    },',
     '{',
     '      "id": "owned-item-freed",',
@@ -743,8 +745,10 @@ const
     'ocess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ' +
     'ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an ' +
     'eine unbekannte Routine, Speichern in einem Array ([H] in einem Ausdruck) und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang' +
-    ' (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorr' +
-    'ektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",',
+    ' (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Das gilt auch, wenn ein Merker das Ergebnis trägt, samt zweitem Vers' +
+    'uch nur bei Misserfolg (Ok := OpenThreadToken(…); if not Ok then Ok := OpenProcessToken(…); if Ok then CloseHandle(…)), und wenn sich eine frühere, seither unveränderte Bedingung wiederholt (if IsNT t' +
+    'hen öffnen; … if IsNT then schließen). Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally' +
+    ' mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.",',
     '      "options": [',
     '        {',
     '          "name": "pairs",',

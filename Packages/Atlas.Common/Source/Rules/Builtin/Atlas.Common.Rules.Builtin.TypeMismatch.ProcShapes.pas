@@ -369,6 +369,13 @@ end;
 /// <summary>Kopf des Kandidaten, wenn er nur als Routine (nicht als Aufruf) zugewiesen sein kann.</summary>
 class function TProcShapes.AssignableShape(const ACandidate: TResolvedSymbol; out AShape: TProcShape): Boolean;
 begin
+  // Wie AliasBody: Ein Kopf mit Kommentar oder bedingter Direktive ({$IFDEF FPC}constref{$ELSE}const{$ENDIF}) ist
+  // als Text nicht lesbar.
+  AShape := Default(TProcShape);
+  if (Pos('{', ACandidate.Signature) > 0) or (Pos('(*', ACandidate.Signature) > 0) then
+  begin
+    Exit(False);
+  end;
   Result := TProcShapes.ParseShape(ACandidate.Signature, True, AShape);
   // Eine Funktion ohne Pflichtparameter kann hier auch aufgerufen werden.
   if Result and AShape.IsFunction then

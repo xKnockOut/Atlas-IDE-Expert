@@ -272,9 +272,9 @@ const
     '      "id": "default-parameter-invalid",',
     '      "name": "Unzulässiger Standardwert eines Parameters",',
     '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' +
-    'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' +
-    'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' +
-    'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."',
+    'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Mengen jeder Größe dürfen einen Standardwert haben; Delphi 13 mel' +
+    'det dort kein E2146. Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaratio' +
+    'n bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."',
     '    },',
     '{',
     '      "id": "exit-array-literal",',

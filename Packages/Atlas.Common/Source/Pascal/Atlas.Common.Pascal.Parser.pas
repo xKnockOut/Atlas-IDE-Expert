@@ -39,7 +39,10 @@
 //
 // Mit Dateiname und Include-Resolver in den Optionen (#860) wirken $DEFINE aus
 // {$I datei.inc}; der Präprozessor-Lauf geht an den Aufrufer zurück, damit
-// Abblenden und Hinweise ihn nicht wiederholen.
+// Abblenden und Hinweise ihn nicht wiederholen. Den Inhalt von Include-Dateien
+// liest der Parser nicht mit (außer {$I} an der Stelle eines Werts): Bringt
+// ein aktives {$I} Code (unit X; {$I win.inc} end.), fallen die Syntaxfehler ab
+// dort weg, weil dem Baum ein Teil der Unit fehlt.
 
 interface
 
@@ -101,6 +104,7 @@ uses
   System.StrUtils,
   System.Generics.Defaults,
   System.Generics.Collections,
+  Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser.Cursor,
@@ -135,6 +139,9 @@ type
     /// <summary>Die Anweisung gehört direkt zu einem case-Zweig bzw. einem on-Handler: Dort beginnt
     /// "; else" den else-Teil von case bzw. except, kein Fehler wie E2153.</summary>
     FInCaseItem: Boolean;
+    /// <summary>Diagnosen ab FCutPos verwerfen (CutDiagnosticsAt).</summary>
+    FCutDiagnostics: Boolean;
+    FCutPos: TTextPosition;
     function ParseFile: TSyntaxNode;
     procedure ParseUnit(ANode: TSyntaxNode);
     procedure ParseProgram(ANode: TSyntaxNode);
@@ -176,7 +183,46 @@ type
     function ParseAnonymousMethod: TSyntaxNode; override;
   public
     function Run: TSyntaxTree;
+    /// <summary>Verwirft nach dem Lauf alle Diagnosen ab APos: Dort bindet ein {$I} Code ein, den der Parser
+    /// nicht sieht.</summary>
+    procedure CutDiagnosticsAt(const APos: TTextPosition);
   end;
+
+/// <summary>Bindet ein aktives {$I datei.inc} Code ein, nicht an der Stelle eines Werts (unit X; {$I win.inc}
+/// end.)? Der Parser liest Include-Dateien nicht mit: Fehlt ihm deren Teil der Unit, folgen ab dort
+/// Syntaxfehler, die der Compiler nicht meldet. APos ist das Ende des letzten Tokens der Hauptdatei davor, ohne
+/// eines der Dateianfang.</summary>
+function CodeIncludeAt(const AProcessed: TPreprocessorResult; out APos: TTextPosition): Boolean;
+var
+  mIndex: Integer;
+  mPrevious: TPascalToken;
+  mHasPrevious: Boolean;
+begin
+  APos := Default(TTextPosition);
+  mPrevious := Default(TPascalToken);
+  mHasPrevious := False;
+  for mIndex := 0 to High(AProcessed.Tokens) do
+  begin
+    if AProcessed.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Continue;
+    end;
+    if AProcessed.FileIndexes[mIndex] = 0 then
+    begin
+      mPrevious := AProcessed.Tokens[mIndex];
+      mHasPrevious := True;
+    end
+    else if not (mHasPrevious and IncludeAsValue(mPrevious)) then
+    begin
+      if mHasPrevious then
+      begin
+        APos := mPrevious.EndPos;
+      end;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
 
 { TParser }
 
@@ -1077,10 +1123,27 @@ end;
 function TParser.Run: TSyntaxTree;
 var
   mRoot: TSyntaxNode;
+  mIndex: Integer;
 begin
   mRoot := ParseFile;
   CheckTokensAndTree(mRoot);
+  if FCutDiagnostics then
+  begin
+    for mIndex := FDiagnostics.Count - 1 downto 0 do
+    begin
+      if not Before(FDiagnostics[mIndex].StartPos, FCutPos) then
+      begin
+        FDiagnostics.Delete(mIndex);
+      end;
+    end;
+  end;
   Result := TSyntaxTree.Create(mRoot, FAllTokens, FDiagnostics.ToArray);
+end;
+
+procedure TParser.CutDiagnosticsAt(const APos: TTextPosition);
+begin
+  FCutDiagnostics := True;
+  FCutPos := APos;
 end;
 
 { TPascalParser }
@@ -1124,6 +1187,7 @@ class function TPascalParser.ParseActive(const AText: string; const AOptions: TP
   const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree;
 var
   mParser: TParser;
+  mCut: TTextPosition;
 begin
   AProcessed := Default(TPreprocessorResult);
   // Schnell: ohne bedingte Direktive und ohne $I gibt es nichts zu überspringen und zu melden.
@@ -1137,6 +1201,10 @@ begin
     AProcessed := TPascalPreprocessor.Process(AText, AOptions);
     mParser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
     try
+      if CodeIncludeAt(AProcessed, mCut) then
+      begin
+        mParser.CutDiagnosticsAt(mCut);
+      end;
       Result := mParser.Run;
     finally
       mParser.Free;
@@ -1157,19 +1225,26 @@ var
   mSkip: TArray<TTextRange>;
   mParser: TParser;
   mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mCut: TTextPosition;
 begin
   ADiagnostics := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
   begin
     Exit(False);
   end;
-  mSkip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText, AOptions));
+  mProcessed := TPascalPreprocessor.Process(AText, AOptions);
+  mSkip := TPascalPreprocessor.MainInactive(mProcessed);
   if mSkip = nil then
   begin
     Exit(False);
   end;
   mParser := TParser.Create(AText, nil, mSkip);
   try
+    if CodeIncludeAt(mProcessed, mCut) then
+    begin
+      mParser.CutDiagnosticsAt(mCut);
+    end;
     mTree := mParser.Run;
     try
       ADiagnostics := mTree.Diagnostics;

@@ -25,6 +25,10 @@ type
     procedure StatementWithoutParentheses;
     [Test]
     procedure NestedRoutine;
+    /// <summary>Eine freie Routine im implementation-Teil ist erst ab ihrer Deklaration sichtbar: Aufrufe davor
+    /// meinen die gleichnamige aus uses bzw. System (DelphiAST: Delete mit TArray weiter unten).</summary>
+    [Test]
+    procedure RoutineDeclaredAfterCall;
     [Test]
     procedure RoutineFromIndex;
     [Test]
@@ -33,6 +37,11 @@ type
     /// eine neue Methode ohne beides schon.</summary>
     [Test]
     procedure AncestorOverloads;
+    /// <summary>Beide Überladungen des Vorfahren im Nachfahren überschrieben, ohne overload (ACBr TACBrBoletoFCFR:
+    /// procedure Imprimir; override; neben procedure Imprimir(AStream: TStream); override;): Der Kopf ohne Liste ist
+    /// eine eigene Deklaration, kein Rumpf; still.</summary>
+    [Test]
+    procedure OverriddenOverloadsWithoutList;
     /// <summary>#1326: Ein Vorfahr außerhalb des Index kann den Namen verdecken (Read im with eines
     /// TMemoryStream-Nachfahren, Error in einem TStrings-Nachfahren); Gegenprobe mit vollständiger Kette.</summary>
     [Test]
@@ -225,6 +234,26 @@ begin
     'begin'#10'  Teilen(7);'#10'  Teilen(7, 1);'#10'end;'#10'end.');
 end;
 
+procedure TCallRulesTests.RoutineDeclaredAfterCall;
+const
+  cLater = 'procedure Teilen(var Werte: TArray<string>; Index: Integer);'#10'begin'#10'end;'#10;
+begin
+  Silent('unit Spaeter;'#10'interface'#10'implementation'#10'procedure Lesen(var S: string);'#10'begin'#10 +
+    '  Teilen(S, 1, 2);'#10'end;'#10 + cLater + 'end.');
+  // Dahinter gilt sie; ebenso überall, wenn sie im interface-Teil steht oder vorwärts deklariert ist.
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'implementation'#10 + cLater + 'procedure Lesen(var S: TArray<string>);'#10 +
+    'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10'end.'));
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'procedure Teilen(var Werte: TArray<string>; Index: Integer);'#10 +
+    'implementation'#10'procedure Lesen(var S: TArray<string>);'#10'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10 +
+    cLater + 'end.'));
+  Assert.AreEqual('Teilen erwartet 2 Argumente, übergeben sind 3 (wie E2034).', OnlyMessage(
+    'unit Spaeter;'#10'interface'#10'implementation'#10 +
+    'procedure Teilen(var Werte: TArray<string>; Index: Integer); forward;'#10 +
+    'procedure Lesen(var S: TArray<string>);'#10'begin'#10'  Teilen(S, 1, 2);'#10'end;'#10 + cLater + 'end.'));
+end;
+
 procedure TCallRulesTests.RoutineFromIndex;
 var
   mIndex: ISymbolIndex;
@@ -267,6 +296,16 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
   Assert.AreEqual('AttachProcess erwartet 3 Argumente, übergeben sind 4 (wie E2034).', mFound[0].Message);
+end;
+
+procedure TCallRulesTests.OverriddenOverloadsWithoutList;
+begin
+  Silent('unit Druck;'#10'interface'#10'type'#10'  TBasis = class'#10'    procedure Drucken; overload; virtual;'#10 +
+    '    procedure Drucken(A: Integer); overload; virtual;'#10'  end;'#10'  TKind = class(TBasis)'#10 +
+    '    procedure Drucken; override;'#10'    procedure Drucken(A: Integer); override;'#10'  end;'#10 +
+    'implementation'#10'procedure TBasis.Drucken;'#10'begin'#10'end;'#10'procedure TBasis.Drucken(A: Integer);'#10 +
+    'begin'#10'end;'#10'procedure TKind.Drucken;'#10'begin'#10'  Drucken(1);'#10'end;'#10 +
+    'procedure TKind.Drucken(A: Integer);'#10'begin'#10'  Drucken;'#10'end;'#10'end.');
 end;
 
 procedure TCallRulesTests.AncestorOverloads;

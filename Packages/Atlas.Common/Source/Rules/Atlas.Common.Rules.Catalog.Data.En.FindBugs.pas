@@ -148,7 +148,8 @@ const
     '      "severity": "error",',
     '      "group": "find-bugs",',
     '      "description": "A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name wi' +
-    'th a different header is reported by signature-mismatch instead.",',
+    'th a different header is reported by signature-mismatch instead. Bodies in include files of the implementation section ({$I}, {$INCLUDE}, also nested) count as well; if one cannot be read, the confide' +
+    'nce drops to medium.",',
     '      "bad": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nend.",',
     '      "good": "type\n  TFoo = class\n    procedure Run;\n  end;\n\nimplementation\n\nprocedure TFoo.Run;\nbegin\nend;\n\nend.",',
     '      "safeFix": false',
@@ -479,10 +480,11 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "find-bugs",',
-    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf): a memory l' +
-    'eak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObjectList and TObjectDictionary fields are normal fields. Me' +
-    'dium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inheri' +
-    'ted in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; settings and suppressions with that id still apply.",',
+    '      "description": "An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil or a routine ending in FreeAndNil ' +
+    'such as ALFreeAndNil, Destroy or DisposeOf): a memory leak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObject' +
+    'List and TObjectDictionary fields are normal fields. Medium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with over' +
+    'ride and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; setting' +
+    's and suppressions with that id still apply.",',
     '      "bad": "constructor TImport.Create;\nbegin\n  FZeilen := TStringList.Create;\n  FFehler := TStringList.Create;\nend;\n\ndestructor TImport.Destroy;\nbegin\n  FZeilen.Free;\n  inherited;\nend;",',
     '      "good": "destructor TImport.Destroy;\nbegin\n  FFehler.Free;\n  FZeilen.Free;\n  inherited;\nend;",',
     '      "options": [',
@@ -528,7 +530,8 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "A semicolon right after then, do or else ends the statement: the following line always runs, or the loop spins empty. An empty begin … end after then, do or else is reported too,' +
-    ' unless it contains an explanatory comment (option allowCommented). A semicolon right before end, until, except or finally changes nothing and is not reported. Quick fix: remove the semicolon.",',
+    ' unless it contains an explanatory comment (option allowCommented) or code for other platforms in {$IFDEF}/{$ELSE}. A semicolon right before end, until, except or finally changes nothing and is not re' +
+    'ported. Quick fix: remove the semicolon.",',
     '      "bad": "if Liste.Count = 0 then;\n  raise EKeineDaten.Create(''Keine Daten'');",',
     '      "good": "if Liste.Count = 0 then\n  raise EKeineDaten.Create(''Keine Daten'');",',
     '      "options": [',
@@ -698,8 +701,9 @@ const
     '      "group": "find-bugs",',
     '      "description": "In the overridden method Speichern there is inherited Laden(…) instead of inherited Speichern(…), usually after copying a method. Only calls count (inherited Name as a statement ' +
     'or with parentheses); inherited Caption without parentheses may be a property. Silent in constructors (inherited Create(nil), CreateNew), in methods without override and when the method also calls its' +
-    'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Pairs from the option allowed stay silent. High confidence. Quick fix: replace the name with the method' +
-    '''s own, when the number of arguments matches its parameters.",',
+    'elf in the ancestor (inherited; or inherited Speichern), which makes the other call intentional. Also silent when the class overrides the called method itself without calling the ancestor there: inher' +
+    'ited then bypasses it on purpose (sorted set: its own Insert is blocked, Add inserts through inherited Insert at the sorted position). Pairs from the option allowed stay silent. High confidence. Quick' +
+    ' fix: replace the name with the method''s own, when the number of arguments matches its parameters.",',
     '      "bad": "procedure TKundenForm.Speichern;\nbegin\n  inherited Laden;\n  Protokollieren;\nend;",',
     '      "good": "procedure TKundenForm.Speichern;\nbegin\n  inherited Speichern;\n  Protokollieren;\nend;",',
     '      "options": [',
@@ -972,10 +976,10 @@ const
     '      "group": "find-bugs",',
     '      "description": "FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation foll' +
     'ows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural type' +
-    's of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call, or \"if not Assigned(F) then Exit/' +
-    'raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadTex' +
-    't := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a statement of its own in a ' +
-    'block.",',
+    's of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, \"Assigned(F) and\" before the call (also in parentheses), or \"if not ' +
+    'Assigned(F) then Exit/raise\" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected depende' +
+    'ncies such as FReadText := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in \"if Assigned(F) then\" when it is a stat' +
+    'ement of its own in a block.",',
     '      "bad": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  FOnChange(Self);\nend;",',
     '      "good": "procedure TZaehler.Erhoehen;\nbegin\n  Inc(FWert);\n  if Assigned(FOnChange) then\n    FOnChange(Self);\nend;",',
     '      "safeFix": false',
@@ -1306,8 +1310,9 @@ const
     'hProcess, hThread) and CreateToolhelp32Snapshot with CloseHandle, FindFirstFile with FindClose, RegOpenKeyEx/RegCreateKeyEx with RegCloseKey, LoadLibrary with FreeLibrary, GetDC with ReleaseDC, Create' +
     'Pen/CreateBrush/CreateFont/CreateBitmap with DeleteObject, CreateCompatibleDC with DeleteDC and others. Returning the handle, storing it in a field or global, passing it to an unknown routine or captu' +
     'ring it in an anonymous method counts as handing it on. Branches in which an if check says the open failed (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS) and exception paths (se' +
-    'e pair-without-finally) do not count. The option pairs adds your own pairs. Medium confidence. Quick fix when the handle is never closed: wrap the statements after the open in try … finally with the c' +
-    'lose call, or append the close call when the open is the last statement.",',
+    'e pair-without-finally) do not count. The same holds when a flag carries the result, including a second attempt only on failure (Ok := OpenThreadToken(…); if not Ok then Ok := OpenProcessToken(…); if ' +
+    'Ok then CloseHandle(…)), and when an earlier condition that has not changed since is repeated (if IsNT then open; … if IsNT then close). The option pairs adds your own pairs. Medium confidence. Quick ' +
+    'fix when the handle is never closed: wrap the statements after the open in try … finally with the close call, or append the close call when the open is the last statement.",',
     '      "bad": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\nReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil);",',
     '      "good": "H := CreateFile(PChar(Datei), GENERIC_READ, 0, nil, OPEN_EXISTING, 0, 0);\nif H = INVALID_HANDLE_VALUE then\n  RaiseLastOSError;\ntry\n  ReadFile(H, Puffer, SizeOf(Puffer), Gelesen, nil' +
     ');\nfinally\n  CloseHandle(H);\nend;",',

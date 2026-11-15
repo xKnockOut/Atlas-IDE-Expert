@@ -14,4 +14,7 @@ Bei einem neuen `FPC_COMMIT` diese drei Dateien aus demselben Stand neu holen.
 
 Eigene Korrekturen gegenüber FPC (bei einem neuen Stand prüfen, ob sie noch nötig sind): Neuversuch nach leerem
 Treffer in `MatchAgain` wie in pcre2demo.c; `Replace` übernimmt den ganzen Text zwischen zwei Treffern (vorher nur
-dessen erstes Zeichen, etwa `TRegEx.Replace(S, '\s+', ' ')` bei mehreren Lücken).
+dessen erstes Zeichen, etwa `TRegEx.Replace(S, '\s+', ' ')` bei mehreren Lücken); `EscapeRegExChars` läuft über die Zeichen von `TREString` statt über `PChar` (unter `{$MODE OBJFPC}` ein
+`PAnsiChar`: Mit `USEWIDESTRING` bestand das Ergebnis zur Hälfte aus ungesetztem Speicher, jedes `TRegEx.Escape`
+lieferte je nach Heap ein anderes Muster oder einen Übersetzungsfehler); `GetPCREErrorMsg` liest die Meldung von
+pcre2-16 als UTF-16.

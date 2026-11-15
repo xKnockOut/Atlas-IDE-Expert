@@ -26,9 +26,9 @@
 //                              (A, B: Integer = 0, E2237), Parameter ohne
 //                              Standardwert nach einem mit (E2238), var- und
 //                              out-Parameter mit Standardwert (E2239), Records
-//                              und statische Arrays mit Standardwert (E2268),
-//                              Mengen über 4 Byte mit Standardwert (E2146, nur
-//                              "kleine Mengen" sind erlaubt; mittlere Konfidenz).
+//                              und statische Arrays mit Standardwert (E2268).
+//                              Große Mengen mit Standardwert nimmt dcc an
+//                              (E2146 kommt nicht), sie bleiben still.
 //                              Korrekturen: Parameter einzeln deklarieren;
 //                              Parameter mit Standardwert ans Ende verschieben,
 //                              auch im zugehörigen Kopf derselben Datei
@@ -146,7 +146,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TConstantsText = (Title, MoreThan, DivZeroOperand, DivZero, Overflow, LowAboveHigh, OutOfRangeE, OutOfRangeW,
-    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType, SetDefault,
+    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType,
     SingleDecl, DeclareSingle, VarDefault, NeedsDefault);
 
 const
@@ -179,9 +179,6 @@ const
     (De: 'Parameter mit Standardwert ans Ende verschieben'; En: 'Move parameters with default value to the end'),
     (De: 'Parameter vom Typ %s können keinen Standardwert haben (wie E2268).';
      En: 'Parameters of type %s cannot have a default value (like E2268).'),
-    (De: '%s ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und kleine Mengentypen (wie ' +
-      'E2146).';
-     En: '%s is a set over 4 bytes; default values exist only for ordinal, pointer and small set types (like E2146).'),
     (De: '%s: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).';
      En: '%s: default values exist only for individually declared parameters (like E2237).'),
     (De: 'Parameter einzeln deklarieren'; En: 'Declare parameters individually'),
@@ -1413,46 +1410,6 @@ var
     end;
   end;
 
-  /// <summary>Anzahl der Werte einer Aufzählung "(a, b, c)"; 0, wenn es keine ist.</summary>
-  function EnumCount(const ABody: string): Integer;
-  begin
-    Result := 0;
-    if ABody.StartsWith('(') and ABody.EndsWith(')') then
-    begin
-      Result := Length(ABody.Split([',']));
-    end;
-  end;
-
-  /// <summary>Belegt eine Menge mit dem Basistyp ABase sicher mehr als 4 Byte (keine "kleine Menge")?</summary>
-  function LargeBase(const ABase: string): Boolean;
-  var
-    mBase: string;
-    mDots: Integer;
-    mLowest, mHighest: Int64;
-    mEnum: TResolvedSymbol;
-  begin
-    mBase := LowerCase(Trim(ABase));
-    if (mBase = 'ansichar') or (mBase = 'char') or (mBase = 'widechar') or (mBase = 'byte') or (mBase = 'word') then
-    begin
-      Exit(True);
-    end;
-    if EnumCount(mBase) > 0 then
-    begin
-      Exit(EnumCount(mBase) > 32);
-    end;
-    mDots := Pos('..', mBase);
-    if mDots > 0 then
-    begin
-      // Größe in Byte wie beim Compiler: von Low div 8 bis High div 8.
-      Result := TOrdinalConstants.Evaluate(Copy(ABase, 1, mDots - 1), nil, mLowest) and
-        TOrdinalConstants.Evaluate(Copy(ABase, mDots + 2, MaxInt), nil, mHighest) and (mLowest >= 0) and
-        (mHighest div 8 - mLowest div 8 + 1 > 4);
-      Exit;
-    end;
-    Result := mResolver.ResolveTypeFrom(mResolver.ExtractedUnit(AContext.Tree, mFileName), Trim(ABase), mEnum) and
-      (mEnum.SymbolKind = TIndexSymbolKind.EnumType) and (EnumCount(TypeBodyOf(mEnum.Signature)) > 32);
-  end;
-
   /// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen
   /// keine Auflösung.</summary>
   function ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
@@ -1480,15 +1437,6 @@ var
     Result := (AType.SymbolKind = TIndexSymbolKind.RecordType) or
       ((AType.SymbolKind = TIndexSymbolKind.TypeAlias) and
       (Pos('array[', LowerCase(StringReplace(AType.Signature, ' ', '', [rfReplaceAll]))) > 0));
-  end;
-
-  /// <summary>Mengentyp, der mehr als 4 Byte belegt (E2146).</summary>
-  function LargeSetType(const AType: TResolvedSymbol): Boolean;
-  var
-    mBody: string;
-  begin
-    mBody := TypeBodyOf(AType.Signature);
-    Result := StartsText('set of ', mBody) and LargeBase(Copy(mBody, Length('set of ') + 1, MaxInt));
   end;
 
   /// <summary>Attribute des Parameters mit Leerzeichen dahinter ("[ref] "); '' ohne.</summary>
@@ -1523,7 +1471,8 @@ var
     end;
   end;
 
-  /// <summary>Typ ohne Standardwerte: Record oder statisches Array (E2268), Menge über 4 Byte (E2146).</summary>
+  /// <summary>Typ ohne Standardwerte: Record oder statisches Array (E2268). Mengen jeder Größe nimmt dcc als
+  /// Standardwert an (E2146 kommt mit Delphi 13 nicht).</summary>
   procedure CheckDefaultType(AParameter: TSyntaxNode);
   var
     mType: TResolvedSymbol;
@@ -1538,11 +1487,6 @@ var
     begin
       AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([mTypeNode.Name]),
         TRuleConfidence.High);
-    end
-    else if LargeSetType(mType) then
-    begin
-      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SetDefault].Fmt([mTypeNode.Name]),
-        TRuleConfidence.Medium);
     end;
   end;
 

@@ -13,7 +13,8 @@
 //                              umgekehrt bei class var und statischer
 //                              Klassenmethode (E2356), Feld hinter
 //                              einer Array-Property (E2008; Doku: E2174),
-//                              Feldselektor über ein Feld, das kein Record ist
+//                              Feldselektor über ein Feld, das weder Record
+//                              noch object ist
 //                              (E2459), an einer Klassen-Property (E2459,
 //                              #1380), auf ein Mitglied, das kein Feld ist
 //                              (E2461), oder auf ein fehlendes Feld (E2562).
@@ -268,7 +269,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
   FActions := TClassActionContext.Default;
   FActions.Index := AContext.Index;
@@ -520,7 +521,8 @@ begin
   begin
     Exit;
   end;
-  if mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType then
+  // Felder eines Records oder object-Typs (TSMObject = object) gehen als Selektor.
+  if not (mLocation.Symbol.Kind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType]) then
   begin
     Add(AAccessor, cTexts[TPropertiesText.NotRecord].Fmt([APath, AField.TypeName, APath, ASelector]));
     Exit;
@@ -740,7 +742,9 @@ end;
 
 function TAccessorScan.FindOwner(out AOwner: TSymbolLocation): Boolean;
 begin
-  Result := FAncestry.FindAnyType(FShape.Symbol.Container, AOwner) and (AOwner.FileName = '') and
+  // Zuerst die Klasse, in deren Rumpf die Property steht: TX<T> und TX heißen im Index gleich (#1326).
+  Result := (FAncestry.OwnerOf(FShape.Symbol, AOwner) or FAncestry.FindAnyType(FShape.Symbol.Container, AOwner)) and
+    (AOwner.FileName = '') and
     (AOwner.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType])
     and not TypeHasInclude(FContext.Tree.Tokens, AOwner.Symbol);
 end;
@@ -765,7 +769,7 @@ begin
   FComplete := True;
   if mOwner.Symbol.Kind = TIndexSymbolKind.ClassType then
   begin
-    FChain := FChain + FAncestry.Ancestors(mOwner.Symbol.Name, FComplete, mObjectMissing);
+    FChain := FChain + FAncestry.Ancestors(mOwner, FComplete, mObjectMissing);
   end;
   FWildcards := Wildcards(FChain);
   for mAccessor in FShape.Accessors do
@@ -868,7 +872,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FFileName := AContext.FileName;
   if FFileName = '' then
   begin
@@ -1400,7 +1404,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAllowed := TRuleOptions.Strings(AContext.Options, 'allowAttributes', nil);
 end;
 
