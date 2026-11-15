@@ -280,6 +280,31 @@ type
       out APlans: TArray<TAtlasUnsavedPush>): TAtlasVcsOutcome; static;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Text einer Änderung unter „Ansehen“: neu, unversioniert, gelöscht, umbenannt, Konflikt, geändert.
+  /// </summary>
+  TAtlasUnsavedChangeText = (Added, Untracked, Deleted, Renamed, Conflicted, Modified);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Entscheidungen des Bereichs in der IDE (Zeiten von außen, GetTickCount64).</summary>
+  TAtlasUnsavedSession = class
+  public
+    /// <summary>Mit hideWhenClean erscheint oder verschwindet der Bereich: AWasVisible (zuletzt gezeigt) gleich
+    /// AClean (jetzt nichts offen) heißt neu einrichten statt nur neu zeichnen.</summary>
+    class function Reorder(AOn, AHideWhenClean, AWasVisible, AClean: Boolean): Boolean; static;
+    /// <summary>Projekt neu abfragen: AForce, nie abgefragt (AKnown False) oder letzte Abfrage ALast älter als
+    /// TAtlasWelcomeUnsaved.cRefreshMs.</summary>
+    class function Due(AForce, AKnown: Boolean; ALast, ANow: UInt64): Boolean; static;
+    /// <summary>Abfrage seit AStarted läuft noch (höchstens TAtlasWelcomeUnsaved.cQueryLimitMs).</summary>
+    class function Running(AKnown: Boolean; AStarted, ANow: UInt64): Boolean; static;
+    /// <summary>Zeitlimit einer Abfrage seit AStarted um (TAtlasWelcomeUnsaved.cTimeLimitMs).</summary>
+    class function TimedOut(AStarted, ANow: UInt64): Boolean; static;
+    /// <summary>Ergebnis von Push AIndex; fehlt es, gilt er als misslungen.</summary>
+    class function OutcomeAt(const AOutcomes: TArray<TAtlasVcsOutcome>; AIndex: Integer): TAtlasVcsOutcome;
+      static;
+    class function ChangeText(AKind: TAtlasVcsChangeKind): TAtlasUnsavedChangeText; static;
+  end;
+
 implementation
 
 uses
@@ -1530,6 +1555,56 @@ begin
   if Result <> TAtlasVcsOutcome.Ok then
   begin
     APlans := nil;
+  end;
+end;
+
+{ TAtlasUnsavedSession }
+
+class function TAtlasUnsavedSession.Reorder(AOn, AHideWhenClean, AWasVisible, AClean: Boolean): Boolean;
+begin
+  Result := AOn and AHideWhenClean and (AWasVisible = AClean);
+end;
+
+class function TAtlasUnsavedSession.Due(AForce, AKnown: Boolean; ALast, ANow: UInt64): Boolean;
+begin
+  Result := AForce or not AKnown or (ANow - ALast >= TAtlasWelcomeUnsaved.cRefreshMs);
+end;
+
+class function TAtlasUnsavedSession.Running(AKnown: Boolean; AStarted, ANow: UInt64): Boolean;
+begin
+  Result := AKnown and (ANow >= AStarted) and (ANow - AStarted < TAtlasWelcomeUnsaved.cQueryLimitMs);
+end;
+
+class function TAtlasUnsavedSession.TimedOut(AStarted, ANow: UInt64): Boolean;
+begin
+  Result := ANow - AStarted >= TAtlasWelcomeUnsaved.cTimeLimitMs;
+end;
+
+class function TAtlasUnsavedSession.OutcomeAt(const AOutcomes: TArray<TAtlasVcsOutcome>;
+  AIndex: Integer): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Failed;
+  if (AIndex >= 0) and (AIndex <= High(AOutcomes)) then
+  begin
+    Result := AOutcomes[AIndex];
+  end;
+end;
+
+class function TAtlasUnsavedSession.ChangeText(AKind: TAtlasVcsChangeKind): TAtlasUnsavedChangeText;
+begin
+  case AKind of
+    TAtlasVcsChangeKind.Added:
+      Result := TAtlasUnsavedChangeText.Added;
+    TAtlasVcsChangeKind.Untracked:
+      Result := TAtlasUnsavedChangeText.Untracked;
+    TAtlasVcsChangeKind.Deleted, TAtlasVcsChangeKind.Missing:
+      Result := TAtlasUnsavedChangeText.Deleted;
+    TAtlasVcsChangeKind.Renamed, TAtlasVcsChangeKind.Copied:
+      Result := TAtlasUnsavedChangeText.Renamed;
+    TAtlasVcsChangeKind.Conflicted:
+      Result := TAtlasUnsavedChangeText.Conflicted;
+  else
+    Result := TAtlasUnsavedChangeText.Modified;
   end;
 end;
 

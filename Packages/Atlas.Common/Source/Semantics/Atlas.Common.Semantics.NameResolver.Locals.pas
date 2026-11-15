@@ -42,6 +42,10 @@ type
     function InterfaceRoutine(ARoutine: TSyntaxNode; out ADeclared: TResolvedSymbol): Boolean;
   public
     constructor Create(APlace: TResolverPlace; AUnits: TResolverUnits; ALookup: TResolverLookup);
+    /// <summary>Hat die Routine mit dem Kopf AHeader ein Result: Ergebnistyp im Kopf oder Kurzform einer Funktion
+    /// ohne Parameterliste und Ergebnistyp (function TFoo.Bar;). In der Kurzform verdeckt Result wie sonst auch
+    /// eine Eigenschaft Result der Klasse.</summary>
+    function HasResult(AHeader: TSyntaxNode): Boolean;
     /// <summary>Knoten ANode des Baums als lokaler Name AName.</summary>
     function FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
       AIsParameter: Boolean): TResolvedSymbol;
@@ -68,6 +72,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Index.Extractor;
 
 /// <summary>Hat die Deklaration ADeclared dieselben Parametertypen wie die Routine ARoutine des Baums? Dann ist
@@ -276,7 +281,7 @@ function TResolverLocals.LookupResult(ARoutine, AHeader: TSyntaxNode; const ANam
 var
   mDeclared: TResolvedSymbol;
 begin
-  Result := SameText(AName, 'Result') and (AHeader.FindChild(TSyntaxKind.TypeReference) <> nil);
+  Result := SameText(AName, 'Result') and HasResult(AHeader);
   if not Result then
   begin
     Exit;
@@ -290,6 +295,29 @@ begin
     AResult.TypeName := mDeclared.TypeName;
     AResult.TypeArgs := mDeclared.TypeArgs;
   end;
+end;
+
+function TResolverLocals.HasResult(AHeader: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mTokens: TArray<TPascalToken>;
+begin
+  Result := AHeader.FindChild(TSyntaxKind.TypeReference) <> nil;
+  if Result or not TRoutineSignatures.IsShortForm(AHeader) then
+  begin
+    Exit;
+  end;
+  mTokens := FPlace.Tree.Tokens;
+  mIndex := FPlace.Tree.FirstTokenFrom(AHeader.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Kind = TPascalTokenKind.Comment) do
+  begin
+    Inc(mIndex);
+  end;
+  if (mIndex <= High(mTokens)) and SameText(mTokens[mIndex].Text, 'class') then
+  begin
+    Inc(mIndex);
+  end;
+  Result := (mIndex <= High(mTokens)) and SameText(mTokens[mIndex].Text, 'function');
 end;
 
 function TResolverLocals.InterfaceRoutine(ARoutine: TSyntaxNode; out ADeclared: TResolvedSymbol): Boolean;

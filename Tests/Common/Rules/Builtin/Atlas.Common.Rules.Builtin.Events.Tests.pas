@@ -30,6 +30,12 @@ type
     procedure InjectedAndShadowedAreSilent;
     [Test]
     procedure OffAndExclude;
+    /// <summary>Aufruf in einem inaktiven Zweig ({$IFDEF} ohne gesetztes Symbol) übersetzt dcc nicht.</summary>
+    [Test]
+    procedure InactiveBranchIsSilent;
+    /// <summary>Lokale Routine gleichen Namens verdeckt die Event-Property.</summary>
+    [Test]
+    procedure NestedRoutineShadowsEvent;
     [Test]
     procedure IsKnownEventType;
   end;
@@ -250,6 +256,7 @@ const
     '  TWertProc = reference to procedure(AWert: Integer);'#10 +
     '  TFormat = function(AWert: Integer): string of object;'#10 +
     '  TListe = array of Integer;'#10 +
+    '  TDllRechnen = function(AWert: Integer): Integer; stdcall;'#10 +
     '  TZaehler = class'#10 +
     '  private'#10 +
     '    FMelden: TWertProc;'#10 +
@@ -257,6 +264,10 @@ const
     '    FBerechnen: procedure(AWert: Integer) of object;'#10 +
     '    FAenderung: TZaehlerChangeEvent;'#10 +
     '    FListe: TListe;'#10 +
+    // Funktionszeiger aus einer DLL (ACBr: xSAT_EnviarDadosVenda: function(...): PAnsiChar; cdecl;) sind keine
+    // Ereignisse.
+    '    xRechnen: function(AWert: Integer): Integer; cdecl;'#10 +
+    '    xDll: TDllRechnen;'#10 +
     '    function Wert(A: Integer): Integer;'#10 +
     '    procedure Erhoehen;'#10 +
     '  end;'#10 +
@@ -273,6 +284,8 @@ const
     '  FAenderung(Self, 4);'#10 +
     '  Writeln(Wert(5));'#10 +
     '  FListe[0] := 6;'#10 +
+    '  Writeln(xRechnen(7));'#10 +
+    '  Writeln(xDll(8));'#10 +
     'end;'#10 +
     'end.';
 begin
@@ -343,6 +356,32 @@ begin
   // Mit schreibbarer Property nur der Konstruktor: eine andere Methode mit Zuweisung schützt nicht.
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, StringReplace(cSource, '  OnFertig := procedure',
     '  FOnFertig := procedure begin end;'#10'  OnFertig := procedure', []), 1);
+end;
+
+procedure TEventRulesTests.InactiveBranchIsSilent;
+var
+  mContext: TRuleContext;
+begin
+  mContext := Default(TRuleContext);
+  mContext.Text := Body('{$IFDEF NIEMALS}'#10'  FOnChange(Self);'#10'{$ENDIF}'#10);
+  // Gegentest: ohne bekannte inaktive Zweige bleibt der Aufruf ein Treffer.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TEventCallWithoutAssignedRule.Create, mContext,
+    ''))));
+  mContext.InactiveRanges := [TTextRange.Create(15, 16, 17, 0)];
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TEventCallWithoutAssignedRule.Create, mContext,
+    ''))));
+end;
+
+procedure TEventRulesTests.NestedRoutineShadowsEvent;
+var
+  mSource: string;
+begin
+  mSource := Body('  OnChange(Self);'#10);
+  // Gegentest: ohne lokale Routine ist OnChange die Property.
+  TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, mSource, 1);
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create, StringReplace(mSource,
+    'procedure TZaehler.Erhoehen;'#10, 'procedure TZaehler.Erhoehen;'#10#10 +
+    '  procedure OnChange(ASender: TObject);'#10'  begin'#10'    FWert := 0;'#10'  end;'#10#10, []));
 end;
 
 procedure TEventRulesTests.OffAndExclude;

@@ -50,6 +50,12 @@ type
     procedure TallySumsDurations;
     [Test]
     procedure TallyAndProblemsOfLeaks;
+    [Test]
+    procedure FinishFollowsOutcomeAndReport;
+    [Test]
+    procedure LastLinesKeepsTheEnd;
+    [Test]
+    procedure IsUnitFileComparesNameAndExtension;
   end;
 
 implementation
@@ -64,6 +70,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tests.Run,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Text.DUnitX,
   Atlas.Text.TestResults;
 
@@ -615,6 +622,36 @@ begin
   // Ohne Fundstelle keine Warnung.
   mLeak.Line := -1;
   Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LeakProblems([mLeak], '%s %d'))));
+end;
+
+procedure TAtlasTestRunTests.FinishFollowsOutcomeAndReport;
+begin
+  Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.Report, TAtlasTestRun.FinishOf(TAtlasVcsOutcome.Ok, True));
+  Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.NoReport, TAtlasTestRun.FinishOf(TAtlasVcsOutcome.Ok, False));
+  Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.NoReport, TAtlasTestRun.FinishOf(TAtlasVcsOutcome.Failed, True),
+    'Programm abgestürzt: der Bericht zählt nicht');
+  Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.Cancelled,
+    TAtlasTestRun.FinishOf(TAtlasVcsOutcome.Cancelled, True));
+  Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.TimedOut, TAtlasTestRun.FinishOf(TAtlasVcsOutcome.TimedOut, True));
+end;
+
+procedure TAtlasTestRunTests.LastLinesKeepsTheEnd;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TAtlasTestRun.LastLines(TArray<string>.Create('a', 'b', 'c', 'd'), 2);
+  Assert.AreEqual(2, Integer(Length(mLines)));
+  Assert.AreEqual('c', mLines[0]);
+  Assert.AreEqual('d', mLines[1]);
+  Assert.AreEqual(1, Integer(Length(TAtlasTestRun.LastLines(TArray<string>.Create('a'), 5))), 'weniger als ACount');
+  Assert.AreEqual(0, Integer(Length(TAtlasTestRun.LastLines(nil, 5))));
+end;
+
+procedure TAtlasTestRunTests.IsUnitFileComparesNameAndExtension;
+begin
+  Assert.IsTrue(TAtlasTestRun.IsUnitFile('Src' + PathDelim + 'Rechner.Tests.pas', 'rechner.tests'));
+  Assert.IsFalse(TAtlasTestRun.IsUnitFile('Src' + PathDelim + 'Rechner.Tests.dfm', 'Rechner.Tests'), 'nur .pas');
+  Assert.IsFalse(TAtlasTestRun.IsUnitFile('Src' + PathDelim + 'Rechner.pas', 'Rechner.Tests'));
 end;
 
 initialization

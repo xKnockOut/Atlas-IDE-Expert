@@ -148,7 +148,8 @@ uses
   Atlas.Common.Dfm.ComponentRename,
   Atlas.Common.Editing.TypeComments,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -177,28 +178,6 @@ const
      En: 'Fields "textDocument.uri", "position" and "newName" missing in '));
 
 {$SCOPEDENUMS OFF}
-
-function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    mToken := ATokens[mIndex];
-    if (mToken.StartPos.Line > APosition.Line) or
-      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
-    begin
-      Break;
-    end;
-    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
-      (APosition.Character <= mToken.EndPos.Character) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
-end;
 
 { TLspRename }
 
@@ -747,7 +726,7 @@ var
   mTargets: TArray<TDefinitionTarget>;
 begin
   Result := Default(TRenameCheck);
-  mIndex := TokenAt(ATree.Tokens, APosition);
+  mIndex := IdentifierAt(ATree.Tokens, APosition);
   if mIndex < 0 then
   begin
     Result.Error := cTexts[TRenameText.ThereIsNoIdentifierHere].Text;
@@ -788,7 +767,7 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  mIndex := TokenAt(ATree.Tokens, ASearch.Position);
+  mIndex := IdentifierAt(ATree.Tokens, ASearch.Position);
   if mIndex < 0 then
   begin
     Exit;

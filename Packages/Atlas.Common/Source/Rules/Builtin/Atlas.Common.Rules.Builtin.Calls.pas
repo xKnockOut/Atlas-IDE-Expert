@@ -107,7 +107,8 @@ uses
   Atlas.Common.Semantics.UnresolvedNames,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -326,30 +327,6 @@ begin
   end;
 end;
 
-/// <summary>Letztes Token, das an oder vor APosition beginnt; -1 ohne.</summary>
-function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  Result := -1;
-  mLow := 0;
-  mHigh := Length(ATokens) - 1;
-  while mLow <= mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
-      (ATokens[mMiddle].StartPos.Character <= APosition.Character)) then
-    begin
-      Result := mMiddle;
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle - 1;
-    end;
-  end;
-end;
-
 /// <summary>Signaturhilfe in den Klammern vor ")"; ohne Klammern erst () hinter den Namen.</summary>
 function SignatureFix(ANode, ACallee: TSyntaxNode): TRuleFix;
 var
@@ -395,7 +372,7 @@ var
     Result := '';
     if mPaths <> nil then
     begin
-      Result := TConditionalBranches.PathAt(mPaths, TokenAt(AContext.Tree.Tokens, APosition));
+      Result := TConditionalBranches.PathAt(mPaths, TokenUpToPosition(AContext.Tree.Tokens, APosition));
     end;
   end;
 
@@ -487,9 +464,21 @@ var
     end;
   end;
 
+  /// <summary>Ist AHeader ohne Parameterliste ein eigener Kopf statt eines Rumpfs? override, virtual usw. stehen
+  /// nur an der Deklaration (procedure Drucken; override; neben procedure Drucken(A: Integer); override;
+  /// überschreibt zwei Überladungen des Vorfahren ohne erneutes overload).</summary>
+  function IsOwnHeader(const AHeader: string): Boolean;
+  var
+    mParameters, mTail: string;
+  begin
+    Result := (Pos('(', AHeader) > 0) or (SplitHeader(AHeader, mParameters, mTail) and (HasWord(mTail, 'override') or
+      HasWord(mTail, 'virtual') or HasWord(mTail, 'dynamic') or HasWord(mTail, 'abstract') or
+      HasWord(mTail, 'reintroduce') or HasWord(mTail, 'message')));
+  end;
+
   /// <summary>Index des maßgeblichen Kopfs: Ein Rumpf ohne Parameterliste (procedure TKunde.Senden;) gehört zur
-  /// Deklaration mit Liste. -1, wenn mehrere Köpfe eine Liste haben (Überladung ohne overload oder Verdeckung;
-  /// das klärt der Compiler).</summary>
+  /// Deklaration mit Liste. -1, wenn mehrere Köpfe eine Liste haben oder Direktiven einer Deklaration tragen
+  /// (Überladung ohne overload oder Verdeckung; das klärt der Compiler).</summary>
   function ChosenHeader(const AHeaders: TArray<string>): Integer;
   var
     mIndex, mWithList: Integer;
@@ -498,7 +487,7 @@ var
     mWithList := 0;
     for mIndex := High(AHeaders) downto 0 do
     begin
-      if Pos('(', AHeaders[mIndex]) > 0 then
+      if IsOwnHeader(AHeaders[mIndex]) then
       begin
         Inc(mWithList);
         Result := mIndex;
@@ -805,7 +794,7 @@ var
     Result := '';
     if mPaths <> nil then
     begin
-      Result := TConditionalBranches.PathAt(mPaths, TokenAt(AContext.Tree.Tokens, APosition));
+      Result := TConditionalBranches.PathAt(mPaths, TokenUpToPosition(AContext.Tree.Tokens, APosition));
     end;
   end;
 

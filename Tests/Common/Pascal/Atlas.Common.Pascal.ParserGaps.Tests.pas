@@ -108,7 +108,9 @@ const
     'unit p02_empty_record_const;'#10'interface'#10'type'#10'  TRec = record'#10'    A: Integer;'#10'  end;'#10 +
     '  TComparer = record'#10'    const Ordinal: TRec = ();'#10'  end;'#10'const'#10'  Empty: TRec = ();'#10 +
     '  EmptyGuid: TGUID = ( );'#10'var'#10'  Start: TRec = ();'#10'implementation'#10'procedure P;'#10'const'#10 +
-    '  Lokal: TRec = ();'#10'begin'#10'end;'#10'end.';
+    '  Lokal: TRec = ();'#10'  Liste: array[0..2] of TRec = ((A: 1), (), (A: 3));'#10 +
+    '  Tabelle: array[0..1] of TListe = ((Cnt: 1; Reg: ((A: 1), ())), (Cnt: 0; Reg: ((), ())));'#10'begin'#10 +
+    'end;'#10'end.';
   cFunctionResolution =
     'unit p01_resolution_function;'#10'interface'#10'type'#10'  IFoo = interface'#10 +
     '    function GetX: Integer;'#10'  end;'#10'  TFoo = class(TInterfacedObject, IFoo)'#10 +

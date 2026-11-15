@@ -42,6 +42,15 @@ type
     /// <summary>Projektgruppe: Funde je Projekt, die Karte fasst sie zusammen.</summary>
     [Test]
     procedure CombinesGroupMembers;
+    /// <summary>#1967: Zeilenenden, Ende eines Schritts, Meldung nach Refresh und Summen der Pfadprüfung.</summary>
+    [Test]
+    procedure TemplateGetsCrLf;
+    [Test]
+    procedure FinishedRunFollowsResult;
+    [Test]
+    procedure RefreshAnnouncesReordersOrRedraws;
+    [Test]
+    procedure PathTotalsAddUpChecks;
   end;
 
 implementation
@@ -337,6 +346,51 @@ begin
   // Eine Gruppe ohne Projekte gilt nie als geprüft.
   mCombined := TAtlasWelcomeSetup.Combined('C:\G\Alle.groupproj', mGroup, nil, mChecked);
   Assert.IsFalse(mCombined.Checked);
+end;
+
+procedure TAtlasWelcomeSetupTests.TemplateGetsCrLf;
+begin
+  Assert.AreEqual('a'#13#10'b'#13#10'c'#13#10, TAtlasWelcomeSetup.WithCrLf('a'#10'b'#13#10'c'#10));
+  Assert.AreEqual('', TAtlasWelcomeSetup.WithCrLf(''));
+end;
+
+procedure TAtlasWelcomeSetupTests.FinishedRunFollowsResult;
+begin
+  Assert.AreEqual<TAtlasSetupRun>(TAtlasSetupRun.Done, TAtlasWelcomeSetup.Finished(True));
+  Assert.AreEqual<TAtlasSetupRun>(TAtlasSetupRun.Failed, TAtlasWelcomeSetup.Finished(False));
+end;
+
+procedure TAtlasWelcomeSetupTests.RefreshAnnouncesReordersOrRedraws;
+begin
+  Assert.AreEqual<TAtlasSetupRefresh>(TAtlasSetupRefresh.Announce,
+    TAtlasWelcomeSetup.RefreshStep('Kasse für Atlas einrichten', '', True, True), 'neuer Titel');
+  Assert.AreEqual<TAtlasSetupRefresh>(TAtlasSetupRefresh.Reorder,
+    TAtlasWelcomeSetup.RefreshStep('Kasse', 'Kasse', False, True), 'Karte verschwindet');
+  Assert.AreEqual<TAtlasSetupRefresh>(TAtlasSetupRefresh.Redraw,
+    TAtlasWelcomeSetup.RefreshStep('Kasse', 'Kasse', True, True));
+end;
+
+procedure TAtlasWelcomeSetupTests.PathTotalsAddUpChecks;
+var
+  mCheck: TAtlasPathCheckResult;
+  mFinding: TAtlasPathFinding;
+  mTotals: TAtlasSetupPathTotals;
+begin
+  mCheck := Default(TAtlasPathCheckResult);
+  mCheck.Files := 7;
+  mFinding := Default(TAtlasPathFinding);
+  mFinding.Name := 'Alt';
+  mCheck.MissingUnits := [mFinding];
+  mFinding.Name := 'DEBUGX';
+  mFinding.Uncertain := True;
+  mCheck.UndefinedDefines := [mFinding];
+  mTotals := Default(TAtlasSetupPathTotals);
+  mTotals.Add(mCheck);
+  mTotals.Add(mCheck);
+  Assert.AreEqual(14, mTotals.Files);
+  Assert.AreEqual(2, mTotals.Units);
+  Assert.AreEqual(2, mTotals.Defines);
+  Assert.AreEqual(2, mTotals.Uncertain);
 end;
 
 initialization

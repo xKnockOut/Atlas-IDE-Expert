@@ -39,8 +39,9 @@ const
     '{',
     '      "id": "dfm-required-field-without-control",',
     '      "name": "Pflichtfeld ohne sichtbares Eingabe-Control",',
-    '      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht fü' +
-    'llen, Post schlägt fehl."',
+    '      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder, LiveBindings mit FieldName und' +
+    ' Control ebenso). Der Anwender kann es nicht füllen, Post schlägt fehl. Zeigt kein Control der Formulardatei das Dataset überhaupt (Datenmodul, Eingabe in einem anderen Formular), meldet die Regel nic' +
+    'hts."',
     '    },',
     '{',
     '      "id": "dfm-control-field-type-mismatch",',

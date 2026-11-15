@@ -405,7 +405,7 @@ begin
   end;
   // Ohne Angabe sind Mitglieder published, wenn die Klasse mit RTTI für published übersetzt wird: {$M+} bzw.
   // {$TYPEINFO ON} bei der Deklaration oder ein so übersetzter Vorfahr (TPersistent und Nachfahren).
-  mTypeInfo := TTypeInfoClasses.SwitchAt(FActive, ADecl.StartPos) or InheritsTypeInfo(ABody);
+  mTypeInfo := TTypeInfoClasses.ClassSwitchAt(FActive, ADecl.Name, ADecl.StartPos) or InheritsTypeInfo(ABody);
   FLocalTypeInfo.AddOrSetValue(LowerCase(ADecl.Name), mTypeInfo);
   if mTypeInfo then
   begin

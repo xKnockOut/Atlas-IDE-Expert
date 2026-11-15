@@ -3,7 +3,10 @@
 // Regel use-after-free aus Atlas.Common.Rules.Builtin.Flow (#269): Nach X.Free, X.Destroy, X.DisposeOf,
 // FreeAndNil(X) oder Dispose(X) liest ein Weg des Kontrollflusses X wieder. Eine Zuweisung an X, die Übergabe als
 // Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn. Bei einem Feld der Klasse
-// beendet auch der Aufruf einer eigenen Methode den Weg: Sie kann das Feld neu belegen.
+// beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen. Ebenso
+// beenden ihn eine Zuweisung an eine Variable, die mit absolute auf X liegt (oder X auf ihr), und der Aufruf einer
+// lokalen Routine: Sie kann die Variablen der umgebenden Routine neu setzen. Im Rumpf eines with kann X ein Mitglied
+// des with-Objekts sein: dort keine Meldung (außer Self.X).
 
 interface
 
@@ -60,6 +63,7 @@ type
     FReported: TArray<Integer>;
     FFree: TFlowNode;
     FPath: string;
+    FText: string;
     FToNil: Boolean;
     FUses: TArray<TSyntaxNode>;
     FStops: Boolean;
@@ -67,10 +71,19 @@ type
     /// <summary>Felder und Methoden der Klasse der aktuellen Routine.</summary>
     FFields: TArray<string>;
     FMethods: TArray<string>;
+    /// <summary>Lokale Routinen der aktuellen Routine; ihr Aufruf kann jede Variable neu belegen.</summary>
+    FNested: TArray<string>;
+    /// <summary>absolute-Paare der aktuellen Routine als "alias|ziel" in Kleinschreibung.</summary>
+    FAbsolute: TArray<string>;
+    /// <summary>Namen, die mit FPath über absolute denselben Speicher teilen.</summary>
+    FPathAliases: TArray<string>;
     /// <summary>Ist FPath ein Feld der Klasse? Dann kann eine eigene Methode es neu belegen.</summary>
     FIsField: Boolean;
-    function CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
+    function CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>;
+    AWithInherited: Boolean): Boolean;
     procedure CollectMembers(ARoot, ARoutine: TSyntaxNode);
+    procedure CollectLocals(ARoutine: TSyntaxNode);
+    function AliasesOf(const APath: string): TArray<string>;
     function AlreadyReported(AOffset: Integer): Boolean;
     function VisitAccess(ANode: TSyntaxNode): Integer;
     procedure VisitArgument(const ACallee: string; AArgument: TSyntaxNode);
@@ -98,9 +111,11 @@ begin
   FReport := AReport;
 end;
 
-/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
-/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
-function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode): Boolean;
+/// <summary>Ruft AStatement eine Methode der eigenen Klasse oder geerbt auf (Reset; Self.Reset(1); inherited Reset)?
+/// Sie kann ein Feld neu belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)). ANames sind die Namen
+/// der Methoden bzw. lokalen Routinen; inherited zählt nur mit AWithInherited.</summary>
+function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>;
+  AWithInherited: Boolean): Boolean;
 var
   mTarget: TSyntaxNode;
   mName: string;
@@ -118,10 +133,79 @@ begin
     begin
       mTarget := mTarget[0];
     end;
+    // inherited Laden; ruft die Methode des Vorfahren für Self auf (ACBr: FreeAndNil(FListe); inherited
+    // CarregaAliquotas; FListe.Add(…)).
+    if mTarget.Kind = TSyntaxKind.InheritedExpr then
+    begin
+      Exit(AWithInherited);
+    end;
     // Name oder Self.Name.
     mName := FreedPath(mTarget);
   end;
-  Result := (mName <> '') and MatchText(mName, FMethods);
+  Result := (mName <> '') and MatchText(mName, ANames);
+end;
+
+/// <summary>Lokale Routinen und absolute-Paare (Y: T absolute X) der Routine ARoutine.</summary>
+procedure TUseAfterFreeCheck.CollectLocals(ARoutine: TSyntaxNode);
+var
+  mSection, mDecl: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mTarget, mName, mBetween: string;
+begin
+  FNested := nil;
+  FAbsolute := nil;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    mSection := ARoutine[mIndex];
+    if mSection.Kind = TSyntaxKind.RoutineDecl then
+    begin
+      FNested := FNested + [ShortName(mSection.Name)];
+    end
+    else if mSection.Kind = TSyntaxKind.VarSection then
+    begin
+      for mInner := 0 to mSection.ChildCount - 1 do
+      begin
+        mDecl := mSection[mInner];
+        if (mDecl.Kind <> TSyntaxKind.VarDecl) or (mDecl.ChildCount < 2) then
+        begin
+          Continue;
+        end;
+        // Y: T absolute X: zwischen Typ und Ausdruck steht das Wort absolute.
+        mBetween := Copy(FText, mDecl[0].EndOffset + 1, mDecl[1].StartOffset - mDecl[0].EndOffset);
+        mTarget := FreedPath(mDecl[1]);
+        if (mTarget = '') or not ContainsText(mBetween, 'absolute') then
+        begin
+          Continue;
+        end;
+        for mName in mDecl.Name.Split([',']) do
+        begin
+          FAbsolute := FAbsolute + [LowerCase(Trim(mName) + '|' + mTarget)];
+        end;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Namen, die über absolute mit APath denselben Speicher teilen (beide Richtungen, eine Stufe).
+/// </summary>
+function TUseAfterFreeCheck.AliasesOf(const APath: string): TArray<string>;
+var
+  mPair: string;
+  mParts: TArray<string>;
+begin
+  Result := nil;
+  for mPair in FAbsolute do
+  begin
+    mParts := mPair.Split(['|']);
+    if SameText(mParts[0], APath) then
+    begin
+      Result := Result + [mParts[1]];
+    end
+    else if SameText(mParts[1], APath) then
+    begin
+      Result := Result + [mParts[0]];
+    end;
+  end;
 end;
 
 procedure TUseAfterFreeCheck.CollectMembers(ARoot, ARoutine: TSyntaxNode);
@@ -336,7 +420,7 @@ end;
 /// </summary>
 function TUseAfterFreeCheck.StopsAt(ANode: TFlowNode): Boolean;
 begin
-  Result := SameText(ANode.Defines, FPath);
+  Result := SameText(ANode.Defines, FPath) or (ANode.Defines <> '') and MatchText(ANode.Defines, FPathAliases);
   if not Result and (ANode.Kind = TFlowNodeKind.Condition) then
   begin
     Result := (ANode.Syntax.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
@@ -374,6 +458,27 @@ begin
     [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
 end;
 
+/// <summary>Steht AAccess im Rumpf eines with (nicht in dessen Ausdruck)? Dort kann der Name ein Mitglied des
+/// with-Objekts sein (ACBr: NFSe.Free; … with Liste.New do NFSe.Numero := …).</summary>
+function InWithBody(AAccess: TSyntaxNode): Boolean;
+var
+  mChild, mParent: TSyntaxNode;
+begin
+  Result := False;
+  mChild := AAccess;
+  mParent := AAccess.Parent;
+  while (mParent <> nil) and not IsRoutineBody(mParent) and (mParent.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if (mParent.Kind = TSyntaxKind.WithStatement) and (mParent.ChildCount > 0) and
+      (mParent[mParent.ChildCount - 1] = mChild) then
+    begin
+      Exit(True);
+    end;
+    mChild := mParent;
+    mParent := mParent.Parent;
+  end;
+end;
+
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
 function TUseAfterFreeCheck.WalksOn(ANode: TFlowNode): Boolean;
 var
@@ -386,16 +491,27 @@ begin
   begin
     Inspect(ANode.Syntax);
   end;
-  FStops := FStops or FIsField and CallsOwnMethod(ANode.Syntax);
+  FStops := FStops or FIsField and CallsOwnMethod(ANode.Syntax, FMethods, True) or
+    CallsOwnMethod(ANode.Syntax, FNested, False);
   Result := False;
   if not (FGuarded and FToNil) then
   begin
     for mAccess in FUses do
     begin
-      ReportAccess(ANode, mAccess);
+      if StartsText('Self.', FPath) or not InWithBody(mAccess) then
+      begin
+        ReportAccess(ANode, mAccess);
+      end;
     end;
     Result := not (FStops or FGuarded);
   end;
+end;
+
+/// <summary>Ist APath (Name oder Self.Name) einer der Namen AMembers?</summary>
+function IsMember(const APath: string; const AMembers: TArray<string>): Boolean;
+begin
+  Result := MatchText(APath, AMembers) or StartsText('Self.', APath) and
+    MatchText(Copy(APath, Length('Self.') + 1, MaxInt), AMembers);
 end;
 
 procedure TUseAfterFreeCheck.Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
@@ -408,8 +524,8 @@ begin
   FFree := AFree;
   FPath := APath;
   FToNil := AToNil;
-  FIsField := MatchText(APath, FFields) or StartsText('Self.', APath) and
-    MatchText(Copy(APath, Length('Self.') + 1, MaxInt), FFields);
+  FPathAliases := AliasesOf(APath);
+  FIsField := IsMember(APath, FFields);
   SetLength(mVisited, FGraph.Nodes.Count);
   mQueue := nil;
   QueueSuccessors(AFree, mVisited, mQueue);
@@ -438,7 +554,9 @@ var
 begin
   for mNode in FGraph.Nodes do
   begin
-    if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) then
+    // Pop.Free mit einer Funktion Pop der eigenen Klasse gibt bei jedem Aufruf ein anderes Objekt frei.
+    if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) and
+      not IsMember(mPath, FMethods) then
     begin
       Follow(mNode, mPath, mToNil);
     end;
@@ -454,6 +572,7 @@ begin
   begin
     Exit;
   end;
+  FText := AContext.Text;
   mCache := TRuleDerived.Open(AContext);
   for mRoutine in TRuleDerived.Routines(mCache, AContext) do
   begin
@@ -461,6 +580,7 @@ begin
     if FGraph.Complete then
     begin
       CollectMembers(AContext.Tree.Root, mRoutine);
+      CollectLocals(mRoutine);
       CheckGraph;
     end;
   end;

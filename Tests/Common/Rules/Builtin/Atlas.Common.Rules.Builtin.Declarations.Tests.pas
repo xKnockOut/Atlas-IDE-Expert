@@ -39,6 +39,12 @@ type
     procedure MissingBodyReportsWithFix;
     [Test]
     procedure ImplementedMethodIsSilent;
+    /// <summary>Auskommentierte Direktive (procedure Lauf; virtual; {abstract;}): Die Methode ist nicht abstrakt,
+    /// ihr Rumpf gehört zur Deklaration, ein fehlender Rumpf wird gemeldet.</summary>
+    [Test]
+    procedure DirectiveInCommentDoesNotCount;
+    [Test]
+    procedure CommentedOutAbstractIsNotAbstract;
     [Test]
     procedure MissingOverloadIsReported;
     [Test]
@@ -273,6 +279,26 @@ begin
     ClassUnit('    procedure Lauf(A: Integer);', 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'));
   TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
     ClassUnit('    procedure Lauf(A: Integer);', 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10'end;'));
+end;
+
+procedure TDeclarationRulesTests.DirectiveInCommentDoesNotCount;
+begin
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
+    ClassUnit('    procedure Lauf; virtual; {abstract;}', 'procedure TFoo.Lauf;'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
+    ClassUnit('    procedure Lauf; virtual; // abstract', 'procedure TFoo.Lauf;'#10'begin'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDeclaredNotImplementedRule.Create,
+    ClassUnit('    procedure Lauf; virtual; (* abstract; *)', '')))));
+end;
+
+procedure TDeclarationRulesTests.CommentedOutAbstractIsNotAbstract;
+begin
+  // virtual;// abstract; ist eine gewöhnliche virtuelle Methode: Der Rumpf gehört zur Deklaration.
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create,
+    ClassUnit('    procedure Lauf(A: Integer); virtual;//  abstract;',
+      'procedure TFoo.Lauf('#10'  A: Integer);'#10'begin'#10'end;'));
+  TRuleAssert.Reports(TDeclaredNotImplementedRule.Create,
+    ClassUnit('    procedure Lauf(A: Integer); virtual; { abstract; }', ''));
 end;
 
 procedure TDeclarationRulesTests.MissingOverloadIsReported;

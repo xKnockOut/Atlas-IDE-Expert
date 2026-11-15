@@ -16,7 +16,9 @@ uses
   System.Classes,
   System.UITypes,
   ToolsAPI,
+  DesignIntf,
   Atlas.Core.Designer.FontsColors,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -36,6 +38,8 @@ type
   private
     FUndoFile: string;
     FUndo: TArray<TAtlasFontState>;
+    /// <summary>Formular des laufenden Execute; nach jedem Dialog geprüft.</summary>
+    FKept: TAtlasDesignerKept;
     procedure Remember(const AEditor: IOTAFormEditor; ARoot: TComponent; const ANames: TArray<string>);
     procedure ReplaceFont(const AEditor: IOTAFormEditor; ARoot: TComponent; const AUses: TArray<TAtlasFontUse>;
       const ARow: TAtlasFontRow; const AOthers: TArray<TAtlasFontRow>);
@@ -43,6 +47,14 @@ type
       const ARow: TAtlasColorRow; const AOthers: TArray<TAtlasColorRow>);
     procedure Apply(const AEditor: IOTAFormEditor; ARoot: TComponent; const AFonts: TArray<TAtlasFontChange>;
       const AColors: TArray<TAtlasColorChange>);
+    /// <summary>Nach einem Dialog: noch dasselbe Formular? Sonst melden und False.</summary>
+    function FormHolds: Boolean;
+    /// <summary>Auswahl aus dem offenen Dialog: Komponenten zu den Namen markieren, solange das Formular lebt.
+    /// </summary>
+    function SelectNames(const ADesigner: IDesigner; ARoot: TComponent): TProc<TArray<string>>;
+    /// <summary>Zeile ARow der Schriften (AColor: der Farben) ersetzen, mit eigener Rückfrage.</summary>
+    procedure RunAction(const AEditor: IOTAFormEditor; ARoot: TComponent; const AUses: TArray<TAtlasFontUse>;
+      AColor: Boolean; ARow: Integer);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -59,7 +71,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Dialogs,
-  DesignIntf,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.FontsDialog,
   Atlas.IDE.Designer.Access,
@@ -335,7 +346,7 @@ begin
     end;
   end;
   if not TAtlasFontReplaceDialog.ExecuteFont(ARow.Font, mTargets, Length(SelectedNames(AEditor, ARoot)) > 0,
-    mReplace) then
+    mReplace) or not FormHolds then
   begin
     Exit;
   end;
@@ -368,7 +379,7 @@ begin
     end;
   end;
   if not TAtlasFontReplaceDialog.ExecuteColor(ARow.Color, mTargets, Length(SelectedNames(AEditor, ARoot)) > 0,
-    mReplace) then
+    mReplace) or not FormHolds then
   begin
     Exit;
   end;
@@ -396,7 +407,7 @@ begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerFontsNothing));
     Exit;
   end;
-  if not Confirm(AFonts, AColors) then
+  if not Confirm(AFonts, AColors) or not FormHolds then
   begin
     Exit;
   end;
@@ -417,11 +428,70 @@ begin
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFontsDone, [Length(FUndo)]));
 end;
 
+function TAtlasIdeFontsColors.FormHolds: Boolean;
+begin
+  Result := FKept.Holds;
+  if not Result then
+  begin
+    Say(TAtlasDesignerKept.LostText);
+  end;
+end;
+
+function TAtlasIdeFontsColors.SelectNames(const ADesigner: IDesigner; ARoot: TComponent): TProc<TArray<string>>;
+var
+  mOwner: TAtlasIdeFontsColors;
+  mDesigner: IDesigner;
+begin
+  mOwner := Self;
+  mDesigner := ADesigner;
+  Result :=
+    procedure(ANames: TArray<string>)
+    var
+      mName: string;
+      mSelected: TArray<TComponent>;
+      mFound: TComponent;
+    begin
+      // Der Dialog ist offen; ist das Formular inzwischen neu geladen, ARoot nicht mehr anfassen.
+      if not mOwner.FKept.Holds then
+      begin
+        Exit;
+      end;
+      mSelected := nil;
+      for mName in ANames do
+      begin
+        mFound := ARoot.FindComponent(mName);
+        if mFound <> nil then
+        begin
+          mSelected := mSelected + [mFound];
+        end;
+      end;
+      TAtlasDesignerAccess.Select(mDesigner, ARoot, mSelected);
+    end;
+end;
+
+procedure TAtlasIdeFontsColors.RunAction(const AEditor: IOTAFormEditor; ARoot: TComponent;
+  const AUses: TArray<TAtlasFontUse>; AColor: Boolean; ARow: Integer);
+var
+  mFonts: TArray<TAtlasFontRow>;
+  mColors: TArray<TAtlasColorRow>;
+begin
+  // Dieselben Zeilen wie im Dialog (gleiche Eingaben).
+  mFonts := TAtlasFontsColors.FontRows(AUses, ARoot.Name);
+  mColors := TAtlasFontsColors.ColorRows(AUses, TAtlasIdeSettings.Current.DesignerFontsColorsIgnoreColors);
+  if not AColor and (ARow >= 0) and (ARow <= High(mFonts)) then
+  begin
+    ReplaceFont(AEditor, ARoot, AUses, mFonts[ARow], mFonts);
+  end
+  else if AColor and (ARow >= 0) and (ARow <= High(mColors)) then
+  begin
+    ReplaceColor(AEditor, ARoot, AUses, mColors[ARow], mColors);
+  end;
+end;
+
 procedure TAtlasIdeFontsColors.Execute;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
-  mDesigner: IDesigner;
   mUses: TArray<TAtlasFontUse>;
   mFonts: TArray<TAtlasFontRow>;
   mColors: TArray<TAtlasColorRow>;
@@ -432,39 +502,20 @@ begin
   begin
     Exit;
   end;
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
+  FKept := TAtlasDesignerKept.Take(mEditor, mRoot);
   mTab := 0;
   repeat
     mUses := Collect(mRoot);
     mFonts := TAtlasFontsColors.FontRows(mUses, mRoot.Name);
     mColors := TAtlasFontsColors.ColorRows(mUses, TAtlasIdeSettings.Current.DesignerFontsColorsIgnoreColors);
     mAction := TAtlasFontsDialog.Execute(mRoot.Name, mFonts, mColors,
-      procedure(ANames: TArray<string>)
-      var
-        mName: string;
-        mSelected: TArray<TComponent>;
-        mFound: TComponent;
-      begin
-        mSelected := nil;
-        for mName in ANames do
-        begin
-          mFound := mRoot.FindComponent(mName);
-          if mFound <> nil then
-          begin
-            mSelected := mSelected + [mFound];
-          end;
-        end;
-        TAtlasDesignerAccess.Select(mDesigner, mRoot, mSelected);
-      end, mTab, mRow);
-    if (mAction = TAtlasFontsAction.ReplaceFont) and (mRow >= 0) and (mRow <= High(mFonts)) then
+      SelectNames(TAtlasDesignerAccess.DesignerOf(mEditor), mRoot), mTab, mRow);
+    // Nach jedem Dialog (auch denen beim Ersetzen) nur weiter, solange das Formular dasselbe ist.
+    if (mAction <> TAtlasFontsAction.Close) and FormHolds then
     begin
-      ReplaceFont(mEditor, mRoot, mUses, mFonts[mRow], mFonts);
-    end
-    else if (mAction = TAtlasFontsAction.ReplaceColor) and (mRow >= 0) and (mRow <= High(mColors)) then
-    begin
-      ReplaceColor(mEditor, mRoot, mUses, mColors[mRow], mColors);
+      RunAction(mEditor, mRoot, mUses, mAction = TAtlasFontsAction.ReplaceColor, mRow);
     end;
-  until mAction = TAtlasFontsAction.Close;
+  until (mAction = TAtlasFontsAction.Close) or not FKept.Holds;
 end;
 
 function TAtlasIdeFontsColors.CanUndo: Boolean;

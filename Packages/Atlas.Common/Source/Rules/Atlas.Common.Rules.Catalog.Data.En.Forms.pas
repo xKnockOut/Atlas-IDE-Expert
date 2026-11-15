@@ -69,7 +69,8 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "forms",',
-    '      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",',
+    '      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields, LiveBindings with FieldName and Control count a' +
+    's well). The user cannot fill it and posting fails. If no control in the form file shows the dataset at all (data module, input in another form), the rule says nothing.",',
     '      "bad": "tblKundenName: Required = True, no TDBEdit for Name",',
     '      "good": "edName: TDBEdit; DataSource = dsKunden; DataField = ''Name''",',
     '      "safeFix": false',

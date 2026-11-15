@@ -356,44 +356,23 @@ begin
   end;
 end;
 
-function Contains(const AList: TArray<string>; const AValue: string): Boolean;
-var
-  mItem: string;
-begin
-  Result := False;
-  for mItem in AList do
-  begin
-    Result := Result or SameText(mItem, AValue);
-  end;
-end;
-
 /// <summary>Gewünschte Plugins auf der Willkommensseite der IDE: im Atlas-Layout nur die Tafel, sonst Kopf und
 /// je sichtbarem Bereich eins.</summary>
 function WantedPlugins(const ACurrent: TAtlasPluginSettings; AIdePage: Boolean): TArray<string>;
 var
   mSection: TAtlasWelcomeSection;
+  mSections: TArray<string>;
 begin
-  Result := nil;
-  if not AIdePage then
-  begin
-    Exit;
-  end;
-  if ACurrent.WelcomePageLayout = 'atlas' then
-  begin
-    Result := [BoardId];
-    Exit;
-  end;
-  if ACurrent.WelcomePageHeader then
-  begin
-    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader)];
-  end;
+  mSections := nil;
   for mSection in TAtlasWelcomeSections.Default.Visible do
   begin
     if TAtlasWelcomeViews.Exists(mSection.Id) then
     begin
-      Result := Result + [TAtlasWelcomeIds.PluginId(mSection.Id)];
+      mSections := mSections + [mSection.Id];
     end;
   end;
+  Result := TAtlasWelcomePlugins.Wanted(AIdePage, ACurrent.WelcomePageLayout = 'atlas', ACurrent.WelcomePageHeader,
+    mSections);
 end;
 
 /// <summary>Plugins der Willkommensseite der IDE auf AWanted bringen; gebliebene neu füllen.</summary>
@@ -403,16 +382,13 @@ var
   mId, mPlugin: string;
 begin
   mRegistered := TAtlasIdeWelcomePage.Registered;
-  for mPlugin in mRegistered do
+  for mPlugin in TAtlasWelcomePlugins.Stale(mRegistered, AWanted) do
   begin
-    if not Contains(AWanted, mPlugin) then
-    begin
-      TAtlasIdeWelcomePage.Unregister(mPlugin);
-    end;
+    TAtlasIdeWelcomePage.Unregister(mPlugin);
   end;
   for mId in AWanted do
   begin
-    if Contains(mRegistered, mId) then
+    if TAtlasWelcomePlugins.Contains(mRegistered, mId) then
     begin
       ASelf.RefreshClient(TAtlasIdeWelcomePage.Client(mId));
     end
@@ -468,12 +444,7 @@ procedure MarkDirty(const AId: string);
 var
   mFlush: TThreadProcedure;
 begin
-  if (Instance = nil) or Contains(Instance.FDirty.Ids, AId) then
-  begin
-    Exit;
-  end;
-  Instance.FDirty.Ids := Instance.FDirty.Ids + [AId];
-  if Instance.FDirty.Queued then
+  if (Instance = nil) or not TAtlasWelcomePlugins.Mark(Instance.FDirty.Ids, AId) or Instance.FDirty.Queued then
   begin
     Exit;
   end;
@@ -674,7 +645,7 @@ begin
   mIds := FDirty.Ids;
   FDirty.Ids := nil;
   // Bereiche kamen hinzu, fielen weg oder wurden ein- oder ausgeschaltet.
-  if Contains(mIds, '') then
+  if TAtlasWelcomePlugins.NeedsSync(mIds) then
   begin
     Sync;
     Exit;

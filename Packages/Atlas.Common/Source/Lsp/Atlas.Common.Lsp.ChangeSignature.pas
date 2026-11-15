@@ -158,7 +158,8 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -416,7 +417,7 @@ var
 begin
   mModified := TChangeSignature.ApplyEdits(AText, ToTextEdits(AInner));
   mTokens := TPascalLexer.Tokenize(mModified);
-  mToken := TChangeSignature.NameTokenAt(mTokens, AEdit.NamePos);
+  mToken := IdentifierAt(mTokens, AEdit.NamePos);
   if (mToken >= 0) and TChangeSignature.CallEdit(mModified, mTokens, mToken,
     TCallChange.Create(AOld, AChanges, AEdit.Values), mRebuilt) then
   begin
@@ -958,7 +959,7 @@ begin
   begin
     mValues := InheritedValues(FRequest.Changes);
   end;
-  if TChangeSignature.CallEdit(mUnit.Text, mUnit.Tokens, TChangeSignature.NameTokenAt(mUnit.Tokens, ASite.NamePos),
+  if TChangeSignature.CallEdit(mUnit.Text, mUnit.Tokens, IdentifierAt(mUnit.Tokens, ASite.NamePos),
     TCallChange.Create(FRoot.Decl.Parameters, FRequest.Changes, mValues), mRebuilt) then
   begin
     mEdit := MakeEdit(TEditKind.Call, mRebuilt.Range, mRebuilt.NewText);
@@ -1101,7 +1102,7 @@ begin
   begin
     Exit;
   end;
-  mToken := TChangeSignature.NameTokenAt(ATree.Tokens, APosition);
+  mToken := IdentifierAt(ATree.Tokens, APosition);
   if mToken < 0 then
   begin
     Exit;

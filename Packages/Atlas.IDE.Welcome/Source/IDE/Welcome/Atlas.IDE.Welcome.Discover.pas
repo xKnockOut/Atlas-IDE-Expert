@@ -108,7 +108,6 @@ type
 implementation
 
 uses
-  System.Math,
   System.Classes,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
@@ -174,29 +173,29 @@ procedure TAtlasIdeDiscover.TryFound(const ATip: TAtlasTip);
 var
   mFileName: string;
   mCommand: TAtlasCommand;
+  mRunnable: Boolean;
 begin
   mFileName := SamplePath(ATip);
-  if mFileName <> '' then
-  begin
-    // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
-    TAtlasIdeResults.Open(mFileName, Max(ATip.Line - 1, 0), Max(ATip.Column - 1, 0));
-    if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
-    begin
-      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
-    end;
-  end
-  else if ATip.Sample <> '' then
-  begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
-  end
-  else if CanRun(ATip.TryId) and Assigned(FRun) then
-  begin
-    // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
-    FRun(ATip.TryId);
-  end
-  else
-  begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
+  // Den Befehl nur nachschlagen, wenn es kein Beispiel gibt.
+  mRunnable := (mFileName = '') and (ATip.Sample = '') and CanRun(ATip.TryId) and Assigned(FRun);
+  case TAtlasDiscoverSteps.TryOf(mFileName <> '', ATip.Sample, mRunnable) of
+    TAtlasDiscoverTry.OpenSample:
+      begin
+        // tips.json zählt Zeilen und Spalten ab 1, der Editor ab 0.
+        TAtlasIdeResults.Open(mFileName, TAtlasDiscoverSteps.EditorIndex(ATip.Line),
+          TAtlasDiscoverSteps.EditorIndex(ATip.Column));
+        if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
+        begin
+          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
+        end;
+      end;
+    TAtlasDiscoverTry.NoSample:
+      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
+    TAtlasDiscoverTry.RunCommand:
+      // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
+      FRun(ATip.TryId);
+    TAtlasDiscoverTry.NoCommand:
+      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
   end;
 end;
 
@@ -248,8 +247,9 @@ function TAtlasIdeDiscover.CanRun(const AId: string): Boolean;
 var
   mCommand: TAtlasCommand;
 begin
-  Result := (AId <> '') and FindCommand(AId, mCommand) and
-    (mCommand.IsAtlas or SameText(AId, TAtlasShortcutTips.cPaletteCommandId));
+  Result := (AId <> '') and FindCommand(AId, mCommand);
+  Result := TAtlasDiscoverSteps.Runnable(AId, Result, mCommand.IsAtlas,
+    SameText(AId, TAtlasShortcutTips.cPaletteCommandId));
 end;
 
 function TAtlasIdeDiscover.IsEnabled(const ATip: TAtlasTip): Boolean;
@@ -595,10 +595,7 @@ begin
       // Erst den nächsten bestimmen: Nach dem Sperren steht AId nicht mehr unter den erlaubten.
       Next := TAtlasDiscover.NextAfter(FQueue, AllowedIds, AId);
       FState.Block(AId);
-      if SameText(Next, AId) then
-      begin
-        Next := '';
-      end;
+      Next := TAtlasDiscoverSteps.AfterBlock(Next, AId);
       FCurrent := Next;
       if Next <> '' then
       begin

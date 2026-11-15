@@ -1977,7 +1977,7 @@ MasterSource = dsKunden; MasterFields = 'KundenID'
 
 **Required field without visible input control** · Bug · Warning · Group Forms and data
 
-A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.
+A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields, LiveBindings with FieldName and Control count as well). The user cannot fill it and posting fails. If no control in the form file shows the dataset at all (data module, input in another form), the rule says nothing.
 
 Flagged:
 
@@ -3373,7 +3373,7 @@ end.
 
 **Type used before its declaration** · Bug · Error · Group Find bugs
 
-A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.
+A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias or descendant of the same-named type of another unit (TX = UnitY.TX or TX = class(UnitY.TX): before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.
 
 Flagged:
 
@@ -6183,7 +6183,7 @@ begin
 
 **Conditional directives incomplete or unknown** · Bug · Error · Group Compiler ahead
 
-An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.
+An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC; in branches that are inactive under the project defines only the nesting is checked (dcc skips them); {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.
 
 Matches the compiler message `E2095`, `E2280`, `E2279`, `E2173`, `W1030`, `W1078`, `W1079`, `E2573`, `E1030`.
 
@@ -8747,9 +8747,9 @@ const
 
 **Invalid default value of a parameter** · Bug · Error · Group Compiler ahead
 
-Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only small sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).
+Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Sets of any size may have a default value; Delphi 13 does not report E2146 for them. Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).
 
-Matches the compiler message `E2237`, `E2238`, `E2239`, `E2268`, `E2146`.
+Matches the compiler message `E2237`, `E2238`, `E2239`, `E2268`.
 
 Level A (the parser is enough).
 

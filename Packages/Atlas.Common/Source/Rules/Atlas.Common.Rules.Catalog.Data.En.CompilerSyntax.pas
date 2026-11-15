@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..697] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..696] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -219,8 +219,9 @@ const
     '      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$' +
     'IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030,' +
     ' before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid v' +
-    'alue for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: ad' +
-    'd {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",',
+    'alue for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC; in branches that are inactive under the project defines only the nesting is checked (dcc sk' +
+    'ips them); {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct t' +
+    'he typo.",',
     '      "bad": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n\nprocedure TDienst.Starten;",',
     '      "good": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n{$ENDIF}\n\nprocedure TDienst.Starten;",',
     '      "compilerCodes": [',
@@ -666,17 +667,16 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (' +
-    'like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only sma' +
-    'll sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in' +
-    ' the matching declaration or implementation header of the same file (calls are not changed).",',
+    'like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Sets of any size may have a default value; Delphi 13 does not repo' +
+    'rt E2146 for them. Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declarat' +
+    'ion or implementation header of the same file (calls are not changed).",',
     '      "bad": "procedure Senden(const Text: string = ''''; Ziel: TZiel);",',
     '      "good": "procedure Senden(Ziel: TZiel; const Text: string = '''');",',
     '      "compilerCodes": [',
     '        "E2237",',
     '        "E2238",',
     '        "E2239",',
-    '        "E2268",',
-    '        "E2146"',
+    '        "E2268"',
     '      ],',
     '      "level": "A",',
     '      "safeFix": false',

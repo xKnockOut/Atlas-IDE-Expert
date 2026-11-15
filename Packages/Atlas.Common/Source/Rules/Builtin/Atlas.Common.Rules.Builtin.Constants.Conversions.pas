@@ -42,7 +42,11 @@ type
     /// <summary>Länge N von string[N] bzw. 255 bei ShortString in einem Typ- oder Signaturtext; 0 sonst.
     /// </summary>
     class function ShortStringLength(const AText: string): Integer; static;
+    /// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist; 0 sonst (über alle Units des
+    /// Laufs gemerkt).</summary>
+    class function IndexAliasLength(const AContext: TRuleContext; const ATypeName: string): Integer; static;
   end;
+
 
 
 implementation
@@ -950,9 +954,12 @@ begin
   end;
 end;
 
-/// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist; 0 sonst. Hängt nur vom Index ab
-/// und wird über alle Units des Laufs gemerkt (TIndexNameFacts).</summary>
+/// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist, auch über weitere Aliase
+/// (TShortGuid = TShort39 = string[39]); 0 sonst. Hängt nur vom Index ab und wird über alle Units des Laufs gemerkt
+/// (TIndexNameFacts).</summary>
 function IndexShortAlias(const AFacts: IIndexNameFacts; const AIndex: ISymbolIndex; const ATypeName: string): Integer;
+const
+  cMaxAliasDepth = 8;
 var
   mFacts: IIndexNameFacts;
   mIndex: ISymbolIndex;
@@ -965,26 +972,48 @@ begin
     function: Integer
     var
       mLocations: TArray<TSymbolLocation>;
-      mPosition: Integer;
+      mPosition, mDepth: Integer;
+      mCurrent, mBody, mNext: string;
     begin
       Result := 0;
       if mIndex = nil then
       begin
         Exit;
       end;
-      mLocations := mIndex.FindSymbols(mName);
-      for mPosition := 0 to High(mLocations) do
+      mCurrent := mName;
+      for mDepth := 1 to cMaxAliasDepth do
       begin
-        if mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.TypeAlias then
+        mNext := '';
+        mLocations := mIndex.FindSymbols(mCurrent);
+        for mPosition := 0 to High(mLocations) do
         begin
-          Result := TStringLengthLimitRule.ShortStringLength(TypeBodyOf(mLocations[mPosition].Symbol.Signature));
-          if Result > 0 then
+          if mLocations[mPosition].Symbol.Kind = TIndexSymbolKind.TypeAlias then
           begin
-            Exit;
+            mBody := TypeBodyOf(mLocations[mPosition].Symbol.Signature);
+            Result := TStringLengthLimitRule.ShortStringLength(mBody);
+            if Result > 0 then
+            begin
+              Exit;
+            end;
+            mBody := Trim(StringReplace(mBody, ';', '', [rfReplaceAll]));
+            if IsValidIdent(mBody, True) and not SameText(mBody, mCurrent) then
+            begin
+              mNext := mBody;
+            end;
           end;
         end;
+        if mNext = '' then
+        begin
+          Exit;
+        end;
+        mCurrent := mNext;
       end;
     end);
+end;
+
+class function TStringLengthLimitRule.IndexAliasLength(const AContext: TRuleContext; const ATypeName: string): Integer;
+begin
+  Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
 end;
 
 /// <summary>Gibt es im Index eine Variable, ein Feld oder eine Property AName vom Typ string[N]/ShortString oder

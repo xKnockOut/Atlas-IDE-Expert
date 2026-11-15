@@ -214,7 +214,6 @@ end;
 procedure TFreeFieldTypesTests.TextHelpers;
 begin
   Assert.AreEqual('TObjectList', TFreeFieldTypes.BaseName(' TObjectList<TOrder> '));
-  Assert.AreEqual('a b c', TFreeFieldTypes.Collapse('  a'#9#10' b   c  '));
 end;
 
 procedure TFreeFieldTypesTests.ManyTypesInLargeUnit;

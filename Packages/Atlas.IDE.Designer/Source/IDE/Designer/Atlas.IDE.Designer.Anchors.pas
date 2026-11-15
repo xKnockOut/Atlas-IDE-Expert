@@ -46,6 +46,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.AnchorDialog,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Designer.Outlines;
 
@@ -254,6 +255,7 @@ var
   mIndex: Integer;
   mAccepted: Boolean;
   mSelect: TProc<string>;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerSuggestAnchors or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     not (mRoot is TWinControl) or (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -265,6 +267,11 @@ begin
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsNone));
     Exit;
+  end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  for mIndex := 0 to High(mPlans) do
+  begin
+    mKept.Add(mPlans[mIndex].Control);
   end;
   ShowOutlinesIn(TWinControl(mRoot), OutlinesOf(mPlans, TWinControl(mRoot)));
   try
@@ -278,7 +285,8 @@ begin
   finally
     HideOutlines;
   end;
-  if not mAccepted then
+  // Während des Dialogs kann das Formular neu geladen worden sein: mPlans zeigt dann auf freigegebene Controls.
+  if not mAccepted or not mKept.Reported(OnMessage) then
   begin
     Exit;
   end;

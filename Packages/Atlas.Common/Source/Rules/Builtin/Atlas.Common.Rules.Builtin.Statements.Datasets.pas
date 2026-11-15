@@ -5,7 +5,8 @@
 //                     while not Q.Eof do ohne Q.Next auf jedem Weg durch den
 //                     Rumpf, der die Schleife fortsetzt (#963); Delete, MoveBy,
 //                     Last, Close und FindNext zählen mit. Wird Q im Rumpf
-//                     weitergegeben, bleibt die Regel still.
+//                     weitergegeben oder stammt Q sicher nicht von TDataSet ab
+//                     (Stream mit ReadLine), bleibt die Regel still.
 //   dataset-edit-without-post
 //                     Q.Edit, Q.Append bzw. Q.Insert ohne folgendes Post, Cancel
 //                     oder CheckBrowseMode in der Routine (#964); still, wenn
@@ -127,6 +128,73 @@ begin
   end;
 end;
 
+type
+  /// <summary>Kann ein Empfänger eine Datenmenge sein (#1326)? Fragt den Resolver des Laufs, den sie beim ersten
+  /// Bedarf öffnet und an den Baum heftet.</summary>
+  TDataSetReceivers = class
+  private
+    FContext: TRuleContext;
+    FFileName: string;
+    FCache: IRuleDerivedCache;
+    FResolver: TNameResolver;
+  public
+    constructor Create(const AContext: TRuleContext);
+    destructor Destroy; override;
+    /// <summary>Nein, wenn der Typ von AReceiver bekannt ist und die Vorfahrenkette ohne TDataSet vollständig endet
+    /// oder er keine Klasse ist; bei unbekanntem Typ oder abgebrochener Kette ja.</summary>
+    function MayBeDataSet(AReceiver: TSyntaxNode): Boolean;
+  end;
+
+constructor TDataSetReceivers.Create(const AContext: TRuleContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  FFileName := ContextFileName(AContext);
+end;
+
+destructor TDataSetReceivers.Destroy;
+begin
+  if FResolver <> nil then
+  begin
+    FResolver.UnpinTree;
+  end;
+  inherited;
+end;
+
+function TDataSetReceivers.MayBeDataSet(AReceiver: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound, mComplete: Boolean;
+  mNames: TArray<string>;
+begin
+  Result := True;
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+  if not FResolver.NodeType(FContext.Tree, FFileName, AReceiver, mSymbol, mTypeInfo, mTypeFound) or
+    not mTypeFound then
+  begin
+    Exit;
+  end;
+  if mTypeInfo.Builtin or (mTypeInfo.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
+    TIndexSymbolKind.EnumType]) then
+  begin
+    Exit(False);
+  end;
+  if mTypeInfo.SymbolKind <> TIndexSymbolKind.ClassType then
+  begin
+    Exit;
+  end;
+  mNames := FResolver.Queries.AncestorNames(mTypeInfo, mComplete);
+  // Eine Kette, die bei TObject abbricht (System fehlt im Index), endet an der Wurzel ohne TDataSet.
+  Result := (IndexText('TDataSet', mNames) >= 0) or
+    (not mComplete and not SameText(mNames[High(mNames)], 'TObject'));
+end;
+
 { TDatasetLoopWithoutNextRule }
 
 const
@@ -146,6 +214,7 @@ var
   mLines: TArray<string>;
   mLineBreak: string;
   mDataSet: string;
+  mReceivers: TDataSetReceivers;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -482,7 +551,8 @@ var
   procedure InspectLoop(ACondition, ABody: TSyntaxNode);
   begin
     mDataSet := NodeText(ACondition[0][0]);
-    if Escapes(ABody) or Advances(ABody) then
+    // Eof eines Lesers, der kein TDataSet ist (Stream mit ReadLine), rückt anders vor.
+    if Escapes(ABody) or Advances(ABody) or not mReceivers.MayBeDataSet(ACondition[0][0]) then
     begin
       Exit;
     end;
@@ -533,7 +603,12 @@ begin
     Exit;
   end;
   mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  Visit(AContext.Tree.Root);
+  mReceivers := TDataSetReceivers.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    mReceivers.Free;
+  end;
 end;
 
 { TDatasetEditWithoutPostRule }
@@ -556,19 +631,13 @@ var
   mLines: TArray<string>;
   mLineBreak: string;
   mRoutines: TArray<TSyntaxNode>;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mFileName: string;
+  mReceivers: TDataSetReceivers;
 
-  /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
-  /// ist und die Vorfahrenkette ohne TDataSet vollständig endet oder er keine Klasse ist; bei unbekanntem Typ
-  /// oder abgebrochener Kette ja, wie bisher.</summary>
+  /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (TDataSetReceivers.MayBeDataSet)?
+  /// </summary>
   function MayBeDataSet(AStatement: TSyntaxNode): Boolean;
   var
     mTarget: TSyntaxNode;
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound, mComplete: Boolean;
-    mNames: TArray<string>;
   begin
     Result := True;
     mTarget := AStatement[0];
@@ -580,29 +649,7 @@ var
     begin
       Exit;
     end;
-    if mResolver = nil then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-    end;
-    if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
-      not mTypeFound then
-    begin
-      Exit;
-    end;
-    if mTypeInfo.Builtin or (mTypeInfo.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
-      TIndexSymbolKind.EnumType]) then
-    begin
-      Exit(False);
-    end;
-    if mTypeInfo.SymbolKind <> TIndexSymbolKind.ClassType then
-    begin
-      Exit;
-    end;
-    mNames := mResolver.Queries.AncestorNames(mTypeInfo, mComplete);
-    Result := (IndexText('TDataSet', mNames) >= 0) or not mComplete;
+    Result := mReceivers.MayBeDataSet(mTarget[0]);
   end;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -875,15 +922,11 @@ begin
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  mFileName := ContextFileName(AContext);
-  mResolver := nil;
+  mReceivers := TDataSetReceivers.Create(AContext);
   try
     Visit(AContext.Tree.Root);
   finally
-    if mResolver <> nil then
-    begin
-      mResolver.UnpinTree;
-    end;
+    mReceivers.Free;
   end;
 end;
 

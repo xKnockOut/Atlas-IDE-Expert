@@ -73,6 +73,7 @@ uses
   Winapi.Windows,
   System.IOUtils,
   Atlas.Text.Updates,
+  Atlas.Text.CommandLine,
   Atlas.WinBase.Process,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Updates.Strings,
@@ -159,7 +160,7 @@ var
 begin
   Result := 0;
   // Ohne Standard-Handles: AtlasUpdate erbt nichts.
-  mLaunch := TAtlasProcessLaunch.Create(AExe, TUpdateNames.QuoteArgument(AExe) + ' ' + AArgs.CommandLine,
+  mLaunch := TAtlasProcessLaunch.Create(AExe, TTextCommandLine.Quote(AExe) + ' ' + AArgs.CommandLine,
     ExtractFileDir(AExe), 0, 0, 0);
   if AVisible then
   begin

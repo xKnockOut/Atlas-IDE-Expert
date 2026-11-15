@@ -1317,9 +1317,10 @@ var
       mFrom := 0;
       mTill := MaxInt;
     end;
-    // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst.
+    // Ohne eigenen Delimiter bleibt die Regel still; StrictDelimiter := False ist bewusst. Mit dem Leerzeichen als
+    // Delimiter ist das Trennen an Leerzeichen gewollt.
     if not Assigns(mRoutine.StartOffset, mRoutine.EndOffset, mList, 'Delimiter', mValue) or
-      Assigns(mFrom, mTill, mList, 'StrictDelimiter', mValue) then
+      (mValue = ''' ''') or SameText(mValue, '#32') or Assigns(mFrom, mTill, mList, 'StrictDelimiter', mValue) then
     begin
       Exit;
     end;

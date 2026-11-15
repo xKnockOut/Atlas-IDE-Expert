@@ -203,24 +203,8 @@ begin
 end;
 
 function TSourceFile.TokenAt(const APosition: TTextPosition): Integer;
-var
-  mIndex, mAt: Integer;
-  mTokens: TArray<TPascalToken>;
 begin
-  mTokens := Tree.Tokens;
-  mAt := Offset(APosition);
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if mTokens[mIndex].Offset = mAt then
-    begin
-      Exit(mIndex);
-    end
-    else if mTokens[mIndex].Offset > mAt then
-    begin
-      Break;
-    end;
-  end;
-  Result := -1;
+  Result := TokenExactly(Tree.Tokens, Offset(APosition));
 end;
 
 function TSourceFile.IsVarArgument(ACall: TSyntaxNode; AArgument: Integer): Boolean;

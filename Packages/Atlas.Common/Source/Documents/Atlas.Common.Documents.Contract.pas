@@ -25,6 +25,10 @@ type
     EndPos: TTextPosition;
     constructor Create(const AStartPos, AEndPos: TTextPosition); overload;
     constructor Create(AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer); overload;
+    /// <summary>Liegt APosition im Bereich (StartPos einschließlich, EndPos ausschließlich)?</summary>
+    function Contains(const APosition: TTextPosition): Boolean;
+    /// <summary>Liegt APosition in einem der Bereiche ARanges (etwa den inaktiven Zweigen einer Unit)?</summary>
+    class function AnyContains(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean; static;
   end;
 
   /// <summary>Textänderung: Bereich Range ersetzen durch NewText (früher TRuleEdit in Rules.Contract).</summary>
@@ -124,6 +128,27 @@ constructor TTextRange.Create(AStartLine, AStartCharacter, AEndLine, AEndCharact
 begin
   StartPos := TTextPosition.Create(AStartLine, AStartCharacter);
   EndPos := TTextPosition.Create(AEndLine, AEndCharacter);
+end;
+
+function TTextRange.Contains(const APosition: TTextPosition): Boolean;
+begin
+  Result := ((StartPos.Line < APosition.Line) or ((StartPos.Line = APosition.Line) and
+    (StartPos.Character <= APosition.Character))) and ((APosition.Line < EndPos.Line) or
+    ((APosition.Line = EndPos.Line) and (APosition.Character < EndPos.Character)));
+end;
+
+class function TTextRange.AnyContains(const ARanges: TArray<TTextRange>; const APosition: TTextPosition): Boolean;
+var
+  mRange: TTextRange;
+begin
+  for mRange in ARanges do
+  begin
+    if mRange.Contains(APosition) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 { TTextEdit }

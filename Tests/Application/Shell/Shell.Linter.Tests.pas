@@ -95,6 +95,10 @@ type
     /// ohne installiertes Delphi (Version aus ProjectVersion) und ohne .dproj.</summary>
     [Test]
     procedure InlineCompilerVersionWithoutInstallation;
+    /// <summary>{$IF NOT DECLARED(X)} mit X aus einer anderen Unit des Projekts: Der Index beantwortet Declared,
+    /// nur der {$ELSE}-Zweig gilt, kein Syntaxfehler aus dem anderen Zweig.</summary>
+    [Test]
+    procedure DeclaredInIfAsksIndex;
     /// <summary>#1358: formatierte Datei 0, falsche Einrückung 1 mit Zeile und Art; Diff und JSON.</summary>
     [Test]
     procedure FormatCheckReportsDeviations;
@@ -580,6 +584,32 @@ begin
   Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
   // Ohne .dproj gilt die neueste bekannte Version.
   Assert.AreEqual(0, Run(['--check', Path('Cv/T1.pas'), '--format', 'json', '--fail-on', 'never', '--no-index']));
+  Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
+end;
+
+procedure TShellLinterTests.DeclaredInIfAsksIndex;
+const
+  cDproj = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup><ProjectVersion>20.3</ProjectVersion>' +
+    '<Config Condition="''$(Config)''==''''">Release</Config>' +
+    '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10 +
+    '  <ItemGroup><DCCReference Include="Nutzer.pas"/><DCCReference Include="Kodierung.pas"/></ItemGroup>'#13#10 +
+    '</Project>'#13#10;
+  cKodierung = 'unit Kodierung;'#13#10'interface'#13#10'function Kodiere: Integer;'#13#10'implementation'#13#10 +
+    'function Kodiere: Integer;'#13#10'begin'#13#10'  Result := 1;'#13#10'end;'#13#10'end.'#13#10;
+  // Der Zweig ohne Kodiere ist für sich kein gültiger Code: Gälten beide Zweige, gäbe es Syntaxfehler.
+  cNutzer = 'unit Nutzer;'#13#10'interface'#13#10'function Wert: Integer;'#13#10'implementation'#13#10 +
+    'uses Kodierung;'#13#10'function Wert: Integer;'#13#10'{$IF NOT DECLARED(Kodiere)}'#13#10'begin'#13#10 +
+    '  Result := 0;'#13#10'end;'#13#10'{$ELSE}'#13#10'begin'#13#10'  Result := Kodiere;'#13#10'end;'#13#10 +
+    '{$IFEND}'#13#10'end.'#13#10;
+begin
+  ForceDirectories(Path('Dcl'));
+  TFile.WriteAllText(Path('Dcl/T.dproj'), cDproj);
+  TFile.WriteAllText(Path('Dcl/Nutzer.pas'), cNutzer);
+  TFile.WriteAllText(Path('Dcl/Kodierung.pas'), cKodierung);
+  TFile.WriteAllText(Path('Dcl/atlas.json'), '{"rules": {"syntax": "error"}}');
+  Assert.AreEqual(0, Run(['--check', Path('Dcl/T.dproj'), '--format', 'json', '--fail-on', 'never']));
+  Assert.Contains(OutputText, 'Nutzer.pas');
   Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
 end;
 

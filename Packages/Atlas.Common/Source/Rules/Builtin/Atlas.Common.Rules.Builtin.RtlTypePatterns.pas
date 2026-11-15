@@ -261,7 +261,7 @@ begin
       Continue;
     end;
     mTypeName := DeclaredTypeAt(ATypes, ATokens, mName);
-    if (mTypeName <> '') and TDeclaredTypes.IsReference(mTypeName) then
+    if (mTypeName <> '') and ATypes.IsPointerSized(mTypeName) then
     begin
       AReport.Add(RangeOf(ATokens, mInner, mSizeClose),
         cTexts[TRtlTypePatternsText.SizeOfPointer].Fmt([ATokens[mName].Text, mTypeName]),
@@ -583,6 +583,26 @@ begin
     (TResolvedTypeKinds.OfType(mType) in [TResolvedTypeKind.Record_, TResolvedTypeKind.Object_]);
 end;
 
+/// <summary>Ist ATypeName in ARoot als Klassenreferenz deklariert (TXClass = class of TX)? Solche Typen tragen
+/// nicht immer "Class" im Namen.</summary>
+function IsClassOfDecl(ARoot: TSyntaxNode; const ATypeName: string): Boolean;
+var
+  mFound: Boolean;
+begin
+  mFound := False;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ATypeName) and
+        (ANode.FindChild(TSyntaxKind.ClassOfType) <> nil) then
+      begin
+        mFound := True;
+      end;
+      Result := not mFound;
+    end);
+  Result := mFound;
+end;
+
 procedure TConstructorOnInstanceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TTokens;
@@ -608,7 +628,8 @@ begin
       end;
       mTypeName := DeclaredTypeAt(mTypes, mTokens, mIndex);
       if IsInstanceType(mTypeName) and InStatements(AContext.Tree, mTokens[mIndex].StartPos) and
-        not IsValueType(AContext, mCache, mResolver, mTypeName, mTokens[mIndex].Offset) then
+        not IsValueType(AContext, mCache, mResolver, mTypeName, mTokens[mIndex].Offset) and
+        not IsClassOfDecl(AContext.Tree.Root, mTypeName) then
       begin
         AReport.Add(RangeOf(mTokens, mIndex, mCtor),
           cTexts[TRtlTypePatternsText.CtorOnInstance].Fmt([mTokens[mIndex].Text, mTypeName]), TRuleConfidence.High,

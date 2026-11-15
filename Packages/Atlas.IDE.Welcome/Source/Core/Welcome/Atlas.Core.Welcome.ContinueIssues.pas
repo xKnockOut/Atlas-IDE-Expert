@@ -114,6 +114,15 @@ type
     /// <summary>Was „Fortsetzen“ mit dem Branch tut: AStored gespeichert, ACurrent ausgecheckt, AExists, ob es
     /// AStored noch gibt.</summary>
     class function BranchStep(const AStored, ACurrent: string; AExists: Boolean): TAtlasIssueBranchStep; static;
+    /// <summary>Änderungen aus ATabs ab ASince (UTC; 0 = alle), zum Speichern unter einem Issue.</summary>
+    class function ChangesSince(const ATabs: TArray<TAtlasWorkTab>; ASince: TDateTime): TArray<TAtlasWorkTab>;
+      static;
+    /// <summary>Zustand je Kennung aus AKeys nach den gemeldeten AFoundKeys mit AFoundStates (gleiche Länge);
+    /// nicht gemeldete bleiben Unknown.</summary>
+    class function MatchStates(const AKeys, AFoundKeys: TArray<string>;
+      const AFoundStates: TArray<TAtlasIssueStateKind>): TArray<TAtlasIssueStateKind>; static;
+    /// <summary>AEntry mit Titel und Branch aus AOld, wo AEntry keine hat.</summary>
+    class function KeepNames(const AEntry, AOld: TAtlasIssueWorkEntry): TAtlasIssueWorkEntry; static;
   end;
 
 implementation
@@ -549,6 +558,55 @@ begin
   else
   begin
     Result := TAtlasIssueBranchStep.Missing;
+  end;
+end;
+
+class function TAtlasWelcomeContinueIssues.ChangesSince(const ATabs: TArray<TAtlasWorkTab>;
+  ASince: TDateTime): TArray<TAtlasWorkTab>;
+var
+  mTab: TAtlasWorkTab;
+begin
+  Result := nil;
+  for mTab in ATabs do
+  begin
+    if (ASince <= 0) or (mTab.ChangedAt >= ASince) then
+    begin
+      Result := Result + [mTab];
+    end;
+  end;
+end;
+
+class function TAtlasWelcomeContinueIssues.MatchStates(const AKeys, AFoundKeys: TArray<string>;
+  const AFoundStates: TArray<TAtlasIssueStateKind>): TArray<TAtlasIssueStateKind>;
+var
+  mIndex, mFound: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AKeys));
+  for mIndex := 0 to High(AKeys) do
+  begin
+    Result[mIndex] := TAtlasIssueStateKind.Unknown;
+    for mFound := 0 to Min(High(AFoundKeys), High(AFoundStates)) do
+    begin
+      if SameKey(AFoundKeys[mFound], AKeys[mIndex]) then
+      begin
+        Result[mIndex] := AFoundStates[mFound];
+        Break;
+      end;
+    end;
+  end;
+end;
+
+class function TAtlasWelcomeContinueIssues.KeepNames(const AEntry, AOld: TAtlasIssueWorkEntry): TAtlasIssueWorkEntry;
+begin
+  Result := AEntry;
+  if Result.Title = '' then
+  begin
+    Result.Title := AOld.Title;
+  end;
+  if Result.Branch = '' then
+  begin
+    Result.Branch := AOld.Branch;
   end;
 end;
 

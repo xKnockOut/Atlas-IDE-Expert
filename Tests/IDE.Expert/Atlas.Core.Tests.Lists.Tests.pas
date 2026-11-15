@@ -55,6 +55,20 @@ type
     procedure AddRemoveAndUniqueName;
   end;
 
+  [TestFixture]
+  [Category('Atlas.IDE.Tests')]
+  TAtlasTestListSetTests = class
+  public
+    [Test]
+    procedure MergedPrefersProjectLists;
+    [Test]
+    procedure IndexChecksAndNames;
+    [Test]
+    procedure FreshAndCopiedArePersonal;
+    [Test]
+    procedure StateKeyChangesWithEachPart;
+  end;
+
 implementation
 
 uses
@@ -416,7 +430,98 @@ begin
   Assert.AreEqual(1, Integer(Length(TAtlasTestListModel.OfStore(mLists, TAtlasTestListStore.Personal))));
 end;
 
+/// <summary>Feste Liste AName in der Ablage AStore mit dem Test ATest ('' = ohne).</summary>
+function FixedList(const AName: string; AStore: TAtlasTestListStore; const ATest: string): TAtlasTestList;
+begin
+  Result := Default(TAtlasTestList);
+  Result.Name := AName;
+  Result.Store := AStore;
+  if ATest <> '' then
+  begin
+    Result.Tests := TArray<string>.Create(ATest);
+  end;
+end;
+
+/// <summary>Dynamische Liste AName (Kategorie Schnell).</summary>
+function DynamicList(const AName: string): TAtlasTestList;
+begin
+  Result := FixedList(AName, TAtlasTestListStore.Project, '');
+  Result.Rules := TArray<TAtlasTestListRule>.Create(TAtlasTestListRule.Category('Schnell', False));
+end;
+
+{ TAtlasTestListSetTests }
+
+procedure TAtlasTestListSetTests.MergedPrefersProjectLists;
+var
+  mLists: TAtlasTestLists;
+begin
+  mLists := TAtlasTestListSet.Merged(
+    TArray<TAtlasTestList>.Create(FixedList('Rauch', TAtlasTestListStore.Project, 'A')),
+    TArray<TAtlasTestList>.Create(FixedList('rauch', TAtlasTestListStore.Personal, 'B'),
+    FixedList('Meine', TAtlasTestListStore.Personal, 'C')));
+  Assert.AreEqual(2, Integer(Length(mLists)));
+  Assert.AreEqual('Rauch', mLists[0].Name);
+  Assert.AreEqual('A', mLists[0].Tests[0], 'gleichnamige eigene Liste tritt zurück');
+  Assert.AreEqual('Meine', mLists[1].Name);
+end;
+
+procedure TAtlasTestListSetTests.IndexChecksAndNames;
+var
+  mLists: TAtlasTestLists;
+  mNames: TArray<string>;
+begin
+  mLists := TArray<TAtlasTestList>.Create(FixedList('Fest', TAtlasTestListStore.Personal, 'A'),
+    DynamicList('Schnelle'));
+  Assert.IsTrue(TAtlasTestListSet.Has(mLists, 1));
+  Assert.IsFalse(TAtlasTestListSet.Has(mLists, 2));
+  Assert.IsFalse(TAtlasTestListSet.Has(mLists, -1));
+  Assert.IsTrue(TAtlasTestListSet.IsFixed(mLists, 0));
+  Assert.IsFalse(TAtlasTestListSet.IsFixed(mLists, 1), 'dynamisch');
+  Assert.IsFalse(TAtlasTestListSet.IsFixed(mLists, 5));
+  Assert.AreEqual('Schnelle', TAtlasTestListSet.NameAt(mLists, 1));
+  Assert.AreEqual('', TAtlasTestListSet.NameAt(mLists, -1));
+  mNames := TAtlasTestListSet.Names(mLists);
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  mNames := TAtlasTestListSet.Taken(mLists, 0);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('Schnelle', mNames[0]);
+end;
+
+procedure TAtlasTestListSetTests.FreshAndCopiedArePersonal;
+var
+  mLists: TAtlasTestLists;
+  mList: TAtlasTestList;
+begin
+  mLists := TArray<TAtlasTestList>.Create(FixedList('Neue Liste', TAtlasTestListStore.Project, 'A'));
+  mList := TAtlasTestListSet.Fresh(mLists, 'Neue Liste');
+  Assert.AreEqual('Neue Liste (2)', mList.Name);
+  Assert.AreEqual<TAtlasTestListStore>(TAtlasTestListStore.Personal, mList.Store);
+  Assert.AreEqual(0, Integer(Length(mList.Tests)));
+  mList := TAtlasTestListSet.Copied(mLists, 0);
+  Assert.AreEqual('Neue Liste (2)', mList.Name);
+  Assert.AreEqual<TAtlasTestListStore>(TAtlasTestListStore.Personal, mList.Store, 'Kopie gehört zuerst mir');
+  Assert.AreEqual('A', mList.Tests[0]);
+  // Eigene Kopie: Ändern lässt das Original stehen.
+  mList.Tests[0] := 'B';
+  Assert.AreEqual('A', mLists[0].Tests[0]);
+end;
+
+procedure TAtlasTestListSetTests.StateKeyChangesWithEachPart;
+var
+  mLists: TAtlasTestLists;
+  mKey: string;
+begin
+  mLists := TArray<TAtlasTestList>.Create(FixedList('Fest', TAtlasTestListStore.Personal, 'A'));
+  mKey := TAtlasTestListSet.StateKey(True, 0, mLists);
+  Assert.AreEqual(mKey, TAtlasTestListSet.StateKey(True, 0, Copy(mLists)));
+  Assert.AreNotEqual(mKey, TAtlasTestListSet.StateKey(False, 0, mLists), 'tests.lists');
+  Assert.AreNotEqual(mKey, TAtlasTestListSet.StateKey(True, -1, mLists), 'Auswahl');
+  mLists[0].Name := 'Anders';
+  Assert.AreNotEqual(mKey, TAtlasTestListSet.StateKey(True, 0, mLists), 'Listen');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTestListTests);
+  TDUnitX.RegisterTestFixture(TAtlasTestListSetTests);
 
 end.

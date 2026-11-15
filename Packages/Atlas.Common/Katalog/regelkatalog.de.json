@@ -387,7 +387,7 @@
     {
       "id": "dfm-required-field-without-control",
       "name": "Pflichtfeld ohne sichtbares Eingabe-Control",
-      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder). Der Anwender kann es nicht füllen, Post schlägt fehl."
+      "description": "Ein persistentes Feld mit Required = True ist an kein sichtbares datensensitives Control gebunden (ein Gitter ohne DataField zählt für alle Felder, LiveBindings mit FieldName und Control ebenso). Der Anwender kann es nicht füllen, Post schlägt fehl. Zeigt kein Control der Formulardatei das Dataset überhaupt (Datenmodul, Eingabe in einem anderen Formular), meldet die Regel nichts."
     },
     {
       "id": "dfm-control-field-type-mismatch",
@@ -772,7 +772,7 @@
     {
       "id": "type-used-before-declaration",
       "name": "Typ vor seiner Deklaration benutzt",
-      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."
+      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias oder Nachfahr des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX oder TX = class(UnitY.TX): davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."
     },
     {
       "id": "unneeded-forward-declaration",
@@ -1566,7 +1566,7 @@
     {
       "id": "conditional-directive-unbalanced",
       "name": "Bedingte Direktiven unvollständig oder unbekannt",
-      "description": "Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$ENDIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$WARN}-Bezeichner (wie E1030, vor Delphi 13 W1030; der Code folgt delphiVersion), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."
+      "description": "Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$ENDIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$WARN}-Bezeichner (wie E1030, vor Delphi 13 W1030; der Code folgt delphiVersion), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt; in Zweigen, die unter den Defines des Projekts nicht gelten, prüft sie außer der Verschachtelung nichts (dcc überspringt sie); {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."
     },
     {
       "id": "compiler-directive-invalid",
@@ -2214,7 +2214,7 @@
     {
       "id": "default-parameter-invalid",
       "name": "Unzulässiger Standardwert eines Parameters",
-      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardwert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur kleine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."
+      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardwert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Mengen jeder Größe dürfen einen Standardwert haben; Delphi 13 meldet dort kein E2146. Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."
     },
     {
       "id": "signed-unsigned-mix",

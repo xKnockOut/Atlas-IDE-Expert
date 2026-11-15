@@ -72,8 +72,6 @@ type
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts.</summary>
     cOrder = 15;
-    /// <summary>So lange nach dem ersten Schließen einer Datei gelten die festgehaltenen Reiter.</summary>
-    cBatchMs = 5000;
   private type
     TIdeNotifier = class(TNotifierObject, IOTAIDENotifier)
     private
@@ -110,10 +108,8 @@ type
     /// <summary>Festgehaltene Reiter beim ersten Schließen einer Datei.</summary>
     TBatch = record
       Snapshot: TAtlasContinueSnapshot;
-      /// <summary>GetTickCount64 des letzten Schließens einer Datei; 0 = nichts festgehalten.</summary>
-      At: UInt64;
-      /// <summary>GetTickCount64 des letzten geschriebenen Stands.</summary>
-      LastWrite: UInt64;
+      /// <summary>Letztes Schließen einer Datei und letzter geschriebener Stand.</summary>
+      Ticks: TAtlasContinueTicks;
     end;
 
     /// <summary>Normiertes Ziel → HEAD-Stand (VcsKind, Head, Upstream, UpstreamRevision) bzw. Zeitpunkt der
@@ -366,8 +362,8 @@ end;
 
 function IncomingRunning(ASelf: TAtlasIdeContinue): Boolean;
 begin
-  Result := (ASelf.FIncoming.Started > 0) and
-    (GetTickCount64 - ASelf.FIncoming.Started < TAtlasWelcomeContinue.cQueryLimitMs);
+  Result := TAtlasContinueSession.Recent(ASelf.FIncoming.Started, GetTickCount64,
+    TAtlasWelcomeContinue.cQueryLimitMs);
   if not Result then
   begin
     ASelf.FIncoming.Started := 0;
@@ -467,9 +463,10 @@ begin
     AEntry := Top(ASelf);
     Result := AEntry.Project <> '';
   end;
-  if Result and not AForce and (Key(AEntry.Project) = ASelf.FIncoming.Key) and (ASelf.FIncoming.Fresh > 0) then
+  if Result then
   begin
-    Result := GetTickCount64 - ASelf.FIncoming.Fresh >= TAtlasWelcomeContinue.cRefreshMs;
+    Result := TAtlasContinueSession.IncomingDue(AForce, Key(AEntry.Project) = ASelf.FIncoming.Key,
+      ASelf.FIncoming.Fresh, GetTickCount64);
   end;
 end;
 
@@ -540,53 +537,29 @@ end;
 
 /// <summary>Hinweis auf fehlende Dateien beim Fortsetzen; '' ohne.</summary>
 function MissingNotice(const AMissing: TArray<string>): string;
-var
-  mNames: TArray<string>;
-  mName: string;
 begin
   Result := '';
-  if Length(AMissing) = 0 then
+  if Length(AMissing) > 0 then
   begin
-    Exit;
+    Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing,
+      [TAtlasContinueSession.MissingNames(AMissing)]);
   end;
-  mNames := nil;
-  for mName in AMissing do
-  begin
-    mNames := mNames + [ExtractFileName(mName)];
-  end;
-  Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing, [string.Join(', ', mNames)]);
 end;
 
 /// <summary>Einträge für „Atlas-Ergebnisse“: die Dateien des Commits, die eigenen zuerst.</summary>
 function CommitEntries(const ACommit: TAtlasContinueCommit; const AFiles: TArray<string>): TArray<TAtlasResultEntry>;
 var
-  mFileName, mOwn: string;
-  mMine: Boolean;
+  mFileName: string;
   mEntry: TAtlasResultEntry;
-  mFirst, mRest: TArray<TAtlasResultEntry>;
 begin
-  mFirst := nil;
-  mRest := nil;
-  for mFileName in AFiles do
+  Result := nil;
+  for mFileName in TAtlasContinueSession.OwnFirst(ACommit.Files, AFiles) do
   begin
     mEntry := TAtlasResultEntry.Create(mFileName, 0, 0);
     mEntry.Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitFile,
       [ACommit.Commit.ShortHash]);
-    mMine := False;
-    for mOwn in ACommit.Files do
-    begin
-      mMine := mMine or TAtlasWelcomeContinue.SameFile(mOwn, mFileName);
-    end;
-    if mMine then
-    begin
-      mFirst := mFirst + [mEntry];
-    end
-    else
-    begin
-      mRest := mRest + [mEntry];
-    end;
+    Result := Result + [mEntry];
   end;
-  Result := mFirst + mRest;
 end;
 
 procedure ShowCommitEntries(const ACommit: TAtlasContinueCommit; const AEntries: TArray<TAtlasResultEntry>);
@@ -697,7 +670,7 @@ begin
   end;
   mTarget := TAtlasIdeContinueEditor.CurrentTarget;
   if (mTarget = '') or (FHeads.Fresh.TryGetValue(Key(mTarget), mLast) and
-    (GetTickCount64 - mLast < TAtlasWelcomeContinue.cRefreshMs)) then
+    TAtlasContinueSession.Recent(mLast, GetTickCount64, TAtlasWelcomeContinue.cRefreshMs)) then
   begin
     Exit;
   end;
@@ -711,11 +684,11 @@ begin
     Exit;
   end;
   // Erste Datei einer Folge: Reiter festhalten, solange sie noch alle offen sind.
-  if (FBatch.At = 0) or (GetTickCount64 - FBatch.At >= cBatchMs) then
+  if TAtlasContinueSession.HoldTabs(FBatch.Ticks, GetTickCount64) then
   begin
     FBatch.Snapshot := TAtlasIdeContinueEditor.TakeSnapshot(FChanges);
   end;
-  FBatch.At := GetTickCount64;
+  FBatch.Ticks.Held := GetTickCount64;
 end;
 
 procedure TAtlasIdeContinue.ProjectOpened(const AFileName: string);
@@ -737,22 +710,20 @@ procedure TAtlasIdeContinue.ProjectClosing(const AFileName: string);
 var
   mTarget: string;
   mSnapshot: TAtlasContinueSnapshot;
+  mStep: TAtlasContinueCloseStep;
 begin
   if not Recording then
   begin
     Exit;
   end;
   // Gruppe und ihre Projekte melden sich einzeln: einmal je Schließen schreiben.
-  if (FBatch.LastWrite > 0) and (GetTickCount64 - FBatch.LastWrite < cBatchMs) then
-  begin
-    Exit;
-  end;
+  mStep := TAtlasContinueSession.CloseStep(FBatch.Ticks, GetTickCount64);
   mTarget := TAtlasIdeContinueEditor.TargetOf(AFileName);
-  if mTarget = '' then
+  if (mStep = TAtlasContinueCloseStep.Skip) or (mTarget = '') then
   begin
     Exit;
   end;
-  if (FBatch.At > 0) and (GetTickCount64 - FBatch.At < cBatchMs) then
+  if mStep = TAtlasContinueCloseStep.UseHeld then
   begin
     mSnapshot := FBatch.Snapshot;
   end
@@ -796,8 +767,8 @@ begin
     end);
   // Derselbe Stand unter dem aktiven Issue (#2052), solange die Änderungen dieser Sitzung noch da sind.
   Issues.ProjectWritten(ATarget, ASnapshot);
-  FBatch.LastWrite := GetTickCount64;
-  FBatch.At := 0;
+  FBatch.Ticks.Written := GetTickCount64;
+  FBatch.Ticks.Held := 0;
   FBatch.Snapshot := Default(TAtlasContinueSnapshot);
   // Neue Sitzung: Änderungen gehören zum geschriebenen Stand.
   FChanges.Clear;
@@ -830,7 +801,7 @@ begin
   mQuery := Default(THeadQuery);
   mQuery.Key := Key(ATarget);
   if FHeads.Querying.TryGetValue(mQuery.Key, mStarted) and
-    (GetTickCount64 - mStarted < TAtlasWelcomeContinue.cQueryLimitMs) then
+    TAtlasContinueSession.Recent(mStarted, GetTickCount64, TAtlasWelcomeContinue.cQueryLimitMs) then
   begin
     Exit;
   end;
@@ -977,7 +948,7 @@ begin
   end;
   // Beenden der IDE: Ist das Projekt noch offen (kein Schließen gemeldet), jetzt schreiben, ohne Abfrage.
   try
-    if Recording and (GetTickCount64 - FBatch.LastWrite >= cBatchMs) then
+    if Recording and TAtlasContinueSession.WriteOnStop(FBatch.Ticks, GetTickCount64) then
     begin
       mTarget := TAtlasIdeContinueEditor.CurrentTarget;
       if mTarget <> '' then
@@ -1079,17 +1050,13 @@ begin
 end;
 
 function TAtlasIdeContinue.Incoming: TAtlasContinueIncoming;
-var
-  mEntry: TAtlasContinueEntry;
 begin
   Result := Default(TAtlasContinueIncoming);
   if not Enabled or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming then
   begin
     Exit;
   end;
-  mEntry := Top(Self);
-  if (mEntry.Project <> '') and (Key(mEntry.Project) = FIncoming.Key) and
-    (Key(FIncoming.Data.Project) = FIncoming.Key) then
+  if TAtlasContinueSession.IncomingFits(Top(Self).Project, FIncoming.Key, FIncoming.Data.Project) then
   begin
     Result := FIncoming.Data;
   end;
@@ -1163,7 +1130,7 @@ begin
       begin
         TAtlasIdeContinueEditor.OpenTab(Tab);
       end;
-      if (Plan.Active >= 0) and (Plan.Active <= High(Plan.Open)) then
+      if TAtlasContinueSession.ActiveInPlan(Plan.Active, Length(Plan.Open)) then
       begin
         TAtlasIdeContinueEditor.OpenTab(Plan.Open[Plan.Active]);
       end;

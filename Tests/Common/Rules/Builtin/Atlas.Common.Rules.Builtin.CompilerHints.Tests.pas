@@ -178,6 +178,13 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('{$IFDEF NIE_DEFINIERT}{$M+}{$ENDIF}'#10 +
     '  TKlasse = class', cBody)))));
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('{$M+}{$M-}'#10'  TKlasse = class', cBody)))));
+  // FP mORMot: Der Zustand an der forward-Deklaration gilt für die Klasse und ihre Nachfahren.
+  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TKlasse = class;'#10'{$M-}'#10'  TKlasse = class',
+    cBody))));
+  Assert.AreEqual('', Messages(Findings(Klasse('{$M+}'#10'  TBasis = class;'#10'{$M-}'#10'  TBasis = class'#10 +
+    '  end;'#10'  TKind = class(TBasis)', cBody))));
+  Assert.AreEqual(1, Integer(Length(Findings(Klasse('  TKlasse = class;'#10'{$M+}{$M-}'#10'  TKlasse = class',
+    cBody)))));
 end;
 
 procedure TCompilerHintsRulesTests.AncestorWithTypeInfoInFile;
