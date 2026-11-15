@@ -39,6 +39,8 @@ type
     [Test]
     procedure EmptyBlockDependsOnComment;
     [Test]
+    procedure BlockWithCodeOfOtherPlatformsIsSilent;
+    [Test]
     procedure EmptyWithAfterCallIsSilent;
     [Test]
     procedure CorrectFormsAreSilent;
@@ -56,6 +58,8 @@ type
     procedure LengthOfArrayUsesHigh;
     [Test]
     procedure CorrectLoopsAreSilent;
+    [Test]
+    procedure CountVariableIsNotListCount;
     [Test]
     procedure StringLoopsAndZeroIndex;
     [Test]
@@ -105,6 +109,10 @@ type
     procedure DatasetLoopVariants;
     [Test]
     procedure DatasetLoopSilentCases;
+    /// <summary>Eof eines Lesers, der sicher kein TDataSet ist (CSV-Stream mit ReadLine): still; Datenmenge und
+    /// unbekannter Typ bleiben Treffer.</summary>
+    [Test]
+    procedure DatasetLoopOnlyOnDataSets;
     [Test]
     procedure DatasetLoopOffAndExclude;
     [Test]
@@ -117,6 +125,10 @@ type
     /// an Records und Listen; gemeldet bleibt die Datenmenge und der unbekannte Typ.</summary>
     [Test]
     procedure DatasetEditOnlyOnDataSets;
+    /// <summary>Typparameter mit Klassen-Einschränkung (DMVC TMVCRepository&lt;T: TMVCActiveRecord&gt;): Insert
+    /// auf T ist das der Einschränkung; ohne Einschränkung oder mit Datenmenge bleibt der Befund.</summary>
+    [Test]
+    procedure DatasetEditOnTypeParameters;
     [Test]
     procedure DatasetEditOffAndExclude;
     [Test]
@@ -330,6 +342,21 @@ begin
     '{"rules": {"empty-statement": {"exclude": ["Alt/*.pas"]}}}', 'Neu/Daten.pas'))));
 end;
 
+procedure TStatementRulesTests.BlockWithCodeOfOtherPlatformsIsSilent;
+var
+  mSource: string;
+begin
+  // Wie die FMX-Units von Alcinoe: Der Block enthält nur Code für andere Plattformen, unter Win32 ist er leer.
+  mSource := Body('  if Fertig then'#10'  begin'#10'    {$REGION ''ANDROID''}'#10'    {$IF defined(ANDROID)}'#10 +
+    '    Fertig := False;'#10'    {$ENDIF}'#10'    {$ENDREGION}'#10'  end'#10'  else'#10'  begin'#10 +
+    '    {$IFDEF IOS}'#10'    Fertig := True;'#10'    {$ELSE}'#10'    {$ENDIF}'#10'  end;'#10);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create, mSource,
+    '{"rules": {"empty-statement": {"allowCommented": false}}}', 'Daten.pas'))));
+  // Nur {$REGION} macht den Block nicht voll.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TEmptyStatementRule.Create,
+    Body('  if Fertig then'#10'  begin'#10'    {$REGION ''Leer''}'#10'    {$ENDREGION}'#10'  end;'#10)))));
+end;
+
 procedure TStatementRulesTests.AllowCommentedMustBeBoolean;
 var
   mIssues: TArray<TConfigurationIssue>;
@@ -443,6 +470,21 @@ begin
     mFindings[0].Message);
   Assert.AreEqual('High(FZahlen) verwenden', mFindings[0].Fixes[0].Title);
   Assert.AreEqual('High(FZahlen)', mFindings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TStatementRulesTests.CountVariableIsNotListCount;
+const
+  cHeader = 'unit Zeitleiste;'#10'interface'#10'type'#10'  TLeiste = class'#10 +
+    '    function GetItem(AIndex: Integer): TObject;'#10'    function GetCount: Integer;'#10 +
+    '    property Items[AIndex: Integer]: TObject read GetItem;'#10'    property Count: Integer read GetCount;'#10 +
+    '    procedure Ordnen;'#10'  end;'#10'implementation'#10'procedure TLeiste.Ordnen;'#10'var'#10;
+begin
+  // Lokale Variable Count hält schon Items.Count - 1.
+  TRuleAssert.Silent(TLoopOffByOneRule.Create, cHeader + '  I, Count: Integer;'#10'begin'#10 +
+    '  Count := Items.Count - 1;'#10'  for I := 0 to Count do'#10'    Items[I].Free;'#10'end;'#10'end.');
+  // Ohne Variable ist Count die eigene Property: weiter gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TLoopOffByOneRule.Create, cHeader + '  I: Integer;'#10 +
+    'begin'#10'  for I := 0 to Count do'#10'    Items[I].Free;'#10'end;'#10'end.'))));
 end;
 
 procedure TStatementRulesTests.CorrectLoopsAreSilent;
@@ -865,6 +907,22 @@ begin
     '  while not Q.Eof do'#10'    raise EAbbruch.Create(''x'');'#10));
 end;
 
+procedure TStatementPatternRulesTests.DatasetLoopOnlyOnDataSets;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDatasetLoopWithoutNextRule.Create, 'unit Leser;'#10'interface'#10 +
+    'type'#10'  TDataSet = class'#10'  public'#10'    function Eof: Boolean;'#10'  end;'#10 +
+    '  TAbfrage = class(TDataSet)'#10'  end;'#10'  TZeilenLeser = class(TObject)'#10'  public'#10 +
+    '    function Eof: Boolean;'#10'    function ReadLine: string;'#10'  end;'#10'implementation'#10 +
+    'procedure Test(ALeser: TZeilenLeser; AAbfrage: TAbfrage; AFremd: TFremd);'#10'begin'#10 +
+    '  while not ALeser.Eof do'#10'    Verarbeite(ALeser.ReadLine);'#10'  while not AAbfrage.Eof do'#10 +
+    '    Lesen;'#10'  while not AFremd.Eof do'#10'    Lesen;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(21, mFindings[1].Range.StartPos.Line);
+end;
+
 procedure TStatementPatternRulesTests.DatasetLoopOffAndExclude;
 var
   mSource: string;
@@ -948,6 +1006,24 @@ begin
   Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[0].Message);
   Assert.AreEqual(28, mFindings[1].Range.StartPos.Line);
   Assert.AreEqual('Nach Insert fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[1].Message);
+end;
+
+procedure TStatementPatternRulesTests.DatasetEditOnTypeParameters;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, 'unit Ablage;'#10'interface'#10 +
+    'type'#10'  TDataSet = class'#10'  public'#10'    procedure Insert;'#10'    procedure Post;'#10'  end;'#10 +
+    '  TSatz = class'#10'  public'#10'    procedure Insert;'#10'  end;'#10 +
+    '  TAblage<T: TSatz> = class'#10'    procedure Neu(const AEintrag: T);'#10'  end;'#10 +
+    '  TMengen<T: TDataSet> = class'#10'    procedure Neu(const AMenge: T);'#10'  end;'#10 +
+    '  TFrei<T> = class'#10'    procedure Neu(const AWert: T);'#10'  end;'#10'implementation'#10 +
+    'procedure TAblage<T>.Neu(const AEintrag: T);'#10'begin'#10'  AEintrag.Insert;'#10'end;'#10 +
+    'procedure TMengen<T>.Neu(const AMenge: T);'#10'begin'#10'  AMenge.Insert;'#10'end;'#10 +
+    'procedure TFrei<T>.Neu(const AWert: T);'#10'begin'#10'  AWert.Insert;'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(28, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual(32, mFindings[1].Range.StartPos.Line);
 end;
 
 procedure TStatementPatternRulesTests.DatasetEditOffAndExclude;

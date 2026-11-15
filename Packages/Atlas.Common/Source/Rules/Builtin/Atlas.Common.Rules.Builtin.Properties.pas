@@ -13,7 +13,8 @@
 //                              umgekehrt bei class var und statischer
 //                              Klassenmethode (E2356), Feld hinter
 //                              einer Array-Property (E2008; Doku: E2174),
-//                              Feldselektor über ein Feld, das kein Record ist
+//                              Feldselektor über ein Feld, das weder Record
+//                              noch object ist
 //                              (E2459), an einer Klassen-Property (E2459,
 //                              #1380), auf ein Mitglied, das kein Feld ist
 //                              (E2461), oder auf ein fehlendes Feld (E2562).
@@ -268,7 +269,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
   FActions := TClassActionContext.Default;
   FActions.Index := AContext.Index;
@@ -520,7 +521,8 @@ begin
   begin
     Exit;
   end;
-  if mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType then
+  // Felder eines Records oder object-Typs (TSMObject = object) gehen als Selektor.
+  if not (mLocation.Symbol.Kind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType]) then
   begin
     Add(AAccessor, cTexts[TPropertiesText.NotRecord].Fmt([APath, AField.TypeName, APath, ASelector]));
     Exit;
@@ -870,7 +872,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FFileName := AContext.FileName;
   if FFileName = '' then
   begin
@@ -1402,7 +1404,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
-  FTokens := TRuleDerived.CodeTokens(FCache, AContext);
+  FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
   FAllowed := TRuleOptions.Strings(AContext.Options, 'allowAttributes', nil);
 end;
 

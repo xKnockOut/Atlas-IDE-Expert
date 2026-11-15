@@ -605,7 +605,8 @@ begin
   end;
   FPlace.MoveTo(ATree, AFileName, ANode.StartOffset);
   Result := FExpressions.ExprSymbol(ANode, ASymbol);
-  if Result and (ASymbol.Kind <> TResolvedKind.UnitName) then
+  // Mehrere gleich gut passende Überladungen mit verschiedenen Ergebnistypen: Typ offen.
+  if Result and (ASymbol.Kind <> TResolvedKind.UnitName) and not FExpressions.AmbiguousResult(ANode) then
   begin
     ATypeFound := FTyping.TypeOf(ASymbol, AType);
   end;

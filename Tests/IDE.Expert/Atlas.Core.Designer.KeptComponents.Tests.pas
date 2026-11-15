@@ -21,6 +21,8 @@ type
     FSecond: TComponent;
     FNested: TComponent;
   public
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -51,6 +53,18 @@ function Named(AOwner: TComponent; const AName: string): TComponent;
 begin
   Result := TComponent.Create(AOwner);
   Result.Name := AName;
+end;
+
+procedure TAtlasKeptComponentsTests.WarmUpFirstUse;
+begin
+  // Komponenten mit Namen legen unter Delphi beim ersten Mal einmalig Speicher an (336 Byte, auch im Einzellauf):
+  // vorab, damit der Leckmonitor ihn nicht dem ersten Test zuschreibt. Ein echtes Leck zeigt der Test trotzdem.
+  Setup;
+  try
+    UnchangedFormHolds;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasKeptComponentsTests.Setup;

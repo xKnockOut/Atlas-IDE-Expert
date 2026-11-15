@@ -85,7 +85,8 @@ const
     '      "id": "declared-not-implemented",',
     '      "name": "Deklariert, aber nicht implementiert",',
     '      "description": "Eine Methode ist in einer Klasse, einem Record oder Objekt deklariert, hat aber keinen Rumpf im implementation-Abschnitt. Der Compiler meldet das erst beim Kompilieren (E2065). E' +
-    'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch."',
+    'inen Rumpf gleichen Namens mit anderem Kopf meldet stattdessen signature-mismatch. Rümpfe in Include-Dateien des implementation-Teils ({$I}, {$INCLUDE}, auch verschachtelt) zählen mit; lässt sich eine' +
+    ' nicht lesen, sinkt die Konfidenz auf mittel."',
     '    },',
     '{',
     '      "id": "implemented-not-declared",',
@@ -250,18 +251,18 @@ const
     '      "name": "Typ vor seiner Deklaration benutzt",',
     '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' +
     'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selb' +
-    'en type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forwar' +
-    'd-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender ve' +
-    'rschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
+    'en type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias oder Nachfahr des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX oder TX = class(UnitY.TX): davor gilt UnitY.' +
+    'TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder ein' +
+    'en Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
     '    },',
     '{',
     '      "id": "field-not-freed",',
     '      "name": "Feld erzeugt, aber nie freigegeben",',
-    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil, De' +
-    'stroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus der Option ignoreTypes; TObjectList- und TObjectD' +
-    'ictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse freigeben; ein fehlender Destruktor wird mit override ' +
-    'und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle). Bis #918 hieß die Regel owned-field-not-freed; ' +
-    'Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.",',
+    '      "description": "Ein Objektfeld, das der Konstruktor (oder eine von ihm aufgerufene private Methode) mit TKlasse.Create erzeugt, wird in der Klasse nirgends freigegeben (kein Free, FreeAndNil ode' +
+    'r eine Routine auf FreeAndNil wie ALFreeAndNil, Destroy oder DisposeOf): ein Speicherleck. Ausgenommen sind Komponenten mit einem Owner ungleich nil, Interface- und Record-Felder sowie die Klassen aus' +
+    ' der Option ignoreTypes; TObjectList- und TObjectDictionary-Felder sind normale Felder. Konfidenz mittel. Schnellkorrekturen: das Feld im Destruktor freigeben oder alle eigenen Objekte der Klasse frei' +
+    'geben; ein fehlender Destruktor wird mit override und inherited angelegt. Die Freigaben stehen vor inherited in umgekehrter Erzeugungsreihenfolge, als Free oder FreeAndNil (refactoring.freeFieldsStyle' +
+    '). Bis #918 hieß die Regel owned-field-not-freed; Einstellungen und Unterdrückungen mit dieser Kennung wirken weiter.",',
     '      "options": [',
     '        {',
     '          "name": "ignoreTypes",',
@@ -287,8 +288,8 @@ const
     '      "id": "empty-statement",',
     '      "name": "Leere Anweisung nach then, do oder else",',
     '      "description": "Ein Semikolon direkt nach then, do oder else beendet die Anweisung: Die folgende Zeile läuft dann immer bzw. die Schleife dreht leer. Ein leerer Block begin … end nach then, do o' +
-    'der else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented). Ein Semikolon direkt vor end, until, except oder finally ändert nichts und bleibt unbeanstandet.' +
-    ' Schnellkorrektur: Semikolon entfernen.",',
+    'der else wird ebenfalls gemeldet, außer er enthält einen erklärenden Kommentar (Option allowCommented) oder Code anderer Plattformen in {$IFDEF}/{$ELSE}. Ein Semikolon direkt vor end, until, except od' +
+    'er finally ändert nichts und bleibt unbeanstandet. Schnellkorrektur: Semikolon entfernen.",',
     '      "options": [',
     '        {',
     '          "name": "allowCommented",',
@@ -543,10 +544,10 @@ const
     '      "name": "Ereignis ohne Assigned-Prüfung aufgerufen",',
     '      "description": "FOnChange(Self) oder OnChange(Self) wird in einer Methode der Klasse aufgerufen, ohne dass Assigned(FOnChange) oder FOnChange <> nil den Aufruf schützt: Ohne Handler folgt eine Z' +
     'ugriffsverletzung. Ereignisse sind Felder und Properties der Klasse mit Methodenzeiger- oder Referenztyp (procedure … of object, reference to …, TNotifyEvent, TProc/TFunc, Typen auf Event, prozedurale' +
-    ' Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf oder \"if not Assigned(F) then Ex' +
-    'it/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert belegt (eingereichte Ab' +
-    'hängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als eigene Anweisung ' +
-    'in einem Block steht."',
+    ' Typen der Unit oder des Index). Schutz: der then-Zweig einer Bedingung mit Assigned (auch while), der else-Zweig von not Assigned, \"Assigned(F) and\" vor dem Aufruf (auch geklammert) oder \"if not A' +
+    'ssigned(F) then Exit/raise\" davor, auch über einen Merker oder eine Methode der Klasse ohne Parameter, deren Result Assigned(F) enthält. Still bleiben Felder, die ein Konstruktor mit einem Wert beleg' +
+    't (eingereichte Abhängigkeiten wie FReadText := AReadText), Properties darauf und gleichnamige lokale Namen. Sicherheit hoch. Korrektur: den Aufruf in \"if Assigned(F) then\" einschließen, wenn er als' +
+    ' eigene Anweisung in einem Block steht."',
     '    },',
     '{',
     '      "id": "owned-item-freed",',

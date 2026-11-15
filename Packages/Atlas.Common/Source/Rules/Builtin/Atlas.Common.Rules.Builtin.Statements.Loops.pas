@@ -310,7 +310,14 @@ var
       Exit;
     end;
     mDot := PreviousCode(mTokens, AHeader.HighLast);
-    if AHeader.HighLast = AHeader.HighFirst then
+    if (AHeader.HighLast = AHeader.HighFirst) and
+      (mTypes.DeclaredType(mTokens[AHeader.HighLast].Text, mTokens[AHeader.HighLast].StartPos) <> '') then
+    begin
+      // Variable, Parameter oder Feld namens Count (Count := Items.Count - 1): ein gespeicherter Wert, nicht die
+      // Anzahl der eigenen Liste.
+      Result := False;
+    end
+    else if AHeader.HighLast = AHeader.HighFirst then
     begin
       ABase.First := AHeader.HighLast + 1;
       ABase.Last := AHeader.HighLast; // leer: Items[I]

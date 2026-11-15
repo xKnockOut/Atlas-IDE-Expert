@@ -279,8 +279,8 @@ Compiler errors while typing, without a build.
   - quick fix passes a local variable
 - `@` before an expression (like E2036)
 - Invalid default values of parameters
-  - several names with one default, a parameter without default after one with default, `var`/`out`, records and large sets
-  - like E2237, E2238, E2239, E2268, E2146
+  - several names with one default, a parameter without default after one with default, `var`/`out` and records
+  - like E2237, E2238, E2239, E2268
   - quick fixes split the names or move the parameters with defaults to the end
 
 #### Generics

@@ -87,8 +87,9 @@ const
     'RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (thir' +
     'd argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into' +
     ' a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, ''a'' + ''b''). Besides Test' +
-    'Case(''Name'', ''Values''[, ''Separator'']) the newer forms TestCase(''Values''[, ''Separator''[, Trim]]) and NamedTestCase(''Name'', ''Values'') are recognized. Only in test units (uses DUnitX.TestFramework, TestF' +
-    'ramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.",',
+    'Case(''Name'', ''Values''[, ''Separator'']) the newer forms TestCase(''Values''[, ''Separator''[, Trim]]) and NamedTestCase(''Name'', ''Values'') are recognized. Two arguments without a Boolean are ambiguous when t' +
+    'he second one contains no letters or digits (''],{,}'', ''/''): older DUnitX versions only know TestCase(''Name'', ''Values''), so the reading whose number of values fits the method counts. Only in test units' +
+    ' (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.",',
     '      "bad": "[Test]\n[TestCase(''Rest'', ''7,2'')]\nprocedure Teile(A, B, Rest: Integer);",',
     '      "good": "[Test]\n[TestCase(''Rest'', ''7,2,1'')]\nprocedure Teile(A, B, Rest: Integer);",',
     '      "safeFix": false',

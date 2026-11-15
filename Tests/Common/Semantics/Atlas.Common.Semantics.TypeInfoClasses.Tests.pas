@@ -29,6 +29,8 @@ type
     [Test]
     procedure SwitchFollowsPushAndPopOpt;
     [Test]
+    procedure ForwardDeclarationCarriesSwitch;
+    [Test]
     procedure FollowsAncestorsThroughIndex;
     [Test]
     procedure KnownClassesWithoutIndex;
@@ -132,6 +134,25 @@ begin
   Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(4, 5)));
   Assert.IsFalse(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(6, 5)), 'inaktiver Zweig');
   Assert.IsTrue(TTypeInfoClasses.SwitchAt(cCode, TTextPosition.Create(8, 5)), 'aktiver Zweig');
+end;
+
+procedure TTypeInfoClassesTests.ForwardDeclarationCarriesSwitch;
+const
+  cCode =
+    'unit U;'#10 +                  // 0
+    'type'#10 +                     // 1
+    '{$M+}'#10 +                    // 2
+    '  TA = class;'#10 +            // 3
+    '  TC = class of TB;'#10 +      // 4
+    '{$M-}'#10 +                    // 5
+    '  TA = class end;'#10 +        // 6
+    '  TB = class end;'#10 +        // 7
+    'end.';
+begin
+  // Der Zustand an der forward-Deklaration gilt für die Klasse; ein Klassenreferenztyp ist keine.
+  Assert.IsTrue(TTypeInfoClasses.ClassSwitchAt(cCode, 'TA', TTextPosition.Create(6, 2)));
+  Assert.IsTrue(TTypeInfoClasses.ClassSwitchAt(cCode, 'U.TA', TTextPosition.Create(6, 2)));
+  Assert.IsFalse(TTypeInfoClasses.ClassSwitchAt(cCode, 'TB', TTextPosition.Create(7, 2)));
 end;
 
 procedure TTypeInfoClassesTests.SwitchFollowsPushAndPopOpt;

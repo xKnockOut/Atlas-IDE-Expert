@@ -29,6 +29,8 @@ type
     procedure TearDown;
     [Test]
     procedure ChoosesOverloadByArgumentCount;
+    /// <summary>Genau passender Parametertyp schlägt die gleiche Familie (Integer vor Int64, string vor
+    /// AnsiString); bei unbekanntem Argument bleiben alle.</summary>
     [Test]
     procedure AmbiguousOverloadsGiveAllCandidates;
     [Test]
@@ -294,11 +296,17 @@ end;
 
 procedure TNameResolverLanguageFeatureTests.AmbiguousOverloadsGiveAllCandidates;
 const
-  cSource = cHead + '  S := IntToStr(I);'#10'  S := IntToStr(Name);' + cTail;
+  cSource = cHead + '  S := IntToStr(I);'#10'  S := IntToStr(Unbekannt);' + cTail;
+var
+  mResults: TArray<TResolvedSymbol>;
 begin
-  // Integer passt genau, Int64 nur der Familie nach: beide gleich gut, also beide.
-  Assert.AreEqual(2, Integer(Length(ResolveAllAt(cSource, 'IntToStr(I)'))));
-  Assert.IsTrue(ResolveAt(cSource, 'IntToStr(I)').Found);
+  // Integer passt genau, Int64 nur der Familie nach: wie dcc die Integer-Fassung.
+  mResults := ResolveAllAt(cSource, 'IntToStr(I)');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual('Integer', mResults[0].ParamTypes[0]);
+  // Typ des Arguments unbekannt: beide gleich gut, also beide.
+  Assert.AreEqual(2, Integer(Length(ResolveAllAt(cSource, 'IntToStr(Unbekannt)'))));
+  mResults := nil;
 end;
 
 procedure TNameResolverLanguageFeatureTests.ParameterTypeAliasFitsItsBaseType;
