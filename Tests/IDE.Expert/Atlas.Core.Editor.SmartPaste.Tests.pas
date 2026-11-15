@@ -27,6 +27,8 @@ type
     [Test]
     procedure ReadsAnalysisAndSelection;
     [Test]
+    procedure ReadsNames;
+    [Test]
     procedure BuildsArguments;
   end;
 
@@ -192,6 +194,19 @@ begin
   Assert.AreEqual('A, B, C, …', TAtlasSmartPaste.Named(['A', 'B', 'C', 'D']));
   Assert.IsFalse(TAtlasSmartPaste.ReadAnalysis(nil).Valid);
   mAnalysis := Default(TAtlasPasteAnalysis);
+end;
+
+procedure TAtlasSmartPasteTests.ReadsNames;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue('["System.JSON",1,"Data.DB",null]');
+  try
+    Assert.AreEqual('System.JSON|Data.DB', string.Join('|', TAtlasSmartPaste.ReadNames(mValue)));
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(TAtlasSmartPaste.ReadNames(nil))));
 end;
 
 procedure TAtlasSmartPasteTests.BuildsArguments;

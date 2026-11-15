@@ -33,12 +33,15 @@ Keine neuen Funktionen mehr.
 - Nicht begonnen und nach 2.2 verschoben: #2079 (Designer-Layout), #2107 bis #2109 (Vervollständigung), #2134 bis
   #2138 (GitHub im Tracker).
 
-## 2.2: Debuggen, Testen und Lecks
+## 2.2.0: Debuggen, Testen und Lecks
 
 - Debuggen: #1878, #1820 und aus Epic #614 #577, #583, #584, #843, #851, #853, #863, #864, #869, #872, #895.
 - Testen: #1873 (Test aus dem Debug-Halt), #1776, #1771, #1770, #1778, Prüfregeln #1780, #1781, #1882, #1879.
 - Lecks: #1774, #1875, #1876, #1877, #1880.
 - Zweite Welle: #1772, #1773, #1775, #1777, #1779, #1782, #1783, #1881, #1226, #275, #1460, #154, #305.
+- Dazugekommen: Profiler (#2057), Testlisten, Protokoll je Test, Grenzfälle als Testfälle (#2167, #2168, #2173),
+  Bedingungen vorausschauen und erneut anhängen (#2169, #2171), Leck- und Absturzberichte (#74), aus 2.1 verschoben
+  #2079, #2107 bis #2109 und #2134 bis #2138 (GitHub im Tracker).
 
 ## 2.3: KI-Debugger, Team, Versionsverwaltung, CI
 

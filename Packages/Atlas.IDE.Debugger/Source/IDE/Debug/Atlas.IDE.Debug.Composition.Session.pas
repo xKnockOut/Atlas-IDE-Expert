@@ -36,6 +36,8 @@ function DebugLeakParts(const AScope: IAtlasModuleScope): TArray<IAtlasFeaturePa
 procedure ShowDebugLeaks;
 /// <summary>Befehl „Atlas-Lecks“ zeigen? (debug.leakReport)</summary>
 function DebugLeaksVisible: Boolean;
+/// <summary>Text des Befehls Atlas.DebugLeaks.</summary>
+function DebugLeaksCommandText: string;
 /// <summary>Nach einem Wechsel des IDE-Themas (Parallele Aufrufstapel, Atlas-Aufrufstapel, Atlas-Lecks).</summary>
 procedure DebugThreadsThemeChanged;
 /// <summary>Befehle „Thread markieren“, „einfrieren“, „auftauen“, „Alle auftauen“ (#852) und
@@ -64,6 +66,7 @@ uses
   Atlas.IDE.Debug.AsyncOrigin,
   Atlas.IDE.Debug.Leaks,
   Atlas.IDE.Debug.Composition.CallStack,
+  Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Strings;
 
 { Dienste von Base }
@@ -118,6 +121,11 @@ end;
 function DebugLeaksVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.DebugLeakReport;
+end;
+
+function DebugLeaksCommandText: string;
+begin
+  Result := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksCommand);
 end;
 
 { Start der Teile }

@@ -49,6 +49,8 @@ type
     [Test]
     procedure ParseMappingAndMerge;
     [Test]
+    procedure MappingsOfTeamOverrideGitHub;
+    [Test]
     procedure ExpandFillsPlaceholders;
     [Test]
     procedure MatchOptionFindsSimilarOption;
@@ -72,6 +74,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Product.Version;
 
 function Lines(const ALines: array of string): string;
@@ -277,6 +280,26 @@ begin
   Assert.AreEqual(4, Integer(Length(mItems)));
   Assert.AreEqual('fest', mItems[1].Value, 'Überschreiben ohne Groß-/Kleinschreibung');
   Assert.AreEqual('steps', mItems[3].Id);
+end;
+
+procedure TAtlasIssueFormsTests.MappingsOfTeamOverrideGitHub;
+var
+  mTeam: TArray<TAtlasTeamVariable>;
+  mItems: TAtlasIssueFormMappings;
+begin
+  SetLength(mTeam, 2);
+  mTeam[0].Name := 'IDE';
+  mTeam[0].Value := 'aus der .atlas';
+  mTeam[1].Name := 'steps';
+  mTeam[1].Value := '{code}';
+  mItems := TAtlasIssueForms.MappingsOf('version={version}; ide={ide}', mTeam);
+  Assert.AreEqual(3, Integer(Length(mItems)));
+  Assert.AreEqual('{version}', mItems[0].Value);
+  Assert.AreEqual('aus der .atlas', mItems[1].Value, 'Team-Datei gewinnt');
+  Assert.AreEqual('steps', mItems[2].Id);
+  Assert.AreEqual(0, Integer(Length(TAtlasIssueForms.MappingsOf('', nil))));
+  mTeam := nil;
+  mItems := nil;
 end;
 
 procedure TAtlasIssueFormsTests.ExpandFillsPlaceholders;

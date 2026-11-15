@@ -54,8 +54,6 @@ type
     FLastRun: string;
     FCurrent: Integer;
     FLoadedAt: UInt64;
-    /// <summary>Kennung von tests.lists, Auswahl und Listen: ändert sie sich, zeigt ApplySettings neu.</summary>
-    function StateKey: string;
     procedure Load(const AProject: string);
     procedure LoadPersonal(out ALists: TAtlasTestLists; out ALastRun: string);
     function SaveProject: Boolean;
@@ -192,6 +190,14 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+/// <summary>Kennung von tests.lists, Auswahl ACurrent und Listen ALists: ändert sie sich, zeigt ApplySettings
+/// neu.</summary>
+function StateKey(ACurrent: Integer; const ALists: TAtlasTestLists): string;
+begin
+  Result := BoolToStr(TAtlasIdeTestLists.Wanted, True) + '|' + IntToStr(ACurrent) + '|' +
+    TAtlasTestListModel.ToJson(ALists, '');
 end;
 
 { TAtlasIdeTestLists }
@@ -705,22 +711,17 @@ begin
   // Jede geänderte Einstellung (auch fremde, etwa die Sortierung der Gliederung) kommt hier an. Nur wenn sich
   // Listen, Auswahl oder tests.lists ändern, neu zeigen: Changed baut den ganzen Baum im Fenster „Atlas-Tests“ neu
   // (bei 14000 Tests mehrere Sekunden).
-  mBefore := StateKey;
+  mBefore := StateKey(FCurrent, FLists);
   if not Wanted then
   begin
     FCurrent := -1;
   end;
   Load(FProject);
-  if StateKey = mBefore then
+  if StateKey(FCurrent, FLists) = mBefore then
   begin
     Exit;
   end;
   Changed;
-end;
-
-function TAtlasIdeTestLists.StateKey: string;
-begin
-  Result := BoolToStr(Wanted, True) + '|' + IntToStr(FCurrent) + '|' + TAtlasTestListModel.ToJson(FLists, '');
 end;
 
 class function TAtlasIdeTestLists.Texts: TAtlasTestListTexts;

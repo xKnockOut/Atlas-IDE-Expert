@@ -95,6 +95,9 @@ type
       const AIndent: TAtlasPasteIndent; out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
     /// <summary>Antwort des Servers ohne gewählte Units; Valid = False ohne gültige Antwort.</summary>
     class function ReadAnalysis(AValue: TJSONValue): TAtlasPasteAnalysis; static;
+    /// <summary>Strings eines JSON-Arrays (etwa „added“ und „toImplementation“ der Antwort mit gewählten Units);
+    /// andere Werte und Elemente bleiben weg.</summary>
+    class function ReadNames(AValue: TJSONValue): TArray<string>; static;
     /// <summary>Eindeutige und gewählte Units ohne Doppelte.</summary>
     class function Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>; static;
     /// <summary>Namen für die Überschrift: höchstens MaxNamed, dann „…“.</summary>
@@ -518,6 +521,11 @@ begin
     Result.InInterface := (mReply.GetValue('interface') is TJSONBool) and
       TJSONBool(mReply.GetValue('interface')).AsBoolean;
   end;
+end;
+
+class function TAtlasSmartPaste.ReadNames(AValue: TJSONValue): TArray<string>;
+begin
+  Result := StringsOf(AValue);
 end;
 
 class function TAtlasSmartPaste.Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>;
