@@ -294,6 +294,14 @@ begin
     OnlyMessage(UnitText('type'#10'  TListe = class'#10'    procedure Setzen(AZahl: Integer);'#10'  end;'#10,
     'procedure TListe.Setzen(AZahl: Integer);'#10'begin'#10'end;'#10'procedure Fall(AListe: TListe);'#10 +
     'begin'#10'  AListe.Setzen(''x'');'#10'end;'#10)));
+  // string[N] an var ShortString: mit {$P+} sind das offene Strings (FP mORMot2 AppendShort(LF, line)).
+  AssertSilent(UnitText('', 'procedure Anhaengen(const AQuelle: ShortString; var AZiel: ShortString);'#10 +
+    'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mZeile: string[87];'#10'begin'#10 +
+    '  Anhaengen(''x'', mZeile);'#10'end;'#10));
+  // string[N] an var string bleibt ein Fehler.
+  Assert.AreEqual(1, Integer(Length(Findings(UnitText('', 'procedure Fuellen(var AText: string);'#10 +
+    'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mZeile: string[87];'#10'begin'#10 +
+    '  Fuellen(mZeile);'#10'end;'#10)))));
 end;
 
 procedure TTypeMismatchTests.ArgumentsThatFitAreSilent;

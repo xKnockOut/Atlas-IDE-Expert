@@ -307,6 +307,10 @@ begin
     '(wie E2461).', OnlyMessage(mTypes + '    property Laenge: Double read FPunkt.Laenge;'#10'  end;'#10 +
     'implementation'#10'end.'));
   Silent(mTypes + '    property Y: Integer read FPunkt.Y write FPunkt.Y;'#10'  end;'#10'implementation'#10'end.');
+  // Old-style object ist wie ein Record (FP mORMot SynSM: property cx read VObject.fcx mit TSMObject = object).
+  Silent('unit Kunden;'#10'interface'#10'type'#10'  TZaehler = object'#10'    Wert: Integer;'#10'  end;'#10 +
+    '  TKunde = class'#10'  private'#10'    FZaehler: TZaehler;'#10'  public'#10 +
+    '    property Wert: Integer read FZaehler.Wert;'#10'  end;'#10'implementation'#10'end.');
   // Klassen-Properties: kein Feldselektor, auch über einen Record (Cm.E2459, #1380).
   Assert.AreEqual('Die Klassen-Property X darf hinter read keinen Feldselektor haben; FMitte.X geht nur an ' +
     'Instanz-Properties (wie E2459).', OnlyMessage(mTypes + '    class var FMitte: TPunkt;'#10 +
