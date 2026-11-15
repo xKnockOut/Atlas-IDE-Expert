@@ -274,8 +274,10 @@ Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
 Atlas.Common.Rules.Builtin.Conditions.Jumps.Tests
+Atlas.Common.Rules.Builtin.Constants.Tests
 Atlas.Common.Rules.Builtin.Constants.Types.Tests
 Atlas.Common.Rules.Builtin.Credentials.Tests
+Atlas.Common.Rules.Builtin.DataBinding.Tests
 Atlas.Common.Rules.Builtin.Database.Statements.Tests
 Atlas.Common.Rules.Builtin.Declarations.Defaults.Tests
 Atlas.Common.Rules.Builtin.Declarations.Duplicates.Tests
