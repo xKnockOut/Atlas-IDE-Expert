@@ -622,3 +622,5 @@ Atlas.Core.Debug.RunToColumnFlow.Tests
 Atlas.Core.Debug.ExceptionDialogFlow.Tests
 Atlas.Core.Debug.AsyncOriginFlow.Tests
 Atlas.Core.Designer.KeptComponents.Tests
+Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
+Atlas.Common.Rules.Builtin.Inheritance.Tests
