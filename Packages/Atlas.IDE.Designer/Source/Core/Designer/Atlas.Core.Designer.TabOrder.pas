@@ -23,10 +23,13 @@
 //   Tests auf Fixture-DFMs ohne IDE.
 // - TAtlasTabClicks: Modus „Reihenfolge klicken“: zählt je Elternelement ab
 //   0 hoch, merkt den alten Stand für Esc.
+// - TAtlasTabMarks: Marken und Rahmen für die Anzeige (Stil nach Zustand) und
+//   „Nach Lesereihenfolge sortieren“ mit dem Stand zum Rückgängigmachen.
 
 interface
 
 uses
+  System.SysUtils,
   System.Types,
   System.Generics.Collections,
   Atlas.Core.Designer.FormModel;
@@ -129,10 +132,59 @@ type
     property Active: Boolean read FActive;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Normal = Akzentfarbe, Warn = auffällig, Muted = ohne TabStop, Picked = schon geklickt.</summary>
+  TAtlasTabMarkStyle = (Normal, Warn, Muted, Picked);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Marke eines sichtbaren Steuerelements; Texte der Hinweise setzt die Anzeige.</summary>
+  TAtlasTabMark = record
+    /// <summary>Index des Stops.</summary>
+    Index: Integer;
+    Name: string;
+    /// <summary>TabOrder, Pfad oder „–“ (ohne TabStop).</summary>
+    Text: string;
+    Style: TAtlasTabMarkStyle;
+    /// <summary>Auffälligkeit bei Style = Warn.</summary>
+    Issue: TAtlasTabIssue;
+    /// <summary>Weg mit Namen (NamedPath).</summary>
+    Path: string;
+    /// <summary>Liegt in einem Container mit TabOrder: Der Hinweis nennt den ganzen Weg.</summary>
+    Nested: Boolean;
+    /// <summary>Farbgruppe; -1 = Akzentfarbe.</summary>
+    Group: Integer;
+    /// <summary>Oben rechts des Steuerelements, verschoben um AOffset.</summary>
+    Anchor: TPoint;
+  end;
+
+  /// <summary>Ergebnis von „Nach Lesereihenfolge sortieren“.</summary>
+  TAtlasTabSortPlan = record
+    /// <summary>Zuweisungen für die Lesereihenfolge; leer, wenn schon alles stimmt.</summary>
+    Apply: TArray<TAtlasTabAssignment>;
+    /// <summary>Zuweisungen für den alten Stand (Rückgängig), aufsteigend wie beim Sortieren.</summary>
+    Undo: TArray<TAtlasTabAssignment>;
+    /// <summary>Zahl der Steuerelemente mit neuer TabOrder.</summary>
+    Changed: Integer;
+  end;
+
+  /// <summary>Anzeige und Sortieren der Tab-Reihenfolge aus den Stops.</summary>
+  TAtlasTabMarks = class
+  public
+    /// <summary>Marken der sichtbaren Stops. APaths: Pfad statt Nummer; AGroups aus TAtlasTabOrder.Groups, nil =
+    /// ohne Farben; APicked: im Modus „Reihenfolge klicken“ schon geklickt.</summary>
+    class function Marks(const AStops: TArray<TAtlasTabStop>; ARightToLeft, APaths: Boolean;
+      const AGroups: TArray<Integer>; const AOffset: TPoint; const APicked: TFunc<string, Boolean>):
+      TArray<TAtlasTabMark>; static;
+    /// <summary>Indizes der sichtbaren Container mit Farbgruppe (gestrichelter Rahmen).</summary>
+    class function Frames(const AStops: TArray<TAtlasTabStop>; const AGroups: TArray<Integer>): TArray<Integer>;
+      static;
+    /// <summary>Sortieren nach Lesereihenfolge mit dem Stand zum Rückgängigmachen.</summary>
+    class function SortPlan(const AStops: TArray<TAtlasTabStop>; ARightToLeft: Boolean): TAtlasTabSortPlan; static;
+  end;
+
 implementation
 
 uses
-  System.SysUtils,
   System.Math;
 
 function Key(const AText: string): string;
@@ -669,6 +721,108 @@ begin
   FClicked.Clear;
   FOriginal := nil;
   FActive := False;
+end;
+
+{ TAtlasTabMarks }
+
+/// <summary>Stil der Marke nach Zustand: ohne TabStop, geklickt, auffällig.</summary>
+procedure MarkStyle(var AMark: TAtlasTabMark; const AStop: TAtlasTabStop; AIssue: TAtlasTabIssue;
+  const APicked: TFunc<string, Boolean>);
+begin
+  if not AStop.Reached then
+  begin
+    AMark.Text := '–';
+    AMark.Style := TAtlasTabMarkStyle.Muted;
+  end
+  else if APicked(AStop.Name) then
+  begin
+    AMark.Style := TAtlasTabMarkStyle.Picked;
+  end
+  else if AIssue <> TAtlasTabIssue.None then
+  begin
+    AMark.Style := TAtlasTabMarkStyle.Warn;
+    AMark.Issue := AIssue;
+  end;
+end;
+
+class function TAtlasTabMarks.Marks(const AStops: TArray<TAtlasTabStop>; ARightToLeft, APaths: Boolean;
+  const AGroups: TArray<Integer>; const AOffset: TPoint; const APicked: TFunc<string, Boolean>):
+  TArray<TAtlasTabMark>;
+var
+  mIssues: TArray<TAtlasTabIssue>;
+  mPaths: TArray<string>;
+  mIndex: Integer;
+  mMark: TAtlasTabMark;
+begin
+  mIssues := TAtlasTabOrder.Issues(AStops, ARightToLeft);
+  mPaths := TAtlasTabOrder.Paths(AStops);
+  Result := nil;
+  for mIndex := 0 to High(AStops) do
+  begin
+    if not AStops[mIndex].Shown then
+    begin
+      Continue;
+    end;
+    mMark := Default(TAtlasTabMark);
+    mMark.Index := mIndex;
+    mMark.Name := AStops[mIndex].Name;
+    mMark.Text := IntToStr(AStops[mIndex].TabOrder);
+    if APaths then
+    begin
+      mMark.Text := mPaths[mIndex];
+    end;
+    mMark.Style := TAtlasTabMarkStyle.Normal;
+    mMark.Issue := TAtlasTabIssue.None;
+    mMark.Path := TAtlasTabOrder.NamedPath(AStops, mIndex);
+    mMark.Nested := TAtlasTabOrder.IndexOf(AStops, AStops[mIndex].ParentName) >= 0;
+    mMark.Group := -1;
+    if AGroups <> nil then
+    begin
+      mMark.Group := TAtlasTabOrder.GroupOf(AStops, AGroups, mIndex);
+    end;
+    mMark.Anchor := Point(AStops[mIndex].Bounds.Right + AOffset.X, AStops[mIndex].Bounds.Top + AOffset.Y);
+    MarkStyle(mMark, AStops[mIndex], mIssues[mIndex], APicked);
+    Result := Result + [mMark];
+  end;
+end;
+
+class function TAtlasTabMarks.Frames(const AStops: TArray<TAtlasTabStop>;
+  const AGroups: TArray<Integer>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to Min(High(AGroups), High(AStops)) do
+  begin
+    if AStops[mIndex].Shown and (AGroups[mIndex] >= 0) then
+    begin
+      Result := Result + [mIndex];
+    end;
+  end;
+end;
+
+class function TAtlasTabMarks.SortPlan(const AStops: TArray<TAtlasTabStop>;
+  ARightToLeft: Boolean): TAtlasTabSortPlan;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mOrders: TArray<Integer>;
+  mIndex: Integer;
+begin
+  mOrders := TAtlasTabOrder.ReadingOrder(AStops, ARightToLeft);
+  Result.Apply := TAtlasTabOrder.Assignments(AStops, mOrders);
+  Result.Changed := 0;
+  mStops := Copy(AStops);
+  for mIndex := 0 to High(mStops) do
+  begin
+    if mStops[mIndex].TabOrder <> mOrders[mIndex] then
+    begin
+      Inc(Result.Changed);
+    end;
+    // Rückgängig: der alte Stand, aufsteigend gesetzt wie beim Sortieren.
+    mOrders[mIndex] := mStops[mIndex].TabOrder;
+    mStops[mIndex].TabOrder := -1;
+  end;
+  Result.Undo := TAtlasTabOrder.Assignments(mStops, mOrders);
 end;
 
 end.

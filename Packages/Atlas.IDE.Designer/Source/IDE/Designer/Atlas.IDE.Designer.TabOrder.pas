@@ -269,66 +269,37 @@ begin
   Result := Point(AScreen.Left - AVisible.Left, AScreen.Top - AVisible.Top);
 end;
 
-/// <summary>Stil und Hinweis der Marke nach Zustand: ohne TabStop, geklickt, auffällig. APath: Weg mit Namen.
-/// </summary>
-procedure MarkBadge(var ABadge: TAtlasTabBadge; const AStop: TAtlasTabStop; AIssue: TAtlasTabIssue;
-  APicked: TFunc<string, Boolean>; const APath: string);
-begin
-  if not AStop.Reached then
-  begin
-    ABadge.Text := '–';
-    ABadge.Style := TAtlasTabBadgeStyle.Muted;
-    ABadge.Hint := APath + ': ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabNoStop);
-  end
-  else if APicked(AStop.Name) then
-  begin
-    ABadge.Style := TAtlasTabBadgeStyle.Picked;
-  end
-  else if AIssue <> TAtlasTabIssue.None then
-  begin
-    ABadge.Style := TAtlasTabBadgeStyle.Warn;
-    ABadge.Hint := APath + ': ' + IssueText(AIssue);
-  end;
-end;
+const
+  cBadgeStyles: array[TAtlasTabMarkStyle] of TAtlasTabBadgeStyle = (TAtlasTabBadgeStyle.Normal,
+    TAtlasTabBadgeStyle.Warn, TAtlasTabBadgeStyle.Muted, TAtlasTabBadgeStyle.Picked);
 
-/// <summary>Marken der sichtbaren Steuerelemente oben rechts; AOffset aus OffsetOf. AGroups: Farbgruppen aus
-/// TAtlasTabOrder.Groups, nil = ohne Farben.</summary>
-function BadgesOf(const AStops: TArray<TAtlasTabStop>; ARightToLeft, APaths: Boolean;
-  const AGroups: TArray<Integer>; const AOffset: TPoint; APicked: TFunc<string, Boolean>): TArray<TAtlasTabBadge>;
+/// <summary>Marken als Badges: Hinweis mit dem Weg bei verschachtelten, mit Grund bei grauen und auffälligen.
+/// </summary>
+function BadgesOf(const AMarks: TArray<TAtlasTabMark>): TArray<TAtlasTabBadge>;
 var
-  mIssues: TArray<TAtlasTabIssue>;
-  mPaths: TArray<string>;
-  mIndex: Integer;
+  mMark: TAtlasTabMark;
   mBadge: TAtlasTabBadge;
-  mPath: string;
 begin
-  mIssues := TAtlasTabOrder.Issues(AStops, ARightToLeft);
-  mPaths := TAtlasTabOrder.Paths(AStops);
   Result := nil;
-  for mIndex := 0 to High(AStops) do
+  for mMark in AMarks do
   begin
-    if not AStops[mIndex].Shown then
+    mBadge := TAtlasTabBadge.Create(mMark.Name, mMark.Text, cBadgeStyles[mMark.Style], mMark.Anchor);
+    if mMark.Group >= 0 then
     begin
-      Continue;
+      mBadge.Group := mMark.Group;
     end;
-    mBadge := TAtlasTabBadge.Create(AStops[mIndex].Name, IntToStr(AStops[mIndex].TabOrder),
-      TAtlasTabBadgeStyle.Normal, Point(AStops[mIndex].Bounds.Right + AOffset.X,
-      AStops[mIndex].Bounds.Top + AOffset.Y));
-    if APaths then
+    if mMark.Nested then
     begin
-      mBadge.Text := mPaths[mIndex];
+      mBadge.Hint := mMark.Path;
     end;
-    mPath := TAtlasTabOrder.NamedPath(AStops, mIndex);
-    if AGroups <> nil then
+    if mMark.Style = TAtlasTabMarkStyle.Muted then
     begin
-      mBadge.Group := TAtlasTabOrder.GroupOf(AStops, AGroups, mIndex);
-    end;
-    if TAtlasTabOrder.IndexOf(AStops, AStops[mIndex].ParentName) >= 0 then
+      mBadge.Hint := mMark.Path + ': ' + TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabNoStop);
+    end
+    else if mMark.Style = TAtlasTabMarkStyle.Warn then
     begin
-      // Verschachtelt: Der Hinweis nennt den ganzen Weg, die Marke nur die eigene Nummer.
-      mBadge.Hint := mPath;
+      mBadge.Hint := mMark.Path + ': ' + IssueText(mMark.Issue);
     end;
-    MarkBadge(mBadge, AStops[mIndex], mIssues[mIndex], APicked, mPath);
     Result := Result + [mBadge];
   end;
 end;
@@ -341,14 +312,11 @@ var
   mBounds: TRect;
 begin
   Result := nil;
-  for mIndex := 0 to High(AGroups) do
+  for mIndex in TAtlasTabMarks.Frames(AStops, AGroups) do
   begin
-    if AStops[mIndex].Shown and (AGroups[mIndex] >= 0) then
-    begin
-      mBounds := AStops[mIndex].Bounds;
-      mBounds.Offset(AOffset);
-      Result := Result + [TAtlasTabFrame.Create(mBounds, AGroups[mIndex])];
-    end;
+    mBounds := AStops[mIndex].Bounds;
+    mBounds.Offset(AOffset);
+    Result := Result + [TAtlasTabFrame.Create(mBounds, AGroups[mIndex])];
   end;
 end;
 
@@ -669,11 +637,12 @@ begin
     mGroups := TAtlasTabOrder.Groups(mStops, TAtlasTabOrderOverlay.GroupCount);
   end;
   FOverlay.SetFrames(FramesOf(mStops, mGroups, OffsetOf(mScreen, mVisible)));
-  FOverlay.SetBadges(BadgesOf(mStops, RightToLeft(mForm), PathsWanted, mGroups, OffsetOf(mScreen, mVisible),
+  FOverlay.SetBadges(BadgesOf(TAtlasTabMarks.Marks(mStops, RightToLeft(mForm), PathsWanted, mGroups,
+    OffsetOf(mScreen, mVisible),
     function(AName: string): Boolean
     begin
       Result := mClicks.Active and mClicks.Clicked(AName);
-    end));
+    end)));
   if not FOverlay.Shown or (FOverlay.BoundsRect <> mVisible) then
   begin
     FOverlay.ShowAt(mVisible);
@@ -759,10 +728,7 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mDesigner: IDesigner;
-  mStops: TArray<TAtlasTabStop>;
-  mList, mOld: TArray<TAtlasTabAssignment>;
-  mOrders: TArray<Integer>;
-  mIndex, mChanged: Integer;
+  mPlan: TAtlasTabSortPlan;
 begin
   if not TAtlasIdeSettings.Current.DesignerTabOrderClick or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     not (mRoot is TWinControl) then
@@ -770,35 +736,17 @@ begin
     Exit;
   end;
   mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  mStops := TabStopsOf(mRoot);
-  mOrders := TAtlasTabOrder.ReadingOrder(mStops, RightToLeft(TWinControl(mRoot)));
-  mList := TAtlasTabOrder.Assignments(mStops, mOrders);
-  if (Length(mList) = 0) or (mDesigner = nil) then
+  mPlan := TAtlasTabMarks.SortPlan(TabStopsOf(mRoot), RightToLeft(TWinControl(mRoot)));
+  if (Length(mPlan.Apply) = 0) or (mDesigner = nil) then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTabSortedNone));
     Exit;
   end;
-  mChanged := 0;
-  SetLength(mOld, Length(mStops));
-  for mIndex := 0 to High(mStops) do
-  begin
-    mOld[mIndex] := TAtlasTabAssignment.Create(mStops[mIndex].Name, mStops[mIndex].TabOrder);
-    if mStops[mIndex].TabOrder <> mOrders[mIndex] then
-    begin
-      Inc(mChanged);
-    end;
-  end;
-  // Rückgängig: der alte Stand, aufsteigend gesetzt wie beim Sortieren.
-  for mIndex := 0 to High(mStops) do
-  begin
-    mOrders[mIndex] := mStops[mIndex].TabOrder;
-    mStops[mIndex].TabOrder := -1;
-  end;
-  FUndo := TAtlasTabOrder.Assignments(mStops, mOrders);
+  FUndo := mPlan.Undo;
   FUndoFile := mEditor.FileName;
-  Apply(mRoot, mList);
+  Apply(mRoot, mPlan.Apply);
   mDesigner.Modified;
-  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTabSorted, [mChanged]));
+  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTabSorted, [mPlan.Changed]));
   Update;
 end;
 

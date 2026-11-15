@@ -46,6 +46,18 @@ type
     procedure FormFixture;
     [Test]
     procedure FormFixtureJump;
+    [Test]
+    procedure MarksOnlyShown;
+    [Test]
+    procedure MarksStyles;
+    [Test]
+    procedure MarksPathsAndGroups;
+    [Test]
+    procedure FramesOfContainers;
+    [Test]
+    procedure SortPlanWithUndo;
+    [Test]
+    procedure SortPlanUnchanged;
   end;
 
   [TestFixture]
@@ -471,6 +483,125 @@ begin
   finally
     mClicks.Free;
   end;
+end;
+
+function NotPicked(AName: string): Boolean;
+begin
+  Result := False;
+end;
+
+procedure TAtlasTabOrderTests.MarksOnlyShown;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mMarks: TArray<TAtlasTabMark>;
+begin
+  mStops := [Stop('Edit1', 'Form1', 0, Rect(10, 10, 100, 30)), Stop('Edit2', 'Form1', 1, Rect(10, 40, 100, 60))];
+  mStops[1].Shown := False;
+  mMarks := TAtlasTabMarks.Marks(mStops, False, False, nil, Point(5, 7), NotPicked);
+  Assert.AreEqual(1, Integer(Length(mMarks)));
+  Assert.AreEqual('Edit1', mMarks[0].Name);
+  Assert.AreEqual('0', mMarks[0].Text);
+  Assert.AreEqual(105, mMarks[0].Anchor.X);
+  Assert.AreEqual(17, mMarks[0].Anchor.Y);
+  Assert.AreEqual(-1, mMarks[0].Group);
+  Assert.IsFalse(mMarks[0].Nested);
+end;
+
+procedure TAtlasTabOrderTests.MarksStyles;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mMarks: TArray<TAtlasTabMark>;
+  mIssues: TArray<TAtlasTabIssue>;
+  mIndex, mWarned: Integer;
+begin
+  // Edit2/Edit3 gegen die Lesereihenfolge, Static1 ohne TabStop, Edit1 geklickt.
+  mStops := [Stop('Edit1', 'Form1', 0, Rect(10, 10, 100, 30)), Stop('Edit2', 'Form1', 2, Rect(10, 40, 100, 60)),
+    Stop('Edit3', 'Form1', 1, Rect(10, 70, 100, 90)), Stop('Static1', 'Form1', 3, Rect(10, 100, 100, 120))];
+  mStops[3].Focusable := False;
+  mMarks := TAtlasTabMarks.Marks(mStops, False, False, nil, Point(0, 0),
+    function(AName: string): Boolean
+    begin
+      Result := AName = 'Edit1';
+    end);
+  mIssues := TAtlasTabOrder.Issues(mStops, False);
+  Assert.AreEqual<TAtlasTabMarkStyle>(TAtlasTabMarkStyle.Picked, mMarks[0].Style);
+  mWarned := 0;
+  for mIndex := 1 to 2 do
+  begin
+    if mIssues[mIndex] = TAtlasTabIssue.None then
+    begin
+      Assert.AreEqual<TAtlasTabMarkStyle>(TAtlasTabMarkStyle.Normal, mMarks[mIndex].Style);
+    end
+    else
+    begin
+      Assert.AreEqual<TAtlasTabMarkStyle>(TAtlasTabMarkStyle.Warn, mMarks[mIndex].Style);
+      Assert.AreEqual<TAtlasTabIssue>(mIssues[mIndex], mMarks[mIndex].Issue);
+      Inc(mWarned);
+    end;
+  end;
+  Assert.IsTrue(mWarned > 0, 'Rücksprung erkannt');
+  Assert.AreEqual<TAtlasTabMarkStyle>(TAtlasTabMarkStyle.Muted, mMarks[3].Style);
+  Assert.AreEqual('–', mMarks[3].Text);
+end;
+
+procedure TAtlasTabOrderTests.MarksPathsAndGroups;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mMarks: TArray<TAtlasTabMark>;
+  mGroups: TArray<Integer>;
+begin
+  mStops := [Stop('Panel1', 'Form1', 2, Rect(0, 0, 200, 100)), Stop('Edit1', 'Panel1', 1, Rect(10, 10, 100, 30))];
+  mStops[0].Container := True;
+  mGroups := TAtlasTabOrder.Groups(mStops, 3);
+  mMarks := TAtlasTabMarks.Marks(mStops, False, True, mGroups, Point(0, 0), NotPicked);
+  Assert.AreEqual('2.1', mMarks[1].Text);
+  Assert.IsTrue(mMarks[1].Nested);
+  Assert.AreEqual(TAtlasTabOrder.NamedPath(mStops, 1), mMarks[1].Path);
+  Assert.AreEqual(mGroups[0], mMarks[1].Group);
+  Assert.AreEqual(-1, mMarks[0].Group);
+end;
+
+procedure TAtlasTabOrderTests.FramesOfContainers;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mFrames: TArray<Integer>;
+begin
+  mStops := [Stop('Panel1', 'Form1', 0, Rect(0, 0, 200, 100)), Stop('Edit1', 'Panel1', 0, Rect(10, 10, 100, 30)),
+    Stop('Panel2', 'Form1', 1, Rect(0, 100, 200, 200))];
+  mStops[2].Shown := False;
+  mFrames := TAtlasTabMarks.Frames(mStops, TArray<Integer>.Create(0, -1, 1));
+  Assert.AreEqual(1, Integer(Length(mFrames)));
+  Assert.AreEqual(0, mFrames[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasTabMarks.Frames(mStops, nil))));
+end;
+
+procedure TAtlasTabOrderTests.SortPlanWithUndo;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mPlan: TAtlasTabSortPlan;
+begin
+  mStops := [Stop('Edit1', 'Form1', 1, Rect(10, 10, 100, 30)), Stop('Edit2', 'Form1', 0, Rect(10, 40, 100, 60))];
+  mPlan := TAtlasTabMarks.SortPlan(mStops, False);
+  Assert.AreEqual(2, mPlan.Changed);
+  Assert.IsTrue(Length(mPlan.Apply) > 0);
+  Assert.AreEqual('Edit1', mPlan.Apply[0].Name);
+  Assert.AreEqual(0, mPlan.Apply[0].Order);
+  // Rückgängig setzt den alten Stand aufsteigend: zuerst Edit2 auf 0.
+  Assert.AreEqual('Edit2', mPlan.Undo[0].Name);
+  Assert.AreEqual(0, mPlan.Undo[0].Order);
+  // Die Stops des Aufrufers bleiben unverändert.
+  Assert.AreEqual(1, mStops[0].TabOrder);
+end;
+
+procedure TAtlasTabOrderTests.SortPlanUnchanged;
+var
+  mStops: TArray<TAtlasTabStop>;
+  mPlan: TAtlasTabSortPlan;
+begin
+  mStops := [Stop('Edit1', 'Form1', 0, Rect(10, 10, 100, 30)), Stop('Edit2', 'Form1', 1, Rect(10, 40, 100, 60))];
+  mPlan := TAtlasTabMarks.SortPlan(mStops, False);
+  Assert.AreEqual(0, mPlan.Changed);
+  Assert.AreEqual(0, Integer(Length(mPlan.Apply)));
 end;
 
 initialization
