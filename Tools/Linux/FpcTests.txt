@@ -341,6 +341,7 @@ Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests
+Atlas.Common.Rules.Builtin.TypeMismatch.Tests
 Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Tests
@@ -367,8 +368,10 @@ Atlas.Common.Semantics.ControlFlow.Signatures.Tests
 Atlas.Common.Semantics.ExitPoints.Tests
 Atlas.Common.Semantics.ExpressionTypes.Operators.Tests
 Atlas.Common.Semantics.ExpressionTypes.RecordSizes.Tests
+Atlas.Common.Semantics.FreeRoutineMembers.Tests
 Atlas.Common.Semantics.OrdinalConstants.Tests
 Atlas.Common.Semantics.Reassigned.Tests
+Atlas.Common.Semantics.RtlMethodReferences.Tests
 Atlas.Common.Semantics.StepCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
@@ -601,3 +604,14 @@ Atlas.Core.Debug.ProfilerFlow.Tests
 Atlas.Core.Debug.MethodGroupFlow.Tests
 Atlas.Core.Debug.EventLogFlow.Tests
 Atlas.Core.Debug.PinsFlow.Tests
+Atlas.Core.Debug.EditValueFlow.Tests
+Atlas.Core.Debug.CallStackFlow.Tests
+Atlas.Core.Debug.ReattachFlow.Tests
+Atlas.Core.Debug.VisualizerFlow.Tests
+Atlas.Core.Debug.NoSourceFlow.Tests
+Atlas.Core.Debug.LeakFlow.Tests
+Atlas.Core.Debug.BreakpointAnchorFlow.Tests
+Atlas.Core.Debug.ThreadsInSourceFlow.Tests
+Atlas.Core.Debug.RunToColumnFlow.Tests
+Atlas.Core.Debug.ExceptionDialogFlow.Tests
+Atlas.Core.Debug.AsyncOriginFlow.Tests

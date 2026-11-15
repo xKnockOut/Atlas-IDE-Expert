@@ -116,6 +116,7 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.Reattach,
+  Atlas.Core.Debug.ReattachFlow,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Processes,
   Atlas.IDE.Debug.UnavailableFixes,
@@ -182,7 +183,7 @@ var
 begin
   mPath := FAttachedPath;
   FAttachedPath := '';
-  if (mPath = '') or TAtlasIdeDebugReattach.Waiting then
+  if not TAtlasReattachFlow.OffersWait(mPath, TAtlasIdeDebugReattach.Waiting) then
   begin
     Exit;
   end;
@@ -323,7 +324,7 @@ end;
 class procedure TAtlasIdeDebugReattach.Found(AGeneration: Integer; APid: Cardinal);
 begin
   // Ein Treffer aus einem abgebrochenen oder ersetzten Warten zählt nicht.
-  if (AGeneration <> FGeneration) or not Waiting then
+  if not TAtlasReattachFlow.Counts(AGeneration, FGeneration, Waiting) then
   begin
     Exit;
   end;
@@ -338,12 +339,12 @@ var
 begin
   mGroup := CurrentGroup;
   // Projektgruppe gewechselt oder geschlossen: Das Warten gehörte zur alten.
-  if Waiting and not SameText(mGroup, FWaitGroup) then
+  if TAtlasReattachFlow.GroupLeft(Waiting, mGroup, FWaitGroup) then
   begin
     CancelWait;
   end;
   // Der Menüeintrag nennt das zuletzt gemerkte Programm der Gruppe.
-  if not SameText(mGroup, FMenuGroup) then
+  if TAtlasReattachFlow.MenuStale(mGroup, FMenuGroup) then
   begin
     UpdateMenu;
   end;
@@ -475,15 +476,8 @@ begin
 end;
 
 class function TAtlasIdeDebugReattach.LastTarget: string;
-var
-  mItems: TArray<string>;
 begin
-  Result := '';
-  mItems := History.Items(CurrentGroup);
-  if mItems <> nil then
-  begin
-    Result := mItems[0];
-  end;
+  Result := TAtlasReattachFlow.LastOf(History.Items(CurrentGroup));
 end;
 
 class procedure TAtlasIdeDebugReattach.Execute;
@@ -520,11 +514,7 @@ var
   mDialog: TOpenDialog;
   mDefault: string;
 begin
-  mDefault := LastTarget;
-  if mDefault = '' then
-  begin
-    mDefault := ProjectTarget;
-  end;
+  mDefault := TAtlasReattachFlow.DefaultExe(LastTarget, ProjectTarget);
   mDialog := TOpenDialog.Create(nil);
   try
     mDialog.Title := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachChooseExe);

@@ -263,10 +263,11 @@ const
     'lue (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice v' +
     'ersa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose paramete' +
     'rs differ in count, const/var/out or type, assigned or passed as an argument, and likewise an anonymous method such as procedure(const S: string) for TProc<string> (like E2010); a parameterless functi' +
-    'on whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and' +
-    ' of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implic' +
-    'it), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which' +
-    ' side is wrong.",',
+    'on whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself), also as an argument of a variable, field or property of pro' +
+    'cedural type (FOnTree(A, Refresh)). The rule knows TProc, TFunc and TPredicate from System.SysUtils even without the RTL sources in the index, as long as the unit uses System.SysUtils and no third-par' +
+    'ty unit after it can hide the type. As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certai' +
+    'n and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix o' +
+    'nly for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",',
     '      "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := ''drei'';",',
     '      "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",',
     '      "compilerCodes": [',

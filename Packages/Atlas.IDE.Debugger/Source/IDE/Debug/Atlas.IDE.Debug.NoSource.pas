@@ -89,6 +89,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.NoSourceFlow,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -114,12 +115,9 @@ end;
 
 procedure TAtlasIdeDebugNoSource.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
-  if not TAtlasIdeSettings.Current.DebugNoSourcePage then
-  begin
-    Exit;
-  end;
   // Mit „Nur eigener Code“ übernimmt #578 die Schritte; dann nur Exceptions.
-  if not FReturning and (AStop = TAtlasDebugStop.Paused) and TAtlasIdeSettings.Current.DebugJustMyCode then
+  if not TAtlasNoSourceFlow.Watches(TAtlasIdeSettings.Current.DebugNoSourcePage, FReturning,
+    AStop = TAtlasDebugStop.Paused, TAtlasIdeSettings.Current.DebugJustMyCode) then
   begin
     Exit;
   end;
@@ -241,20 +239,6 @@ begin
 end;
 
 /// <summary>Steht weiter unten im Stapel eigener Code?</summary>
-function HasOwnFrame(const AFrames: TAtlasDebugFrames): Boolean;
-var
-  mFrame: TAtlasDebugFrame;
-begin
-  for mFrame in AFrames do
-  begin
-    if mFrame.Own then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 class procedure TAtlasIdeDebugNoSource.Judge(const AFrames: TAtlasDebugFrames);
 var
   mFacts: TAtlasNoSourceFacts;
@@ -270,18 +254,17 @@ begin
     Exit;
   end;
   mFacts := TAtlasIdeNoSourceFacts.Collect(AFrames[0].Header);
-  if TAtlasNoSource.IsIgnored(mFacts.UnitName, TAtlasIdeSettings.Current.DebugNoSourceIgnoredUnits) or
-    TAtlasNoSource.IsIgnored(mFacts.Place.Module, TAtlasIdeSettings.Current.DebugNoSourceIgnoredUnits) then
+  if TAtlasNoSourceFlow.Ignored(mFacts, TAtlasIdeSettings.Current.DebugNoSourceIgnoredUnits) then
   begin
     Exit;
   end;
-  Show(mFacts, HasOwnFrame(AFrames));
+  Show(mFacts, TAtlasNoSourceFlow.HasOwnFrame(AFrames));
 end;
 
 class procedure TAtlasIdeDebugNoSource.Returned(const AFrames: TAtlasDebugFrames);
 begin
   // „Zurück zum eigenen Code“: weiter, bis der oberste Rahmen eigener Code ist.
-  if (Length(AFrames) = 0) or AFrames[0].Own or (FReturns >= cMaxReturns) or not HasOwnFrame(AFrames) then
+  if not TAtlasNoSourceFlow.KeepsReturning(AFrames, FReturns, cMaxReturns) then
   begin
     FReturning := False;
     Exit;
@@ -296,19 +279,11 @@ end;
 /// <summary>„Modul … · Adresse … · Unit …“; Unbekanntes als „unbekannt“.</summary>
 function PlaceText(const AFacts: TAtlasNoSourceFacts): string;
 var
-  mModule, mAddress: string;
+  mUnknown: string;
 begin
-  mModule := AFacts.Place.Module;
-  if mModule = '' then
-  begin
-    mModule := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceUnknown);
-  end;
-  mAddress := AFacts.Place.Address;
-  if mAddress = '' then
-  begin
-    mAddress := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceUnknown);
-  end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourcePlace, [mModule, mAddress]);
+  mUnknown := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceUnknown);
+  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourcePlace, [TAtlasNoSourceFlow.OrUnknown(AFacts.Place.Module,
+    mUnknown), TAtlasNoSourceFlow.OrUnknown(AFacts.Place.Address, mUnknown)]);
   if AFacts.UnitName <> '' then
   begin
     Result := Result + ' · ' + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceUnit, [AFacts.UnitName]);
@@ -353,11 +328,7 @@ class procedure TAtlasIdeDebugNoSource.FindSource;
 var
   mFolder, mName, mFile: string;
 begin
-  mName := FFacts.UnitName + '.pas';
-  if FFacts.UnitName = '' then
-  begin
-    mName := FFacts.Place.Routine;
-  end;
+  mName := TAtlasNoSourceFlow.SourceName(FFacts);
   mFolder := ExtractFileDir(FFacts.PasPath);
   if not SelectDirectory(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceFindTitle, [mName]), '', mFolder) then
   begin
@@ -379,11 +350,7 @@ var
   mNext: TAtlasPluginSettings;
   mUnit: string;
 begin
-  mUnit := FFacts.UnitName;
-  if mUnit = '' then
-  begin
-    mUnit := FFacts.Place.Module;
-  end;
+  mUnit := TAtlasNoSourceFlow.IgnoreName(FFacts);
   if mUnit = '' then
   begin
     Exit;

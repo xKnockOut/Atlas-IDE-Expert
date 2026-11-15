@@ -33,11 +33,7 @@ type
     [Test]
     procedure ParsesDeclarations;
     [Test]
-    procedure SplitsTypeArgs;
-    [Test]
     procedure SubstitutesWholeWords;
-    [Test]
-    procedure RtlDeclarations;
     [Test]
     procedure NamesArgParameters;
     [Test]
@@ -272,17 +268,6 @@ begin
   Assert.AreEqual('', mTarget);
 end;
 
-procedure TCompletionAnonymousTests.SplitsTypeArgs;
-var
-  mBase: string;
-begin
-  Assert.AreEqual('TCustomer|TFunc<Integer, string>', string.Join('|',
-    TCompletionAnonymous.TypeArgs('TFunc<TCustomer, TFunc<Integer, string>>', mBase)));
-  Assert.AreEqual('TFunc', mBase);
-  Assert.AreEqual(0, Integer(Length(TCompletionAnonymous.TypeArgs('System.SysUtils.TProc', mBase))));
-  Assert.AreEqual('System.SysUtils.TProc', mBase);
-end;
-
 procedure TCompletionAnonymousTests.SubstitutesWholeWords;
 begin
   Assert.AreEqual('TArray<TCustomer>; Unit1.T; TX',
@@ -290,24 +275,6 @@ begin
     TArray<string>.Create('TCustomer')));
   Assert.AreEqual('Integer, string', TCompletionAnonymous.Substitute('T1, T2', TArray<string>.Create('T1', 'T2'),
     TArray<string>.Create('Integer', 'string')));
-end;
-
-procedure TCompletionAnonymousTests.RtlDeclarations;
-begin
-  Assert.AreEqual('TProc = reference to procedure;', TCompletionAnonymous.RtlDeclaration('TProc', 0));
-  Assert.AreEqual('TProc<T> = reference to procedure(Arg1: T);',
-    TCompletionAnonymous.RtlDeclaration('System.SysUtils.TProc', 1));
-  Assert.AreEqual('TProc<T1, T2> = reference to procedure(Arg1: T1; Arg2: T2);',
-    TCompletionAnonymous.RtlDeclaration('TProc', 2));
-  Assert.AreEqual('TFunc<TResult> = reference to function: TResult;', TCompletionAnonymous.RtlDeclaration('TFunc', 1));
-  Assert.AreEqual('TFunc<T, TResult> = reference to function(Arg1: T): TResult;',
-    TCompletionAnonymous.RtlDeclaration('SysUtils.TFunc', 2));
-  Assert.AreEqual('TPredicate<T> = reference to function(Arg1: T): Boolean;',
-    TCompletionAnonymous.RtlDeclaration('TPredicate', 1));
-  Assert.AreEqual('', TCompletionAnonymous.RtlDeclaration('TFunc', 0));
-  Assert.AreEqual('', TCompletionAnonymous.RtlDeclaration('TProc', 5));
-  Assert.AreEqual('', TCompletionAnonymous.RtlDeclaration('TPredicate', 2));
-  Assert.AreEqual('', TCompletionAnonymous.RtlDeclaration('TList', 1));
 end;
 
 procedure TCompletionAnonymousTests.NamesArgParameters;
