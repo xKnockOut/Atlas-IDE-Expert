@@ -123,16 +123,18 @@ begin
   end;
 end;
 
-/// <summary>Namen der Kette, die an ATokens[AIndex] endet; AFirst: Platz des ersten Namens.</summary>
+/// <summary>Namen der Kette, die an ATokens[AIndex] endet, wie im Quelltext (mit Escape-&amp;); AFirst: Platz des
+/// ersten Namens. ResolveNames nimmt das Escape-&amp; ab; vorher entfernt, machte es aus &amp;&amp;op_Equality
+/// op_Equality.</summary>
 function NamesBefore(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AFirst: Integer): TArray<string>;
 begin
-  Result := TArray<string>.Create(CleanName(ATokens[AIndex].Text));
+  Result := TArray<string>.Create(ATokens[AIndex].Text);
   AFirst := AIndex;
   while (AFirst >= 2) and ATokens[AFirst - 1].IsSymbol('.') and
     (ATokens[AFirst - 2].Kind = TPascalTokenKind.Identifier) do
   begin
     Dec(AFirst, 2);
-    Result := TArray<string>.Create(CleanName(ATokens[AFirst].Text)) + Result;
+    Result := TArray<string>.Create(ATokens[AFirst].Text) + Result;
   end;
 end;
 
@@ -337,7 +339,7 @@ begin
   // die folgenden Teile ergänzen und den längsten passenden Unit-Namen nehmen.
   Result := False;
   mLast := AAt.Index;
-  mUnitName := string.Join('.', AAt.Names);
+  mUnitName := TPascalLexer.PlainName(string.Join('.', AAt.Names));
   while (mLast + 2 < Length(AAt.Tokens)) and AAt.Tokens[mLast + 1].IsSymbol('.') and
     (AAt.Tokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
   begin
