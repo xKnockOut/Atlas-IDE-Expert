@@ -89,7 +89,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -116,28 +117,6 @@ end;
 function Before(const A, B: TTextPosition): Boolean;
 begin
   Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-end;
-
-/// <summary>Bezeichner, auf oder direkt hinter dem APosition steht; -1 ohne.</summary>
-function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-  mToken: TPascalToken;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    mToken := ATokens[mIndex];
-    if Before(APosition, mToken.StartPos) then
-    begin
-      Break;
-    end;
-    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
-      not Before(mToken.EndPos, APosition) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Token, das an APosition beginnt; -1 ohne.</summary>

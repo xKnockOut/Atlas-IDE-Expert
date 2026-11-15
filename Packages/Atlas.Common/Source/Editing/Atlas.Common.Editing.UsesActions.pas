@@ -177,7 +177,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   cInInterfacePart = TUsesResolution.cInterfacePart;
@@ -1116,11 +1117,6 @@ begin
   Result := True;
 end;
 
-function Before(const A, B: TTextPosition): Boolean;
-begin
-  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-end;
-
 function IsDeclaredIn(ANode: TSyntaxNode; const AName: string): Boolean;
 var
   mName: string;
@@ -1152,22 +1148,6 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end) <> nil;
-end;
-
-/// <summary>Index des Bezeichners an APosition; -1, wenn dort keiner steht.</summary>
-function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and not Before(APosition, ATokens[mIndex].StartPos) and
-      not Before(ATokens[mIndex].EndPos, APosition) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Steht vor dem Token AIndex (über Kommentare und Direktiven hinweg) ein Punkt? Dann ist es ein

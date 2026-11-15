@@ -53,7 +53,6 @@ type
     // Je Typ (Container): Ergebnis der Vorfahrenkette, einmal ermittelt.
     FChains: TDictionary<string, TArray<TIndexSymbol>>;
     FUnknownChains: TDictionary<string, Boolean>;
-    function TokenAt(const APosition: TTextPosition): Integer;
     function AttributesBefore(const APosition: TTextPosition): TArray<string>;
     function Owner(const AContainer: string; out AOwner: TIndexSymbol): Boolean;
     function FindType(const AName: string; out AType: TIndexSymbol): Boolean;
@@ -85,8 +84,6 @@ type
     /// <summary>Passt AName auf das Muster APattern (* beliebig viele, ? genau ein Zeichen, ohne Groß-/
     /// Kleinschreibung)?</summary>
     class function Matches(const APattern, AName: string): Boolean; static;
-    /// <summary>Erstes Token in ATokens, das bei APosition oder dahinter beginnt; -1 hinter dem letzten.</summary>
-    class function TokenIndexAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer; static;
     /// <summary>Namen der Attribute direkt vor der Deklaration an APosition ([A, B('x')] [C]), ohne Endung
     /// Attribute; ATokens sind Code-Tokens ohne Kommentare. Auch für Code-Abfragen (has attribute, #1351).
     /// </summary>
@@ -99,7 +96,8 @@ implementation
 uses
   System.StrUtils,
   System.Math,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   /// <summary>Begründungen für den Befund-Hover in beiden Sprachen (#1458); None hat keinen Text.</summary>
@@ -164,11 +162,6 @@ begin
   FChains.Free;
   FUnknownChains.Free;
   inherited;
-end;
-
-function TConsideredUsed.TokenAt(const APosition: TTextPosition): Integer;
-begin
-  Result := TokenIndexAt(FTokens, APosition);
 end;
 
 function TConsideredUsed.AttributesBefore(const APosition: TTextPosition): TArray<string>;
@@ -407,15 +400,11 @@ var
   mAt, mLast: Integer;
 begin
   // Methodenzuordnung im Typ: procedure IFoo.Bar = Baz;
-  mAt := TokenAt(AOwner.Range.StartPos);
-  mLast := TokenAt(AOwner.Range.EndPos);
-  if mAt < 0 then
+  mAt := TokenFromPosition(FTokens, AOwner.Range.StartPos);
+  mLast := Min(TokenFromPosition(FTokens, AOwner.Range.EndPos), High(FTokens));
+  if mAt > High(FTokens) then
   begin
     Exit(False);
-  end;
-  if mLast < 0 then
-  begin
-    mLast := High(FTokens);
   end;
   // Vor dem Namen stehen mindestens IFoo . Bar =.
   mAt := Max(mAt, 3);
@@ -672,40 +661,18 @@ begin
   Result := P > Length(mPattern);
 end;
 
-class function TConsideredUsed.TokenIndexAt(const ATokens: TArray<TPascalToken>;
-  const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh_, mMiddle: Integer;
-begin
-  mLow := 0;
-  mHigh_ := Length(ATokens);
-  while mLow < mHigh_ do
-  begin
-    mMiddle := (mLow + mHigh_) div 2;
-    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
-      (ATokens[mMiddle].StartPos.Character < APosition.Character)) then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh_ := mMiddle;
-    end;
-  end;
-  Result := mLow;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
-end;
-
 class function TConsideredUsed.AttributesAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): TArray<string>;
 var
   mAt: Integer;
 begin
   Result := nil;
-  mAt := TokenIndexAt(ATokens, APosition) - 1;
+  mAt := TokenFromPosition(ATokens, APosition);
+  if mAt > High(ATokens) then
+  begin
+    Exit;
+  end;
+  Dec(mAt);
   // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration.
   while (mAt >= 0) and ATokens[mAt].IsSymbol(']') do
   begin

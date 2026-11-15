@@ -42,6 +42,8 @@ type
     procedure StripTrailingCr;
     [Test]
     procedure NormalizeLineBreaks;
+    [Test]
+    procedure CollapseSpace;
   end;
 
   [TestFixture]
@@ -220,6 +222,15 @@ procedure TTextLinesTests.NormalizeLineBreaks;
 begin
   Assert.AreEqual('a'#13#10'b'#13#10'c'#13#10, TTextLines.NormalizeLineBreaks('a'#10'b'#13'c'#13#10, #13#10));
   Assert.AreEqual('a'#10'b', TTextLines.NormalizeLineBreaks('a'#13#10'b', #10));
+end;
+
+procedure TTextLinesTests.CollapseSpace;
+begin
+  Assert.AreEqual('a b c', TTextLines.CollapseSpace('  a'#9#10' b   c  '));
+  Assert.AreEqual('array of string', TTextLines.CollapseSpace('array'#13#10'  of'#13'string'));
+  Assert.AreEqual('x', TTextLines.CollapseSpace('x'));
+  Assert.AreEqual('', TTextLines.CollapseSpace(' '#9#13#10' '));
+  Assert.AreEqual('', TTextLines.CollapseSpace(''));
 end;
 
 { TLineTableTests }

@@ -286,31 +286,6 @@ begin
   end;
 end;
 
-/// <summary>Position der schließenden Klammer zur öffnenden an AOpen; hinter dem Textende, wenn keine passt.</summary>
-function MatchingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  Result := AOpen;
-  while Result <= Length(AText) do
-  begin
-    if AText[Result] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[Result] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Ist AContent eine Menge mit einer Zahl, einem String oder einem Zeichen als Element? Nur solche sind
 /// sicher keine Sichtbarkeiten; Namen können Konstanten vom Typ TVisibilityClass sein.</summary>
 function HasLiteralElement(const AContent: string): Boolean;
@@ -351,7 +326,7 @@ begin
       Continue;
     end;
     mClose := MatchingParen(ADirective, mOpen);
-    if (mClose <= Length(ADirective)) and
+    if (mClose > 0) and
       HasLiteralElement(Trim(Copy(ADirective, mOpen + 1, mClose - mOpen - 1))) then
     begin
       Exit(Copy(ADirective, mStart, mClose - mStart + 1));

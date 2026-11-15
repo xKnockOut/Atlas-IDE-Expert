@@ -34,8 +34,6 @@ type
   public
     /// <summary>Quelltext eines Knotens.</summary>
     class function NodeText(const AText: string; ANode: TSyntaxNode): string; static;
-    /// <summary>Leerraum zu je einem Leerzeichen zusammenfassen.</summary>
-    class function Collapse(const AText: string): string; static;
     /// <summary>Name ohne generische Argumente: TObjectList&lt;TOrder&gt; → TObjectList.</summary>
     class function BaseName(const ATypeName: string): string; static;
     /// <summary>Quelltext eines Knotens mit zusammengefasstem Leerraum.</summary>
@@ -62,7 +60,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.RegularExpressions,
-  Atlas.Common.Editing.ClassMembers;
+  Atlas.Common.Editing.ClassMembers,
+  Atlas.Text.Lines;
 
 const
   cOwnerNames: array[0..3] of string = ('Self', 'AOwner', 'Owner', 'Application');
@@ -114,31 +113,6 @@ end;
 class function TFreeFieldTypes.NodeText(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-end;
-
-class function TFreeFieldTypes.Collapse(const AText: string): string;
-var
-  mIndex: Integer;
-  mSpace: Boolean;
-begin
-  Result := '';
-  mSpace := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
-    begin
-      mSpace := True;
-    end
-    else
-    begin
-      if mSpace and (Result <> '') then
-      begin
-        Result := Result + ' ';
-      end;
-      mSpace := False;
-      Result := Result + AText[mIndex];
-    end;
-  end;
 end;
 
 /// <summary>Art eines Typknotens; tgUnknown für Verweise und Unbekanntes.</summary>
@@ -498,7 +472,7 @@ end;
 
 class function TFreeFieldTypes.CodeOf(const AText: string; ANode: TSyntaxNode): string;
 begin
-  Result := Collapse(NodeText(AText, ANode));
+  Result := TTextLines.CollapseSpace(NodeText(AText, ANode));
 end;
 
 function TFreeFieldTypes.TypeGuess(const ATypeName: string): TTypeGuess;
