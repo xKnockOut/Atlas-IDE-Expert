@@ -29,7 +29,6 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Text.Profile,
   Atlas.Core.Debug.Profiler,
-  Atlas.Core.Debug.ProfilerFlow,
   Atlas.UI.Debug.ProfileFrame;
 
 type
@@ -102,6 +101,7 @@ implementation
 uses
   System.IOUtils,
   ToolsAPI,
+  Atlas.Core.Debug.ProfilerFlow,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.StartProfiles.Store,
   Atlas.IDE.Foundation.Host,

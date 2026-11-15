@@ -28,7 +28,6 @@ uses
   System.Classes,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.SprintLoad,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.SprintTile,
@@ -124,6 +123,7 @@ implementation
 
 uses
   Winapi.Windows,
+  Atlas.Core.Tracker.Board,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Diagnostics.Guard,

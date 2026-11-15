@@ -17,7 +17,6 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CommentEditor,
-  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Tracker.IssueContext;
 
@@ -69,6 +68,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.Core.Tracker.Preview,
   Atlas.IDE.Foundation.Settings,
