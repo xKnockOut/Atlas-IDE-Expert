@@ -33,6 +33,11 @@ type
     /// eine neue Methode ohne beides schon.</summary>
     [Test]
     procedure AncestorOverloads;
+    /// <summary>Beide Überladungen des Vorfahren im Nachfahren überschrieben, ohne overload (ACBr TACBrBoletoFCFR:
+    /// procedure Imprimir; override; neben procedure Imprimir(AStream: TStream); override;): Der Kopf ohne Liste ist
+    /// eine eigene Deklaration, kein Rumpf; still.</summary>
+    [Test]
+    procedure OverriddenOverloadsWithoutList;
     /// <summary>#1326: Ein Vorfahr außerhalb des Index kann den Namen verdecken (Read im with eines
     /// TMemoryStream-Nachfahren, Error in einem TStrings-Nachfahren); Gegenprobe mit vollständiger Kette.</summary>
     [Test]
@@ -267,6 +272,16 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
   Assert.AreEqual('AttachProcess erwartet 3 Argumente, übergeben sind 4 (wie E2034).', mFound[0].Message);
+end;
+
+procedure TCallRulesTests.OverriddenOverloadsWithoutList;
+begin
+  Silent('unit Druck;'#10'interface'#10'type'#10'  TBasis = class'#10'    procedure Drucken; overload; virtual;'#10 +
+    '    procedure Drucken(A: Integer); overload; virtual;'#10'  end;'#10'  TKind = class(TBasis)'#10 +
+    '    procedure Drucken; override;'#10'    procedure Drucken(A: Integer); override;'#10'  end;'#10 +
+    'implementation'#10'procedure TBasis.Drucken;'#10'begin'#10'end;'#10'procedure TBasis.Drucken(A: Integer);'#10 +
+    'begin'#10'end;'#10'procedure TKind.Drucken;'#10'begin'#10'  Drucken(1);'#10'end;'#10 +
+    'procedure TKind.Drucken(A: Integer);'#10'begin'#10'  Drucken;'#10'end;'#10'end.');
 end;
 
 procedure TCallRulesTests.AncestorOverloads;
