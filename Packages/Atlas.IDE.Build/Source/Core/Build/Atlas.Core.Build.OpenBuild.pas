@@ -23,6 +23,10 @@
 //   der Schreibweise des Projekts; fehlt sie dort, bleibt es bei der
 //   Einstellung des Projekts. Die Plattform prüft die IDE-Schicht über die
 //   im Projekt aktivierten Plattformen.
+// - TAtlasOpenBuildSummary entscheidet über die Zusammenfassung am Ende des
+//   Laufs: ob sie nötig ist (mehr als ein Projekt, Abbruch oder unbekannte
+//   Vorgaben), wie schwer sie wiegt und welche Zeilen sie hat. Die Texte
+//   setzt die IDE-Schicht.
 
 interface
 
@@ -30,7 +34,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Notifications.Contract;
 
 type
   /// <summary>Ergebnis eines Laufs beim Öffnen.</summary>
@@ -47,6 +52,34 @@ type
     /// <summary>Erster Grund eines Abbruchs; '' ohne.</summary>
     CancelReason: string;
     function AllSucceeded: Boolean;
+  end;
+
+  /// <summary>Zeile der Zusammenfassung am Ende des Laufs.</summary>
+  TAtlasOpenBuildLine = (
+    /// <summary>Fehlgeschlagene Projekte.</summary>
+    Failed,
+    /// <summary>Nicht gebaute Projekte.</summary>
+    NotBuilt,
+    /// <summary>Grund des Abbruchs.</summary>
+    Reason,
+    /// <summary>Alles gebaut (nur ohne die anderen Zeilen).</summary>
+    Succeeded);
+
+  TAtlasOpenBuildSummary = record
+  public
+    /// <summary>Lohnt die Zusammenfassung? Ein einzelnes gebautes Projekt meldet schon „Build fertig“ (#535).
+    /// </summary>
+    class function Needed(const AOutcome: TAtlasOpenBuildResult; ANoteCount: Integer): Boolean; static;
+    /// <summary>Fehler bei fehlgeschlagenen Projekten, Warnung bei nicht gebauten oder unbekannten Vorgaben
+    /// (AHasNotes), sonst Info.</summary>
+    class function Severity(const AOutcome: TAtlasOpenBuildResult; AHasNotes: Boolean):
+      TAtlasNotificationSeverity; static;
+    /// <summary>Zeilen in dieser Reihenfolge; Succeeded nur, wenn keine andere zutrifft.</summary>
+    class function Lines(const AOutcome: TAtlasOpenBuildResult): TArray<TAtlasOpenBuildLine>; static;
+    /// <summary>Weicht die Vorgabe AWanted von der Auswahl ACurrent ab? Ohne Vorgabe nie.</summary>
+    class function Differs(const AWanted, ACurrent: string): Boolean; static;
+    /// <summary>Ist AFileName ein Projekt aus ACovered (.dpr und .dproj zählen gleich)?</summary>
+    class function IsCovered(const ACovered: TArray<string>; const AFileName: string): Boolean; static;
   end;
 
   TAtlasOpenBuild = class
@@ -117,6 +150,67 @@ uses
 function TAtlasOpenBuildResult.AllSucceeded: Boolean;
 begin
   Result := (Total > 0) and (Succeeded = Total);
+end;
+
+{ TAtlasOpenBuildSummary }
+
+class function TAtlasOpenBuildSummary.Needed(const AOutcome: TAtlasOpenBuildResult; ANoteCount: Integer): Boolean;
+begin
+  Result := (AOutcome.Total > 1) or (AOutcome.NotBuilt > 0) or (ANoteCount > 0);
+end;
+
+class function TAtlasOpenBuildSummary.Severity(const AOutcome: TAtlasOpenBuildResult; AHasNotes: Boolean):
+  TAtlasNotificationSeverity;
+begin
+  Result := TAtlasNotificationSeverity.Info;
+  if (AOutcome.NotBuilt > 0) or AHasNotes then
+  begin
+    Result := TAtlasNotificationSeverity.Warning;
+  end;
+  if AOutcome.Failed > 0 then
+  begin
+    Result := TAtlasNotificationSeverity.Error;
+  end;
+end;
+
+class function TAtlasOpenBuildSummary.Lines(const AOutcome: TAtlasOpenBuildResult): TArray<TAtlasOpenBuildLine>;
+begin
+  Result := nil;
+  if AOutcome.Failed > 0 then
+  begin
+    Result := Result + [TAtlasOpenBuildLine.Failed];
+  end;
+  if AOutcome.NotBuilt > 0 then
+  begin
+    Result := Result + [TAtlasOpenBuildLine.NotBuilt];
+  end;
+  if AOutcome.CancelReason <> '' then
+  begin
+    Result := Result + [TAtlasOpenBuildLine.Reason];
+  end;
+  if Length(Result) = 0 then
+  begin
+    Result := Result + [TAtlasOpenBuildLine.Succeeded];
+  end;
+end;
+
+class function TAtlasOpenBuildSummary.Differs(const AWanted, ACurrent: string): Boolean;
+begin
+  Result := (AWanted <> '') and not SameText(AWanted, ACurrent);
+end;
+
+class function TAtlasOpenBuildSummary.IsCovered(const ACovered: TArray<string>; const AFileName: string): Boolean;
+var
+  mMember: string;
+begin
+  for mMember in ACovered do
+  begin
+    if TAtlasOpenBuild.KeyOf(mMember) = TAtlasOpenBuild.KeyOf(AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 { TAtlasOpenBuild }

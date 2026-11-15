@@ -543,6 +543,9 @@ Atlas.Core.Debug.DialogInput.Tests
 Atlas.Core.Problems.Switches.Tests
 Atlas.Core.Forms.PropertyValues.Tests
 Atlas.Core.Editor.GutterMarks.Tests
+Atlas.Core.Tasks.Plan.Tests
+Atlas.Core.StartProfiles.Picker.Tests
+Atlas.Core.Build.OpenBuild.Tests
 Atlas.Core.Debug.VariablesFlow.Tests
 Atlas.Core.Debug.LaunchProcesses.Tests
 Atlas.Core.Debug.StepFilterEdit.Tests

@@ -101,8 +101,10 @@
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Matchers.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.OutputGroup.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas"/>
+        <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Plan.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Runs.pas"/>
+        <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Picker.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.CompilerSwitches.pas"/>
         <DCCReference Include="Source\IDE\BuildTools\Atlas.IDE.BuildTools.Composition.pas"/>
         <DCCReference Include="Source\IDE\Build\Atlas.IDE.Build.OpenBuild.pas"/>
