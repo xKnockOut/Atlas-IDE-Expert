@@ -1448,8 +1448,15 @@ begin
   if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
   begin
     mOptions := TJSONObject(AArguments.Items[1]);
-    mOptions.TryGetValue<Boolean>('form', mWithForm);
-    mOptions.TryGetValue<Boolean>('usedBy', mWithUsedBy);
+    // TryGetValue setzt den Wert auch ohne Schlüssel (auf False); fehlt er, bleibt die Vorgabe True.
+    if not mOptions.TryGetValue<Boolean>('form', mWithForm) then
+    begin
+      mWithForm := True;
+    end;
+    if not mOptions.TryGetValue<Boolean>('usedBy', mWithUsedBy) then
+    begin
+      mWithUsedBy := True;
+    end;
   end;
   if not FContextFor(mContext) then
   begin

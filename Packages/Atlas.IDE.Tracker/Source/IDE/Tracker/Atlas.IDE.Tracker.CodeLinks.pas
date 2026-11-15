@@ -69,10 +69,6 @@ type
   TAtlasIdeCodeLinks = class
   private const
     cTickMs = 150;
-    cMenuShow = 1;
-    cMenuBrowse = 2;
-    cMenuCopy = 3;
-    cMenuStart = 4;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -135,22 +131,17 @@ type
 implementation
 
 uses
-  System.StrUtils,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Tracker.CodeLinkPlan,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorRefresh;
-
-function PatternKey(const ATarget: TAtlasTrackerTarget; const ACommit: string): string;
-begin
-  Result := ATarget.Provider + #1 + ATarget.Url + #1 + ATarget.Project + #1 + ACommit;
-end;
 
 /// <summary>Den Editor vorn neu zeichnen.</summary>
 procedure InvalidateEditor;
@@ -161,11 +152,6 @@ begin
   begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
-end;
-
-function IsPascal(const AFileName: string): Boolean;
-begin
-  Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc', '.lpr', '.pp']);
 end;
 
 function CanStart(const AHooks: TAtlasCodeLinksHooks): Boolean;
@@ -309,7 +295,7 @@ begin
   begin
     Result := TAtlasEditorBuffer.ActiveView;
   end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not IsPascal(Result.Buffer.FileName)) then
+  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasCodeLinkPlan.IsPascal(Result.Buffer.FileName)) then
   begin
     Result := nil;
   end;
@@ -338,10 +324,10 @@ begin
   begin
     mCommit := FHooks.CommitPattern();
   end;
-  mKey := PatternKey(mTarget, mCommit);
+  mKey := TAtlasCodeLinkPlan.PatternKey(mTarget, mCommit);
   mSnapshot := TAtlasEditorSnapshots.Get(mView);
-  if (mSnapshot.Version = FState.Version) and SameText(mSnapshot.FileName, FState.FileName) and
-    (mKey = FState.PatternKey) then
+  if TAtlasCodeLinkPlan.Unchanged(mSnapshot.Version, mSnapshot.FileName, mKey, FState.Version, FState.FileName,
+    FState.PatternKey) then
   begin
     Exit;
   end;
@@ -376,7 +362,6 @@ end;
 function PaintedLine(AOwner: TAtlasIdeCodeLinks; const AContext: INTACodeEditorPaintContext): Integer;
 var
   mLineState: INTACodeEditorLineState;
-  mLine: Integer;
 begin
   Result := -1;
   if not AOwner.Shown or not SameText(AContext.FileName, AOwner.FState.FileName) then
@@ -384,11 +369,9 @@ begin
     Exit;
   end;
   mLineState := AContext.LineState;
-  mLine := AContext.LogicalLineNum - 1;
-  if (mLineState <> nil) and (mLine >= 0) and (mLine < Length(AOwner.FState.Lines)) and
-    (TrimRight(mLineState.Text) = TrimRight(AOwner.FState.Lines[mLine])) then
+  if mLineState <> nil then
   begin
-    Result := mLine;
+    Result := TAtlasCodeLinkPlan.PaintedLine(AContext.LogicalLineNum, mLineState.Text, AOwner.FState.Lines);
   end;
 end;
 
@@ -503,19 +486,19 @@ var
 begin
   mTarget := AHit.Match.IssueTarget(FState.Target);
   case ACommand of
-    cMenuShow:
+    TAtlasCodeLinkPlan.cMenuShow:
       if Assigned(FHooks.Show) then
       begin
         FHooks.Show(mTarget, AHit.Match.IssueKey);
       end;
-    cMenuBrowse:
+    TAtlasCodeLinkPlan.cMenuBrowse:
       if Assigned(FHooks.Browse) then
       begin
         FHooks.Browse(mTarget, AHit.Match.IssueKey);
       end;
-    cMenuCopy:
+    TAtlasCodeLinkPlan.cMenuCopy:
       Clipboard.AsText := AHit.Match.Key;
-    cMenuStart:
+    TAtlasCodeLinkPlan.cMenuStart:
       if CanStart(FHooks) then
       begin
         FHooks.Start(mTarget, AHit.Match.IssueKey);
@@ -584,8 +567,8 @@ end;
 /// <summary>Strg+Klick oder Rechtsklick ohne Umschalt (Umschalt+Rechtsklick: Kontextmenü der IDE)?</summary>
 function IsLinkClick(const AMsg: TMsg): Boolean;
 begin
-  Result := ((AMsg.message = WM_LBUTTONDOWN) and ((AMsg.wParam and MK_CONTROL) <> 0)) or
-    ((AMsg.message = WM_RBUTTONDOWN) and ((AMsg.wParam and MK_SHIFT) = 0));
+  Result := TAtlasCodeLinkPlan.Catches(AMsg.message = WM_LBUTTONDOWN, AMsg.message = WM_RBUTTONDOWN,
+    (AMsg.wParam and MK_CONTROL) <> 0, (AMsg.wParam and MK_SHIFT) <> 0);
 end;
 
 /// <summary>Klick auf eine Kennung: Strg+Klick öffnet Vorschau bzw. Browser (Strg+Umschalt+Klick: Browser; die
@@ -593,7 +576,6 @@ end;
 procedure LinkClick(AOwner: TAtlasIdeCodeLinks; const AMsg: TMsg; var AHandled: Boolean);
 var
   mHit: TAtlasCodeLinkHit;
-  mCommand: Integer;
 begin
   if not AOwner.HitAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)), mHit) then
   begin
@@ -610,12 +592,7 @@ begin
   else
   begin
     AOwner.FSwallowUp := WM_LBUTTONUP;
-    mCommand := TAtlasIdeCodeLinks.cMenuShow;
-    if (AMsg.wParam and MK_SHIFT) <> 0 then
-    begin
-      mCommand := TAtlasIdeCodeLinks.cMenuBrowse;
-    end;
-    QueueAct(mHit, mCommand, AOwner.FSerialOf);
+    QueueAct(mHit, TAtlasCodeLinkPlan.ClickCommand((AMsg.wParam and MK_SHIFT) <> 0), AOwner.FSerialOf);
   end;
 end;
 
@@ -649,12 +626,14 @@ procedure TAtlasIdeCodeLinks.ShowMenu(const AHit: TAtlasCodeLinkHit; const APoin
 begin
   FMenu.Items.Clear;
   FMenuHit := AHit;
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow), cMenuShow,
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssueLinkMenuShow), TAtlasCodeLinkPlan.cMenuShow,
     MenuClick).Default := True;
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse), cMenuBrowse, MenuClick);
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey), cMenuCopy, MenuClick);
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewBrowse), TAtlasCodeLinkPlan.cMenuBrowse,
+    MenuClick);
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewCopyKey), TAtlasCodeLinkPlan.cMenuCopy,
+    MenuClick);
   AddMenuItem(FMenu, '-', 0, nil);
-  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart), cMenuStart,
+  AddMenuItem(FMenu, TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewStart), TAtlasCodeLinkPlan.cMenuStart,
     MenuClick).Enabled := CanStart(FHooks);
   FMenu.Popup(APoint.X, APoint.Y);
 end;

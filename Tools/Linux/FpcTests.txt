@@ -281,6 +281,7 @@ Atlas.Common.Rules.Builtin.Declarations.Overloads.Tests
 Atlas.Common.Rules.Builtin.Declarations.Shared.Tests
 Atlas.Common.Rules.Builtin.Declarations.TypeSizes.Tests
 Atlas.Common.Rules.Builtin.Declarations.VariantRecords.Tests
+Atlas.Common.Rules.Builtin.DelphiSemantics.Tests
 Atlas.Common.Rules.Builtin.DllExports.Tests
 Atlas.Common.Rules.Builtin.Events.Tests
 Atlas.Common.Rules.Builtin.Exceptions.Tests
@@ -513,6 +514,9 @@ Atlas.Core.Tracker.Internals.GitHubPulls.Tests
 Atlas.Core.Tracker.EndPull.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
+Atlas.Core.Tracker.CodeLinkPlan.Tests
+Atlas.Core.Tracker.BlamePlan.Tests
+Atlas.Core.Tracker.SprintLoad.Tests
 Atlas.Core.Tracker.CommentPlan.Tests
 Atlas.Core.Tracker.NotifyPlan.Tests
 Atlas.Core.Tracker.DevelopmentPlan.Tests
