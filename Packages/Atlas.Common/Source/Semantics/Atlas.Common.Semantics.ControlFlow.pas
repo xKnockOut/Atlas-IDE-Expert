@@ -112,6 +112,9 @@ type
     function UpdateDominators(const AReachable: TArray<Boolean>): Boolean;
     /// <summary>Ist eine andere Kopie der Anweisung von ANode (finally je Ausgang) erreichbar?</summary>
     function HasReachableCopy(ANode: TFlowNode): Boolean;
+    /// <summary>Ist ANode die Bedingung eines repeat, dessen Rumpf erreichbar ist? Springt der Rumpf immer (Break,
+    /// raise), ist nur until unerreichbar; das meldet loop-runs-at-most-once, nicht unreachable-code.</summary>
+    function IsConditionOfReachedRepeat(ANode: TFlowNode): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -1351,6 +1354,35 @@ begin
   Result := False;
 end;
 
+function TControlFlowGraph.IsConditionOfReachedRepeat(ANode: TFlowNode): Boolean;
+var
+  mOther: TFlowNode;
+  mCurrent: TSyntaxNode;
+begin
+  if (ANode.Kind <> TFlowNodeKind.Condition) or (ANode.Syntax = nil) or
+    (ANode.Syntax.Kind <> TSyntaxKind.RepeatStatement) then
+  begin
+    Exit(False);
+  end;
+  for mOther in FNodes do
+  begin
+    if (mOther = ANode) or (mOther.Syntax = nil) or (IsReachable(mOther) <> TFlowAnswer.Yes) then
+    begin
+      Continue;
+    end;
+    mCurrent := mOther.Syntax.Parent;
+    while mCurrent <> nil do
+    begin
+      if mCurrent = ANode.Syntax then
+      begin
+        Exit(True);
+      end;
+      mCurrent := mCurrent.Parent;
+    end;
+  end;
+  Result := False;
+end;
+
 class function TControlFlowGraph.Build(ARoutine: TSyntaxNode; const ALookup: TFlowSignatureLookup):
   TControlFlowGraph;
 begin
@@ -1546,7 +1578,8 @@ begin
   for mNode in FNodes do
   begin
     if (mNode.Kind in [TFlowNodeKind.Statement, TFlowNodeKind.Condition]) and
-      (IsReachable(mNode) = TFlowAnswer.No) and not HasReachableCopy(mNode) and not ListsSyntax(Result, mNode) then
+      (IsReachable(mNode) = TFlowAnswer.No) and not HasReachableCopy(mNode) and not ListsSyntax(Result, mNode) and
+      not IsConditionOfReachedRepeat(mNode) then
     begin
       Result := Result + [mNode];
     end;
