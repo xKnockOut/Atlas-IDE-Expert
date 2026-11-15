@@ -3,7 +3,9 @@
 // Regel possibly-uninitialized aus Atlas.Common.Rules.Builtin.Flow (#269): lokale Variable wird möglicherweise vor
 // der ersten Zuweisung gelesen (wie W1036). Geprüft werden nur Variablen, die Delphi nicht selbst vorbelegt:
 // einfache Typen (Konfidenz hoch) und T…-Typen wie Klassen und Records (Konfidenz mittel). Ein Merker (Found :=
-// True neben der Zuweisung) schützt einen Lesezugriff in if Found then … (#1109).
+// True neben der Zuweisung) schützt einen Lesezugriff in if Found then … (#1109). Ein Methodenaufruf auf einem
+// Record oder old-style object legt die Variable an, ebenso Zuweisungen an eine Variable, die mit absolute über
+// ihr liegt.
 
 interface
 
@@ -356,6 +358,31 @@ begin
   end;
 end;
 
+/// <summary>Liegt eine andere Variable der Routine über AName (Overlay: array[1..2] of Longint absolute D)?
+/// Zuweisungen an sie setzen AName; der Fluss sieht nur ihren Namen.</summary>
+function OverlaidByAbsolute(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mSection, mDecl: Integer;
+  mVar: TSyntaxNode;
+begin
+  Result := False;
+  for mSection := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[mSection].Kind <> TSyntaxKind.VarSection then
+    begin
+      Continue;
+    end;
+    for mDecl := 0 to ARoutine[mSection].ChildCount - 1 do
+    begin
+      mVar := ARoutine[mSection][mDecl];
+      // Kinder: der Typ, danach das Ziel hinter absolute (Startwerte lokaler Variablen gibt es nur als
+      // Konstante, die keine Variable der Routine nennt).
+      Result := Result or ((mVar.Kind = TSyntaxKind.VarDecl) and (mVar.ChildCount = 2) and
+        IsName(mVar[1], AName));
+    end;
+  end;
+end;
+
 /// <summary>Namen der Methoden im Record-Rumpf ABody.</summary>
 function RecordHeaderNames(ABody: TSyntaxNode): TArray<string>;
 var
@@ -371,7 +398,8 @@ begin
   end;
 end;
 
-/// <summary>Rumpf (RecordType) des Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
+/// <summary>Rumpf (RecordType bzw. ObjectType) des Record- oder object-Typs ATypeName aus dieser Unit; nil für
+/// andere Typen. Ein old-style object bekommt Self wie ein Record als var-Parameter (E.Init legt E an).</summary>
 function RecordBody(ARoot: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
   mTypeName: string;
@@ -395,24 +423,56 @@ begin
   if mDecl <> nil then
   begin
     Result := mDecl.FindChild(TSyntaxKind.RecordType);
+    if Result = nil then
+    begin
+      Result := mDecl.FindChild(TSyntaxKind.ObjectType);
+    end;
   end;
 end;
 
-/// <summary>Methoden eines Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
+/// <summary>Vorfahr des object-Rumpfs ABody (TKind = object(TBasis)); leer ohne Vorfahr und bei Records.
+/// </summary>
+function ObjectAncestor(ABody: TSyntaxNode): string;
+var
+  mAncestor: TSyntaxNode;
+begin
+  Result := '';
+  mAncestor := ABody.FindChild(TSyntaxKind.TypeReference);
+  if (ABody.Kind = TSyntaxKind.ObjectType) and (mAncestor <> nil) then
+  begin
+    Result := mAncestor.Name;
+  end;
+end;
+
+/// <summary>Methoden eines Record- oder object-Typs ATypeName aus dieser Unit, beim object auch die geerbten
+/// der Vorfahren dieser Unit; nil für andere Typen.</summary>
 function RecordMethods(ARoot: TSyntaxNode; const ATypeName: string): TArray<string>;
+const
+  // Schutz gegen Zyklen in fehlerhaftem Quelltext (TA = object(TB); TB = object(TA)).
+  cMaxAncestors = 32;
 var
   mBody: TSyntaxNode;
+  mTypeName: string;
+  mDepth: Integer;
 begin
   Result := nil;
-  mBody := RecordBody(ARoot, ATypeName);
-  if mBody <> nil then
+  mTypeName := ATypeName;
+  mDepth := 0;
+  while (mTypeName <> '') and (mDepth < cMaxAncestors) do
   begin
-    Result := RecordHeaderNames(mBody);
+    mBody := RecordBody(ARoot, mTypeName);
+    mTypeName := '';
+    if mBody <> nil then
+    begin
+      Result := Result + RecordHeaderNames(mBody);
+      mTypeName := ObjectAncestor(mBody);
+    end;
+    Inc(mDepth);
   end;
 end;
 
-/// <summary>Methoden eines Record-Typs ATypeName aus einer anderen Unit (Index); nil ohne Index oder für andere
-/// Typen. Mehrere gleichnamige Records liefern alle ihre Methoden.</summary>
+/// <summary>Methoden eines Record- oder object-Typs ATypeName aus einer anderen Unit (Index); nil ohne Index oder
+/// für andere Typen. Mehrere gleichnamige Typen liefern alle ihre Methoden.</summary>
 function IndexRecordMethods(const AIndex: ISymbolIndex; const ATypeName: string): TArray<string>;
 var
   mShort: string;
@@ -428,7 +488,7 @@ begin
   mShort := Copy(ATypeName, LastDelimiter('.', ATypeName) + 1, MaxInt);
   for mLocation in AIndex.FindSymbols(mShort) do
   begin
-    if (mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType) or (mLocation.Symbol.Container <> '') or
+    if not (mLocation.Symbol.Kind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType]) or (mLocation.Symbol.Container <> '') or
       not AIndex.FindFile(mLocation.FileName, mUnit) then
     begin
       Continue;
@@ -442,6 +502,12 @@ begin
       end;
     end;
   end;
+end;
+
+/// <summary>Mitgliedszugriff X.Name mit genau einem Kind X.</summary>
+function IsSingleMemberAccess(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1);
 end;
 
 /// <summary>Ruft der Rumpf eine Methode des Records auf der Variablen AName auf (Scanner.Init(…))? Die Methode
@@ -461,15 +527,17 @@ begin
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and IsName(AVisited[0], mName) and
-        MatchText(AVisited.Name, mMethods) then
+      if not IsSingleMemberAccess(AVisited) then
+      begin
+        Exit;
+      end;
+      if IsName(AVisited[0], mName) and MatchText(AVisited.Name, mMethods) then
       begin
         Result := TSyntaxSearchStep.Found;
       end
       // Methode eines Record-Felds (Container.Bag.AddObject): Einträge „Feld.Methode“.
-      else if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and
-        (AVisited[0].Kind = TSyntaxKind.MemberAccess) and (AVisited[0].ChildCount = 1) and
-        IsName(AVisited[0][0], mName) and MatchText(AVisited[0].Name + '.' + AVisited.Name, mMethods) then
+      else if IsSingleMemberAccess(AVisited[0]) and IsName(AVisited[0][0], mName) and
+        MatchText(AVisited[0].Name + '.' + AVisited.Name, mMethods) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -791,7 +859,7 @@ begin
   begin
     FName := mName;
     if HasOpaqueUse(ABlock, mName.Trim) or UsedInNested(ARoutine, mName) or
-      CallsRecordMethod(ABlock, mName, MethodsOfRecord(mTypeName)) then
+      OverlaidByAbsolute(ARoutine, mName.Trim) or CallsRecordMethod(ABlock, mName, MethodsOfRecord(mTypeName)) then
     begin
       Continue;
     end;

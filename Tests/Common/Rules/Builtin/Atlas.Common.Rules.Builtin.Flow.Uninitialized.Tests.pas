@@ -25,6 +25,12 @@ type
     procedure MethodOfRecordFieldIsSilent;
     [Test]
     procedure NameInsideWithIsSilent;
+    [Test]
+    procedure MethodOfOldStyleObjectIsSilent;
+    [Test]
+    procedure LoopOverConstantArrayIsSilent;
+    [Test]
+    procedure AbsoluteOverlayIsSilent;
   end;
 
 implementation
@@ -130,6 +136,48 @@ begin
   // Der Ausdruck hinter with gehört nicht zum Rumpf und wird weiter geprüft.
   TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Breite, N: Integer;',
     '  N := 0;'#10'  with Liste[Breite] do'#10'    Zeige(N);'));
+end;
+
+procedure TFlowUninitializedTests.MethodOfOldStyleObjectIsSilent;
+const
+  cTypes = 'type'#10'  TBasis = object'#10'    P: PChar;'#10'    procedure Init(const S: string);'#10'  end;'#10 +
+    '  TEsc = object(TBasis)'#10'    procedure Weiter;'#10'  end;'#10;
+begin
+  // Ein old-style object bekommt Self wie ein Record als var-Parameter: E.Init legt E an, auch geerbt.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10 + cTypes + 'implementation'#10 +
+    'procedure Run;'#10'var'#10'  E: TEsc;'#10'begin'#10'  E.Init(''abc'');'#10'end;'#10'end.');
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10 + cTypes + 'implementation'#10 +
+    'procedure Run;'#10'var'#10'  E: TBasis;'#10'begin'#10'  E.Init(''abc'');'#10'end;'#10'end.');
+  // Nur ein Feld gelesen: Das bleibt ein Befund.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, 'unit U;'#10'interface'#10 + cTypes + 'implementation'#10 +
+    'procedure Run(var Q: PChar);'#10'var'#10'  E: TEsc;'#10'begin'#10'  Q := E.P;'#10'end;'#10'end.');
+end;
+
+procedure TFlowUninitializedTests.LoopOverConstantArrayIsSilent;
+const
+  cHead = 'unit U;'#10'interface'#10'implementation'#10'const'#10'  A: array[0..2] of Integer = (1, 2, 3);'#10 +
+    'function F(X: Integer): Boolean;'#10'var'#10'  B: Boolean;'#10'  I: Integer;'#10'  D: array of Integer;'#10 +
+    'begin'#10;
+begin
+  // Die Grenzen sind beim Übersetzen bekannt und der Bereich nicht leer: Der Rumpf läuft sicher einmal.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, cHead + '  for I := Low(A) to High(A) do'#10'  begin'#10 +
+    '    B := A[I] = X;'#10'    if B then'#10'      Break;'#10'  end;'#10'  Result := B;'#10'end;'#10'end.');
+  // Dynamisches Array: Die Schleife kann leer sein.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, cHead + '  for I := Low(D) to High(D) do'#10'  begin'#10 +
+    '    B := D[I] = X;'#10'    if B then'#10'      Break;'#10'  end;'#10'  Result := B;'#10'end;'#10'end.');
+end;
+
+procedure TFlowUninitializedTests.AbsoluteOverlayIsSilent;
+const
+  cHead = 'unit U;'#10'interface'#10'implementation'#10'function HexToDouble(A, B: Integer): Double;'#10'var'#10 +
+    '  D: Double;'#10;
+begin
+  // Overlay liegt über D: Die Zuweisungen an Overlay setzen D.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, cHead + '  Overlay: array[1..2] of Longint absolute D;'#10 +
+    'begin'#10'  Overlay[1] := A;'#10'  Overlay[2] := B;'#10'  Result := D;'#10'end;'#10'end.');
+  // Ohne absolute bleibt D ungesetzt.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, cHead + '  Overlay: array[1..2] of Longint;'#10 +
+    'begin'#10'  Overlay[1] := A;'#10'  Overlay[2] := B;'#10'  Result := D;'#10'end;'#10'end.');
 end;
 
 initialization
