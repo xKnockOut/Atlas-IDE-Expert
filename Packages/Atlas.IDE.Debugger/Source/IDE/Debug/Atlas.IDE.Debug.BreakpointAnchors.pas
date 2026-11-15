@@ -27,16 +27,10 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Editor.MethodAnchor,
-  Atlas.Core.Debug.BreakpointAnchors;
+  Atlas.Core.Debug.BreakpointAnchors,
+  Atlas.Core.Debug.BreakpointAnchorFlow;
 
 type
-  /// <summary>Zuletzt gesehener Stand einer Datei.</summary>
-  TAtlasAnchorFileSeen = record
-    Hash: Integer;
-    Age: TDateTime;
-    LineCount: Integer;
-  end;
-
   /// <summary>Ergebnis eines Durchlaufs: neue Anker, Verschiebungen, Verwaiste.</summary>
   TAtlasAnchorBatch = record
     Next: TDictionary<string, TAtlasAnchoredBreakpoint>;
@@ -171,7 +165,7 @@ begin
       Load;
     end;
     Process;
-    if FDirty and (TThread.GetTickCount64 - FSavedAt >= cSaveMs) then
+    if TAtlasBreakpointAnchorFlow.SaveDue(FDirty, TThread.GetTickCount64, FSavedAt, cSaveMs) then
     begin
       Save;
     end;
@@ -224,7 +218,7 @@ begin
   mNow.Hash := THashBobJenkins.GetHashValue(mSource);
   mNow.Age := DiskAge(AFileName);
   mKnown := FFiles.TryGetValue(LowerCase(AFileName), mSeen);
-  mChanged := not mKnown or (mSeen.Hash <> mNow.Hash);
+  mChanged := TAtlasBreakpointAnchorFlow.Changed(mKnown, mSeen, mNow.Hash);
   if not NeedsWork(AFileName, ALines, mChanged) then
   begin
     KeepAnchors(AFileName, ALines, ABatch);
@@ -247,48 +241,51 @@ class procedure TAtlasIdeBreakpointAnchors.FollowLine(const AFileName: string; A
 var
   mKey: string;
   mItem: TAtlasAnchoredBreakpoint;
-  mFresh: Boolean;
+  mHasAnchor, mHasStored: Boolean;
+  mCase: TAtlasAnchorCase;
   mResult: TAtlasAnchorResult;
   mOrphan: TAtlasAnchorOrphan;
 begin
   mKey := TAtlasBreakpointAnchors.Key(AFileName, ALine);
-  // Gespeicherter Anker aus einer früheren Sitzung: immer nachziehen.
-  mFresh := not FAnchors.TryGetValue(mKey, mItem) and FStored.TryGetValue(mKey, mItem);
-  if mFresh then
-  begin
-    FStored.Remove(mKey);
-  end
-  else if not FAnchors.ContainsKey(mKey) then
+  mHasAnchor := FAnchors.TryGetValue(mKey, mItem);
+  mHasStored := not mHasAnchor and FStored.TryGetValue(mKey, mItem);
+  mCase := TAtlasBreakpointAnchorFlow.CaseOf(mHasAnchor, mHasStored, AChanged);
+  if mCase = TAtlasAnchorCase.Added then
   begin
     // Neuer Haltepunkt: Anker merken.
     ABatch.Next.AddOrSetValue(mKey, CaptureAt(AFileName, ALine, AText));
     Exit;
-  end
-  else if not AChanged then
+  end;
+  if mCase = TAtlasAnchorCase.Unchanged then
   begin
     // Datei unverändert: Anker bleibt (auch der alte eines verwaisten Haltepunkts).
     ABatch.Next.AddOrSetValue(mKey, mItem);
     Exit;
   end;
+  if mCase = TAtlasAnchorCase.Stored then
+  begin
+    // Gespeicherter Anker aus einer früheren Sitzung: immer nachziehen.
+    FStored.Remove(mKey);
+  end;
   mItem.Line := ALine;
   mResult := TAtlasBreakpointAnchors.Follow(AText, mItem);
-  if (mResult.Step = TAtlasAnchorStep.Keep) or not (AExternal or mFresh) then
-  begin
-    ABatch.Next.AddOrSetValue(mKey, CaptureAt(AFileName, ALine, AText));
-  end
-  else if mResult.Step = TAtlasAnchorStep.Move then
-  begin
-    ABatch.Moves := ABatch.Moves + [TAtlasAnchorMove.Create(AFileName, ALine, mResult.Line)];
-    ABatch.Next.AddOrSetValue(TAtlasBreakpointAnchors.Key(AFileName, mResult.Line),
-      CaptureAt(AFileName, mResult.Line, AText));
-  end
-  else
-  begin
-    // Verwaist: alter Anker bleibt, damit ein späterer Stand ihn wiederfinden kann.
-    mOrphan.Item := mItem;
-    mOrphan.Suggestion := mResult.Line;
-    ABatch.Orphans := ABatch.Orphans + [mOrphan];
-    ABatch.Next.AddOrSetValue(mKey, mItem);
+  case TAtlasBreakpointAnchorFlow.OutcomeOf(mResult.Step, AExternal, mCase = TAtlasAnchorCase.Stored) of
+    TAtlasAnchorOutcome.Recapture:
+      ABatch.Next.AddOrSetValue(mKey, CaptureAt(AFileName, ALine, AText));
+    TAtlasAnchorOutcome.Move:
+      begin
+        ABatch.Moves := ABatch.Moves + [TAtlasAnchorMove.Create(AFileName, ALine, mResult.Line)];
+        ABatch.Next.AddOrSetValue(TAtlasBreakpointAnchors.Key(AFileName, mResult.Line),
+          CaptureAt(AFileName, mResult.Line, AText));
+      end;
+    TAtlasAnchorOutcome.Orphan:
+      begin
+        // Verwaist: alter Anker bleibt, damit ein späterer Stand ihn wiederfinden kann.
+        mOrphan.Item := mItem;
+        mOrphan.Suggestion := mResult.Line;
+        ABatch.Orphans := ABatch.Orphans + [mOrphan];
+        ABatch.Next.AddOrSetValue(mKey, mItem);
+      end;
   end;
 end;
 
@@ -382,18 +379,12 @@ end;
 
 class procedure TAtlasIdeBreakpointAnchors.MergeOrphans(const ANew: TAtlasAnchorOrphans);
 var
-  mOld, mNew: TAtlasAnchorOrphan;
-  mKnown: Boolean;
+  mOld: TAtlasAnchorOrphan;
 begin
   for mOld in FOrphans do
   begin
-    mKnown := False;
-    for mNew in ANew do
-    begin
-      mKnown := mKnown or (TAtlasBreakpointAnchors.Key(mNew.Item.FileName, mNew.Item.Line) =
-        TAtlasBreakpointAnchors.Key(mOld.Item.FileName, mOld.Item.Line));
-    end;
-    if not mKnown and (TAtlasIdeBreakpoints.Find(mOld.Item.FileName, mOld.Item.Line) <> nil) then
+    if TAtlasBreakpointAnchorFlow.KeepsOrphan(mOld, ANew) and
+      (TAtlasIdeBreakpoints.Find(mOld.Item.FileName, mOld.Item.Line) <> nil) then
     begin
       FOrphans := FOrphans + [mOld];
     end;

@@ -26,6 +26,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.EditValue,
+  Atlas.Core.Debug.EditValueFlow,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.InlineValuePainter;
@@ -34,9 +35,9 @@ type
   TAtlasIdeDebugEditValue = class
   public const
     /// <summary>Ids der Aktionen im Debug-Hover.</summary>
-    cEditAction = 868;
-    cToggleAction = 8681;
-    cUndoAction = 8682;
+    cEditAction = TAtlasEditValueFlow.cEditAction;
+    cToggleAction = TAtlasEditValueFlow.cToggleAction;
+    cUndoAction = TAtlasEditValueFlow.cUndoAction;
     cRequestTimeoutMs = 3000;
   private type
     TListener = class(TAtlasIdeDebugListener)
@@ -49,16 +50,7 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    /// <summary>Stelle des Werts: Datei, Zeile (1-basiert), Ausdruck und angezeigter Wert. Direct: neuer Wert ohne
-    /// Dialog (Umschalten, Rückgängig); Undoing: Rückgängig, die Änderung wird danach vergessen.</summary>
-    TPlace = record
-      FileName: string;
-      Line: Integer;
-      Expression: string;
-      Value: string;
-      Direct: string;
-      Undoing: Boolean;
-    end;
+    TPlace = TAtlasEditPlace;
   private class var
     FInstance: TAtlasIdeDebugEditValue;
   private
@@ -205,7 +197,7 @@ end;
 procedure TAtlasIdeDebugEditValue.Answered(ARequest: Integer; const APlace: TPlace; const AAnswer: string);
 begin
   // Eine neuere Anfrage oder ein Schritt dazwischen: nichts mehr anzeigen.
-  if (ARequest <> FRequest) or (TAtlasIdeDebugValues.StoppedThread = nil) then
+  if not TAtlasEditValueFlow.Current(ARequest, FRequest, TAtlasIdeDebugValues.StoppedThread <> nil) then
   begin
     Exit;
   end;
@@ -224,10 +216,7 @@ begin
   end;
   // Umschalten und Rückgängig: wie der Dialog umsetzen (Typpräfix, Hochkommas), sonst unverändert.
   mCheck := TAtlasEditValue.Check(AInfo, mNew);
-  if (APlace.Direct <> '') and mCheck.Ok then
-  begin
-    mNew := mCheck.Value;
-  end;
+  mNew := TAtlasEditValueFlow.Final(APlace.Direct, mNew, mCheck);
   if TAtlasIdeDebugValues.StoppedThread = nil then
   begin
     Exit;
@@ -291,10 +280,7 @@ begin
     TAtlasIdeDebugEditValue.FInstance.FChanges.Find(APlace.FileName, APlace.Expression, mChange);
   if Result then
   begin
-    APlace.Line := mChange.Line;
-    APlace.Value := mChange.NewValue;
-    APlace.Direct := mChange.OldValue;
-    APlace.Undoing := True;
+    TAtlasEditValueFlow.ApplyUndo(APlace, mChange);
   end;
 end;
 
@@ -402,7 +388,7 @@ var
   mPlace: TPlace;
   mNew: string;
 begin
-  Result := (AAction = cEditAction) or (AAction = cToggleAction) or (AAction = cUndoAction);
+  Result := TAtlasEditValueFlow.OwnAction(AAction);
   if not Result or (FInstance = nil) or (TAtlasIdeDebugValues.StoppedThread = nil) then
   begin
     Exit;
@@ -450,21 +436,6 @@ begin
   Result := mValue.State <> TAtlasDebugValueState.Failed;
 end;
 
-/// <summary>Gemerkte Änderung: ANew bzw. der Wert, den der Debugger nach dem Ändern meldet (AOutcome).</summary>
-function ChangeOf(const APlace: TAtlasIdeDebugEditValue.TPlace; const ANew, AOutcome: string): TAtlasEditChange;
-begin
-  Result := Default(TAtlasEditChange);
-  Result.FileName := APlace.FileName;
-  Result.Line := APlace.Line;
-  Result.Expression := APlace.Expression;
-  Result.OldValue := APlace.Value;
-  Result.NewValue := ANew;
-  if AOutcome <> '' then
-  begin
-    Result.NewValue := AOutcome;
-  end;
-end;
-
 function TAtlasIdeDebugEditValue.Apply(const APlace: TPlace; const AInfo: TAtlasEditInfo; const ANew: string): Boolean;
 var
   mOutcome: string;
@@ -494,7 +465,7 @@ begin
   end
   else
   begin
-    FChanges.Add(ChangeOf(APlace, ANew, mOutcome));
+    FChanges.Add(TAtlasEditValueFlow.ChangeOf(APlace, ANew, mOutcome));
   end;
   if Assigned(FChanged) then
   begin
