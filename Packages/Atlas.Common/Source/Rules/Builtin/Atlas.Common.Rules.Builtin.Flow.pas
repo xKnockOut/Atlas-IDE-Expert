@@ -200,6 +200,34 @@ begin
   Result := Atlas.Common.Rules.Builtin.Flow.Shared.HasOpaqueUse(ABlock, AName);
 end;
 
+/// <summary>Liegt eine lokale Variable von ARoutine mit absolute auf AName (R: T absolute Result)? Zuweisungen an
+/// sie setzen AName, ohne dass der Kontrollfluss es sieht (PasVulkan.Audio FastExp2).</summary>
+function HasAbsoluteAlias(const AText: string; ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mSection, mDecl: TSyntaxNode;
+  mIndex, mInner: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    mSection := ARoutine[mIndex];
+    if mSection.Kind <> TSyntaxKind.VarSection then
+    begin
+      Continue;
+    end;
+    for mInner := 0 to mSection.ChildCount - 1 do
+    begin
+      mDecl := mSection[mInner];
+      // Y: T absolute X: zwischen Typ und Ausdruck steht das Wort absolute.
+      if (mDecl.Kind = TSyntaxKind.VarDecl) and (mDecl.ChildCount >= 2) and SameText(FreedPath(mDecl[1]), AName) and
+        ContainsText(Copy(AText, mDecl[0].EndOffset + 1, mDecl[1].StartOffset - mDecl[0].EndOffset), 'absolute') then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
 { TResultNotSetRule }
 
 function TResultNotSetRule.Descriptor: TRuleDescriptor;
@@ -233,7 +261,8 @@ begin
     end;
     mBlock := mRoutine.FindChild(TSyntaxKind.Block);
     mName := ShortName(mRoutine.Name);
-    if HasOpaqueUse(mBlock, 'Result') or HasOpaqueUse(mBlock, mName) or ContainsKind(mBlock, TSyntaxKind.InheritedExpr) then
+    if HasOpaqueUse(mBlock, 'Result') or HasOpaqueUse(mBlock, mName) or
+      ContainsKind(mBlock, TSyntaxKind.InheritedExpr) or HasAbsoluteAlias(AContext.Text, mRoutine, 'Result') or HasAbsoluteAlias(AContext.Text, mRoutine, mName) then
     begin
       Continue;
     end;

@@ -80,6 +80,11 @@ type
     /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im
     /// Methodenkopf).</summary>
     function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
+    /// <summary>Im Typ, zu dem AMember gehört, oder einem ihn umgebenden Typ deklarierter Typ ATypeName. Solche
+    /// verschachtelten Typen verdecken gleichnamige Typen der Unit-Ebene und aus dem uses (Feld vom Typ
+    /// TKarte.TBytes8 neben Typen.TBytes8). False bei Typtext mit Präfix, Typargumenten oder Zeiger.</summary>
+    function MemberNestedType(const AMember: TResolvedSymbol; const ATypeName: string;
+      out AType: TResolvedSymbol): Boolean;
     /// <summary>Innerster Typ aus MethodClasses.</summary>
     function MethodClass(out AType: TResolvedSymbol): Boolean;
     /// <summary>Typ der umgebenden Methode und bei verschachtelten Typen (TAussen.TInnen.Methode) die
@@ -197,14 +202,17 @@ function TResolverTyping.DeclaredType(const AResolved: TResolvedSymbol; out ATyp
 var
   mFromUnit: TUnitIndex;
   mWithImplementation: Boolean;
+  mText: string;
 begin
   Result := FUnits.UnitOf(AResolved, mFromUnit);
   if Result then
   begin
     mWithImplementation := (AResolved.Kind = TResolvedKind.Local) or
       (FPlace.IsCurrentFile(mFromUnit.FileName) and FPlace.InImplementation);
-    Result := FLookup.ResolveTypeText(TResolverText.Substitute(TResolverText.FullType(AResolved.TypeName,
-      AResolved.TypeArgs), AResolved.Bindings), mFromUnit, mWithImplementation, AType);
+    mText := TResolverText.Substitute(TResolverText.FullType(AResolved.TypeName, AResolved.TypeArgs),
+      AResolved.Bindings);
+    Result := MemberNestedType(AResolved, mText, AType) or
+      FLookup.ResolveTypeText(mText, mFromUnit, mWithImplementation, AType);
   end;
 end;
 
@@ -213,6 +221,7 @@ var
   mCurrent, mNext: TResolvedSymbol;
   mFromUnit: TUnitIndex;
   mDepth: Integer;
+  mText: string;
 begin
   mCurrent := AStart;
   mDepth := 0;
@@ -220,9 +229,10 @@ begin
     (mDepth < cMaxDepth) do
   begin
     // Eigene Variable: der out-Parameter würde mCurrent.TypeName vor dem Aufruf leeren.
-    if not FUnits.UnitOf(mCurrent, mFromUnit) or
-      not FLookup.ResolveTypeText(TResolverText.Substitute(TResolverText.FullType(mCurrent.TypeName,
-        mCurrent.TypeArgs), mCurrent.Bindings), mFromUnit, FPlace.IsCurrentFile(mFromUnit.FileName), mNext) then
+    mText := TResolverText.Substitute(TResolverText.FullType(mCurrent.TypeName, mCurrent.TypeArgs),
+      mCurrent.Bindings);
+    if not FUnits.UnitOf(mCurrent, mFromUnit) or (not MemberNestedType(mCurrent, mText, mNext) and
+      not FLookup.ResolveTypeText(mText, mFromUnit, FPlace.IsCurrentFile(mFromUnit.FileName), mNext)) then
     begin
       Exit(False);
     end;
@@ -577,6 +587,40 @@ begin
       AResult.Bindings := AOuter.Bindings;
       Exit(True);
     end;
+  end;
+end;
+
+function TResolverTyping.MemberNestedType(const AMember: TResolvedSymbol; const ATypeName: string;
+  out AType: TResolvedSymbol): Boolean;
+var
+  mOwnerUnit: TUnitIndex;
+  mContainer: string;
+  mPosition: Integer;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  if (AMember.Kind = TResolvedKind.Local) or AMember.Builtin or (AMember.Container = '') or (ATypeName = '') or
+    (LastDelimiter('.<>^[ ', ATypeName) > 0) or not FUnits.UnitOf(AMember, mOwnerUnit) then
+  begin
+    Exit;
+  end;
+  // Vom Typ des Mitglieds nach außen (TAussen.TInnen, dann TAussen).
+  mContainer := AMember.Container;
+  while mContainer <> '' do
+  begin
+    for mPosition in mOwnerUnit.SymbolsNamed(ATypeName) do
+    begin
+      mSymbol := mOwnerUnit.Symbols[mPosition];
+      // Nicht das Mitglied selbst: Ein Alias, der auf sich zeigte, wäre eine Schleife.
+      if (mSymbol.Kind in cTypeKinds) and SameText(mSymbol.Container, mContainer) and
+        not (SameText(mSymbol.Name, AMember.Name) and SameText(mSymbol.Container, AMember.Container)) then
+      begin
+        AType := TResolvedSymbol.FromIndex(mOwnerUnit, mSymbol);
+        AType.Bindings := AMember.Bindings;
+        Exit(True);
+      end;
+    end;
+    mContainer := Copy(mContainer, 1, LastDelimiter('.', mContainer) - 1);
   end;
 end;
 

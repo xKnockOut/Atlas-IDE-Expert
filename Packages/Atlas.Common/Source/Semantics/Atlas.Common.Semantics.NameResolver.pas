@@ -94,6 +94,10 @@ type
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei
     /// Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
+    /// <summary>Im Typ von AMember oder einem ihn umgebenden Typ deklarierter Typ ATypeName; verdeckt
+    /// gleichnamige Typen der Unit-Ebene.</summary>
+    function MemberNestedType(const AMember: TResolvedSymbol; const ATypeName: string;
+      out AType: TResolvedSymbol): Boolean;
     /// <summary>Löst den Bezeichner an APosition auf; bei gleich guten Überladungen die erste.</summary>
     function Resolve(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
     /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist
@@ -238,6 +242,12 @@ end;
 function TNameResolver.AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
 begin
   Result := FCore.Typing.AncestorOf(AType, AAncestor);
+end;
+
+function TNameResolver.MemberNestedType(const AMember: TResolvedSymbol; const ATypeName: string;
+  out AType: TResolvedSymbol): Boolean;
+begin
+  Result := FCore.Typing.MemberNestedType(AMember, ATypeName, AType);
 end;
 
 function TNameResolver.Resolve(ATree: TSyntaxTree; const AFileName: string;

@@ -77,6 +77,11 @@ type
     /// </summary>
     [Test]
     procedure OverloadsFromSeveralUnitsAreSilent;
+    /// <summary>Ein im Typ des Felds (oder einem umgebenden Typ) verschachtelter Typ verdeckt einen gleichnamigen
+    /// aus dem uses: TKarte.TBytes8 ist ein dynamisches Array, Typen.TBytes8 ein statisches (Fehlalarm in
+    /// PasVulkan.Collections).</summary>
+    [Test]
+    procedure NestedTypeHidesUsedType;
   end;
 
 implementation
@@ -533,6 +538,28 @@ begin
   // Eine fremde Unit hinter System.SysUtils kann TProc verdecken; ohne System.SysUtils gibt es keinen.
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.SysUtils,'#10'  Fremd', cRoutinen, cAnweisungen)));
   Assert.AreEqual('', Messages(WithoutRtlFindings('  System.Classes', cRoutinen, cAnweisungen)));
+end;
+
+procedure TTypeMismatchTests.NestedTypeHidesUsedType;
+const
+  cKarte = 'unit Fall;'#10'interface'#10'uses'#10'  Typen;'#10'type'#10'  TKarte = class'#10'  public'#10 +
+    '    type'#10'      TBytes8 = array of Byte;'#10'      TListe = TBytes8;'#10'      TInnen = class'#10 +
+    '        FInnen: TBytes8;'#10'      end;'#10'  private'#10'    FDaten: TBytes8;'#10'    FListe: TListe;'#10 +
+    '    FFremd: TAndere;'#10'  public'#10'    procedure Leeren;'#10'    procedure Setze(const A: TBytes8);'#10'  end;'#10 +
+    '  TAndere = class'#10 +
+    '    FDaten: TBytes8;'#10'  end;'#10'implementation'#10 +
+    'procedure TKarte.Leeren;'#10'var'#10'  mInnen: TInnen;'#10'begin'#10'  FDaten := nil;'#10 +
+    '  FListe := nil;'#10'  mInnen := nil;'#10'  mInnen.FInnen := nil;'#10'  FFremd.FDaten := nil;'#10'  Setze(FDaten);'#10'end;'#10 +
+    'procedure TKarte.Setze(const A: TBytes8);'#10'begin'#10'end;'#10'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Typen;'#10'interface'#10'type'#10 +
+    '  TBytes8 = array[0..65535] of Byte;'#10'implementation'#10'end.', 'Typen.pas', nil));
+  // Nur das Feld von TAndere hat das statische Array aus Typen.
+  Assert.AreEqual('33: Inkompatible Typen: ''TBytes8'' und ''Pointer'' (wie E2010).',
+    Messages(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, cKarte, mIndex, '', 'Fall.pas')));
 end;
 
 procedure TTypeMismatchTests.ProceduralCalleeArguments;
