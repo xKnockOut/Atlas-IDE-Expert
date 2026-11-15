@@ -414,11 +414,16 @@ function TScanner.ScanDecimal: Boolean;
 begin
   Result := True;
   ScanDigits(['0'..'9', '_']);
-  // Nachkommastellen, aber nicht bei 1..2 (Bereich).
+  // Nachkommastellen, aber nicht bei 1..2 (Bereich). Ohne Ziffern dahinter gehört der Punkt wie bei dcc zur Zahl
+  // (0., 25. * X); nicht vor .) (Klammer ]) und nicht vor einem Bezeichner (1.ToString).
   if (Peek = '.') and CharInSet(Peek(1), ['0'..'9']) then
   begin
     Inc(FPos);
     ScanDigits(['0'..'9', '_']);
+  end
+  else if (Peek = '.') and not CharInSet(Peek(1), ['.', ')']) and not IsIdentifierStart(Peek(1)) then
+  begin
+    Inc(FPos);
   end;
   if CharInSet(Peek, ['e', 'E']) and
     (CharInSet(Peek(1), ['0'..'9']) or (CharInSet(Peek(1), ['+', '-']) and CharInSet(Peek(2), ['0'..'9']))) then

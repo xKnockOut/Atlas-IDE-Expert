@@ -321,6 +321,8 @@ begin
     OnlyMessage(Werte('', '  I := $FFFFFFFF;'#10)));
   Silent(Werte('const'#10'  Grenze: Byte = 255;'#10'  Wort: Word = 300;'#10, '  B := 200;'#10'  I := -1;'#10 +
     '  C := 4000000000;'#10));
+  // Eine typisierte Konstante ist für dcc kein konstanter Ausdruck (Synapse tzutil: DS := DSTStartDay - 31).
+  Silent(Werte('const'#10'  Starttag: Word = 0;'#10, '  B := Starttag - 31;'#10));
 end;
 
 procedure TConstantExpressionErrorTests.OutsideIsErrorBySignedness;

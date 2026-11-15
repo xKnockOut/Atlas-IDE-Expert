@@ -107,6 +107,8 @@ type
     [Test]
     procedure OffAndExclude;
     [Test]
+    procedure RaisingRoutinesNeedClearTarget;
+    [Test]
     procedure RaisingMethodOfOtherObjectIsSilent;
   end;
 
@@ -732,6 +734,33 @@ begin
   // die Meldung.
   Assert.AreEqual(2, Integer(Length(OnceFindings(mSource,
     '{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', 'Suche.pas'))));
+end;
+
+procedure TLoopRunsAtMostOnceTests.RaisingRoutinesNeedClearTarget;
+const
+  cHead = 'unit Strom;'#10'interface'#10'uses Classes;'#10'type'#10'  TNurLesen = class'#10 +
+    '    procedure Write(N: Integer);'#10'    procedure Pruefe;'#10'  end;'#10'  TZiel = class'#10 +
+    '    procedure Pruefe;'#10'    procedure Lauf(AStrom: TStream; N: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TNurLesen.Write(N: Integer);'#10'begin'#10'  raise Exception.Create(''nur lesen'');'#10'end;'#10 +
+    'procedure TNurLesen.Pruefe;'#10'begin'#10'  raise Exception.Create(''nein'');'#10'end;'#10 +
+    'procedure TZiel.Pruefe;'#10'begin'#10'end;'#10 +
+    'procedure Warte(N: Integer);'#10'begin'#10'  repeat'#10'    if N > 0 then'#10'      Exit;'#10 +
+    '    Dec(N);'#10'  until N < -10;'#10'  raise Exception.Create(''Zeit'');'#10'end;'#10 +
+    'procedure TZiel.Lauf(AStrom: TStream; N: Integer);'#10'begin'#10;
+begin
+  // Write auf einem TStream ist nicht die gleichnamige, immer auslösende Methode der Datei (cryptolib4pascal).
+  TRuleAssert.Silent(TLoopRunsAtMostOnceRule.Create, cHead + '  while N > 0 do'#10'  begin'#10 +
+    '    AStrom.Write(N, 1);'#10'    Dec(N);'#10'  end;'#10'end;'#10'end.');
+  // Pruefe gibt es auslösend (TNurLesen) und still (TZiel): unklar, welche gemeint ist.
+  TRuleAssert.Silent(TLoopRunsAtMostOnceRule.Create, cHead + '  while N > 0 do'#10'  begin'#10 +
+    '    Pruefe;'#10'    Dec(N);'#10'  end;'#10'end;'#10'end.');
+  // Warte kehrt über Exit normal zurück, obwohl der Rumpf mit raise endet (PascalCoin-Tests: Settle).
+  TRuleAssert.Silent(TLoopRunsAtMostOnceRule.Create, cHead + '  while N > 0 do'#10'  begin'#10 +
+    '    Warte(N);'#10'    Dec(N);'#10'  end;'#10'end;'#10'end.');
+  // Self.Write und TNurLesen.Write meinen die Methode der Datei.
+  TRuleAssert.Reports(TLoopRunsAtMostOnceRule.Create, cHead.Replace('procedure TZiel.Lauf',
+    'procedure TNurLesen.Lauf') + '  while N > 0 do'#10'  begin'#10'    Self.Write(N);'#10'    Dec(N);'#10 +
+    '  end;'#10'end;'#10'end.');
 end;
 
 procedure TLoopRunsAtMostOnceTests.OffAndExclude;

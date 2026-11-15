@@ -296,6 +296,11 @@ begin
     Dec(mLast);
   end;
   mEquals := SymbolAtDepthZero(FTokens, mFirst, mLast + 1, '=');
+  // Typisierte Konstante (X: Word = 0): für dcc kein konstanter Ausdruck, mit {$J+} sogar veränderlich.
+  if (mEquals >= 0) and (SymbolAtDepthZero(FTokens, mFirst, mEquals, ':') >= 0) then
+  begin
+    Exit;
+  end;
   Result := (mEquals >= 0) and Evaluate(mEquals + 1, mLast, AValue);
 end;
 
@@ -316,6 +321,11 @@ begin
       (mSymbol.Range.StartPos.Line = ASymbol.Range.StartPos.Line) and
       (mSymbol.Range.StartPos.Character = ASymbol.Range.StartPos.Character) then
     begin
+      // Typisierte Konstante: kein konstanter Ausdruck (wie in OwnValue).
+      if mSymbol.TypeName <> '' then
+      begin
+        Exit;
+      end;
       Exit(ForeignValue(mOwner, mSymbol, AValue));
     end;
   end;

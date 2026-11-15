@@ -20,6 +20,8 @@ const
 function ShortName(const AName: string): string;
 /// <summary>Name eines Aufrufs (Bezeichner, Kette X.Name, Name(…)); '' sonst.</summary>
 function CalledName(ANode: TSyntaxNode): string;
+/// <summary>Kehrt ANode über Exit normal zurück (ohne anonyme Methoden)?</summary>
+function HasExitCall(ANode: TSyntaxNode): Boolean;
 /// <summary>Name eines Sprungs ohne Qualifizierer (Exit, Break, Halt, Exit(X)); '' sonst. TMonitor.Exit(…) ist
 /// kein Sprung.</summary>
 function JumpName(ANode: TSyntaxNode): string;
@@ -62,6 +64,38 @@ begin
   if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
   begin
     Result := ANode.Name;
+  end;
+end;
+
+function HasExitCall(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
+      begin
+        Continue;
+      end;
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.Call]) and SameText(JumpName(mNode), 'Exit') then
+      begin
+        Exit(True);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
   end;
 end;
 
