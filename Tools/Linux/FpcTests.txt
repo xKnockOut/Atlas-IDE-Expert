@@ -61,11 +61,13 @@ Atlas.Common.Diagnostics.StackGuard.Tests
 Atlas.Common.Documents.TextDocument.Tests
 Atlas.Common.Editing.AnonymousMethods.Shared.Tests
 Atlas.Common.Editing.AnonymousMethods.Tests
+Atlas.Common.Editing.AssignFields.Tests
 Atlas.Common.Editing.CaseCompletion.Tests
 Atlas.Common.Editing.ChangeSignature.Tests
 Atlas.Common.Editing.ClassBodies.Tests
 Atlas.Common.Editing.ClassCompletion.Tests
 Atlas.Common.Editing.ClassLayout.Tests
+Atlas.Common.Editing.CodeActions.Tests
 Atlas.Common.Editing.Colors.Tests
 Atlas.Common.Editing.CompilerFixes.Tests
 Atlas.Common.Editing.ConditionalExpression.Tests
@@ -91,6 +93,7 @@ Atlas.Common.Editing.ForwardDeclarations.Tests
 Atlas.Common.Editing.FreeFields.Tests
 Atlas.Common.Editing.GenericLists.Parts.Tests
 Atlas.Common.Editing.GitUser.Tests
+Atlas.Common.Editing.GuardFree.Tests
 Atlas.Common.Editing.InlineAccessor.Tests
 Atlas.Common.Editing.Inlining.Method.Tests
 Atlas.Common.Editing.Inlining.Syntax.Tests
@@ -269,6 +272,7 @@ Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
 Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests
+Atlas.Common.Rules.Builtin.Components.Tests
 Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests
@@ -397,6 +401,7 @@ Atlas.Core.EditorToolbar.Plan.Tests
 Atlas.Core.Editor.PeekPlan.Tests
 Atlas.Core.Settings.NodeScope.Tests
 Atlas.Core.Problems.Findings.Tests
+Atlas.Core.Projects.PathCheck.Tests
 Atlas.Core.Projects.VcsSettings.Tests
 Atlas.Core.Problems.Explanation.Tests
 Atlas.Core.Hover.View.Tests
