@@ -578,3 +578,9 @@ Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests
 Atlas.Core.Debug.BreakpointSetFlow.Tests
 Atlas.Core.Debug.StepIntoJump.Tests
+Atlas.Core.Debug.UnavailableNote.Tests
+Atlas.Core.Debug.ExceptionBarFlow.Tests
+Atlas.Core.Debug.ProfilerFlow.Tests
+Atlas.Core.Debug.MethodGroupFlow.Tests
+Atlas.Core.Debug.EventLogFlow.Tests
+Atlas.Core.Debug.PinsFlow.Tests

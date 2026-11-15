@@ -183,9 +183,6 @@ type
   end;
 
   TAtlasAvStop = class
-  public const
-    /// <summary>So viele ruhige Takte ohne modalen Dialog, bevor Atlas erklärt.</summary>
-    cQuietTicks = 2;
   public
     /// <summary>„Datei:Zeile“ (Zeile 0-basiert); ohne Zeile nur der Name.</summary>
     class function Place(const AFileName: string; ALine: Integer): string; static;
@@ -194,7 +191,7 @@ type
     /// <summary>Nur das Modul nennen: oberster Rahmen fehlt, ohne Quelltext oder nicht eigener Code.</summary>
     class function ModuleOnly(const AFrames: TAtlasDebugFrames): Boolean; static;
     /// <summary>Ein Takt des Wartens: weitergelaufen oder zu lange (AElapsedMs über ALimitMs) verwerfen; solange
-    /// ein modaler Dialog offen ist, AQuiet auf 0; nach cQuietTicks ruhigen Takten erklären.</summary>
+    /// ein modaler Dialog offen ist, AQuiet auf 0; nach ruhigen Takten wie die Exception-Leiste erklären.</summary>
     class function WaitStep(AStillStopped: Boolean; AElapsedMs, ALimitMs: UInt64; AModal: Boolean;
       var AQuiet: Integer): TAtlasAvWaitStep; static;
     /// <summary>Warum die Zerlegung AChains nichts liefert; None, wenn es Ketten gibt.</summary>
@@ -209,7 +206,8 @@ implementation
 
 uses
   System.Math,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Debug.ExceptionBarFlow;
 
 const
   cFreedPatterns32: array[0..2] of UInt64 = ($80808080, $FEEEFEEE, $DDDDDDDD);
@@ -945,22 +943,15 @@ end;
 class function TAtlasAvStop.WaitStep(AStillStopped: Boolean; AElapsedMs, ALimitMs: UInt64; AModal: Boolean;
   var AQuiet: Integer): TAtlasAvWaitStep;
 begin
-  if not AStillStopped or (AElapsedMs > ALimitMs) then
-  begin
-    Exit(TAtlasAvWaitStep.Drop);
+  // Wie die Exception-Leiste: erst ohne modalen Dialog, nach ruhigen Takten.
+  case TAtlasExceptionBarFlow.WaitStep(AStillStopped, AElapsedMs, ALimitMs, AModal, AQuiet) of
+    TAtlasBarWait.Drop:
+      Result := TAtlasAvWaitStep.Drop;
+    TAtlasBarWait.Wait:
+      Result := TAtlasAvWaitStep.Wait;
+  else
+    Result := TAtlasAvWaitStep.Go;
   end;
-  // Solange ein Dialog offen ist, könnte der Benutzer noch fortsetzen.
-  if AModal then
-  begin
-    AQuiet := 0;
-    Exit(TAtlasAvWaitStep.Wait);
-  end;
-  Inc(AQuiet);
-  if AQuiet < cQuietTicks then
-  begin
-    Exit(TAtlasAvWaitStep.Wait);
-  end;
-  Result := TAtlasAvWaitStep.Go;
 end;
 
 class function TAtlasAvStop.Failure(const AChains: TAtlasAvChains): TAtlasAvFailure;
