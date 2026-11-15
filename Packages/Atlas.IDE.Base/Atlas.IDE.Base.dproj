@@ -701,6 +701,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.InlayPlan.pas"/>
+        <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.PlaceholderPlan.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagram.pas"/>

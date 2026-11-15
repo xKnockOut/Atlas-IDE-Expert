@@ -1300,6 +1300,8 @@ uses
   Atlas.UI.Todos.Tests in 'IDE.Expert\Atlas.UI.Todos.Tests.pas',
   Atlas.Core.InlayHints.Store in '..\Packages\Atlas.IDE.Base\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.Editor.InlayPlan in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.InlayPlan.pas',
+  Atlas.Core.Editor.PlaceholderPlan in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.PlaceholderPlan.pas',
+  Atlas.Core.Editor.PlaceholderPlan.Tests in 'IDE.Expert\Atlas.Core.Editor.PlaceholderPlan.Tests.pas',
   Atlas.Core.Editor.InlayPlan.Tests in 'IDE.Expert\Atlas.Core.Editor.InlayPlan.Tests.pas',
   Atlas.Core.InlayHints.Store.Tests in 'IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas',
   Atlas.Core.Results.Model in '..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.Model.pas',

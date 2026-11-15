@@ -628,6 +628,7 @@ contains
   Atlas.Core.Projects.VcsSettings in 'Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas',
   Atlas.Core.InlayHints.Store in 'Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas',
   Atlas.Core.Editor.InlayPlan in 'Source\Core\Editor\Atlas.Core.Editor.InlayPlan.pas',
+  Atlas.Core.Editor.PlaceholderPlan in 'Source\Core\Editor\Atlas.Core.Editor.PlaceholderPlan.pas',
   Atlas.Core.Results.Model in 'Source\Core\Results\Atlas.Core.Results.Model.pas',
   Atlas.Core.Results.CallDiagramTemplate in 'Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas',
   Atlas.Core.Results.CallDiagram in 'Source\Core\Results\Atlas.Core.Results.CallDiagram.pas',

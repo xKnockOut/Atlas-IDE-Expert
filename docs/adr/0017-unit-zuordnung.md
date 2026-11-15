@@ -202,6 +202,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LensAsk` | `Core/Editor/Atlas.Core.Editor.LensAsk.pas` | Ordner `Core/Editor`; ausstehende Frage einer Code Lens im Hintergrund, Antwort nur für die jüngste Frage |
 | `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor`; Antwort von `atlas.server.metrics` für Statusleiste, Metrikbericht und Metrik-Lens (#1756) |
 | `Atlas.Core.Editor.InlayPlan` | `Core/Editor/Atlas.Core.Editor.InlayPlan.pas` | Ordner `Core/Editor`; Entscheidungen der Inlay-Hints (Abruf, Arten, klickbare Marken), #1967 |
+| `Atlas.Core.Editor.PlaceholderPlan` | `Core/Editor/Atlas.Core.Editor.PlaceholderPlan.pas` | Ordner `Core/Editor`; Entscheidungen des Platzhalter-Modus (Tasten, Rahmen, Undo-Schritt), #1967 |
 | `Atlas.Core.Editor.CrumbCard` | `Core/Editor/Atlas.Core.Editor.CrumbCard.pas` | Ordner `Core/Editor`; Kennzahlen-Karte der Brotkrumen aus `Core.Editor.Metrics` (Outline → Editor wäre ein Feature-Zyklus) |
 | `Atlas.Core.Editor.LearnedSuggestions` | `Core/Editor/Atlas.Core.Editor.LearnedSuggestions.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LearnedUsage` | `Core/Editor/Atlas.Core.Editor.LearnedUsage.pas` | Ordner `Core/Editor` |
