@@ -1345,7 +1345,7 @@ Panel.Width := 200;
 
 **Declared but not implemented** · Bug · Error · Group Find bugs
 
-A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name with a different header is reported by signature-mismatch instead.
+A method is declared in a class, record or object but has no body in the implementation section. The compiler reports this only when compiling (E2065). A body of the same name with a different header is reported by signature-mismatch instead. Bodies in include files of the implementation section ({$I}, {$INCLUDE}, also nested) count as well; if one cannot be read, the confidence drops to medium.
 
 Flagged:
 
@@ -1977,7 +1977,7 @@ MasterSource = dsKunden; MasterFields = 'KundenID'
 
 **Required field without visible input control** · Bug · Warning · Group Forms and data
 
-A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.
+A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields, LiveBindings with FieldName and Control count as well). The user cannot fill it and posting fails. If no control in the form file shows the dataset at all (data module, input in another form), the rule says nothing.
 
 Flagged:
 
@@ -3373,7 +3373,7 @@ end.
 
 **Type used before its declaration** · Bug · Error · Group Find bugs
 
-A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.
+A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias or descendant of the same-named type of another unit (TX = UnitY.TX or TX = class(UnitY.TX): before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.
 
 Flagged:
 
@@ -3427,7 +3427,7 @@ type
 
 **Field created but never freed** · Bug · Warning · Group Find bugs
 
-An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil, Destroy or DisposeOf): a memory leak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObjectList and TObjectDictionary fields are normal fields. Medium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; settings and suppressions with that id still apply.
+An object field that the constructor (or a private method it calls) creates with TClass.Create is never freed in the class (no Free, FreeAndNil or a routine ending in FreeAndNil such as ALFreeAndNil, Destroy or DisposeOf): a memory leak. Components created with an owner other than nil, interface and record fields and the classes from the option ignoreTypes are exempt; TObjectList and TObjectDictionary fields are normal fields. Medium confidence. Quick fixes: free the field in the destructor, or free all owned objects of the class; a missing destructor is created with override and inherited. The objects are freed before inherited in reverse creation order, as Free or FreeAndNil (refactoring.freeFieldsStyle). Up to #918 the rule was called owned-field-not-freed; settings and suppressions with that id still apply.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -3512,7 +3512,7 @@ if not (Zustand in [zsOffen, zsGesperrt]) then
 
 **Empty statement after then, do or else** · Bug · Warning · Group Find bugs
 
-A semicolon right after then, do or else ends the statement: the following line always runs, or the loop spins empty. An empty begin … end after then, do or else is reported too, unless it contains an explanatory comment (option allowCommented). A semicolon right before end, until, except or finally changes nothing and is not reported. Quick fix: remove the semicolon.
+A semicolon right after then, do or else ends the statement: the following line always runs, or the loop spins empty. An empty begin … end after then, do or else is reported too, unless it contains an explanatory comment (option allowCommented) or code for other platforms in {$IFDEF}/{$ELSE}. A semicolon right before end, until, except or finally changes nothing and is not reported. Quick fix: remove the semicolon.
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
@@ -4838,7 +4838,7 @@ end;
 
 **TestCase does not match the method** · Bug · Warning · Group Packages and tests
 
-A [TestCase] whose values DUnitX cannot pass to the method, which only shows when the tests run: the number of values differs from the number of parameters (DUnitX calls through RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (third argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, 'a' + 'b'). Besides TestCase('Name', 'Values'[, 'Separator']) the newer forms TestCase('Values'[, 'Separator'[, Trim]]) and NamedTestCase('Name', 'Values') are recognized. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.
+A [TestCase] whose values DUnitX cannot pass to the method, which only shows when the tests run: the number of values differs from the number of parameters (DUnitX calls through RTTI, default values do not count), a value does not fit the type of its parameter, or the method has no parameters at all. Values are split like DUnitX does: at every character of the separator (third argument, default comma; no quotes), an empty text gives no value. Checked types: integers (decimal or hex, $FF, 0xFF), floating point (point or comma as decimal separator, DUnitX turns a comma into a point), Boolean (True or False) and enumerations declared in the same file (by name); other types are not checked, nor are values that are not a string literal (a constant, 'a' + 'b'). Besides TestCase('Name', 'Values'[, 'Separator']) the newer forms TestCase('Values'[, 'Separator'[, Trim]]) and NamedTestCase('Name', 'Values') are recognized. Two arguments without a Boolean are ambiguous when the second one contains no letters or digits ('],{,}', '/'): older DUnitX versions only know TestCase('Name', 'Values'), so the reading whose number of values fits the method counts. Only in test units (uses DUnitX.TestFramework, TestFramework or TestInsight.*). High confidence. No quick fix: what was meant is unclear.
 
 Flagged:
 
@@ -5090,7 +5090,7 @@ procedure Speichern;
 
 **Event called without Assigned check** · Bug · Warning · Group Find bugs
 
-FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation follows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural types of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, "Assigned(F) and" before the call, or "if not Assigned(F) then Exit/raise" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadText := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in "if Assigned(F) then" when it is a statement of its own in a block.
+FOnChange(Self) or OnChange(Self) is called in a method of the class without Assigned(FOnChange) or FOnChange <> nil guarding the call: without a handler an access violation follows. Events are fields and properties of the class with a method pointer or reference type (procedure ... of object, reference to ..., TNotifyEvent, TProc/TFunc, types ending in Event, procedural types of the unit or the index). Guards: the then branch of a condition with Assigned (also while), the else branch of not Assigned, "Assigned(F) and" before the call (also in parentheses), or "if not Assigned(F) then Exit/raise" before it, including a flag variable or a parameterless method of the class whose Result contains Assigned(F). Fields that a constructor sets to a value (injected dependencies such as FReadText := AReadText), properties reading them and local names that shadow the event stay silent. High confidence. Quick fix: wrap the call in "if Assigned(F) then" when it is a statement of its own in a block.
 
 Flagged:
 
@@ -5834,7 +5834,7 @@ end;
 
 **Edit or Append without Post** · Bug · Warning · Group Database
 
-After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save button) and when the dataset is passed on after Edit (argument, assignment, with). Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the except part.
+After Edit, Append or Insert (without arguments) on a dataset, the same routine calls neither Post nor Cancel (nor CheckBrowseMode). The change stays open and is silently lost on scrolling or saved unexpectedly later; on an exception in between, nothing cancels it. Silent when another routine of the unit posts or cancels the same dataset (an Edit button with a separate Save button) and when the dataset is passed on after Edit (argument, assignment, with). A type parameter with a class constraint (TStore<T: TRecord>) has the type of its constraint; if that does not descend from TDataSet, the rule stays silent. Medium confidence. Quick fix: wrap the following statements that use the dataset in try … except, with Post at the end of the try part and Cancel; raise; in the except part.
 
 Flagged:
 
@@ -6183,7 +6183,7 @@ begin
 
 **Conditional directives incomplete or unknown** · Bug · Error · Group Compiler ahead
 
-An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.
+An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC; in branches that are inactive under the project defines only the nesting is checked (dcc skips them); {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.
 
 Matches the compiler message `E2095`, `E2280`, `E2279`, `E2173`, `W1030`, `W1078`, `W1079`, `E2573`, `E1030`.
 
@@ -8747,9 +8747,9 @@ const
 
 **Invalid default value of a parameter** · Bug · Error · Group Compiler ahead
 
-Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (like E2238), var and out parameters with a default value (like E2239) records or static arrays with a default value (like E2268) and sets larger than 4 bytes with a default value (like E2146, only small sets are allowed; medium confidence). Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).
+Default values the compiler rejects: several names sharing one default value (A, B: Integer = 0, like E2237), a parameter without a default value after one with a default value (like E2238), var and out parameters with a default value (like E2239) and records or static arrays with a default value (like E2268). Sets of any size may have a default value; Delphi 13 does not report E2146 for them. Applies to routines, methods and procedural types. Quick fixes: declare the parameters one by one; move the parameters with a default value to the end, also in the matching declaration or implementation header of the same file (calls are not changed).
 
-Matches the compiler message `E2237`, `E2238`, `E2239`, `E2268`, `E2146`.
+Matches the compiler message `E2237`, `E2238`, `E2239`, `E2268`.
 
 Level A (the parser is enough).
 
@@ -9728,7 +9728,7 @@ Gefunden := I <= High(Werte);
 
 **Wrong number of arguments** · Bug · Error · Group Compiler ahead
 
-A call passes more arguments than the routine has parameters (like E2034) or fewer than its parameters without default value (like E2035), also as a statement without parentheses. Checked only when the name resolves to exactly one routine: overloads, varargs, typecasts, variables of procedural type, System identifiers without source and declarations in conditional branches are left to the compiler (E2250). A function called with too many arguments is only reported when its result type is known and not procedural. Quick fix: Signature help opens the parameter hint inside the parentheses (adds () when missing).
+A call passes more arguments than the routine has parameters (like E2034) or fewer than its parameters without default value (like E2035), also as a statement without parentheses. Checked only when the name resolves to exactly one routine: overloads, varargs, typecasts, variables of procedural type, System identifiers without source and declarations in conditional branches are left to the compiler (E2250), as is a routine of the implementation section declared only after the call (the name means something else there). A function called with too many arguments is only reported when its result type is known and not procedural. Quick fix: Signature help opens the parameter hint inside the parentheses (adds () when missing).
 
 Matches the compiler message `E2034`, `E2035`.
 

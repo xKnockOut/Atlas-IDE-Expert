@@ -95,8 +95,9 @@ const
     '      "description": "Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$EN' +
     'DIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$' +
     'WARN}-Bezeichner (wie E1030, vor Delphi 13 W1030; der Code folgt delphiVersion), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POP' +
-    'OPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in' +
-    ' einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."',
+    'OPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt; in Zweigen, die unter den Defines des Projekts' +
+    ' nicht gelten, prüft sie außer der Verschachtelung nichts (dcc überspringt sie); {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerze' +
+    'ile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."',
     '    },',
     '{',
     '      "id": "compiler-directive-invalid",',
@@ -271,9 +272,9 @@ const
     '      "id": "default-parameter-invalid",',
     '      "name": "Unzulässiger Standardwert eines Parameters",',
     '      "description": "Standardwerte, die der Compiler ablehnt: mehrere Namen mit einem gemeinsamen Standardwert (A, B: Integer = 0, wie E2237), ein Parameter ohne Standardwert nach einem mit Standardw' +
-    'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) Records oder statische Arrays mit Standardwert (wie E2268) sowie Mengen über 4 Byte mit Standardwert (wie E2146, erlaubt sind nur k' +
-    'leine Mengen; mittlere Konfidenz). Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf ' +
-    'der Deklaration bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."',
+    'ert (wie E2238), var- und out-Parameter mit Standardwert (wie E2239) sowie Records oder statische Arrays mit Standardwert (wie E2268). Mengen jeder Größe dürfen einen Standardwert haben; Delphi 13 mel' +
+    'det dort kein E2146. Gilt für Routinen, Methoden und Prozedurtypen. Korrekturen: Parameter einzeln deklarieren; Parameter mit Standardwert ans Ende verschieben, auch im zugehörigen Kopf der Deklaratio' +
+    'n bzw. Implementierung derselben Datei (Aufrufe ändert sie nicht)."',
     '    },',
     '{',
     '      "id": "exit-array-literal",',

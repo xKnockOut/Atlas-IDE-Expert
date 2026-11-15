@@ -19,6 +19,9 @@ type
     procedure RoutinesIncludeNestedWithBody;
     [Test]
     procedure CodeTokensSkipCommentsAndDirectives;
+    /// <summary>ActiveCodeTokens lässt Token in InactiveRanges weg; ohne Bereiche wie CodeTokens.</summary>
+    [Test]
+    procedure ActiveCodeTokensSkipInactiveRanges;
     [Test]
     procedure GraphIsSharedPerRoutine;
     [Test]
@@ -322,6 +325,39 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleDerived.CodeTokens(mCache, mContext))));
   Assert.AreEqual(0, Integer(Length(TRuleDerived.UnitIndex(mCache, mContext).Symbols)));
   Assert.IsFalse(Assigned(TRuleDerived.FlowSignatures(mCache, mContext)));
+end;
+
+
+procedure TRuleDerivedTests.ActiveCodeTokensSkipInactiveRanges;
+const
+  cText = 'unit U; {$IFDEF X}uses A;{$ENDIF} end.';
+var
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mTokens: TArray<TPascalToken>;
+  mToken: TPascalToken;
+  mCache, mOther: IRuleDerivedCache;
+begin
+  mTree := TPascalParser.Parse(cText);
+  try
+    mContext := ContextOf(mTree, cText);
+    mCache := TRuleDerivedCache.Create;
+    Assert.AreEqual(Integer(Length(TRuleDerived.CodeTokens(mCache, mContext))),
+      Integer(Length(TRuleDerived.ActiveCodeTokens(mCache, mContext))), 'ohne Bereiche');
+    // Inaktiv: uses A; (Zeichen 18 bis 25).
+    mContext.InactiveRanges := [TTextRange.Create(0, 18, 0, 25)];
+    mOther := TRuleDerivedCache.Create;
+    mTokens := TRuleDerived.ActiveCodeTokens(mOther, mContext);
+    Assert.AreEqual(5, Integer(Length(mTokens)));
+    for mToken in mTokens do
+    begin
+      Assert.IsFalse((mToken.Text = 'uses') or (mToken.Text = 'A'), mToken.Text);
+    end;
+    mCache := nil;
+    mOther := nil;
+  finally
+    mTree.Free;
+  end;
 end;
 
 initialization

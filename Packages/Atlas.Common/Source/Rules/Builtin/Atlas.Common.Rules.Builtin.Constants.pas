@@ -26,9 +26,9 @@
 //                              (A, B: Integer = 0, E2237), Parameter ohne
 //                              Standardwert nach einem mit (E2238), var- und
 //                              out-Parameter mit Standardwert (E2239), Records
-//                              und statische Arrays mit Standardwert (E2268),
-//                              Mengen über 4 Byte mit Standardwert (E2146, nur
-//                              "kleine Mengen" sind erlaubt; mittlere Konfidenz).
+//                              und statische Arrays mit Standardwert (E2268).
+//                              Große Mengen mit Standardwert nimmt dcc an
+//                              (E2146 kommt nicht), sie bleiben still.
 //                              Korrekturen: Parameter einzeln deklarieren;
 //                              Parameter mit Standardwert ans Ende verschieben,
 //                              auch im zugehörigen Kopf derselben Datei
@@ -129,6 +129,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -145,7 +146,7 @@ uses
 type
   /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
   TConstantsText = (Title, MoreThan, DivZeroOperand, DivZero, Overflow, LowAboveHigh, OutOfRangeE, OutOfRangeW,
-    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType, SetDefault,
+    Truncated64, IndexOut, SetTooLarge, IntTooLarge, RttiSet, DefaultTitle, MoveDefaults, NoDefaultType,
     SingleDecl, DeclareSingle, VarDefault, NeedsDefault);
 
 const
@@ -178,9 +179,6 @@ const
     (De: 'Parameter mit Standardwert ans Ende verschieben'; En: 'Move parameters with default value to the end'),
     (De: 'Parameter vom Typ %s können keinen Standardwert haben (wie E2268).';
      En: 'Parameters of type %s cannot have a default value (like E2268).'),
-    (De: '%s ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und kleine Mengentypen (wie ' +
-      'E2146).';
-     En: '%s is a set over 4 bytes; default values exist only for ordinal, pointer and small set types (like E2146).'),
     (De: '%s: Standardwerte gibt es nur für einzeln deklarierte Parameter (wie E2237).';
      En: '%s: default values exist only for individually declared parameters (like E2237).'),
     (De: 'Parameter einzeln deklarieren'; En: 'Declare parameters individually'),
@@ -285,31 +283,6 @@ begin
   end;
 end;
 
-/// <summary>Position der schließenden Klammer zur öffnenden an AOpen; hinter dem Textende, wenn keine passt.</summary>
-function MatchingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  Result := AOpen;
-  while Result <= Length(AText) do
-  begin
-    if AText[Result] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[Result] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Ist AContent eine Menge mit einer Zahl, einem String oder einem Zeichen als Element? Nur solche sind
 /// sicher keine Sichtbarkeiten; Namen können Konstanten vom Typ TVisibilityClass sein.</summary>
 function HasLiteralElement(const AContent: string): Boolean;
@@ -350,7 +323,7 @@ begin
       Continue;
     end;
     mClose := MatchingParen(ADirective, mOpen);
-    if (mClose <= Length(ADirective)) and
+    if (mClose > 0) and
       HasLiteralElement(Trim(Copy(ADirective, mOpen + 1, mClose - mOpen - 1))) then
     begin
       Exit(Copy(ADirective, mStart, mClose - mStart + 1));
@@ -1203,7 +1176,8 @@ end;
 /// <summary>Hat der Parameter einen Standardwert? Kinder sind Typ und Wert; ohne Typ gibt es keinen Wert.</summary>
 function HasDefault(AParameter: TSyntaxNode): Boolean;
 begin
-  Result := AParameter.ChildCount >= 2;
+  // Nicht über die Zahl der Kinder: Attribute wie in "const [ref] A: TPunkt" sind auch Kinder des Parameters.
+  Result := TRoutineSignatures.ParameterDefault(AParameter) <> nil;
 end;
 
 procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1224,8 +1198,11 @@ var
 
   /// <summary>Text des Parameters ab dem Typ ("Integer = 0") und der Modifizierer davor.</summary>
   function TypeAndDefault(AParameter: TSyntaxNode): string;
+  var
+    mType: TSyntaxNode;
   begin
-    Result := Copy(AContext.Text, AParameter[0].StartOffset + 1, AParameter.EndOffset - AParameter[0].StartOffset);
+    mType := TRoutineSignatures.ParameterType(AParameter);
+    Result := Copy(AContext.Text, mType.StartOffset + 1, AParameter.EndOffset - mType.StartOffset);
   end;
 
   function ModifierText(AParameter: TSyntaxNode): string;
@@ -1433,46 +1410,6 @@ var
     end;
   end;
 
-  /// <summary>Anzahl der Werte einer Aufzählung "(a, b, c)"; 0, wenn es keine ist.</summary>
-  function EnumCount(const ABody: string): Integer;
-  begin
-    Result := 0;
-    if ABody.StartsWith('(') and ABody.EndsWith(')') then
-    begin
-      Result := Length(ABody.Split([',']));
-    end;
-  end;
-
-  /// <summary>Belegt eine Menge mit dem Basistyp ABase sicher mehr als 4 Byte (keine "kleine Menge")?</summary>
-  function LargeBase(const ABase: string): Boolean;
-  var
-    mBase: string;
-    mDots: Integer;
-    mLowest, mHighest: Int64;
-    mEnum: TResolvedSymbol;
-  begin
-    mBase := LowerCase(Trim(ABase));
-    if (mBase = 'ansichar') or (mBase = 'char') or (mBase = 'widechar') or (mBase = 'byte') or (mBase = 'word') then
-    begin
-      Exit(True);
-    end;
-    if EnumCount(mBase) > 0 then
-    begin
-      Exit(EnumCount(mBase) > 32);
-    end;
-    mDots := Pos('..', mBase);
-    if mDots > 0 then
-    begin
-      // Größe in Byte wie beim Compiler: von Low div 8 bis High div 8.
-      Result := TOrdinalConstants.Evaluate(Copy(ABase, 1, mDots - 1), nil, mLowest) and
-        TOrdinalConstants.Evaluate(Copy(ABase, mDots + 2, MaxInt), nil, mHighest) and (mLowest >= 0) and
-        (mHighest div 8 - mLowest div 8 + 1 > 4);
-      Exit;
-    end;
-    Result := mResolver.ResolveTypeFrom(mResolver.ExtractedUnit(AContext.Tree, mFileName), Trim(ABase), mEnum) and
-      (mEnum.SymbolKind = TIndexSymbolKind.EnumType) and (EnumCount(TypeBodyOf(mEnum.Signature)) > 32);
-  end;
-
   /// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen
   /// keine Auflösung.</summary>
   function ParameterType(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
@@ -1502,13 +1439,19 @@ var
       (Pos('array[', LowerCase(StringReplace(AType.Signature, ' ', '', [rfReplaceAll]))) > 0));
   end;
 
-  /// <summary>Mengentyp, der mehr als 4 Byte belegt (E2146).</summary>
-  function LargeSetType(const AType: TResolvedSymbol): Boolean;
+  /// <summary>Attribute des Parameters mit Leerzeichen dahinter ("[ref] "); '' ohne.</summary>
+  function AttributePrefix(AParameter: TSyntaxNode): string;
   var
-    mBody: string;
+    mIndex: Integer;
   begin
-    mBody := TypeBodyOf(AType.Signature);
-    Result := StartsText('set of ', mBody) and LargeBase(Copy(mBody, Length('set of ') + 1, MaxInt));
+    Result := '';
+    for mIndex := 0 to AParameter.ChildCount - 1 do
+    begin
+      if AParameter[mIndex].Kind = TSyntaxKind.Attribute then
+      begin
+        Result := Result + NodeText(AParameter[mIndex]) + ' ';
+      end;
+    end;
   end;
 
   /// <summary>A, B: Integer = 0 wird A: Integer = 0; B: Integer = 0.</summary>
@@ -1523,28 +1466,27 @@ var
       begin
         Result := Result + '; ';
       end;
-      Result := Result + ModifierText(AParameter) + Trim(mName) + ': ' + TypeAndDefault(AParameter);
+      Result := Result + ModifierText(AParameter) + AttributePrefix(AParameter) + Trim(mName) + ': ' +
+        TypeAndDefault(AParameter);
     end;
   end;
 
-  /// <summary>Typ ohne Standardwerte: Record oder statisches Array (E2268), Menge über 4 Byte (E2146).</summary>
+  /// <summary>Typ ohne Standardwerte: Record oder statisches Array (E2268). Mengen jeder Größe nimmt dcc als
+  /// Standardwert an (E2146 kommt mit Delphi 13 nicht).</summary>
   procedure CheckDefaultType(AParameter: TSyntaxNode);
   var
     mType: TResolvedSymbol;
+    mTypeNode: TSyntaxNode;
   begin
-    if not ParameterType(AParameter[0], mType) then
+    mTypeNode := TRoutineSignatures.ParameterType(AParameter);
+    if (mTypeNode = nil) or not ParameterType(mTypeNode, mType) then
     begin
       Exit;
     end;
     if NoDefaultType(mType) then
     begin
-      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([AParameter[0].Name]),
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([mTypeNode.Name]),
         TRuleConfidence.High);
-    end
-    else if LargeSetType(mType) then
-    begin
-      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SetDefault].Fmt([AParameter[0].Name]),
-        TRuleConfidence.Medium);
     end;
   end;
 

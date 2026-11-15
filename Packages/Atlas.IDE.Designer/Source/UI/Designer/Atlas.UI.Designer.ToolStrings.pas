@@ -25,7 +25,7 @@ type
     SettingsBar, SettingsBarMode, SettingsBarAuto, SettingsBarShortcut, SettingsBarDelay, SettingsBarItems,
     SettingsBarKey, MagHint, MagTitle, MagShow, MagFreeze, MagZoom, MagGrid, MagEdges, MagCopyColor, MagCopyPos,
     MagHeader, MagHeaderParent, MagFrozen, MagSystem, MagCopied, MagOutside, SettingsMag, SettingsMagZoom,
-    SettingsMagGrid, SettingsMagEdges, SettingsMagKey);
+    SettingsMagGrid, SettingsMagEdges, SettingsMagKey, FormChanged);
 
 {$SCOPEDENUMS OFF}
 
@@ -128,7 +128,8 @@ const
      'Vergrößerung beim Öffnen (2, 4 oder 8)',
      'Pixelraster ab 4×',
      'Kanten der Auswahl und Nachbarn einzeichnen',
-     'Taste für Lupe und Einfrieren'),
+     'Taste für Lupe und Einfrieren',
+     'Formular inzwischen geändert (neu geladen oder Komponente gelöscht); nichts übernommen.'),
     ('Show or hide gap handles for a multiple selection in a row or column',
      'Show gap handles',
      'Set gaps …',
@@ -213,7 +214,8 @@ const
      'Zoom when opened (2, 4 or 8)',
      'Pixel grid from 4×',
      'Draw edges of the selection and its neighbours',
-     'Key for magnifier and freeze'));
+     'Key for magnifier and freeze',
+     'Form changed in the meantime (reloaded or component deleted); nothing applied.'));
 
 { TAtlasDesignerToolStrings }
 

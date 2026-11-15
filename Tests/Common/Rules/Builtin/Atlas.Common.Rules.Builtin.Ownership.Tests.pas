@@ -283,6 +283,14 @@ begin
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := TAuftrag.Create;'#10'  Auftrag.Free;'#10));
   // V := Liste[I].Kunde ist kein Element.
   TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege[I].Vorgaenger;'#10'  Auftrag.Free;'#10));
+  // Es zählt die letzte Zuweisung vor der Freigabe: danach ein eigenes Objekt, bzw. erst danach das Element.
+  TRuleAssert.Silent(TOwnedItemFreedRule.Create, Body('  Auftrag := Auftraege[I];'#10'  Pruefen(Auftrag);'#10 +
+    '  Auftrag := TAuftrag.Create;'#10'  Auftrag.Free;'#10));
+  mFindings := TRuleAssert.Findings(TOwnedItemFreedRule.Create, Body('  Auftrag := TAuftrag.Create;'#10 +
+    '  Auftrag := Auftraege[I];'#10'  Auftrag.Free;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Auftraege besitzt seine Elemente (OwnsObjects); die Liste gibt das Element beim Freigeben ein ' +
+    'zweites Mal frei.', mFindings[0].Message);
 end;
 
 procedure TOwnershipRulesTests.RemoveSuggestsExtract;
@@ -801,6 +809,11 @@ begin
   // Eigene Freigaberoutine.
   TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10,
     '  GetMem(P, Groesse);'#10'  PufferFreigeben(P);'#10));
+  // Gleichnamige Methode einer Klasse ist keine Belegung (TDocVariant.New(V)); System.New schon.
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  V: Variant;'#10, '  TDokument.New(V);'#10));
+  TRuleAssert.Silent(TRawMemoryLeakRule.Create, Puffer('  P: Pointer;'#10, '  P := Speicher.AllocMem(Groesse);'#10));
+  TRuleAssert.Reports(TRawMemoryLeakRule.Create, Puffer('  Satz: PSatz;'#10,
+    '  System.New(Satz);'#10'  Satz^.Wert := 1;'#10));
 end;
 
 procedure TRawMemoryLeakTests.EscapesAreSilent;

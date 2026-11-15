@@ -51,6 +51,9 @@ type
     /// (TAtlasResultEntry.Confidence in Atlas.Core.Results.Model).</summary>
     [Test]
     procedure SameNameAliasLaterIsSilent;
+    /// <summary>TX = class(UnitY.TX) weiter unten (Zwischenklasse für ein Formular): Davor gilt UnitY.TX.</summary>
+    [Test]
+    procedure SameNameDescendantLaterIsSilent;
   end;
 
 implementation
@@ -364,6 +367,19 @@ begin
   mFindings := Analyze(UnitText('type'#10'  TEintrag = record'#10'    Sicherheit: TSicherheit;'#10'  end;'#10 +
     '  TSicherheit = (Sicher, Erschlossen);'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
+end;
+
+procedure TForwardDeclarationsTests.SameNameDescendantLaterIsSilent;
+var
+  mFindings: TArray<TForwardFinding>;
+begin
+  Assert.AreEqual(0, Integer(Length(Analyze(UnitText('type'#10'  TMaske = class(TForm)'#10 +
+    '    Gruppe: TGroupBox;'#10'  end;'#10'  TGroupBox = class(StdCtrls.TGroupBox)'#10'  end;'#10)))));
+  // Gegentest: Nachfahr eines anders benannten Typs.
+  mFindings := Analyze(UnitText('type'#10'  TMaske = class(TForm)'#10'    Gruppe: TGroupBox;'#10'  end;'#10 +
+    '  TGroupBox = class(StdCtrls.TCustomGroupBox)'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TGroupBox', mFindings[0].TypeName);
 end;
 
 initialization

@@ -249,7 +249,7 @@ Compilerfehler schon beim Tippen, ohne Build.
   - geprüft nur, wenn alle Überladungen bekannt sind
 - ungültige Argumente für var- und out-Parameter: Konstanten, Properties, Funktionsergebnisse und Ausdrücke (wie E2197, E2192, E2036; `Slice` an var- und out-Open-Arrays und String-Elemente wie `S[1]` bleiben still wie bei dcc, #1383; die Korrektur übergibt eine lokale Variable)
 - `@` vor einem Ausdruck (wie E2036)
-- unzulässige Standardwerte von Parametern (mehrere Namen mit einem Standardwert, Parameter ohne Standardwert nach einem mit, `var`/`out`, Records und große Mengen; wie E2237, E2238, E2239, E2268, E2146; die Korrekturen deklarieren die Namen einzeln bzw. verschieben die Parameter mit Standardwert ans Ende)
+- unzulässige Standardwerte von Parametern (mehrere Namen mit einem Standardwert, Parameter ohne Standardwert nach einem mit, `var`/`out` und Records; wie E2237, E2238, E2239, E2268; die Korrekturen deklarieren die Namen einzeln bzw. verschieben die Parameter mit Standardwert ans Ende)
 - lokale (verschachtelte) Routinen als Prozedurvariable oder Argument eines prozeduralen Typs (wie E2094, E2278; die Korrektur verschiebt die Routine auf Unit-Ebene)
 
 #### Generics

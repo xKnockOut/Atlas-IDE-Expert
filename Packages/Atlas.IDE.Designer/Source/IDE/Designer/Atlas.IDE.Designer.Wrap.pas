@@ -97,6 +97,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Anchors,
   Atlas.IDE.Designer.DuplicateRow,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -720,13 +721,22 @@ var
   mClass: TComponentClass;
   mName, mCaption: string;
   mContainer: TWinControl;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerWrapInContainer or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
   begin
     Exit;
   end;
-  if not Ready(mEditor, mRoot, AClassName, mControls, mClass) or not AskName(mClass, mRoot, mName, mCaption) then
+  if not Ready(mEditor, mRoot, AClassName, mControls, mClass) then
+  begin
+    Exit;
+  end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mControls);
+  mKept.Add(mControls[0].Parent);
+  // Während der Abfrage kann das Formular neu geladen worden sein.
+  if not AskName(mClass, mRoot, mName, mCaption) or not mKept.Reported(OnMessage) then
   begin
     Exit;
   end;
@@ -757,6 +767,7 @@ var
   mIndex: Integer;
   mBounds: TArray<TRect>;
   mOffset: TPoint;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerWrapInContainer or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -770,7 +781,11 @@ begin
     Exit;
   end;
   mInner := InnerOf(mContainer);
-  if not ConfirmReferences(mEditor, mContainer, mInner) then
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mContainer);
+  mKept.Add(mInner);
+  mKept.Add(mContainer.Parent);
+  if not ConfirmReferences(mEditor, mContainer, mInner) or not mKept.Reported(OnMessage) then
   begin
     Exit;
   end;

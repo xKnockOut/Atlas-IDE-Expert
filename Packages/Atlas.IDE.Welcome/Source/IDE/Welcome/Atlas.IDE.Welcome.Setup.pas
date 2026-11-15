@@ -159,15 +159,6 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.Core.Diagnostics.WorkerSlot;
 
-type
-  /// <summary>Summe der Funde aller Projekte einer Pfadprüfung (nur Zahlen, fürs Protokoll).</summary>
-  TPathTotals = record
-    Files: Integer;
-    Units: Integer;
-    Defines: Integer;
-    Uncertain: Integer;
-  end;
-
 { Hilfen }
 
 function FileThere(const AFileName: string): Boolean;
@@ -343,7 +334,7 @@ begin
     Exit;
   end;
   // CRLF wie die übrigen Dateien eines Delphi-Projekts.
-  AText := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #10, #13#10, [rfReplaceAll]);
+  AText := TAtlasWelcomeSetup.WithCrLf(AText);
 end;
 
 /// <summary>False mit Meldung, wenn es neben AProject schon eine atlas.json gibt.</summary>
@@ -437,7 +428,7 @@ begin
 end;
 
 /// <summary>Funde des Projekts in dessen Zusammenfassung; die Karte einer Gruppe fasst sie zusammen.</summary>
-procedure StoreRun(const ARun: TAtlasSetupPathRun; AStamp: TDateTime; var ATotals: TPathTotals);
+procedure StoreRun(const ARun: TAtlasSetupPathRun; AStamp: TDateTime; var ATotals: TAtlasSetupPathTotals);
 var
   mCheck: TAtlasPathCheckResult;
   mMember: string;
@@ -450,11 +441,7 @@ begin
     begin
       ASummary.Setup := TAtlasWelcomeSetup.Checked(ASummary.Setup, mMember, mCheck, AStamp);
     end);
-  Inc(ATotals.Files, mCheck.Files);
-  Inc(ATotals.Units, Length(mCheck.MissingUnits));
-  Inc(ATotals.Defines, Length(mCheck.UndefinedDefines));
-  Inc(ATotals.Uncertain, TAtlasPathCheckResult.UncertainIn(mCheck.MissingUnits) +
-    TAtlasPathCheckResult.UncertainIn(mCheck.UndefinedDefines));
+  ATotals.Add(mCheck);
 end;
 
 { TAtlasIdeSetup }
@@ -544,14 +531,7 @@ begin
   FBaseline.Total := ATotal;
   FBaseline.Files := AFiles;
   FBaseline.Error := AError;
-  if ASucceeded then
-  begin
-    FBaseline.Run := TAtlasSetupRun.Done;
-  end
-  else
-  begin
-    FBaseline.Run := TAtlasSetupRun.Failed;
-  end;
+  FBaseline.Run := TAtlasWelcomeSetup.Finished(ASucceeded);
   Refresh;
 end;
 
@@ -560,14 +540,14 @@ var
   mRun: TAtlasSetupPathRun;
   mStamp: TDateTime;
   mError: string;
-  mTotals: TPathTotals;
+  mTotals: TAtlasSetupPathTotals;
 begin
   if not FStarted then
   begin
     Exit;
   end;
   mError := '';
-  mTotals := Default(TPathTotals);
+  mTotals := Default(TAtlasSetupPathTotals);
   mStamp := TAtlasIdeProjectSummaries.StampUtc;
   for mRun in ARuns do
   begin
@@ -680,23 +660,25 @@ begin
     procedure
     begin
       mNext := Section;
-      // Titel mit dem Projektnamen (oder nach einem Sprachwechsel): neu anmelden; Add meldet allen Beobachtern.
-      if mNext.Title <> FTitle then
-      begin
-        FTitle := mNext.Title;
-        FShown := ShouldShow;
-        TAtlasWelcomeSections.Default.Add(mNext);
-        Exit;
-      end;
       mShown := ShouldShow;
-      if mShown <> FShown then
-      begin
-        // Karte erscheint oder verschwindet: Die Willkommensseite ordnet neu.
-        FShown := mShown;
-        TAtlasWelcomeSections.Default.Changed;
-        Exit;
+      case TAtlasWelcomeSetup.RefreshStep(mNext.Title, FTitle, mShown, FShown) of
+        TAtlasSetupRefresh.Announce:
+          begin
+            // Titel mit dem Projektnamen (oder nach einem Sprachwechsel): neu anmelden; Add meldet allen
+            // Beobachtern.
+            FTitle := mNext.Title;
+            FShown := mShown;
+            TAtlasWelcomeSections.Default.Add(mNext);
+          end;
+        TAtlasSetupRefresh.Reorder:
+          begin
+            // Karte erscheint oder verschwindet: Die Willkommensseite ordnet neu.
+            FShown := mShown;
+            TAtlasWelcomeSections.Default.Changed;
+          end;
+        TAtlasSetupRefresh.Redraw:
+          TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cSetup);
       end;
-      TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cSetup);
     end);
 end;
 

@@ -108,6 +108,24 @@ type
     procedure RemoveListener(AHandle: Integer);
   end;
 
+  /// <summary>Welche Plugins auf der Willkommensseite der IDE stehen und was nach einer Meldung neu zu zeichnen
+  /// ist (Kennungen ohne Groß-/Kleinschreibung).</summary>
+  TAtlasWelcomePlugins = class
+  public
+    /// <summary>Gewünschte Plugins: ohne AIdePage keins, im Atlas-Layout nur die Tafel, sonst der Kopf (AHeader)
+    /// und je sichtbarem Bereich mit Ansicht (ASections, in ihrer Reihenfolge) eins.</summary>
+    class function Wanted(AIdePage, AAtlasLayout, AHeader: Boolean; const ASections: TArray<string>):
+      TArray<string>; static;
+    class function Contains(const AList: TArray<string>; const AValue: string): Boolean; static;
+    /// <summary>Angemeldete Plugins aus ARegistered, die nicht mehr in AWanted stehen.</summary>
+    class function Stale(const ARegistered, AWanted: TArray<string>): TArray<string>; static;
+    /// <summary>AIds der gesammelten Meldungen enthält '' (Bereiche kamen, gingen oder wurden geschaltet): alles
+    /// abgleichen statt einzelne Bereiche neu zu zeichnen.</summary>
+    class function NeedsSync(const AIds: TArray<string>): Boolean; static;
+    /// <summary>AId zu AIds hinzufügen, wenn sie dort noch fehlt; False, wenn sie schon da war.</summary>
+    class function Mark(var AIds: TArray<string>; const AId: string): Boolean; static;
+  end;
+
 implementation
 
 { TAtlasWelcomeSection }
@@ -378,6 +396,72 @@ begin
     FListeners.Remove(AHandle);
   finally
     FLock.Leave;
+  end;
+end;
+
+{ TAtlasWelcomePlugins }
+
+class function TAtlasWelcomePlugins.Wanted(AIdePage, AAtlasLayout, AHeader: Boolean;
+  const ASections: TArray<string>): TArray<string>;
+var
+  mId: string;
+begin
+  Result := nil;
+  if not AIdePage then
+  begin
+    Exit;
+  end;
+  if AAtlasLayout then
+  begin
+    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard)];
+    Exit;
+  end;
+  if AHeader then
+  begin
+    Result := [TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader)];
+  end;
+  for mId in ASections do
+  begin
+    Result := Result + [TAtlasWelcomeIds.PluginId(mId)];
+  end;
+end;
+
+class function TAtlasWelcomePlugins.Contains(const AList: TArray<string>; const AValue: string): Boolean;
+var
+  mItem: string;
+begin
+  Result := False;
+  for mItem in AList do
+  begin
+    Result := Result or SameText(mItem, AValue);
+  end;
+end;
+
+class function TAtlasWelcomePlugins.Stale(const ARegistered, AWanted: TArray<string>): TArray<string>;
+var
+  mPlugin: string;
+begin
+  Result := nil;
+  for mPlugin in ARegistered do
+  begin
+    if not Contains(AWanted, mPlugin) then
+    begin
+      Result := Result + [mPlugin];
+    end;
+  end;
+end;
+
+class function TAtlasWelcomePlugins.NeedsSync(const AIds: TArray<string>): Boolean;
+begin
+  Result := Contains(AIds, '');
+end;
+
+class function TAtlasWelcomePlugins.Mark(var AIds: TArray<string>; const AId: string): Boolean;
+begin
+  Result := not Contains(AIds, AId);
+  if Result then
+  begin
+    AIds := AIds + [AId];
   end;
 end;
 

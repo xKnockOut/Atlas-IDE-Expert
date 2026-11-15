@@ -12,8 +12,8 @@
 // (W1012), Menge über 256 Werte (E2028), {$RTTI} mit Zahlen (E2572), je mit
 // Gegenfällen.
 // default-parameter-invalid (#993): Beispiel mit Korrektur samt Implementierung,
-// mehrere Namen mit einem Standardwert, var/out, Record, statisches Array und
-// Mengen über 4 Byte,
+// mehrere Namen mit einem Standardwert, var/out, Record, statisches Array, große
+// Mengen still,
 // Prozedurtypen, stille Fälle, Abschalten.
 // signed-unsigned-mix (#1012): Beispiel mit UInt64 (W1073), Vergleich und
 // Rechnung mit Cardinal (W1023/W1024), Korrektur, Felder und Funktionen aus dem
@@ -92,6 +92,8 @@ type
     procedure VarOutAndTypesWithoutDefaults;
     [Test]
     procedure ValidDefaultsAreSilent;
+    [Test]
+    procedure AttributeIsNoDefault;
     [Test]
     procedure OffAndExclude;
   end;
@@ -683,11 +685,10 @@ begin
     OnlyDefaultMessage(Post('    procedure Zeigen(const Ort: TPunkt = nil);'#10, '')));
   Assert.AreEqual('Parameter vom Typ TPaar können keinen Standardwert haben (wie E2268).',
     OnlyDefaultMessage(Post('    procedure Zeigen(const Werte: TPaar = nil);'#10, '')));
-  // Mengen über 4 Byte (E2146), kleine Mengen gehen.
-  Assert.AreEqual('TZeichen ist eine Menge über 4 Byte; Standardwerte gibt es nur für ordinale, Zeiger- und ' +
-    'kleine Mengentypen (wie E2146).', OnlyDefaultMessage(Post('    procedure Trennen(Zeichen: TZeichen = [''a'']);'#10,
-    '').Replace('  TPost = class'#10, '  TZeichen = set of AnsiChar;'#10'  TPost = class'#10)));
-  Assert.AreEqual(1, Integer(Length(DefaultFindings(Post('    procedure Trennen(Werte: TWerte = []);'#10,
+  // Mengen jeder Größe mit Standardwert nimmt dcc an (Delphi 13 meldet kein E2146; FP mORMot: set of Byte).
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Trennen(Zeichen: TZeichen = [''a'']);'#10,
+    '').Replace('  TPost = class'#10, '  TZeichen = set of AnsiChar;'#10'  TPost = class'#10)))));
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Trennen(Werte: TWerte = []);'#10,
     '').Replace('  TPost = class'#10, '  TWerte = set of 0..40;'#10'  TPost = class'#10)))));
   Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Malen(Farben: TFarben = [Rot]; ' +
     'Bits: TBits = [1, 5]);'#10, '').Replace('  TPost = class'#10, '  TFarbe = (Rot, Gruen, Blau);'#10 +
@@ -704,6 +705,26 @@ begin
     ' Anzahl: Integer = 1; Faktor: Double = 0.5; Z: TZiel = nil);'#10'    procedure Leer(var A, B: Integer);'#10,
     'procedure TPost.Senden(Ziel: TZiel; const Text: string; Anzahl: Integer; Faktor: Double; Z: TZiel);'#10 +
     'begin'#10'end;'#10'procedure TPost.Leer(var A, B: Integer);'#10'begin'#10'end;'#10)))));
+end;
+
+procedure TDefaultParameterInvalidTests.AttributeIsNoDefault;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // [ref] ist ein Kind des Parameters wie der Standardwert, aber keiner (Header wie Box2D: const [ref] p: TVec2).
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Kreis(const [ref] Mitte: TPunkt; ' +
+    'Radius: Integer; [Ref] const Rand: TPunkt; Farbe: Integer = 0);'#10,
+    'procedure TPost.Kreis(const [ref] Mitte: TPunkt; Radius: Integer; [Ref] const Rand: TPunkt; Farbe: Integer);' +
+    #10'begin'#10'end;'#10)))));
+  // Echter Standardwert vor einem Attribut-Parameter: gemeldet, die Korrektur behält das Attribut.
+  mSource := Post('    procedure Linie(Breite: Integer = 1; const [ref] Bis: TPunkt);'#10, '');
+  mFound := DefaultFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Bis braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).',
+    mFound[0].Message);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure Linie(const [ref] Bis: TPunkt; Breite: Integer = 1);', mFixed) > 0, mFixed);
 end;
 
 procedure TDefaultParameterInvalidTests.OffAndExclude;

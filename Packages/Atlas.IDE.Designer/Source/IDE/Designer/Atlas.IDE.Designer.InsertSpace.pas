@@ -52,6 +52,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.SpaceDialog,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -259,6 +260,7 @@ var
   mControls: TArray<TControl>;
   mOptions: TAtlasSpaceOptions;
   mAmount: Integer;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerInsertSpace or not TAtlasDesignerAccess.Current(mEditor, mRun.Root) then
   begin
@@ -270,11 +272,18 @@ begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSpaceNoSelection));
     Exit;
   end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRun.Root);
+  mKept.Add(mControls);
   mOptions.Axis := TAtlasSpaceAxis.Rows;
   mOptions.Amount := cDefaultGrid * 3;
   mOptions.Snap := True;
   if not TAtlasSpaceDialog.Execute(ARemove, mOptions) or (mOptions.Amount = 0) then
   begin
+    Exit;
+  end;
+  if not mKept.Holds then
+  begin
+    Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
   mAmount := mOptions.Amount;

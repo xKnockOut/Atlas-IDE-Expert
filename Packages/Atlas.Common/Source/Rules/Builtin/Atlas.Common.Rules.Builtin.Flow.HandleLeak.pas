@@ -377,13 +377,26 @@ begin
   end;
 end;
 
+/// <summary>ExtractIcon(…, …, Cardinal(-1)) liefert die Zahl der Icons, kein Handle.</summary>
+function CountsIcons(const AText: string; ACall: TSyntaxNode): Boolean;
+var
+  mIndex: string;
+begin
+  Result := SameRoutine(CallName(AText, ACall), 'ExtractIcon') and (ACall.ChildCount > 3);
+  if Result then
+  begin
+    mIndex := StringReplace(SourceText(AText, ACall[3]), ' ', '', [rfReplaceAll]);
+    Result := MatchText(mIndex, ['-1', 'Cardinal(-1)', 'UINT(-1)', 'DWORD(-1)', 'LongWord(-1)', '$FFFFFFFF']);
+  end;
+end;
+
 /// <summary>Handles, die ACall öffnet; ATarget ist das Ziel einer Zuweisung ('' ohne).</summary>
 function THandleCheck.Opened(ACall: TSyntaxNode; const ATarget: string; out AHandles: TArray<TOpenedHandle>): Boolean;
 var
   mPair: THandlePair;
 begin
   AHandles := nil;
-  if not PairOf(CallName(FContext.Text, ACall), mPair) then
+  if not PairOf(CallName(FContext.Text, ACall), mPair) or CountsIcons(FContext.Text, ACall) then
   begin
     Exit(False);
   end;

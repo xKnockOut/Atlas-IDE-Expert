@@ -39,6 +39,7 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Memory,
   Atlas.Common.Index.UsageCounts;
@@ -169,6 +170,10 @@ type
     function Budget: Int64;
     function Generation: Int64;
     function UsageCount(const AName: string): Integer;
+    /// <summary>Antwort auf Declared(X) in {$IF} (#847) über AIndex: X steht als Symbol ohne umgebenden Typ im
+    /// Index. Server, MCP und --check melden sie beim Präprozessor an, sonst bleibt Declared(X) unbekannt und
+    /// beide Zweige gelten.</summary>
+    class function DeclaredIn(const AIndex: ISymbolIndex): TDeclaredFunc; static;
   end;
 
 implementation
@@ -828,6 +833,24 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+class function TSymbolIndex.DeclaredIn(const AIndex: ISymbolIndex): TDeclaredFunc;
+begin
+  Result :=
+    function(const AName: string): Boolean
+    var
+      mLocation: TSymbolLocation;
+    begin
+      for mLocation in AIndex.FindSymbols(AName) do
+      begin
+        if mLocation.Symbol.Container = '' then
+        begin
+          Exit(True);
+        end;
+      end;
+      Result := False;
+    end;
 end;
 
 end.

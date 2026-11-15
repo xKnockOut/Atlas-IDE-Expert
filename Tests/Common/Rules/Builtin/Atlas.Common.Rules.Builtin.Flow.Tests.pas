@@ -78,6 +78,10 @@ type
     procedure SafeUsesAfterFreeAreSilent;
     [Test]
     procedure UseAfterFreeOffAndExclude;
+    /// <summary>while Count &gt; 0 do Pop.Free: Pop ist eine Funktion der eigenen Klasse und liefert jedes Mal ein
+    /// anderes Objekt.</summary>
+    [Test]
+    procedure UseAfterFreeOfOwnFunctionResultIsSilent;
     [Test]
     procedure DerefBeforeNilCheckReportsWithFix;
     [Test]
@@ -112,6 +116,13 @@ type
     procedure HandleLeakVariants;
     [Test]
     procedure HandleLeakSilentCases;
+    /// <summary>DeleteObject(SelectObject(DC, Alt)) gibt das Bitmap frei, das vorher mit SelectObject(DC, Bmp)
+    /// gewählt wurde; ein Bitmap in einem anderen Gerätekontext bleibt ein Leck.</summary>
+    [Test]
+    procedure HandleLeakDeletedWhenSelectedBack;
+    /// <summary>ExtractIcon mit Index -1 zählt die Icons und öffnet kein Handle.</summary>
+    [Test]
+    procedure HandleLeakIconCountIsSilent;
     [Test]
     procedure HandleLeakPairsAndOff;
   end;
@@ -364,7 +375,16 @@ begin
   // asm macht den Graphen unvollständig: keine Aussage.
   TRuleAssert.Silent(TUnreachableCodeRule.Create,
     Routine('  Exit;'#10'  asm'#10'    nop'#10'  end;', 'procedure P;'));
+  // FP mORMot2: Eine eigene Methode Abort verdeckt System.SysUtils.Abort und kehrt zurück.
+  TRuleAssert.Silent(TUnreachableCodeRule.Create, 'unit U;'#10'interface'#10'type'#10'  TArbeiter = class'#10 +
+    '  public'#10'    procedure Abort;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TArbeiter.Abort;'#10'begin'#10'end;'#10'destructor TArbeiter.Destroy;'#10'begin'#10'  Abort;'#10 +
+    '  inherited Destroy;'#10'end;'#10'end.');
+  // Ohne eigene Routine dieses Namens bleibt Abort ein Ausstieg.
+  TRuleAssert.Reports(TUnreachableCodeRule.Create, Routine('  Abort;'#10'  A;', 'procedure P;'), 1);
 end;
+
+
 
 procedure TFlowRulesTests.FlowRulesFindSameWithSharedGraphs;
 const
@@ -500,6 +520,22 @@ begin
   TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine(
     // Freigabe nur auf einem Weg, der nicht zum Zugriff führt.
     '  if A then'#10'  begin'#10'    Bericht.Free;'#10'    Exit;'#10'  end;'#10'  Bericht.Drucken;', cFreeHeader));
+end;
+
+procedure TFlowRulesTests.UseAfterFreeOfOwnFunctionResultIsSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TSchlange = class'#10'  private'#10'    FListe: TList;'#10 +
+    '  public'#10'    function Count: Integer;'#10'    function Pop: TObject;'#10'    destructor Destroy; override;'#10 +
+    '  end;'#10'implementation'#10'destructor TSchlange.Destroy;'#10'begin'#10'  while Count > 0 do'#10 +
+    '    Pop.Free;'#10'  while Count > 0 do'#10'    Self.Pop.Free;'#10'  FListe.Free;'#10'  FListe.Clear;'#10 +
+    '  inherited;'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Gegentest im selben Fall: das Feld FListe bleibt nach Free freigegeben.
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(19, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TFlowRulesTests.UseAfterFreeOffAndExclude;
@@ -1185,6 +1221,30 @@ begin
     'function Oeffnen(var H: THandle): THandle;'#10'var'#10'  K: THandle;'#10'begin'#10 +
     '  H := CreateEvent(nil, True, False, nil);'#10'  K := OpenProcess(0, False, 1);'#10'  Exit(K);'#10 +
     'end;'#10'end.');
+end;
+
+procedure TFlowRulesTests.HandleLeakDeletedWhenSelectedBack;
+const
+  cVars = '  DC, Bmp, Alt: THandle;'#10;
+begin
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei(cVars,
+    '  Bmp := CreateCompatibleBitmap(Wnd, 10, 10);'#10'  Alt := SelectObject(DC, Bmp);'#10'  Malen(DC);'#10 +
+    '  DeleteObject(SelectObject(DC, Alt));'));
+  // Gegentest: zurückgewählt wird in einem anderen Gerätekontext.
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei(cVars + '  Anderer: THandle;'#10,
+    '  Bmp := CreateCompatibleBitmap(Wnd, 10, 10);'#10'  Alt := SelectObject(DC, Bmp);'#10'  Malen(DC);'#10 +
+    '  DeleteObject(SelectObject(Anderer, Alt));'));
+end;
+
+procedure TFlowRulesTests.HandleLeakIconCountIsSilent;
+const
+  cVars = '  Anzahl: THandle;'#10;
+begin
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei(cVars,
+    '  Anzahl := ExtractIcon(HInstance, PChar(Datei), Cardinal(-1));'));
+  // Gegentest: Index 0 liefert ein Icon, das DestroyIcon braucht.
+  TRuleAssert.Reports(THandleLeakRule.Create, Datei(cVars,
+    '  Anzahl := ExtractIcon(HInstance, PChar(Datei), 0);'), 1);
 end;
 
 procedure TFlowRulesTests.HandleLeakPairsAndOff;

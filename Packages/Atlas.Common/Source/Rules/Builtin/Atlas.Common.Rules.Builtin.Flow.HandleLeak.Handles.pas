@@ -254,6 +254,50 @@ begin
   end;
 end;
 
+/// <summary>Wählt die Routine um ANode das Handle mit SelectObject(ADc, Handle) in den Gerätekontext ADc?</summary>
+function SelectedInto(const AText: string; ANode: TSyntaxNode; const ADc, APath: string): Boolean;
+var
+  mRoutine: TSyntaxNode;
+  mText: string;
+begin
+  mRoutine := ANode;
+  while (mRoutine.Parent <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mRoutine := mRoutine.Parent;
+  end;
+  mText := AText;
+  Result := mRoutine.Search(
+    function(ACall: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ACall.Kind = TSyntaxKind.Call) and (ACall.ChildCount = 3) and
+        SameText(CallName(mText, ACall), 'SelectObject') and SameText(HandlePath(ACall[1]), ADc) and
+        SameText(HandlePath(ACall[2]), APath) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+/// <summary>DeleteObject(SelectObject(DC, Alt)): Das Zurückwählen liefert das Objekt, das in DC gewählt war; ist
+/// das Handle vorher mit SelectObject(DC, Handle) gewählt worden, schließt der Aufruf es.</summary>
+function ClosesSelected(const AText: string; ACall: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+var
+  mInner: TSyntaxNode;
+begin
+  Result := False;
+  if ACall.ChildCount <> 2 then
+  begin
+    Exit;
+  end;
+  mInner := ACall[1];
+  if (mInner.Kind = TSyntaxKind.Call) and (mInner.ChildCount = 3) and
+    SameText(CallName(AText, mInner), 'SelectObject') and (HandlePath(mInner[1]) <> '') then
+  begin
+    Result := SelectedInto(AText, ACall, HandlePath(mInner[1]), AHandle.Path);
+  end;
+end;
+
 function ClosesHandle(const AText: string; ARoot: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 var
   mText: string;
@@ -271,7 +315,7 @@ begin
         Result := TSyntaxSearchStep.Skip;
       end
       else if (ANode.Kind = TSyntaxKind.Call) and SameRoutine(CallName(mText, ANode), mHandle.CloseName) and
-        PassesHandlePath(ANode, mHandle.Path) then
+        (PassesHandlePath(ANode, mHandle.Path) or ClosesSelected(mText, ANode, mHandle)) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;

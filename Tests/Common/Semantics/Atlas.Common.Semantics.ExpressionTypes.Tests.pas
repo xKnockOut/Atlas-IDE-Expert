@@ -152,6 +152,7 @@ const
     '  Big := Card + Count;' + cLB +
     '  Card := Card + Card;' + cLB +
     '  Count := B + B;' + cLB +
+    '  Big := 9223372036854775807 + 14695981039346656037 + 18446744073709551615 + 18446744073709551616;' + cLB +
     '  D := D * Count;' + cLB +
     '  D := Count / 2;' + cLB +
     '  Count := Count div 2;' + cLB +
@@ -319,6 +320,11 @@ begin
   Assert.AreEqual('Int64', TypeOf('Card + Count').TypeName, 'Cardinal mit Vorzeichen');
   Assert.AreEqual('Cardinal', TypeOf('Card + Card').TypeName);
   Assert.AreEqual('Integer', TypeOf('B + B').TypeName, 'Byte rechnet als Integer');
+  // Dezimalzahl über High(Int64): dcc gibt ihr UInt64, erst über High(UInt64) wird sie Gleitkomma.
+  Assert.AreEqual('Int64', TypeOf('9223372036854775807').TypeName);
+  Assert.AreEqual('UInt64', TypeOf('14695981039346656037').TypeName);
+  Assert.AreEqual('UInt64', TypeOf('18446744073709551615').TypeName);
+  Assert.AreEqual('Extended', TypeOf('18446744073709551616').TypeName);
 end;
 
 procedure TExpressionTypesTests.StringsVariantsAndConversions;

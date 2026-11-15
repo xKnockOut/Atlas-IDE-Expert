@@ -51,6 +51,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.QueryTest,
+  Atlas.Core.Tracker.SettingsPlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,

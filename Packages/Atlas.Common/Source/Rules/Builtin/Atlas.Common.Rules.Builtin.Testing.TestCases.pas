@@ -12,7 +12,9 @@
 // Datei über ihre Namen; andere Typen (string, Datum, Typen anderer Units) prüft die Regel nicht.
 // Formen: TestCase('Name', 'Werte'[, 'Trenner'[, Trim]]) wie bisher, TestCase('Werte'[, 'Trenner'[, Trim]]) und
 // NamedTestCase('Name', 'Werte'[, …]) aus neueren DUnitX-Ständen. Mit zwei oder mehr Argumenten gilt die alte Form,
-// außer das zweite ist ein Trennzeichen ohne Buchstaben und Ziffern oder das dritte True/False.
+// außer das zweite ist ein Trennzeichen ohne Buchstaben und Ziffern oder das dritte True/False. Bei genau zwei
+// Argumenten ist das mehrdeutig (ältere DUnitX-Stände kennen nur TestCase('Name', 'Werte'); Werte wie '],{,}'
+// oder '/' sehen dann wie ein Trenner aus): Passt die Zahl der Werte nur in der alten Lesart, gilt diese.
 // TDUnitXTestCases ist öffentlich: Die TestCase-Tabelle (#1879) liest die Werte auf dieselbe Weise.
 
 interface
@@ -35,6 +37,10 @@ type
     Separator: string;
     /// <summary>Stelle des Werte-Arguments: 0 bei TestCase('Werte'…), sonst 1.</summary>
     ValuesAt: Integer;
+    /// <summary>Werte der alten Lesart TestCase('Name', 'Werte'), wenn zwei Argumente auch die neue Form
+    /// TestCase('Werte', 'Trenner') sein können; sonst nil und HasOldReading False.</summary>
+    OldValues: TArray<string>;
+    HasOldReading: Boolean;
   end;
 
   /// <summary>Ein Parameter einer Testmethode.</summary>
@@ -283,6 +289,12 @@ begin
   if Result then
   begin
     ACase.Values := Split(mText, ACase.Separator);
+    if (mValuesAt = 0) and (Length(mArgs) = 2) and SameText(mName, 'TestCase') and
+      LiteralText(mArgs[1], mText) then
+    begin
+      ACase.OldValues := Split(mText, ',');
+      ACase.HasOldReading := True;
+    end;
   end;
 end;
 
@@ -581,6 +593,12 @@ var
       if not TDUnitXTestCases.Read(mItem, mCase) then
       begin
         Continue;
+      end;
+      // Mehrdeutige zwei Argumente: Welche DUnitX-Fassung gilt, ist unbekannt; die passende Lesart zählt.
+      if mCase.HasOldReading and (Length(mCase.Values) <> Length(mParams)) and
+        (Length(mCase.OldValues) = Length(mParams)) then
+      begin
+        mCase.Values := mCase.OldValues;
       end;
       if mParams = nil then
       begin

@@ -694,6 +694,16 @@ begin
   Result := False;
 end;
 
+/// <summary>Folgt auf den Namen bei AIndex eine eckige Klammer (Format[J])? Dann ist er ein String oder Array
+/// (Parameter, Variable), kein Aufruf.</summary>
+function IsIndexed(const ATokens: TTokens; AIndex: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  mNext := NextCode(ATokens, AIndex + 1);
+  Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('[');
+end;
+
 /// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
 function ResolverFileName(const AContext: TRuleContext): string;
 begin
@@ -721,6 +731,9 @@ type
     /// (TXmlNodeKind.Text) auf oder als Property, die direkt ein Feld liest (TPascalToken.Text aus einer anderen
     /// Unit)? Ein gespeicherter Wert baut keinen String auf.</summary>
     function ReadsField(AIndex: Integer): Boolean;
+    /// <summary>Ist der Name bei AIndex eine lokale Variable, ein Parameter oder ein gespeicherter Wert
+    /// (ReadsField) statt der gleichnamigen Routine (Copy: Integer)?</summary>
+    function IsLocalOrValue(AIndex: Integer): Boolean;
     procedure CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
   public
     constructor Create(const AContext: TRuleContext; AResolver: TNameResolver);
@@ -765,6 +778,12 @@ begin
     FResolver.PropertyReadsField(mSymbol, mReadsField) and mReadsField);
 end;
 
+function TLoopConditionCheck.IsLocalOrValue(AIndex: Integer): Boolean;
+begin
+  Result := (FResolver.Resolve(FTree, FFileName, FTokens[AIndex].StartPos).Kind = TResolvedKind.Local) or
+    ReadsField(AIndex);
+end;
+
 procedure TLoopConditionCheck.CheckProperty(const ALoop: TLoop; AIndex, ADot: Integer; const AReport: IRuleReport);
 var
   mName: string;
@@ -790,7 +809,8 @@ begin
     CheckProperty(ALoop, AIndex, mPrevious, AReport);
   end
   else if MatchText(mName, cExpensiveCalls) and StartsDesignator(FTokens, AIndex) and
-    not ArgumentsChange(FTokens, ALoop, AIndex) then
+    not IsIndexed(FTokens, AIndex) and not ArgumentsChange(FTokens, ALoop, AIndex) and
+    not IsLocalOrValue(AIndex) then
   begin
     AReport.Add(RangeOf(FTokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
       TRuleConfidence.Medium);

@@ -157,11 +157,21 @@ begin
   mScan.Run;
 end;
 
+/// <summary>Steht ATypeText für einen Methodenzeiger oder eine Methodenreferenz (procedure … of object, reference to
+/// …)? Ein einfacher Funktionszeiger (xFunc: function(A: PAnsiChar): Integer; cdecl; aus einer DLL) ist kein
+/// Ereignis: Den belegt der Lader, nicht ein optionaler Handler.</summary>
+function IsMethodPointerText(const ATypeText: string): Boolean;
+begin
+  Result := TRegEx.IsMatch(ATypeText, cProceduralPattern, [roIgnoreCase]) and
+    (TRegEx.IsMatch(ATypeText, '^\s*reference\s+to\b', [roIgnoreCase]) or
+    TRegEx.IsMatch(ATypeText, '\bof\s+object\b', [roIgnoreCase]));
+end;
+
 class function TEventCallWithoutAssignedRule.IsKnownEventType(const ATypeName: string): Boolean;
 var
   mName: string;
 begin
-  if TRegEx.IsMatch(ATypeName, cProceduralPattern, [roIgnoreCase]) then
+  if IsMethodPointerText(ATypeName) then
   begin
     Exit(True);
   end;
@@ -201,7 +211,8 @@ begin
   end;
 end;
 
-// Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante oder einen Parameter AName?
+// Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante, einen Parameter oder eine lokale
+// Routine AName? Die lokale Routine verdeckt die gleichnamige Event-Property.
 function Shadowed(ARoot: TSyntaxNode; const AName: string): Boolean;
 var
   mIndex: Integer;
@@ -216,7 +227,8 @@ begin
     while not Result and (mPending.Count > 0) do
     begin
       mNode := mPending.Pop;
-      Result := DeclaresName(mNode, AName);
+      Result := DeclaresName(mNode, AName) or ((mNode <> ARoot) and (mNode.Kind = TSyntaxKind.RoutineDecl) and
+        SameText(mNode.Name, AName));
       for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
         mPending.Push(mNode[mIndex]);
@@ -300,13 +312,16 @@ begin
   end;
 end;
 
-// Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)".
+// Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)", auch mit
+// Klammern um das Glied ("(not Assigned(F)) or (not F(…))", Alcinoe).
 function ShortCircuit(const APrefix, AName: string): Boolean;
 begin
-  Result := Positive(APrefix, AName) and ContainsStr(APrefix, 'assigned(' + AName + ')and');
-  Result := Result or ContainsStr(APrefix, AName + '<>niland');
+  Result := Positive(APrefix, AName) and (ContainsStr(APrefix, 'assigned(' + AName + ')and') or
+    ContainsStr(APrefix, 'assigned(' + AName + '))and'));
+  Result := Result or ContainsStr(APrefix, AName + '<>niland') or ContainsStr(APrefix, AName + '<>nil)and');
   Result := Result or (Negative(APrefix, AName) and (ContainsStr(APrefix, 'notassigned(' + AName + ')or') or
-    ContainsStr(APrefix, AName + '=nilor')));
+    ContainsStr(APrefix, 'notassigned(' + AName + '))or') or ContainsStr(APrefix, AName + '=nilor') or
+    ContainsStr(APrefix, AName + '=nil)or')));
 end;
 
 { TEventCallScan }
@@ -321,9 +336,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   SetLength(mCode, Length(mTokens));
   mCount := 0;
+  // Token in inaktiven Zweigen übersetzt dcc nicht; sie bleiben wie Kommentare außen vor.
   for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[mIndex]) then
+    if not IsTrivia(mTokens[mIndex]) and not TTextRange.AnyContains(AContext.InactiveRanges,
+      mTokens[mIndex].StartPos) then
     begin
       mCode[mCount] := mTokens[mIndex];
       Inc(mCount);
@@ -394,7 +411,7 @@ begin
     begin
       mText := NodeText(mDecl);
       mText := Copy(mText, Pos('=', mText) + 1, MaxInt);
-      Exit(TRegEx.IsMatch(mText, cProceduralPattern, [roIgnoreCase]));
+      Exit(IsMethodPointerText(mText));
     end;
   end;
   if FContext.Index <> nil then
@@ -500,6 +517,10 @@ begin
   if AMember.Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
   begin
     Result := AMember.FindChild(TSyntaxKind.ProcedureType);
+    if (Result <> nil) and not IsMethodPointerText(NodeText(Result)) then
+    begin
+      Exit(nil);
+    end;
     if Result = nil then
     begin
       Result := AMember.FindChild(TSyntaxKind.TypeReference);

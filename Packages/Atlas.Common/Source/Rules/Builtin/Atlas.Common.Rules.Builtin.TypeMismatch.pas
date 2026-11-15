@@ -81,7 +81,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,
@@ -90,6 +89,7 @@ uses
   Atlas.Common.Semantics.RtlMethodReferences,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Rules.Builtin.Constants.Conversions,
   Atlas.Common.Rules.Builtin.TypeMismatch.ProcShapes;
 
 {$SCOPEDENUMS ON}
@@ -162,6 +162,7 @@ type
     function HiddenMember(ANode: TSyntaxNode; const ASymbol: TResolvedSymbol): Boolean;
     function SameResultType(ACallee: TSyntaxNode): Boolean;
     function ValueOfType(const AType: TResolvedSymbol): TValueType;
+    function DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
     function ValueOfSymbol(const ASymbol, AType: TResolvedSymbol): TValueType;
     function TypeValueFrom(const AUnit: TUnitIndex; const ATypeText: string): TValueType;
     function DescribedValue(ANode: TSyntaxNode): TValueType;
@@ -579,6 +580,21 @@ begin
   end;
 end;
 
+/// <summary>Ist ASymbol als string[N] deklariert? Bei Symbolen aus dem Index steht die Länge in der Signatur, bei
+/// lokalen im Text der Deklaration.</summary>
+function TTypeMismatchCheck.DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
+var
+  mDecl: TSyntaxNode;
+begin
+  Result := TStringLengthLimitRule.ShortStringLength(ASymbol.Signature) > 0;
+  if not Result and (ASymbol.Kind = TResolvedKind.Local) and (FContext.Tree <> nil) then
+  begin
+    mDecl := DeclarationAt(FContext.Tree, ASymbol.SelectionRange.StartPos);
+    Result := (mDecl <> nil) and (TStringLengthLimitRule.ShortStringLength(Copy(FContext.Text, mDecl.StartOffset + 1,
+      mDecl.EndOffset - mDecl.StartOffset)) > 0);
+  end;
+end;
+
 function TTypeMismatchCheck.ValueOfSymbol(const ASymbol, AType: TResolvedSymbol): TValueType;
 var
   mText: string;
@@ -605,6 +621,11 @@ begin
       Exit;
     end;
     Result := ValueOfType(mDeclared);
+  end
+  else if SameText(mText, 'string') and DeclaredShort(ASymbol) then
+  begin
+    // string[N]: Der Index führt den Typ als string, die Länge steht nur in der Deklaration.
+    Result := ValueOfType(BuiltinSymbol('ShortString'));
   end
   else
   begin

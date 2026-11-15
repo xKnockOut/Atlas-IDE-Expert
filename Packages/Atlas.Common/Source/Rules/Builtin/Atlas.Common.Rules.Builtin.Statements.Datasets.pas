@@ -5,13 +5,16 @@
 //                     while not Q.Eof do ohne Q.Next auf jedem Weg durch den
 //                     Rumpf, der die Schleife fortsetzt (#963); Delete, MoveBy,
 //                     Last, Close und FindNext zählen mit. Wird Q im Rumpf
-//                     weitergegeben, bleibt die Regel still.
+//                     weitergegeben oder stammt Q sicher nicht von TDataSet ab
+//                     (Stream mit ReadLine), bleibt die Regel still.
 //   dataset-edit-without-post
 //                     Q.Edit, Q.Append bzw. Q.Insert ohne folgendes Post, Cancel
 //                     oder CheckBrowseMode in der Routine (#964); still, wenn
 //                     eine andere Routine der Unit Q postet oder Q weitergegeben wird,
 //                     und wenn Q sicher nicht von TDataSet abstammt (#1326: Insert
-//                     und Edit eines ActiveRecord, eines Records oder einer Liste).
+//                     und Edit eines ActiveRecord, eines Records oder einer Liste); ein
+//                     Typparameter hat den Typ seiner Klassen-Einschränkung
+//                     (TMVCRepository<T: TMVCActiveRecord>).
 //   transaction-without-rollback
 //                     StartTransaction (BeginTransaction, BeginTrans) ohne Rollback
 //                     im except des unmittelbar folgenden try (#965); Paare aus der
@@ -66,6 +69,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Statements.Tokens,
+  Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -127,6 +131,131 @@ begin
   end;
 end;
 
+type
+  /// <summary>Kann ein Empfänger eine Datenmenge sein (#1326)? Fragt den Resolver des Laufs, den sie beim ersten
+  /// Bedarf öffnet und an den Baum heftet.</summary>
+  TDataSetReceivers = class
+  private
+    FContext: TRuleContext;
+    FFileName: string;
+    FCache: IRuleDerivedCache;
+    FResolver: TNameResolver;
+    function ConstraintType(ARoutine: TSyntaxNode; const ATypeName: string; out AType: TResolvedSymbol): Boolean;
+  public
+    constructor Create(const AContext: TRuleContext);
+    destructor Destroy; override;
+    /// <summary>Nein, wenn der Typ von AReceiver bekannt ist und die Vorfahrenkette ohne TDataSet vollständig endet
+    /// oder er keine Klasse ist; bei unbekanntem Typ oder abgebrochener Kette ja.</summary>
+    function MayBeDataSet(AReceiver: TSyntaxNode): Boolean;
+    /// <summary>Wie MayBeDataSet; ein Typparameter der Klasse von ARoutine hat den Typ seiner Klassen-Einschränkung
+    /// (TMVCRepository&lt;T: TMVCActiveRecord&gt;).</summary>
+    function MayBeDataSetIn(AReceiver, ARoutine: TSyntaxNode): Boolean;
+  end;
+
+constructor TDataSetReceivers.Create(const AContext: TRuleContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  FFileName := ContextFileName(AContext);
+end;
+
+destructor TDataSetReceivers.Destroy;
+begin
+  if FResolver <> nil then
+  begin
+    FResolver.UnpinTree;
+  end;
+  inherited;
+end;
+
+/// <summary>Typ, den der Typparameter ATypeName der Klasse von ARoutine mindestens hat: bei
+/// TAblage&lt;T: TSatz&gt; ist ein T ein TSatz. False ohne genau eine Typ-Einschränkung.</summary>
+function TDataSetReceivers.ConstraintType(ARoutine: TSyntaxNode; const ATypeName: string;
+  out AType: TResolvedSymbol): Boolean;
+var
+  mOwner: string;
+  mUnit: TUnitIndex;
+  mHeader, mParams: TSyntaxNode;
+  mGeneric: TResolvedSymbol;
+  mParam: TGenericParam;
+  mConstraints: TArray<string>;
+begin
+  Result := False;
+  if ARoutine = nil then
+  begin
+    Exit;
+  end;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mParams := nil;
+  if mHeader <> nil then
+  begin
+    mParams := mHeader.FindChild(TSyntaxKind.GenericParams);
+  end;
+  // Der Name trägt keine Typparameter (TAblage.Neu); die erste Gruppe gehört zur Klasse. Gehört sie zur Methode,
+  // passt die Zahl der Typparameter nicht und der Typ bleibt unbekannt.
+  if (ATypeName = '') or (mParams = nil) or (LastDelimiter('.', ARoutine.Name) = 0) then
+  begin
+    Exit;
+  end;
+  mOwner := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1) +
+    Copy(FContext.Text, mParams.StartOffset + 1, mParams.EndOffset - mParams.StartOffset);
+  mUnit := FResolver.ExtractedUnit(FContext.Tree, FFileName);
+  if not FResolver.ResolveTypeTextFrom(mUnit, mOwner, mGeneric) then
+  begin
+    Exit;
+  end;
+  for mParam in TGenericConstraintViolatedRule.ParseParams(mGeneric.Signature) do
+  begin
+    if SameText(mParam.Name, ATypeName) then
+    begin
+      mConstraints := mParam.TypeConstraints;
+      Exit((Length(mConstraints) = 1) and FResolver.ResolveTypeTextFrom(mUnit, mConstraints[0], AType));
+    end;
+  end;
+end;
+
+function TDataSetReceivers.MayBeDataSet(AReceiver: TSyntaxNode): Boolean;
+begin
+  Result := MayBeDataSetIn(AReceiver, nil);
+end;
+
+function TDataSetReceivers.MayBeDataSetIn(AReceiver, ARoutine: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound, mComplete: Boolean;
+  mNames: TArray<string>;
+begin
+  Result := True;
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+  if not FResolver.NodeType(FContext.Tree, FFileName, AReceiver, mSymbol, mTypeInfo, mTypeFound) then
+  begin
+    Exit;
+  end;
+  if not mTypeFound and not ConstraintType(ARoutine, mSymbol.TypeName, mTypeInfo) then
+  begin
+    Exit;
+  end;
+  if mTypeInfo.Builtin or (mTypeInfo.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
+    TIndexSymbolKind.EnumType]) then
+  begin
+    Exit(False);
+  end;
+  if mTypeInfo.SymbolKind <> TIndexSymbolKind.ClassType then
+  begin
+    Exit;
+  end;
+  mNames := FResolver.Queries.AncestorNames(mTypeInfo, mComplete);
+  // Eine Kette, die bei TObject abbricht (System fehlt im Index), endet an der Wurzel ohne TDataSet.
+  Result := (IndexText('TDataSet', mNames) >= 0) or
+    (not mComplete and not SameText(mNames[High(mNames)], 'TObject'));
+end;
+
 { TDatasetLoopWithoutNextRule }
 
 const
@@ -146,6 +275,7 @@ var
   mLines: TArray<string>;
   mLineBreak: string;
   mDataSet: string;
+  mReceivers: TDataSetReceivers;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -482,7 +612,8 @@ var
   procedure InspectLoop(ACondition, ABody: TSyntaxNode);
   begin
     mDataSet := NodeText(ACondition[0][0]);
-    if Escapes(ABody) or Advances(ABody) then
+    // Eof eines Lesers, der kein TDataSet ist (Stream mit ReadLine), rückt anders vor.
+    if Escapes(ABody) or Advances(ABody) or not mReceivers.MayBeDataSet(ACondition[0][0]) then
     begin
       Exit;
     end;
@@ -533,7 +664,12 @@ begin
     Exit;
   end;
   mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  Visit(AContext.Tree.Root);
+  mReceivers := TDataSetReceivers.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    mReceivers.Free;
+  end;
 end;
 
 { TDatasetEditWithoutPostRule }
@@ -556,19 +692,13 @@ var
   mLines: TArray<string>;
   mLineBreak: string;
   mRoutines: TArray<TSyntaxNode>;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mFileName: string;
+  mReceivers: TDataSetReceivers;
 
-  /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
-  /// ist und die Vorfahrenkette ohne TDataSet vollständig endet oder er keine Klasse ist; bei unbekanntem Typ
-  /// oder abgebrochener Kette ja, wie bisher.</summary>
-  function MayBeDataSet(AStatement: TSyntaxNode): Boolean;
+  /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (TDataSetReceivers.MayBeDataSet)?
+  /// </summary>
+  function MayBeDataSet(AStatement, ARoutine: TSyntaxNode): Boolean;
   var
     mTarget: TSyntaxNode;
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound, mComplete: Boolean;
-    mNames: TArray<string>;
   begin
     Result := True;
     mTarget := AStatement[0];
@@ -580,29 +710,7 @@ var
     begin
       Exit;
     end;
-    if mResolver = nil then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-    end;
-    if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
-      not mTypeFound then
-    begin
-      Exit;
-    end;
-    if mTypeInfo.Builtin or (mTypeInfo.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
-      TIndexSymbolKind.EnumType]) then
-    begin
-      Exit(False);
-    end;
-    if mTypeInfo.SymbolKind <> TIndexSymbolKind.ClassType then
-    begin
-      Exit;
-    end;
-    mNames := mResolver.Queries.AncestorNames(mTypeInfo, mComplete);
-    Result := (IndexText('TDataSet', mNames) >= 0) or not mComplete;
+    Result := mReceivers.MayBeDataSetIn(mTarget[0], ARoutine);
   end;
 
   function NodeText(ANode: TSyntaxNode): string;
@@ -808,7 +916,7 @@ var
     Result := (AReceiver <> '') and (mArguments = 0) and MatchText(AName, cDatasetEditMethods);
     Result := Result and not Ends(ARoutine, AReceiver, ANode.EndOffset) and
       not Escapes(ARoutine, AReceiver, ANode.EndOffset);
-    Result := Result and not EndedElsewhere(ARoutine, AReceiver) and MayBeDataSet(ANode);
+    Result := Result and not EndedElsewhere(ARoutine, AReceiver) and MayBeDataSet(ANode, ARoutine);
   end;
 
   procedure CheckCall(ANode, ARoutine: TSyntaxNode);
@@ -875,15 +983,11 @@ begin
       end;
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  mFileName := ContextFileName(AContext);
-  mResolver := nil;
+  mReceivers := TDataSetReceivers.Create(AContext);
   try
     Visit(AContext.Tree.Root);
   finally
-    if mResolver <> nil then
-    begin
-      mResolver.UnpinTree;
-    end;
+    mReceivers.Free;
   end;
 end;
 

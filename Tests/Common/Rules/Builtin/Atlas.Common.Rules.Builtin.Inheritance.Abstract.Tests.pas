@@ -19,11 +19,14 @@ type
     procedure ConcreteClassIsSilent;
     [Test]
     procedure InheritedAbstractCallIsReported;
+    [Test]
+    procedure InheritedOtherOverloadIsSilent;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Inheritance.Abstract,
   Atlas.Tests.RuleAssert;
@@ -68,6 +71,19 @@ begin
     '  inherited Lauf;'#10'end;'#10'end.'#10);
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('inherited-abstract-call', mFindings[0].RuleId);
+end;
+
+procedure TInheritanceAbstractTests.InheritedOtherOverloadIsSilent;
+const
+  cUnit = 'unit U;'#10'interface'#10'type'#10'  TListe = class(TObjectList)'#10'  public'#10 +
+    '    function Add: TObject; overload; virtual; abstract;'#10'  end;'#10'  TMeine = class(TListe)'#10 +
+    '  public'#10'    function Add: TObject; override;'#10'  end;'#10'implementation'#10 +
+    'function TMeine.Add: TObject;'#10'begin'#10'  Result := TObject.Create;'#10'  inherited %s;'#10'end;'#10'end.'#10;
+begin
+  // Ein Argument: Die abstrakte Überladung nimmt keins, gemeint ist TObjectList.Add (nicht im Index).
+  TRuleAssert.Silent(TInheritedAbstractCallRule.Create, Format(cUnit, ['Add(Result)']));
+  TRuleAssert.Reports(TInheritedAbstractCallRule.Create, Format(cUnit, ['Add']));
+  TRuleAssert.Reports(TInheritedAbstractCallRule.Create, Format(cUnit, ['Add()']));
 end;
 
 initialization
