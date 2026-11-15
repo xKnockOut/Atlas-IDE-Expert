@@ -38,6 +38,7 @@ uses
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Rules.Builtin.Declarations.Shared,
+  Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -112,6 +113,31 @@ var
     end;
   end;
 
+  // Typ ANode ohne Unit davor, wenn er nur ein (qualifizierter) Name ist: JclStrings.PMultiSz ist PMultiSz.
+  // Sonst (array of, Generika, Zeiger) der ganze Text.
+  function TypeKey(ANode: TSyntaxNode): string;
+  var
+    mIndex: Integer;
+  begin
+    Result := '';
+    for mIndex := FirstToken(ANode) to High(mTokens) do
+    begin
+      if mTokens[mIndex].Offset >= ANode.EndOffset then
+      begin
+        Break;
+      end;
+      if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+      begin
+        Result := LowerCase(mTokens[mIndex].Text);
+      end
+      else if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+        not mTokens[mIndex].IsSymbol('.') then
+      begin
+        Exit(NodeKey(ANode));
+      end;
+    end;
+  end;
+
   // class operator Implicit … darf ohne overload mehrfach stehen.
   function IsOperator(AHeader: TSyntaxNode): Boolean;
   var
@@ -131,7 +157,9 @@ var
     Result := False;
   end;
 
-  // Parameterarten und -typen der Parameterliste AParams; A, B: Integer zählt als zwei Parameter.
+  // Parameterarten und -typen der Parameterliste AParams; A, B: Integer zählt als zwei Parameter. Eingebaute
+  // Aliase zählen als ihr Typ wie bei dcc: Int32 ist Integer, DWORD ist Cardinal, die Implementierung mit Integer
+  // gehört zur Deklaration mit Int32 (Indy, JCL); ebenso Unit.Typ und Typ.
   function ParameterKey(AParams: TSyntaxNode): string;
   const
     cModifiers: array[TParameterModifier] of string = ('', 'const ', 'var ', 'out ', 'constref ');
@@ -153,7 +181,7 @@ var
       mTypeText := '?';
       if mTypeNode <> nil then
       begin
-        mTypeText := NodeKey(mTypeNode);
+        mTypeText := CanonicalTypeName(TypeKey(mTypeNode));
       end;
       for mCount := 1 to Length(mParameter.Name.Split([','])) do
       begin

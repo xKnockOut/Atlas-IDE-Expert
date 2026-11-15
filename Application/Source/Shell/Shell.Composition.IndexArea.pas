@@ -86,27 +86,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Lsp.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Shell.Workspace;
-
-function DeclaredIn(const AIndex: ISymbolIndex): TDeclaredFunc;
-begin
-  Result :=
-    function(const AName: string): Boolean
-    var
-      mLocation: TSymbolLocation;
-    begin
-      for mLocation in AIndex.FindSymbols(AName) do
-      begin
-        if mLocation.Symbol.Container = '' then
-        begin
-          Exit(True);
-        end;
-      end;
-      Result := False;
-    end;
-end;
 
 { TShellIndexArea }
 
@@ -118,7 +99,7 @@ begin
   FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
   // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis die Komposition den Anbieter
   // abmeldet.
-  TPascalPreprocessor.SetDeclaredProvider(DeclaredIn(FIndex));
+  TPascalPreprocessor.SetDeclaredProvider(TSymbolIndex.DeclaredIn(FIndex));
   FFolders := TLspWorkspaceFolders.Create;
   FFolders.OnChanged := FoldersChanged;
   FFolders.Attach(FServices.Dispatcher);
