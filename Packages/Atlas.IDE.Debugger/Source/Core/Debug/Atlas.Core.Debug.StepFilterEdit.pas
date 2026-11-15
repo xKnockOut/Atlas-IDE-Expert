@@ -8,7 +8,6 @@
 interface
 
 uses
-  Atlas.Text.StepFilter,
   Atlas.Core.Debug.StepFilter;
 
 {$SCOPEDENUMS ON}
@@ -75,7 +74,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.StepFilter;
 
 { TAtlasStepBreakpoint }
 
