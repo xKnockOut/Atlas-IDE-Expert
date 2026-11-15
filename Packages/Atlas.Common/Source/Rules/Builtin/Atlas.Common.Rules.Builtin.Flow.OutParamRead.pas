@@ -2,7 +2,8 @@
 
 // Regel out-param-read aus Atlas.Common.Rules.Builtin.Flow (#924): Ein out-Parameter wird gelesen, bevor die
 // Routine ihn setzt; bei verwalteten Typen hat ihn der Aufrufer schon geleert. Korrektur: out -&gt; var in der
-// Implementierung und in jeder Deklaration mit gleicher Parameterliste.
+// Implementierung und in jeder Deklaration mit gleicher Parameterliste. Ruft die Routine eine Methode des Records
+// auf dem Parameter auf (Dest.Init), legt sie ihn damit an: dann schweigt die Regel für ihn.
 
 interface
 
@@ -29,6 +30,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Flow.Shared,
   Atlas.Common.Localization.Texts;
@@ -147,6 +149,8 @@ type
     function ReadsUndefined(ANode: TSyntaxNode): Boolean;
     procedure ReportRead(ANode: TSyntaxNode);
     procedure CheckName(ABlock: TSyntaxNode);
+    function IsRecordMethod(const AMember: string): Boolean;
+    function CallsRecordMethod(ABlock: TSyntaxNode): Boolean;
     function GraphComplete: Boolean;
     procedure CheckParam(AParam, ABlock: TSyntaxNode);
     procedure CheckRoutine(ARoutine: TSyntaxNode);
@@ -344,6 +348,65 @@ begin
   end;
 end;
 
+/// <summary>Ist AMember eine Methode des Records oder object-Typs FTypeName (in der Unit oder im Index)?</summary>
+function TOutParamCheck.IsRecordMethod(const AMember: string): Boolean;
+var
+  mShort: string;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mMethod, mRecord: Boolean;
+begin
+  mShort := FTypeName.Substring(FTypeName.LastIndexOf('.') + 1);
+  mMethod := False;
+  mRecord := False;
+  for mSymbol in TRuleDerived.UnitIndex(FCache, FContext).Symbols do
+  begin
+    mMethod := mMethod or (SameText(mSymbol.Name, AMember) and SameText(mSymbol.Container, mShort) and
+      (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]));
+    mRecord := mRecord or (SameText(mSymbol.Name, mShort) and (mSymbol.Container = '') and
+      (mSymbol.Kind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType]));
+  end;
+  if (FContext.Index <> nil) and not (mMethod and mRecord) then
+  begin
+    for mLocation in FContext.Index.FindSymbols(AMember) do
+    begin
+      mMethod := mMethod or (SameText(mLocation.Symbol.Container, mShort) and
+        (mLocation.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]));
+    end;
+    for mLocation in FContext.Index.FindSymbols(mShort) do
+    begin
+      mRecord := mRecord or ((mLocation.Symbol.Container = '') and
+        (mLocation.Symbol.Kind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType]));
+    end;
+  end;
+  Result := mMethod and mRecord;
+end;
+
+/// <summary>Ruft der Rumpf eine Methode des Records auf dem Parameter auf (Result.InitFast, Dest.Init(…))? Die
+/// Methode bekommt den Record als var-Self und kann ihn anlegen; das sieht der Graph nicht.</summary>
+function TOutParamCheck.CallsRecordMethod(ABlock: TSyntaxNode): Boolean;
+begin
+  if (FTypeName = '') or IsManagedParamType(FTypeName) then
+  begin
+    Exit(False);
+  end;
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := ABlock.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if IsRoutineBody(AVisited) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and
+        IsName(AVisited[0], FName) and IsRecordMethod(AVisited.Name) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
 /// <summary>Legt den Graphen beim ersten Bedarf an; False, wenn er unvollständig ist.</summary>
 function TOutParamCheck.GraphComplete: Boolean;
 begin
@@ -371,7 +434,8 @@ begin
   for mName in AParam.Name.Split([',']) do
   begin
     FName := mName.Trim;
-    if not HasOpaqueUse(ABlock, FName) and not PassesPart(ABlock, FName) and GraphComplete then
+    if not HasOpaqueUse(ABlock, FName) and not PassesPart(ABlock, FName) and not CallsRecordMethod(ABlock) and
+      GraphComplete then
     begin
       CheckName(ABlock);
     end;

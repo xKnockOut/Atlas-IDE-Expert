@@ -22,6 +22,8 @@ type
     [Test]
     procedure SecondNameIsChecked;
     [Test]
+    procedure RecordMethodCallIsSilent;
+    [Test]
     procedure FixReplacesDeclarationAndImplementation;
   end;
 
@@ -83,6 +85,25 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('out-Parameter B wird gelesen, bevor er gesetzt ist; sein Wert ist hier undefiniert.',
     mFindings[0].Message);
+end;
+
+/// <summary>Unit mit dem Typ ATypeDecl (Methode Init, Feld Anzahl) und "procedure P(out D: TDok)".</summary>
+function DokRoutine(const AKind, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TDok = ' + AKind + #10'    Anzahl: Integer;'#10 +
+    '    procedure Init;'#10'  end;'#10'procedure P(out D: TDok);'#10'implementation'#10 +
+    'procedure TDok.Init;'#10'begin'#10'  Anzahl := 0;'#10'end;'#10'procedure P(out D: TDok);'#10'begin'#10 +
+    ABody + #10'end;'#10'end.';
+end;
+
+procedure TFlowOutParamReadTests.RecordMethodCallIsSilent;
+begin
+  // Eine Methode des Records bekommt ihn als var-Self und legt ihn an (Result.InitFast, Dest.Init(…)).
+  TRuleAssert.Silent(TOutParamReadRule.Create, DokRoutine('record', '  D.Init;'#10'  D.Anzahl := D.Anzahl + 1;'));
+  TRuleAssert.Silent(TOutParamReadRule.Create, DokRoutine('object', '  D.Init;'));
+  // Bei einer Klasse liest D.Init die undefinierte Referenz; ein Feld des Records lesen bleibt gemeldet.
+  TRuleAssert.Reports(TOutParamReadRule.Create, DokRoutine('class', '  D.Init;'), 1);
+  TRuleAssert.Reports(TOutParamReadRule.Create, DokRoutine('record', '  if D.Anzahl > 0 then'#10'    Exit;'), 1);
 end;
 
 procedure TFlowOutParamReadTests.FixReplacesDeclarationAndImplementation;

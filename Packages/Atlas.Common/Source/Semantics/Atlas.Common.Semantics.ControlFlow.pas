@@ -885,9 +885,12 @@ begin
     Jump(mNode, FLoops.Last.ContinueTarget);
     Result := nil;
   end
-  else if (mName = 'abort') or (mName <> '') and Assigned(FNoReturn) and FNoReturn(mName) then
+  else if (mName <> '') and (Assigned(FNoReturn) and FNoReturn(mName) or (mName = 'abort') and not Assigned(FNoReturn))
+    then
   begin
-    // noreturn-Routinen (ab Delphi 13) kehren wie Abort nie normal zurück.
+    // noreturn-Routinen (ab Delphi 13) kehren wie Abort nie normal zurück. Mit Lookup entscheidet er auch über
+    // Abort: Eine eigene Methode Abort der Datei (TTunnelLocalThread.Abort in mORMot2) löst nicht aus.
+
     Jump(mNode, FRaiseTargets.Last);
     Result := nil;
   end

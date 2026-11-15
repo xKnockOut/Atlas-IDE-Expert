@@ -55,6 +55,8 @@ type
     FFieldsByName: TDictionary<string, TArray<Integer>>;
     /// <summary>Typen, deren Felder und Properties schon in FFieldsByName stehen.</summary>
     FFieldsIndexed: TDictionary<string, Boolean>;
+    /// <summary>uses-Listen (interface und implementation) je Datei in Kleinschreibung, '' = diese Datei.</summary>
+    FUnitUses: TDictionary<string, TArray<string>>;
     /// <summary>Methoden und Konstruktoren dieser Datei je Anfang (Zeile:Spalte): Indizes in FLocal.Symbols,
     /// aufsteigend; erst bei Bedarf angelegt. Je Methodendeklaration über alle Symbole gesucht war das quadratisch.
     /// </summary>
@@ -70,8 +72,15 @@ type
     function FieldsNamed(const AType: TSymbolLocation; const AName: string): TArray<Integer>;
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Klasse AName mit AArity Typparametern (#1326: THorseChannel und THorseChannel&lt;T&gt; sind zwei
-    /// Typen); AArity &lt; 0 = Zahl unbekannt, jede passt.</summary>
-    function FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
+    /// Typen); AArity &lt; 0 = Zahl unbekannt, jede passt.
+    /// AFromFile: Datei, deren uses gelten ('' = diese Datei); gleichnamige Klassen aus Units, die sie nicht
+    /// einbindet, treten hinter die sichtbaren zurück.</summary>
+    function FindTypeOf(const AName: string; AArity: Integer; const AFromFile: string;
+      out AType: TSymbolLocation): Boolean;
+    /// <summary>uses-Listen der Datei AFileName ('' = diese Datei).</summary>
+    function UsesOf(const AFileName: string): TArray<string>;
+    /// <summary>Liegt ALocation in AFromFile oder in einer Unit aus deren uses?</summary>
+    function Visible(const ALocation: TSymbolLocation; const AFromFile: string): Boolean;
     /// <summary>Direkter Vorfahr von AType, mit der Zahl seiner Typargumente aufgelöst; TObject ohne Angabe.
     /// AName: sein Name ohne Unit und Typargumente.</summary>
     function ParentLocation(const AType: TSymbolLocation; out AName: string; out AParent: TSymbolLocation): Boolean;
@@ -285,6 +294,7 @@ begin
   FMembers := TDictionary<string, TArray<TIndexSymbol>>.Create;
   FFieldsByName := TDictionary<string, TArray<Integer>>.Create;
   FFieldsIndexed := TDictionary<string, Boolean>.Create;
+  FUnitUses := TDictionary<string, TArray<string>>.Create;
 end;
 
 /// <summary>Schlüssel einer Stelle für FLocalMethodsAt.</summary>
@@ -296,6 +306,7 @@ end;
 destructor TAncestry.Destroy;
 begin
   FLocalMethodsAt.Free;
+  FUnitUses.Free;
   FFieldsIndexed.Free;
   FFieldsByName.Free;
   FMembers.Free;
@@ -500,7 +511,7 @@ begin
   begin
     mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
-  Result := FindTypeOf(mName, NameArity(AName), AType);
+  Result := FindTypeOf(mName, NameArity(AName), '', AType);
 end;
 
 /// <summary>Klasse AName auf oberster Ebene mit AArity Typparametern (AArity &lt; 0: jede Zahl)?</summary>
@@ -518,19 +529,78 @@ begin
     BareName(B.Ancestors[0])));
 end;
 
-function TAncestry.FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
+function TAncestry.UsesOf(const AFileName: string): TArray<string>;
+var
+  mKey, mName: string;
+  mUnit: TUnitIndex;
+  mIndex: Integer;
+begin
+  mKey := '';
+  if not SameText(AFileName, FLocal.FileName) then
+  begin
+    mKey := AnsiLowerCase(AFileName);
+  end;
+  if FUnitUses.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  mUnit := FLocal;
+  if (mKey <> '') and ((FIndex = nil) or not FIndex.FindFile(AFileName, mUnit)) then
+  begin
+    mUnit := Default(TUnitIndex);
+  end;
+  Result := nil;
+  SetLength(Result, Length(mUnit.InterfaceUses) + Length(mUnit.ImplementationUses));
+  mIndex := 0;
+  for mName in mUnit.InterfaceUses + mUnit.ImplementationUses do
+  begin
+    Result[mIndex] := AnsiLowerCase(mName);
+    Inc(mIndex);
+  end;
+  FUnitUses.Add(mKey, Result);
+end;
+
+function TAncestry.Visible(const ALocation: TSymbolLocation; const AFromFile: string): Boolean;
+var
+  mUnitName, mEntry: string;
+begin
+  if (ALocation.FileName = '') or SameText(ALocation.FileName, AFromFile) or
+    ((AFromFile = '') and SameText(ALocation.FileName, FLocal.FileName)) then
+  begin
+    Exit(True);
+  end;
+  // Unitname aus dem Dateinamen; uses-Einträge auch mit Namensraum (System.SysUtils für SysUtils.pas).
+  // Dateiname nach dem letzten \ oder / (Index unter Windows und Linux).
+  mUnitName := Copy(ALocation.FileName, LastDelimiter('\/', ALocation.FileName) + 1, MaxInt);
+  mUnitName := AnsiLowerCase(ChangeFileExt(mUnitName, ''));
+  for mEntry in UsesOf(AFromFile) do
+  begin
+    if (mEntry = mUnitName) or mEntry.EndsWith('.' + mUnitName) or mUnitName.EndsWith('.' + mEntry) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TAncestry.FindTypeOf(const AName: string; AArity: Integer; const AFromFile: string;
+  out AType: TSymbolLocation): Boolean;
 var
   mIndex: Integer;
   mLocation: TSymbolLocation;
+  mVisible, mFound, mFoundVisible, mAmbiguous: Boolean;
 begin
   // Über den Index: for-in kopierte jedes Symbol der Datei, auch die vielen, die nicht passen.
-  for mIndex := 0 to High(FLocal.Symbols) do
+  if (AFromFile = '') or SameText(AFromFile, FLocal.FileName) then
   begin
-    if IsClassNamed(FLocal.Symbols[mIndex], AName, AArity) then
+    for mIndex := 0 to High(FLocal.Symbols) do
     begin
-      AType := Default(TSymbolLocation);
-      AType.Symbol := FLocal.Symbols[mIndex];
-      Exit(True);
+      if IsClassNamed(FLocal.Symbols[mIndex], AName, AArity) then
+      begin
+        AType := Default(TSymbolLocation);
+        AType.Symbol := FLocal.Symbols[mIndex];
+        Exit(True);
+      end;
     end;
   end;
   Result := False;
@@ -538,23 +608,32 @@ begin
   begin
     Exit;
   end;
+  // Sichtbar heißt: in AFromFile oder einer Unit aus deren uses. Eine gleichnamige Klasse einer anderen Unit
+  // des Projekts (TSQLRestServer in mORMot und SynCrossPlatformREST) verdeckt die eingebundene nicht.
+  mFound := False;
+  mFoundVisible := False;
+  mAmbiguous := False;
   for mLocation in FIndex.FindSymbols(AName) do
   begin
     if not IsClassNamed(mLocation.Symbol, AName, AArity) or not Reachable(mLocation) then
     begin
       Continue;
     end;
-    if not Result then
+    mVisible := Visible(mLocation, AFromFile);
+    if not mFound or (mVisible and not mFoundVisible) then
     begin
       AType := mLocation;
-      Result := True;
+      mFound := True;
+      mFoundVisible := mVisible;
+      mAmbiguous := False;
     end
-    // Mehrere gleichnamige Klassen mit verschiedenen Vorfahren: keine Aussage.
-    else if OtherAncestors(mLocation.Symbol, AType.Symbol) then
+    // Mehrere gleich sichtbare Klassen mit verschiedenen Vorfahren: keine Aussage.
+    else if (mVisible = mFoundVisible) and OtherAncestors(mLocation.Symbol, AType.Symbol) then
     begin
-      Exit(False);
+      mAmbiguous := True;
     end;
   end;
+  Result := mFound and not mAmbiguous;
 end;
 
 function TAncestry.ParentLocation(const AType: TSymbolLocation; out AName: string;
@@ -577,7 +656,7 @@ begin
       mArity := GenericArity(AType.Symbol.AncestorArgs[0]);
     end;
   end;
-  Result := FindTypeOf(AName, mArity, AParent);
+  Result := FindTypeOf(AName, mArity, AType.FileName, AParent);
 end;
 
 function TAncestry.ParentOf(const ATypeName: string): string;
