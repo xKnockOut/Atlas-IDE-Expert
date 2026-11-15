@@ -129,6 +129,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
@@ -1203,7 +1204,8 @@ end;
 /// <summary>Hat der Parameter einen Standardwert? Kinder sind Typ und Wert; ohne Typ gibt es keinen Wert.</summary>
 function HasDefault(AParameter: TSyntaxNode): Boolean;
 begin
-  Result := AParameter.ChildCount >= 2;
+  // Nicht über die Zahl der Kinder: Attribute wie in "const [ref] A: TPunkt" sind auch Kinder des Parameters.
+  Result := TRoutineSignatures.ParameterDefault(AParameter) <> nil;
 end;
 
 procedure TDefaultParameterInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1224,8 +1226,11 @@ var
 
   /// <summary>Text des Parameters ab dem Typ ("Integer = 0") und der Modifizierer davor.</summary>
   function TypeAndDefault(AParameter: TSyntaxNode): string;
+  var
+    mType: TSyntaxNode;
   begin
-    Result := Copy(AContext.Text, AParameter[0].StartOffset + 1, AParameter.EndOffset - AParameter[0].StartOffset);
+    mType := TRoutineSignatures.ParameterType(AParameter);
+    Result := Copy(AContext.Text, mType.StartOffset + 1, AParameter.EndOffset - mType.StartOffset);
   end;
 
   function ModifierText(AParameter: TSyntaxNode): string;
@@ -1511,6 +1516,21 @@ var
     Result := StartsText('set of ', mBody) and LargeBase(Copy(mBody, Length('set of ') + 1, MaxInt));
   end;
 
+  /// <summary>Attribute des Parameters mit Leerzeichen dahinter ("[ref] "); '' ohne.</summary>
+  function AttributePrefix(AParameter: TSyntaxNode): string;
+  var
+    mIndex: Integer;
+  begin
+    Result := '';
+    for mIndex := 0 to AParameter.ChildCount - 1 do
+    begin
+      if AParameter[mIndex].Kind = TSyntaxKind.Attribute then
+      begin
+        Result := Result + NodeText(AParameter[mIndex]) + ' ';
+      end;
+    end;
+  end;
+
   /// <summary>A, B: Integer = 0 wird A: Integer = 0; B: Integer = 0.</summary>
   function SeparateDeclarations(AParameter: TSyntaxNode; const ANames: TArray<string>): string;
   var
@@ -1523,7 +1543,8 @@ var
       begin
         Result := Result + '; ';
       end;
-      Result := Result + ModifierText(AParameter) + Trim(mName) + ': ' + TypeAndDefault(AParameter);
+      Result := Result + ModifierText(AParameter) + AttributePrefix(AParameter) + Trim(mName) + ': ' +
+        TypeAndDefault(AParameter);
     end;
   end;
 
@@ -1531,19 +1552,21 @@ var
   procedure CheckDefaultType(AParameter: TSyntaxNode);
   var
     mType: TResolvedSymbol;
+    mTypeNode: TSyntaxNode;
   begin
-    if not ParameterType(AParameter[0], mType) then
+    mTypeNode := TRoutineSignatures.ParameterType(AParameter);
+    if (mTypeNode = nil) or not ParameterType(mTypeNode, mType) then
     begin
       Exit;
     end;
     if NoDefaultType(mType) then
     begin
-      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([AParameter[0].Name]),
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.NoDefaultType].Fmt([mTypeNode.Name]),
         TRuleConfidence.High);
     end
     else if LargeSetType(mType) then
     begin
-      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SetDefault].Fmt([AParameter[0].Name]),
+      AReport.Add(NodeRange(AParameter), cTexts[TConstantsText.SetDefault].Fmt([mTypeNode.Name]),
         TRuleConfidence.Medium);
     end;
   end;
