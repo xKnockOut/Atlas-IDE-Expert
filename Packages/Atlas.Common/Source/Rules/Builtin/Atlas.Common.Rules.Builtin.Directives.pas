@@ -244,6 +244,20 @@ begin
   Result := Copy(AText, 1, mIndex - 1);
 end;
 
+/// <summary>Bezeichnerzeichen am Anfang von AText: dcc liest das Symbol einer Direktive nur so weit und übergeht den
+/// Rest ({$DEFINE DELPHI10.2_TOKYO_UP} definiert DELPHI10).</summary>
+function LeadingIdentifier(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
+    Inc(mIndex);
+  end;
+  Result := Copy(AText, 1, mIndex - 1);
+end;
+
 /// <summary>Kommt ein Bezeichner vor, der mit FPC beginnt (FPC, FPC_FULLVERSION)?</summary>
 function MentionsFpc(const AText: string): Boolean;
 var
@@ -407,7 +421,7 @@ var
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.NoSymbol].Fmt([AName]), TRuleConfidence.High);
     end
-    else if not IsValidIdent(mSymbol) then
+    else if not IsValidIdent(LeadingIdentifier(mSymbol)) then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadSymbol].Fmt([mSymbol, AName]),
         TRuleConfidence.High);

@@ -21,6 +21,8 @@ type
     [Test]
     procedure AccessorPrefersNestedType;
     [Test]
+    procedure AccessorInGenericTypeBesideNonGeneric;
+    [Test]
     procedure AccessorValidFormsAreSilent;
     [Test]
     procedure AccessorMissingFixes;
@@ -147,6 +149,20 @@ begin
   Assert.IsTrue(Pos('procedure SetName(const Value: string);', mFixed) > 0, mFixed);
   Assert.IsTrue(Pos('procedure TKunde.SetName(const Value: string);', mFixed) > 0, mFixed);
   Silent(mFixed);
+end;
+
+procedure TPropertyRulesTests.AccessorInGenericTypeBesideNonGeneric;
+begin
+  // TListe und TListe<T> in einer Unit: Die Property gehört zu TListe<T>, die Zugriffsmethoden stehen in deren
+  // Vorfahr (PascalCoin, AbstractMem: TAbstractMemTList<T>).
+  Silent('unit Listen;'#10'interface'#10'type'#10'  TListe = class'#10'  public'#10'    procedure Sperren;'#10 +
+    '  end;'#10'  TBasis<T> = class'#10'  protected'#10'    function GetItem(AIndex: Integer): T; virtual;'#10 +
+    '    procedure SetItem(AIndex: Integer; const AItem: T); virtual;'#10'  end;'#10 +
+    '  TListe<T> = class(TBasis<T>)'#10'  public'#10 +
+    '    property Item[AIndex: Integer]: T read GetItem write SetItem;'#10'  end;'#10'implementation'#10 +
+    'procedure TListe.Sperren;'#10'begin'#10'end;'#10'function TBasis<T>.GetItem(AIndex: Integer): T;'#10 +
+    'begin'#10'  Result := Default(T);'#10'end;'#10'procedure TBasis<T>.SetItem(AIndex: Integer; const AItem: T);'#10 +
+    'begin'#10'end;'#10'end.');
 end;
 
 procedure TPropertyRulesTests.AccessorPrefersNestedType;

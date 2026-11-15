@@ -1256,6 +1256,8 @@ type
     FReport: IRuleReport;
     // Routinen (Kurzname klein), deren Rumpf auf jedem Weg auslöst bzw. das Programm beendet.
     FRaising: TDictionary<string, Boolean>;
+    // Namen der Typen der Datei: X.Name(…) zählt nur mit Self oder einem dieser Typen als Empfänger.
+    FTypes: TArray<string>;
     FAllowFirstElement: Boolean;
     // Nur Ausnahmen und Programmende zählen (Rumpf einer Routine: Exit verlässt nur sie).
     FRaisingOnly: Boolean;
@@ -1273,6 +1275,7 @@ type
     function MisplacedJump(const AStatements: TArray<TSyntaxNode>; AJumpAt: Integer): Boolean;
     procedure CheckLoop(ALoop: TSyntaxNode);
     procedure CollectAlwaysRaising;
+    function AllNamedRaise(const ARoutines: TArray<TSyntaxNode>; const AName: string): Boolean;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -1472,6 +1475,34 @@ begin
   end;
 end;
 
+/// <summary>Namen aller Typen, die die Datei deklariert.</summary>
+function TypeNames(ARoot: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  Result := nil;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.Name <> '') then
+      begin
+        Result := Result + [mNode.Name];
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
 /// <summary>Schlüsselwort der Schleife für den Meldungsbereich.</summary>
 function KeywordRange(ALoop: TSyntaxNode): TTextRange;
 var
@@ -1557,7 +1588,7 @@ begin
   begin
     Exit;
   end;
-  mName := CalledName(ANode[0]);
+  mName := OwnCallName(ANode[0], FTypes);
   mJump := JumpName(ANode[0]);
   if MatchText(mJump, cRaisingCalls) or (mName <> '') and FRaising.ContainsKey(LowerCase(mName)) or
     not FRaisingOnly and MatchText(mJump, ['Exit', 'Break']) then
@@ -1805,26 +1836,52 @@ end;
 procedure TLoopOnceCheck.CollectAlwaysRaising;
 var
   mRoutines: TArray<TSyntaxNode>;
-  mRoutine, mBlock: TSyntaxNode;
-  mChanged, mMixed: Boolean;
+  mRoutine: TSyntaxNode;
+  mName: string;
+  mChanged: Boolean;
 begin
   mRoutines := RoutineDecls(FContext.Tree.Root);
+  FTypes := TypeNames(FContext.Tree.Root);
   FRaisingOnly := True;
   // Bis nichts mehr dazukommt: A ruft B, B löst immer aus.
   repeat
     mChanged := False;
     for mRoutine in mRoutines do
     begin
-      mBlock := mRoutine.FindChild(TSyntaxKind.Block);
-      if (mBlock <> nil) and not FRaising.ContainsKey(LowerCase(ShortName(mRoutine.Name))) and
-        (Leaves(mBlock, mMixed) <> '') then
+      mName := LowerCase(ShortName(mRoutine.Name));
+      if (mRoutine.FindChild(TSyntaxKind.Block) <> nil) and not FRaising.ContainsKey(mName) and
+        AllNamedRaise(mRoutines, mName) then
       begin
-        FRaising.Add(LowerCase(ShortName(mRoutine.Name)), True);
+        FRaising.Add(mName, True);
         mChanged := True;
       end;
     end;
   until not mChanged;
   FRaisingOnly := False;
+end;
+
+/// <summary>Löst jede Routine der Datei mit dem Kurznamen AName (klein) mit Rumpf auf jedem Weg aus? Der Name
+/// steht für alle gleichnamigen Methoden; ein Exit im Rumpf kehrt normal zurück (repeat … if … then Exit; until …;
+/// raise …).</summary>
+function TLoopOnceCheck.AllNamedRaise(const ARoutines: TArray<TSyntaxNode>; const AName: string): Boolean;
+var
+  mRoutine, mBlock: TSyntaxNode;
+  mMixed: Boolean;
+begin
+  Result := False;
+  for mRoutine in ARoutines do
+  begin
+    mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+    if (mBlock = nil) or not SameText(ShortName(mRoutine.Name), AName) then
+    begin
+      Continue;
+    end;
+    if HasExitCall(mBlock) or (Leaves(mBlock, mMixed) = '') then
+    begin
+      Exit(False);
+    end;
+    Result := True;
+  end;
 end;
 
 procedure TLoopOnceCheck.Run;

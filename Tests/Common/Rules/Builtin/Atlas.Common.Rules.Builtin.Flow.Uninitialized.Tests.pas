@@ -19,12 +19,17 @@ type
     procedure GuardedByFlagIsSilent;
     [Test]
     procedure ManagedTypeIsSilent;
+    [Test]
+    procedure RecordMethodFromOtherUnitIsSilent;
   end;
 
 implementation
 
 uses
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Flow.Uninitialized,
   Atlas.Tests.RuleAssert;
@@ -65,6 +70,29 @@ end;
 procedure TFlowUninitializedTests.ManagedTypeIsSilent;
 begin
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  S, T: string;', '  T := S;'));
+end;
+
+procedure TFlowUninitializedTests.RecordMethodFromOtherUnitIsSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'uses Fremd;'#10'implementation'#10'procedure P(B: Boolean);'#10'var'#10 +
+    '  G: TAufraeumer;'#10'  O: TObject;'#10'begin'#10'  if B then'#10'    O := G.Merke(TObject.Create);'#10 +
+    'end;'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Die Methode bekommt den Record als var-Self, auch wenn er in einer anderen Unit steht (PascalCoin:
+  // GC.AddObject mit TDisposables aus UMemory).
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TAufraeumer = record'#10 +
+    '  private'#10'    FZeiger: array of Pointer;'#10'  public'#10 +
+    '    function Merke(const AObjekt: TObject): TObject;'#10'  end;'#10'implementation'#10 +
+    'function TAufraeumer.Merke(const AObjekt: TObject): TObject;'#10'begin'#10'  Result := AObjekt;'#10'end;'#10 +
+    'end.', 'C:\P\Fremd.pas', nil));
+  mFindings := TRuleAssert.IndexFindings(TPossiblyUninitializedRule.Create, cSource, mIndex, '', 'U.pas');
+  Assert.AreEqual(0, Integer(Length(mFindings)));
+  // Ohne Index bleibt der Befund (Record unbekannt).
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, cSource);
 end;
 
 initialization

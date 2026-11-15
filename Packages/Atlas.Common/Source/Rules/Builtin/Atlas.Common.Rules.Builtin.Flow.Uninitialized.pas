@@ -24,6 +24,7 @@ uses
   System.StrUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Rules.Derived,
@@ -400,6 +401,39 @@ begin
   end;
 end;
 
+/// <summary>Methoden eines Record-Typs ATypeName aus einer anderen Unit (Index); nil ohne Index oder für andere
+/// Typen. Mehrere gleichnamige Records liefern alle ihre Methoden.</summary>
+function IndexRecordMethods(const AIndex: ISymbolIndex; const ATypeName: string): TArray<string>;
+var
+  mShort: string;
+  mLocation: TSymbolLocation;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  Result := nil;
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  mShort := Copy(ATypeName, LastDelimiter('.', ATypeName) + 1, MaxInt);
+  for mLocation in AIndex.FindSymbols(mShort) do
+  begin
+    if (mLocation.Symbol.Kind <> TIndexSymbolKind.RecordType) or (mLocation.Symbol.Container <> '') or
+      not AIndex.FindFile(mLocation.FileName, mUnit) then
+    begin
+      Continue;
+    end;
+    for mSymbol in mUnit.Symbols do
+    begin
+      if (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+        SameText(mSymbol.Container, mShort) then
+      begin
+        Result := Result + [mSymbol.Name];
+      end;
+    end;
+  end;
+end;
+
 /// <summary>Ruft der Rumpf eine Methode des Records auf der Variablen AName auf (Scanner.Init(…))? Die Methode
 /// bekommt den Record als var-Self und legt ihn an.</summary>
 function CallsRecordMethod(ABlock: TSyntaxNode; const AName: string; const AMethods: TArray<string>): Boolean;
@@ -501,6 +535,11 @@ begin
   if not FRecordMethods.TryGetValue(mKey, Result) then
   begin
     Result := RecordMethods(FContext.Tree.Root, ATypeName);
+    // Record aus einer anderen Unit (TDisposables aus UMemory): Methoden aus dem Index.
+    if Result = nil then
+    begin
+      Result := IndexRecordMethods(FContext.Index, ATypeName);
+    end;
     FRecordMethods.Add(mKey, Result);
   end;
 end;

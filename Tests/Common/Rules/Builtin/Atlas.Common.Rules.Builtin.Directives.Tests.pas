@@ -223,6 +223,11 @@ begin
   Assert.AreEqual('{$UNDEF} ohne Symbol (wie E2173).', OnlyMessage(Dienst('{$UNDEF }'#10, '')));
   TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$DEFINE Atlas_1}'#10 +
     '{$IFNDEF Atlas_1}'#10'{$ENDIF}'#10, ''));
+  // dcc liest das Symbol bis zum ersten Zeichen, das nicht in einen Bezeichner gehört (HashLib4Pascal).
+  TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$DEFINE DELPHI10.2_TOKYO_UP}'#10 +
+    '{$IFDEF DELPHI10.2_TOKYO_UP}'#10'{$ENDIF}'#10, ''));
+  Assert.AreEqual('.X ist kein gültiges Symbol für {$IFDEF} (wie E2173).',
+    OnlyMessage(Dienst('{$IFDEF .X}'#10'{$ENDIF}'#10, '')));
 end;
 
 procedure TDirectiveRulesTests.UnbalancedUnknownDirectives;
