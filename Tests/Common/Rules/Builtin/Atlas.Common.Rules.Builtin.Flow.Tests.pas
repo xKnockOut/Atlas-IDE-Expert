@@ -44,6 +44,10 @@ type
     procedure NoReturnCallEndsPath;
     [Test]
     procedure FunctionNameAssignmentIsSilent;
+    /// <summary>R: T absolute Result setzt das Ergebnis über R (PasVulkan.Audio FastExp2); ohne absolute bleibt der
+    /// Befund.</summary>
+    [Test]
+    procedure AbsoluteAliasOfResultIsSilent;
     [Test]
     procedure ProcedureIsSilent;
     [Test]
@@ -242,6 +246,16 @@ end;
 procedure TFlowRulesTests.FunctionNameAssignmentIsSilent;
 begin
   TRuleAssert.Silent(TResultNotSetRule.Create, Routine('  F := 1;'));
+end;
+
+procedure TFlowRulesTests.AbsoluteAliasOfResultIsSilent;
+begin
+  TRuleAssert.Silent(TResultNotSetRule.Create, Routine('  R := 1;', 'function F: Single;',
+    'var'#10'  R: Cardinal absolute Result;'#10));
+  TRuleAssert.Silent(TResultNotSetRule.Create, Routine('  R := 1;', 'function F: Single;',
+    'var'#10'  R: Cardinal absolute F;'#10));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TResultNotSetRule.Create, Routine('  R := 1;',
+    'function F: Single;', 'var'#10'  R: Cardinal;'#10)))));
 end;
 
 procedure TFlowRulesTests.ProcedureIsSilent;

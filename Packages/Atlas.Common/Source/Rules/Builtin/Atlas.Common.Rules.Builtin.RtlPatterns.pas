@@ -74,6 +74,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Localization.Texts;
 
@@ -954,45 +955,98 @@ begin
   Result := Result and ((AInner = ASpan.First) or not ATokens[PreviousCode(ATokens, AInner)].IsSymbol('.'));
 end;
 
+type
+  /// <summary>Sucht in den Zweigen eines IfThen nach Seiteneffekten; Typumwandlungen (TFlags(0)) sind keine
+  /// Aufrufe.</summary>
+  TIfThenScan = class
+  strict private
+    FContext: TRuleContext;
+    FTokens: TTokens;
+    FCache: IRuleDerivedCache;
+    FResolver: TNameResolver;
+    /// <summary>Ist der Name am Token AName ein Typ (Umwandlung statt Aufruf)? Resolver erst bei Bedarf.</summary>
+    function IsTypeCast(AName: Integer): Boolean;
+    procedure ScanBranch(const ASpan: TSpan; const AChecked: TArray<string>; var AFound: Boolean;
+      var AConfidence: TRuleConfidence);
+  public
+    constructor Create(const AContext: TRuleContext);
+    /// <summary>Hat einer der beiden Zweige einen Seiteneffekt? AConfidence: hoch bei Zugriff auf geprüfte Namen.
+    /// </summary>
+    function BranchEffects(const AArgs: TArray<TSpan>; out AConfidence: TRuleConfidence): Boolean;
+  end;
+
+constructor TIfThenScan.Create(const AContext: TRuleContext);
+begin
+  inherited Create;
+  FContext := AContext;
+  FTokens := AContext.Tree.Tokens;
+  FResolver := nil;
+end;
+
+function TIfThenScan.IsTypeCast(AName: Integer): Boolean;
+var
+  mResolved: TResolvedSymbol;
+  mDot: Integer;
+begin
+  if TResolverText.IsBuiltinTypeName(FTokens[AName].Text) then
+  begin
+    Exit(True);
+  end;
+  // X.Name(…) ist ein Methodenaufruf.
+  mDot := PreviousCode(FTokens, AName);
+  if (mDot >= 0) and FTokens[mDot].IsSymbol('.') then
+  begin
+    Exit(False);
+  end;
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs; gehört dem Cache, den der Scan bis zum Ende hält.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+  end;
+  mResolved := FResolver.ResolveChain(FContext.Tree, ResolverFileName(FContext), [FTokens[AName].Text],
+    FTokens[AName].Offset);
+  Result := mResolved.Found and mResolved.IsType;
+end;
+
 /// <summary>Durchsucht einen Zweig nach Aufrufen mit Seiteneffekt (AFound) und Zugriffen auf geprüfte Namen
 /// (dann AConfidence hoch).</summary>
-procedure ScanBranch(const ATokens: TTokens; const ASpan: TSpan; const AChecked: TArray<string>; var AFound: Boolean;
+procedure TIfThenScan.ScanBranch(const ASpan: TSpan; const AChecked: TArray<string>; var AFound: Boolean;
   var AConfidence: TRuleConfidence);
 var
   mInner, mNext: Integer;
 begin
   for mInner := ASpan.First to ASpan.Last do
   begin
-    mNext := NextCode(ATokens, mInner + 1);
-    if ATokens[mInner].Kind <> TPascalTokenKind.Identifier then
+    mNext := NextCode(FTokens, mInner + 1);
+    if FTokens[mInner].Kind <> TPascalTokenKind.Identifier then
     begin
       Continue;
     end;
-    if IsCheckedAccess(ATokens, mInner, mNext, ASpan, AChecked) then
+    if IsCheckedAccess(FTokens, mInner, mNext, ASpan, AChecked) then
     begin
       AFound := True;
       AConfidence := TRuleConfidence.High;
     end
-    else if (mNext <= ASpan.Last) and ATokens[mNext].IsSymbol('(') and not PureCall(ATokens, mInner) then
+    else if (mNext <= ASpan.Last) and FTokens[mNext].IsSymbol('(') and not PureCall(FTokens, mInner) and
+      not IsTypeCast(mInner) then
     begin
       AFound := True;
     end;
   end;
 end;
 
-/// <summary>Hat einer der beiden Zweige einen Seiteneffekt? AConfidence: hoch bei Zugriff auf geprüfte Namen.
-/// </summary>
-function BranchEffects(const ATokens: TTokens; const AArgs: TArray<TSpan>; out AConfidence: TRuleConfidence): Boolean;
+function TIfThenScan.BranchEffects(const AArgs: TArray<TSpan>; out AConfidence: TRuleConfidence): Boolean;
 var
   mChecked: TArray<string>;
   mArg: Integer;
 begin
-  mChecked := CheckedNames(ATokens, AArgs[0].First, AArgs[0].Last);
+  mChecked := CheckedNames(FTokens, AArgs[0].First, AArgs[0].Last);
   Result := False;
   AConfidence := TRuleConfidence.Medium;
   for mArg := 1 to 2 do
   begin
-    ScanBranch(ATokens, AArgs[mArg], mChecked, Result, AConfidence);
+    ScanBranch(AArgs[mArg], mChecked, Result, AConfidence);
   end;
 end;
 
@@ -1035,24 +1089,30 @@ var
   mArgs: TArray<TSpan>;
   mIndex, mOpen, mClose: Integer;
   mConfidence: TRuleConfidence;
+  mScan: TIfThenScan;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  for mIndex := 0 to High(mTokens) do
-  begin
-    if not CallAt(mTokens, mIndex, 'IfThen', mOpen, mClose) then
+  mScan := TIfThenScan.Create(AContext);
+  try
+    for mIndex := 0 to High(mTokens) do
     begin
-      Continue;
+      if not CallAt(mTokens, mIndex, 'IfThen', mOpen, mClose) then
+      begin
+        Continue;
+      end;
+      mArgs := Arguments(mTokens, mOpen, mClose);
+      if (Length(mArgs) = 3) and mScan.BranchEffects(mArgs, mConfidence) then
+      begin
+        AReport.Add(RangeOf(mTokens, mIndex, mClose), cTexts[TRtlPatternsText.IfThen].Text, mConfidence,
+          IfStatementFix(AContext.Text, mTokens, mIndex, mClose, mArgs));
+      end;
     end;
-    mArgs := Arguments(mTokens, mOpen, mClose);
-    if (Length(mArgs) = 3) and BranchEffects(mTokens, mArgs, mConfidence) then
-    begin
-      AReport.Add(RangeOf(mTokens, mIndex, mClose), cTexts[TRtlPatternsText.IfThen].Text, mConfidence,
-        IfStatementFix(AContext.Text, mTokens, mIndex, mClose, mArgs));
-    end;
+  finally
+    mScan.Free;
   end;
 end;
 

@@ -25,6 +25,10 @@ type
     procedure ReassignedBeforeExitThroughFinallyIsSilent;
     [Test]
     procedure IsCheckCountsAsNilCheck;
+    /// <summary>Nach New(X) bzw. X := T.Create auf jedem Weg ist X nie nil; die Abfrage im finally ist Vorsicht
+    /// (PasVulkan.FileFormats.FBX). Fehlt das Anlegen auf einem Weg, bleibt der Befund.</summary>
+    [Test]
+    procedure CreatedBeforeAccessIsSilent;
   end;
 
 implementation
@@ -91,6 +95,16 @@ procedure TFlowDerefBeforeNilCheckTests.IsCheckCountsAsNilCheck;
 begin
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine('  if L is TStringList then'#10'    L.Clear;'#10 +
     '  if L <> nil then'#10'    L.Sort;'));
+end;
+
+procedure TFlowDerefBeforeNilCheckTests.CreatedBeforeAccessIsSilent;
+begin
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine('  L := TStringList.Create;'#10'  try'#10 +
+    '    L.Clear;'#10'  finally'#10'    if L <> nil then'#10'      L.Free;'#10'  end;'#10'  New(L);'#10 +
+    '  try'#10'    FillChar(L^, 1, 0);'#10'  finally'#10'    if Assigned(L) then'#10'      Dispose(L);'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine(
+    '  if Pos(''a'', ''b'') > 0 then'#10'    L := TStringList.Create'#10'  else'#10'    L := Neu;'#10'  L.Clear;'#10 +
+    '  if L <> nil then'#10'    L.Sort;')))));
 end;
 
 initialization

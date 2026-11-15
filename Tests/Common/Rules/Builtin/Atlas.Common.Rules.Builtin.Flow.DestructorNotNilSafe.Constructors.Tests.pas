@@ -133,10 +133,11 @@ var
 begin
   mRisky := Scanned('  try'#10'    FStrom := TFileStream.Create(Datei, fmOpenRead);'#10 +
     '    FZeilen := TStringList.Create;'#10'  finally'#10'    Melde;'#10'  end;', mImplications);
-  Assert.AreEqual(1, Integer(Length(mRisky)));
-  Assert.AreEqual('FZeilen', mRisky[0].Field);
+  // Beide Felder gelten wie einfache Zuweisungen: gefährdet nur, wenn der erste werfende Aufruf wirft.
+  Assert.AreEqual(2, Integer(Length(mRisky)));
   Assert.IsFalse(mRisky[0].Conditional);
-  Assert.AreEqual('TFileStream.Create', mRisky[0].Raiser);
+  Assert.IsFalse(mRisky[1].Conditional);
+  Assert.AreEqual('TFileStream.Create', mRisky[1].Raiser);
   mRisky := Scanned('  try'#10'    FZeilen := TStringList.Create;'#10'  except'#10'    Melde;'#10'  end;',
     mImplications);
   Assert.AreEqual(1, Integer(Length(mRisky)));
