@@ -1,0 +1,3 @@
+### Behoben
+- Prüflauf hing auf großen Header-Übersetzungen (DirectX-, Vulkan-Header): `type-too-large` und die Erkennung verwalteter Typen rechneten verschachtelte Records bis zur Tiefengrenze exponentiell oft neu, `dictionary-get-without-check` durchsuchte je Indexzugriff den ganzen Baum, `magic-number` plante die Korrektur je Literal über die ganze Datei, „Felder im Destruktor freigeben“ suchte je Feld alle Typdeklarationen. Größen und Antworten je Typname werden jetzt gemerkt, Typtabellen einmal je Datei gebaut.
+- `constructor-on-instance` meldete den Konstruktor eines Records oder object-Typs auf der Variablen (`Desc.Create(…)`), auch über einen Alias auf einen Record einer anderen Unit; das initialisiert die Variable an Ort und Stelle.

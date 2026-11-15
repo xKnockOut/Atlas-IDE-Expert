@@ -666,6 +666,7 @@ end;
 procedure TDictionaryGetWithoutCheckRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTypes: TDeclaredTypes;
+  mAliases: TDictionary<string, string>;
   mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
@@ -695,32 +696,30 @@ var
     end;
   end;
 
-  // Typtext einer Typdeklaration der Datei (TPreise = TDictionary<string, Double>), sonst ''.
-  function AliasOf(ANode: TSyntaxNode; const AName: string): string;
+  // Tabelle Typname -> Typtext der Typdeklarationen der Datei (TPreise = TDictionary<string, Double>), einmal je
+  // Datei: Je Indexzugriff den ganzen Baum zu durchsuchen war quadratisch (4-MB-Header hingen). Vorordnung wie
+  // die frühere Suche: Es zählt der erste gleichnamige Typ mit Verweis, in Typdeklarationen wird nicht abgestiegen.
+  procedure CollectAliases;
   var
     mPending: TStack<TSyntaxNode>;
     mNode, mReference: TSyntaxNode;
     mIndex: Integer;
+    mName: string;
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Vorordnung wie die frühere Rekursion: der erste passende Typ
-    // mit Verweis zählt.
-    Result := '';
+    mAliases := TDictionary<string, string>.Create;
     mPending := TStack<TSyntaxNode>.Create;
     try
-      mPending.Push(ANode);
+      mPending.Push(AContext.Tree.Root);
       while mPending.Count > 0 do
       begin
         mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, AName) then
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
           mReference := mNode.FindChild(TSyntaxKind.TypeReference);
-          if mReference <> nil then
+          mName := LowerCase(mNode.Name);
+          if (mReference <> nil) and not mAliases.ContainsKey(mName) and (Text(mReference) <> '') then
           begin
-            Result := Text(mReference);
-          end;
-          if Result <> '' then
-          begin
-            Exit;
+            mAliases.Add(mName, Text(mReference));
           end;
           Continue;
         end;
@@ -731,6 +730,19 @@ var
       end;
     finally
       mPending.Free;
+    end;
+  end;
+
+  // Typtext einer Typdeklaration der Datei (TPreise = TDictionary<string, Double>), sonst ''.
+  function AliasOf(const AName: string): string;
+  begin
+    if mAliases = nil then
+    begin
+      CollectAliases;
+    end;
+    if not mAliases.TryGetValue(LowerCase(AName), Result) then
+    begin
+      Result := '';
     end;
   end;
 
@@ -749,7 +761,7 @@ var
     mTypeName := mTypes.DeclaredType(mName, ADict.StartPos);
     if (mTypeName <> '') and (Pos('<', mTypeName) = 0) then
     begin
-      mTypeName := AliasOf(AContext.Tree.Root, mTypeName);
+      mTypeName := AliasOf(mTypeName);
     end;
     if IsDictionaryType(mTypeName, mOpen) then
     begin
@@ -1162,9 +1174,11 @@ begin
   end;
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mAliases := nil;
   try
     Visit(AContext.Tree.Root);
   finally
+    mAliases.Free;
     mTypes.Free;
   end;
 end;

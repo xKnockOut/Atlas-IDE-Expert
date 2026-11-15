@@ -85,6 +85,10 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Rules.ManagedTypes,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.TypeKinds,
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory,
@@ -561,10 +565,30 @@ begin
   Result := Result and not StartsText('class', ATypeName) and (Pos('<', ATypeName) = 0);
 end;
 
+/// <summary>Ist ATypeName an AOffset ein Record oder ein object-Typ (auch über einen Alias aus einer anderen Unit)?
+/// Deren Konstruktor auf der Variablen (Desc.Create(…)) initialisiert sie an Ort und Stelle.</summary>
+function IsValueType(const AContext: TRuleContext; var ACache: IRuleDerivedCache; var AResolver: TNameResolver;
+  const ATypeName: string; AOffset: Integer): Boolean;
+var
+  mResolved, mType: TResolvedSymbol;
+begin
+  if AResolver = nil then
+  begin
+    // Resolver des Laufs; gehört dem Cache, den der Aufrufer bis zum Ende hält.
+    ACache := TRuleDerived.Open(AContext);
+    AResolver := TRuleDerived.Resolver(ACache, AContext);
+  end;
+  mResolved := AResolver.ResolveChain(AContext.Tree, ResolverFileName(AContext), ATypeName.Split(['.']), AOffset);
+  Result := mResolved.Found and mResolved.IsType and AResolver.TypeOf(mResolved, mType) and
+    (TResolvedTypeKinds.OfType(mType) in [TResolvedTypeKind.Record_, TResolvedTypeKind.Object_]);
+end;
+
 procedure TConstructorOnInstanceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mTokens: TTokens;
   mTypes: TDeclaredTypes;
+  mCache: IRuleDerivedCache;
+  mResolver: TNameResolver;
   mIndex, mCtor: Integer;
   mTypeName: string;
 begin
@@ -574,6 +598,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mResolver := nil;
   try
     for mIndex := 0 to High(mTokens) do
     begin
@@ -582,7 +607,8 @@ begin
         Continue;
       end;
       mTypeName := DeclaredTypeAt(mTypes, mTokens, mIndex);
-      if IsInstanceType(mTypeName) and InStatements(AContext.Tree, mTokens[mIndex].StartPos) then
+      if IsInstanceType(mTypeName) and InStatements(AContext.Tree, mTokens[mIndex].StartPos) and
+        not IsValueType(AContext, mCache, mResolver, mTypeName, mTokens[mIndex].Offset) then
       begin
         AReport.Add(RangeOf(mTokens, mIndex, mCtor),
           cTexts[TRtlTypePatternsText.CtorOnInstance].Fmt([mTokens[mIndex].Text, mTypeName]), TRuleConfidence.High,

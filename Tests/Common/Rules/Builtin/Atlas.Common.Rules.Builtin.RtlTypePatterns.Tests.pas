@@ -34,6 +34,8 @@ type
     [Test]
     procedure ConstructorOnInstance;
     [Test]
+    procedure ConstructorOnRecordVariable;
+    [Test]
     procedure FormatWithoutSettings;
     [Test]
     procedure FormatWithoutSettingsOwnRoutineInOtherUnit;
@@ -95,6 +97,8 @@ type
     procedure DictionaryGetVariants;
     [Test]
     procedure DictionaryGetSilentCases;
+    [Test]
+    procedure DictionaryGetAliasInLargeUnit;
     [Test]
     procedure DelimitedTextIssueExample;
     [Test]
@@ -300,6 +304,31 @@ begin
   TRuleAssert.Silent(TConstructorOnInstanceRule.Create, InRoutine('  List: TStringList;'#10 +
     '  Kind: TComponentClass;'#10'  C: TComponent;', '  List := TStringList.Create;'#10 +
     '  C := Kind.Create(nil);'#10'  inherited Create;'));
+end;
+
+procedure TRtlTypePatternRulesTests.ConstructorOnRecordVariable;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Konstruktor eines Records oder object-Typs auf der Variablen initialisiert sie an Ort und Stelle: in der Datei,
+  // über einen Alias und über einen Alias auf einen Record einer anderen Unit (Header-Übersetzungen).
+  TRuleAssert.Silent(TConstructorOnInstanceRule.Create, 'unit U;'#10'interface'#10'type'#10'  TDesc = record'#10 +
+    '    N: Integer;'#10'    constructor Create(A: Integer);'#10'  end;'#10'  TAlias = TDesc;'#10 +
+    '  TAlt = object'#10'    N: Integer;'#10'    constructor Create;'#10'  end;'#10'implementation'#10 +
+    'constructor TDesc.Create(A: Integer);'#10'begin'#10'  N := A;'#10'end;'#10 +
+    'constructor TAlt.Create;'#10'begin'#10'  N := 0;'#10'end;'#10'procedure P;'#10'var'#10'  D: TDesc;'#10 +
+    '  E: TAlias;'#10'  O: TAlt;'#10'begin'#10'  D.Create(1);'#10'  E.Create(2);'#10'  O.Create;'#10'end;'#10'end.');
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'type'#10'  TFremdDesc = record'#10 +
+    '    N: Integer;'#10'    constructor Create(A: Integer);'#10'  end;'#10'implementation'#10 +
+    'constructor TFremdDesc.Create(A: Integer);'#10'begin'#10'end;'#10'end.', 'C:\P\Fremd.pas', nil));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TConstructorOnInstanceRule.Create,
+    'unit U;'#10'interface'#10'uses'#10'  Fremd;'#10'type'#10'  TDesc = TFremdDesc;'#10'implementation'#10 +
+    'procedure P;'#10'var'#10'  D: TDesc;'#10'begin'#10'  D.Create(1);'#10'end;'#10'end.', mIndex, '', 'U.pas'))));
+  // Eine Klasse der Datei bleibt ein Befund.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TConstructorOnInstanceRule.Create, 'unit U;'#10 +
+    'interface'#10'type'#10'  TListe = class'#10'  end;'#10'implementation'#10'procedure P;'#10'var'#10 +
+    '  L: TListe;'#10'begin'#10'  L.Create;'#10'end;'#10'end.'))));
 end;
 
 procedure TRtlTypePatternRulesTests.FormatWithoutSettings;
@@ -995,6 +1024,35 @@ begin
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, StringReplace(Preisliste('',
     '  Preis := FPreise[Artikel.Nummer];'), 'implementation'#10, 'implementation'#10 +
     'procedure TKasse.Merken(Artikel: TArtikel);'#10'begin'#10'  FPreise.Add(Artikel.Nummer, 1);'#10'end;'#10, []));
+end;
+
+procedure TRtlConversionRulesTests.DictionaryGetAliasInLargeUnit;
+var
+  mSource, mBody: string;
+  mIndex: Integer;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Viele Typen und Indexzugriffe (Header-Übersetzung): Der Alias hinter allen Typen wird gefunden, die
+  // Typtabelle entsteht einmal je Datei statt je Zugriff (vorher quadratisch).
+  mSource := 'unit U;'#10'interface'#10'type'#10;
+  for mIndex := 0 to 1999 do
+  begin
+    mSource := mSource + Format('  T%d = record X: Integer; end;'#10, [mIndex]);
+  end;
+  mBody := '';
+  for mIndex := 0 to 1999 do
+  begin
+    mBody := mBody + '  Anzeigen(FTabelle[0].X);'#10;
+  end;
+  mSource := mSource + '  TPreisMap = TDictionary<string, Double>;'#10'  TKasse = class'#10 +
+    '    FTabelle: array of T5;'#10'    FPreise: TPreisMap;'#10'  end;'#10'implementation'#10 +
+    'procedure TKasse.Buchen;'#10'var'#10'  Preis: Double;'#10'begin'#10 + mBody + '  Preis := FPreise[''A''];'#10 +
+    'end;'#10'end.';
+  mFindings := TRuleAssert.Findings(TDictionaryGetWithoutCheckRule.Create, mSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('In TryGetValue umschreiben', mFindings[0].Fixes[0].Title);
+  mSource := '';
+  mBody := '';
 end;
 
 function Teilen(const ABody: string): string;

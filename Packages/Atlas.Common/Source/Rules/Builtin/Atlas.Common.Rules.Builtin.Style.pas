@@ -1375,6 +1375,8 @@ procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IR
 var
   mAllowed: TArray<Double>;
   mSettings: TFormatSettings;
+  // Eine Korrekturplanung je Datei: Zeilentabelle und freier Name nicht je Literal neu (große Units).
+  mExtractor: TConstantExtractor;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -1508,12 +1510,14 @@ var
       Exit;
     end;
     mFixes := nil;
-    mOptions := TExtractOptions.Default;
-    // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
-    mOptions.Names := AContext.NewNames;
-    if TExtractRefactoring.ExtractConstant(AContext.Text, AContext.Tree,
-      TTextRange.Create(mNode.StartPos, mNode.EndPos),
-      mOptions, False, mAction) then
+    if mExtractor = nil then
+    begin
+      mOptions := TExtractOptions.Default;
+      // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
+      mOptions.Names := AContext.NewNames;
+      mExtractor := TConstantExtractor.Create(AContext.Text, AContext.Tree, mOptions);
+    end;
+    if mExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), False, mAction) then
     begin
       mFixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, mAction.Edits)];
     end;
@@ -1583,7 +1587,12 @@ begin
   end;
   mAllowed := TRuleOptions.Numbers(AContext.Options, 'allowed', mDefaults);
   mSettings := TFormatSettings.Invariant;
-  Visit(AContext.Tree.Root, False);
+  mExtractor := nil;
+  try
+    Visit(AContext.Tree.Root, False);
+  finally
+    mExtractor.Free;
+  end;
 end;
 
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);
