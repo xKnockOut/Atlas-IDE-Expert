@@ -36,7 +36,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Unavailable,
@@ -63,7 +63,7 @@ type
     FSession: TAtlasUnavailableSessionFunc;
     FMessage: TProc<string>;
     FListener: IAtlasIdeDebugListener;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Letzte Erklärung: die Korrekturen brauchen ihre Tatsachen (Einfügungen, Schalter).
     FLastExpression: string;
@@ -84,7 +84,6 @@ type
       const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts; const ADone: TAtlasDebugValueEvent);
     procedure RestartWithDebug;
     procedure Say(AText: string);
-    procedure ReapWorkers(AWait: Boolean);
     /// <summary>Datei (vollständig) und Zeile (0-basiert) des Ausführungspunkts; False ohne Quelltext.</summary>
     class function StopLocation(out AFileName: string; out ALine: Integer): Boolean; static;
     class function LaunchFacts: TAtlasUnavailableLaunch; static;
@@ -185,7 +184,7 @@ begin
   inherited Create;
   FSession := ASession;
   FMessage := AMessage;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FListener := TListener.Create;
   TAtlasIdeDebugSession.AddListener(FListener);
 end;
@@ -198,7 +197,10 @@ begin
   end;
   FListener := nil;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FLastFacts := Default(TAtlasUnavailableFacts);
   FLastExplanation := Default(TAtlasUnavailableExplanation);
@@ -249,7 +251,7 @@ procedure TAtlasIdeDebugUnavailable.Accept(ARequest: Integer; const AValue: TAtl
 var
   mExplanation: TAtlasUnavailableExplanation;
 begin
-  ReapWorkers(False);
+  FWorkers.Prune;
   // Nur die jüngste Anfrage; ein Halt danach macht die Erklärung wertlos (der Hover fragt neu).
   if (ARequest <> FRequest) or not Enabled or (TAtlasIdeDebugSession.StoppedThread = nil) then
   begin
@@ -330,10 +332,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  ReapWorkers(False);
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeDebugUnavailable.RestartWithDebug;
@@ -360,25 +359,6 @@ begin
   if Assigned(FMessage) then
   begin
     FMessage(AText);
-  end;
-end;
-
-procedure TAtlasIdeDebugUnavailable.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
   end;
 end;
 

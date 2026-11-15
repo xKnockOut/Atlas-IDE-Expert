@@ -8,7 +8,7 @@
 // Komposition ruft es direkt nach TAtlasShutdown.Signal) entfernt alle noch
 // wartenden Einträge und nimmt keine neuen mehr an.
 // Nicht an den aufrufenden Arbeiter gebunden: Hover und Vervollständigung geben
-// fertige Arbeiter frei (ReapWorkers), bevor CheckSynchronize ihre Einträge
+// fertige Arbeiter frei, bevor CheckSynchronize ihre Einträge
 // ausführt; TThread.Destroy würde die Ergebnisse dann entfernen.
 // Jeder Eintrag läuft unter der Sicherung (#493): Eine Ausnahme zählt für das
 // angegebene Feature und erreicht nie TApplication.HandleException.

@@ -15,7 +15,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Lsp.Contract;
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Testlauf: Datei aus dem Testprojekt und Namen für --run.</summary>
@@ -23,7 +24,7 @@ type
 
   TAtlasIdeImpact = class
   private class var
-    FWorkers: TArray<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     FFileName: string;
     FName: string;
@@ -31,8 +32,9 @@ type
     FCharacter: Integer;
     FRunTests: TAtlasImpactTestRun;
   private
+    class constructor Create;
+    class destructor Destroy;
     class procedure Start(ADepth: Integer); static;
-    class procedure Reap(AWait: Boolean); static;
     class procedure Show(ARequest: Integer; const AImpact: TAtlasImpact; const AError: string); static;
   public
     /// <summary>Verdrahtet das Ergebnisfenster; ARunTests startet den Testläufer.</summary>
@@ -67,6 +69,16 @@ uses
 
 { TAtlasIdeImpact }
 
+class constructor TAtlasIdeImpact.Create;
+begin
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
+end;
+
+class destructor TAtlasIdeImpact.Destroy;
+begin
+  FreeAndNil(FWorkers);
+end;
+
 class procedure TAtlasIdeImpact.Start(ADepth: Integer);
 var
   mSession: TLspSession;
@@ -86,7 +98,6 @@ begin
   mLine := FLine;
   mCharacter := FCharacter;
   TAtlasIdeResultsWindow.ShowEntries(TAtlasResultsStrings.Fmt(TAtlasResultsTextId.ImpactRunning, [FName, ADepth]), nil);
-  Reap(False);
   mWorker := TThread.CreateAnonymousThread(
     procedure
     var
@@ -107,32 +118,7 @@ begin
           Show(mRequest, Impact, Error);
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers := FWorkers + [mWorker];
-  mWorker.Start;
-end;
-
-class procedure TAtlasIdeImpact.Reap(AWait: Boolean);
-var
-  mIndex: Integer;
-  mRemaining: TArray<TThread>;
-begin
-  // Fertige Arbeiter freigeben; ein laufender liefert nur noch eine verworfene Antwort und hält den
-  // Hauptthread nicht auf. Beim Entladen (AWait) auf alle warten.
-  mRemaining := nil;
-  for mIndex := 0 to High(FWorkers) do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-    end
-    else
-    begin
-      mRemaining := mRemaining + [FWorkers[mIndex]];
-    end;
-  end;
-  FWorkers := mRemaining;
+  FWorkers.Start(mWorker);
 end;
 
 class procedure TAtlasIdeImpact.Show(ARequest: Integer; const AImpact: TAtlasImpact; const AError: string);
@@ -190,7 +176,7 @@ begin
   // Arbeiter warten: TAtlasShutdown bricht ihre Anfrage sofort ab. Wird nur der Befehl abgeschaltet (Sicherheits-
   // stufe), bleibt das Package geladen; ein laufender Arbeiter endet dann von selbst und wird später freigegeben.
   Inc(FRequest);
-  Reap(TAtlasShutdown.Signalled);
+  FWorkers.Release(TAtlasShutdown.Signalled);
   FRunTests := nil;
   FFileName := '';
   FName := '';

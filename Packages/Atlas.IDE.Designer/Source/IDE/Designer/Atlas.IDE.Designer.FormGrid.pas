@@ -51,6 +51,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.NearAlign,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Designer.Outlines;
@@ -195,6 +196,7 @@ var
   mBitmap: TBitmap;
   mIndex: Integer;
   mAccepted: Boolean;
+  mKept: TAtlasDesignerKept;
 begin
   mSettings := TAtlasIdeSettings.Current;
   if not mSettings.DesignerArrangeForm or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
@@ -214,6 +216,8 @@ begin
   finally
     mBitmap.Free;
   end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mControls);
   ShowOutlinesIn(TWinControl(mRoot), OutlinesOf(mControls, mResult, TWinControl(mRoot)));
   try
     mAccepted := MessageDlg(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerGridConfirm, [Length(mControls)]),
@@ -221,7 +225,8 @@ begin
   finally
     HideOutlines;
   end;
-  if not mAccepted then
+  // Während der Rückfrage kann das Formular neu geladen worden sein.
+  if not mAccepted or not mKept.Reported(OnMessage) then
   begin
     Exit;
   end;
