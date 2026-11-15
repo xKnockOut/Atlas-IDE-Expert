@@ -43,6 +43,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.InlineValues,
+  Atlas.Core.Debug.InlineValuesFlow,
+  Atlas.Core.Debug.StopProgress,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Debug.InlineValuePainter;
@@ -74,17 +76,6 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    {$SCOPEDENUMS ON}
-    TPhase = (Idle, Location, Request, Evaluate);
-    /// <summary>Nach einem Wert: weiter, auf den verzögerten warten oder alles verworfen.</summary>
-    TSliceStep = (Next, Wait, Dropped);
-    {$SCOPEDENUMS OFF}
-    TProgress = record
-      Phase: TPhase;
-      Stop: Integer;
-      Request: Integer;
-      Retries: Integer;
-    end;
     /// <summary>Verzögerter Wert (LLDB) und seit wann Atlas auf ihn wartet.</summary>
     TDeferred = record
       Name: string;
@@ -102,7 +93,7 @@ type
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FWorkers: TList<TThread>;
-    FProgress: TProgress;
+    FProgress: TAtlasStopProgress;
     FDeferred: TDeferred;
     FInternal: Boolean;
     FFileName: string;
@@ -124,7 +115,7 @@ type
     procedure EvaluateSlice;
     /// <summary>Wartet Atlas noch auf den verzögerten Wert? Nach DeferredTimeoutMs ohne ihn weiter.</summary>
     function DeferredPending: Boolean;
-    function EvaluateOne(const AName: string; var AChanged: Boolean): TSliceStep;
+    function EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
     procedure DeferredDone(const AValue: TAtlasDebugValue);
     procedure EndInternal;
     function StillStopped: Boolean;
@@ -148,11 +139,9 @@ procedure ReevaluateInlineValues;
 implementation
 
 uses
-  System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Debug.CallStack,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -276,8 +265,7 @@ begin
   EndInternal;
   FDeferred.Name := '';
   // Antworten noch laufender Anfragen verwerfen.
-  Inc(FProgress.Request);
-  FProgress.Phase := TPhase.Idle;
+  FProgress.Discard;
   if AForget then
   begin
     FValues.Reset;
@@ -303,9 +291,7 @@ begin
     Exit;
   end;
   FValues.SetUnavailable(TAtlasIdeDebugUnavailable.InlineCaption, TAtlasIdeDebugUnavailable.Patterns);
-  FProgress.Stop := TAtlasIdeDebugSession.StopCount;
-  FProgress.Retries := 0;
-  FProgress.Phase := TPhase.Location;
+  FProgress.Restart(TAtlasIdeDebugSession.StopCount);
   if ReadLocation then
   begin
     Ask;
@@ -321,19 +307,19 @@ begin
   end;
   try
     case FProgress.Phase of
-      TPhase.Location:
+      TAtlasStopPhase.Location:
         begin
           FTimer.Enabled := False;
           if not StillStopped then
           begin
-            FProgress.Phase := TPhase.Idle;
+            FProgress.Phase := TAtlasStopPhase.Idle;
           end
           else if ReadLocation then
           begin
             Ask;
           end;
         end;
-      TPhase.Evaluate:
+      TAtlasStopPhase.Evaluate:
         EvaluateSlice;
     else
       FTimer.Enabled := False;
@@ -351,53 +337,34 @@ function TAtlasIdeDebugInlineValues.ReadLocation: Boolean;
 var
   mFrames: TAtlasDebugFrames;
   mBuffer: IOTAEditBuffer;
+  mRead: TAtlasDebugStackRead;
+  mWithoutSource: Boolean;
 begin
-  Result := False;
-  case TAtlasIdeDebugSession.ReadStack(TAtlasIdeDebugSession.StoppedThread, 1, mFrames) of
-    TAtlasDebugStackRead.Wait:
+  mBuffer := nil;
+  mRead := TAtlasIdeDebugSession.ReadStack(TAtlasIdeDebugSession.StoppedThread, 1, mFrames);
+  // Kein Quelltext am Ausführungspunkt (RTL ohne Quellen, Assembler).
+  mWithoutSource := (mRead = TAtlasDebugStackRead.Ready) and ((Length(mFrames) = 0) or not mFrames[0].HasSource);
+  if (mRead = TAtlasDebugStackRead.Ready) and not mWithoutSource then
+  begin
+    TAtlasIdeDebugSources.MarkFrames(mFrames);
+    mBuffer := TAtlasIdeFiles.BufferOf(mFrames[0].FileName);
+  end;
+  // LLDB liefert den Stapel bzw. die IDE öffnet die Datei des Halts erst gleich danach.
+  case FProgress.Locate(mRead = TAtlasDebugStackRead.None, mWithoutSource, mBuffer <> nil, cLocationRetries) of
+    TAtlasStopLocation.Retry:
       begin
-        // LLDB: Stapel kommt später.
-        Inc(FProgress.Retries);
         FTimer.Interval := cTickMs * 5;
-        FTimer.Enabled := FProgress.Retries <= cLocationRetries;
-        if not FTimer.Enabled then
-        begin
-          FProgress.Phase := TPhase.Idle;
-        end;
-        Exit;
+        FTimer.Enabled := True;
+        Exit(False);
       end;
-    TAtlasDebugStackRead.None:
-      begin
-        FProgress.Phase := TPhase.Idle;
-        Exit;
-      end;
-  end;
-  if (Length(mFrames) = 0) or not mFrames[0].HasSource then
-  begin
-    // Kein Quelltext am Ausführungspunkt (RTL ohne Quellen, Assembler).
-    FProgress.Phase := TPhase.Idle;
-    Exit;
-  end;
-  TAtlasIdeDebugSources.MarkFrames(mFrames);
-  mBuffer := TAtlasIdeFiles.BufferOf(mFrames[0].FileName);
-  if mBuffer = nil then
-  begin
-    // Die IDE öffnet die Datei des Halts gleich danach.
-    Inc(FProgress.Retries);
-    FTimer.Interval := cTickMs * 5;
-    FTimer.Enabled := FProgress.Retries <= cLocationRetries;
-    if not FTimer.Enabled then
-    begin
-      FProgress.Phase := TPhase.Idle;
-    end;
-    Exit;
+    TAtlasStopLocation.GiveUp:
+      Exit(False);
   end;
   FFileName := mBuffer.FileName;
-  FContext := FFileName + '|' + mFrames[0].Routine;
+  FContext := TAtlasInlineValuesFlow.ContextOf(FFileName, mFrames[0].Routine);
   FLine := mFrames[0].Line - 1;
   FText := TAtlasEditorBuffer.Text(mBuffer);
   FLines := FText.Split([#13#10, #10]);
-  FProgress.Phase := TPhase.Request;
   Result := True;
 end;
 
@@ -416,7 +383,7 @@ begin
   end;
   if mSession = nil then
   begin
-    FProgress.Phase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -424,8 +391,7 @@ begin
   mLine := FLine;
   mSession.Sync(mFileName, FText);
   ReapWorkers(False);
-  Inc(FProgress.Request);
-  mRequest := FProgress.Request;
+  mRequest := FProgress.NextRequest;
   mWorker := TThread.CreateAnonymousThread(
     procedure
     var
@@ -464,17 +430,17 @@ end;
 procedure TAtlasIdeDebugInlineValues.Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
 begin
   // Nur die jüngste Antwort, und nur, solange derselbe Halt besteht.
-  if (ARequest <> FProgress.Request) or (FProgress.Phase <> TPhase.Request) then
+  if not FProgress.Accepts(ARequest) then
   begin
     Exit;
   end;
   if not StillStopped or not Enabled or (Length(ARefs) = 0) then
   begin
-    FProgress.Phase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
     Exit;
   end;
   FValues.Start(FFileName, FContext, FLine, ARefs, TAtlasIdeSettings.Current.DebugInlineValuesPerLine);
-  FProgress.Phase := TPhase.Evaluate;
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
@@ -484,7 +450,7 @@ procedure TAtlasIdeDebugInlineValues.EvaluateSlice;
 var
   mStartedAt: UInt64;
   mName: string;
-  mStep: TSliceStep;
+  mStep: TAtlasInlineStep;
   mChanged: Boolean;
 begin
   if not StillStopped then
@@ -497,20 +463,20 @@ begin
     Exit;
   end;
   mChanged := False;
-  mStep := TSliceStep.Next;
+  mStep := TAtlasInlineStep.Next;
   mStartedAt := TAtlasTicks.Now;
-  while (mStep = TSliceStep.Next) and (TAtlasTicks.Since(mStartedAt) < cSliceMs) and FValues.NextPending(mName) do
+  while (mStep = TAtlasInlineStep.Next) and (TAtlasTicks.Since(mStartedAt) < cSliceMs) and FValues.NextPending(mName) do
   begin
     mStep := EvaluateOne(mName, mChanged);
   end;
-  if mStep = TSliceStep.Dropped then
+  if mStep = TAtlasInlineStep.Dropped then
   begin
     Exit;
   end;
-  if (FDeferred.Name = '') and not FValues.NextPending(mName) then
+  if TAtlasInlineValuesFlow.SliceDone(FDeferred.Name, FValues.NextPending(mName)) then
   begin
     FTimer.Enabled := False;
-    FProgress.Phase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
   end;
   if mChanged then
   begin
@@ -534,7 +500,7 @@ begin
   begin
     Exit;
   end;
-  Result := TAtlasTicks.Since(FDeferred.Since) < cDeferredTimeoutMs;
+  Result := not TAtlasInlineValuesFlow.DeferredExpired(TAtlasTicks.Since(FDeferred.Since), cDeferredTimeoutMs);
   if not Result then
   begin
     FEvaluator.Cancel;
@@ -548,7 +514,6 @@ function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChange
 var
   mValue: TAtlasDebugValue;
 begin
-  Result := TSliceStep.Next;
   // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
   mValue := Default(TAtlasDebugValue);
   TAtlasIdeDebugSession.BeginInternal;
@@ -561,24 +526,26 @@ begin
       EndInternal;
     end;
   end;
-  case mValue.State of
-    TAtlasDebugValueState.Pending:
+  Result := TAtlasInlineValuesFlow.StepOf(mValue.State);
+  case Result of
+    TAtlasInlineStep.Wait:
       begin
         FDeferred.Name := AName;
         FDeferred.Since := TAtlasTicks.Now;
-        Result := TSliceStep.Wait;
       end;
-    TAtlasDebugValueState.Value:
+    TAtlasInlineStep.Next:
+      if mValue.State = TAtlasDebugValueState.Value then
       begin
         FValues.Put(AName, mValue.Text, True);
         AChanged := True;
+      end
+      else
+      begin
+        FValues.Put(AName, '', False);
       end;
-    TAtlasDebugValueState.Failed:
-      FValues.Put(AName, '', False);
   else
     // Kein angehaltener Prozess mehr.
     Drop(False);
-    Result := TSliceStep.Dropped;
   end;
 end;
 
@@ -605,7 +572,7 @@ end;
 
 function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
 begin
-  Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+  Result := FProgress.StillAt(TAtlasIdeDebugSession.StopCount, TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 procedure TAtlasIdeDebugInlineValues.ReapWorkers(AWait: Boolean);
@@ -685,12 +652,6 @@ begin
   Result := mSettings.Enabled and mSettings.DebugInlineValues;
 end;
 
-/// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-begin
-  Result := Length(TAtlasPairs.DisplayLine(Copy(ALine, 1, Max(0, ACharacter)), ATabWidth)) + 1;
-end;
-
 /// <summary>Entspricht die Zeile im Editor der abgeglichenen AStored? ATabWidth: Tabweite des Puffers.</summary>
 function LineMatches(const AContext: INTACodeEditorPaintContext; const AStored: string;
   out ATabWidth: Integer): Boolean;
@@ -703,8 +664,7 @@ begin
   if Result then
   begin
     ATabWidth := TAtlasEditorBuffer.TabWidth(AContext.EditView.Buffer);
-    Result := TrimRight(TAtlasPairs.DisplayLine(mLineState.Text, ATabWidth)) =
-      TrimRight(TAtlasPairs.DisplayLine(AStored, ATabWidth));
+    Result := TAtlasInlineValuesFlow.SameLine(mLineState.Text, AStored, ATabWidth);
   end;
 end;
 
@@ -735,8 +695,8 @@ begin
     mStored := FLines[mLine];
     mDC := Context.Canvas.Handle;
     // Zwei Zeichen Abstand hinter dem letzten Zeichen der Zeile.
-    mCell := Context.EditorState.GetCharacterPosPx(ColumnOf(mStored, Length(TrimRight(mStored)), mTabWidth) + 2,
-      Context.EditorLineNum);
+    mCell := Context.EditorState.GetCharacterPosPx(
+      TAtlasInlineValuesFlow.ColumnOf(mStored, Length(TrimRight(mStored)), mTabWidth) + 2, Context.EditorLineNum);
     mTailKey := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
     mX := TAtlasLineTail.Start(Self, mTailKey, mCell.Left);
     mSample := GetPixel(mDC, mX, Rect.Top + 1);

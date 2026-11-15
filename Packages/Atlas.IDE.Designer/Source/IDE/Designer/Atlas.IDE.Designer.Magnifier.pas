@@ -69,7 +69,8 @@ type
     FColorText: string;
     procedure EnsureWindow;
     function Open: Boolean;
-    /// <summary>Ausschnitt holen, wenn sich die Maus bewegt hat, AForce gilt oder cRefresh vergangen ist.</summary>
+    /// <summary>Ausschnitt holen, wenn sich die Maus bewegt hat, AForce gilt oder
+    /// TAtlasMagnifier.cRefreshMs vergangen ist.</summary>
     procedure UpdateView(AForce: Boolean);
     procedure TimerTick(Sender: TObject);
     procedure Describe;
@@ -125,8 +126,6 @@ uses
 const
   cKeyPriority = 42;
   cInterval = 30;
-  /// <summary>Spätestens so oft neu holen, auch ohne Mausbewegung (Designer geändert).</summary>
-  cRefresh = 300;
   cMenuShow = 0;
   cMenuFreeze = 1;
   cMenuZoom = 10;
@@ -155,8 +154,8 @@ begin
     Exit;
   end;
   mRgb := ColorToRGB(mColor);
-  Colors := Colors + [TAtlasNamedColor.Create(AName, (Cardinal(GetRValue(mRgb)) shl 16) or
-    (Cardinal(GetGValue(mRgb)) shl 8) or GetBValue(mRgb))];
+  Colors := Colors + [TAtlasNamedColor.Create(AName, TAtlasMagnifier.RgbOf(GetRValue(mRgb), GetGValue(mRgb),
+    GetBValue(mRgb)))];
 end;
 
 { TAtlasMagnifierKeys }
@@ -327,7 +326,7 @@ begin
     mMoved := mCursor <> FState.Center;
     FState.Center := mCursor;
   end;
-  if not AForce and not mMoved and (GetTickCount64 - FLastCapture < cRefresh) then
+  if not TAtlasMagnifier.RefreshDue(AForce, mMoved, GetTickCount64, FLastCapture) then
   begin
     Exit;
   end;
@@ -499,9 +498,8 @@ begin
   mSource := FWindow.Source;
   mTopLeft := AControl.Parent.ClientToScreen(AControl.BoundsRect.TopLeft);
   mRect := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
-  // Nur Kanten, die den Ausschnitt schneiden; rechte und untere Kante liegen hinter dem letzten Pixel.
-  if (mRect.Bottom < mSource.Top) or (mRect.Top > mSource.Bottom) or (mRect.Right < mSource.Left) or
-    (mRect.Left > mSource.Right) then
+  // Nur Kanten, die den Ausschnitt schneiden.
+  if not TAtlasMagnifier.Crosses(mRect, mSource) then
   begin
     Exit;
   end;
@@ -520,12 +518,10 @@ begin
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagShow), cMenuShow, Shown);
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagFreeze), cMenuFreeze, FState.Frozen);
   FMenu.Items.Add(NewLine);
-  mZoom := TAtlasMagnifier.cMinZoom;
-  while mZoom <= TAtlasMagnifier.cMaxZoom do
+  for mZoom in TAtlasMagnifier.Zooms do
   begin
     AddMenuItem(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.MagZoom, [mZoom]), cMenuZoom + mZoom,
       mZoom = FState.Zoom);
-    mZoom := mZoom * 2;
   end;
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagGrid), cMenuGrid, FState.Grid);
   AddMenuItem(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.MagEdges), cMenuEdges, FState.Edges);

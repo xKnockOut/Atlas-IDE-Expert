@@ -805,14 +805,8 @@ begin
   mTransport := FContext.TransportOf(mProvider, AEntry.Target);
   if mTransport = nil then
   begin
-    if (mProvider = nil) or not FContext.CanTransport then
-    begin
-      Loaded(mGeneration, AEntry, False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotConfigured);
-    end
-    else
-    begin
-      Loaded(mGeneration, AEntry, False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.Unauthorized);
-    end;
+    Loaded(mGeneration, AEntry, False, TAtlasTrackerDetails.Empty,
+      TAtlasIssuePreview.MissingTransport(mProvider <> nil, FContext.CanTransport));
     Exit;
   end;
   if not Supports(mTransport, IAtlasCiCancel, FLoad.Cancel) then
@@ -838,23 +832,21 @@ begin
   begin
     TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, TAtlasIdeIssueContext.LoadState(ASucceeded, AError)]));
   end;
-  // Ein anderer Wunsch wartet: der zählt.
-  if FLoad.HasPending then
-  begin
-    FLoad.HasPending := False;
-    Load(FLoad.Pending);
-  end
-  else if AGeneration <> FContext.Generation then
-  begin
-    // Veraltet: ein neuerer Wunsch läuft.
-  end
-  else if ASucceeded then
-  begin
-    ShowLoaded(Self, FContext.Frame, AEntry, ADetails);
-  end
-  else
-  begin
-    ShowFailed(Self, FContext.Frame, AEntry, AError);
+  case TAtlasIssuePreview.LoadStep(FLoad.HasPending, AGeneration, FContext.Generation, ASucceeded) of
+    TAtlasIssueLoadStep.Pending:
+      begin
+        // Ein anderer Wunsch wartet: der zählt.
+        FLoad.HasPending := False;
+        Load(FLoad.Pending);
+      end;
+    TAtlasIssueLoadStep.Show:
+      ShowLoaded(Self, FContext.Frame, AEntry, ADetails);
+    TAtlasIssueLoadStep.Fail:
+      ShowFailed(Self, FContext.Frame, AEntry, AError);
+    TAtlasIssueLoadStep.Outdated:
+      begin
+        // Veraltet: ein neuerer Wunsch läuft.
+      end;
   end;
 end;
 
@@ -1067,18 +1059,13 @@ end;
 
 procedure TAtlasIdeIssuePreview.ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
 begin
-  if ALink.Local and FContext.Started and Active then
-  begin
-    Show(ATarget, ALink.Key);
-  end
-  else if ALink.Page <> '' then
-  begin
-    TAtlasIssuePreview.Browse(ALink.Page);
-  end
-  else
-  begin
-    // Nur die Seite aus der eingetragenen Adresse.
-    TAtlasIssuePreview.BrowseIssue(FContext.ProviderOf(ATarget), ATarget, ALink.Key);
+  case TAtlasIssuePreview.LinkOpen(ALink, FContext.Started and Active) of
+    TAtlasIssueLinkOpen.Preview:
+      Show(ATarget, ALink.Key);
+    TAtlasIssueLinkOpen.Page:
+      TAtlasIssuePreview.Browse(ALink.Page);
+    TAtlasIssueLinkOpen.IssuePage:
+      TAtlasIssuePreview.BrowseIssue(FContext.ProviderOf(ATarget), ATarget, ALink.Key);
   end;
 end;
 

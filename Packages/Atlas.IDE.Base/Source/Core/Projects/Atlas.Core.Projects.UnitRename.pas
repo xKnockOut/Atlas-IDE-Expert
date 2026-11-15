@@ -57,6 +57,11 @@ type
     /// <summary>Wie viele der betroffenen Dateien in AScopeFiles liegen.</summary>
     class function CountIn(const AAnswer: TAtlasUnitRenameAnswer; const AScopeFiles: TArray<string>): Integer;
       static;
+    /// <summary>Angebotene Bereiche: Projekt, wenn dort Units betroffen sind; Gruppe, wenn sie mehr betrifft.
+    /// </summary>
+    class function Scopes(AInProject, AInGroup: Integer): TArray<TAtlasUnitRenameScope>; static;
+    /// <summary>Zahl in der Überschrift des Hinweises: die im Projekt, ohne Treffer dort die der Gruppe.</summary>
+    class function ShownCount(AInProject, AInGroup: Integer): Integer; static;
   end;
 
   /// <summary>Wartende Umbenennungen; dieselbe (alte und neue Datei) nur einmal.</summary>
@@ -223,6 +228,28 @@ begin
         Break;
       end;
     end;
+  end;
+end;
+
+class function TAtlasUnitRename.Scopes(AInProject, AInGroup: Integer): TArray<TAtlasUnitRenameScope>;
+begin
+  Result := nil;
+  if AInProject > 0 then
+  begin
+    Result := Result + [TAtlasUnitRenameScope.Project];
+  end;
+  if AInGroup > AInProject then
+  begin
+    Result := Result + [TAtlasUnitRenameScope.Group];
+  end;
+end;
+
+class function TAtlasUnitRename.ShownCount(AInProject, AInGroup: Integer): Integer;
+begin
+  Result := AInProject;
+  if Result = 0 then
+  begin
+    Result := AInGroup;
   end;
 end;
 

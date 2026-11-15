@@ -33,6 +33,9 @@ type
     procedure RuleHitsUnknownWithoutCheckedFiles;
     [Test]
     procedure RecordsRuleHits;
+    /// <summary>Build-Dauer (#758): ungültige Werte unbekannt, die Gruppe misst den ganzen Lauf (#1967).</summary>
+    [Test]
+    procedure BuildDurationsForProjectAndGroup;
   end;
 
 implementation
@@ -396,6 +399,18 @@ begin
   begin
     Assert.AreNotEqual<TAtlasProjectPillKind>(TAtlasProjectPillKind.Rules, mPill.Kind);
   end;
+end;
+
+procedure TAtlasProjectRecordingTests.BuildDurationsForProjectAndGroup;
+begin
+  Assert.AreEqual(1500, TAtlasProjectRecording.BuildDurationMs(1500));
+  Assert.AreEqual(0, TAtlasProjectRecording.BuildDurationMs(0));
+  Assert.AreEqual(0, TAtlasProjectRecording.BuildDurationMs(-1));
+  Assert.AreEqual(0, TAtlasProjectRecording.BuildDurationMs(Int64(MaxInt)), 'ab MaxInt unbekannt');
+  Assert.AreEqual(MaxInt - 1, TAtlasProjectRecording.BuildDurationMs(Int64(MaxInt) - 1));
+  Assert.AreEqual(Int64(9000), TAtlasProjectRecording.GroupDurationMs(9000, 1500));
+  Assert.AreEqual(Int64(1500), TAtlasProjectRecording.GroupDurationMs(0, 1500), 'ohne Angabe die des Projekts');
+  Assert.AreEqual(Int64(1500), TAtlasProjectRecording.GroupDurationMs(-5, 1500));
 end;
 
 initialization

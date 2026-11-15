@@ -30,6 +30,8 @@ type
     procedure ExpandsOnlyOnUnchangedState;
     [Test]
     procedure SpanCoversExpressionLines;
+    [Test]
+    procedure HandlesPascalSources;
   end;
 
 implementation
@@ -272,6 +274,13 @@ begin
   // Leerer Bereich (Cursor) und Zeile kürzer als der Anfang.
   Assert.IsFalse(TAtlasExpressionType.SpanOnLine(TLspRange.Create(2, 4, 2, 4), 2, 20, mSpan));
   Assert.IsFalse(TAtlasExpressionType.SpanOnLine(TLspRange.Create(2, 30, 2, 34), 2, 20, mSpan));
+end;
+
+procedure TAtlasExpressionTypeTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasExpressionType.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasExpressionType.Handles('defines.INC'));
+  Assert.IsFalse(TAtlasExpressionType.Handles('Main.dfm'));
 end;
 
 initialization

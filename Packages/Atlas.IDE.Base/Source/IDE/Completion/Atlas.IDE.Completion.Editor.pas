@@ -38,6 +38,7 @@ uses
   ToolsAPI,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Controller,
+  Atlas.Core.Completion.EditorPlan,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
   Atlas.IDE.Completion.EditorState,
@@ -73,6 +74,8 @@ type
     function PreviewText: string;
     /// <summary>Gehört die Taste gerade dem Popup?</summary>
     function WantsKey(AKey: TAtlasNavigationKey): Boolean;
+    /// <summary>Zustand der Liste für die Kürzel (TAtlasCompletionEditorPlan.Command).</summary>
+    function CommandState: TAtlasCompletionCommandState;
     /// <summary>Favorit (#458) an APosition anheften bzw. lösen; APosition &lt; 0 = gewählter Eintrag (Strg+D).
     /// Speichert und zeigt das Ergebnis in der Fußzeile.</summary>
     procedure ToggleFavorite(APosition: Integer);
@@ -166,25 +169,6 @@ type
     constructor Create(AOwner: TAtlasEditorCompletion);
   end;
 
-function NavigationKey(AKey: Word; out ANavigation: TAtlasNavigationKey): Boolean;
-begin
-  Result := True;
-  case AKey of
-    VK_UP: ANavigation := TAtlasNavigationKey.Up;
-    VK_DOWN: ANavigation := TAtlasNavigationKey.Down;
-    VK_PRIOR: ANavigation := TAtlasNavigationKey.PageUp;
-    VK_NEXT: ANavigation := TAtlasNavigationKey.PageDown;
-    VK_HOME: ANavigation := TAtlasNavigationKey.First;
-    VK_END: ANavigation := TAtlasNavigationKey.Last;
-    VK_RETURN, VK_TAB: ANavigation := TAtlasNavigationKey.Accept;
-    VK_ESCAPE: ANavigation := TAtlasNavigationKey.Cancel;
-    // Mengenmodus (#448): anhaken; sonst gehört die Leertaste dem Editor (WantsKey).
-    VK_SPACE: ANavigation := TAtlasNavigationKey.Toggle;
-  else
-    Result := False;
-  end;
-end;
-
 { TCompletionKeys }
 
 constructor TCompletionKeys.Create(AOwner: TAtlasEditorCompletion);
@@ -197,7 +181,8 @@ function TCompletionKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
   mNavigation: TAtlasNavigationKey;
 begin
-  Result := ((AShift = []) and NavigationKey(AKey, mNavigation) and FOwner.WantsKey(mNavigation)) or
+  Result := ((AShift = []) and TAtlasCompletionEditorPlan.NavigationKey(AKey, mNavigation) and
+    FOwner.WantsKey(mNavigation)) or
     FOwner.WantsCommand(AKey, AShift);
 end;
 
@@ -210,7 +195,7 @@ begin
     begin
       FOwner.HandleCommand(AKey, AShift);
     end
-    else if NavigationKey(AKey, mNavigation) then
+    else if TAtlasCompletionEditorPlan.NavigationKey(AKey, mNavigation) then
     begin
       FOwner.HandleKey(mNavigation);
     end;
@@ -403,8 +388,8 @@ begin
     Exit;
   end;
   // Commit-Zeichen direkt hinter dem Wort (#429): übernehmen, das Zeichen bleibt.
-  if TAtlasIdeSettings.Current.CommitCharacters and (AIndex = ACharacter) and
-    CharInSet(ALineText[AIndex], ['(', ';', '.']) and FController.CanCommitOnCharacter then
+  if TAtlasCompletionEditorPlan.CommitsOnCharacter(TAtlasIdeSettings.Current.CommitCharacters, ALineText, AIndex,
+    ACharacter, FController.CanCommitOnCharacter) then
   begin
     FCommitChar.WordEnd := ACharacter - 1;
     FCommitChar.SuffixBytes := TEncoding.UTF8.GetByteCount(string(ALineText[AIndex]));
@@ -424,7 +409,7 @@ procedure TAtlasEditorCompletion.Refilter(const ALineText: string; ALine, AChara
 var
   mPrefix: string;
 begin
-  mPrefix := Copy(ALineText, FOpen.WordStart + 1, ACharacter - FOpen.WordStart);
+  mPrefix := TAtlasCompletionEditorPlan.Prefix(ALineText, FOpen.WordStart, ACharacter);
   // Gekürzte Liste (#431) oder Wort nicht mehr Fortsetzung der Anfrage (Rücktaste, #616): lokal weiterfiltern
   // und im Hintergrund neu fragen. Sonst nur lokal; der Server wird beim Tippen nicht mehr gefragt.
   if (mPrefix <> FController.Prefix) and FController.NeedsQuery(mPrefix) then
@@ -463,7 +448,7 @@ begin
     HideDetails;
     Exit;
   end;
-  mKey := mItem.Name + #0 + mItem.ResolveData;
+  mKey := TAtlasCompletionEditorPlan.DetailsKey(mItem);
   if mKey <> FDetails.Key then
   begin
     // Erst nach 80 ms Ruhe nachfragen, damit schnelles Scrollen nicht flackert (#424).
@@ -480,10 +465,7 @@ begin
   end;
   FDetails.Requested := True;
   // Überladung (#425): deren Position statt der ersten nachfragen.
-  if (FDetails.OverloadIndex > 0) and (FDetails.OverloadIndex <= Length(mItem.OverloadData)) then
-  begin
-    mItem.ResolveData := mItem.OverloadData[FDetails.OverloadIndex - 1];
-  end;
+  mItem := TAtlasCompletionEditorPlan.OverloadItem(mItem, FDetails.OverloadIndex);
   // Unit im uses-Abschnitt (#469): alles Nötige liefert schon die Liste.
   if mItem.UsesGroup <> '' then
   begin
@@ -512,7 +494,7 @@ begin
   end;
   // Im aktiven Ziel nicht deklariert (#476): Hinweis im Panel, auch ohne Details vom Server.
   mAvailability := '';
-  if mItem.Unavailable and (mItem.Condition <> '') and not SameText(mItem.Condition, 'platform') then
+  if TAtlasCompletionEditorPlan.ShowsAvailability(mItem) then
   begin
     mAvailability := TAtlasCompletionStrings.Fmt(TAtlasCompletionTextId.UnavailableHint, [mItem.Condition,
       FPopup.Target]);
@@ -557,7 +539,8 @@ begin
   begin
     Exit;
   end;
-  FDetails.OverloadIndex := (FDetails.OverloadIndex + ADelta + mItem.OverloadCount) mod mItem.OverloadCount;
+  FDetails.OverloadIndex := TAtlasCompletionEditorPlan.NextOverload(FDetails.OverloadIndex, ADelta,
+    mItem.OverloadCount);
   FPopup.SetOverload(FDetails.OverloadIndex, mItem.OverloadCount);
   // Sofort nachfragen, ohne die 80 ms Ruhe beim Blättern in der Liste.
   FDetails.Requested := False;
@@ -607,20 +590,17 @@ end;
 
 function TAtlasEditorCompletion.WantsKey(AKey: TAtlasNavigationKey): Boolean;
 begin
-  // Liste offen: alle Navigationstasten, die Leertaste nur im Mengenmodus (#448). Leerer Zustand (#423): nur Esc.
-  if AKey = TAtlasNavigationKey.Toggle then
-  begin
-    Result := FController.Visible and FController.SetMode;
-  end
-  // Nur Deklarationen eines unbekannten Namens, nichts gewählt (#471): Enter gehört dem Editor.
-  else if (AKey = TAtlasNavigationKey.Accept) and FController.Passive then
-  begin
-    FController.Close;
-    Result := False;
-  end
+  case TAtlasCompletionEditorPlan.KeyStep(AKey, FController.Visible, FController.SetMode, FController.Passive,
+    FController.Empty) of
+    TAtlasCompletionKeyStep.Take:
+      Result := True;
+    TAtlasCompletionKeyStep.CloseAndPass:
+      begin
+        FController.Close;
+        Result := False;
+      end;
   else
-  begin
-    Result := FController.Visible or (FController.Empty and (AKey = TAtlasNavigationKey.Cancel));
+    Result := False;
   end;
 end;
 
@@ -737,50 +717,51 @@ begin
   ActiveChanged;
 end;
 
-function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+function TAtlasEditorCompletion.CommandState: TAtlasCompletionCommandState;
 var
   mItem: TAtlasCompletionItem;
 begin
-  // Strg+Q Panel (#428), Alt+1 … Alt+6 Chips (#422), Strg+C mit markierter Doku im Panel (#654), Strg+D Favorit
-  // (#458; bei offener Liste nie an den Editor).
-  Result := FController.Visible and (((AKey = Ord('Q')) and (AShift = [ssCtrl])) or
-    ((AKey = Ord('D')) and (AShift = [ssCtrl]) and (FController.Favorites <> nil)) or
-    ((AKey = Ord('C')) and (AShift = [ssCtrl]) and (FPopup.SelectedDocText <> '')) or
-    (((AKey = VK_UP) or (AKey = VK_DOWN)) and (AShift = [ssAlt]) and FController.SelectedItem(mItem) and
-      (mItem.OverloadCount > 1)) or
-    (FController.ChipsEnabled and (AKey >= Ord('1')) and (AKey <= Ord('6')) and (AShift = [ssAlt]))) or
-    // Zweites Strg+Leertaste (#2108): nicht sichtbare Treffer zeigen, auch im leeren Zustand.
-    ((AKey = VK_SPACE) and (AShift = [ssCtrl]) and FController.CanRevealInaccessible);
+  Result := Default(TAtlasCompletionCommandState);
+  Result.Visible := FController.Visible;
+  Result.HasFavorites := FController.Favorites <> nil;
+  Result.ChipsEnabled := FController.ChipsEnabled;
+  Result.CanRevealInaccessible := FController.CanRevealInaccessible;
+  if Result.Visible then
+  begin
+    Result.HasDocText := FPopup.SelectedDocText <> '';
+    Result.HasOverloads := FController.SelectedItem(mItem) and (mItem.OverloadCount > 1);
+  end;
+end;
+
+function TAtlasEditorCompletion.WantsCommand(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  Result := TAtlasCompletionEditorPlan.Command(AKey, AShift, CommandState) <> TAtlasCompletionCommand.None;
 end;
 
 procedure TAtlasEditorCompletion.HandleCommand(AKey: Word; AShift: TShiftState);
+var
+  mCommand: TAtlasCompletionCommand;
 begin
-  if (AKey = Ord('Q')) and (AShift = [ssCtrl]) then
+  mCommand := TAtlasCompletionEditorPlan.Command(AKey, AShift, CommandState);
+  if mCommand = TAtlasCompletionCommand.None then
   begin
-    FPopup.TogglePanel;
-  end
-  else if (AKey = Ord('C')) and (AShift = [ssCtrl]) then
-  begin
-    Clipboard.AsText := FPopup.SelectedDocText;
-  end
-  else if (AKey = Ord('D')) and (AShift = [ssCtrl]) then
-  begin
-    ToggleFavorite(-1);
-  end
-  else if (AKey = VK_UP) and (AShift = [ssAlt]) then
-  begin
-    ChangeOverload(-1);
-  end
-  else if (AKey = VK_DOWN) and (AShift = [ssAlt]) then
-  begin
-    ChangeOverload(1);
-  end
-  else if (AKey >= Ord('1')) and (AKey <= Ord('6')) then
-  begin
-    FController.SelectChipAt(AKey - Ord('1'));
-  end
-  else if AKey = VK_SPACE then
-  begin
+    Exit;
+  end;
+  case mCommand of
+    TAtlasCompletionCommand.TogglePanel:
+      FPopup.TogglePanel;
+    TAtlasCompletionCommand.CopyDoc:
+      Clipboard.AsText := FPopup.SelectedDocText;
+    TAtlasCompletionCommand.ToggleFavorite:
+      ToggleFavorite(-1);
+    TAtlasCompletionCommand.PreviousOverload:
+      ChangeOverload(-1);
+    TAtlasCompletionCommand.NextOverload:
+      ChangeOverload(1);
+    TAtlasCompletionCommand.SelectChip:
+      FController.SelectChipAt(TAtlasCompletionEditorPlan.ChipIndex(AKey));
+  else
+    // RevealInaccessible
     FController.RevealInaccessible;
   end;
 end;

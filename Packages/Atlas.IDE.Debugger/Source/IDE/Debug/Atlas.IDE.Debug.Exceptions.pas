@@ -41,6 +41,7 @@ uses
   Atlas.Core.Debug.IgnoreList,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.ExceptionDialog,
+  Atlas.Core.Debug.ExceptionCapture,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ExceptionDialog,
   Atlas.UI.Debug.ExceptionsFrame;
@@ -84,12 +85,7 @@ type
     /// <summary>Aufnahme des aktuellen Halts: Stapel und Dialog, beide müssen fertig sein (Finish).</summary>
     TCapture = record
       Pending: TAtlasDebugExceptionStop;
-      HasPending: Boolean;
-      DialogDone: Boolean;
-      StackDone: Boolean;
-      Retries: Integer;
-      /// <summary>Halt, den der Dialog schon vor der Meldung der Session ausgelöst hat (Arm); 0 = keiner.</summary>
-      EarlyStop: Integer;
+      State: TAtlasDebugCaptureState;
     end;
     THandlers = record
       Items: TArray<TAtlasDebugExceptionHandler>;
@@ -166,7 +162,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionsWindow,
   Atlas.IDE.Debug.Sources,
-  Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.ExceptionBanner,
   Atlas.UI.Debug.Strings;
 
@@ -228,8 +223,7 @@ begin
   FHistory.StartSession;
   FDialog.NewSession;
   FStatusLogged := False;
-  FCapture.HasPending := False;
-  FCapture.EarlyStop := 0;
+  FCapture.State.Reset;
   TAtlasIdeDebugSources.Clear;
   RefreshWindow;
   ArmDialog;
@@ -238,7 +232,7 @@ end;
 procedure TAtlasIdeDebugExceptions.TListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
   // Schon über den Dialog aufgenommen (EarlyFound): nicht doppelt.
-  if FCapture.EarlyStop = TAtlasIdeDebugSession.StopCount then
+  if FCapture.State.EarlyStop = TAtlasIdeDebugSession.StopCount then
   begin
     Exit;
   end;
@@ -257,10 +251,9 @@ end;
 procedure TAtlasIdeDebugExceptions.TListener.DebugResumed;
 begin
   // Weiter ohne Dialog (etwa F9 im Dialog): mit dem Bekannten aufnehmen.
-  if FCapture.HasPending then
+  if FCapture.State.HasPending then
   begin
-    FCapture.DialogDone := True;
-    FCapture.StackDone := True;
+    FCapture.State.Force;
     FDialog.Cancel;
     FRetry.Enabled := False;
     Finish;
@@ -287,32 +280,20 @@ begin
     Exit;
   end;
   // Ein noch offener Halt (kein Dialog, kein Weiterlaufen dazwischen) zuerst abschließen.
-  if FCapture.HasPending then
+  if FCapture.State.HasPending then
   begin
-    FCapture.DialogDone := True;
-    FCapture.StackDone := True;
+    FCapture.State.Force;
     Finish;
   end;
   StatusTexts(FStatusLogged, mExceptionClass, mMessage);
-  if mExceptionClass = '' then
-  begin
-    if AFault then
-    begin
-      mExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFault);
-    end
-    else
-    begin
-      mExceptionClass := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsUnknownClass);
-    end;
-  end;
+  mExceptionClass := TAtlasDebugCapture.ClassOrFallback(mExceptionClass, AFault,
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFault),
+    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsUnknownClass));
   FCapture.Pending := Default(TAtlasDebugExceptionStop);
   FCapture.Pending.Stop := TAtlasIdeDebugSession.StopCount;
   FCapture.Pending.Exception := TAtlasDebugException.Create(Now, mExceptionClass, mMessage, mThread.GetOSThreadID,
     TAtlasIdeDebugSession.ThreadName(mThread));
-  FCapture.HasPending := True;
-  FCapture.DialogDone := False;
-  FCapture.StackDone := False;
-  FCapture.Retries := 0;
+  FCapture.State.Open;
   ReadStack;
   FDialog.Watch(DialogFound, DialogTimeout);
 end;
@@ -326,22 +307,18 @@ begin
   begin
     Exit;
   end;
-  if FCapture.HasPending then
+  if FCapture.State.HasPending then
   begin
-    FCapture.DialogDone := True;
-    FCapture.StackDone := True;
+    FCapture.State.Force;
     Finish;
   end;
   // Die Session zählt diesen Halt erst, wenn die IDE ihren Dialog geschlossen hat: Nummer vorwegnehmen.
-  FCapture.EarlyStop := TAtlasIdeDebugSession.StopCount + 1;
+  FCapture.State.EarlyStop := TAtlasIdeDebugSession.StopCount + 1;
   FCapture.Pending := Default(TAtlasDebugExceptionStop);
-  FCapture.Pending.Stop := FCapture.EarlyStop;
+  FCapture.Pending.Stop := FCapture.State.EarlyStop;
   FCapture.Pending.Exception := TAtlasDebugException.Create(Now, AScan.ExceptionClass, AScan.Message,
     mThread.GetOSThreadID, TAtlasIdeDebugSession.ThreadName(mThread));
-  FCapture.HasPending := True;
-  FCapture.DialogDone := False;
-  FCapture.StackDone := False;
-  FCapture.Retries := 0;
+  FCapture.State.Open;
   ReadStack;
   // Der Dialog ist schon erkannt (FDialog kennt seine Knöpfe): kein neues Watch, das ihn vergäße.
   DialogFound(AScan);
@@ -358,21 +335,19 @@ end;
 class procedure TAtlasIdeDebugExceptions.ReadStack;
 var
   mFrames: TAtlasDebugFrames;
-  mIndex: Integer;
   mThread: IOTAThread;
 begin
   mThread := TAtlasIdeDebugSession.StoppedThread;
   if mThread = nil then
   begin
-    FCapture.StackDone := True;
+    FCapture.State.StackDone := True;
     Finish;
     Exit;
   end;
   case TAtlasIdeDebugSession.ReadStack(mThread, TAtlasDebugCallStack.cMaxFrames, mFrames) of
     TAtlasDebugStackRead.Wait:
       begin
-        Inc(FCapture.Retries);
-        if FCapture.Retries <= cStackRetries then
+        if FCapture.State.RetryStack(cStackRetries) then
         begin
           FRetry.Enabled := True;
           Exit;
@@ -383,28 +358,18 @@ begin
         // Pfade auflösen, eigenen Code markieren (#578); mit debug.justMyCode ist der Ort der erste eigene Rahmen.
         TAtlasIdeDebugSources.MarkFrames(mFrames);
         FCapture.Pending.Frames := mFrames;
-        FCapture.Pending.Exception.Frames := mFrames;
-        mIndex := TAtlasDebugOwnCode.LocationIndex(mFrames, TAtlasIdeSettings.Current.DebugJustMyCode);
-        if mIndex >= 0 then
-        begin
-          FCapture.Pending.Exception.FileName := mFrames[mIndex].FileName;
-          FCapture.Pending.Exception.Line := mFrames[mIndex].Line;
-          FCapture.Pending.Exception.Routine := mFrames[mIndex].Routine;
-        end
-        else if mFrames <> nil then
-        begin
-          FCapture.Pending.Exception.Routine := mFrames[0].Routine;
-        end;
+        TAtlasDebugCapture.ApplyFrames(FCapture.Pending.Exception, mFrames,
+          TAtlasIdeSettings.Current.DebugJustMyCode);
       end;
   end;
-  FCapture.StackDone := True;
+  FCapture.State.StackDone := True;
   Finish;
 end;
 
 class procedure TAtlasIdeDebugExceptions.RetryTick;
 begin
   FRetry.Enabled := False;
-  if FCapture.HasPending and not FCapture.StackDone then
+  if FCapture.State.HasPending and not FCapture.State.StackDone then
   begin
     ReadStack;
   end;
@@ -412,24 +377,24 @@ end;
 
 class procedure TAtlasIdeDebugExceptions.DialogFound(const AScan: TAtlasDebugDialogScan);
 begin
-  if not FCapture.HasPending then
+  if not FCapture.State.HasPending then
   begin
     Exit;
   end;
   FCapture.Pending.Dialog := AScan;
   FCapture.Pending.Exception.ExceptionClass := AScan.ExceptionClass;
   FCapture.Pending.Exception.Message := AScan.Message;
-  FCapture.DialogDone := True;
+  FCapture.State.DialogDone := True;
   Finish;
 end;
 
 class procedure TAtlasIdeDebugExceptions.DialogTimeout;
 begin
-  if not FCapture.HasPending then
+  if not FCapture.State.HasPending then
   begin
     Exit;
   end;
-  FCapture.DialogDone := True;
+  FCapture.State.DialogDone := True;
   Finish;
 end;
 
@@ -440,29 +405,23 @@ var
   mHandlers: TArray<TAtlasDebugExceptionHandler>;
   mAuto: TAtlasDebugAutoContinue;
 begin
-  if not FCapture.HasPending or not FCapture.DialogDone or not FCapture.StackDone then
+  if not FCapture.State.Take then
   begin
     Exit;
   end;
-  FCapture.HasPending := False;
   mDone := FCapture.Pending;
   // Klasse bzw. Ort auf der Ignorier-Liste: Dialog mit „Fortsetzen“ schließen und nur zählen.
   mAuto := TAtlasDebugBannerRules.AutoContinue(FIgnore.IgnoresClass(mDone.Exception.ExceptionClass),
     FIgnore.IgnoresLocation(TAtlasIdeDebugSession.LaunchProject, mDone.Exception.ExceptionClass,
     mDone.Exception.FileName, mDone.Exception.Line), LocationsActive);
-  if mAuto <> TAtlasDebugAutoContinue.None then
-  begin
-    // Ohne erkannten Dialog (keiner erschienen oder nicht lesbar) steht der Prozess nur: direkt fortsetzen.
-    if mDone.Dialog.HasException then
-    begin
+  // Ohne erkannten Dialog (keiner erschienen oder nicht lesbar) steht der Prozess nur: direkt fortsetzen.
+  case TAtlasDebugCapture.Resume(mAuto, mDone.Dialog.HasException) of
+    TAtlasDebugCaptureResume.ByDialog:
       mDone.Continued := mDone.Dialog.CanContinue and FDialog.ContinueFound;
-    end
-    else
-    begin
+    TAtlasDebugCaptureResume.ByProcess:
       mDone.Continued := (TAtlasIdeDebugSession.StopCount = mDone.Stop) and TAtlasIdeDebugSession.Resume;
-    end;
-    mDone.Exception.Ignored := mDone.Continued;
   end;
+  mDone.Exception.Ignored := mDone.Continued;
   FHistory.Add(mDone.Exception);
   RefreshWindow;
   mHandlers := FHandlers.Items;
@@ -626,7 +585,7 @@ begin
   end;
   FListener := nil;
   FHandlers.Items := nil;
-  FCapture.HasPending := False;
+  FCapture.State.Reset;
   TAtlasIdeDebugExceptionsWindow.Release;
   FreeAndNil(FRetry);
   FreeAndNil(FTicker);
@@ -747,7 +706,7 @@ var
   mList: TAtlasDebugIgnoreList;
 begin
   mList := FIgnore;
-  Result := (AProject <> '') and (AFileName <> '') and (ALine > 0) and
+  Result := TAtlasDebugCapture.CanIgnoreLocation(AProject, AFileName, ALine) and
     mList.AddLocation(AProject, AClass, AFileName, ALine);
   if not Result then
   begin

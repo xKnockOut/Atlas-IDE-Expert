@@ -90,8 +90,6 @@ type
   public
     constructor Create(const ASession: TAtlasGutterColumnSessionFunc);
     destructor Destroy; override;
-    /// <summary>True für Pascal-Quelltexte (.pas, .dpr, .dpk, .inc).</summary>
-    class function IsSource(const AFileName: string): Boolean; static;
     /// <summary>Welche Arten die Spalte zeigt, aus den Einstellungen.</summary>
     procedure ReadOptions;
     /// <summary>Alles Gemerkte vergessen (Spalte aus).</summary>
@@ -355,15 +353,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeGutterColumnState.IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := ExtractFileExt(AFileName);
-  Result := SameText(mExtension, '.pas') or SameText(mExtension, '.dpr') or SameText(mExtension, '.dpk') or
-    SameText(mExtension, '.inc');
-end;
-
 procedure TAtlasIdeGutterColumnState.ReadOptions;
 var
   mSettings: TAtlasPluginSettings;
@@ -392,7 +381,7 @@ var
   mSession: TLspSession;
   mStore: TAtlasProblemStore;
 begin
-  if (AView = nil) or (AView.Buffer = nil) or not IsSource(AView.Buffer.FileName) then
+  if (AView = nil) or (AView.Buffer = nil) or not TAtlasGutterColumn.Handles(AView.Buffer.FileName) then
   begin
     Exit;
   end;

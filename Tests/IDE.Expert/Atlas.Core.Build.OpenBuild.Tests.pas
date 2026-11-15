@@ -31,12 +31,24 @@ type
     /// Atlas.Core.Build.OpenBuildSettings.Tests.</summary>
     [Test]
     procedure KeysAndProjectFiles;
+    /// <summary>Zusammenfassung nur bei mehr als einem Projekt, nicht gebauten oder unbekannten Vorgaben; Schwere
+    /// nach dem schlimmsten Ergebnis.</summary>
+    [Test]
+    procedure SummaryNeededAndSeverity;
+    /// <summary>Zeilen der Zusammenfassung in fester Reihenfolge; „gebaut“ nur allein.</summary>
+    [Test]
+    procedure SummaryLines;
+    /// <summary>Vorgabe weicht nur ab, wenn sie gesetzt ist und anders heißt; Projekte einer Gruppe zählen mit
+    /// .dpr und .dproj.</summary>
+    [Test]
+    procedure TargetsDifferAndGroupsCover;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Notifications.Contract,
   Atlas.Core.Build.OpenBuild;
 
 { TAtlasOpenBuildTests }
@@ -193,6 +205,65 @@ begin
   Assert.IsFalse(TAtlasOpenBuild.IsGroupFile('C:\P\App.dproj'));
   Assert.IsTrue(TAtlasOpenBuild.IsProjectFile('C:\P\Pkg.dpk'));
   Assert.IsFalse(TAtlasOpenBuild.IsProjectFile('C:\P\Unit1.pas'));
+end;
+
+function Outcome(ATotal, ASucceeded, AFailed, ANotBuilt: Integer; const AReason: string): TAtlasOpenBuildResult;
+begin
+  Result := Default(TAtlasOpenBuildResult);
+  Result.Total := ATotal;
+  Result.Succeeded := ASucceeded;
+  Result.Failed := AFailed;
+  Result.NotBuilt := ANotBuilt;
+  Result.CancelReason := AReason;
+end;
+
+procedure TAtlasOpenBuildTests.SummaryNeededAndSeverity;
+begin
+  Assert.IsFalse(TAtlasOpenBuildSummary.Needed(Outcome(1, 1, 0, 0, ''), 0), 'ein Projekt meldet „Build fertig“');
+  Assert.IsFalse(TAtlasOpenBuildSummary.Needed(Outcome(1, 0, 1, 0, ''), 0), 'auch fehlgeschlagen');
+  Assert.IsTrue(TAtlasOpenBuildSummary.Needed(Outcome(2, 2, 0, 0, ''), 0));
+  Assert.IsTrue(TAtlasOpenBuildSummary.Needed(Outcome(1, 0, 0, 1, 'Wächter'), 0));
+  Assert.IsTrue(TAtlasOpenBuildSummary.Needed(Outcome(1, 1, 0, 0, ''), 1), 'unbekannte Vorgabe');
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Info),
+    Ord(TAtlasOpenBuildSummary.Severity(Outcome(2, 2, 0, 0, ''), False)));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning),
+    Ord(TAtlasOpenBuildSummary.Severity(Outcome(2, 2, 0, 0, ''), True)));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Warning),
+    Ord(TAtlasOpenBuildSummary.Severity(Outcome(2, 1, 0, 1, ''), False)));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error),
+    Ord(TAtlasOpenBuildSummary.Severity(Outcome(3, 1, 1, 1, ''), True)), 'Fehler wiegt am schwersten');
+end;
+
+procedure TAtlasOpenBuildTests.SummaryLines;
+var
+  mLines: TArray<TAtlasOpenBuildLine>;
+begin
+  mLines := TAtlasOpenBuildSummary.Lines(Outcome(2, 2, 0, 0, ''));
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual(Ord(TAtlasOpenBuildLine.Succeeded), Ord(mLines[0]));
+  mLines := TAtlasOpenBuildSummary.Lines(Outcome(3, 1, 1, 1, 'Release-Wächter'));
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.AreEqual(Ord(TAtlasOpenBuildLine.Failed), Ord(mLines[0]));
+  Assert.AreEqual(Ord(TAtlasOpenBuildLine.NotBuilt), Ord(mLines[1]));
+  Assert.AreEqual(Ord(TAtlasOpenBuildLine.Reason), Ord(mLines[2]));
+  mLines := TAtlasOpenBuildSummary.Lines(Outcome(2, 1, 1, 0, ''));
+  Assert.AreEqual(1, Integer(Length(mLines)));
+  Assert.AreEqual(Ord(TAtlasOpenBuildLine.Failed), Ord(mLines[0]));
+  mLines := nil;
+end;
+
+procedure TAtlasOpenBuildTests.TargetsDifferAndGroupsCover;
+var
+  mCovered: TArray<string>;
+begin
+  Assert.IsFalse(TAtlasOpenBuildSummary.Differs('', 'Debug'), 'ohne Vorgabe');
+  Assert.IsFalse(TAtlasOpenBuildSummary.Differs('release', 'Release'), 'Groß/klein egal');
+  Assert.IsTrue(TAtlasOpenBuildSummary.Differs('Release', 'Debug'));
+  mCovered := TArray<string>.Create('C:\P\App.dproj', 'C:\P\Lib.dproj');
+  Assert.IsTrue(TAtlasOpenBuildSummary.IsCovered(mCovered, 'c:\p\app.dpr'));
+  Assert.IsFalse(TAtlasOpenBuildSummary.IsCovered(mCovered, 'C:\P\Tests.dproj'));
+  Assert.IsFalse(TAtlasOpenBuildSummary.IsCovered(nil, 'C:\P\App.dproj'));
+  mCovered := nil;
 end;
 
 initialization

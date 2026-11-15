@@ -65,6 +65,7 @@ contains
   Atlas.IDE.Hotspots.Window in 'Source\IDE\Hotspots\Atlas.IDE.Hotspots.Window.pas',
   Atlas.IDE.Hotspots.Service in 'Source\IDE\Hotspots\Atlas.IDE.Hotspots.Service.pas',
   Atlas.Core.UnitRelations.Model in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
+  Atlas.Core.UnitRelations.Plan in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.Plan.pas',
   Atlas.Core.UnitRelations.InterfaceCost in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
   Atlas.UI.UnitRelations.Frame in 'Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas' {AtlasUnitRelationsFrame: TFrame},
   Atlas.IDE.UnitRelations.Window in 'Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Window.pas',

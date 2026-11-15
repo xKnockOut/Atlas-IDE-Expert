@@ -40,9 +40,22 @@ type
     procedure BrokenJsonIsEmpty;
     [Test]
     procedure MissingMembers;
+    [Test]
+    procedure StoreAndKey;
+    [Test]
+    procedure MenuTagsRoundTrip;
+    [Test]
+    procedure MenuActions;
+    [Test]
+    procedure CombinedSelection;
   end;
 
 implementation
+
+uses
+  System.SysUtils,
+  System.Classes,
+  System.IOUtils;
 
 const
   cForm = 'C:\Projekt\uKunden.dfm';
@@ -183,6 +196,84 @@ begin
   mMissing := TAtlasSelectionSets.Missing(TAtlasSelectionSet.Create('A', ['edtPlz', 'edtOrt']), ['EDTPLZ']);
   Assert.AreEqual(1, Integer(Length(mMissing)));
   Assert.AreEqual('edtOrt', mMissing[0]);
+end;
+
+procedure TAtlasSelectionSetsTests.StoreAndKey;
+begin
+  Assert.AreEqual(TPath.Combine('C:\P\', '.atlas-selection-sets.json'),
+    TAtlasSelectionSets.StorePath('C:\P\Main.dfm', True, 'C:\Local', 'C:\Temp'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine('C:\Local', 'Atlas'), 'designer-selection-sets.json'),
+    TAtlasSelectionSets.StorePath('C:\P\Main.dfm', False, 'C:\Local', 'C:\Temp'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine('C:\Temp', 'Atlas'), 'designer-selection-sets.json'),
+    TAtlasSelectionSets.StorePath('C:\P\Main.dfm', False, '', 'C:\Temp'), 'ohne LOCALAPPDATA');
+  Assert.AreEqual('C:\P\Main.dfm', TAtlasSelectionSets.FormKey('C:\P\Main.dfm', False));
+  Assert.AreEqual(ExtractFileName('C:\P\Main.dfm'), TAtlasSelectionSets.FormKey('C:\P\Main.dfm', True));
+end;
+
+procedure TAtlasSelectionSetsTests.MenuTagsRoundTrip;
+var
+  mIndex: Integer;
+  mAction: TAtlasSetAction;
+begin
+  Assert.IsTrue(TAtlasSetMenu.TryDecode(TAtlasSetMenu.TagOf(3, TAtlasSetAction.Rename), mIndex, mAction));
+  Assert.AreEqual(3, mIndex);
+  Assert.AreEqual(Ord(TAtlasSetAction.Rename), Ord(mAction));
+  Assert.IsTrue(TAtlasSetMenu.TryDecode(TAtlasSetMenu.TagOf(0, TAtlasSetAction.Delete), mIndex, mAction));
+  Assert.AreEqual(0, mIndex);
+  Assert.AreEqual(Ord(TAtlasSetAction.Delete), Ord(mAction));
+  Assert.IsFalse(TAtlasSetMenu.TryDecode(TAtlasSetMenu.cSaveTag, mIndex, mAction), 'Auswahl speichern');
+end;
+
+procedure TAtlasSelectionSetsTests.MenuActions;
+begin
+  Assert.AreEqual(Ord(TAtlasSetAction.Add), Ord(TAtlasSetMenu.ClickAction(TAtlasSetAction.Restore, True, True)),
+    'Umschalt vor Strg');
+  Assert.AreEqual(Ord(TAtlasSetAction.Remove), Ord(TAtlasSetMenu.ClickAction(TAtlasSetAction.Restore, False, True)));
+  Assert.AreEqual(Ord(TAtlasSetAction.Restore), Ord(TAtlasSetMenu.ClickAction(TAtlasSetAction.Restore, False, False)));
+  Assert.AreEqual(Ord(TAtlasSetAction.Rename), Ord(TAtlasSetMenu.ClickAction(TAtlasSetAction.Rename, True, False)),
+    'nur Wiederherstellen');
+  Assert.IsFalse(TAtlasSetMenu.Enabled(TAtlasSetAction.Restore, 0), 'leerer Satz grau');
+  Assert.IsTrue(TAtlasSetMenu.Enabled(TAtlasSetAction.Rename, 0), 'pflegen geht');
+  Assert.IsTrue(TAtlasSetMenu.Enabled(TAtlasSetAction.Add, 2));
+  Assert.IsTrue(TAtlasSetMenu.BreakBefore(TAtlasSetAction.Overwrite));
+  Assert.IsTrue(TAtlasSetMenu.BreakBefore(TAtlasSetAction.Up));
+  Assert.IsFalse(TAtlasSetMenu.BreakBefore(TAtlasSetAction.Down));
+  Assert.AreEqual(0, TAtlasSetMenu.ShortcutIndex(Ord('1'), True));
+  Assert.AreEqual(8, TAtlasSetMenu.ShortcutIndex(Ord('9'), True));
+  Assert.AreEqual(-1, TAtlasSetMenu.ShortcutIndex(Ord('0'), True));
+  Assert.AreEqual(-1, TAtlasSetMenu.ShortcutIndex(Ord('1'), False), 'ohne Strg+Umschalt');
+end;
+
+procedure TAtlasSelectionSetsTests.CombinedSelection;
+var
+  mOwner: TComponent;
+  mA, mB, mC: TComponent;
+  mResult: TArray<TComponent>;
+begin
+  mOwner := TComponent.Create(nil);
+  try
+    mA := TComponent.Create(mOwner);
+    mB := TComponent.Create(mOwner);
+    mC := TComponent.Create(mOwner);
+    mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
+      TAtlasSetAction.Restore);
+    Assert.AreEqual(2, Integer(Length(mResult)));
+    Assert.IsTrue(mResult[0] = mB);
+    Assert.IsTrue(mResult[1] = mC);
+    mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
+      TAtlasSetAction.Add);
+    Assert.AreEqual(3, Integer(Length(mResult)));
+    Assert.IsTrue(mResult[0] = mA);
+    Assert.IsTrue(mResult[1] = mB);
+    Assert.IsTrue(mResult[2] = mC);
+    mResult := TAtlasSetMenu.Combined(TArray<TComponent>.Create(mA, mB), TArray<TComponent>.Create(mB, mC),
+      TAtlasSetAction.Remove);
+    Assert.AreEqual(1, Integer(Length(mResult)));
+    Assert.IsTrue(mResult[0] = mA);
+    mResult := nil;
+  finally
+    mOwner.Free;
+  end;
 end;
 
 end.

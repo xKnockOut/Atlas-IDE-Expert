@@ -129,14 +129,6 @@ begin
   Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
-end;
-
 /// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
 function CaretPoint: TPoint;
 var
@@ -313,7 +305,7 @@ begin
   ASession := nil;
   AView := TAtlasEditorBuffer.ActiveView;
   Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
-    IsPascal(AView.Buffer.FileName);
+    TAtlasUnwrap.Handles(AView.Buffer.FileName);
   if Result and Assigned(FSession) then
   begin
     ASession := FSession();

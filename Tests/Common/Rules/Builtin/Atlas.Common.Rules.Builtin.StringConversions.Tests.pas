@@ -26,6 +26,8 @@ type
     [Test]
     procedure WideCharInSetWithFix;
     [Test]
+    procedure CharInSysCharSet;
+    [Test]
     procedure ArgumentsAndInlineVariables;
     [Test]
     procedure SystemStringTypes;
@@ -252,6 +254,30 @@ begin
   Assert.AreEqual(1, Integer(Length(mFound[0].Fixes[0].Edits)));
   mFixed := Applied(mSource, mFound[1].Fixes[0]);
   Assert.IsTrue(Pos('  if not (CharInSet(W, [#9, '' ''])) then Exit;'#10, mFixed) > 0, mFixed);
+end;
+
+procedure TStringConversionTests.CharInSysCharSet;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fundstelle aus Atlas.Core.Tracker.Internals.FormYaml (#2309): Zeichenliteral und Char in TSysCharSet.
+  mSource := 'unit Texte;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Stopp(const AStops: TSysCharSet; C: Char): Boolean;'#10'begin'#10 +
+    '  Result := (''}'' in AStops) or (C in AStops) or CharInSet(C, AStops);'#10'end;'#10'end.';
+  mFound := Findings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('''}'' ist Char; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).',
+    mFound[0].Message);
+  Assert.AreEqual('C ist Char; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).',
+    mFound[1].Message);
+  mFixed := Applied(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  Result := (CharInSet(''}'', AStops)) or (C in AStops)', mFixed) > 0, mFixed);
+  // Ohne System.SysUtils ist TSysCharSet nicht sicher der Typ der RTL; eigene Mengen von Char kürzen nicht.
+  Assert.AreEqual('', Messages(Findings('unit Texte;'#10'interface'#10'implementation'#10 +
+    'type'#10'  TZeichen = set of Char;'#10'function Stopp(const AStops: TSysCharSet; const AEigene: TZeichen): ' +
+    'Boolean;'#10'begin'#10'  Result := (''}'' in AStops) or (''}'' in AEigene);'#10'end;'#10'end.')));
+  mFound := nil;
 end;
 
 procedure TStringConversionTests.ArgumentsAndInlineVariables;
