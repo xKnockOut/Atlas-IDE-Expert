@@ -154,6 +154,15 @@ const
   cWideCasts: array[0..1] of string = ('UInt64', 'Int64');
   cFnvPrime32 = 16777619;
   cFnvPrime64 = 1099511628211;
+  /// <summary>Breite der FNV-Primzahlen in Bit (Ergebnis von PrimeBits).</summary>
+  cHashBits32 = 32;
+  cHashBits64 = 64;
+  /// <summary>TryGetValue(Key, Wert): Aufgerufener, Schlüssel und out-Argument.</summary>
+  cTryGetValueArgs = 3;
+  /// <summary>Anfang der eingefügten Zuweisung an Result.</summary>
+  cResultAssign = 'Result := ';
+  /// <summary>Eingefügte eigene Kopie: Feld := Copy(Feld).</summary>
+  cCopyAssign = '%0:s := Copy(%0:s)';
 
 { Hilfen }
 
@@ -370,10 +379,38 @@ type
     function Read(ANode: TSyntaxNode): Boolean;
   end;
 
-function TResultScan.Read(ANode: TSyntaxNode): Boolean;
+{ TResultScan }
+
+function TResultScan.Step(AResult: TSyntaxNode): Boolean;
+var
+  mParent, mCall: TSyntaxNode;
+  mCallee: string;
 begin
-  Reader := ANode;
+  mParent := AResult.Parent;
+  if (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent[0] = AResult) then
+  begin
+    if (State = TResultState.Unset) and MentionsResult(mParent[1]) then
+    begin
+      Reader := mParent;
+    end;
+    State := TResultState.Done;
+    Exit(False);
+  end;
+  mCall := ArgumentOf(AResult, mCallee);
+  if mCall <> nil then
+  begin
+    Exit(StepCall(AResult, mCall, mCallee));
+  end;
+  if (mParent.Kind = TSyntaxKind.IndexAccess) and (mParent[0] = AResult) then
+  begin
+    Exit(StepElement(mParent));
+  end;
   Result := False;
+  if (State = TResultState.Unset) and (mParent.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.ForInStatement,
+    TSyntaxKind.MemberAccess]) then
+  begin
+    Reader := mParent;
+  end;
 end;
 
 function TResultScan.StepCall(AResult, ACall: TSyntaxNode; const ACallee: string): Boolean;
@@ -435,36 +472,10 @@ begin
   Result := Read(AElement);
 end;
 
-function TResultScan.Step(AResult: TSyntaxNode): Boolean;
-var
-  mParent, mCall: TSyntaxNode;
-  mCallee: string;
+function TResultScan.Read(ANode: TSyntaxNode): Boolean;
 begin
-  mParent := AResult.Parent;
-  if (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent[0] = AResult) then
-  begin
-    if (State = TResultState.Unset) and MentionsResult(mParent[1]) then
-    begin
-      Reader := mParent;
-    end;
-    State := TResultState.Done;
-    Exit(False);
-  end;
-  mCall := ArgumentOf(AResult, mCallee);
-  if mCall <> nil then
-  begin
-    Exit(StepCall(AResult, mCall, mCallee));
-  end;
-  if (mParent.Kind = TSyntaxKind.IndexAccess) and (mParent[0] = AResult) then
-  begin
-    Exit(StepElement(mParent));
-  end;
+  Reader := ANode;
   Result := False;
-  if (State = TResultState.Unset) and (mParent.Kind in [TSyntaxKind.BinaryExpr, TSyntaxKind.ForInStatement,
-    TSyntaxKind.MemberAccess]) then
-  begin
-    Reader := mParent;
-  end;
 end;
 
 procedure TManagedResultReadRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -502,14 +513,14 @@ begin
       mStatement := StatementOf(mScan.Sized);
       AReport.Add(TTextRange.Create(mScan.Sized.StartPos, mScan.Sized.EndPos), cTexts[TSemanticsText.ResultSized].Fmt(
         [mEmpty, mReader]), TRuleConfidence.Medium, [InsertBefore(AContext, mStatement,
-        cTexts[TSemanticsText.ResultFix].Fmt([mEmpty]), 'Result := ' + mEmpty)]);
+        cTexts[TSemanticsText.ResultFix].Fmt([mEmpty]), cResultAssign + mEmpty)]);
     end
     else
     begin
       mStatement := StatementOf(mScan.Reader);
       AReport.Add(TTextRange.Create(mScan.Reader.StartPos, mScan.Reader.EndPos), cTexts[TSemanticsText.ResultRead].Fmt(
         [mReader, mEmpty]), TRuleConfidence.Medium, [InsertBefore(AContext, mStatement,
-        cTexts[TSemanticsText.ResultFix].Fmt([mEmpty]), 'Result := ' + mEmpty)]);
+        cTexts[TSemanticsText.ResultFix].Fmt([mEmpty]), cResultAssign + mEmpty)]);
     end;
   end;
 end;
@@ -534,7 +545,7 @@ begin
   end;
   mCallee := AStatement[0][0];
   if (mCallee.Kind = TSyntaxKind.MemberAccess) and SameText(mCallee.Name, 'TryGetValue') and
-    (AStatement[0].ChildCount >= 3) then
+    (AStatement[0].ChildCount >= cTryGetValueArgs) then
   begin
     Result := AStatement[0];
   end;
@@ -663,6 +674,8 @@ type
     function IsDynamicArray(ANode: TSyntaxNode): Boolean;
   end;
 
+{ TSharedTypes }
+
 constructor TSharedTypes.Create(const AContext: TRuleContext);
 var
   mOptions: TExpressionTypeOptions;
@@ -748,6 +761,8 @@ type
     function Statement: TSyntaxNode;
   end;
 
+{ TSharedCopy }
+
 function TSharedCopy.Statement: TSyntaxNode;
 begin
   Result := Statements[Index];
@@ -806,8 +821,7 @@ begin
   AReport.Add(TTextRange.Create(AWrite[0].StartPos, AWrite[0].EndPos), cTexts[TSemanticsText.SharedMessage].Fmt(
     [mField, ACopy.Statement.StartPos.Line + 1, SourceText(AContext.Text, ACopy.Statement), mOther]),
     TRuleConfidence.High,
-    [InsertBefore(AContext, AWrite, cTexts[TSemanticsText.SharedFix].Fmt([mField]), mField + ' := Copy(' + mField +
-    ')')]);
+    [InsertBefore(AContext, AWrite, cTexts[TSemanticsText.SharedFix].Fmt([mField]), Format(cCopyAssign, [mField]))]);
 end;
 
 procedure TRecordArraySharedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1040,11 +1054,11 @@ begin
   end;
   if mNumber = cFnvPrime32 then
   begin
-    Result := 32;
+    Result := cHashBits32;
   end
   else if mNumber = cFnvPrime64 then
   begin
-    Result := 64;
+    Result := cHashBits64;
   end;
 end;
 
@@ -1129,11 +1143,11 @@ begin
   for mSide := 0 to 1 do
   begin
     mBits := PrimeBits(ARoot, AProduct[mSide]);
-    if mBits = 64 then
+    if mBits = cHashBits64 then
     begin
       Exit(True);
     end;
-    if (mBits = 32) and not IsWidened(AProduct[1 - mSide]) then
+    if (mBits = cHashBits32) and not IsWidened(AProduct[1 - mSide]) then
     begin
       Exit(True);
     end;
