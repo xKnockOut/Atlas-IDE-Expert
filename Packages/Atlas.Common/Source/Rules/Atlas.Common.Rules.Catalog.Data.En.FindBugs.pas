@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnFindBugs: array[0..1249] of string = (
+  cCatalogLinesEnFindBugs: array[0..1261] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Function result possibly not set",',
@@ -1508,6 +1508,23 @@ const
     '          "description": "Further functions without side effects that are reported like the standard routines, as Name, Class.Name or Unit.Name."',
     '        }',
     '      ],',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "class-reference-nonvirtual-constructor",',
+    '      "name": "Constructor called through a class reference is not virtual",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "find-bugs",',
+    '      "description": "Create called through a class reference (class of TBasis) whose constructor is not virtual. On Win32 and Win64 this compiles silently but always runs the constructor of TBasis: f' +
+    'ields that descendants set up in their own constructors stay empty. The receiver may be a variable, field, parameter or function result whose type is a class reference; the constructor is resolved by ' +
+    'name resolution in the nearest class that declares it, including overloads by argument count. The rule stays silent when a matching overload is virtual, dynamic, override or abstract, when a declarati' +
+    'on lies in another branch of conditional compilation, and when a type cannot be resolved. Quick fix when the constructor is declared in this file: virtual on it and override on the constructors with t' +
+    'he same signature in descendants in this file.",',
+    '      "bad": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create;\n  end;\n...\n  P := Klasse.Create;",',
+    '      "good": "type\n  TPluginKlasse = class of TPlugin;\n  TPlugin = class\n    constructor Create; virtual;\n  end;\n  TSpezial = class(TPlugin)\n    constructor Create; override;\n  end;\n...\n  P ' +
+    ':= Klasse.Create;",',
+    '      "level": "B",',
     '      "safeFix": false',
     '    }');
 

@@ -80,6 +80,10 @@ function SectionNames(ASection: TSyntaxNode): TArray<string>;
 /// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
 /// TG4).</summary>
 function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
+/// <summary>Echte Konstanten (ohne Typ) auf oberster Ebene von ASection. Methoden generischer Typen und
+/// generische Methoden aus dem interface-Teil dürfen sie verwenden; dcc meldet E2506 nur für typisierte
+/// Konstanten, Variablen und Routinen (DMVC Serializer.Streaming.Items, dcc-Probe Delphi 13).</summary>
+function UntypedConstantsOf(ASection: TSyntaxNode): TArray<string>;
 /// <summary>Erste Typdeklaration AName (Klasse, Record, object) unterhalb von ASection, nil ohne.</summary>
 function FindStructDecl(ASection: TSyntaxNode; const AName: string): TSyntaxNode;
 /// <summary>Letzter Teil eines Namens mit Punkten: "TAussen.TInnen" ergibt "TInnen".</summary>
@@ -268,6 +272,24 @@ begin
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+end;
+
+function UntypedConstantsOf(ASection: TSyntaxNode): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ASection = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mIndex].Kind = TSyntaxKind.ConstSection then
+    begin
+      Result := Result + UntypedConstNames(ASection[mIndex]);
     end;
   end;
 end;

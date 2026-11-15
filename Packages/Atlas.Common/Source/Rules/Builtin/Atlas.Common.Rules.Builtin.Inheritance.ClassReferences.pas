@@ -1,10 +1,10 @@
 ﻿unit Atlas.Common.Rules.Builtin.Inheritance.ClassReferences;
 
 // Regel class-reference-nonvirtual-constructor aus Atlas.Common.Rules.Builtin.Inheritance (#1032): Create über
-// eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtuell ist (E2391); es läuft immer der
-// Konstruktor der Basisklasse. Kennt der Index die Klassenreferenz oder ihre Klasse nicht (RTL unter Linux:
-// ExceptClass, Exception), kann die Regel die Zeile nicht entscheiden (IRuleLineCertainty): Ein lsp-ignore dort
-// gilt dann nicht als unused-suppression.
+// eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtuell ist; es läuft immer der Konstruktor der
+// Basisklasse. dcc meldet das unter Win32 und Win64 nicht (E2391 gab es nur für .NET). Kennt der Index die
+// Klassenreferenz oder ihre Klasse nicht (RTL unter Linux: ExceptClass, Exception), kann die Regel die Zeile nicht
+// entscheiden (IRuleLineCertainty): Ein lsp-ignore dort gilt dann nicht als unused-suppression.
 
 interface
 
@@ -44,12 +44,12 @@ type
 
 const
   cTexts: array[TInheritanceClassReferencesText] of TAtlasText = (
-    (De: 'Konstruktor über Klassenreferenz nicht virtuell (wie E2391)';
-     En: 'Constructor via class reference not virtual (like E2391)'),
+    (De: 'Konstruktor über Klassenreferenz nicht virtuell';
+     En: 'Constructor via class reference not virtual'),
     (De: 'virtual an %s.%s, override in den Nachfahren'; En: 'virtual on %s.%s, override in the descendants'),
     (De: 'virtual an %s.%s'; En: 'virtual on %s.%s'),
-    (De: '%s.%s ist nicht virtuell; über die Klassenreferenz läuft immer %s.%s (wie E2391).';
-     En: '%s.%s is not virtual; the class reference always runs %s.%s (like E2391).'));
+    (De: '%s.%s ist nicht virtuell; über die Klassenreferenz läuft immer %s.%s.';
+     En: '%s.%s is not virtual; the class reference always runs %s.%s.'));
 
 {$SCOPEDENUMS OFF}
 

@@ -1229,9 +1229,12 @@ var
     mSymbols: TImplementationSymbols;
     mRoutine, mDecl, mOuter, mUse: TSyntaxNode;
     mGeneric: Boolean;
+    mConstants: TArray<string>;
   begin
     mSymbols := TImplementationSymbols.Create(AContext);
     try
+      // Echte Konstanten setzt dcc ein wie Literale; nur typisierte Konstanten, Variablen und Routinen sind E2506.
+      mConstants := UntypedConstantsOf(AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection));
       for mRoutine in mSymbols.Routines do
       begin
         mDecl := mSymbols.OwnerType(mRoutine);
@@ -1255,8 +1258,11 @@ var
         end;
         for mUse in mSymbols.UsesIn(mRoutine, mDecl) do
         begin
-          Report(NodeRange(mUse), cTexts[TTypeRestrictionsGenericsText.ImplementationUse].Fmt([mRoutine.Name,
-            mUse.Name]));
+          if not MatchText(mUse.Name, mConstants) then
+          begin
+            Report(NodeRange(mUse), cTexts[TTypeRestrictionsGenericsText.ImplementationUse].Fmt([mRoutine.Name,
+              mUse.Name]));
+          end;
         end;
       end;
     finally

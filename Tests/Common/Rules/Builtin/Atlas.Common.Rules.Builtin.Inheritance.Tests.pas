@@ -29,8 +29,13 @@ type
     procedure HidesVirtualWithOtherSignatureIsMedium;
     [Test]
     procedure ReintroduceSilencesAllRules;
+    /// <summary>Wie dcc (W1010): overload nur am Nachfahren verdeckt die virtuelle Methode des Vorfahren.</summary>
     [Test]
-    procedure OverloadWithOtherSignatureIsSilent;
+    procedure OverloadOnlyInDescendantReports;
+    /// <summary>Wie dcc: Trägt die verdeckte virtuelle Methode overload, ergänzt der Nachfahr die Überladungen
+    /// (Indy TIdHTTP.GetResponse).</summary>
+    [Test]
+    procedure AncestorOverloadIsSilent;
     [Test]
     procedure VirtualInsteadOfOverrideReplacesDirective;
     /// <summary>Die Meldung nennt den Vorfahren mit der virtuellen Methode, auch über Zwischenstufen.</summary>
@@ -302,9 +307,25 @@ begin
   TRuleAssert.Silent(TComponentCreateWithoutOverrideRule.Create, mSource);
 end;
 
-procedure TInheritanceRulesTests.OverloadWithOtherSignatureIsSilent;
+procedure TInheritanceRulesTests.OverloadOnlyInDescendantReports;
+var
+  mFindings: TArray<TRuleFinding>;
 begin
-  TRuleAssert.Silent(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(const S: string); overload;'));
+  mFindings := TRuleAssert.Findings(THidesVirtualRule.Create, ClassUnit('    procedure Lauf(const S: string); overload;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  TRuleAssert.Silent(THidesVirtualRule.Create,
+    ClassUnit('    procedure Lauf(const S: string); reintroduce; overload;'));
+end;
+
+procedure TInheritanceRulesTests.AncestorOverloadIsSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TConn = class'#10'  public'#10 +
+    '    function GetResponse(const A: SmallInt = -1): SmallInt; overload;'#10 +
+    '    function GetResponse(const A: array of SmallInt): SmallInt; overload; virtual;'#10'  end;'#10 +
+    '  THttp = class(TConn)'#10'  protected'#10'    function GetResponse: TObject;'#10'  end;'#10 +
+    'implementation'#10'end.';
+begin
+  TRuleAssert.Silent(THidesVirtualRule.Create, cSource);
 end;
 
 procedure TInheritanceRulesTests.VirtualInsteadOfOverrideReplacesDirective;
@@ -1163,8 +1184,8 @@ begin
   mSource := Plugins('', '', '  Result := Klasse.Create;'#10);
   mFindings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual('TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create ' +
-    '(wie E2391).', mFindings[0].Message);
+  Assert.AreEqual('TPlugin.Create ist nicht virtuell; über die Klassenreferenz läuft immer TPlugin.Create.',
+    mFindings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
   Assert.AreEqual(22, mFindings[0].Range.StartPos.Line);
@@ -1204,8 +1225,8 @@ begin
     'procedure Lauf(K: TDienstKlasse; B: TBauteilKlasse);'#10'begin'#10'  K.Create.Free;'#10 +
     '  B.Create(nil).Free;'#10'  Klasse.Create.Free;'#10'end;'#10'end.', IndexWith([cBasisSource]), '', 'U.pas');
   Assert.AreEqual(2, Integer(Length(mFindings)));
-  Assert.AreEqual('TDienst.Create ist nicht virtuell; über die Klassenreferenz läuft immer TDienst.Create ' +
-    '(wie E2391).', mFindings[0].Message);
+  Assert.AreEqual('TDienst.Create ist nicht virtuell; über die Klassenreferenz läuft immer TDienst.Create.',
+    mFindings[0].Message);
   Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
   Assert.AreEqual(0, Integer(Length(mFindings[0].Fixes)));
   Assert.AreEqual(9, mFindings[1].Range.StartPos.Line);
@@ -1246,7 +1267,7 @@ begin
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '{"rules": {"class-reference-nonvirtual-constructor": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
-    '{"rules": {"group:compiler": "off"}}', 'U.pas'))));
+    '{"rules": {"group:find-bugs": "off"}}', 'U.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create, mSource,
     '{"rules": {"class-reference-nonvirtual-constructor": {"exclude": ["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;

@@ -8,12 +8,12 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 87 |
+| [Fehler finden](#gruppe-find-bugs) | 88 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 98 |
-| [Robustheit und Muster](#gruppe-robustness) | 14 |
+| [Compiler vorab](#gruppe-compiler) | 96 |
+| [Robustheit und Muster](#gruppe-robustness) | 15 |
 | [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 12 |
@@ -116,6 +116,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
 | [`ignored-result`](#ignored-result) | Ergebnis einer Funktion ohne Seiteneffekte verworfen | Bug | Warnung |
+| [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 
 <a id="gruppe-exceptions"></a>
 ### Exceptions
@@ -194,7 +195,6 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`text-after-final-end`](#text-after-final-end) | Text nach dem abschließenden end. | Code Smell | Warnung |
 | [`exports-invalid`](#exports-invalid) | exports-Klausel unzulässig | Bug | Fehler |
 | [`unit-name-conflict`](#unit-name-conflict) | Unit-Name kollidiert | Bug | Fehler |
-| [`implicit-variants-unit`](#implicit-variants-unit) | Variant ohne System.Variants in uses | Code Smell | Hinweis |
 | [`file-encoding-unsupported`](#file-encoding-unsupported) | Kodierung oder Zeichen, die der Compiler nicht liest | Bug | Fehler |
 | [`anonymous-capture-invalid`](#anonymous-capture-invalid) | Anonyme Methode erfasst, was sie nicht erfassen darf | Bug | Fehler |
 | [`operator-declaration-invalid`](#operator-declaration-invalid) | Operator falsch deklariert | Bug | Fehler |
@@ -258,7 +258,6 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`winapi-uses-missing`](#winapi-uses-missing) | Winapi.Windows fehlt in uses | Bug | Fehler |
 | [`stream-write-nativeint`](#stream-write-nativeint) | Write ohne NativeInt-Überladung | Bug | Warnung |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
-| [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
 | [`reraise-outside-handler`](#reraise-outside-handler) | raise ohne Argument außerhalb eines Handlers | Bug | Fehler |
 | [`label-misuse`](#label-misuse) | Sprungmarke falsch verwendet | Bug | Fehler |
@@ -283,6 +282,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`compiler-warnings-disabled`](#compiler-warnings-disabled) | Compiler-Warnungen oder Prüfungen bis zum Ende der Unit abgeschaltet | Code Smell | Warnung |
 | [`dll-export-unsafe`](#dll-export-unsafe) | Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar | Bug | Warnung |
 | [`global-formatsettings-modified`](#global-formatsettings-modified) | Globale FormatSettings wird verändert | Bug | Warnung |
+| [`implicit-variants-unit`](#implicit-variants-unit) | Variant ohne System.Variants in uses | Code Smell | Hinweis |
 | [`ui-call-in-console-or-service`](#ui-call-in-console-or-service) | Dialog in Konsolenprogramm oder Dienst | Bug | Warnung |
 | [`load-without-encoding`](#load-without-encoding) | Text laden oder speichern ohne Kodierung | Bug | Warnung |
 | [`registry-hklm-write`](#registry-hklm-write) | Schreiben nach HKEY_LOCAL_MACHINE | Bug | Hinweis |
@@ -6819,11 +6819,9 @@ interface
 <a id="implicit-variants-unit"></a>
 ### implicit-variants-unit
 
-**Variant ohne System.Variants in uses** · Code Smell · Hinweis · Gruppe Compiler vorab
+**Variant ohne System.Variants in uses** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (wie W1040) und ändert damit die Initialisierungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in System, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in uses aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt).
-
-Entspricht der Compilermeldung `W1040`.
+Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (Delphi 13 meldet dafür kein W1040) und ändert damit die Initialisierungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne Namespace. Still in System, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektur: System.Variants in uses aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt).
 
 Stufe B (Namensauflösung über Units).
 
@@ -9535,11 +9533,9 @@ type
 <a id="class-reference-nonvirtual-constructor"></a>
 ### class-reference-nonvirtual-constructor
 
-**Konstruktor über Klassenreferenz nicht virtuell** · Bug · Warnung · Gruppe Compiler vorab
+**Konstruktor über Klassenreferenz nicht virtuell** · Bug · Warnung · Gruppe Fehler finden
 
-Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer (wie E2391). Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynamic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei.
-
-Entspricht der Compilermeldung `E2391`.
+Create über eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtual ist. Unter Win32 und Win64 übersetzt das ohne Meldung, erzeugt aber immer über den Konstruktor von TBasis: Felder, die Nachfahren in ihren eigenen Konstruktoren setzen, bleiben leer. Der Empfänger kann eine Variable, ein Feld, ein Parameter oder ein Funktionsergebnis vom Typ einer Klassenreferenz sein; den Konstruktor löst die Namensauflösung in der nächsten Klasse auf, die ihn deklariert, Überladungen nach Zahl der Argumente. Still, wenn eine passende Überladung virtual, dynamic, override oder abstract ist, wenn eine Deklaration in einem anderen Zweig der bedingten Übersetzung steht und wenn ein Typ nicht auflösbar ist. Korrektur, wenn der Konstruktor in dieser Datei steht: virtual an ihn und override an die gleichlautenden Konstruktoren der Nachfahren in dieser Datei.
 
 Stufe B (Namensauflösung über Units).
 

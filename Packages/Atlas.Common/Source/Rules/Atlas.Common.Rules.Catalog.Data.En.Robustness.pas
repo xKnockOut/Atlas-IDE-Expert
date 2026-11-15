@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnRobustness: array[0..196] of string = (
+  cCatalogLinesEnRobustness: array[0..211] of string = (
     '{',
     '      "id": "random-without-randomize",',
     '      "name": "Random without Randomize",',
@@ -202,6 +202,24 @@ const
     '        }',
     '      ],',
     '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "implicit-variants-unit",',
+    '      "name": "Variant without System.Variants in uses",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "robustness",',
+    '      "description": "The unit uses Variant or OleVariant as a type without System.Variants in uses. The compiler then adds the unit silently (Delphi 13 reports no W1040 for it) and so changes the ini' +
+    'tialization order. The rule counts type references in the syntax tree (variables, fields, parameters, results, type arguments); Variants in uses also counts inside an {$IF…} branch and without namespa' +
+    'ce. Silent in System, SysInit and Variants themselves, when the file declares its own type Variant, and after {$WARN IMPLICIT_VARIANTS OFF}. Off by default (strict profile). Quick fix: add System.Vari' +
+    'ants to uses (Variants when the unit names SysUtils or Classes without namespace).",',
+    '      "bad": "uses\n  System.SysUtils;\n…\nvar Wert: Variant;",',
+    '      "good": "uses\n  System.SysUtils, System.Variants;\n…\nvar Wert: Variant;",',
+    '      "level": "B",',
+    '      "safeFix": true,',
+    '      "profiles": [',
+    '        "strict"',
+    '      ]',
     '    },',
     '{',
     '      "id": "ui-call-in-console-or-service",',

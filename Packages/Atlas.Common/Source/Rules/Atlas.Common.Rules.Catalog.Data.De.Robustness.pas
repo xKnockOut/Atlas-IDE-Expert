@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeRobustness: array[0..99] of string = (
+  cCatalogLinesDeRobustness: array[0..104] of string = (
     '{',
     '      "id": "random-without-randomize",',
     '      "name": "Random ohne Randomize",',
@@ -130,6 +130,14 @@ const
     '          "description": "Zuweisungen in der .dpr erlauben, etwa einmal beim Programmstart."',
     '        }',
     '      ]',
+    '    },',
+    '{',
+    '      "id": "implicit-variants-unit",',
+    '      "name": "Variant ohne System.Variants in uses",',
+    '      "description": "Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses zu haben. Der Compiler bindet die Unit dann still ein (Delphi 13 meldet dafür kein W1040) und änd' +
+    'ert damit die Initialisierungsreihenfolge. Die Regel zählt Typangaben im Syntaxbaum (Variablen, Felder, Parameter, Ergebnisse, Typargumente); Variants in uses gilt auch in einem {$IF…}-Zweig und ohne ' +
+    'Namespace. Still in System, SysInit und Variants selbst, wenn die Datei einen eigenen Typ Variant deklariert, und nach {$WARN IMPLICIT_VARIANTS OFF}. Standardmäßig aus (Profil strict). Schnellkorrektu' +
+    'r: System.Variants in uses aufnehmen (Variants, wenn die Unit SysUtils oder Classes ohne Namespace nennt)."',
     '    },',
     '{',
     '      "id": "ui-call-in-console-or-service",',
