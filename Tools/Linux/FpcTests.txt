@@ -525,5 +525,6 @@ Atlas.Core.Tests.ListFile.Tests
 Atlas.Core.Tests.Log.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
 Atlas.Core.Debug.DialogInput.Tests
-Atlas.Core.Settings.FeatureGates.Tests
+Atlas.Core.Problems.Switches.Tests
 Atlas.Core.Forms.PropertyValues.Tests
+Atlas.Core.Editor.GutterMarks.Tests

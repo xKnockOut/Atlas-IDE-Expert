@@ -119,7 +119,8 @@ var
 begin
   mClick := Default(TAtlasGutterClickLine);
   mClick.Remember('C:\a\Unit1.pas', 41, 1000);
-  Assert.IsTrue(mClick.Take('C:\a\Unit1.pas', 1000 + TAtlasGutterClickLine.cLineMs, mLine));
+  // Schreibweise und / statt \ zählen nicht.
+  Assert.IsTrue(mClick.Take('c:/A/UNIT1.pas', 1000 + TAtlasGutterClickLine.cLineMs, mLine));
   Assert.AreEqual(41, mLine);
   // Ein Befehl verbraucht den Klick.
   Assert.IsFalse(mClick.Take('C:\a\Unit1.pas', 1001, mLine));

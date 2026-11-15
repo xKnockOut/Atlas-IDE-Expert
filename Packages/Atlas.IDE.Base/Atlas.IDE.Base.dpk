@@ -817,7 +817,7 @@ contains
   Atlas.IDE.EditorToolbar.FindMethod in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.FindMethod.pas',
   Atlas.IDE.EditorToolbar.Service in 'Source\IDE\EditorToolbar\Atlas.IDE.EditorToolbar.Service.pas',
   Atlas.Core.Settings.StatusBarItems in 'Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas',
-  Atlas.Core.Settings.FeatureGates in 'Source\Core\Settings\Atlas.Core.Settings.FeatureGates.pas',
+  Atlas.Core.Problems.Switches in 'Source\Core\Problems\Atlas.Core.Problems.Switches.pas',
   Atlas.Core.StatusBar.Layout in 'Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas',
   Atlas.Core.StatusBar.Content in 'Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas',
   Atlas.UI.Problems.KindIcon in 'Source\UI\Problems\Atlas.UI.Problems.KindIcon.pas',

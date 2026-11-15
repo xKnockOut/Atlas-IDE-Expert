@@ -5,7 +5,7 @@
 // - TAtlasGutterTracker: wann die Schichten die Datei vorn neu verankern. Eine neue Datei sofort (AOpened), eine
 //   Änderung erst nach einer Tipp-Pause von cQuietMs, und nur einmal je Stand des Textes.
 // - TAtlasGutterClickLine: Rechtsklick in die Rinne gilt für die Befehle des Kontextmenüs, höchstens cLineMs lang
-//   und nur für dieselbe Datei; ein Befehl verbraucht ihn.
+//   und nur für dieselbe Datei (Schreibweise und / statt \ egal); ein Befehl verbraucht ihn.
 // - TAtlasGutterLayout.IconRect: Lage der Symbole in einer Rinnenzeile.
 // Zeiten in Millisekunden eines fortlaufenden Zählers; der Aufrufer nennt die aktuelle Zeit (ANow).
 
@@ -65,6 +65,17 @@ type
   end;
 
   TAtlasGutterLayout = class
+  public const
+    /// <summary>Höhe eines Symbols: Zeilenhöhe minus cRowMargin, zwischen cMinHeight und cMaxHeight.</summary>
+    cMinHeight = 6;
+    cMaxHeight = 14;
+    cRowMargin = 4;
+    /// <summary>Breite: cWidthPart/cWidthWhole der Höhe, mindestens cMinWidth.</summary>
+    cWidthPart = 4;
+    cWidthWhole = 5;
+    cMinWidth = 5;
+    /// <summary>Abstand links und zwischen den Symbolen.</summary>
+    cGap = 2;
   public
     /// <summary>Rechteck des Symbols Nummer ASlot (0 = ganz links, negativ wie 0) in einer Rinnenzeile AGutter:
     /// senkrecht mittig, Höhe nach Zeile (6 bis 14 Punkte), Breite vier Fünftel davon, 2 Punkte Abstand.</summary>
@@ -75,8 +86,13 @@ implementation
 
 uses
   System.SysUtils,
-  System.Math,
-  Atlas.Core.Projects.Summary;
+  System.Math;
+
+/// <summary>Gleicher Pfad ohne Rücksicht auf Schreibweise, Leerraum am Rand und / statt \.</summary>
+function SamePath(const A, B: string): Boolean;
+begin
+  Result := SameText(Trim(A).Replace('/', '\'), Trim(B).Replace('/', '\'));
+end;
 
 { TAtlasGutterTracker }
 
@@ -136,7 +152,7 @@ function TAtlasGutterClickLine.Take(const AFileName: string; ANow: UInt64; out A
 begin
   ALine := FLine;
   Result := (FFileName <> '') and (FLine >= 0) and
-    (TAtlasProjectSummaries.NormalizedPath(FFileName) = TAtlasProjectSummaries.NormalizedPath(AFileName)) and
+    SamePath(FFileName, AFileName) and
     (ANow - FAt <= cLineMs);
   if not Result then
   begin
@@ -151,10 +167,10 @@ class function TAtlasGutterLayout.IconRect(const AGutter: TRect; ASlot: Integer)
 var
   mHeight, mWidth, mTop, mLeft: Integer;
 begin
-  mHeight := Max(6, Min(AGutter.Height - 4, 14));
-  mWidth := Max(5, (mHeight * 4) div 5);
+  mHeight := Max(cMinHeight, Min(AGutter.Height - cRowMargin, cMaxHeight));
+  mWidth := Max(cMinWidth, (mHeight * cWidthPart) div cWidthWhole);
   mTop := AGutter.Top + (AGutter.Height - mHeight) div 2;
-  mLeft := AGutter.Left + 2 + Max(0, ASlot) * (mWidth + 2);
+  mLeft := AGutter.Left + cGap + Max(0, ASlot) * (mWidth + cGap);
   Result := TRect.Create(mLeft, mTop, mLeft + mWidth, mTop + mHeight);
 end;
 

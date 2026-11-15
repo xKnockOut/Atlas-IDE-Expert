@@ -1,7 +1,8 @@
-﻿unit Atlas.Core.Settings.FeatureGates;
+﻿unit Atlas.Core.Problems.Switches;
 
 // Zusammengesetzte Schalter aus den wirksamen Einstellungen des Plugins (#1967), für Atlas.IDE.Foundation.Settings:
-// - Inline-Diagnosen: nur mit Hauptschalter und Problemen an, sonst Off; die Stufe aus der Einstellung InlineDiagnostics.
+// - Inline-Diagnosen: nur mit Hauptschalter und Problemen an, sonst Off; die Stufe aus der Einstellung
+//   InlineDiagnostics.
 // - Zähler der Befunde in der Statusleiste der IDE: nur, wenn die eigene Statusleiste des Editors die Befunde nicht
 //   schon zeigt (sonst stünden sie doppelt da).
 
@@ -12,7 +13,7 @@ uses
   Atlas.Core.Problems.InlineHints;
 
 type
-  TAtlasFeatureGates = class
+  TAtlasProblemSwitches = class
   public
     /// <summary>Stufe der Inline-Diagnosen; Off ohne Hauptschalter oder ohne Problemmarkierungen.</summary>
     class function InlineDiagnostics(const ASettings: TAtlasPluginSettings): TAtlasInlineDiagnosticsMode; static;
@@ -25,9 +26,10 @@ implementation
 uses
   Atlas.Core.Settings.StatusBarItems;
 
-{ TAtlasFeatureGates }
+{ TAtlasProblemSwitches }
 
-class function TAtlasFeatureGates.InlineDiagnostics(const ASettings: TAtlasPluginSettings): TAtlasInlineDiagnosticsMode;
+class function TAtlasProblemSwitches.InlineDiagnostics(
+  const ASettings: TAtlasPluginSettings): TAtlasInlineDiagnosticsMode;
 begin
   Result := TAtlasInlineDiagnosticsMode.Off;
   if ASettings.Enabled and ASettings.Problems then
@@ -36,7 +38,7 @@ begin
   end;
 end;
 
-class function TAtlasFeatureGates.ProblemsStatusCounter(const ASettings: TAtlasPluginSettings): Boolean;
+class function TAtlasProblemSwitches.ProblemsStatusCounter(const ASettings: TAtlasPluginSettings): Boolean;
 begin
   Result := ASettings.Enabled and ASettings.Problems and ASettings.ProblemsStatusCounter and
     not (ASettings.EditorStatusBar and TAtlasStatusBarItems.Contains(

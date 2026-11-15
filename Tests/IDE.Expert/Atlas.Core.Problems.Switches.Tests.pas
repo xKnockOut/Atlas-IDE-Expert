@@ -1,4 +1,4 @@
-﻿unit Atlas.Core.Settings.FeatureGates.Tests;
+﻿unit Atlas.Core.Problems.Switches.Tests;
 
 // Tests für die zusammengesetzten Schalter des Plugins (#1967): Inline-Diagnosen hängen an Hauptschalter und
 // Problemen, der Befundzähler der IDE weicht der eigenen Statusleiste mit Befunden.
@@ -10,7 +10,7 @@ uses
 
 type
   [TestFixture]
-  TAtlasFeatureGatesTests = class
+  TAtlasProblemSwitchesTests = class
   public
     [Test]
     procedure InlineDiagnosticsFollowsSetting;
@@ -27,7 +27,7 @@ implementation
 uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Problems.InlineHints,
-  Atlas.Core.Settings.FeatureGates;
+  Atlas.Core.Problems.Switches;
 
 function CounterSettings: TAtlasPluginSettings;
 begin
@@ -38,61 +38,61 @@ begin
   Result.EditorStatusBar := False;
 end;
 
-{ TAtlasFeatureGatesTests }
+{ TAtlasProblemSwitchesTests }
 
-procedure TAtlasFeatureGatesTests.InlineDiagnosticsFollowsSetting;
+procedure TAtlasProblemSwitchesTests.InlineDiagnosticsFollowsSetting;
 var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := CounterSettings;
   mSettings.InlineDiagnostics := 'all';
-  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.All), Ord(TAtlasFeatureGates.InlineDiagnostics(mSettings)));
+  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.All), Ord(TAtlasProblemSwitches.InlineDiagnostics(mSettings)));
   mSettings.InlineDiagnostics := 'off';
-  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasFeatureGates.InlineDiagnostics(mSettings)));
+  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasProblemSwitches.InlineDiagnostics(mSettings)));
 end;
 
-procedure TAtlasFeatureGatesTests.InlineDiagnosticsOffWithoutProblemsOrMainSwitch;
+procedure TAtlasProblemSwitchesTests.InlineDiagnosticsOffWithoutProblemsOrMainSwitch;
 var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := CounterSettings;
   mSettings.InlineDiagnostics := 'all';
   mSettings.Problems := False;
-  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasFeatureGates.InlineDiagnostics(mSettings)));
+  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasProblemSwitches.InlineDiagnostics(mSettings)));
   mSettings.Problems := True;
   mSettings.Enabled := False;
-  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasFeatureGates.InlineDiagnostics(mSettings)));
+  Assert.AreEqual(Ord(TAtlasInlineDiagnosticsMode.Off), Ord(TAtlasProblemSwitches.InlineDiagnostics(mSettings)));
 end;
 
-procedure TAtlasFeatureGatesTests.StatusCounterOnByItsSwitches;
+procedure TAtlasProblemSwitchesTests.StatusCounterOnByItsSwitches;
 var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := CounterSettings;
-  Assert.IsTrue(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsTrue(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
   mSettings.ProblemsStatusCounter := False;
-  Assert.IsFalse(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsFalse(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
   mSettings := CounterSettings;
   mSettings.Problems := False;
-  Assert.IsFalse(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsFalse(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
   mSettings := CounterSettings;
   mSettings.Enabled := False;
-  Assert.IsFalse(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsFalse(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
 end;
 
-procedure TAtlasFeatureGatesTests.StatusCounterYieldsToEditorStatusBarFindings;
+procedure TAtlasProblemSwitchesTests.StatusCounterYieldsToEditorStatusBarFindings;
 var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := CounterSettings;
   mSettings.EditorStatusBarItems := 'status,findings';
   // Eigene Statusleiste aus: Zähler bleibt.
-  Assert.IsTrue(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsTrue(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
   mSettings.EditorStatusBar := True;
-  Assert.IsFalse(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsFalse(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
   // Eigene Statusleiste ohne Befunde: Zähler bleibt.
   mSettings.EditorStatusBarItems := 'status';
-  Assert.IsTrue(TAtlasFeatureGates.ProblemsStatusCounter(mSettings));
+  Assert.IsTrue(TAtlasProblemSwitches.ProblemsStatusCounter(mSettings));
 end;
 
 end.

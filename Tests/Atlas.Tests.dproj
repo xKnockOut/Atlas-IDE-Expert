@@ -2322,8 +2322,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.StatusBarItems.Tests.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.FeatureGates.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.FeatureGates.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Switches.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Switches.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StatusBar.Layout.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas"/>

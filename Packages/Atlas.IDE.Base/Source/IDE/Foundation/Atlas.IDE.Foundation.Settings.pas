@@ -159,7 +159,7 @@ uses
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Settings.FeatureGates,
+  Atlas.Core.Problems.Switches,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings;
@@ -615,13 +615,13 @@ end;
 class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;
 begin
   EnsureLoaded;
-  Result := TAtlasFeatureGates.InlineDiagnostics(GState.Effective);
+  Result := TAtlasProblemSwitches.InlineDiagnostics(GState.Effective);
 end;
 
 class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
 begin
   EnsureLoaded;
-  Result := TAtlasFeatureGates.ProblemsStatusCounter(GState.Effective);
+  Result := TAtlasProblemSwitches.ProblemsStatusCounter(GState.Effective);
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
