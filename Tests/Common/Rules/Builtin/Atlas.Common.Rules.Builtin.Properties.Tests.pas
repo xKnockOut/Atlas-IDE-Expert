@@ -38,6 +38,10 @@ type
     procedure AccessorFormsDccAccepts;
     [Test]
     procedure AccessorOptions;
+    /// <summary>read {$IFDEF BCB}GetObj{$ELSE}GetObject{$ENDIF} (JsonDataObjects): Der inaktive Zweig zählt nicht;
+    /// ist er aktiv (MSWINDOWS unter Win32), meldet die Regel GetObj.</summary>
+    [Test]
+    procedure AccessorInInactiveBranch;
     [Test]
     procedure WriteOnlyReported;
     [Test]
@@ -61,7 +65,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert,
-  Atlas.Common.Rules.Profiles;
+  Atlas.Common.Rules.Profiles,
+  Atlas.Common.Rules.Checker;
 
 /// <summary>Unit mit einer Klasse TKunde aus AMembers; ABodies im implementation-Teil.</summary>
 function Kunden(const AMembers, ABodies: string): string;
@@ -447,6 +452,31 @@ begin
   TConfigurationParser.Parse('{"rules": {"write-only-property": {"allowAttributes": "Geheim"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('"allowAttributes" muss eine Liste von Texten sein', mIssues[0].Message);
+end;
+
+
+procedure TPropertyRulesTests.AccessorInInactiveBranch;
+
+  function Count(const ACondition: string): Integer;
+  var
+    mFinding: TRuleFinding;
+  begin
+    Result := 0;
+    for mFinding in TFileChecker.CheckText([TPropertyAccessorInvalidRule.Create as IRule], TServerSettings.Default,
+      'Kunden.pas', Kunden('  private'#10'    function GetObject(I: Integer): TObject;'#10'  public'#10 +
+      '    property O[I: Integer]: TObject read {$IFDEF ' + ACondition + '}GetObj{$ELSE}GetObject{$ENDIF};'#10,
+      'function TKunde.GetObject(I: Integer): TObject;'#10'begin'#10'  Result := nil;'#10'end;'#10)) do
+    begin
+      if mFinding.RuleId = cPropertyAccessorInvalidRuleId then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+
+begin
+  Assert.AreEqual(0, Count('BCB'), 'inaktiver Zweig');
+  Assert.AreEqual(1, Count('MSWINDOWS'), 'aktiver Zweig');
 end;
 
 initialization

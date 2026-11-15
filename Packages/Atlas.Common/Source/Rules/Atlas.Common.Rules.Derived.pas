@@ -74,6 +74,10 @@ type
     /// <summary>Token ohne Kommentare und Direktiven.</summary>
     class function CodeTokens(const ACache: IRuleDerivedCache;
       const AContext: TRuleContext): TArray<TPascalToken>; static;
+    /// <summary>CodeTokens ohne die Token in inaktiven Zweigen (AContext.InactiveRanges): read {$IFDEF BCB}GetObj
+    /// {$ELSE}GetObject{$ENDIF} liest dann nur GetObject.</summary>
+    class function ActiveCodeTokens(const ACache: IRuleDerivedCache;
+      const AContext: TRuleContext): TArray<TPascalToken>; static;
     /// <summary>Zeile/Zeichen zu einem Offset ab 0 über die Zeilentabelle von TTextDocument
     /// (binäre Suche; CR, LF und CRLF sind Zeilenenden).</summary>
     class function PositionAt(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
@@ -96,6 +100,7 @@ const
   cKeyGraph = 'rules.graph:';
   cKeyNoReturn = 'rules.noReturn';
   cKeyCodeTokens = 'rules.codeTokens';
+  cKeyActiveCodeTokens = 'rules.activeCodeTokens';
   cKeyLines = 'rules.lines';
   cKeyResolver = 'rules.resolver';
 
@@ -382,6 +387,55 @@ begin
     SetLength(Result, mCount);
   end;
   ACache.Put(cKeyCodeTokens, TRuleDerivedValue<TArray<TPascalToken>>.Create(Result));
+end;
+
+function PosBefore(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
+/// <summary>Liegt APos in einem der Bereiche ARanges?</summary>
+function InAnyRange(const APos: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
+var
+  mRange: TTextRange;
+begin
+  for mRange in ARanges do
+  begin
+    if not PosBefore(APos, mRange.StartPos) and PosBefore(APos, mRange.EndPos) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+class function TRuleDerived.ActiveCodeTokens(const ACache: IRuleDerivedCache;
+  const AContext: TRuleContext): TArray<TPascalToken>;
+var
+  mValue: TObject;
+  mToken: TPascalToken;
+  mCount: Integer;
+begin
+  if ACache.TryGet(cKeyActiveCodeTokens, mValue) then
+  begin
+    Exit(TRuleDerivedValue<TArray<TPascalToken>>(mValue).Value);
+  end;
+  Result := CodeTokens(ACache, AContext);
+  if AContext.InactiveRanges <> nil then
+  begin
+    Result := Copy(Result);
+    mCount := 0;
+    for mToken in Result do
+    begin
+      if not InAnyRange(mToken.StartPos, AContext.InactiveRanges) then
+      begin
+        Result[mCount] := mToken;
+        Inc(mCount);
+      end;
+    end;
+    SetLength(Result, mCount);
+  end;
+  ACache.Put(cKeyActiveCodeTokens, TRuleDerivedValue<TArray<TPascalToken>>.Create(Result));
 end;
 
 class function TRuleDerived.PositionAt(const ACache: IRuleDerivedCache; const AContext: TRuleContext;

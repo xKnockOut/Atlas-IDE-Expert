@@ -3,9 +3,10 @@
 // Regel use-after-free aus Atlas.Common.Rules.Builtin.Flow (#269): Nach X.Free, X.Destroy, X.DisposeOf,
 // FreeAndNil(X) oder Dispose(X) liest ein Weg des Kontrollflusses X wieder. Eine Zuweisung an X, die Übergabe als
 // Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn. Bei einem Feld der Klasse
-// beendet auch der Aufruf einer eigenen Methode den Weg: Sie kann das Feld neu belegen. Ebenso beenden ihn eine
-// Zuweisung an eine Variable, die mit absolute auf X liegt (oder X auf ihr), und der Aufruf einer lokalen Routine:
-// Sie kann die Variablen der umgebenden Routine neu setzen.
+// beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen. Ebenso
+// beenden ihn eine Zuweisung an eine Variable, die mit absolute auf X liegt (oder X auf ihr), und der Aufruf einer
+// lokalen Routine: Sie kann die Variablen der umgebenden Routine neu setzen. Im Rumpf eines with kann X ein Mitglied
+// des with-Objekts sein: dort keine Meldung (außer Self.X).
 
 interface
 
@@ -78,7 +79,8 @@ type
     FPathAliases: TArray<string>;
     /// <summary>Ist FPath ein Feld der Klasse? Dann kann eine eigene Methode es neu belegen.</summary>
     FIsField: Boolean;
-    function CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>): Boolean;
+    function CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>;
+    AWithInherited: Boolean): Boolean;
     procedure CollectMembers(ARoot, ARoutine: TSyntaxNode);
     procedure CollectLocals(ARoutine: TSyntaxNode);
     function AliasesOf(const APath: string): TArray<string>;
@@ -109,9 +111,11 @@ begin
   FReport := AReport;
 end;
 
-/// <summary>Ruft AStatement eine Methode der eigenen Klasse auf (Reset; Self.Reset(1))? Sie kann ein Feld neu
-/// belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)).</summary>
-function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>): Boolean;
+/// <summary>Ruft AStatement eine Methode der eigenen Klasse oder geerbt auf (Reset; Self.Reset(1); inherited Reset)?
+/// Sie kann ein Feld neu belegen (FP-Prüfung 28.10.2026: FList.Free; Reset; FList.Add(…)). ANames sind die Namen
+/// der Methoden bzw. lokalen Routinen; inherited zählt nur mit AWithInherited.</summary>
+function TUseAfterFreeCheck.CallsOwnMethod(AStatement: TSyntaxNode; const ANames: TArray<string>;
+  AWithInherited: Boolean): Boolean;
 var
   mTarget: TSyntaxNode;
   mName: string;
@@ -128,6 +132,12 @@ begin
     if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
     begin
       mTarget := mTarget[0];
+    end;
+    // inherited Laden; ruft die Methode des Vorfahren für Self auf (ACBr: FreeAndNil(FListe); inherited
+    // CarregaAliquotas; FListe.Add(…)).
+    if mTarget.Kind = TSyntaxKind.InheritedExpr then
+    begin
+      Exit(AWithInherited);
     end;
     // Name oder Self.Name.
     mName := FreedPath(mTarget);
@@ -448,6 +458,27 @@ begin
     [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
 end;
 
+/// <summary>Steht AAccess im Rumpf eines with (nicht in dessen Ausdruck)? Dort kann der Name ein Mitglied des
+/// with-Objekts sein (ACBr: NFSe.Free; … with Liste.New do NFSe.Numero := …).</summary>
+function InWithBody(AAccess: TSyntaxNode): Boolean;
+var
+  mChild, mParent: TSyntaxNode;
+begin
+  Result := False;
+  mChild := AAccess;
+  mParent := AAccess.Parent;
+  while (mParent <> nil) and not IsRoutineBody(mParent) and (mParent.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if (mParent.Kind = TSyntaxKind.WithStatement) and (mParent.ChildCount > 0) and
+      (mParent[mParent.ChildCount - 1] = mChild) then
+    begin
+      Exit(True);
+    end;
+    mChild := mParent;
+    mParent := mParent.Parent;
+  end;
+end;
+
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
 function TUseAfterFreeCheck.WalksOn(ANode: TFlowNode): Boolean;
 var
@@ -460,14 +491,17 @@ begin
   begin
     Inspect(ANode.Syntax);
   end;
-  FStops := FStops or FIsField and CallsOwnMethod(ANode.Syntax, FMethods) or
-    CallsOwnMethod(ANode.Syntax, FNested);
+  FStops := FStops or FIsField and CallsOwnMethod(ANode.Syntax, FMethods, True) or
+    CallsOwnMethod(ANode.Syntax, FNested, False);
   Result := False;
   if not (FGuarded and FToNil) then
   begin
     for mAccess in FUses do
     begin
-      ReportAccess(ANode, mAccess);
+      if StartsText('Self.', FPath) or not InWithBody(mAccess) then
+      begin
+        ReportAccess(ANode, mAccess);
+      end;
     end;
     Result := not (FStops or FGuarded);
   end;
