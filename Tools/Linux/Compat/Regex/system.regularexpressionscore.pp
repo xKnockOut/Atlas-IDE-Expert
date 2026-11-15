@@ -659,13 +659,15 @@ Const
 
 var
   I : Integer;
-  PSrc,PDest,PStart : PChar;
+  // Atlas: Zeichen von TREString, nicht PChar ({$MODE OBJFPC}: PChar = PAnsiChar). Mit USEWIDESTRING lief die
+  // Schleife sonst über die Bytes der ersten Hälfte, der Rest blieb ungesetzter Speicher (Muster je nach Heap).
+  PSrc,PDest,PStart : {$IFDEF USEWIDESTRING}PWideChar{$ELSE}PAnsiChar{$ENDIF};
 
 begin
   Result:='';
   SetLength(Result,2*Length(aString));
-  PSrc:=PChar(aString);
-  PDest:=PChar(Result);
+  PSrc:=Pointer(aString);
+  PDest:=Pointer(Result);
   PStart:=PDest;
   for I:=1 to Length(aString) do
     begin
@@ -675,7 +677,7 @@ begin
       Inc(PDest);
       PDest^:='0';
       end
-    else if CharInSet(PSrc^,NeedEscape) then
+    else if (Ord(PSrc^)<128) and (AnsiChar(Ord(PSrc^)) in NeedEscape) then
       begin
       PDest^:='\';
       Inc(PDest);
@@ -732,12 +734,17 @@ end;
 function TPerlRegEx.GetPCREErrorMsg(ErrorNr: Integer): TREString;
 
 var
-  Buffer : Array[0..255] of ansichar;
+  // Atlas: pcre2-16 schreibt UTF-16 und zählt die Puffergröße in Codeeinheiten.
+  Buffer : Array[0..255] of {$IFDEF USE_PCRE2_16}WideChar{$ELSE}AnsiChar{$ENDIF};
 
 begin
   FillChar(Buffer,SizeOf(Buffer),0);
-  pcre2_get_error_message(ErrorNr,@Buffer,SizeOf(Buffer));
-  Result:=strpas(@Buffer);
+  pcre2_get_error_message(ErrorNr,@Buffer,Length(Buffer));
+{$IFDEF USE_PCRE2_16}
+  Result:=TREString(PUnicodeChar(@Buffer));
+{$ELSE}
+  Result:=TREString(strpas(PAnsiChar(@Buffer)));
+{$ENDIF}
 end;
 
 procedure TPerlRegEx.Compile;

@@ -25,6 +25,8 @@ type
     [Test]
     procedure KeepsRangeOperatorAfterNumber;
     [Test]
+    procedure ReadsRealWithoutFraction;
+    [Test]
     procedure ReadsStringsWithEscapedQuotes;
     [Test]
     procedure ReadsCharLiterals;
@@ -124,6 +126,16 @@ procedure TPascalLexerTests.KeepsRangeOperatorAfterNumber;
 begin
   Assert.AreEqual('Number:1|Symbol:..|Number:10', Describe('1..10'));
   Assert.AreEqual('Identifier:x|Symbol:.|Identifier:e', Describe('x.e'));
+end;
+
+procedure TPascalLexerTests.ReadsRealWithoutFraction;
+begin
+  // dcc liest 0. und 25. als reelle Zahl (OpenDSS: RegisterTotals[i] := 0.;).
+  Assert.AreEqual('Identifier:X|Symbol::=|Number:0.|Symbol:;', Describe('X := 0.;'));
+  Assert.AreEqual('Number:25.|Symbol:*|Identifier:K', Describe('25. * K'));
+  // Vor .) (Klammer ]) und vor einem Bezeichner bleibt der Punkt ein eigenes Token.
+  Assert.AreEqual('Identifier:A|Symbol:(.|Number:1|Symbol:.)', Describe('A(.1.)'));
+  Assert.AreEqual('Number:1|Symbol:.|Identifier:ToString', Describe('1.ToString'));
 end;
 
 procedure TPascalLexerTests.ReadsStringsWithEscapedQuotes;

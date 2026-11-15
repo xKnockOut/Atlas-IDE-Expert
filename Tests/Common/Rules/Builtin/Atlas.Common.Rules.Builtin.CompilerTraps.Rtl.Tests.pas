@@ -22,6 +22,8 @@ type
     [Test]
     procedure WindowsOnlyRoutineSilentCases;
     [Test]
+    procedure WindowsOnlyRoutineInInactiveBranch;
+    [Test]
     procedure StreamWriteWithoutNativeInt;
     [Test]
     procedure StreamWriteSilentCases;
@@ -33,6 +35,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -143,6 +146,29 @@ begin
   Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TWinapiUsesMissingRule.Create, 'unit U;'#10 +
     'interface'#10'implementation'#10'procedure Lauf;'#10'begin'#10'  if GetTickCount64 > 0 then'#10'    Exit;'#10 +
     'end;'#10'end.', ThreadIndex, '', 'U.pas'))));
+end;
+
+procedure TCompilerTrapsRtlTests.WindowsOnlyRoutineInInactiveBranch;
+const
+  cSource = 'unit U;'#10'interface'#10'implementation'#10'uses'#10'  System.Classes;'#10 +
+    'function Millisekunden: UInt64;'#10'begin'#10 +
+    '  {$IFDEF FPC}Result := GetTickCount64;{$ELSE}Result := TThread.GetTickCount64;{$ENDIF}'#10'end;'#10'end.';
+var
+  mContext: TRuleContext;
+begin
+  // dcc sieht den FPC-Zweig nicht (PascalCoin, UConcurrency).
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := 'U.pas';
+  mContext.UnitName := 'U';
+  mContext.Text := cSource;
+  mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(cSource,
+    TPascalPreprocessor.EditorOptions(['MSWINDOWS', 'WIN32'])));
+  Assert.AreEqual('', Messages(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, '')));
+  // Im aktiven Zweig bleibt der Befund.
+  mContext.Text := cSource.Replace('{$IFDEF FPC}', '{$IFNDEF FPC}');
+  mContext.InactiveRanges := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(mContext.Text,
+    TPascalPreprocessor.EditorOptions(['MSWINDOWS', 'WIN32'])));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TWinapiUsesMissingRule.Create, mContext, ''))));
 end;
 
 procedure TCompilerTrapsRtlTests.WindowsOnlyRoutineSilentCases;

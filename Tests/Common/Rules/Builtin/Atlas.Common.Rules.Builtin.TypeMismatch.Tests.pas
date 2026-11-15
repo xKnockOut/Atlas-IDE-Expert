@@ -45,6 +45,8 @@ type
     procedure IncAndPtr;
     [Test]
     procedure ProceduralTypes;
+    [Test]
+    procedure ConditionalParameterModifierIsSilent;
     /// <summary>#1897: Routine an TFunc/TProc mit const-Parameter statt Wertparameter, als Zuweisung und
     /// Argument.</summary>
     [Test]
@@ -429,6 +431,21 @@ begin
     'Parameter von Frei passen nicht zur Methodenreferenz (Zahl, const/var/out oder Typ, wie E2010).',
     OnlyMessage(UnitText(cKlasse, cRuempfe + 'procedure Fall;'#10'var'#10 +
     '  mReferenz: reference to procedure(AWert: Integer);'#10'begin'#10'  mReferenz := Frei;'#10'end;'#10)));
+end;
+
+procedure TTypeMismatchTests.ConditionalParameterModifierIsSilent;
+const
+  cTypen = 'type'#10'  TAuswahl = record'#10'    A: Integer;'#10'  end;'#10 +
+    '  TAuswahlEreignis = procedure(Sender: TObject; const AWahl: TAuswahl) of object;'#10 +
+    '  TBeobachter = class'#10'  public'#10 +
+    '    procedure Gewaehlt(Sender: TObject; {$IFDEF FPC}constref{$ELSE}const{$ENDIF} AWahl: TAuswahl);'#10 +
+    '  end;'#10;
+begin
+  // Der Kopf der Methode hängt an einer bedingten Direktive; dcc sieht const (PascalCoin: OnSelection).
+  AssertSilent(UnitText(cTypen, 'procedure TBeobachter.Gewaehlt(Sender: TObject; ' +
+    '{$IFDEF FPC}constref{$ELSE}const{$ENDIF} AWahl: TAuswahl);'#10'begin'#10'end;'#10 +
+    'procedure Fall(ABeobachter: TBeobachter);'#10'var'#10'  mEreignis: TAuswahlEreignis;'#10'begin'#10 +
+    '  mEreignis := ABeobachter.Gewaehlt;'#10'end;'#10));
 end;
 
 procedure TTypeMismatchTests.MethodReferenceParameters;

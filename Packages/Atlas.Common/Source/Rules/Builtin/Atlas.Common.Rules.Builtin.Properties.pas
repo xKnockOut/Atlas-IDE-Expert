@@ -742,7 +742,9 @@ end;
 
 function TAccessorScan.FindOwner(out AOwner: TSymbolLocation): Boolean;
 begin
-  Result := FAncestry.FindAnyType(FShape.Symbol.Container, AOwner) and (AOwner.FileName = '') and
+  // Zuerst die Klasse, in deren Rumpf die Property steht: TX<T> und TX heißen im Index gleich (#1326).
+  Result := (FAncestry.OwnerOf(FShape.Symbol, AOwner) or FAncestry.FindAnyType(FShape.Symbol.Container, AOwner)) and
+    (AOwner.FileName = '') and
     (AOwner.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType, TIndexSymbolKind.ObjectType])
     and not TypeHasInclude(FContext.Tree.Tokens, AOwner.Symbol);
 end;
@@ -767,7 +769,7 @@ begin
   FComplete := True;
   if mOwner.Symbol.Kind = TIndexSymbolKind.ClassType then
   begin
-    FChain := FChain + FAncestry.Ancestors(mOwner.Symbol.Name, FComplete, mObjectMissing);
+    FChain := FChain + FAncestry.Ancestors(mOwner, FComplete, mObjectMissing);
   end;
   FWildcards := Wildcards(FChain);
   for mAccessor in FShape.Accessors do
