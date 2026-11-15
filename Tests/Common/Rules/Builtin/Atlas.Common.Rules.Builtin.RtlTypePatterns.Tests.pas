@@ -33,6 +33,9 @@ type
     procedure FloatEqualityInComparers;
     [Test]
     procedure ConstructorOnInstance;
+    /// <summary>Klassenreferenz ohne "Class" im Namen (TFehlerArt = class of EFehler): E.Create legt an.</summary>
+    [Test]
+    procedure ConstructorOnClassOfWithoutClassSuffix;
     [Test]
     procedure FormatWithoutSettings;
     [Test]
@@ -300,6 +303,21 @@ begin
   TRuleAssert.Silent(TConstructorOnInstanceRule.Create, InRoutine('  List: TStringList;'#10 +
     '  Kind: TComponentClass;'#10'  C: TComponent;', '  List := TStringList.Create;'#10 +
     '  C := Kind.Create(nil);'#10'  inherited Create;'));
+end;
+
+procedure TRtlTypePatternRulesTests.ConstructorOnClassOfWithoutClassSuffix;
+const
+  cSource = 'unit U;'#10'interface'#10'uses SysUtils;'#10'type'#10'  EFehler = class(Exception);'#10 +
+    '  TFehlerArt = class of EFehler;'#10'  TFehler = EFehler;'#10'implementation'#10 +
+    'procedure Pruefe(Ok: Boolean; E: TFehlerArt; F: TFehler);'#10'begin'#10'  if not Ok then'#10 +
+    '    raise E.Create(''kaputt'');'#10'  F.Create(''neu'');'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Gegentest im selben Fall: F ist eine Instanz (Alias auf die Klasse), F.Create bleibt ein Treffer.
+  mFindings := TRuleAssert.Findings(TConstructorOnInstanceRule.Create, cSource);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TFehler', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 
 procedure TRtlTypePatternRulesTests.FormatWithoutSettings;
@@ -1085,6 +1103,11 @@ begin
     '    Writeln(Teile.DelimitedText);'#10));
   // Delimiter einer anderen Liste.
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Andere.Delimiter := '';'';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10));
+  // Leerzeichen als Delimiter: Trennen an Leerzeichen ist gewollt.
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := '' '';'#10 +
+    '    Teile.DelimitedText := Zeile;'#10));
+  TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.Delimiter := #32;'#10 +
     '    Teile.DelimitedText := Zeile;'#10));
 end;
 

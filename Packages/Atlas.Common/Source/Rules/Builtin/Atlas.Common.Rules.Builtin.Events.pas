@@ -321,9 +321,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   SetLength(mCode, Length(mTokens));
   mCount := 0;
+  // Token in inaktiven Zweigen übersetzt dcc nicht; sie bleiben wie Kommentare außen vor.
   for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[mIndex]) then
+    if not IsTrivia(mTokens[mIndex]) and not TTextRange.AnyContains(AContext.InactiveRanges,
+      mTokens[mIndex].StartPos) then
     begin
       mCode[mCount] := mTokens[mIndex];
       Inc(mCount);

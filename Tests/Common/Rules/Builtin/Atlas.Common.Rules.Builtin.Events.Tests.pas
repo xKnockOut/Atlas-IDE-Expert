@@ -30,6 +30,9 @@ type
     procedure InjectedAndShadowedAreSilent;
     [Test]
     procedure OffAndExclude;
+    /// <summary>Aufruf in einem inaktiven Zweig ({$IFDEF} ohne gesetztes Symbol) übersetzt dcc nicht.</summary>
+    [Test]
+    procedure InactiveBranchIsSilent;
     [Test]
     procedure IsKnownEventType;
   end;
@@ -343,6 +346,20 @@ begin
   // Mit schreibbarer Property nur der Konstruktor: eine andere Methode mit Zuweisung schützt nicht.
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create, StringReplace(cSource, '  OnFertig := procedure',
     '  FOnFertig := procedure begin end;'#10'  OnFertig := procedure', []), 1);
+end;
+
+procedure TEventRulesTests.InactiveBranchIsSilent;
+var
+  mContext: TRuleContext;
+begin
+  mContext := Default(TRuleContext);
+  mContext.Text := Body('{$IFDEF NIEMALS}'#10'  FOnChange(Self);'#10'{$ENDIF}'#10);
+  // Gegentest: ohne bekannte inaktive Zweige bleibt der Aufruf ein Treffer.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.ContextFindings(TEventCallWithoutAssignedRule.Create, mContext,
+    ''))));
+  mContext.InactiveRanges := [TTextRange.Create(15, 16, 17, 0)];
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TEventCallWithoutAssignedRule.Create, mContext,
+    ''))));
 end;
 
 procedure TEventRulesTests.OffAndExclude;

@@ -18,7 +18,7 @@
 //                     (die Meldung nennt dafür UniqueString). Still bleibt die
 //                     Regel, wenn eine Bedingung S als nicht leer sichert
 //                     (if S <> '' then, if Length(S) > 0 then, if N > 0 then
-//                     nach SetLength(S, N), if S = '' then Exit davor).
+//                     nach SetLength(S, N), if S = '' then Exit davor, SetLength(S, 2) davor).
 
 interface
 
@@ -290,7 +290,24 @@ var
       (AIf.ChildCount > 2) and (AIf[2] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, False));
   end;
 
-  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;"?</summary>
+  /// <summary>Ist AStatement "SetLength(S, N)" mit einer Zahl N &gt; 0? S ist ABase in Squeezed-Form.</summary>
+  function SetsFixedLength(AStatement: TSyntaxNode; const ABase: string): Boolean;
+  var
+    mCall: TSyntaxNode;
+    mLength: Integer;
+  begin
+    Result := False;
+    if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+    begin
+      Exit;
+    end;
+    mCall := AStatement[0];
+    Result := (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount = 3) and
+      SameText(Squeezed(mCall[0]), 'setlength') and (Squeezed(mCall[1]) = ABase) and
+      TryStrToInt(Squeezed(mCall[2]), mLength) and (mLength > 0);
+  end;
+
+  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;" oder "SetLength(S, 2);"?</summary>
   function LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
   var
     mIndex: Integer;
@@ -303,6 +320,7 @@ var
       mStatement := ABlock[mIndex];
       Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
         Leaves(mStatement[1]) and ConditionSays(mStatement[0], ABase, ARoutine, False);
+      Result := Result or SetsFixedLength(mStatement, ABase);
       Inc(mIndex);
     end;
   end;

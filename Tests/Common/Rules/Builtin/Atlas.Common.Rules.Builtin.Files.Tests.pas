@@ -173,6 +173,12 @@ begin
     '  Ziel := Ordner + ''export.csv'';'#10)));
   // Kein lokaler Name (Feld, Parameter)
   Assert.AreEqual(0, PathCount(Body('  Ziel := Datei + ''export.csv'';'#10)));
+  // Konstante bringt das Trennzeichen mit (je Plattform eine Fassung); Gegentest ohne Trennzeichen.
+  Assert.AreEqual(0, PathCount(StringReplace(Body('  Ziel := ExtractFileDir(Datei) + cIni;'#10), 'procedure',
+    'const'#10'{$IFDEF MSWINDOWS}'#10'  cIni = ''\Programm.ini'';'#10'{$ELSE}'#10'  cIni = ''/.programm'';'#10 +
+    '{$ENDIF}'#10'procedure', [])));
+  Assert.AreEqual(1, PathCount(StringReplace(Body('  Ziel := ExtractFileDir(Datei) + cIni;'#10), 'procedure',
+    'const'#10'  cIni = ''Programm.ini'';'#10'procedure', [])));
 end;
 
 procedure TFileRulesTests.PathConcatOptions;
