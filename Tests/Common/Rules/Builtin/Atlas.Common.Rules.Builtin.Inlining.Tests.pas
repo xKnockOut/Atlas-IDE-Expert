@@ -654,10 +654,9 @@ var
   mWithRefs: string;
 begin
   mRoot := RtlRoot;
-  // Ohne Assert.Pass wie ParsesDelphiSourceCorpus (Leckmonitor).
+  // Ohne RTL nichts zu prüfen; ohne Assert.Pass wie ParsesDelphiSourceCorpus (Leckmonitor).
   if mRoot = '' then
   begin
-    System.Writeln('  Übersprungen: keine Delphi-RTL (BDS setzen)');
     Exit;
   end;
   mIndex := TSymbolIndex.Create;
