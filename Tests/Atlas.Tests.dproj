@@ -1447,6 +1447,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Quick.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.ColumnPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.ColumnPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas"/>
@@ -1744,6 +1748,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Hotspots.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
@@ -1895,6 +1901,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.LineChangesPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.LineChangesPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VcsSettings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas"/>
