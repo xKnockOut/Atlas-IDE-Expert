@@ -23,7 +23,6 @@ interface
 
 uses
   System.SysUtils,
-  Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.WorkingCopies,
   Atlas.UI.VersionControl.WorkingCopies;
 
@@ -71,6 +70,7 @@ uses
   System.UITypes,
   Vcl.Controls,
   Vcl.Dialogs,
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Pull,
   Atlas.UI.Strings,

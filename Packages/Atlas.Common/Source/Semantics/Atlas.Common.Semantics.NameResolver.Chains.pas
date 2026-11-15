@@ -107,7 +107,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.Attributes;
+  Atlas.Common.Semantics.Attributes,
+  Atlas.Common.Pascal.Lexer;
 
 /// <summary>&amp;Begin → Begin.</summary>
 function CleanName(const AText: string): string;
@@ -466,17 +467,24 @@ end;
 function TResolverChains.ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
   AOffset: Integer; const AStart: TResolverChainStart): TArray<TResolvedSymbol>;
 var
-  mConsumed: Integer;
+  mConsumed, mIndex: Integer;
   mCandidates: TArray<TResolvedSymbol>;
+  mNames: TArray<string>;
 begin
   Result := nil;
   if (ATree = nil) or (Length(ANames) = 0) then
   begin
     Exit;
   end;
+  // Namen aus dem Baum tragen das Escape-& (&Type, &if); Index und lokale Namen führen sie ohne.
+  SetLength(mNames, Length(ANames));
+  for mIndex := 0 to High(ANames) do
+  begin
+    mNames[mIndex] := TPascalLexer.PlainName(ANames[mIndex]);
+  end;
   FPlace.MoveTo(ATree, AFileName, AOffset);
-  if not StartCandidates(ANames, AStart, mConsumed, mCandidates) or
-    not FollowChain(ANames, mConsumed, mCandidates) then
+  if not StartCandidates(mNames, AStart, mConsumed, mCandidates) or
+    not FollowChain(mNames, mConsumed, mCandidates) then
   begin
     Exit;
   end;
@@ -633,7 +641,7 @@ begin
     Exit;
   end;
   FPlace.MoveTo(ATree, AFileName, ACallee.StartOffset);
-  if WithDecides(ACallee.Name, Result) then
+  if WithDecides(TPascalLexer.PlainName(ACallee.Name), Result) then
   begin
     Exit;
   end;

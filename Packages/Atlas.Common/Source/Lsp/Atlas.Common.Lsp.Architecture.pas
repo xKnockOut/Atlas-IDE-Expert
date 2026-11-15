@@ -44,7 +44,6 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Overview,
-  Atlas.Common.Architecture.Grouping,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.Comparison;
 
@@ -86,6 +85,7 @@ uses
   System.Generics.Collections,
   System.StrUtils,
   System.IOUtils,
+  Atlas.Common.Architecture.Grouping,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Architecture.Layout,

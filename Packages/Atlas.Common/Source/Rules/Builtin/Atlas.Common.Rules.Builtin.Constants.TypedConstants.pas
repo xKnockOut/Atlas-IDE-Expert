@@ -38,7 +38,6 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.Constants.Types,
   Atlas.Common.Localization.Texts;

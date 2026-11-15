@@ -128,7 +128,6 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.StrUtils,
-  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Internals.GitHubApi,

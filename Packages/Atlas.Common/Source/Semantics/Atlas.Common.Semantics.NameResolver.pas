@@ -189,6 +189,9 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Pascal.Lexer;
+
 { TNameResolver }
 
 constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc);
@@ -323,13 +326,14 @@ end;
 function TNameResolver.FindMember(const AType: TResolvedSymbol; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 begin
-  Result := FCore.Members.FindMember(AType, AName, AResult);
+  // Namen aus dem Baum tragen das Escape-& (P.&Type); der Index führt sie ohne.
+  Result := FCore.Members.FindMember(AType, TPascalLexer.PlainName(AName), AResult);
 end;
 
 function TNameResolver.DeclaredMember(const AType: TResolvedSymbol; const AName: string;
   out AResult: TResolvedSymbol): Boolean;
 begin
-  Result := FCore.Members.DeclaredMember(AType, AName, AResult);
+  Result := FCore.Members.DeclaredMember(AType, TPascalLexer.PlainName(AName), AResult);
 end;
 
 function TNameResolver.DeclaringUnit(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;

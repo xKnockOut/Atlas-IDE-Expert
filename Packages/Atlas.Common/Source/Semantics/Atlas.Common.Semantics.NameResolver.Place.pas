@@ -80,9 +80,9 @@ type
     function EnclosingRoutines: TArray<TSyntaxNode>;
     /// <summary>with-Anweisungen, in deren Rumpf die Stelle liegt, innerste zuerst.</summary>
     function EnclosingWiths: TArray<TSyntaxNode>;
-    /// <summary>Qualifizierter Name des Typs, wenn die Stelle in einer Property-Deklaration steht; sonst ''.
-    /// </summary>
-    function PropertyClassName: string;
+    /// <summary>Qualifizierter Name des Typs, wenn die Stelle in der Deklaration eines Mitglieds (Property,
+    /// Methodenkopf, Feld) im Rumpf einer Klasse, eines Records oder Interfaces steht; sonst ''.</summary>
+    function MemberClassName: string;
     /// <summary>Liegt ein Knoten in der aktuellen Unit (gleiche Datei)?</summary>
     function IsCurrentFile(const AFileName: string): Boolean;
     property Index: ISymbolIndex read FIndex;
@@ -343,17 +343,35 @@ begin
   end;
 end;
 
-function TResolverPlace.PropertyClassName: string;
+/// <summary>Steht das Mitglied AMember im Rumpf eines strukturierten Typs (nicht etwa im Kopf eines prozeduralen
+/// Typs)?</summary>
+function InTypeBody(AMember: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := AMember.Parent;
+  while (mNode <> nil) and (mNode.Kind = TSyntaxKind.Visibility) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  Result := (mNode <> nil) and (mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+    TSyntaxKind.InterfaceType, TSyntaxKind.HelperType]);
+end;
+
+function TResolverPlace.MemberClassName: string;
 var
   mNode, mInner: TSyntaxNode;
   mIndex: Integer;
 begin
   Result := '';
   mNode := FTree.Root;
-  // Rümpfe enthalten keine Property-Deklarationen.
+  // Rümpfe enthalten keine Mitgliedsdeklarationen. Wie bei dcc gilt in der Deklaration eines Mitglieds der Bereich
+  // seines Typs: Zugriffe einer Property (read FName write SetName, #690) und Typnamen in Methodenköpfen und Feldern
+  // (verschachtelter Typ vor gleichnamigem Typ der Unit).
   while (mNode <> nil) and not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl]) do
   begin
-    if mNode.Kind = TSyntaxKind.PropertyDecl then
+    if (mNode.Kind in [TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.Field]) and
+      InTypeBody(mNode) then
     begin
       Exit(mNode.EnclosingTypeName);
     end;
