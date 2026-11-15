@@ -109,13 +109,13 @@ type
 implementation
 
 uses
-  System.StrUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
+  Atlas.Core.Rules.OwnershipPlan,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Color,
@@ -350,7 +350,7 @@ begin
   Result := nil;
   ALine := '';
   if (AContext.LineState = nil) or (AContext.EditView = nil) or (AContext.EditView.Buffer = nil) or
-    not MatchText(ExtractFileExt(AContext.FileName), ['.pas', '.dpr']) then
+    not TAtlasOwnershipPlan.MarksFile(AContext.FileName) then
   begin
     Exit;
   end;
@@ -405,20 +405,29 @@ end;
 /// <summary>Marke merken; ersetzt die derselben Zeile und vergisst die einer anderen obersten Zeile.</summary>
 procedure TAtlasIdeOwnershipHints.Remember(const AHit: THit);
 var
-  mIndex: Integer;
+  mIndex, mFirstTop: Integer;
+  mLines: TArray<Integer>;
 begin
-  if (FHits <> nil) and (FHits[0].TopRow <> AHit.TopRow) then
+  mFirstTop := -1;
+  if FHits <> nil then
+  begin
+    mFirstTop := FHits[0].TopRow;
+  end;
+  if TAtlasOwnershipPlan.ForgetsHits(FHits <> nil, mFirstTop, AHit.TopRow) then
   begin
     FHits := nil;
     HideTip;
   end;
+  SetLength(mLines, Length(FHits));
   for mIndex := 0 to High(FHits) do
   begin
-    if FHits[mIndex].Line = AHit.Line then
-    begin
-      FHits[mIndex] := AHit;
-      Exit;
-    end;
+    mLines[mIndex] := FHits[mIndex].Line;
+  end;
+  mIndex := TAtlasOwnershipPlan.SameLine(mLines, AHit.Line);
+  if mIndex >= 0 then
+  begin
+    FHits[mIndex] := AHit;
+    Exit;
   end;
   SetLength(FHits, Length(FHits) + 1);
   FHits[High(FHits)] := AHit;
@@ -454,7 +463,8 @@ var
   mHit, mLine: Integer;
 begin
   try
-    if (Button <> mbLeft) or (Shift * [ssShift, ssAlt, ssCtrl] <> []) or (FHits = nil) or not Wanted then
+    if not TAtlasOwnershipPlan.ClickJumps(Button = mbLeft, Shift * [ssShift, ssAlt, ssCtrl] <> [], FHits <> nil,
+      Wanted) then
     begin
       Exit;
     end;
@@ -522,15 +532,14 @@ begin
     end;
     mCursor := Mouse.CursorPos;
     // Maus hat die Marke verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-    if not PtInRect(FHoverScreen, mCursor) and not (FTip.IsShown and PtInRect(FTip.BoundsRect, mCursor)) then
-    begin
-      HideTip;
-    end
-    else if not FTip.IsShown and
-      (TThread.GetTickCount64 - FHoverSince >= TAtlasCloseRules.cTooltipShowDelayMs) then
-    begin
-      FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
-        TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+    case TAtlasOwnershipPlan.TipStep(PtInRect(FHoverScreen, mCursor) or
+      (FTip.IsShown and PtInRect(FTip.BoundsRect, mCursor)), FTip.IsShown, FHoverSince, TThread.GetTickCount64,
+      TAtlasCloseRules.cTooltipShowDelayMs) of
+      TAtlasOwnershipTipStep.Close:
+        HideTip;
+      TAtlasOwnershipTipStep.Show:
+        FTip.ShowNote(TAtlasOwnershipMarks.TipTitle(FHits[FHover].Marks, FTexts),
+          TAtlasOwnershipMarks.TipText(FHits[FHover].Marks, FTexts), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
     end;
   except
     on E: Exception do
@@ -591,7 +600,8 @@ var
   mSettings: TAtlasPluginSettings;
 begin
   mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.OwnershipHints and not TAtlasGuard.Disabled(TAtlasFeature.Problems);
+  Result := TAtlasOwnershipPlan.Wanted(mSettings.Enabled, mSettings.OwnershipHints,
+    TAtlasGuard.Disabled(TAtlasFeature.Problems));
 end;
 
 class function TAtlasIdeOwnershipHints.Texts: TAtlasOwnershipTexts;

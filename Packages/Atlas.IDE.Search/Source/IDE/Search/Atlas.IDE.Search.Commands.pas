@@ -142,7 +142,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Search.Matching,
-  Atlas.Core.Search.Scopes,
+  Atlas.Core.Search.BarPlan,
   Atlas.Core.Search.Results,
   Atlas.Text.Lines,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -162,7 +162,6 @@ uses
 const
   // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.
   cProbeMs = 100;
-  cFocusGraceMs = 400;
   // Pause im Tippen, nach der die Suche über Dateien beginnt (#893).
   cFilesDelayMs = 400;
 
@@ -211,33 +210,6 @@ begin
   if mControl <> nil then
   begin
     Result := Result + ', ' + mControl.ClassName + ' ' + mControl.Name;
-  end;
-end;
-
-/// <summary>Vorschlag: einzeilige Markierung, sonst Bezeichner am Cursor, sonst die letzte Suche.</summary>
-function Proposal(const ALines: TArray<string>; const ACursor: TAtlasSearchPos; const ASelection: TAtlasSearchArea;
-  AHasSelection: Boolean): string;
-begin
-  Result := TAtlasIdeSearchEditor.LineSelection(ALines, ASelection, AHasSelection);
-  if (Result = '') and (ACursor.Line >= 0) and (ACursor.Line <= High(ALines)) then
-  begin
-    Result := TAtlasTextSearch.WordAt(ALines[ACursor.Line], ACursor.Character);
-  end;
-  if Result = '' then
-  begin
-    Result := TAtlasIdeSearchSession.Last.Text;
-  end;
-end;
-
-/// <summary>Stufen für „Methode“: die Routinen um den Cursor, innerste zuerst.</summary>
-function Levels(const AText: string; const ACursor: TAtlasSearchPos): TArray<string>;
-var
-  mRoutine: TAtlasSearchRoutine;
-begin
-  Result := nil;
-  for mRoutine in TAtlasSearchScopes.RoutinesAt(AText, ACursor) do
-  begin
-    Result := Result + [mRoutine.Caption];
   end;
 end;
 
@@ -304,14 +276,11 @@ begin
   mHasSelection := TAtlasIdeSearchEditor.SelectionOf(mView, mLines, mSelection);
   // Bereich Unit; Methode nur mit „In Methode suchen“, mehrzeilige Markierung als Auswahl.
   mQuery := TAtlasSearchResults.StartQuery(TAtlasIdeSearchSession.Last,
-    Proposal(mLines, mCursor, mSelection, mHasSelection),
-    mHasSelection and (mSelection.Start.Line <> mSelection.Stop.Line), AInMethod);
+    TAtlasSearchBarPlan.Proposal(TAtlasIdeSearchEditor.LineSelection(mLines, mSelection, mHasSelection), mLines,
+    mCursor, TAtlasIdeSearchSession.Last.Text), TAtlasSearchBarPlan.AsSelection(mHasSelection, mSelection),
+    AInMethod);
   // Ursprung der Suche: Anfang einer Markierung, sonst der Cursor.
-  TAtlasIdeSearchSession.Origin := mCursor;
-  if mHasSelection then
-  begin
-    TAtlasIdeSearchSession.Origin := mSelection.Start;
-  end;
+  TAtlasIdeSearchSession.Origin := TAtlasSearchBarPlan.Origin(mCursor, mHasSelection, mSelection);
   TAtlasIdeSearchSession.Selection := mSelection;
   TAtlasIdeSearchSession.FileName := mView.Buffer.FileName;
   // Eine andere Leiste (anderes Editorfenster) beenden.
@@ -324,7 +293,7 @@ begin
   mBar.Features := Features;
   // Strg+H mit, Strg+F ohne Ersetzen-Zeile.
   mBar.ReplaceShown := AReplace;
-  mBar.Prepare(mQuery, Levels(mText, mCursor), mHasSelection);
+  mBar.Prepare(mQuery, TAtlasSearchBarPlan.Levels(mText, mCursor), mHasSelection);
   mBar.Visible := True;
   // Vor alle Geschwister: Kein Fenster der IDE soll über der Leiste liegen.
   mBar.BringToFront;
@@ -516,7 +485,7 @@ begin
   begin
     Exit;
   end;
-  if TThread.GetTickCount64 - FEnteredAt <= cFocusGraceMs then
+  if TAtlasSearchBarPlan.WithinFocusGrace(FEnteredAt, TThread.GetTickCount64) then
   begin
     TAtlasGuard.Log(Format('Suchleiste: Fokus nach dem Klick an %s %s verloren (an %s); hole ihn zurück',
       [FEntered.ClassName, FEntered.Name, WindowName(Winapi.Windows.GetFocus)]));

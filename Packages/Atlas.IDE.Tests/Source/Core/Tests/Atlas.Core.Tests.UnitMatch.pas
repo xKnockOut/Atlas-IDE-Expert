@@ -40,8 +40,10 @@ uses
 function BaseName(const AFileName: string): string;
 begin
   // Trennzeichen beider Systeme: Die Tests laufen auch unter Linux.
-  Result := ChangeFileExt(ExtractFileName(StringReplace(AFileName, '\', '/', [rfReplaceAll])), '');
-  Result := Copy(Result, LastDelimiter('/', Result) + 1, MaxInt);
+  // Selbst an '/' trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst
+  // gälte ein Punkt im Ordnernamen als Endung.
+  Result := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
 end;
 
 function Matches(const ACandidate, AUnitName: string): Boolean;

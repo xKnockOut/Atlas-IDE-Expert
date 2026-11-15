@@ -26,12 +26,11 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Diagnostics,
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Tracker.Sprint,
+  Atlas.Core.Tracker.SprintLoad,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.SprintTile,
   Atlas.IDE.Tracker.WelcomeLink;
@@ -59,53 +58,6 @@ type
     Assign: TProc;
     /// <summary>Meldungen an die Willkommensseite (gehört dem Aufrufer); nil ohne.</summary>
     Welcome: TAtlasTrackerWelcomeLink;
-  end;
-
-  /// <summary>Stand der Kachel für den Tracker des Projekts (letzte Antwort bzw. Zwischenspeicher).</summary>
-  TAtlasSprintState = record
-    HasSnapshot: Boolean;
-    Snapshot: TAtlasBoardSnapshot;
-    Calendar: TAtlasSprintCalendar;
-    Previous: TArray<TAtlasSprintSummary>;
-    // Die Vorsprints wurden mit dem Vergleich geladen (issues.sprint.compare eingeschaltet: neu laden).
-    WithPrevious: Boolean;
-    Stale: Boolean;
-    Error: TAtlasCiFetchError;
-  end;
-
-  /// <summary>Ergebnis einer Abfrage im Hintergrund.</summary>
-  TAtlasSprintResult = record
-    Succeeded: Boolean;
-    Snapshot: TAtlasBoardSnapshot;
-    Calendar: TAtlasSprintCalendar;
-    /// <summary>Arbeitstage kamen vom Tracker (sonst bleibt der Kalender des Stands).</summary>
-    CalendarKnown: Boolean;
-    Previous: TArray<TAtlasSprintSummary>;
-    WithPrevious: Boolean;
-    Error: TAtlasCiFetchError;
-    /// <summary>Fehlschlag mit AError; ACalendar bleibt.</summary>
-    class function Failed(const ACalendar: TAtlasSprintCalendar; AError: TAtlasCiFetchError): TAtlasSprintResult;
-      static;
-  end;
-
-  /// <summary>Eine Abfrage: aktueller Sprint, Arbeitstage und mit Vergleich die Vorsprints; läuft im
-  /// Hintergrund und schreibt nur in Outcome.</summary>
-  TAtlasSprintJob = record
-    Target: TAtlasTrackerTarget;
-    Boards: IAtlasTrackerBoards;
-    WorkDays: IAtlasTrackerWorkDays;
-    Transport: IAtlasCiTransport;
-    Folder: string;
-    /// <summary>Gewähltes Board ('' = das erste des Projekts).</summary>
-    BoardId: string;
-    /// <summary>issues.sprint.compare: frühere Sprints fragen.</summary>
-    Compare: Boolean;
-    Watch: TStopwatch;
-    Outcome: TAtlasSprintResult;
-    procedure Execute;
-    function LoadCurrent: Boolean;
-    procedure LoadWorkDays;
-    procedure LoadPrevious;
   end;
 
   TAtlasIdeSprint = class(TInterfacedObject, IAtlasSprintSource)
@@ -160,14 +112,6 @@ type
     procedure IssuesFetched(AForce: Boolean);
     /// <summary>welcomePage.sprint an?</summary>
     class function Active: Boolean; static;
-    /// <summary>Zusammenfassung des abgeschlossenen Sprints ASprintId aus dem Zwischenspeicher; False ohne
-    /// (lesbare) Datei.</summary>
-    class function CachedSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-      const ABoardId, ASprintId: string; out ASummary: TAtlasSprintSummary): Boolean; static;
-    /// <summary>Zusammenfassung eines abgeschlossenen Sprints merken; Fehler beim Schreiben werden übergangen.
-    /// </summary>
-    class procedure SaveSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget; const ABoardId: string;
-      const ASummary: TAtlasSprintSummary); static;
     { IAtlasSprintSource }
     function View: TAtlasSprintTile;
     procedure Shown;
@@ -181,114 +125,19 @@ implementation
 
 uses
   Winapi.Windows,
-  System.DateUtils,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.MyIssues,
+  Atlas.Core.Tracker.Sprint,
   Atlas.UI.Tracker.MyIssues.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.Board;
 
 const
   cStopWaitMs = 1000;
-  cMsPerMinute = 60000;
-  // Weniger Zeit übrig: keine weiteren Vorsprints fragen.
-  cMinLeftMs = 1000;
   cLogAborted = 'Sprint: Abfrage mit %s abgebrochen';
   cLogOutcome = 'Sprint: %s, %s';
-
-{ TAtlasSprintResult }
-
-class function TAtlasSprintResult.Failed(const ACalendar: TAtlasSprintCalendar;
-  AError: TAtlasCiFetchError): TAtlasSprintResult;
-begin
-  Result := Default(TAtlasSprintResult);
-  Result.Calendar := ACalendar;
-  Result.Error := AError;
-end;
-
-{ TAtlasSprintJob }
-
-procedure TAtlasSprintJob.Execute;
-begin
-  Watch := TStopwatch.StartNew;
-  Outcome.WithPrevious := Compare;
-  try
-    Outcome.Succeeded := LoadCurrent;
-    if Outcome.Succeeded then
-    begin
-      LoadWorkDays;
-    end;
-    if Outcome.Succeeded and Compare then
-    begin
-      LoadPrevious;
-    end;
-  except
-    // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
-    on E: Exception do
-    begin
-      Outcome.Succeeded := False;
-      Outcome.Error := TAtlasCiFetchError.Network;
-      TAtlasGuard.Log(Format(cLogAborted, [E.ClassName], TFormatSettings.Invariant));
-    end;
-  end;
-  Transport := nil;
-end;
-
-function TAtlasSprintJob.LoadCurrent: Boolean;
-begin
-  Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, BoardId, '', TAtlasTrackerBoard.cTimeoutMs),
-    Outcome.Snapshot, Outcome.Error);
-  // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
-  if not Result and (BoardId <> '') and (Outcome.Error = TAtlasCiFetchError.NotFound) then
-  begin
-    Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, '', '', TAtlasTrackerBoard.cTimeoutMs),
-      Outcome.Snapshot, Outcome.Error);
-  end;
-end;
-
-procedure TAtlasSprintJob.LoadWorkDays;
-var
-  mDays: TArray<Integer>;
-begin
-  if (WorkDays <> nil) and WorkDays.WorkDays(Target, Transport, TAtlasTrackerBoard.cTimeoutMs, mDays) then
-  begin
-    Outcome.Calendar := TAtlasSprintCalendar.Create(mDays);
-    Outcome.CalendarKnown := True;
-  end;
-end;
-
-procedure TAtlasSprintJob.LoadPrevious;
-var
-  mSprint: TAtlasBoardSprint;
-  mSummary: TAtlasSprintSummary;
-  mOld: TAtlasBoardSnapshot;
-  mOldError: TAtlasCiFetchError;
-  mLeft: Int64;
-begin
-  for mSprint in TAtlasTrackerSprint.PreviousSprints(Outcome.Snapshot.Sprints, Outcome.Snapshot.Sprint,
-    TAtlasTrackerSprint.cVelocitySprints) do
-  begin
-    // Abgeschlossene Sprints ändern sich nicht: einmal fragen, dann aus dem Zwischenspeicher.
-    mLeft := TAtlasTrackerSprint.cTimeoutMs - Watch.ElapsedMilliseconds;
-    if TAtlasIdeSprint.CachedSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSprint.Id, mSummary) then
-    begin
-      Outcome.Previous := Outcome.Previous + [mSummary];
-    end
-    else if mLeft < cMinLeftMs then
-    begin
-      Break;
-    end
-    else if Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, Outcome.Snapshot.Board.Id, mSprint.Id,
-      Integer(mLeft)), mOld, mOldError) then
-    begin
-      mSummary := TAtlasTrackerSprint.Summarize(mOld, Outcome.Calendar, TAtlasIdeSprint.NowUtc);
-      TAtlasIdeSprint.SaveSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSummary);
-      Outcome.Previous := Outcome.Previous + [mSummary];
-    end;
-  end;
-end;
 
 { TAtlasIdeSprint }
 
@@ -354,10 +203,6 @@ begin
 end;
 
 procedure TAtlasIdeSprint.Prepare(const ATarget: TAtlasTrackerTarget);
-var
-  mSprint: TAtlasBoardSprint;
-  mSummary: TAtlasSprintSummary;
-  mFile, mText: string;
 begin
   if FPrepared and SameText(FTargetKey, ATarget.Key) then
   begin
@@ -373,34 +218,7 @@ begin
   end;
   FPrepared := True;
   FTargetKey := ATarget.Key;
-  FState.Stale := False;
-  FState.Error := TAtlasCiFetchError.None;
-  FState.Previous := nil;
-  FState.WithPrevious := False;
-  FState.Calendar := TAtlasSprintCalendar.WorkWeek;
-  FState.HasSnapshot := TAtlasTrackerBoard.Load(FCacheFolder, ATarget, cCacheName, FState.Snapshot);
-  if not FState.HasSnapshot then
-  begin
-    FState.Snapshot := TAtlasBoardSnapshot.Empty;
-  end;
-  mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
-  if (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) then
-  begin
-    FState.Calendar := TAtlasSprintCalendar.FromText(mText);
-  end;
-  if not FState.HasSnapshot then
-  begin
-    Exit;
-  end;
-  // Vorsprints nur aus dem Zwischenspeicher; fehlt einer, holt ihn die nächste Abfrage.
-  for mSprint in TAtlasTrackerSprint.PreviousSprints(FState.Snapshot.Sprints, FState.Snapshot.Sprint,
-    TAtlasTrackerSprint.cVelocitySprints) do
-  begin
-    if CachedSummary(FCacheFolder, ATarget, FState.Snapshot.Board.Id, mSprint.Id, mSummary) then
-    begin
-      FState.Previous := FState.Previous + [mSummary];
-    end;
-  end;
+  FState.Restore(FCacheFolder, ATarget, cCacheName, cWorkDaysName);
 end;
 
 procedure TAtlasIdeSprint.Load(AForce: Boolean);
@@ -512,28 +330,24 @@ begin
   begin
     Exit;
   end;
+  if AResult.Aborted <> '' then
+  begin
+    TAtlasGuard.Log(Format(cLogAborted, [AResult.Aborted], TFormatSettings.Invariant));
+  end;
   // Anonym: Anbieter und Ergebnis; nie Adresse, Board, Sprint oder Kennungen.
   TAtlasGuard.Log(Format(cLogOutcome, [ATarget.Provider, TAtlasCiBuild.ErrorKey(AResult.Error)],
     TFormatSettings.Invariant));
   if not AResult.Succeeded then
   begin
     // Letzter Stand bleibt mit „Stand vom … · Grund“; ohne Stand der Grund allein.
-    FState.Stale := True;
-    FState.Error := AResult.Error;
+    FState.Fail(AResult.Error);
     Changed;
     Exit;
   end;
-  FState.Snapshot := AResult.Snapshot;
-  FState.Snapshot.Fetched := NowUtc;
-  FState.HasSnapshot := True;
-  FState.Stale := False;
-  FState.Error := TAtlasCiFetchError.None;
-  FState.Previous := AResult.Previous;
-  FState.WithPrevious := AResult.WithPrevious;
+  FState.Take(AResult, NowUtc);
   TAtlasTrackerBoard.Save(FCacheFolder, ATarget, cCacheName, FState.Snapshot);
   if AResult.CalendarKnown then
   begin
-    FState.Calendar := AResult.Calendar;
     mFile := TAtlasTrackerBoard.CacheFile(FCacheFolder, ATarget, cWorkDaysName);
     if mFile <> '' then
     begin
@@ -554,13 +368,13 @@ end;
 
 function TAtlasIdeSprint.Due(const ATarget: TAtlasTrackerTarget): Boolean;
 begin
-  Result := (FLoadedTick = 0) or (GetTickCount64 - FLoadedTick >= UInt64(TAtlasMyIssues.cDueMinutes) * cMsPerMinute) or
-    (TAtlasIdeSettings.Current.IssuesSprintCompare and not FState.WithPrevious);
+  Result := TAtlasSprintLoad.Due(FLoadedTick, GetTickCount64, TAtlasMyIssues.cDueMinutes,
+    TAtlasIdeSettings.Current.IssuesSprintCompare, FState.WithPrevious);
 end;
 
 class function TAtlasIdeSprint.NowUtc: TDateTime;
 begin
-  Result := TTimeZone.Local.ToUniversalTime(Now);
+  Result := TAtlasSprintLoad.NowUtc;
 end;
 
 procedure TAtlasIdeSprint.Start;
@@ -608,29 +422,6 @@ end;
 class function TAtlasIdeSprint.Active: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.WelcomePageSprint;
-end;
-
-class function TAtlasIdeSprint.CachedSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-  const ABoardId, ASprintId: string; out ASummary: TAtlasSprintSummary): Boolean;
-var
-  mFile, mText: string;
-begin
-  ASummary := Default(TAtlasSprintSummary);
-  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASprintId));
-  Result := (mFile <> '') and TAtlasTrackerBoard.ReadText(mFile, mText) and
-    TAtlasTrackerSprint.SummaryFromJson(mText, ASummary);
-end;
-
-class procedure TAtlasIdeSprint.SaveSummary(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-  const ABoardId: string; const ASummary: TAtlasSprintSummary);
-var
-  mFile: string;
-begin
-  mFile := TAtlasTrackerBoard.CacheFile(AFolder, ATarget, TAtlasTrackerSprint.SummaryName(ABoardId, ASummary.Id));
-  if mFile <> '' then
-  begin
-    TAtlasTrackerBoard.WriteText(mFile, TAtlasTrackerSprint.SummaryToJson(ASummary));
-  end;
 end;
 
 procedure TAtlasIdeSprint.Shown;

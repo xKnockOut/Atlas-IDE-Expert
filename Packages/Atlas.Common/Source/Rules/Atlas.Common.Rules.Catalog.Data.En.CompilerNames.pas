@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerNames: array[0..778] of string = (
+  cCatalogLinesEnCompilerNames: array[0..808] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Deprecated or bound symbol",',
@@ -894,6 +894,42 @@ const
     't to the uses of the interface section (offered when the interface section has a uses clause).",',
     '      "bad": "interface\nuses\n  System.SysUtils;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation\nuses\n  System.Classes;",',
     '      "good": "interface\nuses\n  System.SysUtils, System.Classes;\ntype\n  TFenster = class\n    FListe: TStringList;\n  end;\nimplementation",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "winapi-declaration-missing",',
+    '      "name": "Missing from Delphi''s Winapi.Windows",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "The unit uses Winapi.Windows (or Windows) and names an identifier that Free Pascal''s Windows unit declares but Delphi''s Winapi.Windows does not: OpenThread, THREAD_SUSPEND_RESUME' +
+    ', THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal compiles it, Delphi reports E2003. Not reported when the file declares the name itself o' +
+    'r when name resolution finds it in a unit other than Free Pascal''s Windows (for example a project unit, or Delphi''s Winapi.Windows from the symbol index). Names after a dot, in comments and in strings' +
+    ' stay silent. One finding per name and file; the message gives the declaration to add.",',
+    '      "bad": "uses\n  Winapi.Windows;\n…\n  mThread := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);",',
+    '      "good": "uses\n  Winapi.Windows;\nconst\n  THREAD_SUSPEND_RESUME = $0002;\nfunction OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;\n  external ker' +
+    'nel32 name ''OpenThread'';",',
+    '      "compilerCodes": [',
+    '        "E2003"',
+    '      ],',
+    '      "level": "B",',
+    '      "safeFix": false',
+    '    },',
+    '{',
+    '      "id": "winapi-uses-missing",',
+    '      "name": "Winapi.Windows missing from uses",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A routine that Delphi only declares in Winapi.Windows (GetTickCount64, GetTickCount, MulDiv) is called while Winapi.Windows (or Windows) is not in uses. Free Pascal also finds th' +
+    'ese routines in SysUtils and compiles the unit; Delphi reports E2003. TThread.GetTickCount64 and other names after a dot do not count, nor do routines the file or a project unit declares itself. One f' +
+    'inding per file. Quick fix: add Winapi.Windows to the uses of that section (watch uses-order-hides-type if the unit also uses Vcl.Graphics).",',
+    '      "bad": "uses\n  System.SysUtils;\n…\n  mStart := GetTickCount64;",',
+    '      "good": "uses\n  Winapi.Windows, System.SysUtils;\n…\n  mStart := GetTickCount64;",',
     '      "compilerCodes": [',
     '        "E2003"',
     '      ],',

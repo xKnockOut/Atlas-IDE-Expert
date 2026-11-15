@@ -25,6 +25,8 @@ type
     [Test]
     procedure DisplayLineExpandsTabsAndRunsMatchOnlyAtTheirColumn;
     [Test]
+    procedure DisplayColumnAndSameDisplayLine;
+    [Test]
     procedure GuidesSpanMultiLineBlocksAtIndentOfOpenerLine;
     [Test]
     procedure GuidesForTypesTabsAndSingleLineBlocks;
@@ -463,6 +465,17 @@ begin
   Assert.AreEqual(1, mGuides[1].Routine);
   Assert.AreEqual(1, mGuides[1].FirstLine, 'Linie ab dem Kopf');
   Assert.AreEqual(0, mGuides[2].Routine);
+end;
+
+procedure TAtlasPairsTests.DisplayColumnAndSameDisplayLine;
+begin
+  Assert.AreEqual(1, TAtlasPairs.DisplayColumn('a'#9'b', 0, 4));
+  Assert.AreEqual(5, TAtlasPairs.DisplayColumn('a'#9'b', 2, 4));
+  // Hinter dem Zeilenende und mit #13 keine weitere Spalte.
+  Assert.AreEqual(3, TAtlasPairs.DisplayColumn('ab'#13, 10, 4));
+  Assert.AreEqual(1, TAtlasPairs.DisplayColumn('ab', -1, 4));
+  Assert.IsTrue(TAtlasPairs.SameDisplayLine(#9'x  ', '    x', 4));
+  Assert.IsFalse(TAtlasPairs.SameDisplayLine(#9'x', '  x', 4));
 end;
 
 initialization

@@ -3,7 +3,8 @@
 // Tests des Zustands im Statusfeld (#2124) ohne IDE: Feldtext mit gekürztem
 // Zustand, Einträge des Menüs unter einer Zustandsmaschine und ohne, Einträge
 // der Befehlspalette mit Filter und Kennung, Änderung je Eintrag und der
-// danach bekannte Zustand.
+// danach bekannte Zustand; wann das Feld leer bleibt, Zeile über dem Menü,
+// Wahl im Dialog und was ein neuer Stand aus „Meine Issues“ bewirkt.
 
 interface
 
@@ -29,6 +30,12 @@ type
     procedure RowIdLeadsBackToEntry;
     [Test]
     procedure ChangeForTransitionAndValue;
+    [Test]
+    procedure FieldKeyAndHidden;
+    [Test]
+    procedure MenuNoteEntryAtAndCaptions;
+    [Test]
+    procedure UpdateFromMyIssues;
   end;
 
 implementation
@@ -146,6 +153,51 @@ begin
   Assert.AreEqual('', mChange.Transition.Id);
   Assert.AreEqual('', mChange.Comment);
   Assert.AreEqual('Erledigt', TAtlasIssueStatus.After(TAtlasIssueStateEntry.ForState('Erledigt'), nil));
+end;
+
+procedure TAtlasIssueStatusTests.FieldKeyAndHidden;
+begin
+  Assert.AreEqual('ATL-1', TAtlasIssueStatus.FieldKey('ATL-1', 'ATL-2'));
+  Assert.AreEqual('ATL-2', TAtlasIssueStatus.FieldKey('', 'ATL-2'), 'Kennung der Zeiterfassung');
+  Assert.IsTrue(TAtlasIssueStatus.Hidden('', 'Offen', 'ATL-2'), 'ohne Kennung');
+  Assert.IsTrue(TAtlasIssueStatus.Hidden('ATL-1', '', ''), 'weder Zustand noch Zeit');
+  Assert.IsFalse(TAtlasIssueStatus.Hidden('ATL-1', 'Offen', ''));
+  Assert.IsFalse(TAtlasIssueStatus.Hidden('ATL-1', '', 'ATL-1'));
+end;
+
+procedure TAtlasIssueStatusTests.MenuNoteEntryAtAndCaptions;
+var
+  mEntries: TArray<TAtlasIssueStateEntry>;
+  mCaptions: TArray<string>;
+begin
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateMenuNote.Failed)), Integer(Ord(TAtlasIssueStatus.MenuNote(False, 2))));
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateMenuNote.Empty)), Integer(Ord(TAtlasIssueStatus.MenuNote(True, 0))));
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateMenuNote.None)), Integer(Ord(TAtlasIssueStatus.MenuNote(True, 1))));
+  mEntries := TAtlasIssueStatus.Entries(Default(TAtlasTrackerStateRules), States, 'Offen');
+  mCaptions := TAtlasIssueStatus.Captions(mEntries);
+  Assert.AreEqual(Integer(Length(mEntries)), Integer(Length(mCaptions)));
+  Assert.AreEqual(mEntries[0].Caption, mCaptions[0]);
+  Assert.AreEqual(mEntries[1].State, TAtlasIssueStatus.EntryAt(mEntries, 1).State);
+  Assert.AreEqual('', TAtlasIssueStatus.EntryAt(mEntries, -1).State, 'keiner gewählt');
+  Assert.AreEqual('', TAtlasIssueStatus.EntryAt(mEntries, Length(mEntries)).State);
+  mEntries := nil;
+  mCaptions := nil;
+end;
+
+procedure TAtlasIssueStatusTests.UpdateFromMyIssues;
+begin
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.NewIssue)),
+    Integer(Ord(TAtlasIssueStatus.Update(False, 'Offen', 'Offen', False, 0, True))));
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.NewState)),
+    Integer(Ord(TAtlasIssueStatus.Update(True, 'Offen', 'Erledigt', True, 0, True))));
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.Keep)),
+    Integer(Ord(TAtlasIssueStatus.Update(True, 'Offen', 'offen', False, 0, True))), 'ohne Groß-/Kleinschreibung');
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.ReadLate)),
+    Integer(Ord(TAtlasIssueStatus.Update(True, 'Offen', 'Offen', True, 0, True))), 'erst später eingeschaltet');
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.Keep)),
+    Integer(Ord(TAtlasIssueStatus.Update(True, 'Offen', 'Offen', True, 1, True))), 'liest schon');
+  Assert.AreEqual(Integer(Ord(TAtlasIssueStateUpdate.Keep)),
+    Integer(Ord(TAtlasIssueStatus.Update(True, 'Offen', 'Offen', True, 0, False))), 'Zustand aus');
 end;
 
 initialization

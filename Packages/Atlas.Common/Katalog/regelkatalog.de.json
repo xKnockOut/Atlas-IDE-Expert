@@ -164,6 +164,31 @@
       "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."
     },
     {
+      "id": "managed-result-read-before-set",
+      "name": "Result gelesen, bevor es gesetzt ist",
+      "description": "Eine Funktion, deren Ergebnis ein dynamisches Array oder ein String ist, liest Result, bevor sie es setzt: SetLength(Result, N) und danach ein Element gelesen (if Result[I], Inc(Result[I])), SetLength(Result, Length(Result) + 1), Result := Result + ..., Length(Result), for X in Result, Insert, Delete oder Copy auf Result. Delphi übergibt ein verwaltetes Result als Variable des Aufrufers (A := F(...) reicht A durch): SetLength behält dann dessen alte Werte, Result + ... hängt an sie an; Free Pascal beginnt leer, die Tests sind dort grün. Elemente nach SetLength schreiben, Length nach SetLength, Result als Argument einer anderen Routine (kann ein var- oder out-Parameter sein) und anonyme Methoden bleiben still. Konfidenz mittel. Schnellkorrektur: Result := nil (bzw. '') vor die Anweisung."
+    },
+    {
+      "id": "trygetvalue-out-default",
+      "name": "TryGetValue überschreibt die Vorbelegung",
+      "description": "TryGetValue (TDictionary, TJSONValue.TryGetValue<T> und andere) steht als Anweisung, das Ergebnis wird verworfen, und das out-Argument bekam vorher in der Routine einen Wert, der nicht der Vorgabe entspricht (nicht nil, '', 0, False, [] oder Default(T)). Delphi setzt das out-Argument auch ohne Schlüssel auf den Vorgabewert, die Vorbelegung geht verloren; Free Pascal lässt sie stehen, die Tests sind dort grün. Eine Vorbelegung mit dem Vorgabewert, ein ausgewertetes Ergebnis (if not D.TryGetValue(K, V) then V := ...) und ein Argument ohne Vorbelegung bleiben still. Konfidenz mittel. Korrektur: in eine eigene Variable lesen und nur übernehmen, wenn TryGetValue True liefert."
+    },
+    {
+      "id": "record-array-shared",
+      "name": "Kopierter Record teilt sein Array",
+      "description": "Ein Record wird mit B := A kopiert (Namen, Felder und Indizes, kein Aufruf), und später in der Routine wird ein Element eines Felds vom Typ dynamisches Array von B oder A in place geschrieben (B.Items[0] := ..., B.Items[0].State := ...). Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write: Kopie und Original teilen das Array, das Schreiben ändert beide. Die Regel braucht den Symbolindex und meldet nur, wenn die Namensauflösung Record und dynamisches Array sicher kennt. Ein neues Array für das Feld vor dem Schreiben (Copy, SetLength, neue Zuweisung), statische Arrays, String-Felder, Klassen und ein neu zugewiesener Record bleiben still. Schnellkorrektur: B.Items := Copy(B.Items) vor das Schreiben."
+    },
+    {
+      "id": "extractfile-forward-slash",
+      "name": "Dateiname mit / zerlegt",
+      "description": "ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt oder ExtractFileDrive bekommt einen Pfad mit '/': ein Literal mit '/', eine Verkettung mit einem solchen Literal, StringReplace(X, '\\', '/', ...) bzw. X.Replace('\\', '/') oder eine lokale Variable, deren letzte Zuweisung in der Routine so etwas ist. Die Routinen trennen nur an PathDelim und DriveDelim, unter Windows '\\', unter Linux '/': Unter Windows bleibt der Pfad ungeteilt. PathDelim als Ersatz, '\\' und andere Variablen bleiben still. Schnellkorrektur für StringReplace(..., '/', ...): durch PathDelim ersetzen."
+    },
+    {
+      "id": "hash-overflow-checked",
+      "name": "Gewollter Überlauf mit Überlaufprüfung",
+      "description": "Eine Multiplikation mit einer FNV-Primzahl (16777619 oder 1099511628211, als Literal, $-Hexzahl oder Konstante der Unit, auch in UInt64(...)), die überläuft, steht an einer Stelle mit Überlaufprüfung: kein {$Q-} bzw. {$OVERFLOWCHECKS OFF} davor. Im Debug-Build mit {$Q+} bricht der gewollte Überlauf des Hashs mit EIntOverflow ab; typisch ist eine {$IFOPT Q+}...{$Q-}{$ENDIF}-Klammer um die falsche Routine. Die Direktiven der Datei zählen der Reihe nach, {$PUSHOPT}/{$POPOPT} eingeschlossen; die Projekteinstellung ist nicht bekannt, die Überlaufprüfung gilt deshalb als an. Ein 32-Bit-Produkt mit UInt64(...) bzw. Int64(...) auf der anderen Seite läuft nicht über und bleibt still. Korrektur: die Routine in {$IFOPT Q+}{$DEFINE X}{$Q-}{$ENDIF} ... {$IFDEF X}{$Q+}{$UNDEF X}{$ENDIF} klammern."
+    },
+    {
       "id": "unreachable-code",
       "name": "Unerreichbarer Code",
       "description": "Eine Anweisung nach Exit, raise, Abort, Halt, Break, Continue oder goto wird nie ausgeführt. Meist ein Rest oder ein falsch gesetzter Sprung. Gemeldet wird nur die erste Anweisung eines unerreichbaren Abschnitts."
@@ -2311,6 +2336,21 @@
       "id": "interface-uses-missing",
       "name": "Unit nur im uses des implementation-Teils",
       "description": "Ein Typ im interface-Teil (Feld, Parameter, Ergebnis, Property, Vorfahr) kommt aus einer Unit, die nur im uses des implementation-Teils steht. Dort ist der Name noch nicht bekannt (wie E2003). Gemeldet, wenn der Name im interface-Teil nicht aufgelöst wird und genau eine solche Unit ihn in ihrem interface-Teil deklariert; je Unit einmal pro Datei. Korrektur: Unit ins uses des interface-Teils verschieben (angeboten, wenn der interface-Teil ein uses hat)."
+    },
+    {
+      "id": "winapi-declaration-missing",
+      "name": "Fehlt in Delphis Winapi.Windows",
+      "description": "Die Unit bindet Winapi.Windows (bzw. Windows) ein und nennt einen Bezeichner, den Free Pascals Unit Windows deklariert, Delphis Winapi.Windows aber nicht: OpenThread, THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal übersetzt das, Delphi meldet E2003. Still, wenn die Datei den Namen selbst deklariert oder die Namensauflösung ihn in einer anderen Unit als Free Pascals Windows findet (etwa einer Projekt-Unit oder Delphis Winapi.Windows aus dem Symbolindex). Namen hinter einem Punkt, in Kommentaren und in Strings bleiben still. Eine Meldung je Name und Datei; sie nennt die Deklaration, die anzulegen ist."
+    },
+    {
+      "id": "winapi-uses-missing",
+      "name": "Winapi.Windows fehlt in uses",
+      "description": "Eine Routine, die Delphi nur in Winapi.Windows deklariert (GetTickCount64, GetTickCount, MulDiv), wird aufgerufen, ohne dass Winapi.Windows (bzw. Windows) in uses steht. Free Pascal findet diese Routinen auch in SysUtils und übersetzt die Unit; Delphi meldet E2003. TThread.GetTickCount64 und andere Namen hinter einem Punkt zählen nicht, ebenso Routinen, die die Datei oder eine Projekt-Unit selbst deklariert. Eine Meldung je Datei. Korrektur: Winapi.Windows ins uses des Abschnitts aufnehmen (bei Vcl.Graphics in uses auf uses-order-hides-type achten)."
+    },
+    {
+      "id": "stream-write-nativeint",
+      "name": "Write ohne NativeInt-Überladung",
+      "description": "Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream, aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab Delphi 13 gibt. Unter Win64 rufen WriteBuffer und CopyFrom die NativeInt-Überladung auf und gehen an der eigenen Fassung vorbei, ohne Compilermeldung: Eine Grenze oder Zählung in der Longint-Fassung greift nicht mehr. Die zweite Fassung wird im ganzen Text der Klasse gesucht, auch in {$IF}-Zweigen. Still, wenn delphiVersion eine Version vor Delphi 13 nennt. Unter Win32 sind beide Signaturen gleich; die NativeInt-Fassung gehört deshalb in {$IF RTLVersion >= 37.0} und {$IF SizeOf(Longint) <> SizeOf(NativeInt)}."
     },
     {
       "id": "unresolved-type",
