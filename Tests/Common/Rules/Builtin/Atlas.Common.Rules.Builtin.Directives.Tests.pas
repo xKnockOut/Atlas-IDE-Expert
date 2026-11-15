@@ -218,8 +218,10 @@ end;
 procedure TDirectiveRulesTests.UnbalancedSymbols;
 begin
   Assert.AreEqual('{$IFDEF} ohne Symbol (wie E2173).', OnlyMessage(Dienst('{$IFDEF}'#10'{$ENDIF}'#10, '')));
-  Assert.AreEqual('1X ist kein gültiges Symbol für {$DEFINE} (wie E2173).',
-    OnlyMessage(Dienst('{$DEFINE 1X}'#10, '')));
+  // dcc nimmt auch Ziffern vorn (FastMM4: {$define 32Bit}) und übergeht Zeichen nach dem Bezeichner
+  // (SynPdf: {$ifdef USE_PDFALEVEL]}).
+  TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$DEFINE 32Bit}'#10 +
+    '{$IFDEF 32Bit}'#10'{$ENDIF}'#10'{$IFDEF USE_PDFALEVEL]}'#10'{$ENDIF}'#10, ''));
   Assert.AreEqual('{$UNDEF} ohne Symbol (wie E2173).', OnlyMessage(Dienst('{$UNDEF }'#10, '')));
   TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$DEFINE Atlas_1}'#10 +
     '{$IFNDEF Atlas_1}'#10'{$ENDIF}'#10, ''));

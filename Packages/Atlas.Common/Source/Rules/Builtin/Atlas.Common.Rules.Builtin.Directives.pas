@@ -245,7 +245,7 @@ begin
 end;
 
 /// <summary>Bezeichnerzeichen am Anfang von AText: dcc liest das Symbol einer Direktive nur so weit und übergeht den
-/// Rest ({$DEFINE DELPHI10.2_TOKYO_UP} definiert DELPHI10).</summary>
+/// Rest ({$DEFINE DELPHI10.2_TOKYO_UP} definiert DELPHI10). Ziffern vorn nimmt dcc auch ({$define 32Bit}).</summary>
 function LeadingIdentifier(const AText: string): string;
 var
   mIndex: Integer;
@@ -421,7 +421,7 @@ var
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.NoSymbol].Fmt([AName]), TRuleConfidence.High);
     end
-    else if not IsValidIdent(LeadingIdentifier(mSymbol)) then
+    else if LeadingIdentifier(mSymbol) = '' then
     begin
       AReport.Add(RangeOf(AIndex), cTexts[TDirectivesText.BadSymbol].Fmt([mSymbol, AName]),
         TRuleConfidence.High);

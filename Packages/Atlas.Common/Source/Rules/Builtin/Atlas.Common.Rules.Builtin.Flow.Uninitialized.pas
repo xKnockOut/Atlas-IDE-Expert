@@ -74,6 +74,8 @@ type
     /// je Variable gerufen wuchs das mit großen Klassen quadratisch.</summary>
     FRecordMethods: TDictionary<string, TArray<string>>;
     function MethodsOfRecord(const ATypeName: string): TArray<string>;
+    function DirectMethodsOfRecord(const ATypeName: string): TArray<string>;
+    function FieldMethodsOfRecord(const ATypeName: string): TArray<string>;
     function FlowNodeOf(ANode: TSyntaxNode): TFlowNode;
     function IsFlagFor(ABlock: TSyntaxNode; const AFlag: string): Boolean;
     function ThenGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
@@ -369,11 +371,11 @@ begin
   end;
 end;
 
-/// <summary>Methoden eines Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
-function RecordMethods(ARoot: TSyntaxNode; const ATypeName: string): TArray<string>;
+/// <summary>Rumpf (RecordType) des Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
+function RecordBody(ARoot: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
   mTypeName: string;
-  mDecl, mBody: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   Result := nil;
   mTypeName := ATypeName;
@@ -390,11 +392,19 @@ begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  if mDecl = nil then
+  if mDecl <> nil then
   begin
-    Exit;
+    Result := mDecl.FindChild(TSyntaxKind.RecordType);
   end;
-  mBody := mDecl.FindChild(TSyntaxKind.RecordType);
+end;
+
+/// <summary>Methoden eines Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
+function RecordMethods(ARoot: TSyntaxNode; const ATypeName: string): TArray<string>;
+var
+  mBody: TSyntaxNode;
+begin
+  Result := nil;
+  mBody := RecordBody(ARoot, ATypeName);
   if mBody <> nil then
   begin
     Result := RecordHeaderNames(mBody);
@@ -453,6 +463,13 @@ begin
       Result := TSyntaxSearchStep.Descend;
       if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and IsName(AVisited[0], mName) and
         MatchText(AVisited.Name, mMethods) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end
+      // Methode eines Record-Felds (Container.Bag.AddObject): Einträge „Feld.Methode“.
+      else if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and
+        (AVisited[0].Kind = TSyntaxKind.MemberAccess) and (AVisited[0].ChildCount = 1) and
+        IsName(AVisited[0][0], mName) and MatchText(AVisited[0].Name + '.' + AVisited.Name, mMethods) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -534,13 +551,52 @@ begin
   mKey := UpperCase(ATypeName);
   if not FRecordMethods.TryGetValue(mKey, Result) then
   begin
-    Result := RecordMethods(FContext.Tree.Root, ATypeName);
-    // Record aus einer anderen Unit (TDisposables aus UMemory): Methoden aus dem Index.
-    if Result = nil then
-    begin
-      Result := IndexRecordMethods(FContext.Index, ATypeName);
-    end;
+    Result := DirectMethodsOfRecord(ATypeName) + FieldMethodsOfRecord(ATypeName);
     FRecordMethods.Add(mKey, Result);
+  end;
+end;
+
+function TUninitializedCheck.DirectMethodsOfRecord(const ATypeName: string): TArray<string>;
+begin
+  Result := RecordMethods(FContext.Tree.Root, ATypeName);
+  // Record aus einer anderen Unit (TDisposables aus UMemory): Methoden aus dem Index.
+  if Result = nil then
+  begin
+    Result := IndexRecordMethods(FContext.Index, ATypeName);
+  end;
+end;
+
+/// <summary>Methoden der Record-Felder eines Records dieser Unit als „Feld.Methode“: Container.Bag.AddObject
+/// bekommt das Feld als var-Self wie ein Aufruf auf dem Record selbst. Eine Ebene tief.</summary>
+function TUninitializedCheck.FieldMethodsOfRecord(const ATypeName: string): TArray<string>;
+var
+  mBody, mField, mType: TSyntaxNode;
+  mIndex: Integer;
+  mMethods: TArray<string>;
+  mFieldName, mMethod: string;
+begin
+  Result := nil;
+  mBody := RecordBody(FContext.Tree.Root, ATypeName);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mBody.ChildCount - 1 do
+  begin
+    mField := mBody[mIndex];
+    mType := mField.FindChild(TSyntaxKind.TypeReference);
+    if (mField.Kind <> TSyntaxKind.Field) or (mType = nil) or SameText(mType.Name, ATypeName) then
+    begin
+      Continue;
+    end;
+    mMethods := DirectMethodsOfRecord(mType.Name);
+    for mFieldName in mField.Name.Split([',']) do
+    begin
+      for mMethod in mMethods do
+      begin
+        Result := Result + [mFieldName.Trim + '.' + mMethod];
+      end;
+    end;
   end;
 end;
 
