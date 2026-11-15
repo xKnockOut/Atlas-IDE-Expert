@@ -1574,6 +1574,8 @@ uses
   Atlas.UI.Hotspots.Frame.Tests in 'IDE.Expert\Atlas.UI.Hotspots.Frame.Tests.pas',
   Atlas.Core.UnitRelations.Model in '..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
   Atlas.Core.UnitRelations.Model.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas',
+  Atlas.Core.UnitRelations.Plan in '..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Plan.pas',
+  Atlas.Core.UnitRelations.Plan.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.Plan.Tests.pas',
   Atlas.Core.UnitRelations.InterfaceCost in '..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
   Atlas.Core.UnitRelations.InterfaceCost.Tests in 'IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas',
   Atlas.Core.Analysis.MetricsLens in '..\Packages\Atlas.IDE.Analysis\Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas',

@@ -531,3 +531,4 @@ Atlas.Core.Bookmarks.ColumnPlan.Tests
 Atlas.Core.Bookmarks.Plan.Tests
 Atlas.Core.VersionControl.LineChangesPlan.Tests
 Atlas.Core.VersionControl.Plan.Tests
+Atlas.Core.UnitRelations.Plan.Tests
