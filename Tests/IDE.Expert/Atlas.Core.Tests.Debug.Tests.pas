@@ -153,8 +153,6 @@ begin
   Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', mParts[1]);
   Assert.AreEqual('b"c d"e', mParts[2]);
   Assert.AreEqual(0, Integer(Length(TAtlasTestDebug.SplitArguments('   '))));
-  Assert.AreEqual('"--xmlfile:C:\Mit Leer\r.xml"', TAtlasTestDebug.QuoteArgument('--xmlfile:C:\Mit Leer\r.xml'));
-  Assert.AreEqual('--run:A.B', TAtlasTestDebug.QuoteArgument('--run:A.B'));
 end;
 
 procedure TAtlasTestDebugTests.OptionNames;

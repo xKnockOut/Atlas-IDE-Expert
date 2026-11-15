@@ -84,7 +84,7 @@ type
 implementation
 
 uses
-  Atlas.Text.UpdateRun,
+  Atlas.Text.CommandLine,
   Atlas.Common.Localization.Texts;
 
 const
@@ -347,21 +347,8 @@ begin
 end;
 
 class function TMonitorCommands.CommandLine(const AServer: string; const AArguments: TArray<string>): string;
-var
-  mBuilder: TStringBuilder;
-  mArgument: string;
 begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mBuilder.Append(TUpdateNames.QuoteArgument(AServer));
-    for mArgument in AArguments do
-    begin
-      mBuilder.Append(' ').Append(TUpdateNames.QuoteArgument(mArgument));
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
+  Result := TTextCommandLine.Join(AServer, AArguments);
 end;
 
 class function TMonitorCommands.CoveredSwitches: TArray<string>;

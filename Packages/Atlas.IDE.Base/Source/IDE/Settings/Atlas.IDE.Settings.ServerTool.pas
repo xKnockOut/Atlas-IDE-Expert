@@ -52,6 +52,7 @@ uses
   Vcl.Forms,
   Vcl.Controls,
   System.UITypes,
+  Atlas.Text.CommandLine,
   Atlas.WinBase.Process;
 
 { TAtlasServerToolCall }
@@ -111,8 +112,9 @@ var
   mInfo: TProcessInformation;
 begin
   Result := False;
-  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('', '"' + ACall.Exe + '" ' + ACall.Arguments,
-    ACall.Directory, 0, AHandles.OutputFile, AHandles.NulHandle), mInfo) then
+  if not TAtlasProcessLauncher.Launch(TAtlasProcessLaunch.Create('',
+    TTextCommandLine.Quote(ACall.Exe) + ' ' + ACall.Arguments, ACall.Directory, 0, AHandles.OutputFile,
+    AHandles.NulHandle), mInfo) then
   begin
     AResult.Error := SysErrorMessage(GetLastError);
     Exit;

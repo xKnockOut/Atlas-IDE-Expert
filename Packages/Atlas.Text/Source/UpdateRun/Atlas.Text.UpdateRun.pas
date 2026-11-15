@@ -158,8 +158,6 @@ type
     class function ParseOutcome(const AText: string): TUpdateOutcomeKind; static;
     class function NewModulesName(AValue: TUpdateNewModules): string; static;
     class function ParseNewModules(const AText: string): TUpdateNewModules; static;
-    /// <summary>Ein Argument mit Anführungszeichen nach den Regeln von CommandLineToArgvW.</summary>
-    class function QuoteArgument(const AArgument: string): string; static;
   end;
 
 implementation
@@ -168,7 +166,8 @@ uses
   System.StrUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.CommandLine;
 
 const
   cPhaseNames: array[TUpdatePhase] of string = ('downloading', 'verifying', 'building', 'ready', 'failed');
@@ -247,45 +246,6 @@ begin
     end;
   end;
   Result := TUpdateNewModules.Ask;
-end;
-
-class function TUpdateNames.QuoteArgument(const AArgument: string): string;
-var
-  mBuilder: TStringBuilder;
-  mIndex, mSlashes: Integer;
-begin
-  if (AArgument <> '') and (AArgument.IndexOfAny([' ', #9, '"']) < 0) then
-  begin
-    Exit(AArgument);
-  end;
-  mBuilder := TStringBuilder.Create;
-  try
-    mBuilder.Append('"');
-    mSlashes := 0;
-    for mIndex := 1 to Length(AArgument) do
-    begin
-      if AArgument[mIndex] = '\' then
-      begin
-        Inc(mSlashes);
-        Continue;
-      end;
-      // Backslashes vor einem Anführungszeichen verdoppeln, das Zeichen selbst maskieren.
-      if AArgument[mIndex] = '"' then
-      begin
-        mBuilder.Append(StringOfChar('\', mSlashes * 2 + 1));
-      end
-      else
-      begin
-        mBuilder.Append(StringOfChar('\', mSlashes));
-      end;
-      mSlashes := 0;
-      mBuilder.Append(AArgument[mIndex]);
-    end;
-    mBuilder.Append(StringOfChar('\', mSlashes * 2)).Append('"');
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
-  end;
 end;
 
 { JSON-Hilfen }
@@ -619,20 +579,8 @@ begin
 end;
 
 function TUpdateArguments.CommandLine: string;
-var
-  mArgs: TArray<string>;
-  mIndex: Integer;
 begin
-  mArgs := ToArgs;
-  Result := '';
-  for mIndex := 0 to High(mArgs) do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ' ';
-    end;
-    Result := Result + TUpdateNames.QuoteArgument(mArgs[mIndex]);
-  end;
+  Result := TTextCommandLine.JoinArguments(ToArgs);
 end;
 
 end.
