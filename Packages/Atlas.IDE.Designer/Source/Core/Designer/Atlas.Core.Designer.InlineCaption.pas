@@ -8,11 +8,15 @@
 //   Labels stehen über FocusControl vor ihrem Feld, sonst nach ihrer Lage.
 // - ColumnAt: Spalte eines Grids unter einem Punkt.
 // - CanBreak und Duplicates: mehrzeilige Captions, doppelte Tastenkürzel.
+// - TAtlasCaptionLayout: Lage des Eingabefelds über dem Text, Spaltenkante,
+//   neue Breite nach dem Übernehmen, Klick ohne Ziehen.
+// - TAtlasCaptionHistory: Übernahmen für „Beschriftung rückgängig“.
 
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.Types;
 
 type
   TAtlasCaptionStop = record
@@ -56,6 +60,48 @@ type
     class function Duplicates(const ATexts: TArray<string>; AIndex: Integer): TArray<Integer>; static;
     /// <summary>Breite des Eingabefelds: mindestens die der Komponente, sonst Text und Rand.</summary>
     class function EditorWidth(AComponentWidth, ATextWidth, APadding: Integer): Integer; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Wo der Text einer Komponente steht: GroupBox oben im Rahmen, Registerseite im Reiter darüber,
+  /// Label und Eingabefeld auf der ganzen Fläche, sonst senkrecht in der Mitte.</summary>
+  TAtlasCaptionHolder = (Other, GroupBox, TabSheet, TextControl);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Lage des Eingabefelds und der Komponente nach dem Übernehmen.</summary>
+  TAtlasCaptionLayout = class
+  public
+    /// <summary>Bearbeitet APath einen Spaltentitel (Columns[…])?</summary>
+    class function IsColumn(const APath: string): Boolean; static;
+    /// <summary>Linke Kante der Spalte AIndex; AStart: Breite des Indikators, ALine: Breite der Linien.</summary>
+    class function ColumnLeft(const AWidths: TArray<Integer>; AStart, ALine, AIndex: Integer): Integer; static;
+    /// <summary>Eingabefeld über dem Text in ABounds (Bildschirm): ABand ist die Höhe einer Textzeile, AIndent der
+    /// Einzug im Rahmen der GroupBox.</summary>
+    class function EditorBand(const ABounds: TRect; AHolder: TAtlasCaptionHolder; ABand, AIndent: Integer): TRect;
+      static;
+    /// <summary>Lage mit der neuen Breite AWidth; nur rechts verankert wächst sie nach links.</summary>
+    class function Fitted(const ABounds: TRect; AWidth: Integer; ARightAnchored: Boolean): TRect; static;
+    /// <summary>Liegt AUp höchstens ADragX/ADragY von ADown entfernt (Klick ohne Ziehen)?</summary>
+    class function WithinDrag(const ADown, AUp: TPoint; ADragX, ADragY: Integer): Boolean; static;
+  end;
+
+  /// <summary>Eine Übernahme: alter Text und, wenn die Breite mitwuchs, die alte Lage.</summary>
+  TAtlasCaptionChange = record
+    FormFile: string;
+    Component: string;
+    Path: string;
+    OldText: string;
+    OldBounds: TRect;
+    Resized: Boolean;
+  end;
+
+  /// <summary>Übernahmen für „Beschriftung rückgängig“, je Formulardatei der letzte zuerst.</summary>
+  TAtlasCaptionHistory = record
+    Changes: TArray<TAtlasCaptionChange>;
+    procedure Push(const AChange: TAtlasCaptionChange);
+    /// <summary>Gehört die letzte Übernahme zur Formulardatei (ohne Groß-/Kleinschreibung)?</summary>
+    function CanUndo(const AFormFile: string): Boolean;
+    function Pop(out AChange: TAtlasCaptionChange): Boolean;
   end;
 
 implementation
@@ -367,6 +413,83 @@ begin
   if ATextWidth + APadding > Result then
   begin
     Result := ATextWidth + APadding;
+  end;
+end;
+
+{ TAtlasCaptionLayout }
+
+class function TAtlasCaptionLayout.IsColumn(const APath: string): Boolean;
+begin
+  Result := Pos('Columns[', APath) = 1;
+end;
+
+class function TAtlasCaptionLayout.ColumnLeft(const AWidths: TArray<Integer>; AStart, ALine, AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := AStart;
+  for mIndex := 0 to Min(AIndex, Length(AWidths)) - 1 do
+  begin
+    Result := Result + AWidths[mIndex] + ALine;
+  end;
+end;
+
+class function TAtlasCaptionLayout.EditorBand(const ABounds: TRect; AHolder: TAtlasCaptionHolder;
+  ABand, AIndent: Integer): TRect;
+begin
+  Result := ABounds;
+  case AHolder of
+    TAtlasCaptionHolder.GroupBox:
+      Result := Rect(ABounds.Left + AIndent, ABounds.Top, ABounds.Right - AIndent, ABounds.Top + ABand);
+    TAtlasCaptionHolder.TabSheet:
+      Result := Rect(ABounds.Left, ABounds.Top - ABand, ABounds.Right, ABounds.Top);
+    TAtlasCaptionHolder.Other:
+      if ABounds.Height > ABand then
+      begin
+        Result.Top := ABounds.Top + (ABounds.Height - ABand) div 2;
+        Result.Bottom := Result.Top + ABand;
+      end;
+  end;
+end;
+
+class function TAtlasCaptionLayout.Fitted(const ABounds: TRect; AWidth: Integer; ARightAnchored: Boolean): TRect;
+begin
+  Result := ABounds;
+  if ARightAnchored then
+  begin
+    Result.Left := ABounds.Right - AWidth;
+  end
+  else
+  begin
+    Result.Right := ABounds.Left + AWidth;
+  end;
+end;
+
+class function TAtlasCaptionLayout.WithinDrag(const ADown, AUp: TPoint; ADragX, ADragY: Integer): Boolean;
+begin
+  Result := (Abs(AUp.X - ADown.X) <= ADragX) and (Abs(AUp.Y - ADown.Y) <= ADragY);
+end;
+
+{ TAtlasCaptionHistory }
+
+procedure TAtlasCaptionHistory.Push(const AChange: TAtlasCaptionChange);
+begin
+  SetLength(Changes, Length(Changes) + 1);
+  Changes[High(Changes)] := AChange;
+end;
+
+function TAtlasCaptionHistory.CanUndo(const AFormFile: string): Boolean;
+begin
+  Result := (Length(Changes) > 0) and SameText(Changes[High(Changes)].FormFile, AFormFile);
+end;
+
+function TAtlasCaptionHistory.Pop(out AChange: TAtlasCaptionChange): Boolean;
+begin
+  Result := Length(Changes) > 0;
+  if Result then
+  begin
+    AChange := Changes[High(Changes)];
+    SetLength(Changes, Length(Changes) - 1);
   end;
 end;
 
