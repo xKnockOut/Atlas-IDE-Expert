@@ -1201,6 +1201,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.EndSteps` | `Core/Tracker/Atlas.Core.Tracker.EndSteps.pas` | Ordner `Core/Tracker`; Plan und Schritte des Beendens in Workflow-Reihenfolge (Zeit, Felder, Kommentar, Übergang) mit Fortsetzen nach Ablehnung (#2123) |
 | `Atlas.Core.Tracker.StatusState` | `Core/Tracker/Atlas.Core.Tracker.StatusState.pas` | Ordner `Core/Tracker`; Feldtext, Menüeinträge und Palettenzeilen für den Zustand des aktuellen Issues im Statusfeld (#2124) |
 | `Atlas.Core.Tracker.SprintStart` | `Core/Tracker/Atlas.Core.Tracker.SprintStart.pas` | Ordner `Core/Tracker`; laufender Sprint ohne das Issue beim Beginnen (#2128) |
+| `Atlas.Core.Tracker.MyIssuesPlan` | `Core/Tracker/Atlas.Core.Tracker.MyIssuesPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Meine Issues“ („Alle“, projektgebundene Stände, Aktionen an Zeilen) |
+| `Atlas.Core.Tracker.SettingsPlan` | `Core/Tracker/Atlas.Core.Tracker.SettingsPlan.pas` | Ordner `Core/Tracker`; Entscheidungen des Abschnitts „Issue-Tracker“ (Stand, Werte-Ziel, Protokoll) |
+| `Atlas.Core.Tracker.NewIssuePlan` | `Core/Tracker/Atlas.Core.Tracker.NewIssuePlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Issue anlegen“ (Tracker-Auswahl, Vorlagen, Browser) |
+| `Atlas.Core.Tracker.AttachPlan` | `Core/Tracker/Atlas.Core.Tracker.AttachPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „An Issue anhängen“ (etwas zu senden, Meldung, Protokoll) |
 | `Atlas.Core.Tracker.PaletteSearchPlan` | `Core/Tracker/Atlas.Core.Tracker.PaletteSearchPlan.pas` | Ordner `Core/Tracker`; Entscheidungen der Issue-Suche in der Palette (Antwort, Fehlertext, Protokoll, Zeile, Tasten) |
 | `Atlas.Core.Tracker.CodeLinkPlan` | `Core/Tracker/Atlas.Core.Tracker.CodeLinkPlan.pas` | Ordner `Core/Tracker`; Entscheidungen der Issue-Kennungen im Editor (Dateien, Stand, gezeichnete Zeile, Klicks) |
 | `Atlas.Core.Tracker.BlamePlan` | `Core/Tracker/Atlas.Core.Tracker.BlamePlan.pas` | Ordner `Core/Tracker`; Entscheidungen der Issues in der Zeilenhistorie |

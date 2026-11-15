@@ -151,11 +151,7 @@ begin
   begin
     Exit;
   end;
-  mKey := FIssue.Key;
-  if mKey = '' then
-  begin
-    mKey := FTime.Key;
-  end;
+  mKey := TAtlasIssueStatus.FieldKey(FIssue.Key, FTime.Key);
   mState := '';
   if ShowsState then
   begin
@@ -168,7 +164,7 @@ begin
     mHint := Trim(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.StatusStateHint, [mKey, mState]) + sLineBreak +
       FTime.Hint);
   end;
-  if (mKey = '') or ((mState = '') and (FTime.Key = '')) then
+  if TAtlasIssueStatus.Hidden(mKey, mState, FTime.Key) then
   begin
     if FShown <> '' then
     begin
@@ -457,13 +453,13 @@ procedure TAtlasIdeIssueState.AddStateItems;
 var
   mIndex: Integer;
 begin
-  if not FRead.Succeeded then
-  begin
-    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuFailed), 0, nil);
-  end
-  else if Length(FEntries) = 0 then
-  begin
-    AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuNone), 0, nil);
+  case TAtlasIssueStatus.MenuNote(FRead.Succeeded, Length(FEntries)) of
+    TAtlasIssueStateMenuNote.None:
+      ; // Übergänge vorhanden: keine Zeile darüber.
+    TAtlasIssueStateMenuNote.Failed:
+      AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuFailed), 0, nil);
+    TAtlasIssueStateMenuNote.Empty:
+      AddItem(FMenu.Items, TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.StatusMenuNone), 0, nil);
   end;
   for mIndex := 0 to High(FEntries) do
   begin
@@ -494,23 +490,10 @@ begin
   FSync := nil;
 end;
 
-/// <summary>Texte der Einträge für die Auswahl im Dialog.</summary>
-function Captions(const AEntries: TArray<TAtlasIssueStateEntry>): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(AEntries));
-  for mIndex := 0 to High(AEntries) do
-  begin
-    Result[mIndex] := AEntries[mIndex].Caption;
-  end;
-end;
-
 procedure TAtlasIdeIssueState.CommentClick(Sender: TObject);
 var
   mDialog: TAtlasTrackerStateDialog;
   mAssist: IAtlasCommentAssist;
-  mEntry: TAtlasIssueStateEntry;
 begin
   if FStopped then
   begin
@@ -522,7 +505,7 @@ begin
     mAssist := FHooks.Assist(TAtlasTrackerTarget.Create(FIssue.Provider, FIssue.Url, FIssue.Project, ''), FIssue.Key,
       TAtlasCommentDrafts.cFieldState);
   end;
-  mDialog := TAtlasTrackerStateDialog.CreateDialog(nil, FIssue.Key, Captions(FEntries), -1);
+  mDialog := TAtlasTrackerStateDialog.CreateDialog(nil, FIssue.Key, TAtlasIssueStatus.Captions(FEntries), -1);
   try
     mDialog.Editor.Enhanced := mAssist <> nil;
     mDialog.Editor.Bind(mAssist);
@@ -531,12 +514,7 @@ begin
       mDialog.Editor.Unbind;
       Exit;
     end;
-    mEntry := Default(TAtlasIssueStateEntry);
-    if (mDialog.Entry >= 0) and (mDialog.Entry <= High(FEntries)) then
-    begin
-      mEntry := FEntries[mDialog.Entry];
-    end;
-    Run(mEntry, mDialog.Comment);
+    Run(TAtlasIssueStatus.EntryAt(FEntries, mDialog.Entry), mDialog.Comment);
     mDialog.Editor.Sent;
   finally
     mDialog.Free;
@@ -554,28 +532,31 @@ begin
   begin
     Exit;
   end;
-  if not FIssue.Same(AIssue) then
-  begin
-    FIssue := AIssue;
-    FListState := AState;
-    FState := AState;
-    FRead := Default(TAtlasIssueStateRead);
-    FEntries := nil;
-    if ShowsState then
-    begin
+  case TAtlasIssueStatus.Update(FIssue.Same(AIssue), FListState, AState, FRead.Key = '', FWorker.Pending,
+    ShowsState) of
+    TAtlasIssueStateUpdate.NewIssue:
+      begin
+        FIssue := AIssue;
+        FListState := AState;
+        FState := AState;
+        FRead := Default(TAtlasIssueStateRead);
+        FEntries := nil;
+        if ShowsState then
+        begin
+          Read(nil);
+        end;
+      end;
+    TAtlasIssueStateUpdate.NewState:
+      begin
+        // „Meine Issues“ kennt einen neueren Stand (anderswo geändert).
+        FListState := AState;
+        FState := AState;
+      end;
+    TAtlasIssueStateUpdate.ReadLate:
+      // Erst später eingeschaltet (issues.statusState, issues.syncState): einmal lesen.
       Read(nil);
-    end;
-  end
-  else if not SameText(FListState, AState) then
-  begin
-    // „Meine Issues“ kennt einen neueren Stand (anderswo geändert).
-    FListState := AState;
-    FState := AState;
-  end
-  else if (FRead.Key = '') and (FWorker.Pending = 0) and ShowsState then
-  begin
-    // Erst später eingeschaltet (issues.statusState, issues.syncState): einmal lesen.
-    Read(nil);
+    TAtlasIssueStateUpdate.Keep:
+      ; // Nichts Neues.
   end;
   Render;
 end;
