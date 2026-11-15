@@ -1,7 +1,0 @@
-### Behoben
-- `hides-virtual` entscheidet bei Überladungen wie Delphi (W1010): Trägt die verdeckte virtuelle Methode des Vorfahren `overload`, ergänzt der Nachfahr nur die Überladungen und bleibt still (Indy `TIdHTTP.GetResponse`). `overload` nur am Nachfahren verdeckt die Methode dagegen weiter und wird jetzt gemeldet; still macht es `reintroduce; overload`.
-- `generic-declaration-invalid` (wie E2506) meldet echte Konstanten des implementation-Teils nicht mehr; Delphi setzt sie in Methoden generischer Typen ein. Typisierte Konstanten, Variablen und Routinen bleiben gemeldet (DelphiMVCFramework).
-- `pchar-of-temporary` erkennt Aufrufe, deren Ergebnis über Aliase ein Zeiger oder eine Zahl ist (`PAnsiChar(LocalAlloc(…))` mit `HLOCAL`, `PAnsiChar(Image.RvaToVa(…))`), und meldet sie nicht mehr als temporären String (cnvcl, JCL).
-- `default-property-invalid` (wie E2131) unterscheidet einen generischen und einen nicht generischen Typ gleichen Namens (`IList` und `IList<T>`, JCL).
-- `default-parameter-invalid` (wie E2268) löst verschachtelte Typen wie `THashSHA2.TSHA2Version` ganz auf und hält eine Aufzählung im Record nicht mehr für den Record (Alcinoe).
-- `class-reference-nonvirtual-constructor` und `implicit-variants-unit` geben keine Compilermeldung mehr an: Delphi 13 meldet in beiden Fällen nichts (E2391 gab es nur für .NET). Die Regeln stehen jetzt in den Gruppen „Fehler finden“ bzw. „Robustheit und Muster“.

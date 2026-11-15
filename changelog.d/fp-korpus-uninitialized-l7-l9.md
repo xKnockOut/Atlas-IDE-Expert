@@ -1,2 +1,0 @@
-### Behoben
-- `possibly-uninitialized` meldet drei Fälle nicht mehr, die Delphi ohne W1036 übersetzt: Methodenaufruf auf einer Variablen eines old-style `object` (`E.Init(…)` legt `E` über var-Self an, auch mit geerbter Methode), `for` über `Low`/`High` eines statischen Arrays mit nicht leerem Bereich (Konstante, Variable oder Typ der Unit, auch über einen benannten Array-Typ; gilt für alle Flussregeln) und eine Variable, über der eine andere mit `absolute` liegt (`Overlay: array[1..2] of Longint absolute D`).
