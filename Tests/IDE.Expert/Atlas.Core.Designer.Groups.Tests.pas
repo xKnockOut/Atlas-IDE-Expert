@@ -28,11 +28,22 @@ type
     procedure JsonRoundTrip;
     [Test]
     procedure Names;
+    [Test]
+    procedure FormKeyAndStorePath;
+    [Test]
+    procedure TouchesIgnoresCase;
+    [Test]
+    procedure SecondClickOnlyInTime;
+    [Test]
+    procedure FrameAroundMembers;
+    [Test]
+    procedure TopLeftLabel;
   end;
 
 implementation
 
 uses
+  System.IOUtils,
   System.Types,
   Atlas.Core.Designer.SelectionSets,
   Atlas.Core.Designer.Groups;
@@ -156,6 +167,57 @@ begin
   Assert.AreEqual('Lieferant', TAtlasDesignerGroups.SuggestName(['lblX', 'edtY'], '&Lieferant:'));
   Assert.AreEqual(TAtlasSelectionSets.SuggestName(['edtAdresseStrasse', 'edtAdressePlz']),
     TAtlasDesignerGroups.SuggestName(['edtAdresseStrasse', 'edtAdressePlz'], ''));
+end;
+
+procedure TAtlasDesignerGroupsTests.FormKeyAndStorePath;
+var
+  mForm: string;
+begin
+  mForm := TPath.Combine(TPath.Combine('projekt', 'src'), 'Main.dfm');
+  Assert.AreEqual('Main.dfm', TAtlasGroupRules.FormKey(mForm, True));
+  Assert.AreEqual(mForm, TAtlasGroupRules.FormKey(mForm, False));
+  Assert.AreEqual(TPath.Combine(TPath.Combine('projekt', 'src'), TAtlasGroupRules.cSharedFile),
+    TAtlasGroupRules.StorePath(mForm, True, 'lokal', 'temp'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine('lokal', 'Atlas'), TAtlasGroupRules.cLocalFile),
+    TAtlasGroupRules.StorePath(mForm, False, 'lokal', 'temp'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine('temp', 'Atlas'), TAtlasGroupRules.cLocalFile),
+    TAtlasGroupRules.StorePath(mForm, False, '', 'temp'));
+end;
+
+procedure TAtlasDesignerGroupsTests.TouchesIgnoresCase;
+begin
+  Assert.IsTrue(TAtlasGroupRules.Touches(TArray<string>.Create('Edit1', 'Label1'), TArray<string>.Create('LABEL1')));
+  Assert.IsFalse(TAtlasGroupRules.Touches(TArray<string>.Create('Edit1'), TArray<string>.Create('Edit2')));
+  Assert.IsFalse(TAtlasGroupRules.Touches(TArray<string>.Create('Edit1'), nil));
+end;
+
+procedure TAtlasDesignerGroupsTests.SecondClickOnlyInTime;
+begin
+  Assert.IsTrue(TAtlasGroupRules.SecondClick(True, TArray<string>.Create('edit1'), 'Edit1', 300, 500));
+  Assert.IsFalse(TAtlasGroupRules.SecondClick(True, TArray<string>.Create('Edit1'), 'Edit1', 600, 500));
+  Assert.IsFalse(TAtlasGroupRules.SecondClick(False, TArray<string>.Create('Edit1'), 'Edit1', 300, 500));
+  Assert.IsFalse(TAtlasGroupRules.SecondClick(True, TArray<string>.Create('Edit1', 'Edit2'), 'Edit1', 300, 500));
+  Assert.IsFalse(TAtlasGroupRules.SecondClick(True, TArray<string>.Create('Edit2'), 'Edit1', 300, 500));
+end;
+
+procedure TAtlasDesignerGroupsTests.FrameAroundMembers;
+var
+  mFrame: TRect;
+begin
+  mFrame := TAtlasGroupRules.Frame(TArray<TRect>.Create(Rect(10, 10, 50, 30), Rect(60, 40, 100, 60)), 4);
+  Assert.AreEqual(6, mFrame.Left);
+  Assert.AreEqual(6, mFrame.Top);
+  Assert.AreEqual(104, mFrame.Right);
+  Assert.AreEqual(64, mFrame.Bottom);
+  Assert.IsTrue(TAtlasGroupRules.Frame(nil, 4).IsEmpty);
+end;
+
+procedure TAtlasDesignerGroupsTests.TopLeftLabel;
+begin
+  // Oberste zuerst, bei gleicher Höhe die linke.
+  Assert.AreEqual(2, TAtlasGroupRules.TopLeft(TArray<TRect>.Create(Rect(50, 20, 90, 33), Rect(80, 10, 120, 23),
+    Rect(10, 10, 40, 23))));
+  Assert.AreEqual(-1, TAtlasGroupRules.TopLeft(nil));
 end;
 
 end.
