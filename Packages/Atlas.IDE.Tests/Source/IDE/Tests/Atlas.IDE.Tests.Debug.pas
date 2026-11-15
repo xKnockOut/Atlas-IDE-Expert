@@ -178,6 +178,8 @@ begin
           TickStarting(mServices);
         TPhase.Running:
           TickRunning(mServices);
+      else
+        // Ruhend bzw. beim Bauen wartet der Takt.
       end;
     end);
 end;
