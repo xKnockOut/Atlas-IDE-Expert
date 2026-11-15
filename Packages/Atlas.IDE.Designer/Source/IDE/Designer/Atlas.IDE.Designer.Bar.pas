@@ -133,7 +133,7 @@ type
     procedure ToggleNonVisual;
     procedure AlignMenuClick(Sender: TObject);
     function SearchOptions(const AEditor: IOTAFormEditor; ARoot: TComponent): TAtlasComponentSearchOptions;
-    procedure WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
+    class procedure WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean); static;
     procedure CloseSearch;
     procedure Later(const AAction: TProc);
   public
@@ -764,7 +764,7 @@ begin
 end;
 
 /// <summary>Eigene Methode, damit die anonymen Methoden nur das Fenster und ACompact fangen.</summary>
-procedure TDesignerBarState.WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
+class procedure TDesignerBarState.WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
 var
   mWindow: TAtlasComponentSearchWindow;
   mCompact: Boolean;

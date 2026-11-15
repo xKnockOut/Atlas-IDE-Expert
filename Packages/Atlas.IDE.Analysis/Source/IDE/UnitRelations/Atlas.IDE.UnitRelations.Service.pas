@@ -178,7 +178,7 @@ type
     procedure Wake;
     procedure Tick(Sender: TObject);
     procedure Wire(AFrame: TAtlasUnitRelationsFrame);
-    function EditorFile: string;
+    class function EditorFile: string; static;
     function Target: string;
     procedure ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
     procedure ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
@@ -507,7 +507,7 @@ begin
   Reset;
 end;
 
-function TUnitRelationsState.EditorFile: string;
+class function TUnitRelationsState.EditorFile: string;
 var
   mView: IOTAEditView;
 begin

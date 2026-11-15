@@ -30,6 +30,15 @@ type
     class function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>; static;
     /// <summary>Projekte der Projektgruppe AGroupFile; leer, wenn sie nicht lesbar ist (Warnung im Log).</summary>
     class function LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>; static;
+    /// <summary>Ordner der Projektdateien AProjects in ihrer Reihenfolge, ohne Doppelte. Dort sucht der
+    /// TPackageLocator die Quelle eines Packages aus requires (#46): Ohne sie fehlen beim Prüfen eines einzelnen
+    /// Moduls alle Units des Basis-Packages im Index (#2309).</summary>
+    class function ProjectFolders(const AProjects: TArray<string>): TArray<string>; static;
+    /// <summary>Projekte der nächsten .groupproj in einem Ordner über AProjectFile (höchstens cGroupLevels Ebenen),
+    /// die AProjectFile enthält; leer ohne. So kennt --check &lt;Modul&gt;.dproj die Projekte der Gruppe, auch wenn
+    /// die Gruppe nicht im Ordner des Projekts liegt (#2309).</summary>
+    class function EnclosingGroupProjects(const AProjectFile: string; const ALogger: ILogger): TArray<string>;
+      static;
     /// <summary>%APPDATA%\Atlas\settings.json; '' ohne APPDATA.</summary>
     class function GlobalSettingsFile: string; overload; static;
     /// <summary>settings.json unter AAppData\Atlas; '' ohne AAppData.</summary>
@@ -107,6 +116,73 @@ begin
   begin
     Result := LoadGroup(mGroups[0], ALogger);
   end;
+end;
+
+class function TShellBootstrap.ProjectFolders(const AProjects: TArray<string>): TArray<string>;
+var
+  mProject, mFolder: string;
+  mKnown: Boolean;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mProject in AProjects do
+  begin
+    mFolder := ExtractFileDir(mProject);
+    mKnown := mFolder = '';
+    for mIndex := 0 to High(Result) do
+    begin
+      mKnown := mKnown or SameText(Result[mIndex], mFolder);
+    end;
+    if not mKnown then
+    begin
+      Result := Result + [mFolder];
+    end;
+  end;
+end;
+
+/// <summary>Enthält AProjects die Datei AProjectFile?</summary>
+function ContainsProject(const AProjects: TArray<string>; const AProjectFile: string): Boolean;
+var
+  mProject: string;
+begin
+  Result := False;
+  for mProject in AProjects do
+  begin
+    Result := Result or SameFileName(ExpandFileName(mProject), AProjectFile);
+  end;
+end;
+
+class function TShellBootstrap.EnclosingGroupProjects(const AProjectFile: string;
+  const ALogger: ILogger): TArray<string>;
+const
+  // Packages/<Modul>/<Modul>.dproj liegt zwei Ebenen unter der Gruppe; Luft für tiefere Ordner.
+  cGroupLevels = 4;
+var
+  mFolder, mParent, mProjectFile: string;
+  mLevel: Integer;
+begin
+  Result := nil;
+  if AProjectFile = '' then
+  begin
+    Exit;
+  end;
+  mProjectFile := ExpandFileName(AProjectFile);
+  mFolder := ExtractFileDir(mProjectFile);
+  for mLevel := 0 to cGroupLevels do
+  begin
+    Result := GroupProjects(mFolder, ALogger);
+    if ContainsProject(Result, mProjectFile) then
+    begin
+      Exit;
+    end;
+    mParent := ExtractFileDir(mFolder);
+    if (mParent = '') or SameFileName(mParent, mFolder) then
+    begin
+      Break;
+    end;
+    mFolder := mParent;
+  end;
+  Result := nil;
 end;
 
 class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;

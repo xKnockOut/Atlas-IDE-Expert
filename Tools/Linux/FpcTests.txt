@@ -266,6 +266,7 @@ Atlas.Common.Rationale.References.Tests
 Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
+Atlas.Common.Rules.Builtin.Calls.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
 Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
@@ -344,6 +345,7 @@ Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests
 Atlas.Common.Rules.Builtin.TypeRestrictions.Tests
 Atlas.Common.Rules.Builtin.Unicode.Tests
 Atlas.Common.Rules.Builtin.Units.Tests
+Atlas.Common.Rules.Builtin.Unresolved.Tests
 Atlas.Common.Rules.Builtin.Unused.Tests
 Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests
 Atlas.Common.Rules.ChangedFiles.Tests
@@ -370,6 +372,7 @@ Atlas.Common.Semantics.Reassigned.Tests
 Atlas.Common.Semantics.StepCalls.Tests
 Atlas.Common.Semantics.TypeCompatibility.Tests
 Atlas.Common.Semantics.TypeKinds.Tests
+Atlas.Common.Semantics.UnresolvedNames.Tests
 Atlas.Common.Todos.Report.Tests
 Atlas.Common.Todos.Scanner.Tests
 Atlas.Common.Updates.Apply.Tests

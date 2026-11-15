@@ -107,7 +107,8 @@ uses
   System.Math,
   Atlas.Common.Lsp.WorkspaceFolders,
   Atlas.Common.Rules.LibrarySources,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Shell.Bootstrap;
 
 const
   cWaitForever = Cardinal($FFFFFFFF);
@@ -347,22 +348,10 @@ begin
 end;
 
 function TShellWorkspaceRegistry.PackageFolders: TArray<string>;
-var
-  mOther: TShellWorkspace;
 begin
-  Result := nil;
-  System.TMonitor.Enter(FLock);
-  try
-    for mOther in FItems do
-    begin
-      if mOther.Setup.ProjectFile <> '' then
-      begin
-        Result := Result + [ExtractFileDir(mOther.Setup.ProjectFile)];
-      end;
-    end;
-  finally
-    System.TMonitor.Exit(FLock);
-  end;
+  // Auch die Projekte der Gruppe ohne eigenen Arbeitsbereich (index.projectGroup aus): Ein Modul findet die Quelle
+  // seines Basis-Packages aus requires sonst nur als .dcp, und dessen Units fehlen im Index (#2309).
+  Result := TShellBootstrap.ProjectFolders(GroupProjectFiles);
 end;
 
 function TShellWorkspaceRegistry.Extract(const AOrigin: string;

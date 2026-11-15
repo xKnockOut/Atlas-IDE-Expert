@@ -3147,7 +3147,7 @@ RegisterComponents('Samples', [TMyButton]);
 
 **Unresolved identifier** · Bug · Warning · Group Find bugs
 
-An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped. Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule reports like E2601 or E2602, and Fail outside a constructor like E2078.
+An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks and asm are skipped. After a dot the rule also reports a member that the type before it lacks, even invisibly (like E2003), when that type is surely and completely known: a class, object, record, interface or enumeration from the index, not generic, with known ancestors. While a unit from uses is missing from the index, the rule stays silent. Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule reports like E2601 or E2602, and Fail outside a constructor like E2078.
 
 Matches the compiler message `E2003`, `E2601`, `E2602`, `E2078`.
 

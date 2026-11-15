@@ -38,8 +38,8 @@ uses
 type
   TParticipant = class(TAtlasCompileParticipant)
   private
-    function Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
-    function Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
+    class function Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean; static;
+    class function Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean; static;
   public
     function CancelCompile(const AProject: TAtlasCompileProject; out AReason: string): Boolean; override;
   end;
@@ -108,7 +108,7 @@ begin
   end;
 end;
 
-function TParticipant.Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
+class function TParticipant.Stop(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
 var
   mProcess: TAtlasRunningProcess;
 begin
@@ -124,7 +124,7 @@ begin
   Result := False;
 end;
 
-function TParticipant.Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
+class function TParticipant.Ask(const APlan: TAtlasRunningProgramPlan; out AReason: string): Boolean;
 begin
   AReason := '';
   case TAtlasRunningPrompt.Ask(APlan.ProgramName, APlan.ProcessNames) of

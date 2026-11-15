@@ -267,6 +267,14 @@ begin
   end;
 end;
 
+/// <summary>Sind Index und alle verwendeten Units bekannt, sodass ein fehlender Name sicher fehlt?</summary>
+function NamesCheckable(const AContext: TRuleContext): Boolean;
+begin
+  Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
+  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+    AContext.Namespaces, AContext.EnsureUnit);
+end;
+
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
@@ -274,7 +282,9 @@ var
   mName: TUnresolvedName;
   mUsed: TArray<string>;
 begin
-  if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
+  // Wie unresolved-type: Fehlt eine Unit aus uses im Index (Basis-Package beim Prüfen eines Moduls ohne seine
+  // Quelle), kann jeder Name aus ihr stammen; sonst Hunderte Fehlalarme, unter denen echte Fehler untergehen (#2309).
+  if not NamesCheckable(AContext) then
   begin
     Exit;
   end;
@@ -798,14 +808,6 @@ begin
       Result := TRuleConfidence.Medium;
     end;
   end;
-end;
-
-/// <summary>Sind Index und alle verwendeten Units bekannt, sodass ein fehlender Name sicher fehlt?</summary>
-function NamesCheckable(const AContext: TRuleContext): Boolean;
-begin
-  Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
-  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
-    AContext.Namespaces, AContext.EnsureUnit);
 end;
 
 /// <summary>Kandidaten ohne die, die eine andere Kandidatin im interface einbinden und den Typ weiterreichen
