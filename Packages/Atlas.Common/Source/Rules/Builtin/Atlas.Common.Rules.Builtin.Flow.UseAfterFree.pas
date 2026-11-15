@@ -3,7 +3,8 @@
 // Regel use-after-free aus Atlas.Common.Rules.Builtin.Flow (#269): Nach X.Free, X.Destroy, X.DisposeOf,
 // FreeAndNil(X) oder Dispose(X) liest ein Weg des Kontrollflusses X wieder. Eine Zuweisung an X, die Übergabe als
 // Argument und @X beenden den Weg; Assigned(X) und Vergleiche mit nil trennen ihn. Bei einem Feld der Klasse
-// beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen.
+// beendet auch der Aufruf einer eigenen Methode den Weg, ebenso inherited: Sie kann das Feld neu belegen. Im Rumpf
+// eines with kann X ein Mitglied des with-Objekts sein: dort keine Meldung (außer Self.X).
 
 interface
 
@@ -380,6 +381,27 @@ begin
     [TRuleFix.Jump(cTexts[TFlowUseAfterFreeText.JumpToFree].Fmt([mFreeLine]), FFree.Syntax.StartPos)]);
 end;
 
+/// <summary>Steht AAccess im Rumpf eines with (nicht in dessen Ausdruck)? Dort kann der Name ein Mitglied des
+/// with-Objekts sein (ACBr: NFSe.Free; … with Liste.New do NFSe.Numero := …).</summary>
+function InWithBody(AAccess: TSyntaxNode): Boolean;
+var
+  mChild, mParent: TSyntaxNode;
+begin
+  Result := False;
+  mChild := AAccess;
+  mParent := AAccess.Parent;
+  while (mParent <> nil) and not IsRoutineBody(mParent) and (mParent.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    if (mParent.Kind = TSyntaxKind.WithStatement) and (mParent.ChildCount > 0) and
+      (mParent[mParent.ChildCount - 1] = mChild) then
+    begin
+      Exit(True);
+    end;
+    mChild := mParent;
+    mParent := mParent.Parent;
+  end;
+end;
+
 /// <summary>Meldet die Zugriffe in ANode; True, wenn der Weg hinter ANode weitergeht.</summary>
 function TUseAfterFreeCheck.WalksOn(ANode: TFlowNode): Boolean;
 var
@@ -398,7 +420,10 @@ begin
   begin
     for mAccess in FUses do
     begin
-      ReportAccess(ANode, mAccess);
+      if StartsText('Self.', FPath) or not InWithBody(mAccess) then
+      begin
+        ReportAccess(ANode, mAccess);
+      end;
     end;
     Result := not (FStops or FGuarded);
   end;

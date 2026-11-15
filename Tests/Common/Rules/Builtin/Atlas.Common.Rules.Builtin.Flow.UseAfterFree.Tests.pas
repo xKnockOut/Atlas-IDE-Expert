@@ -23,6 +23,10 @@ type
     procedure AssignedAfterFreeIsReported;
     [Test]
     procedure OwnMethodMayReassignField;
+    /// <summary>Im Rumpf eines with kann der Name ein Mitglied des with-Objekts sein (ACBr: NFSe.Free; … with
+    /// Liste.New do NFSe.Numero := …): still; der with-Ausdruck selbst bleibt ein Zugriff.</summary>
+    [Test]
+    procedure WithMemberOfSameNameIsSilent;
   end;
 
 implementation
@@ -97,6 +101,18 @@ begin
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, cHead + '  FListe.Free;'#10'  Melden;'#10 +
     '  FListe.Add(nil);'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(mFindings)));
+  mFindings := nil;
+end;
+
+
+procedure TFlowUseAfterFreeTests.WithMemberOfSameNameIsSilent;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  with Merke2 do'#10'  begin'#10 +
+    '    L.Add(''x'');'#10'  end;'));
+  mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  with L do'#10'    Clear;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)), 'with L');
   mFindings := nil;
 end;
 
