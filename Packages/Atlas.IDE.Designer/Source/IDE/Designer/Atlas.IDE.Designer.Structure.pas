@@ -215,7 +215,7 @@ end;
 function PositionOf(AComponent: TComponent): TPoint;
 begin
   // DesignInfo: Left im unteren, Top im oberen Wort, wie Left/Top in der DFM.
-  Result := TPoint.Create(SmallInt(LongRec(AComponent.DesignInfo).Lo), SmallInt(LongRec(AComponent.DesignInfo).Hi));
+  Result := TAtlasStructureModel.PositionOf(AComponent.DesignInfo);
 end;
 
 /// <summary>Name des Ziels eines Verweises: im eigenen Formular der Name, sonst „Besitzer.Name“.</summary>
@@ -226,12 +226,12 @@ begin
   begin
     Exit;
   end;
-  Result := AComponent.Name;
-  if (AComponent <> ARoot) and (AComponent.Owner <> ARoot) and (AComponent.Owner <> nil) and
-    (AComponent.Owner.Name <> '') then
+  // Aus einem eingebetteten Frame: mit dem Namen des Frames davor.
+  if (AComponent <> ARoot) and (AComponent.Owner <> ARoot) and (AComponent.Owner <> nil) then
   begin
-    Result := AComponent.Owner.Name + '.' + Result;
+    Exit(TAtlasStructureModel.QualifiedName(AComponent.Name, AComponent.Owner.Name, True));
   end;
+  Result := AComponent.Name;
 end;
 
 /// <summary>Veröffentlichte Eigenschaften vom Typ einer Komponente, ohne Unterkomponenten (EditLabel …).
@@ -262,29 +262,6 @@ begin
     end;
   finally
     FreeMem(mList);
-  end;
-end;
-
-function SignatureOf(const AItems: TArray<TAtlasStructureItem>; ARoot: TComponent): string;
-var
-  mItem: TAtlasStructureItem;
-  mRef: TAtlasStructureRef;
-  mBuilder: TStringBuilder;
-begin
-  mBuilder := TStringBuilder.Create;
-  try
-    mBuilder.Append(ARoot.Name);
-    for mItem in AItems do
-    begin
-      mBuilder.Append('|').Append(mItem.Name).Append(':').Append(mItem.ClassName).Append('<').Append(mItem.Parent);
-      for mRef in mItem.Refs do
-      begin
-        mBuilder.Append(',').Append(mRef.Prop).Append('=').Append(mRef.Target);
-      end;
-    end;
-    Result := mBuilder.ToString;
-  finally
-    mBuilder.Free;
   end;
 end;
 
@@ -554,7 +531,7 @@ begin
   if TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     mItems := Items(mRoot);
-    mSignature := SignatureOf(mItems, mRoot);
+    mSignature := TAtlasStructureModel.Signature(mItems, mRoot.Name);
     mRootName := mRoot.Name;
   end;
   if not AForce and (mSignature = FSignature) then
@@ -705,23 +682,14 @@ var
   mCreated: IOTAComponent;
   mComponent: TComponent;
   mPoint: TPoint;
-  mOccupied: TArray<TPoint>;
-  mItem: TAtlasStructureItem;
 begin
   mClass := PaletteClass;
   if (mClass = nil) or not TAtlasDesignerAccess.Current(mEditor, mRoot) or not (mRoot is TWinControl) then
   begin
     Exit;
   end;
-  mOccupied := nil;
-  for mItem in Items(mRoot) do
-  begin
-    if not mItem.IsControl then
-    begin
-      mOccupied := mOccupied + [mItem.Position];
-    end;
-  end;
-  mPoint := TAtlasStructure.FreePosition(mOccupied, TAtlasDesignerModel.ClientOf(TWinControl(mRoot)));
+  mPoint := TAtlasStructure.FreePosition(TAtlasStructureModel.Occupied(Items(mRoot)),
+    TAtlasDesignerModel.ClientOf(TWinControl(mRoot)));
   try
     mCreated := mEditor.CreateComponent(mEditor.GetRootComponent, mClass.ClassName, mPoint.X, mPoint.Y, 0, 0);
   except
@@ -738,7 +706,7 @@ begin
   end;
   mComponent := TComponent(mCreated.GetComponentHandle);
   // Lage in Pixeln der DFM, unabhängig davon, wie CreateComponent X/Y deutet.
-  mComponent.DesignInfo := MakeLong(Word(mPoint.X), Word(mPoint.Y));
+  mComponent.DesignInfo := TAtlasStructureModel.DesignInfoOf(mPoint);
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   FOnMessage(TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.StCreated, [mComponent.Name]));
   Fill(True);

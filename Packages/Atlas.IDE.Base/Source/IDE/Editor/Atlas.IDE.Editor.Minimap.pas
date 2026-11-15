@@ -131,13 +131,6 @@ begin
   Result := TAtlasMinimap.Options(TAtlasIdeSettings.Current);
 end;
 
-function SameOptions(const A, B: TAtlasMinimapOptions): Boolean;
-begin
-  Result := (A.Render = B.Render) and (A.Width = B.Width) and (A.Scale = B.Scale) and (A.MaxColumn = B.MaxColumn) and
-    (A.Side = B.Side) and (A.Slider = B.Slider) and (A.SectionHeaders = B.SectionHeaders) and
-    (A.HighlightMethod = B.HighlightMethod) and (A.Markers = B.Markers) and (A.ClickJumps = B.ClickJumps);
-end;
-
 /// <summary>Minimap an den Rand ASide ihres Eltern-Steuerelements.</summary>
 procedure PlaceView(AView: TAtlasMinimapView; ASide: TAtlasMinimapSide);
 var
@@ -571,7 +564,7 @@ var
   mOptions: TAtlasMinimapOptions;
 begin
   mOptions := CurrentOptions;
-  if SameOptions(mOptions, FOptions) then
+  if mOptions.Same(FOptions) then
   begin
     Exit;
   end;

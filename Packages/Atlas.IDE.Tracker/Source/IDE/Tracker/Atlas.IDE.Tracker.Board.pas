@@ -34,6 +34,7 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
+  Atlas.Core.Tracker.BoardPlan,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame;
@@ -170,12 +171,40 @@ begin
   end;
 end;
 
+/// <summary>Anzeige nach dem Laden ohne Antwort: letzter Stand, Hinweis oder nichts; Ziehen gesperrt.</summary>
+procedure ShowFailed(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; const ATarget: TAtlasTrackerTarget;
+  AError: TAtlasCiFetchError);
+var
+  mCached: TAtlasBoardSnapshot;
+  mHasCache: Boolean;
+  mWhen: string;
+begin
+  // Ohne Antwort: der letzte Stand mit Grund, Ziehen gesperrt.
+  AOwner.FOnline := False;
+  AFrame.SetCanDrag(False);
+  mHasCache := TAtlasTrackerBoard.Load(AOwner.FCacheFolder, ATarget, mCached);
+  case TAtlasBoardPlan.LoadView(False, False, mHasCache, AError) of
+    TAtlasBoardLoadView.Cached:
+      begin
+        mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
+        AFrame.SetSnapshot(mCached, TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardOffline,
+          [mWhen, AOwner.ErrorText(AError)]));
+        AOwner.UpdateActive;
+      end;
+    TAtlasBoardLoadView.Notice:
+      begin
+        AFrame.ShowNotice(AOwner.ErrorText(AError));
+        AFrame.SetStatus('');
+      end;
+  end;
+end;
+
 procedure TAtlasIdeBoard.Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
   const ASnapshot: TAtlasBoardSnapshot; AError: TAtlasCiFetchError; AWrite: Boolean);
 var
   mFrame: TAtlasBoardFrame;
-  mSnapshot, mCached: TAtlasBoardSnapshot;
-  mWhen: string;
+  mSnapshot: TAtlasBoardSnapshot;
+  mNotice: string;
 begin
   if AGeneration <> FGeneration then
   begin
@@ -190,42 +219,27 @@ begin
   end;
   mFrame.SetLoading(False);
   TAtlasGuard.Log('Atlas-Board: ' + ATarget.Provider + ', ' + TAtlasCiBuild.ErrorKey(AError));
-  if ASucceeded then
+  if not ASucceeded then
   begin
-    mSnapshot := ASnapshot;
-    mSnapshot.Fetched := NowUtc;
-    TAtlasTrackerBoard.Save(FCacheFolder, ATarget, mSnapshot);
-    FBoardId := mSnapshot.Board.Id;
-    FSprintId := mSnapshot.Sprint.Id;
-    FOnline := True;
-    FCanWrite := AWrite;
-    // GitHub: Ohne Recht auf Projekte zeigt das Board Offen/Geschlossen und sagt warum.
-    if mSnapshot.ProjectsDenied then
-    begin
-      mFrame.SetSnapshot(mSnapshot, TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardErrorScopes));
-    end
-    else
-    begin
-      mFrame.SetSnapshot(mSnapshot, '');
-    end;
-    mFrame.SetCanDrag(AWrite);
-    UpdateActive;
+    ShowFailed(Self, mFrame, ATarget, AError);
     Exit;
   end;
-  // Ohne Antwort: der letzte Stand mit Grund, Ziehen gesperrt.
-  FOnline := False;
-  mFrame.SetCanDrag(False);
-  if TAtlasTrackerBoard.Load(FCacheFolder, ATarget, mCached) and (AError <> TAtlasCiFetchError.NotFound) then
+  mSnapshot := ASnapshot;
+  mSnapshot.Fetched := NowUtc;
+  TAtlasTrackerBoard.Save(FCacheFolder, ATarget, mSnapshot);
+  FBoardId := mSnapshot.Board.Id;
+  FSprintId := mSnapshot.Sprint.Id;
+  FOnline := True;
+  FCanWrite := AWrite;
+  // GitHub: Ohne Recht auf Projekte zeigt das Board Offen/Geschlossen und sagt warum.
+  mNotice := '';
+  if TAtlasBoardPlan.LoadView(True, mSnapshot.ProjectsDenied, False, AError) = TAtlasBoardLoadView.FreshDenied then
   begin
-    mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(mCached.Fetched), FormatSettings);
-    mFrame.SetSnapshot(mCached, TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardOffline, [mWhen, ErrorText(AError)]));
-    UpdateActive;
-  end
-  else if AError <> TAtlasCiFetchError.Cancelled then
-  begin
-    mFrame.ShowNotice(ErrorText(AError));
-    mFrame.SetStatus('');
+    mNotice := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardErrorScopes);
   end;
+  mFrame.SetSnapshot(mSnapshot, mNotice);
+  mFrame.SetCanDrag(AWrite);
+  UpdateActive;
 end;
 
 procedure TAtlasIdeBoard.OpenCard(ACard: Integer);
@@ -239,18 +253,12 @@ begin
     Exit;
   end;
   mCard := mFrame.Card(ACard);
-  if mCard.Key = '' then
-  begin
-    Exit;
-  end;
   // Aus einem anderen Repository (GitHub "owner/repo#12"): die Seite im Browser.
-  if (Pos('/', mCard.Key) > 0) or not Assigned(FHooks.Preview) then
-  begin
-    BrowseCard(ACard);
-  end
-  else
-  begin
-    FHooks.Preview(FTarget, mCard.Key);
+  case TAtlasBoardPlan.CardOpen(mCard.Key, Assigned(FHooks.Preview)) of
+    TAtlasBoardCardOpen.Preview:
+      FHooks.Preview(FTarget, mCard.Key);
+    TAtlasBoardCardOpen.Browse:
+      BrowseCard(ACard);
   end;
 end;
 
@@ -271,7 +279,7 @@ begin
     Exit;
   end;
   mCard := mFrame.Card(ACard);
-  if (mCard.Key = '') or (Pos('/', mCard.Key) > 0) then
+  if not TAtlasBoardPlan.Actionable(mCard.Key) then
   begin
     Exit;
   end;
@@ -285,6 +293,7 @@ end;
 procedure TAtlasIdeBoard.BrowseCard(ACard: Integer);
 var
   mFrame: TAtlasBoardFrame;
+  mCard: TAtlasBoardCard;
   mPage: string;
   mProvider: IAtlasTrackerProvider;
 begin
@@ -293,15 +302,15 @@ begin
   begin
     Exit;
   end;
-  mPage := mFrame.Card(ACard).Page;
+  mCard := mFrame.Card(ACard);
   // Seite aus der eingetragenen Adresse, sonst die aus der Antwort, aber nur als Web-Adresse ohne Benutzer.
+  mPage := '';
   mProvider := ProviderOf(FTarget);
-  if (Pos('/', mFrame.Card(ACard).Key) = 0) and (mProvider <> nil) and
-    (mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key) <> '') then
+  if not TAtlasBoardPlan.Foreign(mCard.Key) and (mProvider <> nil) then
   begin
-    mPage := mProvider.IssuePage(FTarget, mFrame.Card(ACard).Key);
+    mPage := mProvider.IssuePage(FTarget, mCard.Key);
   end;
-  TAtlasIssuePreview.Browse(mPage);
+  TAtlasIssuePreview.Browse(TAtlasBoardPlan.BrowsePage(mCard.Key, mCard.Page, mPage));
 end;
 
 procedure TAtlasIdeBoard.AssignCard(ACard: Integer);
@@ -317,7 +326,7 @@ begin
     Exit;
   end;
   mKey := mFrame.Card(ACard).Key;
-  if (mKey = '') or (Pos('/', mKey) > 0) then
+  if not TAtlasBoardPlan.Actionable(mKey) then
   begin
     Exit;
   end;
@@ -486,16 +495,16 @@ end;
 
 function TAtlasIdeBoard.ErrorText(AError: TAtlasCiFetchError): string;
 begin
-  case AError of
-    TAtlasCiFetchError.Unauthorized:
+  case TAtlasBoardPlan.ReasonOf(AError) of
+    TAtlasBoardReason.Token:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.NotFound:
+    TAtlasBoardReason.NoBoard:
       Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoBoard);
-    TAtlasCiFetchError.Timeout:
+    TAtlasBoardReason.Timeout:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorTimeout);
-    TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
+    TAtlasBoardReason.NoTracker:
       Result := TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardNoTracker);
-    TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
+    TAtlasBoardReason.Invalid:
       Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorInvalid);
   else
     Result := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewErrorNetwork);
@@ -614,7 +623,7 @@ begin
   end;
   AOwner.FBoardId := ABoardId;
   AOwner.FSprintId := ASprintId;
-  if not SameText(mTarget.Key, AOwner.FTarget.Key) then
+  if TAtlasBoardPlan.TargetChanged(AOwner.FTarget, mTarget) then
   begin
     AOwner.FBoardId := '';
     AOwner.FSprintId := '';
@@ -721,53 +730,42 @@ begin
   end;
 end;
 
-/// <summary>Darf ACard nach AColumn; verbietet es der Workflow des Trackers, nennt die Statuszeile von AFrame die
-/// erlaubten Übergänge.</summary>
-function Movable(AFrame: TAtlasBoardFrame; const ASnapshot: TAtlasBoardSnapshot; ACard, AColumn: Integer): Boolean;
-var
-  mCard: TAtlasBoardCard;
-  mNames: string;
-begin
-  Result := TAtlasBoardTransitions.Allowed(ASnapshot, ACard, AColumn);
-  if Result or not TAtlasTrackerBoard.CanMove(ASnapshot, ACard, AColumn) then
-  begin
-    Exit;
-  end;
-  // Die Zustandsmaschine von YouTrack lässt diese Spalte nicht zu: gleich sagen, welche gehen.
-  mCard := ASnapshot.Cards[ACard];
-  mNames := TAtlasBoardTransitions.Names(mCard);
-  if mNames = '' then
-  begin
-    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNoTransition, [mCard.Key, mCard.State]));
-  end
-  else
-  begin
-    AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNotAllowed, [mCard.Key,
-      AFrame.ColumnCaption(AColumn), mCard.State, mNames]));
-  end;
-end;
-
-/// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt).
-/// </summary>
+/// <summary>Darf ACard nach AColumn? Ohne Verbindung kein Schreiben (#1272: Ziehen ohne Netz gesperrt); verbietet es
+/// der Workflow des Trackers, nennt die Statuszeile die erlaubten Übergänge.</summary>
 function MoveAllowed(AOwner: TAtlasIdeBoard; AFrame: TAtlasBoardFrame; ACard, AColumn: Integer;
   out AJob: TMoveJob): Boolean;
+var
+  mCard: TAtlasBoardCard;
+  mCheck: TAtlasBoardMoveCheck;
 begin
   AJob := Default(TMoveJob);
-  Result := False;
-  if not AOwner.FOnline or not AOwner.FCanWrite then
-  begin
-    AFrame.SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveLocked));
-  end
-  else
-  begin
-    AJob.Snapshot := AFrame.Snapshot;
-    Result := Movable(AFrame, AJob.Snapshot, ACard, AColumn);
-    if Result then
-    begin
-      AJob.Card := AJob.Snapshot.Cards[ACard];
-      AJob.Column := AColumn;
-      AJob.ColumnName := AFrame.ColumnCaption(AColumn);
-    end;
+  AJob.Snapshot := AFrame.Snapshot;
+  mCheck := TAtlasBoardPlan.MoveCheck(AOwner.FOnline, AOwner.FCanWrite, AJob.Snapshot, ACard, AColumn);
+  Result := mCheck = TAtlasBoardMoveCheck.Allowed;
+  case mCheck of
+    TAtlasBoardMoveCheck.Allowed:
+      begin
+        AJob.Card := AJob.Snapshot.Cards[ACard];
+        AJob.Column := AColumn;
+        AJob.ColumnName := AFrame.ColumnCaption(AColumn);
+      end;
+    TAtlasBoardMoveCheck.Locked:
+      AFrame.SetStatus(TAtlasBoardStrings.Text(TAtlasBoardTextId.BoardMoveLocked));
+    TAtlasBoardMoveCheck.Refused:
+      // Gleiche Spalte oder Spalte ohne Wert: ohne Meldung.
+      ;
+    TAtlasBoardMoveCheck.NoTransition:
+      begin
+        // Die Zustandsmaschine von YouTrack lässt diese Spalte nicht zu: gleich sagen, welche gehen.
+        mCard := AJob.Snapshot.Cards[ACard];
+        AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNoTransition, [mCard.Key, mCard.State]));
+      end;
+    TAtlasBoardMoveCheck.NotAllowed:
+      begin
+        mCard := AJob.Snapshot.Cards[ACard];
+        AFrame.SetStatus(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveNotAllowed, [mCard.Key,
+          AFrame.ColumnCaption(AColumn), mCard.State, TAtlasBoardTransitions.Names(mCard)]));
+      end;
   end;
 end;
 
@@ -897,8 +895,7 @@ begin
   Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveFailed, [ACard.Key,
     TAtlasTrackerEndDialog.ErrorText(ACard.Key, AResult)]);
   // Abgelehnt (400) unter einer Zustandsmaschine: die erlaubten Übergänge dazu.
-  if (AResult.Error = TAtlasCiFetchError.Invalid) and ACard.Workflow.StateMachine and
-    (TAtlasBoardTransitions.Names(ACard) <> '') then
+  if TAtlasBoardPlan.ShowsTransitions(ACard, AResult) then
   begin
     Result := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveTransitions, [Result, ACard.State,
       TAtlasBoardTransitions.Names(ACard)]);
@@ -930,7 +927,7 @@ end;
 
 procedure TAtlasIdeBoard.Refresh;
 begin
-  if FStarted and Active and TAtlasIdeBoardWindow.Visible and not FLoading and not FMoving then
+  if TAtlasBoardPlan.Refreshes(FStarted, Active, TAtlasIdeBoardWindow.Visible, FLoading, FMoving) then
   begin
     Load(FBoardId, FSprintId);
   end;

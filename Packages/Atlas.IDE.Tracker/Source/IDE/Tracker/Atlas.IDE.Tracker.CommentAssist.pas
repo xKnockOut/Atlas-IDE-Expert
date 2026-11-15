@@ -56,8 +56,6 @@ type
   TAtlasIdeCommentService = class(TInterfacedObject)
   public const
     cTimeoutMs = 5000;
-    /// <summary>So lange gilt eine Benutzerliste für denselben Text.</summary>
-    cCacheMs = 5 * 60 * 1000;
     cVcsTimeoutMs = 5000;
   private type
     TCachedUsers = record
@@ -150,6 +148,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,
+  Atlas.Core.Tracker.CommentPlan,
   Atlas.Core.VersionControl.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
@@ -230,7 +229,7 @@ var
   mEntry: TCachedUsers;
 begin
   AUsers := nil;
-  Result := FUsers.TryGetValue(AKey, mEntry) and (NowMs - mEntry.Tick < cCacheMs);
+  Result := FUsers.TryGetValue(AKey, mEntry) and TAtlasCommentPlan.UsersFresh(mEntry.Tick, NowMs);
   if Result then
   begin
     AUsers := mEntry.Users;
@@ -308,7 +307,7 @@ function TAtlasIdeCommentService.Assist(const ATarget: TAtlasTrackerTarget; cons
   IAtlasCommentAssist;
 begin
   Result := nil;
-  if FStarted and Active and (AKey <> '') then
+  if TAtlasCommentPlan.Assists(FStarted, Active, AKey) then
   begin
     Result := TAtlasIdeCommentAssist.Create(Self, ATarget, AKey, AField);
   end;
@@ -384,7 +383,7 @@ begin
   FUserCancel := nil;
   if not ASucceeded then
   begin
-    if AError <> TAtlasCiFetchError.Cancelled then
+    if TAtlasCommentPlan.LogsUsersError(AError) then
     begin
       TAtlasGuard.Log('Kommentar-Editor: Benutzer ' + FTarget.Provider + ' ohne Antwort (' +
         TAtlasCiBuild.ErrorKey(AError) + ')');
@@ -410,7 +409,7 @@ begin
   FIssueCancel := nil;
   if not ASucceeded then
   begin
-    if (AError <> TAtlasCiFetchError.Cancelled) and (AError <> TAtlasCiFetchError.NotFound) then
+    if TAtlasCommentPlan.LogsIssuesError(AError) then
     begin
       TAtlasGuard.Log('Kommentar-Editor: Issue-Suche ' + FTarget.Provider + ' ohne Antwort (' +
         TAtlasCiBuild.ErrorKey(AError) + ')');
@@ -618,7 +617,7 @@ begin
     Exit;
   end;
   mJob.Text := AText;
-  mJob.CacheKey := TAtlasCommentDrafts.TrackerKey(FTarget) + '|' + AnsiLowerCase(AText);
+  mJob.CacheKey := TAtlasCommentPlan.UsersKey(TAtlasCommentDrafts.TrackerKey(FTarget), AText);
   // Rücktaste und neu getippt: dieselbe Liste ohne Netz.
   if FService.CachedUsers(mJob.CacheKey, mUsers) then
   begin
@@ -664,7 +663,7 @@ begin
     TAtlasIssueSearchKind.Recent:
       begin
         // Ohne Netz: die zuletzt in der Vorschau geöffneten.
-        ADone(Copy(FService.RecentOf(FTarget), 0, TAtlasCommentEditing.cMaxSuggestions));
+        ADone(TAtlasCommentPlan.Recent(FService.RecentOf(FTarget), TAtlasCommentEditing.cMaxSuggestions));
         Exit;
       end;
     TAtlasIssueSearchKind.Key, TAtlasIssueSearchKind.Text: ;

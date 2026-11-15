@@ -40,6 +40,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Tracker.TestFetch,
   Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Projects.Summaries,
   Atlas.IDE.Tracker.Access,
@@ -49,12 +50,6 @@ uses
   Atlas.Core.Diagnostics.WorkerSlot;
 
 type
-  /// <summary>Ein Job und die Projekte, deren Zusammenfassung sein Ergebnis bekommt.</summary>
-  TAtlasTestResultsFetch = record
-    Job: TAtlasCiJob;
-    Projects: TArray<string>;
-  end;
-
   /// <summary>Projekte, Zusammenfassungen und Jobs der Kachel; liest .atlas und Zusammenfassungen höchstens alle
   /// cCacheMs neu. Hauptthread.</summary>
   TAtlasTestResultsData = class
@@ -133,10 +128,6 @@ type
     /// <summary>Fällige Jobs; AForce ohne Intervall, AOnly nur dieses Projekt, AServer nur Jobs dieses Servers
     /// ('' = alle). Derselbe Job (Projektgruppe und ihr Testprojekt) einmal.</summary>
     function DueJobs(AForce: Boolean; const AOnly, AServer: string): TArray<TAtlasTestResultsFetch>;
-    /// <summary>Mit Job, nicht schon in Abfrage, und passend zu AOnly bzw. AServer ('' = alle).</summary>
-    class function Wanted(const AItem: TAtlasTestProject; const AOnly, AServer: string): Boolean; static;
-    /// <summary>AItem anhängen; derselbe Job bekommt nur das Projekt dazu.</summary>
-    class procedure AddFetch(var AList: TArray<TAtlasTestResultsFetch>; const AItem: TAtlasTestProject); static;
     procedure Fetch(AForce: Boolean; const AOnly, AServer: string);
     procedure TurnedRed(const AProject: string; const AJob: TAtlasCiJob; const ABuild: TAtlasCiBuild);
     procedure Guarded(const AProc: TProc);
@@ -208,11 +199,6 @@ begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
-function EmptyJob: TAtlasCiJob;
-begin
-  Result := TAtlasCiJob.Create('', '', '', False, '');
-end;
-
 { TAtlasTestResultsData }
 
 constructor TAtlasTestResultsData.Create(ALink: TAtlasTrackerWelcomeLink);
@@ -238,7 +224,8 @@ var
   mVcs: TAtlasProjectVcs;
 begin
   // Die Zusammenfassung nicht bei jedem Zeichnen lesen.
-  if FSummaries.TryGetValue(KeyOf(AProject), mCached) and (GetTickCount64 - mCached.Tick < cCacheMs) then
+  if FSummaries.TryGetValue(KeyOf(AProject), mCached) and
+    TAtlasTestFetchPlan.Fresh(mCached.Tick, GetTickCount64, cCacheMs) then
   begin
     Exit(mCached.Summary);
   end;
@@ -264,7 +251,7 @@ var
 begin
   // .atlas nicht bei jedem Zeichnen lesen.
   mKey := KeyOf(AProject) + '|' + ABranch;
-  if FJobs.TryGetValue(mKey, mCached) and (GetTickCount64 - mCached.Tick < cCacheMs) then
+  if FJobs.TryGetValue(mKey, mCached) and TAtlasTestFetchPlan.Fresh(mCached.Tick, GetTickCount64, cCacheMs) then
   begin
     Exit(mCached.Job);
   end;
@@ -277,20 +264,11 @@ end;
 function TAtlasTestResultsData.ReadJob(const AProject, ABranch: string): TAtlasCiJob;
 var
   mTeam: TAtlasTeamSettings;
-  mProvider: string;
 begin
-  Result := EmptyJob;
+  Result := TAtlasTestFetchPlan.NoJob;
   try
     mTeam := TAtlasIdeTeamFile.ForProject(AProject);
-    mProvider := mTeam.Ci.Provider;
-    if mProvider = '' then
-    begin
-      mProvider := TAtlasIdeSettings.Current.WelcomePageTestsCiProvider;
-    end;
-    if mTeam.Ci.Url <> '' then
-    begin
-      Result := TAtlasCiJob.Create(mProvider, mTeam.Ci.Url, mTeam.Ci.Job, mTeam.Ci.Multibranch, ABranch);
-    end;
+    Result := TAtlasTestFetchPlan.JobOf(mTeam.Ci, TAtlasIdeSettings.Current.WelcomePageTestsCiProvider, ABranch);
   except
     // .atlas nicht lesbar: ohne Build-Server.
     on E: Exception do
@@ -320,7 +298,7 @@ begin
     mItem := Default(TAtlasTestProject);
     mItem.Project := mProject.Project;
     mItem.Summary := SummaryOf(mProject.Project);
-    mItem.Job := EmptyJob;
+    mItem.Job := TAtlasTestFetchPlan.NoJob;
     // Ohne welcomePage.tests.ci weder .atlas lesen noch Netz.
     if ACi then
     begin
@@ -486,46 +464,12 @@ begin
   mInterval := TAtlasIdeSettings.Current.WelcomePageTestsCiIntervalMinutes;
   for mItem in FData.Projects(True) do
   begin
-    if Wanted(mItem, AOnly, AServer) and (AForce or
+    if TAtlasTestFetchPlan.Wanted(mItem, AOnly, AServer) and (AForce or
       TAtlasTestResults.Due(TAtlasTestResults.CiFor(mItem.Summary, mItem.Job).Attempt, mStamp, mInterval)) then
     begin
-      AddFetch(Result, mItem);
+      TAtlasTestFetchPlan.AddFetch(Result, mItem);
     end;
   end;
-end;
-
-class function TAtlasIdeTestResults.Wanted(const AItem: TAtlasTestProject; const AOnly, AServer: string): Boolean;
-begin
-  Result := AItem.Job.Configured and not AItem.Querying;
-  if Result and (AOnly <> '') then
-  begin
-    Result := SameText(AItem.Project, AOnly);
-  end;
-  if Result and (AServer <> '') then
-  begin
-    Result := AItem.Job.Server = AServer;
-  end;
-end;
-
-
-class procedure TAtlasIdeTestResults.AddFetch(var AList: TArray<TAtlasTestResultsFetch>;
-  const AItem: TAtlasTestProject);
-var
-  mIndex: Integer;
-  mNext: TAtlasTestResultsFetch;
-begin
-  // Derselbe Job (Projektgruppe und ihr Testprojekt): einmal fragen, bei beiden eintragen.
-  for mIndex := 0 to High(AList) do
-  begin
-    if AList[mIndex].Job.Key = AItem.Job.Key then
-    begin
-      AList[mIndex].Projects := AList[mIndex].Projects + [AItem.Project];
-      Exit;
-    end;
-  end;
-  mNext.Job := AItem.Job;
-  mNext.Projects := [AItem.Project];
-  AList := AList + [mNext];
 end;
 
 procedure TAtlasIdeTestResults.Fetch(AForce: Boolean; const AOnly, AServer: string);
@@ -536,7 +480,8 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   // welcomePage.tests.ci aus: kein Netzzugriff. Eine Abfrage zur Zeit; die nächste kommt beim nächsten Anzeigen.
-  if not FStarted or not mSettings.WelcomePageTests or not mSettings.WelcomePageTestsCi or (FAccess = nil) then
+  if not TAtlasTestFetchPlan.Fetches(FStarted, mSettings.WelcomePageTests, mSettings.WelcomePageTestsCi,
+    FAccess <> nil) then
   begin
     Exit;
   end;

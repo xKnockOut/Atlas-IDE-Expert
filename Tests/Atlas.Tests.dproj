@@ -770,6 +770,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Matching.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Controller.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.EditorPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.EditorPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Controller.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Signature\Atlas.Core.Signature.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
@@ -784,6 +786,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.DebugTree.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Painter.Tests.pas"/>
@@ -799,7 +803,13 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DisplayRules.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepIntoJump.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepIntoJump.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StopProgress.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StopProgress.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreakWatch.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepInto.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreak.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
@@ -918,11 +928,15 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyConflicts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyMap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyMap.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyScan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyScan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.KeyMap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Commands.KeyMap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Usage.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ShortcutTips.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.ShortcutTable.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.ShortcutTable.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Accessibility.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Popup.Accessibility.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Popup\Atlas.UI.Popup.Window.pas"/>
@@ -1037,6 +1051,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Rules.Strings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.XmlDoc.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Snippets.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.CommitPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Completion.CommitPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.LiveTemplates.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.SnippetCatalog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Placeholders.pas"/>
@@ -1268,6 +1284,22 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StatusState.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SprintStart.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SprintStart.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommentPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CommentPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.NotifyPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.NotifyPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TestFetch.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TestFetch.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.DevelopmentPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.DevelopmentPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TimePlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TimePlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.StartPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.StartPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SyncPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SyncPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLanes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
@@ -1415,6 +1447,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\SavedPlaces\Atlas.Core.SavedPlaces.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Quick.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.ColumnPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.ColumnPlan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\Core\Bookmarks\Atlas.Core.Bookmarks.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Bookmarks.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas"/>
@@ -1429,6 +1465,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Problems.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Todos.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.InlayPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.InlayPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.InlayHints.Store.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Results\Atlas.Core.Results.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Results.Model.Tests.pas"/>
@@ -1459,6 +1497,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LensAsk.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LensAsk.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Metrics.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.TextOffsets.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.TextOffsets.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Metrics.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Todos.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Todos.Tests.pas"/>
@@ -1483,6 +1523,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.PropertyValues.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Forms.PropertyValues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
@@ -1523,6 +1565,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Projects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Recording.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VcsQueries.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Versions.Project.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Build.Pipeline.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas"/>
@@ -1710,6 +1754,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Hotspots.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.InterfaceCost.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
@@ -1863,6 +1909,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Svn.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\VersionControl\Atlas.Core.VersionControl.Providers.Null.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Detection.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.Plan.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.LineChangesPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.VersionControl.LineChangesPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.VcsSettings.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.VcsSettings.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.VersionControl\Source\Core\VersionControl\Atlas.Core.VersionControl.Composition.pas"/>
@@ -1906,6 +1956,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.Palette.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.QuickOpen.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.QuickOpen.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.QuickOpenTarget.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.QuickOpenTarget.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas"/>
@@ -1917,6 +1969,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.Recursion.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GutterColumn.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GutterMarks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SelectionMatches.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ExitPoints.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.Reassigned.pas"/>
@@ -1951,6 +2004,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterMarks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SelectionMatches.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ExitPoints.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Reassigned.Tests.pas"/>
@@ -2026,6 +2080,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Definitions.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Matchers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Runs.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\StartProfiles\Atlas.Core.StartProfiles.Picker.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.StartProfiles.Picker.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Commands.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas"/>
@@ -2033,6 +2089,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Reports.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.PreBuild.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.OutputGroup.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tasks.Texts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas"/>
@@ -2318,6 +2376,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.StatusBarItems.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Switches.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Switches.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.StatusBar.Layout.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas"/>
@@ -2326,6 +2386,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.StatusBar.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionCapture.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.ExceptionCapture.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>
@@ -2395,10 +2457,16 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.ExceptionBanner.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ExceptionBar.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InlineValues.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.InlineValuesFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InlineValuesFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.InlineValues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WhyHere.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.WhyHereFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHereFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.WhyHere.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Variables.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.VariablesFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Variables.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Forecast.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Forecast.Tests.pas"/>
@@ -2419,10 +2487,14 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Unavailable.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.DialogInput.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DialogInput.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.DialogCompletion.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Providers\Atlas.Core.Completion.Providers.Expression.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Completion.Providers.Expression.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvaluateRows.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>
@@ -2441,6 +2513,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.AccessViolation.Stop.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.Deadlocks.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.ParallelStacks.pas"/>
@@ -2462,6 +2535,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.BreakpointCheck.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodBreakpoints.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StepFilterEdit.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilterEdit.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointList.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointList.Tests.pas"/>
@@ -2482,6 +2557,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.InstanceBreakpoint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.BreakpointSetFlow.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointSetFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.BreakpointSets.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.BreakpointSets.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.BreakpointSets.Tests.pas"/>
@@ -2598,6 +2675,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Reattach.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.RuntimeReport.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.LaunchGroups.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.LaunchProcesses.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.LaunchProcesses.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\UI\Tests\Atlas.UI.Tests.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Build\Atlas.UI.Build.SettingsSection.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\UI\BuildPipeline\Atlas.UI.BuildPipeline.SettingsSection.pas"/>
@@ -2644,6 +2723,22 @@
         </DCCReference>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MultiCursorKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MultiCursorKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GuideStroke.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GuideStroke.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedKeys.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CaretSteps.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CaretSteps.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GutterPanel.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterPanel.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SourceFiles.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SourceFiles.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ExitPointAsk.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.ExitPointAsk.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GhostKeys.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GhostKeys.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

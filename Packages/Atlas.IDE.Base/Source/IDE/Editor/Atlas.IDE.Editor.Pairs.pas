@@ -185,6 +185,7 @@ implementation
 
 uses
   Atlas.Core.Editor.Guides,
+  Atlas.Core.Editor.GuideStroke,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.Plugin,
@@ -207,10 +208,6 @@ const
   cBandAlpha = 28;
 
 type
-  /// <summary>Wie eine Blocklinie in einer Zeile endet: als Linie, spitz von oben (unter dem mitlaufenden Kopf),
-  /// spitz nach unten (letzte sichtbare Zeile) oder gar nicht (Rest unter der letzten Zeile).</summary>
-  TGuideEnd = (geLine, geTaperTop, geTaperBottom, geSkip);
-
   /// <summary>Strich einer Blocklinie in einer Zeile.</summary>
   TGuideStroke = record
     X: Integer;
@@ -263,36 +260,13 @@ end;
 /// <summary>Bildschirmzeile (0-basiert) von ARect; -1 ohne Höhe.</summary>
 function RowIndex(const ARect: TRect): Integer;
 begin
-  Result := -1;
-  if ARect.Height > 0 then
-  begin
-    Result := (ARect.Top + ARect.Height div 2) div ARect.Height;
-  end;
+  Result := TAtlasGuideStroke.RowIndex(ARect.Top, ARect.Height);
 end;
 
 /// <summary>Zeile ARect liegt unter dem mitlaufenden Kopf von AFileName (TAtlasIdeStickyScroll).</summary>
 function UnderStickyHeader(const ARect: TRect; const AFileName: string): Boolean;
 begin
-  Result := (RowIndex(ARect) >= 0) and (RowIndex(ARect) < TAtlasIdeStickyScroll.CoveredRows(AFileName));
-end;
-
-/// <summary>Zeichenindex (0-basiert) in ALine als 1-basierte Editorspalte, Tabs aufgelöst.</summary>
-function ColumnOf(const ALine: string; ACharacter, ATabWidth: Integer): Integer;
-var
-  mIndex: Integer;
-begin
-  Result := 1;
-  for mIndex := 1 to ACharacter do
-  begin
-    if (mIndex <= Length(ALine)) and (ALine[mIndex] = #9) and (ATabWidth > 0) then
-    begin
-      Result := ((Result - 1) div ATabWidth + 1) * ATabWidth + 1;
-    end
-    else
-    begin
-      Inc(Result);
-    end;
-  end;
+  Result := TAtlasGuideStroke.UnderHeader(RowIndex(ARect), TAtlasIdeStickyScroll.CoveredRows(AFileName));
 end;
 
 /// <summary>Rechteck ARect zu AAlpha/255 mit AColor überblenden (#1788).</summary>
@@ -440,62 +414,40 @@ begin
 end;
 
 /// <summary>Wie die Blocklinie AGuide in der Zeile von APaint endet.</summary>
-function GuideEnd(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TGuideEnd;
+function GuideEnd(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TAtlasGuideEnd;
 var
-  mClient, mHalf: Integer;
+  mRow: TAtlasGuideRow;
 begin
-  Result := geLine;
-  if AGuide.First then
-  begin
-    Exit;
-  end;
-  mHalf := APaint.Rect.Height div 2;
-  mClient := MaxInt;
+  mRow.First := AGuide.First;
+  mRow.Last := AGuide.Last;
+  mRow.Top := APaint.Rect.Top;
+  mRow.Bottom := APaint.Rect.Bottom;
+  mRow.ClientHeight := MaxInt;
   if APaint.Context.EditControl <> nil then
   begin
-    mClient := APaint.Context.EditControl.ClientHeight;
+    mRow.ClientHeight := APaint.Context.EditControl.ClientHeight;
   end;
   // Erste Zeile unter dem mitlaufenden Kopf: Ist das Element der Linie dahinter verschwunden und läge ihre
   // Spitze im Text der letzten Kopfzeile, beginnt sie hier spitz und eingeblendet.
-  if (RowIndex(APaint.Rect) >= 0) and (RowIndex(APaint.Rect) = APaint.Covered) and
-    TAtlasIdeStickyScroll.TaperBelow(APaint.Context.FileName, AGuide.Column) then
-  begin
-    Result := geTaperTop;
-  end
-  // Letzte sichtbare Zeile: Läuft die Linie darunter weiter (ihr end ist nicht zu sehen), endet sie hier spitz
-  // wie oben unter dem Kopf. Genau eine Zeile läuft aus: die angeschnittene letzte, wenn
-  // mindestens die Hälfte zu sehen ist (bis zum Rand), sonst die vorletzte; im Rest darunter dann nichts, sonst
-  // begänne die Linie dort wieder breit. Der Rest gilt auch für das Ende der Linie: Steht ihr end dort, lief sie
-  // in der Zeile darüber schon aus.
-  else if mClient - APaint.Rect.Top < mHalf then
-  begin
-    Result := geSkip;
-  end
-  else if not AGuide.Last and (APaint.Rect.Bottom + mHalf > mClient) then
-  begin
-    Result := geTaperBottom;
-  end;
+  mRow.TaperBelowHeader := not AGuide.First and (RowIndex(APaint.Rect) >= 0) and
+    (RowIndex(APaint.Rect) = APaint.Covered) and TAtlasIdeStickyScroll.TaperBelow(APaint.Context.FileName,
+    AGuide.Column);
+  Result := TAtlasGuideStroke.EndOf(mRow);
 end;
 
 /// <summary>Eine Blocklinie in der Zeile von APaint; liefert, wie sie endet.</summary>
-function PaintGuide(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TGuideEnd;
+function PaintGuide(const APaint: TGuidePaint; const AGuide: TAtlasEditorPairs.TLineGuide): TAtlasGuideEnd;
 var
   mCell: TRect;
   mStroke: TGuideStroke;
-  mMinX: Integer;
 begin
   mCell := APaint.Context.EditorState.GetCharacterPosPx(AGuide.Column, APaint.Context.EditorLineNum);
   mStroke.Rect := APaint.Rect;
   mStroke.Width := APaint.Width;
   mStroke.Back := APaint.Back;
   mStroke.HasBack := APaint.HasBack;
-  mStroke.X := mCell.Left - Max(2, mCell.Width div 3) - (APaint.Width - 1) div 2;
-  // Blöcke ab Spalte 1 (procedure … end): Linie knapp links vom Text, nicht durch das erste Zeichen.
-  mMinX := APaint.Code.Left - cGuideMargin + APaint.Width div 2;
-  if (APaint.Code.Right > APaint.Code.Left) and (mStroke.X < mMinX) then
-  begin
-    mStroke.X := mMinX;
-  end;
+  mStroke.X := TAtlasGuideStroke.StrokeX(mCell.Left, mCell.Width, APaint.Width, APaint.Code.Left, APaint.Code.Right,
+    cGuideMargin);
   // Deckkraft: Linie mit dem Hintergrund gemischt, damit sie zurücktritt.
   mStroke.Color := APaint.Nesting.Color(APaint.Palette, AGuide.Depth, AGuide.Routine);
   mStroke.Dashed := APaint.Nesting.OwnColor(AGuide.Routine);
@@ -505,17 +457,17 @@ begin
   end;
   Result := GuideEnd(APaint, AGuide);
   case Result of
-    geTaperTop:
+    TAtlasGuideEnd.TaperTop:
       PaintTaper(APaint.DC, mStroke, False);
-    geTaperBottom:
+    TAtlasGuideEnd.TaperBottom:
       begin
         mStroke.Rect.Bottom := APaint.Rect.Top + Min(APaint.Context.EditControl.ClientHeight - APaint.Rect.Top,
           APaint.Rect.Height);
         PaintTaper(APaint.DC, mStroke, True);
       end;
-    geLine:
+    TAtlasGuideEnd.Line:
       PaintStroke(APaint.DC, mStroke, AGuide, Max(3, mCell.Width div 2));
-    geSkip:
+    TAtlasGuideEnd.Skip:
       begin
         // Rest unter der letzten Zeile: keine Linie.
       end;
@@ -837,7 +789,7 @@ begin
       // Spalte der IDE statt Zeichenindex.
       FLines[mToken.Line] := FLines[mToken.Line] + [mToken];
       FLines[mToken.Line][High(FLines[mToken.Line])].Character :=
-        ColumnOf(ALines[mToken.Line], mToken.Character, FTabWidth);
+        TAtlasPairs.ColumnOf(ALines[mToken.Line], mToken.Character, FTabWidth);
     end;
   end;
 end;
@@ -1065,7 +1017,7 @@ begin
   end;
   // Unter dem mitlaufenden Kopf zeichnet der Kopf die Linien selbst, jede erst unter ihrem Element.
   if (ALine < 0) or (ALine > High(FGuides)) or (Length(FGuides[ALine]) = 0) or
-    (RowIndex(ARect) >= 0) and (RowIndex(ARect) < TAtlasIdeStickyScroll.CoveredRows(AContext.FileName)) then
+    UnderStickyHeader(ARect, AContext.FileName) then
   begin
     Exit;
   end;
@@ -1107,7 +1059,7 @@ begin
     mEdge := False;
     for mGuide in FGuides[ALine] do
     begin
-      mEdge := (PaintGuide(mPaint, mGuide) <> geLine) or mEdge;
+      mEdge := (PaintGuide(mPaint, mGuide) <> TAtlasGuideEnd.Line) or mEdge;
     end;
     if mEdge then
     begin

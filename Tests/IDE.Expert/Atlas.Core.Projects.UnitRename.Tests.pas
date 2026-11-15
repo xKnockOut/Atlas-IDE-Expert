@@ -23,6 +23,8 @@ type
     procedure ArgumentsCarryUris;
     [Test]
     procedure ReadsAnswerAndCountsPerScope;
+    [Test]
+    procedure OffersProjectAndLargerGroup;
   end;
 
 implementation
@@ -130,6 +132,23 @@ begin
   Assert.AreEqual(2, TAtlasUnitRename.CountIn(mAnswer, ['c:\p\kasse.pas', 'C:\P\Lager.pas', 'C:\P\Projekt.dpr']));
   Assert.AreEqual(3, TAtlasUnitRename.CountIn(mAnswer, ['C:\P\Kasse.pas', 'C:\P\Lager.pas', 'C:\Q\Bericht.pas']));
   mAnswer := Default(TAtlasUnitRenameAnswer);
+end;
+
+procedure TAtlasUnitRenameTests.OffersProjectAndLargerGroup;
+var
+  mScopes: TArray<TAtlasUnitRenameScope>;
+begin
+  mScopes := TAtlasUnitRename.Scopes(2, 5);
+  Assert.AreEqual(2, Integer(Length(mScopes)));
+  Assert.IsTrue(mScopes[0] = TAtlasUnitRenameScope.Project);
+  Assert.IsTrue(mScopes[1] = TAtlasUnitRenameScope.Group);
+  mScopes := TAtlasUnitRename.Scopes(3, 3);
+  Assert.AreEqual(1, Integer(Length(mScopes)), 'Gruppe ohne weitere Dateien');
+  mScopes := TAtlasUnitRename.Scopes(0, 4);
+  Assert.AreEqual(1, Integer(Length(mScopes)));
+  Assert.IsTrue(mScopes[0] = TAtlasUnitRenameScope.Group);
+  Assert.AreEqual(2, TAtlasUnitRename.ShownCount(2, 5));
+  Assert.AreEqual(4, TAtlasUnitRename.ShownCount(0, 4), 'ohne Treffer im Projekt die Zahl der Gruppe');
 end;
 
 initialization

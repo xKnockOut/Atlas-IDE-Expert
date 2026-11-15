@@ -60,6 +60,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Commands.QuickOpen,
+  Atlas.Core.Commands.QuickOpenTarget,
   Atlas.UI.Commands.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Foundation.EditorStyle,
@@ -319,7 +320,7 @@ end;
 function Target(const AFileName: string; ALine, ACharacter: Integer; const ACaption, APath,
   AShortCut: string): TAtlasCommand;
 begin
-  Result := Command(Format('%d:%d', [ALine, ACharacter]), ACaption, APath, AShortCut);
+  Result := Command(TAtlasQuickOpenTarget.IdOf(ALine, ACharacter), ACaption, APath, AShortCut);
   Result.Description := AFileName;
 end;
 
@@ -360,11 +361,7 @@ begin
     Result := [Command('', TAtlasCommandsStrings.Text(TAtlasCommandsTextId.QuickOpenBuilding), '', '')];
     Exit;
   end;
-  mLine := -1;
-  if AParsed.Line > 0 then
-  begin
-    mLine := AParsed.Line - 1;
-  end;
+  mLine := TAtlasQuickOpenTarget.FileLine(AParsed.Line);
   for mIndex in TAtlasQuickOpen.Order(mFiles, AParsed.Text, AWindow.Open, State.Recent) do
   begin
     Result := Result + [Target(mFiles[mIndex].FileName, mLine, 0, mFiles[mIndex].Name,
@@ -442,16 +439,6 @@ begin
   end;
 end;
 
-/// <summary>Zweite Zeile eines Projektsymbols: Container und Datei, ohne Container nur die Datei.</summary>
-function SymbolPlace(const ASymbol: TAtlasSymbol): string;
-begin
-  Result := ExtractFileName(ASymbol.FileName);
-  if ASymbol.Container <> '' then
-  begin
-    Result := ASymbol.Container + ' · ' + Result;
-  end;
-end;
-
 /// <summary>Symbole des ganzen Projekts vom Server; leer ohne Sitzung oder Suchtext.</summary>
 function ProjectSymbolResults(const AParsed: TAtlasQuickOpenQuery): TArray<TAtlasCommand>;
 var
@@ -474,7 +461,8 @@ begin
   for mIndex := 0 to Min(High(mSymbols), TAtlasQuickOpen.cMaxResults - 1) do
   begin
     Result := Result + [Target(mSymbols[mIndex].FileName, mSymbols[mIndex].Line, mSymbols[mIndex].Character,
-      mSymbols[mIndex].Name, SymbolPlace(mSymbols[mIndex]), TAtlasResults.SymbolBadge(mSymbols[mIndex].Kind))];
+      mSymbols[mIndex].Name, TAtlasQuickOpenTarget.SymbolPlace(mSymbols[mIndex].Container, mSymbols[mIndex].FileName),
+      TAtlasResults.SymbolBadge(mSymbols[mIndex].Kind))];
   end;
 end;
 
@@ -507,27 +495,23 @@ end;
 
 procedure OpenTarget(const ACommand: TAtlasCommand);
 var
-  mParts: TArray<string>;
-  mLine, mCharacter: Integer;
+  mTarget: TAtlasQuickOpenTarget;
 begin
-  mParts := ACommand.Id.Split([':']);
-  if (ACommand.Description = '') or (Length(mParts) <> 2) then
+  if not TAtlasQuickOpenTarget.TryParse(ACommand.Id, ACommand.Description, mTarget) then
   begin
     Exit;
   end;
-  mLine := StrToIntDef(mParts[0], -1);
-  mCharacter := StrToIntDef(mParts[1], 0);
   if State <> nil then
   begin
-    State.Recent.Executed(TAtlasQuickOpen.RecentKey(ACommand.Description));
+    State.Recent.Executed(TAtlasQuickOpen.RecentKey(mTarget.FileName));
   end;
-  if mLine >= 0 then
+  if mTarget.GoesToLine then
   begin
-    TAtlasIdeNavigation.GoToLocation(ACommand.Description, mLine, mCharacter);
+    TAtlasIdeNavigation.GoToLocation(mTarget.FileName, mTarget.Line, mTarget.Character);
   end
   else
   begin
-    TAtlasIdeNavigation.ShowFile(ACommand.Description);
+    TAtlasIdeNavigation.ShowFile(mTarget.FileName);
   end;
 end;
 
