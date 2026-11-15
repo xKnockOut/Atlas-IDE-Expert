@@ -16,6 +16,7 @@ uses
   System.Classes,
   System.UITypes,
   ToolsAPI,
+  DesignIntf,
   Atlas.Core.Designer.FontsColors,
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Tool;
@@ -70,7 +71,6 @@ uses
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.Dialogs,
-  DesignIntf,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.FontsDialog,
   Atlas.IDE.Designer.Access,

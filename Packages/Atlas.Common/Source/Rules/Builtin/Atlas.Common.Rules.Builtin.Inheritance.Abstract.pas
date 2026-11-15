@@ -393,6 +393,46 @@ begin
   end;
 end;
 
+/// <summary>Zahl der Argumente des inherited-Aufrufs AExpr (inherited Add(X) → 1, inherited Add() → 0); -1 ohne
+/// Argumentliste (inherited Add), dann entscheidet die Zahl nicht.</summary>
+function ArgumentCount(AExpr: TSyntaxNode): Integer;
+var
+  mCall: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := -1;
+  mCall := AExpr.Parent;
+  if (mCall = nil) or (mCall.Kind <> TSyntaxKind.Call) or (mCall.ChildCount = 0) or (mCall[0] <> AExpr) then
+  begin
+    Exit;
+  end;
+  Result := 0;
+  for mIndex := 1 to mCall.ChildCount - 1 do
+  begin
+    if mCall[mIndex].Kind <> TSyntaxKind.GenericArgs then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+/// <summary>Die Überladungen aus ACandidates, die AArguments Argumente annehmen. Passt keine, ruft der Aufruf
+/// eine Überladung, die der Index nicht kennt (inherited Add(Objekt) geht an TObjectList.Add, wenn die Klasse
+/// selbst nur "function Add: T; overload; virtual; abstract;" hat).</summary>
+function Accepting(const ACandidates: TArray<TResolvedSymbol>; AArguments: Integer): TArray<TResolvedSymbol>;
+var
+  mCandidate: TResolvedSymbol;
+begin
+  Result := nil;
+  for mCandidate in ACandidates do
+  begin
+    if (AArguments < 0) or ((AArguments >= mCandidate.MinArgs) and (AArguments <= mCandidate.MaxArgs)) then
+    begin
+      Result := Result + [mCandidate];
+    end;
+  end;
+end;
+
 /// <summary>Jede passende Überladung ist abstrakt; sonst wählt der Compiler womöglich eine andere.</summary>
 function AllAbstract(const ACandidates: TArray<TResolvedSymbol>): Boolean;
 var
@@ -448,7 +488,8 @@ var
   mStatement: TSyntaxNode;
   mFixes: TArray<TRuleFix>;
 begin
-  mCandidates := FResolver.ResolveAll(FContext.Tree, FFileName, FTokens[ANameToken].StartPos);
+  mCandidates := Accepting(FResolver.ResolveAll(FContext.Tree, FFileName, FTokens[ANameToken].StartPos),
+    ArgumentCount(AExpr));
   if not AllAbstract(mCandidates) then
   begin
     Exit;
