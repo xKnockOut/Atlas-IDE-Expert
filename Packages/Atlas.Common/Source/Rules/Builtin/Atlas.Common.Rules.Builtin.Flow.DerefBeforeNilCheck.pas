@@ -301,6 +301,7 @@ type
     function CheckAfter(ANode: TFlowNode; const APath: string; ALocal: Boolean): TFlowNode;
     function FreesToNil(ANode: TFlowNode; const APath: string): Boolean;
     function AssignedOnWay(AFrom, ATo: TFlowNode; const APath: string): Boolean;
+    function AssignedOnWayToCopy(AFrom, ACheck: TFlowNode; const APath: string): Boolean;
     function GuardsLater(ANode, ACheck: TFlowNode; const APath: string): Boolean;
     function Source(ANode: TSyntaxNode): string;
     function Reindented(const AText, AIndent: string): string;
@@ -423,6 +424,24 @@ begin
   end;
 end;
 
+/// <summary>Wie AssignedOnWay, aber zu jeder Kopie von ACheck, die AFrom beherrscht: Ein finally steht je Ausgang
+/// einmal im Graphen. X := nil; Exit; im try erreicht die Prüfung im finally über die Kopie des Exit-Ausgangs, die
+/// Prüfung gilt dann auch diesem Weg (Indy, Cookie-Verwaltung).</summary>
+function TDerefCheck.AssignedOnWayToCopy(AFrom, ACheck: TFlowNode; const APath: string): Boolean;
+var
+  mOther: TFlowNode;
+begin
+  for mOther in FGraph.Nodes do
+  begin
+    if (mOther.Syntax = ACheck.Syntax) and (FGraph.Dominates(AFrom, mOther) = TFlowAnswer.Yes) and
+      AssignedOnWay(AFrom, mOther, APath) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Gilt die spätere Prüfung ACheck dem Zugriff in ANode?</summary>
 function TDerefCheck.GuardsLater(ANode, ACheck: TFlowNode; const APath: string): Boolean;
 begin
@@ -431,7 +450,7 @@ begin
   // Nur wenn jeder Weg zur Prüfung durch den Zugriff führt; sonst gilt sie den anderen Wegen
   // (X := TX.Create; X.Init; … if X <> nil nach einem Zweig ohne Create).
   Result := Result and (FGraph.Dominates(ANode, ACheck) = TFlowAnswer.Yes) and
-    not AssignedOnWay(ANode, ACheck, APath);
+    not AssignedOnWayToCopy(ANode, ACheck, APath);
   // while X <> nil do … X := X.Parent: die Bedingung gilt den späteren Durchläufen.
   Result := Result and not ((ACheck.Syntax.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and
     SubtreeAssigns(ACheck.Syntax, APath));

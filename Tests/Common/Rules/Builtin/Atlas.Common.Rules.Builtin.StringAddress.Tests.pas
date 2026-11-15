@@ -34,7 +34,10 @@ type
     procedure GuardedNonEmptyIsSilent;
     [Test]
     procedure OffAndExclude;
+    [Test]
+    procedure ShortStringAliasIsSilent;
   end;
+
 
 implementation
 
@@ -143,6 +146,17 @@ begin
     '  WriteBuffer(@AText[2], 1);'#10'  WriteBuffer(@AText[mPos], 1);'#10'  WriteBuffer(@AKurz[1], 1);'#10 +
     '  WriteBuffer(@ABytes[0], 1);'#10'  WriteBuffer(@AFeld[1], 1);'#10'  WriteBuffer(@AText, 1);'#10 +
     '  WriteBuffer(PChar(AText), 1);'#10));
+end;
+
+procedure TFirstCharAddressTests.ShortStringAliasIsSilent;
+begin
+  // FP mORMot2: TShort31 = string[31] als Ergebnis, var-Parameter und Variable string[N]; @S[1] ist dort gültig.
+  TRuleAssert.Silent(TFirstCharAddressRule.Create, 'unit Kurz;'#10'interface'#10'type'#10 +
+    '  TKurz = string[8];'#10'function Zwei(AWert: Byte): TKurz;'#10'procedure Fuellen(var AText: TKurz);'#10 +
+    'implementation'#10'function Zwei(AWert: Byte): TKurz;'#10'begin'#10'  Result[0] := #2;'#10 +
+    '  PWord(@Result[1])^ := AWert;'#10'end;'#10'procedure Fuellen(var AText: TKurz);'#10'var'#10 +
+    '  mPuffer: string[10];'#10'begin'#10'  PByte(@AText[1])^ := 1;'#10'  PByte(@mPuffer[1])^ := 1;'#10 +
+    'end;'#10'end.');
 end;
 
 procedure TFirstCharAddressTests.NoFixWithoutConst;

@@ -375,7 +375,16 @@ begin
   // asm macht den Graphen unvollständig: keine Aussage.
   TRuleAssert.Silent(TUnreachableCodeRule.Create,
     Routine('  Exit;'#10'  asm'#10'    nop'#10'  end;', 'procedure P;'));
+  // FP mORMot2: Eine eigene Methode Abort verdeckt System.SysUtils.Abort und kehrt zurück.
+  TRuleAssert.Silent(TUnreachableCodeRule.Create, 'unit U;'#10'interface'#10'type'#10'  TArbeiter = class'#10 +
+    '  public'#10'    procedure Abort;'#10'    destructor Destroy; override;'#10'  end;'#10'implementation'#10 +
+    'procedure TArbeiter.Abort;'#10'begin'#10'end;'#10'destructor TArbeiter.Destroy;'#10'begin'#10'  Abort;'#10 +
+    '  inherited Destroy;'#10'end;'#10'end.');
+  // Ohne eigene Routine dieses Namens bleibt Abort ein Ausstieg.
+  TRuleAssert.Reports(TUnreachableCodeRule.Create, Routine('  Abort;'#10'  A;', 'procedure P;'), 1);
 end;
+
+
 
 procedure TFlowRulesTests.FlowRulesFindSameWithSharedGraphs;
 const

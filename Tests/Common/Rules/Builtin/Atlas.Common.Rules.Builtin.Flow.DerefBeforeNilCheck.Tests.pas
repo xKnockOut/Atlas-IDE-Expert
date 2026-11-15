@@ -19,6 +19,10 @@ type
     procedure CheckBeforeAccessIsSilent;
     [Test]
     procedure ReassignedBeforeCheckIsSilent;
+    /// <summary>L := nil; Exit; im try: Die Prüfung im finally gilt auch diesem Weg (Indy). Ohne die Zuweisung
+    /// bleibt der Befund.</summary>
+    [Test]
+    procedure ReassignedBeforeExitThroughFinallyIsSilent;
     [Test]
     procedure IsCheckCountsAsNilCheck;
   end;
@@ -71,6 +75,16 @@ procedure TFlowDerefBeforeNilCheckTests.ReassignedBeforeCheckIsSilent;
 begin
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine('  L.Clear;'#10'  L := Neu;'#10 +
     '  if L <> nil then'#10'    L.Sort;'));
+end;
+
+procedure TFlowDerefBeforeNilCheckTests.ReassignedBeforeExitThroughFinallyIsSilent;
+begin
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine('  L := Neu;'#10'  try'#10 +
+    '    if L.Count = 0 then'#10'    begin'#10'      L := nil;'#10'      Exit;'#10'    end;'#10'  finally'#10 +
+    '    if L <> nil then'#10'      L.Free;'#10'  end;'));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  L := Neu;'#10 +
+    '  try'#10'    if L.Count = 0 then'#10'      Exit;'#10'  finally'#10'    if L <> nil then'#10'      L.Free;'#10 +
+    '  end;')))));
 end;
 
 procedure TFlowDerefBeforeNilCheckTests.IsCheckCountsAsNilCheck;
