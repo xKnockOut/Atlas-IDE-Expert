@@ -65,6 +65,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Tests.Debug,
   Atlas.Core.Tests.Run,
+  Atlas.Core.Tests.Lens,
   Atlas.Text.DUnitX,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug;
@@ -78,7 +79,12 @@ type
   private const
     /// <summary>Abstand der Marke vom Zeilenende in Zeichen.</summary>
     cGapColumns = 3;
-    cMinFontSize = 6;
+    /// <summary>Anteil der Farbe des Stands an Schrift, Rahmen und Fläche der Marke.</summary>
+    cTextMix = 0.85;
+    cPenMix = 0.35;
+    cBrushMix = 0.12;
+    /// <summary>Rundung der Ecken in Punkten.</summary>
+    cCorner = 6;
   public
     /// <summary>Schrift der Marke: einen Punkt kleiner, unterstrichen; AItalic für einen veralteten Stand.</summary>
     class procedure Prepare(ACanvas: TCanvas; AItalic: Boolean); static;
@@ -102,27 +108,13 @@ type
       function AllowedLineStages: TPaintLineStages; override;
     end;
 
-    /// <summary>Eine Marke: Fixture, Test (alle Fälle) oder ein Fall.</summary>
+    /// <summary>Eine Marke (Atlas.Core.Tests.Lens), die gezeichneten Rechtecke ihrer Knöpfe und die oberste
+    /// sichtbare Zeile dabei.</summary>
     TItem = record
-      /// <summary>Zeile der Marke (0-basiert).</summary>
-      Line: Integer;
-      Selection: TAtlasTestSelection;
-      /// <summary>Tests, die ein Lauf der Marke ergibt; erst wenn alle bestanden sind, gilt sie als bestanden.
-      /// </summary>
-      Expected: TArray<TAtlasTestKey>;
-      /// <summary>Gezeichnete Rechtecke „ausführen“, „Debuggen“ und „Vergleichen“ (Koordinaten des Editors, leer
-      /// ohne) und oberste sichtbare Zeile dabei.</summary>
-      RunRect: TRect;
-      DebugRect: TRect;
-      CompareRect: TRect;
-      /// <summary>Marke „4 Fälle · Tabelle“ an einer Methode mit [TestCase] (#1879); leer ohne.</summary>
-      TableRect: TRect;
+      Mark: TAtlasTestLensMark;
+      Rects: TAtlasTestLensRects;
       TopRow: Integer;
     end;
-    /// <summary>Knopf einer Marke.</summary>
-    {$SCOPEDENUMS ON}
-    TMark = (Run, Debug, Compare, Table);
-    {$SCOPEDENUMS OFF}
     /// <summary>Lebt, solange die Lens lebt; ein eingereihter Klick prüft es.</summary>
     TAlive = class(TInterfacedObject)
     public
@@ -165,7 +157,8 @@ type
     procedure Clear;
     function ItemAt(ALine: Integer): Integer;
     /// <summary>Beschriftung der Marke und Stand ihrer Tests (Farbe); AWarn: gelb (langsam oder Leck).</summary>
-    function Caption(const AItem: TItem; out AStatus: TAtlasTestStatus; out AStale, AWarn: Boolean): string;
+    function Caption(const AMark: TAtlasTestLensMark; out AStatus: TAtlasTestStatus; out AStale,
+      AWarn: Boolean): string;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     /// <summary>Marke der Zeile von AContext, -1 ohne (Lens aus, andere Datei, Leerzeile, ausgeblendet).</summary>
@@ -173,8 +166,8 @@ type
     procedure PaintMarks(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
       ALeft: Integer; ABack: TAtlasColor);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    /// <summary>Marke unter (X, Y) und ihr Knopf AMark. -1 ohne.</summary>
-    function HitAt(AX, AY: Integer; out AMark: TMark): Integer;
+    /// <summary>Marke unter (X, Y) und ihr Knopf AButton. -1 ohne.</summary>
+    function HitAt(AX, AY: Integer; out AButton: TAtlasTestLensButton): Integer;
     /// <summary>„Debuggen“ (#585), an einer fehlgeschlagenen Marke (AFailed) „Vergleichen“ (#1779) und an einer
     /// Methode mit [TestCase] „Tabelle“ (#1879) rechts von ALeft.</summary>
     procedure PaintButtons(AIndex: Integer; const ARow: TRect; const AContext: INTACodeEditorPaintContext;
@@ -182,7 +175,7 @@ type
     /// <summary>Gezeichnetes Rechteck ARect der Marke AIndex für das Ausblenden am Element (#628) melden.</summary>
     procedure Painted(AIndex: Integer; const AContext: INTACodeEditorPaintContext; const ARect: TRect;
       ARowHeight: Integer);
-    procedure QueueClick(AIndex: Integer; AMark: TMark);
+    procedure QueueClick(AIndex: Integer; AButton: TAtlasTestLensButton);
   public
     /// <summary>ATests und ADebugger gehören dem Aufrufer und leben länger als die Lens; AQueries nennt die Tests
     /// mit veraltetem Ergebnis (#1770) und die wackelnden (#1773, je nil = keine), ACompare den Knopf
@@ -200,7 +193,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Style.Palette,
@@ -363,64 +355,20 @@ begin
   end;
 end;
 
-/// <summary>Marke an ALine anhängen, wenn es die Zeile gibt und die Auswahl Namen hat.</summary>
-procedure AddItem(var AItems: TArray<TAtlasIdeTestsLens.TItem>; const AFound: TDUnitXUnit;
-  ALine, AFixture, ATest, ACase: Integer);
-var
-  mItem: TAtlasIdeTestsLens.TItem;
-begin
-  if ALine < 0 then
-  begin
-    Exit;
-  end;
-  mItem := Default(TAtlasIdeTestsLens.TItem);
-  mItem.Line := ALine;
-  mItem.Selection := TAtlasTestDebug.Selection(AFound, AFixture, ATest, ACase);
-  mItem.Expected := TAtlasTestRun.Expected(AFound, AFixture, ATest, ACase);
-  if Length(mItem.Selection.Names) > 0 then
-  begin
-    AItems := AItems + [mItem];
-  end;
-end;
-
-/// <summary>Marke des Tests und seiner Fälle mit eigener Zeile.</summary>
-procedure AddTest(var AItems: TArray<TAtlasIdeTestsLens.TItem>; const AFound: TDUnitXUnit;
-  AFixture, ATest: Integer);
-var
-  mTest: TDUnitXTest;
-  mCase: Integer;
-begin
-  mTest := AFound.Fixtures[AFixture].Tests[ATest];
-  AddItem(AItems, AFound, AFound.MarkLine(AFixture, ATest), AFixture, ATest, -1);
-  // Fälle mit eigener Zeile bekommen eigene Marken (mit [Ignore] führt DUnitX sie als einen Test).
-  if mTest.Ignored then
-  begin
-    Exit;
-  end;
-  for mCase := 0 to High(mTest.CaseLines) do
-  begin
-    if AFound.CaseHasOwnLine(AFixture, ATest, mCase) then
-    begin
-      AddItem(AItems, AFound, mTest.CaseLines[mCase], AFixture, ATest, mCase);
-    end;
-  end;
-end;
-
 procedure TAtlasIdeTestsLens.Scan;
 var
   mFound: TDUnitXUnit;
-  mFixture, mTest: Integer;
+  mMarks: TArray<TAtlasTestLensMark>;
   mItems: TArray<TItem>;
+  mIndex: Integer;
 begin
   mFound := TDUnitXSource.Scan(TTextLines.SplitLines(FText));
-  mItems := nil;
-  for mFixture := 0 to High(mFound.Fixtures) do
+  mMarks := TAtlasTestLens.Marks(mFound);
+  SetLength(mItems, Length(mMarks));
+  for mIndex := 0 to High(mMarks) do
   begin
-    AddItem(mItems, mFound, mFound.MarkLine(mFixture, -1), mFixture, -1, -1);
-    for mTest := 0 to High(mFound.Fixtures[mFixture].Tests) do
-    begin
-      AddTest(mItems, mFound, mFixture, mTest);
-    end;
+    mItems[mIndex] := Default(TItem);
+    mItems[mIndex].Mark := mMarks[mIndex];
   end;
   FScannedFile := FFileName;
   FScannedText := FText;
@@ -443,7 +391,7 @@ var
 begin
   for mIndex := 0 to High(FItems) do
   begin
-    if FItems[mIndex].Line = ALine then
+    if FItems[mIndex].Mark.Line = ALine then
     begin
       Exit(mIndex);
     end;
@@ -498,11 +446,7 @@ begin
   mTexts.Duration := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDuration);
   mTexts.Slow := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensSlow);
   mTexts.DecimalSeparator := FormatSettings.DecimalSeparator;
-  mSlowMs := TAtlasIdeSettings.Current.TestsSlowMs;
-  if (AStatus = TAtlasTestStatus.Failed) or ATally.IsStale then
-  begin
-    mSlowMs := 0;
-  end;
+  mSlowMs := TAtlasTestLens.SlowLimit(AStatus, ATally.IsStale, TAtlasIdeSettings.Current.TestsSlowMs);
   Result := ATally.WithDuration(ACaption, mSlowMs, mTexts, ASlow);
 end;
 
@@ -517,21 +461,9 @@ begin
   mMark := Default(TAtlasTestSeriesMark);
   Result := Assigned(AHooks.Series) and AHooks.Series(ASelection, mMark);
   ACaption := mMark.Caption;
-  if not Result or mMark.Running then
+  if Result then
   begin
-    Exit;
-  end;
-  if mMark.AnyPassed and mMark.AnyFailed then
-  begin
-    AStatus := TAtlasTestStatus.Partial;
-  end
-  else if mMark.AnyFailed then
-  begin
-    AStatus := TAtlasTestStatus.Failed;
-  end
-  else
-  begin
-    AStatus := TAtlasTestStatus.Passed;
+    AStatus := TAtlasTestLens.SeriesStatus(mMark);
   end;
 end;
 
@@ -559,8 +491,11 @@ begin
   end;
 end;
 
-function TAtlasIdeTestsLens.Caption(const AItem: TItem; out AStatus: TAtlasTestStatus;
+function TAtlasIdeTestsLens.Caption(const AMark: TAtlasTestLensMark; out AStatus: TAtlasTestStatus;
   out AStale, AWarn: Boolean): string;
+const
+  cRunTexts: array[TAtlasTestLensKind] of TAtlasTestsTextId = (TAtlasTestsTextId.TestsLensRunFixture,
+    TAtlasTestsTextId.TestsLensRunCase, TAtlasTestsTextId.TestsLensRun);
 var
   mTally: TAtlasTestTally;
 begin
@@ -568,7 +503,7 @@ begin
   AStale := False;
   AWarn := False;
   // Serie (#1782): während und nach ihr steht ihr Ergebnis an der Marke, bis zum nächsten Lauf.
-  if SeriesCaption(FCompare, AItem.Selection, Result, AStatus) then
+  if SeriesCaption(FCompare, AMark.Selection, Result, AStatus) then
   begin
     Exit;
   end;
@@ -576,22 +511,11 @@ begin
   begin
     Exit(TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning));
   end;
-  if AItem.Selection.Method = '' then
-  begin
-    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunFixture);
-  end
-  else if AItem.Selection.CaseName <> '' then
-  begin
-    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunCase);
-  end
-  else
-  begin
-    Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRun);
-  end;
+  Result := TAtlasTestsStrings.Text(cRunTexts[TAtlasTestLens.KindOf(AMark.Selection)]);
   // Nur der Stand der Tests dieser Marke: Ein einzelner Test macht die Fixture nicht „bestanden“.
   // Veraltete Ergebnisse (#1770) zählen nicht als bestanden; der alte Stand bleibt mit „(veraltet)“ sichtbar.
-  mTally := FTests.TallyOf(FUnitName, AItem.Selection.Fixture, AItem.Expected,
-    TAtlasTestRun.StaleOf(FState.StaleKeys, FUnitName, AItem.Selection.Fixture));
+  mTally := FTests.TallyOf(FUnitName, AMark.Selection.Fixture, AMark.Expected,
+    TAtlasTestRun.StaleOf(FState.StaleKeys, FUnitName, AMark.Selection.Fixture));
   AStatus := mTally.Shown;
   AStale := mTally.IsStale;
   if AStatus = TAtlasTestStatus.Failed then
@@ -607,14 +531,14 @@ begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensPartial, [Result, mTally.FreshPassed, mTally.Total]);
   end;
   Result := DurationCaption(Result, mTally, AStatus, AWarn);
-  if (mTally.Leaked > 0) and (AStatus <> TAtlasTestStatus.Failed) then
+  if TAtlasTestLens.ShowsLeak(mTally.Leaked, AStatus) then
   begin
     // Bestanden mit Leck (#1774): gelb wie langsam.
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensLeak, [Result, mTally.LeakBytes]);
     AWarn := True;
   end;
   // Wackelt (#1773): gelb, auch wenn der letzte Lauf rot oder grün war.
-  Result := FlakyCaption(Result, FState, FUnitName, AItem.Selection, AWarn);
+  Result := FlakyCaption(Result, FState, FUnitName, AMark.Selection, AWarn);
   if AStale then
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsLensStale, [Result]);
@@ -625,7 +549,7 @@ end;
 
 class procedure TAtlasIdeLensPill.Prepare(ACanvas: TCanvas; AItalic: Boolean);
 begin
-  ACanvas.Font.Size := Max(cMinFontSize, ACanvas.Font.Size - 1);
+  ACanvas.Font.Size := TAtlasTestLens.PillFontSize(ACanvas.Font.Size);
   ACanvas.Font.Style := [fsUnderline];
   if AItalic then
   begin
@@ -635,20 +559,15 @@ end;
 
 class function TAtlasIdeLensPill.Draw(ACanvas: TCanvas; const ARow: TRect; const ACaption: string; ATone,
   ABack: TAtlasColor; ALeft: Integer): TRect;
-var
-  mWidth, mHeight, mTop: Integer;
 begin
-  ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, 0.85));
-  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, 0.35));
-  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, 0.12));
-  mHeight := ACanvas.TextHeight('Xg');
-  mWidth := ACanvas.TextWidth(ACaption);
-  mTop := ARow.Top + Max(0, (ARow.Bottom - ARow.Top - mHeight - 2) div 2);
-  Result := TRect.Create(ALeft, mTop, ALeft + mWidth + 10, mTop + mHeight + 2);
+  ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, cTextMix));
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, cPenMix));
+  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(ATone, ABack, cBrushMix));
+  Result := TAtlasTestLens.PillRect(ARow, ALeft, ACanvas.TextWidth(ACaption), ACanvas.TextHeight('Xg'));
   ACanvas.Brush.Style := bsSolid;
-  ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, 6, 6);
+  ACanvas.RoundRect(Result.Left, Result.Top, Result.Right, Result.Bottom, cCorner, cCorner);
   ACanvas.Brush.Style := bsClear;
-  ACanvas.TextOut(Result.Left + 5, Result.Top + 1, ACaption);
+  ACanvas.TextOut(Result.Left + TAtlasTestLens.cPillPadding, Result.Top + 1, ACaption);
 end;
 
 class function TAtlasIdeLensPill.BackgroundAt(ACanvas: TCanvas; AX, AY: Integer): TAtlasColor;
@@ -726,12 +645,9 @@ begin
   Result := ItemAt(AContext.LogicalLineNum - 1);
   // Ausgeblendet am Element (#628): Anker ist Fixture.Methode[.Fall].
   if (Result >= 0) and TAtlasIdeElements.Hidden(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
-    FItems[Result].Selection.Caption) then
+    FItems[Result].Mark.Selection.Caption) then
   begin
-    FItems[Result].RunRect := TRect.Empty;
-    FItems[Result].DebugRect := TRect.Empty;
-    FItems[Result].CompareRect := TRect.Empty;
-    FItems[Result].TableRect := TRect.Empty;
+    FItems[Result].Rects := Default(TAtlasTestLensRects);
     Result := -1;
   end;
 end;
@@ -741,22 +657,10 @@ end;
 function CasesCaption(ATests: TAtlasIdeTests; const AUnitName: string; const ASelection: TAtlasTestSelection;
   const AExpected: TArray<TAtlasTestKey>): string;
 var
-  mKey: TAtlasTestKey;
   mCases, mFailed: Integer;
 begin
   Result := '';
-  if (ASelection.Method = '') or (ASelection.CaseName <> '') then
-  begin
-    Exit;
-  end;
-  mCases := 0;
-  for mKey in AExpected do
-  begin
-    if mKey.CaseName <> '' then
-    begin
-      Inc(mCases);
-    end;
-  end;
+  mCases := TAtlasTestLens.CaseCount(ASelection, AExpected);
   if mCases = 0 then
   begin
     Exit;
@@ -795,72 +699,36 @@ var
   mPill: TRect;
 begin
   mCanvas := AContext.Canvas;
-  mText := Caption(FItems[AIndex], mStatus, mStale, mWarn);
+  mText := Caption(FItems[AIndex].Mark, mStatus, mStale, mWarn);
   mColors := TAtlasColors.ForBackground(ABack);
-  mTone := mColors.Accent;
-  if mStatus = TAtlasTestStatus.Failed then
-  begin
-    mTone := mColors.Error;
-  end
-  else if mStatus = TAtlasTestStatus.Passed then
-  begin
-    mTone := mColors.Add;
-  end
-  else if mStatus = TAtlasTestStatus.Partial then
-  begin
-    // Erst ein Teil der Tests lief (#1762): gelb, nicht grün.
-    mTone := mColors.Warn;
-  end;
-  if mWarn then
-  begin
-    // Langsam (#1772) oder Leck (#1774): gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
-    mTone := mColors.Warn;
-  end;
+  // Langsam (#1772) oder Leck (#1774) gelb, auch wenn bestanden; Caption meldet es nie für Fehlschläge.
+  mTone := TAtlasTestLens.Tone(mColors, mColors.Accent, mStatus, mWarn, mStale);
   // Veraltet (#1770): alter Stand grau und kursiv.
   TAtlasIdeLensPill.Prepare(mCanvas, mStale);
-  if mStale then
-  begin
-    mTone := mColors.Muted;
-  end;
   mPill := TAtlasIdeLensPill.Draw(mCanvas, ARow, mText, mTone, ABack, ALeft);
-  FItems[AIndex].RunRect := mPill;
+  FItems[AIndex].Rects[TAtlasTestLensButton.Run] := mPill;
   // „Debuggen“ (#585) und „Vergleichen“ (#1779, nur fehlgeschlagen und nicht veraltet) rechts daneben.
-  PaintButtons(AIndex, ARow, AContext, mPill.Right + cPillGap, ABack, (mStatus = TAtlasTestStatus.Failed) and
-    not mStale);
+  PaintButtons(AIndex, ARow, AContext, mPill.Right + cPillGap, ABack, TAtlasTestLens.Comparable(mStatus, mStale));
   FItems[AIndex].TopRow := AContext.EditView.TopRow;
   Painted(AIndex, AContext, mPill, ARow.Height);
-  Painted(AIndex, AContext, FItems[AIndex].DebugRect, ARow.Height);
-  Painted(AIndex, AContext, FItems[AIndex].CompareRect, ARow.Height);
-  Painted(AIndex, AContext, FItems[AIndex].TableRect, ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].Rects[TAtlasTestLensButton.Debug], ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].Rects[TAtlasTestLensButton.Compare], ARow.Height);
+  Painted(AIndex, AContext, FItems[AIndex].Rects[TAtlasTestLensButton.Table], ARow.Height);
 end;
 
-function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out AMark: TMark): Integer;
+function TAtlasIdeTestsLens.HitAt(AX, AY: Integer; out AButton: TAtlasTestLensButton): Integer;
 var
   mIndex: Integer;
+  mButton: TAtlasTestLensButton;
 begin
   Result := -1;
-  AMark := TMark.Run;
+  AButton := TAtlasTestLensButton.Run;
   for mIndex := 0 to High(FItems) do
   begin
-    if not FItems[mIndex].RunRect.IsEmpty and PtInRect(FItems[mIndex].RunRect, Point(AX, AY)) then
+    if TAtlasTestLens.Hit(FItems[mIndex].Rects, Point(AX, AY), mButton) then
     begin
       Result := mIndex;
-      AMark := TMark.Run;
-    end
-    else if not FItems[mIndex].DebugRect.IsEmpty and PtInRect(FItems[mIndex].DebugRect, Point(AX, AY)) then
-    begin
-      Result := mIndex;
-      AMark := TMark.Debug;
-    end
-    else if not FItems[mIndex].CompareRect.IsEmpty and PtInRect(FItems[mIndex].CompareRect, Point(AX, AY)) then
-    begin
-      Result := mIndex;
-      AMark := TMark.Compare;
-    end
-    else if not FItems[mIndex].TableRect.IsEmpty and PtInRect(FItems[mIndex].TableRect, Point(AX, AY)) then
-    begin
-      Result := mIndex;
-      AMark := TMark.Table;
+      AButton := mButton;
     end;
   end;
 end;
@@ -872,9 +740,9 @@ var
   mLeft: Integer;
   mText: string;
 begin
-  FItems[AIndex].DebugRect := TRect.Empty;
-  FItems[AIndex].CompareRect := TRect.Empty;
-  FItems[AIndex].TableRect := TRect.Empty;
+  FItems[AIndex].Rects[TAtlasTestLensButton.Debug] := TRect.Empty;
+  FItems[AIndex].Rects[TAtlasTestLensButton.Compare] := TRect.Empty;
+  FItems[AIndex].Rects[TAtlasTestLensButton.Table] := TRect.Empty;
   // Nicht während eines Laufs.
   if FTests.Busy then
   begin
@@ -884,26 +752,27 @@ begin
   mLeft := ALeft;
   if TAtlasTestDebug.LensDebugWanted(TAtlasIdeSettings.Current) then
   begin
-    FItems[AIndex].DebugRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
+    FItems[AIndex].Rects[TAtlasTestLensButton.Debug] := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
       TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensDebug), mAccent, ABack, mLeft);
-    mLeft := FItems[AIndex].DebugRect.Right + cPillGap;
+    mLeft := FItems[AIndex].Rects[TAtlasTestLensButton.Debug].Right + cPillGap;
   end;
   // „Vergleichen“ nur, wenn der Test der Marke erwartet und erhalten hat.
-  if AFailed and Assigned(FCompare.CanCompare) and FCompare.CanCompare(FItems[AIndex].Selection) then
+  if AFailed and Assigned(FCompare.CanCompare) and FCompare.CanCompare(FItems[AIndex].Mark.Selection) then
   begin
-    FItems[AIndex].CompareRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
-      CompareCaption(FCompare, FItems[AIndex].Selection), mAccent, ABack, mLeft);
-    mLeft := FItems[AIndex].CompareRect.Right + cPillGap;
+    FItems[AIndex].Rects[TAtlasTestLensButton.Compare] := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow,
+      CompareCaption(FCompare, FItems[AIndex].Mark.Selection), mAccent, ABack, mLeft);
+    mLeft := FItems[AIndex].Rects[TAtlasTestLensButton.Compare].Right + cPillGap;
   end;
   // „Tabelle“ (#1879) an einer Methode mit [TestCase].
   mText := '';
   if Assigned(FOnTable) and TAtlasIdeSettings.Current.TestsCaseTable then
   begin
-    mText := CasesCaption(FTests, FUnitName, FItems[AIndex].Selection, FItems[AIndex].Expected);
+    mText := CasesCaption(FTests, FUnitName, FItems[AIndex].Mark.Selection, FItems[AIndex].Mark.Expected);
   end;
   if mText <> '' then
   begin
-    FItems[AIndex].TableRect := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow, mText, mAccent, ABack, mLeft);
+    FItems[AIndex].Rects[TAtlasTestLensButton.Table] := TAtlasIdeLensPill.Draw(AContext.Canvas, ARow, mText,
+      mAccent, ABack, mLeft);
   end;
 end;
 
@@ -913,7 +782,7 @@ begin
   if not ARect.IsEmpty then
   begin
     TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.CodeLensTests, AContext.FileName,
-      FItems[AIndex].Line, FItems[AIndex].Selection.Caption), ARect, FItems[AIndex].TopRow, ARowHeight);
+      FItems[AIndex].Mark.Line, FItems[AIndex].Mark.Selection.Caption), ARect, FItems[AIndex].TopRow, ARowHeight);
   end;
 end;
 
@@ -937,11 +806,11 @@ begin
     (mView.TopRow = ATopRow);
 end;
 
-/// <summary>Handlung des Knopfs AMark an der Marke AItem: ausführen, debuggen, vergleichen oder Tabelle öffnen.
+/// <summary>Handlung des Knopfs AButton an der Marke AMark: ausführen, debuggen, vergleichen oder Tabelle öffnen.
 /// </summary>
-function ClickAction(AMark: TAtlasIdeTestsLens.TMark; ADebugger: TAtlasIdeTestDebugger;
+function ClickAction(AButton: TAtlasTestLensButton; ADebugger: TAtlasIdeTestDebugger;
   const AShow: TAtlasTestSelectionAction; const AOnTable: TAtlasTestsLensTableProc; const AFileName: string;
-  const AItem: TAtlasIdeTestsLens.TItem): TProc;
+  const AMark: TAtlasTestLensMark): TProc;
 var
   mSelection: TAtlasTestSelection;
   mLine: Integer;
@@ -951,20 +820,20 @@ var
   mOnTable: TAtlasTestsLensTableProc;
 begin
   // Nur Kopien einfangen, keine Parameter.
-  mSelection := AItem.Selection;
-  mLine := AItem.Line;
+  mSelection := AMark.Selection;
+  mLine := AMark.Line;
   mFileName := AFileName;
   mDebugger := ADebugger;
   mShow := AShow;
   mOnTable := AOnTable;
-  case AMark of
-    TAtlasIdeTestsLens.TMark.Debug:
+  case AButton of
+    TAtlasTestLensButton.Debug:
       Result :=
         procedure
         begin
           mDebugger.Debug(mFileName, mSelection);
         end;
-    TAtlasIdeTestsLens.TMark.Compare:
+    TAtlasTestLensButton.Compare:
       Result :=
         procedure
         begin
@@ -973,7 +842,7 @@ begin
             mShow(mSelection);
           end;
         end;
-    TAtlasIdeTestsLens.TMark.Table:
+    TAtlasTestLensButton.Table:
       Result :=
         procedure
         begin
@@ -995,28 +864,28 @@ procedure TAtlasIdeTestsLens.EditorMouseDown(const Editor: TWinControl; Button: 
   Shift: TShiftState; X, Y: Integer);
 var
   mHit: Integer;
-  mMark: TMark;
+  mButton: TAtlasTestLensButton;
 begin
   if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FShowing or (FUnitName = '') or
     not Wanted(TAtlasIdeSettings.Current) then
   begin
     Exit;
   end;
-  mHit := HitAt(X, Y, mMark);
+  mHit := HitAt(X, Y, mButton);
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
   if (mHit >= 0) and ShownAt(FScannedFile, FItems[mHit].TopRow) then
   begin
-    QueueClick(mHit, mMark);
+    QueueClick(mHit, mButton);
   end;
 end;
 
-procedure TAtlasIdeTestsLens.QueueClick(AIndex: Integer; AMark: TMark);
+procedure TAtlasIdeTestsLens.QueueClick(AIndex: Integer; AButton: TAtlasTestLensButton);
 var
   mAction: TProc;
   mAlive: TAlive;
   mKeep: IInterface;
 begin
-  mAction := ClickAction(AMark, FDebugger, FCompare.Show, FOnTable, FScannedFile, FItems[AIndex]);
+  mAction := ClickAction(AButton, FDebugger, FCompare.Show, FOnTable, FScannedFile, FItems[AIndex].Mark);
   mAlive := FAlive;
   mKeep := FAliveRef;
   // Erst nach dem Mausereignis: der Editor setzt sonst den Cursor danach; die Tabelle ist modal. Die Lens lebt

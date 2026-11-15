@@ -67,6 +67,15 @@ type
     Series: TAtlasTestSeriesMarkFunc;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Nach dem Build vor dem Lauf bzw. Debuggen (#69, #585): weiter, vom Build-Dienst abgelehnt oder
+  /// fehlgeschlagen.</summary>
+  TAtlasTestBuildStep = (Go, Refused, Failed);
+  /// <summary>Takt nach „Start“ (#585): weiter warten, der Prozess läuft, schon fertig (Bericht da) bzw. bis zur
+  /// Zeitgrenze kein Prozess.</summary>
+  TAtlasTestDebugWait = (Wait, Running, Finished, TimedOut);
+{$SCOPEDENUMS OFF}
+
   TAtlasTestDebug = class
   public const
     /// <summary>So lange wartet Atlas nach „Start“ auf den Prozess, bevor es die Startparameter zurückstellt.
@@ -107,6 +116,16 @@ type
     /// <summary>Einmaligen Haltepunkt setzen: debug.testBreakAtStart an und die Zeile bekannt.</summary>
     class function BreakWanted(const ASettings: TAtlasPluginSettings; const ASelection: TAtlasTestSelection): Boolean;
       static;
+    /// <summary>Schritt nach dem Build: mit AError abgelehnt, sonst nach ASucceeded weiter oder fehlgeschlagen.
+    /// </summary>
+    class function BuildStep(ASucceeded: Boolean; const AError: string): TAtlasTestBuildStep; static;
+    /// <summary>Takt nach „Start“: AProcesses Prozesse im Debugger, AReportExists der Bericht liegt schon vor,
+    /// AElapsedMs seit „Start“.</summary>
+    class function WaitStep(AProcesses: Integer; AReportExists: Boolean; AElapsedMs: UInt64): TAtlasTestDebugWait;
+      static;
+    /// <summary>Mögliche Unitnamen zum vollen Namen Unit.Fixture.Methode[.Fall]: der Text vor jedem Punkt, von
+    /// hinten nach vorn (der Unitname kann Punkte enthalten).</summary>
+    class function UnitNamesOf(const AFullName: string): TArray<string>; static;
   end;
 
 implementation
@@ -389,6 +408,60 @@ class function TAtlasTestDebug.BreakWanted(const ASettings: TAtlasPluginSettings
   const ASelection: TAtlasTestSelection): Boolean;
 begin
   Result := ASettings.TestBreakAtStart and (ASelection.Method <> '') and (ASelection.BreakLine >= 0);
+end;
+
+class function TAtlasTestDebug.BuildStep(ASucceeded: Boolean; const AError: string): TAtlasTestBuildStep;
+begin
+  if AError <> '' then
+  begin
+    Result := TAtlasTestBuildStep.Refused;
+  end
+  else if not ASucceeded then
+  begin
+    Result := TAtlasTestBuildStep.Failed;
+  end
+  else
+  begin
+    Result := TAtlasTestBuildStep.Go;
+  end;
+end;
+
+class function TAtlasTestDebug.WaitStep(AProcesses: Integer; AReportExists: Boolean;
+  AElapsedMs: UInt64): TAtlasTestDebugWait;
+begin
+  if AProcesses > 0 then
+  begin
+    Result := TAtlasTestDebugWait.Running;
+  end
+  // Schneller als ein Takt gelaufen: der Bericht ist schon da.
+  else if AReportExists then
+  begin
+    Result := TAtlasTestDebugWait.Finished;
+  end
+  else if AElapsedMs > cStartTimeoutMs then
+  begin
+    Result := TAtlasTestDebugWait.TimedOut;
+  end
+  else
+  begin
+    Result := TAtlasTestDebugWait.Wait;
+  end;
+end;
+
+class function TAtlasTestDebug.UnitNamesOf(const AFullName: string): TArray<string>;
+var
+  mName: string;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mName := Trim(AFullName);
+  for mIndex := Length(mName) downto 1 do
+  begin
+    if mName[mIndex] = '.' then
+    begin
+      Result := Result + [Copy(mName, 1, mIndex - 1)];
+    end;
+  end;
 end;
 
 end.

@@ -146,6 +146,31 @@ type
     class function StateName(AState: TAtlasTestListState): string; static;
   end;
 
+  /// <summary>Die Listen eines Testprojekts als Reiter (#2167): zusammenführen, auswählen, anlegen, kopieren.
+  /// </summary>
+  TAtlasTestListSet = class
+  public
+    /// <summary>Listen des Projekts AProject, dahinter die eigenen APersonal ohne die gleichnamigen.</summary>
+    class function Merged(const AProject, APersonal: TAtlasTestLists): TAtlasTestLists; static;
+    /// <summary>Gibt es die Liste AIndex?</summary>
+    class function Has(const ALists: TAtlasTestLists; AIndex: Integer): Boolean; static;
+    /// <summary>Gibt es die Liste AIndex und ist sie fest (Tests lassen sich hinzufügen und entfernen)?</summary>
+    class function IsFixed(const ALists: TAtlasTestLists; AIndex: Integer): Boolean; static;
+    /// <summary>Name der Liste AIndex; '' ohne.</summary>
+    class function NameAt(const ALists: TAtlasTestLists; AIndex: Integer): string; static;
+    /// <summary>Namen aller Listen.</summary>
+    class function Names(const ALists: TAtlasTestLists): TArray<string>; static;
+    /// <summary>Namen aller Listen außer AExcept (vergeben für den Dialog).</summary>
+    class function Taken(const ALists: TAtlasTestLists; AExcept: Integer): TArray<string>; static;
+    /// <summary>Neue eigene Liste mit freiem Namen nach ADefaultName.</summary>
+    class function Fresh(const ALists: TAtlasTestLists; const ADefaultName: string): TAtlasTestList; static;
+    /// <summary>Kopie der Liste AIndex mit freiem Namen; eine Kopie gehört zuerst nur mir.</summary>
+    class function Copied(const ALists: TAtlasTestLists; AIndex: Integer): TAtlasTestList; static;
+    /// <summary>Kennung von tests.lists (AWanted), Auswahl ACurrent und Listen ALists: Ändert sie sich, zeigt das
+    /// Fenster die Listen neu.</summary>
+    class function StateKey(AWanted: Boolean; ACurrent: Integer; const ALists: TAtlasTestLists): string; static;
+  end;
+
 implementation
 
 uses
@@ -1062,6 +1087,83 @@ end;
 class function TAtlasTestListModel.StateName(AState: TAtlasTestListState): string;
 begin
   Result := cStateNames[AState];
+end;
+
+{ TAtlasTestListSet }
+
+class function TAtlasTestListSet.Merged(const AProject, APersonal: TAtlasTestLists): TAtlasTestLists;
+var
+  mList: TAtlasTestList;
+begin
+  Result := Copy(AProject);
+  // Gleichnamige eigene Listen treten hinter die des Projekts zurück.
+  for mList in APersonal do
+  begin
+    if TAtlasTestListModel.IndexOf(Result, mList.Name) < 0 then
+    begin
+      Result := Result + [mList];
+    end;
+  end;
+end;
+
+class function TAtlasTestListSet.Has(const ALists: TAtlasTestLists; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(ALists));
+end;
+
+class function TAtlasTestListSet.IsFixed(const ALists: TAtlasTestLists; AIndex: Integer): Boolean;
+begin
+  Result := Has(ALists, AIndex) and not ALists[AIndex].IsDynamic;
+end;
+
+class function TAtlasTestListSet.NameAt(const ALists: TAtlasTestLists; AIndex: Integer): string;
+begin
+  Result := '';
+  if Has(ALists, AIndex) then
+  begin
+    Result := ALists[AIndex].Name;
+  end;
+end;
+
+class function TAtlasTestListSet.Names(const ALists: TAtlasTestLists): TArray<string>;
+begin
+  Result := Taken(ALists, -1);
+end;
+
+class function TAtlasTestListSet.Taken(const ALists: TAtlasTestLists; AExcept: Integer): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ALists) do
+  begin
+    if mIndex <> AExcept then
+    begin
+      Result := Result + [ALists[mIndex].Name];
+    end;
+  end;
+end;
+
+class function TAtlasTestListSet.Fresh(const ALists: TAtlasTestLists; const ADefaultName: string): TAtlasTestList;
+begin
+  Result := Default(TAtlasTestList);
+  Result.Name := TAtlasTestListModel.UniqueName(ALists, ADefaultName);
+  Result.Store := TAtlasTestListStore.Personal;
+end;
+
+class function TAtlasTestListSet.Copied(const ALists: TAtlasTestLists; AIndex: Integer): TAtlasTestList;
+begin
+  Result := ALists[AIndex];
+  Result.Rules := Copy(Result.Rules);
+  Result.Tests := Copy(Result.Tests);
+  Result.Name := TAtlasTestListModel.UniqueName(ALists, Result.Name);
+  // Ins Projekt kommt die Kopie über „Umbenennen …“.
+  Result.Store := TAtlasTestListStore.Personal;
+end;
+
+class function TAtlasTestListSet.StateKey(AWanted: Boolean; ACurrent: Integer; const ALists: TAtlasTestLists): string;
+begin
+  Result := BoolToStr(AWanted, True) + '|' + IntToStr(ACurrent) + '|' + TAtlasTestListModel.ToJson(ALists, '');
 end;
 
 end.
