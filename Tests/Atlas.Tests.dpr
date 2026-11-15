@@ -1351,6 +1351,8 @@ uses
   Atlas.Core.Forms.Text in '..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Text.pas',
   Atlas.Core.Forms.Changes in '..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Changes.pas',
   Atlas.Core.Forms.Tests in 'IDE.Expert\Atlas.Core.Forms.Tests.pas',
+  Atlas.Core.Forms.PropertyValues in '..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.PropertyValues.pas',
+  Atlas.Core.Forms.PropertyValues.Tests in 'IDE.Expert\Atlas.Core.Forms.PropertyValues.Tests.pas',
   Atlas.Core.Assistants.EditInbox in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas',
   Atlas.Core.Assistants.EditInbox.Tests in 'IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas',
   Atlas.Core.Assistants.InboxPace in '..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
