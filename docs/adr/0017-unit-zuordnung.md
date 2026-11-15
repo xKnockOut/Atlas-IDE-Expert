@@ -1739,6 +1739,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | Unit | Datei | Begründung |
 |---|---|---|
 | `Atlas.Core.Bookmarks.Quick` | `Core/Bookmarks/Atlas.Core.Bookmarks.Quick.pas` | Ordner `Core/Bookmarks` |
+| `Atlas.Core.Bookmarks.ColumnPlan` | `Core/Bookmarks/Atlas.Core.Bookmarks.ColumnPlan.pas` | Ordner `Core/Bookmarks` |
+| `Atlas.Core.Bookmarks.Plan` | `Core/Bookmarks/Atlas.Core.Bookmarks.Plan.pas` | Ordner `Core/Bookmarks` |
 | `Atlas.Core.Bookmarks.SavedPlaces` | `Core/Bookmarks/Atlas.Core.Bookmarks.SavedPlaces.pas` | Notizen und Lesezeichen als gemerkte Stellen (Vertrag SavedPlaces), #1456 |
 | `Atlas.Core.Bookmarks.Store` | `Core/Bookmarks/Atlas.Core.Bookmarks.Store.pas` | Ordner `Core/Bookmarks` |
 | `Atlas.Core.Marks.Ids` | `Core/Marks/Atlas.Core.Marks.Ids.pas` | Ordner `Core/Marks` |
