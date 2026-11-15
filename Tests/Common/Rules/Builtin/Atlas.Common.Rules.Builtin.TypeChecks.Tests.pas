@@ -64,6 +64,10 @@ type
     procedure OpenArraysSliceAndExpressions;
     [Test]
     procedure AddressOfExpression;
+    /// <summary>@F einer prozeduralen Variablen ist eine Variable vom Typ Pointer und geht an var P: Pointer
+    /// (Laden('Name', @xFunc)); @ einer Integer-Variablen nicht.</summary>
+    [Test]
+    procedure ProceduralAddressIsVariable;
     [Test]
     procedure PropertyFixWritesBack;
     [Test]
@@ -654,6 +658,20 @@ begin
   // Variablen, Elemente, Felder, Routinen und Dereferenzierung haben eine Adresse.
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  if (@Zahl = nil) or (@(Zahl) = nil) or (@Feld[1] = nil) ' +
     'or (@Doppelt = nil) or (@S[1] = nil) or (@Zeile.FText = nil) then;'#10)))));
+end;
+
+procedure TInvalidVarArgumentTests.ProceduralAddressIsVariable;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := VarFindings('unit Lader;'#10'interface'#10'implementation'#10'type'#10 +
+    '  TRechnen = function(A: Integer): Integer; stdcall;'#10'var'#10'  xRechnen: TRechnen;'#10 +
+    '  xZaehlen: function: Integer;'#10'  Zahl: Integer;'#10 +
+    'procedure Laden(const AName: string; var AZeiger: Pointer);'#10'begin'#10'end;'#10 +
+    'procedure Tun;'#10'begin'#10'  Laden(''Rechnen'', @xRechnen);'#10'  Laden(''Zaehlen'', @xZaehlen);'#10 +
+    '  Laden(''Zahl'', @Zahl);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(16, mFound[0].Range.StartPos.Line, '@Zahl');
 end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;

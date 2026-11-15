@@ -106,6 +106,7 @@ type
     procedure ClassifyCall(AArgument: TSyntaxNode; AOpenArray: Boolean; var AResult: TVarArgument);
     procedure ClassifyConstant(const ASymbol: TResolvedSymbol; AOpenArray: Boolean; var AResult: TVarArgument);
     procedure ClassifySymbol(AArgument: TSyntaxNode; AOpenArray: Boolean; var AResult: TVarArgument);
+    function AddressMayBeVariable(AAddress: TSyntaxNode): Boolean;
     function Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;
     function FixHost(ACall: TSyntaxNode): TSyntaxNode;
     function KnownParamType(const AParamType: string): Boolean;
@@ -374,6 +375,44 @@ begin
   end;
 end;
 
+function IsProceduralText(const AText: string): Boolean;
+begin
+  Result := StartsText('procedure', AText) or StartsText('function', AText) or StartsText('reference', AText);
+end;
+
+function TVarArgumentScan.AddressMayBeVariable(AAddress: TSyntaxNode): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mTypeText: string;
+begin
+  // @F einer prozeduralen Variablen ist selbst eine Variable vom Typ Pointer (@F := GetProcAddress(...)) und
+  // geht an var P: Pointer (LoadFunction('Name', @xFunc)). Ausdruck nur bei bekanntem anderem Typ.
+  Result := False;
+  if (AAddress.ChildCount <> 1) or not (AAddress[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
+    Exit;
+  end;
+  if not FResolver.NodeType(FContext.Tree, FFileName, AAddress[0], mSymbol, mType, mTypeFound) then
+  begin
+    Exit(True);
+  end;
+  if not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+  begin
+    Exit;
+  end;
+  mTypeText := DeclaredTypeText(FContext, mSymbol);
+  if IsProceduralText(mTypeText) then
+  begin
+    Exit(True);
+  end;
+  if mTypeFound and (Pos('=', mType.Signature) > 0) then
+  begin
+    Exit(IsProceduralText(Trim(Copy(mType.Signature, Pos('=', mType.Signature) + 1, MaxInt))));
+  end;
+  Result := not mTypeFound and not TResolverText.IsBuiltinTypeName(mTypeText);
+end;
+
 function TVarArgumentScan.Classify(AArgument: TSyntaxNode; const AParamType: string): TVarArgument;
 var
   mOpenArray: Boolean;
@@ -403,7 +442,10 @@ begin
         Result.Kind := TVarArgumentKind.Expression;
       end;
     TSyntaxKind.AddressOf:
-      Result.Kind := TVarArgumentKind.Expression;
+      if not AddressMayBeVariable(AArgument) then
+      begin
+        Result.Kind := TVarArgumentKind.Expression;
+      end;
     TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr, TSyntaxKind.ParenExpr:
       ClassifyExpression(AArgument, mOpenArray, Result);
     TSyntaxKind.IndexAccess:
