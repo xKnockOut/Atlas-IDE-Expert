@@ -25,6 +25,12 @@ type
     procedure JumpNodeToBodyOrDeclaration;
     [Test]
     procedure JumpUnknownNodeGoesNowhere;
+    [Test]
+    procedure PlaceCaptionIndentsAndMarks;
+    [Test]
+    procedure PlacePathByMarkAndGroup;
+    [Test]
+    procedure PlaceChoiceById;
   end;
 
 implementation
@@ -186,6 +192,55 @@ begin
   mCrumb := Default(TAtlasCrumb);
   mCrumb.Node := 3;
   Assert.AreEqual<TAtlasCrumbJumpKind>(TAtlasCrumbJumpKind.None, TAtlasCrumbPlan.Jump(nil, mCrumb, False).Kind);
+end;
+
+function MenuPlace(const AText, AGroup, AMark: string; ADepth, ACount: Integer): TAtlasCrumbPlace;
+begin
+  Result := Default(TAtlasCrumbPlace);
+  Result.Text := AText;
+  Result.Group := AGroup;
+  Result.Mark := AMark;
+  Result.Depth := ADepth;
+  Result.Count := ACount;
+end;
+
+procedure TAtlasCrumbPlanTests.PlaceCaptionIndentsAndMarks;
+begin
+  Assert.AreEqual('Region', TAtlasCrumbPlan.PlaceCaption(MenuPlace('Region', '', '', 0, 0), 'Region', True));
+  Assert.AreEqual('        Innen', TAtlasCrumbPlan.PlaceCaption(MenuPlace('Innen', '', '', 2, 0), 'Innen', False));
+  Assert.AreEqual('+ public', TAtlasCrumbPlan.PlaceCaption(MenuPlace('public', '', '+', 0, 3), 'public', True));
+  Assert.AreEqual('public', TAtlasCrumbPlan.PlaceCaption(MenuPlace('public', '', '+', 0, 3), 'public', False));
+end;
+
+procedure TAtlasCrumbPlanTests.PlacePathByMarkAndGroup;
+begin
+  Assert.AreEqual<TAtlasCrumbPlacePath>(TAtlasCrumbPlacePath.SectionOne,
+    TAtlasCrumbPlan.PlacePath(MenuPlace('public', '', '+', 0, 1), True));
+  Assert.AreEqual<TAtlasCrumbPlacePath>(TAtlasCrumbPlacePath.SectionCount,
+    TAtlasCrumbPlan.PlacePath(MenuPlace('public', '', '+', 0, 4), True));
+  Assert.AreEqual<TAtlasCrumbPlacePath>(TAtlasCrumbPlacePath.Group,
+    TAtlasCrumbPlan.PlacePath(MenuPlace('public', 'interface', '+', 0, 4), False));
+  Assert.AreEqual<TAtlasCrumbPlacePath>(TAtlasCrumbPlacePath.LineOnly,
+    TAtlasCrumbPlan.PlacePath(MenuPlace('x', '', '', 0, 0), True));
+end;
+
+procedure TAtlasCrumbPlanTests.PlaceChoiceById;
+var
+  mChoice: TAtlasCrumbPlaceChoice;
+begin
+  mChoice := TAtlasCrumbPlan.PlaceChoice(TAtlasCrumbPlan.cAppendId + '2', 3);
+  Assert.AreEqual<TAtlasCrumbPlaceAction>(TAtlasCrumbPlaceAction.Append, mChoice.Action);
+  Assert.AreEqual(2, mChoice.Index);
+  mChoice := TAtlasCrumbPlan.PlaceChoice(TAtlasCrumbPlan.cAppendId + 'x', 3);
+  Assert.AreEqual(TAtlasCrumbPlan.cNoSection, mChoice.Index);
+  mChoice := TAtlasCrumbPlan.PlaceChoice(TAtlasCrumbPlan.cCreateId + 'private', 3);
+  Assert.AreEqual<TAtlasCrumbPlaceAction>(TAtlasCrumbPlaceAction.AddSection, mChoice.Action);
+  Assert.AreEqual('private', mChoice.Keyword);
+  mChoice := TAtlasCrumbPlan.PlaceChoice('1', 3);
+  Assert.AreEqual<TAtlasCrumbPlaceAction>(TAtlasCrumbPlaceAction.Jump, mChoice.Action);
+  Assert.AreEqual(1, mChoice.Index);
+  Assert.AreEqual<TAtlasCrumbPlaceAction>(TAtlasCrumbPlaceAction.None, TAtlasCrumbPlan.PlaceChoice('3', 3).Action);
+  Assert.AreEqual<TAtlasCrumbPlaceAction>(TAtlasCrumbPlaceAction.None, TAtlasCrumbPlan.PlaceChoice('', 3).Action);
 end;
 
 initialization

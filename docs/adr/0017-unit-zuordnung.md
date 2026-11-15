@@ -362,6 +362,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Switches` | `Core/Problems/Atlas.Core.Problems.Switches.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.AtCaret` | `Core/Problems/Atlas.Core.Problems.AtCaret.pas` | Ordner `Core/Problems`: Befund unter der Schreibmarke, ohne IDE testbar (#1967) |
 | `Atlas.Core.Problems.Plan` | `Core/Problems/Atlas.Core.Problems.Plan.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.Marks` | `Core/Problems/Atlas.Core.Problems.Marks.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Product.Version` | `Core/Product/Atlas.Core.Product.Version.pas` | Ordner `Core/Product` |
 | `Atlas.Core.Projects.Baseline` | `Core/Projects/Atlas.Core.Projects.Baseline.pas` | Stand der Baseline-Datei; Build-Zusammenfassung, Projektverlauf und Modul Prüfregeln lesen ihn, #1455 |
 | `Atlas.Core.Projects.Contract` | `Core/Projects/Atlas.Core.Projects.Contract.pas` | Ordner `Core/Projects` |
