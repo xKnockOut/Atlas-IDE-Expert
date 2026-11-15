@@ -280,6 +280,7 @@ Atlas.Common.Rules.Builtin.Declarations.Overloads.Tests
 Atlas.Common.Rules.Builtin.Declarations.Shared.Tests
 Atlas.Common.Rules.Builtin.Declarations.TypeSizes.Tests
 Atlas.Common.Rules.Builtin.Declarations.VariantRecords.Tests
+Atlas.Common.Rules.Builtin.DelphiSemantics.Tests
 Atlas.Common.Rules.Builtin.DllExports.Tests
 Atlas.Common.Rules.Builtin.Events.Tests
 Atlas.Common.Rules.Builtin.Exceptions.Tests

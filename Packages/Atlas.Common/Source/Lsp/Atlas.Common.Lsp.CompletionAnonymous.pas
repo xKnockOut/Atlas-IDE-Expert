@@ -665,6 +665,9 @@ var
   mName: string;
 begin
   Result := AMethodRef;
+  // Eigenes Array: Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write, sonst änderte das Schreiben
+  // unten auch AMethodRef.Params des Aufrufers.
+  Result.Params := Copy(Result.Params);
   mCount := ArgNameCount(Result.Params);
   if mCount = 0 then
   begin

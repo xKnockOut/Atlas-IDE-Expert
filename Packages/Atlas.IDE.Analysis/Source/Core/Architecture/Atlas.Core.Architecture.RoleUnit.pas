@@ -336,8 +336,10 @@ end;
 /// <summary>Unitname einer Datei: ohne Ordner (beide Trennzeichen) und Endung.</summary>
 function UnitNameOfFile(const AFileName: string): string;
 begin
-  Result := ChangeFileExt(ExtractFileName(StringReplace(AFileName, '\', '/', [rfReplaceAll])), '');
-  Result := Copy(Result, LastDelimiter('/', Result) + 1, MaxInt);
+  // Selbst an '/' trennen: ExtractFileName trennt unter Windows nur an '\', ChangeFileExt erst danach, sonst
+  // gälte ein Punkt im Ordnernamen als Endung.
+  Result := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  Result := ChangeFileExt(Copy(Result, LastDelimiter('/', Result) + 1, MaxInt), '');
 end;
 
 /// <summary>Ordner von AFileName mit Trennzeichen am Ende, wie die Datei es schreibt.</summary>
