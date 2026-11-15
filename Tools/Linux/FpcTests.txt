@@ -552,3 +552,6 @@ Atlas.Core.Debug.VariablesFlow.Tests
 Atlas.Core.Debug.LaunchProcesses.Tests
 Atlas.Core.Debug.StepFilterEdit.Tests
 Atlas.Core.Debug.AccessViolation.Stop.Tests
+Atlas.Core.Search.BarPlan.Tests
+Atlas.Core.UnitSearch.Plan.Tests
+Atlas.Core.Rules.OwnershipPlan.Tests
