@@ -37,7 +37,6 @@ uses
   Winapi.Windows,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
@@ -139,6 +138,8 @@ procedure ReevaluateInlineValues;
 implementation
 
 uses
+  System.UITypes,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
@@ -510,7 +511,7 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TSliceStep;
+function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
 var
   mValue: TAtlasDebugValue;
 begin
