@@ -203,9 +203,11 @@ begin
   Result := TColor(AColor);
 end;
 
-function StyleColors: TAtlasColors;
+/// <summary>Farben aus dem Stil von AControl: Die IDE themt je Formular; der globale Stil liefert im dunklen
+/// Thema Weiß (Gliederung hell im dunklen Thema).</summary>
+function StyleColors(AControl: TControl): TAtlasColors;
 begin
-  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices.GetSystemColor(clWindow))));
+  Result := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(AControl).GetSystemColor(clWindow))));
 end;
 
 { TAtlasOutlineFrame }
@@ -776,7 +778,12 @@ begin
   begin
     Exit;
   end;
-  mColors := StyleColors;
+  mColors := StyleColors(FList);
+  // Fläche unter den Zeilen in derselben Farbe wie die Zeilen.
+  if FList.Color <> ToColor(mColors.Surface) then
+  begin
+    FList.Color := ToColor(mColors.Surface);
+  end;
   mCanvas := FList.Canvas;
   mNode := FNodes[FRows[Index].Node];
   mCanvas.Brush.Style := bsSolid;

@@ -284,6 +284,9 @@ end;
 
 procedure TAtlasUnitSearchPainter.Text(const AText: string; ARect: TRect; AFormat: Cardinal);
 begin
+  // DrawText malt mit dem Hintergrundmodus des DC: bsClear am Pinsel setzt ihn erst, wenn TCanvas den Pinsel neu
+  // wählt; nach Font.Assign blieb er OPAQUE, und die Texte standen auf einem schwarzen Kasten.
+  SetBkMode(FCanvas.Handle, TRANSPARENT);
   DrawText(FCanvas.Handle, PChar(AText), -1, ARect, AFormat);
 end;
 
