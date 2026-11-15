@@ -10,6 +10,9 @@
 // Fehlalarme aus der Prüfung von Atlas und der RTL: Alias einer Deklaration
 // aus System (tkRecord in System.TypInfo, TList<T>.Add), Zyklus bei Rümpfen
 // nur mit eingebauten Typen und Intrinsics (THashFNV1a32.GetHashValue).
+// Routinen aus System und SysInit (TMonitor.Enter, Pos) und direkt gerufene
+// Mitglieder generischer Typen (TObjectList<T>[I]) brauchen keinen Eintrag im
+// uses, auch gegen die RTL der Delphi-Installation (BDS).
 // lsp-ignore an einem Aufruf, den der Index nicht kennt, bleibt ohne
 // unused-suppression (RenameFile unter Linux).
 
@@ -36,6 +39,19 @@ type
     /// Feld einer Instanz ohne Bedarf und Alias als Ergebnistyp.</summary>
     [Test]
     procedure OwnUnitInstanceMembersAndResultAlias;
+    /// <summary>System und SysInit stehen implizit im uses: TMonitor.Enter, Pos und UpCase brauchen keinen
+    /// Eintrag, auch wenn ihr Rumpf Verweise hat.</summary>
+    [Test]
+    procedure ImplicitSystemNeedsNoUses;
+    /// <summary>Mitglied eines generischen Typs direkt gerufen (FListe[I] auf ein TObjectList&lt;T&gt;-Feld einer
+    /// anderen Unit): Delphi 13 bettet ohne System.Generics.Collections ein.</summary>
+    [Test]
+    procedure GenericMemberNeedsNoUses;
+    /// <summary>Gegen die RTL der Delphi-Installation (BDS; ohne sie übersprungen): TMonitor.Enter, Pos, UpCase und
+    /// TObjectList&lt;T&gt;[I] auf ein Feld einer anderen Unit schweigen ohne System bzw.
+    /// System.Generics.Collections im uses.</summary>
+    [Test]
+    procedure RealRtlNeedsNoImplicitOrGenericUnit;
     [Test]
     procedure QuickFixAddsUnit;
     [Test]
@@ -83,13 +99,16 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Diagnostics,
+  System.IOUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Pascal.IncludeFiles,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Inlining,
+  Atlas.Common.Semantics.InlineCallees,
   Atlas.Tests.RuleAssert;
 
 const
@@ -448,6 +467,220 @@ begin
     'in uses (wie H2443).|', Messages(Findings(mSource)));
   Assert.AreEqual('', Messages(Findings(StringReplace(mSource, 'uses Werk.Ansicht;',
     'uses Werk.Ansicht, Werk.Sammlung, Werk.Generisch, Werk.Typen;', []))));
+end;
+
+procedure TInliningRulesTests.ImplicitSystemNeedsNoUses;
+const
+  cSystem =
+    'unit System;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TMonitor = record'#10 +
+    '  private'#10 +
+    '    class procedure Sperre(const AObjekt: TObject); static;'#10 +
+    '  public'#10 +
+    '    class procedure Enter(const AObjekt: TObject); static; inline;'#10 +
+    '  end;'#10 +
+    'function Pos(const ATeil, AText: string): Integer; inline;'#10 +
+    'implementation'#10 +
+    'function PosIntern(const ATeil, AText: string): Integer;'#10 +
+    'begin'#10 +
+    '  Result := 0;'#10 +
+    'end;'#10 +
+    'class procedure TMonitor.Sperre(const AObjekt: TObject);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'class procedure TMonitor.Enter(const AObjekt: TObject);'#10 +
+    'begin'#10 +
+    '  if Kennung > 0 then'#10 +
+    '    Sperre(AObjekt);'#10 +
+    'end;'#10 +
+    'function Pos(const ATeil, AText: string): Integer;'#10 +
+    'begin'#10 +
+    '  Result := PosIntern(ATeil, AText) + Kennung;'#10 +
+    'end;'#10 +
+    'end.';
+  cSysInit =
+    'unit SysInit;'#10 +
+    'interface'#10 +
+    'function Kennung: Integer; inline;'#10 +
+    'implementation'#10 +
+    'function Intern: Integer;'#10 +
+    'begin'#10 +
+    '  Result := 1;'#10 +
+    'end;'#10 +
+    'function Kennung: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Intern + Pos(''a'', ''b'');'#10 +
+    'end;'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Mathe;'#10 +
+    'procedure Lauf(O: TObject);'#10 +
+    'var'#10 +
+    '  X: Integer;'#10 +
+    'begin'#10 +
+    '  TMonitor.Enter(O);'#10 +
+    '  System.TMonitor.Enter(O);'#10 +
+    '  X := Pos(''='', ''a=b'') + Kennung + Halb(2);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+  mRefs: string;
+  mSymbol: TIndexSymbol;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cSysInit, 'C:\P\SysInit.pas', nil));
+  // Die Rümpfe haben Verweise (wie in der RTL, hier auf die jeweils andere implizite Unit): Ohne die Ausnahme
+  // verlangte die Regel System bzw. SysInit im uses.
+  mRefs := '';
+  for mSymbol in TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil).Symbols do
+  begin
+    if mSymbol.InlineRefs <> nil then
+    begin
+      mRefs := mRefs + mSymbol.QualifiedName + '=' + String.Join(',', mSymbol.InlineRefs) + '|';
+    end;
+  end;
+  Assert.AreEqual('TMonitor.Enter=Kennung|Pos=Kennung|TMonitor.Enter=Kennung|Pos=Kennung|', mRefs);
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+end;
+
+procedure TInliningRulesTests.GenericMemberNeedsNoUses;
+const
+  cHalter =
+    'unit Werk.Halter;'#10 +
+    'interface'#10 +
+    'uses Werk.Generisch;'#10 +
+    'type'#10 +
+    '  THalter = class'#10 +
+    '  public'#10 +
+    '    Liste: TFolge<Integer>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Halter;'#10 +
+    'procedure Lauf(H: THalter);'#10 +
+    'var'#10 +
+    '  X: Integer;'#10 +
+    'begin'#10 +
+    '  X := H.Liste[0] + H.Liste.Items[1];'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cHalter, 'C:\P\Werk.Halter.pas', nil));
+  // Vorher: „Werk.Generisch fehlt in uses“ für TFolge.GetItem. Aus dem Rumpf einer Routine einer anderen Unit
+  // heraus braucht das Mitglied seine Unit weiter (OwnUnitInstanceMembersAndResultAlias, Spalten[X]).
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+end;
+
+/// <summary>Ordner source\rtl der Delphi-Installation aus BDS; '' ohne.</summary>
+function RtlRoot: string;
+begin
+  Result := GetEnvironmentVariable('BDS');
+  if Result <> '' then
+  begin
+    Result := TPath.Combine(TPath.Combine(Result, 'source'), 'rtl');
+  end;
+  if (Result <> '') and not TDirectory.Exists(Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Unit AFile aus dem Ordner AFolder der RTL ARoot wie unter Win64 mit Delphi 13 in den Index.</summary>
+procedure AddRtlUnit(const AIndex: ISymbolIndex; const ARoot, AFolder, AFile: string);
+var
+  mFileName, mText: string;
+begin
+  mFileName := TPath.Combine(TPath.Combine(ARoot, AFolder), AFile);
+  Assert.IsTrue(TIncludeFiles.ReadFile(mFileName, mText), mFileName);
+  AIndex.AddUnit(TIndexExtractor.ExtractText(mText, mFileName, TArray<string>.Create('MSWINDOWS', 'WIN64', 'CPUX64',
+    'CPU64BITS', 'UNICODE', 'NATIVECODE', 'CONDITIONALEXPRESSIONS', 'VER370', 'ASSEMBLER'),
+    TIncludeFiles.Resolver(TArray<string>.Create(TPath.Combine(ARoot, 'sys'), TPath.Combine(ARoot, 'common')))));
+end;
+
+procedure TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit;
+const
+  cHalter =
+    'unit Werk.Halter;'#10 +
+    'interface'#10 +
+    'uses System.Generics.Collections;'#10 +
+    'type'#10 +
+    '  THalter = class'#10 +
+    '  public'#10 +
+    '    Liste: TObjectList<TObject>;'#10 +
+    '    Zahlen: TList<Integer>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Halter;'#10 +
+    'procedure Lauf(H: THalter);'#10 +
+    'var'#10 +
+    '  X: Integer;'#10 +
+    '  C: Char;'#10 +
+    'begin'#10 +
+    '  TMonitor.Enter(H);'#10 +
+    '  System.TMonitor.Enter(H);'#10 +
+    '  System.TMonitor.Exit(H);'#10 +
+    '  X := Pos(''='', ''a=b'') + H.Zahlen[0];'#10 +
+    '  C := UpCase(''a'');'#10 +
+    '  if H.Liste[X] = nil then'#10 +
+    '    X := Ord(C);'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mRoot: string;
+  mIndex: ISymbolIndex;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mWithRefs: string;
+begin
+  mRoot := RtlRoot;
+  // Ohne RTL nichts zu prüfen; ohne Assert.Pass wie ParsesDelphiSourceCorpus (Leckmonitor).
+  if mRoot = '' then
+  begin
+    Exit;
+  end;
+  mIndex := TSymbolIndex.Create;
+  AddRtlUnit(mIndex, mRoot, 'sys', 'System.pas');
+  AddRtlUnit(mIndex, mRoot, 'sys', 'SysInit.pas');
+  AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Defaults.pas');
+  AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Collections.pas');
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cHalter, 'C:\P\Werk.Halter.pas', nil));
+  // Die Rümpfe haben Verweise: Ohne die Ausnahmen verlangte die Regel System bzw. System.Generics.Collections.
+  Assert.IsTrue(mIndex.FindUnit('System', mUnit));
+  mWithRefs := '';
+  for mSymbol in mUnit.Symbols do
+  begin
+    if ((mSymbol.Name = 'Pos') or (mSymbol.QualifiedName = 'TMonitor.Enter')) and (mSymbol.InlineRefs <> nil) and
+      not TInlineCallees.IsWithoutRefs(mSymbol) and not ContainsText(mWithRefs, mSymbol.QualifiedName + '|') then
+    begin
+      mWithRefs := mWithRefs + mSymbol.QualifiedName + '|';
+    end;
+  end;
+  Assert.IsTrue(ContainsText(mWithRefs, 'TMonitor.Enter|'), mWithRefs);
+  Assert.IsTrue(ContainsText(mWithRefs, 'Pos|'), mWithRefs);
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+  mWithRefs := '';
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
