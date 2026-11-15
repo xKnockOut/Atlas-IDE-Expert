@@ -413,6 +413,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Settings.SchemaData` | `Core/Settings/Atlas.Core.Settings.SchemaData.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.Scopes` | `Core/Settings/Atlas.Core.Settings.Scopes.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.StatusBarItems` | `Core/Settings/Atlas.Core.Settings.StatusBarItems.pas` | Ordner `Core/Settings` |
+| `Atlas.Core.Settings.FeatureGates` | `Core/Settings/Atlas.Core.Settings.FeatureGates.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.StoreValues` | `Core/Settings/Atlas.Core.Settings.StoreValues.pas` | Ordner `Core/Settings`; Werte des zentralen Records nach Schlüssel für die Abschnitte der Module (#1455) |
 | `Atlas.Core.Settings.TeamFile` | `Core/Settings/Atlas.Core.Settings.TeamFile.pas` | Ordner `Core/Settings` |
 | `Atlas.Core.Settings.ToolbarItems` | `Core/Settings/Atlas.Core.Settings.ToolbarItems.pas` | Ordner `Core/Settings` |

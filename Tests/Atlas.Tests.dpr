@@ -1951,6 +1951,8 @@ uses
   Atlas.UI.EditorToolbar.Customize.Tests in 'IDE.Expert\Atlas.UI.EditorToolbar.Customize.Tests.pas',
   Atlas.Core.Settings.StatusBarItems in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.StatusBarItems.pas',
   Atlas.Core.Settings.StatusBarItems.Tests in 'IDE.Expert\Atlas.Core.Settings.StatusBarItems.Tests.pas',
+  Atlas.Core.Settings.FeatureGates in '..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.FeatureGates.pas',
+  Atlas.Core.Settings.FeatureGates.Tests in 'IDE.Expert\Atlas.Core.Settings.FeatureGates.Tests.pas',
   Atlas.Core.StatusBar.Layout in '..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Layout.pas',
   Atlas.Core.StatusBar.Layout.Tests in 'IDE.Expert\Atlas.Core.StatusBar.Layout.Tests.pas',
   Atlas.Core.StatusBar.Content in '..\Packages\Atlas.IDE.Base\Source\Core\StatusBar\Atlas.Core.StatusBar.Content.pas',
