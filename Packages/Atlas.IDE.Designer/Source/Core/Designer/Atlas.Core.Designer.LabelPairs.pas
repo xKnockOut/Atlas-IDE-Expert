@@ -11,6 +11,8 @@
 //   ihrer Schreibweise, mit Doppelpunkt: edtPlz → „PLZ:“, cbxZahlungsart →
 //   „Zahlungsart:“; Name „lbl“ + Rest (lblPlz).
 // - Tastenkürzel: erster Buchstabe der Caption, der in AUsed noch frei ist.
+// - Mitziehen: Snapped (Lage am Feld), Follow (mit dem Feld verschoben);
+//   NewSide/GapOf für neue Labels.
 
 interface
 
@@ -34,6 +36,9 @@ type
     cLabelPrefix = 'lbl';
     /// <summary>Linke Textkante im Feld: Rahmen und Innenabstand bei 96 dpi.</summary>
     cTextIndent = 3;
+    /// <summary>Abstand eines neuen Labels links vom Feld bzw. darüber.</summary>
+    cLeftGap = 8;
+    cAboveGap = 3;
   public
     /// <summary>Feld zu einem Label in ALabel; Field -1 ohne.</summary>
     class function FindField(const ALabel: TRect; const AFields: TArray<TRect>;
@@ -52,6 +57,18 @@ type
     /// <summary>Caption mit „&amp;“ vor dem ersten freien Buchstaben; leer, wenn schon eins da ist oder keiner
     /// frei.</summary>
     class function FreeAccelerator(const ACaption, AUsed: string): string; static;
+    /// <summary>Tastenkürzel einer Caption (Zeichen nach dem ersten „&amp;“) als Großbuchstabe; leer ohne.</summary>
+    class function AcceleratorOf(const ACaption: string): string; static;
+    /// <summary>Lage des Labels ALabel an seinem Feld: darüber auf die Textkante, links auf die Grundlinie
+    /// (ALabelAscent: Grundlinie unter Top; ohne Grundlinien, Werte unter 0, bleibt Top).</summary>
+    class function Snapped(const ALabel, AField: TRect; ASide: TAtlasPairSide;
+      ALabelAscent, AFieldBaseline: Integer): TPoint; static;
+    /// <summary>Lage des Labels, wenn sein Feld von AOldField nach ANewField wandert: um denselben Weg.</summary>
+    class function Follow(const ALabel, AOldField, ANewField: TRect): TPoint; static;
+    /// <summary>Seite neuer Labels: darüber oder links (designer.labelPairs.newLabelPosition).</summary>
+    class function NewSide(AAbove: Boolean): TAtlasPairSide; static;
+    /// <summary>Abstand eines neuen Labels zur Seite ASide.</summary>
+    class function GapOf(ASide: TAtlasPairSide): Integer; static;
   end;
 
 implementation
@@ -226,6 +243,55 @@ begin
     begin
       Exit(Copy(ACaption, 1, mIndex - 1) + '&' + Copy(ACaption, mIndex, MaxInt));
     end;
+  end;
+end;
+
+class function TAtlasLabelPairs.AcceleratorOf(const ACaption: string): string;
+var
+  mPos: Integer;
+begin
+  Result := '';
+  mPos := Pos('&', ACaption);
+  if mPos > 0 then
+  begin
+    Result := UpperCase(Copy(ACaption, mPos + 1, 1));
+  end;
+end;
+
+class function TAtlasLabelPairs.Snapped(const ALabel, AField: TRect; ASide: TAtlasPairSide;
+  ALabelAscent, AFieldBaseline: Integer): TPoint;
+begin
+  Result := ALabel.TopLeft;
+  if ASide = TAtlasPairSide.Above then
+  begin
+    Result.X := AField.Left + cTextIndent;
+  end
+  else if (ALabelAscent >= 0) and (AFieldBaseline >= 0) then
+  begin
+    Result.Y := BaselineTop(AFieldBaseline, ALabelAscent);
+  end;
+end;
+
+class function TAtlasLabelPairs.Follow(const ALabel, AOldField, ANewField: TRect): TPoint;
+begin
+  Result := Point(ALabel.Left + ANewField.Left - AOldField.Left, ALabel.Top + ANewField.Top - AOldField.Top);
+end;
+
+class function TAtlasLabelPairs.NewSide(AAbove: Boolean): TAtlasPairSide;
+begin
+  Result := TAtlasPairSide.Left;
+  if AAbove then
+  begin
+    Result := TAtlasPairSide.Above;
+  end;
+end;
+
+class function TAtlasLabelPairs.GapOf(ASide: TAtlasPairSide): Integer;
+begin
+  Result := cLeftGap;
+  if ASide = TAtlasPairSide.Above then
+  begin
+    Result := cAboveGap;
   end;
 end;
 

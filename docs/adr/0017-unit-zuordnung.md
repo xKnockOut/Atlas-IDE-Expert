@@ -262,6 +262,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.Layout.DebugTree` | `Core/Hover/Atlas.Core.Hover.Layout.DebugTree.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Texts` | `Core/Hover/Atlas.Core.Hover.Texts.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.View` | `Core/Hover/Atlas.Core.Hover.View.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Plan` | `Core/Hover/Atlas.Core.Hover.Plan.pas` | Ordner `Core/Hover`; Entscheidungen des Hover-Tooltips (Tasten, Zeitgeber, Aktionen), #1967 |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
 | `Atlas.Core.Localization.Language` | `Core/Localization/Atlas.Core.Localization.Language.pas` | Sprache der Plugin-Texte für Core und UI, Texttabellen der Units (#1458) |
 | `Atlas.Core.Lsp.AccessChains` | `Core/Lsp/Atlas.Core.Lsp.AccessChains.pas` | Ordner `Core/Lsp` |
@@ -899,8 +900,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.BreakpointTags` | `Core/Debug/Atlas.Core.Debug.BreakpointTags.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStack` | `Core/Debug/Atlas.Core.Debug.CallStack.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DialogCompletion` | `Core/Debug/Atlas.Core.Debug.DialogCompletion.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.DialogInput` | `Core/Debug/Atlas.Core.Debug.DialogInput.pas` | Debugger-Dialoge: Beschriftung, Liste nach einer Eingabe, Tasten, Übernehmen, #1967 |
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.EvaluateRows` | `Core/Debug/Atlas.Core.Debug.EvaluateRows.pas` | Zeilen des Fensters „Auswerten“: Ergebnis, kein Zugriff, Felder, Festgeheftete, #1967 |
 | `Atlas.Core.Debug.BreakpointCheck` | `Core/Debug/Atlas.Core.Debug.BreakpointCheck.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointAnchors` | `Core/Debug/Atlas.Core.Debug.BreakpointAnchors.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointRules` | `Core/Debug/Atlas.Core.Debug.BreakpointRules.pas` | Ordner `Core/Debug` |
@@ -934,9 +937,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Note` | `Core/Debug/Atlas.Core.Debug.Note.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.OwnCode` | `Core/Debug/Atlas.Core.Debug.OwnCode.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.StepFilter` | `Core/Debug/Atlas.Core.Debug.StepFilter.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.StepFilterEdit` | `Core/Debug/Atlas.Core.Debug.StepFilterEdit.pas` | Schrittfilter: Art des Schritts, Haltepunkt, Routine überspringen und zurücknehmen, #1967 |
 | `Atlas.Core.Debug.StepInto` | `Core/Debug/Atlas.Core.Debug.StepInto.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Unavailable` | `Core/Debug/Atlas.Core.Debug.Unavailable.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Variables` | `Core/Debug/Atlas.Core.Debug.Variables.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.VariablesFlow` | `Core/Debug/Atlas.Core.Debug.VariablesFlow.pas` | Fenster „Variablen“: Text unten, vorige Zeile, neue Überwachung, #1967 |
 | `Atlas.Core.Debug.Visualizers` | `Core/Debug/Atlas.Core.Debug.Visualizers.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Visualizers.Format` | `Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas` | Ordner `Core/Debug` |
 | `Atlas.IDE.Debug.AccessViolation` | `IDE/Debug/Atlas.IDE.Debug.AccessViolation.pas` | Ordner `IDE/Debug` |
@@ -1082,6 +1087,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
 | `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
 | `Atlas.Core.Debug.LaunchGroups` | `Core/Debug/Atlas.Core.Debug.LaunchGroups.pas` | Startverbünde lesen und schreiben, Ablauf eines Laufs ohne IDE, #867 |
+| `Atlas.Core.Debug.LaunchProcesses` | `Core/Debug/Atlas.Core.Debug.LaunchProcesses.pas` | Gestartete Programme eines Startverbunds: Zustand, Statusfeld, nächster Prozess, Prüfer, #1967 |
 | `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
 | `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EditValueDialog` | `UI/Debug/Atlas.UI.Debug.EditValueDialog.pas` | Ordner `UI/Debug` |
@@ -1158,6 +1164,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.EndSteps` | `Core/Tracker/Atlas.Core.Tracker.EndSteps.pas` | Ordner `Core/Tracker`; Plan und Schritte des Beendens in Workflow-Reihenfolge (Zeit, Felder, Kommentar, Übergang) mit Fortsetzen nach Ablehnung (#2123) |
 | `Atlas.Core.Tracker.StatusState` | `Core/Tracker/Atlas.Core.Tracker.StatusState.pas` | Ordner `Core/Tracker`; Feldtext, Menüeinträge und Palettenzeilen für den Zustand des aktuellen Issues im Statusfeld (#2124) |
 | `Atlas.Core.Tracker.SprintStart` | `Core/Tracker/Atlas.Core.Tracker.SprintStart.pas` | Ordner `Core/Tracker`; laufender Sprint ohne das Issue beim Beginnen (#2128) |
+| `Atlas.Core.Tracker.StartPlan` | `Core/Tracker/Atlas.Core.Tracker.StartPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Beginnen“ in „Meine Issues“ ohne IDE (#765, #1967) |
+| `Atlas.Core.Tracker.SyncPlan` | `Core/Tracker/Atlas.Core.Tracker.SyncPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Tracker nachführen“ ohne IDE (#1266, #1967) |
 | `Atlas.Core.Tracker.Transitions` | `Core/Tracker/Atlas.Core.Tracker.Transitions.pas` | Ordner `Core/Tracker`; Zuordnung der Übergänge einer Zustandsmaschine für Board, Beginnen, Beenden und Statusfeld (#2122) |
 | `Atlas.IDE.Tracker.Access` | `IDE/Tracker/Atlas.IDE.Tracker.Access.pas` | Ordner `IDE/Tracker`, Zugang zu Issue-Tracker und Build-Server aus der Kompositionswurzel, #1455 |
 | `Atlas.IDE.Tracker.Attach` | `IDE/Tracker/Atlas.IDE.Tracker.Attach.pas` | Ordner `IDE/Tracker` |

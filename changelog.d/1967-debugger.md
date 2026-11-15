@@ -1,0 +1,2 @@
+### Tests
+- Debugger: Entscheidungen der IDE-Schicht in Core-Units mit DUnitX-Tests (#1967): Zeilen des Fensters „Auswerten“ (`Atlas.Core.Debug.EvaluateRows`), Vervollständigung in den Debugger-Dialogen (`Atlas.Core.Debug.DialogInput`), Fenster „Variablen“ (`Atlas.Core.Debug.VariablesFlow`), Startverbünde (`Atlas.Core.Debug.LaunchProcesses`), Schrittfilter (`Atlas.Core.Debug.StepFilterEdit`) und „Zugriffsverletzung erklären“ (`TAtlasAvStop`).

@@ -139,6 +139,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.EvaluateRows,
+  Atlas.Core.Debug.VariablesFlow,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -171,29 +173,21 @@ end;
 function StatusText(ALists: TAtlasIdeVariablesLists; ATab: TAtlasVariablesTab; ASearchDone,
   AHasServer: Boolean): string;
 var
-  mSearch: TAtlasVariableSearch;
+  mStatus: TAtlasVariablesStatus;
 begin
-  mSearch := ALists.Search;
-  if not AHasServer and (ATab <> TAtlasVariablesTab.Watch) then
-  begin
-    Result := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesNoServer);
-  end
-  else if not mSearch.Active then
-  begin
-    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesCount, [ALists[ATab].Count]);
-  end
-  else if not ASearchDone then
-  begin
-    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesSearching, [mSearch.Evaluations]);
-  end
-  else if mSearch.Truncated then
-  begin
-    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesTruncated,
-      [mSearch.HitCount, mSearch.Evaluations]);
-  end
+  mStatus := TAtlasVariablesFlow.Status(ALists.Search, ATab, ALists[ATab].Count, ASearchDone, AHasServer);
+  case mStatus.Kind of
+    TAtlasVariablesStatusKind.NoServer:
+      Result := TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesNoServer);
+    TAtlasVariablesStatusKind.Count:
+      Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesCount, [mStatus.Count]);
+    TAtlasVariablesStatusKind.Searching:
+      Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesSearching, [mStatus.Evaluations]);
+    TAtlasVariablesStatusKind.Truncated:
+      Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesTruncated,
+        [mStatus.Hits, mStatus.Evaluations]);
   else
-  begin
-    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesHits, [mSearch.HitCount]);
+    Result := TAtlasVariablesStrings.Fmt(TAtlasVariablesTextId.VariablesHits, [mStatus.Hits]);
   end;
 end;
 
@@ -543,11 +537,7 @@ begin
     Accept(FProgress.Request, '');
     Exit;
   end;
-  mPrevious := -1;
-  if SameText(FPrevious.FileName, FPlace.FileName) then
-  begin
-    mPrevious := FPrevious.Line;
-  end;
+  mPrevious := TAtlasVariablesFlow.PreviousLine(FPrevious.FileName, FPrevious.Line, FPlace.FileName);
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(FPlace.FileName, FText);
   if not FRun(TAtlasVariables.cCommand, TAtlasVariables.Arguments(TLspSession.PathToUri(FPlace.FileName),
@@ -695,18 +685,7 @@ begin
   mList := FLists[ATab];
   mNode := mList.Find(AKey);
   // Felder des Index ersetzen Teile, die der Wert inzwischen geliefert hat.
-  if (mNode <> nil) and not (mNode.ChildrenLoaded and not mNode.FromParts) then
-  begin
-    if Length(AFields) > 0 then
-    begin
-      mList.SetFields(mNode, AFields);
-    end
-    else if not mNode.ChildrenLoaded and not mList.SetParts(mNode) then
-    begin
-      // Weder Felder noch Teile: aufgeklappt mit „(keine Felder)“.
-      mList.SetFields(mNode, nil);
-    end;
-  end;
+  TAtlasEvalRows.AcceptFields(mList, mNode, AFields);
   if (ATab = FTab) and (AKey = FProgress.SearchKey) then
   begin
     FProgress.SearchKey := '';
@@ -728,7 +707,7 @@ var
   mNode: TAtlasEvalNode;
 begin
   mList := FLists[TAtlasVariablesTab.Watch];
-  if (Trim(AExpression) = '') or (mList.Find(Trim(AExpression)) <> nil) then
+  if not TAtlasVariablesFlow.CanAddWatch(mList, AExpression) then
   begin
     Exit;
   end;

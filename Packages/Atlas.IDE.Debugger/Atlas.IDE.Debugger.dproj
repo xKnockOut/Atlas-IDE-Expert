@@ -98,8 +98,10 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointTags.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DialogCompletion.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DialogInput.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DisplayRules.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.InstanceBreakpoint.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.DataBreakpoint.pas"/>
@@ -122,6 +124,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.OwnCode.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepFilterEdit.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointCheck.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.MethodBreakpoints.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.BreakpointSets.pas"/>
@@ -314,10 +317,12 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.RuntimeReport.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.RuntimeReport.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.LaunchGroups.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.LaunchProcesses.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LaunchProbe.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.LaunchGroupsDialog.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.LaunchGroups.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Variables.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.VariablesFlow.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.FieldRequests.pas"/>
         <DCCReference Include="Source\UI\Debug\Atlas.UI.Debug.VariablesFrame.pas">
             <Form>AtlasDebugVariablesFrame</Form>

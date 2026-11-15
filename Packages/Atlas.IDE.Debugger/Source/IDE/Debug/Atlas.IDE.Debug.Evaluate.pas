@@ -45,7 +45,6 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
@@ -205,7 +204,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
-  Atlas.Core.Debug.Unavailable,
+  Atlas.Core.Debug.EvaluateRows,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -240,31 +239,16 @@ begin
   Result := TAtlasIdeDebugSession.StoppedThread <> nil;
 end;
 
-/// <summary>Fehlertext eines Werts; bekannter Text für „kein Zugriff“ (#840) gekennzeichnet, die Ursache erklärt
-/// der Hover.</summary>
-function ErrorText(const AValue: TAtlasDebugValue): string;
-var
-  mCaption: string;
+/// <summary>Kennzeichnung „kein Zugriff“ (#840) der Fehlertexte; die Ursache erklärt der Hover.</summary>
+function Unavailable: TAtlasEvalUnavailable;
 begin
-  Result := AValue.Text;
-  mCaption := TAtlasIdeDebugUnavailable.InlineCaption;
-  if (mCaption <> '') and TAtlasDebugUnavailable.IsUnavailable(AValue.Text, TAtlasIdeDebugUnavailable.Patterns) then
-  begin
-    Result := mCaption + ' ' + Result;
-  end;
+  Result := TAtlasEvalUnavailable.Create(TAtlasIdeDebugUnavailable.InlineCaption, TAtlasIdeDebugUnavailable.Patterns);
 end;
 
 /// <summary>AValue an ANode in AList.</summary>
 procedure PutValue(AList: TAtlasEvalList; ANode: TAtlasEvalNode; const AValue: TAtlasDebugValue);
 begin
-  case AValue.State of
-    TAtlasDebugValueState.Value:
-      AList.SetResult(ANode, True, AValue.Text);
-    TAtlasDebugValueState.Failed:
-      AList.SetResult(ANode, False, ErrorText(AValue));
-  else
-    ANode.State := TAtlasEvalState.Unavailable;
-  end;
+  TAtlasEvalRows.PutValue(AList, ANode, AValue, Unavailable);
 end;
 
 /// <summary>Einzeilige Markierung, sonst der Ausdruck unter dem Cursor des obersten Editors.</summary>
@@ -317,25 +301,6 @@ begin
         TAtlasIdeDebugEvaluate.FInstance.AcceptFields(ARequest, mKey, AFields);
       end;
     end;
-end;
-
-/// <summary>ANode und seine Felder neu auswerten; Teile entstehen aus dem neuen Wert.</summary>
-procedure MarkPending(ANode: TAtlasEvalNode);
-var
-  mIndex: Integer;
-begin
-  if ANode.FromParts then
-  begin
-    ANode.ClearChildren;
-  end;
-  if ANode.Expression <> '' then
-  begin
-    ANode.State := TAtlasEvalState.Pending;
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    MarkPending(ANode.Children[mIndex]);
-  end;
 end;
 
 /// <summary>Aufklappen nicht in der Benachrichtigung des Baums: später im Hauptthread.</summary>
@@ -609,7 +574,7 @@ end;
 
 procedure TAtlasIdeDebugEvaluate.TEvaluation.Drop(ANode: TAtlasEvalNode);
 begin
-  if Waiting and ((FKey = ANode.Key) or FKey.StartsWith(ANode.Key + #1)) then
+  if TAtlasEvalRows.Covers(ANode.Key, FKey) then
   begin
     Cancel;
   end;
@@ -964,28 +929,15 @@ begin
 end;
 
 procedure TAtlasIdeDebugEvaluate.AcceptFields(ARequest: Integer; const AKey: string; const AFields: TArray<string>);
-var
-  mNode: TAtlasEvalNode;
 begin
   // Antwort eines früheren Halts bzw. für eine entfernte Zeile: verwerfen.
   if ARequest <> FProgress.Request then
   begin
     Exit;
   end;
-  mNode := FList.Find(AKey);
-  // Felder des Index ersetzen Teile, die der Wert inzwischen geliefert hat (SetResult bei aufgeklapptem Knoten).
-  if (mNode = nil) or (mNode.ChildrenLoaded and not mNode.FromParts) then
+  if not TAtlasEvalRows.AcceptFields(FList, FList.Find(AKey), AFields) then
   begin
     Exit;
-  end;
-  if Length(AFields) > 0 then
-  begin
-    FList.SetFields(mNode, AFields);
-  end
-  else if not mNode.ChildrenLoaded and not FList.SetParts(mNode) then
-  begin
-    // Weder Felder noch Teile: aufgeklappt mit „(keine Felder)“.
-    FList.SetFields(mNode, nil);
   end;
   RefreshFrame;
   if StillStopped and (FProgress.Phase = TPhase.Idle) and (Length(FList.Pending) > 0) then
@@ -1027,7 +979,7 @@ begin
   mNode := FList.Find(mKey);
   if mNode <> nil then
   begin
-    MarkPending(mNode);
+    TAtlasEvalRows.MarkPending(mNode);
   end;
   if Frame <> nil then
   begin
@@ -1043,36 +995,13 @@ end;
 procedure TAtlasIdeDebugEvaluate.SyncPinned;
 var
   mProject: string;
-  mPinned: TArray<string>;
-  mIndex: Integer;
-  mNode: TAtlasEvalNode;
 begin
   if not FStore.SwitchProject(mProject) then
   begin
     Exit;
   end;
   // Festgeheftete Zeilen des vorigen Projekts weg, die des neuen in ihrer Reihenfolge (älteste zuerst) dazu.
-  for mIndex := FList.Count - 1 downto 0 do
-  begin
-    if FList.Roots[mIndex].Pinned then
-    begin
-      FList.Delete(mIndex);
-    end;
-  end;
-  mPinned := FStore.PinnedItems(mProject);
-  for mIndex := High(mPinned) downto 0 do
-  begin
-    mNode := FList.Add(mPinned[mIndex]);
-    if mNode = nil then
-    begin
-      Continue;
-    end;
-    mNode.Pinned := True;
-    if not StillStopped then
-    begin
-      mNode.State := TAtlasEvalState.Unavailable;
-    end;
-  end;
+  TAtlasEvalRows.ReplacePinned(FList, FStore.PinnedItems(mProject), StillStopped);
   RefreshFrame;
   if StillStopped then
   begin
@@ -1241,29 +1170,10 @@ begin
   TAtlasIdeEvaluateHook.OpenIdeDialog(mHook);
 end;
 
-/// <summary>Aufgeklappte Felder aus dem Index unter ANode leeren und ihre Schlüssel in AReload sammeln: Mit
-/// Nebenwirkungen kommen Eigenschaften dazu bzw. fallen weg.</summary>
-procedure CollectIndexFields(ANode: TAtlasEvalNode; AReload: TList<string>);
-var
-  mIndex: Integer;
-begin
-  if ANode.Expanded and ANode.ChildrenLoaded and not ANode.FromParts then
-  begin
-    ANode.ClearChildren;
-    AReload.Add(ANode.Key);
-    Exit;
-  end;
-  for mIndex := 0 to ANode.ChildCount - 1 do
-  begin
-    CollectIndexFields(ANode.Children[mIndex], AReload);
-  end;
-end;
-
 procedure TAtlasIdeDebugEvaluate.SetSideEffects(AValue: Boolean);
 var
-  mReload: TList<string>;
+  mReload: TArray<string>;
   mKey: string;
-  mIndex: Integer;
 begin
   if FSideEffects = AValue then
   begin
@@ -1274,20 +1184,12 @@ begin
   begin
     Exit;
   end;
-  mReload := TList<string>.Create;
-  try
-    for mIndex := 0 to FList.Count - 1 do
-    begin
-      CollectIndexFields(FList.Roots[mIndex], mReload);
-    end;
-    // Mit oder ohne Funktionsaufrufe kann ein anderer Wert herauskommen: neu auswerten, Felder neu holen.
-    Stopped;
-    for mKey in mReload do
-    begin
-      Expand(mKey);
-    end;
-  finally
-    mReload.Free;
+  mReload := TAtlasEvalRows.IndexFieldKeys(FList);
+  // Mit oder ohne Funktionsaufrufe kann ein anderer Wert herauskommen: neu auswerten, Felder neu holen.
+  Stopped;
+  for mKey in mReload do
+  begin
+    Expand(mKey);
   end;
 end;
 

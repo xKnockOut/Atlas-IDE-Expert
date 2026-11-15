@@ -137,8 +137,6 @@ uses
 
 const
   cKeyPriority = 50;
-  cLocalFile = 'designer-groups.json';
-  cSharedFile = '.atlas-groups.json';
   cFrameGap = 4;
 
 function Shared: Boolean;
@@ -147,28 +145,13 @@ begin
 end;
 
 function StoreFile(const AFormFile: string): string;
-var
-  mLocal: string;
 begin
-  if Shared then
-  begin
-    Exit(TPath.Combine(ExtractFilePath(AFormFile), cSharedFile));
-  end;
-  mLocal := GetEnvironmentVariable('LOCALAPPDATA');
-  if mLocal = '' then
-  begin
-    mLocal := TPath.GetTempPath;
-  end;
-  Result := TPath.Combine(TPath.Combine(mLocal, 'Atlas'), cLocalFile);
+  Result := TAtlasGroupRules.StorePath(AFormFile, Shared, GetEnvironmentVariable('LOCALAPPDATA'), TPath.GetTempPath);
 end;
 
 function FormKey(const AFormFile: string): string;
 begin
-  Result := AFormFile;
-  if Shared then
-  begin
-    Result := ExtractFileName(AFormFile);
-  end;
+  Result := TAtlasGroupRules.FormKey(AFormFile, Shared);
 end;
 
 function Names(const AComponents: TArray<TComponent>): TArray<string>;
@@ -201,21 +184,25 @@ end;
 function FirstLabel(const AComponents: TArray<TComponent>): string;
 var
   mComponent: TComponent;
-  mBest: TControl;
+  mLabels: TArray<TCustomLabel>;
+  mBounds: TArray<TRect>;
+  mIndex: Integer;
 begin
-  mBest := nil;
+  mLabels := nil;
+  mBounds := nil;
   for mComponent in AComponents do
   begin
-    if (mComponent is TCustomLabel) and ((mBest = nil) or (TControl(mComponent).Top < mBest.Top) or
-      ((TControl(mComponent).Top = mBest.Top) and (TControl(mComponent).Left < mBest.Left))) then
+    if mComponent is TCustomLabel then
     begin
-      mBest := TControl(mComponent);
+      mLabels := mLabels + [TCustomLabel(mComponent)];
+      mBounds := mBounds + [TCustomLabel(mComponent).BoundsRect];
     end;
   end;
   Result := '';
-  if mBest <> nil then
+  mIndex := TAtlasGroupRules.TopLeft(mBounds);
+  if mIndex >= 0 then
   begin
-    Result := TLabel(mBest).Caption;
+    Result := TLabel(mLabels[mIndex]).Caption;
   end;
 end;
 
@@ -234,21 +221,6 @@ begin
     if ARoot.FindComponent(mName) <> nil then
     begin
       Result := Result + [ARoot.FindComponent(mName)];
-    end;
-  end;
-end;
-
-function Touches(const AMembers, ASelected: TArray<string>): Boolean;
-var
-  mName: string;
-  mMember: string;
-begin
-  Result := False;
-  for mName in ASelected do
-  begin
-    for mMember in AMembers do
-    begin
-      Result := Result or SameText(mName, mMember);
     end;
   end;
 end;
@@ -556,10 +528,9 @@ function TAtlasIdeDesignerGroups.SecondClick(const ANames: TArray<string>): Bool
 begin
   // designer.groups.memberClick = doubleClick: das zuletzt zur Gruppe ergänzte
   // Mitglied noch einmal angeklickt wählt es allein.
-  Result := SameText(TAtlasIdeSettings.Current.DesignerGroupsMemberClick,
-    TAtlasPluginSettings.cDesignerGroupsDoubleClick) and
-    (Length(ANames) = 1) and SameText(ANames[0], FClick.Single) and
-    (TAtlasTicks.Since(FClick.Tick) <= GetDoubleClickTime);
+  Result := TAtlasGroupRules.SecondClick(SameText(TAtlasIdeSettings.Current.DesignerGroupsMemberClick,
+    TAtlasPluginSettings.cDesignerGroupsDoubleClick), ANames, FClick.Single, TAtlasTicks.Since(FClick.Tick),
+    GetDoubleClickTime);
   if Result then
   begin
     FClick.Single := '';
@@ -572,6 +543,7 @@ var
   mSelected: TArray<string>;
   mIndex: Integer;
   mArea: TRect;
+  mBounds: TArray<TRect>;
   mComponent: TComponent;
 begin
   Result := nil;
@@ -579,21 +551,21 @@ begin
   mGroups := Store(AFormFile).GroupsOf(FormKey(AFormFile));
   for mIndex := 0 to High(mGroups) do
   begin
-    if not Touches(mGroups[mIndex].Members, mSelected) then
+    if not TAtlasGroupRules.Touches(mGroups[mIndex].Members, mSelected) then
     begin
       Continue;
     end;
-    mArea := TRect.Empty;
+    mBounds := nil;
     for mComponent in Found(ARoot, mGroups[mIndex].Members) do
     begin
       if mComponent is TControl then
       begin
-        mArea.Union(TAtlasDesignerAccess.BoundsInRoot(TControl(mComponent), ARoot));
+        mBounds := mBounds + [TAtlasDesignerAccess.BoundsInRoot(TControl(mComponent), ARoot)];
       end;
     end;
+    mArea := TAtlasGroupRules.Frame(mBounds, cFrameGap);
     if not mArea.IsEmpty then
     begin
-      mArea.Inflate(cFrameGap, cFrameGap);
       Result := Result + [TAtlasOutline.Create(mArea, mGroups[mIndex].Name, False)];
     end;
   end;

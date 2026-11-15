@@ -1,0 +1,2 @@
+### Tests
+- Tracker: Entscheidungen der IDE-Schicht in Core gezogen und ohne IDE getestet (#1967): „Tracker nachführen“ (Beginnen unter einer Zustandsmaschine, Werte für „Beenden“ und „Prüfen“, was der Beenden-Dialog zeigt), „Beginnen“ in „Meine Issues“ (Branch, Weiterarbeiten, verknüpfter Branch, lokale Änderungen, Sprint, Git-Hook, Meldungen), Laden und Verknüpfungen der Issue-Vorschau, Wahl des Projekts in „Meine Issues“.
