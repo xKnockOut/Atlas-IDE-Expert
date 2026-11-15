@@ -267,6 +267,7 @@ Atlas.Common.Rationale.Scanner.Tests
 Atlas.Common.Rules.Baseline.Tests
 Atlas.Common.Rules.Builtin.Assembler.Tests
 Atlas.Common.Rules.Builtin.Capture.Tests
+Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests
 Atlas.Common.Rules.Builtin.Components.Model.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Syntax.Tests
 Atlas.Common.Rules.Builtin.Concurrency.Tests

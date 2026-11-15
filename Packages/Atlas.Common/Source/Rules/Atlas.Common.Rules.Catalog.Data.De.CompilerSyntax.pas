@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerSyntax: array[0..198] of string = (
+  cCatalogLinesDeCompilerSyntax: array[0..203] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntaxfehler",',
@@ -288,6 +288,14 @@ const
     '      "description": "Winapi.Windows (bzw. Windows) steht in uses hinter Vcl.Graphics, FMX.Graphics oder Graphics, und die Unit nennt TBitmap. Die letzte Unit gewinnt, TBitmap meint also den Record au' +
     's Winapi.Windows: TBitmap.Create und die Methoden der Grafikklasse werden nicht gefunden (wie E2003). uses des interface- und implementation-Teils zählen zusammen. TBitmap hinter einem Punkt (Vcl.Grap' +
     'hics.TBitmap) bleibt still. Korrektur (sicher) nur, wenn beide Units in derselben uses-Liste stehen: Winapi.Windows vor die Grafik-Unit stellen."',
+    '    },',
+    '{',
+    '      "id": "stream-write-nativeint",',
+    '      "name": "Write ohne NativeInt-Überladung",',
+    '      "description": "Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream, aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab Delphi 13' +
+    ' gibt. Unter Win64 rufen WriteBuffer und CopyFrom die NativeInt-Überladung auf und gehen an der eigenen Fassung vorbei, ohne Compilermeldung: Eine Grenze oder Zählung in der Longint-Fassung greift nic' +
+    'ht mehr. Die zweite Fassung wird im ganzen Text der Klasse gesucht, auch in {$IF}-Zweigen. Still, wenn delphiVersion eine Version vor Delphi 13 nennt. Unter Win32 sind beide Signaturen gleich; die Nat' +
+    'iveInt-Fassung gehört deshalb in {$IF RTLVersion >= 37.0} und {$IF SizeOf(Longint) <> SizeOf(NativeInt)}."',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

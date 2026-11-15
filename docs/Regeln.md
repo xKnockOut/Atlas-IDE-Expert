@@ -12,7 +12,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 95 |
+| [Compiler vorab](#gruppe-compiler) | 98 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Migration](#gruppe-migration) | 6 |
 | [Performance](#gruppe-performance) | 6 |
@@ -249,6 +249,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`caption-string-helper`](#caption-string-helper) | String-Helfer auf TCaption | Bug | Fehler |
 | [`uses-order-hides-type`](#uses-order-hides-type) | Unit verdeckt einen Typ | Bug | Fehler |
 | [`interface-uses-missing`](#interface-uses-missing) | Unit nur im uses des implementation-Teils | Bug | Fehler |
+| [`winapi-declaration-missing`](#winapi-declaration-missing) | Fehlt in Delphis Winapi.Windows | Bug | Fehler |
+| [`winapi-uses-missing`](#winapi-uses-missing) | Winapi.Windows fehlt in uses | Bug | Fehler |
+| [`stream-write-nativeint`](#stream-write-nativeint) | Write ohne NativeInt-Überladung | Bug | Warnung |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -9268,6 +9271,98 @@ type
     FListe: TStringList;
   end;
 implementation
+```
+
+<a id="winapi-declaration-missing"></a>
+### winapi-declaration-missing
+
+**Fehlt in Delphis Winapi.Windows** · Bug · Fehler · Gruppe Compiler vorab
+
+Die Unit bindet Winapi.Windows (bzw. Windows) ein und nennt einen Bezeichner, den Free Pascals Unit Windows deklariert, Delphis Winapi.Windows aber nicht: OpenThread, THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal übersetzt das, Delphi meldet E2003. Still, wenn die Datei den Namen selbst deklariert oder die Namensauflösung ihn in einer anderen Unit als Free Pascals Windows findet (etwa einer Projekt-Unit oder Delphis Winapi.Windows aus dem Symbolindex). Namen hinter einem Punkt, in Kommentaren und in Strings bleiben still. Eine Meldung je Name und Datei; sie nennt die Deklaration, die anzulegen ist.
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+uses
+  Winapi.Windows;
+…
+  mThread := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);
+```
+
+Richtig:
+
+```pascal
+uses
+  Winapi.Windows;
+const
+  THREAD_SUSPEND_RESUME = $0002;
+function OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;
+  external kernel32 name 'OpenThread';
+```
+
+<a id="winapi-uses-missing"></a>
+### winapi-uses-missing
+
+**Winapi.Windows fehlt in uses** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Routine, die Delphi nur in Winapi.Windows deklariert (GetTickCount64, GetTickCount, MulDiv), wird aufgerufen, ohne dass Winapi.Windows (bzw. Windows) in uses steht. Free Pascal findet diese Routinen auch in SysUtils und übersetzt die Unit; Delphi meldet E2003. TThread.GetTickCount64 und andere Namen hinter einem Punkt zählen nicht, ebenso Routinen, die die Datei oder eine Projekt-Unit selbst deklariert. Eine Meldung je Datei. Korrektur: Winapi.Windows ins uses des Abschnitts aufnehmen (bei Vcl.Graphics in uses auf uses-order-hides-type achten).
+
+Entspricht der Compilermeldung `E2003`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+uses
+  System.SysUtils;
+…
+  mStart := GetTickCount64;
+```
+
+Richtig:
+
+```pascal
+uses
+  Winapi.Windows, System.SysUtils;
+…
+  mStart := GetTickCount64;
+```
+
+<a id="stream-write-nativeint"></a>
+### stream-write-nativeint
+
+**Write ohne NativeInt-Überladung** · Bug · Warnung · Gruppe Compiler vorab
+
+Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream, aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab Delphi 13 gibt. Unter Win64 rufen WriteBuffer und CopyFrom die NativeInt-Überladung auf und gehen an der eigenen Fassung vorbei, ohne Compilermeldung: Eine Grenze oder Zählung in der Longint-Fassung greift nicht mehr. Die zweite Fassung wird im ganzen Text der Klasse gesucht, auch in {$IF}-Zweigen. Still, wenn delphiVersion eine Version vor Delphi 13 nennt. Unter Win32 sind beide Signaturen gleich; die NativeInt-Fassung gehört deshalb in {$IF RTLVersion >= 37.0} und {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+TGrenze = class(TBytesStream)
+public
+  function Write(const Buffer; Count: Longint): Longint; override;
+end;
+```
+
+Richtig:
+
+```pascal
+TGrenze = class(TBytesStream)
+public
+  function Write(const Buffer; Count: Longint): Longint; overload; override;
+{$IF RTLVersion >= 37.0}
+  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}
+  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;
+  {$IFEND}
+{$IFEND}
+end;
 ```
 
 <a id="unresolved-type"></a>

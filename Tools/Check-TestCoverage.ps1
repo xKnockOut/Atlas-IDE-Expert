@@ -12,10 +12,15 @@
     2. Jede Testunit Tests/**/*.Tests.pas muss in Tests/Atlas.Tests.dpr stehen,
        sonst läuft sie nie.
     3. Eine Ausnahme, die inzwischen Tests hat, ist zu streichen.
-    4. Jede Plugin-Unit (Packages/Atlas.IDE.*/Source), die eine Testunit
-       einbindet, muss samt allen Plugin-Units, die sie ihrerseits einbindet, in
-       Tests/Atlas.Tests.dpr stehen. Das Testprojekt hat keinen Suchpfad auf die
-       Plugin-Quellen; Delphi fände sie sonst nicht.
+    4. Jede Unit des Repositorys, die das Testprojekt erreicht (aus einer
+       Testunit oder einer Unit in Tests/Atlas.Tests.dpr, auch über weitere
+       Units hinweg), muss in Tests/Atlas.Tests.dpr stehen, sonst meldet Delphi
+       F2613. Ausgenommen sind nur die Packages, deren Dcu-Ordner im
+       DCC_UnitSearchPath von Tests/Atlas.Tests.dproj steht (Atlas.Text,
+       Atlas.Common, …), und Atlas.Linux (unter Windows nicht übersetzt). Das
+       gilt für Plugin-Units (Packages/Atlas.IDE.*/Source) ebenso wie für
+       Server-Units (Application/Source): Eine Server-Unit, die eine neue
+       Server-Unit einbindet, zieht diese ins Testprojekt (#2309).
     5. Testkategorie je Modul (#1455): Jede Testklasse einer Testunit,
        deren Unit zu einem Modul gehört, trägt [Category('<Package>')], z. B.
        [Category('Atlas.IDE.Debugger')]; damit laufen die Tests eines Moduls
@@ -137,16 +142,37 @@ function Get-UsedUnits([string] $Text) {
     return $units
 }
 
-$pluginFiles = @{}
-foreach ($file in $PluginSources | ForEach-Object { Get-ChildItem -Path (Join-Path $Root $_) -Recurse -File -Filter '*.pas' }) {
-    $pluginFiles[$file.BaseName.ToLowerInvariant()] = $file
+# Units, die Delphi im Testprojekt nur über die dpr findet (#2309): alle Quellen unter Packages/*/Source und
+# Application/Source außer den Packages, deren Dcu-Ordner im Suchpfad des Testprojekts steht, und Atlas.Linux.
+$dproj = [IO.File]::ReadAllText((Join-Path $Root 'Tests/Atlas.Tests.dproj'))
+$onSearchPath = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($path in [regex]::Matches($dproj, '<DCC_UnitSearchPath>([^<]*)</DCC_UnitSearchPath>')) {
+    foreach ($entry in $path.Groups[1].Value -split ';') {
+        if ($entry -match '\\Dcu\\([\w.]+)\\?$') { [void]$onSearchPath.Add($Matches[1]) }
+    }
 }
+$listedDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory |
+    Where-Object { -not $onSearchPath.Contains($_.Name) -and $_.Name -ne 'Atlas.Linux' } |
+    ForEach-Object { Join-Path $_.FullName 'Source' }) + @(Join-Path $Root 'Application/Source')
+$listedFiles = @{}
+foreach ($file in $listedDirs | Where-Object { Test-Path $_ } | ForEach-Object { Get-ChildItem -Path $_ -Recurse -File -Filter '*.pas' }) {
+    $listedFiles[$file.BaseName.ToLowerInvariant()] = $file
+}
+$inDpr = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($m in [regex]::Matches($dpr, "(?m)^\s*([\w.]+)\s+in\s+'")) { [void]$inDpr.Add($m.Groups[1].Value) }
 $needed = @{}
 $queue = [System.Collections.Generic.Queue[string]]::new()
+foreach ($unit in $inDpr) {
+    $key = $unit.ToLowerInvariant()
+    if ($listedFiles.ContainsKey($key) -and -not $needed.ContainsKey($key)) {
+        $needed[$key] = 'Tests/Atlas.Tests.dpr'
+        $queue.Enqueue($key)
+    }
+}
 foreach ($file in $testFiles) {
     foreach ($unit in Get-UsedUnits ([IO.File]::ReadAllText($file.FullName))) {
         $key = $unit.ToLowerInvariant()
-        if ($pluginFiles.ContainsKey($key) -and -not $needed.ContainsKey($key)) {
+        if ($listedFiles.ContainsKey($key) -and -not $needed.ContainsKey($key)) {
             $needed[$key] = [IO.Path]::GetRelativePath($Root, $file.FullName)
             $queue.Enqueue($key)
         }
@@ -154,18 +180,18 @@ foreach ($file in $testFiles) {
 }
 while ($queue.Count -gt 0) {
     $key = $queue.Dequeue()
-    foreach ($unit in Get-UsedUnits ([IO.File]::ReadAllText($pluginFiles[$key].FullName))) {
+    foreach ($unit in Get-UsedUnits ([IO.File]::ReadAllText($listedFiles[$key].FullName))) {
         $used = $unit.ToLowerInvariant()
-        if ($pluginFiles.ContainsKey($used) -and -not $needed.ContainsKey($used)) {
-            $needed[$used] = $pluginFiles[$key].BaseName
+        if ($listedFiles.ContainsKey($used) -and -not $needed.ContainsKey($used)) {
+            $needed[$used] = $listedFiles[$key].BaseName
             $queue.Enqueue($used)
         }
     }
 }
 foreach ($key in $needed.Keys) {
-    $unit = $pluginFiles[$key].BaseName
-    if (-not [regex]::IsMatch($dpr, '(?m)^\s*' + [regex]::Escape($unit) + '\s+in\s', 'IgnoreCase')) {
-        $problems += "${unit}: eingebunden von $($needed[$key]), fehlt in Tests/Atlas.Tests.dpr"
+    $unit = $listedFiles[$key].BaseName
+    if (-not $inDpr.Contains($unit)) {
+        $problems += "${unit}: eingebunden von $($needed[$key]), fehlt in Tests/Atlas.Tests.dpr (wie F2613)"
     }
 }
 
