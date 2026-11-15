@@ -94,7 +94,8 @@ type
     // 32: Hinweiswort vor dem Startwert (NoErrMsg: Boolean platform = False); ohne neue Version blieb System.pas
     // aus dem alten Index ohne NoErrMsg (unresolved-identifier).
     // 33: Folgemuster der Projekt-Units im Kopf (#1890, gelernte Vorschläge).
-    const cFormatVersion = 33;
+    // 34: Typverweise in InlineRefs nennen das benutzte Mitglied (":TList<T>#Count", ":TList<T>#[]", #2309).
+    const cFormatVersion = 34;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;

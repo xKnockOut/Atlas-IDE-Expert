@@ -25,6 +25,8 @@
 // Ausblenden am Element (#628): Jede Schicht nennt ihr Element; ein in .atlas
 // ausgeblendetes Symbol (Datei oder Zeilentext) entfällt, jedes gezeichnete
 // meldet sich bei TAtlasIdeElements.
+// Die Entscheidungen (wann neu verankern, Rechtsklickzeile, Lage der Symbole) liegen in
+// Atlas.Core.Editor.GutterMarks.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -43,6 +45,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Elements,
+  Atlas.Core.Editor.GutterMarks,
   Atlas.Core.Modules.Watch,
   Atlas.UI.Popup.TitledTip;
 
@@ -98,7 +101,7 @@ type
   TAtlasIdeGutterMarks = class
   public const
     /// <summary>So lange gilt ein Rechtsklick in die Rinne für die Befehle.</summary>
-    cLineMs = 60000;
+    cLineMs = TAtlasGutterClickLine.cLineMs;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -128,12 +131,9 @@ type
       Screen: TRect;
     end;
   private const
-    cQuietMs = 300;
     cHoverMs = 300;
   private class var
-    FClickFile: string;
-    FClickLine: Integer;
-    FClickAt: UInt64;
+    FClick: TAtlasGutterClickLine;
   private
     /// <summary>Schichten von Base (Add) und der Module (FWatch); FLayers ist beides in dieser Reihenfolge:
     /// Module zuerst, wie bis #1455 Notizen und Lesezeichen vor den Rekursionssymbolen.</summary>
@@ -147,10 +147,7 @@ type
     FTip: TAtlasTitledTip;
     /// <summary>Je Bildschirmzeile des Editors (EditorLineNum) die zuletzt gezeichnete Rinnenzeile.</summary>
     FRows: TDictionary<Integer, TRow>;
-    FFileName: string;
-    FText: string;
-    FTrackedText: string;
-    FChangedAt: UInt64;
+    FTracker: TAtlasGutterTracker;
     FHover: THover;
     FShowing: Boolean;
     procedure LayersChanged;
@@ -190,8 +187,6 @@ implementation
 
 uses
   Winapi.Windows,
-  System.Math,
-  Atlas.Core.Projects.Summary,
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
@@ -396,7 +391,7 @@ begin
     FRows.Clear;
   end;
   // Eine neue Schicht soll die Datei vorn sofort kennen.
-  FFileName := '';
+  FTracker.Reset;
   Invalidate;
 end;
 
@@ -476,7 +471,7 @@ begin
         FShowing := False;
         FRows.Clear;
         // Beim Wiedereinschalten die Datei vorn neu zuordnen.
-        FFileName := '';
+        FTracker.Reset;
         Invalidate;
       end;
       Exit;
@@ -500,32 +495,23 @@ begin
     Exit;
   end;
   mText := TAtlasEditorSnapshots.Get(mView).Text;
-  if not SameText(FFileName, mView.Buffer.FileName) then
-  begin
-    // Andere Datei vorn: gleich zuordnen, damit ihre Symbole erscheinen.
-    FFileName := mView.Buffer.FileName;
-    FText := mText;
-    FTrackedText := mText;
-    FRows.Clear;
-    HideTip;
-    TrackLayers(FLayers, FFileName, mText, False);
-    FShowing := True;
-    Invalidate;
-  end
-  else if FText <> mText then
-  begin
-    FText := mText;
-    FChangedAt := TThread.GetTickCount64;
-  end
-  // Nach der Tipp-Pause neu verankern; nur Dateien mit Markierungen kosten etwas. Auch ohne Bewegung neu
-  // zeichnen: Die Zeile einer Markierung wurde vielleicht nur bearbeitet.
-  else if (FTrackedText <> FText) and (TThread.GetTickCount64 - FChangedAt >= cQuietMs) then
-  begin
-    FTrackedText := FText;
-    if TrackLayers(FLayers, FFileName, FText, True) then
-    begin
-      Invalidate;
-    end;
+  case FTracker.Step(mView.Buffer.FileName, mText, TThread.GetTickCount64) of
+    TAtlasGutterTrackAction.NewFile:
+      begin
+        // Andere Datei vorn: gleich zuordnen, damit ihre Symbole erscheinen.
+        FRows.Clear;
+        HideTip;
+        TrackLayers(FLayers, FTracker.FileName, mText, False);
+        FShowing := True;
+        Invalidate;
+      end;
+    // Nach der Tipp-Pause neu verankern; nur Dateien mit Markierungen kosten etwas. Auch ohne Bewegung neu
+    // zeichnen: Die Zeile einer Markierung wurde vielleicht nur bearbeitet.
+    TAtlasGutterTrackAction.Retrack:
+      if TrackLayers(FLayers, FTracker.FileName, FTracker.Text, True) then
+      begin
+        Invalidate;
+      end;
   end;
 end;
 
@@ -763,40 +749,23 @@ begin
 end;
 
 class function TAtlasIdeGutterMarks.IconRect(const AGutter: TRect; ASlot: Integer): TRect;
-var
-  mHeight, mWidth, mTop, mLeft: Integer;
 begin
-  mHeight := Max(6, Min(AGutter.Height - 4, 14));
-  mWidth := Max(5, (mHeight * 4) div 5);
-  mTop := AGutter.Top + (AGutter.Height - mHeight) div 2;
-  mLeft := AGutter.Left + 2 + Max(0, ASlot) * (mWidth + 2);
-  Result := TRect.Create(mLeft, mTop, mLeft + mWidth, mTop + mHeight);
+  Result := TAtlasGutterLayout.IconRect(AGutter, ASlot);
 end;
 
 class procedure TAtlasIdeGutterMarks.RememberLine(const AFileName: string; ALine: Integer);
 begin
-  FClickFile := AFileName;
-  FClickLine := ALine;
-  FClickAt := TThread.GetTickCount64;
+  FClick.Remember(AFileName, ALine, TThread.GetTickCount64);
 end;
 
 class procedure TAtlasIdeGutterMarks.ForgetLine;
 begin
-  FClickFile := '';
-  FClickLine := -1;
+  FClick.Forget;
 end;
 
 class function TAtlasIdeGutterMarks.TakeLine(const AFileName: string; out ALine: Integer): Boolean;
 begin
-  ALine := FClickLine;
-  Result := (FClickFile <> '') and (FClickLine >= 0) and
-    (TAtlasProjectSummaries.NormalizedPath(FClickFile) = TAtlasProjectSummaries.NormalizedPath(AFileName)) and
-    (TThread.GetTickCount64 - FClickAt <= cLineMs);
-  if not Result then
-  begin
-    ALine := -1;
-  end;
-  ForgetLine;
+  Result := FClick.Take(AFileName, TThread.GetTickCount64, ALine);
 end;
 
 end.

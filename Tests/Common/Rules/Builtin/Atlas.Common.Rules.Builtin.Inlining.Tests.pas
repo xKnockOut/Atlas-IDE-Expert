@@ -32,6 +32,10 @@ type
     procedure PropertyGetterAndForIn;
     [Test]
     procedure IndexedAndSetProperties;
+    /// <summary>#2309: Unit der Routine über einen geerbten Getter, inline-Mitglied einer generischen Instanz,
+    /// Feld einer Instanz ohne Bedarf und Alias als Ergebnistyp.</summary>
+    [Test]
+    procedure OwnUnitInstanceMembersAndResultAlias;
     [Test]
     procedure QuickFixAddsUnit;
     [Test]
@@ -89,15 +93,122 @@ uses
   Atlas.Tests.RuleAssert;
 
 const
+  // Count über einen inline-Getter mit Verweis (wie TList<T>.GetCount bis Delphi 12): Ein Feld einer Instanz
+  // (FWerte: TListe<Integer>) braucht Werk.Listen erst über ihn (#2309).
   cUnitListen =
     'unit Werk.Listen;'#10 +
     'interface'#10 +
     'type'#10 +
     '  TListe<T> = class'#10 +
     '  private'#10 +
-    '    FAnzahl: Integer;'#10 +
+    '    FDaten: TArray<T>;'#10 +
+    '    function GetAnzahl: Integer; inline;'#10 +
     '  public'#10 +
-    '    property Count: Integer read FAnzahl;'#10 +
+    '    property Count: Integer read GetAnzahl;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TListe<T>.GetAnzahl: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Length(FDaten);'#10 +
+    'end;'#10 +
+    'end.';
+
+  // Fälle aus dem Delphi-13-Bau (#2309): TCollection.GetCount (Feld einer generischen Instanz, Count liest ein
+  // Feld), TJSONArray.GetValue (Default-Property der Instanz mit inline-Getter), TFont.GetStyle (Alias als
+  // Ergebnistyp).
+  cUnitGenerisch =
+    'unit Werk.Generisch;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFolge<T> = class'#10 +
+    '  private'#10 +
+    '    FAnzahl: NativeInt;'#10 +
+    '    FDaten: TArray<T>;'#10 +
+    '    function GetItem(I: NativeInt): T; inline;'#10 +
+    '  public'#10 +
+    '    property Count: NativeInt read FAnzahl;'#10 +
+    '    property Items[I: NativeInt]: T read GetItem; default;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TFolge<T>.GetItem(I: NativeInt): T;'#10 +
+    'begin'#10 +
+    '  Result := FDaten[I];'#10 +
+    'end;'#10 +
+    'end.';
+
+  cUnitSammlung =
+    'unit Werk.Sammlung;'#10 +
+    'interface'#10 +
+    'uses Werk.Generisch;'#10 +
+    'type'#10 +
+    '  TEintrag = class'#10 +
+    '  end;'#10 +
+    '  TSammlung = class'#10 +
+    '  private'#10 +
+    '    FItems: TFolge<TEintrag>;'#10 +
+    '    function GetCount: Integer; inline;'#10 +
+    '    function GetEintrag(I: Integer): TEintrag; inline;'#10 +
+    '  public'#10 +
+    '    property Count: Integer read GetCount;'#10 +
+    '    property Eintraege[I: Integer]: TEintrag read GetEintrag; default;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TSammlung.GetCount: Integer;'#10 +
+    'begin'#10 +
+    '  Result := FItems.Count;'#10 +
+    'end;'#10 +
+    'function TSammlung.GetEintrag(I: Integer): TEintrag;'#10 +
+    'begin'#10 +
+    '  Result := FItems[I];'#10 +
+    'end;'#10 +
+    'end.';
+
+  cUnitTypen =
+    'unit Werk.Typen;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TArt = (Fett, Kursiv);'#10 +
+    '  TArten = set of TArt;'#10 +
+    'implementation'#10 +
+    'end.';
+
+  cUnitSchrift =
+    'unit Werk.Schrift;'#10 +
+    'interface'#10 +
+    'uses Werk.Typen;'#10 +
+    'type'#10 +
+    '  TArten = Werk.Typen.TArten;'#10 +
+    '  TSchrift = class'#10 +
+    '  private'#10 +
+    '    FHoehe: Integer;'#10 +
+    '    function GetArten: TArten; inline;'#10 +
+    '    function GetHoehe: Integer; inline;'#10 +
+    '  public'#10 +
+    '    property Arten: TArten read GetArten;'#10 +
+    '    property Hoehe: Integer read GetHoehe;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TSchrift.GetArten: TArten;'#10 +
+    'begin'#10 +
+    '  Result := [];'#10 +
+    'end;'#10 +
+    'function TSchrift.GetHoehe: Integer;'#10 +
+    'begin'#10 +
+    '  Result := FHoehe;'#10 +
+    'end;'#10 +
+    'end.';
+
+  cUnitAnsicht =
+    'unit Werk.Ansicht;'#10 +
+    'interface'#10 +
+    'uses Werk.Sammlung, Werk.Schrift;'#10 +
+    'type'#10 +
+    '  TSpalten = class(TSammlung)'#10 +
+    '  end;'#10 +
+    '  TAnsicht = class'#10 +
+    '  public'#10 +
+    '    Spalten: TSpalten;'#10 +
+    '    Schrift: TSchrift;'#10 +
     '  end;'#10 +
     'implementation'#10 +
     'end.';
@@ -238,6 +349,11 @@ begin
   Result.AddUnit(TIndexExtractor.ExtractText(cUnitJson, 'C:\P\Werk.Json.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(cUnitKreis, 'C:\P\Werk.Kreis.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText(cUnitRing, 'C:\P\Werk.Ring.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitGenerisch, 'C:\P\Werk.Generisch.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitSammlung, 'C:\P\Werk.Sammlung.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitTypen, 'C:\P\Werk.Typen.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitSchrift, 'C:\P\Werk.Schrift.pas', nil));
+  Result.AddUnit(TIndexExtractor.ExtractText(cUnitAnsicht, 'C:\P\Werk.Ansicht.pas', nil));
 end;
 
 function Haupt(const AUses, ABody: string): string;
@@ -313,6 +429,25 @@ begin
     '  X := (TObject(F) as TJsonFeld).Werte[2];'#10'  F.Stil := F.Stil + [Fett];'#10))));
   Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json, Werk.Listen', '  X := F.Werte[0] + F[1];'#10 +
     '  F.Stil := F.Stil + [Fett];'#10))));
+end;
+
+procedure TInliningRulesTests.OwnUnitInstanceMembersAndResultAlias;
+var
+  mSource: string;
+begin
+  mSource := 'unit Haupt;'#10'interface'#10'uses Werk.Ansicht;'#10'implementation'#10 +
+    'procedure Lauf(A: TAnsicht);'#10'var'#10'  X: Integer;'#10'begin'#10'  X := A.Spalten.Count;'#10 +
+    '  if A.Spalten[X] = nil then'#10'    Exit;'#10'  if A.Schrift.Arten = [] then'#10'    X := A.Schrift.Hoehe;'#10 +
+    'end;'#10'end.';
+  // Count: nur die Unit der Routine (wie TCollection.GetCount ohne System.Classes); Spalten[X]: dazu die Unit
+  // des inline-Getters der Instanz (wie TJSONArray.GetValue); Arten: die Unit hinter dem Alias (wie
+  // TFont.GetStyle); Hoehe liest nur ein Feld.
+  Assert.AreEqual('8:17 Inline-Funktion TSammlung.GetCount wird nicht eingebettet: Werk.Sammlung fehlt in uses ' +
+    '(wie H2443).|9:14 Inline-Funktion TSammlung.GetEintrag wird nicht eingebettet: Werk.Generisch, Werk.Sammlung ' +
+    'fehlen in uses (wie H2443).|11:15 Inline-Funktion TSchrift.GetArten wird nicht eingebettet: Werk.Typen fehlt ' +
+    'in uses (wie H2443).|', Messages(Findings(mSource)));
+  Assert.AreEqual('', Messages(Findings(StringReplace(mSource, 'uses Werk.Ansicht;',
+    'uses Werk.Ansicht, Werk.Sammlung, Werk.Generisch, Werk.Typen;', []))));
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
@@ -601,9 +736,11 @@ begin
   end;
   // Lokale Namen, Result, eigene Typen und Mitglieder ohne weiteren Zugriff fehlen; Normal und Nochmal sind
   // nicht inline. Eingebaute Typen (Integer) löst erst die Regel auf.
-  Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>|TJsonFeld.Anzahl=:Integer,:TListe<Integer>|' +
-    'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>|' +
-    'TJsonFeld.GetWert=:TListe<Integer>|TJsonFeld.GetStil=:TListe<Integer>,Include,Fett|Doppelt=Mal2|', mRefs);
+  // Typverweise nennen das benutzte Mitglied (#2309).
+  Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>#Count|TJsonFeld.Anzahl=:Integer,:TListe<Integer>#Count|' +
+    'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>#Count|' +
+    'TJsonFeld.GetWert=:TListe<Integer>#Count|TJsonFeld.GetStil=:TListe<Integer>#Count,Include,Fett|Doppelt=Mal2|',
+    mRefs);
   // Ohne Verweise bleibt die inline-Routine erkennbar (#1381); Mal2 ist nicht inline.
   mUnitIndex := TIndexExtractor.ExtractText(cUnitMathe, 'C:\P\Werk.Mathe.pas', nil);
   mRefs := '';
