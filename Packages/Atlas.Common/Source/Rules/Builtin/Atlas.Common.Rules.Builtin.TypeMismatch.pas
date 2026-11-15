@@ -81,7 +81,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Rules.TypedScope,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.NameResolver.Symbols,
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.ExpressionTypes.Contract,

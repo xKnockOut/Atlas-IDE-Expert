@@ -97,7 +97,8 @@ begin
   Result :=
     function(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean
     begin
-      Result := mExpressions.ExprSymbol(ANode, AResult);
+      // var X := Überladung(Unbekannt): Typ offen, nicht der der ersten Überladung.
+      Result := mExpressions.ExprSymbol(ANode, AResult) and not mExpressions.AmbiguousResult(ANode);
     end;
 end;
 

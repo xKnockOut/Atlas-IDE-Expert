@@ -56,6 +56,8 @@ type
     [Test]
     procedure IncludeLowersConfidence;
     [Test]
+    procedure BodiesInIncludeFilesCount;
+    [Test]
     procedure BodyWithoutDeclarationReports;
     [Test]
     procedure FixAddsDeclarationToExistingPrivate;
@@ -339,6 +341,50 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+end;
+
+/// <summary>Liest Teile.delphi.inc (Rumpf TFoo.Lauf, bindet Tiefer.inc ein) und Tiefer.inc (Rumpf
+/// TFoo.TInnen&lt;T&gt;.Weiter); Teile.fpc.inc fehlt.</summary>
+function IncludeReader: TRuleFileReader;
+begin
+  Result :=
+    function(const AName: string; out AData: TBytes): Boolean
+    begin
+      Result := True;
+      if SameText(AName, 'Teile.delphi.inc') then
+      begin
+        AData := TEncoding.UTF8.GetBytes('{$I Tiefer.inc}'#10'function TFoo.Lauf: Integer;'#10'begin'#10 +
+          '  Result := 1;'#10'end;'#10);
+      end
+      else if SameText(AName, 'Tiefer.inc') then
+      begin
+        AData := TEncoding.UTF8.GetBytes('procedure TFoo.TInnen<T>.Weiter;'#10'begin'#10'end;'#10);
+      end
+      else
+      begin
+        Result := False;
+      end;
+    end;
+end;
+
+procedure TDeclarationRulesTests.BodiesInIncludeFilesCount;
+var
+  mContext: TRuleContext;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Wie mORMot: Rümpfe in einer Include-Datei des implementation-Teils, je Compiler eine eigene.
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := 'U.pas';
+  mContext.FileName := 'C:\P\U.pas';
+  mContext.Text := 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  public type'#10 +
+    '    TInnen<T> = class'#10'      procedure Weiter;'#10'    end;'#10'  public'#10 +
+    '    function Lauf: Integer;'#10'    procedure Rest;'#10'  end;'#10'implementation'#10 +
+    '{$IFDEF FPC}'#10'  {$include Teile.fpc.inc}'#10'{$ELSE}'#10'  {$include Teile.delphi.inc}'#10'{$ENDIF}'#10'end.';
+  mContext.ReadFile := IncludeReader;
+  mFindings := TRuleAssert.ContextFindings(TDeclaredNotImplementedRule.Create, mContext, '');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.Contains(mFindings[0].Message, 'TFoo.Rest');
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
 end;
 
 procedure TDeclarationRulesTests.BodyWithoutDeclarationReports;

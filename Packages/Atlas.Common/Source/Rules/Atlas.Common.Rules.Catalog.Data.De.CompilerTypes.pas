@@ -177,8 +177,8 @@ const
     '      "name": "Falsche Anzahl Argumente",',
     '      "description": "Ein Aufruf übergibt mehr Argumente, als die Routine Parameter hat (wie E2034), oder weniger als Parameter ohne Standardwert (wie E2035), auch als Anweisung ohne Klammern. Geprüft' +
     ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' +
-    'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' +
-    'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."',
+    'en bleiben beim Compiler (E2250), ebenso eine Routine des implementation-Teils, die erst nach dem Aufruf deklariert ist (der Name meint dort etwas anderes). Eine Funktion mit zu vielen Argumenten meld' +
+    'et die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in die Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."',
     '    },',
     '{',
     '      "id": "overload-resolution",',

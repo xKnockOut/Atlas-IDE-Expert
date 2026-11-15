@@ -286,6 +286,22 @@ begin
   end;
 end;
 
+/// <summary>Ob AText eine Dezimalzahl über High(Int64), aber im Bereich von UInt64 ist; Delphi gibt ihr den Typ
+/// UInt64 (Int64(14695981039346656037), Dec(I, 10000000000000000000)).</summary>
+function IsUInt64Literal(const AText: string): Boolean;
+const
+  cHighUInt64 = '18446744073709551615';
+var
+  mChar: Char;
+begin
+  Result := Length(AText) in [19, 20];
+  for mChar in AText do
+  begin
+    Result := Result and CharInSet(mChar, ['0'..'9']);
+  end;
+  Result := Result and ((Length(AText) < Length(cHighUInt64)) or (AText <= cHighUInt64));
+end;
+
 /// <summary>Typ eines Literals (Zeichen, string, Zahl, nil); False bei unbekannter Form.</summary>
 function LiteralType(const AText: string; out ATyped: TExpressionTypes.TTyped): Boolean;
 var
@@ -300,6 +316,10 @@ begin
   else if TOrdinalConstants.TryNumber(AText, mValue) then
   begin
     ATyped := TExpressionOperators.Typed(IntegerLiteral(mValue));
+  end
+  else if IsUInt64Literal(AText) then
+  begin
+    ATyped := TExpressionOperators.Typed('UInt64');
   end
   else if (AText <> '') and CharInSet(AText[1], ['0'..'9']) then
   begin
