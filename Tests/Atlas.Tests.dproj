@@ -1518,6 +1518,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Sections.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.UseUnit.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\UnitSearch\Atlas.Core.UnitSearch.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.UnitSearch.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Forms\Atlas.Core.Forms.Changes.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.Tests.pas"/>
@@ -1594,6 +1596,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Rules.CustomLayer.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Rules\Atlas.Core.Rules.Ownership.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Rules.Ownership.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Rules\Source\Core\Rules\Atlas.Core.Rules.OwnershipPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Rules.OwnershipPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Discover.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas"/>
@@ -2052,6 +2056,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Matching.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Scopes.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.BarPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Search.BarPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Results.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
@@ -2105,6 +2111,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Assistants.SettingsSection.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.ReleaseGuard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.ReleaseGuard.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Plan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.Plan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.BuildPipeline\Source\Core\BuildPipeline\Atlas.Core.BuildPipeline.Gate.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Build\Atlas.Core.Build.Verdict.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.BuildPipeline.Gate.Tests.pas"/>

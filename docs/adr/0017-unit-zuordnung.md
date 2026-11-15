@@ -1584,10 +1584,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Search.ReplaceList` | `Core/Search/Atlas.Core.Search.ReplaceList.pas` | Ordner `Core/Search` |
 | `Atlas.Core.Search.Results` | `Core/Search/Atlas.Core.Search.Results.pas` | Ordner `Core/Search` |
 | `Atlas.Core.Search.Scopes` | `Core/Search/Atlas.Core.Search.Scopes.pas` | Ordner `Core/Search` |
+| `Atlas.Core.Search.BarPlan` | `Core/Search/Atlas.Core.Search.BarPlan.pas` | Ordner `Core/Search` |
 | `Atlas.Core.UnitSearch.Model` | `Core/UnitSearch/Atlas.Core.UnitSearch.Model.pas` | Ordner `Core/UnitSearch` |
 | `Atlas.Core.UnitSearch.Sections` | `Core/UnitSearch/Atlas.Core.UnitSearch.Sections.pas` | Ordner `Core/UnitSearch` |
 | `Atlas.Core.UnitSearch.State` | `Core/UnitSearch/Atlas.Core.UnitSearch.State.pas` | Ordner `Core/UnitSearch` |
 | `Atlas.Core.UnitSearch.UseUnit` | `Core/UnitSearch/Atlas.Core.UnitSearch.UseUnit.pas` | Ordner `Core/UnitSearch` |
+| `Atlas.Core.UnitSearch.Plan` | `Core/UnitSearch/Atlas.Core.UnitSearch.Plan.pas` | Ordner `Core/UnitSearch` |
 | `Atlas.IDE.Query.Service` | `IDE/Query/Atlas.IDE.Query.Service.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Query.Window` | `IDE/Query/Atlas.IDE.Query.Window.pas` | Ordner `IDE/Query` |
 | `Atlas.IDE.Search.Commands` | `IDE/Search/Atlas.IDE.Search.Commands.pas` | Ordner `IDE/Search` |
@@ -1623,6 +1625,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Rules.Table` | `Core/Rules/Atlas.Core.Rules.Table.pas` | Ordner `Core/Rules`: Regeltabelle für Regel-Editor und „Regel abschalten“, #1755 |
 | `Atlas.Core.Rules.CustomLayer` | `Core/Rules/Atlas.Core.Rules.CustomLayer.pas` | Ordner `Core/Rules`: Eigene Prüfregel als Schicht von forbidden-uses, #1821 |
 | `Atlas.Core.Rules.Ownership` | `Core/Rules/Atlas.Core.Rules.Ownership.pas` | Ordner `Core/Rules`: Marke „Wer gibt das frei?“ lesen, Ton und Texte (Antwort von atlas.server.ownership), #1877 |
+| `Atlas.Core.Rules.OwnershipPlan` | `Core/Rules/Atlas.Core.Rules.OwnershipPlan.pas` | Ordner `Core/Rules` |
 | `Atlas.IDE.Editor.DfmPropertyRules` | `IDE/Editor/Atlas.IDE.Editor.DfmPropertyRules.pas` | Eigenschaftsregeln anwenden (#309), Schalter dfmRules.apply unter ruleChecks, #1455 |
 | `Atlas.IDE.Rules.Baseline` | `IDE/Rules/Atlas.IDE.Rules.Baseline.pas` | Ordner `IDE/Rules`: Baseline aktualisieren, Compilermeldungen in die Baseline, #1455 |
 | `Atlas.IDE.Rules.BulkFix` | `IDE/Rules/Atlas.IDE.Rules.BulkFix.pas` | Ordner `IDE/Rules`: Sammelkorrektur, #1455 |
@@ -1764,6 +1767,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 |---|---|---|
 | `Atlas.Core.BuildPipeline.Gate` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Gate.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.Core.BuildPipeline.ReleaseGuard` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.ReleaseGuard.pas` | Ordner `Core/BuildPipeline` |
+| `Atlas.Core.BuildPipeline.Plan` | `Core/BuildPipeline/Atlas.Core.BuildPipeline.Plan.pas` | Ordner `Core/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Gate` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Gate.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.ReleaseGuard` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.ReleaseGuard.pas` | Ordner `IDE/BuildPipeline` |
 | `Atlas.IDE.BuildPipeline.Runner` | `IDE/BuildPipeline/Atlas.IDE.BuildPipeline.Runner.pas` | Ordner `IDE/BuildPipeline` |
