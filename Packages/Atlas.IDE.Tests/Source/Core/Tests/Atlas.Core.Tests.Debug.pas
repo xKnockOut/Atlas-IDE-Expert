@@ -96,8 +96,6 @@ type
     /// <summary>Befehlszeile in Argumente zerlegen wie Windows (Leerraum trennt, Anführungszeichen schützen);
     /// die Argumente bleiben roh, mit ihren Anführungszeichen.</summary>
     class function SplitArguments(const AText: string): TArray<string>; static;
-    /// <summary>Argument in Anführungszeichen, wenn es Leerraum enthält.</summary>
-    class function QuoteArgument(const AValue: string): string; static;
     /// <summary>Name einer DUnitX-Option klein, ohne -, -- bzw. / und ohne Wert („--RUN:x“ → „run“); '' für
     /// Argumente ohne Optionszeichen.</summary>
     class function OptionName(const AArgument: string): string; static;
@@ -131,6 +129,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Text.CommandLine;
 
 const
   /// <summary>Optionen von DUnitX (lang und kurz), die Atlas beim Debuggen weglässt.</summary>
@@ -291,15 +292,6 @@ begin
   end;
 end;
 
-class function TAtlasTestDebug.QuoteArgument(const AValue: string): string;
-begin
-  Result := AValue;
-  if (Pos(' ', AValue) > 0) or (Pos(#9, AValue) > 0) then
-  begin
-    Result := '"' + StringReplace(AValue, '"', '', [rfReplaceAll]) + '"';
-  end;
-end;
-
 class function TAtlasTestDebug.OptionName(const AArgument: string): string;
 var
   mText: string;
@@ -382,12 +374,12 @@ begin
   mRun := JoinedNames(ANames);
   if mRun <> '' then
   begin
-    mParts := mParts + [QuoteArgument('--run:' + mRun)];
+    mParts := mParts + [TTextCommandLine.QuoteForParamStr('--run:' + mRun)];
   end;
   mParts := mParts + ['--exitbehavior:Continue'];
   if AXmlFile <> '' then
   begin
-    mParts := mParts + [QuoteArgument('--xmlfile:' + AXmlFile)];
+    mParts := mParts + [TTextCommandLine.QuoteForParamStr('--xmlfile:' + AXmlFile)];
   end;
   Result := string.Join(' ', mParts);
 end;

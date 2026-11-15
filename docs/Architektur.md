@@ -13,7 +13,7 @@ Der Schnitt folgt Rollen (Platform-Package, Host, Hosted-Feature; innerhalb eine
 | Projekt | Art | Darf verwenden | Darf nicht verwenden |
 |---|---|---|---|
 | `Atlas.Text` | Platform-Package, zusätzlich als Quelltext im Plugin | nur RTL (`System.*`) | Windows, VCL, FMX, alle anderen Atlas-Artefakte |
-| `Atlas.WinBase` | Platform-Package, zusätzlich als Quelltext im Plugin; Gegenstück zu `Atlas.Text` für Code mit Windows-API, den Server und Plugin gleich brauchen (Prozessstart mit Handle-Liste) | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Text` | VCL, FMX, `Atlas.Common`, `Atlas.Windows`, alles aus dem Plugin |
+| `Atlas.WinBase` | Platform-Package, zusätzlich als Quelltext im Plugin; Gegenstück zu `Atlas.Text` für Code mit Windows-API, den Server und Plugin gleich brauchen (Prozessstart mit Handle-Liste, Lesen mit geteiltem Löschen) | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Text` | VCL, FMX, `Atlas.Common`, `Atlas.Windows`, alles aus dem Plugin |
 | `Atlas.Common` | Platform-Package, derzeit zugleich Fachcode-Package des Servers (siehe [Ausnahme](#ausnahme-atlascommon-als-fachcode-package-des-servers)) | plattformunabhängige RTL (`System.*`), `Atlas.Text` | Windows (`Winapi.*`, `System.Win.*`), VCL, FMX, `Atlas.Windows` |
 | `Atlas.Windows` | Platform-Package | RTL, `Winapi.*`, `System.Win.*`, `Atlas.Common`, `Atlas.WinBase` | VCL, FMX |
 | `Atlas.Linux` | Platform-Package nur als Quelltext für den Linux-Bau des Servers mit Free Pascal (#1109); kein `.dpk` | RTL, FPC-Units für Linux (`BaseUnix`, `Process`, `Pipes`), `Atlas.Common` | Windows, VCL, FMX, `Atlas.Windows` |

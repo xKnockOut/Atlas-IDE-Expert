@@ -11,8 +11,6 @@ type
   TProcessRunnerTests = class
   public
     [Test]
-    procedure QuotesArguments;
-    [Test]
     procedure ReadsOutputLinesAndExitCode;
     /// <summary>Cancel beendet einen laufenden Prozess sofort.</summary>
     [Test]
@@ -32,15 +30,6 @@ uses
   Atlas.Common.Compiler.Contract;
 
 { TProcessRunnerTests }
-
-procedure TProcessRunnerTests.QuotesArguments;
-begin
-  Assert.AreEqual('-Q', TProcessRunner.QuoteArgument('-Q'));
-  Assert.AreEqual('"C:\Program Files\x.dpr"', TProcessRunner.QuoteArgument('C:\Program Files\x.dpr'));
-  Assert.AreEqual('"-UC:\a b\\"', TProcessRunner.QuoteArgument('-UC:\a b\'));
-  Assert.AreEqual('"a\"b"', TProcessRunner.QuoteArgument('a"b'));
-  Assert.AreEqual('""', TProcessRunner.QuoteArgument(''));
-end;
 
 procedure TProcessRunnerTests.ReadsOutputLinesAndExitCode;
 var

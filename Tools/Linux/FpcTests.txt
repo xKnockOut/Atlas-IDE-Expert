@@ -7,6 +7,7 @@
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
 Atlas.Text.Checkin.Tests
+Atlas.Text.CommandLine.Tests
 Atlas.Text.DUnitX.Tests
 Atlas.Text.DebugDisplay.Tests
 Atlas.Text.Defines.Tests
@@ -618,3 +619,4 @@ Atlas.Core.Debug.ThreadsInSourceFlow.Tests
 Atlas.Core.Debug.RunToColumnFlow.Tests
 Atlas.Core.Debug.ExceptionDialogFlow.Tests
 Atlas.Core.Debug.AsyncOriginFlow.Tests
+Atlas.Core.Designer.KeptComponents.Tests

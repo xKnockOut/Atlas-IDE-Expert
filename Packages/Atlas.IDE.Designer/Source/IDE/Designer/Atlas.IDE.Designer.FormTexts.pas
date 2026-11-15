@@ -43,6 +43,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.TextsDialog,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.FormTextProps,
   Atlas.IDE.Foundation.Settings;
 
@@ -96,6 +97,7 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mEntries: TArray<TAtlasTextEntry>;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerTextTable or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -114,12 +116,20 @@ begin
     FUndoFile := mEditor.FileName;
     FUndo := nil;
   end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
   TAtlasTextsDialog.Execute(mRoot.Name, mEntries, SelectByName,
     function(AIndex: Integer; const AText: string): TArray<TAtlasTextEntry>
     var
       mChange: TChange;
       mComponent: TComponent;
     begin
+      // Der Dialog bleibt offen; ist das Formular inzwischen neu geladen, nichts mehr schreiben.
+      if not mKept.Holds then
+      begin
+        Say(TAtlasDesignerKept.LostText);
+        Result := mEntries;
+        Exit;
+      end;
       mComponent := ComponentOf(mRoot, mEntries[AIndex].Component);
       mChange.Component := mEntries[AIndex].Component;
       mChange.Path := mEntries[AIndex].Path;

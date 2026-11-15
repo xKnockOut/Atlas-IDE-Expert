@@ -95,6 +95,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings;
 
 const
@@ -461,12 +462,15 @@ var
   mName: string;
   mSets: TAtlasSelectionSets;
   mIndex: Integer;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerSelectionSets or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
   mSelected := TAtlasDesignerAccess.Selection(mEditor, mRoot);
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+  mKept.Add(mSelected);
   if Length(mSelected) = 0 then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNoSelection));
@@ -482,6 +486,11 @@ begin
   if not InputQuery(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSetsSaveTitle),
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSetsSavePrompt), mName) or (Trim(mName) = '') then
   begin
+    Exit;
+  end;
+  if not mKept.Holds then
+  begin
+    Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
   mIndex := mSets.Add(FormKey(mEditor.FileName), mName, Names(mSelected));
@@ -564,6 +573,7 @@ var
   mSets: TAtlasSelectionSets;
   mList: TArray<TAtlasSelectionSet>;
   mSelected: TArray<TComponent>;
+  mKept: TAtlasDesignerKept;
 begin
   if not TAtlasIdeSettings.Current.DesignerSelectionSets or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
@@ -583,9 +593,14 @@ begin
       ComponentsOf(mRoot, mList[AIndex].Members), AAction));
     Exit;
   end;
+  mKept := TAtlasDesignerKept.Take(mEditor, mRoot);
   Maintain(mSets, FormKey(mEditor.FileName), AIndex, AAction, Names(mSelected));
-  Watch(mRoot, mEditor.FileName);
-  Save(mEditor.FileName);
+  // Umbenennen fragt über einen Dialog; danach kann das Formular neu geladen sein: dann nicht mehr hineinsehen.
+  if mKept.Holds then
+  begin
+    Watch(mRoot, mEditor.FileName);
+  end;
+  Save(mKept.FileName);
 end;
 
 end.
