@@ -188,6 +188,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.FormatLog` | `Core/Editor/Atlas.Core.Editor.FormatLog.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Guides` | `Core/Editor/Atlas.Core.Editor.Guides.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.GutterColumn` | `Core/Editor/Atlas.Core.Editor.GutterColumn.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.GutterMarks` | `Core/Editor/Atlas.Core.Editor.GutterMarks.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Hide` | `Core/Editor/Atlas.Core.Editor.Hide.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodAnchor` | `Core/Editor/Atlas.Core.Editor.MethodAnchor.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineAnchor` | `Core/Editor/Atlas.Core.Editor.LineAnchor.pas` | Ordner `Core/Editor` |
