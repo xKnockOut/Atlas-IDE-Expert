@@ -85,7 +85,7 @@ begin
   Assert.AreEqual('Duplizieren', mIds[0]);
   Assert.AreEqual('Zweiter', mIds[1]);
   Assert.AreEqual(Integer(cCtrlD), Integer(FTable.PrevKey));
-  Assert.IsTrue(FTable.PrevAge(cStart + 5) = 5, 'Alter des vorigen Schritts');
+  Assert.AreEqual(Int64(5), Int64(FTable.PrevAge(cStart + 5)), 'Alter des vorigen Schritts');
 end;
 
 procedure TAtlasShortcutTableTests.SecondStepNeedsRecentFirstStep;

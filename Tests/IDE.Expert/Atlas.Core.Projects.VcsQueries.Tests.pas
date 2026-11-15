@@ -76,7 +76,7 @@ var
 begin
   Assert.IsTrue(FQueries.TryStart(cProject, cStart, mKey, mStarted));
   Assert.AreEqual(TAtlasProjectVcsQueries.KeyOf(cProject), mKey);
-  Assert.IsTrue(mStarted = cStart, 'Start ist die genannte Zeit');
+  Assert.AreEqual(Int64(cStart), Int64(mStarted), 'Start ist die genannte Zeit');
   Assert.IsTrue(FQueries.Querying(cSameProject, cStart + 1), 'derselbe Pfad anders geschrieben');
   Assert.IsFalse(FQueries.TryStart(cSameProject, cStart + 1, mOtherKey, mOtherStarted), 'läuft schon');
   Assert.IsTrue(FQueries.TryStart(cOther, cStart + 1, mOtherKey, mOtherStarted), 'anderes Projekt');
