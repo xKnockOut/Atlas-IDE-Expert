@@ -102,6 +102,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.CiBuild.Contract` | `Core/CiBuild/Atlas.Core.CiBuild.Contract.pas` | CI-Stand als Daten (Lauf, Job, Fehler); Projektzusammenfassung, Willkommensseite und Modul Tracker lesen ihn, #1455 |
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyStroke` | `Core/Commands/Atlas.Core.Commands.KeyStroke.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuSlots` | `Core/Commands/Atlas.Core.Commands.MenuSlots.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuContext` | `Core/Commands/Atlas.Core.Commands.MenuContext.pas` | Ordner `Core/Commands` |
@@ -109,7 +110,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Commands.Palette` | `Core/Commands/Atlas.Core.Commands.Palette.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.SettingsPalette` | `Core/Commands/Atlas.Core.Commands.SettingsPalette.pas` | Ordner `Core/Commands`; Einstellungen mit @ in der Befehlspalette (#1884) |
 | `Atlas.Core.Commands.QuickOpen` | `Core/Commands/Atlas.Core.Commands.QuickOpen.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.QuickOpenTarget` | `Core/Commands/Atlas.Core.Commands.QuickOpenTarget.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.ShortcutTips` | `Core/Commands/Atlas.Core.Commands.ShortcutTips.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.ShortcutTable` | `Core/Commands/Atlas.Core.Commands.ShortcutTable.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Tips` | `Core/Commands/Atlas.Core.Commands.Tips.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.Usage` | `Core/Commands/Atlas.Core.Commands.Usage.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Completion.Composite` | `Core/Completion/Atlas.Core.Completion.Composite.pas` | Ordner `Core/Completion` |
@@ -346,6 +349,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Projects.PathCheck` | `Core/Projects/Atlas.Core.Projects.PathCheck.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.PathCheck.Scan` | `Core/Projects/Atlas.Core.Projects.PathCheck.Scan.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Recording` | `Core/Projects/Atlas.Core.Projects.Recording.pas` | Build, Versionsverwaltung und Regeltreffer in die Projekt-Zusammenfassung, #1455 |
+| `Atlas.Core.Projects.VcsQueries` | `Core/Projects/Atlas.Core.Projects.VcsQueries.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Setup` | `Core/Projects/Atlas.Core.Projects.Setup.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary` | `Core/Projects/Atlas.Core.Projects.Summary.pas` | Ordner `Core/Projects` |
 | `Atlas.Core.Projects.Summary.Json` | `Core/Projects/Atlas.Core.Projects.Summary.Json.pas` | Ordner `Core/Projects` |
@@ -937,9 +941,11 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.Note` | `Core/Debug/Atlas.Core.Debug.Note.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.OwnCode` | `Core/Debug/Atlas.Core.Debug.OwnCode.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.StepFilter` | `Core/Debug/Atlas.Core.Debug.StepFilter.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.StepFilterEdit` | `Core/Debug/Atlas.Core.Debug.StepFilterEdit.pas` | Schrittfilter: Art des Schritts, Haltepunkt, Routine überspringen und zurücknehmen, #1967 |
 | `Atlas.Core.Debug.StepInto` | `Core/Debug/Atlas.Core.Debug.StepInto.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Unavailable` | `Core/Debug/Atlas.Core.Debug.Unavailable.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Variables` | `Core/Debug/Atlas.Core.Debug.Variables.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.VariablesFlow` | `Core/Debug/Atlas.Core.Debug.VariablesFlow.pas` | Fenster „Variablen“: Text unten, vorige Zeile, neue Überwachung, #1967 |
 | `Atlas.Core.Debug.Visualizers` | `Core/Debug/Atlas.Core.Debug.Visualizers.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Visualizers.Format` | `Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas` | Ordner `Core/Debug` |
 | `Atlas.IDE.Debug.AccessViolation` | `IDE/Debug/Atlas.IDE.Debug.AccessViolation.pas` | Ordner `IDE/Debug` |
@@ -1085,6 +1091,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.RuntimeReport` | `Core/Debug/Atlas.Core.Debug.RuntimeReport.pas` | Argumente und Antwort von atlas.server.runtimeReport ohne IDE, #74 |
 | `Atlas.IDE.Debug.RuntimeReport` | `IDE/Debug/Atlas.IDE.Debug.RuntimeReport.pas` | Leck- oder Absturzbericht einfügen, Stapel in der Meldungsansicht, #74 |
 | `Atlas.Core.Debug.LaunchGroups` | `Core/Debug/Atlas.Core.Debug.LaunchGroups.pas` | Startverbünde lesen und schreiben, Ablauf eines Laufs ohne IDE, #867 |
+| `Atlas.Core.Debug.LaunchProcesses` | `Core/Debug/Atlas.Core.Debug.LaunchProcesses.pas` | Gestartete Programme eines Startverbunds: Zustand, Statusfeld, nächster Prozess, Prüfer, #1967 |
 | `Atlas.IDE.Debug.LaunchProbe` | `IDE/Debug/Atlas.IDE.Debug.LaunchProbe.pas` | Port und Hauptfenster prüfen, Programme ohne Debugger starten und beenden (Windows), #867 |
 | `Atlas.UI.Debug.LaunchGroupsDialog` | `UI/Debug/Atlas.UI.Debug.LaunchGroupsDialog.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EditValueDialog` | `UI/Debug/Atlas.UI.Debug.EditValueDialog.pas` | Ordner `UI/Debug` |

@@ -410,6 +410,7 @@
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyConflicts.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Keys.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyMap.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.KeyScan.pas"/>
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.KeyMap.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.KeyMap.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.Usage.pas"/>
@@ -420,6 +421,7 @@
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.ProjectSelection.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Usage.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.ShortcutTips.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.ShortcutTable.pas"/>
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.ShortcutTip.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ShortcutKeys.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.ShortcutTips.pas"/>
@@ -504,6 +506,7 @@
         <DCCReference Include="Source\UI\Commands\Atlas.UI.Commands.Palette.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.Palette.pas"/>
         <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.QuickOpen.pas"/>
+        <DCCReference Include="Source\Core\Commands\Atlas.Core.Commands.QuickOpenTarget.pas"/>
         <DCCReference Include="Source\IDE\Commands\Atlas.IDE.Commands.QuickOpen.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Pairs.pas"/>
         <DCCReference Include="Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
@@ -777,6 +780,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.PipelineSettings.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Pipeline.pas"/>
         <DCCReference Include="Source\Core\Versions\Atlas.Core.Versions.Project.pas"/>
