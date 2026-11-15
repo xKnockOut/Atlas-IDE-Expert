@@ -485,6 +485,11 @@ Atlas.Core.Tracker.Internals.GitHubPulls.Tests
 Atlas.Core.Tracker.EndPull.Tests
 Atlas.Core.Tracker.StatusState.Tests
 Atlas.Core.Tracker.SprintStart.Tests
+Atlas.Core.Tracker.CommentPlan.Tests
+Atlas.Core.Tracker.NotifyPlan.Tests
+Atlas.Core.Tracker.DevelopmentPlan.Tests
+Atlas.Core.Tracker.TimePlan.Tests
+Atlas.Core.Tracker.BoardPlan.Tests
 Atlas.Core.Tracker.SyncPlan.Tests
 Atlas.Core.Tracker.Preview.Tests
 Atlas.Core.Tests.Stale.Tests

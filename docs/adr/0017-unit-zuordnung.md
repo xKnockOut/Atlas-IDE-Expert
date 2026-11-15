@@ -1161,6 +1161,12 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.EndSteps` | `Core/Tracker/Atlas.Core.Tracker.EndSteps.pas` | Ordner `Core/Tracker`; Plan und Schritte des Beendens in Workflow-Reihenfolge (Zeit, Felder, Kommentar, Übergang) mit Fortsetzen nach Ablehnung (#2123) |
 | `Atlas.Core.Tracker.StatusState` | `Core/Tracker/Atlas.Core.Tracker.StatusState.pas` | Ordner `Core/Tracker`; Feldtext, Menüeinträge und Palettenzeilen für den Zustand des aktuellen Issues im Statusfeld (#2124) |
 | `Atlas.Core.Tracker.SprintStart` | `Core/Tracker/Atlas.Core.Tracker.SprintStart.pas` | Ordner `Core/Tracker`; laufender Sprint ohne das Issue beim Beginnen (#2128) |
+| `Atlas.Core.Tracker.CommentPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentPlan.pas` | Ordner `Core/Tracker`; Entscheidungen des Kommentar-Editors in der IDE |
+| `Atlas.Core.Tracker.NotifyPlan` | `Core/Tracker/Atlas.Core.Tracker.NotifyPlan.pas` | Ordner `Core/Tracker`; Entscheidungen der Meldungen zu meinen Issues |
+| `Atlas.Core.Tracker.TestFetch` | `Core/Tracker/Atlas.Core.Tracker.TestFetch.pas` | Ordner `Core/Tracker`; Abfrage beim Build-Server für die Kachel Testergebnisse |
+| `Atlas.Core.Tracker.DevelopmentPlan` | `Core/Tracker/Atlas.Core.Tracker.DevelopmentPlan.pas` | Ordner `Core/Tracker`; Entscheidungen des Reiters Entwicklung |
+| `Atlas.Core.Tracker.TimePlan` | `Core/Tracker/Atlas.Core.Tracker.TimePlan.pas` | Ordner `Core/Tracker`; Entscheidungen der Zeiterfassung |
+| `Atlas.Core.Tracker.BoardPlan` | `Core/Tracker/Atlas.Core.Tracker.BoardPlan.pas` | Ordner `Core/Tracker`; Entscheidungen des Fensters Atlas-Board |
 | `Atlas.Core.Tracker.StartPlan` | `Core/Tracker/Atlas.Core.Tracker.StartPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Beginnen“ in „Meine Issues“ ohne IDE (#765, #1967) |
 | `Atlas.Core.Tracker.SyncPlan` | `Core/Tracker/Atlas.Core.Tracker.SyncPlan.pas` | Ordner `Core/Tracker`; Entscheidungen von „Tracker nachführen“ ohne IDE (#1266, #1967) |
 | `Atlas.Core.Tracker.Transitions` | `Core/Tracker/Atlas.Core.Tracker.Transitions.pas` | Ordner `Core/Tracker`; Zuordnung der Übergänge einer Zustandsmaschine für Board, Beginnen, Beenden und Statusfeld (#2122) |
