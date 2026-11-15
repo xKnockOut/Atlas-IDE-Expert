@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesEnCompilerSyntax: array[0..685] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..697] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',
@@ -219,8 +219,9 @@ const
     '      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$' +
     'IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030,' +
     ' before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid v' +
-    'alue for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: ad' +
-    'd {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",',
+    'alue for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC; in branches that are inactive under the project defines only the nesting is checked (dcc sk' +
+    'ips them); {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct t' +
+    'he typo.",',
     '      "bad": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n\nprocedure TDienst.Starten;",',
     '      "good": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n{$ENDIF}\n\nprocedure TDienst.Starten;",',
     '      "compilerCodes": [',
@@ -715,6 +716,22 @@ const
     '      ],',
     '      "level": "A",',
     '      "safeFix": true',
+    '    },',
+    '{',
+    '      "id": "stream-write-nativeint",',
+    '      "name": "Write without NativeInt overload",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "A class overrides Write(const Buffer; Count: Longint): Longint of TStream but not the overload Write(const Buffer; Count: NativeInt): NativeInt that exists from Delphi 13 on. Und' +
+    'er Win64, WriteBuffer and CopyFrom call the NativeInt overload and bypass the own version, without any compiler message: a limit or count in the Longint version no longer applies. The second version i' +
+    's searched in the whole text of the class, also in {$IF} branches. Not reported when delphiVersion is set to a version before Delphi 13. Under Win32 both signatures are the same, so the NativeInt vers' +
+    'ion belongs inside {$IF RTLVersion >= 37.0} and {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.",',
+    '      "bad": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; override;\nend;",',
+    '      "good": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; overload; override;\n{$IF RTLVersion >= 37.0}\n  {$IF SizeOf(Longint) <> SizeOf(NativeInt' +
+    ')}\n  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;\n  {$IFEND}\n{$IFEND}\nend;",',
+    '      "level": "A",',
+    '      "safeFix": false',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

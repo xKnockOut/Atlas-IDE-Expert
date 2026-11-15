@@ -33,7 +33,7 @@ type
 implementation
 
 uses
-  System.Math;
+  Atlas.Core.Lsp.TextOffsets;
 
 /// <summary>Ansicht des aktuellen Moduls; bei mehreren Fenstern die zuletzt benutzte.</summary>
 function CurrentModuleView: IOTAEditView;
@@ -164,29 +164,12 @@ end;
 
 class function TAtlasEditorBuffer.ByteOffset(const AText: string; ALine, ACharacter: Integer): Integer;
 begin
-  Result := TEncoding.UTF8.GetByteCount(Copy(AText, 1, CharOffset(AText, ALine, ACharacter)));
+  Result := TAtlasTextOffsets.ByteOffset(AText, ALine, ACharacter);
 end;
 
 class function TAtlasEditorBuffer.CharOffset(const AText: string; ALine, ACharacter: Integer): Integer;
-var
-  mLine, mIndex, mLineEnd: Integer;
 begin
-  mIndex := 1;
-  mLine := 0;
-  while (mLine < ALine) and (mIndex <= Length(AText)) do
-  begin
-    if AText[mIndex] = #10 then
-    begin
-      Inc(mLine);
-    end;
-    Inc(mIndex);
-  end;
-  mLineEnd := mIndex;
-  while (mLineEnd <= Length(AText)) and not CharInSet(AText[mLineEnd], [#13, #10]) do
-  begin
-    Inc(mLineEnd);
-  end;
-  Result := Min(mIndex + ACharacter, mLineEnd) - 1;
+  Result := TAtlasTextOffsets.CharOffset(AText, ALine, ACharacter);
 end;
 
 class function TAtlasEditorBuffer.ActiveView: IOTAEditView;

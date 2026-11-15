@@ -11,6 +11,8 @@
 //   derselben Lage zueinander wie eine Gruppe werden eine neue Gruppe.
 // - Ablage und Namensvorschlag wie die Auswahlsätze (#739,
 //   TAtlasSelectionSets); die DFM bleibt unberührt.
+// - TAtlasGroupRules: Ablagedatei und Schlüssel des Formulars, zweiter Klick
+//   auf ein Mitglied, Rahmen um die Mitglieder.
 
 interface
 
@@ -66,10 +68,36 @@ type
     class function IsCopy(const AGroup, ANew: TArray<TAtlasGroupShape>): Boolean; static;
   end;
 
+  /// <summary>Ablage, Klicks und Rahmen der Gruppen.</summary>
+  TAtlasGroupRules = class
+  public const
+    cLocalFile = 'designer-groups.json';
+    cSharedFile = '.atlas-groups.json';
+  public
+    /// <summary>Schlüssel des Formulars in der Ablage: geteilt nur der Dateiname (die Datei liegt daneben),
+    /// lokal der ganze Pfad.</summary>
+    class function FormKey(const AFormFile: string; AShared: Boolean): string; static;
+    /// <summary>Datei der Ablage: geteilt neben dem Formular, lokal in ALocalData\Atlas (leer: ATemp\Atlas).
+    /// </summary>
+    class function StorePath(const AFormFile: string; AShared: Boolean; const ALocalData, ATemp: string): string;
+      static;
+    /// <summary>Gehört ein Name aus ASelected zu AMembers (ohne Groß-/Kleinschreibung)?</summary>
+    class function Touches(const AMembers, ASelected: TArray<string>): Boolean; static;
+    /// <summary>designer.groups.memberClick = doubleClick: Wird das zuletzt zur Gruppe ergänzte Mitglied ASingle
+    /// innerhalb der Doppelklickzeit noch einmal allein angeklickt, wählt der Klick es allein.</summary>
+    class function SecondClick(ADoubleClickMode: Boolean; const ANames: TArray<string>; const ASingle: string;
+      AElapsedMs, ADoubleClickMs: UInt64): Boolean; static;
+    /// <summary>Rahmen um die Mitglieder: Vereinigung der nicht leeren Lagen, um AGap größer; leer ohne.</summary>
+    class function Frame(const ABounds: TArray<TRect>; AGap: Integer): TRect; static;
+    /// <summary>Index der Lage oben links (oberste, bei Gleichstand linke); -1 ohne.</summary>
+    class function TopLeft(const ABounds: TArray<TRect>): Integer; static;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   System.Math;
 
 { TAtlasGroupShape }
@@ -393,6 +421,96 @@ begin
       (mNew[mIndex].Bounds.Top - mGroup[mIndex].Bounds.Top = mOffset.Y) and
       (mNew[mIndex].Bounds.Width = mGroup[mIndex].Bounds.Width) and
       (mNew[mIndex].Bounds.Height = mGroup[mIndex].Bounds.Height);
+  end;
+end;
+
+{ TAtlasGroupRules }
+
+class function TAtlasGroupRules.FormKey(const AFormFile: string; AShared: Boolean): string;
+begin
+  Result := AFormFile;
+  if AShared then
+  begin
+    Result := ExtractFileName(AFormFile);
+  end;
+end;
+
+class function TAtlasGroupRules.StorePath(const AFormFile: string; AShared: Boolean;
+  const ALocalData, ATemp: string): string;
+var
+  mLocal: string;
+begin
+  if AShared then
+  begin
+    Exit(TPath.Combine(ExtractFilePath(AFormFile), cSharedFile));
+  end;
+  mLocal := ALocalData;
+  if mLocal = '' then
+  begin
+    mLocal := ATemp;
+  end;
+  Result := TPath.Combine(TPath.Combine(mLocal, 'Atlas'), cLocalFile);
+end;
+
+class function TAtlasGroupRules.Touches(const AMembers, ASelected: TArray<string>): Boolean;
+var
+  mName, mMember: string;
+begin
+  for mName in ASelected do
+  begin
+    for mMember in AMembers do
+    begin
+      if SameText(mName, mMember) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+class function TAtlasGroupRules.SecondClick(ADoubleClickMode: Boolean; const ANames: TArray<string>;
+  const ASingle: string; AElapsedMs, ADoubleClickMs: UInt64): Boolean;
+begin
+  Result := ADoubleClickMode and (Length(ANames) = 1) and SameText(ANames[0], ASingle) and
+    (AElapsedMs <= ADoubleClickMs);
+end;
+
+class function TAtlasGroupRules.Frame(const ABounds: TArray<TRect>; AGap: Integer): TRect;
+var
+  mBounds: TRect;
+begin
+  // Delphis TRect.Union nimmt ein leeres Self mit (0, 0) in die Hülle auf (FPC nicht): beim ersten Rechteck beginnen.
+  Result := TRect.Empty;
+  for mBounds in ABounds do
+  begin
+    if Result.IsEmpty then
+    begin
+      Result := mBounds;
+    end
+    else
+    begin
+      Result.Union(mBounds);
+    end;
+  end;
+  if not Result.IsEmpty then
+  begin
+    Result.Inflate(AGap, AGap);
+  end;
+end;
+
+class function TAtlasGroupRules.TopLeft(const ABounds: TArray<TRect>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(ABounds) do
+  begin
+    if (Result < 0) or (ABounds[mIndex].Top < ABounds[Result].Top) or
+      ((ABounds[mIndex].Top = ABounds[Result].Top) and (ABounds[mIndex].Left < ABounds[Result].Left)) then
+    begin
+      Result := mIndex;
+    end;
   end;
 end;
 

@@ -82,7 +82,8 @@ type
     FOnMessage: TProc<string>;
     FSwitch: TAtlasDesktopSwitch;
     FTimer: TTimer;
-    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne Projekt).</summary>
+    /// <summary>Offene Formular-Designer: ohne Designer ruht der Takt (vorher alle 100 ms, auch ohne
+    /// Projekt).</summary>
     FOpen: TAtlasDesignerOpenWatch;
     FNotifier: TProjectNotifier;
     FNotifierIndex: Integer;
@@ -95,7 +96,7 @@ type
     procedure OpenChanged;
     procedure Tick;
     function DefaultLayout(ANow: UInt64): string;
-    procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
+    class procedure Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction); static;
   public
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -384,7 +385,7 @@ begin
   Result := FDefaultLayout;
 end;
 
-procedure TRunner.Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
+class procedure TRunner.Load(ACombo: TCustomComboBox; const AAction: TAtlasDesktopAction);
 var
   mIndex: Integer;
   mEditor: IOTAFormEditor;

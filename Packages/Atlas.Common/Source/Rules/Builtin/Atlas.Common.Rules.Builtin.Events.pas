@@ -201,7 +201,8 @@ begin
   end;
 end;
 
-// Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante oder einen Parameter AName?
+// Deklariert ARoutine (auch in anonymen Methoden) eine Variable, Konstante, einen Parameter oder eine lokale
+// Routine AName? Die lokale Routine verdeckt die gleichnamige Event-Property.
 function Shadowed(ARoot: TSyntaxNode; const AName: string): Boolean;
 var
   mIndex: Integer;
@@ -216,7 +217,8 @@ begin
     while not Result and (mPending.Count > 0) do
     begin
       mNode := mPending.Pop;
-      Result := DeclaresName(mNode, AName);
+      Result := DeclaresName(mNode, AName) or ((mNode <> ARoot) and (mNode.Kind = TSyntaxKind.RoutineDecl) and
+        SameText(mNode.Name, AName));
       for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
         mPending.Push(mNode[mIndex]);
@@ -321,9 +323,11 @@ begin
   mTokens := AContext.Tree.Tokens;
   SetLength(mCode, Length(mTokens));
   mCount := 0;
+  // Token in inaktiven Zweigen übersetzt dcc nicht; sie bleiben wie Kommentare außen vor.
   for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(mTokens[mIndex]) then
+    if not IsTrivia(mTokens[mIndex]) and not TTextRange.AnyContains(AContext.InactiveRanges,
+      mTokens[mIndex].StartPos) then
     begin
       mCode[mCount] := mTokens[mIndex];
       Inc(mCount);

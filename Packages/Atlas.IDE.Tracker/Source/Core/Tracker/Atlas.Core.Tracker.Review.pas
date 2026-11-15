@@ -101,6 +101,18 @@ type
     /// <summary>Zeile AIssue in „Meine Issues“ bietet „Prüfen …“ statt „Beginnen“: Zustand in den Prüfzuständen der
     /// Ansicht, Git oder SVN, nicht das aktuelle Issue.</summary>
     class function Reviews(const AView: TAtlasIssuesView; const AIssue: TAtlasTrackerIssue): Boolean; static;
+    /// <summary>Projekt für den Build: AProject, wenn es eine .dproj ist (ein Ordner als Tracker-Projekt lässt sich
+    /// nicht bauen), sonst das aktive Projekt AActive der IDE; '' wenn keines eine .dproj ist.</summary>
+    class function BuildProject(const AProject, AActive: string): string; static;
+    /// <summary>Eigenes Issue vor dem Wechsel: AActive, außer es ist das geprüfte Issue AKey ('').</summary>
+    class function OwnKey(const AActive, AKey: string): string; static;
+    /// <summary>Hinweis „prüft schon“ beim zweiten Aufruf: die laufende Prüfung ARunning gilt einem anderen Issue.
+    /// </summary>
+    class function OtherRunning(const ARunning, AKey: string): Boolean; static;
+    /// <summary>Branch des Issues nach Muster (issues.branchPattern), auch wenn issues.start „merken“ sagt; '' ohne
+    /// gültigen Plan.</summary>
+    class function PlannedBranch(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
+      const AIssue: TAtlasTrackerIssue): string; static;
   end;
 
 implementation
@@ -111,6 +123,9 @@ uses
   System.Generics.Defaults,
   Atlas.Core.Build.Messages,
   Atlas.Core.Tracker.Workflow;
+
+const
+  cProjectExtension = '.dproj';
 
 { TAtlasReviewState }
 
@@ -325,6 +340,49 @@ class function TAtlasTrackerReview.Reviews(const AView: TAtlasIssuesView; const 
 begin
   Result := (AView.VcsKind in [TAtlasVcsKind.Git, TAtlasVcsKind.Svn]) and
     not SameText(AIssue.Key, AView.Active.Key) and Offered(AIssue.State, AView.ReviewStates);
+end;
+
+class function TAtlasTrackerReview.BuildProject(const AProject, AActive: string): string;
+begin
+  Result := AProject;
+  if not SameText(ExtractFileExt(Result), cProjectExtension) then
+  begin
+    Result := AActive;
+  end;
+  if not SameText(ExtractFileExt(Result), cProjectExtension) then
+  begin
+    Result := '';
+  end;
+end;
+
+class function TAtlasTrackerReview.OwnKey(const AActive, AKey: string): string;
+begin
+  Result := AActive;
+  if SameText(Result, AKey) then
+  begin
+    Result := '';
+  end;
+end;
+
+class function TAtlasTrackerReview.OtherRunning(const ARunning, AKey: string): Boolean;
+begin
+  Result := not SameText(ARunning, AKey);
+end;
+
+class function TAtlasTrackerReview.PlannedBranch(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
+  const AIssue: TAtlasTrackerIssue): string;
+var
+  mOptions: TAtlasIssuesOptions;
+  mPlan: TAtlasIssueStartPlan;
+begin
+  mOptions := AOptions;
+  mOptions.Start := TAtlasIssueStart.Branch;
+  mPlan := TAtlasMyIssues.PlanStart(AKind, mOptions, AIssue);
+  Result := '';
+  if mPlan.Valid then
+  begin
+    Result := mPlan.Branch;
+  end;
 end;
 
 end.

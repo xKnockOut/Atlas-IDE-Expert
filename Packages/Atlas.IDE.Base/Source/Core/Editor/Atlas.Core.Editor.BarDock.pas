@@ -93,6 +93,7 @@ function OwnByOrder(const AItems: TArray<TAtlasBarDockItem>): TArray<Integer>;
 var
   mIndex, mPos, mCount: Integer;
 begin
+  Result := nil;
   SetLength(Result, Length(AItems));
   mCount := 0;
   for mIndex := 0 to High(AItems) do

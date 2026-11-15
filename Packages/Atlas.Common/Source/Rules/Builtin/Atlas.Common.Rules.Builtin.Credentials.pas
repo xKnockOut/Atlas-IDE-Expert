@@ -333,13 +333,35 @@ begin
   end;
 end;
 
-/// <summary>Fund am Literal bei AIndex; AResource: im resourcestring-Abschnitt (nur Schlüsselformate).</summary>
+/// <summary>Nur die Kopf- oder Fußzeile eines PEM-Blocks ('-----BEGIN RSA PRIVATE KEY-----') ohne Schlüssel?
+/// </summary>
+function IsPemArmorOnly(const AText: string): Boolean;
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  mText := Trim(AText);
+  Result := (StartsStr('-----BEGIN ', mText) or StartsStr('-----END ', mText)) and EndsStr('-----', mText) and
+    (Length(mText) > 15);
+  for mIndex := 6 to Length(mText) - 5 do
+  begin
+    Result := Result and CharInSet(mText[mIndex], ['A'..'Z', ' ']);
+  end;
+end;
+
+/// <summary>Fund am Literal bei AIndex; AResource: im resourcestring-Abschnitt (nur Schlüsselformate). Eine
+/// Konstante, die nur die PEM-Kopfzeile enthält (PEM_RSA_PRIVATE_HEAD = '-----BEGIN RSA PRIVATE KEY-----'), ist eine
+/// Marke zum Zerlegen von PEM-Text, kein Schlüssel.</summary>
 function SourceHit(AScan: TCredentialScan; const ATokens: TArray<TPascalToken>; AIndex: Integer;
   AResource: Boolean; out AHit: THit): Boolean;
 var
   mText: string;
 begin
   mText := LiteralText(ATokens[AIndex]);
+  if IsPemArmorOnly(mText) and IsWholeValue(ATokens, AIndex) then
+  begin
+    Exit(False);
+  end;
   Result := AScan.TextHit(mText, not AResource, AHit) or
     (not AResource and TCredentialScan.NamedHit(TargetName(ATokens, AIndex), mText, AHit));
 end;

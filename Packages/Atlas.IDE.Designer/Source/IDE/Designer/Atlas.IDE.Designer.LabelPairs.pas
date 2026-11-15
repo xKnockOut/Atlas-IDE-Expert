@@ -79,7 +79,7 @@ type
     procedure Execute(ACommand: TAtlasPairsCommand);
     function CanUndo: Boolean;
     /// <summary>Gibt es in der Auswahl ein Feld ohne Label?</summary>
-    function CanCreate: Boolean;
+    class function CanCreate: Boolean; static;
   end;
 
 implementation
@@ -101,10 +101,6 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.NearAlign,
   Atlas.IDE.Foundation.Settings;
-
-const
-  cLeftGap = 8;
-  cAboveGap = 3;
 
 function IsLabel(AControl: TControl): Boolean;
 begin
@@ -190,6 +186,7 @@ function Snap(ALabel, AField: TControl; ASide: TAtlasPairSide; const ASettings: 
   ACanvas: TCanvas): Boolean;
 var
   mAscent, mBaseline: Integer;
+  mPoint: TPoint;
 begin
   Result := False;
   if ASettings.DesignerLabelPairsFocusControl and (FocusOf(ALabel) = nil) and
@@ -202,17 +199,23 @@ begin
   begin
     Exit;
   end;
-  if ASide = TAtlasPairSide.Above then
+  // Grundlinien nur links neben dem Feld: Darüber zählt die Textkante.
+  mAscent := -1;
+  mBaseline := -1;
+  if ASide <> TAtlasPairSide.Above then
   begin
-    Result := Result or (ALabel.Left <> AField.Left + TAtlasLabelPairs.cTextIndent);
-    ALabel.Left := AField.Left + TAtlasLabelPairs.cTextIndent;
-    Exit;
+    mAscent := TAtlasIdeNearAlign.Baseline(ALabel, ACanvas) - ALabel.Top;
+    mBaseline := TAtlasIdeNearAlign.Baseline(AField, ACanvas);
   end;
-  mAscent := TAtlasIdeNearAlign.Baseline(ALabel, ACanvas) - ALabel.Top;
-  mBaseline := TAtlasIdeNearAlign.Baseline(AField, ACanvas);
-  if (mAscent >= 0) and (mBaseline >= 0) and (ALabel.Top <> TAtlasLabelPairs.BaselineTop(mBaseline, mAscent)) then
+  mPoint := TAtlasLabelPairs.Snapped(ALabel.BoundsRect, AField.BoundsRect, ASide, mAscent, mBaseline);
+  if mPoint.X <> ALabel.Left then
   begin
-    ALabel.Top := TAtlasLabelPairs.BaselineTop(mBaseline, mAscent);
+    ALabel.Left := mPoint.X;
+    Result := True;
+  end;
+  if mPoint.Y <> ALabel.Top then
+  begin
+    ALabel.Top := mPoint.Y;
     Result := True;
   end;
 end;
@@ -226,9 +229,9 @@ begin
   Result := '';
   for mIndex := 0 to AControl.Parent.ControlCount - 1 do
   begin
-    if TAtlasDesignerAccess.PropText(AControl.Parent.Controls[mIndex], 'Caption', mText) and (Pos('&', mText) > 0) then
+    if TAtlasDesignerAccess.PropText(AControl.Parent.Controls[mIndex], 'Caption', mText) then
     begin
-      Result := Result + UpperCase(Copy(mText, Pos('&', mText) + 1, 1));
+      Result := Result + TAtlasLabelPairs.AcceleratorOf(mText);
     end;
   end;
 end;
@@ -461,6 +464,7 @@ function FollowField(AField: TControl; ARoot: TComponent; const AOld: TDictionar
 var
   mSettings: TAtlasPluginSettings;
   mOld: TRect;
+  mPoint: TPoint;
   mLabel, mOther: TControl;
   mSide: TAtlasPairSide;
   mTogether: Boolean;
@@ -482,8 +486,8 @@ begin
     begin
       Continue;
     end;
-    mLabel.SetBounds(mLabel.Left + AField.Left - mOld.Left, mLabel.Top + AField.Top - mOld.Top, mLabel.Width,
-      mLabel.Height);
+    mPoint := TAtlasLabelPairs.Follow(mLabel.BoundsRect, mOld, AField.BoundsRect);
+    mLabel.SetBounds(mPoint.X, mPoint.Y, mLabel.Width, mLabel.Height);
     Result := True;
     if (AField.Height <> mOld.Height) and (PartnerOf(mLabel, ARoot, mSettings.DesignerLabelPairsPairDistance,
       mSide) = AField) then
@@ -679,17 +683,10 @@ begin
   begin
     TLabel(Result).FocusControl := TWinControl(AField);
   end;
-  mSide := TAtlasPairSide.Left;
-  if SameText(ASettings.DesignerLabelPairsNewLabelPosition, TAtlasPluginSettings.cLabelAbove) then
-  begin
-    mSide := TAtlasPairSide.Above;
-  end;
+  mSide := TAtlasLabelPairs.NewSide(SameText(ASettings.DesignerLabelPairsNewLabelPosition,
+    TAtlasPluginSettings.cLabelAbove));
   mAscent := TAtlasIdeNearAlign.Baseline(Result, ACanvas) - Result.Top;
-  mGap := cLeftGap;
-  if mSide = TAtlasPairSide.Above then
-  begin
-    mGap := cAboveGap;
-  end;
+  mGap := TAtlasLabelPairs.GapOf(mSide);
   mPoint := TAtlasLabelPairs.Place(AField.BoundsRect, TSize.Create(Result.Width, Result.Height), mSide, mGap,
     TAtlasIdeNearAlign.Baseline(AField, ACanvas), mAscent);
   Result.SetBounds(mPoint.X, mPoint.Y, Result.Width, Result.Height);
@@ -837,7 +834,7 @@ begin
     SameText(mEditor.FileName, FCreatedFile));
 end;
 
-function TAtlasIdeLabelPairs.CanCreate: Boolean;
+class function TAtlasIdeLabelPairs.CanCreate: Boolean;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;

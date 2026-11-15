@@ -29,11 +29,12 @@
 {$IMPLICITBUILD ON}
 
 // Gegenstück zu Atlas.Text für Code, der die Windows-API braucht und den
-// Server und IDE-Plugin gleich brauchen (Prozessstart mit Handle-Liste).
+// Server und IDE-Plugin gleich brauchen (Prozessstart mit Handle-Liste,
+// Lesen mit geteiltem Löschen).
 // Erlaubt sind RTL, Winapi.* und System.Win.*; keine VCL, kein Atlas.Common,
 // kein Atlas.Windows, nichts aus dem Plugin. Keine Zustände über Aufrufe
 // hinweg, keine eigenen Protokollaufrufe (Server und Plugin protokollieren
-// verschieden), Fehler als Rückgabewert.
+// verschieden), Fehler als Rückgabewert oder als Ausnahme der RTL.
 // Server, AtlasUpdate und Tests linken die DCUs; das Plugin übersetzt
 // dieselben Quelldateien per "contains … in" mit, damit die IDE weiterhin nur
 // ein BPL lädt. Geprüft durch Tools\Check-PackageDependencies.ps1.
@@ -42,6 +43,7 @@ requires
   rtl;
 
 contains
-  Atlas.WinBase.Process in 'Source\Process\Atlas.WinBase.Process.pas';
+  Atlas.WinBase.Process in 'Source\Process\Atlas.WinBase.Process.pas',
+  Atlas.WinBase.Files in 'Source\Files\Atlas.WinBase.Files.pas';
 
 end.

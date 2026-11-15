@@ -28,6 +28,22 @@ type
     procedure StatusOfRun;
   end;
 
+  [TestFixture]
+  [Category('Atlas.IDE.Tests')]
+  TAtlasMutationStepsTests = class
+  public
+    [Test]
+    procedure BaselineFailsUnlessGreen;
+    [Test]
+    procedure OutcomeRelativeToRoutine;
+    [Test]
+    procedure TotalsAndSurvivorsUpToDone;
+    [Test]
+    procedure RoutineResultsByName;
+    [Test]
+    procedure KilledTextByReason;
+  end;
+
 implementation
 
 uses
@@ -170,7 +186,117 @@ begin
     TAtlasMutationPlan.StatusOf(False, 0, '<test-run total="0"></test-run>', mBy));
 end;
 
+/// <summary>Job des Mutanten AId in Routine ARoutine (Kopf in Zeile ARoutineLine, ab 0) an Zeile ALine (ab 1).
+/// </summary>
+function Job(const ARoutine: string; ARoutineLine, ALine: Integer): TAtlasMutationJob;
+begin
+  Result := Default(TAtlasMutationJob);
+  Result.Routine.Name := ARoutine;
+  Result.Routine.Line := ARoutineLine;
+  Result.Routine.EndLine := ARoutineLine + 5;
+  Result.Mutant.Line := ALine;
+  Result.Mutant.OperatorId := 'boundary';
+  Result.Mutant.Original := '>=';
+  Result.Mutant.Replacement := '>';
+  Result.Mutant.Description := '>= durch >';
+  Result.Index := 1;
+end;
+
+/// <summary>Ausgang mit dem Stand AStatus.</summary>
+function Outcome(AStatus: TAtlasMutationStatus): TAtlasMutationOutcome;
+begin
+  Result := Default(TAtlasMutationOutcome);
+  Result.Status := AStatus;
+end;
+
+{ TAtlasMutationStepsTests }
+
+procedure TAtlasMutationStepsTests.BaselineFailsUnlessGreen;
+begin
+  Assert.IsFalse(TAtlasMutationSteps.BaselineFailed(-1, TAtlasMutationStatus.Survived), 'alle grün ohne Mutation');
+  Assert.IsTrue(TAtlasMutationSteps.BaselineFailed(-1, TAtlasMutationStatus.Killed));
+  Assert.IsTrue(TAtlasMutationSteps.BaselineFailed(-1, TAtlasMutationStatus.BuildFailed));
+  Assert.IsTrue(TAtlasMutationSteps.BaselineFailed(-1, TAtlasMutationStatus.Invalid));
+  Assert.IsFalse(TAtlasMutationSteps.BaselineFailed(0, TAtlasMutationStatus.Killed), 'Mutant erkannt');
+  Assert.AreEqual(0, TAtlasMutationSteps.Done(-1));
+  Assert.AreEqual(3, TAtlasMutationSteps.Done(3));
+end;
+
+procedure TAtlasMutationStepsTests.OutcomeRelativeToRoutine;
+var
+  mOutcome: TAtlasMutationOutcome;
+begin
+  mOutcome := TAtlasMutationSteps.OutcomeOf(Job('Satz', 3, 6), TAtlasMutationStatus.Killed, 'T.A', 120);
+  Assert.AreEqual(2, mOutcome.Line, 'Zeile 6 (ab 1) ist die dritte der Routine ab Zeile 3 (ab 0)');
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed, mOutcome.Status);
+  Assert.AreEqual('T.A', mOutcome.By);
+  Assert.AreEqual(120, mOutcome.Milliseconds);
+  Assert.AreEqual(1, mOutcome.Index);
+  Assert.AreEqual('boundary', mOutcome.OperatorId);
+  Assert.AreEqual('>=', mOutcome.Original);
+  Assert.AreEqual('>', mOutcome.Replacement);
+  Assert.AreEqual('>= durch >', mOutcome.Description);
+end;
+
+procedure TAtlasMutationStepsTests.TotalsAndSurvivorsUpToDone;
+var
+  mOutcomes: TArray<TAtlasMutationOutcome>;
+  mTotals: TAtlasMutationTotals;
+  mSurvivors: TArray<Integer>;
+begin
+  mOutcomes := TArray<TAtlasMutationOutcome>.Create(Outcome(TAtlasMutationStatus.Killed),
+    Outcome(TAtlasMutationStatus.Survived), Outcome(TAtlasMutationStatus.TimedOut),
+    Outcome(TAtlasMutationStatus.Survived));
+  // Abgebrochen nach drei: Der vierte zählt nicht.
+  mTotals := TAtlasMutationSteps.Totals(mOutcomes, 3);
+  Assert.AreEqual(1, mTotals.Killed);
+  Assert.AreEqual(1, mTotals.Survived);
+  Assert.AreEqual(1, mTotals.TimedOut);
+  mSurvivors := TAtlasMutationSteps.Survivors(mOutcomes, 3);
+  Assert.AreEqual(1, Integer(Length(mSurvivors)));
+  Assert.AreEqual(1, mSurvivors[0]);
+  Assert.AreEqual(2, Integer(Length(TAtlasMutationSteps.Survivors(mOutcomes, 9))), 'höchstens alle');
+end;
+
+procedure TAtlasMutationStepsTests.RoutineResultsByName;
+var
+  mJobs: TArray<TAtlasMutationJob>;
+  mOutcomes: TArray<TAtlasMutationOutcome>;
+  mResult: TAtlasMutationRoutineResult;
+  mComplete: Boolean;
+begin
+  // Satz, Lokal, wieder Satz: Die Mutanten von Satz gehören zusammen, auch mit Lokal dazwischen.
+  mJobs := TArray<TAtlasMutationJob>.Create(Job('Satz', 3, 6), Job('Satz.Lokal', 4, 5), Job('Satz', 3, 7));
+  mOutcomes := TArray<TAtlasMutationOutcome>.Create(Outcome(TAtlasMutationStatus.Killed),
+    Outcome(TAtlasMutationStatus.Survived), Outcome(TAtlasMutationStatus.Killed));
+  Assert.IsTrue(TAtlasMutationSteps.FirstOfRoutine(mJobs, 0));
+  Assert.IsTrue(TAtlasMutationSteps.FirstOfRoutine(mJobs, 1));
+  Assert.IsFalse(TAtlasMutationSteps.FirstOfRoutine(mJobs, 2));
+  mResult := TAtlasMutationSteps.RoutineResult(mJobs, mOutcomes, 0, 3, mComplete);
+  Assert.AreEqual('Satz', mResult.Routine);
+  Assert.AreEqual(3, mResult.Line);
+  Assert.AreEqual(8, mResult.EndLine);
+  Assert.AreEqual(2, Integer(Length(mResult.Outcomes)));
+  Assert.IsTrue(mComplete);
+  // Abgebrochen nach zwei: Satz ist nicht ganz geprüft, Lokal schon.
+  TAtlasMutationSteps.RoutineResult(mJobs, mOutcomes, 0, 2, mComplete);
+  Assert.IsFalse(mComplete);
+  TAtlasMutationSteps.RoutineResult(mJobs, mOutcomes, 1, 2, mComplete);
+  Assert.IsTrue(mComplete);
+end;
+
+procedure TAtlasMutationStepsTests.KilledTextByReason;
+begin
+  Assert.AreEqual<TAtlasMutationKilledText>(TAtlasMutationKilledText.ExitCode, TAtlasMutationSteps.KilledText('3'));
+  Assert.AreEqual<TAtlasMutationKilledText>(TAtlasMutationKilledText.ByTest,
+    TAtlasMutationSteps.KilledText('TPreiseTests.Satz'));
+  Assert.AreEqual<TAtlasMutationKilledText>(TAtlasMutationKilledText.Plain, TAtlasMutationSteps.KilledText(''));
+  Assert.AreEqual<TAtlasMutationKilledText>(TAtlasMutationKilledText.ByTest, TAtlasMutationSteps.KilledText('0'),
+    'Exitcode 0 nennt keinen Absturz');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasMutationPlanTests);
+  TDUnitX.RegisterTestFixture(TAtlasMutationStepsTests);
 
 end.

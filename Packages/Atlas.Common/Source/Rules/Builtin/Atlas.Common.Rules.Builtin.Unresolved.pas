@@ -8,6 +8,10 @@
 // object-Syntax: fehlender Konstruktor in New(P, Init) wie E2601, fehlender
 // Destruktor in Dispose(P, Done) wie E2602, Fail außerhalb eines Konstruktors
 // wie E2078 (#1382).
+// Mitglied ohne Objekt in einer freien Routine (#2309, wie E2003): "List.OnSelectItem := ListSelectItem;" in
+// "procedure CreateList(AFrame: TFrame)" meint AFrame.ListSelectItem (Atlas.Common.Semantics.FreeRoutineMembers).
+// Das prüft die Regel auch ohne System im Index, dann aber nur für Methoden, die als Wert stehen; Korrektur: den
+// Parameter vom Typ der Klasse davorsetzen.
 //
 // uses-unit-not-found (#1016, wie F2613, F1026, F1027, E2202, F2092): Units in
 // uses und contains, die der Compiler nicht findet (TRuleContext.Units, die
@@ -128,6 +132,7 @@ uses
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Semantics.FreeRoutineMembers,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -137,7 +142,8 @@ type
   TUnresolvedText = (Title, UndeclaredMeant, Undeclared, UsesTitle, OrSep, AddUses, UsesItself, FileNotFound,
     SystemNotFound, AddSearchPath, UseName, OutsidePaths, Similar, UnitNotFound, PackageNotFound, AttributeTitle,
     AttributeIgnored, TestsDontRun, LikeCode, UnitMissing, Candidates, NotType, RoutineNotType, ConstantNotType,
-    TypeTitle, TypeUndeclared, MissingInUses, TypeCandidates, LikeE2564, LikeE2003);
+    TypeTitle, TypeUndeclared, MissingInUses, TypeCandidates, LikeE2564, LikeE2003, MemberWithoutObject,
+    MemberMeant, PrefixObject);
 
 const
   cTexts: array[TUnresolvedText] of TAtlasText = (
@@ -176,7 +182,11 @@ const
     (De: '; %s fehlt in uses'; En: '; %s is missing in uses'),
     (De: '; in Frage kommen %s'; En: '; candidates are %s'),
     (De: ' (wie E2564).'; En: ' (like E2564).'),
-    (De: ' (wie E2003).'; En: ' (like E2003).'));
+    (De: ' (wie E2003).'; En: ' (like E2003).'),
+    (De: '"%s" ist nicht deklariert: %s ist ein Mitglied von %s, die freie Routine %s hat aber kein Self (wie E2003).';
+     En: '"%s" is not declared: %s is a member of %s, but the free routine %s has no Self (like E2003).'),
+    (De: ' Gemeint ist wohl %s.'; En: ' %s is probably meant.'),
+    (De: '%s einsetzen'; En: 'Use %s'));
 
 {$SCOPEDENUMS OFF}
 
@@ -267,14 +277,66 @@ begin
   end;
 end;
 
+/// <summary>Sind Index und alle verwendeten Units bekannt, sodass ein fehlender Name sicher fehlt?</summary>
+function NamesCheckable(const AContext: TRuleContext): Boolean;
+begin
+  Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
+  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
+    AContext.Namespaces, AContext.EnsureUnit);
+end;
+
+/// <summary>Befund zu einem Mitglied ohne Objekt in einer freien Routine (#2309); Korrektur mit dem Parameter vom
+/// Typ der Klasse.</summary>
+procedure ReportMember(const AReport: IRuleReport; const AMember: TFreeRoutineMember; ACertain: Boolean);
+var
+  mMessage, mMeant: string;
+  mFixes: TArray<TRuleFix>;
+  mConfidence: TRuleConfidence;
+begin
+  mMessage := cTexts[TUnresolvedText.MemberWithoutObject].Fmt([AMember.Name, AMember.Name, AMember.Owner,
+    AMember.Routine]);
+  mFixes := nil;
+  if AMember.Parameter <> '' then
+  begin
+    mMeant := AMember.Parameter + '.' + AMember.Name;
+    mMessage := mMessage + cTexts[TUnresolvedText.MemberMeant].Fmt([mMeant]);
+    mFixes := TArray<TRuleFix>.Create(TRuleFix.Create(cTexts[TUnresolvedText.PrefixObject].Fmt([mMeant]),
+      [TTextEdit.Create(TTextRange.Create(AMember.Range.StartPos, AMember.Range.StartPos), AMember.Parameter + '.')]));
+  end;
+  mConfidence := TRuleConfidence.Medium;
+  if ACertain then
+  begin
+    mConfidence := TRuleConfidence.High;
+  end;
+  AReport.Add(AMember.Range, mMessage, mConfidence, mFixes);
+end;
+
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   mName: TUnresolvedName;
   mUsed: TArray<string>;
+  mMember: TFreeRoutineMember;
+  mComplete: Boolean;
+  mReported: TArray<TTextPosition>;
+
+  function Reported(const APosition: TTextPosition): Boolean;
+  var
+    mPosition: TTextPosition;
+  begin
+    for mPosition in mReported do
+    begin
+      if (mPosition.Line = APosition.Line) and (mPosition.Character = APosition.Character) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
 begin
-  if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
+  if (AContext.Tree = nil) or (AContext.Index = nil) then
   begin
     Exit;
   end;
@@ -282,8 +344,26 @@ begin
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
   mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  mComplete := TUnresolvedNames.Available(AContext.Index) and TUnresolvedNames.UsesKnown(AContext.Index, mUsed,
+    AContext.Namespaces, AContext.EnsureUnit);
+  mReported := nil;
+  for mMember in TFreeRoutineMembers.Find(mResolver, AContext.Tree, AContext.RelativePath, mComplete) do
+  begin
+    ReportMember(AReport, mMember, mComplete);
+    mReported := mReported + [mMember.Range.StartPos];
+  end;
+  // Wie unresolved-type: Fehlt eine Unit aus uses im Index (Basis-Package beim Prüfen eines Moduls ohne seine
+  // Quelle), kann jeder Name aus ihr stammen; sonst Hunderte Fehlalarme, unter denen echte Fehler untergehen (#2309).
+  if not mComplete then
+  begin
+    Exit;
+  end;
   for mName in TUnresolvedNames.Find(mResolver, AContext.Tree, AContext.RelativePath) do
   begin
+    if Reported(mName.Range.StartPos) then
+    begin
+      Continue;
+    end;
     // Typ aus einem Package der IDE, dessen Unit im uses steht (TFoo.Create).
     if (mName.Code = '') and IdeDeclares(AContext.IdeTypes, TArray<string>.Create(mName.Name), mUsed,
       AContext.Namespaces) then
@@ -798,14 +878,6 @@ begin
       Result := TRuleConfidence.Medium;
     end;
   end;
-end;
-
-/// <summary>Sind Index und alle verwendeten Units bekannt, sodass ein fehlender Name sicher fehlt?</summary>
-function NamesCheckable(const AContext: TRuleContext): Boolean;
-begin
-  Result := (AContext.Tree <> nil) and (AContext.Tree.Root <> nil) and TUnresolvedNames.Available(AContext.Index);
-  Result := Result and TUnresolvedNames.UsesKnown(AContext.Index, TUsesClauses.UsedUnits(AContext.Tree.Tokens),
-    AContext.Namespaces, AContext.EnsureUnit);
 end;
 
 /// <summary>Kandidaten ohne die, die eine andere Kandidatin im interface einbinden und den Typ weiterreichen

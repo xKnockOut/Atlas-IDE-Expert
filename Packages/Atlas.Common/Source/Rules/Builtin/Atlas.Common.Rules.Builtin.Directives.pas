@@ -36,8 +36,10 @@
 //
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
 // Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen prüft sie nicht in Zweigen, deren
-// Bedingung FPC abfragt ({$IFDEF FPC}{$MODE DELPHI}{$ENDIF}); in anderen bedingten Zweigen meldet sie sie mit niedriger
-// Konfidenz, weil dcc sie in nicht geltenden Zweigen überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon
+// Bedingung FPC abfragt ({$IFDEF FPC}{$MODE DELPHI}{$ENDIF}) und in Zweigen, die unter den Defines des Projekts
+// nicht gelten (TRuleContext.InactiveRanges); dort prüft sie auch {$DEFINE}, {$UNDEF}, {$ALIGN}, {$WARN} und Schalter
+// nicht. In anderen bedingten Zweigen meldet sie sie mit niedriger Konfidenz, weil dcc sie in nicht geltenden Zweigen
+// überspringt. {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon
 // in einem bedingten Zweig steht.
 //
 // compiler-directive-invalid prüft nur Direktiven außerhalb bedingter Zweige:
@@ -311,6 +313,27 @@ var
     Result := (mStack <> nil) and mStack[High(mStack)].Fpc;
   end;
 
+  /// <summary>Steht die Direktive AIndex in einem Zweig, der unter den Defines des Projekts nicht gilt? dcc
+  /// überspringt ihn und liest dort nur die Bedingungen ({$ifdef BSD}{$linklib c}{$endif} meldet er nicht).
+  /// </summary>
+  function InInactive(AIndex: Integer): Boolean;
+  var
+    mRange: TTextRange;
+    mPos: TTextPosition;
+  begin
+    mPos := mTokens[AIndex].StartPos;
+    for mRange in AContext.InactiveRanges do
+    begin
+      if ((mRange.StartPos.Line < mPos.Line) or (mRange.StartPos.Line = mPos.Line) and
+        (mRange.StartPos.Character <= mPos.Character)) and ((mPos.Line < mRange.EndPos.Line) or
+        (mPos.Line = mRange.EndPos.Line) and (mPos.Character < mRange.EndPos.Character)) then
+      begin
+        Exit(True);
+      end;
+    end;
+    Result := False;
+  end;
+
   /// <summary>Konfidenz eines unbekannten Namens: In einem bedingten Zweig weiß die Regel nicht, ob er gilt, und
   /// dcc meldet nur aus geltenden Zweigen (z. B. {$error} im {$else} hinter {$if defined(TARGET_x64)}).</summary>
   function UnknownConfidence: TRuleConfidence;
@@ -578,14 +601,18 @@ var
   /// <summary>Direktiven ohne Bedingung: Symbole, Optionen, Schalter.</summary>
   procedure VisitOther(AIndex: Integer; const ABody, AName, ARest: string);
   begin
-    if MatchStr(AName, ['DEFINE', 'UNDEF']) then
-    begin
-      CheckSymbol(AIndex, AName, ARest);
-    end
-    else if MatchStr(AName, ['PUSHOPT', 'POPOPT']) then
+    if MatchStr(AName, ['PUSHOPT', 'POPOPT']) then
     begin
       mOptions := mOptions + [AIndex];
       mOptionInBranch := mOptionInBranch or (mStack <> nil);
+    end
+    else if InInactive(AIndex) then
+    begin
+      Exit;
+    end
+    else if MatchStr(AName, ['DEFINE', 'UNDEF']) then
+    begin
+      CheckSymbol(AIndex, AName, ARest);
     end
     else if AName = 'ALIGN' then
     begin

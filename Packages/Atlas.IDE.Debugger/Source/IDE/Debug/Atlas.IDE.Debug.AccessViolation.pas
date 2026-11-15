@@ -30,7 +30,7 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -126,7 +126,7 @@ type
     FListener: IAtlasIdeDebugListener;
     FHandler: Integer;
     FTimer: TTimer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FEvaluator: TAtlasIdeDebugValues;
     FAnalysis: TAtlasAvAnalysis;
     FProgress: TProgress;
@@ -155,7 +155,6 @@ type
     procedure RunAction(AAction: TAtlasDebugBarAction);
     procedure EndInternal;
     function StillStopped: Boolean;
-    procedure ReapWorkers(AWait: Boolean);
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasAvSessionFunc; const AMessage: TProc<string>); static;
@@ -227,7 +226,7 @@ begin
   FHooks.Session := ASession;
   FHooks.Message := AMessage;
   FEvaluator := TAtlasIdeDebugValues.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cTickMs;
@@ -242,7 +241,10 @@ begin
   FEvaluator.Cancel;
   EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FreeAndNil(FEvaluator);
   FreeAndNil(FAnalysis);
@@ -276,7 +278,7 @@ begin
   FFacts.Lines := nil;
   FFacts.Note := Default(TAtlasDebugModuleNote);
   FFacts.ModuleOnly := False;
-  ReapWorkers(False);
+  FWorkers.Prune;
   if (FUnderline <> nil) and FUnderline.Clear then
   begin
     TAtlasIdeAvUnderline.Invalidate;
@@ -310,22 +312,18 @@ end;
 
 procedure TAtlasIdeDebugAccessViolation.CheckWait;
 begin
-  // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: nichts.
-  if not StillStopped or (TThread.GetTickCount64 - FProgress.Since > cShowWaitMs) then
-  begin
-    Drop;
-    Exit;
-  end;
-  // Erst wenn kein Dialog mehr offen ist (zwei ruhige Takte); solange könnte der Benutzer noch fortsetzen.
-  if Application.ModalLevel > 0 then
-  begin
-    FProgress.Quiet := 0;
-    Exit;
-  end;
-  Inc(FProgress.Quiet);
-  if FProgress.Quiet < 2 then
-  begin
-    Exit;
+  // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: nichts. Erst wenn kein Dialog mehr offen ist
+  // (zwei ruhige Takte); solange könnte der Benutzer noch fortsetzen.
+  case TAtlasAvStop.WaitStep(StillStopped, TThread.GetTickCount64 - FProgress.Since, cShowWaitMs,
+    Application.ModalLevel > 0, FProgress.Quiet) of
+    TAtlasAvWaitStep.Drop:
+      begin
+        Drop;
+        Exit;
+      end;
+    TAtlasAvWaitStep.Wait:
+      Exit;
+    TAtlasAvWaitStep.Go: ;
   end;
   FTimer.Enabled := False;
   if FFacts.ModuleOnly then
@@ -376,15 +374,18 @@ begin
     Drop;
     Exit;
   end;
-  if not AChains.Found then
-  begin
-    Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoServer), FFacts.Header));
-    Exit;
-  end;
-  if AChains.Chains = nil then
-  begin
-    Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoChains), FFacts.Header));
-    Exit;
+  case TAtlasAvStop.Failure(AChains) of
+    TAtlasAvFailure.NoServer:
+      begin
+        Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoServer), FFacts.Header));
+        Exit;
+      end;
+    TAtlasAvFailure.NoChains:
+      begin
+        Publish(TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoChains), FFacts.Header));
+        Exit;
+      end;
+    TAtlasAvFailure.None: ;
   end;
   FAnalysis := TAtlasAvAnalysis.Create(AChains, FFacts.Access, FFacts.PointerSize,
     TAtlasIdeSettings.Current.DebugExplainAccessViolationAllowCalls);
@@ -488,7 +489,7 @@ begin
   mFileName := FFacts.FileName;
   mLine := FFacts.Line;
   mPointerSize := FFacts.PointerSize;
-  ReapWorkers(False);
+  FWorkers.Prune;
   Inc(FProgress.Request);
   mRequest := FProgress.Request;
   FProgress.Phase := TPhase.Request;
@@ -521,9 +522,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 /// <summary>debug.moduleOfAddress (#1820) zusätzlich zu debug.explainAccessViolation?</summary>
@@ -550,7 +549,7 @@ begin
   end;
   // Der Debugger wertet im obersten Rahmen aus: Nur wenn der eigener Code mit Quelltext ist, passt die Zeile.
   // Sonst nennt Atlas nur das Modul der Fehleradresse (#1820), falls bekannt.
-  FFacts.ModuleOnly := (Length(AStop.Frames) = 0) or not AStop.Frames[0].HasSource or not AStop.Frames[0].Own;
+  FFacts.ModuleOnly := TAtlasAvStop.ModuleOnly(AStop.Frames);
   if FFacts.ModuleOnly and not FFacts.Note.Known then
   begin
     TAtlasGuard.Log('Zugriffsverletzung erklären: Halt nicht in eigenem Code mit Quelltext; nur die Meldung');
@@ -592,7 +591,7 @@ end;
 procedure TAtlasIdeDebugAccessViolation.Finish;
 var
   mVerdict: TAtlasAvVerdict;
-  mEnd: Integer;
+  mRange: TAtlasAvUnderlineRange;
 begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
@@ -600,19 +599,10 @@ begin
   FOutcome.Culprit := mVerdict.Culprit;
   FOutcome.HasCulprit := mVerdict.HasCulprit;
   // Unterstreichen: das schuldige Glied in seiner ersten Zeile.
-  if mVerdict.HasCulprit and (FFacts.Lines <> nil) and (mVerdict.Culprit.StartLine >= 0) and
-    (mVerdict.Culprit.StartLine <= High(FFacts.Lines)) then
+  if TAtlasAvStop.Underline(mVerdict, FFacts.Lines, mRange) then
   begin
-    if mVerdict.Culprit.EndLine = mVerdict.Culprit.StartLine then
-    begin
-      mEnd := mVerdict.Culprit.EndCharacter;
-    end
-    else
-    begin
-      mEnd := Length(TrimRight(FFacts.Lines[mVerdict.Culprit.StartLine]));
-    end;
-    FUnderline.Show(FFacts.FileName, mVerdict.Culprit.StartLine, mVerdict.Culprit.StartCharacter, mEnd,
-      FFacts.Lines[mVerdict.Culprit.StartLine]);
+    FUnderline.Show(FFacts.FileName, mRange.Line, mRange.StartCharacter, mRange.EndCharacter,
+      FFacts.Lines[mRange.Line]);
   end;
   Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FHooks.WhereAssigned) and
     TAtlasIdeSettings.Current.DataFlow, Assigned(FHooks.Evaluate) and TAtlasIdeSettings.Current.DebugEvaluateWindow,
@@ -694,25 +684,6 @@ begin
   Result := (TAtlasIdeDebugSession.StopCount = FProgress.Stop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
-procedure TAtlasIdeDebugAccessViolation.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
-end;
-
 class procedure TAtlasIdeDebugAccessViolation.Start(const ASession: TAtlasAvSessionFunc;
   const AMessage: TProc<string>);
 begin
@@ -772,22 +743,12 @@ end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Place: string;
 begin
-  // Ohne Zeile (nur das Modul bekannt, #1820) nur der Name.
-  if Line < 0 then
-  begin
-    Exit(ExtractFileName(FileName));
-  end;
-  Result := Format('%s:%d', [ExtractFileName(FileName), Line + 1]);
+  Result := TAtlasAvStop.Place(FileName, Line);
 end;
 
 function TAtlasIdeDebugAccessViolation.TStopFacts.Header: string;
 begin
-  Result := Exception.ExceptionClass;
-  if Exception.Message <> '' then
-  begin
-    Result := Result + ': ' + Exception.Message;
-  end;
-  Result := Result + ' (' + Place + ')';
+  Result := TAtlasAvStop.Header(Exception, Place);
 end;
 
 class function

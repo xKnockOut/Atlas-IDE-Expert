@@ -67,7 +67,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Debug.Leaks;
 
 {$R *.dfm}
@@ -92,14 +92,14 @@ begin
   mBar.Align := alTop;
   mBar.Parent := Self;
   FHideKnown := TCheckBox.Create(Self);
-  FHideKnown.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksHideKnown);
+  FHideKnown.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksHideKnown);
   FHideKnown.SetBounds(MulDiv(cGap, CurrentPPI, cBasePpi), MulDiv(cGap, CurrentPPI, cBasePpi) div 2,
     MulDiv(cCheckWidth, CurrentPPI, cBasePpi), MulDiv(cBarHeight - cGap, CurrentPPI, cBasePpi));
   FHideKnown.Checked := True;
   FHideKnown.OnClick := FilterClick;
   FHideKnown.Parent := mBar;
   FMarkKnown := TButton.Create(Self);
-  FMarkKnown.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksMarkKnown);
+  FMarkKnown.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksMarkKnown);
   FMarkKnown.SetBounds(FHideKnown.Left + FHideKnown.Width + MulDiv(cGap, CurrentPPI, cBasePpi), FHideKnown.Top,
     MulDiv(cButtonWidth, CurrentPPI, cBasePpi), FHideKnown.Height);
   FMarkKnown.Enabled := False;
@@ -108,10 +108,10 @@ begin
   FStatus := TLabel.Create(Self);
   FStatus.Left := FMarkKnown.Left + FMarkKnown.Width + MulDiv(cGap, CurrentPPI, cBasePpi);
   FStatus.Top := FHideKnown.Top + MulDiv(cGap, CurrentPPI, cBasePpi) div 2;
-  FStatus.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksEmpty);
+  FStatus.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksEmpty);
   FStatus.Parent := mBar;
   FFooter := TLabel.Create(Self);
-  FFooter.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksFooter);
+  FFooter.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksFooter);
   FFooter.Align := alBottom;
   FFooter.Parent := Self;
   FTree := TTreeView.Create(Self);
@@ -205,11 +205,11 @@ begin
   FMarkKnown.Enabled := (mRow >= 0) and (mRow <= High(FRows));
   if FMarkKnown.Enabled and FRows[mRow].Entry.Known then
   begin
-    FMarkKnown.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksUnmarkKnown);
+    FMarkKnown.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksUnmarkKnown);
   end
   else
   begin
-    FMarkKnown.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksMarkKnown);
+    FMarkKnown.Caption := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksMarkKnown);
   end;
 end;
 

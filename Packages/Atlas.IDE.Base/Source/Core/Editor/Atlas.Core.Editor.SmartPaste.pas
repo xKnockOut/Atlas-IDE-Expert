@@ -95,6 +95,9 @@ type
       const AIndent: TAtlasPasteIndent; out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
     /// <summary>Antwort des Servers ohne gewählte Units; Valid = False ohne gültige Antwort.</summary>
     class function ReadAnalysis(AValue: TJSONValue): TAtlasPasteAnalysis; static;
+    /// <summary>Strings eines JSON-Arrays (etwa „added“ und „toImplementation“ der Antwort mit gewählten Units);
+    /// andere Werte und Elemente bleiben weg.</summary>
+    class function ReadNames(AValue: TJSONValue): TArray<string>; static;
     /// <summary>Eindeutige und gewählte Units ohne Doppelte.</summary>
     class function Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>; static;
     /// <summary>Namen für die Überschrift: höchstens MaxNamed, dann „…“.</summary>
@@ -104,11 +107,16 @@ type
       string; overload; static;
     class function Arguments(const AUri: string; AStartLine, AStartCharacter, AEndLine, AEndCharacter: Integer;
       const AUnits: TArray<string>): string; overload; static;
+    /// <summary>Einfügen mit Einrückung gibt es in Pascal-Quelltexten (.pas, .dpr, .dpk, .inc).</summary>
+    class function Handles(const AFileName: string): Boolean; static;
+    /// <summary>Fehlende uses-Einträge bietet es nur in Units und Programmen an.</summary>
+    class function OffersUses(const AFileName: string): Boolean; static;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.StrUtils,
   System.Generics.Collections;
 
@@ -310,7 +318,8 @@ begin
   begin
     for mItem in TJSONArray(AValue) do
     begin
-      if mItem is TJSONString then
+      // TJSONNumber erbt unter Delphi 12 und FPC von TJSONString.
+      if (mItem is TJSONString) and not (mItem is TJSONNumber) then
       begin
         Result := Result + [mItem.Value];
       end;
@@ -520,6 +529,11 @@ begin
   end;
 end;
 
+class function TAtlasSmartPaste.ReadNames(AValue: TJSONValue): TArray<string>;
+begin
+  Result := StringsOf(AValue);
+end;
+
 class function TAtlasSmartPaste.Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>;
 var
   mName: string;
@@ -580,6 +594,16 @@ begin
   finally
     mList.Free;
   end;
+end;
+
+class function TAtlasSmartPaste.Handles(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
+end;
+
+class function TAtlasSmartPaste.OffersUses(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.HasUses(AFileName);
 end;
 
 end.

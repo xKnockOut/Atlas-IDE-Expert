@@ -62,6 +62,7 @@ uses
   Atlas.Core.Outline.VisibilitySections,
   Atlas.Core.Outline.SectionEdit,
   Atlas.Core.Outline.Overloads,
+  Atlas.Core.Outline.CrumbPlan,
   Atlas.UI.Outline.Strings,
   Atlas.UI.Commands.Palette,
   Atlas.IDE.Outline.SectionEdit,
@@ -71,15 +72,8 @@ uses
 
 const
   cMenuWidth = 380;
-  /// <summary>Kennungen der Menüeinträge „Neue Zeile am Ende von …“ und „Abschnitt anlegen“ (#1768).</summary>
-  cAppendId = 'append:';
-  cCreateId = 'create:';
   /// <summary>Höchstlänge von Name und Parametern im Menü (#1784); länger mit „…“.</summary>
   cOverloadCaptionMax = 56;
-  /// <summary>Einrückung je Verschachtelungstiefe einer Region im Menü (#1764), in Zeichen.</summary>
-  cPlaceIndent = 4;
-  /// <summary>Abschnitt einer unlesbaren Kennung: keiner (-1 heißt „vor dem ersten Schlüsselwort“).</summary>
-  cNoSection = -2;
 
 type
   /// <summary>Knoten eines Menüs (Geschwister, Kinder oder Überladungen) mit dem vorgewählten Knoten; Overloads
@@ -290,25 +284,16 @@ end;
 /// ACounts), bei Deklarationsblöcken (#1766) mit dem Teil der Unit, sonst nur die Zeile.</summary>
 function PlacePath(const APlace: TAtlasCrumbPlace; ACounts: Boolean): string;
 begin
-  if ACounts and (APlace.Mark <> '') then
-  begin
-    if APlace.Count = 1 then
-    begin
+  case TAtlasCrumbPlan.PlacePath(APlace, ACounts) of
+    TAtlasCrumbPlacePath.SectionOne:
       Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCountOne), [APlace.Line + 1]);
-    end
-    else
-    begin
+    TAtlasCrumbPlacePath.SectionCount:
       Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCount), [APlace.Count,
         APlace.Line + 1]);
-    end;
-  end
-  else if APlace.Group <> '' then
-  begin
-    Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLine), [APlace.Group,
-      APlace.Line + 1]);
-  end
+    TAtlasCrumbPlacePath.Group:
+      Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLine), [APlace.Group,
+        APlace.Line + 1]);
   else
-  begin
     Result := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsPlaceLineOnly), [APlace.Line + 1]);
   end;
 end;
@@ -330,13 +315,8 @@ begin
     end;
     mCommand := Default(TAtlasCommand);
     mCommand.Id := IntToStr(mIndex);
-    // Verschachtelte Regionen (#1764) eingerückt.
-    mCommand.Caption := StringOfChar(' ', cPlaceIndent * APlaces[mIndex].Depth) + mText;
-    // Marke der Gliederung vor dem Abschnitt (#1768).
-    if ACounts and (APlaces[mIndex].Mark <> '') then
-    begin
-      mCommand.Caption := APlaces[mIndex].Mark + ' ' + mCommand.Caption;
-    end;
+    // Verschachtelte Regionen (#1764) eingerückt, Marke der Gliederung vor dem Abschnitt (#1768).
+    mCommand.Caption := TAtlasCrumbPlan.PlaceCaption(APlaces[mIndex], mText, ACounts);
     mCommand.Path := PlacePath(APlaces[mIndex], ACounts);
     if mIndex = ACurrent then
     begin
@@ -361,7 +341,7 @@ begin
     for mIndex := 0 to High(APlaces) do
     begin
       mCommand := Default(TAtlasCommand);
-      mCommand.Id := cAppendId + IntToStr(mIndex);
+      mCommand.Id := TAtlasCrumbPlan.cAppendId + IntToStr(mIndex);
       mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionAppend),
         [APlaces[mIndex].Text]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
@@ -375,7 +355,7 @@ begin
     for mKeyword in AMissing do
     begin
       mCommand := Default(TAtlasCommand);
-      mCommand.Id := cCreateId + mKeyword;
+      mCommand.Id := TAtlasCrumbPlan.cCreateId + mKeyword;
       mCommand.Caption := Format(TAtlasOutlineStrings.Text(TAtlasOutlineTextId.BreadcrumbsSectionCreate), [mKeyword]);
       if TAtlasBreadcrumbs.MatchesAtWordStart(APattern, mCommand.Caption) then
       begin
@@ -400,25 +380,21 @@ end;
 /// </summary>
 procedure RunPlace(const ASource: TAtlasCrumbSource; const APlaces: TArray<TAtlasCrumbPlace>; const AId: string);
 var
-  mChosen: Integer;
+  mChoice: TAtlasCrumbPlaceChoice;
 begin
-  if AId.StartsWith(cAppendId) then
-  begin
-    TAtlasIdeSectionEdit.Append(ASource.FileName, ASource.Nodes, ASource.Lines, ASource.Line, ASource.Character,
-      StrToIntDef(AId.Substring(Length(cAppendId)), cNoSection));
-  end
-  else if AId.StartsWith(cCreateId) then
-  begin
-    TAtlasIdeSectionEdit.Add(ASource.FileName, ASource.Nodes, ASource.Lines, ASource.Line, ASource.Character,
-      AId.Substring(Length(cCreateId)));
-  end
-  else
-  begin
-    mChosen := StrToIntDef(AId, -1);
-    if (mChosen >= 0) and (mChosen <= High(APlaces)) then
-    begin
-      TAtlasIdeNavigation.GoToLocation(ASource.FileName, APlaces[mChosen].Line, APlaces[mChosen].Character);
-    end;
+  mChoice := TAtlasCrumbPlan.PlaceChoice(AId, Length(APlaces));
+  case mChoice.Action of
+    TAtlasCrumbPlaceAction.Append:
+      TAtlasIdeSectionEdit.Append(ASource.FileName, ASource.Nodes, ASource.Lines, ASource.Line, ASource.Character,
+        mChoice.Index);
+    TAtlasCrumbPlaceAction.AddSection:
+      TAtlasIdeSectionEdit.Add(ASource.FileName, ASource.Nodes, ASource.Lines, ASource.Line, ASource.Character,
+        mChoice.Keyword);
+    TAtlasCrumbPlaceAction.Jump:
+      TAtlasIdeNavigation.GoToLocation(ASource.FileName, APlaces[mChoice.Index].Line,
+        APlaces[mChoice.Index].Character);
+    TAtlasCrumbPlaceAction.None:
+      Exit;
   end;
 end;
 

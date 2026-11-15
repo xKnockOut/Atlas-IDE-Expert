@@ -406,6 +406,61 @@
       "safeFix": false
     },
     {
+      "id": "managed-result-read-before-set",
+      "name": "Result read before it is set",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A function whose result is a dynamic array or a string reads Result before assigning it: SetLength(Result, N) followed by a read of an element (if Result[I], Inc(Result[I])), SetLength(Result, Length(Result) + 1), Result := Result + ..., Length(Result), for X in Result, Insert, Delete or Copy on Result. Delphi passes a managed Result as the caller's variable (A := F(...) hands over A), so SetLength keeps the caller's old values and Result + ... appends to them; Free Pascal starts with an empty value, so tests stay green there. Writing elements after SetLength, Length after SetLength, Result as an argument of another routine (it may be a var or out parameter) and anonymous methods stay silent. Medium confidence. Quick fix: Result := nil (or '') before the statement.",
+      "bad": "function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;\nvar\n  I: Integer;\nbegin\n  SetLength(Result, Length(A));\n  for I := 0 to High(A) do\n    if not Result[I] then\n      Result[I] := A[I] > 0;\nend;",
+      "good": "function Sichtbar(const A: TArray<Integer>): TArray<Boolean>;\nvar\n  I: Integer;\nbegin\n  Result := nil;\n  SetLength(Result, Length(A));\n  for I := 0 to High(A) do\n    if not Result[I] then\n      Result[I] := A[I] > 0;\nend;",
+      "safeFix": false
+    },
+    {
+      "id": "trygetvalue-out-default",
+      "name": "TryGetValue overwrites the preset value",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "TryGetValue (TDictionary, TJSONValue.TryGetValue<T> and others) is called as a statement, its result is discarded, and the out argument got a value earlier in the routine that is not the default value (not nil, '', 0, False, [] or Default(T)). Delphi sets the out argument to the default value even when the key is missing, so the preset is lost; Free Pascal leaves it unchanged, so tests stay green there. A preset with the default value, an evaluated result (if not D.TryGetValue(K, V) then V := ...) and an argument without a preset stay silent. Medium confidence. Fix: read into a variable of its own and take it over only when TryGetValue returns True.",
+      "bad": "Result.Top := cVorgabe;\nArgumente.TryGetValue<Integer>('top', Result.Top);",
+      "good": "if Argumente.TryGetValue<Integer>('top', mTop) then\n  Result.Top := mTop;",
+      "safeFix": false
+    },
+    {
+      "id": "record-array-shared",
+      "name": "Copied record shares its array",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A record is copied with B := A (names, fields and indexes, no call), and later in the routine an element of a dynamic array field of B or A is written in place (B.Items[0] := ..., B.Items[0].State := ...). Dynamic arrays are references without copy-on-write in Delphi: the copy and the original share the array, the write changes both. The rule needs the symbol index and reports only when name resolution knows the record and the dynamic array for sure. A new array for the field before the write (Copy, SetLength, a new assignment), static arrays, string fields, classes and a record assigned again stay silent. Quick fix: B.Items := Copy(B.Items) before the write.",
+      "bad": "mKopie := Ansicht;\nmKopie.Extras[0].State := Rot;",
+      "good": "mKopie := Ansicht;\nmKopie.Extras := Copy(mKopie.Extras);\nmKopie.Extras[0].State := Rot;",
+      "safeFix": false
+    },
+    {
+      "id": "extractfile-forward-slash",
+      "name": "File name with / split",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt or ExtractFileDrive gets a path with '/': a literal with '/', a concatenation with such a literal, StringReplace(X, '\\', '/', ...) or X.Replace('\\', '/'), or a local variable whose last assignment in the routine is one of these. These routines split only at PathDelim and DriveDelim, which is '\\' on Windows and '/' on Linux, so the path stays in one piece on Windows. PathDelim as the replacement, '\\' and other variables stay silent. Quick fix for StringReplace(..., '/', ...): replace with PathDelim.",
+      "bad": "Name := ExtractFileName(StringReplace(Pfad, '\\', '/', [rfReplaceAll]));",
+      "good": "Name := ExtractFileName(StringReplace(Pfad, '/', PathDelim, [rfReplaceAll]));",
+      "safeFix": false
+    },
+    {
+      "id": "hash-overflow-checked",
+      "name": "Intended overflow with overflow checking",
+      "category": "bug",
+      "severity": "warning",
+      "group": "find-bugs",
+      "description": "A multiplication with an FNV prime (16777619 or 1099511628211, as a literal, $-hex number or constant of the unit, also inside UInt64(...)) that overflows is in a place where overflow checking applies: no {$Q-} or {$OVERFLOWCHECKS OFF} before it. In a debug build with {$Q+} the intended overflow of the hash stops with EIntOverflow; typical is a {$IFOPT Q+}...{$Q-}{$ENDIF} bracket around the wrong routine. The directives of the file count in order, {$PUSHOPT}/{$POPOPT} included; the project setting is not known, so overflow checking counts as on. A 32-bit product with UInt64(...) or Int64(...) on the other side does not overflow and stays silent. Fix: enclose the routine in {$IFOPT Q+}{$DEFINE X}{$Q-}{$ENDIF} ... {$IFDEF X}{$Q+}{$UNDEF X}{$ENDIF}.",
+      "bad": "function Pruefsumme(const A: string): UInt64;\nvar\n  C: Char;\nbegin\n  Result := UInt64($CBF29CE484222325);\n  for C in A do\n    Result := (Result xor Ord(C)) * UInt64($00000100000001B3);\nend;",
+      "good": "{$IFOPT Q+}{$DEFINE HASH_UEBERLAUF}{$Q-}{$ENDIF}\nfunction Pruefsumme(const A: string): UInt64;\nvar\n  C: Char;\nbegin\n  Result := UInt64($CBF29CE484222325);\n  for C in A do\n    Result := (Result xor Ord(C)) * UInt64($00000100000001B3);\nend;\n{$IFDEF HASH_UEBERLAUF}{$Q+}{$UNDEF HASH_UEBERLAUF}{$ENDIF}",
+      "safeFix": false
+    },
+    {
       "id": "unreachable-code",
       "name": "Unreachable code",
       "category": "bug",
@@ -817,7 +872,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "forms",
-      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields). The user cannot fill it and posting fails.",
+      "description": "A persistent field with Required = True is bound to no visible data-aware control (a grid without DataField counts for all fields, LiveBindings with FieldName and Control count as well). The user cannot fill it and posting fails. If no control in the form file shows the dataset at all (data module, input in another form), the rule says nothing.",
       "bad": "tblKundenName: Required = True, no TDBEdit for Name",
       "good": "edName: TDBEdit; DataSource = dsKunden; DataField = 'Name'",
       "safeFix": false
@@ -1594,7 +1649,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped. Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule reports like E2601 or E2602, and Fail outside a constructor like E2078.",
+      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks and asm are skipped. After a dot the rule also reports a member that the type before it lacks, even invisibly (like E2003), when that type is surely and completely known: a class, object, record, interface or enumeration from the index, not generic, with known ancestors. While a unit from uses is missing from the index, the rule stays silent except for members without an object (see below). Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule reports like E2601 or E2602, and Fail outside a constructor like E2078. A member of a class of this file used without an object in a free routine (List.OnSelectItem := ListSelectItem in procedure CreateList(AFrame: TFrame)) gets its own message, even without System in the index, but then only for methods used as a value; quick fix: put the parameter of the class type in front (AFrame.ListSelectItem).",
       "bad": "procedure Foo;\nbegin\n  Lst.Add('x');\nend;",
       "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;",
       "compilerCodes": [
@@ -1657,7 +1712,7 @@
       "category": "bug",
       "severity": "error",
       "group": "find-bugs",
-      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
+      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias or descendant of the same-named type of another unit (TX = UnitY.TX or TX = class(UnitY.TX): before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
       "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
       "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
       "safeFix": false
@@ -3339,7 +3394,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",
+      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC; in branches that are inactive under the project defines only the nesting is checked (dcc skips them); {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",
       "bad": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n\nprocedure TDienst.Starten;",
       "good": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n{$ENDIF}\n\nprocedure TDienst.Starten;",
       "compilerCodes": [
@@ -5235,7 +5290,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose parameters differ in count, const/var/out or type, assigned or passed as an argument, and likewise an anonymous method such as procedure(const S: string) for TProc<string> (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",
+      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010); a routine for a method reference (reference to, also generic such as TFunc<string, TArray<string>>) whose parameters differ in count, const/var/out or type, assigned or passed as an argument, and likewise an anonymous method such as procedure(const S: string) for TProc<string> (like E2010); a parameterless function whose result has exactly the procedural type of the target, assigned or passed without () (like E2010: Delphi takes the function itself), also as an argument of a variable, field or property of procedural type (FOnTree(A, Refresh)). The rule knows TProc, TFunc and TPredicate from System.SysUtils even without the RTL sources in the index, as long as the unit uses System.SysUtils and no third-party unit after it can hide the type. As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. Quick fix only for the function without (): add (). Otherwise no quick fix: only the developer knows which side is wrong.",
       "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 'drei';",
       "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",
       "compilerCodes": [
@@ -5448,6 +5503,48 @@
         "E2003"
       ],
       "level": "B",
+      "safeFix": false
+    },
+    {
+      "id": "winapi-declaration-missing",
+      "name": "Missing from Delphi's Winapi.Windows",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "The unit uses Winapi.Windows (or Windows) and names an identifier that Free Pascal's Windows unit declares but Delphi's Winapi.Windows does not: OpenThread, THREAD_SUSPEND_RESUME, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, ERROR_NOT_FOUND. Free Pascal compiles it, Delphi reports E2003. Not reported when the file declares the name itself or when name resolution finds it in a unit other than Free Pascal's Windows (for example a project unit, or Delphi's Winapi.Windows from the symbol index). Names after a dot, in comments and in strings stay silent. One finding per name and file; the message gives the declaration to add.",
+      "bad": "uses\n  Winapi.Windows;\n…\n  mThread := OpenThread(THREAD_SUSPEND_RESUME, False, AThreadId);",
+      "good": "uses\n  Winapi.Windows;\nconst\n  THREAD_SUSPEND_RESUME = $0002;\nfunction OpenThread(dwDesiredAccess: DWORD; bInheritHandle: BOOL; dwThreadId: DWORD): THandle; stdcall;\n  external kernel32 name 'OpenThread';",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "B",
+      "safeFix": false
+    },
+    {
+      "id": "winapi-uses-missing",
+      "name": "Winapi.Windows missing from uses",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A routine that Delphi only declares in Winapi.Windows (GetTickCount64, GetTickCount, MulDiv) is called while Winapi.Windows (or Windows) is not in uses. Free Pascal also finds these routines in SysUtils and compiles the unit; Delphi reports E2003. TThread.GetTickCount64 and other names after a dot do not count, nor do routines the file or a project unit declares itself. One finding per file. Quick fix: add Winapi.Windows to the uses of that section (watch uses-order-hides-type if the unit also uses Vcl.Graphics).",
+      "bad": "uses\n  System.SysUtils;\n…\n  mStart := GetTickCount64;",
+      "good": "uses\n  Winapi.Windows, System.SysUtils;\n…\n  mStart := GetTickCount64;",
+      "compilerCodes": [
+        "E2003"
+      ],
+      "level": "B",
+      "safeFix": false
+    },
+    {
+      "id": "stream-write-nativeint",
+      "name": "Write without NativeInt overload",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "A class overrides Write(const Buffer; Count: Longint): Longint of TStream but not the overload Write(const Buffer; Count: NativeInt): NativeInt that exists from Delphi 13 on. Under Win64, WriteBuffer and CopyFrom call the NativeInt overload and bypass the own version, without any compiler message: a limit or count in the Longint version no longer applies. The second version is searched in the whole text of the class, also in {$IF} branches. Not reported when delphiVersion is set to a version before Delphi 13. Under Win32 both signatures are the same, so the NativeInt version belongs inside {$IF RTLVersion >= 37.0} and {$IF SizeOf(Longint) <> SizeOf(NativeInt)}.",
+      "bad": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; override;\nend;",
+      "good": "TGrenze = class(TBytesStream)\npublic\n  function Write(const Buffer; Count: Longint): Longint; overload; override;\n{$IF RTLVersion >= 37.0}\n  {$IF SizeOf(Longint) <> SizeOf(NativeInt)}\n  function Write(const Buffer; Count: NativeInt): NativeInt; overload; override;\n  {$IFEND}\n{$IFEND}\nend;",
+      "level": "A",
       "safeFix": false
     },
     {

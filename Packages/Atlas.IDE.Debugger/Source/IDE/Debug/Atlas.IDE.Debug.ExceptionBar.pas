@@ -135,6 +135,7 @@ implementation
 uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Debug.ExceptionDialog,
+  Atlas.Core.Debug.ExceptionBarFlow,
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Clipbrd,
@@ -186,7 +187,7 @@ end;
 function TAtlasIdeDebugExceptionBar.TKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 begin
   Result := (FBar <> nil) and FBar.Visible and (AShift = []) and
-    ((AKey = VK_ESCAPE) or (AKey = VK_F8) or (AKey = VK_F9)) and
+    (TAtlasExceptionBarFlow.KeyOf(AKey) <> TAtlasBarKey.None) and
     (Screen.ActiveCustomForm <> nil) and (Screen.ActiveCustomForm = GetParentForm(FBar));
 end;
 
@@ -196,7 +197,7 @@ begin
   begin
     Exit;
   end;
-  if AKey = VK_F9 then
+  if TAtlasExceptionBarFlow.KeyOf(AKey) = TAtlasBarKey.Continue then
   begin
     FBar.Trigger(TAtlasDebugBarAction.Continue);
   end
@@ -257,24 +258,20 @@ end;
 
 class procedure TAtlasIdeDebugExceptionBar.CheckShow;
 begin
-  // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: keine Leiste.
-  if not FHasPending or (TAtlasIdeDebugSession.StopCount <> FPending.Stop) or
-    (TAtlasIdeDebugSession.StoppedThread = nil) or (TThread.GetTickCount64 - FPendingSince > cShowWaitMs) then
-  begin
-    FTimer.Enabled := False;
-    FHasPending := False;
-    Exit;
-  end;
-  // Erst wenn kein Dialog mehr offen ist und die IDE ihren Ort gezeigt hat (zwei ruhige Takte).
-  if Application.ModalLevel > 0 then
-  begin
-    FQuiet := 0;
-    Exit;
-  end;
-  Inc(FQuiet);
-  if FQuiet < 2 then
-  begin
-    Exit;
+  // Weitergelaufen, neuer Halt, Sitzung zu oder zu lange gewartet: keine Leiste. Erst wenn kein Dialog mehr
+  // offen ist und die IDE ihren Ort gezeigt hat (zwei ruhige Takte).
+  case TAtlasExceptionBarFlow.WaitStep(FHasPending and (TAtlasIdeDebugSession.StopCount = FPending.Stop) and
+    (TAtlasIdeDebugSession.StoppedThread <> nil), TThread.GetTickCount64 - FPendingSince, cShowWaitMs,
+    Application.ModalLevel > 0, FQuiet) of
+    TAtlasBarWait.Drop:
+      begin
+        FTimer.Enabled := False;
+        FHasPending := False;
+        Exit;
+      end;
+    TAtlasBarWait.Wait:
+      Exit;
+    TAtlasBarWait.Go: ;
   end;
   FTimer.Enabled := False;
   FHasPending := False;
@@ -536,8 +533,9 @@ begin
   else if FBar <> nil then
   begin
     // debug.exceptionBanner.ignoreAtLocation: Knopf an oder aus.
-    FShownInfo.CanIgnoreLocation := TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation and
-      (TAtlasIdeDebugSession.LaunchProject <> '') and FShownInfo.HasLocation;
+    FShownInfo.CanIgnoreLocation := TAtlasExceptionBarFlow.CanIgnoreLocation(
+      TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation, TAtlasIdeDebugSession.LaunchProject,
+      FShownInfo.HasLocation);
     FShownInfo.CanCreateTest := CreateTestOffered;
     FBar.SetInfo(FShownInfo);
   end;
@@ -603,7 +601,7 @@ end;
 class function TAtlasIdeDebugExceptionBar.Covers(AStop: Integer): Boolean;
 begin
   Result := Started and TAtlasIdeSettings.Current.DebugExceptionBanner and
-    ((Visible and (FShownStop = AStop)) or (FHasPending and (FPending.Stop = AStop)));
+    TAtlasExceptionBarFlow.Covers(Visible, FShownStop, FHasPending, FPending.Stop, AStop);
 end;
 
 class procedure TAtlasIdeDebugExceptionBar.SetExplanationHandler(const AHandler: TProc<TAtlasDebugBarAction>);

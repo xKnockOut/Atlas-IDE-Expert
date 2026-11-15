@@ -27,6 +27,8 @@ type
     procedure NestedRoutine;
     [Test]
     procedure RoutineFromIndex;
+    [Test]
+    procedure OpenToolsInterfaceMethod;
     /// <summary>Überladungen im Vorfahren (#1326, Indy): override bzw. overload im Nachfahren verdeckt sie nicht;
     /// eine neue Methode ohne beides schon.</summary>
     [Test]
@@ -246,6 +248,27 @@ begin
   Assert.AreEqual('Versenden erwartet höchstens 3 Argumente, übergeben sind 4 (wie E2034).', mFound[1].Message);
 end;
 
+procedure TCallRulesTests.OpenToolsInterfaceMethod;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  // IOTADebuggerServices.AttachProcess hat in Delphi 13 nur noch die Form mit drei Argumenten (#2309, Fundstelle
+  // Atlas.IDE.Debug.Reattach): Der vierte Parameter RemoteHost der älteren Form ist weg.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit ToolsAPI;'#10'interface'#10'type'#10 +
+    '  IOTADebuggerServices = interface(IUnknown)'#10'    [''{0E3B9D7B-E119-11D1-AB0C-00C04FB16FB3}'']'#10 +
+    '    function AttachProcess(Pid: Integer; PauseAfterAttach, CloseAfterDetach: Boolean): Boolean;'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\Delphi\ToolsAPI.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, 'unit Wieder;'#10'interface'#10 +
+    'implementation'#10'uses'#10'  ToolsAPI;'#10'procedure Anhaengen(AServices: IOTADebuggerServices);'#10 +
+    'begin'#10'  AServices.AttachProcess(12, False, False, '''');'#10'  AServices.AttachProcess(12, False, False);'#10 +
+    'end;'#10'end.', mIndex, '', '');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(7, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('AttachProcess erwartet 3 Argumente, übergeben sind 4 (wie E2034).', mFound[0].Message);
+end;
+
 procedure TCallRulesTests.AncestorOverloads;
 var
   mIndex: ISymbolIndex;
@@ -339,6 +362,19 @@ begin
     'constructor TFehler.Create(const AText: string);'#10'begin'#10'end;'#10 +
     'procedure Test(AKlasse: TFehlerKlasse);'#10'begin'#10'  AKlasse.Create(''x'').Free;'#10 +
     '  TFehler.Create(''y'');'#10'end;'#10'end.');
+  // #2309 (Atlas.IDE.Designer.DefaultSizes, Wrap): Umwandlung in eine Klassenreferenz, Konstruktor eines Vorfahren
+  // mit Owner (TControlClass(AControl.ClassType).Create(nil)).
+  Silent('unit Lokal;'#10'interface'#10'type'#10'  TObject = class'#10'    constructor Create;'#10 +
+    '    function ClassType: TClass;'#10'  end;'#10'  TClass = class of TObject;'#10 +
+    '  TComponent = class(TObject)'#10'    constructor Create(AOwner: TComponent); virtual;'#10'  end;'#10 +
+    '  TControl = class(TComponent)'#10'  end;'#10'  TControlClass = class of TControl;'#10 +
+    '  TComponentClass = class of TComponent;'#10'implementation'#10'constructor TObject.Create;'#10'begin'#10 +
+    'end;'#10'function TObject.ClassType: TClass;'#10'begin'#10'end;'#10 +
+    'constructor TComponent.Create(AOwner: TComponent);'#10'begin'#10'end;'#10 +
+    'procedure Test(AControl: TControl);'#10'var'#10'  mFresh: TControl;'#10'  mTemplate: TComponent;'#10 +
+    'begin'#10'  mFresh := TControlClass(AControl.ClassType).Create(nil);'#10 +
+    '  mTemplate := TComponentClass(AControl.ClassType).Create(nil);'#10 +
+    '  mTemplate := TComponentClass(AControl).Create(nil);'#10'end;'#10'end.');
 end;
 
 procedure TCallRulesTests.SilentCases;

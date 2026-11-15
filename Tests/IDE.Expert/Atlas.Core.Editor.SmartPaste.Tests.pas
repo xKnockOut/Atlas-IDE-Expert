@@ -27,7 +27,11 @@ type
     [Test]
     procedure ReadsAnalysisAndSelection;
     [Test]
+    procedure ReadsNames;
+    [Test]
     procedure BuildsArguments;
+    [Test]
+    procedure HandlesPascalSources;
   end;
 
 implementation
@@ -194,12 +198,34 @@ begin
   mAnalysis := Default(TAtlasPasteAnalysis);
 end;
 
+procedure TAtlasSmartPasteTests.ReadsNames;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJSONObject.ParseJSONValue('["System.JSON",1,"Data.DB",null]');
+  try
+    Assert.AreEqual('System.JSON|Data.DB', string.Join('|', TAtlasSmartPaste.ReadNames(mValue)));
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(TAtlasSmartPaste.ReadNames(nil))));
+end;
+
 procedure TAtlasSmartPasteTests.BuildsArguments;
 begin
   Assert.AreEqual('["file:///c%3A/p/A.pas",{"start":{"line":3,"character":2},"end":{"line":5,"character":7}}]',
     TAtlasSmartPaste.Arguments('file:///c%3A/p/A.pas', 3, 2, 5, 7));
   Assert.AreEqual('["u",{"start":{"line":0,"character":0},"end":{"line":1,"character":0}},["System.JSON"]]',
     TAtlasSmartPaste.Arguments('u', 0, 0, 1, 0, ['System.JSON']));
+end;
+
+procedure TAtlasSmartPasteTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasSmartPaste.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasSmartPaste.Handles('defines.INC'));
+  Assert.IsFalse(TAtlasSmartPaste.Handles('Main.dfm'));
+  Assert.IsTrue(TAtlasSmartPaste.OffersUses('Projekt.dpr'));
+  Assert.IsFalse(TAtlasSmartPaste.OffersUses('defines.inc'), 'Include-Dateien haben kein uses');
 end;
 
 initialization

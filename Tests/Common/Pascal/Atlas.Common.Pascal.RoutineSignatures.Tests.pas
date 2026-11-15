@@ -61,6 +61,13 @@ begin
   Assert.AreEqual('function Foo(A: Integer; B: string): TList<Integer>', TRoutineSignatures.Head(
     'function Foo(A: Integer;  B: string): TList<Integer>; stdcall;', mRest));
   Assert.AreEqual(' stdcall;', mRest);
+  // Kommentare hinter dem Kopf sind keine Direktiven; Compilerdirektiven bleiben.
+  TRoutineSignatures.Head('procedure P; virtual;// abstract;', mRest);
+  Assert.AreEqual(' virtual; ', mRest);
+  TRoutineSignatures.Head('procedure P; {$IFDEF X} override; {$ENDIF} { abstract } (* abstract *) dynamic;', mRest);
+  Assert.AreEqual(' {$IFDEF X} override; {$ENDIF}     dynamic;', mRest);
+  TRoutineSignatures.Head('procedure P; external ''a//b.dll'';', mRest);
+  Assert.AreEqual(' external ''a//b.dll'';', mRest);
   // Ein "<" im Standardwert steht in Klammern und zählt nicht.
   Assert.AreEqual('procedure P(A: Boolean = 1 < 2)', TRoutineSignatures.Head('procedure P(A: Boolean = 1 < 2); begin',
     mRest));

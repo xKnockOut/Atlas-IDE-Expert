@@ -57,6 +57,12 @@ type
     class function InFolder(const AFileName, AFolder: string): Boolean; static;
     /// <summary>Läuft eine Abfrage, die bei AStartedMs begann (Tick in ms), bei ANowMs noch?</summary>
     class function QueryRunning(AStartedMs, ANowMs: UInt64): Boolean; static;
+    /// <summary>Dauer eines Builds für die Zusammenfassung (#758): mehr als 24 Tage gibt es nicht, ungültige Werte
+    /// (0 und weniger, ab MaxInt) gelten als unbekannt (0).</summary>
+    class function BuildDurationMs(ADurationMs: Int64): Integer; static;
+    /// <summary>Dauer eines Builds für die Projektgruppe: der ganze Lauf („Alle erzeugen“), ohne Angabe die des
+    /// Projekts.</summary>
+    class function GroupDurationMs(AGroupMs, AProjectMs: Int64): Int64; static;
     /// <summary>Atlas-Regeltreffer: Code einer Regel, nicht vom Compiler, kein inaktiver Bereich.</summary>
     class function IsRuleHit(const AProblem: TAtlasProblem): Boolean; static;
     /// <summary>Regeltreffer in den Dateien von AStore unterhalb von AFolder. False (unbekannt), wenn dort keine
@@ -215,6 +221,24 @@ class function TAtlasProjectRecording.QueryRunning(AStartedMs, ANowMs: UInt64): 
 begin
   // Ein Tick vor dem Start (Uhr übergelaufen o. Ä.) zählt als beendet.
   Result := (ANowMs >= AStartedMs) and (ANowMs - AStartedMs < cVcsQueryLimitMs);
+end;
+
+class function TAtlasProjectRecording.BuildDurationMs(ADurationMs: Int64): Integer;
+begin
+  Result := 0;
+  if (ADurationMs > 0) and (ADurationMs < MaxInt) then
+  begin
+    Result := Integer(ADurationMs);
+  end;
+end;
+
+class function TAtlasProjectRecording.GroupDurationMs(AGroupMs, AProjectMs: Int64): Int64;
+begin
+  Result := AGroupMs;
+  if Result <= 0 then
+  begin
+    Result := AProjectMs;
+  end;
 end;
 
 class function TAtlasProjectRecording.IsRuleHit(const AProblem: TAtlasProblem): Boolean;

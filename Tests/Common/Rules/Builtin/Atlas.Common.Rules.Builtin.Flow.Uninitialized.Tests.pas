@@ -19,6 +19,8 @@ type
     procedure GuardedByFlagIsSilent;
     [Test]
     procedure ManagedTypeIsSilent;
+    [Test]
+    procedure NameInsideWithIsSilent;
   end;
 
 implementation
@@ -65,6 +67,17 @@ end;
 procedure TFlowUninitializedTests.ManagedTypeIsSilent;
 begin
   TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  S, T: string;', '  T := S;'));
+end;
+
+procedure TFlowUninitializedTests.NameInsideWithIsSilent;
+begin
+  // Im with-Rumpf kann Breite ein Mitglied von TRect(…) sein und die lokale Variable verdecken.
+  TRuleAssert.Silent(TPossiblyUninitializedRule.Create, Routine('  Breite, N: Integer;',
+    '  N := 0;'#10'  if B then'#10'    Breite := 1'#10'  else'#10'    with TRect(Self) do'#10'      N := Breite;'#10 +
+    '  Zeige(N);'));
+  // Der Ausdruck hinter with gehört nicht zum Rumpf und wird weiter geprüft.
+  TRuleAssert.Reports(TPossiblyUninitializedRule.Create, Routine('  Breite, N: Integer;',
+    '  N := 0;'#10'  with Liste[Breite] do'#10'    Zeige(N);'));
 end;
 
 initialization

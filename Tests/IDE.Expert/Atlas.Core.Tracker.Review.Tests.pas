@@ -5,7 +5,8 @@
 // alle Branches geordnet zur Auswahl; Schrittfolge (ohne Build ausgelassen,
 // gescheiterter Build lässt die Tests aus, fehlgeschlagene Tests scheitern);
 // Rückweg nur nach gelungenem Wechsel; Build-Ergebnis aus dem Bericht;
-// Vorlage mit {build} und {tests}, Vorgabe folgt der Sprache.
+// Vorlage mit {build} und {tests}, Vorgabe folgt der Sprache; Projekt für den
+// Build, eigenes Issue vor dem Wechsel und Branch nach Muster.
 
 interface
 
@@ -43,6 +44,12 @@ type
     procedure ReturnNameByKind;
     [Test]
     procedure RowReviewsInReviewState;
+    [Test]
+    procedure BuildProjectFallsBackToActive;
+    [Test]
+    procedure OwnKeyAndOtherRunning;
+    [Test]
+    procedure PlannedBranchIgnoresRemember;
   end;
 
 implementation
@@ -281,6 +288,37 @@ begin
   mView.VcsKind := TAtlasVcsKind.Svn;
   mIssue.State := 'Offen';
   Assert.IsFalse(TAtlasTrackerReview.Reviews(mView, mIssue));
+end;
+
+procedure TAtlasTrackerReviewTests.BuildProjectFallsBackToActive;
+begin
+  Assert.AreEqual('C:\Src\App.dproj', TAtlasTrackerReview.BuildProject('C:\Src\App.dproj', 'C:\Src\B.dproj'));
+  Assert.AreEqual('C:\Src\B.DPROJ', TAtlasTrackerReview.BuildProject('C:\Src', 'C:\Src\B.DPROJ'), 'Ordner');
+  Assert.AreEqual('', TAtlasTrackerReview.BuildProject('C:\Src', 'C:\Src\Gruppe.groupproj'));
+  Assert.AreEqual('', TAtlasTrackerReview.BuildProject('', ''));
+end;
+
+procedure TAtlasTrackerReviewTests.OwnKeyAndOtherRunning;
+begin
+  Assert.AreEqual('ATL-1', TAtlasTrackerReview.OwnKey('ATL-1', 'ATL-2052'));
+  Assert.AreEqual('', TAtlasTrackerReview.OwnKey('atl-2052', 'ATL-2052'), 'das geprüfte Issue selbst');
+  Assert.AreEqual('', TAtlasTrackerReview.OwnKey('', 'ATL-2052'));
+  Assert.IsTrue(TAtlasTrackerReview.OtherRunning('ATL-1', 'ATL-2052'));
+  Assert.IsFalse(TAtlasTrackerReview.OtherRunning('atl-2052', 'ATL-2052'));
+end;
+
+procedure TAtlasTrackerReviewTests.PlannedBranchIgnoresRemember;
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  mIssue := TAtlasTrackerIssue.Empty;
+  mIssue.Key := '#9';
+  mIssue.Number := 9;
+  mIssue.Title := 'x';
+  Assert.AreEqual('bugfix/9', TAtlasTrackerReview.PlannedBranch(TAtlasVcsKind.Git,
+    TAtlasIssuesOptions.Create(TAtlasIssueStart.Remember, 'bugfix/{nummer}', '', ''), mIssue), 'merken zählt nicht');
+  Assert.AreEqual('', TAtlasTrackerReview.PlannedBranch(TAtlasVcsKind.Git,
+    TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '///', '', ''), mIssue), 'kein gültiger Name');
 end;
 
 initialization

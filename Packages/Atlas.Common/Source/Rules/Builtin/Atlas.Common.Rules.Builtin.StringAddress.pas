@@ -18,7 +18,10 @@
 //                     (die Meldung nennt dafür UniqueString). Still bleibt die
 //                     Regel, wenn eine Bedingung S als nicht leer sichert
 //                     (if S <> '' then, if Length(S) > 0 then, if N > 0 then
-//                     nach SetLength(S, N), if S = '' then Exit davor).
+//                     nach SetLength(S, N), if S = '' then Exit davor, SetLength(S, 2) davor).
+//                     string[N] und Aliase darauf sind ShortStrings: Dort
+//                     ist @S[1] immer gültig, die Regel schweigt.
+
 
 interface
 
@@ -51,6 +54,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Builtin.TypedExpressions,
+  Atlas.Common.Rules.Builtin.Constants.Conversions,
+
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Localization.Texts;
 
@@ -162,6 +167,71 @@ var
     end;
   end;
 
+  /// <summary>Hat ein Typknoten der Datei namens ATypeName die Form string[N] bzw. ShortString?</summary>
+  function LocalShortAlias(const ATypeName: string): Boolean;
+  var
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    Result := False;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(AContext.Tree.Root);
+      while not Result and (mPending.Count > 0) do
+      begin
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, ATypeName) and (mNode.ChildCount > 0) then
+        begin
+          Result := TStringLengthLimitRule.ShortStringLength(mScope.Text(mNode[0])) > 0;
+        end;
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  /// <summary>Steht in der Deklaration von ASymbol in dieser Datei (bis zum nächsten ';') string[…]?</summary>
+  function DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
+  var
+    mTokens: TArray<TPascalToken>;
+    mIndex: Integer;
+  begin
+    Result := False;
+    if (ASymbol.Kind <> TResolvedKind.Local) and not SameText(ASymbol.FileName, mScope.FileName) then
+    begin
+      Exit;
+    end;
+    mTokens := mScope.Tokens;
+    mIndex := mScope.TokenAtPosition(ASymbol.SelectionRange.StartPos);
+    while (mIndex >= 0) and (mIndex < High(mTokens)) and (mTokens[mIndex].Text <> ';') do
+    begin
+      if SameText(mTokens[mIndex].Text, 'string') and (mTokens[mIndex + 1].Text = '[') then
+      begin
+        Exit(True);
+      end;
+      Inc(mIndex);
+    end;
+  end;
+
+  /// <summary>Ist ASymbol ein ShortString (string[N] oder ein Alias darauf, auch aus dem Index)? @S[1] ist dort
+  /// immer gültig (FP mORMot2: TShort31 = string[31]); die Namensauflösung führt string[N] auf string zurück.
+  /// </summary>
+  function IsShortString(const ASymbol: TResolvedSymbol): Boolean;
+  begin
+    Result := (TStringLengthLimitRule.ShortStringLength(ASymbol.Signature) > 0) or
+      (TStringLengthLimitRule.ShortStringLength(ASymbol.TypeName) > 0) or DeclaredShort(ASymbol);
+    if not Result and IsValidIdent(ASymbol.TypeName, True) then
+    begin
+      Result := LocalShortAlias(ASymbol.TypeName) or
+        (TStringLengthLimitRule.IndexAliasLength(AContext, ASymbol.TypeName) > 0);
+    end;
+  end;
+
   /// <summary>Umgebende Umwandlung in einen Zeigertyp (PChar(@S[1])) oder nil.</summary>
   function PointerCast(ANode: TSyntaxNode): TSyntaxNode;
   begin
@@ -212,8 +282,9 @@ var
     begin
       AWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
     end;
-    Result := AWidth <> 0;
+    Result := (AWidth <> 0) and not IsShortString(ASymbol);
   end;
+
 
   /// <summary>Text von ANode klein und ohne Leerraum, zum Vergleichen von Bedingungen.</summary>
   function Squeezed(ANode: TSyntaxNode): string;
@@ -290,7 +361,24 @@ var
       (AIf.ChildCount > 2) and (AIf[2] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, False));
   end;
 
-  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;"?</summary>
+  /// <summary>Ist AStatement "SetLength(S, N)" mit einer Zahl N &gt; 0? S ist ABase in Squeezed-Form.</summary>
+  function SetsFixedLength(AStatement: TSyntaxNode; const ABase: string): Boolean;
+  var
+    mCall: TSyntaxNode;
+    mLength: Integer;
+  begin
+    Result := False;
+    if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+    begin
+      Exit;
+    end;
+    mCall := AStatement[0];
+    Result := (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount = 3) and
+      SameText(Squeezed(mCall[0]), 'setlength') and (Squeezed(mCall[1]) = ABase) and
+      TryStrToInt(Squeezed(mCall[2]), mLength) and (mLength > 0);
+  end;
+
+  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;" oder "SetLength(S, 2);"?</summary>
   function LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
   var
     mIndex: Integer;
@@ -303,6 +391,7 @@ var
       mStatement := ABlock[mIndex];
       Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
         Leaves(mStatement[1]) and ConditionSays(mStatement[0], ABase, ARoutine, False);
+      Result := Result or SetsFixedLength(mStatement, ABase);
       Inc(mIndex);
     end;
   end;

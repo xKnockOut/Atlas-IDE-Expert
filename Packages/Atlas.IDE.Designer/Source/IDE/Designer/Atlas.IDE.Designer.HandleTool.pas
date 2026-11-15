@@ -10,6 +10,9 @@
 // - Schritte: BeginStep merkt den Stand (TAtlasDesignerSnapshot), ein
 //   Schritt mit Änderung (Changed) wird bei CommitStep zum Stand für
 //   „… rückgängig“, sonst verworfen.
+// - Lost bricht einen Schritt ab, wenn das Formular während eines Zugs oder
+//   Dialogs nicht mehr dasselbe ist (TAtlasDesignerKept): verwerfen ohne
+//   Zurücksetzen, Zug lösen, Meldung.
 // Nur im Hauptthread.
 
 interface
@@ -33,7 +36,7 @@ type
     FStep: TAtlasDesignerSnapshot;
     FChanged: Boolean;
     procedure MenuClick(Sender: TObject);
-    procedure RunGuarded(const AAction: TProc);
+    class procedure RunGuarded(const AAction: TProc); static;
   protected
     /// <summary>Griff-Fenster anlegen und verdrahten.</summary>
     procedure EnsureOverlay;
@@ -53,6 +56,9 @@ type
     /// <summary>Schritt beenden: mit Änderung als Stand für „rückgängig“ (Designer geändert, ADone in die
     /// Meldungen), ohne verwerfen. ARestore: Stand vor dem Schritt wiederherstellen.</summary>
     procedure CommitStep(const ADone: string; ARestore: Boolean);
+    /// <summary>Formular nicht mehr dasselbe (neu geladen, Komponente gelöscht): Schritt verwerfen, ohne den alten
+    /// Stand zurückzuschreiben, Zug lösen, Griffe ausblenden und melden.</summary>
+    procedure Lost;
     function InStep: Boolean;
     property Overlay: TAtlasDesignerHandles read FOverlay;
     property Changed: Boolean read FChanged write FChanged;
@@ -79,6 +85,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.EditorStyle;
 
 { TAtlasIdeHandleTool }
@@ -137,7 +144,7 @@ begin
     end);
 end;
 
-procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
+class procedure TAtlasIdeHandleTool.RunGuarded(const AAction: TProc);
 begin
   TAtlasGuard.Run(TAtlasFeature.DesignerBar, AAction);
 end;
@@ -250,6 +257,18 @@ begin
   end;
   FreeAndNil(FStep);
   FChanged := False;
+end;
+
+procedure TAtlasIdeHandleTool.Lost;
+begin
+  FreeAndNil(FStep);
+  FChanged := False;
+  if FOverlay <> nil then
+  begin
+    FOverlay.CancelDrag;
+  end;
+  Hide;
+  Say(TAtlasDesignerKept.LostText);
 end;
 
 function TAtlasIdeHandleTool.InStep: Boolean;

@@ -54,8 +54,6 @@ type
     FLastRun: string;
     FCurrent: Integer;
     FLoadedAt: UInt64;
-    /// <summary>Kennung von tests.lists, Auswahl und Listen: ändert sie sich, zeigt ApplySettings neu.</summary>
-    function StateKey: string;
     procedure Load(const AProject: string);
     procedure LoadPersonal(out ALists: TAtlasTestLists; out ALastRun: string);
     function SaveProject: Boolean;
@@ -194,6 +192,13 @@ begin
   end;
 end;
 
+/// <summary>Kennung von tests.lists, Auswahl ACurrent und Listen ALists: ändert sie sich, zeigt ApplySettings
+/// neu.</summary>
+function StateKey(ACurrent: Integer; const ALists: TAtlasTestLists): string;
+begin
+  Result := TAtlasTestListSet.StateKey(TAtlasIdeTestLists.Wanted, ACurrent, ALists);
+end;
+
 { TAtlasIdeTestLists }
 
 constructor TAtlasIdeTestLists.Create(ATests: TAtlasIdeTests);
@@ -219,13 +224,12 @@ procedure TAtlasIdeTestLists.Load(const AProject: string);
 var
   mCurrent: string;
   mPersonal: TAtlasTestLists;
-  mList: TAtlasTestList;
 begin
   // Der gewählte Reiter bleibt über den Namen, auch wenn Listen dazukommen.
   mCurrent := '';
-  if (FCurrent >= 0) and (FCurrent <= High(FLists)) and SameText(AProject, FProject) then
+  if SameText(AProject, FProject) then
   begin
-    mCurrent := FLists[FCurrent].Name;
+    mCurrent := TAtlasTestListSet.NameAt(FLists, FCurrent);
   end;
   FProject := AProject;
   FLists := nil;
@@ -236,16 +240,8 @@ begin
     FCurrent := -1;
     Exit;
   end;
-  FLists := ProjectLists(FProject);
   LoadPersonal(mPersonal, FLastRun);
-  // Gleichnamige eigene Listen treten hinter die des Projekts zurück.
-  for mList in mPersonal do
-  begin
-    if TAtlasTestListModel.IndexOf(FLists, mList.Name) < 0 then
-    begin
-      FLists := FLists + [mList];
-    end;
-  end;
+  FLists := TAtlasTestListSet.Merged(ProjectLists(FProject), mPersonal);
   FCurrent := TAtlasTestListModel.IndexOf(FLists, mCurrent);
 end;
 
@@ -376,17 +372,8 @@ begin
 end;
 
 function TAtlasIdeTestLists.Taken(AExcept: Integer): TArray<string>;
-var
-  mIndex: Integer;
 begin
-  Result := nil;
-  for mIndex := 0 to High(FLists) do
-  begin
-    if mIndex <> AExcept then
-    begin
-      Result := Result + [FLists[mIndex].Name];
-    end;
-  end;
+  Result := TAtlasTestListSet.Taken(FLists, AExcept);
 end;
 
 function TAtlasIdeTestLists.Edit(var AList: TAtlasTestList; ANew: Boolean; AExcept: Integer): Boolean;
@@ -433,9 +420,7 @@ procedure TAtlasIdeTestLists.NewList;
 var
   mList: TAtlasTestList;
 begin
-  mList := Default(TAtlasTestList);
-  mList.Name := TAtlasTestListModel.UniqueName(FLists, TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsDefaultName));
-  mList.Store := TAtlasTestListStore.Personal;
+  mList := TAtlasTestListSet.Fresh(FLists, TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsDefaultName));
   if (FProject = '') or not Edit(mList, True, -1) then
   begin
     Exit;
@@ -451,7 +436,7 @@ var
   mList: TAtlasTestList;
   mOldStore: TAtlasTestListStore;
 begin
-  if (AIndex < 0) or (AIndex > High(FLists)) then
+  if not TAtlasTestListSet.Has(FLists, AIndex) then
   begin
     Exit;
   end;
@@ -475,14 +460,11 @@ procedure TAtlasIdeTestLists.Duplicate(AIndex: Integer);
 var
   mList: TAtlasTestList;
 begin
-  if (AIndex < 0) or (AIndex > High(FLists)) then
+  if not TAtlasTestListSet.Has(FLists, AIndex) then
   begin
     Exit;
   end;
-  mList := FLists[AIndex];
-  mList.Name := TAtlasTestListModel.UniqueName(FLists, mList.Name);
-  // Eine Kopie gehört zuerst nur mir; ins Projekt kommt sie über „Umbenennen …“.
-  mList.Store := TAtlasTestListStore.Personal;
+  mList := TAtlasTestListSet.Copied(FLists, AIndex);
   FLists := FLists + [mList];
   FCurrent := High(FLists);
   Save(mList.Store);
@@ -493,7 +475,7 @@ procedure TAtlasIdeTestLists.DeleteList(AIndex: Integer);
 var
   mStore: TAtlasTestListStore;
 begin
-  if (AIndex < 0) or (AIndex > High(FLists)) or (MessageDlg(TAtlasTestsStrings.Fmt(
+  if not TAtlasTestListSet.Has(FLists, AIndex) or (MessageDlg(TAtlasTestsStrings.Fmt(
     TAtlasTestsTextId.ListsDeleteConfirm, [FLists[AIndex].Name]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
     Exit;
@@ -519,10 +501,7 @@ begin
   if AIndex < 0 then
   begin
     // „Neue Liste …“: feste Liste mit der Auswahl.
-    mList := Default(TAtlasTestList);
-    mList.Name := TAtlasTestListModel.UniqueName(FLists,
-      TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsDefaultName));
-    mList.Store := TAtlasTestListStore.Personal;
+    mList := TAtlasTestListSet.Fresh(FLists, TAtlasTestsStrings.Text(TAtlasTestsTextId.ListsDefaultName));
     if not Edit(mList, False, -1) then
     begin
       Exit;
@@ -530,7 +509,7 @@ begin
     FLists := FLists + [mList];
     AIndex := High(FLists);
   end;
-  if (AIndex > High(FLists)) or FLists[AIndex].IsDynamic then
+  if not TAtlasTestListSet.IsFixed(FLists, AIndex) then
   begin
     Exit;
   end;
@@ -544,7 +523,7 @@ var
   mSource: TAtlasTestListSource;
   mNames: TArray<string>;
 begin
-  if (FCurrent < 0) or (FCurrent > High(FLists)) or FLists[FCurrent].IsDynamic then
+  if not TAtlasTestListSet.IsFixed(FLists, FCurrent) then
   begin
     Exit;
   end;
@@ -563,7 +542,7 @@ var
   mArguments: TArray<string>;
   mList: TAtlasTestList;
 begin
-  if not Wanted or (AIndex < 0) or (AIndex > High(FLists)) or not Assigned(FSource) then
+  if not Wanted or not TAtlasTestListSet.Has(FLists, AIndex) or not Assigned(FSource) then
   begin
     Exit;
   end;
@@ -634,7 +613,7 @@ var
   mList: TAtlasTestList;
 begin
   Result := AVisible;
-  if not Wanted or (FCurrent < 0) or (FCurrent > High(FLists)) then
+  if not Wanted or not TAtlasTestListSet.Has(FLists, FCurrent) then
   begin
     Exit;
   end;
@@ -649,8 +628,6 @@ begin
 end;
 
 function TAtlasIdeTestLists.Names: TArray<string>;
-var
-  mList: TAtlasTestList;
 begin
   Result := nil;
   if not Wanted or not Assigned(FSource) then
@@ -661,10 +638,7 @@ begin
   begin
     Load(FSource(False).Project);
   end;
-  for mList in FLists do
-  begin
-    Result := Result + [mList.Name];
-  end;
+  Result := TAtlasTestListSet.Names(FLists);
 end;
 
 procedure TAtlasIdeTestLists.RunByName(const AName: string);
@@ -705,22 +679,17 @@ begin
   // Jede geänderte Einstellung (auch fremde, etwa die Sortierung der Gliederung) kommt hier an. Nur wenn sich
   // Listen, Auswahl oder tests.lists ändern, neu zeigen: Changed baut den ganzen Baum im Fenster „Atlas-Tests“ neu
   // (bei 14000 Tests mehrere Sekunden).
-  mBefore := StateKey;
+  mBefore := StateKey(FCurrent, FLists);
   if not Wanted then
   begin
     FCurrent := -1;
   end;
   Load(FProject);
-  if StateKey = mBefore then
+  if StateKey(FCurrent, FLists) = mBefore then
   begin
     Exit;
   end;
   Changed;
-end;
-
-function TAtlasIdeTestLists.StateKey: string;
-begin
-  Result := BoolToStr(Wanted, True) + '|' + IntToStr(FCurrent) + '|' + TAtlasTestListModel.ToJson(FLists, '');
 end;
 
 class function TAtlasIdeTestLists.Texts: TAtlasTestListTexts;

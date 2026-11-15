@@ -24,7 +24,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Build.CompilerSwitches,
@@ -47,7 +47,7 @@ type
     FStatus: TAtlasCompilerSwitchesStatusProc;
     FFollow: TAtlasSwitchFollow;
     FTimer: TTimer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     FHasView: Boolean;
     FView: TAtlasCompilerSwitchView;
@@ -65,14 +65,13 @@ type
     /// <summary>Ohne Bedarf: Stand vergessen (beim Öffnen sofort fragen), Statusfeld leeren.</summary>
     procedure Rest;
     /// <summary>Fenster sichtbar oder Statusfeld an.</summary>
-    function Wanted: Boolean;
+    class function Wanted: Boolean; static;
     procedure Ask;
     procedure Accept(ARequest: Integer; const AFileName: string; ALine: Integer;
       const AView: TAtlasCompilerSwitchView; AKnown: Boolean);
     procedure ShowMessageText(const AText: string);
     procedure UpdateStatus;
     procedure Fill(AFrame: TAtlasBuildSwitchesFrame);
-    procedure ReapWorkers(AWait: Boolean);
     /// <summary>Im Hintergrund-Thread: fragen und lesen; False ohne Antwort.</summary>
     class function Fetch(ASession: TLspSession; const AFileName: string; ALine, ACharacter: Integer;
       out AView: TAtlasCompilerSwitchView): Boolean; static;
@@ -125,7 +124,7 @@ begin
   FSession := ASession;
   FStatus := AStatus;
   FFollow := TAtlasSwitchFollow.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FViewLine := -1;
   FMessage := TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesEmpty);
   FTimer := TTimer.Create(nil);
@@ -138,7 +137,10 @@ destructor TAtlasIdeCompilerSwitches.Destroy;
 begin
   FreeAndNil(FTimer);
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FreeAndNil(FFollow);
   FView := Default(TAtlasCompilerSwitchView);
@@ -147,7 +149,7 @@ end;
 
 procedure TAtlasIdeCompilerSwitches.Tick(Sender: TObject);
 begin
-  ReapWorkers(False);
+  FWorkers.Prune;
   if not Enabled or TAtlasGuard.Disabled(TAtlasFeature.Build) then
   begin
     Exit;
@@ -216,7 +218,7 @@ begin
   UpdateStatus;
 end;
 
-function TAtlasIdeCompilerSwitches.Wanted: Boolean;
+class function TAtlasIdeCompilerSwitches.Wanted: Boolean;
 begin
   Result := TAtlasIdeBuildSwitchesWindow.Visible or TAtlasIdeSettings.Current.BuildSwitchesInStatusBar;
 end;
@@ -294,25 +296,6 @@ begin
   else
   begin
     AFrame.SetMessage(FMessage);
-  end;
-end;
-
-procedure TAtlasIdeCompilerSwitches.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
   end;
 end;
 
@@ -448,9 +431,7 @@ begin
   end;
   Inc(FRequest);
   mWorker := FetchThread(mSession, FFollow.FileName, FFollow.Line, FFollow.Character, FRequest);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 class procedure TAtlasIdeCompilerSwitches.Release;

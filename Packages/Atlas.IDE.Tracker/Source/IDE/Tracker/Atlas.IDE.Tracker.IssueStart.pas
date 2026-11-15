@@ -40,7 +40,7 @@ uses
   System.SysUtils,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.VersionControl.BranchPlan,
+  Atlas.Core.Tracker.StartPlan,
   Atlas.IDE.Tracker.IssuesContext,
   Atlas.IDE.Tracker.LinkedStart,
   Atlas.IDE.Tracker.IssuesServices,
@@ -53,46 +53,20 @@ type
     /// <summary>Haupt-Arbeitskopie (#1926): erster Pfad aus issues.projects, sonst Ordner des Projekts.</summary>
     Folder: string;
     Issue: TAtlasTrackerIssue;
-    Plan: TAtlasIssueStartPlan;
-    /// <summary>Lokale Änderungen der Arbeitskopie.</summary>
-    Changes: Integer;
-    /// <summary>Stand für den Plan (#1288), nur wenn der Branch noch fehlt.</summary>
-    Facts: TAtlasVcsBranchFacts;
-    /// <summary>Request statt nur Plan ausführen (Dialog bzw. Git-Optionen, #1289).</summary>
-    UseRequest: Boolean;
-    Request: TAtlasVcsBranchRequest;
-    /// <summary>Nach dem Dialog: scheitert der Abruf, „Vom lokalen Stand abzweigen?“ anbieten (#1289).</summary>
-    OfferLocal: Boolean;
+    /// <summary>Plan, lokale Änderungen, Stand, Wahl im Dialog, gemerkter Branch (#2127); die Entscheidungen
+    /// darüber stehen in Core (TAtlasIssueStartState).</summary>
+    State: TAtlasIssueStartState;
     Outcome: TAtlasIssueStartResult;
-    /// <summary>„Weiterarbeiten“ (#2127): gemerkter Branch; '' bei „Beginnen“.</summary>
-    ResumeBranch: string;
     /// <summary>In diesen Sprint aufnehmen (#2128); nicht gesetzt = keiner.</summary>
     Sprint: TAtlasTrackerSprintRef;
     /// <summary>Verknüpfter Branch (#2138): Tracker, Ziel und Transport; nicht Active = aus.</summary>
     Link: TAtlasIdeLinkSetup;
-    /// <summary>Den Branch gibt es lokal schon (Inspect).</summary>
-    LocalExists: Boolean;
     /// <summary>Was mit dem verknüpften Branch geschah; Outcome None = nicht versucht.</summary>
     Linked: TAtlasIdeLinkedResult;
-    /// <summary>„Weiterarbeiten“ statt „Beginnen“?</summary>
-    function Resuming: Boolean;
     /// <summary>Im Hintergrund: Art der Versionsverwaltung, Plan, lokale Änderungen und Stand.</summary>
     procedure Inspect(const AOptions: TAtlasIssuesOptions);
     /// <summary>Im Hintergrund: Plan bzw. Request ausführen; im worktree Hook-Ordner des neuen Ordners.</summary>
     procedure Execute;
-    /// <summary>Neuer bzw. umzuschaltender Branch mit gültigem Namen?</summary>
-    function Branching: Boolean;
-    /// <summary>Ohne Dialog fragen, ob lokale Änderungen mitgehen (uncommitted = ask)?</summary>
-    function AsksUncommitted(const AOptions: TAtlasVcsGitBranchOptions): Boolean;
-    /// <summary>Im Dialog für Git entschieden.</summary>
-    function InDialog: Boolean;
-    /// <summary>Mit stash oder worktree entschieden.</summary>
-    function Settled: Boolean;
-    /// <summary>Lokale Änderungen noch nicht entschieden (AAsked: ohne Dialog gefragt)?</summary>
-    function ChangesOpen(AAsked: Boolean): Boolean;
-    /// <summary>Verknüpften Branch versuchen (#2138): eingeschaltet, neuer Branch nach Muster, ohne stash und
-    /// worktree.</summary>
-    function Linking: Boolean;
     /// <summary>Im Hintergrund: verknüpften Branch anlegen bzw. finden und auschecken; True, wenn Outcome steht.
     /// </summary>
     function StartLinked: Boolean;
@@ -123,7 +97,7 @@ type
     procedure Cancelled(const AProject: string);
     procedure Prepared(const AJob: TAtlasIssueStartJob);
     class function DefaultChoice(var AJob: TAtlasIssueStartJob; var AAsked: Boolean): Boolean; static;
-    function DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
+    class function DialogChoice(var AJob: TAtlasIssueStartJob): Boolean; static;
     function ConfirmChanges(const AJob: TAtlasIssueStartJob; AAsked: Boolean): Boolean;
     procedure Run(const AJob: TAtlasIssueStartJob);
     procedure Executed(const AJob: TAtlasIssueStartJob);
@@ -156,11 +130,10 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Links,
-  Atlas.Core.Tracker.SprintStart,
   Atlas.Core.Tracker.Workflow,
+  Atlas.Core.VersionControl.BranchPlan,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
@@ -185,11 +158,6 @@ const
 
 { TAtlasIssueStartJob }
 
-function TAtlasIssueStartJob.Resuming: Boolean;
-begin
-  Result := ResumeBranch <> '';
-end;
-
 procedure TAtlasIssueStartJob.Inspect(const AOptions: TAtlasIssuesOptions);
 var
   mVcs: IAtlasVersionControl;
@@ -204,25 +172,25 @@ begin
   begin
     mKind := mVcs.Kind;
   end;
-  Plan := TAtlasMyIssues.PlanStart(mKind, AOptions, Issue);
-  TAtlasMyIssues.ResumeOn(Plan, ResumeBranch);
-  if not Branching or (mVcs = nil) then
+  State.Plan := TAtlasMyIssues.PlanStart(mKind, AOptions, Issue);
+  TAtlasMyIssues.ResumeOn(State.Plan, State.ResumeBranch);
+  if not State.Branching or (mVcs = nil) then
   begin
     Exit;
   end;
   if mVcs.Changes(mItems) = TAtlasVcsOutcome.Ok then
   begin
-    Changes := TAtlasVcsBranchPlan.LocalChanges(mItems);
+    State.Changes := TAtlasVcsBranchPlan.LocalChanges(mItems);
   end;
   // Vorhandener Branch: nur umschalten, ohne Dialog (wie bisher).
   if Supports(mVcs, IAtlasVcsBranching, mBranching) and
-    (mBranching.BranchExists(Plan.Branch, Plan.Svn, mExists) = TAtlasVcsOutcome.Ok) then
+    (mBranching.BranchExists(State.Plan.Branch, State.Plan.Svn, mExists) = TAtlasVcsOutcome.Ok) then
   begin
-    LocalExists := mExists;
+    State.LocalExists := mExists;
     if not mExists then
     begin
-      Facts := TAtlasVcsBranchPlan.Inspect(mVcs, Plan.Bases);
-      Facts.LocalChanges := Changes;
+      State.Facts := TAtlasVcsBranchPlan.Inspect(mVcs, State.Plan.Bases);
+      State.Facts.LocalChanges := State.Changes;
     end;
   end;
 end;
@@ -234,19 +202,19 @@ var
   mBranching: IAtlasVcsBranching;
 begin
   // Verknüpfter Branch (#2138): sonst der lokale Weg wie bisher.
-  if Linking and StartLinked then
+  if State.Linking and StartLinked then
   begin
     Exit;
   end;
   mDir := Folder;
-  if UseRequest then
+  if State.UseRequest then
   begin
-    Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), Plan,
-      Request, TAtlasIdeVcs.Dialogs.Progress(Request.Kind));
+    Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), State.Plan,
+      State.Request, TAtlasIdeVcs.Dialogs.Progress(State.Request.Kind));
   end
   else
   begin
-    Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), Plan);
+    Outcome := TAtlasMyIssues.Execute(TAtlasIdeVcs.ForFolder(mDir, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs)), State.Plan);
   end;
   // worktree (#1289): Hook und Präfix-Datei gehören zum neuen Ordner (eigener Verwaltungsordner).
   if (Outcome.Outcome <> TAtlasIssueStartOutcome.Started) or (Outcome.Folder = '') then
@@ -264,53 +232,15 @@ begin
   end;
 end;
 
-function TAtlasIssueStartJob.Branching: Boolean;
-begin
-  Result := (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid;
-end;
-
-function TAtlasIssueStartJob.AsksUncommitted(const AOptions: TAtlasVcsGitBranchOptions): Boolean;
-begin
-  Result := (Request.Kind = TAtlasVcsKind.Git) and (Request.WorktreeFolder = '') and (Changes > 0) and
-    (AOptions.Uncommitted = TAtlasVcsGitUncommitted.Ask);
-end;
-
-function TAtlasIssueStartJob.InDialog: Boolean;
-begin
-  Result := OfferLocal and (Request.Kind = TAtlasVcsKind.Git);
-end;
-
-function TAtlasIssueStartJob.Settled: Boolean;
-begin
-  Result := UseRequest and (Request.Stash or (Request.WorktreeFolder <> ''));
-end;
-
-function TAtlasIssueStartJob.ChangesOpen(AAsked: Boolean): Boolean;
-begin
-  Result := Branching and (Changes > 0) and not AAsked and not InDialog and not Settled;
-end;
-
-function TAtlasIssueStartJob.Linking: Boolean;
-begin
-  Result := Link.Active and Branching and not Resuming and not Settled;
-end;
-
 function TAtlasIssueStartJob.StartLinked: Boolean;
-var
-  mBase: string;
 begin
   Result := False;
-  if LocalExists then
+  if State.LocalExists then
   begin
-    Linked := TAtlasIdeLinkedResult.Make(TAtlasTrackerBranchLinkOutcome.Exists, Plan.Branch);
+    Linked := TAtlasIdeLinkedResult.Make(TAtlasTrackerBranchLinkOutcome.Exists, State.Plan.Branch);
     Exit;
   end;
-  mBase := '';
-  if Length(Plan.Bases) > 0 then
-  begin
-    mBase := Plan.Bases[0];
-  end;
-  Linked := TAtlasIdeLinkedStart.Run(Link, Folder, Issue.Key, Plan.Branch, mBase);
+  Linked := TAtlasIdeLinkedStart.Run(Link, Folder, Issue.Key, State.Plan.Branch, State.LinkBase);
   Result := Linked.CheckedOut;
   if not Result then
   begin
@@ -345,44 +275,20 @@ end;
 /// <summary>Hinweis nach gelungenem Beginnen.</summary>
 function NoticeOf(const AJob: TAtlasIssueStartJob): string;
 begin
-  case AJob.Outcome.Outcome of
-    TAtlasIssueStartOutcome.Started:
-      if AJob.Outcome.Folder <> '' then
-      begin
-        Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [AJob.Outcome.Branch, AJob.Outcome.Base,
-          AJob.Outcome.Folder]);
-      end
-      else
-      begin
-        Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesCreated,
-          [AJob.Outcome.Branch, AJob.Outcome.Base]);
-      end;
-    TAtlasIssueStartOutcome.Switched:
+  case TAtlasIssueStartFlow.Notice(AJob.Outcome, AJob.State.Plan.Prefix) of
+    TAtlasStartNotice.Worktree:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [AJob.Outcome.Branch, AJob.Outcome.Base,
+        AJob.Outcome.Folder]);
+    TAtlasStartNotice.Created:
+      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesCreated,
+        [AJob.Outcome.Branch, AJob.Outcome.Base]);
+    TAtlasStartNotice.Switched:
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesSwitched, [AJob.Outcome.Branch]);
-  else
-    if AJob.Plan.Prefix <> '' then
-    begin
+    TAtlasStartNotice.RememberedPrefix:
       Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesRememberedPrefix,
-        [AJob.Issue.Key, AJob.Plan.Prefix]);
-    end
-    else
-    begin
-      Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesRemembered, [AJob.Issue.Key]);
-    end;
-  end;
-end;
-
-/// <summary>Projekt, für das das Issue gilt: im worktree (#1289) das im neuen Ordner.</summary>
-function ProjectOf(const AJob: TAtlasIssueStartJob): string;
-begin
-  Result := AJob.Project;
-  if AJob.Outcome.Folder <> '' then
-  begin
-    Result := TAtlasVcsBranchPlan.ProjectInFolder(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.Folder);
-  end;
-  if Result = '' then
-  begin
-    Result := AJob.Project;
+        [AJob.Issue.Key, AJob.State.Plan.Prefix]);
+  else
+    Result := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesRemembered, [AJob.Issue.Key]);
   end;
 end;
 
@@ -473,18 +379,22 @@ var
   mAnswer: TAtlasSprintAnswer;
   mDontAsk: Boolean;
   mNext: TAtlasPluginSettings;
+  mStep: TAtlasSprintOnStart;
+  mWrites: Boolean;
 begin
   ASprint := TAtlasTrackerSprintRef.None;
   Result := True;
   mMode := TAtlasIdeSettings.Current.IssuesSprintOnStart;
   mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
-  if (mMode = TAtlasPluginSettings.cIssuesSprintNever) or (FServices.Sync = nil) or
-    not FServices.Sync.Enabled(FContext.ProviderOf(mTarget.Provider), mTarget) or
-    not CachedSprint(mTarget, AIssue.Key, mFound) then
+  // Den Zwischenspeicher nur lesen, wenn überhaupt aufgenommen werden kann.
+  mWrites := (mMode <> TAtlasPluginSettings.cIssuesSprintNever) and (FServices.Sync <> nil) and
+    FServices.Sync.Enabled(FContext.ProviderOf(mTarget.Provider), mTarget);
+  mStep := TAtlasIssueStartFlow.SprintOnStart(mMode, mWrites, mWrites and CachedSprint(mTarget, AIssue.Key, mFound));
+  if mStep = TAtlasSprintOnStart.Skip then
   begin
     Exit;
   end;
-  if mMode = TAtlasPluginSettings.cIssuesSprintAlways then
+  if mStep = TAtlasSprintOnStart.Take then
   begin
     ASprint := mFound;
     Exit;
@@ -499,31 +409,16 @@ begin
   if mDontAsk then
   begin
     mNext := TAtlasIdeSettings.Stored;
-    mNext.IssuesSprintOnStart := TAtlasPluginSettings.cIssuesSprintNever;
-    if ASprint.IsSet then
-    begin
-      mNext.IssuesSprintOnStart := TAtlasPluginSettings.cIssuesSprintAlways;
-    end;
+    mNext.IssuesSprintOnStart := TAtlasIssueStartFlow.RememberedSprintMode(ASprint.IsSet);
     TAtlasIdeSettings.Update(mNext);
   end;
 end;
 
 class function TAtlasIdeIssueStart.CachedSprint(const ATarget: TAtlasTrackerTarget; const AKey: string;
   out ASprint: TAtlasTrackerSprintRef): Boolean;
-var
-  mSnapshot: TAtlasBoardSnapshot;
-  mFolder: string;
 begin
-  // Ohne Netz: der zuletzt gelesene Stand; die Kachel zeigt den laufenden Sprint, das Board den gewählten.
-  mFolder := TAtlasIdeIssuesTargets.IssuesFolder;
-  Result := TAtlasTrackerBoard.Load(mFolder, ATarget, TAtlasIdeSprint.cCacheName, mSnapshot) and
-    TAtlasSprintStart.Running(mSnapshot, TAtlasIdeIssuesTargets.NowUtc);
-  if not Result then
-  begin
-    Result := TAtlasTrackerBoard.Load(mFolder, ATarget, mSnapshot) and
-      TAtlasSprintStart.Running(mSnapshot, TAtlasIdeIssuesTargets.NowUtc);
-  end;
-  Result := Result and TAtlasSprintStart.Missing(mSnapshot, AKey, TAtlasIdeIssuesTargets.NowUtc, ASprint);
+  Result := TAtlasIssueStartFlow.CachedSprint(TAtlasIdeIssuesTargets.IssuesFolder, TAtlasIdeSprint.cCacheName, ATarget,
+    AKey, TAtlasIdeIssuesTargets.NowUtc, ASprint);
 end;
 
 procedure TAtlasIdeIssueStart.StartJob(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart;
@@ -541,10 +436,11 @@ begin
   mJob.Project := FContext.Selection.CurrentProject;
   mJob.Folder := TAtlasIdeTrackerWorkingCopies.FolderOf(mJob.Project);
   mJob.Issue := AIssue;
-  mJob.ResumeBranch := AResumeBranch;
+  mJob.State.ResumeBranch := AResumeBranch;
   mJob.Sprint := ASprint;
-  mJob.Facts := TAtlasVcsBranchFacts.Empty;
+  mJob.State.Facts := TAtlasVcsBranchFacts.Empty;
   mJob.Link := TAtlasIdeLinkedStart.Setup(FContext, mJob.Project);
+  mJob.State.LinkActive := mJob.Link.Active;
   FContext.StartProject := mJob.Project;
   FContext.Notice := TAtlasIssuesNotice.Create(mJob.Project,
     TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStarting, [AIssue.Key]), False);
@@ -575,7 +471,7 @@ end;
 class function TAtlasIdeIssueStart.RecreateGone(const AJob: TAtlasIssueStartJob): Boolean;
 begin
   Result := MessageDlg(TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesContinueBranchGone,
-    [AJob.Plan.Branch]), mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+    [AJob.State.Plan.Branch]), mtConfirmation, [mbYes, mbNo], 0) = mrYes;
 end;
 
 procedure TAtlasIdeIssueStart.Inspect(const AJob: TAtlasIssueStartJob; const AOptions: TAtlasIssuesOptions);
@@ -629,12 +525,12 @@ var
   mAsked: Boolean;
 begin
   mJob := AJob;
-  mJob.UseRequest := False;
-  mJob.OfferLocal := False;
-  mJob.Request := Default(TAtlasVcsBranchRequest);
+  mJob.State.UseRequest := False;
+  mJob.State.OfferLocal := False;
+  mJob.State.Request := Default(TAtlasVcsBranchRequest);
   mAsked := False;
   // „Weiterarbeiten“ (#2127): Der gemerkte Branch fehlt (Facts nur dann gelesen): erst fragen.
-  if mJob.Resuming and mJob.Branching and (mJob.Facts.Outcome = TAtlasVcsOutcome.Ok) and not RecreateGone(mJob) then
+  if mJob.State.AsksRecreate and not RecreateGone(mJob) then
   begin
     Cancelled(mJob.Project);
     Exit;
@@ -643,8 +539,7 @@ begin
   // Ohne Dialog die Vorgaben aus dem Plan und den Git-Optionen (#1289). Findet SVN ohne erkennbares Layout
   // keinen Ort (#1290), fragt der Dialog trotzdem danach, statt an einem geratenen Ort anzulegen. Mit
   // verknüpftem Branch (#2138) ohne Dialog: Name und Basis kommen vom Muster, angelegt wird auf dem Server.
-  if mJob.Branching and (mJob.Facts.Outcome = TAtlasVcsOutcome.Ok) and
-    not (DefaultChoice(mJob, mAsked) and (mJob.Linking or DialogChoice(mJob))) then
+  if mJob.State.ChoosesBranch and not (DefaultChoice(mJob, mAsked) and (mJob.State.Linking or DialogChoice(mJob))) then
   begin
     Cancelled(mJob.Project);
     Exit;
@@ -667,35 +562,36 @@ begin
     Exit;
   end;
   mOptions := TAtlasIdeVcs.Dialogs.GitOptions;
-  AJob.UseRequest := TAtlasVcsBranchPlan.DefaultRequest(AJob.Facts, AJob.Plan.Branch, AJob.Plan.Message,
-    AJob.Issue.Key, TAtlasVcsBranchOptions.Make(mOptions, AJob.Plan.Svn), AJob.Request);
+  AJob.State.UseRequest := TAtlasVcsBranchPlan.DefaultRequest(AJob.State.Facts, AJob.State.Plan.Branch,
+    AJob.State.Plan.Message, AJob.Issue.Key, TAtlasVcsBranchOptions.Make(mOptions, AJob.State.Plan.Svn),
+    AJob.State.Request);
   // uncommitted = ask ohne Dialog: mitnehmen, beiseitelegen oder abbrechen.
-  if AJob.UseRequest and AJob.AsksUncommitted(mOptions) then
+  if AJob.State.UseRequest and AJob.State.AsksUncommitted(mOptions) then
   begin
-    Result := TAtlasIdeVcs.Dialogs.AskUncommitted(AJob.Changes, AJob.Plan.Branch, AJob.Request.Stash);
+    Result := TAtlasIdeVcs.Dialogs.AskUncommitted(AJob.State.Changes, AJob.State.Plan.Branch,
+      AJob.State.Request.Stash);
     AAsked := Result;
   end;
 end;
 
-function TAtlasIdeIssueStart.DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
+class function TAtlasIdeIssueStart.DialogChoice(var AJob: TAtlasIssueStartJob): Boolean;
 var
   mNeverAsk: Boolean;
   mAsk: TAtlasVcsBranchAsk;
 begin
   Result := True;
-  if not TAtlasIdeSettings.Current.VcsBranchConfirm and
-    (AJob.UseRequest or (AJob.Facts.Kind <> TAtlasVcsKind.Svn)) then
+  if not AJob.State.ShowsDialog(TAtlasIdeSettings.Current.VcsBranchConfirm) then
   begin
     Exit;
   end;
   mAsk.Folder := AJob.Folder;
-  mAsk.Facts := AJob.Facts;
-  mAsk.Name := AJob.Plan.Branch;
-  mAsk.Message := AJob.Plan.Message;
+  mAsk.Facts := AJob.State.Facts;
+  mAsk.Name := AJob.State.Plan.Branch;
+  mAsk.Message := AJob.State.Plan.Message;
   mAsk.Key := AJob.Issue.Key;
-  mAsk.Svn := AJob.Plan.Svn;
+  mAsk.Svn := AJob.State.Plan.Svn;
   mAsk.OfferNeverAsk := True;
-  Result := TAtlasIdeVcs.Dialogs.AskBranch(mAsk, AJob.Request, mNeverAsk);
+  Result := TAtlasIdeVcs.Dialogs.AskBranch(mAsk, AJob.State.Request, mNeverAsk);
   if not Result then
   begin
     Exit;
@@ -704,17 +600,18 @@ begin
   begin
     TAtlasIdeVcs.Dialogs.StopAsking;
   end;
-  AJob.UseRequest := True;
-  AJob.OfferLocal := True;
-  AJob.Plan.Branch := AJob.Request.Name;
+  AJob.State.UseRequest := True;
+  AJob.State.OfferLocal := True;
+  AJob.State.Plan.Branch := AJob.State.Request.Name;
 end;
 
 function TAtlasIdeIssueStart.ConfirmChanges(const AJob: TAtlasIssueStartJob; AAsked: Boolean): Boolean;
 begin
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren). Nicht, wenn sie schon
   // entschieden sind: im Dialog (Git), bei stash oder worktree (#1289).
-  Result := not AJob.ChangesOpen(AAsked) or (MessageDlg(TAtlasWorkflowStrings.Fmt(
-    TAtlasWorkflowTextId.WelcomeIssuesLocalChanges, [AJob.Changes, AJob.Plan.Branch, sLineBreak + sLineBreak]),
+  Result := not AJob.State.ChangesOpen(AAsked) or (MessageDlg(TAtlasWorkflowStrings.Fmt(
+    TAtlasWorkflowTextId.WelcomeIssuesLocalChanges, [AJob.State.Changes, AJob.State.Plan.Branch,
+    sLineBreak + sLineBreak]),
     mtConfirmation, [mbYes, mbNo], 0) = mrYes);
 end;
 
@@ -751,13 +648,14 @@ var
   mFallback: TAtlasVcsBranchRequest;
 begin
   // Abruf gescheitert (#1289), noch nichts geändert: nach dem Dialog vom lokalen Stand, ohne erneute Frage.
-  if AJob.OfferLocal and (AJob.Outcome.Outcome = TAtlasIssueStartOutcome.Failed) and
-    TAtlasIdeVcs.Dialogs.AskLocal(AJob.Facts, AJob.Request, AJob.Outcome.Steps, AJob.Outcome.Run, mFallback) then
+  if AJob.State.OfferLocal and (AJob.Outcome.Outcome = TAtlasIssueStartOutcome.Failed) and
+    TAtlasIdeVcs.Dialogs.AskLocal(AJob.State.Facts, AJob.State.Request, AJob.Outcome.Steps, AJob.Outcome.Run,
+    mFallback) then
   begin
     mJob := AJob;
-    mJob.UseRequest := True;
-    mJob.Request := mFallback;
-    mJob.OfferLocal := False;
+    mJob.State.UseRequest := True;
+    mJob.State.Request := mFallback;
+    mJob.State.OfferLocal := False;
     Run(mJob);
   end
   else
@@ -774,7 +672,8 @@ begin
     FContext.Report(TAtlasIdeLinkedStart.Report(AJob.Link, AJob.Issue.Key, AJob.Linked));
   end;
   // Anonym: Art, Ergebnis; nie Kennung, Branch oder Pfad.
-  TAtlasGuard.Log(Format(cLogStarted, [TAtlasMyIssues.StartName(AJob.Plan.Mode), AtlasVcsKindName(AJob.Plan.Kind),
+  TAtlasGuard.Log(Format(cLogStarted, [TAtlasMyIssues.StartName(AJob.State.Plan.Mode),
+    AtlasVcsKindName(AJob.State.Plan.Kind),
     AtlasVcsOutcomeName(AJob.Outcome.Reason)], TFormatSettings.Invariant));
   if ReportFailure(AJob) then
   begin
@@ -787,43 +686,42 @@ begin
   OpenAfter(AJob);
   // Arbeitsstand je Issue (#2052): gemerkte Reiter anbieten; im neuen worktree gelten die alten Pfade nicht.
   // „Weiterarbeiten“ (#2127) stellt ihn ohne Rückfrage wieder her.
-  if (AJob.Outcome.Folder = '') and AJob.Resuming then
-  begin
-    TAtlasTrackerIssueWorkLink.AfterResume(AJob.Project, AJob.Issue.Key);
-  end
-  else if AJob.Outcome.Folder = '' then
-  begin
-    TAtlasTrackerIssueWorkLink.AfterStart(AJob.Project, AJob.Issue.Key);
+  case TAtlasIssueStartFlow.WorkAfter(AJob.Outcome.Folder, AJob.State.Resuming) of
+    TAtlasStartWork.Restore:
+      TAtlasTrackerIssueWorkLink.AfterResume(AJob.Project, AJob.Issue.Key);
+    TAtlasStartWork.Offer:
+      TAtlasTrackerIssueWorkLink.AfterStart(AJob.Project, AJob.Issue.Key);
+    TAtlasStartWork.None:
+      begin
+        // Neuer worktree: die alten Pfade gelten dort nicht.
+      end;
   end;
 end;
 
 function TAtlasIdeIssueStart.ReportFailure(const AJob: TAtlasIssueStartJob): Boolean;
 var
   mResult: TAtlasIssueStartResult;
+  mFailure: TAtlasStartFailure;
 begin
   mResult := AJob.Outcome;
-  Result := mResult.Outcome in [TAtlasIssueStartOutcome.InvalidName, TAtlasIssueStartOutcome.Failed];
-  if mResult.Outcome = TAtlasIssueStartOutcome.InvalidName then
+  mFailure := TAtlasIssueStartFlow.Failure(mResult);
+  Result := mFailure <> TAtlasStartFailure.None;
+  if mFailure = TAtlasStartFailure.InvalidName then
   begin
     FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project,
       TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesInvalidName, [AJob.Issue.Key]), True);
   end
-  else if mResult.Outcome = TAtlasIssueStartOutcome.Failed then
+  else if Result then
   begin
     FContext.Notice := TAtlasIssuesNotice.Create(AJob.Project,
       TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStartFailed,
       [mResult.Branch, AtlasVcsOutcomeName(mResult.Reason)]), True);
-    // Mit Plan (#1288): Schritt, Grund und was schon auf dem Server liegt; worktree-Ordner belegt (#1289).
-    if mResult.FolderTaken then
-    begin
-      FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mResult.Folder]));
-    end
-    else if Length(mResult.Steps) > 0 then
-    begin
-      FContext.Report(TAtlasIdeVcs.Dialogs.FailureText(AJob.Plan.Kind, mResult.Steps, mResult.Run));
-    end
+    case mFailure of
+      TAtlasStartFailure.FolderTaken:
+        FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mResult.Folder]));
+      TAtlasStartFailure.Steps:
+        FContext.Report(TAtlasIdeVcs.Dialogs.FailureText(AJob.State.Plan.Kind, mResult.Steps, mResult.Run));
     else
-    begin
       FContext.Report(FContext.Notice.Text);
     end;
   end;
@@ -839,13 +737,9 @@ var
   mMode: TAtlasIssueStart;
   mProject: string;
 begin
-  mMode := TAtlasIssueStart.Branch;
-  if AJob.Outcome.Outcome = TAtlasIssueStartOutcome.Remembered then
-  begin
-    mMode := TAtlasIssueStart.Remember;
-  end;
+  mMode := TAtlasIssueStartFlow.ModeAfter(AJob.Outcome);
   // worktree (#1289): Das Issue gilt für das Projekt im neuen Ordner; die bisherige Arbeitskopie bleibt.
-  mProject := ProjectOf(AJob);
+  mProject := TAtlasIssueStartFlow.ProjectAfter(AJob.Project, AJob.Outcome);
   mState := FContext.StateOf(mProject);
   TAtlasMyIssues.Started(mState, AJob.Issue, mMode, AJob.Outcome.Branch, TAtlasIdeIssuesTargets.NowUtc);
   if AJob.Outcome.GitDir <> '' then
@@ -853,7 +747,7 @@ begin
     mState.GitDir := AJob.Outcome.GitDir;
   end;
   // Git-Hook für das Präfix: nur mit Muster und nach Zustimmung.
-  if (AJob.Plan.Prefix <> '') and (AJob.Outcome.Hooks <> '') then
+  if (AJob.State.Plan.Prefix <> '') and (AJob.Outcome.Hooks <> '') then
   begin
     AskHook(mState, AJob.Outcome.Hooks);
   end;
@@ -866,7 +760,7 @@ var
 begin
   // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler. Nicht bei
   // „Weiterarbeiten“ (#2127): Den Zustand hat der Tracker gerade selbst zurückgesetzt.
-  if (FServices.Sync <> nil) and not AJob.Resuming then
+  if (FServices.Sync <> nil) and not AJob.State.Resuming then
   begin
     mTarget := FContext.TargetOf(AJob.Project);
     FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch,
@@ -894,21 +788,22 @@ var
 begin
   // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige. Ein Ordner
   // als gewähltes Tracker-Projekt (#1927) lässt sich nicht öffnen.
-  if not TAtlasIdeFiles.IsProjectFile(AJob.Project) then
-  begin
-    // Nichts zu öffnen.
-  end
-  else if (FContext.Welcome <> nil) and (AJob.Outcome.Folder = '') then
-  begin
-    FContext.Welcome.Open(AJob.Project);
-  end
-  else if FContext.Welcome <> nil then
-  begin
-    mOpen := TAtlasIdeVcs.Dialogs.WorktreeProject(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.Folder);
-    if TAtlasIdeVcs.Dialogs.OfferWorktree(AJob.Outcome.Branch, AJob.Outcome.Folder, mOpen) then
-    begin
-      FContext.Welcome.Open(mOpen);
-    end;
+  case TAtlasIssueStartFlow.OpenAfter(TAtlasIdeFiles.IsProjectFile(AJob.Project), FContext.Welcome <> nil,
+    AJob.Outcome.Folder) of
+    TAtlasStartOpen.Project:
+      FContext.Welcome.Open(AJob.Project);
+    TAtlasStartOpen.Worktree:
+      begin
+        mOpen := TAtlasIdeVcs.Dialogs.WorktreeProject(AJob.Project, AJob.Outcome.WorkingRoot, AJob.Outcome.Folder);
+        if TAtlasIdeVcs.Dialogs.OfferWorktree(AJob.Outcome.Branch, AJob.Outcome.Folder, mOpen) then
+        begin
+          FContext.Welcome.Open(mOpen);
+        end;
+      end;
+    TAtlasStartOpen.None:
+      begin
+        // Nichts zu öffnen.
+      end;
   end;
   // SVN „frisch auschecken“ (#1290): die alte Arbeitskopie bleibt; dieselbe Gruppe im neuen Ordner anbieten.
   if AJob.Outcome.CheckoutFolder <> '' then
@@ -923,13 +818,20 @@ begin
 end;
 
 procedure TAtlasIdeIssueStart.AskHook(var AState: TAtlasIssuesState; const AHooks: string);
+var
+  mStep: TAtlasHookStep;
 begin
   // Einmal je Projekt fragen; ein fremder Hook bleibt unangetastet.
-  if (AHooks = '') or (AState.Hook <> '') then
+  mStep := TAtlasHookStep.Skip;
+  if AHooks <> '' then
+  begin
+    mStep := TAtlasIssueStartFlow.HookStep(AHooks, AState.Hook, TAtlasCommitHook.State(AHooks));
+  end;
+  if mStep = TAtlasHookStep.Skip then
   begin
     Exit;
   end;
-  if TAtlasCommitHook.State(AHooks) = TAtlasCommitHookState.Own then
+  if mStep = TAtlasHookStep.Own then
   begin
     AState.Hook := TAtlasMyIssues.cHookYes;
   end
@@ -1089,14 +991,8 @@ begin
     Exit;
   end;
   // Mit gemerktem Branch immer als Branch, auch wenn issues.start „merken“ sagt: Es gab ihn schon.
-  if ABranch = '' then
-  begin
-    StartJob(AIssue, FServices.Options.Start, '', TAtlasTrackerSprintRef.None);
-  end
-  else
-  begin
-    StartJob(AIssue, TAtlasIssueStart.Branch, ABranch, TAtlasTrackerSprintRef.None);
-  end;
+  StartJob(AIssue, TAtlasIssueStartFlow.ResumeMode(ABranch, FServices.Options.Start), ABranch,
+    TAtlasTrackerSprintRef.None);
 end;
 
 end.

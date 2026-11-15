@@ -43,6 +43,9 @@ type
     /// </summary>
     function ParseKeywordOperand(AStart: Integer): TSyntaxNode;
     function ParseInherited(AStart: Integer): TSyntaxNode;
+    /// <summary>Element einer Record- oder Array-Konstante; () ist darin die leere Record-Konstante, alle
+    /// Felder null: (Name: 'CR0'), (), (Name: 'CR2').</summary>
+    procedure ParseParenElement(AParent: TSyntaxNode);
     /// <summary>(…) mit Record- und Array-Konstanten: (X: 1; Y: 2), (1, 2, 3).</summary>
     function ParseParenExpr(AStart: Integer): TSyntaxNode;
     /// <summary>[a, b..c]</summary>
@@ -332,17 +335,37 @@ begin
   FinishNode(Result, AStart);
 end;
 
+procedure TExpressionParser.ParseParenElement(AParent: TSyntaxNode);
+var
+  mStart: Integer;
+  mNode: TSyntaxNode;
+begin
+  if IsSym('(') and PeekToken(1).IsSymbol(')') then
+  begin
+    mStart := NodeStart;
+    mNode := StartNode(TSyntaxKind.ParenExpr);
+    AParent.Add(mNode);
+    Advance;
+    Advance;
+    FinishNode(mNode, mStart);
+  end
+  else
+  begin
+    ParseExpression(AParent);
+  end;
+end;
+
 function TExpressionParser.ParseParenExpr(AStart: Integer): TSyntaxNode;
 begin
   Result := StartNode(TSyntaxKind.ParenExpr);
   Advance;
-  ParseExpression(Result);
+  ParseParenElement(Result);
   // Record-Konstanten: (X: 1; Y: 2) und Array-Konstanten: (1, 2, 3)
   while AcceptSym(',') or AcceptSym(';') or AcceptSym(':') do
   begin
     if not IsSym(')') then
     begin
-      ParseExpression(Result);
+      ParseParenElement(Result);
     end;
   end;
   ExpectSym(')');

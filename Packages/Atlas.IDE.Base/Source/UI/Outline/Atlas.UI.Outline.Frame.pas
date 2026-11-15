@@ -768,6 +768,22 @@ begin
   end;
 end;
 
+/// <summary>Marken hinter dem Namen: „nicht implementiert“ und mit AShowConditions der aktive Zweig der bedingten
+/// Kompilierung (#845), wie die Marke im Mockup.</summary>
+procedure PutMarks(ACanvas: TCanvas; var AX: Integer; const ARect: TRect; const ANode: TAtlasOutlineNode;
+  AShowConditions: Boolean; const AColors: TAtlasColors);
+begin
+  if ANode.Unimplemented then
+  begin
+    PutText(ACanvas, AX, ARect, '  ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented),
+      AColors.Warn, [fsItalic]);
+  end;
+  if AShowConditions and (ANode.Condition <> '') then
+  begin
+    PutText(ACanvas, AX, ARect, '  ' + ANode.Condition, AColors.Accent, []);
+  end;
+end;
+
 procedure TAtlasOutlineFrameRows.ListDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
   State: TOwnerDrawState);
 var
@@ -817,16 +833,7 @@ begin
   end;
   PutName(mCanvas, X, Rect, mNode, FRows[Index].Matched, mColors);
   PutText(mCanvas, X, Rect, ExtraText(mNode), mColors.Muted, []);
-  if mNode.Unimplemented then
-  begin
-    PutText(mCanvas, X, Rect, '  ' + TAtlasOutlineStrings.Text(TAtlasOutlineTextId.OutlineUnimplemented), mColors.Warn,
-      [fsItalic]);
-  end;
-  // Aktiver Zweig der bedingten Kompilierung (#845), wie die Marke im Mockup.
-  if FShowConditions and (mNode.Condition <> '') then
-  begin
-    PutText(mCanvas, X, Rect, '  ' + mNode.Condition, mColors.Accent, []);
-  end;
+  PutMarks(mCanvas, X, Rect, mNode, FShowConditions, mColors);
   if odFocused in State then
   begin
     mCanvas.DrawFocusRect(Rect);

@@ -60,8 +60,6 @@ implementation
 uses
   System.Classes,
   System.Types,
-  System.Actions,
-  Vcl.ActnList,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
@@ -80,6 +78,7 @@ uses
   Atlas.UI.Designer.Search,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Commands,
+  Atlas.IDE.Designer.NonVisualAction,
   Atlas.IDE.Designer.OpenWatch,
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Designer.ShowComponent,
@@ -96,8 +95,6 @@ const
   cIdNonVisual = 'nonVisual';
   cIdParent = 'parent';
   cIdAlign = 'align';
-  /// <summary>Aktion der IDE hinter Strg+H im Designer.</summary>
-  cNonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
 
 type
   /// <summary>Taste für „Komponenten suchen“, solange der Designer den Fokus hat.</summary>
@@ -121,8 +118,8 @@ type
     FAlignMenu: TPopupMenu;
     FCommands: TAtlasIdeDesignerCommands;
     FLastAlign: TAtlasAlignKind;
-    FActionIndex: Integer;
-    FActionLogged: Boolean;
+    /// <summary>Aktion der IDE hinter Strg+H (nicht sichtbare Komponenten).</summary>
+    FNonVisual: TAtlasIdeNonVisualAction;
     procedure OpenChanged;
     procedure Tick(Sender: TObject);
     function CreateBar: TAtlasDesignerBar;
@@ -133,11 +130,10 @@ type
     procedure UpdateKeyClient;
     procedure Command(const AId: string);
     procedure ShowMenu(const AId: string; const APoint: TPoint);
-    function FindNonVisualAction: TContainedAction;
     procedure ToggleNonVisual;
     procedure AlignMenuClick(Sender: TObject);
     function SearchOptions(const AEditor: IOTAFormEditor; ARoot: TComponent): TAtlasComponentSearchOptions;
-    procedure WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
+    class procedure WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean); static;
     procedure CloseSearch;
     procedure Later(const AAction: TProc);
   public
@@ -276,32 +272,6 @@ begin
   mDesigner.Modified;
 end;
 
-/// <summary>Methode zum Ereignis OnClick, sonst zum ersten belegten Ereignis; '' ohne.</summary>
-function EventMethod(const AEvents: TArray<string>): string;
-var
-  mEvent, mItem: string;
-  mPos: Integer;
-begin
-  Result := '';
-  if Length(AEvents) = 0 then
-  begin
-    Exit;
-  end;
-  mEvent := AEvents[0];
-  for mItem in AEvents do
-  begin
-    if mItem.StartsWith('OnClick ', True) then
-    begin
-      mEvent := mItem;
-    end;
-  end;
-  mPos := Pos(' = ', mEvent);
-  if mPos > 0 then
-  begin
-    Result := Copy(mEvent, mPos + 3, MaxInt);
-  end;
-end;
-
 /// <summary>Auswahl ohne das Formular selbst und ohne AComponent, dahinter AComponent (#539).</summary>
 function SelectionPlus(const AEditor: IOTAFormEditor; ARoot, AComponent: TComponent): TArray<TComponent>;
 var
@@ -352,7 +322,7 @@ begin
   end
   else if AAction = TAtlasComponentSearchAction.Event then
   begin
-    mMethod := EventMethod(AItem.Events);
+    mMethod := TAtlasDesignerSearch.EventMethod(AItem.Events);
     if mMethod = '' then
     begin
       Exit;
@@ -393,7 +363,7 @@ end;
 constructor TDesignerBarState.Create;
 begin
   inherited Create;
-  FActionIndex := -1;
+  FNonVisual := TAtlasIdeNonVisualAction.Create;
   FSearchChoice := Default(TAtlasComponentSearchOptions);
   FSearchChoice.Kind := TAtlasDesignerKind.All;
   FSearchChoice.Fields := [TAtlasDesignerField.Name, TAtlasDesignerField.Caption, TAtlasDesignerField.ClassName];
@@ -452,6 +422,7 @@ begin
   FTabOrder.Free;
   FAlignMenu.Free;
   FCommands.Free;
+  FNonVisual.Free;
   FHost.Free;
   inherited Destroy;
 end;
@@ -569,27 +540,24 @@ end;
 
 function TDesignerBarState.NonVisualButton: TAtlasDesignerButton;
 var
-  mAction: TContainedAction;
+  mEnabled, mPressed: Boolean;
 begin
   Result := TAtlasDesignerButton.Create(cIdNonVisual, TAtlasToolbarIcon.NonVisual,
     TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualHint));
-  mAction := FindNonVisualAction;
-  if mAction = nil then
+  mEnabled := Result.Enabled;
+  mPressed := Result.Pressed;
+  if not FNonVisual.State(mEnabled, mPressed) then
   begin
     Result.Enabled := False;
     Result.Hint := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualMissing);
     Exit;
   end;
-  mAction.Update;
-  if mAction is TCustomAction then
+  Result.Enabled := mEnabled;
+  Result.Pressed := mPressed;
+  // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
+  if Result.Pressed then
   begin
-    Result.Enabled := TCustomAction(mAction).Enabled;
-    Result.Pressed := TCustomAction(mAction).Checked;
-    // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
-    if Result.Pressed then
-    begin
-      Result.Icon := TAtlasToolbarIcon.NonVisualHidden;
-    end;
+    Result.Icon := TAtlasToolbarIcon.NonVisualHidden;
   end;
 end;
 
@@ -704,9 +672,7 @@ begin
   FAlignMenu.Items.Clear;
   for mKind := Low(TAtlasAlignKind) to High(TAtlasAlignKind) do
   begin
-    // Gruppen: Kanten, Mitten, im Elternelement, Größe, Abstände.
-    if mKind in [TAtlasAlignKind.CentersH, TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.SameWidth,
-      TAtlasAlignKind.SpaceH] then
+    if TAtlasDesignerAlign.StartsGroup(mKind) then
     begin
       mItem := TMenuItem.Create(FAlignMenu);
       mItem.Caption := '-';
@@ -723,56 +689,12 @@ begin
   FAlignMenu.Popup(APoint.X, APoint.Y);
 end;
 
-function TDesignerBarState.FindNonVisualAction: TContainedAction;
-var
-  mServices: INTAServices;
-  mList: TCustomActionList;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
-  begin
-    Exit;
-  end;
-  mList := mServices.ActionList;
-  // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
-  if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
-    SameText(mList.Actions[FActionIndex].Name, cNonVisualAction) then
-  begin
-    Exit(mList.Actions[FActionIndex]);
-  end;
-  FActionIndex := -1;
-  for mIndex := 0 to mList.ActionCount - 1 do
-  begin
-    if SameText(mList.Actions[mIndex].Name, cNonVisualAction) then
-    begin
-      FActionIndex := mIndex;
-      Exit(mList.Actions[mIndex]);
-    end;
-  end;
-  if not FActionLogged then
-  begin
-    FActionLogged := True;
-    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + cNonVisualAction + ' nicht gefunden');
-  end;
-end;
-
 procedure TDesignerBarState.ToggleNonVisual;
-var
-  mAction: TContainedAction;
 begin
-  mAction := FindNonVisualAction;
-  if mAction = nil then
+  if not FNonVisual.Toggle then
   begin
     Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerBarNonVisualMissing));
-    Exit;
   end;
-  mAction.Update;
-  if (mAction is TCustomAction) and not TCustomAction(mAction).Enabled then
-  begin
-    Exit;
-  end;
-  mAction.Execute;
 end;
 
 procedure TDesignerBarState.AlignMenuClick(Sender: TObject);
@@ -814,7 +736,7 @@ begin
 end;
 
 /// <summary>Eigene Methode, damit die anonymen Methoden nur das Fenster und ACompact fangen.</summary>
-procedure TDesignerBarState.WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
+class procedure TDesignerBarState.WireSearch(AWindow: TAtlasComponentSearchWindow; ACompact: Boolean);
 var
   mWindow: TAtlasComponentSearchWindow;
   mCompact: Boolean;

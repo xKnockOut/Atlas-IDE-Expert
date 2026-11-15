@@ -18,6 +18,8 @@ type
     procedure WaitsForBuildAndDebugger;
     [Test]
     procedure SlowCheckDisablesProject;
+    [Test]
+    procedure BelongsByModuleOrProjectSource;
   end;
 
 implementation
@@ -82,6 +84,15 @@ begin
   finally
     mCheck.Free;
   end;
+end;
+
+procedure TAtlasCheckOnSaveTests.BelongsByModuleOrProjectSource;
+begin
+  Assert.IsTrue(TAtlasCheckOnSave.Belongs('P/A.dproj', ['P/Unit1.pas', 'P/Unit2.pas'], 'p/unit2.PAS'));
+  Assert.IsTrue(TAtlasCheckOnSave.Belongs('P/A.dproj', nil, 'P/A.dpr'));
+  Assert.IsTrue(TAtlasCheckOnSave.Belongs('P/A.dproj', nil, 'P/A.dpk'));
+  Assert.IsFalse(TAtlasCheckOnSave.Belongs('P/A.dproj', ['P/Unit1.pas'], 'P/Other.pas'));
+  Assert.IsFalse(TAtlasCheckOnSave.Belongs('P/A.dproj', nil, 'P/B.dpr'));
 end;
 
 initialization

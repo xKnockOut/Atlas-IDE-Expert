@@ -32,6 +32,9 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Lauf eines Schritts in dieser Sitzung (Baseline, Pfadprüfung).</summary>
   TAtlasSetupRun = (Idle, Running, Done, Failed);
+  /// <summary>Was Refresh meldet: neu anmelden (Titel geändert), neu ordnen (Karte erscheint oder verschwindet)
+  /// oder nur den Bereich neu zeichnen.</summary>
+  TAtlasSetupRefresh = (Announce, Reorder, Redraw);
   TAtlasSetupFindingKind = (MissingUnit, UndefinedDefine, Hint);
 {$SCOPEDENUMS OFF}
 
@@ -134,6 +137,23 @@ type
       const AMembers: TArray<TAtlasSetupMember>; out AChecked: Integer): TAtlasProjectSetup; static;
     /// <summary>„$(A), $(B), $(C), …“ für die Karte.</summary>
     class function MacroList(const AMacros: TArray<string>): string; static;
+    /// <summary>Zeilenenden als CRLF wie die übrigen Dateien eines Delphi-Projekts.</summary>
+    class function WithCrLf(const AText: string): string; static;
+    /// <summary>Lauf nach dem Ende eines Schritts.</summary>
+    class function Finished(ASucceeded: Boolean): TAtlasSetupRun; static;
+    /// <summary>Nach Refresh: neuer Titel ATitle gegenüber dem angemeldeten AOldTitle, Karte gezeigt (AShown)
+    /// gegenüber vorher (AWasShown).</summary>
+    class function RefreshStep(const ATitle, AOldTitle: string; AShown, AWasShown: Boolean): TAtlasSetupRefresh;
+      static;
+  end;
+
+  /// <summary>Summen einer Pfadprüfung über alle Projekte (nur Zahlen, fürs Protokoll).</summary>
+  TAtlasSetupPathTotals = record
+    Files: Integer;
+    Units: Integer;
+    Defines: Integer;
+    Uncertain: Integer;
+    procedure Add(const ACheck: TAtlasPathCheckResult);
   end;
 
 implementation
@@ -455,6 +475,48 @@ begin
     end;
     Result := Result + '$(' + AMacros[mIndex] + ')';
   end;
+end;
+
+class function TAtlasWelcomeSetup.WithCrLf(const AText: string): string;
+begin
+  Result := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #10, #13#10, [rfReplaceAll]);
+end;
+
+class function TAtlasWelcomeSetup.Finished(ASucceeded: Boolean): TAtlasSetupRun;
+begin
+  Result := TAtlasSetupRun.Failed;
+  if ASucceeded then
+  begin
+    Result := TAtlasSetupRun.Done;
+  end;
+end;
+
+class function TAtlasWelcomeSetup.RefreshStep(const ATitle, AOldTitle: string; AShown,
+  AWasShown: Boolean): TAtlasSetupRefresh;
+begin
+  if ATitle <> AOldTitle then
+  begin
+    Result := TAtlasSetupRefresh.Announce;
+  end
+  else if AShown <> AWasShown then
+  begin
+    Result := TAtlasSetupRefresh.Reorder;
+  end
+  else
+  begin
+    Result := TAtlasSetupRefresh.Redraw;
+  end;
+end;
+
+{ TAtlasSetupPathTotals }
+
+procedure TAtlasSetupPathTotals.Add(const ACheck: TAtlasPathCheckResult);
+begin
+  Inc(Files, ACheck.Files);
+  Inc(Units, Length(ACheck.MissingUnits));
+  Inc(Defines, Length(ACheck.UndefinedDefines));
+  Inc(Uncertain, TAtlasPathCheckResult.UncertainIn(ACheck.MissingUnits) +
+    TAtlasPathCheckResult.UncertainIn(ACheck.UndefinedDefines));
 end;
 
 end.

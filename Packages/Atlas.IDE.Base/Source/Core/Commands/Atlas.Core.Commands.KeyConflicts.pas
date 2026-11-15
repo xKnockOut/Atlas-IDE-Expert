@@ -623,6 +623,15 @@ begin
       ASettings.DesignerMagnifierKey := AEntry.Key;
     TAtlasKeyFunction.DesignerUsages:
       ASettings.DesignerUsagesKey := AEntry.Key;
+  else
+    // Gehört zu einem anderen Teil.
+  end;
+end;
+
+/// <summary>Teil 7 von ToSettings: Tasten der Module Tests und Debugger.</summary>
+procedure StoreKeys7(const AEntry: TAtlasKeyEntry; var ASettings: TAtlasPluginSettings);
+begin
+  case AEntry.Func of
     TAtlasKeyFunction.TestsListRun:
       ASettings.TestsListsRunKey := AEntry.Key;
     TAtlasKeyFunction.DebugReattach:
@@ -646,6 +655,7 @@ begin
     StoreKeys4(mEntry, ASettings);
     StoreKeys5(mEntry, ASettings);
     StoreKeys6(mEntry, ASettings);
+    StoreKeys7(mEntry, ASettings);
   end;
 end;
 

@@ -33,6 +33,9 @@ type
     function Resolve(const APath: string): string;
     /// <summary>APath (absolut, normalisiert) liegt in AFolder oder ist AFolder.</summary>
     class function IsInside(const AFolder, APath: string): Boolean; static;
+    /// <summary>Wie IsInside, aber ARoot und AFileName dürfen relativ oder nicht normalisiert sein (".." zählt
+    /// nicht als darin). False, wenn eins leer oder kein gültiger Pfad ist.</summary>
+    class function Contains(const ARoot, AFileName: string): Boolean; static;
     property Root: string read FRoot;
   end;
 
@@ -125,6 +128,24 @@ end;
 class function TMcpPathGuard.IsInside(const AFolder, APath: string): Boolean;
 begin
   Result := (AFolder <> '') and (SameText(APath, AFolder) or StartsText(IncludeTrailingPathDelimiter(AFolder), APath));
+end;
+
+class function TMcpPathGuard.Contains(const ARoot, AFileName: string): Boolean;
+var
+  mRoot, mFileName: string;
+begin
+  if (Trim(ARoot) = '') or (Trim(AFileName) = '') then
+  begin
+    Exit(False);
+  end;
+  try
+    mRoot := ExcludeTrailingPathDelimiter(TPath.GetFullPath(ARoot));
+    mFileName := TPath.GetFullPath(AFileName);
+  except
+    // Kein gültiger Pfad (unzulässige Zeichen, zu lang): liegt nirgends.
+    Exit(False);
+  end;
+  Result := IsInside(mRoot, mFileName);
 end;
 
 initialization

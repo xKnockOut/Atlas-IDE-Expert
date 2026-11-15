@@ -16,6 +16,11 @@
 //   die Änderung gilt erst nach Rückfrage.
 // - Jeder Zug bzw. jede Eingabe ist ein Schritt für „Abstände rückgängig“
 //   (TAtlasIdeHandleTool).
+// - Die Gruppe ist über Zug und Dialoge gemerkt (TAtlasDesignerKept): Nach
+//   der Eingabe des Werts wird sie neu ermittelt und muss dieselbe sein, vor
+//   jedem Schreiben und nach der Rückfrage muss sie noch leben; sonst bricht
+//   der Schritt ab (Lost). Solange ein eigener Dialog offen ist, lässt Tick
+//   die Gruppe in Ruhe.
 // Knopf der Designer-Leiste: Klick auf das Symbol blendet die Griffe ein und
 // aus, der Pfeil öffnet das Menü. Nur im Hauptthread.
 
@@ -31,6 +36,7 @@ uses
   Atlas.UI.Designer.Bar,
   Atlas.UI.Designer.Handles,
   Atlas.IDE.Designer.HandleTool,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.KeyHook;
 
 type
@@ -52,6 +58,8 @@ type
     FKeys: TAtlasGapKeys;
     FParent: TWinControl;
     FControls: TArray<TControl>;
+    FKept: TAtlasDesignerKept;
+    FAsking: Boolean;
     FStart: TArray<TRect>;
     FLayout: TAtlasGapLayout;
     FStartGap: Integer;
@@ -66,6 +74,9 @@ type
     procedure Place(AGap: Integer; AAnchor: TAtlasGapAnchor);
     procedure FinishStep;
     procedure Ask(AIndex: Integer; AShift: TShiftState);
+    function Regroup(const ABefore: TAtlasDesignerKept): Boolean;
+    function AskValue(var AText: string): Boolean;
+    function ConfirmOutside: Boolean;
   protected
     procedure Down(AIndex: Integer; AShift: TShiftState); override;
     procedure Drag(const ADelta: TPoint; AShift: TShiftState); override;
@@ -190,6 +201,11 @@ begin
     FDelta := ADelta.Y;
   end;
   FShift := AShift;
+  if not FKept.Holds then
+  begin
+    Lost;
+    Exit;
+  end;
   Place(GapNow, AnchorFor(FShift));
 end;
 
@@ -236,7 +252,7 @@ end;
 
 procedure TAtlasIdeGapHandles.Tick;
 begin
-  if Dragging then
+  if Dragging or FAsking then
   begin
     Exit;
   end;
@@ -255,7 +271,7 @@ begin
 end;
 
 /// <summary>Markierte Steuerelemente im selben Elternelement als Reihe oder Spalte (Felder FParent, FControls,
-/// FStart, FLayout).</summary>
+/// FStart, FLayout, FKept).</summary>
 function TAtlasIdeGapHandles.FindGroup: Boolean;
 var
   mEditor: IOTAFormEditor;
@@ -265,6 +281,7 @@ begin
   FControls := nil;
   FStart := nil;
   FLayout := Default(TAtlasGapLayout);
+  FKept := Default(TAtlasDesignerKept);
   if not Application.Active or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit(False);
@@ -282,6 +299,12 @@ begin
   end;
   FLayout := TAtlasGaps.Detect(FStart);
   Result := FLayout.Axis <> TAtlasGapAxis.None;
+  if Result then
+  begin
+    FKept := TAtlasDesignerKept.Take(mEditor, mRoot);
+    FKept.Add(FParent);
+    FKept.Add(FControls);
+  end;
 end;
 
 function TAtlasIdeGapHandles.AnchorFor(AShift: TShiftState): TAtlasGapAnchor;
@@ -410,10 +433,15 @@ end;
 /// <summary>Ende eines Zugs: übernehmen (nach Rückfrage, wenn etwas herausragt) oder zurücksetzen.</summary>
 procedure TAtlasIdeGapHandles.FinishStep;
 var
-  mOutside, mFlag: Boolean;
+  mOutside, mFlag, mRestore: Boolean;
 begin
   if not InStep then
   begin
+    Exit;
+  end;
+  if not FKept.Holds then
+  begin
+    Lost;
     Exit;
   end;
   mOutside := False;
@@ -422,9 +450,15 @@ begin
   begin
     mOutside := mOutside or mFlag;
   end;
+  mRestore := Changed and mOutside and not ConfirmOutside;
+  // Während der Rückfrage kann das Formular neu geladen worden sein.
+  if not FKept.Holds then
+  begin
+    Lost;
+    Exit;
+  end;
   CommitStep(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.GapDone, [Length(FLayout.Gaps), GapNow]),
-    Changed and mOutside and (MessageDlg(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapOutsideConfirm),
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes));
+    mRestore);
   Tick;
 end;
 
@@ -432,16 +466,23 @@ procedure TAtlasIdeGapHandles.Ask(AIndex: Integer; AShift: TShiftState);
 var
   mText: string;
   mGap: Integer;
+  mBefore: TAtlasDesignerKept;
 begin
   if not FindGroup then
   begin
     Say(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapNeeds));
     Exit;
   end;
+  mBefore := FKept;
   mText := IntToStr(FLayout.Gaps[EnsureRange(AIndex, 0, High(FLayout.Gaps))]);
-  if not InputQuery(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetTitle),
-    TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetPrompt), mText) then
+  if not AskValue(mText) then
   begin
+    Exit;
+  end;
+  // Während der Eingabe kann das Formular neu geladen oder die Auswahl geändert worden sein.
+  if not Regroup(mBefore) then
+  begin
+    Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
   if not TryStrToInt(mText.Trim, mGap) or (mGap < 0) or (mGap > TAtlasGaps.cMaxGap) then
@@ -458,6 +499,36 @@ begin
   EnsureOverlay;
   Place(mGap, AnchorFor(FShift));
   FinishStep;
+end;
+
+/// <summary>Nach einem Dialog: Gruppe neu ermitteln; False, wenn sie nicht mehr dieselbe ist wie ABefore.</summary>
+function TAtlasIdeGapHandles.Regroup(const ABefore: TAtlasDesignerKept): Boolean;
+begin
+  Result := FindGroup and FKept.SameAs(ABefore);
+end;
+
+/// <summary>Wert abfragen; Tick lässt die Gruppe solange in Ruhe.</summary>
+function TAtlasIdeGapHandles.AskValue(var AText: string): Boolean;
+begin
+  FAsking := True;
+  try
+    Result := InputQuery(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetTitle),
+      TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapSetPrompt), AText);
+  finally
+    FAsking := False;
+  end;
+end;
+
+/// <summary>Rückfrage, wenn etwas herausragt; True: trotzdem übernehmen.</summary>
+function TAtlasIdeGapHandles.ConfirmOutside: Boolean;
+begin
+  FAsking := True;
+  try
+    Result := MessageDlg(TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.GapOutsideConfirm),
+      mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  finally
+    FAsking := False;
+  end;
 end;
 
 class function TAtlasIdeGapHandles.Available(const ASettings: TAtlasPluginSettings): Boolean;
@@ -477,6 +548,11 @@ procedure TAtlasIdeGapHandles.Nudge(ADelta: Integer);
 begin
   if not InStep or not Dragging then
   begin
+    Exit;
+  end;
+  if not FKept.Holds then
+  begin
+    Lost;
     Exit;
   end;
   Inc(FKeyOffset, ADelta);

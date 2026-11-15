@@ -30,6 +30,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Pins,
+  Atlas.Core.Debug.PinsFlow,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.ValueRequest,
   Atlas.UI.Debug.InlineValuePainter;
@@ -50,11 +51,6 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    /// <summary>Kreuz eines gezeichneten Felds, für den Klick.</summary>
-    THit = record
-      Pin: TAtlasDebugPin;
-      Rect: TRect;
-    end;
   private class var
     FInstance: TAtlasIdeDebugPins;
   private
@@ -72,7 +68,7 @@ type
     FVisible: Boolean;
     FProject: string;
     FQueue: TList<TAtlasDebugPin>;
-    FHits: TList<THit>;
+    FHits: TList<TAtlasPinHit>;
     FStyle: TAtlasInlineValuePainter;
     constructor Create(const AMessage: TProc<string>);
     procedure Load;
@@ -179,7 +175,7 @@ begin
   FPins := TAtlasDebugPins.Create;
   FValues := TAtlasIdeDebugValueRequest.Create(cDeferredTimeoutMs);
   FQueue := TList<TAtlasDebugPin>.Create;
-  FHits := TList<THit>.Create;
+  FHits := TList<TAtlasPinHit>.Create;
   FStyle := TAtlasInlineValuePainter.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -379,12 +375,16 @@ end;
 
 function TAtlasIdeDebugPins.StillStopped: Boolean;
 begin
-  Result := FVisible and (TAtlasIdeDebugSession.StopCount = FStop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+  Result := TAtlasPinsFlow.StillStopped(FVisible, FStop, TAtlasIdeDebugSession.StopCount,
+    TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 procedure TAtlasIdeDebugPins.Pin(const APin: TAtlasDebugPin);
+var
+  mAdded: Boolean;
 begin
-  if FPins.Add(APin) then
+  mAdded := FPins.Add(APin);
+  if mAdded then
   begin
     Save;
     // Gleich auswerten, solange der Prozess steht.
@@ -396,7 +396,7 @@ begin
     end;
     TAtlasDebugLineEnd.Invalidate;
   end
-  else if (Length(FPins.All(APin.Project)) >= TAtlasDebugPins.cLimit) and Assigned(FMessage) then
+  else if TAtlasPinsFlow.ReportLimit(mAdded, Length(FPins.All(APin.Project))) and Assigned(FMessage) then
   begin
     FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.PinLimit, [TAtlasDebugPins.cLimit]));
   end;
@@ -435,12 +435,8 @@ begin
   end;
   try
     mX := -1;
-    for mPin in FPins.InFile(FProject, Context.FileName) do
+    for mPin in TAtlasPinsFlow.OnLine(FPins.InFile(FProject, Context.FileName), Context.LogicalLineNum) do
     begin
-      if mPin.Line <> Context.LogicalLineNum then
-      begin
-        Continue;
-      end;
       if mX < 0 then
       begin
         // Hinter dem letzten Zeichen der Zeile bzw. hinter den Werten im Editor.
@@ -463,24 +459,13 @@ end;
 procedure TAtlasIdeDebugPins.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  mHit: THit;
   mPin: TAtlasDebugPin;
-  mFound: Boolean;
 begin
-  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or not FVisible then
+  if not TAtlasPinsFlow.WantsClick(Button = mbLeft, Shift * [ssShift, ssCtrl, ssAlt] <> [], FVisible) then
   begin
     Exit;
   end;
-  mFound := False;
-  for mHit in FHits do
-  begin
-    if mHit.Rect.Contains(Point(X, Y)) then
-    begin
-      mPin := mHit.Pin;
-      mFound := True;
-    end;
-  end;
-  if not mFound then
+  if not TAtlasPinsFlow.HitAt(FHits.ToArray, Point(X, Y), mPin) then
   begin
     Exit;
   end;
@@ -504,7 +489,7 @@ end;
 
 procedure TAtlasIdeDebugPins.RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
 var
-  mHit: THit;
+  mHit: TAtlasPinHit;
   mIndex: Integer;
 begin
   for mIndex := FHits.Count - 1 downto 0 do
@@ -575,7 +560,7 @@ end;
 class function TAtlasIdeDebugPins.Actions(const AValue: TAtlasDebugValue): TArray<TAtlasDebugValueFix>;
 begin
   Result := nil;
-  if (FInstance <> nil) and (AValue.Expression <> '') then
+  if TAtlasPinsFlow.CanOffer(FInstance <> nil, AValue.Expression) then
   begin
     Result := TArray<TAtlasDebugValueFix>.Create(TAtlasDebugValueFix.Create(cPinAction,
       TAtlasDebugStrings.Text(TAtlasDebugTextId.PinAction)));

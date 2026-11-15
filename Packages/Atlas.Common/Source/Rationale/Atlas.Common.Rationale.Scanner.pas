@@ -51,7 +51,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 const
   cMaxMarkerLength = 20;
@@ -64,32 +65,6 @@ end;
 function IsLetter(ACh: Char): Boolean;
 begin
   Result := CharInSet(ACh, ['A'..'Z', 'a'..'z']);
-end;
-
-/// <summary>Leerraum (auch Zeilenumbrüche) zu je einem Leerzeichen, außen ohne.</summary>
-function Collapse(const AText: string): string;
-var
-  mIndex: Integer;
-  mPending: Boolean;
-begin
-  Result := '';
-  mPending := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if IsSpace(AText[mIndex]) then
-    begin
-      mPending := Result <> '';
-    end
-    else
-    begin
-      if mPending then
-      begin
-        Result := Result + ' ';
-      end;
-      mPending := False;
-      Result := Result + AText[mIndex];
-    end;
-  end;
 end;
 
 function IsLineComment(const AToken: TPascalToken): Boolean;
@@ -147,7 +122,7 @@ var
   begin
     if mOpen then
     begin
-      mEntry.Text := Collapse(mEntry.Text);
+      mEntry.Text := TTextLines.CollapseSpace(mEntry.Text);
       if Length(mEntry.Text) > TRationale.cMaxText then
       begin
         mEntry.Text := Copy(mEntry.Text, 1, TRationale.cMaxText - 1) + '…';

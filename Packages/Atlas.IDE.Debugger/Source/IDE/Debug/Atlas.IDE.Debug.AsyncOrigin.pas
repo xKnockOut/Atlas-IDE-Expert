@@ -115,6 +115,7 @@ implementation
 uses
   Atlas.Core.Status.Registry,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Debug.AsyncOriginFlow,
   Atlas.UI.Results.Items,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Navigation,
@@ -151,7 +152,7 @@ begin
   for mIndex := 0 to mProject.GetModuleCount - 1 do
   begin
     mFileName := mProject.GetModule(mIndex).FileName;
-    if SameText(ExtractFileExt(mFileName), '.pas') or SameText(ExtractFileExt(mFileName), '.dpr') then
+    if TAtlasAsyncOriginFlow.IsSource(mFileName) then
     begin
       Result := Result + [mFileName];
     end;
@@ -319,7 +320,7 @@ class function TAtlasIdeDebugAsyncOrigin.Assign(AThreadId: Cardinal; ASite: Inte
 begin
   // Weitere Halte desselben Threads in derselben Methode (Schritte): Zuordnung bleibt. Das Fenster
   // Atlas-Aufrufstapel und der Zuhörer fragen beim selben Halt beide; wer zuerst fragt, ordnet zu.
-  Result := not (FShown.Has and (FShown.ThreadId = AThreadId) and (FShown.Site = ASite));
+  Result := TAtlasAsyncOriginFlow.Reassigns(FShown.Has, FShown.ThreadId, FShown.Site, AThreadId, ASite);
   if not Result then
   begin
     Exit;
@@ -333,18 +334,17 @@ end;
 
 class procedure TAtlasIdeDebugAsyncOrigin.Report;
 begin
-  if not FShown.Found then
-  begin
-    FMessage(TAtlasAsyncOriginTexts.NoneText(FSites[FShown.Site].Kind));
-  end
-  else if TAtlasIdeDebugCallStack.Started and TAtlasIdeDebugCallStackWindow.Visible then
-  begin
-    TAtlasIdeResultsWindow.ReleaseItems(cOwner);
-    FMessage(TAtlasAsyncOriginTexts.Title(FShown.Entry, FSites[FShown.Site].Kind));
-  end
-  else
-  begin
-    Show;
+  case TAtlasAsyncOriginFlow.ReportOf(FShown.Found, TAtlasIdeDebugCallStack.Started and
+    TAtlasIdeDebugCallStackWindow.Visible) of
+    TAtlasOriginReport.None:
+      FMessage(TAtlasAsyncOriginTexts.NoneText(FSites[FShown.Site].Kind));
+    TAtlasOriginReport.Title:
+      begin
+        TAtlasIdeResultsWindow.ReleaseItems(cOwner);
+        FMessage(TAtlasAsyncOriginTexts.Title(FShown.Entry, FSites[FShown.Site].Kind));
+      end;
+    TAtlasOriginReport.Results:
+      Show;
   end;
 end;
 
@@ -402,8 +402,8 @@ var
   mIndex: Integer;
   mFrame: TAtlasDebugFrame;
 begin
-  mIndex := StrToIntDef(AItemId, -1);
-  if not FShown.Found or (mIndex < 0) or (mIndex > High(FShown.Entry.Frames)) then
+  mIndex := TAtlasAsyncOriginFlow.FrameOf(FShown.Found, AItemId, Length(FShown.Entry.Frames));
+  if mIndex < 0 then
   begin
     Exit;
   end;

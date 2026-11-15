@@ -97,7 +97,8 @@ implementation
 uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Debug.ExceptionDialogFlow;
 
 type
   // Zugriff auf die geschützten Caption und Text von TControl.
@@ -142,7 +143,7 @@ var
   mForm: TCustomForm;
 begin
   // Nur, solange Atlas auf den Dialog wartet; ShowModal hat das Fenster noch nicht gezeigt.
-  if not FArmed or (FHidden <> nil) or not Assigned(FMayHide) then
+  if not Assigned(FMayHide) or not TAtlasExceptionDialogFlow.MayHide(FArmed, FHidden <> nil) then
   begin
     Exit;
   end;
@@ -150,7 +151,8 @@ begin
     for mIndex := 0 to Screen.CustomFormCount - 1 do
     begin
       mForm := Screen.CustomForms[mIndex];
-      if mForm.Visible or (mForm = Application.MainForm) or (fsModal in mForm.FormState) then
+      if not TAtlasExceptionDialogFlow.ScansHidden(mForm.Visible, mForm = Application.MainForm,
+        fsModal in mForm.FormState) then
       begin
         Continue;
       end;
@@ -220,7 +222,7 @@ begin
   begin
     Exit;
   end;
-  if not FArmed and (TThread.GetTickCount64 - FStartedAt >= cWatchMs) then
+  if TAtlasExceptionDialogFlow.TimedOut(FArmed, TThread.GetTickCount64, FStartedAt, cWatchMs) then
   begin
     FTimer.Enabled := False;
     mTimeout := FOnTimeout;
@@ -261,12 +263,9 @@ begin
   for mIndex := 0 to Screen.CustomFormCount - 1 do
   begin
     mForm := Screen.CustomForms[mIndex];
-    if not mForm.Visible or (mForm = Application.MainForm) then
-    begin
-      Continue;
-    end;
     // Bereit (Programm läuft): nur modale Fenster, damit der Takt die IDE nicht durchsucht.
-    if FArmed and not (fsModal in mForm.FormState) then
+    if not TAtlasExceptionDialogFlow.ScansOpen(mForm.Visible, mForm = Application.MainForm, FArmed,
+      fsModal in mForm.FormState) then
     begin
       Continue;
     end;
@@ -312,7 +311,7 @@ var
   mAlive: Boolean;
 begin
   Result := False;
-  if (FForm = nil) or (AIndex < 0) or (AIndex > High(FButtons)) then
+  if not TAtlasExceptionDialogFlow.CanClick(FForm <> nil, AIndex, Length(FButtons)) then
   begin
     Exit;
   end;

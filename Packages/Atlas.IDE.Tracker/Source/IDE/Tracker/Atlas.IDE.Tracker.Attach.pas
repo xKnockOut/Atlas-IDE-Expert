@@ -103,6 +103,7 @@ uses
   Vcl.Clipbrd,
   Vcl.Dialogs,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Tracker.AttachPlan,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.Preview,
@@ -234,56 +235,33 @@ end;
 
 procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
   const AOutcome: TAtlasAttachOutcome);
-var
-  mState: string;
 begin
   FCancel := nil;
   FWorker.Prune;
   // Die Dateien sind gesendet bzw. gescheitert: der Ordner des Laufs geht in jedem Fall.
   DropTemp;
-  if AOutcome.Succeeded then
-  begin
-    mState := 'gesendet';
-  end
-  else
-  begin
-    mState := 'nicht gesendet (' + TAtlasCiBuild.ErrorKey(AOutcome.Error) + ')';
-  end;
-  TAtlasGuard.Log(Format('Anhängen: %s, %d Dateien, %s', [AProvider.Name, Length(ARequest.Files), mState]));
-  if AOutcome.Error = TAtlasCiFetchError.Cancelled then
-  begin
-    Exit;
-  end;
-  if not AOutcome.Succeeded then
-  begin
-    if AOutcome.Uploaded > 0 then
-    begin
+  TAtlasGuard.Log(TAtlasAttachPlan.SentLog(AProvider.Name, Length(ARequest.Files), AOutcome.Succeeded,
+    AOutcome.Error));
+  case TAtlasAttachPlan.ReportOf(AOutcome.Succeeded, AOutcome.Error, AOutcome.Uploaded, AOutcome.Commented,
+    AOutcome.Fallback) of
+    TAtlasAttachReport.Silent:
+      ; // Abgebrochen: keine Meldung.
+    TAtlasAttachReport.CommentFailed:
       Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommentFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
-    end
-    else
-    begin
+    TAtlasAttachReport.Failed:
       Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
-    end;
-    Exit;
-  end;
-  if AOutcome.Fallback then
-  begin
-    Fallback(ARequest, AOutcome);
-    Exit;
-  end;
-  if (AOutcome.Uploaded > 0) and AOutcome.Commented then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
-  end
-  else if AOutcome.Uploaded > 0 then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
-  end
-  else if AOutcome.Commented then
-  begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+    TAtlasAttachReport.Fallback:
+      Fallback(ARequest, AOutcome);
+    TAtlasAttachReport.DoneComment:
+      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
+    TAtlasAttachReport.Done:
+      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
+    TAtlasAttachReport.Commented:
+      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+    TAtlasAttachReport.Nothing:
+      ; // Weder Dateien noch Kommentar: nichts zu melden.
   end;
 end;
 
@@ -574,7 +552,7 @@ var
   mTransport: IAtlasCiTransport;
   mOutcome: TAtlasAttachOutcome;
 begin
-  if (ARequest.Key = '') or ((Length(ARequest.Files) = 0) and (ARequest.Comment = '')) then
+  if not TAtlasAttachPlan.HasWork(ARequest.Key, Length(ARequest.Files), ARequest.Comment) then
   begin
     DropTemp;
     Exit;

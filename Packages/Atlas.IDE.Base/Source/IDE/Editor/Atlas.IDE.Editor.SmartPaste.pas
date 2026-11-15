@@ -109,7 +109,6 @@ type
 implementation
 
 uses
-  System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.Math,
   System.JSON,
   Vcl.Controls,
@@ -136,23 +135,6 @@ begin
   Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
-end;
-
-/// <summary>uses gibt es nur in Units und Programmen.</summary>
-function HasUses(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr');
-end;
-
 /// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
 function CaretPoint: TPoint;
 var
@@ -164,23 +146,6 @@ begin
   begin
     Inc(Result.Y, 16);
     Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
-function ReadNames(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(AValue) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [mItem.Value];
-      end;
-    end;
   end;
 end;
 
@@ -425,8 +390,8 @@ begin
       if mAnswer is TJSONObject then
       begin
         AEdit := TLspWorkspaceEdit.FromJson(TJSONObject(mAnswer).GetValue('edit'));
-        AAdded := ReadNames(TJSONObject(mAnswer).GetValue('added'));
-        AMoved := ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
+        AAdded := TAtlasSmartPaste.ReadNames(TJSONObject(mAnswer).GetValue('added'));
+        AMoved := TAtlasSmartPaste.ReadNames(TJSONObject(mAnswer).GetValue('toImplementation'));
       end;
     finally
       mAnswer.Free;
@@ -461,7 +426,7 @@ end;
 function Pastable(const AView: IOTAEditView): Boolean;
 begin
   Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
-    IsPascal(AView.Buffer.FileName);
+    TAtlasSmartPaste.Handles(AView.Buffer.FileName);
 end;
 
 /// <summary>Steht AClipLines direkt vor dem Cursor von AView? ALine: Zeile des Cursors (ab 0), ACharacter: Zeichen
@@ -521,7 +486,7 @@ begin
   begin
     Indent(mView, FStartLine, FStartCharacter, FEndCharacter);
   end;
-  if TAtlasSmartPaste.WantsUses(mMode) and HasUses(FFileName) then
+  if TAtlasSmartPaste.WantsUses(mMode) and TAtlasSmartPaste.OffersUses(FFileName) then
   begin
     Ask(mView);
   end;

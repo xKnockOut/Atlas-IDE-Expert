@@ -32,11 +32,24 @@ type
     procedure MultiLine;
     [Test]
     procedure DuplicateAccelerators;
+    [Test]
+    procedure ColumnPathDetected;
+    [Test]
+    procedure ColumnLeftSumsWidths;
+    [Test]
+    procedure EditorBandByHolder;
+    [Test]
+    procedure FittedGrowsAwayFromAnchor;
+    [Test]
+    procedure WithinDragDistance;
+    [Test]
+    procedure HistoryPerFormFile;
   end;
 
 implementation
 
 uses
+  System.Types,
   Atlas.Core.Designer.InlineCaption;
 
 function Joined(const ANames: TArray<string>): string;
@@ -150,6 +163,84 @@ begin
   Assert.AreEqual(3, mDuplicates[1], '&& ist kein Kürzel');
   Assert.AreEqual(0, Integer(Length(TAtlasInlineCaption.Duplicates(['O&rt', '&Name'], 0))));
   Assert.AreEqual(0, Integer(Length(TAtlasInlineCaption.Duplicates(['Ohne'], 0))));
+end;
+
+procedure TAtlasInlineCaptionTests.ColumnPathDetected;
+begin
+  Assert.IsTrue(TAtlasCaptionLayout.IsColumn(TAtlasInlineCaption.ColumnPath(2)));
+  Assert.IsFalse(TAtlasCaptionLayout.IsColumn('Caption'));
+  Assert.IsFalse(TAtlasCaptionLayout.IsColumn('EditLabel.Caption'));
+end;
+
+procedure TAtlasInlineCaptionTests.ColumnLeftSumsWidths;
+begin
+  Assert.AreEqual(11, TAtlasCaptionLayout.ColumnLeft(TArray<Integer>.Create(50, 60, 70), 11, 1, 0));
+  Assert.AreEqual(11 + 51 + 61, TAtlasCaptionLayout.ColumnLeft(TArray<Integer>.Create(50, 60, 70), 11, 1, 2));
+end;
+
+procedure TAtlasInlineCaptionTests.EditorBandByHolder;
+var
+  mRect: TRect;
+begin
+  mRect := TAtlasCaptionLayout.EditorBand(Rect(100, 100, 300, 200), TAtlasCaptionHolder.GroupBox, 20, 8);
+  Assert.AreEqual(108, mRect.Left);
+  Assert.AreEqual(292, mRect.Right);
+  Assert.AreEqual(120, mRect.Bottom);
+  mRect := TAtlasCaptionLayout.EditorBand(Rect(100, 100, 300, 200), TAtlasCaptionHolder.TabSheet, 20, 8);
+  Assert.AreEqual(80, mRect.Top);
+  Assert.AreEqual(100, mRect.Bottom);
+  mRect := TAtlasCaptionLayout.EditorBand(Rect(100, 100, 300, 200), TAtlasCaptionHolder.Other, 20, 8);
+  Assert.AreEqual(140, mRect.Top);
+  Assert.AreEqual(160, mRect.Bottom);
+  mRect := TAtlasCaptionLayout.EditorBand(Rect(100, 100, 300, 200), TAtlasCaptionHolder.TextControl, 20, 8);
+  Assert.AreEqual(100, mRect.Top);
+  Assert.AreEqual(200, mRect.Bottom);
+  // Niedriger als eine Zeile: bleibt.
+  mRect := TAtlasCaptionLayout.EditorBand(Rect(100, 100, 300, 110), TAtlasCaptionHolder.Other, 20, 8);
+  Assert.AreEqual(110, mRect.Bottom);
+end;
+
+procedure TAtlasInlineCaptionTests.FittedGrowsAwayFromAnchor;
+var
+  mRect: TRect;
+begin
+  mRect := TAtlasCaptionLayout.Fitted(Rect(100, 10, 175, 35), 120, False);
+  Assert.AreEqual(100, mRect.Left);
+  Assert.AreEqual(220, mRect.Right);
+  mRect := TAtlasCaptionLayout.Fitted(Rect(100, 10, 175, 35), 120, True);
+  Assert.AreEqual(55, mRect.Left);
+  Assert.AreEqual(175, mRect.Right);
+  Assert.AreEqual(35, mRect.Bottom);
+end;
+
+procedure TAtlasInlineCaptionTests.WithinDragDistance;
+begin
+  Assert.IsTrue(TAtlasCaptionLayout.WithinDrag(Point(10, 10), Point(14, 6), 4, 4));
+  Assert.IsFalse(TAtlasCaptionLayout.WithinDrag(Point(10, 10), Point(15, 10), 4, 4));
+  Assert.IsFalse(TAtlasCaptionLayout.WithinDrag(Point(10, 10), Point(10, 15), 4, 4));
+end;
+
+procedure TAtlasInlineCaptionTests.HistoryPerFormFile;
+var
+  mHistory: TAtlasCaptionHistory;
+  mChange: TAtlasCaptionChange;
+begin
+  mHistory := Default(TAtlasCaptionHistory);
+  mChange := Default(TAtlasCaptionChange);
+  mChange.FormFile := 'Unit1.dfm';
+  mChange.Component := 'Button1';
+  mChange.OldText := 'OK';
+  mHistory.Push(mChange);
+  mChange.FormFile := 'Unit2.dfm';
+  mChange.Component := 'Label1';
+  mHistory.Push(mChange);
+  Assert.IsFalse(mHistory.CanUndo('Unit1.dfm'));
+  Assert.IsTrue(mHistory.CanUndo('UNIT2.DFM'));
+  Assert.IsTrue(mHistory.Pop(mChange));
+  Assert.AreEqual('Label1', mChange.Component);
+  Assert.IsTrue(mHistory.CanUndo('Unit1.dfm'));
+  Assert.IsTrue(mHistory.Pop(mChange));
+  Assert.IsFalse(mHistory.Pop(mChange));
 end;
 
 initialization

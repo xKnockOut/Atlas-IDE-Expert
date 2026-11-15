@@ -43,7 +43,7 @@ type
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
     /// <summary>Knopf nach den Einstellungen; Id leer, wenn ausgeschaltet.</summary>
-    function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+    class function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton; static;
     /// <summary>Klick: Dialog für die Auswahl im aktiven Designer.</summary>
     procedure Run;
   end;
@@ -412,7 +412,7 @@ begin
     end);
 end;
 
-function TAtlasIdeExtractFrame.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
+class function TAtlasIdeExtractFrame.Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
 begin
   if not ASettings.DesignerExtractFrame then
   begin

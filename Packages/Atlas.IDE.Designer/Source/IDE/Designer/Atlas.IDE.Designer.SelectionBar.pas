@@ -47,28 +47,12 @@ type
     procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
-  /// <summary>Alter Wert einer Eigenschaft (Pfad wie Font.Size) einer Komponente.</summary>
-  TAtlasBarChange = record
-    Name: string;
-    Path: string;
-    Value: string;
-  end;
-
-  TAtlasBarStep = record
-    FileName: string;
-    Changes: TArray<TAtlasBarChange>;
-  end;
-
-  /// <summary>Verfolgte Auswahl im Designer: Wurzel, Steuerelemente, Knöpfe, Namen und Grenzen, seit wann sie
-  /// steht und ob die Leiste angefordert ist.</summary>
+  /// <summary>Verfolgte Auswahl im Designer: Wurzel, Steuerelemente, Knöpfe und Stand (TAtlasBarTracking).</summary>
   TAtlasBarSelection = record
     Root: TComponent;
     Controls: TArray<TControl>;
     Items: TArray<TAtlasBarItem>;
-    Names: string;
-    Bounds: string;
-    Since: UInt64;
-    Requested: Boolean;
+    Tracking: TAtlasBarTracking;
   end;
 
   /// <summary>Menüs der Leiste: Pfeilmenü und Farbauswahl.</summary>
@@ -86,14 +70,13 @@ type
     FWindow: TAtlasSelectionBarWindow;
     FMenus: TAtlasBarMenus;
     FKeys: TAtlasSelectionBarKeys;
-    FSteps: TArray<TAtlasBarStep>;
+    FHistory: TAtlasBarHistory;
     FSelection: TAtlasBarSelection;
     procedure EnsureWindow;
     function FindControls: Boolean;
     function Wanted: Boolean;
     function SelectionBounds(out AScreen, AArea: TRect): Boolean;
     function Props(const APath, AType: string): TArray<TAtlasBarProp>;
-    function StateOf(AItem: TAtlasBarItem; const AProps: TArray<TAtlasBarProp>): TAtlasBarState;
     function ButtonOf(AItem: TAtlasBarItem): TAtlasBarButton;
     /// <summary>Format-Pinsel übertragen: grau, solange nichts aufgenommen ist.</summary>
     function TransferButton: TAtlasBarButton;
@@ -159,25 +142,11 @@ const
   cGap = 6;
   /// <summary>Rand um das Formular, in dem die Leiste noch stehen darf.</summary>
   cAreaMargin = 4000;
-  cMaxSteps = 50;
   cMenuShow = 0;
   cMenuUndo = 1;
   cColorMore = -1;
   cStandardColors: array[0..9] of TColor = (clWindowText, clBlack, clGrayText, clGray, clMaroon, clRed, clGreen,
     clNavy, clBlue, clHighlight);
-  /// <summary>Eigenschaft je Knopf (Pfad über RTTI).</summary>
-  cPaths: array[TAtlasBarItem] of string = ('Font.Size', 'Font.Size', 'Font.Size', 'Font.Style', 'Font.Style',
-    'Font.Color', 'Enabled', 'Visible', 'ParentFont', 'ParentColor', 'Anchors', 'Anchors', 'Anchors', 'Anchors',
-    'Width', 'Height', 'Alignment', 'Alignment', 'Alignment', '', 'Width');
-  /// <summary>Verlangter Typ der Eigenschaft; leer = jeder (TCheckBox.Alignment ist kein TAlignment).</summary>
-  cTypes: array[TAtlasBarItem] of string = ('', '', '', '', '', '', 'Boolean', 'Boolean', 'Boolean', 'Boolean',
-    'TAnchors', 'TAnchors', 'TAnchors', 'TAnchors', '', '', 'TAlignment', 'TAlignment', 'TAlignment', '', '');
-  /// <summary>Element der Menge bzw. eingeschalteter Wert der Umschalter.</summary>
-  cElements: array[TAtlasBarItem] of string = ('', '', '', 'fsBold', 'fsItalic', '', 'True', 'True', 'True', 'True',
-    'akLeft', 'akTop', 'akRight', 'akBottom', '', '', 'taLeftJustify', 'taCenter', 'taRightJustify', '',
-    '');
-  cTexts: array[TAtlasBarItem] of string = ('A−', '–', 'A+', '', '', 'A', 'Enabled', 'Visible', 'ParentFont',
-    'ParentColor', 'L', 'T', 'R', 'B', 'W=', 'H=', '◧', '◫', '◨', '⇉', 'Aa↔');
   cHints: array[TAtlasBarItem] of TAtlasDesignerToolTextId = (TAtlasDesignerToolTextId.BarFontSmaller,
     TAtlasDesignerToolTextId.BarFontSize, TAtlasDesignerToolTextId.BarFontLarger, TAtlasDesignerToolTextId.BarBold,
     TAtlasDesignerToolTextId.BarItalic, TAtlasDesignerToolTextId.BarFontColor, TAtlasDesignerToolTextId.BarFlag,
@@ -261,20 +230,6 @@ begin
   end;
 end;
 
-procedure AddColor(var AColors: TArray<TColor>; AColor: TColor);
-var
-  mOther: TColor;
-begin
-  for mOther in AColors do
-  begin
-    if mOther = AColor then
-    begin
-      Exit;
-    end;
-  end;
-  AColors := AColors + [AColor];
-end;
-
 { TAtlasSelectionBarKeys }
 
 function TAtlasSelectionBarKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
@@ -283,7 +238,7 @@ var
 begin
   mSettings := TAtlasIdeSettings.Current;
   Result := mSettings.DesignerSelectionBar and (FOwner <> nil) and FOwner.FActive and
-    SameText(mSettings.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut) and
+    TAtlasSelectionBar.IsShortcut(mSettings.DesignerSelectionBarMode) and
     (mSettings.DesignerSelectionBarKey <> 0) and
     (ShortCut(AKey, AShift) = TShortCut(mSettings.DesignerSelectionBarKey)) and TAtlasDesignerAccess.Focused;
 end;
@@ -368,7 +323,7 @@ begin
   FSelection.Root := nil;
   if not TAtlasDesignerAccess.Current(mEditor, FSelection.Root) or not (FSelection.Root is TWinControl) then
   begin
-    FSelection.Names := '';
+    FSelection.Tracking.Clear;
     Exit(False);
   end;
   mNames := mEditor.FileName;
@@ -384,20 +339,7 @@ begin
     end;
   end;
   Result := Length(FSelection.Controls) >= 2;
-  if mNames <> FSelection.Names then
-  begin
-    // Neue Auswahl: Verzögerung von vorn, im Modus shortcut erst wieder auf Tastendruck.
-    FSelection.Names := mNames;
-    FSelection.Bounds := mBounds;
-    FSelection.Since := GetTickCount64;
-    FSelection.Requested := False;
-  end
-  else if mBounds <> FSelection.Bounds then
-  begin
-    // Lage oder Größe ändern sich (Ziehen): ausblenden, Verzögerung von vorn.
-    FSelection.Bounds := mBounds;
-    FSelection.Since := GetTickCount64;
-  end;
+  FSelection.Tracking.Update(mNames, mBounds, GetTickCount64);
 end;
 
 function TAtlasIdeSelectionBar.Wanted: Boolean;
@@ -459,18 +401,6 @@ begin
   end;
 end;
 
-function TAtlasIdeSelectionBar.StateOf(AItem: TAtlasBarItem; const AProps: TArray<TAtlasBarProp>): TAtlasBarState;
-begin
-  case AItem of
-    TAtlasBarItem.Bold, TAtlasBarItem.Italic, TAtlasBarItem.AnchorLeft..TAtlasBarItem.AnchorBottom:
-      Result := TAtlasSelectionBar.SetFlag(AProps, cElements[AItem]);
-    TAtlasBarItem.Enabled..TAtlasBarItem.ParentColor, TAtlasBarItem.AlignLeft..TAtlasBarItem.AlignRight:
-      Result := TAtlasSelectionBar.Flag(AProps, cElements[AItem]);
-  else
-    Result := TAtlasBarState.Off;
-  end;
-end;
-
 function TAtlasIdeSelectionBar.ButtonOf(AItem: TAtlasBarItem): TAtlasBarButton;
 var
   mProps: TArray<TAtlasBarProp>;
@@ -481,19 +411,10 @@ begin
   begin
     Exit(TransferButton);
   end;
-  mProps := Props(cPaths[AItem], cTypes[AItem]);
+  mProps := Props(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem));
   mValue := TAtlasSelectionBar.Combine(mProps);
-  case AItem of
-    TAtlasBarItem.Enabled..TAtlasBarItem.ParentColor:
-      mArgument := cTexts[AItem];
-    TAtlasBarItem.AnchorLeft..TAtlasBarItem.AnchorBottom:
-      mArgument := cElements[AItem];
-    TAtlasBarItem.SameWidth, TAtlasBarItem.SameHeight:
-      mArgument := FSelection.Controls[0].Name;
-  else
-    mArgument := '';
-  end;
-  Result := TAtlasBarButton.Create(cTexts[AItem], StateOf(AItem, mProps),
+  mArgument := TAtlasBarItems.HintArgument(AItem, FSelection.Controls[0].Name);
+  Result := TAtlasBarButton.Create(TAtlasBarItems.TextOf(AItem), TAtlasBarItems.StateOf(AItem, mProps),
     TAtlasDesignerToolStrings.Fmt(cHints[AItem], [mArgument]));
   if (AItem = TAtlasBarItem.FontSize) and (mValue.State = TAtlasBarState.On) then
   begin
@@ -529,17 +450,17 @@ function TAtlasIdeSelectionBar.TransferButton: TAtlasBarButton;
 begin
   if not TAtlasIdeSettings.Current.DesignerPropertyPainter then
   begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+    Result := TAtlasBarButton.Create(TAtlasBarItems.TextOf(TAtlasBarItem.Transfer), TAtlasBarState.None,
       TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferOff));
   end
   else if Assigned(FPainter) and FPainter.CanApply then
   begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.Off,
+    Result := TAtlasBarButton.Create(TAtlasBarItems.TextOf(TAtlasBarItem.Transfer), TAtlasBarState.Off,
       TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransfer));
   end
   else
   begin
-    Result := TAtlasBarButton.Create(cTexts[TAtlasBarItem.Transfer], TAtlasBarState.None,
+    Result := TAtlasBarButton.Create(TAtlasBarItems.TextOf(TAtlasBarItem.Transfer), TAtlasBarState.None,
       TAtlasDesignerToolStrings.Text(TAtlasDesignerToolTextId.BarTransferNeeds));
   end;
 end;
@@ -572,8 +493,8 @@ procedure TAtlasIdeSelectionBar.Refresh;
 begin
   if FindControls then
   begin
-    FSelection.Since := 0;
-    FSelection.Requested := True;
+    FSelection.Tracking.Since := 0;
+    FSelection.Tracking.Requested := True;
     ShowBar;
   end
   else
@@ -601,7 +522,7 @@ begin
     TAtlasBarItem.FontSmaller, TAtlasBarItem.FontLarger:
       begin
         mStep := IfThen(AItem = TAtlasBarItem.FontLarger, 1, -1);
-        Change(cPaths[AItem], '',
+        Change(TAtlasBarItems.PathOf(AItem), '',
           function(AOld: string): string
           begin
             Result := IntToStr(TAtlasSelectionBar.NextFontSize(StrToIntDef(AOld, 8), mStep));
@@ -616,11 +537,12 @@ begin
     TAtlasBarItem.Enabled..TAtlasBarItem.ParentColor:
       ToggleFlag(AItem, mLabel);
     TAtlasBarItem.SameWidth:
-      ChangeTo(cPaths[AItem], '', IntToStr(FSelection.Controls[0].Width), mLabel);
+      ChangeTo(TAtlasBarItems.PathOf(AItem), '', IntToStr(FSelection.Controls[0].Width), mLabel);
     TAtlasBarItem.SameHeight:
-      ChangeTo(cPaths[AItem], '', IntToStr(FSelection.Controls[0].Height), mLabel);
+      ChangeTo(TAtlasBarItems.PathOf(AItem), '', IntToStr(FSelection.Controls[0].Height), mLabel);
     TAtlasBarItem.AlignLeft..TAtlasBarItem.AlignRight:
-      ChangeTo(cPaths[AItem], cTypes[AItem], cElements[AItem], mLabel);
+      ChangeTo(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem), TAtlasBarItems.ElementOf(AItem),
+        mLabel);
     TAtlasBarItem.FitText:
       TAtlasIdeFitText.Execute(OnMessage);
     TAtlasBarItem.Transfer:
@@ -636,9 +558,7 @@ var
   mRoot: TComponent;
   mControl: TControl;
   mOld, mNew: string;
-  mChange: TAtlasBarChange;
   mStep: TAtlasBarStep;
-  mCount: Integer;
 begin
   if not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
@@ -646,7 +566,6 @@ begin
   end;
   mStep.FileName := mEditor.FileName;
   mStep.Changes := nil;
-  mCount := 0;
   for mControl in FSelection.Controls do
   begin
     if not ReadProp(mControl, APath, AType, mOld) then
@@ -658,27 +577,19 @@ begin
     begin
       Continue;
     end;
-    mChange.Name := mControl.Name;
-    mChange.Path := APath;
-    mChange.Value := mOld;
-    mStep.Changes := mStep.Changes + [mChange];
+    mStep.Changes := mStep.Changes + [TAtlasBarChange.Create(mControl.Name, APath, mOld)];
     WriteProp(mControl, APath, mNew);
-    Inc(mCount);
   end;
-  if mCount = 0 then
+  if Length(mStep.Changes) = 0 then
   begin
     Exit;
   end;
-  FSteps := FSteps + [mStep];
-  if Length(FSteps) > cMaxSteps then
-  begin
-    Delete(FSteps, 0, 1);
-  end;
+  FHistory.Push(mStep);
   if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
   begin
     TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   end;
-  Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.BarDone, [ALabel, mCount]));
+  Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.BarDone, [ALabel, Length(mStep.Changes)]));
 end;
 
 procedure TAtlasIdeSelectionBar.ChangeTo(const APath, AType, AValue, ALabel: string);
@@ -702,8 +613,9 @@ procedure TAtlasIdeSelectionBar.ToggleFlag(AItem: TAtlasBarItem; const ALabel: s
 var
   mTarget: Boolean;
 begin
-  mTarget := TAtlasSelectionBar.Target(StateOf(AItem, Props(cPaths[AItem], cTypes[AItem])));
-  ChangeTo(cPaths[AItem], cTypes[AItem], BoolToStr(mTarget, True), ALabel);
+  mTarget := TAtlasSelectionBar.Target(TAtlasBarItems.StateOf(AItem,
+    Props(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem))));
+  ChangeTo(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem), BoolToStr(mTarget, True), ALabel);
 end;
 
 procedure TAtlasIdeSelectionBar.ToggleSet(AItem: TAtlasBarItem; const ALabel: string);
@@ -711,9 +623,10 @@ var
   mTarget: Boolean;
   mElement: string;
 begin
-  mTarget := TAtlasSelectionBar.Target(StateOf(AItem, Props(cPaths[AItem], cTypes[AItem])));
-  mElement := cElements[AItem];
-  Change(cPaths[AItem], cTypes[AItem],
+  mTarget := TAtlasSelectionBar.Target(TAtlasBarItems.StateOf(AItem,
+    Props(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem))));
+  mElement := TAtlasBarItems.ElementOf(AItem);
+  Change(TAtlasBarItems.PathOf(AItem), TAtlasBarItems.PropTypeOf(AItem),
     function(AOld: string): string
     begin
       Result := AOld;
@@ -737,8 +650,12 @@ begin
   begin
     Exit;
   end;
-  if not TryStrToInt(Trim(mText), mSize) or (mSize < TAtlasSelectionBar.cMinFontSize) or
-    (mSize > TAtlasSelectionBar.cMaxFontSize) then
+  // Wie nach der Farbauswahl: Auswahl neu ermitteln, die gemerkten Controls können inzwischen freigegeben sein.
+  if not FindControls then
+  begin
+    Exit;
+  end;
+  if not TAtlasSelectionBar.TryFontSize(mText, mSize) then
   begin
     Say(TAtlasDesignerToolStrings.Fmt(TAtlasDesignerToolTextId.BarSizeInvalid,
       [mText, TAtlasSelectionBar.cMinFontSize, TAtlasSelectionBar.cMaxFontSize]));
@@ -749,26 +666,26 @@ end;
 
 procedure TAtlasIdeSelectionBar.PopupColors(const AAt: TPoint);
 var
-  mColors: TArray<TColor>;
+  mUsedColors, mStandard, mColors: TArray<Integer>;
   mIndex, mUsed: Integer;
   mValue: string;
-  mColor: TColor;
   mItem: TMenuItem;
 begin
-  mColors := nil;
   // Oben die im Formular verwendeten Schriftfarben, darunter die üblichen.
+  mUsedColors := nil;
   for mIndex := 0 to FSelection.Root.ComponentCount - 1 do
   begin
     if ReadProp(FSelection.Root.Components[mIndex], 'Font.Color', '', mValue) then
     begin
-      AddColor(mColors, TColor(StrToIntDef(mValue, clWindowText)));
+      mUsedColors := mUsedColors + [Integer(StrToIntDef(mValue, clWindowText))];
     end;
   end;
-  mUsed := Length(mColors);
-  for mColor in cStandardColors do
+  SetLength(mStandard, Length(cStandardColors));
+  for mIndex := 0 to High(cStandardColors) do
   begin
-    AddColor(mColors, mColor);
+    mStandard[mIndex] := cStandardColors[mIndex];
   end;
+  mColors := TAtlasSelectionBar.ColorChoices(mUsedColors, mStandard, mUsed);
   FMenus.ColorMenu.Items.Clear;
   for mIndex := 0 to High(mColors) do
   begin
@@ -777,9 +694,9 @@ begin
       FMenus.ColorMenu.Items.Add(NewLine);
     end;
     mItem := TMenuItem.Create(FMenus.ColorMenu);
-    mItem.Caption := ColorToString(mColors[mIndex]);
+    mItem.Caption := ColorToString(TColor(mColors[mIndex]));
     mItem.Tag := mColors[mIndex];
-    SetSwatch(mItem, mColors[mIndex]);
+    SetSwatch(mItem, TColor(mColors[mIndex]));
     mItem.OnClick := ColorClick;
     FMenus.ColorMenu.Items.Add(mItem);
   end;
@@ -856,8 +773,7 @@ var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
 begin
-  Result := (Length(FSteps) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(FSteps[High(FSteps)].FileName, mEditor.FileName);
+  Result := TAtlasDesignerAccess.Current(mEditor, mRoot) and FHistory.CanUndo(mEditor.FileName);
 end;
 
 procedure TAtlasIdeSelectionBar.Undo;
@@ -867,12 +783,10 @@ var
   mStep: TAtlasBarStep;
   mIndex: Integer;
 begin
-  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
+  if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) or not FHistory.Pop(mStep) then
   begin
     Exit;
   end;
-  mStep := FSteps[High(FSteps)];
-  SetLength(FSteps, Length(FSteps) - 1);
   for mIndex := High(mStep.Changes) downto 0 do
   begin
     mComponent := mRoot.FindComponent(mStep.Changes[mIndex].Name);
@@ -894,7 +808,7 @@ end;
 
 procedure TAtlasIdeSelectionBar.UpdateKeys;
 begin
-  if Wanted and SameText(TAtlasIdeSettings.Current.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut) then
+  if Wanted and TAtlasSelectionBar.IsShortcut(TAtlasIdeSettings.Current.DesignerSelectionBarMode) then
   begin
     TAtlasKeyHook.Add(FKeys);
   end
@@ -971,16 +885,16 @@ begin
     Exit;
   end;
   mSettings := TAtlasIdeSettings.Current;
-  mShortcut := SameText(mSettings.DesignerSelectionBarMode, TAtlasSelectionBar.cModeShortcut);
+  mShortcut := TAtlasSelectionBar.IsShortcut(mSettings.DesignerSelectionBarMode);
   // Ziehen oder Größe ändern im Designer, Fokus im Objektinspektor: weg.
   if ((FWindow = nil) or not FWindow.MouseOver) and (GetKeyState(VK_LBUTTON) < 0) then
   begin
-    FSelection.Since := GetTickCount64;
+    FSelection.Tracking.Since := GetTickCount64;
     Hide;
     Exit;
   end;
-  if not TAtlasDesignerAccess.Focused or (mShortcut and not FSelection.Requested) or
-    (not mShortcut and (GetTickCount64 - FSelection.Since < UInt64(mSettings.DesignerSelectionBarDelayMs))) then
+  if not TAtlasSelectionBar.Due(TAtlasDesignerAccess.Focused, mShortcut, FSelection.Tracking.Requested,
+    GetTickCount64, FSelection.Tracking.Since, mSettings.DesignerSelectionBarDelayMs) then
   begin
     Hide;
     Exit;

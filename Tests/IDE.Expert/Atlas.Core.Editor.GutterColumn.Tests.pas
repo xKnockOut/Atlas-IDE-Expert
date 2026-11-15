@@ -39,6 +39,8 @@ type
     /// </summary>
     [Test]
     procedure RetryDoublesUpToLimit;
+    [Test]
+    procedure HandlesPascalSources;
   end;
 
 implementation
@@ -241,6 +243,14 @@ begin
   mRetry.Succeeded;
   mRetry.Failed(5000);
   Assert.AreEqual(Int64(5000 + TAtlasGutterRetry.cRetryMs), Int64(mRetry.RetryAt));
+end;
+
+
+procedure TAtlasGutterColumnTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasGutterColumn.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasGutterColumn.Handles('defines.INC'));
+  Assert.IsFalse(TAtlasGutterColumn.Handles('Main.dfm'));
 end;
 
 end.

@@ -24,6 +24,10 @@ type
     [Test]
     procedure RequiredFieldInGridIsSilent;
     [Test]
+    procedure RequiredFieldWithoutBoundControlsIsSilent;
+    [Test]
+    procedure RequiredFieldWithLiveBindings;
+    [Test]
     procedure WithoutPersistentFieldsIsSilent;
     [Test]
     procedure EditOnBooleanFieldReports;
@@ -118,7 +122,9 @@ const
 
 procedure TDataBindingRulesTests.RequiredFieldWithoutControlReports;
 begin
-  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable)));
+  // Das Formular zeigt das Dataset (Aktiv), aber nicht das Pflichtfeld Name.
+  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
+    '  object cbAktiv: TDBCheckBox'#10'    DataSource = dsA'#10'    DataField = ''Aktiv'''#10'  end'#10)));
   // Nur unsichtbar gebunden zählt nicht.
   Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
     '  object Panel1: TPanel'#10'    Visible = False'#10 +
@@ -132,6 +138,36 @@ begin
     '  object Grid: TDBGrid'#10'    DataSource = dsA'#10'  end'#10)));
   Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
     '  object edName: TDBEdit'#10'    DataSource = dsA'#10'    DataField = ''Name'''#10'  end'#10)));
+end;
+
+procedure TDataBindingRulesTests.RequiredFieldWithoutBoundControlsIsSilent;
+begin
+  // Kein Control der Datei zeigt das Dataset: Datenmodul, die Eingabe liegt in einem anderen Formular.
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable)));
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
+    '  object lbTitel: TLabel'#10'    Caption = ''Kunden'''#10'  end'#10)));
+end;
+
+const
+  cLiveBindings =
+    '  object BindSourceDB1: TBindSourceDB'#10'    DataSet = tblA'#10'  end'#10 +
+    '  object edName: TEdit'#10'  end'#10 +
+    '  object BindingsList1: TBindingsList'#10 +
+    '    object LinkControlToField1: TLinkControlToField'#10'      DataSource = BindSourceDB1'#10 +
+    '      FieldName = ''%s'''#10'      Control = edName'#10'    end'#10 +
+    '  end'#10;
+
+procedure TDataBindingRulesTests.RequiredFieldWithLiveBindings;
+begin
+  // FireMonkey: TLinkControlToField bindet das Control über TBindSourceDB an das Feld.
+  Assert.AreEqual(0, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
+    Format(cLiveBindings, ['Name']))));
+  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
+    Format(cLiveBindings, ['Aktiv']))));
+  // Ein unsichtbares Control hinter der Verknüpfung zählt nicht.
+  Assert.AreEqual(1, Count(TDfmRequiredFieldWithoutControlRule.Create, Form(cPersistentTable +
+    StringReplace(Format(cLiveBindings, ['Name']), '  object edName: TEdit'#10,
+    '  object edName: TEdit'#10'    Visible = False'#10, []))));
 end;
 
 procedure TDataBindingRulesTests.WithoutPersistentFieldsIsSilent;

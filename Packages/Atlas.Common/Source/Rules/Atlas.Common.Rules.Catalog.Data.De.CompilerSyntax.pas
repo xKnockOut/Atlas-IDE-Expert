@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeCompilerSyntax: array[0..198] of string = (
+  cCatalogLinesDeCompilerSyntax: array[0..203] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntaxfehler",',
@@ -95,8 +95,9 @@ const
     '      "description": "Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$EN' +
     'DIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$' +
     'WARN}-Bezeichner (wie E1030, vor Delphi 13 W1030; der Code folgt delphiVersion), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POP' +
-    'OPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in' +
-    ' einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."',
+    'OPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt; in Zweigen, die unter den Defines des Projekts' +
+    ' nicht gelten, prüft sie außer der Verschachtelung nichts (dcc überspringt sie); {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerze' +
+    'ile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."',
     '    },',
     '{',
     '      "id": "compiler-directive-invalid",',
@@ -288,6 +289,14 @@ const
     '      "description": "Winapi.Windows (bzw. Windows) steht in uses hinter Vcl.Graphics, FMX.Graphics oder Graphics, und die Unit nennt TBitmap. Die letzte Unit gewinnt, TBitmap meint also den Record au' +
     's Winapi.Windows: TBitmap.Create und die Methoden der Grafikklasse werden nicht gefunden (wie E2003). uses des interface- und implementation-Teils zählen zusammen. TBitmap hinter einem Punkt (Vcl.Grap' +
     'hics.TBitmap) bleibt still. Korrektur (sicher) nur, wenn beide Units in derselben uses-Liste stehen: Winapi.Windows vor die Grafik-Unit stellen."',
+    '    },',
+    '{',
+    '      "id": "stream-write-nativeint",',
+    '      "name": "Write ohne NativeInt-Überladung",',
+    '      "description": "Eine Klasse überschreibt Write(const Buffer; Count: Longint): Longint von TStream, aber nicht die Überladung Write(const Buffer; Count: NativeInt): NativeInt, die es ab Delphi 13' +
+    ' gibt. Unter Win64 rufen WriteBuffer und CopyFrom die NativeInt-Überladung auf und gehen an der eigenen Fassung vorbei, ohne Compilermeldung: Eine Grenze oder Zählung in der Longint-Fassung greift nic' +
+    'ht mehr. Die zweite Fassung wird im ganzen Text der Klasse gesucht, auch in {$IF}-Zweigen. Still, wenn delphiVersion eine Version vor Delphi 13 nennt. Unter Win32 sind beide Signaturen gleich; die Nat' +
+    'iveInt-Fassung gehört deshalb in {$IF RTLVersion >= 37.0} und {$IF SizeOf(Longint) <> SizeOf(NativeInt)}."',
     '    },',
     '{',
     '      "id": "jump-outside-allowed-scope",',

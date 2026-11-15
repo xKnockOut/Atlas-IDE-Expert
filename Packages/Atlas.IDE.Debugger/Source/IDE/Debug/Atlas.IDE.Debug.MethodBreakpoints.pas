@@ -92,6 +92,7 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.UI.Debug.Strings,
   Atlas.Core.Debug.Evaluate,
+  Atlas.Core.Debug.MethodGroupFlow,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Breakpoints;
@@ -289,19 +290,21 @@ end;
 class procedure TAtlasIdeMethodBreakpoints.ToggleGroup(const AGroup: TAtlasMethodGroup);
 var
   mBreakpoints: TArray<IOTABreakpoint>;
-  mBreakpoint: IOTABreakpoint;
-  mAllEnabled: Boolean;
+  mEnabled: TArray<Boolean>;
+  mIndex: Integer;
+  mState: Boolean;
 begin
   mBreakpoints := GroupBreakpoints(AGroup.Pattern);
-  mAllEnabled := True;
-  for mBreakpoint in mBreakpoints do
+  SetLength(mEnabled, Length(mBreakpoints));
+  for mIndex := 0 to High(mBreakpoints) do
   begin
-    mAllEnabled := mAllEnabled and mBreakpoint.Enabled;
+    mEnabled[mIndex] := mBreakpoints[mIndex].Enabled;
   end;
   // Alle an: alle aus; sonst alle an.
-  for mBreakpoint in mBreakpoints do
+  mState := TAtlasMethodGroupFlow.ToggleTo(mEnabled);
+  for mIndex := 0 to High(mBreakpoints) do
   begin
-    mBreakpoint.Enabled := not mAllEnabled;
+    mBreakpoints[mIndex].Enabled := mState;
   end;
 end;
 
@@ -378,29 +381,6 @@ begin
   end;
 end;
 
-/// <summary>Zeile für die Meldungen: die ersten Namen, danach „…“.</summary>
-function HitNames(const AHits: TAtlasMethodHits): string;
-const
-  cShown = 5;
-var
-  mIndex: Integer;
-begin
-  Result := '';
-  for mIndex := 0 to High(AHits) do
-  begin
-    if mIndex = cShown then
-    begin
-      Result := Result + ', …';
-      Break;
-    end;
-    if Result <> '' then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + AHits[mIndex].DisplayName;
-  end;
-end;
-
 class procedure TAtlasIdeMethodBreakpoints.Grow(const AProject: string);
 var
   mGroups: TAtlasMethodGroups;
@@ -435,7 +415,7 @@ begin
     FStore.Put(AProject, mGroup);
     mChanged := True;
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsGrown, [Length(mNew), mGroup.Pattern,
-      HitNames(mNew)]));
+      TAtlasMethodGroupFlow.HitNames(mNew)]));
   end;
   if mChanged then
   begin
@@ -517,7 +497,7 @@ class procedure TAtlasIdeMethodBreakpoints.Run;
 var
   mGroup, mKnown: TAtlasMethodGroup;
   mSelected: TAtlasMethodHits;
-  mProject, mKey, mStart: string;
+  mProject, mStart: string;
 begin
   if not Started then
   begin
@@ -527,16 +507,8 @@ begin
   AttachListMenu;
   // Das Wort am Cursor gibt das Muster vor; ein neues Muster beginnt ohne Bedingung und Mitwachsen.
   mStart := CursorPattern;
-  mGroup := FLastGroup;
-  if (mGroup.Pattern = '') or (mStart <> '') and not SameText(mStart, FLastGroup.Pattern) then
-  begin
-    mGroup := Default(TAtlasMethodGroup);
-    mGroup.Pattern := mStart;
-    mGroup.Overrides := True;
-    mGroup.Overloads := True;
-  end;
   // Gesehen ist, was diese Gruppe schon kannte; der Dialog nimmt die neuen Treffer dazu.
-  mGroup.Known := nil;
+  mGroup := TAtlasMethodGroupFlow.StartGroup(FLastGroup, mStart);
   if not TAtlasMethodBreakpointsDialog.Execute(mGroup, SearchFunc(), mSelected) then
   begin
     Exit;
@@ -545,13 +517,7 @@ begin
   // Schon gesehene Treffer einer gleichnamigen Gruppe bleiben gesehen.
   if FStore.Find(mProject, mGroup.Pattern, mKnown) then
   begin
-    for mKey in mKnown.Known do
-    begin
-      if not mGroup.Knows(mKey) then
-      begin
-        mGroup.Known := mGroup.Known + [mKey];
-      end;
-    end;
+    TAtlasMethodGroupFlow.MergeKnown(mGroup, mKnown.Known);
   end;
   Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsCreated, [Place(mGroup, mSelected),
     TAtlasMethodBreakpoints.GroupName(mGroup.Pattern)]));

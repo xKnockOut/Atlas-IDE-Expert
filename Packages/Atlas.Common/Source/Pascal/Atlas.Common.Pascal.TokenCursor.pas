@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Pascal.TokenCursor;
 
 // Lesender Zugriff auf die Token einer Unit für Prüfregeln, Editierbefehle und LSP-Funktionen: Token zu einem
-// Offset, nächstes und voriges Code-Token, passende Klammer. Alle Indexprüfungen an den Rändern des Token-Arrays
+// Offset oder einer Position (Zeile und Spalte), Bezeichner unter dem Cursor, nächstes und voriges Code-Token,
+// passende Klammer in Token oder im Text. Alle Indexprüfungen an den Rändern des Token-Arrays
 // stehen hier an einer Stelle; Regeln bringen keine eigenen Kopien dieser Helfer mit (Kopien-Sperre in
 // Tools/Check-PackageDependencies.ps1).
 //
@@ -12,9 +13,13 @@
 interface
 
 uses
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract;
 
 type
+  /// <summary>Menge von Token-Arten, z. B. für TokenTouching.</summary>
+  TPascalTokenKinds = set of TPascalTokenKind;
+
   /// <summary>Lesender Blick auf die Token einer Unit; alle Indexprüfungen an einer Stelle.</summary>
   TTokenCursor = record
   private
@@ -68,6 +73,23 @@ function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Int
 function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer; AStop: Integer): Integer; overload;
 /// <summary>Wie oben, gesucht wird bis zum Ende des Arrays.</summary>
 function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer; overload;
+/// <summary>Stelle (ab 1) der schließenden runden Klammer zur öffnenden an AOpen im Text AText; zählt nur ( und
+/// ), Strings und Kommentare nicht beachtet (für kurze Ausschnitte wie Parameterlisten und Direktiven). 0 ohne
+/// Gegenstück oder wenn an AOpen keine öffnende Klammer steht.</summary>
+function MatchingParen(const AText: string; AOpen: Integer): Integer; overload;
+/// <summary>Index des ersten Tokens, das bei APosition (Zeile und Spalte) oder dahinter beginnt (binäre Suche);
+/// Length(ATokens), wenn keines folgt.</summary>
+function TokenFromPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+/// <summary>Index des letzten Tokens, das bei APosition oder davor beginnt (binäre Suche); -1 ohne.</summary>
+function TokenUpToPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+/// <summary>Erstes Token einer der Arten AKinds, auf dem APosition steht oder direkt dahinter (Cursor am
+/// Wortende): Es beginnt bei oder vor APosition und endet in derselben Zeile bei oder hinter ihr. Grenzen zwei
+/// Token an APosition aneinander, gilt das vordere. -1 ohne.</summary>
+function TokenTouching(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  const AKinds: TPascalTokenKinds): Integer;
+/// <summary>Bezeichner, auf dem APosition steht oder direkt dahinter (TokenTouching mit Identifier); -1 ohne.
+/// </summary>
+function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 
 implementation
 
@@ -195,6 +217,109 @@ begin
     end;
   end;
   Result := -1;
+end;
+
+function MatchingParen(const AText: string; AOpen: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  if (AOpen < 1) or (AOpen > Length(AText)) or (AText[AOpen] <> '(') then
+  begin
+    Exit(0);
+  end;
+  mDepth := 0;
+  for Result := AOpen to Length(AText) do
+  begin
+    if AText[Result] = '(' then
+    begin
+      Inc(mDepth);
+    end
+    else if AText[Result] = ')' then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>Liegt A vor B (Zeile, dann Spalte)? AOrEqual: auch bei Gleichheit.</summary>
+function PositionBefore(const A, B: TTextPosition; AOrEqual: Boolean): Boolean;
+begin
+  if A.Line <> B.Line then
+  begin
+    Exit(A.Line < B.Line);
+  end;
+  Result := (A.Character < B.Character) or (AOrEqual and (A.Character = B.Character));
+end;
+
+/// <summary>Anzahl der Token, die vor APosition beginnen (AOrEqual: auch genau bei ihr); die Token sind nach
+/// Position sortiert.</summary>
+function CountStartingBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  AOrEqual: Boolean): Integer;
+var
+  mHigh, mMiddle: Integer;
+begin
+  Result := 0;
+  mHigh := Length(ATokens);
+  while Result < mHigh do
+  begin
+    mMiddle := (Result + mHigh) div 2;
+    if PositionBefore(ATokens[mMiddle].StartPos, APosition, AOrEqual) then
+    begin
+      Result := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
+    end;
+  end;
+end;
+
+function TokenFromPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+begin
+  Result := CountStartingBefore(ATokens, APosition, False);
+end;
+
+function TokenUpToPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+begin
+  Result := CountStartingBefore(ATokens, APosition, True) - 1;
+end;
+
+function TokenTouching(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  const AKinds: TPascalTokenKinds): Integer;
+var
+  mFirst, mIndex, mLast: Integer;
+begin
+  // In Frage kommen nur Token, die bei APosition oder davor beginnen und bei ihr oder dahinter enden. Die Token
+  // überlappen nicht, also sind das die letzten bis mLast; zurück bis vor das erste, das vor APosition endet.
+  mLast := TokenUpToPosition(ATokens, APosition);
+  if mLast < 0 then
+  begin
+    Exit(-1);
+  end;
+  mFirst := mLast;
+  while (mFirst > 0) and not PositionBefore(ATokens[mFirst - 1].EndPos, APosition, False) do
+  begin
+    Dec(mFirst);
+  end;
+  for mIndex := mFirst to mLast do
+  begin
+    if (ATokens[mIndex].Kind in AKinds) and (ATokens[mIndex].EndPos.Line = APosition.Line) and
+      (APosition.Character <= ATokens[mIndex].EndPos.Character) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+begin
+  Result := TokenTouching(ATokens, APosition, [TPascalTokenKind.Identifier]);
 end;
 
 { TTokenCursor }

@@ -559,22 +559,7 @@ begin
   mCatalog := TAtlasSettingsCatalog.CreateDefault;
   mGroups := TAtlasSettingsGroups.Create(mCatalog);
   try
-    mSwitch := '';
-    if (mCatalog.IndexOfName(AKey) >= 0) or (mCatalog.IndexOfKey(AKey) >= 0) then
-    begin
-      if mCatalog.IndexOfName(AKey) < 0 then
-      begin
-        mSwitch := TAtlasSettingsNodeScope.ModuleOf(mCatalog, mGroups, mCatalog[mCatalog.IndexOfKey(AKey)].Name);
-      end
-      else
-      begin
-        mSwitch := TAtlasSettingsNodeScope.ModuleOf(mCatalog, mGroups, AKey);
-      end;
-    end
-    else if AKey.StartsWith('Vcs', True) then
-    begin
-      mSwitch := 'vcs';
-    end;
+    mSwitch := TAtlasSettingsNodeScope.SwitchOfKey(mCatalog, mGroups, AKey);
   finally
     mGroups.Free;
     mCatalog.Free;

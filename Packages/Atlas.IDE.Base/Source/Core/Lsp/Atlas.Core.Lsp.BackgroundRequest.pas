@@ -18,7 +18,8 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.WorkerSlot;
 
 type
   /// <summary>Abschluss im Hauptthread: AOk, wenn AWork ohne Ausnahme endete; sonst AError mit der Meldung.</summary>
@@ -35,10 +36,8 @@ type
   private
     FFeature: TAtlasFeature;
     FAlive: IAtlasRequestAlive;
-    FWorker: TThread;
+    FWorkers: TAtlasWorkerSlot;
     FBusy: Boolean;
-    /// <summary>Thread der vorigen, abgeschlossenen Anfrage freigeben.</summary>
-    procedure Reap;
   public
     constructor Create(AFeature: TAtlasFeature);
     destructor Destroy; override;
@@ -89,28 +88,18 @@ begin
   inherited Create;
   FFeature := AFeature;
   FAlive := TRequestAlive.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
 end;
 
 destructor TAtlasBackgroundRequest.Destroy;
 begin
   FAlive.Kill;
-  if FWorker <> nil then
+  if FWorkers <> nil then
   begin
-    FWorker.WaitFor;
-    FWorker.Free;
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
   end;
+  FreeAndNil(FWorkers);
   inherited;
-end;
-
-procedure TAtlasBackgroundRequest.Reap;
-begin
-  // Der Abschluss ist schon gelaufen; der Thread steht höchstens noch in seinen letzten Anweisungen.
-  if FWorker <> nil then
-  begin
-    FWorker.WaitFor;
-    FWorker.Free;
-    FWorker := nil;
-  end;
 end;
 
 function TAtlasBackgroundRequest.Busy: Boolean;
@@ -192,11 +181,10 @@ begin
   begin
     Exit;
   end;
-  Reap;
+  // Der Thread der vorigen Anfrage steht höchstens noch in seinen letzten Anweisungen; Start gibt ihn frei,
+  // sobald er beendet ist.
   FBusy := True;
-  FWorker := TThread.CreateAnonymousThread(Work(Self, AWork, ADone));
-  FWorker.FreeOnTerminate := False;
-  FWorker.Start;
+  FWorkers.Start(TThread.CreateAnonymousThread(Work(Self, AWork, ADone)));
 end;
 
 end.

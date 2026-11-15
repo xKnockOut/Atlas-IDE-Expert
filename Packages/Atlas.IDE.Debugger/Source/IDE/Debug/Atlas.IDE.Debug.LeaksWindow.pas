@@ -43,7 +43,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Leaks.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -79,7 +79,7 @@ end;
 
 function TLeaksDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.LeaksCaption);
+  Result := TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksCaption);
 end;
 
 function TLeaksDock.GetIdentifier: string;

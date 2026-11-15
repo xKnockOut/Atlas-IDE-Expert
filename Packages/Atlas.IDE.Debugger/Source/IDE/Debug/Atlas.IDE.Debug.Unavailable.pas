@@ -36,7 +36,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Unavailable,
@@ -63,7 +63,7 @@ type
     FSession: TAtlasUnavailableSessionFunc;
     FMessage: TProc<string>;
     FListener: IAtlasIdeDebugListener;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FRequest: Integer;
     // Letzte Erklärung: die Korrekturen brauchen ihre Tatsachen (Einfügungen, Schalter).
     FLastExpression: string;
@@ -84,7 +84,6 @@ type
       const AValue: TAtlasDebugValue; const AFacts: TAtlasUnavailableFacts; const ADone: TAtlasDebugValueEvent);
     procedure RestartWithDebug;
     procedure Say(AText: string);
-    procedure ReapWorkers(AWait: Boolean);
     /// <summary>Datei (vollständig) und Zeile (0-basiert) des Ausführungspunkts; False ohne Quelltext.</summary>
     class function StopLocation(out AFileName: string; out ALine: Integer): Boolean; static;
     class function LaunchFacts: TAtlasUnavailableLaunch; static;
@@ -128,6 +127,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.UnavailableNote,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -136,8 +136,8 @@ uses
   Atlas.UI.Debug.Strings;
 
 const
-  cDebugDcusOption = TAtlasIdeDebugUnavailableFixes.cDebugDcusOption;
-  cDebugInfoOption = TAtlasIdeDebugUnavailableFixes.cDebugInfoOption;
+  cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
+  cDebugInfoOption = TAtlasUnavailableNote.cDebugInfoOption;
 
 function CheckText(ACheck: TAtlasUnavailableCheck): string;
 const
@@ -164,15 +164,6 @@ begin
   end;
 end;
 
-function Joined(const AFirst, ASecond: string): string;
-begin
-  Result := AFirst;
-  if ASecond <> '' then
-  begin
-    Result := Result + ' ' + ASecond;
-  end;
-end;
-
 { TAtlasIdeDebugUnavailable.TListener }
 
 procedure TAtlasIdeDebugUnavailable.TListener.DebugEnded;
@@ -193,7 +184,7 @@ begin
   inherited Create;
   FSession := ASession;
   FMessage := AMessage;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FListener := TListener.Create;
   TAtlasIdeDebugSession.AddListener(FListener);
 end;
@@ -206,7 +197,10 @@ begin
   end;
   FListener := nil;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FLastFacts := Default(TAtlasUnavailableFacts);
   FLastExplanation := Default(TAtlasUnavailableExplanation);
@@ -241,7 +235,7 @@ begin
     mBuffer := TAtlasIdeFiles.BufferOf(mFileName);
   end;
   Inc(FRequest);
-  if (mSession = nil) or (mBuffer = nil) or (mName = '') then
+  if not TAtlasUnavailableNote.AskServer(mSession <> nil, mBuffer <> nil, mName) then
   begin
     Result := ExplainLocally(AValue, mFacts);
     Exit;
@@ -257,7 +251,7 @@ procedure TAtlasIdeDebugUnavailable.Accept(ARequest: Integer; const AValue: TAtl
 var
   mExplanation: TAtlasUnavailableExplanation;
 begin
-  ReapWorkers(False);
+  FWorkers.Prune;
   // Nur die jüngste Anfrage; ein Halt danach macht die Erklärung wertlos (der Hover fragt neu).
   if (ARequest <> FRequest) or not Enabled or (TAtlasIdeDebugSession.StoppedThread = nil) then
   begin
@@ -276,7 +270,7 @@ end;
 procedure TAtlasIdeDebugUnavailable.RunFix(const AValue: TAtlasDebugValue; AFix: TAtlasUnavailableFix);
 begin
   // Die Tatsachen gehören zur letzten Erklärung; für einen anderen Ausdruck fehlen sie.
-  if (AValue.Expression <> FLastExpression) or not FLastExplanation.HasFix(AFix) then
+  if not TAtlasUnavailableNote.FixAllowed(AValue.Expression, FLastExpression, FLastExplanation, AFix) then
   begin
     Exit;
   end;
@@ -338,10 +332,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  ReapWorkers(False);
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeDebugUnavailable.RestartWithDebug;
@@ -371,25 +362,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugUnavailable.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
-end;
-
 class function TAtlasIdeDebugUnavailable.StopLocation(out AFileName: string; out ALine: Integer): Boolean;
 var
   mFrames: TAtlasDebugFrames;
@@ -413,8 +385,8 @@ begin
   Result.Configuration := TAtlasIdeDebugSession.LaunchConfiguration;
   Result.Known := Result.Configuration <> '';
   Result.DebugInfo := TAtlasIdeDebugSession.LaunchValue(cDebugInfoOption);
-  Result.LocalSymbols := TAtlasIdeDebugSession.LaunchValue('DCC_LocalDebugSymbols');
-  Result.Optimization := TAtlasIdeDebugSession.LaunchValue('DCC_Optimize');
+  Result.LocalSymbols := TAtlasIdeDebugSession.LaunchValue(TAtlasUnavailableNote.cLocalSymbolsOption);
+  Result.Optimization := TAtlasIdeDebugSession.LaunchValue(TAtlasUnavailableNote.cOptimizeOption);
   Result.DebugDcus := TAtlasIdeDebugSession.LaunchValue(cDebugDcusOption);
 end;
 
@@ -451,24 +423,13 @@ begin
     TAtlasUnavailableCause.ReleaseBuild:
       mNote.Reason := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableRelease, [AExplanation.Configuration]);
     TAtlasUnavailableCause.NoDebugInfo:
-      begin
-        mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoDebugInfo);
-        mNote.Origin := OriginText(AExplanation.Switch, cDebugInfoOption, AExplanation.Configuration);
-      end;
+      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoDebugInfo);
     TAtlasUnavailableCause.NoLocalSymbols:
-      begin
-        mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoLocalSymbols);
-        mNote.Origin := OriginText(AExplanation.Switch, 'DCC_LocalDebugSymbols', AExplanation.Configuration);
-      end;
+      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoLocalSymbols);
     TAtlasUnavailableCause.Optimization:
-      begin
-        mNote.Reason := Joined(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOptimization),
-          LifetimeText(AExplanation.Lifetime, AFacts));
-        mNote.Origin := OriginText(AExplanation.Switch, 'DCC_Optimize', AExplanation.Configuration);
-      end;
+      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOptimization);
     TAtlasUnavailableCause.Lifetime:
-      mNote.Reason := Joined(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableLifetime),
-        LifetimeText(AExplanation.Lifetime, AFacts));
+      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableLifetime);
     TAtlasUnavailableCause.InlineRoutine:
       mNote.Reason := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableInline, [AExplanation.RoutineName]);
     TAtlasUnavailableCause.LibraryFrame:
@@ -482,6 +443,15 @@ begin
       end;
     end;
   end;
+  if TAtlasUnavailableNote.WithLifetime(AExplanation.Cause) then
+  begin
+    mNote.Reason := TAtlasUnavailableNote.Joined(mNote.Reason, LifetimeText(AExplanation.Lifetime, AFacts));
+  end;
+  if TAtlasUnavailableNote.OptionOf(AExplanation.Cause) <> '' then
+  begin
+    mNote.Origin := OriginText(AExplanation.Switch, TAtlasUnavailableNote.OptionOf(AExplanation.Cause),
+      AExplanation.Configuration);
+  end;
   for mFix in AExplanation.Fixes do
   begin
     mNote.Fixes := mNote.Fixes + [TAtlasDebugValueFix.Create(Ord(mFix),
@@ -493,22 +463,16 @@ end;
 class function TAtlasIdeDebugUnavailable.OriginText(const ASwitch: TAtlasUnavailableSwitch;
   const AOption, AConfiguration: string): string;
 begin
-  Result := '';
-  if not ASwitch.Known then
-  begin
-    Exit;
-  end;
-  case ASwitch.Source of
-    TAtlasSwitchSource.Directive, TAtlasSwitchSource.Include:
-      if ASwitch.FileName <> '' then
-      begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableOriginDirective, [ASwitch.OriginText,
-          ExtractFileName(ASwitch.FileName), ASwitch.Line + 1]);
-      end;
-    TAtlasSwitchSource.Project:
+  case TAtlasUnavailableNote.OriginOf(ASwitch) of
+    TAtlasUnavailableOrigin.Directive:
+      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableOriginDirective, [ASwitch.OriginText,
+        ExtractFileName(ASwitch.FileName), ASwitch.Line + 1]);
+    TAtlasUnavailableOrigin.Project:
       Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableOriginProject, [AOption, AConfiguration]);
+    TAtlasUnavailableOrigin.Default:
+      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOriginDefault);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOriginDefault);
+    Result := '';
   end;
 end;
 
@@ -592,8 +556,7 @@ class function TAtlasIdeDebugUnavailable.Explain(const AValue: TAtlasDebugValue;
   const ADone: TAtlasDebugValueEvent): TAtlasDebugValue;
 begin
   Result := AValue;
-  if (FInstance = nil) or not Enabled or (AValue.State <> TAtlasDebugValueState.Failed) or
-    not TAtlasDebugUnavailable.IsUnavailable(AValue.Text, Patterns) then
+  if (FInstance = nil) or not Enabled or not TAtlasUnavailableNote.CanExplain(AValue, Patterns) then
   begin
     Exit;
   end;
@@ -601,17 +564,13 @@ begin
 end;
 
 class procedure TAtlasIdeDebugUnavailable.Fix(const AValue: TAtlasDebugValue; AIndex: Integer);
+var
+  mFix: TAtlasUnavailableFix;
 begin
-  if (FInstance = nil) or not Enabled or (AIndex < 0) or (AIndex > High(AValue.Note.Fixes)) then
+  if (FInstance <> nil) and Enabled and TAtlasUnavailableNote.FixOf(AValue, AIndex, mFix) then
   begin
-    Exit;
+    FInstance.RunFix(AValue, mFix);
   end;
-  if (AValue.Note.Fixes[AIndex].Id < Ord(Low(TAtlasUnavailableFix))) or
-    (AValue.Note.Fixes[AIndex].Id > Ord(High(TAtlasUnavailableFix))) then
-  begin
-    Exit;
-  end;
-  FInstance.RunFix(AValue, TAtlasUnavailableFix(AValue.Note.Fixes[AIndex].Id));
 end;
 
 end.

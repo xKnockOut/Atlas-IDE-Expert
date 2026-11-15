@@ -28,6 +28,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Debug.DialogCompletion,
   Atlas.Core.Debug.LaunchGroups,
+  Atlas.Core.Debug.LaunchProcesses,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.LaunchProbe,
   Atlas.UI.Debug.StepsBar;
@@ -62,12 +63,6 @@ type
       procedure Tick(Sender: TObject);
     end;
     /// <summary>Gestartetes Programm des Verbunds.</summary>
-    TStarted = record
-      Caption: string;
-      Exe: string;
-      Pid: Cardinal;
-      Debug: Boolean;
-    end;
   private class var
     FListener: IAtlasIdeDebugListener;
     FHandler: THandler;
@@ -80,7 +75,7 @@ type
     FFolder: string;
     FProbe: TAtlasIdeLaunchProbe;
     FBar: TAtlasStepsBar;
-    FStarted: TArray<TStarted>;
+    FStarted: TAtlasLaunchStartedList;
     FKnown: TArray<Cardinal>;
     FDoneAt: UInt64;
     FAsking: Boolean;
@@ -94,7 +89,6 @@ type
     class procedure FinishRun; static;
     class procedure ShowBar; static;
     class procedure FreeProbe; static;
-    class function StateText(const AStarted: TStarted): string; static;
     class procedure UpdateStatus; static;
     class procedure SwitchProcess; static;
     class function AnyRunning: Boolean; static;
@@ -299,23 +293,15 @@ end;
 procedure TAtlasIdeLaunchGroups.TListener.DebugStopped(AStop: TAtlasDebugStop);
 var
   mProcess: IOTAProcess;
-  mStarted: TStarted;
+  mStarted: TAtlasLaunchStarted;
 begin
   TAtlasIdeLaunchGroups.UpdateStatus;
   mProcess := TAtlasIdeDebugSession.Process;
-  if mProcess = nil then
-  begin
-    Exit;
-  end;
   // Beim Halt nennt die Meldung den Prozess des Verbunds.
-  for mStarted in FStarted do
+  if (mProcess <> nil) and TAtlasLaunchProcesses.FindDebugged(FStarted, mProcess.ProcessId, mStarted) then
   begin
-    if mStarted.Debug and (mStarted.Pid = mProcess.ProcessId) then
-    begin
-      TAtlasIdeLaunchGroups.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchStoppedAt,
-        [mStarted.Caption, mStarted.Pid]));
-      Exit;
-    end;
+    TAtlasIdeLaunchGroups.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchStoppedAt,
+      [mStarted.Caption, mStarted.Pid]));
   end;
 end;
 
@@ -416,13 +402,13 @@ class procedure TAtlasIdeLaunchGroups.StartItem(AIndex: Integer);
 var
   mItem: TAtlasLaunchItem;
   mProject: IOTAProject;
-  mStarted: TStarted;
+  mStarted: TAtlasLaunchStarted;
   mArgs, mDir, mEnvironment: string;
   mPort: Integer;
 begin
   mItem := FRun.Group.Items[AIndex];
   mProject := TAtlasIdeStartOptions.FindProject(ProjectPath(FFolder, mItem));
-  mStarted := Default(TStarted);
+  mStarted := Default(TAtlasLaunchStarted);
   mStarted.Caption := mItem.Caption;
   mStarted.Debug := mItem.Debug;
   if (mProject <> nil) and (mProject.ProjectOptions <> nil) then
@@ -452,12 +438,7 @@ begin
     end;
   end;
   FStarted := FStarted + [mStarted];
-  mPort := 0;
-  if mItem.Wait = TAtlasLaunchWaitKind.Port then
-  begin
-    mPort := mItem.Value;
-  end;
-  if mItem.Wait in [TAtlasLaunchWaitKind.Port, TAtlasLaunchWaitKind.Window] then
+  if TAtlasLaunchProcesses.NeedsProbe(mItem, mPort) then
   begin
     FProbe := TAtlasIdeLaunchProbe.Create(mPort, mStarted.Pid);
   end;
@@ -531,11 +512,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.FinishRun;
 begin
-  if FDoneAt = 0 then
-  begin
-    FDoneAt := NowMs;
-  end;
-  if NowMs - FDoneAt < cDoneMs then
+  if not TAtlasLaunchProcesses.DoneLongEnough(FDoneAt, NowMs, cDoneMs) then
   begin
     Exit;
   end;
@@ -575,35 +552,35 @@ begin
   FreeAndNil(FProbe);
 end;
 
-class function TAtlasIdeLaunchGroups.StateText(const AStarted: TStarted): string;
+/// <summary>Zustand eines gestarteten Programms: mit Debugger über den Prozess der IDE, sonst über Windows.</summary>
+function StartedState(const AStarted: TAtlasLaunchStarted): TAtlasLaunchProcessState;
 var
   mProcess: IOTAProcess;
-  mRunning: Boolean;
 begin
-  if AStarted.Debug then
+  if not AStarted.Debug then
   begin
-    mProcess := DebuggedProcess(AStarted.Pid);
-    mRunning := mProcess <> nil;
-    if mRunning and (mProcess.ProcessState in [psStopped, psFault, psResFault, psException]) then
-    begin
-      Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStatePaused));
-    end;
-  end
-  else
-  begin
-    mRunning := TAtlasIdeLaunchProcesses.Running(AStarted.Pid);
+    Exit(TAtlasLaunchProcesses.StateOf(TAtlasIdeLaunchProcesses.Running(AStarted.Pid), False));
   end;
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded);
-  if mRunning then
+  mProcess := DebuggedProcess(AStarted.Pid);
+  Result := TAtlasLaunchProcesses.StateOf(mProcess <> nil, (mProcess <> nil) and
+    (mProcess.ProcessState in [psStopped, psFault, psResFault, psException]));
+end;
+
+/// <summary>Zustände aller gestarteten Programme in ihrer Reihenfolge.</summary>
+function StartedStates: TArray<TAtlasLaunchProcessState>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(TAtlasIdeLaunchGroups.FStarted));
+  for mIndex := 0 to High(TAtlasIdeLaunchGroups.FStarted) do
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateRunning);
+    Result[mIndex] := StartedState(TAtlasIdeLaunchGroups.FStarted[mIndex]);
   end;
 end;
 
 class procedure TAtlasIdeLaunchGroups.UpdateStatus;
 var
-  mParts: TArray<string>;
-  mStarted: TStarted;
+  mTexts: TAtlasLaunchStateTexts;
   mText: string;
   mLine: TAtlasStatusLine;
 begin
@@ -611,12 +588,10 @@ begin
   begin
     Exit;
   end;
-  mParts := nil;
-  for mStarted in FStarted do
-  begin
-    mParts := mParts + [mStarted.Caption + ' ' + StateText(mStarted)];
-  end;
-  mText := string.Join(' · ', mParts);
+  mTexts.Running := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateRunning);
+  mTexts.Paused := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStatePaused);
+  mTexts.Ended := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded);
+  mText := TAtlasLaunchProcesses.StatusText(FStarted, StartedStates, mTexts);
   if (mText = FStatusText) and ((FStatus <> nil) = (mText <> '')) then
   begin
     Exit;
@@ -645,10 +620,12 @@ class procedure TAtlasIdeLaunchGroups.SwitchProcess;
 var
   mServices: IOTADebuggerServices;
   mCurrent: IOTAProcess;
-  mIndex, mFrom: Integer;
+  mIndex: Integer;
   mCandidates: TArray<IOTAProcess>;
-  mStarted: TStarted;
+  mPids: TArray<Cardinal>;
+  mStarted: TAtlasLaunchStarted;
   mProcess: IOTAProcess;
+  mCurrentPid: Cardinal;
 begin
   mServices := Debugger;
   if mServices = nil then
@@ -669,31 +646,24 @@ begin
     Exit;
   end;
   // Nächster Prozess des Verbunds nach dem aktuellen der IDE.
-  mCurrent := mServices.CurrentProcess;
-  mFrom := -1;
+  SetLength(mPids, Length(mCandidates));
   for mIndex := 0 to High(mCandidates) do
   begin
-    if (mCurrent <> nil) and (mCandidates[mIndex].ProcessId = mCurrent.ProcessId) then
-    begin
-      mFrom := mIndex;
-    end;
+    mPids[mIndex] := mCandidates[mIndex].ProcessId;
   end;
-  mServices.CurrentProcess := mCandidates[(mFrom + 1) mod Length(mCandidates)];
+  mCurrent := mServices.CurrentProcess;
+  mCurrentPid := 0;
+  if mCurrent <> nil then
+  begin
+    mCurrentPid := mCurrent.ProcessId;
+  end;
+  mServices.CurrentProcess := mCandidates[TAtlasLaunchProcesses.NextIndex(mPids, mCurrentPid)];
   UpdateStatus;
 end;
 
 class function TAtlasIdeLaunchGroups.AnyRunning: Boolean;
-var
-  mStarted: TStarted;
 begin
-  for mStarted in FStarted do
-  begin
-    if StateText(mStarted) <> TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
+  Result := TAtlasLaunchProcesses.AnyRunning(StartedStates);
 end;
 
 class procedure TAtlasIdeLaunchGroups.Start(const AMessage: TProc<string>; const ARegistry: IAtlasStatusRegistry);
@@ -835,7 +805,7 @@ end;
 
 class procedure TAtlasIdeLaunchGroups.StopAll;
 var
-  mStarted: TStarted;
+  mStarted: TAtlasLaunchStarted;
   mProcess: IOTAProcess;
 begin
   if FRun <> nil then

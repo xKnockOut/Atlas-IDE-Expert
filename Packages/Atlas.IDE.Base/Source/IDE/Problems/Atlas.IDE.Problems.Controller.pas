@@ -278,12 +278,12 @@ implementation
 
 uses
   Atlas.Core.Problems.Refresh,
+  Atlas.Core.Problems.Plan,
   Atlas.Core.Settings.ProblemsUpdate,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
-  Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Problems.Strings,
   Atlas.Core.Files.TextFile,
@@ -295,36 +295,23 @@ uses
 
 /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
 function ProblemsActive: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and (mSettings.Problems or mSettings.InactiveDim or mSettings.DimUnusedUses);
+  Result := TAtlasProblemsPlan.Active(TAtlasIdeSettings.Current);
 end;
 
 function ShowProblems: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.Problems;
+  Result := TAtlasProblemsPlan.Shown(TAtlasIdeSettings.Current);
 end;
 
 function ShowInactive: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.InactiveDim;
+  Result := TAtlasProblemsPlan.InactiveShown(TAtlasIdeSettings.Current);
 end;
 
 function IsSource(const AFileName: string): Boolean;
-var
-  mExtension: string;
 begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc') or
-    (mExtension = '.lpr');
+  Result := TAtlasProblemsPlan.IsSource(AFileName);
 end;
 
 function IsOpenInIde(const AFileName: string): Boolean;
@@ -642,7 +629,7 @@ begin
     Exit;
   end;
   mShow := ProblemsActive and TAtlasIdeSettings.ProblemsStatusCounterOn;
-  if (mShow = FCountsShown) and (not mShow or (FCountsVersion = FStore.Version)) then
+  if not TAtlasProblemsPlan.CountsDue(mShow, FCountsShown, FStore.Version, FCountsVersion) then
   begin
     Exit;
   end;
@@ -882,7 +869,7 @@ begin
     Exit;
   end;
   // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
-  FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
+  FStore.CompilerMerge := TAtlasProblemsPlan.CompilerMerge(TAtlasIdeSettings.Current);
   // Meldungen gelöschter Zeilen fallen weg statt blass auf die Folgezeile zu rutschen (#1818, editor.trackLines).
   FStore.DropDeletedLines := TAtlasIdeSettings.TrackLinesOn;
   ApplyIdeErrorsSetting;
@@ -1073,14 +1060,16 @@ var
   mOtherText: string;
 begin
   // Sonst fehlt eine neue Deklaration in der anderen Unit (Index nach der Tipp-Pause, #492).
-  if (FLastFile = '') or SameText(FLastFile, AFileName) then
-  begin
-    FLastFile := AFileName;
-    Exit;
-  end;
-  if not FDocuments.Idle then
-  begin
-    Exit;
+  case TAtlasProblemsPlan.Switch(FLastFile, AFileName, FDocuments.Idle) of
+    TAtlasProblemsSwitch.Remember:
+      begin
+        FLastFile := AFileName;
+        Exit;
+      end;
+    TAtlasProblemsSwitch.Wait:
+      Exit;
+  else
+    // SyncPrevious: unten.
   end;
   if FTexts.TryGetValue(TAtlasProblemStore.Key(FLastFile), mOtherText) then
   begin
@@ -1237,26 +1226,11 @@ begin
 end;
 
 class function TAtlasProblemsController.UsesHint(const AProblem: TAtlasProblem): string;
-var
-  mId: TAtlasTextId;
+const
+  cHints: array[TAtlasProblemsUsesHint] of TAtlasTextId = (TAtlasTextId.UsesUnusedHint,
+    TAtlasTextId.UsesInitializationHint, TAtlasTextId.UsesAllowlistHint, TAtlasTextId.UsesImplementationHint);
 begin
-  if AProblem.UsesState = TAtlasProblem.cUsesInitialization then
-  begin
-    mId := TAtlasTextId.UsesInitializationHint;
-  end
-  else if AProblem.UsesState = TAtlasProblem.cUsesAllowlist then
-  begin
-    mId := TAtlasTextId.UsesAllowlistHint;
-  end
-  else if AProblem.UsesState = TAtlasProblem.cUsesImplementation then
-  begin
-    mId := TAtlasTextId.UsesImplementationHint;
-  end
-  else
-  begin
-    mId := TAtlasTextId.UsesUnusedHint;
-  end;
-  Result := TAtlasStrings.Fmt(mId, [AProblem.UsesUnit]);
+  Result := TAtlasStrings.Fmt(cHints[TAtlasProblemsPlan.UsesHint(AProblem.UsesState)], [AProblem.UsesUnit]);
 end;
 
 class function TAtlasProblemsController.Current: TAtlasProblemStore;

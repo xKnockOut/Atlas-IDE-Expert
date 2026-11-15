@@ -80,7 +80,6 @@ implementation
 
 uses
   System.Classes,
-  System.Math,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -89,6 +88,7 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.UnitRelations.Model,
   Atlas.Core.UnitRelations.InterfaceCost,
+  Atlas.Core.UnitRelations.Plan,
   Atlas.Core.EditorToolbar.Sections,
   Atlas.Core.Results.Model,
   Atlas.UI.Strings,
@@ -107,13 +107,7 @@ uses
 
 const
   cTickMs = 250;
-  /// <summary>Nachfragen, solange das Fenster offen ist; die Anfrage dauert auf dem Server Millisekunden.</summary>
-  cRefreshMs = 2000;
   cTimeoutMs = 15000;
-  /// <summary>Nach einer Änderung aus dem Fenster so bald wieder nachfragen (statt nach RefreshMs).</summary>
-  cAfterChangeMs = 500;
-  /// <summary>Kosten nachfragen, solange die Einfügemarke im interface steht (#554).</summary>
-  cCostRefreshMs = 5000;
 
 type
   /// <summary>Kosten einer interface-Änderung (#554) für das Feld der Statusleiste.</summary>
@@ -178,7 +172,7 @@ type
     procedure Wake;
     procedure Tick(Sender: TObject);
     procedure Wire(AFrame: TAtlasUnitRelationsFrame);
-    function EditorFile: string;
+    class function EditorFile: string; static;
     function Target: string;
     procedure ShowJson(AFrame: TAtlasUnitRelationsFrame; const AJson: string);
     procedure ShowInfo(AFrame: TAtlasUnitRelationsFrame; AId: TAtlasAnalysisTextId);
@@ -205,13 +199,6 @@ begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled and not TAtlasGuard.Disabled(TAtlasFeature.UnitRelations);
 end;
 
-function IsPascalFile(const AFileName: string): Boolean;
-var
-  mExtension: string;
-begin
-  mExtension := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk');
-end;
 
 { TInterfaceCostState }
 
@@ -327,7 +314,7 @@ begin
     FCost := Default(TAtlasInterfaceCost);
     FKnown := False;
     FPending := False;
-    FAsked := TAtlasTicks.Now - cCostRefreshMs;
+    FAsked := TAtlasTicks.Now - TAtlasUnitRelationsPlan.cCostRefreshMs;
   end;
 end;
 
@@ -360,7 +347,7 @@ begin
     mView := TAtlasEditorBuffer.ActiveView;
   end;
   // Nur Units haben einen interface-Teil.
-  if (mView = nil) or (mView.Buffer = nil) or not SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') then
+  if (mView = nil) or (mView.Buffer = nil) or not TAtlasUnitRelationsPlan.HasInterfaceCost(mView.Buffer.FileName) then
   begin
     Hide;
     Exit;
@@ -368,8 +355,7 @@ begin
   Locate(mView);
   // Gefragt wird nur, solange die Marke im interface steht; im implementation-Teil braucht niemand den Wert.
   // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.
-  if FInInterface and not FPending and (TAtlasTicks.Since(FAsked) >= cCostRefreshMs) and
-    TAtlasIdeCodeView.InFront then
+  if TAtlasUnitRelationsPlan.CostDue(FInInterface, FPending, TAtlasTicks.Since(FAsked), TAtlasIdeCodeView.InFront) then
   begin
     Request;
   end;
@@ -507,13 +493,13 @@ begin
   Reset;
 end;
 
-function TUnitRelationsState.EditorFile: string;
+class function TUnitRelationsState.EditorFile: string;
 var
   mView: IOTAEditView;
 begin
   Result := '';
   mView := TAtlasEditorBuffer.ActiveView;
-  if (mView <> nil) and (mView.Buffer <> nil) and IsPascalFile(mView.Buffer.FileName) then
+  if (mView <> nil) and (mView.Buffer <> nil) and TAtlasUnitRelationsPlan.IsPascalFile(mView.Buffer.FileName) then
   begin
     Result := mView.Buffer.FileName;
   end;
@@ -524,7 +510,7 @@ var
   mEditor: string;
 begin
   mEditor := EditorFile;
-  if (FPinned <> '') and SameText(mEditor, FPinnedEditor) then
+  if TAtlasUnitRelationsPlan.PinHolds(FPinned, mEditor, FPinnedEditor) then
   begin
     Exit(FPinned);
   end;
@@ -702,7 +688,7 @@ begin
           [Outcome.Error]);
       end;
       // Bald neu fragen: Der Server sieht den geänderten Text mit dem nächsten Abgleich des Puffers.
-      FAsked := TAtlasTicks.Now - (cRefreshMs - cAfterChangeMs);
+      FAsked := TAtlasUnitRelationsPlan.AskedAfterChange(TAtlasTicks.Now);
     end) then
   begin
     mFrame.Info.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsNoServer);
@@ -746,34 +732,29 @@ begin
     Exit;
   end;
   mFileName := Target;
-  if mFileName = '' then
-  begin
-    if (FFileName <> '') or not FShownMessage then
-    begin
-      FFileName := '';
-      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoFile);
-    end;
-    Exit;
-  end;
-  if not SameText(mFileName, FFileName) then
-  begin
-    // Dateiwechsel: gemerkter Stand sofort, die Antwort des Servers folgt.
-    FFileName := mFileName;
-    FLastJson := '';
-    if FCache.TryGet(mFileName, FAllLevels, mJson) then
-    begin
-      ShowJson(mFrame, mJson);
-    end
-    else
-    begin
-      ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsLoading);
-    end;
-    Request;
-    Exit;
-  end;
-  if not FPending and (TAtlasTicks.Since(FAsked) >= cRefreshMs) then
-  begin
-    Request;
+  case TAtlasUnitRelationsPlan.Step(mFileName, FFileName, FShownMessage, FPending, TAtlasTicks.Since(FAsked)) of
+    TAtlasUnitRelationsStep.NoFile:
+      begin
+        FFileName := '';
+        ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsNoFile);
+      end;
+    TAtlasUnitRelationsStep.NewFile:
+      begin
+        // Dateiwechsel: gemerkter Stand sofort, die Antwort des Servers folgt.
+        FFileName := mFileName;
+        FLastJson := '';
+        if FCache.TryGet(mFileName, FAllLevels, mJson) then
+        begin
+          ShowJson(mFrame, mJson);
+        end
+        else
+        begin
+          ShowInfo(mFrame, TAtlasAnalysisTextId.UnitRelationsLoading);
+        end;
+        Request;
+      end;
+    TAtlasUnitRelationsStep.Refresh:
+      Request;
   end;
 end;
 
@@ -882,24 +863,18 @@ function DependentEntries(const AUsedBy: TAtlasUnitRelationList): TArray<TAtlasR
 var
   mRelation: TAtlasUnitRelation;
   mEntry: TAtlasResultEntry;
+  mFileName: string;
+  mLine, mCharacter: Integer;
 begin
   Result := nil;
   for mRelation in AUsedBy do
   begin
-    if mRelation.LocationFile <> '' then
+    if TAtlasUnitRelationsPlan.DependentTarget(mRelation, mFileName, mLine, mCharacter) then
     begin
-      mEntry := TAtlasResultEntry.Create(mRelation.LocationFile, Max(mRelation.Line, 0), Max(mRelation.Character, 0));
-    end
-    else if mRelation.FileName <> '' then
-    begin
-      mEntry := TAtlasResultEntry.Create(mRelation.FileName, 0, 0);
-    end
-    else
-    begin
-      Continue;
+      mEntry := TAtlasResultEntry.Create(mFileName, mLine, mCharacter);
+      mEntry.Text := mRelation.Name;
+      Result := Result + [mEntry];
     end;
-    mEntry.Text := mRelation.Name;
-    Result := Result + [mEntry];
   end;
 end;
 

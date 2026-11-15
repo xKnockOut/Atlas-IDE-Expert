@@ -11,6 +11,8 @@
 //   Compilermeldung bzw. die Codes, denen die Regel entspricht, mit
 //   „Atlas + dcc“, wenn der letzte Build den Befund bestätigt.
 // - TAtlasFindingsCache (Atlas.Core.Problems.FindingsCache) baut darauf auf.
+// - TAtlasFindingsLayout und TAtlasFindingsWindow: Aufbau des Fensters in den Einstellungen (problems.window.*),
+//   gezeigte Dateien je Bereich, Schlüssel für den Neuaufbau, Takt des Projektfortschritts.
 // - TAtlasFindingsView (Atlas.Core.Problems.FindingsView): Filter (Bereich, Arten, Kategorie, Text, Compiler),
 //   Gruppierung (keine, Datei, Regel, Kategorie), Sortierung (Vorgabe Art,
 //   Datei, Zeile; Klick auf eine Spalte sortiert nach ihr, zweiter Klick
@@ -43,7 +45,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.IdeErrors,
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Settings.Plugin;
 
 type
   {$SCOPEDENUMS ON}
@@ -237,6 +240,39 @@ type
     class function AsText(const AFindings: TArray<TAtlasFinding>): string; static;
     /// <summary>Name der Kategorie wie im Katalog (bug, code-smell …); '' bei Other.</summary>
     class function CategoryName(ACategory: TAtlasFindingCategory): string; static;
+  end;
+
+  /// <summary>Aufbau des Fensters „Atlas-Prüfung“, wie er in den Einstellungen steht (problems.window.*).</summary>
+  TAtlasFindingsLayout = record
+    Scope: string;
+    ScopeProject: string;
+    GroupBy: string;
+    Columns: string;
+    OpenFirst: Boolean;
+    class function FromSettings(const ASettings: TAtlasPluginSettings): TAtlasFindingsLayout; static;
+    /// <summary>Aufbau des Fensters: Bereich AScope, Einzelprojekt AScopeProject, Gruppierung, Spalten, offene
+    /// zuerst. Das Einzelprojekt (#1843) bleibt wie in ABefore, solange ein anderer Bereich als Projekt gilt.
+    /// </summary>
+    class function Create(const ABefore: TAtlasFindingsLayout; AScope: TAtlasFindingScope;
+      const AScopeProject: string; AGrouping: TAtlasFindingGrouping; const AColumns: string;
+      AOpenFirst: Boolean): TAtlasFindingsLayout; static;
+    function Same(const AOther: TAtlasFindingsLayout): Boolean;
+    /// <summary>In ASettings übernehmen.</summary>
+    procedure ApplyTo(var ASettings: TAtlasPluginSettings);
+  end;
+
+  /// <summary>Entscheidungen des Fensters „Atlas-Prüfung“ (#909) beim Takt.</summary>
+  TAtlasFindingsWindow = record
+  public
+    /// <summary>Dateien, die das Fenster zeigt: im Bereich „aktuelle Datei“ nur ACurrent, sonst AFiles.</summary>
+    class function ShownFiles(AScope: TAtlasFindingScope; const ACurrent: string;
+      const AFiles: TArray<string>): TArray<string>; static;
+    /// <summary>Schlüssel der Eingaben eines Neuaufbaus: Ändert er sich, baut das Fenster neu auf.</summary>
+    class function InputsKey(AScope: TAtlasFindingScope; const ACurrent, AFilesKey: string;
+      const AOpened: TArray<string>; AChecked: Boolean): string; static;
+    /// <summary>True, wenn die Dateiliste des Projektfortschritts neu zu holen ist: noch nie (AAt = 0) oder vor
+    /// mindestens ARefreshMs (ANow in ms).</summary>
+    class function ProgressDue(AAt, ANow: UInt64; ARefreshMs: Cardinal): Boolean; static;
   end;
 
 implementation
@@ -792,6 +828,72 @@ end;
 class function TAtlasFindings.CategoryName(ACategory: TAtlasFindingCategory): string;
 begin
   Result := cCategoryNames[ACategory];
+end;
+
+{ TAtlasFindingsLayout }
+
+class function TAtlasFindingsLayout.FromSettings(const ASettings: TAtlasPluginSettings): TAtlasFindingsLayout;
+begin
+  Result.Scope := ASettings.ProblemsWindowScope;
+  Result.ScopeProject := ASettings.ProblemsWindowScopeProject;
+  Result.GroupBy := ASettings.ProblemsWindowGroupBy;
+  Result.Columns := ASettings.ProblemsWindowColumns;
+  Result.OpenFirst := ASettings.ProblemsWindowOpenFirst;
+end;
+
+class function TAtlasFindingsLayout.Create(const ABefore: TAtlasFindingsLayout; AScope: TAtlasFindingScope;
+  const AScopeProject: string; AGrouping: TAtlasFindingGrouping; const AColumns: string;
+  AOpenFirst: Boolean): TAtlasFindingsLayout;
+begin
+  Result := ABefore;
+  Result.Scope := TAtlasFindings.cScopeNames[AScope];
+  if AScope = TAtlasFindingScope.Project then
+  begin
+    Result.ScopeProject := AScopeProject;
+  end;
+  Result.GroupBy := TAtlasFindings.cGroupingNames[AGrouping];
+  Result.Columns := AColumns;
+  Result.OpenFirst := AOpenFirst;
+end;
+
+function TAtlasFindingsLayout.Same(const AOther: TAtlasFindingsLayout): Boolean;
+begin
+  Result := (Scope = AOther.Scope) and (ScopeProject = AOther.ScopeProject) and (GroupBy = AOther.GroupBy) and
+    (Columns = AOther.Columns) and (OpenFirst = AOther.OpenFirst);
+end;
+
+procedure TAtlasFindingsLayout.ApplyTo(var ASettings: TAtlasPluginSettings);
+begin
+  ASettings.ProblemsWindowScope := Scope;
+  ASettings.ProblemsWindowScopeProject := ScopeProject;
+  ASettings.ProblemsWindowGroupBy := GroupBy;
+  ASettings.ProblemsWindowColumns := Columns;
+  ASettings.ProblemsWindowOpenFirst := OpenFirst;
+end;
+
+{ TAtlasFindingsWindow }
+
+class function TAtlasFindingsWindow.ShownFiles(AScope: TAtlasFindingScope; const ACurrent: string;
+  const AFiles: TArray<string>): TArray<string>;
+begin
+  if AScope = TAtlasFindingScope.CurrentFile then
+  begin
+    Result := TArray<string>.Create(ACurrent);
+    Exit;
+  end;
+  Result := AFiles;
+end;
+
+class function TAtlasFindingsWindow.InputsKey(AScope: TAtlasFindingScope; const ACurrent, AFilesKey: string;
+  const AOpened: TArray<string>; AChecked: Boolean): string;
+begin
+  Result := Ord(AScope).ToString + '|' + ACurrent + '|' + AFilesKey + '|' + string.Join(';', AOpened) + '|' +
+    BoolToStr(AChecked, True);
+end;
+
+class function TAtlasFindingsWindow.ProgressDue(AAt, ANow: UInt64; ARefreshMs: Cardinal): Boolean;
+begin
+  Result := (AAt = 0) or (ANow < AAt) or (ANow - AAt >= ARefreshMs);
 end;
 
 end.

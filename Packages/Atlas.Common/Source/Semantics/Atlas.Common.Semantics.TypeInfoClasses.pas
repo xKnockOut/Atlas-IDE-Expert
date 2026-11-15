@@ -51,6 +51,14 @@ type
       overload; static;
     /// <summary>Wie oben; liest die aktiven Token aus AText.</summary>
     class function SwitchAt(const AText: string; const APosition: TTextPosition): Boolean; overload; static;
+    /// <summary>Wird die Klasse AClassName, deklariert an APosition, mit RTTI übersetzt? {$M+} an der Deklaration
+    /// oder an einer forward-Deklaration davor (TX = class; unter {$M+}): Der Zustand dort gilt für die Klasse.
+    /// </summary>
+    class function ClassSwitchAt(const ATokens: TArray<TPascalToken>; const AClassName: string;
+      const APosition: TTextPosition): Boolean; overload; static;
+    /// <summary>Wie oben; liest die aktiven Token aus AText.</summary>
+    class function ClassSwitchAt(const AText, AClassName: string; const APosition: TTextPosition): Boolean;
+      overload; static;
     /// <summary>Aktive Token von AText: ohne inaktive Zweige von $IFDEF/$IF.</summary>
     class function ActiveTokens(const AText: string): TArray<TPascalToken>; static;
     /// <summary>Wirkung einer Direktive auf den Schalter: True/False in AOn, wenn sie ihn setzt.</summary>
@@ -112,7 +120,7 @@ begin
   end;
   if Assigned(FReadText) and FReadText(mFileName, mText) then
   begin
-    Result := SwitchAt(mText, AFound.Symbol.Range.StartPos);
+    Result := ClassSwitchAt(mText, AFound.Symbol.Name, AFound.Symbol.Range.StartPos);
   end;
   if not Result and (Length(AFound.Symbol.Ancestors) > 0) then
   begin
@@ -181,6 +189,34 @@ end;
 class function TTypeInfoClasses.SwitchAt(const AText: string; const APosition: TTextPosition): Boolean;
 begin
   Result := SwitchAt(ActiveTokens(AText), APosition);
+end;
+
+class function TTypeInfoClasses.ClassSwitchAt(const ATokens: TArray<TPascalToken>; const AClassName: string;
+  const APosition: TTextPosition): Boolean;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  Result := SwitchAt(ATokens, APosition);
+  mName := ShortName(AClassName);
+  mIndex := 0;
+  // forward-Deklaration "Name = class;" vor der Deklaration.
+  while not Result and (mIndex + 3 <= High(ATokens)) and Before(ATokens[mIndex].StartPos, APosition) do
+  begin
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, mName) and
+      (ATokens[mIndex + 1].Text = '=') and ATokens[mIndex + 2].IsKeyword('class') and
+      (ATokens[mIndex + 3].Text = ';') then
+    begin
+      Result := SwitchAt(ATokens, ATokens[mIndex].StartPos);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+class function TTypeInfoClasses.ClassSwitchAt(const AText, AClassName: string;
+  const APosition: TTextPosition): Boolean;
+begin
+  Result := ClassSwitchAt(ActiveTokens(AText), AClassName, APosition);
 end;
 
 /// <summary>Klasse AKey auf oberster Ebene aus AIndex; False ohne.</summary>

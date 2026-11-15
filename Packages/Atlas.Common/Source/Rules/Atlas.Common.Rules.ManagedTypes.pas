@@ -67,7 +67,8 @@ const
 
 const
   // RTL-Records mit verwalteten Feldern, auch ohne Index.
-  cManagedStringRecords: array[0..2] of string = ('TFormatSettings', 'TSearchRec', 'TWin32FindData');
+  // TWin32FindData gehört nicht dazu: cFileName und cAlternateFileName sind statische Zeichen-Arrays.
+  cManagedStringRecords: array[0..1] of string = ('TFormatSettings', 'TSearchRec');
   cManagedInterfaceRecords: array[0..1] of string = ('TValue', 'TRttiContext');
   cDynamicArrayNames: array[0..5] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
     'TArray', 'TObjectDynArray');
