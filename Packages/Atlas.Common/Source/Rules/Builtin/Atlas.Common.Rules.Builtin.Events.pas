@@ -312,13 +312,16 @@ begin
   end;
 end;
 
-// Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)".
+// Kurzschluss im selben Ausdruck: "Assigned(F) and F(Self)", "not Assigned(F) or not F(Self)", auch mit
+// Klammern um das Glied ("(not Assigned(F)) or (not F(…))", Alcinoe).
 function ShortCircuit(const APrefix, AName: string): Boolean;
 begin
-  Result := Positive(APrefix, AName) and ContainsStr(APrefix, 'assigned(' + AName + ')and');
-  Result := Result or ContainsStr(APrefix, AName + '<>niland');
+  Result := Positive(APrefix, AName) and (ContainsStr(APrefix, 'assigned(' + AName + ')and') or
+    ContainsStr(APrefix, 'assigned(' + AName + '))and'));
+  Result := Result or ContainsStr(APrefix, AName + '<>niland') or ContainsStr(APrefix, AName + '<>nil)and');
   Result := Result or (Negative(APrefix, AName) and (ContainsStr(APrefix, 'notassigned(' + AName + ')or') or
-    ContainsStr(APrefix, AName + '=nilor')));
+    ContainsStr(APrefix, 'notassigned(' + AName + '))or') or ContainsStr(APrefix, AName + '=nilor') or
+    ContainsStr(APrefix, AName + '=nil)or')));
 end;
 
 { TEventCallScan }

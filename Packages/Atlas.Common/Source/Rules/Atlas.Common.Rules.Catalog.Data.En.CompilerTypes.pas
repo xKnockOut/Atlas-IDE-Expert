@@ -395,8 +395,8 @@ const
     '      "group": "compiler",',
     '      "description": "A call passes more arguments than the routine has parameters (like E2034) or fewer than its parameters without default value (like E2035), also as a statement without parentheses' +
     '. Checked only when the name resolves to exactly one routine: overloads, varargs, typecasts, variables of procedural type, System identifiers without source and declarations in conditional branches ar' +
-    'e left to the compiler (E2250). A function called with too many arguments is only reported when its result type is known and not procedural. Quick fix: Signature help opens the parameter hint inside t' +
-    'he parentheses (adds () when missing).",',
+    'e left to the compiler (E2250), as is a routine of the implementation section declared only after the call (the name means something else there). A function called with too many arguments is only repo' +
+    'rted when its result type is known and not procedural. Quick fix: Signature help opens the parameter hint inside the parentheses (adds () when missing).",',
     '      "bad": "Versenden(Kunde.Mail, ''Rechnung'');",',
     '      "good": "Versenden(Kunde.Mail, ''Rechnung'', Text);",',
     '      "compilerCodes": [',
