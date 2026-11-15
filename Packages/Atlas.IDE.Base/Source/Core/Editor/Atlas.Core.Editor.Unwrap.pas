@@ -64,11 +64,14 @@ type
     class function LineSpan(const AEntry: TAtlasUnwrapEntry; out AFirst, ALast: Integer): Boolean; static;
     /// <summary>Die Edits des Eintrags als Änderung an AFileName.</summary>
     class function EditOf(const AEntry: TAtlasUnwrapEntry; const AFileName: string): TLspWorkspaceEdit; static;
+    /// <summary>Umschließung entfernen gibt es in Pascal-Quelltexten (.pas, .dpr, .dpk, .inc).</summary>
+    class function Handles(const AFileName: string): Boolean; static;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Text.Json;
@@ -344,6 +347,11 @@ begin
   mFileEdits.FileName := AFileName;
   mFileEdits.Edits := AEntry.Edits;
   Result.Files := [mFileEdits];
+end;
+
+class function TAtlasUnwrap.Handles(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
 end;
 
 end.

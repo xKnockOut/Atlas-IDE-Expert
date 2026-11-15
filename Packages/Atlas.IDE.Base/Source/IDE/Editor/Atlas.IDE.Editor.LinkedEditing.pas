@@ -112,8 +112,8 @@ type
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
     procedure CharTyped(const AMsg: TMsg; var AHandled: Boolean);
-    /// <summary>Hälfte eines Zeichens außerhalb der Grundebene behandeln; True, wenn ATyped eine war.</summary>
-    function Surrogate(ATyped: Char; var AHandled: Boolean): Boolean;
+    /// <summary>Tiefe Hälfte ATyped eines Zeichens außerhalb der Grundebene zur wartenden hohen einfügen.</summary>
+    procedure InsertSurrogates(ATyped: Char; var AHandled: Boolean);
     procedure TimerTick(Sender: TObject);
     /// <summary>Takt mit Sitzung: beenden, wenn sie nicht mehr gilt; ausstehende Änderung nachziehen.</summary>
     procedure CheckRun;
@@ -166,8 +166,8 @@ uses
   System.Generics.Collections,
   Vcl.Forms,
   Vcl.Graphics,
-  Atlas.Text.Chars,
   Atlas.Text.Lines,
+  Atlas.Core.Editor.LinkedKeys,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
@@ -562,8 +562,6 @@ begin
 end;
 
 procedure TAtlasIdeLinkedEditing.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
-var
-  mKey: Word;
 begin
   if not IsEditorWindow(AMsg.hwnd) then
   begin
@@ -574,32 +572,22 @@ begin
     Finish;
     Exit;
   end;
-  mKey := Word(AMsg.wParam);
-  // Mit Strg, Alt oder Umschalt (Wort löschen, Rückgängig ...) arbeitet die IDE; Follow bzw. der Takt ziehen nach.
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) or (CurrentShift <> []) then
-  begin
-    Exit;
-  end;
-  case mKey of
-    VK_ESCAPE:
-      if FRun.Active then
+  case TAtlasLinkedKeys.KeyStep(Word(AMsg.wParam), CurrentShift <> [], FRun.Active,
+    FRun.Problem <> TAtlasLinkedProblem.None) of
+    TAtlasLinkedKeyStep.RestoreAndFinish:
       begin
-        if FRun.Problem <> TAtlasLinkedProblem.None then
-        begin
-          Restore;
-        end;
+        Restore;
         Finish;
         AHandled := True;
       end;
-    VK_RETURN:
-      if FRun.Active then
+    TAtlasLinkedKeyStep.Finish:
       begin
         Finish;
         AHandled := True;
       end;
-    VK_BACK:
+    TAtlasLinkedKeyStep.Backspace:
       AHandled := Edit(TAtlasLinkedKey.Backspace, '');
-    VK_DELETE:
+    TAtlasLinkedKeyStep.Delete:
       AHandled := Edit(TAtlasLinkedKey.Delete, '');
   end;
 end;
@@ -613,47 +601,40 @@ begin
     Exit;
   end;
   mTyped := Char(AMsg.wParam);
-  if (mTyped < ' ') or (mTyped = #127) or Surrogate(mTyped, AHandled) then
-  begin
-    Exit;
-  end;
-  FHighSurrogate := #0;
-  // Leerzeichen, Punkt, Klammer ...: Sitzung zu Ende, das Zeichen schreibt die IDE.
-  if TTextChars.IsIdentChar(mTyped) then
-  begin
-    AHandled := Edit(TAtlasLinkedKey.Insert, mTyped);
-  end
-  else
-  begin
-    Finish;
+  case TAtlasLinkedKeys.CharStep(mTyped, FHighSurrogate <> #0) of
+    TAtlasLinkedCharStep.HighSurrogate:
+      // Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR; nur in einer laufenden Sitzung.
+      if FRun.Active then
+      begin
+        FHighSurrogate := mTyped;
+        AHandled := True;
+      end;
+    TAtlasLinkedCharStep.LowSurrogate:
+      InsertSurrogates(mTyped, AHandled);
+    TAtlasLinkedCharStep.Insert:
+      begin
+        FHighSurrogate := #0;
+        AHandled := Edit(TAtlasLinkedKey.Insert, mTyped);
+      end;
+    TAtlasLinkedCharStep.Finish:
+      begin
+        // Leerzeichen, Punkt, Klammer ...: Sitzung zu Ende, das Zeichen schreibt die IDE.
+        FHighSurrogate := #0;
+        Finish;
+      end;
   end;
 end;
 
-function TAtlasIdeLinkedEditing.Surrogate(ATyped: Char; var AHandled: Boolean): Boolean;
+procedure TAtlasIdeLinkedEditing.InsertSurrogates(ATyped: Char; var AHandled: Boolean);
 var
   mPair: string;
 begin
-  // Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR; nur in einer laufenden Sitzung.
-  Result := (ATyped >= #$D800) and (ATyped <= #$DBFF);
-  if Result then
+  mPair := FHighSurrogate + ATyped;
+  FHighSurrogate := #0;
+  AHandled := True;
+  if not Edit(TAtlasLinkedKey.Insert, mPair) and (TAtlasEditorBuffer.ActiveView <> nil) then
   begin
-    if FRun.Active then
-    begin
-      FHighSurrogate := ATyped;
-      AHandled := True;
-    end;
-    Exit;
-  end;
-  Result := (FHighSurrogate <> #0) and (ATyped >= #$DC00) and (ATyped <= #$DFFF);
-  if Result then
-  begin
-    mPair := FHighSurrogate + ATyped;
-    FHighSurrogate := #0;
-    AHandled := True;
-    if not Edit(TAtlasLinkedKey.Insert, mPair) and (TAtlasEditorBuffer.ActiveView <> nil) then
-    begin
-      TAtlasEditorBuffer.ActiveView.Position.InsertText(mPair);
-    end;
+    TAtlasEditorBuffer.ActiveView.Position.InsertText(mPair);
   end;
 end;
 

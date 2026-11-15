@@ -52,7 +52,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.TypInfo,
   Vcl.Forms,
   ToolsAPI,
@@ -63,9 +62,6 @@ uses
   Atlas.UI.Designer.DuplicateDialog,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Foundation.Settings;
-
-const
-  cDefaultPpi = 96;
 
 type
   /// <summary>Eine Kopie: Originale und ihre Kopien in gleicher Reihenfolge (samt Kindern).</summary>
@@ -176,13 +172,6 @@ end;
 
 { Eigenschaften kopieren }
 
-// ControlCollection verweist auf die Kinder des Originals; die Kopie füllt sie selbst.
-function Skipped(const AName: string): Boolean;
-begin
-  Result := SameText(AName, 'Name') or SameText(AName, 'Left') or SameText(AName, 'Top') or
-    SameText(AName, 'TabOrder') or SameText(AName, 'ControlCollection');
-end;
-
 procedure CopyProp(ASource, ATarget: TComponent; AProp: PPropInfo; AShare: Boolean);
 begin
   case AProp.PropType^.Kind of
@@ -218,7 +207,8 @@ begin
     for mIndex := 0 to mCount - 1 do
     begin
       mProp := mList[mIndex];
-      if (mProp.SetProc <> nil) and not Skipped(string(mProp.Name)) and IsStoredProp(ASource, mProp) then
+      if (mProp.SetProc <> nil) and not TAtlasDuplicateRow.SkippedProperty(string(mProp.Name)) and
+        IsStoredProp(ASource, mProp) then
       begin
         CopyProp(ASource, ATarget, mProp, AShare);
       end;
@@ -333,27 +323,24 @@ end;
 function TabControls(const AControls: TArray<TControl>): TArray<TWinControl>;
 var
   mControl: TControl;
-  mIndex, mPos: Integer;
-  mValue: TWinControl;
+  mWin: TArray<TWinControl>;
+  mOrders: TArray<Integer>;
+  mIndex: Integer;
 begin
-  Result := nil;
+  mWin := nil;
+  mOrders := nil;
   for mControl in AControls do
   begin
     if mControl is TWinControl then
     begin
-      Result := Result + [TWinControl(mControl)];
+      mWin := mWin + [TWinControl(mControl)];
+      mOrders := mOrders + [TWinControl(mControl).TabOrder];
     end;
   end;
-  for mIndex := 1 to High(Result) do
+  Result := nil;
+  for mIndex in TAtlasDuplicateRow.TabSequence(mOrders) do
   begin
-    mValue := Result[mIndex];
-    mPos := mIndex - 1;
-    while (mPos >= 0) and (Result[mPos].TabOrder > mValue.TabOrder) do
-    begin
-      Result[mPos + 1] := Result[mPos];
-      Dec(mPos);
-    end;
-    Result[mPos + 1] := mValue;
+    Result := Result + [mWin[mIndex]];
   end;
 end;
 
@@ -400,20 +387,8 @@ end;
 
 /// <summary>Verschiebung der Kopie ACopy gegenüber der Auswahl.</summary>
 function ShiftOf(const ARun: TDuplicateRun; const ALayout: TAtlasDuplicateLayout; ACopy: Integer): TPoint;
-var
-  mGroup: TRect;
 begin
-  mGroup := ARun.Request.Group;
-  Result := Point(ALayout.Copies[ACopy].Left - mGroup.Left, ALayout.Copies[ACopy].Top - mGroup.Top);
-end;
-
-function EntryOf(const AEntries: TArray<string>; AIndex: Integer): string;
-begin
-  Result := '';
-  if AIndex < Length(AEntries) then
-  begin
-    Result := AEntries[AIndex];
-  end;
+  Result := TAtlasDuplicateRow.ShiftOf(ARun.Request.Group, ALayout, ACopy);
 end;
 
 /// <summary>Alle Kopien anlegen; je Kopie eine Gruppe.</summary>
@@ -439,7 +414,7 @@ begin
       mBounds.Offset(ShiftOf(ARun, ALayout, mCopy));
       mControl := CopyControl(ARun, mGroup, ARun.Controls[mIndex], ARun.Controls[mIndex].Parent, mBounds,
         TAtlasDuplicateRow.UniqueName(mNames[mCopy][mIndex], ARun.Taken));
-      ApplyEntry(ARun, ARun.Controls[mIndex], mControl, EntryOf(mEntries, mCopy));
+      ApplyEntry(ARun, ARun.Controls[mIndex], mControl, TAtlasDuplicateRow.EntryOf(mEntries, mCopy));
     end;
     FixReferences(mGroup, ARun.Root);
     Result := Result + [mGroup];
@@ -473,22 +448,6 @@ begin
         Result := Result + [mComponent];
       end;
     end;
-  end;
-end;
-
-/// <summary>Text der Vorschau: „lblFax, edtFax; lblMobil, edtMobil“.</summary>
-function PreviewText(const ANames: TArray<TArray<string>>): string;
-var
-  mCopy: TArray<string>;
-begin
-  Result := '';
-  for mCopy in ANames do
-  begin
-    if Result <> '' then
-    begin
-      Result := Result + '; ';
-    end;
-    Result := Result + string.Join(', ', mCopy);
   end;
 end;
 
@@ -563,7 +522,7 @@ begin
     end;
   end;
   AOwner.ShowOutlines(ARun.Controls[0].Parent, mOutlines);
-  ADialog.SetPreview(PreviewText(mNames), mLayout.AnyBad);
+  ADialog.SetPreview(TAtlasDuplicateRow.PreviewText(mNames), mLayout.AnyBad);
   ADialog.PushCheck.Enabled := mLayout.AnyBad or AOptions.Push;
 end;
 
@@ -593,12 +552,12 @@ begin
   Result.Gap := TAtlasDuplicateRow.DetectGap(ARun.Request.Group, RectsOf(ARun.Others), Result.Direction);
   if Result.Gap < 0 then
   begin
-    mPpi := cDefaultPpi;
-    if (ARun.Root is TCustomForm) and (TCustomForm(ARun.Root).PixelsPerInch > 0) then
+    mPpi := 0;
+    if ARun.Root is TCustomForm then
     begin
       mPpi := TCustomForm(ARun.Root).PixelsPerInch;
     end;
-    Result.Gap := MulDiv(ASettings.DesignerDuplicateRowDefaultGap, mPpi, cDefaultPpi);
+    Result.Gap := TAtlasDuplicateRow.ScaledGap(ASettings.DesignerDuplicateRowDefaultGap, mPpi);
   end;
   Result.Count := 1;
   Result.List := '';

@@ -1,0 +1,2 @@
+### Tests
+- Designer: Entscheidungen der IDE-Schicht in den Core-Units des Moduls mit DUnitX-Tests (#1967): Schnellleiste (Einträge, Verlauf, Verfolgen der Auswahl), Leiste, Einpacken, Label-Paare, Tab-Reihenfolge (Marken, Sortieren), Beschriftung im Designer (Lage, Verlauf), Struktur, Gruppen und Auswahlsätze (Ablage, Klicks, Menü), Verwendungen im Code (Bereich, Zähler, Entprellen), In Reihe duplizieren und Lupe; die IDE-Units rufen dafür nur noch OTA, VCL und den Kern.

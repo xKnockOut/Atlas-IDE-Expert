@@ -59,6 +59,8 @@ type
     function RowHeight: Integer;
     /// <summary>Linker Rand der Spalte AColumn bei AWidth Pixeln Breite.</summary>
     function ColumnX(AColumn, AWidth: Integer): Integer;
+    /// <summary>Alle Einstellungen gleich wie in AOther (dann muss die Minimap nichts neu anlegen).</summary>
+    function Same(const AOther: TAtlasMinimapOptions): Boolean;
   end;
 
   /// <summary>Gefalteter Bereich: Kopfzeile Line bleibt sichtbar, die Hidden Zeilen danach nicht.</summary>
@@ -505,6 +507,14 @@ end;
 function TAtlasMinimapOptions.ColumnX(AColumn, AWidth: Integer): Integer;
 begin
   Result := Integer((Int64(EnsureRange(AColumn, 0, MaxColumn)) * Max(0, AWidth)) div Max(1, MaxColumn));
+end;
+
+function TAtlasMinimapOptions.Same(const AOther: TAtlasMinimapOptions): Boolean;
+begin
+  Result := (Render = AOther.Render) and (Width = AOther.Width) and (Scale = AOther.Scale) and
+    (MaxColumn = AOther.MaxColumn) and (Side = AOther.Side) and (Slider = AOther.Slider) and
+    (SectionHeaders = AOther.SectionHeaders) and (HighlightMethod = AOther.HighlightMethod) and
+    (Markers = AOther.Markers) and (ClickJumps = AOther.ClickJumps);
 end;
 
 { TAtlasMinimapFold }
