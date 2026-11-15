@@ -36,6 +36,7 @@ implementation
 
 uses
   Atlas.Core.Build.Events,
+  Atlas.Core.BuildPipeline.Plan,
   System.Hash,
   ToolsAPI,
   Atlas.Core.Lsp.Contract,
@@ -69,14 +70,6 @@ begin
   begin
     Supports(mModules.FindModule(AFileName), IOTAProject, Result);
   end;
-end;
-
-function IsPascalFile(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk');
 end;
 
 /// <summary>Stand einer Unit: ungespeicherter Puffer = Prüfsumme, sonst Zeitstempel der Datei. False ohne Datei
@@ -124,7 +117,7 @@ begin
   for mIndex := 0 to mProject.GetModuleCount - 1 do
   begin
     mName := mProject.GetModule(mIndex).FileName;
-    if (mName <> '') and IsPascalFile(mName) and UnitState(mName, mItem) then
+    if (mName <> '') and TAtlasBuildPipelinePlan.IsPascalFile(mName) and UnitState(mName, mItem) then
     begin
       AUnits := AUnits + [mItem];
     end;

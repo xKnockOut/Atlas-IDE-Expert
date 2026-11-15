@@ -12,6 +12,10 @@
 //   SetWith schaltet ein Element in einer Menge.
 // - NextFontSize: Schriftgröße in Punktschritten.
 // - Place: Lage der Leiste über (sonst unter) dem umschließenden Rechteck.
+// - Due: ob die Leiste jetzt stehen darf (Fokus, Modus, Verzögerung);
+//   TAtlasBarTracking verfolgt dafür Namen und Grenzen der Auswahl.
+// - TAtlasBarItems: Eigenschaft, Typ, Element und Beschriftung je Knopf.
+// - TAtlasBarHistory: Schritte zum Rückgängigmachen je Formulardatei.
 
 interface
 
@@ -83,6 +87,79 @@ type
     /// Leeres Rechteck, wenn die Auswahl nicht in AArea liegt.</summary>
     class function Place(const ASelection: TRect; const ASize: TSize; const AArea: TRect;
       AGap: Integer): TRect; static;
+    /// <summary>Modus designer.selectionBar.mode = shortcut (nur auf Tastendruck)?</summary>
+    class function IsShortcut(const AMode: string): Boolean; static;
+    /// <summary>Darf die Leiste jetzt stehen? Nur mit Fokus im Designer; im Modus shortcut erst nach dem
+    /// Tastendruck, sonst erst ADelayMs nach ASince.</summary>
+    class function Due(AFocused, AShortcut, ARequested: Boolean; ANow, ASince: UInt64;
+      ADelayMs: Integer): Boolean; static;
+    /// <summary>Eingabe im Dialog „Schriftgröße“: ganze Zahl zwischen cMinFontSize und cMaxFontSize.</summary>
+    class function TryFontSize(const AText: string; out ASize: Integer): Boolean; static;
+    /// <summary>Farben des Farbmenüs: zuerst die im Formular verwendeten (AUsed), dann die üblichen
+    /// (AStandard), ohne Doppelte. AUsedCount: Zahl der verwendeten vorn (Trennstrich danach).</summary>
+    class function ColorChoices(const AUsed, AStandard: TArray<Integer>; out AUsedCount: Integer): TArray<Integer>;
+      static;
+  end;
+
+  /// <summary>Feste Daten je Knopf: Eigenschaft (Pfad über RTTI), verlangter Typ, Element bzw. Wert und
+  /// Beschriftung; Zustand des Knopfs aus den Werten der Auswahl.</summary>
+  TAtlasBarItems = class
+  public
+    /// <summary>Pfad der Eigenschaft wie Font.Size; leer bei transfer.</summary>
+    class function PathOf(AItem: TAtlasBarItem): string; static;
+    /// <summary>Verlangter Typ der Eigenschaft; leer = jeder (TCheckBox.Alignment ist kein TAlignment).</summary>
+    class function PropTypeOf(AItem: TAtlasBarItem): string; static;
+    /// <summary>Element der Menge bzw. eingeschalteter Wert der Umschalter.</summary>
+    class function ElementOf(AItem: TAtlasBarItem): string; static;
+    /// <summary>Beschriftung des Knopfs.</summary>
+    class function TextOf(AItem: TAtlasBarItem): string; static;
+    /// <summary>Zustand des Knopfs: Mengen und Umschalter aus den Werten, alle übrigen Off.</summary>
+    class function StateOf(AItem: TAtlasBarItem; const AProps: TArray<TAtlasBarProp>): TAtlasBarState; static;
+    /// <summary>Argument des Tooltips: Name des Umschalters, Element des Ankers oder Name des ersten
+    /// Steuerelements (gleiche Breite/Höhe wie AFirstName); sonst leer.</summary>
+    class function HintArgument(AItem: TAtlasBarItem; const AFirstName: string): string; static;
+  end;
+
+  /// <summary>Verfolgte Auswahl: Schlüssel aus Namen und Grenzen, seit wann sie steht und ob die Leiste
+  /// angefordert ist.</summary>
+  TAtlasBarTracking = record
+    Names: string;
+    Bounds: string;
+    Since: UInt64;
+    Requested: Boolean;
+    /// <summary>Neue Auswahl (ANames anders): Verzögerung von vorn und Anforderung weg. Nur andere
+    /// Grenzen (Ziehen): Verzögerung von vorn.</summary>
+    procedure Update(const ANames, ABounds: string; ANow: UInt64);
+    /// <summary>Keine Auswahl mehr: beim nächsten Update gilt jede Auswahl als neu.</summary>
+    procedure Clear;
+  end;
+
+  /// <summary>Alter Wert einer Eigenschaft (Pfad wie Font.Size) einer Komponente.</summary>
+  TAtlasBarChange = record
+    Name: string;
+    Path: string;
+    Value: string;
+    class function Create(const AName, APath, AValue: string): TAtlasBarChange; static;
+  end;
+
+  /// <summary>Ein Klick der Leiste: alte Werte je Formulardatei.</summary>
+  TAtlasBarStep = record
+    FileName: string;
+    Changes: TArray<TAtlasBarChange>;
+  end;
+
+  /// <summary>Schritte zum Rückgängigmachen, höchstens cMaxSteps (die ältesten fallen weg).</summary>
+  TAtlasBarHistory = record
+  public const
+    cMaxSteps = 50;
+  public
+    Steps: TArray<TAtlasBarStep>;
+    /// <summary>Schritt merken; ohne Änderungen nichts.</summary>
+    procedure Push(const AStep: TAtlasBarStep);
+    /// <summary>Gehört der letzte Schritt zur Formulardatei (ohne Groß-/Kleinschreibung)?</summary>
+    function CanUndo(const AFileName: string): Boolean;
+    /// <summary>Letzten Schritt herausnehmen; False ohne Schritt.</summary>
+    function Pop(out AStep: TAtlasBarStep): Boolean;
   end;
 
 implementation
@@ -97,6 +174,16 @@ const
     'anchorBottom', 'sameWidth', 'sameHeight', 'alignLeft', 'alignCenter', 'alignRight', 'transfer',
     'fitText');
   cItemGroups: array[TAtlasBarItem] of Integer = (0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 4, 4);
+  cItemPaths: array[TAtlasBarItem] of string = ('Font.Size', 'Font.Size', 'Font.Size', 'Font.Style', 'Font.Style',
+    'Font.Color', 'Enabled', 'Visible', 'ParentFont', 'ParentColor', 'Anchors', 'Anchors', 'Anchors', 'Anchors',
+    'Width', 'Height', 'Alignment', 'Alignment', 'Alignment', '', 'Width');
+  cItemTypes: array[TAtlasBarItem] of string = ('', '', '', '', '', '', 'Boolean', 'Boolean', 'Boolean', 'Boolean',
+    'TAnchors', 'TAnchors', 'TAnchors', 'TAnchors', '', '', 'TAlignment', 'TAlignment', 'TAlignment', '', '');
+  cItemElements: array[TAtlasBarItem] of string = ('', '', '', 'fsBold', 'fsItalic', '', 'True', 'True', 'True',
+    'True', 'akLeft', 'akTop', 'akRight', 'akBottom', '', '', 'taLeftJustify', 'taCenter', 'taRightJustify', '',
+    '');
+  cItemTexts: array[TAtlasBarItem] of string = ('A−', '–', 'A+', '', '', 'A', 'Enabled', 'Visible', 'ParentFont',
+    'ParentColor', 'L', 'T', 'R', 'B', 'W=', 'H=', '◧', '◫', '◨', '⇉', 'Aa↔');
 
 { TAtlasBarProp }
 
@@ -351,6 +438,173 @@ begin
     mTop := Min(ASelection.Bottom + AGap, Max(AArea.Top, AArea.Bottom - ASize.cy));
   end;
   Result := Rect(mLeft, mTop, mLeft + ASize.cx, mTop + ASize.cy);
+end;
+
+class function TAtlasSelectionBar.IsShortcut(const AMode: string): Boolean;
+begin
+  Result := SameText(AMode, cModeShortcut);
+end;
+
+class function TAtlasSelectionBar.Due(AFocused, AShortcut, ARequested: Boolean; ANow, ASince: UInt64;
+  ADelayMs: Integer): Boolean;
+begin
+  if not AFocused then
+  begin
+    Exit(False);
+  end;
+  if AShortcut then
+  begin
+    Exit(ARequested);
+  end;
+  Result := (ANow < ASince) or (ANow - ASince >= UInt64(Max(ADelayMs, 0)));
+end;
+
+class function TAtlasSelectionBar.TryFontSize(const AText: string; out ASize: Integer): Boolean;
+begin
+  Result := TryStrToInt(Trim(AText), ASize) and (ASize >= cMinFontSize) and (ASize <= cMaxFontSize);
+end;
+
+procedure AddColor(var AColors: TArray<Integer>; AColor: Integer);
+var
+  mOther: Integer;
+begin
+  for mOther in AColors do
+  begin
+    if mOther = AColor then
+    begin
+      Exit;
+    end;
+  end;
+  SetLength(AColors, Length(AColors) + 1);
+  AColors[High(AColors)] := AColor;
+end;
+
+class function TAtlasSelectionBar.ColorChoices(const AUsed, AStandard: TArray<Integer>;
+  out AUsedCount: Integer): TArray<Integer>;
+var
+  mColor: Integer;
+begin
+  Result := nil;
+  for mColor in AUsed do
+  begin
+    AddColor(Result, mColor);
+  end;
+  AUsedCount := Length(Result);
+  for mColor in AStandard do
+  begin
+    AddColor(Result, mColor);
+  end;
+end;
+
+{ TAtlasBarItems }
+
+class function TAtlasBarItems.PathOf(AItem: TAtlasBarItem): string;
+begin
+  Result := cItemPaths[AItem];
+end;
+
+class function TAtlasBarItems.PropTypeOf(AItem: TAtlasBarItem): string;
+begin
+  Result := cItemTypes[AItem];
+end;
+
+class function TAtlasBarItems.ElementOf(AItem: TAtlasBarItem): string;
+begin
+  Result := cItemElements[AItem];
+end;
+
+class function TAtlasBarItems.TextOf(AItem: TAtlasBarItem): string;
+begin
+  Result := cItemTexts[AItem];
+end;
+
+class function TAtlasBarItems.StateOf(AItem: TAtlasBarItem; const AProps: TArray<TAtlasBarProp>): TAtlasBarState;
+begin
+  case AItem of
+    TAtlasBarItem.Bold, TAtlasBarItem.Italic, TAtlasBarItem.AnchorLeft..TAtlasBarItem.AnchorBottom:
+      Result := TAtlasSelectionBar.SetFlag(AProps, cItemElements[AItem]);
+    TAtlasBarItem.Enabled..TAtlasBarItem.ParentColor, TAtlasBarItem.AlignLeft..TAtlasBarItem.AlignRight:
+      Result := TAtlasSelectionBar.Flag(AProps, cItemElements[AItem]);
+  else
+    Result := TAtlasBarState.Off;
+  end;
+end;
+
+class function TAtlasBarItems.HintArgument(AItem: TAtlasBarItem; const AFirstName: string): string;
+begin
+  case AItem of
+    TAtlasBarItem.Enabled..TAtlasBarItem.ParentColor:
+      Result := cItemTexts[AItem];
+    TAtlasBarItem.AnchorLeft..TAtlasBarItem.AnchorBottom:
+      Result := cItemElements[AItem];
+    TAtlasBarItem.SameWidth, TAtlasBarItem.SameHeight:
+      Result := AFirstName;
+  else
+    Result := '';
+  end;
+end;
+
+{ TAtlasBarTracking }
+
+procedure TAtlasBarTracking.Update(const ANames, ABounds: string; ANow: UInt64);
+begin
+  if ANames <> Names then
+  begin
+    Names := ANames;
+    Bounds := ABounds;
+    Since := ANow;
+    Requested := False;
+  end
+  else if ABounds <> Bounds then
+  begin
+    Bounds := ABounds;
+    Since := ANow;
+  end;
+end;
+
+procedure TAtlasBarTracking.Clear;
+begin
+  Names := '';
+end;
+
+{ TAtlasBarChange }
+
+class function TAtlasBarChange.Create(const AName, APath, AValue: string): TAtlasBarChange;
+begin
+  Result.Name := AName;
+  Result.Path := APath;
+  Result.Value := AValue;
+end;
+
+{ TAtlasBarHistory }
+
+procedure TAtlasBarHistory.Push(const AStep: TAtlasBarStep);
+begin
+  if Length(AStep.Changes) = 0 then
+  begin
+    Exit;
+  end;
+  SetLength(Steps, Length(Steps) + 1);
+  Steps[High(Steps)] := AStep;
+  if Length(Steps) > cMaxSteps then
+  begin
+    Delete(Steps, 0, Length(Steps) - cMaxSteps);
+  end;
+end;
+
+function TAtlasBarHistory.CanUndo(const AFileName: string): Boolean;
+begin
+  Result := (Length(Steps) > 0) and SameText(Steps[High(Steps)].FileName, AFileName);
+end;
+
+function TAtlasBarHistory.Pop(out AStep: TAtlasBarStep): Boolean;
+begin
+  Result := Length(Steps) > 0;
+  if Result then
+  begin
+    AStep := Steps[High(Steps)];
+    SetLength(Steps, Length(Steps) - 1);
+  end;
 end;
 
 end.

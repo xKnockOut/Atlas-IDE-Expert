@@ -62,6 +62,7 @@ uses
   Atlas.Core.Modules.FeatureParts,
   Atlas.Core.Bookmarks.Store,
   Atlas.Core.Bookmarks.Quick,
+  Atlas.Core.Bookmarks.Plan,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
@@ -131,40 +132,28 @@ end;
 /// <summary>Taste von „Lesezeichen setzen…“ (#622); 0, solange bookmarks.named aus ist.</summary>
 function BookmarkKey: Integer;
 begin
-  Result := 0;
-  if TAtlasIdeSettings.Current.BookmarksNamed then
-  begin
-    Result := TAtlasIdeSettings.Current.BookmarkKey;
-  end;
+  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.BookmarksNamed,
+    TAtlasIdeSettings.Current.BookmarkKey);
 end;
 
 /// <summary>Akkord der schnellen Lesezeichen (#1104); 0, solange sie aus sind oder die Wartezeit 0 ist (dann bleibt
 /// Strg+Umschalt+K bei der IDE).</summary>
 function QuickBookmarkKey: Integer;
 begin
-  Result := 0;
-  if TAtlasIdeSettings.Current.QuickBookmarks and (TAtlasIdeSettings.Current.QuickBookmarkChordWait > 0) then
-  begin
-    Result := TAtlasIdeSettings.Current.QuickBookmarkKey;
-  end;
+  Result := TAtlasBookmarksPlan.ChordKey(TAtlasIdeSettings.Current.QuickBookmarks,
+    TAtlasIdeSettings.Current.QuickBookmarkChordWait, TAtlasIdeSettings.Current.QuickBookmarkKey);
 end;
 
 function NextBookmarkKey: Integer;
 begin
-  Result := 0;
-  if TAtlasIdeSettings.Current.QuickBookmarks then
-  begin
-    Result := TAtlasIdeSettings.Current.NextBookmarkKey;
-  end;
+  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.QuickBookmarks,
+    TAtlasIdeSettings.Current.NextBookmarkKey);
 end;
 
 function PreviousBookmarkKey: Integer;
 begin
-  Result := 0;
-  if TAtlasIdeSettings.Current.QuickBookmarks then
-  begin
-    Result := TAtlasIdeSettings.Current.PreviousBookmarkKey;
-  end;
+  Result := TAtlasBookmarksPlan.KeyWhen(TAtlasIdeSettings.Current.QuickBookmarks,
+    TAtlasIdeSettings.Current.PreviousBookmarkKey);
 end;
 
 { Start der Teile (aus der Kompositionswurzel hierher gezogen, #1455) }
@@ -323,14 +312,13 @@ begin
     begin
       Exit;
     end;
+    mId := TAtlasBookmarksPlan.NumberCommandId(mNumber, AJump);
     if AJump then
     begin
-      mId := 'Atlas.QuickBookmarkJump' + IntToStr(mNumber);
       mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkJumpN, [mNumber]);
     end
     else
     begin
-      mId := 'Atlas.QuickBookmarkSet' + IntToStr(mNumber);
       mWhat := TAtlasBookmarksStrings.Fmt(TAtlasBookmarksTextId.QuickBookmarkSetN, [mNumber]);
     end;
     Result := Result + [ModuleKey(mId, mWhat, mKey, PriorityOf(ATake), NumberProc(mNumber, AJump))];
@@ -357,8 +345,7 @@ begin
     TAtlasFeaturePart.When('QuickBookmarks',
       function(ALevel: TAtlasSafeLevel): Boolean
       begin
-        Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
-          TAtlasIdeSettings.Current.QuickBookmarks);
+        Result := TAtlasBookmarksPlan.QuickColumnRuns(ALevel, TAtlasIdeSettings.Current.QuickBookmarks);
       end, QuickColumnStarted, StartQuickColumn, StopQuickColumn)];
 end;
 

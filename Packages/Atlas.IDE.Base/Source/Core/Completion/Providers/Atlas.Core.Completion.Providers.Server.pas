@@ -810,6 +810,9 @@ var
   mIndex: Integer;
 begin
   Result := AItem;
+  // Eigenes Array: Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write, sonst änderte das Schreiben
+  // unten auch AItem.AdditionalEdits des Aufrufers.
+  Result.AdditionalEdits := Copy(Result.AdditionalEdits);
   if Result.HasTextEdit then
   begin
     Result.TextEdit.NewText := Expanded(Result.Snippet);

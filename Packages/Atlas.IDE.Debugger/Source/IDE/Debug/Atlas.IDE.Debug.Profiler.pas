@@ -29,6 +29,7 @@ uses
   Atlas.Core.Modules.Contract,
   Atlas.Text.Profile,
   Atlas.Core.Debug.Profiler,
+  Atlas.Core.Debug.ProfilerFlow,
   Atlas.UI.Debug.ProfileFrame;
 
 type
@@ -99,7 +100,6 @@ type
 implementation
 
 uses
-  System.Math,
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -207,14 +207,7 @@ begin
   end;
   Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileStopped, [mAnswer.FileName, mAnswer.Samples]));
   SetRunning(False);
-  if mAnswer.Path <> '' then
-  begin
-    Finished(mAnswer.Path);
-  end
-  else
-  begin
-    Finished(mAnswer.FileName);
-  end;
+  Finished(TAtlasProfilerFlow.ResultFile(mAnswer.Path, mAnswer.FileName));
 end;
 
 class procedure TAtlasIdeDebugProfiler.PollStatus;
@@ -341,7 +334,7 @@ end;
 
 class function TAtlasIdeDebugProfiler.Load(const APath: string; var ALoaded: TLoaded): Boolean;
 begin
-  Result := SameText(ALoaded.Path, APath) and (APath <> '');
+  Result := TAtlasProfilerFlow.IsLoaded(ALoaded.Path, APath);
   if Result then
   begin
     Exit;
@@ -396,7 +389,7 @@ begin
     Say(TAtlasProfileStrings.Fmt(TAtlasProfileTextId.ProfileNoSource, [ARow.FileName]));
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(mPath, Max(ARow.Line - 1, 0), 0);
+  TAtlasIdeNavigation.GoToLocation(mPath, TAtlasProfilerFlow.EditorLine(ARow.Line), 0);
 end;
 
 class procedure TAtlasIdeDebugProfiler.Start(const AScopeOf: TFunc<IAtlasModuleScope>;
@@ -480,7 +473,7 @@ class procedure TAtlasIdeDebugProfiler.RunWithProfile;
 var
   mTarget: TAtlasProfilerTarget;
 begin
-  if FRun.Running or FRun.Busy then
+  if TAtlasProfilerFlow.ActsAsToggle(FRun.Busy, FRun.Running) then
   begin
     Toggle;
   end
@@ -496,36 +489,36 @@ class procedure TAtlasIdeDebugProfiler.Toggle;
 var
   mTarget: TAtlasProfilerTarget;
   mProcess: IOTAProcess;
+  mPid: Cardinal;
 begin
-  if FRun.Busy then
-  begin
-    Exit;
-  end;
-  if FRun.Running then
-  begin
-    Stop;
-    Exit;
-  end;
-  mProcess := nil;
-  if TAtlasIdeDebugSession.Active then
+  mPid := 0;
+  if not FRun.Busy and not FRun.Running and TAtlasIdeDebugSession.Active then
   begin
     mProcess := TAtlasIdeDebugSession.Process;
+    if mProcess <> nil then
+    begin
+      mPid := mProcess.ProcessId;
+    end;
   end;
-  if (mProcess = nil) or (mProcess.ProcessId = 0) then
-  begin
-    Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProcess));
-    Exit;
+  case TAtlasProfilerFlow.Toggle(FRun.Busy, FRun.Running, mPid) of
+    TAtlasProfilerToggle.Stop:
+      Stop;
+    TAtlasProfilerToggle.NoProcess:
+      Say(TAtlasProfileStrings.Text(TAtlasProfileTextId.ProfileNoProcess));
+    TAtlasProfilerToggle.Start:
+      begin
+        TargetOfActiveProject(mTarget);
+        mTarget.ProcessId := mPid;
+        StartFor(mTarget);
+      end;
   end;
-  TargetOfActiveProject(mTarget);
-  mTarget.ProcessId := mProcess.ProcessId;
-  StartFor(mTarget);
 end;
 
 class procedure TAtlasIdeDebugProfiler.Reload(const ASelect: string);
 var
   mFrame: TAtlasDebugProfileFrame;
   mFiles, mTitles: TArray<string>;
-  mIndex, mSelected: Integer;
+  mIndex: Integer;
 begin
   mFrame := TAtlasIdeDebugProfileWindow.ExistingFrame;
   if mFrame = nil then
@@ -539,16 +532,11 @@ begin
   end;
   FRuns := TAtlasProfileStore.Newest(mFiles);
   SetLength(mTitles, Length(FRuns));
-  mSelected := Min(0, High(FRuns));
   for mIndex := 0 to High(FRuns) do
   begin
     mTitles[mIndex] := TAtlasProfileTable.RunTitle(FRuns[mIndex]);
-    if (ASelect <> '') and SameText(ExtractFileName(FRuns[mIndex]), ExtractFileName(ASelect)) then
-    begin
-      mSelected := mIndex;
-    end;
   end;
-  mFrame.SetRuns(mTitles, mSelected);
+  mFrame.SetRuns(mTitles, TAtlasProfilerFlow.SelectedRun(FRuns, ASelect));
   // Neu einlesen: Eine Datei gleichen Namens kann neu geschrieben sein.
   FCurrent := Default(TLoaded);
   FPrevious := Default(TLoaded);

@@ -549,20 +549,6 @@ begin
   end;
 end;
 
-function IsCovered(const ACovered: TArray<string>; const AFileName: string): Boolean;
-var
-  mMember: string;
-begin
-  for mMember in ACovered do
-  begin
-    if TAtlasOpenBuild.KeyOf(mMember) = TAtlasOpenBuild.KeyOf(AFileName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 /// <summary>Einzeln gemeldete Projekte, die keine Gruppe schon abdeckt; nicht geladene kommen später wieder.</summary>
 function ProjectCandidates(ACore: TAtlasOpenBuild; const AFiles, ACovered: TArray<string>): TArray<string>;
 var
@@ -572,7 +558,7 @@ begin
   Result := nil;
   for mFileName in AFiles do
   begin
-    if TAtlasOpenBuild.IsGroupFile(mFileName) or IsCovered(ACovered, mFileName) then
+    if TAtlasOpenBuild.IsGroupFile(mFileName) or TAtlasOpenBuildSummary.IsCovered(ACovered, mFileName) then
     begin
       Continue;
     end;
@@ -684,11 +670,6 @@ begin
   end;
 end;
 
-function Differs(const AWanted, ACurrent: string): Boolean;
-begin
-  Result := (AWanted <> '') and not SameText(AWanted, ACurrent);
-end;
-
 procedure TAtlasIdeOpenBuild.ApplyTargets(const AProjects: TArray<IOTAProject>);
 var
   mSettings: TAtlasPluginSettings;
@@ -711,14 +692,15 @@ begin
     mConfiguration := PickConfiguration(mProject, mSettings.BuildOnOpenConfig, FTargetNotes);
     mPlatform := PickPlatform(mProject, mSettings.BuildOnOpenPlatform, FTargetNotes);
     // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
-    if Differs(mConfiguration, mSwitch.Configuration) or Differs(mPlatform, mSwitch.Platform) then
+    if TAtlasOpenBuildSummary.Differs(mConfiguration, mSwitch.Configuration) or
+      TAtlasOpenBuildSummary.Differs(mPlatform, mSwitch.Platform) then
     begin
       FSwitched := FSwitched + [mSwitch];
-      if Differs(mConfiguration, mSwitch.Configuration) then
+      if TAtlasOpenBuildSummary.Differs(mConfiguration, mSwitch.Configuration) then
       begin
         mProject.CurrentConfiguration := mConfiguration;
       end;
-      if Differs(mPlatform, mSwitch.Platform) then
+      if TAtlasOpenBuildSummary.Differs(mPlatform, mSwitch.Platform) then
       begin
         mProject.CurrentPlatform := mPlatform;
       end;
@@ -743,42 +725,29 @@ begin
   Result := GetTickCount64;
 end;
 
-function FinishSeverity(const AOutcome: TAtlasOpenBuildResult; AHasNotes: Boolean): TAtlasNotificationSeverity;
-begin
-  Result := TAtlasNotificationSeverity.Info;
-  if (AOutcome.NotBuilt > 0) or AHasNotes then
-  begin
-    Result := TAtlasNotificationSeverity.Warning;
-  end;
-  if AOutcome.Failed > 0 then
-  begin
-    Result := TAtlasNotificationSeverity.Error;
-  end;
-end;
-
+/// <summary>Zeilen der Zusammenfassung; dazu die Vorgaben, die ein Projekt nicht kennt (#1293): gebaut wie im
+/// Projekt eingestellt.</summary>
 function FinishLines(const AOutcome: TAtlasOpenBuildResult; const AKind: string;
   const ANotes: TArray<string>): TArray<string>;
+var
+  mLine: TAtlasOpenBuildLine;
 begin
   Result := nil;
-  if AOutcome.Failed > 0 then
+  for mLine in TAtlasOpenBuildSummary.Lines(AOutcome) do
   begin
-    Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildFailed,
-      [string.Join(', ', AOutcome.FailedNames)])];
+    case mLine of
+      TAtlasOpenBuildLine.Failed:
+        Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildFailed,
+          [string.Join(', ', AOutcome.FailedNames)])];
+      TAtlasOpenBuildLine.NotBuilt:
+        Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildNotBuilt,
+          [string.Join(', ', AOutcome.NotBuiltNames)])];
+      TAtlasOpenBuildLine.Reason:
+        Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReason, [AOutcome.CancelReason])];
+      TAtlasOpenBuildLine.Succeeded:
+        Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildSucceeded, [AKind])];
+    end;
   end;
-  if AOutcome.NotBuilt > 0 then
-  begin
-    Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildNotBuilt,
-      [string.Join(', ', AOutcome.NotBuiltNames)])];
-  end;
-  if AOutcome.CancelReason <> '' then
-  begin
-    Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildReason, [AOutcome.CancelReason])];
-  end;
-  if Length(Result) = 0 then
-  begin
-    Result := Result + [TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildSucceeded, [AKind])];
-  end;
-  // Vorgaben, die ein Projekt nicht kennt (#1293): gebaut wie im Projekt eingestellt.
   Result := Result + ANotes;
 end;
 
@@ -806,12 +775,12 @@ begin
       mOutcome.Failed, mOutcome.NotBuilt, NowMs - FStartedAt]));
   end;
   // Ein einzelnes gebautes Projekt meldet schon „Build fertig“ (#535); die Zusammenfassung lohnt nur sonst.
-  if (mOutcome.Total <= 1) and (mOutcome.NotBuilt = 0) and (Length(FTargetNotes) = 0) then
+  if not TAtlasOpenBuildSummary.Needed(mOutcome, Length(FTargetNotes)) then
   begin
     Exit;
   end;
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cOpenBuild,
-    FinishSeverity(mOutcome, Length(FTargetNotes) > 0),
+    TAtlasOpenBuildSummary.Severity(mOutcome, Length(FTargetNotes) > 0),
     TAtlasBuildStrings.Fmt(TAtlasBuildTextId.OpenBuildTitle, [mOutcome.Succeeded, mOutcome.Total]),
     string.Join(sLineBreak, FinishLines(mOutcome, mKind, FTargetNotes)));
 end;

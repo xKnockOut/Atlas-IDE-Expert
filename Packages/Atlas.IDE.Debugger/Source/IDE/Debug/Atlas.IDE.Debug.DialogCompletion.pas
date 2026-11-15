@@ -157,7 +157,8 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.Sources;
+  Atlas.IDE.Debug.Sources,
+  Atlas.Core.Debug.DialogInput;
 
 type
   // FocusControl ist in TCustomLabel geschützt.
@@ -262,48 +263,31 @@ begin
   end;
 end;
 
-/// <summary>Abstand des Labels ABounds zum Feld AOwn: links in derselben Höhe oder direkt darüber; False sonst.
-/// </summary>
-function LabelDistance(const ABounds, AOwn: TRect; out ADistance: Integer): Boolean;
-begin
-  Result := True;
-  ADistance := 0;
-  if (ABounds.Right <= AOwn.Left + 4) and (ABounds.Bottom > AOwn.Top) and (ABounds.Top < AOwn.Bottom) then
-  begin
-    ADistance := AOwn.Left - ABounds.Right;
-  end
-  else if (ABounds.Bottom <= AOwn.Top + 4) and (ABounds.Left < AOwn.Right) and (ABounds.Right > AOwn.Left) then
-  begin
-    ADistance := AOwn.Top - ABounds.Bottom;
-  end
-  else
-  begin
-    Result := False;
-  end;
-end;
-
 /// <summary>Nächstes sichtbares Label im selben Container wie AControl; '' ohne.</summary>
 function NearestLabel(AControl: TWinControl): string;
 var
-  mIndex, mDistance, mBest: Integer;
+  mIndex, mCount: Integer;
   mControl: TControl;
+  mLabels: TArray<TAtlasDialogLabel>;
 begin
   Result := '';
   if AControl.Parent = nil then
   begin
     Exit;
   end;
-  mBest := MaxInt;
+  SetLength(mLabels, AControl.Parent.ControlCount);
+  mCount := 0;
   for mIndex := 0 to AControl.Parent.ControlCount - 1 do
   begin
     mControl := AControl.Parent.Controls[mIndex];
-    if (mControl is TCustomLabel) and mControl.Visible and
-      LabelDistance(mControl.BoundsRect, AControl.BoundsRect, mDistance) and (mDistance < mBest) then
+    if (mControl is TCustomLabel) and mControl.Visible then
     begin
-      mBest := mDistance;
-      Result := TLabelAccess(mControl).Caption;
+      mLabels[mCount] := TAtlasDialogLabel.Create(TLabelAccess(mControl).Caption, mControl.BoundsRect);
+      Inc(mCount);
     end;
   end;
+  SetLength(mLabels, mCount);
+  Result := TAtlasDialogInput.NearestLabel(mLabels, AControl.BoundsRect);
 end;
 
 /// <summary>Beschriftung von AControl: Label mit FocusControl, sonst das nächste links bzw. darüber.</summary>
@@ -395,7 +379,7 @@ function ServerContext(ASession: TLspSession; AForm: TCustomForm; ADialog: TAtla
   var AContext: TAtlasContext): Boolean;
 var
   mFileName, mSource: string;
-  mLine, mWordStart: Integer;
+  mLine: Integer;
 begin
   Result := Scope(AForm, ADialog, mFileName, mLine) and TAtlasIdeFiles.SourceText(mFileName, mSource);
   if not Result then
@@ -406,9 +390,8 @@ begin
   ASession.Sync(mFileName, mSource);
   AContext.FileName := mFileName;
   AContext.Line := mLine;
-  // Nach "." Mitgliederliste (#497): Zeichen vor dem Wortanfang, 1-basiert an der Stelle des Wortanfangs.
-  mWordStart := AContext.Character - Length(AContext.Prefix);
-  if (mWordStart > 0) and (mWordStart <= Length(AContext.Text)) and (AContext.Text[mWordStart] = '.') then
+  // Nach "." Mitgliederliste (#497).
+  if TAtlasDialogInput.MemberTrigger(AContext.Text, AContext.Character, AContext.Prefix) then
   begin
     AContext.Trigger := '.';
   end;
@@ -660,7 +643,7 @@ begin
   end;
   mText := WindowText(FEdit);
   Selection(FEdit, mStart, mStop);
-  mAllSelected := (mText <> '') and (mStart = 0) and (mStop = Length(mText));
+  mAllSelected := TAtlasDialogInput.AllSelected(mText, mStart, mStop);
   // Ausgewertet: Die IDE markiert danach das ganze Feld.
   if (mText = FText) and mAllSelected and not FAllSelected then
   begin
@@ -684,17 +667,14 @@ begin
   mPrefix := TAtlasExpressionEdit.PrefixAt(AText, ACaret);
   if FController.Active then
   begin
-    if FHistoryMode or (ACaret - Length(mPrefix) <> FWordStart) then
-    begin
-      FController.Close;
-    end
-    else if FController.NeedsQuery(mPrefix) then
-    begin
-      Query(False, True);
-    end
-    else
-    begin
-      FController.UpdatePrefix(mPrefix);
+    case TAtlasDialogInput.Follow(FHistoryMode, ACaret - Length(mPrefix) = FWordStart,
+      FController.NeedsQuery(mPrefix)) of
+      TAtlasDialogFollow.Close:
+        FController.Close;
+      TAtlasDialogFollow.Query:
+        Query(False, True);
+      TAtlasDialogFollow.UpdatePrefix:
+        FController.UpdatePrefix(mPrefix);
     end;
   end;
   if not FController.Active and mOpens then
@@ -747,7 +727,7 @@ begin
   FDialog := mDialog;
   FText := WindowText(FEdit);
   Selection(FEdit, mStart, mStop);
-  FAllSelected := (FText <> '') and (mStart = 0) and (mStop = Length(FText));
+  FAllSelected := TAtlasDialogInput.AllSelected(FText, mStart, mStop);
   FCaret := Max(mStop, 0);
   FWordStart := -1;
   FHistoryMode := False;
@@ -836,8 +816,8 @@ end;
 
 procedure TAtlasIdeDebugDialogCompletion.Commit(const AItem: TAtlasCompletionItem);
 var
-  mInsert, mText: string;
-  mCaret, mStop: Integer;
+  mInsert: string;
+  mCommit: TAtlasDialogCommit;
 begin
   if (FEdit = 0) or not IsWindow(FEdit) then
   begin
@@ -848,49 +828,36 @@ begin
   begin
     mInsert := AItem.Name;
   end;
-  if FHistoryMode then
-  begin
-    SendMessage(FEdit, EM_SETSEL, 0, -1);
-    mCaret := Length(mInsert);
-  end
-  else
-  begin
-    // Das ganze Wort an der Schreibmarke, wie TAtlasExpressionEdit.Apply.
-    TAtlasExpressionEdit.Apply(FText, FCaret, FCaret - Max(FWordStart, 0), mInsert, mText, mCaret);
-    mStop := Length(FText) - (Length(mText) - mCaret);
-    SendMessage(FEdit, EM_SETSEL, WPARAM(Max(FWordStart, 0)), LPARAM(mStop));
-  end;
+  mCommit := TAtlasDialogInput.Commit(FText, FCaret, FWordStart, mInsert, FHistoryMode);
+  SendMessage(FEdit, EM_SETSEL, WPARAM(mCommit.SelStart), LPARAM(mCommit.SelStop));
   // Mit Rückgängig-Eintrag (wParam = 1): Strg+Z im Feld nimmt es zurück.
   SendMessage(FEdit, EM_REPLACESEL, 1, LPARAM(PChar(mInsert)));
-  SendMessage(FEdit, EM_SETSEL, WPARAM(mCaret), LPARAM(mCaret));
+  SendMessage(FEdit, EM_SETSEL, WPARAM(mCommit.Caret), LPARAM(mCommit.Caret));
   FText := WindowText(FEdit);
-  FCaret := mCaret;
+  FCaret := mCommit.Caret;
   FHistoryMode := False;
 end;
 
 function TAtlasIdeDebugDialogCompletion.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
   mNavigation: TAtlasNavigationKey;
+  mInput: TAtlasDialogKeyInput;
 begin
-  Result := False;
-  if (FEdit = 0) or (GetFocus <> FEdit) or not Enabled then
+  mInput := Default(TAtlasDialogKeyInput);
+  mInput.Tracked := (FEdit <> 0) and (GetFocus = FEdit) and Enabled;
+  if not mInput.Tracked then
   begin
-    Exit;
+    Exit(False);
   end;
-  if (AKey = VK_SPACE) and (AShift = [ssCtrl]) then
-  begin
-    Exit(True);
-  end;
-  if AShift <> [] then
-  begin
-    Exit;
-  end;
-  if FController.Visible and NavigationOf(AKey, mNavigation) then
-  begin
-    Exit(True);
-  end;
-  // Verlauf (#538): Pfeil nach unten im leeren Feld; im Fenster „Auswerten“ zeigt das Fenster seinen eigenen.
-  Result := (AKey = VK_DOWN) and not FOwnField and not FController.Active and (WindowText(FEdit) = '');
+  mInput.CtrlSpace := (AKey = VK_SPACE) and (AShift = [ssCtrl]);
+  mInput.Plain := AShift = [];
+  mInput.Navigation := NavigationOf(AKey, mNavigation);
+  mInput.Down := AKey = VK_DOWN;
+  mInput.ListVisible := FController.Visible;
+  mInput.ListActive := FController.Active;
+  mInput.OwnField := FOwnField;
+  mInput.FieldEmpty := WindowText(FEdit) = '';
+  Result := TAtlasDialogInput.WantsKey(mInput);
 end;
 
 procedure TAtlasIdeDebugDialogCompletion.HandleKey(AKey: Word);

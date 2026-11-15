@@ -14,21 +14,11 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Editor.MultiCursor;
+  Atlas.Core.Editor.MultiCursor,
+  Atlas.Core.Editor.CaretSteps;
 
 type
   TAtlasIdeMultiCursorState = class
-  private const
-    /// <summary>So viele eigene Schritte merkt sich Atlas für Rückgängig und Wiederholen.</summary>
-    cStepLimit = 20;
-  private type
-    /// <summary>Ein eigener Schritt: Text und Marken davor und danach.</summary>
-    TStep = record
-      Before: string;
-      After: string;
-      BeforeCarets: TAtlasCarets;
-      AfterCarets: TAtlasCarets;
-    end;
   private
     FOnFinish: TProc;
     FOnRefresh: TProc;
@@ -38,15 +28,13 @@ type
     FLines: TArray<string>;
     FCarets: TAtlasCarets;
     FWriting: Boolean;
-    FSteps: TArray<TStep>;
-    FStep: Integer;
+    FSteps: TAtlasCaretSteps;
     /// <summary>Aktive Ansicht, ihr Text und die Marken mit der Hauptmarke aus der IDE; False ohne Ansicht oder
     /// bei schreibgeschütztem Puffer.</summary>
     function Prepare(out AView: IOTAEditView; out AText: string): Boolean;
     procedure Apply(const AView: IOTAEditView; const AText, ANewText: string; const ACarets: TAtlasCarets);
     procedure SetCarets(const AView: IOTAEditView; const AText: string; const ACarets: TAtlasCarets);
     procedure WriteBuffer(const ABuffer: IOTAEditBuffer; const AText, ANewText: string);
-    procedure AddStep(const ABefore, AAfter: string; const ABeforeCarets, AAfterCarets: TAtlasCarets);
     procedure SetText(const AText: string);
   public
     /// <summary>AOnFinish beendet die Zusatzmarken (Datei gewechselt), AOnRefresh zeigt sie nach einem Schritt.
@@ -98,7 +86,6 @@ uses
   Winapi.Windows,
   Vcl.Clipbrd,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Editor.LineMove,
   Atlas.Core.Editor.WrapSelection,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -194,32 +181,6 @@ begin
   AView.SetTopLeft(Max(1, ALine + 1 - mRows div 2), AView.LeftColumn);
 end;
 
-/// <summary>Bereiche der Marken für das Umschließen.</summary>
-function RangesOf(const ACarets: TAtlasCarets): TArray<TLspRange>;
-var
-  mIndex, mStartLine, mStartCharacter, mEndLine, mEndCharacter: Integer;
-begin
-  SetLength(Result, Length(ACarets));
-  for mIndex := 0 to High(ACarets) do
-  begin
-    ACarets[mIndex].Bounds(mStartLine, mStartCharacter, mEndLine, mEndCharacter);
-    Result[mIndex] := TLspRange.Create(mStartLine, mStartCharacter, mEndLine, mEndCharacter);
-  end;
-end;
-
-/// <summary>Marken aus den Markierungen nach dem Umschließen.</summary>
-function CaretsOf(const ASelections: TArray<TLspRange>): TAtlasCarets;
-var
-  mIndex: Integer;
-begin
-  SetLength(Result, Length(ASelections));
-  for mIndex := 0 to High(ASelections) do
-  begin
-    Result[mIndex] := TAtlasCaret.Range(ASelections[mIndex].StartPos.Line, ASelections[mIndex].StartPos.Character,
-      ASelections[mIndex].EndPos.Line, ASelections[mIndex].EndPos.Character);
-  end;
-end;
-
 { TAtlasIdeMultiCursorState }
 
 constructor TAtlasIdeMultiCursorState.Create(const AOnFinish, AOnRefresh: TProc);
@@ -270,7 +231,7 @@ procedure TAtlasIdeMultiCursorState.Apply(const AView: IOTAEditView; const AText
   const ACarets: TAtlasCarets);
 begin
   WriteBuffer(AView.Buffer, AText, ANewText);
-  AddStep(AText, ANewText, FCarets, ACarets);
+  FSteps.Add(AText, ANewText, FCarets, ACarets);
   SetCarets(AView, ANewText, ACarets);
 end;
 
@@ -314,25 +275,6 @@ begin
   TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
-procedure TAtlasIdeMultiCursorState.AddStep(const ABefore, AAfter: string; const ABeforeCarets,
-  AAfterCarets: TAtlasCarets);
-var
-  mStep: TStep;
-begin
-  // Ein neuer Schritt verwirft, was nach dem aktuellen wiederholt werden könnte.
-  SetLength(FSteps, FStep);
-  mStep.Before := ABefore;
-  mStep.After := AAfter;
-  mStep.BeforeCarets := Copy(ABeforeCarets);
-  mStep.AfterCarets := Copy(AAfterCarets);
-  FSteps := FSteps + [mStep];
-  if Length(FSteps) > cStepLimit then
-  begin
-    Delete(FSteps, 0, 1);
-  end;
-  FStep := Length(FSteps);
-end;
-
 procedure TAtlasIdeMultiCursorState.SetText(const AText: string);
 begin
   FText := AText;
@@ -362,8 +304,7 @@ end;
 procedure TAtlasIdeMultiCursorState.Clear;
 begin
   FCarets := nil;
-  FSteps := nil;
-  FStep := 0;
+  FSteps.Clear;
   FView := nil;
   FText := '';
   FLines := nil;
@@ -384,23 +325,14 @@ begin
     Exit;
   end;
   // Rückgängig bzw. Wiederholen eines eigenen Schritts: dessen Marken.
-  if (FStep > 0) and (AText = FSteps[FStep - 1].Before) then
+  if FSteps.Recall(AText, mCarets) then
   begin
-    FCarets := Copy(FSteps[FStep - 1].BeforeCarets);
-    Dec(FStep);
-    SetText(AText);
-    Exit;
-  end;
-  if (FStep < Length(FSteps)) and (AText = FSteps[FStep].After) then
-  begin
-    FCarets := Copy(FSteps[FStep].AfterCarets);
-    Inc(FStep);
+    FCarets := mCarets;
     SetText(AText);
     Exit;
   end;
   // Fremde Änderung: an der Hauptmarke an allen Marken ausführen, sonst die Marken verschieben.
-  FSteps := nil;
-  FStep := 0;
+  FSteps.Clear;
   if TAtlasMultiCursor.Mirror(FText, AText, FCarets, mMirrored, mCarets) then
   begin
     WriteBuffer(FView.Buffer, AText, mMirrored);
@@ -444,12 +376,12 @@ var
   mWrapped: TAtlasWrapResult;
 begin
   Result := TAtlasIdeWrapSelection.Enabled and TAtlasWrapSelection.Accepts(AOpen, TAtlasIdeWrapSelection.Chars) and
-    Prepare(mView, mText) and TAtlasWrapSelection.Wrap(TAtlasMultiCursor.Lines(mText), RangesOf(FCarets), AOpen,
-    TAtlasIdeWrapSelection.Chars, mWrapped);
+    Prepare(mView, mText) and TAtlasWrapSelection.Wrap(TAtlasMultiCursor.Lines(mText),
+    TAtlasCaretRanges.RangesOf(FCarets), AOpen, TAtlasIdeWrapSelection.Chars, mWrapped);
   if Result then
   begin
     Apply(mView, mText, string.Join(TAtlasMultiCursor.LineBreakOf(mText), mWrapped.Lines),
-      CaretsOf(mWrapped.Selections));
+      TAtlasCaretRanges.CaretsOf(mWrapped.Selections));
   end;
 end;
 

@@ -130,6 +130,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.VersionControl.BranchNames,
+  Atlas.Core.VersionControl.Plan,
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.IDE.Foundation.DockWindow,
@@ -511,10 +512,7 @@ type
 function TBranchCreation.SearchOptions: TAtlasVcsSvnBranchOptions;
 begin
   Result := FSvn;
-  if FRequest.Location <> '' then
-  begin
-    Result.Location := '^/' + FRequest.Location;
-  end;
+  Result.Location := TAtlasVcsPlan.SearchLocation(FRequest.Location, FSvn.Location);
 end;
 
 procedure TBranchCreation.ReportCreated;
@@ -596,26 +594,28 @@ var
 begin
   TAtlasGuard.Log(Format('Branch anlegen (Befehl): %s, %s', [AtlasVcsKindName(FRequest.Kind),
     AtlasVcsOutcomeName(FRun.Outcome)]));
-  if FExists then
-  begin
-    TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExists, [FRequest.Name]));
-  end
-  else if FTaken then
-  begin
-    TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [FRequest.WorktreeFolder]));
-  end
-  else if FRun.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(FSteps, FRun) then
-  begin
-    ReportCreated;
-    AfterCreated;
-  end
-  // Abruf gescheitert, noch nichts geändert: nach Rückfrage vom lokalen Stand, ohne erneute Rückfrage.
-  else if FOfferLocal and TAtlasIdeBranching.AskLocal(FFacts, FRequest, FSteps, FRun, mFallback) then
-  begin
-    TAtlasIdeBranching.RunCreate(FProject, FFacts, mFallback, FSvn, False, FDone);
-  end
+  case TAtlasVcsPlan.BranchFinish(FExists, FTaken, FRun.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(FSteps, FRun),
+    FOfferLocal, TAtlasVcsBranchPlan.FetchFailed(FSteps, FRun)) of
+    TAtlasVcsBranchFinish.Exists:
+      TAtlasIdeVcsCore.Report(TAtlasVcsStrings.Fmt(TAtlasVcsTextId.VcsBranchExists, [FRequest.Name]));
+    TAtlasVcsBranchFinish.FolderTaken:
+      TAtlasIdeVcsCore.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [FRequest.WorktreeFolder]));
+    TAtlasVcsBranchFinish.Created:
+      begin
+        ReportCreated;
+        AfterCreated;
+      end;
+    // Abruf gescheitert, noch nichts geändert: nach Rückfrage vom lokalen Stand, ohne erneute Rückfrage.
+    TAtlasVcsBranchFinish.OfferLocal:
+      if TAtlasIdeBranching.AskLocal(FFacts, FRequest, FSteps, FRun, mFallback) then
+      begin
+        TAtlasIdeBranching.RunCreate(FProject, FFacts, mFallback, FSvn, False, FDone);
+      end
+      else
+      begin
+        TAtlasIdeVcsCore.Report(TAtlasIdeBranching.FailureText(FRequest.Kind, FSteps, FRun));
+      end;
   else
-  begin
     TAtlasIdeVcsCore.Report(TAtlasIdeBranching.FailureText(FRequest.Kind, FSteps, FRun));
   end;
 end;

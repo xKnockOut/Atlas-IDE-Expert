@@ -107,11 +107,14 @@ type
     class function ProblemTitle(const AProblem: TAtlasProblem; const ASeverity: string): string; static;
     /// <summary>Text eines Sprungziels: "TControl.Paint — Controls.pas:30" (Zeile ab 1).</summary>
     class function TargetText(const ATarget: TAtlasGutterTarget): string; static;
+    /// <summary>Die Spalte zeigt Symbole in Pascal-Quelltexten (.pas, .dpr, .dpk, .inc).</summary>
+    class function Handles(const AFileName: string): Boolean; static;
   end;
 
 implementation
 
 uses
+  Atlas.Core.Editor.SourceFiles,
   System.Generics.Collections,
   System.Math;
 
@@ -367,6 +370,11 @@ end;
 class function TAtlasGutterColumn.TargetText(const ATarget: TAtlasGutterTarget): string;
 begin
   Result := Format('%s — %s:%d', [ATarget.Name, ExtractFileName(ATarget.FileName), ATarget.Line + 1]);
+end;
+
+class function TAtlasGutterColumn.Handles(const AFileName: string): Boolean;
+begin
+  Result := TAtlasSourceFiles.IsPascal(AFileName);
 end;
 
 end.

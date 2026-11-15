@@ -15,6 +15,19 @@
 // TTypeKind = System.TTypeKind, tkRecord = System.TTypeKind.tkRecord) braucht
 // die Unit des Alias nicht: dcc löst ihn auf System auf. Eingebaute Typen,
 // Intrinsics und System zählen nicht als Verweis nach außen.
+//
+// Was dcc beim Einbetten außerdem verlangt (#2309, aus dem Delphi-13-Bau):
+// - die Unit der Routine selbst, sobald ihr Rumpf Verweise hat: Wer
+//   TListView.Columns.Count ohne System.Classes liest, bekommt H2443 für
+//   TCollection.GetCount, auch ohne Vcl.ComCtrls im uses;
+// - die Unit hinter einem Alias als Ergebnistyp (TFont.GetStyle: TFontStyles =
+//   System.UITypes.TFontStyles verlangt System.UITypes);
+// - bei einem Feld eines instanziierten generischen Typs (FItems:
+//   TList<TCollectionItem>) nicht die Unit des generischen Typs: Die
+//   Instanz gehört der Unit der Routine. Erst ein inline-Mitglied der Instanz
+//   (FElements[I] über TList<T>.GetItem) bringt dessen Bedarf mit, samt seiner
+//   Unit (System.Generics.Collections bei TJSONArray.GetValue). Count liest in
+//   Delphi 13 ein Feld (TJSONArray.GetCount braucht nichts weiter).
 
 interface
 
@@ -29,7 +42,8 @@ uses
 type
   /// <summary>Was eine inline-Routine aus Sicht ihrer Unit braucht.</summary>
   TInlineNeeds = record
-    /// <summary>Units, die der Rumpf benutzt (ohne System und die eigene Unit).</summary>
+    /// <summary>Units, die der Aufrufer zum Einbetten braucht (ohne System): die des Rumpfs und, wenn der Rumpf
+    /// Verweise hat, die eigene Unit der Routine.</summary>
     Units: TArray<string>;
     /// <summary>Verweist der Rumpf auf etwas außerhalb seiner Unit, das nicht eingebaut ist und nicht aus System
     /// stammt? Unaufgelöste Verweise zählen mit (H2456, H2457).</summary>
@@ -53,6 +67,8 @@ type
     // Eigener Resolver für die Seite der gerufenen Unit: ResolveNameFrom setzt den Zustand zurück.
     FCallee: TNameResolver;
     FNeeds: TDictionary<string, TInlineNeeds>;
+    // Routinen, deren Bedarf gerade ermittelt wird: verschachtelte inline-Aufrufe können sich im Kreis rufen.
+    FPending: TDictionary<string, Boolean>;
     FCandidates: TDictionary<string, Boolean>;
     // inline-Routinen der eigenen Unit als "container.name" (klein) und alle Namen, die dort Kandidaten sind.
     FOwnInline: TDictionary<string, Boolean>;
@@ -66,9 +82,18 @@ type
     /// sonst.</summary>
     function UnitOfResolved(const AResolved: TResolvedSymbol): string;
     /// <summary>Unit, auf die der Verweis ARef im Rumpf von ACallee zeigt; '' ohne. AExternal: Verweis nach
-    /// außen, der sich nicht auflösen lässt. AOwner: Klasse von ACallee, wenn AHasOwner.</summary>
+    /// außen, der sich nicht auflösen lässt. AOwner: Klasse von ACallee, wenn AHasOwner. Weitere Units (Bedarf
+    /// eines inline-Mitglieds einer generischen Instanz) kommen nach AUnits.</summary>
     function RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
-      const AOwner: TResolvedSymbol; var AExternal: Boolean): string;
+      const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
+    /// <summary>Bedarf des Verweises ":Typ#Mitglied" auf ein Feld eines instanziierten generischen Typs
+    /// (TList&lt;TKunde&gt;): nur der eines inline-Mitglieds, samt dessen Unit. False, wenn das Mitglied unbekannt ist.
+    /// </summary>
+    function AddInstanceMemberNeeds(const ACallee: TInlineCallee; const AType: TResolvedSymbol;
+      const AMember: string; AUnits: TList<string>): Boolean;
+    /// <summary>Unit hinter dem Alias des Ergebnistyps von ACallee (TFontStyles = System.UITypes.TFontStyles);
+    /// '' ohne.</summary>
+    function ResultAliasUnit(const ACallee: TInlineCallee): string;
     function HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
     /// <summary>Füllt FOwnInline und FOwnCandidates aus den Symbolen der eigenen Unit.</summary>
     procedure CollectOwnCandidates;
@@ -222,6 +247,7 @@ begin
   FCallee := TNameResolver.Create(AIndex, AEnsureUnit, ATreeUnits);
   FCallee.Namespaces := ANamespaces;
   FNeeds := TDictionary<string, TInlineNeeds>.Create;
+  FPending := TDictionary<string, Boolean>.Create;
   FCandidates := TDictionary<string, Boolean>.Create;
   FOwnInline := TDictionary<string, Boolean>.Create;
   FOwnCandidates := TDictionary<string, Boolean>.Create;
@@ -232,6 +258,7 @@ begin
   FOwnCandidates.Free;
   FOwnInline.Free;
   FCandidates.Free;
+  FPending.Free;
   FNeeds.Free;
   FCallee.Free;
   inherited;
@@ -282,20 +309,38 @@ begin
 end;
 
 function TInlineCallees.RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
-  const AOwner: TResolvedSymbol; var AExternal: Boolean): string;
+  const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
 var
   mResolved, mMember: TResolvedSymbol;
+  mTypeText, mMemberName: string;
+  mMark: Integer;
 begin
   Result := '';
   if ARef[1] = ':' then
   begin
-    if FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, Copy(ARef, 2, MaxInt), mResolved) then
+    mTypeText := Copy(ARef, 2, MaxInt);
+    mMemberName := '';
+    mMark := Pos(TIndexSymbol.cInlineMemberMark, mTypeText);
+    if mMark > 0 then
     begin
-      Result := UnitOfResolved(mResolved);
+      mMemberName := Copy(mTypeText, mMark + 1, MaxInt);
+      mTypeText := Copy(mTypeText, 1, mMark - 1);
+    end;
+    if not FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, mTypeText, mResolved) then
+    begin
+      AExternal := True;
+    end
+    // Instanz eines generischen Typs: gehört der Unit der Routine; zählt nur ein inline-Mitglied.
+    else if (Pos('<', mTypeText) > 0) and (mMemberName <> '') and not mResolved.Builtin then
+    begin
+      if not AddInstanceMemberNeeds(ACallee, mResolved, mMemberName, AUnits) then
+      begin
+        AExternal := True;
+      end;
     end
     else
     begin
-      AExternal := True;
+      Result := UnitOfResolved(mResolved);
     end;
     Exit;
   end;
@@ -313,6 +358,110 @@ begin
   else if not TResolverText.IsBuiltinTypeName(ARef) and not TUnresolvedNames.IsIntrinsic(ARef) then
   begin
     AExternal := True;
+  end;
+end;
+
+function TInlineCallees.AddInstanceMemberNeeds(const ACallee: TInlineCallee; const AType: TResolvedSymbol;
+  const AMember: string; AUnits: TList<string>): Boolean;
+var
+  mMember: TResolvedSymbol;
+  mTypeUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mTarget, mGetter: TInlineCallee;
+  mUnitName: string;
+  mFound: Boolean;
+begin
+  mFound := False;
+  if AMember = '[]' then
+  begin
+    // Default-Property des generischen Typs selbst (TList<T>.Items).
+    if FCallee.DeclaringUnit(AType, mTypeUnit) then
+    begin
+      for mSymbol in mTypeUnit.Symbols do
+      begin
+        if not mFound and mSymbol.IsDefault and (mSymbol.Kind = TIndexSymbolKind.Property_) and
+          SameText(mSymbol.Container, AType.QualifiedName) then
+        begin
+          mTarget.OwnerUnit := mTypeUnit;
+          mTarget.Symbol := mSymbol;
+          mFound := True;
+        end;
+      end;
+    end;
+  end
+  else
+  begin
+    mFound := FCallee.DeclaredMember(AType, AMember, mMember) and CalleeOf(mMember, mTarget);
+  end;
+  Result := mFound;
+  if not mFound then
+  begin
+    Exit;
+  end;
+  if mTarget.Symbol.Kind = TIndexSymbolKind.Property_ then
+  begin
+    // Ohne Getter-Methode (read FCount) ruft der Rumpf nichts.
+    if not Accessor(mTarget, False, mGetter) then
+    begin
+      Exit;
+    end;
+    mTarget := mGetter;
+  end;
+  if (mTarget.Symbol.InlineRefs = nil) or SameText(mTarget.OwnerUnit.UnitName, ACallee.OwnerUnit.UnitName) then
+  begin
+    Exit;
+  end;
+  // Dessen Bedarf enthält bei einem Rumpf mit Verweisen auch seine Unit (TList<T>.GetItem:
+  // System.Generics.Collections).
+  for mUnitName in NeedsOf(mTarget).Units do
+  begin
+    if AUnits.IndexOf(mUnitName) < 0 then
+    begin
+      AUnits.Add(mUnitName);
+    end;
+  end;
+end;
+
+function TInlineCallees.ResultAliasUnit(const ACallee: TInlineCallee): string;
+var
+  mResolved, mTarget: TResolvedSymbol;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mText: string;
+  mEquals, mPosition: Integer;
+begin
+  Result := '';
+  if not (ACallee.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
+    (ACallee.Symbol.TypeName = '') or (Pos('<', ACallee.Symbol.TypeName) > 0) or
+    not FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.TypeName, mResolved) or mResolved.Builtin or
+    (mResolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or not FCallee.DeclaringUnit(mResolved, mUnit) then
+  begin
+    Exit;
+  end;
+  for mPosition in mUnit.SymbolsNamed(mResolved.Name) do
+  begin
+    mSymbol := mUnit.Symbols[mPosition];
+    if (mSymbol.SelectionRange.StartPos = mResolved.SelectionRange.StartPos) and (mSymbol.Container = '') then
+    begin
+      // Signatur "TFontStyles = System.UITypes.TFontStyles;": nur einfache Aliase, keine eigenen Typen.
+      mEquals := mSymbol.Signature.IndexOf('=');
+      if mEquals < 0 then
+      begin
+        Exit;
+      end;
+      mText := mSymbol.Signature.Substring(mEquals + 1).Trim;
+      if mText.EndsWith(';') then
+      begin
+        mText := mText.Substring(0, mText.Length - 1).TrimRight;
+      end;
+      if StartsText('type ', mText) or (mText.IndexOfAny([' ', '(', '[', '<', '^']) >= 0) or
+        not FCallee.ResolveTypeTextFrom(mUnit, mText, mTarget) then
+      begin
+        Exit;
+      end;
+      Result := UnitOfResolved(mTarget);
+      Exit;
+    end;
   end;
 end;
 
@@ -579,14 +728,16 @@ var
   mOwner: TResolvedSymbol;
   mHasOwner: Boolean;
   mUnits: TList<string>;
+  mIndex: Integer;
 begin
   mKey := UpperCase(ACallee.OwnerUnit.UnitName + '|' + ACallee.Symbol.QualifiedName + '|' +
     IntToStr(ACallee.Symbol.SelectionRange.StartPos.Line));
-  if FNeeds.TryGetValue(mKey, Result) then
+  Result := Default(TInlineNeeds);
+  if FNeeds.TryGetValue(mKey, Result) or FPending.ContainsKey(mKey) then
   begin
     Exit;
   end;
-  Result := Default(TInlineNeeds);
+  FPending.Add(mKey, True);
   mOwner := Default(TResolvedSymbol);
   mHasOwner := (ACallee.Symbol.Container <> '') and
     FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.Container, mOwner);
@@ -599,21 +750,37 @@ begin
       begin
         Continue;
       end;
-      mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, Result.External);
-      if (mUnitName = '') or SameText(mUnitName, ACallee.OwnerUnit.UnitName) or
-        (IndexText(mUnitName, cImplicitUnits) >= 0) then
-      begin
-        Continue;
-      end;
-      Result.External := True;
-      if mUnits.IndexOf(mUnitName) < 0 then
+      mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, mUnits, Result.External);
+      if (mUnitName <> '') and not SameText(mUnitName, ACallee.OwnerUnit.UnitName) and
+        (mUnits.IndexOf(mUnitName) < 0) then
       begin
         mUnits.Add(mUnitName);
       end;
     end;
+    mUnitName := ResultAliasUnit(ACallee);
+    if (mUnitName <> '') and not SameText(mUnitName, ACallee.OwnerUnit.UnitName) and
+      (mUnits.IndexOf(mUnitName) < 0) then
+    begin
+      mUnits.Add(mUnitName);
+    end;
+    // Units außerhalb der eigenen machen den Rumpf „extern“ (H2456, H2457); System und SysInit zählen nicht.
+    for mIndex := mUnits.Count - 1 downto 0 do
+    begin
+      if (IndexText(mUnits[mIndex], cImplicitUnits) >= 0) or SameText(mUnits[mIndex], ACallee.OwnerUnit.UnitName) then
+      begin
+        mUnits.Delete(mIndex);
+      end;
+    end;
+    Result.External := Result.External or (mUnits.Count > 0);
+    // Mit Verweisen braucht der Aufrufer auch die Unit der Routine (TCollection.GetCount, #2309).
+    if not IsWithoutRefs(ACallee.Symbol) and (mUnits.IndexOf(ACallee.OwnerUnit.UnitName) < 0) then
+    begin
+      mUnits.Add(ACallee.OwnerUnit.UnitName);
+    end;
     Result.Units := mUnits.ToArray;
   finally
     mUnits.Free;
+    FPending.Remove(mKey);
   end;
   FNeeds.Add(mKey, Result);
 end;

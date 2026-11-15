@@ -36,6 +36,7 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StepInto,
+  Atlas.Core.Debug.StepIntoJump,
   Atlas.UI.Debug.StepInto;
 
 type
@@ -48,16 +49,6 @@ type
     /// <summary>Zeitlimit je Auswertung des Laufzeittyps.</summary>
     cEvaluateMs = 1500;
     cTickMs = 100;
-  private type
-    TJumpState = record
-      Running: Boolean;
-      SeenRunning: Boolean;
-      StartFile: string;
-      StartLine: Integer;
-      Caption: string;
-      Target: TAtlasStepTarget;
-      FollowLine: Integer;
-    end;
   private class var
     FInstance: TAtlasIdeStepInto;
   private
@@ -71,7 +62,7 @@ type
     FAnswer: TAtlasStepAnswer;
     FRows: TArray<TAtlasStepRow>;
     // Laufender Sprung.
-    FJump: TJumpState;
+    FJump: TAtlasStepJump;
     /// <summary>Vorübergehende Haltepunkte auf Ziel und Folgeanweisung.</summary>
     FBreaks: TArray<IOTABreakpoint>;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -146,22 +137,22 @@ end;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
 function ListKey(AWindow: TAtlasStepIntoWindow; AKey: Word): Boolean;
+var
+  mDigit: Integer;
 begin
   Result := True;
-  case AKey of
-    VK_RETURN:
+  case TAtlasStepIntoJump.KeyOf(AKey, mDigit) of
+    TAtlasStepKey.Accept:
       AWindow.Accept;
-    VK_ESCAPE:
+    TAtlasStepKey.Cancel:
       AWindow.Cancel;
-    VK_UP:
+    TAtlasStepKey.Up:
       AWindow.MoveRow(-1);
-    VK_DOWN:
+    TAtlasStepKey.Down:
       AWindow.MoveRow(1);
     // Nicht wählbare Ziffer: Liste bleibt offen, die Taste geht nicht in den Editor.
-    Ord('1')..Ord('9'):
-      AWindow.AcceptDigit(AKey - Ord('0'));
-    VK_NUMPAD1..VK_NUMPAD9:
-      AWindow.AcceptDigit(AKey - VK_NUMPAD0);
+    TAtlasStepKey.Digit:
+      AWindow.AcceptDigit(mDigit);
   else
     Result := False;
   end;
@@ -349,17 +340,15 @@ begin
       Result := CanBreak(AFileName);
     end);
   // Höchstens ein Aufruf: wie F7.
-  if TAtlasStepInto.ActsLikeStepInto(FRows) then
-  begin
-    StepInto;
-  end
-  else if TAtlasStepInto.NextAvailable(FRows, 0, 1) < 0 then
-  begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNothing));
-    StepInto;
-  end
+  case TAtlasStepIntoJump.Offer(FRows) of
+    TAtlasStepOffer.StepInto:
+      StepInto;
+    TAtlasStepOffer.Nothing:
+      begin
+        Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNothing));
+        StepInto;
+      end;
   else
-  begin
     ShowWindow;
   end;
 end;
@@ -438,24 +427,22 @@ procedure TAtlasIdeStepInto.Arrived(const AProcess: IOTAProcess);
 var
   mFileName: string;
   mLine: Integer;
+  mArrival: TAtlasStepArrival;
 begin
-  // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
   TAtlasIdeBreakpoints.Position(AProcess.CurrentThread, mFileName, mLine);
-  if not FJump.SeenRunning and SameText(mFileName, FJump.StartFile) and (mLine = FJump.StartLine) then
+  mArrival := FJump.Arrival(mFileName, mLine, FFileName, AProcess.ProcessState = psStopped);
+  // Noch am Start und nie gelaufen: Run ist noch nicht angekommen.
+  if mArrival = TAtlasStepArrival.NotYet then
   begin
     Exit;
   end;
   Finish;
-  if SameText(mFileName, FJump.Target.FileName) and (mLine = FJump.Target.Line) then
-  begin
-    Exit;
-  end;
-  if SameText(mFileName, FFileName) and (mLine = FJump.FollowLine) then
+  if mArrival = TAtlasStepArrival.NotCalled then
   begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FJump.Caption,
       FJump.FollowLine + 1]));
   end
-  else if AProcess.ProcessState = psStopped then
+  else if mArrival = TAtlasStepArrival.Elsewhere then
   begin
     Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetElsewhere,
       [ExtractFileName(mFileName), mLine + 1]));
@@ -464,7 +451,7 @@ end;
 
 procedure TAtlasIdeStepInto.Accept(AIndex: Integer);
 begin
-  if (AIndex < 0) or (AIndex > High(FRows)) or not FRows[AIndex].Available then
+  if not TAtlasStepIntoJump.CanAccept(FRows, AIndex) then
   begin
     Close;
     Exit;
@@ -489,8 +476,7 @@ begin
   FJump.FollowLine := FAnswer.FollowLine;
   FBreaks := [TAtlasIdeBreakpoints.Add(FJump.Target.FileName, FJump.Target.Line)];
   // Hält das Programm zuerst an der Folgeanweisung, ist der Aufruf nicht erfolgt.
-  if (FJump.FollowLine >= 0) and
-    not (SameText(FJump.Target.FileName, FFileName) and (FJump.Target.Line = FJump.FollowLine)) then
+  if FJump.NeedsFollowBreak(FFileName) then
   begin
     FBreaks := FBreaks + [TAtlasIdeBreakpoints.Add(FFileName, FJump.FollowLine)];
   end;
@@ -569,7 +555,7 @@ begin
   end;
   mValue := TAtlasIdeProjectContext.ConfigurationValue(mProject, mProject.CurrentConfiguration,
     mProject.CurrentPlatform, 'DCC_DebugDCUs');
-  Result := SameText(Trim(mValue), 'true');
+  Result := TAtlasStepIntoJump.DebugDcus(mValue);
 end;
 
 class function TAtlasIdeStepInto.Evaluate(const AExpression: string; out AValue: string): Boolean;

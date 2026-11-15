@@ -30,6 +30,16 @@ type
     procedure CaptionAndName;
     [Test]
     procedure Accelerator;
+    [Test]
+    procedure AcceleratorOfCaption;
+    [Test]
+    procedure SnappedAboveToTextEdge;
+    [Test]
+    procedure SnappedLeftToBaseline;
+    [Test]
+    procedure FollowKeepsOffset;
+    [Test]
+    procedure NewLabelSideAndGap;
   end;
 
 implementation
@@ -124,6 +134,52 @@ begin
   Assert.AreEqual('P&LZ:', TAtlasLabelPairs.FreeAccelerator('PLZ:', 'sp'));
   Assert.AreEqual('', TAtlasLabelPairs.FreeAccelerator('&Name:', ''), 'hat schon eins');
   Assert.AreEqual('', TAtlasLabelPairs.FreeAccelerator('AB:', 'ab'), 'keiner frei');
+end;
+
+procedure TAtlasLabelPairsTests.AcceleratorOfCaption;
+begin
+  Assert.AreEqual('N', TAtlasLabelPairs.AcceleratorOf('&name:'));
+  Assert.AreEqual('P', TAtlasLabelPairs.AcceleratorOf('Ort/&Plz'));
+  Assert.AreEqual('', TAtlasLabelPairs.AcceleratorOf('Name:'));
+  Assert.AreEqual('', TAtlasLabelPairs.AcceleratorOf('Name&'));
+end;
+
+procedure TAtlasLabelPairsTests.SnappedAboveToTextEdge;
+var
+  mPoint: TPoint;
+begin
+  mPoint := TAtlasLabelPairs.Snapped(Rect(10, 20, 60, 33), Rect(16, 36, 116, 57), TAtlasPairSide.Above, -1, -1);
+  Assert.AreEqual(16 + TAtlasLabelPairs.cTextIndent, mPoint.X);
+  Assert.AreEqual(20, mPoint.Y);
+end;
+
+procedure TAtlasLabelPairsTests.SnappedLeftToBaseline;
+var
+  mPoint: TPoint;
+begin
+  mPoint := TAtlasLabelPairs.Snapped(Rect(10, 20, 60, 33), Rect(70, 18, 170, 39), TAtlasPairSide.Left, 11, 34);
+  Assert.AreEqual(10, mPoint.X);
+  Assert.AreEqual(23, mPoint.Y);
+  // Ohne Grundlinie bleibt das Label stehen.
+  mPoint := TAtlasLabelPairs.Snapped(Rect(10, 20, 60, 33), Rect(70, 18, 170, 39), TAtlasPairSide.Left, -1, 34);
+  Assert.AreEqual(20, mPoint.Y);
+end;
+
+procedure TAtlasLabelPairsTests.FollowKeepsOffset;
+var
+  mPoint: TPoint;
+begin
+  mPoint := TAtlasLabelPairs.Follow(Rect(10, 20, 60, 33), Rect(70, 18, 170, 39), Rect(90, 8, 190, 29));
+  Assert.AreEqual(30, mPoint.X);
+  Assert.AreEqual(10, mPoint.Y);
+end;
+
+procedure TAtlasLabelPairsTests.NewLabelSideAndGap;
+begin
+  Assert.AreEqual<TAtlasPairSide>(TAtlasPairSide.Above, TAtlasLabelPairs.NewSide(True));
+  Assert.AreEqual<TAtlasPairSide>(TAtlasPairSide.Left, TAtlasLabelPairs.NewSide(False));
+  Assert.AreEqual(TAtlasLabelPairs.cAboveGap, TAtlasLabelPairs.GapOf(TAtlasPairSide.Above));
+  Assert.AreEqual(TAtlasLabelPairs.cLeftGap, TAtlasLabelPairs.GapOf(TAtlasPairSide.Left));
 end;
 
 end.

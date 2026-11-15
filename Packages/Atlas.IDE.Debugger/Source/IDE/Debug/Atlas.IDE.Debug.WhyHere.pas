@@ -34,6 +34,7 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.WhyHere,
+  Atlas.Core.Debug.StopProgress,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Forecast,
   Atlas.IDE.Debug.ValueRequest,
@@ -61,9 +62,6 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-    {$SCOPEDENUMS ON}
-    TPhase = (Idle, Location, Request, Evaluate);
-    {$SCOPEDENUMS OFF}
   private class var
     FInstance: TAtlasIdeDebugWhyHere;
   private
@@ -77,10 +75,7 @@ type
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
-    FPhase: TPhase;
-    FStop: Integer;
-    FRequest: Integer;
-    FRetries: Integer;
+    FProgress: TAtlasStopProgress;
     FFileName: string;
     FLine: Integer;
     FText: string;
@@ -125,6 +120,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Forecast,
+  Atlas.Core.Debug.WhyHereFlow,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -265,8 +261,7 @@ begin
   end;
   FValues.Cancel;
   // Antworten noch laufender Anfragen verwerfen.
-  Inc(FRequest);
-  FPhase := TPhase.Idle;
+  FProgress.Discard;
   FWhy.Clear;
   FForecast.Clear;
   FHits.Clear;
@@ -285,9 +280,7 @@ begin
   begin
     Exit;
   end;
-  FStop := TAtlasIdeDebugSession.StopCount;
-  FRetries := 0;
-  FPhase := TPhase.Location;
+  FProgress.Restart(TAtlasIdeDebugSession.StopCount);
   if ReadLocation then
   begin
     Ask;
@@ -302,20 +295,20 @@ begin
     Exit;
   end;
   try
-    case FPhase of
-      TPhase.Location:
+    case FProgress.Phase of
+      TAtlasStopPhase.Location:
         begin
           FTimer.Enabled := False;
           if not StillStopped then
           begin
-            FPhase := TPhase.Idle;
+            FProgress.Phase := TAtlasStopPhase.Idle;
           end
           else if ReadLocation then
           begin
             Ask;
           end;
         end;
-      TPhase.Evaluate:
+      TAtlasStopPhase.Evaluate:
         EvaluateSlice;
     else
       FTimer.Enabled := False;
@@ -334,39 +327,32 @@ var
   mFrames: TAtlasDebugFrames;
   mBuffer: IOTAEditBuffer;
   mRead: TAtlasDebugStackRead;
+  mWithoutSource: Boolean;
 begin
-  Result := False;
   mBuffer := nil;
   mRead := TAtlasIdeDebugSession.ReadStack(TAtlasIdeDebugSession.StoppedThread, 1, mFrames);
   // Nur in Dateien mit Quelltext (#1878, Punkt 4).
-  if (mRead = TAtlasDebugStackRead.None) or ((mRead = TAtlasDebugStackRead.Ready) and
-    ((Length(mFrames) = 0) or not mFrames[0].HasSource)) then
-  begin
-    FPhase := TPhase.Idle;
-    Exit;
-  end;
-  if mRead = TAtlasDebugStackRead.Ready then
+  mWithoutSource := (mRead = TAtlasDebugStackRead.Ready) and ((Length(mFrames) = 0) or not mFrames[0].HasSource);
+  if (mRead = TAtlasDebugStackRead.Ready) and not mWithoutSource then
   begin
     TAtlasIdeDebugSources.MarkFrames(mFrames);
     mBuffer := TAtlasIdeFiles.BufferOf(mFrames[0].FileName);
   end;
-  if mBuffer = nil then
-  begin
-    // LLDB liefert den Stapel bzw. die IDE öffnet die Datei erst gleich danach.
-    Inc(FRetries);
-    FTimer.Interval := cTickMs * cLocationTicks;
-    FTimer.Enabled := FRetries <= cLocationRetries;
-    if not FTimer.Enabled then
-    begin
-      FPhase := TPhase.Idle;
-    end;
-    Exit;
+  // LLDB liefert den Stapel bzw. die IDE öffnet die Datei erst gleich danach.
+  case FProgress.Locate(mRead = TAtlasDebugStackRead.None, mWithoutSource, mBuffer <> nil, cLocationRetries) of
+    TAtlasStopLocation.Retry:
+      begin
+        FTimer.Interval := cTickMs * cLocationTicks;
+        FTimer.Enabled := True;
+        Exit(False);
+      end;
+    TAtlasStopLocation.GiveUp:
+      Exit(False);
   end;
   FFileName := mBuffer.FileName;
   FLine := mFrames[0].Line - 1;
   FText := TAtlasEditorBuffer.Text(mBuffer);
   FLines := FText.Split([#13#10, #10]);
-  FPhase := TPhase.Request;
   Result := True;
 end;
 
@@ -375,8 +361,8 @@ var
   mBlocks: TAtlasWhyHereBlocks;
   mStarted: Boolean;
 begin
-  // Nur die jüngste Antwort (Drop zählt FRequest weiter), und nur, solange derselbe Halt besteht.
-  if (ARequest <> FRequest) or not StillStopped or not Enabled then
+  // Nur die jüngste Antwort (Drop zählt die Anfragen weiter), und nur, solange derselbe Halt besteht.
+  if not FProgress.IsNewest(ARequest) or not StillStopped or not Enabled then
   begin
     Exit;
   end;
@@ -397,7 +383,7 @@ begin
   begin
     Exit;
   end;
-  FPhase := TPhase.Evaluate;
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
@@ -442,7 +428,7 @@ begin
     FWhy.Put(ARef, AText, AOk);
   end;
   // Verzögerte Antworten kommen außerhalb einer Zeitscheibe: dann neu zeichnen.
-  if FPhase = TPhase.Evaluate then
+  if FProgress.Phase = TAtlasStopPhase.Evaluate then
   begin
     TAtlasDebugLineEnd.Invalidate;
   end;
@@ -450,7 +436,7 @@ end;
 
 function TAtlasIdeDebugWhyHere.StillStopped: Boolean;
 begin
-  Result := (TAtlasIdeDebugSession.StopCount = FStop) and (TAtlasIdeDebugSession.StoppedThread <> nil);
+  Result := FProgress.StillAt(TAtlasIdeDebugSession.StopCount, TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 /// <summary>Rückruf für die Antwort der Anfrage ARequest; erreicht das Objekt nur, solange es besteht.</summary>
@@ -471,6 +457,7 @@ var
   mSession: TLspSession;
   mUri: string;
   mAsked: Boolean;
+  mRequest: Integer;
 begin
   FTimer.Enabled := False;
   mSession := nil;
@@ -480,28 +467,28 @@ begin
   end;
   if (mSession = nil) or not Assigned(FRun) then
   begin
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
   mSession.Sync(FFileName, FText);
   mUri := TLspSession.PathToUri(FFileName);
-  Inc(FRequest);
+  mRequest := FProgress.NextRequest;
   mAsked := False;
   if TAtlasIdeSettings.Current.DebugWhyHere then
   begin
     mAsked := FRun(TAtlasWhyHere.cCommand, TAtlasWhyHere.Arguments(mUri, FLine,
-      TAtlasIdeSettings.Current.DebugWhyHereDepth), cRequestTimeoutMs, AnswerTo(FRequest, False));
+      TAtlasIdeSettings.Current.DebugWhyHereDepth), cRequestTimeoutMs, AnswerTo(mRequest, False));
   end;
   // Vorhersage (#2169): eigene Anfrage im selben Halt.
   if FForecast.Wanted and FRun(TAtlasForecast.cCommand, TAtlasIdeDebugForecast.Arguments(mUri, FLine),
-    cRequestTimeoutMs, AnswerTo(FRequest, True)) then
+    cRequestTimeoutMs, AnswerTo(mRequest, True)) then
   begin
     mAsked := True;
   end;
   if not mAsked then
   begin
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
   end;
 end;
 
@@ -518,7 +505,7 @@ begin
   try
     mLine := Context.LogicalLineNum - 1;
     FForecast.PaintDimmed(Rect, Context);
-    mText := Trim(FWhy.LineText(Context.FileName, mLine, WhyHereTexts) + '  ' +
+    mText := TAtlasWhyHereFlow.LineText(FWhy.LineText(Context.FileName, mLine, WhyHereTexts),
       FForecast.LineText(Context.FileName, mLine));
     if (mText = '') or (mLine < 0) or (mLine > High(FLines)) or not TAtlasDebugLineEnd.Matches(Context, FLines[mLine])
       then
@@ -557,23 +544,10 @@ begin
     Exit;
   end;
   FWhy.AllowCalls(ALine);
-  FPhase := TPhase.Evaluate;
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
   EvaluateSlice;
-end;
-
-/// <summary>Nächster Teil zum Auswerten: erst „Warum bin ich hier?“, dann die Vorhersage (AForecast).</summary>
-function NextOf(AWhy: TAtlasWhyHere; AForecast: TAtlasIdeDebugForecast; out ARef: TAtlasWhyHereRef;
-  out AIsForecast: Boolean): Boolean;
-begin
-  AIsForecast := False;
-  Result := AWhy.NextPending(ARef);
-  if not Result then
-  begin
-    AIsForecast := True;
-    Result := AForecast.Model.NextPending(ARef);
-  end;
 end;
 
 procedure TAtlasIdeDebugWhyHere.EvaluateSlice;
@@ -594,19 +568,20 @@ begin
   mChanged := False;
   mGoOn := True;
   mStartedAt := TAtlasTicks.Now;
-  while mGoOn and (TAtlasTicks.Since(mStartedAt) < cSliceMs) and NextOf(FWhy, FForecast, mRef, mForecast) do
+  while mGoOn and (TAtlasTicks.Since(mStartedAt) < cSliceMs) and
+    TAtlasWhyHereFlow.NextOf(FWhy, FForecast.Model, mRef, mForecast) do
   begin
     mGoOn := EvaluateOne(mRef, mForecast);
     mChanged := True;
   end;
-  if FPhase <> TPhase.Evaluate then
+  if FProgress.Phase <> TAtlasStopPhase.Evaluate then
   begin
     Exit;
   end;
-  if not FValues.Busy and not NextOf(FWhy, FForecast, mRef, mForecast) then
+  if not FValues.Busy and not TAtlasWhyHereFlow.NextOf(FWhy, FForecast.Model, mRef, mForecast) then
   begin
     FTimer.Enabled := False;
-    FPhase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
   end;
   if mChanged then
   begin
@@ -662,19 +637,20 @@ begin
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger,
         procedure
+        var
+          mInstance: TAtlasIdeDebugWhyHere;
         begin
           if TAtlasIdeDebugWhyHere.FInstance = nil then
           begin
             Exit;
           end;
-          if Length(TAtlasIdeDebugWhyHere.FInstance.FWhy.CallsAt(ALine)) > 0 then
-          begin
-            TAtlasIdeDebugWhyHere.FInstance.AskCalls(ALine);
-          end
-          else if TAtlasIdeDebugWhyHere.FInstance.FForecast.LineText(TAtlasIdeDebugWhyHere.FInstance.FFileName,
-            ALine) <> '' then
-          begin
-            TAtlasIdeDebugWhyHere.FInstance.FForecast.ShowMenu(APoint);
+          mInstance := TAtlasIdeDebugWhyHere.FInstance;
+          case TAtlasWhyHereFlow.Click(Length(mInstance.FWhy.CallsAt(ALine)),
+            mInstance.FForecast.LineText(mInstance.FFileName, ALine)) of
+            TAtlasWhyHereClick.Calls:
+              mInstance.AskCalls(ALine);
+            TAtlasWhyHereClick.Forecast:
+              mInstance.FForecast.ShowMenu(APoint);
           end;
         end);
     end);

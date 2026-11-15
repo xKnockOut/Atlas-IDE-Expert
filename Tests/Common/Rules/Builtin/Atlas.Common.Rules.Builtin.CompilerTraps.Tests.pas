@@ -18,6 +18,10 @@ type
     procedure ExitArrayLiteralSilentCases;
     [Test]
     procedure CaptionStringHelper;
+    /// <summary>#2309: TCaption über neu deklarierte Properties (Caption protected im Vorfahren einer anderen
+    /// Unit, wie TControl/TLabel) und über Felder und Unterobjekte.</summary>
+    [Test]
+    procedure CaptionThroughRedeclaredProperties;
     [Test]
     procedure UsesOrderHidesBitmap;
     [Test]
@@ -111,6 +115,33 @@ begin
     'dafür nicht (wie E2018). string(...) darum setzen.|', Messages(mFound));
   mFixed := TChangeSignature.ApplyEdits(mSource, mFound[0].Fixes[0].Edits);
   Assert.AreEqual(StringReplace(mSource, 'K.Caption.StartsWith', 'string(K.Caption).StartsWith', []), mFixed);
+end;
+
+procedure TCompilerTrapsTests.CaptionThroughRedeclaredProperties;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  mIndex := BasisIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Werk.Steuer;'#10'interface'#10'uses'#10'  Werk.Basis;'#10 +
+    'type'#10'  TSteuer = class'#10'  private'#10'    function GetText: TCaption;'#10'  protected'#10 +
+    '    property Caption: TCaption read GetText;'#10'    property Text: TCaption read GetText;'#10'  end;'#10 +
+    '  TBeschriftung = class(TSteuer)'#10'  published'#10'    property Caption;'#10'  end;'#10 +
+    '  TEingabe = class(TSteuer)'#10'  public'#10'    property Text;'#10'  end;'#10'  TNotiz = class(TEingabe)'#10 +
+    '  end;'#10'implementation'#10'function TSteuer.GetText: TCaption;'#10'begin'#10'  Result := '''';'#10'end;'#10 +
+    'end.', 'C:\P\Werk.Steuer.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Werk.Steuer;'#10'type'#10'  TInhalt = class'#10'  public'#10 +
+    '    Notiz: TNotiz;'#10'    Titel: TBeschriftung;'#10'  end;'#10'  TTeile = class'#10'  private'#10 +
+    '    FInhalt: TInhalt;'#10'  public'#10'    property Inhalt: TInhalt read FInhalt;'#10'  end;'#10 +
+    'implementation'#10'procedure Lauf(ATeile: TTeile; ASteuer: TSteuer);'#10'begin'#10 +
+    '  if ATeile.Inhalt.Notiz.Text.StartsWith(''a'') or ATeile.Inhalt.Titel.Caption.Contains(''b'') then'#10 +
+    '    Exit;'#10'  if ASteuer.Caption.Contains(''c'') then'#10'    Exit;'#10'end;'#10'end.';
+  // ASteuer.Caption ist hier nicht sichtbar (protected, E2362 ist Sache von inaccessible-member).
+  Assert.AreEqual('19: ATeile.Inhalt.Notiz.Text ist vom Typ TCaption, einem eigenen String-Typ: StartsWith aus ' +
+    'TStringHelper gilt dafür nicht (wie E2018). string(...) darum setzen.|19: ATeile.Inhalt.Titel.Caption ist vom ' +
+    'Typ TCaption, einem eigenen String-Typ: Contains aus TStringHelper gilt dafür nicht (wie E2018). string(...) ' +
+    'darum setzen.|', Messages(TRuleAssert.IndexFindings(TCaptionStringHelperRule.Create, mSource, mIndex, '',
+    'U.pas')));
 end;
 
 procedure TCompilerTrapsTests.UsesOrderHidesBitmap;

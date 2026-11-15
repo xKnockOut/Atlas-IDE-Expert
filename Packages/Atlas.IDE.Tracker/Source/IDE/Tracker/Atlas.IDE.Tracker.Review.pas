@@ -129,7 +129,6 @@ uses
 const
   /// <summary>Zeitlimit je Aufruf der Versionsverwaltung.</summary>
   cVcsTimeoutMs = 30000;
-  cProjectExtension = '.dproj';
   cLogReview = 'Review: %s, %d candidates';
   cLogBack = 'Review: back %s';
 
@@ -185,8 +184,6 @@ var
   mHistory: IAtlasVcsHistory;
   mItems: TArray<TAtlasVcsChange>;
   mRefs: TArray<TAtlasVcsRef>;
-  mOptions: TAtlasIssuesOptions;
-  mPlan: TAtlasIssueStartPlan;
 begin
   mVcs := TAtlasIdeVcs.ForFolder(AFolder, TAtlasIdeVcs.AtLeast(cVcsTimeoutMs));
   if mVcs = nil then
@@ -206,15 +203,8 @@ begin
   begin
     Exit;
   end;
-  // Branch nach Muster (issues.branchPattern), auch wenn issues.start „merken“ sagt.
-  mOptions := AOptions;
-  mOptions.Start := TAtlasIssueStart.Branch;
-  mPlan := TAtlasMyIssues.PlanStart(Kind, mOptions, AIssue);
-  if not mPlan.Valid then
-  begin
-    mPlan.Branch := '';
-  end;
-  Candidates := TAtlasTrackerReview.Candidates(ARequest, mPlan.Branch, mRefs);
+  Candidates := TAtlasTrackerReview.Candidates(ARequest, TAtlasTrackerReview.PlannedBranch(Kind, AOptions, AIssue),
+    mRefs);
   Choices := TAtlasTrackerReview.AllBranches(mRefs);
 end;
 
@@ -650,15 +640,7 @@ end;
 function TAtlasIdeIssueReview.BuildProject: string;
 begin
   // Ein Ordner als Tracker-Projekt (#1927) lässt sich nicht bauen: dann das aktive Projekt der IDE.
-  Result := FProject;
-  if not SameText(ExtractFileExt(Result), cProjectExtension) then
-  begin
-    Result := TAtlasIdeFiles.ActiveProjectFile;
-  end;
-  if not SameText(ExtractFileExt(Result), cProjectExtension) then
-  begin
-    Result := '';
-  end;
+  Result := TAtlasTrackerReview.BuildProject(FProject, TAtlasIdeFiles.ActiveProjectFile);
 end;
 
 procedure TAtlasIdeIssueReview.Review(const AIssue: TAtlasTrackerIssue; const AOptions: TAtlasIssuesOptions);
@@ -670,7 +652,7 @@ begin
   if FDialog <> nil then
   begin
     FDialog.Show;
-    if not SameText(FState.Key, AIssue.Key) then
+    if TAtlasTrackerReview.OtherRunning(FState.Key, AIssue.Key) then
     begin
       FDialog.ShowNote(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBusy, [FState.Key]));
     end;
@@ -688,11 +670,7 @@ begin
   // Eigener Stand (#2052): Arbeitsstand des aktiven Issues sichern, bevor der Branch wechselt.
   TAtlasTrackerIssueWorkLink.BeforeStart(FContext, FProject, AIssue.Key);
   FState := TAtlasReviewState.Create(AIssue.Key, TAtlasIdeSettings.Current.IssuesReviewBuild);
-  FState.OwnKey := TAtlasTrackerIssueWorkLink.ActiveKey(FContext, FProject);
-  if SameText(FState.OwnKey, AIssue.Key) then
-  begin
-    FState.OwnKey := '';
-  end;
+  FState.OwnKey := TAtlasTrackerReview.OwnKey(TAtlasTrackerIssueWorkLink.ActiveKey(FContext, FProject), AIssue.Key);
   FState.Marks[TAtlasReviewStep.Saved] := TAtlasReviewMark.Running;
   OpenDialog;
   Inspect(AIssue, AOptions);

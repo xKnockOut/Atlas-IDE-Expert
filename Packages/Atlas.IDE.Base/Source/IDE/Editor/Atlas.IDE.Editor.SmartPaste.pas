@@ -135,23 +135,6 @@ begin
   Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
-function IsPascal(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
-end;
-
-/// <summary>uses gibt es nur in Units und Programmen.</summary>
-function HasUses(const AFileName: string): Boolean;
-var
-  mExt: string;
-begin
-  mExt := LowerCase(ExtractFileExt(AFileName));
-  Result := (mExt = '.pas') or (mExt = '.dpr');
-end;
-
 /// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
 function CaretPoint: TPoint;
 var
@@ -443,7 +426,7 @@ end;
 function Pastable(const AView: IOTAEditView): Boolean;
 begin
   Result := (AView <> nil) and (AView.Buffer <> nil) and not AView.Buffer.IsReadOnly and
-    IsPascal(AView.Buffer.FileName);
+    TAtlasSmartPaste.Handles(AView.Buffer.FileName);
 end;
 
 /// <summary>Steht AClipLines direkt vor dem Cursor von AView? ALine: Zeile des Cursors (ab 0), ACharacter: Zeichen
@@ -503,7 +486,7 @@ begin
   begin
     Indent(mView, FStartLine, FStartCharacter, FEndCharacter);
   end;
-  if TAtlasSmartPaste.WantsUses(mMode) and HasUses(FFileName) then
+  if TAtlasSmartPaste.WantsUses(mMode) and TAtlasSmartPaste.OffersUses(FFileName) then
   begin
     Ask(mView);
   end;

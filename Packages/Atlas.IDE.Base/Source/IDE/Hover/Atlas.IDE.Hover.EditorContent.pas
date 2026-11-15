@@ -168,9 +168,6 @@ type
     procedure DebugMenuClick(Sender: TObject);
     /// <summary>Refresh, solange derselbe Bezeichner im Tooltip steht (nachgereichte Kinder, #895).</summary>
     function DebugTreeRefresh: TProc;
-    /// <summary>Wert, auf den die Aktionen wirken: die gewählte Zeile des aufgeklappten Werts (#895), sonst AValue.
-    /// </summary>
-    class function Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue; static;
   protected
     // Ausdruck unter der Maus ('' ohne angehaltenen Prozess) und sein Wert.
     FDebugExpression: string;
@@ -236,13 +233,11 @@ implementation
 uses
   Winapi.Windows,
   Winapi.ShellAPI,
-  System.StrUtils,
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Documentation.Contract,
-  Atlas.Core.Hover.Declaration,
-  Atlas.Core.Settings.Reassigned,
+  Atlas.Core.Hover.Plan,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
@@ -319,12 +314,11 @@ end;
 function ShowsReassigned(const AData: TAtlasHoverData): Boolean;
 var
   mTargets, mStyle, mColor: string;
-  mTarget: TAtlasReassignedTarget;
+  mEnabled: Boolean;
 begin
-  Result := TAtlasIdeSettings.ReassignedOn(mTargets, mStyle, mColor) and
-    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) and
-    TAtlasReassignedNames.TryTarget(AData.ReassignedTarget, mTarget);
-  Result := Result and (mTarget in TAtlasReassignedNames.ParseTargets(mTargets));
+  mEnabled := TAtlasIdeSettings.ReassignedOn(mTargets, mStyle, mColor) and
+    not TAtlasGuard.Disabled(TAtlasFeature.Reassigned);
+  Result := TAtlasHoverPlan.ShowsReassigned(mEnabled, mTargets, AData.ReassignedTarget);
 end;
 
 function TAtlasEditorHoverContent.CurrentView: TAtlasHoverView;
@@ -477,7 +471,7 @@ begin
     // Aktionen wirken auf die gewählte Zeile (#895).
     if Assigned(FOnDebugActions) then
     begin
-      Result.DebugValue.Actions := FOnDebugActions(Subject(Result.DebugValue, FTip.DebugSelectedIndex));
+      Result.DebugValue.Actions := FOnDebugActions(TAtlasHoverPlan.Subject(Result.DebugValue, FTip.DebugSelectedIndex));
     end;
   end;
 end;
@@ -504,25 +498,13 @@ begin
     Exit;
   end;
   // Kein Wert (Fehler, weitergelaufen) und sonst nichts zu zeigen: schließen.
-  if not FDebugValue.Visible and not FHistory.Current.Found and (Length(FProblems) = 0) then
+  if not TAtlasHoverPlan.HasContent(FHistory.Current.Found, Length(FProblems), FDebugValue.Visible) then
   begin
     Hide;
   end
   else
   begin
     Refresh;
-  end;
-end;
-
-/// <summary>Typ der Deklaration, dann seine Vorfahren (für die Visualisierer, #835).</summary>
-function TypeChain(const AData: TAtlasHoverData): TArray<string>;
-var
-  mAncestor: TAtlasHoverTypeRef;
-begin
-  Result := TArray<string>.Create(TAtlasHoverDeclaration.DeclaredType(AData.Declaration));
-  for mAncestor in AData.Ancestors do
-  begin
-    Result := Result + [mAncestor.Name];
   end;
 end;
 
@@ -533,8 +515,7 @@ var
   mAliveRef: IInterface;
 begin
   Result := AValue;
-  if (AValue.State <> TAtlasDebugValueState.Failed) or (AValue.Note.Caption <> '') or (AKey <> FKey) or
-    not Assigned(FOnExplain) then
+  if not TAtlasHoverPlan.NeedsExplanation(AValue) or (AKey <> FKey) or not Assigned(FOnExplain) then
   begin
     Exit;
   end;
@@ -568,11 +549,11 @@ begin
     Exit;
   end;
   // Einmal je Wert und Typ: Die Visualisierer werten im Debugger aus, Refresh kommt öfter.
-  mKey := FDebugValue.Expression + #0 + FDebugValue.Text + #0 + mData.Declaration;
+  mKey := TAtlasHoverPlan.VisualizeKey(FDebugValue, mData.Declaration);
   if mKey <> FVisualizedKey then
   begin
     FVisualizedKey := mKey;
-    FVisualized := FOnVisualize(FDebugValue.Expression, TypeChain(mData), FDebugValue.Text);
+    FVisualized := FOnVisualize(FDebugValue.Expression, TAtlasHoverPlan.TypeChain(mData), FDebugValue.Text);
   end;
   if FVisualized <> '' then
   begin
@@ -605,7 +586,7 @@ var
   mLine: Integer;
 begin
   try
-    mValue := Subject(FTip.View.DebugValue, FTip.DebugSelectedIndex);
+    mValue := TAtlasHoverPlan.Subject(FTip.View.DebugValue, FTip.DebugSelectedIndex);
     if not Assigned(FOnDebugAction) or (FView = nil) or (AIndex < 0) or (AIndex > High(mValue.Actions)) then
     begin
       Exit;
@@ -697,26 +678,6 @@ begin
     end;
 end;
 
-class function TAtlasEditorHoverDebug.Subject(const AValue: TAtlasDebugValue; ARow: Integer): TAtlasDebugValue;
-begin
-  Result := AValue;
-  if (ARow < 0) or (ARow > High(AValue.Rows)) or AValue.Rows[ARow].More then
-  begin
-    Exit;
-  end;
-  Result.Expression := AValue.Rows[ARow].Expression;
-  Result.Text := AValue.Rows[ARow].Text;
-  Result.OldText := AValue.Rows[ARow].OldText;
-  Result.Expandable := AValue.Rows[ARow].Expandable;
-  Result.Expanded := AValue.Rows[ARow].Expanded;
-  Result.Rows := nil;
-  // Ausstehender Wert oder nicht ausgewerteter Getter: noch nichts zum Kopieren, Anheften oder Ändern.
-  if AValue.Rows[ARow].Pending or AValue.Rows[ARow].Lazy then
-  begin
-    Result.State := TAtlasDebugValueState.Pending;
-  end;
-end;
-
 procedure TAtlasEditorHoverDebug.EvaluateDebugValue;
 var
   mOwner: TAtlasEditorHoverDebug;
@@ -795,8 +756,6 @@ end;
 
 procedure TAtlasEditorHoverActions.ExampleDone(const AKey: string; AProblem: Integer; const ARule: string;
   const AExplanation: TAtlasRuleExplanation);
-var
-  mExample: TAtlasRuleExplanation;
 begin
   try
     if not FTip.IsShown or (AKey <> FShownKey) or (AProblem > High(FTip.View.Problems)) or
@@ -805,12 +764,7 @@ begin
       Exit;
     end;
     // Ohne Katalogeintrag trotzdem aufklappen: Der Tooltip sagt dann, dass der Katalog nichts zur Regel hat.
-    mExample := AExplanation;
-    if mExample.Id = '' then
-    begin
-      mExample.Id := ARule;
-    end;
-    SetExample(AProblem, mExample);
+    SetExample(AProblem, TAtlasHoverPlan.ExampleOf(ARule, AExplanation));
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.Hover, E);
@@ -884,8 +838,8 @@ end;
 procedure TAtlasEditorHoverActions.TipUrl(Sender: TObject; const AUrl: string);
 begin
   try
-    // Nur Web- und Mail-Adressen; andere Schemata (file:, Programme) öffnet der Tooltip nicht.
-    if StartsText('http://', AUrl) or StartsText('https://', AUrl) or StartsText('mailto:', AUrl) then
+    // Nur Web- und Mail-Adressen.
+    if TAtlasHoverPlan.OpensUrl(AUrl) then
     begin
       ShellExecute(0, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
     end;
@@ -897,12 +851,6 @@ end;
 
 procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: Integer;
   AAction: TAtlasHoverProblemAction; AItem: Integer);
-const
-  // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
-  // Explain (#54) öffnet den Dialog „Erklären“; DocWiki öffnet der Tooltip selbst; Example (#145) bleibt im
-  // Tooltip und hat keine Kennung; Compare (#1779) zeigt erwartet und erhalten des Tests.
-  cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
-    'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph', 'problem.explain', '', '', 'test.compare');
 var
   mProblem: TAtlasProblem;
   mTag: string;
@@ -928,11 +876,7 @@ begin
       end;
       Exit;
     end;
-    mTag := cTags[AAction];
-    if AAction = TAtlasHoverProblemAction.Related then
-    begin
-      mTag := mTag + IntToStr(AItem);
-    end;
+    mTag := TAtlasHoverPlan.ProblemActionTag(AAction, AItem);
     Hide;
     FOnProblemAction(mProblem, mTag);
   except
@@ -960,17 +904,13 @@ procedure TAtlasEditorHoverActions.CopyToClipboard(const AData: TAtlasHoverData)
 begin
   // Markierter Doku-Text (#654) hat Vorrang, bei Komponentenklassen die gezeigte Liste (#110), sonst die
   // Deklaration.
-  if FTip.HasSelection then
-  begin
-    Clipboard.AsText := FTip.SelectedText;
-  end
-  else if Length(AData.Members) > 0 then
-  begin
-    Clipboard.AsText := AData.MembersText(not FTip.View.HideInherited, FTip.View.OnlyDefaults,
-      TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedImplicit));
-  end
+  case TAtlasHoverPlan.CopySource(FTip.HasSelection, Length(AData.Members)) of
+    TAtlasHoverCopySource.Selection:
+      Clipboard.AsText := FTip.SelectedText;
+    TAtlasHoverCopySource.Members:
+      Clipboard.AsText := AData.MembersText(not FTip.View.HideInherited, FTip.View.OnlyDefaults,
+        TAtlasHoverStrings.Text(TAtlasHoverTextId.PublishedImplicit));
   else
-  begin
     Clipboard.AsText := AData.Declaration;
   end;
 end;

@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeFindBugs: array[0..581] of string = (
+  cCatalogLinesDeFindBugs: array[0..606] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',
@@ -17,6 +17,48 @@ const
     '      "id": "possibly-uninitialized",',
     '      "name": "Variable eventuell nicht initialisiert",',
     '      "description": "Eine lokale Variable wird auf einem Pfad gelesen, auf dem ihr nie ein Wert zugewiesen wurde."',
+    '    },',
+    '{',
+    '      "id": "managed-result-read-before-set",',
+    '      "name": "Result gelesen, bevor es gesetzt ist",',
+    '      "description": "Eine Funktion, deren Ergebnis ein dynamisches Array oder ein String ist, liest Result, bevor sie es setzt: SetLength(Result, N) und danach ein Element gelesen (if Result[I], Inc(' +
+    'Result[I])), SetLength(Result, Length(Result) + 1), Result := Result + ..., Length(Result), for X in Result, Insert, Delete oder Copy auf Result. Delphi übergibt ein verwaltetes Result als Variable de' +
+    's Aufrufers (A := F(...) reicht A durch): SetLength behält dann dessen alte Werte, Result + ... hängt an sie an; Free Pascal beginnt leer, die Tests sind dort grün. Elemente nach SetLength schreiben, ' +
+    'Length nach SetLength, Result als Argument einer anderen Routine (kann ein var- oder out-Parameter sein) und anonyme Methoden bleiben still. Konfidenz mittel. Schnellkorrektur: Result := nil (bzw. '''')' +
+    ' vor die Anweisung."',
+    '    },',
+    '{',
+    '      "id": "trygetvalue-out-default",',
+    '      "name": "TryGetValue überschreibt die Vorbelegung",',
+    '      "description": "TryGetValue (TDictionary, TJSONValue.TryGetValue<T> und andere) steht als Anweisung, das Ergebnis wird verworfen, und das out-Argument bekam vorher in der Routine einen Wert, der' +
+    ' nicht der Vorgabe entspricht (nicht nil, '''', 0, False, [] oder Default(T)). Delphi setzt das out-Argument auch ohne Schlüssel auf den Vorgabewert, die Vorbelegung geht verloren; Free Pascal lässt sie' +
+    ' stehen, die Tests sind dort grün. Eine Vorbelegung mit dem Vorgabewert, ein ausgewertetes Ergebnis (if not D.TryGetValue(K, V) then V := ...) und ein Argument ohne Vorbelegung bleiben still. Konfiden' +
+    'z mittel. Korrektur: in eine eigene Variable lesen und nur übernehmen, wenn TryGetValue True liefert."',
+    '    },',
+    '{',
+    '      "id": "record-array-shared",',
+    '      "name": "Kopierter Record teilt sein Array",',
+    '      "description": "Ein Record wird mit B := A kopiert (Namen, Felder und Indizes, kein Aufruf), und später in der Routine wird ein Element eines Felds vom Typ dynamisches Array von B oder A in plac' +
+    'e geschrieben (B.Items[0] := ..., B.Items[0].State := ...). Dynamische Arrays sind in Delphi Referenzen ohne Copy-on-Write: Kopie und Original teilen das Array, das Schreiben ändert beide. Die Regel b' +
+    'raucht den Symbolindex und meldet nur, wenn die Namensauflösung Record und dynamisches Array sicher kennt. Ein neues Array für das Feld vor dem Schreiben (Copy, SetLength, neue Zuweisung), statische A' +
+    'rrays, String-Felder, Klassen und ein neu zugewiesener Record bleiben still. Schnellkorrektur: B.Items := Copy(B.Items) vor das Schreiben."',
+    '    },',
+    '{',
+    '      "id": "extractfile-forward-slash",',
+    '      "name": "Dateiname mit / zerlegt",',
+    '      "description": "ExtractFileName, ExtractFilePath, ExtractFileDir, ExtractFileExt oder ExtractFileDrive bekommt einen Pfad mit ''/'': ein Literal mit ''/'', eine Verkettung mit einem solchen Literal,' +
+    ' StringReplace(X, ''\\'', ''/'', ...) bzw. X.Replace(''\\'', ''/'') oder eine lokale Variable, deren letzte Zuweisung in der Routine so etwas ist. Die Routinen trennen nur an PathDelim und DriveDelim, unter W' +
+    'indows ''\\'', unter Linux ''/'': Unter Windows bleibt der Pfad ungeteilt. PathDelim als Ersatz, ''\\'' und andere Variablen bleiben still. Schnellkorrektur für StringReplace(..., ''/'', ...): durch PathDelim' +
+    ' ersetzen."',
+    '    },',
+    '{',
+    '      "id": "hash-overflow-checked",',
+    '      "name": "Gewollter Überlauf mit Überlaufprüfung",',
+    '      "description": "Eine Multiplikation mit einer FNV-Primzahl (16777619 oder 1099511628211, als Literal, $-Hexzahl oder Konstante der Unit, auch in UInt64(...)), die überläuft, steht an einer Stell' +
+    'e mit Überlaufprüfung: kein {$Q-} bzw. {$OVERFLOWCHECKS OFF} davor. Im Debug-Build mit {$Q+} bricht der gewollte Überlauf des Hashs mit EIntOverflow ab; typisch ist eine {$IFOPT Q+}...{$Q-}{$ENDIF}-Kl' +
+    'ammer um die falsche Routine. Die Direktiven der Datei zählen der Reihe nach, {$PUSHOPT}/{$POPOPT} eingeschlossen; die Projekteinstellung ist nicht bekannt, die Überlaufprüfung gilt deshalb als an. Ei' +
+    'n 32-Bit-Produkt mit UInt64(...) bzw. Int64(...) auf der anderen Seite läuft nicht über und bleibt still. Korrektur: die Routine in {$IFOPT Q+}{$DEFINE X}{$Q-}{$ENDIF} ... {$IFDEF X}{$Q+}{$UNDEF X}{$E' +
+    'NDIF} klammern."',
     '    },',
     '{',
     '      "id": "unreachable-code",',

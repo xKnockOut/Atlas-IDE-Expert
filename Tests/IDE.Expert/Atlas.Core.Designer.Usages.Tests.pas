@@ -30,6 +30,14 @@ type
     procedure SortsByComponentFileLine;
     [Test]
     procedure FindsBindings;
+    [Test]
+    procedure ScopeFromSetting;
+    [Test]
+    procedure CountsOnlyInScope;
+    [Test]
+    procedure CaptionsAndParts;
+    [Test]
+    procedure WatchDebouncesOnce;
   end;
 
 implementation
@@ -256,6 +264,66 @@ begin
   finally
     mRoot.Free;
   end;
+end;
+
+procedure TAtlasDesignerUsagesTests.ScopeFromSetting;
+begin
+  Assert.AreEqual(Ord(TAtlasUsageScope.UnitOnly), Ord(TAtlasDesignerUsages.ScopeOf('Unit', 'unit', 'projectGroup')));
+  Assert.AreEqual(Ord(TAtlasUsageScope.ProjectGroup),
+    Ord(TAtlasDesignerUsages.ScopeOf('projectGroup', 'unit', 'projectGroup')));
+  Assert.AreEqual(Ord(TAtlasUsageScope.Project), Ord(TAtlasDesignerUsages.ScopeOf('project', 'unit', 'projectGroup')));
+  Assert.AreEqual(Ord(TAtlasUsageScope.Project), Ord(TAtlasDesignerUsages.ScopeOf('', 'unit', 'projectGroup')),
+    'unbekannt ist Projekt');
+end;
+
+procedure TAtlasDesignerUsagesTests.CountsOnlyInScope;
+var
+  mFiles, mProject: TArray<string>;
+begin
+  mFiles := TArray<string>.Create('C:\P\Main.pas', 'C:\P\main.pas', 'C:\P\Hilfe.pas', 'C:\Fremd\X.pas');
+  mProject := TArray<string>.Create('C:\P\Main.pas', 'C:\P\Hilfe.pas');
+  Assert.AreEqual(2, TAtlasDesignerUsages.CountInScope(TAtlasUsageScope.UnitOnly, mFiles, 'C:\P\Main.pas', mProject));
+  Assert.AreEqual(3, TAtlasDesignerUsages.CountInScope(TAtlasUsageScope.Project, mFiles, 'C:\P\Main.pas', mProject));
+  Assert.AreEqual(4, TAtlasDesignerUsages.CountInScope(TAtlasUsageScope.ProjectGroup, mFiles, 'C:\P\Main.pas',
+    mProject));
+end;
+
+procedure TAtlasDesignerUsagesTests.CaptionsAndParts;
+var
+  mUsage: TAtlasUsage;
+begin
+  mUsage := Default(TAtlasUsage);
+  mUsage.Component := 'edtRabatt';
+  mUsage.FileName := 'Main.pas';
+  mUsage.Method := 'TfrmAuftrag.FormShow';
+  Assert.AreEqual('edtRabatt · Main.pas · TfrmAuftrag.FormShow', TAtlasDesignerUsages.GroupCaption(mUsage, '-'));
+  mUsage.Method := '';
+  Assert.AreEqual('edtRabatt · Main.pas · außerhalb', TAtlasDesignerUsages.GroupCaption(mUsage, 'außerhalb'));
+  Assert.AreEqual('RabattGeaendert', TAtlasDesignerUsages.HandlerOf('OnChange = RabattGeaendert'));
+  Assert.AreEqual('Panel1', TAtlasDesignerUsages.BindingOwner('Panel1.PopupMenu'));
+  Assert.AreEqual('', TAtlasDesignerUsages.BindingOwner('PopupMenu'));
+  Assert.AreEqual(Ord(TAtlasUsageForm.None), Ord(TAtlasDesignerUsages.FormOf(0)));
+  Assert.AreEqual(Ord(TAtlasUsageForm.One), Ord(TAtlasDesignerUsages.FormOf(1)));
+  Assert.AreEqual(Ord(TAtlasUsageForm.Many), Ord(TAtlasDesignerUsages.FormOf(2)));
+end;
+
+procedure TAtlasDesignerUsagesTests.WatchDebouncesOnce;
+var
+  mWatch: TAtlasUsageWatch;
+  mKey: string;
+begin
+  mWatch := Default(TAtlasUsageWatch);
+  mKey := TAtlasUsageWatch.KeyOf('Main.pas', 'edtRabatt');
+  Assert.AreEqual('Main.pas|edtRabatt', mKey);
+  Assert.IsFalse(mWatch.Ask(mKey, 1000), 'neue Auswahl');
+  Assert.IsFalse(mWatch.Ask(mKey, 1000 + TAtlasUsageWatch.cDebounceMs - 1), 'zu früh');
+  Assert.IsTrue(mWatch.Ask(mKey, 1000 + TAtlasUsageWatch.cDebounceMs), 'steht lange genug');
+  Assert.AreEqual('Main.pas', mWatch.AskedUnit);
+  Assert.IsFalse(mWatch.Ask(mKey, 5000), 'nur einmal');
+  Assert.IsFalse(mWatch.Ask('Main.pas|edtNr', 5000), 'Wechsel beginnt neu');
+  mWatch.Clear;
+  Assert.IsFalse(mWatch.Ask(mKey, 6000));
+  Assert.IsTrue(mWatch.Ask(mKey, 7000), 'nach Clear wieder');
 end;
 
 initialization

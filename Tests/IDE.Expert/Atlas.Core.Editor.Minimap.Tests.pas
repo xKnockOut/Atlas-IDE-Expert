@@ -17,6 +17,8 @@ type
     [Test]
     procedure OptionsFromSettings;
     [Test]
+    procedure SameComparesEveryOption;
+    [Test]
     procedure LinesAndRowsWithFolds;
     [Test]
     procedure PixelsWithoutCompression;
@@ -99,6 +101,23 @@ begin
 end;
 
 { TAtlasMinimapTests }
+
+procedure TAtlasMinimapTests.SameComparesEveryOption;
+var
+  mOptions, mOther: TAtlasMinimapOptions;
+begin
+  mOptions := TAtlasMinimap.Defaults;
+  mOther := mOptions;
+  Assert.IsTrue(mOptions.Same(mOther));
+  mOther.ClickJumps := not mOther.ClickJumps;
+  Assert.IsFalse(mOptions.Same(mOther), 'letzte Einstellung');
+  mOther := mOptions;
+  mOther.Side := TAtlasMinimapSide.Left;
+  Assert.IsFalse(mOptions.Same(mOther));
+  mOther := mOptions;
+  mOther.Scale := mOther.Scale + 1;
+  Assert.IsFalse(mOptions.Same(mOther));
+end;
 
 procedure TAtlasMinimapTests.OptionsFromSettings;
 var

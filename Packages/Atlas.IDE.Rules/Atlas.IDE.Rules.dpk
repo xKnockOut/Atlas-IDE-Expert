@@ -54,6 +54,7 @@ contains
   Atlas.Core.Rules.Table in 'Source\Core\Rules\Atlas.Core.Rules.Table.pas',
   Atlas.Core.Rules.CustomLayer in 'Source\Core\Rules\Atlas.Core.Rules.CustomLayer.pas',
   Atlas.Core.Rules.Ownership in 'Source\Core\Rules\Atlas.Core.Rules.Ownership.pas',
+  Atlas.Core.Rules.OwnershipPlan in 'Source\Core\Rules\Atlas.Core.Rules.OwnershipPlan.pas',
   Atlas.UI.Rules.Editor in 'Source\UI\Rules\Atlas.UI.Rules.Editor.pas',
   Atlas.UI.Rules.SettingsDialog in 'Source\UI\Rules\Atlas.UI.Rules.SettingsDialog.pas',
   Atlas.IDE.Rules.FindingActions in 'Source\IDE\Rules\Atlas.IDE.Rules.FindingActions.pas',

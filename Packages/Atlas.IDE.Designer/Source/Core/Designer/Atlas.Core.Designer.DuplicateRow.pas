@@ -18,6 +18,9 @@
 // - Überlauf: Kopie ragt aus dem Elternelement oder überdeckt ein anderes
 //   Steuerelement. Mit „Nachfolgende verschieben“ rücken die Steuerelemente
 //   hinter dem Block um die Fläche aller Kopien weiter.
+// - Kopieren: welche Eigenschaften nicht übernommen werden, Reihenfolge der
+//   fokussierbaren Originale, Abstand ohne Nachbarn nach Bildschirmdichte,
+//   Text der Vorschau.
 
 interface
 
@@ -91,6 +94,20 @@ type
     /// <summary>Verweis in der Kopie: zeigt ein Original auf ein anderes der Auswahl (FocusControl), dann auf
     /// dessen Kopie; sonst bleibt der Verweis.</summary>
     class function MapReference(const ATarget: string; const AOriginals, ACopies: TArray<string>): string; static;
+    /// <summary>Eigenschaft, die die Kopie nicht übernimmt: Name, Lage, TabOrder und ControlCollection (verweist
+    /// auf die Kinder des Originals; die Kopie füllt sie selbst).</summary>
+    class function SkippedProperty(const AName: string): Boolean; static;
+    /// <summary>Indizes in ATabOrders, aufsteigend nach TabOrder; bei Gleichstand in der alten Folge.</summary>
+    class function TabSequence(const ATabOrders: TArray<Integer>): TArray<Integer>; static;
+    /// <summary>Vorgabe-Abstand AGap (bei 96 dpi) für APpi, wie MulDiv gerundet; APpi &lt;= 0 gilt als 96.</summary>
+    class function ScaledGap(AGap, APpi: Integer): Integer; static;
+    /// <summary>Verschiebung der Kopie ACopy gegenüber dem Umriss der Auswahl.</summary>
+    class function ShiftOf(const AGroup: TRect; const ALayout: TAtlasDuplicateLayout; ACopy: Integer): TPoint;
+      static;
+    /// <summary>Listeneintrag der Kopie AIndex; '' hinter dem Ende der Liste.</summary>
+    class function EntryOf(const AEntries: TArray<string>; AIndex: Integer): string; static;
+    /// <summary>Text der Vorschau: „lblFax, edtFax; lblMobil, edtMobil“.</summary>
+    class function PreviewText(const ANames: TArray<TArray<string>>): string; static;
   end;
 
 implementation
@@ -98,6 +115,9 @@ implementation
 uses
   System.SysUtils,
   System.Math;
+
+const
+  cDefaultPpi = 96;
 
 { TAtlasDuplicateLayout }
 
@@ -530,6 +550,88 @@ begin
     begin
       Exit(ACopies[mIndex]);
     end;
+  end;
+end;
+
+class function TAtlasDuplicateRow.SkippedProperty(const AName: string): Boolean;
+begin
+  Result := SameText(AName, 'Name') or SameText(AName, 'Left') or SameText(AName, 'Top') or
+    SameText(AName, 'TabOrder') or SameText(AName, 'ControlCollection');
+end;
+
+class function TAtlasDuplicateRow.TabSequence(const ATabOrders: TArray<Integer>): TArray<Integer>;
+var
+  mIndex, mPos, mValue: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(ATabOrders));
+  for mIndex := 0 to High(Result) do
+  begin
+    Result[mIndex] := mIndex;
+  end;
+  // Einfügen: stabil, die Folge ist kurz.
+  for mIndex := 1 to High(Result) do
+  begin
+    mValue := Result[mIndex];
+    mPos := mIndex - 1;
+    while (mPos >= 0) and (ATabOrders[Result[mPos]] > ATabOrders[mValue]) do
+    begin
+      Result[mPos + 1] := Result[mPos];
+      Dec(mPos);
+    end;
+    Result[mPos + 1] := mValue;
+  end;
+end;
+
+class function TAtlasDuplicateRow.ScaledGap(AGap, APpi: Integer): Integer;
+var
+  mPpi: Int64;
+  mProduct: Int64;
+begin
+  mPpi := APpi;
+  if mPpi <= 0 then
+  begin
+    mPpi := cDefaultPpi;
+  end;
+  mProduct := Int64(AGap) * mPpi;
+  // Wie MulDiv: halbe Schritte weg von null.
+  if mProduct >= 0 then
+  begin
+    Result := Integer((mProduct + cDefaultPpi div 2) div cDefaultPpi);
+  end
+  else
+  begin
+    Result := Integer((mProduct - cDefaultPpi div 2) div cDefaultPpi);
+  end;
+end;
+
+class function TAtlasDuplicateRow.ShiftOf(const AGroup: TRect; const ALayout: TAtlasDuplicateLayout;
+  ACopy: Integer): TPoint;
+begin
+  Result := Point(ALayout.Copies[ACopy].Left - AGroup.Left, ALayout.Copies[ACopy].Top - AGroup.Top);
+end;
+
+class function TAtlasDuplicateRow.EntryOf(const AEntries: TArray<string>; AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < Length(AEntries)) then
+  begin
+    Result := AEntries[AIndex];
+  end;
+end;
+
+class function TAtlasDuplicateRow.PreviewText(const ANames: TArray<TArray<string>>): string;
+var
+  mCopy: TArray<string>;
+begin
+  Result := '';
+  for mCopy in ANames do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + '; ';
+    end;
+    Result := Result + string.Join(', ', mCopy);
   end;
 end;
 

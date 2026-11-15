@@ -4,7 +4,8 @@
 //   dunitx-areequal-length  Assert.AreEqual bzw. Assert.AreNotEqual mit einer Ganzzahl auf der einen und einem
 //                           NativeInt auf der anderen Seite: Length, High oder Low eines dynamischen Arrays (ab
 //                           Delphi 12 NativeInt) oder ein Ausdruck, dessen Typ sicher NativeInt bzw. NativeUInt ist
-//                           (TList<T>.Count mit der RTL im Index). Keine der Überladungen Integer, Int64, Double …
+//                           (TList<T>.Count mit der RTL im Index), auch in Rechnungen wie Length(..) - 1 (#2309).
+//                           Keine der Überladungen Integer, Int64, Double …
 //                           passt eindeutig, Delphi fällt auf AreEqual<T> zurück und kann T nicht ableiten (E2532).
 //                           FPC übersetzt den Aufruf, deshalb fällt der Fehler erst beim Bau mit Delphi auf.
 //                           Strings (Length gibt Integer), statische Arrays und Ausdrücke unbekannten Typs bleiben
@@ -61,6 +62,8 @@ const
   cAssertMethods: array[0..1] of string = ('Assert.AreEqual', 'Assert.AreNotEqual');
   cArrayIntrinsics: array[0..2] of string = ('Length', 'High', 'Low');
   cNativeTypes: array[0..1] of string = ('NativeInt', 'NativeUInt');
+  // Operatoren, deren Ergebnis bei Ganzzahlen den größeren der beiden Typen hat (NativeInt + Integer = NativeInt).
+  cIntegerOperators: array[0..7] of string = ('+', '-', '*', 'div', 'mod', 'and', 'or', 'xor');
   cIntegerTypes: array[0..7] of string = ('Integer', 'Cardinal', 'LongInt', 'LongWord', 'SmallInt', 'Word',
     'ShortInt', 'Byte');
   // Delphi 12 (BDS 23.0): Length, High und Low dynamischer Arrays liefern NativeInt.
@@ -80,6 +83,9 @@ type
     function TypeNameOf(ANode: TSyntaxNode): string;
     function IsDynamicArray(ANode: TSyntaxNode): Boolean;
     function KindOf(ANode: TSyntaxNode): TArgumentKind;
+    /// <summary>Art einer Ganzzahlrechnung: NativeInt, sobald eine Seite es ist und die andere eine Ganzzahl.
+    /// </summary>
+    function KindOfArithmetic(ANode: TSyntaxNode): TArgumentKind;
     procedure CheckCall(ACall: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -150,6 +156,10 @@ var
 begin
   Result := TArgumentKind.Unknown;
   mNode := Unwrapped(ANode);
+  if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and MatchText(mNode.Name, cIntegerOperators) then
+  begin
+    Exit(KindOfArithmetic(mNode));
+  end;
   if (mNode.Kind = TSyntaxKind.Literal) and (mNode.Name <> '') and CharInSet(mNode.Name[1], ['0'..'9', '$']) and
     (Pos('.', mNode.Name) = 0) and not ContainsText(mNode.Name, 'e') then
   begin
@@ -171,6 +181,28 @@ begin
     Result := TArgumentKind.Native;
   end
   else if MatchText(mType, cIntegerTypes) then
+  begin
+    Result := TArgumentKind.Integer_;
+  end;
+end;
+
+function TAreEqualCheck.KindOfArithmetic(ANode: TSyntaxNode): TArgumentKind;
+var
+  mLeft, mRight: TArgumentKind;
+begin
+  // Length(FListe) - 1: Die Rechnung hat den Typ NativeInt; unbekannte Seiten (Double, Int64) lassen offen.
+  Result := TArgumentKind.Unknown;
+  mLeft := KindOf(ANode[0]);
+  mRight := KindOf(ANode[1]);
+  if (mLeft = TArgumentKind.Unknown) or (mRight = TArgumentKind.Unknown) then
+  begin
+    Exit;
+  end;
+  if (mLeft = TArgumentKind.Native) or (mRight = TArgumentKind.Native) then
+  begin
+    Result := TArgumentKind.Native;
+  end
+  else
   begin
     Result := TArgumentKind.Integer_;
   end;

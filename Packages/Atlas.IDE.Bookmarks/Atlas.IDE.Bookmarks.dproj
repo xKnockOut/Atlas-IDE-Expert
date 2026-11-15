@@ -94,6 +94,8 @@
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="Atlas.IDE.Base.dcp"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas"/>
+        <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.ColumnPlan.pas"/>
+        <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Plan.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas"/>
         <DCCReference Include="Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas"/>
         <DCCReference Include="Source\Core\Marks\Atlas.Core.Marks.Ids.pas"/>

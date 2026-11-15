@@ -35,6 +35,14 @@ type
     procedure FreePositionNextToOthers;
     [Test]
     procedure FreePositionFull;
+    [Test]
+    procedure SignatureFollowsChanges;
+    [Test]
+    procedure QualifiedNameForFrames;
+    [Test]
+    procedure OccupiedOnlyNonVisual;
+    [Test]
+    procedure DesignInfoRoundTrip;
   end;
 
 implementation
@@ -316,6 +324,60 @@ begin
   mPoint := TAtlasStructure.FreePosition(nil, TSize.Create(20, 20));
   Assert.AreEqual(8, mPoint.X);
   Assert.AreEqual(8, mPoint.Y);
+end;
+
+procedure TAtlasStructureTests.SignatureFollowsChanges;
+var
+  mItems: TArray<TAtlasStructureItem>;
+  mBefore: string;
+begin
+  mItems := FixtureItems;
+  mBefore := TAtlasStructureModel.Signature(mItems, 'Form1');
+  Assert.AreEqual(mBefore, TAtlasStructureModel.Signature(FixtureItems, 'Form1'));
+  Assert.AreNotEqual(mBefore, TAtlasStructureModel.Signature(mItems, 'Form2'));
+  mItems[High(mItems)].Refs := mItems[High(mItems)].Refs + [TAtlasStructureRef.Create('Images', 'ImageList9')];
+  Assert.AreNotEqual(mBefore, TAtlasStructureModel.Signature(mItems, 'Form1'));
+  Assert.IsTrue(mBefore.StartsWith('Form1|'));
+end;
+
+procedure TAtlasStructureTests.QualifiedNameForFrames;
+begin
+  Assert.AreEqual('Frame1.Button1', TAtlasStructureModel.QualifiedName('Button1', 'Frame1', True));
+  Assert.AreEqual('Button1', TAtlasStructureModel.QualifiedName('Button1', '', True));
+  Assert.AreEqual('Button1', TAtlasStructureModel.QualifiedName('Button1', 'Form1', False));
+end;
+
+procedure TAtlasStructureTests.OccupiedOnlyNonVisual;
+var
+  mItems: TArray<TAtlasStructureItem>;
+  mItem: TAtlasStructureItem;
+  mCount: Integer;
+begin
+  mItems := FixtureItems;
+  mCount := 0;
+  for mItem in mItems do
+  begin
+    if not mItem.IsControl then
+    begin
+      Inc(mCount);
+    end;
+  end;
+  Assert.AreEqual(mCount, Integer(Length(TAtlasStructureModel.Occupied(mItems))));
+  Assert.AreEqual(0, Integer(Length(TAtlasStructureModel.Occupied(nil))));
+end;
+
+procedure TAtlasStructureTests.DesignInfoRoundTrip;
+var
+  mPoint: TPoint;
+begin
+  mPoint := TAtlasStructureModel.PositionOf(TAtlasStructureModel.DesignInfoOf(Point(120, 48)));
+  Assert.AreEqual(120, mPoint.X);
+  Assert.AreEqual(48, mPoint.Y);
+  // Links oder oberhalb des Formulars: negative Werte bleiben erhalten.
+  mPoint := TAtlasStructureModel.PositionOf(TAtlasStructureModel.DesignInfoOf(Point(-16, -3)));
+  Assert.AreEqual(-16, mPoint.X);
+  Assert.AreEqual(-3, mPoint.Y);
+  Assert.AreEqual($00300078, TAtlasStructureModel.DesignInfoOf(Point(120, 48)));
 end;
 
 initialization
