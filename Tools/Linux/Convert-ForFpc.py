@@ -399,6 +399,9 @@ def convert(txt, is_program):
     txt = re.sub(r"\bTStringBuilder\b", 'TUnicodeStringBuilder', txt)
     txt = re.sub(r"\bTUTF8Encoding\.Create\(\s*False\s*\)", 'TUTF8NoBomEncoding.Create', txt, flags=re.I)
     txt = re.sub(r"\bSystem\.TMonitor\b", 'TMonitor', txt)
+    # LastDelimiter, IsDelimiter und AnsiPos zählen in FPC UTF-8-Bytes (nur AnsiString): Fassungen aus DelphiCompat.
+    txt = sub_code(re.compile(r"(?<![\w.])(?:SysUtils\.)?(LastDelimiter|IsDelimiter|AnsiPos)\b(?=\s*\()", re.I),
+                   lambda m: 'DelphiCompat.' + m.group(1), txt)
     if any(n.lower() == 'system.json' for n in uses_of(txt)):
         txt = sub_code(re.compile(r"(?<![\w.])T(?:JSONObject|JSONValue)\.ParseJSONValue\("),
                        lambda m: 'AtlasJsonCompat.ParseJSONValueOrNil(', txt)

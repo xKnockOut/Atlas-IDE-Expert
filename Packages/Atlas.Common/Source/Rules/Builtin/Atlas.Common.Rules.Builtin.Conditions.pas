@@ -1254,10 +1254,11 @@ type
   private
     FContext: TRuleContext;
     FReport: IRuleReport;
-    // Routinen (Kurzname klein), deren Rumpf auf jedem Weg auslöst bzw. das Programm beendet.
+    // Routinen (Kurzname klein), deren Rumpf auf jedem Weg auslöst bzw. das Programm beendet; True, wenn eine
+    // davon eine freie Routine ist (nicht TKlasse.Name).
     FRaising: TDictionary<string, Boolean>;
-    // Namen der Typen der Datei: X.Name(…) zählt nur mit Self oder einem dieser Typen als Empfänger.
-    FTypes: TArray<string>;
+    // Kurznamen (klein), unter denen die Datei auch eine Routine hat, die nicht immer auslöst.
+    FBlocked: TDictionary<string, Boolean>;
     FAllowFirstElement: Boolean;
     // Nur Ausnahmen und Programmende zählen (Rumpf einer Routine: Exit verlässt nur sie).
     FRaisingOnly: Boolean;
@@ -1275,7 +1276,8 @@ type
     function MisplacedJump(const AStatements: TArray<TSyntaxNode>; AJumpAt: Integer): Boolean;
     procedure CheckLoop(ALoop: TSyntaxNode);
     procedure CollectAlwaysRaising;
-    function AllNamedRaise(const ARoutines: TArray<TSyntaxNode>; const AName: string): Boolean;
+    /// <summary>Ein Durchgang bis zum Fixpunkt über ARoutines ohne die Namen aus FBlocked.</summary>
+    procedure CollectRaisingPass(const ARoutines: TArray<TSyntaxNode>);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
@@ -1475,34 +1477,6 @@ begin
   end;
 end;
 
-/// <summary>Namen aller Typen, die die Datei deklariert.</summary>
-function TypeNames(ARoot: TSyntaxNode): TArray<string>;
-var
-  mIndex: Integer;
-  mNode: TSyntaxNode;
-  mPending: TStack<TSyntaxNode>;
-begin
-  Result := nil;
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.Name <> '') then
-      begin
-        Result := Result + [mNode.Name];
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 /// <summary>Schlüsselwort der Schleife für den Meldungsbereich.</summary>
 function KeywordRange(ALoop: TSyntaxNode): TTextRange;
 var
@@ -1551,10 +1525,12 @@ begin
   FReport := AReport;
   FAllowFirstElement := TRuleOptions.Bool(AContext.Options, 'allowFirstElement', False);
   FRaising := TDictionary<string, Boolean>.Create;
+  FBlocked := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TLoopOnceCheck.Destroy;
 begin
+  FBlocked.Free;
   FRaising.Free;
   inherited Destroy;
 end;
@@ -1578,19 +1554,34 @@ begin
   end;
 end;
 
+/// <summary>Ruft ANode (Name, Name(…), Self.Name(…)) eine Methode des eigenen Objekts? Bei X.Name(…) gehört die
+/// Methode einem anderen Objekt, womöglich einer anderen Klasse mit einer gleichnamigen Methode.</summary>
+function OwnReceiver(ANode: TSyntaxNode): Boolean;
+begin
+  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+  begin
+    ANode := ANode[0];
+  end;
+  Result := (ANode.Kind = TSyntaxKind.Identifier) or (ANode.Kind = TSyntaxKind.MemberAccess) and
+    (ANode.ChildCount > 0) and (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self');
+end;
+
 /// <summary>Aufruf, der immer auslöst (Halt, eine immer auslösende Routine) bzw. Exit oder Break.</summary>
 function TLoopOnceCheck.CallLeaves(ANode: TSyntaxNode): string;
 var
   mName, mJump: string;
+  mFree, mRaising: Boolean;
 begin
   Result := '';
   if ANode.ChildCount = 0 then
   begin
     Exit;
   end;
-  mName := OwnCallName(ANode[0], FTypes);
+  mName := CalledName(ANode[0]);
   mJump := JumpName(ANode[0]);
-  if MatchText(mJump, cRaisingCalls) or (mName <> '') and FRaising.ContainsKey(LowerCase(mName)) or
+  mFree := False;
+  mRaising := (mName <> '') and FRaising.TryGetValue(LowerCase(mName), mFree) and (mFree or OwnReceiver(ANode[0]));
+  if MatchText(mJump, cRaisingCalls) or mRaising or
     not FRaisingOnly and MatchText(mJump, ['Exit', 'Break']) then
   begin
     Result := mName;
@@ -1833,55 +1824,63 @@ end;
 
 /// <summary>Routinen der Datei (Kurzname klein), deren Rumpf auf jedem Weg eine Ausnahme auslöst bzw. das
 /// Programm beendet; RaisingRoutines genügt nicht, dort reicht ein raise irgendwo.</summary>
-procedure TLoopOnceCheck.CollectAlwaysRaising;
+procedure TLoopOnceCheck.CollectRaisingPass(const ARoutines: TArray<TSyntaxNode>);
 var
-  mRoutines: TArray<TSyntaxNode>;
-  mRoutine: TSyntaxNode;
-  mName: string;
-  mChanged: Boolean;
+  mRoutine, mBlock: TSyntaxNode;
+  mChanged, mMixed, mFree: Boolean;
+  mKey: string;
 begin
-  mRoutines := RoutineDecls(FContext.Tree.Root);
-  FTypes := TypeNames(FContext.Tree.Root);
-  FRaisingOnly := True;
   // Bis nichts mehr dazukommt: A ruft B, B löst immer aus.
   repeat
     mChanged := False;
-    for mRoutine in mRoutines do
+    for mRoutine in ARoutines do
     begin
-      mName := LowerCase(ShortName(mRoutine.Name));
-      if (mRoutine.FindChild(TSyntaxKind.Block) <> nil) and not FRaising.ContainsKey(mName) and
-        AllNamedRaise(mRoutines, mName) then
+      mKey := LowerCase(ShortName(mRoutine.Name));
+      mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+      // Exit irgendwo im Rumpf kehrt normal zurück, auch wenn er mit raise endet (repeat … Exit … until; raise).
+      if (mBlock <> nil) and not FBlocked.ContainsKey(mKey) and (Leaves(mBlock, mMixed) <> '') and
+        not HasExitCall(mBlock) then
       begin
-        FRaising.Add(mName, True);
-        mChanged := True;
+        mFree := False;
+        FRaising.TryGetValue(mKey, mFree);
+        if not FRaising.ContainsKey(mKey) or (not mFree and not mRoutine.Name.Contains('.')) then
+        begin
+          FRaising.AddOrSetValue(mKey, mFree or not mRoutine.Name.Contains('.'));
+          mChanged := True;
+        end;
       end;
     end;
   until not mChanged;
-  FRaisingOnly := False;
 end;
 
-/// <summary>Löst jede Routine der Datei mit dem Kurznamen AName (klein) mit Rumpf auf jedem Weg aus? Der Name
-/// steht für alle gleichnamigen Methoden; ein Exit im Rumpf kehrt normal zurück (repeat … if … then Exit; until …;
-/// raise …).</summary>
-function TLoopOnceCheck.AllNamedRaise(const ARoutines: TArray<TSyntaxNode>; const AName: string): Boolean;
+procedure TLoopOnceCheck.CollectAlwaysRaising;
 var
+  mRoutines: TArray<TSyntaxNode>;
   mRoutine, mBlock: TSyntaxNode;
-  mMixed: Boolean;
+  mMixed, mMore: Boolean;
+  mKey: string;
 begin
-  Result := False;
-  for mRoutine in ARoutines do
-  begin
-    mBlock := mRoutine.FindChild(TSyntaxKind.Block);
-    if (mBlock = nil) or not SameText(ShortName(mRoutine.Name), AName) then
+  mRoutines := RoutineDecls(FContext.Tree.Root);
+  FRaisingOnly := True;
+  // Ein Name zählt nur, wenn jede Routine dieses Namens immer auslöst: TPfad.Assign mit raise macht
+  // FListe.Assign einer anderen Klasse nicht zum Sprung. Gesperrte Namen können weitere sperren, also neu.
+  repeat
+    FRaising.Clear;
+    CollectRaisingPass(mRoutines);
+    mMore := False;
+    for mRoutine in mRoutines do
     begin
-      Continue;
+      mKey := LowerCase(ShortName(mRoutine.Name));
+      mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+      if (mBlock <> nil) and FRaising.ContainsKey(mKey) and not FBlocked.ContainsKey(mKey) and
+        (Leaves(mBlock, mMixed) = '') then
+      begin
+        FBlocked.Add(mKey, True);
+        mMore := True;
+      end;
     end;
-    if HasExitCall(mBlock) or (Leaves(mBlock, mMixed) = '') then
-    begin
-      Exit(False);
-    end;
-    Result := True;
-  end;
+  until not mMore;
+  FRaisingOnly := False;
 end;
 
 procedure TLoopOnceCheck.Run;

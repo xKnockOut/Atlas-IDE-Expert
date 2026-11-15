@@ -59,7 +59,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
@@ -115,7 +115,7 @@ type
     // Anfrage an den Server im Hintergrund: Die IDE friert nie ein, auch wenn er langsam ist.
     // FRequest zählt die Anfragen; nur die jüngste wird angezeigt.
     FRequest: Integer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     // Fenster beim Anzeigen (Fokus, Datei, oberste Zeile); TAtlasCloseRules vergleicht damit.
     FShown: TAtlasEditorWindowState;
     function WindowState: TAtlasEditorWindowState;
@@ -136,7 +136,6 @@ type
     procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
     procedure EditorResized(const Editor: TWinControl);
     procedure ShowData(const AData: TAtlasHoverData);
-    procedure ReapWorkers(AWait: Boolean);
     procedure ShowTimerTick(Sender: TObject);
     /// <summary>textDocument/hover im Hintergrund; das Ergebnis zeigt ShowData im Hauptthread.</summary>
     procedure RequestHover(ASession: TLspSession);
@@ -232,7 +231,7 @@ begin
   inherited Create(ASession, ALog, AProblemsAt, AHandles);
   FIndex := -1;
   FKeys := THoverKeys.Create(Self);
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
   FShowTimer.Interval := TAtlasCloseRules.cTooltipShowDelayMs;
@@ -297,8 +296,11 @@ begin
   begin
     FAlive.Alive := False;
   end;
-  ReapWorkers(True);
-  FWorkers.Free;
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
+  FreeAndNil(FWorkers);
   FShowTimer.Free;
   FHideTimer.Free;
   FWatchTimer.Free;
@@ -564,21 +566,6 @@ begin
   FWatchTimer.Enabled := True;
 end;
 
-procedure TAtlasEditorHover.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
-end;
-
 procedure TAtlasEditorHover.ShowTimerTick(Sender: TObject);
 var
   mSession: TLspSession;
@@ -636,7 +623,7 @@ begin
   mText := TAtlasEditorBuffer.Text(FView.Buffer);
   mFileName := FView.Buffer.FileName;
   ASession.Sync(mFileName, mText);
-  ReapWorkers(False);
+  FWorkers.Prune;
   Inc(FRequest);
   mRequest := FRequest;
   mKey := FKey;
@@ -672,12 +659,10 @@ begin
               mOwner.ShowData(mData);
             end);
         end;
-      // Atlas gehört der Eintrag: beim Entladen verworfen, übersteht aber ReapWorkers.
+      // Atlas gehört der Eintrag: beim Entladen verworfen, übersteht aber das Freigeben beendeter Arbeiter.
       TAtlasMainThread.Queue(TAtlasFeature.Hover, mShow);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 
@@ -821,7 +806,7 @@ begin
   // Eingereihte Ergebnisse veralten (Show vergleicht FRequest); die Arbeiter halten die Sitzung als rohen Zeiger.
   // Ohne Hide: Der Tooltip zeigt kopierte Daten, ein Neustart soll ihn nicht schließen.
   Inc(FRequest);
-  ReapWorkers(True);
+  FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
 end;
 
 end.

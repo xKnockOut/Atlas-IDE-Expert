@@ -82,6 +82,9 @@ type
     class function StripTrailingCr(const ALine: string): string; static;
     /// <summary>Alle Umbrüche (CRLF, LF, CR) durch ALineBreak ersetzen.</summary>
     class function NormalizeLineBreaks(const AText, ALineBreak: string): string; static;
+    /// <summary>Leerraum (Leerzeichen, Tabulator, Zeilenumbrüche) zu je einem Leerzeichen, außen ohne; z. B. für
+    /// Typen und Kopfzeilen, die über mehrere Zeilen gehen.</summary>
+    class function CollapseSpace(const AText: string): string; static;
   end;
 
 implementation
@@ -505,6 +508,37 @@ begin
       begin
         mBuilder.Append(AText[mIndex]);
         Inc(mIndex);
+      end;
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+class function TTextLines.CollapseSpace(const AText: string): string;
+var
+  mBuilder: TStringBuilder;
+  mChar: Char;
+  mPending: Boolean;
+begin
+  mBuilder := TStringBuilder.Create(Length(AText));
+  try
+    mPending := False;
+    for mChar in AText do
+    begin
+      if (mChar = ' ') or (mChar = #9) or (mChar = #10) or (mChar = #13) then
+      begin
+        mPending := mBuilder.Length > 0;
+      end
+      else
+      begin
+        if mPending then
+        begin
+          mBuilder.Append(' ');
+        end;
+        mPending := False;
+        mBuilder.Append(mChar);
       end;
     end;
     Result := mBuilder.ToString;

@@ -83,7 +83,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.MemberTransfer,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Pascal.TokenCursor;
+  Atlas.Common.Pascal.TokenCursor,
+  Atlas.Text.Lines;
 
 {$SCOPEDENUMS ON}
 
@@ -153,27 +154,6 @@ end;
 function TextLines(const AText: string): TArray<string>;
 begin
   Result := AText.Replace(#13#10, #10).Replace(#13, #10).Split([#10]);
-end;
-
-/// <summary>Bezeichner an APosition; -1 ohne.</summary>
-function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
-var
-  mIndex: Integer;
-begin
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if ATokens[mIndex].StartPos.Line > APosition.Line then
-    begin
-      Break;
-    end;
-    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and (ATokens[mIndex].StartPos.Line = APosition.Line) and
-      (ATokens[mIndex].StartPos.Character <= APosition.Character) and
-      (ATokens[mIndex].EndPos.Character >= APosition.Character) then
-    begin
-      Exit(mIndex);
-    end;
-  end;
-  Result := -1;
 end;
 
 /// <summary>Bereich des ersten Bezeichners AName in ANode (ohne Punkt-Präfix: der letzte Teil zählt).</summary>
@@ -274,7 +254,8 @@ begin
   mParameters := mHeader.FindChild(TSyntaxKind.Parameters);
   if mParameters <> nil then
   begin
-    Result := CollapseSpace(Copy(AText, mParameters.StartOffset + 1, mParameters.EndOffset - mParameters.StartOffset));
+    Result := TTextLines.CollapseSpace(Copy(AText, mParameters.StartOffset + 1,
+      mParameters.EndOffset - mParameters.StartOffset));
   end;
 end;
 

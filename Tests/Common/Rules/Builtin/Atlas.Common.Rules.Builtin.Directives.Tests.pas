@@ -32,6 +32,8 @@ type
     [Test]
     procedure UnknownDirectiveInBranchLowConfidence;
     [Test]
+    procedure UnknownDirectiveInInactiveBranchIsSilent;
+    [Test]
     procedure UnbalancedOptionStack;
     [Test]
     procedure UnbalancedAlign;
@@ -297,6 +299,30 @@ begin
   mFound := Findings(Dienst('{$IFDEF X}'#10'{$error ''x''}'#10'{$ENDIF}'#10, ''));
   Assert.AreEqual(0, Integer(Length(mFound)));
   mFound := nil;
+end;
+
+procedure TDirectiveRulesTests.UnknownDirectiveInInactiveBranchIsSilent;
+const
+  cSource = 'unit Dienst;'#10'interface'#10'implementation'#10'{$IFDEF BSD}'#10'{$linklib c}'#10 +
+    '{$WARN UNBEKANNT OFF}'#10'{$ENDIF}'#10'end.';
+var
+  mContext: TRuleContext;
+  mFound: TArray<TRuleFinding>;
+begin
+  // FP mORMot (SynSQLite3): {$linklib c} unter {$ifdef BSD}; dcc überspringt den Zweig, der unter Win32 nicht gilt.
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := 'Dienst.pas';
+  mContext.UnitName := 'Dienst';
+  mContext.Text := cSource;
+  mFound := TRuleAssert.ContextFindings(TConditionalDirectiveUnbalancedRule.Create, mContext,
+    '{"minConfidence": "low"}');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  mContext.InactiveRanges := [TTextRange.Create(4, 0, 6, 0)];
+  mFound := TRuleAssert.ContextFindings(TConditionalDirectiveUnbalancedRule.Create, mContext,
+    '{"minConfidence": "low"}');
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  mFound := nil;
+  mContext := Default(TRuleContext);
 end;
 
 procedure TDirectiveRulesTests.UnbalancedOptionStack;

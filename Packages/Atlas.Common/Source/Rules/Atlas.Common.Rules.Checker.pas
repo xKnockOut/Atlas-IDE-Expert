@@ -95,6 +95,21 @@ type
       const AFileName: string): TCheckOrigin; static;
   end;
 
+  /// <summary>Dateien neben der geprüften Unit, wie dcc sie findet: Unter Windows zählt die Groß-/Kleinschreibung
+  /// nicht ({$R *.DFM} neben X.dfm), auf Dateisystemen, die sie unterscheiden, sucht OnDisk die Datei im Ordner
+  /// ohne Rücksicht darauf.</summary>
+  TRuleFolderFiles = class
+  public
+    /// <summary>AFileName, wenn es die Datei gibt; sonst die Datei im selben Ordner, deren Name sich nur in der
+    /// Groß-/Kleinschreibung unterscheidet; sonst AFileName unverändert.</summary>
+    class function OnDisk(const AFileName: string): string; static;
+    /// <summary>Liest Dateien relativ zu AFolder; False, wenn sie fehlen oder nicht lesbar sind.</summary>
+    class function Reader(const AFolder: string): TRuleFileReader; static;
+    /// <summary>Prüft, ob es eine Datei relativ zu AFolder gibt (fehlende Dateien aus {$I} und {$R}, #1379).
+    /// </summary>
+    class function Exists(const AFolder: string): TRuleFileExists; static;
+  end;
+
   TFileChecker = class
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
@@ -173,7 +188,7 @@ const
 /// <summary>Formulardatei (.dfm, sonst .fmx) neben einer .pas-Datei; leer ohne oder wenn nicht lesbar.</summary>
 procedure LoadForm(var AContext: TRuleContext; const AFileName: string);
 var
-  mExtension: string;
+  mExtension, mFormFile: string;
   mFileFormat: TFileFormat;
 begin
   if not SameText(ExtractFileExt(AFileName), '.pas') then
@@ -182,11 +197,12 @@ begin
   end;
   for mExtension in TArray<string>.Create('.dfm', '.fmx') do
   begin
-    if TFile.Exists(ChangeFileExt(AFileName, mExtension)) then
+    mFormFile := TRuleFolderFiles.OnDisk(ChangeFileExt(AFileName, mExtension));
+    if TFile.Exists(mFormFile) then
     begin
       try
-        AContext.FormText := TFileEncoding.LoadFromFile(ChangeFileExt(AFileName, mExtension), mFileFormat);
-        AContext.FormFile := ChangeFileExt(AFileName, mExtension);
+        AContext.FormText := TFileEncoding.LoadFromFile(mFormFile, mFileFormat);
+        AContext.FormFile := mFormFile;
       except
         on EInOutError do
           AContext.FormText := '';
@@ -198,16 +214,45 @@ begin
   end;
 end;
 
-/// <summary>Liest Dateien relativ zu AFolder; False, wenn sie fehlen oder nicht lesbar sind.</summary>
-function FolderReader(const AFolder: string): TRuleFileReader;
+{ TRuleFolderFiles }
+
+class function TRuleFolderFiles.OnDisk(const AFileName: string): string;
+var
+  mFolder, mName, mCandidate: string;
+begin
+  Result := AFileName;
+  mFolder := ExtractFileDir(AFileName);
+  if (PathDelim = '\') or TFile.Exists(AFileName) or (mFolder = '') or not TDirectory.Exists(mFolder) then
+  begin
+    Exit;
+  end;
+  mName := ExtractFileName(AFileName);
+  try
+    for mCandidate in TDirectory.GetFiles(mFolder) do
+    begin
+      if SameText(ExtractFileName(mCandidate), mName) then
+      begin
+        Exit(mCandidate);
+      end;
+    end;
+  except
+    on EInOutError do
+      Result := AFileName;
+  end;
+end;
+
+class function TRuleFolderFiles.Reader(const AFolder: string): TRuleFileReader;
 begin
   Result :=
     function(const AName: string; out AData: TBytes): Boolean
+    var
+      mFileName: string;
     begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
+      mFileName := TRuleFolderFiles.OnDisk(TPath.Combine(AFolder, AName));
+      Result := TFile.Exists(mFileName);
       if Result then
       try
-        AData := TFile.ReadAllBytes(TPath.Combine(AFolder, AName));
+        AData := TFile.ReadAllBytes(mFileName);
       except
         on EInOutError do
           Result := False;
@@ -217,13 +262,12 @@ begin
     end;
 end;
 
-/// <summary>Prüft, ob es eine Datei relativ zu AFolder gibt (fehlende Dateien aus {$I} und {$R}, #1379).</summary>
-function FolderExists(const AFolder: string): TRuleFileExists;
+class function TRuleFolderFiles.Exists(const AFolder: string): TRuleFileExists;
 begin
   Result :=
     function(const AName: string): Boolean
     begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
+      Result := TFile.Exists(TRuleFolderFiles.OnDisk(TPath.Combine(AFolder, AName)));
     end;
 end;
 
@@ -232,8 +276,8 @@ procedure SetFiles(var AContext: TRuleContext; const AFileName: string);
 begin
   AContext.FileName := AFileName;
   LoadForm(AContext, AFileName);
-  AContext.ReadFile := FolderReader(ExtractFilePath(AFileName));
-  AContext.FileExists := FolderExists(ExtractFilePath(AFileName));
+  AContext.ReadFile := TRuleFolderFiles.Reader(ExtractFilePath(AFileName));
+  AContext.FileExists := TRuleFolderFiles.Exists(ExtractFilePath(AFileName));
 end;
 
 { TCheckOrigin }

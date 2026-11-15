@@ -38,15 +38,14 @@ type
     destructor Destroy; override;
     function Run(const ARequest: TCompilerRequest; const AOnLine: TCompilerLineEvent): Integer;
     procedure Cancel;
-    /// <summary>Kommandozeile mit Anführungszeichen nach den Regeln von CommandLineToArgvW.</summary>
-    class function QuoteArgument(const AArgument: string): string; static;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
-  Atlas.WinBase.Process;
+  Atlas.WinBase.Process,
+  Atlas.Text.CommandLine;
 
 const
   /// <summary>Exit-Code eines über Cancel beendeten Prozesses.</summary>
@@ -119,36 +118,6 @@ begin
   end;
 end;
 
-class function TProcessRunner.QuoteArgument(const AArgument: string): string;
-var
-  mIndex, mBackslashes: Integer;
-begin
-  if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
-  begin
-    Exit(AArgument);
-  end;
-  Result := '"';
-  mBackslashes := 0;
-  for mIndex := 1 to Length(AArgument) do
-  begin
-    if AArgument[mIndex] = '\' then
-    begin
-      Inc(mBackslashes);
-    end
-    else
-    begin
-      if AArgument[mIndex] = '"' then
-      begin
-        Result := Result + StringOfChar('\', mBackslashes + 1);
-      end;
-      mBackslashes := 0;
-    end;
-    Result := Result + AArgument[mIndex];
-  end;
-  // Backslashes vor dem schließenden Anführungszeichen verdoppeln.
-  Result := Result + StringOfChar('\', mBackslashes) + '"';
-end;
-
 procedure RaiseCancelled(const ARequest: TCompilerRequest);
 begin
   raise ECompilerCancelled.CreateFmt('%s: abgebrochen', [ExtractFileName(ARequest.Executable)]);
@@ -210,14 +179,8 @@ begin
 end;
 
 function CommandLineOf(const ARequest: TCompilerRequest): string;
-var
-  mArgument: string;
 begin
-  Result := TProcessRunner.QuoteArgument(ARequest.Executable);
-  for mArgument in ARequest.Arguments do
-  begin
-    Result := Result + ' ' + TProcessRunner.QuoteArgument(mArgument);
-  end;
+  Result := TTextCommandLine.Join(ARequest.Executable, ARequest.Arguments);
 end;
 
 /// <summary>Startet den Prozess unsichtbar, ohne Eingabe, stdout und stderr in AWritePipe; nur dieses Handle erbt

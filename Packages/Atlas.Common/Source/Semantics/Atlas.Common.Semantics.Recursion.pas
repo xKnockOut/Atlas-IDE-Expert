@@ -726,6 +726,34 @@ begin
   end;
 end;
 
+/// <summary>Ist ANode der Anfang eines Zuweisungsziels mit Feld oder Index (Name.X := …, Name[I] := …)?</summary>
+function IsWrittenThrough(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  mNode := ANode;
+  while (mNode.Parent <> nil) and (mNode.Parent.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) and
+    (mNode.Parent.ChildCount > 0) and (mNode.Parent[0] = mNode) do
+  begin
+    mNode := mNode.Parent;
+  end;
+  Result := (mNode <> ANode) and IsAssigned(mNode);
+end;
+
+/// <summary>Ist ATarget ARoutine selbst oder eine Routine, in der ARoutine verschachtelt liegt?</summary>
+function IsOwnOrEnclosing(ARoutine, ATarget: TRoutineInfo): Boolean;
+begin
+  Result := False;
+  while ARoutine <> nil do
+  begin
+    if ARoutine = ATarget then
+    begin
+      Exit(True);
+    end;
+    ARoutine := ARoutine.Parent;
+  end;
+end;
+
 /// <summary>Führt der Name ANode zu ATarget? Ohne Property: Zuweisung an den eigenen Namen ist das
 /// Funktionsergebnis, ein Prozedurname außerhalb einer Aufrufstelle ein Methodenzeiger.</summary>
 function IsEdge(ATarget: TRoutineInfo; AProp: TPropertyInfo; AWritten: Boolean; ANode: TSyntaxNode): Boolean;
@@ -748,6 +776,12 @@ begin
   mWritten := IsAssigned(ANode);
   mTarget := FindTarget(ARoutine, AName, ASelf, mWritten, mProp);
   if (mTarget = nil) or not IsEdge(mTarget, mProp, mWritten, ANode) then
+  begin
+    Exit;
+  end;
+  // Name.X := … im Rumpf der Funktion Name schreibt wie Result.X in das Funktionsergebnis.
+  if (mProp = nil) and not ASelf and mTarget.IsFunction and IsOwnOrEnclosing(ARoutine, mTarget) and
+    IsWrittenThrough(ANode) then
   begin
     Exit;
   end;

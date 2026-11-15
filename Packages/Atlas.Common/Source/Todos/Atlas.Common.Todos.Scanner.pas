@@ -50,7 +50,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Metrics.Collector;
+  Atlas.Common.Metrics.Collector,
+  Atlas.Text.Lines;
 
 function IsSpace(ACh: Char): Boolean;
 begin
@@ -60,32 +61,6 @@ end;
 function IsLetter(ACh: Char): Boolean;
 begin
   Result := CharInSet(ACh, ['A'..'Z', 'a'..'z']);
-end;
-
-/// <summary>Leerraum (auch Zeilenumbrüche) zu je einem Leerzeichen, außen ohne.</summary>
-function Collapse(const AText: string): string;
-var
-  mIndex: Integer;
-  mPending: Boolean;
-begin
-  Result := '';
-  mPending := False;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if IsSpace(AText[mIndex]) then
-    begin
-      mPending := Result <> '';
-    end
-    else
-    begin
-      if mPending then
-      begin
-        Result := Result + ' ';
-      end;
-      mPending := False;
-      Result := Result + AText[mIndex];
-    end;
-  end;
 end;
 
 function IsKeyword(const AWord: string; const AKeywords: TArray<string>): Boolean;
@@ -228,7 +203,7 @@ begin
   begin
     mOption := UpCase(AReader.Text[AReader.Position + 1]);
     Inc(AReader.Position, 2);
-    mValue := Collapse(AReader.ReadOptionValue);
+    mValue := TTextLines.CollapseSpace(AReader.ReadOptionValue);
     if mOption = 'O' then
     begin
       AEntry.Owner := mValue;
@@ -301,7 +276,7 @@ begin
   begin
     Inc(mReader.Position);
   end;
-  AEntry.Text := Collapse(Copy(ABody, mReader.Position, MaxInt));
+  AEntry.Text := TTextLines.CollapseSpace(Copy(ABody, mReader.Position, MaxInt));
 end;
 
 class function TTodoScanner.FromTokens(const ATokens: TArray<TPascalToken>;

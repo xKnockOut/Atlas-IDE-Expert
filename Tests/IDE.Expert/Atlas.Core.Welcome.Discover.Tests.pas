@@ -60,6 +60,21 @@ type
     procedure StateRoundTripsThroughTipsFile;
   end;
 
+  /// <summary>Entscheidungen der Karte in der IDE (#1967).</summary>
+  [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
+  TAtlasDiscoverStepsTests = class
+  public
+    [Test]
+    procedure TryPrefersSampleThenCommand;
+    [Test]
+    procedure RunnableOnlyAtlasOrPalette;
+    [Test]
+    procedure EditorIndexFromOneBased;
+    [Test]
+    procedure AfterBlockDropsOnlyTip;
+  end;
+
 implementation
 
 uses
@@ -533,8 +548,43 @@ begin
   end;
 end;
 
+{ TAtlasDiscoverStepsTests }
+
+procedure TAtlasDiscoverStepsTests.TryPrefersSampleThenCommand;
+begin
+  Assert.AreEqual<TAtlasDiscoverTry>(TAtlasDiscoverTry.OpenSample,
+    TAtlasDiscoverSteps.TryOf(True, 'Beispiele\Kunde.pas', True));
+  Assert.AreEqual<TAtlasDiscoverTry>(TAtlasDiscoverTry.NoSample,
+    TAtlasDiscoverSteps.TryOf(False, 'Beispiele\Kunde.pas', True), 'Beispiel fehlt: kein Befehl stattdessen');
+  Assert.AreEqual<TAtlasDiscoverTry>(TAtlasDiscoverTry.RunCommand, TAtlasDiscoverSteps.TryOf(False, '', True));
+  Assert.AreEqual<TAtlasDiscoverTry>(TAtlasDiscoverTry.NoCommand, TAtlasDiscoverSteps.TryOf(False, '', False));
+end;
+
+procedure TAtlasDiscoverStepsTests.RunnableOnlyAtlasOrPalette;
+begin
+  Assert.IsTrue(TAtlasDiscoverSteps.Runnable('Atlas.Format', True, True, False));
+  Assert.IsTrue(TAtlasDiscoverSteps.Runnable('palette', True, False, True));
+  Assert.IsFalse(TAtlasDiscoverSteps.Runnable('ide.save', True, False, False), 'Befehl der IDE');
+  Assert.IsFalse(TAtlasDiscoverSteps.Runnable('Atlas.Format', False, True, False), 'nicht gefunden');
+  Assert.IsFalse(TAtlasDiscoverSteps.Runnable('', True, True, False));
+end;
+
+procedure TAtlasDiscoverStepsTests.EditorIndexFromOneBased;
+begin
+  Assert.AreEqual(4, TAtlasDiscoverSteps.EditorIndex(5));
+  Assert.AreEqual(0, TAtlasDiscoverSteps.EditorIndex(1));
+  Assert.AreEqual(0, TAtlasDiscoverSteps.EditorIndex(0), 'fehlt in tips.json');
+end;
+
+procedure TAtlasDiscoverStepsTests.AfterBlockDropsOnlyTip;
+begin
+  Assert.AreEqual('b', TAtlasDiscoverSteps.AfterBlock('b', 'a'));
+  Assert.AreEqual('', TAtlasDiscoverSteps.AfterBlock('A', 'a'), 'einziger Tipp');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTipCatalogTests);
   TDUnitX.RegisterTestFixture(TAtlasDiscoverTests);
+  TDUnitX.RegisterTestFixture(TAtlasDiscoverStepsTests);
 
 end.

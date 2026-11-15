@@ -728,6 +728,17 @@ begin
   Result := Result and FGraph.ReachingDefinitions(mFlow, FName).FromEntry and not GuardedByFlag(ARoot, ANode);
 end;
 
+/// <summary>Legt die Ausdrücke einer with-Anweisung (alle Kinder außer dem Rumpf) rückwärts auf APending.</summary>
+procedure PushWithExpressions(APending: TStack<TSyntaxNode>; AWith: TSyntaxNode);
+var
+  mIndex: Integer;
+begin
+  for mIndex := AWith.ChildCount - 2 downto 0 do
+  begin
+    APending.Push(AWith[mIndex]);
+  end;
+end;
+
 /// <summary>Erster Lesezugriff auf die Variable, der ohne vorherige Zuweisung erreichbar ist.</summary>
 procedure TUninitializedCheck.Visit(ARoot: TSyntaxNode);
 var
@@ -743,6 +754,13 @@ begin
       mNode := mPending.Pop;
       if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
       begin
+        Continue;
+      end;
+      // Im Rumpf von with X do verdeckt ein gleichnamiges Mitglied von X die lokale Variable: Der Name kann dort
+      // etwas anderes meinen. Geprüft werden nur die Ausdrücke hinter with.
+      if mNode.Kind = TSyntaxKind.WithStatement then
+      begin
+        PushWithExpressions(mPending, mNode);
         Continue;
       end;
       if IsRead(mNode) and ReadsUninitialized(ARoot, mNode) then

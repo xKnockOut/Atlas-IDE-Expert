@@ -13,7 +13,6 @@
 interface
 
 uses
-  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
@@ -36,7 +35,6 @@ type
     FCheckPaths: Boolean;
     FSitePath: string;
     function OwnerUnit(const ASymbol: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
-    function TokenAt(const APosition: TTextPosition): Integer;
     function EnumOrdinal(const ASymbol: TResolvedSymbol; out AValue: Int64): Boolean;
     function ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol; out AValue: Int64): Boolean;
     /// <summary>Wert einer Konstanten, deren Deklaration im eigenen Baum steht.</summary>
@@ -134,29 +132,6 @@ begin
     Exit(True);
   end;
   Result := (FIndex <> nil) and FIndex.FindFile(ASymbol.FileName, AUnit);
-end;
-
-function TConstantValues.TokenAt(const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle: Integer;
-begin
-  // Erstes Token, das an APosition oder dahinter beginnt.
-  mLow := 0;
-  mHigh := Length(FTokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if (FTokens[mMiddle].StartPos.Line < APosition.Line) or ((FTokens[mMiddle].StartPos.Line = APosition.Line) and
-      (FTokens[mMiddle].StartPos.Character < APosition.Character)) then
-    begin
-      mLow := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
-  Result := mLow;
 end;
 
 function TConstantValues.ForeignValue(const AOwner: TUnitIndex; const ASymbol: TIndexSymbol;
@@ -304,8 +279,8 @@ begin
   Result := False;
   AValue := 0;
   // Ausdruck hinter "=" bis vor das Semikolon.
-  mFirst := TokenAt(ASymbol.Range.StartPos);
-  mLast := TokenAt(ASymbol.Range.EndPos) - 1;
+  mFirst := TokenFromPosition(FTokens, ASymbol.Range.StartPos);
+  mLast := TokenFromPosition(FTokens, ASymbol.Range.EndPos) - 1;
   if (mFirst > High(FTokens)) or (mLast < mFirst) then
   begin
     Exit;

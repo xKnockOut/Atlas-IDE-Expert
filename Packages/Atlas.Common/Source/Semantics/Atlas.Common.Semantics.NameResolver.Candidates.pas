@@ -705,7 +705,7 @@ begin
       end;
     end;
   end;
-  if mHeader.FindChild(TSyntaxKind.TypeReference) <> nil then
+  if FParts.Locals.HasResult(mHeader) then
   begin
     AList.Add(FParts.Locals.FromNode(mHeader, 'Result', TIndexSymbolKind.Variable, False));
   end;

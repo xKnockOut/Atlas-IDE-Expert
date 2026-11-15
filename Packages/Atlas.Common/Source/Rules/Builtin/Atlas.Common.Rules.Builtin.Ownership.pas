@@ -558,19 +558,33 @@ begin
     FreeInLoop(APosition, AFreePosition);
 end;
 
-/// <summary>Elementvariablen der Routine: V := L[I], V := L.Items[I], L.First/Last, for V in L / L.Values.</summary>
+/// <summary>Elementvariablen der Routine: V := L[I], V := L.Items[I], L.First/Last, for V in L / L.Values. Es
+/// zählt die letzte Zuweisung an V vor der Freigabe: V := TX.Create danach macht V wieder zu einem eigenen Objekt.
+/// </summary>
 function TOwnedItemFreedScan.AliasList(ABlock: TSyntaxNode; AFreePosition: Integer; const AName: string;
   out AList: TOwningList): Boolean;
 var
   mPosition: Integer;
+  mList: TOwningList;
 begin
   Result := False;
+  AList := Default(TOwningList);
   for mPosition := 0 to AFreePosition - 1 do
   begin
-    if (Token(mPosition).Offset >= ABlock.StartOffset) and IsName(mPosition, AName) and
-      (IsElementAssign(mPosition, AList) or IsLoopAlias(mPosition, AFreePosition, AList)) then
+    if (Token(mPosition).Offset < ABlock.StartOffset) or not IsName(mPosition, AName) then
+    begin
+      Continue;
+    end;
+    // Eigene Variable: ListAt hat einen out-Parameter, ein gescheiterter Versuch leerte sonst die gefundene Liste.
+    mList := Default(TOwningList);
+    if IsElementAssign(mPosition, mList) or IsLoopAlias(mPosition, AFreePosition, mList) then
     begin
       Result := True;
+      AList := mList;
+    end
+    else if IsSym(mPosition + 1, ':=') and not IsSym(mPosition - 1, '.') then
+    begin
+      Result := False;
     end;
   end;
 end;

@@ -93,6 +93,8 @@ type
     [Test]
     procedure ValidDefaultsAreSilent;
     [Test]
+    procedure AttributeIsNoDefault;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -706,6 +708,26 @@ begin
     ' Anzahl: Integer = 1; Faktor: Double = 0.5; Z: TZiel = nil);'#10'    procedure Leer(var A, B: Integer);'#10,
     'procedure TPost.Senden(Ziel: TZiel; const Text: string; Anzahl: Integer; Faktor: Double; Z: TZiel);'#10 +
     'begin'#10'end;'#10'procedure TPost.Leer(var A, B: Integer);'#10'begin'#10'end;'#10)))));
+end;
+
+procedure TDefaultParameterInvalidTests.AttributeIsNoDefault;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // [ref] ist ein Kind des Parameters wie der Standardwert, aber keiner (Header wie Box2D: const [ref] p: TVec2).
+  Assert.AreEqual(0, Integer(Length(DefaultFindings(Post('    procedure Kreis(const [ref] Mitte: TPunkt; ' +
+    'Radius: Integer; [Ref] const Rand: TPunkt; Farbe: Integer = 0);'#10,
+    'procedure TPost.Kreis(const [ref] Mitte: TPunkt; Radius: Integer; [Ref] const Rand: TPunkt; Farbe: Integer);' +
+    #10'begin'#10'end;'#10)))));
+  // Echter Standardwert vor einem Attribut-Parameter: gemeldet, die Korrektur behält das Attribut.
+  mSource := Post('    procedure Linie(Breite: Integer = 1; const [ref] Bis: TPunkt);'#10, '');
+  mFound := DefaultFindings(mSource);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Bis braucht einen Standardwert, weil ein vorheriger Parameter einen hat (wie E2238).',
+    mFound[0].Message);
+  mFixed := ApplyAll(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('procedure Linie(const [ref] Bis: TPunkt; Breite: Integer = 1);', mFixed) > 0, mFixed);
 end;
 
 procedure TDefaultParameterInvalidTests.OffAndExclude;

@@ -42,7 +42,11 @@ type
     /// <summary>Länge N von string[N] bzw. 255 bei ShortString in einem Typ- oder Signaturtext; 0 sonst.
     /// </summary>
     class function ShortStringLength(const AText: string): Integer; static;
+    /// <summary>N, wenn ATypeName im Index ein Alias auf string[N]/ShortString ist; 0 sonst (über alle Units des
+    /// Laufs gemerkt).</summary>
+    class function IndexAliasLength(const AContext: TRuleContext; const ATypeName: string): Integer; static;
   end;
+
 
 
 implementation
@@ -985,6 +989,11 @@ begin
         end;
       end;
     end);
+end;
+
+class function TStringLengthLimitRule.IndexAliasLength(const AContext: TRuleContext; const ATypeName: string): Integer;
+begin
+  Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
 end;
 
 /// <summary>Gibt es im Index eine Variable, ein Feld oder eine Property AName vom Typ string[N]/ShortString oder

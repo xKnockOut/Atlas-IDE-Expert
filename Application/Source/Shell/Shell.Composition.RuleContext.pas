@@ -70,42 +70,12 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
-  System.IOUtils,
   System.SyncObjs,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.Builtin,
   Shell.Workspace.RuleProjects;
-
-/// <summary>Liest Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114).</summary>
-function FolderFileReader(const AFolder: string): TRuleFileReader;
-begin
-  Result :=
-    function(const AName: string; out AData: TBytes): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
-      if Result then
-      try
-        AData := TFile.ReadAllBytes(TPath.Combine(AFolder, AName));
-      except
-        on EInOutError do
-          Result := False;
-        on EFileStreamError do
-          Result := False;
-      end;
-    end;
-end;
-
-/// <summary>Fehlende Dateien aus {$I} und {$R} (#1379) neben der Unit.</summary>
-function FolderFileExists(const AFolder: string): TRuleFileExists;
-begin
-  Result :=
-    function(const AName: string): Boolean
-    begin
-      Result := TFile.Exists(TPath.Combine(AFolder, AName));
-    end;
-end;
 
 { TShellRuleContext }
 
@@ -209,16 +179,21 @@ begin
 end;
 
 procedure TShellRuleContext.ReadFormFile(const AFileName: string; var AContext: TRuleCheckContext);
+var
+  mDfm, mFmx: string;
 begin
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
-  if FServices.ReadText(ChangeFileExt(AFileName, '.dfm'), AContext.FormText) then
+  // Schreibweise wie auf der Platte (X.DFM neben X.pas), wie unter Windows.
+  mDfm := TRuleFolderFiles.OnDisk(ChangeFileExt(AFileName, '.dfm'));
+  mFmx := TRuleFolderFiles.OnDisk(ChangeFileExt(AFileName, '.fmx'));
+  if FServices.ReadText(mDfm, AContext.FormText) then
   begin
-    AContext.FormFile := ChangeFileExt(AFileName, '.dfm');
+    AContext.FormFile := mDfm;
   end
-  else if FServices.ReadText(ChangeFileExt(AFileName, '.fmx'), AContext.FormText) then
+  else if FServices.ReadText(mFmx, AContext.FormText) then
   begin
-    AContext.FormFile := ChangeFileExt(AFileName, '.fmx');
+    AContext.FormFile := mFmx;
   end
   else
   begin
@@ -273,8 +248,10 @@ begin
   begin
     ReadFormFile(mFileName, AContext);
   end;
-  AContext.ReadFile := FolderFileReader(ExtractFilePath(mFileName));
-  AContext.FileExists := FolderFileExists(ExtractFilePath(mFileName));
+  // Ressourcen neben der Unit, z. B. die .dcr mit den Palettensymbolen (#114), und fehlende Dateien aus {$I} und
+  // {$R} (#1379).
+  AContext.ReadFile := TRuleFolderFiles.Reader(ExtractFilePath(mFileName));
+  AContext.FileExists := TRuleFolderFiles.Exists(ExtractFilePath(mFileName));
   AContext.Memo := FMemo;
   Result := True;
 end;
