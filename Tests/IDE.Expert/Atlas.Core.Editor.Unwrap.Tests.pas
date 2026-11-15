@@ -28,6 +28,8 @@ type
     procedure SpansOnLine;
     [Test]
     procedure EditForFile;
+    [Test]
+    procedure HandlesPascalSources;
   end;
 
 implementation
@@ -172,6 +174,13 @@ begin
   Assert.AreEqual('C:\a.pas', mEdit.Files[0].FileName);
   Assert.AreEqual(1, mEdit.EditCount);
   Assert.IsTrue(TAtlasUnwrap.EditOf(mList[2], 'C:\a.pas').IsEmpty);
+end;
+
+procedure TAtlasUnwrapTests.HandlesPascalSources;
+begin
+  Assert.IsTrue(TAtlasUnwrap.Handles('Main.pas'));
+  Assert.IsTrue(TAtlasUnwrap.Handles('defines.INC'));
+  Assert.IsFalse(TAtlasUnwrap.Handles('Main.dfm'));
 end;
 
 initialization

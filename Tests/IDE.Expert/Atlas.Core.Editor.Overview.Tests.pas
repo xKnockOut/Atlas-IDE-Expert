@@ -27,12 +27,18 @@ type
     procedure SearchOccurrences;
     [Test]
     procedure SameMarks;
+    [Test]
+    procedure ProblemsBySeverityWithoutUsesAndInactive;
+    [Test]
+    procedure ChangesWithTextOfTheirKind;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.Overview;
 
 { TAtlasOverviewTests }
@@ -160,6 +166,59 @@ begin
   Assert.IsFalse(TAtlasOverview.Same(A, B));
   Assert.IsFalse(TAtlasOverview.Same(A, nil));
   Assert.IsTrue(TAtlasOverview.Same(nil, nil));
+end;
+
+function Problem(ASeverity: TAtlasProblemSeverity; AStart, AEnd: Integer): TAtlasProblem;
+begin
+  Result := Default(TAtlasProblem);
+  Result.Severity := ASeverity;
+  Result.StartLine := AStart;
+  Result.EndLine := AEnd;
+  Result.Message := 'm' + IntToStr(AStart);
+end;
+
+procedure TAtlasOverviewTests.ProblemsBySeverityWithoutUsesAndInactive;
+var
+  mProblems: TArray<TAtlasProblem>;
+  mMarks: TAtlasOverviewMarks;
+begin
+  mProblems := TArray<TAtlasProblem>.Create(Problem(TAtlasProblemSeverity.Error, 4, 6),
+    Problem(TAtlasProblemSeverity.Warning, 8, 2), Problem(TAtlasProblemSeverity.Hint, 9, 9),
+    Problem(TAtlasProblemSeverity.Warning, 1, 1), Problem(TAtlasProblemSeverity.Warning, 2, 2));
+  mProblems[3].Unnecessary := True;
+  mProblems[4].UsesUnit := 'System.Math';
+  mMarks := TAtlasOverview.ProblemMarks(mProblems);
+  Assert.AreEqual(3, Integer(Length(mMarks)), 'ohne inaktive Zweige und uses-Einträge');
+  Assert.IsTrue(mMarks[0].Kind = TAtlasOverviewMarkKind.Error);
+  Assert.AreEqual(3, mMarks[0].Count, 'über alle Zeilen des Befunds');
+  Assert.AreEqual('m4', mMarks[0].Text);
+  Assert.IsTrue(mMarks[1].Kind = TAtlasOverviewMarkKind.Warning);
+  Assert.AreEqual(1, mMarks[1].Count, 'mindestens eine Zeile');
+  Assert.IsTrue(mMarks[2].Kind = TAtlasOverviewMarkKind.Info);
+end;
+
+procedure TAtlasOverviewTests.ChangesWithTextOfTheirKind;
+var
+  mChange: TAtlasLineChange;
+  mMark: TAtlasOverviewMark;
+begin
+  mChange := Default(TAtlasLineChange);
+  mChange.Kind := TAtlasLineChangeKind.Modified;
+  mChange.Line := 5;
+  mChange.Count := 2;
+  mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
+  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Modified);
+  Assert.AreEqual(2, mMark.Count);
+  Assert.AreEqual('anders', mMark.Text);
+  mChange.Kind := TAtlasLineChangeKind.Deleted;
+  mChange.Line := 20;
+  mChange.Count := 0;
+  mMark := TAtlasOverview.ChangeMark(mChange, 20, 'neu', 'anders', 'weg');
+  Assert.IsTrue(mMark.Kind = TAtlasOverviewMarkKind.Deleted);
+  Assert.AreEqual(19, mMark.Line, 'am Ende auf die letzte Zeile');
+  Assert.AreEqual(1, mMark.Count);
+  mChange.Kind := TAtlasLineChangeKind.Added;
+  Assert.AreEqual('neu', TAtlasOverview.ChangeMark(mChange, 30, 'neu', 'anders', 'weg').Text);
 end;
 
 initialization
