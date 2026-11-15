@@ -473,6 +473,13 @@ begin
   end;
 end;
 
+/// <summary>Ist APath (Name oder Self.Name) einer der Namen AMembers?</summary>
+function IsMember(const APath: string; const AMembers: TArray<string>): Boolean;
+begin
+  Result := MatchText(APath, AMembers) or StartsText('Self.', APath) and
+    MatchText(Copy(APath, Length('Self.') + 1, MaxInt), AMembers);
+end;
+
 procedure TUseAfterFreeCheck.Follow(AFree: TFlowNode; const APath: string; AToNil: Boolean);
 var
   mVisited: TArray<Boolean>;
@@ -484,8 +491,7 @@ begin
   FPath := APath;
   FToNil := AToNil;
   FPathAliases := AliasesOf(APath);
-  FIsField := MatchText(APath, FFields) or StartsText('Self.', APath) and
-    MatchText(Copy(APath, Length('Self.') + 1, MaxInt), FFields);
+  FIsField := IsMember(APath, FFields);
   SetLength(mVisited, FGraph.Nodes.Count);
   mQueue := nil;
   QueueSuccessors(AFree, mVisited, mQueue);
@@ -514,7 +520,9 @@ var
 begin
   for mNode in FGraph.Nodes do
   begin
-    if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) then
+    // Pop.Free mit einer Funktion Pop der eigenen Klasse gibt bei jedem Aufruf ein anderes Objekt frei.
+    if (mNode.Kind = TFlowNodeKind.Statement) and FreedBy(mNode.Syntax, mPath, mToNil) and
+      not IsMember(mPath, FMethods) then
     begin
       Follow(mNode, mPath, mToNil);
     end;

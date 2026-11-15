@@ -28,6 +28,10 @@ type
     procedure LoopInvariantCallReported;
     [Test]
     procedure ArgumentChangedInLoopSilent;
+    /// <summary>Parameter oder Variable mit dem Namen einer Routine (Format: string; Format[J]) ist kein Aufruf.
+    /// </summary>
+    [Test]
+    procedure VariableNamedLikeRoutineSilent;
     [Test]
     procedure ForBoundsAndCheapConditionSilent;
     [Test]
@@ -191,6 +195,19 @@ begin
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(mFindings[0].Confidence));
   Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
     '  repeat'#10'    Inc(I);'#10'  until UpperCase(Name) = ''X'';')));
+end;
+
+procedure TPerformanceRulesTests.VariableNamedLikeRoutineSilent;
+const
+  cSource = 'unit U;'#10'interface'#10'implementation'#10 +
+    'function Zaehle(const Format: string; Ch: Char; L: Integer): Integer;'#10'var'#10'  J, Copy: Integer;'#10 +
+    'begin'#10'  J := 1;'#10'  Copy := L;'#10'  while (UpCase(Format[J]) = Ch) and (J <= L) do'#10'    Inc(J);'#10 +
+    '  while J < Copy do'#10'    Inc(J);'#10'  Result := J;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, cSource));
+  // Gegentest: der Aufruf Format(...) in der Bedingung bleibt ein Treffer.
+  Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
+    '  while Format(''%d'', [1]) <> '''' do'#10'    Inc(I);')));
 end;
 
 procedure TPerformanceRulesTests.ArgumentChangedInLoopSilent;

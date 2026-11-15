@@ -234,11 +234,15 @@ begin
     '  SetLength(mText, ALen);'#10'  if ALen > 0 then'#10'    WriteBuffer(@mText[1], ALen);'#10 +
     '  if AText = '''' then'#10'    WriteBuffer(nil, 0)'#10'  else'#10'    WriteBuffer(@AText[1], 1);'#10 +
     '  if Length(AText) = 0 then'#10'    Exit;'#10'  WriteBuffer(@AText[1], 1);'#10));
-  // Eine Bedingung über etwas anderes, oder mit or, sichert nichts.
-  mFound := Findings(Source('const AText: string; ALen: Integer', '',
+  // Feste Länge davor (JVCL: SetLength(AnsiChars, 2); ToAscii(…, @AnsiChars[1], …)).
+  TRuleAssert.Silent(TFirstCharAddressRule.Create, Source('ALen: Integer', '  mText: AnsiString;'#10,
+    '  SetLength(mText, 2);'#10'  WriteBuffer(@mText[1], 2);'#10));
+  // Eine Bedingung über etwas anderes, oder mit or, sichert nichts; SetLength(S, 0) auch nicht.
+  mFound := Findings(Source('const AText: string; ALen: Integer', '  mText: string;'#10,
     '  if ALen > 0 then'#10'    WriteBuffer(@AText[1], 1);'#10 +
-    '  if (AText <> '''') or (ALen > 0) then'#10'    WriteBuffer(@AText[1], 1);'#10));
-  Assert.AreEqual(2, Integer(Length(mFound)));
+    '  if (AText <> '''') or (ALen > 0) then'#10'    WriteBuffer(@AText[1], 1);'#10 +
+    '  SetLength(mText, 0);'#10'  WriteBuffer(@mText[1], 1);'#10));
+  Assert.AreEqual(3, Integer(Length(mFound)));
   mFound := nil;
 end;
 

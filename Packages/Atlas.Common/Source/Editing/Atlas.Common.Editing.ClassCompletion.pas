@@ -249,22 +249,22 @@ begin
   Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
+/// <summary>Steht das Wort AWord als Bezeichner oder reserviertes Wort in AText? Kommentare und Strings zählen
+/// nicht (procedure Redo; virtual; {abstract;} ist nicht abstrakt).</summary>
 function HasWord(const AText, AWord: string): Boolean;
 var
-  mIndex: Integer;
-  mLower: string;
+  mToken: TPascalToken;
 begin
-  mLower := LowerCase(AText);
-  mIndex := Pos(AWord, mLower);
-  while mIndex > 0 do
+  if not ContainsText(AText, AWord) then
   begin
-    if ((mIndex = 1) or not CharInSet(mLower[mIndex - 1], ['a'..'z', '0'..'9', '_'])) and
-      ((mIndex + Length(AWord) > Length(mLower)) or
-      not CharInSet(mLower[mIndex + Length(AWord)], ['a'..'z', '0'..'9', '_'])) then
+    Exit(False);
+  end;
+  for mToken in TPascalLexer.Tokenize(AText) do
+  begin
+    if (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(mToken.Text, AWord) then
     begin
       Exit(True);
     end;
-    mIndex := PosEx(AWord, mLower, mIndex + 1);
   end;
   Result := False;
 end;
