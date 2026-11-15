@@ -904,8 +904,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.BreakpointTags` | `Core/Debug/Atlas.Core.Debug.BreakpointTags.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.CallStack` | `Core/Debug/Atlas.Core.Debug.CallStack.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.DialogCompletion` | `Core/Debug/Atlas.Core.Debug.DialogCompletion.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.DialogInput` | `Core/Debug/Atlas.Core.Debug.DialogInput.pas` | Debugger-Dialoge: Beschriftung, Liste nach einer Eingabe, Tasten, Übernehmen, #1967 |
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.EvaluateRows` | `Core/Debug/Atlas.Core.Debug.EvaluateRows.pas` | Zeilen des Fensters „Auswerten“: Ergebnis, kein Zugriff, Felder, Festgeheftete, #1967 |
 | `Atlas.Core.Debug.BreakpointCheck` | `Core/Debug/Atlas.Core.Debug.BreakpointCheck.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointAnchors` | `Core/Debug/Atlas.Core.Debug.BreakpointAnchors.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointRules` | `Core/Debug/Atlas.Core.Debug.BreakpointRules.pas` | Ordner `Core/Debug` |

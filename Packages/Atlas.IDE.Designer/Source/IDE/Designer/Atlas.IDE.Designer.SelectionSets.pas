@@ -60,8 +60,6 @@ type
     FSeen: TDictionary<TComponent, TPair<string, string>>;
     FWatch: TAtlasSelectionSetWatch;
     FKeys: TAtlasSelectionSetKeys;
-    function StoreFile(const AFormFile: string): string;
-    function FormKey(const AFormFile: string): string;
     function Store(const AFormFile: string): TAtlasSelectionSets;
     procedure Save(const AFormFile: string);
     procedure Watch(ARoot: TComponent; const AFormFile: string);
@@ -70,7 +68,7 @@ type
     function SetCaption(const ASet: TAtlasSelectionSet; AIndex: Integer; ARoot: TComponent): string;
     procedure AddSetMenu(AParent: TMenuItem; const ASet: TAtlasSelectionSet; AIndex: Integer; ARoot: TComponent);
     procedure MenuClick(Sender: TObject);
-    procedure Run(AAction, AIndex: Integer);
+    procedure Run(AAction: TAtlasSetAction; AIndex: Integer);
   public
     constructor Create(const AOnMessage: TProc<string>);
     destructor Destroy; override;
@@ -101,38 +99,27 @@ uses
 
 const
   cKeyPriority = 50;
-  cLocalFile = 'designer-selection-sets.json';
-  cSharedFile = '.atlas-selection-sets.json';
-  /// <summary>Aktionen im Untermenü eines Satzes; Tag = Index · cActionCount + Aktion.</summary>
-  cRestore = 0;
-  cAdd = 1;
-  cRemove = 2;
-  cOverwrite = 3;
-  cExtend = 4;
-  cRename = 5;
-  cUp = 6;
-  cDown = 7;
-  cDelete = 8;
-  cActionCount = 9;
 
 function Kind: string;
 begin
   Result := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSetsKind);
 end;
 
-function LocalAppData: string;
-begin
-  Result := GetEnvironmentVariable('LOCALAPPDATA');
-  if Result = '' then
-  begin
-    Result := TPath.GetTempPath;
-  end;
-end;
-
 function Shared: Boolean;
 begin
   Result := SameText(TAtlasIdeSettings.Current.DesignerSelectionSetsStorage,
     TAtlasPluginSettings.cDesignerSetsShared);
+end;
+
+function StoreFile(const AFormFile: string): string;
+begin
+  Result := TAtlasSelectionSets.StorePath(AFormFile, Shared, GetEnvironmentVariable('LOCALAPPDATA'),
+    TPath.GetTempPath);
+end;
+
+function FormKey(const AFormFile: string): string;
+begin
+  Result := TAtlasSelectionSets.FormKey(AFormFile, Shared);
 end;
 
 function Names(const AComponents: TArray<TComponent>): TArray<string>;
@@ -147,21 +134,9 @@ begin
 end;
 
 /// <summary>Umschalt beim Klick fügt hinzu, Strg entfernt; sonst AAction.</summary>
-function ClickAction(AAction: Integer): Integer;
+function ClickAction(AAction: TAtlasSetAction): TAtlasSetAction;
 begin
-  Result := AAction;
-  if AAction <> cRestore then
-  begin
-    Exit;
-  end;
-  if GetKeyState(VK_SHIFT) < 0 then
-  begin
-    Result := cAdd;
-  end
-  else if GetKeyState(VK_CONTROL) < 0 then
-  begin
-    Result := cRemove;
-  end;
+  Result := TAtlasSetMenu.ClickAction(AAction, GetKeyState(VK_SHIFT) < 0, GetKeyState(VK_CONTROL) < 0);
 end;
 
 /// <summary>„ (Strg+Umschalt+n)“ für Satz AIndex; leer ohne Kürzel.</summary>
@@ -192,25 +167,23 @@ begin
   begin
     Exit(True);
   end;
-  Result := mSettings.DesignerSelectionSetsShortcuts and (AShift = [ssCtrl, ssShift]) and
-    (AKey >= Ord('1')) and (AKey <= Ord('9'));
+  Result := mSettings.DesignerSelectionSetsShortcuts and
+    (TAtlasSetMenu.ShortcutIndex(AKey, AShift = [ssCtrl, ssShift]) >= 0);
 end;
 
 procedure TAtlasSelectionSetKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
   mOwner: TAtlasIdeSelectionSets;
-  mKey: Word;
-  mShift: TShiftState;
+  mIndex: Integer;
 begin
   mOwner := FOwner;
-  mKey := AKey;
-  mShift := AShift;
+  mIndex := TAtlasSetMenu.ShortcutIndex(AKey, AShift = [ssCtrl, ssShift]);
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
     begin
-      if (mShift = [ssCtrl, ssShift]) and (mKey >= Ord('1')) and (mKey <= Ord('9')) then
+      if mIndex >= 0 then
       begin
-        mOwner.Restore(mKey - Ord('1'));
+        mOwner.Restore(mIndex);
       end
       else
       begin
@@ -263,27 +236,6 @@ begin
   FKept.Free;
   FStores.Free;
   inherited Destroy;
-end;
-
-function TAtlasIdeSelectionSets.StoreFile(const AFormFile: string): string;
-begin
-  if Shared then
-  begin
-    Result := TPath.Combine(ExtractFilePath(AFormFile), cSharedFile);
-  end
-  else
-  begin
-    Result := TPath.Combine(TPath.Combine(LocalAppData, 'Atlas'), cLocalFile);
-  end;
-end;
-
-function TAtlasIdeSelectionSets.FormKey(const AFormFile: string): string;
-begin
-  Result := AFormFile;
-  if Shared then
-  begin
-    Result := ExtractFileName(AFormFile);
-  end;
 end;
 
 function TAtlasIdeSelectionSets.Store(const AFormFile: string): TAtlasSelectionSets;
@@ -420,30 +372,29 @@ end;
 procedure TAtlasIdeSelectionSets.AddSetMenu(AParent: TMenuItem; const ASet: TAtlasSelectionSet; AIndex: Integer;
   ARoot: TComponent);
 const
-  cTexts: array[cRestore..cDelete] of TAtlasDesignerTextId = (TAtlasDesignerTextId.DesignerSetsRestore,
+  cTexts: array[TAtlasSetAction] of TAtlasDesignerTextId = (TAtlasDesignerTextId.DesignerSetsRestore,
     TAtlasDesignerTextId.DesignerSetsAdd, TAtlasDesignerTextId.DesignerSetsRemove,
     TAtlasDesignerTextId.DesignerSetsOverwrite, TAtlasDesignerTextId.DesignerSetsExtend,
     TAtlasDesignerTextId.DesignerSetsRename, TAtlasDesignerTextId.DesignerSetsUp,
     TAtlasDesignerTextId.DesignerSetsDown, TAtlasDesignerTextId.DesignerSetsDelete);
 var
   mItem, mAction: TMenuItem;
-  mIndex: Integer;
+  mKind: TAtlasSetAction;
 begin
   mItem := TMenuItem.Create(AParent.Owner);
   mItem.Caption := SetCaption(ASet, AIndex, ARoot);
   AParent.Add(mItem);
-  for mIndex := cRestore to cDelete do
+  for mKind := Low(TAtlasSetAction) to High(TAtlasSetAction) do
   begin
-    if mIndex in [cOverwrite, cUp] then
+    if TAtlasSetMenu.BreakBefore(mKind) then
     begin
       mItem.Add(NewLine);
     end;
     mAction := TMenuItem.Create(AParent.Owner);
-    mAction.Caption := TAtlasDesignerStrings.Text(cTexts[mIndex]);
-    mAction.Tag := AIndex * cActionCount + mIndex;
+    mAction.Caption := TAtlasDesignerStrings.Text(cTexts[mKind]);
+    mAction.Tag := TAtlasSetMenu.TagOf(AIndex, mKind);
     mAction.OnClick := MenuClick;
-    // Leerer Satz: grau, nur noch pflegen.
-    mAction.Enabled := (Length(ASet.Members) > 0) or not (mIndex in [cRestore, cAdd, cRemove]);
+    mAction.Enabled := TAtlasSetMenu.Enabled(mKind, Length(ASet.Members));
     mItem.Add(mAction);
   end;
 end;
@@ -455,14 +406,17 @@ begin
   mTag := TMenuItem(Sender).Tag;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
+    var
+      mIndex: Integer;
+      mAction: TAtlasSetAction;
     begin
-      if mTag < 0 then
+      if TAtlasSetMenu.TryDecode(mTag, mIndex, mAction) then
       begin
-        SaveSelection;
+        Run(ClickAction(mAction), mIndex);
       end
       else
       begin
-        Run(ClickAction(mTag mod cActionCount), mTag div cActionCount);
+        SaveSelection;
       end;
     end);
 end;
@@ -482,7 +436,7 @@ begin
   Reconcile(mRoot, mEditor.FileName);
   mItem := TMenuItem.Create(AParent.Owner);
   mItem.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSetsSave);
-  mItem.Tag := -1;
+  mItem.Tag := TAtlasSetMenu.cSaveTag;
   mItem.OnClick := MenuClick;
   AParent.Add(mItem);
   mSets := Store(mEditor.FileName).SetsOf(FormKey(mEditor.FileName));
@@ -538,7 +492,7 @@ end;
 
 procedure TAtlasIdeSelectionSets.Restore(AIndex: Integer);
 begin
-  Run(cRestore, AIndex);
+  Run(TAtlasSetAction.Restore, AIndex);
 end;
 
 procedure TAtlasIdeSelectionSets.UpdateKeys(AWanted: Boolean);
@@ -570,61 +524,21 @@ begin
   end;
 end;
 
-function Contains(const AList: TArray<TComponent>; AComponent: TComponent): Boolean;
-var
-  mItem: TComponent;
-begin
-  for mItem in AList do
-  begin
-    if mItem = AComponent then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
-/// <summary>Neue Auswahl: Satz allein, dazu oder ohne ihn.</summary>
-function Combined(const ACurrent, ASet: TArray<TComponent>; AAction: Integer): TArray<TComponent>;
-var
-  mComponent: TComponent;
-begin
-  if AAction = cRestore then
-  begin
-    Exit(ASet);
-  end;
-  Result := nil;
-  for mComponent in ACurrent do
-  begin
-    if (AAction = cAdd) or (not Contains(ASet, mComponent)) then
-    begin
-      Result := Result + [mComponent];
-    end;
-  end;
-  if AAction = cAdd then
-  begin
-    for mComponent in ASet do
-    begin
-      if not Contains(Result, mComponent) then
-      begin
-        Result := Result + [mComponent];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Satz pflegen: überschreiben, erweitern, umbenennen, verschieben, löschen.</summary>
-procedure Maintain(ASets: TAtlasSelectionSets; const AKey: string; AIndex, AAction: Integer;
+procedure Maintain(ASets: TAtlasSelectionSets; const AKey: string; AIndex: Integer; AAction: TAtlasSetAction;
   const ASelected: TArray<string>);
 var
   mName: string;
 begin
   case AAction of
-    cOverwrite:
+    TAtlasSetAction.Restore, TAtlasSetAction.Add, TAtlasSetAction.Remove:
+      // Ändern die Auswahl, nicht den Satz (Run).
+      Exit;
+    TAtlasSetAction.Overwrite:
       ASets.Replace(AKey, AIndex, ASelected);
-    cExtend:
+    TAtlasSetAction.Extend:
       ASets.Extend(AKey, AIndex, ASelected);
-    cRename:
+    TAtlasSetAction.Rename:
       begin
         mName := ASets.SetsOf(AKey)[AIndex].Name;
         if InputQuery(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSetsSaveTitle),
@@ -633,16 +547,16 @@ begin
           ASets.Rename(AKey, AIndex, mName);
         end;
       end;
-    cUp:
+    TAtlasSetAction.Up:
       ASets.Move(AKey, AIndex, -1);
-    cDown:
+    TAtlasSetAction.Down:
       ASets.Move(AKey, AIndex, 1);
-    cDelete:
+    TAtlasSetAction.Delete:
       ASets.Delete(AKey, AIndex);
   end;
 end;
 
-procedure TAtlasIdeSelectionSets.Run(AAction, AIndex: Integer);
+procedure TAtlasIdeSelectionSets.Run(AAction: TAtlasSetAction; AIndex: Integer);
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
@@ -663,10 +577,10 @@ begin
     Exit;
   end;
   mSelected := TAtlasDesignerAccess.Selection(mEditor, mRoot);
-  if AAction in [cRestore, cAdd, cRemove] then
+  if TAtlasSetMenu.Selects(AAction) then
   begin
-    TAtlasDesignerAccess.Select(mDesigner, mRoot, Combined(mSelected, ComponentsOf(mRoot, mList[AIndex].Members),
-      AAction));
+    TAtlasDesignerAccess.Select(mDesigner, mRoot, TAtlasSetMenu.Combined(mSelected,
+      ComponentsOf(mRoot, mList[AIndex].Members), AAction));
     Exit;
   end;
   Maintain(mSets, FormKey(mEditor.FileName), AIndex, AAction, Names(mSelected));

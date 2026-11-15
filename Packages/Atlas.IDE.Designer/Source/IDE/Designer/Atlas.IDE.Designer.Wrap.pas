@@ -132,15 +132,16 @@ end;
 
 function UniqueName(ARoot: TComponent; const AName: string): string;
 var
-  mNumber: Integer;
+  mRoot: TComponent;
+  mExists: TFunc<string, Boolean>;
 begin
-  Result := AName;
-  mNumber := 1;
-  while ARoot.FindComponent(Result) <> nil do
-  begin
-    Inc(mNumber);
-    Result := AName + IntToStr(mNumber);
-  end;
+  mRoot := ARoot;
+  mExists :=
+    function(ACandidate: string): Boolean
+    begin
+      Result := mRoot.FindComponent(ACandidate) <> nil;
+    end;
+  Result := TAtlasWrapOrder.UniqueName(AName, mExists);
 end;
 
 function ParentByName(ARoot: TComponent; const AName: string): TWinControl;
@@ -191,20 +192,6 @@ begin
       Result := Result + [AParent.Controls[mIndex]];
     end;
   end;
-end;
-
-function Contains(const ANames: TArray<string>; const AName: string): Boolean;
-var
-  mName: string;
-begin
-  for mName in ANames do
-  begin
-    if SameText(mName, AName) then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
 end;
 
 function NamesOf(const AControls: TArray<TControl>): TArray<string>;
@@ -331,23 +318,6 @@ begin
   end;
 end;
 
-/// <summary>Zeilen mit Verweisen als Text für die Rückfrage.</summary>
-function ReferenceText(const ASource: string; const ALines: TArray<Integer>): string;
-var
-  mLines: TArray<string>;
-  mIndex: Integer;
-begin
-  Result := '';
-  mLines := ASource.Replace(#13#10, #10).Split([#10]);
-  for mIndex := 0 to Min(High(ALines), cMaxShownReferences - 1) do
-  begin
-    if ALines[mIndex] <= Length(mLines) then
-    begin
-      Result := Result + sLineBreak + IntToStr(ALines[mIndex]) + ': ' + Trim(mLines[ALines[mIndex] - 1]);
-    end;
-  end;
-end;
-
 /// <summary>Spalten und Zeilen des GridPanels gleich verteilt.</summary>
 procedure SetupGrid(AGrid: TGridPanel; const ACells: TAtlasGridCells);
 var
@@ -406,7 +376,7 @@ begin
     mSorted := nil;
     for mControl in OwnedControls(AControls[0].Parent, ARoot) do
     begin
-      if Contains(NamesOf(AControls), mControl.Name) then
+      if TAtlasWrapOrder.Contains(NamesOf(AControls), mControl.Name) then
       begin
         mSorted := mSorted + [mControl];
       end;
@@ -575,8 +545,7 @@ begin
   begin
     mSheet := TTabSheet(ADesigner.CreateComponent(TTabSheet, Result, 0, 0, 0, 0));
     mSheet.PageControl := TPageControl(Result);
-    mSheet.Name := UniqueName(Result.Owner, TAtlasContainerWrap.PrefixFor(TTabSheet.ClassName) +
-      Copy(AName, Length(TAtlasContainerWrap.PrefixFor(AClass.ClassName)) + 1, MaxInt));
+    mSheet.Name := UniqueName(Result.Owner, TAtlasWrapOrder.SheetName(AName, AClass.ClassName));
     FState.Sheet := mSheet.Name;
   end;
 end;
@@ -597,34 +566,10 @@ procedure TAtlasIdeWrap.FinishUnwrap(ARoot: TComponent; AParent: TWinControl);
 var
   mNames: TArray<string>;
   mTabs: TArray<Integer>;
-  mStack: TArray<string>;
-  mIndex: Integer;
-  mName: string;
 begin
-  mNames := nil;
-  mTabs := nil;
-  for mIndex := 0 to High(FState.Children) do
-  begin
-    if FState.ChildTabs[mIndex] >= 0 then
-    begin
-      mNames := mNames + [FState.Children[mIndex]];
-      mTabs := mTabs + [FState.ChildTabs[mIndex]];
-    end;
-  end;
+  TAtlasWrapOrder.TabbedChildren(FState.Children, FState.ChildTabs, mNames, mTabs);
   SetTabs(ARoot, mNames, TAtlasContainerWrap.UnwrapTabOrders(FState.ContainerTab, mTabs));
-  mStack := nil;
-  for mName in FState.Stack do
-  begin
-    if SameText(mName, FState.Container) then
-    begin
-      mStack := mStack + FState.Children;
-    end
-    else
-    begin
-      mStack := mStack + [mName];
-    end;
-  end;
-  Restack(AParent, ARoot, mStack);
+  Restack(AParent, ARoot, TAtlasWrapOrder.UnwrapStack(FState.Stack, FState.Children, FState.Container));
 end;
 
 /// <summary>Kinder in den Container: Koordinaten, Reihenfolge (Flow/Grid zeilenweise), TabOrder, Anchors.</summary>
@@ -670,40 +615,10 @@ end;
 /// <summary>Container an die TabOrder des ersten Kinds und die Z-Stelle des obersten.</summary>
 procedure FinishWrap(ARoot: TComponent; AParent, AContainer: TWinControl; const AState: TAtlasWrapState);
 var
-  mName: string;
-  mStack: TArray<string>;
-  mTop, mIndex, mTab: Integer;
+  mTab: Integer;
 begin
-  mTab := -1;
-  mTop := -1;
-  for mIndex := 0 to High(AState.Stack) do
-  begin
-    if Contains(AState.Children, AState.Stack[mIndex]) then
-    begin
-      mTop := mIndex;
-    end;
-  end;
-  mStack := nil;
-  for mIndex := 0 to High(AState.Stack) do
-  begin
-    mName := AState.Stack[mIndex];
-    if mIndex = mTop then
-    begin
-      mStack := mStack + [AContainer.Name];
-    end
-    else if not Contains(AState.Children, mName) then
-    begin
-      mStack := mStack + [mName];
-    end;
-  end;
-  Restack(AParent, ARoot, mStack);
-  for mIndex in TAtlasContainerWrap.ByTabOrder(AState.ChildTabs) do
-  begin
-    if (mTab < 0) and (AState.ChildTabs[mIndex] >= 0) then
-    begin
-      mTab := AState.ChildTabs[mIndex];
-    end;
-  end;
+  Restack(AParent, ARoot, TAtlasWrapOrder.WrapStack(AState.Stack, AState.Children, AContainer.Name));
+  mTab := TAtlasWrapOrder.ContainerTabOrder(AState.ChildTabs);
   if mTab >= 0 then
   begin
     AContainer.TabOrder := mTab;
@@ -723,7 +638,8 @@ begin
     mLines := mLines + TAtlasContainerWrap.References(mSource, AInner.Name);
   end;
   Result := (Length(mLines) = 0) or (MessageDlg(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerWrapReferences,
-    [AContainer.Name, ReferenceText(mSource, mLines), sLineBreak + sLineBreak]), mtWarning, [mbYes, mbNo], 0) = mrYes);
+    [AContainer.Name, TAtlasWrapOrder.ReferenceText(mSource, mLines, cMaxShownReferences), sLineBreak + sLineBreak]),
+    mtWarning, [mbYes, mbNo], 0) = mrYes);
 end;
 
 procedure TAtlasIdeWrap.UndoWrap(const AEditor: IOTAFormEditor; ARoot: TComponent);
@@ -771,23 +687,11 @@ end;
 
 class function TAtlasIdeWrap.ClassNames: TArray<string>;
 var
-  mName: string;
   mSettings: TAtlasPluginSettings;
 begin
-  Result := nil;
-  for mName in cBuiltIn do
-  begin
-    Result := Result + [mName];
-  end;
   mSettings := TAtlasIdeSettings.Current;
-  for mName in (mSettings.DesignerWrapInContainerClasses + ',' + mSettings.DesignerWrapInContainerDefaultClass).Split(
-    [',', ';']) do
-  begin
-    if (Trim(mName) <> '') and not Contains(Result, Trim(mName)) then
-    begin
-      Result := Result + [Trim(mName)];
-    end;
-  end;
+  Result := TAtlasWrapOrder.ClassNames(cBuiltIn, mSettings.DesignerWrapInContainerClasses + ',' +
+    mSettings.DesignerWrapInContainerDefaultClass);
 end;
 
 class function TAtlasIdeWrap.CanWrap: Boolean;

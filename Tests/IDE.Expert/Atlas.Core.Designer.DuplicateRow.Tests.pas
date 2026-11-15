@@ -38,6 +38,14 @@ type
     procedure Overflow;
     [Test]
     procedure PushFollowers;
+    [Test]
+    procedure SkipsNameAndPosition;
+    [Test]
+    procedure TabSequenceStable;
+    [Test]
+    procedure GapScaledLikeMulDiv;
+    [Test]
+    procedure ShiftEntryAndPreview;
   end;
 
 implementation
@@ -192,6 +200,58 @@ begin
   Assert.IsFalse(mLayout.AnyBad);
   Assert.AreEqual(1, Integer(Length(TAtlasDuplicateRow.Followers(mRequest.Group, mRequest.Others,
     TAtlasDuplicateDirection.Down))));
+end;
+
+procedure TAtlasDuplicateRowTests.SkipsNameAndPosition;
+begin
+  Assert.IsTrue(TAtlasDuplicateRow.SkippedProperty('name'));
+  Assert.IsTrue(TAtlasDuplicateRow.SkippedProperty('Left'));
+  Assert.IsTrue(TAtlasDuplicateRow.SkippedProperty('Top'));
+  Assert.IsTrue(TAtlasDuplicateRow.SkippedProperty('TabOrder'));
+  Assert.IsTrue(TAtlasDuplicateRow.SkippedProperty('ControlCollection'));
+  Assert.IsFalse(TAtlasDuplicateRow.SkippedProperty('Width'), 'Größe kommt mit');
+  Assert.IsFalse(TAtlasDuplicateRow.SkippedProperty('Caption'));
+end;
+
+procedure TAtlasDuplicateRowTests.TabSequenceStable;
+var
+  mSequence: TArray<Integer>;
+begin
+  mSequence := TAtlasDuplicateRow.TabSequence(TArray<Integer>.Create(3, 1, 2, 1));
+  Assert.AreEqual(4, Integer(Length(mSequence)));
+  Assert.AreEqual(1, mSequence[0]);
+  Assert.AreEqual(3, mSequence[1], 'Gleichstand in alter Folge');
+  Assert.AreEqual(2, mSequence[2]);
+  Assert.AreEqual(0, mSequence[3]);
+  Assert.AreEqual(0, Integer(Length(TAtlasDuplicateRow.TabSequence(nil))));
+end;
+
+procedure TAtlasDuplicateRowTests.GapScaledLikeMulDiv;
+begin
+  Assert.AreEqual(8, TAtlasDuplicateRow.ScaledGap(8, 96));
+  Assert.AreEqual(12, TAtlasDuplicateRow.ScaledGap(8, 144));
+  Assert.AreEqual(8, TAtlasDuplicateRow.ScaledGap(8, 0), 'ohne Dichte 96 dpi');
+  Assert.AreEqual(10, TAtlasDuplicateRow.ScaledGap(8, 120));
+  Assert.AreEqual(2, TAtlasDuplicateRow.ScaledGap(1, 144), '1,5 aufgerundet');
+  Assert.AreEqual(-2, TAtlasDuplicateRow.ScaledGap(-1, 144), 'weg von null');
+end;
+
+procedure TAtlasDuplicateRowTests.ShiftEntryAndPreview;
+var
+  mLayout: TAtlasDuplicateLayout;
+  mShift: TPoint;
+begin
+  mLayout := Default(TAtlasDuplicateLayout);
+  mLayout.Copies := TArray<TRect>.Create(Rect(10, 40, 50, 60));
+  mShift := TAtlasDuplicateRow.ShiftOf(Rect(10, 10, 50, 30), mLayout, 0);
+  Assert.AreEqual(0, mShift.X);
+  Assert.AreEqual(30, mShift.Y);
+  Assert.AreEqual('Fax', TAtlasDuplicateRow.EntryOf(TArray<string>.Create('Fax'), 0));
+  Assert.AreEqual('', TAtlasDuplicateRow.EntryOf(TArray<string>.Create('Fax'), 1), 'hinter der Liste');
+  Assert.AreEqual('lblFax, edtFax; lblMobil, edtMobil', TAtlasDuplicateRow.PreviewText(
+    TArray<TArray<string>>.Create(TArray<string>.Create('lblFax', 'edtFax'),
+    TArray<string>.Create('lblMobil', 'edtMobil'))));
+  Assert.AreEqual('', TAtlasDuplicateRow.PreviewText(nil));
 end;
 
 end.
