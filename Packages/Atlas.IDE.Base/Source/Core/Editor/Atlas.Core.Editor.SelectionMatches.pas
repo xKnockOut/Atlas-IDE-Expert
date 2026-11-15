@@ -28,6 +28,8 @@ type
     /// <summary>Vorgaben wie in den Einstellungen: 3 Zeichen, ohne Groß-/Kleinschreibung, Teilwörter, 1000.
     /// </summary>
     class function Defaults: TAtlasSelectionMatchOptions; static;
+    /// <summary>Alle Optionen als Text: Neu gesucht wird, wenn er sich ändert.</summary>
+    function Key: string;
   end;
 
   TAtlasSelectionMatch = record
@@ -87,6 +89,11 @@ begin
   Result.CaseSensitive := False;
   Result.WholeWord := False;
   Result.MaxMatches := 1000;
+end;
+
+function TAtlasSelectionMatchOptions.Key: string;
+begin
+  Result := Format('%d|%d|%d|%d', [MinLength, Ord(CaseSensitive), Ord(WholeWord), MaxMatches]);
 end;
 
 { TAtlasSelectionMatchList }

@@ -2586,7 +2586,23 @@ uses
   Atlas.UI.Settings.Section.Tests in 'IDE.Expert\Atlas.UI.Settings.Section.Tests.pas',
   Atlas.UI.Settings.Overview in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Overview.pas' {AtlasSettingsOverview: TFrame},
   Atlas.UI.Settings.Page.Search in '..\Packages\Atlas.IDE.Base\Source\UI\Settings\Atlas.UI.Settings.Page.Search.pas',
-  Atlas.UI.Settings.Overview.Tests in 'IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas';
+  Atlas.UI.Settings.Overview.Tests in 'IDE.Expert\Atlas.UI.Settings.Overview.Tests.pas',
+  Atlas.Core.Editor.MultiCursorKeys in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MultiCursorKeys.pas',
+  Atlas.Core.Editor.MultiCursorKeys.Tests in 'IDE.Expert\Atlas.Core.Editor.MultiCursorKeys.Tests.pas',
+  Atlas.Core.Editor.GuideStroke in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GuideStroke.pas',
+  Atlas.Core.Editor.GuideStroke.Tests in 'IDE.Expert\Atlas.Core.Editor.GuideStroke.Tests.pas',
+  Atlas.Core.Editor.LinkedKeys in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedKeys.pas',
+  Atlas.Core.Editor.LinkedKeys.Tests in 'IDE.Expert\Atlas.Core.Editor.LinkedKeys.Tests.pas',
+  Atlas.Core.Editor.CaretSteps in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.CaretSteps.pas',
+  Atlas.Core.Editor.CaretSteps.Tests in 'IDE.Expert\Atlas.Core.Editor.CaretSteps.Tests.pas',
+  Atlas.Core.Editor.GutterPanel in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GutterPanel.pas',
+  Atlas.Core.Editor.GutterPanel.Tests in 'IDE.Expert\Atlas.Core.Editor.GutterPanel.Tests.pas',
+  Atlas.Core.Editor.SourceFiles in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SourceFiles.pas',
+  Atlas.Core.Editor.SourceFiles.Tests in 'IDE.Expert\Atlas.Core.Editor.SourceFiles.Tests.pas',
+  Atlas.Core.Editor.ExitPointAsk in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.ExitPointAsk.pas',
+  Atlas.Core.Editor.ExitPointAsk.Tests in 'IDE.Expert\Atlas.Core.Editor.ExitPointAsk.Tests.pas',
+  Atlas.Core.Editor.GhostKeys in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.GhostKeys.pas',
+  Atlas.Core.Editor.GhostKeys.Tests in 'IDE.Expert\Atlas.Core.Editor.GhostKeys.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}
