@@ -5,8 +5,8 @@
 //   in PATH, jeweils auch mit den Endungen aus PATHEXT. Ohne Treffer ''.
 // - MergeEnvironment: Umgebung des Plugins, darüber env der Aufgabe (Namen
 //   ohne Groß-/Kleinschreibung).
-// - QuoteArgument/BuildCommandLine nach den Regeln von CommandLineToArgvW;
-//   .bat und .cmd laufen über cmd.exe /d /s /c.
+// - BuildCommandLine nach den Regeln von CommandLineToArgvW
+//   (TTextCommandLine); .bat und .cmd laufen über cmd.exe /d /s /c.
 // Den Prozess selbst startet Atlas.Core.Tasks.Adapters.Process.
 
 interface
@@ -24,8 +24,6 @@ type
       const AExists: TAtlasTaskFileExists): string; static;
     /// <summary>ACurrent („NAME=Wert“) mit ANames/AValues überschrieben bzw. ergänzt.</summary>
     class function MergeEnvironment(const ACurrent, ANames, AValues: TArray<string>): TArray<string>; static;
-    /// <summary>Argument nach den Regeln von CommandLineToArgvW.</summary>
-    class function QuoteArgument(const AArgument: string): string; static;
     /// <summary>Befehlszeile für CreateProcess; ABatch: über cmd.exe /d /s /c.</summary>
     class function BuildCommandLine(const AProgram: string; const AArgs: TArray<string>; ABatch: Boolean): string;
       static;
@@ -34,6 +32,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Text.CommandLine;
 
 function HasPathPart(const ACommand: string): Boolean;
 begin
@@ -181,45 +182,10 @@ begin
   end;
 end;
 
-class function TAtlasTaskCommands.QuoteArgument(const AArgument: string): string;
-var
-  mIndex, mBackslashes: Integer;
-begin
-  if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
-  begin
-    Exit(AArgument);
-  end;
-  Result := '"';
-  mBackslashes := 0;
-  for mIndex := 1 to Length(AArgument) do
-  begin
-    if AArgument[mIndex] = '\' then
-    begin
-      Inc(mBackslashes);
-    end
-    else
-    begin
-      if AArgument[mIndex] = '"' then
-      begin
-        Result := Result + StringOfChar('\', mBackslashes + 1);
-      end;
-      mBackslashes := 0;
-    end;
-    Result := Result + AArgument[mIndex];
-  end;
-  Result := Result + StringOfChar('\', mBackslashes) + '"';
-end;
-
 class function TAtlasTaskCommands.BuildCommandLine(const AProgram: string; const AArgs: TArray<string>;
   ABatch: Boolean): string;
-var
-  mArg: string;
 begin
-  Result := QuoteArgument(AProgram);
-  for mArg in AArgs do
-  begin
-    Result := Result + ' ' + QuoteArgument(mArg);
-  end;
+  Result := TTextCommandLine.Join(AProgram, AArgs);
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg, der Rest bleibt wie geschrieben.
   if ABatch then
   begin

@@ -8,6 +8,8 @@
 // derselbe Weg wie TServerComposition.RuleContextFor, damit IDE, MCP und
 // --check dieselben Befunde haben. Der Index ist das Herzstück: Ohne ihn
 // schweigen Regeln, die Typen aus anderen Units oder der RTL brauchen.
+// Wie im LSP-Server beantwortet der Index Declared(X) in {$IF} (#847); sonst
+// blieb es unbekannt, beide Zweige galten und ergaben Syntaxfehler.
 
 interface
 
@@ -118,6 +120,8 @@ uses
   System.JSON,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Query.Service,
   Atlas.Common.Lsp.Query,
   Shell.Bootstrap,
@@ -167,10 +171,12 @@ begin
     AIndex, AProgressToken));
   FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
   FQueries := TCodeQueryService.Create(QuerySource);
+  TPascalPreprocessor.SetDeclaredProvider(TSymbolIndex.DeclaredIn(AIndex));
 end;
 
 destructor TShellWorkspaceGroup.Destroy;
 begin
+  TPascalPreprocessor.SetDeclaredProvider(nil);
   FQueries := nil;
   FUsesGraph.Free;
   FOthers.Free;

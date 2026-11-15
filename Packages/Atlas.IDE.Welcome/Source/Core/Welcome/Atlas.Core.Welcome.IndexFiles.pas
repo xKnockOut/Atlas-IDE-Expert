@@ -49,8 +49,9 @@ type
     // #848, #849, #861, #862, 25: Methodenzuordnungen je Klasse, 26: Namen ohne Escape-& (#1137), 27: Codepage-
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
-    // 31: Typargumente je Vorfahr. 33: Folgemuster im Unit-Kopf (#1890).
-    cFormatVersion = 33;
+    // 31: Typargumente je Vorfahr. 33: Folgemuster im Unit-Kopf (#1890). 34: Mitglied in Typverweisen der
+    // InlineRefs (#2309).
+    cFormatVersion = 34;
     cIndexFolder = 'Index';
     cLibraryFolder = 'Bibliothek';
   private

@@ -33,11 +33,10 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  System.Generics.Collections,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Winapi.Windows,
   Vcl.ExtCtrls,
   Vcl.Graphics,
-  ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Contract,
   Atlas.Core.Lsp.Session,
@@ -92,7 +91,7 @@ type
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
-    FWorkers: TList<TThread>;
+    FWorkers: TAtlasWorkerSlot;
     FProgress: TAtlasStopProgress;
     FDeferred: TDeferred;
     FInternal: Boolean;
@@ -119,7 +118,6 @@ type
     procedure DeferredDone(const AValue: TAtlasDebugValue);
     procedure EndInternal;
     function StillStopped: Boolean;
-    procedure ReapWorkers(AWait: Boolean);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
@@ -139,6 +137,7 @@ procedure ReevaluateInlineValues;
 implementation
 
 uses
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
@@ -209,7 +208,7 @@ begin
   FIndex := -1;
   FValues := TAtlasInlineValues.Create;
   FEvaluator := TAtlasIdeDebugValues.Create;
-  FWorkers := TList<TThread>.Create;
+  FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FStyle := TAtlasInlineValuePainter.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -242,7 +241,10 @@ begin
   FEvaluator.Cancel;
   EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
-  ReapWorkers(True);
+  if FWorkers <> nil then
+  begin
+    FWorkers.Stop(TAtlasWorkerSlot.cWaitForever);
+  end;
   FreeAndNil(FWorkers);
   FreeAndNil(FEvaluator);
   FreeAndNil(FValues);
@@ -276,7 +278,7 @@ begin
   end;
   FText := '';
   FLines := nil;
-  ReapWorkers(False);
+  FWorkers.Prune;
   if mHad then
   begin
     Invalidate;
@@ -390,7 +392,7 @@ begin
   mFileName := FFileName;
   mLine := FLine;
   mSession.Sync(mFileName, FText);
-  ReapWorkers(False);
+  FWorkers.Prune;
   mRequest := FProgress.NextRequest;
   mWorker := TThread.CreateAnonymousThread(
     procedure
@@ -422,9 +424,7 @@ begin
           end;
         end);
     end);
-  mWorker.FreeOnTerminate := False;
-  FWorkers.Add(mWorker);
-  mWorker.Start;
+  FWorkers.Start(mWorker);
 end;
 
 procedure TAtlasIdeDebugInlineValues.Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
@@ -510,7 +510,7 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TSliceStep;
+function TAtlasIdeDebugInlineValues.EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
 var
   mValue: TAtlasDebugValue;
 begin
@@ -573,25 +573,6 @@ end;
 function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
 begin
   Result := FProgress.StillAt(TAtlasIdeDebugSession.StopCount, TAtlasIdeDebugSession.StoppedThread <> nil);
-end;
-
-procedure TAtlasIdeDebugInlineValues.ReapWorkers(AWait: Boolean);
-var
-  mIndex: Integer;
-begin
-  if FWorkers = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := FWorkers.Count - 1 downto 0 do
-  begin
-    if AWait or FWorkers[mIndex].Finished then
-    begin
-      FWorkers[mIndex].WaitFor;
-      FWorkers[mIndex].Free;
-      FWorkers.Delete(mIndex);
-    end;
-  end;
 end;
 
 class procedure TAtlasIdeDebugInlineValues.Invalidate;

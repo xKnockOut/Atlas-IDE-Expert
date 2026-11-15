@@ -11,7 +11,10 @@ interface
 
 uses
   System.SysUtils,
+  System.Types,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Tests.Run;
 
 type
@@ -50,7 +53,29 @@ type
     function MethodAt(ALine: Integer): Integer;
     /// <summary>Methoden mit mindestens einem Test.</summary>
     function Tested: Integer;
+    /// <summary>Die Tests aller Methoden hintereinander.</summary>
+    function AllTests: TArray<TAtlasCoveredTest>;
   end;
+
+  /// <summary>Zuletzt gefragter Stand: Datei, Text und Kennung der Einstellungen (Tiefe, private Methoden); FileName
+  /// leer, wenn kein Server antworten konnte; At: Zeitpunkt des Versuchs (0 = nie).</summary>
+  TAtlasCoveredByAsked = record
+    FileName: string;
+    Text: string;
+    Key: string;
+    At: UInt64;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Was der Zeitgeber tut: nichts (Stand schon gefragt), warten (ohne Server erst nach einer Pause neu),
+  /// die Marken leeren (Testunit) oder den Server fragen.</summary>
+  TAtlasCoveredByAsk = (Skip, Wait, TestUnit, Ask);
+  /// <summary>Beschriftung nach der Zahl der Tests: keiner, einer, mehrere.</summary>
+  TAtlasCoveredByCount = (None, One, Many);
+  /// <summary>Klick auf die Marke: ohne Test zur Testunit wechseln, mit Strg die Liste, sonst die Tests ausführen.
+  /// </summary>
+  TAtlasCoveredByClick = (SwitchTestUnit, List, Run);
+{$SCOPEDENUMS OFF}
 
   /// <summary>Stand eines Tests (Unit, Fixture, Methode) nach den Läufen dieser Sitzung.</summary>
   TAtlasCoveredTallyFunc = reference to function(const AUnitName, AFixture, AMethod: string): TAtlasTestTally;
@@ -58,6 +83,8 @@ type
   TAtlasCoveredBy = class
   public const
     cMethod = 'atlas/coveredBy';
+    /// <summary>Ohne laufenden Server erst nach so vielen Millisekunden erneut fragen.</summary>
+    cRetryMs = 5000;
   public
     /// <summary>Marken zeichnen? Plugin an, „Tests ausführen“ und codeLens.coveredBy.</summary>
     class function Wanted(const ASettings: TAtlasPluginSettings): Boolean; static;
@@ -82,6 +109,24 @@ type
     /// gelesen (AReadLines) und nach AStaleKeys gefragt; nil ohne AStaleKeys.</summary>
     class function StaleKeysOf(const ATests: TArray<TAtlasCoveredTest>; const AReadLines: TAtlasTestReadLines;
       const AStaleKeys: TAtlasTestStaleKeys): TArray<string>; static;
+    /// <summary>Kennung der Einstellungen, die die Antwort ändern: Tiefe und private Methoden.</summary>
+    class function AskKey(ADepth: Integer; APrivate: Boolean): string; static;
+    /// <summary>Schritt des Zeitgebers für Datei AFileName mit Text AText und Kennung AKey; AElapsedMs seit dem
+    /// letzten Versuch AAsked.At.</summary>
+    class function AskStep(const AAsked: TAtlasCoveredByAsked; const AFileName, AText, AKey: string;
+      AElapsedMs: UInt64): TAtlasCoveredByAsk; static;
+    /// <summary>Steht der Kurzname der Methode AMethodName (Bar aus TFoo.Bar) in der Zeile ALine? Sonst ist der
+    /// Text seit der Antwort verschoben.</summary>
+    class function HeaderShows(const AMethodName, ALine: string): Boolean; static;
+    /// <summary>Beschriftung nach der Zahl ATests der Tests der Methode.</summary>
+    class function CountOf(ATests: Integer): TAtlasCoveredByCount; static;
+    /// <summary>Handlung des Klicks auf eine Marke mit ATests Tests; AList: mit Strg.</summary>
+    class function ClickOf(ATests: Integer; AList: Boolean): TAtlasCoveredByClick; static;
+    /// <summary>Farbe der Marke nach dem Stand ATally wie an der Test-Lens; ADefault ohne Ergebnis.</summary>
+    class function ToneOf(const AColors: TAtlasColors; ADefault: TAtlasColor; const ATally: TAtlasTestTally):
+      TAtlasColor; static;
+    /// <summary>Index der ersten gezeichneten Marke in ARects unter APoint; -1 ohne.</summary>
+    class function HitIndex(const ARects: TArray<TRect>; const APoint: TPoint): Integer; static;
   end;
 
 implementation
@@ -90,6 +135,7 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.JSON,
   System.StrUtils,
+  Atlas.Core.Tests.Lens,
   Atlas.Text.DUnitX,
   Atlas.Text.Lines;
 
@@ -120,6 +166,17 @@ begin
     begin
       Inc(Result);
     end;
+  end;
+end;
+
+function TAtlasCoveredUnit.AllTests: TArray<TAtlasCoveredTest>;
+var
+  mMethod: TAtlasCoveredMethod;
+begin
+  Result := nil;
+  for mMethod in Methods do
+  begin
+    Result := Result + mMethod.Tests;
   end;
 end;
 
@@ -359,6 +416,94 @@ begin
       Result := Result + AStaleKeys(TDUnitXSource.Scan(mLines), mLines);
     end;
   end;
+end;
+
+class function TAtlasCoveredBy.AskKey(ADepth: Integer; APrivate: Boolean): string;
+begin
+  Result := Format('%d|%s', [ADepth, BoolToStr(APrivate, True)]);
+end;
+
+class function TAtlasCoveredBy.AskStep(const AAsked: TAtlasCoveredByAsked; const AFileName, AText, AKey: string;
+  AElapsedMs: UInt64): TAtlasCoveredByAsk;
+begin
+  if SameText(AAsked.FileName, AFileName) and (AAsked.Text = AText) and (AAsked.Key = AKey) then
+  begin
+    Result := TAtlasCoveredByAsk.Skip;
+  end
+  // Ohne laufenden Server (FileName leer) erst nach einer Pause erneut.
+  else if (AAsked.FileName = '') and (AAsked.At <> 0) and (AElapsedMs < cRetryMs) then
+  begin
+    Result := TAtlasCoveredByAsk.Wait;
+  end
+  // Testunits bekommen keine Marken (dort zeigt die Test-Lens den Stand): ohne Anfrage.
+  else if IsTestUnit(AText) then
+  begin
+    Result := TAtlasCoveredByAsk.TestUnit;
+  end
+  else
+  begin
+    Result := TAtlasCoveredByAsk.Ask;
+  end;
+end;
+
+class function TAtlasCoveredBy.HeaderShows(const AMethodName, ALine: string): Boolean;
+var
+  mShort: string;
+begin
+  mShort := Copy(AMethodName, LastDelimiter('.', AMethodName) + 1, MaxInt);
+  Result := Pos(LowerCase(mShort), LowerCase(ALine)) > 0;
+end;
+
+class function TAtlasCoveredBy.CountOf(ATests: Integer): TAtlasCoveredByCount;
+begin
+  if ATests = 0 then
+  begin
+    Result := TAtlasCoveredByCount.None;
+  end
+  else if ATests = 1 then
+  begin
+    Result := TAtlasCoveredByCount.One;
+  end
+  else
+  begin
+    Result := TAtlasCoveredByCount.Many;
+  end;
+end;
+
+class function TAtlasCoveredBy.ClickOf(ATests: Integer; AList: Boolean): TAtlasCoveredByClick;
+begin
+  if ATests = 0 then
+  begin
+    Result := TAtlasCoveredByClick.SwitchTestUnit;
+  end
+  else if AList then
+  begin
+    Result := TAtlasCoveredByClick.List;
+  end
+  else
+  begin
+    Result := TAtlasCoveredByClick.Run;
+  end;
+end;
+
+class function TAtlasCoveredBy.ToneOf(const AColors: TAtlasColors; ADefault: TAtlasColor;
+  const ATally: TAtlasTestTally): TAtlasColor;
+begin
+  Result := TAtlasTestLens.Tone(AColors, ADefault, ATally.Shown, False, ATally.IsStale);
+end;
+
+class function TAtlasCoveredBy.HitIndex(const ARects: TArray<TRect>; const APoint: TPoint): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ARects) do
+  begin
+    if not ARects[mIndex].IsEmpty and ARects[mIndex].Contains(APoint) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
 end;
 
 end.

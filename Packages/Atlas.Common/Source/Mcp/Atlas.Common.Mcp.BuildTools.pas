@@ -34,7 +34,7 @@ uses
   System.Generics.Collections,
   System.DateUtils,
   System.StrUtils,
-  System.IOUtils,
+  Atlas.Common.Mcp.Paths,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -74,24 +74,6 @@ begin
   Result := TCompilerSeverity.Hint;
 end;
 
-/// <summary>AFileName liegt im Ordner ARoot (nach Normalisierung, ".." zählt nicht als darin).</summary>
-function InsideRoot(const ARoot, AFileName: string): Boolean;
-var
-  mRoot, mFileName: string;
-begin
-  if (ARoot = '') or (AFileName = '') then
-  begin
-    Exit(AFileName = '');
-  end;
-  try
-    mRoot := IncludeTrailingPathDelimiter(TPath.GetFullPath(ARoot));
-    mFileName := TPath.GetFullPath(AFileName);
-  except
-    Exit(False);
-  end;
-  Result := StartsText(mRoot, mFileName);
-end;
-
 function MessagesToJson(const AMessages: TArray<TCompilerMessage>; const ARoot: string;
   out AOmitted: Integer): TJSONArray;
 var
@@ -102,7 +84,8 @@ begin
   AOmitted := 0;
   for mMessage in AMessages do
   begin
-    if (ARoot <> '') and not InsideRoot(ARoot, mMessage.FileName) then
+    // Meldungen ohne Datei (Linker, Projekt) bleiben.
+    if (ARoot <> '') and (mMessage.FileName <> '') and not TMcpPathGuard.Contains(ARoot, mMessage.FileName) then
     begin
       Inc(AOmitted);
       Continue;

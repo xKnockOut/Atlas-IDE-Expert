@@ -56,6 +56,8 @@ type
     [Test]
     procedure OverloadsAndAccessorsAreSilent;
     [Test]
+    procedure FunctionNameAsResultIsSilent;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -375,6 +377,20 @@ begin
   // Getter der eigenen Property meldet setter-recursion.
   Assert.AreEqual(0, Integer(Length(RecursionFindings(cHeader + 'function TFoo.GetName: string;'#10'begin'#10 +
     '  Result := Name;'#10'end;'#10'end.'))));
+end;
+
+procedure TUnconditionalRecursionTests.FunctionNameAsResultIsSilent;
+const
+  cUnit = 'unit Geometrie;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X, Y: Integer;'#10'  end;'#10 +
+    '  TPaar = array[0..1] of Integer;'#10'implementation'#10;
+begin
+  // Wie Result.X: Name.X := … im Rumpf der Funktion schreibt in ihr Ergebnis (alter Stil, Raize RzGrafx).
+  Assert.AreEqual(0, Integer(Length(RecursionFindings(cUnit + 'function Mitte(A, B: TPunkt): TPunkt;'#10 +
+    'begin'#10'  Mitte.X := (A.X + B.X) div 2;'#10'  Mitte.Y := (A.Y + B.Y) div 2;'#10'end;'#10 +
+    'function Paar(A: Integer): TPaar;'#10'begin'#10'  Paar[0] := A;'#10'  Paar[1] := -A;'#10'end;'#10'end.'))));
+  // Gelesen bleibt es ein Aufruf.
+  Assert.AreEqual(1, Integer(Length(RecursionFindings(cUnit + 'function Mitte(A, B: TPunkt): TPunkt;'#10 +
+    'begin'#10'  Result.X := Mitte(A, B).X;'#10'end;'#10'end.'))));
 end;
 
 procedure TUnconditionalRecursionTests.OffAndExclude;

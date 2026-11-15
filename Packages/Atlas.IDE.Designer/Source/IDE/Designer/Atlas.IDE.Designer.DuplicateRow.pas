@@ -61,6 +61,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.DuplicateDialog,
   Atlas.IDE.Designer.Access,
+  Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Foundation.Settings;
 
 type
@@ -77,6 +78,9 @@ type
     Controls: TArray<TControl>;
     Others: TArray<TControl>;
     Options: TAtlasDuplicateOptions;
+    /// <summary>Formular, Auswahl, Elternelement und Nachbarn; Vorschau und Anlegen prüfen sie nach dem Dialog.
+    /// </summary>
+    Kept: TAtlasDesignerKept;
     function Entries: TArray<string>;
     function Count: Integer;
     function Request: TAtlasDuplicateRequest;
@@ -508,6 +512,14 @@ var
   mCopy, mIndex: Integer;
   mBounds: TRect;
 begin
+  // Der Dialog ist offen: Ist das Formular inzwischen neu geladen, keine Umrisse aus alten Controls.
+  if not ARun.Kept.Holds then
+  begin
+    AOwner.HideOutlines;
+    ADialog.SetPreview(TAtlasDesignerKept.LostText, True);
+    ADialog.PushCheck.Enabled := False;
+    Exit;
+  end;
   ARun.Options := AOptions;
   mLayout := TAtlasDuplicateRow.Layout(ARun.Request);
   mNames := TAtlasDuplicateRow.Names(ARun.ControlNames, ARun.Entries, ARun.Count, ARun.Taken);
@@ -605,9 +617,18 @@ begin
     Exit;
   end;
   mRun.Others := SiblingsOf(mRun.Controls, mRun.Root);
+  mRun.Kept := TAtlasDesignerKept.Take(mEditor, mRun.Root);
+  mRun.Kept.Add(mRun.Controls);
+  mRun.Kept.Add(mRun.Others);
+  mRun.Kept.Add(mRun.Controls[0].Parent);
   mOptions := DefaultOptions(mRun, TAtlasIdeSettings.Current);
   if not Ask(Self, mRun, mOptions) then
   begin
+    Exit;
+  end;
+  if not mRun.Kept.Holds then
+  begin
+    Say(TAtlasDesignerKept.LostText);
     Exit;
   end;
   mRun.Options := mOptions;

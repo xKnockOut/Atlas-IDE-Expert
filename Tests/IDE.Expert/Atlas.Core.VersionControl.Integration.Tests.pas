@@ -663,10 +663,6 @@ begin
   mAnswer := mRunner.Run(mPing, ['-n', '1', '127.0.0.1'], '', 10000);
   Assert.AreEqual<TAtlasVcsOutcome>(TAtlasVcsOutcome.Ok, mAnswer.Outcome);
   Assert.IsTrue(Length(mAnswer.Output) > 0, 'stdout gelesen');
-  Assert.AreEqual('"a b"', TAtlasVcsProcessRunner.QuoteArgument('a b'));
-  Assert.AreEqual('"x\"y"', TAtlasVcsProcessRunner.QuoteArgument('x"y'));
-  Assert.AreEqual('"C:\a b\\"', TAtlasVcsProcessRunner.QuoteArgument('C:\a b\'));
-  Assert.AreEqual('""', TAtlasVcsProcessRunner.QuoteArgument(''));
 end;
 
 /// <summary>Arbeitskopie des Repositorys, in dem die Tests laufen, mit dem Läufer der IDE.</summary>

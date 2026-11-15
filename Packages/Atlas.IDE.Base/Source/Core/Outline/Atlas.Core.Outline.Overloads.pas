@@ -34,7 +34,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Text.Lines;
 
 function IsRoutine(const ANode: TAtlasOutlineNode): Boolean;
 begin
@@ -91,26 +92,9 @@ end;
 /// <summary>Leerraum (auch Zeilenenden) zu einem Leerzeichen zusammengezogen, ohne Leerraum innen an den
 /// Klammern.</summary>
 function Collapse(const AText: string): string;
-var
-  mChar: Char;
-  mSpace: Boolean;
 begin
-  Result := '';
-  mSpace := False;
-  for mChar in AText do
-  begin
-    if CharInSet(mChar, [' ', #9, #10, #13]) then
-    begin
-      mSpace := True;
-      Continue;
-    end;
-    if mSpace and (Result <> '') and (Result[Length(Result)] <> '(') and (mChar <> ')') then
-    begin
-      Result := Result + ' ';
-    end;
-    mSpace := False;
-    Result := Result + mChar;
-  end;
+  Result := StringReplace(StringReplace(TTextLines.CollapseSpace(AText), '( ', '(', [rfReplaceAll]), ' )', ')',
+    [rfReplaceAll]);
 end;
 
 /// <summary>Index hinter dem Namen ab AIndex (mit Besitzer und generischen Parametern) und dem Leerraum danach.
