@@ -330,7 +330,7 @@ begin
 end;
 
 /// <summary>Liest Teile.delphi.inc (Rumpf TFoo.Lauf, bindet Tiefer.inc ein) und Tiefer.inc (Rumpf
-/// TFoo.TInnen<T>.Weiter); Teile.fpc.inc fehlt.</summary>
+/// TFoo.TInnen&lt;T&gt;.Weiter); Teile.fpc.inc fehlt.</summary>
 function IncludeReader: TRuleFileReader;
 begin
   Result :=
