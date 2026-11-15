@@ -603,3 +603,14 @@ Atlas.Core.Debug.ProfilerFlow.Tests
 Atlas.Core.Debug.MethodGroupFlow.Tests
 Atlas.Core.Debug.EventLogFlow.Tests
 Atlas.Core.Debug.PinsFlow.Tests
+Atlas.Core.Debug.EditValueFlow.Tests
+Atlas.Core.Debug.CallStackFlow.Tests
+Atlas.Core.Debug.ReattachFlow.Tests
+Atlas.Core.Debug.VisualizerFlow.Tests
+Atlas.Core.Debug.NoSourceFlow.Tests
+Atlas.Core.Debug.LeakFlow.Tests
+Atlas.Core.Debug.BreakpointAnchorFlow.Tests
+Atlas.Core.Debug.ThreadsInSourceFlow.Tests
+Atlas.Core.Debug.RunToColumnFlow.Tests
+Atlas.Core.Debug.ExceptionDialogFlow.Tests
+Atlas.Core.Debug.AsyncOriginFlow.Tests

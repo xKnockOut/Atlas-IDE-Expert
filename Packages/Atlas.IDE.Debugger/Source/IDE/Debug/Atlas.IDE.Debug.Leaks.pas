@@ -92,6 +92,7 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Text.LeakReport,
+  Atlas.Core.Debug.LeakFlow,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Navigation,
@@ -195,6 +196,7 @@ function ProjectFileNamed(const AProject, AFileName: string): string;
 var
   mModule: IOTAModule;
   mProject: IOTAProject;
+  mFiles: TArray<string>;
   mIndex: Integer;
 begin
   Result := '';
@@ -203,13 +205,12 @@ begin
   begin
     Exit;
   end;
-  for mIndex := 0 to mProject.GetModuleCount - 1 do
+  SetLength(mFiles, mProject.GetModuleCount);
+  for mIndex := 0 to High(mFiles) do
   begin
-    if SameText(ExtractFileName(mProject.GetModule(mIndex).FileName), ExtractFileName(AFileName)) then
-    begin
-      Exit(mProject.GetModule(mIndex).FileName);
-    end;
+    mFiles[mIndex] := mProject.GetModule(mIndex).FileName;
   end;
+  Result := TAtlasLeakFlow.FileNamed(mFiles, AFileName);
 end;
 
 { TAtlasIdeDebugLeaks.TListener }
@@ -318,12 +319,8 @@ end;
 
 class function TAtlasIdeDebugLeaks.HistoryFile: string;
 begin
-  Result := '';
-  if FProject <> '' then
-  begin
-    Result := TPath.Combine(TPath.Combine(ExtractFileDir(FProject), cLocalFolder),
-      TAtlasLeakCaptures.HistoryFileName(FConfiguration, FPlatform));
-  end;
+  Result := TAtlasLeakFlow.HistoryPath(FProject, cLocalFolder,
+    TAtlasLeakCaptures.HistoryFileName(FConfiguration, FPlatform));
 end;
 
 class procedure TAtlasIdeDebugLeaks.RequestCandidates;
@@ -341,12 +338,14 @@ begin
       FStatus := TAtlasLeakTexts.Summary(FCapture);
       Refresh;
     end;
-  FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksSearching);
+  FStatus := TAtlasLeakFlow.StatusWith(TAtlasLeakTexts.Summary(FCapture),
+    TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksSearching));
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(FScope, TAtlasFeature.Debugger,
     TAtlasLeakViews.cCandidatesCommand, TAtlasLeakViews.CandidateArgumentsJson(FProject, FCapture.Text), cTimeoutMs,
     mDone) then
   begin
-    FStatus := TAtlasLeakTexts.Summary(FCapture) + '  ·  ' + TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksNoServer);
+    FStatus := TAtlasLeakFlow.StatusWith(TAtlasLeakTexts.Summary(FCapture),
+      TAtlasLeaksStrings.Text(TAtlasLeaksTextId.LeaksNoServer));
   end;
   Refresh;
 end;
@@ -369,19 +368,21 @@ end;
 
 class procedure TAtlasIdeDebugLeaks.Open(const ARow: TAtlasLeakRow);
 var
+  mOpen: TAtlasLeakOpen;
   mFrame: TLeakFrame;
   mFile: string;
 begin
-  if ARow.Kind = TAtlasLeakRowKind.Place then
+  mOpen := TAtlasLeakFlow.OpenOf(ARow);
+  if mOpen = TAtlasLeakOpen.Place then
   begin
     TAtlasIdeNavigation.GoToLocation(ARow.Place.FileName, ARow.Place.Line, ARow.Place.Character);
     Exit;
   end;
-  if (ARow.Kind <> TAtlasLeakRowKind.Group) or (ARow.Group.Site < 0) then
+  if mOpen <> TAtlasLeakOpen.Site then
   begin
     Exit;
   end;
-  mFrame := ARow.Group.Frames[ARow.Group.Site];
+  mFrame := TAtlasLeakFlow.SiteOf(ARow);
   mFile := mFrame.FileName;
   if not FileExists(mFile) then
   begin
@@ -440,13 +441,7 @@ var
   mPrevious: TAtlasLeakHistory;
 begin
   mPrevious := ReadHistory(HistoryFile);
-  FHistory := mPrevious;
-  if not TAtlasIdeSettings.Current.DebugLeakReportCompare then
-  begin
-    // Ohne Vergleich gilt jeder Name als bisher unbekannt; „bekannt“ bleibt.
-    FHistory.Names := nil;
-    FHistory.Counts := nil;
-  end;
+  FHistory := TAtlasLeakFlow.Compared(mPrevious, TAtlasIdeSettings.Current.DebugLeakReportCompare);
   FEntries := TAtlasLeakCaptures.Compare(FCapture.Report, FHistory);
   FHistory := TAtlasLeakCaptures.NextHistory(FCapture.Report, mPrevious);
   WriteHistory(HistoryFile, FHistory);
@@ -473,15 +468,10 @@ begin
 end;
 
 class procedure TAtlasIdeDebugLeaks.ToggleKnown(const AName: string);
-var
-  mIndex: Integer;
 begin
   FHistory := TAtlasLeakCaptures.MarkKnown(FHistory, AName, not FHistory.IsKnown(AName));
   WriteHistory(HistoryFile, FHistory);
-  for mIndex := 0 to High(FEntries) do
-  begin
-    FEntries[mIndex].Known := FHistory.IsKnown(FEntries[mIndex].Name);
-  end;
+  TAtlasLeakFlow.ApplyKnown(FEntries, FHistory);
   Refresh;
 end;
 
