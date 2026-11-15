@@ -127,7 +127,7 @@ begin
 end;
 
 /// <summary>Typverweis auf den Typ von ASymbol samt dem Mitglied, das der Rumpf an AIdent benutzt:
-/// ":TList<TKunde>#Count" bei FListe.Count, ":TList<TKunde>#[]" bei FListe[I] (Default-Property, #2309).</summary>
+/// ":TList&lt;TKunde&gt;#Count" bei FListe.Count, ":TList&lt;TKunde&gt;#[]" bei FListe[I] (Default-Property, #2309).</summary>
 function TypeRefOf(AIdent: TSyntaxNode; const ASymbol: TIndexSymbol): string;
 begin
   Result := ':' + ASymbol.TypeName;
