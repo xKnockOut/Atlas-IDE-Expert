@@ -72,7 +72,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.ParallelStacks;
 
 {$R *.dfm}
@@ -97,13 +97,13 @@ begin
   mBar.Align := alTop;
   mBar.Parent := Self;
   FOwnOnly := TCheckBox.Create(Self);
-  FOwnOnly.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksOwnOnly);
+  FOwnOnly.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksOwnOnly);
   FOwnOnly.SetBounds(MulDiv(cGap, CurrentPPI, cBasePpi), MulDiv(cGap, CurrentPPI, cBasePpi) div 2,
     MulDiv(cCheckWidth, CurrentPPI, cBasePpi), MulDiv(cBarHeight - cGap, CurrentPPI, cBasePpi));
   FOwnOnly.OnClick := FilterClick;
   FOwnOnly.Parent := mBar;
   FWaitingOnly := TCheckBox.Create(Self);
-  FWaitingOnly.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksWaitingOnly);
+  FWaitingOnly.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksWaitingOnly);
   FWaitingOnly.SetBounds(FOwnOnly.Left + FOwnOnly.Width + MulDiv(cGap, CurrentPPI, cBasePpi), FOwnOnly.Top,
     MulDiv(cCheckWidth, CurrentPPI, cBasePpi), FOwnOnly.Height);
   FWaitingOnly.OnClick := FilterClick;
@@ -113,7 +113,7 @@ begin
   FStatus.Top := FOwnOnly.Top + MulDiv(cGap, CurrentPPI, cBasePpi) div 2;
   FStatus.Parent := mBar;
   FFooter := TLabel.Create(Self);
-  FFooter.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksFooter);
+  FFooter.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksFooter);
   FFooter.Align := alBottom;
   FFooter.Parent := Self;
   FThreads := TLabel.Create(Self);

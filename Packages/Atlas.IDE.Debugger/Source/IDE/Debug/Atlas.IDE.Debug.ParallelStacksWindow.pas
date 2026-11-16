@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TParallelStacksDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCaption);
+  Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksCaption);
 end;
 
 function TParallelStacksDock.GetIdentifier: string;

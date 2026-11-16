@@ -59,7 +59,7 @@ implementation
 uses
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Modules,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.AccessViolation.Strings,
 
   Atlas.Core.Debug.ExceptionBanner,
   System.SysUtils;
@@ -357,7 +357,8 @@ begin
   Assert.IsTrue(mExplanation.Active and mExplanation.Busy);
   Assert.IsTrue(mExplanation.Headline.StartsWith('Atlas prüft'), mExplanation.Headline);
   Assert.AreEqual('', mExplanation.CopyText);
-  mExplanation := TAtlasAvTexts.Failed(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvNoChains), 'EAccessViolation');
+  mExplanation := TAtlasAvTexts.Failed(TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvNoChains),
+    'EAccessViolation');
   Assert.IsFalse(mExplanation.Busy);
   Assert.AreEqual('Ursache nicht eindeutig', mExplanation.Headline);
   Assert.AreEqual('keine Zugriffskette in der Zeile', mExplanation.Detail);

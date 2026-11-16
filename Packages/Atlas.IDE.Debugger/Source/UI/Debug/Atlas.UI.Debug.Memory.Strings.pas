@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Debug.Memory.Strings;
 
 // Oberflächentexte des Speicherverlaufs (#858) im Modul Debugger, auf Deutsch und Englisch: Fenster „Atlas:
-// Speicher“ samt Objektzählung, Befehl, Meldungen und Einstellungen. Eigene Unit, weil Atlas.UI.Debug.Strings
-// die Längengrenze erreicht. Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
+// Speicher“ samt Objektzählung, Befehl, Meldungen und Einstellungen. Die Sprache bestimmt Base
+// (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
 

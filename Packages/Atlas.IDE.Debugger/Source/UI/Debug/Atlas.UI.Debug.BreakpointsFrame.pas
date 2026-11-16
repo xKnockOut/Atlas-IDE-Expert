@@ -146,7 +146,7 @@ implementation
 uses
   Winapi.Windows,
   Winapi.CommCtrl,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 {$R *.dfm}
 
@@ -163,17 +163,19 @@ const
   cDefaultPpi = 96;
   // Trennlinie im Menü.
   cLine = '-';
-  cColumnTexts: array[TAtlasBreakpointColumn] of TAtlasDebugTextId = (TAtlasDebugTextId.BreakpointsColumnEnabled,
-    TAtlasDebugTextId.BreakpointsColumnLocation, TAtlasDebugTextId.BreakpointsColumnCondition,
-    TAtlasDebugTextId.BreakpointsColumnPassCount, TAtlasDebugTextId.BreakpointsColumnHits,
-    TAtlasDebugTextId.BreakpointsColumnTags, TAtlasDebugTextId.BreakpointsColumnGroup,
-    TAtlasDebugTextId.BreakpointsColumnSet, TAtlasDebugTextId.BreakpointsColumnRules);
-  cChipTexts: array[TAtlasBreakpointFilter] of TAtlasDebugTextId = (TAtlasDebugTextId.BreakpointsChipActive,
-    TAtlasDebugTextId.BreakpointsChipCondition, TAtlasDebugTextId.BreakpointsChipNeverHit,
-    TAtlasDebugTextId.BreakpointsChipNotEffective);
-  cGroupingTexts: array[TAtlasBreakpointGrouping] of TAtlasDebugTextId = (TAtlasDebugTextId.BreakpointsGroupNone,
-    TAtlasDebugTextId.BreakpointsGroupByTag, TAtlasDebugTextId.BreakpointsGroupByFile,
-    TAtlasDebugTextId.BreakpointsGroupByGroup);
+  cColumnTexts: array[TAtlasBreakpointColumn] of TAtlasBreakpointsTextId = (
+    TAtlasBreakpointsTextId.BreakpointsColumnEnabled,
+    TAtlasBreakpointsTextId.BreakpointsColumnLocation, TAtlasBreakpointsTextId.BreakpointsColumnCondition,
+    TAtlasBreakpointsTextId.BreakpointsColumnPassCount, TAtlasBreakpointsTextId.BreakpointsColumnHits,
+    TAtlasBreakpointsTextId.BreakpointsColumnTags, TAtlasBreakpointsTextId.BreakpointsColumnGroup,
+    TAtlasBreakpointsTextId.BreakpointsColumnSet, TAtlasBreakpointsTextId.BreakpointsColumnRules);
+  cChipTexts: array[TAtlasBreakpointFilter] of TAtlasBreakpointsTextId = (TAtlasBreakpointsTextId.BreakpointsChipActive,
+    TAtlasBreakpointsTextId.BreakpointsChipCondition, TAtlasBreakpointsTextId.BreakpointsChipNeverHit,
+    TAtlasBreakpointsTextId.BreakpointsChipNotEffective);
+  cGroupingTexts: array[TAtlasBreakpointGrouping] of TAtlasBreakpointsTextId = (
+    TAtlasBreakpointsTextId.BreakpointsGroupNone,
+    TAtlasBreakpointsTextId.BreakpointsGroupByTag, TAtlasBreakpointsTextId.BreakpointsGroupByFile,
+    TAtlasBreakpointsTextId.BreakpointsGroupByGroup);
 
 function RowKey(const ARow: TAtlasBreakpointRow): string;
 begin
@@ -229,11 +231,11 @@ function HitPart(const ARule: TAtlasBreakpointRule): string;
 begin
   case ARule.Hit of
     TAtlasHitMode.Exactly:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleExactly, [ARule.HitCount]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleExactly, [ARule.HitCount]);
     TAtlasHitMode.AtLeast:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAtLeast, [ARule.HitCount]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleAtLeast, [ARule.HitCount]);
     TAtlasHitMode.EveryNth:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleEvery, [ARule.HitCount]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleEvery, [ARule.HitCount]);
   else
     Result := '';
   end;
@@ -243,11 +245,11 @@ function ThreadPart(const ARule: TAtlasBreakpointRule): string;
 begin
   case ARule.Thread of
     TAtlasThreadFilter.NameContains:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleThreadName, [ARule.ThreadText]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleThreadName, [ARule.ThreadText]);
     TAtlasThreadFilter.ThreadId:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleThreadId, [ARule.ThreadId]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleThreadId, [ARule.ThreadId]);
     TAtlasThreadFilter.MainThread:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsRuleMain);
+      Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsRuleMain);
   else
     Result := '';
   end;
@@ -262,9 +264,9 @@ begin
   end;
   case ARule.Depend of
     TAtlasDependMode.UntilEnd:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAfter, [ATriggerText]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleAfter, [ATriggerText]);
     TAtlasDependMode.Once:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsRuleAfterOnce, [ATriggerText]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsRuleAfterOnce, [ATriggerText]);
   else
     Result := '';
   end;
@@ -272,7 +274,7 @@ end;
 
 class function TAtlasBreakpointTexts.ColumnCaption(AColumn: TAtlasBreakpointColumn): string;
 begin
-  Result := TAtlasDebugStrings.Text(cColumnTexts[AColumn]);
+  Result := TAtlasBreakpointsStrings.Text(cColumnTexts[AColumn]);
 end;
 
 class function TAtlasBreakpointTexts.RuleText(const ARule: TAtlasBreakpointRule; const ATriggerText: string): string;
@@ -297,10 +299,10 @@ begin
   Result := ACaption;
   if Result = '' then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsWithoutGroup);
+    Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsWithoutGroup);
     if AGrouping = TAtlasBreakpointGrouping.ByTag then
     begin
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsWithoutTag);
+      Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsWithoutTag);
     end;
   end;
   Result := Format('%s (%d)', [Result, ACount]);
@@ -308,10 +310,10 @@ end;
 
 class function TAtlasBreakpointTexts.Summary(AShown, ATotal: Integer; AHasRun: Boolean): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsSummary, [AShown, ATotal]);
+  Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsSummary, [AShown, ATotal]);
   if not AHasRun then
   begin
-    Result := Result + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsHitsNoSession);
+    Result := Result + ' · ' + TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsHitsNoSession);
   end;
 end;
 
@@ -358,7 +360,7 @@ begin
   Result.ParentBackground := True;
 end;
 
-function AddButton(AFrame: TAtlasDebugBreakpointsFrame; AParent: TWinControl; AText: TAtlasDebugTextId;
+function AddButton(AFrame: TAtlasDebugBreakpointsFrame; AParent: TWinControl; AText: TAtlasBreakpointsTextId;
   AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(AFrame);
@@ -366,7 +368,7 @@ begin
   Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := ScaleLogical(AFrame, cButtonWidth);
-  Result.Caption := TAtlasDebugStrings.Text(AText);
+  Result.Caption := TAtlasBreakpointsStrings.Text(AText);
   Result.OnClick := AClick;
 end;
 
@@ -384,7 +386,7 @@ var
   mBar: TPanel;
 begin
   mBar := AddBar(AFrame, 0);
-  AFrame.FControls.ResetHits := AddButton(AFrame, mBar, TAtlasDebugTextId.BreakpointsResetHits,
+  AFrame.FControls.ResetHits := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsResetHits,
     AActions.ResetHitsClick);
   AFrame.FControls.Grouping := TComboBox.Create(AFrame);
   AFrame.FControls.Grouping.Parent := mBar;
@@ -397,7 +399,7 @@ begin
   AFrame.FControls.Search.Parent := mBar;
   AFrame.FControls.Search.Align := alClient;
   AFrame.FControls.Search.AlignWithMargins := True;
-  AFrame.FControls.Search.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsSearchHint);
+  AFrame.FControls.Search.TextHint := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsSearchHint);
   AFrame.FControls.Search.OnChange := AFrame.FilterChanged;
   // Einträge erst mit Fenster (CreateWnd); bis dahin merkt Tag die Wahl.
   AFrame.FControls.Grouping.Tag := Ord(TAtlasBreakpointGrouping.None);
@@ -416,7 +418,7 @@ begin
     mChip.Parent := mBar;
     mChip.Align := alLeft;
     mChip.AlignWithMargins := True;
-    mChip.Caption := TAtlasDebugStrings.Text(cChipTexts[mFilter]);
+    mChip.Caption := TAtlasBreakpointsStrings.Text(cChipTexts[mFilter]);
     mChip.Width := ScaleLogical(AFrame, cButtonWidth);
     mChip.OnClick := AFrame.FilterChanged;
     AFrame.FControls.Chips[mFilter] := mChip;
@@ -428,9 +430,9 @@ var
   mBar: TPanel;
 begin
   mBar := AddBar(AFrame, 2 * ScaleLogical(AFrame, cBarHeight));
-  AFrame.FControls.RemoveTag := AddButton(AFrame, mBar, TAtlasDebugTextId.BreakpointsRemoveTag,
+  AFrame.FControls.RemoveTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsRemoveTag,
     AActions.RemoveTagClick);
-  AFrame.FControls.AddTag := AddButton(AFrame, mBar, TAtlasDebugTextId.BreakpointsAddTag, AActions.AddTagClick);
+  AFrame.FControls.AddTag := AddButton(AFrame, mBar, TAtlasBreakpointsTextId.BreakpointsAddTag, AActions.AddTagClick);
   AFrame.FControls.Tag := TComboBox.Create(AFrame);
   AFrame.FControls.Tag.Parent := mBar;
   AFrame.FControls.Tag.Align := alRight;
@@ -438,7 +440,7 @@ begin
   AFrame.FControls.Tag.Width := ScaleLogical(AFrame, cTagWidth);
   AFrame.FControls.Tag.Style := csDropDown;
   AFrame.FControls.Tag.AutoComplete := True;
-  AFrame.FControls.Tag.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsTagHint);
+  AFrame.FControls.Tag.TextHint := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsTagHint);
 end;
 
 procedure CreateList(AFrame: TAtlasDebugBreakpointsFrame; AActions: TBreakpointsActions);
@@ -473,16 +475,21 @@ begin
   AFrame.FControls.Menu := TPopupMenu.Create(AFrame);
   AFrame.FControls.Menu.OnPopup := AActions.MenuPopup;
   mItems := AFrame.FControls.Menu.Items;
-  AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsGoTo), AActions.OpenClick);
-  AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsProperties),
+  AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsGoTo),
+    AActions.OpenClick);
+  AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsProperties),
     AActions.PropertiesClick);
   AddMenuItem(AFrame, mItems, cLine, nil);
-  AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsEnable), AActions.EnableClick);
-  AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsDisable), AActions.DisableClick);
-  AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsDelete), AActions.DeleteClick);
+  AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsEnable),
+    AActions.EnableClick);
+  AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsDisable),
+    AActions.DisableClick);
+  AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsDelete),
+    AActions.DeleteClick);
   AFrame.FControls.UndoItem := AddMenuItem(AFrame, mItems, '', AActions.UndoClick);
   AddMenuItem(AFrame, mItems, cLine, nil);
-  mColumns := AddMenuItem(AFrame, mItems, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsColumns), nil);
+  mColumns := AddMenuItem(AFrame, mItems, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsColumns),
+    nil);
   for mColumn := Low(TAtlasBreakpointColumn) to High(TAtlasBreakpointColumn) do
   begin
     AFrame.FControls.ColumnItems[mColumn] := AddMenuItem(AFrame, mColumns,
@@ -685,7 +692,7 @@ begin
     try
       for mGrouping := Low(TAtlasBreakpointGrouping) to High(TAtlasBreakpointGrouping) do
       begin
-        FControls.Grouping.Items.Add(TAtlasDebugStrings.Text(cGroupingTexts[mGrouping]));
+        FControls.Grouping.Items.Add(TAtlasBreakpointsStrings.Text(cGroupingTexts[mGrouping]));
       end;
     finally
       FControls.Grouping.Items.EndUpdate;
@@ -932,7 +939,7 @@ end;
 procedure TAtlasDebugBreakpointsFrame.SetUndoCount(ACount: Integer);
 begin
   FState.UndoCount := ACount;
-  FControls.UndoItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointsUndo, [ACount]);
+  FControls.UndoItem.Caption := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointsUndo, [ACount]);
   FControls.UndoItem.Enabled := ACount > 0;
 end;
 

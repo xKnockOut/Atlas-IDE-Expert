@@ -136,7 +136,7 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Debug.VariablesStrings;
 
 {$R *.dfm}
@@ -285,7 +285,7 @@ begin
     ShortCut(Ord('C'), [ssCtrl]));
   AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCopyExpression),
     TRowAction.CopyExpression, ShortCut(Ord('C'), [ssCtrl, ssShift]));
-  AddMenuItem(ASelf, TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueAction), TRowAction.EditValue,
+  AddMenuItem(ASelf, TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueAction), TRowAction.EditValue,
     ShortCut(VK_F2, []));
   AddMenuItem(ASelf, TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesRemoveWatch), TRowAction.RemoveWatch,
     ShortCut(VK_DELETE, []));

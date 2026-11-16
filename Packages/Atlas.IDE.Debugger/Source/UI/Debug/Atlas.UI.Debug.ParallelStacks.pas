@@ -27,7 +27,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 { TAtlasParallelStacksTexts }
 
@@ -36,20 +36,20 @@ begin
   Result := ANode.Frame.Routine;
   if ANode.Frame.HasSource then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsPlace,
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsPlace,
       [Result, ExtractFileName(ANode.Frame.FileName), ANode.Frame.Line]);
   end;
   if Length(ANode.Threads) = 1 then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksNodeOne, [Result]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ParallelStacksNodeOne, [Result]);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksNode, [Result, Length(ANode.Threads)]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ParallelStacksNode, [Result, Length(ANode.Threads)]);
   end;
   if ANode.AllWaiting then
   begin
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksNodeWaiting);
+    Result := Result + TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksNodeWaiting);
   end;
 end;
 
@@ -64,7 +64,7 @@ begin
   begin
     mNames[mIndex] := ThreadText(AStacks[ANode.Threads[mIndex]]);
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksThreads, [string.Join(', ', mNames)]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ParallelStacksThreads, [string.Join(', ', mNames)]);
 end;
 
 class function TAtlasParallelStacksTexts.StatusText(const ATree: TAtlasDebugStackTree): string;
@@ -80,7 +80,7 @@ begin
       Inc(mCount);
     end;
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksStatus, [Length(ATree.Waiting), mCount]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ParallelStacksStatus, [Length(ATree.Waiting), mCount]);
 end;
 
 class function TAtlasParallelStacksTexts.ThreadText(const AStack: TAtlasDebugThreadStack): string;
@@ -88,7 +88,7 @@ begin
   Result := IntToStr(AStack.ThreadId);
   if AStack.Name <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadName, [Result, AStack.Name]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsThreadName, [Result, AStack.Name]);
   end;
 end;
 

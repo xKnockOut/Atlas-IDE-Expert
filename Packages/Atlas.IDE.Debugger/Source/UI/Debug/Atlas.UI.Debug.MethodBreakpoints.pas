@@ -145,7 +145,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.MethodBreakpoints.Strings;
 
 const
   cDialogWidth = 640;
@@ -162,7 +162,8 @@ const
 constructor TAtlasMethodBreakpointsDialog.CreateDialog(AOwner: TComponent; const AGroup: TAtlasMethodGroup;
   const ASearch: TAtlasMethodSearch);
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsTitle), cDialogWidth);
+  inherited CreateDialog(AOwner,
+    TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsTitle), cDialogWidth);
   FSearch := ASearch;
   FInitial := AGroup;
   CreatePatternRows;
@@ -218,12 +219,13 @@ var
   mRow: TPanel;
   mHint: TLabel;
 begin
-  FPattern := AddLabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsPattern), cRowHeight);
+  FPattern := AddLabeledEdit(TAtlasMethodBreakpointsStrings.Text(
+    TAtlasMethodBreakpointsTextId.MethodBreakpointsPattern), cRowHeight);
   FPattern.Text := FInitial.Pattern;
   // „Suchen“ rechts in derselben Zeile; Vorgabeknopf, damit die Eingabetaste sucht statt zu setzen.
   mFind := TButton.Create(Self);
   mFind.Parent := FPattern.Parent;
-  mFind.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsSearch);
+  mFind.Caption := TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsSearch);
   mFind.Default := True;
   mFind.Width := Max(ScaleValue(TAtlasButtonRow.cButtonMinWidth),
     Canvas.TextWidth(mFind.Caption) + ScaleValue(TAtlasButtonRow.cButtonPadding));
@@ -234,7 +236,8 @@ begin
   mFind.OnClick := FindClick;
   FPattern.Width := mFind.Left - FPattern.Left - ScaleValue(cRowGap);
   mRow := AddRow(cHintHeight);
-  mHint := AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsPatternHint));
+  mHint := AddLabel(mRow,
+    TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsPatternHint));
   mHint.ShowAccelChar := False;
   mHint.Left := ScaleValue(cLabelWidth);
   mHint.Top := 0;
@@ -246,19 +249,24 @@ var
   mRow: TPanel;
 begin
   mRow := AddRow(cRowHeight);
-  FOverrides := AddCheck(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsOverrides), 0,
+  FOverrides := AddCheck(mRow,
+    TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOverrides), 0,
     FInitial.Overrides);
   FOverrides.OnClick := SwitchClick;
-  FOverloads := AddCheck(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsOverloads),
+  FOverloads := AddCheck(mRow,
+    TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOverloads),
     ScaleValue(cCheckWidth), FInitial.Overloads);
   FOverloads.OnClick := SwitchClick;
   mRow := AddRow(cRowHeight);
-  FGrow := AddCheck(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsGrow), 0, FInitial.Grow);
+  FGrow := AddCheck(mRow, TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsGrow), 0,
+    FInitial.Grow);
   FitRight(FGrow);
-  FCondition := AddLabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsCondition), cRowHeight);
+  FCondition := AddLabeledEdit(TAtlasMethodBreakpointsStrings.Text(
+    TAtlasMethodBreakpointsTextId.MethodBreakpointsCondition), cRowHeight);
   FCondition.Text := FInitial.Condition;
   mRow := AddRow(cRowHeight);
-  FLogOnly := AddCheck(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsLogOnly), 0,
+  FLogOnly := AddCheck(mRow,
+    TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsLogOnly), 0,
     FInitial.LogOnly);
   FitRight(FLogOnly);
 end;
@@ -281,9 +289,10 @@ var
   mButtons: TAtlasButtonRow;
 begin
   mButtons := AddButtonRow;
-  FSet := mButtons.AddButton(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsSet, [0]));
+  FSet := mButtons.AddButton(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsSet,
+    [0]));
   FSet.OnClick := SetClick;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsCancel),
+  mButtons.AddButton(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsCancel),
     TAtlasButtonKind.Cancel);
 end;
 
@@ -296,7 +305,8 @@ begin
   mFile := ExtractFileName(AHit.FileName.Replace('/', PathDelim));
   if AHit.HasSource then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsHitLine, [mFile, AHit.Line + 1,
+    Result := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsHitLine, [mFile,
+      AHit.Line + 1,
       AHit.DisplayName]);
   end
   else
@@ -305,9 +315,10 @@ begin
   end;
   case AHit.Reason of
     TAtlasMethodHitReason.Override_:
-      mExtra := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsOverride, [AHit.Via]);
+      mExtra := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsOverride, [AHit.Via]);
     TAtlasMethodHitReason.Implementation_:
-      mExtra := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsImplements, [AHit.Via]);
+      mExtra := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsImplements,
+        [AHit.Via]);
   else
     // Passt selbst: kein Zusatz.
     mExtra := '';
@@ -318,7 +329,7 @@ begin
     begin
       mExtra := mExtra + ', ';
     end;
-    mExtra := mExtra + TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsNoSource);
+    mExtra := mExtra + TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsNoSource);
   end;
   if mExtra <> '' then
   begin
@@ -331,12 +342,14 @@ class function TAtlasMethodBreakpointTexts.FooterText(const AAnswer: TAtlasMetho
 begin
   if AAnswer.Truncated then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsTruncated, [Length(AAnswer.Hits),
+    Result := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsTruncated,
+      [Length(AAnswer.Hits),
       ASelected]);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsFooter, [Length(AAnswer.Hits), ASelected]);
+    Result := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsFooter,
+      [Length(AAnswer.Hits), ASelected]);
   end;
 end;
 
@@ -345,7 +358,7 @@ var
   mCount: Integer;
 begin
   mCount := Length(Selected);
-  FSet.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsSet, [mCount]);
+  FSet.Caption := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsSet, [mCount]);
   FSet.Enabled := mCount > 0;
   if not FSearched then
   begin
@@ -353,7 +366,8 @@ begin
   end
   else if FAnswer.Hits = nil then
   begin
-    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsNone), TAtlasSignalKind.Warn);
+    FNote.ShowNote(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsNone),
+      TAtlasSignalKind.Warn);
   end
   else
   begin
@@ -400,7 +414,8 @@ begin
   if not Assigned(FSearch) or not FSearch(TAtlasMethodQuery.Create(Trim(FPattern.Text), FOverrides.Checked,
     FOverloads.Checked), mAnswer, mError) then
   begin
-    FNote.ShowNote(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodBreakpointsNoServer, [mError]),
+    FNote.ShowNote(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsNoServer,
+      [mError]),
       TAtlasSignalKind.Error);
     UpdateFooter;
     Exit;
@@ -477,7 +492,8 @@ end;
 constructor TAtlasMethodGroupsDialog.CreateDialog(AOwner: TComponent; const AStates: TAtlasMethodGroupStatesFunc;
   const AToggle, ARemove: TAtlasMethodGroupAction);
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsTitle), cGroupsWidth);
+  inherited CreateDialog(AOwner, TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodGroupsTitle),
+    cGroupsWidth);
   FStates := AStates;
   FToggle := AToggle;
   FRemove := ARemove;
@@ -510,11 +526,14 @@ var
   mButtons: TAtlasButtonRow;
 begin
   mButtons := AddButtonRow;
-  FToggleButton := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsToggle));
+  FToggleButton := mButtons.AddButton(TAtlasMethodBreakpointsStrings.Text(
+    TAtlasMethodBreakpointsTextId.MethodGroupsToggle));
   FToggleButton.OnClick := ToggleClick;
-  FRemoveButton := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsRemove));
+  FRemoveButton := mButtons.AddButton(TAtlasMethodBreakpointsStrings.Text(
+    TAtlasMethodBreakpointsTextId.MethodGroupsRemove));
   FRemoveButton.OnClick := RemoveClick;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsClose), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodGroupsClose),
+    TAtlasButtonKind.Cancel);
 end;
 
 procedure TAtlasMethodGroupsDialog.Act(const AAction: TAtlasMethodGroupAction);
@@ -560,7 +579,7 @@ begin
     end;
     if FItems = nil then
     begin
-      FList.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsEmpty));
+      FList.Items.Add(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodGroupsEmpty));
     end;
   finally
     FList.Items.EndUpdate;
@@ -575,11 +594,12 @@ end;
 
 class function TAtlasMethodGroupsDialog.StateText(const AState: TAtlasMethodGroupState): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.MethodGroupsItem, [AState.Group.Pattern, AState.Breakpoints,
+  Result := TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodGroupsItem, [AState.Group.Pattern,
+    AState.Breakpoints,
     AState.Enabled]);
   if AState.Group.Grow then
   begin
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodGroupsGrowing);
+    Result := Result + TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodGroupsGrowing);
   end;
 end;
 

@@ -126,7 +126,7 @@ uses
   Atlas.IDE.Debug.CallStackWindow,
   Atlas.IDE.Debug.Sources,
   Atlas.UI.Debug.AsyncOrigin,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 /// <summary>Quelltexte (.pas, .dpr) des Projekts AProjectFile, sonst des aktiven Projekts.</summary>
 function ProjectSources(const AProjectFile: string): TArray<string>;
@@ -214,7 +214,7 @@ begin
   end;
   if FSites = nil then
   begin
-    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.AsyncOriginNoSites));
+    FMessage(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.AsyncOriginNoSites));
     Exit;
   end;
   SetLength(FOwnBreak, Length(FSites));
@@ -228,7 +228,7 @@ begin
       FBreaks := FBreaks + [mBreakpoint];
     end;
   end;
-  FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginArmed, [Length(FSites)]));
+  FMessage(TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginArmed, [Length(FSites)]));
   UpdateStatus;
 end;
 
@@ -440,7 +440,7 @@ begin
   FRegistry.Add(FStatusRef);
   // Gelb: Das Anhalten an jeder Aufrufstelle bremst das Programm.
   mLine.Update(TAtlasAsyncOriginTexts.StatusText(Length(FSites)), TAtlasStatusState.Yellow,
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginArmed, [Length(FSites)]));
+    TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginArmed, [Length(FSites)]));
 end;
 
 class function TAtlasIdeDebugAsyncOrigin.CurrentPosition(const AThread: IOTAThread; out AFileName: string;

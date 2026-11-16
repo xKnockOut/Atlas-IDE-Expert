@@ -83,7 +83,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 const
   cDialogWidth = 620;
@@ -95,7 +95,8 @@ const
 constructor TAtlasBreakpointCheckDialog.CreateDialog(AOwner: TComponent; const AProblems: TAtlasBreakpointProblems;
   AMode: TAtlasBreakpointCheckMode; const AJump: TAtlasBreakpointJump);
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckTitle), cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckTitle),
+    cDialogWidth);
   FProblems := AProblems;
   FMode := AMode;
   FJump := AJump;
@@ -126,7 +127,8 @@ var
   mRow: TPanel;
 begin
   mRow := AddRow(cSummaryHeight);
-  FSummary := AddLabel(mRow, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckSummary, [Length(FProblems)]));
+  FSummary := AddLabel(mRow, TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckSummary,
+    [Length(FProblems)]));
   FSummary.ShowAccelChar := False;
 end;
 
@@ -151,21 +153,21 @@ var
 begin
   mButtons := AddButtonRow;
   mMovable := TAtlasBreakpointCheck.Movable(FProblems);
-  FMove := mButtons.AddButton(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMove, [mMovable]));
+  FMove := mButtons.AddButton(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMove, [mMovable]));
   FMove.Enabled := mMovable > 0;
   FMove.OnClick := MoveClick;
   if FMode = TAtlasBreakpointCheckMode.Launch then
   begin
-    FStart := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckStart),
+    FStart := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckStart),
       TAtlasButtonKind.Default);
     FStart.OnClick := StartClick;
-    FCancel := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckCancel),
+    FCancel := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckCancel),
       TAtlasButtonKind.Cancel);
     FCancel.OnClick := CancelClick;
   end
   else
   begin
-    FStart := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckClose),
+    FStart := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckClose),
       TAtlasButtonKind.Cancel);
     FStart.OnClick := StartClick;
   end;
@@ -236,7 +238,7 @@ end;
 
 class function TAtlasBreakpointCheckDialog.ProblemText(const AProblem: TAtlasBreakpointProblem): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckProblemLine,
+  Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckProblemLine,
     [ExtractFileName(AProblem.FileName.Replace('/', PathDelim)), AProblem.Line + 1, ReasonText(AProblem)]);
 end;
 
@@ -246,20 +248,21 @@ begin
     TAtlasBreakpointReason.NoCode:
       if AProblem.CanMove then
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoCodeNext, [AProblem.NextLine + 1]);
+        Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckNoCodeNext,
+          [AProblem.NextLine + 1]);
       end
       else
       begin
-        Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNoCode);
+        Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckNoCode);
       end;
     TAtlasBreakpointReason.Inactive:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckInactive, [AProblem.Detail]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckInactive, [AProblem.Detail]);
     TAtlasBreakpointReason.NoDebugInfo:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoDebugInfo, [AProblem.Detail]);
+      Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckNoDebugInfo, [AProblem.Detail]);
     TAtlasBreakpointReason.NotInProject:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNotInProject);
+      Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckNotInProject);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckUnreadable);
+    Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckUnreadable);
   end;
 end;
 

@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.EventLog.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TEventLogDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogCaption);
+  Result := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogCaption);
 end;
 
 function TEventLogDock.GetIdentifier: string;

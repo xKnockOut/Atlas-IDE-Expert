@@ -62,7 +62,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Threads,
   Atlas.UI.Debug.Deadlocks,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 const
   cPatternPrefix = 'p';
@@ -114,7 +114,7 @@ var
 begin
   if FReport.Stacks = nil then
   begin
-    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
+    FMessage(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsNotStopped));
     Exit;
   end;
   mList := Default(TAtlasResultsItemList);
@@ -122,7 +122,7 @@ begin
   mList.Title := TAtlasDebugWaitTexts.Title(FReport);
   mList.OnOpen := Open;
   mGroup := Default(TAtlasResultsItemGroup);
-  mGroup.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsPatterns);
+  mGroup.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsPatterns);
   for mIndex := 0 to High(FReport.Patterns) do
   begin
     mItem := Default(TAtlasResultsItem);
@@ -134,12 +134,12 @@ begin
   begin
     mItem := Default(TAtlasResultsItem);
     mItem.Id := cPatternPrefix;
-    mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNoPattern);
+    mItem.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsNoPattern);
     mGroup.Items := [mItem];
   end;
   mList.Groups := [mGroup];
   mGroup := Default(TAtlasResultsItemGroup);
-  mGroup.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsThreads);
+  mGroup.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsThreads);
   for mIndex := 0 to High(FReport.Stacks) do
   begin
     mItem := Default(TAtlasResultsItem);
@@ -217,7 +217,7 @@ begin
   FTimer.Enabled := False;
   if TAtlasIdeDebugSession.StoppedThread = nil then
   begin
-    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
+    FMessage(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsNotStopped));
     Exit;
   end;
   FRetries := 0;

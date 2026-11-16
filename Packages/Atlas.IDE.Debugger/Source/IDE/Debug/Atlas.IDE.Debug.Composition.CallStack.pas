@@ -26,7 +26,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.CallStack,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Commands.Strings;
 
 function CallStackCommands: TArray<TAtlasModuleCommand>;
 var
@@ -34,7 +34,7 @@ var
 begin
   mCommand := Default(TAtlasModuleCommand);
   mCommand.Id := 'Atlas.DebugCallStack';
-  mCommand.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackCommand);
+  mCommand.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.CallStackCommand);
   mCommand.Run :=
     procedure
     begin
