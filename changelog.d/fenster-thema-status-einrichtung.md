@@ -1,0 +1,2 @@
+### Behoben
+- Die Fenster Status, Benachrichtigungen, Schnellschalter und Atlas-Einrichtung folgen dem IDE-Thema: Knöpfe, Auswahlliste und Häkchen sind im Stil der IDE gezeichnet, und ein Themenwechsel färbt ein offenes Fenster sofort um. Die Atlas-Einrichtung lässt sich in der Breite ziehen (Knöpfe bleiben rechts, Hinweise brechen neu um) und ordnet sich nach einem Wechsel der Bildschirmauflösung neu an.

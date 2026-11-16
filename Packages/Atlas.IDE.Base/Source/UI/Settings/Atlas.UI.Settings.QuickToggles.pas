@@ -17,6 +17,8 @@
 // offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der
 // Arbeitsfläche hoch; darüber Bildlauf mit Mausrad und Pfeiltasten, rechts ein
 // schmaler Balken.
+// Basis ist TAtlasDialog: Dialogschrift, IDE-Thema am Knopf und neue Farben bei
+// jedem Themenwechsel, solange das Fenster offen ist.
 // Aufbau: Zeilen und Ein-/Ausklappen in TAtlasQuickToggleRows, Bildlauf in
 // TAtlasQuickToggleScroll, Maße und Zeichnen in Hilfsrecords im
 // Implementationsteil (TToggleGeometry, TTogglePainter).
@@ -34,7 +36,8 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Settings.QuickToggles;
+  Atlas.Core.Settings.QuickToggles,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasQuickToggleRow = record
@@ -87,7 +90,14 @@ type
     function Last(ACount: Integer): Integer;
   end;
 
-  TAtlasQuickToggleWindow = class(TForm)
+  /// <summary>Ereignisse des Fensters der Schnellschalter.</summary>
+  TAtlasQuickToggleEvents = record
+    Toggle: TProc<TAtlasQuickToggleItem>;
+    OpenSetting: TProc<TAtlasQuickToggleItem>;
+    AllOff: TProc;
+  end;
+
+  TAtlasQuickToggleWindow = class(TAtlasDialog)
   private
     FScroll: TAtlasQuickToggleScroll;
     FColors: TAtlasColors;
@@ -96,11 +106,9 @@ type
     FHot: Integer;
     FClosing: Boolean;
     FAllButton: TButton;
-    FOnToggle: TProc<TAtlasQuickToggleItem>;
-    FOnOpenSetting: TProc<TAtlasQuickToggleItem>;
+    FEvents: TAtlasQuickToggleEvents;
     /// <summary>Maus über dem Symbol „Einstellung öffnen“ dieser Zeile; -1 ohne.</summary>
     FHotOpen: Integer;
-    FOnAllOff: TProc;
     FAnchor: TPoint;
     procedure OpenRow(ARow: Integer);
     procedure Layout;
@@ -120,6 +128,8 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
+    procedure ThemeChanged; override;
   public
     constructor CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Schalter und „Alles aus“ neu setzen (auch bei offenem Fenster).</summary>
@@ -137,12 +147,12 @@ type
     property AllButton: TButton read FAllButton;
     property HotRow: Integer read FHot;
     /// <summary>Schalter umschalten; bei Projektwerten erst nach dem Schließen.</summary>
-    property OnToggle: TProc<TAtlasQuickToggleItem> read FOnToggle write FOnToggle;
+    property OnToggle: TProc<TAtlasQuickToggleItem> read FEvents.Toggle write FEvents.Toggle;
     /// <summary>Symbol rechts bzw. Strg+Enter: die Einstellung in Tools › Optionen öffnen (nach dem Schließen).
     /// </summary>
-    property OnOpenSetting: TProc<TAtlasQuickToggleItem> read FOnOpenSetting write FOnOpenSetting;
+    property OnOpenSetting: TProc<TAtlasQuickToggleItem> read FEvents.OpenSetting write FEvents.OpenSetting;
     /// <summary>„Alles aus für diese Sitzung“ bzw. „Alles wieder an“.</summary>
-    property OnAllOff: TProc read FOnAllOff write FOnAllOff;
+    property OnAllOff: TProc read FEvents.AllOff write FEvents.AllOff;
   end;
 
 implementation
@@ -153,6 +163,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.PageNames,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
@@ -602,7 +613,7 @@ begin
   HotBackground(AIndex, ARow);
   mCheck := CheckBox(ARow, mItem.Checked);
   // Rechts in jeder Zeile das Symbol „Einstellung öffnen“, unter der Maus in Akzentfarbe.
-  if Assigned(Window.FOnOpenSetting) then
+  if Assigned(Window.FEvents.OpenSetting) then
   begin
     OpenIcon(Geometry.OpenRect(AIndex), AIndex = Window.FHotOpen);
   end;
@@ -682,17 +693,17 @@ end;
 
 constructor TAtlasQuickToggleWindow.CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  // Breite setzt Layout nach den Zeilen.
+  inherited CreateDialog(AOwner, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle), 0);
   FColors := AColors;
   FHot := -1;
   FHotOpen := -1;
   BorderStyle := bsNone;
+  // Lage setzt ShowAbove über dem Feld.
+  Position := poDesigned;
   KeyPreview := True;
   DoubleBuffered := True;
   Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle);
   FAllButton := TButton.Create(Self);
   FAllButton.Parent := Self;
   FAllButton.OnClick := AllClick;
@@ -704,6 +715,13 @@ procedure TAtlasQuickToggleWindow.CreateParams(var Params: TCreateParams);
 begin
   inherited;
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
+end;
+
+procedure TAtlasQuickToggleWindow.ThemeChanged;
+begin
+  FColors := TAtlasUiTheme.Colors;
+  Color := ToColor(FColors.Surface);
+  Invalidate;
 end;
 
 procedure TAtlasQuickToggleWindow.Deactivate;
@@ -828,7 +846,7 @@ var
   mItem: TAtlasQuickToggleItem;
   mHandler: TProc<TAtlasQuickToggleItem>;
 begin
-  mHandler := FOnOpenSetting;
+  mHandler := FEvents.OpenSetting;
   if not FRows.IsToggle(ARow) or FClosing or not Assigned(mHandler) then
   begin
     Exit;
@@ -924,7 +942,7 @@ begin
     Exit;
   end;
   mItem := FRows.ToggleOf(ARow);
-  mHandler := FOnToggle;
+  mHandler := FEvents.Toggle;
   if not Assigned(mHandler) then
   begin
     Exit;
@@ -962,9 +980,9 @@ end;
 
 procedure TAtlasQuickToggleWindow.AllClick(Sender: TObject);
 begin
-  if Assigned(FOnAllOff) then
+  if Assigned(FEvents.AllOff) then
   begin
-    FOnAllOff();
+    FEvents.AllOff();
   end;
 end;
 
