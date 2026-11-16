@@ -24,7 +24,8 @@ uses
   System.SysUtils,
   ToolsAPI,
   Atlas.Core.Debug.RunTo,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeRunTo = class
@@ -38,11 +39,10 @@ type
       procedure DebugEnded; override;
     end;
   private class var
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FListener: IAtlasIdeDebugListener;
     FState: TAtlasRunToState;
     FStopCount: Integer;
-    class procedure Report(const AText: string); static;
     class function StateFile: string; static;
     class procedure SaveState; static;
     class procedure LoadState; static;
@@ -110,14 +110,6 @@ end;
 
 { TAtlasIdeRunTo }
 
-class procedure TAtlasIdeRunTo.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class function TAtlasIdeRunTo.StateFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cStateFile);
@@ -138,7 +130,7 @@ begin
   except
     // Ohne Datei geht nur das Zurücksetzen nach einem Absturz verloren.
     on E: Exception do
-      Report(E.Message);
+      FMessage.Say(E.Message);
   end;
 end;
 
@@ -178,7 +170,8 @@ begin
   if (mBreakpoints[0] <> nil) and SameText(mBreakpoints[0].GroupName, TAtlasRunTo.cOnceGroup) then
   begin
     TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceRemoved, [ExtractFileName(mFileName), mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceRemoved, [ExtractFileName(mFileName),
+      mLine + 1]));
   end;
 end;
 
@@ -215,7 +208,7 @@ begin
   Result := (mView <> nil) and (mView.Buffer <> nil);
   if not Result then
   begin
-    Report(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToNoEditor));
+    FMessage.Say(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToNoEditor));
     Exit;
   end;
   AFileName := mView.Buffer.FileName;
@@ -244,7 +237,7 @@ begin
   Result := mBreakpoint <> nil;
   if not Result then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoBreakpoint, [ALine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoBreakpoint, [ALine + 1]));
   end;
 end;
 
@@ -266,7 +259,7 @@ end;
 
 class procedure TAtlasIdeRunTo.Start(const AMessage: TProc<string>);
 begin
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   if FListener = nil then
   begin
     FListener := TListener.Create;
@@ -283,7 +276,7 @@ begin
     TAtlasIdeDebugSession.RemoveListener(FListener);
   end;
   FListener := nil;
-  FMessage := nil;
+  FMessage.Clear;
   // Der Zustand bleibt in der Datei; der nächste Start setzt ihn zurück.
   FState := Default(TAtlasRunToState);
 end;
@@ -313,12 +306,12 @@ begin
   mProcess := TAtlasIdeBreakpoints.StoppedProcess;
   if mProcess = nil then
   begin
-    Report(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToNotStopped));
+    FMessage.Say(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToNotStopped));
     Exit;
   end;
   if not CodeLine(AFileName, ALine) then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoCode, [ALine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoCode, [ALine + 1]));
     Exit;
   end;
   // Ein Lauf, der noch nicht angekommen ist (etwa nach Pause), zuerst zurücksetzen.
@@ -377,7 +370,7 @@ begin
   SaveState;
   if Length(mDone) > 1 then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToRestored, [Length(mDone)]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToRestored, [Length(mDone)]));
   end;
 end;
 
@@ -423,19 +416,19 @@ begin
   end;
   if TAtlasIdeBreakpoints.Find(mFileName, mLine) <> nil then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceExists, [mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceExists, [mLine + 1]));
   end
   else if not CodeLine(mFileName, mLine) then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoCode, [mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoCode, [mLine + 1]));
   end
   else if TAtlasIdeBreakpoints.Add(mFileName, mLine, TAtlasRunTo.cOnceGroup) = nil then
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoBreakpoint, [mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToNoBreakpoint, [mLine + 1]));
   end
   else
   begin
-    Report(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceSet, [mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceSet, [mLine + 1]));
   end;
 end;
 

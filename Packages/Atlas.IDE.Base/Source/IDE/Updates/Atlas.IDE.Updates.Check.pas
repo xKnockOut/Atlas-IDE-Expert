@@ -23,7 +23,8 @@
 //   Hauptversion). Mit off, über GetIt, ohne AtlasUpdate.exe oder außerhalb
 //   eines Release-Ordners öffnet sie wie bisher (#495) die Änderungen samt
 //   Download im Browser.
-// - Abgefragt wird der Kanal aus updates.channel (#1519).
+// - Abgefragt wird der Kanal aus updates.channel (#1519). Ein Wechsel des
+//   Kanals in den Optionen prüft sofort, nicht erst nach Ablauf des Tages.
 // Zustand (gefragt, letzte Prüfung, gefundene Version) in
 // %LOCALAPPDATA%\Atlas\updates.json.
 
@@ -425,6 +426,7 @@ begin
     FreeAndNil(FThread);
   end;
   FState.LastCheck := AState.LastCheck;
+  FState.ChannelUrl := AState.ChannelUrl;
   mPreviousError := FState.LastError;
   // Gefundene Version merken bzw. nach „aktuell“ vergessen (#754), Fehlerart merken bzw. vergessen.
   TAtlasUpdates.Remember(FState, AResult);
@@ -509,15 +511,15 @@ var
   mState: TAtlasUpdateState;
   mQuery: TAtlasUpdateQuery;
 begin
+  mQuery.Url := TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
+    TAtlasPluginVersion.cVersion);
   if (FSource = nil) or (FThread <> nil) or TAtlasShutdown.Signalled or
-    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsStateDue(FState, Now) then
+    not TAtlasIdeSettings.Current.UpdatesCheck or not TAtlasUpdates.IsQueryDue(FState, mQuery.Url, Now) then
   begin
     Exit;
   end;
   mSource := FSource;
   mState := FState;
-  mQuery.Url := TAtlasUpdateInstall.ChannelUrl(TAtlasIdeSettings.Current.UpdatesChannel,
-    TAtlasPluginVersion.cVersion);
   mQuery.Installed := TAtlasPluginVersion.cVersion;
   mQuery.IdeVersion := TAtlasUpdates.IdeVersion;
   FThread := TThread.CreateAnonymousThread(

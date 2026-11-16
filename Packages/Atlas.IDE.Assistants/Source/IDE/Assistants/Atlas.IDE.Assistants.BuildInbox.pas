@@ -53,6 +53,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Build.Messages,
   Atlas.Core.Assistants.BuildInbox,
+  Atlas.Core.Assistants.Inbox,
   Atlas.UI.Assistants.Strings;
 
 var
@@ -110,7 +111,7 @@ begin
   end;
   FSignal.Reopen;
   try
-    mPending := TAtlasBuildInbox.Pending(FFolder);
+    mPending := TAtlasFileInbox.Pending(FFolder);
     // Nur einer je Takt: Liegen mehr, listet der nächste Takt wieder.
     FPace.Listed(GetTickCount64, Length(mPending) > 1);
     if Length(mPending) > 0 then
@@ -204,10 +205,10 @@ begin
       try
         if AError <> '' then
         begin
-          TAtlasBuildInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AError));
+          TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.RefusalText(AError));
           Exit;
         end;
-        TAtlasBuildInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.SuccessText(AReport));
+        TAtlasFileInbox.Answer(AFolder, ARequest.Id, TAtlasBuildInbox.SuccessText(AReport));
         if Assigned(AOnMessage) then
         begin
           AOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildFinished,
@@ -251,7 +252,7 @@ begin
   end;
   if not mStarted then
   begin
-    TAtlasBuildInbox.Answer(FFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(mReason));
+    TAtlasFileInbox.Answer(FFolder, mRequest.Id, TAtlasBuildInbox.RefusalText(mReason));
     if Assigned(mOnMessage) then
     begin
       mOnMessage(TAtlasAssistantsStrings.Fmt(TAtlasAssistantsTextId.BuildRefused,

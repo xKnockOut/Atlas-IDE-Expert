@@ -40,7 +40,9 @@
     Fassungen mit Grund in $AllowedJsonParseLocal.
     Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
     Editorschrift (TAtlasEditorFont), die Auswahl im Designer
-    (TAtlasDesignerAccess), die oberste Editoransicht
+    (TAtlasDesignerAccess), Meldungszeilen der Module (TAtlasMessageSink.Say
+    statt eigener Report), wartende Aufträge der Assistenten-Eingänge
+    (TAtlasFileInbox.Pending), die oberste Editoransicht
     (TAtlasEditorBuffer.TopView/TopSourceView); ebenso in Atlas.Common der
     Dateiname für die Namensauflösung (TRuleContext.ResolverFileName),
     Knoten in Baumreihenfolge und Vorkommen eines Bezeichners (TSyntaxNode)
@@ -413,6 +415,39 @@ $PluginLock = @(
         Folder  = 'Packages/Atlas.IDE.Designer'
         Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
         Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'Report'
+        Folder  = 'Packages/Atlas.IDE.Welcome'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'Report'
+        Folder  = 'Packages/Atlas.IDE.Tracker'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Allowed = @{
+            'Atlas.IDE.Tracker.IssuesServices:Report'                   = 'Methodendeklaration von TAtlasIssuesLink'
+            'Atlas.IDE.Tracker.IssuesServices:TAtlasIssuesLink.Report'  = 'meldet nur, solange der Kontext lebt (Keep)'
+            'Atlas.IDE.Tracker.LinkedStart:TAtlasIdeLinkedStart.Report' = 'baut den Text einer Meldung, meldet nicht selbst'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'Report'
+        Folder  = 'Packages/Atlas.IDE.Debugger'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Allowed = @{
+            'Atlas.IDE.Debug.AsyncOrigin:TAtlasIdeDebugAsyncOrigin.Report'  = 'zeigt den Ursprung als Meldung oder in der Ergebnisliste'
+            'Atlas.IDE.Debug.ReattachWait:TAtlasIdeReattachWaiter.Report'   = 'meldet einen gefundenen Prozess, keine Textzeile'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'Pending'
+        Folder  = 'Packages/Atlas.IDE.Assistants'
+        Home    = 'TAtlasFileInbox.Pending in Atlas.Core.Assistants.Inbox'
+        Allowed = @{
+            'Atlas.Core.Assistants.Inbox:TAtlasFileInbox.Pending' = 'die eine Fassung'
+        }
     }
     # Dateiname für die Namensauflösung der Prüfregeln: nur TRuleContext.ResolverFileName.
     [pscustomobject]@{

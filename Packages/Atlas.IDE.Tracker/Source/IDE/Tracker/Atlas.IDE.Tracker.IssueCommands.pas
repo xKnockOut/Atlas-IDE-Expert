@@ -135,7 +135,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
+        FContext.Messages.Say(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
         Exit;
       end;
       mInput := '';
@@ -149,7 +149,7 @@ begin
       mKey := TAtlasIssuePreview.KeyOf(mTarget.Provider, mInput);
       if mKey = '' then
       begin
-        FContext.Report(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
+        FContext.Messages.Say(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
         Exit;
       end;
       FServices.Preview.Show(mTarget, mKey);
@@ -236,7 +236,7 @@ begin
       end
       else
       begin
-        AContext.Report(TAtlasIssueTip.ErrorText(AError, mKey));
+        AContext.Messages.Say(TAtlasIssueTip.ErrorText(AError, mKey));
       end;
     end;
 end;
@@ -286,7 +286,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
+        FContext.Messages.Say(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
         Exit;
       end;
       // Das aktuelle Issue vorwählen, wenn es zum selben Tracker gehört.

@@ -669,7 +669,7 @@ begin
   FContext.StartProject := '';
   if AJob.Linked.Link.Outcome <> TAtlasTrackerBranchLinkOutcome.None then
   begin
-    FContext.Report(TAtlasIdeLinkedStart.Report(AJob.Link, AJob.Issue.Key, AJob.Linked));
+    FContext.Messages.Say(TAtlasIdeLinkedStart.Report(AJob.Link, AJob.Issue.Key, AJob.Linked));
   end;
   // Anonym: Art, Ergebnis; nie Kennung, Branch oder Pfad.
   TAtlasGuard.Log(Format(cLogStarted, [TAtlasMyIssues.StartName(AJob.State.Plan.Mode),
@@ -718,11 +718,11 @@ begin
       [mResult.Branch, AtlasVcsOutcomeName(mResult.Reason)]), True);
     case mFailure of
       TAtlasStartFailure.FolderTaken:
-        FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mResult.Folder]));
+        FContext.Messages.Say(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [mResult.Folder]));
       TAtlasStartFailure.Steps:
-        FContext.Report(TAtlasIdeVcs.Dialogs.FailureText(AJob.State.Plan.Kind, mResult.Steps, mResult.Run));
+        FContext.Messages.Say(TAtlasIdeVcs.Dialogs.FailureText(AJob.State.Plan.Kind, mResult.Steps, mResult.Run));
     else
-      FContext.Report(FContext.Notice.Text);
+      FContext.Messages.Say(FContext.Notice.Text);
     end;
   end;
   if Result then
@@ -777,7 +777,7 @@ begin
   // Nur der Push danach scheiterte (#1289): der lokale Branch bleibt, die Meldung nennt den Grund.
   if AJob.Outcome.PushFailed then
   begin
-    FContext.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchPushFailed, [AJob.Outcome.Branch,
+    FContext.Messages.Say(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchPushFailed, [AJob.Outcome.Branch,
       TAtlasIdeVcs.Dialogs.ServerState(AJob.Outcome.Reason)]));
   end;
 end;
@@ -843,7 +843,7 @@ begin
   else if TAtlasCommitHook.State(AHooks) = TAtlasCommitHookState.Foreign then
   begin
     AState.Hook := TAtlasMyIssues.cHookForeign;
-    FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHookForeign));
+    FContext.Messages.Say(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHookForeign));
   end
   else if TAtlasCommitHook.Install(AHooks, TAtlasStrings.Language = TAtlasLanguage.English) then
   begin
@@ -852,7 +852,7 @@ begin
   end
   else
   begin
-    FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHookFailed));
+    FContext.Messages.Say(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.WelcomeIssuesHookFailed));
   end;
 end;
 

@@ -25,7 +25,8 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.BreakpointCheck,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasBreakpointCheckSessionFunc = reference to function: TLspSession;
@@ -40,10 +41,9 @@ type
     end;
   private class var
     FSession: TAtlasBreakpointCheckSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FListener: IAtlasIdeDebugListener;
     FLastProblems: TAtlasBreakpointProblems;
-    class procedure Report(const AText: string); static;
     class function Spots: TAtlasBreakpointSpots; static;
     class procedure SyncOpenFiles(const ASession: TLspSession; const ASpots: TAtlasBreakpointSpots); static;
     class function ProjectProblems(const AProject: IOTAProject;
@@ -87,14 +87,6 @@ begin
 end;
 
 { TAtlasIdeBreakpointCheck }
-
-class procedure TAtlasIdeBreakpointCheck.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
 
 class function TAtlasIdeBreakpointCheck.Spots: TAtlasBreakpointSpots;
 var
@@ -213,7 +205,7 @@ class procedure TAtlasIdeBreakpointCheck.Start(const ASession: TAtlasBreakpointC
   const AMessage: TProc<string>);
 begin
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   if FListener = nil then
   begin
     FListener := TListener.Create;
@@ -282,7 +274,7 @@ begin
   FListener := nil;
   FLastProblems := nil;
   FSession := nil;
-  FMessage := nil;
+  FMessage.Clear;
 end;
 
 class function TAtlasIdeBreakpointCheck.Started: Boolean;
@@ -320,7 +312,8 @@ begin
   end;
   case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc()) of
     TAtlasBreakpointCheckChoice.Move:
-      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
+      FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved,
+        [MoveProblems(mProblems)]));
     TAtlasBreakpointCheckChoice.Cancel:
       Result := False;
   end;
@@ -335,30 +328,30 @@ var
 begin
   if not Started then
   begin
-    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckOff));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckOff));
     Exit;
   end;
   mSpots := Spots;
   if mSpots = nil then
   begin
-    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckNone));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckNone));
     Exit;
   end;
   mProject := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ActiveProjectFile);
   if not Check(mProject, mSpots, mProblems, mError) then
   begin
-    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckNoServer, [mError]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckNoServer, [mError]));
     Exit;
   end;
   if mProblems = nil then
   begin
-    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckAllOk, [Length(mSpots)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckAllOk, [Length(mSpots)]));
     Exit;
   end;
   if TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Command, JumpProc()) =
     TAtlasBreakpointCheckChoice.Move then
   begin
-    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
   end;
 end;
 

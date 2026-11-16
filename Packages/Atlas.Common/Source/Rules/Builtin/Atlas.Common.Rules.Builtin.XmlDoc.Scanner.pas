@@ -5,6 +5,8 @@
 // ("<" und "&" ohne gültiges Tag bzw. Entität, unbekannte Entität, Attributwert
 // ohne Anführungszeichen, nicht geschlossene und überzählige Endtags). Nach
 // einem Fehler im Aufbau bricht er ab (Broken), Folgefehler wären Rauschen.
+// Typargumente direkt hinter einem Bezeichner (TList<T>, TDictionary<string,
+// TList<Integer>>) sind Text wie im Hover (TXmlDoc.TypeArgumentsStop).
 
 interface
 
@@ -121,7 +123,8 @@ implementation
 uses
   System.StrUtils,
   System.Character,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.XmlDoc;
 
 {$SCOPEDENUMS ON}
 
@@ -155,10 +158,6 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  // Tags der XML-Dokumentation: Nicht geschlossen bekommen sie ein Endtag, fremde Namen werden zu Text.
-  cDocTags: array[0..27] of string = ('summary', 'param', 'typeparam', 'returns', 'value', 'exception', 'remarks',
-    'example', 'seealso', 'see', 'para', 'c', 'code', 'b', 'i', 'u', 'list', 'item', 'term', 'description',
-    'listheader', 'paramref', 'typeparamref', 'inheritdoc', 'br', 'permission', 'include', 'note');
   // Abschnitte, die einander nicht enthalten: Ein offener endet vor dem nächsten (wie TXmlDoc).
   cBlockSections: array[0..7] of string = ('summary', 'param', 'typeparam', 'returns', 'value', 'exception',
     'remarks', 'example');
@@ -519,6 +518,13 @@ var
   mElement: TDocElement;
   mOutcome: TTagOutcome;
 begin
+  // Typargumente hinter einem Bezeichner (TList<T>) sind Text, kein Tag.
+  mNameStop := TXmlDoc.TypeArgumentsStop(FXml, AIndex);
+  if mNameStop > 0 then
+  begin
+    AIndex := mNameStop;
+    Exit;
+  end;
   if not IsNameStartAt(AIndex + 1) then
   begin
     RejectTag(AIndex, '');
@@ -676,7 +682,7 @@ begin
       [TDocReplacement.Create(mElement.OpenStop - 1, mElement.OpenStop - 1, '/')], True));
   end
   else if (Length(mElement.Attributes) = 0) and not mElement.HasChildren and
-    ((IndexText(mElement.Name, cDocTags) < 0) or (IndexText(mElement.Name, cAttributeTags) >= 0)) then
+    (not TXmlDoc.IsDocTag(mElement.Name) or (IndexText(mElement.Name, cAttributeTags) >= 0)) then
   begin
     // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
     AddFlaw(TDocFlaw.Create(mElement.Start, mElement.OpenStop,

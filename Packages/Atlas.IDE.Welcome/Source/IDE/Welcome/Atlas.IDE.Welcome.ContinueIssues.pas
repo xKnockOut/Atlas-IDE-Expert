@@ -29,12 +29,13 @@ uses
   Atlas.Core.Welcome.ContinueIssues,
   Atlas.IDE.Contracts.IssueWork,
   Atlas.UI.Welcome.ContinueIssues,
-  Atlas.IDE.Welcome.Continue.Editor;
+  Atlas.IDE.Welcome.Continue.Editor,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeContinueIssues = class(TInterfacedObject, IAtlasContinueIssuesSource)
   private
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FChanged: TProc;
     // Änderungsstellen dieser Sitzung (gehört TAtlasIdeContinue).
     FChanges: TDictionary<string, TAtlasWorkTab>;
@@ -42,7 +43,6 @@ type
     FNotice: string;
     // Beginn des aktiven Issues (UTC); ältere Änderungen gehören zum vorigen.
     FSince: TDateTime;
-    procedure Report(const AText: string);
     procedure Changed;
     function SinceChanges: TArray<TAtlasWorkTab>;
     function StatesOf(const AProject: string; const AKeys: TArray<string>): TArray<TAtlasIssueStateKind>;
@@ -87,7 +87,6 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.VersionControl.Contract,
@@ -159,17 +158,9 @@ constructor TAtlasIdeContinueIssues.Create(const AMessage: TProc<string>; AChang
   const AChanged: TProc);
 begin
   inherited Create;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FChanges := AChanges;
   FChanged := AChanged;
-end;
-
-procedure TAtlasIdeContinueIssues.Report(const AText: string);
-begin
-  if Assigned(FMessage) and (AText <> '') then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeContinueIssues.Changed;
@@ -287,7 +278,7 @@ begin
       begin
         // Branch nicht mehr vorhanden: nur die Reiter.
         FNotice := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIssuesBranchMissing, [AEntry.Branch]);
-        Report(FNotice);
+        FMessage.Say(FNotice);
         OpenPlan(AProject, AEntry);
       end;
     TAtlasIssueBranchStep.Ask:
@@ -337,7 +328,7 @@ begin
       begin
         FNotice := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeIssuesSwitchFailed,
           [mBranch, AtlasVcsOutcomeName(mOutcome)]);
-        Report(FNotice);
+        FMessage.Say(FNotice);
       end;
       OpenPlan(mProject, mEntry);
     end) then
@@ -368,7 +359,7 @@ begin
       Missing := MissingFilesText(Plan.Missing);
       if Missing <> '' then
       begin
-        Report(Missing);
+        FMessage.Say(Missing);
         FNotice := Trim(FNotice + ' ' + Missing);
       end;
       TAtlasIdeContinueEditor.EnsureProject(mProject);
@@ -564,17 +555,17 @@ var
 begin
   if not Enabled then
   begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
+    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
     Exit;
   end;
   if not FindEntry(AProject, AKey, mTarget, mEntry) then
   begin
-    Report(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
+    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
     Exit;
   end;
   if not FileExists(mTarget) then
   begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mTarget]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mTarget]));
     Exit;
   end;
   FNotice := '';

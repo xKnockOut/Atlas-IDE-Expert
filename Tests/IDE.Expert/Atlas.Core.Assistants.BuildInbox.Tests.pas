@@ -43,7 +43,8 @@ uses
   System.JSON,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.Messages,
-  Atlas.Core.Assistants.BuildInbox;
+  Atlas.Core.Assistants.BuildInbox,
+  Atlas.Core.Assistants.Inbox;
 
 /// <summary>Gründe wie in der UI; der Test prüft, dass ParseRequest sie verwendet.</summary>
 function Texts: TAtlasBuildInboxTexts;
@@ -186,7 +187,7 @@ begin
   TFile.WriteAllText(TPath.Combine(FFolder, 'a.json'), '{"project": "C:\\P\\A.dproj"}', TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'c.json.tmp'), '{}', TEncoding.UTF8);
   TFile.WriteAllText(TPath.Combine(FFolder, 'd.result.json'), '{}', TEncoding.UTF8);
-  mPending := TAtlasBuildInbox.Pending(FFolder);
+  mPending := TAtlasFileInbox.Pending(FFolder);
   Assert.AreEqual(2, Integer(Length(mPending)));
   Assert.AreEqual('a.json', ExtractFileName(mPending[0]));
   Assert.IsTrue(TAtlasBuildInbox.Take(mPending[0], Texts, mRequest, mReason), mReason);
@@ -196,7 +197,7 @@ begin
   // Wer das Umbenennen verliert, hat den Auftrag nicht.
   Assert.IsFalse(TAtlasBuildInbox.Take(mPending[0], Texts, mRequest, mReason));
   Assert.AreEqual('', mReason);
-  TAtlasBuildInbox.Answer(FFolder, 'a', TAtlasBuildInbox.RefusalText('nein'));
+  TAtlasFileInbox.Answer(FFolder, 'a', TAtlasBuildInbox.RefusalText('nein'));
   Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'a.result.json')));
   Assert.IsFalse(TFile.Exists(TPath.Combine(FFolder, 'a.taken')), 'übernommener Auftrag gelöscht');
   Assert.IsFalse(TFile.Exists(TPath.Combine(FFolder, 'a.result.json.tmp')));

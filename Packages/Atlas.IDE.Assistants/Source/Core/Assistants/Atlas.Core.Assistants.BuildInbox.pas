@@ -18,6 +18,8 @@
 // Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeBuilds. Die Gründe einer
 // Ablehnung kommen in der Sprache der Oberfläche als TAtlasBuildInboxTexts
 // herein (#1458; Core kennt die Texttabellen nicht).
+// Finden, Übernehmen und Antworten teilt er mit dem anderen Eingang
+// (TAtlasFileInbox in Atlas.Core.Assistants.Inbox).
 
 interface
 
@@ -38,16 +40,11 @@ type
 
   TAtlasBuildInbox = class
   public const
-    cRequestExtension = '.json';
-    cTakenExtension = '.taken';
-    cResultSuffix = '.result.json';
     /// <summary>Wert von "requestedBy" in den Compile-Ereignissen und im Ergebnis.</summary>
     cRequestedBy = 'mcp';
   public
     /// <summary>Eingang des Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function Folder(const ABase: string; APid: Cardinal): string; static;
-    /// <summary>Wartende Aufträge (ohne .tmp, .taken und Ergebnisse), älteste zuerst.</summary>
-    class function Pending(const AFolder: string): TArray<string>; static;
     /// <summary>"make", "build", "check" → Art; False bei anderem Text. '' gilt als "make".</summary>
     class function KindOf(const AMode: string; out AKind: TAtlasCompileKind): Boolean; static;
     /// <summary>Liest einen Auftrag; False mit Grund in AReason.</summary>
@@ -63,50 +60,22 @@ type
     class function SuccessText(const AReport: TAtlasBuildReport): string; static;
     /// <summary>{"ok": false, "reason": …}.</summary>
     class function RefusalText(const AReason: string): string; static;
-    /// <summary>Antwort schreiben (erst daneben, dann umbenennen) und den übernommenen Auftrag löschen.</summary>
-    class procedure Answer(const AFolder, AId, AText: string); static;
   end;
 
 implementation
 
 uses
   Atlas.Core.Build.Messages,
-  Winapi.Windows,
   System.IOUtils,
   System.DateUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Assistants.Inbox;
 
 { TAtlasBuildInbox }
 
 class function TAtlasBuildInbox.Folder(const ABase: string; APid: Cardinal): string;
 begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-builds'), IntToStr(APid));
-end;
-
-class function TAtlasBuildInbox.Pending(const AFolder: string): TArray<string>;
-var
-  mName: string;
-  mFound: TList<string>;
-begin
-  Result := nil;
-  if not TDirectory.Exists(AFolder) then
-  begin
-    Exit;
-  end;
-  mFound := TList<string>.Create;
-  try
-    for mName in TDirectory.GetFiles(AFolder, '*' + cRequestExtension) do
-    begin
-      if mName.EndsWith(cRequestExtension, True) and not mName.EndsWith(cResultSuffix, True) then
-      begin
-        mFound.Add(mName);
-      end;
-    end;
-    mFound.Sort;
-    Result := mFound.ToArray;
-  finally
-    mFound.Free;
-  end;
 end;
 
 class function TAtlasBuildInbox.KindOf(const AMode: string; out AKind: TAtlasCompileKind): Boolean;
@@ -172,28 +141,19 @@ end;
 class function TAtlasBuildInbox.Take(const AFileName: string; const ATexts: TAtlasBuildInboxTexts;
   out ARequest: TAtlasBuildRequest; out AReason: string): Boolean;
 var
-  mTaken, mText, mId: string;
+  mText, mId: string;
 begin
   ARequest := Default(TAtlasBuildRequest);
   AReason := '';
-  mId := ChangeFileExt(ExtractFileName(AFileName), '');
-  mTaken := ChangeFileExt(AFileName, cTakenExtension);
-  // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen zurückgezogen, schlägt es fehl.
-  if not RenameFile(AFileName, mTaken) then
+  if not TAtlasFileInbox.Claim(AFileName, mId, mText) then
   begin
     Exit(False);
-  end;
-  try
-    mText := TFile.ReadAllText(mTaken, TEncoding.UTF8);
-  except
-    on Exception do
-      mText := '';
   end;
   Result := ParseRequest(mText, ATexts, ARequest, AReason);
   ARequest.Id := mId;
   if not Result then
   begin
-    Answer(ExtractFilePath(AFileName), mId, RefusalText(AReason));
+    TAtlasFileInbox.Answer(ExtractFilePath(AFileName), mId, RefusalText(AReason));
   end;
 end;
 
@@ -256,24 +216,6 @@ begin
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
-  end;
-end;
-
-class procedure TAtlasBuildInbox.Answer(const AFolder, AId, AText: string);
-var
-  mTarget, mTemporary: string;
-begin
-  mTarget := TPath.Combine(AFolder, AId + cResultSuffix);
-  mTemporary := mTarget + '.tmp';
-  TFile.WriteAllText(mTemporary, AText, TEncoding.UTF8);
-  if FileExists(mTarget) then
-  begin
-    TFile.Delete(mTarget);
-  end;
-  TFile.Move(mTemporary, mTarget);
-  if FileExists(TPath.Combine(AFolder, AId + cTakenExtension)) then
-  begin
-    TFile.Delete(TPath.Combine(AFolder, AId + cTakenExtension));
   end;
 end;
 

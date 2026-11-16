@@ -44,7 +44,8 @@ uses
   System.Classes,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Scopes,
-  Atlas.Core.Search.Files;
+  Atlas.Core.Search.Files,
+  Atlas.Tests.TempFolder;
 
 function Query(const AText: string): TAtlasSearchQuery;
 begin
@@ -82,11 +83,7 @@ end;
 
 procedure TAtlasSearchFilesTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasSearchFilesTests.SourcesAreUniqueSourceFilesWithBuffersFirst;

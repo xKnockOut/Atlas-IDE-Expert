@@ -30,7 +30,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIssueAttachHooks = record
@@ -54,11 +55,11 @@ type
     cImageGap = 16;
   private
     FHooks: TAtlasIssueAttachHooks;
+    FMessage: TAtlasMessageSink;
     FStarted: Boolean;
     FWorker: TAtlasWorkerSlot;
     FCancel: IAtlasCiCancel;
     FTemp: TAtlasAttachTemp;
-    procedure Report(const AText: string);
     procedure Send(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest);
     procedure Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
       const AOutcome: TAtlasAttachOutcome);
@@ -102,7 +103,6 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.AttachPlan,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -215,6 +215,7 @@ constructor TAtlasIdeIssueAttach.Create(const AHooks: TAtlasIssueAttachHooks);
 begin
   inherited Create;
   FHooks := AHooks;
+  FMessage := TAtlasMessageSink.Create(FHooks.Report);
   FWorker := TAtlasWorkerSlot.Create(HInstance);
 end;
 
@@ -223,14 +224,6 @@ begin
   FWorker.Free;
   DropTemp;
   inherited;
-end;
-
-procedure TAtlasIdeIssueAttach.Report(const AText: string);
-begin
-  if Assigned(FHooks.Report) then
-  begin
-    FHooks.Report(AText);
-  end;
 end;
 
 procedure TAtlasIdeIssueAttach.Sent(const AProvider: IAtlasTrackerProvider; const ARequest: TAtlasAttachRequest;
@@ -247,19 +240,19 @@ begin
     TAtlasAttachReport.Silent:
       ; // Abgebrochen: keine Meldung.
     TAtlasAttachReport.CommentFailed:
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommentFailed, [ARequest.Key,
+      FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommentFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
     TAtlasAttachReport.Failed:
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFailed, [ARequest.Key,
+      FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachFailed, [ARequest.Key,
         TAtlasIssueTip.ErrorText(AOutcome.Error, ARequest.Key)]));
     TAtlasAttachReport.Fallback:
       Fallback(ARequest, AOutcome);
     TAtlasAttachReport.DoneComment:
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
+      FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDoneComment, [ARequest.Key, AOutcome.Uploaded]));
     TAtlasAttachReport.Done:
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
+      FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachDone, [ARequest.Key, AOutcome.Uploaded]));
     TAtlasAttachReport.Commented:
-      Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+      FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
     TAtlasAttachReport.Nothing:
       ; // Weder Dateien noch Kommentar: nichts zu melden.
   end;
@@ -274,7 +267,7 @@ var
 begin
   if AOutcome.Commented then
   begin
-    Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
+    FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachCommented, [ARequest.Key]));
   end;
   if Length(AOutcome.Images) > 0 then
   begin
@@ -305,7 +298,7 @@ begin
     end;
     // Erst der Hinweis, dann der Browser: Der Nutzer weiß, was er dort tun soll.
     mText := TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachPasteHint, [Length(mBitmaps), ARequest.Key]);
-    Report(mText);
+    FMessage.Say(mText);
     MessageDlg(mText, mtInformation, [mbOK], 0);
   end;
   TAtlasIssuePreview.Browse(AOutcome.Page);
@@ -368,6 +361,7 @@ begin
   FWorker.Stop(TAtlasShutdown.cStopMs);
   DropTemp;
   FHooks := Default(TAtlasIssueAttachHooks);
+  FMessage.Clear;
 end;
 
 procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -478,7 +472,7 @@ begin
       end;
       if Busy then
       begin
-        Report(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachBusy));
+        FMessage.Say(TAtlasAttachStrings.Text(TAtlasAttachTextId.AttachBusy));
         Exit;
       end;
       mProvider := nil;
@@ -488,7 +482,7 @@ begin
       end;
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
-        Report(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
+        FMessage.Say(TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewNoTracker));
         Exit;
       end;
       DropTemp;
@@ -573,7 +567,7 @@ begin
   begin
     FCancel := nil;
   end;
-  Report(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachSending, [ARequest.Key]));
+  FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachSending, [ARequest.Key]));
   FWorker.Start(TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest)));
 end;
 

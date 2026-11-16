@@ -1,0 +1,3 @@
+### Behoben
+- `xmldoc-mismatch` meldet Typargumente im Doku-Text nicht mehr als „kein wohlgeformtes XML“: `TMyGeneric<TAbc>`, `TDictionary<string, TList<Integer>>` und offene Typen wie `IList<>` direkt hinter einem Bezeichner gelten als Text. Echte Fehler (nicht geschlossenes `<summary>`, falsch geschachtelte Tags, `Wert<>nil`) meldet die Regel weiter. Hover, Parameter-Hint und Detailpanel zeigen solche Typargumente jetzt vollständig an, statt sie als unbekanntes Tag zu verschlucken.
+- Linux-Server: Texte aus JSON (Einstellungen, Anfragen) behalten Zeichen außerhalb der Codepage des Systems, etwa „→“ oder chinesische Zeichen; bisher wurden sie beim Lesen zu „?“ oder umschrieben.

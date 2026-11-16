@@ -43,7 +43,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Shell.Bootstrap,
-  Shell.WorkspaceGroup;
+  Shell.WorkspaceGroup,
+  Atlas.Tests.TempFolder;
 
 const
   cDproj = '<?xml version="1.0" encoding="utf-8"?>'#13#10 +
@@ -96,11 +97,7 @@ end;
 
 procedure TShellWorkspaceGroupTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TShellWorkspaceGroupTests.LoadIndexesProjectAndGivesRuleProject;

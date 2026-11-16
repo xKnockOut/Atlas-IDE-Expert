@@ -196,6 +196,9 @@ else
   # AnsiString und pcre2-8, TMatch.Index zählt dort UTF-8-Bytes statt Zeichen wie unter Delphi. Mit UnicodeString
   # und pcre2-16 stimmen die Indizes; libpcre2-16.so.0 wird zur Laufzeit geladen (Paket libpcre2-16-0).
   cp "$REPO"/Tools/Linux/Compat/Regex/*.pp "$SRC/"
+  # System.JSON der vcl-compat aus dem Quelltext: Die vorkompilierte Unit liest GetValue<string> über AnsiString
+  # und verliert Zeichen außerhalb der Codepage (Tools/Linux/Compat/JSON/LIESMICH.md).
+  cp "$REPO"/Tools/Linux/Compat/JSON/*.pp "$SRC/"
   if ! ldconfig -p 2>/dev/null | grep -q 'libpcre2-16\.so\.0'; then
     log "Hinweis: libpcre2-16.so.0 fehlt; reguläre Ausdrücke gehen erst nach apt-get install libpcre2-16-0"
   fi

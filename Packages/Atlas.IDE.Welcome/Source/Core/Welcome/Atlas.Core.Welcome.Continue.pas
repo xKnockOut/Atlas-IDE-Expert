@@ -278,7 +278,8 @@ uses
   System.JSON,
   System.DateUtils,
   Atlas.Core.Editor.MethodToggle,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Projects.Summary.Json;
 
 { TAtlasWorkTab }
 
@@ -646,35 +647,9 @@ begin
 end;
 
 class procedure TAtlasWelcomeContinue.Write(var ASummary: TAtlasProjectSummary; const AState: TAtlasWorkState);
-var
-  mValue: TJSONValue;
-  mOriginal, mRoot: TJSONObject;
-  mIndex: Integer;
-  mPair: TJSONPair;
 begin
-  mValue := TJsonRead.Parse(ASummary.Raw);
-  mRoot := TJSONObject.Create;
-  try
-    // Alles außer dem Abschnitt übernehmen; ohne Datei schreibt TAtlasProjectSummaries.ToJson die übrigen
-    // Felder aus dem Datensatz.
-    if mValue is TJSONObject then
-    begin
-      mOriginal := TJSONObject(mValue);
-      for mIndex := 0 to mOriginal.Count - 1 do
-      begin
-        mPair := mOriginal.Pairs[mIndex];
-        if mPair.JsonString.Value <> cSectionName then
-        begin
-          mRoot.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-        end;
-      end;
-    end;
-    mRoot.AddPair(cSectionName, SectionJson(AState));
-    ASummary.Raw := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-    mValue.Free;
-  end;
+  // Ohne Datei schreibt TAtlasProjectSummaries.ToJson die übrigen Felder aus dem Datensatz.
+  ASummary.Raw := ReplaceSection(ASummary.Raw, cSectionName, SectionJson(AState));
 end;
 
 class function TAtlasWelcomeContinue.ToJson(const AState: TAtlasWorkState): string;

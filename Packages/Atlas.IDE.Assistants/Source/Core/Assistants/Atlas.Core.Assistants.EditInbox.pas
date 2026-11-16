@@ -11,6 +11,8 @@
 //   <id>.result.json  {"applied": true|false, "reason": "...", "notOpen": true}
 // Gegenstück im MCP-Server: Atlas.Common.Mcp.IdeEdits. Welche Dateien offen
 // sind, steht unter "open" in editor-dirty-<pid>.json (TAtlasDirtyExport).
+// Finden, Übernehmen und Antworten teilt er mit dem anderen Eingang
+// (TAtlasFileInbox in Atlas.Core.Assistants.Inbox).
 
 interface
 
@@ -26,15 +28,9 @@ type
   end;
 
   TAtlasEditInbox = class
-  public const
-    cRequestExtension = '.json';
-    cTakenExtension = '.taken';
-    cResultSuffix = '.result.json';
   public
     /// <summary>Eingang des Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function Folder(const ABase: string; APid: Cardinal): string; static;
-    /// <summary>Wartende Aufträge (ohne .tmp, .taken und Ergebnisse), älteste zuerst.</summary>
-    class function Pending(const AFolder: string): TArray<string>; static;
     /// <summary>Übernimmt den Auftrag AFileName und liest ihn; False, wenn ihn schon jemand hat
     /// oder er unlesbar ist (dann ist er gelöscht).</summary>
     class function Take(const AFileName: string; out ARequest: TAtlasEditRequest): Boolean; static;
@@ -46,10 +42,10 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.IOUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Assistants.Inbox;
 
 { TAtlasEditInbox }
 
@@ -58,50 +54,15 @@ begin
   Result := TPath.Combine(TPath.Combine(ABase, 'ide-edits'), IntToStr(APid));
 end;
 
-class function TAtlasEditInbox.Pending(const AFolder: string): TArray<string>;
-var
-  mName: string;
-  mFound: TList<string>;
-begin
-  Result := nil;
-  if not TDirectory.Exists(AFolder) then
-  begin
-    Exit;
-  end;
-  mFound := TList<string>.Create;
-  try
-    for mName in TDirectory.GetFiles(AFolder, '*' + cRequestExtension) do
-    begin
-      if mName.EndsWith(cRequestExtension, True) and not mName.EndsWith(cResultSuffix, True) then
-      begin
-        mFound.Add(mName);
-      end;
-    end;
-    mFound.Sort;
-    Result := mFound.ToArray;
-  finally
-    mFound.Free;
-  end;
-end;
-
 class function TAtlasEditInbox.Take(const AFileName: string; out ARequest: TAtlasEditRequest): Boolean;
 var
-  mTaken, mText: string;
+  mText: string;
   mJson: TJSONValue;
 begin
   ARequest := Default(TAtlasEditRequest);
-  ARequest.Id := ChangeFileExt(ExtractFileName(AFileName), '');
-  mTaken := ChangeFileExt(AFileName, cTakenExtension);
-  // Umbenennen ist der Zuschlag: Hat der MCP-Server inzwischen gelöscht, schlägt es fehl.
-  if not RenameFile(AFileName, mTaken) then
+  if not TAtlasFileInbox.Claim(AFileName, ARequest.Id, mText) then
   begin
     Exit(False);
-  end;
-  try
-    mText := TFile.ReadAllText(mTaken, TEncoding.UTF8);
-  except
-    on Exception do
-      mText := '';
   end;
   mJson := TJSONObject.ParseJSONValue(mText);
   try
@@ -121,7 +82,7 @@ class procedure TAtlasEditInbox.Answer(const AFolder: string; const ARequest: TA
   ANotOpen: Boolean; const AReason: string);
 var
   mJson: TJSONObject;
-  mTarget, mTemporary, mText: string;
+  mText: string;
 begin
   mJson := TJSONObject.Create;
   try
@@ -138,18 +99,7 @@ begin
   finally
     mJson.Free;
   end;
-  mTarget := TPath.Combine(AFolder, ARequest.Id + cResultSuffix);
-  mTemporary := mTarget + '.tmp';
-  TFile.WriteAllText(mTemporary, mText, TEncoding.UTF8);
-  if FileExists(mTarget) then
-  begin
-    TFile.Delete(mTarget);
-  end;
-  TFile.Move(mTemporary, mTarget);
-  if FileExists(TPath.Combine(AFolder, ARequest.Id + cTakenExtension)) then
-  begin
-    TFile.Delete(TPath.Combine(AFolder, ARequest.Id + cTakenExtension));
-  end;
+  TAtlasFileInbox.Answer(AFolder, ARequest.Id, mText);
 end;
 
 end.

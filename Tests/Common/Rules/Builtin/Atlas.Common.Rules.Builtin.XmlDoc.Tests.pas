@@ -27,6 +27,8 @@ type
     [Test]
     procedure MalformedTags;
     [Test]
+    procedure GenericTypeArgumentsAreText;
+    [Test]
     procedure CrefFromIndex;
     [Test]
     procedure RequirePublic;
@@ -45,6 +47,8 @@ type
     procedure Entities;
     [Test]
     procedure BrokenStructureStops;
+    [Test]
+    procedure TypeArgumentsAreText;
   end;
 
 implementation
@@ -289,16 +293,16 @@ procedure TXmlDocRuleTests.MalformedTags;
 var
   mSource: string;
 begin
-  // Generischer Typ im Text.
-  mSource := Kunden('    /// <summary>Liefert eine TList<T>.</summary>'#10'    function Liste: TObject;'#10);
-  Assert.AreEqual(StringReplace(mSource, 'TList<T>', 'TList&lt;T&gt;', []), Fixed(mSource,
+  // Fremdes Tag ohne Inhalt, nicht an einem Bezeichner: gemeint ist Text.
+  mSource := Kunden('    /// <summary>Liefert <T> zurück.</summary>'#10'    function Liste: TObject;'#10);
+  Assert.AreEqual(StringReplace(mSource, '<T>', '&lt;T&gt;', []), Fixed(mSource,
     'Doku-Kommentar ist kein wohlgeformtes XML: <T> wird nicht geschlossen.', '<T> als Text schreiben'));
   // Tag ohne sein Attribut ist Text; '…' beginnt keinen Namen.
   mSource := Kunden('    /// <summary>Ohne <param> nicht dokumentiert.</summary>'#10'    procedure Laden;'#10);
   Assert.AreEqual(StringReplace(mSource, '<param>', '&lt;param&gt;', []), Fixed(mSource,
     'Doku-Kommentar ist kein wohlgeformtes XML: <param> wird nicht geschlossen.', '<param> als Text schreiben'));
   Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.',
-    OnlyFinding(Kunden('    /// <summary>Name<…> =</summary>'#10'    procedure Laden;'#10)).Message);
+    OnlyFinding(Kunden('    /// <summary>Name <…> =</summary>'#10'    procedure Laden;'#10)).Message);
   // Vergessenes Endtag.
   mSource := Kunden('    /// <summary>Lädt'#10'    /// <param name="A">Pfad</param>'#10 +
     '    procedure Laden(A: string);'#10);
@@ -316,6 +320,35 @@ begin
   // Nach einem Fehler im Aufbau keine Signaturprüfung (Folgefehler).
   Assert.AreEqual(1, Integer(Length(Findings(Kunden('    /// <summary>Text<para></summary>'#10 +
     '    /// <param name="X">gibt es nicht</param>'#10'    procedure Laden(A: string);'#10)))));
+end;
+
+procedure TXmlDocRuleTests.GenericTypeArgumentsAreText;
+var
+  mSource: string;
+begin
+  // Typargumente direkt hinter einem Bezeichner sind Text, auch geschachtelt und mit mehreren Parametern.
+  Assert.AreEqual(0, Integer(Length(Findings(Kunden('    ///<summary> TMyGeneric<TAbc> blablabla </summary>'#10 +
+    '    procedure Laden;'#10)))));
+  Assert.AreEqual(0, Integer(Length(Findings(Kunden('    /// <summary>Liefert eine TList<T>.</summary>'#10 +
+    '    function Liste: TObject;'#10)))));
+  Assert.AreEqual(0, Integer(Length(Findings(Kunden('    /// IList<> Methode zum Löschen'#10 +
+    '    procedure Loeschen;'#10)))));
+  Assert.AreEqual(0, Integer(Length(Findings(Kunden(
+    '    /// <summary>Füllt TDictionary<string, TList<Integer>> und System.Generics.Collections.TPair<K,V>.'#10 +
+    '    /// </summary>'#10'    /// <param name="A">Ziel vom Typ TArray<TArray<Byte>></param>'#10 +
+    '    procedure Laden(A: Integer);'#10)))));
+  // Echte Fehler bleiben: Vergleich im Text, <summary> nicht geschlossen, falsch geschachtelte Tags.
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.',
+    OnlyFinding(Kunden('    /// Nur wenn Wert<>nil'#10'    procedure Laden;'#10)).Message);
+  mSource := Kunden('    /// <summary>TMyGeneric<TAbc> lädt'#10'    procedure Laden;'#10);
+  Assert.AreEqual(StringReplace(mSource, 'lädt', 'lädt</summary>', []), Fixed(mSource,
+    'Doku-Kommentar ist kein wohlgeformtes XML: <summary> wird nicht geschlossen.', '</summary> ergänzen'));
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: <i> wird nicht geschlossen.',
+    OnlyFinding(Kunden('    /// <summary>TList<T> <b>fett<i>kursiv</b></i></summary>'#10 +
+    '    procedure Laden;'#10)).Message);
+  // Ein Tag der XML-Dokumentation direkt hinter einem Wort bleibt ein Tag.
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: <c> wird nicht geschlossen.',
+    OnlyFinding(Kunden('    /// <summary>Wert<c>nil</summary>'#10'    procedure Laden;'#10)).Message);
 end;
 
 procedure TXmlDocRuleTests.CrefFromIndex;
@@ -503,6 +536,25 @@ begin
   Assert.AreEqual(4, Integer(Length(mFlaws)));
   Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: &nbsp; ist in XML nicht definiert.', mFlaws[2].Message);
   Assert.AreEqual(17, mFlaws[3].Start);
+end;
+
+procedure TDocScannerTests.TypeArgumentsAreText;
+var
+  mScanner: TDocScanner;
+  mElements: TArray<TDocElement>;
+begin
+  mScanner := TDocScanner.Create('<summary>TDictionary<string, TList<Integer>> und TMyGeneric<TAbc></summary>');
+  try
+    mScanner.Scan;
+    Assert.IsFalse(mScanner.Broken);
+    Assert.AreEqual(0, Integer(Length(mScanner.Flaws)));
+    mElements := mScanner.Elements;
+  finally
+    mScanner.Free;
+  end;
+  Assert.AreEqual(1, Integer(Length(mElements)));
+  Assert.AreEqual('summary', mElements[0].Name);
+  Assert.IsFalse(mElements[0].HasChildren);
 end;
 
 procedure TDocScannerTests.BrokenStructureStops;

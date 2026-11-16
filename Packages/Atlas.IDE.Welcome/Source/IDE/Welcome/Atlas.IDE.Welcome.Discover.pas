@@ -33,7 +33,8 @@ uses
   Atlas.Core.Commands.Tips,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Discover,
-  Atlas.UI.Welcome.Discover;
+  Atlas.UI.Welcome.Discover,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeDiscover = class(TInterfacedObject, IAtlasDiscoverSource)
@@ -45,7 +46,7 @@ type
   private
     FCommands: TFunc<TArray<TAtlasCommand>>;
     FRun: TProc<string>;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FQueued: Boolean;
     FQueue: TArray<string>;
     FState: TAtlasDiscoverState;
@@ -55,7 +56,6 @@ type
     // Befehlsliste für einen Durchgang über alle Tipps (AllowedIds): einmal gebaut statt je Tipp (Start 06.11.2026).
     FSnapshot: TArray<TAtlasCommand>;
     FSnapshotActive: Boolean;
-    procedure Report(const AText: string);
     /// <summary>Befehle der Palette; während AllowedIds die einmal gebaute Liste.</summary>
     function Commands: TArray<TAtlasCommand>;
     /// <summary>„Ausprobieren“ für ATip: Beispiel öffnen, sonst den Befehl über die Palette ausführen.</summary>
@@ -109,7 +109,6 @@ implementation
 
 uses
   System.Classes,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.ShortcutTips,
@@ -135,7 +134,7 @@ begin
   inherited Create;
   FCommands := ACommands;
   FRun := ARun;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FInstance := Self;
 end;
 
@@ -146,14 +145,6 @@ begin
     FInstance := nil;
   end;
   inherited;
-end;
-
-procedure TAtlasIdeDiscover.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 function TAtlasIdeDiscover.Commands: TArray<TAtlasCommand>;
@@ -186,16 +177,16 @@ begin
           TAtlasDiscoverSteps.EditorIndex(ATip.Column));
         if (ATip.Command <> '') and FindCommand(ATip.Command, mCommand) and (mCommand.ShortCut <> '') then
         begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
+          FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverPressKey, [mCommand.ShortCut]));
         end;
       end;
     TAtlasDiscoverTry.NoSample:
-      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
+      FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoSample, [ATip.Sample]));
     TAtlasDiscoverTry.RunCommand:
       // Über die Palette: zählt als Aufruf (#600) und steht im Verlauf.
       FRun(ATip.TryId);
     TAtlasDiscoverTry.NoCommand:
-      Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
+      FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeDiscoverNoCommand, [ATip.TryId]));
   end;
 end;
 

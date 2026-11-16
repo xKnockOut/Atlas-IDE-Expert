@@ -131,7 +131,8 @@ uses
   System.Math,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Core.Projects.Summary.Json;
 
 const
   cTitle = 'title';
@@ -308,36 +309,15 @@ end;
 class procedure TAtlasWelcomeContinueIssues.Write(var ASummary: TAtlasProjectSummary;
   const AEntries: TAtlasIssueWorkEntries);
 var
-  mValue: TJSONValue;
-  mOriginal, mRoot: TJSONObject;
-  mIndex: Integer;
-  mPair: TJSONPair;
+  mSection: TJSONObject;
 begin
-  mValue := TJsonRead.Parse(ASummary.Raw);
-  mRoot := TJSONObject.Create;
-  try
-    // Alles außer dem Abschnitt übernehmen (auch "continue" und unbekannte Felder).
-    if mValue is TJSONObject then
-    begin
-      mOriginal := TJSONObject(mValue);
-      for mIndex := 0 to mOriginal.Count - 1 do
-      begin
-        mPair := mOriginal.Pairs[mIndex];
-        if mPair.JsonString.Value <> cSectionName then
-        begin
-          mRoot.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
-        end;
-      end;
-    end;
-    if Length(AEntries) > 0 then
-    begin
-      mRoot.AddPair(cSectionName, SectionJson(AEntries));
-    end;
-    ASummary.Raw := mRoot.ToJSON;
-  finally
-    mRoot.Free;
-    mValue.Free;
+  // Ohne Einträge fällt der Abschnitt weg; "continue" und unbekannte Felder bleiben.
+  mSection := nil;
+  if Length(AEntries) > 0 then
+  begin
+    mSection := SectionJson(AEntries);
   end;
+  ASummary.Raw := ReplaceSection(ASummary.Raw, cSectionName, mSection);
 end;
 
 class function TAtlasWelcomeContinueIssues.ToJson(const AEntries: TAtlasIssueWorkEntries): string;
