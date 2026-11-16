@@ -496,7 +496,8 @@ end;
 
 procedure TAtlasIdeDebugVariables.StartEvaluate;
 begin
-  if StillStopped then
+  // StillStopped an dieser Instanz: derselbe Halt wie in FProgress, Thread angehalten.
+  if StillAtStop then
   begin
     BeginEvaluate(cTickMs);
   end;

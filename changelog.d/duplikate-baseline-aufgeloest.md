@@ -1,0 +1,2 @@
+### Geändert
+- Kopien zusammengelegt, die die Prüfung auf wortgleiche Rümpfe gefunden hat: Beginn des Auswertens der Debugger-Anzeigen (`TAtlasIdeDebugStopView.BeginEvaluate`), oberste Editoransicht (`TAtlasEditorBuffer.TopView`), Arbeitsfläche der Dialoge über dem Hauptfenster (`TAtlasDialog.MainFormWorkArea`, jetzt auch in „Regel erklären“ und der Formularvorschau) und die Texte der Rückgängig-Tests im Designer. Die Baseline `atlas-duplicates.json` ist um diese Gruppen kürzer.

@@ -46,7 +46,8 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Designer.Undo;
+  Atlas.Core.Designer.Undo,
+  Atlas.Core.Designer.UndoFlow.Tests;
 
 function Lines(const ALines: array of string): string;
 var
@@ -100,22 +101,6 @@ end;
 function Changed(const AOld, ANew: string): string;
 begin
   Result := StringReplace(BaseForm, AOld, ANew, []);
-end;
-
-/// <summary>Formate wie aus der Oberfläche, hier englisch und ohne Pfeil: FPC vergleicht Strings mit
-/// Zeichen außerhalb von ASCII aus der Quelle anders als Delphi.</summary>
-function Words: TAtlasUndoWords;
-begin
-  Result.Moved := '%s moved (%s, %s) -> (%s, %s)';
-  Result.Resized := '%s size (%s, %s) -> (%s, %s)';
-  Result.Changed := '%s.%s: %s -> %s';
-  Result.ChangedMany := '%s: %d properties changed';
-  Result.Inserted := '%s inserted';
-  Result.Deleted := '%s deleted';
-  Result.Renamed := '%s renamed to %s';
-  Result.MovedMany := '%d components moved';
-  Result.Several := '%d changes';
-  Result.DefaultValue := '(default)';
 end;
 
 { TAtlasDesignerUndoTests }
@@ -286,26 +271,26 @@ end;
 procedure TAtlasDesignerUndoTests.DescribesSteps;
 begin
   Assert.AreEqual('Button1 moved (312, 410) -> (296, 410)',
-    TAtlasFormUndo.Describe(BaseForm, Changed('Left = 312', 'Left = 296'), Words));
+    TAtlasFormUndo.Describe(BaseForm, Changed('Left = 312', 'Left = 296'), UndoTestWords));
   Assert.AreEqual('Button1 size (75, 25) -> (100, 25)',
-    TAtlasFormUndo.Describe(BaseForm, Changed('Width = 75', 'Width = 100'), Words));
+    TAtlasFormUndo.Describe(BaseForm, Changed('Width = 75', 'Width = 100'), UndoTestWords));
   Assert.AreEqual('Panel1.Align: (default) -> alClient', TAtlasFormUndo.Describe(BaseForm,
-    Changed('    Caption = ''Panel1''', '    Align = alClient'#13#10'    Caption = ''Panel1'''), Words));
+    Changed('    Caption = ''Panel1''', '    Align = alClient'#13#10'    Caption = ''Panel1'''), UndoTestWords));
   Assert.AreEqual('Button1: 2 properties changed', TAtlasFormUndo.Describe(BaseForm,
-    Changed('Caption = ''OK''', 'Caption = ''Ja''').Replace('Button1Click', 'Button1Ja'), Words));
+    Changed('Caption = ''OK''', 'Caption = ''Ja''').Replace('Button1Click', 'Button1Ja'), UndoTestWords));
   Assert.AreEqual('pnlTop renamed to Panel1', TAtlasFormUndo.Describe(Changed('object Panel1: TPanel',
-    'object pnlTop: TPanel'), BaseForm, Words));
+    'object pnlTop: TPanel'), BaseForm, UndoTestWords));
   Assert.AreEqual('Memo1 deleted', TAtlasFormUndo.Describe(BaseForm, Changed(Lines(['  object Memo1: TMemo',
     '    Hint = ', '      ''Erste Zeile '' +', '      ''zweite Zeile''', '    Lines.Strings = (', '      ''Memo1'')',
-    '  end']), ''), Words));
+    '  end']), ''), UndoTestWords));
   Assert.AreEqual('Memo1 inserted', TAtlasFormUndo.Describe(Changed(Lines(['  object Memo1: TMemo',
     '    Hint = ', '      ''Erste Zeile '' +', '      ''zweite Zeile''', '    Lines.Strings = (', '      ''Memo1'')',
-    '  end']), ''), BaseForm, Words));
+    '  end']), ''), BaseForm, UndoTestWords));
   Assert.AreEqual('2 components moved', TAtlasFormUndo.Describe(BaseForm,
-    Changed('Left = 312', 'Left = 296').Replace('    Left = 8', '    Left = 16'), Words));
+    Changed('Left = 312', 'Left = 296').Replace('    Left = 8', '    Left = 16'), UndoTestWords));
   Assert.AreEqual('2 changes', TAtlasFormUndo.Describe(BaseForm,
-    Changed('Left = 312', 'Left = 296').Replace('''Form1''', '''Haupt'''), Words));
-  Assert.AreEqual('', TAtlasFormUndo.Describe(BaseForm, BaseForm, Words), 'keine Änderung');
+    Changed('Left = 312', 'Left = 296').Replace('''Form1''', '''Haupt'''), UndoTestWords));
+  Assert.AreEqual('', TAtlasFormUndo.Describe(BaseForm, BaseForm, UndoTestWords), 'keine Änderung');
 end;
 
 procedure TAtlasDesignerUndoTests.ShownShortensValues;
