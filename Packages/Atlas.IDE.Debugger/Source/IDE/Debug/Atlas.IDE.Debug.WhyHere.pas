@@ -30,12 +30,11 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.ExtCtrls,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.WhyHere,
-  Atlas.Core.Debug.StopProgress,
-  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.StopView,
+
   Atlas.IDE.Debug.Forecast,
   Atlas.IDE.Debug.ValueRequest,
   Atlas.UI.Debug.InlineValuePainter;
@@ -48,15 +47,8 @@ type
   TAtlasWhyHereRunner = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<string>): Boolean;
 
-  TAtlasIdeDebugWhyHere = class
+  TAtlasIdeDebugWhyHere = class(TAtlasIdeDebugStopView)
   private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStarted; override;
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugResumed; override;
-      procedure DebugEnded; override;
-    end;
     TEvents = class(TNTACodeEditorNotifier)
     protected
       function AllowedEvents: TCodeEditorEvents; override;
@@ -70,12 +62,9 @@ type
     FWhy: TAtlasWhyHere;
     FForecast: TAtlasIdeDebugForecast;
     FValues: TAtlasIdeDebugValueRequest;
-    FListener: IAtlasIdeDebugListener;
-    FTimer: TTimer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
-    FProgress: TAtlasStopProgress;
     FFileName: string;
     FLine: Integer;
     FText: string;
@@ -85,20 +74,22 @@ type
     FStyle: TAtlasInlineValuePainter;
     constructor Create(const ASession: TAtlasWhyHereSessionFunc; const ARun: TAtlasWhyHereRunner);
     procedure Drop;
-    procedure Stopped;
-    procedure Tick(Sender: TObject);
-    function ReadLocation: Boolean;
-    procedure Ask;
     /// <summary>Antwort auf „Warum bin ich hier?“ bzw. (AForecast) auf die Vorhersage.</summary>
     procedure Accept(ARequest: Integer; AForecast: Boolean; const AAnswer: string);
-    procedure EvaluateSlice;
     function EvaluateOne(const ARef: TAtlasWhyHereRef; AForecast: Boolean): Boolean;
     procedure ValueArrived(const ARef: TAtlasWhyHereRef; AForecast: Boolean; const AText: string; AOk: Boolean);
-    function StillStopped: Boolean;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure AskCalls(ALine: Integer);
+  protected
+    procedure SessionStarted; override;
+    procedure SessionStopped; override;
+    procedure SessionResumed; override;
+    procedure SessionEnded; override;
+    function ReadLocation: Boolean; override;
+    procedure Ask; override;
+    procedure EvaluateSlice; override;
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasWhyHereSessionFunc; const ARun: TAtlasWhyHereRunner); static;
@@ -111,6 +102,8 @@ type
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Debug.StopProgress,
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
@@ -147,42 +140,6 @@ begin
   Result.Of_ := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereOf);
 end;
 
-{ TAtlasIdeDebugWhyHere.TListener }
-
-procedure TAtlasIdeDebugWhyHere.TListener.DebugStarted;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.FForecast.SessionChanged;
-    FInstance.Drop;
-  end;
-end;
-
-procedure TAtlasIdeDebugWhyHere.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugWhyHere.TListener.DebugResumed;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Drop;
-  end;
-end;
-
-procedure TAtlasIdeDebugWhyHere.TListener.DebugEnded;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.FForecast.SessionChanged;
-    FInstance.Drop;
-  end;
-end;
-
 { TAtlasIdeDebugWhyHere.TEvents }
 
 function TAtlasIdeDebugWhyHere.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -210,10 +167,7 @@ begin
   FValues := TAtlasIdeDebugValueRequest.Create(cDeferredTimeoutMs);
   FHits := TDictionary<Integer, TRect>.Create;
   FStyle := TAtlasInlineValuePainter.Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  CreateTimer(cTickMs);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -239,7 +193,6 @@ begin
     FEvents.OnEditorMouseDown := nil;
   end;
   FEventsRef := nil;
-  FreeAndNil(FTimer);
   FreeAndNil(FValues);
   FreeAndNil(FWhy);
   FreeAndNil(FForecast);
@@ -273,7 +226,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugWhyHere.Stopped;
+procedure TAtlasIdeDebugWhyHere.SessionStarted;
+begin
+  FForecast.SessionChanged;
+  Drop;
+end;
+
+procedure TAtlasIdeDebugWhyHere.SessionStopped;
 begin
   Drop;
   if not Enabled then
@@ -287,43 +246,20 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugWhyHere.Tick(Sender: TObject);
+procedure TAtlasIdeDebugWhyHere.SessionResumed;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TAtlasStopPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped then
-          begin
-            FProgress.Phase := TAtlasStopPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            Ask;
-          end;
-        end;
-      TAtlasStopPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
+  Drop;
+end;
+
+procedure TAtlasIdeDebugWhyHere.SessionEnded;
+begin
+  FForecast.SessionChanged;
+  Drop;
 end;
 
 function TAtlasIdeDebugWhyHere.ReadLocation: Boolean;
 var
+
   mFrames: TAtlasDebugFrames;
   mBuffer: IOTAEditBuffer;
   mRead: TAtlasDebugStackRead;
@@ -362,7 +298,7 @@ var
   mStarted: Boolean;
 begin
   // Nur die jüngste Antwort (Drop zählt die Anfragen weiter), und nur, solange derselbe Halt besteht.
-  if not FProgress.IsNewest(ARequest) or not StillStopped or not Enabled then
+  if not FProgress.IsNewest(ARequest) or not StillAtStop or not Enabled then
   begin
     Exit;
   end;
@@ -432,11 +368,6 @@ begin
   begin
     TAtlasDebugLineEnd.Invalidate;
   end;
-end;
-
-function TAtlasIdeDebugWhyHere.StillStopped: Boolean;
-begin
-  Result := FProgress.StillAt(TAtlasIdeDebugSession.StopCount, TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
 /// <summary>Rückruf für die Antwort der Anfrage ARequest; erreicht das Objekt nur, solange es besteht.</summary>
@@ -529,7 +460,7 @@ var
   mCalls: TArray<string>;
 begin
   mCalls := FWhy.CallsAt(ALine);
-  if (Length(mCalls) = 0) or not StillStopped then
+  if (Length(mCalls) = 0) or not StillAtStop then
   begin
     Exit;
   end;
@@ -539,7 +470,7 @@ begin
   begin
     Exit;
   end;
-  if not StillStopped then
+  if not StillAtStop then
   begin
     Exit;
   end;
@@ -556,7 +487,7 @@ var
   mRef: TAtlasWhyHereRef;
   mChanged, mGoOn, mForecast: Boolean;
 begin
-  if not StillStopped then
+  if not StillAtStop then
   begin
     Drop;
     Exit;
@@ -594,13 +525,12 @@ begin
   if FInstance = nil then
   begin
     FInstance := TAtlasIdeDebugWhyHere.Create(ASession, ARun);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.Listen;
   end;
   TAtlasIdeDebugSession.Start;
   if TAtlasIdeDebugSession.StoppedThread <> nil then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 
@@ -614,11 +544,6 @@ begin
   end;
   mInstance := FInstance;
   FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   mInstance.Free;
   TAtlasDebugLineEnd.Invalidate;
 end;

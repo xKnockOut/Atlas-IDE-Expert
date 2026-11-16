@@ -35,7 +35,6 @@ uses
   System.Classes,
   Atlas.Core.Diagnostics.WorkerSlot,
   Winapi.Windows,
-  Vcl.ExtCtrls,
   Vcl.Graphics,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Contract,
@@ -43,8 +42,7 @@ uses
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.InlineValues,
   Atlas.Core.Debug.InlineValuesFlow,
-  Atlas.Core.Debug.StopProgress,
-  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.StopView,
   Atlas.IDE.Hover.DebugValue,
   Atlas.UI.Debug.InlineValuePainter;
 
@@ -52,7 +50,7 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasInlineValuesSessionFunc = reference to function: TLspSession;
 
-  TAtlasIdeDebugInlineValues = class
+  TAtlasIdeDebugInlineValues = class(TAtlasIdeDebugStopView)
   public const
     /// <summary>Höchstens so lange wertet Atlas am Stück aus.</summary>
     cSliceMs = 30;
@@ -63,13 +61,6 @@ type
     /// <summary>Versuche, bis der Aufrufstapel bzw. der Editor der Datei da ist (je TickMs * 5).</summary>
     cLocationRetries = 20;
   private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStarted; override;
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugResumed; override;
-      procedure DebugEnded; override;
-    end;
     TEvents = class(TNTACodeEditorNotifier)
     protected
       function AllowedEvents: TCodeEditorEvents; override;
@@ -86,13 +77,10 @@ type
     FSession: TAtlasInlineValuesSessionFunc;
     FValues: TAtlasInlineValues;
     FEvaluator: TAtlasIdeDebugValues;
-    FListener: IAtlasIdeDebugListener;
-    FTimer: TTimer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
     FWorkers: TAtlasWorkerSlot;
-    FProgress: TAtlasStopProgress;
     FDeferred: TDeferred;
     FInternal: Boolean;
     FFileName: string;
@@ -104,23 +92,25 @@ type
     constructor Create(const ASession: TAtlasInlineValuesSessionFunc);
     /// <summary>Werte und laufende Arbeit verwerfen; AForget auch die gemerkten Werte (Ende der Sitzung).</summary>
     procedure Drop(AForget: Boolean);
-    procedure Stopped;
-    procedure Tick(Sender: TObject);
-    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal bzw. aufgeben
-    /// (FProgress.Phase).</summary>
-    function ReadLocation: Boolean;
-    procedure Ask;
     procedure Accept(ARequest: Integer; const ARefs: TAtlasInlineValueRefs);
-    procedure EvaluateSlice;
     /// <summary>Wartet Atlas noch auf den verzögerten Wert? Nach DeferredTimeoutMs ohne ihn weiter.</summary>
     function DeferredPending: Boolean;
     function EvaluateOne(const AName: string; var AChanged: Boolean): TAtlasInlineStep;
     procedure DeferredDone(const AValue: TAtlasDebugValue);
     procedure EndInternal;
-    function StillStopped: Boolean;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
+  protected
+    procedure SessionStarted; override;
+    procedure SessionStopped; override;
+    procedure SessionResumed; override;
+    procedure SessionEnded; override;
+    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal bzw. aufgeben
+    /// (FProgress.Phase).</summary>
+    function ReadLocation: Boolean; override;
+    procedure Ask; override;
+    procedure EvaluateSlice; override;
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasInlineValuesSessionFunc); static;
@@ -137,6 +127,8 @@ procedure ReevaluateInlineValues;
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Debug.StopProgress,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -150,40 +142,6 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.Core.Diagnostics.Deadline;
-
-{ TAtlasIdeDebugInlineValues.TListener }
-
-procedure TAtlasIdeDebugInlineValues.TListener.DebugStarted;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Drop(True);
-  end;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TListener.DebugResumed;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Drop(False);
-  end;
-end;
-
-procedure TAtlasIdeDebugInlineValues.TListener.DebugEnded;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Drop(True);
-  end;
-end;
 
 { TAtlasIdeDebugInlineValues.TEvents }
 
@@ -210,10 +168,7 @@ begin
   FEvaluator := TAtlasIdeDebugValues.Create;
   FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FStyle := TAtlasInlineValuePainter.Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  CreateTimer(cTickMs);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -237,7 +192,6 @@ begin
     FEvents.OnEditorPaintLine := nil;
   end;
   FEventsRef := nil;
-  FreeAndNil(FTimer);
   FEvaluator.Cancel;
   EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
@@ -285,7 +239,12 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugInlineValues.Stopped;
+procedure TAtlasIdeDebugInlineValues.SessionStarted;
+begin
+  Drop(True);
+end;
+
+procedure TAtlasIdeDebugInlineValues.SessionStopped;
 begin
   Drop(False);
   if not Enabled then
@@ -300,42 +259,18 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugInlineValues.Tick(Sender: TObject);
+procedure TAtlasIdeDebugInlineValues.SessionResumed;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TAtlasStopPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped then
-          begin
-            FProgress.Phase := TAtlasStopPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            Ask;
-          end;
-        end;
-      TAtlasStopPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
+  Drop(False);
+end;
+
+procedure TAtlasIdeDebugInlineValues.SessionEnded;
+begin
+  Drop(True);
 end;
 
 function TAtlasIdeDebugInlineValues.ReadLocation: Boolean;
+
 var
   mFrames: TAtlasDebugFrames;
   mBuffer: IOTAEditBuffer;
@@ -434,7 +369,7 @@ begin
   begin
     Exit;
   end;
-  if not StillStopped or not Enabled or (Length(ARefs) = 0) then
+  if not StillAtStop or not Enabled or (Length(ARefs) = 0) then
   begin
     FProgress.Phase := TAtlasStopPhase.Idle;
     Exit;
@@ -453,7 +388,7 @@ var
   mStep: TAtlasInlineStep;
   mChanged: Boolean;
 begin
-  if not StillStopped then
+  if not StillAtStop then
   begin
     Drop(False);
     Exit;
@@ -488,7 +423,7 @@ procedure ReevaluateInlineValues;
 begin
   if (TAtlasIdeDebugInlineValues.FInstance <> nil) and (TAtlasIdeDebugSession.StoppedThread <> nil) then
   begin
-    TAtlasIdeDebugInlineValues.FInstance.Stopped;
+    TAtlasIdeDebugInlineValues.FInstance.SessionStopped;
   end;
 end;
 
@@ -570,11 +505,6 @@ begin
   end;
 end;
 
-function TAtlasIdeDebugInlineValues.StillStopped: Boolean;
-begin
-  Result := FProgress.StillAt(TAtlasIdeDebugSession.StopCount, TAtlasIdeDebugSession.StoppedThread <> nil);
-end;
-
 class procedure TAtlasIdeDebugInlineValues.Invalidate;
 var
   mServices: INTACodeEditorServices;
@@ -590,14 +520,13 @@ begin
   if FInstance = nil then
   begin
     FInstance := TAtlasIdeDebugInlineValues.Create(ASession);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.Listen;
   end;
   TAtlasIdeDebugSession.Start;
   // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
   if TAtlasIdeDebugSession.StoppedThread <> nil then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 
@@ -611,11 +540,6 @@ begin
   end;
   mInstance := FInstance;
   FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   mInstance.Free;
   Invalidate;
 end;

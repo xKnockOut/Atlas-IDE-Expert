@@ -483,7 +483,7 @@ procedure TAtlasIdeEventMap.Toggle;
 var
   mCreated: Boolean;
 begin
-  if FShown and (Host <> nil) and Host.Shown then
+  if FShown and TAtlasIdeDockWindow.IsShown(Host) then
   begin
     Host.Hide;
     FShown := False;

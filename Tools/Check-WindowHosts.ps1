@@ -19,6 +19,10 @@
       (Atlas.IDE.Foundation.EditorRefresh): InvalidateTopEditor legt ohne
       offenes Editorfenster ein neues an, beim Beenden der IDE mit Absturz
       nach dem Entladen fremder Experten (#1233).
+    - Zeigen, Verstecken und Sichtbarkeit eines Dockfensters laufen über
+      TAtlasIdeDockWindow.Present, HideIfAny und IsShown: keine eigene
+      nil-Prüfung vor Host.Hide bzw. Host.Shown und kein zweites UpdateIcon
+      nach Show (jedes neue Fenster brachte sonst dieselben Zeilen mit).
     - Im Code gebaute Dialoge erben von TAtlasDialog
       (Atlas.UI.Foundation.Dialog, #2062): kein eigenes inherited CreateNew,
       keine Schrift 'Segoe UI' von Hand (TAtlasUiTheme), kein clRed als
@@ -95,7 +99,13 @@ $Rules = @(
     @{ Pattern = '(?i)\bFindComponent\s*\(\s*''Editor''\s*\)'; Allowed = $BarUnit
        Message = 'Editor-Steuerelement am Leisten-Host vorbei gesucht; TAtlasEditorBarHost.EditorOf/TopEditor/FocusEditor verwenden' },
     @{ Pattern = '(?i)\.\s*InvalidateTopEditor(LogicalLine)?\b'; Allowed = $RefreshUnit
-       Message = 'Editor direkt neu gezeichnet (legt ohne Editorfenster eins an); TAtlasIdeEditorRefresh.InvalidateTop/InvalidateTopLine verwenden' }
+       Message = 'Editor direkt neu gezeichnet (legt ohne Editorfenster eins an); TAtlasIdeEditorRefresh.InvalidateTop/InvalidateTopLine verwenden' },
+    @{ Pattern = '(?i)\bif\s+(F?Host)\s*<>\s*nil\s+then\s+begin\s+\1\s*\.\s*Hide\s*;\s*end\b'; Allowed = $DockUnit
+       Message = 'Dockfenster mit eigener nil-Prüfung versteckt; TAtlasIdeDockWindow.HideIfAny verwenden' },
+    @{ Pattern = '(?i)\(\s*(F?Host)\s*<>\s*nil\s*\)\s*and\s*\1\s*\.\s*Shown\b'; Allowed = $DockUnit
+       Message = 'Sichtbarkeit des Dockfensters mit eigener nil-Prüfung; TAtlasIdeDockWindow.IsShown verwenden' },
+    @{ Pattern = '(?is)\.\s*Show\s*\(\s*(\w+)\s*\)\s*;\s*if\s+\1\s+then\s+begin\s+TAtlasIdeDockWindow\s*\.\s*UpdateIcon\s*\(\s*\w+\s*\)\s*;\s*end\b'; Allowed = $DockUnit
+       Message = 'Symbol nach Show(…) noch einmal gesetzt (Show setzt es beim Anlegen selbst); TAtlasIdeDockWindow.Present verwenden' }
 )
 
 # Dialogregeln (#2064): gezählt je Datei gegen Tools/WindowHosts.baseline.json.
