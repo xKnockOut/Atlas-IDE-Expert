@@ -47,6 +47,13 @@
 //   --format-write        schreibt die formatierten Dateien (atomar, Kodierung bleibt)
 //                         Beide mit --changed/--diff, --changed-lines (nur geänderte Zeilen) und --units.
 //
+// Wortgleiche Rümpfe (Kopien-Prüfung), Ziel wie bei --check:
+//   --check-duplicates    Routinen mit wortgleichem Rumpf in verschiedenen Units (Regel duplicate-routine-body,
+//                         Optionen minLines und exclude aus atlas.json); bekannte Gruppen aus --baseline,
+//                         sonst atlas-duplicates.json neben atlas.json. Exit-Code 1 bei einer neuen Kopie oder
+//                         einem toten Eintrag der Baseline; --update-baseline schreibt sie neu.
+//                         --format text oder json, --output
+//
 // Betroffene Tests (#1353):
 //   --affected-tests [<Basis>] statt der Prüfung die DUnitX-Tests, die eine Änderung gegenüber
 //                         der Basis betrifft (Git: Merge-Base mit <Basis>, Standard main;
@@ -196,6 +203,8 @@ type
     FormatCheck: Boolean;
     /// <summary>--format-write (#1358): formatierte Dateien schreiben.</summary>
     FormatWrite: Boolean;
+    /// <summary>--check-duplicates: wortgleiche Rümpfe statt Regeln.</summary>
+    CheckDuplicates: Boolean;
     /// <summary>--format diff (#1358): vereinigter Diff; nur mit --format-check/--format-write.</summary>
     FormatDiff: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
@@ -220,7 +229,8 @@ type
     class function FromProcess: TCommandLineOptions; static;
     class function TryParseLogLevel(const AText: string; out ALevel: TLogLevel): Boolean; static;
     /// <summary>Befehl eines Laufs ohne Editor für die Statusdatei (#1901): check, fix, format-check, format-write,
-    /// metrics, todos, architecture, affected-tests, query, hotspots; '' für LSP- und MCP-Server.</summary>
+    /// check-duplicates, metrics, todos, architecture, affected-tests, query, hotspots; '' für LSP- und
+    /// MCP-Server.</summary>
     function RunCommand: string;
     /// <summary>Alle Schalter, die Parse kennt; AtlasMonitor (#1900) prüft damit, dass er jeden anbietet oder
     /// bewusst auslässt.</summary>
@@ -542,7 +552,8 @@ begin
     FlagOption('--suppression-stats', @AOptions.SuppressionStats), FlagOption('--metrics', @AOptions.Metrics),
     FlagOption('--todos', @AOptions.Todos), FlagOption('--no-index', @AOptions.NoIndex),
     FlagOption('--fix-dry-run', @AOptions.FixDryRun), FlagOption('--fail-on-match', @AOptions.FailOnMatch),
-    FlagOption('--format-check', @AOptions.FormatCheck), FlagOption('--format-write', @AOptions.FormatWrite)];
+    FlagOption('--format-check', @AOptions.FormatCheck), FlagOption('--format-write', @AOptions.FormatWrite),
+    FlagOption('--check-duplicates', @AOptions.CheckDuplicates)];
   Result.Values := [ValueOption('--log-level', ApplyLogLevel), ValueOption('--format', ApplyFormat),
     ValueOption('--rules', ApplyRules), ValueOption('--units', ApplyUnits), ValueOption('--fix', ApplyFix),
     ValueOption('--min-severity', ApplyMinSeverity), ValueOption('--fail-on', ApplyFailOn),
@@ -684,6 +695,10 @@ begin
   else if AOptions.FormatCheck then
   begin
     Result := 'format-check';
+  end
+  else if AOptions.CheckDuplicates then
+  begin
+    Result := 'check-duplicates';
   end
   else if AOptions.FormatWrite then
   begin

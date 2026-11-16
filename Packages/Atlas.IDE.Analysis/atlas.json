@@ -14,6 +14,7 @@
     "catch-all-without-raise": "off",
     "narrowing-assignment": "off",
     "method-order": "off",
+    "duplicate-routine-body": "off",
     "architecture-role-import": {
       "severity": "warning",
       "exclude": [

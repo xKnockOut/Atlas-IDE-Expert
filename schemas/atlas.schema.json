@@ -156,8 +156,8 @@
               "minLines": {
                 "type": "integer",
                 "minimum": 1,
-                "description": "Nur commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3.",
-                "x-description-en": "Only commented-out-code (#942): the rule reports this many consecutive comment lines with code; default 3."
+                "description": "Bei commented-out-code (#942): so viele aufeinanderfolgende Kommentarzeilen mit Code meldet die Regel; Vorgabe 3. Bei duplicate-routine-body: Mindestzahl der Zeilen eines Rumpfs, kürzere zählen nicht; Vorgabe 6 (gilt auch für --check-duplicates).",
+                "x-description-en": "For commented-out-code (#942): the rule reports this many consecutive comment lines with code; default 3. For duplicate-routine-body: minimum number of lines of a body, shorter ones do not count; default 6 (also applies to --check-duplicates)."
               },
               "maxLiteralLength": {
                 "type": "integer",
