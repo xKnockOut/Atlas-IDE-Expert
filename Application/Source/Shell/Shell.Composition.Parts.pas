@@ -106,6 +106,7 @@ uses
   Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Shell.Composition.Refactorings,
   Shell.Platform;
 
 { TShellParts }
@@ -114,6 +115,13 @@ destructor TShellParts.Destroy;
 var
   mUnfinished: Boolean;
 begin
+  // Ganz zuerst: Ein laufender Profiler hält Threads des gemessenen Programms reihum an. Endet der Server, während
+  // einer angehalten ist (Client beendet ihn nach seiner Schonfrist hart, oder das Ende des Prozesses trifft den
+  // Prober), bleibt das Programm hängen. Also anhalten, bevor der langsame Abbau beginnt.
+  if (CodeArea <> nil) and (CodeArea.Refactorings <> nil) then
+  begin
+    CodeArea.Refactorings.StopForeignWork;
+  end;
   // Vor allem anderen: Der Takt der Statusdatei fragt sonst Teile ab, die gleich freigegeben werden (#1901).
   TServerActivity.Shared.SetDetails(nil);
   TPascalPreprocessor.SetDeclaredProvider(nil);

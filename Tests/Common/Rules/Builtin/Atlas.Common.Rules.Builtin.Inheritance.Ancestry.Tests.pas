@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Inheritance.Ancestry.Tests;
 
-// Tests der gemeinsamen Hilfen der Vererbungsregeln: Sichtbarkeit für Nachfahren, Dateiname für den Auflöser.
+// Tests der gemeinsamen Hilfen der Vererbungsregeln: Sichtbarkeit für Nachfahren.
 
 interface
 
@@ -13,14 +13,11 @@ type
   public
     [Test]
     procedure VisibilityForDescendants;
-    [Test]
-    procedure FileNameForResolver;
   end;
 
 implementation
 
 uses
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Inheritance.Ancestry,
   Atlas.Common.Index.Contract;
 
@@ -43,20 +40,6 @@ begin
   Assert.IsFalse(InvisibleToDescendant(mLocation, mSymbol));
   mLocation := Default(TSymbolLocation);
   mSymbol := Default(TIndexSymbol);
-end;
-
-procedure TInheritanceAncestryTests.FileNameForResolver;
-var
-  mContext: TRuleContext;
-begin
-  mContext := Default(TRuleContext);
-  mContext.UnitName := 'Kunden';
-  Assert.AreEqual('Kunden.pas', ResolverFileName(mContext));
-  mContext.RelativePath := 'Src\Kunden.pas';
-  Assert.AreEqual('Src\Kunden.pas', ResolverFileName(mContext));
-  mContext.FileName := 'C:\Projekt\Src\Kunden.pas';
-  Assert.AreEqual('C:\Projekt\Src\Kunden.pas', ResolverFileName(mContext));
-  mContext := Default(TRuleContext);
 end;
 
 initialization

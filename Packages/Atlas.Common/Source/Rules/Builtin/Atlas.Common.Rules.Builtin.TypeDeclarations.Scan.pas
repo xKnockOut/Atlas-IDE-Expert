@@ -138,15 +138,7 @@ begin
   inherited Create;
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, mFileName);

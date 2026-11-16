@@ -316,14 +316,14 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
   mResolver.PinTree(AContext.Tree, mFileName);
   try
     mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
-    for mNode in PreOrder(AContext.Tree.Root) do
+    for mNode in TSyntaxNode.PreOrder(AContext.Tree.Root) do
     begin
       if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and
         MatchText(mNode[0].Name, ['New', 'Dispose', 'SetLength']) then
@@ -451,7 +451,7 @@ var
   var
     mInner: TSyntaxNode;
   begin
-    for mInner in PreOrder(ARoutine) do
+    for mInner in TSyntaxNode.PreOrder(ARoutine) do
     begin
       if (mInner.Kind = TSyntaxKind.Identifier) and not IsMemberName(mInner) and UsesSurrounding(ARoutine, mInner) then
       begin
@@ -604,7 +604,7 @@ var
     begin
       Exit;
     end;
-    for mInner in PreOrder(AConst) do
+    for mInner in TSyntaxNode.PreOrder(AConst) do
     begin
       if IsLocalAddress(mInner, mOuter) then
       begin
@@ -640,7 +640,7 @@ var
   var
     mNode: TSyntaxNode;
   begin
-    mFileName := ResolverFileName(AContext);
+    mFileName := AContext.ResolverFileName;
     mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
     if mLineBreak = '' then
     begin
@@ -673,7 +673,7 @@ begin
   begin
     Exit;
   end;
-  mNodes := PreOrder(AContext.Tree.Root);
+  mNodes := TSyntaxNode.PreOrder(AContext.Tree.Root);
   mNested := TList<TSyntaxNode>.Create;
   mNames := TStringList.Create;
   try
@@ -805,14 +805,14 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
   mResolver.PinTree(AContext.Tree, mFileName);
   try
     mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
-    for mNode in PreOrder(AContext.Tree.Root) do
+    for mNode in TSyntaxNode.PreOrder(AContext.Tree.Root) do
       case mNode.Kind of
         TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.IfExpr:
           if mNode.ChildCount > 0 then
@@ -1022,13 +1022,13 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
   mResolver.PinTree(AContext.Tree, mFileName);
   try
-    for mNode in PreOrder(AContext.Tree.Root) do
+    for mNode in TSyntaxNode.PreOrder(AContext.Tree.Root) do
     begin
       if mNode.Kind = TSyntaxKind.ForInStatement then
       begin

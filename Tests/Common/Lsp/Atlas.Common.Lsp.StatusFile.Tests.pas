@@ -186,6 +186,7 @@ begin
   Result.Total := 10;
   Result.Timeouts := 1;
   Result.Errors := 5;
+  Result.ProfiledProcess := 4711;
 end;
 
 procedure TServerStatusFileTests.EntryKeepsAllFields;
@@ -214,6 +215,7 @@ begin
   Assert.AreEqual(10, mEntry.Total);
   Assert.AreEqual(1, mEntry.Timeouts);
   Assert.AreEqual(5, mEntry.Errors);
+  Assert.AreEqual<Cardinal>(4711, mEntry.ProfiledProcess);
   Assert.AreEqual(1, Integer(Length(mEntry.Roots)));
   Assert.AreEqual('', mEntry.Status, 'ohne ausführlichen Status');
   Assert.AreEqual(TServerStatusFile.FileFor(FRoot, 7), mEntry.FileName);

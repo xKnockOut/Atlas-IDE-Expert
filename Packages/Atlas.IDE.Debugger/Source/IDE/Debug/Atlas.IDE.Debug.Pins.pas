@@ -26,26 +26,21 @@ uses
   System.Classes,
   System.Generics.Collections,
   Vcl.Controls,
-  Vcl.ExtCtrls,
   ToolsAPI.Editor,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Pins,
   Atlas.Core.Debug.PinsFlow,
-  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.StopView,
+
   Atlas.IDE.Debug.ValueRequest,
   Atlas.UI.Debug.InlineValuePainter;
 
 type
-  TAtlasIdeDebugPins = class
+  TAtlasIdeDebugPins = class(TAtlasIdeDebugStopView)
   public const
     /// <summary>Id der Aktion „Anheften“ im Debug-Hover.</summary>
     cPinAction = 526;
   private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugEnded; override;
-    end;
     TEvents = class(TNTACodeEditorNotifier)
     protected
       function AllowedEvents: TCodeEditorEvents; override;
@@ -58,8 +53,6 @@ type
     FKept: Boolean;
     FMessage: TProc<string>;
     FValues: TAtlasIdeDebugValueRequest;
-    FListener: IAtlasIdeDebugListener;
-    FTimer: TTimer;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
@@ -73,10 +66,6 @@ type
     constructor Create(const AMessage: TProc<string>);
     procedure Load;
     procedure Save;
-    procedure Stopped;
-    procedure Ended;
-    procedure Tick(Sender: TObject);
-    procedure EvaluateSlice;
     function EvaluateOne(const APin: TAtlasDebugPin): Boolean;
     procedure ValueArrived(const APin: TAtlasDebugPin; const AText: string; AOk: Boolean);
     function StillStopped: Boolean;
@@ -87,6 +76,12 @@ type
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure RememberHit(const APin: TAtlasDebugPin; const ARect: TRect);
     function CanPaint(const AContext: INTACodeEditorPaintContext): Boolean;
+  protected
+    procedure SessionStopped; override;
+    procedure SessionEnded; override;
+    /// <summary>Jeder Takt wertet ein Stück der Pins aus.</summary>
+    procedure Advance; override;
+    procedure EvaluateSlice; override;
   public
     destructor Destroy; override;
     class procedure Start(const AMessage: TProc<string>); static;
@@ -105,6 +100,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -133,24 +129,6 @@ begin
     cFileName);
 end;
 
-{ TAtlasIdeDebugPins.TListener }
-
-procedure TAtlasIdeDebugPins.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugPins.TListener.DebugEnded;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Ended;
-  end;
-end;
-
 { TAtlasIdeDebugPins.TEvents }
 
 function TAtlasIdeDebugPins.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -177,10 +155,7 @@ begin
   FQueue := TList<TAtlasDebugPin>.Create;
   FHits := TList<TAtlasPinHit>.Create;
   FStyle := TAtlasInlineValuePainter.Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  CreateTimer(cTickMs);
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
@@ -207,7 +182,6 @@ begin
     FEvents.OnEditorMouseDown := nil;
   end;
   FEventsRef := nil;
-  FreeAndNil(FTimer);
   FreeAndNil(FValues);
   FreeAndNil(FQueue);
   FreeAndNil(FHits);
@@ -242,7 +216,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugPins.Stopped;
+procedure TAtlasIdeDebugPins.SessionStopped;
 var
   mPin: TAtlasDebugPin;
 begin
@@ -269,7 +243,7 @@ begin
   TAtlasDebugLineEnd.Invalidate;
 end;
 
-procedure TAtlasIdeDebugPins.Ended;
+procedure TAtlasIdeDebugPins.SessionEnded;
 begin
   if FTimer <> nil then
   begin
@@ -286,25 +260,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugPins.Tick(Sender: TObject);
+procedure TAtlasIdeDebugPins.Advance;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    EvaluateSlice;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
+  EvaluateSlice;
 end;
 
 procedure TAtlasIdeDebugPins.EvaluateSlice;
+
 var
   mStartedAt: UInt64;
   mChanged, mGoOn: Boolean;
@@ -515,13 +477,12 @@ begin
   if FInstance = nil then
   begin
     FInstance := TAtlasIdeDebugPins.Create(AMessage);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.Listen;
   end;
   TAtlasIdeDebugSession.Start;
   if TAtlasIdeDebugSession.StoppedThread <> nil then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 
@@ -535,11 +496,6 @@ begin
   end;
   mInstance := FInstance;
   FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   mInstance.Free;
   TAtlasDebugLineEnd.Invalidate;
 end;
@@ -581,7 +537,7 @@ class procedure TAtlasIdeDebugPins.Reevaluate;
 begin
   if (FInstance <> nil) and FInstance.FVisible and (TAtlasIdeDebugSession.StoppedThread <> nil) then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 

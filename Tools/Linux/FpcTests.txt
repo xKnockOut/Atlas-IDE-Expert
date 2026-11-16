@@ -362,6 +362,7 @@ Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests
 Atlas.Common.Rules.ChangedFiles.Tests
 Atlas.Common.Rules.CodeActions.Tests
 Atlas.Common.Rules.Confidence.Tests
+Atlas.Common.Rules.Contract.Tests
 Atlas.Common.Rules.Derived.Tests
 Atlas.Common.Rules.Engine.Tests
 Atlas.Common.Rules.FormatOutput.Tests
@@ -608,6 +609,7 @@ Atlas.Core.Debug.ExceptionCapture.Tests
 Atlas.Core.Debug.InlineValuesFlow.Tests
 Atlas.Core.Debug.EventBreakWatch.Tests
 Atlas.Core.Debug.StopProgress.Tests
+Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests
 Atlas.Core.Debug.BreakpointSetFlow.Tests
 Atlas.Core.Debug.StepIntoJump.Tests

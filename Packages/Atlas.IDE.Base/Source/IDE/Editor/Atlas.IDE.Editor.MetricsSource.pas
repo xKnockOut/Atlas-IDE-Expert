@@ -90,7 +90,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 const
   cMetricsCommand = 'atlas.server.metrics';
@@ -223,7 +224,7 @@ begin
       Clear;
       Exit;
     end;
-    mView := TAtlasLensPoll.TopView;
+    mView := TAtlasEditorBuffer.TopView;
     if (mView <> nil) and (mView.Buffer <> nil) and TAtlasSourceFiles.IsCompiled(mView.Buffer.FileName) and
       FPoll.Due(mView, cQuietMs, cRefreshMs) then
     begin
