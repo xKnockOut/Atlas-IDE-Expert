@@ -59,6 +59,13 @@ type
     GitState: TFunc<string, string>;
     /// <summary>uses-Kontext (Declaring, Namespaces) zur URI der Datei, in die „uses aufnehmen“ schreibt.</summary>
     UsesFor: TFunc<string, TUsesContext>;
+    /// <summary>Datei, die für den Unit-Namen gilt (wie dcc: Projekt vor Suchpfad vor Bibliothek, sonst die zuerst
+    /// gefundene); '' wenn unbekannt. Gleichnamige Units aus Suchpfad und Bibliothek, die dahinter zurückstehen,
+    /// fehlen in der Liste.</summary>
+    UnitFileOf: TFunc<string, string>;
+    /// <summary>Gehört die Datei nur zu Projekten außerhalb der IDE, etwa einem zweiten Checkout, dessen Datei
+    /// geöffnet war? Solche Units fehlen in der Liste; Projects nennt diese Projekte nicht.</summary>
+    Foreign: TFunc<string, Boolean>;
   end;
 
   TUnitSearchContextProvider = reference to function(out AContext: TUnitSearchContext): Boolean;
@@ -941,6 +948,8 @@ type
     function AddEntry(const AName, AFile, AOrigin, AKind: string; AProjects: TJSONArray): TJSONObject;
     procedure AddCaption(AEntry: TJSONObject; const AKind, AOrigin, AFormFile: string);
     function MarkSeen(const AFileName: string): Boolean;
+    /// <summary>Gehört AUnit nicht in die Liste (fremdes Projekt, verdeckt)?</summary>
+    function Hidden(const AUnit: TUnitIndex): Boolean;
     procedure AddIndexed(const AUnit: TUnitIndex);
     procedure AddIncludes(const AUnit: TUnitIndex; const AOrigin: string);
     procedure AddMissing(const AFileName: string);
@@ -1062,6 +1071,31 @@ begin
   end;
 end;
 
+function TUnitsJsonRun.Hidden(const AUnit: TUnitIndex): Boolean;
+var
+  mApplies: string;
+begin
+  // Projektdateien stehen immer in der Liste, auch gleichnamige verschiedener Projekte der Gruppe. Nicht dazu
+  // gehören Units eines Projekts außerhalb der IDE (zweiter Checkout, dessen Datei offen war) und Units aus Suchpfad
+  // oder Bibliothek, hinter denen eine gleichnamige vorrangige steht: Die sieht dcc nie. Sonst erschiene die Unit
+  // doppelt.
+  Result := False;
+  if FOwners.ContainsKey(UpperCase(AUnit.FileName)) then
+  begin
+    Exit;
+  end;
+  if Assigned(FContext.Foreign) and FContext.Foreign(AUnit.FileName) then
+  begin
+    Exit(True);
+  end;
+  if not Assigned(FContext.UnitFileOf) then
+  begin
+    Exit;
+  end;
+  mApplies := FContext.UnitFileOf(AUnit.UnitName);
+  Result := (mApplies <> '') and not AnsiSameText(mApplies, AUnit.FileName);
+end;
+
 procedure TUnitsJsonRun.AddIndexed(const AUnit: TUnitIndex);
 var
   mKey, mOrigin, mKind, mFormFile: string;
@@ -1069,7 +1103,7 @@ var
   mProjects: TJSONArray;
 begin
   // Nur Units, keine Programme oder Packages.
-  if (AUnit.UnitName = '') or not SameText(ExtractFileExt(AUnit.FileName), '.pas') or
+  if (AUnit.UnitName = '') or not SameText(ExtractFileExt(AUnit.FileName), '.pas') or Hidden(AUnit) or
     not MarkSeen(AUnit.FileName) then
   begin
     Exit;

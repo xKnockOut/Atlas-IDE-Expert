@@ -416,6 +416,7 @@ procedure TShellFolders.Derive(const AFileName: string);
 var
   mKnown: Boolean;
   mFolder: string;
+  mDerived: TWorkspaceFolder;
 begin
   System.TMonitor.Enter(FServices.Workspaces.Lock);
   try
@@ -430,7 +431,9 @@ begin
   mFolder := TLspWorkspaceFolders.ProjectFolderFor(AFileName, HasProjectFile);
   if mFolder <> '' then
   begin
-    Add(TWorkspaceFolder.Create(mFolder, ExtractFileName(mFolder)));
+    mDerived := TWorkspaceFolder.Create(mFolder, ExtractFileName(mFolder));
+    Add(mDerived);
+    FServices.Workspaces.MarkDerived(mDerived.Key);
   end;
 end;
 

@@ -69,6 +69,9 @@ type
     /// <summary>Merkt die Projekte einer Gruppe; True, wenn schon Arbeitsbereiche bestehen.</summary>
     function AddGroupProjects(const AProjects: TArray<string>): Boolean;
     function HasProject(const AProjectFile: string): Boolean;
+    /// <summary>Kennzeichnet die Arbeitsbereiche des Eintrags AOrigin als abgeleitet (TShellWorkspaceSetup.Derived).
+    /// </summary>
+    procedure MarkDerived(const AOrigin: string);
     /// <summary>Projekte der Gruppen und aller Arbeitsbereiche (uses-unit-not-found).</summary>
     function GroupProjectFiles: TArray<string>;
     /// <summary>Ordner aller Projekte, für requires-Packages als Quelle (#46).</summary>
@@ -320,6 +323,24 @@ begin
       if SameText(mExisting.Setup.ProjectFile, AProjectFile) then
       begin
         Exit(True);
+      end;
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TShellWorkspaceRegistry.MarkDerived(const AOrigin: string);
+var
+  mWorkspace: TShellWorkspace;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    for mWorkspace in FItems do
+    begin
+      if SameText(mWorkspace.Setup.Origin, AOrigin) then
+      begin
+        mWorkspace.Setup.Derived := True;
       end;
     end;
   finally

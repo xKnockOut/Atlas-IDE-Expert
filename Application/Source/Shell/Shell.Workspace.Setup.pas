@@ -45,6 +45,7 @@ type
     FIdeProjects: TLspIdeProject;
     FIdeTypes: IRuleIdeTypes;
     FOrigin: string;
+    FDerived: Boolean;
     FOnPackageFolders: TFunc<TArray<string>>;
     FOnGroupProjects: TFunc<TArray<string>>;
     FSelection: TProjectSelection;
@@ -79,6 +80,9 @@ type
     property IdeTypes: IRuleIdeTypes read FIdeTypes write FIdeTypes;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
     property Origin: string read FOrigin write FOrigin;
+    /// <summary>Aus einer geöffneten Datei außerhalb der Projekte der IDE abgeleitet (#175), etwa eine Datei aus
+    /// einem zweiten Checkout; gehört nicht zu den Projekten, die die IDE gerade bearbeitet.</summary>
+    property Derived: Boolean read FDerived write FDerived;
     /// <summary>Ordner, in denen requires-Packages als .dpk gesucht werden (#46), z. B. die Projekte der Gruppe.
     /// Danach folgen Projektordner, Such- und Bibliothekspfade.</summary>
     property OnPackageFolders: TFunc<TArray<string>> read FOnPackageFolders write FOnPackageFolders;
