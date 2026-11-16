@@ -38,6 +38,13 @@ type
     procedure ReportLinesAndProgress;
     [Test]
     procedure ShowAtStartWithoutEcho;
+    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    [Test]
+    procedure FollowsIdeTheme;
+    /// <summary>Breiter gezogen: Knöpfe bleiben rechts, die Höhe folgt dem Inhalt, schmaler als die Vorgabe geht
+    /// es nicht.</summary>
+    [Test]
+    procedure WidthFollowsWindow;
   end;
 
 implementation
@@ -49,6 +56,8 @@ uses
   Atlas.Core.Status.Lines,
   Atlas.Core.Setup.Checklist,
   Atlas.UI.Strings,
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Setup.Strings,
   Atlas.UI.Setup.Window;
 
@@ -301,6 +310,59 @@ begin
     Assert.IsTrue(mLast);
     mWindow.SetTryKey('Strg+J');
     Assert.AreEqual('Strg+J', mWindow.TryKey);
+  finally
+    mWindow.Free;
+  end;
+end;
+
+procedure TAtlasSetupWindowTests.FollowsIdeTheme;
+var
+  mWindow: TAtlasSetupWindow;
+  mDark: TAtlasColors;
+begin
+  mDark := TAtlasColors.Dark;
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  try
+    Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    TAtlasUiTheme.Install(
+      function: TAtlasColors
+      begin
+        Result := TAtlasColors.Dark;
+      end, nil, nil);
+    try
+      TAtlasUiTheme.Changed;
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Integer(TColor(mDark.Surface)), Integer(mWindow.Color), 'Fläche im neuen Thema');
+  finally
+    mWindow.Free;
+  end;
+end;
+
+procedure TAtlasSetupWindowTests.WidthFollowsWindow;
+var
+  mWindow: TAtlasSetupWindow;
+  mWidth, mHeight, mGap, mStep: Integer;
+begin
+  mWindow := TAtlasSetupWindow.CreateSetup(nil, TAtlasColors.Light);
+  try
+    mWindow.SetResults(TAtlasSetupChecklist.Evaluate(Input));
+    mStep := mWindow.ScaleValue(200);
+    mWidth := mWindow.ClientWidth;
+    mHeight := mWindow.ClientHeight;
+    mGap := mWindow.ClientWidth - mWindow.CloseButton.Left - mWindow.CloseButton.Width;
+    mWindow.Width := mWindow.Width + mStep;
+    Assert.AreEqual(mWidth + mStep, mWindow.ClientWidth, 'breiter gezogen');
+    Assert.AreEqual(mGap, mWindow.ClientWidth - mWindow.CloseButton.Left - mWindow.CloseButton.Width,
+      'Schließen bleibt am rechten Rand');
+    Assert.AreEqual(mGap, mWindow.ClientWidth - mWindow.FixButtons[3].Left - mWindow.FixButtons[3].Width,
+      'Knopf der Prüfung bleibt am rechten Rand');
+    mWindow.Height := mWindow.Height + mStep;
+    Assert.AreEqual(mHeight, mWindow.ClientHeight, 'Höhe folgt dem Inhalt');
+    mWindow.Width := mWindow.Width - 2 * mStep;
+    Assert.AreEqual(mWidth, mWindow.ClientWidth, 'nicht schmaler als die Vorgabe');
   finally
     mWindow.Free;
   end;
