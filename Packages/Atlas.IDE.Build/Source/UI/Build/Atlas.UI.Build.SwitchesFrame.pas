@@ -118,7 +118,8 @@ uses
   Vcl.Themes,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Build.Strings;
+  Atlas.UI.Build.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -160,12 +161,11 @@ begin
   FParts.Where.ShowAccelChar := False;
   FParts.Where.Caption := '';
 
-  FParts.Summary := TLabel.Create(Self);
+  FParts.Summary := TAtlasWrapLabel.Create(Self);
   FParts.Summary.Parent := Self;
   FParts.Summary.Align := alBottom;
   FParts.Summary.AlignWithMargins := True;
   FParts.Summary.ShowAccelChar := False;
-  FParts.Summary.WordWrap := True;
   FParts.Summary.Font.Color := clGrayText;
   FParts.Summary.Caption := '';
 
@@ -198,11 +198,10 @@ begin
   FParts.List.OnCustomDrawItem := ListCustomDrawItem;
   FParts.List.OnCustomDrawSubItem := ListCustomDrawSubItem;
 
-  FParts.Empty := TLabel.Create(Self);
+  FParts.Empty := TAtlasWrapLabel.Create(Self);
   FParts.Empty.Parent := Self;
   FParts.Empty.Align := alClient;
   FParts.Empty.AlignWithMargins := True;
-  FParts.Empty.WordWrap := True;
   FParts.Empty.ShowAccelChar := False;
   FParts.Empty.Font.Color := clGrayText;
   FParts.Empty.Caption := FMessage;

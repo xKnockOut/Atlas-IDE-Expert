@@ -143,7 +143,8 @@ uses
   Winapi.Windows,
   System.Math,
   Atlas.UI.Strings,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 type
   /// <summary>Legt die Steuerelemente der Karte an: Überschriften, Zeilen mit Schalter und „Ausprobieren“, den
@@ -241,9 +242,8 @@ begin
   end;
   if AItem.Text <> '' then
   begin
-    Result.Text := FFrame.Add(TLabel.Create(nil));
+    Result.Text := FFrame.Add(TAtlasWrapLabel.Create(nil));
     Result.Text.AutoSize := True;
-    Result.Text.WordWrap := True;
     Result.Text.Caption := AItem.TextFor(TAtlasStrings.Language = TAtlasLanguage.English);
   end;
   Result.Switch := NewSwitch(AItem.Setting);

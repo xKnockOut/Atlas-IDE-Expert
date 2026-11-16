@@ -78,7 +78,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Editor.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
@@ -113,12 +114,11 @@ end;
 /// <summary>Mehrzeilige Beschriftung unten in AForm mit den Rändern Gap und oben ATopMargin.</summary>
 function AddNoteLabel(AForm: TForm; ATopMargin: Integer): TLabel;
 begin
-  Result := TLabel.Create(AForm);
+  Result := TAtlasWrapLabel.Create(AForm);
   Result.Parent := AForm;
   Result.Align := alBottom;
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(cGap, ATopMargin, cGap, cGap div 2);
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
 end;
 

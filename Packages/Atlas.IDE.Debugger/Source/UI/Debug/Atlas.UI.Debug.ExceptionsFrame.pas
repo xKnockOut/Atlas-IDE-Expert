@@ -329,7 +329,7 @@ begin
   CreateList(Self);
   // Ohne Exceptions: Hinweis statt leerer Liste.
   FEmpty := GrayLabel(Self, alClient);
-  FEmpty.WordWrap := True;
+  FEmpty.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
   FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsEmpty);
   FEmpty.Visible := False;
 end;

@@ -224,7 +224,8 @@ implementation
 
 uses
   Atlas.UI.Strings,
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 6;
@@ -701,8 +702,8 @@ begin
   FMark := AddLabel(FDetails, TAtlasStrings.Text(TAtlasTextId.ProblemsExperimental));
   FMark.Font.Color := $000080C0;
   FMark.Visible := False;
-  FDescription := AddLabel(FDetails, '');
-  FDescription.WordWrap := True;
+  FDescription := TAtlasWrapLabel.Create(Self);
+  Stack(FDetails, FDescription);
   FSeverityRow := TAtlasRulesBox.Create(Self);
   FSeverityRow.Height := FSeverityRow.ScaleValue(24);
   Stack(FDetails, FSeverityRow);

@@ -142,7 +142,8 @@ implementation
 
 uses
   Atlas.UI.Strings,
-  Atlas.UI.VersionControl.Strings;
+  Atlas.UI.VersionControl.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -419,12 +420,11 @@ procedure TAtlasWorkingCopiesDialog.AddHint;
 var
   mHint: TLabel;
 begin
-  mHint := TLabel.Create(Self);
+  mHint := TAtlasWrapLabel.Create(Self);
   mHint.Parent := Self;
   mHint.Align := alBottom;
   mHint.AlignWithMargins := True;
   mHint.Margins.SetBounds(cGap, 2, cGap, 2);
-  mHint.WordWrap := True;
   mHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsWorkingCopiesHint);
 end;
 

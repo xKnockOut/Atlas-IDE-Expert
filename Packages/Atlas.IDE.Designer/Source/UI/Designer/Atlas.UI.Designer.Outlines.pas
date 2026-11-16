@@ -28,7 +28,7 @@ type
     class function Create(const ABounds: TRect; const AName: string; ABad: Boolean): TAtlasOutline; static;
   end;
 
-  TAtlasDesignerOutlines = class(TForm)
+  TAtlasDesignerOutlines = class(TForm) // window-ok: Überlagerung über dem Designer ohne Dialogcharakter, zeichnet selbst
   private const
     cKeyColor = TColor($00FF00FF);
   private

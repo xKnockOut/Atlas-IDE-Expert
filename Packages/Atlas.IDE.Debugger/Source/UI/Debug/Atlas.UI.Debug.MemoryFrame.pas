@@ -91,7 +91,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Debug.Memory.Strings;
+  Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -177,13 +178,12 @@ end;
 /// <summary>Umbrechende Beschriftung unten in AFrame; größeres ATop liegt weiter unten.</summary>
 function AddBottomLabel(AFrame: TAtlasDebugMemoryFrame; ATop: Integer; const ACaption: string): TLabel;
 begin
-  Result := TLabel.Create(AFrame);
+  Result := TAtlasWrapLabel.Create(AFrame);
   Result.Top := ATop;
   Result.Align := alBottom;
   Result.Parent := AFrame;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
-  Result.WordWrap := True;
   Result.Caption := ACaption;
 end;
 

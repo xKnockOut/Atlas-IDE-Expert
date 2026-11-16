@@ -128,7 +128,8 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.UI.Tracker.Time.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -248,10 +249,9 @@ begin
 
   Result := AddRow(34);
   Result.Top := FParts.Text.Top + FParts.Text.Height + 1;
-  FParts.Note := TLabel.Create(Self);
+  FParts.Note := TAtlasWrapLabel.Create(Self);
   FParts.Note.Parent := Result;
   FParts.Note.Align := alClient;
-  FParts.Note.WordWrap := True;
   FParts.Note.Caption := '';
   if FRequest.Mode = TAtlasTimeBookMode.Comment then
   begin

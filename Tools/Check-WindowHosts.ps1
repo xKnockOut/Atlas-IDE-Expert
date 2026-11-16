@@ -22,8 +22,17 @@
     - Im Code gebaute Dialoge erben von TAtlasDialog
       (Atlas.UI.Foundation.Dialog, #2062): kein eigenes inherited CreateNew,
       keine Schrift 'Segoe UI' von Hand (TAtlasUiTheme), kein clRed als
-      Fehlerfarbe (TAtlasNoteLabel bzw. TAtlasUiTheme.TextColor). Die Stellen
-      von vor #2064 stehen mit ihrer Anzahl je Datei in
+      Fehlerfarbe (TAtlasNoteLabel bzw. TAtlasUiTheme.TextColor). Auch kein
+      Formular, das von außen über X.CreateNew angelegt wird (TForm.CreateNew(nil)
+      bekommt weder Dialogschrift noch IDE-Thema), und keine Fensterklasse
+      direkt von TForm (create-new-call, form-class).
+    - Umbrechende Beschriftungen sind TAtlasWrapLabel
+      (Atlas.UI.Foundation.WrapLabel): Ein TLabel mit WordWrap rechnet seine
+      Höhe bei der Anfangsbreite (65 Pixel) und behält sie, wenn Align oder
+      Anker es danach breiter machen; über der Liste blieb so ein großer
+      leerer Bereich (wrap-label, jedes „.WordWrap := True“). Memos und
+      TAtlasNoteLabel brechen ohnehin um. Die Altstellen (Dialoge
+      von vor #2064, Fenster ohne TAtlasDialog) stehen mit ihrer Anzahl je Datei in
       Tools/WindowHosts.baseline.json; mehr Treffer sind ein Verstoß, weniger
       verlangen das Senken der Baseline (-UpdateBaseline). Eine Zeile mit
       // window-ok ist ausgenommen (Überlagerungen und Popups ohne
@@ -62,6 +71,7 @@ $BarUnit = 'Atlas.IDE.Foundation.EditorBarHost.pas'
 $RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
 $DialogUnit = 'Atlas.UI.Foundation.Dialog.pas'
 $ThemeUnit = 'Atlas.UI.Foundation.Theme.pas'
+$WrapLabelUnit = 'Atlas.UI.Foundation.WrapLabel.pas'
 $BaselineFile = Join-Path $Root 'Tools/WindowHosts.baseline.json'
 
 function Remove-PascalComments([string] $Text) {
@@ -95,7 +105,13 @@ $DialogRules = @(
     @{ Id = 'segoe-font'; Pattern = '(?i)\bFont\s*\.\s*Name\s*:=\s*''Segoe UI'''; Allowed = $ThemeUnit
        Message = 'Dialogschrift von Hand gesetzt; TAtlasUiTheme.AssignDialogFont bzw. TAtlasDialog verwenden' },
     @{ Id = 'cl-red'; Pattern = '(?i)\bclRed\b'; Allowed = ''
-       Message = 'clRed als Fehlerfarbe; TAtlasNoteLabel.ShowNote bzw. TAtlasUiTheme.TextColor verwenden' }
+       Message = 'clRed als Fehlerfarbe; TAtlasNoteLabel.ShowNote bzw. TAtlasUiTheme.TextColor verwenden' },
+    @{ Id = 'create-new-call'; Pattern = '(?i)(?<!\binherited\s+)\b\w+\s*\.\s*CreateNew\s*\('; Allowed = $DialogUnit
+       Message = 'Formular von außen über CreateNew angelegt (ohne Dialogschrift und IDE-Thema); TAtlasDialog.CreateDialog bzw. eine Unterklasse von TAtlasDialog verwenden' },
+    @{ Id = 'form-class'; Pattern = '(?i)=\s*class\s*\(\s*TForm\s*\)'; Allowed = $DialogUnit
+       Message = 'Fensterklasse direkt von TForm (ohne Dialogschrift und IDE-Thema); von TAtlasDialog erben' },
+    @{ Id = 'wrap-label'; Pattern = '(?i)\.\s*WordWrap\s*:=\s*True\b'; Allowed = $WrapLabelUnit
+       Message = 'WordWrap von Hand: TLabel rechnet die Höhe bei der Anfangsbreite und behält sie, wenn Align oder Anker die Breite ändern; TAtlasWrapLabel verwenden (Memos brechen ohnehin um)' }
 )
 
 function Get-ExemptLines([string] $RawText) {

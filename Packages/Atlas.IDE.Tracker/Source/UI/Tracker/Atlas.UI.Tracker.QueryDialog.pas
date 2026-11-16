@@ -225,7 +225,6 @@ begin
   FView.Result.Margins.SetBounds(ScaleValue(cGap + cLabelWidth), 0, ScaleValue(cGap), ScaleValue(cGap));
   FView.Result.Height := ScaleValue(cResultHeight);
   FView.Result.ReadOnly := True;
-  FView.Result.WordWrap := True;
   FView.Result.ScrollBars := ssVertical;
   FView.Result.TabStop := False;
 end;

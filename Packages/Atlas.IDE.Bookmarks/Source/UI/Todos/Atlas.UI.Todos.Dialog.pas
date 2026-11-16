@@ -55,7 +55,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -90,10 +91,9 @@ begin
     ScaleValue(20));
   FNextTop := FIncludeDone.Top + FIncludeDone.Height + ScaleValue(cGap);
 
-  FHint := TLabel.Create(Self);
+  FHint := TAtlasWrapLabel.Create(Self);
   FHint.Parent := Self;
   FHint.ShowAccelChar := False;
-  FHint.WordWrap := True;
   FHint.AutoSize := False;
   FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.TodoFilterHint);
   FHint.SetBounds(ScaleValue(cGap), FNextTop, ClientWidth - ScaleValue(2 * cGap), ScaleValue(32));

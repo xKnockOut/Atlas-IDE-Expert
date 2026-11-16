@@ -67,7 +67,8 @@ implementation
 
 uses
   Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -116,12 +117,11 @@ begin
   Width := ScaleValue(900);
   Height := ScaleValue(600);
 
-  mHint := TLabel.Create(Self);
+  mHint := TAtlasWrapLabel.Create(Self);
   mHint.Parent := Self;
   mHint.Align := alTop;
   mHint.AlignWithMargins := True;
   mHint.Margins.SetBounds(cGap, cGap, cGap, cGap);
-  mHint.WordWrap := True;
   // Breite vor dem Text: Sonst misst die Beschriftung mit ihrer Standardbreite, bricht nach jedem Wort um und
   // bleibt so hoch, dass die Vorschau kaum Platz hat.
   mHint.Width := Width - 2 * cGap;

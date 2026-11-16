@@ -84,7 +84,8 @@ implementation
 uses
   Vcl.Themes,
   Vcl.Graphics,
-  Atlas.UI.Editor.Strings;
+  Atlas.UI.Editor.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Breiten der Spalten Mitglied, Art, Sichtbarkeit und Grund in der Liste.
@@ -355,20 +356,18 @@ begin
   FOk.Default := True;
   FOk.Left := mCancel.Left - FOk.Width - ScaleValue(cGap);
   // Hinweise des Servers und Fehler über den Knöpfen.
-  mNotes := TLabel.Create(Self);
+  mNotes := TAtlasWrapLabel.Create(Self);
   mNotes.Parent := Self;
   mNotes.Align := alBottom;
   mNotes.AlignWithMargins := True;
   mNotes.Margins.SetBounds(cGap, 0, cGap, cGap div 2);
-  mNotes.WordWrap := True;
   mNotes.ShowAccelChar := False;
   mNotes.Caption := NotesText(FModel);
-  FError := TLabel.Create(Self);
+  FError := TAtlasWrapLabel.Create(Self);
   FError.Parent := Self;
   FError.Align := alBottom;
   FError.AlignWithMargins := True;
   FError.Margins.SetBounds(cGap, cGap div 2, cGap, cGap div 2);
-  FError.WordWrap := True;
   FError.ShowAccelChar := False;
   FError.Font.Color := clRed;
 end;

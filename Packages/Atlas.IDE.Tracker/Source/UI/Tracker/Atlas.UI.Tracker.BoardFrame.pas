@@ -1308,7 +1308,6 @@ begin
   AFrame.FParts.Status.Align := alTop;
   AFrame.FParts.Status.AlignWithMargins := True;
   AFrame.FParts.Status.Margins.SetBounds(8, 2, 8, 2);
-  AFrame.FParts.Status.WordWrap := True;
   AFrame.FParts.Status.Visible := False;
   AFrame.FParts.Status.Top := AFrame.FParts.Head.Top + AFrame.FParts.Head.Height + 1;
   AFrame.FParts.Scroll := TScrollBox.Create(AFrame);
@@ -1321,11 +1320,10 @@ begin
   AFrame.FParts.View := TAtlasBoardView.Create(AFrame);
   AFrame.FParts.View.Parent := AFrame.FParts.Scroll;
   AFrame.FParts.View.Events := ViewEvents(AFrame);
-  AFrame.FParts.Empty := TLabel.Create(AFrame);
+  AFrame.FParts.Empty := TAtlasWrapLabel.Create(AFrame);
   AFrame.FParts.Empty.Parent := AFrame.FParts.Scroll;
   AFrame.FParts.Empty.AutoSize := False;
   AFrame.FParts.Empty.Alignment := taCenter;
-  AFrame.FParts.Empty.WordWrap := True;
   AFrame.FParts.Empty.SetBounds(0, AFrame.ScaleValue(40), AFrame.ScaleValue(300), AFrame.ScaleValue(60));
   AFrame.FParts.Empty.Visible := False;
 end;

@@ -40,7 +40,7 @@ type
     class function Create(const AText: string; AState: TAtlasBarState; const AHint: string): TAtlasBarButton; static;
   end;
 
-  TAtlasSelectionBarWindow = class(TForm)
+  TAtlasSelectionBarWindow = class(TForm) // window-ok: Überlagerung über dem Designer ohne Dialogcharakter, zeichnet selbst
   private
     FColors: TAtlasColors;
     FButtons: TArray<TAtlasBarButton>;

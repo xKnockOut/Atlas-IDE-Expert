@@ -131,7 +131,8 @@ uses
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Style.Symbol,
-  Atlas.Core.Diagnostics.Hangs;
+  Atlas.Core.Diagnostics.Hangs,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   /// <summary>Aktionen für den Einfrier-Wächter (Protokollnamen, nicht übersetzt).</summary>
@@ -466,11 +467,10 @@ begin
   mButton.Width := mButton.ScaleValue(90);
   mButton.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalAllow);
   mButton.OnClick := ExperimentalAllowClick;
-  mText := TLabel.Create(Self);
+  mText := TAtlasWrapLabel.Create(Self);
   mText.Parent := FExperimentalBanner;
   mText.Align := alClient;
   mText.Layout := tlCenter;
-  mText.WordWrap := True;
   mText.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsExperimentalOff);
 end;
 

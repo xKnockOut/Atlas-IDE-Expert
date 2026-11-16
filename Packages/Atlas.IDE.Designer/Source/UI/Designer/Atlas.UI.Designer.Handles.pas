@@ -53,7 +53,7 @@ type
     class function Create(const ABounds: TRect; AKind: TAtlasHandleFrameKind): TAtlasHandleFrame; static;
   end;
 
-  TAtlasDesignerHandles = class(TForm)
+  TAtlasDesignerHandles = class(TForm) // window-ok: Überlagerung über dem Designer ohne Dialogcharakter, zeichnet selbst
   private const
     cKeyColor = TColor($00FF00FF);
   private

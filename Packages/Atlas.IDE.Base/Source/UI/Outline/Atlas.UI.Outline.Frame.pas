@@ -174,7 +174,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
-  Atlas.UI.Outline.Strings;
+  Atlas.UI.Outline.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -557,11 +558,10 @@ begin
   FList.OnKeyDown := ListKeyDown;
 
   // Ohne Gliederung oder ohne Treffer: Hinweis statt leerer Liste.
-  FMessage := TLabel.Create(Self);
+  FMessage := TAtlasWrapLabel.Create(Self);
   FMessage.Parent := Self;
   FMessage.Align := alClient;
   FMessage.AlignWithMargins := True;
-  FMessage.WordWrap := True;
   FMessage.ShowAccelChar := False;
   FMessage.Font.Color := clGrayText;
   FMessage.Visible := False;

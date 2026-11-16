@@ -150,7 +150,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -227,13 +228,12 @@ end;
 /// wuchsen nicht mit.</summary>
 procedure BuildKeys(ASelf: TAtlasDebugEvaluateFrame);
 begin
-  ASelf.FParts.Keys := TLabel.Create(ASelf);
+  ASelf.FParts.Keys := TAtlasWrapLabel.Create(ASelf);
   ASelf.FParts.Keys.Parent := ASelf;
   ASelf.FParts.Keys.AutoSize := False;
   ASelf.FParts.Keys.Align := alBottom;
   ASelf.FParts.Keys.AlignWithMargins := True;
   ASelf.FParts.Keys.ShowAccelChar := False;
-  ASelf.FParts.Keys.WordWrap := True;
   ASelf.FParts.Keys.Font.Color := clGrayText;
   ASelf.FParts.Keys.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateKeys);
 end;

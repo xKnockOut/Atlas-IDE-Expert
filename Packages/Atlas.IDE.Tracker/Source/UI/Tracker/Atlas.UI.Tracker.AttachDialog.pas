@@ -182,7 +182,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Attach.Strings,
-  Atlas.UI.Tracker.ImageMarkup;
+  Atlas.UI.Tracker.ImageMarkup,
+  Atlas.UI.Foundation.WrapLabel;
 
 { TAtlasAttachDialogInput }
 
@@ -304,10 +305,9 @@ begin
   ADialog.FParts.Issue.OnChange := ADialog.TextChanged;
   ADialog.FParts.Issue.Text := ADialog.FInput.Key;
   Inc(ATop, 30);
-  ADialog.FParts.Hint := TLabel.Create(ADialog);
+  ADialog.FParts.Hint := TAtlasWrapLabel.Create(ADialog);
   ADialog.FParts.Hint.Parent := ADialog;
   ADialog.FParts.Hint.AutoSize := False;
-  ADialog.FParts.Hint.WordWrap := True;
   ADialog.FParts.Hint.SetBounds(TAtlasAttachDialog.cGap, ATop,
     TAtlasAttachDialog.cDialogWidth - 2 * TAtlasAttachDialog.cGap, 32);
   ADialog.FParts.Hint.Anchors := [akLeft, akTop, akRight];

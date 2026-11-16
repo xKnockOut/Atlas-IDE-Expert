@@ -105,7 +105,7 @@ begin
   // Feste Breite aus der Zeile: kein Schrumpfen auf die längste Zeile.
   mLabel.AutoSize := False;
   mLabel.Align := alClient;
-  mLabel.WordWrap := True;
+  mLabel.WordWrap := True; // window-ok: feste Größe (AutoSize aus, alClient)
 end;
 
 procedure TAtlasBreakpointOrphanDialog.CreateList;

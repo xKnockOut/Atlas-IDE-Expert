@@ -21,7 +21,7 @@ uses
   Atlas.Core.Style.Palette;
 
 type
-  TAtlasDesignerFlash = class(TForm)
+  TAtlasDesignerFlash = class(TForm) // window-ok: Überlagerung über dem Designer ohne Dialogcharakter, zeichnet selbst
   private const
     cKeyColor = TColor($00FF00FF);
     cDuration = 600;

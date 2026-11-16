@@ -60,7 +60,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Rules.Strings;
+  Atlas.UI.Rules.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -102,13 +103,12 @@ begin
   mTop.BevelOuter := bvNone;
   mTop.ShowCaption := False;
   mTop.AutoSize := True;
-  FSummary := TLabel.Create(Self);
+  FSummary := TAtlasWrapLabel.Create(Self);
   FSummary.Parent := mTop;
   FSummary.Align := alTop;
   FSummary.AlignWithMargins := True;
   FSummary.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap div 2));
   FSummary.ShowAccelChar := False;
-  FSummary.WordWrap := True;
   FSummary.Caption := FPreview.Summary;
 end;
 

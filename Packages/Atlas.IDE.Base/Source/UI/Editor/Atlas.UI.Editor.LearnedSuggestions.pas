@@ -8,6 +8,9 @@
 // Kästchen schaltet ein Muster ab, „Vergessen“ löscht seine Lernzähler,
 // Doppelklick bzw. „Zum Beleg“ zeigt die erste Stelle. Die Liste kennt die
 // Ablage nicht; die IDE-Schicht reicht Zustand und Rückrufe herein.
+// Das Fenster ist ein TAtlasDialog (Dialogschrift, IDE-Thema), ziehbar; die
+// Liste füllt den Platz zwischen Einleitung und Knopfleiste, Spalten passen
+// sich dem Inhalt an („Folge“ nimmt den Rest), Klick auf den Kopf sortiert.
 
 interface
 
@@ -62,6 +65,16 @@ type
 
 implementation
 
+uses
+  Winapi.Windows,
+  Winapi.CommCtrl,
+  System.Types,
+  System.Math,
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Foundation.WrapLabel;
+
 const
   cTexts: array[TAtlasLanguage, TAtlasLearnedText] of string = (
     ('Gelernte Vorschläge anzeigen …', 'Gelernte Vorschläge',
@@ -100,25 +113,31 @@ end;
 const
   /// <summary>Maße in Pixeln bei 96 dpi.</summary>
   cWindowWidth = 860;
-  cWindowHeight = 460;
-  cButtonWidth = 110;
-  cButtonTop = 9;
+  cMinWidth = 520;
+  cMinHeight = 280;
+  cGap = 8;
   cButtonBarHeight = 44;
-  cGap = 10;
-  cWidthTrigger = 190;
-  cWidthFollow = 260;
-  cWidthShare = 60;
-  cWidthCount = 70;
-  cWidthOrigin = 80;
-  cWidthUsed = 180;
+  cButtonPadding = 32;
+  cButtonMinWidth = 90;
+  /// <summary>Spalte „Folge“ füllt den Rest, mindestens so breit.</summary>
+  cFollowMinWidth = 160;
+  /// <summary>Übrige Spalten nach Inhalt, höchstens so breit.</summary>
+  cColumnMaxWidth = 320;
+  /// <summary>Anfangs so viele Zeilen sichtbar, mehr nur mit Rollen.</summary>
+  cInitialRows = 18;
+  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
+  cMaxScreenShare = 80;
+  cColumnFollow = 1;
 
 type
   /// <summary>Fenster der Liste mit seinen Ereignissen.</summary>
-  TListWindow = class(TForm)
+  TListWindow = class(TAtlasDialog)
   private
     FItems: TArray<TAtlasLearnedListItem>;
     FEvents: TAtlasLearnedListEvents;
-    FList: TListView;
+    FIntro: TLabel;
+    FButtons: TPanel;
+    FList: TAtlasListView;
     FForget: TButton;
     FGoTo: TButton;
     /// <summary>Beim Füllen keine Rückrufe für die Kästchen.</summary>
@@ -129,8 +148,9 @@ type
     procedure BuildButtons;
     procedure BuildList;
     procedure FillList;
-    procedure AddColumn(const ACaption: string; AWidth: Integer);
-    function AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer): TButton;
+    procedure FitToContent;
+    function WorkArea: TRect;
+    function AddButton(const ACaption: string; AAlign: TAlign): TButton;
     procedure ItemChecked(Sender: TObject; Item: TListItem);
     procedure ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ForgetClick(Sender: TObject);
@@ -161,16 +181,14 @@ end;
 
 procedure TListWindow.Build;
 begin
-  Caption := T(TAtlasLearnedText.Title);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Width := ScaleValue(cWindowWidth);
-  Height := ScaleValue(cWindowHeight);
-  BuildIntro;
+  // Reihenfolge: Leiste unten und Einleitung oben vor der Liste, die den Rest füllt.
   BuildButtons;
+  BuildIntro;
   BuildList;
   FillList;
+  FitToContent;
   FList.OnItemChecked := ItemChecked;
   FList.OnSelectItem := ItemSelected;
   FList.OnDblClick := GoToClick;
@@ -183,38 +201,39 @@ begin
 end;
 
 procedure TListWindow.BuildIntro;
-var
-  mIntro: TLabel;
 begin
-  mIntro := TLabel.Create(Self);
-  mIntro.Parent := Self;
-  mIntro.Align := alTop;
-  mIntro.WordWrap := True;
-  mIntro.AlignWithMargins := True;
-  mIntro.Caption := T(TAtlasLearnedText.Intro);
+  // Umbrechende Beschriftung: Ein TLabel behielte die Höhe, die es bei seiner Anfangsbreite (65 Pixel) hatte.
+  FIntro := TAtlasWrapLabel.Create(Self);
+  FIntro.Top := 0;
+  FIntro.AlignWithMargins := True;
+  FIntro.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap));
+  FIntro.Caption := T(TAtlasLearnedText.Intro);
   if Length(FItems) = 0 then
   begin
-    mIntro.Caption := mIntro.Caption + sLineBreak + sLineBreak + T(TAtlasLearnedText.Empty);
+    FIntro.Caption := FIntro.Caption + sLineBreak + sLineBreak + T(TAtlasLearnedText.Empty);
   end;
+  FIntro.Align := alTop;
+  FIntro.Parent := Self;
 end;
 
 procedure TListWindow.BuildButtons;
 var
-  mButtons: TPanel;
   mClose: TButton;
 begin
-  mButtons := TPanel.Create(Self);
-  mButtons.Parent := Self;
-  mButtons.Align := alBottom;
-  mButtons.Height := ScaleValue(cButtonBarHeight);
-  mButtons.BevelOuter := bvNone;
-  FForget := AddButton(mButtons, T(TAtlasLearnedText.Forget), cGap);
+  FButtons := TPanel.Create(Self);
+  // Lage vor Align und Parent: Sonst kann die VCL die Reihenfolge beim Anlegen des Fensters vertauschen.
+  FButtons.Top := ClientHeight;
+  FButtons.Height := ScaleValue(cButtonBarHeight);
+  FButtons.BevelOuter := bvNone;
+  FButtons.ShowCaption := False;
+  FButtons.Align := alBottom;
+  FButtons.Parent := Self;
+  FForget := AddButton(T(TAtlasLearnedText.Forget), alLeft);
   FForget.OnClick := ForgetClick;
-  FGoTo := AddButton(mButtons, T(TAtlasLearnedText.GoToExample), cGap + cButtonWidth + cGap);
+  FGoTo := AddButton(T(TAtlasLearnedText.GoToExample), alLeft);
+  FGoTo.Left := FForget.Left + FForget.Width + 1;
   FGoTo.OnClick := GoToClick;
-  mClose := AddButton(mButtons, T(TAtlasLearnedText.Close), 0);
-  mClose.Left := mButtons.ClientWidth - mClose.Width - ScaleValue(cGap);
-  mClose.Anchors := [akTop, akRight];
+  mClose := AddButton(T(TAtlasLearnedText.Close), alRight);
   mClose.ModalResult := mrOk;
   mClose.Cancel := True;
   mClose.Default := True;
@@ -222,20 +241,23 @@ end;
 
 procedure TListWindow.BuildList;
 begin
-  FList := TListView.Create(Self);
-  FList.Parent := Self;
+  FList := TAtlasListView.Create(Self);
+  FList.AlignWithMargins := True;
+  FList.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cGap), 0);
   FList.Align := alClient;
-  FList.ViewStyle := vsReport;
+  FList.Parent := Self;
   FList.Checkboxes := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
-  AddColumn(T(TAtlasLearnedText.ColumnTrigger), cWidthTrigger);
-  AddColumn(T(TAtlasLearnedText.ColumnFollow), cWidthFollow);
-  AddColumn(T(TAtlasLearnedText.ColumnShare), cWidthShare);
-  AddColumn(T(TAtlasLearnedText.ColumnCount), cWidthCount);
-  AddColumn(T(TAtlasLearnedText.ColumnOrigin), cWidthOrigin);
-  AddColumn(T(TAtlasLearnedText.ColumnUsed), cWidthUsed);
+  FList.Sortable := True;
+  // Breiten setzt FitToContent nach dem Inhalt; hier nur die Spalten.
+  FList.AddColumn(T(TAtlasLearnedText.ColumnTrigger), 0);
+  FList.AddColumn(T(TAtlasLearnedText.ColumnFollow), 0);
+  FList.AddColumn(T(TAtlasLearnedText.ColumnShare), 0, taRightJustify);
+  FList.AddColumn(T(TAtlasLearnedText.ColumnCount), 0, taRightJustify);
+  FList.AddColumn(T(TAtlasLearnedText.ColumnOrigin), 0);
+  FList.AddColumn(T(TAtlasLearnedText.ColumnUsed), 0);
 end;
 
 procedure TListWindow.FillList;
@@ -243,6 +265,8 @@ var
   mIndex: Integer;
   mItem: TListItem;
 begin
+  // Ohne Fenster nimmt die Liste keine Zeilen an (Items braucht ein Handle).
+  FList.HandleNeeded;
   FFilling := True;
   FList.Items.BeginUpdate;
   try
@@ -258,23 +282,73 @@ begin
   end;
 end;
 
-procedure TListWindow.AddColumn(const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
+function TListWindow.WorkArea: TRect;
 begin
-  mColumn := FList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := ScaleValue(AWidth);
+  // Das Fenster erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
+  Result := Screen.WorkAreaRect;
+  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
+  begin
+    Result := Application.MainForm.Monitor.WorkareaRect;
+  end;
 end;
 
-function TListWindow.AddButton(AParent: TWinControl; const ACaption: string; ALeft: Integer): TButton;
+procedure TListWindow.FitToContent;
+var
+  mArea, mRow: TRect;
+  mWidth, mIndex, mRows, mRowHeight, mHeight: Integer;
+begin
+  mArea := WorkArea;
+  FList.FillColumn(cColumnFollow, cFollowMinWidth);
+  FList.FitColumnsToContent(cColumnMaxWidth);
+  // Breit genug für alle Spalten samt ganzer Folge, Rand und senkrechter Rollleiste.
+  mWidth := FList.ContentWidth(cColumnFollow) + 2 * ScaleValue(cGap) +
+    MulDiv(GetSystemMetrics(SM_CXVSCROLL), CurrentPPI, Screen.PixelsPerInch) + ScaleValue(cGap);
+  for mIndex := 0 to FList.Columns.Count - 1 do
+  begin
+    if mIndex <> cColumnFollow then
+    begin
+      Inc(mWidth, FList.Columns[mIndex].Width);
+    end;
+  end;
+  ClientWidth := Max(Min(mWidth, mArea.Width * cMaxScreenShare div 100), ScaleValue(cMinWidth));
+  // Ohne Fenster ordnet die VCL nicht an: Breite der Einleitung und damit ihre Höhe wären die vorläufigen.
+  HandleNeeded;
+  Realign;
+  // Ohne Zeile: Schrifthöhe plus Rand.
+  mRowHeight := Abs(FList.Font.Height) + ScaleValue(cGap);
+  if (FList.Items.Count > 0) and ListView_GetItemRect(FList.Handle, 0, mRow, LVIR_BOUNDS) then
+  begin
+    mRowHeight := mRow.Height;
+  end;
+  mRows := Max(Min(FList.Items.Count, cInitialRows), 1);
+  // Kopfzeile etwa so hoch wie eine Zeile, dazu Rahmen der Liste.
+  mHeight := FIntro.Top + FIntro.Height + FIntro.Margins.Bottom + (mRows + 2) * mRowHeight + FButtons.Height;
+  ClientHeight := Max(Min(mHeight, mArea.Height * cMaxScreenShare div 100), ScaleValue(cMinHeight));
+  Constraints.MinWidth := Width - ClientWidth + ScaleValue(cMinWidth);
+  Constraints.MinHeight := Height - ClientHeight + ScaleValue(cMinHeight);
+end;
+
+function TListWindow.AddButton(const ACaption: string; AAlign: TAlign): TButton;
+var
+  mBitmap: TBitmap;
 begin
   Result := TButton.Create(Self);
-  Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Width := ScaleValue(cButtonWidth);
-  Result.Top := ScaleValue(cButtonTop);
-  Result.Left := ScaleValue(ALeft);
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(Font);
+    Result.Width := Max(mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding), ScaleValue(cButtonMinWidth));
+  finally
+    mBitmap.Free;
+  end;
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), 0, ScaleValue(cGap));
+  if AAlign = alRight then
+  begin
+    Result.Margins.SetBounds(0, ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap));
+  end;
+  Result.Align := AAlign;
+  Result.Parent := FButtons;
 end;
 
 procedure TListWindow.ItemChecked(Sender: TObject; Item: TListItem);
@@ -341,7 +415,7 @@ class procedure TAtlasLearnedList.Execute(const AItems: TArray<TAtlasLearnedList
 var
   mWindow: TListWindow;
 begin
-  mWindow := TListWindow.CreateNew(nil);
+  mWindow := TListWindow.CreateDialog(nil, T(TAtlasLearnedText.Title), cWindowWidth);
   try
     mWindow.FItems := Copy(AItems);
     mWindow.FEvents := AEvents;

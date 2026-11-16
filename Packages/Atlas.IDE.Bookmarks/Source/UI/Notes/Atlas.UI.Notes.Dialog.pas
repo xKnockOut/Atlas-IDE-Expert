@@ -60,7 +60,8 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Bookmarks.Strings;
+  Atlas.UI.Bookmarks.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -82,12 +83,11 @@ begin
   ClientHeight := ScaleValue(cDialogHeight);
   KeyPreview := False;
 
-  FHint := TLabel.Create(Self);
+  FHint := TAtlasWrapLabel.Create(Self);
   FHint.Parent := Self;
   FHint.Align := alTop;
   FHint.AlignWithMargins := True;
   FHint.Margins.SetBounds(cGap, cGap, cGap, cGap div 2);
-  FHint.WordWrap := True;
   FHint.ShowAccelChar := False;
   FHint.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.NotesDialogHint);
 
@@ -113,7 +113,6 @@ begin
   FMemo.AlignWithMargins := True;
   FMemo.Margins.SetBounds(cGap, 0, cGap, 0);
   FMemo.ScrollBars := ssVertical;
-  FMemo.WordWrap := True;
   FMemo.WantReturns := True;
   FMemo.WantTabs := False;
   FMemo.OnKeyDown := MemoKeyDown;

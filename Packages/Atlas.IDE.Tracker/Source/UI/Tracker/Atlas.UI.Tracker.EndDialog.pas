@@ -333,7 +333,8 @@ uses
   Atlas.UI.Tracker.Time.Strings,
   Atlas.UI.Tracker.GitHubStrings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -1056,10 +1057,9 @@ begin
   FParts.Assignee.OnChange := AssigneeChange;
 
   Result := AddRow(cTextRowHeight);
-  FParts.Note := TLabel.Create(Self);
+  FParts.Note := TAtlasWrapLabel.Create(Self);
   FParts.Note.Parent := Result;
   FParts.Note.Align := alClient;
-  FParts.Note.WordWrap := True;
   FParts.Note.Caption := '';
 end;
 

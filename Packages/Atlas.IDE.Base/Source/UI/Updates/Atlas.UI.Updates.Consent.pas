@@ -52,7 +52,8 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -76,12 +77,11 @@ begin
   FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
   FSymbol.Left := FSymbol.ScaleValue(cGap);
   FSymbol.Top := FSymbol.ScaleValue(cGap);
-  FText := TLabel.Create(Self);
+  FText := TAtlasWrapLabel.Create(Self);
   FText.Parent := Self;
   FText.Align := alTop;
   FText.AlignWithMargins := True;
   FText.Margins.SetBounds(2 * cGap + FSymbol.Width, cGap, cGap, 0);
-  FText.WordWrap := True;
   FText.Caption := TAtlasStrings.Text(TAtlasTextId.UpdatesConsentText);
 
   mButtons := TFlowPanel.Create(Self);

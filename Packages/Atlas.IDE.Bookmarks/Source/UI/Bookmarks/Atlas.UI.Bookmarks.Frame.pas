@@ -160,7 +160,8 @@ uses
   Winapi.CommCtrl,
   Vcl.Themes,
   Atlas.UI.Bookmarks.Strings,
-  Atlas.Core.Marks.Ids;
+  Atlas.Core.Marks.Ids,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -301,11 +302,10 @@ end;
 function BuildEmpty(AFrame: TAtlasBookmarksFrame): TLabel;
 begin
   // Ohne Lesezeichen: Hinweis statt leerer Liste.
-  Result := TLabel.Create(AFrame);
+  Result := TAtlasWrapLabel.Create(AFrame);
   Result.Parent := AFrame;
   Result.Align := alClient;
   Result.AlignWithMargins := True;
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
   Result.Font.Color := clGrayText;
   Result.Caption := TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.BookmarksEmpty);

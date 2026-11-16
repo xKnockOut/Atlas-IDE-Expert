@@ -90,7 +90,8 @@ uses
   Vcl.Graphics,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Settings.Page.Sheets;
+  Atlas.UI.Settings.Page.Sheets,
+  Atlas.UI.Foundation.WrapLabel;
 
 type
   /// <summary>Art einer Zeile beim Aufteilen eines Bereichs: mit Einstellung, angehängt, Beschriftung, sonst.
@@ -564,12 +565,11 @@ begin
     mPage.Box.HorzScrollBar.Visible := False;
   end;
   // Hinweis auf eine Sperre durch einen Hauptschalter auf einer anderen Seite, immer ganz oben.
-  mPage.Banner := TLabel.Create(Self);
+  mPage.Banner := TAtlasWrapLabel.Create(Self);
   mPage.Banner.Parent := mPage.Box;
   mPage.Banner.Align := alTop;
   mPage.Banner.AlignWithMargins := True;
   mPage.Banner.Top := 0;
-  mPage.Banner.WordWrap := True;
   mPage.Banner.ShowAccelChar := False;
   mPage.Banner.Font.Style := [fsItalic];
   mPage.Banner.Visible := False;

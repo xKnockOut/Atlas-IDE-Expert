@@ -53,7 +53,8 @@ type
 implementation
 
 uses
-  Vcl.Themes;
+  Vcl.Themes,
+  Atlas.UI.Foundation.WrapLabel;
 
 { TAtlasSettingsGroup }
 
@@ -67,14 +68,13 @@ begin
   AlignWithMargins := True;
   Height := ScaleValue(40);
   FNextTop := 100;
-  FReason := TLabel.Create(Self);
+  FReason := TAtlasWrapLabel.Create(Self);
   FReason.Parent := Self;
   FReason.Align := alTop;
   FReason.AlignWithMargins := True;
   FReason.Margins.Left := FReason.ScaleValue(3) + FReason.ScaleValue(cIndent);
   FReason.Top := FReason.ScaleValue(2);
   FReason.ShowAccelChar := False;
-  FReason.WordWrap := True;
   FReason.Font.Style := [fsItalic];
   FReason.Visible := False;
 end;

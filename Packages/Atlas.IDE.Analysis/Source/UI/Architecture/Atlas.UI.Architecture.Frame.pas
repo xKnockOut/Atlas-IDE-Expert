@@ -638,7 +638,7 @@ begin
   mButton.ShowHint := True;
   AFrame.FParts.ExplainButton := mButton;
   AFrame.FParts.Explanation := NewLabel(AFrame, AFrame.FParts.SubsystemsBar, alClient);
-  AFrame.FParts.Explanation.WordWrap := True;
+  AFrame.FParts.Explanation.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
   AFrame.FParts.Explanation.Font.Color := clGrayText;
   AFrame.FParts.Explanation.Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.ArchitectureExplainHint);
   AFrame.FParts.Subsystems := NewTree(AFrame, mSheet);

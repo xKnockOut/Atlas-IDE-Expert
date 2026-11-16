@@ -61,7 +61,7 @@ type
     class function Create(const ABounds: TRect; AGroup: Integer): TAtlasTabFrame; static;
   end;
 
-  TAtlasTabOrderOverlay = class(TForm)
+  TAtlasTabOrderOverlay = class(TForm) // window-ok: Überlagerung über dem Designer ohne Dialogcharakter, zeichnet selbst
   private const
     cKeyColor = TColor($00FF00FF);
   private

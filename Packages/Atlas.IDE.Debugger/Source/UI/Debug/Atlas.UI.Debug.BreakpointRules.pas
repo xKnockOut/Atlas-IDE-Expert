@@ -161,7 +161,7 @@ begin
   // Feste Breite aus der Zeile: kein Schrumpfen auf die längste Zeile.
   mHint.AutoSize := False;
   mHint.Align := alClient;
-  mHint.WordWrap := True;
+  mHint.WordWrap := True; // window-ok: feste Größe (AutoSize aus, alClient)
 end;
 
 procedure TAtlasBreakpointRuleDialog.CreateButtons;

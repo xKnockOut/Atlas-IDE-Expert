@@ -130,6 +130,8 @@ type
     FRestarts: Integer;
     /// <summary>Zeile oben unter APrevious (nil = ganz oben).</summary>
     function NewLine(APrevious: TControl): TLabel;
+    /// <summary>ALabel als Zeile unter APrevious setzen.</summary>
+    function PlaceLine(ALabel: TLabel; APrevious: TControl): TLabel;
     procedure UpdateTexts;
     procedure UpdateServerTexts;
   protected
@@ -157,7 +159,8 @@ uses
   Atlas.Core.Style.Color,
   Winapi.Windows,
   System.Math,
-  Atlas.UI.Status.Strings;
+  Atlas.UI.Status.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Breiten der Spalten Regel, ms und Aufrufe; Breite der Knöpfe der Leiste.
@@ -581,8 +584,7 @@ begin
   FHeader := NewLine(nil);
   FHeader.EllipsisPosition := epEndEllipsis;
   FHeader.Font.Style := [fsBold];
-  FQueue := NewLine(FHeader);
-  FQueue.WordWrap := True;
+  FQueue := PlaceLine(TAtlasWrapLabel.Create(Self), FHeader);
   FCheckRun := NewLine(FQueue);
   FMemory := TAtlasServerMemoryChart.Create(Self);
   FMemory.Parent := Self;
@@ -610,7 +612,12 @@ end;
 
 function TAtlasServerFrame.NewLine(APrevious: TControl): TLabel;
 begin
-  Result := TLabel.Create(Self);
+  Result := PlaceLine(TLabel.Create(Self), APrevious);
+end;
+
+function TAtlasServerFrame.PlaceLine(ALabel: TLabel; APrevious: TControl): TLabel;
+begin
+  Result := ALabel;
   Result.Parent := Self;
   Result.Align := alTop;
   Result.AlignWithMargins := True;

@@ -44,7 +44,8 @@ implementation
 uses
   System.UITypes,
   Vcl.Controls,
-  Atlas.UI.Updates.Strings;
+  Atlas.UI.Updates.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -60,9 +61,8 @@ begin
   inherited CreateDialog(AOwner, '', cWidth);
   FCandidates := ACandidates;
   Caption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionTitle, [AVersion]);
-  FText := TLabel.Create(Self);
+  FText := TAtlasWrapLabel.Create(Self);
   FText.Parent := Self;
-  FText.WordWrap := True;
   FText.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cWidth - 2 * cGap), ScaleValue(48));
   FText.Caption := TAtlasUpdatesStrings.Text(TAtlasUpdatesTextId.UpdatesSelectionText);
   FList := TCheckListBox.Create(Self);

@@ -116,7 +116,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -143,20 +144,18 @@ end;
 
 procedure TAtlasSafeModeNotice.CreateTexts(const AText, ASuggestion: string);
 begin
-  FParts.Text := TLabel.Create(Self);
+  FParts.Text := TAtlasWrapLabel.Create(Self);
   FParts.Text.Parent := Self;
   FParts.Text.Align := alTop;
   FParts.Text.AlignWithMargins := True;
   FParts.Text.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FParts.Text.WordWrap := True;
   FParts.Text.Caption := AText;
 
-  FParts.Suggestion := TLabel.Create(Self);
+  FParts.Suggestion := TAtlasWrapLabel.Create(Self);
   FParts.Suggestion.Parent := Self;
   FParts.Suggestion.Align := alTop;
   FParts.Suggestion.AlignWithMargins := True;
   FParts.Suggestion.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FParts.Suggestion.WordWrap := True;
   FParts.Suggestion.Caption := ASuggestion;
   FParts.Suggestion.Visible := ASuggestion <> '';
   FParts.Suggestion.Top := FParts.Text.Top + FParts.Text.Height + 1;
