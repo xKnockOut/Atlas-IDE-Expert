@@ -36,6 +36,7 @@ implementation
 
 uses
   Winapi.Windows,
+  System.Classes,
   System.IOUtils,
   System.Generics.Collections;
 
@@ -83,7 +84,12 @@ begin
   try
     AText := TFile.ReadAllText(mTaken, TEncoding.UTF8);
   except
-    on Exception do
+    // Nicht lesbar (gesperrt, verschwunden, kein UTF-8): der Auftrag gilt als leer und wird mit Fehler beantwortet.
+    on EInOutError do
+      AText := '';
+    on EFileStreamError do
+      AText := '';
+    on EEncodingError do
       AText := '';
   end;
 end;
