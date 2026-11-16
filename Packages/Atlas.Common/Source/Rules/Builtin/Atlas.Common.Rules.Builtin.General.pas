@@ -246,305 +246,345 @@ begin
   Result := TRuleDescriptor.Create('empty-finally', TRuleSeverity.Hint, cTexts[TGeneralText.EmptyFinallyTitle].Text);
 end;
 
-procedure TEmptyFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TEmptyFinallyRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TEmptyFinallyScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FLines: TArray<string>;
+    FLineBreak: string;
+    function IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
+    function FirstKeyword(const AWord: string; AFrom: Integer): Integer;
+    function LastKeyword(const AWord: string; ABefore: Integer): Integer;
+    function CreatedVariable(ATry: TSyntaxNode): string;
+    function InStatementList(ATry: TSyntaxNode): Boolean;
+    function StatementCount(ATry: TSyntaxNode): Integer;
+    function OwnLines(ATryLine, AFinallyLine, AEndLine: Integer; out AEnding: string): Boolean;
+    function BeginEndBody(ATryLine, AFinallyLine, AEndLine: Integer): TArray<string>;
+    function BodyShift(ATryLine, AFinallyLine: Integer): Integer;
+    function OutdentedBody(ATryLine, AFinallyLine: Integer; const AEnding: string): TArray<string>;
+    function Fix(ATry: TSyntaxNode; ATryToken, AFinallyToken, AEndToken: Integer; out AFix: TRuleFix): Boolean;
+    procedure CheckTry(ATry: TSyntaxNode);
+    procedure Walk(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TEmptyFinallyScan }
+
+constructor TEmptyFinallyScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TEmptyFinallyScan.IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
 var
-  mTokens: TArray<TPascalToken>;
-  mLines: TArray<string>;
-  mLineBreak: string;
-
-  function IsEmptyBlock(ABlock: TSyntaxNode): Boolean;
-  var
-    mIndex: Integer;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ABlock.ChildCount - 1 do
   begin
-    for mIndex := 0 to ABlock.ChildCount - 1 do
-    begin
-      if ABlock[mIndex].Kind <> TSyntaxKind.EmptyStatement then
-      begin
-        Exit(False);
-      end;
-    end;
-    Result := True;
-  end;
-
-  // Index des Tokens mit dem Schlüsselwort AWord ab Offset AFrom (erstes) bzw. vor ABefore (letztes); -1 ohne.
-  function FirstKeyword(const AWord: string; AFrom: Integer): Integer;
-  begin
-    for Result := 0 to High(mTokens) do
-    begin
-      if (mTokens[Result].Offset >= AFrom) and mTokens[Result].IsKeyword(AWord) then
-      begin
-        Exit;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  function LastKeyword(const AWord: string; ABefore: Integer): Integer;
-  begin
-    for Result := High(mTokens) downto 0 do
-    begin
-      if (mTokens[Result].Offset < ABefore) and mTokens[Result].IsKeyword(AWord) then
-      begin
-        Exit;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  // Variable aus X := T….Create direkt vor dem try; '' ohne.
-  function CreatedVariable(ATry: TSyntaxNode): string;
-  var
-    mParent, mPrevious, mValue: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    Result := '';
-    mParent := ATry.Parent;
-    if mParent = nil then
-    begin
-      Exit;
-    end;
-    mPrevious := nil;
-    for mIndex := 1 to mParent.ChildCount - 1 do
-    begin
-      if mParent[mIndex] = ATry then
-      begin
-        mPrevious := mParent[mIndex - 1];
-      end;
-    end;
-    if (mPrevious = nil) or (mPrevious.Kind <> TSyntaxKind.AssignStatement) or (mPrevious.ChildCount <> 2) or
-      (mPrevious[0].Kind <> TSyntaxKind.Identifier) then
-    begin
-      Exit;
-    end;
-    mValue := mPrevious[1];
-    if (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount > 0) then
-    begin
-      mValue := mValue[0];
-    end;
-    if (mValue.Kind = TSyntaxKind.MemberAccess) and SameText(mValue.Name, 'Create') then
-    begin
-      Result := mPrevious[0].Name;
-    end;
-  end;
-
-  // Steht ATry in einer Anweisungsliste (begin … end, try, repeat …)? Sonst ist sie die einzige Anweisung
-  // eines if, while, for, with oder case-Zweigs.
-  function InStatementList(ATry: TSyntaxNode): Boolean;
-  begin
-    Result := (ATry.Parent <> nil) and (ATry.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
-      TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse]);
-  end;
-
-  /// <summary>Anweisungen im try-Teil von ATry (ohne finally und leere Anweisungen).</summary>
-  function StatementCount(ATry: TSyntaxNode): Integer;
-  var
-    mIndex: Integer;
-  begin
-    Result := 0;
-    for mIndex := 0 to ATry.ChildCount - 1 do
-    begin
-      if not (ATry[mIndex].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
-      begin
-        Inc(Result);
-      end;
-    end;
-  end;
-
-  /// <summary>Stehen try, finally und end je allein auf ihrer Zeile? AEnding: die Zeile von end, getrimmt.
-  /// </summary>
-  function OwnLines(ATryLine, AFinallyLine, AEndLine: Integer; out AEnding: string): Boolean;
-  begin
-    AEnding := '';
-    Result := (AEndLine <= High(mLines)) and (Trim(mLines[ATryLine]) = 'try') and
-      (Trim(mLines[AFinallyLine]) = 'finally');
-    if Result then
-    begin
-      AEnding := Trim(mLines[AEndLine]);
-      Result := (AEnding = 'end') or (AEnding = 'end;');
-    end;
-  end;
-
-  /// <summary>Rumpf zwischen try und finally als begin … end.</summary>
-  function BeginEndBody(ATryLine, AFinallyLine, AEndLine: Integer): TArray<string>;
-  var
-    mLine: Integer;
-  begin
-    Result := [TTextLines.IndentOf(mLines[ATryLine]) + 'begin'];
-    for mLine := ATryLine + 1 to AFinallyLine - 1 do
-    begin
-      Result := Result + [mLines[mLine]];
-    end;
-    Result := Result + [mLines[AEndLine]];
-  end;
-
-  /// <summary>Unterschied zwischen der Einrückung des Rumpfs und der von try; 0, wenn er nicht weiter
-  /// eingerückt ist.</summary>
-  function BodyShift(ATryLine, AFinallyLine: Integer): Integer;
-  var
-    mLine: Integer;
-  begin
-    Result := MaxInt;
-    for mLine := ATryLine + 1 to AFinallyLine - 1 do
-    begin
-      if Trim(mLines[mLine]) <> '' then
-      begin
-        Result := Min(Result, TTextLines.IndentLength(mLines[mLine]) - TTextLines.IndentLength(mLines[ATryLine]));
-      end;
-    end;
-    if (Result = MaxInt) or (Result < 0) then
-    begin
-      Result := 0;
-    end;
-  end;
-
-  /// <summary>Rumpf zwischen try und finally, um seine zusätzliche Einrückung ausgerückt; nil ohne Zeilen.
-  /// end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
-  /// </summary>
-  function OutdentedBody(ATryLine, AFinallyLine: Integer; const AEnding: string): TArray<string>;
-  var
-    mLine, mShift: Integer;
-    mText: string;
-  begin
-    mShift := BodyShift(ATryLine, AFinallyLine);
-    Result := nil;
-    for mLine := ATryLine + 1 to AFinallyLine - 1 do
-    begin
-      if Trim(mLines[mLine]) = '' then
-      begin
-        Result := Result + [''];
-      end
-      else
-      begin
-        Result := Result + [Copy(mLines[mLine], mShift + 1, MaxInt)];
-      end;
-    end;
-    if Result = nil then
-    begin
-      Exit;
-    end;
-    mText := TrimRight(Result[High(Result)]);
-    if (AEnding = 'end;') and not EndsStr(';', mText) then
-    begin
-      Result[High(Result)] := mText + ';';
-    end;
-  end;
-
-  // try, finally und end stehen je allein auf ihrer Zeile (end mit oder ohne Semikolon): Dann entfernt die
-  // Korrektur die drei Zeilen und rückt den Rumpf aus; als einzige Anweisung mit mehreren Anweisungen im Rumpf
-  // wird aus try begin.
-  function Fix(ATry: TSyntaxNode; ATryToken, AFinallyToken, AEndToken: Integer; out AFix: TRuleFix): Boolean;
-  var
-    mTryLine, mFinallyLine, mEndLine: Integer;
-    mBody: TArray<string>;
-    mEnding: string;
-    mRange: TTextRange;
-  begin
-    mTryLine := mTokens[ATryToken].StartPos.Line;
-    mFinallyLine := mTokens[AFinallyToken].StartPos.Line;
-    mEndLine := mTokens[AEndToken].StartPos.Line;
-    if not OwnLines(mTryLine, mFinallyLine, mEndLine, mEnding) then
+    if ABlock[mIndex].Kind <> TSyntaxKind.EmptyStatement then
     begin
       Exit(False);
     end;
-    mRange := TTextRange.Create(TTextPosition.Create(mTryLine, 0), TTextPosition.Create(mEndLine,
-      Length(mLines[mEndLine])));
-    if not InStatementList(ATry) and (StatementCount(ATry) > 1) then
-    begin
-      AFix := TRuleFix.Create(cTexts[TGeneralText.ReplaceTryByBegin].Text,
-        [TRuleEdit.Create(mRange, TTextLines.JoinLines(BeginEndBody(mTryLine, mFinallyLine, mEndLine), mLineBreak))]);
-      Exit(True);
-    end;
-    // Rumpf um den Unterschied zwischen seiner Einrückung und der von try ausrücken.
-    mBody := OutdentedBody(mTryLine, mFinallyLine, mEnding);
-    Result := mBody <> nil;
-    if Result then
-    begin
-      AFix := TRuleFix.Create(cTexts[TGeneralText.RemoveTry].Text,
-        [TRuleEdit.Create(mRange, TTextLines.JoinLines(mBody, mLineBreak))]);
-    end;
   end;
+  Result := True;
+end;
 
-  procedure CheckTry(ATry: TSyntaxNode);
-  var
-    mBlock: TSyntaxNode;
-    mTryToken, mFinallyToken, mEndToken, mIndex: Integer;
-    mVariable, mMessage: string;
-    mRuleFix: TRuleFix;
-  begin
-    mBlock := ATry[ATry.ChildCount - 1];
-    if (mBlock.Kind <> TSyntaxKind.FinallyBlock) or not IsEmptyBlock(mBlock) then
-    begin
-      Exit;
-    end;
-    mTryToken := FirstKeyword('try', ATry.StartOffset);
-    mFinallyToken := LastKeyword('finally', ATry.EndOffset);
-    mEndToken := LastKeyword('end', ATry.EndOffset);
-    if (mTryToken < 0) or (mFinallyToken < 0) or (mEndToken <= mFinallyToken) then
-    begin
-      Exit;
-    end;
-    // Ein Kommentar begründet den leeren Block; eine Direktive kann Code eines anderen Zweigs enthalten.
-    for mIndex := mFinallyToken + 1 to mEndToken - 1 do
-    begin
-      if mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-      begin
-        Exit;
-      end;
-    end;
-    mVariable := CreatedVariable(ATry);
-    if mVariable <> '' then
-    begin
-      mMessage := cTexts[TGeneralText.EmptyFinallyFree].Fmt([mVariable]);
-    end
-    else
-    begin
-      mMessage := cTexts[TGeneralText.EmptyFinally].Text;
-    end;
-    if Fix(ATry, mTryToken, mFinallyToken, mEndToken, mRuleFix) then
-    begin
-      AReport.Add(TokenRange(mTokens[mFinallyToken]), mMessage, TRuleConfidence.High, [mRuleFix]);
-    end
-    else
-    begin
-      AReport.Add(TokenRange(mTokens[mFinallyToken]), mMessage, TRuleConfidence.High, []);
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Walk(ARoot: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TryStatement) and (mNode.ChildCount > 0) then
-        begin
-          CheckTry(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+// Index des Tokens mit dem Schlüsselwort AWord ab Offset AFrom (erstes) bzw. vor ABefore (letztes); -1 ohne.
+function TEmptyFinallyScan.FirstKeyword(const AWord: string; AFrom: Integer): Integer;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  for Result := 0 to High(FTokens) do
+  begin
+    if (FTokens[Result].Offset >= AFrom) and FTokens[Result].IsKeyword(AWord) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+function TEmptyFinallyScan.LastKeyword(const AWord: string; ABefore: Integer): Integer;
+begin
+  for Result := High(FTokens) downto 0 do
+  begin
+    if (FTokens[Result].Offset < ABefore) and FTokens[Result].IsKeyword(AWord) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+// Variable aus X := T….Create direkt vor dem try; '' ohne.
+function TEmptyFinallyScan.CreatedVariable(ATry: TSyntaxNode): string;
+var
+  mParent, mPrevious, mValue: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := '';
+  mParent := ATry.Parent;
+  if mParent = nil then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  Walk(AContext.Tree.Root);
+  mPrevious := nil;
+  for mIndex := 1 to mParent.ChildCount - 1 do
+  begin
+    if mParent[mIndex] = ATry then
+    begin
+      mPrevious := mParent[mIndex - 1];
+    end;
+  end;
+  if (mPrevious = nil) or (mPrevious.Kind <> TSyntaxKind.AssignStatement) or (mPrevious.ChildCount <> 2) or
+    (mPrevious[0].Kind <> TSyntaxKind.Identifier) then
+  begin
+    Exit;
+  end;
+  mValue := mPrevious[1];
+  if (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount > 0) then
+  begin
+    mValue := mValue[0];
+  end;
+  if (mValue.Kind = TSyntaxKind.MemberAccess) and SameText(mValue.Name, 'Create') then
+  begin
+    Result := mPrevious[0].Name;
+  end;
+end;
+
+// Steht ATry in einer Anweisungsliste (begin … end, try, repeat …)? Sonst ist sie die einzige Anweisung
+// eines if, while, for, with oder case-Zweigs.
+function TEmptyFinallyScan.InStatementList(ATry: TSyntaxNode): Boolean;
+begin
+  Result := (ATry.Parent <> nil) and (ATry.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+    TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse]);
+end;
+
+/// <summary>Anweisungen im try-Teil von ATry (ohne finally und leere Anweisungen).</summary>
+function TEmptyFinallyScan.StatementCount(ATry: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  for mIndex := 0 to ATry.ChildCount - 1 do
+  begin
+    if not (ATry[mIndex].Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.EmptyStatement]) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
+/// <summary>Stehen try, finally und end je allein auf ihrer Zeile? AEnding: die Zeile von end, getrimmt.
+/// </summary>
+function TEmptyFinallyScan.OwnLines(ATryLine, AFinallyLine, AEndLine: Integer; out AEnding: string): Boolean;
+begin
+  AEnding := '';
+  Result := (AEndLine <= High(FLines)) and (Trim(FLines[ATryLine]) = 'try') and
+    (Trim(FLines[AFinallyLine]) = 'finally');
+  if Result then
+  begin
+    AEnding := Trim(FLines[AEndLine]);
+    Result := (AEnding = 'end') or (AEnding = 'end;');
+  end;
+end;
+
+/// <summary>Rumpf zwischen try und finally als begin … end.</summary>
+function TEmptyFinallyScan.BeginEndBody(ATryLine, AFinallyLine, AEndLine: Integer): TArray<string>;
+var
+  mLine: Integer;
+begin
+  Result := [TTextLines.IndentOf(FLines[ATryLine]) + 'begin'];
+  for mLine := ATryLine + 1 to AFinallyLine - 1 do
+  begin
+    Result := Result + [FLines[mLine]];
+  end;
+  Result := Result + [FLines[AEndLine]];
+end;
+
+/// <summary>Unterschied zwischen der Einrückung des Rumpfs und der von try; 0, wenn er nicht weiter
+/// eingerückt ist.</summary>
+function TEmptyFinallyScan.BodyShift(ATryLine, AFinallyLine: Integer): Integer;
+var
+  mLine: Integer;
+begin
+  Result := MaxInt;
+  for mLine := ATryLine + 1 to AFinallyLine - 1 do
+  begin
+    if Trim(FLines[mLine]) <> '' then
+    begin
+      Result := Min(Result, TTextLines.IndentLength(FLines[mLine]) - TTextLines.IndentLength(FLines[ATryLine]));
+    end;
+  end;
+  if (Result = MaxInt) or (Result < 0) then
+  begin
+    Result := 0;
+  end;
+end;
+
+/// <summary>Rumpf zwischen try und finally, um seine zusätzliche Einrückung ausgerückt; nil ohne Zeilen.
+/// end; trennte die Anweisung von der folgenden: Das Semikolon wandert an die letzte Zeile des Rumpfs.
+/// </summary>
+function TEmptyFinallyScan.OutdentedBody(ATryLine, AFinallyLine: Integer; const AEnding: string): TArray<string>;
+var
+  mLine, mShift: Integer;
+  mText: string;
+begin
+  mShift := BodyShift(ATryLine, AFinallyLine);
+  Result := nil;
+  for mLine := ATryLine + 1 to AFinallyLine - 1 do
+  begin
+    if Trim(FLines[mLine]) = '' then
+    begin
+      Result := Result + [''];
+    end
+    else
+    begin
+      Result := Result + [Copy(FLines[mLine], mShift + 1, MaxInt)];
+    end;
+  end;
+  if Result = nil then
+  begin
+    Exit;
+  end;
+  mText := TrimRight(Result[High(Result)]);
+  if (AEnding = 'end;') and not EndsStr(';', mText) then
+  begin
+    Result[High(Result)] := mText + ';';
+  end;
+end;
+
+// try, finally und end stehen je allein auf ihrer Zeile (end mit oder ohne Semikolon): Dann entfernt die
+// Korrektur die drei Zeilen und rückt den Rumpf aus; als einzige Anweisung mit mehreren Anweisungen im Rumpf
+// wird aus try begin.
+function TEmptyFinallyScan.Fix(ATry: TSyntaxNode; ATryToken, AFinallyToken, AEndToken: Integer;
+  out AFix: TRuleFix): Boolean;
+var
+  mTryLine, mFinallyLine, mEndLine: Integer;
+  mBody: TArray<string>;
+  mEnding: string;
+  mRange: TTextRange;
+begin
+  mTryLine := FTokens[ATryToken].StartPos.Line;
+  mFinallyLine := FTokens[AFinallyToken].StartPos.Line;
+  mEndLine := FTokens[AEndToken].StartPos.Line;
+  if not OwnLines(mTryLine, mFinallyLine, mEndLine, mEnding) then
+  begin
+    Exit(False);
+  end;
+  mRange := TTextRange.Create(TTextPosition.Create(mTryLine, 0), TTextPosition.Create(mEndLine,
+    Length(FLines[mEndLine])));
+  if not InStatementList(ATry) and (StatementCount(ATry) > 1) then
+  begin
+    AFix := TRuleFix.Create(cTexts[TGeneralText.ReplaceTryByBegin].Text,
+      [TRuleEdit.Create(mRange, TTextLines.JoinLines(BeginEndBody(mTryLine, mFinallyLine, mEndLine), FLineBreak))]);
+    Exit(True);
+  end;
+  // Rumpf um den Unterschied zwischen seiner Einrückung und der von try ausrücken.
+  mBody := OutdentedBody(mTryLine, mFinallyLine, mEnding);
+  Result := mBody <> nil;
+  if Result then
+  begin
+    AFix := TRuleFix.Create(cTexts[TGeneralText.RemoveTry].Text,
+      [TRuleEdit.Create(mRange, TTextLines.JoinLines(mBody, FLineBreak))]);
+  end;
+end;
+
+procedure TEmptyFinallyScan.CheckTry(ATry: TSyntaxNode);
+var
+  mBlock: TSyntaxNode;
+  mTryToken, mFinallyToken, mEndToken, mIndex: Integer;
+  mVariable, mMessage: string;
+  mRuleFix: TRuleFix;
+begin
+  mBlock := ATry[ATry.ChildCount - 1];
+  if (mBlock.Kind <> TSyntaxKind.FinallyBlock) or not IsEmptyBlock(mBlock) then
+  begin
+    Exit;
+  end;
+  mTryToken := FirstKeyword('try', ATry.StartOffset);
+  mFinallyToken := LastKeyword('finally', ATry.EndOffset);
+  mEndToken := LastKeyword('end', ATry.EndOffset);
+  if (mTryToken < 0) or (mFinallyToken < 0) or (mEndToken <= mFinallyToken) then
+  begin
+    Exit;
+  end;
+  // Ein Kommentar begründet den leeren Block; eine Direktive kann Code eines anderen Zweigs enthalten.
+  for mIndex := mFinallyToken + 1 to mEndToken - 1 do
+  begin
+    if FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Exit;
+    end;
+  end;
+  mVariable := CreatedVariable(ATry);
+  if mVariable <> '' then
+  begin
+    mMessage := cTexts[TGeneralText.EmptyFinallyFree].Fmt([mVariable]);
+  end
+  else
+  begin
+    mMessage := cTexts[TGeneralText.EmptyFinally].Text;
+  end;
+  if Fix(ATry, mTryToken, mFinallyToken, mEndToken, mRuleFix) then
+  begin
+    FReport.Add(TokenRange(FTokens[mFinallyToken]), mMessage, TRuleConfidence.High, [mRuleFix]);
+  end
+  else
+  begin
+    FReport.Add(TokenRange(FTokens[mFinallyToken]), mMessage, TRuleConfidence.High, []);
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TEmptyFinallyScan.Walk(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TryStatement) and (mNode.ChildCount > 0) then
+      begin
+        CheckTry(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TEmptyFinallyScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  Walk(FContext.Tree.Root);
+end;
+
+procedure TEmptyFinallyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TEmptyFinallyScan;
+begin
+  mScan := TEmptyFinallyScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { Interface-Deklarationen }

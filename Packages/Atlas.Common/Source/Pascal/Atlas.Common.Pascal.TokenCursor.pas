@@ -77,6 +77,13 @@ function MatchingParen(const ATokens: TArray<TPascalToken>; AOpen: Integer): Int
 /// ), Strings und Kommentare nicht beachtet (für kurze Ausschnitte wie Parameterlisten und Direktiven). 0 ohne
 /// Gegenstück oder wenn an AOpen keine öffnende Klammer steht.</summary>
 function MatchingParen(const AText: string; AOpen: Integer): Integer; overload;
+/// <summary>Index in ACode (Indizes der Code-Tokens in ATokens, nach Offset sortiert) des ersten Code-Tokens,
+/// das bei AOffset oder dahinter beginnt (binäre Suche); Length(ACode), wenn keines folgt.</summary>
+function CodeIndexAt(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>; AOffset: Integer): Integer;
+/// <summary>Index in ACode der schließenden Klammer zur öffnenden an AOpen (AOpen ab 0); runde und eckige
+/// Klammern zählen gemeinsam. -1 ohne Gegenstück.</summary>
+function CodeClosingParen(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>;
+  AOpen: Integer): Integer;
 /// <summary>Index des ersten Tokens, das bei APosition (Zeile und Spalte) oder dahinter beginnt (binäre Suche);
 /// Length(ATokens), wenn keines folgt.</summary>
 function TokenFromPosition(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
@@ -244,6 +251,53 @@ begin
     end;
   end;
   Result := 0;
+end;
+
+function CodeIndexAt(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>; AOffset: Integer): Integer;
+var
+  mHigh, mMiddle: Integer;
+begin
+  // Binär statt ab Dateianfang mit einer Kopie je Token: ACode steht nach Offset sortiert (#1342).
+  Result := 0;
+  mHigh := Length(ACode);
+  while Result < mHigh do
+  begin
+    mMiddle := (Result + mHigh) div 2;
+    if ATokens[ACode[mMiddle]].Offset < AOffset then
+    begin
+      Result := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
+    end;
+  end;
+end;
+
+function CodeClosingParen(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>;
+  AOpen: Integer): Integer;
+var
+  mDepth: Integer;
+  mToken: TPascalToken;
+begin
+  mDepth := 0;
+  for Result := AOpen to High(ACode) do
+  begin
+    mToken := ATokens[ACode[Result]];
+    if mToken.IsSymbol('(') or mToken.IsSymbol('[') then
+    begin
+      Inc(mDepth);
+    end
+    else if mToken.IsSymbol(')') or mToken.IsSymbol(']') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  Result := -1;
 end;
 
 /// <summary>Liegt A vor B (Zeile, dann Spalte)? AOrEqual: auch bei Gleichheit.</summary>

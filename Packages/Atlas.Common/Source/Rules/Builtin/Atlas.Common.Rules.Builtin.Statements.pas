@@ -114,232 +114,265 @@ begin
     cTexts[TStatementsText.EmptyTitle].Text);
 end;
 
-procedure TEmptyStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TTokens;
-  mAllowCommented: Boolean;
-  mReport: IRuleReport;
-
-  // Semikolon ANext direkt nach dem Schlüsselwort AKeyword melden, außer am Blockende.
-  procedure InspectSemicolon(AKeyword, ANext: Integer; AIsLoop: Boolean);
-  var
-    mAfter: Integer;
-    mWord, mMessage: string;
-  begin
-    mAfter := NextCode(mTokens, ANext + 1);
-    // Am Blockende ändert das Semikolon nichts am Ablauf (z. B. while not Fertig do; als Warteschleife).
-    if (mAfter > High(mTokens)) or (mTokens[mAfter].Kind = TPascalTokenKind.Keyword) and
-      MatchText(mTokens[mAfter].Text, ['end', 'until', 'except', 'finally', 'else']) then
-    begin
-      Exit;
-    end;
-    mWord := LowerCase(mTokens[AKeyword].Text);
-    if AIsLoop then
-    begin
-      mMessage := cTexts[TStatementsText.EmptyLoop].Fmt([mWord]);
-    end
-    else
-    begin
-      mMessage := cTexts[TStatementsText.EmptyNextLine].Fmt([mWord]);
-    end;
-    mReport.Add(TTextRange.Create(mTokens[AKeyword].StartPos, mTokens[ANext].EndPos), mMessage, TRuleConfidence.High,
-      [TRuleFix.Create(cTexts[TStatementsText.RemoveSemicolon].Text,
-        [TRuleEdit.Create(TTextRange.Create(mTokens[ANext].StartPos,
-      mTokens[ANext].EndPos), '')])]);
+type
+  /// <summary>Ein Lauf von TEmptyStatementRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TEmptyStatementScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FAllowCommented: Boolean;
+    procedure InspectSemicolon(AKeyword, ANext: Integer; AIsLoop: Boolean);
+    procedure InspectEmptyBlock(AKeyword, ANext: Integer; ABody: TSyntaxNode);
+    procedure Inspect(AKeyword: Integer; ABody: TSyntaxNode; AIsLoop: Boolean);
+    function InChildStatement(ANode: TSyntaxNode; AIndex: Integer): Boolean;
+    function OwnKeyword(ANode: TSyntaxNode; AFrom, AStop: Integer; const AWord: string): Integer;
+    procedure VisitIf(ANode: TSyntaxNode; AStop: Integer);
+    function WithCalls(ANode: TSyntaxNode): Boolean;
+    procedure VisitLoop(ANode: TSyntaxNode; AStop: Integer);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // begin end ohne Anweisung ab Token ANext, mit Kommentar darin nur bei allowCommented = false. Mit bedingtem
-  // Code darin ({$IF …} bzw. {$ELSE}) ist der Block nur auf dieser Plattform leer: still.
-  procedure InspectEmptyBlock(AKeyword, ANext: Integer; ABody: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mHasComment, mConditional: Boolean;
-  begin
-    mHasComment := False;
-    mConditional := False;
-    mIndex := ANext + 1;
-    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ABody.EndOffset) do
-    begin
-      mHasComment := mHasComment or (mTokens[mIndex].Kind = TPascalTokenKind.Comment);
-      mConditional := mConditional or ((mTokens[mIndex].Kind = TPascalTokenKind.Directive) and
-        (StartsText('{$IF', mTokens[mIndex].Text) or StartsText('{$ELSE', mTokens[mIndex].Text)));
-      Inc(mIndex);
-    end;
-    if not mConditional and not (mHasComment and mAllowCommented) then
-    begin
-      mReport.Add(TTextRange.Create(mTokens[AKeyword].StartPos, mTokens[mIndex - 1].EndPos),
-        cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(mTokens[AKeyword].Text)]),
-        TRuleConfidence.High);
-    end;
-  end;
+{ TEmptyStatementScan }
 
-  // AKeyword: Index von then/do/else; ABody: Anweisung danach oder nil.
-  procedure Inspect(AKeyword: Integer; ABody: TSyntaxNode; AIsLoop: Boolean);
-  var
-    mNext: Integer;
-  begin
-    if AKeyword < 0 then
-    begin
-      Exit;
-    end;
-    mNext := NextCode(mTokens, AKeyword + 1);
-    if mNext > High(mTokens) then
-    begin
-      Exit;
-    end;
-    if mTokens[mNext].IsSymbol(';') and ((ABody = nil) or (ABody.StartOffset > mTokens[mNext].Offset)) then
-    begin
-      InspectSemicolon(AKeyword, mNext, AIsLoop);
-    end
-    else if (ABody <> nil) and (ABody.Kind = TSyntaxKind.Block) and (ABody.ChildCount = 0) and
-      mTokens[mNext].IsKeyword('begin') and (mTokens[mNext].Offset = ABody.StartOffset) then
-    begin
-      InspectEmptyBlock(AKeyword, mNext, ABody);
-    end;
-  end;
-
-  // Liegt der Token AIndex in einer untergeordneten Anweisung von ANode?
-  function InChildStatement(ANode: TSyntaxNode; AIndex: Integer): Boolean;
-  var
-    mChild: Integer;
-  begin
-    Result := False;
-    for mChild := 0 to ANode.ChildCount - 1 do
-    begin
-      if (ANode[mChild].Kind in StatementKinds) and (mTokens[AIndex].Offset >= ANode[mChild].StartOffset) and
-        (mTokens[AIndex].Offset < ANode[mChild].EndOffset) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  // Schlüsselwort AWord dieses Knotens: auf Klammerebene 0 und nicht in einer untergeordneten Anweisung.
-  function OwnKeyword(ANode: TSyntaxNode; AFrom, AStop: Integer; const AWord: string): Integer;
-  var
-    mIndex, mDepth: Integer;
-  begin
-    mDepth := 0;
-    for mIndex := AFrom to AStop - 1 do
-    begin
-      if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
-      begin
-        Inc(mDepth);
-      end
-      else if mTokens[mIndex].IsSymbol(')') or mTokens[mIndex].IsSymbol(']') then
-      begin
-        Dec(mDepth);
-      end
-      else if (mDepth = 0) and mTokens[mIndex].IsKeyword(AWord) and not InChildStatement(ANode, mIndex) then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-    Result := -1;
-  end;
-
-  procedure VisitIf(ANode: TSyntaxNode; AStop: Integer);
-  var
-    mThen, mElse: Integer;
-    mBody: TSyntaxNode;
-  begin
-    mThen := OwnKeyword(ANode, TokenFrom(mTokens, ANode[0].EndOffset), AStop, 'then');
-    if mThen < 0 then
-    begin
-      Exit;
-    end;
-    mElse := OwnKeyword(ANode, mThen + 1, AStop, 'else');
-    mBody := StatementAfter(ANode, mTokens[mThen].Offset);
-    if (mBody <> nil) and (mElse >= 0) and (mBody.StartOffset > mTokens[mElse].Offset) then
-    begin
-      mBody := nil;
-    end;
-    Inspect(mThen, mBody, False);
-    if mElse >= 0 then
-    begin
-      Inspect(mElse, StatementAfter(ANode, mTokens[mElse].Offset), False);
-    end;
-  end;
-
-  // Ruft ein Ausdruck vor do von with etwas auf (with CL.Add(TX) do begin end;)? Dann geschieht dort etwas.
-  function WithCalls(ANode: TSyntaxNode): Boolean;
-  var
-    mIndex: Integer;
-    mFound: Boolean;
-  begin
-    mFound := False;
-    for mIndex := 0 to ANode.ChildCount - 2 do
-    begin
-      ANode[mIndex].Walk(
-        function(AChild: TSyntaxNode): Boolean
-        begin
-          mFound := mFound or (AChild.Kind = TSyntaxKind.Call);
-          Result := not mFound;
-        end);
-    end;
-    Result := mFound;
-  end;
-
-  procedure VisitLoop(ANode: TSyntaxNode; AStop: Integer);
-  var
-    mDo: Integer;
-  begin
-    if (ANode.Kind = TSyntaxKind.WithStatement) and WithCalls(ANode) then
-    begin
-      Exit;
-    end;
-    mDo := OwnKeyword(ANode, TokenFrom(mTokens, ANode.StartOffset), AStop, 'do');
-    if mDo >= 0 then
-    begin
-      Inspect(mDo, StatementAfter(ANode, mTokens[mDo].Offset), ANode.Kind <> TSyntaxKind.WithStatement);
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex, mStop: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): lange else-if-Ketten ergeben sehr tiefe Bäume.
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mStop := TokenFrom(mTokens, mNode.EndOffset);
-        case mNode.Kind of
-          TSyntaxKind.IfStatement:
-            if mNode.ChildCount > 0 then
-            begin
-              VisitIf(mNode, mStop);
-            end;
-          TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
-          TSyntaxKind.WithStatement:
-            VisitLoop(mNode, mStop);
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+constructor TEmptyStatementScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+// Semikolon ANext direkt nach dem Schlüsselwort AKeyword melden, außer am Blockende.
+procedure TEmptyStatementScan.InspectSemicolon(AKeyword, ANext: Integer; AIsLoop: Boolean);
+var
+  mAfter: Integer;
+  mWord, mMessage: string;
+begin
+  mAfter := NextCode(FTokens, ANext + 1);
+  // Am Blockende ändert das Semikolon nichts am Ablauf (z. B. while not Fertig do; als Warteschleife).
+  if (mAfter > High(FTokens)) or (FTokens[mAfter].Kind = TPascalTokenKind.Keyword) and
+    MatchText(FTokens[mAfter].Text, ['end', 'until', 'except', 'finally', 'else']) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mAllowCommented := TRuleOptions.Bool(AContext.Options, 'allowCommented', True);
-  mReport := AReport;
-  Visit(AContext.Tree.Root);
+  mWord := LowerCase(FTokens[AKeyword].Text);
+  if AIsLoop then
+  begin
+    mMessage := cTexts[TStatementsText.EmptyLoop].Fmt([mWord]);
+  end
+  else
+  begin
+    mMessage := cTexts[TStatementsText.EmptyNextLine].Fmt([mWord]);
+  end;
+  FReport.Add(TTextRange.Create(FTokens[AKeyword].StartPos, FTokens[ANext].EndPos), mMessage, TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TStatementsText.RemoveSemicolon].Text,
+      [TRuleEdit.Create(TTextRange.Create(FTokens[ANext].StartPos,
+    FTokens[ANext].EndPos), '')])]);
+end;
+
+// begin end ohne Anweisung ab Token ANext, mit Kommentar darin nur bei allowCommented = false. Mit bedingtem
+// Code darin ({$IF …} bzw. {$ELSE}) ist der Block nur auf dieser Plattform leer: still.
+procedure TEmptyStatementScan.InspectEmptyBlock(AKeyword, ANext: Integer; ABody: TSyntaxNode);
+var
+  mIndex: Integer;
+  mHasComment, mConditional: Boolean;
+begin
+  mHasComment := False;
+  mConditional := False;
+  mIndex := ANext + 1;
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ABody.EndOffset) do
+  begin
+    mHasComment := mHasComment or (FTokens[mIndex].Kind = TPascalTokenKind.Comment);
+    mConditional := mConditional or ((FTokens[mIndex].Kind = TPascalTokenKind.Directive) and
+      (StartsText('{$IF', FTokens[mIndex].Text) or StartsText('{$ELSE', FTokens[mIndex].Text)));
+    Inc(mIndex);
+  end;
+  if not mConditional and not (mHasComment and FAllowCommented) then
+  begin
+    FReport.Add(TTextRange.Create(FTokens[AKeyword].StartPos, FTokens[mIndex - 1].EndPos),
+      cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(FTokens[AKeyword].Text)]),
+      TRuleConfidence.High);
+  end;
+end;
+
+// AKeyword: Index von then/do/else; ABody: Anweisung danach oder nil.
+procedure TEmptyStatementScan.Inspect(AKeyword: Integer; ABody: TSyntaxNode; AIsLoop: Boolean);
+var
+  mNext: Integer;
+begin
+  if AKeyword < 0 then
+  begin
+    Exit;
+  end;
+  mNext := NextCode(FTokens, AKeyword + 1);
+  if mNext > High(FTokens) then
+  begin
+    Exit;
+  end;
+  if FTokens[mNext].IsSymbol(';') and ((ABody = nil) or (ABody.StartOffset > FTokens[mNext].Offset)) then
+  begin
+    InspectSemicolon(AKeyword, mNext, AIsLoop);
+  end
+  else if (ABody <> nil) and (ABody.Kind = TSyntaxKind.Block) and (ABody.ChildCount = 0) and
+    FTokens[mNext].IsKeyword('begin') and (FTokens[mNext].Offset = ABody.StartOffset) then
+  begin
+    InspectEmptyBlock(AKeyword, mNext, ABody);
+  end;
+end;
+
+// Liegt der Token AIndex in einer untergeordneten Anweisung von ANode?
+function TEmptyStatementScan.InChildStatement(ANode: TSyntaxNode; AIndex: Integer): Boolean;
+var
+  mChild: Integer;
+begin
+  Result := False;
+  for mChild := 0 to ANode.ChildCount - 1 do
+  begin
+    if (ANode[mChild].Kind in StatementKinds) and (FTokens[AIndex].Offset >= ANode[mChild].StartOffset) and
+      (FTokens[AIndex].Offset < ANode[mChild].EndOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+// Schlüsselwort AWord dieses Knotens: auf Klammerebene 0 und nicht in einer untergeordneten Anweisung.
+function TEmptyStatementScan.OwnKeyword(ANode: TSyntaxNode; AFrom, AStop: Integer; const AWord: string): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  mDepth := 0;
+  for mIndex := AFrom to AStop - 1 do
+  begin
+    if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
+    begin
+      Inc(mDepth);
+    end
+    else if FTokens[mIndex].IsSymbol(')') or FTokens[mIndex].IsSymbol(']') then
+    begin
+      Dec(mDepth);
+    end
+    else if (mDepth = 0) and FTokens[mIndex].IsKeyword(AWord) and not InChildStatement(ANode, mIndex) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TEmptyStatementScan.VisitIf(ANode: TSyntaxNode; AStop: Integer);
+var
+  mThen, mElse: Integer;
+  mBody: TSyntaxNode;
+begin
+  mThen := OwnKeyword(ANode, TokenFrom(FTokens, ANode[0].EndOffset), AStop, 'then');
+  if mThen < 0 then
+  begin
+    Exit;
+  end;
+  mElse := OwnKeyword(ANode, mThen + 1, AStop, 'else');
+  mBody := StatementAfter(ANode, FTokens[mThen].Offset);
+  if (mBody <> nil) and (mElse >= 0) and (mBody.StartOffset > FTokens[mElse].Offset) then
+  begin
+    mBody := nil;
+  end;
+  Inspect(mThen, mBody, False);
+  if mElse >= 0 then
+  begin
+    Inspect(mElse, StatementAfter(ANode, FTokens[mElse].Offset), False);
+  end;
+end;
+
+// Ruft ein Ausdruck vor do von with etwas auf (with CL.Add(TX) do begin end;)? Dann geschieht dort etwas.
+function TEmptyStatementScan.WithCalls(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mFound: Boolean;
+begin
+  mFound := False;
+  for mIndex := 0 to ANode.ChildCount - 2 do
+  begin
+    ANode[mIndex].Walk(
+      function(AChild: TSyntaxNode): Boolean
+      begin
+        mFound := mFound or (AChild.Kind = TSyntaxKind.Call);
+        Result := not mFound;
+      end);
+  end;
+  Result := mFound;
+end;
+
+procedure TEmptyStatementScan.VisitLoop(ANode: TSyntaxNode; AStop: Integer);
+var
+  mDo: Integer;
+begin
+  if (ANode.Kind = TSyntaxKind.WithStatement) and WithCalls(ANode) then
+  begin
+    Exit;
+  end;
+  mDo := OwnKeyword(ANode, TokenFrom(FTokens, ANode.StartOffset), AStop, 'do');
+  if mDo >= 0 then
+  begin
+    Inspect(mDo, StatementAfter(ANode, FTokens[mDo].Offset), ANode.Kind <> TSyntaxKind.WithStatement);
+  end;
+end;
+
+procedure TEmptyStatementScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex, mStop: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): lange else-if-Ketten ergeben sehr tiefe Bäume.
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mStop := TokenFrom(FTokens, mNode.EndOffset);
+      case mNode.Kind of
+        TSyntaxKind.IfStatement:
+          if mNode.ChildCount > 0 then
+          begin
+            VisitIf(mNode, mStop);
+          end;
+        TSyntaxKind.WhileStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
+        TSyntaxKind.WithStatement:
+          VisitLoop(mNode, mStop);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TEmptyStatementScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FAllowCommented := TRuleOptions.Bool(FContext.Options, 'allowCommented', True);
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TEmptyStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TEmptyStatementScan;
+begin
+  mScan := TEmptyStatementScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TDestroyCalledDirectlyRule }

@@ -202,384 +202,422 @@ begin
     cTexts[TTypeDeclarationsText.MessageTitle].Text);
 end;
 
-procedure TMessageMethodInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TMessageMethodInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TMessageMethodInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FMethods: TList<TMessageMethod>;
+    FPaths: TArray<string>;
+    FFileName: string;
+    function FirstToken(ANode: TSyntaxNode): Integer;
+    procedure AddMethod(AHeader, ADirective: TSyntaxNode; const AClassName: string);
+    procedure CollectClass(AClass: TSyntaxNode; const AClassName: string);
+    procedure Collect(ARoot: TSyntaxNode; const AOwner: string);
+    function NameRange(AHeader: TSyntaxNode): TTextRange;
+    function ExpressionText(const AMethod: TMessageMethod): string;
+    function MethodName(AHeader: TSyntaxNode): string;
+    function SingleParameter(AHeader: TSyntaxNode; out AParam: TSyntaxNode): Boolean;
+    function ParameterEdits(AHeader: TSyntaxNode; out AEdits: TArray<TTextEdit>): Boolean;
+    function SignatureFix(const AMethod: TMessageMethod): TArray<TRuleFix>;
+    procedure CheckParameters(const AMethod: TMessageMethod);
+    function PathOf(const AMethod: TMessageMethod): string;
+    function EarlierHandler(const AKeys: TArray<string>; const AKnown: TArray<Boolean>; AIndex: Integer): Integer;
+    procedure CheckNumber(AValues: TConstantValues; AIndex: Integer; var AKeys: TArray<string>;
+      var AKnown: TArray<Boolean>);
+    procedure CheckNumbers;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TMessageMethodInvalidScan }
+
+constructor TMessageMethodInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TMessageMethodInvalidScan.FirstToken(ANode: TSyntaxNode): Integer;
+begin
+  Result := TokenFrom(FTokens, ANode.StartOffset);
+end;
+
+procedure TMessageMethodInvalidScan.AddMethod(AHeader, ADirective: TSyntaxNode; const AClassName: string);
 var
-  mTokens: TArray<TPascalToken>;
-  mMethods: TList<TMessageMethod>;
-  mPaths: TArray<string>;
-  mFileName: string;
-
-  function FirstToken(ANode: TSyntaxNode): Integer;
-  begin
-    Result := TokenFrom(mTokens, ANode.StartOffset);
-  end;
-
-  function NextCode(AIndex, AStop: Integer): Integer;
-  begin
-    Result := AIndex;
-    while (Result < AStop) and IsTrivia(mTokens[Result]) do
-    begin
-      Inc(Result);
-    end;
-  end;
-
-  procedure AddMethod(AHeader, ADirective: TSyntaxNode; const AClassName: string);
-  var
-    mStop: Integer;
-    mMethod: TMessageMethod;
-  begin
-    mMethod := Default(TMessageMethod);
-    mMethod.ClassName := AClassName;
-    mMethod.Header := AHeader;
-    mMethod.Directive := ADirective;
-    mStop := TokenFrom(mTokens, ADirective.EndOffset);
-    mMethod.First := NextCode(FirstToken(ADirective) + 1, mStop);
-    mMethod.Last := mStop - 1;
-    while (mMethod.Last >= mMethod.First) and IsTrivia(mTokens[mMethod.Last]) do
-    begin
-      Dec(mMethod.Last);
-    end;
-    mMethods.Add(mMethod);
-  end;
-
-  /// <summary>Merkt die message-Methoden der Klasse AClass mit dem Namen AClassName.</summary>
-  procedure CollectClass(AClass: TSyntaxNode; const AClassName: string);
-  var
-    mIndex: Integer;
-    mDirective: TSyntaxNode;
-  begin
-    for mIndex := 0 to AClass.ChildCount - 1 do
-    begin
-      if AClass[mIndex].Kind <> TSyntaxKind.RoutineHeader then
-      begin
-        Continue;
-      end;
-      mDirective := MessageDirective(AClass[mIndex]);
-      if mDirective <> nil then
-      begin
-        AddMethod(AClass[mIndex], mDirective, AClassName);
-      end;
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Collect(ARoot: TSyntaxNode; const AOwner: string);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mPendingOwner: TStack<string>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-    mName: string;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    mPendingOwner := TStack<string>.Create;
-    try
-      mPending.Push(ARoot);
-      mPendingOwner.Push(AOwner);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mName := NestedTypeName(mPendingOwner.Pop, mNode);
-        if mNode.Kind = TSyntaxKind.ClassType then
-        begin
-          CollectClass(mNode, mName);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          if mNode[mIndex].Kind in cDeclarationKinds then
-          begin
-            mPending.Push(mNode[mIndex]);
-            mPendingOwner.Push(mName);
-          end;
-        end;
-      end;
-    finally
-      mPendingOwner.Free;
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Name der Methode im Kopf (Token hinter procedure/function).</summary>
-  function NameRange(AHeader: TSyntaxNode): TTextRange;
-  var
-    mIndex, mStop: Integer;
-  begin
-    Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
-    mStop := TokenFrom(mTokens, AHeader.EndOffset);
-    for mIndex := FirstToken(AHeader) to mStop - 1 do
-    begin
-      if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
-      begin
-        Exit(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos));
-      end;
-    end;
-  end;
-
-  function ExpressionText(const AMethod: TMessageMethod): string;
-  var
-    mIndex: Integer;
-  begin
-    Result := '';
-    for mIndex := AMethod.First to AMethod.Last do
-    begin
-      if not IsTrivia(mTokens[mIndex]) then
-      begin
-        if (Result <> '') and (mTokens[mIndex - 1].Offset + Length(mTokens[mIndex -
-          1].Text) <> mTokens[mIndex].Offset) then
-        begin
-          Result := Result + ' ';
-        end;
-        Result := Result + mTokens[mIndex].Text;
-      end;
-    end;
-  end;
-
-  function MethodName(AHeader: TSyntaxNode): string;
-  var
-    mDot: Integer;
-  begin
-    Result := AHeader.Name;
-    mDot := LastDelimiter('.', Result);
-    if mDot > 0 then
-    begin
-      Result := Copy(Result, mDot + 1, MaxInt);
-    end;
-  end;
-
-  /// <summary>Einziger Parameter ohne var: nur den Modifizierer ändern.</summary>
-  function SingleParameter(AHeader: TSyntaxNode; out AParam: TSyntaxNode): Boolean;
-  var
-    mParams: TSyntaxNode;
-  begin
-    AParam := nil;
-    mParams := AHeader.FindChild(TSyntaxKind.Parameters);
-    Result := (mParams <> nil) and (mParams.ChildCount = 1) and (Pos(',', mParams[0].Name) = 0) and
-      (mParams[0].FindChild(TSyntaxKind.Attribute) = nil);
-    if Result then
-    begin
-      AParam := mParams[0];
-    end;
-  end;
-
-  function ParameterEdits(AHeader: TSyntaxNode; out AEdits: TArray<TTextEdit>): Boolean;
-  var
-    mParam, mParams: TSyntaxNode;
-    mIndex: Integer;
-    mPosition: TTextPosition;
-  begin
-    AEdits := nil;
-    Result := True;
-    if SingleParameter(AHeader, mParam) then
-    begin
-      mIndex := FirstToken(mParam);
-      if mParam.Modifier = TParameterModifier.None then
-      begin
-        AEdits := [TTextEdit.Create(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].StartPos), 'var ')];
-      end
-      else
-      begin
-        AEdits := [TTextEdit.Create(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos), 'var')];
-      end;
-      Exit;
-    end;
-    mParams := AHeader.FindChild(TSyntaxKind.Parameters);
-    if mParams <> nil then
-    begin
-      AEdits := [TTextEdit.Create(TTextRange.Create(mParams.StartPos, mParams.EndPos), cDefaultMessageParameter)];
-    end
-    else
-    begin
-      // Ohne Klammern: direkt hinter dem Namen einfügen.
-      mPosition := NameRange(AHeader).EndPos;
-      AEdits := [TTextEdit.Create(TTextRange.Create(mPosition, mPosition), cDefaultMessageParameter)];
-    end;
-  end;
-
-  function SignatureFix(const AMethod: TMessageMethod): TArray<TRuleFix>;
-  var
-    mEdits, mBodyEdits: TArray<TTextEdit>;
-    mDecl, mHeader: TSyntaxNode;
-    mParam: TSyntaxNode;
-  begin
-    Result := nil;
-    if not ParameterEdits(AMethod.Header, mEdits) then
-    begin
-      Exit;
-    end;
-    mDecl := MethodBody(AContext.Tree, AMethod.ClassName, MethodName(AMethod.Header));
-    if mDecl <> nil then
-    begin
-      mHeader := mDecl.FindChild(TSyntaxKind.RoutineHeader);
-      // Rumpf ohne Parameterliste darf so bleiben; sonst gleich anpassen.
-      if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.Parameters) <> nil) then
-      begin
-        if SingleParameter(AMethod.Header, mParam) <> SingleParameter(mHeader, mParam) then
-        begin
-          Exit;
-        end;
-        if ParameterEdits(mHeader, mBodyEdits) then
-        begin
-          mEdits := mEdits + mBodyEdits;
-        end;
-      end;
-    end;
-    if SingleParameter(AMethod.Header, mParam) then
-    begin
-      Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.PassAsVar].Fmt([mParam.Name]), mEdits)];
-    end
-    else
-    begin
-      Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.InsertSignature].Fmt([cDefaultMessageParameter]),
-        mEdits)];
-    end;
-  end;
-
-  procedure CheckParameters(const AMethod: TMessageMethod);
-  var
-    mParams: TSyntaxNode;
-    mKeyword: string;
-    mIndex: Integer;
-  begin
-    // Nur Prozeduren: message an Funktionen ist ein anderer Fall.
-    mIndex := NextCode(FirstToken(AMethod.Header), Length(mTokens));
-    if (mIndex < Length(mTokens)) and mTokens[mIndex].IsKeyword('class') then
-    begin
-      Exit;
-    end;
-    if mIndex >= Length(mTokens) then
-    begin
-      Exit;
-    end;
-    mKeyword := LowerCase(mTokens[mIndex].Text);
-    if mKeyword <> 'procedure' then
-    begin
-      Exit;
-    end;
-    mParams := AMethod.Header.FindChild(TSyntaxKind.Parameters);
-    if (mParams <> nil) and (mParams.ChildCount = 1) and (Pos(',', mParams[0].Name) = 0) and
-      (mParams[0].Modifier = TParameterModifier.VarParam) then
-    begin
-      Exit;
-    end;
-    AReport.Add(NameRange(AMethod.Header), cTexts[TTypeDeclarationsText.MessageParam].Fmt([MethodName(AMethod.Header)]),
-      TRuleConfidence.High, SignatureFix(AMethod));
-  end;
-
-  function PathOf(const AMethod: TMessageMethod): string;
-  begin
-    Result := TConditionalBranches.PathAt(mPaths, FirstToken(AMethod.Header));
-  end;
-
-  /// <summary>Behandelt eine frühere message-Methode derselben Klasse in derselben Bedingungsvariante die
-  /// Nummer mit dem Schlüssel AKeys[AIndex]? Index der früheren, -1 ohne.</summary>
-  function EarlierHandler(const AKeys: TArray<string>; const AKnown: TArray<Boolean>; AIndex: Integer): Integer;
-  var
-    mEarlier: Integer;
-  begin
-    for mEarlier := 0 to AIndex - 1 do
-    begin
-      if AKnown[mEarlier] and SameText(mMethods[mEarlier].ClassName, mMethods[AIndex].ClassName) and
-        (AKeys[mEarlier] = AKeys[AIndex]) and
-        not TConditionalBranches.Exclusive(PathOf(mMethods[mEarlier]), PathOf(mMethods[AIndex])) then
-      begin
-        Exit(mEarlier);
-      end;
-    end;
-    Result := -1;
-  end;
-
-  /// <summary>Prüft die Nummer der Methode AIndex (E2139, E2140) und merkt ihren Schlüssel.</summary>
-  procedure CheckNumber(AValues: TConstantValues; AIndex: Integer; var AKeys: TArray<string>;
-    var AKnown: TArray<Boolean>);
-  var
-    mValue: Int64;
-    mMethod: TMessageMethod;
-    mRange: TTextRange;
-    mEarlier: Integer;
-  begin
-    mMethod := mMethods[AIndex];
-    mRange := TTextRange.Create(mTokens[mMethod.First].StartPos, mTokens[mMethod.Last].EndPos);
-    if not AValues.Evaluate(mMethod.First, mMethod.Last, mValue) then
-    begin
-      AKeys[AIndex] := 't' + UpperCase(ExpressionText(mMethod).Replace(' ', ''));
-    end
-    else if mValue < 1 then
-    begin
-      AReport.Add(mRange, cTexts[TTypeDeclarationsText.MessageNumber].Fmt(
-        [ExpressionText(mMethod), MethodName(mMethod.Header)]), TRuleConfidence.High);
-      Exit;
-    end
-    else
-    begin
-      AKeys[AIndex] := 'v' + IntToStr(mValue);
-    end;
-    AKnown[AIndex] := True;
-    mEarlier := EarlierHandler(AKeys, AKnown, AIndex);
-    if mEarlier >= 0 then
-    begin
-      AReport.Add(mRange, cTexts[TTypeDeclarationsText.MessageHandled].Fmt([ExpressionText(mMethod),
-        MethodName(mMethods[mEarlier].Header)]), TRuleConfidence.High);
-    end;
-  end;
-
-  procedure CheckNumbers;
-  var
-    mResolver: TNameResolver;
-    mCache: IRuleDerivedCache;
-    mValues: TConstantValues;
-    mKeys: TArray<string>;
-    mKnown: TArray<Boolean>;
-    mIndex: Integer;
-  begin
-    SetLength(mKeys, mMethods.Count);
-    SetLength(mKnown, mMethods.Count);
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    mCache := TRuleDerived.Open(AContext);
-    mResolver := TRuleDerived.Resolver(mCache, AContext);
-    try
-      mResolver.PinTree(AContext.Tree, mFileName);
-      mValues := TConstantValues.Create(AContext.Tree, mFileName, AContext.Index, mResolver);
-      try
-        for mIndex := 0 to mMethods.Count - 1 do
-        begin
-          if mMethods[mIndex].First <= mMethods[mIndex].Last then
-          begin
-            CheckNumber(mValues, mIndex, mKeys, mKnown);
-          end;
-        end;
-      finally
-        mValues.Free;
-      end;
-    finally
-      mResolver.UnpinTree;
-    end;
-  end;
-
-var
+  mStop: Integer;
   mMethod: TMessageMethod;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  mMethod := Default(TMessageMethod);
+  mMethod.ClassName := AClassName;
+  mMethod.Header := AHeader;
+  mMethod.Directive := ADirective;
+  mStop := TokenFrom(FTokens, ADirective.EndOffset);
+  mMethod.First := NextCode(FTokens, FirstToken(ADirective) + 1);
+  if mMethod.First > mStop then
+  begin
+    mMethod.First := mStop;
+  end;
+  mMethod.Last := mStop - 1;
+  while (mMethod.Last >= mMethod.First) and IsTrivia(FTokens[mMethod.Last]) do
+  begin
+    Dec(mMethod.Last);
+  end;
+  FMethods.Add(mMethod);
+end;
+
+/// <summary>Merkt die message-Methoden der Klasse AClass mit dem Namen AClassName.</summary>
+procedure TMessageMethodInvalidScan.CollectClass(AClass: TSyntaxNode; const AClassName: string);
+var
+  mIndex: Integer;
+  mDirective: TSyntaxNode;
+begin
+  for mIndex := 0 to AClass.ChildCount - 1 do
+  begin
+    if AClass[mIndex].Kind <> TSyntaxKind.RoutineHeader then
+    begin
+      Continue;
+    end;
+    mDirective := MessageDirective(AClass[mIndex]);
+    if mDirective <> nil then
+    begin
+      AddMethod(AClass[mIndex], mDirective, AClassName);
+    end;
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TMessageMethodInvalidScan.Collect(ARoot: TSyntaxNode; const AOwner: string);
+var
+  mPending: TStack<TSyntaxNode>;
+  mPendingOwner: TStack<string>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingOwner := TStack<string>.Create;
+  try
+    mPending.Push(ARoot);
+    mPendingOwner.Push(AOwner);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mName := NestedTypeName(mPendingOwner.Pop, mNode);
+      if mNode.Kind = TSyntaxKind.ClassType then
+      begin
+        CollectClass(mNode, mName);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        if mNode[mIndex].Kind in cDeclarationKinds then
+        begin
+          mPending.Push(mNode[mIndex]);
+          mPendingOwner.Push(mName);
+        end;
+      end;
+    end;
+  finally
+    mPendingOwner.Free;
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Name der Methode im Kopf (Token hinter procedure/function).</summary>
+function TMessageMethodInvalidScan.NameRange(AHeader: TSyntaxNode): TTextRange;
+var
+  mIndex, mStop: Integer;
+begin
+  Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
+  mStop := TokenFrom(FTokens, AHeader.EndOffset);
+  for mIndex := FirstToken(AHeader) to mStop - 1 do
+  begin
+    if FTokens[mIndex].Kind = TPascalTokenKind.Identifier then
+    begin
+      Exit(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mIndex].EndPos));
+    end;
+  end;
+end;
+
+function TMessageMethodInvalidScan.ExpressionText(const AMethod: TMessageMethod): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AMethod.First to AMethod.Last do
+  begin
+    if not IsTrivia(FTokens[mIndex]) then
+    begin
+      if (Result <> '') and (FTokens[mIndex - 1].Offset + Length(FTokens[mIndex -
+        1].Text) <> FTokens[mIndex].Offset) then
+      begin
+        Result := Result + ' ';
+      end;
+      Result := Result + FTokens[mIndex].Text;
+    end;
+  end;
+end;
+
+function TMessageMethodInvalidScan.MethodName(AHeader: TSyntaxNode): string;
+var
+  mDot: Integer;
+begin
+  Result := AHeader.Name;
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
+  begin
+    Result := Copy(Result, mDot + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Einziger Parameter ohne var: nur den Modifizierer ändern.</summary>
+function TMessageMethodInvalidScan.SingleParameter(AHeader: TSyntaxNode; out AParam: TSyntaxNode): Boolean;
+var
+  mParams: TSyntaxNode;
+begin
+  AParam := nil;
+  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+  Result := (mParams <> nil) and (mParams.ChildCount = 1) and (Pos(',', mParams[0].Name) = 0) and
+    (mParams[0].FindChild(TSyntaxKind.Attribute) = nil);
+  if Result then
+  begin
+    AParam := mParams[0];
+  end;
+end;
+
+function TMessageMethodInvalidScan.ParameterEdits(AHeader: TSyntaxNode; out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mParam, mParams: TSyntaxNode;
+  mIndex: Integer;
+  mPosition: TTextPosition;
+begin
+  AEdits := nil;
+  Result := True;
+  if SingleParameter(AHeader, mParam) then
+  begin
+    mIndex := FirstToken(mParam);
+    if mParam.Modifier = TParameterModifier.None then
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mIndex].StartPos), 'var ')];
+    end
+    else
+    begin
+      AEdits := [TTextEdit.Create(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mIndex].EndPos), 'var')];
+    end;
+    Exit;
+  end;
+  mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams <> nil then
+  begin
+    AEdits := [TTextEdit.Create(TTextRange.Create(mParams.StartPos, mParams.EndPos), cDefaultMessageParameter)];
+  end
+  else
+  begin
+    // Ohne Klammern: direkt hinter dem Namen einfügen.
+    mPosition := NameRange(AHeader).EndPos;
+    AEdits := [TTextEdit.Create(TTextRange.Create(mPosition, mPosition), cDefaultMessageParameter)];
+  end;
+end;
+
+function TMessageMethodInvalidScan.SignatureFix(const AMethod: TMessageMethod): TArray<TRuleFix>;
+var
+  mEdits, mBodyEdits: TArray<TTextEdit>;
+  mDecl, mHeader: TSyntaxNode;
+  mParam: TSyntaxNode;
+begin
+  Result := nil;
+  if not ParameterEdits(AMethod.Header, mEdits) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mFileName := AContext.ResolverFileName;
-  mMethods := TList<TMessageMethod>.Create;
+  mDecl := MethodBody(FContext.Tree, AMethod.ClassName, MethodName(AMethod.Header));
+  if mDecl <> nil then
+  begin
+    mHeader := mDecl.FindChild(TSyntaxKind.RoutineHeader);
+    // Rumpf ohne Parameterliste darf so bleiben; sonst gleich anpassen.
+    if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.Parameters) <> nil) then
+    begin
+      if SingleParameter(AMethod.Header, mParam) <> SingleParameter(mHeader, mParam) then
+      begin
+        Exit;
+      end;
+      if ParameterEdits(mHeader, mBodyEdits) then
+      begin
+        mEdits := mEdits + mBodyEdits;
+      end;
+    end;
+  end;
+  if SingleParameter(AMethod.Header, mParam) then
+  begin
+    Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.PassAsVar].Fmt([mParam.Name]), mEdits)];
+  end
+  else
+  begin
+    Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.InsertSignature].Fmt([cDefaultMessageParameter]),
+      mEdits)];
+  end;
+end;
+
+procedure TMessageMethodInvalidScan.CheckParameters(const AMethod: TMessageMethod);
+var
+  mParams: TSyntaxNode;
+  mKeyword: string;
+  mIndex: Integer;
+begin
+  // Nur Prozeduren: message an Funktionen ist ein anderer Fall.
+  mIndex := NextCode(FTokens, FirstToken(AMethod.Header));
+  if (mIndex < Length(FTokens)) and FTokens[mIndex].IsKeyword('class') then
+  begin
+    Exit;
+  end;
+  if mIndex >= Length(FTokens) then
+  begin
+    Exit;
+  end;
+  mKeyword := LowerCase(FTokens[mIndex].Text);
+  if mKeyword <> 'procedure' then
+  begin
+    Exit;
+  end;
+  mParams := AMethod.Header.FindChild(TSyntaxKind.Parameters);
+  if (mParams <> nil) and (mParams.ChildCount = 1) and (Pos(',', mParams[0].Name) = 0) and
+    (mParams[0].Modifier = TParameterModifier.VarParam) then
+  begin
+    Exit;
+  end;
+  FReport.Add(NameRange(AMethod.Header), cTexts[TTypeDeclarationsText.MessageParam].Fmt([MethodName(AMethod.Header)]),
+    TRuleConfidence.High, SignatureFix(AMethod));
+end;
+
+function TMessageMethodInvalidScan.PathOf(const AMethod: TMessageMethod): string;
+begin
+  Result := TConditionalBranches.PathAt(FPaths, FirstToken(AMethod.Header));
+end;
+
+/// <summary>Behandelt eine frühere message-Methode derselben Klasse in derselben Bedingungsvariante die
+/// Nummer mit dem Schlüssel AKeys[AIndex]? Index der früheren, -1 ohne.</summary>
+function TMessageMethodInvalidScan.EarlierHandler(const AKeys: TArray<string>; const AKnown: TArray<Boolean>;
+  AIndex: Integer): Integer;
+var
+  mEarlier: Integer;
+begin
+  for mEarlier := 0 to AIndex - 1 do
+  begin
+    if AKnown[mEarlier] and SameText(FMethods[mEarlier].ClassName, FMethods[AIndex].ClassName) and
+      (AKeys[mEarlier] = AKeys[AIndex]) and
+      not TConditionalBranches.Exclusive(PathOf(FMethods[mEarlier]), PathOf(FMethods[AIndex])) then
+    begin
+      Exit(mEarlier);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Prüft die Nummer der Methode AIndex (E2139, E2140) und merkt ihren Schlüssel.</summary>
+procedure TMessageMethodInvalidScan.CheckNumber(AValues: TConstantValues; AIndex: Integer; var AKeys: TArray<string>;
+  var AKnown: TArray<Boolean>);
+var
+  mValue: Int64;
+  mMethod: TMessageMethod;
+  mRange: TTextRange;
+  mEarlier: Integer;
+begin
+  mMethod := FMethods[AIndex];
+  mRange := TTextRange.Create(FTokens[mMethod.First].StartPos, FTokens[mMethod.Last].EndPos);
+  if not AValues.Evaluate(mMethod.First, mMethod.Last, mValue) then
+  begin
+    AKeys[AIndex] := 't' + UpperCase(ExpressionText(mMethod).Replace(' ', ''));
+  end
+  else if mValue < 1 then
+  begin
+    FReport.Add(mRange, cTexts[TTypeDeclarationsText.MessageNumber].Fmt(
+      [ExpressionText(mMethod), MethodName(mMethod.Header)]), TRuleConfidence.High);
+    Exit;
+  end
+  else
+  begin
+    AKeys[AIndex] := 'v' + IntToStr(mValue);
+  end;
+  AKnown[AIndex] := True;
+  mEarlier := EarlierHandler(AKeys, AKnown, AIndex);
+  if mEarlier >= 0 then
+  begin
+    FReport.Add(mRange, cTexts[TTypeDeclarationsText.MessageHandled].Fmt([ExpressionText(mMethod),
+      MethodName(FMethods[mEarlier].Header)]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TMessageMethodInvalidScan.CheckNumbers;
+var
+  mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
+  mValues: TConstantValues;
+  mKeys: TArray<string>;
+  mKnown: TArray<Boolean>;
+  mIndex: Integer;
+begin
+  SetLength(mKeys, FMethods.Count);
+  SetLength(mKnown, FMethods.Count);
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  mCache := TRuleDerived.Open(FContext);
+  mResolver := TRuleDerived.Resolver(mCache, FContext);
   try
-    Collect(AContext.Tree.Root, '');
-    if mMethods.Count = 0 then
+    mResolver.PinTree(FContext.Tree, FFileName);
+    mValues := TConstantValues.Create(FContext.Tree, FFileName, FContext.Index, mResolver);
+    try
+      for mIndex := 0 to FMethods.Count - 1 do
+      begin
+        if FMethods[mIndex].First <= FMethods[mIndex].Last then
+        begin
+          CheckNumber(mValues, mIndex, mKeys, mKnown);
+        end;
+      end;
+    finally
+      mValues.Free;
+    end;
+  finally
+    mResolver.UnpinTree;
+  end;
+end;
+
+procedure TMessageMethodInvalidScan.Run;
+var
+  mMethod: TMessageMethod;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FFileName := FContext.ResolverFileName;
+  FMethods := TList<TMessageMethod>.Create;
+  try
+    Collect(FContext.Tree.Root, '');
+    if FMethods.Count = 0 then
     begin
       Exit;
     end;
-    mPaths := TConditionalBranches.Paths(mTokens);
-    for mMethod in mMethods do
+    FPaths := TConditionalBranches.Paths(FTokens);
+    for mMethod in FMethods do
     begin
       CheckParameters(mMethod);
     end;
     CheckNumbers;
   finally
-    mMethods.Free;
+    FMethods.Free;
   end;
+end;
+
+procedure TMessageMethodInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TMessageMethodInvalidScan;
+begin
+  mScan := TMessageMethodInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TInterfaceDeclarationInvalidRule }
@@ -590,264 +628,301 @@ begin
     cTexts[TTypeDeclarationsText.InterfaceTitle].Text);
 end;
 
-procedure TInterfaceDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mScan: TDeclarationScan;
-
-  /// <summary>Löst ANode (TypeReference) sicher zu einer Klasse, einem Record oder einer Aufzählung auf?</summary>
-  function NotAnInterface(ANode: TSyntaxNode; out AKind: string): Boolean;
-  var
-    mResolved: TResolvedSymbol;
-  begin
-    AKind := '';
-    Result := (ANode.Name <> '') and mScan.Resolver.ResolveTypeFrom(mScan.OwnUnit, ANode.Name, mResolved) and
-      mResolved.Found and not mResolved.Builtin and (mResolved.SymbolKind in cNonInterfaceKinds);
-    if not Result then
-    begin
-      Exit;
-    end;
-    case mResolved.SymbolKind of
-      TIndexSymbolKind.RecordType:
-        AKind := cTexts[TTypeDeclarationsText.RecordKind].Text;
-      TIndexSymbolKind.EnumType:
-        AKind := cTexts[TTypeDeclarationsText.EnumKind].Text;
-    else
-      AKind := cTexts[TTypeDeclarationsText.ClassKind].Text;
-    end;
+type
+  /// <summary>Ein Lauf von TInterfaceDeclarationInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TInterfaceDeclarationInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScan: TDeclarationScan;
+    function NotAnInterface(ANode: TSyntaxNode; out AKind: string): Boolean;
+    procedure ReportNotInterface(ANode: TSyntaxNode);
+    procedure CheckClassList(AClass: TSyntaxNode);
+    procedure CheckPropertyClauses(AProperty: TSyntaxNode);
+    function WithoutType(AProperty: TSyntaxNode): Boolean;
+    procedure CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
+    procedure ReportVarSection(ASection: TSyntaxNode);
+    procedure ReportForbiddenDirectives(AHeader: TSyntaxNode);
+    procedure CheckInterfaceMember(AChild: TSyntaxNode);
+    procedure CheckInterface(AType: TSyntaxNode; const AName: string);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  procedure ReportNotInterface(ANode: TSyntaxNode);
-  var
-    mKind: string;
-  begin
-    if mScan.Unconditional(ANode) and NotAnInterface(ANode, mKind) then
-    begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-        cTexts[TTypeDeclarationsText.NotInterface].Fmt([ANode.Name, mKind]), TRuleConfidence.High);
-    end;
-  end;
+{ TInterfaceDeclarationInvalidScan }
 
-  procedure CheckClassList(AClass: TSyntaxNode);
-  var
-    mIndex, mEarlier, mPosition: Integer;
-    mReferences: TArray<TSyntaxNode>;
-  begin
-    mReferences := nil;
-    for mIndex := 0 to AClass.ChildCount - 1 do
-    begin
-      if AClass[mIndex].Kind = TSyntaxKind.TypeReference then
-      begin
-        mReferences := mReferences + [AClass[mIndex]];
-      end
-      else
-      begin
-        Break;
-      end;
-    end;
-    for mPosition := 1 to High(mReferences) do
-    begin
-      ReportNotInterface(mReferences[mPosition]);
-      for mEarlier := 0 to mPosition - 1 do
-      begin
-        if (mScan.TypeKey(mReferences[mEarlier]) = mScan.TypeKey(mReferences[mPosition])) and
-          mScan.Unconditional(mReferences[mPosition]) then
-        begin
-          AReport.Add(TTextRange.Create(mReferences[mPosition].StartPos, mReferences[mPosition].EndPos),
-            cTexts[TTypeDeclarationsText.AlreadyListed].Fmt([mReferences[mPosition].Name]),
-            TRuleConfidence.High);
-          Break;
-        end;
-      end;
-    end;
-  end;
-
-  /// <summary>Klauseln stored, nodefault und default mit Wert vor dem ersten Semikolon der Property.</summary>
-  procedure CheckPropertyClauses(AProperty: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mWord: string;
-  begin
-    for mIndex in mScan.ClauseWords(AProperty) do
-    begin
-      mWord := LowerCase(mScan.Tokens[mIndex].Text);
-      if (mWord = 'stored') or (mWord = 'nodefault') or
-        ((mWord = 'default') and (mScan.ClauseArgument(AProperty, mIndex) < mScan.ClauseEnd(AProperty))) then
-      begin
-        AReport.Add(mScan.TokenRange(mIndex), cTexts[TTypeDeclarationsText.ClauseNotAllowed].Fmt(
-          [mWord]), TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  /// <summary>Property ohne eigenen Typ (property Name; bzw. property Name read …), die eine geerbte
-  /// Property nur neu aufführt. Interfaces erlauben das nicht (E2206); eine Neudeklaration mit Typ ist eine
-  /// neue Property und übersetzt (#1328).</summary>
-  function WithoutType(AProperty: TSyntaxNode): Boolean;
-  var
-    mIndex, mStop: Integer;
-  begin
-    mStop := mScan.StopToken(AProperty);
-    mIndex := mScan.PropertyNameToken(AProperty);
-    Result := mIndex < mStop;
-    if Result then
-    begin
-      mIndex := mScan.NextCode(mIndex + 1, mStop);
-      Result := (mIndex >= mStop) or not MatchText(mScan.Tokens[mIndex].Text, [':', '[']);
-    end;
-  end;
-
-  // Geerbte Accessoren (property X read GetX mit GetX aus dem Vorfahr-Interface) übersetzt dcc, generisch wie
-  // nicht generisch (DUnitX IList<T>; ID1, ID2, ID3; dcc-Lauf vom 29.10.2026, #1328): Die frühere Prüfung auf
-  // E2370 ist entfallen.
-  procedure CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
-  var
-    mOwn, mAncestor, mMember: TResolvedSymbol;
-    mIndex: Integer;
-    mChild: TSyntaxNode;
-  begin
-    if not mScan.Resolver.ResolveTypeFrom(mScan.OwnUnit, AName, mOwn) or not mOwn.Found or
-      (mOwn.SymbolKind <> TIndexSymbolKind.InterfaceType) or not mScan.Resolver.AncestorOf(mOwn, mAncestor) then
-    begin
-      Exit;
-    end;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      mChild := AType[mIndex];
-      if (mChild.Kind <> TSyntaxKind.PropertyDecl) or not mScan.Unconditional(mChild) then
-      begin
-        Continue;
-      end;
-      if WithoutType(mChild) and mScan.Resolver.DeclaredMember(mAncestor, mChild.Name, mMember) and
-        (mMember.SymbolKind = TIndexSymbolKind.Property_) then
-      begin
-        AReport.Add(mScan.PropertyRange(mChild), cTexts[TTypeDeclarationsText.PropertyRedeclared].Fmt([mChild.Name,
-          mMember.Container]), TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  procedure ReportVarSection(ASection: TSyntaxNode);
-  var
-    mInner: Integer;
-  begin
-    for mInner := 0 to ASection.ChildCount - 1 do
-    begin
-      if ASection[mInner].Kind = TSyntaxKind.VarDecl then
-      begin
-        AReport.Add(mScan.FirstRange(ASection[mInner]), cTexts[TTypeDeclarationsText.NoFields].Text,
-          TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  procedure ReportForbiddenDirectives(AHeader: TSyntaxNode);
-  var
-    mInner: Integer;
-  begin
-    for mInner := 0 to AHeader.ChildCount - 1 do
-    begin
-      if (AHeader[mInner].Kind = TSyntaxKind.Directive) and
-        MatchText(AHeader[mInner].Name, cInterfaceForbiddenDirectives) then
-      begin
-        AReport.Add(mScan.FirstRange(AHeader[mInner]),
-          cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AHeader[mInner].Name]), TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  procedure CheckInterfaceMember(AChild: TSyntaxNode);
-  begin
-    case AChild.Kind of
-      TSyntaxKind.Field:
-        AReport.Add(mScan.FirstRange(AChild), cTexts[TTypeDeclarationsText.NoFields].Text, TRuleConfidence.High);
-      TSyntaxKind.VarSection:
-        ReportVarSection(AChild);
-      TSyntaxKind.Visibility:
-        AReport.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos),
-          cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AChild.Name]), TRuleConfidence.High);
-      TSyntaxKind.RoutineHeader:
-        ReportForbiddenDirectives(AChild);
-      TSyntaxKind.PropertyDecl:
-        CheckPropertyClauses(AChild);
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  end;
-
-  procedure CheckInterface(AType: TSyntaxNode; const AName: string);
-  var
-    mIndex: Integer;
-  begin
-    // dispinterface prüft dispinterface-invalid.
-    if mScan.DispKeyword(AType) >= 0 then
-    begin
-      Exit;
-    end;
-    if (AType.ChildCount > 0) and (AType[0].Kind = TSyntaxKind.TypeReference) then
-    begin
-      ReportNotInterface(AType[0]);
-    end;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      if mScan.Unconditional(AType[mIndex]) then
-      begin
-        CheckInterfaceMember(AType[mIndex]);
-      end;
-    end;
-    CheckInheritedMembers(AType, AName);
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-    mBody: TSyntaxNode;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.TypeDecl then
-        begin
-          mBody := mNode.FindChild(TSyntaxKind.InterfaceType);
-          if mBody <> nil then
-          begin
-            CheckInterface(mBody, mNode.Name);
-          end;
-          mBody := mNode.FindChild(TSyntaxKind.ClassType);
-          if mBody <> nil then
-          begin
-            CheckClassList(mBody);
-          end;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          if mNode[mIndex].Kind in cDeclarationKinds then
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+constructor TInterfaceDeclarationInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+/// <summary>Löst ANode (TypeReference) sicher zu einer Klasse, einem Record oder einer Aufzählung auf?</summary>
+function TInterfaceDeclarationInvalidScan.NotAnInterface(ANode: TSyntaxNode; out AKind: string): Boolean;
+var
+  mResolved: TResolvedSymbol;
+begin
+  AKind := '';
+  Result := (ANode.Name <> '') and FScan.Resolver.ResolveTypeFrom(FScan.OwnUnit, ANode.Name, mResolved) and
+    mResolved.Found and not mResolved.Builtin and (mResolved.SymbolKind in cNonInterfaceKinds);
+  if not Result then
   begin
     Exit;
   end;
-  mScan := TDeclarationScan.Create(AContext);
-  try
-    Visit(AContext.Tree.Root);
-  finally
-    mScan.Free;
+  case mResolved.SymbolKind of
+    TIndexSymbolKind.RecordType:
+      AKind := cTexts[TTypeDeclarationsText.RecordKind].Text;
+    TIndexSymbolKind.EnumType:
+      AKind := cTexts[TTypeDeclarationsText.EnumKind].Text;
+  else
+    AKind := cTexts[TTypeDeclarationsText.ClassKind].Text;
   end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.ReportNotInterface(ANode: TSyntaxNode);
+var
+  mKind: string;
+begin
+  if FScan.Unconditional(ANode) and NotAnInterface(ANode, mKind) then
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeDeclarationsText.NotInterface].Fmt([ANode.Name, mKind]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.CheckClassList(AClass: TSyntaxNode);
+var
+  mIndex, mEarlier, mPosition: Integer;
+  mReferences: TArray<TSyntaxNode>;
+begin
+  mReferences := nil;
+  for mIndex := 0 to AClass.ChildCount - 1 do
+  begin
+    if AClass[mIndex].Kind = TSyntaxKind.TypeReference then
+    begin
+      mReferences := mReferences + [AClass[mIndex]];
+    end
+    else
+    begin
+      Break;
+    end;
+  end;
+  for mPosition := 1 to High(mReferences) do
+  begin
+    ReportNotInterface(mReferences[mPosition]);
+    for mEarlier := 0 to mPosition - 1 do
+    begin
+      if (FScan.TypeKey(mReferences[mEarlier]) = FScan.TypeKey(mReferences[mPosition])) and
+        FScan.Unconditional(mReferences[mPosition]) then
+      begin
+        FReport.Add(TTextRange.Create(mReferences[mPosition].StartPos, mReferences[mPosition].EndPos),
+          cTexts[TTypeDeclarationsText.AlreadyListed].Fmt([mReferences[mPosition].Name]),
+          TRuleConfidence.High);
+        Break;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Klauseln stored, nodefault und default mit Wert vor dem ersten Semikolon der Property.</summary>
+procedure TInterfaceDeclarationInvalidScan.CheckPropertyClauses(AProperty: TSyntaxNode);
+var
+  mIndex: Integer;
+  mWord: string;
+begin
+  for mIndex in FScan.ClauseWords(AProperty) do
+  begin
+    mWord := LowerCase(FScan.Tokens[mIndex].Text);
+    if (mWord = 'stored') or (mWord = 'nodefault') or
+      ((mWord = 'default') and (FScan.ClauseArgument(AProperty, mIndex) < FScan.ClauseEnd(AProperty))) then
+    begin
+      FReport.Add(FScan.TokenRange(mIndex), cTexts[TTypeDeclarationsText.ClauseNotAllowed].Fmt(
+        [mWord]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Property ohne eigenen Typ (property Name; bzw. property Name read …), die eine geerbte
+/// Property nur neu aufführt. Interfaces erlauben das nicht (E2206); eine Neudeklaration mit Typ ist eine
+/// neue Property und übersetzt (#1328).</summary>
+function TInterfaceDeclarationInvalidScan.WithoutType(AProperty: TSyntaxNode): Boolean;
+var
+  mIndex, mStop: Integer;
+begin
+  mStop := FScan.StopToken(AProperty);
+  mIndex := FScan.PropertyNameToken(AProperty);
+  Result := mIndex < mStop;
+  if Result then
+  begin
+    mIndex := FScan.NextCode(mIndex + 1, mStop);
+    Result := (mIndex >= mStop) or not MatchText(FScan.Tokens[mIndex].Text, [':', '[']);
+  end;
+end;
+
+// Geerbte Accessoren (property X read GetX mit GetX aus dem Vorfahr-Interface) übersetzt dcc, generisch wie
+// nicht generisch (DUnitX IList<T>; ID1, ID2, ID3; dcc-Lauf vom 29.10.2026, #1328): Die frühere Prüfung auf
+// E2370 ist entfallen.
+procedure TInterfaceDeclarationInvalidScan.CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
+var
+  mOwn, mAncestor, mMember: TResolvedSymbol;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  if not FScan.Resolver.ResolveTypeFrom(FScan.OwnUnit, AName, mOwn) or not mOwn.Found or
+    (mOwn.SymbolKind <> TIndexSymbolKind.InterfaceType) or not FScan.Resolver.AncestorOf(mOwn, mAncestor) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    mChild := AType[mIndex];
+    if (mChild.Kind <> TSyntaxKind.PropertyDecl) or not FScan.Unconditional(mChild) then
+    begin
+      Continue;
+    end;
+    if WithoutType(mChild) and FScan.Resolver.DeclaredMember(mAncestor, mChild.Name, mMember) and
+      (mMember.SymbolKind = TIndexSymbolKind.Property_) then
+    begin
+      FReport.Add(FScan.PropertyRange(mChild), cTexts[TTypeDeclarationsText.PropertyRedeclared].Fmt([mChild.Name,
+        mMember.Container]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.ReportVarSection(ASection: TSyntaxNode);
+var
+  mInner: Integer;
+begin
+  for mInner := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mInner].Kind = TSyntaxKind.VarDecl then
+    begin
+      FReport.Add(FScan.FirstRange(ASection[mInner]), cTexts[TTypeDeclarationsText.NoFields].Text,
+        TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.ReportForbiddenDirectives(AHeader: TSyntaxNode);
+var
+  mInner: Integer;
+begin
+  for mInner := 0 to AHeader.ChildCount - 1 do
+  begin
+    if (AHeader[mInner].Kind = TSyntaxKind.Directive) and
+      MatchText(AHeader[mInner].Name, cInterfaceForbiddenDirectives) then
+    begin
+      FReport.Add(FScan.FirstRange(AHeader[mInner]),
+        cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AHeader[mInner].Name]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.CheckInterfaceMember(AChild: TSyntaxNode);
+begin
+  case AChild.Kind of
+    TSyntaxKind.Field:
+      FReport.Add(FScan.FirstRange(AChild), cTexts[TTypeDeclarationsText.NoFields].Text, TRuleConfidence.High);
+    TSyntaxKind.VarSection:
+      ReportVarSection(AChild);
+    TSyntaxKind.Visibility:
+      FReport.Add(TTextRange.Create(AChild.StartPos, AChild.EndPos),
+        cTexts[TTypeDeclarationsText.DirectiveNotAllowed].Fmt([AChild.Name]), TRuleConfidence.High);
+    TSyntaxKind.RoutineHeader:
+      ReportForbiddenDirectives(AChild);
+    TSyntaxKind.PropertyDecl:
+      CheckPropertyClauses(AChild);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.CheckInterface(AType: TSyntaxNode; const AName: string);
+var
+  mIndex: Integer;
+begin
+  // dispinterface prüft dispinterface-invalid.
+  if FScan.DispKeyword(AType) >= 0 then
+  begin
+    Exit;
+  end;
+  if (AType.ChildCount > 0) and (AType[0].Kind = TSyntaxKind.TypeReference) then
+  begin
+    ReportNotInterface(AType[0]);
+  end;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    if FScan.Unconditional(AType[mIndex]) then
+    begin
+      CheckInterfaceMember(AType[mIndex]);
+    end;
+  end;
+  CheckInheritedMembers(AType, AName);
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TInterfaceDeclarationInvalidScan.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mBody: TSyntaxNode;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.TypeDecl then
+      begin
+        mBody := mNode.FindChild(TSyntaxKind.InterfaceType);
+        if mBody <> nil then
+        begin
+          CheckInterface(mBody, mNode.Name);
+        end;
+        mBody := mNode.FindChild(TSyntaxKind.ClassType);
+        if mBody <> nil then
+        begin
+          CheckClassList(mBody);
+        end;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        if mNode[mIndex].Kind in cDeclarationKinds then
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FScan := TDeclarationScan.Create(FContext);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FScan.Free;
+  end;
+end;
+
+procedure TInterfaceDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TInterfaceDeclarationInvalidScan;
+begin
+  mScan := TInterfaceDeclarationInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TImplementsClauseInvalidRule }
@@ -858,293 +933,333 @@ begin
     cTexts[TTypeDeclarationsText.ImplementsTitle].Text);
 end;
 
-procedure TImplementsClauseInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mScan: TDeclarationScan;
-
-  function Word(AIndex: Integer): string;
-  begin
-    Result := LowerCase(mScan.Tokens[AIndex].Text);
+type
+  /// <summary>Ein Lauf von TImplementsClauseInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TImplementsClauseInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScan: TDeclarationScan;
+    function Word(AIndex: Integer): string;
+    procedure CheckType(AProperty: TSyntaxNode);
+    procedure CheckGetter(AType: TSyntaxNode; AGetter: Integer);
+    function ImplementsWord(const AWords: TArray<Integer>; out AHasRead: Boolean): Integer;
+    procedure CheckClauses(AType, AProperty: TSyntaxNode; const AWords: TArray<Integer>);
+    function EndsInterface(APosition, AStop: Integer; var ADepth: Integer): Boolean;
+    procedure AddInterface(AFirst, AStop: Integer; const AOwner: string; var AKeys, AOwners: TArray<string>);
+    procedure CollectInterfaces(AProperty: TSyntaxNode; AImplements: Integer; var AKeys, AOwners: TArray<string>);
+    procedure CheckProperty(AType, AProperty: TSyntaxNode; var AKeys, AOwners: TArray<string>);
+    procedure CheckResolution(AHeader: TSyntaxNode; const AKeys, AOwners: TArray<string>);
+    procedure CheckClass(AType: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  procedure CheckType(AProperty: TSyntaxNode);
-  var
-    mReference: TSyntaxNode;
-    mResolved: TResolvedSymbol;
-  begin
-    mReference := AProperty.FindChild(TSyntaxKind.TypeReference);
-    if (mReference = nil) or (mReference.Name = '') then
-    begin
-      Exit;
-    end;
-    // Eingebaute Typen (Integer, string …) stehen nicht im Index; ein eigener gleichnamiger Typ geht vor.
-    if not mScan.Resolver.ResolveTypeFrom(mScan.OwnUnit, mReference.Name, mResolved) or not mResolved.Found then
-    begin
-      mResolved.Builtin := TResolverText.IsBuiltinTypeName(mReference.Name);
-      if not mResolved.Builtin then
-      begin
-        Exit;
-      end;
-    end;
-    if mResolved.Builtin or (mResolved.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.EnumType]) then
-    begin
-      AReport.Add(TTextRange.Create(mReference.StartPos, mReference.EndPos),
-        cTexts[TTypeDeclarationsText.ImplementsType].Fmt([mReference.Name]),
-        TRuleConfidence.High);
-    end;
-  end;
+{ TImplementsClauseInvalidScan }
 
-  procedure CheckGetter(AType: TSyntaxNode; AGetter: Integer);
-  var
-    mHeader: TSyntaxNode;
-    mIndex: Integer;
-    mName: string;
-  begin
-    mHeader := UniqueMethodHeader(AType, mScan.Tokens[AGetter].Text);
-    if mHeader = nil then
-    begin
-      Exit;
-    end;
-    for mIndex := 0 to mHeader.ChildCount - 1 do
-    begin
-      if mHeader[mIndex].Kind <> TSyntaxKind.Directive then
-      begin
-        Continue;
-      end;
-      mName := mHeader[mIndex].Name;
-      if MatchText(mName, cForeignConventions) then
-      begin
-        AReport.Add(mScan.TokenRange(AGetter),
-          cTexts[TTypeDeclarationsText.GetterRegister].Fmt([mScan.Tokens[AGetter].Text, mName]), TRuleConfidence.High);
-      end
-      else if (mName = 'dynamic') or (mName = 'message') then
-      begin
-        AReport.Add(mScan.TokenRange(AGetter), cTexts[TTypeDeclarationsText.GetterNot].Fmt([mScan.Tokens[AGetter].Text,
-          mName]), TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  /// <summary>Token des Worts implements unter den Klauselwörtern AWords, -1 ohne; AHasRead bei read.</summary>
-  function ImplementsWord(const AWords: TArray<Integer>; out AHasRead: Boolean): Integer;
-  var
-    mClause: Integer;
-  begin
-    Result := -1;
-    AHasRead := False;
-    for mClause in AWords do
-    begin
-      if Word(mClause) = 'implements' then
-      begin
-        Result := mClause;
-      end
-      else if Word(mClause) = 'read' then
-      begin
-        AHasRead := True;
-      end;
-    end;
-  end;
-
-  // index neben implements (E2260) und Getter hinter read.
-  procedure CheckClauses(AType, AProperty: TSyntaxNode; const AWords: TArray<Integer>);
-  var
-    mClause, mArgument: Integer;
-  begin
-    for mClause in AWords do
-    begin
-      mArgument := mScan.ClauseArgument(AProperty, mClause);
-      if Word(mClause) = 'index' then
-      begin
-        AReport.Add(mScan.TokenRange(mClause), cTexts[TTypeDeclarationsText.ImplementsIndex].Text,
-          TRuleConfidence.High);
-      end
-      else if (Word(mClause) = 'read') and (mArgument < mScan.ClauseEnd(AProperty)) and
-        (mScan.Tokens[mArgument].Kind = TPascalTokenKind.Identifier) then
-      begin
-        CheckGetter(AType, mArgument);
-      end;
-    end;
-  end;
-
-  /// <summary>Endet an APosition ein Interface hinter implements (Komma auf Ebene 0 oder Ende AStop)?</summary>
-  function EndsInterface(APosition, AStop: Integer; var ADepth: Integer): Boolean;
-  begin
-    if APosition >= AStop then
-    begin
-      Exit(True);
-    end;
-    if mScan.Tokens[APosition].IsSymbol('<') then
-    begin
-      Inc(ADepth);
-    end
-    else if mScan.Tokens[APosition].IsSymbol('>') then
-    begin
-      Dec(ADepth);
-    end;
-    Result := (ADepth = 0) and mScan.Tokens[APosition].IsSymbol(',');
-  end;
-
-  /// <summary>Merkt das Interface zwischen AFirst und AStop als von AOwner umgesetzt; doppelt: E2257.</summary>
-  procedure AddInterface(AFirst, AStop: Integer; const AOwner: string; var AKeys, AOwners: TArray<string>);
-  var
-    mKey: string;
-    mClause: Integer;
-  begin
-    mKey := mScan.TypeKey(AFirst, AStop);
-    for mClause := 0 to High(AKeys) do
-    begin
-      if AKeys[mClause] = mKey then
-      begin
-        AReport.Add(TTextRange.Create(mScan.Tokens[AFirst].StartPos, mScan.Tokens[AStop - 1].EndPos),
-          cTexts[TTypeDeclarationsText.AlreadyImplemented].Fmt([mScan.Text(AFirst, AStop),
-          AOwners[mClause]]), TRuleConfidence.High);
-        Exit;
-      end;
-    end;
-    AKeys := AKeys + [mKey];
-    AOwners := AOwners + [AOwner];
-  end;
-
-  // Interfaces hinter implements, durch Kommas getrennt.
-  procedure CollectInterfaces(AProperty: TSyntaxNode; AImplements: Integer; var AKeys, AOwners: TArray<string>);
-  var
-    mFirst, mDepth, mPosition, mStop: Integer;
-  begin
-    mStop := mScan.ClauseEnd(AProperty);
-    mFirst := mScan.NextCode(AImplements + 1, mStop);
-    mDepth := 0;
-    for mPosition := mFirst to mStop do
-    begin
-      if not EndsInterface(mPosition, mStop, mDepth) then
-      begin
-        Continue;
-      end;
-      if mPosition > mFirst then
-      begin
-        AddInterface(mFirst, mPosition, AProperty.Name, AKeys, AOwners);
-      end;
-      mFirst := mScan.NextCode(mPosition + 1, mStop);
-    end;
-  end;
-
-  procedure CheckProperty(AType, AProperty: TSyntaxNode; var AKeys, AOwners: TArray<string>);
-  var
-    mWords: TArray<Integer>;
-    mImplements: Integer;
-    mHasRead: Boolean;
-  begin
-    mWords := mScan.ClauseWords(AProperty);
-    mImplements := ImplementsWord(mWords, mHasRead);
-    if mImplements < 0 then
-    begin
-      Exit;
-    end;
-    if AType.Kind <> TSyntaxKind.ClassType then
-    begin
-      AReport.Add(mScan.TokenRange(mImplements), cTexts[TTypeDeclarationsText.ImplementsClassOnly].Text,
-        TRuleConfidence.High);
-      Exit;
-    end;
-    CheckType(AProperty);
-    CheckClauses(AType, AProperty, mWords);
-    if not mHasRead then
-    begin
-      AReport.Add(mScan.TokenRange(mImplements), cTexts[TTypeDeclarationsText.ImplementsReadable].Text,
-        TRuleConfidence.High);
-    end;
-    CollectInterfaces(AProperty, mImplements, AKeys, AOwners);
-  end;
-
-  // Methodenzuordnung (procedure IFoo.Bar = Baz) für ein Interface mit implements-Property: E2264.
-  procedure CheckResolution(AHeader: TSyntaxNode; const AKeys, AOwners: TArray<string>);
-  var
-    mPrefix: string;
-    mClause: Integer;
-  begin
-    mPrefix := UpperCase(Copy(AHeader.Name, 1, LastDelimiter('.', AHeader.Name) - 1));
-    mPrefix := Copy(mPrefix, LastDelimiter('.', mPrefix) + 1, MaxInt);
-    for mClause := 0 to High(AKeys) do
-    begin
-      if AKeys[mClause] = mPrefix then
-      begin
-        AReport.Add(mScan.TokenRange(mScan.NextCode(mScan.FirstToken(AHeader) + 1, mScan.StopToken(AHeader))),
-          cTexts[TTypeDeclarationsText.MethodResolution].Fmt([Copy(AHeader.Name, 1, LastDelimiter('.',
-            AHeader.Name) - 1), AOwners[mClause]]),
-          TRuleConfidence.High);
-        Exit;
-      end;
-    end;
-  end;
-
-  procedure CheckClass(AType: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mChild: TSyntaxNode;
-    mKeys, mOwners: TArray<string>;
-  begin
-    mKeys := nil;
-    mOwners := nil;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      mChild := AType[mIndex];
-      if (mChild.Kind = TSyntaxKind.PropertyDecl) and mScan.Unconditional(mChild) then
-      begin
-        CheckProperty(AType, mChild, mKeys, mOwners);
-      end;
-    end;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      mChild := AType[mIndex];
-      if (mChild.Kind = TSyntaxKind.RoutineHeader) and (Pos('.', mChild.Name) > 0) and mScan.Unconditional(mChild) then
-      begin
-        CheckResolution(mChild, mKeys, mOwners);
-      end;
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-          TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-        begin
-          CheckClass(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          if mNode[mIndex].Kind in cDeclarationKinds + [TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
-            TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+constructor TImplementsClauseInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TImplementsClauseInvalidScan.Word(AIndex: Integer): string;
+begin
+  Result := LowerCase(FScan.Tokens[AIndex].Text);
+end;
+
+procedure TImplementsClauseInvalidScan.CheckType(AProperty: TSyntaxNode);
+var
+  mReference: TSyntaxNode;
+  mResolved: TResolvedSymbol;
+begin
+  mReference := AProperty.FindChild(TSyntaxKind.TypeReference);
+  if (mReference = nil) or (mReference.Name = '') then
   begin
     Exit;
   end;
-  mScan := TDeclarationScan.Create(AContext);
-  try
-    Visit(AContext.Tree.Root);
-  finally
-    mScan.Free;
+  // Eingebaute Typen (Integer, string …) stehen nicht im Index; ein eigener gleichnamiger Typ geht vor.
+  if not FScan.Resolver.ResolveTypeFrom(FScan.OwnUnit, mReference.Name, mResolved) or not mResolved.Found then
+  begin
+    mResolved.Builtin := TResolverText.IsBuiltinTypeName(mReference.Name);
+    if not mResolved.Builtin then
+    begin
+      Exit;
+    end;
   end;
+  if mResolved.Builtin or (mResolved.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.EnumType]) then
+  begin
+    FReport.Add(TTextRange.Create(mReference.StartPos, mReference.EndPos),
+      cTexts[TTypeDeclarationsText.ImplementsType].Fmt([mReference.Name]),
+      TRuleConfidence.High);
+  end;
+end;
+
+procedure TImplementsClauseInvalidScan.CheckGetter(AType: TSyntaxNode; AGetter: Integer);
+var
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+begin
+  mHeader := UniqueMethodHeader(AType, FScan.Tokens[AGetter].Text);
+  if mHeader = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mHeader.ChildCount - 1 do
+  begin
+    if mHeader[mIndex].Kind <> TSyntaxKind.Directive then
+    begin
+      Continue;
+    end;
+    mName := mHeader[mIndex].Name;
+    if MatchText(mName, cForeignConventions) then
+    begin
+      FReport.Add(FScan.TokenRange(AGetter),
+        cTexts[TTypeDeclarationsText.GetterRegister].Fmt([FScan.Tokens[AGetter].Text, mName]), TRuleConfidence.High);
+    end
+    else if (mName = 'dynamic') or (mName = 'message') then
+    begin
+      FReport.Add(FScan.TokenRange(AGetter), cTexts[TTypeDeclarationsText.GetterNot].Fmt([FScan.Tokens[AGetter].Text,
+        mName]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Token des Worts implements unter den Klauselwörtern AWords, -1 ohne; AHasRead bei read.</summary>
+function TImplementsClauseInvalidScan.ImplementsWord(const AWords: TArray<Integer>; out AHasRead: Boolean): Integer;
+var
+  mClause: Integer;
+begin
+  Result := -1;
+  AHasRead := False;
+  for mClause in AWords do
+  begin
+    if Word(mClause) = 'implements' then
+    begin
+      Result := mClause;
+    end
+    else if Word(mClause) = 'read' then
+    begin
+      AHasRead := True;
+    end;
+  end;
+end;
+
+// index neben implements (E2260) und Getter hinter read.
+procedure TImplementsClauseInvalidScan.CheckClauses(AType, AProperty: TSyntaxNode; const AWords: TArray<Integer>);
+var
+  mClause, mArgument: Integer;
+begin
+  for mClause in AWords do
+  begin
+    mArgument := FScan.ClauseArgument(AProperty, mClause);
+    if Word(mClause) = 'index' then
+    begin
+      FReport.Add(FScan.TokenRange(mClause), cTexts[TTypeDeclarationsText.ImplementsIndex].Text,
+        TRuleConfidence.High);
+    end
+    else if (Word(mClause) = 'read') and (mArgument < FScan.ClauseEnd(AProperty)) and
+      (FScan.Tokens[mArgument].Kind = TPascalTokenKind.Identifier) then
+    begin
+      CheckGetter(AType, mArgument);
+    end;
+  end;
+end;
+
+/// <summary>Endet an APosition ein Interface hinter implements (Komma auf Ebene 0 oder Ende AStop)?</summary>
+function TImplementsClauseInvalidScan.EndsInterface(APosition, AStop: Integer; var ADepth: Integer): Boolean;
+begin
+  if APosition >= AStop then
+  begin
+    Exit(True);
+  end;
+  if FScan.Tokens[APosition].IsSymbol('<') then
+  begin
+    Inc(ADepth);
+  end
+  else if FScan.Tokens[APosition].IsSymbol('>') then
+  begin
+    Dec(ADepth);
+  end;
+  Result := (ADepth = 0) and FScan.Tokens[APosition].IsSymbol(',');
+end;
+
+/// <summary>Merkt das Interface zwischen AFirst und AStop als von AOwner umgesetzt; doppelt: E2257.</summary>
+procedure TImplementsClauseInvalidScan.AddInterface(AFirst, AStop: Integer; const AOwner: string; var AKeys,
+  AOwners: TArray<string>);
+var
+  mKey: string;
+  mClause: Integer;
+begin
+  mKey := FScan.TypeKey(AFirst, AStop);
+  for mClause := 0 to High(AKeys) do
+  begin
+    if AKeys[mClause] = mKey then
+    begin
+      FReport.Add(TTextRange.Create(FScan.Tokens[AFirst].StartPos, FScan.Tokens[AStop - 1].EndPos),
+        cTexts[TTypeDeclarationsText.AlreadyImplemented].Fmt([FScan.Text(AFirst, AStop),
+        AOwners[mClause]]), TRuleConfidence.High);
+      Exit;
+    end;
+  end;
+  AKeys := AKeys + [mKey];
+  AOwners := AOwners + [AOwner];
+end;
+
+// Interfaces hinter implements, durch Kommas getrennt.
+procedure TImplementsClauseInvalidScan.CollectInterfaces(AProperty: TSyntaxNode; AImplements: Integer; var AKeys,
+  AOwners: TArray<string>);
+var
+  mFirst, mDepth, mPosition, mStop: Integer;
+begin
+  mStop := FScan.ClauseEnd(AProperty);
+  mFirst := FScan.NextCode(AImplements + 1, mStop);
+  mDepth := 0;
+  for mPosition := mFirst to mStop do
+  begin
+    if not EndsInterface(mPosition, mStop, mDepth) then
+    begin
+      Continue;
+    end;
+    if mPosition > mFirst then
+    begin
+      AddInterface(mFirst, mPosition, AProperty.Name, AKeys, AOwners);
+    end;
+    mFirst := FScan.NextCode(mPosition + 1, mStop);
+  end;
+end;
+
+procedure TImplementsClauseInvalidScan.CheckProperty(AType, AProperty: TSyntaxNode; var AKeys, AOwners: TArray<string>);
+var
+  mWords: TArray<Integer>;
+  mImplements: Integer;
+  mHasRead: Boolean;
+begin
+  mWords := FScan.ClauseWords(AProperty);
+  mImplements := ImplementsWord(mWords, mHasRead);
+  if mImplements < 0 then
+  begin
+    Exit;
+  end;
+  if AType.Kind <> TSyntaxKind.ClassType then
+  begin
+    FReport.Add(FScan.TokenRange(mImplements), cTexts[TTypeDeclarationsText.ImplementsClassOnly].Text,
+      TRuleConfidence.High);
+    Exit;
+  end;
+  CheckType(AProperty);
+  CheckClauses(AType, AProperty, mWords);
+  if not mHasRead then
+  begin
+    FReport.Add(FScan.TokenRange(mImplements), cTexts[TTypeDeclarationsText.ImplementsReadable].Text,
+      TRuleConfidence.High);
+  end;
+  CollectInterfaces(AProperty, mImplements, AKeys, AOwners);
+end;
+
+// Methodenzuordnung (procedure IFoo.Bar = Baz) für ein Interface mit implements-Property: E2264.
+procedure TImplementsClauseInvalidScan.CheckResolution(AHeader: TSyntaxNode; const AKeys, AOwners: TArray<string>);
+var
+  mPrefix: string;
+  mClause: Integer;
+begin
+  mPrefix := UpperCase(Copy(AHeader.Name, 1, LastDelimiter('.', AHeader.Name) - 1));
+  mPrefix := Copy(mPrefix, LastDelimiter('.', mPrefix) + 1, MaxInt);
+  for mClause := 0 to High(AKeys) do
+  begin
+    if AKeys[mClause] = mPrefix then
+    begin
+      FReport.Add(FScan.TokenRange(FScan.NextCode(FScan.FirstToken(AHeader) + 1, FScan.StopToken(AHeader))),
+        cTexts[TTypeDeclarationsText.MethodResolution].Fmt([Copy(AHeader.Name, 1, LastDelimiter('.',
+          AHeader.Name) - 1), AOwners[mClause]]),
+        TRuleConfidence.High);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TImplementsClauseInvalidScan.CheckClass(AType: TSyntaxNode);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mKeys, mOwners: TArray<string>;
+begin
+  mKeys := nil;
+  mOwners := nil;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    mChild := AType[mIndex];
+    if (mChild.Kind = TSyntaxKind.PropertyDecl) and FScan.Unconditional(mChild) then
+    begin
+      CheckProperty(AType, mChild, mKeys, mOwners);
+    end;
+  end;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    mChild := AType[mIndex];
+    if (mChild.Kind = TSyntaxKind.RoutineHeader) and (Pos('.', mChild.Name) > 0) and FScan.Unconditional(mChild) then
+    begin
+      CheckResolution(mChild, mKeys, mOwners);
+    end;
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TImplementsClauseInvalidScan.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+        TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+      begin
+        CheckClass(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        if mNode[mIndex].Kind in cDeclarationKinds + [TSyntaxKind.RecordType, TSyntaxKind.InterfaceType,
+          TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TImplementsClauseInvalidScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FScan := TDeclarationScan.Create(FContext);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FScan.Free;
+  end;
+end;
+
+procedure TImplementsClauseInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TImplementsClauseInvalidScan;
+begin
+  mScan := TImplementsClauseInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TCallingConventionRequiredRule }
@@ -1155,254 +1270,293 @@ begin
     cTexts[TTypeDeclarationsText.ConventionTitle].Text);
 end;
 
-procedure TCallingConventionRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TCallingConventionRequiredRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TCallingConventionRequiredScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScan: TDeclarationScan;
+    function Directive(AHeader: TSyntaxNode; const AName: string): TSyntaxNode;
+    function Convention(AHeader: TSyntaxNode): TSyntaxNode;
+    function Keyword(AHeader: TSyntaxNode): string;
+    function RemoveFix(const AClassName: string; AHeader, AConvention: TSyntaxNode): TArray<TRuleFix>;
+    procedure CheckConstructor(AHeader: TSyntaxNode; const AClassName: string);
+    function AccessorHeader(AType, AProperty: TSyntaxNode; AClause: Integer; out AArgument: Integer): TSyntaxNode;
+    procedure CheckPublishedProperty(AType, AProperty: TSyntaxNode; const AClassName: string);
+    procedure CheckClass(AType: TSyntaxNode; const AClassName: string);
+    procedure CheckVarargs(AHeader: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode; const AOwner: string);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TCallingConventionRequiredScan }
+
+constructor TCallingConventionRequiredScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TCallingConventionRequiredScan.Directive(AHeader: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  mScan: TDeclarationScan;
-
-  function Directive(AHeader: TSyntaxNode; const AName: string): TSyntaxNode;
-  var
-    mIndex: Integer;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    Result := nil;
-    for mIndex := 0 to AHeader.ChildCount - 1 do
+    if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, AName) then
     begin
-      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, AName) then
-      begin
-        Exit(AHeader[mIndex]);
-      end;
+      Exit(AHeader[mIndex]);
     end;
   end;
+end;
 
-  function Convention(AHeader: TSyntaxNode): TSyntaxNode;
-  var
-    mIndex: Integer;
+function TCallingConventionRequiredScan.Convention(AHeader: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    Result := nil;
-    for mIndex := 0 to AHeader.ChildCount - 1 do
+    if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, cForeignConventions) then
     begin
-      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, cForeignConventions) then
-      begin
-        Exit(AHeader[mIndex]);
-      end;
+      Exit(AHeader[mIndex]);
     end;
   end;
+end;
 
-  function Keyword(AHeader: TSyntaxNode): string;
-  var
-    mIndex: Integer;
+function TCallingConventionRequiredScan.Keyword(AHeader: TSyntaxNode): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := FScan.NextCode(FScan.FirstToken(AHeader), Length(FScan.Tokens));
+  Result := '';
+  if mIndex < Length(FScan.Tokens) then
   begin
-    mIndex := mScan.NextCode(mScan.FirstToken(AHeader), Length(mScan.Tokens));
-    Result := '';
-    if mIndex < Length(mScan.Tokens) then
+    Result := LowerCase(FScan.Tokens[mIndex].Text);
+  end;
+end;
+
+/// <summary>Korrektur: Konvention an AHeader und am Rumpf der Datei entfernen.</summary>
+function TCallingConventionRequiredScan.RemoveFix(const AClassName: string; AHeader,
+  AConvention: TSyntaxNode): TArray<TRuleFix>;
+var
+  mEdits: TArray<TTextEdit>;
+  mBody, mOther: TSyntaxNode;
+begin
+  mEdits := [FScan.DirectiveRemoval(AConvention)];
+  mBody := MethodBody(FContext.Tree, AClassName, AHeader.Name);
+  if mBody <> nil then
+  begin
+    mBody := mBody.FindChild(TSyntaxKind.RoutineHeader);
+  end;
+  if mBody <> nil then
+  begin
+    mOther := Directive(mBody, AConvention.Name);
+    if mOther <> nil then
     begin
-      Result := LowerCase(mScan.Tokens[mIndex].Text);
+      mEdits := mEdits + [FScan.DirectiveRemoval(mOther)];
     end;
   end;
+  Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.RemoveName].Fmt([AConvention.Name]), mEdits)];
+end;
 
-  /// <summary>Korrektur: Konvention an AHeader und am Rumpf der Datei entfernen.</summary>
-  function RemoveFix(const AClassName: string; AHeader, AConvention: TSyntaxNode): TArray<TRuleFix>;
-  var
-    mEdits: TArray<TTextEdit>;
-    mBody, mOther: TSyntaxNode;
+// Konstruktoren und Destruktoren mit fremder Konvention: E2236.
+procedure TCallingConventionRequiredScan.CheckConstructor(AHeader: TSyntaxNode; const AClassName: string);
+var
+  mFound: TSyntaxNode;
+begin
+  mFound := Convention(AHeader);
+  if mFound <> nil then
   begin
-    mEdits := [mScan.DirectiveRemoval(AConvention)];
-    mBody := MethodBody(AContext.Tree, AClassName, AHeader.Name);
-    if mBody <> nil then
-    begin
-      mBody := mBody.FindChild(TSyntaxKind.RoutineHeader);
-    end;
-    if mBody <> nil then
-    begin
-      mOther := Directive(mBody, AConvention.Name);
-      if mOther <> nil then
-      begin
-        mEdits := mEdits + [mScan.DirectiveRemoval(mOther)];
-      end;
-    end;
-    Result := [TRuleFix.Create(cTexts[TTypeDeclarationsText.RemoveName].Fmt([AConvention.Name]), mEdits)];
+    FReport.Add(FScan.FirstRange(mFound), cTexts[TTypeDeclarationsText.CtorRegister].Fmt([mFound.Name]),
+      TRuleConfidence.High, RemoveFix(AClassName, AHeader, mFound));
   end;
+end;
 
-  // Konstruktoren und Destruktoren mit fremder Konvention: E2236.
-  procedure CheckConstructor(AHeader: TSyntaxNode; const AClassName: string);
-  var
-    mFound: TSyntaxNode;
+/// <summary>Methodenkopf hinter der Klausel read/write AClause einer Property von AType, nil ohne.</summary>
+function TCallingConventionRequiredScan.AccessorHeader(AType, AProperty: TSyntaxNode; AClause: Integer;
+  out AArgument: Integer): TSyntaxNode;
+begin
+  Result := nil;
+  AArgument := FScan.ClauseArgument(AProperty, AClause);
+  if MatchText(FScan.Tokens[AClause].Text, ['read', 'write']) and (AArgument < FScan.ClauseEnd(AProperty)) and
+    (FScan.Tokens[AArgument].Kind = TPascalTokenKind.Identifier) then
   begin
-    mFound := Convention(AHeader);
-    if mFound <> nil then
-    begin
-      AReport.Add(mScan.FirstRange(mFound), cTexts[TTypeDeclarationsText.CtorRegister].Fmt([mFound.Name]),
-        TRuleConfidence.High, RemoveFix(AClassName, AHeader, mFound));
-    end;
+    Result := UniqueMethodHeader(AType, FScan.Tokens[AArgument].Text);
   end;
+end;
 
-  /// <summary>Methodenkopf hinter der Klausel read/write AClause einer Property von AType, nil ohne.</summary>
-  function AccessorHeader(AType, AProperty: TSyntaxNode; AClause: Integer; out AArgument: Integer): TSyntaxNode;
+// Getter und Setter einer published-Property mit fremder Konvention: E2270.
+procedure TCallingConventionRequiredScan.CheckPublishedProperty(AType, AProperty: TSyntaxNode;
+  const AClassName: string);
+var
+  mClause, mArgument: Integer;
+  mHeader, mFound: TSyntaxNode;
+  mKind: string;
+begin
+  for mClause in FScan.ClauseWords(AProperty) do
   begin
-    Result := nil;
-    AArgument := mScan.ClauseArgument(AProperty, AClause);
-    if MatchText(mScan.Tokens[AClause].Text, ['read', 'write']) and (AArgument < mScan.ClauseEnd(AProperty)) and
-      (mScan.Tokens[AArgument].Kind = TPascalTokenKind.Identifier) then
+    mHeader := AccessorHeader(AType, AProperty, mClause, mArgument);
+    mFound := nil;
+    if mHeader <> nil then
     begin
-      Result := UniqueMethodHeader(AType, mScan.Tokens[AArgument].Text);
+      mFound := Convention(mHeader);
     end;
-  end;
-
-  // Getter und Setter einer published-Property mit fremder Konvention: E2270.
-  procedure CheckPublishedProperty(AType, AProperty: TSyntaxNode; const AClassName: string);
-  var
-    mClause, mArgument: Integer;
-    mHeader, mFound: TSyntaxNode;
-    mKind: string;
-  begin
-    for mClause in mScan.ClauseWords(AProperty) do
-    begin
-      mHeader := AccessorHeader(AType, AProperty, mClause, mArgument);
-      mFound := nil;
-      if mHeader <> nil then
-      begin
-        mFound := Convention(mHeader);
-      end;
-      if mFound = nil then
-      begin
-        Continue;
-      end;
-      mKind := 'Setter';
-      if SameText(mScan.Tokens[mClause].Text, 'read') then
-      begin
-        mKind := 'Getter';
-      end;
-      AReport.Add(mScan.TokenRange(mArgument), cTexts[TTypeDeclarationsText.PublishedRegister].Fmt([mKind,
-        mScan.Tokens[mArgument].Text, AProperty.Name, mFound.Name]),
-        TRuleConfidence.High, RemoveFix(AClassName, mHeader, mFound));
-    end;
-  end;
-
-  procedure CheckClass(AType: TSyntaxNode; const AClassName: string);
-  var
-    mIndex: Integer;
-    mChild: TSyntaxNode;
-    mPublished: Boolean;
-  begin
-    mPublished := False;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      mChild := AType[mIndex];
-      if mChild.Kind = TSyntaxKind.Visibility then
-      begin
-        mPublished := mChild.Name = 'published';
-      end
-      else if not mScan.Unconditional(mChild) then
-      begin
-        Continue;
-      end
-      else if (mChild.Kind = TSyntaxKind.RoutineHeader) and MatchText(Keyword(mChild), ['constructor', 'destructor']) then
-      begin
-        CheckConstructor(mChild, AClassName);
-      end
-      else if (mChild.Kind = TSyntaxKind.PropertyDecl) and mPublished then
-      begin
-        CheckPublishedProperty(AType, mChild, AClassName);
-      end;
-    end;
-  end;
-
-  procedure CheckVarargs(AHeader: TSyntaxNode);
-  var
-    mVarargs, mFound: TSyntaxNode;
-    mCode: string;
-    mEdit: TTextEdit;
-    mPosition: TTextPosition;
-  begin
-    mVarargs := Directive(AHeader, 'varargs');
-    if (mVarargs = nil) or not mScan.Unconditional(AHeader) then
-    begin
-      Exit;
-    end;
-    // Ohne external: dcc meldet E2277 unter Win32 auch mit cdecl; Win64 übersetzt es (Cm.E2277, #1380).
-    if Directive(AHeader, 'external') = nil then
-    begin
-      if AContext.Tree.Platform = 'Win32' then
-      begin
-        AReport.Add(mScan.FirstRange(mVarargs), cTexts[TTypeDeclarationsText.VarargsWin32].Text, TRuleConfidence.High);
-      end;
-      Exit;
-    end;
-    if Directive(AHeader, 'cdecl') <> nil then
-    begin
-      Exit;
-    end;
-    mCode := 'E2277';
-    mFound := Convention(AHeader);
     if mFound = nil then
     begin
-      mFound := Directive(AHeader, 'register');
+      Continue;
     end;
-    if mFound <> nil then
+    mKind := 'Setter';
+    if SameText(FScan.Tokens[mClause].Text, 'read') then
     begin
-      mEdit := TTextEdit.Create(mScan.FirstRange(mFound), 'cdecl');
-    end
-    else
-    begin
-      mPosition := mScan.FirstRange(mVarargs).StartPos;
-      mEdit := TTextEdit.Create(TTextRange.Create(mPosition, mPosition), 'cdecl; ');
+      mKind := 'Getter';
     end;
-    AReport.Add(mScan.FirstRange(mVarargs), cTexts[TTypeDeclarationsText.VarargsCdecl].Fmt([mCode]),
-      TRuleConfidence.High, [TRuleFix.Create(cTexts[TTypeDeclarationsText.SetCdecl].Text, [mEdit])]);
+    FReport.Add(FScan.TokenRange(mArgument), cTexts[TTypeDeclarationsText.PublishedRegister].Fmt([mKind,
+      FScan.Tokens[mArgument].Text, AProperty.Name, mFound.Name]),
+      TRuleConfidence.High, RemoveFix(AClassName, mHeader, mFound));
   end;
+end;
 
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Visit(ARoot: TSyntaxNode; const AOwner: string);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mPendingOwner: TStack<string>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-    mName: string;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    mPendingOwner := TStack<string>.Create;
-    try
-      mPending.Push(ARoot);
-      mPendingOwner.Push(AOwner);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mName := NestedTypeName(mPendingOwner.Pop, mNode);
-        if mNode.Kind = TSyntaxKind.ClassType then
-        begin
-          CheckClass(mNode, mName);
-        end;
-        if mNode.Kind = TSyntaxKind.RoutineHeader then
-        begin
-          CheckVarargs(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          if mNode[mIndex].Kind in cDeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
-            TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
-          begin
-            mPending.Push(mNode[mIndex]);
-            mPendingOwner.Push(mName);
-          end;
-        end;
-      end;
-    finally
-      mPendingOwner.Free;
-      mPending.Free;
-    end;
-  end;
-
+procedure TCallingConventionRequiredScan.CheckClass(AType: TSyntaxNode; const AClassName: string);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mPublished: Boolean;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  mPublished := False;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    mChild := AType[mIndex];
+    if mChild.Kind = TSyntaxKind.Visibility then
+    begin
+      mPublished := mChild.Name = 'published';
+    end
+    else if not FScan.Unconditional(mChild) then
+    begin
+      Continue;
+    end
+    else if (mChild.Kind = TSyntaxKind.RoutineHeader) and MatchText(Keyword(mChild), ['constructor', 'destructor']) then
+    begin
+      CheckConstructor(mChild, AClassName);
+    end
+    else if (mChild.Kind = TSyntaxKind.PropertyDecl) and mPublished then
+    begin
+      CheckPublishedProperty(AType, mChild, AClassName);
+    end;
+  end;
+end;
+
+procedure TCallingConventionRequiredScan.CheckVarargs(AHeader: TSyntaxNode);
+var
+  mVarargs, mFound: TSyntaxNode;
+  mCode: string;
+  mEdit: TTextEdit;
+  mPosition: TTextPosition;
+begin
+  mVarargs := Directive(AHeader, 'varargs');
+  if (mVarargs = nil) or not FScan.Unconditional(AHeader) then
   begin
     Exit;
   end;
-  mScan := TDeclarationScan.Create(AContext);
-  try
-    Visit(AContext.Tree.Root, '');
-  finally
-    mScan.Free;
+  // Ohne external: dcc meldet E2277 unter Win32 auch mit cdecl; Win64 übersetzt es (Cm.E2277, #1380).
+  if Directive(AHeader, 'external') = nil then
+  begin
+    if FContext.Tree.Platform = 'Win32' then
+    begin
+      FReport.Add(FScan.FirstRange(mVarargs), cTexts[TTypeDeclarationsText.VarargsWin32].Text, TRuleConfidence.High);
+    end;
+    Exit;
   end;
+  if Directive(AHeader, 'cdecl') <> nil then
+  begin
+    Exit;
+  end;
+  mCode := 'E2277';
+  mFound := Convention(AHeader);
+  if mFound = nil then
+  begin
+    mFound := Directive(AHeader, 'register');
+  end;
+  if mFound <> nil then
+  begin
+    mEdit := TTextEdit.Create(FScan.FirstRange(mFound), 'cdecl');
+  end
+  else
+  begin
+    mPosition := FScan.FirstRange(mVarargs).StartPos;
+    mEdit := TTextEdit.Create(TTextRange.Create(mPosition, mPosition), 'cdecl; ');
+  end;
+  FReport.Add(FScan.FirstRange(mVarargs), cTexts[TTypeDeclarationsText.VarargsCdecl].Fmt([mCode]),
+    TRuleConfidence.High, [TRuleFix.Create(cTexts[TTypeDeclarationsText.SetCdecl].Text, [mEdit])]);
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TCallingConventionRequiredScan.Visit(ARoot: TSyntaxNode; const AOwner: string);
+var
+  mPending: TStack<TSyntaxNode>;
+  mPendingOwner: TStack<string>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingOwner := TStack<string>.Create;
+  try
+    mPending.Push(ARoot);
+    mPendingOwner.Push(AOwner);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mName := NestedTypeName(mPendingOwner.Pop, mNode);
+      if mNode.Kind = TSyntaxKind.ClassType then
+      begin
+        CheckClass(mNode, mName);
+      end;
+      if mNode.Kind = TSyntaxKind.RoutineHeader then
+      begin
+        CheckVarargs(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        if mNode[mIndex].Kind in cDeclarationKinds + [TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
+          TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType] then
+        begin
+          mPending.Push(mNode[mIndex]);
+          mPendingOwner.Push(mName);
+        end;
+      end;
+    end;
+  finally
+    mPendingOwner.Free;
+    mPending.Free;
+  end;
+end;
+
+procedure TCallingConventionRequiredScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FScan := TDeclarationScan.Create(FContext);
+  try
+    Visit(FContext.Tree.Root, '');
+  finally
+    FScan.Free;
+  end;
+end;
+
+procedure TCallingConventionRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TCallingConventionRequiredScan;
+begin
+  mScan := TCallingConventionRequiredScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TDispinterfaceInvalidRule }

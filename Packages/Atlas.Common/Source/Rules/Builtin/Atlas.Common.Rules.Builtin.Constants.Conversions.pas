@@ -402,315 +402,221 @@ begin
   SetLength(Result, mCount);
 end;
 
-procedure TNarrowingAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   cMaxValueText = 30;
+
+type
+  /// <summary>Ein Lauf von TNarrowingAssignmentRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TNarrowingAssignmentScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FFileName: string;
+    FResolver: TNameResolver;
+    FCache: IRuleDerivedCache;
+    FSources: TTypedNames;
+    FPairs: TDictionary<string, Boolean>;
+    function NodeText(ANode: TSyntaxNode): string;
+    procedure EnsureResolver;
+    function Canonical(const ATypeName: string; const ATypeInfo: TResolvedSymbol; ATypeFound: Boolean): string;
+    function NamedType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
+    function LiteralType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
+    function KnownType(ANode: TSyntaxNode; AKnown: TDictionary<TSyntaxNode, TNumericType>;
+      out AType: TNumericType): Boolean;
+    function ExpressionType(ANode: TSyntaxNode; out ACanonical, ADisplay: string): Boolean;
+    function MaySource(ANode: TSyntaxNode): Boolean;
+    function DeclarationTypeNode(const ASymbol: TResolvedSymbol): TSyntaxNode;
+    procedure Report(AValue: TSyntaxNode; const ATargetDisplay, ATargetCanonical: string;
+      ATargetTypeNode: TSyntaxNode);
+    procedure CheckAssignment(ANode: TSyntaxNode);
+    procedure CheckInlineVar(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TNarrowingAssignmentScan }
+
+constructor TNarrowingAssignmentScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TNarrowingAssignmentScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+procedure TNarrowingAssignmentScan.EnsureResolver;
+begin
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+end;
+
+/// <summary>Einheitlicher Name des Typs ATypeName; eigene Aliase über den aufgelösten Typ
+/// (ATypeInfo aus NodeType bzw. ResolveType).</summary>
+function TNarrowingAssignmentScan.Canonical(const ATypeName: string; const ATypeInfo: TResolvedSymbol;
+  ATypeFound: Boolean): string;
 var
-  mFileName: string;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mSources: TTypedNames;
-  // Paare "quelle>ziel" in einheitlichen Namen.
-  mPairs: TDictionary<string, Boolean>;
-
-  function NodeText(ANode: TSyntaxNode): string;
+  mBody: string;
+begin
+  Result := TNarrowingAssignmentRule.CanonicalTypeName(ATypeName);
+  if (IntegerWidth(Result) > 0) or IsFloatName(Result) or not ATypeFound then
   begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+    Exit;
   end;
-
-  procedure EnsureResolver;
+  // Aufgelöst ist entweder der Zieltyp selbst (Integer) oder der Alias mit Signatur (TZahl = Integer).
+  mBody := TNarrowingAssignmentRule.CanonicalTypeName(ATypeInfo.Name);
+  if (IntegerWidth(mBody) = 0) and not IsFloatName(mBody) then
   begin
-    if mResolver = nil then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-    end;
+    mBody := TNarrowingAssignmentRule.CanonicalTypeName(TypeBodyOf(ATypeInfo.Signature));
   end;
-
-  /// <summary>Einheitlicher Name des Typs ATypeName; eigene Aliase über den aufgelösten Typ
-  /// (ATypeInfo aus NodeType bzw. ResolveType).</summary>
-  function Canonical(const ATypeName: string; const ATypeInfo: TResolvedSymbol; ATypeFound: Boolean): string;
-  var
-    mBody: string;
+  if (IntegerWidth(mBody) > 0) or IsFloatName(mBody) then
   begin
-    Result := CanonicalTypeName(ATypeName);
-    if (IntegerWidth(Result) > 0) or IsFloatName(Result) or not ATypeFound then
-    begin
-      Exit;
-    end;
-    // Aufgelöst ist entweder der Zieltyp selbst (Integer) oder der Alias mit Signatur (TZahl = Integer).
-    mBody := CanonicalTypeName(ATypeInfo.Name);
-    if (IntegerWidth(mBody) = 0) and not IsFloatName(mBody) then
-    begin
-      mBody := CanonicalTypeName(TypeBodyOf(ATypeInfo.Signature));
-    end;
-    if (IntegerWidth(mBody) > 0) or IsFloatName(mBody) then
-    begin
-      Result := mBody;
-    end;
+    Result := mBody;
   end;
+end;
 
-  /// <summary>Typ eines Namens, Aufrufs oder Elements mit sicher bekanntem Zahltyp.</summary>
-  function NamedType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
+/// <summary>Typ eines Namens, Aufrufs oder Elements mit sicher bekanntem Zahltyp.</summary>
+function TNarrowingAssignmentScan.NamedType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  AType := Default(TNumericType);
+  EnsureResolver;
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+    TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and (mSymbol.TypeName <> '');
+  if Result then
   begin
-    AType := Default(TNumericType);
-    EnsureResolver;
-    Result := mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mTypeInfo, mTypeFound) and
-      (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
-      TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and (mSymbol.TypeName <> '');
-    if Result then
-    begin
-      AType.Canonical := Canonical(mSymbol.TypeName, mTypeInfo, mTypeFound);
-      AType.Display := mSymbol.TypeName;
-      Result := (IntegerWidth(AType.Canonical) > 0) or IsFloatName(AType.Canonical);
-    end;
+    AType.Canonical := Canonical(mSymbol.TypeName, mTypeInfo, mTypeFound);
+    AType.Display := mSymbol.TypeName;
+    Result := (IntegerWidth(AType.Canonical) > 0) or IsFloatName(AType.Canonical);
   end;
+end;
 
-  /// <summary>Kleine ganze Zahl innerhalb einer Rechnung: Integer, sie ändert die Breite nicht.</summary>
-  function LiteralType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
-  var
-    mValue: Int64;
+/// <summary>Kleine ganze Zahl innerhalb einer Rechnung: Integer, sie ändert die Breite nicht.</summary>
+function TNarrowingAssignmentScan.LiteralType(ANode: TSyntaxNode; out AType: TNumericType): Boolean;
+var
+  mValue: Int64;
+begin
+  AType := Default(TNumericType);
+  Result := TOrdinalConstants.Evaluate(NodeText(ANode), nil, mValue) and (mValue >= Low(Integer)) and
+    (mValue <= High(Integer));
+  if Result then
   begin
-    AType := Default(TNumericType);
-    Result := TOrdinalConstants.Evaluate(NodeText(ANode), nil, mValue) and (mValue >= Low(Integer)) and
-      (mValue <= High(Integer));
-    if Result then
-    begin
-      AType.Canonical := 'integer';
-      AType.Display := 'Integer';
-    end;
+    AType.Canonical := 'integer';
+    AType.Display := 'Integer';
   end;
+end;
 
-  /// <summary>Typ von ANode, wenn die Typen der Operanden schon in AKnown stehen.</summary>
-  function KnownType(ANode: TSyntaxNode; AKnown: TDictionary<TSyntaxNode, TNumericType>;
-    out AType: TNumericType): Boolean;
-  begin
-    AType := Default(TNumericType);
-    case ANode.Kind of
-      TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
-        Result := TypeFollowsOperands(ANode) and AKnown.TryGetValue(ANode[0], AType);
-      TSyntaxKind.Literal:
-        Result := LiteralType(ANode, AType);
-      TSyntaxKind.BinaryExpr:
-        Result := ArithmeticType(ANode, AKnown, AType);
-      TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess:
-        Result := NamedType(ANode, AType);
-    else
-      Result := False;
-    end;
-  end;
-
-  /// <summary>Typ des Ausdrucks ANode: Operand mit sicher bekanntem Typ oder ganzzahlige Rechnung daraus.
-  /// ADisplay ist der Typ wie deklariert; False, wenn er nicht sicher bekannt ist.</summary>
-  function ExpressionType(ANode: TSyntaxNode; out ACanonical, ADisplay: string): Boolean;
-  var
-    mEntry: TSyntaxPostOrderEntry;
-    mType: TNumericType;
-    mPending: TStack<TSyntaxPostOrderEntry>;
-    mKnown: TDictionary<TSyntaxNode, TNumericType>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben
-    // sehr tiefe Bäume. Bekannte Typen stehen in mKnown, unbekannte fehlen dort.
-    mPending := TStack<TSyntaxPostOrderEntry>.Create;
-    mKnown := TDictionary<TSyntaxNode, TNumericType>.Create;
-    try
-      mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-      while mPending.Count > 0 do
-      begin
-        mEntry := mPending.Pop;
-        if not mEntry.Done then
-        begin
-          PushPostOrder(mPending, mEntry.Node, TypeFollowsOperands(mEntry.Node));
-        end
-        else if KnownType(mEntry.Node, mKnown, mType) then
-        begin
-          mKnown.AddOrSetValue(mEntry.Node, mType);
-        end;
-      end;
-      Result := mKnown.TryGetValue(ANode, mType);
-      ACanonical := mType.Canonical;
-      ADisplay := mType.Display;
-    finally
-      mKnown.Free;
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Kann der Ausdruck einen Quelltyp aus den Paaren haben (Vorfilter ohne Namensauflösung)?</summary>
-  function MaySource(ANode: TSyntaxNode): Boolean;
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+/// <summary>Typ von ANode, wenn die Typen der Operanden schon in AKnown stehen.</summary>
+function TNarrowingAssignmentScan.KnownType(ANode: TSyntaxNode; AKnown: TDictionary<TSyntaxNode, TNumericType>;
+  out AType: TNumericType): Boolean;
+begin
+  AType := Default(TNumericType);
+  case ANode.Kind of
+    TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr:
+      Result := TypeFollowsOperands(ANode) and AKnown.TryGetValue(ANode[0], AType);
+    TSyntaxKind.Literal:
+      Result := LiteralType(ANode, AType);
+    TSyntaxKind.BinaryExpr:
+      Result := ArithmeticType(ANode, AKnown, AType);
+    TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess:
+      Result := NamedType(ANode, AType);
+  else
     Result := False;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
-          TSyntaxKind.IndexAccess] then
-        begin
-          if mSources.Suspect(OperandName(mNode)) then
-          begin
-            Exit(True);
-          end;
-        end
-        else if mNode.Kind in [TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr] then
-        begin
-          for mIndex := mNode.ChildCount - 1 downto 0 do
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
   end;
+end;
 
-  /// <summary>Typknoten der Deklaration des Ziels in dieser Datei (einzelne Variable oder einzelnes Feld);
-  /// nil, wenn die Deklaration woanders steht oder mehrere Namen teilt.</summary>
-  function DeclarationTypeNode(const ASymbol: TResolvedSymbol): TSyntaxNode;
-  var
-    mFound: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      mIndex: Integer;
-      mNode: TSyntaxNode;
-      mPending: TStack<TSyntaxNode>;
+/// <summary>Typ des Ausdrucks ANode: Operand mit sicher bekanntem Typ oder ganzzahlige Rechnung daraus.
+/// ADisplay ist der Typ wie deklariert; False, wenn er nicht sicher bekannt ist.</summary>
+function TNarrowingAssignmentScan.ExpressionType(ANode: TSyntaxNode; out ACanonical, ADisplay: string): Boolean;
+var
+  mEntry: TSyntaxPostOrderEntry;
+  mType: TNumericType;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mKnown: TDictionary<TSyntaxNode, TNumericType>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Rechenketten ergeben
+  // sehr tiefe Bäume. Bekannte Typen stehen in mKnown, unbekannte fehlen dort.
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
+  mKnown := TDictionary<TSyntaxNode, TNumericType>.Create;
+  try
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-      mPending := TStack<TSyntaxNode>.Create;
-      try
-        mPending.Push(ARoot);
-        while mPending.Count > 0 do
-        begin
-          mNode := mPending.Pop;
-          if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.InlineVar]) and
-            (mNode.ChildCount > 0) and SameText(mNode.Name, ASymbol.Name) and
-            (mNode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
-            (mNode[0].Kind = TSyntaxKind.TypeReference) then
-          begin
-            mFound := mNode[0];
-            Exit;
-          end;
-          for mIndex := mNode.ChildCount - 1 downto 0 do
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      finally
-        mPending.Free;
-      end;
-    end;
-
-  begin
-    mFound := nil;
-    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, mFileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(mFileName)) then
-    begin
-      Search(AContext.Tree.Root);
-    end;
-    Result := mFound;
-  end;
-
-  procedure Report(AValue: TSyntaxNode; const ATargetDisplay, ATargetCanonical: string;
-    ATargetTypeNode: TSyntaxNode);
-  var
-    mSourceCanonical, mSourceDisplay, mValueText, mCodeSuffix, mMessage: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    if not MaySource(AValue) or not ExpressionType(AValue, mSourceCanonical, mSourceDisplay) or
-      not mPairs.ContainsKey(mSourceCanonical + '>' + ATargetCanonical) then
-    begin
-      Exit;
-    end;
-    mCodeSuffix := '';
-    if IsFloatName(ATargetCanonical) then
-    begin
-      if (mSourceCanonical = 'extended') and (ATargetCanonical = 'double') then
+      mEntry := mPending.Pop;
+      if not mEntry.Done then
       begin
-        mCodeSuffix := cTexts[TConstantsConversionsText.LikeW1066].Text;
+        PushPostOrder(mPending, mEntry.Node, TypeFollowsOperands(mEntry.Node));
       end
-      else
+      else if KnownType(mEntry.Node, mKnown, mType) then
       begin
-        mCodeSuffix := cTexts[TConstantsConversionsText.LikeW1072].Text;
+        mKnown.AddOrSetValue(mEntry.Node, mType);
       end;
     end;
-    mValueText := NodeText(AValue);
-    if (Length(mValueText) > cMaxValueText) or (Pos(#10, mValueText) > 0) then
-    begin
-      mValueText := cTexts[TConstantsConversionsText.TheValue].Text;
-    end;
-    mMessage := cTexts[TConstantsConversionsText.MayLose].Fmt([mValueText, mSourceDisplay, ATargetDisplay,
-      mCodeSuffix]);
-    mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.CastExplicitly].Fmt([ATargetDisplay]),
-      [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
-      ATargetDisplay + '(' + NodeText(AValue) + ')')])];
-    if ATargetTypeNode <> nil then
-    begin
-      mFixes := mFixes + [TRuleFix.Create(cTexts[TConstantsConversionsText.WidenTarget].Fmt([mSourceDisplay]),
-        [TTextEdit.Create(TTextRange.Create(ATargetTypeNode.StartPos, ATargetTypeNode.EndPos), mSourceDisplay)])];
-    end;
-    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), mMessage, TRuleConfidence.Medium, mFixes);
+    Result := mKnown.TryGetValue(ANode, mType);
+    ACanonical := mType.Canonical;
+    ADisplay := mType.Display;
+  finally
+    mKnown.Free;
+    mPending.Free;
   end;
+end;
 
-  procedure CheckAssignment(ANode: TSyntaxNode);
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-    mTarget: string;
-  begin
-    if (ANode.ChildCount <> 2) or not MaySource(ANode[1]) then
+/// <summary>Kann der Ausdruck einen Quelltyp aus den Paaren haben (Vorfilter ohne Namensauflösung)?</summary>
+function TNarrowingAssignmentScan.MaySource(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Exit;
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+        TSyntaxKind.IndexAccess] then
+      begin
+        if FSources.Suspect(OperandName(mNode)) then
+        begin
+          Exit(True);
+        end;
+      end
+      else if mNode.Kind in [TSyntaxKind.ParenExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr] then
+      begin
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
     end;
-    EnsureResolver;
-    if not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
-      not mResolver.NodeType(AContext.Tree, mFileName, ANode[0], mSymbol, mTypeInfo, mTypeFound) or
-      not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-      TIndexSymbolKind.Property_]) or (mSymbol.TypeName = '') then
-    begin
-      Exit;
-    end;
-    mTarget := Canonical(mSymbol.TypeName, mTypeInfo, mTypeFound);
-    if (ANode[0].Kind = TSyntaxKind.Identifier) and not mSymbol.IsParameter then
-    begin
-      Report(ANode[1], mSymbol.TypeName, mTarget, DeclarationTypeNode(mSymbol));
-    end
-    else
-    begin
-      Report(ANode[1], mSymbol.TypeName, mTarget, nil);
-    end;
+  finally
+    mPending.Free;
   end;
+end;
 
-  procedure CheckInlineVar(ANode: TSyntaxNode);
-  var
-    mTypeInfo: TResolvedSymbol;
-    mTypeName: string;
-  begin
-    if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) or
-      not MaySource(ANode[1]) then
-    begin
-      Exit;
-    end;
-    EnsureResolver;
-    mTypeName := NodeText(ANode[0]);
-    mTypeInfo := mResolver.ResolveType(AContext.Tree, mFileName, ANode[0].StartPos);
-    Report(ANode[1], mTypeName, Canonical(mTypeName, mTypeInfo, mTypeInfo.Found), ANode[0]);
-  end;
+/// <summary>Typknoten der Deklaration des Ziels in dieser Datei (einzelne Variable oder einzelnes Feld);
+/// nil, wenn die Deklaration woanders steht oder mehrere Namen teilt.</summary>
+function TNarrowingAssignmentScan.DeclarationTypeNode(const ASymbol: TResolvedSymbol): TSyntaxNode;
+var
+  mFound: TSyntaxNode;
 
-  procedure Visit(ARoot: TSyntaxNode);
+  procedure Search(ARoot: TSyntaxNode);
   var
     mIndex: Integer;
     mNode: TSyntaxNode;
@@ -723,13 +629,13 @@ var
       while mPending.Count > 0 do
       begin
         mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.AssignStatement then
+        if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.InlineVar]) and
+          (mNode.ChildCount > 0) and SameText(mNode.Name, ASymbol.Name) and
+          (mNode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) and
+          (mNode[0].Kind = TSyntaxKind.TypeReference) then
         begin
-          CheckAssignment(mNode);
-        end
-        else if mNode.Kind = TSyntaxKind.InlineVar then
-        begin
-          CheckInlineVar(mNode);
+          mFound := mNode[0];
+          Exit;
         end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
@@ -741,33 +647,170 @@ var
     end;
   end;
 
-var
-  mSourceNames: TArray<string>;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  mFound := nil;
+  if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) or
+    SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FFileName)) then
+  begin
+    Search(FContext.Tree.Root);
+  end;
+  Result := mFound;
+end;
+
+procedure TNarrowingAssignmentScan.Report(AValue: TSyntaxNode; const ATargetDisplay, ATargetCanonical: string;
+  ATargetTypeNode: TSyntaxNode);
+var
+  mSourceCanonical, mSourceDisplay, mValueText, mCodeSuffix, mMessage: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  if not MaySource(AValue) or not ExpressionType(AValue, mSourceCanonical, mSourceDisplay) or
+    not FPairs.ContainsKey(mSourceCanonical + '>' + ATargetCanonical) then
   begin
     Exit;
   end;
-  mFileName := AContext.ResolverFileName;
-  mPairs := TDictionary<string, Boolean>.Create;
-  mResolver := nil;
-  mSources := nil;
+  mCodeSuffix := '';
+  if IsFloatName(ATargetCanonical) then
+  begin
+    if (mSourceCanonical = 'extended') and (ATargetCanonical = 'double') then
+    begin
+      mCodeSuffix := cTexts[TConstantsConversionsText.LikeW1066].Text;
+    end
+    else
+    begin
+      mCodeSuffix := cTexts[TConstantsConversionsText.LikeW1072].Text;
+    end;
+  end;
+  mValueText := NodeText(AValue);
+  if (Length(mValueText) > cMaxValueText) or (Pos(#10, mValueText) > 0) then
+  begin
+    mValueText := cTexts[TConstantsConversionsText.TheValue].Text;
+  end;
+  mMessage := cTexts[TConstantsConversionsText.MayLose].Fmt([mValueText, mSourceDisplay, ATargetDisplay,
+    mCodeSuffix]);
+  mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.CastExplicitly].Fmt([ATargetDisplay]),
+    [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+    ATargetDisplay + '(' + NodeText(AValue) + ')')])];
+  if ATargetTypeNode <> nil then
+  begin
+    mFixes := mFixes + [TRuleFix.Create(cTexts[TConstantsConversionsText.WidenTarget].Fmt([mSourceDisplay]),
+      [TTextEdit.Create(TTextRange.Create(ATargetTypeNode.StartPos, ATargetTypeNode.EndPos), mSourceDisplay)])];
+  end;
+  FReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), mMessage, TRuleConfidence.Medium, mFixes);
+end;
+
+procedure TNarrowingAssignmentScan.CheckAssignment(ANode: TSyntaxNode);
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mTarget: string;
+begin
+  if (ANode.ChildCount <> 2) or not MaySource(ANode[1]) then
+  begin
+    Exit;
+  end;
+  EnsureResolver;
+  if not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
+    not FResolver.NodeType(FContext.Tree, FFileName, ANode[0], mSymbol, mTypeInfo, mTypeFound) or
+    not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_]) or (mSymbol.TypeName = '') then
+  begin
+    Exit;
+  end;
+  mTarget := Canonical(mSymbol.TypeName, mTypeInfo, mTypeFound);
+  if (ANode[0].Kind = TSyntaxKind.Identifier) and not mSymbol.IsParameter then
+  begin
+    Report(ANode[1], mSymbol.TypeName, mTarget, DeclarationTypeNode(mSymbol));
+  end
+  else
+  begin
+    Report(ANode[1], mSymbol.TypeName, mTarget, nil);
+  end;
+end;
+
+procedure TNarrowingAssignmentScan.CheckInlineVar(ANode: TSyntaxNode);
+var
+  mTypeInfo: TResolvedSymbol;
+  mTypeName: string;
+begin
+  if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) or
+    not MaySource(ANode[1]) then
+  begin
+    Exit;
+  end;
+  EnsureResolver;
+  mTypeName := NodeText(ANode[0]);
+  mTypeInfo := FResolver.ResolveType(FContext.Tree, FFileName, ANode[0].StartPos);
+  Report(ANode[1], mTypeName, Canonical(mTypeName, mTypeInfo, mTypeInfo.Found), ANode[0]);
+end;
+
+procedure TNarrowingAssignmentScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    mSourceNames := ReadPairs(TRuleOptions.Strings(AContext.Options, 'types', DefaultTypes), mPairs);
-    if mPairs.Count = 0 then
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AssignStatement then
+      begin
+        CheckAssignment(mNode);
+      end
+      else if mNode.Kind = TSyntaxKind.InlineVar then
+      begin
+        CheckInlineVar(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TNarrowingAssignmentScan.Run;
+var
+  mSourceNames: TArray<string>;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FFileName := FContext.ResolverFileName;
+  FPairs := TDictionary<string, Boolean>.Create;
+  FResolver := nil;
+  FSources := nil;
+  try
+    mSourceNames := ReadPairs(TRuleOptions.Strings(FContext.Options, 'types', TNarrowingAssignmentRule.DefaultTypes),
+      FPairs);
+    if FPairs.Count = 0 then
     begin
       Exit;
     end;
-    mSources := TTypedNames.Create(AContext, mSourceNames);
-    Visit(AContext.Tree.Root);
+    FSources := TTypedNames.Create(FContext, mSourceNames);
+    Visit(FContext.Tree.Root);
   finally
-    if mResolver <> nil then
+    if FResolver <> nil then
     begin
-      mResolver.UnpinTree;
+      FResolver.UnpinTree;
     end;
-    mSources.Free;
-    mPairs.Free;
+    FSources.Free;
+    FPairs.Free;
   end;
+end;
+
+procedure TNarrowingAssignmentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TNarrowingAssignmentScan;
+begin
+  mScan := TNarrowingAssignmentScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TStringLengthLimitRule }
@@ -1104,614 +1147,656 @@ begin
   Inc(AIndex);
 end;
 
-procedure TStringLengthLimitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   cMaxLiteral = 255;
   cMaxResourceString = 4096;
   // Ab Delphi 12 (BDS 23) dürfen Literale länger sein.
   cLongLiteralVersion = 23;
-var
-  mFileName: string;
-  mResolver: TNameResolver;
-  // Namen und Typen mit string[N]/ShortString (Vorfilter vor der Namensauflösung).
-  mLocalNames, mShortTypes, mSuspects: TDictionary<string, Boolean>;
-  // Werte von Konstanten für string[Laenge]; erst bei Bedarf.
-  mValues: TConstantValues;
-  // Deklarationen dieser Datei nach Namen (klein), erst bei Bedarf (EnsureDeclarations).
-  mDeclarations: TObjectDictionary<string, TList<TSyntaxNode>>;
-  mTypeBodies: TDictionary<string, TSyntaxNode>;
-  // Hält den Resolver des Laufs (oder einen eigenen Cache ohne Engine).
-  mCache: IRuleDerivedCache;
 
-  function NodeText(ANode: TSyntaxNode): string;
-  begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+type
+  /// <summary>Ein Lauf von TStringLengthLimitRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TStringLengthLimitScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FFileName: string;
+    FResolver: TNameResolver;
+    FLocalNames, FShortTypes, FSuspects: TDictionary<string, Boolean>;
+    FValues: TConstantValues;
+    FDeclarations: TObjectDictionary<string, TList<TSyntaxNode>>;
+    FTypeBodies: TDictionary<string, TSyntaxNode>;
+    FCache: IRuleDerivedCache;
+    function NodeText(ANode: TSyntaxNode): string;
+    procedure EnsureResolver;
+    function BracketLength(ATypeNode: TSyntaxNode): Integer;
+    function IsShortTypeNode(ATypeNode: TSyntaxNode): Boolean;
+    function ExpressionLength(ANode: TSyntaxNode): Integer;
+    function AliasLength(const ATypeName: string): Integer;
+    procedure CollectTypes(ARoot: TSyntaxNode);
+    procedure CollectLocal(ARoot: TSyntaxNode);
+    function Suspect(const AName: string): Boolean;
+    procedure AddDeclaration(ANode: TSyntaxNode);
+    procedure EnsureDeclarations;
+    function LocalTypeBody(const ATypeName: string): TSyntaxNode;
+    function TypeNodeLength(ATypeNode: TSyntaxNode): Integer;
+    function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer;
+    function DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
+    procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
+    procedure CheckDeclaration(ANode: TSyntaxNode);
+    procedure CheckAssignment(ANode: TSyntaxNode);
+    procedure CheckResourceStrings(ASection: TSyntaxNode);
+    function SplitLiteral(const ATokenText: string): string;
+    procedure CheckLongLiterals;
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  procedure EnsureResolver;
-  begin
-    if mResolver = nil then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-    end;
-  end;
+{ TStringLengthLimitScan }
 
-  /// <summary>Typknoten string[Ausdruck] aus dem Baum: N über die Konstantenwerte (auch string[Laenge]); 0 bei
-  /// anderen Typen.</summary>
-  function BracketLength(ATypeNode: TSyntaxNode): Integer;
-  var
-    mValue: Int64;
-  begin
-    Result := 0;
-    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or not SameText(ATypeNode.Name, 'string') or
-      (ATypeNode.ChildCount <> 1) then
-    begin
-      Exit;
-    end;
-    EnsureResolver;
-    if mValues = nil then
-    begin
-      mValues := TConstantValues.Create(AContext.Tree, mFileName, AContext.Index, mResolver);
-    end;
-    if (mValues.Check(ATypeNode[0], mValue) = TOrdinalStatus.Value) and (mValue >= 1) and (mValue <= 255) then
-    begin
-      Result := Integer(mValue);
-    end;
-  end;
-
-  /// <summary>Nennt der Typknoten string[…], ShortString oder einen eigenen Alias darauf?</summary>
-  function IsShortTypeNode(ATypeNode: TSyntaxNode): Boolean;
-  begin
-    Result := ((ATypeNode.Kind = TSyntaxKind.TypeReference) and SameText(ATypeNode.Name, 'string') and
-      (ATypeNode.ChildCount = 1)) or (ShortStringLength(NodeText(ATypeNode)) > 0) or
-      mShortTypes.ContainsKey(LowerCase(Trim(NodeText(ATypeNode))));
-  end;
-
-  /// <summary>Zeichen des konstanten String-Ausdrucks ANode (Literale, mit + verkettet); -1 sonst.</summary>
-  function ExpressionLength(ANode: TSyntaxNode): Integer;
-  var
-    mLongest, mChars: Integer;
-    mEntry: TSyntaxPostOrderEntry;
-    mPending: TStack<TSyntaxPostOrderEntry>;
-    mLengths: TDictionary<TSyntaxNode, Integer>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben
-    // sehr tiefe Bäume.
-    mPending := TStack<TSyntaxPostOrderEntry>.Create;
-    mLengths := TDictionary<TSyntaxNode, Integer>.Create;
-    try
-      mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-      while mPending.Count > 0 do
-      begin
-        mEntry := mPending.Pop;
-        if not mEntry.Done then
-        begin
-          PushPostOrder(mPending, mEntry.Node, CombinesLength(mEntry.Node));
-          Continue;
-        end;
-        mChars := -1;
-        if mEntry.Node.Kind = TSyntaxKind.Literal then
-        begin
-          mChars := LiteralLength(NodeText(mEntry.Node), mLongest);
-        end
-        else if CombinesLength(mEntry.Node) then
-        begin
-          mChars := CombinedLength(mEntry.Node, mLengths);
-        end;
-        mLengths.AddOrSetValue(mEntry.Node, mChars);
-      end;
-      Result := KnownLength(mLengths, ANode);
-    finally
-      mLengths.Free;
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Ist ATypeName ein Alias auf string[N]/ShortString (eigene Datei oder Index)? Liefert N.</summary>
-  function AliasLength(const ATypeName: string): Integer;
-  begin
-    Result := ShortStringLength(ATypeName);
-    if (Result > 0) or not IsValidIdent(ATypeName, True) then
-    begin
-      Exit;
-    end;
-    if mShortTypes.ContainsKey(LowerCase(ATypeName)) then
-    begin
-      Exit(1);
-    end;
-    Result := IndexShortAlias(AContext.NameFacts, AContext.Index, ATypeName);
-  end;
-
-  procedure CollectTypes(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.ChildCount > 0) and IsShortTypeNode(mNode[0]) then
-        begin
-          mShortTypes.AddOrSetValue(LowerCase(mNode.Name), True);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  procedure CollectLocal(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mName: string;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
-          TSyntaxKind.InlineVar]) and (mNode.ChildCount > 0) and IsShortTypeNode(mNode[0]) then
-        begin
-          for mName in mNode.Name.Split([',']) do
-          begin
-            mLocalNames.AddOrSetValue(LowerCase(Trim(mName)), True);
-          end;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  function Suspect(const AName: string): Boolean;
-  var
-    mKey: string;
-    mLocation: TSymbolLocation;
-  begin
-    mKey := LowerCase(AName);
-    if (mKey = '') or mLocalNames.ContainsKey(mKey) then
-    begin
-      Exit(mKey <> '');
-    end;
-    if mSuspects.TryGetValue(mKey, Result) then
-    begin
-      Exit;
-    end;
-    Result := False;
-    // Ohne eigene Aliase der Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
-    if mShortTypes.Count = 0 then
-    begin
-      Result := IndexShortVariable(AContext.NameFacts, AContext.Index, AName);
-    end
-    else if AContext.Index <> nil then
-    begin
-      for mLocation in AContext.Index.FindSymbols(AName) do
-      begin
-        if (mLocation.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-          TIndexSymbolKind.Property_]) and ((ShortStringLength(mLocation.Symbol.Signature) > 0) or
-          ((mLocation.Symbol.TypeName <> '') and (AliasLength(mLocation.Symbol.TypeName) > 0))) then
-        begin
-          Result := True;
-          Break;
-        end;
-      end;
-    end;
-    mSuspects.Add(mKey, Result);
-  end;
-
-  /// <summary>Merkt die Deklaration ANode unter jedem ihrer Namen (A, B: Integer).</summary>
-  procedure AddDeclaration(ANode: TSyntaxNode);
-  var
-    mName, mKey: string;
-    mNodes: TList<TSyntaxNode>;
-  begin
-    for mName in ANode.Name.Split([',']) do
-    begin
-      mKey := LowerCase(Trim(mName));
-      if not mDeclarations.TryGetValue(mKey, mNodes) then
-      begin
-        mNodes := TList<TSyntaxNode>.Create;
-        mDeclarations.Add(mKey, mNodes);
-      end;
-      mNodes.Add(ANode);
-    end;
-  end;
-
-  /// <summary>Einmal je Datei: Typdeklarationen und Deklarationen mit Typ nach Namen, in Baumreihenfolge. Vorher
-  /// durchsuchte jede verdächtige Zuweisung den ganzen Baum (Zuweisungen × Knoten, Sekunden bei großen Units).
-  /// </summary>
-  procedure EnsureDeclarations;
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    if mDeclarations <> nil then
-    begin
-      Exit;
-    end;
-    mDeclarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
-    mTypeBodies := TDictionary<string, TSyntaxNode>.Create;
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung wie die frühere Suche, damit der erste Treffer
-    // gleich bleibt.
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(AContext.Tree.Root);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.ChildCount > 0) and
-          not mTypeBodies.ContainsKey(LowerCase(mNode.Name)) then
-        begin
-          mTypeBodies.Add(LowerCase(mNode.Name), mNode[0]);
-        end;
-        if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
-          TSyntaxKind.Parameter]) and (mNode.ChildCount > 0) then
-        begin
-          AddDeclaration(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Typknoten hinter "=" der Typdeklaration ATypeName in dieser Datei; nil sonst.</summary>
-  function LocalTypeBody(const ATypeName: string): TSyntaxNode;
-  begin
-    EnsureDeclarations;
-    if not mTypeBodies.TryGetValue(LowerCase(ATypeName), Result) then
-    begin
-      Result := nil;
-    end;
-  end;
-
-  // TypeNodeLength und TypeNameLength rufen sich gegenseitig auf; die Rekursion bleibt: sie folgt
-  // nur einer Kette von Typaliasen (TName = TKurz; TKurz = string[8]), nicht dem Syntaxbaum.
-  function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer; forward;
-
-  /// <summary>N des Typknotens ATypeNode (string[N], ShortString oder Alias darauf); 0 sonst.</summary>
-  function TypeNodeLength(ATypeNode: TSyntaxNode): Integer;
-  begin
-    Result := BracketLength(ATypeNode);
-    if Result = 0 then
-    begin
-      Result := ShortStringLength(NodeText(ATypeNode));
-    end;
-    if (Result = 0) and (ATypeNode.Kind = TSyntaxKind.TypeReference) then
-    begin
-      Result := TypeNameLength(Trim(NodeText(ATypeNode)), ATypeNode);
-    end;
-  end;
-
-  /// <summary>N des Alias ATypeName: eigener Alias aus dem Baum (auch string[Laenge]), sonst aus der Signatur
-  /// im Index; 0 sonst. AFrom verhindert, dass ein Knoten sich selbst auswertet.</summary>
-  function TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer;
-  var
-    mBody: TSyntaxNode;
-  begin
-    Result := 0;
-    if mShortTypes.ContainsKey(LowerCase(ATypeName)) then
-    begin
-      mBody := LocalTypeBody(ATypeName);
-      if (mBody <> nil) and (mBody <> AFrom) then
-      begin
-        Result := TypeNodeLength(mBody);
-      end;
-    end
-    else
-    begin
-      Result := AliasLength(ATypeName);
-    end;
-  end;
-
-  /// <summary>Typknoten der Deklaration von ASymbol in dieser Datei; nil, wenn sie woanders steht. AFixable:
-  /// einzelne Variable, Inline-Variable oder typisierte Konstante (keine Record-Felder, deren Größe zählen kann,
-  /// keine Parameter).</summary>
-  function DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
-  var
-    mNodes: TList<TSyntaxNode>;
-    mNode: TSyntaxNode;
-  begin
-    Result := nil;
-    AFixable := False;
-    if not ((ASymbol.FileName = '') or SameText(ASymbol.FileName, mFileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(mFileName))) then
-    begin
-      Exit;
-    end;
-    EnsureDeclarations;
-    if not mDeclarations.TryGetValue(LowerCase(ASymbol.Name), mNodes) then
-    begin
-      Exit;
-    end;
-    for mNode in mNodes do
-    begin
-      if (mNode.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
-        (mNode.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
-      begin
-        Result := mNode[0];
-        AFixable := (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
-          (Pos(',', mNode.Name) = 0) and (Result.Kind = TSyntaxKind.TypeReference);
-        Exit;
-      end;
-    end;
-  end;
-
-  procedure ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
-  var
-    mFixes: TArray<TRuleFix>;
-  begin
-    mFixes := nil;
-    if ATypeNode <> nil then
-    begin
-      mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.DeclareString].Text,
-        [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
-        ATypeNode.EndPos), 'string')])];
-    end;
-    AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
-      cTexts[TConstantsConversionsText.Truncated].Fmt([ALength, ALimit]), TRuleConfidence.High, mFixes);
-  end;
-
-  /// <summary>Typisierte Konstante oder initialisierte Variable: const K: string[8] = '…'.</summary>
-  procedure CheckDeclaration(ANode: TSyntaxNode);
-  var
-    mLimit, mChars: Integer;
-    mTypeNode: TSyntaxNode;
-  begin
-    if ANode.ChildCount <> 2 then
-    begin
-      Exit;
-    end;
-    mChars := ExpressionLength(ANode[1]);
-    if mChars <= 0 then
-    begin
-      Exit;
-    end;
-    mLimit := TypeNodeLength(ANode[0]);
-    if (mLimit = 0) or (mChars <= mLimit) then
-    begin
-      Exit;
-    end;
-    mTypeNode := nil;
-    if (Pos(',', ANode.Name) = 0) and (ANode[0].Kind = TSyntaxKind.TypeReference) then
-    begin
-      mTypeNode := ANode[0];
-    end;
-    ReportTruncated(ANode[1], mChars, mLimit, mTypeNode);
-  end;
-
-  procedure CheckAssignment(ANode: TSyntaxNode);
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound, mFixable: Boolean;
-    mLimit, mChars: Integer;
-    mTypeNode: TSyntaxNode;
-  begin
-    if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-      not Suspect(ANode[0].Name) then
-    begin
-      Exit;
-    end;
-    mChars := ExpressionLength(ANode[1]);
-    if mChars <= 0 then
-    begin
-      Exit;
-    end;
-    EnsureResolver;
-    if not mResolver.NodeType(AContext.Tree, mFileName, ANode[0], mSymbol, mTypeInfo, mTypeFound) or
-      not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
-    begin
-      Exit;
-    end;
-    // Deklaration in dieser Datei: Länge aus dem Baum (auch string[Laenge]); sonst aus der Signatur.
-    mTypeNode := DeclarationTypeNode(mSymbol, mFixable);
-    if mTypeNode <> nil then
-    begin
-      mLimit := TypeNodeLength(mTypeNode);
-    end
-    else
-    begin
-      mLimit := ShortStringLength(Copy(mSymbol.Signature, Pos(':', mSymbol.Signature) + 1, MaxInt));
-      if (mLimit = 0) and (mSymbol.TypeName <> '') then
-      begin
-        mLimit := TypeNameLength(mSymbol.TypeName, nil);
-      end;
-    end;
-    if (mLimit = 0) or (mChars <= mLimit) then
-    begin
-      Exit;
-    end;
-    if mFixable and (ANode[0].Kind = TSyntaxKind.Identifier) then
-    begin
-      ReportTruncated(ANode[1], mChars, mLimit, mTypeNode);
-    end
-    else
-    begin
-      ReportTruncated(ANode[1], mChars, mLimit, nil);
-    end;
-  end;
-
-  procedure CheckResourceStrings(ASection: TSyntaxNode);
-  var
-    mIndex, mChars: Integer;
-    mDecl: TSyntaxNode;
-  begin
-    for mIndex := 0 to ASection.ChildCount - 1 do
-    begin
-      mDecl := ASection[mIndex];
-      if (mDecl.Kind <> TSyntaxKind.ConstDecl) or (mDecl.ChildCount = 0) then
-      begin
-        Continue;
-      end;
-      mChars := ExpressionLength(mDecl[mDecl.ChildCount - 1]);
-      if mChars > cMaxResourceString then
-      begin
-        AReport.AddWithSeverity(TTextRange.Create(mDecl[mDecl.ChildCount - 1].StartPos,
-          mDecl[mDecl.ChildCount - 1].EndPos),
-            cTexts[TConstantsConversionsText.ResourceTooLong].Fmt([mDecl.Name, mChars,
-            cMaxResourceString]), TRuleSeverity.Error, nil);
-      end;
-    end;
-  end;
-
-  /// <summary>Teilt das Literal ATokenText in Stücke zu höchstens MaxLiteral Zeichen ('…' + '…'); '' wenn es
-  /// nicht nur aus einem Stück in Anführungszeichen besteht.</summary>
-  function SplitLiteral(const ATokenText: string): string;
-  var
-    mIndex, mCount: Integer;
-    mPart, mChar: string;
-  begin
-    Result := '';
-    if (Length(ATokenText) < 2) or (ATokenText[1] <> '''') or (ATokenText[Length(ATokenText)] <> '''') then
-    begin
-      Exit;
-    end;
-    mPart := '';
-    mCount := 0;
-    mIndex := 2;
-    while mIndex < Length(ATokenText) do
-    begin
-      if mCount = cMaxLiteral then
-      begin
-        Result := Result + '''' + mPart + ''' + ';
-        mPart := '';
-        mCount := 0;
-      end;
-      mChar := NextLiteralChar(ATokenText, mIndex);
-      if mChar = '' then
-      begin
-        Exit('');
-      end;
-      mPart := mPart + mChar;
-      Inc(mCount);
-    end;
-    Result := Result + '''' + mPart + '''';
-  end;
-
-  procedure CheckLongLiterals;
-  var
-    mToken: TPascalToken;
-    mLongest, mMajor: Integer;
-    mSplit: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mMajor := StrToIntDef(Copy(AContext.DelphiVersion, 1, Pos('.', AContext.DelphiVersion + '.') - 1), 0);
-    if (mMajor <= 0) or (mMajor >= cLongLiteralVersion) then
-    begin
-      Exit;
-    end;
-    for mToken in AContext.Tree.Tokens do
-    begin
-      if (mToken.Kind = TPascalTokenKind.StringLiteral) and (Length(mToken.Text) > cMaxLiteral) and
-        (LiteralLength(mToken.Text, mLongest) >= 0) and (mLongest > cMaxLiteral) then
-      begin
-        mFixes := nil;
-        mSplit := SplitLiteral(mToken.Text);
-        if mSplit <> '' then
-        begin
-          mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.SplitLiteral].Text,
-            [TTextEdit.Create(TTextRange.Create(mToken.StartPos,
-            mToken.EndPos), mSplit)])];
-        end;
-        AReport.AddWithSeverity(TTextRange.Create(mToken.StartPos, mToken.EndPos),
-          cTexts[TConstantsConversionsText.LiteralTooLong].Fmt(
-          [mLongest, cMaxLiteral]), TRuleSeverity.Error, mFixes);
-      end;
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        case mNode.Kind of
-          TSyntaxKind.AssignStatement:
-            CheckAssignment(mNode);
-          TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar:
-            CheckDeclaration(mNode);
-          TSyntaxKind.ConstSection:
-            if SameText(mNode.Name, 'resourcestring') then
-            begin
-              CheckResourceStrings(mNode);
-            end;
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+constructor TStringLengthLimitScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TStringLengthLimitScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+procedure TStringLengthLimitScan.EnsureResolver;
+begin
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+end;
+
+/// <summary>Typknoten string[Ausdruck] aus dem Baum: N über die Konstantenwerte (auch string[Laenge]); 0 bei
+/// anderen Typen.</summary>
+function TStringLengthLimitScan.BracketLength(ATypeNode: TSyntaxNode): Integer;
+var
+  mValue: Int64;
+begin
+  Result := 0;
+  if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or not SameText(ATypeNode.Name, 'string') or
+    (ATypeNode.ChildCount <> 1) then
   begin
     Exit;
   end;
-  mFileName := AContext.ResolverFileName;
-  mResolver := nil;
-  mValues := nil;
-  mDeclarations := nil;
-  mTypeBodies := nil;
-  mLocalNames := TDictionary<string, Boolean>.Create;
-  mShortTypes := TDictionary<string, Boolean>.Create;
-  mSuspects := TDictionary<string, Boolean>.Create;
+  EnsureResolver;
+  if FValues = nil then
+  begin
+    FValues := TConstantValues.Create(FContext.Tree, FFileName, FContext.Index, FResolver);
+  end;
+  if (FValues.Check(ATypeNode[0], mValue) = TOrdinalStatus.Value) and (mValue >= 1) and (mValue <= 255) then
+  begin
+    Result := Integer(mValue);
+  end;
+end;
+
+/// <summary>Nennt der Typknoten string[…], ShortString oder einen eigenen Alias darauf?</summary>
+function TStringLengthLimitScan.IsShortTypeNode(ATypeNode: TSyntaxNode): Boolean;
+begin
+  Result := ((ATypeNode.Kind = TSyntaxKind.TypeReference) and SameText(ATypeNode.Name, 'string') and
+    (ATypeNode.ChildCount = 1)) or (TStringLengthLimitRule.ShortStringLength(NodeText(ATypeNode)) > 0) or
+    FShortTypes.ContainsKey(LowerCase(Trim(NodeText(ATypeNode))));
+end;
+
+/// <summary>Zeichen des konstanten String-Ausdrucks ANode (Literale, mit + verkettet); -1 sonst.</summary>
+function TStringLengthLimitScan.ExpressionLength(ANode: TSyntaxNode): Integer;
+var
+  mLongest, mChars: Integer;
+  mEntry: TSyntaxPostOrderEntry;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mLengths: TDictionary<TSyntaxNode, Integer>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Nachordnung, die Operanden zuerst; lange Verkettungen ergeben
+  // sehr tiefe Bäume.
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
+  mLengths := TDictionary<TSyntaxNode, Integer>.Create;
   try
-    CollectTypes(AContext.Tree.Root);
-    CollectLocal(AContext.Tree.Root);
-    Visit(AContext.Tree.Root);
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
+    begin
+      mEntry := mPending.Pop;
+      if not mEntry.Done then
+      begin
+        PushPostOrder(mPending, mEntry.Node, CombinesLength(mEntry.Node));
+        Continue;
+      end;
+      mChars := -1;
+      if mEntry.Node.Kind = TSyntaxKind.Literal then
+      begin
+        mChars := TStringLengthLimitRule.LiteralLength(NodeText(mEntry.Node), mLongest);
+      end
+      else if CombinesLength(mEntry.Node) then
+      begin
+        mChars := CombinedLength(mEntry.Node, mLengths);
+      end;
+      mLengths.AddOrSetValue(mEntry.Node, mChars);
+    end;
+    Result := KnownLength(mLengths, ANode);
+  finally
+    mLengths.Free;
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Ist ATypeName ein Alias auf string[N]/ShortString (eigene Datei oder Index)? Liefert N.</summary>
+function TStringLengthLimitScan.AliasLength(const ATypeName: string): Integer;
+begin
+  Result := TStringLengthLimitRule.ShortStringLength(ATypeName);
+  if (Result > 0) or not IsValidIdent(ATypeName, True) then
+  begin
+    Exit;
+  end;
+  if FShortTypes.ContainsKey(LowerCase(ATypeName)) then
+  begin
+    Exit(1);
+  end;
+  Result := IndexShortAlias(FContext.NameFacts, FContext.Index, ATypeName);
+end;
+
+procedure TStringLengthLimitScan.CollectTypes(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.ChildCount > 0) and IsShortTypeNode(mNode[0]) then
+      begin
+        FShortTypes.AddOrSetValue(LowerCase(mNode.Name), True);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TStringLengthLimitScan.CollectLocal(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mName: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
+        TSyntaxKind.InlineVar]) and (mNode.ChildCount > 0) and IsShortTypeNode(mNode[0]) then
+      begin
+        for mName in mNode.Name.Split([',']) do
+        begin
+          FLocalNames.AddOrSetValue(LowerCase(Trim(mName)), True);
+        end;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TStringLengthLimitScan.Suspect(const AName: string): Boolean;
+var
+  mKey: string;
+  mLocation: TSymbolLocation;
+begin
+  mKey := LowerCase(AName);
+  if (mKey = '') or FLocalNames.ContainsKey(mKey) then
+  begin
+    Exit(mKey <> '');
+  end;
+  if FSuspects.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := False;
+  // Ohne eigene Aliase der Datei hängt die Antwort nur vom Index ab: über alle Units gemerkt.
+  if FShortTypes.Count = 0 then
+  begin
+    Result := IndexShortVariable(FContext.NameFacts, FContext.Index, AName);
+  end
+  else if FContext.Index <> nil then
+  begin
+    for mLocation in FContext.Index.FindSymbols(AName) do
+    begin
+      if (mLocation.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+        TIndexSymbolKind.Property_]) and ((TStringLengthLimitRule.ShortStringLength(mLocation.Symbol.Signature) > 0) or
+        ((mLocation.Symbol.TypeName <> '') and (AliasLength(mLocation.Symbol.TypeName) > 0))) then
+      begin
+        Result := True;
+        Break;
+      end;
+    end;
+  end;
+  FSuspects.Add(mKey, Result);
+end;
+
+/// <summary>Merkt die Deklaration ANode unter jedem ihrer Namen (A, B: Integer).</summary>
+procedure TStringLengthLimitScan.AddDeclaration(ANode: TSyntaxNode);
+var
+  mName, mKey: string;
+  mNodes: TList<TSyntaxNode>;
+begin
+  for mName in ANode.Name.Split([',']) do
+  begin
+    mKey := LowerCase(Trim(mName));
+    if not FDeclarations.TryGetValue(mKey, mNodes) then
+    begin
+      mNodes := TList<TSyntaxNode>.Create;
+      FDeclarations.Add(mKey, mNodes);
+    end;
+    mNodes.Add(ANode);
+  end;
+end;
+
+/// <summary>Einmal je Datei: Typdeklarationen und Deklarationen mit Typ nach Namen, in Baumreihenfolge. Vorher
+/// durchsuchte jede verdächtige Zuweisung den ganzen Baum (Zuweisungen × Knoten, Sekunden bei großen Units).
+/// </summary>
+procedure TStringLengthLimitScan.EnsureDeclarations;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  if FDeclarations <> nil then
+  begin
+    Exit;
+  end;
+  FDeclarations := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
+  FTypeBodies := TDictionary<string, TSyntaxNode>.Create;
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung wie die frühere Suche, damit der erste Treffer
+  // gleich bleibt.
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(FContext.Tree.Root);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and (mNode.ChildCount > 0) and
+        not FTypeBodies.ContainsKey(LowerCase(mNode.Name)) then
+      begin
+        FTypeBodies.Add(LowerCase(mNode.Name), mNode[0]);
+      end;
+      if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl, TSyntaxKind.Field,
+        TSyntaxKind.Parameter]) and (mNode.ChildCount > 0) then
+      begin
+        AddDeclaration(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Typknoten hinter "=" der Typdeklaration ATypeName in dieser Datei; nil sonst.</summary>
+function TStringLengthLimitScan.LocalTypeBody(const ATypeName: string): TSyntaxNode;
+begin
+  EnsureDeclarations;
+  if not FTypeBodies.TryGetValue(LowerCase(ATypeName), Result) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>N des Typknotens ATypeNode (string[N], ShortString oder Alias darauf); 0 sonst.</summary>
+function TStringLengthLimitScan.TypeNodeLength(ATypeNode: TSyntaxNode): Integer;
+begin
+  Result := BracketLength(ATypeNode);
+  if Result = 0 then
+  begin
+    Result := TStringLengthLimitRule.ShortStringLength(NodeText(ATypeNode));
+  end;
+  if (Result = 0) and (ATypeNode.Kind = TSyntaxKind.TypeReference) then
+  begin
+    Result := TypeNameLength(Trim(NodeText(ATypeNode)), ATypeNode);
+  end;
+end;
+
+/// <summary>N des Alias ATypeName: eigener Alias aus dem Baum (auch string[Laenge]), sonst aus der Signatur
+/// im Index; 0 sonst. AFrom verhindert, dass ein Knoten sich selbst auswertet.</summary>
+function TStringLengthLimitScan.TypeNameLength(const ATypeName: string; AFrom: TSyntaxNode): Integer;
+var
+  mBody: TSyntaxNode;
+begin
+  Result := 0;
+  if FShortTypes.ContainsKey(LowerCase(ATypeName)) then
+  begin
+    mBody := LocalTypeBody(ATypeName);
+    if (mBody <> nil) and (mBody <> AFrom) then
+    begin
+      Result := TypeNodeLength(mBody);
+    end;
+  end
+  else
+  begin
+    Result := AliasLength(ATypeName);
+  end;
+end;
+
+/// <summary>Typknoten der Deklaration von ASymbol in dieser Datei; nil, wenn sie woanders steht. AFixable:
+/// einzelne Variable, Inline-Variable oder typisierte Konstante (keine Record-Felder, deren Größe zählen kann,
+/// keine Parameter).</summary>
+function TStringLengthLimitScan.DeclarationTypeNode(const ASymbol: TResolvedSymbol; out AFixable: Boolean): TSyntaxNode;
+var
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  AFixable := False;
+  if not ((ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) or
+    SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FFileName))) then
+  begin
+    Exit;
+  end;
+  EnsureDeclarations;
+  if not FDeclarations.TryGetValue(LowerCase(ASymbol.Name), mNodes) then
+  begin
+    Exit;
+  end;
+  for mNode in mNodes do
+  begin
+    if (mNode.StartPos.Line <= ASymbol.SelectionRange.StartPos.Line) and
+      (mNode.EndPos.Line >= ASymbol.SelectionRange.StartPos.Line) then
+    begin
+      Result := mNode[0];
+      AFixable := (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl]) and
+        (Pos(',', mNode.Name) = 0) and (Result.Kind = TSyntaxKind.TypeReference);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TStringLengthLimitScan.ReportTruncated(AValue: TSyntaxNode; ALength, ALimit: Integer; ATypeNode: TSyntaxNode);
+var
+  mFixes: TArray<TRuleFix>;
+begin
+  mFixes := nil;
+  if ATypeNode <> nil then
+  begin
+    mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.DeclareString].Text,
+      [TTextEdit.Create(TTextRange.Create(ATypeNode.StartPos,
+      ATypeNode.EndPos), 'string')])];
+  end;
+  FReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+    cTexts[TConstantsConversionsText.Truncated].Fmt([ALength, ALimit]), TRuleConfidence.High, mFixes);
+end;
+
+/// <summary>Typisierte Konstante oder initialisierte Variable: const K: string[8] = '…'.</summary>
+procedure TStringLengthLimitScan.CheckDeclaration(ANode: TSyntaxNode);
+var
+  mLimit, mChars: Integer;
+  mTypeNode: TSyntaxNode;
+begin
+  if ANode.ChildCount <> 2 then
+  begin
+    Exit;
+  end;
+  mChars := ExpressionLength(ANode[1]);
+  if mChars <= 0 then
+  begin
+    Exit;
+  end;
+  mLimit := TypeNodeLength(ANode[0]);
+  if (mLimit = 0) or (mChars <= mLimit) then
+  begin
+    Exit;
+  end;
+  mTypeNode := nil;
+  if (Pos(',', ANode.Name) = 0) and (ANode[0].Kind = TSyntaxKind.TypeReference) then
+  begin
+    mTypeNode := ANode[0];
+  end;
+  ReportTruncated(ANode[1], mChars, mLimit, mTypeNode);
+end;
+
+procedure TStringLengthLimitScan.CheckAssignment(ANode: TSyntaxNode);
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound, mFixable: Boolean;
+  mLimit, mChars: Integer;
+  mTypeNode: TSyntaxNode;
+begin
+  if (ANode.ChildCount <> 2) or not (ANode[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+    not Suspect(ANode[0].Name) then
+  begin
+    Exit;
+  end;
+  mChars := ExpressionLength(ANode[1]);
+  if mChars <= 0 then
+  begin
+    Exit;
+  end;
+  EnsureResolver;
+  if not FResolver.NodeType(FContext.Tree, FFileName, ANode[0], mSymbol, mTypeInfo, mTypeFound) or
+    not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+  begin
+    Exit;
+  end;
+  // Deklaration in dieser Datei: Länge aus dem Baum (auch string[Laenge]); sonst aus der Signatur.
+  mTypeNode := DeclarationTypeNode(mSymbol, mFixable);
+  if mTypeNode <> nil then
+  begin
+    mLimit := TypeNodeLength(mTypeNode);
+  end
+  else
+  begin
+    mLimit := TStringLengthLimitRule.ShortStringLength(Copy(mSymbol.Signature, Pos(':', mSymbol.Signature) + 1,
+      MaxInt));
+    if (mLimit = 0) and (mSymbol.TypeName <> '') then
+    begin
+      mLimit := TypeNameLength(mSymbol.TypeName, nil);
+    end;
+  end;
+  if (mLimit = 0) or (mChars <= mLimit) then
+  begin
+    Exit;
+  end;
+  if mFixable and (ANode[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    ReportTruncated(ANode[1], mChars, mLimit, mTypeNode);
+  end
+  else
+  begin
+    ReportTruncated(ANode[1], mChars, mLimit, nil);
+  end;
+end;
+
+procedure TStringLengthLimitScan.CheckResourceStrings(ASection: TSyntaxNode);
+var
+  mIndex, mChars: Integer;
+  mDecl: TSyntaxNode;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mDecl := ASection[mIndex];
+    if (mDecl.Kind <> TSyntaxKind.ConstDecl) or (mDecl.ChildCount = 0) then
+    begin
+      Continue;
+    end;
+    mChars := ExpressionLength(mDecl[mDecl.ChildCount - 1]);
+    if mChars > cMaxResourceString then
+    begin
+      FReport.AddWithSeverity(TTextRange.Create(mDecl[mDecl.ChildCount - 1].StartPos,
+        mDecl[mDecl.ChildCount - 1].EndPos),
+          cTexts[TConstantsConversionsText.ResourceTooLong].Fmt([mDecl.Name, mChars,
+          cMaxResourceString]), TRuleSeverity.Error, nil);
+    end;
+  end;
+end;
+
+/// <summary>Teilt das Literal ATokenText in Stücke zu höchstens MaxLiteral Zeichen ('…' + '…'); '' wenn es
+/// nicht nur aus einem Stück in Anführungszeichen besteht.</summary>
+function TStringLengthLimitScan.SplitLiteral(const ATokenText: string): string;
+var
+  mIndex, mCount: Integer;
+  mPart, mChar: string;
+begin
+  Result := '';
+  if (Length(ATokenText) < 2) or (ATokenText[1] <> '''') or (ATokenText[Length(ATokenText)] <> '''') then
+  begin
+    Exit;
+  end;
+  mPart := '';
+  mCount := 0;
+  mIndex := 2;
+  while mIndex < Length(ATokenText) do
+  begin
+    if mCount = cMaxLiteral then
+    begin
+      Result := Result + '''' + mPart + ''' + ';
+      mPart := '';
+      mCount := 0;
+    end;
+    mChar := NextLiteralChar(ATokenText, mIndex);
+    if mChar = '' then
+    begin
+      Exit('');
+    end;
+    mPart := mPart + mChar;
+    Inc(mCount);
+  end;
+  Result := Result + '''' + mPart + '''';
+end;
+
+procedure TStringLengthLimitScan.CheckLongLiterals;
+var
+  mToken: TPascalToken;
+  mLongest, mMajor: Integer;
+  mSplit: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  mMajor := StrToIntDef(Copy(FContext.DelphiVersion, 1, Pos('.', FContext.DelphiVersion + '.') - 1), 0);
+  if (mMajor <= 0) or (mMajor >= cLongLiteralVersion) then
+  begin
+    Exit;
+  end;
+  for mToken in FContext.Tree.Tokens do
+  begin
+    if (mToken.Kind = TPascalTokenKind.StringLiteral) and (Length(mToken.Text) > cMaxLiteral) and
+      (TStringLengthLimitRule.LiteralLength(mToken.Text, mLongest) >= 0) and (mLongest > cMaxLiteral) then
+    begin
+      mFixes := nil;
+      mSplit := SplitLiteral(mToken.Text);
+      if mSplit <> '' then
+      begin
+        mFixes := [TRuleFix.Create(cTexts[TConstantsConversionsText.SplitLiteral].Text,
+          [TTextEdit.Create(TTextRange.Create(mToken.StartPos,
+          mToken.EndPos), mSplit)])];
+      end;
+      FReport.AddWithSeverity(TTextRange.Create(mToken.StartPos, mToken.EndPos),
+        cTexts[TConstantsConversionsText.LiteralTooLong].Fmt(
+        [mLongest, cMaxLiteral]), TRuleSeverity.Error, mFixes);
+    end;
+  end;
+end;
+
+procedure TStringLengthLimitScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.AssignStatement:
+          CheckAssignment(mNode);
+        TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar:
+          CheckDeclaration(mNode);
+        TSyntaxKind.ConstSection:
+          if SameText(mNode.Name, 'resourcestring') then
+          begin
+            CheckResourceStrings(mNode);
+          end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TStringLengthLimitScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FFileName := FContext.ResolverFileName;
+  FResolver := nil;
+  FValues := nil;
+  FDeclarations := nil;
+  FTypeBodies := nil;
+  FLocalNames := TDictionary<string, Boolean>.Create;
+  FShortTypes := TDictionary<string, Boolean>.Create;
+  FSuspects := TDictionary<string, Boolean>.Create;
+  try
+    CollectTypes(FContext.Tree.Root);
+    CollectLocal(FContext.Tree.Root);
+    Visit(FContext.Tree.Root);
     CheckLongLiterals;
   finally
-    mValues.Free;
-    if mResolver <> nil then
+    FValues.Free;
+    if FResolver <> nil then
     begin
-      mResolver.UnpinTree;
+      FResolver.UnpinTree;
     end;
-    mTypeBodies.Free;
-    mDeclarations.Free;
-    mSuspects.Free;
-    mShortTypes.Free;
-    mLocalNames.Free;
+    FTypeBodies.Free;
+    FDeclarations.Free;
+    FSuspects.Free;
+    FShortTypes.Free;
+    FLocalNames.Free;
   end;
+end;
+
+procedure TStringLengthLimitRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TStringLengthLimitScan;
+begin
+  mScan := TStringLengthLimitScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

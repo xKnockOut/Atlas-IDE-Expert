@@ -768,287 +768,316 @@ begin
   end;
 end;
 
-procedure TInheritedOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TInheritedOrderRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TInheritedOrderScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FModel: TComponentModel;
+    FLines: TArray<string>;
+    function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
+    function WaitsInDestructor(const AClassName: string): Boolean;
+    function OwnLines(AStatement: TSyntaxNode): Boolean;
+    function MoveFix(ABlock, AStatement: TSyntaxNode; AToEnd: Boolean; out AFix: TRuleFix): Boolean;
+    function AncestorDestroys(const AClassName: string): Boolean;
+    procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+    function FirstInheritedAccess(ARoot: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
+      out AName, AOwner: string): TSyntaxNode;
+    function ArgumentsUseLocals(ARoot: TSyntaxNode; const ALocals: TArray<string>): Boolean;
+    procedure CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TInheritedOrderScan }
+
+constructor TInheritedOrderScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TInheritedOrderScan.FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
 var
-  mModel: TComponentModel;
+  mInfo: TClassInfo;
+begin
+  for mInfo in FModel.Classes do
+  begin
+    if SameText(mInfo.Name, AName) then
+    begin
+      AInfo := mInfo;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+// Wartet der Destruktor eines Vorfahren auf etwas (TThread.Destroy beendet und erwartet den Thread)?
+function TInheritedOrderScan.WaitsInDestructor(const AClassName: string): Boolean;
+var
+  mName: string;
+  mDepth: Integer;
+begin
+  mName := AClassName;
+  for mDepth := 0 to 63 do
+  begin
+    if ContainsText(mName, 'Thread') then
+    begin
+      Exit(True);
+    end;
+    if (mName = '') or SameText(mName, 'TObject') then
+    begin
+      Break;
+    end;
+    mName := FModel.Ancestry.ParentOf(mName);
+  end;
+  Result := False;
+end;
+
+// Steht AStatement allein in seinen Zeilen (höchstens mit ";")?
+function TInheritedOrderScan.OwnLines(AStatement: TSyntaxNode): Boolean;
+begin
+  Result := (AStatement.EndPos.Line <= High(FLines)) and
+    (Trim(Copy(FLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
+    IsIn(Trim(Copy(FLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
+end;
+
+// inherited ans Ende bzw. an den Anfang: Zeilen der Anweisung entfernen, Text neu einfügen.
+function TInheritedOrderScan.MoveFix(ABlock, AStatement: TSyntaxNode; AToEnd: Boolean; out AFix: TRuleFix): Boolean;
+var
+  mInsert, mRemove: TRuleEdit;
+  mText: string;
+begin
+  Result := False;
+  if not OwnLines(AStatement) then
+  begin
+    Exit;
+  end;
+  mText := FModel.NodeText(AStatement) + ';';
+  if AToEnd then
+  begin
+    Result := FModel.InsertBeforeEnd(ABlock, mText, mInsert);
+  end
+  else
+  begin
+    Result := FModel.InsertAfterBegin(ABlock, mText, mInsert);
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mRemove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
+  if AToEnd then
+  begin
+    AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToEnd].Text, [mRemove, mInsert]);
+  end
+  else
+  begin
+    AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToStart].Text, [mInsert, mRemove]);
+  end;
+end;
+
+// Baut ein Vorfahr in seinem Destruktor etwas ab? Ohne Destruktor in der ganzen Kette (bis TObject) ist die
+// Reihenfolge gleich (FP-Prüfung 28.10.2026); ein unbekannter Vorfahr zählt wie einer mit Destruktor.
+function TInheritedOrderScan.AncestorDestroys(const AClassName: string): Boolean;
+var
+  mName: string;
+  mDepth: Integer;
+begin
+  mName := FModel.Ancestry.ParentOf(AClassName);
+  for mDepth := 0 to 63 do
+  begin
+    if (mName = '') or IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
+      FModel.Ancestry.HasDestructor(mName) then
+    begin
+      Exit(True);
+    end;
+    if SameText(mName, 'TObject') then
+    begin
+      Exit(False);
+    end;
+    mName := FModel.Ancestry.ParentOf(mName);
+  end;
+  Result := True;
+end;
+
+procedure TInheritedOrderScan.CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+var
+  mIndex: Integer;
+  mStatement: TSyntaxNode;
+  mName, mField: string;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  if WaitsInDestructor(AInfo.Name) or not AncestorDestroys(AInfo.Name) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to AMethod.Block.ChildCount - 1 do
+  begin
+    mStatement := AMethod.Block[mIndex];
+    if not IsInheritedCall(mStatement, mName) then
+    begin
+      Continue;
+    end;
+    mField := '';
+    if (mName = '') or SameText(mName, AMethod.MethodName) then
+    begin
+      mField := FreedFrom(AMethod.Block, mIndex + 1, OwnFields(AInfo));
+    end;
+    if mField <> '' then
+    begin
+      mFixes := nil;
+      if MoveFix(AMethod.Block, mStatement, True, mFix) then
+      begin
+        mFixes := [mFix];
+      end;
+      FReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
+        cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([mField, mField]), TRuleConfidence.Medium, mFixes);
+    end;
+    Exit;
+  end;
+end;
+
+// Erstes geerbtes Feld bzw. erste geerbte Property in ANode (F, Self.F); nil ohne.
+function TInheritedOrderScan.FirstInheritedAccess(ARoot: TSyntaxNode; const AParent: string;
+  const AExcluded: TArray<string>;
+  out AName, AOwner: string): TSyntaxNode;
+var
+  mIndex: Integer;
+  mName, mUnresolved: string;
+  mMember: TIndexSymbol;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := nil;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
+      begin
+        Continue;
+      end;
+      mName := AccessedName(mNode);
+      if (mName <> '') and not SameText(mName, 'Self') and not IsIn(mName, AExcluded) and
+        FModel.Ancestry.FindMember(AParent, mName, mMember, mUnresolved) and
+        (mMember.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+      begin
+        AName := mName;
+        AOwner := mMember.Container;
+        Exit(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Verwenden die Argumente von inherited Create(…) lokale Variablen, die die Anweisungen davor setzen?
+function TInheritedOrderScan.ArgumentsUseLocals(ARoot: TSyntaxNode; const ALocals: TArray<string>): Boolean;
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Identifier) and IsIn(mNode.Name, ALocals) then
+      begin
+        Exit(True);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TInheritedOrderScan.CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
+var
+  mIndex, mEarlier: Integer;
+  mStatement, mAccess: TSyntaxNode;
+  mName, mMember, mOwner, mParent: string;
+  mLocals, mExcluded: TArray<string>;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  mParent := DeclaredParent(AInfo);
+  if (mParent = '') or SameText(mParent, 'TObject') or FModel.HasToken(AMethod.Block, ['with']) then
+  begin
+    Exit;
+  end;
+  mLocals := MethodLocalNames(AMethod);
+  mExcluded := mLocals + OwnMembers(AInfo);
+  for mIndex := 0 to AMethod.Block.ChildCount - 1 do
+  begin
+    mStatement := AMethod.Block[mIndex];
+    if not IsInheritedCall(mStatement, mName) then
+    begin
+      Continue;
+    end;
+    for mEarlier := 0 to mIndex - 1 do
+    begin
+      mAccess := FirstInheritedAccess(AMethod.Block[mEarlier], mParent, mExcluded, mMember, mOwner);
+      if mAccess = nil then
+      begin
+        Continue;
+      end;
+      mFixes := nil;
+      if not ArgumentsUseLocals(mStatement, mLocals) and MoveFix(AMethod.Block, mStatement, False, mFix) then
+      begin
+        mFixes := [mFix];
+      end;
+      FReport.Add(TTextRange.Create(mAccess.StartPos, mAccess.EndPos),
+        cTexts[TComponentsInheritedCallsText.BeforeInherited].Fmt(
+        [AMethod.MethodName, mMember, mOwner]), TRuleConfidence.Medium, mFixes);
+      Exit;
+    end;
+    Exit;
+  end;
+end;
+
+procedure TInheritedOrderScan.Run;
+var
   mCache: IRuleDerivedCache;
-  mLines: TArray<string>;
   mLineBreak: string;
-
-  function FindClassInfo(const AName: string; out AInfo: TClassInfo): Boolean;
-  var
-    mInfo: TClassInfo;
-  begin
-    for mInfo in mModel.Classes do
-    begin
-      if SameText(mInfo.Name, AName) then
-      begin
-        AInfo := mInfo;
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  // Wartet der Destruktor eines Vorfahren auf etwas (TThread.Destroy beendet und erwartet den Thread)?
-  function WaitsInDestructor(const AClassName: string): Boolean;
-  var
-    mName: string;
-    mDepth: Integer;
-  begin
-    mName := AClassName;
-    for mDepth := 0 to 63 do
-    begin
-      if ContainsText(mName, 'Thread') then
-      begin
-        Exit(True);
-      end;
-      if (mName = '') or SameText(mName, 'TObject') then
-      begin
-        Break;
-      end;
-      mName := mModel.Ancestry.ParentOf(mName);
-    end;
-    Result := False;
-  end;
-
-  // Steht AStatement allein in seinen Zeilen (höchstens mit ";")?
-  function OwnLines(AStatement: TSyntaxNode): Boolean;
-  begin
-    Result := (AStatement.EndPos.Line <= High(mLines)) and
-      (Trim(Copy(mLines[AStatement.StartPos.Line], 1, AStatement.StartPos.Character)) = '') and
-      IsIn(Trim(Copy(mLines[AStatement.EndPos.Line], AStatement.EndPos.Character + 1, MaxInt)), ['', ';']);
-  end;
-
-  // inherited ans Ende bzw. an den Anfang: Zeilen der Anweisung entfernen, Text neu einfügen.
-  function MoveFix(ABlock, AStatement: TSyntaxNode; AToEnd: Boolean; out AFix: TRuleFix): Boolean;
-  var
-    mInsert, mRemove: TRuleEdit;
-    mText: string;
-  begin
-    Result := False;
-    if not OwnLines(AStatement) then
-    begin
-      Exit;
-    end;
-    mText := mModel.NodeText(AStatement) + ';';
-    if AToEnd then
-    begin
-      Result := mModel.InsertBeforeEnd(ABlock, mText, mInsert);
-    end
-    else
-    begin
-      Result := mModel.InsertAfterBegin(ABlock, mText, mInsert);
-    end;
-    if not Result then
-    begin
-      Exit;
-    end;
-    mRemove := TRuleEdit.Create(TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0), '');
-    if AToEnd then
-    begin
-      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToEnd].Text, [mRemove, mInsert]);
-    end
-    else
-    begin
-      AFix := TRuleFix.Create(cTexts[TComponentsInheritedCallsText.MoveToStart].Text, [mInsert, mRemove]);
-    end;
-  end;
-
-  // Baut ein Vorfahr in seinem Destruktor etwas ab? Ohne Destruktor in der ganzen Kette (bis TObject) ist die
-  // Reihenfolge gleich (FP-Prüfung 28.10.2026); ein unbekannter Vorfahr zählt wie einer mit Destruktor.
-  function AncestorDestroys(const AClassName: string): Boolean;
-  var
-    mName: string;
-    mDepth: Integer;
-  begin
-    mName := mModel.Ancestry.ParentOf(AClassName);
-    for mDepth := 0 to 63 do
-    begin
-      if (mName = '') or IsIn(mName, cComponentBases) or IsIn(mName, cConstructorBases) or
-        mModel.Ancestry.HasDestructor(mName) then
-      begin
-        Exit(True);
-      end;
-      if SameText(mName, 'TObject') then
-      begin
-        Exit(False);
-      end;
-      mName := mModel.Ancestry.ParentOf(mName);
-    end;
-    Result := True;
-  end;
-
-  procedure CheckDestructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
-  var
-    mIndex: Integer;
-    mStatement: TSyntaxNode;
-    mName, mField: string;
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-  begin
-    if WaitsInDestructor(AInfo.Name) or not AncestorDestroys(AInfo.Name) then
-    begin
-      Exit;
-    end;
-    for mIndex := 0 to AMethod.Block.ChildCount - 1 do
-    begin
-      mStatement := AMethod.Block[mIndex];
-      if not IsInheritedCall(mStatement, mName) then
-      begin
-        Continue;
-      end;
-      mField := '';
-      if (mName = '') or SameText(mName, AMethod.MethodName) then
-      begin
-        mField := FreedFrom(AMethod.Block, mIndex + 1, OwnFields(AInfo));
-      end;
-      if mField <> '' then
-      begin
-        mFixes := nil;
-        if MoveFix(AMethod.Block, mStatement, True, mFix) then
-        begin
-          mFixes := [mFix];
-        end;
-        AReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
-          cTexts[TComponentsInheritedCallsText.BeforeFree].Fmt([mField, mField]), TRuleConfidence.Medium, mFixes);
-      end;
-      Exit;
-    end;
-  end;
-
-  // Erstes geerbtes Feld bzw. erste geerbte Property in ANode (F, Self.F); nil ohne.
-  function FirstInheritedAccess(ARoot: TSyntaxNode; const AParent: string; const AExcluded: TArray<string>;
-    out AName, AOwner: string): TSyntaxNode;
-  var
-    mIndex: Integer;
-    mName, mUnresolved: string;
-    mMember: TIndexSymbol;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    Result := nil;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.AnonymousMethod then
-        begin
-          Continue;
-        end;
-        mName := AccessedName(mNode);
-        if (mName <> '') and not SameText(mName, 'Self') and not IsIn(mName, AExcluded) and
-          mModel.Ancestry.FindMember(AParent, mName, mMember, mUnresolved) and
-          (mMember.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
-        begin
-          AName := mName;
-          AOwner := mMember.Container;
-          Exit(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  // Verwenden die Argumente von inherited Create(…) lokale Variablen, die die Anweisungen davor setzen?
-  function ArgumentsUseLocals(ARoot: TSyntaxNode; const ALocals: TArray<string>): Boolean;
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    Result := False;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.Identifier) and IsIn(mNode.Name, ALocals) then
-        begin
-          Exit(True);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  procedure CheckConstructor(const AMethod: TMethodImpl; const AInfo: TClassInfo);
-  var
-    mIndex, mEarlier: Integer;
-    mStatement, mAccess: TSyntaxNode;
-    mName, mMember, mOwner, mParent: string;
-    mLocals, mExcluded: TArray<string>;
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mParent := DeclaredParent(AInfo);
-    if (mParent = '') or SameText(mParent, 'TObject') or mModel.HasToken(AMethod.Block, ['with']) then
-    begin
-      Exit;
-    end;
-    mLocals := MethodLocalNames(AMethod);
-    mExcluded := mLocals + OwnMembers(AInfo);
-    for mIndex := 0 to AMethod.Block.ChildCount - 1 do
-    begin
-      mStatement := AMethod.Block[mIndex];
-      if not IsInheritedCall(mStatement, mName) then
-      begin
-        Continue;
-      end;
-      for mEarlier := 0 to mIndex - 1 do
-      begin
-        mAccess := FirstInheritedAccess(AMethod.Block[mEarlier], mParent, mExcluded, mMember, mOwner);
-        if mAccess = nil then
-        begin
-          Continue;
-        end;
-        mFixes := nil;
-        if not ArgumentsUseLocals(mStatement, mLocals) and MoveFix(AMethod.Block, mStatement, False, mFix) then
-        begin
-          mFixes := [mFix];
-        end;
-        AReport.Add(TTextRange.Create(mAccess.StartPos, mAccess.EndPos),
-          cTexts[TComponentsInheritedCallsText.BeforeInherited].Fmt(
-          [AMethod.MethodName, mMember, mOwner]), TRuleConfidence.Medium, mFixes);
-        Exit;
-      end;
-      Exit;
-    end;
-  end;
-
-var
   mMethod: TMethodImpl;
   mInfo: TClassInfo;
   mSource: string;
 begin
-  mCache := TRuleDerived.Open(AContext);
-  if not PrepareModel(mCache, AContext, mModel) or not ContainsText(AContext.Text, 'inherited') then
+  mCache := TRuleDerived.Open(FContext);
+  if not PrepareModel(mCache, FContext, FModel) or not ContainsText(FContext.Text, 'inherited') then
   begin
     Exit;
   end;
-  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  for mMethod in mModel.Methods do
+  FLines := TTextLines.SplitLines(FContext.Text, mLineBreak);
+  for mMethod in FModel.Methods do
   begin
     if not FindClassInfo(mMethod.ClassName, mInfo) then
     begin
       Continue;
     end;
-    mSource := TrimLeft(mModel.NodeText(mMethod.Decl));
+    mSource := TrimLeft(FModel.NodeText(mMethod.Decl));
     if StartsText('destructor', mSource) then
     begin
       CheckDestructor(mMethod, mInfo);
@@ -1058,6 +1087,14 @@ begin
       CheckConstructor(mMethod, mInfo);
     end;
   end;
+end;
+
+procedure TInheritedOrderRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TInheritedOrderScan;
+begin
+  mScan := TInheritedOrderScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TInheritedWrongMethodRule }

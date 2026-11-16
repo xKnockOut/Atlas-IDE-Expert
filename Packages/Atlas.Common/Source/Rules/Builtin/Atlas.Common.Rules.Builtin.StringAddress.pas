@@ -117,393 +117,428 @@ begin
   end;
 end;
 
-procedure TFirstCharAddressRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TFirstCharAddressRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TFirstCharAddressScan = class(TTypedScopeRun)
+  private
+    function IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
+    function IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
+    function LocalShortAlias(const ATypeName: string): Boolean;
+    function DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
+    function IsShortString(const ASymbol: TResolvedSymbol): Boolean;
+    function PointerCast(ANode: TSyntaxNode): TSyntaxNode;
+    function IsFirstCharAddress(ANode: TSyntaxNode; out ABase: TSyntaxNode; out ASymbol: TResolvedSymbol;
+      out AWidth: Integer): Boolean;
+    function Squeezed(ANode: TSyntaxNode): string;
+    function IsLengthOf(ANode: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+    function ConditionSays(ACondition: TSyntaxNode; const ABase, ARoutine: string; ANonEmpty: Boolean): Boolean;
+    function Leaves(ANode: TSyntaxNode): Boolean;
+    function BranchGuards(AIf, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+    function SetsFixedLength(AStatement: TSyntaxNode; const ABase: string): Boolean;
+    function LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+    function GuardedNonEmpty(ANode, ABase: TSyntaxNode): Boolean;
+    procedure CheckAddress(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    procedure Run;
+  end;
+
+{ TFirstCharAddressScan }
+
+/// <summary>Ist AIndex der erste Index von ABase: 1 oder Low(ABase)?</summary>
+function TFirstCharAddressScan.IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
+begin
+  AIndex := Unwrapped(AIndex);
+  if (AIndex.Kind = TSyntaxKind.Literal) and (FScope.Text(AIndex) = '1') then
+  begin
+    Exit(True);
+  end;
+  Result := (AIndex.Kind = TSyntaxKind.Call) and (AIndex.ChildCount = 2) and
+    (AIndex[0].Kind = TSyntaxKind.Identifier) and SameText(AIndex[0].Name, 'Low') and
+    SameText(FScope.Text(Unwrapped(AIndex[1])), FScope.Text(ABase));
+end;
+
+/// <summary>Ist ASymbol ein const-Parameter dieser Datei? Vor dem Namen stehen nur weitere Namen mit Komma,
+/// davor "const".</summary>
+function TFirstCharAddressScan.IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
 var
-  mScope: TTypedScope;
-
-  /// <summary>Ist AIndex der erste Index von ABase: 1 oder Low(ABase)?</summary>
-  function IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if not ASymbol.IsParameter or ((ASymbol.Kind <> TResolvedKind.Local) and
+    not SameText(ASymbol.FileName, FScope.FileName)) then
   begin
-    AIndex := Unwrapped(AIndex);
-    if (AIndex.Kind = TSyntaxKind.Literal) and (mScope.Text(AIndex) = '1') then
-    begin
-      Exit(True);
-    end;
-    Result := (AIndex.Kind = TSyntaxKind.Call) and (AIndex.ChildCount = 2) and
-      (AIndex[0].Kind = TSyntaxKind.Identifier) and SameText(AIndex[0].Name, 'Low') and
-      SameText(mScope.Text(Unwrapped(AIndex[1])), mScope.Text(ABase));
+    Exit;
   end;
-
-  /// <summary>Ist ASymbol ein const-Parameter dieser Datei? Vor dem Namen stehen nur weitere Namen mit Komma,
-  /// davor "const".</summary>
-  function IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
-  var
-    mTokens: TArray<TPascalToken>;
-    mIndex: Integer;
+  mTokens := FScope.Tokens;
+  mIndex := FScope.TokenAtPosition(ASymbol.SelectionRange.StartPos) - 1;
+  while mIndex >= 0 do
   begin
-    Result := False;
-    if not ASymbol.IsParameter or ((ASymbol.Kind <> TResolvedKind.Local) and
-      not SameText(ASymbol.FileName, mScope.FileName)) then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
     begin
-      Exit;
-    end;
-    mTokens := mScope.Tokens;
-    mIndex := mScope.TokenAtPosition(ASymbol.SelectionRange.StartPos) - 1;
-    while mIndex >= 0 do
-    begin
-      if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
-      begin
-        Dec(mIndex);
-      end
-      else if (mTokens[mIndex].Text = ',') or (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
-        not SameText(mTokens[mIndex].Text, 'const') then
-      begin
-        Dec(mIndex);
-      end
-      else
-      begin
-        Exit(SameText(mTokens[mIndex].Text, 'const'));
-      end;
-    end;
-  end;
-
-  /// <summary>Hat ein Typknoten der Datei namens ATypeName die Form string[N] bzw. ShortString?</summary>
-  function LocalShortAlias(const ATypeName: string): Boolean;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    Result := False;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(AContext.Tree.Root);
-      while not Result and (mPending.Count > 0) do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, ATypeName) and (mNode.ChildCount > 0) then
-        begin
-          Result := TStringLengthLimitRule.ShortStringLength(mScope.Text(mNode[0])) > 0;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Steht in der Deklaration von ASymbol in dieser Datei (bis zum nächsten ';') string[…]?</summary>
-  function DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
-  var
-    mTokens: TArray<TPascalToken>;
-    mIndex: Integer;
-  begin
-    Result := False;
-    if (ASymbol.Kind <> TResolvedKind.Local) and not SameText(ASymbol.FileName, mScope.FileName) then
-    begin
-      Exit;
-    end;
-    mTokens := mScope.Tokens;
-    mIndex := mScope.TokenAtPosition(ASymbol.SelectionRange.StartPos);
-    while (mIndex >= 0) and (mIndex < High(mTokens)) and (mTokens[mIndex].Text <> ';') do
-    begin
-      if SameText(mTokens[mIndex].Text, 'string') and (mTokens[mIndex + 1].Text = '[') then
-      begin
-        Exit(True);
-      end;
-      Inc(mIndex);
-    end;
-  end;
-
-  /// <summary>Ist ASymbol ein ShortString (string[N] oder ein Alias darauf, auch aus dem Index)? @S[1] ist dort
-  /// immer gültig (FP mORMot2: TShort31 = string[31]); die Namensauflösung führt string[N] auf string zurück.
-  /// </summary>
-  function IsShortString(const ASymbol: TResolvedSymbol): Boolean;
-  begin
-    Result := (TStringLengthLimitRule.ShortStringLength(ASymbol.Signature) > 0) or
-      (TStringLengthLimitRule.ShortStringLength(ASymbol.TypeName) > 0) or DeclaredShort(ASymbol);
-    if not Result and IsValidIdent(ASymbol.TypeName, True) then
-    begin
-      Result := LocalShortAlias(ASymbol.TypeName) or
-        (TStringLengthLimitRule.IndexAliasLength(AContext, ASymbol.TypeName) > 0);
-    end;
-  end;
-
-  /// <summary>Umgebende Umwandlung in einen Zeigertyp (PChar(@S[1])) oder nil.</summary>
-  function PointerCast(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := nil;
-    while (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.ParenExpr) do
-    begin
-      ANode := ANode.Parent;
-    end;
-    if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.Call) or (ANode.Parent.ChildCount <> 2) then
-    begin
-      Exit;
-    end;
-    if (ANode.Parent[1] = ANode) and (ANode.Parent[0].Kind = TSyntaxKind.Identifier) and
-      MatchText(ANode.Parent[0].Name, ['PChar', 'PAnsiChar', 'PWideChar', 'PByte', 'Pointer']) then
-    begin
-      Result := ANode.Parent;
-    end;
-  end;
-
-  /// <summary>Ist ANode @S[1] auf einer String-Variablen oder einem String-Feld? Liefert S, das Symbol und die
-  /// Zeichenbreite.</summary>
-  function IsFirstCharAddress(ANode: TSyntaxNode; out ABase: TSyntaxNode; out ASymbol: TResolvedSymbol;
-    out AWidth: Integer): Boolean;
-  var
-    mAccess: TSyntaxNode;
-    mType: TResolvedSymbol;
-  begin
-    Result := False;
-    ABase := nil;
-    AWidth := 0;
-    mAccess := nil;
-    if ANode.ChildCount = 1 then
-    begin
-      mAccess := Unwrapped(ANode[0]);
-    end;
-    if (mAccess = nil) or (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) or
-      not IsFirstIndex(mAccess[1], mAccess[0]) then
-    begin
-      Exit;
-    end;
-    ABase := mAccess[0];
-    if not mScope.SureType(ABase, ASymbol, mType) or ASymbol.IsType or
-      not (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
-    begin
-      Exit;
-    end;
-    if mType.Builtin or SameText(mType.UnitName, 'System') then
-    begin
-      AWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
-    end;
-    Result := (AWidth <> 0) and not IsShortString(ASymbol);
-  end;
-
-
-  /// <summary>Text von ANode klein und ohne Leerraum, zum Vergleichen von Bedingungen.</summary>
-  function Squeezed(ANode: TSyntaxNode): string;
-  begin
-    Result := LowerCase(mScope.Text(ANode)).Replace(' ', '').Replace(#9, '').Replace(#13, '').Replace(#10, '');
-  end;
-
-  /// <summary>Ist ANode Length(S) oder eine Variable N mit SetLength(S, N) in der Routine ARoutine? S ist ABase
-  /// in Squeezed-Form.</summary>
-  function IsLengthOf(ANode: TSyntaxNode; const ABase, ARoutine: string): Boolean;
-  var
-    mText: string;
-  begin
-    mText := Squeezed(Unwrapped(ANode));
-    Result := (mText = 'length(' + ABase + ')') or (ARoutine <> '') and (ANode.Kind = TSyntaxKind.Identifier) and
-      ARoutine.Contains('setlength(' + ABase + ',' + mText + ')');
-  end;
-
-  /// <summary>Ist ACondition (oder ein mit and verknüpfter Teil) wahr nur bei nicht leerem S (ANonEmpty) bzw. nur
-  /// bei leerem S (not ANonEmpty)? Erkannt: S &lt;&gt; '', Length(S) &gt; 0, &gt;= 1, &lt;&gt; 0 und dieselben
-  /// Vergleiche mit der Länge aus SetLength(S, N).</summary>
-  function ConditionSays(ACondition: TSyntaxNode; const ABase, ARoutine: string; ANonEmpty: Boolean): Boolean;
-  var
-    mOperator, mLeft, mRight: string;
-  begin
-    ACondition := Unwrapped(ACondition);
-    Result := False;
-    if (ACondition.Kind <> TSyntaxKind.BinaryExpr) or (ACondition.ChildCount <> 2) then
-    begin
-      Exit;
-    end;
-    mOperator := LowerCase(ACondition.Name);
-    if ANonEmpty and (mOperator = 'and') or not ANonEmpty and (mOperator = 'or') then
-    begin
-      Exit(ConditionSays(ACondition[0], ABase, ARoutine, ANonEmpty) or
-        ConditionSays(ACondition[1], ABase, ARoutine, ANonEmpty));
-    end;
-    mLeft := Squeezed(Unwrapped(ACondition[0]));
-    mRight := Squeezed(Unwrapped(ACondition[1]));
-    if (mLeft = ABase) and (mRight = '''''') or (mRight = ABase) and (mLeft = '''''') then
-    begin
-      Result := ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '=');
+      Dec(mIndex);
     end
-    else if IsLengthOf(ACondition[0], ABase, ARoutine) then
+    else if (mTokens[mIndex].Text = ',') or (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      not SameText(mTokens[mIndex].Text, 'const') then
     begin
-      Result := LengthSays(mOperator, mRight, ANonEmpty);
-    end
-    else if IsLengthOf(ACondition[1], ABase, ARoutine) then
-    begin
-      Result := LengthSays(MirroredOperator(mOperator), mLeft, ANonEmpty);
-    end;
-  end;
-
-  /// <summary>Verlässt ANode die Routine bzw. Schleife (Exit, raise, Continue, Break)?</summary>
-  function Leaves(ANode: TSyntaxNode): Boolean;
-  var
-    mText: string;
-  begin
-    mText := Squeezed(ANode).Replace(';', '');
-    if mText.StartsWith('begin') and mText.EndsWith('end') then
-    begin
-      mText := Copy(mText, 6, Length(mText) - 8);
-    end;
-    Result := (mText = 'exit') or mText.StartsWith('exit(') or mText.StartsWith('raise') or (mText = 'continue') or
-      (mText = 'break');
-  end;
-
-  /// <summary>Ist AChild der then-Zweig eines if, das nur bei nicht leerem S gilt, bzw. der else-Zweig eines if,
-  /// das nur bei leerem S gilt?</summary>
-  function BranchGuards(AIf, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
-  begin
-    Result := (AIf.Kind = TSyntaxKind.IfStatement) and (AIf.ChildCount > 1) and
-      ((AIf[1] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, True) or
-      (AIf.ChildCount > 2) and (AIf[2] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, False));
-  end;
-
-  /// <summary>Ist AStatement "SetLength(S, N)" mit einer Zahl N &gt; 0? S ist ABase in Squeezed-Form.</summary>
-  function SetsFixedLength(AStatement: TSyntaxNode; const ABase: string): Boolean;
-  var
-    mCall: TSyntaxNode;
-    mLength: Integer;
-  begin
-    Result := False;
-    if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
-    begin
-      Exit;
-    end;
-    mCall := AStatement[0];
-    Result := (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount = 3) and
-      SameText(Squeezed(mCall[0]), 'setlength') and (Squeezed(mCall[1]) = ABase) and
-      TryStrToInt(Squeezed(mCall[2]), mLength) and (mLength > 0);
-  end;
-
-  /// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;" oder "SetLength(S, 2);"?</summary>
-  function LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
-  var
-    mIndex: Integer;
-    mStatement: TSyntaxNode;
-  begin
-    Result := False;
-    mIndex := 0;
-    while not Result and (mIndex < ABlock.ChildCount) and (ABlock[mIndex] <> AChild) do
-    begin
-      mStatement := ABlock[mIndex];
-      Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
-        Leaves(mStatement[1]) and ConditionSays(mStatement[0], ABase, ARoutine, False);
-      Result := Result or SetsFixedLength(mStatement, ABase);
-      Inc(mIndex);
-    end;
-  end;
-
-  /// <summary>Steht ANode nur bei nicht leerem ABase: im then-Zweig von "if S &lt;&gt; '' then" bzw. hinter
-  /// "if S = '' then Exit;" (FP-Prüfung 28.10.2026, F12: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
-  /// </summary>
-  function GuardedNonEmpty(ANode, ABase: TSyntaxNode): Boolean;
-  var
-    mChild, mParent, mRoutineNode: TSyntaxNode;
-    mBase, mRoutine: string;
-  begin
-    Result := False;
-    mBase := Squeezed(ABase);
-    mRoutineNode := ANode.Parent;
-    while (mRoutineNode <> nil) and (mRoutineNode.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      mRoutineNode := mRoutineNode.Parent;
-    end;
-    mRoutine := '';
-    if mRoutineNode <> nil then
-    begin
-      mRoutine := Squeezed(mRoutineNode);
-    end;
-    mChild := ANode;
-    mParent := ANode.Parent;
-    while not Result and (mParent <> nil) and (mParent <> mRoutineNode) do
-    begin
-      Result := BranchGuards(mParent, mChild, mBase, mRoutine) or (mParent.Kind = TSyntaxKind.Block) and
-        LeftBefore(mParent, mChild, mBase, mRoutine);
-      mChild := mParent;
-      mParent := mParent.Parent;
-    end;
-  end;
-
-  procedure CheckAddress(ANode: TSyntaxNode);
-  var
-    mBase, mCast, mReplaced: TSyntaxNode;
-    mSymbol: TResolvedSymbol;
-    mWidth: Integer;
-    mPointer, mSafe, mMessage: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    if not IsFirstCharAddress(ANode, mBase, mSymbol, mWidth) or GuardedNonEmpty(ANode, mBase) then
-    begin
-      Exit;
-    end;
-    mPointer := 'PChar';
-    if mWidth = 1 then
-    begin
-      mPointer := 'PAnsiChar';
-    end;
-    mCast := PointerCast(ANode);
-    mReplaced := ANode;
-    if mCast <> nil then
-    begin
-      mPointer := mCast[0].Name;
-      mReplaced := mCast;
-    end;
-    mSafe := Format('%s(%s)', [mPointer, mScope.Text(mBase)]);
-    mFixes := nil;
-    if IsConstParameter(mSymbol) then
-    begin
-      mMessage := cTexts[TStringAddressText.EmptyRead].Fmt([mScope.Text(mBase), mScope.Text(ANode), mSafe]);
-      mFixes := [TRuleFix.Create(cTexts[TStringAddressText.ReplaceWith].Fmt([mSafe]),
-        [TTextEdit.Create(TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos), mSafe)])];
+      Dec(mIndex);
     end
     else
     begin
-      mMessage := cTexts[TStringAddressText.EmptyWrite].Fmt([mScope.Text(mBase), mScope.Text(ANode),
-        mSafe, mScope.Text(mBase)]);
-    end;
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, mFixes);
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.AddressOf then
-        begin
-          CheckAddress(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
+      Exit(SameText(mTokens[mIndex].Text, 'const'));
     end;
   end;
+end;
 
+/// <summary>Hat ein Typknoten der Datei namens ATypeName die Form string[N] bzw. ShortString?</summary>
+function TFirstCharAddressScan.LocalShortAlias(const ATypeName: string): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(FContext.Tree.Root);
+    while not Result and (mPending.Count > 0) do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, ATypeName) and (mNode.ChildCount > 0) then
+      begin
+        Result := TStringLengthLimitRule.ShortStringLength(FScope.Text(mNode[0])) > 0;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Steht in der Deklaration von ASymbol in dieser Datei (bis zum nächsten ';') string[…]?</summary>
+function TFirstCharAddressScan.DeclaredShort(const ASymbol: TResolvedSymbol): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if (ASymbol.Kind <> TResolvedKind.Local) and not SameText(ASymbol.FileName, FScope.FileName) then
+  begin
+    Exit;
+  end;
+  mTokens := FScope.Tokens;
+  mIndex := FScope.TokenAtPosition(ASymbol.SelectionRange.StartPos);
+  while (mIndex >= 0) and (mIndex < High(mTokens)) and (mTokens[mIndex].Text <> ';') do
+  begin
+    if SameText(mTokens[mIndex].Text, 'string') and (mTokens[mIndex + 1].Text = '[') then
+    begin
+      Exit(True);
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Ist ASymbol ein ShortString (string[N] oder ein Alias darauf, auch aus dem Index)? @S[1] ist dort
+/// immer gültig (FP mORMot2: TShort31 = string[31]); die Namensauflösung führt string[N] auf string zurück.
+/// </summary>
+function TFirstCharAddressScan.IsShortString(const ASymbol: TResolvedSymbol): Boolean;
+begin
+  Result := (TStringLengthLimitRule.ShortStringLength(ASymbol.Signature) > 0) or
+    (TStringLengthLimitRule.ShortStringLength(ASymbol.TypeName) > 0) or DeclaredShort(ASymbol);
+  if not Result and IsValidIdent(ASymbol.TypeName, True) then
+  begin
+    Result := LocalShortAlias(ASymbol.TypeName) or
+      (TStringLengthLimitRule.IndexAliasLength(FContext, ASymbol.TypeName) > 0);
+  end;
+end;
+
+/// <summary>Umgebende Umwandlung in einen Zeigertyp (PChar(@S[1])) oder nil.</summary>
+function TFirstCharAddressScan.PointerCast(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := nil;
+  while (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.ParenExpr) do
+  begin
+    ANode := ANode.Parent;
+  end;
+  if (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.Call) or (ANode.Parent.ChildCount <> 2) then
+  begin
+    Exit;
+  end;
+  if (ANode.Parent[1] = ANode) and (ANode.Parent[0].Kind = TSyntaxKind.Identifier) and
+    MatchText(ANode.Parent[0].Name, ['PChar', 'PAnsiChar', 'PWideChar', 'PByte', 'Pointer']) then
+  begin
+    Result := ANode.Parent;
+  end;
+end;
+
+/// <summary>Ist ANode @S[1] auf einer String-Variablen oder einem String-Feld? Liefert S, das Symbol und die
+/// Zeichenbreite.</summary>
+function TFirstCharAddressScan.IsFirstCharAddress(ANode: TSyntaxNode; out ABase: TSyntaxNode;
+  out ASymbol: TResolvedSymbol;
+  out AWidth: Integer): Boolean;
+var
+  mAccess: TSyntaxNode;
+  mType: TResolvedSymbol;
+begin
+  Result := False;
+  ABase := nil;
+  AWidth := 0;
+  mAccess := nil;
+  if ANode.ChildCount = 1 then
+  begin
+    mAccess := Unwrapped(ANode[0]);
+  end;
+  if (mAccess = nil) or (mAccess.Kind <> TSyntaxKind.IndexAccess) or (mAccess.ChildCount <> 2) or
+    not IsFirstIndex(mAccess[1], mAccess[0]) then
+  begin
+    Exit;
+  end;
+  ABase := mAccess[0];
+  if not FScope.SureType(ABase, ASymbol, mType) or ASymbol.IsType or
+    not (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) then
+  begin
+    Exit;
+  end;
+  if mType.Builtin or SameText(mType.UnitName, 'System') then
+  begin
+    AWidth := TSuspiciousStringPointerCastRule.StringWidth(mType.Name);
+  end;
+  Result := (AWidth <> 0) and not IsShortString(ASymbol);
+end;
+
+/// <summary>Text von ANode klein und ohne Leerraum, zum Vergleichen von Bedingungen.</summary>
+function TFirstCharAddressScan.Squeezed(ANode: TSyntaxNode): string;
+begin
+  Result := LowerCase(FScope.Text(ANode)).Replace(' ', '').Replace(#9, '').Replace(#13, '').Replace(#10, '');
+end;
+
+/// <summary>Ist ANode Length(S) oder eine Variable N mit SetLength(S, N) in der Routine ARoutine? S ist ABase
+/// in Squeezed-Form.</summary>
+function TFirstCharAddressScan.IsLengthOf(ANode: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+var
+  mText: string;
+begin
+  mText := Squeezed(Unwrapped(ANode));
+  Result := (mText = 'length(' + ABase + ')') or (ARoutine <> '') and (ANode.Kind = TSyntaxKind.Identifier) and
+    ARoutine.Contains('setlength(' + ABase + ',' + mText + ')');
+end;
+
+/// <summary>Ist ACondition (oder ein mit and verknüpfter Teil) wahr nur bei nicht leerem S (ANonEmpty) bzw. nur
+/// bei leerem S (not ANonEmpty)? Erkannt: S &lt;&gt; '', Length(S) &gt; 0, &gt;= 1, &lt;&gt; 0 und dieselben
+/// Vergleiche mit der Länge aus SetLength(S, N).</summary>
+function TFirstCharAddressScan.ConditionSays(ACondition: TSyntaxNode; const ABase, ARoutine: string;
+  ANonEmpty: Boolean): Boolean;
+var
+  mOperator, mLeft, mRight: string;
+begin
+  ACondition := Unwrapped(ACondition);
+  Result := False;
+  if (ACondition.Kind <> TSyntaxKind.BinaryExpr) or (ACondition.ChildCount <> 2) then
+  begin
+    Exit;
+  end;
+  mOperator := LowerCase(ACondition.Name);
+  if ANonEmpty and (mOperator = 'and') or not ANonEmpty and (mOperator = 'or') then
+  begin
+    Exit(ConditionSays(ACondition[0], ABase, ARoutine, ANonEmpty) or
+      ConditionSays(ACondition[1], ABase, ARoutine, ANonEmpty));
+  end;
+  mLeft := Squeezed(Unwrapped(ACondition[0]));
+  mRight := Squeezed(Unwrapped(ACondition[1]));
+  if (mLeft = ABase) and (mRight = '''''') or (mRight = ABase) and (mLeft = '''''') then
+  begin
+    Result := ANonEmpty and (mOperator = '<>') or not ANonEmpty and (mOperator = '=');
+  end
+  else if IsLengthOf(ACondition[0], ABase, ARoutine) then
+  begin
+    Result := LengthSays(mOperator, mRight, ANonEmpty);
+  end
+  else if IsLengthOf(ACondition[1], ABase, ARoutine) then
+  begin
+    Result := LengthSays(MirroredOperator(mOperator), mLeft, ANonEmpty);
+  end;
+end;
+
+/// <summary>Verlässt ANode die Routine bzw. Schleife (Exit, raise, Continue, Break)?</summary>
+function TFirstCharAddressScan.Leaves(ANode: TSyntaxNode): Boolean;
+var
+  mText: string;
+begin
+  mText := Squeezed(ANode).Replace(';', '');
+  if mText.StartsWith('begin') and mText.EndsWith('end') then
+  begin
+    mText := Copy(mText, 6, Length(mText) - 8);
+  end;
+  Result := (mText = 'exit') or mText.StartsWith('exit(') or mText.StartsWith('raise') or (mText = 'continue') or
+    (mText = 'break');
+end;
+
+/// <summary>Ist AChild der then-Zweig eines if, das nur bei nicht leerem S gilt, bzw. der else-Zweig eines if,
+/// das nur bei leerem S gilt?</summary>
+function TFirstCharAddressScan.BranchGuards(AIf, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+begin
+  Result := (AIf.Kind = TSyntaxKind.IfStatement) and (AIf.ChildCount > 1) and
+    ((AIf[1] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, True) or
+    (AIf.ChildCount > 2) and (AIf[2] = AChild) and ConditionSays(AIf[0], ABase, ARoutine, False));
+end;
+
+/// <summary>Ist AStatement "SetLength(S, N)" mit einer Zahl N &gt; 0? S ist ABase in Squeezed-Form.</summary>
+function TFirstCharAddressScan.SetsFixedLength(AStatement: TSyntaxNode; const ABase: string): Boolean;
+var
+  mCall: TSyntaxNode;
+  mLength: Integer;
+begin
+  Result := False;
+  if (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  mCall := AStatement[0];
+  Result := (mCall.Kind = TSyntaxKind.Call) and (mCall.ChildCount = 3) and
+    SameText(Squeezed(mCall[0]), 'setlength') and (Squeezed(mCall[1]) = ABase) and
+    TryStrToInt(Squeezed(mCall[2]), mLength) and (mLength > 0);
+end;
+
+/// <summary>Steht im Block ABlock vor AChild ein "if S = '' then Exit;" oder "SetLength(S, 2);"?</summary>
+function TFirstCharAddressScan.LeftBefore(ABlock, AChild: TSyntaxNode; const ABase, ARoutine: string): Boolean;
+var
+  mIndex: Integer;
+  mStatement: TSyntaxNode;
+begin
+  Result := False;
+  mIndex := 0;
+  while not Result and (mIndex < ABlock.ChildCount) and (ABlock[mIndex] <> AChild) do
+  begin
+    mStatement := ABlock[mIndex];
+    Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
+      Leaves(mStatement[1]) and ConditionSays(mStatement[0], ABase, ARoutine, False);
+    Result := Result or SetsFixedLength(mStatement, ABase);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Steht ANode nur bei nicht leerem ABase: im then-Zweig von "if S &lt;&gt; '' then" bzw. hinter
+/// "if S = '' then Exit;" (FP-Prüfung 28.10.2026, F12: SetLength(Result, Len); if Len &gt; 0 then … @Result[1]).
+/// </summary>
+function TFirstCharAddressScan.GuardedNonEmpty(ANode, ABase: TSyntaxNode): Boolean;
+var
+  mChild, mParent, mRoutineNode: TSyntaxNode;
+  mBase, mRoutine: string;
+begin
+  Result := False;
+  mBase := Squeezed(ABase);
+  mRoutineNode := ANode.Parent;
+  while (mRoutineNode <> nil) and (mRoutineNode.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    mRoutineNode := mRoutineNode.Parent;
+  end;
+  mRoutine := '';
+  if mRoutineNode <> nil then
+  begin
+    mRoutine := Squeezed(mRoutineNode);
+  end;
+  mChild := ANode;
+  mParent := ANode.Parent;
+  while not Result and (mParent <> nil) and (mParent <> mRoutineNode) do
+  begin
+    Result := BranchGuards(mParent, mChild, mBase, mRoutine) or (mParent.Kind = TSyntaxKind.Block) and
+      LeftBefore(mParent, mChild, mBase, mRoutine);
+    mChild := mParent;
+    mParent := mParent.Parent;
+  end;
+end;
+
+procedure TFirstCharAddressScan.CheckAddress(ANode: TSyntaxNode);
+var
+  mBase, mCast, mReplaced: TSyntaxNode;
+  mSymbol: TResolvedSymbol;
+  mWidth: Integer;
+  mPointer, mSafe, mMessage: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  if not IsFirstCharAddress(ANode, mBase, mSymbol, mWidth) or GuardedNonEmpty(ANode, mBase) then
+  begin
+    Exit;
+  end;
+  mPointer := 'PChar';
+  if mWidth = 1 then
+  begin
+    mPointer := 'PAnsiChar';
+  end;
+  mCast := PointerCast(ANode);
+  mReplaced := ANode;
+  if mCast <> nil then
+  begin
+    mPointer := mCast[0].Name;
+    mReplaced := mCast;
+  end;
+  mSafe := Format('%s(%s)', [mPointer, FScope.Text(mBase)]);
+  mFixes := nil;
+  if IsConstParameter(mSymbol) then
+  begin
+    mMessage := cTexts[TStringAddressText.EmptyRead].Fmt([FScope.Text(mBase), FScope.Text(ANode), mSafe]);
+    mFixes := [TRuleFix.Create(cTexts[TStringAddressText.ReplaceWith].Fmt([mSafe]),
+      [TTextEdit.Create(TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos), mSafe)])];
+  end
+  else
+  begin
+    mMessage := cTexts[TStringAddressText.EmptyWrite].Fmt([FScope.Text(mBase), FScope.Text(ANode),
+      mSafe, FScope.Text(mBase)]);
+  end;
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, TRuleConfidence.High, mFixes);
+end;
+
+procedure TFirstCharAddressScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AddressOf then
+      begin
+        CheckAddress(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TFirstCharAddressScan.Run;
+begin
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TFirstCharAddressRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TFirstCharAddressScan;
+begin
+  // Ohne Baum gibt es nichts zu prüfen; der Lauf legt im Konstruktor den Typbereich an.
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  mScope := TTypedScope.Create(AContext);
+  mScan := TFirstCharAddressScan.Create(AContext, AReport);
   try
-    Visit(AContext.Tree.Root);
+    mScan.Run;
   finally
-    mScope.Free;
+    mScan.Free;
   end;
 end;
 

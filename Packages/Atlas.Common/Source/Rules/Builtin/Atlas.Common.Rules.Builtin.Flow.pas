@@ -505,183 +505,207 @@ begin
     cTexts[TFlowText.NoReturnTitle].Text);
 end;
 
-procedure TNoreturnReturnsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TNoreturnReturnsRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TNoreturnReturnsScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FNoreturnFull, FNoreturnShort, FKnownShort: TDictionary<string, Boolean>;
+    FGraph: TControlFlowGraph;
+    procedure CollectHeaders;
+    function IndexEffect(const AShort: string): TNoreturnCallEffect;
+    function CallEffect(ASyntax: TSyntaxNode): TNoreturnCallEffect;
+    function Reachable(AStopAtExit: Boolean): TArray<Boolean>;
+    function ExitsReached: TArray<TFlowNode>;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TNoreturnReturnsScan }
+
+constructor TNoreturnReturnsScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+procedure TNoreturnReturnsScan.CollectHeaders;
 var
-  mNoreturnFull, mNoreturnShort, mKnownShort: TDictionary<string, Boolean>;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mShort: string;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(FContext.Tree.Root);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      for mIndex := 0 to mNode.ChildCount - 1 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+      if mNode.Kind <> TSyntaxKind.RoutineHeader then
+      begin
+        Continue;
+      end;
+      mShort := LowerCase(ShortName(HeaderFullName(mNode)));
+      FKnownShort.AddOrSetValue(mShort, True);
+      if HasNoreturn(mNode) then
+      begin
+        FNoreturnFull.AddOrSetValue(HeaderFullName(mNode), True);
+        FNoreturnShort.AddOrSetValue(mShort, True);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TNoreturnReturnsScan.IndexEffect(const AShort: string): TNoreturnCallEffect;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := TNoreturnCallEffect.Unknown;
+  if FContext.Index = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in FContext.Index.FindSymbols(AShort) do
+  begin
+    if mLocation.Symbol.HasDirective('noreturn') then
+    begin
+      Exit(TNoreturnCallEffect.Ends);
+    end
+    else
+    begin
+      Result := TNoreturnCallEffect.Returns;
+    end;
+  end;
+end;
+
+/// <summary>Wirkung der Anweisung ASyntax: Ends bei Halt, RunError und noreturn-Routinen, Unknown bei
+/// Aufrufen mit unbekanntem Ziel (inherited, Methoden fremder Typen ohne Index).</summary>
+function TNoreturnReturnsScan.CallEffect(ASyntax: TSyntaxNode): TNoreturnCallEffect;
+var
+  mCallee: TSyntaxNode;
+  mShort: string;
+  mMode: TFlowArgumentMode;
+  mIsName: Boolean;
+begin
+  Result := TNoreturnCallEffect.Returns;
+  mCallee := StatementCallee(ASyntax);
+  if mCallee = nil then
+  begin
+    Exit;
+  end;
+  mShort := LowerCase(mCallee.Name);
+  mIsName := mCallee.Kind = TSyntaxKind.Identifier;
+  if not mIsName and (mCallee.Kind <> TSyntaxKind.MemberAccess) then
+  begin
+    Result := TNoreturnCallEffect.Unknown;
+  end
+  else if mIsName and MatchText(mShort, ['halt', 'runerror']) then
+  begin
+    Result := TNoreturnCallEffect.Ends;
+  end
+  else if mIsName and MatchText(mShort, ['exit', 'break', 'continue', 'abort']) then
+  begin
+    // Sprünge modelliert der Graph selbst.
+    Result := TNoreturnCallEffect.Returns;
+  end
+  else if FNoreturnShort.ContainsKey(mShort) then
+  begin
+    Result := TNoreturnCallEffect.Ends;
+  end
+  else if not FKnownShort.ContainsKey(mShort) and
+    not (mIsName and TFlowSignatures.TryBuiltin(mShort, 0, mMode)) then
+  begin
+    Result := IndexEffect(mShort);
+  end;
+end;
+
+/// <summary>Knoten, die vom Anfang aus erreichbar sind, ohne einen Knoten zu verlassen, der den Weg
+/// beendet; von solchen Knoten führen nur die Ausnahmekanten weiter. Mit AStopAtExit enden die Wege auch
+/// an Exit.</summary>
+function TNoreturnReturnsScan.Reachable(AStopAtExit: Boolean): TArray<Boolean>;
+var
+  mPending: TStack<TFlowNode>;
+  mNode, mNext: TFlowNode;
+  mEnds: Boolean;
+begin
+  SetLength(Result, FGraph.Nodes.Count);
+  mPending := TStack<TFlowNode>.Create;
+  try
+    mPending.Push(FGraph.Entry);
+    Result[FGraph.Entry.Index] := True;
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mEnds := (AStopAtExit and IsExitStatement(mNode.Syntax)) or
+        (CallEffect(mNode.Syntax) <> TNoreturnCallEffect.Returns);
+      for mNext in mNode.Successors do
+      begin
+        if not Result[mNext.Index] and (not mEnds or mNode.IsImplicitRaiseEdge(mNext)) then
+        begin
+          Result[mNext.Index] := True;
+          mPending.Push(mNext);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TNoreturnReturnsScan.ExitsReached: TArray<TFlowNode>;
+var
+  mSeen: TArray<Boolean>;
+  mNode: TFlowNode;
+begin
+  Result := nil;
+  mSeen := Reachable(False);
+  for mNode in FGraph.Nodes do
+  begin
+    if mSeen[mNode.Index] and (mNode.Kind = TFlowNodeKind.Statement) and IsExitStatement(mNode.Syntax) then
+    begin
+      Result := Result + [mNode];
+    end;
+  end;
+end;
+
+procedure TNoreturnReturnsScan.Run;
+var
   mCache: IRuleDerivedCache;
   mRoutine: TSyntaxNode;
-  mGraph: TControlFlowGraph;
   mExits: TArray<TFlowNode>;
   mExit: TFlowNode;
   mToEnd: TArray<Boolean>;
   mName: string;
-
-  procedure CollectHeaders;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-    mShort: string;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(AContext.Tree.Root);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        for mIndex := 0 to mNode.ChildCount - 1 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-        if mNode.Kind <> TSyntaxKind.RoutineHeader then
-        begin
-          Continue;
-        end;
-        mShort := LowerCase(ShortName(HeaderFullName(mNode)));
-        mKnownShort.AddOrSetValue(mShort, True);
-        if HasNoreturn(mNode) then
-        begin
-          mNoreturnFull.AddOrSetValue(HeaderFullName(mNode), True);
-          mNoreturnShort.AddOrSetValue(mShort, True);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  function IndexEffect(const AShort: string): TNoreturnCallEffect;
-  var
-    mLocation: TSymbolLocation;
-  begin
-    Result := TNoreturnCallEffect.Unknown;
-    if AContext.Index = nil then
-    begin
-      Exit;
-    end;
-    for mLocation in AContext.Index.FindSymbols(AShort) do
-    begin
-      if mLocation.Symbol.HasDirective('noreturn') then
-      begin
-        Exit(TNoreturnCallEffect.Ends);
-      end
-      else
-      begin
-        Result := TNoreturnCallEffect.Returns;
-      end;
-    end;
-  end;
-
-  /// <summary>Wirkung der Anweisung ASyntax: Ends bei Halt, RunError und noreturn-Routinen, Unknown bei
-  /// Aufrufen mit unbekanntem Ziel (inherited, Methoden fremder Typen ohne Index).</summary>
-  function CallEffect(ASyntax: TSyntaxNode): TNoreturnCallEffect;
-  var
-    mCallee: TSyntaxNode;
-    mShort: string;
-    mMode: TFlowArgumentMode;
-    mIsName: Boolean;
-  begin
-    Result := TNoreturnCallEffect.Returns;
-    mCallee := StatementCallee(ASyntax);
-    if mCallee = nil then
-    begin
-      Exit;
-    end;
-    mShort := LowerCase(mCallee.Name);
-    mIsName := mCallee.Kind = TSyntaxKind.Identifier;
-    if not mIsName and (mCallee.Kind <> TSyntaxKind.MemberAccess) then
-    begin
-      Result := TNoreturnCallEffect.Unknown;
-    end
-    else if mIsName and MatchText(mShort, ['halt', 'runerror']) then
-    begin
-      Result := TNoreturnCallEffect.Ends;
-    end
-    else if mIsName and MatchText(mShort, ['exit', 'break', 'continue', 'abort']) then
-    begin
-      // Sprünge modelliert der Graph selbst.
-      Result := TNoreturnCallEffect.Returns;
-    end
-    else if mNoreturnShort.ContainsKey(mShort) then
-    begin
-      Result := TNoreturnCallEffect.Ends;
-    end
-    else if not mKnownShort.ContainsKey(mShort) and
-      not (mIsName and TFlowSignatures.TryBuiltin(mShort, 0, mMode)) then
-    begin
-      Result := IndexEffect(mShort);
-    end;
-  end;
-
-  /// <summary>Knoten, die vom Anfang aus erreichbar sind, ohne einen Knoten zu verlassen, der den Weg
-  /// beendet; von solchen Knoten führen nur die Ausnahmekanten weiter. Mit AStopAtExit enden die Wege auch
-  /// an Exit.</summary>
-  function Reachable(AStopAtExit: Boolean): TArray<Boolean>;
-  var
-    mPending: TStack<TFlowNode>;
-    mNode, mNext: TFlowNode;
-    mEnds: Boolean;
-  begin
-    SetLength(Result, mGraph.Nodes.Count);
-    mPending := TStack<TFlowNode>.Create;
-    try
-      mPending.Push(mGraph.Entry);
-      Result[mGraph.Entry.Index] := True;
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mEnds := (AStopAtExit and IsExitStatement(mNode.Syntax)) or
-          (CallEffect(mNode.Syntax) <> TNoreturnCallEffect.Returns);
-        for mNext in mNode.Successors do
-        begin
-          if not Result[mNext.Index] and (not mEnds or mNode.IsImplicitRaiseEdge(mNext)) then
-          begin
-            Result[mNext.Index] := True;
-            mPending.Push(mNext);
-          end;
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  function ExitsReached: TArray<TFlowNode>;
-  var
-    mSeen: TArray<Boolean>;
-    mNode: TFlowNode;
-  begin
-    Result := nil;
-    mSeen := Reachable(False);
-    for mNode in mGraph.Nodes do
-    begin
-      if mSeen[mNode.Index] and (mNode.Kind = TFlowNodeKind.Statement) and IsExitStatement(mNode.Syntax) then
-      begin
-        Result := Result + [mNode];
-      end;
-    end;
-  end;
-
 begin
-  if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'noreturn') then
+  if (FContext.Tree = nil) or not ContainsText(FContext.Text, 'noreturn') then
   begin
     Exit;
   end;
-  mNoreturnFull := TDictionary<string, Boolean>.Create;
-  mNoreturnShort := TDictionary<string, Boolean>.Create;
-  mKnownShort := TDictionary<string, Boolean>.Create;
+  FNoreturnFull := TDictionary<string, Boolean>.Create;
+  FNoreturnShort := TDictionary<string, Boolean>.Create;
+  FKnownShort := TDictionary<string, Boolean>.Create;
   try
     CollectHeaders;
-    mCache := TRuleDerived.Open(AContext);
-    for mRoutine in TRuleDerived.Routines(mCache, AContext) do
+    mCache := TRuleDerived.Open(FContext);
+    for mRoutine in TRuleDerived.Routines(mCache, FContext) do
     begin
       if not (HasNoreturn(mRoutine.FindChild(TSyntaxKind.RoutineHeader)) or
-        mNoreturnFull.ContainsKey(LowerCase(TRoutineSignatures.WithoutTypeParams(mRoutine.Name)))) then
+        FNoreturnFull.ContainsKey(LowerCase(TRoutineSignatures.WithoutTypeParams(mRoutine.Name)))) then
       begin
         Continue;
       end;
-      mGraph := TRuleDerived.Graph(mCache, AContext, mRoutine);
-      if not mGraph.Complete then
+      FGraph := TRuleDerived.Graph(mCache, FContext, mRoutine);
+      if not FGraph.Complete then
       begin
         Continue;
       end;
@@ -689,22 +713,30 @@ begin
       mExits := ExitsReached;
       for mExit in mExits do
       begin
-        AReport.Add(NodeRange(mExit.Syntax),
+        FReport.Add(NodeRange(mExit.Syntax),
           cTexts[TFlowText.ExitNoReturn].Fmt([mName]), TRuleConfidence.High);
       end;
       mToEnd := Reachable(True);
-      if mToEnd[mGraph.ExitNode.Index] then
+      if mToEnd[FGraph.ExitNode.Index] then
       begin
-        AReport.Add(HeaderNameRange(AContext, mRoutine),
+        FReport.Add(HeaderNameRange(FContext, mRoutine),
           cTexts[TFlowText.EndNoReturn].Fmt([mName]),
           TRuleConfidence.High);
       end;
     end;
   finally
-    mKnownShort.Free;
-    mNoreturnShort.Free;
-    mNoreturnFull.Free;
+    FKnownShort.Free;
+    FNoreturnShort.Free;
+    FNoreturnFull.Free;
   end;
+end;
+
+procedure TNoreturnReturnsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TNoreturnReturnsScan;
+begin
+  mScan := TNoreturnReturnsScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterFlowRules(const ARegistry: TRuleRegistry);

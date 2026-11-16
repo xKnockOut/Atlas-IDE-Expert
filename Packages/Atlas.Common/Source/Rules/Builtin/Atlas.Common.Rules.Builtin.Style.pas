@@ -947,233 +947,271 @@ begin
   Result := TRuleDescriptor.Create('boolean-assign-if', TRuleSeverity.Hint, cTexts[TStyleText.IfBoolTitle].Text);
 end;
 
-procedure TBooleanAssignIfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TTokens;
-
-  function Text(ANode: TSyntaxNode): string;
-  begin
-    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+type
+  /// <summary>Ein Lauf von TBooleanAssignIfRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TBooleanAssignIfScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    function Text(ANode: TSyntaxNode): string;
+    function Key(ANode: TSyntaxNode): string;
+    function Single(ANode: TSyntaxNode): TSyntaxNode;
+    function BoolValue(ANode: TSyntaxNode): Integer;
+    function AssignedValue(ANode: TSyntaxNode; out ATarget: TSyntaxNode): Integer;
+    function ExitValue(ANode: TSyntaxNode): Integer;
+    function Negated(ACondition: TSyntaxNode): string;
+    function HasComment(AStart, AEnd: Integer): Boolean;
+    procedure Report(AIf, ALast: TSyntaxNode; const ANewText: string);
+    function Expression(ACondition: TSyntaxNode; AValue: Integer): string;
+    procedure CheckIf(AIf: TSyntaxNode; ANext: TSyntaxNode);
+    procedure Visit(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // Vergleichsschlüssel ohne Leerraum.
-  function Key(ANode: TSyntaxNode): string;
-  begin
-    Result := LowerCase(StringReplace(StringReplace(Text(ANode), ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]));
-  end;
+{ TBooleanAssignIfScan }
 
-  // begin X end mit genau einer Anweisung: die Anweisung.
-  function Single(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode;
-    while (Result <> nil) and (Result.Kind = TSyntaxKind.Block) do
-    begin
-      if Result.ChildCount = 1 then
-      begin
-        Result := Result[0];
-      end
-      else
-      begin
-        Result := nil;
-      end;
-    end;
-  end;
-
-  // 1 für True, 0 für False, -1 sonst.
-  function BoolValue(ANode: TSyntaxNode): Integer;
-  begin
-    Result := -1;
-    if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
-    begin
-      if SameText(ANode.Name, 'True') then
-      begin
-        Result := 1;
-      end
-      else if SameText(ANode.Name, 'False') then
-      begin
-        Result := 0;
-      end;
-    end;
-  end;
-
-  // X := True/False: Wert, Ziel in ATarget.
-  function AssignedValue(ANode: TSyntaxNode; out ATarget: TSyntaxNode): Integer;
-  begin
-    Result := -1;
-    ATarget := nil;
-    if (ANode <> nil) and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
-    begin
-      ATarget := ANode[0];
-      Result := BoolValue(ANode[1]);
-    end;
-  end;
-
-  // Exit(True/False) als Anweisung.
-  function ExitValue(ANode: TSyntaxNode): Integer;
-  begin
-    Result := -1;
-    if (ANode = nil) or (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount <> 1) then
-    begin
-      Exit;
-    end;
-    if (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'Exit') and (ANode[0].ChildCount = 2) then
-    begin
-      Result := BoolValue(ANode[0][1]);
-    end;
-  end;
-
-  function Negated(ACondition: TSyntaxNode): string;
-  begin
-    if (ACondition.Kind = TSyntaxKind.UnaryExpr) and SameText(ACondition.Name, 'not') and
-      (ACondition.ChildCount = 1) then
-    begin
-      Result := Text(ACondition[0]);
-    end
-    else if ACondition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
-      TSyntaxKind.IndexAccess, TSyntaxKind.ParenExpr] then
-    begin
-      Result := 'not ' + Text(ACondition);
-    end
-    else
-    begin
-      Result := 'not (' + Text(ACondition) + ')';
-    end;
-  end;
-
-  function HasComment(AStart, AEnd: Integer): Boolean;
-  var
-    mIndex: Integer;
-  begin
-    // Binär zum ersten Token des Bereichs statt ab Dateianfang (#1323).
-    mIndex := AContext.Tree.FirstTokenFrom(AStart);
-    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AEnd) do
-    begin
-      if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
-      begin
-        Exit(True);
-      end;
-      Inc(mIndex);
-    end;
-    Result := False;
-  end;
-
-  procedure Report(AIf, ALast: TSyntaxNode; const ANewText: string);
-  var
-    mFixes: TArray<TRuleFix>;
-  begin
-    mFixes := nil;
-    if not HasComment(AIf.StartOffset, ALast.EndOffset) then
-    begin
-      mFixes := [TRuleFix.Create(cTexts[TStyleText.ReplaceWith].Fmt([ANewText]),
-        [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
-        ALast.EndPos), ANewText)])];
-    end;
-    AReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), cTexts[TStyleText.IfBool].Text, TRuleConfidence.High,
-      mFixes);
-  end;
-
-  function Expression(ACondition: TSyntaxNode; AValue: Integer): string;
-  begin
-    if AValue = 1 then
-    begin
-      Result := Text(ACondition);
-    end
-    else
-    begin
-      Result := Negated(ACondition);
-    end;
-  end;
-
-  procedure CheckIf(AIf: TSyntaxNode; ANext: TSyntaxNode);
-  var
-    mThenTarget, mElseTarget: TSyntaxNode;
-    mThenValue, mElseValue: Integer;
-  begin
-    if AIf.ChildCount < 2 then
-    begin
-      Exit;
-    end;
-    if AIf.ChildCount = 3 then
-    begin
-      // if B then X := True else X := False
-      mThenValue := AssignedValue(Single(AIf[1]), mThenTarget);
-      mElseValue := AssignedValue(Single(AIf[2]), mElseTarget);
-      if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) and
-        (Key(mThenTarget) = Key(mElseTarget)) then
-      begin
-        Report(AIf, AIf, Text(mThenTarget) + ' := ' + Expression(AIf[0], mThenValue));
-        Exit;
-      end;
-      // if B then Exit(True) else Exit(False)
-      mThenValue := ExitValue(Single(AIf[1]));
-      mElseValue := ExitValue(Single(AIf[2]));
-      if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) then
-      begin
-        Report(AIf, AIf, 'Exit(' + Expression(AIf[0], mThenValue) + ')');
-      end;
-      Exit;
-    end;
-    // if B then Exit(True); Exit(False);
-    mThenValue := ExitValue(Single(AIf[1]));
-    mElseValue := ExitValue(ANext);
-    if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) then
-    begin
-      Report(AIf, ANext, 'Exit(' + Expression(AIf[0], mThenValue) + ')');
-    end;
-  end;
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    mParents: TStack<TSyntaxNode>;
-    mIndexes: TStack<Integer>;
-    mParent, mChild, mNext: TSyntaxNode;
-    mIndex, mItem: Integer;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere
-    // Rekursion.
-    mParents := TStack<TSyntaxNode>.Create;
-    mIndexes := TStack<Integer>.Create;
-    try
-      for mItem := ANode.ChildCount - 1 downto 0 do
-      begin
-        mParents.Push(ANode);
-        mIndexes.Push(mItem);
-      end;
-      while mParents.Count > 0 do
-      begin
-        mParent := mParents.Pop;
-        mIndex := mIndexes.Pop;
-        mChild := mParent[mIndex];
-        if mChild.Kind = TSyntaxKind.IfStatement then
-        begin
-          mNext := nil;
-          // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
-          if (mIndex < mParent.ChildCount - 1) and (mParent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
-            TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
-          begin
-            mNext := mParent[mIndex + 1];
-          end;
-          CheckIf(mChild, mNext);
-        end;
-        for mItem := mChild.ChildCount - 1 downto 0 do
-        begin
-          mParents.Push(mChild);
-          mIndexes.Push(mItem);
-        end;
-      end;
-    finally
-      mIndexes.Free;
-      mParents.Free;
-    end;
-  end;
-
+constructor TBooleanAssignIfScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TBooleanAssignIfScan.Text(ANode: TSyntaxNode): string;
+begin
+  Result := Trim(Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+end;
+
+// Vergleichsschlüssel ohne Leerraum.
+function TBooleanAssignIfScan.Key(ANode: TSyntaxNode): string;
+begin
+  Result := LowerCase(StringReplace(StringReplace(Text(ANode), ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]));
+end;
+
+// begin X end mit genau einer Anweisung: die Anweisung.
+function TBooleanAssignIfScan.Single(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode;
+  while (Result <> nil) and (Result.Kind = TSyntaxKind.Block) do
+  begin
+    if Result.ChildCount = 1 then
+    begin
+      Result := Result[0];
+    end
+    else
+    begin
+      Result := nil;
+    end;
+  end;
+end;
+
+// 1 für True, 0 für False, -1 sonst.
+function TBooleanAssignIfScan.BoolValue(ANode: TSyntaxNode): Integer;
+begin
+  Result := -1;
+  if (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+  begin
+    if SameText(ANode.Name, 'True') then
+    begin
+      Result := 1;
+    end
+    else if SameText(ANode.Name, 'False') then
+    begin
+      Result := 0;
+    end;
+  end;
+end;
+
+// X := True/False: Wert, Ziel in ATarget.
+function TBooleanAssignIfScan.AssignedValue(ANode: TSyntaxNode; out ATarget: TSyntaxNode): Integer;
+begin
+  Result := -1;
+  ATarget := nil;
+  if (ANode <> nil) and (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) then
+  begin
+    ATarget := ANode[0];
+    Result := BoolValue(ANode[1]);
+  end;
+end;
+
+// Exit(True/False) als Anweisung.
+function TBooleanAssignIfScan.ExitValue(ANode: TSyntaxNode): Integer;
+begin
+  Result := -1;
+  if (ANode = nil) or (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount <> 1) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  Visit(AContext.Tree.Root);
+  if (ANode[0].Kind = TSyntaxKind.Call) and SameText(ANode[0].Name, 'Exit') and (ANode[0].ChildCount = 2) then
+  begin
+    Result := BoolValue(ANode[0][1]);
+  end;
+end;
+
+function TBooleanAssignIfScan.Negated(ACondition: TSyntaxNode): string;
+begin
+  if (ACondition.Kind = TSyntaxKind.UnaryExpr) and SameText(ACondition.Name, 'not') and
+    (ACondition.ChildCount = 1) then
+  begin
+    Result := Text(ACondition[0]);
+  end
+  else if ACondition.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+    TSyntaxKind.IndexAccess, TSyntaxKind.ParenExpr] then
+  begin
+    Result := 'not ' + Text(ACondition);
+  end
+  else
+  begin
+    Result := 'not (' + Text(ACondition) + ')';
+  end;
+end;
+
+function TBooleanAssignIfScan.HasComment(AStart, AEnd: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  // Binär zum ersten Token des Bereichs statt ab Dateianfang (#1323).
+  mIndex := FContext.Tree.FirstTokenFrom(AStart);
+  while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < AEnd) do
+  begin
+    if FTokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
+      Exit(True);
+    end;
+    Inc(mIndex);
+  end;
+  Result := False;
+end;
+
+procedure TBooleanAssignIfScan.Report(AIf, ALast: TSyntaxNode; const ANewText: string);
+var
+  mFixes: TArray<TRuleFix>;
+begin
+  mFixes := nil;
+  if not HasComment(AIf.StartOffset, ALast.EndOffset) then
+  begin
+    mFixes := [TRuleFix.Create(cTexts[TStyleText.ReplaceWith].Fmt([ANewText]),
+      [TRuleEdit.Create(TTextRange.Create(AIf.StartPos,
+      ALast.EndPos), ANewText)])];
+  end;
+  FReport.Add(TTextRange.Create(AIf.StartPos, AIf[0].EndPos), cTexts[TStyleText.IfBool].Text, TRuleConfidence.High,
+    mFixes);
+end;
+
+function TBooleanAssignIfScan.Expression(ACondition: TSyntaxNode; AValue: Integer): string;
+begin
+  if AValue = 1 then
+  begin
+    Result := Text(ACondition);
+  end
+  else
+  begin
+    Result := Negated(ACondition);
+  end;
+end;
+
+procedure TBooleanAssignIfScan.CheckIf(AIf: TSyntaxNode; ANext: TSyntaxNode);
+var
+  mThenTarget, mElseTarget: TSyntaxNode;
+  mThenValue, mElseValue: Integer;
+begin
+  if AIf.ChildCount < 2 then
+  begin
+    Exit;
+  end;
+  if AIf.ChildCount = 3 then
+  begin
+    // if B then X := True else X := False
+    mThenValue := AssignedValue(Single(AIf[1]), mThenTarget);
+    mElseValue := AssignedValue(Single(AIf[2]), mElseTarget);
+    if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) and
+      (Key(mThenTarget) = Key(mElseTarget)) then
+    begin
+      Report(AIf, AIf, Text(mThenTarget) + ' := ' + Expression(AIf[0], mThenValue));
+      Exit;
+    end;
+    // if B then Exit(True) else Exit(False)
+    mThenValue := ExitValue(Single(AIf[1]));
+    mElseValue := ExitValue(Single(AIf[2]));
+    if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) then
+    begin
+      Report(AIf, AIf, 'Exit(' + Expression(AIf[0], mThenValue) + ')');
+    end;
+    Exit;
+  end;
+  // if B then Exit(True); Exit(False);
+  mThenValue := ExitValue(Single(AIf[1]));
+  mElseValue := ExitValue(ANext);
+  if (mThenValue >= 0) and (mElseValue >= 0) and (mThenValue <> mElseValue) then
+  begin
+    Report(AIf, ANext, 'Exit(' + Expression(AIf[0], mThenValue) + ')');
+  end;
+end;
+
+procedure TBooleanAssignIfScan.Visit(ANode: TSyntaxNode);
+var
+  mParents: TStack<TSyntaxNode>;
+  mIndexes: TStack<Integer>;
+  mParent, mChild, mNext: TSyntaxNode;
+  mIndex, mItem: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): Paare (Elternknoten, Kindindex), Reihenfolge wie die frühere
+  // Rekursion.
+  mParents := TStack<TSyntaxNode>.Create;
+  mIndexes := TStack<Integer>.Create;
+  try
+    for mItem := ANode.ChildCount - 1 downto 0 do
+    begin
+      mParents.Push(ANode);
+      mIndexes.Push(mItem);
+    end;
+    while mParents.Count > 0 do
+    begin
+      mParent := mParents.Pop;
+      mIndex := mIndexes.Pop;
+      mChild := mParent[mIndex];
+      if mChild.Kind = TSyntaxKind.IfStatement then
+      begin
+        mNext := nil;
+        // Folgeanweisung nur in Anweisungslisten, nicht im else-Zweig eines äußeren if.
+        if (mIndex < mParent.ChildCount - 1) and (mParent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+          TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) then
+        begin
+          mNext := mParent[mIndex + 1];
+        end;
+        CheckIf(mChild, mNext);
+      end;
+      for mItem := mChild.ChildCount - 1 downto 0 do
+      begin
+        mParents.Push(mChild);
+        mIndexes.Push(mItem);
+      end;
+    end;
+  finally
+    mIndexes.Free;
+    mParents.Free;
+  end;
+end;
+
+procedure TBooleanAssignIfScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TBooleanAssignIfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TBooleanAssignIfScan;
+begin
+  mScan := TBooleanAssignIfScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TCaseInsensitiveCompareRule }
@@ -1371,228 +1409,261 @@ begin
   Result := TRuleDescriptor.Create('magic-number', TRuleSeverity.Hint, cTexts[TStyleText.MagicTitle].Text);
 end;
 
-procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TMagicNumberRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TMagicNumberScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FAllowed: TArray<Double>;
+    FSettings: TFormatSettings;
+    FExtractor: TConstantExtractor;
+    function Text(ANode: TSyntaxNode): string;
+    function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
+    function IsAllowed(AValue: Double): Boolean;
+    function IsNumberNode(ANode: TSyntaxNode): Boolean;
+    function AllNumberArguments(ACall: TSyntaxNode): Boolean;
+    function SpeaksForItself(ANode: TSyntaxNode; AValue: Double): Boolean;
+    procedure CheckLiteral(ALiteral: TSyntaxNode);
+    procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TMagicNumberScan }
+
+constructor TMagicNumberScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TMagicNumberScan.Text(ANode: TSyntaxNode): string;
+begin
+  Result := Trim(Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+end;
+
+// Wert eines Zahlenliterals (dezimal, $hex, Gleitkomma); False bei Strings und Zeichen (#13).
+function TMagicNumberScan.NumberValue(const ALiteral: string; out AValue: Double): Boolean;
 var
-  mAllowed: TArray<Double>;
-  mSettings: TFormatSettings;
-  // Eine Korrekturplanung je Datei: Zeilentabelle und freier Name nicht je Literal neu (große Units).
-  mExtractor: TConstantExtractor;
-
-  function Text(ANode: TSyntaxNode): string;
+  mHex: Int64;
+begin
+  Result := False;
+  if ALiteral = '' then
   begin
-    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+    Exit;
   end;
-
-  // Wert eines Zahlenliterals (dezimal, $hex, Gleitkomma); False bei Strings und Zeichen (#13).
-  function NumberValue(const ALiteral: string; out AValue: Double): Boolean;
-  var
-    mHex: Int64;
+  if ALiteral[1] = '$' then
   begin
-    Result := False;
-    if ALiteral = '' then
-    begin
-      Exit;
-    end;
-    if ALiteral[1] = '$' then
-    begin
-      Result := TryStrToInt64(ALiteral, mHex);
-      AValue := mHex;
-    end
-    else if CharInSet(ALiteral[1], ['0'..'9']) then
-    begin
-      Result := TryStrToFloat(ALiteral, AValue, mSettings);
-    end;
+    Result := TryStrToInt64(ALiteral, mHex);
+    AValue := mHex;
+  end
+  else if CharInSet(ALiteral[1], ['0'..'9']) then
+  begin
+    Result := TryStrToFloat(ALiteral, AValue, FSettings);
   end;
+end;
 
-  function IsAllowed(AValue: Double): Boolean;
-  var
-    mValue: Double;
+function TMagicNumberScan.IsAllowed(AValue: Double): Boolean;
+var
+  mValue: Double;
+begin
+  for mValue in FAllowed do
   begin
-    for mValue in mAllowed do
-    begin
-      if SameValue(mValue, AValue) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  // Zahl als Literal (auch negativ)?
-  function IsNumberNode(ANode: TSyntaxNode): Boolean;
-  var
-    mValue: Double;
-  begin
-    if (ANode.Kind = TSyntaxKind.UnaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 1) then
-    begin
-      ANode := ANode[0];
-    end;
-    Result := (ANode.Kind = TSyntaxKind.Literal) and NumberValue(Text(ANode), mValue);
-  end;
-
-  // Element einer Punktliste: Aufruf in einem Array-Literal mit mindestens zwei Argumenten, die alle Zahlen sind
-  // ([P(3.5, 1.5), P(9.5, 1.5)]). SetBounds(12, 9, 360, 23) allein zählt nicht: Pixelwerte brauchen Namen.
-  function AllNumberArguments(ACall: TSyntaxNode): Boolean;
-  var
-    mIndex: Integer;
-  begin
-    Result := (ACall.ChildCount >= 3) and (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.SetConstructor);
-    for mIndex := 1 to ACall.ChildCount - 1 do
-    begin
-      Result := Result and IsNumberNode(ACall[mIndex]);
-    end;
-  end;
-
-  // Zahlen, die für sich sprechen (siehe Kopf der Unit). SameValue nur mit Double-Werten: Mit einem
-  // Ganzzahl-Argument wählt FPC die Single-Überladung, dann gälte 65536 als $FFFF.
-  function SpeaksForItself(ANode: TSyntaxNode; AValue: Double): Boolean;
-  const
-    cFullMasks: array[0..2] of Double = (255, 65535, 4294967295);
-    cTimeUnits: array[0..3] of Double = (24, 60, 1000, 3600);
-    cDpiBase: Double = 96;
-  var
-    mParent: TSyntaxNode;
-
-    function OneOf(const AValues: array of Double): Boolean;
-    var
-      mValue: Double;
-    begin
-      Result := False;
-      for mValue in AValues do
-      begin
-        Result := Result or SameValue(AValue, mValue);
-      end;
-    end;
-
-  begin
-    if StartsText('$', Text(ANode)) and OneOf(cFullMasks) then
+    if SameValue(mValue, AValue) then
     begin
       Exit(True);
     end;
-    mParent := ANode.Parent;
-    if mParent = nil then
-    begin
-      Exit(False);
-    end;
-    if mParent.Kind = TSyntaxKind.Call then
-    begin
-      Result := (SameText(mParent.Name, 'MulDiv') and SameValue(AValue, cDpiBase)) or AllNumberArguments(mParent);
-    end
-    else
-    begin
-      Result := (mParent.Kind = TSyntaxKind.BinaryExpr) and MatchText(mParent.Name, ['*', '/', 'div', 'mod']) and
-        OneOf(cTimeUnits);
-    end;
   end;
+  Result := False;
+end;
 
-  procedure CheckLiteral(ALiteral: TSyntaxNode);
+// Zahl als Literal (auch negativ)?
+function TMagicNumberScan.IsNumberNode(ANode: TSyntaxNode): Boolean;
+var
+  mValue: Double;
+begin
+  if (ANode.Kind = TSyntaxKind.UnaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 1) then
+  begin
+    ANode := ANode[0];
+  end;
+  Result := (ANode.Kind = TSyntaxKind.Literal) and NumberValue(Text(ANode), mValue);
+end;
+
+// Element einer Punktliste: Aufruf in einem Array-Literal mit mindestens zwei Argumenten, die alle Zahlen sind
+// ([P(3.5, 1.5), P(9.5, 1.5)]). SetBounds(12, 9, 360, 23) allein zählt nicht: Pixelwerte brauchen Namen.
+function TMagicNumberScan.AllNumberArguments(ACall: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (ACall.ChildCount >= 3) and (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.SetConstructor);
+  for mIndex := 1 to ACall.ChildCount - 1 do
+  begin
+    Result := Result and IsNumberNode(ACall[mIndex]);
+  end;
+end;
+
+// Zahlen, die für sich sprechen (siehe Kopf der Unit). SameValue nur mit Double-Werten: Mit einem
+// Ganzzahl-Argument wählt FPC die Single-Überladung, dann gälte 65536 als $FFFF.
+function TMagicNumberScan.SpeaksForItself(ANode: TSyntaxNode; AValue: Double): Boolean;
+const
+  cFullMasks: array[0..2] of Double = (255, 65535, 4294967295);
+  cTimeUnits: array[0..3] of Double = (24, 60, 1000, 3600);
+  cDpiBase: Double = 96;
+var
+  mParent: TSyntaxNode;
+
+  function OneOf(const AValues: array of Double): Boolean;
   var
-    mNode: TSyntaxNode;
     mValue: Double;
-    mAction: TCodeAction;
-    mFixes: TArray<TRuleFix>;
-    mOptions: TExtractOptions;
   begin
-    if not NumberValue(Text(ALiteral), mValue) then
+    Result := False;
+    for mValue in AValues do
     begin
-      Exit;
+      Result := Result or SameValue(AValue, mValue);
     end;
-    mNode := ALiteral;
-    // -5: das Vorzeichen gehört zur Zahl.
-    if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.UnaryExpr) and (mNode.Parent.Name = '-') and
-      (mNode.Parent.ChildCount = 1) then
-    begin
-      mNode := mNode.Parent;
-      mValue := -mValue;
-    end;
-    if IsAllowed(mValue) or SpeaksForItself(mNode, mValue) then
-    begin
-      Exit;
-    end;
-    mFixes := nil;
-    if mExtractor = nil then
-    begin
-      mOptions := TExtractOptions.Default;
-      // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
-      mOptions.Names := AContext.NewNames;
-      mExtractor := TConstantExtractor.Create(AContext.Text, AContext.Tree, mOptions);
-    end;
-    if mExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), False, mAction) then
-    begin
-      mFixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, mAction.Edits)];
-    end;
-    AReport.Add(TTextRange.Create(mNode.StartPos, mNode.EndPos), cTexts[TStyleText.Magic].Fmt([Text(mNode)]),
-      TRuleConfidence.Low, mFixes);
   end;
 
-  procedure Visit(ANode: TSyntaxNode; AInBody: Boolean);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mInBodies: TStack<Boolean>;
-    mNode: TSyntaxNode;
-    mInBody: Boolean;
-    mIndex: Integer;
+begin
+  if StartsText('$', Text(ANode)) and OneOf(cFullMasks) then
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); InBodies führt AInBody je Knoten mit.
-    mPending := TStack<TSyntaxNode>.Create;
-    mInBodies := TStack<Boolean>.Create;
-    try
-      mPending.Push(ANode);
-      mInBodies.Push(AInBody);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mInBody := mInBodies.Pop;
-        case mNode.Kind of
-          // Konstanten, Typen, Array-Grenzen und Teilbereiche haben ihren Namen schon.
-          TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.TypeSection,
-          TSyntaxKind.TypeDecl, TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SubrangeType,
-          TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.VarSection, TSyntaxKind.Attribute,
-          TSyntaxKind.AsmBlock, TSyntaxKind.RoutineHeader:
-            Continue;
-          TSyntaxKind.Block:
-            mInBody := True;
-          TSyntaxKind.Literal:
-            if mInBody then
-            begin
-              CheckLiteral(mNode);
-            end;
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-          mInBodies.Push(mInBody);
-        end;
+    Exit(True);
+  end;
+  mParent := ANode.Parent;
+  if mParent = nil then
+  begin
+    Exit(False);
+  end;
+  if mParent.Kind = TSyntaxKind.Call then
+  begin
+    Result := (SameText(mParent.Name, 'MulDiv') and SameValue(AValue, cDpiBase)) or AllNumberArguments(mParent);
+  end
+  else
+  begin
+    Result := (mParent.Kind = TSyntaxKind.BinaryExpr) and MatchText(mParent.Name, ['*', '/', 'div', 'mod']) and
+      OneOf(cTimeUnits);
+  end;
+end;
+
+procedure TMagicNumberScan.CheckLiteral(ALiteral: TSyntaxNode);
+var
+  mNode: TSyntaxNode;
+  mValue: Double;
+  mAction: TCodeAction;
+  mFixes: TArray<TRuleFix>;
+  mOptions: TExtractOptions;
+begin
+  if not NumberValue(Text(ALiteral), mValue) then
+  begin
+    Exit;
+  end;
+  mNode := ALiteral;
+  // -5: das Vorzeichen gehört zur Zahl.
+  if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.UnaryExpr) and (mNode.Parent.Name = '-') and
+    (mNode.Parent.ChildCount = 1) then
+  begin
+    mNode := mNode.Parent;
+    mValue := -mValue;
+  end;
+  if IsAllowed(mValue) or SpeaksForItself(mNode, mValue) then
+  begin
+    Exit;
+  end;
+  mFixes := nil;
+  if FExtractor = nil then
+  begin
+    mOptions := TExtractOptions.Default;
+    // Name nach der Namensregel (cNewConstant), sonst meldet naming-prefix die Korrektur gleich wieder.
+    mOptions.Names := FContext.NewNames;
+    FExtractor := TConstantExtractor.Create(FContext.Text, FContext.Tree, mOptions);
+  end;
+  if FExtractor.Run(TTextRange.Create(mNode.StartPos, mNode.EndPos), False, mAction) then
+  begin
+    mFixes := [TRuleFix.Create(cTexts[TStyleText.IntroduceConstant].Text, mAction.Edits)];
+  end;
+  FReport.Add(TTextRange.Create(mNode.StartPos, mNode.EndPos), cTexts[TStyleText.Magic].Fmt([Text(mNode)]),
+    TRuleConfidence.Low, mFixes);
+end;
+
+procedure TMagicNumberScan.Visit(ANode: TSyntaxNode; AInBody: Boolean);
+var
+  mPending: TStack<TSyntaxNode>;
+  mInBodies: TStack<Boolean>;
+  mNode: TSyntaxNode;
+  mInBody: Boolean;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); InBodies führt AInBody je Knoten mit.
+  mPending := TStack<TSyntaxNode>.Create;
+  mInBodies := TStack<Boolean>.Create;
+  try
+    mPending.Push(ANode);
+    mInBodies.Push(AInBody);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mInBody := mInBodies.Pop;
+      case mNode.Kind of
+        // Konstanten, Typen, Array-Grenzen und Teilbereiche haben ihren Namen schon.
+        TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.TypeSection,
+        TSyntaxKind.TypeDecl, TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SubrangeType,
+        TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.VarSection, TSyntaxKind.Attribute,
+        TSyntaxKind.AsmBlock, TSyntaxKind.RoutineHeader:
+          Continue;
+        TSyntaxKind.Block:
+          mInBody := True;
+        TSyntaxKind.Literal:
+          if mInBody then
+          begin
+            CheckLiteral(mNode);
+          end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
       end;
-    finally
-      mInBodies.Free;
-      mPending.Free;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+        mInBodies.Push(mInBody);
+      end;
     end;
+  finally
+    mInBodies.Free;
+    mPending.Free;
   end;
+end;
 
+procedure TMagicNumberScan.Run;
 var
   mDefaults: TArray<Double>;
   mValue: Double;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
   mDefaults := nil;
-  for mValue in cDefaultAllowed do
+  for mValue in TMagicNumberRule.cDefaultAllowed do
   begin
     mDefaults := mDefaults + [mValue];
   end;
-  mAllowed := TRuleOptions.Numbers(AContext.Options, 'allowed', mDefaults);
-  mSettings := TFormatSettings.Invariant;
-  mExtractor := nil;
+  FAllowed := TRuleOptions.Numbers(FContext.Options, 'allowed', mDefaults);
+  FSettings := TFormatSettings.Invariant;
+  FExtractor := nil;
   try
-    Visit(AContext.Tree.Root, False);
+    Visit(FContext.Tree.Root, False);
   finally
-    mExtractor.Free;
+    FExtractor.Free;
   end;
+end;
+
+procedure TMagicNumberRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TMagicNumberScan;
+begin
+  mScan := TMagicNumberScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterStyleRules(const ARegistry: TRuleRegistry);

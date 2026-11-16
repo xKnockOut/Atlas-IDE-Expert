@@ -373,292 +373,336 @@ begin
   Result := TRuleDescriptor.Create(cRedundantCastRuleId, TRuleSeverity.Hint, cTexts[TCastsText.RedundantTitle].Text);
 end;
 
-procedure TRedundantCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TRedundantCastRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TRedundantCastScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScope: TTypedScope;
+    FCheckFree: Boolean;
+    function LastName(const AName: string): string;
+    function CastParts(ANode: TSyntaxNode; out ATypeNode, ASource: TSyntaxNode; out AIsAs: Boolean): Boolean;
+    function TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+    function SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
+    function InOverloadedCall(ANode: TSyntaxNode): Boolean;
+    function ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
+    procedure Report(ANode, ASource: TSyntaxNode; const AMessage: string);
+    function DeclaresFree(const AChain: TArray<TResolvedSymbol>): Boolean;
+    function SameDeclared(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+      ATypeNode: TSyntaxNode): Boolean;
+    function SameBuiltin(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+      ATypeNode: TSyntaxNode): Boolean;
+    procedure CheckCast(ANode: TSyntaxNode);
+    function FreeWithArguments(ANode: TSyntaxNode): Boolean;
+    function PlainFree(const AType: TResolvedSymbol): Boolean;
+    procedure CheckFree(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TRedundantCastScan }
+
+constructor TRedundantCastScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+/// <summary>Letzter Teil eines qualifizierten Namens ("System.Classes.TStringList" → "TStringList").</summary>
+function TRedundantCastScan.LastName(const AName: string): string;
 var
-  mScope: TTypedScope;
-  mCheckFree: Boolean;
-
-  /// <summary>Letzter Teil eines qualifizierten Namens ("System.Classes.TStringList" → "TStringList").</summary>
-  function LastName(const AName: string): string;
-  var
-    mDot: Integer;
+  mDot: Integer;
+begin
+  Result := Trim(AName);
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Trim(AName);
-    mDot := LastDelimiter('.', Result);
-    if mDot > 0 then
-    begin
-      Result := Copy(Result, mDot + 1, MaxInt);
-    end;
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
+end;
 
-  /// <summary>Zieltyp der Umwandlung ANode: T(X) als Aufruf oder X as T; ATypeNode ist der Typname im Text,
-  /// ASource der umgewandelte Ausdruck.</summary>
-  function CastParts(ANode: TSyntaxNode; out ATypeNode, ASource: TSyntaxNode; out AIsAs: Boolean): Boolean;
+/// <summary>Zieltyp der Umwandlung ANode: T(X) als Aufruf oder X as T; ATypeNode ist der Typname im Text,
+/// ASource der umgewandelte Ausdruck.</summary>
+function TRedundantCastScan.CastParts(ANode: TSyntaxNode; out ATypeNode, ASource: TSyntaxNode;
+  out AIsAs: Boolean): Boolean;
+begin
+  ATypeNode := nil;
+  ASource := nil;
+  AIsAs := (ANode.Kind = TSyntaxKind.BinaryExpr) and SameText(ANode.Name, 'as') and (ANode.ChildCount = 2);
+  if AIsAs then
   begin
-    ATypeNode := nil;
-    ASource := nil;
-    AIsAs := (ANode.Kind = TSyntaxKind.BinaryExpr) and SameText(ANode.Name, 'as') and (ANode.ChildCount = 2);
-    if AIsAs then
-    begin
-      ATypeNode := ANode[1];
-      ASource := Unwrapped(ANode[0]);
-    end
-    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) then
-    begin
-      ATypeNode := ANode[0];
-      ASource := Unwrapped(ANode[1]);
-    end;
-    Result := (ATypeNode <> nil) and (ASource <> nil) and
-      (ATypeNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil);
+    ATypeNode := ANode[1];
+    ASource := Unwrapped(ANode[0]);
+  end
+  else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) then
+  begin
+    ATypeNode := ANode[0];
+    ASource := Unwrapped(ANode[1]);
   end;
+  Result := (ATypeNode <> nil) and (ASource <> nil) and
+    (ATypeNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+    (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil);
+end;
 
-  /// <summary>Zieltyp ATypeNode der Umwandlung. Eingebaute Typen (Integer, string) und TObject ohne Index findet
-  /// die Auflösung nicht; sie gelten nur, wenn der Name auf nichts anderes zeigt.</summary>
-  function TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
-  var
-    mSymbol: TResolvedSymbol;
-    mFound: Boolean;
+/// <summary>Zieltyp ATypeNode der Umwandlung. Eingebaute Typen (Integer, string) und TObject ohne Index findet
+/// die Auflösung nicht; sie gelten nur, wenn der Name auf nichts anderes zeigt.</summary>
+function TRedundantCastScan.TargetOf(ATypeNode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+  mFound: Boolean;
+begin
+  if FScope.SureType(ATypeNode, mSymbol, AType) then
   begin
-    if mScope.SureType(ATypeNode, mSymbol, AType) then
-    begin
-      Exit(mSymbol.IsType);
-    end;
-    if (ATypeNode.Kind <> TSyntaxKind.Identifier) or mScope.Resolver.NodeType(AContext.Tree, mScope.FileName,
-      ATypeNode, mSymbol, AType, mFound) then
-    begin
-      Exit(False);
-    end;
-    AType := Default(TResolvedSymbol);
-    AType.Kind := TResolvedKind.Symbol;
-    AType.Name := ATypeNode.Name;
-    AType.UnitName := 'System';
-    AType.Builtin := True;
-    AType.SymbolKind := TIndexSymbolKind.RecordType;
-    if SameText(ATypeNode.Name, 'TObject') then
-    begin
-      AType.SymbolKind := TIndexSymbolKind.ClassType;
-    end;
-    Result := SameText(ATypeNode.Name, 'TObject') or TResolverText.IsBuiltinTypeName(ATypeNode.Name);
+    Exit(mSymbol.IsType);
   end;
-
-  /// <summary>Typ der Quelle sicher bekannt und als Wert verwendbar: keine Typen, keine Konstanten (untypisierte
-  /// Konstanten ändern mit der Umwandlung ihren Typ), keine überladenen Routinen, Routinen nur als Aufruf.
-  /// </summary>
-  function SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
+  if (ATypeNode.Kind <> TSyntaxKind.Identifier) or FScope.Resolver.NodeType(FContext.Tree, FScope.FileName,
+    ATypeNode, mSymbol, AType, mFound) then
   begin
-    Result := mScope.SureType(ASource, ASymbol, AType) and not ASymbol.IsType and
-      not (ASymbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]);
-    if Result and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-      TIndexSymbolKind.Constructor_]) then
+    Exit(False);
+  end;
+  AType := Default(TResolvedSymbol);
+  AType.Kind := TResolvedKind.Symbol;
+  AType.Name := ATypeNode.Name;
+  AType.UnitName := 'System';
+  AType.Builtin := True;
+  AType.SymbolKind := TIndexSymbolKind.RecordType;
+  if SameText(ATypeNode.Name, 'TObject') then
+  begin
+    AType.SymbolKind := TIndexSymbolKind.ClassType;
+  end;
+  Result := SameText(ATypeNode.Name, 'TObject') or TResolverText.IsBuiltinTypeName(ATypeNode.Name);
+end;
+
+/// <summary>Typ der Quelle sicher bekannt und als Wert verwendbar: keine Typen, keine Konstanten (untypisierte
+/// Konstanten ändern mit der Umwandlung ihren Typ), keine überladenen Routinen, Routinen nur als Aufruf.
+/// </summary>
+function TRedundantCastScan.SureSource(ASource: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
+begin
+  Result := FScope.SureType(ASource, ASymbol, AType) and not ASymbol.IsType and
+    not (ASymbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]);
+  if Result and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
+    TIndexSymbolKind.Constructor_]) then
+  begin
+    Result := (ASource.Kind = TSyntaxKind.Call) and (ASymbol.Overloads = nil) and
+      (Length(ASymbol.VariantParams) <= 1);
+  end;
+end;
+
+/// <summary>Steht ANode als Argument in einem Aufruf, dessen Ziel nicht genau eine Routine ist? Bei
+/// Überladungen kann die Umwandlung die Auswahl steuern; bei unbekanntem Ziel (Assert.AreEqual aus einer
+/// Bibliothek ohne Index) ist das nicht auszuschließen.</summary>
+function TRedundantCastScan.InOverloadedCall(ANode: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  while (mParent <> nil) and (mParent.Kind = TSyntaxKind.ParenExpr) do
+  begin
+    ANode := mParent;
+    mParent := mParent.Parent;
+  end;
+  Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 0) and
+    (mParent[0] <> ANode) and
+    (Length(FScope.Resolver.CallCandidates(FContext.Tree, FScope.FileName, mParent[0])) <> 1);
+end;
+
+/// <summary>Zu ersetzender Bereich: bei "(X as T)" samt Klammern, das Ergebnis ist ein einfacher Ausdruck.
+/// </summary>
+function TRedundantCastScan.ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode;
+  while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
+    (Result.Parent.ChildCount = 1) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+procedure TRedundantCastScan.Report(ANode, ASource: TSyntaxNode; const AMessage: string);
+var
+  mRange: TTextRange;
+  mReplaced: TSyntaxNode;
+begin
+  mReplaced := ReplacedNode(ANode);
+  mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
+  // Sicher (#1352): Der Ausdruck hat denselben Typ wie vorher, auch in der Sammelkorrektur.
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TCastsText.RemoveCast].Text, [TTextEdit.Create(mRange, FScope.Text(ASource))], True)]);
+end;
+
+/// <summary>Deklariert eine Klasse der Kette außer TObject ein eigenes Free?</summary>
+function TRedundantCastScan.DeclaresFree(const AChain: TArray<TResolvedSymbol>): Boolean;
+var
+  mItem: TResolvedSymbol;
+  mUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  for mItem in AChain do
+  begin
+    if IsTObject(mItem) then
     begin
-      Result := (ASource.Kind = TSyntaxKind.Call) and (ASymbol.Overloads = nil) and
-        (Length(ASymbol.VariantParams) <= 1);
+      Continue;
     end;
-  end;
-
-  /// <summary>Steht ANode als Argument in einem Aufruf, dessen Ziel nicht genau eine Routine ist? Bei
-  /// Überladungen kann die Umwandlung die Auswahl steuern; bei unbekanntem Ziel (Assert.AreEqual aus einer
-  /// Bibliothek ohne Index) ist das nicht auszuschließen.</summary>
-  function InOverloadedCall(ANode: TSyntaxNode): Boolean;
-  var
-    mParent: TSyntaxNode;
-  begin
-    mParent := ANode.Parent;
-    while (mParent <> nil) and (mParent.Kind = TSyntaxKind.ParenExpr) do
+    if not FScope.Resolver.DeclaringUnit(mItem, mUnit) then
     begin
-      ANode := mParent;
-      mParent := mParent.Parent;
+      Exit(True);
     end;
-    Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 0) and
-      (mParent[0] <> ANode) and
-      (Length(mScope.Resolver.CallCandidates(AContext.Tree, mScope.FileName, mParent[0])) <> 1);
-  end;
-
-  /// <summary>Zu ersetzender Bereich: bei "(X as T)" samt Klammern, das Ergebnis ist ein einfacher Ausdruck.
-  /// </summary>
-  function ReplacedNode(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode;
-    while (Result.Parent <> nil) and (Result.Parent.Kind = TSyntaxKind.ParenExpr) and
-      (Result.Parent.ChildCount = 1) do
+    for mSymbol in mUnit.Symbols do
     begin
-      Result := Result.Parent;
-    end;
-  end;
-
-  procedure Report(ANode, ASource: TSyntaxNode; const AMessage: string);
-  var
-    mRange: TTextRange;
-    mReplaced: TSyntaxNode;
-  begin
-    mReplaced := ReplacedNode(ANode);
-    mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
-    // Sicher (#1352): Der Ausdruck hat denselben Typ wie vorher, auch in der Sammelkorrektur.
-    AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
-      [TRuleFix.Create(cTexts[TCastsText.RemoveCast].Text, [TTextEdit.Create(mRange, mScope.Text(ASource))], True)]);
-  end;
-
-  /// <summary>Deklariert eine Klasse der Kette außer TObject ein eigenes Free?</summary>
-  function DeclaresFree(const AChain: TArray<TResolvedSymbol>): Boolean;
-  var
-    mItem: TResolvedSymbol;
-    mUnit: TUnitIndex;
-    mSymbol: TIndexSymbol;
-  begin
-    for mItem in AChain do
-    begin
-      if IsTObject(mItem) then
-      begin
-        Continue;
-      end;
-      if not mScope.Resolver.DeclaringUnit(mItem, mUnit) then
+      if SameText(mSymbol.Container, mItem.QualifiedName) and SameText(mSymbol.Name, 'Free') then
       begin
         Exit(True);
       end;
-      for mSymbol in mUnit.Symbols do
-      begin
-        if SameText(mSymbol.Container, mItem.QualifiedName) and SameText(mSymbol.Name, 'Free') then
-        begin
-          Exit(True);
-        end;
-      end;
-    end;
-    Result := False;
-  end;
-
-  /// <summary>Gleicher Typ: derselbe aufgelöste Typ und derselbe Name wie in der Deklaration der Quelle.
-  /// </summary>
-  function SameDeclared(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
-    ATypeNode: TSyntaxNode): Boolean;
-  begin
-    Result := SameType(ASourceType, ATargetType) and (ASourceSymbol.TypeName <> '') and
-      SameText(LastName(ASourceSymbol.TypeName), LastName(mScope.Text(ATypeNode)));
-  end;
-
-  /// <summary>Gleichheit für Typen ohne Deklaration im Index (Integer, string): nur der Name.</summary>
-  function SameBuiltin(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
-    ATypeNode: TSyntaxNode): Boolean;
-  begin
-    Result := ASourceType.Builtin and ATargetType.Builtin and (ASourceSymbol.TypeName <> '') and
-      SameText(LastName(ASourceSymbol.TypeName), LastName(mScope.Text(ATypeNode))) and
-      SameText(ASourceType.Name, ATargetType.Name);
-  end;
-
-  procedure CheckCast(ANode: TSyntaxNode);
-  var
-    mTypeNode, mSource: TSyntaxNode;
-    mIsAs: Boolean;
-    mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
-  begin
-    // as mit Interface ruft QueryInterface und kann ein anderes Objekt liefern.
-    if not CastParts(ANode, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
-      mIsAs and not IsPlainClass(mTargetType) then
-    begin
-      Exit;
-    end;
-    if not SureSource(mSource, mSourceSymbol, mSourceType) or
-      not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
-      not SameBuiltin(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
-    begin
-      Exit;
-    end;
-    if InOverloadedCall(ReplacedNode(ANode)) then
-    begin
-      Exit;
-    end;
-    Report(ANode, mSource, cTexts[TCastsText.AlreadyType].Fmt([mScope.Text(mSource), mScope.Text(mTypeNode)]));
-  end;
-
-  /// <summary>Ist ANode der Name in einem Aufruf Free(…) mit Argumenten? Der ist nicht TObject.Free.</summary>
-  function FreeWithArguments(ANode: TSyntaxNode): Boolean;
-  begin
-    Result := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
-      (ANode.Parent.ChildCount > 1);
-  end;
-
-  /// <summary>Ruft Free für AType den Destruktor von TObject.Free (keine Klasse der Kette deklariert Free)?
-  /// </summary>
-  function PlainFree(const AType: TResolvedSymbol): Boolean;
-  var
-    mChain: TArray<TResolvedSymbol>;
-  begin
-    Result := ClassChain(mScope.Resolver, AType, mChain) and not DeclaresFree(mChain);
-  end;
-
-  /// <summary>TObject(FStrom).Free: Umwandlung einer Klasse in eine Klasse nur für Free.</summary>
-  procedure CheckFree(ANode: TSyntaxNode);
-  var
-    mCast, mTypeNode, mSource: TSyntaxNode;
-    mIsAs: Boolean;
-    mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
-  begin
-    if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) or FreeWithArguments(ANode) then
-    begin
-      Exit;
-    end;
-    mCast := Unwrapped(ANode[0]);
-    if not CastParts(mCast, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
-      not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
-    begin
-      Exit;
-    end;
-    // Gleicher Typ meldet CheckCast.
-    if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) or
-      SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
-    begin
-      Exit;
-    end;
-    if not PlainFree(mSourceType) or not IsTObject(mTargetType) and not PlainFree(mTargetType) then
-    begin
-      Exit;
-    end;
-    Report(mCast, mSource, cTexts[TCastsText.FreeVirtual].Fmt([mScope.Text(mSource), mScope.Text(mTypeNode)]));
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.BinaryExpr] then
-        begin
-          CheckCast(mNode);
-        end
-        else if mCheckFree and (mNode.Kind = TSyntaxKind.MemberAccess) then
-        begin
-          CheckFree(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
     end;
   end;
+  Result := False;
+end;
 
+/// <summary>Gleicher Typ: derselbe aufgelöste Typ und derselbe Name wie in der Deklaration der Quelle.
+/// </summary>
+function TRedundantCastScan.SameDeclared(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+  ATypeNode: TSyntaxNode): Boolean;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  Result := SameType(ASourceType, ATargetType) and (ASourceSymbol.TypeName <> '') and
+    SameText(LastName(ASourceSymbol.TypeName), LastName(FScope.Text(ATypeNode)));
+end;
+
+/// <summary>Gleichheit für Typen ohne Deklaration im Index (Integer, string): nur der Name.</summary>
+function TRedundantCastScan.SameBuiltin(const ASourceSymbol, ASourceType, ATargetType: TResolvedSymbol;
+  ATypeNode: TSyntaxNode): Boolean;
+begin
+  Result := ASourceType.Builtin and ATargetType.Builtin and (ASourceSymbol.TypeName <> '') and
+    SameText(LastName(ASourceSymbol.TypeName), LastName(FScope.Text(ATypeNode))) and
+    SameText(ASourceType.Name, ATargetType.Name);
+end;
+
+procedure TRedundantCastScan.CheckCast(ANode: TSyntaxNode);
+var
+  mTypeNode, mSource: TSyntaxNode;
+  mIsAs: Boolean;
+  mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
+begin
+  // as mit Interface ruft QueryInterface und kann ein anderes Objekt liefern.
+  if not CastParts(ANode, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
+    mIsAs and not IsPlainClass(mTargetType) then
   begin
     Exit;
   end;
-  mCheckFree := TRuleOptions.Bool(AContext.Options, 'checkFree', True);
-  mScope := TTypedScope.Create(AContext);
-  try
-    Visit(AContext.Tree.Root);
-  finally
-    mScope.Free;
+  if not SureSource(mSource, mSourceSymbol, mSourceType) or
+    not SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) and
+    not SameBuiltin(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+  begin
+    Exit;
   end;
+  if InOverloadedCall(ReplacedNode(ANode)) then
+  begin
+    Exit;
+  end;
+  Report(ANode, mSource, cTexts[TCastsText.AlreadyType].Fmt([FScope.Text(mSource), FScope.Text(mTypeNode)]));
+end;
+
+/// <summary>Ist ANode der Name in einem Aufruf Free(…) mit Argumenten? Der ist nicht TObject.Free.</summary>
+function TRedundantCastScan.FreeWithArguments(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.Call) and (ANode.Parent[0] = ANode) and
+    (ANode.Parent.ChildCount > 1);
+end;
+
+/// <summary>Ruft Free für AType den Destruktor von TObject.Free (keine Klasse der Kette deklariert Free)?
+/// </summary>
+function TRedundantCastScan.PlainFree(const AType: TResolvedSymbol): Boolean;
+var
+  mChain: TArray<TResolvedSymbol>;
+begin
+  Result := ClassChain(FScope.Resolver, AType, mChain) and not DeclaresFree(mChain);
+end;
+
+/// <summary>TObject(FStrom).Free: Umwandlung einer Klasse in eine Klasse nur für Free.</summary>
+procedure TRedundantCastScan.CheckFree(ANode: TSyntaxNode);
+var
+  mCast, mTypeNode, mSource: TSyntaxNode;
+  mIsAs: Boolean;
+  mTargetType, mSourceSymbol, mSourceType: TResolvedSymbol;
+begin
+  if not SameText(ANode.Name, 'Free') or (ANode.ChildCount = 0) or FreeWithArguments(ANode) then
+  begin
+    Exit;
+  end;
+  mCast := Unwrapped(ANode[0]);
+  if not CastParts(mCast, mTypeNode, mSource, mIsAs) or not TargetOf(mTypeNode, mTargetType) or
+    not (IsPlainClass(mTargetType) or IsTObject(mTargetType)) then
+  begin
+    Exit;
+  end;
+  // Gleicher Typ meldet CheckCast.
+  if not SureSource(mSource, mSourceSymbol, mSourceType) or not IsPlainClass(mSourceType) or
+    SameDeclared(mSourceSymbol, mSourceType, mTargetType, mTypeNode) then
+  begin
+    Exit;
+  end;
+  if not PlainFree(mSourceType) or not IsTObject(mTargetType) and not PlainFree(mTargetType) then
+  begin
+    Exit;
+  end;
+  Report(mCast, mSource, cTexts[TCastsText.FreeVirtual].Fmt([FScope.Text(mSource), FScope.Text(mTypeNode)]));
+end;
+
+procedure TRedundantCastScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.BinaryExpr] then
+      begin
+        CheckCast(mNode);
+      end
+      else if FCheckFree and (mNode.Kind = TSyntaxKind.MemberAccess) then
+      begin
+        CheckFree(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TRedundantCastScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FCheckFree := TRuleOptions.Bool(FContext.Options, 'checkFree', True);
+  FScope := TTypedScope.Create(FContext);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FScope.Free;
+  end;
+end;
+
+procedure TRedundantCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TRedundantCastScan;
+begin
+  mScan := TRedundantCastScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterCastRules(const ARegistry: TRuleRegistry);

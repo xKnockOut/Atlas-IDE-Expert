@@ -49,6 +49,8 @@ type
     procedure IdentifierAtMatchesLinearSearch;
     [Test]
     procedure MatchingParenInText;
+    [Test]
+    procedure CodeIndexesFindOffsetAndClosingParen;
   end;
 
 implementation
@@ -378,6 +380,35 @@ begin
   Assert.AreEqual(0, MatchingParen('(a)', 0));
   Assert.AreEqual(0, MatchingParen('(a)', 4));
   Assert.AreEqual(0, MatchingParen('', 1));
+end;
+
+procedure TTokenCursorTests.CodeIndexesFindOffsetAndClosingParen;
+var
+  mTokens: TArray<TPascalToken>;
+  mCode: TArray<Integer>;
+  mIndex: Integer;
+begin
+  // Code-Token ohne Kommentar: F ( a [ 1 ] , ( b ) ) ;
+  //                             0 1 2 3 4 5 6 7 8 9 10 11
+  mTokens := TPascalLexer.Tokenize('F({c}a[1], (b));');
+  mCode := nil;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if not IsTrivia(mTokens[mIndex]) then
+    begin
+      SetLength(mCode, Length(mCode) + 1);
+      mCode[High(mCode)] := mIndex;
+    end;
+  end;
+  Assert.AreEqual(12, Integer(Length(mCode)));
+  Assert.AreEqual(2, CodeIndexAt(mTokens, mCode, 5), 'a beginnt bei 5');
+  Assert.AreEqual(2, CodeIndexAt(mTokens, mCode, 3), 'im Kommentar: nächstes Code-Token');
+  Assert.AreEqual(0, CodeIndexAt(mTokens, mCode, 0));
+  Assert.AreEqual(12, CodeIndexAt(mTokens, mCode, 100), 'hinter dem Ende');
+  Assert.AreEqual(10, CodeClosingParen(mTokens, mCode, 1));
+  Assert.AreEqual(5, CodeClosingParen(mTokens, mCode, 3));
+  Assert.AreEqual(9, CodeClosingParen(mTokens, mCode, 7));
+  Assert.AreEqual(-1, CodeClosingParen(mTokens, mCode, 8), 'nach b schließt nichts mehr auf');
 end;
 
 initialization

@@ -220,628 +220,685 @@ begin
   Result := not MatchText(ACode, ['W1059', 'W1060', 'W1068']);
 end;
 
-procedure TStringConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TStringConversionRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TStringConversionScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScope: TTypedScope;
+    FSwitches: TRuleWarnSwitches;
+    FCodePage: Integer;
+    function NodeText(ANode: TSyntaxNode): string;
+    function ValueText(ANode: TSyntaxNode): string;
+    function StateOf(const ACode: string; ANode: TSyntaxNode): TRuleWarnState;
+    procedure Report(const ACode: string; ANode: TSyntaxNode; const AMessage: string; AConfidence: TRuleConfidence;
+      const AFixes: TArray<TRuleFix>);
+    function SystemType(const ATypeInfo: TResolvedSymbol): Boolean;
+    function StringElement(ANode: TSyntaxNode; out ABase: TResolvedSymbol; out ABaseType: TResolvedSymbol): Boolean;
+    function ExpressionKind(ANode: TSyntaxNode; AWritable: Boolean; out ADisplay: string): TStringTypeKind;
+    function ConstantString(ANode: TSyntaxNode; out AValue: string): Boolean;
+    procedure CheckConstant(AValue: TSyntaxNode; const ATargetDisplay: string);
+    procedure CheckImplicit(AValue: TSyntaxNode; ATarget: TStringTypeKind; const ATargetDisplay, AWhere: string);
+    procedure CheckAssignment(ANode: TSyntaxNode);
+    procedure CheckInlineVar(ANode: TSyntaxNode);
+    function ResolvedCall(ACall: TSyntaxNode; out ASymbol: TResolvedSymbol;
+      out AParams: TArray<TSignatureParameter>): Boolean;
+    function ParamModifier(const AParam: TSignatureParameter): string;
+    procedure CheckCall(ACall: TSyntaxNode);
+    function CheckCast(ACall: TSyntaxNode): Boolean;
+    function AsciiCharSet(ASet: TSyntaxNode): Boolean;
+    function IsUnicodeChar(ALeft: TSyntaxNode; out ADisplay: string): Boolean;
+    function CharInSetEdits(ANode: TSyntaxNode): TArray<TTextEdit>;
+    function IsSysCharSet(ASet: TSyntaxNode): Boolean;
+    function IsCharLiteral(ANode: TSyntaxNode): Boolean;
+    function TruncatingMembership(ANode: TSyntaxNode; out ADisplay: string): Boolean;
+    procedure CheckSetMembership(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+    function ShortStrings: Boolean;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TStringConversionScan }
+
+constructor TStringConversionScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TStringConversionScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := FScope.Text(ANode);
+end;
+
+function TStringConversionScan.ValueText(ANode: TSyntaxNode): string;
+begin
+  Result := NodeText(ANode);
+  if Length(Result) > cMaxValueText then
+  begin
+    Result := cTexts[TStringConversionsText.TheValue].Text;
+  end;
+end;
+
+function TStringConversionScan.StateOf(const ACode: string; ANode: TSyntaxNode): TRuleWarnState;
+begin
+  Result := FSwitches.StateAtOffset(TWarningCodes.Identifier(ACode, FContext.DelphiVersion), DefaultOn(ACode),
+    ANode.StartOffset);
+end;
+
+/// <summary>Meldet AMessage an ANode, wenn der Compiler ACode dort meldet; als Fehler nach {$WARN … ERROR}.
+/// </summary>
+procedure TStringConversionScan.Report(const ACode: string; ANode: TSyntaxNode; const AMessage: string;
+  AConfidence: TRuleConfidence;
+  const AFixes: TArray<TRuleFix>);
 var
-  mScope: TTypedScope;
-  mSwitches: TRuleWarnSwitches;
-  mCodePage: Integer;
-
-  function NodeText(ANode: TSyntaxNode): string;
+  mState: TRuleWarnState;
+begin
+  mState := StateOf(ACode, ANode);
+  if mState = TRuleWarnState.AsError then
   begin
-    Result := mScope.Text(ANode);
+    FReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleSeverity.Error, AFixes);
+  end
+  else if mState = TRuleWarnState.Enabled then
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, AConfidence, AFixes);
   end;
+end;
 
-  function ValueText(ANode: TSyntaxNode): string;
+/// <summary>Ist ATypeInfo ein eingebauter Typ aus System?</summary>
+function TStringConversionScan.SystemType(const ATypeInfo: TResolvedSymbol): Boolean;
+begin
+  Result := ATypeInfo.Builtin or SameText(ATypeInfo.UnitName, 'System');
+end;
+
+/// <summary>Indizierter Zugriff auf einen String (S[1])? Sein Typ ist dann ein Zeichen, nicht der String.
+/// </summary>
+function TStringConversionScan.StringElement(ANode: TSyntaxNode; out ABase: TResolvedSymbol;
+  out ABaseType: TResolvedSymbol): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount = 2) and
+    FScope.SureType(Unwrapped(ANode[0]), ABase, ABaseType) and SystemType(ABaseType) and
+    (TStringConversionRule.KindOf(ABaseType.Name) <> TStringTypeKind.None);
+end;
+
+/// <summary>Stringart des Ausdrucks ANode mit sicher bekanntem eingebautem Typ; ADisplay ist der Typname.
+/// AWritable: nur Variablen, Felder und Properties (Ziel einer Zuweisung).</summary>
+function TStringConversionScan.ExpressionKind(ANode: TSyntaxNode; AWritable: Boolean;
+  out ADisplay: string): TStringTypeKind;
+var
+  mNode: TSyntaxNode;
+  mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
+  mKinds: set of TIndexSymbolKind;
+begin
+  Result := TStringTypeKind.None;
+  ADisplay := '';
+  mNode := Unwrapped(ANode);
+  if (mNode = nil) or StringElement(mNode, mBase, mBaseType) then
   begin
-    Result := NodeText(ANode);
-    if Length(Result) > cMaxValueText then
-    begin
-      Result := cTexts[TStringConversionsText.TheValue].Text;
-    end;
+    Exit;
   end;
-
-  function StateOf(const ACode: string; ANode: TSyntaxNode): TRuleWarnState;
+  if AWritable then
   begin
-    Result := mSwitches.StateAtOffset(TWarningCodes.Identifier(ACode, AContext.DelphiVersion), DefaultOn(ACode),
-      ANode.StartOffset);
+    mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_];
+  end
+  else
+  begin
+    mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+      TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant];
   end;
-
-  /// <summary>Meldet AMessage an ANode, wenn der Compiler ACode dort meldet; als Fehler nach {$WARN … ERROR}.
-  /// </summary>
-  procedure Report(const ACode: string; ANode: TSyntaxNode; const AMessage: string; AConfidence: TRuleConfidence;
-    const AFixes: TArray<TRuleFix>);
-  var
-    mState: TRuleWarnState;
+  if not FScope.SureType(mNode, mSymbol, mTypeInfo) or mSymbol.IsType or not (mSymbol.SymbolKind in mKinds) or
+    not SystemType(mTypeInfo) then
   begin
-    mState := StateOf(ACode, ANode);
-    if mState = TRuleWarnState.AsError then
-    begin
-      AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleSeverity.Error, AFixes);
-    end
-    else if mState = TRuleWarnState.Enabled then
-    begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, AConfidence, AFixes);
-    end;
+    Exit;
   end;
+  Result := TStringConversionRule.KindOf(mTypeInfo.Name);
+  ADisplay := mTypeInfo.Name;
+end;
 
-  /// <summary>Ist ATypeInfo ein eingebauter Typ aus System?</summary>
-  function SystemType(const ATypeInfo: TResolvedSymbol): Boolean;
+/// <summary>Wert eines konstanten String-Ausdrucks aus Literalen und + ; False für anderes.</summary>
+function TStringConversionScan.ConstantString(ANode: TSyntaxNode; out AValue: string): Boolean;
+var
+  mNode: TSyntaxNode;
+  mLeft, mRight: string;
+begin
+  AValue := '';
+  mNode := Unwrapped(ANode);
+  if mNode = nil then
   begin
-    Result := ATypeInfo.Builtin or SameText(ATypeInfo.UnitName, 'System');
+    Exit(False);
   end;
-
-  /// <summary>Indizierter Zugriff auf einen String (S[1])? Sein Typ ist dann ein Zeichen, nicht der String.
-  /// </summary>
-  function StringElement(ANode: TSyntaxNode; out ABase: TResolvedSymbol; out ABaseType: TResolvedSymbol): Boolean;
-  begin
-    Result := (ANode.Kind = TSyntaxKind.IndexAccess) and (ANode.ChildCount = 2) and
-      mScope.SureType(Unwrapped(ANode[0]), ABase, ABaseType) and SystemType(ABaseType) and
-      (KindOf(ABaseType.Name) <> TStringTypeKind.None);
-  end;
-
-  /// <summary>Stringart des Ausdrucks ANode mit sicher bekanntem eingebautem Typ; ADisplay ist der Typname.
-  /// AWritable: nur Variablen, Felder und Properties (Ziel einer Zuweisung).</summary>
-  function ExpressionKind(ANode: TSyntaxNode; AWritable: Boolean; out ADisplay: string): TStringTypeKind;
-  var
-    mNode: TSyntaxNode;
-    mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
-    mKinds: set of TIndexSymbolKind;
-  begin
-    Result := TStringTypeKind.None;
-    ADisplay := '';
-    mNode := Unwrapped(ANode);
-    if (mNode = nil) or StringElement(mNode, mBase, mBaseType) then
-    begin
-      Exit;
-    end;
-    if AWritable then
-    begin
-      mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_];
-    end
-    else
-    begin
-      mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
-        TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant];
-    end;
-    if not mScope.SureType(mNode, mSymbol, mTypeInfo) or mSymbol.IsType or not (mSymbol.SymbolKind in mKinds) or
-      not SystemType(mTypeInfo) then
-    begin
-      Exit;
-    end;
-    Result := KindOf(mTypeInfo.Name);
-    ADisplay := mTypeInfo.Name;
-  end;
-
-  /// <summary>Wert eines konstanten String-Ausdrucks aus Literalen und + ; False für anderes.</summary>
-  function ConstantString(ANode: TSyntaxNode; out AValue: string): Boolean;
-  var
-    mNode: TSyntaxNode;
-    mLeft, mRight: string;
-  begin
-    AValue := '';
-    mNode := Unwrapped(ANode);
-    if mNode = nil then
-    begin
-      Exit(False);
-    end;
-    case mNode.Kind of
-      TSyntaxKind.Literal:
-        Result := (StartsStr('''', mNode.Name) or StartsStr('#', mNode.Name)) and
-          TFormatString.LiteralValue(NodeText(mNode), AValue);
-      TSyntaxKind.BinaryExpr:
+  case mNode.Kind of
+    TSyntaxKind.Literal:
+      Result := (StartsStr('''', mNode.Name) or StartsStr('#', mNode.Name)) and
+        TFormatString.LiteralValue(NodeText(mNode), AValue);
+    TSyntaxKind.BinaryExpr:
+      begin
+        Result := (mNode.Name = '+') and (mNode.ChildCount = 2) and ConstantString(mNode[0], mLeft) and
+          ConstantString(mNode[1], mRight);
+        if Result then
         begin
-          Result := (mNode.Name = '+') and (mNode.ChildCount = 2) and ConstantString(mNode[0], mLeft) and
-            ConstantString(mNode[1], mRight);
-          if Result then
-          begin
-            AValue := mLeft + mRight;
-          end;
+          AValue := mLeft + mRight;
         end;
-    else
-      Result := False;
-    end;
-  end;
-
-  /// <summary>Konstante mit Zeichen, die die Codepage nicht kennt, an einen Ansi-String (W1062 mit W1058).
-  /// </summary>
-  procedure CheckConstant(AValue: TSyntaxNode; const ATargetDisplay: string);
-  var
-    mText, mCodes: string;
-    mChar: Char;
-    mLost: Boolean;
-    mWide, mLoss: TRuleWarnState;
-  begin
-    if (mCodePage <> cDefaultCodePage) or not ConstantString(AValue, mText) then
-    begin
-      Exit;
-    end;
-    mLost := False;
-    for mChar in mText do
-    begin
-      if LostIn1252(mChar) then
-      begin
-        mLost := True;
-        Break;
       end;
-    end;
-    if not mLost then
+  else
+    Result := False;
+  end;
+end;
+
+/// <summary>Konstante mit Zeichen, die die Codepage nicht kennt, an einen Ansi-String (W1062 mit W1058).
+/// </summary>
+procedure TStringConversionScan.CheckConstant(AValue: TSyntaxNode; const ATargetDisplay: string);
+var
+  mText, mCodes: string;
+  mChar: Char;
+  mLost: Boolean;
+  mWide, mLoss: TRuleWarnState;
+begin
+  if (FCodePage <> cDefaultCodePage) or not ConstantString(AValue, mText) then
+  begin
+    Exit;
+  end;
+  mLost := False;
+  for mChar in mText do
+  begin
+    if TStringConversionRule.LostIn1252(mChar) then
     begin
-      Exit;
-    end;
-    mLoss := StateOf('W1058', AValue);
-    mWide := StateOf('W1062', AValue);
-    if TRuleWarnSwitches.Reported(mLoss) and TRuleWarnSwitches.Reported(mWide) then
-    begin
-      mCodes := cTexts[TStringConversionsText.BothCodes].Text;
-    end
-    else if TRuleWarnSwitches.Reported(mWide) then
-    begin
-      mCodes := 'W1062';
-    end
-    else if TRuleWarnSwitches.Reported(mLoss) then
-    begin
-      mCodes := 'W1058';
-    end
-    else
-    begin
-      Exit;
-    end;
-    if (mLoss = TRuleWarnState.AsError) or (mWide = TRuleWarnState.AsError) then
-    begin
-      AReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos),
-        cTexts[TStringConversionsText.Unmappable].Fmt(
-        [ValueText(AValue), mCodePage, ATargetDisplay, mCodes]), TRuleSeverity.Error, nil);
-    end
-    else
-    begin
-      AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
-        cTexts[TStringConversionsText.Unmappable].Fmt([ValueText(AValue),
-        mCodePage, ATargetDisplay, mCodes]), TRuleConfidence.Medium);
+      mLost := True;
+      Break;
     end;
   end;
-
-  /// <summary>Wert AValue an ein Ziel vom Typ ATargetDisplay der Art ATarget; AWhere beschreibt das Ziel
-  /// ("die Zuweisung an S", "die Übergabe an Ausgeben").</summary>
-  procedure CheckImplicit(AValue: TSyntaxNode; ATarget: TStringTypeKind; const ATargetDisplay, AWhere: string);
-  var
-    mSourceDisplay, mCode, mMessage: string;
-    mSource: TStringTypeKind;
-    mFix: TRuleFix;
+  if not mLost then
   begin
-    if ATarget = TStringTypeKind.Ansi then
-    begin
-      CheckConstant(AValue, ATargetDisplay);
-    end;
-    mSource := ExpressionKind(AValue, False, mSourceDisplay);
-    mCode := ConversionCode(mSource, ATarget, False);
-    if mCode = '' then
-    begin
-      Exit;
-    end;
-    if mCode = 'W1058' then
-    begin
-      mMessage := cTexts[TStringConversionsText.MayLose].Fmt([ValueText(AValue), mSourceDisplay,
-        AWhere]);
-    end
-    else
-    begin
-      mMessage := cTexts[TStringConversionsText.Implicit].Fmt([ValueText(AValue), mSourceDisplay,
-        AWhere]);
-    end;
-    mFix := TRuleFix.Create(cTexts[TStringConversionsText.ConvertExplicitly].Fmt([ATargetDisplay]),
-      [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s(%s)', [ATargetDisplay,
-      NodeText(AValue)]))]);
-    Report(mCode, AValue, mMessage, TRuleConfidence.High, [mFix]);
+    Exit;
   end;
-
-  procedure CheckAssignment(ANode: TSyntaxNode);
-  var
-    mTargetDisplay: string;
-    mTarget: TStringTypeKind;
-    mBase, mBaseType: TResolvedSymbol;
+  mLoss := StateOf('W1058', AValue);
+  mWide := StateOf('W1062', AValue);
+  if TRuleWarnSwitches.Reported(mLoss) and TRuleWarnSwitches.Reported(mWide) then
   begin
-    if ANode.ChildCount <> 2 then
+    mCodes := cTexts[TStringConversionsText.BothCodes].Text;
+  end
+  else if TRuleWarnSwitches.Reported(mWide) then
+  begin
+    mCodes := 'W1062';
+  end
+  else if TRuleWarnSwitches.Reported(mLoss) then
+  begin
+    mCodes := 'W1058';
+  end
+  else
+  begin
+    Exit;
+  end;
+  if (mLoss = TRuleWarnState.AsError) or (mWide = TRuleWarnState.AsError) then
+  begin
+    FReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+      cTexts[TStringConversionsText.Unmappable].Fmt(
+      [ValueText(AValue), FCodePage, ATargetDisplay, mCodes]), TRuleSeverity.Error, nil);
+  end
+  else
+  begin
+    FReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+      cTexts[TStringConversionsText.Unmappable].Fmt([ValueText(AValue),
+      FCodePage, ATargetDisplay, mCodes]), TRuleConfidence.Medium);
+  end;
+end;
+
+/// <summary>Wert AValue an ein Ziel vom Typ ATargetDisplay der Art ATarget; AWhere beschreibt das Ziel
+/// ("die Zuweisung an S", "die Übergabe an Ausgeben").</summary>
+procedure TStringConversionScan.CheckImplicit(AValue: TSyntaxNode; ATarget: TStringTypeKind; const ATargetDisplay,
+  AWhere: string);
+var
+  mSourceDisplay, mCode, mMessage: string;
+  mSource: TStringTypeKind;
+  mFix: TRuleFix;
+begin
+  if ATarget = TStringTypeKind.Ansi then
+  begin
+    CheckConstant(AValue, ATargetDisplay);
+  end;
+  mSource := ExpressionKind(AValue, False, mSourceDisplay);
+  mCode := TStringConversionRule.ConversionCode(mSource, ATarget, False);
+  if mCode = '' then
+  begin
+    Exit;
+  end;
+  if mCode = 'W1058' then
+  begin
+    mMessage := cTexts[TStringConversionsText.MayLose].Fmt([ValueText(AValue), mSourceDisplay,
+      AWhere]);
+  end
+  else
+  begin
+    mMessage := cTexts[TStringConversionsText.Implicit].Fmt([ValueText(AValue), mSourceDisplay,
+      AWhere]);
+  end;
+  mFix := TRuleFix.Create(cTexts[TStringConversionsText.ConvertExplicitly].Fmt([ATargetDisplay]),
+    [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s(%s)', [ATargetDisplay,
+    NodeText(AValue)]))]);
+  Report(mCode, AValue, mMessage, TRuleConfidence.High, [mFix]);
+end;
+
+procedure TStringConversionScan.CheckAssignment(ANode: TSyntaxNode);
+var
+  mTargetDisplay: string;
+  mTarget: TStringTypeKind;
+  mBase, mBaseType: TResolvedSymbol;
+begin
+  if ANode.ChildCount <> 2 then
+  begin
+    Exit;
+  end;
+  // S[1] := 'x' (W1068): nur Variablen und Felder vom Typ string, keine Properties mit Index.
+  if StringElement(Unwrapped(ANode[0]), mBase, mBaseType) then
+  begin
+    if (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
+      MatchText(mBaseType.Name, ['string', 'UnicodeString']) then
     begin
-      Exit;
+      Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(Unwrapped(ANode[0])[0])]),
+        TRuleConfidence.High, nil);
     end;
-    // S[1] := 'x' (W1068): nur Variablen und Felder vom Typ string, keine Properties mit Index.
-    if StringElement(Unwrapped(ANode[0]), mBase, mBaseType) then
+    Exit;
+  end;
+  mTarget := ExpressionKind(ANode[0], True, mTargetDisplay);
+  if mTarget <> TStringTypeKind.None then
+  begin
+    CheckImplicit(ANode[1], mTarget, mTargetDisplay,
+      cTexts[TStringConversionsText.AssignmentTo].Fmt([NodeText(ANode[0])]));
+  end;
+end;
+
+procedure TStringConversionScan.CheckInlineVar(ANode: TSyntaxNode);
+var
+  mTypeName: string;
+  mTypeInfo: TResolvedSymbol;
+  mTarget: TStringTypeKind;
+begin
+  if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) then
+  begin
+    Exit;
+  end;
+  mTypeName := NodeText(ANode[0]);
+  mTarget := TStringConversionRule.KindOf(mTypeName);
+  if mTarget = TStringTypeKind.None then
+  begin
+    Exit;
+  end;
+  // Ein eigener Typ gleichen Namens verdeckt den aus System.
+  mTypeInfo := FScope.Resolver.ResolveType(FContext.Tree, FScope.FileName, ANode[0].StartPos);
+  if mTypeInfo.Found and not SystemType(mTypeInfo) then
+  begin
+    Exit;
+  end;
+  CheckImplicit(ANode[1], mTarget, mTypeName, cTexts[TStringConversionsText.AssignmentTo].Fmt([ANode.Name]));
+end;
+
+/// <summary>Ist ACall sicher der Aufruf einer Routine mit bekanntem Kopf? Liefert Symbol und Parameter.</summary>
+function TStringConversionScan.ResolvedCall(ACall: TSyntaxNode; out ASymbol: TResolvedSymbol;
+  out AParams: TArray<TSignatureParameter>): Boolean;
+var
+  mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  AParams := nil;
+  Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and
+    FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ACall, ASymbol, mTypeInfo, mTypeFound);
+  Result := Result and not ASymbol.IsType and (ASymbol.SymbolKind in [TIndexSymbolKind.Method,
+    TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
+  Result := Result and FScope.DeclarationSure(ASymbol, ACall) and RoutineParams(FContext, ASymbol, AParams);
+  // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
+  if Result and (ASymbol.Signature <> '') then
+  begin
+    Result := (ACall.ChildCount - 1 >= ASymbol.MinArgs) and (ACall.ChildCount - 1 <= ASymbol.MaxArgs);
+  end;
+end;
+
+/// <summary>Übergabeart des Parameters in Kleinbuchstaben; mit Attribut ("[ref] var") das letzte Wort.</summary>
+function TStringConversionScan.ParamModifier(const AParam: TSignatureParameter): string;
+begin
+  Result := LowerCase(Trim(AParam.Modifier));
+  if Pos(' ', Result) > 0 then
+  begin
+    Result := Copy(Result, LastDelimiter(' ', Result) + 1, MaxInt);
+  end;
+end;
+
+procedure TStringConversionScan.CheckCall(ACall: TSyntaxNode);
+var
+  mSymbol: TResolvedSymbol;
+  mParams: TArray<TSignatureParameter>;
+  mIndex: Integer;
+  mModifier: string;
+  mTarget: TStringTypeKind;
+begin
+  if not ResolvedCall(ACall, mSymbol, mParams) then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to ACall.ChildCount - 1 do
+  begin
+    if mIndex > Length(mParams) then
     begin
-      if (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
-        MatchText(mBaseType.Name, ['string', 'UnicodeString']) then
-      begin
-        Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(Unwrapped(ANode[0])[0])]),
-          TRuleConfidence.High, nil);
-      end;
-      Exit;
+      Break;
     end;
-    mTarget := ExpressionKind(ANode[0], True, mTargetDisplay);
+    // var und out verlangen denselben Typ (E2033), das meldet eine andere Regel.
+    mModifier := ParamModifier(mParams[mIndex - 1]);
+    if (mModifier = 'var') or (mModifier = 'out') then
+    begin
+      Continue;
+    end;
+    mTarget := TStringConversionRule.KindOf(mParams[mIndex - 1].TypeName);
     if mTarget <> TStringTypeKind.None then
     begin
-      CheckImplicit(ANode[1], mTarget, mTargetDisplay,
-        cTexts[TStringConversionsText.AssignmentTo].Fmt([NodeText(ANode[0])]));
+      CheckImplicit(ACall[mIndex], mTarget, Trim(mParams[mIndex - 1].TypeName),
+        cTexts[TStringConversionsText.PassingTo].Fmt([mSymbol.Name, mParams[mIndex - 1].Name]));
     end;
   end;
+end;
 
-  procedure CheckInlineVar(ANode: TSyntaxNode);
-  var
-    mTypeName: string;
-    mTypeInfo: TResolvedSymbol;
-    mTarget: TStringTypeKind;
+/// <summary>string(A) bzw. AnsiString(S): ausdrückliche Umwandlung (W1059, W1060).</summary>
+function TStringConversionScan.CheckCast(ACall: TSyntaxNode): Boolean;
+var
+  mCallee: TSyntaxNode;
+  mTargetName, mSourceDisplay, mCode: string;
+  mTarget, mSource: TStringTypeKind;
+begin
+  Result := False;
+  if ACall.ChildCount <> 2 then
   begin
-    if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) then
-    begin
-      Exit;
-    end;
-    mTypeName := NodeText(ANode[0]);
-    mTarget := KindOf(mTypeName);
-    if mTarget = TStringTypeKind.None then
-    begin
-      Exit;
-    end;
-    // Ein eigener Typ gleichen Namens verdeckt den aus System.
-    mTypeInfo := mScope.Resolver.ResolveType(AContext.Tree, mScope.FileName, ANode[0].StartPos);
-    if mTypeInfo.Found and not SystemType(mTypeInfo) then
-    begin
-      Exit;
-    end;
-    CheckImplicit(ANode[1], mTarget, mTypeName, cTexts[TStringConversionsText.AssignmentTo].Fmt([ANode.Name]));
+    Exit;
   end;
-
-  /// <summary>Ist ACall sicher der Aufruf einer Routine mit bekanntem Kopf? Liefert Symbol und Parameter.</summary>
-  function ResolvedCall(ACall: TSyntaxNode; out ASymbol: TResolvedSymbol;
-    out AParams: TArray<TSignatureParameter>): Boolean;
-  var
-    mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
+  mCallee := ACall[0];
+  if mCallee.Kind = TSyntaxKind.Identifier then
   begin
-    AParams := nil;
-    Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and
-      mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ACall, ASymbol, mTypeInfo, mTypeFound);
-    Result := Result and not ASymbol.IsType and (ASymbol.SymbolKind in [TIndexSymbolKind.Method,
-      TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
-    Result := Result and mScope.DeclarationSure(ASymbol, ACall) and RoutineParams(AContext, ASymbol, AParams);
-    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
-    if Result and (ASymbol.Signature <> '') then
-    begin
-      Result := (ACall.ChildCount - 1 >= ASymbol.MinArgs) and (ACall.ChildCount - 1 <= ASymbol.MaxArgs);
-    end;
+    mTargetName := mCallee.Name;
+  end
+  else if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
+    (mCallee[0].Kind = TSyntaxKind.Identifier) and SameText(mCallee[0].Name, 'System') then
+  begin
+    mTargetName := mCallee.Name;
+  end
+  else
+  begin
+    Exit;
   end;
-
-  /// <summary>Übergabeart des Parameters in Kleinbuchstaben; mit Attribut ("[ref] var") das letzte Wort.</summary>
-  function ParamModifier(const AParam: TSignatureParameter): string;
+  mTarget := TStringConversionRule.KindOf(mTargetName);
+  if mTarget = TStringTypeKind.None then
   begin
-    Result := LowerCase(Trim(AParam.Modifier));
-    if Pos(' ', Result) > 0 then
-    begin
-      Result := Copy(Result, LastDelimiter(' ', Result) + 1, MaxInt);
-    end;
+    Exit;
   end;
-
-  procedure CheckCall(ACall: TSyntaxNode);
-  var
-    mSymbol: TResolvedSymbol;
-    mParams: TArray<TSignatureParameter>;
-    mIndex: Integer;
-    mModifier: string;
-    mTarget: TStringTypeKind;
+  Result := True;
+  mSource := ExpressionKind(ACall[1], False, mSourceDisplay);
+  mCode := TStringConversionRule.ConversionCode(mSource, mTarget, True);
+  if mCode = 'W1060' then
   begin
-    if not ResolvedCall(ACall, mSymbol, mParams) then
-    begin
-      Exit;
-    end;
-    for mIndex := 1 to ACall.ChildCount - 1 do
-    begin
-      if mIndex > Length(mParams) then
-      begin
-        Break;
-      end;
-      // var und out verlangen denselben Typ (E2033), das meldet eine andere Regel.
-      mModifier := ParamModifier(mParams[mIndex - 1]);
-      if (mModifier = 'var') or (mModifier = 'out') then
-      begin
-        Continue;
-      end;
-      mTarget := KindOf(mParams[mIndex - 1].TypeName);
-      if mTarget <> TStringTypeKind.None then
-      begin
-        CheckImplicit(ACall[mIndex], mTarget, Trim(mParams[mIndex - 1].TypeName),
-          cTexts[TStringConversionsText.PassingTo].Fmt([mSymbol.Name, mParams[mIndex - 1].Name]));
-      end;
-    end;
+    Report(mCode, ACall, cTexts[TStringConversionsText.ConversionLoses].Fmt(
+      [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
+  end
+  else if mCode = 'W1059' then
+  begin
+    Report(mCode, ACall, cTexts[TStringConversionsText.ExplicitConversion].Fmt(
+      [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
   end;
+end;
 
-  /// <summary>string(A) bzw. AnsiString(S): ausdrückliche Umwandlung (W1059, W1060).</summary>
-  function CheckCast(ACall: TSyntaxNode): Boolean;
-  var
-    mCallee: TSyntaxNode;
-    mTargetName, mSourceDisplay, mCode: string;
-    mTarget, mSource: TStringTypeKind;
+/// <summary>Mengenkonstruktor aus Zeichenliteralen bis #127 ('a', #9, 'a'..'z')?</summary>
+function TStringConversionScan.AsciiCharSet(ASet: TSyntaxNode): Boolean;
+var
+  mElement, mPart: TSyntaxNode;
+  mIndex, mPartIndex: Integer;
+  mValue: string;
+begin
+  Result := (ASet.Kind = TSyntaxKind.SetConstructor) and (ASet.ChildCount > 0);
+  for mIndex := 0 to ASet.ChildCount - 1 do
   begin
-    Result := False;
-    if ACall.ChildCount <> 2 then
-    begin
-      Exit;
-    end;
-    mCallee := ACall[0];
-    if mCallee.Kind = TSyntaxKind.Identifier then
-    begin
-      mTargetName := mCallee.Name;
-    end
-    else if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
-      (mCallee[0].Kind = TSyntaxKind.Identifier) and SameText(mCallee[0].Name, 'System') then
-    begin
-      mTargetName := mCallee.Name;
-    end
-    else
-    begin
-      Exit;
-    end;
-    mTarget := KindOf(mTargetName);
-    if mTarget = TStringTypeKind.None then
-    begin
-      Exit;
-    end;
-    Result := True;
-    mSource := ExpressionKind(ACall[1], False, mSourceDisplay);
-    mCode := ConversionCode(mSource, mTarget, True);
-    if mCode = 'W1060' then
-    begin
-      Report(mCode, ACall, cTexts[TStringConversionsText.ConversionLoses].Fmt(
-        [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
-    end
-    else if mCode = 'W1059' then
-    begin
-      Report(mCode, ACall, cTexts[TStringConversionsText.ExplicitConversion].Fmt(
-        [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
-    end;
-  end;
-
-  /// <summary>Mengenkonstruktor aus Zeichenliteralen bis #127 ('a', #9, 'a'..'z')?</summary>
-  function AsciiCharSet(ASet: TSyntaxNode): Boolean;
-  var
-    mElement, mPart: TSyntaxNode;
-    mIndex, mPartIndex: Integer;
-    mValue: string;
-  begin
-    Result := (ASet.Kind = TSyntaxKind.SetConstructor) and (ASet.ChildCount > 0);
-    for mIndex := 0 to ASet.ChildCount - 1 do
-    begin
-      if not Result then
-      begin
-        Exit;
-      end;
-      mElement := ASet[mIndex];
-      if mElement.Kind = TSyntaxKind.RangeExpr then
-      begin
-        Result := mElement.ChildCount = 2;
-      end
-      else
-      begin
-        Result := mElement.Kind = TSyntaxKind.Literal;
-      end;
-      if not Result then
-      begin
-        Exit;
-      end;
-      for mPartIndex := 0 to mElement.ChildCount - 1 do
-      begin
-        mPart := mElement[mPartIndex];
-        Result := Result and (mPart.Kind = TSyntaxKind.Literal) and ConstantString(mPart, mValue) and
-          (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
-      end;
-      if mElement.Kind = TSyntaxKind.Literal then
-      begin
-        Result := ConstantString(mElement, mValue) and (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
-      end;
-    end;
-  end;
-
-  /// <summary>Ist ALeft ein Zeichen vom Typ Char bzw. WideChar? ADisplay: Anzeigename des Typs.</summary>
-  function IsUnicodeChar(ALeft: TSyntaxNode; out ADisplay: string): Boolean;
-  var
-    mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
-  begin
-    ADisplay := 'Char';
-    if StringElement(ALeft, mBase, mBaseType) then
-    begin
-      // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
-      Exit((mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) and
-        (KindOf(mBaseType.Name) = TStringTypeKind.Unicode));
-    end;
-    Result := mScope.SureType(ALeft, mSymbol, mTypeInfo) and not mSymbol.IsType and SystemType(mTypeInfo);
-    Result := Result and MatchText(mTypeInfo.Name, ['Char', 'WideChar']) and (mSymbol.SymbolKind in
-      [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
-      TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]);
-    if Result then
-    begin
-      ADisplay := mTypeInfo.Name;
-    end;
-  end;
-
-  /// <summary>Korrektur CharInSet(…) samt System.SysUtils in den uses; nil, wenn die uses nicht passen.</summary>
-  function CharInSetEdits(ANode: TSyntaxNode): TArray<TTextEdit>;
-  var
-    mUsesEdit: TTextEdit;
-    mUsed: TArray<string>;
-  begin
-    Result := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
-      [NodeText(ANode[0]), NodeText(ANode[1])]))];
-    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
-    if TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) or
-      TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces) then
-    begin
-      Exit;
-    end;
-    if TUsesClauses.AddUnit(mScope.Tokens, ANode.StartOffset, 'System.SysUtils',
-      TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
-    begin
-      Result := Result + [mUsesEdit];
-    end
-    else
-    begin
-      Result := nil;
-    end;
-  end;
-
-  /// <summary>Ist ASet ein Ausdruck vom Typ TSysCharSet aus System.SysUtils (set of AnsiChar)? Ohne RTL im Index
-  /// zählt der Typname der Deklaration, wenn die Datei System.SysUtils verwendet.</summary>
-  function IsSysCharSet(ASet: TSyntaxNode): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-    mUsed: TArray<string>;
-  begin
-    Result := (ASet.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ASet, mSymbol, mTypeInfo, mTypeFound) and
-      not mSymbol.IsType and (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-      TIndexSymbolKind.Property_, TIndexSymbolKind.Constant]) and mScope.DeclarationSure(mSymbol, ASet);
     if not Result then
     begin
       Exit;
     end;
-    if mTypeFound then
+    mElement := ASet[mIndex];
+    if mElement.Kind = TSyntaxKind.RangeExpr then
     begin
-      Exit(SameText(mTypeInfo.Name, 'TSysCharSet') and MatchText(mTypeInfo.UnitName, ['System.SysUtils',
-        'SysUtils']));
-    end;
-    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
-    Result := MatchText(mSymbol.TypeName, ['TSysCharSet', 'System.SysUtils.TSysCharSet', 'SysUtils.TSysCharSet']) and
-      (TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) or
-      TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces));
-  end;
-
-  /// <summary>Zeichenliteral wie '}' oder #9; in Ausdrücken hat es den Typ Char.</summary>
-  function IsCharLiteral(ANode: TSyntaxNode): Boolean;
-  var
-    mValue: string;
-  begin
-    Result := (ANode.Kind = TSyntaxKind.Literal) and ConstantString(ANode, mValue) and (Length(mValue) = 1);
-  end;
-
-  /// <summary>Links ein Zeichen, rechts eine Menge, die es auf ein Byte kürzt: Mengenkonstruktor aus
-  /// Zeichenliteralen bei Char, TSysCharSet bei Char und Zeichenliteralen.</summary>
-  function TruncatingMembership(ANode: TSyntaxNode; out ADisplay: string): Boolean;
-  var
-    mLeft, mRight: TSyntaxNode;
-  begin
-    mLeft := Unwrapped(ANode[0]);
-    mRight := Unwrapped(ANode[1]);
-    if AsciiCharSet(mRight) then
-    begin
-      Exit(IsUnicodeChar(mLeft, ADisplay));
-    end;
-    if not IsSysCharSet(mRight) then
-    begin
-      Exit(False);
-    end;
-    ADisplay := 'Char';
-    Result := IsCharLiteral(mLeft) or IsUnicodeChar(mLeft, ADisplay);
-  end;
-
-  /// <summary>C in ['a'..'z'] mit C: Char, '}' in AStops mit AStops: TSysCharSet (W1050); Korrektur CharInSet.
-  /// </summary>
-  procedure CheckSetMembership(ANode: TSyntaxNode);
-  var
-    mDisplay, mMessage: string;
-    mEdits: TArray<TTextEdit>;
-  begin
-    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not TruncatingMembership(ANode, mDisplay) then
-    begin
-      Exit;
-    end;
-    mEdits := CharInSetEdits(ANode);
-    mMessage := cTexts[TStringConversionsText.SetTruncates].Fmt([ValueText(ANode[0]), mDisplay]);
-    if mEdits = nil then
-    begin
-      Report('W1050', ANode, mMessage, TRuleConfidence.High, nil);
+      Result := mElement.ChildCount = 2;
     end
     else
     begin
-      Report('W1050', ANode, mMessage, TRuleConfidence.High,
-        [TRuleFix.Create(cTexts[TStringConversionsText.UseCharInSet].Text, mEdits)]);
+      Result := mElement.Kind = TSyntaxKind.Literal;
     end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        case mNode.Kind of
-          TSyntaxKind.AssignStatement:
-            CheckAssignment(mNode);
-          TSyntaxKind.InlineVar:
-            CheckInlineVar(mNode);
-          TSyntaxKind.Call:
-            if not CheckCast(mNode) then
-            begin
-              CheckCall(mNode);
-            end;
-          TSyntaxKind.BinaryExpr:
-            CheckSetMembership(mNode);
-        else
-          // Übrige Knoten bewusst ohne Wirkung.
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>{$H-} bzw. {$LONGSTRINGS OFF} irgendwo in der Datei: string ist dort ShortString.</summary>
-  function ShortStrings: Boolean;
-  var
-    mToken: TPascalToken;
-    mText: string;
-  begin
-    for mToken in AContext.Tree.Tokens do
+    if not Result then
     begin
-      if mToken.Kind = TPascalTokenKind.Directive then
-      begin
-        mText := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
-        if ContainsStr(mText, '$H-') or ContainsStr(mText, ',H-') or ContainsStr(mText, '$LONGSTRINGSOFF') then
-        begin
-          Exit(True);
-        end;
-      end;
+      Exit;
     end;
-    Result := False;
+    for mPartIndex := 0 to mElement.ChildCount - 1 do
+    begin
+      mPart := mElement[mPartIndex];
+      Result := Result and (mPart.Kind = TSyntaxKind.Literal) and ConstantString(mPart, mValue) and
+        (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
+    end;
+    if mElement.Kind = TSyntaxKind.Literal then
+    begin
+      Result := ConstantString(mElement, mValue) and (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
+    end;
   end;
+end;
 
+/// <summary>Ist ALeft ein Zeichen vom Typ Char bzw. WideChar? ADisplay: Anzeigename des Typs.</summary>
+function TStringConversionScan.IsUnicodeChar(ALeft: TSyntaxNode; out ADisplay: string): Boolean;
 var
-  mVersion: Integer;
+  mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  ADisplay := 'Char';
+  if StringElement(ALeft, mBase, mBaseType) then
+  begin
+    // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
+    Exit((mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) and
+      (TStringConversionRule.KindOf(mBaseType.Name) = TStringTypeKind.Unicode));
+  end;
+  Result := FScope.SureType(ALeft, mSymbol, mTypeInfo) and not mSymbol.IsType and SystemType(mTypeInfo);
+  Result := Result and MatchText(mTypeInfo.Name, ['Char', 'WideChar']) and (mSymbol.SymbolKind in
+    [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+    TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]);
+  if Result then
+  begin
+    ADisplay := mTypeInfo.Name;
+  end;
+end;
+
+/// <summary>Korrektur CharInSet(…) samt System.SysUtils in den uses; nil, wenn die uses nicht passen.</summary>
+function TStringConversionScan.CharInSetEdits(ANode: TSyntaxNode): TArray<TTextEdit>;
+var
+  mUsesEdit: TTextEdit;
+  mUsed: TArray<string>;
+begin
+  Result := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
+    [NodeText(ANode[0]), NodeText(ANode[1])]))];
+  mUsed := TUsesClauses.UsedUnits(FScope.Tokens);
+  if TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
+    TUsesClauses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces) then
   begin
     Exit;
   end;
-  mVersion := TLanguageFeatures.ParseVersion(AContext.DelphiVersion);
+  if TUsesClauses.AddUnit(FScope.Tokens, ANode.StartOffset, 'System.SysUtils',
+    TTextLines.LineBreakOf(FContext.Text), mUsesEdit) then
+  begin
+    Result := Result + [mUsesEdit];
+  end
+  else
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Ist ASet ein Ausdruck vom Typ TSysCharSet aus System.SysUtils (set of AnsiChar)? Ohne RTL im Index
+/// zählt der Typname der Deklaration, wenn die Datei System.SysUtils verwendet.</summary>
+function TStringConversionScan.IsSysCharSet(ASet: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mUsed: TArray<string>;
+begin
+  Result := (ASet.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+    FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ASet, mSymbol, mTypeInfo, mTypeFound) and
+    not mSymbol.IsType and (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
+    TIndexSymbolKind.Property_, TIndexSymbolKind.Constant]) and FScope.DeclarationSure(mSymbol, ASet);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if mTypeFound then
+  begin
+    Exit(SameText(mTypeInfo.Name, 'TSysCharSet') and MatchText(mTypeInfo.UnitName, ['System.SysUtils',
+      'SysUtils']));
+  end;
+  mUsed := TUsesClauses.UsedUnits(FScope.Tokens);
+  Result := MatchText(mSymbol.TypeName, ['TSysCharSet', 'System.SysUtils.TSysCharSet', 'SysUtils.TSysCharSet']) and
+    (TUsesClauses.IsUsed(mUsed, 'System.SysUtils', FContext.Namespaces) or
+    TUsesClauses.IsUsed(mUsed, 'SysUtils', FContext.Namespaces));
+end;
+
+/// <summary>Zeichenliteral wie '}' oder #9; in Ausdrücken hat es den Typ Char.</summary>
+function TStringConversionScan.IsCharLiteral(ANode: TSyntaxNode): Boolean;
+var
+  mValue: string;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Literal) and ConstantString(ANode, mValue) and (Length(mValue) = 1);
+end;
+
+/// <summary>Links ein Zeichen, rechts eine Menge, die es auf ein Byte kürzt: Mengenkonstruktor aus
+/// Zeichenliteralen bei Char, TSysCharSet bei Char und Zeichenliteralen.</summary>
+function TStringConversionScan.TruncatingMembership(ANode: TSyntaxNode; out ADisplay: string): Boolean;
+var
+  mLeft, mRight: TSyntaxNode;
+begin
+  mLeft := Unwrapped(ANode[0]);
+  mRight := Unwrapped(ANode[1]);
+  if AsciiCharSet(mRight) then
+  begin
+    Exit(IsUnicodeChar(mLeft, ADisplay));
+  end;
+  if not IsSysCharSet(mRight) then
+  begin
+    Exit(False);
+  end;
+  ADisplay := 'Char';
+  Result := IsCharLiteral(mLeft) or IsUnicodeChar(mLeft, ADisplay);
+end;
+
+/// <summary>C in ['a'..'z'] mit C: Char, '}' in AStops mit AStops: TSysCharSet (W1050); Korrektur CharInSet.
+/// </summary>
+procedure TStringConversionScan.CheckSetMembership(ANode: TSyntaxNode);
+var
+  mDisplay, mMessage: string;
+  mEdits: TArray<TTextEdit>;
+begin
+  if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not TruncatingMembership(ANode, mDisplay) then
+  begin
+    Exit;
+  end;
+  mEdits := CharInSetEdits(ANode);
+  mMessage := cTexts[TStringConversionsText.SetTruncates].Fmt([ValueText(ANode[0]), mDisplay]);
+  if mEdits = nil then
+  begin
+    Report('W1050', ANode, mMessage, TRuleConfidence.High, nil);
+  end
+  else
+  begin
+    Report('W1050', ANode, mMessage, TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TStringConversionsText.UseCharInSet].Text, mEdits)]);
+  end;
+end;
+
+procedure TStringConversionScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.AssignStatement:
+          CheckAssignment(mNode);
+        TSyntaxKind.InlineVar:
+          CheckInlineVar(mNode);
+        TSyntaxKind.Call:
+          if not CheckCast(mNode) then
+          begin
+            CheckCall(mNode);
+          end;
+        TSyntaxKind.BinaryExpr:
+          CheckSetMembership(mNode);
+      else
+        // Übrige Knoten bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>{$H-} bzw. {$LONGSTRINGS OFF} irgendwo in der Datei: string ist dort ShortString.</summary>
+function TStringConversionScan.ShortStrings: Boolean;
+var
+  mToken: TPascalToken;
+  mText: string;
+begin
+  for mToken in FContext.Tree.Tokens do
+  begin
+    if mToken.Kind = TPascalTokenKind.Directive then
+    begin
+      mText := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
+      if ContainsStr(mText, '$H-') or ContainsStr(mText, ',H-') or ContainsStr(mText, '$LONGSTRINGSOFF') then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TStringConversionScan.Run;
+var
+  mVersion: Integer;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  mVersion := TLanguageFeatures.ParseVersion(FContext.DelphiVersion);
   if ((mVersion > 0) and (mVersion < TLanguageFeatures.ParseVersion(cUnicodeVersion))) or ShortStrings then
   begin
     Exit;
   end;
-  mCodePage := TRuleOptions.Int(AContext.Options, 'ansiCodePage', cDefaultCodePage);
-  mSwitches := TRuleWarnSwitches.Create(AContext);
-  mScope := TTypedScope.Create(AContext);
+  FCodePage := TRuleOptions.Int(FContext.Options, 'ansiCodePage', cDefaultCodePage);
+  FSwitches := TRuleWarnSwitches.Create(FContext);
+  FScope := TTypedScope.Create(FContext);
   try
-    Visit(AContext.Tree.Root);
+    Visit(FContext.Tree.Root);
   finally
-    mScope.Free;
-    mSwitches.Free;
+    FScope.Free;
+    FSwitches.Free;
   end;
+end;
+
+procedure TStringConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TStringConversionScan;
+begin
+  mScan := TStringConversionScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterStringConversionRules(const ARegistry: TRuleRegistry);

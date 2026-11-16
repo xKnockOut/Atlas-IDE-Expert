@@ -46,6 +46,19 @@ type
     property Tokens: TArray<TPascalToken> read FTokens;
   end;
 
+  /// <summary>Grundlage eines Laufs einer Regel über eine Unit, der Ausdruckstypen braucht: Kontext, Bericht und
+  /// der Typbereich der Unit, angelegt im Konstruktor und freigegeben in Destroy. Check prüft vorher, dass der
+  /// Kontext einen Baum hat.</summary>
+  TTypedScopeRun = class
+  protected
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FScope: TTypedScope;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    destructor Destroy; override;
+  end;
+
 /// <summary>Ausdruck ohne umschließende Klammern.</summary>
 function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
 
@@ -173,6 +186,22 @@ begin
   Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
     TSyntaxKind.IndexAccess]) and FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, AType, mTypeFound) and
     mTypeFound and (ASymbol.Kind <> TResolvedKind.UnitName) and DeclarationSure(ASymbol, ANode);
+end;
+
+{ TTypedScopeRun }
+
+constructor TTypedScopeRun.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+  FScope := TTypedScope.Create(AContext);
+end;
+
+destructor TTypedScopeRun.Destroy;
+begin
+  FScope.Free;
+  inherited Destroy;
 end;
 
 end.

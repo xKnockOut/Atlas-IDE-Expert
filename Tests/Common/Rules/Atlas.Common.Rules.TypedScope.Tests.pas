@@ -2,7 +2,7 @@
 
 // Tests des gemeinsamen Rahmens der Regeln mit Ausdruckstypen (#1129): Text
 // ohne Zeilenumbrüche, sicherer Typ einer Variablen, unsichere Deklaration im
-// bedingten Zweig, Ausdruck ohne Klammern.
+// bedingten Zweig, Ausdruck ohne Klammern, Typbereich eines Laufs.
 
 interface
 
@@ -21,6 +21,8 @@ type
     procedure ConditionalDeclarationIsNotSure;
     [Test]
     procedure UnwrappedDropsParens;
+    [Test]
+    procedure RunHoldsScopeOfContext;
   end;
 
 implementation
@@ -80,6 +82,18 @@ begin
   Result.Tree := ATree;
   Result.UnitName := 'Werte';
   Result.FileName := 'C:\Projekt\Werte.pas';
+end;
+
+type
+  /// <summary>Macht den Typbereich eines Laufs für den Test sichtbar.</summary>
+  TTypedScopeRunProbe = class(TTypedScopeRun)
+  public
+    function Scope: TTypedScope;
+  end;
+
+function TTypedScopeRunProbe.Scope: TTypedScope;
+begin
+  Result := FScope;
 end;
 
 { TTypedScopeTests }
@@ -156,6 +170,26 @@ begin
     Assert.AreEqual(Ord(TSyntaxKind.Identifier), Ord(Unwrapped(mParen).Kind));
     Assert.AreEqual('mWert', Unwrapped(mParen).Name);
     Assert.IsNull(Unwrapped(nil));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TTypedScopeTests.RunHoldsScopeOfContext;
+var
+  mTree: TSyntaxTree;
+  mRun: TTypedScopeRunProbe;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mRun := TTypedScopeRunProbe.Create(Context(mTree), nil);
+    try
+      // Der Lauf legt den Typbereich der Unit an; Destroy gibt ihn frei (der Leckmonitor prüft das).
+      Assert.IsNotNull(mRun.Scope);
+      Assert.AreEqual('mZahl + 1', mRun.Scope.Text(Unwrapped(Find(mTree.Root, TSyntaxKind.ParenExpr, '', 0))));
+    finally
+      mRun.Free;
+    end;
   finally
     mTree.Free;
   end;

@@ -259,379 +259,415 @@ begin
     cTexts[TForbiddenSymbolsText.Title].Text);
 end;
 
-procedure TForbiddenSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TForbiddenSymbolRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TForbiddenSymbolScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FEntries: TArray<TForbiddenSymbol>;
+    FScope: TTypedScope;
+    function Resolved(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
+    function KindMatches(AKind: TForbiddenKind; const ASymbol: TResolvedSymbol): Boolean;
+    function FullNames(const ASymbol: TResolvedSymbol): TArray<string>;
+    function WrittenName(ANode: TSyntaxNode): string;
+    function Leftmost(ANode: TSyntaxNode): TSyntaxNode;
+    function FirstArgument(ANode: TSyntaxNode): TSyntaxNode;
+    function ArgumentIn(AArgument: TSyntaxNode; const AItems: TArray<string>): Boolean;
+    function ArgumentsAllow(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode): Boolean;
+    function ReplacedRange(ANode: TSyntaxNode; out ARange: TTextRange): Boolean;
+    procedure Report(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AShown: string);
+    function SymbolOf(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol; out AResolved: Boolean): Boolean;
+    procedure Lookup(ANode: TSyntaxNode; const AWritten: string; var ALookup: TNodeLookup);
+    function Hits(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AWritten: string;
+      var ALookup: TNodeLookup): Boolean;
+    procedure CheckNode(ANode: TSyntaxNode);
+    function Checked(ANode: TSyntaxNode): Boolean;
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TForbiddenSymbolScan }
+
+constructor TForbiddenSymbolScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+/// <summary>Deklaration des Ausdrucks ANode (auch Unit-Namen und Typen); False, wenn nicht auflösbar.</summary>
+function TForbiddenSymbolScan.Resolved(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
 var
-  mEntries: TArray<TForbiddenSymbol>;
-  mScope: TTypedScope;
+  mType: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  Result := FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, ANode, ASymbol, mType, mTypeFound);
+end;
 
-  /// <summary>Deklaration des Ausdrucks ANode (auch Unit-Namen und Typen); False, wenn nicht auflösbar.</summary>
-  function Resolved(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
-  var
-    mType: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    Result := mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ANode, ASymbol, mType, mTypeFound);
-  end;
-
-  function KindMatches(AKind: TForbiddenKind; const ASymbol: TResolvedSymbol): Boolean;
-  begin
-    case AKind of
-      TForbiddenKind.Any:
-        Result := True;
-      TForbiddenKind.Routine:
-        Result := ASymbol.SymbolKind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method,
-          TIndexSymbolKind.Constructor_];
-      TForbiddenKind.Type_:
-        Result := ASymbol.SymbolKind in cTypeKinds;
-      TForbiddenKind.Constant:
-        Result := ASymbol.SymbolKind = TIndexSymbolKind.Constant;
-      TForbiddenKind.Field:
-        Result := ASymbol.SymbolKind = TIndexSymbolKind.Field;
-      TForbiddenKind.Property_:
-        Result := ASymbol.SymbolKind = TIndexSymbolKind.Property_;
-      TForbiddenKind.EnumValue:
-        Result := ASymbol.SymbolKind = TIndexSymbolKind.EnumMember;
-    else
-      Result := False;
-    end;
-  end;
-
-  /// <summary>Voll qualifizierte Namen von ASymbol: Unit.Typ.Name; Aufzählungswerte auch Unit.Name.</summary>
-  function FullNames(const ASymbol: TResolvedSymbol): TArray<string>;
-  begin
-    Result := [ASymbol.UnitName + '.' + ASymbol.QualifiedName];
-    if (ASymbol.SymbolKind = TIndexSymbolKind.EnumMember) and (ASymbol.Container <> '') then
-    begin
-      Result := Result + [ASymbol.UnitName + '.' + ASymbol.Name];
-    end;
-  end;
-
-  /// <summary>Geschriebener Name A.B.C von ANode; '' bei anderen Ausdrücken (Aufruf, Index, Typargumente).
-  /// </summary>
-  function WrittenName(ANode: TSyntaxNode): string;
-  var
-    mNode: TSyntaxNode;
-  begin
-    Result := '';
-    mNode := ANode;
-    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
-    begin
-      Result := '.' + mNode.Name + Result;
-      mNode := mNode[0];
-    end;
-    if (mNode.Kind = TSyntaxKind.Identifier) and (mNode.ChildCount = 0) then
-    begin
-      Result := mNode.Name + Result;
-    end
-    else
-    begin
-      Result := '';
-    end;
-  end;
-
-  function Leftmost(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode;
-    while (Result.Kind = TSyntaxKind.MemberAccess) and (Result.ChildCount > 0) do
-    begin
-      Result := Result[0];
-    end;
-  end;
-
-  /// <summary>Erstes Argument, wenn ANode aufgerufen wird; nil ohne.</summary>
-  function FirstArgument(ANode: TSyntaxNode): TSyntaxNode;
-  var
-    mParent: TSyntaxNode;
-  begin
-    mParent := ANode.Parent;
-    if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 1) and
-      (mParent[0] = ANode) then
-    begin
-      Result := Unwrapped(mParent[1]);
-    end
-    else
-    begin
-      Result := nil;
-    end;
-  end;
-
-  /// <summary>Passt das Argument AArgument auf einen der Einträge (Text oder Typname)?</summary>
-  function ArgumentIn(AArgument: TSyntaxNode; const AItems: TArray<string>): Boolean;
-  var
-    mItem, mText, mTypeName: string;
-    mSymbol, mType: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    if AArgument = nil then
-    begin
-      Exit(False);
-    end;
-    mText := mScope.Text(AArgument);
-    mTypeName := '';
-    if mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, AArgument, mSymbol, mType, mTypeFound) then
-    begin
-      if mTypeFound then
-      begin
-        mTypeName := mType.Name;
-      end
-      else
-      begin
-        mTypeName := WithoutUnit(mSymbol.TypeName);
-      end;
-    end;
-    for mItem in AItems do
-    begin
-      if SameText(mItem, mText) or ((mTypeName <> '') and SameText(WithoutUnit(mItem), mTypeName)) then
-      begin
-        Exit(True);
-      end;
-    end;
+function TForbiddenSymbolScan.KindMatches(AKind: TForbiddenKind; const ASymbol: TResolvedSymbol): Boolean;
+begin
+  case AKind of
+    TForbiddenKind.Any:
+      Result := True;
+    TForbiddenKind.Routine:
+      Result := ASymbol.SymbolKind in [TIndexSymbolKind.Routine, TIndexSymbolKind.Method,
+        TIndexSymbolKind.Constructor_];
+    TForbiddenKind.Type_:
+      Result := ASymbol.SymbolKind in cTypeKinds;
+    TForbiddenKind.Constant:
+      Result := ASymbol.SymbolKind = TIndexSymbolKind.Constant;
+    TForbiddenKind.Field:
+      Result := ASymbol.SymbolKind = TIndexSymbolKind.Field;
+    TForbiddenKind.Property_:
+      Result := ASymbol.SymbolKind = TIndexSymbolKind.Property_;
+    TForbiddenKind.EnumValue:
+      Result := ASymbol.SymbolKind = TIndexSymbolKind.EnumMember;
+  else
     Result := False;
   end;
+end;
 
-  function ArgumentsAllow(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode): Boolean;
-  var
-    mArgument: TSyntaxNode;
+/// <summary>Voll qualifizierte Namen von ASymbol: Unit.Typ.Name; Aufzählungswerte auch Unit.Name.</summary>
+function TForbiddenSymbolScan.FullNames(const ASymbol: TResolvedSymbol): TArray<string>;
+begin
+  Result := [ASymbol.UnitName + '.' + ASymbol.QualifiedName];
+  if (ASymbol.SymbolKind = TIndexSymbolKind.EnumMember) and (ASymbol.Container <> '') then
   begin
-    if (AEntry.FirstArgument = nil) and (AEntry.AllowFirstArgument = nil) then
+    Result := Result + [ASymbol.UnitName + '.' + ASymbol.Name];
+  end;
+end;
+
+/// <summary>Geschriebener Name A.B.C von ANode; '' bei anderen Ausdrücken (Aufruf, Index, Typargumente).
+/// </summary>
+function TForbiddenSymbolScan.WrittenName(ANode: TSyntaxNode): string;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := '';
+  mNode := ANode;
+  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
+  begin
+    Result := '.' + mNode.Name + Result;
+    mNode := mNode[0];
+  end;
+  if (mNode.Kind = TSyntaxKind.Identifier) and (mNode.ChildCount = 0) then
+  begin
+    Result := mNode.Name + Result;
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+function TForbiddenSymbolScan.Leftmost(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode;
+  while (Result.Kind = TSyntaxKind.MemberAccess) and (Result.ChildCount > 0) do
+  begin
+    Result := Result[0];
+  end;
+end;
+
+/// <summary>Erstes Argument, wenn ANode aufgerufen wird; nil ohne.</summary>
+function TForbiddenSymbolScan.FirstArgument(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mParent: TSyntaxNode;
+begin
+  mParent := ANode.Parent;
+  if (mParent <> nil) and (mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 1) and
+    (mParent[0] = ANode) then
+  begin
+    Result := Unwrapped(mParent[1]);
+  end
+  else
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Passt das Argument AArgument auf einen der Einträge (Text oder Typname)?</summary>
+function TForbiddenSymbolScan.ArgumentIn(AArgument: TSyntaxNode; const AItems: TArray<string>): Boolean;
+var
+  mItem, mText, mTypeName: string;
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  if AArgument = nil then
+  begin
+    Exit(False);
+  end;
+  mText := FScope.Text(AArgument);
+  mTypeName := '';
+  if FScope.Resolver.NodeType(FContext.Tree, FScope.FileName, AArgument, mSymbol, mType, mTypeFound) then
+  begin
+    if mTypeFound then
+    begin
+      mTypeName := mType.Name;
+    end
+    else
+    begin
+      mTypeName := WithoutUnit(mSymbol.TypeName);
+    end;
+  end;
+  for mItem in AItems do
+  begin
+    if SameText(mItem, mText) or ((mTypeName <> '') and SameText(WithoutUnit(mItem), mTypeName)) then
     begin
       Exit(True);
     end;
-    mArgument := FirstArgument(ANode);
-    if (AEntry.FirstArgument <> nil) and not ArgumentIn(mArgument, AEntry.FirstArgument) then
-    begin
-      Exit(False);
-    end;
-    Result := not ArgumentIn(mArgument, AEntry.AllowFirstArgument);
   end;
+  Result := False;
+end;
 
-  /// <summary>Bereich des Namens, den der Ersatz ersetzt: der ganze Ausdruck, wenn davor eine Unit oder ein Typ
-  /// steht, sonst nur das Mitglied hinter dem letzten Punkt.</summary>
-  function ReplacedRange(ANode: TSyntaxNode; out ARange: TTextRange): Boolean;
-  var
-    mOwner: TResolvedSymbol;
-    mStart: TTextPosition;
+function TForbiddenSymbolScan.ArgumentsAllow(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode): Boolean;
+var
+  mArgument: TSyntaxNode;
+begin
+  if (AEntry.FirstArgument = nil) and (AEntry.AllowFirstArgument = nil) then
   begin
-    ARange := TTextRange.Create(ANode.StartPos, ANode.EndPos);
-    Result := True;
-    if ANode.Kind <> TSyntaxKind.MemberAccess then
+    Exit(True);
+  end;
+  mArgument := FirstArgument(ANode);
+  if (AEntry.FirstArgument <> nil) and not ArgumentIn(mArgument, AEntry.FirstArgument) then
+  begin
+    Exit(False);
+  end;
+  Result := not ArgumentIn(mArgument, AEntry.AllowFirstArgument);
+end;
+
+/// <summary>Bereich des Namens, den der Ersatz ersetzt: der ganze Ausdruck, wenn davor eine Unit oder ein Typ
+/// steht, sonst nur das Mitglied hinter dem letzten Punkt.</summary>
+function TForbiddenSymbolScan.ReplacedRange(ANode: TSyntaxNode; out ARange: TTextRange): Boolean;
+var
+  mOwner: TResolvedSymbol;
+  mStart: TTextPosition;
+begin
+  ARange := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+  Result := True;
+  if ANode.Kind <> TSyntaxKind.MemberAccess then
+  begin
+    Exit;
+  end;
+  if Resolved(ANode[0], mOwner) and ((mOwner.Kind = TResolvedKind.UnitName) or mOwner.IsType) then
+  begin
+    Exit;
+  end;
+  // Nur das Mitglied: Es steht am Ende des Ausdrucks in derselben Zeile.
+  mStart := ANode.EndPos;
+  mStart.Character := mStart.Character - Length(ANode.Name);
+  Result := (mStart.Character >= 0) and SameText(Copy(FContext.Text, ANode.EndOffset - Length(ANode.Name) + 1,
+    Length(ANode.Name)), ANode.Name);
+  ARange := TTextRange.Create(mStart, ANode.EndPos);
+end;
+
+procedure TForbiddenSymbolScan.Report(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AShown: string);
+var
+  mMessage: string;
+  mFixes: TArray<TRuleFix>;
+  mRange: TTextRange;
+begin
+  if AEntry.Message <> '' then
+  begin
+    mMessage := cTexts[TForbiddenSymbolsText.ForbiddenReason].Fmt([AShown, AEntry.Message]);
+  end
+  else
+  begin
+    mMessage := cTexts[TForbiddenSymbolsText.Forbidden].Fmt([AShown]);
+  end;
+  mFixes := nil;
+  if (AEntry.Replacement <> '') and ReplacedRange(ANode, mRange) then
+  begin
+    mFixes := [TRuleFix.Create(cTexts[TForbiddenSymbolsText.ReplaceWith].Fmt([AEntry.Replacement]),
+      [TTextEdit.Create(mRange, AEntry.Replacement)])];
+  end;
+  FReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, AEntry.Severity, mFixes);
+end;
+
+/// <summary>Symbol von ANode: aufgelöst, Bezeichner aus System ohne Quelltext oder (AResolved False) nicht
+/// auflösbar.</summary>
+function TForbiddenSymbolScan.SymbolOf(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol;
+  out AResolved: Boolean): Boolean;
+var
+  mIntrinsics: TArray<TSystemIntrinsic>;
+begin
+  AResolved := False;
+  if ANode.Kind = TSyntaxKind.TypeReference then
+  begin
+    ASymbol := FScope.Resolver.ResolveChain(FContext.Tree, FScope.FileName, ANode.Name.Split(['.']),
+      ANode.StartOffset);
+    AResolved := ASymbol.Kind <> TResolvedKind.None;
+  end
+  else
+  begin
+    AResolved := Resolved(ANode, ASymbol);
+  end;
+  if AResolved then
+  begin
+    Exit(ASymbol.Kind = TResolvedKind.Symbol);
+  end;
+  // Writeln, Halt …: in System ohne Deklaration im Quelltext; ein eigener gleichnamiger Name wäre aufgelöst.
+  mIntrinsics := TSystemIntrinsics.Find(ANode.Name);
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and (Length(mIntrinsics) > 0);
+  if Result then
+  begin
+    ASymbol := Default(TResolvedSymbol);
+    ASymbol.Kind := TResolvedKind.Symbol;
+    ASymbol.Name := mIntrinsics[0].Name;
+    ASymbol.UnitName := 'System';
+    ASymbol.SymbolKind := mIntrinsics[0].Kind;
+    ASymbol.Builtin := True;
+    AResolved := True;
+  end;
+end;
+
+/// <summary>Löst ANode beim ersten Bedarf auf (ALookup.Tried); AWritten ist der geschriebene Name.</summary>
+procedure TForbiddenSymbolScan.Lookup(ANode: TSyntaxNode; const AWritten: string; var ALookup: TNodeLookup);
+var
+  mLeft: TResolvedSymbol;
+begin
+  if ALookup.Tried then
+  begin
+    Exit;
+  end;
+  ALookup.Tried := True;
+  ALookup.HasSymbol := SymbolOf(ANode, ALookup.Symbol, ALookup.Resolved);
+  if ALookup.HasSymbol then
+  begin
+    ALookup.Names := FullNames(ALookup.Symbol);
+  end;
+  // Linker Teil gar nicht auflösbar (Unit nicht indexiert): Dann zählt der geschriebene Name.
+  ALookup.LeftUnknown := not ALookup.Resolved and (Pos('.', AWritten) > 0) and
+    not Resolved(Leftmost(ANode), mLeft);
+end;
+
+function TForbiddenSymbolScan.Hits(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AWritten: string;
+  var ALookup: TNodeLookup): Boolean;
+var
+  mName: string;
+begin
+  if AEntry.Kind = TForbiddenKind.Identifier then
+  begin
+    Exit(MatchesGlob(AEntry.Name, ANode.Name) or ((AWritten <> '') and AEntry.MatchesName(AWritten)));
+  end;
+  Lookup(ANode, AWritten, ALookup);
+  if ALookup.LeftUnknown then
+  begin
+    Exit(AEntry.MatchesTail(AWritten));
+  end;
+  if not ALookup.HasSymbol or not KindMatches(AEntry.Kind, ALookup.Symbol) then
+  begin
+    Exit(False);
+  end;
+  for mName in ALookup.Names do
+  begin
+    if AEntry.MatchesName(mName) then
     begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TForbiddenSymbolScan.CheckNode(ANode: TSyntaxNode);
+var
+  mEntry: TForbiddenSymbol;
+  mWritten, mShown: string;
+  mLookup: TNodeLookup;
+begin
+  if ANode.Kind = TSyntaxKind.TypeReference then
+  begin
+    mWritten := ANode.Name;
+  end
+  else
+  begin
+    mWritten := WrittenName(ANode);
+  end;
+  mShown := mWritten;
+  if mShown = '' then
+  begin
+    mShown := ANode.Name;
+  end;
+  mLookup := Default(TNodeLookup);
+  // Vorfilter nach dem letzten Namensteil: aufgelöst wird nur, was ein Eintrag treffen kann.
+  for mEntry in FEntries do
+  begin
+    if mEntry.MayMatch(ANode.Name) and Hits(mEntry, ANode, mWritten, mLookup) and ArgumentsAllow(mEntry, ANode) then
+    begin
+      Report(mEntry, ANode, mShown);
       Exit;
     end;
-    if Resolved(ANode[0], mOwner) and ((mOwner.Kind = TResolvedKind.UnitName) or mOwner.IsType) then
-    begin
-      Exit;
-    end;
-    // Nur das Mitglied: Es steht am Ende des Ausdrucks in derselben Zeile.
-    mStart := ANode.EndPos;
-    mStart.Character := mStart.Character - Length(ANode.Name);
-    Result := (mStart.Character >= 0) and SameText(Copy(AContext.Text, ANode.EndOffset - Length(ANode.Name) + 1,
-      Length(ANode.Name)), ANode.Name);
-    ARange := TTextRange.Create(mStart, ANode.EndPos);
   end;
+end;
 
-  procedure Report(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AShown: string);
-  var
-    mMessage: string;
-    mFixes: TArray<TRuleFix>;
-    mRange: TTextRange;
+/// <summary>Wird ANode geprüft? Bezeichner, Typangaben und qualifizierte Namen ohne Typargumente; Werte einer
+/// Aufzählung (Read, Write) sind Deklarationen, keine Verwendung.</summary>
+function TForbiddenSymbolScan.Checked(ANode: TSyntaxNode): Boolean;
+begin
+  if ANode.Name = '' then
   begin
-    if AEntry.Message <> '' then
-    begin
-      mMessage := cTexts[TForbiddenSymbolsText.ForbiddenReason].Fmt([AShown, AEntry.Message]);
-    end
-    else
-    begin
-      mMessage := cTexts[TForbiddenSymbolsText.Forbidden].Fmt([AShown]);
-    end;
-    mFixes := nil;
-    if (AEntry.Replacement <> '') and ReplacedRange(ANode, mRange) then
-    begin
-      mFixes := [TRuleFix.Create(cTexts[TForbiddenSymbolsText.ReplaceWith].Fmt([AEntry.Replacement]),
-        [TTextEdit.Create(mRange, AEntry.Replacement)])];
-    end;
-    AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), mMessage, AEntry.Severity, mFixes);
+    Exit(False);
   end;
-
-  /// <summary>Symbol von ANode: aufgelöst, Bezeichner aus System ohne Quelltext oder (AResolved False) nicht
-  /// auflösbar.</summary>
-  function SymbolOf(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol; out AResolved: Boolean): Boolean;
-  var
-    mIntrinsics: TArray<TSystemIntrinsic>;
-  begin
-    AResolved := False;
-    if ANode.Kind = TSyntaxKind.TypeReference then
-    begin
-      ASymbol := mScope.Resolver.ResolveChain(AContext.Tree, mScope.FileName, ANode.Name.Split(['.']),
-        ANode.StartOffset);
-      AResolved := ASymbol.Kind <> TResolvedKind.None;
-    end
-    else
-    begin
-      AResolved := Resolved(ANode, ASymbol);
-    end;
-    if AResolved then
-    begin
-      Exit(ASymbol.Kind = TResolvedKind.Symbol);
-    end;
-    // Writeln, Halt …: in System ohne Deklaration im Quelltext; ein eigener gleichnamiger Name wäre aufgelöst.
-    mIntrinsics := TSystemIntrinsics.Find(ANode.Name);
-    Result := (ANode.Kind = TSyntaxKind.Identifier) and (Length(mIntrinsics) > 0);
-    if Result then
-    begin
-      ASymbol := Default(TResolvedSymbol);
-      ASymbol.Kind := TResolvedKind.Symbol;
-      ASymbol.Name := mIntrinsics[0].Name;
-      ASymbol.UnitName := 'System';
-      ASymbol.SymbolKind := mIntrinsics[0].Kind;
-      ASymbol.Builtin := True;
-      AResolved := True;
-    end;
-  end;
-
-  /// <summary>Löst ANode beim ersten Bedarf auf (ALookup.Tried); AWritten ist der geschriebene Name.</summary>
-  procedure Lookup(ANode: TSyntaxNode; const AWritten: string; var ALookup: TNodeLookup);
-  var
-    mLeft: TResolvedSymbol;
-  begin
-    if ALookup.Tried then
-    begin
-      Exit;
-    end;
-    ALookup.Tried := True;
-    ALookup.HasSymbol := SymbolOf(ANode, ALookup.Symbol, ALookup.Resolved);
-    if ALookup.HasSymbol then
-    begin
-      ALookup.Names := FullNames(ALookup.Symbol);
-    end;
-    // Linker Teil gar nicht auflösbar (Unit nicht indexiert): Dann zählt der geschriebene Name.
-    ALookup.LeftUnknown := not ALookup.Resolved and (Pos('.', AWritten) > 0) and
-      not Resolved(Leftmost(ANode), mLeft);
-  end;
-
-  function Hits(const AEntry: TForbiddenSymbol; ANode: TSyntaxNode; const AWritten: string;
-    var ALookup: TNodeLookup): Boolean;
-  var
-    mName: string;
-  begin
-    if AEntry.Kind = TForbiddenKind.Identifier then
-    begin
-      Exit(MatchesGlob(AEntry.Name, ANode.Name) or ((AWritten <> '') and AEntry.MatchesName(AWritten)));
-    end;
-    Lookup(ANode, AWritten, ALookup);
-    if ALookup.LeftUnknown then
-    begin
-      Exit(AEntry.MatchesTail(AWritten));
-    end;
-    if not ALookup.HasSymbol or not KindMatches(AEntry.Kind, ALookup.Symbol) then
-    begin
-      Exit(False);
-    end;
-    for mName in ALookup.Names do
-    begin
-      if AEntry.MatchesName(mName) then
-      begin
-        Exit(True);
-      end;
-    end;
+  case ANode.Kind of
+    TSyntaxKind.Identifier:
+      Result := (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.EnumType);
+    TSyntaxKind.TypeReference:
+      Result := True;
+    TSyntaxKind.MemberAccess:
+      Result := ANode.FindChild(TSyntaxKind.GenericArgs) = nil;
+  else
     Result := False;
   end;
+end;
 
-  procedure CheckNode(ANode: TSyntaxNode);
-  var
-    mEntry: TForbiddenSymbol;
-    mWritten, mShown: string;
-    mLookup: TNodeLookup;
-  begin
-    if ANode.Kind = TSyntaxKind.TypeReference then
+procedure TForbiddenSymbolScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      mWritten := ANode.Name;
-    end
-    else
-    begin
-      mWritten := WrittenName(ANode);
-    end;
-    mShown := mWritten;
-    if mShown = '' then
-    begin
-      mShown := ANode.Name;
-    end;
-    mLookup := Default(TNodeLookup);
-    // Vorfilter nach dem letzten Namensteil: aufgelöst wird nur, was ein Eintrag treffen kann.
-    for mEntry in mEntries do
-    begin
-      if mEntry.MayMatch(ANode.Name) and Hits(mEntry, ANode, mWritten, mLookup) and ArgumentsAllow(mEntry, ANode) then
+      mNode := mPending.Pop;
+      if Checked(mNode) then
       begin
-        Report(mEntry, ANode, mShown);
-        Exit;
+        CheckNode(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
       end;
     end;
+  finally
+    mPending.Free;
   end;
+end;
 
-  /// <summary>Wird ANode geprüft? Bezeichner, Typangaben und qualifizierte Namen ohne Typargumente; Werte einer
-  /// Aufzählung (Read, Write) sind Deklarationen, keine Verwendung.</summary>
-  function Checked(ANode: TSyntaxNode): Boolean;
-  begin
-    if ANode.Name = '' then
-    begin
-      Exit(False);
-    end;
-    case ANode.Kind of
-      TSyntaxKind.Identifier:
-        Result := (ANode.Parent = nil) or (ANode.Parent.Kind <> TSyntaxKind.EnumType);
-      TSyntaxKind.TypeReference:
-        Result := True;
-      TSyntaxKind.MemberAccess:
-        Result := ANode.FindChild(TSyntaxKind.GenericArgs) = nil;
-    else
-      Result := False;
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if Checked(mNode) then
-        begin
-          CheckNode(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+procedure TForbiddenSymbolScan.Run;
 var
   mEntry: TForbiddenSymbol;
   mApplying: TArray<TForbiddenSymbol>;
   mUnitName: string;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
   // Name aus dem Quelltext (unit X), sonst aus dem Dateinamen.
-  mUnitName := TUsesClauses.OwnName(AContext.Tree.Tokens);
+  mUnitName := TUsesClauses.OwnName(FContext.Tree.Tokens);
   if mUnitName = '' then
   begin
-    mUnitName := AContext.UnitName;
+    mUnitName := FContext.UnitName;
   end;
   mApplying := nil;
-  for mEntry in ParseSymbols(AContext.Options) do
+  for mEntry in TForbiddenSymbolRule.ParseSymbols(FContext.Options) do
   begin
     if (mEntry.Severity <> TRuleSeverity.Off) and mEntry.AppliesTo(mUnitName) then
     begin
@@ -642,13 +678,21 @@ begin
   begin
     Exit;
   end;
-  mEntries := mApplying;
-  mScope := TTypedScope.Create(AContext);
+  FEntries := mApplying;
+  FScope := TTypedScope.Create(FContext);
   try
-    Visit(AContext.Tree.Root);
+    Visit(FContext.Tree.Root);
   finally
-    mScope.Free;
+    FScope.Free;
   end;
+end;
+
+procedure TForbiddenSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TForbiddenSymbolScan;
+begin
+  mScan := TForbiddenSymbolScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TForbiddenSymbolRule.ParseSymbols(const AOptions: string): TArray<TForbiddenSymbol>;
