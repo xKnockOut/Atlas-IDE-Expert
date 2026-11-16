@@ -2,7 +2,11 @@
 
 // Prüfung auf neue Versionen (#495), ohne Netzwerk und ohne IDE:
 // - Nur mit updates.check (Vorgabe aus, Zustimmung beim ersten Start) und
-//   höchstens einmal täglich; auch eine gescheiterte Abfrage zählt.
+//   höchstens einmal täglich; auch eine gescheiterte Abfrage zählt. Die
+//   tägliche Sperre gilt je Kanal: Nach einem Wechsel von updates.channel
+//   (andere Versionsdatei als bei der letzten Abfrage) ist die Prüfung sofort
+//   fällig, sonst erführe man erst bis zu einen Tag später von einer
+//   Vorabversion.
 // - Abgefragt wird die Versionsdatei des Kanals (updates.channel, #1519:
 //   atlas-version.json bzw. atlas-version-beta.json, {"version": "1.2.0",
 //   "changes": "https://…", …}); übertragen werden nur Atlas-Version und
@@ -49,6 +53,9 @@ type
     /// <summary>Fehlerart der letzten Abfrage, z. B. „HTTP 407“; '' = sie ist gelungen oder es gab noch keine.
     /// </summary>
     LastError: string;
+    /// <summary>Versionsdatei (Kanal) der letzten Abfrage; '' = unbekannt. Ein anderer Kanal ist sofort fällig.
+    /// </summary>
+    ChannelUrl: string;
     function ToJson: string;
     class function FromJson(const AJson: string): TAtlasUpdateState; static;
   end;
@@ -92,6 +99,10 @@ type
     class function IsDue(ALastCheck, ANow: TDateTime): Boolean; static;
     /// <summary>Wie IsDue, nach einer gescheiterten Abfrage (LastError) aber schon nach cRetryHours.</summary>
     class function IsStateDue(const AState: TAtlasUpdateState; ANow: TDateTime): Boolean; static;
+    /// <summary>Wie IsStateDue, außerdem sofort, wenn AChannelUrl nicht der Kanal der letzten Abfrage ist.
+    /// </summary>
+    class function IsQueryDue(const AState: TAtlasUpdateState; const AChannelUrl: string;
+      ANow: TDateTime): Boolean; static;
     /// <summary>Adresse mit genau zwei Parametern: atlas und ide.</summary>
     class function RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string; static;
     /// <summary>Ergebnis einer Prüfung im Zustand merken (#754): neue Version setzt Available und ChangesUrl,
@@ -145,6 +156,10 @@ begin
     begin
       mRoot.AddPair('lastError', TJSONString.Create(LastError));
     end;
+    if ChannelUrl <> '' then
+    begin
+      mRoot.AddPair('channel', TJSONString.Create(ChannelUrl));
+    end;
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
@@ -194,6 +209,11 @@ begin
     if mFound then
     begin
       Result.LastError := TAtlasUpdates.ErrorText(mText);
+    end;
+    mFound := mRoot.TryGetValue<string>('channel', mText);
+    if mFound then
+    begin
+      Result.ChannelUrl := mText;
     end;
   finally
     mValue.Free;
@@ -259,6 +279,12 @@ class function TAtlasUpdates.IsStateDue(const AState: TAtlasUpdateState; ANow: T
 begin
   Result := IsDue(AState.LastCheck, ANow) or
     ((AState.LastError <> '') and (ANow >= IncHour(AState.LastCheck, cRetryHours)));
+end;
+
+class function TAtlasUpdates.IsQueryDue(const AState: TAtlasUpdateState; const AChannelUrl: string;
+  ANow: TDateTime): Boolean;
+begin
+  Result := IsStateDue(AState, ANow) or not SameText(AState.ChannelUrl, AChannelUrl);
 end;
 
 class function TAtlasUpdates.RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string;
@@ -338,13 +364,14 @@ begin
     Result.Outcome := TAtlasUpdateOutcome.Disabled;
     Exit;
   end;
-  if not IsStateDue(AState, ANow) then
+  if not IsQueryDue(AState, AQuery.Url, ANow) then
   begin
     Result.Outcome := TAtlasUpdateOutcome.NotDue;
     Exit;
   end;
-  // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag.
+  // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag und Kanal.
   AState.LastCheck := ANow;
+  AState.ChannelUrl := AQuery.Url;
   if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), cTimeoutMs, mText,
     Result.Error) then
   begin
