@@ -28,7 +28,8 @@ uses
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Generate.Menu;
+  Atlas.Core.Generate.Menu,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasGenerateChoicesFunc = reference to function(const AEntry: TAtlasGenerateEntry): TArray<string>;
@@ -72,14 +73,13 @@ type
     Hide: TAtlasGenerateHideProc;
   end;
 
-  TAtlasGenerateWindow = class(TForm)
+  TAtlasGenerateWindow = class(TAtlasPopupForm)
   private const
     cVisibleRows = 14;
   private
     FEntries: TArray<TAtlasGenerateEntry>;
     FOptions: TAtlasGenerateOptions;
     FRecent: TAtlasGenerateRecent;
-    FColors: TAtlasColors;
     FPattern: string;
     FRows: TArray<TAtlasGenerateRow>;
     FSelected: Integer;
@@ -104,7 +104,6 @@ type
     procedure UpdateHeight;
     procedure FormDeactivate(Sender: TObject);
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: Char); override;
@@ -434,11 +433,11 @@ begin
     end;
     mChunk := Copy(AText, mIndex, mRun - mIndex + 1);
     Canvas.Font.Style := [];
-    Canvas.Font.Color := ToColor(Window.FColors.Text);
+    Canvas.Font.Color := ToColor(Window.Colors.Text);
     if mMarks[mIndex] then
     begin
       Canvas.Font.Style := [fsBold];
-      Canvas.Font.Color := ToColor(Window.FColors.Accent);
+      Canvas.Font.Color := ToColor(Window.Colors.Accent);
     end;
     mPart := Rect(mX, ARect.Top, ARect.Right, ARect.Bottom);
     DrawText(Canvas.Handle, PChar(mChunk), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -455,11 +454,11 @@ begin
   // Ziffer 1–9 als Badge.
   mBadge := Rect(ABounds.Left, ABounds.Top + Px(4), ABounds.Left + Px(18), ABounds.Bottom - Px(4));
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Window.FColors.AccentSoft);
-  Canvas.Pen.Color := ToColor(Window.FColors.Line);
+  Canvas.Brush.Color := ToColor(Window.Colors.AccentSoft);
+  Canvas.Pen.Color := ToColor(Window.Colors.Line);
   Canvas.RoundRect(mBadge.Left, mBadge.Top, mBadge.Right, mBadge.Bottom, Px(4), Px(4));
   Canvas.Brush.Style := bsClear;
-  DrawLabel(IntToStr(ADigit), mBadge, Window.FColors.Text, DT_CENTER);
+  DrawLabel(IntToStr(ADigit), mBadge, Window.Colors.Text, DT_CENTER);
 end;
 
 procedure TAtlasGeneratePainter.ListRow(AVisibleRow: Integer);
@@ -477,7 +476,7 @@ begin
     Canvas.Font.Size := Window.Font.Size - 1;
     mPart := mBounds;
     Inc(mPart.Left, Px(8));
-    DrawLabel(TAtlasGenerateTexts.GroupCaption(mRow.Group), mPart, Window.FColors.Muted, 0);
+    DrawLabel(TAtlasGenerateTexts.GroupCaption(mRow.Group), mPart, Window.Colors.Muted, 0);
     Canvas.Font.Size := Window.Font.Size;
     Canvas.Brush.Style := bsSolid;
     Exit;
@@ -486,7 +485,7 @@ begin
   if Window.FTop + AVisibleRow = Window.FSelected then
   begin
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Window.FColors.Selection);
+    Canvas.Brush.Color := ToColor(Window.Colors.Selection);
     Canvas.FillRect(mBounds);
     Canvas.Brush.Style := bsClear;
   end;
@@ -502,7 +501,7 @@ begin
   begin
     mNameWidth := Canvas.TextWidth(mEntry.CommandName);
     mPart := Rect(mBounds.Right - mNameWidth, mBounds.Top, mBounds.Right, mBounds.Bottom);
-    DrawLabel(mEntry.CommandName, mPart, Window.FColors.Muted, 0);
+    DrawLabel(mEntry.CommandName, mPart, Window.Colors.Muted, 0);
     Inc(mNameWidth, Px(12));
   end;
   DrawHighlighted(TAtlasGenerateTexts.EntryCaption(mEntry), CaptionPattern(Window.FPattern),
@@ -522,7 +521,7 @@ begin
   if mIndex = Window.FSelected then
   begin
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(Window.FColors.Selection);
+    Canvas.Brush.Color := ToColor(Window.Colors.Selection);
     Canvas.FillRect(mBounds);
   end;
   Canvas.Brush.Style := bsClear;
@@ -531,7 +530,7 @@ begin
   begin
     // Eigene Eingabe.
     DrawLabel(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateFreeText, [Trim(mStep.Text)]), mBounds,
-      Window.FColors.Text,
+      Window.Colors.Text,
       DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;
     Exit;
@@ -539,11 +538,11 @@ begin
   if mStep.Entry.Multi then
   begin
     mBox := Rect(mBounds.Left, mBounds.Top + Px(5), mBounds.Left + Px(14), mBounds.Bottom - Px(5));
-    Canvas.Pen.Color := ToColor(Window.FColors.Muted);
+    Canvas.Pen.Color := ToColor(Window.Colors.Muted);
     if mStep.Checked[mStep.Order[mIndex]] then
     begin
       Canvas.Brush.Style := bsSolid;
-      Canvas.Brush.Color := ToColor(Window.FColors.Accent);
+      Canvas.Brush.Color := ToColor(Window.Colors.Accent);
     end;
     Canvas.Rectangle(mBox);
     Canvas.Brush.Style := bsClear;
@@ -561,18 +560,18 @@ begin
   Canvas.Font.Style := [fsBold];
   if Window.FStep.Active then
   begin
-    DrawLabel(TAtlasGenerateTexts.EntryCaption(Window.FStep.Entry), Result, Window.FColors.Text, DT_END_ELLIPSIS);
+    DrawLabel(TAtlasGenerateTexts.EntryCaption(Window.FStep.Entry), Result, Window.Colors.Text, DT_END_ELLIPSIS);
   end
   else
   begin
-    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateTitle), Result, Window.FColors.Text, 0);
+    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateTitle), Result, Window.Colors.Text, 0);
   end;
   Canvas.Font.Style := [];
   if Window.FStep.Active and Window.FOptions.ShowCommandNames then
   begin
-    DrawLabel(Window.FStep.Entry.CommandName, Result, Window.FColors.Muted, DT_RIGHT);
+    DrawLabel(Window.FStep.Entry.CommandName, Result, Window.Colors.Muted, DT_RIGHT);
   end;
-  Canvas.Pen.Color := ToColor(Window.FColors.Line);
+  Canvas.Pen.Color := ToColor(Window.Colors.Line);
   Canvas.MoveTo(0, Result.Bottom + Px(2));
   Canvas.LineTo(Window.ClientWidth, Result.Bottom + Px(2));
 end;
@@ -584,23 +583,23 @@ begin
   // Eingabefeld mit Akzentrahmen.
   mInput := Rect(Px(6), ATitle.Bottom + Px(6), Window.ClientWidth - Px(6), ATitle.Bottom + Px(6) + Metrics.RowHeight);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Pen.Color := ToColor(Window.FColors.Accent);
-  Canvas.Brush.Color := ToColor(Window.FColors.Gutter);
+  Canvas.Pen.Color := ToColor(Window.Colors.Accent);
+  Canvas.Brush.Color := ToColor(Window.Colors.Gutter);
   Canvas.Rectangle(mInput);
   InflateRect(mInput, -Px(8), 0);
   Canvas.Brush.Style := bsClear;
   if Window.FStep.Text <> '' then
   begin
-    DrawLabel(Window.FStep.Text + '|', mInput, Window.FColors.Text, DT_END_ELLIPSIS);
+    DrawLabel(Window.FStep.Text + '|', mInput, Window.Colors.Text, DT_END_ELLIPSIS);
   end
   else if Window.FStep.Entry.Example <> '' then
   begin
     DrawLabel(TAtlasGenerateStrings.Fmt(TAtlasGenerateTextId.GenerateExample, [Window.FStep.Entry.Example]), mInput,
-      Window.FColors.Muted, DT_END_ELLIPSIS);
+      Window.Colors.Muted, DT_END_ELLIPSIS);
   end
   else
   begin
-    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateArgumentPrompt), mInput, Window.FColors.Muted,
+    DrawLabel(TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateArgumentPrompt), mInput, Window.Colors.Muted,
       DT_END_ELLIPSIS);
   end;
 end;
@@ -624,7 +623,7 @@ begin
     mReason := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateEmpty);
   end;
   DrawLabel(mReason, Rect(Px(12), Metrics.ListTop, Window.ClientWidth - Px(12),
-    Metrics.ListTop + Metrics.RowHeight), Window.FColors.Muted, 0);
+    Metrics.ListTop + Metrics.RowHeight), Window.Colors.Muted, 0);
 end;
 
 procedure TAtlasGeneratePainter.Footer;
@@ -635,7 +634,7 @@ begin
   // Fußzeile: Filter oder Hinweis.
   mFooter := Rect(Px(12), Window.ClientHeight - Metrics.FooterHeight - Px(2), Window.ClientWidth - Px(12),
     Window.ClientHeight - Px(2));
-  Canvas.Pen.Color := ToColor(Window.FColors.Line);
+  Canvas.Pen.Color := ToColor(Window.Colors.Line);
   Canvas.MoveTo(0, mFooter.Top);
   Canvas.LineTo(Window.ClientWidth, mFooter.Top);
   Canvas.Brush.Style := bsClear;
@@ -656,7 +655,7 @@ begin
   begin
     mHint := TAtlasGenerateStrings.Text(TAtlasGenerateTextId.GenerateHint);
   end;
-  DrawLabel(mHint, mFooter, Window.FColors.Muted, DT_END_ELLIPSIS);
+  DrawLabel(mHint, mFooter, Window.Colors.Muted, DT_END_ELLIPSIS);
   Canvas.Font.Size := Window.Font.Size;
 end;
 
@@ -665,25 +664,14 @@ end;
 constructor TAtlasGenerateWindow.CreateMenu(AOwner: TComponent; const AEntries: TArray<TAtlasGenerateEntry>;
   const AOptions: TAtlasGenerateOptions; ARecent: TAtlasGenerateRecent; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreatePopup(AOwner, AColors);
   FEntries := AEntries;
   FOptions := AOptions;
   FRecent := ARecent;
-  FColors := AColors;
-  BorderStyle := bsNone;
-  KeyPreview := False;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 10;
+  // Eine Stufe größer als die Dialogschrift, wie die Befehlspalette.
+  Font.Size := Font.Size + 1;
   OnDeactivate := FormDeactivate;
   Rebuild;
-end;
-
-procedure TAtlasGenerateWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
 procedure TAtlasGenerateWindow.Paint;
@@ -695,7 +683,7 @@ begin
   mPainter.Window := Self;
   mPainter.Metrics.Window := Self;
   Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   mTitle := mPainter.Title;
   if FStep.Active then
@@ -720,7 +708,7 @@ begin
   end;
   mPainter.Footer;
   // Rahmen des Fensters.
-  Canvas.Pen.Color := ToColor(FColors.Accent);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
   Canvas.Rectangle(ClientRect);
   Canvas.Brush.Style := bsSolid;
 end;

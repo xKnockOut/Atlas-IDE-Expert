@@ -2,7 +2,8 @@
 
 // Internals-Rolle Shell: Fassade der Refactorings des Servers. Legt die Teile an, meldet ihre Befehle an und liefert
 // ihre Code-Aktionen in fester Reihenfolge (so stehen sie im Menü des Editors). Auch die Befehle des Debuggers
-// (Shell.Composition.Stepping, Shell.Composition.MethodBreakpoints) laufen hierüber, sie brauchen dieselben Dienste.
+// (Shell.Composition.Stepping, Shell.Composition.MethodBreakpoints) laufen hierüber, sie brauchen dieselben Dienste,
+// ebenso der Profiler (Shell.Composition.Profiler), den StopForeignWork beim Ende des Servers zuerst anhält.
 
 interface
 
@@ -10,17 +11,23 @@ uses
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Commands,
-  Shell.Composition.Refactorings.Services;
+  Shell.Composition.Refactorings.Services,
+  Shell.Composition.Profiler;
 
 type
   TShellRefactorings = class(TShellRefactoringPart)
   private
     FParts: TArray<TShellRefactoringPart>;
+    /// <summary>Einer der Teile (nicht besitzend).</summary>
+    FProfiler: TShellProfiler;
   public
     constructor Create(const AServices: TShellRefactoringServices);
     destructor Destroy; override;
     procedure Register(ACommands: TLspCommands); override;
     function Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>; override;
+    /// <summary>Erster Schritt beim Ende des Servers: hält einen laufenden Profiler-Lauf an und schreibt ihn, bevor
+    /// der Client den Server nach seiner Schonfrist hart beendet.</summary>
+    procedure StopForeignWork;
   end;
 
 implementation
@@ -33,19 +40,23 @@ uses
   Shell.Composition.Refactorings.Fixes,
   Shell.Composition.Refactorings.Editing,
   Shell.Composition.Stepping,
-  Shell.Composition.MethodBreakpoints,
-  Shell.Composition.Profiler;
+  Shell.Composition.MethodBreakpoints;
 
 { TShellRefactorings }
 
 constructor TShellRefactorings.Create(const AServices: TShellRefactoringServices);
+var
+  mProfiler: TShellProfiler;
 begin
   inherited Create(AServices);
+  mProfiler := TShellProfiler.Create(AServices);
   FParts := TArray<TShellRefactoringPart>.Create(TShellStructureRefactorings.Create(AServices),
     TShellVisibilityRefactorings.Create(AServices),
     TShellConversionRefactorings.Create(AServices), TShellTypeRefactorings.Create(AServices),
     TShellFixRefactorings.Create(AServices), TShellEditingRefactorings.Create(AServices),
-    TShellStepping.Create(AServices), TShellMethodBreakpoints.Create(AServices), TShellProfiler.Create(AServices));
+    TShellStepping.Create(AServices), TShellMethodBreakpoints.Create(AServices), mProfiler);
+  // FParts besitzt ihn, FProfiler kennt ihn nur.
+  FProfiler := mProfiler;
 end;
 
 destructor TShellRefactorings.Destroy;
@@ -57,7 +68,13 @@ begin
     mPart.Free;
   end;
   FParts := nil;
+  FProfiler := nil;
   inherited;
+end;
+
+procedure TShellRefactorings.StopForeignWork;
+begin
+  FProfiler.StopRun;
 end;
 
 procedure TShellRefactorings.Register(ACommands: TLspCommands);

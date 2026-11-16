@@ -17,6 +17,8 @@
 //   atlas-debug-children (AllRows gesetzt), schaltet „Alle Felder“ auf die
 //   ganze Feldliste um; die Wahl bleibt beim nächsten Halt erhalten.
 // - Schließen gibt das Fenster frei und meldet OnClosed.
+// - Thema und Schrift über TAtlasDialog (folgt jedem Themenwechsel), Spalten
+//   in logischen Pixeln über TAtlasListView; die letzte Spalte füllt den Rest.
 
 interface
 
@@ -31,15 +33,17 @@ uses
   Vcl.ExtCtrls,
   Vcl.Graphics,
   Vcl.Menus,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.ListView;
 
 type
-  TAtlasDebugViewer = class(TForm)
+  TAtlasDebugViewer = class(TAtlasDialog)
   private
     FHeader: TLabel;
     FNote: TLabel;
     FAllFields: TCheckBox;
-    FList: TListView;
+    FList: TAtlasListView;
     FTree: TTreeView;
     FImageBox: TScrollBox;
     FImage: TPaintBox;
@@ -77,7 +81,7 @@ type
     property View: TAtlasVisualizerView read FView;
     property HeaderLabel: TLabel read FHeader;
     property NoteLabel: TLabel read FNote;
-    property List: TListView read FList;
+    property List: TAtlasListView read FList;
     property AllFieldsCheck: TCheckBox read FAllFields;
     property Tree: TTreeView read FTree;
     property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
@@ -98,6 +102,11 @@ const
   cViewerHeight = 420;
   cGap = 8;
   cColorSize = 96;
+  /// <summary>Spaltenbreiten der Tabelle (Index, übrige) und Mindestbreite der füllenden letzten Spalte, logische
+  /// Pixel.</summary>
+  cIndexWidth = 56;
+  cColumnWidth = 160;
+  cFillMinWidth = 120;
 
 /// <summary>AControl oben in AForm, mit Rand Gap seitlich und ATopGap oben.</summary>
 procedure PlaceTop(AControl: TControl; AForm: TForm; ATopGap: Integer);
@@ -142,9 +151,8 @@ end;
 /// <summary>Tabelle und Baum des Betrachters AViewer.</summary>
 procedure CreateListAndTree(AViewer: TAtlasDebugViewer);
 begin
-  AViewer.FList := TListView.Create(AViewer);
+  AViewer.FList := TAtlasListView.Create(AViewer);
   PlaceClient(AViewer.FList, AViewer);
-  AViewer.FList.ViewStyle := vsReport;
   AViewer.FList.OwnerData := True;
   AViewer.FList.ReadOnly := True;
   AViewer.FList.RowSelect := True;
@@ -177,6 +185,8 @@ begin
   AViewer.FColor.Height := AViewer.ScaleValue(cColorSize);
   AViewer.FColor.BevelOuter := bvNone;
   AViewer.FColor.ParentBackground := False;
+  // Die Fläche zeigt die Farbe des Werts, nicht die des Themas.
+  AViewer.FColor.StyleElements := [];
 
   AViewer.FText := TMemo.Create(AViewer);
   PlaceClient(AViewer.FText, AViewer);
@@ -209,14 +219,12 @@ end;
 
 constructor TAtlasDebugViewer.CreateViewer(AOwner: TComponent);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, '', cViewerWidth);
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
+  // Der Aufrufer setzt die Lage (neben dem Ausdruck).
   Position := poDesigned;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  Width := ScaleValue(cViewerWidth);
-  Height := ScaleValue(cViewerHeight);
+  ClientHeight := ScaleValue(cViewerHeight);
   OnClose := ViewerClose;
   FMenu := CopyMenu(Self, CopyClick);
 
@@ -368,7 +376,6 @@ end;
 procedure TAtlasDebugViewer.ShowTable;
 var
   mColumn: TAtlasVisualizerColumn;
-  mListColumn: TListColumn;
   mIndex: Integer;
 begin
   FList.Items.BeginUpdate;
@@ -379,22 +386,17 @@ begin
     for mIndex := 0 to High(FView.Columns) do
     begin
       mColumn := FView.Columns[mIndex];
-      mListColumn := FList.Columns.Add;
-      mListColumn.Caption := ColumnCaption(mColumn);
       if mColumn = TAtlasVisualizerColumn.Index then
       begin
-        mListColumn.Width := ScaleValue(56);
+        FList.AddColumn(ColumnCaption(mColumn), cIndexWidth);
       end
       else
       begin
-        mListColumn.Width := ScaleValue(160);
+        FList.AddColumn(ColumnCaption(mColumn), cColumnWidth);
       end;
     end;
     // Die letzte Spalte füllt den Rest.
-    if FList.Columns.Count > 0 then
-    begin
-      FList.Columns[FList.Columns.Count - 1].AutoSize := True;
-    end;
+    FList.FillColumn(FList.Columns.Count - 1, cFillMinWidth);
     FList.ShowColumnHeaders := True;
     FList.Items.Count := Length(CurrentRows);
   finally
@@ -404,16 +406,14 @@ begin
 end;
 
 procedure TAtlasDebugViewer.ShowHex;
-var
-  mListColumn: TListColumn;
 begin
   FList.Items.BeginUpdate;
   try
     FList.Items.Count := 0;
     FList.Columns.Clear;
     FList.Font.Name := 'Consolas';
-    mListColumn := FList.Columns.Add;
-    mListColumn.AutoSize := True;
+    FList.AddColumn('', cFillMinWidth);
+    FList.FillColumn(0, cFillMinWidth);
     FList.ShowColumnHeaders := False;
     FList.Items.Count := TAtlasVisualizerFormat.HexLineCount(Length(FView.Bytes));
   finally

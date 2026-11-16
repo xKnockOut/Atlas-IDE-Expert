@@ -303,7 +303,7 @@ begin
     Exit;
   end;
   mRequireElse := TRuleOptions.Bool(AContext.Options, 'requireElse', False);
-  mFileName := ContextFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -647,7 +647,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mPaths := TConditionalBranches.Paths(mTokens);
-  mFileName := ContextFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);

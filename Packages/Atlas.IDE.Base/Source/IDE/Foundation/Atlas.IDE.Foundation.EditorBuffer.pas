@@ -28,6 +28,11 @@ type
     /// <summary>Editoransicht der aktuellen Datei, auch wenn der Fokus gerade in Palette, Menü oder einem
     /// angedockten Fenster liegt; nil ohne offene Quelltextdatei.</summary>
     class function ActiveView: IOTAEditView; static;
+    /// <summary>Oberste Editoransicht der IDE (IOTAEditorServices.TopView); nil ohne. Liegt der Fokus außerhalb des
+    /// Editors, kann sie fehlen, siehe ActiveView.</summary>
+    class function TopView: IOTAEditView; static;
+    /// <summary>Wie TopView, aber nil, wenn die Ansicht keinen Puffer hat.</summary>
+    class function TopSourceView: IOTAEditView; static;
   end;
 
 implementation
@@ -182,6 +187,26 @@ begin
   if (Result = nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
     Result := mEditors.TopView;
+  end;
+end;
+
+class function TAtlasEditorBuffer.TopView: IOTAEditView;
+var
+  mEditors: IOTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  begin
+    Result := mEditors.TopView;
+  end;
+end;
+
+class function TAtlasEditorBuffer.TopSourceView: IOTAEditView;
+begin
+  Result := TopView;
+  if (Result <> nil) and (Result.Buffer = nil) then
+  begin
+    Result := nil;
   end;
 end;
 

@@ -20,7 +20,7 @@ uses
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.HoverTree,
   Atlas.IDE.Hover.DebugValue,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.StopView;
 
 type
   /// <summary>Anfrage AMethod mit AParamsJson im Hintergrund an den laufenden Server; ADone im Hauptthread, nur
@@ -28,18 +28,11 @@ type
   TAtlasHoverTreeRequestRunner = reference to function(const AMethod, AParamsJson: string;
     const ADone: TProc<string>): Boolean;
 
-  TAtlasIdeDebugHoverTree = class
+  TAtlasIdeDebugHoverTree = class(TAtlasIdeDebugStopView)
   public const
     /// <summary>Ids der Aktionen im Debug-Hover.</summary>
     cCopyAction = 895;
     cWatchAction = 8951;
-  private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugResumed; override;
-      procedure DebugEnded; override;
-    end;
   private class var
     FInstance: TAtlasIdeDebugHoverTree;
   private
@@ -47,7 +40,6 @@ type
     FTree: TAtlasHoverTree;
     FDebug: TAtlasIdeDebugValues;
     FRequest: TAtlasHoverTreeRequestRunner;
-    FListener: IAtlasIdeDebugListener;
     FRefresh: TProc;
     FFileName: string;
     FLine: Integer;
@@ -57,18 +49,21 @@ type
     FGeneration: Integer;
     constructor Create(const ARequest: TAtlasHoverTreeRequestRunner);
     procedure ApplySettings;
-    procedure Stopped;
     /// <summary>Baum verwerfen; AEnded: auch die gemerkten Werte (Ende der Sitzung).</summary>
     procedure Forget(AEnded: Boolean);
     /// <summary>Nächste Auswertung starten, wenn keine läuft.</summary>
     procedure Pump;
     procedure Evaluate(const ARequest: TAtlasHoverTreeRequest);
-    procedure Ask(const ARequest: TAtlasHoverTreeRequest);
+    procedure AskServer(const ARequest: TAtlasHoverTreeRequest);
     /// <summary>Antwort angekommen: Tooltip neu zeichnen, weiter mit der nächsten.</summary>
     procedure Answered(AGeneration: Integer);
     /// <summary>Thread und Methode des Halts; '' ohne angehaltenen Prozess.</summary>
     class function Context: string; static;
     class procedure Copy(const AValue: TAtlasDebugValue); static;
+  protected
+    procedure SessionStopped; override;
+    procedure SessionResumed; override;
+    procedure SessionEnded; override;
   public
     destructor Destroy; override;
     /// <summary>Teil starten; ARequest schickt Anfragen an den laufenden Server (Eigenschaften).</summary>
@@ -92,6 +87,7 @@ type
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
   Winapi.Windows,
   Vcl.Clipbrd,
   ToolsAPI,
@@ -100,32 +96,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluate,
   Atlas.UI.Debug.Values.Strings;
-
-{ TAtlasIdeDebugHoverTree.TListener }
-
-procedure TAtlasIdeDebugHoverTree.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugHoverTree.TListener.DebugResumed;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Forget(False);
-  end;
-end;
-
-procedure TAtlasIdeDebugHoverTree.TListener.DebugEnded;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Forget(True);
-  end;
-end;
 
 { TAtlasIdeDebugHoverTree }
 
@@ -170,10 +140,20 @@ begin
   FTree.ShowChanges := mSettings.DebugHoverChanges;
 end;
 
-procedure TAtlasIdeDebugHoverTree.Stopped;
+procedure TAtlasIdeDebugHoverTree.SessionStopped;
 begin
   Forget(False);
   FChanges.BeginStop(Context);
+end;
+
+procedure TAtlasIdeDebugHoverTree.SessionResumed;
+begin
+  Forget(False);
+end;
+
+procedure TAtlasIdeDebugHoverTree.SessionEnded;
+begin
+  Forget(True);
 end;
 
 procedure TAtlasIdeDebugHoverTree.Forget(AEnded: Boolean);
@@ -208,7 +188,7 @@ begin
     mLast := mRequest;
     if mRequest.Properties then
     begin
-      Ask(mRequest);
+      AskServer(mRequest);
     end
     else
     begin
@@ -248,7 +228,7 @@ begin
   FBusy := False;
 end;
 
-procedure TAtlasIdeDebugHoverTree.Ask(const ARequest: TAtlasHoverTreeRequest);
+procedure TAtlasIdeDebugHoverTree.AskServer(const ARequest: TAtlasHoverTreeRequest);
 var
   mGeneration: Integer;
   mKey: string;
@@ -334,8 +314,8 @@ begin
     Exit;
   end;
   FInstance := TAtlasIdeDebugHoverTree.Create(ARequest);
-  FInstance.FListener := TListener.Create;
-  TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+  FInstance.Listen;
+
   TAtlasIdeDebugSession.Start;
 end;
 
@@ -349,11 +329,6 @@ begin
   end;
   mInstance := FInstance;
   FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   mInstance.Free;
 end;
 

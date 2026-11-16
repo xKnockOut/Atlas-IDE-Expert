@@ -127,7 +127,8 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Problems.Controller;
+  Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 const
   cTimeoutMs = 20000;
@@ -157,17 +158,6 @@ begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
   end;
 end;
 
@@ -452,7 +442,7 @@ function TAtlasIdeOwnershipHints.StillShown(const AHit: THit): Boolean;
 var
   mView: IOTAEditView;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, FFileName) and
     (mView.TopRow = AHit.TopRow);
 end;

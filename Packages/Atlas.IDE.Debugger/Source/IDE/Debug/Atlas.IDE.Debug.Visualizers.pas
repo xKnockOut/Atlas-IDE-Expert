@@ -140,7 +140,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Debug.VisualizerFlow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Values.Strings;
@@ -263,7 +262,6 @@ begin
   FForm.Left := APosition.X;
   FForm.Top := APosition.Y;
   FForm.MakeFullyVisible;
-  TAtlasIdeDockWindow.ApplyIdeTheme(FForm);
   FForm.Show;
   TAtlasIdeVisualizers.ViewerOpened(Self);
   RefreshVisualizer(AExpression, ATypeName, AEvalResult);

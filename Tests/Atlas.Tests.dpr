@@ -489,6 +489,7 @@ uses
   Atlas.Common.Rules.Profiles.Tests in 'Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas',
   Atlas.Common.Rules.CodeActions.Tests in 'Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas',
   Atlas.Common.Rules.Confidence.Tests in 'Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas',
+  Atlas.Common.Rules.Contract.Tests in 'Common\Rules\Atlas.Common.Rules.Contract.Tests.pas',
   Atlas.Common.Rules.Output.Tests in 'Common\Rules\Atlas.Common.Rules.Output.Tests.pas',
   Atlas.Common.Rules.FormatOutput.Tests in 'Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas',
   Atlas.Common.Rules.Baseline.Tests in 'Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas',

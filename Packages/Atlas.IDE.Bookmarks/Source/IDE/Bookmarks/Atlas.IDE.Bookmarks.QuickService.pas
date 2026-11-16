@@ -29,6 +29,8 @@ type
     class function ColumnMarksAt(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>; static;
     /// <summary>Datei hat Marker für die Spalte (aus dem Speicher; erst nach Track bekannt).</summary>
     class function HasColumnMarks(const AFileName: string): Boolean; static;
+    /// <summary>Datei und Text (Schnappschuss) der obersten Editoransicht für die Spalte; '' ohne Datei.</summary>
+    class procedure TopFileText(out AFileName, AText: string); static;
     /// <summary>Nummer, die ein Klick in die Spalte jetzt vergäbe (1–9, 0 = alle belegt).</summary>
     class function NextNumber(const AFileName: string): Integer; static;
     /// <summary>Gefundene Lesezeichen von AFileName für die Übersichtsleiste (#519); False, wenn die schnellen
@@ -68,6 +70,7 @@ uses
   Atlas.UI.Bookmarks.Strings,
   Atlas.UI.Bookmarks.Dialog,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Bookmarks.Service;
@@ -164,6 +167,20 @@ begin
   if TAtlasIdeBookmarks.LoadedList(AFileName, mCurrent) then
   begin
     Result := TAtlasQuickBookmarks.ColumnMarks(mCurrent, AFileName, ALine);
+  end;
+end;
+
+class procedure TAtlasIdeQuickBookmarks.TopFileText(out AFileName, AText: string);
+var
+  mView: IOTAEditView;
+begin
+  AFileName := '';
+  AText := '';
+  mView := TAtlasEditorBuffer.TopView;
+  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
+  begin
+    AFileName := mView.Buffer.FileName;
+    AText := TAtlasEditorSnapshots.Get(mView).Text;
   end;
 end;
 

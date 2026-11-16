@@ -152,20 +152,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Dateiname des Laufs für die Namensauflösung: FileName, sonst RelativePath, sonst Unit.pas.</summary>
-function RuleFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 /// <summary>Methode, in der ANode steht (äußerste Routine mit Punkt im Namen); nil außerhalb.</summary>
 function EnclosingMethod(ANode: TSyntaxNode): TSyntaxNode;
 var
@@ -811,7 +797,7 @@ begin
   FCache := TRuleDerived.Open(FContext);
   FLocal := TRuleDerived.UnitIndex(FCache, FContext);
   FTokens := TRuleDerived.CodeTokens(FCache, FContext);
-  FFileName := RuleFileName(FContext);
+  FFileName := FContext.ResolverFileName;
   CheckPropertyAccessors;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   FResolver := TRuleDerived.Resolver(FCache, FContext);

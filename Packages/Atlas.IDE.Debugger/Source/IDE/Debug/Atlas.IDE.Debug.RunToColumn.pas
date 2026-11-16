@@ -123,17 +123,6 @@ begin
   end;
 end;
 
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
-
 /// <summary>▶ in ARect, Farbe aus dem Grund der Spalte; Pinsel und Stift der IDE bleiben erhalten.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ARect: TRect);
 var
@@ -308,7 +297,7 @@ var
   mView: IOTAEditView;
   mText: string;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or not TAtlasRunToColumnFlow.ReadDue(SameText(FCodeFile,
     mView.Buffer.FileName), TThread.GetTickCount64, FCodeReadAt, cTextMs) then
   begin
@@ -338,7 +327,7 @@ var
 begin
   ARow := Default(TRow);
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;

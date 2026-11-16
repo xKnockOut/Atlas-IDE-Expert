@@ -879,15 +879,7 @@ begin
   FReport := AReport;
   FCache := TRuleDerived.Open(AContext);
   FTokens := TRuleDerived.ActiveCodeTokens(FCache, AContext);
-  FFileName := AContext.FileName;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.RelativePath;
-  end;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.UnitName + '.pas';
-  end;
+  FFileName := AContext.ResolverFileName;
   FAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(FCache, AContext));
 end;
 

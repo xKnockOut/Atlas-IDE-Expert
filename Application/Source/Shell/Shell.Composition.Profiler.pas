@@ -2,7 +2,9 @@
 
 // Internals-Rolle Shell: Befehle des Stichproben-Profilers (#2057) atlas.server.profilerStart, …Status und …Stop.
 // Gemessen wird im Server, weil er unter Windows ein 64-Bit-Prozess ist (Prober aus Shell.Platform); die Läufe liegen
-// im Cache unter profiles, wo auch get_profile sie liest. Logik in Atlas.Common.Lsp.Profiler.
+// im Cache unter profiles, wo auch get_profile sie liest. Logik in Atlas.Common.Lsp.Profiler. Den gemessenen Prozess
+// meldet der Teil an die Statusdatei (AtlasMonitor warnt dann vor dem Beenden); StopRun hält den Lauf beim Ende des
+// Servers an.
 
 interface
 
@@ -22,6 +24,9 @@ type
     destructor Destroy; override;
     procedure Register(ACommands: TLspCommands); override;
     function Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>; override;
+    /// <summary>Laufenden Lauf anhalten und schreiben (Ende des Servers); ein Fehler beim Schreiben landet im Log.
+    /// </summary>
+    procedure StopRun;
   end;
 
 implementation
@@ -29,6 +34,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Lsp.ServerActivity,
   Atlas.Common.Profiling.Contract,
   Atlas.Text.Profile,
   Shell.Platform;
@@ -43,6 +49,11 @@ begin
     begin
       Result := TShellPlatform.ProfileSampler;
     end, TAtlasProfileStore.Folder(TIndexCacheDirectory.DefaultRoot));
+  FProfiler.OnProcessChange :=
+    procedure(AProcessId: Cardinal)
+    begin
+      TServerActivity.Shared.SetProfiledProcess(AProcessId);
+    end;
 end;
 
 destructor TShellProfiler.Destroy;
@@ -54,6 +65,17 @@ end;
 procedure TShellProfiler.Register(ACommands: TLspCommands);
 begin
   FProfiler.Register(ACommands);
+end;
+
+procedure TShellProfiler.StopRun;
+begin
+  try
+    FProfiler.StopRun;
+  except
+    // Der Prober ist schon angehalten; nur die Datei des Laufs fehlt. Das Ende des Servers geht weiter.
+    on E: Exception do
+      Log('Profiler: Lauf beim Beenden nicht geschrieben (' + E.ClassName + ')'); // german-ok: Diagnoseprotokoll
+  end;
 end;
 
 function TShellProfiler.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;

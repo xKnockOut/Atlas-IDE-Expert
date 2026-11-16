@@ -902,16 +902,14 @@ end;
 
 /// <summary>Oberer Editor mit einer Quelldatei; nil ohne. Ohne Fokus ändert sich der Puffer nur über Neuladen, das
 /// den Stand ohnehin als veraltet markiert: dann weder Puffer lesen noch abgleichen.</summary>
-function TopSourceView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
+function ActiveTopSourceView: IOTAEditView;
 begin
   Result := nil;
-  if Application.Active and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  if Application.Active then
   begin
-    Result := mEditors.TopView;
+    Result := TAtlasEditorBuffer.TopSourceView;
   end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not IsSource(Result.Buffer.FileName)) then
+  if (Result <> nil) and not IsSource(Result.Buffer.FileName) then
   begin
     Result := nil;
   end;
@@ -936,7 +934,7 @@ begin
     end;
     CheckProjectsRemoved;
     PullRequestedFiles;
-    mView := TopSourceView;
+    mView := ActiveTopSourceView;
     if mView <> nil then
     begin
       mText := TrackEdit(mView);
