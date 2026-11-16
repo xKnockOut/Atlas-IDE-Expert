@@ -399,10 +399,12 @@ begin
   if mChosen.IsEmpty then
   begin
     SetEnabled(mChosen, True);
-    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesRemoved, [PlaceText(mFileName, mLine)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesRemoved, [PlaceText(mFileName,
+      mLine)]));
     Exit;
   end;
-  FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesSaved, [PlaceText(mFileName, mLine)]));
+  FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesSaved, [PlaceText(mFileName,
+    mLine)]));
 end;
 
 class procedure TAtlasIdeBreakpointRules.Moved(const AFileName: string; AFromLine, AToLine: Integer);

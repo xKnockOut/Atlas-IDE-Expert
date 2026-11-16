@@ -272,8 +272,8 @@ begin
       mOrphans[mIndex].Expression := TAtlasInstanceBreakpoint.WithoutAddress(mOrphans[mIndex].Expression);
     end;
   end;
-  FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceOrphanDone, [Length(mOrphans) - mReplaced,
-    mReplaced]));
+  FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceOrphanDone,
+    [Length(mOrphans) - mReplaced, mReplaced]));
 end;
 
 class procedure TAtlasIdeInstanceBreakpoint.Start(const AMessage: TProc<string>);

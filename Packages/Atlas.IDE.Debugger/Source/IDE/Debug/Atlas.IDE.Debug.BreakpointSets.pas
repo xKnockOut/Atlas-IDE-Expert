@@ -384,8 +384,8 @@ begin
   FActiveName := ASets[AIndex].Name;
   if AExclusive then
   begin
-    FMessage.Say(APrefix + TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSwitched, [ASets[AIndex].Name,
-      mCounts.Created, mCounts.Enabled, mCounts.Disabled]));
+    FMessage.Say(APrefix + TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSwitched,
+      [ASets[AIndex].Name, mCounts.Created, mCounts.Enabled, mCounts.Disabled]));
   end
   else
   begin
@@ -536,7 +536,8 @@ begin
   else if AskSet(mFolder, mSet) and WriteSet(mFolder, mSet) then
   begin
     FActiveName := mSet.Name;
-    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSaved, [mSet.Name, Length(mSet.Entries)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSaved, [mSet.Name,
+      Length(mSet.Entries)]));
   end;
 end;
 

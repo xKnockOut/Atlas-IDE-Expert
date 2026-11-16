@@ -312,7 +312,8 @@ begin
   end;
   case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc()) of
     TAtlasBreakpointCheckChoice.Move:
-      FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
+      FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved,
+        [MoveProblems(mProblems)]));
     TAtlasBreakpointCheckChoice.Cancel:
       Result := False;
   end;

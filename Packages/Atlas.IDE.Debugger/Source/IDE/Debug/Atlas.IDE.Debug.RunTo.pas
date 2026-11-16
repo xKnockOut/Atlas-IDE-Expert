@@ -170,7 +170,8 @@ begin
   if (mBreakpoints[0] <> nil) and SameText(mBreakpoints[0].GroupName, TAtlasRunTo.cOnceGroup) then
   begin
     TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
-    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceRemoved, [ExtractFileName(mFileName), mLine + 1]));
+    FMessage.Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToOnceRemoved, [ExtractFileName(mFileName),
+      mLine + 1]));
   end;
 end;
 

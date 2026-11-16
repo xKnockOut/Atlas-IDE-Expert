@@ -175,7 +175,8 @@ begin
     end
     else if TAtlasDataBreakpoint.FreeSlots(UsedSlots) = 0 then
     begin
-      FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSlot, [TAtlasDataBreakpoint.cSlots]));
+      FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSlot,
+        [TAtlasDataBreakpoint.cSlots]));
     end
     else
     begin
@@ -315,8 +316,8 @@ begin
       Continue;
     end;
     mValue := NewValue(mWatch, mBytes);
-    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataChanged, [mWatch.Expression, mWatch.Value,
-      mValue]));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataChanged, [mWatch.Expression,
+      mWatch.Value, mValue]));
     mLast := TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataStatus, [mWatch.Expression, mWatch.Value,
       mValue]);
     mWatch.Bytes := mBytes;
