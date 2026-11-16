@@ -1,0 +1,2 @@
+### Behoben
+- Tests mit `[TestCase]` werden im Fenster „Atlas-Tests“, an der Testmarke und in der Statusleiste wieder grün bzw. rot: Der NUnit-Bericht von DUnitX nennt jeden Test relativ zu seiner Fixture („Methode.Fall“), Atlas las daraus aber „Methode“ als Fixture und „Fall“ als Methode, sodass das Ergebnis keinem Knoten zugeordnet wurde. Fälle mit Punkt im Namen und Fälle aus Werten („Methode(1, 2)“) werden ebenso richtig gelesen.
