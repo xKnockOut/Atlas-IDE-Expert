@@ -29,7 +29,8 @@ uses
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Projects,
-  Atlas.IDE.Projects.Summaries;
+  Atlas.IDE.Projects.Summaries,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
@@ -37,7 +38,7 @@ type
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts.</summary>
     cOrder = 20;
   private
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FStopped: Boolean;
     // Hört auf die Zusammenfassungen des Kerns (#1455), solange der Bereich läuft.
     FListening: IAtlasRegistration;
@@ -46,7 +47,6 @@ type
     // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
     FQuickActions: IAtlasQuickActionsSource;
     procedure Changed;
-    procedure Report(const AText: string);
     class function TrendsOn: Boolean; static;
     class function ProjectOpen(const AFileName: string): Boolean; static;
     class function Summaries: TAtlasIdeProjectSummaries; static;
@@ -106,7 +106,7 @@ uses
 constructor TAtlasIdeProjects.Create(const AMessage: TProc<string>);
 begin
   inherited Create;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
 end;
 
 destructor TAtlasIdeProjects.Destroy;
@@ -128,14 +128,6 @@ begin
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cTests);
   // Und „Meine Issues“ (#765): Auswahl, Branch (Branch → Ticket) und Art der Versionsverwaltung.
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cIssues);
-end;
-
-procedure TAtlasIdeProjects.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 class function TAtlasIdeProjects.TrendsOn: Boolean;
@@ -279,7 +271,7 @@ begin
     begin
       if not FileExists(AProject) then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
         Exit;
       end;
       if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
@@ -306,7 +298,7 @@ begin
     begin
       if not FileExists(AProject) then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
         Exit;
       end;
       // Erst das Projekt (wie die Liste der IDE), dann die erste Meldung.
@@ -353,7 +345,7 @@ begin
       end
       else
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
       end;
     end);
 end;

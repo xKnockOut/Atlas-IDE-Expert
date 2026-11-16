@@ -59,7 +59,8 @@ uses
   Atlas.Core.Tracker.SyncPlan,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Worker,
-  Atlas.UI.Tracker.EndDialog;
+  Atlas.UI.Tracker.EndDialog,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Transport mit dem Token aus dem Anmeldespeicher; nil ohne Token. Läuft im Hintergrund.</summary>
@@ -110,13 +111,12 @@ type
   private
     FWorker: TAtlasVcsWorker;
     FTransport: TAtlasIdeTrackerTransport;
-    FReport: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FTimeText: TAtlasIdeTrackerTimeText;
     FTimeSeconds: TAtlasIdeTrackerTimeSeconds;
     FTimeBooked: TAtlasIdeTrackerTimeBooked;
     FCommentAssist: TAtlasIdeTrackerAssist;
     FStopped: Boolean;
-    procedure Report(const AText: string);
     procedure ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
       const AEnded: TProc<TAtlasTrackerWrite>);
@@ -291,7 +291,7 @@ constructor TAtlasIdeTrackerSync.Create(const ATransport: TAtlasIdeTrackerTransp
 begin
   inherited Create;
   FTransport := ATransport;
-  FReport := AReport;
+  FMessage := TAtlasMessageSink.Create(AReport);
   FWorker := TAtlasVcsWorker.Create;
 end;
 
@@ -300,14 +300,6 @@ begin
   Stop;
   FWorker.Free;
   inherited;
-end;
-
-procedure TAtlasIdeTrackerSync.Report(const AText: string);
-begin
-  if Assigned(FReport) and (AText <> '') then
-  begin
-    FReport(AText);
-  end;
 end;
 
 procedure TAtlasIdeTrackerSync.ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -381,23 +373,23 @@ begin
     // Abgebrochen nach einem Teilerfolg: sagen, was schon im Tracker steht.
     if AOutcome.Progress.Wrote then
     begin
-      Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndPartial, [AKey, mSummary]));
+      FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndPartial, [AKey, mSummary]));
     end;
     Exit;
   end;
   if mSummary <> '' then
   begin
-    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndSent, [AKey, mSummary]));
+    FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerEndSent, [AKey, mSummary]));
   end;
   // Status im Projekt (#2134) in eigenen Zeilen.
   for mLine in TAtlasGitHubStrings.ProjectLines(AKey, AOutcome.Progress.Project) do
   begin
-    Report(mLine);
+    FMessage.Say(mLine);
   end;
   // Pull Request (#2136) mit Adresse in eigenen Zeilen.
   for mLine in TAtlasGitHubStrings.PullLines(AKey, AOutcome.Progress.Pull) do
   begin
-    Report(mLine);
+    FMessage.Say(mLine);
   end;
   AEnded(AOutcome.Plan.Change);
 end;
@@ -472,18 +464,18 @@ begin
   mNote := TAtlasTrackerSyncPlan.StartNote(AStarted);
   if mNote.Failed then
   begin
-    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
+    FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
       [AKey, TAtlasTrackerEndDialog.ErrorText(AKey, AStarted.Outcome)]));
     Exit;
   end;
   if mNote.Synced then
   begin
-    Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
+    FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartSynced,
       [AKey, TAtlasTrackerEndDialog.SummaryText(AStarted.Change, AStarted.NewState)]));
   end;
   case mNote.Block of
     TAtlasTrackerStartBlock.NoTransitions:
-      Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransitionNone, [AKey, mNote.Current]));
+      FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransitionNone, [AKey, mNote.Current]));
     TAtlasTrackerStartBlock.Transitions:
       begin
         mNames := Copy(mNote.Transitions);
@@ -491,7 +483,7 @@ begin
         begin
           mNames[mIndex] := TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerQuoted, [mNames[mIndex]]);
         end;
-        Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransition,
+        FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartNoTransition,
           [AKey, mNote.Current, string.Join(', ', mNames)]));
       end;
     TAtlasTrackerStartBlock.None:
@@ -619,7 +611,7 @@ begin
   // Höchstens die Zeitgrenze eines Schreibens; danach kommt kein Ergebnis mehr an.
   FWorker.Stop(1000);
   FTransport := nil;
-  FReport := nil;
+  FMessage.Clear;
   FTimeText := nil;
   FTimeSeconds := nil;
   FTimeBooked := nil;
@@ -767,7 +759,7 @@ begin
       begin
         for mLine in TAtlasTrackerEndTexts.StartLines(mKey, mChange, AResult) do
         begin
-          mOwner.Report(mLine);
+          mOwner.FMessage.Say(mLine);
         end;
         if Assigned(mWritten) then
         begin
@@ -776,7 +768,7 @@ begin
       end
       else
       begin
-        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
+        mOwner.FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerStartFailed,
           [mKey, TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);
@@ -956,7 +948,7 @@ begin
       Logged(mProvider, 'Kommentar', AResult);
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerCommentSent, [mKey]));
+        mOwner.FMessage.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerCommentSent, [mKey]));
       end;
       mDone(AResult);
     end);

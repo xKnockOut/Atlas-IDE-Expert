@@ -30,7 +30,8 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Unwrap,
-  Atlas.UI.Editor.Unwrap;
+  Atlas.UI.Editor.Unwrap,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasUnwrapSessionFunc = reference to function: TLspSession;
@@ -52,7 +53,7 @@ type
     FInstance: TAtlasIdeUnwrap;
   private
     FSession: TAtlasUnwrapSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FMessages: TApplicationEvents;
     FWindow: TAtlasUnwrapWindow;
     FEvents: TEvents;
@@ -76,7 +77,6 @@ type
     procedure Preview(AIndex: Integer);
     procedure Accept(AIndex: Integer);
     procedure Close;
-    procedure Report(const AText: string);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class procedure Invalidate; static;
@@ -163,7 +163,7 @@ var
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FIndex := -1;
   FPreview := -1;
   FMessages := TApplicationEvents.Create(nil);
@@ -312,7 +312,7 @@ begin
   end;
   if Result and (ASession = nil) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    FMessage.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Result := False;
   end;
 end;
@@ -352,12 +352,12 @@ begin
     Result := Length(AEntries) > 0;
     if not Result then
     begin
-      Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapNothing));
+      FMessage.Say(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapNothing));
     end;
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapFailed, [E.Message]));
+      FMessage.Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapFailed, [E.Message]));
     end;
   end;
 end;
@@ -441,7 +441,7 @@ begin
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FFileName) or
     (TAtlasEditorBuffer.Text(mView.Buffer) <> FText) then
   begin
-    Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapChanged));
+    FMessage.Say(TAtlasEditorStrings.Text(TAtlasEditorTextId.UnwrapChanged));
     Exit;
   end;
   FWriting := True;
@@ -453,10 +453,10 @@ begin
   end;
   if mOutcome.Error <> '' then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+    FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
     Exit;
   end;
-  Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
+  FMessage.Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.UnwrapDone, [TAtlasUnwrapWindow.EntryCaption(mEntry)]));
 end;
 
 procedure TAtlasIdeUnwrap.Close;
@@ -473,14 +473,6 @@ begin
   if mPainted then
   begin
     Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeUnwrap.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 

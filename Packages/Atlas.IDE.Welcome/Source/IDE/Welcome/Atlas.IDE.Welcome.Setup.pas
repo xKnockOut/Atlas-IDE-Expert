@@ -46,7 +46,8 @@ uses
   Atlas.Core.Welcome.Setup,
   Atlas.UI.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
-  Atlas.IDE.Welcome.Setup.ProjectEvents;
+  Atlas.IDE.Welcome.Setup.ProjectEvents,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
@@ -65,7 +66,7 @@ type
   private type
     /// <summary>Was die Komposition hereinreicht.</summary>
     THooks = record
-      Message: TProc<string>;
+      Message: TAtlasMessageSink;
       StartBaseline: TAtlasSetupBaselineStart;
       NewFile: TAtlasSetupNewFile;
     end;
@@ -166,14 +167,6 @@ begin
   Result := FileExists(AFileName);
 end;
 
-procedure Report(ASelf: TAtlasIdeSetup; const AText: string);
-begin
-  if Assigned(ASelf.FHooks.Message) then
-  begin
-    ASelf.FHooks.Message(AText);
-  end;
-end;
-
 /// <summary>Projektdatei eines Eintrags aus „Wieder öffnen“; '' fehlt sie oder ist sie ausgeblendet.</summary>
 function RecentTarget(const ARecent: string): string;
 var
@@ -232,7 +225,7 @@ begin
   Result := Target(AOpen);
   if Result = '' then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
+    ASelf.FHooks.Message.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupNoProject));
   end;
 end;
 
@@ -329,7 +322,7 @@ begin
   end;
   if not Result then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
+    ASelf.FHooks.Message.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigInvalid,
       [TAtlasSetupTexts.TemplateCaption(ATemplate), string.Join('; ', mIssues)]));
     Exit;
   end;
@@ -346,7 +339,7 @@ begin
   Result := mExisting = '';
   if not Result then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [mExisting]));
+    ASelf.FHooks.Message.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigExists, [mExisting]));
     ASelf.Refresh;
   end;
 end;
@@ -361,7 +354,7 @@ begin
     on E: Exception do
     begin
       TAtlasGuard.Log('Einrichtung: atlas.json nicht geschrieben (' + E.ClassName + ')');
-      Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigFailed, [AConfigFile,
+      ASelf.FHooks.Message.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigFailed, [AConfigFile,
         E.Message]));
       Result := False;
     end;
@@ -450,7 +443,7 @@ constructor TAtlasIdeSetup.Create(const AMessage: TProc<string>; const AStartBas
   const ANewFile: TAtlasSetupNewFile);
 begin
   inherited Create;
-  FHooks.Message := AMessage;
+  FHooks.Message := TAtlasMessageSink.Create(AMessage);
   FHooks.StartBaseline := AStartBaseline;
   FHooks.NewFile := ANewFile;
   FListener := -1;
@@ -790,7 +783,7 @@ begin
         Exit;
       end;
       TAtlasGuard.Log('Einrichtung: atlas.json angelegt (Vorlage ' + TAtlasProjectSetups.TemplateId(mTemplate) + ')');
-      Report(Self, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigWritten, [mConfigFile]));
+      FHooks.Message.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupConfigWritten, [mConfigFile]));
       // Abnahme: Schritt 2 ist danach abgehakt.
       Refresh;
     end);

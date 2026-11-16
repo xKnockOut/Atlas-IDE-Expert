@@ -56,7 +56,8 @@ uses
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Continue,
   Atlas.IDE.Welcome.Continue.Editor,
-  Atlas.IDE.Welcome.ContinueIssues;
+  Atlas.IDE.Welcome.ContinueIssues,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Was die Komposition dem Bereich mitgibt.</summary>
@@ -128,7 +129,7 @@ type
       Started: UInt64;
     end;
   private
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FNotifiers: TNotifiers;
     FStopped: Boolean;
     // Großgeschriebener Pfad → letzte Änderungsstelle dieser Sitzung.
@@ -352,14 +353,6 @@ begin
   Result := TAtlasProjectSummaries.NormalizedPath(APath);
 end;
 
-procedure Report(ASelf: TAtlasIdeContinue; const AText: string);
-begin
-  if Assigned(ASelf.FMessage) then
-  begin
-    ASelf.FMessage(AText);
-  end;
-end;
-
 function IncomingRunning(ASelf: TAtlasIdeContinue): Boolean;
 begin
   Result := TAtlasContinueSession.Recent(ASelf.FIncoming.Started, GetTickCount64,
@@ -518,16 +511,16 @@ begin
   AState := TAtlasWorkState.Empty;
   if not ASelf.Enabled then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
+    ASelf.FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
   end
   else if not TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, mSummary) or
     not TAtlasWelcomeContinue.Read(mSummary, AState) or (AState.TabCount = 0) then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
+    ASelf.FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
   end
   else if not FileExists(AProject) then
   begin
-    Report(ASelf, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+    ASelf.FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
   end
   else
   begin
@@ -603,7 +596,7 @@ end;
 constructor TAtlasIdeContinue.Create(const AMessage: TProc<string>);
 begin
   inherited Create;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FNotifiers.IdeIndex := -1;
   FNotifiers.EditIndex := -1;
   FChanges := TDictionary<string, TAtlasWorkTab>.Create;
@@ -889,7 +882,7 @@ var
 begin
   if not TAtlasIdeContinueSaved.FindFavorite(AItem, mFileName, mLine) then
   begin
-    Report(Self, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSavedUnitMissing, [AItem.Text, AItem.UnitName]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSavedUnitMissing, [AItem.Text, AItem.UnitName]));
     Exit;
   end;
   TAtlasIdeResults.Open(mFileName, mLine, 0);
@@ -1005,13 +998,13 @@ var
 begin
   if not Enabled then
   begin
-    Report(Self, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
+    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
     Exit;
   end;
   mEntry := Top(Self);
   if mEntry.Project = '' then
   begin
-    Report(Self, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
+    FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
     Exit;
   end;
   Resume(mEntry.Project);
@@ -1122,7 +1115,7 @@ begin
       FNotice := MissingNotice(Plan.Missing);
       if FNotice <> '' then
       begin
-        Report(Self, FNotice);
+        FMessage.Say(FNotice);
       end;
       TAtlasIdeContinueEditor.EnsureProject(mProject);
       // Reiter in ihrer Reihenfolge; danach den zuvor aktiven noch einmal, damit er vorn liegt.
@@ -1170,7 +1163,7 @@ begin
       end;
       if mOutcome <> TAtlasVcsOutcome.Ok then
       begin
-        Report(Self, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitFailed,
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitFailed,
           [mCommit.Commit.ShortHash, AtlasVcsOutcomeName(mOutcome)]));
         Exit;
       end;
@@ -1200,7 +1193,7 @@ begin
       TAtlasIdeContinueEditor.EnsureProject(mItem.Project);
       if not FileExists(mItem.FileName) then
       begin
-        Report(Self, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSavedFileMissing, [mItem.FileName]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSavedFileMissing, [mItem.FileName]));
         Exit;
       end;
       // Lesezeichen mit eingeschalteter Funktion: über #622 (findet die Stelle vor dem Sprung wieder).

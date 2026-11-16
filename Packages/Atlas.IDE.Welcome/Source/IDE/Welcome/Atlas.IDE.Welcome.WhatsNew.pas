@@ -22,7 +22,8 @@ uses
   System.SysUtils,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Sections,
-  Atlas.UI.Welcome.WhatsNew;
+  Atlas.UI.Welcome.WhatsNew,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)
@@ -40,8 +41,7 @@ type
     FOrderShown: Integer;
     FCommandExists: TFunc<string, Boolean>;
     FRun: TProc<string>;
-    FMessage: TProc<string>;
-    procedure Report(const AText: string);
+    FMessage: TAtlasMessageSink;
     procedure Changed;
     function Mode: TAtlasWhatsNewMode;
   public
@@ -120,18 +120,10 @@ begin
   inherited Create;
   FCommandExists := ACommandExists;
   FRun := ARun;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FCurrent := TAtlasPluginVersion.cVersion;
   FManualView := TAtlasWhatsNewView.Hidden;
   FOrderShown := -1;
-end;
-
-procedure TAtlasIdeWhatsNew.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeWhatsNew.Changed;
@@ -342,14 +334,14 @@ begin
         end
         else
         begin
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoCommand, [AItem.Command]));
+          FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoCommand, [AItem.Command]));
         end;
         Exit;
       end;
       FileName := SamplePath(FFolder, AItem.Sample);
       if (FileName = '') or not FileExists(FileName) then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoSample, [AItem.Sample]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsNoSample, [AItem.Sample]));
         Exit;
       end;
       // whatsnew.json zählt Zeilen ab 1, der Editor ab 0.
@@ -399,7 +391,7 @@ begin
       end;
       if Length(TAtlasWhatsNew.VersionsFor(AView, FVersions, FSeen, FCurrent)) = 0 then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsMissing, [TAtlasWhatsNew.cFileName]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeNewsMissing, [TAtlasWhatsNew.cFileName]));
         Exit;
       end;
       FManual := True;

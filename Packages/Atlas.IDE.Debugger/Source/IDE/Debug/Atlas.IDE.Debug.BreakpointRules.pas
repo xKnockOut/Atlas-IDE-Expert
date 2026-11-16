@@ -24,7 +24,8 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Debug.BreakpointRules,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeBreakpointRules = class
@@ -39,10 +40,9 @@ type
     cStateFile = 'breakpoint-rules.json';
   private class var
     FListener: IAtlasIdeDebugListener;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FRules: TAtlasBreakpointRuleList;
     FStates: TDictionary<string, TAtlasRuleState>;
-    class procedure Report(const AText: string); static;
     class function StateFile: string; static;
     class procedure Load; static;
     class procedure Save; static;
@@ -109,14 +109,6 @@ end;
 
 { TAtlasIdeBreakpointRules }
 
-class procedure TAtlasIdeBreakpointRules.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class function TAtlasIdeBreakpointRules.StateFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cStateFile);
@@ -140,7 +132,7 @@ begin
   except
     // Ohne Datei gelten die Regeln nur bis zum Neustart.
     on E: Exception do
-      Report(E.Message);
+      FMessage.Say(E.Message);
   end;
 end;
 
@@ -202,7 +194,7 @@ begin
     mState := TAtlasRuleState.Start(mRule);
     if mRule.HasTrigger and (TAtlasIdeBreakpoints.Find(mRule.TriggerFile, mRule.TriggerLine) = nil) then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesTriggerMissing,
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesTriggerMissing,
         [PlaceText(mRule.FileName, mRule.Line), PlaceText(mRule.TriggerFile, mRule.TriggerLine)]));
       mState.Armed := True;
     end;
@@ -249,7 +241,7 @@ begin
     mState := StateOf(mRule);
     if TAtlasBreakpointRules.Arm(mRule, mState) then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesArmed,
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesArmed,
         [PlaceText(mRule.FileName, mRule.Line), PlaceText(AFileName, ALine)]));
     end;
     SetState(mRule, mState);
@@ -295,7 +287,7 @@ end;
 
 class procedure TAtlasIdeBreakpointRules.Start(const AMessage: TProc<string>);
 begin
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   if FListener = nil then
   begin
     FStates := TDictionary<string, TAtlasRuleState>.Create;
@@ -315,7 +307,7 @@ begin
     SessionEnded;
   end;
   FListener := nil;
-  FMessage := nil;
+  FMessage.Clear;
   FRules := nil;
   FreeAndNil(FStates);
 end;
@@ -382,12 +374,12 @@ var
 begin
   if not TargetLine(mFileName, mLine) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesNoEditor));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesNoEditor));
     Exit;
   end;
   if TAtlasIdeBreakpoints.Find(mFileName, mLine) = nil then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesNoBreakpoint, [mLine + 1]));
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesNoBreakpoint, [mLine + 1]));
     Exit;
   end;
   mIndex := TAtlasBreakpointRules.IndexOf(FRules, mFileName, mLine);
@@ -407,10 +399,10 @@ begin
   if mChosen.IsEmpty then
   begin
     SetEnabled(mChosen, True);
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesRemoved, [PlaceText(mFileName, mLine)]));
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesRemoved, [PlaceText(mFileName, mLine)]));
     Exit;
   end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesSaved, [PlaceText(mFileName, mLine)]));
+  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesSaved, [PlaceText(mFileName, mLine)]));
 end;
 
 class procedure TAtlasIdeBreakpointRules.Moved(const AFileName: string; AFromLine, AToLine: Integer);

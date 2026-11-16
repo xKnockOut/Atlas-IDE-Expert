@@ -21,7 +21,8 @@ uses
   Atlas.Core.VersionControl.Contract,
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.IDE.Tracker.WorkingCopies;
+  Atlas.IDE.Tracker.WorkingCopies,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Tracker-Anbieter zum Namen ("github", "youtrack"); nil, wenn es ihn nicht gibt.</summary>
@@ -175,7 +176,7 @@ type
     cTargetCacheMs = 5000;
   private
     FWelcome: TAtlasTrackerWelcomeLink;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FStarted: Boolean;
     // Normierter Pfad → Abschnitt "issues" (nicht bei jedem Zeichnen die Datei lesen).
     FStates: TDictionary<string, TAtlasIssuesState>;
@@ -194,8 +195,6 @@ type
     destructor Destroy; override;
     /// <summary>Inhalt der Kachel geändert: der Willkommensseite melden.</summary>
     procedure Changed;
-    /// <summary>Zeile in die Meldungsansicht.</summary>
-    procedure Report(const AText: string);
     function ProjectName(const AProject: string): string;
     function TargetOf(const AProject: string): TAtlasTrackerTarget;
     /// <summary>Ziel und Verbindung für AProject (#1261), cTargetCacheMs zwischengespeichert.</summary>
@@ -235,6 +234,8 @@ type
     property Actions: IAtlasIdeIssuesActions read FActions write FActions;
     /// <summary>Gezeigte Tracker-Projekte und Branches eigener Arbeitskopien.</summary>
     property Selection: TAtlasIdeIssuesSelection read FSelection;
+    /// <summary>Zeile in die Meldungsansicht (Messages.Say).</summary>
+    property Messages: TAtlasMessageSink read FMessage;
   end;
 
 implementation
@@ -615,7 +616,7 @@ constructor TAtlasIdeIssuesContext.Create(AWelcome: TAtlasTrackerWelcomeLink; co
 begin
   inherited Create;
   FWelcome := AWelcome;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FStates := TDictionary<string, TAtlasIssuesState>.Create;
   FTargets := TDictionary<string, TAtlasIssuesCachedTarget>.Create;
   FSelection := TAtlasIdeIssuesSelection.Create(Self);
@@ -634,14 +635,6 @@ begin
   if FStarted and (FWelcome <> nil) then
   begin
     FWelcome.TileChanged(cTileId);
-  end;
-end;
-
-procedure TAtlasIdeIssuesContext.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 

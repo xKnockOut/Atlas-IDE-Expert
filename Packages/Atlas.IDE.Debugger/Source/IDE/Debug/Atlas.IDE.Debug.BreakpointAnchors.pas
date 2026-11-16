@@ -28,7 +28,8 @@ uses
   System.Generics.Collections,
   Atlas.Core.Editor.MethodAnchor,
   Atlas.Core.Debug.BreakpointAnchors,
-  Atlas.Core.Debug.BreakpointAnchorFlow;
+  Atlas.Core.Debug.BreakpointAnchorFlow,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Ergebnis eines Durchlaufs: neue Anker, Verschiebungen, Verwaiste.</summary>
@@ -46,7 +47,7 @@ type
   private class var
     FStarted: Boolean;
     FTimer: TObject;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     // Anker der Haltepunkte dieser Sitzung, Schlüssel TAtlasBreakpointAnchors.Key.
     FAnchors: TDictionary<string, TAtlasAnchoredBreakpoint>;
     // Gespeicherte Anker, zu denen es in dieser Sitzung (noch) keinen Haltepunkt gab.
@@ -76,7 +77,6 @@ type
     class function StateFile: string; static;
     class procedure Load; static;
     class procedure Save; static;
-    class procedure Report(const AText: string); static;
   public
     /// <summary>Teil starten: Zeitgeber. AMessage schreibt eine Zeile in die Meldungsansicht.</summary>
     class procedure Start(const AMessage: TProc<string>); static;
@@ -335,10 +335,10 @@ begin
   MergeOrphans(ABatch.Orphans);
   for mMove in ABatch.Moves do
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsMovedLine,
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsMovedLine,
       [ExtractFileName(mMove.FileName), mMove.FromLine + 1, mMove.ToLine + 1]));
   end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsSummary, [mMoved, Length(ABatch.Orphans)]));
+  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsSummary, [mMoved, Length(ABatch.Orphans)]));
 end;
 
 class function TAtlasIdeBreakpointAnchors.ApplyMoves(const AMoves: TAtlasAnchorMoves; ARelocate: Boolean): Integer;
@@ -459,15 +459,7 @@ begin
   except
     // Ohne Datei geht nur das Nachziehen nach einem Neustart verloren.
     on E: Exception do
-      Report(E.Message);
-  end;
-end;
-
-class procedure TAtlasIdeBreakpointAnchors.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
+      FMessage.Say(E.Message);
   end;
 end;
 
@@ -475,7 +467,7 @@ class procedure TAtlasIdeBreakpointAnchors.Start(const AMessage: TProc<string>);
 var
   mTimer: TTimer;
 begin
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FAnchors := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
   FStored := TDictionary<string, TAtlasAnchoredBreakpoint>.Create;
   FFiles := TDictionary<string, TAtlasAnchorFileSeen>.Create;
@@ -500,7 +492,7 @@ begin
   FreeAndNil(FFiles);
   FUndo := nil;
   FOrphans := nil;
-  FMessage := nil;
+  FMessage.Clear;
   FBusy := False;
   FDirty := False;
 end;
@@ -521,12 +513,12 @@ var
 begin
   if FUndo = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNothingToUndo));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNothingToUndo));
     Exit;
   end;
   mMoved := ApplyMoves(TAtlasBreakpointAnchors.Reversed(FUndo), True);
   FUndo := nil;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsUndone, [mMoved]));
+  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsUndone, [mMoved]));
 end;
 
 class procedure TAtlasIdeBreakpointAnchors.ShowOrphans;
@@ -545,7 +537,7 @@ begin
   FOrphans := mOrphans;
   if FOrphans = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNoOrphans));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNoOrphans));
     Exit;
   end;
   FOrphans := TAtlasBreakpointOrphanDialog.Execute(FOrphans, OrphanAction);

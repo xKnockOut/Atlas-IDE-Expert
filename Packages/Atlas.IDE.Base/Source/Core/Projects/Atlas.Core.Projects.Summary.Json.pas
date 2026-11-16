@@ -4,7 +4,8 @@
 // Open Tools API: Zeiten in UTC ("2026-10-15T09:30:00Z") und unbekannte
 // Felder, die beim Schreiben erhalten bleiben. Gelesen wird mit TJsonRead
 // (Atlas.Text.Json). Genutzt von Atlas.Core.Projects.Summary und ihren
-// Abschnitten (Atlas.Core.Projects.Summary.Sections).
+// Abschnitten (Atlas.Core.Projects.Summary.Sections); ReplaceSection setzt die
+// Abschnitte ein, die Module selbst führen.
 
 interface
 
@@ -13,6 +14,10 @@ uses
 
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
+/// <summary>Text der Zusammenfassung ARaw mit ASection als Abschnitt AName; ein vorhandener Abschnitt AName
+/// fällt weg, alle übrigen Felder bleiben in ihrer Reihenfolge. ASection gehört danach der Funktion; nil
+/// entfernt den Abschnitt. Ungültiges ARaw gilt als leeres Objekt.</summary>
+function ReplaceSection(const ARaw, AName: string; ASection: TJSONObject): string;
 /// <summary>Zeit AUtc als Feld AName; nichts bei 0.</summary>
 procedure AddTime(AObject: TJSONObject; const AName: string; AUtc: TDateTime);
 /// <summary>UTC als "2026-10-15T09:30:00Z"; '' bei 0.</summary>
@@ -25,7 +30,8 @@ implementation
 uses
   System.Generics.Collections,
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Atlas.Text.Json;
 
 function Known(const AKeys: array of string; const AName: string): Boolean;
 var
@@ -57,6 +63,29 @@ begin
     begin
       ATarget.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
     end;
+  end;
+end;
+
+function ReplaceSection(const ARaw, AName: string; ASection: TJSONObject): string;
+var
+  mOriginal, mRoot, mSection: TJSONObject;
+begin
+  mSection := ASection;
+  mOriginal := nil;
+  mRoot := TJSONObject.Create;
+  try
+    mOriginal := TJsonRead.ParseObject(ARaw);
+    KeepUnknown(mRoot, mOriginal, [AName]);
+    if mSection <> nil then
+    begin
+      mRoot.AddPair(AName, mSection);
+      mSection := nil;
+    end;
+    Result := mRoot.ToJSON;
+  finally
+    mSection.Free;
+    mRoot.Free;
+    mOriginal.Free;
   end;
 end;
 

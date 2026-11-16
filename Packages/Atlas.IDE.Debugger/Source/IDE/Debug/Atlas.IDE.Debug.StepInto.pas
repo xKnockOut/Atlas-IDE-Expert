@@ -37,7 +37,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.StepIntoJump,
-  Atlas.UI.Debug.StepInto;
+  Atlas.UI.Debug.StepInto,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasStepIntoSessionFunc = reference to function: TLspSession;
@@ -53,7 +54,7 @@ type
     FInstance: TAtlasIdeStepInto;
   private
     FSession: TAtlasStepIntoSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FMessages: TApplicationEvents;
     FWindow: TAtlasStepIntoWindow;
     FTimer: TTimer;
@@ -83,7 +84,6 @@ type
     procedure Close;
     procedure Finish;
     procedure RemoveBreakpoints;
-    procedure Report(const AText: string);
     class function CanBreak(const AFileName: string): Boolean; static;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
   public
@@ -179,7 +179,7 @@ constructor TAtlasIdeStepInto.Create(const ASession: TAtlasStepIntoSessionFunc; 
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FJump.FollowLine := -1;
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
@@ -278,12 +278,12 @@ begin
   mProcess := TAtlasIdeBreakpoints.StoppedProcess;
   if mProcess = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
   end
   else if not TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FFileName, mLine) or
     not TAtlasIdeFiles.SourceText(FFileName, mText) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSourceAt));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSourceAt));
   end
   else if Query(mLine, mText) then
   begin
@@ -304,7 +304,7 @@ begin
   end;
   if mSession = nil then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    FMessage.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   try
@@ -323,7 +323,7 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetFailed, [E.Message]));
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetFailed, [E.Message]));
     end;
   end;
 end;
@@ -345,7 +345,7 @@ begin
       StepInto;
     TAtlasStepOffer.Nothing:
       begin
-        Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNothing));
+        FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNothing));
         StepInto;
       end;
   else
@@ -439,12 +439,12 @@ begin
   Finish;
   if mArrival = TAtlasStepArrival.NotCalled then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FJump.Caption,
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetNotCalled, [FJump.Caption,
       FJump.FollowLine + 1]));
   end
   else if mArrival = TAtlasStepArrival.Elsewhere then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetElsewhere,
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepIntoTargetElsewhere,
       [ExtractFileName(mFileName), mLine + 1]));
   end;
 end;
@@ -467,7 +467,7 @@ begin
   mProcess := TAtlasIdeBreakpoints.StoppedProcess;
   if mProcess = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
   TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FJump.StartFile, FJump.StartLine);
@@ -515,14 +515,6 @@ end;
 procedure TAtlasIdeStepInto.RemoveBreakpoints;
 begin
   TAtlasIdeBreakpoints.RemoveAll(FBreaks);
-end;
-
-procedure TAtlasIdeStepInto.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 class function TAtlasIdeStepInto.CanBreak(const AFileName: string): Boolean;
@@ -603,12 +595,12 @@ begin
   end;
   if not Enabled then
   begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
+    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetOff));
     Exit;
   end;
   if not Stopped then
   begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
+    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
   FInstance.Execute;

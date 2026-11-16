@@ -29,7 +29,8 @@ uses
   ToolsAPI,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.Core.Editor.MethodPlacement;
+  Atlas.Core.Editor.MethodPlacement,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasMethodPlacementSessionFunc = reference to function: TLspSession;
@@ -43,7 +44,7 @@ type
     FInstance: TAtlasIdeMethodPlacement;
   private
     FSession: TAtlasMethodPlacementSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FPolicy: TFunc<TAtlasUnopenedPolicy>;
     FTimer: TTimer;
     // Letzter Stand der aktiven Datei, gegen den neue Rümpfe zählen.
@@ -60,7 +61,6 @@ type
     procedure Arrange;
     /// <summary>Übernimmt die Änderungen von AReply an AFileName und meldet das Ergebnis.</summary>
     procedure ApplyArranged(const AFileName: string; const AReply: TAtlasMethodPlacementReply);
-    procedure Report(const AText: string);
     function CurrentSession: TLspSession;
     class function Mode: string; static;
     class function Texts: TAtlasMethodPlacementTexts; static;
@@ -121,7 +121,7 @@ constructor TAtlasIdeMethodPlacement.Create(const ASession: TAtlasMethodPlacemen
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FPolicy := APolicy;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -244,19 +244,11 @@ begin
   Snapshot;
   if mOutcome.Error <> '' then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
+    FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
   end
   else
   begin
-    Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderDone, [AReply.Moved]));
-  end;
-end;
-
-procedure TAtlasIdeMethodPlacement.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
+    FMessage.Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderDone, [AReply.Moved]));
   end;
 end;
 
@@ -336,7 +328,7 @@ begin
   end;
   if not Enabled then
   begin
-    FInstance.Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderOff));
+    FInstance.FMessage.Say(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderOff));
     Exit;
   end;
   FInstance.Arrange;
@@ -414,7 +406,7 @@ begin
   mSession := CurrentSession;
   if (mView <> nil) and (mSession = nil) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    FMessage.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
   end;
   if (mView = nil) or (mSession = nil) then
   begin
@@ -427,13 +419,13 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderFailed, [E.Message]));
+      FMessage.Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MethodOrderFailed, [E.Message]));
       Exit;
     end;
   end;
   if (mReply.Edits = nil) or (mReply.Moved = 0) then
   begin
-    Report(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderNothing));
+    FMessage.Say(TAtlasEditorStrings.Text(TAtlasEditorTextId.MethodOrderNothing));
     Exit;
   end;
   mOpen :=

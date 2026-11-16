@@ -47,7 +47,8 @@ uses
   Atlas.IDE.Tracker.TestActions,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Tracker.TestResults,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Projekte, Zusammenfassungen und Jobs der Kachel; liest .atlas und Zusammenfassungen höchstens alle
@@ -117,14 +118,13 @@ type
   private
     FLink: TAtlasTrackerWelcomeLink;
     FAccess: IAtlasCiAccess;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FData: TAtlasTestResultsData;
     FActions: TAtlasTestResultsActions;
     FStarted: Boolean;
     FActive: Boolean;
     FWorker: TAtlasWorkerSlot;
     procedure Changed;
-    procedure Report(const AText: string);
     /// <summary>Fällige Jobs; AForce ohne Intervall, AOnly nur dieses Projekt, AServer nur Jobs dieses Servers
     /// ('' = alle). Derselbe Job (Projektgruppe und ihr Testprojekt) einmal.</summary>
     function DueJobs(AForce: Boolean; const AOnly, AServer: string): TArray<TAtlasTestResultsFetch>;
@@ -422,7 +422,7 @@ begin
   inherited Create;
   FLink := ALink;
   FAccess := AAccess;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FData := TAtlasTestResultsData.Create(ALink);
   FActions := TAtlasTestResultsActions.Create(ALink, AAccess, AMessage);
   FWorker := TAtlasWorkerSlot.Create(HInstance);
@@ -442,14 +442,6 @@ begin
   if FStarted and (FLink <> nil) then
   begin
     FLink.TileChanged(cTileId);
-  end;
-end;
-
-procedure TAtlasIdeTestResults.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 
@@ -614,7 +606,7 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
+    FMessage.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
   end
   else
   begin
@@ -636,7 +628,7 @@ begin
       end;
       if mJob.Server = '' then
       begin
-        Report(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
+        FMessage.Say(TAtlasTestResultsStrings.Text(TAtlasTestResultsTextId.CiLoginNoServer));
       end
       else if FAccess.EnterCredentials(mJob) then
       begin
@@ -690,7 +682,7 @@ begin
   // „Einblenden“ (oder Zentrale aus): auch eine Zeile in der Meldungsansicht.
   if mMode = TAtlasNotificationMode.Show then
   begin
-    Report(mTitle + ' – ' + mText);
+    FMessage.Say(mTitle + ' – ' + mText);
   end;
 end;
 

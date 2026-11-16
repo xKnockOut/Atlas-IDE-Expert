@@ -19,8 +19,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    procedure ListsOnlyWaitingRequests;
-    [Test]
     procedure TakesARequestOnlyOnce;
     [Test]
     procedure AnswersAndRemovesTheTakenRequest;
@@ -35,7 +33,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Assistants.EditInbox;
+  Atlas.Core.Assistants.EditInbox,
+  Atlas.Core.Assistants.Inbox;
 
 { TAtlasEditInboxTests }
 
@@ -57,22 +56,6 @@ end;
 procedure Put(const AFolder, AName, AText: string);
 begin
   TFile.WriteAllText(TPath.Combine(AFolder, AName), AText, TEncoding.UTF8);
-end;
-
-procedure TAtlasEditInboxTests.ListsOnlyWaitingRequests;
-var
-  mPending: TArray<string>;
-begin
-  Put(FFolder, 'b.json', '{}');
-  Put(FFolder, 'a.json', '{}');
-  Put(FFolder, 'c.json.tmp', '{}');
-  Put(FFolder, 'd.taken', '{}');
-  Put(FFolder, 'e.result.json', '{}');
-  mPending := TAtlasEditInbox.Pending(FFolder);
-  Assert.AreEqual(2, Integer(Length(mPending)));
-  Assert.AreEqual('a.json', ExtractFileName(mPending[0]));
-  Assert.AreEqual('b.json', ExtractFileName(mPending[1]));
-  Assert.AreEqual(0, Integer(Length(TAtlasEditInbox.Pending(TPath.Combine(FFolder, 'fehlt')))));
 end;
 
 procedure TAtlasEditInboxTests.TakesARequestOnlyOnce;
@@ -109,7 +92,7 @@ begin
   finally
     mJson.Free;
   end;
-  Assert.AreEqual(0, Integer(Length(TAtlasEditInbox.Pending(FFolder))), 'Antwort ist kein Auftrag');
+  Assert.AreEqual(0, Integer(Length(TAtlasFileInbox.Pending(FFolder))), 'Antwort ist kein Auftrag');
 end;
 
 procedure TAtlasEditInboxTests.AnswersUnreadableRequests;

@@ -36,7 +36,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot;
+  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>
@@ -69,6 +70,7 @@ type
   TAtlasIdeIssueSearch = class(TInterfacedObject, IAtlasPaletteSource)
   private
     FHooks: TAtlasIssueSearchHooks;
+    FMessage: TAtlasMessageSink;
     FStarted: Boolean;
     FShow: TProc<TAtlasPaletteGroup>;
     FDebounce: TAtlasIssueSearchDebounce;
@@ -96,7 +98,6 @@ type
     procedure CancelRequest;
     function ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
     procedure Browse(const AKey: string);
-    procedure Report(const AText: string);
     class function NowMs: UInt64; static;
   public
     constructor Create(const AHooks: TAtlasIssueSearchHooks);
@@ -132,6 +133,7 @@ constructor TAtlasIdeIssueSearch.Create(const AHooks: TAtlasIssueSearchHooks);
 begin
   inherited Create;
   FHooks := AHooks;
+  FMessage := TAtlasMessageSink.Create(FHooks.Report);
   FStarted := True;
   FDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.cDelayMs);
   FTimer := TTimer.Create(nil);
@@ -379,14 +381,6 @@ begin
   TAtlasIssuePreview.Browse(mUrl);
 end;
 
-procedure TAtlasIdeIssueSearch.Report(const AText: string);
-begin
-  if Assigned(FHooks.Report) then
-  begin
-    FHooks.Report(AText);
-  end;
-end;
-
 class function TAtlasIdeIssueSearch.NowMs: UInt64;
 begin
   Result := GetTickCount64;
@@ -514,6 +508,7 @@ begin
   FShow := nil;
   FProvider := nil;
   FHooks := Default(TAtlasIssueSearchHooks);
+  FMessage.Clear;
 end;
 
 class function TAtlasIdeIssueSearch.Active: Boolean;
@@ -628,7 +623,7 @@ begin
           end
           else
           begin
-            Report(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.PaletteIssuesCannotStart, [mIssue.Key]));
+            FMessage.Say(TAtlasIssueStrings.Fmt(TAtlasIssueTextId.PaletteIssuesCannotStart, [mIssue.Key]));
           end;
         TAtlasPaletteAction.Browse:
           Browse(mIssue.Key);

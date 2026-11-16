@@ -36,7 +36,8 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.UI.Tracker.BoardFrame;
+  Atlas.UI.Tracker.BoardFrame,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasBoardProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -69,6 +70,7 @@ type
   TAtlasIdeBoard = class(TInterfacedObject)
   private
     FHooks: TAtlasBoardHooks;
+    FMessage: TAtlasMessageSink;
     FCacheFolder: string;
     FStarted: Boolean;
     FWorker: TAtlasVcsWorker;
@@ -97,7 +99,6 @@ type
     procedure StartCard(ACard: Integer; AReview: Boolean);
     procedure BrowseCard(ACard: Integer);
     procedure AssignCard(ACard: Integer);
-    procedure Report(const AText: string);
     function ErrorText(AError: TAtlasCiFetchError): string;
     procedure CancelLoad;
     class function NowUtc: TDateTime; static;
@@ -147,6 +148,7 @@ constructor TAtlasIdeBoard.Create(const AHooks: TAtlasBoardHooks; const ACacheFo
 begin
   inherited Create;
   FHooks := AHooks;
+  FMessage := TAtlasMessageSink.Create(FHooks.Message);
   FCacheFolder := ACacheFolder;
   FWorker := TAtlasVcsWorker.Create;
 end;
@@ -344,7 +346,7 @@ begin
       mCurrent := mOwner.Frame;
       if AResult.Succeeded then
       begin
-        mOwner.Report(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardAssigned, [mKey]));
+        mOwner.FMessage.Say(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardAssigned, [mKey]));
         mOwner.Load(mOwner.FBoardId, mOwner.FSprintId);
       end
       else if mCurrent <> nil then
@@ -353,14 +355,6 @@ begin
           TAtlasTrackerEndDialog.ErrorText(mKey, AResult)]));
       end;
     end);
-end;
-
-procedure TAtlasIdeBoard.Report(const AText: string);
-begin
-  if Assigned(FHooks.Message) then
-  begin
-    FHooks.Message(AText);
-  end;
 end;
 
 /// <summary>Laden, Auswahl und Schließen in AEvents an AOwner; AKeep hält AOwner, solange der Frame lebt.
@@ -560,6 +554,7 @@ begin
   FWorker.Stop(1000);
   TAtlasIdeBoardWindow.Release;
   FHooks := Default(TAtlasBoardHooks);
+  FMessage.Clear;
 end;
 
 procedure TAtlasIdeBoard.Show;
@@ -920,7 +915,7 @@ begin
     mFrame.SetStatus(MoveFailedText(ACard, AResult));
     Exit;
   end;
-  Report(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoved, [ACard.Key, AColumn]));
+  FMessage.Say(TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoved, [ACard.Key, AColumn]));
   // Der Tracker kann mehr geändert haben (Workflow-Regeln): neu laden.
   Load(FBoardId, FSprintId);
 end;

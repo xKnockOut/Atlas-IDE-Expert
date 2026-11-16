@@ -36,7 +36,8 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.EventBreak,
   Atlas.Core.Debug.EventBreakWatch,
-  Atlas.UI.Debug.EventBreak;
+  Atlas.UI.Debug.EventBreak,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasEventBreakSessionFunc = reference to function: TLspSession;
@@ -59,7 +60,7 @@ type
     FInstance: TAtlasIdeEventBreak;
   private
     FSession: TAtlasEventBreakSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FTimer: TTimer;
     FMenuItem: TMenuItem;
     FBar: TAtlasEventBreakBar;
@@ -88,7 +89,6 @@ type
     procedure KeepWatching;
     procedure Finish;
     procedure HideBar;
-    procedure Report(AText: string);
     procedure InstallMenu;
     procedure UpdateMenu;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
@@ -168,13 +168,13 @@ begin
 end;
 
 /// <summary>Laufender Prozess; ohne ihn eine Meldung an AReport.</summary>
-function CurrentProcess(out AProcess: IOTAProcess; const AReport: TProc<string>): Boolean;
+function CurrentProcess(out AProcess: IOTAProcess; const AReport: TAtlasMessageSink): Boolean;
 begin
   AProcess := TAtlasIdeBreakpoints.CurrentProcess;
   Result := AProcess <> nil;
   if not Result then
   begin
-    AReport(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
+    AReport.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
   end;
 end;
 
@@ -217,7 +217,7 @@ constructor TAtlasIdeEventBreak.Create(const ASession: TAtlasEventBreakSessionFu
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FChoice := TAtlasEventChoice.Defaults;
   FWatch.StartLine := -1;
   FTimer := TTimer.Create(nil);
@@ -266,7 +266,7 @@ begin
   if FWatch.Phase <> TAtlasEventWatchPhase.Idle then
   begin
     Finish;
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancelled));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancelled));
   end
   else if Choose(mProcess) then
   begin
@@ -279,7 +279,7 @@ var
   mChoice: TAtlasEventChoice;
 begin
   Result := False;
-  if not CurrentProcess(AProcess, Report) or not Query then
+  if not CurrentProcess(AProcess, FMessage) or not Query then
   begin
     Exit;
   end;
@@ -296,10 +296,10 @@ begin
   FChoice := mChoice;
   if FAnswer.Unresolved > 0 then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
+    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
   end;
   // Der Dialog war modal: Das Programm kann inzwischen beendet sein.
-  Result := CurrentProcess(AProcess, Report);
+  Result := CurrentProcess(AProcess, FMessage);
 end;
 
 procedure TAtlasIdeEventBreak.ArmFor(const AProcess: IOTAProcess);
@@ -353,7 +353,7 @@ begin
     if FWatch.Phase <> TAtlasEventWatchPhase.Idle then
     begin
       Finish;
-      Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
+      FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
     end;
     FTimer.Enabled := False;
   end
@@ -438,7 +438,7 @@ begin
   end;
   if mSession = nil then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    FMessage.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
   mProject := TAtlasIdeFiles.ActiveProjectFile;
@@ -457,13 +457,13 @@ begin
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFailed, [E.Message]));
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFailed, [E.Message]));
       Exit;
     end;
   end;
   if Length(FAnswer.Handlers) = 0 then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
     Exit;
   end;
   Result := True;
@@ -524,21 +524,21 @@ begin
     TAtlasEventArmCount.Empty:
       begin
         FTimer.Enabled := False;
-        Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
+        FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
         Exit;
       end;
     TAtlasEventArmCount.Many:
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FArmed.Locations)]));
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FArmed.Locations)]));
   end;
   Watch;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FArmed.Locations)]));
+  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FArmed.Locations)]));
 end;
 
 procedure TAtlasIdeEventBreak.ArmAllForms;
 var
   mChoice: TAtlasEventChoice;
 begin
-  Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleUnknown));
+  FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleUnknown));
   // Nur für diese Beobachtung; die Wahl im Dialog bleibt „sichtbare Formulare“.
   mChoice := FChoice;
   mChoice.Scope := TAtlasEventScope.AllForms;
@@ -592,14 +592,14 @@ begin
   begin
     if AProcess.ProcessState = psStopped then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(mFileName),
+      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(mFileName),
         mLine + 1]));
     end;
     Exit;
   end;
   mCaption := TAtlasEventBreak.Caption(FAnswer.Handlers, FArmed.Locations[mFound],
     IdentifyHandler(FAnswer, FArmed.Locations[mFound]));
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [mCaption]));
+  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [mCaption]));
   ShowBar(mCaption);
   // Im Takt bleiben, um die Leiste zu schließen, sobald das Programm weiterläuft.
   FTimer.Enabled := True;
@@ -610,7 +610,7 @@ begin
   HideBar;
   if TAtlasIdeBreakpoints.CurrentProcess = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
+    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
     Exit;
   end;
   if Length(FArmed.Locations) > 0 then
@@ -631,14 +631,6 @@ begin
   if (FBar <> nil) and FBar.IsShown then
   begin
     FBar.Dismiss;
-  end;
-end;
-
-procedure TAtlasIdeEventBreak.Report(AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 
@@ -703,7 +695,7 @@ begin
   end;
   if not Enabled then
   begin
-    FInstance.Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOff));
+    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOff));
     Exit;
   end;
   FInstance.Execute;

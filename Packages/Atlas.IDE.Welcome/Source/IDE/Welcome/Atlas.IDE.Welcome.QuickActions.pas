@@ -52,7 +52,8 @@ uses
   Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
@@ -110,13 +111,12 @@ type
       KeyAt: UInt64;
     end;
   private
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FProjects: TAtlasIdeProjects;
     FStopped: Boolean;
     FRuns: TRuns;
     FInput: TInput;
     procedure Changed;
-    procedure Report(const AText: string);
     procedure SetState(const AProject: string; const AState: TAtlasQuickActionState);
     procedure StartAction(const AProject: string; AAction: TAtlasQuickAction);
     procedure Finish(const AProject: string; AAction: TAtlasQuickAction; APhase: TAtlasQuickActionPhase;
@@ -333,7 +333,7 @@ begin
   end;
   ASelf.SetState(AProject, TAtlasQuickActionState.Started(TAtlasQuickAction.Console, ASelf.NowMs));
   ASelf.Finish(AProject, TAtlasQuickAction.Console, TAtlasQuickActionPhase.Failed, '');
-  ASelf.Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgConsoleFailed, [mProgram_]));
+  ASelf.FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgConsoleFailed, [mProgram_]));
 end;
 
 function PullFailedText(const AProject: string; AReason: TAtlasVcsOutcome; AUpdate: Boolean): string;
@@ -412,17 +412,17 @@ begin
     TAtlasPullNote.LocalChanges:
       begin
         Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLocalChanges);
-        ASelf.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
+        ASelf.FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
       end;
     TAtlasPullNote.NoWorkingCopy:
       Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullNoWorkingCopy);
     TAtlasPullNote.Login:
       begin
         Result.Detail := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickPullLogin);
-        ASelf.Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(AProject)]));
+        ASelf.FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(AProject)]));
       end;
     TAtlasPullNote.Failed:
-      ASelf.Report(PullFailedText(AProject, AReason, AUpdate));
+      ASelf.FMessage.Say(PullFailedText(AProject, AReason, AUpdate));
   end;
 end;
 
@@ -432,7 +432,7 @@ constructor TAtlasIdeQuickActions.Create(AProjects: TAtlasIdeProjects; const AMe
 begin
   inherited Create;
   FProjects := AProjects;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FRuns.States := TDictionary<string, TAtlasQuickActionState>.Create;
   FRuns.Tests := TDictionary<string, string>.Create;
   FRuns.Tasks := TDictionary<string, string>.Create;
@@ -455,14 +455,6 @@ begin
   end;
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cProjects);
   TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cContinue);
-end;
-
-procedure TAtlasIdeQuickActions.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 procedure TAtlasIdeQuickActions.SetState(const AProject: string; const AState: TAtlasQuickActionState);
@@ -520,7 +512,7 @@ begin
         TAtlasQuickBuildStep.Refused:
           begin
             Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, AError);
-            Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+            FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
               [NameOf(mProjects[mIndex]), AError]));
           end;
         TAtlasQuickBuildStep.Failed:
@@ -541,7 +533,7 @@ begin
     end, mReason) then
   begin
     Finish(mRow, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, mReason);
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
       [NameOf(mProjects[mIndex]), mReason]));
   end;
 end;
@@ -759,7 +751,7 @@ begin
           SetState(AProject, TAtlasQuickActionState.Started(TAtlasQuickAction.Tests, NowMs));
           Finish(AProject, TAtlasQuickAction.Tests, TAtlasQuickActionPhase.Refused,
             TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeQuickReasonNoTestProject));
-          Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgNoTestProject, [NameOf(AProject)]));
+          FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgNoTestProject, [NameOf(AProject)]));
         end
         else
         begin
@@ -833,7 +825,8 @@ begin
   if not EnsureOpen(AProject, mReason) then
   begin
     Finish(AProject, TAtlasQuickAction.Build, TAtlasQuickActionPhase.Refused, mReason);
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused, [NameOf(AProject), mReason]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgBuildRefused,
+      [NameOf(AProject), mReason]));
     Exit;
   end;
   mList := [AProject];
@@ -904,7 +897,8 @@ begin
   begin
     FRuns.Tests.Remove(Key(ATestProject));
     Finish(AProject, TAtlasQuickAction.Tests, TAtlasQuickActionPhase.Refused, mReason);
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTestsRefused, [NameOf(AProject), mReason]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTestsRefused,
+      [NameOf(AProject), mReason]));
   end
   else if FInput.Watch <> nil then
   begin
@@ -958,7 +952,7 @@ begin
   if mReason <> '' then
   begin
     Finish(AProject, TAtlasQuickAction.Run, TAtlasQuickActionPhase.Refused, mReason);
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgRunRefused, [NameOf(AProject), mReason]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgRunRefused, [NameOf(AProject), mReason]));
     Exit;
   end;
   Finish(AProject, TAtlasQuickAction.Run, TAtlasQuickActionPhase.Succeeded, '');
@@ -999,7 +993,8 @@ begin
   end;
   FRuns.Tasks.Remove(Key(AProject));
   Finish(AProject, TAtlasQuickAction.Tasks, TAtlasQuickActionPhase.Refused, mReason);
-  Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTaskRefused, [AName, NameOf(AProject), mReason]));
+  FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeQuickMsgTaskRefused,
+    [AName, NameOf(AProject), mReason]));
 end;
 
 procedure TAtlasIdeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
@@ -1021,7 +1016,7 @@ begin
   // Der Knopf ist dann gesperrt; aus dem Kontextmenü bzw. der Taste noch einmal prüfen.
   if TAtlasWelcomeQuickActions.PullBlock(mVcs) = TAtlasPullBlock.LocalChanges then
   begin
-    Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
+    FMessage.Say(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullBlocked, [NameOf(AProject)]));
     Exit;
   end;
   StartAction(AProject, TAtlasQuickAction.Pull);

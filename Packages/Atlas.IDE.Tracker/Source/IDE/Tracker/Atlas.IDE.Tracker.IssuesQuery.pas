@@ -342,7 +342,7 @@ begin
       mProvider := FContext.ProviderOf(mTarget.Provider);
       if (mProvider = nil) or (mTarget.Server = '') then
       begin
-        FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
+        FContext.Messages.Say(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin
@@ -367,7 +367,7 @@ begin
       mProvider := FContext.ActiveTarget(mTarget);
       if mProvider = nil then
       begin
-        FContext.Report(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
+        FContext.Messages.Say(TAtlasMyIssuesStrings.Text(TAtlasMyIssuesTextId.TrackerLoginNoTracker));
       end
       else if FContext.Hooks.Credentials(mProvider, mTarget) then
       begin
