@@ -103,7 +103,8 @@ uses
   Atlas.Core.Style.Color,
   System.Math,
   Vcl.Forms,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.AccessViolation.Strings,
+  Atlas.UI.Debug.Exceptions.Strings;
 
 const
   /// <summary>Knöpfe der dritten Zeile in Reihenfolge.</summary>
@@ -170,23 +171,23 @@ function ActionCaption(AAction: TAtlasDebugBarAction; const AWhereName: string):
 begin
   case AAction of
     TAtlasDebugBarAction.BreakHere:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerBreak);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerBreak);
     TAtlasDebugBarAction.Continue:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerContinue);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerContinue);
     TAtlasDebugBarAction.IgnoreClass:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIgnoreClass);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerIgnoreClass);
     TAtlasDebugBarAction.IgnoreLocation:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIgnoreLocation);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerIgnoreLocation);
     TAtlasDebugBarAction.Copy:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerCopy);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerCopy);
     TAtlasDebugBarAction.WhereAssigned:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvWhereAssigned, [AWhereName]);
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvWhereAssigned, [AWhereName]);
     TAtlasDebugBarAction.Evaluate:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvEvaluate);
+      Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvEvaluate);
     TAtlasDebugBarAction.CopyExplanation:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopy);
+      Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvCopy);
     TAtlasDebugBarAction.CreateTest:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerCreateTest);
+      Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerCreateTest);
   else
     Result := '';
   end;
@@ -217,11 +218,11 @@ begin
   mParts := nil;
   if FInfo.ThreadText <> '' then
   begin
-    mParts := mParts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerThread, [FInfo.ThreadText])];
+    mParts := mParts + [TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugBannerThread, [FInfo.ThreadText])];
   end;
   if FInfo.Hidden > 0 then
   begin
-    mParts := mParts + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerHidden, [FInfo.Hidden])];
+    mParts := mParts + [TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugBannerHidden, [FInfo.Hidden])];
   end;
   mPlace := FInfo.Routine;
   if FInfo.LocationText <> '' then
@@ -296,7 +297,7 @@ begin
   Application.CancelHint;
   if mHot = TAtlasDebugBarAction.Open then
   begin
-    Hint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerOpenHint);
+    Hint := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerOpenHint);
   end
   else
   begin
@@ -527,7 +528,7 @@ begin
   mRight := AFrame.Right - ABar.Scale(cGap);
   if ABar.FInfo.Count > 1 then
   begin
-    mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugBannerCount, [ABar.FInfo.Count]);
+    mText := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugBannerCount, [ABar.FInfo.Count]);
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Warn);
     TextIn(ABar.Canvas, mText, Rect(AFrame.Left, AFrame.Top, mRight, AFrame.Top + ABar.RowHeight), DT_RIGHT);
     Dec(mRight, ABar.Canvas.TextWidth(mText) + ABar.Scale(cGap));
@@ -584,7 +585,7 @@ begin
   ABar.Canvas.Font := ABar.Font;
   ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
   ABar.Canvas.Brush.Style := bsClear;
-  mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerKeys);
+  mText := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerKeys);
   mLine := Rect(LastButtonRight(ABar) + ABar.Scale(cGap), ABar.RowTop(ABar.Rows - 1),
     AFrame.Right - ABar.Scale(cGap), AFrame.Bottom);
   if mLine.Width > ABar.Canvas.TextWidth(mText) then
@@ -687,7 +688,8 @@ begin
   if Length(mLines) > cMaxExplanationLines then
   begin
     ABar.Canvas.Font.Color := ToColor(ABar.FColors.Muted);
-    TextIn(ABar.Canvas, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMore, [Length(mLines) - cMaxExplanationLines]),
+    TextIn(ABar.Canvas, TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvMore,
+      [Length(mLines) - cMaxExplanationLines]),
       Rect(AFrame.Left + ABar.Scale(2 * cGap) + mIndent, ABar.RowTop(mRow), AFrame.Right - ABar.Scale(cGap),
       ABar.RowTop(mRow + 1)), DT_LEFT);
   end;

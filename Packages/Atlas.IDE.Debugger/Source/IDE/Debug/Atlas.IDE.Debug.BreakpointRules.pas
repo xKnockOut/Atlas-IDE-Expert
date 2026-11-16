@@ -85,7 +85,7 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.UI.Debug.BreakpointRules,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 { TAtlasIdeBreakpointRules.TListener }
 
@@ -202,7 +202,7 @@ begin
     mState := TAtlasRuleState.Start(mRule);
     if mRule.HasTrigger and (TAtlasIdeBreakpoints.Find(mRule.TriggerFile, mRule.TriggerLine) = nil) then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesTriggerMissing,
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesTriggerMissing,
         [PlaceText(mRule.FileName, mRule.Line), PlaceText(mRule.TriggerFile, mRule.TriggerLine)]));
       mState.Armed := True;
     end;
@@ -249,7 +249,7 @@ begin
     mState := StateOf(mRule);
     if TAtlasBreakpointRules.Arm(mRule, mState) then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesArmed,
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesArmed,
         [PlaceText(mRule.FileName, mRule.Line), PlaceText(AFileName, ALine)]));
     end;
     SetState(mRule, mState);
@@ -382,12 +382,12 @@ var
 begin
   if not TargetLine(mFileName, mLine) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesNoEditor));
+    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesNoEditor));
     Exit;
   end;
   if TAtlasIdeBreakpoints.Find(mFileName, mLine) = nil then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesNoBreakpoint, [mLine + 1]));
+    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesNoBreakpoint, [mLine + 1]));
     Exit;
   end;
   mIndex := TAtlasBreakpointRules.IndexOf(FRules, mFileName, mLine);
@@ -407,10 +407,10 @@ begin
   if mChosen.IsEmpty then
   begin
     SetEnabled(mChosen, True);
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesRemoved, [PlaceText(mFileName, mLine)]));
+    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesRemoved, [PlaceText(mFileName, mLine)]));
     Exit;
   end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesSaved, [PlaceText(mFileName, mLine)]));
+  Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesSaved, [PlaceText(mFileName, mLine)]));
 end;
 
 class procedure TAtlasIdeBreakpointRules.Moved(const AFileName: string; AFromLine, AToLine: Integer);

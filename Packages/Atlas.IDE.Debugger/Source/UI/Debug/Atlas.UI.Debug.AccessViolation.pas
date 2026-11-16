@@ -53,7 +53,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.AccessViolation.Strings;
 
 /// <summary>Zusatz zu „X ist nil“: Zugriff auf die VMT, das Feld (genau bzw. geschätzt) oder der Versatz nahe nil;
 /// '' ohne.</summary>
@@ -62,22 +62,22 @@ begin
   Result := '';
   if AVerdict.VmtAccess then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvVmt);
+    Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvVmt);
   end
   else if (AVerdict.Field <> '') and AVerdict.FieldExact then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvField, [AVerdict.Field,
+    Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvField, [AVerdict.Field,
       TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
   end
   else if AVerdict.Field <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFieldEstimated, [AVerdict.Field,
+    Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvFieldEstimated, [AVerdict.Field,
       TAtlasAvTexts.OffsetText(AVerdict.FieldOffset)]);
   end
   else if AMessage.AddressKnown and (AMessage.Address > 0) and
     (AMessage.Address < TAtlasAvAnalysis.cNearNil) then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOffset,
+    Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvOffset,
       [TAtlasAvTexts.OffsetText(Integer(AMessage.Address))]);
   end;
 end;
@@ -89,44 +89,49 @@ begin
   case AVerdict.Kind of
     TAtlasAvVerdictKind.NilLink:
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvNil, [AVerdict.Culprit.Expression]);
+        Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvNil,
+          [AVerdict.Culprit.Expression]);
         ADetail := NilDetail(AVerdict, AMessage);
       end;
     TAtlasAvVerdictKind.Freed:
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreed, [AVerdict.Culprit.Expression]);
+        Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvFreed,
+          [AVerdict.Culprit.Expression]);
         if TAtlasAvValues.IsFreedPattern(AVerdict.Value, APointerSize) then
         begin
-          ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreedPattern,
+          ADetail := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvFreedPattern,
             [TAtlasAvValues.HexText(AVerdict.Value)]);
         end
         else
         begin
-          ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvFreedHeader);
+          ADetail := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvFreedHeader);
         end;
       end;
     TAtlasAvVerdictKind.FreedMemory:
       begin
-        Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvFreedMemory);
-        ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvFreedMemoryDetail,
+        Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvFreedMemory);
+        ADetail := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvFreedMemoryDetail,
           [TAtlasAvValues.HexText(AVerdict.Value)]);
       end;
     TAtlasAvVerdictKind.Invalid:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvInvalid, [AVerdict.Culprit.Expression,
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvInvalid,
+        [AVerdict.Culprit.Expression,
         TAtlasAvValues.HexText(AVerdict.Value)]);
     TAtlasAvVerdictKind.OutOfRange:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvOutOfRange, [AVerdict.Culprit.IndexText, AVerdict.Index,
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvOutOfRange,
+        [AVerdict.Culprit.IndexText, AVerdict.Index,
         AVerdict.Culprit.Expression, AVerdict.Length]);
   else
     begin
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguous);
+      Result := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvAmbiguous);
       if AVerdict.Causes > 1 then
       begin
-        ADetail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvAmbiguousSeveral, [AVerdict.Causes]);
+        ADetail := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvAmbiguousSeveral,
+          [AVerdict.Causes]);
       end
       else
       begin
-        ADetail := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguousNone);
+        ADetail := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvAmbiguousNone);
       end;
     end;
   end;
@@ -137,7 +142,8 @@ var
   mParts: TArray<string>;
   mLine: TAtlasDebugBannerLine;
 begin
-  mParts := TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyHeader), AExplanation.Headline);
+  mParts := TArray<string>.Create(TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvCopyHeader),
+    AExplanation.Headline);
   if AExplanation.Detail <> '' then
   begin
     mParts := mParts + [AExplanation.Detail];
@@ -148,7 +154,7 @@ begin
   end;
   if AExplanation.Lines <> nil then
   begin
-    mParts := mParts + [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvCopyChecked)];
+    mParts := mParts + [TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvCopyChecked)];
     for mLine in AExplanation.Lines do
     begin
       mParts := mParts + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
@@ -164,7 +170,7 @@ begin
   Result := Default(TAtlasDebugBannerExplanation);
   Result.Active := True;
   Result.Busy := True;
-  Result.Headline := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAnalysing);
+  Result.Headline := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvAnalysing);
 end;
 
 class function TAtlasAvTexts.Failed(const AReason, AHeader: string): TAtlasDebugBannerExplanation;
@@ -172,7 +178,7 @@ begin
   Result := Default(TAtlasDebugBannerExplanation);
   Result.Active := True;
   Result.HeadlineMark := TAtlasDebugBannerMark.Neutral;
-  Result.Headline := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvAmbiguous);
+  Result.Headline := TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvAmbiguous);
   Result.Detail := AReason;
   Result.CopyText := CopyTextOf(Result, AHeader);
 end;
@@ -203,11 +209,12 @@ begin
     if Result.Detail <> '' then
     begin
       Result.Detail := Result.Detail + ' ' + #$00B7 + ' ' +
-        TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
+        TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
     end
     else
     begin
-      Result.Detail := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvStatements, [AAnalysis.Chains.Statements]);
+      Result.Detail := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvStatements,
+        [AAnalysis.Chains.Statements]);
     end;
   end;
   for mIndex := 0 to High(AAnalysis.Checks) do
@@ -252,30 +259,30 @@ begin
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue);
     TAtlasAvCheckState.Freed:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFreed) + ')');
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateFreed) + ')');
     TAtlasAvCheckState.Invalid:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateInvalid) + ')');
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateInvalid) + ')');
     TAtlasAvCheckState.OutOfRange:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Bad, mCheck.Expression + ' = ' + mValue + ' (' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateOutOfRange) + ')');
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateOutOfRange) + ')');
     TAtlasAvCheckState.NotReached:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotReached));
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateNotReached));
     TAtlasAvCheckState.Failed:
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateFailed));
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateFailed));
   else
     // Nicht ausgewertet: wegen eines Aufrufs ohne allowCalls oder weil die Prüfung abbrach.
     if AAnalysis.LinkOf(AIndex).Call and not AAnalysis.AllowCalls then
     begin
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateCall));
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateCall));
     end
     else
     begin
       Result := TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Neutral, mCheck.Expression + ': ' +
-        TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvStateNotEvaluated));
+        TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvStateNotEvaluated));
     end;
   end;
 end;
@@ -292,7 +299,8 @@ begin
   begin
     mText := mText + ' ' + #$00B7 + ' ' + AExplanation.Detail;
   end;
-  Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvMessage, [APlace, mText]));
+  Result := TArray<string>.Create(TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvMessage, [APlace,
+    mText]));
   for mLine in AExplanation.Lines do
   begin
     Result := Result + ['  ' + TAtlasDebugBannerLine.MarkText(mLine.Mark) + ' ' + mLine.Text];
@@ -313,22 +321,23 @@ begin
   end;
   case AModule.Kind of
     TAtlasDebugModuleKind.ProgramFile:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleProgram, [AModule.Name]);
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleProgram, [AModule.Name]);
     TAtlasDebugModuleKind.Runtime:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleRuntime, [AModule.Name]);
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleRuntime, [AModule.Name]);
     TAtlasDebugModuleKind.OperatingSystem:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleSystem, [AModule.Name]);
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleSystem, [AModule.Name]);
     TAtlasDebugModuleKind.Foreign:
       if AModule.NoDebugInfo then
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleNoDebugInfo, [AModule.Name]);
+        Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleNoDebugInfo,
+          [AModule.Name]);
       end
       else
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleForeign, [AModule.Name]);
+        Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleForeign, [AModule.Name]);
       end;
     TAtlasDebugModuleKind.Unknown:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleForeign, [AModule.Name]);
+      Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleForeign, [AModule.Name]);
   end;
 end;
 
@@ -339,10 +348,11 @@ var
 begin
   if (AModule.OwnFrame < 0) or (AModule.OwnFrame > High(AFrames)) then
   begin
-    Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugAvModuleNoOwnFrame));
+    Exit(TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvModuleNoOwnFrame));
   end;
   mFrame := AFrames[AModule.OwnFrame];
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugAvModuleOwnFrame, [ExtractFileName(mFrame.FileName),
+  Result := TAtlasAccessViolationStrings.Fmt(TAtlasAccessViolationTextId.DebugAvModuleOwnFrame,
+    [ExtractFileName(mFrame.FileName),
     mFrame.Line, mFrame.Routine]);
 end;
 

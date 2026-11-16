@@ -96,7 +96,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Session.Strings;
 
 const
   /// <summary>Zeichen hinter fertigen bzw. gescheiterten Schritten.</summary>
@@ -166,11 +166,11 @@ begin
   end
   else if (FRun.Current = TAtlasRestartStep.Stop) and (TThread.GetTickCount64 - FStepAt > cStopMs) then
   begin
-    Fail(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartFailedStop));
+    Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedStop));
   end
   else if (FRun.Current = TAtlasRestartStep.Start) and (TThread.GetTickCount64 - FStepAt > cStartMs) then
   begin
-    Fail(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartFailedStart));
+    Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedStart));
   end;
 end;
 
@@ -225,10 +225,10 @@ var
   mCaptions: TAtlasRestartCaptions;
   mPoint: TPoint;
 begin
-  mCaptions[TAtlasRestartStep.Stop] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStop);
-  mCaptions[TAtlasRestartStep.Build] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartBuild);
-  mCaptions[TAtlasRestartStep.Start] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartStart);
-  mCaptions[TAtlasRestartStep.Return] := TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartReturn);
+  mCaptions[TAtlasRestartStep.Stop] := TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartStop);
+  mCaptions[TAtlasRestartStep.Build] := TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartBuild);
+  mCaptions[TAtlasRestartStep.Start] := TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartStart);
+  mCaptions[TAtlasRestartStep.Return] := TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartReturn);
   if FBar = nil then
   begin
     FBar := TAtlasStepsBar.Create(nil);
@@ -236,7 +236,7 @@ begin
   mPoint := TAtlasStepsBar.ActiveCorner;
   FBar.Colors := TAtlasIdeStyle.Colors;
   FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
-  FBar.ShowSteps(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartTitle), FRun.Text(mCaptions, cDoneMark,
+  FBar.ShowSteps(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartTitle), FRun.Text(mCaptions, cDoneMark,
     cFailedMark), mPoint);
 end;
 
@@ -277,7 +277,7 @@ begin
     mProcess.Terminate;
   except
     on Exception do
-      Fail(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartFailedStop));
+      Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedStop));
   end;
 end;
 
@@ -291,7 +291,7 @@ begin
     mProject.ProjectBuilder.BuildProject(cmOTAMake, True, True);
   if not mOk then
   begin
-    Fail(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartFailedBuild));
+    Fail(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartFailedBuild));
     Exit;
   end;
   FStepDone := True;
@@ -304,7 +304,7 @@ begin
   mCount := ReenableBreakpoints;
   if mCount > 0 then
   begin
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RestartReenabled, [mCount]));
+    Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.RestartReenabled, [mCount]));
   end;
   TAtlasIdeDebugUnavailableFixes.Run(FMessage);
 end;
@@ -427,7 +427,7 @@ begin
   mProject := GetActiveProject;
   if mProject = nil then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartNoProject));
+    Say(TAtlasSessionStrings.Text(TAtlasSessionTextId.RestartNoProject));
     Exit;
   end;
   RememberPlace;

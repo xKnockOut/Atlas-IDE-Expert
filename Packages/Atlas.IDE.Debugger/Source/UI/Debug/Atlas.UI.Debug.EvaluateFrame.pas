@@ -150,7 +150,7 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Evaluate.Strings,
   Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
@@ -158,9 +158,9 @@ uses
 const
   /// <summary>Höhe der Knöpfe der Leisten bei 96 dpi.</summary>
   cButtonHeight = 24;
-  cViewTexts: array[TAtlasEvalView] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugEvaluateViewText,
-    TAtlasDebugTextId.DebugEvaluateViewLines, TAtlasDebugTextId.DebugEvaluateViewJson,
-      TAtlasDebugTextId.DebugEvaluateViewHex);
+  cViewTexts: array[TAtlasEvalView] of TAtlasEvaluateTextId = (TAtlasEvaluateTextId.DebugEvaluateViewText,
+    TAtlasEvaluateTextId.DebugEvaluateViewLines, TAtlasEvaluateTextId.DebugEvaluateViewJson,
+      TAtlasEvaluateTextId.DebugEvaluateViewHex);
 
 type
   /// <summary>Was eine Taste im Baum auslöst.</summary>
@@ -186,7 +186,7 @@ begin
 end;
 
 /// <summary>Knopf der fließenden Leiste; die Reihenfolge ist die der Erzeugung.</summary>
-function AddButton(ASelf: TAtlasDebugEvaluateFrame; AParent: TWinControl; AText: TAtlasDebugTextId;
+function AddButton(ASelf: TAtlasDebugEvaluateFrame; AParent: TWinControl; AText: TAtlasEvaluateTextId;
   AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(ASelf);
@@ -194,7 +194,7 @@ begin
   Result.AlignWithMargins := True;
   Result.Width := Scaled(ASelf, 86);
   Result.Height := Scaled(ASelf, cButtonHeight);
-  Result.Caption := TAtlasDebugStrings.Text(AText);
+  Result.Caption := TAtlasEvaluateStrings.Text(AText);
   Result.OnClick := AClick;
 end;
 
@@ -208,7 +208,7 @@ begin
   ASelf.FParts.SideEffectsCheck.Align := alRight;
   ASelf.FParts.SideEffectsCheck.AlignWithMargins := True;
   ASelf.FParts.SideEffectsCheck.Width := Scaled(ASelf, 170);
-  ASelf.FParts.SideEffectsCheck.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateSideEffects);
+  ASelf.FParts.SideEffectsCheck.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateSideEffects);
   ASelf.FParts.SideEffectsCheck.Checked := False;
   ASelf.FParts.SideEffectsCheck.OnClick := ASelf.SideEffectsClick;
 
@@ -216,7 +216,7 @@ begin
   ASelf.FParts.Input.Parent := ASelf.FParts.Top;
   ASelf.FParts.Input.Align := alClient;
   ASelf.FParts.Input.AlignWithMargins := True;
-  ASelf.FParts.Input.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateInputHint);
+  ASelf.FParts.Input.TextHint := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateInputHint);
   ASelf.FParts.Input.OnKeyDown := ASelf.InputKeyDown;
 
   ASelf.FParts.HistoryMenu := TPopupMenu.Create(ASelf);
@@ -235,7 +235,7 @@ begin
   ASelf.FParts.Keys.AlignWithMargins := True;
   ASelf.FParts.Keys.ShowAccelChar := False;
   ASelf.FParts.Keys.Font.Color := clGrayText;
-  ASelf.FParts.Keys.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateKeys);
+  ASelf.FParts.Keys.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateKeys);
 end;
 
 /// <summary>Höhe der Tastenhilfe für ihre jetzige Breite (Zeilen umbrochen wie beim Zeichnen).</summary>
@@ -272,7 +272,7 @@ begin
   Result.Height := Scaled(ASelf, cButtonHeight);
   Result.GroupIndex := 1;
   Result.AllowAllUp := False;
-  Result.Caption := TAtlasDebugStrings.Text(cViewTexts[AKind]);
+  Result.Caption := TAtlasEvaluateStrings.Text(cViewTexts[AKind]);
   Result.Tag := Ord(AKind);
   Result.Down := AKind = ASelf.FState.View;
   Result.OnClick := ASelf.ViewClick;
@@ -296,10 +296,10 @@ begin
   begin
     ASelf.FParts.ViewButtons[mKind] := AddViewButton(ASelf, mKind);
   end;
-  ASelf.FParts.ModifyButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateModify,
+  ASelf.FParts.ModifyButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasEvaluateTextId.DebugEvaluateModify,
     ASelf.ModifyClick);
-  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluatePin, ASelf.PinClick);
-  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasDebugTextId.DebugEvaluateIdeDialog,
+  ASelf.FParts.PinButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasEvaluateTextId.DebugEvaluatePin, ASelf.PinClick);
+  ASelf.FParts.IdeDialogButton := AddButton(ASelf, ASelf.FParts.Bar, TAtlasEvaluateTextId.DebugEvaluateIdeDialog,
     ASelf.IdeDialogClick);
 end;
 
@@ -381,9 +381,9 @@ function StateDetail(ANode: TAtlasEvalNode): string;
 begin
   case ANode.State of
     TAtlasEvalState.Pending:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
+      Result := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePending);
     TAtlasEvalState.Unavailable:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNotStopped);
+      Result := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateNotStopped);
   else
     Result := ANode.Value;
   end;
@@ -396,7 +396,7 @@ begin
   TAtlasEvalText.Render(ANode.Value, TAtlasEvalView.Text, Result);
   if ALines <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateLinesFailed,
+    Result := TAtlasEvaluateStrings.Fmt(TAtlasEvaluateTextId.DebugEvaluateLinesFailed,
       [TAtlasEvalText.FieldExpression(ANode.Expression, 'Text'), ALines]) + sLineBreak + sLineBreak + Result;
   end;
 end;
@@ -412,7 +412,7 @@ begin
     ASelf.FState.LinesOk := False;
     ASelf.FState.LinesText := '';
     ASelf.FState.Shown.Valid := False;
-    ASelf.FParts.Detail.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
+    ASelf.FParts.Detail.Text := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePending);
     ASelf.Hooks.Lines(ANode);
   end;
 end;
@@ -433,7 +433,7 @@ begin
   mText := TAtlasDebugEvaluateFrame.DetailText(ANode, ASelf.FState.View, AOk, ALines, mUnfit);
   if mUnfit and (ASelf.FState.View <> TAtlasEvalView.Lines) then
   begin
-    mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateViewUnfit) + sLineBreak + sLineBreak + mText;
+    mText := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateViewUnfit) + sLineBreak + sLineBreak + mText;
   end;
   ASelf.FParts.Detail.Text := mText;
 end;
@@ -468,11 +468,11 @@ begin
   ASelf.FParts.PinButton.Enabled := mHasExpression;
   if (mNode <> nil) and (mNode.Parent = nil) and mNode.Pinned then
   begin
-    ASelf.FParts.PinButton.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateUnpin);
+    ASelf.FParts.PinButton.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateUnpin);
   end
   else
   begin
-    ASelf.FParts.PinButton.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePin);
+    ASelf.FParts.PinButton.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePin);
   end;
   ASelf.FParts.IdeDialogButton.Enabled := Assigned(ASelf.Hooks.IdeDialog);
 end;
@@ -578,7 +578,7 @@ begin
   if AMenu.Items.Count = 0 then
   begin
     mMenuItem := TMenuItem.Create(AMenu);
-    mMenuItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateHistoryEmpty);
+    mMenuItem.Caption := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateHistoryEmpty);
     mMenuItem.Enabled := False;
     AMenu.Items.Add(mMenuItem);
   end;
@@ -892,7 +892,7 @@ begin
   AUnfit := False;
   if ANode = nil then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoSelection);
+    Result := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateNoSelection);
   end
   else if ANode.State <> TAtlasEvalState.Value then
   begin

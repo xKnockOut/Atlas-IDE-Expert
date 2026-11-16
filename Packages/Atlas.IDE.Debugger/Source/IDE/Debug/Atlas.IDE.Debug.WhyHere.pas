@@ -119,7 +119,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.LineEnd,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Explain.Strings;
 
 const
   cSliceMs = 30;
@@ -133,11 +133,11 @@ const
 function WhyHereTexts: TAtlasWhyHereTexts;
 begin
   Result := Default(TAtlasWhyHereTexts);
-  Result.NotNeeded := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereNotNeeded);
-  Result.NotEvaluated := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereNotEvaluated);
+  Result.NotNeeded := TAtlasExplainStrings.Text(TAtlasExplainTextId.WhyHereNotNeeded);
+  Result.NotEvaluated := TAtlasExplainStrings.Text(TAtlasExplainTextId.WhyHereNotEvaluated);
   Result.Failed := '?';
-  Result.ElseBranch := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereElseBranch);
-  Result.Of_ := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereOf);
+  Result.ElseBranch := TAtlasExplainStrings.Text(TAtlasExplainTextId.WhyHereElseBranch);
+  Result.Of_ := TAtlasExplainStrings.Text(TAtlasExplainTextId.WhyHereOf);
 end;
 
 { TAtlasIdeDebugWhyHere.TEvents }
@@ -463,7 +463,7 @@ begin
     Exit;
   end;
   // Aufrufe können Nebenwirkungen haben: nur nach Rückfrage.
-  if MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.WhyHereConfirmCalls, [string.Join(sLineBreak, mCalls)]),
+  if MessageDlg(TAtlasExplainStrings.Fmt(TAtlasExplainTextId.WhyHereConfirmCalls, [string.Join(sLineBreak, mCalls)]),
     TMsgDlgType.mtConfirmation, [TMsgDlgBtn.mbOK, TMsgDlgBtn.mbCancel], 0) <> mrOk then
   begin
     Exit;

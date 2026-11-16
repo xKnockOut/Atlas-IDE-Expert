@@ -76,7 +76,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Breakpoints.Strings,
+  Atlas.UI.Debug.DataBreakpoints.Strings,
   Atlas.UI.Debug.InstanceBreakpoint;
 
 { TAtlasIdeInstanceBreakpoint.TListener }
@@ -107,12 +108,12 @@ begin
   Result := False;
   if not Started then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceOff));
+    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceOff));
     Exit;
   end;
   if TAtlasIdeBreakpoints.StoppedProcess = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceNotStopped));
+    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceNotStopped));
     Exit;
   end;
   mView := TAtlasEditorBuffer.ActiveView;
@@ -124,14 +125,14 @@ begin
   ABreakpoint := TAtlasIdeBreakpoints.Find(mView.Buffer.FileName, mLine);
   if ABreakpoint = nil then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceNoBreakpoint, [mLine + 1]));
+    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceNoBreakpoint, [mLine + 1]));
     Exit;
   end;
   mLines := TAtlasEditorBuffer.Text(mView.Buffer).Replace(#13#10, #10).Split([#10]);
   Result := TAtlasInstanceBreakpoint.RoutineHasSelf(mLines, mLine);
   if not Result then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceNoSelf, [mLine + 1]));
+    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceNoSelf, [mLine + 1]));
   end;
 end;
 
@@ -170,10 +171,12 @@ var
 begin
   Result := '';
   mItems := FieldItems(AFields);
-  if TAtlasInstanceBreakpointDialog.Ask(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldTitle),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceFieldSummary, [Place(ABreakpoint), ABreakpoint.LineNumber]),
-    mItems, TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldApply),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceCancel)), 1, mItem) = 0 then
+  if TAtlasInstanceBreakpointDialog.Ask(TAtlasDataBreakpointsStrings.Text(
+    TAtlasDataBreakpointsTextId.InstanceFieldTitle),
+    TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceFieldSummary, [Place(ABreakpoint),
+      ABreakpoint.LineNumber]),
+    mItems, TArray<string>.Create(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceFieldApply),
+    TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceCancel)), 1, mItem) = 0 then
   begin
     if (mItem >= 0) and (mItem <= High(mItems)) then
     begin
@@ -246,14 +249,15 @@ begin
   SetLength(mItems, Length(mOrphans));
   for mIndex := 0 to High(mOrphans) do
   begin
-    mItems[mIndex] := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckProblemLine,
+    mItems[mIndex] := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckProblemLine,
       [Place(mOrphans[mIndex]), mOrphans[mIndex].LineNumber, mOrphans[mIndex].Expression]);
   end;
-  mChoice := TAtlasInstanceBreakpointDialog.Ask(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceOrphanTitle),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceOrphanSummary, [Length(mOrphans)]), mItems,
-    TArray<string>.Create(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceOrphanRemove),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceOrphanReplace),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceOrphanKeep)), 2, mItem);
+  mChoice := TAtlasInstanceBreakpointDialog.Ask(TAtlasDataBreakpointsStrings.Text(
+    TAtlasDataBreakpointsTextId.InstanceOrphanTitle),
+    TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceOrphanSummary, [Length(mOrphans)]), mItems,
+    TArray<string>.Create(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceOrphanRemove),
+    TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceOrphanReplace),
+    TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceOrphanKeep)), 2, mItem);
   if mChoice < 0 then
   begin
     Exit;
@@ -276,7 +280,8 @@ begin
       mOrphans[mIndex].Expression := TAtlasInstanceBreakpoint.WithoutAddress(mOrphans[mIndex].Expression);
     end;
   end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceOrphanDone, [Length(mOrphans) - mReplaced, mReplaced]));
+  Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceOrphanDone, [Length(mOrphans) - mReplaced,
+    mReplaced]));
 end;
 
 class procedure TAtlasIdeInstanceBreakpoint.Start(const AMessage: TProc<string>);
@@ -323,13 +328,13 @@ begin
   if not Evaluate(TAtlasInstanceBreakpoint.cSelfAddressExpression, mValue) or
     not TAtlasInstanceBreakpoint.TryParseAddress(mValue, mAddress) then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceNoAddress, [mValue]));
+    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceNoAddress, [mValue]));
     Exit;
   end;
   FFields.AddOrSetValue(mAddress, SelfFields);
   mBreakpoint.Expression := TAtlasInstanceBreakpoint.RestrictToObject(mBreakpoint.Expression, mAddress,
     TAtlasInstanceStyle.Pointer);
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceRestricted, [Place(mBreakpoint),
+  Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceRestricted, [Place(mBreakpoint),
     mBreakpoint.LineNumber, TAtlasInstanceBreakpoint.AddressText(mAddress)]));
 end;
 
@@ -346,7 +351,7 @@ begin
   mFields := SelfFields;
   if mFields = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceNoFields));
+    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.InstanceNoFields));
     Exit;
   end;
   mCondition := ChooseField(mBreakpoint, mFields);
@@ -355,7 +360,8 @@ begin
     Exit;
   end;
   mBreakpoint.Expression := TAtlasInstanceBreakpoint.Combine(mBreakpoint.Expression, mCondition);
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.InstanceFieldSet, [Place(mBreakpoint), mBreakpoint.LineNumber,
+  Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.InstanceFieldSet, [Place(mBreakpoint),
+    mBreakpoint.LineNumber,
     mCondition]));
 end;
 

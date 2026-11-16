@@ -119,7 +119,7 @@ uses
   Vcl.Clipbrd,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.EventLog.Strings,
   Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
@@ -133,10 +133,10 @@ const
   cKindWidth = 80;
   cThreadWidth = 60;
   cTextWidth = 520;
-  cKindTexts: array[TAtlasEventKind] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugEventLogKindOutput,
-    TAtlasDebugTextId.DebugEventLogKindBreakpoint, TAtlasDebugTextId.DebugEventLogKindModule,
-    TAtlasDebugTextId.DebugEventLogKindThread, TAtlasDebugTextId.DebugEventLogKindProcess,
-    TAtlasDebugTextId.DebugEventLogKindLogpoint, TAtlasDebugTextId.DebugEventLogKindOther);
+  cKindTexts: array[TAtlasEventKind] of TAtlasEventLogTextId = (TAtlasEventLogTextId.DebugEventLogKindOutput,
+    TAtlasEventLogTextId.DebugEventLogKindBreakpoint, TAtlasEventLogTextId.DebugEventLogKindModule,
+    TAtlasEventLogTextId.DebugEventLogKindThread, TAtlasEventLogTextId.DebugEventLogKindProcess,
+    TAtlasEventLogTextId.DebugEventLogKindLogpoint, TAtlasEventLogTextId.DebugEventLogKindOther);
 
 /// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
@@ -171,7 +171,7 @@ begin
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogEmpty);
+  FEmpty.Caption := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogEmpty);
   FEmpty.Visible := False;
 end;
 
@@ -209,7 +209,7 @@ begin
   FRemember.Parent := mTop;
   FRemember.Align := alRight;
   FRemember.AlignWithMargins := True;
-  FRemember.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogRememberFilter);
+  FRemember.Caption := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogRememberFilter);
   FRemember.Width := MulDiv(cRememberWidth, CurrentPPI, 96);
   FRemember.OnClick := RememberClick;
 
@@ -218,7 +218,7 @@ begin
   FFilter.Align := alClient;
   FFilter.AlignWithMargins := True;
   FFilter.Style := csDropDown;
-  FFilter.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFilterHint);
+  FFilter.TextHint := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogFilterHint);
   FFilter.OnChange := FilterChange;
 end;
 
@@ -229,12 +229,12 @@ begin
   inherited Create(AFrame);
   FFrame := AFrame;
   OnPopup := MenuPopup;
-  FOpenItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogGoTo), OpenClick);
+  FOpenItem := AddItem(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogGoTo), OpenClick);
   FOpenItem.Default := True;
-  FCopyItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogCopy), CopyClick);
-  FSaveItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogSave), SaveClick);
-  FForgetItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogForgetFilter), ForgetClick);
-  FClearItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogClear), ClearClick);
+  FCopyItem := AddItem(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogCopy), CopyClick);
+  FSaveItem := AddItem(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogSave), SaveClick);
+  FForgetItem := AddItem(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogForgetFilter), ForgetClick);
+  FClearItem := AddItem(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogClear), ClearClick);
 end;
 
 function TAtlasDebugEventLogFrame.TListMenu.AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -309,10 +309,10 @@ begin
   FList.MultiSelect := False;
   FList.ColumnClick := False;
   FList.PopupMenu := FMenu;
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnTime), cTimeWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnKind), cKindWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnThread), cThreadWidth);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogColumnText), cTextWidth);
+  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnTime), cTimeWidth);
+  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnKind), cKindWidth);
+  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnThread), cThreadWidth);
+  AddColumn(FList, TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogColumnText), cTextWidth);
   FList.OnData := ListData;
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
@@ -333,7 +333,7 @@ begin
   FKindBox.Items.BeginUpdate;
   try
     FKindBox.Items.Clear;
-    FKindBox.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogKindAll));
+    FKindBox.Items.Add(TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogKindAll));
     for mKind := Low(TAtlasEventKind) to High(TAtlasEventKind) do
     begin
       FKindBox.Items.Add(KindCaption(mKind));
@@ -529,11 +529,11 @@ begin
   FList.Visible := mTotal > 0;
   if not mFilter.Valid then
   begin
-    FSummary.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogInvalidRegex);
+    FSummary.Caption := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogInvalidRegex);
   end
   else
   begin
-    FSummary.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogSummary, [Length(FShown), mTotal]);
+    FSummary.Caption := TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogSummary, [Length(FShown), mTotal]);
   end;
 end;
 
@@ -573,7 +573,7 @@ end;
 
 class function TAtlasDebugEventLogFrame.KindCaption(AKind: TAtlasEventKind): string;
 begin
-  Result := TAtlasDebugStrings.Text(cKindTexts[AKind]);
+  Result := TAtlasEventLogStrings.Text(cKindTexts[AKind]);
 end;
 
 class function TAtlasDebugEventLogFrame.Cells(const AEntry: TAtlasEventEntry): TArray<string>;

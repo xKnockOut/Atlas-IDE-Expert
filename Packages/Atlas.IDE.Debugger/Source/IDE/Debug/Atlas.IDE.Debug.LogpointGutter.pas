@@ -38,7 +38,7 @@ implementation
 uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Logpoints,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Logpoints.Strings;
 
 const
   /// <summary>Anteil des Akzents an der Füllung der Raute.</summary>
@@ -108,15 +108,15 @@ begin
   begin
     Exit;
   end;
-  ATitle := TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointTipTitle);
+  ATitle := TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointTipTitle);
   if not mMark.Enabled then
   begin
-    ATitle := ATitle + ' (' + TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointTipOff) + ')';
+    ATitle := ATitle + ' (' + TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointTipOff) + ')';
   end;
   AText := mMark.Input.Text;
   if mMark.Input.Condition <> '' then
   begin
-    AText := AText + #10 + TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCondition) + ' ' +
+    AText := AText + #10 + TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointCondition) + ' ' +
       mMark.Input.Condition;
   end;
 end;

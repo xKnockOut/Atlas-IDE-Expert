@@ -56,7 +56,7 @@ implementation
 
 uses
   Atlas.Core.Style.Signal,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Logpoints.Strings;
 
 const
   cWidth = 460;
@@ -72,24 +72,25 @@ var
   mButtons: TAtlasButtonRow;
   mRemove: TButton;
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointDialogTitle, [APlace]), cWidth);
-  FText := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointText),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointTextHint));
+  inherited CreateDialog(AOwner, TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointDialogTitle, [APlace]),
+    cWidth);
+  FText := LabeledEdit(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointText),
+    TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointTextHint));
   FNote := AddNote(cNoteHeight);
-  FCondition := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCondition),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointConditionHint));
-  FHits := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointHits), '');
+  FCondition := LabeledEdit(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointCondition),
+    TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointConditionHint));
+  FHits := LabeledEdit(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointHits), '');
   FHits.NumbersOnly := True;
   mButtons := AddButtonRow;
-  FSet := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointSet), TAtlasButtonKind.Default);
+  FSet := mButtons.AddButton(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointSet), TAtlasButtonKind.Default);
   FSet.ModalResult := mrNone;
   FSet.OnClick := SetClick;
   if ACanRemove then
   begin
-    mRemove := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointRemove));
+    mRemove := mButtons.AddButton(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointRemove));
     mRemove.ModalResult := cModalRemove;
   end;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCancel), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointCancel), TAtlasButtonKind.Cancel);
   FitHeight;
   ActiveControl := FText;
   InputChange(nil);
@@ -127,7 +128,7 @@ begin
   end
   else
   begin
-    FNote.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointFormats), TAtlasSignalKind.Info);
+    FNote.ShowNote(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointFormats), TAtlasSignalKind.Info);
   end;
   FSet.Enabled := (Trim(FText.Text) <> '') and mTemplate.Valid;
 end;
@@ -160,11 +161,11 @@ begin
   Result := '';
   case ATemplate.Error of
     TAtlasLogpointError.MissingClose:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointMissingClose, [ATemplate.ErrorPos]);
+      Result := TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointMissingClose, [ATemplate.ErrorPos]);
     TAtlasLogpointError.StrayClose:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointStrayClose, [ATemplate.ErrorPos]);
+      Result := TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointStrayClose, [ATemplate.ErrorPos]);
     TAtlasLogpointError.EmptyPlaceholder:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointEmpty, [ATemplate.ErrorPos]);
+      Result := TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointEmpty, [ATemplate.ErrorPos]);
     TAtlasLogpointError.None:
       Result := '';
   end;

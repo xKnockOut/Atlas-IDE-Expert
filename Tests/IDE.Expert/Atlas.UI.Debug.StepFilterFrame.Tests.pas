@@ -43,7 +43,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   System.SysUtils,
   System.Classes,
   Vcl.Forms,
@@ -154,7 +154,7 @@ begin
     TAtlasStepFilterTexts.SessionText(True, 0, '', ''));
   Assert.AreEqual('In dieser Debug-Sitzung übersprungen: 3 · zuletzt Kunden.TKunde.GetName (Muster *.Get*)',
     TAtlasStepFilterTexts.SessionText(True, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
-  Assert.AreEqual(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterInactive),
+  Assert.AreEqual(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterInactive),
     TAtlasStepFilterTexts.SessionText(False, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
   mCounts.Patterns := nil;
 end;

@@ -61,7 +61,7 @@ uses
   Atlas.UI.Debug.BreakpointRules,
   Atlas.IDE.Debug.BreakpointsWindow,
   Atlas.UI.Debug.BreakpointsFrame,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 const
   cRefreshMs = 150;
@@ -534,7 +534,7 @@ begin
   begin
     if Assigned(GMessage) then
     begin
-      GMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsOff));
+      GMessage(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsOff));
     end;
     Exit;
   end;

@@ -52,7 +52,7 @@ uses
   Atlas.IDE.Debug.BreakpointAnchors,
   Atlas.IDE.Debug.BreakpointRules,
   Atlas.IDE.Debug.DataBreakpoint,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Commands.Strings;
 
 const
   /// <summary>Strg+F4: nur im angehaltenen Zustand, sonst schließt die IDE wie gewohnt die Datei.</summary>
@@ -328,49 +328,59 @@ function BreakpointCommands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
     // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
-    Command('Atlas.BreakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand),
+    Command('Atlas.BreakOnNextEvent', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand),
       TAtlasIdeEventBreak.Run, BreakOnNextEventVisible),
     // Haltepunkte prüfen (#577); nur sichtbar, solange debug.checkBreakpoints an ist.
-    Command('Atlas.CheckBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckCommand),
+    Command('Atlas.CheckBreakpoints', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointCheckCommand),
       TAtlasIdeBreakpointCheck.Run, BreakpointCheckVisible),
     // Haltepunkt auf Methoden (#855); nur sichtbar, solange debug.methodBreakpoints an ist.
-    Command('Atlas.MethodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsCommand),
+    Command('Atlas.MethodBreakpoints',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.MethodBreakpointsCommand),
       TAtlasIdeMethodBreakpoints.Run, MethodBreakpointsVisible),
     Command('Atlas.MethodBreakpointGroups',
-      TAtlasDebugStrings.Text(TAtlasDebugTextId.MethodBreakpointsGroupsCommand), TAtlasIdeMethodBreakpoints.RunGroups,
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.MethodBreakpointsGroupsCommand),
+        TAtlasIdeMethodBreakpoints.RunGroups,
       MethodBreakpointsVisible),
     // Haltepunkt-Sätze (#586).
-    Command('Atlas.BreakpointSetSave', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSaveCommand),
+    Command('Atlas.BreakpointSetSave',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointSetSaveCommand),
       TAtlasIdeBreakpointSets.SaveSet, BreakpointSetsRunning),
-    Command('Atlas.BreakpointSetSwitch', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetSwitchCommand),
+    Command('Atlas.BreakpointSetSwitch',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointSetSwitchCommand),
       TAtlasIdeBreakpointSets.SwitchSet, BreakpointSetsRunning),
-    Command('Atlas.BreakpointSetAdd', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetAddCommand),
+    Command('Atlas.BreakpointSetAdd',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointSetAddCommand),
       TAtlasIdeBreakpointSets.AddSet, BreakpointSetsRunning),
-    Command('Atlas.BreakpointSetDelete', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetDeleteCommand),
+    Command('Atlas.BreakpointSetDelete',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointSetDeleteCommand),
       TAtlasIdeBreakpointSets.DeleteSet, BreakpointSetsRunning),
     // Bis hier ausführen (#851); nur sichtbar, solange debug.runToClick an ist.
-    Command('Atlas.RunToHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToHereCommand), TAtlasIdeRunTo.RunHere,
+    Command('Atlas.RunToHere', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RunToHereCommand),
+      TAtlasIdeRunTo.RunHere,
       RunToVisible),
-    Command('Atlas.RunToHereSkip', TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToSkipCommand),
+    Command('Atlas.RunToHereSkip', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RunToSkipCommand),
       TAtlasIdeRunTo.RunHereSkip, RunToVisible),
-    Command('Atlas.OnceBreakpoint', TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToOnceCommand),
+    Command('Atlas.OnceBreakpoint', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RunToOnceCommand),
       TAtlasIdeRunTo.SetOnce, RunToVisible),
     // Haltepunktfenster (#863); nur sichtbar, solange debug.breakpointsWindow an ist.
-    Command('Atlas.BreakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsWindowCommand),
+    Command('Atlas.BreakpointsWindow',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointsWindowCommand),
       TAtlasIdeDebugBreakpointList.ShowWindow, BreakpointsWindowVisible),
     // Haltepunkt nur für ein Objekt (#857); nur sichtbar, solange debug.instanceBreakpoints an ist.
-    Command('Atlas.BreakpointOnlyForObject', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceObjectCommand),
+    Command('Atlas.BreakpointOnlyForObject',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.InstanceObjectCommand),
       TAtlasIdeInstanceBreakpoint.RestrictToObject, InstanceBreakpointVisible),
-    Command('Atlas.BreakpointOnlyIf', TAtlasDebugStrings.Text(TAtlasDebugTextId.InstanceFieldCommand),
+    Command('Atlas.BreakpointOnlyIf', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.InstanceFieldCommand),
       TAtlasIdeInstanceBreakpoint.RestrictToField, InstanceBreakpointVisible),
     // Haltepunkte wandern mit dem Code (#841); nur sichtbar, solange debug.breakpointAnchors an ist.
-    Command('Atlas.BreakpointAnchorsUndo', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsUndoCommand),
+    Command('Atlas.BreakpointAnchorsUndo',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointAnchorsUndoCommand),
       TAtlasIdeBreakpointAnchors.Undo, BreakpointAnchorsVisible),
     Command('Atlas.BreakpointAnchorsOrphans',
-      TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsOrphansCommand),
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointAnchorsOrphansCommand),
       TAtlasIdeBreakpointAnchors.ShowOrphans, BreakpointAnchorsVisible),
     // Haltepunkt-Regeln (#864); nur sichtbar, solange debug.breakpointRules an ist.
-    Command('Atlas.BreakpointRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesCommand),
+    Command('Atlas.BreakpointRules', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.BreakpointRulesCommand),
       TAtlasIdeBreakpointRules.Edit, BreakpointRulesVisible),
     // Anhalten, wenn sich ein Feld ändert (#584); der Text nennt den Ausdruck unter der Schreibmarke.
     Command('Atlas.BreakOnFieldChange', TAtlasIdeDataBreakpoint.CommandCaption, TAtlasIdeDataBreakpoint.WatchAtCursor,
@@ -394,7 +404,7 @@ end;
 function ContextEntry(const ACommandId: string; const AWhen: TAtlasMenuWhen): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
-  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result.Section := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result.Group := 'debug';
   Result.When := AWhen;
 end;
@@ -441,7 +451,7 @@ begin
   end;
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.RunToHereSkip';
-  mKey.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToSkipCommand);
+  mKey.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RunToSkipCommand);
   mKey.Key := cRunToSkipKey;
   mKey.Attempt :=
     function: Boolean

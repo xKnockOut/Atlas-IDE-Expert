@@ -112,7 +112,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.EvaluateStore,
   Atlas.IDE.Debug.LineEnd,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Values.Strings;
 
 const
   cWhat = 'Angeheftete Werte';
@@ -360,7 +360,7 @@ begin
   end
   else if TAtlasPinsFlow.ReportLimit(mAdded, Length(FPins.All(APin.Project))) and Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.PinLimit, [TAtlasDebugPins.cLimit]));
+    FMessage(TAtlasValuesStrings.Fmt(TAtlasValuesTextId.PinLimit, [TAtlasDebugPins.cLimit]));
   end;
 end;
 
@@ -519,7 +519,7 @@ begin
   if TAtlasPinsFlow.CanOffer(FInstance <> nil, AValue.Expression) then
   begin
     Result := TArray<TAtlasDebugValueFix>.Create(TAtlasDebugValueFix.Create(cPinAction,
-      TAtlasDebugStrings.Text(TAtlasDebugTextId.PinAction)));
+      TAtlasValuesStrings.Text(TAtlasValuesTextId.PinAction)));
   end;
 end;
 

@@ -70,7 +70,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Popup.Accessibility;
 
 { TAtlasNoSourcePopup }
@@ -80,7 +80,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
-  SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceTitle, ['']));
+  SetAccessible(cUiaToolTipControlType, TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceTitle, ['']));
 end;
 
 procedure TAtlasNoSourcePopup.Paint;
@@ -184,7 +184,7 @@ begin
   end;
   if FCanIgnore then
   begin
-    Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceIgnore), cIgnoreLink);
+    Link(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceIgnore), cIgnoreLink);
   end;
   if ADraw then
   begin
@@ -212,13 +212,13 @@ class function TAtlasNoSourcePopup.WayText(AWay: TAtlasNoSourceWay): string;
 begin
   case AWay of
     TAtlasNoSourceWay.EnableDebugDcus:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceEnableDcus);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceEnableDcus);
     TAtlasNoSourceWay.ReturnToOwnCode:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturn);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceReturn);
     TAtlasNoSourceWay.FindSource:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceFind);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceFind);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceKeepCpu);
+    Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceKeepCpu);
   end;
 end;
 
@@ -226,15 +226,15 @@ class function TAtlasNoSourcePopup.ReasonText(AReason: TAtlasNoSourceReason): st
 begin
   case AReason of
     TAtlasNoSourceReason.DebugDcusOff:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDebugDcusOff);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceDebugDcusOff);
     TAtlasNoSourceReason.NoDebugInfo:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNoDebugInfo);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceNoDebugInfo);
     TAtlasNoSourceReason.DcuOnly:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceDcuOnly);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceDcuOnly);
     TAtlasNoSourceReason.NotInSearchPath:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceNotInPath);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceNotInPath);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceSystem);
+    Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceSystem);
   end;
 end;
 

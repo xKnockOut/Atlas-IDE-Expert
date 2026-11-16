@@ -103,7 +103,7 @@ uses
   Atlas.IDE.Debug.EventLogMirror,
   Atlas.IDE.Debug.EventLogWindow,
   Atlas.IDE.Debug.Sources,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.EventLog.Strings;
 
 const
   cFiltersWhat = 'Event log filters';
@@ -145,25 +145,25 @@ end;
 procedure TProcessWatch.ThreadCreated(const Thread: IOTAThread);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogThreadStarted));
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadStarted));
 end;
 
 procedure TProcessWatch.ThreadDestroyed(const Thread: IOTAThread);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Thread, ThreadText(Thread),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogThreadEnded));
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogThreadEnded));
 end;
 
 procedure TProcessWatch.ProcessModuleCreated(const ProcessModule: IOTAProcessModule);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
+    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleLoaded, [ProcessModule.GetModuleFileName]));
 end;
 
 procedure TProcessWatch.ProcessModuleDestroyed(const ProcessModule: IOTAProcessModule);
 begin
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Module, '',
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
+    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogModuleUnloaded, [ProcessModule.GetModuleFileName]));
 end;
 
 procedure TProcessWatch.Destroyed;
@@ -199,7 +199,7 @@ procedure TAtlasIdeDebugEventLog.TListener.DebugStarted;
 begin
   TAtlasIdeDebugEventLog.FStartTick := GetTickCount64;
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Process, '',
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogSessionStarted,
+    TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogSessionStarted,
     [ExtractFileName(TAtlasIdeDebugSession.LaunchProject)]));
   Watch;
   // Nur Zeilen ab jetzt; was das Fenster der IDE davor hatte, gehört zu früheren Läufen.
@@ -212,7 +212,7 @@ begin
   TAtlasIdeDebugEventLog.Poll;
   Unwatch;
   TAtlasIdeDebugEventLog.AddEntry(TAtlasEventKind.Process, '',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogSessionEnded));
+    TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogSessionEnded));
 end;
 
 { TAtlasIdeDebugEventLog.TTicker }
@@ -341,7 +341,7 @@ var
 begin
   mDialog := TSaveDialog.Create(nil);
   try
-    mDialog.Filter := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogFileTypes);
+    mDialog.Filter := TAtlasEventLogStrings.Text(TAtlasEventLogTextId.DebugEventLogFileTypes);
     mDialog.DefaultExt := 'txt';
     mDialog.FileName := TAtlasEventLogFlow.SaveName(TAtlasIdeEvaluateStore.CurrentProject);
     mDialog.Options := mDialog.Options + [ofOverwritePrompt];
@@ -352,7 +352,7 @@ begin
     TFile.WriteAllText(mDialog.FileName, FLog.ToText, TEncoding.UTF8);
     if Assigned(FServices.Message) then
     begin
-      FServices.Message(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogSaved, [mDialog.FileName]));
+      FServices.Message(TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogSaved, [mDialog.FileName]));
     end;
   finally
     mDialog.Free;
@@ -562,7 +562,7 @@ begin
   end;
   if Assigned(FServices.Message) then
   begin
-    FServices.Message(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEventLogNotFound,
+    FServices.Message(TAtlasEventLogStrings.Fmt(TAtlasEventLogTextId.DebugEventLogNotFound,
       [mJump.FileName + mJump.Symbol]));
   end;
 end;

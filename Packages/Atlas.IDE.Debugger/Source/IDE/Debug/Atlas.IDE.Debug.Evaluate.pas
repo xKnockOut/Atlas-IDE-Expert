@@ -199,7 +199,7 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Evaluate.Strings,
   Atlas.Core.Diagnostics.Deadline;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
@@ -519,7 +519,7 @@ begin
   mNode := FList.Find(TakeKey);
   if mNode <> nil then
   begin
-    FList.SetResult(mNode, False, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout));
+    FList.SetResult(mNode, False, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout));
   end;
 end;
 
@@ -884,8 +884,8 @@ begin
   mExpression := ANode.Expression;
   mNewValue := ANode.Value;
   // Der Dialog ist modal: Danach kann der Knoten weg sein.
-  if not InputQuery(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateModifyTitle),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyPrompt, [mExpression]), mNewValue) or
+  if not InputQuery(TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateModifyTitle),
+    TAtlasEvaluateStrings.Fmt(TAtlasEvaluateTextId.DebugEvaluateModifyPrompt, [mExpression]), mNewValue) or
     not StillStopped then
   begin
     Exit;
@@ -894,7 +894,7 @@ begin
   try
     if not TAtlasIdeDebugValues.Modify(mExpression, FPlace.FileName, FPlace.Line + 1, mNewValue, mOutcome) then
     begin
-      MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyFailed, [mExpression, mOutcome]),
+      MessageDlg(TAtlasEvaluateStrings.Fmt(TAtlasEvaluateTextId.DebugEvaluateModifyFailed, [mExpression, mOutcome]),
         mtWarning, [mbOK], 0);
     end;
   finally

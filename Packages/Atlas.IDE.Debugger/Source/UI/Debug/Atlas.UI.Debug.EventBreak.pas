@@ -109,7 +109,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -131,19 +131,19 @@ function CategoryText(ACategory: TAtlasEventCategory): string;
 begin
   case ACategory of
     TAtlasEventCategory.Mouse:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakMouse);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakMouse);
     TAtlasEventCategory.Keyboard:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakKeyboard);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakKeyboard);
     TAtlasEventCategory.Timer:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTimer);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakTimer);
     TAtlasEventCategory.Window:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakWindow);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakWindow);
     TAtlasEventCategory.Database:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakDatabase);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakDatabase);
     TAtlasEventCategory.Actions:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakActions);
+      Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakActions);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOther);
+    Result := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakOther);
   end;
 end;
 
@@ -155,7 +155,7 @@ var
 begin
   Result := TGroupBox.Create(ADialog);
   Result.Parent := ADialog;
-  Result.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCategories);
+  Result.Caption := TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakCategories);
   Result.SetBounds(ADialog.ScaleValue(cDialogGap), ADialog.ScaleValue(cDialogGap),
     ADialog.ClientWidth - 2 * ADialog.ScaleValue(cDialogGap), 0);
   mTop := ADialog.ScaleValue(20);
@@ -165,7 +165,7 @@ begin
     ADialog.FCategories[mCategory].Top := mTop;
     Inc(mTop, ADialog.ScaleValue(cLineHeight));
   end;
-  ADialog.FFrequent := ADialog.AddCheck(Result, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFrequent,
+  ADialog.FFrequent := ADialog.AddCheck(Result, TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakFrequent,
     [AExcluded]));
   ADialog.FFrequent.Top := mTop + ADialog.ScaleValue(4);
   Result.Height := ADialog.FFrequent.Top + ADialog.ScaleValue(30);
@@ -177,7 +177,7 @@ var
   mRow: TPanel;
 begin
   mRow := ADialog.AddRow(cComboRowHeight);
-  ADialog.FOne := ADialog.AddRadio(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOneForm));
+  ADialog.FOne := ADialog.AddRadio(mRow, TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakOneForm));
   ADialog.FOne.Align := alLeft;
   ADialog.FOne.Width := ADialog.FOne.Margins.Left + TAtlasDialog.TextWidth(ADialog.Font, ADialog.FOne.Caption) +
     ADialog.ScaleValue(cRadioMark);
@@ -196,10 +196,10 @@ var
   mButtons: TAtlasButtonRow;
 begin
   mButtons := ADialog.AddButtonRow;
-  ADialog.FOk := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk),
+  ADialog.FOk := mButtons.AddButton(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakOk),
     TAtlasButtonKind.Default);
   ADialog.FOk.OnClick := ADialog.OkClick;
-  ADialog.FCancel := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel),
+  ADialog.FCancel := mButtons.AddButton(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakCancel),
     TAtlasButtonKind.Cancel);
   ADialog.FCancel.OnClick := ADialog.CancelClick;
 end;
@@ -211,16 +211,17 @@ constructor TAtlasEventBreakDialog.CreateDialog(AOwner: TComponent; const AChoic
 var
   mHeading: TLabel;
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle), cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakTitle), cDialogWidth);
   FChoice := AChoice;
   FForms := AForms;
   FCountText := ACount;
   BorderIcons := [biSystemMenu];
   CreateCategories(Self, AExcluded);
-  mHeading := AddLabel(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakScope));
+  mHeading := AddLabel(AddRow(cLineHeight), TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakScope));
   mHeading.Font.Style := [fsBold];
-  FAll := AddRadio(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakAllForms));
-  FVisible := AddRadio(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleForms));
+  FAll := AddRadio(AddRow(cLineHeight), TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakAllForms));
+  FVisible := AddRadio(AddRow(cLineHeight),
+    TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakVisibleForms));
   CreateFormRow(Self);
   FCount := AddNote(cCountHeight);
   FCount.ShowAccelChar := False;
@@ -387,7 +388,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
-  SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
+  SetAccessible(cUiaToolTipControlType, TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakTitle));
 end;
 
 procedure TAtlasEventBreakBar.Paint;
@@ -484,7 +485,7 @@ begin
   end;
   X := Scale(cPad);
   Y := Scale(cPad);
-  mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]);
+  mText := TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [FText]);
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
@@ -494,8 +495,8 @@ begin
   mWidth := X + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   Y := Y + mTextHeight + Scale(cGap) * 2;
-  Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakContinue), 0, FContinueRect);
-  Link(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakClose), 1, FCloseRect);
+  Link(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakContinue), 0, FContinueRect);
+  Link(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakClose), 1, FCloseRect);
   mWidth := Max(mWidth, FCloseRect.Right);
   if ADraw then
   begin
@@ -524,7 +525,7 @@ begin
   end;
   mTop := Max(mTop, mArea.Top);
   ShowAt(Rect(mLeft, mTop, mLeft + mSize.cx, mTop + mSize.cy));
-  Announce(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [FText]));
+  Announce(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [FText]));
 end;
 
 procedure TAtlasEventBreakBar.Dismiss;
