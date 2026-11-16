@@ -648,7 +648,7 @@ begin
   try
     CollectRecursive(mTree.Root, mExpected);
     mNodes := TSyntaxNode.PreOrder(mTree.Root);
-    Assert.AreEqual(mExpected.Count, Integer(Length(mNodes)), 'Anzahl Knoten');
+    Assert.AreEqual(Integer(mExpected.Count), Integer(Length(mNodes)), 'Anzahl Knoten');
     for mIndex := 0 to mExpected.Count - 1 do
     begin
       Assert.AreSame(mExpected[mIndex], mNodes[mIndex], 'Reihenfolge an Stelle ' + IntToStr(mIndex));
