@@ -298,6 +298,7 @@ pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
 pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
 pwsh Tools/Check-ProjectFiles.ps1          # project files readable by MSBuild (source build for Delphi 12)
+pwsh Tools/Check-RuntimeChecks.ps1         # every project has range and overflow checking in its Debug build
 ```
 
 `Tests/DccFaelle` holds minimal cases for the compiler rules: each one states whether dcc reports it or compiles it. `pwsh Tools/Build-DccFaelle.ps1` builds them through `Tools/Build-Ide.ps1` (Win32 and Win64) and writes the dcc messages per case to `Output/DccFaelle-Ergebnis.txt`; the rules must not be stricter than that result (#1328).
