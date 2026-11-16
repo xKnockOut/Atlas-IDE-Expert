@@ -63,6 +63,8 @@ type
     FContainer: string;
     FHeader: TSyntaxNode;
     FLocals: TDictionary<string, Boolean>;
+    // Typ je Parameter (klein): Liest der Rumpf ein Mitglied, braucht dcc die Unit des Typs (#2309).
+    FParamTypes: TDictionary<string, string>;
     FSeen: TDictionary<string, Boolean>;
     FOwn: TDictionary<string, TIndexSymbol>;
     FMembers: TDictionary<string, TIndexSymbol>;
@@ -75,6 +77,9 @@ type
     procedure WalkBody(ANode: TSyntaxNode);
     procedure MemberRef(AIdent: TSyntaxNode; const AMember: TIndexSymbol);
     procedure OwnRef(AIdent: TSyntaxNode; const ASymbol: TIndexSymbol);
+    /// <summary>Typverweis für ein Mitglied des Parameters AIdent (A.Line bei A: TTextPosition).</summary>
+    procedure ParamRef(AIdent: TSyntaxNode; const AKey: string);
+    procedure AddParamTypes(AParam: TSyntaxNode);
     procedure Identifier(AIdent: TSyntaxNode);
     procedure TypeReference(AType: TSyntaxNode);
   public
@@ -218,6 +223,7 @@ begin
   FContainer := AContainer;
   FHeader := AHeader;
   FLocals := TDictionary<string, Boolean>.Create;
+  FParamTypes := TDictionary<string, string>.Create;
   FSeen := TDictionary<string, Boolean>.Create;
   FOwn := TDictionary<string, TIndexSymbol>.Create;
   FMembers := TDictionary<string, TIndexSymbol>.Create;
@@ -251,6 +257,7 @@ begin
   FMembers.Free;
   FOwn.Free;
   FSeen.Free;
+  FParamTypes.Free;
   FLocals.Free;
   inherited;
 end;
@@ -273,7 +280,12 @@ end;
 procedure TInlineRefCollector.Visit(AChild, ARoot: TSyntaxNode);
 begin
   case AChild.Kind of
-    TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar,
+    TSyntaxKind.Parameter:
+      begin
+        AddNameList(FLocals, AChild.Name);
+        AddParamTypes(AChild);
+      end;
+    TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar,
     TSyntaxKind.InlineConst, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.TypeDecl:
       AddNameList(FLocals, AChild.Name);
     TSyntaxKind.AsmBlock, TSyntaxKind.WithStatement:
@@ -339,6 +351,43 @@ begin
   end;
 end;
 
+procedure TInlineRefCollector.AddParamTypes(AParam: TSyntaxNode);
+var
+  mTypeNode: TSyntaxNode;
+  mName: string;
+begin
+  // Nur Parameter des Kopfs mit einfachem Typnamen; Typparameter und Typen der eigenen Unit brauchen nichts.
+  if not IsInside(AParam, FHeader) then
+  begin
+    Exit;
+  end;
+  mTypeNode := TIndexTypeText.DeclaredTypeNode(AParam);
+  if (mTypeNode = nil) or (mTypeNode.Kind <> TSyntaxKind.TypeReference) or
+    (mTypeNode.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+  begin
+    Exit;
+  end;
+  for mName in AParam.Name.Split([',']) do
+  begin
+    if mName.Trim <> '' then
+    begin
+      FParamTypes.AddOrSetValue(LowerCase(TPascalLexer.PlainName(mName.Trim)), TPascalLexer.PlainName(mTypeNode.Name));
+    end;
+  end;
+end;
+
+procedure TInlineRefCollector.ParamRef(AIdent: TSyntaxNode; const AKey: string);
+var
+  mType: string;
+begin
+  mType := FParamTypes[AKey];
+  if IsDereferenced(AIdent) and (AIdent.Parent.Kind = TSyntaxKind.MemberAccess) and (AIdent.Parent.Name <> '') and
+    not IsKnown(LowerCase(mType)) and not MatchText(mType, ['string', 'const', 'file']) then
+  begin
+    AddRef(':' + mType + TIndexSymbol.cInlineMemberMark + TPascalLexer.PlainName(AIdent.Parent.Name));
+  end;
+end;
+
 procedure TInlineRefCollector.Identifier(AIdent: TSyntaxNode);
 var
   mName, mKey: string;
@@ -346,6 +395,11 @@ var
 begin
   mName := TPascalLexer.PlainName(AIdent.Name);
   mKey := LowerCase(mName);
+  if FParamTypes.ContainsKey(mKey) then
+  begin
+    ParamRef(AIdent, mKey);
+    Exit;
+  end;
   if (mName = '') or FLocals.ContainsKey(mKey) then
   begin
     Exit;
