@@ -5,7 +5,8 @@
 // .dfm auf der Platte. Das Plugin streamt die Wurzelkomponente wie beim
 // Speichern (TWriter.WriteDescendent ohne Vorfahr) und wandelt das Ergebnis
 // mit ObjectBinaryToText in DFM-Text. Methodennamen von Ereignissen kennt im
-// Designer nur der Designer; sie kommen über AMethodName.
+// Designer nur der Designer; sie kommen über AMethodName. FPC kennt
+// OnFindMethodName nicht und schreibt sie über OnWriteMethodProperty.
 
 interface
 
@@ -23,12 +24,21 @@ type
 
 implementation
 
+{$IFDEF FPC}
+uses
+  System.TypInfo;
+
+{$ENDIF}
 type
   TMethodNamer = class
   private
     FMethodName: TFunc<TMethod, string>;
   public
     procedure FindMethodName(Writer: TWriter; AMethod: TMethod; var AName: string);
+    {$IFDEF FPC}
+    procedure WriteMethodProperty(Writer: TWriter; Instance: TPersistent; PropInfo: PPropInfo;
+      const MethodValue, DefMethodValue: TMethod; var Handled: Boolean);
+    {$ENDIF}
   end;
 
 { TMethodNamer }
@@ -41,6 +51,29 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
+procedure TMethodNamer.WriteMethodProperty(Writer: TWriter; Instance: TPersistent; PropInfo: PPropInfo;
+  const MethodValue, DefMethodValue: TMethod; var Handled: Boolean);
+var
+  mName: string;
+begin
+  Handled := True;
+  if MethodValue.Code = DefMethodValue.Code then
+  begin
+    Exit;
+  end;
+  mName := '';
+  FindMethodName(Writer, MethodValue, mName);
+  if (mName = '') and Assigned(MethodValue.Code) then
+  begin
+    Exit;
+  end;
+  Writer.Driver.BeginProperty(Writer.PropertyPath + PropInfo^.Name);
+  Writer.Driver.WriteMethodName(mName);
+  Writer.Driver.EndProperty;
+end;
+
+{$ENDIF}
 { TAtlasFormText }
 
 class function TAtlasFormText.Write(ARoot: TComponent; const AMethodName: TFunc<TMethod, string>): string;
@@ -59,7 +92,11 @@ begin
     try
       if Assigned(AMethodName) then
       begin
+        {$IFDEF FPC}
+        mWriter.OnWriteMethodProperty := mNamer.WriteMethodProperty;
+        {$ELSE}
         mWriter.OnFindMethodName := mNamer.FindMethodName;
+        {$ENDIF}
       end;
       mWriter.WriteDescendent(ARoot, nil);
     finally
