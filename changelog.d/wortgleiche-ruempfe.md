@@ -1,2 +1,0 @@
-### Neu
-- Wortgleiche Rümpfe über Units hinweg: `AtlasServer --check <Ziel> --check-duplicates` findet Routinen, deren Rumpf ohne Kommentare, Leerraum und Groß-/Kleinschreibung wortgleich mit einem in einer anderen Unit ist, und vergleicht sie mit der Baseline `atlas-duplicates.json` (`--update-baseline` schreibt sie neu). Neue Kopien und entfernte, aber noch eingetragene Kopien ergeben Exit-Code 1. Im Editor dasselbe als Regel `duplicate-routine-body` (Profil strict, Option `minLines`, Vorgabe 6).

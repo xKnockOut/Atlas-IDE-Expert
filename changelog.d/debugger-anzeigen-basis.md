@@ -1,2 +1,0 @@
-### Geändert
-- Debugger: Die Anzeigen, die auf Halte der Debug-Sitzung reagieren (Werte im Editor, „Warum bin ich hier?“, Variablen, Auswerten, Pins, Baum im Debug-Hover), teilen sich eine gemeinsame Basis für Zuhörer und Takt; welcher Schritt ein Takt ist, entscheidet ein getesteter Kern. Die Debugger-Fenster und das Fenster „Atlas-Tests“ zeigen und verstecken sich über die gemeinsame Fensterverwaltung, `Check-WindowHosts` lässt eigene Kopien davon nicht mehr zu. Kein sichtbarer Unterschied.

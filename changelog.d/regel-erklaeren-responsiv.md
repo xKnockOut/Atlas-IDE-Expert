@@ -1,2 +1,0 @@
-### Behoben
-- Fenster „Regel erklären“: Der Text bricht in der Fensterbreite um und rollt, statt rechts und unten abgeschnitten zu werden; „Schließen“ steht in einer eigenen Leiste und überdeckt keinen Text mehr. Die Codebeispiele sind so hoch wie ihre Zeilen und rollen nur waagrecht, wenn eine Zeile nicht passt; „Richtig:“ steht wieder über dem zweiten Beispiel. Das Fenster wählt seine Größe nach dem Inhalt (höchstens 80 % des Bildschirms), lässt sich ziehen und rechnet bei DPI-Wechsel neu.
