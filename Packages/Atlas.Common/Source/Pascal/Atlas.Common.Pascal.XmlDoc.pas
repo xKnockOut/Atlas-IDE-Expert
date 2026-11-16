@@ -11,8 +11,10 @@
 //
 // Fehlertolerant: Unbekannte Tags behalten ihren inneren Text, nicht
 // geschlossene Tags enden am nächsten Abschnitt bzw. am Kommentarende, ein
-// "<" ohne Tag bleibt Text. Text geht nie verloren; Text außerhalb von
-// Abschnitten zählt zur Zusammenfassung.
+// "<" ohne Tag bleibt Text. Typargumente direkt hinter einem Bezeichner
+// (TList<T>, TDictionary<string, TList<Integer>>) sind Text, kein Tag; die
+// Regel xmldoc-mismatch liest sie genauso. Text geht nie verloren; Text
+// außerhalb von Abschnitten zählt zur Zusammenfassung.
 //
 // Zeilenumbrüche im Kommentar sind Fließtext; Einrückung und Zeilen bleiben
 // nur in <code> erhalten. <inheritdoc/> setzt InheritDoc; die Doku des
@@ -110,6 +112,15 @@ type
     class function CleanText(const AText: string): string; static;
     /// <summary>cref ohne Präfix "T:", "M:" usw., {T} als &lt;T&gt;.</summary>
     class function NormalizeCref(const ACref: string): string; static;
+    /// <summary>Ist AName ein Tag der XML-Dokumentation (summary, param, c, see …)? Groß-/Kleinschreibung zählt
+    /// nicht.</summary>
+    class function IsDocTag(const AName: string): Boolean; static;
+    /// <summary>Beginnt am "&lt;" an AIndex die Typargumentliste eines generischen Typs direkt hinter einem
+    /// Bezeichner (TList&lt;T&gt;, TDictionary&lt;string, TList&lt;Integer&gt;&gt;, offen IList&lt;&gt;)? Dann das
+    /// Zeichen hinter dem schließenden "&gt;", sonst 0. Keine Typargumente sind: ein einzelner Name, der ein Tag
+    /// der XML-Dokumentation ist oder später mit "&lt;/Name&gt;" geschlossen wird (Text&lt;b&gt;fett&lt;/b&gt;),
+    /// und eine Liste, an der gleich ein Bezeichner oder eine Zahl hängt (Wert&lt;&gt;nil).</summary>
+    class function TypeArgumentsStop(const AXml: string; AIndex: Integer): Integer; static;
     class function RunsText(const ARuns: TXmlDocRuns): string; static;
     class function RunsMarkdown(const ARuns: TXmlDocRuns): string; static;
     /// <summary>Name für JSON und Tests (summary, param …).</summary>
@@ -124,6 +135,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.Text.Chars,
   Atlas.Text.Entities,
   Atlas.Common.Localization.Texts;
 
@@ -145,6 +157,13 @@ const
     'exception', 'remarks', 'example', 'seealso');
   cRunKindNames: array[TXmlDocRunKind] of string = ('text', 'code', 'ref', 'link', 'paramref', 'keyword', 'br',
     'para', 'codeblock', 'bullet', 'cell');
+  // Tags der XML-Dokumentation (auch für xmldoc-mismatch): Ein einzelner solcher Name in "<…>" ist kein
+  // Typargument.
+  cDocTags: array[0..27] of string = ('summary', 'param', 'typeparam', 'returns', 'value', 'exception', 'remarks',
+    'example', 'seealso', 'see', 'para', 'c', 'code', 'b', 'i', 'u', 'list', 'item', 'term', 'description',
+    'listheader', 'paramref', 'typeparamref', 'inheritdoc', 'br', 'permission', 'include', 'note');
+  // Höchste Schachtelung von Typargumenten (TList<TPair<string, TArray<Integer>>>), Schutz vor Rekursion ohne Ende.
+  cMaxTypeArgumentDepth = 16;
   // Abschnitte, die einander nicht enthalten können: Ein neuer schließt einen offenen.
   cBlockSections: array[0..7] of string = ('summary', 'param', 'typeparam', 'returns', 'value', 'exception',
     'remarks', 'example');
@@ -310,6 +329,89 @@ end;
 function IsBlockSection(const AName: string): Boolean;
 begin
   Result := IndexStr(AName, cBlockSections) >= 0;
+end;
+
+/// <summary>Leerzeichen und Tabulatoren ab AIndex überspringen.</summary>
+function SkipBlanks(const AXml: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AXml)) and CharInSet(AXml[Result], [' ', #9]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Bezeichner ab AIndex, auch mit Punkten (System.Classes.TList); AIndex steht danach dahinter. False,
+/// wenn dort keiner beginnt.</summary>
+function SkipQualifiedName(const AXml: string; var AIndex: Integer): Boolean;
+var
+  mMore: Boolean;
+begin
+  Result := (AIndex <= Length(AXml)) and TTextChars.IsIdentStart(AXml[AIndex]);
+  mMore := Result;
+  while mMore do
+  begin
+    while (AIndex <= Length(AXml)) and TTextChars.IsIdentChar(AXml[AIndex]) do
+    begin
+      Inc(AIndex);
+    end;
+    mMore := (AIndex < Length(AXml)) and (AXml[AIndex] = '.') and TTextChars.IsIdentStart(AXml[AIndex + 1]);
+    if mMore then
+    begin
+      Inc(AIndex);
+    end;
+  end;
+end;
+
+/// <summary>Typargumente ab dem "&lt;" an AIndex: Typen (selbst wieder mit Typargumenten), durch Kommas getrennt.
+/// Zeichen hinter dem passenden "&gt;", sonst 0.</summary>
+function TypeArgumentsEnd(const AXml: string; AIndex, ADepth: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  if ADepth > cMaxTypeArgumentDepth then
+  begin
+    Exit;
+  end;
+  // Offener Typ ohne Argumente: IList<>.
+  if (AIndex < Length(AXml)) and (AXml[AIndex + 1] = '>') then
+  begin
+    Exit(AIndex + 2);
+  end;
+  mIndex := AIndex;
+  repeat
+    mIndex := SkipBlanks(AXml, mIndex + 1);
+    if not SkipQualifiedName(AXml, mIndex) then
+    begin
+      Exit;
+    end;
+    if (mIndex <= Length(AXml)) and (AXml[mIndex] = '<') then
+    begin
+      mIndex := TypeArgumentsEnd(AXml, mIndex, ADepth + 1);
+      if mIndex = 0 then
+      begin
+        Exit;
+      end;
+    end;
+    mIndex := SkipBlanks(AXml, mIndex);
+  until (mIndex > Length(AXml)) or (AXml[mIndex] <> ',');
+  if (mIndex <= Length(AXml)) and (AXml[mIndex] = '>') then
+  begin
+    Result := mIndex + 1;
+  end;
+end;
+
+/// <summary>Ist AText ein einzelner Name ohne Punkt, Komma und Typargumente?</summary>
+function IsPlainName(const AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AText <> '') and TTextChars.IsIdentStart(AText[1]);
+  for mIndex := 2 to Length(AText) do
+  begin
+    Result := Result and TTextChars.IsIdentChar(AText[mIndex]);
+  end;
 end;
 
 /// <summary>Benachbarte Texte gleichen Stils zusammengefasst.</summary>
@@ -729,6 +831,14 @@ var
   mAttributes: TArray<string>;
   mSelfClosing, mValid: Boolean;
 begin
+  // TList<T> im Text: Typargumente bleiben Text.
+  mStart := TXmlDoc.TypeArgumentsStop(FXml, FPos);
+  if mStart > 0 then
+  begin
+    FParser.AddText(Current, Copy(FXml, FPos, mStart - FPos));
+    FPos := mStart;
+    Exit;
+  end;
   mValid := (FPos < FLength) and CharInSet(FXml[FPos + 1], ['A'..'Z', 'a'..'z', '_']);
   mStart := FPos + 1;
   mName := '';
@@ -1616,6 +1726,38 @@ begin
         mBlocks := mBlocks + [cTexts[TXmlDocText.SeeAlso].Text + RunsMarkdown(mSection.Runs)];
     end;
   Result := JoinBlocks(mBlocks);
+end;
+
+class function TXmlDoc.IsDocTag(const AName: string): Boolean;
+begin
+  Result := IndexText(AName, cDocTags) >= 0;
+end;
+
+class function TXmlDoc.TypeArgumentsStop(const AXml: string; AIndex: Integer): Integer;
+var
+  mName: string;
+begin
+  Result := 0;
+  if (AIndex <= 1) or (AIndex > Length(AXml)) or (AXml[AIndex] <> '<') or
+    not TTextChars.IsIdentChar(AXml[AIndex - 1]) then
+  begin
+    Exit;
+  end;
+  Result := TypeArgumentsEnd(AXml, AIndex, 1);
+  if Result = 0 then
+  begin
+    Exit;
+  end;
+  mName := Copy(AXml, AIndex + 1, Result - AIndex - 2);
+  if (Result <= Length(AXml)) and (TTextChars.IsIdentChar(AXml[Result]) or CharInSet(AXml[Result], ['''', '"'])) then
+  begin
+    // Vergleich wie Wert<>nil oder a<b>c: kein Typ.
+    Result := 0;
+  end
+  else if IsPlainName(mName) and (IsDocTag(mName) or (PosEx('</' + mName + '>', AXml, Result) > 0)) then
+  begin
+    Result := 0;
+  end;
 end;
 
 class function TXmlDoc.NormalizeCref(const ACref: string): string;
