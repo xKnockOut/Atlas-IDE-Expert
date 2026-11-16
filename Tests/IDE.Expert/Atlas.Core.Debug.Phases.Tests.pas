@@ -91,7 +91,7 @@ type
 
 procedure TFailingListener.DebugStopped(AStop: TAtlasDebugStop);
 begin
-  raise EConvertError.Create('Zuhörer scheitert');
+  raise EAtlasDebugListenerFault.Create('Zuhörer scheitert');
 end;
 
 { TRemovingListener }
@@ -176,7 +176,7 @@ begin
   FTarget.Launch;
   FTarget.Stop(TAtlasDebugProcessState.Exception, 7);
   FTarget.Tick;
-  FTarget.Resume;
+  FTarget.Proceed;
   FTarget.Stop(TAtlasDebugProcessState.Fault, 7);
   FTarget.Tick;
   Assert.AreEqual('Started,Stopped:Exception,Resumed,Stopped:Fault', FLog.Text);
@@ -186,12 +186,12 @@ end;
 procedure TAtlasDebugPhasesTests.ResumedOnlyAfterStop;
 begin
   FTarget.Launch;
-  FTarget.Resume;
+  FTarget.Proceed;
   Assert.AreEqual('Started', FLog.Text);
   FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
   FTarget.Tick;
-  FTarget.Resume;
-  FTarget.Resume;
+  FTarget.Proceed;
+  FTarget.Proceed;
   Assert.AreEqual('Started,Stopped:Paused,Resumed', FLog.Text);
   Assert.IsFalse(FPhases.Stopped);
 end;
@@ -200,7 +200,7 @@ procedure TAtlasDebugPhasesTests.StopDroppedWhenRunningBeforeTick;
 begin
   FTarget.Launch;
   FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
-  FTarget.Resume;
+  FTarget.Proceed;
   FTarget.Tick;
   // Der Halt ist beim Tick vorbei: kein Halt, nur das Weiterlaufen.
   Assert.AreEqual('Started,Resumed', FLog.Text);
@@ -243,7 +243,7 @@ begin
   FTarget.Launch;
   FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
   FTarget.Tick;
-  FTarget.Resume;
+  FTarget.Proceed;
   FTarget.Stop(TAtlasDebugProcessState.Stopped, 9);
   FTarget.Tick;
   Assert.AreEqual('Started,Stopped:Paused,Resumed,Stopped:Paused', FLog.Text);
@@ -257,7 +257,7 @@ begin
   FTarget.Tick;
   // Eine Auswertung lässt den Prozess kurz laufen und hält wieder an.
   FPhases.BeginInternal;
-  FTarget.Resume;
+  FTarget.Proceed;
   FTarget.Stop(TAtlasDebugProcessState.Stopped, 7);
   FPhases.EndInternal;
   FTarget.Tick;
@@ -266,7 +266,7 @@ begin
   Assert.AreEqual(1, FTarget.TickRequests);
   // Ein EndInternal zu viel schadet nicht.
   FPhases.EndInternal;
-  FTarget.Resume;
+  FTarget.Proceed;
   Assert.AreEqual('Started,Stopped:Paused,Resumed', FLog.Text);
 end;
 
@@ -281,7 +281,7 @@ begin
     function(AStop: TAtlasDebugStop): Boolean
     begin
       mSeen := AStop;
-      mTarget.Resume;
+      mTarget.Proceed;
       Result := True;
     end);
   FTarget.Launch;
@@ -304,7 +304,7 @@ begin
   FTarget.Launch;
   FTarget.Stop(TAtlasDebugProcessState.Exception, 7);
   FTarget.Tick;
-  FTarget.Resume;
+  FTarget.Proceed;
   Assert.AreEqual('Started,Stopped:Exception,Resumed', FLog.Text);
   FPhases.SetStopFilter(nil);
 end;
@@ -349,7 +349,7 @@ begin
   FPhases.Attach;
   Assert.IsTrue(FPhases.Active);
   Assert.IsTrue(FPhases.Stopped);
-  FTarget.Resume;
+  FTarget.Proceed;
   FTarget.Terminate;
   Assert.AreEqual('Resumed,Ended', FLog.Text);
 end;
@@ -364,7 +364,7 @@ begin
   Assert.IsFalse(FPhases.Active);
   Assert.IsFalse(FPhases.Stopped);
   Assert.AreEqual(1, FPhases.StopCount);
-  FTarget.Resume;
+  FTarget.Proceed;
   Assert.AreEqual('Started,Stopped:Paused', FLog.Text);
 end;
 

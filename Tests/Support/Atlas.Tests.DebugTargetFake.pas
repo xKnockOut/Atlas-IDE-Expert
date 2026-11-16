@@ -3,8 +3,8 @@
 // Fälschung für IAtlasDebugTarget: spielt den Debugger der IDE für TAtlasDebugPhases. Tests starten Prozesse,
 // halten sie in einem Thread an, lassen sie weiterlaufen und beenden sie; die Fälschung ändert ihren Zustand
 // und meldet das Ereignis an die verbundenen Phasen wie der Notifier der IDE. Den Tick nach der
-// Benachrichtigung des Debuggers löst der Test selbst aus (Tick), Zuhörer laufen ohne Sicherung, ihre
-// Fehler zählt Errors. Dazu ein Zuhörer, der die Ereignisse als Text mitschreibt.
+// Benachrichtigung des Debuggers löst der Test selbst aus (Tick), Zuhörer laufen ohne Sicherung; Fehler
+// der Art EAtlasDebugListenerFault zählt Errors, alle anderen lässt Run durch. Dazu ein Zuhörer, der die Ereignisse als Text mitschreibt.
 
 interface
 
@@ -14,6 +14,9 @@ uses
   Atlas.Core.Debug.Phases;
 
 type
+  /// <summary>Fehler, den ein Zuhörer im Test absichtlich wirft; Run fängt nur ihn.</summary>
+  EAtlasDebugListenerFault = class(Exception);
+
   TAtlasDebugTargetFake = class(TInterfacedObject, IAtlasDebugTarget)
   private
     FPhases: TAtlasDebugPhases;
@@ -34,7 +37,7 @@ type
     /// <summary>Anderen Thread des angehaltenen Prozesses wählen; der Debugger meldet dazu nichts.</summary>
     procedure SelectThread(AThread: Cardinal);
     /// <summary>Aktueller Prozess läuft weiter.</summary>
-    procedure Resume;
+    procedure Proceed;
     /// <summary>Ein Prozess endet; der letzte lässt den Zustand auf Other.</summary>
     procedure Terminate;
     /// <summary>Zustand ohne Meldung setzen (Stand, bevor der Notifier angemeldet wird).</summary>
@@ -44,7 +47,7 @@ type
     procedure Tick;
     /// <summary>Wie oft die Phasen einen Tick angefordert haben.</summary>
     function TickRequests: Integer;
-    /// <summary>Fehler in Zuhörern und Filter.</summary>
+    /// <summary>Gefangene EAtlasDebugListenerFault aus Zuhörern und Filter.</summary>
     function Errors: Integer;
     { IAtlasDebugTarget }
     function ProcessCount: Integer;
@@ -105,7 +108,7 @@ begin
   FThread := AThread;
 end;
 
-procedure TAtlasDebugTargetFake.Resume;
+procedure TAtlasDebugTargetFake.Proceed;
 begin
   FState := TAtlasDebugProcessState.Running;
   FThread := 0;
@@ -188,7 +191,7 @@ begin
   try
     AProc();
   except
-    on Exception do
+    on EAtlasDebugListenerFault do
       Inc(FErrors);
   end;
 end;
