@@ -487,6 +487,7 @@ begin
   Assert.AreEqual('format-check', TCommandLineOptions.Parse(['--check', 'Src', '--format-check']).RunCommand);
   Assert.AreEqual('format-write', TCommandLineOptions.Parse(['--check', 'Src', '--format-write']).RunCommand);
   Assert.AreEqual('metrics', TCommandLineOptions.Parse(['--check', 'Src', '--metrics']).RunCommand);
+  Assert.AreEqual('check-duplicates', TCommandLineOptions.Parse(['--check', 'Src', '--check-duplicates']).RunCommand);
   Assert.AreEqual('todos', TCommandLineOptions.Parse(['--check', 'Src', '--todos']).RunCommand);
   Assert.AreEqual('architecture', TCommandLineOptions.Parse(['--check', 'Src', '--architecture', 'a.md']).RunCommand);
   Assert.AreEqual('affected-tests', TCommandLineOptions.Parse(['--check', 'T.dproj', '--affected-tests']).RunCommand);

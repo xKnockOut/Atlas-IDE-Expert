@@ -364,10 +364,10 @@ class function TMonitorCommands.SkippedSwitches: TArray<string>;
 begin
   // Protokoll und Mitschnitt des Servers, LSP- und MCP-Betrieb, Editor-Prozess, Cache-Ordner (der Monitor leert
   // den Cache selbst), Auswertungen nur für die CI (Pfadwurzel von SARIF, Unterdrückungszahlen, Exit-Code einer
-  // Abfrage, Mutanten für KI-Assistenten und CI).
+  // Abfrage, Mutanten für KI-Assistenten und CI, Kopien-Prüfung mit Baseline des Repositorys).
   Result := TArray<string>.Create('--log', '--log-level', '--log-names', '--trace', '--mcp', '--root', '--restricted',
     '--clientprocessid', '--stdio', '--clear-cache', '--index-cache', '--source-root', '--suppression-stats',
-    '--fail-on-match', '--mutate', '--routine', '--operators');
+    '--fail-on-match', '--mutate', '--routine', '--operators', '--check-duplicates');
 end;
 
 initialization
