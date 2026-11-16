@@ -264,7 +264,8 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cSeparator = ' · ';
@@ -764,12 +765,11 @@ begin
   FFilter.OnChange := FilterChange;
   FFilter.OnKeyDown := FilterKeyDown;
 
-  FSavedEmpty := TLabel.Create(Self);
+  FSavedEmpty := TAtlasWrapLabel.Create(Self);
   FSavedEmpty.Parent := Self;
   FSavedEmpty.Align := alTop;
   FSavedEmpty.AlignWithMargins := True;
   FSavedEmpty.ShowAccelChar := False;
-  FSavedEmpty.WordWrap := True;
   FSavedEmpty.Font.Color := clGrayText;
   FSavedEmpty.Visible := False;
 

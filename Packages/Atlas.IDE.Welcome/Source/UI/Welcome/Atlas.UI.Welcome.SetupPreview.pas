@@ -45,7 +45,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -60,12 +61,11 @@ begin
   inherited CreateDialog(AOwner, TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewTitle, [AConfigName]),
     cDialogWidth);
 
-  FIntro := TLabel.Create(Self);
+  FIntro := TAtlasWrapLabel.Create(Self);
   FIntro.Parent := Self;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
   FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FIntro.WordWrap := True;
   FIntro.ShowAccelChar := False;
   FIntro.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewIntro, [AConfigName, AProjectName,
     ATemplate]);

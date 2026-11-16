@@ -181,7 +181,8 @@ uses
   System.Math,
   Winapi.Windows,
   Atlas.Core.Style.Color,
-  Atlas.UI.Tracker.Flow.Strings;
+  Atlas.UI.Tracker.Flow.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -688,12 +689,11 @@ procedure AddBody(AFrame: TAtlasFlowFrame);
 var
   mFrame: TAtlasFlowFrame;
 begin
-  AFrame.FParts.Status := TLabel.Create(AFrame);
+  AFrame.FParts.Status := TAtlasWrapLabel.Create(AFrame);
   AFrame.FParts.Status.Parent := AFrame;
   AFrame.FParts.Status.Align := alTop;
   AFrame.FParts.Status.AlignWithMargins := True;
   AFrame.FParts.Status.Margins.SetBounds(cTextMarginX, cTextMarginY, cTextMarginX, cTextMarginY);
-  AFrame.FParts.Status.WordWrap := True;
   AFrame.FParts.Status.Visible := False;
   AFrame.FParts.Status.Top := AFrame.FParts.Head.Top + AFrame.FParts.Head.Height + 1;
   AFrame.FParts.Scroll := TScrollBox.Create(AFrame);
@@ -711,11 +711,10 @@ begin
     begin
       mFrame.SelectState(AState);
     end;
-  AFrame.FParts.Empty := TLabel.Create(AFrame);
+  AFrame.FParts.Empty := TAtlasWrapLabel.Create(AFrame);
   AFrame.FParts.Empty.Parent := AFrame.FParts.Scroll;
   AFrame.FParts.Empty.AutoSize := False;
   AFrame.FParts.Empty.Alignment := taCenter;
-  AFrame.FParts.Empty.WordWrap := True;
   AFrame.FParts.Empty.SetBounds(0, AFrame.ScaleValue(cEmptyTop), AFrame.ScaleValue(cEmptyWidth),
     AFrame.ScaleValue(cEmptyHeight));
   AFrame.FParts.Empty.Visible := False;

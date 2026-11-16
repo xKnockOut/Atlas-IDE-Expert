@@ -34,7 +34,7 @@ type
     function SameAs(const AOther: TAtlasMeasureMark): Boolean;
   end;
 
-  TAtlasMeasureOverlay = class(TForm)
+  TAtlasMeasureOverlay = class(TForm) // window-ok: Überlagerung, kein Dialog
   private const
     cKeyColor = TColor($00FF00FF);
   private

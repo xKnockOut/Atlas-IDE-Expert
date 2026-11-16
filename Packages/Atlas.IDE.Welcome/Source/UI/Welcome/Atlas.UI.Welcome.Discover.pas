@@ -155,7 +155,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Vcl.Imaging.pngimage,
-  Atlas.UI.Welcome.Strings;
+  Atlas.UI.Welcome.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 { TAtlasDiscoverPicture }
 
@@ -263,8 +264,8 @@ begin
   FTitleLabel.Font.Style := [fsBold];
   FKey := NewLabel;
   FKey.Font.Color := clGrayText;
-  FText := NewLabel;
-  FText.WordWrap := True;
+  FText := TAtlasWrapLabel.Create(Self);
+  FText.Parent := Body;
   FAge := NewLabel;
   FAge.Font.Color := clGrayText;
   FPosition := NewLabel;

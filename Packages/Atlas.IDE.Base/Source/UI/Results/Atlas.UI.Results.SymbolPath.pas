@@ -57,7 +57,8 @@ implementation
 
 uses
   Vcl.Controls,
-  Atlas.UI.Results.Strings;
+  Atlas.UI.Results.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 { TAtlasResultsPathPart }
 
@@ -75,12 +76,11 @@ begin
   FParts.Map := TAtlasResultsControls.Button(AView.Host, FParts.Panel, alTop, 75,
     TAtlasResultsStrings.Text(TAtlasResultsTextId.SymbolPathShowMap), MapClick);
   FParts.Map.Visible := False;
-  FParts.Status := TLabel.Create(AView.Host);
+  FParts.Status := TAtlasWrapLabel.Create(AView.Host);
   FParts.Status.Parent := FParts.Panel;
   FParts.Status.Align := alTop;
   FParts.Status.AlignWithMargins := True;
   FParts.Status.ShowAccelChar := False;
-  FParts.Status.WordWrap := True;
   CreateChain;
 end;
 

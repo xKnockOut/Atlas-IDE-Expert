@@ -34,6 +34,7 @@ type
 implementation
 
 uses
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Results.Frame,
   Atlas.UI.Results.Strings;
 
@@ -101,13 +102,13 @@ end;
 class function TAtlasRenamePreview.Execute(const ATitle, AHint, AApply: string;
   const AGroups: TArray<TAtlasResultGroup>; const AOnOpen: TAtlasResultsOpen): Boolean;
 var
-  mDialog: TForm;
+  mDialog: TAtlasDialog;
   mResults: TAtlasResultsFrame;
   mApply: TButton;
 begin
-  mDialog := TForm.CreateNew(nil);
+  // TAtlasDialog: Dialogschrift und IDE-Thema; die Größe setzt der Dialog unten selbst.
+  mDialog := TAtlasDialog.CreateDialog(nil, ATitle, 0);
   try
-    mDialog.Caption := ATitle;
     mDialog.BorderStyle := bsSizeable;
     mDialog.BorderIcons := [biSystemMenu];
     mDialog.Position := poMainFormCenter;

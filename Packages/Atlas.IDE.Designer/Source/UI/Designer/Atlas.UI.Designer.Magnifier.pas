@@ -42,7 +42,7 @@ type
     OnClosed: TProc;
   end;
 
-  TAtlasMagnifierWindow = class(TForm)
+  TAtlasMagnifierWindow = class(TForm) // window-ok: Überlagerung, kein Dialog
   private
     FColors: TAtlasColors;
     FOwnerWindow: HWND;

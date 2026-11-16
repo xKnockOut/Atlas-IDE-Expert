@@ -82,7 +82,8 @@ implementation
 
 uses
   Atlas.UI.Settings.Strings,
-  Atlas.UI.Commands.KeyMap;
+  Atlas.UI.Commands.KeyMap,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -111,11 +112,10 @@ begin
   mTitle.Font.Style := [fsBold];
   mTitle.Top := FNextTop;
   Inc(FNextTop, 100);
-  FIntro := TLabel.Create(Self);
+  FIntro := TAtlasWrapLabel.Create(Self);
   FIntro.Parent := Self;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.WordWrap := True;
   FIntro.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.KeysIntro);
   FIntro.Top := FNextTop;
   Inc(FNextTop, 100);
@@ -130,11 +130,10 @@ begin
   begin
     AddRow(mIndex);
   end;
-  FForeign := TLabel.Create(Self);
+  FForeign := TAtlasWrapLabel.Create(Self);
   FForeign.Parent := Self;
   FForeign.Align := alTop;
   FForeign.AlignWithMargins := True;
-  FForeign.WordWrap := True;
   FForeign.Top := FNextTop;
   Inc(FNextTop, 100);
   ShowForeignCompletions(nil);

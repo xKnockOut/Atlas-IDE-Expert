@@ -128,7 +128,6 @@ begin
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
   FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FIntro.WordWrap := True;
   FIntro.Caption := TAtlasNewIssueStrings.Text(TAtlasNewIssueTextId.SuggestIntro);
 
   FList := TListView.Create(Self);

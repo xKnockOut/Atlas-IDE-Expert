@@ -72,7 +72,6 @@ begin
   FQuestion.Margins.SetBounds(ScaleValue(cRowGap), ScaleValue(cRowGap), ScaleValue(cRowGap), 0);
   FQuestion.Align := alTop;
   FQuestion.Parent := Self;
-  FQuestion.WordWrap := True;
   FQuestion.Caption := QuestionText(AKey, ATitle, ASprint);
 
   FDontAsk := TCheckBox.Create(Self);

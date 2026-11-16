@@ -78,7 +78,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.WrapLabel;
 
 { TAtlasSettingsRow }
 
@@ -244,11 +245,10 @@ var
   mPanel: TWinControl;
 begin
   mPanel := AddPanel(AHeight);
-  Result := TLabel.Create(Self);
+  Result := TAtlasWrapLabel.Create(Self);
   Result.Parent := mPanel;
   Result.AutoSize := False;
   Result.Align := alClient;
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
 end;

@@ -40,7 +40,8 @@ implementation
 uses
   System.UITypes,
   Vcl.Controls,
-  Atlas.UI.Editor.Strings;
+  Atlas.UI.Editor.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -57,9 +58,8 @@ constructor TAtlasActionChoicesDialog.CreateChoices(AOwner: TComponent; const AT
 begin
   inherited CreateDialog(AOwner, ATitle, cWidth);
   FTitles := ATitles;
-  FHint := TLabel.Create(Self);
+  FHint := TAtlasWrapLabel.Create(Self);
   FHint.Parent := Self;
-  FHint.WordWrap := True;
   FHint.AutoSize := False;
   FHint.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cWidth - 2 * cGap), ScaleValue(cHintHeight));
   FHint.Caption := AHint + sLineBreak + sLineBreak + TAtlasEditorStrings.Text(TAtlasEditorTextId.ChoicesText);

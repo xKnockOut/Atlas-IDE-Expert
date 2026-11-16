@@ -64,7 +64,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.Core.Debug.MemoryTimeline,
-  Atlas.UI.Debug.Memory.Strings;
+  Atlas.UI.Debug.Memory.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   /// <summary>Maße in logischen Pixeln.</summary>
@@ -100,12 +101,11 @@ begin
   ShowCaption := False;
   ParentBackground := True;
   CreateBar;
-  mHint := TLabel.Create(Self);
+  mHint := TAtlasWrapLabel.Create(Self);
   mHint.Align := alBottom;
   mHint.Parent := Self;
   mHint.AlignWithMargins := True;
   mHint.ShowAccelChar := False;
-  mHint.WordWrap := True;
   mHint.Font.Color := clGrayText;
   mHint.Caption := TAtlasMemoryStrings.Text(TAtlasMemoryTextId.ObjectCountHint);
   CreateGrid;

@@ -77,7 +77,6 @@ begin
   FQuestion.AlignWithMargins := True;
   FQuestion.Margins.SetBounds(cGap, cGap, cGap, 0);
   FQuestion.Font.Style := [fsBold];
-  FQuestion.WordWrap := True;
   FQuestion.Caption := TAtlasBoardStrings.Fmt(TAtlasBoardTextId.BoardMoveQuestion, [AKey, AColumn]);
 
   mLabel := TLabel.Create(Self);

@@ -137,7 +137,6 @@ begin
   FHelp.Align := alClient;
   FHelp.AlignWithMargins := True;
   FHelp.ReadOnly := True;
-  FHelp.WordWrap := True;
   FHelp.ScrollBars := ssVertical;
   FHelp.BorderStyle := bsNone;
   FHelp.TabStop := False;

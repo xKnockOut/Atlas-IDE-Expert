@@ -1,43 +1,52 @@
 {
   "Packages/Atlas.IDE.Base/Source/UI/Commands/Atlas.UI.Commands.Palette.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Editor/Atlas.UI.Editor.ExtractMembers.pas": {
     "create-new": 1,
     "segoe-font": 1,
-    "cl-red": 1
+    "cl-red": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Generate/Atlas.UI.Generate.Window.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Notifications/Atlas.UI.Notifications.Window.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.QuickToggles.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Setup/Atlas.UI.Setup.Window.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Base/Source/UI/Status/Atlas.UI.Status.Window.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas": {
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Debugger/Source/UI/Debug/Atlas.UI.Debug.EventBreak.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Debugger/Source/UI/Debug/Atlas.UI.Debug.Viewer.pas": {
     "create-new": 1,
-    "segoe-font": 1
+    "segoe-font": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Designer/Source/Core/Designer/Atlas.Core.Designer.Magnifier.pas": {
     "cl-red": 1
@@ -49,7 +58,11 @@
     "create-new": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.CaptionEditor.pas": {
-    "create-new": 1
+    "create-new": 1,
+    "form-class": 1
+  },
+  "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Dialog.pas": {
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Flash.pas": {
     "create-new": 1
@@ -58,7 +71,8 @@
     "create-new": 2
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.FormPreview.pas": {
-    "create-new": 1
+    "create-new": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Handles.pas": {
     "create-new": 1,
@@ -84,7 +98,8 @@
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.Search.pas": {
-    "create-new": 1
+    "create-new": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Designer/Source/UI/Designer/Atlas.UI.Designer.SelectionBar.pas": {
     "create-new": 1,
@@ -101,7 +116,8 @@
     "cl-red": 1
   },
   "Packages/Atlas.IDE.Search/Source/UI/UnitSearch/Atlas.UI.UnitSearch.Window.pas": {
-    "create-new": 1
+    "create-new": 1,
+    "form-class": 1
   },
   "Packages/Atlas.IDE.Tracker/Source/UI/Tracker/Atlas.UI.Tracker.SettingsRows.pas": {
     "cl-red": 1

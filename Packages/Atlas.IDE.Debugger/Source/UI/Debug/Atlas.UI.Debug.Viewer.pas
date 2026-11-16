@@ -90,7 +90,8 @@ uses
   System.Types,
   System.Math,
   Vcl.Clipbrd,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cViewerWidth = 560;
@@ -120,9 +121,8 @@ end;
 /// <summary>Umbrechende Beschriftung oben in AForm.</summary>
 function TopLabel(AForm: TForm; ATopGap: Integer): TLabel;
 begin
-  Result := TLabel.Create(AForm);
+  Result := TAtlasWrapLabel.Create(AForm);
   PlaceTop(Result, AForm, ATopGap);
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
 end;
 

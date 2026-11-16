@@ -76,7 +76,6 @@ begin
   FText := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointText),
     TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointTextHint));
   FNote := AddNote(cNoteHeight);
-  FNote.WordWrap := True;
   FCondition := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCondition),
     TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointConditionHint));
   FHits := LabeledEdit(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointHits), '');

@@ -45,6 +45,8 @@ type
     FPluginOn: Boolean;
     function Page(APage: TAtlasDiagnosticPage): TPanel;
     function NewLabel(AAlign: TAlign): TLabel;
+    /// <summary>ALabel ausgerichtet in den Frame setzen.</summary>
+    function PlaceLabel(ALabel: TLabel; AAlign: TAlign): TLabel;
     procedure Place(APage: TPanel);
     procedure TabsChange(Sender: TObject);
     procedure ShowPages;
@@ -76,7 +78,8 @@ implementation
 uses
   Atlas.Core.Diagnostics.PluginReport,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Diagnostics.PluginRows;
+  Atlas.UI.Diagnostics.PluginRows,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -97,8 +100,7 @@ begin
   FBar.Top := FTabs.Height;
   FFooter := NewLabel(alBottom);
   FFooter.Font.Color := clGrayText;
-  FOffNote := NewLabel(alTop);
-  FOffNote.WordWrap := True;
+  FOffNote := PlaceLabel(TAtlasWrapLabel.Create(Self), alTop);
   FOffNote.Caption := TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.DiagPluginOff);
   FMain := TAtlasMainThreadPage.Create(Self);
   Place(FMain);
@@ -140,7 +142,12 @@ end;
 
 function TAtlasDiagnosticsFrame.NewLabel(AAlign: TAlign): TLabel;
 begin
-  Result := TLabel.Create(Self);
+  Result := PlaceLabel(TLabel.Create(Self), AAlign);
+end;
+
+function TAtlasDiagnosticsFrame.PlaceLabel(ALabel: TLabel; AAlign: TAlign): TLabel;
+begin
+  Result := ALabel;
   Result.Parent := Self;
   Result.Align := AAlign;
   Result.AlignWithMargins := True;

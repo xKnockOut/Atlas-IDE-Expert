@@ -220,7 +220,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Breite der Knöpfe OK und Abbrechen.
@@ -390,11 +391,10 @@ end;
 procedure TAtlasSettingsDialogFrame.CreateHint;
 begin
   // Hinweise oben: Auswahl in der IDE (selectBuild) und Prüfung ohne Server.
-  FHint := TLabel.Create(Self);
+  FHint := TAtlasWrapLabel.Create(Self);
   FHint.Parent := Self;
   FHint.Align := alTop;
   FHint.AlignWithMargins := True;
-  FHint.WordWrap := True;
   FHint.Font.Color := clGrayText;
   FHint.Visible := False;
 end;
@@ -1218,9 +1218,8 @@ end;
 
 function TAtlasSettingsDialogFields.AddLabel(const AText: string; ATop: Integer): TLabel;
 begin
-  Result := TLabel.Create(FBox);
+  Result := TAtlasWrapLabel.Create(FBox);
   Result.Parent := FBox;
-  Result.WordWrap := True;
   Result.AutoSize := True;
   Result.SetBounds(cGap * 2, ATop, FBox.ClientWidth - cGap * 5, 16);
   Result.Caption := AText;

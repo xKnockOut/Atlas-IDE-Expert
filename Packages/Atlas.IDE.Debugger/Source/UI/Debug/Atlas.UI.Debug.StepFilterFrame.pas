@@ -130,7 +130,8 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -155,12 +156,11 @@ end;
 /// <summary>Umbrechende Beschriftung in AFrame, oben bzw. unten nach AAlign.</summary>
 function AddLabel(AFrame: TAtlasDebugStepFilterFrame; AAlign: TAlign; const ACaption: string): TLabel;
 begin
-  Result := TLabel.Create(AFrame);
+  Result := TAtlasWrapLabel.Create(AFrame);
   Result.Parent := AFrame;
   Result.Align := AAlign;
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
-  Result.WordWrap := True;
   Result.Caption := ACaption;
 end;
 

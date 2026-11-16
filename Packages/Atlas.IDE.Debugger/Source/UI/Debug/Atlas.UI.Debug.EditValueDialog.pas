@@ -92,7 +92,6 @@ begin
   mHead.ShowNote(mText, TAtlasSignalKind.Idle);
   AddInput;
   FNote := AddNote(cNoteHeight);
-  FNote.WordWrap := True;
   mButtons := AddButtonRow;
   FApply := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueApply), TAtlasButtonKind.Default);
   FApply.ModalResult := mrNone;

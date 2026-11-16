@@ -394,7 +394,6 @@ begin
   AFrame.FParts.Empty.Parent := AFrame.FParts.Scroll;
   AFrame.FParts.Empty.Align := alTop;
   AFrame.FParts.Empty.AlignWithMargins := True;
-  AFrame.FParts.Empty.WordWrap := True;
   AFrame.FParts.Empty.ShowAccelChar := False;
   AFrame.FParts.Empty.Caption := TAtlasIssueStrings.Text(TAtlasIssueTextId.IssuePreviewEmpty);
 end;
@@ -467,7 +466,6 @@ function AddLabel(AFrame: TAtlasIssueFrame; const ACaption: string; ABold: Boole
 begin
   Result := TAtlasWrapLabel.Create(AFrame);
   Place(AFrame, Result);
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
   Result.Font.Color := ToColor(AFrame.FColors.Text);

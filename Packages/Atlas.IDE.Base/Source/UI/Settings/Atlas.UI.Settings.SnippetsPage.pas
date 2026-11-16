@@ -64,7 +64,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Knöpfe Neu, Kopieren, Löschen (links, Breite) und Lage der Felder Präfix, Name, Beschreibung.
@@ -193,11 +194,10 @@ begin
   FBody.WantTabs := False;
   FBody.Font.Name := 'Consolas';
   FBody.OnChange := FieldChange;
-  FReadOnlyHint := TLabel.Create(Self);
+  FReadOnlyHint := TAtlasWrapLabel.Create(Self);
   FReadOnlyHint.Parent := mEditor;
   FReadOnlyHint.Align := alBottom;
   FReadOnlyHint.AlignWithMargins := True;
-  FReadOnlyHint.WordWrap := True;
   FReadOnlyHint.Font.Color := clGrayText;
   FReadOnlyHint.Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SnippetsReadOnly);
 end;

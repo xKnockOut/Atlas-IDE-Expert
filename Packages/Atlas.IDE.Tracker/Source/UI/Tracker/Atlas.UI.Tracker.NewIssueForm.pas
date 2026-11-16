@@ -263,7 +263,6 @@ begin
   AMemo.BorderStyle := bsNone;
   AMemo.ParentColor := True;
   AMemo.TabStop := False;
-  AMemo.WordWrap := True;
   AMemo.ScrollBars := ssNone;
 end;
 

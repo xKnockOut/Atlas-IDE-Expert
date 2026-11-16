@@ -178,7 +178,6 @@ function AddLabel(AView: TAtlasIssueDevelopmentView; const ACaption: string; AHe
 begin
   Result := TAtlasWrapLabel.Create(AView);
   Place(AView, Result);
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
   Result.Font.Color := ToColor(AView.FColors.Text);
   if AHeading then

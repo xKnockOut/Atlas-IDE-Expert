@@ -114,7 +114,8 @@ uses
   Vcl.Graphics,
   Vcl.Menus,
   Atlas.UI.Strings,
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Breiten der Dialoge Export, Import und Profil.
@@ -177,7 +178,7 @@ end;
 /// <summary>Beschriftung oben im Dialog; ATop ordnet sie unter die vorigen.</summary>
 function NewTopLabel(AOwner: TForm; const ACaption: string; ATop: Integer): TLabel;
 begin
-  Result := TLabel.Create(AOwner);
+  Result := TAtlasWrapLabel.Create(AOwner);
   Result.Parent := AOwner;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
@@ -190,7 +191,6 @@ end;
 function NewInfoLabel(AOwner: TForm; const ACaption: string): TLabel;
 begin
   Result := NewTopLabel(AOwner, ACaption, 0);
-  Result.WordWrap := True;
   Result.ShowAccelChar := False;
 end;
 
@@ -659,12 +659,11 @@ begin
   FCancel := NewButton(Self, mButtons, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDialogCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
-  FDescription := TLabel.Create(Self);
+  FDescription := TAtlasWrapLabel.Create(Self);
   FDescription.Parent := Self;
   FDescription.Align := alBottom;
   FDescription.AlignWithMargins := True;
   FDescription.Margins.SetBounds(cGap, cGap, cGap, 0);
-  FDescription.WordWrap := True;
   FDescription.ShowAccelChar := False;
   FDescription.AutoSize := False;
   FDescription.Height := ScaleValue(48);

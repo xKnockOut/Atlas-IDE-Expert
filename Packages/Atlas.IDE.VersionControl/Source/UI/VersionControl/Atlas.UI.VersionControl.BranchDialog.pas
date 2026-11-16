@@ -287,7 +287,8 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.VersionControl.Strings,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -352,12 +353,11 @@ end;
 /// <summary>Hinweis unter den Feldern, eingerückt wie sie.</summary>
 function NoteLabel(AOwner: TComponent; AParent: TWinControl; ATop, ABottom: Integer): TLabel;
 begin
-  Result := TLabel.Create(AOwner);
+  Result := TAtlasWrapLabel.Create(AOwner);
   Result.Parent := AParent;
   Stack(Result);
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(cCaptionWidth + 2 * cGap, ATop, cGap, ABottom);
-  Result.WordWrap := True;
 end;
 
 /// <summary>Roter Hinweis unter einem Feld.</summary>
@@ -1153,11 +1153,10 @@ begin
   FBox.AlignWithMargins := True;
   FBox.Margins.SetBounds(cGap, 4, cGap, 4);
   FBox.Visible := (mFacts.Kind = TAtlasVcsKind.Svn) and mFacts.Externals;
-  FHint := TLabel.Create(FDialog);
+  FHint := TAtlasWrapLabel.Create(FDialog);
   FHint.Parent := FBox;
   FHint.Align := alBottom;
   FHint.AlignWithMargins := True;
-  FHint.WordWrap := True;
   FBoxes := nil;
   FChoices := nil;
   FDefaults := nil;
@@ -1278,11 +1277,10 @@ begin
   mBox.AlignWithMargins := True;
   mBox.Margins.SetBounds(cGap, 4, cGap, 0);
   mBox.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchWhatHappens);
-  FServerHint := TLabel.Create(FDialog);
+  FServerHint := TAtlasWrapLabel.Create(FDialog);
   FServerHint.Parent := mBox;
   FServerHint.Align := alBottom;
   FServerHint.AlignWithMargins := True;
-  FServerHint.WordWrap := True;
   FServerHint.Caption := TAtlasVcsStrings.Text(TAtlasVcsTextId.VcsBranchServerHint);
   FMemo := TMemo.Create(FDialog);
   FMemo.Parent := mBox;

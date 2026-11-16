@@ -157,7 +157,8 @@ type
 implementation
 
 uses
-  Vcl.Graphics;
+  Vcl.Graphics,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cLabelTop = 5;
@@ -316,10 +317,9 @@ var
   mHint: TLabel;
 begin
   mPanel := AddPanel(cHintRow);
-  mHint := TLabel.Create(FOwner);
+  mHint := TAtlasWrapLabel.Create(FOwner);
   mHint.Parent := mPanel;
   mHint.Align := alClient;
-  mHint.WordWrap := True;
   mHint.Font.Color := clGrayText;
   mHint.Caption := ACaption;
   Attach(mPanel, AAnchor);

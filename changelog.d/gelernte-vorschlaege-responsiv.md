@@ -1,0 +1,4 @@
+### Behoben
+- Fenster „Gelernte Vorschläge“: Die Liste füllt den Platz zwischen Einleitung und Knöpfen, statt unter einem großen leeren Bereich nur zwei Zeilen zu zeigen. Die Spalten richten sich nach ihrem Inhalt („Stellen“ wird nicht mehr abgeschnitten), „Folge“ nimmt die übrige Breite; das Fenster wählt seine Größe nach dem Inhalt (höchstens 80 % des Bildschirms), lässt sich ziehen und folgt dem Thema der IDE. Klick auf einen Spaltenkopf sortiert, ein zweiter Klick kehrt die Richtung um; Zahlen werden als Zahlen sortiert.
+- Umbrechende Hinweistexte in rund 50 weiteren Fenstern und Seiten (Diagnose, Einstellungen, Debugger, Tracker, Versionsverwaltung, Startseite u. a.) behielten die Höhe, die sie bei ihrer Anfangsbreite hatten, und ließen darunter leeren Raum; sie passen ihre Höhe jetzt der Breite an.
+- Vorschau beim Umbenennen, Textansicht des Diagnoseberichts und vergrößerte Bilder im Tracker folgen dem Thema der IDE.

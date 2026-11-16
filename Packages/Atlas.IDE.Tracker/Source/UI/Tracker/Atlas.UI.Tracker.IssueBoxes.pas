@@ -17,7 +17,8 @@ uses
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Links;
+  Atlas.Core.Tracker.Links,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Bild in Fensterbreite (höchstens Originalgröße); Klick vergrößert.</summary>
@@ -101,7 +102,7 @@ type
   end;
 
   /// <summary>Vergrößertes Bild; gibt sich beim Schließen selbst frei.</summary>
-  TAtlasIssueImageWindow = class(TForm)
+  TAtlasIssueImageWindow = class(TAtlasDialog)
   protected
     procedure DoClose(var Action: TCloseAction); override;
   public
@@ -448,8 +449,9 @@ begin
   begin
     Exit;
   end;
-  mForm := TAtlasIssueImageWindow.CreateNew(nil);
-  mForm.Caption := mSource.Alt;
+  // TAtlasDialog: IDE-Thema; die Größe setzt das Fenster unten nach dem Bild.
+  mForm := TAtlasIssueImageWindow.CreateDialog(nil, mSource.Alt, 0);
+  mForm.BorderStyle := bsSizeable;
   mForm.Position := poScreenCenter;
   mForm.Width := Min(mSource.Graphic.Width + mForm.ScaleValue(40), Screen.WorkAreaWidth - mForm.ScaleValue(80));
   mForm.Height := Min(mSource.Graphic.Height + mForm.ScaleValue(60), Screen.WorkAreaHeight - mForm.ScaleValue(80));

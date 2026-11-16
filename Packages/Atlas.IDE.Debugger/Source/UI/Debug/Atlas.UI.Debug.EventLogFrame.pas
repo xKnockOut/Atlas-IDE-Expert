@@ -119,7 +119,8 @@ uses
   Vcl.Clipbrd,
   Vcl.Themes,
   Atlas.Core.Style.Color,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
@@ -164,13 +165,12 @@ begin
   FSummary.Caption := '';
   FMenu := TListMenu.CreateFor(Self);
   CreateList;
-  FEmpty := TLabel.Create(Self);
+  FEmpty := TAtlasWrapLabel.Create(Self);
   FEmpty.Parent := Self;
   FEmpty.Align := alClient;
   FEmpty.AlignWithMargins := True;
   FEmpty.ShowAccelChar := False;
   FEmpty.Font.Color := clGrayText;
-  FEmpty.WordWrap := True;
   FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogEmpty);
   FEmpty.Visible := False;
 end;

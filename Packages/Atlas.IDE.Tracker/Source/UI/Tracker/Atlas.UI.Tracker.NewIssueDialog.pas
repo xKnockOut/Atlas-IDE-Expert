@@ -271,7 +271,8 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Tracker.NewIssueGitHub,
-  Atlas.UI.Tracker.NewIssue.Strings;
+  Atlas.UI.Tracker.NewIssue.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   cGap = 8;
@@ -580,13 +581,12 @@ end;
 
 procedure TAtlasNewIssueParts.CreateStatus;
 begin
-  FStatus := TLabel.Create(FForm);
+  FStatus := TAtlasWrapLabel.Create(FForm);
   FStatus.Top := NextTop(FForm);
   FStatus.Align := alTop;
   FStatus.Parent := FForm;
   FStatus.AlignWithMargins := True;
   FStatus.Margins.SetBounds(Scaled(cGap + cLabelWidth), Scaled(cControlTop), Scaled(cGap), Scaled(cControlTop));
-  FStatus.WordWrap := True;
   FStatus.ShowAccelChar := False;
   FStatus.Caption := '';
 end;

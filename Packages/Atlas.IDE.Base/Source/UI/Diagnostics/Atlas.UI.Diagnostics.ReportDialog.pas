@@ -129,7 +129,8 @@ uses
   Vcl.Dialogs,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
-  Atlas.UI.Diagnostics.Strings;
+  Atlas.UI.Diagnostics.Strings,
+  Atlas.UI.Foundation.WrapLabel;
 
 const
   // Vorläufige Lage der Überschriften; die Ausrichtung ordnet sie danach in dieser Reihenfolge an.
@@ -146,14 +147,15 @@ const
 /// <summary>Eingebautes Fenster für den Inhalt einer Datei.</summary>
 procedure ShowTextWindow(const AName, AText: string);
 var
-  mViewer: TForm;
+  mViewer: TAtlasDialog;
   mMemo: TMemo;
   mBottom: TPanel;
   mButton: TButton;
 begin
-  mViewer := TForm.CreateNew(nil);
+  // TAtlasDialog: Dialogschrift und IDE-Thema; die Größe setzt der Dialog unten selbst.
+  mViewer := TAtlasDialog.CreateDialog(nil, TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportViewerTitle,
+    [AName]), 0);
   try
-    mViewer.Caption := TAtlasDiagnosticsStrings.Fmt(TAtlasDiagnosticsTextId.ReportViewerTitle, [AName]);
     mViewer.BorderStyle := bsSizeable;
     mViewer.Position := poMainFormCenter;
     mViewer.Width := mViewer.ScaleValue(900);
@@ -189,15 +191,21 @@ begin
   end;
 end;
 
-function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
+/// <summary>ALabel oben in AParent setzen.</summary>
+function PlaceLabel(ALabel: TLabel; AParent: TWinControl; const ACaption: string): TLabel;
 begin
-  Result := TLabel.Create(AOwner);
+  Result := ALabel;
   Result.Parent := AParent;
   Result.Align := alTop;
   Result.AlignWithMargins := True;
   Result.Margins.SetBounds(TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, TAtlasReportDialog.cGap, 2);
   Result.ShowAccelChar := False;
   Result.Caption := ACaption;
+end;
+
+function NewLabel(AOwner: TComponent; AParent: TWinControl; const ACaption: string): TLabel;
+begin
+  Result := PlaceLabel(TLabel.Create(AOwner), AParent, ACaption);
 end;
 
 /// <summary>Beschriftung im Fuß: ohne Ausrichtung und feste Größe, die Lage setzt FootResize.</summary>
@@ -248,8 +256,9 @@ var
   mHeading: TLabel;
 begin
   // Von oben nach unten gestapelt: alTop ordnet nach Top, daher wachsende Werte.
-  mHeading := NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportHint));
-  mHeading.WordWrap := True;
+  // Umbrechend: Ein TLabel behielte die Höhe, die es bei seiner Anfangsbreite hatte.
+  mHeading := PlaceLabel(TAtlasWrapLabel.Create(Self), Self, TAtlasDiagnosticsStrings.Text(
+    TAtlasDiagnosticsTextId.ReportHint));
   mHeading.Top := 0;
   NewLabel(Self, Self, TAtlasDiagnosticsStrings.Text(TAtlasDiagnosticsTextId.ReportDescription)).Top := ScaleValue(100);
   FParts.Description := TMemo.Create(Self);
