@@ -141,7 +141,7 @@ $Packages = @(
         Reason           = 'nur RTL; wird auch ins Plugin übersetzt'
     },
     @{
-        # Gegenstück zu Atlas.Text für Code mit Windows-API (Code-Review R-101/D-104); wie Atlas.Text auch als
+        # Gegenstück zu Atlas.Text für Code mit Windows-API; wie Atlas.Text auch als
         # Quelltext im Plugin, darum ohne VCL und ohne alles, was das Plugin nicht enthalten darf.
         Name             = 'Atlas.WinBase'
         Path             = 'Packages/Atlas.WinBase'

@@ -82,7 +82,7 @@ type
     /// <summary>Prozessläufer für git und svn.</summary>
     class function CreateVcsRunner(AAllowMainThread: Boolean; const ACancelled: TFunc<Boolean>): IAtlasVcsRunner;
       static;
-    /// <summary>Warteschritt für das Warten auf eine Datei in AFolder (Antwort des Plugins, P-101): Unter Windows
+    /// <summary>Warteschritt für das Warten auf eine Datei in AFolder (Antwort des Plugins): Unter Windows
     /// kehrt er zurück, sobald sich dort Dateinamen ändern, spätestens nach ASafetyMs; lässt sich der Ordner nicht
     /// beobachten, und unter Linux, schläft er APollMs.</summary>
     class function FolderWait(const AFolder: string; APollMs, ASafetyMs: Cardinal): TProc; static;

@@ -53,17 +53,13 @@ begin
   end;
 end;
 
-/// <summary>Thema an die Teile mit eigenem Fenster: Diagnose, Einrichtung und Tipps (die Tastenbelegung folgt dem
+/// <summary>Thema an die Teile mit eigenem Fenster: Diagnose und Tipps (Tastenbelegung und Einrichtung folgen dem
 /// Thema selbst über TAtlasDialog).</summary>
 procedure PartsThemeChanged;
 begin
   if DiagnosticMode <> nil then
   begin
     DiagnosticMode.ThemeChanged;
-  end;
-  if Setup <> nil then
-  begin
-    Setup.ThemeChanged;
   end;
   if ShortcutTips <> nil then
   begin
