@@ -46,7 +46,6 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
-    procedure ApplyTheme;
   end;
 
 implementation
@@ -58,8 +57,6 @@ uses
   Atlas.UI.Designer.ViewStrings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.Model,
-  Atlas.IDE.Foundation.DockWindow,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings;
 
 /// <summary>Grenze der Constraints (ganzes Fenster) als Client in Pixeln der DFM; 0 bleibt 0.</summary>
@@ -97,8 +94,8 @@ begin
     FOnMessage(TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.ToolNoForm));
     Exit;
   end;
+  // Thema und Farben holt das Fenster selbst (TAtlasDialog), auch bei einem Wechsel.
   FWindow := CreateWindow(TWinControl(mRoot));
-  TAtlasIdeDockWindow.ApplyIdeTheme(FWindow);
   FWindow.Show;
 end;
 
@@ -167,15 +164,6 @@ begin
   else
   begin
     Open;
-  end;
-end;
-
-procedure TAtlasIdePreviewTool.ApplyTheme;
-begin
-  if FWindow <> nil then
-  begin
-    TAtlasIdeDockWindow.ApplyIdeTheme(FWindow);
-    FWindow.ApplyColors(TAtlasIdeStyle.Colors);
   end;
 end;
 

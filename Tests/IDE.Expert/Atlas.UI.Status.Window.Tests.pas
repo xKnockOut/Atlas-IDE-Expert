@@ -21,6 +21,9 @@ type
     procedure DotColorsFollowState;
     [Test]
     procedure ButtonsRunAfterClosing;
+    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    [Test]
+    procedure FollowsIdeTheme;
   end;
 
 implementation
@@ -34,6 +37,8 @@ uses
   Atlas.Core.Style.Signal,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Status.Window;
 
@@ -126,6 +131,32 @@ begin
     Assert.AreEqual(0, mLogged);
   finally
     Application.ProcessMessages;
+  end;
+end;
+
+procedure TAtlasStatusWindowTests.FollowsIdeTheme;
+var
+  mWindow: TAtlasStatusWindow;
+  mDark: TAtlasColors;
+begin
+  mDark := TAtlasColors.Dark;
+  mWindow := TAtlasStatusWindow.CreateStatus(nil, TAtlasColors.Light);
+  try
+    Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    TAtlasUiTheme.Install(
+      function: TAtlasColors
+      begin
+        Result := TAtlasColors.Dark;
+      end, nil, nil);
+    try
+      TAtlasUiTheme.Changed;
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Integer(TColor(mDark.Surface)), Integer(mWindow.Color), 'Fläche im neuen Thema');
+  finally
+    mWindow.Free;
   end;
 end;
 

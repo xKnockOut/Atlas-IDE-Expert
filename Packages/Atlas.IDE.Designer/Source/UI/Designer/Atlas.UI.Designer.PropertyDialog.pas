@@ -6,7 +6,8 @@
 //   (o) Aktuelles Formular  ( ) Projekt  ( ) Projektgruppe
 //                                       [Suchen] [Abbrechen]
 // Die Liste der Bedingung hält die letzten Suchen. Eine Bedingung, die sich
-// nicht lesen lässt, hält den Dialog offen und nennt den Teil in Rot.
+// nicht lesen lässt, hält den Dialog offen und nennt den Teil in der
+// Fehlerfarbe des Themas.
 
 interface
 
@@ -17,6 +18,7 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Designer.Dialog;
 
 type
@@ -43,7 +45,7 @@ type
     cRowMargins = 2 * TAtlasDesignerDialog.cGap;
   private
     FQuery: TComboBox;
-    FError: TLabel;
+    FError: TAtlasNoteLabel;
     FScopes: array[TAtlasPropertyScope] of TRadioButton;
     procedure AddScopes(const AOptions: TAtlasPropertyOptions);
     procedure AddButtons;
@@ -55,13 +57,13 @@ type
     /// </summary>
     class function Execute(var AOptions: TAtlasPropertyOptions): Boolean; static;
     property QueryBox: TComboBox read FQuery;
-    property ErrorLabel: TLabel read FError;
+    property ErrorLabel: TAtlasNoteLabel read FError;
   end;
 
 implementation
 
 uses
-  Vcl.Graphics,
+  Atlas.Core.Style.Signal,
   Atlas.Core.Designer.PropertySearch,
   Atlas.UI.Designer.Strings;
 
@@ -75,12 +77,12 @@ var
   mRow: TFlowPanel;
   mHistory: string;
 begin
-  inherited CreateNew(AOwner);
-  InitDialog(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchTitle), cDialogWidth, bsDialog);
+  inherited CreateDesignerDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchTitle),
+    cDialogWidth, bsDialog);
   OnCloseQuery := CheckQuery;
 
-  mRow := AddRow;
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchCondition));
+  mRow := AddFlowRow;
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchCondition));
   FQuery := TComboBox.Create(Self);
   FQuery.Parent := mRow;
   FQuery.Width := ScaleValue(cDialogWidth) - Canvas.TextWidth(TAtlasDesignerStrings.Text(
@@ -95,13 +97,13 @@ begin
     FQuery.Items.EndUpdate;
   end;
   FQuery.Text := AOptions.Query;
-  mRow := AddRow;
-  AddLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchExamples));
-  mRow := AddRow;
-  FError := TLabel.Create(Self);
+  mRow := AddFlowRow;
+  AddFlowLabel(mRow, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchExamples));
+  mRow := AddFlowRow;
+  FError := TAtlasNoteLabel.Create(Self);
+  // Eine Zeile: In der Flusszeile hätte ein umbrechender Hinweis nur seine Anfangsbreite.
+  FError.WordWrap := False;
   FError.Parent := mRow;
-  FError.Font.Color := clRed;
-  FError.Caption := '';
   AddScopes(AOptions);
   AddButtons;
   ActiveControl := FQuery;
@@ -116,7 +118,7 @@ var
   mScope: TAtlasPropertyScope;
   mRadio: TRadioButton;
 begin
-  mRow := AddRow;
+  mRow := AddFlowRow;
   for mScope := Low(TAtlasPropertyScope) to High(TAtlasPropertyScope) do
   begin
     mRadio := TRadioButton.Create(Self);
@@ -124,7 +126,7 @@ begin
     mRadio.Caption := TAtlasDesignerStrings.Text(cTexts[mScope]);
     mRadio.Width := Canvas.TextWidth(mRadio.Caption) + ScaleValue(cRadioGap);
     mRadio.AlignWithMargins := True;
-    mRadio.Margins.SetBounds(0, 0, cGap, 0);
+    mRadio.Margins.SetBounds(0, 0, Gap, 0);
     FScopes[mScope] := mRadio;
   end;
   FScopes[TAtlasPropertyScope.Form].Enabled := AOptions.HasForm;
@@ -141,21 +143,21 @@ var
   mButtons: TFlowPanel;
   mButton: TButton;
 begin
-  mButtons := AddRow;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons := AddFlowRow;
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.PropertySearchRun);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(0, 0, cGap, 0);
+  mButton.Margins.SetBounds(0, 0, Gap, 0);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+  ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
 procedure TAtlasPropertyDialog.CheckQuery(Sender: TObject; var ACanClose: Boolean);
@@ -170,7 +172,8 @@ begin
   ACanClose := mQuery.Valid;
   if not ACanClose then
   begin
-    FError.Caption := TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.PropertySearchInvalid, [Trim(mQuery.Invalid)]);
+    FError.ShowNote(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.PropertySearchInvalid, [Trim(mQuery.Invalid)]),
+      TAtlasSignalKind.Error);
     ActiveControl := FQuery;
   end;
 end;
