@@ -4,7 +4,8 @@
 // von RAD Studio) mit Namensräumen, Fixtures, Testfällen, Fehlschlag, Fehler
 // und Ignoriert; NUnit 3; JUnit; erwarteter und tatsächlicher Wert; Zeiten mit
 // Komma; kein Bericht; Dauer als Text und die langsamsten Tests (#1772);
-// Leckmeldungen des Leckmonitors (#1774).
+// Leckmeldungen des Leckmonitors (#1774); Namen relativ zur Fixture, wie
+// der NUnit-Logger von DUnitX sie schreibt, mit [TestCase]-Fällen.
 
 interface
 
@@ -19,6 +20,8 @@ type
     procedure ReadsNUnit2Report;
     [Test]
     procedure SplitsNamesWithDottedUnit;
+    [Test]
+    procedure ReadsDUnitXNamesRelativeToFixture;
     [Test]
     procedure ReadsExpectedAndActual;
     [Test]
@@ -81,6 +84,34 @@ const
     '  </test-suite>'#13#10 +
     '</test-results>';
 
+  // So schreibt TDUnitXXMLNUnitFileLogger: test-case name ist ITest.Name (relativ zur Fixture).
+  cDUnitXNUnit =
+    '<?xml version="1.0" encoding="UTF-8"?>'#13#10 +
+    '<test-results name="Rechner.Tests.exe" total="5" errors="0" failures="0" ignored="0">'#13#10 +
+    '  <test-suite type="Assembly" name="Rechner.Tests.exe" executed="true" result="Success" time="0.100">'#13#10 +
+    '    <results>'#13#10 +
+    '      <test-suite type="Namespace" name="Rechner" executed="true" result="Success" time="0.1">'#13#10 +
+    '        <results>'#13#10 +
+    '          <test-suite type="Namespace" name="Tests" executed="true" result="Success" time="0.1">'#13#10 +
+    '            <results>'#13#10 +
+    '              <test-suite type="Fixture" name="TRechnerTests" executed="True" result="Success" ' +
+                     'time="0.1">'#13#10 +
+    '                <results>'#13#10 +
+    '                  <test-case name="Addiert" executed="True" result="Success" time="0.010"/>'#13#10 +
+    '                  <test-case name="Summe.Gross" executed="True" result="Success" time="0.010"/>'#13#10 +
+    '                  <test-case name="Summe.Klein" executed="True" result="Success" time="0.010"/>'#13#10 +
+    '                  <test-case name="Teilt.Fall 1.5" executed="True" result="Success" time="0.010"/>'#13#10 +
+    '                  <test-case name="Mal(1.5, 2)" executed="True" result="Success" time="0.010"/>'#13#10 +
+    '                </results>'#13#10 +
+    '              </test-suite>'#13#10 +
+    '            </results>'#13#10 +
+    '          </test-suite>'#13#10 +
+    '        </results>'#13#10 +
+    '      </test-suite>'#13#10 +
+    '    </results>'#13#10 +
+    '  </test-suite>'#13#10 +
+    '</test-results>';
+
 { TTestResultsTests }
 
 procedure TTestResultsTests.ReadsNUnit2Report;
@@ -130,6 +161,29 @@ begin
   Assert.AreEqual('M', mMethod);
   TTestResults.SplitName('Einzeln', '', mUnitName, mFixture, mMethod, mCaseName);
   Assert.AreEqual('Einzeln', mMethod);
+end;
+
+procedure TTestResultsTests.ReadsDUnitXNamesRelativeToFixture;
+var
+  mRun: TTestRunResult;
+  mCase: TTestCaseResult;
+begin
+  mRun := TTestResults.Parse(cDUnitXNUnit);
+  Assert.AreEqual(5, mRun.Total);
+  for mCase in mRun.Cases do
+  begin
+    Assert.AreEqual('TRechnerTests', mCase.Fixture, 'Fixture aus der Suite: ' + mCase.FullName);
+  end;
+  Assert.AreEqual('Addiert', mRun.Cases[0].Method);
+  Assert.AreEqual('', mRun.Cases[0].CaseName);
+  Assert.AreEqual('Summe', mRun.Cases[1].Method);
+  Assert.AreEqual('Gross', mRun.Cases[1].CaseName);
+  Assert.AreEqual('Summe', mRun.Cases[2].Method);
+  Assert.AreEqual('Klein', mRun.Cases[2].CaseName);
+  Assert.AreEqual('Teilt', mRun.Cases[3].Method);
+  Assert.AreEqual('Fall 1.5', mRun.Cases[3].CaseName, 'Punkt im Fallnamen');
+  Assert.AreEqual('Mal', mRun.Cases[4].Method);
+  Assert.AreEqual('(1.5, 2)', mRun.Cases[4].CaseName, 'Fall aus Werten');
 end;
 
 procedure TTestResultsTests.ReadsExpectedAndActual;
