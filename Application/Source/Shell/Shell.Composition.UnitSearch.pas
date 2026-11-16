@@ -44,6 +44,7 @@ type
     function SourceText(AFileName: string): string;
     function GitState(AFileName: string): string;
     function UsesFor(AUri: string): TUsesContext;
+    function UnitFileOf(AUnitName: string): string;
   public
     constructor Create(const AServices: TShellUnitSearchServices);
     destructor Destroy; override;
@@ -105,6 +106,7 @@ begin
   AContext.Modified := FileModified;
   AContext.GitState := GitState;
   AContext.UsesFor := UsesFor;
+  AContext.UnitFileOf := UnitFileOf;
   Result := True;
 end;
 
@@ -204,6 +206,18 @@ begin
   if not FServices.UsesContextFor(AUri, Result) then
   begin
     Result := Default(TUsesContext);
+  end;
+end;
+
+function TShellUnitSearch.UnitFileOf(AUnitName: string): string;
+var
+  mUnit: TUnitIndex;
+begin
+  // Der Index ordnet gleichnamige Units wie dcc zu (Projekt vor Suchpfad vor Bibliothek).
+  Result := '';
+  if FServices.Index.FindUnit(AUnitName, mUnit) then
+  begin
+    Result := mUnit.FileName;
   end;
 end;
 

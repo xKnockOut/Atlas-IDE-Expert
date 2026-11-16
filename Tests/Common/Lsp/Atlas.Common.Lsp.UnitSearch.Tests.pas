@@ -34,6 +34,10 @@ type
     procedure UsedByListsProjectUnits;
     [Test]
     procedure UnitsCarryOriginKindAndProjects;
+    /// <summary>Gleichnamige Units aus Suchpfad oder Bibliothek, die hinter der geltenden Datei zurückstehen,
+    /// erscheinen nicht ein zweites Mal; Projektdateien bleiben.</summary>
+    [Test]
+    procedure UnitsSkipShadowedSameNamedUnits;
     /// <summary>#1310: Caption des Wurzelobjekts, entschlüsselt und fortgesetzt, nie die eines Kindes.</summary>
     [Test]
     procedure FormCaptionReadsRootOnly;
@@ -328,6 +332,65 @@ begin
   finally
     mAnswer.Free;
   end;
+end;
+
+/// <summary>Einträge namens AName in AUnits mit ihren Pfaden in Kleinschrift, durch „|“ getrennt.</summary>
+function FilesNamed(AUnits: TJSONArray; const AName: string): string;
+var
+  mItem: TJSONValue;
+begin
+  Result := '';
+  for mItem in AUnits do
+  begin
+    if SameText(TJSONObject(mItem).GetValue<string>('name'), AName) then
+    begin
+      if Result <> '' then
+      begin
+        Result := Result + '|';
+      end;
+      Result := Result + LowerCase(TDocumentUris.ToPath(TJSONObject(mItem).GetValue<string>('uri')));
+    end;
+  end;
+end;
+
+/// <summary>Geltende Datei je Unit-Name wie TSymbolIndex.FindUnit: Projekt vor Suchpfad, sonst unbekannt.</summary>
+function AppliesTo(AName: string): string;
+begin
+  Result := '';
+  if SameText(AName, 'Kunden') then
+  begin
+    Result := 'C:\P\Kunden.pas';
+  end
+  else if SameText(AName, 'Hilfe') then
+  begin
+    Result := 'C:\Lib\Hilfe.pas';
+  end;
+end;
+
+procedure TUnitSearchTests.UnitsSkipShadowedSameNamedUnits;
+var
+  mContext: TUnitSearchContext;
+  mAnswer: TJSONObject;
+  mUnits: TJSONArray;
+begin
+  mContext := Context;
+  // Kopie der Projekt-Unit im Suchpfad, zweite Hilfe in einem weiteren Suchpfad (etwa die Quelle eines
+  // requires-Packages an anderem Ort).
+  mContext.Units := mContext.Units + [MakeUnit('Kunden', 'C:\Lib\Kunden.pas', nil),
+    MakeUnit('Hilfe', 'C:\Alt\Hilfe.pas', nil)];
+  mContext.UnitFileOf := AppliesTo;
+  mAnswer := TUnitSearch.UnitsJson(mContext);
+  try
+    mUnits := mAnswer.GetValue<TJSONArray>('units');
+    Assert.AreEqual(7, Integer(mUnits.Count), mAnswer.ToJSON);
+    Assert.AreEqual('c:\p\kunden.pas', FilesNamed(mUnits, 'Kunden'));
+    Assert.AreEqual('c:\lib\hilfe.pas', FilesNamed(mUnits, 'Hilfe'));
+    // Ohne bekannte geltende Datei bleibt der Eintrag.
+    Assert.AreEqual('c:\bds\sysutils.pas', FilesNamed(mUnits, 'System.SysUtils'));
+  finally
+    mAnswer.Free;
+  end;
+  mContext := Default(TUnitSearchContext);
 end;
 
 procedure TUnitSearchTests.FormCaptionReadsRootOnly;
