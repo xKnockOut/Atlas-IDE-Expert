@@ -3,7 +3,9 @@
 // Tests des Schattenprojekts (#1460): Pfade auflösen, dpr (Programmname,
 // in-Pfade, mutierte Unit nach Src\ bzw. angehängt, {$R}/{$I}, Schalter
 // bleiben) und dproj (MainSource, Name, GUID, Suchpfade, Ausgaben, Ereignisse,
-// Include=, Ordner des Originals vorn).
+// Include=, Ordner des Originals vorn); Trennung von Original und Schatten:
+// Der Lauf schreibt nur in den Ordner des Schattenprojekts, dort liegt keine
+// Datei des Originals, und die Ausgaben gehen immer nach Out.
 
 interface
 
@@ -31,6 +33,16 @@ type
     procedure DprojRewritesProject;
     [Test]
     procedure DprojWithoutBaseGroup;
+    [Test]
+    procedure DprojAlwaysSeparatesOutputs;
+    [Test]
+    procedure InsideComparesWholeFolders;
+    [Test]
+    procedure OriginalStaysOutsideShadow;
+    [Test]
+    procedure UnitOfShadowRefused;
+    [Test]
+    procedure ShadowWritingElsewhereRefused;
   end;
 
 implementation
@@ -230,6 +242,113 @@ begin
     '        <DCC_UnitSearchPath>C:\A&amp;B;C:\A&amp;B;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>'), mDproj);
   Assert.IsTrue(mDproj.Contains('</PropertyGroup>' + cBreak + '    <ItemGroup>'), mDproj);
   Assert.IsTrue(mDproj.Contains('<DCCReference Include="Src\Preise.pas"/>'), mDproj);
+end;
+
+procedure TAtlasMutationShadowTests.DprojAlwaysSeparatesOutputs;
+var
+  mSource: TAtlasMutationShadowSource;
+  mDproj: string;
+begin
+  // Das Original nennt keine Ausgaben: Ohne Eintrag legte der Compiler die DCUs neben seine Quelltexte.
+  mSource := Source(cDpr);
+  mSource.Dproj := '<Project>' + cBreak + '    <PropertyGroup Condition="''$(Base)''!=''''">' + cBreak +
+    '        <SanitizedProjectName>Demo_Tests</SanitizedProjectName>' + cBreak + '    </PropertyGroup>' + cBreak +
+    '    <ItemGroup>' + cBreak + '        <DCCReference Include="..\Src\Preise.pas"/>' + cBreak + '    </ItemGroup>' +
+    cBreak + '</Project>';
+  mDproj := Shadow(mSource).Dproj;
+  Assert.IsTrue(mDproj.Contains('        <DCC_ExeOutput>Out</DCC_ExeOutput>' + cBreak +
+    '        <DCC_DcuOutput>Out\Dcu</DCC_DcuOutput>' + cBreak + '        <SanitizedProjectName>'), mDproj);
+  // Ohne Basis-Gruppe ebenso.
+  mSource.Dproj := '<Project>' + cBreak + '    <ItemGroup>' + cBreak + '    </ItemGroup>' + cBreak + '</Project>';
+  mDproj := Shadow(mSource).Dproj;
+  Assert.IsTrue(mDproj.Contains('<DCC_DcuOutput>Out\Dcu</DCC_DcuOutput>'), mDproj);
+  Assert.IsTrue(mDproj.Contains('<DCC_ExeOutput>Out</DCC_ExeOutput>'), mDproj);
+end;
+
+procedure TAtlasMutationShadowTests.InsideComparesWholeFolders;
+begin
+  Assert.IsTrue(TAtlasMutationShadows.Inside('C:\P\A', 'C:\P\A\x.pas'));
+  Assert.IsTrue(TAtlasMutationShadows.Inside('C:\P\A\', 'c:/p/a/B/../x.pas'), 'Schreibweise und ..');
+  Assert.IsTrue(TAtlasMutationShadows.Inside('C:\P\A', 'C:\P\A'), 'der Ordner selbst');
+  Assert.IsFalse(TAtlasMutationShadows.Inside('C:\P\A', 'C:\P\AB\x.pas'), 'nur gleicher Anfang');
+  Assert.IsFalse(TAtlasMutationShadows.Inside('C:\P\A', 'C:\P\A\..\B\x.pas'), '.. aus dem Ordner heraus');
+  Assert.IsFalse(TAtlasMutationShadows.Inside('C:\P\A', 'C:\P\x.pas'));
+  Assert.IsFalse(TAtlasMutationShadows.Inside('', 'C:\P\x.pas'), 'ohne Ordner');
+  Assert.IsFalse(TAtlasMutationShadows.Inside('C:\P\A', ''), 'ohne Datei');
+end;
+
+procedure TAtlasMutationShadowTests.OriginalStaysOutsideShadow;
+var
+  mSource: TAtlasMutationShadowSource;
+  mShadow: TAtlasMutationShadow;
+  mOriginals: TArray<string>;
+  mFile: string;
+begin
+  mSource := Source(cDpr);
+  mShadow := Shadow(mSource);
+  Assert.IsTrue(TAtlasMutationShadows.Separate(mSource, mShadow));
+  // Alles, was der Lauf schreibt, liegt im Ordner des Schattenprojekts ...
+  Assert.IsTrue(TAtlasMutationShadows.IsShadowFile(mShadow, mShadow.DprFile));
+  Assert.IsTrue(TAtlasMutationShadows.IsShadowFile(mShadow, mShadow.DprojFile));
+  Assert.IsTrue(TAtlasMutationShadows.IsShadowFile(mShadow, mShadow.UnitFile));
+  Assert.IsTrue(TAtlasMutationShadows.IsShadowFile(mShadow, mShadow.Folder + '\Src\Preise.dfm'));
+  // ... keine Datei des Originals.
+  mOriginals := TAtlasMutationShadows.OriginalFiles(mSource);
+  Assert.AreEqual(6, Integer(Length(mOriginals)));
+  Assert.AreEqual('C:\P\Src\Preise.pas', mOriginals[0]);
+  Assert.AreEqual(cProject, mOriginals[1]);
+  Assert.AreEqual('C:\P\Tests\Demo.Tests.dpr', mOriginals[2]);
+  Assert.AreEqual('C:\P\Tests\Demo.Tests.res', mOriginals[3]);
+  Assert.AreEqual('C:\P\Src\Preise.dfm', mOriginals[4]);
+  Assert.AreEqual('C:\P\Src\Preise.fmx', mOriginals[5]);
+  for mFile in mOriginals do
+  begin
+    Assert.IsFalse(TAtlasMutationShadows.IsShadowFile(mShadow, mFile), mFile);
+  end;
+  // Auch eine Unit im Ordner des Testprojekts (neben .atlas-local) bleibt draußen.
+  mSource.UnitFile := 'C:\P\Tests\PreiseTests.pas';
+  mSource.UnitName := 'PreiseTests';
+  Assert.IsTrue(TAtlasMutationShadows.Separate(mSource, Shadow(mSource)));
+end;
+
+procedure TAtlasMutationShadowTests.UnitOfShadowRefused;
+var
+  mSource: TAtlasMutationShadowSource;
+  mShadow: TAtlasMutationShadow;
+begin
+  // Die Kopie eines früheren Laufs im Editor, andere Schreibweise: Der Lauf schriebe genau diese Datei.
+  mSource := Source(cDpr);
+  mSource.UnitFile := 'c:\p\tests\.ATLAS-LOCAL\Mutation\Demo.Tests\Src\Preise.pas';
+  mShadow := Shadow(mSource);
+  Assert.IsTrue(TAtlasMutationShadows.IsShadowFile(mShadow, mSource.UnitFile));
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, mShadow));
+  // Ein Schattenordner, in dem die Unit des Originals liegt.
+  mSource := Source(cDpr);
+  mShadow := Shadow(mSource);
+  mShadow.Folder := 'C:\P\Src';
+  mShadow.DprFile := 'C:\P\Src\X.dpr';
+  mShadow.DprojFile := 'C:\P\Src\X.dproj';
+  mShadow.UnitFile := 'C:\P\Src\Src\Preise.pas';
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, mShadow));
+end;
+
+procedure TAtlasMutationShadowTests.ShadowWritingElsewhereRefused;
+var
+  mSource: TAtlasMutationShadowSource;
+  mShadow: TAtlasMutationShadow;
+begin
+  mSource := Source(cDpr);
+  mShadow := Shadow(mSource);
+  mShadow.UnitFile := 'C:\P\Src\Preise.pas';
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, mShadow), 'Kopie wäre das Original');
+  mShadow := Shadow(mSource);
+  mShadow.DprFile := 'C:\P\Tests\Demo.Tests.dpr';
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, mShadow), 'dpr wäre die des Originals');
+  mShadow := Shadow(mSource);
+  mShadow.DprojFile := mShadow.Folder + '\..\Demo.Tests.dproj';
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, mShadow), 'dproj außerhalb über ..');
+  Assert.IsFalse(TAtlasMutationShadows.Separate(mSource, Default(TAtlasMutationShadow)), 'ohne Ordner');
+  Assert.IsFalse(TAtlasMutationShadows.IsShadowFile(Default(TAtlasMutationShadow), 'C:\P\Src\Preise.pas'));
 end;
 
 initialization
