@@ -40,6 +40,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
+  Atlas.Common.Rules.Builtin.DuplicateBodies,
   Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Naming,
@@ -71,6 +72,7 @@ begin
   RegisterTypeDeclarationRules(ARegistry);
   RegisterUnitRules(ARegistry);
   RegisterPublicMemberRules(ARegistry);
+  RegisterDuplicateBodyRules(ARegistry);
   RegisterDeadCodeRules(ARegistry);
   RegisterXmlDocRules(ARegistry);
   RegisterNamingRules(ARegistry);

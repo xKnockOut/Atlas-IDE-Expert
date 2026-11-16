@@ -299,6 +299,8 @@
         <DCCReference Include="Common\Query\Atlas.Common.Query.Engine.Tests.pas"/>
         <DCCReference Include="Common\Query\Atlas.Common.Query.Output.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Collector.Tests.pas"/>
+        <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.DuplicateBodies.Tests.pas"/>
+        <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.DuplicateBaseline.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Todos\Atlas.Common.Todos.Scanner.Tests.pas"/>
@@ -398,6 +400,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Symbols.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DuplicateBodies.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DeadCode.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.UnusedUses.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.UsesOnlyInImplementation.Tests.pas"/>
@@ -1632,6 +1635,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.State.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.State.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Tips.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyFallback.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyFallback.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyStroke.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Commands.KeyStroke.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuSlots.pas"/>
@@ -2403,6 +2408,7 @@
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Hotspots.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Mutation.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Formatting.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Duplicates.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.AffectedTests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Fix.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.Check.pas"/>

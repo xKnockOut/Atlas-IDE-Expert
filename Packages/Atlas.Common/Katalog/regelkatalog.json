@@ -4330,6 +4330,28 @@
       "safeFix": false
     },
     {
+      "id": "duplicate-routine-body",
+      "name": "Identical body in another unit",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A routine has the same body as a routine in another unit of the project group: a copy that should become one shared routine. Compared is the normalized token sequence of the body (everything after the header up to the end of the routine, including local declarations and local routines): comments, whitespace and the case of identifiers and keywords do not count, literals do. Name and parameters of the routine do not count either, so TA.Show and TB.Show with the same body are copies. Silent for copies within the same unit, for bodies shorter than minLines lines, for generated units (header with \"do not edit\", \"generated\" or \"nicht von Hand\"), while projects are loading or the index is incomplete, and for a local routine whose enclosing routine is itself a copy (reported there). The bodies of the other units are read once per check of the project group and reused for 30 seconds, so in the editor changes to other units show up with that delay. For the build, AtlasServer --check <target> --check-duplicates runs the same comparison over all files with its own baseline (atlas-duplicates.json) that may only shrink.",
+      "bad": "// Unit A\nprocedure TListWindow.Show;\nbegin\n  if FWindow = nil then\n    FWindow := TAtlasIdeDockWindow.Present(...);\n  ...\nend;\n// Unit B: the same body in TTreeWindow.Show",
+      "good": "// one shared routine, both windows call it\nprocedure TAtlasIdeDockWindow.ShowOnce(...);",
+      "safeFix": false,
+      "options": [
+        {
+          "name": "minLines",
+          "type": "integer",
+          "default": 6,
+          "description": "Minimum number of lines of a body (from the first to the last token after the header); shorter bodies do not count."
+        }
+      ],
+      "profiles": [
+        "strict"
+      ]
+    },
+    {
       "id": "unused-declaration",
       "name": "Declaration in the implementation section never used",
       "category": "code-smell",

@@ -104,6 +104,7 @@ uses
   Shell.Linter.Hotspots in 'Source\Shell\Shell.Linter.Hotspots.pas',
   Shell.Linter.Mutation in 'Source\Shell\Shell.Linter.Mutation.pas',
   Shell.Linter.Formatting in 'Source\Shell\Shell.Linter.Formatting.pas',
+  Shell.Linter.Duplicates in 'Source\Shell\Shell.Linter.Duplicates.pas',
   Shell.Linter.AffectedTests in 'Source\Shell\Shell.Linter.AffectedTests.pas',
   Shell.Linter.Fix in 'Source\Shell\Shell.Linter.Fix.pas',
   Shell.Linter.Check in 'Source\Shell\Shell.Linter.Check.pas',
