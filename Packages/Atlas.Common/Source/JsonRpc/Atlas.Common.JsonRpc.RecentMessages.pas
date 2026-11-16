@@ -71,7 +71,8 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -91,22 +92,15 @@ const
   cRestPair = '"…":null';
 
 function ShortenedText(const AText: string; AMaxString: Integer): string;
-var
-  mValue: TJSONString;
 begin
   if Length(AText) > AMaxString then
   begin
-    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + cTexts[TRecentMessagesText.Characters].Fmt([
+    Result := TJsonText.Quote(Copy(AText, 1, AMaxString) + cTexts[TRecentMessagesText.Characters].Fmt([
       Length(AText)]));
   end
   else
   begin
-    mValue := TJSONString.Create(AText);
-  end;
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
+    Result := TJsonText.Quote(AText);
   end;
 end;
 

@@ -74,7 +74,8 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.DisableWarning,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -153,17 +154,6 @@ begin
   end;
 end;
 
-function StringsToJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 function ParameterToJson(const AParameter: TBoundaryParameter): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -184,7 +174,7 @@ begin
   Result.AddPair('reason', mCase.Reason);
   Result.AddPair('line', TJSONNumber.Create(mCase.Line));
   Result.AddPair('testCase', TJSONBool.Create(TLspBoundaryCases.FitsTestCase(AResult, ACase)));
-  Result.AddPair('values', StringsToJson(AResult.Values(ACase)));
+  Result.AddPair('values', TJsonBuild.Strings(AResult.Values(ACase)));
 end;
 
 class function TLspBoundaryCases.FitsTestCase(const AResult: TBoundaryResult; ACase: Integer): Boolean;

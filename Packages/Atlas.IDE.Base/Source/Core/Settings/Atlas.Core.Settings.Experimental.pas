@@ -53,7 +53,8 @@ implementation
 uses
   System.JSON,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 function StoredText(const AStore: IAtlasMemorySettingsStore; const AEntry: TAtlasCatalogEntry): string;
 begin
@@ -72,7 +73,7 @@ begin
   end;
   if AEntry.Kind = akString then
   begin
-    Result := TJSONString.Create(Result).ToJSON;
+    Result := TJsonText.Quote(Result);
   end;
 end;
 

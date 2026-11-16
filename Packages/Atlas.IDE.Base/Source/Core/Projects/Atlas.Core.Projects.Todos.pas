@@ -78,18 +78,6 @@ uses
   System.JSON,
   Atlas.Text.Json;
 
-function JsonText(const AValue: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AValue);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 /// <summary>AValue an AList anhängen, wenn es nicht leer und noch nicht drin ist (Groß-/Kleinschreibung
 /// egal).</summary>
 procedure AddDistinct(var AList: TArray<string>; const AValue: string);
@@ -196,7 +184,7 @@ var
   begin
     if AValue <> '' then
     begin
-      mParts := mParts + [JsonText(AName) + ': ' + JsonText(AValue)];
+      mParts := mParts + [TJsonText.Quote(AName) + ': ' + TJsonText.Quote(AValue)];
     end;
   end;
 

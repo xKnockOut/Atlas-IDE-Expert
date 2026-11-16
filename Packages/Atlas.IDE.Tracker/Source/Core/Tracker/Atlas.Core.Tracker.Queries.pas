@@ -92,19 +92,6 @@ end;
 
 { TAtlasTrackerQueries }
 
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    // Ohne Option: Umlaute bleiben lesbar (ToJSON ohne Argument schreibt sie als \u-Folge).
-    Result := mValue.ToJSON([]);
-  finally
-    mValue.Free;
-  end;
-end;
-
 { TAtlasTrackerQueries }
 
 class function TAtlasTrackerQueries.Read(const AJson: string): TArray<TAtlasTrackerQuery>;
@@ -157,14 +144,14 @@ begin
     begin
       Continue;
     end;
-    mPart := '{"name": ' + Quoted(mItem.Name) + ', "query": ' + Quoted(mItem.Query);
+    mPart := '{"name": ' + TJsonText.Quote(mItem.Name) + ', "query": ' + TJsonText.Quote(mItem.Query);
     if mItem.Connection <> '' then
     begin
-      mPart := mPart + ', "connection": ' + Quoted(mItem.Connection);
+      mPart := mPart + ', "connection": ' + TJsonText.Quote(mItem.Connection);
     end;
     if mItem.Project <> '' then
     begin
-      mPart := mPart + ', "project": ' + Quoted(mItem.Project);
+      mPart := mPart + ', "project": ' + TJsonText.Quote(mItem.Project);
     end;
     mParts := mParts + [mPart + '}'];
   end;

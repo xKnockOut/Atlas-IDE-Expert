@@ -78,6 +78,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 { TAtlasIdeParam }
 
 class function TAtlasIdeParam.Make(const AName, ATypeName, AFlag: string): TAtlasIdeParam;
@@ -165,17 +168,6 @@ begin
   end;
 end;
 
-function StringsJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 function DetailJson(const ADetail: TAtlasIdeTypeDetail): TJSONObject;
 var
   mMembers: TJSONArray;
@@ -190,11 +182,11 @@ begin
   end;
   if Length(ADetail.Interfaces) > 0 then
   begin
-    Result.AddPair('interfaces', StringsJson(ADetail.Interfaces));
+    Result.AddPair('interfaces', TJsonBuild.Strings(ADetail.Interfaces));
   end;
   if Length(ADetail.Values) > 0 then
   begin
-    Result.AddPair('values', StringsJson(ADetail.Values));
+    Result.AddPair('values', TJsonBuild.Strings(ADetail.Values));
   end;
   if Length(ADetail.Members) > 0 then
   begin

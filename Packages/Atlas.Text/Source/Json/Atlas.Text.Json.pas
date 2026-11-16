@@ -4,7 +4,12 @@
 // Anführungszeichen, Backslash und Steuerzeichen wie RFC 8259 maskieren, alle
 // übrigen Zeichen unverändert (auch Umlaute, anders als TJSONValue.ToJSON).
 // Ausgaben, die den Text selbst zusammensetzen (Linter-Befunde, Baseline,
-// Metriken), teilen sich diese eine Regel (#1450).
+// Metriken), teilen sich diese eine Regel (#1450). Auch wer einzelne Strings in
+// selbst gebauten JSON-Text setzt, maskiert über TJsonText.Quote und nicht über
+// TJSONString.ToJSON (das je nach Option Umlaute als \u-Folge schreibt).
+//
+// JSON-Werte bauen (TJsonBuild): Listen von Strings als TJSONArray für Server,
+// Plugin und gespeicherte Daten.
 //
 // JSON nachsichtig lesen (TJsonRead, #1969): Ein fehlendes Objekt, ein fehlender
 // Wert, null oder ein falscher Typ liefern die Vorgabe, nie eine Ausnahme. Server
@@ -23,6 +28,14 @@ type
   public
     /// <summary>AText als JSON-String samt Anführungszeichen.</summary>
     class function Quote(const AText: string): string; static;
+  end;
+
+  /// <summary>JSON-Werte aus Pascal-Werten bauen.</summary>
+  TJsonBuild = record
+  public
+    /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
+    /// </summary>
+    class function Strings(const AItems: array of string): TJSONArray; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -114,6 +127,19 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+{ TJsonBuild }
+
+class function TJsonBuild.Strings(const AItems: array of string): TJSONArray;
+var
+  mItem: string;
+begin
+  Result := TJSONArray.Create;
+  for mItem in AItems do
+  begin
+    Result.Add(mItem);
   end;
 end;
 

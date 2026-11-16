@@ -204,18 +204,6 @@ begin
   Result := '';
 end;
 
-function Quote(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 function ReadProfile(AValue: TJSONValue; out AProfile: TAtlasStartProfile): Boolean;
 var
   mEntry, mEnvironment: TJSONObject;
@@ -434,16 +422,16 @@ var
   mSeparator: string;
 begin
   Result := cNewLine + '    {' + cNewLine +
-    '      "name": ' + Quote(AProfile.Name) + ',' + cNewLine +
-    '      "parameters": ' + Quote(AProfile.Parameters) + ',' + cNewLine +
-    '      "workingDir": ' + Quote(AProfile.WorkingDir) + ',' + cNewLine +
-    '      "host": ' + Quote(AProfile.Host) + ',' + cNewLine +
+    '      "name": ' + TJsonText.Quote(AProfile.Name) + ',' + cNewLine +
+    '      "parameters": ' + TJsonText.Quote(AProfile.Parameters) + ',' + cNewLine +
+    '      "workingDir": ' + TJsonText.Quote(AProfile.WorkingDir) + ',' + cNewLine +
+    '      "host": ' + TJsonText.Quote(AProfile.Host) + ',' + cNewLine +
     '      "environment": {';
   mSeparator := '';
   for mVariable := 0 to High(AProfile.Environment) do
   begin
-    Result := Result + mSeparator + Quote(AProfile.Environment[mVariable].Name) + ': ' +
-      Quote(AProfile.Environment[mVariable].Value);
+    Result := Result + mSeparator + TJsonText.Quote(AProfile.Environment[mVariable].Name) + ': ' +
+      TJsonText.Quote(AProfile.Environment[mVariable].Value);
     mSeparator := ', ';
   end;
   Result := Result + '}' + cNewLine + '    }';
@@ -460,8 +448,8 @@ begin
   try
     mLines.Append('{' + cNewLine);
     mLines.Append('  "format": ' + IntToStr(cFormat) + ',' + cNewLine);
-    mLines.Append('  "project": ' + Quote(AState.Project) + ',' + cNewLine);
-    mLines.Append('  "active": ' + Quote(AState.Active) + ',' + cNewLine);
+    mLines.Append('  "project": ' + TJsonText.Quote(AState.Project) + ',' + cNewLine);
+    mLines.Append('  "active": ' + TJsonText.Quote(AState.Active) + ',' + cNewLine);
     mLines.Append('  "profiles": [');
     for mIndex := 0 to High(AState.Profiles) do
     begin
@@ -479,20 +467,20 @@ begin
     if AState.HasOriginal then
     begin
       mLines.Append(',' + cNewLine + '  "original": {' + cNewLine);
-      mLines.Append('    "parameters": ' + Quote(AState.Original.Parameters) + ',' + cNewLine);
-      mLines.Append('    "workingDir": ' + Quote(AState.Original.WorkingDir) + ',' + cNewLine);
-      mLines.Append('    "host": ' + Quote(AState.Original.Host) + ',' + cNewLine);
-      mLines.Append('    "environment": ' + Quote(AState.Original.Environment) + cNewLine);
+      mLines.Append('    "parameters": ' + TJsonText.Quote(AState.Original.Parameters) + ',' + cNewLine);
+      mLines.Append('    "workingDir": ' + TJsonText.Quote(AState.Original.WorkingDir) + ',' + cNewLine);
+      mLines.Append('    "host": ' + TJsonText.Quote(AState.Original.Host) + ',' + cNewLine);
+      mLines.Append('    "environment": ' + TJsonText.Quote(AState.Original.Environment) + cNewLine);
       mLines.Append('  }');
     end;
     if AState.HasTemporary then
     begin
       mLines.Append(',' + cNewLine + '  "temporary": {' + cNewLine);
-      mLines.Append('    "parameters": ' + Quote(AState.TemporaryBefore.Parameters) + ',' + cNewLine);
-      mLines.Append('    "workingDir": ' + Quote(AState.TemporaryBefore.WorkingDir) + ',' + cNewLine);
-      mLines.Append('    "host": ' + Quote(AState.TemporaryBefore.Host) + ',' + cNewLine);
-      mLines.Append('    "environment": ' + Quote(AState.TemporaryBefore.Environment) + ',' + cNewLine);
-      mLines.Append('    "written": ' + Quote(AState.TemporaryWritten) + cNewLine);
+      mLines.Append('    "parameters": ' + TJsonText.Quote(AState.TemporaryBefore.Parameters) + ',' + cNewLine);
+      mLines.Append('    "workingDir": ' + TJsonText.Quote(AState.TemporaryBefore.WorkingDir) + ',' + cNewLine);
+      mLines.Append('    "host": ' + TJsonText.Quote(AState.TemporaryBefore.Host) + ',' + cNewLine);
+      mLines.Append('    "environment": ' + TJsonText.Quote(AState.TemporaryBefore.Environment) + ',' + cNewLine);
+      mLines.Append('    "written": ' + TJsonText.Quote(AState.TemporaryWritten) + cNewLine);
       mLines.Append('  }');
     end;
     mLines.Append(cNewLine + '}' + cNewLine);

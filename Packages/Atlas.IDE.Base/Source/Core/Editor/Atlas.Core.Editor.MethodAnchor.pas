@@ -192,17 +192,6 @@ begin
   Result := Find(TAtlasMethodAnchorText.Create(AText), AAnchor, ALine);
 end;
 
-function TextsJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
-end;
-
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
   mValue: TJSONValue;
@@ -235,8 +224,8 @@ begin
   end;
   AObject.AddPair('line', TJSONNumber.Create(AAnchor.Anchor.Line + 1));
   AObject.AddPair('lineText', AAnchor.Anchor.Text);
-  AObject.AddPair('before', TextsJson(AAnchor.Anchor.Before));
-  AObject.AddPair('after', TextsJson(AAnchor.Anchor.After));
+  AObject.AddPair('before', TJsonBuild.Strings(AAnchor.Anchor.Before));
+  AObject.AddPair('after', TJsonBuild.Strings(AAnchor.Anchor.After));
 end;
 
 class function TAtlasMethodAnchors.ReadFrom(AObject: TJSONObject): TAtlasMethodAnchor;

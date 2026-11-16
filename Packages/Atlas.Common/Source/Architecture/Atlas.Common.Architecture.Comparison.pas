@@ -168,8 +168,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   System.IOUtils,
-  Atlas.Common.Metrics.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -873,11 +873,6 @@ begin
     MarkdownList(cTexts[TComparisonText.RemovedUnits].Text, AComparison.RemovedUnits);
 end;
 
-function JsonText(const AText: string): string;
-begin
-  Result := TMetricsReport.JsonString(AText);
-end;
-
 function JsonNames(const ANames: TArray<string>): string;
 var
   mIndex: Integer;
@@ -889,7 +884,7 @@ begin
     begin
       Result := Result + ',';
     end;
-    Result := Result + JsonText(ANames[mIndex]);
+    Result := Result + TJsonText.Quote(ANames[mIndex]);
   end;
   Result := Result + ']';
 end;
@@ -924,12 +919,12 @@ begin
     begin
       Result := Result + ',';
     end;
-    Result := Result + '{"source":' + JsonText(mEdge.Source) + ',"target":' + JsonText(mEdge.Target) + ',"section":' +
-      JsonText(SectionText(mEdge.Interface_)) + ',"from":' + JsonText(mEdge.FromSubsystem) + ',"to":' +
-      JsonText(mEdge.ToSubsystem);
+    Result := Result + '{"source":' + TJsonText.Quote(mEdge.Source) + ',"target":' + TJsonText.Quote(mEdge.Target) +
+      ',"section":' + TJsonText.Quote(SectionText(mEdge.Interface_)) + ',"from":' +
+      TJsonText.Quote(mEdge.FromSubsystem) + ',"to":' + TJsonText.Quote(mEdge.ToSubsystem);
     if AReason then
     begin
-      Result := Result + ',"reason":' + JsonText(mEdge.Reason);
+      Result := Result + ',"reason":' + TJsonText.Quote(mEdge.Reason);
     end;
     Result := Result + '}';
   end;
@@ -955,7 +950,8 @@ begin
       begin
         mBuilder.Append(cLineBreak);
       end;
-      mBuilder.Append('[').Append(JsonText(AEdges[mIndex].Source)).Append(',').Append(JsonText(AEdges[mIndex].Target));
+      mBuilder.Append('[').Append(TJsonText.Quote(AEdges[mIndex].Source)).Append(',')
+        .Append(TJsonText.Quote(AEdges[mIndex].Target));
       if AEdges[mIndex].Interface_ then
       begin
         mBuilder.Append(',"i"]');
@@ -985,9 +981,9 @@ begin
     begin
       mMoves := mMoves + ',';
     end;
-    mMoves := mMoves + '{"unit":' + JsonText(AComparison.Moves[mIndex].Unit_) + ',"from":' +
-      JsonText(AComparison.Moves[mIndex].FromSubsystem) + ',"to":' + JsonText(AComparison.Moves[mIndex].ToSubsystem) +
-      '}';
+    mMoves := mMoves + '{"unit":' + TJsonText.Quote(AComparison.Moves[mIndex].Unit_) + ',"from":' +
+      TJsonText.Quote(AComparison.Moves[mIndex].FromSubsystem) + ',"to":' +
+      TJsonText.Quote(AComparison.Moves[mIndex].ToSubsystem) + '}';
   end;
   mMoves := mMoves + ']';
   mGrowth := '[';
@@ -997,11 +993,11 @@ begin
     begin
       mGrowth := mGrowth + ',';
     end;
-    mGrowth := mGrowth + '{"unit":' + JsonText(AComparison.Growth[mIndex].Unit_) + ',"before":' +
+    mGrowth := mGrowth + '{"unit":' + TJsonText.Quote(AComparison.Growth[mIndex].Unit_) + ',"before":' +
       IntToStr(AComparison.Growth[mIndex].Before) + ',"after":' + IntToStr(AComparison.Growth[mIndex].After) + '}';
   end;
   mGrowth := mGrowth + ']';
-  Result := '{"baseline":{"title":' + JsonText(AComparison.BaselineTitle) + ',"units":' +
+  Result := '{"baseline":{"title":' + TJsonText.Quote(AComparison.BaselineTitle) + ',"units":' +
     IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + ',"resolution":' +
     ResolutionJson(AComparison.BaselineGrouping) + '}' + cLineBreak + ',"resolution":' +
     ResolutionJson(AComparison.Grouping) + cLineBreak +

@@ -18,6 +18,21 @@ type
     procedure EscapesControlCharacters;
     [Test]
     procedure KeepsUmlauts;
+    [Test]
+    procedure KeepsSlash;
+    [Test]
+    procedure QuotedTextParsesBack;
+  end;
+
+  [TestFixture]
+  TJsonBuildTests = class
+  public
+    [Test]
+    procedure EmptyListGivesEmptyArray;
+    [Test]
+    procedure KeepsOrderAndText;
+    [Test]
+    procedure TakesDynamicArray;
   end;
 
   [TestFixture]
@@ -94,6 +109,73 @@ end;
 procedure TJsonTextTests.KeepsUmlauts;
 begin
   Assert.AreEqual('"Größe"', TJsonText.Quote('Größe'));
+end;
+
+procedure TJsonTextTests.KeepsSlash;
+begin
+  Assert.AreEqual('"a/b"', TJsonText.Quote('a/b'));
+end;
+
+procedure TJsonTextTests.QuotedTextParsesBack;
+const
+  cText = 'Größe "x" \ / C:\Pfad' + #9#10;
+var
+  mValue: TJSONValue;
+begin
+  mValue := TJsonRead.Parse(TJsonText.Quote(cText));
+  try
+    Assert.IsTrue(mValue is TJSONString);
+    Assert.AreEqual(cText, mValue.Value);
+  finally
+    mValue.Free;
+  end;
+end;
+
+{ TJsonBuildTests }
+
+procedure TJsonBuildTests.EmptyListGivesEmptyArray;
+var
+  mArray: TJSONArray;
+begin
+  mArray := TJsonBuild.Strings([]);
+  try
+    Assert.AreEqual(0, mArray.Count);
+    Assert.AreEqual('[]', mArray.ToJSON);
+  finally
+    mArray.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.KeepsOrderAndText;
+var
+  mArray: TJSONArray;
+begin
+  mArray := TJsonBuild.Strings(['b', 'a', '', 'Größe "x"']);
+  try
+    Assert.AreEqual(4, mArray.Count);
+    Assert.AreEqual('b', mArray.Items[0].Value);
+    Assert.AreEqual('a', mArray.Items[1].Value);
+    Assert.AreEqual('', mArray.Items[2].Value);
+    Assert.AreEqual('Größe "x"', mArray.Items[3].Value);
+    Assert.IsTrue(mArray.Items[3] is TJSONString);
+  finally
+    mArray.Free;
+  end;
+end;
+
+procedure TJsonBuildTests.TakesDynamicArray;
+var
+  mItems: TArray<string>;
+  mArray: TJSONArray;
+begin
+  mItems := TArray<string>.Create('x', 'y');
+  mArray := TJsonBuild.Strings(mItems);
+  try
+    Assert.AreEqual(2, mArray.Count);
+    Assert.AreEqual('y', mArray.Items[1].Value);
+  finally
+    mArray.Free;
+  end;
 end;
 
 { TJsonReadTests }
@@ -283,6 +365,7 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TJsonTextTests);
+  TDUnitX.RegisterTestFixture(TJsonBuildTests);
   TDUnitX.RegisterTestFixture(TJsonReadTests);
 
 end.

@@ -506,17 +506,6 @@ begin
   end;
 end;
 
-function TextsJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
-end;
-
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
 procedure KeepUnknown(ATarget, AOriginal: TJSONObject; const AKeys: array of string);
 var
@@ -591,8 +580,8 @@ begin
   Result.AddPair('line', TJSONNumber.Create(ANote.Line + 1));
   Result.AddPair('text', ANote.Text);
   Result.AddPair('lineText', ANote.Anchor.Text);
-  Result.AddPair('before', TextsJson(ANote.Anchor.Before));
-  Result.AddPair('after', TextsJson(ANote.Anchor.After));
+  Result.AddPair('before', TJsonBuild.Strings(ANote.Anchor.Before));
+  Result.AddPair('after', TJsonBuild.Strings(ANote.Anchor.After));
   if ANote.Created > 0 then
   begin
     Result.AddPair('created', TAtlasProjectSummaries.TimeText(ANote.Created));

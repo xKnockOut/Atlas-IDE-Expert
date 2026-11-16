@@ -118,7 +118,8 @@ implementation
 uses
   Atlas.Core.Editor.SourceFiles,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 const
   cOpeners: array[0..15] of string = ('begin', 'try', 'finally', 'except', 'repeat', 'then', 'do', 'else', 'of',
@@ -146,18 +147,6 @@ begin
   while (Result < Length(ALine)) and ((ALine[Result + 1] = ' ') or (ALine[Result + 1] = #9)) do
   begin
     Inc(Result);
-  end;
-end;
-
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
   end;
 end;
 
@@ -573,7 +562,7 @@ class function TAtlasSmartPaste.Arguments(const AUri: string; AStartLine, AStart
   AEndCharacter: Integer): string;
 begin
   Result := Format('[%s,{"start":{"line":%d,"character":%d},"end":{"line":%d,"character":%d}}]',
-    [Quoted(AUri), AStartLine, AStartCharacter, AEndLine, AEndCharacter]);
+    [TJsonText.Quote(AUri), AStartLine, AStartCharacter, AEndLine, AEndCharacter]);
 end;
 
 class function TAtlasSmartPaste.Arguments(const AUri: string; AStartLine, AStartCharacter, AEndLine,

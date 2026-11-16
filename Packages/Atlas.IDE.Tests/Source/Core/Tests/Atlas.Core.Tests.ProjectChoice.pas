@@ -68,18 +68,6 @@ uses
   System.Generics.Collections,
   Atlas.Text.Json;
 
-function Quote(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 { TAtlasTestProjectChoices }
 
 class function TAtlasTestProjectChoices.KeyOf(const ACandidates: TArray<string>): string;
@@ -199,8 +187,8 @@ begin
       begin
         mLines.Append(',');
       end;
-      mLines.Append(cNewLine + '    {"candidates": ' + Quote(AChoices[mIndex].Key) + ', "project": ' +
-        Quote(AChoices[mIndex].Project) + '}');
+      mLines.Append(cNewLine + '    {"candidates": ' + TJsonText.Quote(AChoices[mIndex].Key) + ', "project": ' +
+        TJsonText.Quote(AChoices[mIndex].Project) + '}');
     end;
     if Length(AChoices) > 0 then
     begin

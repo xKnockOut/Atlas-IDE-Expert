@@ -66,7 +66,8 @@ uses
   System.DateUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract.Files,
-  Atlas.Core.Tracker.Files;
+  Atlas.Core.Tracker.Files,
+  Atlas.Text.Json;
 
 function MemoryKey(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -100,17 +101,6 @@ begin
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
   begin
     Result := 0;
-  end;
-end;
-
-function LabelsJson(const ALabels: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ALabels do
-  begin
-    Result.Add(mText);
   end;
 end;
 
@@ -449,7 +439,7 @@ begin
     mRoot.AddPair('kind', ADetails.Kind);
     mRoot.AddPair('assignee', ADetails.Assignee);
     mRoot.AddPair('sprint', ADetails.Sprint);
-    mRoot.AddPair('labels', LabelsJson(ADetails.Labels));
+    mRoot.AddPair('labels', TJsonBuild.Strings(ADetails.Labels));
     mRoot.AddPair('created', IsoOf(ADetails.Created));
     mRoot.AddPair('updated', IsoOf(ADetails.Updated));
     mRoot.AddPair('description', ADetails.Description);

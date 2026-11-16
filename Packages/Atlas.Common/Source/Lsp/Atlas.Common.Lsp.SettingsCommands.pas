@@ -60,7 +60,8 @@ uses
   Atlas.Common.Rules.MessageCatalog,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Output,
-  Atlas.Common.Product.Version;
+  Atlas.Common.Product.Version,
+  Atlas.Text.Json;
 
 function FirstString(const AArguments: TJSONArray): string;
 begin
@@ -178,17 +179,6 @@ begin
   end;
 end;
 
-function StringsJson(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 /// <summary>Setzt AName auf true, wenn AValue gilt.</summary>
 procedure AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
 begin
@@ -213,7 +203,7 @@ begin
   Result.AddPair('options', OptionsJson(AEntry.Options));
   if AEntry.OverriddenBy <> nil then
   begin
-    Result.AddPair('overriddenBy', StringsJson(AEntry.OverriddenBy));
+    Result.AddPair('overriddenBy', TJsonBuild.Strings(AEntry.OverriddenBy));
   end;
   AddFlag(Result, 'experimental', AEntry.Experimental);
   // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.

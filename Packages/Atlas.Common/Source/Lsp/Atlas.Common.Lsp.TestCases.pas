@@ -53,7 +53,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -66,17 +67,6 @@ const
     (De: '%s ist nicht lesbar'; En: '%s cannot be read'));
 
 {$SCOPEDENUMS OFF}
-
-function StringsToJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
 
 /// <summary>Fehler der Zeile und je Wert.</summary>
 procedure AddProblems(AObject: TJSONObject; const ATable: TTestCaseTable; const ARow: TTestCaseRow);
@@ -113,7 +103,7 @@ function RowToJson(const ATable: TTestCaseTable; const ARow: TTestCaseRow): TJSO
 begin
   Result := TJSONObject.Create;
   Result.AddPair('name', ARow.Name);
-  Result.AddPair('values', StringsToJson(ARow.Values));
+  Result.AddPair('values', TJsonBuild.Strings(ARow.Values));
   Result.AddPair('separator', ARow.Separator);
   Result.AddPair('form', TLspTestCases.cFormNames[ARow.Form]);
   Result.AddPair('line', TJSONNumber.Create(ARow.Line));

@@ -80,7 +80,8 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 function Setting(const AName, APath: string; AFlag: Boolean): TAtlasRoutedSetting;
 begin
@@ -422,7 +423,7 @@ begin
     WriteJson(mRouted.Path, AValue);
     Exit;
   end;
-  mJson := TAtlasJsonText.Quote(AValue);
+  mJson := TJsonText.Quote(AValue);
   if JsonValue(mRouted.Path) <> mJson then
   begin
     FText := TAtlasJsonText.SetValue(FText, mRouted.Path, mJson);

@@ -90,7 +90,8 @@ uses
   Atlas.Common.Projects.DprojReader,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
-  Shell.Bootstrap;
+  Shell.Bootstrap,
+  Atlas.Text.Json;
 
 /// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
 function DryRunOf(const AArguments: TJSONObject): Boolean;
@@ -105,7 +106,6 @@ function SchemaWith(const ASchema: string; const ADescriptions: array of string)
 var
   mRest: string;
   mIndex, mAt: Integer;
-  mText: TJSONString;
 begin
   Result := '';
   mRest := ASchema;
@@ -116,12 +116,7 @@ begin
     begin
       Break;
     end;
-    mText := TJSONString.Create(ADescriptions[mIndex]);
-    try
-      Result := Result + Copy(mRest, 1, mAt - 1) + mText.ToJSON;
-    finally
-      mText.Free;
-    end;
+    Result := Result + Copy(mRest, 1, mAt - 1) + TJsonText.Quote(ADescriptions[mIndex]);
     mRest := Copy(mRest, mAt + 2, MaxInt);
   end;
   Result := Result + mRest;

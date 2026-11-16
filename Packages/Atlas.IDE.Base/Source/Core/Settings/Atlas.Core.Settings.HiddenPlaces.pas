@@ -85,7 +85,8 @@ implementation
 uses
   System.JSON,
   Atlas.Text.Lines,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 function IsSeparator(ACh: Char): Boolean;
 begin
@@ -186,11 +187,11 @@ begin
   Result := '[';
   for mIndex := 0 to High(APlaces) do
   begin
-    mItem := '{"setting": ' + TAtlasJsonText.Quote(APlaces[mIndex].Setting) + ', "file": ' +
-      TAtlasJsonText.Quote(NormalizePath(APlaces[mIndex].FileName));
+    mItem := '{"setting": ' + TJsonText.Quote(APlaces[mIndex].Setting) + ', "file": ' +
+      TJsonText.Quote(NormalizePath(APlaces[mIndex].FileName));
     if APlaces[mIndex].Anchor <> '' then
     begin
-      mItem := mItem + ', "anchor": ' + TAtlasJsonText.Quote(APlaces[mIndex].Anchor);
+      mItem := mItem + ', "anchor": ' + TJsonText.Quote(APlaces[mIndex].Anchor);
     end;
     mItem := mItem + '}';
     if mIndex < High(APlaces) then

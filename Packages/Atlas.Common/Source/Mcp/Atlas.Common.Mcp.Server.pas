@@ -224,7 +224,8 @@ uses
   Atlas.Text.Uris,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Text.LogMarks,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -1022,18 +1023,6 @@ begin
   Result.AddPair('isError', TJSONBool.Create(mIsError));
 end;
 
-function JsonText(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 { TMcpArgs }
 
 class function TMcpArgs.StringSchema(const ANames, ADescriptions: array of string; ARequired: Integer): string;
@@ -1055,15 +1044,15 @@ begin
     begin
       mProperties := mProperties + ',';
     end;
-    mProperties := mProperties + JsonText(ANames[mIndex]) + ':{"type":"string","description":' +
-      JsonText(ADescriptions[mIndex]) + '}';
+    mProperties := mProperties + TJsonText.Quote(ANames[mIndex]) + ':{"type":"string","description":' +
+      TJsonText.Quote(ADescriptions[mIndex]) + '}';
     if mIndex < mCount then
     begin
       if mRequired <> '' then
       begin
         mRequired := mRequired + ',';
       end;
-      mRequired := mRequired + JsonText(ANames[mIndex]);
+      mRequired := mRequired + TJsonText.Quote(ANames[mIndex]);
     end;
   end;
   Result := '{"type":"object","properties":{' + mProperties + '},"required":[' + mRequired + ']}';

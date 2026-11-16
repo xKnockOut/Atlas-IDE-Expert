@@ -604,18 +604,6 @@ begin
   end;
 end;
 
-function StringJson(const AText: string): string;
-var
-  mValue: TJSONValue;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 /// <summary>AText als JSON-Text, wenn er gültiges JSON ist.</summary>
 function ParsedJson(const AText: string; out AJson: string): Boolean;
 var
@@ -1104,7 +1092,7 @@ begin
   end
   else if SameText(AKind, 'string') then
   begin
-    AJson := StringJson(mText);
+    AJson := TJsonText.Quote(mText);
   end
   else if SameText(AKind, 'string-list') then
   begin

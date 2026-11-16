@@ -611,7 +611,7 @@ begin
         end;
       end;
   else
-    Result := TAtlasJsonText.Quote(AStore.ReadString(AEntry.Name, ''));
+    Result := TJsonText.Quote(AStore.ReadString(AEntry.Name, ''));
   end;
 end;
 
@@ -996,7 +996,7 @@ begin
     begin
       Result := Result + ', ';
     end;
-    Result := Result + TAtlasJsonText.Quote(AItems[mIndex]);
+    Result := Result + TJsonText.Quote(AItems[mIndex]);
   end;
   Result := Result + ']';
 end;
@@ -1006,7 +1006,7 @@ function ValueText(AValue: TJSONValue): string;
 begin
   if IsText(AValue) then
   begin
-    Result := TAtlasJsonText.Quote(TJSONString(AValue).Value);
+    Result := TJsonText.Quote(TJSONString(AValue).Value);
   end
   else
   begin
@@ -1058,7 +1058,7 @@ var
   mMapped: TJSONValue;
   mHasUser: Boolean;
 begin
-  ALine := '    ' + TAtlasJsonText.Quote(AEntry.Key) + ': ';
+  ALine := '    ' + TJsonText.Quote(AEntry.Key) + ': ';
   if AOptions.Backup then
   begin
     ALine := ALine + ValueText(AValue);
@@ -1069,7 +1069,7 @@ begin
     Result := AOptions.Secrets <> smOmit;
     if Result then
     begin
-      ALine := ALine + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder);
+      ALine := ALine + TJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder);
       AResult.Placeholders := AResult.Placeholders + [AEntry.Key];
     end
     else
@@ -1101,10 +1101,10 @@ var
   mIndex: Integer;
 begin
   Result := '{' + #10 +
-    '  "format": ' + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cFormatName) + ',' + #10 +
+    '  "format": ' + TJsonText.Quote(TAtlasSettingsTransfer.cFormatName) + ',' + #10 +
     '  "formatVersion": ' + IntToStr(TAtlasSettingsTransfer.cFormatVersion) + ',' + #10 +
     '  "schemaVersion": ' + IntToStr(ACatalog.Version) + ',' + #10 +
-    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.cVersion) + ',' + #10;
+    '  "atlasVersion": ' + TJsonText.Quote(TAtlasPluginVersion.cVersion) + ',' + #10;
   if ABackup then
   begin
     Result := Result + '  "backup": true,' + #10;
@@ -1435,7 +1435,7 @@ begin
   begin
     AItem.Status := isSkipped;
   end
-  else if TAtlasJsonValues.Same(AItem.NewJson, TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder)) then
+  else if TAtlasJsonValues.Same(AItem.NewJson, TJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder)) then
   begin
     AItem.Status := isSecret;
   end

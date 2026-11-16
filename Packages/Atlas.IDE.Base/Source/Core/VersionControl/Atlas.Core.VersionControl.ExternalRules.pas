@@ -33,7 +33,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 function RuleAction(const AText: string; out AAction: TAtlasVcsExternalAction): Boolean;
 begin
@@ -71,31 +72,6 @@ begin
   Result := -1;
 end;
 
-function JsonText(AObject: TJSONObject; const AName: string): string;
-var
-  mValue: TJSONValue;
-begin
-  Result := '';
-  mValue := AObject.GetValue(AName);
-  // TJSONNumber erbt von TJSONString: Zahlen zählen nicht als Text.
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
-  begin
-    Result := Trim(TJSONString(mValue).Value);
-  end;
-end;
-
-function JsonQuoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 { TAtlasVcsExternalRules }
 
 class function TAtlasVcsExternalRules.RulesOf(const AJson: string): TArray<TAtlasVcsExternalRule>;
@@ -121,8 +97,8 @@ begin
       begin
         Continue;
       end;
-      mSource := JsonText(TJSONObject(mItem), 'source');
-      if (mSource = '') or not RuleAction(JsonText(TJSONObject(mItem), 'onBranch'), mAction) or
+      mSource := Trim(TJsonRead.StrictText(TJSONObject(mItem), 'source'));
+      if (mSource = '') or not RuleAction(Trim(TJsonRead.StrictText(TJSONObject(mItem), 'onBranch')), mAction) or
         (RuleIndex(Result, mSource) >= 0) then
       begin
         Continue;
@@ -144,8 +120,8 @@ begin
   begin
     if (mRule.Source <> '') and (mRule.Action <> TAtlasVcsExternalAction.Ask) then
     begin
-      mParts := mParts + ['{"source": ' + JsonQuoted(mRule.Source) + ', "onBranch": ' +
-        JsonQuoted(AtlasVcsExternalActionText(mRule.Action)) + '}'];
+      mParts := mParts + ['{"source": ' + TJsonText.Quote(mRule.Source) + ', "onBranch": ' +
+        TJsonText.Quote(AtlasVcsExternalActionText(mRule.Action)) + '}'];
     end;
   end;
   Result := '[' + string.Join(', ', mParts) + ']';

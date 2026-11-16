@@ -252,18 +252,6 @@ end;
 
 { TAtlasTrackerConnections }
 
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 /// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
@@ -297,9 +285,9 @@ begin
   mParts := nil;
   for mState in AStates do
   begin
-    mParts := mParts + [Quoted(mState)];
+    mParts := mParts + [TJsonText.Quote(mState)];
   end;
-  Result := ', ' + Quoted(AName) + ': [' + string.Join(', ', mParts) + ']';
+  Result := ', ' + TJsonText.Quote(AName) + ': [' + string.Join(', ', mParts) + ']';
 end;
 
 /// <summary>', "AName": "AValue"'; '' ohne Wert.</summary>
@@ -308,7 +296,7 @@ begin
   Result := '';
   if AValue <> '' then
   begin
-    Result := ', ' + Quoted(AName) + ': ' + Quoted(AValue);
+    Result := ', ' + TJsonText.Quote(AName) + ': ' + TJsonText.Quote(AValue);
   end;
 end;
 
@@ -318,15 +306,15 @@ begin
   Result := '';
   if AItem.StateField <> '' then
   begin
-    Result := Result + ', "stateField": ' + Quoted(AItem.StateField);
+    Result := Result + ', "stateField": ' + TJsonText.Quote(AItem.StateField);
   end;
   if AItem.AssigneeField <> '' then
   begin
-    Result := Result + ', "assigneeField": ' + Quoted(AItem.AssigneeField);
+    Result := Result + ', "assigneeField": ' + TJsonText.Quote(AItem.AssigneeField);
   end;
   if AItem.StartState <> '' then
   begin
-    Result := Result + ', "startState": ' + Quoted(AItem.StartState);
+    Result := Result + ', "startState": ' + TJsonText.Quote(AItem.StartState);
   end;
   Result := Result + StatesJson('endStates', AItem.EndStates) + StatesJson('reviewStates', AItem.ReviewStates) +
     StatesJson('endFields', AItem.EndFields);
@@ -335,7 +323,7 @@ begin
   // JSON-Wahrheitswert, nicht Text (#2138).
   if AItem.GitHubLinkBranch <> '' then
   begin
-    Result := Result + ', ' + Quoted('githubLinkBranch') + ': ' + AItem.GitHubLinkBranch;
+    Result := Result + ', ' + TJsonText.Quote('githubLinkBranch') + ': ' + AItem.GitHubLinkBranch;
   end;
 end;
 
@@ -417,11 +405,11 @@ begin
   begin
     if not mItem.ReadOnly then
     begin
-      mPart := '{"name": ' + Quoted(mItem.Name) + ', "provider": ' + Quoted(mItem.Provider) + ', "url": ' +
-        Quoted(mItem.Url);
+      mPart := '{"name": ' + TJsonText.Quote(mItem.Name) + ', "provider": ' + TJsonText.Quote(mItem.Provider) +
+        ', "url": ' + TJsonText.Quote(mItem.Url);
       if mItem.Language <> '' then
       begin
-        mPart := mPart + ', "language": ' + Quoted(mItem.Language);
+        mPart := mPart + ', "language": ' + TJsonText.Quote(mItem.Language);
       end;
       mParts := mParts + [mPart + StateJson(mItem) + '}'];
     end;

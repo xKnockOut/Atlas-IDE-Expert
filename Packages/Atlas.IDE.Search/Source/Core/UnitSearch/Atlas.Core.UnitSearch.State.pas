@@ -67,6 +67,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 const
   cOriginTexts: array[TAtlasUnitOrigin] of string = ('active', 'group', 'searchPath', 'library');
 
@@ -159,17 +162,6 @@ begin
   FGroups.AddOrSetValue(LowerCase(AGroupFile), mState);
 end;
 
-function TextsToJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
-end;
-
 function OriginsToJson(AOrigins: TAtlasUnitOrigins): TJSONArray;
 var
   mOrigin: TAtlasUnitOrigin;
@@ -195,7 +187,7 @@ end;
 function GroupToJson(const AState: TAtlasUnitSearchState.TGroupState): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('collapsed', TextsToJson(AState.Collapsed));
+  Result.AddPair('collapsed', TJsonBuild.Strings(AState.Collapsed));
   if AState.HasFilters then
   begin
     Result.AddPair('origins', OriginsToJson(AState.Origins));

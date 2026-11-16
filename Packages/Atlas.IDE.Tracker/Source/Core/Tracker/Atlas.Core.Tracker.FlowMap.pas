@@ -908,17 +908,6 @@ begin
   end;
 end;
 
-function TextsJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
-end;
-
 class function TAtlasTrackerFlow.ToJson(const AData: TAtlasFlowData): string;
 var
   mRoot: TJSONObject;
@@ -930,7 +919,7 @@ begin
     mRoot.AddPair('days', TJSONNumber.Create(AData.Days));
     mRoot.AddPair('stateField', AData.StateField);
     mRoot.AddPair('truncated', TJSONBool.Create(AData.Truncated));
-    mRoot.AddPair('resolved', TextsJson(AData.Resolved));
+    mRoot.AddPair('resolved', TJsonBuild.Strings(AData.Resolved));
     mRoot.AddPair('changes', ChangesJson(AData.Changes));
     mRoot.AddPair('open', OpenJson(AData.Open));
     Result := mRoot.ToJSON;

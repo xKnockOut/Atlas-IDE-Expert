@@ -1165,17 +1165,6 @@ begin
   end;
 end;
 
-function NamesJson(const ANames: TArray<string>): TJSONArray;
-var
-  mName: string;
-begin
-  Result := TJSONArray.Create;
-  for mName in ANames do
-  begin
-    Result.Add(mName);
-  end;
-end;
-
 function ItemJson(const AItem: TAtlasUnsavedItem): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -1197,7 +1186,7 @@ begin
   end;
   if Length(AItem.Branches) > 0 then
   begin
-    Result.AddPair('branches', NamesJson(AItem.Branches));
+    Result.AddPair('branches', TJsonBuild.Strings(AItem.Branches));
   end;
   AddText(Result, 'name', AItem.Name);
   AddText(Result, 'ref', AItem.Ref);
