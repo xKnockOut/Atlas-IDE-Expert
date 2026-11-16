@@ -31,7 +31,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.Unwrap,
   Atlas.UI.Editor.Unwrap,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasUnwrapSessionFunc = reference to function: TLspSession;
@@ -107,7 +107,6 @@ uses
   Vcl.Controls,
   Atlas.Text.Lines,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Editor.WorkspacePlan,
@@ -163,13 +162,13 @@ var
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := TAtlasMessageSink.Create(AMessage);
   FIndex := -1;
   FPreview := -1;
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin

@@ -30,7 +30,7 @@ uses
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Projects,
   Atlas.IDE.Projects.Summaries,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeProjects = class(TInterfacedObject, IAtlasProjectsSource, IAtlasProjectSummaryListener)
@@ -92,7 +92,6 @@ uses
   Winapi.ShellAPI,
   System.Classes,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Modules.Registry,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,

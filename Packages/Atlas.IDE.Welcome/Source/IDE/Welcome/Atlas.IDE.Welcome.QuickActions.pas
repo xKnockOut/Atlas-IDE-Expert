@@ -53,7 +53,7 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
   Atlas.IDE.Welcome.Projects,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
@@ -175,7 +175,6 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.VersionControl.Contract,

@@ -72,6 +72,21 @@ uses
   Atlas.Core.Diagnostics.LogRedaction;
 
 type
+  /// <summary>Empfänger einer Meldungszeile, der fehlen darf. Viele Teile der Module hielten dafür einen
+  /// TProc&lt;string&gt; und je eine eigene Methode Report, die nur prüfte, ob der Empfänger da ist; der Datensatz
+  /// ersetzt Feld und Methode. Er steht hier, weil fast alle Nutzer diese Unit schon einbinden.</summary>
+  TAtlasMessageSink = record
+  private
+    FTarget: TProc<string>;
+  public
+    /// <summary>Sink für ATarget; nil ergibt einen Sink, der nichts tut.</summary>
+    class function Create(const ATarget: TProc<string>): TAtlasMessageSink; static;
+    /// <summary>AText an den Empfänger; nichts ohne Empfänger oder bei leerem Text.</summary>
+    procedure Say(const AText: string);
+    /// <summary>Empfänger loslassen (und was er einfängt); danach tut Say nichts.</summary>
+    procedure Clear;
+  end;
+
 {$SCOPEDENUMS ON}
   TAtlasFeature = (Completion, Signature, Hover, Pairs, Problems, Reloader, Palette, CheckOnSave, Watchdog, Server,
     Settings, Menu, Files, InlayHints, Results, EditorCommands, Forms, Build, Status, WelcomePage, ShortcutTips,
@@ -1281,6 +1296,26 @@ begin
   begin
     Result := Copy(Result, 1, cMaxMessageLength) + '…';
   end;
+end;
+
+{ TAtlasMessageSink }
+
+class function TAtlasMessageSink.Create(const ATarget: TProc<string>): TAtlasMessageSink;
+begin
+  Result.FTarget := ATarget;
+end;
+
+procedure TAtlasMessageSink.Say(const AText: string);
+begin
+  if Assigned(FTarget) and (AText <> '') then
+  begin
+    FTarget(AText);
+  end;
+end;
+
+procedure TAtlasMessageSink.Clear;
+begin
+  FTarget := nil;
 end;
 
 initialization

@@ -22,7 +22,7 @@ uses
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.IDE.Tracker.WorkingCopies,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Tracker-Anbieter zum Namen ("github", "youtrack"); nil, wenn es ihn nicht gibt.</summary>
@@ -245,7 +245,6 @@ uses
   System.DateUtils,
   System.IOUtils,
   Atlas.Core.Tracker.Files,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,

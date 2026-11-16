@@ -33,7 +33,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Unsaved,
   Atlas.UI.Welcome.Unsaved,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeUnsaved = class(TInterfacedObject, IAtlasUnsavedSource)
@@ -110,7 +110,6 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,

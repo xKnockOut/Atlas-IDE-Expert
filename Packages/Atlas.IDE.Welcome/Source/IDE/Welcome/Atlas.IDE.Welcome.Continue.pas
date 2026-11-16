@@ -57,7 +57,7 @@ uses
   Atlas.UI.Welcome.Continue,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssues,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Was die Komposition dem Bereich mitgibt.</summary>
@@ -186,7 +186,6 @@ implementation
 uses
   Winapi.Windows,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,

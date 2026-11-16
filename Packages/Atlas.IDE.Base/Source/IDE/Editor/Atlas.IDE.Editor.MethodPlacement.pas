@@ -30,7 +30,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Editor.MethodPlacement,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasMethodPlacementSessionFunc = reference to function: TLspSession;
@@ -89,7 +89,6 @@ implementation
 uses
   Atlas.Core.Editor.SourceFiles,
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.WorkspaceEdits,

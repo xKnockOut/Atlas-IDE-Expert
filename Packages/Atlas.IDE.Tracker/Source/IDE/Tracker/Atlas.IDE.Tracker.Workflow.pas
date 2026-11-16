@@ -60,7 +60,7 @@ uses
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Transport mit dem Token aus dem Anmeldespeicher; nil ohne Token. Läuft im Hintergrund.</summary>
@@ -199,7 +199,6 @@ implementation
 uses
   System.Math,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.VersionControl.Contract,
   Atlas.UI.Tracker.Workflow.Strings,
   Atlas.UI.Tracker.GitHubStrings,

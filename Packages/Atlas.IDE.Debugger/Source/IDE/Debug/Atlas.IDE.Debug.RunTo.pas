@@ -25,7 +25,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.RunTo,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeRunTo = class

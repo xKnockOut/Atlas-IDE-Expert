@@ -29,7 +29,7 @@ uses
   Atlas.Core.Editor.MethodAnchor,
   Atlas.Core.Debug.BreakpointAnchors,
   Atlas.Core.Debug.BreakpointAnchorFlow,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Ergebnis eines Durchlaufs: neue Anker, Verschiebungen, Verwaiste.</summary>

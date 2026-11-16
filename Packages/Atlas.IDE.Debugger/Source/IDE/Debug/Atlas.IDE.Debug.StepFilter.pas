@@ -38,7 +38,7 @@ uses
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Trace,
   Atlas.UI.Debug.StepFilterFrame,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasStepFilterSessionFunc = reference to function: TLspSession;
@@ -140,7 +140,6 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,

@@ -29,7 +29,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.DataBreakpoint,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeDataBreakpoint = class

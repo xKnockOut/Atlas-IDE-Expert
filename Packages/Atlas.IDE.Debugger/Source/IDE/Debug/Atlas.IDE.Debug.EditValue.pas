@@ -30,7 +30,7 @@ uses
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
   Atlas.UI.Debug.InlineValuePainter,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeDebugEditValue = class
@@ -108,7 +108,6 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.InlineValues,

@@ -37,7 +37,7 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Tracker des aktiven Projekts; nil ohne Anbieter bzw. Server.</summary>
@@ -118,7 +118,6 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Clipbrd,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Tracker.PaletteSearchPlan,

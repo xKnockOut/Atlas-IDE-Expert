@@ -38,7 +38,7 @@ uses
   Atlas.Core.Debug.StepInto,
   Atlas.Core.Debug.StepIntoJump,
   Atlas.UI.Debug.StepInto,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasStepIntoSessionFunc = reference to function: TLspSession;
@@ -113,7 +113,6 @@ uses
   System.Math,
   System.JSON,
   Vcl.Controls,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Settings.VisualizerKinds,

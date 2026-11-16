@@ -31,7 +31,7 @@ uses
   Atlas.Core.Tracker.Attach,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIssueAttachHooks = record
@@ -103,7 +103,6 @@ uses
   Vcl.Graphics,
   Vcl.Clipbrd,
   Vcl.Dialogs,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.AttachPlan,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,

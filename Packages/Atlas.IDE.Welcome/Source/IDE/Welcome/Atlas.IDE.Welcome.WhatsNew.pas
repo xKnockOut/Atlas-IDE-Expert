@@ -23,7 +23,7 @@ uses
   Atlas.Core.Welcome.WhatsNew,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeWhatsNew = class(TInterfacedObject, IAtlasWhatsNewSource)
@@ -85,7 +85,6 @@ uses
   System.Classes,
   System.IOUtils,
   Vcl.Menus,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,

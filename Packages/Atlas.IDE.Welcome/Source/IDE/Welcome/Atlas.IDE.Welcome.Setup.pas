@@ -47,7 +47,7 @@ uses
   Atlas.UI.Welcome.Setup,
   Atlas.IDE.Welcome.Setup.Paths,
   Atlas.IDE.Welcome.Setup.ProjectEvents,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Ende des Baseline-Laufs im Hauptthread; ATotal und AFiles nur mit ASucceeded.</summary>
@@ -141,7 +141,6 @@ implementation
 
 uses
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Files.DataFile,

@@ -25,7 +25,7 @@ uses
   System.Classes,
   Atlas.Core.Debug.BreakpointSets,
   Atlas.UI.Debug.BreakpointSets,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeBreakpointSets = class

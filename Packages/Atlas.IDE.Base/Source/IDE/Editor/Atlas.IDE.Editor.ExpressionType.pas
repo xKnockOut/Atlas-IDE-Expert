@@ -34,7 +34,7 @@ uses
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Editor.ExpressionType,
-  Atlas.Core.Notifications.MessageSink;
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasExpressionTypeSessionFunc = reference to function: TLspSession;
@@ -108,7 +108,6 @@ uses
   Vcl.Menus,
   Atlas.Text.Lines,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Strings,
@@ -188,12 +187,12 @@ var
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := TAtlasMessageSink.Create(AMessage);
   FIndex := -1;
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
