@@ -169,6 +169,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.StringLiterals,
+  Atlas.Text.Json,
   Atlas.Text.Lines;
 
 const
@@ -1499,21 +1500,6 @@ begin
   Result := PreviewJson(mContext, TDocumentUris.ToPath(AArguments.Items[0].Value), mWithForm, mWithUsedBy);
 end;
 
-/// <summary>Namen aus dem Array, nur Zeichenketten.</summary>
-function UnitNames(AArray: TJSONArray): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  for mValue in AArray do
-  begin
-    if mValue is TJSONString then
-    begin
-      Result := Result + [mValue.Value];
-    end;
-  end;
-end;
-
 /// <summary>Abschnitt aus {"section": "interface" | "implementation"}; sonst Auto.</summary>
 function TargetOf(AOptions: TJSONValue): TUsesAddTarget;
 var
@@ -1552,7 +1538,7 @@ begin
   begin
     Exit(TJSONNull.Create);
   end;
-  mUnits := UnitNames(TJSONArray(AArguments.Items[1]));
+  mUnits := TJsonRead.Strings(TJSONArray(AArguments.Items[1]));
   if not FContextFor(mContext) or not Assigned(mContext.ReadText) then
   begin
     Exit(TJSONNull.Create);

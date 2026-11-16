@@ -51,8 +51,6 @@ type
     class function ProjectChoices(const AItems: TArray<TProjectChoiceItem>): TJSONObject; static;
     /// <summary>Index von ATarget in AItems: gleicher Pfad oder Name (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     class function FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer; static;
-    /// <summary>Werte als JSON-Liste von Strings.</summary>
-    class function StringsToJson(const AValues: TArray<string>): TJSONArray; static;
     /// <summary>Eintrag der Antwort von atlas.selectBuild zu einem Projekt; gewählte Werte vor denen des
     /// Projekts.</summary>
     class function ProjectItem(const AFolder: string; const AProject: TProjectInfo;
@@ -73,7 +71,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.BinaryForm,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Text.Json;
 
 { TSelectBuildArgs }
 
@@ -185,17 +184,6 @@ begin
 end;
 
 
-class function TBuildCommands.StringsToJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 class function TBuildCommands.ProjectItem(const AFolder: string; const AProject: TProjectInfo;
   const AArgs: TSelectBuildArgs): TJSONObject;
 var
@@ -216,8 +204,8 @@ begin
   Result.AddPair('project', AProject.FileName);
   Result.AddPair('config', mConfig);
   Result.AddPair('platform', mPlatform);
-  Result.AddPair('configs', StringsToJson(AProject.Configs));
-  Result.AddPair('platforms', StringsToJson(AProject.Platforms));
+  Result.AddPair('configs', TJsonBuild.Strings(AProject.Configs));
+  Result.AddPair('platforms', TJsonBuild.Strings(AProject.Platforms));
 end;
 
 class function TBuildCommands.FormFiles(const AArguments: TJSONArray; const AProjectSources: TArray<string>;

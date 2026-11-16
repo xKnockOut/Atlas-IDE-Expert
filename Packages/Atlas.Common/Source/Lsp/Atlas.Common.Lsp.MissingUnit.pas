@@ -57,7 +57,8 @@ implementation
 uses
   System.Generics.Collections,
   System.StrUtils,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -106,20 +107,9 @@ begin
   Result.AddPair('command', mCommand);
 end;
 
-function Arguments(const AValues: array of string): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 function InfoAction(const ATitle, AText: string): TJSONObject;
 begin
-  Result := CommandAction(ATitle, TLspMissingUnit.cInfoCommand, Arguments([AText]), False);
+  Result := CommandAction(ATitle, TLspMissingUnit.cInfoCommand, TJsonBuild.Strings([AText]), False);
 end;
 
 class function TLspMissingUnit.Actions(AEnabled: Boolean; AFirstLine, ALastLine: Integer;
@@ -194,11 +184,11 @@ begin
   begin
     Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch].Fmt([mFolder, mConfig,
       HitOrigin(AHit)]), TLspMissingUnit.cSearchPathCommand,
-      Arguments([ASetup.Project.FileName, mFolder, mConfig]), AFirst)];
+      TJsonBuild.Strings([ASetup.Project.FileName, mFolder, mConfig]), AFirst)];
   end;
   Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch2].Fmt([mFolder, HitOrigin(AHit)]),
     TLspMissingUnit.cSearchPathCommand,
-    Arguments([ASetup.Project.FileName, mFolder, '']), AFirst and (mConfig = ''))];
+    TJsonBuild.Strings([ASetup.Project.FileName, mFolder, '']), AFirst and (mConfig = ''))];
 end;
 
 /// <summary>Ohne Ordner: Hinweis auf andere Plattformen bzw. die durchsuchten Orte.</summary>
@@ -247,7 +237,7 @@ begin
         mSourceOffered := True;
         Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddToTheProject].Fmt([
           ExtractFileName(mHit.FileName)]),
-          cAddUnitCommand, Arguments([ASetup.Project.FileName, mHit.FileName]), False)];
+          cAddUnitCommand, TJsonBuild.Strings([ASetup.Project.FileName, mHit.FileName]), False)];
       end;
       Inc(mOffered);
     end;

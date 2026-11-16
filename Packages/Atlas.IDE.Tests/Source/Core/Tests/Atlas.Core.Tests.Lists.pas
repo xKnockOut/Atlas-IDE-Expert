@@ -923,29 +923,15 @@ begin
   end;
 end;
 
-/// <summary>AText als JSON-Zeichenkette mit Anführungszeichen.</summary>
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    // Ohne Argument schreibt ToJSON Umlaute als \u-Folge; lesbar mit [].
-    Result := mValue.ToJSON([]);
-  finally
-    mValue.Free;
-  end;
-end;
-
 function RuleJson(const ARule: TAtlasTestListRule): string;
 begin
   case ARule.Kind of
     TAtlasTestListRuleKind.Category:
-      Result := '{"category": ' + Quoted(ARule.Value);
+      Result := '{"category": ' + TJsonText.Quote(ARule.Value);
     TAtlasTestListRuleKind.Pattern:
-      Result := '{"unit": ' + Quoted(ARule.Value);
+      Result := '{"unit": ' + TJsonText.Quote(ARule.Value);
   else
-    Result := '{"state": ' + Quoted(cStateNames[ARule.State]);
+    Result := '{"state": ' + TJsonText.Quote(cStateNames[ARule.State]);
   end;
   if ARule.Exclude then
   begin
@@ -981,7 +967,7 @@ var
   mRule: TAtlasTestListRule;
   mName: string;
 begin
-  Result := '{"name": ' + Quoted(AList.Name) + ', ';
+  Result := '{"name": ' + TJsonText.Quote(AList.Name) + ', ';
   mParts := nil;
   if AList.IsDynamic then
   begin
@@ -994,7 +980,7 @@ begin
   end;
   for mName in AList.Tests do
   begin
-    mParts := mParts + [Quoted(mName)];
+    mParts := mParts + [TJsonText.Quote(mName)];
   end;
   Result := Result + '"tests": ' + ArrayJson(mParts, AIndent + cIndent + cIndent) + '}';
 end;

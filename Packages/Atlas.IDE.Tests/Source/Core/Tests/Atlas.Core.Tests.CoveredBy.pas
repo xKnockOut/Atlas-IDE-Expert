@@ -137,6 +137,7 @@ uses
   System.StrUtils,
   Atlas.Core.Tests.Lens,
   Atlas.Text.DUnitX,
+  Atlas.Text.Json,
   Atlas.Text.Lines;
 
 { TAtlasCoveredUnit }
@@ -210,29 +211,13 @@ begin
   end;
 end;
 
-/// <summary>Werte des Arrays AName in AEntry; nil ohne.</summary>
-function StringsIn(AEntry: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AEntry.TryGetValue<TJSONArray>(AName, mArray) then
-  begin
-    for mItem in mArray do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 function TestOf(AEntry: TJSONObject; const AUriToPath: TFunc<string, string>): TAtlasCoveredTest;
 var
   mUri: string;
 begin
   Result := Default(TAtlasCoveredTest);
   Result.Name := AEntry.GetValue<string>('name', '');
-  Result.RunNames := StringsIn(AEntry, 'run');
+  Result.RunNames := TJsonRead.Strings(AEntry, 'run');
   if Length(Result.RunNames) = 0 then
   begin
     Result.RunNames := TArray<string>.Create(Result.Name);

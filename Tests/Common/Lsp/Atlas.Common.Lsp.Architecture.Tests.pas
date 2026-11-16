@@ -52,7 +52,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Lsp.Architecture,
-  Atlas.Common.Architecture.UsesGraph.Tests;
+  Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Text.Json;
 
 var
   Enabled: Boolean;
@@ -100,19 +101,6 @@ begin
       LastScope := AScope;
       Result := True;
     end);
-end;
-
-/// <summary>Pfad als JSON-Zeichenkette.</summary>
-function JsonPath(const APath: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(APath);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
 end;
 
 function Ask(ALsp: TLspArchitecture; const AParams: string): TJSONObject;
@@ -408,7 +396,7 @@ begin
     mTarget := TPath.Combine(mFolder, 'stand.json');
     SaveReportTo(mLsp, mTarget);
     Assert.Contains(TFile.ReadAllText(mTarget, TEncoding.UTF8), '"format": 2');
-    mAnswer := Ask(mLaterLsp, '{"compareWith": ' + JsonPath(mTarget) + '}');
+    mAnswer := Ask(mLaterLsp, '{"compareWith": ' + TJsonText.Quote(mTarget) + '}');
     try
       Assert.AreEqual(mTarget, mAnswer.GetValue<string>('baseline'));
       Assert.AreEqual(1, mAnswer.GetValue<TJSONObject>('comparison').GetValue<TJSONArray>('newCycles').Count);
@@ -418,7 +406,7 @@ begin
     finally
       mAnswer.Free;
     end;
-    mAnswer := Ask(mLaterLsp, '{"format": "text", "compareWith": ' + JsonPath(mTarget) + '}');
+    mAnswer := Ask(mLaterLsp, '{"format": "text", "compareWith": ' + TJsonText.Quote(mTarget) + '}');
     try
       Assert.Contains(mAnswer.GetValue<string>('text'), 'Neue Zyklen: 1');
     finally

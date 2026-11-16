@@ -175,24 +175,6 @@ begin
   Result := IncludeTrailingPathDelimiter(ARoot) + StringReplace(APath, '/', PathDelim, [rfReplaceAll]);
 end;
 
-function ReadNames(const AArray: TJSONArray): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if AArray = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AArray.Count - 1 do
-  begin
-    if AArray.Items[mIndex] is TJSONString then
-    begin
-      Result := Result + [AArray.Items[mIndex].Value];
-    end;
-  end;
-end;
-
 function ReadCommit(const AValue: TJSONValue): TAtlasHotspotCommit;
 var
   mCommit: TJSONObject;
@@ -245,7 +227,7 @@ begin
   Result.EndLine := TJsonRead.IntOr(mItem, 'endLine', Result.Line);
   Result.Changes := TJsonRead.IntOr(mItem, 'changes', 0);
   Result.Authors := TJsonRead.IntOr(mItem, 'authors', 0);
-  Result.AuthorNames := ReadNames(TJsonRead.Items(mItem, 'authorNames'));
+  Result.AuthorNames := TJsonRead.Strings(mItem, 'authorNames');
   Result.Added := TJsonRead.IntOr(mItem, 'added', -1);
   Result.Deleted := TJsonRead.IntOr(mItem, 'deleted', -1);
   Result.LastChange := TJsonRead.Text(mItem, 'lastChange');

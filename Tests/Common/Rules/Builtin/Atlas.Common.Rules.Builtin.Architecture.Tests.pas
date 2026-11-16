@@ -91,7 +91,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Architecture,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  Atlas.Text.Json;
 
 const
   cLayerConfig =
@@ -250,17 +251,6 @@ begin
   Result := '';
 end;
 
-function JsonStrings(const AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  for mItem in AObject.GetValue<TJSONArray>(AName) do
-  begin
-    Result := Result + [mItem.Value];
-  end;
-end;
-
 procedure TArchitectureMatrixTests.MatrixCasesFromFile;
 var
   mFileName: string;
@@ -278,8 +268,8 @@ begin
   try
     Assert.IsTrue(mRoot is TJSONObject);
     mData := TJSONObject(mRoot);
-    mCasePrefixes := JsonStrings(mData, 'prefixes');
-    mCaseHosts := JsonStrings(mData, 'hostRoles');
+    mCasePrefixes := TJsonRead.Strings(mData, 'prefixes');
+    mCaseHosts := TJsonRead.Strings(mData, 'hostRoles');
     mCount := 0;
     for mItem in mData.GetValue<TJSONArray>('cases') do
     begin

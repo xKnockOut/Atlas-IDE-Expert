@@ -89,7 +89,8 @@ uses
   Atlas.UI.Settings.ProjectDialog,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.Text.Json;
 
 /// <summary>Dialogklasse mit Regel-Editor eines laufenden Moduls (Prüfregeln, #1755); sonst die von Base.
 /// </summary>
@@ -441,7 +442,7 @@ var
   mValid: Boolean;
 begin
   // Der Server meldet auch Schlüssel am falschen Ort (#227).
-  mAnswer := RunCommand(TAtlasProjectSettings.cCheckCommand, '[' + TAtlasJsonText.Quote(AText) + FCheckScope + ']');
+  mAnswer := RunCommand(TAtlasProjectSettings.cCheckCommand, '[' + TJsonText.Quote(AText) + FCheckScope + ']');
   try
     AChecked := TAtlasSettingsValidation.FromAnswer(mAnswer, Result, mValid);
   finally

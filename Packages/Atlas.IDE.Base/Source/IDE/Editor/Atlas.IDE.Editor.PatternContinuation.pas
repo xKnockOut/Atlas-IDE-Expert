@@ -95,7 +95,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Editor.EnterWatch;
+  Atlas.IDE.Editor.EnterWatch,
+  Atlas.Text.Json;
 
 const
   cHandlerName = 'PatternContinuation';
@@ -123,7 +124,6 @@ class function TAtlasIdePatternContinuation.EnumValues(const AFileName, AText, A
 var
   mSession: TLspSession;
   mAnswer: TJSONValue;
-  mItem: TJSONValue;
   mKey: string;
 begin
   Result := TAtlasPatternContinuation.LocalEnumValues(AText, AMember);
@@ -150,13 +150,7 @@ begin
     mAnswer := mSession.RunCommand('atlas.server.enumValues', Format('["%s",{"line":%d,"character":%d}]',
       [TLspSession.PathToUri(AFileName).Replace('\', '\\').Replace('"', '\"'), ALine, ACharacter]), cEnumTimeoutMs);
     try
-      if mAnswer is TJSONArray then
-      begin
-        for mItem in TJSONArray(mAnswer) do
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
+      Result := TJsonRead.Strings(mAnswer);
     finally
       mAnswer.Free;
     end;

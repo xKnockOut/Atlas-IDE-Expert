@@ -250,32 +250,6 @@ end;
 
 { JSON-Hilfen }
 
-function NamesOf(const AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mNode, mItem: TJSONValue;
-  mList: TList<string>;
-begin
-  Result := nil;
-  mNode := AObject.GetValue(AName);
-  if not (mNode is TJSONArray) then
-  begin
-    Exit;
-  end;
-  mList := TList<string>.Create;
-  try
-    for mItem in TJSONArray(mNode) do
-    begin
-      if mItem is TJSONString then
-      begin
-        mList.Add(TJSONString(mItem).Value);
-      end;
-    end;
-    Result := mList.ToArray;
-  finally
-    mList.Free;
-  end;
-end;
-
 function NamesJson(const ANames: TArray<string>): string;
 var
   mBuilder: TStringBuilder;
@@ -469,8 +443,8 @@ begin
     Result.Reason := TJsonRead.Text(mRoot, 'reason');
     Result.Detail := TJsonRead.Text(mRoot, 'detail');
     Result.LogFile := TJsonRead.Text(mRoot, 'log');
-    Result.Added := NamesOf(mRoot, 'added');
-    Result.Removed := NamesOf(mRoot, 'removed');
+    Result.Added := TJsonRead.Strings(mRoot, 'added');
+    Result.Removed := TJsonRead.Strings(mRoot, 'removed');
   finally
     mRoot.Free;
   end;

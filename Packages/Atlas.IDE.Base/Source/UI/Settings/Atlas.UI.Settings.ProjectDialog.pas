@@ -221,7 +221,8 @@ uses
   Atlas.UI.Settings.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.Text.Json;
 
 const
   // Breite der Knöpfe OK und Abbrechen.
@@ -1057,7 +1058,7 @@ begin
   end
   else if FModel.Fields[mIndex].Kind = TAtlasSettingKind.Text then
   begin
-    FModel.SetValue(mIndex, TAtlasJsonText.Quote(mText));
+    FModel.SetValue(mIndex, TJsonText.Quote(mText));
   end
   else if TryStrToInt(mText, mNumber) then
   begin
@@ -1093,7 +1094,7 @@ begin
   mJson := '';
   if mText <> '' then
   begin
-    mJson := TAtlasJsonText.Quote(mText);
+    mJson := TJsonText.Quote(mText);
   end;
   // Eine Anzeige aus der Liste speichert ihren Wert ("Delphi 12 (23.0)" → "23.0"), sonst den Text.
   for mChoice := High(FTextChoices[mIndex]) downto 0 do

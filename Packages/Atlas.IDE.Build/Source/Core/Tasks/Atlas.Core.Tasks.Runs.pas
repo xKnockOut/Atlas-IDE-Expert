@@ -579,24 +579,6 @@ begin
   end;
 end;
 
-function ReadHidden(AValue: TJSONValue): TArray<string>;
-var
-  mElement: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mElement in TJSONArray(AValue) do
-  begin
-    if mElement is TJSONString then
-    begin
-      Result := Result + [mElement.Value];
-    end;
-  end;
-end;
-
 function ReadOutcome(AValue: TJSONValue): TAtlasTaskOutcome;
 var
   mOutcome: TAtlasTaskOutcome;
@@ -677,7 +659,7 @@ begin
       FProjects.Add(mProject);
       mProject.FKey := Key(mPair.JsonString.Value);
       mProject.FUsed := DateOf(mItem, 'used');
-      mProject.FHidden := ReadHidden(mItem.GetValue('hidden'));
+      mProject.FHidden := TJsonRead.Strings(mItem.GetValue('hidden'));
       mProject.FLast := ReadRuns(mItem.GetValue('last'));
     end;
   finally

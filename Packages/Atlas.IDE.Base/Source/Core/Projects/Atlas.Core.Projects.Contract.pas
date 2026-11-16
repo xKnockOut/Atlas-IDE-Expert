@@ -87,19 +87,11 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 const
   cNamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local', 'constant');
-
-function JsonList(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
 
 { TAtlasProjectContext }
 
@@ -202,12 +194,12 @@ begin
   begin
     Result.AddPair('bdsVersion', BdsVersion);
   end;
-  Result.AddPair('defines', JsonList(Defines));
-  Result.AddPair('searchPaths', JsonList(SearchPaths));
-  Result.AddPair('namespaces', JsonList(Namespaces));
+  Result.AddPair('defines', TJsonBuild.Strings(Defines));
+  Result.AddPair('searchPaths', TJsonBuild.Strings(SearchPaths));
+  Result.AddPair('namespaces', TJsonBuild.Strings(Namespaces));
   if Length(LibraryPaths) > 0 then
   begin
-    Result.AddPair('libraryPaths', JsonList(LibraryPaths));
+    Result.AddPair('libraryPaths', TJsonBuild.Strings(LibraryPaths));
   end;
   Result.AddPair('active', TJSONBool.Create(Active));
   mPrefixes := nil;

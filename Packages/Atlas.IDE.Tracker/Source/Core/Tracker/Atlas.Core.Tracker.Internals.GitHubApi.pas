@@ -397,17 +397,6 @@ begin
   Result := -1;
 end;
 
-function JsonList(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 /// <summary>Labels nach dem neuen Zustand: der Zustand aus „Beginnen“ fällt weg, der neue kommt dazu (nicht
 /// beim Schließen); True, wenn sich etwas ändert. Schließen ohne Zustand (#2135) nimmt nur den aus „Beginnen“ ab.
 /// </summary>
@@ -514,11 +503,11 @@ begin
   try
     if mLabelsChanged then
     begin
-      mObject.AddPair('labels', JsonList(mLabels));
+      mObject.AddPair('labels', TJsonBuild.Strings(mLabels));
     end;
     if mAssigneesChanged then
     begin
-      mObject.AddPair('assignees', JsonList(mAssignees));
+      mObject.AddPair('assignees', TJsonBuild.Strings(mAssignees));
     end;
     if mClose then
     begin

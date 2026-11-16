@@ -250,24 +250,6 @@ begin
     ARange.TryGetValue<Integer>('end.character', AResult.EndCharacter);
 end;
 
-/// <summary>Die Strings eines JSON-Arrays; leer, wenn AValue kein Array ist.</summary>
-function StringsOf(AValue: TJSONValue): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mValue in TJSONArray(AValue) do
-    begin
-      if mValue is TJSONString then
-      begin
-        Result := Result + [TJSONString(mValue).Value];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>documentation (string oder MarkupContent) und data unverändert für completionItem/resolve.</summary>
 procedure ReadDocumentation(AItem: TJSONObject; var AResult: TAtlasCompletionItem);
 var
@@ -300,9 +282,9 @@ begin
   AResult.Unavailable := AData.GetValue('unavailable') is TJSONTrue;
   AResult.Scope := AData.GetValue<Integer>('scope', 0);
   AResult.DeclaringUnit := AData.GetValue<string>('unit', '');
-  AResult.Hides := StringsOf(AData.GetValue('hides'));
+  AResult.Hides := TJsonRead.Strings(AData.GetValue('hides'));
   AResult.WithOrigin := AData.GetValue<string>('withOrigin', '');
-  AResult.WithShadows := StringsOf(AData.GetValue('withShadows'));
+  AResult.WithShadows := TJsonRead.Strings(AData.GetValue('withShadows'));
   AResult.HasParameters := AData.GetValue('parameters') is TJSONTrue;
   AResult.ExpectedType := AData.GetValue<string>('expected', '');
   AResult.Fits := AData.GetValue('fits') is TJSONTrue;
@@ -417,16 +399,16 @@ begin
   end;
   AResult.UsesElsewhere := AData.GetValue<string>('usesElsewhere', '');
   AResult.UsesCycle := AData.GetValue<string>('usesCycle', '');
-  AResult.UsesTypes := StringsOf(AData.GetValue('usesTypes'));
+  AResult.UsesTypes := TJsonRead.Strings(AData.GetValue('usesTypes'));
   AResult.UsesTypeCount := AData.GetValue<Integer>('usesTypeCount', 0);
-  AResult.UsesHidden := StringsOf(AData.GetValue('usesHidden'));
+  AResult.UsesHidden := TJsonRead.Strings(AData.GetValue('usesHidden'));
   AResult.InheritedMatch := AData.GetValue<string>('inheritedMatch', '');
-  AResult.InheritedAbstract := StringsOf(AData.GetValue('inheritedAbstract'));
+  AResult.InheritedAbstract := TJsonRead.Strings(AData.GetValue('inheritedAbstract'));
   AResult.SameNameActive := AData.GetValue<Boolean>('sameNameActive', False);
   AResult.SameNameOf := AData.GetValue<string>('sameNameOf', '');
   AResult.SameNameInsert := AData.GetValue<string>('sameNameInsert', '');
-  AResult.SameNameUnits := StringsOf(AData.GetValue('sameNameUnits'));
-  AResult.SameNameHidden := StringsOf(AData.GetValue('sameNameHidden'));
+  AResult.SameNameUnits := TJsonRead.Strings(AData.GetValue('sameNameUnits'));
+  AResult.SameNameHidden := TJsonRead.Strings(AData.GetValue('sameNameHidden'));
   AResult.LinkedEdits := AData.GetValue<Boolean>('linkedEdits', False);
 end;
 

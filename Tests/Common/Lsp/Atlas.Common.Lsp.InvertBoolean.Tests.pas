@@ -53,7 +53,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.InvertBoolean;
+  Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Text.Json;
 
 const
   cPanelsFile = 'C:\P\Panels.pas';
@@ -215,10 +216,7 @@ begin
       mFileName := TDocumentUris.ToPath((mDocument.GetValue('textDocument') as TJSONObject).GetValue('uri').Value);
       Result := Result + [ExtractFileName(mFileName) + '|' + Apply(TextOf(mFileName), mDocument)];
     end;
-    for mItem in mAnswer.GetValue('warnings') as TJSONArray do
-    begin
-      AWarnings := AWarnings + [mItem.Value];
-    end;
+    AWarnings := TJsonRead.Strings(mAnswer, 'warnings');
   finally
     mAnswer.Free;
     mResolver.Free;

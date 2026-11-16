@@ -478,17 +478,8 @@ end;
 
 /// <summary>Namen aus einem JSON-Array von Strings; ohne Einträge AFallback allein.</summary>
 function RunNamesOf(const AValue: TJSONValue; const AFallback: string): TArray<string>;
-var
-  mName: TJSONValue;
 begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mName in TJSONArray(AValue) do
-    begin
-      Result := Result + [mName.Value];
-    end;
-  end;
+  Result := TJsonRead.Strings(AValue);
   if Result = nil then
   begin
     Result := TArray<string>.Create(AFallback);
@@ -559,27 +550,12 @@ begin
   Result := TJSONObject.Create(TJSONPair.Create('settings', TJSONObject.Create(TJSONPair.Create('atlas', mValue))));
 end;
 
-/// <summary>Die Werte eines JSON-Arrays als Text; kein Array ergibt nichts.</summary>
-function ValuesOf(const AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(AValue) do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 /// <summary>Grund eines betroffenen Tests: der Weg ab der geänderten Stelle, ohne Weg nur sie; erschlossene
 /// Gründe mit Zusatz.</summary>
 function AffectedReasonOf(AReason: TJSONObject): string;
 begin
   // Der Weg beginnt mit der geänderten Stelle; ohne Weg nur sie.
-  Result := string.Join(' → ', ValuesOf(AReason.GetValue('path')));
+  Result := string.Join(' → ', TJsonRead.Strings(AReason.GetValue('path')));
   if Result = '' then
   begin
     Result := AReason.GetValue<string>('change', '');
@@ -758,7 +734,7 @@ begin
   Result.Depth := mRoot.GetValue<Integer>('depth', 0);
   Result.All := mRoot.GetValue<Boolean>('all', False);
   Result.AllReason := mRoot.GetValue<string>('reason', '');
-  Result.Run := ValuesOf(mRoot.GetValue('run'));
+  Result.Run := TJsonRead.Strings(mRoot.GetValue('run'));
   for mEntry in ObjectsOf(mRoot.GetValue('changes')) do
   begin
     Result.Changes := Result.Changes + [mEntry.GetValue<string>('name', '')];

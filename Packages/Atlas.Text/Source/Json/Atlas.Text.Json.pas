@@ -4,7 +4,12 @@
 // Anführungszeichen, Backslash und Steuerzeichen wie RFC 8259 maskieren, alle
 // übrigen Zeichen unverändert (auch Umlaute, anders als TJSONValue.ToJSON).
 // Ausgaben, die den Text selbst zusammensetzen (Linter-Befunde, Baseline,
-// Metriken), teilen sich diese eine Regel (#1450).
+// Metriken), teilen sich diese eine Regel (#1450). Auch wer einzelne Strings in
+// selbst gebauten JSON-Text setzt, maskiert über TJsonText.Quote und nicht über
+// TJSONString.ToJSON (das je nach Option Umlaute als \u-Folge schreibt).
+//
+// JSON-Werte bauen (TJsonBuild): Listen von Strings als TJSONArray für Server,
+// Plugin und gespeicherte Daten.
 //
 // JSON nachsichtig lesen (TJsonRead, #1969): Ein fehlendes Objekt, ein fehlender
 // Wert, null oder ein falscher Typ liefern die Vorgabe, nie eine Ausnahme. Server
@@ -23,6 +28,16 @@ type
   public
     /// <summary>AText als JSON-String samt Anführungszeichen.</summary>
     class function Quote(const AText: string): string; static;
+    /// <summary>AItems als JSON-Array von Strings in einer Zeile, getrennt durch ", ".</summary>
+    class function List(const AItems: array of string): string; static;
+  end;
+
+  /// <summary>JSON-Werte aus Pascal-Werten bauen.</summary>
+  TJsonBuild = record
+  public
+    /// <summary>AItems als JSON-Array von Strings in derselben Reihenfolge. Der Aufrufer gibt das Array frei.
+    /// </summary>
+    class function Strings(const AItems: array of string): TJSONArray; static;
   end;
 
   /// <summary>Nachsichtiges Lesen aus TJSONObject: nil, fehlender Wert, null und falscher Typ geben die
@@ -70,6 +85,18 @@ type
     class function Obj(AObject: TJSONObject; const AName: string): TJSONObject; static;
     /// <summary>Array AName, sonst nil. Gehört weiter AObject.</summary>
     class function Items(AObject: TJSONObject; const AName: string): TJSONArray; static;
+    /// <summary>True, wenn AValue eine echte Zeichenkette ist, keine Zahl (TJSONNumber erbt bis Delphi 12 von
+    /// TJSONString).</summary>
+    class function IsString(AValue: TJSONValue): Boolean; static;
+    /// <summary>Die Zeichenketten des Arrays AValue in ihrer Reihenfolge; Zahlen, Wahrheitswerte, null, Objekte
+    /// und Arrays darin werden übersprungen. Kein Array gibt nil.</summary>
+    class function Strings(AValue: TJSONValue): TArray<string>; overload; static;
+    /// <summary>Strings des Werts AName in AObject.</summary>
+    class function Strings(AObject: TJSONObject; const AName: string): TArray<string>; overload; static;
+    /// <summary>Wie Strings, jede ohne führenden und folgenden Leerraum; leere fallen weg.</summary>
+    class function TrimmedStrings(AValue: TJSONValue): TArray<string>; overload; static;
+    /// <summary>TrimmedStrings des Werts AName in AObject.</summary>
+    class function TrimmedStrings(AObject: TJSONObject; const AName: string): TArray<string>; overload; static;
   end;
 
 implementation
@@ -114,6 +141,35 @@ begin
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+class function TJsonText.List(const AItems: array of string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '[';
+  for mIndex := 0 to High(AItems) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + Quote(AItems[mIndex]);
+  end;
+  Result := Result + ']';
+end;
+
+{ TJsonBuild }
+
+class function TJsonBuild.Strings(const AItems: array of string): TJSONArray;
+var
+  mItem: string;
+begin
+  Result := TJSONArray.Create;
+  for mItem in AItems do
+  begin
+    Result.Add(mItem);
   end;
 end;
 
@@ -205,7 +261,7 @@ var
 begin
   Result := '';
   mValue := Value(AObject, AName);
-  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
+  if IsString(mValue) then
   begin
     Result := mValue.Value;
   end;
@@ -326,6 +382,64 @@ begin
   begin
     Result := TJSONArray(mValue);
   end;
+end;
+
+class function TJsonRead.IsString(AValue: TJSONValue): Boolean;
+begin
+  Result := (AValue is TJSONString) and not (AValue is TJSONNumber);
+end;
+
+class function TJsonRead.Strings(AValue: TJSONValue): TArray<string>;
+var
+  mList: TJSONArray;
+  mIndex: Integer;
+  mCount: Integer;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  mList := TJSONArray(AValue);
+  SetLength(Result, mList.Count);
+  mCount := 0;
+  for mIndex := 0 to mList.Count - 1 do
+  begin
+    if IsString(mList.Items[mIndex]) then
+    begin
+      Result[mCount] := mList.Items[mIndex].Value;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TJsonRead.Strings(AObject: TJSONObject; const AName: string): TArray<string>;
+begin
+  Result := Strings(Value(AObject, AName));
+end;
+
+class function TJsonRead.TrimmedStrings(AValue: TJSONValue): TArray<string>;
+var
+  mIndex: Integer;
+  mCount: Integer;
+begin
+  Result := Strings(AValue);
+  mCount := 0;
+  for mIndex := 0 to High(Result) do
+  begin
+    if Trim(Result[mIndex]) <> '' then
+    begin
+      Result[mCount] := Trim(Result[mIndex]);
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+end;
+
+class function TJsonRead.TrimmedStrings(AObject: TJSONObject; const AName: string): TArray<string>;
+begin
+  Result := TrimmedStrings(Value(AObject, AName));
 end;
 
 end.

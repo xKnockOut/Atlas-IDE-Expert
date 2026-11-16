@@ -57,9 +57,9 @@ uses
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Common.Metrics.Report,
   Atlas.Common.Mutation.Generator,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -83,11 +83,6 @@ const
   cLineBreak = #13#10;
   /// <summary>Längster Originaltext in Describe; längere werden gekürzt.</summary>
   cMaxDescribed = 60;
-
-function JsonText(const AText: string): string;
-begin
-  Result := TMetricsReport.JsonString(AText);
-end;
 
 function Cell(const AText: string): string;
 begin
@@ -163,10 +158,11 @@ class function TMutationReport.MutantJson(const AMutant: TMutant): string;
 begin
   Result := Format('{"id": %d, "operator": %s, "routine": %s, "line": %d, "character": %d, "endLine": %d, ' +
     '"endCharacter": %d, "startOffset": %d, "endOffset": %d, "original": %s, "replacement": %s, ' +
-    '"description": %s}', [AMutant.Id, JsonText(TMutation.OperatorId(AMutant.Operator)), JsonText(AMutant.Routine),
+    '"description": %s}', [AMutant.Id, TJsonText.Quote(TMutation.OperatorId(AMutant.Operator)),
+    TJsonText.Quote(AMutant.Routine),
     AMutant.Range.StartPos.Line + 1, AMutant.Range.StartPos.Character + 1, AMutant.Range.EndPos.Line + 1,
-    AMutant.Range.EndPos.Character + 1, AMutant.StartOffset, AMutant.EndOffset, JsonText(AMutant.Original),
-    JsonText(AMutant.Replacement), JsonText(Describe(AMutant))]);
+    AMutant.Range.EndPos.Character + 1, AMutant.StartOffset, AMutant.EndOffset, TJsonText.Quote(AMutant.Original),
+    TJsonText.Quote(AMutant.Replacement), TJsonText.Quote(Describe(AMutant))]);
 end;
 
 class function TMutationReport.Json(const APath: string; const AMutants: TArray<TMutant>): string;
@@ -178,7 +174,7 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('{"format": ').Append(cFormat).Append(', "file": ').Append(JsonText(APath))
+    mBuilder.Append('{"format": ').Append(cFormat).Append(', "file": ').Append(TJsonText.Quote(APath))
       .Append(', "count": ').Append(Length(AMutants)).Append(', "operators": {');
     mFirst := True;
     for mPair in Counts(AMutants) do
@@ -188,7 +184,7 @@ begin
         mBuilder.Append(', ');
       end;
       mFirst := False;
-      mBuilder.Append(JsonText(mPair.Key)).Append(': ').Append(mPair.Value);
+      mBuilder.Append(TJsonText.Quote(mPair.Key)).Append(': ').Append(mPair.Value);
     end;
     mBuilder.Append('}, "mutants": [');
     for mIndex := 0 to High(AMutants) do

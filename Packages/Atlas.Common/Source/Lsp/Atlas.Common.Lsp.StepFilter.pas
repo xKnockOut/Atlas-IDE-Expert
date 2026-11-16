@@ -113,7 +113,8 @@ implementation
 uses
   System.Generics.Collections,
   System.StrUtils,
-  Atlas.Common.Lsp.StepTargets;
+  Atlas.Common.Lsp.StepTargets,
+  Atlas.Text.Json;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
@@ -791,22 +792,18 @@ end;
 
 class function TLspStepFilter.ReadPatterns(AArguments: TJSONArray): TArray<string>;
 var
-  mItems: TJSONArray;
-  mIndex: Integer;
+  mPattern: string;
 begin
   Result := nil;
-  if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONArray) then
+  if (AArguments = nil) or (AArguments.Count = 0) then
   begin
     Exit;
   end;
-  mItems := TJSONArray(AArguments.Items[0]);
-  for mIndex := 0 to mItems.Count - 1 do
+  for mPattern in TJsonRead.TrimmedStrings(AArguments.Items[0]) do
   begin
-    // TJSONNumber erbt von TJSONString: Zahlen sind keine Muster.
-    if (mItems.Items[mIndex] is TJSONString) and not (mItems.Items[mIndex] is TJSONNumber) and
-      TStepFilterNames.IsValidPattern(Trim(mItems.Items[mIndex].Value)) then
+    if TStepFilterNames.IsValidPattern(mPattern) then
     begin
-      Result := Result + [Trim(mItems.Items[mIndex].Value)];
+      Result := Result + [mPattern];
     end;
   end;
 end;

@@ -91,7 +91,8 @@ uses
   System.Math,
   Atlas.Common.Projects.Paths,
   Atlas.Text.DUnitX,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -273,7 +274,7 @@ end;
 
 class function TMcpTestTools.TestsOf(const AArguments: TJSONObject): TArray<string>;
 var
-  mValue, mItem: TJSONValue;
+  mValue: TJSONValue;
   mPart: string;
 begin
   Result := nil;
@@ -284,13 +285,7 @@ begin
   mValue := AArguments.GetValue('tests');
   if mValue is TJSONArray then
   begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if Trim(mItem.Value) <> '' then
-      begin
-        Result := Result + [Trim(mItem.Value)];
-      end;
-    end;
+    Result := TJsonRead.TrimmedStrings(mValue);
   end
   else if (mValue <> nil) and not (mValue is TJSONNull) then
   begin
@@ -373,17 +368,6 @@ begin
   end;
 end;
 
-function StringsJson(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 /// <summary>Kopf des Berichts: Ergebnis, Ziel, Filter und Exit-Code.</summary>
 procedure AddHead(ARoot: TJSONObject; const ATarget: TMcpTestTarget; const ATests: TArray<string>;
   const ARun: TTestRunResult; AExitCode: Integer);
@@ -395,7 +379,7 @@ begin
   ARoot.AddPair('executable', ATarget.Executable);
   if Length(ATests) > 0 then
   begin
-    ARoot.AddPair('tests', StringsJson(ATests));
+    ARoot.AddPair('tests', TJsonBuild.Strings(ATests));
   end;
   ARoot.AddPair('exitCode', TJSONNumber.Create(AExitCode));
 end;
@@ -452,7 +436,7 @@ begin
     if not ARun.Valid then
     begin
       mRoot.AddPair('reason', cTexts[TTestToolsText.TheTestProgramWroteNo].Fmt([ARun.Error]));
-      mRoot.AddPair('output', StringsJson(AProcess.Output));
+      mRoot.AddPair('output', TJsonBuild.Strings(AProcess.Output));
       Exit(mRoot.Format(2));
     end;
     AddCounts(mRoot, ARun);

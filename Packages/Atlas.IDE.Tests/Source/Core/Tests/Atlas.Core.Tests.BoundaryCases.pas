@@ -142,24 +142,6 @@ begin
   end;
 end;
 
-function StringsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mArray := TJsonRead.Items(AObject, AName);
-  if mArray = nil then
-  begin
-    Exit;
-  end;
-  SetLength(Result, mArray.Count);
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    Result[mIndex] := mArray.Items[mIndex].Value;
-  end;
-end;
-
 function ObjectsOf(AObject: TJSONObject; const AName: string): TArray<TJSONObject>;
 var
   mArray: TJSONArray;
@@ -197,7 +179,7 @@ begin
   Result.Reason := TJsonRead.Text(AObject, 'reason');
   Result.Line := TJsonRead.IntOr(AObject, 'line', -1);
   Result.TestCase := TJsonRead.FlagOr(AObject, 'testCase', False);
-  Result.Values := StringsOf(AObject, 'values');
+  Result.Values := TJsonRead.Strings(AObject, 'values');
   mName := '';
   if (Result.Parameter >= 0) and (Result.Parameter <= High(AParameters)) then
   begin

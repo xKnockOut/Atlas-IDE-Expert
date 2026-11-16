@@ -35,7 +35,8 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Shell.Platform,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -137,7 +138,6 @@ function EditorDirtyFiles: TArray<string>;
 var
   mFileName, mText: string;
   mJson: TJSONValue;
-  mItem: TJSONValue;
   mPid: Integer;
 begin
   Result := nil;
@@ -161,13 +161,7 @@ begin
       begin
         Continue;
       end;
-      if TJSONObject(mJson).GetValue('files') is TJSONArray then
-      begin
-        for mItem in TJSONArray(TJSONObject(mJson).GetValue('files')) do
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
+      Result := Result + TJsonRead.Strings(TJSONObject(mJson), 'files');
     finally
       mJson.Free;
     end;

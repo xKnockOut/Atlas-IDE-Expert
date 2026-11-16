@@ -608,40 +608,8 @@ begin
 end;
 
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue: TJSONValue;
-  mList: TJSONArray;
-  mIndex: Integer;
 begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  mList := TJSONArray(mValue);
-  for mIndex := 0 to mList.Count - 1 do
-  begin
-    if (mList.Items[mIndex] is TJSONString) and (Length(Result) < TAtlasLineAnchors.cContextLines) then
-    begin
-      Result := Result + [TJSONString(mList.Items[mIndex]).Value];
-    end;
-  end;
-end;
-
-function TextsJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
+  Result := Copy(TJsonRead.Strings(AObject, AName), 0, TAtlasLineAnchors.cContextLines);
 end;
 
 /// <summary>Unbekannte Felder aus AOriginal (darf nil sein) an ATarget anhängen.</summary>
@@ -795,8 +763,8 @@ begin
   end;
   Result.AddPair('line', TJSONNumber.Create(AMark.Line + 1));
   Result.AddPair('lineText', AMark.Anchor.Text);
-  Result.AddPair('before', TextsJson(AMark.Anchor.Before));
-  Result.AddPair('after', TextsJson(AMark.Anchor.After));
+  Result.AddPair('before', TJsonBuild.Strings(AMark.Anchor.Before));
+  Result.AddPair('after', TJsonBuild.Strings(AMark.Anchor.After));
   if AMark.Created > 0 then
   begin
     Result.AddPair('created', TAtlasProjectSummaries.TimeText(AMark.Created));

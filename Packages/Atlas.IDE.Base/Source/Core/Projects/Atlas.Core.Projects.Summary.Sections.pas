@@ -298,28 +298,6 @@ begin
   end;
 end;
 
-/// <summary>Texte aus einem Array von Zeichenketten; anderes (auch Zahlen) fällt weg.</summary>
-function TextsOfSetup(AValue: TJSONValue): TArray<string>;
-var
-  mIndex: Integer;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
-  begin
-    mItem := TJSONArray(AValue).Items[mIndex];
-    // TJSONNumber erbt von TJSONString.
-    if (mItem is TJSONString) and not (mItem is TJSONNumber) and (mItem.Value <> '') then
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 { TAtlasSummarySections }
 
 class function TAtlasSummarySections.SlowestOf(ASection: TJSONObject): TArray<TAtlasProjectSlowTest>;
@@ -464,7 +442,7 @@ begin
   begin
     Result.UncertainDefineCount := Result.UndefinedDefineCount;
   end;
-  Result.SkippedMacros := TextsOfSetup(mPaths.GetValue('skippedMacros'));
+  Result.SkippedMacros := TJsonRead.TrimmedStrings(mPaths.GetValue('skippedMacros'));
 end;
 
 class function TAtlasSummarySections.SetupJson(const ASetup: TAtlasProjectSetup; AOriginal: TJSONObject): TJSONObject;

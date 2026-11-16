@@ -81,7 +81,8 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Json;
 
 const
   cStatementKinds = [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement,
@@ -527,23 +528,12 @@ begin
   Result := ToJson(mAutos, Locals(ALine));
 end;
 
-function StringsToJson(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 class function TLspDebugVariables.ToJson(const AAutos, ALocals: TArray<string>): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('format', TJSONNumber.Create(1));
-  Result.AddPair('autos', StringsToJson(AAutos));
-  Result.AddPair('locals', StringsToJson(ALocals));
+  Result.AddPair('autos', TJsonBuild.Strings(AAutos));
+  Result.AddPair('locals', TJsonBuild.Strings(ALocals));
 end;
 
 end.

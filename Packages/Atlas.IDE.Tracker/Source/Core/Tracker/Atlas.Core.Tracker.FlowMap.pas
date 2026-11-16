@@ -908,17 +908,6 @@ begin
   end;
 end;
 
-function TextsJson(const ATexts: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ATexts do
-  begin
-    Result.Add(mText);
-  end;
-end;
-
 class function TAtlasTrackerFlow.ToJson(const AData: TAtlasFlowData): string;
 var
   mRoot: TJSONObject;
@@ -930,7 +919,7 @@ begin
     mRoot.AddPair('days', TJSONNumber.Create(AData.Days));
     mRoot.AddPair('stateField', AData.StateField);
     mRoot.AddPair('truncated', TJSONBool.Create(AData.Truncated));
-    mRoot.AddPair('resolved', TextsJson(AData.Resolved));
+    mRoot.AddPair('resolved', TJsonBuild.Strings(AData.Resolved));
     mRoot.AddPair('changes', ChangesJson(AData.Changes));
     mRoot.AddPair('open', OpenJson(AData.Open));
     Result := mRoot.ToJSON;
@@ -993,23 +982,6 @@ begin
   end;
 end;
 
-function TextsOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(AValue) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [TJSONString(mItem).Value];
-      end;
-    end;
-  end;
-end;
-
 class function TAtlasTrackerFlow.FromJson(const AJson: string; out AData: TAtlasFlowData): Boolean;
 var
   mValue: TJSONValue;
@@ -1032,7 +1004,7 @@ begin
     AData.Days := TJsonRead.Int(mRoot, 'days');
     AData.StateField := TJsonRead.Text(mRoot, 'stateField');
     AData.Truncated := TJsonRead.Flag(mRoot, 'truncated');
-    AData.Resolved := TextsOf(mRoot.Values['resolved']);
+    AData.Resolved := TJsonRead.Strings(mRoot.Values['resolved']);
     AData.Changes := ChangesOf(mRoot.Values['changes']);
     AData.Open := OpenOf(mRoot.Values['open']);
     Result := True;

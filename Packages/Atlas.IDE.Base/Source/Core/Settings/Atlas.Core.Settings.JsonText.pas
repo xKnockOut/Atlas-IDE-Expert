@@ -32,8 +32,6 @@ type
     class function Remove(const AText, APath: string): string; static;
     /// <summary>Wendet Änderungen der Reihe nach an: Schlüssel = Pfad, Wert = JSON-Text, '' = entfernen.</summary>
     class function ApplyChanges(const AText: string; const AChanges: TArray<TPair<string, string>>): string; static;
-    /// <summary>JSON-Text eines Strings mit Anführungszeichen und Escapes.</summary>
-    class function Quote(const AValue: string): string; static;
   end;
 
 implementation
@@ -307,9 +305,9 @@ function Nested(const ASegments: TArray<string>; AFrom: Integer; const AJson, AI
 begin
   if AFrom = High(ASegments) then
   begin
-    Exit(TAtlasJsonText.Quote(ASegments[AFrom]) + ': ' + AJson);
+    Exit(TJsonText.Quote(ASegments[AFrom]) + ': ' + AJson);
   end;
-  Result := TAtlasJsonText.Quote(ASegments[AFrom]) + ': {' + ALineBreak + AIndent + AStep +
+  Result := TJsonText.Quote(ASegments[AFrom]) + ': {' + ALineBreak + AIndent + AStep +
     Nested(ASegments, AFrom + 1, AJson, AIndent + AStep, AStep, ALineBreak) + ALineBreak + AIndent + '}';
 end;
 
@@ -579,19 +577,6 @@ begin
     begin
       Result := SetValue(Result, mChange.Key, mChange.Value);
     end;
-  end;
-end;
-
-class function TAtlasJsonText.Quote(const AValue: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AValue);
-  try
-    // Ohne Option: Umlaute bleiben lesbar (die Dateien sind UTF-8); ToJSON allein schreibt \u-Folgen.
-    Result := mValue.ToJSON([]);
-  finally
-    mValue.Free;
   end;
 end;
 

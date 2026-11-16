@@ -35,7 +35,8 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Impact,
   Atlas.Text.DUnitX,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -211,22 +212,11 @@ begin
   Result := string.Join(sLineBreak, mLines) + sLineBreak;
 end;
 
-function StringsJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 function ReasonJson(const AReason: TAffectedReason): TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('change', AReason.Change);
-  Result.AddPair('path', StringsJson(AReason.Path));
+  Result.AddPair('path', TJsonBuild.Strings(AReason.Path));
   Result.AddPair('inferred', TJSONBool.Create(AReason.Inferred));
 end;
 
@@ -240,7 +230,7 @@ begin
   Result.AddPair('unit', ATest.UnitName);
   Result.AddPair('fixture', ATest.Fixture);
   Result.AddPair('method', ATest.Method);
-  Result.AddPair('run', StringsJson(ATest.RunNames));
+  Result.AddPair('run', TJsonBuild.Strings(ATest.RunNames));
   Result.AddPair('uri', TDocumentUris.FromPath(ATest.FileName));
   Result.AddPair('line', TJSONNumber.Create(ATest.Line));
   mReasons := TJSONArray.Create;
@@ -305,7 +295,7 @@ begin
   end
   else
   begin
-    Result.AddPair('run', StringsJson(AResult.RunNames));
+    Result.AddPair('run', TJsonBuild.Strings(AResult.RunNames));
   end;
   mTests := TJSONArray.Create;
   Result.AddPair('tests', mTests);
@@ -323,28 +313,12 @@ begin
   Result.AddPair('limits', LimitsJson(AResult.Limits));
 end;
 
-/// <summary>Werte des Arrays AName in AEntry; nil ohne.</summary>
-function StringsIn(AEntry: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AEntry.TryGetValue<TJSONArray>(AName, mArray) then
-  begin
-    for mItem in mArray do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 function ReasonOf(AEntry: TJSONObject): TAffectedReason;
 begin
   Result := Default(TAffectedReason);
   AEntry.TryGetValue<string>('change', Result.Change);
   AEntry.TryGetValue<Boolean>('inferred', Result.Inferred);
-  Result.Path := StringsIn(AEntry, 'path');
+  Result.Path := TJsonRead.Strings(AEntry, 'path');
 end;
 
 function TestOf(AEntry: TJSONObject): TAffectedTest;
@@ -363,7 +337,7 @@ begin
   begin
     Result.FileName := TDocumentUris.ToPath(mUri);
   end;
-  Result.RunNames := StringsIn(AEntry, 'run');
+  Result.RunNames := TJsonRead.Strings(AEntry, 'run');
   if not AEntry.TryGetValue<TJSONArray>('reasons', mReasons) then
   begin
     Exit;

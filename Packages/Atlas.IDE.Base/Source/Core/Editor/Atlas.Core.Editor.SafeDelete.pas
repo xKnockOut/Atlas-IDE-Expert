@@ -101,20 +101,6 @@ begin
   end;
 end;
 
-function StringsOf(const AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AObject.GetValue(AName) is TJSONArray then
-  begin
-    for mItem in TJSONArray(AObject.GetValue(AName)) do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 { TAtlasSafeDeleteInfo }
 
 class function TAtlasSafeDeleteInfo.FromJson(const AValue: TJSONValue): TAtlasSafeDeleteInfo;
@@ -134,8 +120,8 @@ begin
   Result.Title := TJsonRead.Text(mAnswer, 'title');
   Result.Usages := UsagesOf(mAnswer, 'usages');
   Result.Overrides := UsagesOf(mAnswer, 'overrides');
-  Result.Cascade := StringsOf(mAnswer, 'cascade');
-  Result.Warnings := StringsOf(mAnswer, 'warnings');
+  Result.Cascade := TJsonRead.Strings(mAnswer, 'cascade');
+  Result.Warnings := TJsonRead.Strings(mAnswer, 'warnings');
   Result.PreviewWhenUnused := (mAnswer.GetValue('previewWhenUnused') is TJSONBool) and
     TJSONBool(mAnswer.GetValue('previewWhenUnused')).AsBoolean;
   if TJsonRead.Text(mAnswer, 'cascadeMode') <> '' then

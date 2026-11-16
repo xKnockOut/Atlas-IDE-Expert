@@ -126,25 +126,6 @@ type
     Names: TArray<string>;
   end;
 
-function ReadStrings(const AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mList: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not AObject.TryGetValue<TJSONArray>(AName, mList) then
-  begin
-    Exit;
-  end;
-  for mItem in mList do
-  begin
-    if mItem is TJSONString then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
-end;
-
 function ParseSeverity(const AText: string): TRuleSeverity;
 var
   mText: string;
@@ -747,9 +728,9 @@ begin
       mEntry.Message := TJsonRead.Text(TJSONObject(mItem), 'message');
       mEntry.Replacement := TJsonRead.Text(TJSONObject(mItem), 'replacement');
       mEntry.Severity := ParseSeverity(TJsonRead.Text(TJSONObject(mItem), 'severity'));
-      mEntry.Units := ReadStrings(TJSONObject(mItem), 'units');
-      mEntry.FirstArgument := ReadStrings(TJSONObject(mItem), 'firstArgument');
-      mEntry.AllowFirstArgument := ReadStrings(TJSONObject(mItem), 'allowFirstArgument');
+      mEntry.Units := TJsonRead.Strings(TJSONObject(mItem), 'units');
+      mEntry.FirstArgument := TJsonRead.Strings(TJSONObject(mItem), 'firstArgument');
+      mEntry.AllowFirstArgument := TJsonRead.Strings(TJSONObject(mItem), 'allowFirstArgument');
       Result := Result + [mEntry];
     end;
   finally

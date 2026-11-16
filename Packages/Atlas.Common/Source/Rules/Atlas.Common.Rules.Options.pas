@@ -27,7 +27,8 @@ implementation
 uses
   System.SysUtils,
   System.JSON,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Text.Json;
 
 function Member(const AOptions, AName: string): TJSONValue;
 var
@@ -91,22 +92,14 @@ end;
 
 class function TRuleOptions.Strings(const AOptions, AName: string; const ADefault: TArray<string>): TArray<string>;
 var
-  mValue, mItem: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
   mValue := Member(AOptions, AName);
   try
     if mValue is TJSONArray then
     begin
-      Result := nil;
-      for mItem in TJSONArray(mValue) do
-      begin
-        // TJSONNumber erbt von TJSONString: Zahlen gehören nicht in eine Textliste.
-        if (mItem is TJSONString) and not (mItem is TJSONNumber) then
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
+      Result := TJsonRead.Strings(mValue);
     end;
   finally
     mValue.Free;

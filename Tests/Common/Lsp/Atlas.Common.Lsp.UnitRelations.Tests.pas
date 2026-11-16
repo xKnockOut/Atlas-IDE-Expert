@@ -63,22 +63,12 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesGraph.Tests,
-  Atlas.Common.Architecture.UnitRelations.Tests;
+  Atlas.Common.Architecture.UnitRelations.Tests,
+  Atlas.Text.Json;
 
 function FileOf(const AName: string): string;
 begin
   Result := UsesUnit(AName, nil, nil).FileName;
-end;
-
-function Arguments(const AValues: array of string): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
 end;
 
 /// <summary>Text nach den Edits des WorkspaceEdit aus der Antwort {"edit": …}.</summary>
@@ -210,7 +200,7 @@ var
   mOptions: TJSONObject;
   mAnswer: TJSONValue;
 begin
-  mArgs := Arguments([FileOf('A')]);
+  mArgs := TJsonBuild.Strings([FileOf('A')]);
   try
     mOptions := TJSONObject.Create;
     mOptions.AddPair('depth', TJSONNumber.Create(0));
@@ -259,7 +249,7 @@ var
   mText: string;
 begin
   mText := FTexts[FileOf('A')];
-  mArgs := Arguments([FileOf('A'), 'B', 'implementation']);
+  mArgs := TJsonBuild.Strings([FileOf('A'), 'B', 'implementation']);
   try
     mAnswer := FRelations.Move(mArgs);
     try
@@ -271,7 +261,7 @@ begin
   finally
     mArgs.Free;
   end;
-  mArgs := Arguments([FileOf('A'), 'c', 'interface']);
+  mArgs := TJsonBuild.Strings([FileOf('A'), 'c', 'interface']);
   try
     mAnswer := FRelations.Move(mArgs);
     try
@@ -294,7 +284,7 @@ var
   var
     mArgs: TJSONArray;
   begin
-    mArgs := Arguments(AValues);
+    mArgs := TJsonBuild.Strings(AValues);
     try
       Assert.WillRaise(
         procedure
@@ -326,7 +316,7 @@ var
 begin
   mText := 'unit A;'#10'interface'#10'uses'#10'  B;'#10'type'#10'  T = TB;'#10'implementation'#10'uses'#10'  C;'#10'end.';
   FTexts.AddOrSetValue(FileOf('A'), mText);
-  mArgs := Arguments([FileOf('A'), 'C']);
+  mArgs := TJsonBuild.Strings([FileOf('A'), 'C']);
   try
     mAnswer := FRelations.Remove(mArgs);
     try
@@ -338,7 +328,7 @@ begin
   finally
     mArgs.Free;
   end;
-  mArgs := Arguments([FileOf('A'), 'B']);
+  mArgs := TJsonBuild.Strings([FileOf('A'), 'B']);
   try
     Assert.WillRaise(
       procedure
@@ -383,7 +373,7 @@ var
   mArgs: TJSONArray;
   mAnswer: TJSONValue;
 begin
-  mArgs := Arguments([FileOf('A')]);
+  mArgs := TJsonBuild.Strings([FileOf('A')]);
   try
     mAnswer := FRelations.Cost(mArgs);
     try
@@ -400,7 +390,7 @@ begin
   finally
     mArgs.Free;
   end;
-  mArgs := Arguments([FileOf('C')]);
+  mArgs := TJsonBuild.Strings([FileOf('C')]);
   try
     mAnswer := FRelations.Cost(mArgs);
     try
@@ -430,7 +420,7 @@ var
   mAnswer: TJSONValue;
   mCycles: TJSONArray;
 begin
-  mArgs := Arguments([FileOf('A')]);
+  mArgs := TJsonBuild.Strings([FileOf('A')]);
   try
     mAnswer := FRelations.UseUnitInfo(mArgs);
     try
@@ -455,7 +445,7 @@ begin
   finally
     mArgs.Free;
   end;
-  mArgs := Arguments([FileOf('C')]);
+  mArgs := TJsonBuild.Strings([FileOf('C')]);
   try
     mAnswer := FRelations.UseUnitInfo(mArgs);
     try

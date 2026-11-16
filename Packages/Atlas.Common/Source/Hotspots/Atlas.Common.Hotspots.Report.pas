@@ -63,8 +63,8 @@ implementation
 
 uses
   System.Math,
-  Atlas.Common.Metrics.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -132,11 +132,6 @@ const
 
 const
   cLineBreak = #13#10;
-
-function JsonText(const AText: string): string;
-begin
-  Result := TMetricsReport.JsonString(AText);
-end;
 
 function JsonNumber(AValue: Double): string;
 begin
@@ -309,11 +304,11 @@ var
 begin
   mBuilder := TStringBuilder.Create;
   try
-    mBuilder.Append('{"unit":').Append(JsonText(AEntry.UnitName));
-    mBuilder.Append(',"path":').Append(JsonText(AEntry.Path));
+    mBuilder.Append('{"unit":').Append(TJsonText.Quote(AEntry.UnitName));
+    mBuilder.Append(',"path":').Append(TJsonText.Quote(AEntry.Path));
     if AEntry.Method <> '' then
     begin
-      mBuilder.Append(',"method":').Append(JsonText(AEntry.Method));
+      mBuilder.Append(',"method":').Append(TJsonText.Quote(AEntry.Method));
     end;
     mBuilder.Append(',"line":').Append(AEntry.Line);
     mBuilder.Append(',"endLine":').Append(AEntry.EndLine);
@@ -326,15 +321,15 @@ begin
       begin
         mBuilder.Append(',');
       end;
-      mBuilder.Append(JsonText(AEntry.Changes.Authors[mIndex]));
+      mBuilder.Append(TJsonText.Quote(AEntry.Changes.Authors[mIndex]));
     end;
     mBuilder.Append('],"added":').Append(AEntry.Changes.Added);
     mBuilder.Append(',"deleted":').Append(AEntry.Changes.Deleted);
-    mBuilder.Append(',"lastChange":').Append(JsonText(IsoText(AEntry.Changes.LastChange)));
+    mBuilder.Append(',"lastChange":').Append(TJsonText.Quote(IsoText(AEntry.Changes.LastChange)));
     mBuilder.Append(',"complexity":').Append(AEntry.Complexity);
     mBuilder.Append(',"lines":').Append(AEntry.Lines);
     mBuilder.Append(',"pastComplexity":').Append(AEntry.PastComplexity);
-    mBuilder.Append(',"trend":').Append(JsonText(THotspots.TrendKey(AEntry.Trend)));
+    mBuilder.Append(',"trend":').Append(TJsonText.Quote(THotspots.TrendKey(AEntry.Trend)));
     mBuilder.Append(',"score":').Append(JsonNumber(AEntry.Score));
     mBuilder.Append(',"history":[');
     for mIndex := 0 to High(AEntry.Changes.History) do
@@ -344,10 +339,10 @@ begin
       begin
         mBuilder.Append(',');
       end;
-      mBuilder.Append('{"revision":').Append(JsonText(mCommit.Revision));
-      mBuilder.Append(',"author":').Append(JsonText(mCommit.Author));
-      mBuilder.Append(',"date":').Append(JsonText(IsoText(mCommit.Date)));
-      mBuilder.Append(',"summary":').Append(JsonText(mCommit.Summary));
+      mBuilder.Append('{"revision":').Append(TJsonText.Quote(mCommit.Revision));
+      mBuilder.Append(',"author":').Append(TJsonText.Quote(mCommit.Author));
+      mBuilder.Append(',"date":').Append(TJsonText.Quote(IsoText(mCommit.Date)));
+      mBuilder.Append(',"summary":').Append(TJsonText.Quote(mCommit.Summary));
       mBuilder.Append(',"added":').Append(mCommit.Added);
       mBuilder.Append(',"deleted":').Append(mCommit.Deleted);
       mBuilder.Append('}');
@@ -377,7 +372,7 @@ end;
 
 function UnitJson(const AUnit: THotspotUnit): string;
 begin
-  Result := '{"unit":' + JsonText(AUnit.UnitName) + ',"path":' + JsonText(AUnit.Path) + '}';
+  Result := '{"unit":' + TJsonText.Quote(AUnit.UnitName) + ',"path":' + TJsonText.Quote(AUnit.Path) + '}';
 end;
 
 class function THotspotReport.Json(const AResult: THotspotResult): string;
@@ -389,13 +384,13 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     mBuilder.Append('{"format":').Append(cJsonFormat);
-    mBuilder.Append(',"title":').Append(JsonText(AResult.Title));
-    mBuilder.Append(',"vcs":').Append(JsonText(THotspots.KindName(AResult.Kind)));
-    mBuilder.Append(',"head":').Append(JsonText(AResult.Head));
+    mBuilder.Append(',"title":').Append(TJsonText.Quote(AResult.Title));
+    mBuilder.Append(',"vcs":').Append(TJsonText.Quote(THotspots.KindName(AResult.Kind)));
+    mBuilder.Append(',"head":').Append(TJsonText.Quote(AResult.Head));
     mBuilder.Append(',"months":').Append(AResult.Months);
-    mBuilder.Append(',"since":').Append(JsonText(IsoText(AResult.Since)));
+    mBuilder.Append(',"since":').Append(TJsonText.Quote(IsoText(AResult.Since)));
     mBuilder.Append(',"commits":').Append(AResult.Commits);
-    mBuilder.Append(',"level":').Append(JsonText(THotspots.LevelKey(AResult.Level)));
+    mBuilder.Append(',"level":').Append(TJsonText.Quote(THotspots.LevelKey(AResult.Level)));
     mBuilder.Append(',"units":').Append(EntriesJson(AResult.Units));
     mBuilder.Append(',"methods":').Append(EntriesJson(AResult.Methods));
     mBuilder.Append(',"coupling":[');
