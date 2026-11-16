@@ -68,7 +68,6 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Statements.Tokens,
   Atlas.Common.Rules.Builtin.Generics,
   Atlas.Common.Localization.Texts;
 
@@ -156,7 +155,7 @@ constructor TDataSetReceivers.Create(const AContext: TRuleContext);
 begin
   inherited Create;
   FContext := AContext;
-  FFileName := ContextFileName(AContext);
+  FFileName := AContext.ResolverFileName;
 end;
 
 destructor TDataSetReceivers.Destroy;

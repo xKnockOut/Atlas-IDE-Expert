@@ -307,20 +307,6 @@ begin
   end;
 end;
 
-/// <summary>Dateiname für den Resolver: die Datei, sonst der relative Pfad, sonst der Unitname mit .pas.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 procedure TGenericConstraintViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mResolver: TNameResolver;
@@ -983,7 +969,7 @@ begin
     begin
       Exit;
     end;
-    mFileName := ResolverFileName(AContext);
+    mFileName := AContext.ResolverFileName;
     // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
     mCache := TRuleDerived.Open(AContext);
     mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -1508,7 +1494,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mGenericNames := TDictionary<string, Boolean>.Create;
   try
     CollectGenericNames(AContext.Tree.Root);

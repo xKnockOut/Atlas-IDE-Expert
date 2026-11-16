@@ -417,14 +417,14 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
   mResolver.PinTree(AContext.Tree, mFileName);
   try
     mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
-    mScan := THresultScan.Create(mResolver, mLocal, PreOrder(AContext.Tree.Root), AReport);
+    mScan := THresultScan.Create(mResolver, mLocal, TSyntaxNode.PreOrder(AContext.Tree.Root), AReport);
     try
       for mSymbol in mLocal.Symbols do
       begin

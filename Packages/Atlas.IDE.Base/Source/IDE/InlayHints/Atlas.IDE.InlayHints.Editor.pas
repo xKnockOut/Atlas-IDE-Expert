@@ -292,16 +292,10 @@ begin
 end;
 
 /// <summary>Vorderste Ansicht, wenn sie eine Pascal-Datei zeigt; sonst nil.</summary>
-function TopSourceView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
+function TopInlaySourceView: IOTAEditView;
 begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasInlayPlan.IsSource(Result.Buffer.FileName)) then
+  Result := TAtlasEditorBuffer.TopSourceView;
+  if (Result <> nil) and not TAtlasInlayPlan.IsSource(Result.Buffer.FileName) then
   begin
     Result := nil;
   end;
@@ -359,7 +353,7 @@ begin
     mView := nil;
     if Application.Active then
     begin
-      mView := TopSourceView;
+      mView := TopInlaySourceView;
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
     // Im Designer und auf der Willkommensseite ist der Code nicht zu sehen: keine Anfragen an den Server.

@@ -563,15 +563,7 @@ begin
     Exit;
   end;
   mTokens := AContext.Tree.Tokens;
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   mMethods := TList<TMessageMethod>.Create;
   try
     Collect(AContext.Tree.Root, '');

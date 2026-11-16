@@ -242,22 +242,6 @@ begin
   end;
 end;
 
-/// <summary>Oberer Editor; nil ohne.</summary>
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-  if (Result <> nil) and (Result.Buffer = nil) then
-  begin
-    Result := nil;
-  end;
-end;
-
 procedure TAtlasIdeHide.Notice(const ATitle, ADetail: string; ACanUndo: Boolean);
 var
   mFontName: string;
@@ -291,7 +275,7 @@ begin
   AStep := Default(TStep);
   ADetail := '';
   mText := '';
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopSourceView;
   if (mView <> nil) and AnsiSameText(mView.Buffer.FileName, AChoice.Target.FileName) then
   begin
     mText := TAtlasEditorBuffer.Text(mView.Buffer);
@@ -469,7 +453,7 @@ var
 begin
   AStep := Default(TStep);
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopSourceView;
   if (mView = nil) or not AnsiSameText(mView.Buffer.FileName, APlan.Target.FileName) or mView.Buffer.IsReadOnly then
   begin
     ADetail := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.HideFailed, [ExtractFileName(APlan.Target.FileName)]);
@@ -505,7 +489,7 @@ begin
   case AStep.Kind of
     TAtlasHideKind.LineComment, TAtlasHideKind.FileComment:
       begin
-        mView := TopView;
+        mView := TAtlasEditorBuffer.TopSourceView;
         if (mView = nil) or not AnsiSameText(mView.Buffer.FileName, AStep.FileName) then
         begin
           Exit;
@@ -562,7 +546,7 @@ var
   mTargets: TArray<TAtlasHideTarget>;
 begin
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopSourceView;
   if (FInstance = nil) or (mView = nil) then
   begin
     Exit;
@@ -581,7 +565,7 @@ var
   mView: IOTAEditView;
   mTargets: TArray<TAtlasHideTarget>;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopSourceView;
   if (FInstance = nil) or (mView = nil) then
   begin
     Exit;

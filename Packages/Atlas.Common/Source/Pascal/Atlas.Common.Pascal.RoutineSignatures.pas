@@ -47,6 +47,10 @@ type
     class function QualifierMask(const AHead, AName: string): string; static;
     /// <summary>Text AText ohne Leerraum in Kleinbuchstaben, z. B. für Typen ("arrayofptypeinfo").</summary>
     class function TypeKey(const AText: string): string; static;
+    /// <summary>Teile von AText an ADelimiter außerhalb von runden, eckigen und spitzen Klammern und außerhalb von
+    /// Zeichenketten, z. B. Parametergruppen an ";" oder Name und Standardwert an "=". Eine schließende Klammer
+    /// ohne öffnende (Vergleich mit ">" im Standardwert) trennt weiter.</summary>
+    class function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>; static;
     /// <summary>Kurzform eines Routinenkopfs ohne Parameterliste und ohne Ergebnistyp (function Foo;).</summary>
     class function IsShortForm(AHeader: TSyntaxNode): Boolean; static;
     /// <summary>class constructor bzw. class destructor; ATokens sind die Token des Baums.</summary>
@@ -73,43 +77,6 @@ uses
 
 const
   cModifiers: array[0..3] of string = ('const', 'var', 'out', 'constref');
-
-/// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
-function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
-var
-  mIndex, mDepth, mStart: Integer;
-  mQuoted: Boolean;
-begin
-  Result := nil;
-  mDepth := 0;
-  mQuoted := False;
-  mStart := 1;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if AText[mIndex] = '''' then
-    begin
-      mQuoted := not mQuoted;
-    end
-    else if mQuoted then
-    begin
-      Continue;
-    end
-    else if CharInSet(AText[mIndex], ['(', '[', '<']) then
-    begin
-      Inc(mDepth);
-    end
-    else if CharInSet(AText[mIndex], [')', ']', '>']) then
-    begin
-      Dec(mDepth);
-    end
-    else if (mDepth = 0) and (AText[mIndex] = ADelimiter) then
-    begin
-      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-      mStart := mIndex + 1;
-    end;
-  end;
-  Result := Result + [Copy(AText, mStart, MaxInt)];
-end;
 
 /// <summary>Schneidet einen führenden Modifizierer (const, var, out …) von ANames ab und liefert ihn klein.</summary>
 function TakeModifier(var ANames: string): string;
@@ -150,11 +117,11 @@ var
   mParts: TArray<string>;
 begin
   Result := '';
-  for mGroup in SplitTopLevel(AParameters, ';') do
+  for mGroup in TRoutineSignatures.SplitTopLevel(AParameters, ';') do
   begin
     // Standardwert abschneiden: "AValue: Integer = 0".
-    mParts := SplitTopLevel(mGroup, '=');
-    mParts := SplitTopLevel(mParts[0], ':');
+    mParts := TRoutineSignatures.SplitTopLevel(mGroup, '=');
+    mParts := TRoutineSignatures.SplitTopLevel(mParts[0], ':');
     mNames := Trim(mParts[0]);
     mTypeName := GroupTypeName(mParts);
     if mNames = '' then
@@ -162,7 +129,7 @@ begin
       Continue;
     end;
     mModifier := TakeModifier(mNames);
-    for mName in SplitTopLevel(mNames, ',') do
+    for mName in TRoutineSignatures.SplitTopLevel(mNames, ',') do
     begin
       if Result <> '' then
       begin
@@ -418,6 +385,42 @@ begin
   begin
     Result := QualifierPartsMask(mText, mIndex - 1);
   end;
+end;
+
+class function TRoutineSignatures.SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
+var
+  mIndex, mDepth, mStart: Integer;
+  mQuoted: Boolean;
+begin
+  Result := nil;
+  mDepth := 0;
+  mQuoted := False;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
+  begin
+    if AText[mIndex] = '''' then
+    begin
+      mQuoted := not mQuoted;
+    end
+    else if mQuoted then
+    begin
+      Continue;
+    end
+    else if CharInSet(AText[mIndex], ['(', '[', '<']) then
+    begin
+      Inc(mDepth);
+    end
+    else if CharInSet(AText[mIndex], [')', ']', '>']) then
+    begin
+      Dec(mDepth);
+    end
+    else if (mDepth <= 0) and (AText[mIndex] = ADelimiter) then
+    begin
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
+    end;
+  end;
+  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 class function TRoutineSignatures.TypeKey(const AText: string): string;

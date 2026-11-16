@@ -23,8 +23,6 @@ type
     [Test]
     procedure BaseBeforeNeedsNoDot;
     [Test]
-    procedure ContextFileNameFallsBack;
-    [Test]
     procedure StringTypes;
   end;
 
@@ -33,7 +31,6 @@ implementation
 uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.TokenCursor,
-  Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Statements.Tokens;
 
 { TStatementTokensTests }
@@ -82,19 +79,6 @@ begin
   mTokens := TPascalLexer.Tokenize('Andere.Kunden[I]');
   Assert.IsFalse(BaseBefore(mTokens, 3, 'kunden', 1));
   Assert.IsTrue(BaseBefore(mTokens, 3, 'andere.kunden', 3));
-end;
-
-procedure TStatementTokensTests.ContextFileNameFallsBack;
-var
-  mContext: TRuleContext;
-begin
-  mContext := Default(TRuleContext);
-  mContext.UnitName := 'Daten';
-  Assert.AreEqual('Daten.pas', ContextFileName(mContext));
-  mContext.RelativePath := 'Src/Daten.pas';
-  Assert.AreEqual('Src/Daten.pas', ContextFileName(mContext));
-  mContext.FileName := 'C:\Src\Daten.pas';
-  Assert.AreEqual('C:\Src\Daten.pas', ContextFileName(mContext));
 end;
 
 procedure TStatementTokensTests.StringTypes;

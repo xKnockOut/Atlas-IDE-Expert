@@ -527,7 +527,7 @@ begin
   begin
     Exit;
   end;
-  FFileName := ResolverFileName(FContext);
+  FFileName := FContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   FResolver := TRuleDerived.Resolver(FCache, FContext);
   FResolver.PinTree(FContext.Tree, FFileName);

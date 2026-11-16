@@ -118,6 +118,22 @@ type
     /// <summary>Wie Walk, hört aber beim ersten Knoten auf, für den AVisit Found liefert, und gibt ihn zurück;
     /// nil ohne Treffer. Iterativ wie Walk.</summary>
     function Search(const AVisit: TSyntaxNodeSearch): TSyntaxNode;
+    /// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge von Walk, über einen eigenen Stapel:
+    /// Ausdrucksketten können sehr tief sein. nil ohne ARoot.</summary>
+    class function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>; static;
+    /// <summary>Ist der Knoten der Bezeichner AName (ohne Beachtung der Groß-/Kleinschreibung) und nicht das
+    /// Mitglied hinter einem Punkt (bei X.AName zählt nur X)?</summary>
+    function IsIdentifierUse(const AName: string): Boolean;
+    /// <summary>Alle Bezeichner AName (IsIdentifierUse) unter ARoot samt ARoot in der Reihenfolge von Walk, auch in
+    /// verschachtelten Routinen; nil ohne ARoot.</summary>
+    class function IdentifierUses(ARoot: TSyntaxNode; const AName: string): TArray<TSyntaxNode>; static;
+    /// <summary>Wie IdentifierUses, aber ohne verschachtelte Routinen (RoutineDecl unter ARoot): deren lokale
+    /// Namen können AName verdecken.</summary>
+    class function IdentifierUsesOutsideNested(ARoot: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
+      static;
+    /// <summary>Kommt der Bezeichner AName (IsIdentifierUse) in einer Routine vor, die direkt in ARoutine
+    /// verschachtelt ist? False ohne ARoutine.</summary>
+    class function UsedInNestedRoutine(ARoutine: TSyntaxNode; const AName: string): Boolean; static;
     property Kind: TSyntaxKind read FKind write FKind;
     /// <summary>Nur bei Parameter: const, var, out oder constref.</summary>
     property Modifier: TParameterModifier read FModifier write FModifier;
@@ -461,6 +477,112 @@ begin
     end;
   finally
     mPending.Free;
+  end;
+end;
+
+class function TSyntaxNode.PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mNodes.Add(mNode);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode.Children[mIndex]);
+      end;
+    end;
+    Result := mNodes.ToArray;
+  finally
+    mNodes.Free;
+    mPending.Free;
+  end;
+end;
+
+function TSyntaxNode.IsIdentifierUse(const AName: string): Boolean;
+begin
+  Result := (FKind = TSyntaxKind.Identifier) and SameText(FName, AName) and
+    not ((FParent <> nil) and (FParent.Kind = TSyntaxKind.MemberAccess) and (FParent.Children[0] <> Self));
+end;
+
+/// <summary>Bezeichner AName unter ARoot samt ARoot; ANested: auch in verschachtelten Routinen.</summary>
+function CollectIdentifierUses(ARoot: TSyntaxNode; const AName: string; ANested: Boolean): TArray<TSyntaxNode>;
+var
+  mPending: TStack<TSyntaxNode>;
+  mFound: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if ARoot = nil then
+  begin
+    Exit;
+  end;
+  mPending := TStack<TSyntaxNode>.Create;
+  mFound := TList<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.IsIdentifierUse(AName) then
+      begin
+        mFound.Add(mNode);
+      end;
+      if ANested or (mNode = ARoot) or (mNode.Kind <> TSyntaxKind.RoutineDecl) then
+      begin
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode.Children[mIndex]);
+        end;
+      end;
+    end;
+    Result := mFound.ToArray;
+  finally
+    mFound.Free;
+    mPending.Free;
+  end;
+end;
+
+class function TSyntaxNode.IdentifierUses(ARoot: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
+begin
+  Result := CollectIdentifierUses(ARoot, AName, True);
+end;
+
+class function TSyntaxNode.IdentifierUsesOutsideNested(ARoot: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
+begin
+  Result := CollectIdentifierUses(ARoot, AName, False);
+end;
+
+class function TSyntaxNode.UsedInNestedRoutine(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  if ARoutine = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if (ARoutine.Children[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      (IdentifierUses(ARoutine.Children[mIndex], AName) <> nil) then
+    begin
+      Exit(True);
+    end;
   end;
 end;
 

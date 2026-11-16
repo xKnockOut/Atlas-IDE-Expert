@@ -1287,20 +1287,6 @@ begin
   Result := TRuleDescriptor.Create(cPreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text);
 end;
 
-/// <summary>Dateiname für den Resolver: die Datei, sonst der relative Pfad, sonst der Unitname mit .pas.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 /// <summary>Zweige der if-Kette ab AHead: die AConditions umwandelbaren Bedingungen und ein abschließendes
 /// else; 0 ohne umwandelbare Bedingung.</summary>
 function BranchCount(AHead: TSyntaxNode; AConditions: Integer): Integer;
@@ -1383,7 +1369,7 @@ begin
   begin
     mMin := cDefaultMin;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mTokens := AContext.Tree.Tokens;
   mLayout := TStatementLayout.Create('', '  ', TTextLines.LineBreakOf(AContext.Text));
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.

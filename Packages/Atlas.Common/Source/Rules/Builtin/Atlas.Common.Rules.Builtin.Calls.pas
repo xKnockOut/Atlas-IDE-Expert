@@ -692,15 +692,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   mPaths := TConditionalBranches.Paths(AContext.Tree.Tokens);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
@@ -1409,15 +1401,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   mPaths := TConditionalBranches.Paths(AContext.Tree.Tokens);
   mOptions := TExpressionTypeOptions.Default;
   mOptions.Conversions := False;

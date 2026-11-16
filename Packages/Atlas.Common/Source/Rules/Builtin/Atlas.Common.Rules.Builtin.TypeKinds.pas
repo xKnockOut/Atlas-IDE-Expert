@@ -193,53 +193,6 @@ const
   // Standarddateien der Unit System für Write/Read ohne Dateiargument davor.
   cStandardTextFiles: array[0..2] of string = ('Input', 'Output', 'ErrOutput');
 
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
-/// <summary>Alle Knoten unter ARoot in Pre-Order über einen eigenen Stapel (tiefe Ausdrucksketten).
-/// </summary>
-function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
-var
-  mPending: TStack<TSyntaxNode>;
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if ARoot = nil then
-  begin
-    Exit;
-  end;
-  mPending := TStack<TSyntaxNode>.Create;
-  mNodes := TList<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      mNodes.Add(mNode);
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-    Result := mNodes.ToArray;
-  finally
-    mNodes.Free;
-    mPending.Free;
-  end;
-end;
-
 /// <summary>Liegt APosition im Bereich von ANode?</summary>
 function Covers(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 begin
@@ -324,7 +277,7 @@ begin
   FContext := AContext;
   FReport := AReport;
   FResolver := AResolver;
-  FFileName := ResolverFileName(AContext);
+  FFileName := AContext.ResolverFileName;
   FUsesKnown := (AContext.Index <> nil) and TUnresolvedNames.UsesKnown(AContext.Index,
     TUsesClauses.UsedUnits(AContext.Tree.Tokens), AContext.Namespaces, AContext.EnsureUnit);
 end;
@@ -467,7 +420,7 @@ begin
   // Lokale Variable mit Typ ohne Namen (mZeiger: ^Byte): Text des Typknotens ihrer Deklaration, die innerste
   // um den Namen.
   mDecl := nil;
-  for mNode in PreOrder(FContext.Tree.Root) do
+  for mNode in TSyntaxNode.PreOrder(FContext.Tree.Root) do
   begin
     if (mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.InlineVar]) and
       Covers(mNode, ASymbol.SelectionRange.StartPos) then
@@ -1030,7 +983,7 @@ procedure TTypeKindChecker.Run;
 var
   mNode: TSyntaxNode;
 begin
-  for mNode in PreOrder(FContext.Tree.Root) do
+  for mNode in TSyntaxNode.PreOrder(FContext.Tree.Root) do
     case mNode.Kind of
       TSyntaxKind.IndexAccess:
         CheckIndex(mNode);
@@ -1077,7 +1030,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
