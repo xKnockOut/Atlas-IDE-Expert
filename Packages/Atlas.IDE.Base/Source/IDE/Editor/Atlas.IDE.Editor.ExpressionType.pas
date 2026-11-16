@@ -33,7 +33,8 @@ uses
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
-  Atlas.UI.Editor.ExpressionType;
+  Atlas.UI.Editor.ExpressionType,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasExpressionTypeSessionFunc = reference to function: TLspSession;
@@ -54,7 +55,7 @@ type
     FInstance: TAtlasIdeExpressionType;
   private
     FSession: TAtlasExpressionTypeSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FMessages: TApplicationEvents;
     FTip: TAtlasExpressionTypeTip;
     FEvents: TEvents;
@@ -74,7 +75,6 @@ type
     procedure Show(const AInfo: TAtlasExpressionTypeInfo);
     procedure Navigate;
     procedure Close;
-    procedure Report(const AText: string);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     class function KeyText: string; static;
@@ -108,7 +108,6 @@ uses
   Vcl.Menus,
   Atlas.Text.Lines,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Lsp.Client,
   Atlas.UI.Strings,
@@ -188,12 +187,12 @@ var
 begin
   inherited Create;
   FSession := ASession;
-  FMessage := AMessage;
   FIndex := -1;
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FEvents.OnEditorPaintLine := PaintLine;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
@@ -289,7 +288,7 @@ begin
   end;
   if Result and (ASession = nil) then
   begin
-    Report(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    FMessage.Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Result := False;
   end;
 end;
@@ -311,12 +310,12 @@ begin
     Result := AInfo.Usable;
     if not Result then
     begin
-      Report(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+      FMessage.Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     end;
   except
     on E: ELspClientError do
     begin
-      Report(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeFailed, [E.Message]));
+      FMessage.Say(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.ExpressionTypeFailed, [E.Message]));
     end;
   end;
 end;
@@ -376,14 +375,6 @@ begin
   if mPainted then
   begin
     Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeExpressionType.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 

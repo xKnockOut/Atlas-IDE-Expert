@@ -16,7 +16,8 @@ uses
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Tracker.Access,
-  Atlas.IDE.Tracker.WelcomeLink;
+  Atlas.IDE.Tracker.WelcomeLink,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   /// <summary>Aktionen der Kachel: Projekt öffnen, Test öffnen, ausführen und debuggen, Seite des Builds.</summary>
@@ -24,8 +25,7 @@ type
   private
     FLink: TAtlasTrackerWelcomeLink;
     FAccess: IAtlasCiAccess;
-    FMessage: TProc<string>;
-    procedure Report(const AText: string);
+    FMessage: TAtlasMessageSink;
     function EnsureOpen(const AProject: string): Boolean;
     function Locate(const ARow: TAtlasTestRow; const AItem: TAtlasTestFailureItem; out AFileName: string;
       out ALine: Integer): Boolean;
@@ -57,7 +57,6 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Modules.Contract,
@@ -83,15 +82,7 @@ begin
   inherited Create;
   FLink := ALink;
   FAccess := AAccess;
-  FMessage := AMessage;
-end;
-
-procedure TAtlasTestResultsActions.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
+  FMessage := TAtlasMessageSink.Create(AMessage);
 end;
 
 function TAtlasTestResultsActions.EnsureOpen(const AProject: string): Boolean;
@@ -101,7 +92,7 @@ begin
   Result := False;
   if not FileExists(AProject) then
   begin
-    Report(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeProjectsMissing, [AProject]));
+    FMessage.Say(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeProjectsMissing, [AProject]));
   end
   else if ProjectIsOpen(AProject) then
   begin
@@ -174,7 +165,7 @@ begin
     end;
     if not Locate(ARow, AItem, mFileName, mLine) then
     begin
-      Report(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsNotFound, [AItem.Test]));
+      FMessage.Say(TAtlasTestResultsStrings.Fmt(TAtlasTestResultsTextId.WelcomeTestsNotFound, [AItem.Test]));
       Exit;
     end;
   end
@@ -204,7 +195,7 @@ begin
       Exit;
     end;
   end;
-  Report(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+  FMessage.Say(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
 end;
 
 procedure TAtlasTestResultsActions.Debug(const ARow: TAtlasTestRow; const AItem: TAtlasTestFailureItem);
@@ -223,7 +214,7 @@ begin
     begin
       if not mTests.DebugByName(TestProjectOf(ARow), AItem.Test, mReason) and (mReason <> '') then
       begin
-        Report(mReason);
+        FMessage.Say(mReason);
       end;
       Exit;
     end;

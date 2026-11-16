@@ -38,6 +38,10 @@ type
     [Test]
     procedure BrokenXmlKeepsAllText;
     [Test]
+    procedure KeepsTypeArgumentsAsText;
+    [Test]
+    procedure FindsTypeArguments;
+    [Test]
     procedure InheritDocMergesMissingSections;
     [Test]
     procedure PlainTextAndMarkdownContainNames;
@@ -340,6 +344,40 @@ begin
   Assert.AreEqual('R', mDoc.Returns);
   // Kommentar und CDATA.
   Assert.AreEqual('a <b> c', TXmlDoc.CleanText('a <!-- weg --><![CDATA[<b>]]> c'));
+end;
+
+procedure TXmlDocTests.KeepsTypeArgumentsAsText;
+var
+  mDoc: TXmlDoc;
+begin
+  Assert.AreEqual('TMyGeneric<TAbc> blablabla',
+    TXmlDoc.Parse('<summary> TMyGeneric<TAbc> blablabla </summary>').Summary);
+  mDoc := TXmlDoc.Parse('<summary>Liefert TDictionary<string, TList<Integer>> zurück.</summary>' +
+    '<param name="A">Ein TArray<T>.</param><returns>R</returns>');
+  Assert.AreEqual('Liefert TDictionary<string, TList<Integer>> zurück.', mDoc.Summary);
+  Assert.AreEqual('Ein TArray<T>.', mDoc.Params[0].Text);
+  Assert.AreEqual('R', mDoc.Returns);
+  // Tags der XML-Dokumentation und später geschlossene Elemente bleiben Tags.
+  Assert.AreEqual('Wortfett und Textinnen', TXmlDoc.CleanText('Wort<b>fett</b> und Text<foo>innen</foo>'));
+end;
+
+procedure TXmlDocTests.FindsTypeArguments;
+begin
+  Assert.AreEqual(9, TXmlDoc.TypeArgumentsStop('TList<T> x', 6));
+  Assert.AreEqual(13, TXmlDoc.TypeArgumentsStop('A.TPair<K,V>', 8));
+  Assert.AreEqual(27, TXmlDoc.TypeArgumentsStop('TDict<string, TList<Byte>>', 6));
+  Assert.AreEqual(8, TXmlDoc.TypeArgumentsStop('IList<> Methode', 6));
+  Assert.AreEqual(9, TXmlDoc.TypeArgumentsStop('TList<T>.Add', 6));
+  // Nicht direkt hinter einem Bezeichner, nicht geschlossen, kein Typ im Inneren.
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('a < b > c', 3));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('x<y', 2));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('TFoo<T, >', 5));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('Text<c>nil</c>', 5));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('Text<foo>x</foo>', 5));
+  // Vergleiche im Text: Wert<>nil, a<b>c, Name<>''.
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('Wert<>nil', 5));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('a<b>c', 2));
+  Assert.AreEqual(0, TXmlDoc.TypeArgumentsStop('Name<>''''', 5));
 end;
 
 procedure TXmlDocTests.InheritDocMergesMissingSections;

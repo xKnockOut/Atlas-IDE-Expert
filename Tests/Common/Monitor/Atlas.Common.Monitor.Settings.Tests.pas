@@ -38,7 +38,8 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Monitor.Settings;
+  Atlas.Common.Monitor.Settings,
+  Atlas.Tests.TempFolder;
 
 { TMonitorSettingsTests }
 
@@ -49,11 +50,7 @@ end;
 
 procedure TMonitorSettingsTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TMonitorSettingsTests.DefaultsShowIconWithoutAutostart;

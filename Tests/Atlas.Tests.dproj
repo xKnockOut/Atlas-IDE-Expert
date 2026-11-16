@@ -511,6 +511,7 @@
         <DCCReference Include="Support\Atlas.Tests.RtlStubs.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SmallStack.pas"/>
         <DCCReference Include="Support\Atlas.Tests.RecordText.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.TempFolder.pas"/>
         <DCCReference Include="Support\Atlas.Tests.SlashHost.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Engine.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Derived.Tests.pas"/>
@@ -1397,6 +1398,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Json.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Json.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.Sections.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
@@ -1580,6 +1582,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Forms.PropertyValues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.EditInbox.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.Inbox.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Assistants.InboxPace.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Assistants\Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas"/>
@@ -1735,6 +1739,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Guard.MessageSink.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Notice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Notice.Tests.pas"/>

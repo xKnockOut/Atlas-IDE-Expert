@@ -29,7 +29,8 @@ uses
   Atlas.Core.Debug.EditValueFlow,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Debug.Session,
-  Atlas.UI.Debug.InlineValuePainter;
+  Atlas.UI.Debug.InlineValuePainter,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeDebugEditValue = class
@@ -56,7 +57,7 @@ type
   private
     FChanges: TAtlasEditChanges;
     FRun: TAtlasHostCommandRunner;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FChanged: TProc;
     FListener: IAtlasIdeDebugListener;
     FEvents: TEvents;
@@ -74,7 +75,6 @@ type
     procedure Forget;
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    procedure Report(const AText: string);
     /// <summary>Stelle an der Schreibmarke des aktiven Editors; False ohne Bezeichner.</summary>
     class function PlaceAtCursor(out APlace: TPlace): Boolean; static;
   public
@@ -108,7 +108,6 @@ uses
   System.UITypes,
   Vcl.Dialogs,
   ToolsAPI,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Debug.InlineValues,
@@ -158,7 +157,7 @@ var
 begin
   inherited Create;
   FRun := ARun;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FChanged := AChanged;
   FIndex := -1;
   FChanges := TAtlasEditChanges.Create;
@@ -189,7 +188,7 @@ begin
   FreeAndNil(FStyle);
   FreeAndNil(FChanges);
   FRun := nil;
-  FMessage := nil;
+  FMessage.Clear;
   FChanged := nil;
   inherited Destroy;
 end;
@@ -236,14 +235,6 @@ begin
   begin
     FChanges.Clear;
     TAtlasDebugLineEnd.Invalidate;
-  end;
-end;
-
-procedure TAtlasIdeDebugEditValue.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 
@@ -414,7 +405,7 @@ class procedure TAtlasIdeDebugEditValue.EditAtCursor;
 begin
   if not TryEditAtCursor and (FInstance <> nil) then
   begin
-    FInstance.Report(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoValue));
+    FInstance.FMessage.Say(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoValue));
   end;
 end;
 
@@ -514,7 +505,7 @@ begin
   end
   else
   begin
-    FInstance.Report(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoChange));
+    FInstance.FMessage.Say(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoChange));
   end;
 end;
 

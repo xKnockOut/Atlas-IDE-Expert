@@ -186,7 +186,7 @@ procedure TAtlasIssuesLink.Report(const AText: string);
 begin
   if Keep <> nil then
   begin
-    Context.Report(AText);
+    Context.Messages.Say(AText);
   end;
 end;
 

@@ -37,7 +37,8 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.VersionControl.Contract,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Tests.TempFolder;
 
 type
   /// <summary>Programm und Argumente für einen kurzen und einen langen Lauf mit Ausgabe auf stdout.</summary>
@@ -70,11 +71,7 @@ end;
 
 procedure TShellPlatformTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TShellPlatformTests.MoveReplacingOverwritesTarget;

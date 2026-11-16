@@ -66,7 +66,8 @@ uses
   Atlas.Core.Undo.LinePatch,
   Atlas.Core.Undo.Journal,
   Atlas.Core.Undo.Adapters.FileStore,
-  Atlas.Core.Undo.Adapters.DiskTarget;
+  Atlas.Core.Undo.Adapters.DiskTarget,
+  Atlas.Tests.TempFolder;
 
 type
   /// <summary>Ziel im Speicher wie offene Puffer: zählt Schreibvorgänge je Datei
@@ -267,11 +268,7 @@ end;
 
 procedure TAtlasUndoJournalTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasUndoJournalTests.RecordsOnlyMultiFileActions;

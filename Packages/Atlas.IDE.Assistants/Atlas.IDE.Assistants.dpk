@@ -44,6 +44,7 @@ requires
 contains
   Atlas.Core.Assistants.BuildInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.BuildInbox.pas',
   Atlas.Core.Assistants.EditInbox in 'Source\Core\Assistants\Atlas.Core.Assistants.EditInbox.pas',
+  Atlas.Core.Assistants.Inbox in 'Source\Core\Assistants\Atlas.Core.Assistants.Inbox.pas',
   Atlas.Core.Assistants.InboxPace in 'Source\Core\Assistants\Atlas.Core.Assistants.InboxPace.pas',
   Atlas.Core.Assistants.EditPlan in 'Source\Core\Assistants\Atlas.Core.Assistants.EditPlan.pas',
   Atlas.UI.Assistants.Strings in 'Source\UI\Assistants\Atlas.UI.Assistants.Strings.pas',

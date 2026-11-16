@@ -46,7 +46,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Tests.Approval;
+  Atlas.Core.Tests.Approval,
+  Atlas.Tests.TempFolder;
 
 procedure WriteFile(const AFileName, AText: string);
 begin
@@ -68,11 +69,7 @@ end;
 
 procedure TAtlasTestApprovalTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasTestApprovalTests.ParsesGermanDifference;
