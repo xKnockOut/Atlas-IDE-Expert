@@ -264,6 +264,7 @@ Atlas.Common.Pascal.SyntaxChecks.Tests
 Atlas.Common.Pascal.SyntaxTree.Tests
 Atlas.Common.Pascal.TokenCursor.Tests
 Atlas.Common.Pascal.WarningCodes.Tests
+Atlas.Common.Pascal.XmlDoc.Tests
 Atlas.Common.Product.Version.Tests
 Atlas.Common.Projects.DelphiVersions.Tests
 Atlas.Common.Projects.DprojEditor.Tests
@@ -636,3 +637,4 @@ Atlas.Core.Debug.AsyncOriginFlow.Tests
 Atlas.Core.Designer.KeptComponents.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
+Atlas.Common.Rules.Builtin.XmlDoc.Tests
