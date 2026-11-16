@@ -178,15 +178,13 @@ begin
 end;
 
 class function TAtlasEditorBuffer.ActiveView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
 begin
   // Zuerst das aktuelle Modul: TopView ist leer, solange der Fokus nicht im Editor liegt
   // (Befehl aus Palette, Hauptmenü oder einem angedockten Fenster).
   Result := CurrentModuleView;
-  if (Result = nil) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
+  if Result = nil then
   begin
-    Result := mEditors.TopView;
+    Result := TopView;
   end;
 end;
 

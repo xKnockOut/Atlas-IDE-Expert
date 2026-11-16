@@ -331,12 +331,7 @@ var
   mArea: TRect;
   mBad, mGood, mLineHeight, mCodeWidth, mWidth, mHeight, mPass: Integer;
 begin
-  // Der Dialog erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  mArea := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    mArea := Application.MainForm.Monitor.WorkareaRect;
-  end;
+  mArea := MainFormWorkArea;
   // Breiter, damit die längste Codezeile ohne Rollen passt; Rand, Rollleiste und Rahmen dazu.
   MeasureCode(FBad, mBad, mLineHeight);
   MeasureCode(FGood, mGood, mLineHeight);

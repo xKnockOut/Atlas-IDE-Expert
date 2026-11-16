@@ -319,9 +319,7 @@ begin
   begin
     Exit;
   end;
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
   TAtlasDebugLineEnd.Invalidate;
 end;
@@ -475,9 +473,7 @@ begin
     Exit;
   end;
   FWhy.AllowCalls(ALine);
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
 end;
 
