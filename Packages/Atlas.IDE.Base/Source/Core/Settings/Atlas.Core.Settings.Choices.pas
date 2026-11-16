@@ -56,7 +56,8 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Text.Json;
 
 type
   TDelphiProduct = record
@@ -196,7 +197,7 @@ begin
     Result := nil;
     for mVersion in mList do
     begin
-      Result := Result + [TAtlasSettingChoice.Create(DelphiCaption(mVersion), TAtlasJsonText.Quote(mVersion))];
+      Result := Result + [TAtlasSettingChoice.Create(DelphiCaption(mVersion), TJsonText.Quote(mVersion))];
     end;
   finally
     mList.Free;
@@ -293,7 +294,7 @@ begin
   Result := nil;
   for mText in ATexts do
   begin
-    Result := Result + [TAtlasSettingChoice.Create(mText, TAtlasJsonText.Quote(mText))];
+    Result := Result + [TAtlasSettingChoice.Create(mText, TJsonText.Quote(mText))];
   end;
 end;
 

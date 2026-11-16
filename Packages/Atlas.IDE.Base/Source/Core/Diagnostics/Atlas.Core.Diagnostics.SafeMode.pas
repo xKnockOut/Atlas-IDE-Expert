@@ -182,7 +182,8 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -321,24 +322,6 @@ begin
   end;
 end;
 
-function MarkerFeaturesOf(const AValue: TJSONValue): TArray<string>;
-var
-  mElement: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mElement in TJSONArray(AValue) do
-  begin
-    if mElement is TJSONString then
-    begin
-      Result := Result + [TJSONString(mElement).Value];
-    end;
-  end;
-end;
-
 function MarkerFailuresOf(const AValue: TJSONValue): TArray<TPair<string, Integer>>;
 var
   mPair: TJSONPair;
@@ -386,7 +369,7 @@ begin
       AMarker.LoadMs := TJSONNumber(mValue).AsInt64;
     end;
     AMarker.Level := LevelOf(TJSONObject(mRoot).GetValue<string>('level', ''));
-    AMarker.Features := MarkerFeaturesOf(TJSONObject(mRoot).GetValue('features'));
+    AMarker.Features := TJsonRead.Strings(TJSONObject(mRoot).GetValue('features'));
     AMarker.Failures := MarkerFailuresOf(TJSONObject(mRoot).GetValue('failures'));
     Result := True;
   finally

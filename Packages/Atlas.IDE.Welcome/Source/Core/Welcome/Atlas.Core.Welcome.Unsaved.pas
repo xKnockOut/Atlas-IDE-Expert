@@ -1166,17 +1166,6 @@ begin
   end;
 end;
 
-function NamesJson(const ANames: TArray<string>): TJSONArray;
-var
-  mName: string;
-begin
-  Result := TJSONArray.Create;
-  for mName in ANames do
-  begin
-    Result.Add(mName);
-  end;
-end;
-
 function ItemJson(const AItem: TAtlasUnsavedItem): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -1198,7 +1187,7 @@ begin
   end;
   if Length(AItem.Branches) > 0 then
   begin
-    Result.AddPair('branches', NamesJson(AItem.Branches));
+    Result.AddPair('branches', TJsonBuild.Strings(AItem.Branches));
   end;
   AddText(Result, 'name', AItem.Name);
   AddText(Result, 'ref', AItem.Ref);
@@ -1237,26 +1226,6 @@ begin
     begin
       mIgnore.AddPair(TAtlasWelcomeUnsaved.KindName(mIgnored.Kind),
         TAtlasProjectSummaries.TimeText(mIgnored.UntilUtc));
-    end;
-  end;
-end;
-
-function BranchesOf(AValue: TJSONValue): TArray<string>;
-var
-  mIndex: Integer;
-  mName: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
-  begin
-    mName := TJSONArray(AValue).Items[mIndex];
-    if mName is TJSONString then
-    begin
-      Result := Result + [TJSONString(mName).Value];
     end;
   end;
 end;
@@ -1303,7 +1272,7 @@ begin
   AItem.Since := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'since'));
   AItem.Name := TJsonRead.Text(mEntry, 'name');
   AItem.Ref := TJsonRead.Text(mEntry, 'ref');
-  AItem.Branches := BranchesOf(mEntry.GetValue('branches'));
+  AItem.Branches := TJsonRead.Strings(mEntry.GetValue('branches'));
   AItem.Places := PlacesFrom(mEntry.GetValue('places'));
 end;
 

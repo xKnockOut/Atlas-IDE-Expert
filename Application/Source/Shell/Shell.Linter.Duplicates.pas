@@ -247,23 +247,6 @@ begin
   end;
 end;
 
-/// <summary>JSON-Liste aus Texten.</summary>
-function JsonList(const AItems: TArray<string>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '[';
-  for mIndex := 0 to High(AItems) do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + TJsonText.Quote(AItems[mIndex]);
-  end;
-  Result := Result + ']';
-end;
-
 function CopiesJson(const ACopies: TDuplicateNewCopies): string;
 var
   mMembers: TArray<string>;
@@ -295,7 +278,7 @@ begin
   for mIndex := 0 to High(AComparison.Stale) do
   begin
     mStale := mStale + [Format('{"hash": %s, "members": %s}', [TJsonText.Quote(AComparison.Stale[mIndex].Hash),
-      JsonList(AComparison.Stale[mIndex].Members)])];
+      TJsonText.List(AComparison.Stale[mIndex].Members)])];
   end;
   Result := Format('{"groups": %d, "known": %d, "newCopies": [%s], "stale": [%s]}'#10, [AGroups,
     AComparison.KnownGroups, string.Join(', ', mCopies), string.Join(', ', mStale)]);

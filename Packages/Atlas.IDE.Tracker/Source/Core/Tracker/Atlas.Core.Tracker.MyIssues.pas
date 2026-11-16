@@ -1246,21 +1246,8 @@ begin
 end;
 
 function LabelsOf(AEntry: TJSONObject): TArray<string>;
-var
-  mLabels, mLabelValue: TJSONValue;
 begin
-  Result := nil;
-  mLabels := AEntry.GetValue('labels');
-  if mLabels is TJSONArray then
-  begin
-    for mLabelValue in TJSONArray(mLabels) do
-    begin
-      if (mLabelValue is TJSONString) and (Length(Result) < TAtlasTrackerIssue.cMaxLabels) then
-      begin
-        Result := Result + [TJSONString(mLabelValue).Value];
-      end;
-    end;
-  end;
+  Result := Copy(TJsonRead.Strings(AEntry, 'labels'), 0, TAtlasTrackerIssue.cMaxLabels);
 end;
 
 /// <summary>Ein Eintrag aus "items"; False ohne Schlüssel.</summary>

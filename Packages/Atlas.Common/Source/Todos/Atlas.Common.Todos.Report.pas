@@ -63,8 +63,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Metrics.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -94,11 +94,6 @@ type
 
 const
   cLineBreak = #13#10;
-
-function JsonText(const AText: string): string;
-begin
-  Result := TMetricsReport.JsonString(AText);
-end;
 
 function Cell(const AText: string): string;
 begin
@@ -202,7 +197,8 @@ begin
     begin
       mKeywords := mKeywords + ', ';
     end;
-    mKeywords := mKeywords + JsonText(ASummary.Keywords[mIndex]) + ': ' + IntToStr(ASummary.KeywordCounts[mIndex]);
+    mKeywords := mKeywords + TJsonText.Quote(ASummary.Keywords[mIndex]) + ': ' +
+      IntToStr(ASummary.KeywordCounts[mIndex]);
   end;
   Result := '{"files": ' + IntToStr(ASummary.Files) + ', "open": ' + IntToStr(ASummary.Open) + ', "done": ' +
     IntToStr(ASummary.Done) + ', "keywords": {' + mKeywords + '}}';
@@ -210,9 +206,9 @@ end;
 
 class function TTodoReport.EntryJson(const AEntry: TTodoEntry): string;
 begin
-  Result := '{"keyword": ' + JsonText(AEntry.Keyword) + ', "done": ' + LowerCase(BoolToStr(AEntry.Done, True)) +
-    ', "priority": ' + IntToStr(AEntry.Priority) + ', "owner": ' + JsonText(AEntry.Owner) + ', "category": ' +
-    JsonText(AEntry.Category) + ', "text": ' + JsonText(AEntry.Text) + ', "line": ' +
+  Result := '{"keyword": ' + TJsonText.Quote(AEntry.Keyword) + ', "done": ' + LowerCase(BoolToStr(AEntry.Done, True)) +
+    ', "priority": ' + IntToStr(AEntry.Priority) + ', "owner": ' + TJsonText.Quote(AEntry.Owner) + ', "category": ' +
+    TJsonText.Quote(AEntry.Category) + ', "text": ' + TJsonText.Quote(AEntry.Text) + ', "line": ' +
     IntToStr(AEntry.Range.StartPos.Line + 1) + ', "character": ' + IntToStr(AEntry.Range.StartPos.Character + 1) +
     ', "endLine": ' + IntToStr(AEntry.Range.EndPos.Line + 1) + '}';
 end;
@@ -221,7 +217,7 @@ class function TTodoReport.FileJson(const AFile: TFileTodos): string;
 var
   mIndex: Integer;
 begin
-  Result := '{"file": ' + JsonText(AFile.Path) + ', "unit": ' + JsonText(AFile.UnitName) + ', "todos": [';
+  Result := '{"file": ' + TJsonText.Quote(AFile.Path) + ', "unit": ' + TJsonText.Quote(AFile.UnitName) + ', "todos": [';
   for mIndex := 0 to High(AFile.Entries) do
   begin
     if mIndex > 0 then
@@ -243,7 +239,7 @@ begin
     mBuilder.Append('{"format": ').Append(IntToStr(cFormat));
     if ARoot <> '' then
     begin
-      mBuilder.Append(', "root": ').Append(JsonText(ARoot));
+      mBuilder.Append(', "root": ').Append(TJsonText.Quote(ARoot));
     end;
     mBuilder.Append(', "summary": ').Append(SummaryJson(Summarize(AFiles))).Append(', "files": [');
     for mIndex := 0 to High(AFiles) do

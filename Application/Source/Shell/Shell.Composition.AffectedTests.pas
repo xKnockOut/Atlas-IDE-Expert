@@ -71,7 +71,8 @@ uses
   Shell.Platform,
   Shell.VersionControlChanges,
   Shell.Workspace,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
 {$SCOPEDENUMS ON}
@@ -92,23 +93,12 @@ end;
 /// <summary>Pfade aus dem Feld files (URIs) der Anfrage; leer ohne.</summary>
 function FilesOf(AParams: TJSONObject): TArray<string>;
 var
-  mValue: TJSONValue;
-  mFiles: TJSONArray;
-  mIndex: Integer;
+  mFile: string;
 begin
   Result := nil;
-  mValue := AParams.GetValue('files');
-  if not (mValue is TJSONArray) then
+  for mFile in TJsonRead.Strings(AParams, 'files') do
   begin
-    Exit;
-  end;
-  mFiles := TJSONArray(mValue);
-  for mIndex := 0 to mFiles.Count - 1 do
-  begin
-    if mFiles.Items[mIndex] is TJSONString then
-    begin
-      Result := Result + [TDocumentUris.ToPath(mFiles.Items[mIndex].Value)];
-    end;
+    Result := Result + [TDocumentUris.ToPath(mFile)];
   end;
 end;
 

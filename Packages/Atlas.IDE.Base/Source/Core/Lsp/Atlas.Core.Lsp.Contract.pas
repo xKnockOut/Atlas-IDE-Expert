@@ -282,6 +282,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 { TAtlasConfidence }
 
 class function TAtlasConfidence.FromJson(const AItem: TJSONValue): TAtlasConfidence;
@@ -540,25 +543,6 @@ begin
   end;
 end;
 
-/// <summary>Die Zeichenketten eines JSON-Arrays; anderes wird übergangen.</summary>
-function ProblemStringsOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if mItem is TJSONString then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
-end;
-
 /// <summary>Liest data.inactive und data.uses eines Befunds.</summary>
 procedure ReadProblemContext(var AProblem: TAtlasProblem; AData: TJSONObject);
 var
@@ -593,7 +577,7 @@ begin
   AProblem.Category := mData.GetValue<string>('category', '');
   AProblem.Group := mData.GetValue<string>('group', '');
   AProblem.FixTitle := mData.GetValue<string>('fix', '');
-  AProblem.CompilerCodes := ProblemStringsOf(mData.GetValue('compilerCodes'));
+  AProblem.CompilerCodes := TJsonRead.Strings(mData.GetValue('compilerCodes'));
   AProblem.Details := mData.GetValue<string>('details', '');
   ReadProblemContext(AProblem, mData);
 end;

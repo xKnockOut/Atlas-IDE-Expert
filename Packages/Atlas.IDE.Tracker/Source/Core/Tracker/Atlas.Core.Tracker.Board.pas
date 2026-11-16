@@ -742,17 +742,6 @@ begin
   Result := TAtlasTrackerFiles.Join(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
 end;
 
-function Texts(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 function SprintJson(const ASprint: TAtlasBoardSprint): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -788,7 +777,7 @@ begin
   begin
     mItem := TJSONObject.Create;
     mItem.AddPair('name', mColumn.Name);
-    mItem.AddPair('values', Texts(mColumn.Values));
+    mItem.AddPair('values', TJsonBuild.Strings(mColumn.Values));
     mItem.AddPair('optionId', mColumn.OptionId);
     mItem.AddPair('resolved', TJSONBool.Create(mColumn.Resolved));
     Result.AddElement(mItem);
@@ -814,7 +803,7 @@ begin
   Result.AddPair('title', ACard.Title);
   Result.AddPair('state', ACard.State);
   Result.AddPair('assignee', ACard.Assignee);
-  Result.AddPair('logins', Texts(ACard.Logins));
+  Result.AddPair('logins', TJsonBuild.Strings(ACard.Logins));
   Result.AddPair('priority', ACard.Priority);
   Result.AddPair('priorityColor', ACard.PriorityColor);
   Result.AddPair('done', TJSONNumber.Create(ACard.Checklist.Done));
@@ -834,9 +823,9 @@ end;
 function SwimlanesJson(const ASwimlanes: TAtlasBoardSwimlanes): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('fields', Texts(ASwimlanes.Fields));
+  Result.AddPair('fields', TJsonBuild.Strings(ASwimlanes.Fields));
   Result.AddPair('caption', ASwimlanes.Caption);
-  Result.AddPair('values', Texts(ASwimlanes.Values));
+  Result.AddPair('values', TJsonBuild.Strings(ASwimlanes.Values));
   Result.AddPair('orphansAtTop', TJSONBool.Create(ASwimlanes.OrphansAtTop));
   Result.AddPair('hideOrphans', TJSONBool.Create(ASwimlanes.HideOrphans));
 end;
@@ -878,24 +867,6 @@ begin
     Result := mRoot.ToJSON;
   finally
     mRoot.Free;
-  end;
-end;
-
-function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.Values[AName];
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [TJSONString(mItem).Value];
-      end;
-    end;
   end;
 end;
 
@@ -947,7 +918,7 @@ begin
       if mItem is TJSONObject then
       begin
         mObject := TJSONObject(mItem);
-        Result := Result + [TAtlasBoardColumn.Create(TJsonRead.Text(mObject, 'name'), TextsOf(mObject, 'values'),
+        Result := Result + [TAtlasBoardColumn.Create(TJsonRead.Text(mObject, 'name'), TJsonRead.Strings(mObject, 'values'),
           TJsonRead.Text(mObject, 'optionId'), TJsonRead.Flag(mObject, 'resolved'))];
       end;
     end;
@@ -964,9 +935,9 @@ begin
     Exit;
   end;
   mObject := TJSONObject(AValue);
-  Result.Fields := TextsOf(mObject, 'fields');
+  Result.Fields := TJsonRead.Strings(mObject, 'fields');
   Result.Caption := TJsonRead.Text(mObject, 'caption');
-  Result.Values := TextsOf(mObject, 'values');
+  Result.Values := TJsonRead.Strings(mObject, 'values');
   Result.OrphansAtTop := TJsonRead.Flag(mObject, 'orphansAtTop');
   Result.HideOrphans := TJsonRead.Flag(mObject, 'hideOrphans');
 end;
@@ -993,7 +964,7 @@ begin
   Result.Title := TJsonRead.Text(AObject, 'title');
   Result.State := TJsonRead.Text(AObject, 'state');
   Result.Assignee := TJsonRead.Text(AObject, 'assignee');
-  Result.Logins := TextsOf(AObject, 'logins');
+  Result.Logins := TJsonRead.Strings(AObject, 'logins');
   Result.Priority := TJsonRead.Text(AObject, 'priority');
   Result.PriorityColor := TJsonRead.Text(AObject, 'priorityColor');
   Result.Checklist := TAtlasChecklistProgress.Create(TJsonRead.Int(AObject, 'done'), TJsonRead.Int(AObject, 'total'));

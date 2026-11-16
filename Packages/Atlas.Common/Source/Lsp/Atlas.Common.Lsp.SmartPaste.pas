@@ -40,7 +40,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -54,17 +55,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-function NamesJson(const ANames: TArray<string>): TJSONArray;
-var
-  mName: string;
-begin
-  Result := TJSONArray.Create;
-  for mName in ANames do
-  begin
-    Result.Add(mName);
-  end;
-end;
-
 /// <summary>Was fehlt im eingefügten Bereich ARange? Eindeutige Units, mehrdeutige Namen und ob die Einfügestelle
 /// im interface-Teil liegt.</summary>
 procedure AddMissing(AResult: TJSONObject; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
@@ -76,7 +66,7 @@ var
   mChoice: TJSONObject;
 begin
   mNames := TSmartPaste.Missing(ATokens, ATree, ARange, AUses.Declaring, AUses.Namespaces);
-  AResult.AddPair('units', NamesJson(TSmartPaste.Certain(mNames)));
+  AResult.AddPair('units', TJsonBuild.Strings(TSmartPaste.Certain(mNames)));
   mChoices := TJSONArray.Create;
   for mItem in mNames do
   begin
@@ -84,27 +74,12 @@ begin
     begin
       mChoice := TJSONObject.Create;
       mChoice.AddPair('name', mItem.Name);
-      mChoice.AddPair('units', NamesJson(mItem.Units));
+      mChoice.AddPair('units', TJsonBuild.Strings(mItem.Units));
       mChoices.AddElement(mChoice);
     end;
   end;
   AResult.AddPair('choices', mChoices);
   AResult.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(ATokens, ARange.StartPos)));
-end;
-
-/// <summary>Zeichenketten aus AValues.</summary>
-function StringsOf(AValues: TJSONArray): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  for mValue in AValues do
-  begin
-    if mValue is TJSONString then
-    begin
-      Result := Result + [mValue.Value];
-    end;
-  end;
 end;
 
 /// <summary>WorkspaceEdit mit AEdits für die Datei AUri.</summary>
@@ -154,7 +129,7 @@ begin
   mTarget.InterfaceUses := AInterfaceUses;
   mTarget.Namespaces := AUses.Namespaces;
   mTarget.LineBreak := TTextLines.LineBreakOf(AText);
-  if TSmartPaste.UsesEdits(mTarget, StringsOf(TJSONArray(AArguments.Items[2])), mUses) then
+  if TSmartPaste.UsesEdits(mTarget, TJsonRead.Strings(TJSONArray(AArguments.Items[2])), mUses) then
   begin
     Result.AddPair('edit', WorkspaceEditJson(AUri, mUses.Edits));
   end
@@ -162,8 +137,8 @@ begin
   begin
     Result.AddPair('edit', TJSONNull.Create);
   end;
-  Result.AddPair('added', NamesJson(mUses.Added));
-  Result.AddPair('toImplementation', NamesJson(mUses.ToImplementation));
+  Result.AddPair('added', TJsonBuild.Strings(mUses.Added));
+  Result.AddPair('toImplementation', TJsonBuild.Strings(mUses.ToImplementation));
 end;
 
 initialization

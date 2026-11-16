@@ -140,7 +140,8 @@ uses
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.FreeFields,
   Atlas.Common.Lsp.InactiveRegions,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -794,18 +795,8 @@ begin
 end;
 
 function OnlyKinds(AParams: TJSONObject): TArray<string>;
-var
-  mOnly: TJSONArray;
-  mItem: TJSONValue;
 begin
-  Result := nil;
-  if AParams.TryGetValue<TJSONArray>('context.only', mOnly) then
-  begin
-    for mItem in mOnly do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
+  Result := TJsonRead.Strings(TJsonRead.Obj(AParams, 'context'), 'only');
 end;
 
 function TLspCodeActions.HandleCodeAction(const AParams: TJSONValue;

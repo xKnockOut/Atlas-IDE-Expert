@@ -66,7 +66,8 @@ uses
   System.DateUtils,
   System.JSON,
   Atlas.Core.Tracker.Contract.Files,
-  Atlas.Core.Tracker.Files;
+  Atlas.Core.Tracker.Files,
+  Atlas.Text.Json;
 
 function MemoryKey(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
 begin
@@ -100,17 +101,6 @@ begin
   if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
   begin
     Result := 0;
-  end;
-end;
-
-function LabelsJson(const ALabels: TArray<string>): TJSONArray;
-var
-  mText: string;
-begin
-  Result := TJSONArray.Create;
-  for mText in ALabels do
-  begin
-    Result.Add(mText);
   end;
 end;
 
@@ -168,23 +158,6 @@ begin
     mItem.AddPair('linkState', mLink.State);
     mItem.AddPair('resolved', TJSONBool.Create(mLink.Resolved));
     Result.AddElement(mItem);
-  end;
-end;
-
-function LabelsOf(AValue: TJSONValue): TArray<string>;
-var
-  mEntry: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mEntry in TJSONArray(AValue) do
-    begin
-      if mEntry is TJSONString then
-      begin
-        Result := Result + [TJSONString(mEntry).Value];
-      end;
-    end;
   end;
 end;
 
@@ -449,7 +422,7 @@ begin
     mRoot.AddPair('kind', ADetails.Kind);
     mRoot.AddPair('assignee', ADetails.Assignee);
     mRoot.AddPair('sprint', ADetails.Sprint);
-    mRoot.AddPair('labels', LabelsJson(ADetails.Labels));
+    mRoot.AddPair('labels', TJsonBuild.Strings(ADetails.Labels));
     mRoot.AddPair('created', IsoOf(ADetails.Created));
     mRoot.AddPair('updated', IsoOf(ADetails.Updated));
     mRoot.AddPair('description', ADetails.Description);
@@ -528,7 +501,7 @@ begin
       Exit;
     end;
     ReadFields(mRoot, ADetails);
-    ADetails.Labels := LabelsOf(mRoot.Values['labels']);
+    ADetails.Labels := TJsonRead.Strings(mRoot.Values['labels']);
     ADetails.Comments := CommentsOf(mRoot.Values['comments']);
     ADetails.Attachments := AttachmentsOf(mRoot.Values['attachments']);
     ADetails.Links := LinksOf(mRoot.Values['links']);

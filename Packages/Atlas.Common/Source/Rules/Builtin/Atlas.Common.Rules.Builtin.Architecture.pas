@@ -135,7 +135,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -194,25 +195,6 @@ const
     [TArchitectureRole.Contract, TArchitectureRole.Root],
     [TArchitectureRole.Contract, TArchitectureRole.Root, TArchitectureRole.Providers,
      TArchitectureRole.Adapters, TArchitectureRole.Composition, TArchitectureRole.Hosting]);
-
-function ReadStrings(const AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mList: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not AObject.TryGetValue<TJSONArray>(AName, mList) then
-  begin
-    Exit;
-  end;
-  for mItem in mList do
-  begin
-    if mItem is TJSONString then
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
 
 function MatchesAny(const APatterns: TArray<string>; const AName: string): Boolean;
 var
@@ -286,8 +268,8 @@ begin
       begin
         Continue;
       end;
-      mLayer.Deny := ReadStrings(TJSONObject(mItem), 'deny');
-      mLayer.Allow := ReadStrings(TJSONObject(mItem), 'allow');
+      mLayer.Deny := TJsonRead.Strings(TJSONObject(mItem), 'deny');
+      mLayer.Allow := TJsonRead.Strings(TJSONObject(mItem), 'allow');
       if mLayer.Deny <> nil then
       begin
         Result := Result + [mLayer];
@@ -490,11 +472,11 @@ begin
     begin
       Exit;
     end;
-    Result.Prefixes := ReadStrings(TJSONObject(mValue), 'prefixes');
-    Result.Allow := ReadStrings(TJSONObject(mValue), 'allow');
+    Result.Prefixes := TJsonRead.Strings(TJSONObject(mValue), 'prefixes');
+    Result.Allow := TJsonRead.Strings(TJSONObject(mValue), 'allow');
     if TJSONObject(mValue).GetValue('hostRoles') <> nil then
     begin
-      Result.HostRoles := ReadStrings(TJSONObject(mValue), 'hostRoles');
+      Result.HostRoles := TJsonRead.Strings(TJSONObject(mValue), 'hostRoles');
     end;
   finally
     mValue.Free;

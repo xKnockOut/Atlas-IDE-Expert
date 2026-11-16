@@ -193,21 +193,8 @@ end;
 
 /// <summary>Texte der Einträge in roots von AObject.</summary>
 function RootsOf(AObject: TJSONObject): TArray<string>;
-var
-  mItem: TJSONValue;
 begin
-  Result := nil;
-  if not (AObject.GetValue('roots') is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AObject.GetValue('roots')) do
-  begin
-    if mItem is TJSONString then
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
+  Result := TJsonRead.Strings(AObject, 'roots');
 end;
 
 /// <summary>Laufende Anfragen und Fortschritt aus den Unterobjekten running und progress.</summary>

@@ -110,7 +110,8 @@ implementation
 
 uses
   Atlas.Core.Debug.Visualizers.Format,
-  Atlas.Core.Settings.VisualizerKinds;
+  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Text.Json;
 
 { TAtlasDisplayRule }
 
@@ -214,30 +215,6 @@ begin
   MapName(LowerCase(ShortName(mRule.TypeName)), mIndex);
 end;
 
-/// <summary>Namen aus "children": nur nicht leere Zeichenketten.</summary>
-function ChildrenOf(AChildren: TJSONValue): TArray<string>;
-var
-  mChild: TJSONValue;
-  mText: string;
-begin
-  Result := nil;
-  if not (AChildren is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mChild in TJSONArray(AChildren) do
-  begin
-    if mChild is TJSONString then
-    begin
-      mText := Trim(mChild.Value);
-      if mText <> '' then
-      begin
-        Result := Result + [mText];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Eine Regel aus einem Eintrag von "rules".</summary>
 function RuleOf(AItem: TJSONObject): TAtlasDisplayRule;
 var
@@ -264,7 +241,7 @@ begin
   begin
     Result.Origin := TDebugDisplayOrigin.Comment;
   end;
-  Result.Children := ChildrenOf(AItem.GetValue('children'));
+  Result.Children := TJsonRead.TrimmedStrings(AItem.GetValue('children'));
 end;
 
 procedure TAtlasDisplayRules.AddRules(ARules: TJSONValue);

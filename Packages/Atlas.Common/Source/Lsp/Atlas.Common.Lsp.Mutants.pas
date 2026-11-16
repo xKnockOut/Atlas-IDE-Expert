@@ -50,7 +50,8 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Mutation.Generator,
   Atlas.Common.Mutation.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -64,26 +65,6 @@ const
     (De: 'Unbekannte Operatoren: %s'; En: 'Unknown operators: %s'));
 
 {$SCOPEDENUMS OFF}
-
-function StringsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue: TJSONValue;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(mValue).Count - 1 do
-  begin
-    if TJSONArray(mValue).Items[mIndex] is TJSONString then
-    begin
-      Result := Result + [TJSONArray(mValue).Items[mIndex].Value];
-    end;
-  end;
-end;
 
 function LineOf(AObject: TJSONObject; const AName: string): Integer;
 var
@@ -156,7 +137,7 @@ begin
   begin
     AOptions.Routine := Trim(mObject.GetValue('routine').Value);
   end;
-  mIds := StringsOf(mObject, 'operators');
+  mIds := TJsonRead.Strings(mObject, 'operators');
   if mIds <> nil then
   begin
     AOptions.Operators := TMutation.ParseOperators(mIds, mUnknown);
@@ -166,7 +147,7 @@ begin
       Exit(False);
     end;
   end;
-  AOptions.Defines := StringsOf(mObject, 'defines');
+  AOptions.Defines := TJsonRead.Strings(mObject, 'defines');
   AOptions.FirstLine := LineOf(mObject, 'firstLine');
   AOptions.LastLine := LineOf(mObject, 'lastLine');
 end;

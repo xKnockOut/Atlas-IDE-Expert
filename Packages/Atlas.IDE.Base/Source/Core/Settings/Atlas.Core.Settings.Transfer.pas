@@ -611,7 +611,7 @@ begin
         end;
       end;
   else
-    Result := TAtlasJsonText.Quote(AStore.ReadString(AEntry.Name, ''));
+    Result := TJsonText.Quote(AStore.ReadString(AEntry.Name, ''));
   end;
 end;
 
@@ -985,28 +985,12 @@ begin
   Result := ResetAreas(ACatalog, AState, ACatalog.AreaIds);
 end;
 
-function JsonList(const AItems: TArray<string>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '[';
-  for mIndex := 0 to High(AItems) do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + TAtlasJsonText.Quote(AItems[mIndex]);
-  end;
-  Result := Result + ']';
-end;
-
 /// <summary>JSON-Text eines Werts; Strings über Quote (Umlaute bleiben lesbar).</summary>
 function ValueText(AValue: TJSONValue): string;
 begin
   if IsText(AValue) then
   begin
-    Result := TAtlasJsonText.Quote(TJSONString(AValue).Value);
+    Result := TJsonText.Quote(TJSONString(AValue).Value);
   end
   else
   begin
@@ -1058,7 +1042,7 @@ var
   mMapped: TJSONValue;
   mHasUser: Boolean;
 begin
-  ALine := '    ' + TAtlasJsonText.Quote(AEntry.Key) + ': ';
+  ALine := '    ' + TJsonText.Quote(AEntry.Key) + ': ';
   if AOptions.Backup then
   begin
     ALine := ALine + ValueText(AValue);
@@ -1069,7 +1053,7 @@ begin
     Result := AOptions.Secrets <> smOmit;
     if Result then
     begin
-      ALine := ALine + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder);
+      ALine := ALine + TJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder);
       AResult.Placeholders := AResult.Placeholders + [AEntry.Key];
     end
     else
@@ -1101,15 +1085,15 @@ var
   mIndex: Integer;
 begin
   Result := '{' + #10 +
-    '  "format": ' + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cFormatName) + ',' + #10 +
+    '  "format": ' + TJsonText.Quote(TAtlasSettingsTransfer.cFormatName) + ',' + #10 +
     '  "formatVersion": ' + IntToStr(TAtlasSettingsTransfer.cFormatVersion) + ',' + #10 +
     '  "schemaVersion": ' + IntToStr(ACatalog.Version) + ',' + #10 +
-    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.cVersion) + ',' + #10;
+    '  "atlasVersion": ' + TJsonText.Quote(TAtlasPluginVersion.cVersion) + ',' + #10;
   if ABackup then
   begin
     Result := Result + '  "backup": true,' + #10;
   end;
-  Result := Result + '  "areas": ' + JsonList(AAreas) + ',' + #10 + '  "settings": {';
+  Result := Result + '  "areas": ' + TJsonText.List(AAreas) + ',' + #10 + '  "settings": {';
   for mIndex := 0 to High(ALines) do
   begin
     if mIndex > 0 then
@@ -1189,24 +1173,6 @@ begin
   end;
 end;
 
-function TextItems(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if IsText(mItem) then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
-end;
-
 procedure ReadFileHeader(ARoot: TJSONObject; var AFile: TAtlasSettingsFile);
 begin
   AFile.FormatVersion := TJsonRead.Int(ARoot, 'formatVersion');
@@ -1218,7 +1184,7 @@ begin
   AFile.DescriptionEn := StringField(ARoot, 'descriptionEn');
   AFile.Mode := StringField(ARoot, 'mode');
   AFile.Backup := IsTrue(ARoot.GetValue('backup'));
-  AFile.Areas := TextItems(ARoot.GetValue('areas'));
+  AFile.Areas := TJsonRead.Strings(ARoot.GetValue('areas'));
 end;
 
 /// <summary>Grund, warum ARoot keine Exportdatei ist; '' wenn sie eine ist.</summary>
@@ -1435,7 +1401,7 @@ begin
   begin
     AItem.Status := isSkipped;
   end
-  else if TAtlasJsonValues.Same(AItem.NewJson, TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder)) then
+  else if TAtlasJsonValues.Same(AItem.NewJson, TJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder)) then
   begin
     AItem.Status := isSecret;
   end

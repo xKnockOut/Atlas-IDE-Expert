@@ -78,6 +78,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Text.Json,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -357,22 +358,6 @@ begin
   Result := True;
 end;
 
-function StringsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if not AObject.TryGetValue<TJSONArray>(AName, mArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    Result := Result + [mArray.Items[mIndex].Value];
-  end;
-end;
-
 class function TLspBoundaryTests.CasesFromJson(AArray: TJSONArray): TArray<TLspBoundaryTestCase>;
 var
   mIndex: Integer;
@@ -396,7 +381,7 @@ begin
     begin
       mCase.Expected := '';
     end;
-    mCase.Values := StringsOf(mObject, 'values');
+    mCase.Values := TJsonRead.Strings(mObject, 'values');
     Result := Result + [mCase];
   end;
 end;

@@ -73,7 +73,8 @@ uses
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Lsp.ApplyEdit,
   System.Generics.Collections,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -98,24 +99,6 @@ begin
   else
   begin
     Result := AText;
-  end;
-end;
-
-function StringsOf(const AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
-    begin
-      Result := Result + [Trim(mItem.Value)];
-    end;
   end;
 end;
 
@@ -216,7 +199,7 @@ begin
       cTexts[TBulkFixText.ArgumentsRulesFilesMinConfidenceHigh].Text);
   end;
   mArguments := TJSONObject(AArguments.Items[0]);
-  mFixRules := StringsOf(mArguments.GetValue('rules'));
+  mFixRules := TJsonRead.TrimmedStrings(mArguments.GetValue('rules'));
   if mFixRules = nil then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBulkFixText.RulesMissingRuleIdsOr].Text);
@@ -227,7 +210,7 @@ begin
     mRequested := mArguments.GetValue('minConfidence').Value;
   end;
   mResults := nil;
-  for mName in StringsOf(mArguments.GetValue('files')) do
+  for mName in TJsonRead.TrimmedStrings(mArguments.GetValue('files')) do
   begin
     if RunFile(PathOf(mName), mFixRules, mRequested, mResult) then
     begin

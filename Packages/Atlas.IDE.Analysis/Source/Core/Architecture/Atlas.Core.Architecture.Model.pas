@@ -583,24 +583,6 @@ begin
   end;
 end;
 
-function NamesOf(const AItems: TJSONArray): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if AItems = nil then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to AItems.Count - 1 do
-  begin
-    if AItems.Items[mIndex] is TJSONString then
-    begin
-      Result := Result + [AItems.Items[mIndex].Value];
-    end;
-  end;
-end;
-
 function ChangeOf(const AModel: TAtlasArchitectureModel; const AText, AUnit: string): TAtlasArchChange;
 begin
   Result := Default(TAtlasArchChange);
@@ -614,7 +596,7 @@ function CycleChange(const AModel: TAtlasArchitectureModel; const AItem: TJSONOb
 var
   mMembers: TArray<string>;
 begin
-  mMembers := NamesOf(TJsonRead.Items(AItem, 'units'));
+  mMembers := TJsonRead.Strings(AItem, 'units');
   Result := Length(mMembers) > 0;
   if not Result then
   begin
@@ -692,7 +674,7 @@ begin
   end;
   if AKind in [TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits] then
   begin
-    for mName in NamesOf(mItems) do
+    for mName in TJsonRead.Strings(mItems) do
     begin
       Result := Result + [ChangeOf(AModel, mName, mName)];
     end;
@@ -782,7 +764,7 @@ begin
     Result.BaselineResolution := 1;
   end;
   Result.Resolution := ResolutionOf(mData);
-  Result.Failed := NamesOf(TJsonRead.Items(mData, 'failed'));
+  Result.Failed := TJsonRead.Strings(mData, 'failed');
   for mKind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
   begin
     mSection.Kind := mKind;

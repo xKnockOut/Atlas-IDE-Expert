@@ -71,7 +71,8 @@ uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
   System.SysUtils,
   System.StrUtils,
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 function MatchesWildcard(const AName, APattern: string): Boolean;
 var
@@ -112,7 +113,7 @@ end;
 
 function IgnorePatterns(const AOptions: string): TArray<string>;
 var
-  mValue, mItems, mItem: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AOptions = '' then
@@ -125,17 +126,7 @@ begin
     begin
       Exit;
     end;
-    mItems := TJSONObject(mValue).GetValue('ignore');
-    if mItems is TJSONArray then
-    begin
-      for mItem in TJSONArray(mItems) do
-      begin
-        if mItem is TJSONString then
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
-    end;
+    Result := TJsonRead.Strings(TJSONObject(mValue), 'ignore');
   finally
     mValue.Free;
   end;

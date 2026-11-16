@@ -73,6 +73,7 @@ implementation
 uses
   System.Generics.Collections,
   System.StrUtils,
+  Atlas.Text.Json,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
@@ -483,21 +484,6 @@ begin
       begin
         Result := Result + [TJSONNumber(mItem).AsInt];
       end;
-    end;
-  end;
-end;
-
-function Names(AObject: TJSONObject; const AKey: string): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      Result := Result + [Trim(mItem.Value)];
     end;
   end;
 end;
@@ -1127,7 +1113,7 @@ begin
   FUp := IsUp(FContext.Direction);
   FFound := Info(FTree, FText, APosition);
   ReadRequest(mBody);
-  ChooseTargets(Names(mBody, 'targets'));
+  ChooseTargets(TJsonRead.TrimmedStrings(mBody, 'targets'));
   FSource := TClassLayout.Read(FTree, FText, TClassLayout.DeclNamed(FTree, FFound.ClassName));
   FFiles.Add(FFileName, FText);
   for mRef in FTargets do

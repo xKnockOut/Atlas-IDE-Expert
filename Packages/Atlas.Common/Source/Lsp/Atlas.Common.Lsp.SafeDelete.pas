@@ -105,7 +105,8 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.WorkspaceChanges,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -990,17 +991,6 @@ begin
   Result.AddPair('kind', AKind);
 end;
 
-function StringsJson(const AItems: TArray<string>): TJSONArray;
-var
-  mItem: string;
-begin
-  Result := TJSONArray.Create;
-  for mItem in AItems do
-  begin
-    Result.Add(mItem);
-  end;
-end;
-
 class function TLspSafeDelete.Prepare(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
   AText: string; const APosition: TTextPosition; const AContext: TSafeDeleteContext): TJSONObject;
 var
@@ -1035,9 +1025,9 @@ begin
     Result.AddPair('title', TSafeDelete.Title(mPlan.Target));
     Result.AddPair('usages', mUsages);
     Result.AddPair('overrides', mOverrides);
-    Result.AddPair('cascade', StringsJson(mCascade));
+    Result.AddPair('cascade', TJsonBuild.Strings(mCascade));
     Result.AddPair('usesFiles', TJSONNumber.Create(Length(mPlan.UsesFiles)));
-    Result.AddPair('warnings', StringsJson(mPlan.Warnings));
+    Result.AddPair('warnings', TJsonBuild.Strings(mPlan.Warnings));
   finally
     mPlan.Free;
   end;

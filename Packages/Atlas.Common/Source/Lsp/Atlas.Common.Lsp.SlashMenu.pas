@@ -94,7 +94,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -161,17 +162,6 @@ begin
     begin
       Exit(True);
     end;
-  end;
-end;
-
-function NamesToJson(const ANames: TArray<string>): TJSONArray;
-var
-  mName: string;
-begin
-  Result := TJSONArray.Create;
-  for mName in ANames do
-  begin
-    Result.Add(mName);
   end;
 end;
 
@@ -321,7 +311,7 @@ begin
   Result := TJSONObject.Create;
   try
     TJSONObject(Result).AddPair('enabled', TJSONBool.Create(mIsEnabled));
-    TJSONObject(Result).AddPair('places', NamesToJson(TSlashMenu.PlaceNames(mPlaces)));
+    TJSONObject(Result).AddPair('places', TJsonBuild.Strings(TSlashMenu.PlaceNames(mPlaces)));
     mCommands := TJSONArray.Create;
     TJSONObject(Result).AddPair('commands', mCommands);
     if not mIsEnabled then
@@ -379,9 +369,9 @@ begin
         mNames := mNames + [mItem.Container + '.' + mItem.Name];
       end;
     end;
-    Exit(NamesToJson(mNames));
+    Exit(TJsonBuild.Strings(mNames));
   end;
-  Result := NamesToJson(TSlashMenu.Choices(mDocument.Text, mSpot, StringAt(AArguments, 3), FIndex));
+  Result := TJsonBuild.Strings(TSlashMenu.Choices(mDocument.Text, mSpot, StringAt(AArguments, 3), FIndex));
 end;
 
 function TLspSlashMenu.ExecuteRun(const AArguments: TJSONArray): TJSONValue;

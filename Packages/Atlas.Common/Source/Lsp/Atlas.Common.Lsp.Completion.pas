@@ -152,7 +152,8 @@ uses
   Atlas.Common.Lsp.Completion.Details,
   Atlas.Common.Lsp.Completion.HiddenMembers,
   Atlas.Common.Diagnostics.RequestScope,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
   /// <summary>Texte der Vervollständigung in beiden Sprachen (#1458).</summary>
@@ -167,17 +168,8 @@ const
 
 /// <summary>Gebundene Typparameter (#450) aus data.bindings von AData.</summary>
 function BindingsOf(AData: TJSONObject): TArray<string>;
-var
-  mBinding: TJSONValue;
 begin
-  Result := nil;
-  if AData.GetValue('bindings') is TJSONArray then
-  begin
-    for mBinding in TJSONArray(AData.GetValue('bindings')) do
-    begin
-      Result := Result + [mBinding.Value];
-    end;
-  end;
+  Result := TJsonRead.Strings(AData, 'bindings');
 end;
 
 /// <summary>Datei und Position aus data von AItem; False ohne.</summary>

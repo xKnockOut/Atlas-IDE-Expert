@@ -342,23 +342,8 @@ begin
 end;
 
 function TagsJson(AObject: TJSONObject): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
 begin
-  Result := nil;
-  mValue := AObject.GetValue(cKeyTags);
-  if not (mValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(mValue) do
-  begin
-    // Zahlen erben in Delphi 12 und FPC noch von TJSONString: ausdrücklich ausschließen.
-    if (mItem is TJSONString) and not (mItem is TJSONNumber) then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
+  Result := TJsonRead.Strings(AObject, cKeyTags);
 end;
 
 procedure ParseEntry(AItem: TJSONValue; var ATags: TAtlasBreakpointTags);

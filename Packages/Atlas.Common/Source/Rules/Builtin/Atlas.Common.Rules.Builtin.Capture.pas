@@ -75,6 +75,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineLocals,
   Atlas.Common.Rules.Derived,
+  Atlas.Text.Json,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -116,7 +117,7 @@ type
 function DeferredApis(const AOptions: string): TArray<string>;
 var
   mIndex: Integer;
-  mValue, mItems, mItem: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   for mIndex := Low(TCapturedLoopVariableRule.cDefaultDeferredApis) to
@@ -134,17 +135,7 @@ begin
     begin
       Exit;
     end;
-    mItems := TJSONObject(mValue).GetValue('deferredApis');
-    if mItems is TJSONArray then
-    begin
-      for mItem in TJSONArray(mItems) do
-      begin
-        if mItem is TJSONString then
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
-    end;
+    Result := Result + TJsonRead.Strings(TJSONObject(mValue), 'deferredApis');
   finally
     mValue.Free;
   end;

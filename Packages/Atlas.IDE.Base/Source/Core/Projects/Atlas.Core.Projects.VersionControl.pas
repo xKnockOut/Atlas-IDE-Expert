@@ -163,18 +163,6 @@ end;
 
 { TAtlasVcsProjects }
 
-function Quoted(const AText: string): string;
-var
-  mValue: TJSONString;
-begin
-  mValue := TJSONString.Create(AText);
-  try
-    Result := mValue.ToJSON;
-  finally
-    mValue.Free;
-  end;
-end;
-
 function MatchesOf(const AItems: TArray<TAtlasVcsProjectMapping>): TArray<string>;
 var
   mIndex: Integer;
@@ -294,10 +282,11 @@ begin
     begin
       Continue;
     end;
-    mText := '{"match": ' + Quoted(mItem.Match) + ', "provider": ' + Quoted(ProviderText(mItem.Provider));
+    mText := '{"match": ' + TJsonText.Quote(mItem.Match) + ', "provider": ' +
+      TJsonText.Quote(ProviderText(mItem.Provider));
     if mItem.MainBranch <> '' then
     begin
-      mText := mText + ', "mainBranch": ' + Quoted(mItem.MainBranch);
+      mText := mText + ', "mainBranch": ' + TJsonText.Quote(mItem.MainBranch);
     end;
     mParts := mParts + [mText + '}'];
   end;

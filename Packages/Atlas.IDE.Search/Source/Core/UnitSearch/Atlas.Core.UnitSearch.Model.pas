@@ -193,7 +193,8 @@ uses
   System.StrUtils,
   System.DateUtils,
   System.Generics.Defaults,
-  Atlas.Core.Completion.Matching;
+  Atlas.Core.Completion.Matching,
+  Atlas.Text.Json;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
@@ -406,22 +407,6 @@ end;
 
 { TAtlasUnitPreview }
 
-/// <summary>Texte aller Einträge des Arrays AName (leer ohne).</summary>
-function ValuesOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mItems: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AObject.TryGetValue<TJSONArray>(AName, mItems) then
-  begin
-    for mItem in mItems do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 /// <summary>Zeitpunkt aus "modified" (ISO 8601); 0 ohne oder bei ungültigem Wert.</summary>
 function ModifiedOf(AObject: TJSONObject): TDateTime;
 var
@@ -538,12 +523,12 @@ begin
   begin
     Result.TypeCount := mNumber;
   end;
-  Result.Uses_ := ValuesOf(mAnswer, 'uses');
+  Result.Uses_ := TJsonRead.Strings(mAnswer, 'uses');
   if mAnswer.TryGetValue<Integer>('usedBy', mNumber) then
   begin
     Result.UsedBy := mNumber;
   end;
-  Result.UsedByUnits := ValuesOf(mAnswer, 'usedByUnits');
+  Result.UsedByUnits := TJsonRead.Strings(mAnswer, 'usedByUnits');
   if mAnswer.TryGetValue<TJSONObject>('form', mForm) then
   begin
     ReadForm(mForm, Result);
@@ -696,7 +681,7 @@ begin
     TAtlasUnitSearch.KindFromText(mText, Result.Kind);
   end;
   AItem.TryGetValue<string>('caption', Result.Caption);
-  Result.Projects := ValuesOf(AItem, 'projects');
+  Result.Projects := TJsonRead.Strings(AItem, 'projects');
   Result.Project := ProjectOf(Result, AActiveProject);
   mText := '';
   AItem.TryGetValue<string>('origin', mText);

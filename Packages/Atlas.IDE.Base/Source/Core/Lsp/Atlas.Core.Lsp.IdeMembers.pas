@@ -78,6 +78,9 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Json;
+
 { TAtlasIdeParam }
 
 class function TAtlasIdeParam.Make(const AName, ATypeName, AFlag: string): TAtlasIdeParam;
@@ -95,23 +98,8 @@ begin
 end;
 
 class function TAtlasIdeMembers.WantedUnits(const AParams: TJSONValue): TArray<string>;
-var
-  mUnits: TJSONArray;
-  mValue: TJSONValue;
 begin
-  Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('units', mUnits)) then
-  begin
-    Exit;
-  end;
-  for mValue in mUnits do
-  begin
-    // TJSONNumber erbt von TJSONString.
-    if (mValue is TJSONString) and not (mValue is TJSONNumber) and (Trim(mValue.Value) <> '') then
-    begin
-      Result := Result + [Trim(mValue.Value)];
-    end;
-  end;
+  Result := TJsonRead.TrimmedStrings(TJsonRead.AsObject(AParams), 'units');
 end;
 
 /// <summary>Liste "params" bzw. "index".</summary>
@@ -165,17 +153,6 @@ begin
   end;
 end;
 
-function StringsJson(const AValues: TArray<string>): TJSONArray;
-var
-  mValue: string;
-begin
-  Result := TJSONArray.Create;
-  for mValue in AValues do
-  begin
-    Result.Add(mValue);
-  end;
-end;
-
 function DetailJson(const ADetail: TAtlasIdeTypeDetail): TJSONObject;
 var
   mMembers: TJSONArray;
@@ -190,11 +167,11 @@ begin
   end;
   if Length(ADetail.Interfaces) > 0 then
   begin
-    Result.AddPair('interfaces', StringsJson(ADetail.Interfaces));
+    Result.AddPair('interfaces', TJsonBuild.Strings(ADetail.Interfaces));
   end;
   if Length(ADetail.Values) > 0 then
   begin
-    Result.AddPair('values', StringsJson(ADetail.Values));
+    Result.AddPair('values', TJsonBuild.Strings(ADetail.Values));
   end;
   if Length(ADetail.Members) > 0 then
   begin

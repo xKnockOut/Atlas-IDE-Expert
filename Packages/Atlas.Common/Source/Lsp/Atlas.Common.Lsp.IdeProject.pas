@@ -120,29 +120,16 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Text.Json;
 
 const
   cNamingKeys: array[TNamingKind] of string = ('field', 'parameter', 'local');
 
 function StringsOf(AObject: TJSONObject; const AName: string; out AFound: Boolean): TArray<string>;
-var
-  mItems: TJSONArray;
-  mItem: TJSONValue;
 begin
-  Result := nil;
-  AFound := AObject.TryGetValue<TJSONArray>(AName, mItems);
-  if not AFound then
-  begin
-    Exit;
-  end;
-  for mItem in mItems do
-  begin
-    if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
-    begin
-      Result := Result + [Trim(mItem.Value)];
-    end;
-  end;
+  AFound := TJsonRead.Items(AObject, AName) <> nil;
+  Result := TJsonRead.TrimmedStrings(AObject, AName);
 end;
 
 function WithTarget(const AVariables: TArray<TPair<string, string>>; const AProject: TProjectInfo):

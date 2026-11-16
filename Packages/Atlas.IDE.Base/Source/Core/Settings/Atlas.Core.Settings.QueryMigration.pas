@@ -99,8 +99,8 @@ begin
   begin
     Exit;
   end;
-  mParts := TArray<string>.Create('{"name": ' + TAtlasJsonText.Quote(cStandardName) + ', "query": ' +
-    TAtlasJsonText.Quote(mQuery) + '}');
+  mParts := TArray<string>.Create('{"name": ' + TJsonText.Quote(cStandardName) + ', "query": ' +
+    TJsonText.Quote(mQuery) + '}');
   mRoot := nil;
   if Trim(AJson) <> '' then
   begin

@@ -137,8 +137,8 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.MapTemplate,
   Atlas.Common.Architecture.MapTemplateEn,
-  Atlas.Common.Metrics.Report,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
@@ -275,11 +275,6 @@ const
 
 const
   cLineBreak = #13#10;
-
-function JsonText(const AText: string): string;
-begin
-  Result := TMetricsReport.JsonString(AText);
-end;
 
 function JsonNumber(AValue: Double): string;
 begin
@@ -639,10 +634,10 @@ end;
 function EdgeJson(const AOverview: TArchitectureOverview; const AEdge: TOverviewEdge): string;
 begin
   Result := '"source":' + IntToStr(AEdge.Source) + ',"target":' + IntToStr(AEdge.Target) + ',"section":' +
-    JsonText(TArchitectureReport.SectionCaption(IsInterface(AEdge)));
+    TJsonText.Quote(TArchitectureReport.SectionCaption(IsInterface(AEdge)));
   if AEdge.Located then
   begin
-    Result := Result + ',"file":' + JsonText(AOverview.RelativePath(AEdge.Location.FileName)) + ',"line":' +
+    Result := Result + ',"file":' + TJsonText.Quote(AOverview.RelativePath(AEdge.Location.FileName)) + ',"line":' +
       IntToStr(AEdge.Location.Range.StartPos.Line + 1) + ',"character":' +
       IntToStr(AEdge.Location.Range.StartPos.Character + 1);
   end;
@@ -734,23 +729,25 @@ procedure AppendJsonHeader(ABuilder: TStringBuilder; const AOverview: TArchitect
 var
   mIndex: Integer;
 begin
-  ABuilder.Append('{"format":').Append(TArchitectureReport.cFormat).Append(',"title":').Append(JsonText(AOverview.Title))
+  ABuilder.Append('{"format":').Append(TArchitectureReport.cFormat)
+    .Append(',"title":').Append(TJsonText.Quote(AOverview.Title))
     .Append(',"created":')
-    .Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.Created, TFormatSettings.Invariant)))
+    .Append(TJsonText.Quote(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.Created, TFormatSettings.Invariant)))
     .Append(',"generation":').Append(IntToStr(AOverview.Generation))
     .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
-    .Append(',"scope":').Append(JsonText(AOverview.Scope))
+    .Append(',"scope":').Append(TJsonText.Quote(AOverview.Scope))
     .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
     .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution))
     .Append(',"maxShare":').Append(JsonNumber(AOverview.Grouping.Clamped.MaxShare))
     .Append(',"minCohesion":').Append(JsonNumber(AOverview.Grouping.Clamped.MinCohesion))
-    .Append(',"foundations":').Append(JsonText(TArchitectureGrouping.FoundationsText(AOverview.Grouping.Foundations)))
+    .Append(',"foundations":')
+    .Append(TJsonText.Quote(TArchitectureGrouping.FoundationsText(AOverview.Grouping.Foundations)))
     .Append('}')
     .Append(',"excludes":[');
   for mIndex := 0 to High(AOverview.Excludes) do
   begin
     AppendComma(ABuilder, mIndex);
-    ABuilder.Append(JsonText(AOverview.Excludes[mIndex]));
+    ABuilder.Append(TJsonText.Quote(AOverview.Excludes[mIndex]));
   end;
   ABuilder.Append('],"summary":{"units":').Append(Length(AOverview.Units))
     .Append(',"edges":').Append(AOverview.EdgeCount)
@@ -761,13 +758,14 @@ begin
     .Append(',"outliers":').Append(Length(AOverview.Outliers)).Append('}');
   if AOverview.ShowsAssignment then
   begin
-    ABuilder.Append(',"explanation":').Append(JsonText(TArchitectureReport.GroupingExplanation(AOverview.Grouping)));
+    ABuilder.Append(',"explanation":')
+      .Append(TJsonText.Quote(TArchitectureReport.GroupingExplanation(AOverview.Grouping)));
   end;
   if AOverview.IsAligned then
   begin
-    ABuilder.Append(',"aligned":{"source":').Append(JsonText(AOverview.AlignedSource))
+    ABuilder.Append(',"aligned":{"source":').Append(TJsonText.Quote(AOverview.AlignedSource))
       .Append(',"at":')
-      .Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt, TFormatSettings.Invariant)))
+      .Append(TJsonText.Quote(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt, TFormatSettings.Invariant)))
       .Append(',"kept":').Append(AOverview.AlignedKept).Append('}');
   end;
 end;
@@ -783,13 +781,13 @@ begin
   begin
     mItem := AOverview.Units[mIndex];
     AppendComma(ABuilder, mIndex);
-    ABuilder.Append(cLineBreak).Append('{"name":').Append(JsonText(mItem.Name))
-      .Append(',"file":').Append(JsonText(AOverview.RelativePath(mItem.FileName)))
+    ABuilder.Append(cLineBreak).Append('{"name":').Append(TJsonText.Quote(mItem.Name))
+      .Append(',"file":').Append(TJsonText.Quote(AOverview.RelativePath(mItem.FileName)))
       .Append(',"subsystem":').Append(mItem.Subsystem)
       .Append(',"direct":').Append(mItem.Direct)
       .Append(',"total":').Append(mItem.Total)
       .Append(',"uses":').Append(mItem.Uses_)
-      .Append(',"role":').Append(JsonText(RoleName(mItem.Role)))
+      .Append(',"role":').Append(TJsonText.Quote(RoleName(mItem.Role)))
       .Append(',"library":').Append(JsonBool(mItem.Library_));
     if mIndex < Length(ALayout.Units) then
     begin
@@ -835,7 +833,7 @@ end;
 
 procedure AppendJsonSubsystem(ABuilder: TStringBuilder; const ASubsystem: TOverviewSubsystem);
 begin
-  ABuilder.Append(cLineBreak).Append('{"name":').Append(JsonText(ASubsystem.Name))
+  ABuilder.Append(cLineBreak).Append('{"name":').Append(TJsonText.Quote(ASubsystem.Name))
     .Append(',"units":').Append(JsonInts(ASubsystem.Units))
     .Append(',"central":').Append(ASubsystem.Central)
     .Append(',"inner":').Append(ASubsystem.InnerEdges)
@@ -850,7 +848,7 @@ begin
   end;
   if ASubsystem.Parent <> '' then
   begin
-    ABuilder.Append(',"parent":').Append(JsonText(ASubsystem.Parent));
+    ABuilder.Append(',"parent":').Append(TJsonText.Quote(ASubsystem.Parent));
   end;
 end;
 
