@@ -28,8 +28,10 @@
 // übrigen nicht ab. Nach geänderten Einstellungen meldet
 // Rebind die Bindung neu an. Der Befehl läuft nach der Tastenverarbeitung
 // (ForceQueue), nicht in der Bindung selbst. Ausnahme sind Befehle mit
-// Rückfall (AddAttemptKey): Sie laufen sofort, und ohne Treffer geht die
-// Taste an die nächste Bindung (krNextProc), beim Wechsel Deklaration ⇄
+// Rückfall (AddAttemptKey): Sie laufen sofort, und ohne Treffer führt die
+// Bindung die Aktion der IDE mit dieser Taste aus (F9 Fortsetzen, Strg+F2
+// Programm beenden; Atlas.Core.Commands.KeyFallback); ohne solche Aktion geht
+// die Taste an die nächste Bindung (krNextProc), beim Wechsel Deklaration ⇄
 // Implementierung also an die Klassennavigation der IDE. F3 und Umschalt+F3
 // suchen eine einzeilige Markierung vorwärts bzw. rückwärts; ohne Markierung
 // bleibt es bei „Erneut suchen“ der IDE. Strg+. (HideElementKey, #628) öffnet
@@ -80,7 +82,10 @@ implementation
 
 uses
   System.SysUtils,
+  System.Actions,
   Winapi.Windows,
+  Vcl.ActnList,
+  Atlas.Core.Commands.KeyFallback,
   Atlas.Core.Commands.KeyStroke,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -132,6 +137,63 @@ begin
     end;
 end;
 
+/// <summary>Aktionen der IDE samt ihrer Kürzel für den Rückfall; AList hält die Aktion je Eintrag.</summary>
+function FallbackActions(const AServices: INTAServices;
+  out AList: TArray<TCustomAction>): TArray<TAtlasFallbackAction>;
+var
+  mIndex, mCount, mSecondary: Integer;
+  mAction: TCustomAction;
+begin
+  Result := nil;
+  SetLength(Result, AServices.ActionList.ActionCount);
+  SetLength(AList, Length(Result));
+  mCount := 0;
+  for mIndex := 0 to AServices.ActionList.ActionCount - 1 do
+  begin
+    if AServices.ActionList.Actions[mIndex] is TCustomAction then
+    begin
+      mAction := TCustomAction(AServices.ActionList.Actions[mIndex]);
+      AList[mCount] := mAction;
+      Result[mCount].Category := mAction.Category;
+      SetLength(Result[mCount].ShortCuts, mAction.SecondaryShortCuts.Count + 1);
+      Result[mCount].ShortCuts[0] := mAction.ShortCut;
+      for mSecondary := 0 to mAction.SecondaryShortCuts.Count - 1 do
+      begin
+        Result[mCount].ShortCuts[mSecondary + 1] := mAction.SecondaryShortCuts.ShortCuts[mSecondary];
+      end;
+      Inc(mCount);
+    end;
+  end;
+  SetLength(Result, mCount);
+  SetLength(AList, mCount);
+end;
+
+/// <summary>Führt die erste freigegebene Aktion der IDE mit der Taste AKey aus (Rückfall einer Atlas-Taste ohne
+/// Treffer); False ohne solche Aktion.</summary>
+function RunIdeAction(AKey: TShortCut): Boolean;
+var
+  mServices: INTAServices;
+  mList: TArray<TCustomAction>;
+  mActions: TArray<TAtlasFallbackAction>;
+  mIndex: Integer;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+  begin
+    Exit;
+  end;
+  mActions := FallbackActions(mServices, mList);
+  for mIndex in TAtlasKeyFallback.Candidates(mActions, AKey) do
+  begin
+    mList[mIndex].Update;
+    if mList[mIndex].Enabled then
+    begin
+      mList[mIndex].Execute;
+      Exit(True);
+    end;
+  end;
+end;
+
 { TAtlasIdeEditorKeys.TBinding }
 
 procedure TAtlasIdeEditorKeys.TBinding.Pressed(const Context: IOTAKeyContext; KeyCode: TShortCut;
@@ -168,7 +230,8 @@ begin
           begin
             mDone := mAttempt();
           end);
-        if mDone then
+        // Ohne Treffer zuerst die Aktion der IDE (F9, Strg+F2): krNextProc erreicht nur Tastaturbindungen.
+        if mDone or RunIdeAction(KeyCode) then
         begin
           BindingResult := krHandled;
         end
