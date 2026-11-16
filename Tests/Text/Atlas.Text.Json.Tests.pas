@@ -372,11 +372,6 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TJsonTextTests);
-  TDUnitX.RegisterTestFixture(TJsonBuildTests);
-  TDUnitX.RegisterTestFixture(TJsonReadTests);
-
 procedure TJsonReadTests.IsStringRejectsNumbers;
 begin
   Assert.IsTrue(TJsonRead.IsString(TJsonRead.Value(FObject, 'numberText')));
@@ -406,5 +401,10 @@ begin
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(FObject, 'names')));
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(TJsonRead.Value(FObject, 'names'))));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TJsonTextTests);
+  TDUnitX.RegisterTestFixture(TJsonBuildTests);
+  TDUnitX.RegisterTestFixture(TJsonReadTests);
 
 end.
