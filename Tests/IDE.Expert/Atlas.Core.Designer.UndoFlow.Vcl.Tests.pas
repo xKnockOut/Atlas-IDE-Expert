@@ -24,6 +24,10 @@ type
     FSurface: IAtlasDesignSurface;
     FFlow: TAtlasDesignerUndoFlow;
   public
+    /// <summary>Einmal-Belegungen der VCL (erstes Fenster, Panel und Knopf streamen) vorwegnehmen; sie gehören
+    /// nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -47,12 +51,27 @@ uses
 
 { TAtlasDesignerUndoFlowVclTests }
 
+procedure TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse;
+begin
+  // Einziger Test der Fixture und erster mit VCL-Steuerelementen im Lauf: einmal ungemessen vorweg.
+  Setup;
+  try
+    MovedButtonAndDeletedPanelComeBack;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasDesignerUndoFlowVclTests.Setup;
 var
   mForm: TForm;
 begin
   mForm := TForm.CreateNew(nil);
   mForm.Name := 'Form1';
+  // Im Designer hat das Formular immer ein Fenster. Ohne legt Delphi es erst beim ersten
+  // Schreiben an (TextHeight misst über den Canvas), und poDefaultPosOnly lässt Windows dann
+  // Left/Top neu setzen: Der zweite Schnappschuss sähe Form1 „bewegt“. Unter FPC fällt das weg.
+  mForm.HandleNeeded;
   FFake := TAtlasDesignSurfaceFake.Create(mForm);
   FSurface := FFake;
   FFlow := TAtlasDesignerUndoFlow.Create(UndoTestWords, UndoTestReasons);

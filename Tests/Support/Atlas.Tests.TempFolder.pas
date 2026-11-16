@@ -15,6 +15,7 @@ type
 implementation
 
 uses
+  System.SysUtils, // Inline-Funktion TDirectory.Exists (H2443)
   System.IOUtils;
 
 { TTestTempFolder }

@@ -1267,7 +1267,12 @@ begin
   inherited CreateWnd;
   mPreference := cRoundCorners;
   DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
-  SetDwmBorderColor(Handle, FPainter.Colors.Accent);
+  // TAtlasDialog legt das Fenster schon im geerbten Konstruktor an, bevor FPainter besteht; die Randfarbe setzt dann
+  // ThemeChanged nach.
+  if FPainter <> nil then
+  begin
+    SetDwmBorderColor(Handle, FPainter.Colors.Accent);
+  end;
 end;
 
 procedure TAtlasComponentSearchWindow.ThemeChanged;

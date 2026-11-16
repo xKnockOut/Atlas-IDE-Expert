@@ -12,6 +12,10 @@ type
   [TestFixture]
   TShellWorkspaceIndexingTests = class
   public
+    /// <summary>Einmal-Belegungen (72 Byte, Monitor-Datensatz eines langlebigen Objekts) vorwegnehmen; sie gehören
+    /// nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Ein neuer Aufbau läuft noch nicht; Kodierungen ohne Dateien melden nichts.</summary>
     [Test]
     procedure IndexingStartsIdle;
@@ -34,6 +38,12 @@ uses
   Shell.Workspace.Indexing;
 
 { TShellWorkspaceIndexingTests }
+
+procedure TShellWorkspaceIndexingTests.WarmUpFirstUse;
+begin
+  // Der Test leckt nur beim ersten Lauf im Prozess: einmal ungemessen vorweg.
+  IndexingStartsIdle;
+end;
 
 procedure TShellWorkspaceIndexingTests.IndexingStartsIdle;
 var

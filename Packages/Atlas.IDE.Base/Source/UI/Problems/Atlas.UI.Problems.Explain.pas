@@ -163,7 +163,8 @@ end;
 procedure FitCode(AMemo: TMemo);
 var
   mWidth, mLineHeight, mHeight, mChrome: Integer;
-  mScrollBars: TScrollStyle;
+  // Vcl.StdCtrls.TScrollStyle ist veraltet (W1000): der Typ aus System.UITypes.
+  mScrollBars: System.UITypes.TScrollStyle;
 begin
   if AMemo = nil then
   begin

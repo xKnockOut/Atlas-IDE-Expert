@@ -69,6 +69,10 @@ type
     function Undo: TAtlasUndoOutcome;
     function Redo: TAtlasUndoOutcome;
   public
+    /// <summary>Einmal-Belegungen (erstes Formular mit Verlauf, erstes Find/AreSame) vorwegnehmen; sie gehören
+    /// nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -163,6 +167,24 @@ begin
 end;
 
 { TAtlasDesignerUndoFlowTests }
+
+procedure TAtlasDesignerUndoFlowTests.WarmUpFirstUse;
+begin
+  // Der erste Test der Fixture leckt (einzeln jeder), FindFollowsFrameKeys auch in der Fixture als einziger
+  // mit Find/AreSame/IsNull: beide einmal ungemessen vorweg.
+  Setup;
+  try
+    OpenCapturesInitialState;
+  finally
+    TearDown;
+  end;
+  Setup;
+  try
+    FindFollowsFrameKeys;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDesignerUndoFlowTests.Setup;
 var

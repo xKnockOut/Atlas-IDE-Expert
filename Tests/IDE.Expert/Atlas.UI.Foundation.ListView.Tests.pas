@@ -75,6 +75,21 @@ begin
     FList.AddColumn('Name', 100);
     FForm.ScaleForPPI(FForm.CurrentPPI * 3 div 2);
     FForm.ScaleForPPI(FForm.CurrentPPI * 2 div 3);
+    // Zeilen, füllende Spalte und Breite nach Inhalt: legt einmalig an; sonst
+    // leckt der erste von FillColumn…, ContentWidth… und FitToContent… (jeder
+    // einzeln immer, in der Fixture nur der erste).
+    FList.AddColumn('Folge', 10);
+    AddRow(['kurz', 'egal'], 0);
+    FList.FillColumn(1, 50);
+    FList.FitColumnsToContent(150);
+    FForm.Width := FForm.ScaleValue(900);
+  finally
+    TearDown;
+  end;
+  // Textbreite über den Canvas der Liste (TControlCanvas): legt beim ersten Mal 56 Byte an, die bleiben.
+  SetUp;
+  try
+    ContentWidthFitsLongestCell;
   finally
     TearDown;
   end;

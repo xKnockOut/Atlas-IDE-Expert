@@ -17,6 +17,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen beim ersten Rahmen mit Messung vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -49,6 +52,17 @@ begin
 end;
 
 { TAtlasDebugMemoryFrameTests }
+
+procedure TAtlasDebugMemoryFrameTests.WarmUpFirstUse;
+begin
+  // Der erste Rahmen mit Messung legt in der VCL einmalig an (in der Fixture leckt nur der erste solche Test).
+  Setup;
+  try
+    ButtonsNeedSamples;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugMemoryFrameTests.Setup;
 begin

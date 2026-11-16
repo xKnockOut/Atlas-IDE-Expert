@@ -12,6 +12,10 @@ type
   [TestFixture]
   TDuplicateRoutineBodyTests = class
   public
+    /// <summary>Einmal-Belegungen (gemeinsamer Katalog, Regelwerk) vorwegnehmen; sie gehören nicht in die
+    /// Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -190,6 +194,16 @@ begin
 end;
 
 { TDuplicateRoutineBodyTests }
+
+procedure TDuplicateRoutineBodyTests.WarmUpFirstUse;
+begin
+  // Nur der erste Test der Fixture leckt: einmal ungemessen vorweg.
+  try
+    ReportsCopyInOtherUnit;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TDuplicateRoutineBodyTests.TearDown;
 begin

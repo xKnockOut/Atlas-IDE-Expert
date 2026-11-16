@@ -71,7 +71,9 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.UITypes, // TScrollStyle (der aus Vcl.StdCtrls ist veraltet, W1000)
   Winapi.Windows,
+  Vcl.Graphics, // Inline-Funktion TFont.GetHeight (H2443)
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.Menus,
@@ -578,8 +580,8 @@ begin
     Assert.IsTrue(mDialog.BadHeading.Top < mDialog.BadMemo.Top, 'Falsch: über dem Beispiel');
     Assert.IsTrue(mDialog.BadMemo.Top < mDialog.GoodHeading.Top, 'Richtig: unter dem ersten Beispiel');
     Assert.IsTrue(mDialog.GoodHeading.Top < mDialog.GoodMemo.Top, 'Richtig: über dem Beispiel');
-    Assert.AreEqual<TScrollStyle>(ssNone, mDialog.BadMemo.ScrollBars, 'kurze Zeilen ohne Rollleiste');
-    Assert.AreEqual<TScrollStyle>(ssHorizontal, mDialog.GoodMemo.ScrollBars, 'überlange Zeile rollt waagrecht');
+    Assert.AreEqual<System.UITypes.TScrollStyle>(ssNone, mDialog.BadMemo.ScrollBars, 'kurze Zeilen ohne Rollleiste');
+    Assert.AreEqual<System.UITypes.TScrollStyle>(ssHorizontal, mDialog.GoodMemo.ScrollBars, 'überlange Zeile rollt waagrecht');
     Assert.IsTrue(mDialog.BadMemo.Height > 4 * Abs(mDialog.BadMemo.Font.Height), 'vier Zeilen hoch');
   finally
     mDialog.Free;
