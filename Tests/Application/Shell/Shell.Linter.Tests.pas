@@ -87,6 +87,8 @@ type
     procedure UpdatedBaselineHidesFindings;
     [Test]
     procedure DefaultBaselineBesideConfiguration;
+    [Test]
+    procedure DuplicatesAgainstBaseline;
     /// <summary>Mit Index kennt legacy-stack-queue TObjectStack aus einer anderen Unit, mit --no-index nicht.
     /// </summary>
     [Test]
@@ -131,6 +133,7 @@ uses
   Shell.CommandLine,
   Shell.Linter,
   Shell.Linter.Check,
+  Shell.Linter.Duplicates,
   Shell.Linter.Mutation,
   Shell.Workspace.Listings;
 
@@ -523,6 +526,36 @@ begin
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--update-baseline']));
   Assert.IsTrue(TFile.Exists(Path('Src/atlas-baseline.json')));
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--format', 'json']));
+end;
+
+procedure TShellLinterTests.DuplicatesAgainstBaseline;
+const
+  cBody = 'begin'#13#10'  if A > 0 then'#13#10'  begin'#13#10'    Inc(B);'#13#10'    Writeln(''x'');'#13#10 +
+    '  end;'#13#10'end;'#13#10;
+var
+  mBaseline: string;
+begin
+  TFile.WriteAllText(Path('Src/Kopie1.pas'), 'unit Kopie1;'#13#10'interface'#13#10'implementation'#13#10 +
+    'procedure P;'#13#10 + cBody + 'end.'#13#10);
+  TFile.WriteAllText(Path('Src/Kopie2.pas'), 'unit Kopie2;'#13#10'interface'#13#10'implementation'#13#10 +
+    'procedure Q;'#13#10 + cBody + 'end.'#13#10);
+  mBaseline := Path('kopien.json');
+  // Ohne Baseline ist jede Gruppe neu.
+  Assert.AreEqual(1, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--baseline', mBaseline]));
+  Assert.Contains(OutputText, 'Kopie2.pas');
+  Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--update-baseline',
+    '--baseline', mBaseline]));
+  Assert.Contains(TFile.ReadAllText(mBaseline, TEncoding.UTF8), 'Kopie1.pas:P');
+  Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--format', 'json',
+    '--baseline', mBaseline]));
+  Assert.Contains(OutputText, '"newCopies": []');
+  // Eine entfernte Kopie lässt einen toten Eintrag zurück.
+  TFile.Delete(Path('Src/Kopie2.pas'));
+  Assert.AreEqual(1, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--baseline', mBaseline]));
+  Assert.AreEqual(3, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--format', 'sarif']));
+  // Ohne --baseline liegt sie neben atlas.json, hier im Ziel.
+  Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--check-duplicates', '--update-baseline']));
+  Assert.IsTrue(TFile.Exists(Path('Src/' + TLinterDuplicates.cBaselineName)));
 end;
 
 procedure TShellLinterTests.IndexKnowsTypesOfOtherUnits;

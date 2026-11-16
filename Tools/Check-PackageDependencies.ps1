@@ -39,9 +39,9 @@
     TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json; eigene
     Fassungen mit Grund in $AllowedJsonParseLocal.
     Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
-    Editorschrift (TAtlasEditorFont), die Auswahl im Designer
-    (TAtlasDesignerAccess) und Meldungen der Designer-Werkzeuge
-    (TAtlasIdeDesignerTool.Say). Module melden sich nur über TAtlasModuleHost
+    Editorschrift (TAtlasEditorFont) und die Auswahl im Designer
+    (TAtlasDesignerAccess). Wortgleiche Kopien beliebiger Routinen findet
+    AtlasServer --check-duplicates (Baseline atlas-duplicates.json). Module melden sich nur über TAtlasModuleHost
     an und ab: UnregisterModule und TAtlasContractHandshake.Check ruft nur
     Atlas.Core.Diagnostics.ModuleHost.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
@@ -381,29 +381,6 @@ $PluginLock = @(
         Folder  = 'Packages/Atlas.IDE.Designer'
         Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
         Allowed = @{}
-    }
-    [pscustomobject]@{
-        Name    = 'Candidates'
-        Folder  = 'Packages/Atlas.IDE.Designer'
-        Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
-        Allowed = @{
-            'Atlas.IDE.Designer.FitContainer:TAtlasIdeFitContainer.Candidates' = 'nur Container; ohne Auswahl das Formular'
-            'Atlas.IDE.Designer.ButtonBar:TAtlasIdeButtonBar.Candidates'       = 'nur Knöpfe mit gemeinsamem Elternteil'
-            'Atlas.IDE.Designer.FitText:TAtlasIdeFitText.Candidates'           = 'nur Steuerelemente mit messbarem Text'
-        }
-    }
-    [pscustomobject]@{
-        Name    = 'Say'
-        Folder  = 'Packages/Atlas.IDE.Designer'
-        Home    = 'TAtlasIdeDesignerTool.Say in Atlas.IDE.Designer.Tool'
-        Allowed = @{
-            'Atlas.IDE.Designer.Tool:TAtlasIdeDesignerTool.Say'                = 'die eine Fassung'
-            'Atlas.IDE.Designer.Undo:TAtlasIdeDesignerUndo.Say'                = 'override: schreibt zusätzlich ins Protokoll'
-            'Atlas.IDE.Designer.Bar:Say'                                       = 'Leiste ist kein Werkzeug; Meldung über ihre Hooks'
-            'Atlas.IDE.Designer.PropertySearch:TAtlasIdePropertySearch.Say'    = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
-            'Atlas.IDE.Designer.ShowComponent:TAtlasIdeShowComponent.Say'      = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
-            'Atlas.IDE.Designer.Usages:TAtlasIdeDesignerUsages.Say'            = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
-        }
     }
 )
 

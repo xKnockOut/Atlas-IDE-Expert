@@ -13,6 +13,9 @@
        kann. Nicht mitgezählt wird ein Package, dessen atlas.json sich gegenüber
        -BaseRef geändert hat oder dort fehlt (anderes Profil, andere Regeln): Dann ist
        seine Baseline neu gemessen, und die Änderung steht im Diff.
+    3. Die Baseline wortgleicher Rümpfe (atlas-duplicates.json im Wurzelordner) hat
+       nicht mehr Fassungen als unter -BaseRef, solange minLines gleich bleibt.
+       Neue Kopien gehören in eine gemeinsame Routine, nicht in die Baseline.
 
     Fehlt -BaseRef im Repository (flacher Klon), bricht das Skript mit einer Meldung
     ab; in CI vorher den Zielbranch holen.
@@ -89,6 +92,18 @@ foreach ($mRelative in $Baselines) {
     if ($null -ne $mJson) {
         $mCounts = Get-RuleCounts $mJson
         foreach ($mRule in $mCounts.Keys) { $After[$mRule] = [int]$After[$mRule] + $mCounts[$mRule] }
+    }
+}
+$DuplicatesName = 'atlas-duplicates.json'
+$DuplicatesFile = Join-Path $Root $DuplicatesName
+$DuplicatesBase = Get-BaseText $DuplicatesName
+if ((Test-Path -LiteralPath $DuplicatesFile) -and $null -ne $DuplicatesBase) {
+    $mNow = Get-Content -LiteralPath $DuplicatesFile -Raw -Encoding utf8 | ConvertFrom-Json
+    $mBase = $DuplicatesBase | ConvertFrom-Json
+    $mCountNow = (@($mNow.groups) | ForEach-Object { @($_.members).Count } | Measure-Object -Sum).Sum
+    $mCountBase = (@($mBase.groups) | ForEach-Object { @($_.members).Count } | Measure-Object -Sum).Sum
+    if ([int]$mNow.minLines -eq [int]$mBase.minLines -and [int]$mCountNow -gt [int]$mCountBase) {
+        $Problems.Add("$DuplicatesName wächst von $([int]$mCountBase) auf $([int]$mCountNow) Fassungen; Kopien zusammenlegen statt in die Baseline aufnehmen")
     }
 }
 foreach ($mRule in ($After.Keys | Sort-Object)) {

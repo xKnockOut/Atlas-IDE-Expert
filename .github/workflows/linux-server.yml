@@ -77,6 +77,12 @@ jobs:
         # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
         run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
 
+      - name: Wortgleiche Rümpfe über Units hinweg
+        # Vergleicht die Rümpfe aller Routinen des Repositorys mit atlas-duplicates.json; neue Kopien und
+        # entfernte, aber noch eingetragene Kopien brechen ab. Nach dem Zusammenlegen von Kopien die Baseline mit
+        # --update-baseline neu schreiben.
+        run: Output/Linux64/Bin/AtlasServer --check . --check-duplicates
+
       - name: Regex zählt Zeichen (#1751)
         # Hinter „für“ steht im anonymen Log der Arbeitsbereich als name#1. Zählt TMatch.Index UTF-8-Bytes statt
         # Zeichen, setzt der Anonymisierer die Zeile falsch zusammen („fürrnname1: DDelphi“).
