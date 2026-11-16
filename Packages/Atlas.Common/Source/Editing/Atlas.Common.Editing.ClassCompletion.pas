@@ -212,43 +212,6 @@ begin
   end;
 end;
 
-/// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
-function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
-var
-  mIndex, mDepth, mStart: Integer;
-  mQuoted: Boolean;
-begin
-  Result := nil;
-  mDepth := 0;
-  mQuoted := False;
-  mStart := 1;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if AText[mIndex] = '''' then
-    begin
-      mQuoted := not mQuoted;
-    end
-    else if mQuoted then
-    begin
-      Continue;
-    end
-    else if CharInSet(AText[mIndex], ['(', '[', '<']) then
-    begin
-      Inc(mDepth);
-    end
-    else if CharInSet(AText[mIndex], [')', ']', '>']) then
-    begin
-      Dec(mDepth);
-    end
-    else if (mDepth = 0) and (AText[mIndex] = ADelimiter) then
-    begin
-      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-      mStart := mIndex + 1;
-    end;
-  end;
-  Result := Result + [Copy(AText, mStart, MaxInt)];
-end;
-
 /// <summary>Steht das Wort AWord als Bezeichner oder reserviertes Wort in AText? Kommentare und Strings zählen
 /// nicht (procedure Redo; virtual; {abstract;} ist nicht abstrakt).</summary>
 function HasWord(const AText, AWord: string): Boolean;
@@ -769,7 +732,7 @@ begin
   begin
     mTypeName := StringReplace(mTypeName, '  ', ' ', [rfReplaceAll]);
   end;
-  for mName in SplitTopLevel(mNames, ',') do
+  for mName in TRoutineSignatures.SplitTopLevel(mNames, ',') do
   begin
     mParameter.Modifier := mModifier;
     mParameter.Name := Trim(mName);
@@ -825,7 +788,7 @@ var
   mSpace: Integer;
 begin
   Result := '';
-  for mPart in SplitTopLevel(ARest, ';') do
+  for mPart in TRoutineSignatures.SplitTopLevel(ARest, ';') do
   begin
     mWord := LowerCase(Trim(mPart));
     mSpace := Pos(' ', mWord);

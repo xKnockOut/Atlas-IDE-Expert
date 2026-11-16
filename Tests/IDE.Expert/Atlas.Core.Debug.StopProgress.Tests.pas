@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Debug.StopProgress.Tests;
 
 // Tests für den Ablauf je Halt der Anzeigen im Editor (#508, #1878, #1967): Phase, Nachfragen am
-// Ausführungspunkt, jüngste Antwort, derselbe Halt; ohne IDE.
+// Ausführungspunkt, jüngste Antwort, derselbe Halt, Schritt je Takt; ohne IDE.
 
 interface
 
@@ -23,6 +23,12 @@ type
     procedure OnlyNewestAnswerCounts;
     [Test]
     procedure StillAtSameStop;
+    [Test]
+    procedure NextLocatesOnlyAtSameStop;
+    [Test]
+    procedure NextEvaluatesUntilPhaseChanges;
+    [Test]
+    procedure NextPausesWhileIdleOrWaiting;
   end;
 
 implementation
@@ -102,6 +108,46 @@ begin
   Assert.IsTrue(mProgress.StillAt(4, True));
   Assert.IsFalse(mProgress.StillAt(5, True));
   Assert.IsFalse(mProgress.StillAt(4, False));
+end;
+
+procedure TAtlasStopProgressTests.NextLocatesOnlyAtSameStop;
+var
+  mProgress: TAtlasStopProgress;
+begin
+  mProgress := Default(TAtlasStopProgress);
+  mProgress.Restart(1);
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Locate, mProgress.Next(True));
+  // Lesen ändert die Phase erst über Locate.
+  Assert.AreEqual<TAtlasStopPhase>(TAtlasStopPhase.Location, mProgress.Phase);
+  // Fortgesetzt oder neuer Halt, bevor der Takt kam: nichts mehr lesen.
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Pause, mProgress.Next(False));
+  Assert.AreEqual<TAtlasStopPhase>(TAtlasStopPhase.Idle, mProgress.Phase);
+end;
+
+procedure TAtlasStopProgressTests.NextEvaluatesUntilPhaseChanges;
+var
+  mProgress: TAtlasStopProgress;
+begin
+  mProgress := Default(TAtlasStopProgress);
+  mProgress.Phase := TAtlasStopPhase.Evaluate;
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Evaluate, mProgress.Next(True));
+  // Ob der Halt noch besteht, prüft das Auswerten selbst.
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Evaluate, mProgress.Next(False));
+  Assert.AreEqual<TAtlasStopPhase>(TAtlasStopPhase.Evaluate, mProgress.Phase);
+  mProgress.Discard;
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Pause, mProgress.Next(True));
+end;
+
+procedure TAtlasStopProgressTests.NextPausesWhileIdleOrWaiting;
+var
+  mProgress: TAtlasStopProgress;
+begin
+  mProgress := Default(TAtlasStopProgress);
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Pause, mProgress.Next(True));
+  // Während der Server antwortet, wartet der Takt auf Accept.
+  mProgress.Phase := TAtlasStopPhase.Request;
+  Assert.AreEqual<TAtlasStopTick>(TAtlasStopTick.Pause, mProgress.Next(True));
+  Assert.AreEqual<TAtlasStopPhase>(TAtlasStopPhase.Request, mProgress.Phase);
 end;
 
 initialization

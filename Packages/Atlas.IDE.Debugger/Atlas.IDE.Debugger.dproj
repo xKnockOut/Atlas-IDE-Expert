@@ -142,6 +142,7 @@
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepInto.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StepIntoJump.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.StopProgress.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Phases.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Unavailable.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.UnavailableNote.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas"/>
@@ -204,6 +205,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopView.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryCounters.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryTimeline.pas"/>

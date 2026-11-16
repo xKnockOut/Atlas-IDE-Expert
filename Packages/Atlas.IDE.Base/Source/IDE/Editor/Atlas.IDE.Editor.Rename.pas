@@ -82,18 +82,6 @@ type
     OldName: string;
   end;
 
-/// <summary>Oberer Editor, sonst nil.</summary>
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
-
 /// <summary>Name unter dem Cursor von AView, den der Server umbenennen kann. False mit Meldung, wenn es keinen gibt
 /// oder der Server scheitert.</summary>
 function PrepareTarget(ASession: TLspSession; const AView: IOTAEditView; const AMessage: TProc<string>;
@@ -230,7 +218,7 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     AMessage(TAtlasEditorStrings.Text(TAtlasEditorTextId.RenameNothing));

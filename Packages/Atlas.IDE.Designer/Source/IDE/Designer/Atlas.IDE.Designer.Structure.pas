@@ -403,7 +403,7 @@ procedure TAtlasIdeStructure.CloseWindow;
 begin
   FTimer.Enabled := False;
   HideOnForm(False);
-  if (FHost <> nil) and FHost.Shown then
+  if TAtlasIdeDockWindow.IsShown(FHost) then
   begin
     FHost.Hide;
   end;
@@ -756,12 +756,12 @@ begin
   end;
   Result := TAtlasDesignerButton.Create(cId, TAtlasToolbarIcon.Structure,
     TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StHint));
-  Result.Pressed := (FHost <> nil) and FHost.Shown;
+  Result.Pressed := TAtlasIdeDockWindow.IsShown(FHost);
 end;
 
 procedure TAtlasIdeStructure.Toggle;
 begin
-  if (FHost <> nil) and FHost.Shown then
+  if TAtlasIdeDockWindow.IsShown(FHost) then
   begin
     CloseWindow;
   end

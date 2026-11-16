@@ -185,17 +185,6 @@ begin
   end;
 end;
 
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
-
 /// <summary>↑ (AUp) bzw. ↓: Schaft und gefüllte Spitze.</summary>
 procedure PaintArrow(ACanvas: TCanvas; const ABox: TSymbolBox; AUp: Boolean);
 var
@@ -551,7 +540,7 @@ begin
     EnsureColumn;
     // Andere Datei oben: Die gemerkten Zeilen gehören zur alten.
     mFileName := FState.FileName;
-    FState.Track(TopView);
+    FState.Track(TAtlasEditorBuffer.TopView);
     if not SameText(mFileName, FState.FileName) then
     begin
       FRows.Clear;
@@ -600,7 +589,7 @@ var
 begin
   ARow := Default(TRow);
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
@@ -845,7 +834,7 @@ var
   mView: IOTAEditView;
   mPosition: TOTAEditPos;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, ARow.FileName) then
   begin
     Exit;

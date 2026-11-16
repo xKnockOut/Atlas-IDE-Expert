@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.BoundedStream;
 
-// Antwort-Stream mit Größengrenze für HTTP-Anfragen (Code-Review F-105):
+// Antwort-Stream mit Größengrenze für HTTP-Anfragen:
 // Vorher lag die ganze Antwort im Speicher, bevor ihre Größe geprüft wurde;
 // eine sehr große oder endlose Antwort eines frei eingetragenen Servers wurde
 // bis zur Zeitgrenze in der IDE gepuffert. Dieser Stream bricht schon beim

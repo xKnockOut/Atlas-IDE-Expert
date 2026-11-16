@@ -3,7 +3,8 @@
 // Basis der Atlas-Dialoge (#2062): Vorgaben von CreateDialog, Abo beim
 // Themendienst bis zum Freigeben, Thema beim Zeigen und bei jedem Wechsel,
 // Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
-// Hinweiszeile in der Textfarbe der Palette.
+// Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
+// in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas.
 
 interface
 
@@ -34,6 +35,10 @@ type
     procedure ResizeGrowsMiddleRow;
     [Test]
     procedure FitRightStretchesWithRow;
+    [Test]
+    procedure PopupFormSetsDefaults;
+    [Test]
+    procedure PopupFormFollowsTheme;
   end;
 
 implementation
@@ -46,6 +51,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
@@ -59,6 +65,23 @@ type
   public
     ThemeCount: Integer;
   end;
+
+  /// <summary>Zählt ColorsChanged und merkt sich die Fläche dabei.</summary>
+  TProbePopup = class(TAtlasPopupForm)
+  protected
+    procedure ColorsChanged; override;
+  public
+    ColorsCount: Integer;
+    SurfaceSeen: TAtlasColor;
+  end;
+
+{ TProbePopup }
+
+procedure TProbePopup.ColorsChanged;
+begin
+  Inc(ColorsCount);
+  SurfaceSeen := Colors.Surface;
+end;
 
 { TProbeDialog }
 
@@ -267,6 +290,45 @@ begin
     Assert.AreEqual(mWidth + mDialog.ScaleValue(50), mEdit.Width);
   finally
     mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormSetsDefaults;
+var
+  mPopup: TAtlasPopupForm;
+begin
+  mPopup := TAtlasPopupForm.CreatePopup(nil, TAtlasColors.Dark);
+  try
+    Assert.AreEqual<TFormBorderStyle>(bsNone, mPopup.BorderStyle);
+    Assert.AreEqual<TPosition>(poDesigned, mPopup.Position);
+    Assert.AreEqual(string(TAtlasUiTheme.cFontName), string(mPopup.Font.Name));
+    Assert.AreEqual(Integer(TColor(TAtlasColors.Dark.Surface)), Integer(mPopup.Color));
+    Assert.AreEqual(Cardinal(TAtlasColors.Dark.Surface), Cardinal(mPopup.Colors.Surface));
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mPopup));
+  finally
+    mPopup.Free;
+  end;
+  Assert.IsFalse(TAtlasUiTheme.Subscribed(mPopup));
+end;
+
+procedure TAtlasDialogTests.PopupFormFollowsTheme;
+var
+  mPopup: TProbePopup;
+begin
+  TAtlasUiTheme.Install(
+    function: TAtlasColors
+    begin
+      Result := TAtlasColors.Dark;
+    end, nil, nil);
+  mPopup := TProbePopup.CreatePopup(nil, TAtlasColors.Light);
+  try
+    Assert.AreEqual(0, mPopup.ColorsCount);
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(1, mPopup.ColorsCount);
+    Assert.AreEqual(Cardinal(TAtlasColors.Dark.Surface), Cardinal(mPopup.SurfaceSeen), 'Farben vor ColorsChanged');
+    Assert.AreEqual(Integer(TColor(TAtlasColors.Dark.Surface)), Integer(mPopup.Color));
+  finally
+    mPopup.Free;
   end;
 end;
 

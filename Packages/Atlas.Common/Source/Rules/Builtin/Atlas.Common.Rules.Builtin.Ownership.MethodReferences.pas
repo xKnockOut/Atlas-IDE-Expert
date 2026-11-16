@@ -84,27 +84,6 @@ const
   cTeardownMethods: array[0..4] of string = ('Destroy', 'BeforeDestruction', 'Notification', 'FreeNotification',
     'Release');
 
-/// <summary>Alle Bezeichner AName unter ANode (nicht als Mitglied hinter einem Punkt), ohne lokale Routinen.
-/// </summary>
-function Occurrences(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
-var
-  mFound: TArray<TSyntaxNode>;
-begin
-  mFound := nil;
-  ANode.Walk(
-    function(AChild: TSyntaxNode): Boolean
-    begin
-      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, AName) and
-        not ((AChild.Parent <> nil) and (AChild.Parent.Kind = TSyntaxKind.MemberAccess) and
-        (AChild.Parent[0] <> AChild)) then
-      begin
-        mFound := mFound + [AChild];
-      end;
-      Result := (AChild = ANode) or (AChild.Kind <> TSyntaxKind.RoutineDecl);
-    end);
-  Result := mFound;
-end;
-
 /// <summary>Steht ANode in einer anonymen Methode unterhalb von ARoutine?</summary>
 function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
 var
@@ -204,7 +183,7 @@ begin
     mStore := AInline;
   end;
   mCaptured := False;
-  for mNode in Occurrences(ARoutine, AName) do
+  for mNode in TSyntaxNode.IdentifierUsesOutsideNested(ARoutine, AName) do
   begin
     mValue := AssignedValue(mNode);
     // V := nil löst den Kreis auf.

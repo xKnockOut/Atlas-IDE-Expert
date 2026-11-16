@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Prüft die Baselines der Selbstprüfung: keine toten Einträge, und sie wachsen nicht (Code-Review A-101).
+    Prüft die Baselines der Selbstprüfung: keine toten Einträge, und sie wachsen nicht.
 
 .DESCRIPTION
     Für jede eingecheckte atlas-baseline.json unter Packages/:

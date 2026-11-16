@@ -636,7 +636,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -644,7 +644,7 @@ begin
   try
     mScan := TVarArgumentScan.Create(AContext, AReport, mResolver, mFileName);
     try
-      for mNode in PreOrder(AContext.Tree.Root) do
+      for mNode in TSyntaxNode.PreOrder(AContext.Tree.Root) do
       begin
         if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 1) then
         begin

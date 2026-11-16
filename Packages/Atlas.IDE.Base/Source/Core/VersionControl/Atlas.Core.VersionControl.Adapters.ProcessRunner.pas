@@ -300,7 +300,7 @@ end;
 
 function TChildProcess.OpenPipes: Boolean;
 begin
-  // Nicht vererbbar: Nur die Schreibenden und NUL erbt der Kindprozess, gezielt über TAtlasProcessLauncher (R-101).
+  // Nicht vererbbar: Nur die Schreibenden und NUL erbt der Kindprozess, gezielt über TAtlasProcessLauncher.
   Result := CreatePipe(FOutRead, FOutWrite, nil, 0) and CreatePipe(FErrRead, FErrWrite, nil, 0);
   if Result then
   begin

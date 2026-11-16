@@ -520,6 +520,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Profiles.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.Contract.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
@@ -816,6 +817,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StepIntoJump.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.StopProgress.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.StopProgress.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Phases.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Phases.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreak.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EventBreakWatch.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EventBreakWatch.Tests.pas"/>
@@ -2724,6 +2727,7 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Designer.TabOverlay.Tests.pas"/>
         <DCCReference Include="Support\Atlas.Tests.UpdateFakes.pas"/>
         <DCCReference Include="Support\Atlas.Tests.EditorFilesFake.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.DebugTargetFake.pas"/>
         <DCCReference Include="Text\Atlas.Text.Updates.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.UpdateRun.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>

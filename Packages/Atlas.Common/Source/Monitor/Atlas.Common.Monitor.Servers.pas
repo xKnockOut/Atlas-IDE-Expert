@@ -2,7 +2,8 @@
 
 // Logik des Reiters „Server“ und des Symbols im Infobereich von AtlasMonitor (#1901): Zustand eines Servers aus
 // seiner Statusdatei (ruht, arbeitet, hängt), der schlechteste Zustand aller Server für das Symbol, die Texte für
-// Liste, Kontextmenü, Hinweis und Einzelheiten in Deutsch und Englisch. Ohne VCL und Windows, damit die Regeln
+// Liste, Kontextmenü, Hinweis und Einzelheiten in Deutsch und Englisch, die Warnung vor dem Beenden eines Servers,
+// der gerade ein Programm mit dem Profiler misst. Ohne VCL und Windows, damit die Regeln
 // testbar bleiben; die Oberfläche zeigt nur an.
 
 interface
@@ -43,6 +44,10 @@ type
     class function Columns(const AEntry: TServerStatusEntry; ANow: TDateTime): TArray<string>; static;
     /// <summary>Einzelheiten als Zeilen „Name: Wert“.</summary>
     class function Details(const AEntry: TServerStatusEntry; ANow: TDateTime): TArray<string>; static;
+    /// <summary>Zusatz zur Rückfrage vor dem Beenden der Server AEntries: Misst einer gerade ein Programm mit dem
+    /// Profiler, kann das harte Beenden einen Thread dieses Programms angehalten zurücklassen. '' ohne Profil-Lauf.
+    /// </summary>
+    class function StopWarning(const AEntries: TArray<TServerStatusEntry>): string; static;
   end;
 
 implementation
@@ -56,7 +61,7 @@ type
   TMonitorServerText = (Idle, Busy, Hanging, KindLsp, KindMcp, KindCli, KindCliCommand, Menu, NoServers, Servers,
     ColumnKind, ColumnPlace, ColumnState, ColumnMemory, ColumnPid, ColumnVersion, Megabytes, Process, Version,
     Started, Memory, State, Running, RunningRequest, MoreRequests, Progress, ProgressValue, Timeouts, Errors, Folders,
-    Target, LogFile, LastReport, SecondsAgo);
+    Target, LogFile, LastReport, SecondsAgo, Profiling, ProfilingStop);
   {$SCOPEDENUMS OFF}
 
 const
@@ -94,7 +99,14 @@ const
     (De: 'Ziel: %s'; En: 'Target: %s'),
     (De: 'Protokoll: %s'; En: 'Log: %s'),
     (De: 'Letzte Meldung: %s'; En: 'Last report: %s'),
-    (De: 'vor %d s'; En: '%d s ago'));
+    (De: 'vor %d s'; En: '%d s ago'),
+    (De: 'Profiler misst Prozess: %d'; En: 'Profiler is sampling process: %d'),
+    (De: 'Achtung: Der Profiler misst gerade Prozess %s. Beim Beenden kann ein Thread dieses Programms angehalten ' +
+       'bleiben, dann wirkt es eingefroren; es im Debugger fortsetzen oder neu starten. Besser zuerst in der IDE ' +
+       '„Profil starten/beenden“ wählen.';
+     En: 'Warning: the profiler is sampling process %s. Stopping now can leave a thread of that program suspended, ' +
+       'so it appears frozen; continue it in the debugger or restart it. Better choose "Start/stop profile" in the ' +
+       'IDE first.'));
 
   cMegabyte = 1024 * 1024;
   /// <summary>Windows schneidet den Hinweis eines Symbols im Infobereich nach 127 Zeichen ab.</summary>
@@ -282,6 +294,31 @@ begin
     cTexts[TMonitorServerText.Errors].Fmt([AEntry.Errors]),
     cTexts[TMonitorServerText.LastReport].Fmt([cTexts[TMonitorServerText.SecondsAgo].Fmt([
     SecondsSince(AEntry.Written, ANow)])])];
+  if AEntry.ProfiledProcess <> 0 then
+  begin
+    Result := Result + [cTexts[TMonitorServerText.Profiling].Fmt([AEntry.ProfiledProcess])];
+  end;
+end;
+
+class function TMonitorServers.StopWarning(const AEntries: TArray<TServerStatusEntry>): string;
+var
+  mEntry: TServerStatusEntry;
+  mProcesses: TArray<string>;
+begin
+  Result := '';
+  mProcesses := nil;
+  for mEntry in AEntries do
+  begin
+    if mEntry.ProfiledProcess <> 0 then
+    begin
+      mProcesses := mProcesses + [IntToStr(mEntry.ProfiledProcess)];
+    end;
+  end;
+  if mProcesses <> nil then
+  begin
+    Result := sLineBreak + sLineBreak + cTexts[TMonitorServerText.ProfilingStop].Fmt([string.Join(', ',
+      mProcesses)]);
+  end;
 end;
 
 initialization

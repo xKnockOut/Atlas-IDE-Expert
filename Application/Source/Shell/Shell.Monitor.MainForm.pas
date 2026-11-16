@@ -1,12 +1,12 @@
 ﻿unit Shell.Monitor.MainForm;
 
 // Host-Rolle Shell von AtlasMonitor (#1900, #1901): Fenster mit dem Reiter „Prüfen“ (Läufe ohne IDE über mehrere
-// Ziele, Shell.Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus
-// ihren Statusdateien, Einzelheiten, Beenden, Protokoll öffnen) und Symbol im Infobereich mit Zustandspunkt
-// (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List; Regeln und
-// Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich schließt
-// das Kreuz nur das Fenster (Knopf in der Taskleiste nur bei offenem oder minimiertem Fenster); „Beenden“ beendet
-// das Programm. Ohne Symbol beendet das Schließen das Programm.
+// Ziele, Shell.Monitor.CheckPage), dem Reiter „Server“ (alle laufenden Atlas-Server aus ihren Statusdateien,
+// Einzelheiten, Beenden mit Warnung bei laufendem Profil-Lauf, Protokoll öffnen) und Symbol im Infobereich mit
+// Zustandspunkt (ruht, arbeitet, hängt) und Kontextmenü. Die Liste kommt alle 2 s neu aus TServerStatusFile.List;
+// Regeln und Texte stehen in Atlas.Common.Monitor.*, Systemzugriffe in TMonitorSystem. Mit Symbol im Infobereich
+// schließt das Kreuz nur das Fenster (Knopf in der Taskleiste nur bei offenem oder minimiertem Fenster); „Beenden“
+// beendet das Programm. Ohne Symbol beendet das Schließen das Programm.
 
 interface
 
@@ -357,7 +357,8 @@ begin
     FActions.Inform(TMonitorTexts.Text(TMonitorText.SelectServer));
     Exit;
   end;
-  if not FActions.Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStop, [mEntry.Pid])) then
+  if not FActions.Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStop, [mEntry.Pid]) +
+    TMonitorServers.StopWarning(TArray<TServerStatusEntry>.Create(mEntry))) then
   begin
     Exit;
   end;
@@ -627,7 +628,8 @@ var
 begin
   FServerPage.ReadEntries;
   if (FServerPage.Entries = nil) or
-    not Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStopAll, [Length(FServerPage.Entries)])) then
+    not Confirm(TMonitorTexts.Fmt(TMonitorText.ConfirmStopAll, [Length(FServerPage.Entries)]) +
+    TMonitorServers.StopWarning(FServerPage.Entries)) then
   begin
     Exit;
   end;

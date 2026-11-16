@@ -888,15 +888,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   mLines := nil;
   mResolver := nil;

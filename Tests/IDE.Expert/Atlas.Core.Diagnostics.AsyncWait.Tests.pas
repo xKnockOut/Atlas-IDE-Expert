@@ -1,9 +1,9 @@
 ﻿unit Atlas.Core.Diagnostics.AsyncWait.Tests;
 
-// Gemeinsames Warten auf asynchrone Anfragen (Code-Review D-105): fertig,
+// Gemeinsames Warten auf asynchrone Anfragen: fertig,
 // Frist, Abbruch durch den Aufrufer, Abbruchsignal des Plugins. Nach dem
 // Abbrechen meldet Await, ob die Anfrage beendet ist, und AwaitSettled kehrt
-// erst nach ihrem Ende zurück (Code-Review W-103).
+// erst nach ihrem Ende zurück.
 
 interface
 

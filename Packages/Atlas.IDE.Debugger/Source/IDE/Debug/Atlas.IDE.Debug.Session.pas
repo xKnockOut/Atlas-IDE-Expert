@@ -21,12 +21,13 @@
 //     einer ab, startet die IDE nicht. Nur hier läuft ein Zuhörer im Notifier
 //     selbst: Es gibt noch keinen Prozess, und nur hier lässt sich der Start
 //     anhalten. Fehler darin lassen den Start zu.
-// Die Zuhörer laufen nie im Notifier selbst: Der Debugger ruft aus seiner
-// Benachrichtigung, dort darf weder ausgewertet noch fortgesetzt werden.
-// Gemeldet wird über TAtlasMainThread.ForceQueue; ein Halt, der beim Ausführen
-// schon vorbei ist, wird nicht mehr gemeldet. Auswertungen von Atlas
-// (BeginInternal/EndInternal) ändern den Zustand kurz; diese Wechsel zählen
-// nicht. Jeder Zuhörer läuft unter der Sicherung (Feature Debugger, #493).
+// Die Phasen selbst (Prozesse zählen, Halt, Weiterlaufen, Ende, Filter, Zuhörer)
+// stehen ohne Open Tools API in TAtlasDebugPhases (Atlas.Core.Debug.Phases) und
+// sind dort getestet. Diese Unit ist der Adapter dazu: Der Notifier übersetzt
+// IOTAProcess.ProcessState in TAtlasDebugProcessState, TTarget beantwortet die
+// Fragen der Phasen über IOTADebuggerServices, ein Zeitgeber liefert den Tick
+// nach der Benachrichtigung des Debuggers, und jeder Zuhörer läuft unter der
+// Sicherung (Feature Debugger, #493).
 // Ein Halt, den der Filter (SetStopFilter) erledigt, etwa ein Haltepunkt der Herkunft eingereihter Methoden (#859),
 // der den Stapel merkt und gleich fortsetzt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach.
 // Nur im Hauptthread verwenden.
@@ -35,30 +36,24 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
-  Atlas.Core.Debug.CallStack;
+  Atlas.Core.Debug.CallStack,
+  Atlas.Core.Debug.Phases;
 
 type
+  /// <summary>Grund eines Halts (aus Atlas.Core.Debug.Phases).</summary>
+  TAtlasDebugStop = Atlas.Core.Debug.Phases.TAtlasDebugStop;
+  /// <summary>Zuhörer der Debug-Sitzung (aus Atlas.Core.Debug.Phases).</summary>
+  IAtlasIdeDebugListener = IAtlasDebugListener;
+  /// <summary>Filter für Halte (aus Atlas.Core.Debug.Phases).</summary>
+  TAtlasIdeDebugStopFilter = TAtlasDebugStopFilter;
+
   {$SCOPEDENUMS ON}
-  TAtlasDebugStop = (Paused, Exception, Fault);
   /// <summary>Ergebnis beim Lesen des Aufrufstapels: Ready, Wait (der Debugger liefert ihn später, LLDB), None.
   /// </summary>
   TAtlasDebugStackRead = (Ready, Wait, None);
   {$SCOPEDENUMS OFF}
-
-  IAtlasIdeDebugListener = interface
-    ['{6E4F2A8C-1B7D-4C55-9E2A-3F0B8D61C7A4}']
-    /// <summary>Erster Prozess der Sitzung angelegt.</summary>
-    procedure DebugStarted;
-    /// <summary>Prozess angehalten; AStop nennt den Grund.</summary>
-    procedure DebugStopped(AStop: TAtlasDebugStop);
-    /// <summary>Prozess läuft nach einem Halt weiter.</summary>
-    procedure DebugResumed;
-    /// <summary>Letzter Prozess abgebaut.</summary>
-    procedure DebugEnded;
-  end;
 
   /// <summary>Zusatz eines Zuhörers: Vor dem Start einer Debug-Sitzung gefragt (im Notifier, kein Prozess).
   /// </summary>
@@ -74,10 +69,6 @@ type
     ['{9C3D5E71-2A4B-4F86-B1E0-7D58C2A94F13}']
     procedure BreakpointsChanged;
   end;
-
-  /// <summary>Prüft einen Halt vor den Zuhörern; True = erledigt (etwa fortgesetzt), die Zuhörer erfahren nichts.
-  /// </summary>
-  TAtlasIdeDebugStopFilter = reference to function(AStop: TAtlasDebugStop): Boolean;
 
   /// <summary>Zuhörer mit leeren Methoden zum Überschreiben.</summary>
   TAtlasIdeDebugListener = class(TInterfacedObject, IAtlasIdeDebugListener)
@@ -109,13 +100,18 @@ type
       function BeforeProgramLaunch(const Project: IOTAProject): Boolean;
       procedure ProcessMemoryChanged;
     end;
+    /// <summary>Der Debugger der IDE für TAtlasDebugPhases.</summary>
+    TTarget = class(TInterfacedObject, IAtlasDebugTarget)
+    public
+      function ProcessCount: Integer;
+      function CurrentState: TAtlasDebugProcessState;
+      function HasStoppedThread: Boolean;
+      procedure RequestTick;
+      procedure Run(const AProc: TProc);
+    end;
   private class var
     FNotifierIndex: Integer;
-    FListeners: TList<IAtlasIdeDebugListener>;
-    FProcesses: Integer;
-    FStopped: Boolean;
-    FInternal: Integer;
-    FStopCount: Integer;
+    FPhases: TAtlasDebugPhases;
     FProject: string;
     FConfiguration: string;
     FPlatform: string;
@@ -124,12 +120,9 @@ type
     // des Exception-Dialogs der IDE, die Warteschlange erst nach dessen Schließen (#783: Dialog erkennen).
     FStopTimer: TTimer;
     FTicker: TObject;
-    FPendingStop: TAtlasDebugStop;
-    FPendingCount: Integer;
     class procedure StopTick; static;
-    class procedure NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>); static;
-    class procedure StateChanged(const AProcess: IOTAProcess); static;
-    class procedure Ended; static;
+    class function Phases: TAtlasDebugPhases; static;
+    class procedure StartTimer; static;
     /// <summary>Zuhörer mit IAtlasIdeDebugLaunchCheck fragen; False, wenn einer ablehnt.</summary>
     class function AllowLaunch(const AProject: IOTAProject): Boolean; static;
   public
@@ -184,10 +177,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Projects.Context;
 
-var
-  /// <summary>Filter für Halte (SetStopFilter); nil = keiner.</summary>
-  GStopFilter: TAtlasIdeDebugStopFilter;
-
 function Debugger: IOTADebuggerServices;
 begin
   if not Supports(BorlandIDEServices, IOTADebuggerServices, Result) then
@@ -199,6 +188,23 @@ end;
 function IsStoppedState(AState: TOTAProcessState): Boolean;
 begin
   Result := AState in [psStopped, psFault, psResFault, psException];
+end;
+
+/// <summary>Zustand der Open Tools API für TAtlasDebugPhases.</summary>
+function PhaseState(AState: TOTAProcessState): TAtlasDebugProcessState;
+begin
+  case AState of
+    psRunning:
+      Result := TAtlasDebugProcessState.Running;
+    psStopped:
+      Result := TAtlasDebugProcessState.Stopped;
+    psException:
+      Result := TAtlasDebugProcessState.Exception;
+    psFault, psResFault:
+      Result := TAtlasDebugProcessState.Fault;
+  else
+    Result := TAtlasDebugProcessState.Other;
+  end;
 end;
 
 type
@@ -232,12 +238,53 @@ procedure TAtlasIdeDebugListener.DebugEnded;
 begin
 end;
 
+{ TAtlasIdeDebugSession.TTarget }
+
+function TAtlasIdeDebugSession.TTarget.ProcessCount: Integer;
+var
+  mServices: IOTADebuggerServices;
+begin
+  Result := 0;
+  mServices := Debugger;
+  if mServices <> nil then
+  begin
+    Result := mServices.ProcessCount;
+  end;
+end;
+
+function TAtlasIdeDebugSession.TTarget.CurrentState: TAtlasDebugProcessState;
+var
+  mCurrent: IOTAProcess;
+begin
+  Result := TAtlasDebugProcessState.Other;
+  mCurrent := TAtlasIdeDebugSession.Process;
+  if mCurrent <> nil then
+  begin
+    Result := PhaseState(mCurrent.ProcessState);
+  end;
+end;
+
+function TAtlasIdeDebugSession.TTarget.HasStoppedThread: Boolean;
+begin
+  Result := TAtlasIdeDebugSession.StoppedThread <> nil;
+end;
+
+procedure TAtlasIdeDebugSession.TTarget.RequestTick;
+begin
+  TAtlasIdeDebugSession.StartTimer;
+end;
+
+procedure TAtlasIdeDebugSession.TTarget.Run(const AProc: TProc);
+begin
+  TAtlasGuard.Run(TAtlasFeature.Debugger, AProc);
+end;
+
 { TAtlasIdeDebugSession.TNotifier }
 
 /// <summary>Zuhörer mit IAtlasIdeDebugBreakpointListener benachrichtigen (#863).</summary>
 procedure NotifyBreakpointsChanged;
 begin
-  TAtlasIdeDebugSession.NotifyListeners(
+  TAtlasIdeDebugSession.Phases.Notify(
     procedure(AListener: IAtlasIdeDebugListener)
     var
       mBreakpoints: IAtlasIdeDebugBreakpointListener;
@@ -249,33 +296,14 @@ begin
     end);
 end;
 
-{ TAtlasIdeDebugSession.TNotifier }
-
 procedure TAtlasIdeDebugSession.TNotifier.ProcessCreated(const Process: IOTAProcess);
 begin
-  Inc(TAtlasIdeDebugSession.FProcesses);
-  if TAtlasIdeDebugSession.FProcesses = 1 then
-  begin
-    TAtlasIdeDebugSession.FStopped := False;
-    TAtlasIdeDebugSession.FStopCount := 0;
-    TAtlasIdeDebugSession.NotifyListeners(
-      procedure(AListener: IAtlasIdeDebugListener)
-      begin
-        AListener.DebugStarted;
-      end);
-  end;
+  TAtlasIdeDebugSession.Phases.ProcessCreated;
 end;
 
 procedure TAtlasIdeDebugSession.TNotifier.ProcessDestroyed(const Process: IOTAProcess);
 begin
-  if TAtlasIdeDebugSession.FProcesses > 0 then
-  begin
-    Dec(TAtlasIdeDebugSession.FProcesses);
-  end;
-  if TAtlasIdeDebugSession.FProcesses = 0 then
-  begin
-    TAtlasIdeDebugSession.Ended;
-  end;
+  TAtlasIdeDebugSession.Phases.ProcessDestroyed;
 end;
 
 procedure TAtlasIdeDebugSession.TNotifier.BreakpointAdded(const Breakpoint: IOTABreakpoint);
@@ -299,7 +327,10 @@ end;
 
 procedure TAtlasIdeDebugSession.TNotifier.ProcessStateChanged(const Process: IOTAProcess);
 begin
-  TAtlasIdeDebugSession.StateChanged(Process);
+  if Process <> nil then
+  begin
+    TAtlasIdeDebugSession.Phases.StateChanged(PhaseState(Process.ProcessState));
+  end;
 end;
 
 function TAtlasIdeDebugSession.TNotifier.BeforeProgramLaunch(const Project: IOTAProject): Boolean;
@@ -349,99 +380,36 @@ end;
 
 { TAtlasIdeDebugSession }
 
-class procedure TAtlasIdeDebugSession.NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>);
-var
-  mListeners: TArray<IAtlasIdeDebugListener>;
-  mListener: IAtlasIdeDebugListener;
+class function TAtlasIdeDebugSession.Phases: TAtlasDebugPhases;
 begin
-  if FListeners = nil then
+  // Bleibt bis zum Entladen der Unit: Stop darf aus einem Zuhörer kommen, während Phases benachrichtigt.
+  if FPhases = nil then
   begin
-    Exit;
+    FPhases := TAtlasDebugPhases.Create(TTarget.Create);
   end;
-  // Kopie: Ein Zuhörer darf sich beim Ereignis ab- oder einen anderen anmelden.
-  mListeners := FListeners.ToArray;
-  for mListener in mListeners do
-  begin
-    TAtlasGuard.Run(TAtlasFeature.Debugger,
-      procedure
-      begin
-        if (FListeners <> nil) and (FListeners.IndexOf(mListener) >= 0) then
-        begin
-          AEvent(mListener);
-        end;
-      end);
-  end;
+  Result := FPhases;
 end;
 
-class procedure TAtlasIdeDebugSession.StateChanged(const AProcess: IOTAProcess);
-var
-  mState: TOTAProcessState;
-  mStop: TAtlasDebugStop;
+class procedure TAtlasIdeDebugSession.StartTimer;
 begin
-  if (AProcess = nil) or (FInternal > 0) then
+  if FStopTimer = nil then
   begin
-    Exit;
+    FTicker := TStopTicker.Create;
+    FStopTimer := TTimer.Create(nil);
+    FStopTimer.Enabled := False;
+    FStopTimer.Interval := 1;
+    FStopTimer.OnTimer := TStopTicker(FTicker).Tick;
   end;
-  mState := AProcess.ProcessState;
-  if IsStoppedState(mState) then
-  begin
-    case mState of
-      psException:
-        mStop := TAtlasDebugStop.Exception;
-      psFault, psResFault:
-        mStop := TAtlasDebugStop.Fault;
-    else
-      mStop := TAtlasDebugStop.Paused;
-    end;
-    FStopped := True;
-    Inc(FStopCount);
-    // Erst nach der Benachrichtigung des Debuggers melden; ist der Halt bis dahin vorbei, entfällt er.
-    FPendingStop := mStop;
-    FPendingCount := FStopCount;
-    if FStopTimer = nil then
-    begin
-      FTicker := TStopTicker.Create;
-      FStopTimer := TTimer.Create(nil);
-      FStopTimer.Enabled := False;
-      FStopTimer.Interval := 1;
-      FStopTimer.OnTimer := TStopTicker(FTicker).Tick;
-    end;
-    FStopTimer.Enabled := True;
-  end
-  else if (mState = psRunning) and FStopped then
-  begin
-    FStopped := False;
-    NotifyListeners(
-      procedure(AListener: IAtlasIdeDebugListener)
-      begin
-        AListener.DebugResumed;
-      end);
-  end;
-end;
-
-class procedure TAtlasIdeDebugSession.Ended;
-begin
-  FStopped := False;
-  NotifyListeners(
-    procedure(AListener: IAtlasIdeDebugListener)
-    begin
-      AListener.DebugEnded;
-    end);
+  FStopTimer.Enabled := True;
 end;
 
 class function TAtlasIdeDebugSession.AllowLaunch(const AProject: IOTAProject): Boolean;
 var
-  mListeners: TArray<IAtlasIdeDebugListener>;
   mListener: IAtlasIdeDebugListener;
   mCheck: IAtlasIdeDebugLaunchCheck;
 begin
   Result := True;
-  if FListeners = nil then
-  begin
-    Exit;
-  end;
-  mListeners := FListeners.ToArray;
-  for mListener in mListeners do
+  for mListener in Phases.Listeners do
   begin
     if not Supports(mListener, IAtlasIdeDebugLaunchCheck, mCheck) then
     begin
@@ -465,10 +433,6 @@ var
   mServices: IOTADebuggerServices;
   mNotifier: IOTADebuggerNotifier;
 begin
-  if FListeners = nil then
-  begin
-    FListeners := TList<IAtlasIdeDebugListener>.Create;
-  end;
   if FNotifierIndex > 0 then
   begin
     Exit;
@@ -481,8 +445,7 @@ begin
   // Index + 1, damit 0 „nicht angemeldet“ heißt.
   mNotifier := TNotifier.Create;
   FNotifierIndex := mServices.AddNotifier(mNotifier) + 1;
-  FProcesses := mServices.ProcessCount;
-  FStopped := (mServices.CurrentProcess <> nil) and IsStoppedState(mServices.CurrentProcess.ProcessState);
+  Phases.Attach;
 end;
 
 class procedure TAtlasIdeDebugSession.Stop;
@@ -500,10 +463,10 @@ begin
   end;
   FreeAndNil(FStopTimer);
   FreeAndNil(FTicker);
-  FreeAndNil(FListeners);
-  FProcesses := 0;
-  FStopped := False;
-  FInternal := 0;
+  if FPhases <> nil then
+  begin
+    FPhases.Reset;
+  end;
 end;
 
 class function TAtlasIdeDebugSession.Started: Boolean;
@@ -513,86 +476,37 @@ end;
 
 class procedure TAtlasIdeDebugSession.AddListener(const AListener: IAtlasIdeDebugListener);
 begin
-  if FListeners = nil then
-  begin
-    FListeners := TList<IAtlasIdeDebugListener>.Create;
-  end;
-  if (AListener <> nil) and (FListeners.IndexOf(AListener) < 0) then
-  begin
-    FListeners.Add(AListener);
-  end;
+  Phases.AddListener(AListener);
 end;
 
 class procedure TAtlasIdeDebugSession.RemoveListener(const AListener: IAtlasIdeDebugListener);
 begin
-  if FListeners = nil then
+  if FPhases = nil then
   begin
     Exit;
   end;
-  FListeners.Remove(AListener);
+  FPhases.RemoveListener(AListener);
   // Ohne Zuhörer braucht Atlas keinen Notifier beim Debugger: Der letzte meldet ihn ab.
-  if FListeners.Count = 0 then
+  if FPhases.ListenerCount = 0 then
   begin
     Stop;
   end;
 end;
 
-/// <summary>Halt über den Filter der Sitzung erledigt?</summary>
-function Filtered(AStop: TAtlasDebugStop): Boolean;
-var
-  mFilter: TAtlasIdeDebugStopFilter;
-  mHandled: Boolean;
-begin
-  mFilter := GStopFilter;
-  if not Assigned(mFilter) then
-  begin
-    Exit(False);
-  end;
-  // Vorher als weitergelaufen markieren: Setzt der Filter fort, meldet StateChanged kein DebugResumed.
-  TAtlasIdeDebugSession.FStopped := False;
-  mHandled := False;
-  TAtlasGuard.Run(TAtlasFeature.Debugger,
-    procedure
-    begin
-      mHandled := mFilter(AStop);
-    end);
-  if not mHandled then
-  begin
-    TAtlasIdeDebugSession.FStopped := True;
-  end;
-  Result := mHandled;
-end;
-
 class procedure TAtlasIdeDebugSession.StopTick;
-var
-  mStop: TAtlasDebugStop;
 begin
   FStopTimer.Enabled := False;
-  // Weitergelaufen oder schon ein neuer Halt (der meldet sich selbst): dieser entfällt.
-  if not FStopped or (FPendingCount <> FStopCount) or (StoppedThread = nil) then
-  begin
-    Exit;
-  end;
-  mStop := FPendingStop;
-  if Filtered(mStop) then
-  begin
-    Exit;
-  end;
-  NotifyListeners(
-    procedure(AListener: IAtlasIdeDebugListener)
-    begin
-      AListener.DebugStopped(mStop);
-    end);
+  Phases.Tick;
 end;
 
 class procedure TAtlasIdeDebugSession.SetStopFilter(const AFilter: TAtlasIdeDebugStopFilter);
 begin
-  GStopFilter := AFilter;
+  Phases.SetStopFilter(AFilter);
 end;
 
 class function TAtlasIdeDebugSession.Active: Boolean;
 begin
-  Result := FProcesses > 0;
+  Result := (FPhases <> nil) and FPhases.Active;
 end;
 
 class function TAtlasIdeDebugSession.Process: IOTAProcess;
@@ -621,7 +535,11 @@ end;
 
 class function TAtlasIdeDebugSession.StopCount: Integer;
 begin
-  Result := FStopCount;
+  Result := 0;
+  if FPhases <> nil then
+  begin
+    Result := FPhases.StopCount;
+  end;
 end;
 
 class function TAtlasIdeDebugSession.LaunchProject: string;
@@ -655,15 +573,12 @@ end;
 
 class procedure TAtlasIdeDebugSession.BeginInternal;
 begin
-  Inc(FInternal);
+  Phases.BeginInternal;
 end;
 
 class procedure TAtlasIdeDebugSession.EndInternal;
 begin
-  if FInternal > 0 then
-  begin
-    Dec(FInternal);
-  end;
+  Phases.EndInternal;
 end;
 
 /// <summary>Höchstens AMax Rahmen von AThread (Zugriff schon begonnen); None, wenn der Halt unterwegs endet
@@ -800,5 +715,10 @@ begin
     mCurrent.Run(ARunMode);
   end;
 end;
+
+initialization
+
+finalization
+  FreeAndNil(TAtlasIdeDebugSession.FPhases);
 
 end.

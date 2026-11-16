@@ -265,8 +265,7 @@ function IsOccurrence(ANode: TSyntaxNode; const AName: string): Boolean;
 begin
   if ANode.Kind = TSyntaxKind.Identifier then
   begin
-    Result := SameText(ANode.Name, AName) and not ((ANode.Parent <> nil) and
-      (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent[0] <> ANode));
+    Result := ANode.IsIdentifierUse(AName);
   end
   else
   begin

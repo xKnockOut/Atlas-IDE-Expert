@@ -39,9 +39,15 @@
     TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json; eigene
     Fassungen mit Grund in $AllowedJsonParseLocal.
     Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
-    Editorschrift (TAtlasEditorFont) und die Auswahl im Designer
-    (TAtlasDesignerAccess). Wortgleiche Kopien beliebiger Routinen findet
-    AtlasServer --check-duplicates (Baseline atlas-duplicates.json). Module melden sich nur über TAtlasModuleHost
+    Editorschrift (TAtlasEditorFont), die Auswahl im Designer
+    (TAtlasDesignerAccess), die oberste Editoransicht
+    (TAtlasEditorBuffer.TopView/TopSourceView); ebenso in Atlas.Common der
+    Dateiname für die Namensauflösung (TRuleContext.ResolverFileName),
+    Knoten in Baumreihenfolge und Vorkommen eines Bezeichners (TSyntaxNode)
+    und das Teilen außerhalb von Klammern (TRoutineSignatures.SplitTopLevel).
+    Wortgleiche Kopien beliebiger Routinen findet AtlasServer --check-duplicates
+    (Baseline atlas-duplicates.json).
+    Module melden sich nur über TAtlasModuleHost
     an und ab: UnregisterModule und TAtlasContractHandshake.Check ruft nur
     Atlas.Core.Diagnostics.ModuleHost.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
@@ -141,7 +147,7 @@ $Packages = @(
         Reason           = 'nur RTL; wird auch ins Plugin übersetzt'
     },
     @{
-        # Gegenstück zu Atlas.Text für Code mit Windows-API (Code-Review R-101/D-104); wie Atlas.Text auch als
+        # Gegenstück zu Atlas.Text für Code mit Windows-API; wie Atlas.Text auch als
         # Quelltext im Plugin, darum ohne VCL und ohne alles, was das Plugin nicht enthalten darf.
         Name             = 'Atlas.WinBase'
         Path             = 'Packages/Atlas.WinBase'
@@ -367,7 +373,8 @@ $AllowedJsonParseLocal = @{
     'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
 }
 
-# Kopien-Sperre im Plugin: Name, Ordner, wo es ihn gibt, und erlaubte Fassungen ("Unit:Routine") mit Grund.
+# Kopien-Sperre nach Namen (Plugin und Atlas.Common): Name, Ordner, wo es ihn gibt, und erlaubte Fassungen
+# ("Unit:Routine") mit Grund.
 # Die Listen sollen nur schrumpfen.
 $PluginLock = @(
     [pscustomobject]@{
@@ -381,6 +388,81 @@ $PluginLock = @(
         Folder  = 'Packages/Atlas.IDE.Designer'
         Home    = 'TAtlasDesignerAccess.Siblings/SelectedSiblings in Atlas.IDE.Designer.Access'
         Allowed = @{}
+    }
+    # Dateiname für die Namensauflösung der Prüfregeln: nur TRuleContext.ResolverFileName.
+    [pscustomobject]@{
+        Name    = 'ResolverFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{
+            'Atlas.Common.Rules.Contract:TRuleContext.ResolverFileName' = 'die eine Fassung'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'RuleFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'CheckedFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'ContextFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    # Oberste Editoransicht: nur TAtlasEditorBuffer.TopView/TopSourceView.
+    [pscustomobject]@{
+        Name    = 'TopView'
+        Folder  = 'Packages'
+        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Allowed = @{
+            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
+            'Atlas.IDE.Search.Editor:TAtlasIdeSearchEditor.TopView'        = 'out-Fassung für Bedingungen, leitet weiter'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'TopSourceView'
+        Folder  = 'Packages'
+        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Allowed = @{
+            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
+        }
+    }
+    # Syntaxbaum: Knoten in Baumreihenfolge und Vorkommen eines Bezeichners nur an TSyntaxNode.
+    [pscustomobject]@{
+        Name    = 'PreOrder'
+        Folder  = 'Packages/Atlas.Common'
+        Home    = 'TSyntaxNode.PreOrder in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{
+            'Atlas.Common.Pascal.SyntaxTree:TSyntaxNode.PreOrder' = 'die eine Fassung'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'Occurrences'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'MentionedInLocalRoutine'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{}
+    }
+    # Teile einer Parameter- oder Namensliste außerhalb von Klammern: nur TRoutineSignatures.SplitTopLevel.
+    [pscustomobject]@{
+        Name    = 'SplitTopLevel'
+        Folder  = 'Packages/Atlas.Common'
+        Home    = 'TRoutineSignatures.SplitTopLevel in Atlas.Common.Pascal.RoutineSignatures'
+        Allowed = @{
+            'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.SplitTopLevel' = 'die eine Fassung'
+        }
     }
 )
 

@@ -151,6 +151,7 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
@@ -261,39 +262,6 @@ begin
   end;
   Result := Copy(AText, ATokens[AFirst].Offset + 1,
     ATokens[ALast].Offset + Length(ATokens[ALast].Text) - ATokens[AFirst].Offset);
-end;
-
-/// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
-function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
-var
-  mIndex, mDepth, mStart: Integer;
-  mQuoted: Boolean;
-begin
-  Result := nil;
-  mDepth := 0;
-  mQuoted := False;
-  mStart := 1;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if AText[mIndex] = '''' then
-    begin
-      mQuoted := not mQuoted;
-    end
-    else if not mQuoted then
-      case AText[mIndex] of
-        '(', '[', '<':
-          Inc(mDepth);
-        ')', ']', '>':
-          Dec(mDepth);
-      else
-        if (AText[mIndex] = ADelimiter) and (mDepth = 0) then
-        begin
-          Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-          mStart := mIndex + 1;
-        end;
-      end;
-  end;
-  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 /// <summary>Stelle von ADelimiter außerhalb von Klammern und Zeichenketten; 0 ohne.</summary>
@@ -469,7 +437,7 @@ var
 begin
   Result := nil;
   mGroupIndex := 0;
-  for mGroup in SplitTopLevel(AText, ';') do
+  for mGroup in TRoutineSignatures.SplitTopLevel(AText, ';') do
   begin
     mRest := TTextLines.CollapseSpace(mGroup);
     if mRest = '' then
@@ -480,7 +448,7 @@ begin
     mParameter.Group := mGroupIndex;
     Inc(mGroupIndex);
     ReadModifiers(mRest, mParameter);
-    for mName in SplitTopLevel(ReadTypeAndDefault(mRest, mParameter), ',') do
+    for mName in TRoutineSignatures.SplitTopLevel(ReadTypeAndDefault(mRest, mParameter), ',') do
     begin
       mParameter.Name := Trim(mName);
       if mParameter.Name <> '' then
@@ -980,8 +948,8 @@ begin
   AClose := Matching(ATokens, AOpen);
   if AClose > NextToken(ATokens, AOpen) then
   begin
-    for mValue in SplitTopLevel(SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousCode(ATokens, AClose)),
-      ',') do
+    for mValue in TRoutineSignatures.SplitTopLevel(
+      SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousCode(ATokens, AClose)), ',') do
     begin
       AArguments := AArguments + [Trim(mValue)];
     end;

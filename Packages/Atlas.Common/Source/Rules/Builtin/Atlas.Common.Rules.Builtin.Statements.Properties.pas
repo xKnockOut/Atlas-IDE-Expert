@@ -376,7 +376,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ContextFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mTokens := AContext.Tree.Tokens;
   mLines := TTextLines.SplitLines(AContext.Text);
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
@@ -631,7 +631,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ContextFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -1046,7 +1046,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := ContextFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mLines := TTextLines.SplitLines(AContext.Text);
   mActions := TClassActionContext.Default;
   mActions.Index := AContext.Index;
