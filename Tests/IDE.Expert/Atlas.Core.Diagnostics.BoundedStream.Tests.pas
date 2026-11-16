@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Diagnostics.BoundedStream.Tests;
 
-// Antwort-Stream mit Größengrenze (Code-Review F-105): bis zur Grenze wie
+// Antwort-Stream mit Größengrenze: bis zur Grenze wie
 // TBytesStream, darüber Ausnahme ohne zu schreiben.
 
 interface

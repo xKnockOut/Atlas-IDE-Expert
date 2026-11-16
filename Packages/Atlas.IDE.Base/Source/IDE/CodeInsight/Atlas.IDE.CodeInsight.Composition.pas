@@ -203,7 +203,7 @@ begin
       mStopped := TAtlasTimeLimit.StopAll(TAtlasShutdown.cStopMs);
     end);
   // Überfällige Threads mit dem Code von Base (Update-Prüfung, Thread-Listen): Festhalten wirkt nur hier, vor
-  // FreeLibrary (Code-Review T-103), und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung.
+  // FreeLibrary, und vor dem Abbau von TAtlasOverdueThreads in der Finalisierung.
   ATeardown.Step('OverdueThreads',
     procedure
     begin

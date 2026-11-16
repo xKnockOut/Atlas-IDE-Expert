@@ -187,7 +187,7 @@ function OpenHandles(var AHandles: THandles; var AResult: TAtlasTaskProcessResul
 var
   mLimits: TJobExtendedLimits;
 begin
-  // Nicht vererbbar: Schreibende und NUL erbt der Prozess gezielt über TAtlasProcessLauncher (R-101).
+  // Nicht vererbbar: Schreibende und NUL erbt der Prozess gezielt über TAtlasProcessLauncher.
   Result := CreatePipe(AHandles.OutRead, AHandles.OutWrite, nil, 0);
   if not Result then
   begin

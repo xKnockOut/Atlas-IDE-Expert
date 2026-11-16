@@ -18,7 +18,7 @@
 // 4. zuletzt, auch ohne Scope: Laufen noch überfällige Threads aus dem Package
 //    des Moduls, wartet TAtlasOverdueThreads.SettleBeforeUnload kurz und hält
 //    das Package sonst im Speicher. Das wirkt nur hier, vor FreeLibrary; der
-//    Rückruf beim Entladen käme zu spät (Code-Review T-103).
+//    Rückruf beim Entladen käme zu spät.
 // Base kennt dabei keine Modulnamen (Regel 9): Kennung, Name und Handle gibt
 // das Modul. Das Handle ist das HInstance des Moduls, nie das von Base
 // (Regel 8); deshalb übergibt das Modul es.

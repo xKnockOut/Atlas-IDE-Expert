@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Selbstprüfung je Plugin-Package (Code-Review A-101): prüft jedes Packages/Atlas.IDE.*/<Package>.dproj mit der
+# Selbstprüfung je Plugin-Package: prüft jedes Packages/Atlas.IDE.*/<Package>.dproj mit der
 # atlas.json und der atlas-baseline.json des Packages. Jeder Treffer außerhalb der Baseline ist neu und lässt das
 # Skript scheitern, auch Hinweise.
 #
