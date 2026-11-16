@@ -120,11 +120,8 @@ end;
 type
   /// <summary>Ein Lauf von TFirstCharAddressRule über eine Unit: Kontext, Bericht und der gemeinsame
   /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
-  TFirstCharAddressScan = record
+  TFirstCharAddressScan = class(TTypedScopeRun)
   private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FScope: TTypedScope;
     function IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
     function IsConstParameter(const ASymbol: TResolvedSymbol): Boolean;
     function LocalShortAlias(const ATypeName: string): Boolean;
@@ -144,17 +141,10 @@ type
     procedure CheckAddress(ANode: TSyntaxNode);
     procedure Visit(ARoot: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
 
 { TFirstCharAddressScan }
-
-constructor TFirstCharAddressScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  FContext := AContext;
-  FReport := AReport;
-end;
 
 /// <summary>Ist AIndex der erste Index von ABase: 1 oder Low(ABase)?</summary>
 function TFirstCharAddressScan.IsFirstIndex(AIndex, ABase: TSyntaxNode): Boolean;
@@ -532,24 +522,24 @@ end;
 
 procedure TFirstCharAddressScan.Run;
 begin
-  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
-  begin
-    Exit;
-  end;
-  FScope := TTypedScope.Create(FContext);
-  try
-    Visit(FContext.Tree.Root);
-  finally
-    FScope.Free;
-  end;
+  Visit(FContext.Tree.Root);
 end;
 
 procedure TFirstCharAddressRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScan: TFirstCharAddressScan;
 begin
+  // Ohne Baum gibt es nichts zu prüfen; der Lauf legt im Konstruktor den Typbereich an.
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
   mScan := TFirstCharAddressScan.Create(AContext, AReport);
-  mScan.Run;
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
+  end;
 end;
 
 procedure RegisterStringAddressRules(const ARegistry: TRuleRegistry);

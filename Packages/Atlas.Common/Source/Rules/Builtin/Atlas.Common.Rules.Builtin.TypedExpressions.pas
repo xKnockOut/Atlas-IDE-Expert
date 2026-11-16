@@ -280,11 +280,8 @@ end;
 type
   /// <summary>Ein Lauf von TComparisonAlwaysConstantRule über eine Unit: Kontext, Bericht und der gemeinsame
   /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
-  TComparisonAlwaysConstantScan = record
+  TComparisonAlwaysConstantScan = class(TTypedScopeRun)
   private
-    FContext: TRuleContext;
-    FReport: IRuleReport;
-    FScope: TTypedScope;
     function IntegerOperand(ANode: TSyntaxNode; out ATypeName: string; out ALow, AHigh: Int64): Boolean;
     function LoopNote(ANode: TSyntaxNode; AAlways: Boolean): string;
     function IsLengthCall(ANode: TSyntaxNode): Boolean;
@@ -296,17 +293,10 @@ type
     procedure CheckCase(ANode: TSyntaxNode);
     procedure Visit(ARoot: TSyntaxNode);
   public
-    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
 
 { TComparisonAlwaysConstantScan }
-
-constructor TComparisonAlwaysConstantScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
-begin
-  FContext := AContext;
-  FReport := AReport;
-end;
 
 /// <summary>Wertebereich von ANode, wenn sein Typ sicher ein eingebauter Ganzzahltyp ist.</summary>
 function TComparisonAlwaysConstantScan.IntegerOperand(ANode: TSyntaxNode; out ATypeName: string; out ALow,
@@ -545,24 +535,24 @@ end;
 
 procedure TComparisonAlwaysConstantScan.Run;
 begin
-  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
-  begin
-    Exit;
-  end;
-  FScope := TTypedScope.Create(FContext);
-  try
-    Visit(FContext.Tree.Root);
-  finally
-    FScope.Free;
-  end;
+  Visit(FContext.Tree.Root);
 end;
 
 procedure TComparisonAlwaysConstantRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   mScan: TComparisonAlwaysConstantScan;
 begin
+  // Ohne Baum gibt es nichts zu prüfen; der Lauf legt im Konstruktor den Typbereich an.
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
   mScan := TComparisonAlwaysConstantScan.Create(AContext, AReport);
-  mScan.Run;
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
+  end;
 end;
 
 { TConstantInitializerMismatchRule }
