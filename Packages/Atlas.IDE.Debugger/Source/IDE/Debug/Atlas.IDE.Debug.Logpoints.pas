@@ -86,7 +86,7 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Logpoints.Strings;
 
 /// <summary>Ort für Meldung und Titel: "Unit1.pas:12".</summary>
 function PlaceOf(const AFileName: string; ALine: Integer): string;
@@ -321,7 +321,7 @@ begin
   end;
   if not TargetLine(mFileName, mLine) then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointNoEditor));
+    Say(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointNoEditor));
     Exit;
   end;
   mExisting := Find(mFileName, mLine);
@@ -331,16 +331,16 @@ begin
     TAtlasLogpointChoice.SetLogpoint:
       if Apply(mFileName, mLine, mExisting, mInput) then
       begin
-        Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointSaidSet, [mPlace]));
+        Say(TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointSaidSet, [mPlace]));
       end
       else
       begin
-        Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointFailed));
+        Say(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointFailed));
       end;
     TAtlasLogpointChoice.Remove:
       begin
         Remove(mFileName, mLine, mExisting);
-        Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointSaidRemoved));
+        Say(TAtlasLogpointsStrings.Text(TAtlasLogpointsTextId.LogpointSaidRemoved));
       end;
   else
     Exit;
@@ -358,7 +358,7 @@ begin
   begin
     mBreakpoint.Enabled := False;
   end;
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointSaidDisabled, [Length(mBreakpoints)]));
+  Say(TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointSaidDisabled, [Length(mBreakpoints)]));
   Changed;
 end;
 
@@ -372,7 +372,7 @@ begin
   begin
     mBreakpoint.Enabled := True;
   end;
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointSaidEnabled, [Length(mBreakpoints)]));
+  Say(TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointSaidEnabled, [Length(mBreakpoints)]));
   Changed;
 end;
 
@@ -395,7 +395,7 @@ begin
   begin
     FInputs.Clear;
   end;
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LogpointSaidDeleted, [Length(mBreakpoints)]));
+  Say(TAtlasLogpointsStrings.Fmt(TAtlasLogpointsTextId.LogpointSaidDeleted, [Length(mBreakpoints)]));
   Changed;
 end;
 

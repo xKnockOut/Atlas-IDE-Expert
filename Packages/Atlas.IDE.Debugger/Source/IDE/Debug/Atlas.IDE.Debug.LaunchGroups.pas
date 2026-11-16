@@ -133,7 +133,7 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Processes,
   Atlas.UI.Debug.LaunchGroupsDialog,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Session.Strings;
 
 const
   cActiveWhat = 'debug launch groups';
@@ -300,7 +300,7 @@ begin
   // Beim Halt nennt die Meldung den Prozess des Verbunds.
   if (mProcess <> nil) and TAtlasLaunchProcesses.FindDebugged(FStarted, mProcess.ProcessId, mStarted) then
   begin
-    TAtlasIdeLaunchGroups.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchStoppedAt,
+    TAtlasIdeLaunchGroups.Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchStoppedAt,
       [mStarted.Caption, mStarted.Pid]));
   end;
 end;
@@ -342,13 +342,13 @@ begin
     mProject := TAtlasIdeStartOptions.FindProject(ProjectPath(FFolder, mItem));
     if mProject = nil then
     begin
-      Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchNotInGroup, [mItem.Caption]));
+      Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchNotInGroup, [mItem.Caption]));
       Exit(False);
     end;
     if (mProject.ProjectBuilder <> nil) and mProject.ProjectBuilder.ShouldBuild and
       not mProject.ProjectBuilder.BuildProject(cmOTAMake, True, True) then
     begin
-      Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchBuildFailed, [mItem.Caption]));
+      Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchBuildFailed, [mItem.Caption]));
       Exit(False);
     end;
   end;
@@ -380,7 +380,7 @@ begin
     FreeProbe;
     if mWaitingBefore then
     begin
-      Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchTimedOut, [FRun.Group.Items[FRun.Current].Caption]));
+      Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchTimedOut, [FRun.Group.Items[FRun.Current].Caption]));
     end;
     AskOnFailure;
     Exit;
@@ -417,7 +417,7 @@ begin
   end;
   if (mStarted.Exe = '') or not FileExists(mStarted.Exe) then
   begin
-    Fail(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchStartFailed, [mItem.Caption]));
+    Fail(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchStartFailed, [mItem.Caption]));
     Exit;
   end;
   mArgs := StartArguments(mItem, ProjectPath(FFolder, mItem), mDir, mEnvironment);
@@ -433,7 +433,7 @@ begin
       TAtlasStartProfiles.DecodeEnvironment(mEnvironment));
     if mStarted.Pid = 0 then
     begin
-      Fail(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchStartFailed, [mItem.Caption]));
+      Fail(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchStartFailed, [mItem.Caption]));
       Exit;
     end;
   end;
@@ -483,15 +483,15 @@ begin
   FAsking := True;
   mDialog := TTaskDialog.Create(nil);
   try
-    mDialog.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchTitle, [FRun.Group.Name]);
+    mDialog.Caption := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchTitle, [FRun.Group.Name]);
     mDialog.Title := mDialog.Caption;
     mDialog.Text := FRun.Text(Default(TAtlasLaunchTexts));
     mDialog.CommonButtons := [];
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchContinue);
+    mButton.Caption := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchContinue);
     mButton.ModalResult := mrRetry;
     mButton := mDialog.Buttons.Add;
-    mButton.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStopAll);
+    mButton.Caption := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStopAll);
     mButton.ModalResult := mrAbort;
     mContinue := mDialog.Execute and (mDialog.ModalResult = mrRetry);
   finally
@@ -540,9 +540,9 @@ begin
   FBar.Colors := TAtlasIdeStyle.Colors;
   mTexts.Done := cDoneMark;
   mTexts.Failed := cFailedMark;
-  mTexts.Starting := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStarting);
-  mTexts.Waiting := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchWaiting);
-  FBar.ShowSteps(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchTitle, [FRun.Group.Name]), FRun.Text(mTexts),
+  mTexts.Starting := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStarting);
+  mTexts.Waiting := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchWaiting);
+  FBar.ShowSteps(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchTitle, [FRun.Group.Name]), FRun.Text(mTexts),
     TAtlasStepsBar.ActiveCorner);
 end;
 
@@ -588,9 +588,9 @@ begin
   begin
     Exit;
   end;
-  mTexts.Running := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateRunning);
-  mTexts.Paused := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStatePaused);
-  mTexts.Ended := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStateEnded);
+  mTexts.Running := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStateRunning);
+  mTexts.Paused := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStatePaused);
+  mTexts.Ended := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStateEnded);
   mText := TAtlasLaunchProcesses.StatusText(FStarted, StartedStates, mTexts);
   if (mText = FStatusText) and ((FStatus <> nil) = (mText <> '')) then
   begin
@@ -748,7 +748,7 @@ begin
   mGroups := Groups(mProblems);
   if mProblems <> nil then
   begin
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchProblems, [string.Join(', ', mProblems)]));
+    Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchProblems, [string.Join(', ', mProblems)]));
   end;
   case TAtlasLaunchGroupsDialog.Execute(mGroups, TAtlasIdeLaunchActive.Name, mChosen) of
     TAtlasLaunchGroupsChoice.Activate:
@@ -767,7 +767,7 @@ class procedure TAtlasIdeLaunchGroups.RunActive;
 begin
   if TAtlasIdeLaunchActive.Name = '' then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
+    Say(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchNoActive));
     Exit;
   end;
   RunGroup(TAtlasIdeLaunchActive.Name);
@@ -783,7 +783,7 @@ begin
   mIndex := TAtlasLaunchGroups.IndexOf(mGroups, AName);
   if mIndex < 0 then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoActive));
+    Say(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchNoActive));
     Exit;
   end;
   if (FRun <> nil) and not FRun.Finished then

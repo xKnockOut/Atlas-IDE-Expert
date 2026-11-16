@@ -66,7 +66,7 @@ uses
   Atlas.IDE.Debug.WhyHere,
   Atlas.IDE.Debug.Variables,
   Atlas.IDE.Debug.MemoryTimeline,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.Memory.Strings;
 
 const
@@ -503,13 +503,13 @@ var
 begin
   mEdit := Default(TAtlasModuleCommand);
   mEdit.Id := 'Atlas.DebugEditValue';
-  mEdit.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueCommand);
+  mEdit.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EditValueCommand);
   mEdit.Run := TAtlasIdeDebugEditValue.EditAtCursor;
   mEdit.Visible := EditValueVisible;
   mEdit.Key := EditValueKey;
   mUndo := Default(TAtlasModuleCommand);
   mUndo.Id := 'Atlas.DebugUndoValue';
-  mUndo.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueUndoCommand);
+  mUndo.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EditValueUndoCommand);
   mUndo.Run := TAtlasIdeDebugEditValue.UndoAtCursor;
   mUndo.Visible := EditValueVisible;
   Result := [mEdit, mUndo];
@@ -532,7 +532,7 @@ begin
     mEntry := Default(TAtlasMenuEntry);
     mEntry.CommandId := mId;
     mEntry.Place := TAtlasMenuPlace.EditorContext;
-    mEntry.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+    mEntry.Section := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
     mEntry.Group := 'debug';
     mEntry.When := WhileStopped;
     Result := Result + [mEntry];
@@ -564,7 +564,7 @@ begin
   end;
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.DebugEditValue';
-  mKey.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueCommand);
+  mKey.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EditValueCommand);
   mKey.Key := cEditValueKey;
   mKey.Attempt :=
     function: Boolean

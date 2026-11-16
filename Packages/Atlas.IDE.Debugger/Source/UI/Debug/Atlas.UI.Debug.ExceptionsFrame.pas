@@ -124,7 +124,7 @@ implementation
 
 uses
   Winapi.Windows,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Exceptions.Strings;
 
 {$R *.dfm}
 
@@ -171,7 +171,7 @@ begin
   AFrame.FFilter.Parent := mTop;
   AFrame.FFilter.Align := alClient;
   AFrame.FFilter.AlignWithMargins := True;
-  AFrame.FFilter.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsFilterHint);
+  AFrame.FFilter.TextHint := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsFilterHint);
   AFrame.FFilter.OnChange := AFrame.FilterChange;
   AFrame.FFilter.OnKeyDown := AFrame.FilterKeyDown;
 end;
@@ -189,6 +189,14 @@ end;
 
 /// <summary>Liste der Exceptions in AFrame mit ihren Spalten und Ereignissen.</summary>
 procedure CreateList(AFrame: TAtlasDebugExceptionsFrame);
+const
+  // Spaltenbreiten bei 96 dpi.
+  cTimeWidth = 70;
+  cClassWidth = 130;
+  cMessageWidth = 260;
+  cCountWidth = 60;
+  cLocationWidth = 170;
+  cThreadWidth = 110;
 var
   mList: TListView;
 begin
@@ -204,13 +212,13 @@ begin
   mList.MultiSelect := False;
   mList.ColumnClick := False;
   mList.PopupMenu := AFrame.FMenu;
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnTime), 70);
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnClass), 130);
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnMessage), 260);
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnCount), 60).Alignment :=
-    taRightJustify;
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnLocation), 170);
-  AddColumn(mList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnThread), 110);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnTime), cTimeWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnClass), cClassWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnMessage), cMessageWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnCount),
+    cCountWidth).Alignment := taRightJustify;
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnThread), cThreadWidth);
   mList.OnDblClick := AFrame.ListDblClick;
   mList.OnSelectItem := AFrame.ListSelectItem;
   mList.OnKeyDown := AFrame.ListKeyDown;
@@ -231,12 +239,12 @@ begin
   inherited Create(AFrame);
   FFrame := AFrame;
   OnPopup := MenuPopup;
-  FOpenItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsGoTo), OpenClick);
+  FOpenItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsGoTo), OpenClick);
   FOpenItem.Default := True;
-  FIgnoreItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnoreClass), IgnoreClick);
-  FStopItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStopAgain), StopClick);
-  FCopyItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCopy), CopyClick);
-  FClearItem := AddItem(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsClear), ClearClick);
+  FIgnoreItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnoreClass), IgnoreClick);
+  FStopItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStopAgain), StopClick);
+  FCopyItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsCopy), CopyClick);
+  FClearItem := AddItem(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsClear), ClearClick);
 end;
 
 function TAtlasDebugExceptionsFrame.TListMenu.AddItem(const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -262,15 +270,15 @@ begin
   FClearItem.Enabled := FFrame.FHistory.Entries <> nil;
   if mHas then
   begin
-    FIgnoreItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsIgnoreClassNamed,
+    FIgnoreItem.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsIgnoreClassNamed,
       [mEntry.ExceptionClass]);
-    FStopItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStopAgainNamed,
+    FStopItem.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsStopAgainNamed,
       [mEntry.ExceptionClass]);
   end
   else
   begin
-    FIgnoreItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnoreClass);
-    FStopItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStopAgain);
+    FIgnoreItem.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnoreClass);
+    FStopItem.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStopAgain);
   end;
 end;
 
@@ -330,7 +338,7 @@ begin
   // Ohne Exceptions: Hinweis statt leerer Liste.
   FEmpty := GrayLabel(Self, alClient);
   FEmpty.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
-  FEmpty.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsEmpty);
+  FEmpty.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsEmpty);
   FEmpty.Visible := False;
 end;
 
@@ -356,7 +364,7 @@ begin
   FClassBox.Items.BeginUpdate;
   try
     FClassBox.Items.Clear;
-    FClassBox.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsAllClasses));
+    FClassBox.Items.Add(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsAllClasses));
     for mName in FHistory.Classes do
     begin
       FClassBox.Items.Add(mName);
@@ -400,7 +408,7 @@ begin
   FList.Visible := FHistory.Entries <> nil;
   FStack.SetShown(FHistory.Entries <> nil);
   FillStack;
-  FSummary.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsSummary,
+  FSummary.Caption := TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsSummary,
     [Length(FHistory.Entries), FHistory.Total]);
 end;
 
@@ -567,12 +575,12 @@ begin
   mCount := IntToStr(AException.Count);
   if AIgnoredClass then
   begin
-    mCount := mCount + ' · ' + TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsIgnored);
+    mCount := mCount + ' · ' + TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsIgnored);
   end;
   // Uhrzeit für die Anzeige: im Format des Benutzers.
   Result := TArray<string>.Create(FormatDateTime('hh:nn:ss', AException.LastTime, FormatSettings),
     AException.ExceptionClass, AException.Message, mCount, AException.LocationText,
-    AException.ThreadText(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread)));
+    AException.ThreadText(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread)));
 end;
 
 end.

@@ -89,7 +89,7 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Breakpoints,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 const
   cTickMs = 10000;
@@ -258,7 +258,7 @@ begin
     end
     else
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetUnreadable,
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetUnreadable,
         [TPath.GetFileNameWithoutExtension(mFile)]));
     end;
   end;
@@ -300,7 +300,7 @@ begin
   Result := TAtlasBreakpointSets.ValidName(mName);
   if not Result then
   begin
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetInvalidName, [mName]));
+    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetInvalidName, [mName]));
     Exit;
   end;
   ASet.Name := Trim(mName);
@@ -319,7 +319,7 @@ begin
   except
     on E: Exception do
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetNotSaved, [ASet.Name, E.Message]));
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetNotSaved, [ASet.Name, E.Message]));
       Result := False;
     end;
   end;
@@ -381,7 +381,7 @@ begin
   begin
     if mAction.Kind = TAtlasBreakpointSetActionKind.Missing then
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetMissing, [ASets[AIndex].Name,
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetMissing, [ASets[AIndex].Name,
         ExtractFileName(mAction.Entry.FileName), mAction.Line + 1, mAction.Entry.Anchor.Method]));
     end
     else
@@ -392,12 +392,12 @@ begin
   FActiveName := ASets[AIndex].Name;
   if AExclusive then
   begin
-    Report(APrefix + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetSwitched, [ASets[AIndex].Name,
+    Report(APrefix + TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSwitched, [ASets[AIndex].Name,
       mCounts.Created, mCounts.Enabled, mCounts.Disabled]));
   end
   else
   begin
-    Report(APrefix + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetAdded, [ASets[AIndex].Name,
+    Report(APrefix + TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetAdded, [ASets[AIndex].Name,
       mCounts.Created, mCounts.Enabled]));
   end;
 end;
@@ -412,13 +412,13 @@ begin
   ASets := nil;
   if not ProjectFolder(AFolder) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetNoProject));
+    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointSetNoProject));
     Exit;
   end;
   ASets := LoadSets(AFolder);
   if ASets = nil then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetNone));
+    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointSetNone));
     Exit;
   end;
   if not TAtlasBreakpointSetDialog.Execute(AMode, ASets, '', FActiveName, mName,
@@ -492,7 +492,7 @@ begin
   mIndex := TAtlasBreakpointSets.ForBranch(mSets, ABranch);
   if mIndex >= 0 then
   begin
-    Apply(mSets, mIndex, True, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetBranchSwitched,
+    Apply(mSets, mIndex, True, TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetBranchSwitched,
       [ABranch]));
   end;
 end;
@@ -535,16 +535,16 @@ begin
   mSet := Default(TAtlasBreakpointSet);
   if not ProjectFolder(mFolder) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetNoProject));
+    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointSetNoProject));
   end
   else if not Capture(mSet.Entries) then
   begin
-    Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointSetNoBreakpoints));
+    Report(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointSetNoBreakpoints));
   end
   else if AskSet(mFolder, mSet) and WriteSet(mFolder, mSet) then
   begin
     FActiveName := mSet.Name;
-    Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetSaved, [mSet.Name, Length(mSet.Entries)]));
+    Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetSaved, [mSet.Name, Length(mSet.Entries)]));
   end;
 end;
 
@@ -591,7 +591,8 @@ begin
   except
     on E: Exception do
     begin
-      Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetNotSaved, [mSets[mIndex].Name, E.Message]));
+      Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetNotSaved, [mSets[mIndex].Name,
+        E.Message]));
       Exit;
     end;
   end;
@@ -599,7 +600,7 @@ begin
   begin
     FActiveName := '';
   end;
-  Report(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointSetDeleted, [mSets[mIndex].Name]));
+  Report(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointSetDeleted, [mSets[mIndex].Name]));
 end;
 
 class function TAtlasIdeBreakpointSets.SetNamesAt(const AFileName: string; ALine: Integer): TArray<string>;

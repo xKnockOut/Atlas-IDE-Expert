@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Exceptions.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TExceptionsDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCaption);
+  Result := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsCaption);
 end;
 
 function TExceptionsDock.GetIdentifier: string;

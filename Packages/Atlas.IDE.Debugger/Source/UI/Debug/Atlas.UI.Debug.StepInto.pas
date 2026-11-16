@@ -79,7 +79,7 @@ uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Popup.Accessibility;
 
 const
@@ -206,7 +206,7 @@ begin
   end;
   // Fußzeile mit den Tasten.
   mY := mY + mTextHeight + Scale(cRowGap) * 2;
-  mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetFooter);
+  mText := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetFooter);
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Muted);
@@ -264,13 +264,13 @@ class function TAtlasStepIntoWindow.KindText(const ARow: TAtlasStepRow): string;
 begin
   case ARow.Kind of
     TAtlasStepKind.Getter:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetGetter);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetGetter);
     TAtlasStepKind.Setter:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetSetter);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetSetter);
     TAtlasStepKind.Constructor_:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetConstructor);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetConstructor);
     TAtlasStepKind.Inherited_:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetInherited);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetInherited);
   else
     Result := '';
   end;
@@ -280,7 +280,7 @@ begin
     begin
       Result := Result + ', ';
     end;
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetCandidate);
+    Result := Result + TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetCandidate);
   end;
 end;
 
@@ -288,9 +288,9 @@ class function TAtlasStepIntoWindow.ReasonText(const ARow: TAtlasStepRow): strin
 begin
   case ARow.Unavailable of
     TAtlasStepUnavailable.NoSource:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNoSource);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetNoSource);
     TAtlasStepUnavailable.Library_:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetLibrary);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepIntoTargetLibrary);
   else
     Result := '';
   end;

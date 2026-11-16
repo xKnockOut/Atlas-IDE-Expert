@@ -68,7 +68,7 @@ implementation
 uses
   Winapi.Windows,
   Vcl.Themes,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Exceptions.Strings;
 
 /// <summary>Spalte mit ACaption und AWidth (logische Pixel) an AList.</summary>
 procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
@@ -89,6 +89,10 @@ end;
 { TAtlasDebugExceptionStack }
 
 constructor TAtlasDebugExceptionStack.CreateIn(AParent: TWinControl);
+const
+  // Spaltenbreiten bei 96 dpi.
+  cFrameWidth = 330;
+  cLocationWidth = 170;
 begin
   inherited Create(AParent);
   FList := TListView.Create(Self);
@@ -102,8 +106,8 @@ begin
   FList.ReadOnly := True;
   FList.MultiSelect := False;
   FList.ColumnClick := False;
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStackCaption), 330);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsColumnLocation), 170);
+  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackCaption), cFrameWidth);
+  AddColumn(FList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
@@ -146,7 +150,7 @@ begin
     end;
     if (FRows = nil) and (FKey <> '') then
     begin
-      FList.Items.Add.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsStackEmpty);
+      FList.Items.Add.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsStackEmpty);
     end;
   finally
     FList.Items.EndUpdate;
@@ -239,7 +243,7 @@ var
 begin
   if ARow.Kind = TAtlasDebugStackRowKind.LibraryGroup then
   begin
-    Result := TArray<string>.Create(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugExceptionsStackLibrary,
+    Result := TArray<string>.Create(TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugExceptionsStackLibrary,
       [ARow.Count]), '');
     Exit;
   end;

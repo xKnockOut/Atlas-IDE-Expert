@@ -100,7 +100,7 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Exceptions.Strings;
 
 { TAtlasIdeDebugOwnCode.TTicker }
 
@@ -281,7 +281,7 @@ begin
   TAtlasIdeNavigation.MarkLine(AFrames[mIndex].FileName, AFrames[mIndex].Line - 1);
   if Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugJustMyCodeJumped,
+    FMessage(TAtlasExceptionsStrings.Fmt(TAtlasExceptionsTextId.DebugJustMyCodeJumped,
       [ExtractFileName(AFrames[mIndex].FileName), AFrames[mIndex].Line, mIndex]));
   end;
 end;
@@ -372,11 +372,11 @@ begin
   begin
     if mNext.DebugJustMyCode then
     begin
-      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOn));
+      AMessage(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugJustMyCodeOn));
     end
     else
     begin
-      AMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeOff));
+      AMessage(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugJustMyCodeOff));
     end;
   end;
 end;

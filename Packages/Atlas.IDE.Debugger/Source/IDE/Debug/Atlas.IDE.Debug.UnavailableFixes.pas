@@ -66,7 +66,7 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Projects.Context,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Explain.Strings;
 
 const
   cResetAction = 'RunProgramResetCommand';
@@ -168,11 +168,11 @@ end;
 
 class function TAtlasIdeDebugUnavailableFixes.FixText(AFix: TAtlasUnavailableFix): string;
 const
-  cIds: array[TAtlasUnavailableFix] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugUnavailableFixRestart,
-    TAtlasDebugTextId.DebugUnavailableFixRoutine, TAtlasDebugTextId.DebugUnavailableFixUnit,
-    TAtlasDebugTextId.DebugUnavailableFixDcus, TAtlasDebugTextId.DebugUnavailableFixDirective);
+  cIds: array[TAtlasUnavailableFix] of TAtlasExplainTextId = (TAtlasExplainTextId.DebugUnavailableFixRestart,
+    TAtlasExplainTextId.DebugUnavailableFixRoutine, TAtlasExplainTextId.DebugUnavailableFixUnit,
+    TAtlasExplainTextId.DebugUnavailableFixDcus, TAtlasExplainTextId.DebugUnavailableFixDirective);
 begin
-  Result := TAtlasDebugStrings.Text(cIds[AFix]);
+  Result := TAtlasExplainStrings.Text(cIds[AFix]);
 end;
 
 class procedure TAtlasIdeDebugUnavailableFixes.ApplyEdit(AFix: TAtlasUnavailableFix;
@@ -196,7 +196,7 @@ begin
   end;
   mTarget := ExtractFileName(mEdit.Files[0].FileName);
   // Vorschau: die eingefügten Zeilen; erst nach Bestätigung ändern.
-  if not Confirm(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmEdit, [mTarget,
+  if not Confirm(TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableConfirmEdit, [mTarget,
     sLineBreak + sLineBreak, string.Join(sLineBreak, TAtlasDebugUnavailable.PreviewLines(mEdit)),
     sLineBreak + sLineBreak])) then
   begin
@@ -210,7 +210,7 @@ begin
   end
   else
   begin
-    Say(ASay, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableEditDone, [FixText(AFix), mTarget]));
+    Say(ASay, TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableEditDone, [FixText(AFix), mTarget]));
   end;
 end;
 
@@ -228,11 +228,11 @@ begin
   mChosen := ChooseConfiguration(mProject);
   if mChosen = '' then
   begin
-    Say(ASay, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoDebugConfiguration));
+    Say(ASay, TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableNoDebugConfiguration));
     Exit;
   end;
   mPrevious := mProject.CurrentConfiguration;
-  if not Confirm(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmRestart, [mChosen, mPrevious,
+  if not Confirm(TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableConfirmRestart, [mChosen, mPrevious,
     sLineBreak + sLineBreak])) then
   begin
     Exit;
@@ -257,7 +257,7 @@ begin
   Result := ExecuteAction(cResetAction, ShortCut(VK_F2, [ssCtrl]));
   if not Result then
   begin
-    Say(ASay, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoResetAction));
+    Say(ASay, TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableNoResetAction));
   end;
 end;
 
@@ -288,13 +288,13 @@ begin
   begin
     mPrevious := 'false';
   end;
-  if not Confirm(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableConfirmDcus, [mConfiguration,
+  if not Confirm(TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableConfirmDcus, [mConfiguration,
     ExtractFileName(mProject.FileName), mPrevious, sLineBreak + sLineBreak])) then
   begin
     Exit;
   end;
   mBuild.SetValue(cDebugDcusOption, 'true');
-  Say(ASay, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableDcusDone, [mConfiguration, mPrevious]));
+  Say(ASay, TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableDcusDone, [mConfiguration, mPrevious]));
 end;
 
 class procedure TAtlasIdeDebugUnavailableFixes.ShowDirective(const ASwitch: TAtlasUnavailableSwitch);

@@ -26,7 +26,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Debug.OwnCode,
   Atlas.Core.Debug.CallStackView,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.CallStack.Strings;
 
 type
   /// <summary>Leiste über der Liste: Suche, „Mit letztem Halt vergleichen“, „Kopieren“ mit Menü und Statuszeile.
@@ -46,7 +46,7 @@ type
     procedure CopyClick(Sender: TObject);
     procedure CopyTextClick(Sender: TObject);
     procedure CopyMarkdownClick(Sender: TObject);
-    function MenuItem(ACaption: TAtlasDebugTextId; AClick: TNotifyEvent): TMenuItem;
+    function MenuItem(ACaption: TAtlasCallStackTextId; AClick: TNotifyEvent): TMenuItem;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Suchtext ohne Leerzeichen am Rand.</summary>
@@ -176,16 +176,16 @@ begin
   mArea := AStack.Area(ARow);
   if mArea = '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackGroupMixed, [ARow.Count]);
+    Result := TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackGroupMixed, [ARow.Count]);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackGroup, [ARow.Count, mArea]);
+    Result := TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackGroup, [ARow.Count, mArea]);
   end;
   mHits := AStack.Hits(ARow, AQuery);
   if mHits > 0 then
   begin
-    Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackGroupHits, [mHits]);
+    Result := Result + TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackGroupHits, [mHits]);
   end;
 end;
 
@@ -203,7 +203,7 @@ begin
       Inc(mOwn);
     end;
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackStatus, [AStack.Count, mOwn]);
+  Result := TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackStatus, [AStack.Count, mOwn]);
   if Trim(AQuery) = '' then
   begin
     Exit;
@@ -213,7 +213,7 @@ begin
   begin
     Inc(mHits, AStack.Hits(mRow, AQuery));
   end;
-  Result := Result + ' · ' + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackHits, [mHits]);
+  Result := Result + ' · ' + TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackHits, [mHits]);
 end;
 
 class function TAtlasCallStackTexts.RowCells(const AStack: TAtlasDebugStackView; const ARow: TAtlasDebugStackRow;
@@ -239,26 +239,26 @@ begin
   BevelOuter := bvNone;
   mLeft := MulDiv(cGap, CurrentPPI, cBasePpi);
   FSearch := TEdit.Create(Self);
-  FSearch.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackSearchHint);
+  FSearch.TextHint := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackSearchHint);
   FSearch.SetBounds(mLeft, MulDiv(cEditTop, CurrentPPI, cBasePpi), MulDiv(cSearchWidth, CurrentPPI, cBasePpi),
     MulDiv(cBarHeight - cGap, CurrentPPI, cBasePpi));
   FSearch.OnChange := Changed;
   FSearch.Parent := Self;
   FCompare := TCheckBox.Create(Self);
-  FCompare.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackCompare);
+  FCompare.Caption := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackCompare);
   FCompare.SetBounds(FSearch.Left + FSearch.Width + mLeft, FSearch.Top, MulDiv(cCompareWidth, CurrentPPI, cBasePpi),
     FSearch.Height);
   FCompare.OnClick := Changed;
   FCompare.Parent := Self;
   FCopyMenu := TPopupMenu.Create(Self);
-  FCopyMenu.Items.Add(MenuItem(TAtlasDebugTextId.CallStackCopyText, CopyTextClick));
-  FCopyMenu.Items.Add(MenuItem(TAtlasDebugTextId.CallStackCopyMarkdown, CopyMarkdownClick));
+  FCopyMenu.Items.Add(MenuItem(TAtlasCallStackTextId.CallStackCopyText, CopyTextClick));
+  FCopyMenu.Items.Add(MenuItem(TAtlasCallStackTextId.CallStackCopyMarkdown, CopyMarkdownClick));
   FCopyMenu.Items.Add(NewLine);
-  FOwnOnly := MenuItem(TAtlasDebugTextId.CallStackCopyOwnOnly, nil);
+  FOwnOnly := MenuItem(TAtlasCallStackTextId.CallStackCopyOwnOnly, nil);
   FOwnOnly.AutoCheck := True;
   FCopyMenu.Items.Add(FOwnOnly);
   FCopy := TButton.Create(Self);
-  FCopy.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackCopy) + ' ▾';
+  FCopy.Caption := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackCopy) + ' ▾';
   FCopy.SetBounds(FCompare.Left + FCompare.Width + mLeft, FSearch.Top, MulDiv(cButtonWidth, CurrentPPI, cBasePpi),
     FSearch.Height);
   FCopy.OnClick := CopyClick;
@@ -301,10 +301,10 @@ begin
   end;
 end;
 
-function TAtlasCallStackBar.MenuItem(ACaption: TAtlasDebugTextId; AClick: TNotifyEvent): TMenuItem;
+function TAtlasCallStackBar.MenuItem(ACaption: TAtlasCallStackTextId; AClick: TNotifyEvent): TMenuItem;
 begin
   Result := TMenuItem.Create(FCopyMenu);
-  Result.Caption := TAtlasDebugStrings.Text(ACaption);
+  Result.Caption := TAtlasCallStackStrings.Text(ACaption);
   Result.OnClick := AClick;
 end;
 
@@ -374,14 +374,14 @@ var
   mFooter: TLabel;
 begin
   mFooter := TLabel.Create(Self);
-  mFooter.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackFooter);
+  mFooter.Caption := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackFooter);
   mFooter.Align := alBottom;
   mFooter.Parent := Self;
   FPrevious := NewList(Self, Self);
   FPrevious.Width := MulDiv(cPreviousWidth, CurrentPPI, cBasePpi);
   FPrevious.Align := alRight;
   FPrevious.Visible := False;
-  AddColumn(FPrevious, TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackPrevious), cPreviousColumn);
+  AddColumn(FPrevious, TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackPrevious), cPreviousColumn);
   FPrevious.OnCustomDrawItem := PreviousCustomDrawItem;
   FSplitter := TSplitter.Create(Self);
   FSplitter.Align := alRight;
@@ -389,8 +389,8 @@ begin
   FSplitter.Parent := Self;
   FList := NewList(Self, Self);
   FList.Align := alClient;
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackColumnFrame), cFrameColumn);
-  AddColumn(FList, TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackColumnLocation), cLocationColumn);
+  AddColumn(FList, TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackColumnFrame), cFrameColumn);
+  AddColumn(FList, TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackColumnLocation), cLocationColumn);
   FList.OnDblClick := ListDblClick;
   FList.OnKeyDown := ListKeyDown;
   FList.OnCustomDrawItem := ListCustomDrawItem;
@@ -447,7 +447,7 @@ begin
     FPrevious.Items.Clear;
     if not FHasPrevious then
     begin
-      FPrevious.Items.Add.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackNoPrevious);
+      FPrevious.Items.Add.Caption := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackNoPrevious);
       Exit;
     end;
     for mEntry in FPrev.Entries do

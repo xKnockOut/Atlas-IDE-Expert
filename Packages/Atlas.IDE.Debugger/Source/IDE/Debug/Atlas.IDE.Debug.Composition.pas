@@ -86,7 +86,7 @@ uses
   Atlas.IDE.Debug.Composition.Breakpoints,
   Atlas.IDE.Debug.Composition.Run,
   Atlas.IDE.Debug.Composition.Session,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Commands.Strings,
   Atlas.UI.Debug.VariablesStrings;
 
 var
@@ -187,7 +187,7 @@ begin
     begin
       Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
     end, TAtlasExpressionCompletionProvider.cDefaultTimeoutMs);
-  mProvider.HistoryCaption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExpressionHistory);
+  mProvider.HistoryCaption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugExpressionHistory);
   Result := mProvider;
 end;
 
@@ -236,10 +236,11 @@ end;
 function WindowCommands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
-    Command('Atlas.DebugEvaluate', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateCommand),
+    Command('Atlas.DebugEvaluate', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEvaluateCommand),
       TAtlasIdeDebugEvaluate.ShowWindow,
       DebugEvaluateVisible),
-    Command('Atlas.DebugEvaluateIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateIdeDialogCommand),
+    Command('Atlas.DebugEvaluateIdeDialog',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEvaluateIdeDialogCommand),
       TAtlasIdeDebugEvaluate.OpenIdeDialog, DebugEvaluateVisible),
     Command('Atlas.DebugVariables', TAtlasVariablesStrings.Text(TAtlasVariablesTextId.VariablesCommand),
       ShowVariablesWindow, VariablesWindowVisible),
@@ -311,37 +312,41 @@ var
 begin
   Result := [
     // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
-    CommandWithKey('Atlas.StepIntoTarget', TAtlasDebugStrings.StepIntoTargetCommand,
+    CommandWithKey('Atlas.StepIntoTarget', TAtlasDebugCommandsStrings.StepIntoTargetCommand,
       TAtlasIdeStepInto.Run,
       StepIntoTargetVisible, StepIntoTargetKey),
     // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar.
-    Command('Atlas.StepFilters', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterWindowCommand),
+    Command('Atlas.StepFilters', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.StepFilterWindowCommand),
       TAtlasIdeDebugStepFilter.ShowWindow,
       nil),
-    Command('Atlas.StepIntoAnyway', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterStepIntoAnywayCommand),
+    Command('Atlas.StepIntoAnyway',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.StepFilterStepIntoAnywayCommand),
       TAtlasIdeDebugStepFilter.StepIntoAnyway, StepFilterRunning),
     // Routine an der Schreibmarke in debug.stepFilters.patterns aufnehmen bzw. entfernen (#850); der Aufruf meldet,
     // was danach noch filtert.
-    Command('Atlas.StepFilterSkip', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterSkipCommand),
+    Command('Atlas.StepFilterSkip', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.StepFilterSkipCommand),
       TAtlasIdeDebugStepFilter.SkipAtCursor, nil),
-    Command('Atlas.StepFilterUnskip', TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterUnskipCommand),
+    Command('Atlas.StepFilterUnskip',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.StepFilterUnskipCommand),
       TAtlasIdeDebugStepFilter.UnskipAtCursor,
       nil),
     // Exception-Verlauf (#517); nur sichtbar, solange debug.exceptionHistory an ist.
-    Command('Atlas.DebugExceptions', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsCommand),
+    Command('Atlas.DebugExceptions', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugExceptionsCommand),
       TAtlasIdeDebugExceptions.ShowWindow,
       DebugExceptionsVisible),
     // Nur eigener Code (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
-    Command('Atlas.DebugJustMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugJustMyCodeCommand),
+    Command('Atlas.DebugJustMyCode', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugJustMyCodeCommand),
       ToggleDebugJustMyCode, nil),
     // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung.
-    Command('Atlas.DebugExceptionIdeDialog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogCommand),
+    Command('Atlas.DebugExceptionIdeDialog',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugBannerIdeDialogCommand),
       TAtlasIdeDebugExceptionBar.ToggleIdeDialog, DebugExceptionBarVisible),
     // Was wartet worauf? (#587); nur sichtbar, solange debug.deadlocks an ist.
-    Command('Atlas.DebugDeadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsCommand),
+    Command('Atlas.DebugDeadlocks', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugWaitsCommand),
       RunDebugDeadlocks, DebugDeadlocksVisible),
     // Parallele Aufrufstapel (#837); nur sichtbar, solange debug.parallelStacks an ist.
-    Command('Atlas.DebugParallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksCommand),
+    Command('Atlas.DebugParallelStacks',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ParallelStacksCommand),
       ShowDebugParallelStacks, DebugParallelStacksVisible),
     // Atlas-Lecks (#1875); nur sichtbar, solange debug.leakReport an ist.
     Command('Atlas.DebugLeaks', DebugLeaksCommandText, ShowDebugLeaks, DebugLeaksVisible)];
@@ -381,7 +386,7 @@ end;
 function ContextEntry(const ACommandId: string): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.EditorContext);
-  Result.Section := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEditorMenuGroup);
+  Result.Section := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result.Group := 'debug';
   Result.When := WhileDebugging;
 end;
@@ -393,15 +398,15 @@ begin
 end;
 
 /// <summary>Eintrag im Untermenü ASection des Atlas-Menüs („-“ = Trennlinie); nur mit offenem Projekt.</summary>
-function AtlasEntry(const ACommandId: string; ASection: TAtlasDebugTextId): TAtlasMenuEntry;
+function AtlasEntry(const ACommandId: string; ASection: TAtlasDebugCommandsTextId): TAtlasMenuEntry;
 begin
   Result := MenuEntry(ACommandId, TAtlasMenuPlace.AtlasMenu);
-  Result.Section := TAtlasDebugStrings.Text(ASection);
+  Result.Section := TAtlasDebugCommandsStrings.Text(ASection);
   Result.When := WithProject;
 end;
 
 /// <summary>Einträge AIds („-“ = Trennlinie) im Untermenü ASection des Atlas-Menüs.</summary>
-function AtlasEntries(const AIds: array of string; ASection: TAtlasDebugTextId): TArray<TAtlasMenuEntry>;
+function AtlasEntries(const AIds: array of string; ASection: TAtlasDebugCommandsTextId): TArray<TAtlasMenuEntry>;
 var
   mIndex: Integer;
 begin
@@ -421,11 +426,11 @@ begin
     'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
     'Atlas.DebugLeaks', '-', 'Atlas.DebugDeadlocks', '-', 'Atlas.DebugRestart', 'Atlas.LaunchGroups', '-',
     'Atlas.DebugProfile', 'Atlas.DebugProfileRun', 'Atlas.DebugProfileToggle', '-', 'Atlas.RuntimeReportPaste'],
-    TAtlasDebugTextId.DebugEditorMenuGroup);
+    TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
   Result := Result + AtlasEntries(['Atlas.BreakpointsWindow', 'Atlas.CheckBreakpoints', '-', 'Atlas.Logpoint',
     '-', 'Atlas.MethodBreakpoints', 'Atlas.MethodBreakpointGroups', '-', 'Atlas.BreakpointRules', '-',
     'Atlas.BreakpointSetSave', 'Atlas.BreakpointSetSwitch', '-', 'Atlas.BreakpointAnchorsOrphans',
-    'Atlas.BreakpointAnchorsUndo'], TAtlasDebugTextId.MenuGroupBreakpoints);
+    'Atlas.BreakpointAnchorsUndo'], TAtlasDebugCommandsTextId.MenuGroupBreakpoints);
 end;
 
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -455,7 +460,7 @@ begin
   // Gezielt hineinspringen (#836): nur im angehaltenen Zustand; sonst geht die Taste an die IDE weiter.
   mKey := Default(TAtlasModuleKey);
   mKey.Id := 'Atlas.StepIntoTarget';
-  mKey.Caption := TAtlasDebugStrings.StepIntoTargetCommand;
+  mKey.Caption := TAtlasDebugCommandsStrings.StepIntoTargetCommand;
   mKey.Key := StepIntoTargetKey;
   mKey.Attempt :=
     function: Boolean

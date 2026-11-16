@@ -149,7 +149,7 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.Core.Modules.Contributions,
   Atlas.IDE.Contracts.DebugStop,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Exceptions.Strings;
 
 /// <summary>Bietet ein Modul „Test daraus anlegen …“ an (#1873)?</summary>
 function CreateTestOffered: Boolean;
@@ -291,7 +291,7 @@ begin
     FShown.Count := mFound.Count;
   end;
   FShownInfo := TAtlasDebugBannerRules.Info(FShown, TAtlasIdeSettings.Current.DebugJustMyCode,
-    TAtlasIdeDebugSession.LaunchProject, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread),
+    TAtlasIdeDebugSession.LaunchProject, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread),
     TAtlasIdeSettings.Current.DebugExceptionBannerIgnoreAtLocation);
   FShownInfo.CanCreateTest := CreateTestOffered;
   // Zur gezeigten Zeile und markieren; öffnet die Unit im obersten Editorfenster.
@@ -435,8 +435,8 @@ begin
   mLine := TAtlasStatusLine.Create(FRegistry, cStatusId, cStatusOrder);
   FStatusRef := mLine;
   // Gelb: Die Einstellung ist an, wirkt aber nur als Rückfall.
-  mLine.Update(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerUnknownVersionSummary));
+  mLine.Update(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerUnknownVersion), TAtlasStatusState.Yellow,
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerUnknownVersionSummary));
   FRegistry.Add(FStatusRef);
 end;
 
@@ -569,11 +569,11 @@ begin
   begin
     if FIdeDialog then
     begin
-      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogOn));
+      FMessage(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerIdeDialogOn));
     end
     else
     begin
-      FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugBannerIdeDialogOff));
+      FMessage(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugBannerIdeDialogOff));
     end;
   end;
 end;

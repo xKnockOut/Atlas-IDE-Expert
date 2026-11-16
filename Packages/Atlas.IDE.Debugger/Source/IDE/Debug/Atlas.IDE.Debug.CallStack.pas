@@ -115,7 +115,7 @@ uses
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
   Atlas.IDE.Debug.CallStackWindow,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.CallStack.Strings;
 
 /// <summary>Fenster, falls es sichtbar ist; sonst nil.</summary>
 function ShownFrame: TAtlasDebugCallStackFrame;
@@ -180,7 +180,7 @@ begin
   end;
   FStop := TAtlasIdeDebugSession.StopCount;
   FRetries := 0;
-  mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackReading));
+  mFrame.ShowStatus(TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackReading));
   FPhase := TPhase.Read;
   ReadStep;
 end;
@@ -398,7 +398,7 @@ begin
   mFrame := ShownFrame;
   if mFrame <> nil then
   begin
-    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackRunning));
+    mFrame.ShowStatus(TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackRunning));
   end;
 end;
 
@@ -468,7 +468,7 @@ begin
     begin
       if Assigned(FMessage) then
       begin
-        FMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.CallStackCopied, [ACount]));
+        FMessage(TAtlasCallStackStrings.Fmt(TAtlasCallStackTextId.CallStackCopied, [ACount]));
       end;
     end;
 end;
