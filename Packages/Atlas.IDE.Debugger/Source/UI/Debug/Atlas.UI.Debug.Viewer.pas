@@ -94,7 +94,7 @@ uses
   System.Types,
   System.Math,
   Vcl.Clipbrd,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Values.Strings,
   Atlas.UI.Foundation.WrapLabel;
 
 const
@@ -142,7 +142,7 @@ var
 begin
   Result := TPopupMenu.Create(AForm);
   mItem := TMenuItem.Create(Result);
-  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerCopy);
+  mItem.Caption := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerCopy);
   mItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
   mItem.OnClick := AOnCopy;
   Result.Items.Add(mItem);
@@ -201,17 +201,17 @@ function ColumnCaption(AColumn: TAtlasVisualizerColumn): string;
 begin
   case AColumn of
     TAtlasVisualizerColumn.Index:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnIndex);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnIndex);
     TAtlasVisualizerColumn.Key:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnKey);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnKey);
     TAtlasVisualizerColumn.Field:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnField);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnField);
     TAtlasVisualizerColumn.FieldType:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnFieldType);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnFieldType);
     TAtlasVisualizerColumn.OldValue:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnOldValue);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnOldValue);
   else
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerColumnValue);
+    Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerColumnValue);
   end;
 end;
 
@@ -237,7 +237,7 @@ begin
 
   FAllFields := TCheckBox.Create(Self);
   PlaceTop(FAllFields, Self, cGap div 2);
-  FAllFields.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerAllFields);
+  FAllFields.Caption := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerAllFields);
   FAllFields.Visible := False;
   FAllFields.Top := FNote.Top + FNote.Height + 1;
   FAllFields.OnClick := AllFieldsClick;
@@ -512,11 +512,11 @@ end;
 procedure TAtlasDebugViewer.ShowView(const AExpression: string; const AView: TAtlasVisualizerView);
 begin
   FView := AView;
-  Caption := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerTitle), [AExpression]);
+  Caption := Format(TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerTitle), [AExpression]);
   FHeader.Caption := AView.Summary;
   FHeader.Enabled := True;
   FNote.Visible := AView.NeedsMore;
-  FNote.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerNeedsMore);
+  FNote.Caption := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerNeedsMore);
   FAllFields.Visible := (AView.Mode = TAtlasVisualizerViewMode.Table) and (AView.AllRows <> nil);
   FAllFields.Enabled := True;
   HideContent;
@@ -539,7 +539,7 @@ begin
       ShowText;
   else
     begin
-      FText.Text := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerEmpty);
+      FText.Text := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerEmpty);
       FText.Visible := True;
     end;
   end;

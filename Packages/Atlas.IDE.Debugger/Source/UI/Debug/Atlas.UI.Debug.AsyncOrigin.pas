@@ -30,7 +30,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Threads.Strings,
   Atlas.UI.Debug.Deadlocks;
 
 { TAtlasAsyncOriginTexts }
@@ -40,7 +40,7 @@ class procedure TAtlasAsyncOriginTexts.AddLibrary(var ARows: TArray<string>; var
 begin
   if ACount > 0 then
   begin
-    ARows := ARows + [TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginLibrary, [ACount])];
+    ARows := ARows + [TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginLibrary, [ACount])];
     AFrameIndex := AFrameIndex + [-1];
   end;
   ACount := 0;
@@ -48,7 +48,7 @@ end;
 
 class function TAtlasAsyncOriginTexts.Title(const AEntry: TAtlasAsyncEntry; AKind: TAtlasAsyncKind): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginTitle,
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginTitle,
     [TAtlasAsyncSites.KindName(AKind), AEntry.ThreadId]);
 end;
 
@@ -57,7 +57,7 @@ begin
   Result := TAtlasDebugWaitTexts.ShortRoutine(AFrame.Routine);
   if AFrame.HasSource then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginFrame,
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginFrame,
       [Result, ExtractFileName(AFrame.FileName), AFrame.Line]);
   end;
 end;
@@ -87,12 +87,12 @@ end;
 
 class function TAtlasAsyncOriginTexts.NoneText(AKind: TAtlasAsyncKind): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginNone, [TAtlasAsyncSites.KindName(AKind)]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginNone, [TAtlasAsyncSites.KindName(AKind)]);
 end;
 
 class function TAtlasAsyncOriginTexts.StatusText(ASites: Integer): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.AsyncOriginStatus, [ASites]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.AsyncOriginStatus, [ASites]);
 end;
 
 end.

@@ -67,7 +67,7 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Evaluate.Strings;
 
 /// <summary>Reiter in der Reihenfolge der Auswertung: AFirst, dann die übrigen.</summary>
 function TabOrder(AFirst: TAtlasVariablesTab): TArray<TAtlasVariablesTab>;
@@ -139,7 +139,7 @@ begin
   mText := AText;
   if not AOk and (mText = '') then
   begin
-    mText := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout);
+    mText := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout);
   end;
   FLists[ATab].SetResult(mNode, AOk, mText);
 end;

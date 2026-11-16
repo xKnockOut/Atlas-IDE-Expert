@@ -64,7 +64,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 const
   cDialogWidth = 620;
@@ -76,7 +76,8 @@ const
 constructor TAtlasBreakpointOrphanDialog.CreateDialog(AOwner: TComponent; const AOrphans: TAtlasAnchorOrphans;
   const AAction: TAtlasOrphanAction);
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsTitle), cDialogWidth);
+  inherited CreateDialog(AOwner, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsTitle),
+    cDialogWidth);
   FOrphans := AOrphans;
   FAction := AAction;
   CreateHint;
@@ -100,7 +101,7 @@ var
   mLabel: TLabel;
 begin
   mRow := AddRow(cHintHeight);
-  mLabel := AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsHint));
+  mLabel := AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsHint));
   mLabel.ShowAccelChar := False;
   // Feste Breite aus der Zeile: kein Schrumpfen auf die längste Zeile.
   mLabel.AutoSize := False;
@@ -127,12 +128,12 @@ var
   mClose: TButton;
 begin
   mButtons := AddButtonRow;
-  FApply := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsApply),
+  FApply := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsApply),
     TAtlasButtonKind.Default);
   FApply.OnClick := ApplyClick;
-  FDelete := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsDelete));
+  FDelete := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsDelete));
   FDelete.OnClick := DeleteClick;
-  mClose := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsClose),
+  mClose := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsClose),
     TAtlasButtonKind.Cancel);
   mClose.ModalResult := mrCancel;
 end;
@@ -206,7 +207,7 @@ end;
 
 class function TAtlasBreakpointOrphanDialog.ItemText(const AOrphan: TAtlasAnchorOrphan): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsItem,
+  Result := TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointAnchorsItem,
     [ExtractFileName(AOrphan.Item.FileName.Replace('/', PathDelim)), AOrphan.Item.Line + 1,
     AOrphan.Item.Anchor.Anchor.Text, AOrphan.Suggestion + 1]);
 end;

@@ -1,9 +1,7 @@
 ﻿unit Atlas.UI.Debug.VariablesStrings;
 
 // Oberflächentexte des Fensters „Variablen“ (#853) auf Deutsch und Englisch.
-// Eigene Tabelle neben Atlas.UI.Debug.Strings, die sonst über die Grenze der
-// Unit-Länge wüchse. Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder
-// Aufruf liest sie neu.
+// Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
 

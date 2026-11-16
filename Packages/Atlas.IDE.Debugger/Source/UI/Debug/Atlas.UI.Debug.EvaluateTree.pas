@@ -97,7 +97,7 @@ type
 implementation
 
 uses
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Evaluate.Strings;
 
 function RootsOf(AList: TAtlasEvalList): TArray<TAtlasEvalNode>;
 var
@@ -341,7 +341,7 @@ procedure TAtlasEvalTreeSync.SyncChildren(AItem: TTreeNode; ANode: TAtlasEvalNod
 begin
   if ANode.ChildrenLoaded and (ANode.ChildCount = 0) then
   begin
-    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNoFields));
+    SyncPlaceholder(AItem, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateNoFields));
   end
   else if ANode.ChildrenLoaded then
   begin
@@ -350,7 +350,7 @@ begin
   else if ShowsExpander(ANode) then
   begin
     // Platzhalter für das Aufklappzeichen; die Felder holt OnExpand.
-    SyncPlaceholder(AItem, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending));
+    SyncPlaceholder(AItem, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePending));
   end
   else
   begin
@@ -462,10 +462,10 @@ begin
       end
       else
       begin
-        mValue := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluatePending);
+        mValue := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluatePending);
       end;
     TAtlasEvalState.Unavailable:
-      mValue := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateNotStopped);
+      mValue := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateNotStopped);
   else
     mValue := ANode.Value;
   end;

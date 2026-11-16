@@ -99,7 +99,7 @@ uses
   Atlas.IDE.Debug.NoSourceFacts,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.StepsBar,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Stepping.Strings;
 
 const
   cDebugConfiguration = 'Debug';
@@ -216,7 +216,7 @@ class procedure TAtlasIdeDebugNoSource.ReturnToOwnCode;
 begin
   FReturning := True;
   FReturns := 1;
-  Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceReturning));
+  Say(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceReturning));
   if not TAtlasIdeDebugSession.RunMode(ormRunUntilReturn) then
   begin
     FReturning := False;
@@ -281,12 +281,13 @@ function PlaceText(const AFacts: TAtlasNoSourceFacts): string;
 var
   mUnknown: string;
 begin
-  mUnknown := TAtlasDebugStrings.Text(TAtlasDebugTextId.NoSourceUnknown);
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourcePlace, [TAtlasNoSourceFlow.OrUnknown(AFacts.Place.Module,
+  mUnknown := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.NoSourceUnknown);
+  Result := TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourcePlace,
+    [TAtlasNoSourceFlow.OrUnknown(AFacts.Place.Module,
     mUnknown), TAtlasNoSourceFlow.OrUnknown(AFacts.Place.Address, mUnknown)]);
   if AFacts.UnitName <> '' then
   begin
-    Result := Result + ' · ' + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceUnit, [AFacts.UnitName]);
+    Result := Result + ' · ' + TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceUnit, [AFacts.UnitName]);
   end;
 end;
 
@@ -318,7 +319,8 @@ begin
   mPoint := TAtlasStepsBar.ActiveCorner;
   FPopup.Colors := TAtlasIdeStyle.Colors;
   FPopup.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
-  FPopup.ShowFor(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceTitle, [AFacts.Place.Routine]), PlaceText(AFacts),
+  FPopup.ShowFor(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceTitle, [AFacts.Place.Routine]),
+    PlaceText(AFacts),
     TAtlasNoSourcePopup.ReasonText(mReason), TAtlasNoSource.Ways(mReason, AHasOwnFrame,
     SameText(TAtlasIdeDebugSession.LaunchConfiguration, cDebugConfiguration)),
     (AFacts.UnitName <> '') or (AFacts.Place.Module <> ''), mPoint);
@@ -330,18 +332,18 @@ var
 begin
   mName := TAtlasNoSourceFlow.SourceName(FFacts);
   mFolder := ExtractFileDir(FFacts.PasPath);
-  if not SelectDirectory(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceFindTitle, [mName]), '', mFolder) then
+  if not SelectDirectory(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceFindTitle, [mName]), '', mFolder) then
   begin
     Exit;
   end;
   mFile := TPath.Combine(mFolder, mName);
   if (FFacts.UnitName = '') or not FileExists(mFile) then
   begin
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceNotFound, [mName, mFolder]));
+    Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceNotFound, [mName, mFolder]));
     Exit;
   end;
   TAtlasIdeNoSourceFacts.RememberFolder(mFolder);
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceFound, [mFolder]));
+  Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceFound, [mFolder]));
   TAtlasIdeNavigation.ShowFile(mFile);
 end;
 
@@ -358,7 +360,7 @@ begin
   mNext := TAtlasIdeSettings.Stored;
   mNext.DebugNoSourceIgnoredUnits := TAtlasNoSource.AddIgnored(mNext.DebugNoSourceIgnoredUnits, mUnit);
   TAtlasIdeSettings.Update(mNext);
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.NoSourceIgnored, [mUnit]));
+  Say(TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.NoSourceIgnored, [mUnit]));
 end;
 
 class procedure TAtlasIdeDebugNoSource.RebuildAndRun;

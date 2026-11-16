@@ -27,7 +27,7 @@ uses
   Atlas.Core.Debug.ThreadMarks,
   Atlas.Core.Debug.ThreadsInSourceFlow,
   Atlas.IDE.Debug.Session,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 type
   TAtlasIdeDebugThreadsInSource = class
@@ -72,7 +72,7 @@ type
     class procedure Clear; static;
     class procedure Rebuild; static;
     class procedure UpdateStatus; static;
-    class procedure Say(AId: TAtlasDebugTextId; const AThread: TAtlasDebugThreadStack); static;
+    class procedure Say(AId: TAtlasThreadsTextId; const AThread: TAtlasDebugThreadStack); static;
     /// <summary>Threads für einen Befehl aus dem Kontextmenü (siehe Kopf).</summary>
     class function ContextThreads: TArray<Integer>; static;
     class procedure Choose(AAction: TAtlasThreadAction; const AThreads: TArray<Integer>); static;
@@ -272,11 +272,11 @@ begin
   FStatusLine.Update(TAtlasThreadMarkTexts.FrozenText(mCount), TAtlasStatusState.Yellow);
 end;
 
-class procedure TAtlasIdeDebugThreadsInSource.Say(AId: TAtlasDebugTextId; const AThread: TAtlasDebugThreadStack);
+class procedure TAtlasIdeDebugThreadsInSource.Say(AId: TAtlasThreadsTextId; const AThread: TAtlasDebugThreadStack);
 begin
   if Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Fmt(AId, [TAtlasThreadMarkTexts.ThreadLabel(AThread, False)]));
+    FMessage(TAtlasThreadsStrings.Fmt(AId, [TAtlasThreadMarkTexts.ThreadLabel(AThread, False)]));
   end;
 end;
 
@@ -321,7 +321,7 @@ begin
       begin
         if Assigned(FMessage) then
         begin
-          FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsNotStopped));
+          FMessage(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsNotStopped));
         end;
         Exit;
       end;
@@ -351,7 +351,7 @@ begin
   if TAtlasThreadsInSourceFlow.OffersAll(AAction) then
   begin
     mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksAllHere);
+    mItem.Caption := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ThreadMarksAllHere);
     mItem.Tag := cAllTag;
     mItem.OnClick := FTicker.Pick;
     FMenu.Items.Add(mItem);
@@ -377,11 +377,11 @@ begin
       begin
         if TAtlasIdeDebugThreadFreeze.Freeze(mStack.ThreadId) then
         begin
-          Say(TAtlasDebugTextId.ThreadMarksFrozenOn, mStack);
+          Say(TAtlasThreadsTextId.ThreadMarksFrozenOn, mStack);
         end
         else
         begin
-          Say(TAtlasDebugTextId.ThreadMarksFreezeFailed, mStack);
+          Say(TAtlasThreadsTextId.ThreadMarksFreezeFailed, mStack);
         end;
         UpdateStatus;
         TAtlasIdeGutterMarks.Invalidate;
@@ -390,7 +390,7 @@ begin
       begin
         if TAtlasIdeDebugThreadFreeze.Thaw(mStack.ThreadId) then
         begin
-          Say(TAtlasDebugTextId.ThreadMarksThawed, mStack);
+          Say(TAtlasThreadsTextId.ThreadMarksThawed, mStack);
         end;
         UpdateStatus;
         TAtlasIdeGutterMarks.Invalidate;
@@ -487,11 +487,11 @@ class procedure TAtlasIdeDebugThreadsInSource.ToggleFlag(const AStack: TAtlasDeb
 begin
   if FFlagged.Toggle(AStack.ThreadId) then
   begin
-    Say(TAtlasDebugTextId.ThreadMarksFlaggedOn, AStack);
+    Say(TAtlasThreadsTextId.ThreadMarksFlaggedOn, AStack);
   end
   else
   begin
-    Say(TAtlasDebugTextId.ThreadMarksFlaggedOff, AStack);
+    Say(TAtlasThreadsTextId.ThreadMarksFlaggedOff, AStack);
   end;
   Rebuild;
 end;
@@ -524,7 +524,7 @@ begin
   TAtlasIdeDebugThreadFreeze.ThawAll;
   if Assigned(FMessage) then
   begin
-    FMessage(TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksThawedAll));
+    FMessage(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ThreadMarksThawedAll));
   end;
   UpdateStatus;
   TAtlasIdeGutterMarks.Invalidate;

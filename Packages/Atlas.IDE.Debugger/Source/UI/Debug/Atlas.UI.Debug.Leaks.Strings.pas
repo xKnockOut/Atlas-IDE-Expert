@@ -1,8 +1,8 @@
 ﻿unit Atlas.UI.Debug.Leaks.Strings;
 
 // Oberflächentexte des Fensters „Atlas-Lecks“ (#1875) im Modul Debugger, auf Deutsch und Englisch: Fenster,
-// Befehl, Bewertungen der Erzeugungsstellen, Meldungen und Einstellungen. Eigene Unit, weil Atlas.UI.Debug.Strings
-// die Längengrenze erreicht. Die Sprache bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
+// Befehl, Bewertungen der Erzeugungsstellen, Meldungen und Einstellungen. Die Sprache bestimmt Base
+// (`TAtlasStrings.Language`); jeder Aufruf liest sie neu.
 
 interface
 

@@ -114,7 +114,7 @@ uses
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Visualizers,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Values.Strings,
   Atlas.IDE.Foundation.Files;
 
 const
@@ -165,12 +165,12 @@ end;
 
 function TAtlasIdeDisplayVisualizer.GetVisualizerName: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugDisplayName);
+  Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugDisplayName);
 end;
 
 function TAtlasIdeDisplayVisualizer.GetVisualizerDescription: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugDisplayDescription);
+  Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugDisplayDescription);
 end;
 
 procedure TAtlasIdeDisplayVisualizer.GetSupportedType(Index: Integer; var TypeName: string;
@@ -205,7 +205,7 @@ end;
 
 function TAtlasIdeDisplayVisualizer.GetMenuText: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerMenu);
+  Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerMenu);
 end;
 
 /// <summary>Quelle des Ansichtsfensters; eigene Routine, damit der Rahmen keine anderen Methodenreferenzen hält.

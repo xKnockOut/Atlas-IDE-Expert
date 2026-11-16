@@ -95,7 +95,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Evaluate,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Values.Strings;
 
 { TAtlasIdeDebugHoverTree }
 
@@ -109,9 +109,9 @@ begin
   FTree := TAtlasHoverTree.Create(FChanges);
   FDebug := TAtlasIdeDebugValues.Create;
   mTexts := Default(TAtlasHoverTreeTexts);
-  mTexts.Evaluate := TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreeEvaluate);
-  mTexts.Pending := TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreePending);
-  mTexts.More := TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreeMore);
+  mTexts.Evaluate := TAtlasValuesStrings.Text(TAtlasValuesTextId.HoverTreeEvaluate);
+  mTexts.Pending := TAtlasValuesStrings.Text(TAtlasValuesTextId.HoverTreePending);
+  mTexts.More := TAtlasValuesStrings.Text(TAtlasValuesTextId.HoverTreeMore);
   FTree.Texts := mTexts;
   ApplySettings;
 end;
@@ -389,11 +389,11 @@ begin
   begin
     Exit;
   end;
-  Result := [TAtlasDebugValueFix.Create(cCopyAction, TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreeCopy))];
+  Result := [TAtlasDebugValueFix.Create(cCopyAction, TAtlasValuesStrings.Text(TAtlasValuesTextId.HoverTreeCopy))];
   if TAtlasIdeDebugEvaluate.Started then
   begin
     Result := Result + [TAtlasDebugValueFix.Create(cWatchAction,
-      TAtlasDebugStrings.Text(TAtlasDebugTextId.HoverTreeWatch))];
+      TAtlasValuesStrings.Text(TAtlasValuesTextId.HoverTreeWatch))];
   end;
 end;
 

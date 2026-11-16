@@ -52,7 +52,7 @@ uses
   Atlas.IDE.Debug.RuntimeReport,
   Atlas.IDE.Debug.LaunchGroups,
   Atlas.IDE.Debug.Composition.Profiler,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Commands.Strings;
 
 const
   cLogpointCommand = 'Atlas.Logpoint';
@@ -270,32 +270,35 @@ end;
 function RunCommands(const AScope: TFunc<IAtlasModuleScope>): TArray<TAtlasModuleCommand>;
 begin
   Result := [
-    RunCommand('Atlas.DebugEventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEventLogCommand),
+    RunCommand('Atlas.DebugEventLog', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEventLogCommand),
       TAtlasIdeDebugEventLog.ShowWindow, EventLogVisible),
-    RunCommand(cLogpointCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCommand),
+    RunCommand(cLogpointCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointCommand),
       TAtlasIdeLogpoints.SetAtCursor, LogpointsVisible),
-    RunCommand('Atlas.LogpointsDisable', TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointDisableAll),
+    RunCommand('Atlas.LogpointsDisable', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointDisableAll),
       TAtlasIdeLogpoints.DisableAll, LogpointsVisible),
-    RunCommand('Atlas.LogpointsEnable', TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointEnableAll),
+    RunCommand('Atlas.LogpointsEnable', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointEnableAll),
       TAtlasIdeLogpoints.EnableAll, LogpointsVisible),
-    RunCommand('Atlas.LogpointsDelete', TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointDeleteAll),
+    RunCommand('Atlas.LogpointsDelete', TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointDeleteAll),
       TAtlasIdeLogpoints.DeleteAll, LogpointsVisible),
-    RunCommand(cRestartCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartCommand),
+    RunCommand(cRestartCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RestartCommand),
       TAtlasIdeDebugRestart.Execute, RestartVisible),
-    RunCommand(cReattachCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachCommandPlain),
+    RunCommand(cReattachCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ReattachCommandPlain),
       TAtlasIdeDebugReattach.Execute, ReattachVisible),
-    RunCommand('Atlas.ReattachWhenStarted', TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachWaitCommand),
+    RunCommand('Atlas.ReattachWhenStarted',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ReattachWaitCommand),
       TAtlasIdeDebugReattach.WaitForStart, ReattachVisible),
     // Befehle auf Abruf ohne eigene Oberfläche: keine Einstellung.
-    RunCommand(cRuntimeReportCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportPasteCommand),
+    RunCommand(cRuntimeReportCommand,
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RuntimeReportPasteCommand),
       PasteRuntimeReport(AScope), nil),
-    RunCommand('Atlas.RuntimeReportClear', TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportClearCommand),
+    RunCommand('Atlas.RuntimeReportClear',
+      TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RuntimeReportClearCommand),
       ClearRuntimeReport(AScope), nil),
-    RunCommand(cLaunchGroupsCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandWindow),
+    RunCommand(cLaunchGroupsCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandWindow),
       TAtlasIdeLaunchGroups.ShowWindow, LaunchGroupsVisible),
-    RunCommand(cLaunchRunCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandRun),
+    RunCommand(cLaunchRunCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandRun),
       TAtlasIdeLaunchGroups.RunActive, LaunchGroupsVisible),
-    RunCommand(cLaunchStopCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandStop),
+    RunCommand(cLaunchStopCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandStop),
       TAtlasIdeLaunchGroups.StopAll, LaunchGroupsVisible)];
   // Profiler (#2057); nur sichtbar, solange debug.profiler an ist.
   Result := Result + ProfilerCommands;
@@ -388,15 +391,17 @@ end;
 
 function RunKeys: TArray<TAtlasModuleKey>;
 begin
-  Result := [RunKey(cLogpointCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LogpointCommand),
+  Result := [RunKey(cLogpointCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LogpointCommand),
     ShortCut(VK_F5, [ssShift]), TryLogpoint),
-    RunKey(cRestartCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.RestartCommand),
+    RunKey(cRestartCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.RestartCommand),
     ShortCut(VK_F2, [ssCtrl, ssShift]), TryRestart),
-    RunKey(cReattachCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachCommandPlain), ReattachKey,
+    RunKey(cReattachCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ReattachCommandPlain),
+      ReattachKey,
     TryReattach),
-    RunKey(cLaunchRunCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandRun), LaunchKey(VK_F9, []),
+    RunKey(cLaunchRunCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandRun),
+      LaunchKey(VK_F9, []),
     TryLaunchRun),
-    RunKey(cLaunchStopCommand, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchCommandStop),
+    RunKey(cLaunchStopCommand, TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.LaunchCommandStop),
     LaunchKey(VK_F2, [ssCtrl]), TryLaunchStop)];
 end;
 

@@ -70,7 +70,7 @@ implementation
 uses
   System.UITypes,
   Vcl.Forms,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Session.Strings;
 
 { TAtlasLaunchGroupsDialog }
 
@@ -81,12 +81,12 @@ var
   mButtons: TAtlasButtonRow;
   mEdit: TButton;
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchDialogTitle), cWidth);
+  inherited CreateDialog(AOwner, TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchDialogTitle), cWidth);
   FGroups := AGroups;
   FActive := AActive;
   if FGroups = nil then
   begin
-    AddNote(cNoteHeight).Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNoGroups);
+    AddNote(cNoteHeight).Caption := TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchNoGroups);
   end;
   mRow := AddRow(cGroupsHeight);
   FGroupList := TAtlasListView.Create(Self);
@@ -95,8 +95,8 @@ begin
   FGroupList.ReadOnly := True;
   FGroupList.RowSelect := True;
   FGroupList.HideSelection := False;
-  FGroupList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColGroup), cNameWidth);
-  FGroupList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColProjects), cProjectsMinWidth);
+  FGroupList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColGroup), cNameWidth);
+  FGroupList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColProjects), cProjectsMinWidth);
   FGroupList.FillColumn(1, cProjectsMinWidth);
   FGroupList.OnSelectItem := GroupSelect;
   FGroupList.OnDblClick := GroupDblClick;
@@ -106,21 +106,21 @@ begin
   FItemList.Align := alClient;
   FItemList.ReadOnly := True;
   FItemList.RowSelect := True;
-  FItemList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColProject), cProjectWidth);
-  FItemList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColProfile), cProfileWidth);
-  FItemList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColDebug), cDebugWidth);
-  FItemList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchColWait), cWaitMinWidth);
+  FItemList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColProject), cProjectWidth);
+  FItemList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColProfile), cProfileWidth);
+  FItemList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColDebug), cDebugWidth);
+  FItemList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchColWait), cWaitMinWidth);
   FItemList.FillColumn(cWaitColumn, cWaitMinWidth);
   mButtons := AddButtonRow;
-  FActivate := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchActivate));
+  FActivate := mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchActivate));
   FActivate.ModalResult := mrYes;
   FActivate.Enabled := False;
-  FStart := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchStart), TAtlasButtonKind.Default);
+  FStart := mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchStart), TAtlasButtonKind.Default);
   FStart.ModalResult := mrOk;
   FStart.Enabled := False;
-  mEdit := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchEdit));
+  mEdit := mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchEdit));
   mEdit.ModalResult := mrRetry;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchClose), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchClose), TAtlasButtonKind.Cancel);
   FitHeight;
   AllowResize(mItemsRow);
   ActiveControl := FGroupList;
@@ -154,7 +154,7 @@ begin
       mItem.Caption := mGroup.Name;
       if SameText(mGroup.Name, FActive) then
       begin
-        mItem.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchActiveMark, [mGroup.Name]);
+        mItem.Caption := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchActiveMark, [mGroup.Name]);
         mSelect := mItem.Index;
       end;
       mItem.SubItems.Add(ProjectsText(mGroup));
@@ -188,11 +188,11 @@ begin
       mItem.SubItems.Add(mLaunch.Profile);
       if mLaunch.Debug then
       begin
-        mItem.SubItems.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchYes));
+        mItem.SubItems.Add(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchYes));
       end
       else
       begin
-        mItem.SubItems.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.LaunchNo));
+        mItem.SubItems.Add(TAtlasSessionStrings.Text(TAtlasSessionTextId.LaunchNo));
       end;
       mItem.SubItems.Add(WaitText(mLaunch));
     end;
@@ -259,11 +259,11 @@ class function TAtlasLaunchGroupsDialog.WaitText(const AItem: TAtlasLaunchItem):
 begin
   case AItem.Wait of
     TAtlasLaunchWaitKind.Seconds:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitSeconds, [AItem.Value]);
+      Result := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchWaitSeconds, [AItem.Value]);
     TAtlasLaunchWaitKind.Port:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitPort, [AItem.Value, AItem.TimeoutSeconds]);
+      Result := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchWaitPort, [AItem.Value, AItem.TimeoutSeconds]);
     TAtlasLaunchWaitKind.Window:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.LaunchWaitWindow, [AItem.TimeoutSeconds]);
+      Result := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.LaunchWaitWindow, [AItem.TimeoutSeconds]);
   else
     Result := '';
   end;
