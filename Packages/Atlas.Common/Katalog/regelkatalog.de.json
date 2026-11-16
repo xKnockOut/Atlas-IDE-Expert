@@ -1911,6 +1911,17 @@
       ]
     },
     {
+      "id": "duplicate-routine-body",
+      "name": "Wortgleicher Rumpf in einer anderen Unit",
+      "description": "Eine Routine hat denselben Rumpf wie eine Routine in einer anderen Unit der Projektgruppe: eine Kopie, die eine gemeinsame Routine werden sollte. Verglichen wird die normalisierte Token-Folge des Rumpfs (alles hinter dem Kopf bis zum Ende der Routine, samt lokaler Deklarationen und lokaler Routinen): Kommentare, Leerraum und die Groß-/Kleinschreibung von Bezeichnern und Schlüsselwörtern zählen nicht, Literale schon. Auch Name und Parameter der Routine zählen nicht: TA.Show und TB.Show mit gleichem Rumpf sind Kopien. Still bei Kopien innerhalb derselben Unit, bei Rümpfen unter minLines Zeilen, bei erzeugten Units (Kopf mit „nicht von Hand“, „do not edit“ oder „generated“), solange Projekte laden oder der Index unvollständig ist, und bei einer lokalen Routine, deren umschließende Routine selbst eine Kopie ist (dort gemeldet). Die Rümpfe der übrigen Units werden einmal je Prüfung der Projektgruppe gelesen und 30 Sekunden lang wiederverwendet; im Editor erscheinen Änderungen an anderen Units deshalb mit dieser Verzögerung. Für den Build vergleicht AtlasServer --check <Ziel> --check-duplicates dasselbe über alle Dateien, mit eigener Baseline (atlas-duplicates.json), die nur schrumpfen darf.",
+      "options": [
+        {
+          "name": "minLines",
+          "description": "Mindestzahl der Zeilen eines Rumpfs (vom ersten bis zum letzten Token hinter dem Kopf); kürzere Rümpfe zählen nicht."
+        }
+      ]
+    },
+    {
       "id": "unused-declaration",
       "name": "Deklaration im implementation-Abschnitt wird nie verwendet",
       "description": "Eine Routine, ein Typ, eine Konstante oder eine globale Variable aus dem implementation-Abschnitt einer Unit (bzw. aus einem Programm oder einer DLL) wird in der Unit nirgends verwendet; der Compiler meldet das nicht. Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven Zweigen; nicht zählen die Deklarationen selbst (auch forward), Vorkommen im eigenen Rumpf (Rekursion) und bei Typen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden samt Kopf TTyp.Name. Bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]. Gelten als verwendet (Dienst, den auch unused-public-member nutzt): exportierte Routinen, Deklarationen mit Attributen, Namen aus deadCode.keepPatterns, Typen mit einem Attribut aus deadCode.keepAttributes und Namen aus der Formulardatei. Rümpfe von Routinen des interface-Abschnitts prüft unused-public-member. Still bei Units mit Include-Dateien. Korrektur: als bewusst vorhanden markieren (lsp-ignore-Kommentar)."

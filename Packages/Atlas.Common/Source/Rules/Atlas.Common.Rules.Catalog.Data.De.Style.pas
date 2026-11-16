@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeStyle: array[0..569] of string = (
+  cCatalogLinesDeStyle: array[0..580] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -576,6 +576,23 @@ const
     '        {',
     '          "name": "keepPatterns",',
     '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."',
+    '        }',
+    '      ]',
+    '    },',
+    '{',
+    '      "id": "duplicate-routine-body",',
+    '      "name": "Wortgleicher Rumpf in einer anderen Unit",',
+    '      "description": "Eine Routine hat denselben Rumpf wie eine Routine in einer anderen Unit der Projektgruppe: eine Kopie, die eine gemeinsame Routine werden sollte. Verglichen wird die normalisiert' +
+    'e Token-Folge des Rumpfs (alles hinter dem Kopf bis zum Ende der Routine, samt lokaler Deklarationen und lokaler Routinen): Kommentare, Leerraum und die Groß-/Kleinschreibung von Bezeichnern und Schlü' +
+    'sselwörtern zählen nicht, Literale schon. Auch Name und Parameter der Routine zählen nicht: TA.Show und TB.Show mit gleichem Rumpf sind Kopien. Still bei Kopien innerhalb derselben Unit, bei Rümpfen u' +
+    'nter minLines Zeilen, bei erzeugten Units (Kopf mit „nicht von Hand“, „do not edit“ oder „generated“), solange Projekte laden oder der Index unvollständig ist, und bei einer lokalen Routine, deren ums' +
+    'chließende Routine selbst eine Kopie ist (dort gemeldet). Die Rümpfe der übrigen Units werden einmal je Prüfung der Projektgruppe gelesen und 30 Sekunden lang wiederverwendet; im Editor erscheinen Änd' +
+    'erungen an anderen Units deshalb mit dieser Verzögerung. Für den Build vergleicht AtlasServer --check <Ziel> --check-duplicates dasselbe über alle Dateien, mit eigener Baseline (atlas-duplicates.json)' +
+    ', die nur schrumpfen darf.",',
+    '      "options": [',
+    '        {',
+    '          "name": "minLines",',
+    '          "description": "Mindestzahl der Zeilen eines Rumpfs (vom ersten bis zum letzten Token hinter dem Kopf); kürzere Rümpfe zählen nicht."',
     '        }',
     '      ]',
     '    },',

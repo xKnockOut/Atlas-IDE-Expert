@@ -20,7 +20,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 9 |
 | [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 56 |
+| [Stil und Metriken](#gruppe-style) | 57 |
 | [Packages und Tests](#gruppe-packages) | 13 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -423,6 +423,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`xmldoc-mismatch`](#xmldoc-mismatch) | XMLDoc passt nicht zur Signatur | Code Smell | Hinweis |
 | [`missing-begin-end`](#missing-begin-end) | Bedingung oder Schleife ohne begin … end | Code Smell | Hinweis |
 | [`unused-public-member`](#unused-public-member) | Öffentliches Mitglied wird im Projekt nie verwendet | Code Smell | Hinweis |
+| [`duplicate-routine-body`](#duplicate-routine-body) | Wortgleicher Rumpf in einer anderen Unit | Code Smell | Hinweis |
 | [`unused-declaration`](#unused-declaration) | Deklaration im implementation-Abschnitt wird nie verwendet | Code Smell | Hinweis |
 | [`unused-unit`](#unused-unit) | Unit wird von keiner anderen Unit verwendet | Code Smell | Hinweis |
 | [`unused-uses`](#unused-uses) | Ungenutzte Unit im uses | Code Smell | Hinweis |
@@ -7467,6 +7468,39 @@ Richtig:
   public
     procedure ExportiereAlsJson; // called by TMainForm
   end;
+```
+
+<a id="duplicate-routine-body"></a>
+### duplicate-routine-body
+
+**Wortgleicher Rumpf in einer anderen Unit** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Routine hat denselben Rumpf wie eine Routine in einer anderen Unit der Projektgruppe: eine Kopie, die eine gemeinsame Routine werden sollte. Verglichen wird die normalisierte Token-Folge des Rumpfs (alles hinter dem Kopf bis zum Ende der Routine, samt lokaler Deklarationen und lokaler Routinen): Kommentare, Leerraum und die Groß-/Kleinschreibung von Bezeichnern und Schlüsselwörtern zählen nicht, Literale schon. Auch Name und Parameter der Routine zählen nicht: TA.Show und TB.Show mit gleichem Rumpf sind Kopien. Still bei Kopien innerhalb derselben Unit, bei Rümpfen unter minLines Zeilen, bei erzeugten Units (Kopf mit „nicht von Hand“, „do not edit“ oder „generated“), solange Projekte laden oder der Index unvollständig ist, und bei einer lokalen Routine, deren umschließende Routine selbst eine Kopie ist (dort gemeldet). Die Rümpfe der übrigen Units werden einmal je Prüfung der Projektgruppe gelesen und 30 Sekunden lang wiederverwendet; im Editor erscheinen Änderungen an anderen Units deshalb mit dieser Verzögerung. Für den Build vergleicht AtlasServer --check <Ziel> --check-duplicates dasselbe über alle Dateien, mit eigener Baseline (atlas-duplicates.json), die nur schrumpfen darf.
+
+Experimentell: Die Regel läuft nur im Profil `strict` oder wenn sie unter `rules` einen Schweregrad bekommt.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `minLines` | integer | `6` | Mindestzahl der Zeilen eines Rumpfs (vom ersten bis zum letzten Token hinter dem Kopf); kürzere Rümpfe zählen nicht. |
+
+Mit Treffer:
+
+```pascal
+// Unit A
+procedure TListWindow.Show;
+begin
+  if FWindow = nil then
+    FWindow := TAtlasIdeDockWindow.Present(...);
+  ...
+end;
+// Unit B: the same body in TTreeWindow.Show
+```
+
+Richtig:
+
+```pascal
+// one shared routine, both windows call it
+procedure TAtlasIdeDockWindow.ShowOnce(...);
 ```
 
 <a id="unused-declaration"></a>
