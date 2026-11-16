@@ -405,6 +405,8 @@ Experimentell. Aufruf: Atlas-Menü › Mit Profil ausführen, Profil starten/bee
 - „Profil starten/beenden“ misst das gerade debuggte Programm bzw. beendet einen laufenden Lauf.
 - Gemessen wird im Atlas-Server: In festem Abstand (Vorgabe 10 ms) nimmt er die Aufrufstapel aller Threads, ohne das Programm anzuhalten, und löst sie über die Map-Datei auf. Dafür in den Projektoptionen › Linker „Map-Datei = Detailliert“ einstellen, sonst zeigt das Profil nur Module.
 - Endet das Programm, endet auch die Messung. Atlas behält die letzten fünf Läufe.
+- Endet der Atlas-Server während eines Laufs geordnet (Server neu starten, Einstellungen, IDE schließen), hält er die Messung als Erstes an und schreibt den Lauf.
+- Für jede Probe hält der Server einen Thread des Programms für Bruchteile einer Millisekunde an. Wird der Server genau dann hart beendet (AtlasMonitor „Server beenden“, Task-Manager, Absturz der IDE), setzt Windows diesen Thread nicht mehr fort, und das Programm wirkt eingefroren. AtlasMonitor warnt deshalb vor dem Beenden eines Servers, der gerade misst. Abhilfe: das Programm beenden und neu starten, oder ohne Neustart im Ressourcenmonitor (`resmon`) › CPU › Rechtsklick auf den Prozess › „Prozess fortsetzen“. Besser vorher „Profil starten/beenden“ wählen.
 - Das Fenster „Atlas: Profil“ zeigt die Methoden nach Eigenanteil (Programm stand genau dort) mit Gesamtanteil (irgendwo im Aufrufstapel) und der heißesten Zeile. „Nur eigener Code“ fasst Bibliotheksrahmen zur aufgerufenen RTL- oder VCL-Routine zusammen, „Mit vorigem Lauf vergleichen“ zeigt die Änderung je Methode. Doppelklick oder Enter öffnet die Zeile.
 
 Einstellungen: `debug.profiler`, `debug.profiler.intervalMs`

@@ -11,7 +11,9 @@
 //     Programm.
 //   - Solange ein Lauf geht, fragt ein Zeitgeber einmal je Sekunde
 //     atlas.server.profilerStatus. Endet das Programm, schreibt der Server die Datei
-//     selbst; das Fenster zeigt sie dann.
+//     selbst; das Fenster zeigt sie dann. Endet der Server (Neustart), hält er die
+//     Messung als Erstes an und schreibt den Lauf; der neue Server kennt ihn nicht,
+//     das Fenster zeigt dann den neuesten Lauf im Ordner.
 //   - Fenster „Atlas: Profil“: die letzten fünf Läufe aus dem Ordner von
 //     TAtlasProfileStore (die Datei liest das Plugin selbst), Methoden mit
 //     Eigen- und Gesamtanteil, „Nur eigener Code“, Vergleich mit dem vorigen
@@ -243,7 +245,8 @@ begin
     end;
     Exit;
   end;
-  // Das Programm ist geendet; der Server hat die Datei schon geschrieben.
+  // Das Programm ist geendet; der Server hat die Datei schon geschrieben. Ohne Datei hat ein neu gestarteter Server
+  // geantwortet: Der vorige hat den Lauf beim Beenden geschrieben, Finished zeigt dann den neuesten.
   SetRunning(False);
   Finished(mAnswer.LastFile);
 end;
@@ -252,6 +255,8 @@ class procedure TAtlasIdeDebugProfiler.Finished(const AFile: string);
 begin
   if AFile = '' then
   begin
+    // Lauf über einen Neustart des Servers: Er liegt schon im Ordner, das offene Fenster zeigt den neuesten.
+    Reload('');
     Exit;
   end;
   if TAtlasIdeSettings.Current.DebugProfiler then
