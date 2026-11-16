@@ -204,6 +204,7 @@
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Report.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopSource.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Session.pas"/>
+        <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.StopView.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.Sources.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryCounters.pas"/>
         <DCCReference Include="Source\IDE\Debug\Atlas.IDE.Debug.MemoryTimeline.pas"/>

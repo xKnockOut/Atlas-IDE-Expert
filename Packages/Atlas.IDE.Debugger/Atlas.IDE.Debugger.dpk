@@ -108,6 +108,7 @@ contains
   Atlas.UI.Debug.CallStackFrame in 'Source\UI\Debug\Atlas.UI.Debug.CallStackFrame.pas' {AtlasDebugCallStackFrame: TFrame},
   Atlas.UI.Debug.LeaksFrame in 'Source\UI\Debug\Atlas.UI.Debug.LeaksFrame.pas' {AtlasDebugLeaksFrame: TFrame},
   Atlas.IDE.Debug.Session in 'Source\IDE\Debug\Atlas.IDE.Debug.Session.pas',
+  Atlas.IDE.Debug.StopView in 'Source\IDE\Debug\Atlas.IDE.Debug.StopView.pas',
   Atlas.IDE.Debug.ExceptionDialog in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionDialog.pas',
   Atlas.IDE.Debug.ExceptionsWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.ExceptionsWindow.pas',
   Atlas.IDE.Debug.Exceptions in 'Source\IDE\Debug\Atlas.IDE.Debug.Exceptions.pas',
