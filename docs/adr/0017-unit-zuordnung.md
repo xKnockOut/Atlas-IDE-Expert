@@ -103,6 +103,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Commands.KeyConflicts` | `Core/Commands/Atlas.Core.Commands.KeyConflicts.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyMap` | `Core/Commands/Atlas.Core.Commands.KeyMap.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyScan` | `Core/Commands/Atlas.Core.Commands.KeyScan.pas` | Ordner `Core/Commands` |
+| `Atlas.Core.Commands.KeyFallback` | `Core/Commands/Atlas.Core.Commands.KeyFallback.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.KeyStroke` | `Core/Commands/Atlas.Core.Commands.KeyStroke.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuSlots` | `Core/Commands/Atlas.Core.Commands.MenuSlots.pas` | Ordner `Core/Commands` |
 | `Atlas.Core.Commands.MenuContext` | `Core/Commands/Atlas.Core.Commands.MenuContext.pas` | Ordner `Core/Commands` |
