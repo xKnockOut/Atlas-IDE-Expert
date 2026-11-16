@@ -12,6 +12,10 @@
 // „Erneut prüfen“ und „Schließen“. Das Fenster ist nicht modal; es zeigt, was
 // SetResults bekommt, und schließt mit Esc. Texte in der Sprache der IDE aus
 // Befund und Werten der Prüfung (TAtlasSetupResult).
+// Basis ist TAtlasDialog: Dialogschrift, IDE-Thema an Knöpfen und Häkchen,
+// neue Farben bei jedem Themenwechsel. Die Breite lässt sich ziehen (Knöpfe
+// rechts, Hinweis bricht neu um), die Höhe folgt dem Inhalt; nach einem
+// Wechsel der Bildschirmauflösung ordnet das Fenster sich neu an.
 
 interface
 
@@ -26,7 +30,8 @@ uses
   Vcl.StdCtrls,
   Atlas.Core.Style.Palette,
   Atlas.Core.Status.Contract,
-  Atlas.Core.Setup.Checklist;
+  Atlas.Core.Setup.Checklist,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Texte der Einrichtung in der Sprache der IDE aus Befund und Werten der Prüfung.</summary>
@@ -77,19 +82,26 @@ type
     ShowAtStart: TProc<Boolean>;
   end;
 
-  TAtlasSetupWindow = class(TForm)
+  /// <summary>Feste Steuerelemente unten im Fenster.</summary>
+  TAtlasSetupParts = record
+    CopyButton: TButton;
+    RecheckButton: TButton;
+    CloseButton: TButton;
+    ShowAtStart: TCheckBox;
+  end;
+
+  TAtlasSetupWindow = class(TAtlasDialog)
   private
     FColors: TAtlasColors;
     FResults: TArray<TAtlasSetupResult>;
     FGeometry: TAtlasSetupGeometry;
     FFixButtons: TArray<TButton>;
-    FCopyButton: TButton;
-    FRecheckButton: TButton;
-    FCloseButton: TButton;
-    FShowAtStart: TCheckBox;
+    FParts: TAtlasSetupParts;
     FTryKey: string;
     FNote: string;
     FUpdating: Boolean;
+    /// <summary>Layout läuft; die Größenänderungen darin ordnen nicht erneut an.</summary>
+    FArranging: Boolean;
     FEvents: TAtlasSetupEvents;
     function FixButton(AIndex: Integer): TButton;
     function NewButton(const ACaption: string): TButton;
@@ -103,6 +115,8 @@ type
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure Resize; override;
+    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
+    procedure ThemeChanged; override;
   public
     constructor CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Prüfungen setzen (auch bei offenem Fenster); Knöpfe und Höhe folgen.</summary>
@@ -119,10 +133,10 @@ type
     property TryKey: string read FTryKey;
     /// <summary>Zum Testen: Knopf der Prüfung AIndex (unsichtbar ohne Knopf).</summary>
     property FixButtons[AIndex: Integer]: TButton read FixButton;
-    property CopyButton: TButton read FCopyButton;
-    property RecheckButton: TButton read FRecheckButton;
-    property CloseButton: TButton read FCloseButton;
-    property ShowAtStartBox: TCheckBox read FShowAtStart;
+    property CopyButton: TButton read FParts.CopyButton;
+    property RecheckButton: TButton read FParts.RecheckButton;
+    property CloseButton: TButton read FParts.CloseButton;
+    property ShowAtStartBox: TCheckBox read FParts.ShowAtStart;
     /// <summary>Knopf einer Prüfung außer „Warum?“ (das erklärt das Fenster selbst).</summary>
     property OnFix: TProc<TAtlasSetupResult> read FEvents.Fix write FEvents.Fix;
     property OnCopy: TProc read FEvents.Copy write FEvents.Copy;
@@ -135,10 +149,24 @@ implementation
 uses
   Atlas.Core.Style.Color,
   System.Math,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Setup.Strings;
 
 const
+  /// <summary>Kleinste Innenbreite des Fensters, logische Pixel.</summary>
+  cMinClientWidth = 620;
+  /// <summary>Fußzeile, logische Pixel: Rand, Abstand der Knöpfe, Höhe und Innenrand eines Knopfs, Abstand von der
+  /// Trennlinie, Häkchen (Versatz nach unten, Höhe, kleinste Breite, Abstand zu den Knöpfen).</summary>
+  cFooterMargin = 12;
+  cFooterGap = 8;
+  cFooterButtonHeight = 25;
+  cFooterButtonPadding = 24;
+  cFooterTop = 10;
+  cCheckOffset = 4;
+  cCheckHeight = 19;
+  cCheckMinWidth = 80;
+  cCheckGap = 24;
   /// <summary>Hauptzeile je Befund; Varianten (Einheiten, gewonnene Tasten) wählt ResultTextId.</summary>
   cResultTexts: array[TAtlasSetupFinding] of TAtlasTextId = (TAtlasTextId.SetupServerReady,
     TAtlasTextId.SetupServerMissing, TAtlasTextId.SetupServerNotStarted, TAtlasTextId.SetupServerStarting,
@@ -532,20 +560,22 @@ end;
 
 procedure TAtlasSetupArranger.Footer;
 var
-  mBottom, mWidth, mHeight: Integer;
+  mBottom, mWidth, mHeight, mGap: Integer;
 begin
   Window.ClientHeight := Window.FGeometry.FooterTop + Metrics.RowHeight + Metrics.ButtonsHeight;
-  mBottom := Window.ClientHeight - Metrics.ButtonsHeight + Window.ScaleValue(10);
-  mHeight := Window.ScaleValue(25);
-  mWidth := Max(Max(Window.Canvas.TextWidth(Window.FCopyButton.Caption),
-    Window.Canvas.TextWidth(Window.FRecheckButton.Caption)), Window.Canvas.TextWidth(Window.FCloseButton.Caption)) +
-    Window.ScaleValue(24);
-  Window.FCloseButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(12), mBottom, mWidth, mHeight);
-  Window.FRecheckButton.SetBounds(Window.FCloseButton.Left - mWidth - Window.ScaleValue(8), mBottom, mWidth,
+  mBottom := Window.ClientHeight - Metrics.ButtonsHeight + Window.ScaleValue(cFooterTop);
+  mHeight := Window.ScaleValue(cFooterButtonHeight);
+  mGap := Window.ScaleValue(cFooterGap);
+  mWidth := Max(Max(Window.Canvas.TextWidth(Window.FParts.CopyButton.Caption),
+    Window.Canvas.TextWidth(Window.FParts.RecheckButton.Caption)),
+    Window.Canvas.TextWidth(Window.FParts.CloseButton.Caption)) + Window.ScaleValue(cFooterButtonPadding);
+  Window.FParts.CloseButton.SetBounds(Window.ClientWidth - mWidth - Window.ScaleValue(cFooterMargin), mBottom, mWidth,
     mHeight);
-  Window.FCopyButton.SetBounds(Window.FRecheckButton.Left - mWidth - Window.ScaleValue(8), mBottom, mWidth, mHeight);
-  Window.FShowAtStart.SetBounds(Window.ScaleValue(12), mBottom + Window.ScaleValue(4), Max(Window.ScaleValue(80),
-    Window.FCopyButton.Left - Window.ScaleValue(24)), Window.ScaleValue(19));
+  Window.FParts.RecheckButton.SetBounds(Window.FParts.CloseButton.Left - mWidth - mGap, mBottom, mWidth, mHeight);
+  Window.FParts.CopyButton.SetBounds(Window.FParts.RecheckButton.Left - mWidth - mGap, mBottom, mWidth, mHeight);
+  Window.FParts.ShowAtStart.SetBounds(Window.ScaleValue(cFooterMargin), mBottom + Window.ScaleValue(cCheckOffset),
+    Max(Window.ScaleValue(cCheckMinWidth), Window.FParts.CopyButton.Left - Window.ScaleValue(cCheckGap)),
+    Window.ScaleValue(cCheckHeight));
 end;
 
 { TAtlasSetupPainter }
@@ -750,27 +780,23 @@ end;
 
 constructor TAtlasSetupWindow.CreateSetup(AOwner: TComponent; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle), cMinClientWidth);
   FColors := AColors;
-  Caption := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupTitle);
-  BorderStyle := bsSingle;
+  BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
   KeyPreview := True;
   DoubleBuffered := True;
   Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
   OnClose := FormClose;
-  FCopyButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy));
-  FRecheckButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck));
-  FCloseButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupClose));
-  FCloseButton.Cancel := True;
-  FShowAtStart := TCheckBox.Create(Self);
-  FShowAtStart.Parent := Self;
-  FShowAtStart.Caption := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupShowAtStart);
-  FShowAtStart.Checked := True;
-  FShowAtStart.OnClick := ShowAtStartClick;
+  FParts.CopyButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupCopy));
+  FParts.RecheckButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupRecheck));
+  FParts.CloseButton := NewButton(TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupClose));
+  FParts.CloseButton.Cancel := True;
+  FParts.ShowAtStart := TCheckBox.Create(Self);
+  FParts.ShowAtStart.Parent := Self;
+  FParts.ShowAtStart.Caption := TAtlasSetupStrings.Text(TAtlasSetupTextId.SetupShowAtStart);
+  FParts.ShowAtStart.Checked := True;
+  FParts.ShowAtStart.OnClick := ShowAtStartClick;
   FTryKey := 'Strg+Leertaste';
   Layout;
 end;
@@ -829,7 +855,17 @@ end;
 procedure TAtlasSetupWindow.Resize;
 begin
   inherited;
-  Invalidate;
+  // Im Konstruktor ändert schon CreateDialog die Größe, bevor es die Knöpfe gibt.
+  if FParts.ShowAtStart = nil then
+  begin
+    Exit;
+  end;
+  Layout;
+end;
+
+procedure TAtlasSetupWindow.ThemeChanged;
+begin
+  SetColors(TAtlasUiTheme.Colors);
 end;
 
 function TAtlasSetupWindow.NewButton(const ACaption: string): TButton;
@@ -844,13 +880,32 @@ procedure TAtlasSetupWindow.Layout;
 var
   mArranger: TAtlasSetupArranger;
 begin
-  mArranger.Window := Self;
-  mArranger.Metrics.Window := Self;
-  Canvas.Font := Font;
-  ClientWidth := ScaleValue(620);
-  mArranger.EnsureFixButtons;
-  mArranger.Note(mArranger.Lines(mArranger.Metrics.HeaderHeight));
-  mArranger.Footer;
+  if FArranging then
+  begin
+    Exit;
+  end;
+  FArranging := True;
+  try
+    mArranger.Window := Self;
+    mArranger.Metrics.Window := Self;
+    Canvas.Font := Font;
+    // Breite bleibt, wie der Benutzer sie gezogen hat; die Höhe folgt dem Inhalt.
+    Constraints.MinWidth := 0;
+    Constraints.MinHeight := 0;
+    Constraints.MaxHeight := 0;
+    if ClientWidth < ScaleValue(cMinClientWidth) then
+    begin
+      ClientWidth := ScaleValue(cMinClientWidth);
+    end;
+    mArranger.EnsureFixButtons;
+    mArranger.Note(mArranger.Lines(mArranger.Metrics.HeaderHeight));
+    mArranger.Footer;
+    Constraints.MinWidth := Width - ClientWidth + ScaleValue(cMinClientWidth);
+    Constraints.MinHeight := Height;
+    Constraints.MaxHeight := Height;
+  finally
+    FArranging := False;
+  end;
   Invalidate;
 end;
 
@@ -879,11 +934,11 @@ end;
 
 procedure TAtlasSetupWindow.FooterClick(Sender: TObject);
 begin
-  if Sender = FCloseButton then
+  if Sender = FParts.CloseButton then
   begin
     Close;
   end
-  else if Sender = FRecheckButton then
+  else if Sender = FParts.RecheckButton then
   begin
     ShowNote('');
     if Assigned(FEvents.Recheck) then
@@ -901,7 +956,7 @@ procedure TAtlasSetupWindow.ShowAtStartClick(Sender: TObject);
 begin
   if not FUpdating and Assigned(FEvents.ShowAtStart) then
   begin
-    FEvents.ShowAtStart(FShowAtStart.Checked);
+    FEvents.ShowAtStart(FParts.ShowAtStart.Checked);
   end;
 end;
 
@@ -921,7 +976,7 @@ procedure TAtlasSetupWindow.SetColors(const AColors: TAtlasColors);
 begin
   FColors := AColors;
   Color := ToColor(FColors.Surface);
-  FShowAtStart.Font.Color := ToColor(FColors.Text);
+  FParts.ShowAtStart.Font.Color := ToColor(FColors.Text);
   Invalidate;
 end;
 
@@ -938,7 +993,7 @@ procedure TAtlasSetupWindow.SetShowAtStart(AValue: Boolean);
 begin
   FUpdating := True;
   try
-    FShowAtStart.Checked := AValue;
+    FParts.ShowAtStart.Checked := AValue;
   finally
     FUpdating := False;
   end;
