@@ -126,20 +126,8 @@ end;
 
 /// <summary>Werte einer Zeile der Anfrage.</summary>
 function ValuesOf(AObject: TJSONObject): TArray<string>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
 begin
-  Result := nil;
-  if not AObject.TryGetValue<TJSONArray>('values', mArray) then
-  begin
-    Exit;
-  end;
-  SetLength(Result, mArray.Count);
-  for mIndex := 0 to mArray.Count - 1 do
-  begin
-    Result[mIndex] := mArray.Items[mIndex].Value;
-  end;
+  Result := TJsonRead.Strings(AObject, 'values');
 end;
 
 class function TLspTestCases.TableToJson(const AUri: string; const ATable: TTestCaseTable): TJSONObject;

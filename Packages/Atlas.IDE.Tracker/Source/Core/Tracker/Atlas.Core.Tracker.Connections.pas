@@ -252,25 +252,6 @@ end;
 
 { TAtlasTrackerConnections }
 
-/// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
-function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := AObject.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
-      begin
-        Result := Result + [Trim(TJSONString(mItem).Value)];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Paar AName mit der Liste AStates (mit Komma davor); '' ohne Zustände.</summary>
 function StatesJson(const AName: string; const AStates: TArray<string>): string;
 var
@@ -380,9 +361,9 @@ begin
       mConnection.StateField := Trim(TJsonRead.Text(TJSONObject(mItem), 'stateField'));
       mConnection.AssigneeField := Trim(TJsonRead.Text(TJSONObject(mItem), 'assigneeField'));
       mConnection.StartState := Trim(TJsonRead.Text(TJSONObject(mItem), 'startState'));
-      mConnection.EndStates := TextsOf(TJSONObject(mItem), 'endStates');
-      mConnection.EndFields := TextsOf(TJSONObject(mItem), 'endFields');
-      mConnection.ReviewStates := TextsOf(TJSONObject(mItem), 'reviewStates');
+      mConnection.EndStates := TJsonRead.TrimmedStrings(TJSONObject(mItem), 'endStates');
+      mConnection.EndFields := TJsonRead.TrimmedStrings(TJSONObject(mItem), 'endFields');
+      mConnection.ReviewStates := TJsonRead.TrimmedStrings(TJSONObject(mItem), 'reviewStates');
       mConnection.GitHubStateTarget := LowerCase(Trim(TJsonRead.Text(TJSONObject(mItem), 'githubStateTarget')));
       mConnection.GitHubProject := Trim(TJsonRead.Text(TJSONObject(mItem), 'githubProject'));
       mConnection.GitHubLinkBranch := FlagText(TJSONObject(mItem), 'githubLinkBranch');

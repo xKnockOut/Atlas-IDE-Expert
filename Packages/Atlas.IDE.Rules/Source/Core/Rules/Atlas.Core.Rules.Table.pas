@@ -297,25 +297,6 @@ begin
   end;
 end;
 
-/// <summary>Muster aus "exclude" einer Regel; leer ohne.</summary>
-function ExcludeOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if mItem is TJSONString then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
-end;
-
 /// <summary>Wert AValueJson der Option AName setzen; eine unbekannte Option kommt als "json" dazu.</summary>
 procedure SetOptionValue(var ARow: TAtlasRuleRow; const AName, AValueJson: string);
 var
@@ -357,30 +338,11 @@ begin
   begin
     if SameText(mPair.JsonString.Value, 'exclude') then
     begin
-      ARow.Exclude := ExcludeOf(mPair.JsonValue);
+      ARow.Exclude := TJsonRead.Strings(mPair.JsonValue);
     end
     else if not SameText(mPair.JsonString.Value, 'severity') then
     begin
       SetOptionValue(ARow, mPair.JsonString.Value, mPair.JsonValue.ToJSON);
-    end;
-  end;
-end;
-
-/// <summary>Texte aus "overriddenBy" des Katalogs (#1025); leer ohne.</summary>
-function OverridesOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if (mItem is TJSONString) and not (mItem is TJSONNumber) then
-    begin
-      Result := Result + [mItem.Value];
     end;
   end;
 end;
@@ -405,7 +367,7 @@ begin
   ARow.Good := AItem.GetValue<string>('good', '');
   ARow.Experimental := AItem.GetValue<Boolean>('experimental', False);
   ARow.Known := True;
-  ARow.OverriddenBy := OverridesOf(AItem.GetValue('overriddenBy'));
+  ARow.OverriddenBy := TJsonRead.Strings(AItem.GetValue('overriddenBy'));
   ReadOptions(AItem.GetValue('options'), ARow);
   if ARules is TJSONObject then
   begin

@@ -197,25 +197,6 @@ begin
   end;
 end;
 
-function StringsOf(AObject: TJSONObject; const AKey: string): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  if AObject = nil then
-  begin
-    Exit;
-  end;
-  mValue := AObject.GetValue(AKey);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 { TAtlasClassExtractionModel }
 
 /// <summary>Option aus prepare ({kind, value}); nil, wenn keine angeboten wird.</summary>
@@ -233,8 +214,8 @@ begin
   Result := Default(TAtlasExtractionSource);
   Result.SourceClass := StringOf(APrepared, 'className');
   Result.OwnUnit := StringOf(APrepared, 'ownUnit');
-  Result.Notes := StringsOf(APrepared, 'notes');
-  Result.Units := StringsOf(APrepared, 'units');
+  Result.Notes := TJsonRead.Strings(APrepared, 'notes');
+  Result.Units := TJsonRead.Strings(APrepared, 'units');
   Result.MemberName := StringOf(APrepared, 'member');
   Result.Direction := StringOf(APrepared, 'direction');
   Result.NeedsRequired := TJsonRead.FlagOr(APrepared, 'needsRequired', True);

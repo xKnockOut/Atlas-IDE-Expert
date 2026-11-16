@@ -505,27 +505,6 @@ begin
   end;
 end;
 
-function EditedOf(AValue: TJSONValue): TArray<string>;
-var
-  mIndex: Integer;
-  mElement: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
-  begin
-    mElement := TJSONArray(AValue).Items[mIndex];
-    // TJSONNumber erbt von TJSONString: Zahlen sind keine Dateien.
-    if (mElement is TJSONString) and not (mElement is TJSONNumber) and (Trim(TJSONString(mElement).Value) <> '') then
-    begin
-      Result := Result + [TJSONString(mElement).Value];
-    end;
-  end;
-end;
-
 function StateOf(ASection: TJSONObject; out AState: TAtlasWorkState): Boolean;
 begin
   AState := TAtlasWorkState.Empty;
@@ -546,7 +525,7 @@ begin
   begin
     AState.Active := -1;
   end;
-  AState.Edited := EditedOf(ASection.GetValue('edited'));
+  AState.Edited := TJsonRead.TrimmedStrings(ASection.GetValue('edited'));
 end;
 
 function ContainsFile(const AFiles: TArray<string>; const AFileName: string): Boolean;

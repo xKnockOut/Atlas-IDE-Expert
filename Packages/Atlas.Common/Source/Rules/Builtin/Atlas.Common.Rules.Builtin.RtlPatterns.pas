@@ -75,7 +75,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Pascal.PureRoutines,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Json;
 
 {$SCOPEDENUMS ON}
 
@@ -771,7 +772,6 @@ class function TAssertSideEffectRule.MutatingMethods(const AOptions: string): TA
 var
   mValue: TJSONValue;
   mItems: TJSONArray;
-  mItem: TJSONValue;
   mIndex: Integer;
 begin
   SetLength(Result, Length(cDefaultMutatingMethods));
@@ -787,14 +787,7 @@ begin
   try
     if (mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<TJSONArray>('mutatingMethods', mItems) then
     begin
-      Result := nil;
-      for mItem in mItems do
-      begin
-        if mItem is TJSONString then
-        begin
-          Result := Result + [mItem.Value];
-        end;
-      end;
+      Result := TJsonRead.Strings(mItems);
     end;
   finally
     mValue.Free;

@@ -161,23 +161,6 @@ begin
   end;
 end;
 
-function LabelsOf(AValue: TJSONValue): TArray<string>;
-var
-  mEntry: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mEntry in TJSONArray(AValue) do
-    begin
-      if mEntry is TJSONString then
-      begin
-        Result := Result + [TJSONString(mEntry).Value];
-      end;
-    end;
-  end;
-end;
-
 function CommentOf(AItem: TJSONObject): TAtlasTrackerComment;
 begin
   Result := Default(TAtlasTrackerComment);
@@ -518,7 +501,7 @@ begin
       Exit;
     end;
     ReadFields(mRoot, ADetails);
-    ADetails.Labels := LabelsOf(mRoot.Values['labels']);
+    ADetails.Labels := TJsonRead.Strings(mRoot.Values['labels']);
     ADetails.Comments := CommentsOf(mRoot.Values['comments']);
     ADetails.Attachments := AttachmentsOf(mRoot.Values['attachments']);
     ADetails.Links := LinksOf(mRoot.Values['links']);

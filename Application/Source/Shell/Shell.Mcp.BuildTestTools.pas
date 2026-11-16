@@ -35,6 +35,7 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
   Atlas.Text.DUnitX,
+  Atlas.Text.Json,
   Atlas.Text.TestResults,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -520,9 +521,6 @@ end;
 
 /// <summary>Kennungen aus "operators": Liste oder Text mit Kommas; nil = alle.</summary>
 function OperatorIdsOf(const AArguments: TJSONObject): TArray<string>;
-var
-  mArray: TJSONArray;
-  mIndex: Integer;
 begin
   Result := nil;
   if AArguments = nil then
@@ -531,11 +529,7 @@ begin
   end;
   if AArguments.GetValue('operators') is TJSONArray then
   begin
-    mArray := TJSONArray(AArguments.GetValue('operators'));
-    for mIndex := 0 to mArray.Count - 1 do
-    begin
-      Result := Result + [mArray.Items[mIndex].Value];
-    end;
+    Result := TJsonRead.Strings(AArguments, 'operators');
   end
   else
   begin

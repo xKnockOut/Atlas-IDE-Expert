@@ -160,24 +160,6 @@ begin
   Result := ArrayText(mValues);
 end;
 
-function PlacesOf(const AValue: TJSONValue): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mValue in TJSONArray(AValue) do
-  begin
-    if mValue is TJSONString then
-    begin
-      Result := Result + [TJSONString(mValue).Value];
-    end;
-  end;
-end;
-
 /// <summary>Gruppe eines Serverbefehls; „Zuletzt“, „Vorlagen“ und Unbekanntes landen unter „Erzeugen“.</summary>
 function ServerGroupOf(const AText: string): TAtlasGenerateGroup;
 begin
@@ -243,7 +225,7 @@ begin
   end;
   mRoot := TJSONObject(AValue);
   Result.Enabled := TJsonRead.Flag(mRoot, 'enabled');
-  Result.Places := PlacesOf(mRoot.GetValue('places'));
+  Result.Places := TJsonRead.Strings(mRoot.GetValue('places'));
   if mRoot.GetValue('commands') is TJSONArray then
   begin
     for mValue in TJSONArray(mRoot.GetValue('commands')) do
@@ -257,20 +239,8 @@ begin
 end;
 
 class function TAtlasGenerateProtocol.ParseChoices(const AValue: TJSONValue): TArray<string>;
-var
-  mValue: TJSONValue;
 begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mValue in TJSONArray(AValue) do
-    begin
-      if mValue is TJSONString then
-      begin
-        Result := Result + [TJSONString(mValue).Value];
-      end;
-    end;
-  end;
+  Result := TJsonRead.Strings(AValue);
 end;
 
 class function TAtlasGenerateProtocol.ParseRun(const AValue: TJSONValue; out AEdits: TArray<TLspTextEdit>;

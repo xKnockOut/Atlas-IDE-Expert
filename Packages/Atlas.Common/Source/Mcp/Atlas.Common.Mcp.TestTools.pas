@@ -274,7 +274,7 @@ end;
 
 class function TMcpTestTools.TestsOf(const AArguments: TJSONObject): TArray<string>;
 var
-  mValue, mItem: TJSONValue;
+  mValue: TJSONValue;
   mPart: string;
 begin
   Result := nil;
@@ -285,13 +285,7 @@ begin
   mValue := AArguments.GetValue('tests');
   if mValue is TJSONArray then
   begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if Trim(mItem.Value) <> '' then
-      begin
-        Result := Result + [Trim(mItem.Value)];
-      end;
-    end;
+    Result := TJsonRead.TrimmedStrings(mValue);
   end
   else if (mValue <> nil) and not (mValue is TJSONNull) then
   begin

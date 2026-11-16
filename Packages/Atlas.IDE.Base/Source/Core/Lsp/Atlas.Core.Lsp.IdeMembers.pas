@@ -98,23 +98,8 @@ begin
 end;
 
 class function TAtlasIdeMembers.WantedUnits(const AParams: TJSONValue): TArray<string>;
-var
-  mUnits: TJSONArray;
-  mValue: TJSONValue;
 begin
-  Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('units', mUnits)) then
-  begin
-    Exit;
-  end;
-  for mValue in mUnits do
-  begin
-    // TJSONNumber erbt von TJSONString.
-    if (mValue is TJSONString) and not (mValue is TJSONNumber) and (Trim(mValue.Value) <> '') then
-    begin
-      Result := Result + [Trim(mValue.Value)];
-    end;
-  end;
+  Result := TJsonRead.TrimmedStrings(TJsonRead.AsObject(AParams), 'units');
 end;
 
 /// <summary>Liste "params" bzw. "index".</summary>

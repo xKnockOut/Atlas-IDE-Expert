@@ -193,25 +193,8 @@ begin
 end;
 
 function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue: TJSONValue;
-  mList: TJSONArray;
-  mIndex: Integer;
 begin
-  Result := nil;
-  mValue := AObject.GetValue(AName);
-  if not (mValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  mList := TJSONArray(mValue);
-  for mIndex := 0 to mList.Count - 1 do
-  begin
-    if (mList.Items[mIndex] is TJSONString) and (Length(Result) < TAtlasLineAnchors.cContextLines) then
-    begin
-      Result := Result + [TJSONString(mList.Items[mIndex]).Value];
-    end;
-  end;
+  Result := Copy(TJsonRead.Strings(AObject, AName), 0, TAtlasLineAnchors.cContextLines);
 end;
 
 class procedure TAtlasMethodAnchors.AddTo(AObject: TJSONObject; const AAnchor: TAtlasMethodAnchor);

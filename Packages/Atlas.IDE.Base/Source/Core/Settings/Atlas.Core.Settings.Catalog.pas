@@ -218,24 +218,6 @@ begin
   end;
 end;
 
-function StringsOf(ASchema: TJSONObject; const AName: string): TArray<string>;
-var
-  mValue, mItem: TJSONValue;
-begin
-  Result := nil;
-  mValue := ASchema.GetValue(AName);
-  if mValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(mValue) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [TJSONString(mItem).Value];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Text des Schlüssels AName; AFound False, wenn er fehlt (oder kein String ist).</summary>
 function OptionalText(ASchema: TJSONObject; const AName: string; out AFound: Boolean): string;
 var
@@ -311,8 +293,8 @@ begin
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
   Result.Secret := TJsonRead.Flag(ASchema, 'x-secret');
   Result.Format := TJsonRead.Text(ASchema, 'x-format');
-  Result.FormerKeys := StringsOf(ASchema, 'x-formerKeys');
-  Result.RenamedFrom := StringsOf(ASchema, 'x-renamedFrom');
+  Result.FormerKeys := TJsonRead.Strings(ASchema, 'x-formerKeys');
+  Result.RenamedFrom := TJsonRead.Strings(ASchema, 'x-renamedFrom');
   Result.ProjectPath := TJsonRead.Text(ASchema, 'x-project');
   Result.TeamPath := TJsonRead.Text(ASchema, 'x-team');
   Result.SchemaJson := ASchema.ToJSON;
@@ -322,7 +304,7 @@ begin
   Result.Module := TJsonRead.Text(ASchema, 'x-module');
   Result.OffJson := JsonOf(ASchema, 'x-offValue');
   Result.Description := TJsonRead.Text(ASchema, 'description');
-  Result.Keywords := StringsOf(ASchema, 'x-keywords');
+  Result.Keywords := TJsonRead.Strings(ASchema, 'x-keywords');
   Result.QuickToggle := TJsonRead.Flag(ASchema, 'x-quickToggle');
 end;
 
@@ -368,7 +350,7 @@ begin
   Result.State := TJsonRead.Flag(ASchema, 'x-state');
   Result.IsPath := TJsonRead.Flag(ASchema, 'x-path');
   Result.Secret := TJsonRead.Flag(ASchema, 'x-secret');
-  Result.FormerKeys := StringsOf(ASchema, 'x-formerKeys');
+  Result.FormerKeys := TJsonRead.Strings(ASchema, 'x-formerKeys');
   Result.SchemaJson := ASchema.ToJSON;
   Result.Experimental := TJsonRead.Flag(ASchema, 'x-experimental');
 end;

@@ -297,25 +297,6 @@ begin
   Result := AEdit.Indent <> Copy(ALine, 1, AEdit.Remove);
 end;
 
-/// <summary>Zeichenketten in AValue, wenn es ein Array ist.</summary>
-function StringsOf(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AValue is TJSONArray then
-  begin
-    for mItem in TJSONArray(AValue) do
-    begin
-      // TJSONNumber erbt unter Delphi 12 und FPC von TJSONString.
-      if (mItem is TJSONString) and not (mItem is TJSONNumber) then
-      begin
-        Result := Result + [mItem.Value];
-      end;
-    end;
-  end;
-end;
-
 function ReadChoice(AItem: TJSONObject): TAtlasPasteChoice;
 begin
   Result := Default(TAtlasPasteChoice);
@@ -324,7 +305,7 @@ begin
   begin
     Result.Name := AItem.GetValue('name').Value;
   end;
-  Result.Units := StringsOf(AItem.GetValue('units'));
+  Result.Units := TJsonRead.Strings(AItem.GetValue('units'));
 end;
 
 { TAtlasSmartPaste }
@@ -501,7 +482,7 @@ begin
   end;
   if Result.Valid then
   begin
-    Result.Units := StringsOf(mReply.GetValue('units'));
+    Result.Units := TJsonRead.Strings(mReply.GetValue('units'));
     for mValue in TJSONArray(mReply.GetValue('choices')) do
     begin
       if mValue is TJSONObject then
@@ -520,7 +501,7 @@ end;
 
 class function TAtlasSmartPaste.ReadNames(AValue: TJSONValue): TArray<string>;
 begin
-  Result := StringsOf(AValue);
+  Result := TJsonRead.Strings(AValue);
 end;
 
 class function TAtlasSmartPaste.Selected(const AAnalysis: TAtlasPasteAnalysis): TArray<string>;

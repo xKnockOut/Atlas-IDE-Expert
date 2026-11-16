@@ -60,6 +60,12 @@
     Atlas.Text.Json). Geprüft werden Packages, Application und Tests; Ausnahmen
     mit Grund in $AllowedJsonWriteLocal.
 
+    Kopien-Sperre für JSON lesen (nach Form): Keine Routine mit einer Liste von
+    Strings als Ergebnis hängt die Werte eines TJSONArray einzeln an
+    (Result := Result + [Element.Value], Result[I] := Liste.Items[I].Value,
+    Liste.Add(Element.Value)); dafür TJsonRead.Strings/TrimmedStrings in
+    Atlas.Text.Json. Ausnahmen mit Grund in $AllowedJsonReadLocal.
+
     Rollenmatrix: Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
     Importregeln aus docs/Architektur.md einhalten. Contract-Units deklarieren
@@ -382,6 +388,13 @@ $AllowedJsonParseLocal = @{
 # Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $AllowedJsonWriteLocal = @{
     'Atlas.Core.Lsp.Session.Json:TLspSessionJson.ProjectFolders' = 'baut Objekte mit uri und name, keine Liste von Strings'
+}
+
+# Kopien-Sperre für JSON lesen (Array -> Liste von Strings): nach Form wie beim Schreiben.
+# Erlaubte eigene Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
+$AllowedJsonReadLocal = @{
+    'Atlas.Common.Rules.Catalog:CompilerCodesOf' = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
+    'Atlas.Common.Rules.Catalog:OverriddenByOf'  = 'prüft jeden Eintrag und bricht mit Fehlermeldung ab'
 }
 
 # Kopien-Sperre nach Namen (Plugin und Atlas.Common): Name, Ordner, wo es ihn gibt, und erlaubte Fassungen
@@ -1169,6 +1182,51 @@ foreach ($folder in @('Packages', 'Application', 'Tests')) {
 foreach ($key in $AllowedJsonWriteLocal.Keys) {
     if (-not $jsonWriteFound.ContainsKey($key)) {
         $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonWriteLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+    }
+}
+
+# Kopien-Sperre für JSON lesen (Form statt Name): Routine mit Liste von Strings als Ergebnis, die Werte eines
+# TJSONArray einzeln anhängt.
+$jsonReadFound = @{}
+$stringsResultPattern = '(?ims)^(?:class\s+)?function\s+((?:\w+\.)?\w+)\s*(?:\([^)]*\))?\s*:\s*' +
+    '(?:TArray\s*<\s*string\s*>|TStringDynArray)\s*;(.*?)^end\s*;'
+$elementValue = '(?:TJSON\w+\s*\(\s*[\w.]+(?:\s*\[[^\]]+\])?\s*\)|\w+)(?:\s*\.\s*Items\s*\[[^\]]+\])?\s*\.\s*Value\b'
+$elementPatterns = @(
+    ('(?i)\b(\w+)\s*:=\s*\1\s*\+\s*\[\s*(?:Trim\s*\(\s*)?' + $elementValue),
+    ('(?i)\bResult\s*\[\s*\w+\s*\]\s*:=\s*(?:Trim\s*\(\s*)?' + $elementValue),
+    ('(?i)\.\s*Add\s*\(\s*(?:Trim\s*\(\s*)?' + $elementValue)
+)
+foreach ($folder in @('Packages', 'Application', 'Tests')) {
+    $folderPath = Join-Path $Root $folder
+    if (-not (Test-Path $folderPath)) { continue }
+    foreach ($file in Get-ChildItem -Path $folderPath -Recurse -File -Include '*.pas') {
+        $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+        if ($relative.StartsWith('Packages/Atlas.Text/Source/Json/')) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        if ($text -notmatch '(?i)\bTJSONArray\b') { continue }
+        $implementation = [regex]::Match($text, '(?im)^\s*implementation\b')
+        if (-not $implementation.Success) { continue }
+        $body = $text.Substring($implementation.Index)
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        foreach ($routine in [regex]::Matches($body, $stringsResultPattern)) {
+            if ($routine.Value -notmatch '(?i)\bTJSONArray\b') { continue }
+            $inner = $routine.Groups[2].Value
+            $copies = $false
+            foreach ($elementPattern in $elementPatterns) {
+                if ([regex]::IsMatch($inner, $elementPattern)) { $copies = $true }
+            }
+            if (-not $copies) { continue }
+            $key = "${ownUnit}:$($routine.Groups[1].Value)"
+            $jsonReadFound[$key] = $true
+            if ($AllowedJsonReadLocal.ContainsKey($key)) { continue }
+            $line = ($text.Substring(0, $implementation.Index + $routine.Index) -split "`n").Count
+            $violations += "${relative}:${line}: $($routine.Groups[1].Value) – JSON-Array als Liste von Strings gibt es als TJsonRead.Strings/TrimmedStrings in Atlas.Text.Json (Kopien-Sperre); dort verwenden oder in `$AllowedJsonReadLocal begründen"
+        }
+    }
+}
+foreach ($key in $AllowedJsonReadLocal.Keys) {
+    if (-not $jsonReadFound.ContainsKey($key)) {
+        $violations += "Tools/Check-PackageDependencies.ps1: `$AllowedJsonReadLocal nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
     }
 }
 

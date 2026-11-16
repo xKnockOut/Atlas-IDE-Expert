@@ -313,28 +313,12 @@ begin
   Result.AddPair('limits', LimitsJson(AResult.Limits));
 end;
 
-/// <summary>Werte des Arrays AName in AEntry; nil ohne.</summary>
-function StringsIn(AEntry: TJSONObject; const AName: string): TArray<string>;
-var
-  mArray: TJSONArray;
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AEntry.TryGetValue<TJSONArray>(AName, mArray) then
-  begin
-    for mItem in mArray do
-    begin
-      Result := Result + [mItem.Value];
-    end;
-  end;
-end;
-
 function ReasonOf(AEntry: TJSONObject): TAffectedReason;
 begin
   Result := Default(TAffectedReason);
   AEntry.TryGetValue<string>('change', Result.Change);
   AEntry.TryGetValue<Boolean>('inferred', Result.Inferred);
-  Result.Path := StringsIn(AEntry, 'path');
+  Result.Path := TJsonRead.Strings(AEntry, 'path');
 end;
 
 function TestOf(AEntry: TJSONObject): TAffectedTest;
@@ -353,7 +337,7 @@ begin
   begin
     Result.FileName := TDocumentUris.ToPath(mUri);
   end;
-  Result.RunNames := StringsIn(AEntry, 'run');
+  Result.RunNames := TJsonRead.Strings(AEntry, 'run');
   if not AEntry.TryGetValue<TJSONArray>('reasons', mReasons) then
   begin
     Exit;

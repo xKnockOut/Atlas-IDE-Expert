@@ -71,7 +71,8 @@ implementation
 
 uses
   System.Generics.Collections, // Inline-Funktionen von TJSONArray (H2443)
-  System.JSON;
+  System.JSON,
+  Atlas.Text.Json;
 
 const
   cRoleNames: array[TAtlasArchitectureRole] of string = ('', 'Contract', 'Internals', 'Providers', 'Adapters',
@@ -282,8 +283,7 @@ end;
 
 class function TAtlasRoleUnit.Prefixes(const ARulesJson: string): TArray<string>;
 var
-  mRules, mRule, mList: TJSONValue;
-  mItem: TJSONValue;
+  mRules: TJSONValue;
 begin
   Result := nil;
   if Trim(ARulesJson) = '' then
@@ -296,24 +296,7 @@ begin
     begin
       Exit;
     end;
-    mRule := TJSONObject(mRules).GetValue('architecture-role-import');
-    if not (mRule is TJSONObject) then
-    begin
-      Exit;
-    end;
-    mList := TJSONObject(mRule).GetValue('prefixes');
-    if not (mList is TJSONArray) then
-    begin
-      Exit;
-    end;
-    for mItem in TJSONArray(mList) do
-    begin
-      // TJSONNumber erbt von TJSONString.
-      if (mItem is TJSONString) and not (mItem is TJSONNumber) and (Trim(mItem.Value) <> '') then
-      begin
-        Result := Result + [Trim(mItem.Value)];
-      end;
-    end;
+    Result := TJsonRead.TrimmedStrings(TJsonRead.Obj(TJSONObject(mRules), 'architecture-role-import'), 'prefixes');
   finally
     mRules.Free;
   end;

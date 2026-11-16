@@ -115,24 +115,6 @@ begin
   end;
 end;
 
-/// <summary>Texte des Arrays AName; andere Einträge zählen nicht.</summary>
-function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if AObject.GetValue(AName) is TJSONArray then
-  begin
-    for mItem in TJSONArray(AObject.GetValue(AName)) do
-    begin
-      if mItem is TJSONString then
-      begin
-        Result := Result + [mItem.Value];
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Zyklen aus "cycles"; nur Einträge mit Name und Pfad.</summary>
 function CyclesOf(AObject: TJSONObject): TArray<TAtlasUseUnitCycle>;
 var
@@ -182,7 +164,7 @@ begin
     AInfo.Found := TJSONBool(mRoot.GetValue('found')).AsBoolean;
     AInfo.UnitName := TJsonRead.Text(mRoot, 'unit');
     AInfo.FileName := TJsonRead.Text(mRoot, 'file');
-    AInfo.InUses := TextsOf(mRoot, 'inUses');
+    AInfo.InUses := TJsonRead.Strings(mRoot, 'inUses');
     AInfo.Cycles := CyclesOf(mRoot);
     if mRoot.GetValue('generation') is TJSONNumber then
     begin

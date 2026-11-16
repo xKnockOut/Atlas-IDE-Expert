@@ -82,21 +82,6 @@ begin
   AResult.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(ATokens, ARange.StartPos)));
 end;
 
-/// <summary>Zeichenketten aus AValues.</summary>
-function StringsOf(AValues: TJSONArray): TArray<string>;
-var
-  mValue: TJSONValue;
-begin
-  Result := nil;
-  for mValue in AValues do
-  begin
-    if mValue is TJSONString then
-    begin
-      Result := Result + [mValue.Value];
-    end;
-  end;
-end;
-
 /// <summary>WorkspaceEdit mit AEdits für die Datei AUri.</summary>
 function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
@@ -144,7 +129,7 @@ begin
   mTarget.InterfaceUses := AInterfaceUses;
   mTarget.Namespaces := AUses.Namespaces;
   mTarget.LineBreak := TTextLines.LineBreakOf(AText);
-  if TSmartPaste.UsesEdits(mTarget, StringsOf(TJSONArray(AArguments.Items[2])), mUses) then
+  if TSmartPaste.UsesEdits(mTarget, TJsonRead.Strings(TJSONArray(AArguments.Items[2])), mUses) then
   begin
     Result.AddPair('edit', WorkspaceEditJson(AUri, mUses.Edits));
   end

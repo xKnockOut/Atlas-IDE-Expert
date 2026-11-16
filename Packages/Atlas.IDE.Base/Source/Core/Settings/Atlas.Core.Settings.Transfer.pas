@@ -1189,24 +1189,6 @@ begin
   end;
 end;
 
-function TextItems(AValue: TJSONValue): TArray<string>;
-var
-  mItem: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(AValue) do
-  begin
-    if IsText(mItem) then
-    begin
-      Result := Result + [TJSONString(mItem).Value];
-    end;
-  end;
-end;
-
 procedure ReadFileHeader(ARoot: TJSONObject; var AFile: TAtlasSettingsFile);
 begin
   AFile.FormatVersion := TJsonRead.Int(ARoot, 'formatVersion');
@@ -1218,7 +1200,7 @@ begin
   AFile.DescriptionEn := StringField(ARoot, 'descriptionEn');
   AFile.Mode := StringField(ARoot, 'mode');
   AFile.Backup := IsTrue(ARoot.GetValue('backup'));
-  AFile.Areas := TextItems(ARoot.GetValue('areas'));
+  AFile.Areas := TJsonRead.Strings(ARoot.GetValue('areas'));
 end;
 
 /// <summary>Grund, warum ARoot keine Exportdatei ist; '' wenn sie eine ist.</summary>

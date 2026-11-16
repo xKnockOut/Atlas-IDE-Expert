@@ -272,21 +272,6 @@ begin
   end;
 end;
 
-/// <summary>Texte aller Einträge (leer ohne Array).</summary>
-function ValuesOf(AArray: TJSONArray): TArray<string>;
-var
-  mIndex: Integer;
-begin
-  Result := nil;
-  if AArray <> nil then
-  begin
-    for mIndex := 0 to AArray.Count - 1 do
-    begin
-      Result := Result + [AArray.Items[mIndex].Value];
-    end;
-  end;
-end;
-
 /// <summary>Zeile der Antwort; Zellen in der Reihenfolge von AColumns.</summary>
 function RowOf(AItem: TJSONValue; AOrder: Integer; const AColumns: TArray<string>): TAtlasQueryRow;
 var
@@ -338,7 +323,7 @@ begin
   AAnswer.InferredCount := Integer(TJsonRead.Int64Or(AData, 'inferred', 0));
   AAnswer.ElapsedMs := TJsonRead.Int64Or(AData, 'elapsedMs', 0);
   AAnswer.Truncated := TJsonRead.Flag(AData, 'truncated');
-  AAnswer.Columns := ValuesOf(TJsonRead.Items(AData, 'columns'));
+  AAnswer.Columns := TJsonRead.Strings(AData, 'columns');
   mRows := TJsonRead.Items(AData, 'rows');
   if mRows = nil then
   begin
@@ -551,7 +536,7 @@ begin
     if mCatalog <> nil then
     begin
       ACatalog.Entities := EntitiesOf(TJsonRead.Items(mCatalog, 'entities'));
-      ACatalog.Keywords := ValuesOf(TJsonRead.Items(mCatalog, 'keywords'));
+      ACatalog.Keywords := TJsonRead.Strings(mCatalog, 'keywords');
       ACatalog.Saved := SavedOf(TJsonRead.Items(mCatalog, 'queries'));
     end;
   finally

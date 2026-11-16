@@ -80,6 +80,14 @@ type
     procedure ParseObjectOnlyForObjects;
     [Test]
     procedure ParseObjectOrEmptyNeverNil;
+    [Test]
+    procedure IsStringRejectsNumbers;
+    [Test]
+    procedure StringsSkipOtherValues;
+    [Test]
+    procedure StringsOfNoArrayAreEmpty;
+    [Test]
+    procedure TrimmedStringsDropEmpty;
   end;
 
 implementation
@@ -184,7 +192,8 @@ procedure TJsonReadTests.Setup;
 begin
   FObject := TJSONObject.ParseJSONValue('{"text":"  Hallo  ","number":42,"float":12.0,"exp":1e3,' +
     '"numberText":"17","big":5000000000,"real":2.5,"yes":true,"no":false,"none":null,' +
-    '"object":{"a":1},"array":[1,2],"bad":"zwölf"}') as TJSONObject;
+    '"object":{"a":1},"array":[1,2],"bad":"zwölf",' +
+    '"names":[" a ","",1,"b",true,null,{"c":"d"},["e"],"  "]}') as TJSONObject;
 end;
 
 procedure TJsonReadTests.TearDown;
@@ -367,5 +376,35 @@ initialization
   TDUnitX.RegisterTestFixture(TJsonTextTests);
   TDUnitX.RegisterTestFixture(TJsonBuildTests);
   TDUnitX.RegisterTestFixture(TJsonReadTests);
+
+procedure TJsonReadTests.IsStringRejectsNumbers;
+begin
+  Assert.IsTrue(TJsonRead.IsString(TJsonRead.Value(FObject, 'numberText')));
+  Assert.IsFalse(TJsonRead.IsString(TJsonRead.Value(FObject, 'number')));
+  Assert.IsFalse(TJsonRead.IsString(TJsonRead.Value(FObject, 'none')));
+  Assert.IsFalse(TJsonRead.IsString(TJsonRead.Value(FObject, 'missing')));
+end;
+
+procedure TJsonReadTests.StringsSkipOtherValues;
+begin
+  Assert.AreEqual(' a ||b|  ', string.Join('|', TJsonRead.Strings(FObject, 'names')));
+  Assert.AreEqual(Integer(4), Integer(Length(TJsonRead.Strings(TJsonRead.Value(FObject, 'names')))));
+end;
+
+procedure TJsonReadTests.StringsOfNoArrayAreEmpty;
+begin
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Strings(nil, 'names'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Strings(FObject, 'missing'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Strings(FObject, 'text'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Strings(FObject, 'object'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.Strings(FObject, 'array'))));
+  Assert.AreEqual(Integer(0), Integer(Length(TJsonRead.TrimmedStrings(FObject, 'none'))));
+end;
+
+procedure TJsonReadTests.TrimmedStringsDropEmpty;
+begin
+  Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(FObject, 'names')));
+  Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(TJsonRead.Value(FObject, 'names'))));
+end;
 
 end.

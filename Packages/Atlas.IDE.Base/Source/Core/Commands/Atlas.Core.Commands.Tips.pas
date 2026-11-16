@@ -141,7 +141,7 @@ end;
 
 function ListOf(AObject: TJSONObject; const AName: string): TArray<string>;
 var
-  mValue, mItem: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   mValue := AObject.GetValue(AName);
@@ -153,17 +153,7 @@ begin
     end;
     Exit;
   end;
-  if not (mValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mItem in TJSONArray(mValue) do
-  begin
-    if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
-    begin
-      Result := Result + [Trim(TJSONString(mItem).Value)];
-    end;
-  end;
+  Result := TJsonRead.TrimmedStrings(mValue);
 end;
 
 { TAtlasTipCatalog }

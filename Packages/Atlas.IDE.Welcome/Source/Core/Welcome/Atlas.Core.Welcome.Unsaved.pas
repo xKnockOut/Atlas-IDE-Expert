@@ -1229,26 +1229,6 @@ begin
   end;
 end;
 
-function BranchesOf(AValue: TJSONValue): TArray<string>;
-var
-  mIndex: Integer;
-  mName: TJSONValue;
-begin
-  Result := nil;
-  if not (AValue is TJSONArray) then
-  begin
-    Exit;
-  end;
-  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
-  begin
-    mName := TJSONArray(AValue).Items[mIndex];
-    if mName is TJSONString then
-    begin
-      Result := Result + [TJSONString(mName).Value];
-    end;
-  end;
-end;
-
 function PlacesFrom(AValue: TJSONValue): TArray<TAtlasUnsavedPlace>;
 var
   mIndex: Integer;
@@ -1291,7 +1271,7 @@ begin
   AItem.Since := TAtlasProjectSummaries.TimeOf(TJsonRead.Text(mEntry, 'since'));
   AItem.Name := TJsonRead.Text(mEntry, 'name');
   AItem.Ref := TJsonRead.Text(mEntry, 'ref');
-  AItem.Branches := BranchesOf(mEntry.GetValue('branches'));
+  AItem.Branches := TJsonRead.Strings(mEntry.GetValue('branches'));
   AItem.Places := PlacesFrom(mEntry.GetValue('places'));
 end;
 

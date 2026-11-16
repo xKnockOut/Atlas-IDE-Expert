@@ -334,24 +334,8 @@ end;
 
 /// <summary>Liste von Pfaden aus "paths"; Einträge, die keine Zeichenfolge sind, fallen weg.</summary>
 function PathsOf(AObject: TJSONObject): TArray<string>;
-var
-  mItems: TJSONArray;
-  mItem: TJSONValue;
-  mTexts: TArray<string>;
 begin
-  mTexts := nil;
-  mItems := TJsonRead.Items(AObject, cKeyPaths);
-  if mItems <> nil then
-  begin
-    for mItem in mItems do
-    begin
-      if mItem is TJSONString then
-      begin
-        mTexts := mTexts + [TJSONString(mItem).Value];
-      end;
-    end;
-  end;
-  Result := TAtlasTrackerProjects.SplitPaths(string.Join(';', mTexts));
+  Result := TAtlasTrackerProjects.SplitPaths(string.Join(';', TJsonRead.Strings(AObject, cKeyPaths)));
 end;
 
 { TAtlasTrackerProjects }
