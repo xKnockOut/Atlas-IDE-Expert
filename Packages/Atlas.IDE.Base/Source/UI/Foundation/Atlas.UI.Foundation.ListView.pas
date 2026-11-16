@@ -38,7 +38,11 @@ type
     FSortable: Boolean;
     FSortColumn: Integer;
     FSortDescending: Boolean;
-    function CellText(AItem: TListItem; AColumn: Integer): string;
+    class function CellText(AItem: TListItem; AColumn: Integer): string; static;
+    /// <summary>Position hinter der Ziffernfolge ab AFrom.</summary>
+    class function DigitsEnd(const AText: string; AFrom: Integer): Integer; static;
+    /// <summary>Ziffernfolgen als Zahlen vergleichen (führende Nullen zählen nicht, ohne Überlauf).</summary>
+    class function CompareDigits(const ALeft, ARight: string): Integer; static;
     function CompareCells(AItem1, AItem2: TListItem): Integer;
     procedure CompareRows(Sender: TObject; Item1, Item2: TListItem; Data: Integer; var Compare: Integer);
     procedure ShowSortMark;
@@ -228,7 +232,7 @@ begin
   ShowSortMark;
 end;
 
-function TAtlasListView.CellText(AItem: TListItem; AColumn: Integer): string;
+class function TAtlasListView.CellText(AItem: TListItem; AColumn: Integer): string;
 begin
   Result := '';
   if AColumn = 0 then
@@ -241,35 +245,43 @@ begin
   end;
 end;
 
+class function TAtlasListView.DigitsEnd(const AText: string; AFrom: Integer): Integer;
+begin
+  Result := AFrom;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], ['0'..'9']) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+class function TAtlasListView.CompareDigits(const ALeft, ARight: string): Integer;
+var
+  mLeft, mRight: string;
+begin
+  // Die längere Ziffernfolge ist die größere Zahl.
+  mLeft := ALeft.TrimLeft(['0']);
+  mRight := ARight.TrimLeft(['0']);
+  Result := CompareValue(Length(mLeft), Length(mRight));
+  if Result = 0 then
+  begin
+    Result := CompareStr(mLeft, mRight);
+  end;
+end;
+
 class function TAtlasListView.CompareNatural(const ALeft, ARight: string): Integer;
 var
   mLeft, mRight, mLeftEnd, mRightEnd: Integer;
-  mLeftDigits, mRightDigits: string;
 begin
+  Result := 0;
   mLeft := 1;
   mRight := 1;
-  while (mLeft <= Length(ALeft)) and (mRight <= Length(ARight)) do
+  while (Result = 0) and (mLeft <= Length(ALeft)) and (mRight <= Length(ARight)) do
   begin
-    if CharInSet(ALeft[mLeft], ['0'..'9']) and CharInSet(ARight[mRight], ['0'..'9']) then
+    mLeftEnd := DigitsEnd(ALeft, mLeft);
+    mRightEnd := DigitsEnd(ARight, mRight);
+    if (mLeftEnd > mLeft) and (mRightEnd > mRight) then
     begin
-      mLeftEnd := mLeft;
-      while (mLeftEnd <= Length(ALeft)) and CharInSet(ALeft[mLeftEnd], ['0'..'9']) do
-      begin
-        Inc(mLeftEnd);
-      end;
-      mRightEnd := mRight;
-      while (mRightEnd <= Length(ARight)) and CharInSet(ARight[mRightEnd], ['0'..'9']) do
-      begin
-        Inc(mRightEnd);
-      end;
-      // Führende Nullen zählen nicht; die längere Ziffernfolge ist die größere Zahl (kein Überlauf).
-      mLeftDigits := Copy(ALeft, mLeft, mLeftEnd - mLeft).TrimLeft(['0']);
-      mRightDigits := Copy(ARight, mRight, mRightEnd - mRight).TrimLeft(['0']);
-      Result := CompareValue(Length(mLeftDigits), Length(mRightDigits));
-      if Result = 0 then
-      begin
-        Result := CompareStr(mLeftDigits, mRightDigits);
-      end;
+      Result := CompareDigits(Copy(ALeft, mLeft, mLeftEnd - mLeft), Copy(ARight, mRight, mRightEnd - mRight));
       mLeft := mLeftEnd;
       mRight := mRightEnd;
     end
@@ -279,12 +291,11 @@ begin
       Inc(mLeft);
       Inc(mRight);
     end;
-    if Result <> 0 then
-    begin
-      Exit;
-    end;
   end;
-  Result := CompareValue(Length(ALeft) - mLeft, Length(ARight) - mRight);
+  if Result = 0 then
+  begin
+    Result := CompareValue(Length(ALeft) - mLeft, Length(ARight) - mRight);
+  end;
 end;
 
 function TAtlasListView.CompareCells(AItem1, AItem2: TListItem): Integer;
