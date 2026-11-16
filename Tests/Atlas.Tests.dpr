@@ -1501,6 +1501,8 @@ uses
   Atlas.Core.Welcome.State in '..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.State.pas',
   Atlas.Core.Welcome.State.Tests in 'IDE.Expert\Atlas.Core.Welcome.State.Tests.pas',
   Atlas.Core.Commands.Tips in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.Tips.pas',
+  Atlas.Core.Commands.KeyFallback in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyFallback.pas',
+  Atlas.Core.Commands.KeyFallback.Tests in 'IDE.Expert\Atlas.Core.Commands.KeyFallback.Tests.pas',
   Atlas.Core.Commands.KeyStroke in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.KeyStroke.pas',
   Atlas.Core.Commands.KeyStroke.Tests in 'IDE.Expert\Atlas.Core.Commands.KeyStroke.Tests.pas',
   Atlas.Core.Commands.MenuSlots in '..\Packages\Atlas.IDE.Base\Source\Core\Commands\Atlas.Core.Commands.MenuSlots.pas',
