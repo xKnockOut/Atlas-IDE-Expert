@@ -28,6 +28,8 @@ type
   public
     /// <summary>AText als JSON-String samt Anführungszeichen.</summary>
     class function Quote(const AText: string): string; static;
+    /// <summary>AItems als JSON-Array von Strings in einer Zeile, getrennt durch ", ".</summary>
+    class function List(const AItems: array of string): string; static;
   end;
 
   /// <summary>JSON-Werte aus Pascal-Werten bauen.</summary>
@@ -140,6 +142,22 @@ begin
   finally
     mBuilder.Free;
   end;
+end;
+
+class function TJsonText.List(const AItems: array of string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '[';
+  for mIndex := 0 to High(AItems) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ', ';
+    end;
+    Result := Result + Quote(AItems[mIndex]);
+  end;
+  Result := Result + ']';
 end;
 
 { TJsonBuild }

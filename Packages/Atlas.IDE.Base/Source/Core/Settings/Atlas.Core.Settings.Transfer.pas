@@ -985,22 +985,6 @@ begin
   Result := ResetAreas(ACatalog, AState, ACatalog.AreaIds);
 end;
 
-function JsonList(const AItems: TArray<string>): string;
-var
-  mIndex: Integer;
-begin
-  Result := '[';
-  for mIndex := 0 to High(AItems) do
-  begin
-    if mIndex > 0 then
-    begin
-      Result := Result + ', ';
-    end;
-    Result := Result + TJsonText.Quote(AItems[mIndex]);
-  end;
-  Result := Result + ']';
-end;
-
 /// <summary>JSON-Text eines Werts; Strings über Quote (Umlaute bleiben lesbar).</summary>
 function ValueText(AValue: TJSONValue): string;
 begin
@@ -1109,7 +1093,7 @@ begin
   begin
     Result := Result + '  "backup": true,' + #10;
   end;
-  Result := Result + '  "areas": ' + JsonList(AAreas) + ',' + #10 + '  "settings": {';
+  Result := Result + '  "areas": ' + TJsonText.List(AAreas) + ',' + #10 + '  "settings": {';
   for mIndex := 0 to High(ALines) do
   begin
     if mIndex > 0 then

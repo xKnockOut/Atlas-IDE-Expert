@@ -22,6 +22,8 @@ type
     procedure KeepsSlash;
     [Test]
     procedure QuotedTextParsesBack;
+    [Test]
+    procedure ListsQuotedItems;
   end;
 
   [TestFixture]
@@ -400,6 +402,12 @@ procedure TJsonReadTests.TrimmedStringsDropEmpty;
 begin
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(FObject, 'names')));
   Assert.AreEqual('a|b', string.Join('|', TJsonRead.TrimmedStrings(TJsonRead.Value(FObject, 'names'))));
+end;
+
+procedure TJsonTextTests.ListsQuotedItems;
+begin
+  Assert.AreEqual('[]', TJsonText.List([]));
+  Assert.AreEqual('["a", "b\"c"]', TJsonText.List(['a', 'b"c']));
 end;
 
 initialization
