@@ -68,6 +68,7 @@
 // Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
 // bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
 // Atlas.Common.Rules.FormatOutput.
+// Wortgleiche Rümpfe (Kopien-Prüfung): --check-duplicates statt der Regeln, siehe Shell.Linter.Duplicates.
 
 interface
 
@@ -124,6 +125,7 @@ uses
   Shell.Linter.Hotspots,
   Shell.Linter.Mutation,
   Shell.Linter.Formatting,
+  Shell.Linter.Duplicates,
   Shell.Linter.AffectedTests,
   Atlas.Common.Localization.Texts;
 
@@ -147,6 +149,10 @@ begin
   else if AOptions.FormatCheck or AOptions.FormatWrite then
   begin
     Result := Formatting(AOptions);
+  end
+  else if AOptions.CheckDuplicates then
+  begin
+    Result := TLinterDuplicates.Run(AOptions);
   end
   else
   begin
