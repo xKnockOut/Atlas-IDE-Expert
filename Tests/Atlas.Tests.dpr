@@ -1562,6 +1562,8 @@ uses
   Atlas.IDE.Welcome.Tiles in '..\Packages\Atlas.IDE.Welcome\Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas',
   Atlas.IDE.Welcome.Tiles.Tests in 'IDE.Expert\Atlas.IDE.Welcome.Tiles.Tests.pas',
   Atlas.UI.Status.Window in '..\Packages\Atlas.IDE.Base\Source\UI\Status\Atlas.UI.Status.Window.pas',
+  Atlas.UI.Commands.Palette in '..\Packages\Atlas.IDE.Base\Source\UI\Commands\Atlas.UI.Commands.Palette.pas',
+  Atlas.UI.Commands.Palette.Tests in 'IDE.Expert\Atlas.UI.Commands.Palette.Tests.pas',
   Atlas.UI.Status.Window.Tests in 'IDE.Expert\Atlas.UI.Status.Window.Tests.pas',
   Atlas.UI.Status.ServerFrame in '..\Packages\Atlas.IDE.Base\Source\UI\Status\Atlas.UI.Status.ServerFrame.pas',
   Atlas.UI.Status.ServerFrame.Tests in 'IDE.Expert\Atlas.UI.Status.ServerFrame.Tests.pas',
