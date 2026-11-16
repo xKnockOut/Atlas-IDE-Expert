@@ -44,6 +44,14 @@ type
     /// <summary>#54: Compilermeldung mit Ursache und DocWiki-Knopf.</summary>
     [Test]
     procedure ExplainDialogShowsMessageCause;
+    /// <summary>Langer Text bricht in der Breite um, rollt im Inhalt, die Knöpfe liegen in eigener Leiste darunter;
+    /// schmaler gezogen wird der Text höher.</summary>
+    [Test]
+    procedure ExplainDialogWrapsLongTextAboveButtons;
+    /// <summary>Überschriften und Beispiele stehen in Reihenfolge; Beispiele so hoch wie ihre Zeilen, waagrecht
+    /// rollbar nur bei zu langer Zeile.</summary>
+    [Test]
+    procedure ExplainDialogStacksExamplesWithoutNeedlessScrollBars;
     /// <summary>#1108: aktive Unit angepinnt, Trennzeile, nicht geöffnete ausgegraut, ↓ springt über die
     /// Trennzeile, Knopf „Offene zuerst“.</summary>
     [Test]
@@ -65,6 +73,7 @@ uses
   System.Classes,
   Winapi.Windows,
   Vcl.Forms,
+  Vcl.StdCtrls,
   Vcl.Menus,
   Vcl.ComCtrls,
   Vcl.Buttons,
@@ -512,6 +521,66 @@ begin
   try
     Assert.IsNull(mDialog.CauseLabel);
     Assert.IsNull(mDialog.DocWikiButton);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.ExplainDialogWrapsLongTextAboveButtons;
+var
+  mExplanation: TAtlasRuleExplanation;
+  mDialog: TAtlasRuleExplainDialog;
+  mLabel: TLabel;
+  mWideHeight: Integer;
+begin
+  mExplanation := Default(TAtlasRuleExplanation);
+  mExplanation.Id := 'dfm-reference-unit-missing';
+  mExplanation.Name := 'Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht';
+  mExplanation.Description := string.Join(' ', TArray<string>.Create(
+    'Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars,',
+    'Rahmens oder Datenmoduls, dessen Unit aber weder im interface- noch im implementation-uses steht.',
+    'Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis',
+    'leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL den Verweis nur auf, solange ein',
+    'Modul dieses Namens existiert. Korrektur: die Unit ins implementation-uses aufnehmen.'));
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, mExplanation);
+  try
+    mLabel := mDialog.DescriptionLabel;
+    Assert.AreSame(mDialog.Content, mLabel.Parent);
+    Assert.AreSame(mDialog.ButtonBar, mDialog.ActiveControl.Parent, 'Schließen in der Knopfleiste');
+    Assert.IsTrue(mLabel.Width > mDialog.Content.ClientWidth div 2, 'Text nutzt die Breite');
+    Assert.IsTrue(mLabel.Left + mLabel.Width <= mDialog.Content.ClientWidth, 'Text rechts im Fenster');
+    Assert.IsTrue(mLabel.Height > 3 * Abs(mLabel.Font.Height), 'Text bricht um');
+    Assert.IsTrue(mDialog.Content.Top + mDialog.Content.Height <= mDialog.ButtonBar.Top, 'Knöpfe unter dem Text');
+    mWideHeight := mLabel.Height;
+    mDialog.Width := mDialog.Constraints.MinWidth;
+    Assert.IsTrue(mLabel.Height > mWideHeight, 'schmaler, also höher');
+    Assert.IsTrue(mLabel.Left + mLabel.Width <= mDialog.Content.ClientWidth, 'schmal rechts im Fenster');
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.ExplainDialogStacksExamplesWithoutNeedlessScrollBars;
+var
+  mExplanation: TAtlasRuleExplanation;
+  mDialog: TAtlasRuleExplainDialog;
+begin
+  mExplanation := Default(TAtlasRuleExplanation);
+  mExplanation.Id := 'dfm-reference-unit-missing';
+  mExplanation.Name := 'Verweis';
+  mExplanation.Description := 'Unit fehlt.';
+  mExplanation.Bad := '// Unit2.dfm: Connection = Form1.Connection'#13#10'implementation'#13#10#13#10'{$R *.dfm}';
+  mExplanation.Good := 'implementation'#13#10#13#10'uses'#13#10'  Unit1; // ' + StringOfChar('x', 600);
+  mDialog := TAtlasRuleExplainDialog.CreateDialog(nil, mExplanation);
+  try
+    Assert.AreEqual('Falsch:', mDialog.BadHeading.Caption);
+    Assert.AreEqual('Richtig:', mDialog.GoodHeading.Caption);
+    Assert.IsTrue(mDialog.BadHeading.Top < mDialog.BadMemo.Top, 'Falsch: über dem Beispiel');
+    Assert.IsTrue(mDialog.BadMemo.Top < mDialog.GoodHeading.Top, 'Richtig: unter dem ersten Beispiel');
+    Assert.IsTrue(mDialog.GoodHeading.Top < mDialog.GoodMemo.Top, 'Richtig: über dem Beispiel');
+    Assert.AreEqual<TScrollStyle>(ssNone, mDialog.BadMemo.ScrollBars, 'kurze Zeilen ohne Rollleiste');
+    Assert.AreEqual<TScrollStyle>(ssHorizontal, mDialog.GoodMemo.ScrollBars, 'überlange Zeile rollt waagrecht');
+    Assert.IsTrue(mDialog.BadMemo.Height > 4 * Abs(mDialog.BadMemo.Font.Height), 'vier Zeilen hoch');
   finally
     mDialog.Free;
   end;
