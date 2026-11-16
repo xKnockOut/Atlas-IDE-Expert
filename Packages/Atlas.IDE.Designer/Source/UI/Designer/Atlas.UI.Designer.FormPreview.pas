@@ -15,6 +15,10 @@
 // - Maus über einer Komponente: Name, Klasse, Align, Anchors und die Befunde
 //   als Tooltip und in der Fußzeile.
 // - Esc schließt; OnClosed meldet es dem Aufrufer.
+// - Basis ist TAtlasDialog: Dialogschrift und IDE-Thema an der Wurzel, bei
+//   einem Wechsel des Themas neue Farben für das Abbild. Anfangs 900 × 640
+//   logische Pixel, höchstens 80 % der Arbeitsfläche; Knöpfe so breit wie
+//   ihr Text, die Leiste bricht in schmalen Fenstern um.
 
 interface
 
@@ -29,7 +33,8 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Designer.Layout;
+  Atlas.Core.Designer.Layout,
+  Atlas.UI.Foundation.Dialog;
 
 type
   TAtlasFormPreviewData = record
@@ -62,7 +67,7 @@ type
     Updating: Boolean;
   end;
 
-  TAtlasFormPreviewWindow = class(TForm)
+  TAtlasFormPreviewWindow = class(TAtlasDialog)
   public const
     cMinProbe = 40;
   private
@@ -107,11 +112,11 @@ type
     procedure Recalculate; virtual;
     /// <summary>Nach den Knoten zeichnen (Grenzen, Markierungen).</summary>
     procedure PaintOver; virtual;
+    procedure ThemeChanged; override;
   public
     constructor CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData; const AColors: TAtlasColors);
     /// <summary>Probegröße setzen (Client, Pixel der DFM); Constraints des Formulars gelten.</summary>
     procedure SetProbe(const ASize: TSize);
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Text eines Befunds für die Fußzeile und den Tooltip.</summary>
     class function FindingText(const AFinding: TAtlasLayoutFinding; const ANode: TAtlasLayoutNode): string; static;
     property Probe: TSize read FProbe;
@@ -123,6 +128,7 @@ implementation
 
 uses
   System.Math,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.ViewStrings;
 
 const
@@ -132,10 +138,47 @@ const
   cTagMinimum = -1;
   cTagDesign = -2;
   cEditWidth = 56;
+  cWindowWidth = 900;
+  cWindowHeight = 640;
+  /// <summary>Höchstens dieser Anteil der Arbeitsfläche in Prozent.</summary>
+  cMaxScreenShare = 80;
+  cButtonMinWidth = 75;
+  cButtonPadding = 24;
   cBasePpi = 96;
   cAlignNames: array[TAtlasLayoutAlign] of string = ('', 'alTop', 'alBottom', 'alLeft', 'alRight', 'alClient',
     'alCustom');
   cAnchorNames: array[TAtlasLayoutAnchor] of string = ('akLeft', 'akTop', 'akRight', 'akBottom');
+
+/// <summary>AValue, höchstens cMaxScreenShare Prozent von AExtent (Arbeitsfläche).</summary>
+function ScreenLimited(AValue, AExtent: Integer): Integer;
+begin
+  Result := Min(AValue, AExtent * cMaxScreenShare div 100);
+end;
+
+/// <summary>Arbeitsfläche des Monitors der IDE.</summary>
+function WorkArea: TRect;
+begin
+  Result := Screen.WorkAreaRect;
+  if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.Monitor.WorkareaRect;
+  end;
+end;
+
+/// <summary>Breite eines Knopfs mit ACaption in der Schrift AFont, mindestens AMinWidth; Gerätepixel. Gemessen auf
+/// einem Bitmap: Die Leinwand des Formulars bräuchte schon im Konstruktor ein Fenster.</summary>
+function TextButtonWidth(AFont: TFont; const ACaption: string; AMinWidth, APadding: Integer): Integer;
+var
+  mBitmap: Vcl.Graphics.TBitmap;
+begin
+  mBitmap := Vcl.Graphics.TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(AFont);
+    Result := Max(AMinWidth, mBitmap.Canvas.TextWidth(ACaption) + APadding);
+  finally
+    mBitmap.Free;
+  end;
+end;
 
 function AnchorText(AAnchors: TAtlasLayoutAnchors): string;
 var
@@ -159,23 +202,27 @@ end;
 
 constructor TAtlasFormPreviewWindow.CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData;
   const AColors: TAtlasColors);
+var
+  mArea: TRect;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeTitle,
+    [AData.FormName]), cWindowWidth);
   FData := AData;
   FColors := AColors;
-  Caption := TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeTitle, [AData.FormName]);
   BorderStyle := bsSizeToolWin;
-  Position := poMainFormCenter;
   KeyPreview := True;
   OnKeyDown := FormKey;
   OnClose := FormClosed;
-  Width := S(900);
-  Height := S(640);
+  mArea := WorkArea;
+  Width := ScreenLimited(S(cWindowWidth), mArea.Width);
+  Height := ScreenLimited(S(cWindowHeight), mArea.Height);
   FParts.Bar := TFlowPanel.Create(Self);
-  FParts.Bar.Parent := Self;
-  FParts.Bar.Align := alTop;
+  FParts.Bar.Top := 0;
   FParts.Bar.AutoSize := True;
   FParts.Bar.BevelOuter := bvNone;
+  FParts.Bar.Caption := '';
+  FParts.Bar.Align := alTop;
+  FParts.Bar.Parent := Self;
   BuildBar;
   FParts.Status := TLabel.Create(Self);
   FParts.Status.Parent := Self;
@@ -244,6 +291,8 @@ begin
   Result.Tag := ATag;
   Result.OnClick := QuickClick;
   Result.AlignWithMargins := True;
+  // Breite nach dem Text in der Dialogschrift, damit „1920 × 1080“ auch bei hoher DPI passt.
+  Result.Width := TextButtonWidth(Font, ACaption, S(cButtonMinWidth), S(cButtonPadding));
 end;
 
 procedure TAtlasFormPreviewWindow.QuickClick(Sender: TObject);
@@ -596,9 +645,9 @@ begin
   Recalculate;
 end;
 
-procedure TAtlasFormPreviewWindow.ApplyColors(const AColors: TAtlasColors);
+procedure TAtlasFormPreviewWindow.ThemeChanged;
 begin
-  FColors := AColors;
+  FColors := TAtlasUiTheme.Colors;
   FParts.Paint.Invalidate;
 end;
 
