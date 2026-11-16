@@ -45,6 +45,7 @@ type
     function GitState(AFileName: string): string;
     function UsesFor(AUri: string): TUsesContext;
     function UnitFileOf(AUnitName: string): string;
+    function Foreign(AFileName: string): Boolean;
   public
     constructor Create(const AServices: TShellUnitSearchServices);
     destructor Destroy; override;
@@ -107,6 +108,7 @@ begin
   AContext.GitState := GitState;
   AContext.UsesFor := UsesFor;
   AContext.UnitFileOf := UnitFileOf;
+  AContext.Foreign := Foreign;
   Result := True;
 end;
 
@@ -125,6 +127,11 @@ begin
     begin
       for mWorkspace in AWorkspaces do
       begin
+        // Aus einer offenen Datei abgeleitet (zweiter Checkout): kein Projekt der IDE.
+        if mWorkspace.Setup.Derived then
+        begin
+          Continue;
+        end;
         mProject := Default(TUnitSearchProject);
         mProject.Files := mWorkspace.State.ProjectFiles;
         if mWorkspace.State.Project(mInfo) then
@@ -219,6 +226,32 @@ begin
   begin
     Result := mUnit.FileName;
   end;
+end;
+
+function TShellUnitSearch.Foreign(AFileName: string): Boolean;
+var
+  mForeign: Boolean;
+begin
+  mForeign := False;
+  FServices.VisitWorkspaces(
+    procedure(const AWorkspaces: TArray<TShellWorkspace>)
+    var
+      mWorkspace: TShellWorkspace;
+      mDerived, mOwn: Boolean;
+    begin
+      mDerived := False;
+      mOwn := False;
+      for mWorkspace in AWorkspaces do
+      begin
+        if mWorkspace.State.ContainsFile(AFileName) then
+        begin
+          mDerived := mDerived or mWorkspace.Setup.Derived;
+          mOwn := mOwn or not mWorkspace.Setup.Derived;
+        end;
+      end;
+      mForeign := mDerived and not mOwn;
+    end);
+  Result := mForeign;
 end;
 
 procedure TShellUnitSearch.RegisterCommands(ACommands: TLspCommands);

@@ -38,6 +38,10 @@ type
     /// erscheinen nicht ein zweites Mal; Projektdateien bleiben.</summary>
     [Test]
     procedure UnitsSkipShadowedSameNamedUnits;
+    /// <summary>Units eines Projekts außerhalb der IDE (zweiter Checkout, dessen Datei offen war) erscheinen nicht,
+    /// auch nicht unter eigenem Namen.</summary>
+    [Test]
+    procedure UnitsSkipForeignProjects;
     /// <summary>#1310: Caption des Wurzelobjekts, entschlüsselt und fortgesetzt, nie die eines Kindes.</summary>
     [Test]
     procedure FormCaptionReadsRootOnly;
@@ -57,6 +61,7 @@ implementation
 uses
   System.Generics.Collections,
   System.JSON,
+  System.StrUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.Contract;
 
@@ -387,6 +392,34 @@ begin
     Assert.AreEqual('c:\lib\hilfe.pas', FilesNamed(mUnits, 'Hilfe'));
     // Ohne bekannte geltende Datei bleibt der Eintrag.
     Assert.AreEqual('c:\bds\sysutils.pas', FilesNamed(mUnits, 'System.SysUtils'));
+  finally
+    mAnswer.Free;
+  end;
+  mContext := Default(TUnitSearchContext);
+end;
+
+/// <summary>Dateien unter C:\Trunk gehören nur zu einem abgeleiteten Projekt.</summary>
+function InTrunk(AFileName: string): Boolean;
+begin
+  Result := StartsText('C:\Trunk\', AFileName);
+end;
+
+procedure TUnitSearchTests.UnitsSkipForeignProjects;
+var
+  mContext: TUnitSearchContext;
+  mAnswer: TJSONObject;
+  mUnits: TJSONArray;
+begin
+  mContext := Context;
+  mContext.Units := mContext.Units + [MakeUnit('Kunden', 'C:\Trunk\Kunden.pas', nil),
+    MakeUnit('NurImTrunk', 'C:\Trunk\NurImTrunk.pas', nil)];
+  mContext.Foreign := InTrunk;
+  mAnswer := TUnitSearch.UnitsJson(mContext);
+  try
+    mUnits := mAnswer.GetValue<TJSONArray>('units');
+    Assert.AreEqual(7, Integer(mUnits.Count), mAnswer.ToJSON);
+    Assert.AreEqual('c:\p\kunden.pas', FilesNamed(mUnits, 'Kunden'));
+    Assert.AreEqual('', FilesNamed(mUnits, 'NurImTrunk'));
   finally
     mAnswer.Free;
   end;
