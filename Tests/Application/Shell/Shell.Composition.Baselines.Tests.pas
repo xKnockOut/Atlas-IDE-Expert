@@ -54,7 +54,8 @@ uses
   Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.SyntaxDiagnostics,
-  Atlas.Common.Pascal.Preprocessor;
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Tests.TempFolder;
 
 function NoMetricsSource(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
 begin
@@ -122,11 +123,7 @@ end;
 
 procedure TShellBaselinesTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TShellBaselinesTests.FilesWriteAndRead;

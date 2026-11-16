@@ -70,7 +70,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Shell.Bootstrap;
+  Shell.Bootstrap,
+  Atlas.Tests.TempFolder;
 
 type
   /// <summary>Sammelt die Meldungen als "LEVEL Text".</summary>
@@ -163,12 +164,7 @@ end;
 
 procedure TShellBootstrapTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TShellBootstrapTests.ReadSourceText_Utf8Bom_ReturnsText;

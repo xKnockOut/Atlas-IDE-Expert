@@ -546,7 +546,7 @@ begin
   // Der Dialog gibt sich selbst frei (caFree).
   FDialog := nil;
   Inc(FRun);
-  FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewDone, [mState.Key,
+  FContext.Messages.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewDone, [mState.Key,
     TAtlasTrackerReviewDialog.BuildText(mState) + ', ' + TAtlasTrackerReviewDialog.TestsText(mState)]));
   if AReturn and mState.CanReturn then
   begin
@@ -591,12 +591,12 @@ begin
   TAtlasGuard.Log(Format(cLogBack, [AtlasVcsOutcomeName(AOutcome)], TFormatSettings.Invariant));
   if AOutcome <> TAtlasVcsOutcome.Ok then
   begin
-    FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackFailed, [AState.OwnBranch,
+    FContext.Messages.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackFailed, [AState.OwnBranch,
       AtlasVcsOutcomeName(AOutcome)]));
     Exit;
   end;
   Moved;
-  FContext.Report(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackDone, [AState.OwnBranch]));
+  FContext.Messages.Say(TAtlasWorkflowStrings.Fmt(TAtlasWorkflowTextId.TrackerReviewBackDone, [AState.OwnBranch]));
   // Arbeitsstand des eigenen Issues ohne Rückfrage zurück (#2052).
   if AState.OwnKey <> '' then
   begin

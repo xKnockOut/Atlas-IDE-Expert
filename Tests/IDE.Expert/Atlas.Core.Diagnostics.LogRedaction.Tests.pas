@@ -45,7 +45,8 @@ uses
   System.IOUtils,
   Atlas.Text.LogMarks,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.LogRedaction;
+  Atlas.Core.Diagnostics.LogRedaction,
+  Atlas.Tests.TempFolder;
 
 const
   cMarkerProject = 'MarkerProjektKunde';
@@ -62,11 +63,7 @@ end;
 
 procedure TAtlasLogRedactorTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasLogRedactorTests.MarkedValuesBecomeNumberedLabels;

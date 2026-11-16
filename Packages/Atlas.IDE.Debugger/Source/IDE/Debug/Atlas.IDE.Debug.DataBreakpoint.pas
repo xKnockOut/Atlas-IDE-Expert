@@ -28,7 +28,8 @@ uses
   System.Generics.Collections,
   ToolsAPI,
   Atlas.Core.Debug.DataBreakpoint,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeDataBreakpoint = class
@@ -53,10 +54,9 @@ type
       procedure DebugEnded; override;
     end;
   private class var
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FListener: IAtlasIdeDebugListener;
     FWatches: TList<TWatch>;
-    class procedure Report(const AText: string); static;
     class function Evaluate(const AExpression: string; out AValue: string): Boolean; static;
     /// <summary>Ausdruck unter der Schreibmarke des obersten Editors; '' ohne.</summary>
     class function CursorExpression: string; static;
@@ -125,14 +125,6 @@ end;
 
 { TAtlasIdeDataBreakpoint }
 
-class procedure TAtlasIdeDataBreakpoint.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
-end;
-
 class function TAtlasIdeDataBreakpoint.Evaluate(const AExpression: string; out AValue: string): Boolean;
 begin
   // Eigene Auswertung: Zustandswechsel dabei sind kein Weiterlaufen.
@@ -168,22 +160,23 @@ begin
   Result := False;
   if not Started then
   begin
-    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataOff));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataOff));
   end
   else if TAtlasIdeBreakpoints.StoppedProcess = nil then
   begin
-    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataNotStopped));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataNotStopped));
   end
   else
   begin
     AExpression := CursorExpression;
     if AExpression = '' then
     begin
-      Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataNoExpression));
+      FMessage.Say(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataNoExpression));
     end
     else if TAtlasDataBreakpoint.FreeSlots(UsedSlots) = 0 then
     begin
-      Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSlot, [TAtlasDataBreakpoint.cSlots]));
+      FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSlot,
+        [TAtlasDataBreakpoint.cSlots]));
     end
     else
     begin
@@ -245,13 +238,13 @@ begin
   if not Evaluate(TAtlasDataBreakpoint.AddressExpression(AExpression), mValue) or
     not TAtlasInstanceBreakpoint.TryParseAddress(mValue, mAddress) then
   begin
-    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoAddress, [AExpression, mValue]));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoAddress, [AExpression, mValue]));
     Exit;
   end;
   if not Evaluate(TAtlasDataBreakpoint.SizeExpression(AExpression), mValue) or
     not TAtlasDataBreakpoint.TryParseSize(mValue, mSize) then
   begin
-    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSize, [AExpression, mValue]));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataNoSize, [AExpression, mValue]));
     Exit;
   end;
   if not Evaluate(TAtlasDataBreakpoint.cPointerSizeExpression, mValue) or
@@ -323,8 +316,8 @@ begin
       Continue;
     end;
     mValue := NewValue(mWatch, mBytes);
-    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataChanged, [mWatch.Expression, mWatch.Value,
-      mValue]));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataChanged, [mWatch.Expression,
+      mWatch.Value, mValue]));
     mLast := TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataStatus, [mWatch.Expression, mWatch.Value,
       mValue]);
     mWatch.Bytes := mBytes;
@@ -360,14 +353,14 @@ begin
   FWatches.Clear;
   if AReport then
   begin
-    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataRemoved, [Length(mBreakpoints)]));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataRemoved, [Length(mBreakpoints)]));
   end;
   TAtlasIdeBreakpoints.RemoveAll(mBreakpoints);
 end;
 
 class procedure TAtlasIdeDataBreakpoint.Start(const AMessage: TProc<string>);
 begin
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   if FWatches = nil then
   begin
     FWatches := TList<TWatch>.Create;
@@ -389,7 +382,7 @@ begin
   FListener := nil;
   RemoveWatches(False);
   ClearStatus;
-  FMessage := nil;
+  FMessage.Clear;
   FreeAndNil(FWatches);
 end;
 
@@ -431,18 +424,18 @@ begin
   mWatch.Breakpoint := CreateBreakpoint(mPlan);
   if mWatch.Breakpoint = nil then
   begin
-    Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataRejected, [mExpression,
+    FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataRejected, [mExpression,
       TAtlasDataBreakpoint.cSlots]));
     Exit;
   end;
   FWatches.Add(mWatch);
-  Report(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataSet, [mExpression, mPlan.Length,
+  FMessage.Say(TAtlasDataBreakpointsStrings.Fmt(TAtlasDataBreakpointsTextId.DataSet, [mExpression, mPlan.Length,
     TAtlasInstanceBreakpoint.AddressText(mPlan.Address), mWatch.Value]));
   if mWatch.Kind = TAtlasDataValueKind.Text then
   begin
-    Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataTextHint));
+    FMessage.Say(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataTextHint));
   end;
-  Report(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataSessionHint));
+  FMessage.Say(TAtlasDataBreakpointsStrings.Text(TAtlasDataBreakpointsTextId.DataSessionHint));
 end;
 
 end.

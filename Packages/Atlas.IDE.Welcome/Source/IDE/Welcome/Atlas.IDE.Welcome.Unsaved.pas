@@ -32,7 +32,8 @@ uses
   ToolsAPI,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Unsaved,
-  Atlas.UI.Welcome.Unsaved;
+  Atlas.UI.Welcome.Unsaved,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasIdeUnsaved = class(TInterfacedObject, IAtlasUnsavedSource)
@@ -53,7 +54,7 @@ type
       procedure AfterCompile(Succeeded: Boolean); overload;
     end;
   private
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FNotifier: TIdeNotifier;
     FNotifierIndex: Integer;
     FStopped: Boolean;
@@ -66,7 +67,6 @@ type
     // Zuletzt gemeldete Sichtbarkeit des Bereichs (hideWhenClean).
     FVisible: Boolean;
     procedure Changed;
-    procedure Report(const AText: string);
     function Projects: TArray<TAtlasUnsavedProject>;
     function CurrentView: TAtlasUnsavedView;
     function IsVisible: Boolean;
@@ -110,7 +110,6 @@ uses
   System.Classes,
   System.IOUtils,
   System.DateUtils,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,
@@ -160,7 +159,7 @@ end;
 constructor TAtlasIdeUnsaved.Create(const AMessage: TProc<string>);
 begin
   inherited Create;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   FNotifierIndex := -1;
   FVisible := True;
   FFresh := TDictionary<string, UInt64>.Create;
@@ -195,14 +194,6 @@ begin
   else
   begin
     TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cUnsaved);
-  end;
-end;
-
-procedure TAtlasIdeUnsaved.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
   end;
 end;
 
@@ -340,7 +331,7 @@ var
 begin
   if not FileExists(AProject) then
   begin
-    Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+    FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
     Exit;
   end;
   // Schon offen: nicht neu laden.
@@ -634,12 +625,12 @@ begin
         begin
           if mOutcome <> TAtlasVcsOutcome.Ok then
           begin
-            Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed, [mRow.Name,
+            FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed, [mRow.Name,
               AtlasVcsOutcomeName(mOutcome)]));
           end
           else if Length(mPlans) = 0 then
           begin
-            Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushNothing, [mRow.Name]));
+            FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedPushNothing, [mRow.Name]));
           end
           else if TAtlasPushDialog.Confirm(mRow.Name, mPlans, nil) then
           begin
@@ -756,7 +747,7 @@ begin
       end;
       if mOutcome <> TAtlasVcsOutcome.Ok then
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed,
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeUnsavedQueryFailed,
           [mRow.Name, AtlasVcsOutcomeName(mOutcome)]));
         Exit;
       end;
@@ -788,7 +779,7 @@ begin
       end
       else
       begin
-        Report(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mProject]));
+        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [mProject]));
       end;
     end);
 end;
@@ -859,7 +850,7 @@ begin
       end;
       for mIndex := 0 to High(mPlans) do
       begin
-        Report(PushReport(mRow.Name, mPlans, mOutcomes, mIndex));
+        FMessage.Say(PushReport(mRow.Name, mPlans, mOutcomes, mIndex));
       end;
       // Neuer Stand für die Zeile.
       FFresh.Remove(TAtlasProjectSummaries.NormalizedPath(mRow.Project));

@@ -54,7 +54,8 @@ uses
   System.IOUtils,
   System.Zip,
   Atlas.Core.Diagnostics.Package,
-  Atlas.Core.Welcome.Help;
+  Atlas.Core.Welcome.Help,
+  Atlas.Tests.TempFolder;
 
 const
   cRoot = 'C:\Projekte\Kunde';
@@ -113,12 +114,7 @@ end;
 
 procedure TAtlasDiagnosticPackageTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown: Zeichenkette freigeben.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 function PackageInput(const AFolder: string): TAtlasPackageInput;

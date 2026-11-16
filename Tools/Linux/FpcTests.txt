@@ -399,6 +399,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
 Atlas.Core.Outline.CrumbPlan.Tests

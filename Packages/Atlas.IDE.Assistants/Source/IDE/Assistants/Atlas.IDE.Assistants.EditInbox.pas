@@ -51,6 +51,7 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.UI.Assistants.Strings,
   Atlas.Core.Assistants.EditInbox,
+  Atlas.Core.Assistants.Inbox,
   Atlas.Core.Assistants.EditPlan,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.Core.Editor.WorkspacePlan;
@@ -93,7 +94,7 @@ begin
   FSignal.Reopen;
   FPace.Listed(GetTickCount64, False);
   try
-    for mRequestFile in TAtlasEditInbox.Pending(FFolder) do
+    for mRequestFile in TAtlasFileInbox.Pending(FFolder) do
     begin
       Process(mRequestFile);
     end;

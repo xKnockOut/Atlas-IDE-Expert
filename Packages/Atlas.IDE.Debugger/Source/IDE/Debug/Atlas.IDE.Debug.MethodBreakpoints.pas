@@ -25,7 +25,8 @@ uses
   Atlas.Core.Debug.MethodBreakpoints,
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
-  Atlas.IDE.Debug.BreakpointListMenu;
+  Atlas.IDE.Debug.BreakpointListMenu,
+  Atlas.Core.Diagnostics.Guard;
 
 type
   TAtlasMethodBreakpointSessionFunc = reference to function: TLspSession;
@@ -44,7 +45,7 @@ type
     end;
   private class var
     FSession: TAtlasMethodBreakpointSessionFunc;
-    FMessage: TProc<string>;
+    FMessage: TAtlasMessageSink;
     FListener: IAtlasIdeDebugListener;
     FStore: TAtlasMethodGroupStore;
     FStoreKept: Boolean;
@@ -54,7 +55,6 @@ type
     class procedure AttachListMenu; static;
     /// <summary>Startmuster aus Markierung oder Wort am Cursor des aktiven Editors; '' ohne.</summary>
     class function CursorPattern: string; static;
-    class procedure Report(const AText: string); static;
     class function StoreFile: string; static;
     class procedure LoadStore; static;
     class procedure SaveStore; static;
@@ -168,14 +168,6 @@ begin
   mLine := TAtlasEditorBuffer.LineText(mView, mCursor.Line);
   Result := TAtlasMethodBreakpoints.StartPattern(TAtlasEvalText.ExpressionAt(mLine, TLspSession.ColumnToIndex(mLine,
     mCursor.Col, TAtlasEditorBuffer.TabWidth(mView.Buffer))), mLine);
-end;
-
-class procedure TAtlasIdeMethodBreakpoints.Report(const AText: string);
-begin
-  if Assigned(FMessage) then
-  begin
-    FMessage(AText);
-  end;
 end;
 
 class function TAtlasIdeMethodBreakpoints.StoreFile: string;
@@ -415,7 +407,7 @@ begin
     mGroup.Learn(mNew);
     FStore.Put(AProject, mGroup);
     mChanged := True;
-    Report(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsGrown, [Length(mNew),
+    FMessage.Say(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsGrown, [Length(mNew),
       mGroup.Pattern,
       TAtlasMethodGroupFlow.HitNames(mNew)]));
   end;
@@ -450,7 +442,7 @@ begin
   begin
     SaveStore;
   end;
-  Report(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodGroupsRemoved, [AGroup.Pattern,
+  FMessage.Say(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodGroupsRemoved, [AGroup.Pattern,
     mCount]));
 end;
 
@@ -458,7 +450,7 @@ class procedure TAtlasIdeMethodBreakpoints.Start(const ASession: TAtlasMethodBre
   const AMessage: TProc<string>);
 begin
   FSession := ASession;
-  FMessage := AMessage;
+  FMessage := TAtlasMessageSink.Create(AMessage);
   if FStore = nil then
   begin
     FStore := TAtlasMethodGroupStore.Create;
@@ -486,7 +478,7 @@ begin
   end;
   FListener := nil;
   FSession := nil;
-  FMessage := nil;
+  FMessage.Clear;
   FreeAndNil(FStore);
   FLastGroup := Default(TAtlasMethodGroup);
 end;
@@ -504,7 +496,7 @@ var
 begin
   if not Started then
   begin
-    Report(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOff));
+    FMessage.Say(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOff));
     Exit;
   end;
   AttachListMenu;
@@ -522,7 +514,7 @@ begin
   begin
     TAtlasMethodGroupFlow.MergeKnown(mGroup, mKnown.Known);
   end;
-  Report(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsCreated, [Place(mGroup,
+  FMessage.Say(TAtlasMethodBreakpointsStrings.Fmt(TAtlasMethodBreakpointsTextId.MethodBreakpointsCreated, [Place(mGroup,
     mSelected),
     TAtlasMethodBreakpoints.GroupName(mGroup.Pattern)]));
   FLastGroup := mGroup;
@@ -567,7 +559,7 @@ class procedure TAtlasIdeMethodBreakpoints.RunGroups;
 begin
   if not Started then
   begin
-    Report(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOff));
+    FMessage.Say(TAtlasMethodBreakpointsStrings.Text(TAtlasMethodBreakpointsTextId.MethodBreakpointsOff));
     Exit;
   end;
   AttachListMenu;

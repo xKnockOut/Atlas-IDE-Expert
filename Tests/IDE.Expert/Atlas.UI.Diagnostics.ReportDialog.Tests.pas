@@ -49,7 +49,8 @@ uses
   Atlas.Core.Diagnostics.Package,
   Atlas.UI.Strings,
   Atlas.UI.Diagnostics.Strings,
-  Atlas.UI.Diagnostics.ReportDialog;
+  Atlas.UI.Diagnostics.ReportDialog,
+  Atlas.Tests.TempFolder;
 
 const
   cUser = 'mmuster';
@@ -139,12 +140,7 @@ end;
 
 procedure TAtlasReportDialogTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TAtlasReportDialogTests.PreviewFollowsChecks;
