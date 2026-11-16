@@ -130,15 +130,16 @@ implementation
 uses
   Winapi.Windows,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
 
 const
-  cKindTexts: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
-    TAtlasTextId.StepFilterKindSetters, TAtlasTextId.StepFilterKindTrivial, TAtlasTextId.StepFilterKindOperators,
-    TAtlasTextId.StepFilterKindEmptyConstructors);
+  cKindTexts: array[TStepFilterKind] of TAtlasSteppingTextId = (TAtlasSteppingTextId.StepFilterKindGetters,
+    TAtlasSteppingTextId.StepFilterKindSetters, TAtlasSteppingTextId.StepFilterKindTrivial,
+      TAtlasSteppingTextId.StepFilterKindOperators,
+    TAtlasSteppingTextId.StepFilterKindEmptyConstructors);
 
 /// <summary>Knopf rechts in AParent (Besitzer AFrame).</summary>
 function AddButton(AFrame: TAtlasDebugStepFilterFrame; AParent: TWinControl; const ACaption: string;
@@ -182,12 +183,12 @@ var
   mTop: TPanel;
 begin
   mTop := AddBar(AFrame, AFrame);
-  AddButton(AFrame, mTop, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterRefresh), AFrame.RefreshClick);
+  AddButton(AFrame, mTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterRefresh), AFrame.RefreshClick);
   AFrame.FControls.EnabledCheck := TCheckBox.Create(AFrame);
   AFrame.FControls.EnabledCheck.Parent := mTop;
   AFrame.FControls.EnabledCheck.Align := alClient;
   AFrame.FControls.EnabledCheck.AlignWithMargins := True;
-  AFrame.FControls.EnabledCheck.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterEnabled);
+  AFrame.FControls.EnabledCheck.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterEnabled);
   AFrame.FControls.EnabledCheck.OnClick := AFrame.EnabledClick;
   Result := mTop.Height;
 end;
@@ -199,7 +200,7 @@ var
   mHeader: TLabel;
   mCheck: TCheckBox;
 begin
-  mHeader := AddLabel(AFrame, alTop, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterKindsHeader));
+  mHeader := AddLabel(AFrame, alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterKindsHeader));
   mHeader.Font.Style := [fsBold];
   mHeader.Top := ATop;
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
@@ -222,20 +223,20 @@ var
   mHeader: TLabel;
   mBar: TPanel;
 begin
-  mHeader := AddLabel(AFrame, alTop, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterPatternsHeader));
+  mHeader := AddLabel(AFrame, alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterPatternsHeader));
   mHeader.Font.Style := [fsBold];
   mHeader.Top := ATop + mHeader.ScaleValue(100);
   mBar := AddBar(AFrame, AFrame);
   mBar.Top := ATop + mBar.ScaleValue(200);
-  AFrame.FControls.Remove := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterRemove),
+  AFrame.FControls.Remove := AddButton(AFrame, mBar, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterRemove),
     AFrame.RemoveClick);
-  AFrame.FControls.Add := AddButton(AFrame, mBar, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterAdd),
+  AFrame.FControls.Add := AddButton(AFrame, mBar, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterAdd),
     AFrame.AddClick);
   AFrame.FControls.PatternEdit := TEdit.Create(AFrame);
   AFrame.FControls.PatternEdit.Parent := mBar;
   AFrame.FControls.PatternEdit.Align := alClient;
   AFrame.FControls.PatternEdit.AlignWithMargins := True;
-  AFrame.FControls.PatternEdit.TextHint := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterPatternHint);
+  AFrame.FControls.PatternEdit.TextHint := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterPatternHint);
   AFrame.FControls.PatternEdit.OnChange := AFrame.PatternEditChange;
   AFrame.FControls.PatternEdit.OnKeyDown := AFrame.PatternEditKeyDown;
 end;
@@ -245,7 +246,7 @@ procedure CreateBottomLabels(AFrame: TAtlasDebugStepFilterFrame);
 var
   mHint: TLabel;
 begin
-  mHint := AddLabel(AFrame, alBottom, TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterShiftHint));
+  mHint := AddLabel(AFrame, alBottom, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterShiftHint));
   mHint.Font.Color := clGrayText;
   mHint.Top := 30000;
   AFrame.FControls.Session := AddLabel(AFrame, alBottom, '');
@@ -272,10 +273,10 @@ begin
   mList.MultiSelect := False;
   mList.ColumnClick := False;
   mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterColumnPattern);
+  mColumn.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterColumnPattern);
   mColumn.Width := MulDiv(260, AFrame.CurrentPPI, 96);
   mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterColumnHits);
+  mColumn.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterColumnHits);
   mColumn.Width := MulDiv(70, AFrame.CurrentPPI, 96);
   mColumn.Alignment := taRightJustify;
   mList.OnSelectItem := AFrame.PatternsSelectItem;
@@ -623,9 +624,9 @@ class function TAtlasStepFilterTexts.VerdictText(const AVerdict: TAtlasStepVerdi
 begin
   case AVerdict.Kind of
     TAtlasStepVerdictKind.Kind:
-      Result := TAtlasStrings.Text(cKindTexts[AVerdict.FilterKind]);
+      Result := TAtlasSteppingStrings.Text(cKindTexts[AVerdict.FilterKind]);
     TAtlasStepVerdictKind.Pattern:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterByPattern, [AVerdict.Pattern]);
+      Result := TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.StepFilterByPattern, [AVerdict.Pattern]);
   else
     Result := '';
   end;
@@ -634,7 +635,7 @@ end;
 class function TAtlasStepFilterTexts.KindCaption(AKind: TStepFilterKind; AState: TAtlasStepCountsState;
   const ACounts: TAtlasStepCounts): string;
 begin
-  Result := TAtlasStrings.Text(cKindTexts[AKind]);
+  Result := TAtlasSteppingStrings.Text(cKindTexts[AKind]);
   if AState = TAtlasStepCountsState.Ready then
   begin
     Result := Result + ' – ' + IntToStr(ACounts.Kinds[AKind]);
@@ -656,17 +657,17 @@ class function TAtlasStepFilterTexts.SummaryText(AState: TAtlasStepCountsState;
 begin
   case AState of
     TAtlasStepCountsState.Counting:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterCounting);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterCounting);
     TAtlasStepCountsState.Ready:
       begin
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterSummary, [ACounts.Routines, ACounts.Files]);
+        Result := TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.StepFilterSummary, [ACounts.Routines, ACounts.Files]);
         if ACounts.Truncated then
         begin
-          Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterTruncated, [ACounts.Files]);
+          Result := Result + TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.StepFilterTruncated, [ACounts.Files]);
         end;
       end;
     TAtlasStepCountsState.Unavailable:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterNoCounts);
+      Result := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterNoCounts);
   else
     Result := '';
   end;
@@ -677,12 +678,12 @@ class function TAtlasStepFilterTexts.SessionText(AStarted: Boolean; ASkipped: In
 begin
   if not AStarted then
   begin
-    Exit(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterInactive));
+    Exit(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterInactive));
   end;
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterSession, [ASkipped]);
+  Result := TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.StepFilterSession, [ASkipped]);
   if ALastName <> '' then
   begin
-    Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.StepFilterLast, [ALastName, ALastReason]);
+    Result := Result + TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.StepFilterLast, [ALastName, ALastReason]);
   end;
 end;
 

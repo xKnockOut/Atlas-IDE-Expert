@@ -121,7 +121,8 @@ uses
   Atlas.IDE.Debug.Processes,
   Atlas.IDE.Debug.UnavailableFixes,
   Atlas.UI.Debug.ProcessChoice,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Session.Strings,
+  Atlas.UI.Debug.Settings.Strings;
 
 const
   cHistoryWhat = 'debug reattach';
@@ -187,7 +188,7 @@ begin
   begin
     Exit;
   end;
-  mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachEnded, [TAtlasReattach.NameOf(mPath)]);
+  mText := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachEnded, [TAtlasReattach.NameOf(mPath)]);
   TAtlasIdeDebugReattach.ShowStatus(mText, mText,
     procedure
     begin
@@ -361,16 +362,16 @@ begin
   try
     // In Delphi 13 hat IOTADebuggerServices nur noch die Form mit PauseAfterAttach und DetachOnReset (E2035).
     mServices.AttachProcess(Integer(APid), False, False);
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachAttached, [AName, APid]));
+    Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachAttached, [AName, APid]));
   except
     // Kein Zugriff (anderer Benutzer, Dienst) oder falsche Plattform: klar melden statt still scheitern.
-    Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachFailed, [AName, APid]));
+    Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachFailed, [AName, APid]));
   end;
 end;
 
 class procedure TAtlasIdeDebugReattach.OfferWait(const APath: string);
 begin
-  if TAtlasIdeDebugUnavailableFixes.Confirm(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachOfferWait,
+  if TAtlasIdeDebugUnavailableFixes.Confirm(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachOfferWait,
     [TAtlasReattach.NameOf(APath)])) then
   begin
     WaitFor(APath);
@@ -392,7 +393,7 @@ begin
   mParent.Add(FMenuReattach);
   FMenuWait := TMenuItem.Create(nil);
   FMenuWait.Name := cWaitItemName;
-  FMenuWait.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachWaitMenu);
+  FMenuWait.Caption := TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachWaitMenu);
   FMenuWait.OnClick := FHandler.WaitClick;
   mParent.Add(FMenuWait);
   UpdateMenu;
@@ -416,10 +417,10 @@ begin
   mTarget := LastTarget;
   if mTarget = '' then
   begin
-    FMenuReattach.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach);
+    FMenuReattach.Caption := TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattach);
     Exit;
   end;
-  FMenuReattach.Caption := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachCommand,
+  FMenuReattach.Caption := TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachCommand,
     [TAtlasReattach.NameOf(mTarget)]);
 end;
 
@@ -489,7 +490,7 @@ begin
   mTarget := LastTarget;
   if mTarget = '' then
   begin
-    Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachNothing));
+    Say(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachNothing));
     Exit;
   end;
   case TAtlasReattach.Decide(mTarget, TAtlasIdeDebugProcesses.Named(TAtlasReattach.NameOf(mTarget), True),
@@ -517,8 +518,8 @@ begin
   mDefault := TAtlasReattachFlow.DefaultExe(LastTarget, ProjectTarget);
   mDialog := TOpenDialog.Create(nil);
   try
-    mDialog.Title := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachChooseExe);
-    mDialog.Filter := TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachExeFilter);
+    mDialog.Title := TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachChooseExe);
+    mDialog.Filter := TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachExeFilter);
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     mDialog.InitialDir := ExtractFileDir(mDefault);
     mDialog.FileName := ExtractFileName(mDefault);
@@ -549,8 +550,8 @@ begin
     begin
       TAtlasIdeDebugReattach.Found(mGeneration, APid);
     end);
-  ShowStatus(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaiting, [TAtlasReattach.NameOf(APath)]),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachWaitingSummary, [TAtlasReattach.NameOf(APath)]),
+  ShowStatus(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachWaiting, [TAtlasReattach.NameOf(APath)]),
+    TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachWaitingSummary, [TAtlasReattach.NameOf(APath)]),
     TAtlasIdeDebugReattach.CancelWait);
 end;
 
@@ -562,7 +563,7 @@ begin
   end;
   StopWaiter;
   HideStatus;
-  Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachStopped, [TAtlasReattach.NameOf(FWaitTarget)]));
+  Say(TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachStopped, [TAtlasReattach.NameOf(FWaitTarget)]));
 end;
 
 class function TAtlasIdeDebugReattach.Waiting: Boolean;

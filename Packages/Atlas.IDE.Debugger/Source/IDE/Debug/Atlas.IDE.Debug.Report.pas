@@ -33,7 +33,7 @@ uses
   Atlas.Core.Files.TextFile,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Exceptions,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Exceptions.Strings,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.Exceptions;
@@ -42,17 +42,17 @@ uses
 
 class function TAtlasIdeDebugReport.NoteTexts: TAtlasDebugNoteTexts;
 begin
-  Result.Title := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTitle);
-  Result.Project := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteProject);
-  Result.Configuration := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteConfiguration);
-  Result.TargetPlatform := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNotePlatform);
-  Result.Time := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteTime);
-  Result.Thread := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteThread);
-  Result.Location := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLocation);
-  Result.CallStack := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCallStack);
-  Result.LastException := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteLastException);
-  Result.Count := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteCount);
-  Result.NoLocation := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteNoLocation);
+  Result.Title := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteTitle);
+  Result.Project := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteProject);
+  Result.Configuration := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteConfiguration);
+  Result.TargetPlatform := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNotePlatform);
+  Result.Time := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteTime);
+  Result.Thread := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteThread);
+  Result.Location := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteLocation);
+  Result.CallStack := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteCallStack);
+  Result.LastException := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteLastException);
+  Result.Count := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteCount);
+  Result.NoLocation := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteNoLocation);
 end;
 
 function TAtlasIdeDebugReport.DebuggedProcessId: Cardinal;
@@ -155,14 +155,15 @@ begin
   mData.Time := Now;
   mData.Thread := TAtlasDebugException.Create(0, '', '', mThread.GetOSThreadID,
     TAtlasIdeDebugSession.ThreadName(mThread)).ThreadText(
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugExceptionsThread));
+    TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsThread));
   mData.FileName := mThread.CurrentFile;
   mData.Line := Integer(mThread.CurrentLine);
   AddFrames(mData, mThread);
   AddSource(mData);
   AddException(mData);
   AMarkdown := TAtlasDebugNote.Markdown(mData, NoteTexts);
-  AFileName := TAtlasDebugNote.FileName(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugNoteFileStem), mData.Time);
+  AFileName := TAtlasDebugNote.FileName(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugNoteFileStem),
+    mData.Time);
   Result := True;
 end;
 

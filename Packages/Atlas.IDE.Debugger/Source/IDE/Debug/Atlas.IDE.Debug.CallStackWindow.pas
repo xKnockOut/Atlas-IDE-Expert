@@ -44,7 +44,7 @@ uses
   Vcl.Graphics,
   DesignIntf,
   ToolsAPI,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.CallStack.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -80,7 +80,7 @@ end;
 
 function TCallStackDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.CallStackCaption);
+  Result := TAtlasCallStackStrings.Text(TAtlasCallStackTextId.CallStackCaption);
 end;
 
 function TCallStackDock.GetIdentifier: string;

@@ -45,7 +45,7 @@ uses
   DesignIntf,
   ToolsAPI,
   Atlas.Core.Debug.BreakpointList,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.DockWindow;
 
@@ -104,7 +104,7 @@ end;
 
 function TBreakpointsDock.GetCaption: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointsCaption);
+  Result := TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointsCaption);
 end;
 
 function TBreakpointsDock.GetIdentifier: string;

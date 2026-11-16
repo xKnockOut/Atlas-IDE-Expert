@@ -59,7 +59,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Debug.LineEnd,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Explain.Strings;
 
 const
   /// <summary>Deckkraft der Hintergrundfarbe über übersprungenen Zweigen.</summary>
@@ -68,8 +68,8 @@ const
 function ForecastTexts: TAtlasForecastTexts;
 begin
   Result := Default(TAtlasForecastTexts);
-  Result.ElseBranch := TAtlasDebugStrings.Text(TAtlasDebugTextId.WhyHereElseBranch);
-  Result.NoBranch := TAtlasDebugStrings.Text(TAtlasDebugTextId.PredictNoBranch);
+  Result.ElseBranch := TAtlasExplainStrings.Text(TAtlasExplainTextId.WhyHereElseBranch);
+  Result.NoBranch := TAtlasExplainStrings.Text(TAtlasExplainTextId.PredictNoBranch);
 end;
 
 { TAtlasIdeDebugForecast }
@@ -166,7 +166,7 @@ begin
   begin
     FMenu := TPopupMenu.Create(nil);
     mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.PredictOffForSession);
+    mItem.Caption := TAtlasExplainStrings.Text(TAtlasExplainTextId.PredictOffForSession);
     mItem.OnClick := OffClick;
     FMenu.Items.Add(mItem);
   end;

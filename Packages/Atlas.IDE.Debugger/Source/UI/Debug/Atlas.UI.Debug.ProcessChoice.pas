@@ -50,7 +50,7 @@ implementation
 
 uses
   Vcl.Forms,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Session.Strings;
 
 { TAtlasProcessChoiceDialog }
 
@@ -60,7 +60,7 @@ var
   mRow: TWinControl;
   mButtons: TAtlasButtonRow;
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ReattachCommand, [AName]), cWidth);
+  inherited CreateDialog(AOwner, TAtlasSessionStrings.Fmt(TAtlasSessionTextId.ReattachCommand, [AName]), cWidth);
   FProcesses := AProcesses;
   mRow := AddRow(cListHeight);
   FList := TAtlasListView.Create(Self);
@@ -69,16 +69,17 @@ begin
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
-  FList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachPid), cPidWidth, taRightJustify);
-  FList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachStarted), cStartWidth);
-  FList.AddColumn(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachCommandLine), cCommandMinWidth);
+  FList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachPid), cPidWidth, taRightJustify);
+  FList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachStarted), cStartWidth);
+  FList.AddColumn(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachCommandLine), cCommandMinWidth);
   FList.FillColumn(2, cCommandMinWidth);
   FList.OnDblClick := ListDblClick;
   FList.OnSelectItem := ListSelect;
   mButtons := AddButtonRow;
-  FAttach := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachAttach), TAtlasButtonKind.Default);
+  FAttach := mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachAttach),
+    TAtlasButtonKind.Default);
   FAttach.Enabled := False;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.ReattachCancel), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasSessionStrings.Text(TAtlasSessionTextId.ReattachCancel), TAtlasButtonKind.Cancel);
   FitHeight;
   AllowResize(mRow);
   ActiveControl := FList;

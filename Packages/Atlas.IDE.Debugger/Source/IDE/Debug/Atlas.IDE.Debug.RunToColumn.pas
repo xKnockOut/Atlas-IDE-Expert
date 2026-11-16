@@ -99,7 +99,7 @@ uses
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Debug.RunTo,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
@@ -459,8 +459,8 @@ begin
   else if TAtlasRunToColumnFlow.TipDue(FTip.IsShown, TThread.GetTickCount64, FHoverSince, cHoverMs) then
   begin
     TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-    FTip.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToTipTitle),
-      TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RunToTipText, [FHover.Line + 1]),
+    FTip.ShowNote(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToTipTitle),
+      TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToTipText, [FHover.Line + 1]),
       Point(FHoverScreen.Right + cTipGap, FHoverScreen.Bottom + cTipGap div 2));
   end;
 end;

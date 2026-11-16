@@ -133,7 +133,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.UnavailableFixes,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Explain.Strings;
 
 const
   cDebugDcusOption = TAtlasUnavailableNote.cDebugDcusOption;
@@ -141,12 +141,12 @@ const
 
 function CheckText(ACheck: TAtlasUnavailableCheck): string;
 const
-  cIds: array[TAtlasUnavailableCheck] of TAtlasDebugTextId = (TAtlasDebugTextId.DebugUnavailableCheckConfiguration,
-    TAtlasDebugTextId.DebugUnavailableCheckSymbols, TAtlasDebugTextId.DebugUnavailableCheckOptimization,
-    TAtlasDebugTextId.DebugUnavailableCheckLifetime, TAtlasDebugTextId.DebugUnavailableCheckInline,
-    TAtlasDebugTextId.DebugUnavailableCheckLibrary);
+  cIds: array[TAtlasUnavailableCheck] of TAtlasExplainTextId = (TAtlasExplainTextId.DebugUnavailableCheckConfiguration,
+    TAtlasExplainTextId.DebugUnavailableCheckSymbols, TAtlasExplainTextId.DebugUnavailableCheckOptimization,
+    TAtlasExplainTextId.DebugUnavailableCheckLifetime, TAtlasExplainTextId.DebugUnavailableCheckInline,
+    TAtlasExplainTextId.DebugUnavailableCheckLibrary);
 begin
-  Result := TAtlasDebugStrings.Text(cIds[ACheck]);
+  Result := TAtlasExplainStrings.Text(cIds[ACheck]);
 end;
 
 /// <summary>Zusatz zur Lebensdauer (1-basierte Zeilen); '' ohne.</summary>
@@ -154,11 +154,11 @@ function LifetimeText(ALifetime: TAtlasValueLifetime; const AFacts: TAtlasUnavai
 begin
   case ALifetime of
     TAtlasValueLifetime.Unused:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableUnused);
+      Result := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableUnused);
     TAtlasValueLifetime.Before:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableNotYet, [AFacts.FirstUse + 1]);
+      Result := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableNotYet, [AFacts.FirstUse + 1]);
     TAtlasValueLifetime.After:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableNoLonger, [AFacts.LastUse + 1]);
+      Result := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableNoLonger, [AFacts.LastUse + 1]);
   else
     Result := '';
   end;
@@ -218,7 +218,7 @@ var
   mLocated: Boolean;
 begin
   Result := AValue;
-  Result.Note.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableCaption);
+  Result.Note.Caption := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableCaption);
   Result.Note.Pending := True;
   mLocated := StopLocation(mFileName, mLine);
   mFacts := TAtlasUnavailableFacts.Create(LaunchFacts, mLocated and
@@ -418,25 +418,26 @@ var
 begin
   Result := AValue;
   mNote := Default(TAtlasDebugValueNote);
-  mNote.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableCaption);
+  mNote.Caption := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableCaption);
   case AExplanation.Cause of
     TAtlasUnavailableCause.ReleaseBuild:
-      mNote.Reason := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableRelease, [AExplanation.Configuration]);
+      mNote.Reason := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableRelease,
+        [AExplanation.Configuration]);
     TAtlasUnavailableCause.NoDebugInfo:
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoDebugInfo);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableNoDebugInfo);
     TAtlasUnavailableCause.NoLocalSymbols:
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableNoLocalSymbols);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableNoLocalSymbols);
     TAtlasUnavailableCause.Optimization:
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOptimization);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableOptimization);
     TAtlasUnavailableCause.Lifetime:
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableLifetime);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableLifetime);
     TAtlasUnavailableCause.InlineRoutine:
-      mNote.Reason := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableInline, [AExplanation.RoutineName]);
+      mNote.Reason := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableInline, [AExplanation.RoutineName]);
     TAtlasUnavailableCause.LibraryFrame:
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableLibrary);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableLibrary);
   else
     begin
-      mNote.Reason := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableUnknown);
+      mNote.Reason := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableUnknown);
       for mCheck in AExplanation.Checked do
       begin
         mNote.Checked := mNote.Checked + [CheckText(mCheck)];
@@ -465,12 +466,12 @@ class function TAtlasIdeDebugUnavailable.OriginText(const ASwitch: TAtlasUnavail
 begin
   case TAtlasUnavailableNote.OriginOf(ASwitch) of
     TAtlasUnavailableOrigin.Directive:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableOriginDirective, [ASwitch.OriginText,
+      Result := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableOriginDirective, [ASwitch.OriginText,
         ExtractFileName(ASwitch.FileName), ASwitch.Line + 1]);
     TAtlasUnavailableOrigin.Project:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugUnavailableOriginProject, [AOption, AConfiguration]);
+      Result := TAtlasExplainStrings.Fmt(TAtlasExplainTextId.DebugUnavailableOriginProject, [AOption, AConfiguration]);
     TAtlasUnavailableOrigin.Default:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableOriginDefault);
+      Result := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableOriginDefault);
   else
     Result := '';
   end;
@@ -548,7 +549,7 @@ begin
   Result := '';
   if (FInstance <> nil) and Enabled then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugUnavailableCaption);
+    Result := TAtlasExplainStrings.Text(TAtlasExplainTextId.DebugUnavailableCaption);
   end;
 end;
 

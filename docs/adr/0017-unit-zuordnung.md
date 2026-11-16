@@ -1106,7 +1106,24 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
-| `Atlas.UI.Debug.Strings` | `UI/Debug/Atlas.UI.Debug.Strings.pas` | Texte des Moduls (Debugger), Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Settings.Strings` | `UI/Debug/Atlas.UI.Debug.Settings.Strings.pas` | Texte des Debuggers: Einstellungsseite, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Commands.Strings` | `UI/Debug/Atlas.UI.Debug.Commands.Strings.pas` | Texte des Debuggers: Befehlsnamen und Menügruppen, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Values.Strings` | `UI/Debug/Atlas.UI.Debug.Values.Strings.pas` | Texte des Debuggers: Werte, Visualisierer, Hover-Baum, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Evaluate.Strings` | `UI/Debug/Atlas.UI.Debug.Evaluate.Strings.pas` | Texte des Debuggers: Auswertungsfenster, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Explain.Strings` | `UI/Debug/Atlas.UI.Debug.Explain.Strings.pas` | Texte des Debuggers: nicht verfügbare Werte, warum hier, Vorhersage, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Breakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.Breakpoints.Strings.pas` | Texte des Debuggers: Haltepunkte verwalten, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.DataBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.DataBreakpoints.Strings.pas` | Texte des Debuggers: Datenhaltepunkte, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.MethodBreakpoints.Strings` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.Strings.pas` | Texte des Debuggers: Methodenhaltepunkte, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.EventBreak.Strings` | `UI/Debug/Atlas.UI.Debug.EventBreak.Strings.pas` | Texte des Debuggers: beim nächsten Ereignis anhalten, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Logpoints.Strings` | `UI/Debug/Atlas.UI.Debug.Logpoints.Strings.pas` | Texte des Debuggers: Logpunkte, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Exceptions.Strings` | `UI/Debug/Atlas.UI.Debug.Exceptions.Strings.pas` | Texte des Debuggers: Exceptions, Exception-Leiste, Debug-Notiz, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.AccessViolation.Strings` | `UI/Debug/Atlas.UI.Debug.AccessViolation.Strings.pas` | Texte des Debuggers: Zugriffsverletzungen, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Threads.Strings` | `UI/Debug/Atlas.UI.Debug.Threads.Strings.pas` | Texte des Debuggers: Threads, Warteketten, parallele Aufrufstapel, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.CallStack.Strings` | `UI/Debug/Atlas.UI.Debug.CallStack.Strings.pas` | Texte des Debuggers: Aufrufstapel, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Stepping.Strings` | `UI/Debug/Atlas.UI.Debug.Stepping.Strings.pas` | Texte des Debuggers: Schrittbetrieb, Schrittfilter, ohne Quelltext, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.EventLog.Strings` | `UI/Debug/Atlas.UI.Debug.EventLog.Strings.pas` | Texte des Debuggers: Ereignisprotokoll, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.Session.Strings` | `UI/Debug/Atlas.UI.Debug.Session.Strings.pas` | Texte des Debuggers: Neustart, erneut anhängen, Startgruppen, Sprache von Base, #1455 |
+| `Atlas.UI.Debug.RuntimeReport.Strings` | `UI/Debug/Atlas.UI.Debug.RuntimeReport.Strings.pas` | Texte des Debuggers: Leck- und Absturzberichte, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Memory.Strings` | `UI/Debug/Atlas.UI.Debug.Memory.Strings.pas` | Texte des Speicherverlaufs, Sprache von Base, #858 |
 | `Atlas.UI.Debug.Profile.Strings` | `UI/Debug/Atlas.UI.Debug.Profile.Strings.pas` | Texte des Profilers, Sprache von Base, #2057 |
 | `Atlas.UI.Debug.VariablesFrame` | `UI/Debug/Atlas.UI.Debug.VariablesFrame.pas` | Ordner `UI/Debug` |

@@ -59,7 +59,7 @@ implementation
 uses
   Vcl.Dialogs,
   Atlas.Core.Style.Signal,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Values.Strings;
 
 const
   cWidth = 420;
@@ -79,24 +79,24 @@ var
   mButtons: TAtlasButtonRow;
   mText: string;
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueTitle, [AInfo.Expression]),
+  inherited CreateDialog(AOwner, TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueTitle, [AInfo.Expression]),
     cWidth);
   FInfo := AInfo;
   FOldValue := AOldValue;
   mHead := AddNote(cRowHeight);
-  mText := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueCurrent, [AOldValue]);
+  mText := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueCurrent, [AOldValue]);
   if AInfo.TypeName <> '' then
   begin
-    mText := mText + ' · ' + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueType, [AInfo.TypeName]);
+    mText := mText + ' · ' + TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueType, [AInfo.TypeName]);
   end;
   mHead.ShowNote(mText, TAtlasSignalKind.Idle);
   AddInput;
   FNote := AddNote(cNoteHeight);
   mButtons := AddButtonRow;
-  FApply := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueApply), TAtlasButtonKind.Default);
+  FApply := mButtons.AddButton(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueApply), TAtlasButtonKind.Default);
   FApply.ModalResult := mrNone;
   FApply.OnClick := ApplyClick;
-  mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueCancel), TAtlasButtonKind.Cancel);
+  mButtons.AddButton(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueCancel), TAtlasButtonKind.Cancel);
   FitHeight;
 end;
 
@@ -140,7 +140,7 @@ begin
   end
   else if FInfo.Setter <> '' then
   begin
-    FNote.ShowNote(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueSetter, [FInfo.Setter]), TAtlasSignalKind.Warn);
+    FNote.ShowNote(TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueSetter, [FInfo.Setter]), TAtlasSignalKind.Warn);
   end
   else
   begin
@@ -252,7 +252,7 @@ begin
   begin
     mColor := TButton.Create(Self);
     mColor.Parent := mRow;
-    mColor.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueChooseColor);
+    mColor.Caption := TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueChooseColor);
     mColor.Width := ScaleValue(cColorButtonWidth);
     mColor.Left := mRow.Width - mColor.Width;
     mColor.Anchors := [akTop, akRight];
@@ -295,21 +295,21 @@ class function TAtlasEditValueDialog.ProblemText(const ACheck: TAtlasEditCheck):
 begin
   case ACheck.Problem of
     TAtlasEditProblem.Empty:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueEmpty);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueEmpty);
     TAtlasEditProblem.NotInteger:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueNotInteger, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueNotInteger, [ACheck.Detail]);
     TAtlasEditProblem.OutOfRange:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueOutOfRange, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueOutOfRange, [ACheck.Detail]);
     TAtlasEditProblem.NotFloat:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueNotFloat, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueNotFloat, [ACheck.Detail]);
     TAtlasEditProblem.NotBoolean:
-      Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNotBoolean);
+      Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNotBoolean);
     TAtlasEditProblem.NotChar:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueNotChar, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueNotChar, [ACheck.Detail]);
     TAtlasEditProblem.UnknownValue:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueUnknown, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueUnknown, [ACheck.Detail]);
     TAtlasEditProblem.ReadOnly:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueReadOnly, [ACheck.Detail]);
+      Result := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueReadOnly, [ACheck.Detail]);
   else
     Result := '';
   end;
