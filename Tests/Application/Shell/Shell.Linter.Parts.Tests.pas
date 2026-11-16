@@ -91,7 +91,8 @@ uses
   Shell.Linter.Query,
   Shell.Linter.Formatting,
   Shell.Linter.AffectedTests,
-  Shell.Linter.Fix;
+  Shell.Linter.Fix,
+  Atlas.Tests.TempFolder;
 
 { TLinterPartsTests }
 
@@ -115,11 +116,7 @@ end;
 
 procedure TLinterPartsTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure TLinterPartsTests.TargetResolvesFolderAndFile;

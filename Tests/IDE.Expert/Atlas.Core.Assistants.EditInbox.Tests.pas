@@ -34,7 +34,8 @@ uses
   System.IOUtils,
   System.JSON,
   Atlas.Core.Assistants.EditInbox,
-  Atlas.Core.Assistants.Inbox;
+  Atlas.Core.Assistants.Inbox,
+  Atlas.Tests.TempFolder;
 
 { TAtlasEditInboxTests }
 
@@ -46,11 +47,7 @@ end;
 
 procedure TAtlasEditInboxTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure Put(const AFolder, AName, AText: string);

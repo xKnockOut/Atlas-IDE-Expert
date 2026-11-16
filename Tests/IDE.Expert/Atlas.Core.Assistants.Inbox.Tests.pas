@@ -32,7 +32,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
-  Atlas.Core.Assistants.Inbox;
+  Atlas.Core.Assistants.Inbox,
+  Atlas.Tests.TempFolder;
 
 { TAtlasFileInboxTests }
 
@@ -44,11 +45,7 @@ end;
 
 procedure TAtlasFileInboxTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 procedure Put(const AFolder, AName, AText: string);

@@ -37,7 +37,8 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Compiler.Edition,
-  Shell.Compiler;
+  Shell.Compiler,
+  Atlas.Tests.TempFolder;
 
 type
   TFakeAnswer = reference to function(const ARequest: TCompilerRequest; out AOutput: TArray<string>): Integer;
@@ -135,12 +136,7 @@ end;
 
 procedure TShellCompilerTests.TearDown;
 begin
-  if TDirectory.Exists(FFolder) then
-  begin
-    TDirectory.Delete(FFolder, True);
-  end;
-  // Der Leckmonitor misst den Saldo von Setup und TearDown.
-  FFolder := '';
+  TTestTempFolder.Remove(FFolder);
 end;
 
 function StarterAnswer(const ARequest: TCompilerRequest; out AOutput: TArray<string>): Integer;
