@@ -78,7 +78,6 @@ type
     function NodeAt(const APoint: TPoint): Integer;
     function HasFinding(AIndex: Integer): Boolean;
     function AddButton(const ACaption: string; ATag: Integer): TButton;
-    function ButtonWidth(const ACaption: string): Integer;
     procedure QuickClick(Sender: TObject);
     procedure SizeEdited(Sender: TObject);
     procedure PaintPreview(Sender: TObject);
@@ -89,7 +88,6 @@ type
     procedure PreviewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure FormKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormClosed(Sender: TObject; var Action: TCloseAction);
-    procedure FitToScreen;
   protected
     FParts: TAtlasFormPreviewParts;
     FData: TAtlasFormPreviewData;
@@ -119,7 +117,6 @@ type
     constructor CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData; const AColors: TAtlasColors);
     /// <summary>Probegröße setzen (Client, Pixel der DFM); Constraints des Formulars gelten.</summary>
     procedure SetProbe(const ASize: TSize);
-    procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Text eines Befunds für die Fußzeile und den Tooltip.</summary>
     class function FindingText(const AFinding: TAtlasLayoutFinding; const ANode: TAtlasLayoutNode): string; static;
     property Probe: TSize read FProbe;
@@ -152,6 +149,37 @@ const
     'alCustom');
   cAnchorNames: array[TAtlasLayoutAnchor] of string = ('akLeft', 'akTop', 'akRight', 'akBottom');
 
+/// <summary>AValue, höchstens cMaxScreenShare Prozent von AExtent (Arbeitsfläche).</summary>
+function ScreenLimited(AValue, AExtent: Integer): Integer;
+begin
+  Result := Min(AValue, AExtent * cMaxScreenShare div 100);
+end;
+
+/// <summary>Arbeitsfläche des Monitors der IDE.</summary>
+function WorkArea: TRect;
+begin
+  Result := Screen.WorkAreaRect;
+  if Application.MainForm <> nil then
+  begin
+    Result := Application.MainForm.Monitor.WorkareaRect;
+  end;
+end;
+
+/// <summary>Breite eines Knopfs mit ACaption in der Schrift AFont, mindestens AMinWidth; Gerätepixel. Gemessen auf
+/// einem Bitmap: Die Leinwand des Formulars bräuchte schon im Konstruktor ein Fenster.</summary>
+function TextButtonWidth(AFont: TFont; const ACaption: string; AMinWidth, APadding: Integer): Integer;
+var
+  mBitmap: Vcl.Graphics.TBitmap;
+begin
+  mBitmap := Vcl.Graphics.TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(AFont);
+    Result := Max(AMinWidth, mBitmap.Canvas.TextWidth(ACaption) + APadding);
+  finally
+    mBitmap.Free;
+  end;
+end;
+
 function AnchorText(AAnchors: TAtlasLayoutAnchors): string;
 var
   mAnchor: TAtlasLayoutAnchor;
@@ -174,6 +202,8 @@ end;
 
 constructor TAtlasFormPreviewWindow.CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData;
   const AColors: TAtlasColors);
+var
+  mArea: TRect;
 begin
   inherited CreateDialog(AOwner, TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeTitle,
     [AData.FormName]), cWindowWidth);
@@ -183,7 +213,9 @@ begin
   KeyPreview := True;
   OnKeyDown := FormKey;
   OnClose := FormClosed;
-  FitToScreen;
+  mArea := WorkArea;
+  Width := ScreenLimited(S(cWindowWidth), mArea.Width);
+  Height := ScreenLimited(S(cWindowHeight), mArea.Height);
   FParts.Bar := TFlowPanel.Create(Self);
   FParts.Bar.Top := 0;
   FParts.Bar.AutoSize := True;
@@ -209,19 +241,6 @@ begin
   FParts.Paint.OnMouseUp := PreviewMouseUp;
   FParts.Paint.ShowHint := True;
   SetProbe(AData.Design);
-end;
-
-procedure TAtlasFormPreviewWindow.FitToScreen;
-var
-  mArea: TRect;
-begin
-  mArea := Screen.WorkAreaRect;
-  if Application.MainForm <> nil then
-  begin
-    mArea := Application.MainForm.Monitor.WorkareaRect;
-  end;
-  Width := Min(S(cWindowWidth), mArea.Width * cMaxScreenShare div 100);
-  Height := Min(S(cWindowHeight), mArea.Height * cMaxScreenShare div 100);
 end;
 
 function TAtlasFormPreviewWindow.FormRect: TRect;
@@ -272,22 +291,8 @@ begin
   Result.Tag := ATag;
   Result.OnClick := QuickClick;
   Result.AlignWithMargins := True;
-  Result.Width := ButtonWidth(ACaption);
-end;
-
-function TAtlasFormPreviewWindow.ButtonWidth(const ACaption: string): Integer;
-var
-  mBitmap: Vcl.Graphics.TBitmap;
-begin
-  // Breite nach dem Text in der Dialogschrift, damit „1920 × 1080“ auch bei hoher DPI passt. Gemessen auf einem
-  // Bitmap: Die Leinwand des Formulars bräuchte schon im Konstruktor ein Fenster.
-  mBitmap := Vcl.Graphics.TBitmap.Create;
-  try
-    mBitmap.Canvas.Font.Assign(Font);
-    Result := Max(S(cButtonMinWidth), mBitmap.Canvas.TextWidth(ACaption) + S(cButtonPadding));
-  finally
-    mBitmap.Free;
-  end;
+  // Breite nach dem Text in der Dialogschrift, damit „1920 × 1080“ auch bei hoher DPI passt.
+  Result.Width := TextButtonWidth(Font, ACaption, S(cButtonMinWidth), S(cButtonPadding));
 end;
 
 procedure TAtlasFormPreviewWindow.QuickClick(Sender: TObject);
@@ -642,12 +647,7 @@ end;
 
 procedure TAtlasFormPreviewWindow.ThemeChanged;
 begin
-  ApplyColors(TAtlasUiTheme.Colors);
-end;
-
-procedure TAtlasFormPreviewWindow.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
+  FColors := TAtlasUiTheme.Colors;
   FParts.Paint.Invalidate;
 end;
 

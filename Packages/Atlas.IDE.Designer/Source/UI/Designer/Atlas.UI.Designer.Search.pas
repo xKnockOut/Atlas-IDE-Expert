@@ -174,7 +174,6 @@ type
     procedure FormDeactivate(Sender: TObject);
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure SetBorderColor;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
@@ -238,6 +237,15 @@ const
 function C(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
+end;
+
+/// <summary>Rahmenfarbe des Fensters AHandle über DWM (ab Windows 11).</summary>
+procedure SetDwmBorderColor(AHandle: HWND; AColor: TAtlasColor);
+var
+  mBorder: DWORD;
+begin
+  mBorder := DWORD(AColor);
+  DwmSetWindowAttribute(AHandle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
 end;
 
 function KindCaption(AKind: TAtlasDesignerKind): string;
@@ -1259,15 +1267,7 @@ begin
   inherited CreateWnd;
   mPreference := cRoundCorners;
   DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
-  SetBorderColor;
-end;
-
-procedure TAtlasComponentSearchWindow.SetBorderColor;
-var
-  mBorder: DWORD;
-begin
-  mBorder := DWORD(FPainter.Colors.Accent);
-  DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
+  SetDwmBorderColor(Handle, FPainter.Colors.Accent);
 end;
 
 procedure TAtlasComponentSearchWindow.ThemeChanged;
@@ -1280,7 +1280,7 @@ begin
   Color := C(FPainter.Colors.Surface);
   if HandleAllocated then
   begin
-    SetBorderColor;
+    SetDwmBorderColor(Handle, FPainter.Colors.Accent);
   end;
   Invalidate;
 end;
