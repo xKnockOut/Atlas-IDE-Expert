@@ -5,6 +5,7 @@
 // Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
 // Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
 // in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas.
+// MainFormWorkArea: ohne Hauptfenster die Arbeitsfläche des Hauptmonitors.
 
 interface
 
@@ -39,12 +40,15 @@ type
     procedure PopupFormSetsDefaults;
     [Test]
     procedure PopupFormFollowsTheme;
+    [Test]
+    procedure WorkAreaWithoutMainForm;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Types,
   System.Classes,
   Vcl.Graphics,
   Vcl.Controls,
@@ -330,6 +334,22 @@ begin
   finally
     mPopup.Free;
   end;
+end;
+
+procedure TAtlasDialogTests.WorkAreaWithoutMainForm;
+var
+  mArea, mScreen: TRect;
+begin
+  // Der Testlauf hat kein Hauptfenster: Dann begrenzt der Hauptmonitor die Dialoge.
+  Assert.IsTrue(Application.MainForm = nil, 'Testlauf ohne Hauptfenster');
+  mArea := TAtlasDialog.MainFormWorkArea;
+  mScreen := Screen.WorkAreaRect;
+  Assert.AreEqual(mScreen.Left, mArea.Left);
+  Assert.AreEqual(mScreen.Top, mArea.Top);
+  Assert.AreEqual(mScreen.Right, mArea.Right);
+  Assert.AreEqual(mScreen.Bottom, mArea.Bottom);
+  Assert.IsTrue(mArea.Width > 0, 'Breite');
+  Assert.IsTrue(mArea.Height > 0, 'Höhe');
 end;
 
 initialization

@@ -9,7 +9,7 @@
 //   - Takt (optional, CreateTimer): ein TTimer, dessen Ereignis unter der Sicherung des Features Debugger läuft;
 //     ist das Feature aus oder wirft ein Schritt, hält der Takt an. Den Schritt bestimmt Advance, von Haus aus
 //     TAtlasStopProgress.Next: Ausführungspunkt lesen (ReadLocation, dann Ask), ein Stück auswerten
-//     (EvaluateSlice) oder anhalten.
+//     (EvaluateSlice) oder anhalten. BeginEvaluate schaltet in die Phase Evaluate.
 // Nur im Hauptthread verwenden.
 
 interface
@@ -43,6 +43,9 @@ type
     FProgress: TAtlasStopProgress;
     /// <summary>Takt mit AIntervalMs anlegen, zunächst aus.</summary>
     procedure CreateTimer(AIntervalMs: Cardinal);
+    /// <summary>Phase Evaluate beginnen: Takt mit AIntervalMs an, jeder Takt wertet ein Stück aus (EvaluateSlice).
+    /// Ob der Halt noch besteht, prüft der Aufrufer vorher.</summary>
+    procedure BeginEvaluate(AIntervalMs: Cardinal);
     procedure SessionStarted; virtual;
     procedure SessionStopped; virtual;
     procedure SessionResumed; virtual;
@@ -157,6 +160,13 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := AIntervalMs;
   FTimer.OnTimer := Tick;
+end;
+
+procedure TAtlasIdeDebugStopView.BeginEvaluate(AIntervalMs: Cardinal);
+begin
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
+  FTimer.Interval := AIntervalMs;
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeDebugStopView.Tick(Sender: TObject);

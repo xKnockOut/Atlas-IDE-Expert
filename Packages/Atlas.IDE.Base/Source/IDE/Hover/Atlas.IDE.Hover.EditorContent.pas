@@ -122,7 +122,6 @@ type
     function MouseOverTip: Boolean;
     /// <summary>Liegt der Editor unter der Maus (kein anderes Fenster davor)?</summary>
     function MouseOverEditor: Boolean;
-    function CurrentEditView: IOTAEditView;
   public
     constructor Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
       const AProblemsAt: TAtlasHoverProblemsFunc; const AHandles: TAtlasHoverHandlesFunc);
@@ -409,17 +408,6 @@ begin
   mUnder := WindowFromPoint(Mouse.CursorPos);
   Result := (FEditor <> nil) and FEditor.HandleAllocated and
     ((mUnder = FEditor.Handle) or IsChild(FEditor.Handle, mUnder));
-end;
-
-function TAtlasEditorHoverContent.CurrentEditView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
 end;
 
 procedure TAtlasEditorHoverContent.Hide;

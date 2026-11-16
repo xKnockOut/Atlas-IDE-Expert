@@ -190,23 +190,13 @@ uses
   Atlas.Core.Modules.Registry,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorRefresh;
 
 function LayerActive(const ALayer: IAtlasGutterLayer): Boolean;
 begin
   Result := not TAtlasGuard.Disabled(ALayer.Feature) and ALayer.Wanted;
-end;
-
-function TopEditView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
 end;
 
 /// <summary>Aktive Schichten neu verankern; mit AOnlyMarked nur die mit Markierungen in AFileName. True, wenn
@@ -439,7 +429,7 @@ begin
   ARow := Default(TRow);
   ARow.Line := -1;
   Result := False;
-  mView := TopEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
@@ -489,7 +479,7 @@ var
   mView: IOTAEditView;
   mText: string;
 begin
-  mView := TopEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
   begin
     Exit;
