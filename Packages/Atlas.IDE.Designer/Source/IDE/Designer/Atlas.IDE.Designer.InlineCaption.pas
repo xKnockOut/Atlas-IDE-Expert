@@ -90,7 +90,6 @@ type
     procedure Undo;
     /// <summary>Taste an- oder abmelden (Einstellungen, Designer gezeigt).</summary>
     procedure UpdateKeys(AWanted: Boolean);
-    procedure ApplyTheme; override;
   end;
 
 implementation
@@ -416,15 +415,6 @@ begin
   FEditor.Free;
   FKeys.Free;
   inherited Destroy;
-end;
-
-procedure TAtlasIdeInlineCaption.ApplyTheme;
-begin
-  if FEditor <> nil then
-  begin
-    FEditor.ApplyColors(TAtlasIdeStyle.Colors);
-  end;
-  inherited ApplyTheme;
 end;
 
 function TAtlasIdeInlineCaption.Target(out AComponent: TComponent; out APath: string): Boolean;

@@ -102,17 +102,17 @@ end;
 constructor TAtlasTextsDialog.CreateDialog(AOwner: TComponent; const AForm: string;
   const AEntries: TArray<TAtlasTextEntry>; const AOnSelect: TProc<string>; const AOnChange: TAtlasTextsChange);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDesignerDialog(AOwner, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTextsTitle, [AForm]),
+    cDialogWidth, bsSizeToolWin);
   FEntries := AEntries;
   FOnSelect := AOnSelect;
   FOnChange := AOnChange;
   FSortColumn := -1;
-  InitDialog(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerTextsTitle, [AForm]), cDialogWidth, bsSizeToolWin);
   AddTop;
   AddBottom;
   AddList;
   // Abstände über dem Filter, über und unter der Liste und unter dem Textfeld.
-  ClientHeight := ScaleValue(cListHeight) + FFilter.Height + FText.Height + cVerticalGaps * cGap;
+  ClientHeight := ScaleValue(cListHeight) + FFilter.Height + FText.Height + cVerticalGaps * Gap;
   Fill(-1);
   ActiveControl := FList;
 end;
@@ -126,7 +126,7 @@ begin
   mPanel.Align := alTop;
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
-  mPanel.Margins.SetBounds(cGap, cGap, cGap, 0);
+  mPanel.Margins.SetBounds(Gap, Gap, Gap, 0);
   FFilter := TEdit.Create(Self);
   FFilter.Parent := mPanel;
   FFilter.Align := alLeft;
@@ -138,7 +138,7 @@ begin
   FOnlyFindings.Parent := mPanel;
   FOnlyFindings.Align := alLeft;
   FOnlyFindings.AlignWithMargins := True;
-  FOnlyFindings.Margins.SetBounds(cGap, 0, 0, 0);
+  FOnlyFindings.Margins.SetBounds(Gap, 0, 0, 0);
   FOnlyFindings.Left := FFilter.Width + 1;
   FOnlyFindings.Width := ScaleValue(cColumnWidths[cTextColumn]);
   FOnlyFindings.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsOnlyFindings);
@@ -159,7 +159,7 @@ begin
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  FList.Margins.SetBounds(Gap, Gap, Gap, 0);
   FList.ViewStyle := vsReport;
   FList.ReadOnly := True;
   FList.RowSelect := True;
@@ -198,7 +198,7 @@ begin
   mPanel.Align := alBottom;
   mPanel.BevelOuter := bvNone;
   mPanel.AlignWithMargins := True;
-  mPanel.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mPanel.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButton := TButton.Create(Self);
   mButton.Parent := mPanel;
   mButton.Align := alRight;
@@ -209,7 +209,7 @@ begin
   mButton.Parent := mPanel;
   mButton.Align := alRight;
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(cGap, 0, cGap, 0);
+  mButton.Margins.SetBounds(Gap, 0, Gap, 0);
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerTextsApply);
   mButton.OnClick := ApplyClick;
   FText := TEdit.Create(Self);

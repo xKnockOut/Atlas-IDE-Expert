@@ -128,18 +128,18 @@ constructor TAtlasFontsDialog.CreateDialog(AOwner: TComponent; const AForm: stri
   const AFontRows: TArray<TAtlasFontRow>; const AColorRows: TArray<TAtlasColorRow>;
   const AOnSelect: TProc<TArray<string>>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDesignerDialog(AOwner, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFontsTitle, [AForm]),
+    cDialogWidth, bsSizeToolWin);
   FFontRows := AFontRows;
   FColorRows := AColorRows;
   FOnSelect := AOnSelect;
-  InitDialog(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFontsTitle, [AForm]), cDialogWidth, bsSizeToolWin);
   ClientHeight := ScaleValue(cListHeight);
   AddButtons;
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
   FPages.AlignWithMargins := True;
-  FPages.Margins.SetBounds(cGap, cGap, cGap, 0);
+  FPages.Margins.SetBounds(Gap, Gap, Gap, 0);
   FFonts := AddList(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerFontsFontsTab, [Length(AFontRows)]),
     [UiText(TAtlasDesignerTextId.DesignerFontsFont), UiText(TAtlasDesignerTextId.DesignerFontsOwn),
     UiText(TAtlasDesignerTextId.DesignerFontsInherit), UiText(TAtlasDesignerTextId.DesignerFontsNote)]);
@@ -203,7 +203,7 @@ begin
   mButtons.BevelOuter := bvNone;
   mButtons.FlowStyle := fsRightLeftTopBottom;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := UiText(TAtlasDesignerTextId.DesignerFontsClose);
@@ -213,7 +213,7 @@ begin
   mButton.Parent := mButtons;
   mButton.Caption := UiText(TAtlasDesignerTextId.DesignerFontsReplace);
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(0, 0, cGap, 0);
+  mButton.Margins.SetBounds(0, 0, Gap, 0);
   mButton.OnClick := ReplaceClick;
 end;
 
@@ -382,10 +382,9 @@ end;
 constructor TAtlasFontReplaceDialog.CreateDialog(AOwner: TComponent; const ATitle: string; AIsFont,
   AHasSelection: Boolean; const ATargets: TArray<string>);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDesignerDialog(AOwner, ATitle, cComboWidth, bsDialog);
   FIsFont := AIsFont;
-  InitDialog(ATitle, cComboWidth, bsDialog);
-  ClientWidth := ScaleValue(cComboWidth) + 2 * cGap;
+  ClientWidth := ScaleValue(cComboWidth) + 2 * Gap;
   AddTarget(ATargets);
   AddOptions(AHasSelection);
   AddButtons;
@@ -400,13 +399,13 @@ var
 begin
   mLabel := TLabel.Create(Self);
   mLabel.Parent := Self;
-  mLabel.SetBounds(cGap, cGap, ScaleValue(cComboWidth), mLabel.Height);
+  mLabel.SetBounds(Gap, Gap, ScaleValue(cComboWidth), mLabel.Height);
   mLabel.Caption := UiText(TAtlasDesignerTextId.DesignerFontsTarget);
   FTarget := TComboBox.Create(Self);
   FTarget.Parent := Self;
   FTarget.Style := csDropDownList;
-  FTarget.SetBounds(cGap, mLabel.Top + mLabel.Height + cLabelGap, ScaleValue(cComboWidth - cColumnWidth) - cGap,
-    FTarget.Height);
+  FTarget.SetBounds(Gap, mLabel.Top + mLabel.Height + ScaleValue(cLabelGap),
+    ScaleValue(cComboWidth - cColumnWidth) - Gap, FTarget.Height);
   FTarget.Items.BeginUpdate;
   try
     for mText in ATargets do
@@ -420,7 +419,7 @@ begin
   mButton := TButton.Create(Self);
   mButton.Parent := Self;
   mButton.Caption := UiText(TAtlasDesignerTextId.DesignerFontsOther);
-  mButton.SetBounds(FTarget.Left + FTarget.Width + cGap, FTarget.Top, ScaleValue(cColumnWidth), FTarget.Height);
+  mButton.SetBounds(FTarget.Left + FTarget.Width + Gap, FTarget.Top, ScaleValue(cColumnWidth), FTarget.Height);
   mButton.OnClick := OtherClick;
 end;
 
@@ -433,7 +432,7 @@ var
   mPart: TAtlasFontPart;
   mTop: Integer;
 begin
-  mTop := FTarget.Top + FTarget.Height + cGap;
+  mTop := FTarget.Top + FTarget.Height + Gap;
   for mPart := Low(TAtlasFontPart) to High(TAtlasFontPart) do
   begin
     FParts[mPart] := TCheckBox.Create(Self);
@@ -441,18 +440,18 @@ begin
     FParts[mPart].Caption := UiText(cIds[mPart]);
     FParts[mPart].Checked := True;
     FParts[mPart].Visible := FIsFont;
-    FParts[mPart].SetBounds(cGap + Ord(mPart) * ScaleValue(cComboWidth div cPartCount), mTop,
+    FParts[mPart].SetBounds(Gap + Ord(mPart) * ScaleValue(cComboWidth div cPartCount), mTop,
       ScaleValue(cComboWidth div cPartCount), FParts[mPart].Height);
   end;
   if FIsFont then
   begin
-    mTop := mTop + FParts[TAtlasFontPart.Name].Height + cGap;
+    mTop := mTop + FParts[TAtlasFontPart.Name].Height + Gap;
   end;
   FOnlySelected := TCheckBox.Create(Self);
   FOnlySelected.Parent := Self;
   FOnlySelected.Caption := UiText(TAtlasDesignerTextId.DesignerFontsOnlySelected);
   FOnlySelected.Enabled := AHasSelection;
-  FOnlySelected.SetBounds(cGap, mTop, ScaleValue(cComboWidth), FOnlySelected.Height);
+  FOnlySelected.SetBounds(Gap, mTop, ScaleValue(cComboWidth), FOnlySelected.Height);
 end;
 
 procedure TAtlasFontReplaceDialog.AddButtons;
@@ -464,15 +463,15 @@ begin
   mButton.Caption := 'OK';
   mButton.Default := True;
   mButton.ModalResult := mrOk;
-  mButton.SetBounds(ClientWidth - cGap - 2 * ScaleValue(cColumnWidth div 2) - cGap,
-    FOnlySelected.Top + FOnlySelected.Height + cGap, ScaleValue(cColumnWidth div 2), mButton.Height);
-  ClientHeight := mButton.Top + mButton.Height + ScaleValue(cGap);
+  mButton.SetBounds(ClientWidth - Gap - 2 * ScaleValue(cColumnWidth div 2) - Gap,
+    FOnlySelected.Top + FOnlySelected.Height + Gap, ScaleValue(cColumnWidth div 2), mButton.Height);
+  ClientHeight := mButton.Top + mButton.Height + Gap;
   mButton := TButton.Create(Self);
   mButton.Parent := Self;
   mButton.Caption := UiText(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  mButton.SetBounds(ClientWidth - cGap - ScaleValue(cColumnWidth div 2), ClientHeight - cGap - mButton.Height,
+  mButton.SetBounds(ClientWidth - Gap - ScaleValue(cColumnWidth div 2), ClientHeight - Gap - mButton.Height,
     ScaleValue(cColumnWidth div 2), mButton.Height);
 end;
 

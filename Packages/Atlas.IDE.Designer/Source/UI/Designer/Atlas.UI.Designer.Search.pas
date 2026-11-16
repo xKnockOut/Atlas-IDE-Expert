@@ -20,6 +20,9 @@
 //   sobald es den Fokus verliert.
 // Was die Aktionen in der IDE tun, entscheidet Atlas.IDE.Designer.Bar
 // (OnAction); Name kopieren erledigt das Fenster selbst.
+// Basis ist TAtlasDialog (Abo beim Themendienst): Bei einem Wechsel des
+// IDE-Themas holt das offene Fenster die Farben neu. Gezeichnet wird alles
+// selbst, der VCL-Stil bleibt außen vor (StyleElements leer).
 
 interface
 
@@ -35,7 +38,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Designer.Components;
+  Atlas.Core.Designer.Components,
+  Atlas.UI.Foundation.Dialog;
 
 type
 {$SCOPEDENUMS ON}
@@ -64,7 +68,7 @@ type
   TAtlasComponentSearchActionEvent = reference to procedure(AAction: TAtlasComponentSearchAction;
     const AItem: TAtlasDesignerItem);
 
-  TAtlasComponentSearchWindow = class(TForm)
+  TAtlasComponentSearchWindow = class(TAtlasDialog)
   private type
     THit = (None, Chip, Grouping, Row, Action);
     THitArea = record
@@ -144,6 +148,7 @@ type
     public
       constructor Create(AWindow: TAtlasComponentSearchWindow; const AColors: TAtlasColors);
       destructor Destroy; override;
+      procedure SetColors(const AColors: TAtlasColors);
       function Metrics: TMetrics;
       procedure Layout;
       procedure Paint;
@@ -169,9 +174,11 @@ type
     procedure FormDeactivate(Sender: TObject);
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
+    procedure SetBorderColor;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
+    procedure ThemeChanged; override;
     procedure Paint; override;
     procedure Resize; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -215,6 +222,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Designer.Strings;
 
 const
@@ -223,6 +231,9 @@ const
   cRoundCorners = 2;
   cBorderColorAttribute = 34;
   cCompactRows = 12;
+  /// <summary>Schriftgrößen der Liste und der Nebenzeilen in Punkt.</summary>
+  cUIFontSize = 10;
+  cSmallFontSize = 8;
 
 function C(AColor: TAtlasColor): TColor;
 begin
@@ -472,12 +483,13 @@ begin
   FWindow := AWindow;
   FColors := AColors;
   FAreas := TList<THitArea>.Create;
+  // Schriftart der Dialoge; die Liste etwas größer, Nebenzeilen kleiner.
   FUIFont := TFont.Create;
-  FUIFont.Name := 'Segoe UI';
-  FUIFont.Size := 10;
+  TAtlasUiTheme.AssignDialogFont(FUIFont);
+  FUIFont.Size := cUIFontSize;
   FSmallFont := TFont.Create;
-  FSmallFont.Name := 'Segoe UI';
-  FSmallFont.Size := 8;
+  TAtlasUiTheme.AssignDialogFont(FSmallFont);
+  FSmallFont.Size := cSmallFontSize;
 end;
 
 destructor TAtlasComponentSearchWindow.TPainter.Destroy;
@@ -486,6 +498,11 @@ begin
   FUIFont.Free;
   FSmallFont.Free;
   inherited Destroy;
+end;
+
+procedure TAtlasComponentSearchWindow.TPainter.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
 end;
 
 function TAtlasComponentSearchWindow.TPainter.Canvas: TCanvas;
@@ -1190,14 +1207,16 @@ end;
 constructor TAtlasComponentSearchWindow.CreateSearch(AOwner: TComponent; const AOptions: TAtlasComponentSearchOptions;
   const AItems: TArray<TAtlasDesignerItem>; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle), 0);
   FOptions := AOptions;
   FItems := AItems;
   FPainter := TPainter.Create(Self, AColors);
   BorderStyle := bsNone;
+  // Lage setzt ShowOver (gemerkt oder über der Arbeitsfläche); nicht mittig über der IDE.
+  Position := poDesigned;
+  StyleElements := [];
   DoubleBuffered := True;
   Color := C(AColors.Surface);
-  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle);
   OnClose := FormClose;
   OnDeactivate := FormDeactivate;
   Font.Assign(FPainter.UIFont);
@@ -1221,7 +1240,7 @@ end;
 
 destructor TAtlasComponentSearchWindow.Destroy;
 begin
-  FPainter.Free;
+  FreeAndNil(FPainter);
   inherited Destroy;
 end;
 
@@ -1235,13 +1254,35 @@ end;
 
 procedure TAtlasComponentSearchWindow.CreateWnd;
 var
-  mPreference, mBorder: DWORD;
+  mPreference: DWORD;
 begin
   inherited CreateWnd;
   mPreference := cRoundCorners;
   DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
+  SetBorderColor;
+end;
+
+procedure TAtlasComponentSearchWindow.SetBorderColor;
+var
+  mBorder: DWORD;
+begin
   mBorder := DWORD(FPainter.Colors.Accent);
   DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
+end;
+
+procedure TAtlasComponentSearchWindow.ThemeChanged;
+begin
+  if FPainter = nil then
+  begin
+    Exit;
+  end;
+  FPainter.SetColors(TAtlasUiTheme.Colors);
+  Color := C(FPainter.Colors.Surface);
+  if HandleAllocated then
+  begin
+    SetBorderColor;
+  end;
+  Invalidate;
 end;
 
 procedure TAtlasComponentSearchWindow.Paint;

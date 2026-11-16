@@ -68,15 +68,15 @@ var
   mItem: TListItem;
   mColumn: TListColumn;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDesignerDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsTitle),
+    cDialogWidth, bsDialog);
   FRows := ARows;
   FOnSelect := AOnSelect;
-  InitDialog(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerAnchorsTitle), cDialogWidth, bsDialog);
   FList := TListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alTop;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, cGap, 0);
+  FList.Margins.SetBounds(Gap, Gap, Gap, 0);
   FList.Height := ScaleValue(cListHeight);
   FList.ViewStyle := vsReport;
   FList.Checkboxes := True;
@@ -138,7 +138,7 @@ begin
   mButtons.AutoSize := True;
   mButtons.BevelOuter := bvNone;
   mButtons.AlignWithMargins := True;
-  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons.Margins.SetBounds(Gap, Gap, Gap, Gap);
   mButtons.Top := FList.Top + FList.Height + 1;
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
@@ -146,13 +146,13 @@ begin
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton.AlignWithMargins := True;
-  mButton.Margins.SetBounds(0, 0, cGap, 0);
+  mButton.Margins.SetBounds(0, 0, Gap, 0);
   mButton := TButton.Create(Self);
   mButton.Parent := mButtons;
   mButton.Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerDuplicateCancel);
   mButton.Cancel := True;
   mButton.ModalResult := mrCancel;
-  ClientHeight := mButtons.Top + mButtons.Height + ScaleValue(cGap);
+  ClientHeight := mButtons.Top + mButtons.Height + Gap;
 end;
 
 function TAtlasAnchorDialog.Checked: TArray<Boolean>;

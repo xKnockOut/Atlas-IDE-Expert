@@ -151,8 +151,6 @@ end;
 procedure TAtlasIdeDesignerViews.ApplyTheme;
 begin
   FMeasure.ApplyTheme;
-  FResize.ApplyTheme;
-  FScale.ApplyTheme;
   FStructure.ApplyTheme;
   FBindings.ApplyTheme;
   FEvents.ApplyTheme;
