@@ -82,7 +82,7 @@ begin
   FFake.Change(
     procedure
     begin
-      mButton.Left := 40;
+      mButton.SetBounds(40, 8, 75, 25);
     end);
   FFlow.Capture;
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
