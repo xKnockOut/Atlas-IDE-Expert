@@ -242,7 +242,7 @@ end;
 
 { TLspServerProcess }
 
-/// <summary>Startet AExeName mit den Kindenden der Pipes und ohne Fenster; nur diese erbt der Server (R-101).
+/// <summary>Startet AExeName mit den Kindenden der Pipes und ohne Fenster; nur diese erbt der Server.
 /// Löst bei einem Fehler EOSError aus.</summary>
 function LaunchProcess(const AExeName, AArguments: string; AInput, AOutput, AError: THandle): TProcessInformation;
 begin
@@ -378,7 +378,7 @@ end;
 
 procedure TLspServerProcess.CreatePipes(var AInputRead, AOutputWrite: THandle);
 begin
-  // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt (R-101).
+  // Alle Enden nicht vererbbar; die Kindenden vererbt TAtlasProcessLauncher gezielt.
   // Großer Puffer: Ein ganzer Unit-Text passt meist hinein, ohne auf den Server zu warten.
   if not CreatePipe(AInputRead, FInputWrite, nil, 1 shl cPipeBufferBits) then
   begin

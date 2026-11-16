@@ -184,7 +184,7 @@ begin
 end;
 
 /// <summary>Startet den Prozess unsichtbar, ohne Eingabe, stdout und stderr in AWritePipe; nur dieses Handle erbt
-/// er (R-101).</summary>
+/// er.</summary>
 procedure StartProcess(const ARequest: TCompilerRequest; AWritePipe: THandle;
   out AProcessInfo: TProcessInformation);
 var
@@ -241,7 +241,7 @@ begin
   begin
     RaiseCancelled(ARequest);
   end;
-  // Nicht vererbbar: Das Schreibende vererbt TAtlasProcessLauncher gezielt an den Compiler (R-101).
+  // Nicht vererbbar: Das Schreibende vererbt TAtlasProcessLauncher gezielt an den Compiler.
   if not CreatePipe(mReadPipe, mWritePipe, nil, 0) then
   begin
     RaiseLastOSError;

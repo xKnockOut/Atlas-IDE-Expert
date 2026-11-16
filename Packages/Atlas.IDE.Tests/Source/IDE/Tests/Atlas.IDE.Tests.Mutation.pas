@@ -16,6 +16,14 @@
 //   tests.mutation.timeoutSec ausführen, Ausgang festhalten.
 // - Original und seine DCUs bleiben unberührt; der Text der Unit kommt aus
 //   dem Editor (auch ungespeichert), die übrigen Units von der Platte.
+//   Geschrieben wird nur über WriteShadowFile/SaveLines, und die schreiben nur
+//   in den Ordner des Schattenprojekts (TAtlasMutationShadows.IsShadowFile);
+//   vor dem Anlegen prüft TAtlasMutationShadows.Separate, dass keine Datei des
+//   Originals dort liegt.
+// - Die Test-EXE läuft in einem Thread des TAtlasWorkerSlot (Package des
+//   Testmoduls). Abbrechen setzt TAlive.Cancelled; der Prozessläufer prüft das
+//   alle 10 ms und beendet die Test-EXE. Destroy wartet mit der üblichen
+//   Zeitgrenze, was dann noch läuft, übernimmt TAtlasOverdueThreads.
 // - Am Ende (oder nach „Mutationslauf abbrechen“) schließt der Lauf das
 //   Schattenprojekt, merkt die Ergebnisse vollständig geprüfter Routinen in
 //   .atlas-local\mutation\results.json des Testprojekts und meldet in der
@@ -32,6 +40,7 @@ uses
   ToolsAPI,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Files.TextFile,
+  Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.MutationResults,
@@ -84,7 +93,8 @@ type
     FBuild: TAtlasMutationBuildFunc;
     FAlive: TAlive;
     FAliveRef: IInterface;
-    FThread: TThread;
+    /// <summary>Thread der Test-EXE; höchstens einer läuft, ein endender Vorgänger kann noch darin stehen.</summary>
+    FThreads: TAtlasWorkerSlot;
     FResults: TAtlasMutationResults;
     FResultsProject: string;
     FVersion: Integer;
@@ -255,6 +265,7 @@ begin
   FAlive.Alive := True;
   FAliveRef := FAlive;
   FResults := TAtlasMutationResults.Create;
+  FThreads := TAtlasWorkerSlot.Create(HInstance);
   FCurrent := Self;
 end;
 
@@ -266,12 +277,13 @@ begin
   end;
   FAlive.Alive := False;
   FAlive.Cancelled := True;
-  if FThread <> nil then
+  // Der Prozessläufer sieht den Abbruch nach höchstens 10 ms und beendet die Test-EXE. Hängt der Thread trotzdem
+  // (Prozess lässt sich nicht beenden), wartet die IDE nicht länger als die übliche Zeitgrenze; den Rest übernimmt
+  // TAtlasOverdueThreads und wartet beim Abmelden des Moduls nach bzw. hält das Package fest.
+  if FThreads <> nil then
   begin
-    // Der Prozessläufer beendet die Test-EXE, sobald sein Thread endet.
-    FThread.Terminate;
-    FThread.WaitFor;
-    FreeAndNil(FThread);
+    FThreads.Stop(TAtlasShutdown.cStopMs);
+    FreeAndNil(FThreads);
   end;
   if FState.Active then
   begin
@@ -449,33 +461,66 @@ begin
   Result.ResExists := FileExists(ChangeFileExt(AProject, '.res'));
 end;
 
-/// <summary>Dateien des Schattenprojekts AShadow schreiben; Formulardateien der Unit AUnitFile daneben.</summary>
+/// <summary>Wirft, wenn AFileName nicht im Ordner von AShadow liegt: Der Lauf schreibt nie woanders hin.</summary>
+procedure CheckShadowFile(const AShadow: TAtlasMutationShadow; const AFileName: string);
+begin
+  if not TAtlasMutationShadows.IsShadowFile(AShadow, AFileName) then
+  begin
+    raise EInOutError.Create(AFileName);
+  end;
+end;
+
+/// <summary>Text AText als AFileName im Ordner von AShadow schreiben.</summary>
+procedure WriteShadowFile(const AShadow: TAtlasMutationShadow; const AFileName, AText: string);
+begin
+  CheckShadowFile(AShadow, AFileName);
+  TFile.WriteAllText(AFileName, AText, TEncoding.UTF8);
+end;
+
+/// <summary>Dateien des Schattenprojekts AShadow schreiben; vorhandene Formulardateien der Unit AUnitFile
+/// daneben.</summary>
 procedure WriteShadow(const AShadow: TAtlasMutationShadow; const AUnitFile: string);
 var
-  mCompanion: string;
+  mCompanion, mTarget: string;
 begin
+  CheckShadowFile(AShadow, AShadow.UnitFile);
   ForceDirectories(ExtractFileDir(AShadow.UnitFile));
   ForceDirectories(TPath.Combine(AShadow.Folder, TAtlasMutationShadows.cDcuFolder));
-  TFile.WriteAllText(AShadow.DprFile, AShadow.Dpr, TEncoding.UTF8);
-  TFile.WriteAllText(AShadow.DprojFile, AShadow.Dproj, TEncoding.UTF8);
+  WriteShadowFile(AShadow, AShadow.DprFile, AShadow.Dpr);
+  WriteShadowFile(AShadow, AShadow.DprojFile, AShadow.Dproj);
   for mCompanion in TAtlasMutationShadows.CompanionFiles(AUnitFile) do
   begin
-    TFile.Copy(mCompanion, TPath.Combine(ExtractFileDir(AShadow.UnitFile), ExtractFileName(mCompanion)), True);
+    // Units ohne Formular haben keine; TFile.Copy würfe sonst.
+    if FileExists(mCompanion) then
+    begin
+      mTarget := TPath.Combine(ExtractFileDir(AShadow.UnitFile), ExtractFileName(mCompanion));
+      CheckShadowFile(AShadow, mTarget);
+      TFile.Copy(mCompanion, mTarget, True);
+    end;
   end;
 end;
 
 function TAtlasIdeMutationRun.PrepareShadow: Boolean;
 var
   mUnit: string;
+  mSource: TAtlasMutationShadowSource;
 begin
   mUnit := ExtractFileName(FState.FileName);
   Result := False;
   try
     FState.Content := TAtlasTextFile.Load(FState.FileName);
-    if not TAtlasMutationShadows.Build(ShadowSource(FState.Target.Project, FState.FileName), FState.Shadow) then
+    mSource := ShadowSource(FState.Target.Project, FState.FileName);
+    if not TAtlasMutationShadows.Build(mSource, FState.Shadow) then
     begin
       StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowFailed, [mUnit,
         ExtractFileName(ChangeFileExt(FState.Target.Project, '.dpr'))]));
+      Exit;
+    end;
+    // Läge eine Datei des Originals im Schattenordner (etwa die Kopie eines früheren Laufs im Editor), schriebe der
+    // Lauf genau diese Datei.
+    if not TAtlasMutationShadows.Separate(mSource, FState.Shadow) then
+    begin
+      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowOverlaps, [mUnit, FState.Shadow.Folder]));
       Exit;
     end;
     WriteShadow(FState.Shadow, FState.FileName);
@@ -523,14 +568,16 @@ begin
   Advance;
 end;
 
-/// <summary>AContent mit den Zeilen ALines (CRLF) als AFileName speichern.</summary>
-procedure SaveLines(const AFileName: string; const AContent: TAtlasTextFileContent; const ALines: TArray<string>);
+/// <summary>AContent mit den Zeilen ALines (CRLF) als Kopie der Unit von AShadow speichern.</summary>
+procedure SaveLines(const AShadow: TAtlasMutationShadow; const AContent: TAtlasTextFileContent;
+  const ALines: TArray<string>);
 var
   mContent: TAtlasTextFileContent;
 begin
+  CheckShadowFile(AShadow, AShadow.UnitFile);
   mContent := AContent;
   mContent.Text := string.Join(#13#10, ALines) + #13#10;
-  TAtlasTextFile.Save(AFileName, mContent);
+  TAtlasTextFile.Save(AShadow.UnitFile, mContent);
 end;
 
 procedure TAtlasIdeMutationRun.Step;
@@ -551,7 +598,7 @@ begin
     Exit;
   end;
   try
-    SaveLines(FState.Shadow.UnitFile, FState.Content, mLines);
+    SaveLines(FState.Shadow, FState.Content, mLines);
   except
     on E: Exception do
     begin
@@ -635,9 +682,9 @@ begin
   mExecutable := AExecutable;
   mCancelled := CancelledCheck(FAlive, FAliveRef);
   mTimeoutMs := Cardinal(TAtlasIdeSettings.Current.TestsMutationTimeoutSec) * cMsPerSecond;
-  // Ein Thread je Testlauf; der vorige ist fertig, sein Objekt wird hier frei.
-  FreeAndNil(FThread);
-  FThread := TThread.CreateAnonymousThread(
+  // Ein Thread je Testlauf. Start gibt beendete Vorgänger frei; einer, der nach seinem Rückruf noch endet, bleibt bis
+  // zum nächsten Mal im Slot, statt hier im Hauptthread auf ihn zu warten.
+  FThreads.Start(TThread.CreateAnonymousThread(
     procedure
     var
       mResult: TAtlasVcsRunResult;
@@ -658,9 +705,7 @@ begin
           end;
           mRun.Ran(mResult.Outcome = TAtlasVcsOutcome.TimedOut, mResult.ExitCode, mXml);
         end);
-    end);
-  FThread.FreeOnTerminate := False;
-  FThread.Start;
+    end));
 end;
 
 procedure TAtlasIdeMutationRun.Finish(ACancelled: Boolean);

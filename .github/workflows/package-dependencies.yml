@@ -64,10 +64,10 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
-      - name: atlas.json der Plugin-Packages aus Packages/atlas.plugin.json (Code-Review A-101)
+      - name: atlas.json der Plugin-Packages aus Packages/atlas.plugin.json
         shell: pwsh
         run: ./Tools/Update-PackageConfigs.ps1 -Check
-      - name: Baselines ohne tote Einträge, keine Regel wächst (Code-Review A-101)
+      - name: Baselines ohne tote Einträge, keine Regel wächst
         shell: pwsh
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -115,7 +115,10 @@ jobs:
       - name: Sprungziele der F1-Hilfe vorhanden (#1886)
         shell: pwsh
         run: ./Tools/Check-HelpAnchors.ps1
-      - name: Keine doppelten XML-Doku-Kommentare
+      - name: Keine doppelten XML-Doku-Kommentare und keine Review-Kennungen, Selbsttest
+        shell: pwsh
+        run: ./Tools/Check-DocComments.ps1 -SelfTest
+      - name: Keine doppelten XML-Doku-Kommentare und keine Review-Kennungen
         shell: pwsh
         run: ./Tools/Check-DocComments.ps1
       - name: Deutsche Literale nur in Texttabellen (#1458), Selbsttest

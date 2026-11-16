@@ -20,7 +20,7 @@ type
     procedure ChildHandlesAreNotInheritableAfterLaunch;
     [Test]
     procedure MissingProgramFailsWithLastError;
-    /// <summary>Code-Review R-101: Ein kurzer Prozess sieht sein Dateiende sofort, auch wenn ein zweiter Thread
+    /// <summary>Ein kurzer Prozess sieht sein Dateiende sofort, auch wenn ein zweiter Thread
     /// gleichzeitig lange Prozesse mit eigenen Pipes startet. Ohne Handle-Liste erbte der lange Prozess gelegentlich
     /// das Schreib-Ende des kurzen, und dessen Leser wartete bis zum Ende des langen.</summary>
     [Test]
