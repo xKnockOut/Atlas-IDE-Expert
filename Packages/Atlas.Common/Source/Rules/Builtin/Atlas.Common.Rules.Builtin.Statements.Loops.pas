@@ -174,368 +174,413 @@ begin
     cTexts[TStatementsLoopsText.Title].Text);
 end;
 
-procedure TLoopOffByOneRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TTokens;
-  mTypes: TDeclaredTypes;
-  mCountNames: TArray<string>;
-  mZeroBased: Boolean;
-  mBlocks: TArray<TSyntaxNode>;
-
-  function InBlock(AOffset: Integer): Boolean;
-  var
-    mBlock: TSyntaxNode;
-  begin
-    for mBlock in mBlocks do
-    begin
-      if (AOffset >= mBlock.StartOffset) and (AOffset < mBlock.EndOffset) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
+type
+  /// <summary>Ein Lauf von TLoopOffByOneRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TLoopOffByOneScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FTypes: TDeclaredTypes;
+    FCountNames: TArray<string>;
+    FZeroBased: Boolean;
+    FBlocks: TArray<TSyntaxNode>;
+    function InBlock(AOffset: Integer): Boolean;
+    procedure CollectBlocks(ARoot: TSyntaxNode);
+    function IndexesBase(AOpen: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
+    function BodyIndexes(AFrom, AStop: Integer; const ABaseKey: string; ABaseCount: Integer;
+      const AVar: string): Boolean;
+    function IsCountCall(const AHeader: TLoopHeader): Boolean;
+    function CallBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
+    function CountBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
+    function FindBase(const AHeader: TLoopHeader; out ABase: TLoopBase): Boolean;
+    function IsStringBase(const ABase: TLoopBase): Boolean;
+    function StringMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const ALowKey,
+      AHighText: string): string;
+    function StringFix(const AHeader: TLoopHeader; const ABase: TLoopBase): TRuleFix;
+    function IndexMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const AHighText: string;
+      out AFix: TRuleFix): string;
+    procedure Inspect(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+    function IsZeroIndex(AIndex: Integer; out AZero, AClose: Integer): Boolean;
+    procedure FindZeroIndex;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  procedure CollectBlocks(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.Block) and (mNode.Parent <> nil) and
-          (mNode.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection,
-          TSyntaxKind.FinalizationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
-        begin
-          mBlocks := mBlocks + [mNode];
-          Continue;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
+{ TLoopOffByOneScan }
 
-  // Steht vor dem [ an AOpen die Basis ABaseKey? ABaseKey '' = Items[AVar] bzw. Self[AVar]; Basis.Items[I] zählt
-  // mit, Andere.Kunden[I] gehört nicht zu Kunden.
-  function IndexesBase(AOpen: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
-  var
-    mBefore, mPrev: Integer;
-  begin
-    if ABaseKey = '' then
-    begin
-      mBefore := PreviousCode(mTokens, AOpen);
-      Exit((mBefore >= 0) and MatchText(mTokens[mBefore].Text, ['Items', 'Self']));
-    end;
-    mBefore := AOpen;
-    mPrev := PreviousCode(mTokens, AOpen);
-    if (mPrev > 0) and SameText(mTokens[mPrev].Text, 'Items') and mTokens[PreviousCode(mTokens, mPrev)].IsSymbol('.') then
-    begin
-      mBefore := PreviousCode(mTokens, mPrev);
-    end;
-    Result := BaseBefore(mTokens, mBefore, ABaseKey, ABaseCount);
-  end;
-
-  // Liest der Rumpf ABase[AVar]? ABaseKey '' = Items[AVar] bzw. Self[AVar].
-  function BodyIndexes(AFrom, AStop: Integer; const ABaseKey: string; ABaseCount: Integer;
-    const AVar: string): Boolean;
-  var
-    mIndex, mInner, mClose: Integer;
-  begin
-    for mIndex := AFrom to AStop - 1 do
-    begin
-      if not mTokens[mIndex].IsSymbol('[') then
-      begin
-        Continue;
-      end;
-      mInner := NextCode(mTokens, mIndex + 1);
-      mClose := NextCode(mTokens, mInner + 1);
-      if (mClose < AStop) and SameText(mTokens[mInner].Text, AVar) and mTokens[mClose].IsSymbol(']') and
-        IndexesBase(mIndex, ABaseKey, ABaseCount) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  // Obergrenze Length(A): Name aus countNames mit Klammer.
-  function IsCountCall(const AHeader: TLoopHeader): Boolean;
-  var
-    mOpen: Integer;
-  begin
-    mOpen := NextCode(mTokens, AHeader.HighFirst + 1);
-    Result := (mTokens[AHeader.HighFirst].Kind = TPascalTokenKind.Identifier) and
-      (IndexText(mTokens[AHeader.HighFirst].Text, mCountNames) >= 0) and (mOpen <= AHeader.HighLast) and
-      mTokens[mOpen].IsSymbol('(');
-  end;
-
-  // Length(A) mit Klammer um die ganze Obergrenze (oder mit - 1 bei Strings).
-  function CallBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
-  var
-    mOpen: Integer;
-  begin
-    mOpen := NextCode(mTokens, AHeader.HighFirst + 1);
-    ABase.Close := MatchingParen(mTokens, mOpen, AHeader.HighLast + 1);
-    Result := ABase.Close > mOpen + 1;
-    if Result then
-    begin
-      ABase.IsCall := True;
-      ABase.First := NextCode(mTokens, mOpen + 1);
-      ABase.Last := PreviousCode(mTokens, ABase.Close);
-      // Nur "Length(S) - 1" bei Strings; sonst ist es kein einfacher Fall.
-      Result := (ABase.Close = AHeader.HighLast) or (CodeKey(mTokens, ABase.Close + 1, AHeader.HighLast) = '-1');
-    end;
-  end;
-
-  // X.Count bzw. Count: letzter Name aus countNames.
-  function CountBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
-  var
-    mDot: Integer;
-  begin
-    Result := (mTokens[AHeader.HighLast].Kind = TPascalTokenKind.Identifier) and
-      (IndexText(mTokens[AHeader.HighLast].Text, mCountNames) >= 0);
-    if not Result then
-    begin
-      Exit;
-    end;
-    mDot := PreviousCode(mTokens, AHeader.HighLast);
-    if (AHeader.HighLast = AHeader.HighFirst) and
-      (mTypes.DeclaredType(mTokens[AHeader.HighLast].Text, mTokens[AHeader.HighLast].StartPos) <> '') then
-    begin
-      // Variable, Parameter oder Feld namens Count (Count := Items.Count - 1): ein gespeicherter Wert, nicht die
-      // Anzahl der eigenen Liste.
-      Result := False;
-    end
-    else if AHeader.HighLast = AHeader.HighFirst then
-    begin
-      ABase.First := AHeader.HighLast + 1;
-      ABase.Last := AHeader.HighLast; // leer: Items[I]
-    end
-    else if (mDot > AHeader.HighFirst) and mTokens[mDot].IsSymbol('.') then
-    begin
-      ABase.First := AHeader.HighFirst;
-      ABase.Last := PreviousCode(mTokens, mDot);
-    end
-    else
-    begin
-      Result := False;
-    end;
-  end;
-
-  function FindBase(const AHeader: TLoopHeader; out ABase: TLoopBase): Boolean;
-  begin
-    ABase := Default(TLoopBase);
-    ABase.Close := -1;
-    ABase.First := -1;
-    if IsCountCall(AHeader) then
-    begin
-      Result := CallBase(AHeader, ABase);
-    end
-    else
-    begin
-      Result := CountBase(AHeader, ABase);
-    end;
-    Result := Result and (ABase.First >= 0);
-    if Result and (ABase.Last >= ABase.First) then
-    begin
-      ABase.Key := CodeKey(mTokens, ABase.First, ABase.Last);
-      ABase.Text := Trim(SourceText(AContext.Text, mTokens, ABase.First, ABase.Last));
-    end;
-  end;
-
-  function IsStringBase(const ABase: TLoopBase): Boolean;
-  begin
-    Result := ABase.IsCall and (ABase.First = ABase.Last) and
-      (mTokens[ABase.First].Kind = TPascalTokenKind.Identifier);
-    Result := Result and IsStringType(mTypes.DeclaredType(mTokens[ABase.First].Text, mTokens[ABase.First].StartPos));
-  end;
-
-  function StringMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const ALowKey,
-    AHighText: string): string;
-  var
-    mWholeLength: Boolean;
-  begin
-    Result := '';
-    mWholeLength := mZeroBased and (ABase.Close = AHeader.HighLast);
-    if not mZeroBased and (ALowKey = '0') then
-    begin
-      Result := cTexts[TStatementsLoopsText.StringZero].Fmt([ABase.Text]);
-    end
-    else if mWholeLength and (ALowKey = '0') then
-    begin
-      Result := cTexts[TStatementsLoopsText.StringEnd].Fmt([AHighText]);
-    end
-    else if mWholeLength and (ALowKey = '1') then
-    begin
-      Result := cTexts[TStatementsLoopsText.ZeroBased].Fmt([ABase.Text]);
-    end;
-  end;
-
-  function StringFix(const AHeader: TLoopHeader; const ABase: TLoopBase): TRuleFix;
-  begin
-    Result := TRuleFix.Create(cTexts[TStatementsLoopsText.UseLowHigh].Fmt([ABase.Text, ABase.Text]),
-      [TRuleEdit.Create(TTextRange.Create(mTokens[AHeader.LowFirst].StartPos, mTokens[AHeader.HighLast].EndPos),
-      Format('Low(%s) to High(%s)', [ABase.Text, ABase.Text]))]);
-  end;
-
-  function IndexMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const AHighText: string;
-    out AFix: TRuleFix): string;
-  begin
-    if ABase.IsCall then
-    begin
-      Result := cTexts[TStatementsLoopsText.ArrayEnd].Fmt([AHighText, mTokens[AHeader.HighFirst].Text]);
-      AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.UseHigh].Fmt([ABase.Text]),
-        [TRuleEdit.Create(TTextRange.Create(mTokens[AHeader.HighFirst].StartPos, mTokens[AHeader.HighLast].EndPos),
-        Format('High(%s)', [ABase.Text]))]);
-    end
-    else
-    begin
-      Result := cTexts[TStatementsLoopsText.ListEnd].Fmt([AHighText, mTokens[AHeader.HighLast].Text]);
-      AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.AddMinusOne].Text,
-        [TRuleEdit.Create(TTextRange.Create(mTokens[AHeader.HighLast].EndPos,
-        mTokens[AHeader.HighLast].EndPos), ' - 1')]);
-    end;
-  end;
-
-  procedure Inspect(ANode: TSyntaxNode);
-  var
-    mHeader: TLoopHeader;
-    mBase: TLoopBase;
-    mLowKey, mHighText, mMessage: string;
-    mFix: TRuleFix;
-  begin
-    // downto prüft for-high-to-low.
-    if not ParseForHeader(mTokens, ANode, mHeader) or not FindBase(mHeader, mBase) or not BodyIndexes(
-      mHeader.DoIndex + 1, mHeader.Stop, mBase.Key, CodeCount(mTokens, mBase.First, mBase.Last), ANode.Name) then
-    begin
-      Exit;
-    end;
-    mLowKey := CodeKey(mTokens, mHeader.LowFirst, mHeader.LowLast);
-    mHighText := Trim(SourceText(AContext.Text, mTokens, mHeader.HighFirst, mHeader.HighLast));
-    mMessage := '';
-    mFix := Default(TRuleFix);
-    if IsStringBase(mBase) then
-    begin
-      mMessage := StringMessage(mHeader, mBase, mLowKey, mHighText);
-      mFix := StringFix(mHeader, mBase);
-    end
-    else if (mLowKey = '0') and (not mBase.IsCall or (mBase.Close = mHeader.HighLast)) then
-    begin
-      mMessage := IndexMessage(mHeader, mBase, mHighText, mFix);
-    end;
-    if mMessage <> '' then
-    begin
-      AReport.Add(TTextRange.Create(mTokens[mHeader.LowFirst].StartPos, mTokens[mHeader.HighLast].EndPos), mMessage,
-        TRuleConfidence.High, [mFix]);
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.ForStatement then
-        begin
-          Inspect(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  // Folgt auf den Bezeichner AIndex [0] in einem Rumpf, ohne . oder @ davor? AZero/AClose: Token von 0 und ].
-  function IsZeroIndex(AIndex: Integer; out AZero, AClose: Integer): Boolean;
-  var
-    mOpen, mPrev: Integer;
-  begin
-    AZero := -1;
-    AClose := -1;
-    mOpen := NextCode(mTokens, AIndex + 1);
-    if (mOpen > High(mTokens)) or not mTokens[mOpen].IsSymbol('[') then
-    begin
-      Exit(False);
-    end;
-    AZero := NextCode(mTokens, mOpen + 1);
-    AClose := NextCode(mTokens, AZero + 1);
-    if (AClose > High(mTokens)) or not ((mTokens[AZero].Kind = TPascalTokenKind.Number) and
-      (mTokens[AZero].Text = '0')) or
-      not mTokens[AClose].IsSymbol(']') or not InBlock(mTokens[AIndex].Offset) then
-    begin
-      Exit(False);
-    end;
-    mPrev := PreviousCode(mTokens, AIndex);
-    Result := (mPrev < 0) or not (mTokens[mPrev].IsSymbol('.') or mTokens[mPrev].IsSymbol('@'));
-  end;
-
-  // S[0] bei einsbasierten Strings.
-  procedure FindZeroIndex;
-  var
-    mIndex, mZero, mClose: Integer;
-    mName: string;
-  begin
-    for mIndex := 0 to High(mTokens) do
-    begin
-      if (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or not IsZeroIndex(mIndex, mZero, mClose) then
-      begin
-        Continue;
-      end;
-      mName := mTokens[mIndex].Text;
-      if IsStringType(mTypes.DeclaredType(mName, mTokens[mIndex].StartPos)) then
-      begin
-        AReport.Add(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mClose].EndPos),
-          cTexts[TStatementsLoopsText.StringIndexZero].Fmt([mName]),
-          TRuleConfidence.High, [TRuleFix.Create(cTexts[TStatementsLoopsText.UseLow].Fmt([mName]),
-          [TRuleEdit.Create(TTextRange.Create(mTokens[mZero].StartPos, mTokens[mZero].EndPos),
-          Format('Low(%s)', [mName]))])]);
-      end;
-    end;
-  end;
-
+constructor TLoopOffByOneScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TLoopOffByOneScan.InBlock(AOffset: Integer): Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  for mBlock in FBlocks do
+  begin
+    if (AOffset >= mBlock.StartOffset) and (AOffset < mBlock.EndOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TLoopOffByOneScan.CollectBlocks(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Block) and (mNode.Parent <> nil) and
+        (mNode.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.InitializationSection,
+        TSyntaxKind.FinalizationSection, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
+      begin
+        FBlocks := FBlocks + [mNode];
+        Continue;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Steht vor dem [ an AOpen die Basis ABaseKey? ABaseKey '' = Items[AVar] bzw. Self[AVar]; Basis.Items[I] zählt
+// mit, Andere.Kunden[I] gehört nicht zu Kunden.
+function TLoopOffByOneScan.IndexesBase(AOpen: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
+var
+  mBefore, mPrev: Integer;
+begin
+  if ABaseKey = '' then
+  begin
+    mBefore := PreviousCode(FTokens, AOpen);
+    Exit((mBefore >= 0) and MatchText(FTokens[mBefore].Text, ['Items', 'Self']));
+  end;
+  mBefore := AOpen;
+  mPrev := PreviousCode(FTokens, AOpen);
+  if (mPrev > 0) and SameText(FTokens[mPrev].Text, 'Items') and FTokens[PreviousCode(FTokens, mPrev)].IsSymbol('.') then
+  begin
+    mBefore := PreviousCode(FTokens, mPrev);
+  end;
+  Result := BaseBefore(FTokens, mBefore, ABaseKey, ABaseCount);
+end;
+
+// Liest der Rumpf ABase[AVar]? ABaseKey '' = Items[AVar] bzw. Self[AVar].
+function TLoopOffByOneScan.BodyIndexes(AFrom, AStop: Integer; const ABaseKey: string; ABaseCount: Integer;
+  const AVar: string): Boolean;
+var
+  mIndex, mInner, mClose: Integer;
+begin
+  for mIndex := AFrom to AStop - 1 do
+  begin
+    if not FTokens[mIndex].IsSymbol('[') then
+    begin
+      Continue;
+    end;
+    mInner := NextCode(FTokens, mIndex + 1);
+    mClose := NextCode(FTokens, mInner + 1);
+    if (mClose < AStop) and SameText(FTokens[mInner].Text, AVar) and FTokens[mClose].IsSymbol(']') and
+      IndexesBase(mIndex, ABaseKey, ABaseCount) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+// Obergrenze Length(A): Name aus countNames mit Klammer.
+function TLoopOffByOneScan.IsCountCall(const AHeader: TLoopHeader): Boolean;
+var
+  mOpen: Integer;
+begin
+  mOpen := NextCode(FTokens, AHeader.HighFirst + 1);
+  Result := (FTokens[AHeader.HighFirst].Kind = TPascalTokenKind.Identifier) and
+    (IndexText(FTokens[AHeader.HighFirst].Text, FCountNames) >= 0) and (mOpen <= AHeader.HighLast) and
+    FTokens[mOpen].IsSymbol('(');
+end;
+
+// Length(A) mit Klammer um die ganze Obergrenze (oder mit - 1 bei Strings).
+function TLoopOffByOneScan.CallBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
+var
+  mOpen: Integer;
+begin
+  mOpen := NextCode(FTokens, AHeader.HighFirst + 1);
+  ABase.Close := MatchingParen(FTokens, mOpen, AHeader.HighLast + 1);
+  Result := ABase.Close > mOpen + 1;
+  if Result then
+  begin
+    ABase.IsCall := True;
+    ABase.First := NextCode(FTokens, mOpen + 1);
+    ABase.Last := PreviousCode(FTokens, ABase.Close);
+    // Nur "Length(S) - 1" bei Strings; sonst ist es kein einfacher Fall.
+    Result := (ABase.Close = AHeader.HighLast) or (CodeKey(FTokens, ABase.Close + 1, AHeader.HighLast) = '-1');
+  end;
+end;
+
+// X.Count bzw. Count: letzter Name aus countNames.
+function TLoopOffByOneScan.CountBase(const AHeader: TLoopHeader; var ABase: TLoopBase): Boolean;
+var
+  mDot: Integer;
+begin
+  Result := (FTokens[AHeader.HighLast].Kind = TPascalTokenKind.Identifier) and
+    (IndexText(FTokens[AHeader.HighLast].Text, FCountNames) >= 0);
+  if not Result then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mCountNames := TRuleOptions.Strings(AContext.Options, 'countNames', ['Count', 'Length']);
-  mZeroBased := ZeroBasedStrings(mTokens);
-  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mDot := PreviousCode(FTokens, AHeader.HighLast);
+  if (AHeader.HighLast = AHeader.HighFirst) and
+    (FTypes.DeclaredType(FTokens[AHeader.HighLast].Text, FTokens[AHeader.HighLast].StartPos) <> '') then
+  begin
+    // Variable, Parameter oder Feld namens Count (Count := Items.Count - 1): ein gespeicherter Wert, nicht die
+    // Anzahl der eigenen Liste.
+    Result := False;
+  end
+  else if AHeader.HighLast = AHeader.HighFirst then
+  begin
+    ABase.First := AHeader.HighLast + 1;
+    ABase.Last := AHeader.HighLast; // leer: Items[I]
+  end
+  else if (mDot > AHeader.HighFirst) and FTokens[mDot].IsSymbol('.') then
+  begin
+    ABase.First := AHeader.HighFirst;
+    ABase.Last := PreviousCode(FTokens, mDot);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TLoopOffByOneScan.FindBase(const AHeader: TLoopHeader; out ABase: TLoopBase): Boolean;
+begin
+  ABase := Default(TLoopBase);
+  ABase.Close := -1;
+  ABase.First := -1;
+  if IsCountCall(AHeader) then
+  begin
+    Result := CallBase(AHeader, ABase);
+  end
+  else
+  begin
+    Result := CountBase(AHeader, ABase);
+  end;
+  Result := Result and (ABase.First >= 0);
+  if Result and (ABase.Last >= ABase.First) then
+  begin
+    ABase.Key := CodeKey(FTokens, ABase.First, ABase.Last);
+    ABase.Text := Trim(SourceText(FContext.Text, FTokens, ABase.First, ABase.Last));
+  end;
+end;
+
+function TLoopOffByOneScan.IsStringBase(const ABase: TLoopBase): Boolean;
+begin
+  Result := ABase.IsCall and (ABase.First = ABase.Last) and
+    (FTokens[ABase.First].Kind = TPascalTokenKind.Identifier);
+  Result := Result and IsStringType(FTypes.DeclaredType(FTokens[ABase.First].Text, FTokens[ABase.First].StartPos));
+end;
+
+function TLoopOffByOneScan.StringMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const ALowKey,
+  AHighText: string): string;
+var
+  mWholeLength: Boolean;
+begin
+  Result := '';
+  mWholeLength := FZeroBased and (ABase.Close = AHeader.HighLast);
+  if not FZeroBased and (ALowKey = '0') then
+  begin
+    Result := cTexts[TStatementsLoopsText.StringZero].Fmt([ABase.Text]);
+  end
+  else if mWholeLength and (ALowKey = '0') then
+  begin
+    Result := cTexts[TStatementsLoopsText.StringEnd].Fmt([AHighText]);
+  end
+  else if mWholeLength and (ALowKey = '1') then
+  begin
+    Result := cTexts[TStatementsLoopsText.ZeroBased].Fmt([ABase.Text]);
+  end;
+end;
+
+function TLoopOffByOneScan.StringFix(const AHeader: TLoopHeader; const ABase: TLoopBase): TRuleFix;
+begin
+  Result := TRuleFix.Create(cTexts[TStatementsLoopsText.UseLowHigh].Fmt([ABase.Text, ABase.Text]),
+    [TRuleEdit.Create(TTextRange.Create(FTokens[AHeader.LowFirst].StartPos, FTokens[AHeader.HighLast].EndPos),
+    Format('Low(%s) to High(%s)', [ABase.Text, ABase.Text]))]);
+end;
+
+function TLoopOffByOneScan.IndexMessage(const AHeader: TLoopHeader; const ABase: TLoopBase; const AHighText: string;
+  out AFix: TRuleFix): string;
+begin
+  if ABase.IsCall then
+  begin
+    Result := cTexts[TStatementsLoopsText.ArrayEnd].Fmt([AHighText, FTokens[AHeader.HighFirst].Text]);
+    AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.UseHigh].Fmt([ABase.Text]),
+      [TRuleEdit.Create(TTextRange.Create(FTokens[AHeader.HighFirst].StartPos, FTokens[AHeader.HighLast].EndPos),
+      Format('High(%s)', [ABase.Text]))]);
+  end
+  else
+  begin
+    Result := cTexts[TStatementsLoopsText.ListEnd].Fmt([AHighText, FTokens[AHeader.HighLast].Text]);
+    AFix := TRuleFix.Create(cTexts[TStatementsLoopsText.AddMinusOne].Text,
+      [TRuleEdit.Create(TTextRange.Create(FTokens[AHeader.HighLast].EndPos,
+      FTokens[AHeader.HighLast].EndPos), ' - 1')]);
+  end;
+end;
+
+procedure TLoopOffByOneScan.Inspect(ANode: TSyntaxNode);
+var
+  mHeader: TLoopHeader;
+  mBase: TLoopBase;
+  mLowKey, mHighText, mMessage: string;
+  mFix: TRuleFix;
+begin
+  // downto prüft for-high-to-low.
+  if not ParseForHeader(FTokens, ANode, mHeader) or not FindBase(mHeader, mBase) or not BodyIndexes(
+    mHeader.DoIndex + 1, mHeader.Stop, mBase.Key, CodeCount(FTokens, mBase.First, mBase.Last), ANode.Name) then
+  begin
+    Exit;
+  end;
+  mLowKey := CodeKey(FTokens, mHeader.LowFirst, mHeader.LowLast);
+  mHighText := Trim(SourceText(FContext.Text, FTokens, mHeader.HighFirst, mHeader.HighLast));
+  mMessage := '';
+  mFix := Default(TRuleFix);
+  if IsStringBase(mBase) then
+  begin
+    mMessage := StringMessage(mHeader, mBase, mLowKey, mHighText);
+    mFix := StringFix(mHeader, mBase);
+  end
+  else if (mLowKey = '0') and (not mBase.IsCall or (mBase.Close = mHeader.HighLast)) then
+  begin
+    mMessage := IndexMessage(mHeader, mBase, mHighText, mFix);
+  end;
+  if mMessage <> '' then
+  begin
+    FReport.Add(TTextRange.Create(FTokens[mHeader.LowFirst].StartPos, FTokens[mHeader.HighLast].EndPos), mMessage,
+      TRuleConfidence.High, [mFix]);
+  end;
+end;
+
+procedure TLoopOffByOneScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    mBlocks := nil;
-    CollectBlocks(AContext.Tree.Root);
-    Visit(AContext.Tree.Root);
-    if not mZeroBased then
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.ForStatement then
+      begin
+        Inspect(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Folgt auf den Bezeichner AIndex [0] in einem Rumpf, ohne . oder @ davor? AZero/AClose: Token von 0 und ].
+function TLoopOffByOneScan.IsZeroIndex(AIndex: Integer; out AZero, AClose: Integer): Boolean;
+var
+  mOpen, mPrev: Integer;
+begin
+  AZero := -1;
+  AClose := -1;
+  mOpen := NextCode(FTokens, AIndex + 1);
+  if (mOpen > High(FTokens)) or not FTokens[mOpen].IsSymbol('[') then
+  begin
+    Exit(False);
+  end;
+  AZero := NextCode(FTokens, mOpen + 1);
+  AClose := NextCode(FTokens, AZero + 1);
+  if (AClose > High(FTokens)) or not ((FTokens[AZero].Kind = TPascalTokenKind.Number) and
+    (FTokens[AZero].Text = '0')) or
+    not FTokens[AClose].IsSymbol(']') or not InBlock(FTokens[AIndex].Offset) then
+  begin
+    Exit(False);
+  end;
+  mPrev := PreviousCode(FTokens, AIndex);
+  Result := (mPrev < 0) or not (FTokens[mPrev].IsSymbol('.') or FTokens[mPrev].IsSymbol('@'));
+end;
+
+// S[0] bei einsbasierten Strings.
+procedure TLoopOffByOneScan.FindZeroIndex;
+var
+  mIndex, mZero, mClose: Integer;
+  mName: string;
+begin
+  for mIndex := 0 to High(FTokens) do
+  begin
+    if (FTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or not IsZeroIndex(mIndex, mZero, mClose) then
+    begin
+      Continue;
+    end;
+    mName := FTokens[mIndex].Text;
+    if IsStringType(FTypes.DeclaredType(mName, FTokens[mIndex].StartPos)) then
+    begin
+      FReport.Add(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mClose].EndPos),
+        cTexts[TStatementsLoopsText.StringIndexZero].Fmt([mName]),
+        TRuleConfidence.High, [TRuleFix.Create(cTexts[TStatementsLoopsText.UseLow].Fmt([mName]),
+        [TRuleEdit.Create(TTextRange.Create(FTokens[mZero].StartPos, FTokens[mZero].EndPos),
+        Format('Low(%s)', [mName]))])]);
+    end;
+  end;
+end;
+
+procedure TLoopOffByOneScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FCountNames := TRuleOptions.Strings(FContext.Options, 'countNames', ['Count', 'Length']);
+  FZeroBased := TLoopOffByOneRule.ZeroBasedStrings(FTokens);
+  FTypes := TDeclaredTypes.Create(FContext.Tree, FContext.Text);
+  try
+    FBlocks := nil;
+    CollectBlocks(FContext.Tree.Root);
+    Visit(FContext.Tree.Root);
+    if not FZeroBased then
     begin
       FindZeroIndex;
     end;
   finally
-    mTypes.Free;
+    FTypes.Free;
   end;
+end;
+
+procedure TLoopOffByOneRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TLoopOffByOneScan;
+begin
+  mScan := TLoopOffByOneScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TLoopOffByOneRule.ZeroBasedStrings(const ATokens: TArray<TPascalToken>): Boolean;
@@ -578,304 +623,348 @@ begin
     cTexts[TStatementsLoopsText.ModifiedTitle].Text);
 end;
 
-procedure TCollectionModifiedInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TTokens;
-  mMethods: TArray<string>;
-
-  // Beginnt zwischen dem Rumpfanfang ABody und dem Aufruf ACall eine innere Schleife?
-  function HasInnerLoop(ABody, ACall: Integer): Boolean;
-  var
-    mIndex: Integer;
-  begin
-    Result := False;
-    for mIndex := ABody to ACall - 1 do
-    begin
-      if (mTokens[mIndex].Kind = TPascalTokenKind.Keyword) and
-        MatchText(mTokens[mIndex].Text, ['for', 'while', 'repeat']) then
-      begin
-        Exit(True);
-      end;
-    end;
+type
+  /// <summary>Ein Lauf von TCollectionModifiedInLoopRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TCollectionModifiedInLoopScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FMethods: TArray<string>;
+    function HasInnerLoop(ABody, ACall: Integer): Boolean;
+    function StepDepth(const AWord: string; var ADepth: Integer): Boolean;
+    function IsLeave(AIndex: Integer): Boolean;
+    function LeavesLoop(ABody, ACall, AStop: Integer): Boolean;
+    function WithoutMinusOne(AFirst, ALast: Integer): Integer;
+    function CallArgument(AFirst, ALast: Integer; out AArgFirst, AArgLast: Integer): Boolean;
+    function BaseOfBound(AFirst, ALast: Integer; out ABaseFirst, ABaseLast: Integer): Boolean;
+    function IsMutatingCall(AIndex, AStop: Integer; const ATarget: TLoopTarget; out ADot: Integer): Boolean;
+    function CallMessage(const ATarget: TLoopTarget; const AMethod: string; out AFixes: TArray<TRuleFix>): string;
+    procedure FindCalls(AFrom, AStop: Integer; const ATarget: TLoopTarget);
+    function Target(ABaseFirst, ABaseLast: Integer; AForIn: Boolean): TLoopTarget;
+    procedure InspectForIn(ANode: TSyntaxNode);
+    procedure InspectFor(ANode: TSyntaxNode);
+    procedure Inspect(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // Blocktiefe nach dem Schlüsselwort AWord; False am Ende des Blocks mit dem Aufruf.
-  function StepDepth(const AWord: string; var ADepth: Integer): Boolean;
-  begin
-    Result := True;
-    if MatchText(AWord, ['begin', 'try', 'case', 'repeat', 'asm']) then
-    begin
-      Inc(ADepth);
-    end
-    else if MatchText(AWord, ['end', 'until']) then
-    begin
-      Result := ADepth > 0;
-      Dec(ADepth);
-    end;
-  end;
+{ TCollectionModifiedInLoopScan }
 
-  // Break oder Exit am Anfang einer Anweisung; "if … then Break" ist bedingt.
-  function IsLeave(AIndex: Integer): Boolean;
-  var
-    mPrevious: Integer;
-  begin
-    Result := (mTokens[AIndex].Kind = TPascalTokenKind.Identifier) and MatchText(mTokens[AIndex].Text, ['Break', 'Exit']);
-    if Result then
-    begin
-      mPrevious := PreviousCode(mTokens, AIndex);
-      Result := (mPrevious >= 0) and mTokens[mPrevious].IsSymbol(';');
-    end;
-  end;
-
-  // Verlässt der Block mit dem Aufruf (ab ACall) die Schleife? Ja, wenn nach der Anweisung im selben Block ohne
-  // Bedingung Break oder Exit steht, auch nach weiteren Anweisungen (Merker setzen, Schlüssel austragen). Break zählt
-  // nur, wenn zwischen dem Rumpfanfang ABody und dem Aufruf keine innere Schleife beginnt; sonst verlässt es nur diese.
-  function LeavesLoop(ABody, ACall, AStop: Integer): Boolean;
-  var
-    mIndex, mDepth: Integer;
-    mDone: Boolean;
-  begin
-    Result := False;
-    mIndex := DepthZero(mTokens, ACall, AStop, ';', False);
-    if mIndex < 0 then
-    begin
-      Exit;
-    end;
-    mDepth := 0;
-    mDone := False;
-    Inc(mIndex);
-    while (mIndex < AStop) and not mDone do
-    begin
-      if mTokens[mIndex].Kind = TPascalTokenKind.Keyword then
-      begin
-        // Ende des Blocks mit dem Aufruf: kein Break, kein Exit.
-        mDone := not StepDepth(mTokens[mIndex].Text, mDepth);
-      end
-      else if (mDepth = 0) and IsLeave(mIndex) then
-      begin
-        Result := SameText(mTokens[mIndex].Text, 'Exit') or not HasInnerLoop(ABody, ACall);
-        mDone := True;
-      end;
-      Inc(mIndex);
-    end;
-  end;
-
-  // Letztes Token der Obergrenze AFirst..ALast ohne "- 1" am Ende.
-  function WithoutMinusOne(AFirst, ALast: Integer): Integer;
-  begin
-    Result := ALast;
-    if (CodeCount(mTokens, AFirst, ALast) > 2) and (mTokens[ALast].Kind = TPascalTokenKind.Number) and
-      (mTokens[ALast].Text = '1') and mTokens[PreviousCode(mTokens, ALast)].IsSymbol('-') then
-    begin
-      Result := PreviousCode(mTokens, PreviousCode(mTokens, ALast));
-    end;
-  end;
-
-  // Argument von High(…), Length(…) bzw. Pred(…), wenn die Klammer bei ALast schließt.
-  function CallArgument(AFirst, ALast: Integer; out AArgFirst, AArgLast: Integer): Boolean;
-  var
-    mOpen, mClose: Integer;
-  begin
-    mOpen := NextCode(mTokens, AFirst + 1);
-    mClose := -1;
-    if mTokens[mOpen].IsSymbol('(') then
-    begin
-      mClose := MatchingParen(mTokens, mOpen, ALast + 1);
-    end;
-    Result := (mClose = ALast) and (mClose > mOpen + 1);
-    AArgFirst := NextCode(mTokens, mOpen + 1);
-    AArgLast := PreviousCode(mTokens, mClose);
-  end;
-
-  // Basis der Obergrenze: X in X.Count - 1, X.Count, High(X), Pred(X.Count), Length(X) - 1; sonst False.
-  function BaseOfBound(AFirst, ALast: Integer; out ABaseFirst, ABaseLast: Integer): Boolean;
-  var
-    mLast, mDot: Integer;
-  begin
-    Result := False;
-    ABaseFirst := -1;
-    ABaseLast := -1;
-    mLast := WithoutMinusOne(AFirst, ALast);
-    if (mTokens[AFirst].Kind = TPascalTokenKind.Identifier) and
-      MatchText(mTokens[AFirst].Text, ['High', 'Length', 'Pred']) then
-    begin
-      Result := CallArgument(AFirst, mLast, ABaseFirst, ABaseLast);
-      if Result and SameText(mTokens[AFirst].Text, 'Pred') then
-      begin
-        Result := BaseOfBound(ABaseFirst, ABaseLast, ABaseFirst, ABaseLast);
-      end;
-      Exit;
-    end;
-    if (mTokens[mLast].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mLast].Text, 'Count') then
-    begin
-      mDot := PreviousCode(mTokens, mLast);
-      if (mDot > AFirst) and mTokens[mDot].IsSymbol('.') then
-      begin
-        ABaseFirst := AFirst;
-        ABaseLast := PreviousCode(mTokens, mDot);
-        Result := True;
-      end;
-    end;
-  end;
-
-  // Ist Token AIndex ein verändernder Aufruf Basis.M( bzw. Basis.Clear? ADot: Token des Punkts.
-  function IsMutatingCall(AIndex, AStop: Integer; const ATarget: TLoopTarget; out ADot: Integer): Boolean;
-  var
-    mOpen: Integer;
-  begin
-    ADot := -1;
-    if (mTokens[AIndex].Kind <> TPascalTokenKind.Identifier) or (IndexText(mTokens[AIndex].Text, mMethods) < 0) then
-    begin
-      Exit(False);
-    end;
-    ADot := PreviousCode(mTokens, AIndex);
-    if (ADot < 0) or not mTokens[ADot].IsSymbol('.') or not BaseBefore(mTokens, ADot, ATarget.Key, ATarget.Count) then
-    begin
-      Exit(False);
-    end;
-    // Clear ohne Klammern ist auch ein Aufruf; sonst muss "(" folgen.
-    mOpen := NextCode(mTokens, AIndex + 1);
-    Result := SameText(mTokens[AIndex].Text, 'Clear') or ((mOpen < AStop) and mTokens[mOpen].IsSymbol('('));
-  end;
-
-  function CallMessage(const ATarget: TLoopTarget; const AMethod: string; out AFixes: TArray<TRuleFix>): string;
-  begin
-    AFixes := nil;
-    if ATarget.ForIn then
-    begin
-      Result := cTexts[TStatementsLoopsText.ForIn].Fmt([ATarget.Text, AMethod, ATarget.Text]);
-    end
-    else if MatchText(AMethod, ['Add']) then
-    begin
-      Result := cTexts[TStatementsLoopsText.ForwardAdd].Fmt([ATarget.Text, AMethod, ATarget.Text]);
-    end
-    else if MatchText(AMethod, ['Insert']) then
-    begin
-      Result := cTexts[TStatementsLoopsText.ForwardInsert].Fmt([ATarget.Text, AMethod, ATarget.Text]);
-    end
-    else
-    begin
-      Result := cTexts[TStatementsLoopsText.ForwardDelete].Fmt([ATarget.Text, AMethod, ATarget.Text]);
-      AFixes := ATarget.Fix;
-    end;
-  end;
-
-  // Meldet Basis.M( im Rumpf AFrom..AStop-1.
-  procedure FindCalls(AFrom, AStop: Integer; const ATarget: TLoopTarget);
-  var
-    mIndex, mDot: Integer;
-    mMessage: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    for mIndex := AFrom to AStop - 1 do
-    begin
-      if IsMutatingCall(mIndex, AStop, ATarget, mDot) and not LeavesLoop(AFrom, mIndex, AStop) then
-      begin
-        mMessage := CallMessage(ATarget, mTokens[mIndex].Text, mFixes);
-        AReport.Add(TTextRange.Create(mTokens[PreviousCode(mTokens, mDot)].StartPos, mTokens[mIndex].EndPos), mMessage,
-          TRuleConfidence.High, mFixes);
-      end;
-    end;
-  end;
-
-  function Target(ABaseFirst, ABaseLast: Integer; AForIn: Boolean): TLoopTarget;
-  begin
-    Result.Key := CodeKey(mTokens, ABaseFirst, ABaseLast);
-    Result.Text := Trim(SourceText(AContext.Text, mTokens, ABaseFirst, ABaseLast));
-    Result.Count := CodeCount(mTokens, ABaseFirst, ABaseLast);
-    Result.ForIn := AForIn;
-    Result.Fix := nil;
-  end;
-
-  procedure InspectForIn(ANode: TSyntaxNode);
-  var
-    mFirst, mStop, mIn, mDo, mBaseFirst, mBaseLast: Integer;
-  begin
-    mFirst := TokenFrom(mTokens, ANode.StartOffset);
-    mStop := TokenFrom(mTokens, ANode.EndOffset);
-    mIn := DepthZero(mTokens, mFirst, mStop, 'in', True);
-    mDo := DepthZero(mTokens, mFirst, mStop, 'do', True);
-    if (mIn < 0) or (mDo < mIn) then
-    begin
-      Exit;
-    end;
-    mBaseFirst := NextCode(mTokens, mIn + 1);
-    mBaseLast := PreviousCode(mTokens, mDo);
-    if mBaseLast >= mBaseFirst then
-    begin
-      FindCalls(mDo + 1, mStop, Target(mBaseFirst, mBaseLast, True));
-    end;
-  end;
-
-  procedure InspectFor(ANode: TSyntaxNode);
-  var
-    mHeader: TLoopHeader;
-    mBaseFirst, mBaseLast: Integer;
-    mTarget: TLoopTarget;
-    mLowText, mHighText: string;
-  begin
-    // downto: rückwärts ist Löschen unbedenklich
-    if not ParseForHeader(mTokens, ANode, mHeader) or
-      not BaseOfBound(mHeader.HighFirst, mHeader.HighLast, mBaseFirst, mBaseLast) then
-    begin
-      Exit;
-    end;
-    mTarget := Target(mBaseFirst, mBaseLast, False);
-    mLowText := Trim(SourceText(AContext.Text, mTokens, mHeader.LowFirst, mHeader.LowLast));
-    mHighText := Trim(SourceText(AContext.Text, mTokens, mHeader.HighFirst, mHeader.HighLast));
-    mTarget.Fix := [TRuleFix.Create(cTexts[TStatementsLoopsText.RewriteDownto].Text,
-      [TRuleEdit.Create(TTextRange.Create(mTokens[mHeader.LowFirst].StartPos, mTokens[mHeader.HighLast].EndPos),
-      mHighText + ' downto ' + mLowText)])];
-    FindCalls(mHeader.DoIndex + 1, mHeader.Stop, mTarget);
-  end;
-
-  procedure Inspect(ANode: TSyntaxNode);
-  begin
-    if ANode.Kind = TSyntaxKind.ForInStatement then
-    begin
-      InspectForIn(ANode);
-    end
-    else
-    begin
-      InspectFor(ANode);
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
-        begin
-          Inspect(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+constructor TCollectionModifiedInLoopScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+// Beginnt zwischen dem Rumpfanfang ABody und dem Aufruf ACall eine innere Schleife?
+function TCollectionModifiedInLoopScan.HasInnerLoop(ABody, ACall: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := ABody to ACall - 1 do
+  begin
+    if (FTokens[mIndex].Kind = TPascalTokenKind.Keyword) and
+      MatchText(FTokens[mIndex].Text, ['for', 'while', 'repeat']) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+// Blocktiefe nach dem Schlüsselwort AWord; False am Ende des Blocks mit dem Aufruf.
+function TCollectionModifiedInLoopScan.StepDepth(const AWord: string; var ADepth: Integer): Boolean;
+begin
+  Result := True;
+  if MatchText(AWord, ['begin', 'try', 'case', 'repeat', 'asm']) then
+  begin
+    Inc(ADepth);
+  end
+  else if MatchText(AWord, ['end', 'until']) then
+  begin
+    Result := ADepth > 0;
+    Dec(ADepth);
+  end;
+end;
+
+// Break oder Exit am Anfang einer Anweisung; "if … then Break" ist bedingt.
+function TCollectionModifiedInLoopScan.IsLeave(AIndex: Integer): Boolean;
+var
+  mPrevious: Integer;
+begin
+  Result := (FTokens[AIndex].Kind = TPascalTokenKind.Identifier) and MatchText(FTokens[AIndex].Text, ['Break', 'Exit']);
+  if Result then
+  begin
+    mPrevious := PreviousCode(FTokens, AIndex);
+    Result := (mPrevious >= 0) and FTokens[mPrevious].IsSymbol(';');
+  end;
+end;
+
+// Verlässt der Block mit dem Aufruf (ab ACall) die Schleife? Ja, wenn nach der Anweisung im selben Block ohne
+// Bedingung Break oder Exit steht, auch nach weiteren Anweisungen (Merker setzen, Schlüssel austragen). Break zählt
+// nur, wenn zwischen dem Rumpfanfang ABody und dem Aufruf keine innere Schleife beginnt; sonst verlässt es nur diese.
+function TCollectionModifiedInLoopScan.LeavesLoop(ABody, ACall, AStop: Integer): Boolean;
+var
+  mIndex, mDepth: Integer;
+  mDone: Boolean;
+begin
+  Result := False;
+  mIndex := DepthZero(FTokens, ACall, AStop, ';', False);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mMethods := TRuleOptions.Strings(AContext.Options, 'mutatingMethods', DefaultMutatingMethods);
-  Visit(AContext.Tree.Root);
+  mDepth := 0;
+  mDone := False;
+  Inc(mIndex);
+  while (mIndex < AStop) and not mDone do
+  begin
+    if FTokens[mIndex].Kind = TPascalTokenKind.Keyword then
+    begin
+      // Ende des Blocks mit dem Aufruf: kein Break, kein Exit.
+      mDone := not StepDepth(FTokens[mIndex].Text, mDepth);
+    end
+    else if (mDepth = 0) and IsLeave(mIndex) then
+    begin
+      Result := SameText(FTokens[mIndex].Text, 'Exit') or not HasInnerLoop(ABody, ACall);
+      mDone := True;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+// Letztes Token der Obergrenze AFirst..ALast ohne "- 1" am Ende.
+function TCollectionModifiedInLoopScan.WithoutMinusOne(AFirst, ALast: Integer): Integer;
+begin
+  Result := ALast;
+  if (CodeCount(FTokens, AFirst, ALast) > 2) and (FTokens[ALast].Kind = TPascalTokenKind.Number) and
+    (FTokens[ALast].Text = '1') and FTokens[PreviousCode(FTokens, ALast)].IsSymbol('-') then
+  begin
+    Result := PreviousCode(FTokens, PreviousCode(FTokens, ALast));
+  end;
+end;
+
+// Argument von High(…), Length(…) bzw. Pred(…), wenn die Klammer bei ALast schließt.
+function TCollectionModifiedInLoopScan.CallArgument(AFirst, ALast: Integer; out AArgFirst, AArgLast: Integer): Boolean;
+var
+  mOpen, mClose: Integer;
+begin
+  mOpen := NextCode(FTokens, AFirst + 1);
+  mClose := -1;
+  if FTokens[mOpen].IsSymbol('(') then
+  begin
+    mClose := MatchingParen(FTokens, mOpen, ALast + 1);
+  end;
+  Result := (mClose = ALast) and (mClose > mOpen + 1);
+  AArgFirst := NextCode(FTokens, mOpen + 1);
+  AArgLast := PreviousCode(FTokens, mClose);
+end;
+
+// Basis der Obergrenze: X in X.Count - 1, X.Count, High(X), Pred(X.Count), Length(X) - 1; sonst False.
+function TCollectionModifiedInLoopScan.BaseOfBound(AFirst, ALast: Integer; out ABaseFirst, ABaseLast: Integer): Boolean;
+var
+  mLast, mDot: Integer;
+begin
+  Result := False;
+  ABaseFirst := -1;
+  ABaseLast := -1;
+  mLast := WithoutMinusOne(AFirst, ALast);
+  if (FTokens[AFirst].Kind = TPascalTokenKind.Identifier) and
+    MatchText(FTokens[AFirst].Text, ['High', 'Length', 'Pred']) then
+  begin
+    Result := CallArgument(AFirst, mLast, ABaseFirst, ABaseLast);
+    if Result and SameText(FTokens[AFirst].Text, 'Pred') then
+    begin
+      Result := BaseOfBound(ABaseFirst, ABaseLast, ABaseFirst, ABaseLast);
+    end;
+    Exit;
+  end;
+  if (FTokens[mLast].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mLast].Text, 'Count') then
+  begin
+    mDot := PreviousCode(FTokens, mLast);
+    if (mDot > AFirst) and FTokens[mDot].IsSymbol('.') then
+    begin
+      ABaseFirst := AFirst;
+      ABaseLast := PreviousCode(FTokens, mDot);
+      Result := True;
+    end;
+  end;
+end;
+
+// Ist Token AIndex ein verändernder Aufruf Basis.M( bzw. Basis.Clear? ADot: Token des Punkts.
+function TCollectionModifiedInLoopScan.IsMutatingCall(AIndex, AStop: Integer; const ATarget: TLoopTarget;
+  out ADot: Integer): Boolean;
+var
+  mOpen: Integer;
+begin
+  ADot := -1;
+  if (FTokens[AIndex].Kind <> TPascalTokenKind.Identifier) or (IndexText(FTokens[AIndex].Text, FMethods) < 0) then
+  begin
+    Exit(False);
+  end;
+  ADot := PreviousCode(FTokens, AIndex);
+  if (ADot < 0) or not FTokens[ADot].IsSymbol('.') or not BaseBefore(FTokens, ADot, ATarget.Key, ATarget.Count) then
+  begin
+    Exit(False);
+  end;
+  // Clear ohne Klammern ist auch ein Aufruf; sonst muss "(" folgen.
+  mOpen := NextCode(FTokens, AIndex + 1);
+  Result := SameText(FTokens[AIndex].Text, 'Clear') or ((mOpen < AStop) and FTokens[mOpen].IsSymbol('('));
+end;
+
+function TCollectionModifiedInLoopScan.CallMessage(const ATarget: TLoopTarget; const AMethod: string;
+  out AFixes: TArray<TRuleFix>): string;
+begin
+  AFixes := nil;
+  if ATarget.ForIn then
+  begin
+    Result := cTexts[TStatementsLoopsText.ForIn].Fmt([ATarget.Text, AMethod, ATarget.Text]);
+  end
+  else if MatchText(AMethod, ['Add']) then
+  begin
+    Result := cTexts[TStatementsLoopsText.ForwardAdd].Fmt([ATarget.Text, AMethod, ATarget.Text]);
+  end
+  else if MatchText(AMethod, ['Insert']) then
+  begin
+    Result := cTexts[TStatementsLoopsText.ForwardInsert].Fmt([ATarget.Text, AMethod, ATarget.Text]);
+  end
+  else
+  begin
+    Result := cTexts[TStatementsLoopsText.ForwardDelete].Fmt([ATarget.Text, AMethod, ATarget.Text]);
+    AFixes := ATarget.Fix;
+  end;
+end;
+
+// Meldet Basis.M( im Rumpf AFrom..AStop-1.
+procedure TCollectionModifiedInLoopScan.FindCalls(AFrom, AStop: Integer; const ATarget: TLoopTarget);
+var
+  mIndex, mDot: Integer;
+  mMessage: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  for mIndex := AFrom to AStop - 1 do
+  begin
+    if IsMutatingCall(mIndex, AStop, ATarget, mDot) and not LeavesLoop(AFrom, mIndex, AStop) then
+    begin
+      mMessage := CallMessage(ATarget, FTokens[mIndex].Text, mFixes);
+      FReport.Add(TTextRange.Create(FTokens[PreviousCode(FTokens, mDot)].StartPos, FTokens[mIndex].EndPos), mMessage,
+        TRuleConfidence.High, mFixes);
+    end;
+  end;
+end;
+
+function TCollectionModifiedInLoopScan.Target(ABaseFirst, ABaseLast: Integer; AForIn: Boolean): TLoopTarget;
+begin
+  Result.Key := CodeKey(FTokens, ABaseFirst, ABaseLast);
+  Result.Text := Trim(SourceText(FContext.Text, FTokens, ABaseFirst, ABaseLast));
+  Result.Count := CodeCount(FTokens, ABaseFirst, ABaseLast);
+  Result.ForIn := AForIn;
+  Result.Fix := nil;
+end;
+
+procedure TCollectionModifiedInLoopScan.InspectForIn(ANode: TSyntaxNode);
+var
+  mFirst, mStop, mIn, mDo, mBaseFirst, mBaseLast: Integer;
+begin
+  mFirst := TokenFrom(FTokens, ANode.StartOffset);
+  mStop := TokenFrom(FTokens, ANode.EndOffset);
+  mIn := DepthZero(FTokens, mFirst, mStop, 'in', True);
+  mDo := DepthZero(FTokens, mFirst, mStop, 'do', True);
+  if (mIn < 0) or (mDo < mIn) then
+  begin
+    Exit;
+  end;
+  mBaseFirst := NextCode(FTokens, mIn + 1);
+  mBaseLast := PreviousCode(FTokens, mDo);
+  if mBaseLast >= mBaseFirst then
+  begin
+    FindCalls(mDo + 1, mStop, Target(mBaseFirst, mBaseLast, True));
+  end;
+end;
+
+procedure TCollectionModifiedInLoopScan.InspectFor(ANode: TSyntaxNode);
+var
+  mHeader: TLoopHeader;
+  mBaseFirst, mBaseLast: Integer;
+  mTarget: TLoopTarget;
+  mLowText, mHighText: string;
+begin
+  // downto: rückwärts ist Löschen unbedenklich
+  if not ParseForHeader(FTokens, ANode, mHeader) or
+    not BaseOfBound(mHeader.HighFirst, mHeader.HighLast, mBaseFirst, mBaseLast) then
+  begin
+    Exit;
+  end;
+  mTarget := Target(mBaseFirst, mBaseLast, False);
+  mLowText := Trim(SourceText(FContext.Text, FTokens, mHeader.LowFirst, mHeader.LowLast));
+  mHighText := Trim(SourceText(FContext.Text, FTokens, mHeader.HighFirst, mHeader.HighLast));
+  mTarget.Fix := [TRuleFix.Create(cTexts[TStatementsLoopsText.RewriteDownto].Text,
+    [TRuleEdit.Create(TTextRange.Create(FTokens[mHeader.LowFirst].StartPos, FTokens[mHeader.HighLast].EndPos),
+    mHighText + ' downto ' + mLowText)])];
+  FindCalls(mHeader.DoIndex + 1, mHeader.Stop, mTarget);
+end;
+
+procedure TCollectionModifiedInLoopScan.Inspect(ANode: TSyntaxNode);
+begin
+  if ANode.Kind = TSyntaxKind.ForInStatement then
+  begin
+    InspectForIn(ANode);
+  end
+  else
+  begin
+    InspectFor(ANode);
+  end;
+end;
+
+procedure TCollectionModifiedInLoopScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
+      begin
+        Inspect(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TCollectionModifiedInLoopScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FMethods := TRuleOptions.Strings(FContext.Options, 'mutatingMethods',
+    TCollectionModifiedInLoopRule.DefaultMutatingMethods);
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TCollectionModifiedInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TCollectionModifiedInLoopScan;
+begin
+  mScan := TCollectionModifiedInLoopScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TCollectionModifiedInLoopRule.DefaultMutatingMethods: TArray<string>;

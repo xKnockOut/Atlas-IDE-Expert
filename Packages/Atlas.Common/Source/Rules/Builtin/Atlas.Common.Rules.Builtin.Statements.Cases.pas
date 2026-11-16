@@ -342,326 +342,366 @@ begin
     cTexts[TStatementsCasesText.DuplicateTitle].Text);
 end;
 
-procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TDuplicateCaseLabelRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TDuplicateCaseLabelScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FValues: TConstantValues;
+    FPaths: TArray<string>;
+    function LabelText(const ALabel: TCaseLabel): string;
+    function LabelKey(AFirst, ALast: Integer): string;
+    function SplitLabels(AItem: TSyntaxNode; out AParts: TArray<TCaseLabel>): Boolean;
+    procedure Evaluate(var AItem: TCaseLabel);
+    procedure AddLabels(AItem: TSyntaxNode; var ALabels: TArray<TCaseLabel>);
+    function Overlaps(const A, B: TCaseLabel): Boolean;
+    function Covers(const AOuter, AInner: TCaseLabel): Boolean;
+    function RemovalFix(const ALabels: TArray<TCaseLabel>; ALabel: Integer): TRuleFix;
+    function OverlapMessage(const AEarlier, ALabel: TCaseLabel; const ACode: string): string;
+    procedure ReportOverlap(const ALabels: TArray<TCaseLabel>; AEarlier, AIndex: Integer; const ACode: string);
+    function FirstOverlap(const ALabels: TArray<TCaseLabel>; AIndex: Integer): Integer;
+    procedure CheckLabels(AOwner: TSyntaxNode; const ACode: string);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TDuplicateCaseLabelScan }
+
+constructor TDuplicateCaseLabelScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TDuplicateCaseLabelScan.LabelText(const ALabel: TCaseLabel): string;
+begin
+  Result := SourceText(FContext.Text, FTokens, ALabel.First, ALabel.Last);
+end;
+
+// Vergleichstext: Bezeichner ohne Groß-/Kleinschreibung, Literale wie geschrieben ('a' <> 'A').
+function TDuplicateCaseLabelScan.LabelKey(AFirst, ALast: Integer): string;
 var
-  mTokens: TTokens;
-  mValues: TConstantValues;
-  mPaths: TArray<string>;
-
-  function LabelText(const ALabel: TCaseLabel): string;
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to ALast do
   begin
-    Result := SourceText(AContext.Text, mTokens, ALabel.First, ALabel.Last);
-  end;
-
-  // Vergleichstext: Bezeichner ohne Groß-/Kleinschreibung, Literale wie geschrieben ('a' <> 'A').
-  function LabelKey(AFirst, ALast: Integer): string;
-  var
-    mIndex: Integer;
-  begin
-    Result := '';
-    for mIndex := AFirst to ALast do
+    if FTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
     begin
-      if mTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      Result := Result + LowerCase(FTokens[mIndex].Text) + ' ';
+    end
+    else if not IsTrivia(FTokens[mIndex]) then
+    begin
+      Result := Result + FTokens[mIndex].Text + ' ';
+    end;
+  end;
+end;
+
+// Bereiche der Marken eines Zweigs: Token vom Anfang bis zum ":" auf Klammerebene 0, getrennt an ","; False,
+// wenn eine Klammer nicht schließt.
+function TDuplicateCaseLabelScan.SplitLabels(AItem: TSyntaxNode; out AParts: TArray<TCaseLabel>): Boolean;
+var
+  mFirst, mColon, mIndex, mStart: Integer;
+  mItem: TCaseLabel;
+begin
+  AParts := nil;
+  mFirst := NextCode(FTokens, TokenFrom(FTokens, AItem.StartOffset));
+  mColon := DepthZero(FTokens, mFirst, TokenFrom(FTokens, AItem.EndOffset), ':', False);
+  Result := mColon >= 0;
+  mStart := mFirst;
+  mIndex := mFirst;
+  while Result and (mIndex <= mColon) do
+  begin
+    if (mIndex = mColon) or FTokens[mIndex].IsSymbol(',') then
+    begin
+      mItem := Default(TCaseLabel);
+      mItem.Item := AItem;
+      mItem.First := NextCode(FTokens, mStart);
+      mItem.Last := PreviousCode(FTokens, mIndex);
+      if mItem.Last >= mItem.First then
       begin
-        Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
+        AParts := AParts + [mItem];
+      end;
+      mStart := mIndex + 1;
+    end
+    else if FTokens[mIndex].IsSymbol('(') or FTokens[mIndex].IsSymbol('[') then
+    begin
+      // Klammern überspringen, damit "," darin nicht trennt.
+      mIndex := MatchingParen(FTokens, mIndex, mColon);
+      Result := mIndex >= 0;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+// Wert bzw. Bereich der Marke AItem auswerten.
+procedure TDuplicateCaseLabelScan.Evaluate(var AItem: TCaseLabel);
+var
+  mRange: Integer;
+  mLow, mHigh: Int64;
+begin
+  AItem.Key := LabelKey(AItem.First, AItem.Last);
+  mRange := DepthZero(FTokens, AItem.First, AItem.Last + 1, '..', False);
+  AItem.IsRange := mRange >= 0;
+  if AItem.IsRange then
+  begin
+    AItem.Known := FValues.Evaluate(AItem.First, mRange - 1, mLow) and
+      FValues.Evaluate(mRange + 1, AItem.Last, mHigh) and (mLow <= mHigh);
+  end
+  else
+  begin
+    AItem.Known := FValues.Evaluate(AItem.First, AItem.Last, mLow);
+    mHigh := mLow;
+  end;
+  AItem.Lowest := mLow;
+  AItem.Highest := mHigh;
+end;
+
+// Marken eines Zweigs an ALabels anhängen.
+procedure TDuplicateCaseLabelScan.AddLabels(AItem: TSyntaxNode; var ALabels: TArray<TCaseLabel>);
+var
+  mIndex: Integer;
+  mParts: TArray<TCaseLabel>;
+  mItem: TCaseLabel;
+begin
+  if not SplitLabels(AItem, mParts) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mParts) do
+  begin
+    mItem := mParts[mIndex];
+    mItem.Position := mIndex;
+    mItem.Count := Length(mParts);
+    Evaluate(mItem);
+    ALabels := ALabels + [mItem];
+  end;
+end;
+
+function TDuplicateCaseLabelScan.Overlaps(const A, B: TCaseLabel): Boolean;
+begin
+  // Nur wenn A immer mit übersetzt wird, sobald B übersetzt wird: {$IFDEF X} 1: … {$ELSE} 1: …
+  // {$ENDIF} stößt nie zusammen, 1: … {$IFDEF X} 1: … {$ENDIF} dagegen unter X immer.
+  if not TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, B.First),
+    TConditionalBranches.PathAt(FPaths, A.First)) then
+  begin
+    Exit(False);
+  end;
+  if A.Known and B.Known then
+  begin
+    Result := (A.Lowest <= B.Highest) and (B.Lowest <= A.Highest);
+  end
+  else
+  begin
+    Result := not A.Known and not B.Known and (A.Key = B.Key);
+  end;
+end;
+
+function TDuplicateCaseLabelScan.Covers(const AOuter, AInner: TCaseLabel): Boolean;
+begin
+  if AOuter.Known and AInner.Known then
+  begin
+    Result := (AOuter.Lowest <= AInner.Lowest) and (AInner.Highest <= AOuter.Highest);
+  end
+  else
+  begin
+    Result := AOuter.Key = AInner.Key;
+  end;
+end;
+
+// Löscht die Marke ALabel bzw. den ganzen Zweig, wenn sie seine einzige ist.
+function TDuplicateCaseLabelScan.RemovalFix(const ALabels: TArray<TCaseLabel>; ALabel: Integer): TRuleFix;
+var
+  mCurrent: TCaseLabel;
+  mNeighbour, mBefore, mItemLast, mAfter: Integer;
+  mRange: TTextRange;
+begin
+  mCurrent := ALabels[ALabel];
+  if mCurrent.Count > 1 then
+  begin
+    if mCurrent.Position < mCurrent.Count - 1 then
+    begin
+      mNeighbour := ALabel + 1;
+      mRange := TTextRange.Create(FTokens[mCurrent.First].StartPos, FTokens[ALabels[mNeighbour].First].StartPos);
+    end
+    else
+    begin
+      mNeighbour := ALabel - 1;
+      mRange := TTextRange.Create(FTokens[ALabels[mNeighbour].Last].EndPos, FTokens[mCurrent.Last].EndPos);
+    end;
+    Exit(TRuleFix.Create(cTexts[TStatementsCasesText.RemoveLater].Text, [TRuleEdit.Create(mRange, '')],
+      True));
+  end;
+  // Ganzer Zweig samt Semikolon, ab dem Ende des Codes davor.
+  mBefore := PreviousCode(FTokens, mCurrent.First);
+  mItemLast := PreviousCode(FTokens, TokenFrom(FTokens, mCurrent.Item.EndOffset));
+  if (mBefore < 0) or (mItemLast < mCurrent.First) then
+  begin
+    Exit(Default(TRuleFix));
+  end;
+  mAfter := NextCode(FTokens, mItemLast + 1);
+  if (mAfter <= High(FTokens)) and FTokens[mAfter].IsSymbol(';') then
+  begin
+    mItemLast := mAfter;
+  end;
+  mRange := TTextRange.Create(FTokens[mBefore].EndPos, FTokens[mItemLast].EndPos);
+  Result := TRuleFix.Create(cTexts[TStatementsCasesText.RemoveBranch].Text, [TRuleEdit.Create(mRange, '')], False);
+end;
+
+function TDuplicateCaseLabelScan.OverlapMessage(const AEarlier, ALabel: TCaseLabel; const ACode: string): string;
+var
+  mText, mOther: string;
+  mLine: Integer;
+begin
+  mText := LabelText(ALabel);
+  mOther := LabelText(AEarlier);
+  mLine := FTokens[AEarlier.First].StartPos.Line + 1;
+  if AEarlier.Key = ALabel.Key then
+  begin
+    Result := cTexts[TStatementsCasesText.SameLine].Fmt([mText, mLine, ACode]);
+  end
+  else if Covers(AEarlier, ALabel) and AEarlier.IsRange then
+  begin
+    Result := cTexts[TStatementsCasesText.InRange].Fmt([mText, mOther, mLine, ACode]);
+  end
+  else if Covers(AEarlier, ALabel) then
+  begin
+    Result := cTexts[TStatementsCasesText.SameValue].Fmt([mText, mOther, mLine, ACode]);
+  end
+  else
+  begin
+    Result := cTexts[TStatementsCasesText.Overlaps].Fmt([mText, mOther, mLine, ACode]);
+  end;
+end;
+
+procedure TDuplicateCaseLabelScan.ReportOverlap(const ALabels: TArray<TCaseLabel>; AEarlier, AIndex: Integer;
+  const ACode: string);
+var
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  mFixes := nil;
+  if Covers(ALabels[AEarlier], ALabels[AIndex]) then
+  begin
+    mFix := RemovalFix(ALabels, AIndex);
+    if mFix.Title <> '' then
+    begin
+      mFixes := [mFix];
+    end;
+  end;
+  FReport.Add(TTextRange.Create(FTokens[ALabels[AIndex].First].StartPos, FTokens[ALabels[AIndex].Last].EndPos),
+    OverlapMessage(ALabels[AEarlier], ALabels[AIndex], ACode), TRuleConfidence.High, mFixes);
+end;
+
+// Erste frühere Marke, mit der sich die Marke AIndex überschneidet; -1 ohne.
+function TDuplicateCaseLabelScan.FirstOverlap(const ALabels: TArray<TCaseLabel>; AIndex: Integer): Integer;
+var
+  mEarlier: Integer;
+begin
+  for mEarlier := 0 to AIndex - 1 do
+  begin
+    if Overlaps(ALabels[mEarlier], ALabels[AIndex]) then
+    begin
+      Exit(mEarlier);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TDuplicateCaseLabelScan.CheckLabels(AOwner: TSyntaxNode; const ACode: string);
+var
+  mLabels: TArray<TCaseLabel>;
+  mIndex, mEarlier: Integer;
+begin
+  mLabels := nil;
+  for mIndex := 0 to AOwner.ChildCount - 1 do
+  begin
+    if AOwner[mIndex].Kind = TSyntaxKind.CaseItem then
+    begin
+      AddLabels(AOwner[mIndex], mLabels);
+    end;
+  end;
+  for mIndex := 1 to High(mLabels) do
+  begin
+    mEarlier := FirstOverlap(mLabels, mIndex);
+    if mEarlier >= 0 then
+    begin
+      ReportOverlap(mLabels, mEarlier, mIndex, ACode);
+    end;
+  end;
+end;
+
+procedure TDuplicateCaseLabelScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.CaseStatement then
+      begin
+        CheckLabels(mNode, 'E2030');
       end
-      else if not IsTrivia(mTokens[mIndex]) then
+      else if mNode.Kind = TSyntaxKind.VariantPart then
       begin
-        Result := Result + mTokens[mIndex].Text + ' ';
+        CheckLabels(mNode, 'E2027');
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
       end;
     end;
+  finally
+    mPending.Free;
   end;
+end;
 
-  // Bereiche der Marken eines Zweigs: Token vom Anfang bis zum ":" auf Klammerebene 0, getrennt an ","; False,
-  // wenn eine Klammer nicht schließt.
-  function SplitLabels(AItem: TSyntaxNode; out AParts: TArray<TCaseLabel>): Boolean;
-  var
-    mFirst, mColon, mIndex, mStart: Integer;
-    mItem: TCaseLabel;
-  begin
-    AParts := nil;
-    mFirst := NextCode(mTokens, TokenFrom(mTokens, AItem.StartOffset));
-    mColon := DepthZero(mTokens, mFirst, TokenFrom(mTokens, AItem.EndOffset), ':', False);
-    Result := mColon >= 0;
-    mStart := mFirst;
-    mIndex := mFirst;
-    while Result and (mIndex <= mColon) do
-    begin
-      if (mIndex = mColon) or mTokens[mIndex].IsSymbol(',') then
-      begin
-        mItem := Default(TCaseLabel);
-        mItem.Item := AItem;
-        mItem.First := NextCode(mTokens, mStart);
-        mItem.Last := PreviousCode(mTokens, mIndex);
-        if mItem.Last >= mItem.First then
-        begin
-          AParts := AParts + [mItem];
-        end;
-        mStart := mIndex + 1;
-      end
-      else if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
-      begin
-        // Klammern überspringen, damit "," darin nicht trennt.
-        mIndex := MatchingParen(mTokens, mIndex, mColon);
-        Result := mIndex >= 0;
-      end;
-      Inc(mIndex);
-    end;
-  end;
-
-  // Wert bzw. Bereich der Marke AItem auswerten.
-  procedure Evaluate(var AItem: TCaseLabel);
-  var
-    mRange: Integer;
-    mLow, mHigh: Int64;
-  begin
-    AItem.Key := LabelKey(AItem.First, AItem.Last);
-    mRange := DepthZero(mTokens, AItem.First, AItem.Last + 1, '..', False);
-    AItem.IsRange := mRange >= 0;
-    if AItem.IsRange then
-    begin
-      AItem.Known := mValues.Evaluate(AItem.First, mRange - 1, mLow) and
-        mValues.Evaluate(mRange + 1, AItem.Last, mHigh) and (mLow <= mHigh);
-    end
-    else
-    begin
-      AItem.Known := mValues.Evaluate(AItem.First, AItem.Last, mLow);
-      mHigh := mLow;
-    end;
-    AItem.Lowest := mLow;
-    AItem.Highest := mHigh;
-  end;
-
-  // Marken eines Zweigs an ALabels anhängen.
-  procedure AddLabels(AItem: TSyntaxNode; var ALabels: TArray<TCaseLabel>);
-  var
-    mIndex: Integer;
-    mParts: TArray<TCaseLabel>;
-    mItem: TCaseLabel;
-  begin
-    if not SplitLabels(AItem, mParts) then
-    begin
-      Exit;
-    end;
-    for mIndex := 0 to High(mParts) do
-    begin
-      mItem := mParts[mIndex];
-      mItem.Position := mIndex;
-      mItem.Count := Length(mParts);
-      Evaluate(mItem);
-      ALabels := ALabels + [mItem];
-    end;
-  end;
-
-  function Overlaps(const A, B: TCaseLabel): Boolean;
-  begin
-    // Nur wenn A immer mit übersetzt wird, sobald B übersetzt wird: {$IFDEF X} 1: … {$ELSE} 1: …
-    // {$ENDIF} stößt nie zusammen, 1: … {$IFDEF X} 1: … {$ENDIF} dagegen unter X immer.
-    if not TConditionalBranches.Implies(TConditionalBranches.PathAt(mPaths, B.First),
-      TConditionalBranches.PathAt(mPaths, A.First)) then
-    begin
-      Exit(False);
-    end;
-    if A.Known and B.Known then
-    begin
-      Result := (A.Lowest <= B.Highest) and (B.Lowest <= A.Highest);
-    end
-    else
-    begin
-      Result := not A.Known and not B.Known and (A.Key = B.Key);
-    end;
-  end;
-
-  function Covers(const AOuter, AInner: TCaseLabel): Boolean;
-  begin
-    if AOuter.Known and AInner.Known then
-    begin
-      Result := (AOuter.Lowest <= AInner.Lowest) and (AInner.Highest <= AOuter.Highest);
-    end
-    else
-    begin
-      Result := AOuter.Key = AInner.Key;
-    end;
-  end;
-
-  // Löscht die Marke ALabel bzw. den ganzen Zweig, wenn sie seine einzige ist.
-  function RemovalFix(const ALabels: TArray<TCaseLabel>; ALabel: Integer): TRuleFix;
-  var
-    mCurrent: TCaseLabel;
-    mNeighbour, mBefore, mItemLast, mAfter: Integer;
-    mRange: TTextRange;
-  begin
-    mCurrent := ALabels[ALabel];
-    if mCurrent.Count > 1 then
-    begin
-      if mCurrent.Position < mCurrent.Count - 1 then
-      begin
-        mNeighbour := ALabel + 1;
-        mRange := TTextRange.Create(mTokens[mCurrent.First].StartPos, mTokens[ALabels[mNeighbour].First].StartPos);
-      end
-      else
-      begin
-        mNeighbour := ALabel - 1;
-        mRange := TTextRange.Create(mTokens[ALabels[mNeighbour].Last].EndPos, mTokens[mCurrent.Last].EndPos);
-      end;
-      Exit(TRuleFix.Create(cTexts[TStatementsCasesText.RemoveLater].Text, [TRuleEdit.Create(mRange, '')],
-        True));
-    end;
-    // Ganzer Zweig samt Semikolon, ab dem Ende des Codes davor.
-    mBefore := PreviousCode(mTokens, mCurrent.First);
-    mItemLast := PreviousCode(mTokens, TokenFrom(mTokens, mCurrent.Item.EndOffset));
-    if (mBefore < 0) or (mItemLast < mCurrent.First) then
-    begin
-      Exit(Default(TRuleFix));
-    end;
-    mAfter := NextCode(mTokens, mItemLast + 1);
-    if (mAfter <= High(mTokens)) and mTokens[mAfter].IsSymbol(';') then
-    begin
-      mItemLast := mAfter;
-    end;
-    mRange := TTextRange.Create(mTokens[mBefore].EndPos, mTokens[mItemLast].EndPos);
-    Result := TRuleFix.Create(cTexts[TStatementsCasesText.RemoveBranch].Text, [TRuleEdit.Create(mRange, '')], False);
-  end;
-
-  function OverlapMessage(const AEarlier, ALabel: TCaseLabel; const ACode: string): string;
-  var
-    mText, mOther: string;
-    mLine: Integer;
-  begin
-    mText := LabelText(ALabel);
-    mOther := LabelText(AEarlier);
-    mLine := mTokens[AEarlier.First].StartPos.Line + 1;
-    if AEarlier.Key = ALabel.Key then
-    begin
-      Result := cTexts[TStatementsCasesText.SameLine].Fmt([mText, mLine, ACode]);
-    end
-    else if Covers(AEarlier, ALabel) and AEarlier.IsRange then
-    begin
-      Result := cTexts[TStatementsCasesText.InRange].Fmt([mText, mOther, mLine, ACode]);
-    end
-    else if Covers(AEarlier, ALabel) then
-    begin
-      Result := cTexts[TStatementsCasesText.SameValue].Fmt([mText, mOther, mLine, ACode]);
-    end
-    else
-    begin
-      Result := cTexts[TStatementsCasesText.Overlaps].Fmt([mText, mOther, mLine, ACode]);
-    end;
-  end;
-
-  procedure ReportOverlap(const ALabels: TArray<TCaseLabel>; AEarlier, AIndex: Integer; const ACode: string);
-  var
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mFixes := nil;
-    if Covers(ALabels[AEarlier], ALabels[AIndex]) then
-    begin
-      mFix := RemovalFix(ALabels, AIndex);
-      if mFix.Title <> '' then
-      begin
-        mFixes := [mFix];
-      end;
-    end;
-    AReport.Add(TTextRange.Create(mTokens[ALabels[AIndex].First].StartPos, mTokens[ALabels[AIndex].Last].EndPos),
-      OverlapMessage(ALabels[AEarlier], ALabels[AIndex], ACode), TRuleConfidence.High, mFixes);
-  end;
-
-  // Erste frühere Marke, mit der sich die Marke AIndex überschneidet; -1 ohne.
-  function FirstOverlap(const ALabels: TArray<TCaseLabel>; AIndex: Integer): Integer;
-  var
-    mEarlier: Integer;
-  begin
-    for mEarlier := 0 to AIndex - 1 do
-    begin
-      if Overlaps(ALabels[mEarlier], ALabels[AIndex]) then
-      begin
-        Exit(mEarlier);
-      end;
-    end;
-    Result := -1;
-  end;
-
-  procedure CheckLabels(AOwner: TSyntaxNode; const ACode: string);
-  var
-    mLabels: TArray<TCaseLabel>;
-    mIndex, mEarlier: Integer;
-  begin
-    mLabels := nil;
-    for mIndex := 0 to AOwner.ChildCount - 1 do
-    begin
-      if AOwner[mIndex].Kind = TSyntaxKind.CaseItem then
-      begin
-        AddLabels(AOwner[mIndex], mLabels);
-      end;
-    end;
-    for mIndex := 1 to High(mLabels) do
-    begin
-      mEarlier := FirstOverlap(mLabels, mIndex);
-      if mEarlier >= 0 then
-      begin
-        ReportOverlap(mLabels, mEarlier, mIndex, ACode);
-      end;
-    end;
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.CaseStatement then
-        begin
-          CheckLabels(mNode, 'E2030');
-        end
-        else if mNode.Kind = TSyntaxKind.VariantPart then
-        begin
-          CheckLabels(mNode, 'E2027');
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+procedure TDuplicateCaseLabelScan.Run;
 var
   mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
   mFileName: string;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mPaths := TConditionalBranches.Paths(mTokens);
-  mFileName := AContext.ResolverFileName;
+  FTokens := FContext.Tree.Tokens;
+  FPaths := TConditionalBranches.Paths(FTokens);
+  mFileName := FContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-  mCache := TRuleDerived.Open(AContext);
-  mResolver := TRuleDerived.Resolver(mCache, AContext);
-  mResolver.PinTree(AContext.Tree, mFileName);
+  mCache := TRuleDerived.Open(FContext);
+  mResolver := TRuleDerived.Resolver(mCache, FContext);
+  mResolver.PinTree(FContext.Tree, mFileName);
   try
-    mValues := TConstantValues.Create(AContext.Tree, mFileName, AContext.Index, mResolver);
+    FValues := TConstantValues.Create(FContext.Tree, mFileName, FContext.Index, mResolver);
     try
-      Visit(AContext.Tree.Root);
+      Visit(FContext.Tree.Root);
     finally
-      mValues.Free;
+      FValues.Free;
     end;
   finally
     mResolver.UnpinTree;
   end;
+end;
+
+procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TDuplicateCaseLabelScan;
+begin
+  mScan := TDuplicateCaseLabelScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

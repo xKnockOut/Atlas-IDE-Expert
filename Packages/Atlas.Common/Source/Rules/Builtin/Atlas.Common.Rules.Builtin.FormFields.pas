@@ -504,258 +504,289 @@ begin
     cTexts[TFormFieldsText.NotCreatedTitle].Text);
 end;
 
-procedure TFormAccessBeforeCreateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TFormAccessBeforeCreateRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TFormAccessBeforeCreateScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FForms: TArray<string>;
+    FTokens: TArray<TPascalToken>;
+    FCode: TArray<Integer>;
+    FOwnIndex: Integer;
+    FOwnName, FOwnClass, FHandler: string;
+    function Token(APosition: Integer): TPascalToken;
+    function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+    function IsName(APosition: Integer; const AName: string): Boolean;
+    function CodeAt(AOffset: Integer): Integer;
+    function FormIndex(const AName: string): Integer;
+    function FindOwnForm: Boolean;
+    function ChildDeclares(ANode: TSyntaxNode; const AName: string): Boolean;
+    function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
+    function ComparedWithNil(APosition: Integer): Boolean;
+    function HandledAt(APosition: Integer): Boolean;
+    function Handled(AFirst, ALast: Integer; const AName: string): Boolean;
+    procedure CheckRoutine(ARoutine: TSyntaxNode);
+    function IsCreationMethod(ARoutine: TSyntaxNode): Boolean;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TFormAccessBeforeCreateScan }
+
+constructor TFormAccessBeforeCreateScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TFormAccessBeforeCreateScan.Token(APosition: Integer): TPascalToken;
+begin
+  Result := FTokens[FCode[APosition]];
+end;
+
+function TFormAccessBeforeCreateScan.IsSym(APosition: Integer; const ASymbol: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and Token(APosition).IsSymbol(ASymbol);
+end;
+
+function TFormAccessBeforeCreateScan.IsName(APosition: Integer; const AName: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+end;
+
+function TFormAccessBeforeCreateScan.CodeAt(AOffset: Integer): Integer;
 var
-  mForms: TArray<string>;
-  mTokens: TArray<TPascalToken>;
-  mCode: TArray<Integer>;
-  mOwnIndex: Integer;
-  mOwnName, mOwnClass, mHandler: string;
-
-  function Token(APosition: Integer): TPascalToken;
+  mHigh, mMiddle: Integer;
+begin
+  // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+  Result := 0;
+  mHigh := Length(FCode);
+  while Result < mHigh do
   begin
-    Result := mTokens[mCode[APosition]];
-  end;
-
-  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
-  end;
-
-  function IsName(APosition: Integer; const AName: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and
-      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
-  end;
-
-  function CodeAt(AOffset: Integer): Integer;
-  var
-    mHigh, mMiddle: Integer;
-  begin
-    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
-    Result := 0;
-    mHigh := Length(mCode);
-    while Result < mHigh do
+    mMiddle := (Result + mHigh) div 2;
+    if FTokens[FCode[mMiddle]].Offset < AOffset then
     begin
-      mMiddle := (Result + mHigh) div 2;
-      if mTokens[mCode[mMiddle]].Offset < AOffset then
-      begin
-        Result := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-  end;
-
-  function FormIndex(const AName: string): Integer;
-  begin
-    for Result := 0 to High(mForms) do
+      Result := mMiddle + 1;
+    end
+    else
     begin
-      if SameText(mForms[Result], AName) then
-      begin
-        Exit;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  // Globale Variable dieser Unit, die in der .dpr erzeugt wird und deren Klasse hier deklariert ist.
-  function FindOwnForm: Boolean;
-  var
-    mLocal: TUnitIndex;
-    mSymbol, mTypeSymbol: TIndexSymbol;
-    mCache: IRuleDerivedCache;
-  begin
-    mCache := TRuleDerived.Open(AContext);
-    mLocal := TRuleDerived.UnitIndex(mCache, AContext);
-    for mSymbol in mLocal.Symbols do
-    begin
-      if (mSymbol.Kind = TIndexSymbolKind.Variable) and (mSymbol.Container = '') and (FormIndex(mSymbol.Name) >= 0) then
-      begin
-        for mTypeSymbol in mLocal.Symbols do
-        begin
-          if (mTypeSymbol.Kind = TIndexSymbolKind.ClassType) and (mTypeSymbol.Container = '') and
-            SameText(mTypeSymbol.Name, mSymbol.TypeName) then
-          begin
-            mOwnName := mSymbol.Name;
-            mOwnClass := mTypeSymbol.Name;
-            mOwnIndex := FormIndex(mSymbol.Name);
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    Result := False;
-  end;
-
-  /// <summary>Deklariert ein Kind von ANode (Variable, Parameter, Konstante) den Namen AName?</summary>
-  function ChildDeclares(ANode: TSyntaxNode; const AName: string): Boolean;
-  var
-    mIndex: Integer;
-    mName: string;
-  begin
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[mIndex].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
-        TSyntaxKind.ConstDecl] then
-      begin
-        for mName in SplitString(ANode[mIndex].Name, ',') do
-        begin
-          if SameText(Trim(mName), AName) then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    Result := False;
-  end;
-
-  // Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  function DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    Result := False;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while not Result and (mPending.Count > 0) do
-      begin
-        mNode := mPending.Pop;
-        Result := ChildDeclares(mNode, AName);
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          if mNode[mIndex].Kind <> TSyntaxKind.Block then
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      end;
-    finally
-      mPending.Free;
+      mHigh := mMiddle;
     end;
   end;
+end;
 
-  /// <summary>Vergleicht der Name an APosition mit nil (= nil, &lt;&gt; nil)?</summary>
-  function ComparedWithNil(APosition: Integer): Boolean;
+function TFormAccessBeforeCreateScan.FormIndex(const AName: string): Integer;
+begin
+  for Result := 0 to High(FForms) do
   begin
-    Result := (IsSym(APosition + 1, '<>') or IsSym(APosition + 1, '=')) and (APosition + 2 <= High(mCode)) and
-      Token(APosition + 2).IsKeyword('nil');
-  end;
-
-  /// <summary>Prüft oder setzt der Name an APosition die Variable (Assigned, nil-Vergleich, Zuweisung,
-  /// CreateForm)?</summary>
-  function HandledAt(APosition: Integer): Boolean;
-  begin
-    Result := (IsSym(APosition - 1, '(') and IsName(APosition - 2, 'Assigned')) or IsSym(APosition + 1, ':=') or
-      ComparedWithNil(APosition);
-    Result := Result or (IsSym(APosition - 1, ',') and IsName(APosition - 4, 'CreateForm'));
-  end;
-
-  // Prüft oder setzt die Routine die Variable selbst (Assigned, nil-Vergleich, Zuweisung, CreateForm)?
-  function Handled(AFirst, ALast: Integer; const AName: string): Boolean;
-  var
-    mPosition: Integer;
-  begin
-    for mPosition := AFirst to ALast do
-    begin
-      if IsName(mPosition, AName) and not IsSym(mPosition - 1, '.') and HandledAt(mPosition) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure CheckRoutine(ARoutine: TSyntaxNode);
-  var
-    mFirst, mLast, mPosition, mIndex: Integer;
-    mBody: TSyntaxNode;
-    mReported: TArray<string>;
-    mName: string;
-  begin
-    mBody := TRoutineBody.BodyOf(ARoutine);
-    if mBody = nil then
+    if SameText(FForms[Result], AName) then
     begin
       Exit;
     end;
-    mFirst := CodeAt(mBody.StartOffset);
-    mLast := CodeAt(mBody.EndOffset) - 1;
-    mReported := nil;
-    for mPosition := mFirst to mLast do
-    begin
-      if (Token(mPosition).Kind <> TPascalTokenKind.Identifier) or IsSym(mPosition - 1, '.') then
-      begin
-        Continue;
-      end;
-      mIndex := FormIndex(Token(mPosition).Text);
-      if mIndex <= mOwnIndex then
-      begin
-        Continue;
-      end;
-      mName := mForms[mIndex];
-      if MatchText(mName, mReported) or DeclaresLocally(ARoutine, mName) or Handled(mFirst, mLast, mName) then
-      begin
-        Continue;
-      end;
-      mReported := mReported + [mName];
-      AReport.Add(TTextRange.Create(Token(mPosition).StartPos, Token(mPosition).EndPos),
-        cTexts[TFormFieldsText.NotCreated].Fmt([mName, mOwnName]),
-        TRuleConfidence.Medium);
-    end;
   end;
+  Result := -1;
+end;
 
-  // Konstruktor, AfterConstruction und OnCreate-Handler der eigenen Klasse.
-  function IsCreationMethod(ARoutine: TSyntaxNode): Boolean;
-  var
-    mMethod: string;
+// Globale Variable dieser Unit, die in der .dpr erzeugt wird und deren Klasse hier deklariert ist.
+function TFormAccessBeforeCreateScan.FindOwnForm: Boolean;
+var
+  mLocal: TUnitIndex;
+  mSymbol, mTypeSymbol: TIndexSymbol;
+  mCache: IRuleDerivedCache;
+begin
+  mCache := TRuleDerived.Open(FContext);
+  mLocal := TRuleDerived.UnitIndex(mCache, FContext);
+  for mSymbol in mLocal.Symbols do
   begin
-    Result := False;
-    if not StartsText(mOwnClass + '.', ARoutine.Name) then
+    if (mSymbol.Kind = TIndexSymbolKind.Variable) and (mSymbol.Container = '') and (FormIndex(mSymbol.Name) >= 0) then
     begin
-      Exit;
+      for mTypeSymbol in mLocal.Symbols do
+      begin
+        if (mTypeSymbol.Kind = TIndexSymbolKind.ClassType) and (mTypeSymbol.Container = '') and
+          SameText(mTypeSymbol.Name, mSymbol.TypeName) then
+        begin
+          FOwnName := mSymbol.Name;
+          FOwnClass := mTypeSymbol.Name;
+          FOwnIndex := FormIndex(mSymbol.Name);
+          Exit(True);
+        end;
+      end;
     end;
-    mMethod := Copy(ARoutine.Name, Length(mOwnClass) + 2, MaxInt);
-    if Pos('.', mMethod) > 0 then
-    begin
-      Exit;
-    end;
-    Result := SameText(mMethod, 'AfterConstruction') or SameText(mMethod, mHandler) or
-      ((mHandler = '') and MatchText(mMethod, ['FormCreate', 'DataModuleCreate'])) or
-      Token(CodeAt(ARoutine.StartOffset)).IsKeyword('constructor');
   end;
+  Result := False;
+end;
 
+/// <summary>Deklariert ein Kind von ANode (Variable, Parameter, Konstante) den Namen AName?</summary>
+function TFormAccessBeforeCreateScan.ChildDeclares(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter,
+      TSyntaxKind.ConstDecl] then
+    begin
+      for mName in SplitString(ANode[mIndex].Name, ',') do
+      begin
+        if SameText(Trim(mName), AName) then
+        begin
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+// Deklariert die Routine AName selbst (Parameter, lokale Variable)? Iterativ (tiefe Bäume sprengen den Stapel nicht).
+function TFormAccessBeforeCreateScan.DeclaresLocally(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while not Result and (mPending.Count > 0) do
+    begin
+      mNode := mPending.Pop;
+      Result := ChildDeclares(mNode, AName);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        if mNode[mIndex].Kind <> TSyntaxKind.Block then
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Vergleicht der Name an APosition mit nil (= nil, &lt;&gt; nil)?</summary>
+function TFormAccessBeforeCreateScan.ComparedWithNil(APosition: Integer): Boolean;
+begin
+  Result := (IsSym(APosition + 1, '<>') or IsSym(APosition + 1, '=')) and (APosition + 2 <= High(FCode)) and
+    Token(APosition + 2).IsKeyword('nil');
+end;
+
+/// <summary>Prüft oder setzt der Name an APosition die Variable (Assigned, nil-Vergleich, Zuweisung,
+/// CreateForm)?</summary>
+function TFormAccessBeforeCreateScan.HandledAt(APosition: Integer): Boolean;
+begin
+  Result := (IsSym(APosition - 1, '(') and IsName(APosition - 2, 'Assigned')) or IsSym(APosition + 1, ':=') or
+    ComparedWithNil(APosition);
+  Result := Result or (IsSym(APosition - 1, ',') and IsName(APosition - 4, 'CreateForm'));
+end;
+
+// Prüft oder setzt die Routine die Variable selbst (Assigned, nil-Vergleich, Zuweisung, CreateForm)?
+function TFormAccessBeforeCreateScan.Handled(AFirst, ALast: Integer; const AName: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  for mPosition := AFirst to ALast do
+  begin
+    if IsName(mPosition, AName) and not IsSym(mPosition - 1, '.') and HandledAt(mPosition) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TFormAccessBeforeCreateScan.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mFirst, mLast, mPosition, mIndex: Integer;
+  mBody: TSyntaxNode;
+  mReported: TArray<string>;
+  mName: string;
+begin
+  mBody := TRoutineBody.BodyOf(ARoutine);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  mFirst := CodeAt(mBody.StartOffset);
+  mLast := CodeAt(mBody.EndOffset) - 1;
+  mReported := nil;
+  for mPosition := mFirst to mLast do
+  begin
+    if (Token(mPosition).Kind <> TPascalTokenKind.Identifier) or IsSym(mPosition - 1, '.') then
+    begin
+      Continue;
+    end;
+    mIndex := FormIndex(Token(mPosition).Text);
+    if mIndex <= FOwnIndex then
+    begin
+      Continue;
+    end;
+    mName := FForms[mIndex];
+    if MatchText(mName, mReported) or DeclaresLocally(ARoutine, mName) or Handled(mFirst, mLast, mName) then
+    begin
+      Continue;
+    end;
+    mReported := mReported + [mName];
+    FReport.Add(TTextRange.Create(Token(mPosition).StartPos, Token(mPosition).EndPos),
+      cTexts[TFormFieldsText.NotCreated].Fmt([mName, FOwnName]),
+      TRuleConfidence.Medium);
+  end;
+end;
+
+// Konstruktor, AfterConstruction und OnCreate-Handler der eigenen Klasse.
+function TFormAccessBeforeCreateScan.IsCreationMethod(ARoutine: TSyntaxNode): Boolean;
+var
+  mMethod: string;
+begin
+  Result := False;
+  if not StartsText(FOwnClass + '.', ARoutine.Name) then
+  begin
+    Exit;
+  end;
+  mMethod := Copy(ARoutine.Name, Length(FOwnClass) + 2, MaxInt);
+  if Pos('.', mMethod) > 0 then
+  begin
+    Exit;
+  end;
+  Result := SameText(mMethod, 'AfterConstruction') or SameText(mMethod, FHandler) or
+    ((FHandler = '') and MatchText(mMethod, ['FormCreate', 'DataModuleCreate'])) or
+    Token(CodeAt(ARoutine.StartOffset)).IsKeyword('constructor');
+end;
+
+procedure TFormAccessBeforeCreateScan.Run;
 var
   mRoutines: TArray<TSyntaxNode>;
   mRoutine: TSyntaxNode;
   mIndex: Integer;
 begin
-  mForms := AContext.AutoCreateForms;
-  if (Length(mForms) < 2) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FForms := FContext.AutoCreateForms;
+  if (Length(FForms) < 2) or (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mCode := nil;
-  for mIndex := 0 to High(mTokens) do
+  FTokens := FContext.Tree.Tokens;
+  FCode := nil;
+  for mIndex := 0 to High(FTokens) do
   begin
-    if not (mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      mCode := mCode + [mIndex];
+      FCode := FCode + [mIndex];
     end;
   end;
   if not FindOwnForm then
   begin
     Exit;
   end;
-  mHandler := CreateHandler(AContext.FormText);
+  FHandler := TFormAccessBeforeCreateRule.CreateHandler(FContext.FormText);
   mRoutines := nil;
-  AContext.Tree.Root.Walk(
+  FContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.RoutineDecl then
@@ -771,6 +802,14 @@ begin
       CheckRoutine(mRoutine);
     end;
   end;
+end;
+
+procedure TFormAccessBeforeCreateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TFormAccessBeforeCreateScan;
+begin
+  mScan := TFormAccessBeforeCreateScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TFormAccessBeforeCreateRule.AutoCreatedForms(const AMainSource: string): TArray<string>;

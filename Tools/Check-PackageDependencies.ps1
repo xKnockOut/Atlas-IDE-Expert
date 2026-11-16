@@ -353,7 +353,6 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
     'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
     'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
-    'Atlas.Common.Rules.Builtin.TypeDeclarations:NextCode'                = 'Methodendeklaration und lokale Fassung mit Grenze AStop'
     'Atlas.Common.Rules.Builtin.TypeDeclarations.Scan:TDeclarationScan.NextCode' = 'mit Grenze AStop'
     'Atlas.Common.Rules.Builtin.Units:NextCode'                           = 'zählt nach IsCode der Unit'
     'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'

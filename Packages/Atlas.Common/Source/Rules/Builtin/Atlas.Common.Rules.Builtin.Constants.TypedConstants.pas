@@ -236,618 +236,368 @@ begin
     (mName = 'pnativeint') or (mName = 'pnativeuint') or (mName = 'pboolean') or (mName = 'pstring');
 end;
 
-procedure TTypedConstantModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 type
   // Stand von {$J}/{$WRITEABLECONST} vor einer Stelle der Datei.
   TWriteable = (Unknown, Off, On_);
+
+type
+  /// <summary>Ein Lauf von TTypedConstantModifiedRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TTypedConstantModifiedScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FFileName, FLineBreak: string;
+    FLines: TArray<string>;
+    FResolver: TNameResolver;
+    FCache: IRuleDerivedCache;
+    FLocalNames, FSuspects: TDictionary<string, Boolean>;
+    function NodeText(ANode: TSyntaxNode): string;
+    function Before(const A, B: TTextPosition): Boolean;
+    function ReadInclude(const AName: string; out AText: string): Boolean;
+    function SettingOf(const AText: string; ACurrent: TWriteable): TWriteable;
+    procedure ApplyInclude(const AName: string; ADepth: Integer; var AState: TWriteable);
+    procedure ApplyDirective(const ADirective: string; ADepth: Integer; var AState: TWriteable);
+    function WriteableAt(const APosition: TTextPosition): TWriteable;
+    procedure CollectLocal(ARoot: TSyntaxNode);
+    function Suspect(const AName: string): Boolean;
+    function MentionsSuspect(ANode: TSyntaxNode): Boolean;
+    procedure EnsureResolver;
+    function ConstantStep(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol; out AFound: Boolean): TSyntaxNode;
+    function ConstantOfChain(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol;
+      out AElements: TArray<TSyntaxNode>): Boolean;
+    function ThroughPointer(var ASymbol: TResolvedSymbol; const AElements: TArray<TSyntaxNode>): Boolean;
+    function ModifiedConstant(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
+    function DeclarationOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
+    function IndentBefore(const APosition: TTextPosition; out AIndent: string): Boolean;
+    function FixableSection(ASection: TSyntaxNode; out AIndent: string): Boolean;
+    function AddOpening(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
+      var AEdits: TArray<TRuleEdit>): Boolean;
+    function AddClosing(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
+      var AEdits: TArray<TRuleEdit>): Boolean;
+    function VarFix(ADecl: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure Report(ATarget: TSyntaxNode; AAsArgument: Boolean);
+    function AnySuspectArgument(ANode: TSyntaxNode): Boolean;
+    procedure ReportVarArguments(ANode: TSyntaxNode; const AVarArgs: TArray<Boolean>);
+    procedure ReportBuiltinArguments(ANode: TSyntaxNode);
+    procedure CheckCall(ANode: TSyntaxNode);
+    procedure CheckZeroPointer(ANode: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TTypedConstantModifiedScan }
+
+constructor TTypedConstantModifiedScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TTypedConstantModifiedScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function TTypedConstantModifiedScan.Before(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
+end;
+
+/// <summary>Text der Include-Datei AName neben der Unit; False, wenn sie sich nicht lesen lässt.</summary>
+function TTypedConstantModifiedScan.ReadInclude(const AName: string; out AText: string): Boolean;
 var
-  mFileName, mLineBreak: string;
-  mLines: TArray<string>;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  // Namen typisierter Konstanten (Vorfilter): aus der Datei und aus dem Index.
-  mLocalNames, mSuspects: TDictionary<string, Boolean>;
-
-  function NodeText(ANode: TSyntaxNode): string;
+  mBytes: TBytes;
+  mFormat: TFileFormat;
+begin
+  AText := '';
+  Result := (AName <> '') and Assigned(FContext.ReadFile) and FContext.ReadFile(AName, mBytes);
+  if Result then
   begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+    AText := TFileEncoding.Decode(mBytes, mFormat);
   end;
+end;
 
-  function Before(const A, B: TTextPosition): Boolean;
+/// <summary>Stand nach der Direktive AText (groß, ohne Leerzeichen): {$J±} bzw. {$WRITEABLECONST}; sonst
+/// ACurrent.</summary>
+function TTypedConstantModifiedScan.SettingOf(const AText: string; ACurrent: TWriteable): TWriteable;
+var
+  mItem: string;
+begin
+  Result := ACurrent;
+  if AText.StartsWith('WRITEABLECONST') then
   begin
-    Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
-  end;
-
-  /// <summary>Text der Include-Datei AName neben der Unit; False, wenn sie sich nicht lesen lässt.</summary>
-  function ReadInclude(const AName: string; out AText: string): Boolean;
-  var
-    mBytes: TBytes;
-    mFormat: TFileFormat;
-  begin
-    AText := '';
-    Result := (AName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AName, mBytes);
-    if Result then
+    if MatchStr(AText, ['WRITEABLECONSTON', 'WRITEABLECONST+']) then
     begin
-      AText := TFileEncoding.Decode(mBytes, mFormat);
+      Result := TWriteable.On_;
+    end
+    else if MatchStr(AText, ['WRITEABLECONSTOFF', 'WRITEABLECONST-']) then
+    begin
+      Result := TWriteable.Off;
+    end;
+    Exit;
+  end;
+  for mItem in AText.Split([',']) do
+  begin
+    if mItem = 'J+' then
+    begin
+      Result := TWriteable.On_;
+    end
+    else if mItem = 'J-' then
+    begin
+      Result := TWriteable.Off;
     end;
   end;
+end;
 
-  // Rekursiv über Include-Dateien (höchstens acht Ebenen): ApplyInclude spielt deren Direktiven nach.
-  procedure ApplyDirective(const ADirective: string; ADepth: Integer; var AState: TWriteable); forward;
-
-  /// <summary>Stand nach der Direktive AText (groß, ohne Leerzeichen): {$J±} bzw. {$WRITEABLECONST}; sonst
-  /// ACurrent.</summary>
-  function SettingOf(const AText: string; ACurrent: TWriteable): TWriteable;
-  var
-    mItem: string;
+/// <summary>Spielt die Direktiven der Include-Datei AName nach; lässt sie sich nicht lesen, ist der Stand
+/// danach unbekannt.</summary>
+procedure TTypedConstantModifiedScan.ApplyInclude(const AName: string; ADepth: Integer; var AState: TWriteable);
+var
+  mName, mInclude: string;
+  mToken: TPascalToken;
+begin
+  mName := AName;
+  if (Length(mName) >= 2) and (mName[1] = '''') and (mName[Length(mName)] = '''') then
   begin
-    Result := ACurrent;
-    if AText.StartsWith('WRITEABLECONST') then
+    mName := Copy(mName, 2, Length(mName) - 2);
+  end;
+  if (ADepth >= 8) or not ReadInclude(mName, mInclude) then
+  begin
+    AState := TWriteable.Unknown;
+    Exit;
+  end;
+  for mToken in TPascalLexer.Tokenize(mInclude) do
+  begin
+    if mToken.Kind = TPascalTokenKind.Directive then
     begin
-      if MatchStr(AText, ['WRITEABLECONSTON', 'WRITEABLECONST+']) then
+      ApplyDirective(mToken.Text, ADepth + 1, AState);
+    end;
+  end;
+end;
+
+/// <summary>Wendet die Direktive ADirective auf AState an. {$I Datei} bzw. {$INCLUDE Datei} spielt die
+/// Direktiven der Include-Datei nach (HtmlViewer setzt {$J+} in htmlcons.inc, #1328); lässt sie sich nicht
+/// lesen, ist der Stand danach unbekannt.</summary>
+procedure TTypedConstantModifiedScan.ApplyDirective(const ADirective: string; ADepth: Integer; var AState: TWriteable);
+var
+  mBody, mName, mRest: string;
+begin
+  if not (ADirective.StartsWith('{$') or ADirective.StartsWith('(*$')) then
+  begin
+    Exit;
+  end;
+  mBody := TDirectiveNames.Body(ADirective);
+  mName := UpperCase(TDirectiveNames.LeadingName(mBody));
+  mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
+  if MatchStr(mName, ['I', 'INCLUDE']) and (mRest <> '') and not CharInSet(mRest[1], ['+', '-']) then
+  begin
+    ApplyInclude(mRest, ADepth, AState);
+  end
+  else
+  begin
+    AState := SettingOf(UpperCase(StringReplace(mBody, ' ', '', [rfReplaceAll])), AState);
+  end;
+end;
+
+/// <summary>Letzte Einstellung von {$J±} bzw. {$WRITEABLECONST} vor APosition in dieser Datei, samt
+/// eingebundener Include-Dateien.</summary>
+function TTypedConstantModifiedScan.WriteableAt(const APosition: TTextPosition): TWriteable;
+var
+  mToken: TPascalToken;
+begin
+  Result := TWriteable.Unknown;
+  for mToken in FContext.Tree.Tokens do
+  begin
+    if not Before(mToken.StartPos, APosition) then
+    begin
+      Break;
+    end;
+    if mToken.Kind = TPascalTokenKind.Directive then
+    begin
+      ApplyDirective(mToken.Text, 0, Result);
+    end;
+  end;
+end;
+
+procedure TTypedConstantModifiedScan.CollectLocal(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) then
       begin
-        Result := TWriteable.On_;
-      end
-      else if MatchStr(AText, ['WRITEABLECONSTOFF', 'WRITEABLECONST-']) then
-      begin
-        Result := TWriteable.Off;
+        FLocalNames.AddOrSetValue(LowerCase(mNode.Name), True);
       end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TTypedConstantModifiedScan.Suspect(const AName: string): Boolean;
+var
+  mKey: string;
+begin
+  mKey := LowerCase(AName);
+  if (mKey = '') or FLocalNames.ContainsKey(mKey) then
+  begin
+    Exit(mKey <> '');
+  end;
+  if FSuspects.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  Result := False;
+  if FContext.Index <> nil then
+  begin
+    Result := FContext.Index.HasSymbol(AName,
+      function(const ASymbol: TIndexSymbol): Boolean
+      begin
+        Result := (ASymbol.Kind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
+      end);
+  end;
+  FSuspects.Add(mKey, Result);
+end;
+
+/// <summary>Nennt der Zugriff ANode (Name, Feld, Element) einen verdächtigen Namen?</summary>
+function TTypedConstantModifiedScan.MentionsSuspect(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): an der Zugriffskette entlang nach links.
+  Result := False;
+  mNode := ANode;
+  while (mNode <> nil) and not Result do
+  begin
+    if mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    begin
+      Result := Suspect(mNode.Name);
+    end;
+    mNode := ChainParent(mNode);
+  end;
+end;
+
+procedure TTypedConstantModifiedScan.EnsureResolver;
+begin
+  if FResolver = nil then
+  begin
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+end;
+
+/// <summary>Ein Schritt an der Zugriffskette ANode (Name oder Feld) entlang: AFound, wenn ANode eine typisierte
+/// Konstante ist; sonst der Empfänger eines Record-Felds, bei dem es weitergeht, oder nil.</summary>
+function TTypedConstantModifiedScan.ConstantStep(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol;
+  out AFound: Boolean): TSyntaxNode;
+var
+  mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  Result := nil;
+  AFound := False;
+  if not FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, mTypeInfo, mTypeFound) then
+  begin
+    Exit;
+  end;
+  AFound := (ASymbol.SymbolKind = TIndexSymbolKind.Constant) and
+    IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
+  // Feld eines Records: weiter zum Empfänger.
+  if not AFound and (ANode.Kind = TSyntaxKind.MemberAccess) and (ASymbol.SymbolKind = TIndexSymbolKind.Field) then
+  begin
+    Result := ChainParent(ANode);
+  end;
+end;
+
+/// <summary>Typisierte Konstante am linken Ende der Zugriffskette ANode; AElements sind die Elementzugriffe auf
+/// dem Weg, außen zuerst.</summary>
+function TTypedConstantModifiedScan.ConstantOfChain(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol;
+  out AElements: TArray<TSyntaxNode>): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): an der Zugriffskette entlang nach links bis zur Konstante.
+  Result := False;
+  ASymbol := Default(TResolvedSymbol);
+  AElements := nil;
+  mNode := ANode;
+  while (mNode <> nil) and not Result do
+  begin
+    if not (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
+      not MentionsSuspect(mNode) then
+    begin
       Exit;
     end;
-    for mItem in AText.Split([',']) do
+    EnsureResolver;
+    if mNode.Kind = TSyntaxKind.IndexAccess then
     begin
-      if mItem = 'J+' then
-      begin
-        Result := TWriteable.On_;
-      end
-      else if mItem = 'J-' then
-      begin
-        Result := TWriteable.Off;
-      end;
-    end;
-  end;
-
-  /// <summary>Spielt die Direktiven der Include-Datei AName nach; lässt sie sich nicht lesen, ist der Stand
-  /// danach unbekannt.</summary>
-  procedure ApplyInclude(const AName: string; ADepth: Integer; var AState: TWriteable);
-  var
-    mName, mInclude: string;
-    mToken: TPascalToken;
-  begin
-    mName := AName;
-    if (Length(mName) >= 2) and (mName[1] = '''') and (mName[Length(mName)] = '''') then
-    begin
-      mName := Copy(mName, 2, Length(mName) - 2);
-    end;
-    if (ADepth >= 8) or not ReadInclude(mName, mInclude) then
-    begin
-      AState := TWriteable.Unknown;
-      Exit;
-    end;
-    for mToken in TPascalLexer.Tokenize(mInclude) do
-    begin
-      if mToken.Kind = TPascalTokenKind.Directive then
-      begin
-        ApplyDirective(mToken.Text, ADepth + 1, AState);
-      end;
-    end;
-  end;
-
-  /// <summary>Wendet die Direktive ADirective auf AState an. {$I Datei} bzw. {$INCLUDE Datei} spielt die
-  /// Direktiven der Include-Datei nach (HtmlViewer setzt {$J+} in htmlcons.inc, #1328); lässt sie sich nicht
-  /// lesen, ist der Stand danach unbekannt.</summary>
-  procedure ApplyDirective(const ADirective: string; ADepth: Integer; var AState: TWriteable);
-  var
-    mBody, mName, mRest: string;
-  begin
-    if not (ADirective.StartsWith('{$') or ADirective.StartsWith('(*$')) then
-    begin
-      Exit;
-    end;
-    mBody := TDirectiveNames.Body(ADirective);
-    mName := UpperCase(TDirectiveNames.LeadingName(mBody));
-    mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
-    if MatchStr(mName, ['I', 'INCLUDE']) and (mRest <> '') and not CharInSet(mRest[1], ['+', '-']) then
-    begin
-      ApplyInclude(mRest, ADepth, AState);
+      // Element: nur Arrays und Strings, nicht der Speicher hinter einem Zeiger.
+      AElements := AElements + [mNode];
+      mNode := ChainParent(mNode);
     end
     else
     begin
-      AState := SettingOf(UpperCase(StringReplace(mBody, ' ', '', [rfReplaceAll])), AState);
+      mNode := ConstantStep(mNode, ASymbol, Result);
     end;
   end;
+end;
 
-  /// <summary>Letzte Einstellung von {$J±} bzw. {$WRITEABLECONST} vor APosition in dieser Datei, samt
-  /// eingebundener Include-Dateien.</summary>
-  function WriteableAt(const APosition: TTextPosition): TWriteable;
-  var
-    mToken: TPascalToken;
+/// <summary>Führt einer der Elementzugriffe AElements (von innen nach außen) über einen Zeiger? ASymbol folgt
+/// dabei den Elementen.</summary>
+function TTypedConstantModifiedScan.ThroughPointer(var ASymbol: TResolvedSymbol;
+  const AElements: TArray<TSyntaxNode>): Boolean;
+var
+  mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := High(AElements) downto 0 do
   begin
-    Result := TWriteable.Unknown;
-    for mToken in AContext.Tree.Tokens do
+    if IsPointerName(ASymbol.TypeName) or ASymbol.TypeName.StartsWith('^') then
     begin
-      if not Before(mToken.StartPos, APosition) then
-      begin
-        Break;
-      end;
-      if mToken.Kind = TPascalTokenKind.Directive then
-      begin
-        ApplyDirective(mToken.Text, 0, Result);
-      end;
-    end;
-  end;
-
-  procedure CollectLocal(ARoot: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) then
-        begin
-          mLocalNames.AddOrSetValue(LowerCase(mNode.Name), True);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  function Suspect(const AName: string): Boolean;
-  var
-    mKey: string;
-  begin
-    mKey := LowerCase(AName);
-    if (mKey = '') or mLocalNames.ContainsKey(mKey) then
-    begin
-      Exit(mKey <> '');
-    end;
-    if mSuspects.TryGetValue(mKey, Result) then
-    begin
-      Exit;
-    end;
-    Result := False;
-    if AContext.Index <> nil then
-    begin
-      Result := AContext.Index.HasSymbol(AName,
-        function(const ASymbol: TIndexSymbol): Boolean
-        begin
-          Result := (ASymbol.Kind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
-        end);
-    end;
-    mSuspects.Add(mKey, Result);
-  end;
-
-  /// <summary>Nennt der Zugriff ANode (Name, Feld, Element) einen verdächtigen Namen?</summary>
-  function MentionsSuspect(ANode: TSyntaxNode): Boolean;
-  var
-    mNode: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): an der Zugriffskette entlang nach links.
-    Result := False;
-    mNode := ANode;
-    while (mNode <> nil) and not Result do
-    begin
-      if mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
-      begin
-        Result := Suspect(mNode.Name);
-      end;
-      mNode := ChainParent(mNode);
-    end;
-  end;
-
-  procedure EnsureResolver;
-  begin
-    if mResolver = nil then
-    begin
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-    end;
-  end;
-
-  /// <summary>Ein Schritt an der Zugriffskette ANode (Name oder Feld) entlang: AFound, wenn ANode eine typisierte
-  /// Konstante ist; sonst der Empfänger eines Record-Felds, bei dem es weitergeht, oder nil.</summary>
-  function ConstantStep(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol; out AFound: Boolean): TSyntaxNode;
-  var
-    mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    Result := nil;
-    AFound := False;
-    if not mResolver.NodeType(AContext.Tree, mFileName, ANode, ASymbol, mTypeInfo, mTypeFound) then
-    begin
-      Exit;
-    end;
-    AFound := (ASymbol.SymbolKind = TIndexSymbolKind.Constant) and
-      IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
-    // Feld eines Records: weiter zum Empfänger.
-    if not AFound and (ANode.Kind = TSyntaxKind.MemberAccess) and (ASymbol.SymbolKind = TIndexSymbolKind.Field) then
-    begin
-      Result := ChainParent(ANode);
-    end;
-  end;
-
-  /// <summary>Typisierte Konstante am linken Ende der Zugriffskette ANode; AElements sind die Elementzugriffe auf
-  /// dem Weg, außen zuerst.</summary>
-  function ConstantOfChain(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol;
-    out AElements: TArray<TSyntaxNode>): Boolean;
-  var
-    mNode: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): an der Zugriffskette entlang nach links bis zur Konstante.
-    Result := False;
-    ASymbol := Default(TResolvedSymbol);
-    AElements := nil;
-    mNode := ANode;
-    while (mNode <> nil) and not Result do
-    begin
-      if not (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) or
-        not MentionsSuspect(mNode) then
-      begin
-        Exit;
-      end;
-      EnsureResolver;
-      if mNode.Kind = TSyntaxKind.IndexAccess then
-      begin
-        // Element: nur Arrays und Strings, nicht der Speicher hinter einem Zeiger.
-        AElements := AElements + [mNode];
-        mNode := ChainParent(mNode);
-      end
-      else
-      begin
-        mNode := ConstantStep(mNode, ASymbol, Result);
-      end;
-    end;
-  end;
-
-  /// <summary>Führt einer der Elementzugriffe AElements (von innen nach außen) über einen Zeiger? ASymbol folgt
-  /// dabei den Elementen.</summary>
-  function ThroughPointer(var ASymbol: TResolvedSymbol; const AElements: TArray<TSyntaxNode>): Boolean;
-  var
-    mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-    mIndex: Integer;
-  begin
-    Result := False;
-    for mIndex := High(AElements) downto 0 do
-    begin
-      if IsPointerName(ASymbol.TypeName) or ASymbol.TypeName.StartsWith('^') then
-      begin
-        Exit(True);
-      end;
-      if mResolver.NodeType(AContext.Tree, mFileName, AElements[mIndex][0], ASymbol, mTypeInfo, mTypeFound) and
-        mTypeFound and (Pos('^', TypeBodyOf(mTypeInfo.Signature)) > 0) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  /// <summary>Typisierte Konstante, die der Zugriff ANode verändert: die Konstante selbst, ein Element oder ein
-  /// Feld davon (nicht über Zeiger).</summary>
-  function ModifiedConstant(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
-  var
-    mElements: TArray<TSyntaxNode>;
-  begin
-    Result := ConstantOfChain(ANode, ASymbol, mElements) and not ThroughPointer(ASymbol, mElements);
-  end;
-
-  /// <summary>Deklaration der Konstante ASymbol in dieser Datei; nil, wenn sie woanders steht.</summary>
-  function DeclarationOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
-  var
-    mFound: TSyntaxNode;
-
-    procedure Search(ARoot: TSyntaxNode);
-    var
-      mIndex: Integer;
-      mNode: TSyntaxNode;
-      mPending: TStack<TSyntaxNode>;
-    begin
-      // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-      mPending := TStack<TSyntaxNode>.Create;
-      try
-        mPending.Push(ARoot);
-        while mPending.Count > 0 do
-        begin
-          mNode := mPending.Pop;
-          if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) and SameText(mNode.Name, ASymbol.Name) and
-            (mNode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) then
-          begin
-            mFound := mNode;
-            Exit;
-          end;
-          for mIndex := mNode.ChildCount - 1 downto 0 do
-          begin
-            mPending.Push(mNode[mIndex]);
-          end;
-        end;
-      finally
-        mPending.Free;
-      end;
-    end;
-
-  begin
-    mFound := nil;
-    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, mFileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(mFileName)) then
-    begin
-      Search(AContext.Tree.Root);
-    end;
-    Result := mFound;
-  end;
-
-  /// <summary>Text vom Zeilenanfang bis APosition, wenn dort nur Leerraum steht; sonst False.</summary>
-  function IndentBefore(const APosition: TTextPosition; out AIndent: string): Boolean;
-  begin
-    if mLines = nil then
-    begin
-      mLines := TTextLines.SplitLines(AContext.Text);
-    end;
-    Result := False;
-    AIndent := '';
-    if (APosition.Line < 0) or (APosition.Line > High(mLines)) then
-    begin
-      Exit;
-    end;
-    AIndent := Copy(mLines[APosition.Line], 1, APosition.Character);
-    Result := Trim(AIndent) = '';
-  end;
-
-  /// <summary>Globaler const-Abschnitt am Zeilenanfang; AIndent ist seine Einrückung.</summary>
-  function FixableSection(ASection: TSyntaxNode; out AIndent: string): Boolean;
-  begin
-    AIndent := '';
-    Result := (ASection <> nil) and (ASection.Kind = TSyntaxKind.ConstSection) and (ASection.Parent <> nil) and
-      (ASection.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]);
-    Result := Result and SameText(Copy(NodeText(ASection), 1, 5), 'const') and
-      IndentBefore(ASection.StartPos, AIndent);
-  end;
-
-  /// <summary>Bearbeitung vor ADecl (Stelle APosition im Abschnitt): aus "const" wird "var" bzw. eine eigene
-  /// Zeile "var" davor. False, wenn die Deklaration nicht allein in ihrer Zeile beginnt.</summary>
-  function AddOpening(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
-    var AEdits: TArray<TRuleEdit>): Boolean;
-  var
-    mSection: TSyntaxNode;
-    mDummy: string;
-  begin
-    mSection := ADecl.Parent;
-    if APosition = 0 then
-    begin
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mSection.StartPos,
-        TTextPosition.Create(mSection.StartPos.Line, mSection.StartPos.Character + Length('const'))), 'var')];
       Exit(True);
     end;
-    Result := (mSection[APosition - 1].EndPos.Line < ADecl.StartPos.Line) and IndentBefore(ADecl.StartPos, mDummy);
-    if Result then
+    if FResolver.NodeType(FContext.Tree, FFileName, AElements[mIndex][0], ASymbol, mTypeInfo, mTypeFound) and
+      mTypeFound and (Pos('^', TypeBodyOf(mTypeInfo.Signature)) > 0) then
     begin
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ADecl.StartPos.Line, 0),
-        TTextPosition.Create(ADecl.StartPos.Line, 0)), AIndent + 'var' + mLineBreak)];
+      Exit(True);
     end;
   end;
+end;
 
-  /// <summary>Bearbeitung nach ADecl: eine eigene Zeile "const" vor der nächsten Deklaration des Abschnitts.
-  /// False, wenn diese nicht allein in ihrer Zeile beginnt.</summary>
-  function AddClosing(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
-    var AEdits: TArray<TRuleEdit>): Boolean;
-  var
-    mNext: TSyntaxNode;
-    mDummy: string;
-  begin
-    Result := True;
-    if APosition >= ADecl.Parent.ChildCount - 1 then
-    begin
-      Exit;
-    end;
-    mNext := ADecl.Parent[APosition + 1];
-    Result := (ADecl.EndPos.Line < mNext.StartPos.Line) and IndentBefore(mNext.StartPos, mDummy);
-    if Result then
-    begin
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mNext.StartPos.Line, 0),
-        TTextPosition.Create(mNext.StartPos.Line, 0)), AIndent + 'const' + mLineBreak)];
-    end;
-  end;
+/// <summary>Typisierte Konstante, die der Zugriff ANode verändert: die Konstante selbst, ein Element oder ein
+/// Feld davon (nicht über Zeiger).</summary>
+function TTypedConstantModifiedScan.ModifiedConstant(ANode: TSyntaxNode; out ASymbol: TResolvedSymbol): Boolean;
+var
+  mElements: TArray<TSyntaxNode>;
+begin
+  Result := ConstantOfChain(ANode, ASymbol, mElements) and not ThroughPointer(ASymbol, mElements);
+end;
 
-  /// <summary>Korrektur "In var mit Initialwert umwandeln" für eine globale Konstante ADecl: die Deklaration
-  /// kommt in einen eigenen var-Abschnitt, die übrigen bleiben const.</summary>
-  function VarFix(ADecl: TSyntaxNode; out AFix: TRuleFix): Boolean;
-  var
-    mPosition: Integer;
-    mIndent: string;
-    mEdits: TArray<TRuleEdit>;
-  begin
-    Result := False;
-    if not FixableSection(ADecl.Parent, mIndent) then
-    begin
-      Exit;
-    end;
-    mPosition := IndexInParent(ADecl);
-    mEdits := nil;
-    if (mPosition < 0) or not AddOpening(ADecl, mPosition, mIndent, mEdits) or
-      not AddClosing(ADecl, mPosition, mIndent, mEdits) then
-    begin
-      Exit;
-    end;
-    AFix := TRuleFix.Create(cTexts[TConstantsTypedConstantsText.ToVar].Text, mEdits);
-    Result := True;
-  end;
+/// <summary>Deklaration der Konstante ASymbol in dieser Datei; nil, wenn sie woanders steht.</summary>
+function TTypedConstantModifiedScan.DeclarationOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
+var
+  mFound: TSyntaxNode;
 
-  procedure Report(ATarget: TSyntaxNode; AAsArgument: Boolean);
-  var
-    mSymbol: TResolvedSymbol;
-    mDecl: TSyntaxNode;
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-    mCode: string;
-  begin
-    if not ModifiedConstant(ATarget, mSymbol) then
-    begin
-      Exit;
-    end;
-    mFixes := nil;
-    mDecl := DeclarationOf(mSymbol);
-    if (mDecl <> nil) and VarFix(mDecl, mFix) then
-    begin
-      mFixes := [mFix];
-    end;
-    // Mit {$J-} vor der Deklaration übersetzt Delphi die Änderung nicht.
-    if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.Off) then
-    begin
-      if AAsArgument then
-      begin
-        mCode := 'E2197';
-      end
-      else
-      begin
-        mCode := 'E2064';
-      end;
-      AReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
-        cTexts[TConstantsTypedConstantsText.NeedsJ].Fmt([mSymbol.Name, mCode]),
-        TRuleSeverity.Error, mFixes);
-      Exit;
-    end;
-    // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
-    if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.On_) then
-    begin
-      Exit;
-    end;
-    if AAsArgument then
-    begin
-      mCode := 'W1016';
-    end
-    else
-    begin
-      mCode := 'W1017';
-    end;
-    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
-      cTexts[TConstantsTypedConstantsText.Changed].Fmt([mSymbol.Name, mCode]), TRuleConfidence.High, mFixes);
-  end;
-
-  /// <summary>Nennt eines der Argumente des Aufrufs ANode einen verdächtigen Namen?</summary>
-  function AnySuspectArgument(ANode: TSyntaxNode): Boolean;
-  var
-    mIndex: Integer;
-  begin
-    Result := False;
-    for mIndex := 1 to ANode.ChildCount - 1 do
-    begin
-      if MentionsSuspect(ANode[mIndex]) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  /// <summary>Meldet die Argumente des Aufrufs ANode an den Stellen AVarArgs (je Argument: var oder out?).</summary>
-  procedure ReportVarArguments(ANode: TSyntaxNode; const AVarArgs: TArray<Boolean>);
-  var
-    mIndex: Integer;
-  begin
-    for mIndex := 1 to ANode.ChildCount - 1 do
-    begin
-      if (mIndex - 1 <= High(AVarArgs)) and AVarArgs[mIndex - 1] then
-      begin
-        Report(ANode[mIndex], True);
-      end;
-    end;
-  end;
-
-  /// <summary>Meldet die var-Argumente eingebauter Routinen (Inc, Dec …) im Aufruf ANode.</summary>
-  procedure ReportBuiltinArguments(ANode: TSyntaxNode);
-  var
-    mPosition: Integer;
-  begin
-    for mPosition in BuiltinVarArguments(ANode[0].Name) do
-    begin
-      if mPosition + 1 < ANode.ChildCount then
-      begin
-        Report(ANode[mPosition + 1], True);
-      end;
-    end;
-  end;
-
-  procedure CheckCall(ANode: TSyntaxNode);
-  var
-    mCallee: TSyntaxNode;
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    if (ANode.ChildCount < 2) or not AnySuspectArgument(ANode) then
-    begin
-      Exit;
-    end;
-    mCallee := ANode[0];
-    EnsureResolver;
-    if (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      mResolver.NodeType(AContext.Tree, mFileName, mCallee, mSymbol, mTypeInfo, mTypeFound) then
-    begin
-      // Überladungen können andere Parameter haben: dann keine Aussage. NodeType nennt nur die erste Überladung,
-      // bei Methoden fehlen die übrigen in Overloads; CallCandidates zählt alle Deklarationen.
-      if (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-        TIndexSymbolKind.Constructor_]) and (Length(mSymbol.Overloads) = 0) and
-        (Length(mSymbol.VariantParams) <= 1) and
-        (Length(mResolver.CallCandidates(AContext.Tree, mFileName, mCallee)) <= 1) then
-      begin
-        ReportVarArguments(ANode, VarParameters(mSymbol.Signature));
-      end;
-    end
-    else if mCallee.Kind = TSyntaxKind.Identifier then
-    begin
-      ReportBuiltinArguments(ANode);
-    end;
-  end;
-
-  /// <summary>0 als Wert einer Zeigerkonstante bzw. initialisierten Zeigervariable (W1013).</summary>
-  procedure CheckZeroPointer(ANode: TSyntaxNode);
-  var
-    mValue, mTypeNode: TSyntaxNode;
-    mTypeInfo: TResolvedSymbol;
-    mIsPointer: Boolean;
-  begin
-    if ANode.ChildCount <> 2 then
-    begin
-      Exit;
-    end;
-    mTypeNode := ANode[0];
-    mValue := ANode[1];
-    if (mValue.Kind <> TSyntaxKind.Literal) or (Trim(NodeText(mValue)) <> '0') then
-    begin
-      Exit;
-    end;
-    mIsPointer := (mTypeNode.Kind = TSyntaxKind.PointerType) or
-      ((mTypeNode.Kind = TSyntaxKind.TypeReference) and IsPointerName(NodeText(mTypeNode)));
-    if not mIsPointer and (mTypeNode.Kind = TSyntaxKind.TypeReference) then
-    begin
-      EnsureResolver;
-      mTypeInfo := mResolver.ResolveType(AContext.Tree, mFileName, mTypeNode.StartPos);
-      mIsPointer := mTypeInfo.Found and (mTypeInfo.SymbolKind = TIndexSymbolKind.TypeAlias) and
-        ((Pos('^', TypeBodyOf(mTypeInfo.Signature)) = 1) or IsPointerName(TypeBodyOf(mTypeInfo.Signature)));
-    end;
-    if not mIsPointer then
-    begin
-      Exit;
-    end;
-    AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos),
-      cTexts[TConstantsTypedConstantsText.ZeroNil].Fmt([ANode.Name]), TRuleConfidence.High,
-      [TRuleFix.Create(cTexts[TConstantsTypedConstantsText.WriteNil].Text,
-        [TTextEdit.Create(TTextRange.Create(mValue.StartPos, mValue.EndPos), 'nil')],
-      True)]);
-  end;
-
-  procedure Visit(ARoot: TSyntaxNode);
+  procedure Search(ARoot: TSyntaxNode);
   var
     mIndex: Integer;
     mNode: TSyntaxNode;
@@ -860,18 +610,11 @@ var
       while mPending.Count > 0 do
       begin
         mNode := mPending.Pop;
-        case mNode.Kind of
-          TSyntaxKind.AssignStatement:
-            if mNode.ChildCount = 2 then
-            begin
-              Report(mNode[0], False);
-            end;
-          TSyntaxKind.Call:
-            CheckCall(mNode);
-          TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
-            CheckZeroPointer(mNode);
-        else
-          // Übrige Werte bewusst ohne Wirkung.
+        if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) and SameText(mNode.Name, ASymbol.Name) and
+          (mNode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) then
+        begin
+          mFound := mNode;
+          Exit;
         end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
@@ -884,27 +627,340 @@ var
   end;
 
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  mFound := nil;
+  if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FFileName) or
+    SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FFileName)) then
+  begin
+    Search(FContext.Tree.Root);
+  end;
+  Result := mFound;
+end;
+
+/// <summary>Text vom Zeilenanfang bis APosition, wenn dort nur Leerraum steht; sonst False.</summary>
+function TTypedConstantModifiedScan.IndentBefore(const APosition: TTextPosition; out AIndent: string): Boolean;
+begin
+  if FLines = nil then
+  begin
+    FLines := TTextLines.SplitLines(FContext.Text);
+  end;
+  Result := False;
+  AIndent := '';
+  if (APosition.Line < 0) or (APosition.Line > High(FLines)) then
   begin
     Exit;
   end;
-  mFileName := AContext.ResolverFileName;
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mLines := nil;
-  mResolver := nil;
-  mLocalNames := TDictionary<string, Boolean>.Create;
-  mSuspects := TDictionary<string, Boolean>.Create;
-  try
-    CollectLocal(AContext.Tree.Root);
-    Visit(AContext.Tree.Root);
-  finally
-    if mResolver <> nil then
-    begin
-      mResolver.UnpinTree;
-    end;
-    mSuspects.Free;
-    mLocalNames.Free;
+  AIndent := Copy(FLines[APosition.Line], 1, APosition.Character);
+  Result := Trim(AIndent) = '';
+end;
+
+/// <summary>Globaler const-Abschnitt am Zeilenanfang; AIndent ist seine Einrückung.</summary>
+function TTypedConstantModifiedScan.FixableSection(ASection: TSyntaxNode; out AIndent: string): Boolean;
+begin
+  AIndent := '';
+  Result := (ASection <> nil) and (ASection.Kind = TSyntaxKind.ConstSection) and (ASection.Parent <> nil) and
+    (ASection.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]);
+  Result := Result and SameText(Copy(NodeText(ASection), 1, 5), 'const') and
+    IndentBefore(ASection.StartPos, AIndent);
+end;
+
+/// <summary>Bearbeitung vor ADecl (Stelle APosition im Abschnitt): aus "const" wird "var" bzw. eine eigene
+/// Zeile "var" davor. False, wenn die Deklaration nicht allein in ihrer Zeile beginnt.</summary>
+function TTypedConstantModifiedScan.AddOpening(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
+  var AEdits: TArray<TRuleEdit>): Boolean;
+var
+  mSection: TSyntaxNode;
+  mDummy: string;
+begin
+  mSection := ADecl.Parent;
+  if APosition = 0 then
+  begin
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mSection.StartPos,
+      TTextPosition.Create(mSection.StartPos.Line, mSection.StartPos.Character + Length('const'))), 'var')];
+    Exit(True);
   end;
+  Result := (mSection[APosition - 1].EndPos.Line < ADecl.StartPos.Line) and IndentBefore(ADecl.StartPos, mDummy);
+  if Result then
+  begin
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ADecl.StartPos.Line, 0),
+      TTextPosition.Create(ADecl.StartPos.Line, 0)), AIndent + 'var' + FLineBreak)];
+  end;
+end;
+
+/// <summary>Bearbeitung nach ADecl: eine eigene Zeile "const" vor der nächsten Deklaration des Abschnitts.
+/// False, wenn diese nicht allein in ihrer Zeile beginnt.</summary>
+function TTypedConstantModifiedScan.AddClosing(ADecl: TSyntaxNode; APosition: Integer; const AIndent: string;
+  var AEdits: TArray<TRuleEdit>): Boolean;
+var
+  mNext: TSyntaxNode;
+  mDummy: string;
+begin
+  Result := True;
+  if APosition >= ADecl.Parent.ChildCount - 1 then
+  begin
+    Exit;
+  end;
+  mNext := ADecl.Parent[APosition + 1];
+  Result := (ADecl.EndPos.Line < mNext.StartPos.Line) and IndentBefore(mNext.StartPos, mDummy);
+  if Result then
+  begin
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mNext.StartPos.Line, 0),
+      TTextPosition.Create(mNext.StartPos.Line, 0)), AIndent + 'const' + FLineBreak)];
+  end;
+end;
+
+/// <summary>Korrektur "In var mit Initialwert umwandeln" für eine globale Konstante ADecl: die Deklaration
+/// kommt in einen eigenen var-Abschnitt, die übrigen bleiben const.</summary>
+function TTypedConstantModifiedScan.VarFix(ADecl: TSyntaxNode; out AFix: TRuleFix): Boolean;
+var
+  mPosition: Integer;
+  mIndent: string;
+  mEdits: TArray<TRuleEdit>;
+begin
+  Result := False;
+  if not FixableSection(ADecl.Parent, mIndent) then
+  begin
+    Exit;
+  end;
+  mPosition := IndexInParent(ADecl);
+  mEdits := nil;
+  if (mPosition < 0) or not AddOpening(ADecl, mPosition, mIndent, mEdits) or
+    not AddClosing(ADecl, mPosition, mIndent, mEdits) then
+  begin
+    Exit;
+  end;
+  AFix := TRuleFix.Create(cTexts[TConstantsTypedConstantsText.ToVar].Text, mEdits);
+  Result := True;
+end;
+
+procedure TTypedConstantModifiedScan.Report(ATarget: TSyntaxNode; AAsArgument: Boolean);
+var
+  mSymbol: TResolvedSymbol;
+  mDecl: TSyntaxNode;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+  mCode: string;
+begin
+  if not ModifiedConstant(ATarget, mSymbol) then
+  begin
+    Exit;
+  end;
+  mFixes := nil;
+  mDecl := DeclarationOf(mSymbol);
+  if (mDecl <> nil) and VarFix(mDecl, mFix) then
+  begin
+    mFixes := [mFix];
+  end;
+  // Mit {$J-} vor der Deklaration übersetzt Delphi die Änderung nicht.
+  if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.Off) then
+  begin
+    if AAsArgument then
+    begin
+      mCode := 'E2197';
+    end
+    else
+    begin
+      mCode := 'E2064';
+    end;
+    FReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
+      cTexts[TConstantsTypedConstantsText.NeedsJ].Fmt([mSymbol.Name, mCode]),
+      TRuleSeverity.Error, mFixes);
+    Exit;
+  end;
+  // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
+  if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.On_) then
+  begin
+    Exit;
+  end;
+  if AAsArgument then
+  begin
+    mCode := 'W1016';
+  end
+  else
+  begin
+    mCode := 'W1017';
+  end;
+  FReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
+    cTexts[TConstantsTypedConstantsText.Changed].Fmt([mSymbol.Name, mCode]), TRuleConfidence.High, mFixes);
+end;
+
+/// <summary>Nennt eines der Argumente des Aufrufs ANode einen verdächtigen Namen?</summary>
+function TTypedConstantModifiedScan.AnySuspectArgument(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 1 to ANode.ChildCount - 1 do
+  begin
+    if MentionsSuspect(ANode[mIndex]) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Meldet die Argumente des Aufrufs ANode an den Stellen AVarArgs (je Argument: var oder out?).</summary>
+procedure TTypedConstantModifiedScan.ReportVarArguments(ANode: TSyntaxNode; const AVarArgs: TArray<Boolean>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to ANode.ChildCount - 1 do
+  begin
+    if (mIndex - 1 <= High(AVarArgs)) and AVarArgs[mIndex - 1] then
+    begin
+      Report(ANode[mIndex], True);
+    end;
+  end;
+end;
+
+/// <summary>Meldet die var-Argumente eingebauter Routinen (Inc, Dec …) im Aufruf ANode.</summary>
+procedure TTypedConstantModifiedScan.ReportBuiltinArguments(ANode: TSyntaxNode);
+var
+  mPosition: Integer;
+begin
+  for mPosition in BuiltinVarArguments(ANode[0].Name) do
+  begin
+    if mPosition + 1 < ANode.ChildCount then
+    begin
+      Report(ANode[mPosition + 1], True);
+    end;
+  end;
+end;
+
+procedure TTypedConstantModifiedScan.CheckCall(ANode: TSyntaxNode);
+var
+  mCallee: TSyntaxNode;
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  if (ANode.ChildCount < 2) or not AnySuspectArgument(ANode) then
+  begin
+    Exit;
+  end;
+  mCallee := ANode[0];
+  EnsureResolver;
+  if (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+    FResolver.NodeType(FContext.Tree, FFileName, mCallee, mSymbol, mTypeInfo, mTypeFound) then
+  begin
+    // Überladungen können andere Parameter haben: dann keine Aussage. NodeType nennt nur die erste Überladung,
+    // bei Methoden fehlen die übrigen in Overloads; CallCandidates zählt alle Deklarationen.
+    if (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
+      TIndexSymbolKind.Constructor_]) and (Length(mSymbol.Overloads) = 0) and
+      (Length(mSymbol.VariantParams) <= 1) and
+      (Length(FResolver.CallCandidates(FContext.Tree, FFileName, mCallee)) <= 1) then
+    begin
+      ReportVarArguments(ANode, TTypedConstantModifiedRule.VarParameters(mSymbol.Signature));
+    end;
+  end
+  else if mCallee.Kind = TSyntaxKind.Identifier then
+  begin
+    ReportBuiltinArguments(ANode);
+  end;
+end;
+
+/// <summary>0 als Wert einer Zeigerkonstante bzw. initialisierten Zeigervariable (W1013).</summary>
+procedure TTypedConstantModifiedScan.CheckZeroPointer(ANode: TSyntaxNode);
+var
+  mValue, mTypeNode: TSyntaxNode;
+  mTypeInfo: TResolvedSymbol;
+  mIsPointer: Boolean;
+begin
+  if ANode.ChildCount <> 2 then
+  begin
+    Exit;
+  end;
+  mTypeNode := ANode[0];
+  mValue := ANode[1];
+  if (mValue.Kind <> TSyntaxKind.Literal) or (Trim(NodeText(mValue)) <> '0') then
+  begin
+    Exit;
+  end;
+  mIsPointer := (mTypeNode.Kind = TSyntaxKind.PointerType) or
+    ((mTypeNode.Kind = TSyntaxKind.TypeReference) and IsPointerName(NodeText(mTypeNode)));
+  if not mIsPointer and (mTypeNode.Kind = TSyntaxKind.TypeReference) then
+  begin
+    EnsureResolver;
+    mTypeInfo := FResolver.ResolveType(FContext.Tree, FFileName, mTypeNode.StartPos);
+    mIsPointer := mTypeInfo.Found and (mTypeInfo.SymbolKind = TIndexSymbolKind.TypeAlias) and
+      ((Pos('^', TypeBodyOf(mTypeInfo.Signature)) = 1) or IsPointerName(TypeBodyOf(mTypeInfo.Signature)));
+  end;
+  if not mIsPointer then
+  begin
+    Exit;
+  end;
+  FReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos),
+    cTexts[TConstantsTypedConstantsText.ZeroNil].Fmt([ANode.Name]), TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TConstantsTypedConstantsText.WriteNil].Text,
+      [TTextEdit.Create(TTextRange.Create(mValue.StartPos, mValue.EndPos), 'nil')],
+    True)]);
+end;
+
+procedure TTypedConstantModifiedScan.Visit(ARoot: TSyntaxNode);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.AssignStatement:
+          if mNode.ChildCount = 2 then
+          begin
+            Report(mNode[0], False);
+          end;
+        TSyntaxKind.Call:
+          CheckCall(mNode);
+        TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
+          CheckZeroPointer(mNode);
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TTypedConstantModifiedScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FFileName := FContext.ResolverFileName;
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  FLines := nil;
+  FResolver := nil;
+  FLocalNames := TDictionary<string, Boolean>.Create;
+  FSuspects := TDictionary<string, Boolean>.Create;
+  try
+    CollectLocal(FContext.Tree.Root);
+    Visit(FContext.Tree.Root);
+  finally
+    if FResolver <> nil then
+    begin
+      FResolver.UnpinTree;
+    end;
+    FSuspects.Free;
+    FLocalNames.Free;
+  end;
+end;
+
+procedure TTypedConstantModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TTypedConstantModifiedScan;
+begin
+  mScan := TTypedConstantModifiedScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

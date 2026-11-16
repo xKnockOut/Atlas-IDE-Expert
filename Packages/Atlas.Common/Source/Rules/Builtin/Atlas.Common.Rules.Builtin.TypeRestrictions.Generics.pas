@@ -708,625 +708,678 @@ begin
     cTexts[TTypeRestrictionsGenericsText.Title].Text);
 end;
 
-procedure TGenericDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TArray<TPascalToken>;
-  mTypes: TFileTypes;
-  mRoot, mInterfacePart: TSyntaxNode;
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mLocal: TUnitIndex;
-
-  procedure Report(const ARange: TTextRange; const AMessage: string);
-  begin
-    AReport.Add(ARange, AMessage, TRuleConfidence.High, nil);
+type
+  /// <summary>Ein Lauf von TGenericDeclarationInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TGenericDeclarationInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FTypes: TFileTypes;
+    FRoot, FInterfacePart: TSyntaxNode;
+    FNode: TSyntaxNode;
+    FResolver: TNameResolver;
+    FCache: IRuleDerivedCache;
+    FLocal: TUnitIndex;
+    procedure Report(const ARange: TTextRange; const AMessage: string);
+    function TokenRangeAt(AOffset: Integer): TTextRange;
+    function HeaderNameRange(AHeader: TSyntaxNode): TTextRange;
+    function IndexConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
+    function ResolvedConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
+    procedure CheckGroup(const AGroup: TArray<TGenericConstraint>; const AScope: TArray<string>);
+    procedure CheckConstraints(AParams: TSyntaxNode);
+    procedure CheckTypedType(ADecl, ATypeNode: TSyntaxNode);
+    procedure CheckLocalRoutines(ADecl: TSyntaxNode);
+    procedure CheckAttributeClass(ADecl: TSyntaxNode);
+    function InnerGenericParams(ATypeNode: TSyntaxNode): TArray<TSyntaxNode>;
+    procedure CheckShadowing(ADecl, AParams, ATypeNode: TSyntaxNode);
+    procedure CheckTypeDecl(ADecl: TSyntaxNode);
+    procedure CheckMemberHeader(AHeader, AHolder: TSyntaxNode);
+    function DeclaredGenericInInterface(const AName: string): Boolean;
+    function IsGlobalRoutine(AHeader, AHolder: TSyntaxNode): Boolean;
+    procedure CheckHeader(AHeader: TSyntaxNode);
+    function EnclosingClass(ANode: TSyntaxNode; ARejectWith: Boolean): string;
+    procedure AddMethodHeads(ATypeNode: TSyntaxNode; const AMethod: string; var AHeads: TArray<TSyntaxNode>);
+    function MethodHeads(const AType, AMethod: string; out AHeads: TArray<TSyntaxNode>): Boolean;
+    function IsGenericCall(AAccess: TSyntaxNode): Boolean;
+    function QualifiedCallType(AAccess, AQualifier: TSyntaxNode): string;
+    function CallTypeName(AAccess: TSyntaxNode): string;
+    procedure CheckCall(AAccess: TSyntaxNode);
+    procedure CheckLocalSymbols;
+    procedure CheckClassOf(AClassOf: TSyntaxNode);
+    procedure CheckGenericAttribute(AAttribute: TSyntaxNode);
+    procedure CheckNode(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  function TokenRangeAt(AOffset: Integer): TTextRange;
-  var
-    mAt: Integer;
-  begin
-    mAt := TRoutineBody.TokenAt(mTokens, AOffset);
-    if (mAt >= 0) and (mAt < Length(mTokens)) then
-    begin
-      Result := TokenRange(mTokens[mAt]);
-    end
-    else
-    begin
-      Result := TTextRange.Create(mNode.StartPos, mNode.StartPos);
-    end;
-  end;
+{ TGenericDeclarationInvalidScan }
 
-  function HeaderNameRange(AHeader: TSyntaxNode): TTextRange;
-  var
-    mAt: Integer;
-  begin
-    mAt := NameToken(mTokens, AHeader);
-    if mAt >= 0 then
-    begin
-      Result := TokenRange(mTokens[mAt]);
-    end
-    else
-    begin
-      Result := NodeRange(AHeader);
-    end;
-  end;
-
-  /// <summary>Art einer Einschränkung, die weder eingebaut noch in der Datei deklariert ist, über den Index
-  /// (TStream aus System.Classes, #1376): Klasse oder Interface, sonst Unknown. Typparameter aus AScope und
-  /// Namen der Datei (Aliase) bleiben Unknown.</summary>
-  function IndexConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
-  var
-    mBare, mFileName: string;
-    mSymbol: TResolvedSymbol;
-  begin
-    Result := TConstraintKind.Unknown;
-    mBare := BareTypeName(AText);
-    if (AContext.Index = nil) or (mBare = '') or MatchText(mBare, AScope) or (mTypes.IndexOf(mBare) >= 0) then
-    begin
-      Exit;
-    end;
-    if mResolver = nil then
-    begin
-      mFileName := AContext.ResolverFileName;
-      // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      mCache := TRuleDerived.Open(AContext);
-      mResolver := TRuleDerived.Resolver(mCache, AContext);
-      mResolver.PinTree(AContext.Tree, mFileName);
-      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
-    end;
-    if not mResolver.ResolveTypeTextFrom(mLocal, AText, mSymbol) or mSymbol.Builtin or (mSymbol.Condition <> '') then
-    begin
-      Exit;
-    end;
-    if mSymbol.SymbolKind = TIndexSymbolKind.ClassType then
-    begin
-      Result := TConstraintKind.ClassType;
-    end
-    else if mSymbol.SymbolKind = TIndexSymbolKind.InterfaceType then
-    begin
-      Result := TConstraintKind.InterfaceType;
-    end;
-  end;
-
-  /// <summary>Art der Einschränkung aus Datei und eingebauten Typen, sonst über den Index.</summary>
-  function ResolvedConstraintKind(const AText: string; const AScope: TArray<string>): TConstraintKind;
-  begin
-    Result := ConstraintKind(mTypes, AText, AScope);
-    if Result = TConstraintKind.Unknown then
-    begin
-      Result := IndexConstraintKind(AText, AScope);
-    end;
-  end;
-
-  procedure CheckGroup(const AGroup: TArray<TGenericConstraint>; const AScope: TArray<string>);
-  var
-    mSeen: TArray<string>;
-    mConstraint: TGenericConstraint;
-    mKind: TConstraintKind;
-    mState: TConstraintState;
-    mKey, mMessage: string;
-  begin
-    mSeen := nil;
-    mState := Default(TConstraintState);
-    for mConstraint in AGroup do
-    begin
-      mKind := ResolvedConstraintKind(mConstraint.Text, AScope);
-      mKey := LowerCase(mConstraint.Text);
-      if MatchText(mKey, mSeen) and (mKind <> TConstraintKind.ClassType) then
-      begin
-        Report(mConstraint.Range, cTexts[TTypeRestrictionsGenericsText.DuplicateConstraint].Fmt([mConstraint.Text]));
-        Continue;
-      end;
-      mSeen := mSeen + [mKey];
-      mMessage := ConstraintConflict(mKind, mState, mConstraint.Text);
-      if mMessage <> '' then
-      begin
-        Report(mConstraint.Range, mMessage);
-      end;
-      NoteConstraint(mKind, mState);
-    end;
-  end;
-
-  // Einschränkungen einer Typparameterliste: E2507, E2510, E2516, E2552, E2553, E2603.
-  procedure CheckConstraints(AParams: TSyntaxNode);
-  var
-    mScope: TArray<string>;
-    mGroup: TArray<TGenericConstraint>;
-  begin
-    mScope := ScopeTypeParams(AParams);
-    for mGroup in ConstraintGroups(mTokens, AParams) do
-    begin
-      CheckGroup(mGroup, mScope);
-    end;
-  end;
-
-  // type vor einem instanziierten Typ (TEigen = type TListe<Integer>): E2574.
-  procedure CheckTypedType(ADecl, ATypeNode: TSyntaxNode);
-  var
-    mAt, mBefore: Integer;
-    mRange: TTextRange;
-  begin
-    if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil) or
-      (ScopeTypeParams(ADecl) <> nil) then
-    begin
-      Exit;
-    end;
-    mAt := TRoutineBody.TokenAt(mTokens, ATypeNode.StartOffset);
-    mBefore := PreviousCode(mTokens, mAt);
-    if (mBefore < 0) or (mBefore >= Length(mTokens)) or (mTokens[mBefore].Kind <> TPascalTokenKind.Keyword) or
-      not SameText(mTokens[mBefore].Text, 'type') then
-    begin
-      Exit;
-    end;
-    mRange := TTextRange.Create(mTokens[mBefore].StartPos, ATypeNode.EndPos);
-    AReport.Add(mRange, cTexts[TTypeRestrictionsGenericsText.InstantiatedType].Fmt([OneLine(AContext.Text, ATypeNode)]),
-      TRuleConfidence.High,
-      [TRuleFix.Create(cTexts[TTypeRestrictionsGenericsText.RemoveType].Text,
-        [TRuleEdit.Create(TTextRange.Create(mTokens[mBefore].StartPos,
-      mTokens[mAt].StartPos), '')])]);
-  end;
-
-  // Lokale Routinen in einer generischen Methode oder einer Methode eines generischen Typs: E2570.
-  procedure CheckLocalRoutines(ADecl: TSyntaxNode);
-  var
-    mHeader, mInner: TSyntaxNode;
-    mChild: Integer;
-  begin
-    mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
-    if (mHeader = nil) or (Pos('.', mHeader.Name) = 0) or (mHeader.FindChild(TSyntaxKind.GenericParams) = nil) then
-    begin
-      Exit;
-    end;
-    for mChild := 0 to ADecl.ChildCount - 1 do
-    begin
-      if ADecl[mChild].Kind = TSyntaxKind.RoutineDecl then
-      begin
-        mInner := ADecl[mChild].FindChild(TSyntaxKind.RoutineHeader);
-        if mInner = nil then
-        begin
-          mInner := ADecl[mChild];
-        end;
-        Report(HeaderNameRange(mInner), cTexts[TTypeRestrictionsGenericsText.LocalRoutine].Fmt([ADecl[mChild].Name,
-          mHeader.Name]));
-      end;
-    end;
-  end;
-
-  // Generische Attributklasse: E2549.
-  procedure CheckAttributeClass(ADecl: TSyntaxNode);
-  var
-    mAncestor: string;
-    mDepth: Integer;
-  begin
-    mAncestor := mTypes.ParentOf(ADecl.Name);
-    mDepth := 0;
-    while (mAncestor <> '') and (mDepth < 32) do
-    begin
-      if SameText(mAncestor, 'TCustomAttribute') then
-      begin
-        Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.AttributeClass].Fmt([ADecl.Name]));
-        Break;
-      end;
-      mAncestor := mTypes.ParentOf(mAncestor);
-      Inc(mDepth);
-    end;
-  end;
-
-  /// <summary>Typparameterlisten innerhalb von ATypeNode, ohne Methodenzuordnungen.</summary>
-  function InnerGenericParams(ATypeNode: TSyntaxNode): TArray<TSyntaxNode>;
-  var
-    mFound: TArray<TSyntaxNode>;
-  begin
-    mFound := nil;
-    ATypeNode.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
-        // eigenen (#1325).
-        Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
-        if Result and (ANode.Kind = TSyntaxKind.GenericParams) then
-        begin
-          mFound := mFound + [ANode];
-        end;
-      end);
-    Result := mFound;
-  end;
-
-  // Typparameter, die einen des umgebenden Typs verdecken: H2509.
-  procedure CheckShadowing(ADecl, AParams, ATypeNode: TSyntaxNode);
-  var
-    mInner: TSyntaxNode;
-    mNames: TArray<string>;
-    mChild: Integer;
-  begin
-    mNames := TypeParamNames(AParams);
-    for mInner in InnerGenericParams(ATypeNode) do
-    begin
-      for mChild := 0 to mInner.ChildCount - 1 do
-      begin
-        if (mInner[mChild].Kind = TSyntaxKind.Identifier) and MatchText(mInner[mChild].Name, mNames) then
-        begin
-          Report(NodeRange(mInner[mChild]),
-            cTexts[TTypeRestrictionsGenericsText.HidesTypeParam].Fmt([mInner[mChild].Name,
-            ADecl.Name]));
-        end;
-      end;
-    end;
-  end;
-
-  // Typdeklaration mit Typparametern: E2508, E2549, H2509.
-  procedure CheckTypeDecl(ADecl: TSyntaxNode);
-  var
-    mParams, mTypeNode: TSyntaxNode;
-  begin
-    mParams := ADecl.FindChild(TSyntaxKind.GenericParams);
-    mTypeNode := TypeOfDecl(ADecl);
-    if (mParams = nil) and (mTypeNode <> nil) then
-    begin
-      CheckTypedType(ADecl, mTypeNode);
-    end;
-    if (mParams = nil) or (mTypeNode = nil) then
-    begin
-      Exit;
-    end;
-    if mTypeNode.Kind in cNonGenericTypeKinds then
-    begin
-      Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.TypeNoParams].Fmt([ADecl.Name]));
-      Exit;
-    end;
-    if mTypeNode.Kind = TSyntaxKind.ClassType then
-    begin
-      CheckAttributeClass(ADecl);
-    end;
-    CheckShadowing(ADecl, mParams, mTypeNode);
-  end;
-
-  // Methoden mit eigenen Typparametern: E2528, E2529, E2533.
-  procedure CheckMemberHeader(AHeader, AHolder: TSyntaxNode);
-  var
-    mHead: TRoutineHead;
-    mMessage, mName: string;
-    mDirective: TSyntaxNode;
-  begin
-    mHead := TRoutineHead.Read(mTokens, AHeader);
-    mMessage := MemberGenericMessage(mHead, AHolder.Kind);
-    if mMessage <> '' then
-    begin
-      Report(HeaderNameRange(AHeader), mMessage);
-      Exit;
-    end;
-    for mName in cVirtualDirectives do
-    begin
-      mDirective := mHead.Directive(mName);
-      if mDirective <> nil then
-      begin
-        Report(NodeRange(mDirective), cTexts[TTypeRestrictionsGenericsText.VirtualMethods].Text);
-        Exit;
-      end;
-    end;
-  end;
-
-  /// <summary>Steht im interface-Teil eine generische Routine AName?</summary>
-  function DeclaredGenericInInterface(const AName: string): Boolean;
-  var
-    mChild: Integer;
-    mOther, mHeader: TSyntaxNode;
-  begin
-    Result := False;
-    if mInterfacePart = nil then
-    begin
-      Exit;
-    end;
-    for mChild := 0 to mInterfacePart.ChildCount - 1 do
-    begin
-      mOther := mInterfacePart[mChild];
-      if (mOther.Kind <> TSyntaxKind.RoutineDecl) or not SameText(mOther.Name, AName) then
-      begin
-        Continue;
-      end;
-      mHeader := mOther.FindChild(TSyntaxKind.RoutineHeader);
-      if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.GenericParams) <> nil) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  /// <summary>Ist AHeader der Kopf einer globalen Routine (Holder ist ihre RoutineDecl)?</summary>
-  function IsGlobalRoutine(AHeader, AHolder: TSyntaxNode): Boolean;
-  begin
-    Result := (AHolder.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', AHeader.Name) = 0) and (AHolder.Parent <> nil);
-    Result := Result and (AHolder.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-      TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.UnitFile]);
-  end;
-
-  // Routine mit eigenen Typparametern: E2528, E2529, E2530, E2533, E2535.
-  procedure CheckHeader(AHeader: TSyntaxNode);
-  var
-    mOwn, mHolder: TSyntaxNode;
-  begin
-    mOwn := OwnGenericParams(mTokens, AHeader);
-    if (mOwn = nil) or (AHeader.Parent = nil) then
-    begin
-      Exit;
-    end;
-    mHolder := AHeader.Parent;
-    if mHolder.Kind = TSyntaxKind.InterfaceType then
-    begin
-      Report(HeaderNameRange(AHeader), cTexts[TTypeRestrictionsGenericsText.InterfaceMethods].Text);
-    end
-    else if mHolder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
-      TSyntaxKind.HelperType] then
-    begin
-      CheckMemberHeader(AHeader, mHolder);
-    end
-    // Rumpf einer Routine aus dem interface-Teil: dort schon gemeldet.
-    else if IsGlobalRoutine(AHeader, mHolder) and not ((mHolder.Parent.Kind = TSyntaxKind.ImplementationSection) and
-      DeclaredGenericInInterface(AHeader.Name)) then
-    begin
-      Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, mOwn.EndPos),
-        cTexts[TTypeRestrictionsGenericsText.GlobalRoutines].Text);
-    end;
-  end;
-
-  /// <summary>Klasse der Methode, in der ANode steht ('' außerhalb oder in with).</summary>
-  function EnclosingClass(ANode: TSyntaxNode; ARejectWith: Boolean): string;
-  var
-    mCurrent: TSyntaxNode;
-    mName: string;
-  begin
-    Result := '';
-    mCurrent := ANode.Parent;
-    while mCurrent <> nil do
-    begin
-      if ARejectWith and (mCurrent.Kind = TSyntaxKind.WithStatement) then
-      begin
-        Exit('');
-      end;
-      if (mCurrent.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mCurrent.Name) > 0) then
-      begin
-        mName := Copy(mCurrent.Name, 1, LastDelimiter('.', mCurrent.Name) - 1);
-        Result := LastPart(mName);
-      end;
-      mCurrent := mCurrent.Parent;
-    end;
-  end;
-
-  /// <summary>Hängt die Köpfe AMethod direkt in ATypeNode an AHeads an.</summary>
-  procedure AddMethodHeads(ATypeNode: TSyntaxNode; const AMethod: string; var AHeads: TArray<TSyntaxNode>);
-  var
-    mChild: Integer;
-  begin
-    for mChild := 0 to ATypeNode.ChildCount - 1 do
-    begin
-      if (ATypeNode[mChild].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeNode[mChild].Name, AMethod) then
-      begin
-        AHeads := AHeads + [ATypeNode[mChild]];
-      end;
-    end;
-  end;
-
-  /// <summary>Köpfe AMethod der Klasse oder des Records AType samt Vorfahren der Datei; False, wenn die Kette
-  /// außerhalb der Datei weitergeht.</summary>
-  function MethodHeads(const AType, AMethod: string; out AHeads: TArray<TSyntaxNode>): Boolean;
-  var
-    mCurrent: string;
-    mDecl, mTypeNode: TSyntaxNode;
-    mDepth: Integer;
-  begin
-    AHeads := nil;
-    Result := False;
-    mCurrent := AType;
-    mDepth := 0;
-    while mDepth < 32 do
-    begin
-      mDecl := FindStructDecl(mRoot, mCurrent);
-      if mDecl = nil then
-      begin
-        Exit;
-      end;
-      mTypeNode := TypeOfDecl(mDecl);
-      AddMethodHeads(mTypeNode, AMethod, AHeads);
-      if (mTypeNode.Kind <> TSyntaxKind.ClassType) or (mTypeNode.ChildCount = 0) or
-        (mTypeNode[0].Kind <> TSyntaxKind.TypeReference) then
-      begin
-        Exit(True);
-      end;
-      mCurrent := BareTypeName(mTypeNode[0].Name);
-      if SameText(mCurrent, 'TObject') or (mTypes.DeclaredKind(mCurrent) = TSyntaxKind.InterfaceType) then
-      begin
-        Exit(True);
-      end;
-      Inc(mDepth);
-    end;
-  end;
-
-  /// <summary>Ist AAccess (F&lt;…&gt;) das aufgerufene Ziel eines Aufrufs?</summary>
-  function IsGenericCall(AAccess: TSyntaxNode): Boolean;
-  begin
-    Result := (AAccess.ChildCount = 2) and (AAccess[1].Kind = TSyntaxKind.GenericArgs) and (AAccess.Parent <> nil);
-    Result := Result and (AAccess.Parent.Kind in [TSyntaxKind.Call, TSyntaxKind.CallStatement]) and
-      (AAccess.Parent[0] = AAccess);
-  end;
-
-  /// <summary>Typ hinter X.F&lt;…&gt; mit dem Bezeichner AQualifier als X ('' ohne).</summary>
-  function QualifiedCallType(AAccess, AQualifier: TSyntaxNode): string;
-  begin
-    Result := '';
-    if SameText(AQualifier.Name, 'Self') then
-    begin
-      Result := EnclosingClass(AAccess, False);
-    end
-    else if ((EnclosingClass(AAccess, True) <> '') or (Pos('.', AQualifier.Name) = 0)) and
-      (mTypes.DeclaredKind(AQualifier.Name) in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
-    begin
-      Result := AQualifier.Name;
-    end;
-  end;
-
-  /// <summary>Klasse oder Record, deren Methode AAccess aufruft ('' unbekannt).</summary>
-  function CallTypeName(AAccess: TSyntaxNode): string;
-  var
-    mTarget: TSyntaxNode;
-  begin
-    Result := '';
-    mTarget := AAccess[0];
-    if not SameText(mTarget.Name, AAccess.Name) then
-    begin
-      Exit;
-    end;
-    if mTarget.Kind = TSyntaxKind.Identifier then
-    begin
-      Result := EnclosingClass(AAccess, True);
-    end
-    else if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount = 1) and
-      (mTarget[0].Kind = TSyntaxKind.Identifier) then
-    begin
-      Result := QualifiedCallType(AAccess, mTarget[0]);
-    end;
-  end;
-
-  // Aufruf F<…> mit einer Zahl Typargumente, die keine Variante von F hat: E2551.
-  procedure CheckCall(AAccess: TSyntaxNode);
-  var
-    mTypeName, mVariants: string;
-    mHeads: TArray<TSyntaxNode>;
-    mCount: Integer;
-    mFits: Boolean;
-  begin
-    if not IsGenericCall(AAccess) then
-    begin
-      Exit;
-    end;
-    mTypeName := CallTypeName(AAccess);
-    if (mTypeName = '') or not MethodHeads(mTypeName, AAccess.Name, mHeads) or (mHeads = nil) then
-    begin
-      Exit;
-    end;
-    mCount := AAccess[1].ChildCount;
-    if DescribeVariants(mHeads, mCount, mVariants, mFits) and not mFits then
-    begin
-      Report(NodeRange(AAccess), cTexts[TTypeRestrictionsGenericsText.NoVariant].Fmt([AAccess.Name, mCount,
-        mVariants]));
-    end;
-  end;
-
-  // Methoden generischer Typen bzw. generische Methoden aus dem interface-Teil, die Symbole des
-  // implementation-Teils verwenden: E2506.
-  procedure CheckLocalSymbols;
-  var
-    mSymbols: TImplementationSymbols;
-    mRoutine, mDecl, mOuter, mUse: TSyntaxNode;
-    mGeneric: Boolean;
-    mConstants: TArray<string>;
-  begin
-    mSymbols := TImplementationSymbols.Create(AContext);
-    try
-      // Echte Konstanten setzt dcc ein wie Literale; nur typisierte Konstanten, Variablen und Routinen sind E2506.
-      mConstants := UntypedConstantsOf(AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection));
-      for mRoutine in mSymbols.Routines do
-      begin
-        mDecl := mSymbols.OwnerType(mRoutine);
-        if mDecl = nil then
-        begin
-          Continue;
-        end;
-        mGeneric := OwnGenericParams(mTokens, mRoutine.FindChild(TSyntaxKind.RoutineHeader)) <> nil;
-        mOuter := mDecl;
-        while mOuter <> nil do
-        begin
-          if (mOuter.Kind = TSyntaxKind.TypeDecl) and (mOuter.FindChild(TSyntaxKind.GenericParams) <> nil) then
-          begin
-            mGeneric := True;
-          end;
-          mOuter := mOuter.Parent;
-        end;
-        if not mGeneric then
-        begin
-          Continue;
-        end;
-        for mUse in mSymbols.UsesIn(mRoutine, mDecl) do
-        begin
-          if not MatchText(mUse.Name, mConstants) then
-          begin
-            Report(NodeRange(mUse), cTexts[TTypeRestrictionsGenericsText.ImplementationUse].Fmt([mRoutine.Name,
-              mUse.Name]));
-          end;
-        end;
-      end;
-    finally
-      mSymbols.Free;
-    end;
-  end;
-
-  // class of eines parametrisierten Typs: E2548.
-  procedure CheckClassOf(AClassOf: TSyntaxNode);
-  begin
-    if (AClassOf.ChildCount > 0) and (AClassOf[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
-    begin
-      Report(NodeRange(AClassOf[0]), cTexts[TTypeRestrictionsGenericsText.ClassOf].Text);
-    end;
-  end;
-
-  // Parametrisierter Typ als Attribut: E2565.
-  procedure CheckGenericAttribute(AAttribute: TSyntaxNode);
-  var
-    mItem: TSyntaxNode;
-    mGeneric: Boolean;
-  begin
-    if AAttribute.ChildCount = 0 then
-    begin
-      Exit;
-    end;
-    mItem := AAttribute[0];
-    mGeneric := mItem.FindChild(TSyntaxKind.GenericArgs) <> nil;
-    mGeneric := mGeneric or ((mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) and
-      (mItem[0].FindChild(TSyntaxKind.GenericArgs) <> nil));
-    if mGeneric then
-    begin
-      Report(NodeRange(AAttribute), cTexts[TTypeRestrictionsGenericsText.AsAttribute].Text);
-    end;
-  end;
-
-  procedure CheckNode(ANode: TSyntaxNode);
-  begin
-    case ANode.Kind of
-      TSyntaxKind.GenericParams:
-        CheckConstraints(ANode);
-      TSyntaxKind.TypeDecl:
-        CheckTypeDecl(ANode);
-      TSyntaxKind.ClassOfType:
-        CheckClassOf(ANode);
-      TSyntaxKind.Attribute:
-        CheckGenericAttribute(ANode);
-      TSyntaxKind.RoutineHeader:
-        CheckHeader(ANode);
-      TSyntaxKind.MemberAccess:
-        CheckCall(ANode);
-      TSyntaxKind.RoutineDecl:
-        CheckLocalRoutines(ANode);
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-  end;
-
+constructor TGenericDeclarationInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos('<', AContext.Text) = 0) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+procedure TGenericDeclarationInvalidScan.Report(const ARange: TTextRange; const AMessage: string);
+begin
+  FReport.Add(ARange, AMessage, TRuleConfidence.High, nil);
+end;
+
+function TGenericDeclarationInvalidScan.TokenRangeAt(AOffset: Integer): TTextRange;
+var
+  mAt: Integer;
+begin
+  mAt := TRoutineBody.TokenAt(FTokens, AOffset);
+  if (mAt >= 0) and (mAt < Length(FTokens)) then
+  begin
+    Result := TokenRange(FTokens[mAt]);
+  end
+  else
+  begin
+    Result := TTextRange.Create(FNode.StartPos, FNode.StartPos);
+  end;
+end;
+
+function TGenericDeclarationInvalidScan.HeaderNameRange(AHeader: TSyntaxNode): TTextRange;
+var
+  mAt: Integer;
+begin
+  mAt := NameToken(FTokens, AHeader);
+  if mAt >= 0 then
+  begin
+    Result := TokenRange(FTokens[mAt]);
+  end
+  else
+  begin
+    Result := NodeRange(AHeader);
+  end;
+end;
+
+/// <summary>Art einer Einschränkung, die weder eingebaut noch in der Datei deklariert ist, über den Index
+/// (TStream aus System.Classes, #1376): Klasse oder Interface, sonst Unknown. Typparameter aus AScope und
+/// Namen der Datei (Aliase) bleiben Unknown.</summary>
+function TGenericDeclarationInvalidScan.IndexConstraintKind(const AText: string;
+  const AScope: TArray<string>): TConstraintKind;
+var
+  mBare, mFileName: string;
+  mSymbol: TResolvedSymbol;
+begin
+  Result := TConstraintKind.Unknown;
+  mBare := BareTypeName(AText);
+  if (FContext.Index = nil) or (mBare = '') or MatchText(mBare, AScope) or (FTypes.IndexOf(mBare) >= 0) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mRoot := AContext.Tree.Root;
-  mTypes := TFileTypes.Collect(mRoot);
-  mInterfacePart := mRoot.FindChild(TSyntaxKind.InterfaceSection);
-  mResolver := nil;
-  mLocal := Default(TUnitIndex);
+  if FResolver = nil then
+  begin
+    mFileName := FContext.ResolverFileName;
+    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+    FCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(FCache, FContext);
+    FResolver.PinTree(FContext.Tree, mFileName);
+    FLocal := FResolver.ExtractedUnit(FContext.Tree, mFileName);
+  end;
+  if not FResolver.ResolveTypeTextFrom(FLocal, AText, mSymbol) or mSymbol.Builtin or (mSymbol.Condition <> '') then
+  begin
+    Exit;
+  end;
+  if mSymbol.SymbolKind = TIndexSymbolKind.ClassType then
+  begin
+    Result := TConstraintKind.ClassType;
+  end
+  else if mSymbol.SymbolKind = TIndexSymbolKind.InterfaceType then
+  begin
+    Result := TConstraintKind.InterfaceType;
+  end;
+end;
+
+/// <summary>Art der Einschränkung aus Datei und eingebauten Typen, sonst über den Index.</summary>
+function TGenericDeclarationInvalidScan.ResolvedConstraintKind(const AText: string;
+  const AScope: TArray<string>): TConstraintKind;
+begin
+  Result := ConstraintKind(FTypes, AText, AScope);
+  if Result = TConstraintKind.Unknown then
+  begin
+    Result := IndexConstraintKind(AText, AScope);
+  end;
+end;
+
+procedure TGenericDeclarationInvalidScan.CheckGroup(const AGroup: TArray<TGenericConstraint>;
+  const AScope: TArray<string>);
+var
+  mSeen: TArray<string>;
+  mConstraint: TGenericConstraint;
+  mKind: TConstraintKind;
+  mState: TConstraintState;
+  mKey, mMessage: string;
+begin
+  mSeen := nil;
+  mState := Default(TConstraintState);
+  for mConstraint in AGroup do
+  begin
+    mKind := ResolvedConstraintKind(mConstraint.Text, AScope);
+    mKey := LowerCase(mConstraint.Text);
+    if MatchText(mKey, mSeen) and (mKind <> TConstraintKind.ClassType) then
+    begin
+      Report(mConstraint.Range, cTexts[TTypeRestrictionsGenericsText.DuplicateConstraint].Fmt([mConstraint.Text]));
+      Continue;
+    end;
+    mSeen := mSeen + [mKey];
+    mMessage := ConstraintConflict(mKind, mState, mConstraint.Text);
+    if mMessage <> '' then
+    begin
+      Report(mConstraint.Range, mMessage);
+    end;
+    NoteConstraint(mKind, mState);
+  end;
+end;
+
+// Einschränkungen einer Typparameterliste: E2507, E2510, E2516, E2552, E2553, E2603.
+procedure TGenericDeclarationInvalidScan.CheckConstraints(AParams: TSyntaxNode);
+var
+  mScope: TArray<string>;
+  mGroup: TArray<TGenericConstraint>;
+begin
+  mScope := ScopeTypeParams(AParams);
+  for mGroup in ConstraintGroups(FTokens, AParams) do
+  begin
+    CheckGroup(mGroup, mScope);
+  end;
+end;
+
+// type vor einem instanziierten Typ (TEigen = type TListe<Integer>): E2574.
+procedure TGenericDeclarationInvalidScan.CheckTypedType(ADecl, ATypeNode: TSyntaxNode);
+var
+  mAt, mBefore: Integer;
+  mRange: TTextRange;
+begin
+  if (ATypeNode.Kind <> TSyntaxKind.TypeReference) or (ATypeNode.FindChild(TSyntaxKind.GenericArgs) = nil) or
+    (ScopeTypeParams(ADecl) <> nil) then
+  begin
+    Exit;
+  end;
+  mAt := TRoutineBody.TokenAt(FTokens, ATypeNode.StartOffset);
+  mBefore := PreviousCode(FTokens, mAt);
+  if (mBefore < 0) or (mBefore >= Length(FTokens)) or (FTokens[mBefore].Kind <> TPascalTokenKind.Keyword) or
+    not SameText(FTokens[mBefore].Text, 'type') then
+  begin
+    Exit;
+  end;
+  mRange := TTextRange.Create(FTokens[mBefore].StartPos, ATypeNode.EndPos);
+  FReport.Add(mRange, cTexts[TTypeRestrictionsGenericsText.InstantiatedType].Fmt([OneLine(FContext.Text, ATypeNode)]),
+    TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TTypeRestrictionsGenericsText.RemoveType].Text,
+      [TRuleEdit.Create(TTextRange.Create(FTokens[mBefore].StartPos,
+    FTokens[mAt].StartPos), '')])]);
+end;
+
+// Lokale Routinen in einer generischen Methode oder einer Methode eines generischen Typs: E2570.
+procedure TGenericDeclarationInvalidScan.CheckLocalRoutines(ADecl: TSyntaxNode);
+var
+  mHeader, mInner: TSyntaxNode;
+  mChild: Integer;
+begin
+  mHeader := ADecl.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader = nil) or (Pos('.', mHeader.Name) = 0) or (mHeader.FindChild(TSyntaxKind.GenericParams) = nil) then
+  begin
+    Exit;
+  end;
+  for mChild := 0 to ADecl.ChildCount - 1 do
+  begin
+    if ADecl[mChild].Kind = TSyntaxKind.RoutineDecl then
+    begin
+      mInner := ADecl[mChild].FindChild(TSyntaxKind.RoutineHeader);
+      if mInner = nil then
+      begin
+        mInner := ADecl[mChild];
+      end;
+      Report(HeaderNameRange(mInner), cTexts[TTypeRestrictionsGenericsText.LocalRoutine].Fmt([ADecl[mChild].Name,
+        mHeader.Name]));
+    end;
+  end;
+end;
+
+// Generische Attributklasse: E2549.
+procedure TGenericDeclarationInvalidScan.CheckAttributeClass(ADecl: TSyntaxNode);
+var
+  mAncestor: string;
+  mDepth: Integer;
+begin
+  mAncestor := FTypes.ParentOf(ADecl.Name);
+  mDepth := 0;
+  while (mAncestor <> '') and (mDepth < 32) do
+  begin
+    if SameText(mAncestor, 'TCustomAttribute') then
+    begin
+      Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.AttributeClass].Fmt([ADecl.Name]));
+      Break;
+    end;
+    mAncestor := FTypes.ParentOf(mAncestor);
+    Inc(mDepth);
+  end;
+end;
+
+/// <summary>Typparameterlisten innerhalb von ATypeNode, ohne Methodenzuordnungen.</summary>
+function TGenericDeclarationInvalidScan.InnerGenericParams(ATypeNode: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mFound: TArray<TSyntaxNode>;
+begin
+  mFound := nil;
+  ATypeNode.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
+      // eigenen (#1325).
+      Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
+      if Result and (ANode.Kind = TSyntaxKind.GenericParams) then
+      begin
+        mFound := mFound + [ANode];
+      end;
+    end);
+  Result := mFound;
+end;
+
+// Typparameter, die einen des umgebenden Typs verdecken: H2509.
+procedure TGenericDeclarationInvalidScan.CheckShadowing(ADecl, AParams, ATypeNode: TSyntaxNode);
+var
+  mInner: TSyntaxNode;
+  mNames: TArray<string>;
+  mChild: Integer;
+begin
+  mNames := TypeParamNames(AParams);
+  for mInner in InnerGenericParams(ATypeNode) do
+  begin
+    for mChild := 0 to mInner.ChildCount - 1 do
+    begin
+      if (mInner[mChild].Kind = TSyntaxKind.Identifier) and MatchText(mInner[mChild].Name, mNames) then
+      begin
+        Report(NodeRange(mInner[mChild]),
+          cTexts[TTypeRestrictionsGenericsText.HidesTypeParam].Fmt([mInner[mChild].Name,
+          ADecl.Name]));
+      end;
+    end;
+  end;
+end;
+
+// Typdeklaration mit Typparametern: E2508, E2549, H2509.
+procedure TGenericDeclarationInvalidScan.CheckTypeDecl(ADecl: TSyntaxNode);
+var
+  mParams, mTypeNode: TSyntaxNode;
+begin
+  mParams := ADecl.FindChild(TSyntaxKind.GenericParams);
+  mTypeNode := TypeOfDecl(ADecl);
+  if (mParams = nil) and (mTypeNode <> nil) then
+  begin
+    CheckTypedType(ADecl, mTypeNode);
+  end;
+  if (mParams = nil) or (mTypeNode = nil) then
+  begin
+    Exit;
+  end;
+  if mTypeNode.Kind in cNonGenericTypeKinds then
+  begin
+    Report(TokenRangeAt(ADecl.StartOffset), cTexts[TTypeRestrictionsGenericsText.TypeNoParams].Fmt([ADecl.Name]));
+    Exit;
+  end;
+  if mTypeNode.Kind = TSyntaxKind.ClassType then
+  begin
+    CheckAttributeClass(ADecl);
+  end;
+  CheckShadowing(ADecl, mParams, mTypeNode);
+end;
+
+// Methoden mit eigenen Typparametern: E2528, E2529, E2533.
+procedure TGenericDeclarationInvalidScan.CheckMemberHeader(AHeader, AHolder: TSyntaxNode);
+var
+  mHead: TRoutineHead;
+  mMessage, mName: string;
+  mDirective: TSyntaxNode;
+begin
+  mHead := TRoutineHead.Read(FTokens, AHeader);
+  mMessage := MemberGenericMessage(mHead, AHolder.Kind);
+  if mMessage <> '' then
+  begin
+    Report(HeaderNameRange(AHeader), mMessage);
+    Exit;
+  end;
+  for mName in cVirtualDirectives do
+  begin
+    mDirective := mHead.Directive(mName);
+    if mDirective <> nil then
+    begin
+      Report(NodeRange(mDirective), cTexts[TTypeRestrictionsGenericsText.VirtualMethods].Text);
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Steht im interface-Teil eine generische Routine AName?</summary>
+function TGenericDeclarationInvalidScan.DeclaredGenericInInterface(const AName: string): Boolean;
+var
+  mChild: Integer;
+  mOther, mHeader: TSyntaxNode;
+begin
+  Result := False;
+  if FInterfacePart = nil then
+  begin
+    Exit;
+  end;
+  for mChild := 0 to FInterfacePart.ChildCount - 1 do
+  begin
+    mOther := FInterfacePart[mChild];
+    if (mOther.Kind <> TSyntaxKind.RoutineDecl) or not SameText(mOther.Name, AName) then
+    begin
+      Continue;
+    end;
+    mHeader := mOther.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.GenericParams) <> nil) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Ist AHeader der Kopf einer globalen Routine (Holder ist ihre RoutineDecl)?</summary>
+function TGenericDeclarationInvalidScan.IsGlobalRoutine(AHeader, AHolder: TSyntaxNode): Boolean;
+begin
+  Result := (AHolder.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', AHeader.Name) = 0) and (AHolder.Parent <> nil);
+  Result := Result and (AHolder.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+    TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.UnitFile]);
+end;
+
+// Routine mit eigenen Typparametern: E2528, E2529, E2530, E2533, E2535.
+procedure TGenericDeclarationInvalidScan.CheckHeader(AHeader: TSyntaxNode);
+var
+  mOwn, mHolder: TSyntaxNode;
+begin
+  mOwn := OwnGenericParams(FTokens, AHeader);
+  if (mOwn = nil) or (AHeader.Parent = nil) then
+  begin
+    Exit;
+  end;
+  mHolder := AHeader.Parent;
+  if mHolder.Kind = TSyntaxKind.InterfaceType then
+  begin
+    Report(HeaderNameRange(AHeader), cTexts[TTypeRestrictionsGenericsText.InterfaceMethods].Text);
+  end
+  else if mHolder.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType,
+    TSyntaxKind.HelperType] then
+  begin
+    CheckMemberHeader(AHeader, mHolder);
+  end
+  // Rumpf einer Routine aus dem interface-Teil: dort schon gemeldet.
+  else if IsGlobalRoutine(AHeader, mHolder) and not ((mHolder.Parent.Kind = TSyntaxKind.ImplementationSection) and
+    DeclaredGenericInInterface(AHeader.Name)) then
+  begin
+    Report(TTextRange.Create(HeaderNameRange(AHeader).StartPos, mOwn.EndPos),
+      cTexts[TTypeRestrictionsGenericsText.GlobalRoutines].Text);
+  end;
+end;
+
+/// <summary>Klasse der Methode, in der ANode steht ('' außerhalb oder in with).</summary>
+function TGenericDeclarationInvalidScan.EnclosingClass(ANode: TSyntaxNode; ARejectWith: Boolean): string;
+var
+  mCurrent: TSyntaxNode;
+  mName: string;
+begin
+  Result := '';
+  mCurrent := ANode.Parent;
+  while mCurrent <> nil do
+  begin
+    if ARejectWith and (mCurrent.Kind = TSyntaxKind.WithStatement) then
+    begin
+      Exit('');
+    end;
+    if (mCurrent.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', mCurrent.Name) > 0) then
+    begin
+      mName := Copy(mCurrent.Name, 1, LastDelimiter('.', mCurrent.Name) - 1);
+      Result := LastPart(mName);
+    end;
+    mCurrent := mCurrent.Parent;
+  end;
+end;
+
+/// <summary>Hängt die Köpfe AMethod direkt in ATypeNode an AHeads an.</summary>
+procedure TGenericDeclarationInvalidScan.AddMethodHeads(ATypeNode: TSyntaxNode; const AMethod: string;
+  var AHeads: TArray<TSyntaxNode>);
+var
+  mChild: Integer;
+begin
+  for mChild := 0 to ATypeNode.ChildCount - 1 do
+  begin
+    if (ATypeNode[mChild].Kind = TSyntaxKind.RoutineHeader) and SameText(ATypeNode[mChild].Name, AMethod) then
+    begin
+      AHeads := AHeads + [ATypeNode[mChild]];
+    end;
+  end;
+end;
+
+/// <summary>Köpfe AMethod der Klasse oder des Records AType samt Vorfahren der Datei; False, wenn die Kette
+/// außerhalb der Datei weitergeht.</summary>
+function TGenericDeclarationInvalidScan.MethodHeads(const AType, AMethod: string;
+  out AHeads: TArray<TSyntaxNode>): Boolean;
+var
+  mCurrent: string;
+  mDecl, mTypeNode: TSyntaxNode;
+  mDepth: Integer;
+begin
+  AHeads := nil;
+  Result := False;
+  mCurrent := AType;
+  mDepth := 0;
+  while mDepth < 32 do
+  begin
+    mDecl := FindStructDecl(FRoot, mCurrent);
+    if mDecl = nil then
+    begin
+      Exit;
+    end;
+    mTypeNode := TypeOfDecl(mDecl);
+    AddMethodHeads(mTypeNode, AMethod, AHeads);
+    if (mTypeNode.Kind <> TSyntaxKind.ClassType) or (mTypeNode.ChildCount = 0) or
+      (mTypeNode[0].Kind <> TSyntaxKind.TypeReference) then
+    begin
+      Exit(True);
+    end;
+    mCurrent := BareTypeName(mTypeNode[0].Name);
+    if SameText(mCurrent, 'TObject') or (FTypes.DeclaredKind(mCurrent) = TSyntaxKind.InterfaceType) then
+    begin
+      Exit(True);
+    end;
+    Inc(mDepth);
+  end;
+end;
+
+/// <summary>Ist AAccess (F&lt;…&gt;) das aufgerufene Ziel eines Aufrufs?</summary>
+function TGenericDeclarationInvalidScan.IsGenericCall(AAccess: TSyntaxNode): Boolean;
+begin
+  Result := (AAccess.ChildCount = 2) and (AAccess[1].Kind = TSyntaxKind.GenericArgs) and (AAccess.Parent <> nil);
+  Result := Result and (AAccess.Parent.Kind in [TSyntaxKind.Call, TSyntaxKind.CallStatement]) and
+    (AAccess.Parent[0] = AAccess);
+end;
+
+/// <summary>Typ hinter X.F&lt;…&gt; mit dem Bezeichner AQualifier als X ('' ohne).</summary>
+function TGenericDeclarationInvalidScan.QualifiedCallType(AAccess, AQualifier: TSyntaxNode): string;
+begin
+  Result := '';
+  if SameText(AQualifier.Name, 'Self') then
+  begin
+    Result := EnclosingClass(AAccess, False);
+  end
+  else if ((EnclosingClass(AAccess, True) <> '') or (Pos('.', AQualifier.Name) = 0)) and
+    (FTypes.DeclaredKind(AQualifier.Name) in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
+  begin
+    Result := AQualifier.Name;
+  end;
+end;
+
+/// <summary>Klasse oder Record, deren Methode AAccess aufruft ('' unbekannt).</summary>
+function TGenericDeclarationInvalidScan.CallTypeName(AAccess: TSyntaxNode): string;
+var
+  mTarget: TSyntaxNode;
+begin
+  Result := '';
+  mTarget := AAccess[0];
+  if not SameText(mTarget.Name, AAccess.Name) then
+  begin
+    Exit;
+  end;
+  if mTarget.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := EnclosingClass(AAccess, True);
+  end
+  else if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount = 1) and
+    (mTarget[0].Kind = TSyntaxKind.Identifier) then
+  begin
+    Result := QualifiedCallType(AAccess, mTarget[0]);
+  end;
+end;
+
+// Aufruf F<…> mit einer Zahl Typargumente, die keine Variante von F hat: E2551.
+procedure TGenericDeclarationInvalidScan.CheckCall(AAccess: TSyntaxNode);
+var
+  mTypeName, mVariants: string;
+  mHeads: TArray<TSyntaxNode>;
+  mCount: Integer;
+  mFits: Boolean;
+begin
+  if not IsGenericCall(AAccess) then
+  begin
+    Exit;
+  end;
+  mTypeName := CallTypeName(AAccess);
+  if (mTypeName = '') or not MethodHeads(mTypeName, AAccess.Name, mHeads) or (mHeads = nil) then
+  begin
+    Exit;
+  end;
+  mCount := AAccess[1].ChildCount;
+  if DescribeVariants(mHeads, mCount, mVariants, mFits) and not mFits then
+  begin
+    Report(NodeRange(AAccess), cTexts[TTypeRestrictionsGenericsText.NoVariant].Fmt([AAccess.Name, mCount,
+      mVariants]));
+  end;
+end;
+
+// Methoden generischer Typen bzw. generische Methoden aus dem interface-Teil, die Symbole des
+// implementation-Teils verwenden: E2506.
+procedure TGenericDeclarationInvalidScan.CheckLocalSymbols;
+var
+  mSymbols: TImplementationSymbols;
+  mRoutine, mDecl, mOuter, mUse: TSyntaxNode;
+  mGeneric: Boolean;
+  mConstants: TArray<string>;
+begin
+  mSymbols := TImplementationSymbols.Create(FContext);
+  try
+    // Echte Konstanten setzt dcc ein wie Literale; nur typisierte Konstanten, Variablen und Routinen sind E2506.
+    mConstants := UntypedConstantsOf(FContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection));
+    for mRoutine in mSymbols.Routines do
+    begin
+      mDecl := mSymbols.OwnerType(mRoutine);
+      if mDecl = nil then
+      begin
+        Continue;
+      end;
+      mGeneric := OwnGenericParams(FTokens, mRoutine.FindChild(TSyntaxKind.RoutineHeader)) <> nil;
+      mOuter := mDecl;
+      while mOuter <> nil do
+      begin
+        if (mOuter.Kind = TSyntaxKind.TypeDecl) and (mOuter.FindChild(TSyntaxKind.GenericParams) <> nil) then
+        begin
+          mGeneric := True;
+        end;
+        mOuter := mOuter.Parent;
+      end;
+      if not mGeneric then
+      begin
+        Continue;
+      end;
+      for mUse in mSymbols.UsesIn(mRoutine, mDecl) do
+      begin
+        if not MatchText(mUse.Name, mConstants) then
+        begin
+          Report(NodeRange(mUse), cTexts[TTypeRestrictionsGenericsText.ImplementationUse].Fmt([mRoutine.Name,
+            mUse.Name]));
+        end;
+      end;
+    end;
+  finally
+    mSymbols.Free;
+  end;
+end;
+
+// class of eines parametrisierten Typs: E2548.
+procedure TGenericDeclarationInvalidScan.CheckClassOf(AClassOf: TSyntaxNode);
+begin
+  if (AClassOf.ChildCount > 0) and (AClassOf[0].FindChild(TSyntaxKind.GenericArgs) <> nil) then
+  begin
+    Report(NodeRange(AClassOf[0]), cTexts[TTypeRestrictionsGenericsText.ClassOf].Text);
+  end;
+end;
+
+// Parametrisierter Typ als Attribut: E2565.
+procedure TGenericDeclarationInvalidScan.CheckGenericAttribute(AAttribute: TSyntaxNode);
+var
+  mItem: TSyntaxNode;
+  mGeneric: Boolean;
+begin
+  if AAttribute.ChildCount = 0 then
+  begin
+    Exit;
+  end;
+  mItem := AAttribute[0];
+  mGeneric := mItem.FindChild(TSyntaxKind.GenericArgs) <> nil;
+  mGeneric := mGeneric or ((mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) and
+    (mItem[0].FindChild(TSyntaxKind.GenericArgs) <> nil));
+  if mGeneric then
+  begin
+    Report(NodeRange(AAttribute), cTexts[TTypeRestrictionsGenericsText.AsAttribute].Text);
+  end;
+end;
+
+procedure TGenericDeclarationInvalidScan.CheckNode(ANode: TSyntaxNode);
+begin
+  case ANode.Kind of
+    TSyntaxKind.GenericParams:
+      CheckConstraints(ANode);
+    TSyntaxKind.TypeDecl:
+      CheckTypeDecl(ANode);
+    TSyntaxKind.ClassOfType:
+      CheckClassOf(ANode);
+    TSyntaxKind.Attribute:
+      CheckGenericAttribute(ANode);
+    TSyntaxKind.RoutineHeader:
+      CheckHeader(ANode);
+    TSyntaxKind.MemberAccess:
+      CheckCall(ANode);
+    TSyntaxKind.RoutineDecl:
+      CheckLocalRoutines(ANode);
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+procedure TGenericDeclarationInvalidScan.Run;
+var
+  mNode: TSyntaxNode;
+  mNodes: TList<TSyntaxNode>;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) or (Pos('<', FContext.Text) = 0) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FRoot := FContext.Tree.Root;
+  FTypes := TFileTypes.Collect(FRoot);
+  FInterfacePart := FRoot.FindChild(TSyntaxKind.InterfaceSection);
+  FResolver := nil;
+  FLocal := Default(TUnitIndex);
   mNodes := TList<TSyntaxNode>.Create;
   try
-    mRoot.Walk(
+    FRoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         // Methodenzuordnungen (function IFoo<T>.Bar = Baz;) deklarieren nichts Generisches (#1325).
@@ -1339,16 +1392,25 @@ begin
       end);
     for mNode in mNodes do
     begin
+      FNode := mNode;
       CheckNode(mNode);
     end;
     CheckLocalSymbols;
   finally
     mNodes.Free;
-    if mResolver <> nil then
+    if FResolver <> nil then
     begin
-      mResolver.UnpinTree;
+      FResolver.UnpinTree;
     end;
   end;
+end;
+
+procedure TGenericDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TGenericDeclarationInvalidScan;
+begin
+  mScan := TGenericDeclarationInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

@@ -344,350 +344,392 @@ begin
     cTexts[TTypeChecksText.LocalRoutineTitle].Text);
 end;
 
-procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mFileName, mLineBreak: string;
-  mLocal: TUnitIndex;
-  mNodes: TArray<TSyntaxNode>;
-  mNested: TList<TSyntaxNode>;
-  mNames: TStringList;
-  mLines: TArray<string>;
-  mParent: TSyntaxNode;
-
-  function OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode.Parent;
-    while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      Result := Result.Parent;
-    end;
+type
+  /// <summary>Ein Lauf von TLocalRoutineAsCallbackRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TLocalRoutineAsCallbackScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FResolver: TNameResolver;
+    FCache: IRuleDerivedCache;
+    FFileName, FLineBreak: string;
+    FLocal: TUnitIndex;
+    FNodes: TArray<TSyntaxNode>;
+    FNested: TList<TSyntaxNode>;
+    FNames: TStringList;
+    FLines: TArray<string>;
+    FParent: TSyntaxNode;
+    function OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
+    function NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
+    function TargetType(ATarget: TSyntaxNode; out AText: string; out AUnit: TUnitIndex): Boolean;
+    function ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string; out AUnit: TUnitIndex): Boolean;
+    function IsMemberName(AInner: TSyntaxNode): Boolean;
+    function UsesSurrounding(ARoutine, AInner: TSyntaxNode): Boolean;
+    function SelfContained(ARoutine: TSyntaxNode): Boolean;
+    function MoveFix(ARoutine: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure Report(AName: TSyntaxNode; ARoutine: TSyntaxNode; AAssigned: Boolean);
+    procedure CheckName(AName: TSyntaxNode);
+    function IsLocalAddress(AInner, AOuter: TSyntaxNode): Boolean;
+    procedure CheckConstant(AConst: TSyntaxNode);
+    function CollectNested: Boolean;
+    procedure CheckNodes;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  /// <summary>Verschachtelte Routine, deren Kopf ASymbol deklariert; nil, wenn ASymbol keine ist.</summary>
-  function NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
-  var
-    mCandidate, mHeader: TSyntaxNode;
-  begin
-    Result := nil;
-    if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) then
-    begin
-      Exit;
-    end;
-    for mCandidate in mNested do
-    begin
-      mHeader := mCandidate.FindChild(TSyntaxKind.RoutineHeader);
-      if (mHeader <> nil) and Covers(mHeader, ASymbol.SelectionRange.StartPos) then
-      begin
-        Exit(mCandidate);
-      end;
-    end;
-  end;
+{ TLocalRoutineAsCallbackScan }
 
-  /// <summary>Typ des Ziels ATarget einer Zuweisung als Text samt Unit.</summary>
-  function TargetType(ATarget: TSyntaxNode; out AText: string; out AUnit: TUnitIndex): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    Result := mResolver.NodeType(AContext.Tree, mFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
-      (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-      SymbolUnit(mResolver, mLocal, mSymbol, AUnit);
-    if Result then
-    begin
-      AText := DeclaredTypeText(AContext, mSymbol);
-    end;
-  end;
-
-  /// <summary>Typ des Parameters an Stelle AArgument (0 = erstes Argument) des Aufrufs ACall.</summary>
-  function ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string; out AUnit: TUnitIndex): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-    mParams: TArray<TSignatureParameter>;
-  begin
-    Result := mResolver.NodeType(AContext.Tree, mFileName, ACall, mSymbol, mTypeInfo, mTypeFound) and
-      (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) and
-      RoutineParams(AContext, mSymbol, mParams) and (AArgument < Length(mParams)) and
-      SymbolUnit(mResolver, mLocal, mSymbol, AUnit);
-    if Result then
-    begin
-      AText := mParams[AArgument].TypeName;
-    end;
-  end;
-
-  /// <summary>Bezeichner hinter einem Punkt (X.Name): gehört zu X, nicht zur Umgebung.</summary>
-  function IsMemberName(AInner: TSyntaxNode): Boolean;
-  begin
-    Result := (AInner.Parent <> nil) and (AInner.Parent.Kind = TSyntaxKind.MemberAccess) and
-      (AInner.Parent.ChildCount > 0) and (AInner.Parent[0] <> AInner);
-  end;
-
-  /// <summary>Bindet der Bezeichner AInner an etwas aus der umgebenden Routine (lokaler Name weiter außen,
-  /// Mitglied der Klasse ohne Präfix) oder an nichts Bekanntes?</summary>
-  function UsesSurrounding(ARoutine, AInner: TSyntaxNode): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    if not mResolver.NodeType(AContext.Tree, mFileName, AInner, mSymbol, mTypeInfo, mTypeFound) then
-    begin
-      Result := not TSystemIntrinsics.IsKnown(AInner.Name);
-    end
-    else if mSymbol.Kind = TResolvedKind.Local then
-    begin
-      Result := not Covers(ARoutine, mSymbol.SelectionRange.StartPos);
-    end
-    else
-    begin
-      Result := (mSymbol.Kind = TResolvedKind.Symbol) and (mSymbol.Container <> '') and not mSymbol.IsType;
-    end;
-  end;
-
-  /// <summary>Nutzt ARoutine nur eigene Namen und Namen außerhalb der umgebenden Routine (keine Mitglieder
-  /// der Klasse ohne Präfix, keine lokalen Namen weiter außen)? Dann darf sie auf Unit-Ebene stehen.</summary>
-  function SelfContained(ARoutine: TSyntaxNode): Boolean;
-  var
-    mInner: TSyntaxNode;
-  begin
-    for mInner in TSyntaxNode.PreOrder(ARoutine) do
-    begin
-      if (mInner.Kind = TSyntaxKind.Identifier) and not IsMemberName(mInner) and UsesSurrounding(ARoutine, mInner) then
-      begin
-        Exit(False);
-      end;
-    end;
-    Result := True;
-  end;
-
-  /// <summary>Korrektur: ARoutine als Routine der Unit direkt vor die umgebende Routine stellen.</summary>
-  function MoveFix(ARoutine: TSyntaxNode; out AFix: TRuleFix): Boolean;
-  var
-    mOuter: TSyntaxNode;
-    mFirst, mLast, mLine: Integer;
-    mIndent, mText: string;
-  begin
-    Result := False;
-    mOuter := OuterRoutine(ARoutine);
-    // Nur eine Ebene tief: Bei tieferer Schachtelung bräuchte die mittlere Routine sie weiter.
-    if (mOuter = nil) or (OuterRoutine(mOuter) <> nil) or not SelfContained(ARoutine) then
-    begin
-      Exit;
-    end;
-    mFirst := ARoutine.StartPos.Line;
-    mLast := ARoutine.EndPos.Line;
-    if (mLast > High(mLines)) or (Trim(Copy(mLines[mFirst], 1, ARoutine.StartPos.Character)) <> '') or
-      (Trim(Copy(mLines[mLast], ARoutine.EndPos.Character + 1, MaxInt)) <> '') then
-    begin
-      Exit;
-    end;
-    mIndent := TTextLines.IndentOf(mLines[mFirst]);
-    mText := '';
-    for mLine := mFirst to mLast do
-    begin
-      if StartsStr(mIndent, mLines[mLine]) then
-      begin
-        mText := mText + Copy(mLines[mLine], Length(mIndent) + 1, MaxInt) + mLineBreak;
-      end
-      else
-      begin
-        mText := mText + TrimLeft(mLines[mLine]) + mLineBreak;
-      end;
-    end;
-    AFix := TRuleFix.Create(cTexts[TTypeChecksText.MoveToUnit].Fmt([ARoutine.Name]), [
-      TTextEdit.Create(TTextRange.Create(mOuter.StartPos.Line, 0, mOuter.StartPos.Line, 0), mText + mLineBreak),
-      TTextEdit.Create(TTextRange.Create(mFirst, 0, mLast + 1, 0), '')]);
-    Result := True;
-  end;
-
-  procedure Report(AName: TSyntaxNode; ARoutine: TSyntaxNode; AAssigned: Boolean);
-  var
-    mKind, mMessage: string;
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-    mHeader: TSyntaxNode;
-  begin
-    mKind := cTexts[TTypeChecksText.ProcedureKind].Text;
-    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if (mHeader <> nil) and StartsText('function', Trim(NodeText(AContext, mHeader))) then
-    begin
-      mKind := cTexts[TTypeChecksText.FunctionKind].Text;
-    end;
-    if AAssigned then
-    begin
-      mMessage := cTexts[TTypeChecksText.LocalAssigned].Fmt([mKind, ARoutine.Name]);
-    end
-    else
-    begin
-      mMessage := cTexts[TTypeChecksText.LocalPassed].Fmt([mKind, ARoutine.Name]);
-    end;
-    mFixes := nil;
-    if MoveFix(ARoutine, mFix) then
-    begin
-      mFixes := [mFix];
-    end;
-    AReport.Add(TTextRange.Create(AName.StartPos, AName.EndPos), mMessage, TRuleConfidence.High, mFixes);
-  end;
-
-  procedure CheckName(AName: TSyntaxNode);
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-    mRoutine: TSyntaxNode;
-    mTypeText: string;
-    mFromUnit: TUnitIndex;
-    mArgument, mIndex: Integer;
-  begin
-    mParent := AName.Parent;
-    if (mParent = nil) or not (mParent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) or
-      (mParent[0] = AName) then
-    begin
-      Exit;
-    end;
-    if not mResolver.NodeType(AContext.Tree, mFileName, AName, mSymbol, mTypeInfo, mTypeFound) then
-    begin
-      Exit;
-    end;
-    mRoutine := NestedOf(mSymbol);
-    if mRoutine = nil then
-    begin
-      Exit;
-    end;
-    if mParent.Kind = TSyntaxKind.AssignStatement then
-    begin
-      if TargetType(mParent[0], mTypeText, mFromUnit) and
-        IsPlainProcedureType(mResolver, AContext, mFromUnit, mTypeText)
-      then
-      begin
-        Report(AName, mRoutine, True);
-      end;
-      Exit;
-    end;
-    mArgument := -1;
-    for mIndex := 1 to mParent.ChildCount - 1 do
-    begin
-      if mParent[mIndex] = AName then
-      begin
-        mArgument := mIndex - 1;
-      end;
-    end;
-    if (mArgument >= 0) and ParameterType(mParent, mArgument, mTypeText, mFromUnit) and
-      IsPlainProcedureType(mResolver, AContext, mFromUnit, mTypeText) then
-    begin
-      Report(AName, mRoutine, False);
-    end;
-  end;
-
-  /// <summary>@X mit X lokaler Variable bzw. Parameter der Routine AOuter?</summary>
-  function IsLocalAddress(AInner, AOuter: TSyntaxNode): Boolean;
-  var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    Result := (AInner.Kind = TSyntaxKind.AddressOf) and (AInner.ChildCount = 1) and
-      (AInner[0].Kind = TSyntaxKind.Identifier);
-    Result := Result and mResolver.NodeType(AContext.Tree, mFileName, AInner[0], mSymbol, mTypeInfo, mTypeFound);
-    Result := Result and (mSymbol.Kind = TResolvedKind.Local) and (mSymbol.SymbolKind = TIndexSymbolKind.Variable) and
-      Covers(AOuter, mSymbol.SelectionRange.StartPos);
-  end;
-
-  /// <summary>@X in einer typisierten Konstante einer Routine mit X lokaler Variable bzw. Parameter
-  /// (wie E2278).</summary>
-  procedure CheckConstant(AConst: TSyntaxNode);
-  var
-    mInner, mOuter: TSyntaxNode;
-  begin
-    mOuter := OuterRoutine(AConst);
-    if (mOuter = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
-      (AConst.FindChild(TSyntaxKind.PointerType) = nil) then
-    begin
-      Exit;
-    end;
-    for mInner in TSyntaxNode.PreOrder(AConst) do
-    begin
-      if IsLocalAddress(mInner, mOuter) then
-      begin
-        AReport.Add(TTextRange.Create(mInner.StartPos, mInner.EndPos),
-          cTexts[TTypeChecksText.LocalAddress].Fmt([mInner[0].Name]),
-          TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  /// <summary>Verschachtelte Routinen samt Namen sammeln; False, wenn es weder sie noch Konstanten gibt.</summary>
-  function CollectNested: Boolean;
-  var
-    mNode: TSyntaxNode;
-  begin
-    Result := False;
-    for mNode in mNodes do
-    begin
-      if (mNode.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(mNode) <> nil) then
-      begin
-        mNested.Add(mNode);
-        mNames.Add(mNode.Name);
-      end
-      else if mNode.Kind = TSyntaxKind.ConstDecl then
-      begin
-        Result := True;
-      end;
-    end;
-    Result := Result or (mNested.Count > 0);
-  end;
-
-  procedure CheckNodes;
-  var
-    mNode: TSyntaxNode;
-  begin
-    mFileName := AContext.ResolverFileName;
-    mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-    if mLineBreak = '' then
-    begin
-      mLineBreak := sLineBreak;
-    end;
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    mCache := TRuleDerived.Open(AContext);
-    mResolver := TRuleDerived.Resolver(mCache, AContext);
-    mResolver.PinTree(AContext.Tree, mFileName);
-    try
-      mLocal := mResolver.ExtractedUnit(AContext.Tree, mFileName);
-      for mNode in mNodes do
-      begin
-        if (mNode.Kind = TSyntaxKind.Identifier) and (mNames.IndexOf(mNode.Name) >= 0) then
-        begin
-          CheckName(mNode);
-        end
-        else if mNode.Kind = TSyntaxKind.ConstDecl then
-        begin
-          CheckConstant(mNode);
-        end;
-      end;
-    finally
-      mResolver.UnpinTree;
-    end;
-  end;
-
+constructor TLocalRoutineAsCallbackScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TLocalRoutineAsCallbackScan.OuterRoutine(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Verschachtelte Routine, deren Kopf ASymbol deklariert; nil, wenn ASymbol keine ist.</summary>
+function TLocalRoutineAsCallbackScan.NestedOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
+var
+  mCandidate, mHeader: TSyntaxNode;
+begin
+  Result := nil;
+  if (ASymbol.Kind <> TResolvedKind.Local) or (ASymbol.SymbolKind <> TIndexSymbolKind.Routine) then
   begin
     Exit;
   end;
-  mNodes := TSyntaxNode.PreOrder(AContext.Tree.Root);
-  mNested := TList<TSyntaxNode>.Create;
-  mNames := TStringList.Create;
+  for mCandidate in FNested do
+  begin
+    mHeader := mCandidate.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader <> nil) and Covers(mHeader, ASymbol.SelectionRange.StartPos) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+end;
+
+/// <summary>Typ des Ziels ATarget einer Zuweisung als Text samt Unit.</summary>
+function TLocalRoutineAsCallbackScan.TargetType(ATarget: TSyntaxNode; out AText: string;
+  out AUnit: TUnitIndex): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ATarget, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+    SymbolUnit(FResolver, FLocal, mSymbol, AUnit);
+  if Result then
+  begin
+    AText := DeclaredTypeText(FContext, mSymbol);
+  end;
+end;
+
+/// <summary>Typ des Parameters an Stelle AArgument (0 = erstes Argument) des Aufrufs ACall.</summary>
+function TLocalRoutineAsCallbackScan.ParameterType(ACall: TSyntaxNode; AArgument: Integer; out AText: string;
+  out AUnit: TUnitIndex): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mParams: TArray<TSignatureParameter>;
+begin
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ACall, mSymbol, mTypeInfo, mTypeFound) and
+    (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) and
+    RoutineParams(FContext, mSymbol, mParams) and (AArgument < Length(mParams)) and
+    SymbolUnit(FResolver, FLocal, mSymbol, AUnit);
+  if Result then
+  begin
+    AText := mParams[AArgument].TypeName;
+  end;
+end;
+
+/// <summary>Bezeichner hinter einem Punkt (X.Name): gehört zu X, nicht zur Umgebung.</summary>
+function TLocalRoutineAsCallbackScan.IsMemberName(AInner: TSyntaxNode): Boolean;
+begin
+  Result := (AInner.Parent <> nil) and (AInner.Parent.Kind = TSyntaxKind.MemberAccess) and
+    (AInner.Parent.ChildCount > 0) and (AInner.Parent[0] <> AInner);
+end;
+
+/// <summary>Bindet der Bezeichner AInner an etwas aus der umgebenden Routine (lokaler Name weiter außen,
+/// Mitglied der Klasse ohne Präfix) oder an nichts Bekanntes?</summary>
+function TLocalRoutineAsCallbackScan.UsesSurrounding(ARoutine, AInner: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  if not FResolver.NodeType(FContext.Tree, FFileName, AInner, mSymbol, mTypeInfo, mTypeFound) then
+  begin
+    Result := not TSystemIntrinsics.IsKnown(AInner.Name);
+  end
+  else if mSymbol.Kind = TResolvedKind.Local then
+  begin
+    Result := not Covers(ARoutine, mSymbol.SelectionRange.StartPos);
+  end
+  else
+  begin
+    Result := (mSymbol.Kind = TResolvedKind.Symbol) and (mSymbol.Container <> '') and not mSymbol.IsType;
+  end;
+end;
+
+/// <summary>Nutzt ARoutine nur eigene Namen und Namen außerhalb der umgebenden Routine (keine Mitglieder
+/// der Klasse ohne Präfix, keine lokalen Namen weiter außen)? Dann darf sie auf Unit-Ebene stehen.</summary>
+function TLocalRoutineAsCallbackScan.SelfContained(ARoutine: TSyntaxNode): Boolean;
+var
+  mInner: TSyntaxNode;
+begin
+  for mInner in TSyntaxNode.PreOrder(ARoutine) do
+  begin
+    if (mInner.Kind = TSyntaxKind.Identifier) and not IsMemberName(mInner) and UsesSurrounding(ARoutine, mInner) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Korrektur: ARoutine als Routine der Unit direkt vor die umgebende Routine stellen.</summary>
+function TLocalRoutineAsCallbackScan.MoveFix(ARoutine: TSyntaxNode; out AFix: TRuleFix): Boolean;
+var
+  mOuter: TSyntaxNode;
+  mFirst, mLast, mLine: Integer;
+  mIndent, mText: string;
+begin
+  Result := False;
+  mOuter := OuterRoutine(ARoutine);
+  // Nur eine Ebene tief: Bei tieferer Schachtelung bräuchte die mittlere Routine sie weiter.
+  if (mOuter = nil) or (OuterRoutine(mOuter) <> nil) or not SelfContained(ARoutine) then
+  begin
+    Exit;
+  end;
+  mFirst := ARoutine.StartPos.Line;
+  mLast := ARoutine.EndPos.Line;
+  if (mLast > High(FLines)) or (Trim(Copy(FLines[mFirst], 1, ARoutine.StartPos.Character)) <> '') or
+    (Trim(Copy(FLines[mLast], ARoutine.EndPos.Character + 1, MaxInt)) <> '') then
+  begin
+    Exit;
+  end;
+  mIndent := TTextLines.IndentOf(FLines[mFirst]);
+  mText := '';
+  for mLine := mFirst to mLast do
+  begin
+    if StartsStr(mIndent, FLines[mLine]) then
+    begin
+      mText := mText + Copy(FLines[mLine], Length(mIndent) + 1, MaxInt) + FLineBreak;
+    end
+    else
+    begin
+      mText := mText + TrimLeft(FLines[mLine]) + FLineBreak;
+    end;
+  end;
+  AFix := TRuleFix.Create(cTexts[TTypeChecksText.MoveToUnit].Fmt([ARoutine.Name]), [
+    TTextEdit.Create(TTextRange.Create(mOuter.StartPos.Line, 0, mOuter.StartPos.Line, 0), mText + FLineBreak),
+    TTextEdit.Create(TTextRange.Create(mFirst, 0, mLast + 1, 0), '')]);
+  Result := True;
+end;
+
+procedure TLocalRoutineAsCallbackScan.Report(AName: TSyntaxNode; ARoutine: TSyntaxNode; AAssigned: Boolean);
+var
+  mKind, mMessage: string;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+  mHeader: TSyntaxNode;
+begin
+  mKind := cTexts[TTypeChecksText.ProcedureKind].Text;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader <> nil) and StartsText('function', Trim(NodeText(FContext, mHeader))) then
+  begin
+    mKind := cTexts[TTypeChecksText.FunctionKind].Text;
+  end;
+  if AAssigned then
+  begin
+    mMessage := cTexts[TTypeChecksText.LocalAssigned].Fmt([mKind, ARoutine.Name]);
+  end
+  else
+  begin
+    mMessage := cTexts[TTypeChecksText.LocalPassed].Fmt([mKind, ARoutine.Name]);
+  end;
+  mFixes := nil;
+  if MoveFix(ARoutine, mFix) then
+  begin
+    mFixes := [mFix];
+  end;
+  FReport.Add(TTextRange.Create(AName.StartPos, AName.EndPos), mMessage, TRuleConfidence.High, mFixes);
+end;
+
+procedure TLocalRoutineAsCallbackScan.CheckName(AName: TSyntaxNode);
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+  mRoutine: TSyntaxNode;
+  mTypeText: string;
+  mFromUnit: TUnitIndex;
+  mArgument, mIndex: Integer;
+begin
+  FParent := AName.Parent;
+  if (FParent = nil) or not (FParent.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.Call]) or
+    (FParent[0] = AName) then
+  begin
+    Exit;
+  end;
+  if not FResolver.NodeType(FContext.Tree, FFileName, AName, mSymbol, mTypeInfo, mTypeFound) then
+  begin
+    Exit;
+  end;
+  mRoutine := NestedOf(mSymbol);
+  if mRoutine = nil then
+  begin
+    Exit;
+  end;
+  if FParent.Kind = TSyntaxKind.AssignStatement then
+  begin
+    if TargetType(FParent[0], mTypeText, mFromUnit) and
+      IsPlainProcedureType(FResolver, FContext, mFromUnit, mTypeText)
+    then
+    begin
+      Report(AName, mRoutine, True);
+    end;
+    Exit;
+  end;
+  mArgument := -1;
+  for mIndex := 1 to FParent.ChildCount - 1 do
+  begin
+    if FParent[mIndex] = AName then
+    begin
+      mArgument := mIndex - 1;
+    end;
+  end;
+  if (mArgument >= 0) and ParameterType(FParent, mArgument, mTypeText, mFromUnit) and
+    IsPlainProcedureType(FResolver, FContext, mFromUnit, mTypeText) then
+  begin
+    Report(AName, mRoutine, False);
+  end;
+end;
+
+/// <summary>@X mit X lokaler Variable bzw. Parameter der Routine AOuter?</summary>
+function TLocalRoutineAsCallbackScan.IsLocalAddress(AInner, AOuter: TSyntaxNode): Boolean;
+var
+  mSymbol, mTypeInfo: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  Result := (AInner.Kind = TSyntaxKind.AddressOf) and (AInner.ChildCount = 1) and
+    (AInner[0].Kind = TSyntaxKind.Identifier);
+  Result := Result and FResolver.NodeType(FContext.Tree, FFileName, AInner[0], mSymbol, mTypeInfo, mTypeFound);
+  Result := Result and (mSymbol.Kind = TResolvedKind.Local) and (mSymbol.SymbolKind = TIndexSymbolKind.Variable) and
+    Covers(AOuter, mSymbol.SelectionRange.StartPos);
+end;
+
+/// <summary>@X in einer typisierten Konstante einer Routine mit X lokaler Variable bzw. Parameter
+/// (wie E2278).</summary>
+procedure TLocalRoutineAsCallbackScan.CheckConstant(AConst: TSyntaxNode);
+var
+  mInner, mOuter: TSyntaxNode;
+begin
+  mOuter := OuterRoutine(AConst);
+  if (mOuter = nil) or (AConst.FindChild(TSyntaxKind.TypeReference) = nil) and
+    (AConst.FindChild(TSyntaxKind.PointerType) = nil) then
+  begin
+    Exit;
+  end;
+  for mInner in TSyntaxNode.PreOrder(AConst) do
+  begin
+    if IsLocalAddress(mInner, mOuter) then
+    begin
+      FReport.Add(TTextRange.Create(mInner.StartPos, mInner.EndPos),
+        cTexts[TTypeChecksText.LocalAddress].Fmt([mInner[0].Name]),
+        TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Verschachtelte Routinen samt Namen sammeln; False, wenn es weder sie noch Konstanten gibt.</summary>
+function TLocalRoutineAsCallbackScan.CollectNested: Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := False;
+  for mNode in FNodes do
+  begin
+    if (mNode.Kind = TSyntaxKind.RoutineDecl) and (OuterRoutine(mNode) <> nil) then
+    begin
+      FNested.Add(mNode);
+      FNames.Add(mNode.Name);
+    end
+    else if mNode.Kind = TSyntaxKind.ConstDecl then
+    begin
+      Result := True;
+    end;
+  end;
+  Result := Result or (FNested.Count > 0);
+end;
+
+procedure TLocalRoutineAsCallbackScan.CheckNodes;
+var
+  mNode: TSyntaxNode;
+begin
+  FFileName := FContext.ResolverFileName;
+  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  if FLineBreak = '' then
+  begin
+    FLineBreak := sLineBreak;
+  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  FCache := TRuleDerived.Open(FContext);
+  FResolver := TRuleDerived.Resolver(FCache, FContext);
+  FResolver.PinTree(FContext.Tree, FFileName);
   try
-    mNames.CaseSensitive := False;
-    mNames.Sorted := True;
-    mNames.Duplicates := dupIgnore;
+    FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
+    for mNode in FNodes do
+    begin
+      if (mNode.Kind = TSyntaxKind.Identifier) and (FNames.IndexOf(mNode.Name) >= 0) then
+      begin
+        CheckName(mNode);
+      end
+      else if mNode.Kind = TSyntaxKind.ConstDecl then
+      begin
+        CheckConstant(mNode);
+      end;
+    end;
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
+procedure TLocalRoutineAsCallbackScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FNodes := TSyntaxNode.PreOrder(FContext.Tree.Root);
+  FNested := TList<TSyntaxNode>.Create;
+  FNames := TStringList.Create;
+  try
+    FNames.CaseSensitive := False;
+    FNames.Sorted := True;
+    FNames.Duplicates := dupIgnore;
     if CollectNested then
     begin
       CheckNodes;
     end;
   finally
-    mNames.Free;
-    mNested.Free;
+    FNames.Free;
+    FNested.Free;
   end;
+end;
+
+procedure TLocalRoutineAsCallbackRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TLocalRoutineAsCallbackScan;
+begin
+  mScan := TLocalRoutineAsCallbackScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TConditionNotBooleanRule }

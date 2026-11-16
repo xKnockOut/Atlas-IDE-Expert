@@ -791,342 +791,380 @@ begin
   end;
 end;
 
-procedure TPCharOfTemporaryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTypes: TDeclaredTypes;
-  mTokens: TTokens;
-  mLineBreak: string;
-  mCache: IRuleDerivedCache;
-  mResolver: TNameResolver;
-  mFileName: string;
-
-  function Text(ANode: TSyntaxNode): string;
-  begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+type
+  /// <summary>Ein Lauf von TPCharOfTemporaryRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TPCharOfTemporaryScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTypes: TDeclaredTypes;
+    FTokens: TTokens;
+    FLineBreak: string;
+    FResolver: TNameResolver;
+    FFileName: string;
+    function Text(ANode: TSyntaxNode): string;
+    function KnownResultType(ANode: TSyntaxNode; out ANonString: Boolean): Boolean;
+    function KnownNonString(ANode: TSyntaxNode): Boolean;
+    function IsStringValue(ANode: TSyntaxNode): Boolean;
+    function IsConstant(ANode: TSyntaxNode): Boolean;
+    function IsTemporary(ANode: TSyntaxNode): Boolean;
+    function TemporaryPChar(AValue: TSyntaxNode): TSyntaxNode;
+    function FreshName(ARoutine: TSyntaxNode; const ABase: string): string;
+    procedure CheckAssign(AStatement, ARoutine, AParent: TSyntaxNode);
+    procedure CheckAsync(ACall: TSyntaxNode);
+    procedure Visit(ANode, ARoutine, AParent: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // Ist der Typ des Aufrufs ANode samt Aliasen bekannt? Dann sagt ANonString, ob er kein String ist.
-  function KnownResultType(ANode: TSyntaxNode; out ANonString: Boolean): Boolean;
-  var
-    mSymbol, mType: TResolvedSymbol;
-    mTypeFound: Boolean;
-  begin
-    ANonString := False;
-    Result := mResolver.NodeType(AContext.Tree, mFileName, ANode, mSymbol, mType, mTypeFound) and mTypeFound and
-      (mType.Name <> '');
-    if Result then
-    begin
-      ANonString := not MatchText(mType.Name, cStringCasts) and not MatchText(mType.Name, cOtherStrings);
-    end;
-  end;
+{ TPCharOfTemporaryScan }
 
-  // Ein Aufruf, den der Index als Umwandlung in einen Typ ohne String (TCnNativeUInt(P)) oder als Funktion mit
-  // Zahlen- bzw. Zeigerergebnis kennt (LocalAlloc), liefert keinen String.
-  function KnownNonString(ANode: TSyntaxNode): Boolean;
-  var
-    mSymbol: TResolvedSymbol;
-  begin
-    Result := False;
-    if (ANode.Kind <> TSyntaxKind.Call) or (mResolver = nil) then
-    begin
-      Exit;
-    end;
-    // Ergebnistyp samt Aliasen bekannt (HLOCAL von LocalAlloc, Image.RvaToVa: Pointer): String nur bei
-    // String-Typen.
-    if KnownResultType(ANode, Result) or (Pos('.', ANode.Name) > 0) then
-    begin
-      Exit;
-    end;
-    mSymbol := mResolver.Resolve(AContext.Tree, mFileName, ANode.StartPos);
-    if mSymbol.Kind = TResolvedKind.None then
-    begin
-      Exit;
-    end;
-    case mSymbol.SymbolKind of
-      TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType:
-        Result := True;
-      TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
-        Result := TDeclaredTypes.IsInt32(mSymbol.TypeName) or TDeclaredTypes.IsInt64(mSymbol.TypeName) or
-          MatchText(mSymbol.TypeName, cPassThroughCasts) or MatchText(mSymbol.TypeName, ['Pointer', 'THandle']) or
-          IsPointerCast(mSymbol.TypeName) or (Copy(mSymbol.TypeName, 1, 1) = '^');
-    else
-      Result := False;
-    end;
-  end;
-
-  // Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die
-  // Verkettung ist eine Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
-  function IsStringValue(ANode: TSyntaxNode): Boolean;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-  begin
-    Result := False;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while not Result and (mPending.Count > 0) do
-      begin
-        mNode := mPending.Pop;
-        Result := IsStringLeaf(mTypes, mNode) and not KnownNonString(mNode);
-        PushStringParts(mPending, mNode);
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  // Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (tiefe Bäume sprengen den Stapel nicht):
-  // Und-Verknüpfung über Klammern und zweistellige Ausdrücke.
-  function IsConstant(ANode: TSyntaxNode): Boolean;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-  begin
-    Result := True;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        case mNode.Kind of
-          TSyntaxKind.Literal:
-            ;
-          TSyntaxKind.ParenExpr:
-            if mNode.ChildCount = 1 then
-            begin
-              mPending.Push(mNode[0]);
-            end
-            else
-            begin
-              Exit(False);
-            end;
-          TSyntaxKind.BinaryExpr:
-            if mNode.ChildCount = 2 then
-            begin
-              mPending.Push(mNode[1]);
-              mPending.Push(mNode[0]);
-            end
-            else
-            begin
-              Exit(False);
-            end;
-        else
-          Exit(False);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  // Temporärer String: Verkettung mit einem String oder Ergebnis eines Funktionsaufrufs.
-  function IsTemporary(ANode: TSyntaxNode): Boolean;
-  var
-    mNode: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch String-Umwandlungen und Klammern hindurch.
-    mNode := ANode;
-    while True do
-    begin
-      if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cStringCasts) and (mNode.ChildCount = 2) then
-      begin
-        mNode := mNode[1];
-      end
-      else if mNode.Kind = TSyntaxKind.ParenExpr then
-      begin
-        if mNode.ChildCount <> 1 then
-        begin
-          Exit(False);
-        end;
-        mNode := mNode[0];
-      end
-      else
-      begin
-        Break;
-      end;
-    end;
-    Result := not IsConstant(mNode) and (((mNode.Kind = TSyntaxKind.BinaryExpr) and IsStringValue(mNode)) or
-      ((mNode.Kind = TSyntaxKind.Call) and IsStringValue(mNode)));
-  end;
-
-  // PChar(temporär) in AValue, auch hinter LPARAM(…) und ähnlichen Umwandlungen; sonst nil.
-  function TemporaryPChar(AValue: TSyntaxNode): TSyntaxNode;
-  var
-    mValue: TSyntaxNode;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch die Umwandlungen hindurch.
-    Result := nil;
-    mValue := AValue;
-    while (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount = 2) do
-    begin
-      if MatchText(mValue.Name, cPCharCasts) and IsTemporary(mValue[1]) then
-      begin
-        Exit(mValue[1]);
-      end;
-      if not MatchText(mValue.Name, cPassThroughCasts) then
-      begin
-        Exit;
-      end;
-      mValue := mValue[1];
-    end;
-  end;
-
-  // Neuer Name AName + 'Text', der in der Routine noch nicht vorkommt.
-  function FreshName(ARoutine: TSyntaxNode; const ABase: string): string;
-  var
-    mNumber: Integer;
-
-    function Used(const AName: string): Boolean;
-    var
-      mIndex: Integer;
-    begin
-      // Binär zum ersten Token der Routine statt ab Dateianfang (#1323).
-      mIndex := TRoutineBody.TokenAt(mTokens, ARoutine.StartOffset);
-      while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ARoutine.EndOffset) do
-      begin
-        if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
-        begin
-          Exit(True);
-        end;
-        Inc(mIndex);
-      end;
-      Result := False;
-    end;
-
-  begin
-    Result := ABase + 'Text';
-    mNumber := 2;
-    while Used(Result) do
-    begin
-      Result := ABase + 'Text' + IntToStr(mNumber);
-      Inc(mNumber);
-    end;
-  end;
-
-  procedure CheckAssign(AStatement, ARoutine, AParent: TSyntaxNode);
-  var
-    mExpression: TSyntaxNode;
-    mTarget, mName, mIndent: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mExpression := TemporaryPChar(AStatement[1]);
-    if mExpression = nil then
-    begin
-      Exit;
-    end;
-    mTarget := Trim(Text(AStatement[0]));
-    mFixes := nil;
-    // Lokale Variable direkt in einem Block: das Zwischenergebnis in eine Inline-Variable legen.
-    if (AStatement[0].Kind = TSyntaxKind.Identifier) and (AParent <> nil) and (AParent.Kind = TSyntaxKind.Block) and
-      IsLocalVariable(ARoutine, mTarget) then
-    begin
-      mName := FreshName(ARoutine, mTarget);
-      mIndent := StringOfChar(' ', AStatement.StartPos.Character);
-      mFixes := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.StoreIntermediate].Fmt([mName]),
-        [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
-        Format('var %s: string := %s;', [mName, Trim(Text(mExpression))]) + mLineBreak + mIndent),
-        TRuleEdit.Create(TTextRange.Create(mExpression.StartPos, mExpression.EndPos), mName)])];
-    end;
-    AReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
-      cTexts[TRtlTypePatternsMemoryText.TemporaryNow].Fmt([Trim(Text(mExpression)), mTarget]),
-      TRuleConfidence.High, mFixes);
-  end;
-
-  procedure CheckAsync(ACall: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mExpression: TSyntaxNode;
-  begin
-    for mIndex := 1 to ACall.ChildCount - 1 do
-    begin
-      mExpression := TemporaryPChar(ACall[mIndex]);
-      if mExpression <> nil then
-      begin
-        AReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
-          cTexts[TRtlTypePatternsMemoryText.TemporaryLater].Fmt([Trim(Text(mExpression)),
-          ACall.Name]), TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  procedure Visit(ANode, ARoutine, AParent: TSyntaxNode);
-  var
-    mPending, mRoutineStack, mParents: TStack<TSyntaxNode>;
-    mNode, mRoutine, mParent: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ARoutine und AParent je Knoten mit.
-    mPending := TStack<TSyntaxNode>.Create;
-    mRoutineStack := TStack<TSyntaxNode>.Create;
-    mParents := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      mRoutineStack.Push(ARoutine);
-      mParents.Push(AParent);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mRoutine := mRoutineStack.Pop;
-        mParent := mParents.Pop;
-        if mNode.Kind = TSyntaxKind.RoutineDecl then
-        begin
-          mRoutine := mNode;
-        end;
-        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) then
-        begin
-          CheckAssign(mNode, mRoutine, mParent);
-        end
-        else if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cAsyncMessages) then
-        begin
-          CheckAsync(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-          mRoutineStack.Push(mRoutine);
-          mParents.Push(mNode);
-        end;
-      end;
-    finally
-      mParents.Free;
-      mRoutineStack.Free;
-      mPending.Free;
-    end;
-  end;
-
+constructor TPCharOfTemporaryScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if AContext.Tree = nil then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TPCharOfTemporaryScan.Text(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+// Ist der Typ des Aufrufs ANode samt Aliasen bekannt? Dann sagt ANonString, ob er kein String ist.
+function TPCharOfTemporaryScan.KnownResultType(ANode: TSyntaxNode; out ANonString: Boolean): Boolean;
+var
+  mSymbol, mType: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  ANonString := False;
+  Result := FResolver.NodeType(FContext.Tree, FFileName, ANode, mSymbol, mType, mTypeFound) and mTypeFound and
+    (mType.Name <> '');
+  if Result then
+  begin
+    ANonString := not MatchText(mType.Name, cStringCasts) and not MatchText(mType.Name, cOtherStrings);
+  end;
+end;
+
+// Ein Aufruf, den der Index als Umwandlung in einen Typ ohne String (TCnNativeUInt(P)) oder als Funktion mit
+// Zahlen- bzw. Zeigerergebnis kennt (LocalAlloc), liefert keinen String.
+function TPCharOfTemporaryScan.KnownNonString(ANode: TSyntaxNode): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
+  Result := False;
+  if (ANode.Kind <> TSyntaxKind.Call) or (FResolver = nil) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mFileName := AContext.RelativePath;
-  if mFileName = '' then
+  // Ergebnistyp samt Aliasen bekannt (HLOCAL von LocalAlloc, Image.RvaToVa: Pointer): String nur bei
+  // String-Typen.
+  if KnownResultType(ANode, Result) or (Pos('.', ANode.Name) > 0) then
   begin
-    mFileName := AContext.UnitName + '.pas';
+    Exit;
   end;
-  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache. Ohne Index nur die Namensmuster.
-  mResolver := nil;
-  if AContext.Index <> nil then
+  mSymbol := FResolver.Resolve(FContext.Tree, FFileName, ANode.StartPos);
+  if mSymbol.Kind = TResolvedKind.None then
   begin
-    mCache := TRuleDerived.Open(AContext);
-    mResolver := TRuleDerived.Resolver(mCache, AContext);
-    mResolver.PinTree(AContext.Tree, mFileName);
+    Exit;
   end;
-  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  case mSymbol.SymbolKind of
+    TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType:
+      Result := True;
+    TIndexSymbolKind.TypeAlias, TIndexSymbolKind.Method, TIndexSymbolKind.Routine:
+      Result := TDeclaredTypes.IsInt32(mSymbol.TypeName) or TDeclaredTypes.IsInt64(mSymbol.TypeName) or
+        MatchText(mSymbol.TypeName, cPassThroughCasts) or MatchText(mSymbol.TypeName, ['Pointer', 'THandle']) or
+        IsPointerCast(mSymbol.TypeName) or (Copy(mSymbol.TypeName, 1, 1) = '^');
+  else
+    Result := False;
+  end;
+end;
+
+// Ist einer der Bausteine (über + und Klammern) ein String? Iterativ (tiefe Bäume sprengen den Stapel nicht): die
+// Verkettung ist eine Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
+function TPCharOfTemporaryScan.IsStringValue(ANode: TSyntaxNode): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  Result := False;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Visit(AContext.Tree.Root, nil, nil);
-  finally
-    mTypes.Free;
-    if mResolver <> nil then
+    mPending.Push(ANode);
+    while not Result and (mPending.Count > 0) do
     begin
-      mResolver.UnpinTree;
+      mNode := mPending.Pop;
+      Result := IsStringLeaf(FTypes, mNode) and not KnownNonString(mNode);
+      PushStringParts(mPending, mNode);
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Nur Literale: der Compiler legt den String als Konstante ab. Iterativ (tiefe Bäume sprengen den Stapel nicht):
+// Und-Verknüpfung über Klammern und zweistellige Ausdrücke.
+function TPCharOfTemporaryScan.IsConstant(ANode: TSyntaxNode): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  Result := True;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.Literal:
+          ;
+        TSyntaxKind.ParenExpr:
+          if mNode.ChildCount = 1 then
+          begin
+            mPending.Push(mNode[0]);
+          end
+          else
+          begin
+            Exit(False);
+          end;
+        TSyntaxKind.BinaryExpr:
+          if mNode.ChildCount = 2 then
+          begin
+            mPending.Push(mNode[1]);
+            mPending.Push(mNode[0]);
+          end
+          else
+          begin
+            Exit(False);
+          end;
+      else
+        Exit(False);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Temporärer String: Verkettung mit einem String oder Ergebnis eines Funktionsaufrufs.
+function TPCharOfTemporaryScan.IsTemporary(ANode: TSyntaxNode): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch String-Umwandlungen und Klammern hindurch.
+  mNode := ANode;
+  while True do
+  begin
+    if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cStringCasts) and (mNode.ChildCount = 2) then
+    begin
+      mNode := mNode[1];
+    end
+    else if mNode.Kind = TSyntaxKind.ParenExpr then
+    begin
+      if mNode.ChildCount <> 1 then
+      begin
+        Exit(False);
+      end;
+      mNode := mNode[0];
+    end
+    else
+    begin
+      Break;
     end;
   end;
+  Result := not IsConstant(mNode) and (((mNode.Kind = TSyntaxKind.BinaryExpr) and IsStringValue(mNode)) or
+    ((mNode.Kind = TSyntaxKind.Call) and IsStringValue(mNode)));
+end;
+
+// PChar(temporär) in AValue, auch hinter LPARAM(…) und ähnlichen Umwandlungen; sonst nil.
+function TPCharOfTemporaryScan.TemporaryPChar(AValue: TSyntaxNode): TSyntaxNode;
+var
+  mValue: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): durch die Umwandlungen hindurch.
+  Result := nil;
+  mValue := AValue;
+  while (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount = 2) do
+  begin
+    if MatchText(mValue.Name, cPCharCasts) and IsTemporary(mValue[1]) then
+    begin
+      Exit(mValue[1]);
+    end;
+    if not MatchText(mValue.Name, cPassThroughCasts) then
+    begin
+      Exit;
+    end;
+    mValue := mValue[1];
+  end;
+end;
+
+// Neuer Name AName + 'Text', der in der Routine noch nicht vorkommt.
+function TPCharOfTemporaryScan.FreshName(ARoutine: TSyntaxNode; const ABase: string): string;
+var
+  mNumber: Integer;
+
+  function Used(const AName: string): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    // Binär zum ersten Token der Routine statt ab Dateianfang (#1323).
+    mIndex := TRoutineBody.TokenAt(FTokens, ARoutine.StartOffset);
+    while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < ARoutine.EndOffset) do
+    begin
+      if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mIndex].Text, AName) then
+      begin
+        Exit(True);
+      end;
+      Inc(mIndex);
+    end;
+    Result := False;
+  end;
+
+begin
+  Result := ABase + 'Text';
+  mNumber := 2;
+  while Used(Result) do
+  begin
+    Result := ABase + 'Text' + IntToStr(mNumber);
+    Inc(mNumber);
+  end;
+end;
+
+procedure TPCharOfTemporaryScan.CheckAssign(AStatement, ARoutine, AParent: TSyntaxNode);
+var
+  mExpression: TSyntaxNode;
+  mTarget, mName, mIndent: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  mExpression := TemporaryPChar(AStatement[1]);
+  if mExpression = nil then
+  begin
+    Exit;
+  end;
+  mTarget := Trim(Text(AStatement[0]));
+  mFixes := nil;
+  // Lokale Variable direkt in einem Block: das Zwischenergebnis in eine Inline-Variable legen.
+  if (AStatement[0].Kind = TSyntaxKind.Identifier) and (AParent <> nil) and (AParent.Kind = TSyntaxKind.Block) and
+    IsLocalVariable(ARoutine, mTarget) then
+  begin
+    mName := FreshName(ARoutine, mTarget);
+    mIndent := StringOfChar(' ', AStatement.StartPos.Character);
+    mFixes := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.StoreIntermediate].Fmt([mName]),
+      [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
+      Format('var %s: string := %s;', [mName, Trim(Text(mExpression))]) + FLineBreak + mIndent),
+      TRuleEdit.Create(TTextRange.Create(mExpression.StartPos, mExpression.EndPos), mName)])];
+  end;
+  FReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
+    cTexts[TRtlTypePatternsMemoryText.TemporaryNow].Fmt([Trim(Text(mExpression)), mTarget]),
+    TRuleConfidence.High, mFixes);
+end;
+
+procedure TPCharOfTemporaryScan.CheckAsync(ACall: TSyntaxNode);
+var
+  mIndex: Integer;
+  mExpression: TSyntaxNode;
+begin
+  for mIndex := 1 to ACall.ChildCount - 1 do
+  begin
+    mExpression := TemporaryPChar(ACall[mIndex]);
+    if mExpression <> nil then
+    begin
+      FReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
+        cTexts[TRtlTypePatternsMemoryText.TemporaryLater].Fmt([Trim(Text(mExpression)),
+        ACall.Name]), TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TPCharOfTemporaryScan.Visit(ANode, ARoutine, AParent: TSyntaxNode);
+var
+  mPending, mRoutineStack, mParents: TStack<TSyntaxNode>;
+  mNode, mRoutine, mParent: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); parallele Stapel führen ARoutine und AParent je Knoten mit.
+  mPending := TStack<TSyntaxNode>.Create;
+  mRoutineStack := TStack<TSyntaxNode>.Create;
+  mParents := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    mRoutineStack.Push(ARoutine);
+    mParents.Push(AParent);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mRoutine := mRoutineStack.Pop;
+      mParent := mParents.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        mRoutine := mNode;
+      end;
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) then
+      begin
+        CheckAssign(mNode, mRoutine, mParent);
+      end
+      else if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cAsyncMessages) then
+      begin
+        CheckAsync(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+        mRoutineStack.Push(mRoutine);
+        mParents.Push(mNode);
+      end;
+    end;
+  finally
+    mParents.Free;
+    mRoutineStack.Free;
+    mPending.Free;
+  end;
+end;
+
+procedure TPCharOfTemporaryScan.Run;
+var
+  mCache: IRuleDerivedCache;
+begin
+  if FContext.Tree = nil then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  FFileName := FContext.RelativePath;
+  if FFileName = '' then
+  begin
+    FFileName := FContext.UnitName + '.pas';
+  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache. Ohne Index nur die Namensmuster.
+  FResolver := nil;
+  if FContext.Index <> nil then
+  begin
+    mCache := TRuleDerived.Open(FContext);
+    FResolver := TRuleDerived.Resolver(mCache, FContext);
+    FResolver.PinTree(FContext.Tree, FFileName);
+  end;
+  FTypes := TDeclaredTypes.Create(FContext.Tree, FContext.Text);
+  try
+    Visit(FContext.Tree.Root, nil, nil);
+  finally
+    FTypes.Free;
+    if FResolver <> nil then
+    begin
+      FResolver.UnpinTree;
+    end;
+  end;
+end;
+
+procedure TPCharOfTemporaryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TPCharOfTemporaryScan;
+begin
+  mScan := TPCharOfTemporaryScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TCreateProcessReadonlyCommandLineRule }
@@ -1145,358 +1183,403 @@ begin
     cTexts[TRtlTypePatternsMemoryText.CreateProcessTitle].Text);
 end;
 
-procedure TCreateProcessReadonlyCommandLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TCreateProcessReadonlyCommandLineRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TCreateProcessReadonlyCommandLineScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTypes: TDeclaredTypes;
+    FLocal: TUnitIndex;
+    FLineBreak: string;
+    function Text(ANode: TSyntaxNode): string;
+    function IsStringLiteral(ANode: TSyntaxNode): Boolean;
+    function IsUnicodeString(const AType: string): Boolean;
+    function IsConstant(ANode: TSyntaxNode): Boolean;
+    function IsReadonly(ANode: TSyntaxNode): Boolean;
+    procedure Operands(ANode: TSyntaxNode; var AList: TArray<TSyntaxNode>);
+    function IsLiteralConcatenation(ANode: TSyntaxNode): Boolean;
+    function Classify(ANode: TSyntaxNode): TCommandLineKind;
+    function FindParameter(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
+    procedure Assignments(ANode: TSyntaxNode; const AName: string; AOffset: Integer; var ALast: TSyntaxNode;
+      var AUnique: Integer);
+    function ClassifyIdentifier(ARoutine, ANode: TSyntaxNode; AOffset: Integer): TCommandLineKind;
+    function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
+    function Fixes(ARoutine, AValue: TSyntaxNode; AKind: TCommandLineKind): TArray<TRuleFix>;
+    procedure CheckCall(ACall: TSyntaxNode);
+    procedure Visit(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TCreateProcessReadonlyCommandLineScan }
+
+constructor TCreateProcessReadonlyCommandLineScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TCreateProcessReadonlyCommandLineScan.Text(ANode: TSyntaxNode): string;
+begin
+  Result := Trim(Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+end;
+
+function TCreateProcessReadonlyCommandLineScan.IsStringLiteral(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']);
+end;
+
+function TCreateProcessReadonlyCommandLineScan.IsUnicodeString(const AType: string): Boolean;
+begin
+  Result := MatchText(Trim(AType), ['string', 'UnicodeString', 'System.string', 'System.UnicodeString']);
+end;
+
+// Konstante (auch typisierte) aus Datei oder Index; eine gleichnamige Variable der Datei verdeckt sie.
+function TCreateProcessReadonlyCommandLineScan.IsConstant(ANode: TSyntaxNode): Boolean;
 var
-  mTypes: TDeclaredTypes;
-  mLocal: TUnitIndex;
-  mLineBreak: string;
-
-  function Text(ANode: TSyntaxNode): string;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  for mSymbol in FLocal.Symbols do
   begin
-    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
-  end;
-
-  function IsStringLiteral(ANode: TSyntaxNode): Boolean;
-  begin
-    Result := (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']);
-  end;
-
-  function IsUnicodeString(const AType: string): Boolean;
-  begin
-    Result := MatchText(Trim(AType), ['string', 'UnicodeString', 'System.string', 'System.UnicodeString']);
-  end;
-
-  // Konstante (auch typisierte) aus Datei oder Index; eine gleichnamige Variable der Datei verdeckt sie.
-  function IsConstant(ANode: TSyntaxNode): Boolean;
-  var
-    mSymbol: TIndexSymbol;
-    mLocation: TSymbolLocation;
-  begin
-    for mSymbol in mLocal.Symbols do
+    if (mSymbol.Kind = TIndexSymbolKind.Constant) and SameText(mSymbol.Name, ANode.Name) then
     begin
-      if (mSymbol.Kind = TIndexSymbolKind.Constant) and SameText(mSymbol.Name, ANode.Name) then
+      Exit(True);
+    end;
+  end;
+  if FTypes.DeclaredType(ANode.Name, ANode.StartPos) <> '' then
+  begin
+    Exit(False);
+  end;
+  if FContext.Index <> nil then
+  begin
+    for mLocation in FContext.Index.FindSymbols(ANode.Name) do
+    begin
+      if mLocation.Symbol.Kind = TIndexSymbolKind.Constant then
       begin
         Exit(True);
       end;
     end;
-    if mTypes.DeclaredType(ANode.Name, ANode.StartPos) <> '' then
+  end;
+  Result := False;
+end;
+
+// Literal oder Konstante: zeigt auf schreibgeschützten Speicher (Referenzzähler -1).
+function TCreateProcessReadonlyCommandLineScan.IsReadonly(ANode: TSyntaxNode): Boolean;
+begin
+  while (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) do
+  begin
+    ANode := ANode[0];
+  end;
+  Result := IsStringLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsConstant(ANode));
+end;
+
+procedure TCreateProcessReadonlyCommandLineScan.Operands(ANode: TSyntaxNode; var AList: TArray<TSyntaxNode>);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): die Glieder der Verkettung von links nach rechts.
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Exit(False);
-    end;
-    if AContext.Index <> nil then
-    begin
-      for mLocation in AContext.Index.FindSymbols(ANode.Name) do
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.Name = '+') and (mNode.ChildCount = 2) then
       begin
-        if mLocation.Symbol.Kind = TIndexSymbolKind.Constant then
-        begin
-          Exit(True);
-        end;
+        mPending.Push(mNode[1]);
+        mPending.Push(mNode[0]);
+      end
+      else
+      begin
+        AList := AList + [mNode];
       end;
     end;
-    Result := False;
+  finally
+    mPending.Free;
   end;
+end;
 
-  // Literal oder Konstante: zeigt auf schreibgeschützten Speicher (Referenzzähler -1).
-  function IsReadonly(ANode: TSyntaxNode): Boolean;
+// 'notepad.exe ' + Datei: Ist Datei leer, liefert die Verkettung das Literal selbst zurück.
+function TCreateProcessReadonlyCommandLineScan.IsLiteralConcatenation(ANode: TSyntaxNode): Boolean;
+var
+  mList: TArray<TSyntaxNode>;
+begin
+  mList := nil;
+  Operands(ANode, mList);
+  Result := (Length(mList) = 2) and (IsReadonly(mList[0]) <> IsReadonly(mList[1]));
+end;
+
+function TCreateProcessReadonlyCommandLineScan.Classify(ANode: TSyntaxNode): TCommandLineKind;
+begin
+  if IsReadonly(ANode) then
   begin
-    while (ANode.Kind = TSyntaxKind.ParenExpr) and (ANode.ChildCount = 1) do
-    begin
-      ANode := ANode[0];
-    end;
-    Result := IsStringLiteral(ANode) or ((ANode.Kind = TSyntaxKind.Identifier) and IsConstant(ANode));
-  end;
-
-  procedure Operands(ANode: TSyntaxNode; var AList: TArray<TSyntaxNode>);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
+    Result := TCommandLineKind.Constant;
+  end
+  else if (ANode.Kind = TSyntaxKind.BinaryExpr) and IsLiteralConcatenation(ANode) then
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): die Glieder der Verkettung von links nach rechts.
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.Name = '+') and (mNode.ChildCount = 2) then
-        begin
-          mPending.Push(mNode[1]);
-          mPending.Push(mNode[0]);
-        end
-        else
-        begin
-          AList := AList + [mNode];
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  // 'notepad.exe ' + Datei: Ist Datei leer, liefert die Verkettung das Literal selbst zurück.
-  function IsLiteralConcatenation(ANode: TSyntaxNode): Boolean;
-  var
-    mList: TArray<TSyntaxNode>;
-  begin
-    mList := nil;
-    Operands(ANode, mList);
-    Result := (Length(mList) = 2) and (IsReadonly(mList[0]) <> IsReadonly(mList[1]));
-  end;
-
-  function Classify(ANode: TSyntaxNode): TCommandLineKind;
-  begin
-    if IsReadonly(ANode) then
-    begin
-      Result := TCommandLineKind.Constant;
-    end
-    else if (ANode.Kind = TSyntaxKind.BinaryExpr) and IsLiteralConcatenation(ANode) then
-    begin
-      Result := TCommandLineKind.Concatenation;
-    end
-    else
-    begin
-      Result := TCommandLineKind.None;
-    end;
-  end;
-
-  // Parameter AName der Routine (Name, Modifizierer)?
-  function FindParameter(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
-  var
-    mHeader, mParams: TSyntaxNode;
-    mIndex: Integer;
-    mName: string;
-  begin
-    Result := nil;
-    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if mHeader = nil then
-    begin
-      Exit;
-    end;
-    mParams := mHeader.FindChild(TSyntaxKind.Parameters);
-    if mParams = nil then
-    begin
-      Exit;
-    end;
-    for mIndex := 0 to mParams.ChildCount - 1 do
-    begin
-      for mName in SplitString(mParams[mIndex].Name, ',') do
-      begin
-        if SameText(Trim(mName), AName) then
-        begin
-          Exit(mParams[mIndex]);
-        end;
-      end;
-    end;
-  end;
-
-  // Letzte Zuweisung an AName vor AOffset in ANode (Baumreihenfolge) und UniqueString(AName) danach.
-  procedure Assignments(ANode: TSyntaxNode; const AName: string; AOffset: Integer; var ALast: TSyntaxNode;
-    var AUnique: Integer);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung
-    // zählt).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.StartOffset >= AOffset then
-        begin
-          Continue;
-        end;
-        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
-          (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName) then
-        begin
-          ALast := mNode;
-        end;
-        if (mNode.Kind = TSyntaxKind.Call) and SameText(mNode.Name, 'UniqueString') and (mNode.ChildCount = 2) and
-          (mNode[1].Kind = TSyntaxKind.Identifier) and SameText(mNode[1].Name, AName) then
-        begin
-          AUnique := mNode.StartOffset;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  function ClassifyIdentifier(ARoutine, ANode: TSyntaxNode; AOffset: Integer): TCommandLineKind;
-  var
-    mLast: TSyntaxNode;
-    mUnique: Integer;
+    Result := TCommandLineKind.Concatenation;
+  end
+  else
   begin
     Result := TCommandLineKind.None;
-    if not IsUnicodeString(mTypes.DeclaredType(ANode.Name, ANode.StartPos)) then
-    begin
-      Exit;
-    end;
-    mLast := nil;
-    mUnique := -1;
-    Assignments(ARoutine, ANode.Name, AOffset, mLast, mUnique);
-    if mLast <> nil then
-    begin
-      if (mUnique < mLast.StartOffset) and (Classify(mLast[1]) <> TCommandLineKind.None) then
-      begin
-        Result := TCommandLineKind.Variable;
-      end;
-    end
-    else if (mUnique < 0) and (FindParameter(ARoutine, ANode.Name) <> nil) then
-    begin
-      Result := TCommandLineKind.Parameter;
-    end;
   end;
+end;
 
-  // Anweisung in einer Anweisungsliste, vor der die Korrektur einfügen darf; nil in Schleifenbedingungen.
-  function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := ANode.Parent;
-    while (Result <> nil) and not (TRoutineBody.IsStatement(Result) and TRoutineBody.InList(Result)) do
-    begin
-      if Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
-        TSyntaxKind.ForInStatement, TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
-      begin
-        Exit(nil);
-      end;
-      Result := Result.Parent;
-    end;
-    if (Result <> nil) and (Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
-      TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) then
-    begin
-      Result := nil;
-    end;
-  end;
-
-  function Fixes(ARoutine, AValue: TSyntaxNode; AKind: TCommandLineKind): TArray<TRuleFix>;
-  var
-    mStatement: TSyntaxNode;
-    mName, mIndent: string;
-  begin
-    Result := nil;
-    mStatement := StatementOf(AValue);
-    if mStatement = nil then
-    begin
-      Exit;
-    end;
-    if AKind = TCommandLineKind.Variable then
-    begin
-      Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CallUniqueString].Fmt([AValue.Name]),
-        [TRoutineBody.InsertBefore(AContext.Text, mStatement, 'UniqueString(' + AValue.Name + ');')])];
-      Exit;
-    end;
-    mName := TRoutineBody.UniqueName(AContext.Tree.Tokens, AContext.NewNames.Local('Befehl'));
-    mIndent := TTextLines.IndentOf(AContext.Text, mStatement.StartPos.Line);
-    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CopyCommandLine].Text,
-      [TRoutineBody.AddVariable(AContext.Text, ARoutine, mName, 'string', AContext.Formatting),
-      TRoutineBody.InsertBefore(AContext.Text, mStatement, mName + ' := ' + Text(AValue) + ';' + mLineBreak + mIndent +
-      'UniqueString(' + mName + ');'),
-      TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), mName)])];
-  end;
-
-  procedure CheckCall(ACall: TSyntaxNode);
-  var
-    mIndex: Integer;
-    mArgument, mValue, mRoutine: TSyntaxNode;
-    mKind: TCommandLineKind;
-    mMessage: string;
-    mConfidence: TRuleConfidence;
-  begin
-    mIndex := CommandLineIndex(ACall.Name);
-    if (mIndex < 0) or (ACall.ChildCount <= mIndex + 1) then
-    begin
-      Exit;
-    end;
-    mArgument := ACall[mIndex + 1];
-    if (mArgument.Kind <> TSyntaxKind.Call) or not MatchText(mArgument.Name, ['PChar', 'PWideChar']) or
-      (mArgument.ChildCount <> 2) then
-    begin
-      Exit;
-    end;
-    mValue := mArgument[1];
-    mRoutine := TRoutineBody.RoutineAt(AContext.Tree, ACall.StartOffset);
-    mKind := Classify(mValue);
-    if (mKind = TCommandLineKind.None) and (mValue.Kind = TSyntaxKind.Identifier) and (mRoutine <> nil) then
-    begin
-      mKind := ClassifyIdentifier(mRoutine, mValue, ACall.StartOffset);
-    end;
-    mConfidence := TRuleConfidence.High;
-    case mKind of
-      TCommandLineKind.Constant:
-        mMessage := cTexts[TRtlTypePatternsMemoryText.ConstantCommandLine].Fmt([ACall.Name]);
-      TCommandLineKind.Concatenation:
-        mMessage := cTexts[TRtlTypePatternsMemoryText.ConcatCommandLine].Fmt([ACall.Name]);
-      TCommandLineKind.Variable:
-        mMessage := cTexts[TRtlTypePatternsMemoryText.MayBeConstant].Fmt([ACall.Name, mValue.Name]);
-      TCommandLineKind.Parameter:
-        begin
-          mMessage := cTexts[TRtlTypePatternsMemoryText.ParamConstant].Fmt([ACall.Name, mValue.Name]);
-          mConfidence := TRuleConfidence.Medium;
-        end;
-    else
-      Exit;
-    end;
-    if mRoutine = nil then
-    begin
-      AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence);
-    end
-    else
-    begin
-      AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence,
-        Fixes(mRoutine, mValue, mKind));
-    end;
-  end;
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind = TSyntaxKind.Call then
-        begin
-          CheckCall(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
+// Parameter AName der Routine (Name, Modifizierer)?
+function TCreateProcessReadonlyCommandLineScan.FindParameter(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  mCache: IRuleDerivedCache;
+  mHeader, mParams: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'CreateProcess') then
+  Result := nil;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
     Exit;
   end;
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mCache := TRuleDerived.Open(AContext);
-  mLocal := TRuleDerived.UnitIndex(mCache, AContext);
-  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
-  try
-    Visit(AContext.Tree.Root);
-  finally
-    mTypes.Free;
+  mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  if mParams = nil then
+  begin
+    Exit;
   end;
+  for mIndex := 0 to mParams.ChildCount - 1 do
+  begin
+    for mName in SplitString(mParams[mIndex].Name, ',') do
+    begin
+      if SameText(Trim(mName), AName) then
+      begin
+        Exit(mParams[mIndex]);
+      end;
+    end;
+  end;
+end;
+
+// Letzte Zuweisung an AName vor AOffset in ANode (Baumreihenfolge) und UniqueString(AName) danach.
+procedure TCreateProcessReadonlyCommandLineScan.Assignments(ANode: TSyntaxNode; const AName: string; AOffset: Integer;
+  var ALast: TSyntaxNode;
+  var AUnique: Integer);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung
+  // zählt).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.StartOffset >= AOffset then
+      begin
+        Continue;
+      end;
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+        (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName) then
+      begin
+        ALast := mNode;
+      end;
+      if (mNode.Kind = TSyntaxKind.Call) and SameText(mNode.Name, 'UniqueString') and (mNode.ChildCount = 2) and
+        (mNode[1].Kind = TSyntaxKind.Identifier) and SameText(mNode[1].Name, AName) then
+      begin
+        AUnique := mNode.StartOffset;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+function TCreateProcessReadonlyCommandLineScan.ClassifyIdentifier(ARoutine, ANode: TSyntaxNode;
+  AOffset: Integer): TCommandLineKind;
+var
+  mLast: TSyntaxNode;
+  mUnique: Integer;
+begin
+  Result := TCommandLineKind.None;
+  if not IsUnicodeString(FTypes.DeclaredType(ANode.Name, ANode.StartPos)) then
+  begin
+    Exit;
+  end;
+  mLast := nil;
+  mUnique := -1;
+  Assignments(ARoutine, ANode.Name, AOffset, mLast, mUnique);
+  if mLast <> nil then
+  begin
+    if (mUnique < mLast.StartOffset) and (Classify(mLast[1]) <> TCommandLineKind.None) then
+    begin
+      Result := TCommandLineKind.Variable;
+    end;
+  end
+  else if (mUnique < 0) and (FindParameter(ARoutine, ANode.Name) <> nil) then
+  begin
+    Result := TCommandLineKind.Parameter;
+  end;
+end;
+
+// Anweisung in einer Anweisungsliste, vor der die Korrektur einfügen darf; nil in Schleifenbedingungen.
+function TCreateProcessReadonlyCommandLineScan.StatementOf(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and not (TRoutineBody.IsStatement(Result) and TRoutineBody.InList(Result)) do
+  begin
+    if Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement,
+      TSyntaxKind.ForInStatement, TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+    begin
+      Exit(nil);
+    end;
+    Result := Result.Parent;
+  end;
+  if (Result <> nil) and (Result.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
+    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) then
+  begin
+    Result := nil;
+  end;
+end;
+
+function TCreateProcessReadonlyCommandLineScan.Fixes(ARoutine, AValue: TSyntaxNode;
+  AKind: TCommandLineKind): TArray<TRuleFix>;
+var
+  mStatement: TSyntaxNode;
+  mName, mIndent: string;
+begin
+  Result := nil;
+  mStatement := StatementOf(AValue);
+  if mStatement = nil then
+  begin
+    Exit;
+  end;
+  if AKind = TCommandLineKind.Variable then
+  begin
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CallUniqueString].Fmt([AValue.Name]),
+      [TRoutineBody.InsertBefore(FContext.Text, mStatement, 'UniqueString(' + AValue.Name + ');')])];
+    Exit;
+  end;
+  mName := TRoutineBody.UniqueName(FContext.Tree.Tokens, FContext.NewNames.Local('Befehl'));
+  mIndent := TTextLines.IndentOf(FContext.Text, mStatement.StartPos.Line);
+  Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CopyCommandLine].Text,
+    [TRoutineBody.AddVariable(FContext.Text, ARoutine, mName, 'string', FContext.Formatting),
+    TRoutineBody.InsertBefore(FContext.Text, mStatement, mName + ' := ' + Text(AValue) + ';' + FLineBreak + mIndent +
+    'UniqueString(' + mName + ');'),
+    TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), mName)])];
+end;
+
+procedure TCreateProcessReadonlyCommandLineScan.CheckCall(ACall: TSyntaxNode);
+var
+  mIndex: Integer;
+  mArgument, mValue, mRoutine: TSyntaxNode;
+  mKind: TCommandLineKind;
+  mMessage: string;
+  mConfidence: TRuleConfidence;
+begin
+  mIndex := TCreateProcessReadonlyCommandLineRule.CommandLineIndex(ACall.Name);
+  if (mIndex < 0) or (ACall.ChildCount <= mIndex + 1) then
+  begin
+    Exit;
+  end;
+  mArgument := ACall[mIndex + 1];
+  if (mArgument.Kind <> TSyntaxKind.Call) or not MatchText(mArgument.Name, ['PChar', 'PWideChar']) or
+    (mArgument.ChildCount <> 2) then
+  begin
+    Exit;
+  end;
+  mValue := mArgument[1];
+  mRoutine := TRoutineBody.RoutineAt(FContext.Tree, ACall.StartOffset);
+  mKind := Classify(mValue);
+  if (mKind = TCommandLineKind.None) and (mValue.Kind = TSyntaxKind.Identifier) and (mRoutine <> nil) then
+  begin
+    mKind := ClassifyIdentifier(mRoutine, mValue, ACall.StartOffset);
+  end;
+  mConfidence := TRuleConfidence.High;
+  case mKind of
+    TCommandLineKind.Constant:
+      mMessage := cTexts[TRtlTypePatternsMemoryText.ConstantCommandLine].Fmt([ACall.Name]);
+    TCommandLineKind.Concatenation:
+      mMessage := cTexts[TRtlTypePatternsMemoryText.ConcatCommandLine].Fmt([ACall.Name]);
+    TCommandLineKind.Variable:
+      mMessage := cTexts[TRtlTypePatternsMemoryText.MayBeConstant].Fmt([ACall.Name, mValue.Name]);
+    TCommandLineKind.Parameter:
+      begin
+        mMessage := cTexts[TRtlTypePatternsMemoryText.ParamConstant].Fmt([ACall.Name, mValue.Name]);
+        mConfidence := TRuleConfidence.Medium;
+      end;
+  else
+    Exit;
+  end;
+  if mRoutine = nil then
+  begin
+    FReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence);
+  end
+  else
+  begin
+    FReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence,
+      Fixes(mRoutine, mValue, mKind));
+  end;
+end;
+
+procedure TCreateProcessReadonlyCommandLineScan.Visit(ANode: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.Call then
+      begin
+        CheckCall(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TCreateProcessReadonlyCommandLineScan.Run;
+var
+  mCache: IRuleDerivedCache;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) or not ContainsText(FContext.Text, 'CreateProcess') then
+  begin
+    Exit;
+  end;
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  mCache := TRuleDerived.Open(FContext);
+  FLocal := TRuleDerived.UnitIndex(mCache, FContext);
+  FTypes := TDeclaredTypes.Create(FContext.Tree, FContext.Text);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FTypes.Free;
+  end;
+end;
+
+procedure TCreateProcessReadonlyCommandLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TCreateProcessReadonlyCommandLineScan;
+begin
+  mScan := TCreateProcessReadonlyCommandLineScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TCreateProcessReadonlyCommandLineRule.CommandLineIndex(const AName: string): Integer;

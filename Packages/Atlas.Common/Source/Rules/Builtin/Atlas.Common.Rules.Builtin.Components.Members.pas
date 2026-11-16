@@ -574,257 +574,293 @@ begin
     OnlyConstants(ANode.Parent);
 end;
 
-procedure TEqualsWithoutGetHashCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mModel: TComponentModel;
-  mCache: IRuleDerivedCache;
-
-  // Überschreibt ein Vorfahr (ohne TObject) die Methode AName? AKnown: die Kette ist bekannt.
-  function AncestorOverrides(const AClass, AName: string; out AKnown: Boolean): Boolean;
-  var
-    mChain: TArray<TSymbolLocation>;
-    mLocation: TSymbolLocation;
-    mMember: TIndexSymbol;
-    mObjectMissing: Boolean;
-  begin
-    Result := False;
-    mChain := mModel.Ancestry.Ancestors(AClass, AKnown, mObjectMissing);
-    for mLocation in mChain do
-    begin
-      if not SameText(mLocation.Symbol.Name, 'TObject') then
-      begin
-        for mMember in mModel.Ancestry.Methods(mLocation) do
-        begin
-          if SameText(mMember.Name, AName) and mMember.HasDirective('override') then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
+type
+  /// <summary>Ein Lauf von TEqualsWithoutGetHashCodeRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TEqualsWithoutGetHashCodeScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FModel: TComponentModel;
+    function AncestorOverrides(const AClass, AName: string; out AKnown: Boolean): Boolean;
+    procedure CollectFields(ARoot: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
+    function HashFix(const AInfo: TClassInfo; AHeader: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure ReportEqualsOnly(const AInfo: TClassInfo);
+    procedure ReportHashOnly(const AInfo: TClassInfo);
+    procedure CheckClasses;
+    procedure CollectRecords(ARoot: TSyntaxNode; var ANames: TArray<string>);
+    procedure CheckCreates(ARoot: TSyntaxNode; const ARecords: TArray<string>);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
-  procedure CollectFields(ARoot: TSyntaxNode; const AFields: TArray<string>; var ANames, ACompares: TArray<string>);
-  var
-    mIndex: Integer;
-    mCompare: string;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung, damit die Reihenfolge der Felder bleibt.
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(mNode.Name, AFields) and
-          not IsIn(mNode.Name, ANames) then
-        begin
-          mCompare := '';
-          if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.Call) and (mNode.Parent[0] <> mNode) then
-          begin
-            mCompare := mNode.Parent.Name;
-          end;
-          ANames := ANames + [mNode.Name];
-          ACompares := ACompares + [mCompare];
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
+{ TEqualsWithoutGetHashCodeScan }
 
-  // Korrektur: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals umsetzen.
-  function HashFix(const AInfo: TClassInfo; AHeader: TSyntaxNode; out AFix: TRuleFix): Boolean;
-  var
-    mEquals_: TMethodImpl;
-    mNames, mCompares: TArray<string>;
-    mBody: string;
-    mEdit, mUsesEdit: TRuleEdit;
-    mEdits: TArray<TRuleEdit>;
-    mPosition: TTextPosition;
-  begin
-    Result := False;
-    if not LastMethod(mModel, AInfo.Name, 'Equals', mEquals_) then
-    begin
-      Exit;
-    end;
-    mNames := nil;
-    mCompares := nil;
-    CollectFields(mEquals_.Block, OwnFields(AInfo), mNames, mCompares);
-    if mNames = nil then
-    begin
-      Exit;
-    end;
-    mBody := HashBody(AInfo, mNames, mCompares, mModel.LineBreak);
-    // Edits in Textreihenfolge: Deklaration, uses der Implementierung, Rumpf.
-    mPosition := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
-    mEdits := [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), StringOfChar(' ', AHeader.StartPos.Character) +
-      'function GetHashCode: Integer; override;' + mModel.LineBreak)];
-    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(AContext.Tree.Tokens), 'System.Hash', AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', mModel.LineBreak,
-      mUsesEdit) then
-    begin
-      if mUsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
-      begin
-        mEdits := [mUsesEdit] + mEdits;
-      end
-      else
-      begin
-        mEdits := mEdits + [mUsesEdit];
-      end;
-    end;
-    mPosition := TTextPosition.Create(mEquals_.Decl.EndPos.Line + 1, 0);
-    mEdit := TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), mModel.LineBreak + 'function ' + AInfo.Name +
-      '.GetHashCode: Integer;' + mModel.LineBreak + 'begin' + mModel.LineBreak + mBody + 'end;' + mModel.LineBreak);
-    mEdits := mEdits + [mEdit];
-    AFix := TRuleFix.Create(cTexts[TComponentsMembersText.OverrideHash].Fmt([string.Join(', ', mNames)]), mEdits);
-    Result := True;
-  end;
-
-  // Equals ohne GetHashCode: melden, mit Korrektur.
-  procedure ReportEqualsOnly(const AInfo: TClassInfo);
-  var
-    mHeader: TSyntaxNode;
-    mKnown: Boolean;
-    mFix: TRuleFix;
-    mFixes: TArray<TRuleFix>;
-  begin
-    if AncestorOverrides(AInfo.Name, 'GetHashCode', mKnown) or not mKnown then
-    begin
-      Exit;
-    end;
-    mHeader := MemberHeader(AInfo.Body, 'Equals');
-    mFixes := nil;
-    if HashFix(AInfo, mHeader, mFix) then
-    begin
-      mFixes := [mFix];
-    end;
-    AReport.Add(TTextRange.Create(mHeader.StartPos, mHeader.EndPos), cTexts[TComponentsMembersText.EqualsOnly].Text,
-      TRuleConfidence.High, mFixes);
-  end;
-
-  // GetHashCode ohne Equals: melden.
-  procedure ReportHashOnly(const AInfo: TClassInfo);
-  var
-    mHeader: TSyntaxNode;
-    mKnown: Boolean;
-  begin
-    if AncestorOverrides(AInfo.Name, 'Equals', mKnown) or not mKnown then
-    begin
-      Exit;
-    end;
-    mHeader := MemberHeader(AInfo.Body, 'GetHashCode');
-    AReport.Add(TTextRange.Create(mHeader.StartPos, mHeader.EndPos), cTexts[TComponentsMembersText.HashOnly].Text,
-      TRuleConfidence.High);
-  end;
-
-  procedure CheckClasses;
-  var
-    mInfo: TClassInfo;
-    mHasEquals, mHasHash: Boolean;
-  begin
-    for mInfo in mModel.Classes do
-    begin
-      mHasEquals := mModel.DeclaredWith(mInfo, 'Equals', 'override');
-      mHasHash := mModel.DeclaredWith(mInfo, 'GetHashCode', 'override');
-      if mHasEquals and not mHasHash then
-      begin
-        ReportEqualsOnly(mInfo);
-      end
-      else if mHasHash and not mHasEquals then
-      begin
-        ReportHashOnly(mInfo);
-      end;
-    end;
-  end;
-
-  // Records der Datei mit class operator Equal und einem Feld, das der Byte-Vergleich falsch vergleicht.
-  procedure CollectRecords(ARoot: TSyntaxNode; var ANames: TArray<string>);
-  var
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.TypeDecl) and IsEqualRecord(mModel, mNode) then
-        begin
-          ANames := ANames + [mNode.Name];
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  procedure CheckCreates(ARoot: TSyntaxNode; const ARecords: TArray<string>);
-  var
-    mIndex: Integer;
-    mNode, mCollection: TSyntaxNode;
-    mKey: string;
-    mPending: TStack<TSyntaxNode>;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mKey := HashedCreateKey(mNode, mCollection);
-        if (mKey <> '') and IsIn(mKey, ARecords) and WithoutComparer(mNode) then
-        begin
-          AReport.Add(TTextRange.Create(mCollection.StartPos, mCollection.EndPos),
-            cTexts[TComponentsMembersText.RecordEqual].Fmt(
-            [mKey, mCollection.Name]), TRuleConfidence.High);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-var
-  mRecords: TArray<string>;
+constructor TEqualsWithoutGetHashCodeScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  mCache := TRuleDerived.Open(AContext);
-  if not PrepareModel(mCache, AContext, mModel) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+// Überschreibt ein Vorfahr (ohne TObject) die Methode AName? AKnown: die Kette ist bekannt.
+function TEqualsWithoutGetHashCodeScan.AncestorOverrides(const AClass, AName: string; out AKnown: Boolean): Boolean;
+var
+  mChain: TArray<TSymbolLocation>;
+  mLocation: TSymbolLocation;
+  mMember: TIndexSymbol;
+  mObjectMissing: Boolean;
+begin
+  Result := False;
+  mChain := FModel.Ancestry.Ancestors(AClass, AKnown, mObjectMissing);
+  for mLocation in mChain do
+  begin
+    if not SameText(mLocation.Symbol.Name, 'TObject') then
+    begin
+      for mMember in FModel.Ancestry.Methods(mLocation) do
+      begin
+        if SameText(mMember.Name, AName) and mMember.HasDirective('override') then
+        begin
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+end;
+
+// Eigene Felder in der Reihenfolge, in der Equals sie nennt, je mit dem Vergleich (SameText …), in dem sie stehen.
+procedure TEqualsWithoutGetHashCodeScan.CollectFields(ARoot: TSyntaxNode; const AFields: TArray<string>; var ANames,
+  ACompares: TArray<string>);
+var
+  mIndex: Integer;
+  mCompare: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht); Vorordnung, damit die Reihenfolge der Felder bleibt.
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and IsIn(mNode.Name, AFields) and
+        not IsIn(mNode.Name, ANames) then
+      begin
+        mCompare := '';
+        if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.Call) and (mNode.Parent[0] <> mNode) then
+        begin
+          mCompare := mNode.Parent.Name;
+        end;
+        ANames := ANames + [mNode.Name];
+        ACompares := ACompares + [mCompare];
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+// Korrektur: GetHashCode hinter Equals deklarieren und hinter dem Rumpf von Equals umsetzen.
+function TEqualsWithoutGetHashCodeScan.HashFix(const AInfo: TClassInfo; AHeader: TSyntaxNode;
+  out AFix: TRuleFix): Boolean;
+var
+  mEquals_: TMethodImpl;
+  mNames, mCompares: TArray<string>;
+  mBody: string;
+  mEdit, mUsesEdit: TRuleEdit;
+  mEdits: TArray<TRuleEdit>;
+  mPosition: TTextPosition;
+begin
+  Result := False;
+  if not LastMethod(FModel, AInfo.Name, 'Equals', mEquals_) then
   begin
     Exit;
   end;
-  if ContainsText(AContext.Text, 'Equals') or ContainsText(AContext.Text, 'GetHashCode') then
+  mNames := nil;
+  mCompares := nil;
+  CollectFields(mEquals_.Block, OwnFields(AInfo), mNames, mCompares);
+  if mNames = nil then
+  begin
+    Exit;
+  end;
+  mBody := HashBody(AInfo, mNames, mCompares, FModel.LineBreak);
+  // Edits in Textreihenfolge: Deklaration, uses der Implementierung, Rumpf.
+  mPosition := TTextPosition.Create(AHeader.EndPos.Line + 1, 0);
+  mEdits := [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), StringOfChar(' ', AHeader.StartPos.Character) +
+    'function GetHashCode: Integer; override;' + FModel.LineBreak)];
+  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.Hash', FContext.Namespaces) and
+    TUsesClauses.AddUnit(FContext.Tree.Tokens, mEquals_.Decl.StartOffset, 'System.Hash', FModel.LineBreak,
+    mUsesEdit) then
+  begin
+    if mUsesEdit.Range.StartPos.Line < AHeader.StartPos.Line then
+    begin
+      mEdits := [mUsesEdit] + mEdits;
+    end
+    else
+    begin
+      mEdits := mEdits + [mUsesEdit];
+    end;
+  end;
+  mPosition := TTextPosition.Create(mEquals_.Decl.EndPos.Line + 1, 0);
+  mEdit := TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), FModel.LineBreak + 'function ' + AInfo.Name +
+    '.GetHashCode: Integer;' + FModel.LineBreak + 'begin' + FModel.LineBreak + mBody + 'end;' + FModel.LineBreak);
+  mEdits := mEdits + [mEdit];
+  AFix := TRuleFix.Create(cTexts[TComponentsMembersText.OverrideHash].Fmt([string.Join(', ', mNames)]), mEdits);
+  Result := True;
+end;
+
+// Equals ohne GetHashCode: melden, mit Korrektur.
+procedure TEqualsWithoutGetHashCodeScan.ReportEqualsOnly(const AInfo: TClassInfo);
+var
+  mHeader: TSyntaxNode;
+  mKnown: Boolean;
+  mFix: TRuleFix;
+  mFixes: TArray<TRuleFix>;
+begin
+  if AncestorOverrides(AInfo.Name, 'GetHashCode', mKnown) or not mKnown then
+  begin
+    Exit;
+  end;
+  mHeader := MemberHeader(AInfo.Body, 'Equals');
+  mFixes := nil;
+  if HashFix(AInfo, mHeader, mFix) then
+  begin
+    mFixes := [mFix];
+  end;
+  FReport.Add(TTextRange.Create(mHeader.StartPos, mHeader.EndPos), cTexts[TComponentsMembersText.EqualsOnly].Text,
+    TRuleConfidence.High, mFixes);
+end;
+
+// GetHashCode ohne Equals: melden.
+procedure TEqualsWithoutGetHashCodeScan.ReportHashOnly(const AInfo: TClassInfo);
+var
+  mHeader: TSyntaxNode;
+  mKnown: Boolean;
+begin
+  if AncestorOverrides(AInfo.Name, 'Equals', mKnown) or not mKnown then
+  begin
+    Exit;
+  end;
+  mHeader := MemberHeader(AInfo.Body, 'GetHashCode');
+  FReport.Add(TTextRange.Create(mHeader.StartPos, mHeader.EndPos), cTexts[TComponentsMembersText.HashOnly].Text,
+    TRuleConfidence.High);
+end;
+
+procedure TEqualsWithoutGetHashCodeScan.CheckClasses;
+var
+  mInfo: TClassInfo;
+  mHasEquals, mHasHash: Boolean;
+begin
+  for mInfo in FModel.Classes do
+  begin
+    mHasEquals := FModel.DeclaredWith(mInfo, 'Equals', 'override');
+    mHasHash := FModel.DeclaredWith(mInfo, 'GetHashCode', 'override');
+    if mHasEquals and not mHasHash then
+    begin
+      ReportEqualsOnly(mInfo);
+    end
+    else if mHasHash and not mHasEquals then
+    begin
+      ReportHashOnly(mInfo);
+    end;
+  end;
+end;
+
+// Records der Datei mit class operator Equal und einem Feld, das der Byte-Vergleich falsch vergleicht.
+procedure TEqualsWithoutGetHashCodeScan.CollectRecords(ARoot: TSyntaxNode; var ANames: TArray<string>);
+var
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and IsEqualRecord(FModel, mNode) then
+      begin
+        ANames := ANames + [mNode.Name];
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TEqualsWithoutGetHashCodeScan.CheckCreates(ARoot: TSyntaxNode; const ARecords: TArray<string>);
+var
+  mIndex: Integer;
+  mNode, mCollection: TSyntaxNode;
+  mKey: string;
+  mPending: TStack<TSyntaxNode>;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mKey := HashedCreateKey(mNode, mCollection);
+      if (mKey <> '') and IsIn(mKey, ARecords) and WithoutComparer(mNode) then
+      begin
+        FReport.Add(TTextRange.Create(mCollection.StartPos, mCollection.EndPos),
+          cTexts[TComponentsMembersText.RecordEqual].Fmt(
+          [mKey, mCollection.Name]), TRuleConfidence.High);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TEqualsWithoutGetHashCodeScan.Run;
+var
+  mCache: IRuleDerivedCache;
+  mRecords: TArray<string>;
+begin
+  mCache := TRuleDerived.Open(FContext);
+  if not PrepareModel(mCache, FContext, FModel) then
+  begin
+    Exit;
+  end;
+  if ContainsText(FContext.Text, 'Equals') or ContainsText(FContext.Text, 'GetHashCode') then
   begin
     CheckClasses;
   end;
-  if ContainsText(AContext.Text, 'operator') then
+  if ContainsText(FContext.Text, 'operator') then
   begin
     mRecords := nil;
-    CollectRecords(AContext.Tree.Root, mRecords);
+    CollectRecords(FContext.Tree.Root, mRecords);
     if mRecords <> nil then
     begin
-      CheckCreates(AContext.Tree.Root, mRecords);
+      CheckCreates(FContext.Tree.Root, mRecords);
     end;
   end;
+end;
+
+procedure TEqualsWithoutGetHashCodeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TEqualsWithoutGetHashCodeScan;
+begin
+  mScan := TEqualsWithoutGetHashCodeScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

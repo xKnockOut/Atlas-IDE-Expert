@@ -267,342 +267,379 @@ begin
     cTexts[TTypeRestrictionsAttributesText.Title].Text);
 end;
 
-procedure TAttributeUsageInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TArray<TPascalToken>;
-  mTypes: TFileTypes;
-  mPaths: TArray<string>;
-  mAttributes: TList<TSyntaxNode>;
-  mNames: TDeclarationNames;
-  mNode: TSyntaxNode;
-
-  function PathOf(ANode: TSyntaxNode): string;
-  begin
-    Result := TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
+type
+  /// <summary>Ein Lauf von TAttributeUsageInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TAttributeUsageInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FTypes: TFileTypes;
+    FPaths: TArray<string>;
+    FNames: TDeclarationNames;
+    function PathOf(ANode: TSyntaxNode): string;
+    function Inside(ANode, ARoot: TSyntaxNode): Boolean;
+    function VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
+    function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
+    function CertainVariable(const AName: string; AAttribute: TSyntaxNode): Boolean;
+    function ReportNonConstant(ANode, AAttribute: TSyntaxNode; const AAttributeName: string): Boolean;
+    procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
+    procedure CheckArguments(AAttribute: TSyntaxNode);
+    function AttributeGroup(AAttribute: TSyntaxNode): TArray<TSyntaxNode>;
+    function FirstOfGroup(AAttribute: TSyntaxNode): Boolean;
+    procedure CheckWeakTarget(AItem, ATarget: TSyntaxNode);
+    function IsDuplicate(const AItems: TArray<TSyntaxNode>; const AItemNames: TArray<string>; AIndex: Integer):
+      Boolean;
+    procedure CheckItem(AItem, ATarget: TSyntaxNode; const AName: string);
+    procedure CheckTarget(AFirst: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  /// <summary>Liegt ANode in ARoot (ARoot selbst eingeschlossen)?</summary>
-  function Inside(ANode, ARoot: TSyntaxNode): Boolean;
-  begin
-    while ANode <> nil do
-    begin
-      if ANode = ARoot then
-      begin
-        Exit(True);
-      end;
-      ANode := ANode.Parent;
-    end;
-    Result := False;
-  end;
+{ TAttributeUsageInvalidScan }
 
-  /// <summary>Ist der var-Abschnitt ASection am Attribut sichtbar? Unit-Ebene oder umgebende Routine.</summary>
-  function VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
-  var
-    mHolder: TSyntaxNode;
-  begin
-    Result := False;
-    if (ASection = nil) or (ASection.Kind <> TSyntaxKind.VarSection) or (ASection.Parent = nil) then
-    begin
-      Exit;
-    end;
-    mHolder := ASection.Parent;
-    if mHolder.Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Result := Inside(AAttribute, mHolder);
-    end
-    else
-    begin
-      Result := mHolder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection];
-    end;
-  end;
-
-  /// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
-  /// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
-  function VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
-  begin
-    Result := (ADecl.StartOffset < AAttribute.StartOffset) and (ADecl.Kind <> TSyntaxKind.Field);
-    if Result and (ADecl.Kind = TSyntaxKind.VarDecl) then
-    begin
-      Result := VarSectionVisible(ADecl.Parent, AAttribute);
-    end;
-    Result := Result and TConditionalBranches.Implies(PathOf(AAttribute), PathOf(ADecl));
-  end;
-
-  /// <summary>Steht AName am Attribut sicher für eine Variable bzw. Routine der Datei?</summary>
-  function CertainVariable(const AName: string; AAttribute: TSyntaxNode): Boolean;
-  var
-    mDecls: TList<TSyntaxNode>;
-    mDecl: TSyntaxNode;
-  begin
-    Result := False;
-    mDecls := mNames.OnlyVariables(AName);
-    if mDecls = nil then
-    begin
-      Exit;
-    end;
-    for mDecl in mDecls do
-    begin
-      if VisibleAt(mDecl, AAttribute) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  /// <summary>Meldet ANode, wenn es eine Variable oder der Aufruf einer eigenen Routine ist; True nach einer
-  /// Meldung.</summary>
-  function ReportNonConstant(ANode, AAttribute: TSyntaxNode; const AAttributeName: string): Boolean;
-  var
-    mCallee: TSyntaxNode;
-  begin
-    Result := False;
-    if ANode.Kind = TSyntaxKind.Identifier then
-    begin
-      Result := CertainVariable(ANode.Name, AAttribute);
-      if Result then
-      begin
-        AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.ArgumentNotConst].Fmt(
-          [ANode.Name, AAttributeName]), TRuleConfidence.High, nil);
-      end;
-      Exit;
-    end;
-    // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
-    if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
-    begin
-      Exit;
-    end;
-    mCallee := ANode[0];
-    Result := (mCallee.Kind = TSyntaxKind.Identifier) and CertainVariable(mCallee.Name, AAttribute);
-    if Result then
-    begin
-      AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.CallNotConst].Fmt([mCallee.Name,
-        AAttributeName]), TRuleConfidence.High, nil);
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(AArgument);
-      while (mPending.Count > 0) and not AReported do
-      begin
-        mNode := mPending.Pop;
-        case mNode.Kind of
-          TSyntaxKind.Identifier, TSyntaxKind.Call:
-            AReported := ReportNonConstant(mNode, AAttribute, AAttributeName);
-          TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
-          TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
-            for mIndex := mNode.ChildCount - 1 downto 0 do
-            begin
-              mPending.Push(mNode[mIndex]);
-            end;
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  procedure CheckArguments(AAttribute: TSyntaxNode);
-  var
-    mIndex, mArgument: Integer;
-    mItem: TSyntaxNode;
-    mReported: Boolean;
-  begin
-    for mIndex := 0 to AAttribute.ChildCount - 1 do
-    begin
-      mItem := AAttribute[mIndex];
-      if mItem.Kind <> TSyntaxKind.Call then
-      begin
-        Continue;
-      end;
-      mReported := False;
-      for mArgument := 1 to mItem.ChildCount - 1 do
-      begin
-        CheckArgument(mItem[mArgument], AAttribute, DottedNameOf(mItem[0]), mReported);
-      end;
-    end;
-  end;
-
-  /// <summary>Alle Attribut-Knoten vor dem Ziel, zu dem AAttribute gehört (ohne Parameter: nur AAttribute).</summary>
-  function AttributeGroup(AAttribute: TSyntaxNode): TArray<TSyntaxNode>;
-  var
-    mParent: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    Result := [AAttribute];
-    mParent := AAttribute.Parent;
-    if (mParent = nil) or (mParent.Kind = TSyntaxKind.Parameter) then
-    begin
-      Result := nil;
-      if mParent <> nil then
-      begin
-        for mIndex := 0 to mParent.ChildCount - 1 do
-        begin
-          if mParent[mIndex].Kind = TSyntaxKind.Attribute then
-          begin
-            Result := Result + [mParent[mIndex]];
-          end;
-        end;
-      end;
-      Exit;
-    end;
-    mIndex := 0;
-    while (mIndex < mParent.ChildCount) and (mParent[mIndex] <> AAttribute) do
-    begin
-      Inc(mIndex);
-    end;
-    while (mIndex + 1 < mParent.ChildCount) and (mParent[mIndex + 1].Kind = TSyntaxKind.Attribute) do
-    begin
-      Inc(mIndex);
-      Result := Result + [mParent[mIndex]];
-    end;
-  end;
-
-  /// <summary>Ist AAttribute das erste Attribut vor seinem Ziel?</summary>
-  function FirstOfGroup(AAttribute: TSyntaxNode): Boolean;
-  var
-    mParent: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    mParent := AAttribute.Parent;
-    if mParent = nil then
-    begin
-      Exit(False);
-    end;
-    for mIndex := 0 to mParent.ChildCount - 1 do
-    begin
-      if mParent[mIndex] = AAttribute then
-      begin
-        Exit((mIndex = 0) or (mParent[mIndex - 1].Kind <> TSyntaxKind.Attribute));
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure CheckWeakTarget(AItem, ATarget: TSyntaxNode);
-  var
-    mChild: Integer;
-    mTypeNode: TSyntaxNode;
-  begin
-    if not (ATarget.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl]) then
-    begin
-      Exit;
-    end;
-    mTypeNode := nil;
-    for mChild := 0 to ATarget.ChildCount - 1 do
-    begin
-      if ATarget[mChild].Kind <> TSyntaxKind.Attribute then
-      begin
-        mTypeNode := ATarget[mChild];
-        Break;
-      end;
-    end;
-    if (mTypeNode = nil) or not CertainlyNoReference(mTypes, mTypeNode) then
-    begin
-      Exit;
-    end;
-    AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.WeakType].Fmt([Trim(ATarget.Name),
-      OneLine(AContext.Text, mTypeNode)]), TRuleConfidence.High,
-      nil);
-  end;
-
-  /// <summary>Steht das Compiler-Attribut AItemNames[AIndex] schon weiter vorn in derselben Bedingungsvariante?
-  /// </summary>
-  function IsDuplicate(const AItems: TArray<TSyntaxNode>; const AItemNames: TArray<string>; AIndex: Integer):
-    Boolean;
-  var
-    mOther: Integer;
-  begin
-    Result := False;
-    for mOther := 0 to AIndex - 1 do
-    begin
-      if SameText(AItemNames[mOther], AItemNames[AIndex]) and
-        not TConditionalBranches.Exclusive(PathOf(AItems[mOther]), PathOf(AItems[AIndex])) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  procedure CheckItem(AItem, ATarget: TSyntaxNode; const AName: string);
-  begin
-    if SameText(AName, 'Volatile') and (ATarget.Kind in cVolatileForbiddenTargets) then
-    begin
-      AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.VolatileTarget].Text, TRuleConfidence.High,
-        nil);
-    end
-    else if SameText(AName, 'Weak') then
-    begin
-      CheckWeakTarget(AItem, ATarget);
-    end;
-  end;
-
-  procedure CheckTarget(AFirst: TSyntaxNode);
-  var
-    mItems: TArray<TSyntaxNode>;
-    mItemNames: TArray<string>;
-    mAttribute, mTarget: TSyntaxNode;
-    mIndex: Integer;
-  begin
-    mTarget := AttributeTarget(AFirst);
-    if mTarget = nil then
-    begin
-      Exit;
-    end;
-    mItems := nil;
-    for mAttribute in AttributeGroup(AFirst) do
-    begin
-      for mIndex := 0 to mAttribute.ChildCount - 1 do
-      begin
-        mItems := mItems + [mAttribute[mIndex]];
-      end;
-    end;
-    SetLength(mItemNames, Length(mItems));
-    for mIndex := 0 to High(mItems) do
-    begin
-      mItemNames[mIndex] := CompilerAttribute(mTypes, mItems[mIndex]);
-    end;
-    for mIndex := 0 to High(mItems) do
-    begin
-      if mItemNames[mIndex] = '' then
-      begin
-        Continue;
-      end;
-      if IsDuplicate(mItems, mItemNames, mIndex) then
-      begin
-        AReport.Add(NodeRange(mItems[mIndex]),
-          cTexts[TTypeRestrictionsAttributesText.Duplicate].Fmt([mItemNames[mIndex]]),
-          TRuleConfidence.High,
-          nil);
-      end
-      else
-      begin
-        CheckItem(mItems[mIndex], mTarget, mItemNames[mIndex]);
-      end;
-    end;
-  end;
-
+constructor TAttributeUsageInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (Pos('[', AContext.Text) = 0) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TAttributeUsageInvalidScan.PathOf(ANode: TSyntaxNode): string;
+begin
+  Result := TConditionalBranches.PathAt(FPaths, TRoutineBody.TokenAt(FTokens, ANode.StartOffset));
+end;
+
+/// <summary>Liegt ANode in ARoot (ARoot selbst eingeschlossen)?</summary>
+function TAttributeUsageInvalidScan.Inside(ANode, ARoot: TSyntaxNode): Boolean;
+begin
+  while ANode <> nil do
+  begin
+    if ANode = ARoot then
+    begin
+      Exit(True);
+    end;
+    ANode := ANode.Parent;
+  end;
+  Result := False;
+end;
+
+/// <summary>Ist der var-Abschnitt ASection am Attribut sichtbar? Unit-Ebene oder umgebende Routine.</summary>
+function TAttributeUsageInvalidScan.VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
+var
+  mHolder: TSyntaxNode;
+begin
+  Result := False;
+  if (ASection = nil) or (ASection.Kind <> TSyntaxKind.VarSection) or (ASection.Parent = nil) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mTypes := TFileTypes.Collect(AContext.Tree.Root);
-  mPaths := TConditionalBranches.Paths(mTokens);
-  mNames := nil;
+  mHolder := ASection.Parent;
+  if mHolder.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    Result := Inside(AAttribute, mHolder);
+  end
+  else
+  begin
+    Result := mHolder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection];
+  end;
+end;
+
+/// <summary>Ist die Deklaration ADecl (VarDecl, Field oder RoutineHeader) am Attribut AAttribute sichtbar und
+/// wird mit ihm übersetzt? Unit-Ebene oder umgebende Routine, vor dem Attribut; Felder nicht.</summary>
+function TAttributeUsageInvalidScan.VisibleAt(ADecl, AAttribute: TSyntaxNode): Boolean;
+begin
+  Result := (ADecl.StartOffset < AAttribute.StartOffset) and (ADecl.Kind <> TSyntaxKind.Field);
+  if Result and (ADecl.Kind = TSyntaxKind.VarDecl) then
+  begin
+    Result := VarSectionVisible(ADecl.Parent, AAttribute);
+  end;
+  Result := Result and TConditionalBranches.Implies(PathOf(AAttribute), PathOf(ADecl));
+end;
+
+/// <summary>Steht AName am Attribut sicher für eine Variable bzw. Routine der Datei?</summary>
+function TAttributeUsageInvalidScan.CertainVariable(const AName: string; AAttribute: TSyntaxNode): Boolean;
+var
+  mDecls: TList<TSyntaxNode>;
+  mDecl: TSyntaxNode;
+begin
+  Result := False;
+  mDecls := FNames.OnlyVariables(AName);
+  if mDecls = nil then
+  begin
+    Exit;
+  end;
+  for mDecl in mDecls do
+  begin
+    if VisibleAt(mDecl, AAttribute) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Meldet ANode, wenn es eine Variable oder der Aufruf einer eigenen Routine ist; True nach einer
+/// Meldung.</summary>
+function TAttributeUsageInvalidScan.ReportNonConstant(ANode, AAttribute: TSyntaxNode;
+  const AAttributeName: string): Boolean;
+var
+  mCallee: TSyntaxNode;
+begin
+  Result := False;
+  if ANode.Kind = TSyntaxKind.Identifier then
+  begin
+    Result := CertainVariable(ANode.Name, AAttribute);
+    if Result then
+    begin
+      FReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.ArgumentNotConst].Fmt(
+        [ANode.Name, AAttributeName]), TRuleConfidence.High, nil);
+    end;
+    Exit;
+  end;
+  // Nur Aufrufe eigener Routinen; SizeOf, High, TypeInfo usw. sind konstant, Typumwandlungen auch.
+  if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount = 0) then
+  begin
+    Exit;
+  end;
+  mCallee := ANode[0];
+  Result := (mCallee.Kind = TSyntaxKind.Identifier) and CertainVariable(mCallee.Name, AAttribute);
+  if Result then
+  begin
+    FReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.CallNotConst].Fmt([mCallee.Name,
+      AAttributeName]), TRuleConfidence.High, nil);
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TAttributeUsageInvalidScan.CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string;
+  var AReported: Boolean);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(AArgument);
+    while (mPending.Count > 0) and not AReported do
+    begin
+      mNode := mPending.Pop;
+      case mNode.Kind of
+        TSyntaxKind.Identifier, TSyntaxKind.Call:
+          AReported := ReportNonConstant(mNode, AAttribute, AAttributeName);
+        TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
+        TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
+          for mIndex := mNode.ChildCount - 1 downto 0 do
+          begin
+            mPending.Push(mNode[mIndex]);
+          end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TAttributeUsageInvalidScan.CheckArguments(AAttribute: TSyntaxNode);
+var
+  mIndex, mArgument: Integer;
+  mItem: TSyntaxNode;
+  mReported: Boolean;
+begin
+  for mIndex := 0 to AAttribute.ChildCount - 1 do
+  begin
+    mItem := AAttribute[mIndex];
+    if mItem.Kind <> TSyntaxKind.Call then
+    begin
+      Continue;
+    end;
+    mReported := False;
+    for mArgument := 1 to mItem.ChildCount - 1 do
+    begin
+      CheckArgument(mItem[mArgument], AAttribute, DottedNameOf(mItem[0]), mReported);
+    end;
+  end;
+end;
+
+/// <summary>Alle Attribut-Knoten vor dem Ziel, zu dem AAttribute gehört (ohne Parameter: nur AAttribute).</summary>
+function TAttributeUsageInvalidScan.AttributeGroup(AAttribute: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mParent: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := [AAttribute];
+  mParent := AAttribute.Parent;
+  if (mParent = nil) or (mParent.Kind = TSyntaxKind.Parameter) then
+  begin
+    Result := nil;
+    if mParent <> nil then
+    begin
+      for mIndex := 0 to mParent.ChildCount - 1 do
+      begin
+        if mParent[mIndex].Kind = TSyntaxKind.Attribute then
+        begin
+          Result := Result + [mParent[mIndex]];
+        end;
+      end;
+    end;
+    Exit;
+  end;
+  mIndex := 0;
+  while (mIndex < mParent.ChildCount) and (mParent[mIndex] <> AAttribute) do
+  begin
+    Inc(mIndex);
+  end;
+  while (mIndex + 1 < mParent.ChildCount) and (mParent[mIndex + 1].Kind = TSyntaxKind.Attribute) do
+  begin
+    Inc(mIndex);
+    Result := Result + [mParent[mIndex]];
+  end;
+end;
+
+/// <summary>Ist AAttribute das erste Attribut vor seinem Ziel?</summary>
+function TAttributeUsageInvalidScan.FirstOfGroup(AAttribute: TSyntaxNode): Boolean;
+var
+  mParent: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mParent := AAttribute.Parent;
+  if mParent = nil then
+  begin
+    Exit(False);
+  end;
+  for mIndex := 0 to mParent.ChildCount - 1 do
+  begin
+    if mParent[mIndex] = AAttribute then
+    begin
+      Exit((mIndex = 0) or (mParent[mIndex - 1].Kind <> TSyntaxKind.Attribute));
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TAttributeUsageInvalidScan.CheckWeakTarget(AItem, ATarget: TSyntaxNode);
+var
+  mChild: Integer;
+  mTypeNode: TSyntaxNode;
+begin
+  if not (ATarget.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl]) then
+  begin
+    Exit;
+  end;
+  mTypeNode := nil;
+  for mChild := 0 to ATarget.ChildCount - 1 do
+  begin
+    if ATarget[mChild].Kind <> TSyntaxKind.Attribute then
+    begin
+      mTypeNode := ATarget[mChild];
+      Break;
+    end;
+  end;
+  if (mTypeNode = nil) or not CertainlyNoReference(FTypes, mTypeNode) then
+  begin
+    Exit;
+  end;
+  FReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.WeakType].Fmt([Trim(ATarget.Name),
+    OneLine(FContext.Text, mTypeNode)]), TRuleConfidence.High,
+    nil);
+end;
+
+/// <summary>Steht das Compiler-Attribut AItemNames[AIndex] schon weiter vorn in derselben Bedingungsvariante?
+/// </summary>
+function TAttributeUsageInvalidScan.IsDuplicate(const AItems: TArray<TSyntaxNode>; const AItemNames: TArray<string>;
+  AIndex: Integer):
+  Boolean;
+var
+  mOther: Integer;
+begin
+  Result := False;
+  for mOther := 0 to AIndex - 1 do
+  begin
+    if SameText(AItemNames[mOther], AItemNames[AIndex]) and
+      not TConditionalBranches.Exclusive(PathOf(AItems[mOther]), PathOf(AItems[AIndex])) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TAttributeUsageInvalidScan.CheckItem(AItem, ATarget: TSyntaxNode; const AName: string);
+begin
+  if SameText(AName, 'Volatile') and (ATarget.Kind in cVolatileForbiddenTargets) then
+  begin
+    FReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.VolatileTarget].Text, TRuleConfidence.High,
+      nil);
+  end
+  else if SameText(AName, 'Weak') then
+  begin
+    CheckWeakTarget(AItem, ATarget);
+  end;
+end;
+
+procedure TAttributeUsageInvalidScan.CheckTarget(AFirst: TSyntaxNode);
+var
+  mItems: TArray<TSyntaxNode>;
+  mItemNames: TArray<string>;
+  mAttribute, mTarget: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mTarget := AttributeTarget(AFirst);
+  if mTarget = nil then
+  begin
+    Exit;
+  end;
+  mItems := nil;
+  for mAttribute in AttributeGroup(AFirst) do
+  begin
+    for mIndex := 0 to mAttribute.ChildCount - 1 do
+    begin
+      mItems := mItems + [mAttribute[mIndex]];
+    end;
+  end;
+  SetLength(mItemNames, Length(mItems));
+  for mIndex := 0 to High(mItems) do
+  begin
+    mItemNames[mIndex] := CompilerAttribute(FTypes, mItems[mIndex]);
+  end;
+  for mIndex := 0 to High(mItems) do
+  begin
+    if mItemNames[mIndex] = '' then
+    begin
+      Continue;
+    end;
+    if IsDuplicate(mItems, mItemNames, mIndex) then
+    begin
+      FReport.Add(NodeRange(mItems[mIndex]),
+        cTexts[TTypeRestrictionsAttributesText.Duplicate].Fmt([mItemNames[mIndex]]),
+        TRuleConfidence.High,
+        nil);
+    end
+    else
+    begin
+      CheckItem(mItems[mIndex], mTarget, mItemNames[mIndex]);
+    end;
+  end;
+end;
+
+procedure TAttributeUsageInvalidScan.Run;
+var
+  mAttributes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) or (Pos('[', FContext.Text) = 0) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FTypes := TFileTypes.Collect(FContext.Tree.Root);
+  FPaths := TConditionalBranches.Paths(FTokens);
+  FNames := nil;
   mAttributes := TList<TSyntaxNode>.Create;
   try
-    AContext.Tree.Root.Walk(
+    FContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := True;
@@ -615,7 +652,7 @@ begin
     begin
       Exit;
     end;
-    mNames := TDeclarationNames.Create(AContext.Tree.Root);
+    FNames := TDeclarationNames.Create(FContext.Tree.Root);
     for mNode in mAttributes do
     begin
       CheckArguments(mNode);
@@ -625,9 +662,17 @@ begin
       end;
     end;
   finally
-    mNames.Free;
+    FNames.Free;
     mAttributes.Free;
   end;
+end;
+
+procedure TAttributeUsageInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TAttributeUsageInvalidScan;
+begin
+  mScan := TAttributeUsageInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization

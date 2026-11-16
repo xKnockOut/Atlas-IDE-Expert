@@ -1126,338 +1126,380 @@ begin
     cTexts[TCaptureText.ParamTitle].Text);
 end;
 
-procedure TAnonymousCaptureInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mTokens: TArray<TPascalToken>;
-  mPaths: TArray<string>;
-  mLines: TArray<string>;
-  mLineBreak: string;
-  mReported: TList<string>;
-  mLookup: TCaptureLookup;
-
-  /// <summary>Deklaration von AIdent; AOuter: äußerste anonyme Methode zwischen Bezeichner und Bereich.</summary>
-  function Resolve(AIdent: TSyntaxNode; out ADecl: TCaptureDecl; out AOuter: TSyntaxNode): Boolean;
-  var
-    mNode, mScope: TSyntaxNode;
-    mPath: string;
-  begin
-    Result := False;
-    AOuter := nil;
-    mPath := TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, AIdent.StartOffset));
-    mNode := AIdent;
-    while mNode.Parent <> nil do
-    begin
-      // with kann den Namen auf ein Feld umlenken: keine Aussage.
-      if (mNode.Parent.Kind = TSyntaxKind.WithStatement) and (mNode <> mNode.Parent[0]) then
-      begin
-        Exit(False);
-      end;
-      if mNode.Parent.Kind = TSyntaxKind.AsmBlock then
-      begin
-        Exit(False);
-      end;
-      mNode := mNode.Parent;
-      if not IsCaptureScope(mNode) then
-      begin
-        Continue;
-      end;
-      mScope := mNode;
-      if mLookup.Find(mScope, AIdent.Name, AIdent.StartOffset, mPath, ADecl) then
-      begin
-        Exit(AOuter <> nil);
-      end;
-      if mScope.Kind = TSyntaxKind.AnonymousMethod then
-      begin
-        AOuter := mScope;
-      end;
-    end;
+type
+  /// <summary>Ein Lauf von TAnonymousCaptureInvalidRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TAnonymousCaptureInvalidScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FPaths: TArray<string>;
+    FLines: TArray<string>;
+    FLineBreak: string;
+    FReported: TList<string>;
+    FLookup: TCaptureLookup;
+    function Resolve(AIdent: TSyntaxNode; out ADecl: TCaptureDecl; out AOuter: TSyntaxNode): Boolean;
+    function KindText(AKind: TCaptureDeclKind): string;
+    function Indent(ALine: Integer): string;
+    function LineStartsAt(const APosition: TTextPosition): Boolean;
+    function LineEndsAt(const APosition: TTextPosition): Boolean;
+    function FixStatement(AScope, AMethod: TSyntaxNode): TSyntaxNode;
+    function CapturedUses(const ADecl: TCaptureDecl; AMethod: TSyntaxNode; out AReads,
+      AWrites: Boolean): TArray<TSyntaxNode>;
+    function DeclarationEdit(const ADecl: TCaptureDecl; ARoutine: TSyntaxNode; const ACopy: string): TRuleEdit;
+    function CopyName(const ADecl: TCaptureDecl): string;
+    function CopyFix(const ADecl: TCaptureDecl; AMethod: TSyntaxNode; out AFix: TRuleFix): Boolean;
+    procedure CheckIdentifier(AIdent: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  function KindText(AKind: TCaptureDeclKind): string;
-  begin
-    case AKind of
-      TCaptureDeclKind.VarParam:
-        Result := cTexts[TCaptureText.VarParam].Text;
-      TCaptureDeclKind.OutParam:
-        Result := cTexts[TCaptureText.OutParam].Text;
-    else
-      Result := cTexts[TCaptureText.UntypedParam].Text;
-    end;
-  end;
+{ TAnonymousCaptureInvalidScan }
 
-  function Indent(ALine: Integer): string;
-  var
-    mText: string;
-    mIndex: Integer;
-  begin
-    Result := '';
-    if (ALine < 0) or (ALine > High(mLines)) then
-    begin
-      Exit;
-    end;
-    mText := mLines[ALine];
-    mIndex := 1;
-    while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], [' ', #9]) do
-    begin
-      Inc(mIndex);
-    end;
-    Result := Copy(mText, 1, mIndex - 1);
-  end;
-
-  /// <summary>Steht vor APosition in der Zeile nur Leerraum?</summary>
-  function LineStartsAt(const APosition: TTextPosition): Boolean;
-  begin
-    Result := (APosition.Line <= High(mLines)) and (Trim(Copy(mLines[APosition.Line], 1, APosition.Character)) = '');
-  end;
-
-  /// <summary>Folgt hinter APosition in der Zeile nur ein Semikolon, Leerraum oder ein //-Kommentar?</summary>
-  function LineEndsAt(const APosition: TTextPosition): Boolean;
-  var
-    mRest: string;
-  begin
-    Result := False;
-    if APosition.Line > High(mLines) then
-    begin
-      Exit;
-    end;
-    mRest := Trim(Copy(mLines[APosition.Line], APosition.Character + 1, MaxInt));
-    if StartsStr(';', mRest) then
-    begin
-      mRest := Trim(Copy(mRest, 2, MaxInt));
-    end;
-    Result := (mRest = '') or StartsStr('//', mRest);
-  end;
-
-  /// <summary>Anweisung, die die anonyme Methode AMethod enthält, direkt in einem Block der Routine AScope und
-  /// allein auf ihren Zeilen; nil sonst.</summary>
-  function FixStatement(AScope, AMethod: TSyntaxNode): TSyntaxNode;
-  begin
-    Result := AMethod;
-    while (Result.Parent <> nil) and (Result.Parent.Kind <> TSyntaxKind.Block) do
-    begin
-      Result := Result.Parent;
-    end;
-    if (Result.Parent = nil) or (ScopeOf(Result) <> AScope) or not LineStartsAt(Result.StartPos) or
-      not LineEndsAt(Result.EndPos) then
-    begin
-      Result := nil;
-    end;
-  end;
-
-  /// <summary>Bezeichner in AMethod, die die Deklaration ADecl meinen; AReads/AWrites: ob sie gelesen bzw.
-  /// geschrieben wird.</summary>
-  function CapturedUses(const ADecl: TCaptureDecl; AMethod: TSyntaxNode; out AReads,
-    AWrites: Boolean): TArray<TSyntaxNode>;
-  var
-    mFound: TList<TSyntaxNode>;
-    mIdent, mOuter: TSyntaxNode;
-    mDecl: TCaptureDecl;
-    mAccess: TLocalAccess;
-  begin
-    Result := nil;
-    AReads := False;
-    AWrites := False;
-    mFound := TList<TSyntaxNode>.Create;
-    try
-      AMethod.Walk(
-        function(ANode: TSyntaxNode): Boolean
-        begin
-          if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, ADecl.Name) then
-          begin
-            mFound.Add(ANode);
-          end;
-          Result := True;
-        end);
-      for mIdent in mFound do
-      begin
-        if Resolve(mIdent, mDecl, mOuter) and (mDecl.Scope = ADecl.Scope) then
-        begin
-          Result := Result + [mIdent];
-          mAccess := TRoutineLocals.AccessOf(mIdent, nil);
-          AReads := AReads or (mAccess <> TLocalAccess.Write);
-          AWrites := AWrites or (mAccess <> TLocalAccess.Read);
-        end;
-      end;
-    finally
-      mFound.Free;
-    end;
-  end;
-
-  /// <summary>Neue lokale Variable ACopy mit dem Typ von ADecl: an den letzten var-Abschnitt der Routine
-  /// ARoutine bzw. als eigener Abschnitt vor ihrem Block.</summary>
-  function DeclarationEdit(const ADecl: TCaptureDecl; ARoutine: TSyntaxNode; const ACopy: string): TRuleEdit;
-  var
-    mSection, mBlock: TSyntaxNode;
-    mIndex: Integer;
-    mIndent: string;
-  begin
-    mSection := nil;
-    for mIndex := 0 to ARoutine.ChildCount - 1 do
-    begin
-      if ARoutine[mIndex].Kind = TSyntaxKind.VarSection then
-      begin
-        mSection := ARoutine[mIndex];
-      end;
-    end;
-    mIndent := Indent(ARoutine.StartPos.Line);
-    if mSection <> nil then
-    begin
-      Result := TRuleEdit.Create(TTextRange.Create(mSection.EndPos.Line + 1, 0, mSection.EndPos.Line + 1, 0),
-        mIndent + '  ' + ACopy + ': ' + ADecl.TypeText + ';' + mLineBreak);
-    end
-    else
-    begin
-      mBlock := ARoutine.FindChild(TSyntaxKind.Block);
-      Result := TRuleEdit.Create(TTextRange.Create(mBlock.StartPos.Line, 0, mBlock.StartPos.Line, 0),
-        mIndent + 'var' + mLineBreak + mIndent + '  ' + ACopy + ': ' + ADecl.TypeText + ';' + mLineBreak);
-    end;
-  end;
-
-  /// <summary>Name der Kopie: Ergebnis für Result, sonst NameKopie; eindeutig in der Datei.</summary>
-  function CopyName(const ADecl: TCaptureDecl): string;
-  begin
-    if ADecl.Kind = TCaptureDeclKind.FunctionResult then
-    begin
-      Result := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local('Ergebnis'));
-    end
-    else
-    begin
-      Result := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local(ADecl.Name + 'Kopie'));
-    end;
-  end;
-
-  /// <summary>Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in AMethod nur diese
-  /// verwenden und nach der Anweisung zurückschreiben, wenn AMethod schreibt.</summary>
-  function CopyFix(const ADecl: TCaptureDecl; AMethod: TSyntaxNode; out AFix: TRuleFix): Boolean;
-  var
-    mStatement, mIdent: TSyntaxNode;
-    mUses_: TArray<TSyntaxNode>;
-    mReads, mWrites: Boolean;
-    mCopy_, mStatementIndent: string;
-    mEdits: TArray<TRuleEdit>;
-  begin
-    Result := False;
-    AFix := Default(TRuleFix);
-    if (ADecl.Scope.Kind <> TSyntaxKind.RoutineDecl) or (ADecl.TypeText = '') or
-      (ADecl.Scope.FindChild(TSyntaxKind.Block) = nil) then
-    begin
-      Exit;
-    end;
-    mStatement := FixStatement(ADecl.Scope, AMethod);
-    if mStatement = nil then
-    begin
-      Exit;
-    end;
-    mUses_ := CapturedUses(ADecl, AMethod, mReads, mWrites);
-    mCopy_ := CopyName(ADecl);
-    mStatementIndent := Indent(mStatement.StartPos.Line);
-    mEdits := [DeclarationEdit(ADecl, ADecl.Scope, mCopy_)];
-    // out-Parameter und Result haben vorher keinen Wert, der kopiert werden müsste.
-    if mReads and (ADecl.Kind in [TCaptureDeclKind.VarParam, TCaptureDeclKind.FunctionResult]) then
-    begin
-      mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos.Line, 0, mStatement.StartPos.Line, 0),
-        mStatementIndent + mCopy_ + ' := ' + ADecl.Name + ';' + mLineBreak)];
-    end;
-    for mIdent in mUses_ do
-    begin
-      mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mIdent.StartPos, mIdent.EndPos), mCopy_)];
-    end;
-    if mWrites then
-    begin
-      mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mStatement.EndPos.Line + 1, 0, mStatement.EndPos.Line + 1,
-        0), mStatementIndent + ADecl.Name + ' := ' + mCopy_ + ';' + mLineBreak)];
-    end;
-    AFix := TRuleFix.Create(cTexts[TCaptureText.CopyValue].Fmt([mCopy_]), mEdits);
-    Result := True;
-  end;
-
-  procedure CheckIdentifier(AIdent: TSyntaxNode);
-  var
-    mDecl: TCaptureDecl;
-    mOuter: TSyntaxNode;
-    mKey, mMessage: string;
-    mFix: TRuleFix;
-  begin
-    if IsRecordFieldName(mTokens, AIdent) or not Resolve(AIdent, mDecl, mOuter) or
-      (mDecl.Kind in [TCaptureDeclKind.None, TCaptureDeclKind.Other]) then
-    begin
-      Exit;
-    end;
-    // Je anonymer Methode und Deklaration eine Meldung.
-    mKey := IntToStr(mOuter.StartOffset) + ':' + IntToStr(mDecl.Scope.StartOffset) + ':' + LowerCase(mDecl.Name);
-    if mReported.Contains(mKey) then
-    begin
-      Exit;
-    end;
-    mReported.Add(mKey);
-    if mDecl.Kind = TCaptureDeclKind.FunctionResult then
-    begin
-      mMessage := cTexts[TCaptureText.ResultCapture].Text;
-    end
-    else
-    begin
-      mMessage := cTexts[TCaptureText.CannotCapture].Fmt([KindText(mDecl.Kind), mDecl.Name]);
-    end;
-    if CopyFix(mDecl, mOuter, mFix) then
-    begin
-      AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), mMessage, TRuleConfidence.High, [mFix]);
-    end
-    else
-    begin
-      AReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), mMessage, TRuleConfidence.High);
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mPendingInAnonymous: TStack<Boolean>;
-    mNode: TSyntaxNode;
-    mInAnonymous: Boolean;
-    mIndex: Integer;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    mPendingInAnonymous := TStack<Boolean>.Create;
-    try
-      mPending.Push(ARoot);
-      mPendingInAnonymous.Push(False);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mInAnonymous := mPendingInAnonymous.Pop;
-        if mInAnonymous and (mNode.Kind = TSyntaxKind.Identifier) then
-        begin
-          CheckIdentifier(mNode);
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-          mPendingInAnonymous.Push(mInAnonymous or (mNode.Kind = TSyntaxKind.AnonymousMethod));
-        end;
-      end;
-    finally
-      mPendingInAnonymous.Free;
-      mPending.Free;
-    end;
-  end;
-
+constructor TAnonymousCaptureInvalidScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+/// <summary>Deklaration von AIdent; AOuter: äußerste anonyme Methode zwischen Bezeichner und Bereich.</summary>
+function TAnonymousCaptureInvalidScan.Resolve(AIdent: TSyntaxNode; out ADecl: TCaptureDecl;
+  out AOuter: TSyntaxNode): Boolean;
+var
+  mNode, mScope: TSyntaxNode;
+  mPath: string;
+begin
+  Result := False;
+  AOuter := nil;
+  mPath := TConditionalBranches.PathAt(FPaths, TRoutineBody.TokenAt(FTokens, AIdent.StartOffset));
+  mNode := AIdent;
+  while mNode.Parent <> nil do
+  begin
+    // with kann den Namen auf ein Feld umlenken: keine Aussage.
+    if (mNode.Parent.Kind = TSyntaxKind.WithStatement) and (mNode <> mNode.Parent[0]) then
+    begin
+      Exit(False);
+    end;
+    if mNode.Parent.Kind = TSyntaxKind.AsmBlock then
+    begin
+      Exit(False);
+    end;
+    mNode := mNode.Parent;
+    if not IsCaptureScope(mNode) then
+    begin
+      Continue;
+    end;
+    mScope := mNode;
+    if FLookup.Find(mScope, AIdent.Name, AIdent.StartOffset, mPath, ADecl) then
+    begin
+      Exit(AOuter <> nil);
+    end;
+    if mScope.Kind = TSyntaxKind.AnonymousMethod then
+    begin
+      AOuter := mScope;
+    end;
+  end;
+end;
+
+function TAnonymousCaptureInvalidScan.KindText(AKind: TCaptureDeclKind): string;
+begin
+  case AKind of
+    TCaptureDeclKind.VarParam:
+      Result := cTexts[TCaptureText.VarParam].Text;
+    TCaptureDeclKind.OutParam:
+      Result := cTexts[TCaptureText.OutParam].Text;
+  else
+    Result := cTexts[TCaptureText.UntypedParam].Text;
+  end;
+end;
+
+function TAnonymousCaptureInvalidScan.Indent(ALine: Integer): string;
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  Result := '';
+  if (ALine < 0) or (ALine > High(FLines)) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mPaths := TConditionalBranches.Paths(mTokens);
-  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  mReported := TList<string>.Create;
-  mLookup := TCaptureLookup.Create(AContext.Text, mTokens, mPaths);
-  try
-    Visit(AContext.Tree.Root);
-  finally
-    mLookup.Free;
-    mReported.Free;
+  mText := FLines[ALine];
+  mIndex := 1;
+  while (mIndex <= Length(mText)) and CharInSet(mText[mIndex], [' ', #9]) do
+  begin
+    Inc(mIndex);
   end;
+  Result := Copy(mText, 1, mIndex - 1);
+end;
+
+/// <summary>Steht vor APosition in der Zeile nur Leerraum?</summary>
+function TAnonymousCaptureInvalidScan.LineStartsAt(const APosition: TTextPosition): Boolean;
+begin
+  Result := (APosition.Line <= High(FLines)) and (Trim(Copy(FLines[APosition.Line], 1, APosition.Character)) = '');
+end;
+
+/// <summary>Folgt hinter APosition in der Zeile nur ein Semikolon, Leerraum oder ein //-Kommentar?</summary>
+function TAnonymousCaptureInvalidScan.LineEndsAt(const APosition: TTextPosition): Boolean;
+var
+  mRest: string;
+begin
+  Result := False;
+  if APosition.Line > High(FLines) then
+  begin
+    Exit;
+  end;
+  mRest := Trim(Copy(FLines[APosition.Line], APosition.Character + 1, MaxInt));
+  if StartsStr(';', mRest) then
+  begin
+    mRest := Trim(Copy(mRest, 2, MaxInt));
+  end;
+  Result := (mRest = '') or StartsStr('//', mRest);
+end;
+
+/// <summary>Anweisung, die die anonyme Methode AMethod enthält, direkt in einem Block der Routine AScope und
+/// allein auf ihren Zeilen; nil sonst.</summary>
+function TAnonymousCaptureInvalidScan.FixStatement(AScope, AMethod: TSyntaxNode): TSyntaxNode;
+begin
+  Result := AMethod;
+  while (Result.Parent <> nil) and (Result.Parent.Kind <> TSyntaxKind.Block) do
+  begin
+    Result := Result.Parent;
+  end;
+  if (Result.Parent = nil) or (ScopeOf(Result) <> AScope) or not LineStartsAt(Result.StartPos) or
+    not LineEndsAt(Result.EndPos) then
+  begin
+    Result := nil;
+  end;
+end;
+
+/// <summary>Bezeichner in AMethod, die die Deklaration ADecl meinen; AReads/AWrites: ob sie gelesen bzw.
+/// geschrieben wird.</summary>
+function TAnonymousCaptureInvalidScan.CapturedUses(const ADecl: TCaptureDecl; AMethod: TSyntaxNode; out AReads,
+  AWrites: Boolean): TArray<TSyntaxNode>;
+var
+  mFound: TList<TSyntaxNode>;
+  mIdent, mOuter: TSyntaxNode;
+  mDecl: TCaptureDecl;
+  mAccess: TLocalAccess;
+begin
+  Result := nil;
+  AReads := False;
+  AWrites := False;
+  mFound := TList<TSyntaxNode>.Create;
+  try
+    AMethod.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        if (ANode.Kind = TSyntaxKind.Identifier) and SameText(ANode.Name, ADecl.Name) then
+        begin
+          mFound.Add(ANode);
+        end;
+        Result := True;
+      end);
+    for mIdent in mFound do
+    begin
+      if Resolve(mIdent, mDecl, mOuter) and (mDecl.Scope = ADecl.Scope) then
+      begin
+        Result := Result + [mIdent];
+        mAccess := TRoutineLocals.AccessOf(mIdent, nil);
+        AReads := AReads or (mAccess <> TLocalAccess.Write);
+        AWrites := AWrites or (mAccess <> TLocalAccess.Read);
+      end;
+    end;
+  finally
+    mFound.Free;
+  end;
+end;
+
+/// <summary>Neue lokale Variable ACopy mit dem Typ von ADecl: an den letzten var-Abschnitt der Routine
+/// ARoutine bzw. als eigener Abschnitt vor ihrem Block.</summary>
+function TAnonymousCaptureInvalidScan.DeclarationEdit(const ADecl: TCaptureDecl; ARoutine: TSyntaxNode;
+  const ACopy: string): TRuleEdit;
+var
+  mSection, mBlock: TSyntaxNode;
+  mIndex: Integer;
+  mIndent: string;
+begin
+  mSection := nil;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
+  begin
+    if ARoutine[mIndex].Kind = TSyntaxKind.VarSection then
+    begin
+      mSection := ARoutine[mIndex];
+    end;
+  end;
+  mIndent := Indent(ARoutine.StartPos.Line);
+  if mSection <> nil then
+  begin
+    Result := TRuleEdit.Create(TTextRange.Create(mSection.EndPos.Line + 1, 0, mSection.EndPos.Line + 1, 0),
+      mIndent + '  ' + ACopy + ': ' + ADecl.TypeText + ';' + FLineBreak);
+  end
+  else
+  begin
+    mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+    Result := TRuleEdit.Create(TTextRange.Create(mBlock.StartPos.Line, 0, mBlock.StartPos.Line, 0),
+      mIndent + 'var' + FLineBreak + mIndent + '  ' + ACopy + ': ' + ADecl.TypeText + ';' + FLineBreak);
+  end;
+end;
+
+/// <summary>Name der Kopie: Ergebnis für Result, sonst NameKopie; eindeutig in der Datei.</summary>
+function TAnonymousCaptureInvalidScan.CopyName(const ADecl: TCaptureDecl): string;
+begin
+  if ADecl.Kind = TCaptureDeclKind.FunctionResult then
+  begin
+    Result := TRoutineBody.UniqueName(FTokens, FContext.NewNames.Local('Ergebnis'));
+  end
+  else
+  begin
+    Result := TRoutineBody.UniqueName(FTokens, FContext.NewNames.Local(ADecl.Name + 'Kopie'));
+  end;
+end;
+
+/// <summary>Korrektur: Wert vor der Anweisung in eine lokale Variable kopieren, in AMethod nur diese
+/// verwenden und nach der Anweisung zurückschreiben, wenn AMethod schreibt.</summary>
+function TAnonymousCaptureInvalidScan.CopyFix(const ADecl: TCaptureDecl; AMethod: TSyntaxNode;
+  out AFix: TRuleFix): Boolean;
+var
+  mStatement, mIdent: TSyntaxNode;
+  mUses_: TArray<TSyntaxNode>;
+  mReads, mWrites: Boolean;
+  mCopy_, mStatementIndent: string;
+  mEdits: TArray<TRuleEdit>;
+begin
+  Result := False;
+  AFix := Default(TRuleFix);
+  if (ADecl.Scope.Kind <> TSyntaxKind.RoutineDecl) or (ADecl.TypeText = '') or
+    (ADecl.Scope.FindChild(TSyntaxKind.Block) = nil) then
+  begin
+    Exit;
+  end;
+  mStatement := FixStatement(ADecl.Scope, AMethod);
+  if mStatement = nil then
+  begin
+    Exit;
+  end;
+  mUses_ := CapturedUses(ADecl, AMethod, mReads, mWrites);
+  mCopy_ := CopyName(ADecl);
+  mStatementIndent := Indent(mStatement.StartPos.Line);
+  mEdits := [DeclarationEdit(ADecl, ADecl.Scope, mCopy_)];
+  // out-Parameter und Result haben vorher keinen Wert, der kopiert werden müsste.
+  if mReads and (ADecl.Kind in [TCaptureDeclKind.VarParam, TCaptureDeclKind.FunctionResult]) then
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos.Line, 0, mStatement.StartPos.Line, 0),
+      mStatementIndent + mCopy_ + ' := ' + ADecl.Name + ';' + FLineBreak)];
+  end;
+  for mIdent in mUses_ do
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mIdent.StartPos, mIdent.EndPos), mCopy_)];
+  end;
+  if mWrites then
+  begin
+    mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mStatement.EndPos.Line + 1, 0, mStatement.EndPos.Line + 1,
+      0), mStatementIndent + ADecl.Name + ' := ' + mCopy_ + ';' + FLineBreak)];
+  end;
+  AFix := TRuleFix.Create(cTexts[TCaptureText.CopyValue].Fmt([mCopy_]), mEdits);
+  Result := True;
+end;
+
+procedure TAnonymousCaptureInvalidScan.CheckIdentifier(AIdent: TSyntaxNode);
+var
+  mDecl: TCaptureDecl;
+  mOuter: TSyntaxNode;
+  mKey, mMessage: string;
+  mFix: TRuleFix;
+begin
+  if IsRecordFieldName(FTokens, AIdent) or not Resolve(AIdent, mDecl, mOuter) or
+    (mDecl.Kind in [TCaptureDeclKind.None, TCaptureDeclKind.Other]) then
+  begin
+    Exit;
+  end;
+  // Je anonymer Methode und Deklaration eine Meldung.
+  mKey := IntToStr(mOuter.StartOffset) + ':' + IntToStr(mDecl.Scope.StartOffset) + ':' + LowerCase(mDecl.Name);
+  if FReported.Contains(mKey) then
+  begin
+    Exit;
+  end;
+  FReported.Add(mKey);
+  if mDecl.Kind = TCaptureDeclKind.FunctionResult then
+  begin
+    mMessage := cTexts[TCaptureText.ResultCapture].Text;
+  end
+  else
+  begin
+    mMessage := cTexts[TCaptureText.CannotCapture].Fmt([KindText(mDecl.Kind), mDecl.Name]);
+  end;
+  if CopyFix(mDecl, mOuter, mFix) then
+  begin
+    FReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), mMessage, TRuleConfidence.High, [mFix]);
+  end
+  else
+  begin
+    FReport.Add(TTextRange.Create(AIdent.StartPos, AIdent.EndPos), mMessage, TRuleConfidence.High);
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TAnonymousCaptureInvalidScan.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mPendingInAnonymous: TStack<Boolean>;
+  mNode: TSyntaxNode;
+  mInAnonymous: Boolean;
+  mIndex: Integer;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingInAnonymous := TStack<Boolean>.Create;
+  try
+    mPending.Push(ARoot);
+    mPendingInAnonymous.Push(False);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mInAnonymous := mPendingInAnonymous.Pop;
+      if mInAnonymous and (mNode.Kind = TSyntaxKind.Identifier) then
+      begin
+        CheckIdentifier(mNode);
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+        mPendingInAnonymous.Push(mInAnonymous or (mNode.Kind = TSyntaxKind.AnonymousMethod));
+      end;
+    end;
+  finally
+    mPendingInAnonymous.Free;
+    mPending.Free;
+  end;
+end;
+
+procedure TAnonymousCaptureInvalidScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FPaths := TConditionalBranches.Paths(FTokens);
+  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  FReported := TList<string>.Create;
+  FLookup := TCaptureLookup.Create(FContext.Text, FTokens, FPaths);
+  try
+    Visit(FContext.Tree.Root);
+  finally
+    FLookup.Free;
+    FReported.Free;
+  end;
+end;
+
+procedure TAnonymousCaptureInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TAnonymousCaptureInvalidScan;
+begin
+  mScan := TAnonymousCaptureInvalidScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterCaptureRules(const ARegistry: TRuleRegistry);

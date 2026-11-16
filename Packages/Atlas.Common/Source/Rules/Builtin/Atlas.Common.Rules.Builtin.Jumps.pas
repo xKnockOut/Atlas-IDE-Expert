@@ -323,417 +323,471 @@ begin
   Result := TRuleDescriptor.Create(cLabelMisuseRuleId, TRuleSeverity.Error, cTexts[TJumpsText.LabelTitle].Text);
 end;
 
-procedure TLabelMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TLabelMisuseRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TLabelMisuseScan = class
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FPaths: TArray<string>;
+    function PathOf(ANode: TSyntaxNode): string;
+    function TryChain(ANode, AScope: TSyntaxNode): TArray<TSyntaxNode>;
+    function IsPrefix(const AOuter, AInner: TArray<TSyntaxNode>): Boolean;
+    function BlockName(ANode: TSyntaxNode): string;
+    function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
+    function ForEachLabel(ASection: TSyntaxNode; const AProc: TFunc<Integer, Boolean>): Boolean;
+    function SectionDeclares(ASection: TSyntaxNode; const AKey: string): Boolean;
+    function RoutineDeclares(ARoutine: TSyntaxNode; const AKey: string): Boolean;
+    function DeclaredOutside(AScope: TSyntaxNode; const AKey: string): Boolean;
+    procedure CollectDeclared(AScope: TSyntaxNode; ADeclared: TDictionary<string, Integer>);
+    procedure AddSet(ASets: TLabelSets; ANode: TSyntaxNode);
+    function Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
+    function SetEarlier(AList: TList<TSyntaxNode>; AIndex: Integer): Boolean;
+    procedure CheckSets(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
+    function CommonLength(const AGotoChain, ATargetChain: TArray<TSyntaxNode>): Integer;
+    procedure CheckTryJump(AScope, ANode, ATarget: TSyntaxNode);
+    procedure CheckGoto(AScope, ANode: TSyntaxNode; ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
+    function Jumped(AGotos: TList<TSyntaxNode>; const AKey: string): Boolean;
+    procedure CheckNeverSet(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>; AGotos: TList<TSyntaxNode>);
+    procedure CheckScope(AScope, ABody: TSyntaxNode);
+    procedure Visit(ARoot: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TLabelMisuseScan }
+
+constructor TLabelMisuseScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  inherited Create;
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TLabelMisuseScan.PathOf(ANode: TSyntaxNode): string;
+begin
+  Result := TConditionalBranches.PathAt(FPaths, TokenFrom(FTokens, ANode.StartOffset));
+end;
+
+// try-Anweisungen und ihre Teile von der Routine bis zu ANode, als Kette von Knoten.
+function TLabelMisuseScan.TryChain(ANode, AScope: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  mTokens: TArray<TPascalToken>;
-  mPaths: TArray<string>;
-
-  function PathOf(ANode: TSyntaxNode): string;
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode <> AScope) do
   begin
-    Result := TConditionalBranches.PathAt(mPaths, TokenFrom(mTokens, ANode.StartOffset));
-  end;
-
-  // try-Anweisungen und ihre Teile von der Routine bis zu ANode, als Kette von Knoten.
-  function TryChain(ANode, AScope: TSyntaxNode): TArray<TSyntaxNode>;
-  var
-    mNode: TSyntaxNode;
-  begin
-    Result := nil;
-    mNode := ANode.Parent;
-    while (mNode <> nil) and (mNode <> AScope) do
+    if mNode.Kind in [TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
     begin
-      if mNode.Kind in [TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
-      begin
-        Result := [mNode] + Result;
-      end;
-      mNode := mNode.Parent;
+      Result := [mNode] + Result;
     end;
+    mNode := mNode.Parent;
   end;
+end;
 
-  // Ist AOuter ein Anfangsstück von AInner?
-  function IsPrefix(const AOuter, AInner: TArray<TSyntaxNode>): Boolean;
-  var
-    mIndex: Integer;
+// Ist AOuter ein Anfangsstück von AInner?
+function TLabelMisuseScan.IsPrefix(const AOuter, AInner: TArray<TSyntaxNode>): Boolean;
+var
+  mIndex: Integer;
+begin
+  if Length(AOuter) > Length(AInner) then
   begin
-    if Length(AOuter) > Length(AInner) then
+    Exit(False);
+  end;
+  for mIndex := 0 to High(AOuter) do
+  begin
+    if AOuter[mIndex] <> AInner[mIndex] then
     begin
       Exit(False);
     end;
-    for mIndex := 0 to High(AOuter) do
+  end;
+  Result := True;
+end;
+
+// Art des Blocks für die Meldung: try-, except- oder finally-Block.
+function TLabelMisuseScan.BlockName(ANode: TSyntaxNode): string;
+begin
+  case ANode.Kind of
+    TSyntaxKind.ExceptBlock:
+      Result := cTexts[TJumpsText.ExceptBlock].Text;
+    TSyntaxKind.FinallyBlock:
+      Result := cTexts[TJumpsText.FinallyBlock].Text;
+  else
+    Result := cTexts[TJumpsText.TryBlock].Text;
+  end;
+end;
+
+function TLabelMisuseScan.NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
+begin
+  Result := TTextRange.Create(ANode.StartPos,
+    TTextPosition.Create(ANode.StartPos.Line, ANode.StartPos.Character + Length(AName)));
+end;
+
+/// <summary>Token der Marken im label-Abschnitt ASection (bis zum Semikolon) an AProc übergeben; endet,
+/// sobald AProc True liefert.</summary>
+function TLabelMisuseScan.ForEachLabel(ASection: TSyntaxNode; const AProc: TFunc<Integer, Boolean>): Boolean;
+var
+  mToken: Integer;
+begin
+  mToken := TokenFrom(FTokens, ASection.StartOffset) + 1;
+  while (mToken <= High(FTokens)) and (FTokens[mToken].Offset < ASection.EndOffset) and
+    not FTokens[mToken].IsSymbol(';') do
+  begin
+    if (FTokens[mToken].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and AProc(mToken) then
     begin
-      if AOuter[mIndex] <> AInner[mIndex] then
-      begin
-        Exit(False);
-      end;
+      Exit(True);
     end;
-    Result := True;
+    Inc(mToken);
   end;
+  Result := False;
+end;
 
-  // Art des Blocks für die Meldung: try-, except- oder finally-Block.
-  function BlockName(ANode: TSyntaxNode): string;
-  begin
-    case ANode.Kind of
-      TSyntaxKind.ExceptBlock:
-        Result := cTexts[TJumpsText.ExceptBlock].Text;
-      TSyntaxKind.FinallyBlock:
-        Result := cTexts[TJumpsText.FinallyBlock].Text;
-    else
-      Result := cTexts[TJumpsText.TryBlock].Text;
-    end;
-  end;
-
-  function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
-  begin
-    Result := TTextRange.Create(ANode.StartPos,
-      TTextPosition.Create(ANode.StartPos.Line, ANode.StartPos.Character + Length(AName)));
-  end;
-
-  /// <summary>Token der Marken im label-Abschnitt ASection (bis zum Semikolon) an AProc übergeben; endet,
-  /// sobald AProc True liefert.</summary>
-  function ForEachLabel(ASection: TSyntaxNode; const AProc: TFunc<Integer, Boolean>): Boolean;
-  var
-    mToken: Integer;
-  begin
-    mToken := TokenFrom(mTokens, ASection.StartOffset) + 1;
-    while (mToken <= High(mTokens)) and (mTokens[mToken].Offset < ASection.EndOffset) and
-      not mTokens[mToken].IsSymbol(';') do
+/// <summary>Deklariert der label-Abschnitt ASection die Marke AKey?</summary>
+function TLabelMisuseScan.SectionDeclares(ASection: TSyntaxNode; const AKey: string): Boolean;
+begin
+  Result := ForEachLabel(ASection,
+    function(AToken: Integer): Boolean
     begin
-      if (mTokens[mToken].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and AProc(mToken) then
-      begin
-        Exit(True);
-      end;
-      Inc(mToken);
-    end;
-    Result := False;
-  end;
+      Result := TLabelMisuseRule.LabelKey(FTokens[AToken].Text) = AKey;
+    end);
+end;
 
-  /// <summary>Deklariert der label-Abschnitt ASection die Marke AKey?</summary>
-  function SectionDeclares(ASection: TSyntaxNode; const AKey: string): Boolean;
+/// <summary>Deklariert die Routine ARoutine in einem label-Abschnitt die Marke AKey?</summary>
+function TLabelMisuseScan.RoutineDeclares(ARoutine: TSyntaxNode; const AKey: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    Result := ForEachLabel(ASection,
-      function(AToken: Integer): Boolean
-      begin
-        Result := LabelKey(mTokens[AToken].Text) = AKey;
-      end);
-  end;
-
-  /// <summary>Deklariert die Routine ARoutine in einem label-Abschnitt die Marke AKey?</summary>
-  function RoutineDeclares(ARoutine: TSyntaxNode; const AKey: string): Boolean;
-  var
-    mIndex: Integer;
-  begin
-    for mIndex := 0 to ARoutine.ChildCount - 1 do
+    if (ARoutine[mIndex].Kind = TSyntaxKind.LabelSection) and SectionDeclares(ARoutine[mIndex], AKey) then
     begin
-      if (ARoutine[mIndex].Kind = TSyntaxKind.LabelSection) and SectionDeclares(ARoutine[mIndex], AKey) then
-      begin
-        Exit(True);
-      end;
+      Exit(True);
     end;
-    Result := False;
   end;
+  Result := False;
+end;
 
-  // Ist AKey in einer Routine deklariert, die AScope umgibt? Sonst meldet die Syntaxprüfung den Sprung (E2031).
-  function DeclaredOutside(AScope: TSyntaxNode; const AKey: string): Boolean;
-  var
-    mOuter: TSyntaxNode;
+// Ist AKey in einer Routine deklariert, die AScope umgibt? Sonst meldet die Syntaxprüfung den Sprung (E2031).
+function TLabelMisuseScan.DeclaredOutside(AScope: TSyntaxNode; const AKey: string): Boolean;
+var
+  mOuter: TSyntaxNode;
+begin
+  mOuter := AScope.Parent;
+  while mOuter <> nil do
   begin
-    mOuter := AScope.Parent;
-    while mOuter <> nil do
+    if (mOuter.Kind = TSyntaxKind.RoutineDecl) and RoutineDeclares(mOuter, AKey) then
     begin
-      if (mOuter.Kind = TSyntaxKind.RoutineDecl) and RoutineDeclares(mOuter, AKey) then
-      begin
-        Exit(True);
-      end;
-      mOuter := mOuter.Parent;
+      Exit(True);
     end;
-    Result := False;
+    mOuter := mOuter.Parent;
   end;
+  Result := False;
+end;
 
-  /// <summary>label A, B, 10; in den Deklarationen der Routine AScope: Schlüssel und Token der Marke.</summary>
-  procedure CollectDeclared(AScope: TSyntaxNode; ADeclared: TDictionary<string, Integer>);
-  var
-    mIndex: Integer;
+/// <summary>label A, B, 10; in den Deklarationen der Routine AScope: Schlüssel und Token der Marke.</summary>
+procedure TLabelMisuseScan.CollectDeclared(AScope: TSyntaxNode; ADeclared: TDictionary<string, Integer>);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AScope.ChildCount - 1 do
   begin
-    for mIndex := 0 to AScope.ChildCount - 1 do
+    if AScope[mIndex].Kind = TSyntaxKind.LabelSection then
     begin
-      if AScope[mIndex].Kind = TSyntaxKind.LabelSection then
-      begin
-        ForEachLabel(AScope[mIndex],
-          function(AToken: Integer): Boolean
-          begin
-            ADeclared.AddOrSetValue(LabelKey(mTokens[AToken].Text), AToken);
-            Result := False;
-          end);
-      end;
-    end;
-  end;
-
-  procedure AddSet(ASets: TLabelSets; ANode: TSyntaxNode);
-  var
-    mName: string;
-    mList: TList<TSyntaxNode>;
-  begin
-    mName := LabelKey(ANode.Name);
-    if not ASets.TryGetValue(mName, mList) then
-    begin
-      mList := TList<TSyntaxNode>.Create;
-      ASets.Add(mName, mList);
-    end;
-    mList.Add(ANode);
-  end;
-
-  /// <summary>Gesetzte Marken und goto-Anweisungen unter ARoot; False, wenn ein asm-Block vorkommt (dessen
-  /// Marken sieht der Baum nicht). Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
-  function Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mChild: Integer;
-  begin
-    Result := True;
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
-        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      ForEachLabel(AScope[mIndex],
+        function(AToken: Integer): Boolean
         begin
-          Continue;
-        end;
-        case mNode.Kind of
-          TSyntaxKind.AsmBlock:
-            Result := False;
-          TSyntaxKind.LabeledStatement:
-            AddSet(ASets, mNode);
-          TSyntaxKind.GotoStatement:
-            if mNode.Name <> '' then
-            begin
-              AGotos.Add(mNode);
-            end;
-        else
-          // Übrige Knoten setzen keine Marke.
-        end;
-        for mChild := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mChild]);
-        end;
-      end;
-    finally
-      mPending.Free;
+          ADeclared.AddOrSetValue(TLabelMisuseRule.LabelKey(FTokens[AToken].Text), AToken);
+          Result := False;
+        end);
     end;
   end;
+end;
 
-  /// <summary>Wird die Marke in AList an AIndex nie ohne eine frühere übersetzt?</summary>
-  function SetEarlier(AList: TList<TSyntaxNode>; AIndex: Integer): Boolean;
-  var
-    mFirst: Integer;
+procedure TLabelMisuseScan.AddSet(ASets: TLabelSets; ANode: TSyntaxNode);
+var
+  mName: string;
+  mList: TList<TSyntaxNode>;
+begin
+  mName := TLabelMisuseRule.LabelKey(ANode.Name);
+  if not ASets.TryGetValue(mName, mList) then
   begin
-    for mFirst := 0 to AIndex - 1 do
-    begin
-      if TConditionalBranches.Implies(PathOf(AList[AIndex]), PathOf(AList[mFirst])) then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
+    mList := TList<TSyntaxNode>.Create;
+    ASets.Add(mName, mList);
   end;
+  mList.Add(ANode);
+end;
 
-  /// <summary>E2073: dieselbe Marke zweimal gesetzt, wenn die spätere nie ohne die frühere übersetzt wird;
-  /// E2093: gesetzt, aber in dieser Routine nicht deklariert.</summary>
-  procedure CheckSets(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
-  var
-    mKey: string;
-    mIndex: Integer;
-    mNode: TSyntaxNode;
-  begin
-    for mKey in ASets.Keys do
+/// <summary>Gesetzte Marken und goto-Anweisungen unter ARoot; False, wenn ein asm-Block vorkommt (dessen
+/// Marken sieht der Baum nicht). Iterativ (tiefe Bäume sprengen den Stapel nicht).</summary>
+function TLabelMisuseScan.Collect(ARoot: TSyntaxNode; ASets: TLabelSets; AGotos: TList<TSyntaxNode>): Boolean;
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mChild: Integer;
+begin
+  Result := True;
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      for mIndex := 1 to ASets[mKey].Count - 1 do
-      begin
-        mNode := ASets[mKey][mIndex];
-        if SetEarlier(ASets[mKey], mIndex) then
-        begin
-          AReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelSet].Fmt(
-            [mNode.Name]), TRuleConfidence.High);
-        end;
-      end;
-    end;
-    for mKey in ASets.Keys do
-    begin
-      if ADeclared.ContainsKey(mKey) then
+      mNode := mPending.Pop;
+      // Verschachtelte Routinen und anonyme Methoden haben eigene Marken.
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
       begin
         Continue;
       end;
-      for mNode in ASets[mKey] do
-      begin
-        AReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelUndeclared].Fmt([mNode.Name]),
-          TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  /// <summary>Länge des gemeinsamen Anfangs der Ketten AGotoChain und ATargetChain.</summary>
-  function CommonLength(const AGotoChain, ATargetChain: TArray<TSyntaxNode>): Integer;
-  begin
-    Result := 0;
-    while (Result < Length(AGotoChain)) and (Result < Length(ATargetChain)) and
-      (AGotoChain[Result] = ATargetChain[Result]) do
-    begin
-      Inc(Result);
-    end;
-  end;
-
-  /// <summary>E2127: goto ANode in einen try-Block hinein oder aus ihm heraus zum Ziel ATarget.</summary>
-  procedure CheckTryJump(AScope, ANode, ATarget: TSyntaxNode);
-  var
-    mGotoChain, mTargetChain: TArray<TSyntaxNode>;
-    mFirst: Integer;
-  begin
-    mGotoChain := TryChain(ANode, AScope);
-    mTargetChain := TryChain(ATarget, AScope);
-    if (Length(mGotoChain) = Length(mTargetChain)) and IsPrefix(mGotoChain, mTargetChain) then
-    begin
-      Exit;
-    end;
-    // Gemeinsamer Anfang beider Ketten; der erste Block danach steht in der Meldung.
-    mFirst := CommonLength(mGotoChain, mTargetChain);
-    if mFirst = Length(mGotoChain) then
-    begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.JumpsInto].Fmt([ANode.Name,
-        BlockName(mTargetChain[mFirst])]), TRuleConfidence.High);
-    end
-    else
-    begin
-      AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.Leaves].Fmt([ANode.Name,
-        BlockName(mGotoChain[mFirst])]), TRuleConfidence.High);
-    end;
-  end;
-
-  procedure CheckGoto(AScope, ANode: TSyntaxNode; ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
-  var
-    mKey: string;
-  begin
-    mKey := LabelKey(ANode.Name);
-    if not ADeclared.ContainsKey(mKey) then
-    begin
-      // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
-      if not ASets.ContainsKey(mKey) and DeclaredOutside(AScope, mKey) then
-      begin
-        AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
-          cTexts[TJumpsText.LabelUndeclared].Fmt([ANode.Name]), TRuleConfidence.High);
-      end;
-    end
-    // E2127 nur bei genau einem Ziel.
-    else if ASets.ContainsKey(mKey) and (ASets[mKey].Count = 1) then
-    begin
-      CheckTryJump(AScope, ANode, ASets[mKey][0]);
-    end;
-  end;
-
-  /// <summary>Springt eine goto-Anweisung aus AGotos die Marke AKey an?</summary>
-  function Jumped(AGotos: TList<TSyntaxNode>; const AKey: string): Boolean;
-  var
-    mNode: TSyntaxNode;
-  begin
-    for mNode in AGotos do
-    begin
-      if LabelKey(mNode.Name) = AKey then
-      begin
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  /// <summary>E2074: deklariert und angesprungen, aber nie gesetzt.</summary>
-  procedure CheckNeverSet(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>; AGotos: TList<TSyntaxNode>);
-  var
-    mPair: TPair<string, Integer>;
-  begin
-    for mPair in ADeclared do
-    begin
-      if not ASets.ContainsKey(mPair.Key) and Jumped(AGotos, mPair.Key) then
-      begin
-        AReport.Add(TTextRange.Create(mTokens[mPair.Value].StartPos, mTokens[mPair.Value].EndPos),
-          cTexts[TJumpsText.LabelNeverSet].Fmt([mTokens[mPair.Value].Text]),
-          TRuleConfidence.High);
-      end;
-    end;
-  end;
-
-  procedure CheckScope(AScope, ABody: TSyntaxNode);
-  var
-    mDeclared: TDictionary<string, Integer>;
-    mSets: TLabelSets;
-    mGotos: TList<TSyntaxNode>;
-    mNode: TSyntaxNode;
-  begin
-    mDeclared := TDictionary<string, Integer>.Create;
-    mSets := TLabelSets.Create([doOwnsValues]);
-    mGotos := TList<TSyntaxNode>.Create;
-    try
-      CollectDeclared(AScope, mDeclared);
-      // Marken im asm-Block sieht der Baum nicht.
-      if not Collect(ABody, mSets, mGotos) then
-      begin
-        Exit;
-      end;
-      CheckSets(mSets, mDeclared);
-      for mNode in mGotos do
-      begin
-        CheckGoto(AScope, mNode, mSets, mDeclared);
-      end;
-      CheckNeverSet(mSets, mDeclared, mGotos);
-    finally
-      mGotos.Free;
-      mSets.Free;
-      mDeclared.Free;
-    end;
-  end;
-
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  procedure Visit(ARoot: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mIndex: Integer;
-    mBody: TSyntaxNode;
-  begin
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ARoot);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
-        begin
-          mBody := mNode.FindChild(TSyntaxKind.Block);
-          if (mBody <> nil) and not ParserBroken(AContext.Tree, mNode) then
+      case mNode.Kind of
+        TSyntaxKind.AsmBlock:
+          Result := False;
+        TSyntaxKind.LabeledStatement:
+          AddSet(ASets, mNode);
+        TSyntaxKind.GotoStatement:
+          if mNode.Name <> '' then
           begin
-            CheckScope(mNode, mBody);
+            AGotos.Add(mNode);
           end;
-        end;
-        for mIndex := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mIndex]);
-        end;
+      else
+        // Übrige Knoten setzen keine Marke.
       end;
-    finally
-      mPending.Free;
+      for mChild := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mChild]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Wird die Marke in AList an AIndex nie ohne eine frühere übersetzt?</summary>
+function TLabelMisuseScan.SetEarlier(AList: TList<TSyntaxNode>; AIndex: Integer): Boolean;
+var
+  mFirst: Integer;
+begin
+  for mFirst := 0 to AIndex - 1 do
+  begin
+    if TConditionalBranches.Implies(PathOf(AList[AIndex]), PathOf(AList[mFirst])) then
+    begin
+      Exit(True);
     end;
   end;
+  Result := False;
+end;
 
+/// <summary>E2073: dieselbe Marke zweimal gesetzt, wenn die spätere nie ohne die frühere übersetzt wird;
+/// E2093: gesetzt, aber in dieser Routine nicht deklariert.</summary>
+procedure TLabelMisuseScan.CheckSets(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>);
+var
+  mKey: string;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
-    not (ContainsText(AContext.Text, 'goto') or ContainsText(AContext.Text, 'label')) then
+  for mKey in ASets.Keys do
+  begin
+    for mIndex := 1 to ASets[mKey].Count - 1 do
+    begin
+      mNode := ASets[mKey][mIndex];
+      if SetEarlier(ASets[mKey], mIndex) then
+      begin
+        FReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelSet].Fmt(
+          [mNode.Name]), TRuleConfidence.High);
+      end;
+    end;
+  end;
+  for mKey in ASets.Keys do
+  begin
+    if ADeclared.ContainsKey(mKey) then
+    begin
+      Continue;
+    end;
+    for mNode in ASets[mKey] do
+    begin
+      FReport.Add(NameRange(mNode, mNode.Name), cTexts[TJumpsText.LabelUndeclared].Fmt([mNode.Name]),
+        TRuleConfidence.High);
+    end;
+  end;
+end;
+
+/// <summary>Länge des gemeinsamen Anfangs der Ketten AGotoChain und ATargetChain.</summary>
+function TLabelMisuseScan.CommonLength(const AGotoChain, ATargetChain: TArray<TSyntaxNode>): Integer;
+begin
+  Result := 0;
+  while (Result < Length(AGotoChain)) and (Result < Length(ATargetChain)) and
+    (AGotoChain[Result] = ATargetChain[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>E2127: goto ANode in einen try-Block hinein oder aus ihm heraus zum Ziel ATarget.</summary>
+procedure TLabelMisuseScan.CheckTryJump(AScope, ANode, ATarget: TSyntaxNode);
+var
+  mGotoChain, mTargetChain: TArray<TSyntaxNode>;
+  mFirst: Integer;
+begin
+  mGotoChain := TryChain(ANode, AScope);
+  mTargetChain := TryChain(ATarget, AScope);
+  if (Length(mGotoChain) = Length(mTargetChain)) and IsPrefix(mGotoChain, mTargetChain) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mPaths := TConditionalBranches.Paths(mTokens);
-  Visit(AContext.Tree.Root);
+  // Gemeinsamer Anfang beider Ketten; der erste Block danach steht in der Meldung.
+  mFirst := CommonLength(mGotoChain, mTargetChain);
+  if mFirst = Length(mGotoChain) then
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.JumpsInto].Fmt([ANode.Name,
+      BlockName(mTargetChain[mFirst])]), TRuleConfidence.High);
+  end
+  else
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TJumpsText.Leaves].Fmt([ANode.Name,
+      BlockName(mGotoChain[mFirst])]), TRuleConfidence.High);
+  end;
+end;
+
+procedure TLabelMisuseScan.CheckGoto(AScope, ANode: TSyntaxNode; ASets: TLabelSets;
+  ADeclared: TDictionary<string, Integer>);
+var
+  mKey: string;
+begin
+  mKey := TLabelMisuseRule.LabelKey(ANode.Name);
+  if not ADeclared.ContainsKey(mKey) then
+  begin
+    // Nirgends deklariert und nirgends gesetzt: das meldet schon die Syntaxprüfung (E2031).
+    if not ASets.ContainsKey(mKey) and DeclaredOutside(AScope, mKey) then
+    begin
+      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TJumpsText.LabelUndeclared].Fmt([ANode.Name]), TRuleConfidence.High);
+    end;
+  end
+  // E2127 nur bei genau einem Ziel.
+  else if ASets.ContainsKey(mKey) and (ASets[mKey].Count = 1) then
+  begin
+    CheckTryJump(AScope, ANode, ASets[mKey][0]);
+  end;
+end;
+
+/// <summary>Springt eine goto-Anweisung aus AGotos die Marke AKey an?</summary>
+function TLabelMisuseScan.Jumped(AGotos: TList<TSyntaxNode>; const AKey: string): Boolean;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in AGotos do
+  begin
+    if TLabelMisuseRule.LabelKey(mNode.Name) = AKey then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>E2074: deklariert und angesprungen, aber nie gesetzt.</summary>
+procedure TLabelMisuseScan.CheckNeverSet(ASets: TLabelSets; ADeclared: TDictionary<string, Integer>;
+  AGotos: TList<TSyntaxNode>);
+var
+  mPair: TPair<string, Integer>;
+begin
+  for mPair in ADeclared do
+  begin
+    if not ASets.ContainsKey(mPair.Key) and Jumped(AGotos, mPair.Key) then
+    begin
+      FReport.Add(TTextRange.Create(FTokens[mPair.Value].StartPos, FTokens[mPair.Value].EndPos),
+        cTexts[TJumpsText.LabelNeverSet].Fmt([FTokens[mPair.Value].Text]),
+        TRuleConfidence.High);
+    end;
+  end;
+end;
+
+procedure TLabelMisuseScan.CheckScope(AScope, ABody: TSyntaxNode);
+var
+  mDeclared: TDictionary<string, Integer>;
+  mSets: TLabelSets;
+  mGotos: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  mDeclared := TDictionary<string, Integer>.Create;
+  mSets := TLabelSets.Create([doOwnsValues]);
+  mGotos := TList<TSyntaxNode>.Create;
+  try
+    CollectDeclared(AScope, mDeclared);
+    // Marken im asm-Block sieht der Baum nicht.
+    if not Collect(ABody, mSets, mGotos) then
+    begin
+      Exit;
+    end;
+    CheckSets(mSets, mDeclared);
+    for mNode in mGotos do
+    begin
+      CheckGoto(AScope, mNode, mSets, mDeclared);
+    end;
+    CheckNeverSet(mSets, mDeclared, mGotos);
+  finally
+    mGotos.Free;
+    mSets.Free;
+    mDeclared.Free;
+  end;
+end;
+
+// Iterativ (tiefe Bäume sprengen den Stapel nicht).
+procedure TLabelMisuseScan.Visit(ARoot: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mBody: TSyntaxNode;
+begin
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
+      begin
+        mBody := mNode.FindChild(TSyntaxKind.Block);
+        if (mBody <> nil) and not ParserBroken(FContext.Tree, mNode) then
+        begin
+          CheckScope(mNode, mBody);
+        end;
+      end;
+      for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mIndex]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+procedure TLabelMisuseScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) or
+    not (ContainsText(FContext.Text, 'goto') or ContainsText(FContext.Text, 'label')) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FPaths := TConditionalBranches.Paths(FTokens);
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TLabelMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TLabelMisuseScan;
+begin
+  mScan := TLabelMisuseScan.Create(AContext, AReport);
+  try
+    mScan.Run;
+  finally
+    mScan.Free;
+  end;
 end;
 
 class function TLabelMisuseRule.LabelKey(const AName: string): string;

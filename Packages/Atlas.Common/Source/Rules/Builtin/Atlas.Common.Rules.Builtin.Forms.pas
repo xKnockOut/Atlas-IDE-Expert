@@ -488,224 +488,266 @@ begin
     cTexts[TFormsText.TwiceTitle].Text);
 end;
 
-procedure TFormAutoCreateAndManualRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TFormAutoCreateAndManualRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TFormAutoCreateAndManualScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TArray<TPascalToken>;
+    FCode: TArray<Integer>;
+    FCalls: TArray<TCreateFormCall>;
+    FLocal: TUnitIndex;
+    FMainName: string;
+    FReported: TArray<Integer>;
+    function Token(APosition: Integer): TPascalToken;
+    function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+    function IsName(APosition: Integer; const AName: string): Boolean;
+    function CodeAt(AOffset: Integer): Integer;
+    function FindCall(const AVariable: string; out ACall: TCreateFormCall): Boolean;
+    function IsMember(ARoutine: TSyntaxNode; const AName: string): Boolean;
+    function InAssignedOrFree(APosition: Integer): Boolean;
+    function ComparedWithNil(APosition: Integer): Boolean;
+    function FreedAt(APosition: Integer): Boolean;
+    function Handled(AFirst, ALast: Integer; const AName: string): Boolean;
+    function IsCreateAssignment(APosition: Integer): Boolean;
+    function IsUnhandledForm(ARoutine: TSyntaxNode; AFirst, ALast: Integer; const AName: string): Boolean;
+    procedure ReportCreate(APosition: Integer; AHasCall: Boolean; const ACall: TCreateFormCall);
+    procedure CheckRoutine(ARoutine: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TFormAutoCreateAndManualScan }
+
+constructor TFormAutoCreateAndManualScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TFormAutoCreateAndManualScan.Token(APosition: Integer): TPascalToken;
+begin
+  Result := FTokens[FCode[APosition]];
+end;
+
+function TFormAutoCreateAndManualScan.IsSym(APosition: Integer; const ASymbol: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and Token(APosition).IsSymbol(ASymbol);
+end;
+
+function TFormAutoCreateAndManualScan.IsName(APosition: Integer; const AName: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
+end;
+
+function TFormAutoCreateAndManualScan.CodeAt(AOffset: Integer): Integer;
 var
-  mTokens: TArray<TPascalToken>;
-  mCode: TArray<Integer>;
-  mCalls: TArray<TCreateFormCall>;
-  mLocal: TUnitIndex;
-  mMainName: string;
-  mReported: TArray<Integer>;
-
-  function Token(APosition: Integer): TPascalToken;
+  mHigh, mMiddle: Integer;
+begin
+  // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+  Result := 0;
+  mHigh := Length(FCode);
+  while Result < mHigh do
   begin
-    Result := mTokens[mCode[APosition]];
-  end;
-
-  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
-  end;
-
-  function IsName(APosition: Integer; const AName: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and
-      (Token(APosition).Kind = TPascalTokenKind.Identifier) and SameText(Token(APosition).Text, AName);
-  end;
-
-  function CodeAt(AOffset: Integer): Integer;
-  var
-    mHigh, mMiddle: Integer;
-  begin
-    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
-    Result := 0;
-    mHigh := Length(mCode);
-    while Result < mHigh do
+    mMiddle := (Result + mHigh) div 2;
+    if FTokens[FCode[mMiddle]].Offset < AOffset then
     begin
-      mMiddle := (Result + mHigh) div 2;
-      if mTokens[mCode[mMiddle]].Offset < AOffset then
-      begin
-        Result := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
+      Result := mMiddle + 1;
+    end
+    else
+    begin
+      mHigh := mMiddle;
     end;
   end;
+end;
 
-  function FindCall(const AVariable: string; out ACall: TCreateFormCall): Boolean;
-  var
-    mCall: TCreateFormCall;
+function TFormAutoCreateAndManualScan.FindCall(const AVariable: string; out ACall: TCreateFormCall): Boolean;
+var
+  mCall: TCreateFormCall;
+begin
+  for mCall in FCalls do
   begin
-    for mCall in mCalls do
+    if SameText(mCall.Variable, AVariable) then
     begin
-      if SameText(mCall.Variable, AVariable) then
-      begin
-        ACall := mCall;
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  // Feld oder Property gleichen Namens in der Klasse der Methode (verdeckt die globale Variable).
-  function IsMember(ARoutine: TSyntaxNode; const AName: string): Boolean;
-  var
-    mSymbol: TIndexSymbol;
-    mOwner: string;
-  begin
-    Result := False;
-    if LastDelimiter('.', ARoutine.Name) = 0 then
-    begin
-      Exit;
-    end;
-    mOwner := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
-    for mSymbol in mLocal.Symbols do
-    begin
-      if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and SameText(mSymbol.Name, AName) and
-        SameText(mSymbol.Container, mOwner) then
-      begin
-        Exit(True);
-      end;
+      ACall := mCall;
+      Exit(True);
     end;
   end;
+  Result := False;
+end;
 
-  // Assigned(V) oder FreeAndNil(V) beim Code-Token APosition?
-  function InAssignedOrFree(APosition: Integer): Boolean;
+// Feld oder Property gleichen Namens in der Klasse der Methode (verdeckt die globale Variable).
+function TFormAutoCreateAndManualScan.IsMember(ARoutine: TSyntaxNode; const AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mOwner: string;
+begin
+  Result := False;
+  if LastDelimiter('.', ARoutine.Name) = 0 then
   begin
-    Result := IsSym(APosition - 1, '(') and (IsName(APosition - 2, 'Assigned') or IsName(APosition - 2, 'FreeAndNil'));
+    Exit;
   end;
-
-  // V = nil oder V <> nil beim Code-Token APosition?
-  function ComparedWithNil(APosition: Integer): Boolean;
+  mOwner := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+  for mSymbol in FLocal.Symbols do
   begin
-    Result := (IsSym(APosition + 1, '<>') or IsSym(APosition + 1, '=')) and (APosition + 2 <= High(mCode)) and
-      Token(APosition + 2).IsKeyword('nil');
-  end;
-
-  // V.Free, V.Release oder V.DisposeOf beim Code-Token APosition?
-  function FreedAt(APosition: Integer): Boolean;
-  begin
-    Result := IsSym(APosition + 1, '.') and (IsName(APosition + 2, 'Free') or IsName(APosition + 2, 'Release') or
-      IsName(APosition + 2, 'DisposeOf'));
-  end;
-
-  // Prüft oder gibt die Routine die Variable frei (Assigned, nil-Vergleich, Free, FreeAndNil, Release)?
-  function Handled(AFirst, ALast: Integer; const AName: string): Boolean;
-  var
-    mPosition: Integer;
-  begin
-    Result := False;
-    mPosition := AFirst;
-    while not Result and (mPosition <= ALast) do
+    if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and SameText(mSymbol.Name, AName) and
+      SameText(mSymbol.Container, mOwner) then
     begin
-      Result := IsName(mPosition, AName) and not IsSym(mPosition - 1, '.') and (InAssignedOrFree(mPosition) or
-        ComparedWithNil(mPosition) or FreedAt(mPosition));
-      Inc(mPosition);
+      Exit(True);
     end;
   end;
+end;
 
-  // V := TKlasse.Create(…) beim Code-Token APosition?
-  function IsCreateAssignment(APosition: Integer): Boolean;
+// Assigned(V) oder FreeAndNil(V) beim Code-Token APosition?
+function TFormAutoCreateAndManualScan.InAssignedOrFree(APosition: Integer): Boolean;
+begin
+  Result := IsSym(APosition - 1, '(') and (IsName(APosition - 2, 'Assigned') or IsName(APosition - 2, 'FreeAndNil'));
+end;
+
+// V = nil oder V <> nil beim Code-Token APosition?
+function TFormAutoCreateAndManualScan.ComparedWithNil(APosition: Integer): Boolean;
+begin
+  Result := (IsSym(APosition + 1, '<>') or IsSym(APosition + 1, '=')) and (APosition + 2 <= High(FCode)) and
+    Token(APosition + 2).IsKeyword('nil');
+end;
+
+// V.Free, V.Release oder V.DisposeOf beim Code-Token APosition?
+function TFormAutoCreateAndManualScan.FreedAt(APosition: Integer): Boolean;
+begin
+  Result := IsSym(APosition + 1, '.') and (IsName(APosition + 2, 'Free') or IsName(APosition + 2, 'Release') or
+    IsName(APosition + 2, 'DisposeOf'));
+end;
+
+// Prüft oder gibt die Routine die Variable frei (Assigned, nil-Vergleich, Free, FreeAndNil, Release)?
+function TFormAutoCreateAndManualScan.Handled(AFirst, ALast: Integer; const AName: string): Boolean;
+var
+  mPosition: Integer;
+begin
+  Result := False;
+  mPosition := AFirst;
+  while not Result and (mPosition <= ALast) do
   begin
-    Result := (Token(APosition).Kind = TPascalTokenKind.Identifier) and not IsSym(APosition - 1, '.') and
-      IsSym(APosition + 1, ':=');
-    Result := Result and (Token(APosition + 2).Kind = TPascalTokenKind.Identifier) and IsSym(APosition + 3, '.') and
-      IsName(APosition + 4, 'Create');
+    Result := IsName(mPosition, AName) and not IsSym(mPosition - 1, '.') and (InAssignedOrFree(mPosition) or
+      ComparedWithNil(mPosition) or FreedAt(mPosition));
+    Inc(mPosition);
   end;
+end;
 
-  // Ist AName ein automatisch erzeugtes Formular, das die Routine weder selbst deklariert noch prüft oder freigibt?
-  function IsUnhandledForm(ARoutine: TSyntaxNode; AFirst, ALast: Integer; const AName: string): Boolean;
+// V := TKlasse.Create(…) beim Code-Token APosition?
+function TFormAutoCreateAndManualScan.IsCreateAssignment(APosition: Integer): Boolean;
+begin
+  Result := (Token(APosition).Kind = TPascalTokenKind.Identifier) and not IsSym(APosition - 1, '.') and
+    IsSym(APosition + 1, ':=');
+  Result := Result and (Token(APosition + 2).Kind = TPascalTokenKind.Identifier) and IsSym(APosition + 3, '.') and
+    IsName(APosition + 4, 'Create');
+end;
+
+// Ist AName ein automatisch erzeugtes Formular, das die Routine weder selbst deklariert noch prüft oder freigibt?
+function TFormAutoCreateAndManualScan.IsUnhandledForm(ARoutine: TSyntaxNode; AFirst, ALast: Integer;
+  const AName: string): Boolean;
+begin
+  Result := MatchText(AName, FContext.AutoCreateForms) and not DeclaresLocally(ARoutine, AName) and
+    not IsMember(ARoutine, AName) and not Handled(AFirst, ALast, AName);
+end;
+
+procedure TFormAutoCreateAndManualScan.ReportCreate(APosition: Integer; AHasCall: Boolean;
+  const ACall: TCreateFormCall);
+var
+  mFixes: TArray<TRuleFix>;
+begin
+  FReported := FReported + [APosition];
+  mFixes := nil;
+  if AHasCall then
   begin
-    Result := MatchText(AName, AContext.AutoCreateForms) and not DeclaresLocally(ARoutine, AName) and
-      not IsMember(ARoutine, AName) and not Handled(AFirst, ALast, AName);
+    mFixes := [TRuleFix.Create(cTexts[TFormsText.RemoveFromMain].Fmt([ACall.Statement, FMainName]),
+      [TRuleEdit.Create(ACall.Range, '')])];
+    mFixes[0].FileName := FContext.ProjectMainSource;
   end;
+  FReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition + 4).EndPos),
+    cTexts[TFormsText.SecondInstance].Fmt([Token(APosition).Text, FMainName]),
+    TRuleConfidence.High, mFixes);
+end;
 
-  procedure ReportCreate(APosition: Integer; AHasCall: Boolean; const ACall: TCreateFormCall);
-  var
-    mFixes: TArray<TRuleFix>;
+procedure TFormAutoCreateAndManualScan.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mBody: TSyntaxNode;
+  mFirst, mLast, mPosition: Integer;
+  mName: string;
+  mCall: TCreateFormCall;
+  mHasCall: Boolean;
+begin
+  mBody := TRoutineBody.BodyOf(ARoutine);
+  if mBody = nil then
   begin
-    mReported := mReported + [APosition];
-    mFixes := nil;
-    if AHasCall then
+    Exit;
+  end;
+  mFirst := CodeAt(mBody.StartOffset);
+  mLast := CodeAt(mBody.EndOffset) - 1;
+  for mPosition := mFirst to mLast - 4 do
+  begin
+    // Verschachtelte Routinen liegen im Rumpf der äußeren: jede Stelle einmal.
+    if not IsCreateAssignment(mPosition) or IntInArray(mPosition, FReported) then
     begin
-      mFixes := [TRuleFix.Create(cTexts[TFormsText.RemoveFromMain].Fmt([ACall.Statement, mMainName]),
-        [TRuleEdit.Create(ACall.Range, '')])];
-      mFixes[0].FileName := AContext.ProjectMainSource;
+      Continue;
     end;
-    AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(APosition + 4).EndPos),
-      cTexts[TFormsText.SecondInstance].Fmt([Token(APosition).Text, mMainName]),
-      TRuleConfidence.High, mFixes);
-  end;
-
-  procedure CheckRoutine(ARoutine: TSyntaxNode);
-  var
-    mBody: TSyntaxNode;
-    mFirst, mLast, mPosition: Integer;
-    mName: string;
-    mCall: TCreateFormCall;
-    mHasCall: Boolean;
-  begin
-    mBody := TRoutineBody.BodyOf(ARoutine);
-    if mBody = nil then
+    mName := Token(mPosition).Text;
+    mHasCall := FindCall(mName, mCall);
+    if (mHasCall and not SameText(mCall.TypeName, Token(mPosition + 2).Text)) or
+      not IsUnhandledForm(ARoutine, mFirst, mLast, mName) then
     begin
-      Exit;
+      Continue;
     end;
-    mFirst := CodeAt(mBody.StartOffset);
-    mLast := CodeAt(mBody.EndOffset) - 1;
-    for mPosition := mFirst to mLast - 4 do
-    begin
-      // Verschachtelte Routinen liegen im Rumpf der äußeren: jede Stelle einmal.
-      if not IsCreateAssignment(mPosition) or IntInArray(mPosition, mReported) then
-      begin
-        Continue;
-      end;
-      mName := Token(mPosition).Text;
-      mHasCall := FindCall(mName, mCall);
-      if (mHasCall and not SameText(mCall.TypeName, Token(mPosition + 2).Text)) or
-        not IsUnhandledForm(ARoutine, mFirst, mLast, mName) then
-      begin
-        Continue;
-      end;
-      ReportCreate(mPosition, mHasCall, mCall);
-    end;
+    ReportCreate(mPosition, mHasCall, mCall);
   end;
+end;
 
+procedure TFormAutoCreateAndManualScan.Run;
 var
   mData: TBytes;
   mFormat_: TFileFormat;
   mRoutine: TSyntaxNode;
   mCache: IRuleDerivedCache;
 begin
-  if (Length(AContext.AutoCreateForms) = 0) or (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
-    (AContext.Tree.Root.Kind = TSyntaxKind.ProgramFile) then
+  if (Length(FContext.AutoCreateForms) = 0) or (FContext.Tree = nil) or (FContext.Tree.Root = nil) or
+    (FContext.Tree.Root.Kind = TSyntaxKind.ProgramFile) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mCode := CodeIndexes(mTokens);
-  mCalls := nil;
-  mMainName := cTexts[TFormsText.TheDpr].Text;
-  if AContext.ProjectName <> '' then
+  FTokens := FContext.Tree.Tokens;
+  FCode := CodeIndexes(FTokens);
+  FCalls := nil;
+  FMainName := cTexts[TFormsText.TheDpr].Text;
+  if FContext.ProjectName <> '' then
   begin
-    mMainName := AContext.ProjectName + '.dpr';
+    FMainName := FContext.ProjectName + '.dpr';
   end;
-  if AContext.ProjectMainSource <> '' then
+  if FContext.ProjectMainSource <> '' then
   begin
-    mMainName := ExtractFileName(AContext.ProjectMainSource);
-    if Assigned(AContext.ReadFile) and AContext.ReadFile(AContext.ProjectMainSource, mData) then
+    FMainName := ExtractFileName(FContext.ProjectMainSource);
+    if Assigned(FContext.ReadFile) and FContext.ReadFile(FContext.ProjectMainSource, mData) then
     begin
-      mCalls := CreateFormCalls(TFileEncoding.Decode(mData, mFormat_));
+      FCalls := CreateFormCalls(TFileEncoding.Decode(mData, mFormat_));
     end;
   end;
-  mCache := TRuleDerived.Open(AContext);
-  mLocal := TRuleDerived.UnitIndex(mCache, AContext);
-  mReported := nil;
-  for mRoutine in TRuleDerived.Routines(mCache, AContext) do
+  mCache := TRuleDerived.Open(FContext);
+  FLocal := TRuleDerived.UnitIndex(mCache, FContext);
+  FReported := nil;
+  for mRoutine in TRuleDerived.Routines(mCache, FContext) do
   begin
     CheckRoutine(mRoutine);
   end;
+end;
+
+procedure TFormAutoCreateAndManualRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TFormAutoCreateAndManualScan;
+begin
+  mScan := TFormAutoCreateAndManualScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TInheritedFormHandlerRule }
@@ -771,289 +813,321 @@ type
     HasInherited: Boolean;
   end;
 
-procedure TInheritedFormHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TInheritedFormHandlerRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TInheritedFormHandlerScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FInherited_: TArray<TFormEvent>;
+    FUsedUnits: TArray<string>;
+    function IndexedUnits(const AName: string): TArray<string>;
+    function FormOf(const ABase, AName: string; out AText, AFileName: string): Boolean;
+    function AncestorForm(const AClassName: string; const AUnits: TArray<string>; out AText, AFileName: string):
+      Boolean;
+    function ParentInFile(const AClassName, AFormFile: string; out AUnits: TArray<string>): string;
+    function FindInherited(const AEvent: TFormEvent; out AFound: TFormEvent): Boolean;
+    procedure CollectAncestors(const AClassName: string);
+    function FindRoutine(const AName: string): TSyntaxNode;
+    function HandlerTokens(ARoutine, ABody: TSyntaxNode; const AHandler: string): THandlerTokens;
+    function OwnEvents(out AClassName: string): TArray<TFormEvent>;
+    procedure ReportHandler(const AAncestor: TFormEvent; const ATokens: THandlerTokens);
+    procedure CheckEvent(const AEvent: TFormEvent; const AClassName: string);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TInheritedFormHandlerScan }
+
+constructor TInheritedFormHandlerScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+// Units, in denen der Index die Klasse AName deklariert, ohne Endung.
+function TInheritedFormHandlerScan.IndexedUnits(const AName: string): TArray<string>;
 var
-  mInherited_: TArray<TFormEvent>;
-  mUsedUnits: TArray<string>;
-
-  // Units, in denen der Index die Klasse AName deklariert, ohne Endung.
-  function IndexedUnits(const AName: string): TArray<string>;
-  var
-    mLocation: TSymbolLocation;
+  mLocation: TSymbolLocation;
+begin
+  Result := nil;
+  if FContext.Index = nil then
   begin
-    Result := nil;
-    if AContext.Index = nil then
+    Exit;
+  end;
+  for mLocation in FContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
-      Exit;
-    end;
-    for mLocation in AContext.Index.FindSymbols(AName) do
-    begin
-      if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
-      begin
-        Result := Result + [ChangeFileExt(mLocation.FileName, '')];
-      end;
+      Result := Result + [ChangeFileExt(mLocation.FileName, '')];
     end;
   end;
+end;
 
-  // Formulardatei ABase mit .dfm bzw. .fmx, deren Wurzel die Klasse AName ist.
-  function FormOf(const ABase, AName: string; out AText, AFileName: string): Boolean;
-  var
-    mExtension: string;
-    mData: TBytes;
-    mFormat: TFileFormat;
-    mParsed: TDfmDocument;
+// Formulardatei ABase mit .dfm bzw. .fmx, deren Wurzel die Klasse AName ist.
+function TInheritedFormHandlerScan.FormOf(const ABase, AName: string; out AText, AFileName: string): Boolean;
+var
+  mExtension: string;
+  mData: TBytes;
+  mFormat: TFileFormat;
+  mParsed: TDfmDocument;
+begin
+  Result := False;
+  AText := '';
+  AFileName := '';
+  for mExtension in TArray<string>.Create('.dfm', '.fmx') do
   begin
-    Result := False;
-    AText := '';
-    AFileName := '';
-    for mExtension in TArray<string>.Create('.dfm', '.fmx') do
+    if Result or not FContext.ReadFile(ABase + mExtension, mData) then
     begin
-      if Result or not AContext.ReadFile(ABase + mExtension, mData) then
-      begin
-        Continue;
-      end;
-      AText := TFileEncoding.Decode(mData, mFormat);
-      mParsed := TDfmParser.Parse(AText);
-      try
-        Result := (mParsed.Root <> nil) and SameText(mParsed.Root.TypeName, AName);
-      finally
-        mParsed.Free;
-      end;
-      if Result then
-      begin
-        AFileName := ABase + mExtension;
-      end;
+      Continue;
     end;
-  end;
-
-  // Formulardatei der Klasse AClassName: über den Index, sonst über die Units AUnits neben der Unit.
-  function AncestorForm(const AClassName: string; const AUnits: TArray<string>; out AText, AFileName: string):
-    Boolean;
-  var
-    mCandidates: TArray<string>;
-    mCandidate, mName: string;
-  begin
-    Result := False;
-    AText := '';
-    AFileName := '';
-    if not Assigned(AContext.ReadFile) then
-    begin
-      Exit;
-    end;
-    mName := Copy(AClassName, LastDelimiter('.', AClassName) + 1, MaxInt);
-    mCandidates := IndexedUnits(mName) + AUnits;
-    for mCandidate in mCandidates do
-    begin
-      if FormOf(mCandidate, mName, AText, AFileName) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  // Vorfahr von AClassName aus dem Quelltext der Unit neben AFormFile ('' ohne).
-  function ParentInFile(const AClassName, AFormFile: string; out AUnits: TArray<string>): string;
-  var
-    mData: TBytes;
-    mFormat_: TFileFormat;
-    mText: string;
-    mMatch: TMatch;
-  begin
-    Result := '';
-    AUnits := nil;
-    if not AContext.ReadFile(ChangeFileExt(AFormFile, '.pas'), mData) then
-    begin
-      Exit;
-    end;
-    mText := TFileEncoding.Decode(mData, mFormat_);
-    AUnits := TUsesClauses.UsedUnitsOf(mText);
-    mMatch := TRegEx.Match(mText, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
-    if mMatch.Success then
-    begin
-      Result := mMatch.Groups[1].Value;
-    end;
-  end;
-
-  function FindInherited(const AEvent: TFormEvent; out AFound: TFormEvent): Boolean;
-  var
-    mEvent: TFormEvent;
-  begin
-    for mEvent in mInherited_ do
-    begin
-      if SameText(mEvent.Component, AEvent.Component) and SameText(mEvent.Event, AEvent.Event) then
-      begin
-        AFound := mEvent;
-        Exit(True);
-      end;
-    end;
-    Result := False;
-  end;
-
-  procedure CollectAncestors(const AClassName: string);
-  var
-    mParent, mText, mFileName: string;
-    mUnits, mMore: TArray<string>;
-    mLevel: Integer;
-    mParsed: TDfmDocument;
-    mIsInherited: Boolean;
-    mEvents: TArray<TFormEvent>;
-    mEvent, mFound: TFormEvent;
-  begin
-    mParent := AClassName;
-    mUnits := mUsedUnits;
-    for mLevel := 1 to 8 do
-    begin
-      if not AncestorForm(mParent, mUnits, mText, mFileName) then
-      begin
-        Exit;
-      end;
-      mParsed := TDfmParser.Parse(mText);
-      try
-        mEvents := nil;
-        CollectEvents(mParsed.Root, True, mParsed.Root.TypeName, mEvents);
-        mIsInherited := mParsed.Root.Kind = TDfmObjectKind.Inherited_;
-      finally
-        mParsed.Free;
-      end;
-      // Der nächste Vorfahr gewinnt.
-      for mEvent in mEvents do
-      begin
-        if not FindInherited(mEvent, mFound) then
-        begin
-          mInherited_ := mInherited_ + [mEvent];
-        end;
-      end;
-      if not mIsInherited then
-      begin
-        Exit;
-      end;
-      mParent := ParentInFile(Copy(mParent, LastDelimiter('.', mParent) + 1, MaxInt), mFileName, mMore);
-      if mParent = '' then
-      begin
-        Exit;
-      end;
-      mUnits := mUnits + mMore;
-    end;
-  end;
-
-  function FindRoutine(const AName: string): TSyntaxNode;
-  var
-    mRoutine: TSyntaxNode;
-  begin
-    for mRoutine in TRuleDerived.Routines(TRuleDerived.Open(AContext), AContext) do
-    begin
-      if SameText(mRoutine.Name, AName) then
-      begin
-        Exit(mRoutine);
-      end;
-    end;
-    Result := nil;
-  end;
-
-  // Name, begin und inherited der Routine ARoutine mit dem Rumpf ABody, die den Handler AHandler implementiert.
-  function HandlerTokens(ARoutine, ABody: TSyntaxNode; const AHandler: string): THandlerTokens;
-  var
-    mIndex: Integer;
-    mToken: TPascalToken;
-  begin
-    Result := Default(THandlerTokens);
-    for mIndex := AContext.Tree.FirstTokenFrom(ARoutine.StartOffset) to High(AContext.Tree.Tokens) do
-    begin
-      mToken := AContext.Tree.Tokens[mIndex];
-      if (mToken.Offset < ARoutine.StartOffset) or (mToken.Offset >= ARoutine.EndOffset) or
-        (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-      begin
-        Continue;
-      end;
-      if not Result.HasName and (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AHandler) then
-      begin
-        Result.HasName := True;
-        Result.NameToken := mToken;
-      end;
-      if not Result.HasBegin and (mToken.Offset >= ABody.StartOffset) and mToken.IsKeyword('begin') then
-      begin
-        Result.HasBegin := True;
-        Result.BeginToken := mToken;
-      end;
-      Result.HasInherited := Result.HasInherited or ((mToken.Offset >= ABody.StartOffset) and
-        mToken.IsKeyword('inherited'));
-    end;
-  end;
-
-  // Ereignisse der eigenen Formulardatei, wenn sie geerbt ist (inherited); AClassName: ihre Klasse.
-  function OwnEvents(out AClassName: string): TArray<TFormEvent>;
-  var
-    mDocument: TDfmDocument;
-  begin
-    Result := nil;
-    AClassName := '';
-    mDocument := TDfmParser.Parse(AContext.FormText);
+    AText := TFileEncoding.Decode(mData, mFormat);
+    mParsed := TDfmParser.Parse(AText);
     try
-      if (mDocument.Root <> nil) and (mDocument.Root.Kind = TDfmObjectKind.Inherited_) then
-      begin
-        AClassName := mDocument.Root.TypeName;
-        CollectEvents(mDocument.Root, True, AClassName, Result);
-      end;
+      Result := (mParsed.Root <> nil) and SameText(mParsed.Root.TypeName, AName);
     finally
-      mDocument.Free;
+      mParsed.Free;
     end;
-  end;
-
-  procedure ReportHandler(const AAncestor: TFormEvent; const ATokens: THandlerTokens);
-  var
-    mFixes: TArray<TRuleFix>;
-    mLineBreak: string;
-  begin
-    mFixes := nil;
-    if ATokens.HasBegin then
+    if Result then
     begin
-      mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-      mFixes := [TRuleFix.Create(cTexts[TFormsText.InsertInherited].Text, [TRuleEdit.Create(TTextRange.Create(
-        ATokens.BeginToken.EndPos, ATokens.BeginToken.EndPos), mLineBreak +
-        TTextLines.IndentOf(AContext.Text, ATokens.BeginToken.StartPos.Line) + '  inherited;')], True)];
+      AFileName := ABase + mExtension;
     end;
-    AReport.Add(TTextRange.Create(ATokens.NameToken.StartPos, ATokens.NameToken.EndPos),
-      cTexts[TFormsText.NotExecuted].Fmt([AAncestor.Owner, AAncestor.Handler]),
-      TRuleConfidence.High, mFixes);
   end;
+end;
 
-  // Meldet den Handler von AEvent, wenn er den gleichnamigen Handler des Vorfahren ohne inherited ersetzt.
-  procedure CheckEvent(const AEvent: TFormEvent; const AClassName: string);
-  var
-    mAncestor: TFormEvent;
-    mRoutine, mBody: TSyntaxNode;
-    mTokens: THandlerTokens;
+// Formulardatei der Klasse AClassName: über den Index, sonst über die Units AUnits neben der Unit.
+function TInheritedFormHandlerScan.AncestorForm(const AClassName: string; const AUnits: TArray<string>; out AText,
+  AFileName: string):
+  Boolean;
+var
+  mCandidates: TArray<string>;
+  mCandidate, mName: string;
+begin
+  Result := False;
+  AText := '';
+  AFileName := '';
+  if not Assigned(FContext.ReadFile) then
   begin
-    // Nur gleichnamige Handler: ein anderer Name ersetzt den Handler des Vorfahren bewusst.
-    if not FindInherited(AEvent, mAncestor) or not SameText(mAncestor.Handler, AEvent.Handler) then
+    Exit;
+  end;
+  mName := Copy(AClassName, LastDelimiter('.', AClassName) + 1, MaxInt);
+  mCandidates := IndexedUnits(mName) + AUnits;
+  for mCandidate in mCandidates do
+  begin
+    if FormOf(mCandidate, mName, AText, AFileName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+// Vorfahr von AClassName aus dem Quelltext der Unit neben AFormFile ('' ohne).
+function TInheritedFormHandlerScan.ParentInFile(const AClassName, AFormFile: string;
+  out AUnits: TArray<string>): string;
+var
+  mData: TBytes;
+  mFormat_: TFileFormat;
+  mText: string;
+  mMatch: TMatch;
+begin
+  Result := '';
+  AUnits := nil;
+  if not FContext.ReadFile(ChangeFileExt(AFormFile, '.pas'), mData) then
+  begin
+    Exit;
+  end;
+  mText := TFileEncoding.Decode(mData, mFormat_);
+  AUnits := TUsesClauses.UsedUnitsOf(mText);
+  mMatch := TRegEx.Match(mText, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
+  if mMatch.Success then
+  begin
+    Result := mMatch.Groups[1].Value;
+  end;
+end;
+
+function TInheritedFormHandlerScan.FindInherited(const AEvent: TFormEvent; out AFound: TFormEvent): Boolean;
+var
+  mEvent: TFormEvent;
+begin
+  for mEvent in FInherited_ do
+  begin
+    if SameText(mEvent.Component, AEvent.Component) and SameText(mEvent.Event, AEvent.Event) then
+    begin
+      AFound := mEvent;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TInheritedFormHandlerScan.CollectAncestors(const AClassName: string);
+var
+  mParent, mText, mFileName: string;
+  mUnits, mMore: TArray<string>;
+  mLevel: Integer;
+  mParsed: TDfmDocument;
+  mIsInherited: Boolean;
+  mEvents: TArray<TFormEvent>;
+  mEvent, mFound: TFormEvent;
+begin
+  mParent := AClassName;
+  mUnits := FUsedUnits;
+  for mLevel := 1 to 8 do
+  begin
+    if not AncestorForm(mParent, mUnits, mText, mFileName) then
     begin
       Exit;
     end;
-    mRoutine := FindRoutine(AClassName + '.' + AEvent.Handler);
-    mBody := nil;
-    if mRoutine <> nil then
-    begin
-      mBody := TRoutineBody.BodyOf(mRoutine);
+    mParsed := TDfmParser.Parse(mText);
+    try
+      mEvents := nil;
+      CollectEvents(mParsed.Root, True, mParsed.Root.TypeName, mEvents);
+      mIsInherited := mParsed.Root.Kind = TDfmObjectKind.Inherited_;
+    finally
+      mParsed.Free;
     end;
-    if mBody = nil then
+    // Der nächste Vorfahr gewinnt.
+    for mEvent in mEvents do
+    begin
+      if not FindInherited(mEvent, mFound) then
+      begin
+        FInherited_ := FInherited_ + [mEvent];
+      end;
+    end;
+    if not mIsInherited then
     begin
       Exit;
     end;
-    mTokens := HandlerTokens(mRoutine, mBody, AEvent.Handler);
-    if not mTokens.HasInherited and mTokens.HasName then
+    mParent := ParentInFile(Copy(mParent, LastDelimiter('.', mParent) + 1, MaxInt), mFileName, mMore);
+    if mParent = '' then
     begin
-      ReportHandler(mAncestor, mTokens);
+      Exit;
+    end;
+    mUnits := mUnits + mMore;
+  end;
+end;
+
+function TInheritedFormHandlerScan.FindRoutine(const AName: string): TSyntaxNode;
+var
+  mRoutine: TSyntaxNode;
+begin
+  for mRoutine in TRuleDerived.Routines(TRuleDerived.Open(FContext), FContext) do
+  begin
+    if SameText(mRoutine.Name, AName) then
+    begin
+      Exit(mRoutine);
     end;
   end;
+  Result := nil;
+end;
 
+// Name, begin und inherited der Routine ARoutine mit dem Rumpf ABody, die den Handler AHandler implementiert.
+function TInheritedFormHandlerScan.HandlerTokens(ARoutine, ABody: TSyntaxNode; const AHandler: string): THandlerTokens;
+var
+  mIndex: Integer;
+  mToken: TPascalToken;
+begin
+  Result := Default(THandlerTokens);
+  for mIndex := FContext.Tree.FirstTokenFrom(ARoutine.StartOffset) to High(FContext.Tree.Tokens) do
+  begin
+    mToken := FContext.Tree.Tokens[mIndex];
+    if (mToken.Offset < ARoutine.StartOffset) or (mToken.Offset >= ARoutine.EndOffset) or
+      (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      Continue;
+    end;
+    if not Result.HasName and (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AHandler) then
+    begin
+      Result.HasName := True;
+      Result.NameToken := mToken;
+    end;
+    if not Result.HasBegin and (mToken.Offset >= ABody.StartOffset) and mToken.IsKeyword('begin') then
+    begin
+      Result.HasBegin := True;
+      Result.BeginToken := mToken;
+    end;
+    Result.HasInherited := Result.HasInherited or ((mToken.Offset >= ABody.StartOffset) and
+      mToken.IsKeyword('inherited'));
+  end;
+end;
+
+// Ereignisse der eigenen Formulardatei, wenn sie geerbt ist (inherited); AClassName: ihre Klasse.
+function TInheritedFormHandlerScan.OwnEvents(out AClassName: string): TArray<TFormEvent>;
+var
+  mDocument: TDfmDocument;
+begin
+  Result := nil;
+  AClassName := '';
+  mDocument := TDfmParser.Parse(FContext.FormText);
+  try
+    if (mDocument.Root <> nil) and (mDocument.Root.Kind = TDfmObjectKind.Inherited_) then
+    begin
+      AClassName := mDocument.Root.TypeName;
+      CollectEvents(mDocument.Root, True, AClassName, Result);
+    end;
+  finally
+    mDocument.Free;
+  end;
+end;
+
+procedure TInheritedFormHandlerScan.ReportHandler(const AAncestor: TFormEvent; const ATokens: THandlerTokens);
+var
+  mFixes: TArray<TRuleFix>;
+  mLineBreak: string;
+begin
+  mFixes := nil;
+  if ATokens.HasBegin then
+  begin
+    mLineBreak := TTextLines.LineBreakOf(FContext.Text);
+    mFixes := [TRuleFix.Create(cTexts[TFormsText.InsertInherited].Text, [TRuleEdit.Create(TTextRange.Create(
+      ATokens.BeginToken.EndPos, ATokens.BeginToken.EndPos), mLineBreak +
+      TTextLines.IndentOf(FContext.Text, ATokens.BeginToken.StartPos.Line) + '  inherited;')], True)];
+  end;
+  FReport.Add(TTextRange.Create(ATokens.NameToken.StartPos, ATokens.NameToken.EndPos),
+    cTexts[TFormsText.NotExecuted].Fmt([AAncestor.Owner, AAncestor.Handler]),
+    TRuleConfidence.High, mFixes);
+end;
+
+// Meldet den Handler von AEvent, wenn er den gleichnamigen Handler des Vorfahren ohne inherited ersetzt.
+procedure TInheritedFormHandlerScan.CheckEvent(const AEvent: TFormEvent; const AClassName: string);
+var
+  mAncestor: TFormEvent;
+  mRoutine, mBody: TSyntaxNode;
+  mTokens: THandlerTokens;
+begin
+  // Nur gleichnamige Handler: ein anderer Name ersetzt den Handler des Vorfahren bewusst.
+  if not FindInherited(AEvent, mAncestor) or not SameText(mAncestor.Handler, AEvent.Handler) then
+  begin
+    Exit;
+  end;
+  mRoutine := FindRoutine(AClassName + '.' + AEvent.Handler);
+  mBody := nil;
+  if mRoutine <> nil then
+  begin
+    mBody := TRoutineBody.BodyOf(mRoutine);
+  end;
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  mTokens := HandlerTokens(mRoutine, mBody, AEvent.Handler);
+  if not mTokens.HasInherited and mTokens.HasName then
+  begin
+    ReportHandler(mAncestor, mTokens);
+  end;
+end;
+
+procedure TInheritedFormHandlerScan.Run;
 var
   mClassNode: TSyntaxNode;
   mClassName: string;
   mOwn: TArray<TFormEvent>;
   mEvent: TFormEvent;
 begin
-  if (AContext.FormText = '') or (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
-    not ContainsText(AContext.FormText, 'inherited') then
+  if (FContext.FormText = '') or (FContext.Tree = nil) or (FContext.Tree.Root = nil) or
+    not ContainsText(FContext.FormText, 'inherited') then
   begin
     Exit;
   end;
@@ -1062,18 +1136,26 @@ begin
   begin
     Exit;
   end;
-  mClassNode := FindClassDecl(AContext.Tree.Root, mClassName);
+  mClassNode := FindClassDecl(FContext.Tree.Root, mClassName);
   if (mClassNode = nil) or (mClassNode.ChildCount = 0) or (mClassNode[0].Kind <> TSyntaxKind.TypeReference) then
   begin
     Exit;
   end;
-  mUsedUnits := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
-  mInherited_ := nil;
+  FUsedUnits := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
+  FInherited_ := nil;
   CollectAncestors(mClassNode[0].Name);
   for mEvent in mOwn do
   begin
     CheckEvent(mEvent, mClassName);
   end;
+end;
+
+procedure TInheritedFormHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TInheritedFormHandlerScan;
+begin
+  mScan := TInheritedFormHandlerScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TSelfFreeInEventHandlerRule }
@@ -1090,223 +1172,261 @@ begin
   Result := ContainsText(AText, 'Free') or ContainsText(AText, 'Destroy') or ContainsText(AText, 'DisposeOf');
 end;
 
-procedure TSelfFreeInEventHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mEvents: TArray<TFormEvent>;
-  mClassName: string;
-  mVariables: TArray<string>;
-
-  function NodeText(ANode: TSyntaxNode): string;
-  begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+type
+  /// <summary>Ein Lauf von TSelfFreeInEventHandlerRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TSelfFreeInEventHandlerScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FEvents: TArray<TFormEvent>;
+    FClassName: string;
+    FVariables: TArray<string>;
+    function NodeText(ANode: TSyntaxNode): string;
+    function FreesSelf(const AStatement: string): Boolean;
+    function EventOf(const AMethod: string): string;
+    function HandlerOf(ARoutine: TSyntaxNode; out AEvent: string; out ABody: TSyntaxNode; out AIsClose: Boolean):
+      Boolean;
+    function CallStatements(ABody: TSyntaxNode): TArray<TSyntaxNode>;
+    procedure ReportFree(AStatement: TSyntaxNode; const AEvent: string; AIsClose: Boolean);
+    procedure CheckRoutine(ARoutine: TSyntaxNode);
+    function ReadForm(out AIsForm: Boolean): Boolean;
+    function IsFormClass(AClassNode: TSyntaxNode; AIsForm: Boolean): Boolean;
+    function FormVariables(const ACache: IRuleDerivedCache): TArray<string>;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  // Gibt die Anweisung das Formular selbst frei?
-  function FreesSelf(const AStatement: string): Boolean;
-  var
-    mText, mName: string;
+{ TSelfFreeInEventHandlerScan }
+
+constructor TSelfFreeInEventHandlerScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TSelfFreeInEventHandlerScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+// Gibt die Anweisung das Formular selbst frei?
+function TSelfFreeInEventHandlerScan.FreesSelf(const AStatement: string): Boolean;
+var
+  mText, mName: string;
+begin
+  mText := LowerCase(StringReplace(StringReplace(StringReplace(AStatement, ' ', '', [rfReplaceAll]), #9, '',
+    [rfReplaceAll]), ';', '', [rfReplaceAll]));
+  mText := StringReplace(StringReplace(mText, #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
+  if MatchStr(mText, ['free', 'self.free', 'destroy', 'self.destroy', 'disposeof', 'self.disposeof',
+    'freeandnil(self)']) then
   begin
-    mText := LowerCase(StringReplace(StringReplace(StringReplace(AStatement, ' ', '', [rfReplaceAll]), #9, '',
-      [rfReplaceAll]), ';', '', [rfReplaceAll]));
-    mText := StringReplace(StringReplace(mText, #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
-    if MatchStr(mText, ['free', 'self.free', 'destroy', 'self.destroy', 'disposeof', 'self.disposeof',
-      'freeandnil(self)']) then
+    Exit(True);
+  end;
+  for mName in FVariables do
+  begin
+    if MatchStr(mText, [LowerCase(mName) + '.free', LowerCase(mName) + '.destroy', LowerCase(mName) + '.disposeof',
+      'freeandnil(' + LowerCase(mName) + ')']) then
     begin
       Exit(True);
     end;
-    for mName in mVariables do
+  end;
+  Result := False;
+end;
+
+// Ereignis der Formulardatei, das AMethod als Handler hat; '' ohne.
+function TSelfFreeInEventHandlerScan.EventOf(const AMethod: string): string;
+var
+  mEvent: TFormEvent;
+begin
+  for mEvent in FEvents do
+  begin
+    if SameText(mEvent.Handler, AMethod) then
     begin
-      if MatchStr(mText, [LowerCase(mName) + '.free', LowerCase(mName) + '.destroy', LowerCase(mName) + '.disposeof',
-        'freeandnil(' + LowerCase(mName) + ')']) then
-      begin
-        Exit(True);
-      end;
+      Exit(mEvent.Event);
     end;
+  end;
+  Result := '';
+end;
+
+// Rumpf ABody eines Handlers der Klasse: ein Ereignis der Formulardatei (AEvent) oder eine Methode mit
+// Sender: TObject; AIsClose: OnClose mit var Action: TCloseAction.
+function TSelfFreeInEventHandlerScan.HandlerOf(ARoutine: TSyntaxNode; out AEvent: string; out ABody: TSyntaxNode;
+  out AIsClose: Boolean):
+  Boolean;
+var
+  mMethod, mHeader: string;
+begin
+  Result := False;
+  AEvent := '';
+  AIsClose := False;
+  ABody := ARoutine.FindChild(TSyntaxKind.Block);
+  mMethod := Copy(ARoutine.Name, Length(FClassName) + 2, MaxInt);
+  if not StartsText(FClassName + '.', ARoutine.Name) or (Pos('.', mMethod) > 0) or (ABody = nil) then
+  begin
+    Exit;
+  end;
+  mHeader := LowerCase(StringReplace(Copy(FContext.Text, ARoutine.StartOffset + 1, ABody.StartOffset -
+    ARoutine.StartOffset), ' ', '', [rfReplaceAll]));
+  AEvent := EventOf(mMethod);
+  AIsClose := ContainsStr(mHeader, 'varaction:tcloseaction');
+  Result := (AEvent <> '') or ContainsStr(mHeader, 'sender:tobject');
+end;
+
+// Aufrufanweisungen im Rumpf ABody. Anonyme Methoden laufen später, with lenkt Free auf ein anderes Objekt um.
+function TSelfFreeInEventHandlerScan.CallStatements(ABody: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mStatements: TArray<TSyntaxNode>;
+begin
+  mStatements := nil;
+  ABody.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if ANode.Kind = TSyntaxKind.CallStatement then
+      begin
+        mStatements := mStatements + [ANode];
+      end;
+      Result := not (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement,
+        TSyntaxKind.RoutineDecl]);
+    end);
+  Result := mStatements;
+end;
+
+procedure TSelfFreeInEventHandlerScan.ReportFree(AStatement: TSyntaxNode; const AEvent: string; AIsClose: Boolean);
+var
+  mWhat, mReplacement, mTitle: string;
+begin
+  mWhat := cTexts[TFormsText.EventHandler].Text;
+  if StartsText('On', AEvent) and (Length(AEvent) > 2) then
+  begin
+    mWhat := Copy(AEvent, 3, MaxInt) + cTexts[TFormsText.HandlerSuffix].Text;
+  end;
+  mReplacement := 'Release';
+  mTitle := cTexts[TFormsText.FreeToRelease].Text;
+  if AIsClose then
+  begin
+    mReplacement := 'Action := caFree';
+    mTitle := cTexts[TFormsText.ReplaceCaFree].Text;
+  end;
+  FReport.Add(TTextRange.Create(AStatement.StartPos, AStatement.EndPos),
+    cTexts[TFormsText.FreesItself].Fmt([mWhat]),
+    TRuleConfidence.High, [TRuleFix.Create(mTitle, [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos,
+    AStatement.EndPos), mReplacement)], True)]);
+end;
+
+procedure TSelfFreeInEventHandlerScan.CheckRoutine(ARoutine: TSyntaxNode);
+var
+  mEvent: string;
+  mBody, mStatement: TSyntaxNode;
+  mIsClose: Boolean;
+begin
+  if not HandlerOf(ARoutine, mEvent, mBody, mIsClose) then
+  begin
+    Exit;
+  end;
+  for mStatement in CallStatements(mBody) do
+  begin
+    if FreesSelf(NodeText(mStatement)) then
+    begin
+      ReportFree(mStatement, mEvent, mIsClose);
+    end;
+  end;
+end;
+
+// Liest Klasse und Ereignisse der Formulardatei; AIsForm: mit ClientWidth bzw. ClientHeight. False ohne Wurzel.
+function TSelfFreeInEventHandlerScan.ReadForm(out AIsForm: Boolean): Boolean;
+var
+  mDocument: TDfmDocument;
+  mProp: TDfmProperty;
+begin
+  AIsForm := False;
+  mDocument := TDfmParser.Parse(FContext.FormText);
+  try
+    Result := mDocument.Root <> nil;
+    if not Result then
+    begin
+      Exit;
+    end;
+    FClassName := mDocument.Root.TypeName;
+    for mProp in mDocument.Root.Properties do
+    begin
+      AIsForm := AIsForm or SameText(mProp.Name, 'ClientWidth') or SameText(mProp.Name, 'ClientHeight');
+    end;
+    FEvents := nil;
+    CollectEvents(mDocument.Root, True, FClassName, FEvents);
+  finally
+    mDocument.Free;
+  end;
+end;
+
+// Formular nach dem Vorfahren der Klasse AClassNode; sonst bleibt es bei AIsForm aus der Formulardatei.
+function TSelfFreeInEventHandlerScan.IsFormClass(AClassNode: TSyntaxNode; AIsForm: Boolean): Boolean;
+var
+  mParent: string;
+begin
+  Result := AIsForm;
+  if (AClassNode.ChildCount = 0) or (AClassNode[0].Kind <> TSyntaxKind.TypeReference) then
+  begin
+    Exit;
+  end;
+  mParent := AClassNode[0].Name;
+  if MatchText(mParent, ['TForm', 'TCustomForm', 'Vcl.Forms.TForm', 'FMX.Forms.TForm']) then
+  begin
+    Result := True;
+  end
+  else if MatchText(mParent, ['TFrame', 'TDataModule', 'Vcl.Forms.TFrame', 'System.Classes.TDataModule']) then
+  begin
     Result := False;
   end;
+end;
 
-  // Ereignis der Formulardatei, das AMethod als Handler hat; '' ohne.
-  function EventOf(const AMethod: string): string;
-  var
-    mEvent: TFormEvent;
+// Globale Variablen der Unit vom Typ der Klasse.
+function TSelfFreeInEventHandlerScan.FormVariables(const ACache: IRuleDerivedCache): TArray<string>;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := nil;
+  for mSymbol in TRuleDerived.UnitIndex(ACache, FContext).Symbols do
   begin
-    for mEvent in mEvents do
+    if (mSymbol.Kind = TIndexSymbolKind.Variable) and (mSymbol.Container = '') and
+      SameText(mSymbol.TypeName, FClassName) then
     begin
-      if SameText(mEvent.Handler, AMethod) then
-      begin
-        Exit(mEvent.Event);
-      end;
-    end;
-    Result := '';
-  end;
-
-  // Rumpf ABody eines Handlers der Klasse: ein Ereignis der Formulardatei (AEvent) oder eine Methode mit
-  // Sender: TObject; AIsClose: OnClose mit var Action: TCloseAction.
-  function HandlerOf(ARoutine: TSyntaxNode; out AEvent: string; out ABody: TSyntaxNode; out AIsClose: Boolean):
-    Boolean;
-  var
-    mMethod, mHeader: string;
-  begin
-    Result := False;
-    AEvent := '';
-    AIsClose := False;
-    ABody := ARoutine.FindChild(TSyntaxKind.Block);
-    mMethod := Copy(ARoutine.Name, Length(mClassName) + 2, MaxInt);
-    if not StartsText(mClassName + '.', ARoutine.Name) or (Pos('.', mMethod) > 0) or (ABody = nil) then
-    begin
-      Exit;
-    end;
-    mHeader := LowerCase(StringReplace(Copy(AContext.Text, ARoutine.StartOffset + 1, ABody.StartOffset -
-      ARoutine.StartOffset), ' ', '', [rfReplaceAll]));
-    AEvent := EventOf(mMethod);
-    AIsClose := ContainsStr(mHeader, 'varaction:tcloseaction');
-    Result := (AEvent <> '') or ContainsStr(mHeader, 'sender:tobject');
-  end;
-
-  // Aufrufanweisungen im Rumpf ABody. Anonyme Methoden laufen später, with lenkt Free auf ein anderes Objekt um.
-  function CallStatements(ABody: TSyntaxNode): TArray<TSyntaxNode>;
-  var
-    mStatements: TArray<TSyntaxNode>;
-  begin
-    mStatements := nil;
-    ABody.Walk(
-      function(ANode: TSyntaxNode): Boolean
-      begin
-        if ANode.Kind = TSyntaxKind.CallStatement then
-        begin
-          mStatements := mStatements + [ANode];
-        end;
-        Result := not (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement,
-          TSyntaxKind.RoutineDecl]);
-      end);
-    Result := mStatements;
-  end;
-
-  procedure ReportFree(AStatement: TSyntaxNode; const AEvent: string; AIsClose: Boolean);
-  var
-    mWhat, mReplacement, mTitle: string;
-  begin
-    mWhat := cTexts[TFormsText.EventHandler].Text;
-    if StartsText('On', AEvent) and (Length(AEvent) > 2) then
-    begin
-      mWhat := Copy(AEvent, 3, MaxInt) + cTexts[TFormsText.HandlerSuffix].Text;
-    end;
-    mReplacement := 'Release';
-    mTitle := cTexts[TFormsText.FreeToRelease].Text;
-    if AIsClose then
-    begin
-      mReplacement := 'Action := caFree';
-      mTitle := cTexts[TFormsText.ReplaceCaFree].Text;
-    end;
-    AReport.Add(TTextRange.Create(AStatement.StartPos, AStatement.EndPos),
-      cTexts[TFormsText.FreesItself].Fmt([mWhat]),
-      TRuleConfidence.High, [TRuleFix.Create(mTitle, [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos,
-      AStatement.EndPos), mReplacement)], True)]);
-  end;
-
-  procedure CheckRoutine(ARoutine: TSyntaxNode);
-  var
-    mEvent: string;
-    mBody, mStatement: TSyntaxNode;
-    mIsClose: Boolean;
-  begin
-    if not HandlerOf(ARoutine, mEvent, mBody, mIsClose) then
-    begin
-      Exit;
-    end;
-    for mStatement in CallStatements(mBody) do
-    begin
-      if FreesSelf(NodeText(mStatement)) then
-      begin
-        ReportFree(mStatement, mEvent, mIsClose);
-      end;
+      Result := Result + [mSymbol.Name];
     end;
   end;
+end;
 
-  // Liest Klasse und Ereignisse der Formulardatei; AIsForm: mit ClientWidth bzw. ClientHeight. False ohne Wurzel.
-  function ReadForm(out AIsForm: Boolean): Boolean;
-  var
-    mDocument: TDfmDocument;
-    mProp: TDfmProperty;
-  begin
-    AIsForm := False;
-    mDocument := TDfmParser.Parse(AContext.FormText);
-    try
-      Result := mDocument.Root <> nil;
-      if not Result then
-      begin
-        Exit;
-      end;
-      mClassName := mDocument.Root.TypeName;
-      for mProp in mDocument.Root.Properties do
-      begin
-        AIsForm := AIsForm or SameText(mProp.Name, 'ClientWidth') or SameText(mProp.Name, 'ClientHeight');
-      end;
-      mEvents := nil;
-      CollectEvents(mDocument.Root, True, mClassName, mEvents);
-    finally
-      mDocument.Free;
-    end;
-  end;
-
-  // Formular nach dem Vorfahren der Klasse AClassNode; sonst bleibt es bei AIsForm aus der Formulardatei.
-  function IsFormClass(AClassNode: TSyntaxNode; AIsForm: Boolean): Boolean;
-  var
-    mParent: string;
-  begin
-    Result := AIsForm;
-    if (AClassNode.ChildCount = 0) or (AClassNode[0].Kind <> TSyntaxKind.TypeReference) then
-    begin
-      Exit;
-    end;
-    mParent := AClassNode[0].Name;
-    if MatchText(mParent, ['TForm', 'TCustomForm', 'Vcl.Forms.TForm', 'FMX.Forms.TForm']) then
-    begin
-      Result := True;
-    end
-    else if MatchText(mParent, ['TFrame', 'TDataModule', 'Vcl.Forms.TFrame', 'System.Classes.TDataModule']) then
-    begin
-      Result := False;
-    end;
-  end;
-
-  // Globale Variablen der Unit vom Typ der Klasse.
-  function FormVariables(const ACache: IRuleDerivedCache): TArray<string>;
-  var
-    mSymbol: TIndexSymbol;
-  begin
-    Result := nil;
-    for mSymbol in TRuleDerived.UnitIndex(ACache, AContext).Symbols do
-    begin
-      if (mSymbol.Kind = TIndexSymbolKind.Variable) and (mSymbol.Container = '') and
-        SameText(mSymbol.TypeName, mClassName) then
-      begin
-        Result := Result + [mSymbol.Name];
-      end;
-    end;
-  end;
-
+procedure TSelfFreeInEventHandlerScan.Run;
 var
   mRoutine, mClassNode: TSyntaxNode;
   mCache: IRuleDerivedCache;
   mIsForm: Boolean;
 begin
-  if (AContext.FormText = '') or (AContext.Tree = nil) or (AContext.Tree.Root = nil) or
-    not MentionsFree(AContext.Text) or not ReadForm(mIsForm) then
+  if (FContext.FormText = '') or (FContext.Tree = nil) or (FContext.Tree.Root = nil) or
+    not MentionsFree(FContext.Text) or not ReadForm(mIsForm) then
   begin
     Exit;
   end;
-  mClassNode := FindClassDecl(AContext.Tree.Root, mClassName);
+  mClassNode := FindClassDecl(FContext.Tree.Root, FClassName);
   if (mClassNode = nil) or not IsFormClass(mClassNode, mIsForm) then
   begin
     Exit;
   end;
-  mCache := TRuleDerived.Open(AContext);
-  mVariables := FormVariables(mCache);
-  for mRoutine in TRuleDerived.Routines(mCache, AContext) do
+  mCache := TRuleDerived.Open(FContext);
+  FVariables := FormVariables(mCache);
+  for mRoutine in TRuleDerived.Routines(mCache, FContext) do
   begin
     CheckRoutine(mRoutine);
   end;
+end;
+
+procedure TSelfFreeInEventHandlerRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TSelfFreeInEventHandlerScan;
+begin
+  mScan := TSelfFreeInEventHandlerScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 procedure RegisterFormRules(const ARegistry: TRuleRegistry);

@@ -68,305 +68,352 @@ begin
     cTexts[TStyleDeclarationsText.PublicFieldTitle].Text);
 end;
 
-procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-var
-  mLines: TArray<string>;
-  mLineBreak: string;
-  mIncludeRecords: Boolean;
-
-  function NodeText(ANode: TSyntaxNode): string;
-  begin
-    Result := Trim(Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+type
+  /// <summary>Ein Lauf von TPublicFieldRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TPublicFieldScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FLines: TArray<string>;
+    FLineBreak: string;
+    FIncludeRecords: Boolean;
+    function NodeText(ANode: TSyntaxNode): string;
+    function LineOf(ALine: Integer): string;
+    function AloneInLine(ANode: TSyntaxNode): Boolean;
+    function HasMember(AType: TSyntaxNode; const AName: string): Boolean;
+    function FieldNameOf(const AName: string): string;
+    function Prefixed(const AName: string): Boolean;
+    function Encapsulable(AType, AField: TSyntaxNode): Boolean;
+    function IndexOfChild(AParent, AChild: TSyntaxNode): Integer;
+    function SectionEdits(AType, AField, ASection: TSyntaxNode): TArray<TTextEdit>;
+    function MemberText(const AName, ATypeName, AIndent, AVisibility: string): string;
+    function Encapsulate(AType, AField, ASection: TSyntaxNode; const AVisibility: string;
+      out AFix: TRuleFix): Boolean;
+    function FieldCounts(const AVisibility: string; AImplicitCounts: Boolean): Boolean;
+    function FieldFixes(AType, AField, ASection: TSyntaxNode; const AVisibility, AImplicit: string): TArray<TRuleFix>;
+    procedure CheckType(AType: TSyntaxNode; AImplicitCounts: Boolean; const AImplicit: string);
+    function PlainClass(AClass: TSyntaxNode): Boolean;
+    function HiddenSection(const AVisibility: string): Boolean;
+    procedure PushChildren(ANode: TSyntaxNode; AHidden: Boolean; APending: TStack<TSyntaxNode>;
+      AHiddenFlags: TStack<Boolean>);
+    procedure Visit(ANode: TSyntaxNode);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
   end;
 
-  function LineOf(ALine: Integer): string;
-  begin
-    Result := '';
-    if (ALine >= 0) and (ALine <= High(mLines)) then
-    begin
-      Result := mLines[ALine];
-    end;
-  end;
+{ TPublicFieldScan }
 
-  // Steht ANode allein in seiner Zeile (nur Leerraum davor und dahinter)?
-  function AloneInLine(ANode: TSyntaxNode): Boolean;
-  begin
-    Result := (ANode.StartPos.Line = ANode.EndPos.Line) and
-      (Trim(Copy(LineOf(ANode.StartPos.Line), 1, ANode.StartPos.Character)) = '') and
-      (Trim(Copy(LineOf(ANode.EndPos.Line), ANode.EndPos.Character + 1, MaxInt)) = '');
-  end;
-
-  function HasMember(AType: TSyntaxNode; const AName: string): Boolean;
-  var
-    mIndex: Integer;
-    mName: string;
-  begin
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      if AType[mIndex].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
-      begin
-        for mName in AType[mIndex].Name.Split([',']) do
-        begin
-          if SameText(Trim(mName), AName) then
-          begin
-            Exit(True);
-          end;
-        end;
-      end;
-    end;
-    Result := False;
-  end;
-
-  function FieldNameOf(const AName: string): string;
-  begin
-    Result := 'F' + UpperCase(Copy(AName, 1, 1)) + Copy(AName, 2, MaxInt);
-  end;
-
-  // Name mit F-Präfix: Die Property hieße anders als das Feld; Zugriffe von außen gingen verloren.
-  function Prefixed(const AName: string): Boolean;
-  begin
-    Result := (Length(AName) >= 2) and CharInSet(AName[1], ['F', 'f']) and CharInSet(AName[2], ['A'..'Z']);
-  end;
-
-  // Ein Name allein in seiner Zeile, mit Typ, ohne F-Präfix, FName noch frei und end des Typs am Zeilenanfang.
-  function Encapsulable(AType, AField: TSyntaxNode): Boolean;
-  var
-    mName: string;
-  begin
-    mName := Trim(AField.Name);
-    Result := (Pos(',', mName) = 0) and (AField.FindChild(TSyntaxKind.TypeReference) <> nil) and AloneInLine(AField);
-    Result := Result and not Prefixed(mName) and not HasMember(AType, FieldNameOf(mName));
-    Result := Result and (Trim(Copy(LineOf(AType.EndPos.Line), 1, AType.EndPos.Character - 3)) = '');
-  end;
-
-  function IndexOfChild(AParent, AChild: TSyntaxNode): Integer;
-  begin
-    for Result := 0 to AParent.ChildCount - 1 do
-    begin
-      if AParent[Result] = AChild then
-      begin
-        Exit;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  // Einziges Mitglied seines Abschnitts: Das Sichtbarkeitswort geht mit.
-  function SectionEdits(AType, AField, ASection: TSyntaxNode): TArray<TTextEdit>;
-  var
-    mPosition: Integer;
-    mNext: TSyntaxNode;
-  begin
-    Result := nil;
-    if (ASection = nil) or not AloneInLine(ASection) then
-    begin
-      Exit;
-    end;
-    mPosition := IndexOfChild(AType, AField);
-    mNext := nil;
-    if (mPosition >= 0) and (mPosition < AType.ChildCount - 1) then
-    begin
-      mNext := AType[mPosition + 1];
-    end;
-    if (mPosition > 0) and (AType[mPosition - 1] = ASection) and
-      ((mNext = nil) or (mNext.Kind = TSyntaxKind.Visibility))
-      then
-    begin
-      Result := [TTextEdit.Create(TTextRange.Create(ASection.StartPos.Line, 0, ASection.StartPos.Line + 1, 0), '')];
-    end;
-  end;
-
-  // private-Abschnitt mit FName und die Property im alten Abschnitt, vor dem end des Typs.
-  function MemberText(const AName, ATypeName, AIndent, AVisibility: string): string;
-  var
-    mFieldName: string;
-  begin
-    mFieldName := FieldNameOf(AName);
-    Result := AIndent + 'private' + mLineBreak + AIndent + '  ' + mFieldName + ': ' + ATypeName + ';' + mLineBreak +
-      AIndent + AVisibility + mLineBreak + AIndent + '  property ' + AName + ': ' + ATypeName + ' read ' + mFieldName +
-      ' write ' + mFieldName + ';' + mLineBreak;
-  end;
-
-  // FName in private am Ende des Typs, Property im alten Abschnitt; der leere Abschnitt fällt weg.
-  function Encapsulate(AType, AField, ASection: TSyntaxNode; const AVisibility: string;
-    out AFix: TRuleFix): Boolean;
-  var
-    mName, mTypeName, mIndent: string;
-    mEndLine: Integer;
-    mEdits: TArray<TTextEdit>;
-  begin
-    Result := Encapsulable(AType, AField);
-    if not Result then
-    begin
-      Exit;
-    end;
-    mName := Trim(AField.Name);
-    mTypeName := NodeText(AField.FindChild(TSyntaxKind.TypeReference));
-    mEndLine := AType.EndPos.Line;
-    mIndent := TTextLines.IndentOf(LineOf(mEndLine));
-    mEdits := SectionEdits(AType, AField, ASection);
-    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
-    mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mEndLine, 0, mEndLine, 0),
-      MemberText(mName, mTypeName, mIndent,
-      AVisibility))];
-    AFix := TRuleFix.Create(cTexts[TStyleDeclarationsText.Encapsulate].Text, mEdits);
-  end;
-
-  // Zählt ein Feld im Abschnitt AVisibility ('' = ohne Sichtbarkeitswort)?
-  function FieldCounts(const AVisibility: string; AImplicitCounts: Boolean): Boolean;
-  begin
-    if AVisibility = '' then
-    begin
-      Result := AImplicitCounts;
-    end
-    else
-    begin
-      Result := MatchText(AVisibility, ['public', 'published']);
-    end;
-  end;
-
-  function FieldFixes(AType, AField, ASection: TSyntaxNode; const AVisibility, AImplicit: string): TArray<TRuleFix>;
-  var
-    mFix: TRuleFix;
-    mEncapsulated: Boolean;
-  begin
-    if AVisibility = '' then
-    begin
-      mEncapsulated := Encapsulate(AType, AField, nil, AImplicit, mFix);
-    end
-    else
-    begin
-      mEncapsulated := Encapsulate(AType, AField, ASection, AVisibility, mFix);
-    end;
-    Result := nil;
-    if mEncapsulated then
-    begin
-      Result := [mFix];
-    end;
-  end;
-
-  procedure CheckType(AType: TSyntaxNode; AImplicitCounts: Boolean; const AImplicit: string);
-  var
-    mIndex: Integer;
-    mChild, mSection: TSyntaxNode;
-    mVisibility, mName: string;
-    mFixes: TArray<TRuleFix>;
-  begin
-    mVisibility := '';
-    mSection := nil;
-    for mIndex := 0 to AType.ChildCount - 1 do
-    begin
-      mChild := AType[mIndex];
-      if mChild.Kind = TSyntaxKind.Visibility then
-      begin
-        mVisibility := mChild.Name;
-        mSection := mChild;
-        Continue;
-      end;
-      if (mChild.Kind <> TSyntaxKind.Field) or not FieldCounts(mVisibility, AImplicitCounts) then
-      begin
-        Continue;
-      end;
-      mFixes := FieldFixes(AType, mChild, mSection, mVisibility, AImplicit);
-      for mName in mChild.Name.Split([',']) do
-      begin
-        AReport.Add(TTextRange.Create(mChild.StartPos, mChild.EndPos),
-          cTexts[TStyleDeclarationsText.PublicField].Fmt([Trim(mName)]), mFixes);
-      end;
-    end;
-  end;
-
-  // Abschnitt ohne Sichtbarkeitswort: bei Klassen ohne Vorfahren public, sonst oft Felder des Designers.
-  function PlainClass(AClass: TSyntaxNode): Boolean;
-  var
-    mAncestor: TSyntaxNode;
-  begin
-    mAncestor := AClass.FindChild(TSyntaxKind.TypeReference);
-    Result := (mAncestor = nil) or SameText(NodeText(mAncestor), 'TObject');
-  end;
-
-  // Abschnitt, aus dem von außen niemand zugreift (private, protected, strict …).
-  function HiddenSection(const AVisibility: string): Boolean;
-  begin
-    Result := (AVisibility <> '') and not MatchText(AVisibility, ['public', 'published', 'automated']);
-  end;
-
-  // Kinder auf den Stapel, rückwärts; Typen in einem verborgenen Abschnitt erben „verborgen“ (TEntry unter
-  // protected type ist eine Hilfsklasse, ihre Felder sind von außen nicht erreichbar).
-  procedure PushChildren(ANode: TSyntaxNode; AHidden: Boolean; APending: TStack<TSyntaxNode>;
-    AHiddenFlags: TStack<Boolean>);
-  var
-    mIndex: Integer;
-    mFlags: TArray<Boolean>;
-    mVisibility: string;
-  begin
-    SetLength(mFlags, ANode.ChildCount);
-    mVisibility := '';
-    for mIndex := 0 to ANode.ChildCount - 1 do
-    begin
-      if ANode[mIndex].Kind = TSyntaxKind.Visibility then
-      begin
-        mVisibility := ANode[mIndex].Name;
-      end;
-      mFlags[mIndex] := AHidden or (ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) and
-        HiddenSection(mVisibility);
-    end;
-    for mIndex := ANode.ChildCount - 1 downto 0 do
-    begin
-      APending.Push(ANode[mIndex]);
-      AHiddenFlags.Push(mFlags[mIndex]);
-    end;
-  end;
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mHiddenFlags: TStack<Boolean>;
-    mNode: TSyntaxNode;
-    mHidden: Boolean;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    mHiddenFlags := TStack<Boolean>.Create;
-    try
-      mPending.Push(ANode);
-      mHiddenFlags.Push(False);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        mHidden := mHiddenFlags.Pop;
-        case mNode.Kind of
-          TSyntaxKind.ClassType:
-            if not mHidden then
-            begin
-              CheckType(mNode, PlainClass(mNode), 'public');
-            end;
-          TSyntaxKind.RecordType:
-            if mIncludeRecords and not mHidden then
-            begin
-              CheckType(mNode, True, 'public');
-            end;
-          TSyntaxKind.Block, TSyntaxKind.AsmBlock:
-            Continue;
-        else
-          // Übrige Werte bewusst ohne Wirkung.
-        end;
-        PushChildren(mNode, mHidden, mPending, mHiddenFlags);
-      end;
-    finally
-      mHiddenFlags.Free;
-      mPending.Free;
-    end;
-  end;
-
+constructor TPublicFieldScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TPublicFieldScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Trim(Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset));
+end;
+
+function TPublicFieldScan.LineOf(ALine: Integer): string;
+begin
+  Result := '';
+  if (ALine >= 0) and (ALine <= High(FLines)) then
+  begin
+    Result := FLines[ALine];
+  end;
+end;
+
+// Steht ANode allein in seiner Zeile (nur Leerraum davor und dahinter)?
+function TPublicFieldScan.AloneInLine(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.StartPos.Line = ANode.EndPos.Line) and
+    (Trim(Copy(LineOf(ANode.StartPos.Line), 1, ANode.StartPos.Character)) = '') and
+    (Trim(Copy(LineOf(ANode.EndPos.Line), ANode.EndPos.Character + 1, MaxInt)) = '');
+end;
+
+function TPublicFieldScan.HasMember(AType: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    if AType[mIndex].Kind in [TSyntaxKind.Field, TSyntaxKind.PropertyDecl, TSyntaxKind.RoutineHeader] then
+    begin
+      for mName in AType[mIndex].Name.Split([',']) do
+      begin
+        if SameText(Trim(mName), AName) then
+        begin
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+function TPublicFieldScan.FieldNameOf(const AName: string): string;
+begin
+  Result := 'F' + UpperCase(Copy(AName, 1, 1)) + Copy(AName, 2, MaxInt);
+end;
+
+// Name mit F-Präfix: Die Property hieße anders als das Feld; Zugriffe von außen gingen verloren.
+function TPublicFieldScan.Prefixed(const AName: string): Boolean;
+begin
+  Result := (Length(AName) >= 2) and CharInSet(AName[1], ['F', 'f']) and CharInSet(AName[2], ['A'..'Z']);
+end;
+
+// Ein Name allein in seiner Zeile, mit Typ, ohne F-Präfix, FName noch frei und end des Typs am Zeilenanfang.
+function TPublicFieldScan.Encapsulable(AType, AField: TSyntaxNode): Boolean;
+var
+  mName: string;
+begin
+  mName := Trim(AField.Name);
+  Result := (Pos(',', mName) = 0) and (AField.FindChild(TSyntaxKind.TypeReference) <> nil) and AloneInLine(AField);
+  Result := Result and not Prefixed(mName) and not HasMember(AType, FieldNameOf(mName));
+  Result := Result and (Trim(Copy(LineOf(AType.EndPos.Line), 1, AType.EndPos.Character - 3)) = '');
+end;
+
+function TPublicFieldScan.IndexOfChild(AParent, AChild: TSyntaxNode): Integer;
+begin
+  for Result := 0 to AParent.ChildCount - 1 do
+  begin
+    if AParent[Result] = AChild then
+    begin
+      Exit;
+    end;
+  end;
+  Result := -1;
+end;
+
+// Einziges Mitglied seines Abschnitts: Das Sichtbarkeitswort geht mit.
+function TPublicFieldScan.SectionEdits(AType, AField, ASection: TSyntaxNode): TArray<TTextEdit>;
+var
+  mPosition: Integer;
+  mNext: TSyntaxNode;
+begin
+  Result := nil;
+  if (ASection = nil) or not AloneInLine(ASection) then
   begin
     Exit;
   end;
-  mIncludeRecords := TRuleOptions.Bool(AContext.Options, 'includeRecords', False);
-  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
-  Visit(AContext.Tree.Root);
+  mPosition := IndexOfChild(AType, AField);
+  mNext := nil;
+  if (mPosition >= 0) and (mPosition < AType.ChildCount - 1) then
+  begin
+    mNext := AType[mPosition + 1];
+  end;
+  if (mPosition > 0) and (AType[mPosition - 1] = ASection) and
+    ((mNext = nil) or (mNext.Kind = TSyntaxKind.Visibility))
+    then
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(ASection.StartPos.Line, 0, ASection.StartPos.Line + 1, 0), '')];
+  end;
+end;
+
+// private-Abschnitt mit FName und die Property im alten Abschnitt, vor dem end des Typs.
+function TPublicFieldScan.MemberText(const AName, ATypeName, AIndent, AVisibility: string): string;
+var
+  mFieldName: string;
+begin
+  mFieldName := FieldNameOf(AName);
+  Result := AIndent + 'private' + FLineBreak + AIndent + '  ' + mFieldName + ': ' + ATypeName + ';' + FLineBreak +
+    AIndent + AVisibility + FLineBreak + AIndent + '  property ' + AName + ': ' + ATypeName + ' read ' + mFieldName +
+    ' write ' + mFieldName + ';' + FLineBreak;
+end;
+
+// FName in private am Ende des Typs, Property im alten Abschnitt; der leere Abschnitt fällt weg.
+function TPublicFieldScan.Encapsulate(AType, AField, ASection: TSyntaxNode; const AVisibility: string;
+  out AFix: TRuleFix): Boolean;
+var
+  mName, mTypeName, mIndent: string;
+  mEndLine: Integer;
+  mEdits: TArray<TTextEdit>;
+begin
+  Result := Encapsulable(AType, AField);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mName := Trim(AField.Name);
+  mTypeName := NodeText(AField.FindChild(TSyntaxKind.TypeReference));
+  mEndLine := AType.EndPos.Line;
+  mIndent := TTextLines.IndentOf(LineOf(mEndLine));
+  mEdits := SectionEdits(AType, AField, ASection);
+  mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(AField.StartPos.Line, 0, AField.StartPos.Line + 1, 0), '')];
+  mEdits := mEdits + [TTextEdit.Create(TTextRange.Create(mEndLine, 0, mEndLine, 0),
+    MemberText(mName, mTypeName, mIndent,
+    AVisibility))];
+  AFix := TRuleFix.Create(cTexts[TStyleDeclarationsText.Encapsulate].Text, mEdits);
+end;
+
+// Zählt ein Feld im Abschnitt AVisibility ('' = ohne Sichtbarkeitswort)?
+function TPublicFieldScan.FieldCounts(const AVisibility: string; AImplicitCounts: Boolean): Boolean;
+begin
+  if AVisibility = '' then
+  begin
+    Result := AImplicitCounts;
+  end
+  else
+  begin
+    Result := MatchText(AVisibility, ['public', 'published']);
+  end;
+end;
+
+function TPublicFieldScan.FieldFixes(AType, AField, ASection: TSyntaxNode; const AVisibility,
+  AImplicit: string): TArray<TRuleFix>;
+var
+  mFix: TRuleFix;
+  mEncapsulated: Boolean;
+begin
+  if AVisibility = '' then
+  begin
+    mEncapsulated := Encapsulate(AType, AField, nil, AImplicit, mFix);
+  end
+  else
+  begin
+    mEncapsulated := Encapsulate(AType, AField, ASection, AVisibility, mFix);
+  end;
+  Result := nil;
+  if mEncapsulated then
+  begin
+    Result := [mFix];
+  end;
+end;
+
+procedure TPublicFieldScan.CheckType(AType: TSyntaxNode; AImplicitCounts: Boolean; const AImplicit: string);
+var
+  mIndex: Integer;
+  mChild, mSection: TSyntaxNode;
+  mVisibility, mName: string;
+  mFixes: TArray<TRuleFix>;
+begin
+  mVisibility := '';
+  mSection := nil;
+  for mIndex := 0 to AType.ChildCount - 1 do
+  begin
+    mChild := AType[mIndex];
+    if mChild.Kind = TSyntaxKind.Visibility then
+    begin
+      mVisibility := mChild.Name;
+      mSection := mChild;
+      Continue;
+    end;
+    if (mChild.Kind <> TSyntaxKind.Field) or not FieldCounts(mVisibility, AImplicitCounts) then
+    begin
+      Continue;
+    end;
+    mFixes := FieldFixes(AType, mChild, mSection, mVisibility, AImplicit);
+    for mName in mChild.Name.Split([',']) do
+    begin
+      FReport.Add(TTextRange.Create(mChild.StartPos, mChild.EndPos),
+        cTexts[TStyleDeclarationsText.PublicField].Fmt([Trim(mName)]), mFixes);
+    end;
+  end;
+end;
+
+// Abschnitt ohne Sichtbarkeitswort: bei Klassen ohne Vorfahren public, sonst oft Felder des Designers.
+function TPublicFieldScan.PlainClass(AClass: TSyntaxNode): Boolean;
+var
+  mAncestor: TSyntaxNode;
+begin
+  mAncestor := AClass.FindChild(TSyntaxKind.TypeReference);
+  Result := (mAncestor = nil) or SameText(NodeText(mAncestor), 'TObject');
+end;
+
+// Abschnitt, aus dem von außen niemand zugreift (private, protected, strict …).
+function TPublicFieldScan.HiddenSection(const AVisibility: string): Boolean;
+begin
+  Result := (AVisibility <> '') and not MatchText(AVisibility, ['public', 'published', 'automated']);
+end;
+
+// Kinder auf den Stapel, rückwärts; Typen in einem verborgenen Abschnitt erben „verborgen“ (TEntry unter
+// protected type ist eine Hilfsklasse, ihre Felder sind von außen nicht erreichbar).
+procedure TPublicFieldScan.PushChildren(ANode: TSyntaxNode; AHidden: Boolean; APending: TStack<TSyntaxNode>;
+  AHiddenFlags: TStack<Boolean>);
+var
+  mIndex: Integer;
+  mFlags: TArray<Boolean>;
+  mVisibility: string;
+begin
+  SetLength(mFlags, ANode.ChildCount);
+  mVisibility := '';
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind = TSyntaxKind.Visibility then
+    begin
+      mVisibility := ANode[mIndex].Name;
+    end;
+    mFlags[mIndex] := AHidden or (ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) and
+      HiddenSection(mVisibility);
+  end;
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    APending.Push(ANode[mIndex]);
+    AHiddenFlags.Push(mFlags[mIndex]);
+  end;
+end;
+
+procedure TPublicFieldScan.Visit(ANode: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mHiddenFlags: TStack<Boolean>;
+  mNode: TSyntaxNode;
+  mHidden: Boolean;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  mHiddenFlags := TStack<Boolean>.Create;
+  try
+    mPending.Push(ANode);
+    mHiddenFlags.Push(False);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      mHidden := mHiddenFlags.Pop;
+      case mNode.Kind of
+        TSyntaxKind.ClassType:
+          if not mHidden then
+          begin
+            CheckType(mNode, PlainClass(mNode), 'public');
+          end;
+        TSyntaxKind.RecordType:
+          if FIncludeRecords and not mHidden then
+          begin
+            CheckType(mNode, True, 'public');
+          end;
+        TSyntaxKind.Block, TSyntaxKind.AsmBlock:
+          Continue;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+      PushChildren(mNode, mHidden, mPending, mHiddenFlags);
+    end;
+  finally
+    mHiddenFlags.Free;
+    mPending.Free;
+  end;
+end;
+
+procedure TPublicFieldScan.Run;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  FIncludeRecords := TRuleOptions.Bool(FContext.Options, 'includeRecords', False);
+  FLines := TTextLines.SplitLines(FContext.Text, FLineBreak);
+  Visit(FContext.Tree.Root);
+end;
+
+procedure TPublicFieldRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TPublicFieldScan;
+begin
+  mScan := TPublicFieldScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 { TGlobalVariableRule }

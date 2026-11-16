@@ -652,306 +652,338 @@ begin
     cTexts[TRtlTypePatternsConversionsText.EnumCastTitle].Text);
 end;
 
-procedure TUncheckedEnumCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+type
+  /// <summary>Ein Lauf von TUncheckedEnumCastRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TUncheckedEnumCastScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FCode: TArray<Integer>;
+    FSources: TArray<string>;
+    FLineBreak: string;
+    FLocal: TUnitIndex;
+    function Token(APosition: Integer): TPascalToken;
+    function IsSym(APosition: Integer; const ASymbol: string): Boolean;
+    function IsWord(APosition: Integer): Boolean;
+    function TextOf(AFirst, ALast: Integer): string;
+    function Closing(AOpen: Integer): Integer;
+    function CodeAt(AOffset: Integer): Integer;
+    function EnumIn(const AUnit: TUnitIndex; const AName: string; out ACount: Integer;
+      out AExplicit: Boolean): Boolean;
+    function EnumInfo(const AName: string; out ACount: Integer; out AExplicit: Boolean): Boolean;
+    function SourceIn(AFirst, ALast: Integer): string;
+    function VariableSource(ARoutine: TSyntaxNode; AVariable, ACast: Integer): string;
+    function Fixes(ARoutine: TSyntaxNode; const ATypeName: string; AFirst, ALast: Integer): TArray<TRuleFix>;
+    procedure CheckCast(APosition: Integer);
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TUncheckedEnumCastScan }
+
+constructor TUncheckedEnumCastScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TUncheckedEnumCastScan.Token(APosition: Integer): TPascalToken;
+begin
+  Result := FTokens[FCode[APosition]];
+end;
+
+function TUncheckedEnumCastScan.IsSym(APosition: Integer; const ASymbol: string): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and Token(APosition).IsSymbol(ASymbol);
+end;
+
+function TUncheckedEnumCastScan.IsWord(APosition: Integer): Boolean;
+begin
+  Result := (APosition >= 0) and (APosition <= High(FCode)) and
+    (Token(APosition).Kind = TPascalTokenKind.Identifier);
+end;
+
+function TUncheckedEnumCastScan.TextOf(AFirst, ALast: Integer): string;
+begin
+  Result := Copy(FContext.Text, Token(AFirst).Offset + 1,
+    Token(ALast).Offset + Length(Token(ALast).Text) - Token(AFirst).Offset);
+end;
+
+function TUncheckedEnumCastScan.Closing(AOpen: Integer): Integer;
 var
-  mTokens: TTokens;
-  mCode: TArray<Integer>;
-  mSources: TArray<string>;
-  mLineBreak: string;
-  mLocal: TUnitIndex;
-
-  function Token(APosition: Integer): TPascalToken;
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  for Result := AOpen to High(FCode) do
   begin
-    Result := mTokens[mCode[APosition]];
-  end;
-
-  function IsSym(APosition: Integer; const ASymbol: string): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
-  end;
-
-  function IsWord(APosition: Integer): Boolean;
-  begin
-    Result := (APosition >= 0) and (APosition <= High(mCode)) and
-      (Token(APosition).Kind = TPascalTokenKind.Identifier);
-  end;
-
-  function TextOf(AFirst, ALast: Integer): string;
-  begin
-    Result := Copy(AContext.Text, Token(AFirst).Offset + 1,
-      Token(ALast).Offset + Length(Token(ALast).Text) - Token(AFirst).Offset);
-  end;
-
-  function Closing(AOpen: Integer): Integer;
-  var
-    mDepth: Integer;
-  begin
-    mDepth := 0;
-    for Result := AOpen to High(mCode) do
+    if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
     begin
-      if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-      begin
-        Inc(mDepth);
-      end
-      else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
-      begin
-        Dec(mDepth);
-        if mDepth = 0 then
-        begin
-          Exit;
-        end;
-      end;
-    end;
-    Result := -1;
-  end;
-
-  function CodeAt(AOffset: Integer): Integer;
-  var
-    mHigh, mMiddle: Integer;
-  begin
-    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
-    Result := 0;
-    mHigh := Length(mCode);
-    while Result < mHigh do
+      Inc(mDepth);
+    end
+    else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
     begin
-      mMiddle := (Result + mHigh) div 2;
-      if mTokens[mCode[mMiddle]].Offset < AOffset then
-      begin
-        Result := mMiddle + 1;
-      end
-      else
-      begin
-        mHigh := mMiddle;
-      end;
-    end;
-  end;
-
-  // Aufzählungstyp AName in AUnit: Zahl der Werte und ob sie eigene Ordinalwerte tragen.
-  function EnumIn(const AUnit: TUnitIndex; const AName: string; out ACount: Integer;
-    out AExplicit: Boolean): Boolean;
-  var
-    mSymbol: TIndexSymbol;
-    mSignature: string;
-  begin
-    Result := False;
-    ACount := 0;
-    AExplicit := False;
-    for mSymbol in AUnit.Symbols do
-    begin
-      if (mSymbol.Kind = TIndexSymbolKind.EnumType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
-      begin
-        mSignature := mSymbol.Signature;
-        AExplicit := (Pos('(', mSignature) > 0) and (Pos('=', Copy(mSignature, Pos('(', mSignature), MaxInt)) > 0);
-        Result := True;
-      end;
-    end;
-    if not Result then
-    begin
-      Exit;
-    end;
-    for mSymbol in AUnit.Symbols do
-    begin
-      if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AName) then
-      begin
-        Inc(ACount);
-      end;
-    end;
-  end;
-
-  function EnumInfo(const AName: string; out ACount: Integer; out AExplicit: Boolean): Boolean;
-  var
-    mLocation: TSymbolLocation;
-    mOwner: TUnitIndex;
-  begin
-    if EnumIn(mLocal, AName, ACount, AExplicit) then
-    begin
-      Exit(True);
-    end;
-    Result := False;
-    if AContext.Index = nil then
-    begin
-      Exit;
-    end;
-    for mLocation in AContext.Index.FindSymbols(AName) do
-    begin
-      if (mLocation.Symbol.Kind = TIndexSymbolKind.EnumType) and (mLocation.Symbol.Container = '') and
-        AContext.Index.FindFile(mLocation.FileName, mOwner) and EnumIn(mOwner, AName, ACount, AExplicit) then
-      begin
-        Exit(True);
-      end;
-    end;
-  end;
-
-  // Erste Quelle (aus "sources") zwischen AFirst und ALast; '' ohne.
-  function SourceIn(AFirst, ALast: Integer): string;
-  var
-    mPosition: Integer;
-  begin
-    for mPosition := AFirst to ALast do
-    begin
-      if IsWord(mPosition) and MatchText(Token(mPosition).Text, mSources) then
-      begin
-        Exit(Token(mPosition).Text);
-      end;
-    end;
-    Result := '';
-  end;
-
-  // V := Ausdruck mit Quelle vor ACast in der Routine, ohne dass V danach noch gelesen wird (Prüfung).
-  function VariableSource(ARoutine: TSyntaxNode; AVariable, ACast: Integer): string;
-  var
-    mPosition, mAssigned, mEnding: Integer;
-  begin
-    Result := '';
-    mAssigned := -1;
-    for mPosition := CodeAt(ARoutine.StartOffset) to ACast - 1 do
-    begin
-      if IsWord(mPosition) and SameText(Token(mPosition).Text, Token(AVariable).Text) and
-        not IsSym(mPosition - 1, '.') then
-      begin
-        if IsSym(mPosition + 1, ':=') then
-        begin
-          mAssigned := mPosition;
-        end
-        else if mAssigned >= 0 then
-        begin
-          // Gelesen zwischen Zuweisung und Umwandlung: als geprüft ansehen (InRange, Vergleich, case …).
-          Exit('');
-        end;
-      end;
-    end;
-    if mAssigned < 0 then
-    begin
-      Exit;
-    end;
-    mEnding := mAssigned + 2;
-    while (mEnding <= High(mCode)) and not Token(mEnding).IsSymbol(';') and not Token(mEnding).IsKeyword('end') do
-    begin
-      Inc(mEnding);
-    end;
-    Result := SourceIn(mAssigned + 2, mEnding - 1);
-    if (Result <> '') and IsWord(mAssigned + 2) and MatchText(Token(mAssigned + 2).Text, cEnumGuards) then
-    begin
-      Result := '';
-    end;
-  end;
-
-  // Korrektur bei TStatus(Quelle) in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise davor.
-  function Fixes(ARoutine: TSyntaxNode; const ATypeName: string; AFirst, ALast: Integer): TArray<TRuleFix>;
-  var
-    mStatement: TSyntaxNode;
-    mName, mIndent, mPrefix: string;
-    mEdits: TArray<TTextEdit>;
-    mUsesEdit: TTextEdit;
-    mUsed: TArray<string>;
-  begin
-    Result := nil;
-    mStatement := TRoutineBody.Enclosing(ARoutine, Token(AFirst).Offset, Token(ALast).Offset);
-    while (mStatement <> nil) and (mStatement <> ARoutine) and not TRoutineBody.IsStatement(mStatement) do
-    begin
-      mStatement := mStatement.Parent;
-    end;
-    if (mStatement = nil) or (mStatement = ARoutine) or not TRoutineBody.InList(mStatement) or
-      (mStatement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
-      TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement]) then
-    begin
-      Exit;
-    end;
-    mName := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local('Wert'));
-    mIndent := TTextLines.IndentOf(AContext.Text, mStatement.StartPos.Line);
-    mEdits := [TRoutineBody.AddVariable(AContext.Text, ARoutine, mName, 'Integer', AContext.Formatting),
-      TRoutineBody.InsertBefore(AContext.Text, mStatement, mName + ' := ' + TextOf(AFirst, ALast) + ';' +
-      mLineBreak + mIndent + 'if not InRange(' + mName + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
-      '))) then' + mLineBreak + mIndent + TRoutineBody.IndentUnit(AContext.Formatting) +
-      cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + mName + ']);'),
-      TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), mName)];
-    // InRange steht in System.Math.
-    mUsed := TUsesClauses.UsedUnits(mTokens);
-    if not MatchText('System.Math', mUsed) and not MatchText('Math', mUsed) then
-    begin
-      mPrefix := 'System.';
-      if (Length(mUsed) > 0) and not MatchText('System.SysUtils', mUsed) and MatchText('SysUtils', mUsed) then
-      begin
-        mPrefix := '';
-      end;
-      if not TUsesClauses.AddUnit(mTokens, Token(AFirst).Offset, mPrefix + 'Math', mLineBreak, mUsesEdit) then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
-      mEdits := [mUsesEdit] + mEdits;
     end;
-    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.InsertInRange].Text, mEdits)];
   end;
+  Result := -1;
+end;
 
-  procedure CheckCast(APosition: Integer);
-  var
-    mClose, mCount: Integer;
-    mExplicit: Boolean;
-    mTypeName, mSource, mRange: string;
-    mRoutine: TSyntaxNode;
-    mDirect: Boolean;
+function TUncheckedEnumCastScan.CodeAt(AOffset: Integer): Integer;
+var
+  mHigh, mMiddle: Integer;
+begin
+  // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+  Result := 0;
+  mHigh := Length(FCode);
+  while Result < mHigh do
   begin
-    mClose := Closing(APosition + 1);
-    if (mClose < 0) or (mClose = APosition + 2) then
+    mMiddle := (Result + mHigh) div 2;
+    if FTokens[FCode[mMiddle]].Offset < AOffset then
     begin
-      Exit;
-    end;
-    mTypeName := Token(APosition).Text;
-    if not EnumInfo(mTypeName, mCount, mExplicit) then
-    begin
-      Exit;
-    end;
-    mRoutine := TRoutineBody.RoutineAt(AContext.Tree, Token(APosition).Offset);
-    if mRoutine = nil then
-    begin
-      Exit;
-    end;
-    // Direkt: TStatus(qry.FieldByName('Status').AsInteger); über eine Variable: TStatus(Wert).
-    mDirect := not (IsWord(APosition + 2) and MatchText(Token(APosition + 2).Text, cEnumGuards));
-    mSource := '';
-    if mDirect then
-    begin
-      mSource := SourceIn(APosition + 2, mClose - 1);
-    end;
-    if (mSource = '') and (mClose = APosition + 3) and IsWord(APosition + 2) then
-    begin
-      mSource := VariableSource(mRoutine, APosition + 2, APosition);
-      mDirect := False;
-    end;
-    if mSource = '' then
-    begin
-      Exit;
-    end;
-    if mExplicit or (mCount = 0) then
-    begin
-      mRange := Format('Ord(Low(%s))..Ord(High(%s))', [mTypeName, mTypeName]);
+      Result := mMiddle + 1;
     end
     else
     begin
-      mRange := Format('0..%d', [mCount - 1]);
-    end;
-    if mDirect then
-    begin
-      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
-        cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
-        [Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium,
-        Fixes(mRoutine, mTypeName, APosition + 2, mClose - 1));
-    end
-    else
-    begin
-      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
-        cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
-        [Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium);
+      mHigh := mMiddle;
     end;
   end;
+end;
 
+// Aufzählungstyp AName in AUnit: Zahl der Werte und ob sie eigene Ordinalwerte tragen.
+function TUncheckedEnumCastScan.EnumIn(const AUnit: TUnitIndex; const AName: string; out ACount: Integer;
+  out AExplicit: Boolean): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mSignature: string;
+begin
+  Result := False;
+  ACount := 0;
+  AExplicit := False;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.EnumType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
+    begin
+      mSignature := mSymbol.Signature;
+      AExplicit := (Pos('(', mSignature) > 0) and (Pos('=', Copy(mSignature, Pos('(', mSignature), MaxInt)) > 0);
+      Result := True;
+    end;
+  end;
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AName) then
+    begin
+      Inc(ACount);
+    end;
+  end;
+end;
+
+function TUncheckedEnumCastScan.EnumInfo(const AName: string; out ACount: Integer; out AExplicit: Boolean): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mOwner: TUnitIndex;
+begin
+  if EnumIn(FLocal, AName, ACount, AExplicit) then
+  begin
+    Exit(True);
+  end;
+  Result := False;
+  if FContext.Index = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in FContext.Index.FindSymbols(AName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.EnumType) and (mLocation.Symbol.Container = '') and
+      FContext.Index.FindFile(mLocation.FileName, mOwner) and EnumIn(mOwner, AName, ACount, AExplicit) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+// Erste Quelle (aus "sources") zwischen AFirst und ALast; '' ohne.
+function TUncheckedEnumCastScan.SourceIn(AFirst, ALast: Integer): string;
+var
+  mPosition: Integer;
+begin
+  for mPosition := AFirst to ALast do
+  begin
+    if IsWord(mPosition) and MatchText(Token(mPosition).Text, FSources) then
+    begin
+      Exit(Token(mPosition).Text);
+    end;
+  end;
+  Result := '';
+end;
+
+// V := Ausdruck mit Quelle vor ACast in der Routine, ohne dass V danach noch gelesen wird (Prüfung).
+function TUncheckedEnumCastScan.VariableSource(ARoutine: TSyntaxNode; AVariable, ACast: Integer): string;
+var
+  mPosition, mAssigned, mEnding: Integer;
+begin
+  Result := '';
+  mAssigned := -1;
+  for mPosition := CodeAt(ARoutine.StartOffset) to ACast - 1 do
+  begin
+    if IsWord(mPosition) and SameText(Token(mPosition).Text, Token(AVariable).Text) and
+      not IsSym(mPosition - 1, '.') then
+    begin
+      if IsSym(mPosition + 1, ':=') then
+      begin
+        mAssigned := mPosition;
+      end
+      else if mAssigned >= 0 then
+      begin
+        // Gelesen zwischen Zuweisung und Umwandlung: als geprüft ansehen (InRange, Vergleich, case …).
+        Exit('');
+      end;
+    end;
+  end;
+  if mAssigned < 0 then
+  begin
+    Exit;
+  end;
+  mEnding := mAssigned + 2;
+  while (mEnding <= High(FCode)) and not Token(mEnding).IsSymbol(';') and not Token(mEnding).IsKeyword('end') do
+  begin
+    Inc(mEnding);
+  end;
+  Result := SourceIn(mAssigned + 2, mEnding - 1);
+  if (Result <> '') and IsWord(mAssigned + 2) and MatchText(Token(mAssigned + 2).Text, cEnumGuards) then
+  begin
+    Result := '';
+  end;
+end;
+
+// Korrektur bei TStatus(Quelle) in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise davor.
+function TUncheckedEnumCastScan.Fixes(ARoutine: TSyntaxNode; const ATypeName: string; AFirst,
+  ALast: Integer): TArray<TRuleFix>;
+var
+  mStatement: TSyntaxNode;
+  mName, mIndent, mPrefix: string;
+  mEdits: TArray<TTextEdit>;
+  mUsesEdit: TTextEdit;
+  mUsed: TArray<string>;
+begin
+  Result := nil;
+  mStatement := TRoutineBody.Enclosing(ARoutine, Token(AFirst).Offset, Token(ALast).Offset);
+  while (mStatement <> nil) and (mStatement <> ARoutine) and not TRoutineBody.IsStatement(mStatement) do
+  begin
+    mStatement := mStatement.Parent;
+  end;
+  if (mStatement = nil) or (mStatement = ARoutine) or not TRoutineBody.InList(mStatement) or
+    (mStatement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
+    TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement]) then
+  begin
+    Exit;
+  end;
+  mName := TRoutineBody.UniqueName(FTokens, FContext.NewNames.Local('Wert'));
+  mIndent := TTextLines.IndentOf(FContext.Text, mStatement.StartPos.Line);
+  mEdits := [TRoutineBody.AddVariable(FContext.Text, ARoutine, mName, 'Integer', FContext.Formatting),
+    TRoutineBody.InsertBefore(FContext.Text, mStatement, mName + ' := ' + TextOf(AFirst, ALast) + ';' +
+    FLineBreak + mIndent + 'if not InRange(' + mName + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
+    '))) then' + FLineBreak + mIndent + TRoutineBody.IndentUnit(FContext.Formatting) +
+    cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + mName + ']);'),
+    TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), mName)];
+  // InRange steht in System.Math.
+  mUsed := TUsesClauses.UsedUnits(FTokens);
+  if not MatchText('System.Math', mUsed) and not MatchText('Math', mUsed) then
+  begin
+    mPrefix := 'System.';
+    if (Length(mUsed) > 0) and not MatchText('System.SysUtils', mUsed) and MatchText('SysUtils', mUsed) then
+    begin
+      mPrefix := '';
+    end;
+    if not TUsesClauses.AddUnit(FTokens, Token(AFirst).Offset, mPrefix + 'Math', FLineBreak, mUsesEdit) then
+    begin
+      Exit;
+    end;
+    mEdits := [mUsesEdit] + mEdits;
+  end;
+  Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.InsertInRange].Text, mEdits)];
+end;
+
+procedure TUncheckedEnumCastScan.CheckCast(APosition: Integer);
+var
+  mClose, mCount: Integer;
+  mExplicit: Boolean;
+  mTypeName, mSource, mRange: string;
+  mRoutine: TSyntaxNode;
+  mDirect: Boolean;
+begin
+  mClose := Closing(APosition + 1);
+  if (mClose < 0) or (mClose = APosition + 2) then
+  begin
+    Exit;
+  end;
+  mTypeName := Token(APosition).Text;
+  if not EnumInfo(mTypeName, mCount, mExplicit) then
+  begin
+    Exit;
+  end;
+  mRoutine := TRoutineBody.RoutineAt(FContext.Tree, Token(APosition).Offset);
+  if mRoutine = nil then
+  begin
+    Exit;
+  end;
+  // Direkt: TStatus(qry.FieldByName('Status').AsInteger); über eine Variable: TStatus(Wert).
+  mDirect := not (IsWord(APosition + 2) and MatchText(Token(APosition + 2).Text, cEnumGuards));
+  mSource := '';
+  if mDirect then
+  begin
+    mSource := SourceIn(APosition + 2, mClose - 1);
+  end;
+  if (mSource = '') and (mClose = APosition + 3) and IsWord(APosition + 2) then
+  begin
+    mSource := VariableSource(mRoutine, APosition + 2, APosition);
+    mDirect := False;
+  end;
+  if mSource = '' then
+  begin
+    Exit;
+  end;
+  if mExplicit or (mCount = 0) then
+  begin
+    mRange := Format('Ord(Low(%s))..Ord(High(%s))', [mTypeName, mTypeName]);
+  end
+  else
+  begin
+    mRange := Format('0..%d', [mCount - 1]);
+  end;
+  if mDirect then
+  begin
+    FReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
+      cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
+      [TUncheckedEnumCastRule.Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium,
+      Fixes(mRoutine, mTypeName, APosition + 2, mClose - 1));
+  end
+  else
+  begin
+    FReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
+      cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
+      [TUncheckedEnumCastRule.Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium);
+  end;
+end;
+
+procedure TUncheckedEnumCastScan.Run;
 var
   mIndex, mPosition: Integer;
   mDefaults: TArray<string>;
   mName: string;
   mCache: IRuleDerivedCache;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
@@ -960,24 +992,24 @@ begin
   begin
     mDefaults := mDefaults + [mName];
   end;
-  mSources := TRuleOptions.Strings(AContext.Options, 'sources', mDefaults);
-  if Length(mSources) = 0 then
+  FSources := TRuleOptions.Strings(FContext.Options, 'sources', mDefaults);
+  if Length(FSources) = 0 then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mCode := nil;
-  for mIndex := 0 to High(mTokens) do
+  FTokens := FContext.Tree.Tokens;
+  FCode := nil;
+  for mIndex := 0 to High(FTokens) do
   begin
-    if not IsTrivia(mTokens[mIndex]) then
+    if not IsTrivia(FTokens[mIndex]) then
     begin
-      mCode := mCode + [mIndex];
+      FCode := FCode + [mIndex];
     end;
   end;
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mCache := TRuleDerived.Open(AContext);
-  mLocal := TRuleDerived.UnitIndex(mCache, AContext);
-  for mPosition := 0 to High(mCode) - 2 do
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  mCache := TRuleDerived.Open(FContext);
+  FLocal := TRuleDerived.UnitIndex(mCache, FContext);
+  for mPosition := 0 to High(FCode) - 2 do
   begin
     // TName( … ) als Ausdruck: kein Punkt davor (X.TName), kein Typ in einer Deklaration.
     if IsWord(mPosition) and (Token(mPosition).Text[1] = 'T') and IsSym(mPosition + 1, '(') and
@@ -986,6 +1018,14 @@ begin
       CheckCast(mPosition);
     end;
   end;
+end;
+
+procedure TUncheckedEnumCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TUncheckedEnumCastScan;
+begin
+  mScan := TUncheckedEnumCastScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 class function TUncheckedEnumCastRule.Origin(const ASource: string): string;
@@ -1073,7 +1113,6 @@ begin
   end;
 end;
 
-procedure TGlobalFormatSettingsModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   // RTL- und VCL-Basisklassen ohne Mitglieder namens FormatSettings, DecimalSeparator …: Bricht die Kette der
   // Vorfahren ohne Index an einer von ihnen ab, ist der Name trotzdem sicher die globale Variable.
@@ -1081,338 +1120,385 @@ const
     'TPersistent', 'TInterfacedPersistent', 'TComponent', 'TThread', 'TCustomAttribute', 'TControl', 'TWinControl',
     'TCustomControl', 'TGraphicControl', 'TScrollingWinControl', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame',
     'TDataModule');
+
+type
+  /// <summary>Ein Lauf von TGlobalFormatSettingsModifiedRule über eine Unit: Kontext, Bericht und der gemeinsame
+  /// Zustand der Prüfschritte. Check legt ihn an und ruft Run.</summary>
+  TGlobalFormatSettingsModifiedScan = record
+  private
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FTokens: TTokens;
+    FResolver: TNameResolver;
+    FFileName, FLineBreak: string;
+    FUsed, FLines: TArray<string>;
+    FFound: TArray<TFormatSettingsModification>;
+    function NodeText(ANode: TSyntaxNode): string;
+    function ChainOf(ANode: TSyntaxNode; out ANames: TArray<string>): Boolean;
+    function InWith(ANode: TSyntaxNode): Boolean;
+    function UnknownAncestor(AOffset: Integer): Boolean;
+    function IsGlobal(AStatement: TSyntaxNode; const AName: string; AQualified: Boolean): Boolean;
+    procedure Inspect(AStatement: TSyntaxNode);
+    procedure Visit(ANode: TSyntaxNode);
+    function CallEdits(ABody: TSyntaxNode; const AItem: TFormatSettingsModification;
+      const AName: string): TArray<TRuleEdit>;
+    function FieldTail(const AItem: TFormatSettingsModification): string;
+    function AssignmentText(const AItem: TFormatSettingsModification; const AName: string; out AText: string): Boolean;
+    function IsSingleLineStatement(const AItem: TFormatSettingsModification): Boolean;
+    function LocalFix(const AItem: TFormatSettingsModification; out AFix: TRuleFix): Boolean;
+  public
+    constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
+    procedure Run;
+  end;
+
+{ TGlobalFormatSettingsModifiedScan }
+
+constructor TGlobalFormatSettingsModifiedScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
+begin
+  FContext := AContext;
+  FReport := AReport;
+end;
+
+function TGlobalFormatSettingsModifiedScan.NodeText(ANode: TSyntaxNode): string;
+begin
+  Result := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+end;
+
+function TGlobalFormatSettingsModifiedScan.ChainOf(ANode: TSyntaxNode; out ANames: TArray<string>): Boolean;
 var
-  mTokens: TTokens;
-  mResolver: TNameResolver;
-  mCache: IRuleDerivedCache;
-  mFileName, mLineBreak: string;
-  mUsed, mLines: TArray<string>;
-  mFound: TArray<TFormatSettingsModification>;
-  mItem: TFormatSettingsModification;
-  mFixes: TArray<TRuleFix>;
-  mFix: TRuleFix;
-
-  function NodeText(ANode: TSyntaxNode): string;
+  mNode: TSyntaxNode;
+  mMembers: TArray<string>;
+  mIndex: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht): am Empfänger entlang nach innen, die Namen dann von innen nach
+  // außen.
+  ANames := nil;
+  mMembers := nil;
+  mNode := ANode;
+  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount > 0) do
   begin
-    Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+    mMembers := mMembers + [mNode.Name];
+    mNode := mNode[0];
   end;
-
-  function ChainOf(ANode: TSyntaxNode; out ANames: TArray<string>): Boolean;
-  var
-    mNode: TSyntaxNode;
-    mMembers: TArray<string>;
-    mIndex: Integer;
+  Result := mNode.Kind = TSyntaxKind.Identifier;
+  if not Result then
   begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht): am Empfänger entlang nach innen, die Namen dann von innen nach
-    // außen.
-    ANames := nil;
-    mMembers := nil;
-    mNode := ANode;
-    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount > 0) do
-    begin
-      mMembers := mMembers + [mNode.Name];
-      mNode := mNode[0];
-    end;
-    Result := mNode.Kind = TSyntaxKind.Identifier;
-    if not Result then
-    begin
-      Exit;
-    end;
-    ANames := [mNode.Name];
-    for mIndex := High(mMembers) downto 0 do
-    begin
-      ANames := ANames + [mMembers[mIndex]];
-    end;
+    Exit;
   end;
-
-  function InWith(ANode: TSyntaxNode): Boolean;
+  ANames := [mNode.Name];
+  for mIndex := High(mMembers) downto 0 do
   begin
-    Result := False;
-    while (ANode <> nil) and (ANode.Kind <> TSyntaxKind.RoutineDecl) do
-    begin
-      if ANode.Kind = TSyntaxKind.WithStatement then
-      begin
-        Exit(True);
-      end;
-      ANode := ANode.Parent;
-    end;
+    ANames := ANames + [mMembers[mIndex]];
   end;
+end;
 
-  /// <summary>Kann ein Vorfahr der Klasse, in deren Methode AOffset liegt, den Namen selbst deklarieren? Ja, wenn
-  /// die Kette an einem unbekannten Vorfahren abbricht, der nicht in SafeBases steht.</summary>
-  function UnknownAncestor(AOffset: Integer): Boolean;
-  var
-    mCurrent, mNext: TResolvedSymbol;
-    mExpected: string;
-    mDepth: Integer;
+function TGlobalFormatSettingsModifiedScan.InWith(ANode: TSyntaxNode): Boolean;
+begin
+  Result := False;
+  while (ANode <> nil) and (ANode.Kind <> TSyntaxKind.RoutineDecl) do
   begin
-    Result := False;
-    mCurrent := mResolver.ResolveChain(AContext.Tree, mFileName, ['Self'], AOffset);
-    if mCurrent.Kind <> TResolvedKind.Symbol then
-    begin
-      Exit;
-    end;
-    for mDepth := 1 to 64 do
-    begin
-      if mResolver.AncestorOf(mCurrent, mNext) then
-      begin
-        mCurrent := mNext;
-        Continue;
-      end;
-      mExpected := '';
-      if Length(mCurrent.Ancestors) > 0 then
-      begin
-        mExpected := mCurrent.Ancestors[0];
-      end
-      else if (mCurrent.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(mCurrent.Name, 'TObject') then
-      begin
-        mExpected := 'TObject';
-      end;
-      if Pos('.', mExpected) > 0 then
-      begin
-        mExpected := Copy(mExpected, LastDelimiter('.', mExpected) + 1, MaxInt);
-      end;
-      Exit((mExpected <> '') and not MatchText(mExpected, cSafeBases));
-    end;
-  end;
-
-  /// <summary>Ist AName an der Stelle sicher die globale Variable aus System.SysUtils?</summary>
-  function IsGlobal(AStatement: TSyntaxNode; const AName: string; AQualified: Boolean): Boolean;
-  var
-    mResolved: TResolvedSymbol;
-  begin
-    if AQualified then
+    if ANode.Kind = TSyntaxKind.WithStatement then
     begin
       Exit(True);
     end;
-    Result := False;
-    if InWith(AStatement) or not (MatchText('System.SysUtils', mUsed) or MatchText('SysUtils', mUsed)) then
-    begin
-      Exit;
-    end;
-    mResolved := mResolver.ResolveChain(AContext.Tree, mFileName, [AName], AStatement.StartOffset);
-    case mResolved.Kind of
-      TResolvedKind.Local, TResolvedKind.UnitName:
-        Exit;
-      TResolvedKind.Symbol:
-        if not MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
-        begin
-          Exit;
-        end;
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    Result := not UnknownAncestor(AStatement.StartOffset);
+    ANode := ANode.Parent;
   end;
+end;
 
-  procedure Inspect(AStatement: TSyntaxNode);
-  var
-    mTarget: TSyntaxNode;
-    mNames: TArray<string>;
-    mFirst: Integer;
-    mModification: TFormatSettingsModification;
-  begin
-    mTarget := AStatement[0];
-    while (mTarget.Kind = TSyntaxKind.IndexAccess) and (mTarget.ChildCount > 0) do
-    begin
-      mTarget := mTarget[0];
-    end;
-    if not ChainOf(mTarget, mNames) then
-    begin
-      Exit;
-    end;
-    mFirst := 0;
-    if (Length(mNames) >= 3) and SameText(mNames[0], 'System') and SameText(mNames[1], 'SysUtils') then
-    begin
-      mFirst := 2;
-    end
-    else if (Length(mNames) >= 2) and SameText(mNames[0], 'SysUtils') then
-    begin
-      mFirst := 1;
-    end;
-    mModification.Field := '';
-    if SameText(mNames[mFirst], 'FormatSettings') and (Length(mNames) - mFirst <= 2) then
-    begin
-      if Length(mNames) - mFirst = 2 then
-      begin
-        mModification.Field := mNames[mFirst + 1];
-      end;
-    end
-    else if (Length(mNames) - mFirst = 1) and MatchText(mNames[mFirst], cDeprecatedGlobals) then
-    begin
-      mModification.Field := mNames[mFirst];
-    end
-    else
-    begin
-      Exit;
-    end;
-    if not IsGlobal(AStatement, mNames[mFirst], mFirst > 0) then
-    begin
-      Exit;
-    end;
-    mModification.Statement := AStatement;
-    mModification.Target := AStatement[0];
-    mModification.Routine := TRoutineBody.RoutineAt(AContext.Tree, AStatement.StartOffset);
-    mFound := mFound + [mModification];
-  end;
-
-  procedure Visit(ANode: TSyntaxNode);
-  var
-    mPending: TStack<TSyntaxNode>;
-    mNode: TSyntaxNode;
-    mChild: Integer;
-  begin
-    // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-    mPending := TStack<TSyntaxNode>.Create;
-    try
-      mPending.Push(ANode);
-      while mPending.Count > 0 do
-      begin
-        mNode := mPending.Pop;
-        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount >= 2) then
-        begin
-          Inspect(mNode);
-        end;
-        for mChild := mNode.ChildCount - 1 downto 0 do
-        begin
-          mPending.Push(mNode[mChild]);
-        end;
-      end;
-    finally
-      mPending.Free;
-    end;
-  end;
-
-  /// <summary>Formatierungsaufrufe nach der Anweisung bis zum Ende des Rumpfs: AName als letztes Argument.</summary>
-  function CallEdits(ABody: TSyntaxNode; const AItem: TFormatSettingsModification;
-    const AName: string): TArray<TRuleEdit>;
-  var
-    mPosition, mClose: Integer;
-  begin
-    Result := nil;
-    mPosition := TRoutineBody.TokenAt(mTokens, AItem.Statement.EndOffset);
-    while (mPosition <= High(mTokens)) and (mTokens[mPosition].Offset < ABody.EndOffset) do
-    begin
-      if IsLocaleCall(mTokens, mPosition, mClose) then
-      begin
-        Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[mClose].StartPos, mTokens[mClose].StartPos),
-          ', ' + AName)];
-      end;
-      Inc(mPosition);
-    end;
-  end;
-
-  /// <summary>Feld samt Index wie geschrieben: ShortMonthNames[1] aus FormatSettings.ShortMonthNames[1]; '' wenn
-  /// das Feld im Ziel nicht steht.</summary>
-  function FieldTail(const AItem: TFormatSettingsModification): string;
-  var
-    mField: Integer;
-  begin
-    Result := '';
-    mField := TRoutineBody.TokenAt(mTokens, AItem.Target.StartOffset);
-    while (mField <= High(mTokens)) and (mTokens[mField].Offset < AItem.Target.EndOffset) and
-      not IsIdentifierNamed(mTokens[mField], AItem.Field) do
-    begin
-      Inc(mField);
-    end;
-    if (mField <= High(mTokens)) and (mTokens[mField].Offset < AItem.Target.EndOffset) then
-    begin
-      Result := Copy(AContext.Text, mTokens[mField].Offset + 1, AItem.Target.EndOffset - mTokens[mField].Offset);
-    end;
-  end;
-
-  /// <summary>Neuer Text der Zuweisung mit der lokalen TFormatSettings AName; False, wenn das Feld im Ziel nicht
-  /// zu finden ist.</summary>
-  function AssignmentText(const AItem: TFormatSettingsModification; const AName: string; out AText: string): Boolean;
-  var
-    mValue, mTail: string;
-  begin
-    Result := True;
-    mValue := NodeText(AItem.Statement[1]);
-    if AItem.Field = '' then
-    begin
-      AText := AName + ' := ' + mValue;
-    end
-    else if SameText(AItem.Field, 'DecimalSeparator') and (mValue = '''.''') then
-    begin
-      AText := AName + ' := TFormatSettings.Invariant';
-    end
-    else
-    begin
-      mTail := FieldTail(AItem);
-      Result := mTail <> '';
-      AText := AName + ' := FormatSettings;' + mLineBreak + TTextLines.IndentOf(mLines[AItem.Statement.StartPos.Line]) +
-        AName + '.' + mTail + ' := ' + mValue;
-    end;
-  end;
-
-  /// <summary>Einzeilige Anweisung in einer Anweisungsliste?</summary>
-  function IsSingleLineStatement(const AItem: TFormatSettingsModification): Boolean;
-  begin
-    Result := TRoutineBody.InList(AItem.Statement) and (AItem.Statement.StartPos.Line = AItem.Statement.EndPos.Line) and
-      (AItem.Statement.StartPos.Line <= High(mLines));
-  end;
-
-  /// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
-  /// übergeben. Nur bei einer einzeiligen Anweisung in einer Anweisungsliste mit mindestens einem solchen Aufruf.
-  /// </summary>
-  function LocalFix(const AItem: TFormatSettingsModification; out AFix: TRuleFix): Boolean;
-  var
-    mBody: TSyntaxNode;
-    mName, mText: string;
-    mEdits, mCalls: TArray<TRuleEdit>;
-  begin
-    Result := False;
-    mBody := TRoutineBody.BodyOf(AItem.Routine);
-    if (mBody = nil) or not IsSingleLineStatement(AItem) then
-    begin
-      Exit;
-    end;
-    mName := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local('FS'));
-    mCalls := CallEdits(mBody, AItem, mName);
-    if (mCalls = nil) or not AssignmentText(AItem, mName, mText) then
-    begin
-      Exit;
-    end;
-    mEdits := [TRoutineBody.AddVariable(AContext.Text, AItem.Routine, mName, 'TFormatSettings', AContext.Formatting),
-      TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), mText)];
-    mEdits := mEdits + mCalls;
-    AFix := TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.LocalSettings].Text, mEdits);
-    Result := True;
-  end;
-
+/// <summary>Kann ein Vorfahr der Klasse, in deren Methode AOffset liegt, den Namen selbst deklarieren? Ja, wenn
+/// die Kette an einem unbekannten Vorfahren abbricht, der nicht in SafeBases steht.</summary>
+function TGlobalFormatSettingsModifiedScan.UnknownAncestor(AOffset: Integer): Boolean;
+var
+  mCurrent, mNext: TResolvedSymbol;
+  mExpected: string;
+  mDepth: Integer;
 begin
-  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  Result := False;
+  mCurrent := FResolver.ResolveChain(FContext.Tree, FFileName, ['Self'], AOffset);
+  if mCurrent.Kind <> TResolvedKind.Symbol then
   begin
     Exit;
   end;
-  if (AContext.Tree.Root.Kind in [TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) and
-    TRuleOptions.Bool(AContext.Options, 'allowInProgram', False) then
+  for mDepth := 1 to 64 do
+  begin
+    if FResolver.AncestorOf(mCurrent, mNext) then
+    begin
+      mCurrent := mNext;
+      Continue;
+    end;
+    mExpected := '';
+    if Length(mCurrent.Ancestors) > 0 then
+    begin
+      mExpected := mCurrent.Ancestors[0];
+    end
+    else if (mCurrent.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(mCurrent.Name, 'TObject') then
+    begin
+      mExpected := 'TObject';
+    end;
+    if Pos('.', mExpected) > 0 then
+    begin
+      mExpected := Copy(mExpected, LastDelimiter('.', mExpected) + 1, MaxInt);
+    end;
+    Exit((mExpected <> '') and not MatchText(mExpected, cSafeBases));
+  end;
+end;
+
+/// <summary>Ist AName an der Stelle sicher die globale Variable aus System.SysUtils?</summary>
+function TGlobalFormatSettingsModifiedScan.IsGlobal(AStatement: TSyntaxNode; const AName: string;
+  AQualified: Boolean): Boolean;
+var
+  mResolved: TResolvedSymbol;
+begin
+  if AQualified then
+  begin
+    Exit(True);
+  end;
+  Result := False;
+  if InWith(AStatement) or not (MatchText('System.SysUtils', FUsed) or MatchText('SysUtils', FUsed)) then
   begin
     Exit;
   end;
-  mTokens := AContext.Tree.Tokens;
-  mUsed := TUsesClauses.UsedUnits(mTokens);
-  mFileName := AContext.ResolverFileName;
-  mLines := TTextLines.SplitLines(AContext.Text);
-  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
-  mFound := nil;
+  mResolved := FResolver.ResolveChain(FContext.Tree, FFileName, [AName], AStatement.StartOffset);
+  case mResolved.Kind of
+    TResolvedKind.Local, TResolvedKind.UnitName:
+      Exit;
+    TResolvedKind.Symbol:
+      if not MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
+      begin
+        Exit;
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+  Result := not UnknownAncestor(AStatement.StartOffset);
+end;
+
+procedure TGlobalFormatSettingsModifiedScan.Inspect(AStatement: TSyntaxNode);
+var
+  mTarget: TSyntaxNode;
+  mNames: TArray<string>;
+  mFirst: Integer;
+  mModification: TFormatSettingsModification;
+begin
+  mTarget := AStatement[0];
+  while (mTarget.Kind = TSyntaxKind.IndexAccess) and (mTarget.ChildCount > 0) do
+  begin
+    mTarget := mTarget[0];
+  end;
+  if not ChainOf(mTarget, mNames) then
+  begin
+    Exit;
+  end;
+  mFirst := 0;
+  if (Length(mNames) >= 3) and SameText(mNames[0], 'System') and SameText(mNames[1], 'SysUtils') then
+  begin
+    mFirst := 2;
+  end
+  else if (Length(mNames) >= 2) and SameText(mNames[0], 'SysUtils') then
+  begin
+    mFirst := 1;
+  end;
+  mModification.Field := '';
+  if SameText(mNames[mFirst], 'FormatSettings') and (Length(mNames) - mFirst <= 2) then
+  begin
+    if Length(mNames) - mFirst = 2 then
+    begin
+      mModification.Field := mNames[mFirst + 1];
+    end;
+  end
+  else if (Length(mNames) - mFirst = 1) and MatchText(mNames[mFirst],
+    TGlobalFormatSettingsModifiedRule.cDeprecatedGlobals) then
+  begin
+    mModification.Field := mNames[mFirst];
+  end
+  else
+  begin
+    Exit;
+  end;
+  if not IsGlobal(AStatement, mNames[mFirst], mFirst > 0) then
+  begin
+    Exit;
+  end;
+  mModification.Statement := AStatement;
+  mModification.Target := AStatement[0];
+  mModification.Routine := TRoutineBody.RoutineAt(FContext.Tree, AStatement.StartOffset);
+  FFound := FFound + [mModification];
+end;
+
+procedure TGlobalFormatSettingsModifiedScan.Visit(ANode: TSyntaxNode);
+var
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mChild: Integer;
+begin
+  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
+  mPending := TStack<TSyntaxNode>.Create;
+  try
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
+    begin
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount >= 2) then
+      begin
+        Inspect(mNode);
+      end;
+      for mChild := mNode.ChildCount - 1 downto 0 do
+      begin
+        mPending.Push(mNode[mChild]);
+      end;
+    end;
+  finally
+    mPending.Free;
+  end;
+end;
+
+/// <summary>Formatierungsaufrufe nach der Anweisung bis zum Ende des Rumpfs: AName als letztes Argument.</summary>
+function TGlobalFormatSettingsModifiedScan.CallEdits(ABody: TSyntaxNode; const AItem: TFormatSettingsModification;
+  const AName: string): TArray<TRuleEdit>;
+var
+  mPosition, mClose: Integer;
+begin
+  Result := nil;
+  mPosition := TRoutineBody.TokenAt(FTokens, AItem.Statement.EndOffset);
+  while (mPosition <= High(FTokens)) and (FTokens[mPosition].Offset < ABody.EndOffset) do
+  begin
+    if IsLocaleCall(FTokens, mPosition, mClose) then
+    begin
+      Result := Result + [TRuleEdit.Create(TTextRange.Create(FTokens[mClose].StartPos, FTokens[mClose].StartPos),
+        ', ' + AName)];
+    end;
+    Inc(mPosition);
+  end;
+end;
+
+/// <summary>Feld samt Index wie geschrieben: ShortMonthNames[1] aus FormatSettings.ShortMonthNames[1]; '' wenn
+/// das Feld im Ziel nicht steht.</summary>
+function TGlobalFormatSettingsModifiedScan.FieldTail(const AItem: TFormatSettingsModification): string;
+var
+  mField: Integer;
+begin
+  Result := '';
+  mField := TRoutineBody.TokenAt(FTokens, AItem.Target.StartOffset);
+  while (mField <= High(FTokens)) and (FTokens[mField].Offset < AItem.Target.EndOffset) and
+    not IsIdentifierNamed(FTokens[mField], AItem.Field) do
+  begin
+    Inc(mField);
+  end;
+  if (mField <= High(FTokens)) and (FTokens[mField].Offset < AItem.Target.EndOffset) then
+  begin
+    Result := Copy(FContext.Text, FTokens[mField].Offset + 1, AItem.Target.EndOffset - FTokens[mField].Offset);
+  end;
+end;
+
+/// <summary>Neuer Text der Zuweisung mit der lokalen TFormatSettings AName; False, wenn das Feld im Ziel nicht
+/// zu finden ist.</summary>
+function TGlobalFormatSettingsModifiedScan.AssignmentText(const AItem: TFormatSettingsModification; const AName: string;
+  out AText: string): Boolean;
+var
+  mValue, mTail: string;
+begin
+  Result := True;
+  mValue := NodeText(AItem.Statement[1]);
+  if AItem.Field = '' then
+  begin
+    AText := AName + ' := ' + mValue;
+  end
+  else if SameText(AItem.Field, 'DecimalSeparator') and (mValue = '''.''') then
+  begin
+    AText := AName + ' := TFormatSettings.Invariant';
+  end
+  else
+  begin
+    mTail := FieldTail(AItem);
+    Result := mTail <> '';
+    AText := AName + ' := FormatSettings;' + FLineBreak + TTextLines.IndentOf(FLines[AItem.Statement.StartPos.Line]) +
+      AName + '.' + mTail + ' := ' + mValue;
+  end;
+end;
+
+/// <summary>Einzeilige Anweisung in einer Anweisungsliste?</summary>
+function TGlobalFormatSettingsModifiedScan.IsSingleLineStatement(const AItem: TFormatSettingsModification): Boolean;
+begin
+  Result := TRoutineBody.InList(AItem.Statement) and (AItem.Statement.StartPos.Line = AItem.Statement.EndPos.Line) and
+    (AItem.Statement.StartPos.Line <= High(FLines));
+end;
+
+/// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
+/// übergeben. Nur bei einer einzeiligen Anweisung in einer Anweisungsliste mit mindestens einem solchen Aufruf.
+/// </summary>
+function TGlobalFormatSettingsModifiedScan.LocalFix(const AItem: TFormatSettingsModification;
+  out AFix: TRuleFix): Boolean;
+var
+  mBody: TSyntaxNode;
+  mName, mText: string;
+  mEdits, mCalls: TArray<TRuleEdit>;
+begin
+  Result := False;
+  mBody := TRoutineBody.BodyOf(AItem.Routine);
+  if (mBody = nil) or not IsSingleLineStatement(AItem) then
+  begin
+    Exit;
+  end;
+  mName := TRoutineBody.UniqueName(FTokens, FContext.NewNames.Local('FS'));
+  mCalls := CallEdits(mBody, AItem, mName);
+  if (mCalls = nil) or not AssignmentText(AItem, mName, mText) then
+  begin
+    Exit;
+  end;
+  mEdits := [TRoutineBody.AddVariable(FContext.Text, AItem.Routine, mName, 'TFormatSettings', FContext.Formatting),
+    TRuleEdit.Create(TTextRange.Create(AItem.Statement.StartPos, AItem.Statement.EndPos), mText)];
+  mEdits := mEdits + mCalls;
+  AFix := TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.LocalSettings].Text, mEdits);
+  Result := True;
+end;
+
+procedure TGlobalFormatSettingsModifiedScan.Run;
+var
+  mCache: IRuleDerivedCache;
+  mItem: TFormatSettingsModification;
+  mFixes: TArray<TRuleFix>;
+  mFix: TRuleFix;
+begin
+  if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
+  begin
+    Exit;
+  end;
+  if (FContext.Tree.Root.Kind in [TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) and
+    TRuleOptions.Bool(FContext.Options, 'allowInProgram', False) then
+  begin
+    Exit;
+  end;
+  FTokens := FContext.Tree.Tokens;
+  FUsed := TUsesClauses.UsedUnits(FTokens);
+  FFileName := FContext.ResolverFileName;
+  FLines := TTextLines.SplitLines(FContext.Text);
+  FLineBreak := TTextLines.LineBreakOf(FContext.Text);
+  FFound := nil;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-  mCache := TRuleDerived.Open(AContext);
-  mResolver := TRuleDerived.Resolver(mCache, AContext);
-  Visit(AContext.Tree.Root);
-  for mItem in mFound do
+  mCache := TRuleDerived.Open(FContext);
+  FResolver := TRuleDerived.Resolver(mCache, FContext);
+  Visit(FContext.Tree.Root);
+  for mItem in FFound do
   begin
     // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
     // finally nicht sinnvoll um.
     mFixes := nil;
-    if (mItem.Routine <> nil) and (ModificationCount(mFound, mItem.Routine) = 1) and LocalFix(mItem, mFix) then
+    if (mItem.Routine <> nil) and (ModificationCount(FFound, mItem.Routine) = 1) and LocalFix(mItem, mFix) then
     begin
       mFixes := [mFix];
     end;
-    AReport.Add(TTextRange.Create(mItem.Statement.StartPos, mItem.Statement.EndPos),
-      cTexts[TRtlTypePatternsConversionsText.Global].Fmt([Subject(mItem.Field)]), TRuleConfidence.High, mFixes);
+    FReport.Add(TTextRange.Create(mItem.Statement.StartPos, mItem.Statement.EndPos),
+      cTexts[TRtlTypePatternsConversionsText.Global].Fmt([TGlobalFormatSettingsModifiedRule.Subject(mItem.Field)]),
+        TRuleConfidence.High, mFixes);
   end;
+end;
+
+procedure TGlobalFormatSettingsModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mScan: TGlobalFormatSettingsModifiedScan;
+begin
+  mScan := TGlobalFormatSettingsModifiedScan.Create(AContext, AReport);
+  mScan.Run;
 end;
 
 initialization
