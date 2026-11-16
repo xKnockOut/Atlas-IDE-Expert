@@ -18,7 +18,6 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Designer.Dialog;
 
@@ -64,6 +63,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Style.Signal,
   Atlas.Core.Designer.PropertySearch,
   Atlas.UI.Designer.Strings;
 
