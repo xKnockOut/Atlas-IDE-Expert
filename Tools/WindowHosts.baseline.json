@@ -15,26 +15,6 @@
     "segoe-font": 1,
     "form-class": 1
   },
-  "Packages/Atlas.IDE.Base/Source/UI/Notifications/Atlas.UI.Notifications.Window.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "form-class": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Settings/Atlas.UI.Settings.QuickToggles.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "form-class": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Setup/Atlas.UI.Setup.Window.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "form-class": 1
-  },
-  "Packages/Atlas.IDE.Base/Source/UI/Status/Atlas.UI.Status.Window.pas": {
-    "create-new": 1,
-    "segoe-font": 1,
-    "form-class": 1
-  },
   "Packages/Atlas.IDE.Debugger/Source/Core/Debug/Atlas.Core.Debug.Visualizers.Format.pas": {
     "cl-red": 1
   },

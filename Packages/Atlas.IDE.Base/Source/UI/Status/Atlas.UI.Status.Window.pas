@@ -8,6 +8,8 @@
 // der Statusleiste, nimmt den Fokus (eigene Knöpfe) und schließt mit Esc oder
 // einem Klick daneben. Es zeigt, was SetItems bekommt; neue Zeilen brauchen
 // hier keine Änderung.
+// Basis ist TAtlasDialog: Dialogschrift, IDE-Thema an den Knöpfen und neue
+// Farben bei jedem Themenwechsel, solange das Fenster offen ist.
 
 interface
 
@@ -22,10 +24,11 @@ uses
   Vcl.Forms,
   Vcl.StdCtrls,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Status.Contract;
+  Atlas.Core.Status.Contract,
+  Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasStatusWindow = class(TForm)
+  TAtlasStatusWindow = class(TAtlasDialog)
   private
     FColors: TAtlasColors;
     FItems: TArray<IAtlasStatusItem>;
@@ -55,6 +58,8 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
+    procedure ThemeChanged; override;
   public
     constructor CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Zeilen neu setzen (auch bei offenem Fenster); Größe und Lage folgen.</summary>
@@ -80,6 +85,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings;
 
@@ -87,15 +93,16 @@ uses
 
 constructor TAtlasStatusWindow.CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  // Breite setzt Layout nach dem Inhalt.
+  inherited CreateDialog(AOwner, '', 0);
   FColors := AColors;
   FHot := -1;
   BorderStyle := bsNone;
+  // Lage setzt ShowAbove über dem Feld.
+  Position := poDesigned;
   KeyPreview := True;
   DoubleBuffered := True;
   Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
   OnDeactivate := FormDeactivate;
   FLogButton := TButton.Create(Self);
   FLogButton.Parent := Self;
@@ -169,6 +176,13 @@ begin
   Canvas.Pen.Color := ToColor(FColors.Accent);
   Canvas.Rectangle(ClientRect);
   Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TAtlasStatusWindow.ThemeChanged;
+begin
+  FColors := TAtlasUiTheme.Colors;
+  Color := ToColor(FColors.Surface);
+  Invalidate;
 end;
 
 procedure TAtlasStatusWindow.KeyDown(var Key: Word; Shift: TShiftState);
