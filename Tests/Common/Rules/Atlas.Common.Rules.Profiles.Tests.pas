@@ -223,9 +223,10 @@ begin
   // strict schaltet experimentelle Regeln ein (#146): security-path-traversal (#149), file-header und
   // hardcoded-string (#56), random-without-randomize (#153), die freiwillige Regel todo-comment (#68),
   // die Architekturregeln des Rollenkonzepts (ohne "prefixes" stumm), prefer-case (#646),
-  // method-without-self (#686), method-order (#1840).
+  // method-without-self (#686), method-order (#1840), duplicate-routine-body.
   Assert.AreEqual(Merged(cAll, ['architecture-contract-content', 'architecture-role-import',
-    'catch-all-without-raise', 'default-parameter', 'file-header', 'forbidden-symbol', 'global-variable',
+    'catch-all-without-raise', 'default-parameter', 'duplicate-routine-body', 'file-header', 'forbidden-symbol',
+    'global-variable',
     'hardcoded-string',
     'implicit-variants-unit', 'interface-cycle-without-weak', 'legacy-stack-queue', 'legacy-tlist', 'line-length', 'loop-invariant-call', 'magic-number',
     'managed-param-without-const', 'method-order', 'method-without-self', 'missing-begin-update', 'money-as-float',
