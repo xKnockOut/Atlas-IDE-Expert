@@ -603,6 +603,8 @@ Experimental. Open it from the Atlas menu › Run with profile, Start/stop profi
 - “Start/stop profile” samples the program being debugged or stops a running profile.
 - The Atlas server samples: at a fixed interval (default 10 ms) it takes the call stacks of all threads without stopping the program and resolves them through the map file. Set Project options › Linker “Map file = Detailed”, otherwise the profile shows modules only.
 - When the program ends, sampling ends too. Atlas keeps the last five runs.
+- When the Atlas server ends in an orderly way during a run (restart server, settings, closing the IDE), it stops sampling first and writes the run.
+- For each sample the server suspends one thread of the program for a fraction of a millisecond. If the server is killed at exactly that moment (AtlasMonitor “Stop server”, Task Manager, IDE crash), Windows does not resume that thread and the program appears frozen. AtlasMonitor therefore warns before stopping a server that is sampling. Remedy: end and restart the program, or without restarting use Resource Monitor (`resmon`) › CPU › right-click the process › “Resume Process”. Better choose “Start/stop profile” first.
 - The window “Atlas: Profile” lists the methods by self share (the program was exactly there) with total share (anywhere in the call stack) and the hottest line. “Own code only” folds library frames into the RTL or VCL routine your code called, “Compare with previous run” shows the change per method. Double-click or Enter opens the line.
 
 Settings: `debug.profiler`, `debug.profiler.intervalMs`

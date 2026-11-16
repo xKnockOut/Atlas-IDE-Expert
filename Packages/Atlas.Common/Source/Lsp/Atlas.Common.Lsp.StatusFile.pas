@@ -54,6 +54,9 @@ type
     Total: Integer;
     Timeouts: Integer;
     Errors: Integer;
+    /// <summary>Prozess, den der Profiler gerade misst; 0 ohne Lauf. Wer den Server dann hart beendet, kann einen
+    /// Thread dieses Programms angehalten zurücklassen (AtlasMonitor warnt).</summary>
+    ProfiledProcess: Cardinal;
     /// <summary>Ausführlicher Status als JSON-Text (nur LSP-Server); '' ohne.</summary>
     Status: string;
     /// <summary>Gelesene Datei (nur beim Lesen gesetzt).</summary>
@@ -181,6 +184,7 @@ begin
   Result.AddPair('progress', mProgress);
   Result.AddPair('timeouts', TJSONNumber.Create(Timeouts));
   Result.AddPair('errors', TJSONNumber.Create(Errors));
+  Result.AddPair('profiledProcess', TJSONNumber.Create(ProfiledProcess));
   if AStatus <> nil then
   begin
     Result.AddPair('status', TJSONObject(AStatus.Clone));
@@ -246,6 +250,7 @@ begin
   ReadActivity(AObject, AEntry);
   AEntry.Timeouts := TJsonRead.Int(AObject, 'timeouts');
   AEntry.Errors := TJsonRead.Int(AObject, 'errors');
+  AEntry.ProfiledProcess := Cardinal(TJsonRead.Int64Or(AObject, 'profiledProcess', 0));
   if AObject.GetValue('status') is TJSONObject then
   begin
     AEntry.Status := AObject.GetValue('status').ToJSON([]);
