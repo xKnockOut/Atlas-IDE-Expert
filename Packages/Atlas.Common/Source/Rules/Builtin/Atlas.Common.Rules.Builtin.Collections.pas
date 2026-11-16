@@ -713,20 +713,6 @@ end;
 
 { TLegacyCollectionRule }
 
-/// <summary>Name der geprüften Datei; ohne Dateinamen der relative Pfad bzw. Unitname.pas.</summary>
-function CheckedFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 /// <summary>Namen der Zieltypen aller Casts auf die Sammlung mit dem Schlüssel AKey, ohne Doppelte.</summary>
 function CastTypeNames(const AReads: TArray<TLegacyCollectionRead>; const AKey: string): TArray<string>;
 var
@@ -764,7 +750,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := CheckedFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);

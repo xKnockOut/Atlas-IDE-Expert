@@ -387,6 +387,9 @@ type
     Queries: ICodeQueries;
     /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
     IdeTypes: IRuleIdeTypes;
+    /// <summary>Dateiname für die Namensauflösung (TNameResolver): FileName, sonst RelativePath, sonst
+    /// UnitName mit ".pas".</summary>
+    function ResolverFileName: string;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -502,6 +505,21 @@ function ConfidenceText(AConfidence: TRuleConfidence): string;
 function ConfidenceName(AConfidence: TRuleConfidence): string;
 
 implementation
+
+{ TRuleContext }
+
+function TRuleContext.ResolverFileName: string;
+begin
+  Result := FileName;
+  if Result = '' then
+  begin
+    Result := RelativePath;
+  end;
+  if Result = '' then
+  begin
+    Result := UnitName + '.pas';
+  end;
+end;
 
 function ConfidenceText(AConfidence: TRuleConfidence): string;
 begin

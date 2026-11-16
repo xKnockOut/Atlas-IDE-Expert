@@ -1058,20 +1058,6 @@ type
     Field: string;
   end;
 
-/// <summary>Name der geprüften Datei: FileName, sonst der relative Pfad, sonst Unitname mit .pas.</summary>
-function RuleFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 /// <summary>Zahl der Änderungen in AFound, die in der Routine ARoutine stehen.</summary>
 function ModificationCount(const AFound: TArray<TFormatSettingsModification>; ARoutine: TSyntaxNode): Integer;
 var
@@ -1407,7 +1393,7 @@ begin
   end;
   mTokens := AContext.Tree.Tokens;
   mUsed := TUsesClauses.UsedUnits(mTokens);
-  mFileName := RuleFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mLines := TTextLines.SplitLines(AContext.Text);
   mLineBreak := TTextLines.LineBreakOf(AContext.Text);
   mFound := nil;

@@ -197,7 +197,6 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service,
@@ -230,17 +229,6 @@ begin
   if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
   begin
     Result := nil;
-  end;
-end;
-
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
   end;
 end;
 
@@ -737,17 +725,9 @@ end;
 
 procedure TAtlasIdeQuickColumn.Track;
 var
-  mView: IOTAEditView;
   mFileName, mText: string;
 begin
-  mView := TopView;
-  mFileName := '';
-  mText := '';
-  if (mView <> nil) and (mView.Buffer <> nil) and (mView.Buffer.FileName <> '') then
-  begin
-    mFileName := mView.Buffer.FileName;
-    mText := TAtlasEditorSnapshots.Get(mView).Text;
-  end;
+  TAtlasIdeQuickBookmarks.TopFileText(mFileName, mText);
   case FTrack.Step(mFileName, mText, TThread.GetTickCount64, cQuietMs) of
     TAtlasQuickTrackStep.NewFile:
       begin

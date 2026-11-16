@@ -22,6 +22,10 @@ type
     procedure ResultKeys;
     [Test]
     procedure TreeForms;
+    [Test]
+    procedure SplitTopLevelKeepsBracketsAndStrings;
+    [Test]
+    procedure SplitTopLevelAfterLoneClosingBracket;
   end;
 
 implementation
@@ -146,6 +150,33 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+
+procedure TRoutineSignaturesTests.SplitTopLevelKeepsBracketsAndStrings;
+var
+  mParts: TArray<string>;
+begin
+  mParts := TRoutineSignatures.SplitTopLevel('A: TPair<K, V>; const B: string = '';''; C: array[0..1] of Byte', ';');
+  Assert.AreEqual(3, Integer(Length(mParts)));
+  Assert.AreEqual('A: TPair<K, V>', mParts[0]);
+  Assert.AreEqual(' const B: string = '';''', mParts[1]);
+  Assert.AreEqual(' C: array[0..1] of Byte', mParts[2]);
+  mParts := TRoutineSignatures.SplitTopLevel('', ',');
+  Assert.AreEqual(1, Integer(Length(mParts)));
+  Assert.AreEqual('', mParts[0]);
+  mParts := nil;
+end;
+
+procedure TRoutineSignaturesTests.SplitTopLevelAfterLoneClosingBracket;
+var
+  mParts: TArray<string>;
+begin
+  // ">" als Vergleich im Standardwert: Die Gruppen dahinter werden weiter getrennt.
+  mParts := TRoutineSignatures.SplitTopLevel('A: Boolean = 2 > 1; B: Integer', ';');
+  Assert.AreEqual(2, Integer(Length(mParts)));
+  Assert.AreEqual(' B: Integer', mParts[1]);
+  mParts := nil;
 end;
 
 initialization

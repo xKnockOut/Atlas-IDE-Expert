@@ -222,17 +222,6 @@ begin
   Result := TLineChangesState(TAtlasIdeLineChanges.FState);
 end;
 
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
-
 /// <summary>Ergänzungen der Zeilenhistorie für den Stand; lesen die Haken der Komposition erst beim Aufruf.</summary>
 function DataHooks: TAtlasLineChangesHooks;
 begin
@@ -356,7 +345,7 @@ begin
     mSettings := TAtlasIdeSettings.Current;
     FGutterOn := mSettings.GitGutter;
     FBlameOn := mSettings.GitBlame;
-    mView := TopView;
+    mView := TAtlasEditorBuffer.TopView;
     if (mView = nil) or (mView.Buffer = nil) or (mView.Buffer.FileName = '') then
     begin
       Exit;
@@ -695,7 +684,7 @@ var
 begin
   ARow := Default(TMarkRow);
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
@@ -719,7 +708,7 @@ var
   mInside: Boolean;
 begin
   try
-    mView := TopView;
+    mView := TAtlasEditorBuffer.TopView;
     mInside := FBlameOn and (FBlame.Entry >= 0) and not FBlame.Rect.IsEmpty and PtInRect(FBlame.Rect, Point(X, Y)) and
       (mView <> nil) and (mView.TopRow = FBlame.TopRow);
     if not mInside then
@@ -790,7 +779,7 @@ var
   mView: IOTAEditView;
   mTarget: Integer;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if not FGutterOn or (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FData.FileName) or
     not FData.Fresh then
   begin
@@ -906,7 +895,7 @@ begin
     Exit;
   end;
   // Nur, solange die Anzeige dort steht: gleiche Datei, nicht gescrollt, übernommene Zeile.
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, mState.FData.FileName) and
     (mView.TopRow = mState.FBlame.TopRow) and not mState.FData.Entry(mState.FBlame.Entry).Uncommitted;
   if Result then

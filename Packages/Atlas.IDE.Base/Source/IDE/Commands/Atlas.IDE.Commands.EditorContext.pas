@@ -108,22 +108,6 @@ begin
   Result := TLspTextPosition.Create(ARow - 1, TLspSession.ColumnToIndex(LineAt(ALines, ARow), AColumn, ATabWidth));
 end;
 
-/// <summary>Obere Editoransicht mit Puffer oder nil.</summary>
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-  if (Result <> nil) and (Result.Buffer = nil) then
-  begin
-    Result := nil;
-  end;
-end;
-
 { TAtlasEditorCommandContext }
 
 class function TAtlasEditorCommandContext.Session: TLspSession;
@@ -163,7 +147,7 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  AView := TopView;
+  AView := TAtlasEditorBuffer.TopSourceView;
   if AView = nil then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
@@ -191,7 +175,7 @@ var
   mCursor: TOTAEditPos;
 begin
   ACaret := Default(TAtlasEditorCaret);
-  ACaret.View := TopView;
+  ACaret.View := TAtlasEditorBuffer.TopSourceView;
   Result := ACaret.View <> nil;
   if not Result then
   begin

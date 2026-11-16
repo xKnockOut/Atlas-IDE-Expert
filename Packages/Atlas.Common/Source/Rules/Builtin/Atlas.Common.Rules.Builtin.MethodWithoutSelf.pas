@@ -73,20 +73,6 @@ begin
     cTexts[TMethodWithoutSelfText.Title].Text);
 end;
 
-/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
-function RuleFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 /// <summary>Steht AName als ganzes Wort (ohne Groß-/Kleinschreibung) in AText?</summary>
 function MentionsWord(const AText, AName: string): Boolean;
 var
@@ -187,7 +173,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := RuleFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mFormText := AContext.FormText;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);

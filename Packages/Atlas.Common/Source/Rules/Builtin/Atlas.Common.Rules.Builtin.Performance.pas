@@ -704,20 +704,6 @@ begin
   Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('[');
 end;
 
-/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 type
   /// <summary>Prüft die Bedingungen der Schleifen einer Unit (loop-invariant-call).</summary>
   TLoopConditionCheck = class
@@ -754,7 +740,7 @@ begin
   FTokens := FTree.Tokens;
   FTypes := TDeclaredTypes.Create(FTree, AContext.Text);
   FResolver := AResolver;
-  FFileName := ResolverFileName(AContext);
+  FFileName := AContext.ResolverFileName;
 end;
 
 destructor TLoopConditionCheck.Destroy;
@@ -1248,7 +1234,7 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
-  mFileName := ResolverFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   mResolver.PinTree(AContext.Tree, mFileName);
   try

@@ -14,17 +14,12 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature;
 
-/// <summary>Dateiname für die Namensauflösung wie in den übrigen Regeln.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
 /// <summary>Quelltext von ANode.</summary>
 function NodeText(const AContext: TRuleContext; ANode: TSyntaxNode): string;
 /// <summary>Typtext ohne Leerzeichen vor spitzen Klammern ("TArray &lt;Integer&gt;" aus dem Index).</summary>
 function NormalizedType(const AText: string): string;
 /// <summary>Typ der Deklaration ANode (Variable, Parameter, Feld, Typ) als Quelltext; '' ohne.</summary>
 function NodeTypeText(const AText: string; ANode: TSyntaxNode): string;
-/// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge eines rekursiven Laufs, aber über einen
-/// eigenen Stapel: Ausdrucksketten können sehr tief sein.</summary>
-function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 /// <summary>Liegt APosition im Bereich von ANode?</summary>
 function Covers(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 /// <summary>Innerste Deklaration (Variable, Parameter, Feld, Typ, Konstante) um APosition; nil ohne.</summary>
@@ -78,20 +73,6 @@ const
 type
   TSyntaxKinds = set of TSyntaxKind;
 
-/// <summary>Dateiname für die Namensauflösung wie in den übrigen Regeln.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 function NodeText(const AContext: TRuleContext; ANode: TSyntaxNode): string;
 begin
   Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -120,40 +101,6 @@ begin
     begin
       Exit(Trim(Copy(AText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset)));
     end;
-  end;
-end;
-
-/// <summary>Alle Knoten unter ARoot (samt ARoot) in der Reihenfolge eines rekursiven Laufs, aber über einen
-/// eigenen Stapel: Ausdrucksketten können sehr tief sein.</summary>
-function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
-var
-  mPending: TStack<TSyntaxNode>;
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  if ARoot = nil then
-  begin
-    Exit;
-  end;
-  mPending := TStack<TSyntaxNode>.Create;
-  mNodes := TList<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      mNodes.Add(mNode);
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-    Result := mNodes.ToArray;
-  finally
-    mNodes.Free;
-    mPending.Free;
   end;
 end;
 

@@ -770,15 +770,7 @@ var
     end;
     if mResolver = nil then
     begin
-      mFileName := AContext.FileName;
-      if mFileName = '' then
-      begin
-        mFileName := AContext.RelativePath;
-      end;
-      if mFileName = '' then
-      begin
-        mFileName := AContext.UnitName + '.pas';
-      end;
+      mFileName := AContext.ResolverFileName;
       // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
       mCache := TRuleDerived.Open(AContext);
       mResolver := TRuleDerived.Resolver(mCache, AContext);

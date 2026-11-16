@@ -60,15 +60,9 @@ end;
 { TAtlasIdeSearchEditor }
 
 class function TAtlasIdeSearchEditor.TopView(out AView: IOTAEditView): Boolean;
-var
-  mEditors: IOTAEditorServices;
 begin
-  AView := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    AView := mEditors.TopView;
-  end;
-  Result := (AView <> nil) and (AView.Buffer <> nil);
+  AView := TAtlasEditorBuffer.TopSourceView;
+  Result := AView <> nil;
 end;
 
 class function TAtlasIdeSearchEditor.CursorOf(const AView: IOTAEditView;

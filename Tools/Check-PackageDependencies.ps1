@@ -41,7 +41,12 @@
     Im Plugin gibt es manche Helfer nur an einer Stelle ($PluginLock): die
     Editorschrift (TAtlasEditorFont), die Auswahl im Designer
     (TAtlasDesignerAccess) und Meldungen der Designer-Werkzeuge
-    (TAtlasIdeDesignerTool.Say). Module melden sich nur über TAtlasModuleHost
+    (TAtlasIdeDesignerTool.Say), die oberste Editoransicht
+    (TAtlasEditorBuffer.TopView/TopSourceView); ebenso in Atlas.Common der
+    Dateiname für die Namensauflösung (TRuleContext.ResolverFileName),
+    Knoten in Baumreihenfolge und Vorkommen eines Bezeichners (TSyntaxNode)
+    und das Teilen außerhalb von Klammern (TRoutineSignatures.SplitTopLevel).
+    Module melden sich nur über TAtlasModuleHost
     an und ab: UnregisterModule und TAtlasContractHandshake.Check ruft nur
     Atlas.Core.Diagnostics.ModuleHost.
     Dasselbe gilt für JSON-Lesehelfer (#1969): Eine Routine TextOf, StringOf,
@@ -367,7 +372,8 @@ $AllowedJsonParseLocal = @{
     'Atlas.Core.Settings.Catalog:TAtlasJsonValues.Parse'   = 'liest auch einzelne Zahlen, Strings und Wahrheitswerte (über ein Hüllobjekt)'
 }
 
-# Kopien-Sperre im Plugin: Name, Ordner, wo es ihn gibt, und erlaubte Fassungen ("Unit:Routine") mit Grund.
+# Kopien-Sperre nach Namen (Plugin und Atlas.Common): Name, Ordner, wo es ihn gibt, und erlaubte Fassungen
+# ("Unit:Routine") mit Grund.
 # Die Listen sollen nur schrumpfen.
 $PluginLock = @(
     [pscustomobject]@{
@@ -403,6 +409,81 @@ $PluginLock = @(
             'Atlas.IDE.Designer.PropertySearch:TAtlasIdePropertySearch.Say'    = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
             'Atlas.IDE.Designer.ShowComponent:TAtlasIdeShowComponent.Say'      = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
             'Atlas.IDE.Designer.Usages:TAtlasIdeDesignerUsages.Say'            = 'Klassendienst ohne Werkzeug-Instanz, mit Protokoll'
+        }
+    }
+    # Dateiname für die Namensauflösung der Prüfregeln: nur TRuleContext.ResolverFileName.
+    [pscustomobject]@{
+        Name    = 'ResolverFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{
+            'Atlas.Common.Rules.Contract:TRuleContext.ResolverFileName' = 'die eine Fassung'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'RuleFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'CheckedFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'ContextFileName'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TRuleContext.ResolverFileName in Atlas.Common.Rules.Contract'
+        Allowed = @{}
+    }
+    # Oberste Editoransicht: nur TAtlasEditorBuffer.TopView/TopSourceView.
+    [pscustomobject]@{
+        Name    = 'TopView'
+        Folder  = 'Packages'
+        Home    = 'TAtlasEditorBuffer.TopView/TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Allowed = @{
+            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopView' = 'die eine Fassung'
+            'Atlas.IDE.Search.Editor:TAtlasIdeSearchEditor.TopView'        = 'out-Fassung für Bedingungen, leitet weiter'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'TopSourceView'
+        Folder  = 'Packages'
+        Home    = 'TAtlasEditorBuffer.TopSourceView in Atlas.IDE.Foundation.EditorBuffer'
+        Allowed = @{
+            'Atlas.IDE.Foundation.EditorBuffer:TAtlasEditorBuffer.TopSourceView' = 'die eine Fassung'
+        }
+    }
+    # Syntaxbaum: Knoten in Baumreihenfolge und Vorkommen eines Bezeichners nur an TSyntaxNode.
+    [pscustomobject]@{
+        Name    = 'PreOrder'
+        Folder  = 'Packages/Atlas.Common'
+        Home    = 'TSyntaxNode.PreOrder in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{
+            'Atlas.Common.Pascal.SyntaxTree:TSyntaxNode.PreOrder' = 'die eine Fassung'
+        }
+    }
+    [pscustomobject]@{
+        Name    = 'Occurrences'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{}
+    }
+    [pscustomobject]@{
+        Name    = 'MentionedInLocalRoutine'
+        Folder  = 'Packages/Atlas.Common/Source/Rules'
+        Home    = 'TSyntaxNode.IdentifierUses und UsedInNestedRoutine in Atlas.Common.Pascal.SyntaxTree'
+        Allowed = @{}
+    }
+    # Teile einer Parameter- oder Namensliste außerhalb von Klammern: nur TRoutineSignatures.SplitTopLevel.
+    [pscustomobject]@{
+        Name    = 'SplitTopLevel'
+        Folder  = 'Packages/Atlas.Common'
+        Home    = 'TRoutineSignatures.SplitTopLevel in Atlas.Common.Pascal.RoutineSignatures'
+        Allowed = @{
+            'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.SplitTopLevel' = 'die eine Fassung'
         }
     }
 )

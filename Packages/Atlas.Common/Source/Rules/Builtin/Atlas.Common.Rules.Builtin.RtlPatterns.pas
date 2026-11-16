@@ -74,7 +74,6 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Common.Pascal.PureRoutines,
   Atlas.Common.Localization.Texts;
 
@@ -1004,7 +1003,7 @@ begin
     FCache := TRuleDerived.Open(FContext);
     FResolver := TRuleDerived.Resolver(FCache, FContext);
   end;
-  mResolved := FResolver.ResolveChain(FContext.Tree, ResolverFileName(FContext), [FTokens[AName].Text],
+  mResolved := FResolver.ResolveChain(FContext.Tree, FContext.ResolverFileName, [FTokens[AName].Text],
     FTokens[AName].Offset);
   Result := mResolved.Found and mResolved.IsType;
 end;
