@@ -99,7 +99,7 @@ uses
   Atlas.Core.Editor.GutterColumn,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Debug.RunTo,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
@@ -120,17 +120,6 @@ begin
   if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
   begin
     Result := nil;
-  end;
-end;
-
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
   end;
 end;
 
@@ -308,7 +297,7 @@ var
   mView: IOTAEditView;
   mText: string;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or not TAtlasRunToColumnFlow.ReadDue(SameText(FCodeFile,
     mView.Buffer.FileName), TThread.GetTickCount64, FCodeReadAt, cTextMs) then
   begin
@@ -338,7 +327,7 @@ var
 begin
   ARow := Default(TRow);
   Result := False;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
@@ -459,8 +448,8 @@ begin
   else if TAtlasRunToColumnFlow.TipDue(FTip.IsShown, TThread.GetTickCount64, FHoverSince, cHoverMs) then
   begin
     TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-    FTip.ShowNote(TAtlasDebugStrings.Text(TAtlasDebugTextId.RunToTipTitle),
-      TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RunToTipText, [FHover.Line + 1]),
+    FTip.ShowNote(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToTipTitle),
+      TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToTipText, [FHover.Line + 1]),
       Point(FHoverScreen.Right + cTipGap, FHoverScreen.Bottom + cTipGap div 2));
   end;
 end;

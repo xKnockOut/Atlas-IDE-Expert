@@ -189,9 +189,6 @@ function Prepare(const AContext: TRuleContext; out AAncestry: TAncestry; out AMe
 /// <summary>Ein Mitglied ASymbol der Stufe ALocation ist für Nachfahren unsichtbar: strict private, oder private in
 /// einer anderen Unit.</summary>
 function InvisibleToDescendant(const ALocation: TSymbolLocation; const ASymbol: TIndexSymbol): Boolean;
-/// <summary>Dateiname der geprüften Datei für den Namensauflöser: FileName, sonst RelativePath, sonst
-/// Unitname.pas.</summary>
-function ResolverFileName(const AContext: TRuleContext): string;
 
 implementation
 
@@ -1003,19 +1000,6 @@ begin
   if not Result and (A <> '') and (B <> '') then
   begin
     Result := IsTypeAlias(BareName(A)) or IsTypeAlias(BareName(B));
-  end;
-end;
-
-function ResolverFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
   end;
 end;
 

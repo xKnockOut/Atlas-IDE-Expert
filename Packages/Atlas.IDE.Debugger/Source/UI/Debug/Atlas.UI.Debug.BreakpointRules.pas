@@ -78,7 +78,7 @@ implementation
 
 uses
   System.Math,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 const
   cDialogWidth = 560;
@@ -103,7 +103,7 @@ end;
 constructor TAtlasBreakpointRuleDialog.CreateDialog(AOwner: TComponent; const ARule: TAtlasBreakpointRule;
   const ATriggers: TAtlasRuleTriggers);
 begin
-  inherited CreateDialog(AOwner, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointRulesTitle,
+  inherited CreateDialog(AOwner, TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointRulesTitle,
     [TriggerText(TAtlasRuleTrigger.Create(ARule.FileName, ARule.Line))]), cDialogWidth);
   FRule := ARule;
   FTriggers := ATriggers;
@@ -143,20 +143,20 @@ var
   mHint: TLabel;
 begin
   mRow := AddRow(cRowHeight);
-  AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesTrigger)).ShowAccelChar := False;
+  AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesTrigger)).ShowAccelChar := False;
   FTrigger := AddCombo(mRow, cFieldLeft, cMainWidth);
   FDepend := AddCombo(mRow, cFieldLeft + cMainWidth + cGap, cSideWidth);
   mRow := AddRow(cRowHeight);
-  AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesHit)).ShowAccelChar := False;
+  AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesHit)).ShowAccelChar := False;
   FHit := AddCombo(mRow, cFieldLeft, cMainWidth);
   FHitCount := AddEdit(mRow, cFieldLeft + cMainWidth + cGap);
   FHitCount.NumbersOnly := True;
   mRow := AddRow(cRowHeight);
-  AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesThread)).ShowAccelChar := False;
+  AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesThread)).ShowAccelChar := False;
   FThread := AddCombo(mRow, cFieldLeft, cMainWidth);
   FThreadText := AddEdit(mRow, cFieldLeft + cMainWidth + cGap);
   mRow := AddRow(cHintHeight);
-  mHint := AddLabel(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesHint));
+  mHint := AddLabel(mRow, TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesHint));
   mHint.ShowAccelChar := False;
   // Feste Breite aus der Zeile: kein Schrumpfen auf die längste Zeile.
   mHint.AutoSize := False;
@@ -170,12 +170,12 @@ var
   mButton: TButton;
 begin
   mButtons := AddButtonRow;
-  mButton := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesOk),
+  mButton := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesOk),
     TAtlasButtonKind.Default);
   mButton.OnClick := OkClick;
-  mButton := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesClear));
+  mButton := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesClear));
   mButton.OnClick := ClearClick;
-  mButton := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesCancel),
+  mButton := mButtons.AddButton(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesCancel),
     TAtlasButtonKind.Cancel);
   mButton.ModalResult := mrCancel;
 end;
@@ -186,7 +186,7 @@ var
 begin
   FTrigger.Items.BeginUpdate;
   try
-    FTrigger.Items.Add(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointRulesNoTrigger));
+    FTrigger.Items.Add(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointRulesNoTrigger));
     for mIndex := 0 to High(FTriggers) do
     begin
       FTrigger.Items.Add(TriggerText(FTriggers[mIndex]));
@@ -201,15 +201,15 @@ begin
   FTrigger.ItemIndex := Max(0, FTrigger.ItemIndex);
 end;
 
-procedure AddTexts(ABox: TComboBox; const AIds: array of TAtlasDebugTextId; AIndex: Integer);
+procedure AddTexts(ABox: TComboBox; const AIds: array of TAtlasBreakpointsTextId; AIndex: Integer);
 var
-  mId: TAtlasDebugTextId;
+  mId: TAtlasBreakpointsTextId;
 begin
   ABox.Items.BeginUpdate;
   try
     for mId in AIds do
     begin
-      ABox.Items.Add(TAtlasDebugStrings.Text(mId));
+      ABox.Items.Add(TAtlasBreakpointsStrings.Text(mId));
     end;
   finally
     ABox.Items.EndUpdate;
@@ -220,12 +220,15 @@ end;
 procedure TAtlasBreakpointRuleDialog.FillChoices;
 begin
   // Reihenfolge wie die Aufzählungen; „Erst aktiv nach“ ohne None.
-  AddTexts(FDepend, [TAtlasDebugTextId.BreakpointRulesUntilEnd, TAtlasDebugTextId.BreakpointRulesOnce],
+  AddTexts(FDepend, [TAtlasBreakpointsTextId.BreakpointRulesUntilEnd, TAtlasBreakpointsTextId.BreakpointRulesOnce],
     Ord(FRule.Depend = TAtlasDependMode.Once));
-  AddTexts(FHit, [TAtlasDebugTextId.BreakpointRulesHitAny, TAtlasDebugTextId.BreakpointRulesHitExactly,
-    TAtlasDebugTextId.BreakpointRulesHitAtLeast, TAtlasDebugTextId.BreakpointRulesHitEvery], Ord(FRule.Hit));
-  AddTexts(FThread, [TAtlasDebugTextId.BreakpointRulesThreadAny, TAtlasDebugTextId.BreakpointRulesThreadName,
-    TAtlasDebugTextId.BreakpointRulesThreadId, TAtlasDebugTextId.BreakpointRulesThreadMain], Ord(FRule.Thread));
+  AddTexts(FHit, [TAtlasBreakpointsTextId.BreakpointRulesHitAny, TAtlasBreakpointsTextId.BreakpointRulesHitExactly,
+    TAtlasBreakpointsTextId.BreakpointRulesHitAtLeast, TAtlasBreakpointsTextId.BreakpointRulesHitEvery],
+      Ord(FRule.Hit));
+  AddTexts(FThread, [TAtlasBreakpointsTextId.BreakpointRulesThreadAny,
+    TAtlasBreakpointsTextId.BreakpointRulesThreadName,
+    TAtlasBreakpointsTextId.BreakpointRulesThreadId, TAtlasBreakpointsTextId.BreakpointRulesThreadMain],
+      Ord(FRule.Thread));
 end;
 
 procedure TAtlasBreakpointRuleDialog.ChoiceChange(Sender: TObject);

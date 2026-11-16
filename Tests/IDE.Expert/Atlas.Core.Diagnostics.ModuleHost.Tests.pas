@@ -28,7 +28,7 @@ type
     [Test]
     procedure UnregisterLogsFailures;
     /// <summary>Auch ohne Scope: Läuft im Package des Moduls noch ein überfälliger Thread, hält die Abmeldung das
-    /// Package fest, bevor es entladen wird (Code-Review T-103).</summary>
+    /// Package fest, bevor es entladen wird.</summary>
     [Test]
     procedure UnregisterPinsPackageWithOverdueThread;
   end;

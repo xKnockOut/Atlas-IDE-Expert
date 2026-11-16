@@ -33,7 +33,7 @@ implementation
 uses
   System.SysUtils,
   Atlas.UI.Debug.Deadlocks,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 const
   /// <summary>Zeichen markierter Threads (⚑); als Zeichencode und nicht in der Texttabelle, weil FPC es dort
@@ -46,11 +46,11 @@ class function TAtlasThreadMarkTexts.TipTitle(ACount: Integer): string;
 begin
   if ACount = 1 then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksTitleOne);
+    Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ThreadMarksTitleOne);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ThreadMarksTitle, [ACount]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ThreadMarksTitle, [ACount]);
   end;
 end;
 
@@ -59,7 +59,7 @@ begin
   Result := IntToStr(AStack.ThreadId);
   if AStack.Name <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadName, [Result, AStack.Name]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsThreadName, [Result, AStack.Name]);
   end;
   if AFlagged then
   begin
@@ -76,12 +76,12 @@ begin
   mWait := TAtlasDebugWaits.Find(AStack);
   if mWait.Blocked then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ThreadMarksWaiting,
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ThreadMarksWaiting,
       [Result, TAtlasDebugWaitTexts.ShortRoutine(mWait.Routine)]);
   end;
   if AFrozen then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ThreadMarksFrozen, [Result]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ThreadMarksFrozen, [Result]);
   end;
   // Das Zeichen zuletzt davor: Format reicht es unter FPC nicht unverändert durch.
   if AFlagged then
@@ -108,18 +108,18 @@ end;
 
 class function TAtlasThreadMarkTexts.SwitchLink(const AStack: TAtlasDebugThreadStack): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ThreadMarksSwitch, [ThreadLabel(AStack, False)]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ThreadMarksSwitch, [ThreadLabel(AStack, False)]);
 end;
 
 class function TAtlasThreadMarkTexts.FrozenText(ACount: Integer): string;
 begin
   if ACount = 1 then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksFrozenOne);
+    Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ThreadMarksFrozenOne);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ThreadMarksFrozenCount, [ACount]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ThreadMarksFrozenCount, [ACount]);
   end;
 end;
 

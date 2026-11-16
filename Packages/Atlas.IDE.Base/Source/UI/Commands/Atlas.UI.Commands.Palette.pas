@@ -23,6 +23,8 @@
 // Alt+Enter auf einem Eintrag der Gruppe meldet TAtlasPaletteAction.Toggle (Einstellungen mit @, #1884).
 // Mit RowHints zeigt ein Befehl mit Description diese als Hinweis über
 // seiner Zeile (volle Signatur gekürzter Überladungen, #1784).
+// Basis ist TAtlasPopupForm: Dialogschrift, Schatten und neue Farben bei jedem
+// Themenwechsel, solange die Palette offen ist.
 
 interface
 
@@ -37,16 +39,16 @@ uses
   Vcl.Forms,
   Vcl.ExtCtrls,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.UI.Foundation.Dialog;
 
 type
   /// <summary>Zeichnen der Palette: Maße, Eingabefeld, Zeilen mit Hervorhebung, Abzeichen, Überschrift und Status
   /// der Zusatzgruppe.</summary>
-  TAtlasPaletteDrawing = class(TForm)
+  TAtlasPaletteDrawing = class(TAtlasPopupForm)
   protected const
     cVisibleRows = 12;
   protected
-    FColors: TAtlasColors;
     function RowHeight: Integer;
     function InputHeight: Integer;
     function RowRect(ARow: Integer): TRect;
@@ -59,7 +61,6 @@ type
     procedure DrawHeader(const ARow: TRect; const ATitle: string);
     /// <summary>Statuszeile der Gruppe, kursiv und gedimmt.</summary>
     procedure DrawStatus(const ARow: TRect; const AStatus: string);
-    procedure CreateParams(var Params: TCreateParams); override;
   public
     /// <summary>Oben mittig über AArea (Editor bzw. Hauptfenster).</summary>
     procedure ShowOver(const AArea: TRect);
@@ -192,16 +193,11 @@ end;
 constructor TAtlasPaletteWindow.CreatePalette(AOwner: TComponent; const ACommands: TArray<TAtlasCommand>;
   AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreatePopup(AOwner, AColors);
   FCommands := ACommands;
   FHistory := AHistory;
-  FColors := AColors;
-  BorderStyle := bsNone;
-  KeyPreview := False;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
-  Font.Name := 'Segoe UI';
-  Font.Size := 10;
+  // Eine Stufe größer als die Dialogschrift: Eingabe und Treffer sind der Inhalt der Palette.
+  Font.Size := Font.Size + 1;
   OnDeactivate := FormDeactivate;
   FPrompt := '>';
   FQueryTimer := TTimer.Create(Self);
@@ -248,7 +244,7 @@ var
   mRow: Integer;
 begin
   Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   DrawInput(FPattern, FPrompt);
   for mRow := 0 to cVisibleRows - 1 do
@@ -260,7 +256,7 @@ begin
   end;
   // Rahmen des Fensters.
   Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Color := ToColor(FColors.Accent);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
   Canvas.Rectangle(ClientRect);
   Canvas.Brush.Style := bsSolid;
 end;
@@ -301,12 +297,6 @@ end;
 
 { TAtlasPaletteDrawing }
 
-procedure TAtlasPaletteDrawing.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
 function TAtlasPaletteDrawing.RowHeight: Integer;
 begin
   Canvas.Font := Font;
@@ -331,19 +321,19 @@ var
 begin
   // Eingabefeld mit Akzentrahmen.
   mInput := Rect(ScaleValue(6), ScaleValue(6), ClientWidth - ScaleValue(6), InputHeight - ScaleValue(4));
-  Canvas.Pen.Color := ToColor(FColors.Accent);
-  Canvas.Brush.Color := ToColor(FColors.Gutter);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
+  Canvas.Brush.Color := ToColor(Colors.Gutter);
   Canvas.Rectangle(mInput);
   InflateRect(mInput, -ScaleValue(8), 0);
   Canvas.Brush.Style := bsClear;
   if APattern = '' then
   begin
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
     mText := APrompt;
   end
   else
   begin
-    Canvas.Font.Color := ToColor(FColors.Text);
+    Canvas.Font.Color := ToColor(Colors.Text);
     mText := APattern + '|';
   end;
   DrawText(Canvas.Handle, PChar(mText), -1, mInput, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
@@ -713,7 +703,7 @@ begin
   mRow := ARow;
   if ASelected then
   begin
-    Canvas.Brush.Color := ToColor(FColors.Selection);
+    Canvas.Brush.Color := ToColor(Colors.Selection);
     Canvas.FillRect(mRow);
   end;
   Canvas.Brush.Style := bsClear;
@@ -721,7 +711,7 @@ begin
   mShortCutWidth := 0;
   if ACommand.ShortCut <> '' then
   begin
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
     mShortCutWidth := Canvas.TextWidth(ACommand.ShortCut);
     mPart := Rect(mRow.Right - mShortCutWidth, mRow.Top, mRow.Right, mRow.Bottom);
     DrawText(Canvas.Handle, PChar(ACommand.ShortCut), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
@@ -735,11 +725,11 @@ begin
     mPart := Rect(mRow.Right - mShortCutWidth - mBadgeWidth, mRow.Top + ScaleValue(4), mRow.Right - mShortCutWidth,
       mRow.Bottom - ScaleValue(4));
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.Gutter);
-    Canvas.Pen.Color := ToColor(FColors.Muted);
+    Canvas.Brush.Color := ToColor(Colors.Gutter);
+    Canvas.Pen.Color := ToColor(Colors.Muted);
     Canvas.RoundRect(mPart.Left, mPart.Top, mPart.Right, mPart.Bottom, ScaleValue(8), ScaleValue(8));
     Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := ToColor(FColors.Text);
+    Canvas.Font.Color := ToColor(Colors.Text);
     DrawText(Canvas.Handle, PChar(ACommand.Badge), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_CENTER or
       DT_NOPREFIX);
     Canvas.Font.Size := Font.Size;
@@ -749,7 +739,7 @@ begin
   DrawHighlighted(ACommand.Caption, AHighlight, Rect(mRow.Left, mRow.Top, mRow.Left + mCaptionWidth, mRow.Bottom));
   if ACommand.Path <> '' then
   begin
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
     mPart := Rect(mRow.Left + mCaptionWidth + ScaleValue(10), mRow.Top, mRow.Right - mShortCutWidth, mRow.Bottom);
     DrawText(Canvas.Handle, PChar(ACommand.Path), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
       DT_END_ELLIPSIS);
@@ -785,12 +775,12 @@ begin
     if mMarks[mIndex] then
     begin
       Canvas.Font.Style := [fsBold];
-      Canvas.Font.Color := ToColor(FColors.Accent);
+      Canvas.Font.Color := ToColor(Colors.Accent);
     end
     else
     begin
       Canvas.Font.Style := [];
-      Canvas.Font.Color := ToColor(FColors.Text);
+      Canvas.Font.Color := ToColor(Colors.Text);
     end;
     mPart := Rect(X, ARect.Top, ARect.Right, ARect.Bottom);
     DrawText(Canvas.Handle, PChar(mChunk), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -825,13 +815,13 @@ var
   mRow: TRect;
 begin
   mRow := ARow;
-  Canvas.Pen.Color := ToColor(FColors.Gutter);
+  Canvas.Pen.Color := ToColor(Colors.Gutter);
   Canvas.MoveTo(mRow.Left, mRow.Top);
   Canvas.LineTo(mRow.Right, mRow.Top);
   InflateRect(mRow, -ScaleValue(8), 0);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(FColors.Muted);
+  Canvas.Font.Color := ToColor(Colors.Muted);
   DrawText(Canvas.Handle, PChar(ATitle), -1, mRow, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
   Canvas.Brush.Style := bsSolid;
@@ -845,7 +835,7 @@ begin
   InflateRect(mRow, -ScaleValue(8), 0);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsItalic];
-  Canvas.Font.Color := ToColor(FColors.Muted);
+  Canvas.Font.Color := ToColor(Colors.Muted);
   DrawText(Canvas.Handle, PChar(AStatus), -1, mRow, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
   Canvas.Brush.Style := bsSolid;

@@ -140,23 +140,22 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Debug.VisualizerFlow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.DockWindow,
   Atlas.IDE.Debug.Evaluator,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Values.Strings;
 
 const
   cIdentifierPrefix = 'Atlas.Visualizer.';
 
 function KindCaption(AKind: TAtlasVisualizerKind): string;
 const
-  cIds: array[TAtlasVisualizerKind] of TAtlasTextId = (TAtlasTextId.DebugVisualizerKindLists,
-    TAtlasTextId.DebugVisualizerKindDictionaries, TAtlasTextId.DebugVisualizerKindDataSets,
-    TAtlasTextId.DebugVisualizerKindBytes, TAtlasTextId.DebugVisualizerKindJson,
-    TAtlasTextId.DebugVisualizerKindColors, TAtlasTextId.DebugVisualizerKindGuid,
-    TAtlasTextId.DebugVisualizerKindGeometry, TAtlasTextId.DebugVisualizerKindGraphics);
+  cIds: array[TAtlasVisualizerKind] of TAtlasValuesTextId = (TAtlasValuesTextId.DebugVisualizerKindLists,
+    TAtlasValuesTextId.DebugVisualizerKindDictionaries, TAtlasValuesTextId.DebugVisualizerKindDataSets,
+    TAtlasValuesTextId.DebugVisualizerKindBytes, TAtlasValuesTextId.DebugVisualizerKindJson,
+    TAtlasValuesTextId.DebugVisualizerKindColors, TAtlasValuesTextId.DebugVisualizerKindGuid,
+    TAtlasValuesTextId.DebugVisualizerKindGeometry, TAtlasValuesTextId.DebugVisualizerKindGraphics);
 begin
-  Result := TAtlasStrings.Text(cIds[AKind]);
+  Result := TAtlasValuesStrings.Text(cIds[AKind]);
 end;
 
 { TAtlasIdeVisualizer }
@@ -190,12 +189,12 @@ end;
 
 function TAtlasIdeVisualizer.GetVisualizerName: string;
 begin
-  Result := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerName), [KindCaption(FKind)]);
+  Result := Format(TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugVisualizerName), [KindCaption(FKind)]);
 end;
 
 function TAtlasIdeVisualizer.GetVisualizerDescription: string;
 begin
-  Result := Format(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerDescription), [KindCaption(FKind)]);
+  Result := Format(TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugVisualizerDescription), [KindCaption(FKind)]);
 end;
 
 procedure TAtlasIdeVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean;
@@ -234,7 +233,7 @@ end;
 
 function TAtlasIdeViewerVisualizer.GetMenuText: string;
 begin
-  Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerMenu);
+  Result := TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerMenu);
 end;
 
 function TAtlasIdeViewerVisualizer.Show(const Expression, TypeName, EvalResult: string; SuggestedLeft,
@@ -263,7 +262,6 @@ begin
   FForm.Left := APosition.X;
   FForm.Top := APosition.Y;
   FForm.MakeFullyVisible;
-  TAtlasIdeDockWindow.ApplyIdeTheme(FForm);
   FForm.Show;
   TAtlasIdeVisualizers.ViewerOpened(Self);
   RefreshVisualizer(AExpression, ATypeName, AEvalResult);
@@ -312,11 +310,11 @@ begin
   end;
   if Reason = ovurProcessRunning then
   begin
-    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerRunning));
+    FForm.MarkUnavailable(TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerRunning));
   end
   else
   begin
-    FForm.MarkUnavailable(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugViewerOutOfScope));
+    FForm.MarkUnavailable(TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugViewerOutOfScope));
   end;
 end;
 

@@ -45,11 +45,12 @@ uses
   Atlas.Core.UnitSearch.Model,
   Atlas.Core.UnitSearch.State,
   Atlas.Core.UnitSearch.UseUnit,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.UnitSearch.Data,
   Atlas.UI.UnitSearch.Painter;
 
 type
-  TAtlasUnitSearchWindow = class(TForm)
+  TAtlasUnitSearchWindow = class(TAtlasPopupForm)
   private
     FData: TAtlasUnitSearchData;
     FPainter: TAtlasUnitSearchPainter;
@@ -76,8 +77,8 @@ type
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
   protected
+    procedure ColorsChanged; override;
     procedure CreateParams(var Params: TCreateParams); override;
-    procedure CreateWnd; override;
     procedure Paint; override;
     procedure Resize; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -112,18 +113,11 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
-  Winapi.Dwmapi,
   Vcl.Graphics,
   Vcl.Clipbrd,
   Atlas.Core.UnitSearch.Sections,
   Atlas.UI.Strings,
   Atlas.UI.Search.Strings;
-
-const
-  // Ab Windows 11; ältere Systeme ignorieren die Attribute.
-  cCornerPreference = 33;
-  cRoundCorners = 2;
-  cBorderColorAttribute = 34;
 
 function WindowCaption(const AOptions: TAtlasUnitSearchOptions): string;
 begin
@@ -411,14 +405,12 @@ end;
 constructor TAtlasUnitSearchWindow.CreateSearch(AOwner: TComponent; const AOptions: TAtlasUnitSearchOptions;
   AState: TAtlasUnitSearchState; const AColors: TAtlasColors);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreatePopup(AOwner, AColors);
   FData := TAtlasUnitSearchData.Create(AOptions, AState);
   FData.Metrics.PPI := CurrentPPI;
   FPainter := TAtlasUnitSearchPainter.Create(FData, AColors);
-  BorderStyle := bsNone;
-  KeyPreview := False;
-  DoubleBuffered := True;
-  Color := TColor(AColors.Surface);
+  // Runde Ecken und Akzentrand vom Fenstermanager.
+  Rounded := True;
   Caption := WindowCaption(AOptions);
   OnClose := FormClose;
   ShowHint := True;
@@ -442,20 +434,16 @@ end;
 procedure TAtlasUnitSearchWindow.CreateParams(var Params: TCreateParams);
 begin
   inherited;
-  // Ohne Systemrahmen; vergrößert wird über WM_NCHITTEST. Schatten wie die Palette.
+  // Ohne Systemrahmen; vergrößert wird über WM_NCHITTEST. Den Schatten setzt TAtlasPopupForm.
   Params.Style := (Params.Style and not (WS_CAPTION or WS_THICKFRAME)) or WS_POPUP;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
 end;
 
-procedure TAtlasUnitSearchWindow.CreateWnd;
-var
-  mPreference, mBorder: DWORD;
+procedure TAtlasUnitSearchWindow.ColorsChanged;
 begin
-  inherited CreateWnd;
-  mPreference := cRoundCorners;
-  DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
-  mBorder := DWORD(FPainter.Colors.Accent);
-  DwmSetWindowAttribute(Handle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
+  if FPainter <> nil then
+  begin
+    FPainter.Colors := Colors;
+  end;
 end;
 
 procedure TAtlasUnitSearchWindow.Paint;

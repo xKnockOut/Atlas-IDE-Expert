@@ -116,7 +116,7 @@ uses
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.LineEnd,
   Atlas.UI.Debug.EditValueDialog,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Values.Strings;
 
 { TAtlasIdeDebugEditValue.TListener }
 
@@ -220,7 +220,7 @@ begin
   begin
     Exit;
   end;
-  if (AInfo.Setter <> '') and (MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueConfirmSetter,
+  if (AInfo.Setter <> '') and (MessageDlg(TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueConfirmSetter,
     [AInfo.Setter]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
     Exit;
@@ -331,12 +331,12 @@ begin
   begin
     Exit;
   end;
-  Result := [TAtlasDebugValueFix.Create(cEditAction, TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueAction))];
+  Result := [TAtlasDebugValueFix.Create(cEditAction, TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueAction))];
   // Booleans per Klick umschalten.
   if TAtlasEditValue.Toggled(AValue.Text, mNew) then
   begin
     Result := Result + [TAtlasDebugValueFix.Create(cToggleAction,
-      TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueToggle, [mNew]))];
+      TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueToggle, [mNew]))];
   end;
   // Der Hover gehört zum aktiven Editor.
   mView := TAtlasEditorBuffer.ActiveView;
@@ -344,7 +344,7 @@ begin
     FInstance.FChanges.Find(mView.Buffer.FileName, AValue.Expression, mChange) then
   begin
     Result := Result + [TAtlasDebugValueFix.Create(cUndoAction,
-      TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueUndo, [mChange.OldValue]))];
+      TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueUndo, [mChange.OldValue]))];
   end;
 end;
 
@@ -405,7 +405,7 @@ class procedure TAtlasIdeDebugEditValue.EditAtCursor;
 begin
   if not TryEditAtCursor and (FInstance <> nil) then
   begin
-    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNoValue));
+    FInstance.FMessage.Say(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoValue));
   end;
 end;
 
@@ -446,7 +446,7 @@ begin
   end;
   if not Result then
   begin
-    MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueFailed, [APlace.Expression, mOutcome]), mtWarning,
+    MessageDlg(TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueFailed, [APlace.Expression, mOutcome]), mtWarning,
       [mbOK], 0);
     Exit;
   end;
@@ -505,7 +505,7 @@ begin
   end
   else
   begin
-    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EditValueNoChange));
+    FInstance.FMessage.Say(TAtlasValuesStrings.Text(TAtlasValuesTextId.EditValueNoChange));
   end;
 end;
 
@@ -514,7 +514,7 @@ function MarkOf(const AChange: TAtlasEditChange): TAtlasInlineValueItem;
 begin
   Result := Default(TAtlasInlineValueItem);
   Result.Name := AChange.Expression;
-  Result.Text := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EditValueMark, [AChange.NewValue, AChange.OldValue]);
+  Result.Text := TAtlasValuesStrings.Fmt(TAtlasValuesTextId.EditValueMark, [AChange.NewValue, AChange.OldValue]);
   Result.State := TAtlasInlineValueState.Ready;
   Result.Changed := True;
 end;

@@ -72,15 +72,7 @@ constructor TTypedScope.Create(const AContext: TRuleContext);
 begin
   inherited Create;
   FContext := AContext;
-  FFileName := AContext.FileName;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.RelativePath;
-  end;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.UnitName + '.pas';
-  end;
+  FFileName := AContext.ResolverFileName;
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
   // Der Resolver des Laufs (TRuleDerived.Resolver): Seine Antworten teilen sich alle Regeln einer Datei.

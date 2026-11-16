@@ -28,11 +28,10 @@ interface
 
 uses
   System.SysUtils,
-  Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.Variables,
-  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.FieldRequests,
   Atlas.IDE.Debug.VariablesLists,
   Atlas.IDE.Debug.VariablesStore;
@@ -45,7 +44,7 @@ type
   TAtlasVariablesRunner = reference to function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
     const ADone: TProc<string>): Boolean;
 
-  TAtlasIdeDebugVariables = class
+  TAtlasIdeDebugVariables = class(TAtlasIdeDebugStopView)
   public const
     cTickMs = 10;
     cRequestTimeoutMs = 3000;
@@ -53,32 +52,17 @@ type
     cLocationRetries = 20;
     cLocationTicks = 5;
   private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStarted; override;
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugResumed; override;
-      procedure DebugEnded; override;
+    /// <summary>Stand der Suche im gezeigten Reiter.</summary>
+    TSearchState = record
+      /// <summary>Knoten, auf dessen Felder die Suche wartet; '' ohne.</summary>
+      Key: string;
+      /// <summary>Die Suche ist durch (Treffer bestimmt).</summary>
+      Done: Boolean;
     end;
-    {$SCOPEDENUMS ON}
-    TPhase = (Idle, Location, Request, Evaluate);
-    {$SCOPEDENUMS OFF}
     /// <summary>Ausführungspunkt: Datei und Zeile (0-basiert, -1 ohne).</summary>
     TPlace = record
       FileName: string;
       Line: Integer;
-    end;
-    TProgress = record
-      Phase: TPhase;
-      /// <summary>Halt (TAtlasIdeDebugSession.StopCount), für den die Listen gelten.</summary>
-      Stop: Integer;
-      /// <summary>Nummer der Anfragen; ältere Antworten verwirft Atlas.</summary>
-      Request: Integer;
-      Retries: Integer;
-      /// <summary>Knoten, auf dessen Felder die Suche wartet; '' ohne.</summary>
-      SearchKey: string;
-      /// <summary>Die Suche ist durch (Treffer bestimmt).</summary>
-      SearchDone: Boolean;
     end;
   private class var
     FInstance: TAtlasIdeDebugVariables;
@@ -88,24 +72,16 @@ type
     FLists: TAtlasIdeVariablesLists;
     FFields: TAtlasIdeDebugFieldRequests;
     FStore: TAtlasIdeVariablesStore;
-    FListener: IAtlasIdeDebugListener;
-    FTimer: TTimer;
     FTab: TAtlasVariablesTab;
-    FProgress: TProgress;
+    FSearch: TSearchState;
     FPlace: TPlace;
     FPrevious: TPlace;
     /// <summary>Text der Datei am Halt, für die Felder aus dem Index.</summary>
     FText: string;
     constructor Create(const ASession: TAtlasVariablesSessionFunc; const ARun: TAtlasVariablesRunner);
     procedure CancelWork;
-    procedure Stopped;
-    procedure Tick(Sender: TObject);
-    /// <summary>Ausführungspunkt lesen; False: später noch einmal (LLDB).</summary>
-    function ReadLocation: Boolean;
-    procedure Ask;
     procedure Accept(ARequest: Integer; const AAnswer: string);
     procedure StartEvaluate;
-    procedure EvaluateSlice;
     procedure SearchStep;
     procedure Expand(ATab: TAtlasVariablesTab; const AKey: string);
     procedure AcceptFields(ARequest: Integer; ATab: TAtlasVariablesTab; const AKey: string;
@@ -117,6 +93,15 @@ type
     /// <summary>Suche mit AText im gezeigten Reiter (neu) starten; leer: Suche aus.</summary>
     procedure Search(const AText: string; AMode: TAtlasVariableSearchMode; ADeep: Boolean);
     procedure Refresh;
+  protected
+    procedure SessionStarted; override;
+    procedure SessionStopped; override;
+    procedure SessionResumed; override;
+    procedure SessionEnded; override;
+    /// <summary>Ausführungspunkt lesen; False: später noch einmal (LLDB).</summary>
+    function ReadLocation: Boolean; override;
+    procedure Ask; override;
+    procedure EvaluateSlice; override;
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasVariablesSessionFunc; const ARun: TAtlasVariablesRunner); static;
@@ -136,10 +121,12 @@ type
 implementation
 
 uses
+  Atlas.IDE.Debug.Session,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.EvaluateRows,
+  Atlas.Core.Debug.StopProgress,
   Atlas.Core.Debug.VariablesFlow,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Files,
@@ -337,50 +324,9 @@ begin
   if (TAtlasIdeDebugSession.StoppedThread <> nil) and
     (TAtlasIdeDebugSession.StopCount <> mInstance.FProgress.Stop) then
   begin
-    mInstance.Stopped;
+    mInstance.SessionStopped;
   end;
   mInstance.Refresh;
-end;
-
-{ TAtlasIdeDebugVariables.TListener }
-
-procedure TAtlasIdeDebugVariables.TListener.DebugStarted;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.SyncWatches;
-  end;
-end;
-
-procedure TAtlasIdeDebugVariables.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugVariables.TListener.DebugResumed;
-begin
-  // Die Werte bleiben stehen bis zum nächsten Halt; nur laufende Arbeit endet.
-  if FInstance <> nil then
-  begin
-    FInstance.CancelWork;
-  end;
-end;
-
-procedure TAtlasIdeDebugVariables.TListener.DebugEnded;
-begin
-  if FInstance = nil then
-  begin
-    Exit;
-  end;
-  FInstance.CancelWork;
-  FInstance.FLists.Unavailable;
-  FInstance.FPlace := NoPlace;
-  FInstance.FPrevious := NoPlace;
-  FInstance.FText := '';
-  FInstance.Refresh;
 end;
 
 { TAtlasIdeDebugVariables }
@@ -397,21 +343,17 @@ begin
   FLists := TAtlasIdeVariablesLists.Create(ValueArrived());
   FFields := TAtlasIdeDebugFieldRequests.Create;
   FStore := TAtlasIdeVariablesStore.Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  CreateTimer(cTickMs);
 end;
 
 destructor TAtlasIdeDebugVariables.Destroy;
 begin
-  FreeAndNil(FTimer);
   // Laufende Feldanfragen halten die Sitzung: Destroy wartet sie ab.
   FreeAndNil(FFields);
   FreeAndNil(FLists);
   FreeAndNil(FStore);
   FText := '';
-  FProgress.SearchKey := '';
+  FSearch.Key := '';
   inherited Destroy;
 end;
 
@@ -424,12 +366,17 @@ begin
   FLists.Cancel;
   // Antworten noch laufender Anfragen verwerfen.
   Inc(FProgress.Request);
-  FProgress.Phase := TPhase.Idle;
-  FProgress.SearchKey := '';
+  FProgress.Phase := TAtlasStopPhase.Idle;
+  FSearch.Key := '';
   FFields.Reap(False);
 end;
 
-procedure TAtlasIdeDebugVariables.Stopped;
+procedure TAtlasIdeDebugVariables.SessionStarted;
+begin
+  SyncWatches;
+end;
+
+procedure TAtlasIdeDebugVariables.SessionStopped;
 var
   mSearch: TAtlasVariableSearch;
 begin
@@ -447,7 +394,7 @@ begin
   FProgress.Retries := 0;
   FLists.BeginStop;
   // Erst den Ort lesen; die Suche startet mit den neuen Werten neu.
-  FProgress.Phase := TPhase.Location;
+  FProgress.Phase := TAtlasStopPhase.Location;
   mSearch := FLists.Search;
   Search(mSearch.Text, mSearch.Mode, mSearch.Deep);
   if ReadLocation then
@@ -456,39 +403,20 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugVariables.Tick(Sender: TObject);
+procedure TAtlasIdeDebugVariables.SessionResumed;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped then
-          begin
-            FProgress.Phase := TPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            Ask;
-          end;
-        end;
-      TPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
+  // Die Werte bleiben stehen bis zum nächsten Halt; nur laufende Arbeit endet.
+  CancelWork;
+end;
+
+procedure TAtlasIdeDebugVariables.SessionEnded;
+begin
+  CancelWork;
+  FLists.Unavailable;
+  FPlace := NoPlace;
+  FPrevious := NoPlace;
+  FText := '';
+  Refresh;
 end;
 
 function TAtlasIdeDebugVariables.ReadLocation: Boolean;
@@ -524,7 +452,7 @@ var
 begin
   FTimer.Enabled := False;
   Inc(FProgress.Request);
-  FProgress.Phase := TPhase.Request;
+  FProgress.Phase := TAtlasStopPhase.Request;
   mSession := nil;
   if Assigned(FSession) then
   begin
@@ -552,7 +480,7 @@ var
   mAnswer: TAtlasVariablesAnswer;
 begin
   // Nur die jüngste Antwort, und nur, solange derselbe Halt besteht.
-  if (ARequest <> FProgress.Request) or (FProgress.Phase <> TPhase.Request) or not StillStopped then
+  if (ARequest <> FProgress.Request) or (FProgress.Phase <> TAtlasStopPhase.Request) or not StillStopped then
   begin
     Exit;
   end;
@@ -572,7 +500,7 @@ begin
   begin
     Exit;
   end;
-  FProgress.Phase := TPhase.Evaluate;
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
 end;
@@ -587,7 +515,7 @@ begin
     Exit;
   end;
   // Verzögerter Wert (LLDB) oder Felder für die Suche: warten.
-  if FLists.Busy or (FProgress.SearchKey <> '') then
+  if FLists.Busy or (FSearch.Key <> '') then
   begin
     Exit;
   end;
@@ -603,11 +531,11 @@ begin
       SearchStep;
     TAtlasVariablesStep.More, TAtlasVariablesStep.Wait: ;
   end;
-  mWaiting := FLists.Busy or (FProgress.SearchKey <> '') or not FProgress.SearchDone;
+  mWaiting := FLists.Busy or (FSearch.Key <> '') or not FSearch.Done;
   if not mWaiting and not FLists.HasPending then
   begin
     FTimer.Enabled := False;
-    FProgress.Phase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
   end;
   if mChanged then
   begin
@@ -620,7 +548,7 @@ var
   mSearch: TAtlasVariableSearch;
   mNode: TAtlasEvalNode;
 begin
-  if FProgress.SearchDone then
+  if FSearch.Done then
   begin
     Exit;
   end;
@@ -630,14 +558,14 @@ begin
   begin
     // Durch oder an der Grenze: Treffer bestimmen, Pfade aufklappen, Rest ausblenden.
     mSearch.Apply(FLists[FTab]);
-    FProgress.SearchDone := True;
+    FSearch.Done := True;
   end
   else
   begin
     mSearch.Opened(mNode);
     if not mNode.ChildrenLoaded then
     begin
-      FProgress.SearchKey := mNode.Key;
+      FSearch.Key := mNode.Key;
       Expand(FTab, mNode.Key);
     end;
   end;
@@ -686,16 +614,16 @@ begin
   mNode := mList.Find(AKey);
   // Felder des Index ersetzen Teile, die der Wert inzwischen geliefert hat.
   TAtlasEvalRows.AcceptFields(mList, mNode, AFields);
-  if (ATab = FTab) and (AKey = FProgress.SearchKey) then
+  if (ATab = FTab) and (AKey = FSearch.Key) then
   begin
-    FProgress.SearchKey := '';
+    FSearch.Key := '';
     if mNode <> nil then
     begin
       FLists.Search.Loaded(mNode);
     end;
   end;
   Refresh;
-  if FProgress.Phase = TPhase.Idle then
+  if FProgress.Phase = TAtlasStopPhase.Idle then
   begin
     StartEvaluate;
   end;
@@ -718,7 +646,7 @@ begin
     mNode.State := TAtlasEvalState.Unavailable;
   end;
   Refresh;
-  if FProgress.Phase = TPhase.Idle then
+  if FProgress.Phase = TAtlasStopPhase.Idle then
   begin
     StartEvaluate;
   end;
@@ -757,7 +685,7 @@ begin
     mList.Unavailable;
   end;
   Refresh;
-  if FProgress.Phase = TPhase.Idle then
+  if FProgress.Phase = TAtlasStopPhase.Idle then
   begin
     StartEvaluate;
   end;
@@ -785,11 +713,11 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   FLists.Search.Start(AText, AMode, ADeep, mSettings.DebugVariablesSearchDepth,
     mSettings.DebugVariablesSearchLimit);
-  FProgress.SearchKey := '';
-  FProgress.SearchDone := False;
+  FSearch.Key := '';
+  FSearch.Done := False;
   if StillStopped then
   begin
-    if FProgress.Phase = TPhase.Idle then
+    if FProgress.Phase = TAtlasStopPhase.Idle then
     begin
       StartEvaluate;
     end;
@@ -798,7 +726,7 @@ begin
   begin
     // Ohne angehaltenen Prozess öffnet die Suche nichts: nur im Vorhandenen.
     FLists.Search.Apply(FLists[FTab]);
-    FProgress.SearchDone := True;
+    FSearch.Done := True;
   end;
   Refresh;
 end;
@@ -815,7 +743,7 @@ begin
   end;
   mHasServer := Assigned(FSession) and (FSession() <> nil);
   mFrame.Refresh;
-  mFrame.SetStatus(StatusText(FLists, FTab, FProgress.SearchDone, mHasServer));
+  mFrame.SetStatus(StatusText(FLists, FTab, FSearch.Done, mHasServer));
 end;
 
 class procedure TAtlasIdeDebugVariables.Start(const ASession: TAtlasVariablesSessionFunc;
@@ -824,8 +752,7 @@ begin
   if FInstance = nil then
   begin
     FInstance := TAtlasIdeDebugVariables.Create(ASession, ARun);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.Listen;
   end;
   TAtlasIdeDebugSession.Start;
   TAtlasIdeDebugVariablesWindow.OnFrame :=
@@ -837,7 +764,7 @@ begin
   // Eingeschaltet, während der Prozess steht und das Fenster schon besteht: gleich für diesen Halt.
   if (TAtlasIdeDebugSession.StoppedThread <> nil) and (Frame <> nil) then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 
@@ -851,11 +778,6 @@ begin
   end;
   mInstance := FInstance;
   FInstance := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   // Der Frame zeigt die Listen der Instanz: erst lösen, dann Fenster und Instanz freigeben.
   if Frame <> nil then
   begin

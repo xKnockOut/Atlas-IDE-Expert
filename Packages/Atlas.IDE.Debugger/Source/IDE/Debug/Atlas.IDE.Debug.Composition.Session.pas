@@ -67,7 +67,7 @@ uses
   Atlas.IDE.Debug.Leaks,
   Atlas.IDE.Debug.Composition.CallStack,
   Atlas.UI.Debug.Leaks.Strings,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Commands.Strings;
 
 { Dienste von Base }
 
@@ -178,12 +178,12 @@ begin
 end;
 
 /// <summary>Befehl, dessen Ausführung über TAtlasFeature.Debugger gesichert ist.</summary>
-function ThreadCommand(const AId: string; ACaption: TAtlasDebugTextId; const ARun: TProc;
+function ThreadCommand(const AId: string; ACaption: TAtlasDebugCommandsTextId; const ARun: TProc;
   const AVisible: TFunc<Boolean>): TAtlasModuleCommand;
 begin
   Result := Default(TAtlasModuleCommand);
   Result.Id := AId;
-  Result.Caption := TAtlasDebugStrings.Text(ACaption);
+  Result.Caption := TAtlasDebugCommandsStrings.Text(ACaption);
   Result.Run :=
     procedure
     begin
@@ -195,14 +195,14 @@ end;
 function DebugThreadCommands: TArray<TAtlasModuleCommand>;
 begin
   Result := [
-    ThreadCommand('Atlas.DebugThreadFlag', TAtlasDebugTextId.ThreadMarksFlagCommand,
+    ThreadCommand('Atlas.DebugThreadFlag', TAtlasDebugCommandsTextId.ThreadMarksFlagCommand,
       TAtlasIdeDebugThreadsInSource.FlagAtLine, DebugThreadsInSourceVisible),
     // Einfrieren nur mit debug.threadFreeze (experimentell); Auftauen, solange ein Thread eingefroren ist.
-    ThreadCommand('Atlas.DebugThreadFreeze', TAtlasDebugTextId.ThreadMarksFreezeCommand,
+    ThreadCommand('Atlas.DebugThreadFreeze', TAtlasDebugCommandsTextId.ThreadMarksFreezeCommand,
       TAtlasIdeDebugThreadsInSource.FreezeAtLine, DebugThreadFreezeVisible),
-    ThreadCommand('Atlas.DebugThreadThaw', TAtlasDebugTextId.ThreadMarksThawCommand,
+    ThreadCommand('Atlas.DebugThreadThaw', TAtlasDebugCommandsTextId.ThreadMarksThawCommand,
       TAtlasIdeDebugThreadsInSource.ThawAtLine, DebugThreadsFrozenVisible),
-    ThreadCommand('Atlas.DebugThreadsThawAll', TAtlasDebugTextId.ThreadMarksThawAllCommand,
+    ThreadCommand('Atlas.DebugThreadsThawAll', TAtlasDebugCommandsTextId.ThreadMarksThawAllCommand,
       TAtlasIdeDebugThreadsInSource.ThawAll, DebugThreadsFrozenVisible)];
   Result := Result + CallStackCommands;
 end;

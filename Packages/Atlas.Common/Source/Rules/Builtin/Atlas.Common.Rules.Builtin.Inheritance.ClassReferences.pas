@@ -493,7 +493,7 @@ begin
   FCache := TRuleDerived.Open(FContext);
   FTokens := FContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  FFileName := ResolverFileName(FContext);
+  FFileName := FContext.ResolverFileName;
   FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FCache, FContext));
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   FResolver := TRuleDerived.Resolver(FCache, FContext);

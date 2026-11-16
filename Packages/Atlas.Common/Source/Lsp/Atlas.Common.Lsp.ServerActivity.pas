@@ -2,8 +2,9 @@
 
 // Was der Server gerade tut, für seine Statusdatei (#1901): Art, Befehl und Ziel des Prozesses, laufende Anfragen
 // mit Dauer (über TServerActivityObserver am Verteiler), Fortschritt eines Kommandozeilenlaufs, Zähler für
-// Zeitüberschreitungen und Fehler. Der LSP-Server meldet zusätzlich eine Funktion für seinen ausführlichen Status
-// (SetDetails). Ein Prozess hat genau eine Aktivität (Shared); TServerStatusHeartbeat liest sie alle paar Sekunden.
+// Zeitüberschreitungen und Fehler, der Prozess, den der Profiler gerade misst. Der LSP-Server meldet zusätzlich eine
+// Funktion für seinen ausführlichen Status (SetDetails). Ein Prozess hat genau eine Aktivität (Shared);
+// TServerStatusHeartbeat liest sie alle paar Sekunden.
 // Alle Methoden sind threadsicher.
 
 interface
@@ -48,6 +49,7 @@ type
     FTotal: Integer;
     FTimeouts: Integer;
     FErrors: Integer;
+    FProfiledProcess: Cardinal;
     FEnabled: Boolean;
     FDetails: TServerDetailsFunc;
     function GetEnabled: Boolean;
@@ -69,6 +71,8 @@ type
     procedure CountTimeout;
     /// <summary>Fortschritt eines Laufs: ADone von ATotal (ATotal = 0: kein Fortschritt).</summary>
     procedure SetProgress(ADone, ATotal: Integer);
+    /// <summary>Prozess, den der Profiler misst; 0, sobald kein Lauf mehr geht.</summary>
+    procedure SetProfiledProcess(AProcessId: Cardinal);
     /// <summary>Meldet die Funktion für den ausführlichen Status an bzw. mit nil ab; das Abmelden wartet auf eine
     /// laufende Abfrage.</summary>
     procedure SetDetails(const ADetails: TServerDetailsFunc);
@@ -242,6 +246,16 @@ begin
   end;
 end;
 
+procedure TServerActivity.SetProfiledProcess(AProcessId: Cardinal);
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FProfiledProcess := AProcessId;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
 procedure TServerActivity.SetDetails(const ADetails: TServerDetailsFunc);
 begin
   System.TMonitor.Enter(FDetailsLock);
@@ -299,6 +313,7 @@ begin
     Result.Total := FTotal;
     Result.Timeouts := FTimeouts;
     Result.Errors := FErrors;
+    Result.ProfiledProcess := FProfiledProcess;
     AddLongestRun(Result, ANowTicks);
   finally
     System.TMonitor.Exit(FLock);

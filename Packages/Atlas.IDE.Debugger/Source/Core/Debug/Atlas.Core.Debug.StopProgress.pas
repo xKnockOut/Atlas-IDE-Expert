@@ -2,7 +2,8 @@
 
 // Ablauf je Halt für Anzeigen im Editor, die Werte des Halts auswerten (Werte im Editor #508, „Warum bin ich
 // hier?“ #1878), ohne IDE prüfbar (#1967): Phase, Nachfragen bis Aufrufstapel und Editor da sind, nur die jüngste
-// Antwort des Servers und ob derselbe Halt noch besteht.
+// Antwort des Servers und ob derselbe Halt noch besteht. Next entscheidet, was ein Takt der Anzeige tut
+// (TAtlasIdeDebugStopView).
 
 interface
 
@@ -13,6 +14,10 @@ type
 
   /// <summary>Ausführungspunkt lesen: aufgeben, später noch einmal, Datei und Zeile da.</summary>
   TAtlasStopLocation = (GiveUp, Retry, Ready);
+
+  /// <summary>Was ein Takt tut: Takt anhalten, Takt anhalten und den Ausführungspunkt lesen, ein Stück
+  /// auswerten (der Takt läuft weiter).</summary>
+  TAtlasStopTick = (Pause, Locate, Evaluate);
 
   TAtlasStopProgress = record
     Phase: TAtlasStopPhase;
@@ -37,6 +42,9 @@ type
     function Accepts(ARequest: Integer): Boolean;
     /// <summary>Besteht derselbe Halt noch (AStopCount der Session, angehaltener Thread da)?</summary>
     function StillAt(AStopCount: Integer; AHasThread: Boolean): Boolean;
+    /// <summary>Schritt des nächsten Takts. In der Phase Location liest Atlas den Ausführungspunkt nur, solange
+    /// derselbe Halt besteht (AStillAtStop); sonst geht die Phase auf Idle.</summary>
+    function Next(AStillAtStop: Boolean): TAtlasStopTick;
   end;
 
 implementation
@@ -100,6 +108,25 @@ end;
 function TAtlasStopProgress.StillAt(AStopCount: Integer; AHasThread: Boolean): Boolean;
 begin
   Result := (AStopCount = Stop) and AHasThread;
+end;
+
+function TAtlasStopProgress.Next(AStillAtStop: Boolean): TAtlasStopTick;
+begin
+  case Phase of
+    TAtlasStopPhase.Location:
+      begin
+        if AStillAtStop then
+        begin
+          Exit(TAtlasStopTick.Locate);
+        end;
+        Phase := TAtlasStopPhase.Idle;
+        Result := TAtlasStopTick.Pause;
+      end;
+    TAtlasStopPhase.Evaluate:
+      Result := TAtlasStopTick.Evaluate;
+  else
+    Result := TAtlasStopTick.Pause;
+  end;
 end;
 
 end.

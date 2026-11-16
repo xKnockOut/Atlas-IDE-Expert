@@ -1,6 +1,6 @@
 ﻿unit Atlas.Core.Designer.KeptComponents.Tests;
 
-// Tests der gemerkten Komponenten über einen Dialog hinweg (F-104):
+// Tests der gemerkten Komponenten über einen Dialog hinweg:
 // gleiches Formular, gelöschte, umbenannte und verschachtelte Komponenten,
 // anderes Formular, Erreichbarkeit und Vergleich zweier Gruppen.
 

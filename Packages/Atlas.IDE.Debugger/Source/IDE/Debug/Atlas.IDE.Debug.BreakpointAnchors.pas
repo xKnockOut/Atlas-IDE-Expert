@@ -104,7 +104,7 @@ uses
   Atlas.IDE.Debug.Breakpoints,
   Atlas.IDE.Debug.BreakpointRules,
   Atlas.UI.Debug.BreakpointAnchors,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Breakpoints.Strings;
 
 /// <summary>Quelltext-Haltepunkte der IDE je Datei (Schlüssel: Dateiname wie in der IDE), Zeilen ab 0.</summary>
 function BreakpointsByFile: TDictionary<string, TArray<Integer>>;
@@ -335,10 +335,11 @@ begin
   MergeOrphans(ABatch.Orphans);
   for mMove in ABatch.Moves do
   begin
-    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsMovedLine,
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointAnchorsMovedLine,
       [ExtractFileName(mMove.FileName), mMove.FromLine + 1, mMove.ToLine + 1]));
   end;
-  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsSummary, [mMoved, Length(ABatch.Orphans)]));
+  FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointAnchorsSummary, [mMoved,
+    Length(ABatch.Orphans)]));
 end;
 
 class function TAtlasIdeBreakpointAnchors.ApplyMoves(const AMoves: TAtlasAnchorMoves; ARelocate: Boolean): Integer;
@@ -513,12 +514,12 @@ var
 begin
   if FUndo = nil then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNothingToUndo));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsNothingToUndo));
     Exit;
   end;
   mMoved := ApplyMoves(TAtlasBreakpointAnchors.Reversed(FUndo), True);
   FUndo := nil;
-  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointAnchorsUndone, [mMoved]));
+  FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointAnchorsUndone, [mMoved]));
 end;
 
 class procedure TAtlasIdeBreakpointAnchors.ShowOrphans;
@@ -537,7 +538,7 @@ begin
   FOrphans := mOrphans;
   if FOrphans = nil then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointAnchorsNoOrphans));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointAnchorsNoOrphans));
     Exit;
   end;
   FOrphans := TAtlasBreakpointOrphanDialog.Execute(FOrphans, OrphanAction);

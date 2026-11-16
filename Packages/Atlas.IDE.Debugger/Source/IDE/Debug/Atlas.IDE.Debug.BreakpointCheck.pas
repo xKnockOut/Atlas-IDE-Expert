@@ -72,7 +72,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Lsp.Client,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Breakpoints.Strings,
   Atlas.UI.Debug.BreakpointCheck,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -312,7 +312,7 @@ begin
   end;
   case TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Launch, JumpProc()) of
     TAtlasBreakpointCheckChoice.Move:
-      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
+      FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
     TAtlasBreakpointCheckChoice.Cancel:
       Result := False;
   end;
@@ -327,30 +327,30 @@ var
 begin
   if not Started then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckOff));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckOff));
     Exit;
   end;
   mSpots := Spots;
   if mSpots = nil then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.BreakpointCheckNone));
+    FMessage.Say(TAtlasBreakpointsStrings.Text(TAtlasBreakpointsTextId.BreakpointCheckNone));
     Exit;
   end;
   mProject := TAtlasIdeFiles.GroupProject(TAtlasIdeFiles.ActiveProjectFile);
   if not Check(mProject, mSpots, mProblems, mError) then
   begin
-    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckNoServer, [mError]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckNoServer, [mError]));
     Exit;
   end;
   if mProblems = nil then
   begin
-    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckAllOk, [Length(mSpots)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckAllOk, [Length(mSpots)]));
     Exit;
   end;
   if TAtlasBreakpointCheckDialog.Execute(mProblems, TAtlasBreakpointCheckMode.Command, JumpProc()) =
     TAtlasBreakpointCheckChoice.Move then
   begin
-    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
+    FMessage.Say(TAtlasBreakpointsStrings.Fmt(TAtlasBreakpointsTextId.BreakpointCheckMoved, [MoveProblems(mProblems)]));
   end;
 end;
 

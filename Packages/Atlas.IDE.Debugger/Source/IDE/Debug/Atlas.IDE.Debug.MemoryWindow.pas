@@ -171,16 +171,10 @@ end;
 { TAtlasIdeDebugMemoryWindow }
 
 class function TAtlasIdeDebugMemoryWindow.Show: TAtlasDebugMemoryFrame;
-var
-  mCreated: Boolean;
 begin
   // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
   EnsureHost;
-  Host.Show(mCreated);
-  if mCreated then
-  begin
-    TAtlasIdeDockWindow.UpdateIcon(Host);
-  end;
+  Host.Present;
   Result := ExistingFrame;
 end;
 
@@ -196,15 +190,12 @@ end;
 class function TAtlasIdeDebugMemoryWindow.Visible: Boolean;
 begin
   // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
-  Result := (Host <> nil) and Host.Shown;
+  Result := TAtlasIdeDockWindow.IsShown(Host);
 end;
 
 class procedure TAtlasIdeDebugMemoryWindow.Hide;
 begin
-  if Host <> nil then
-  begin
-    Host.Hide;
-  end;
+  TAtlasIdeDockWindow.HideIfAny(Host);
 end;
 
 class procedure TAtlasIdeDebugMemoryWindow.ApplyTheme;

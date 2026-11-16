@@ -18,15 +18,24 @@
 // TAtlasButtonRow misst die Knöpfe nach ihrem Text, TAtlasNoteLabel zeigt
 // Hinweise in der Textfarbe der Palette (Fehler, Warnung, Ok); Hinweise ohne
 // Aussage zeichnet der Stil. Eigene Farben holt ein Dialog in ThemeChanged.
+// TAtlasPopupForm ist die Basis der selbst gezeichneten Fenster, die anders
+// als TAtlasPopupWindow den Fokus nehmen (Erzeugen-Menü, Unit-Suche): ohne
+// Rahmen, mit Schatten und Dialogschrift, Farben aus TAtlasUiTheme. Es setzt
+// keinen VCL-Stil (das Fenster zeichnet alles selbst und behandelt seinen
+// Rand teils selbst), folgt aber jedem Themenwechsel mit neuen Farben.
+// Mit Rounded rundet ab Windows 11 der Fenstermanager die Ecken und zeichnet
+// den Rand in der Akzentfarbe (ältere Systeme übergehen beides).
 
 interface
 
 uses
   System.Classes,
+  Vcl.Graphics,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Forms,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Style.Signal;
 
 type
@@ -82,6 +91,9 @@ type
     /// <summary>Oberkante unter dem bisher untersten Element (alTop stapelt nach Top).</summary>
     function NextTop: Integer;
   public
+    /// <summary>Breite von AText in AFont, Gerätepixel (Font.Height ist schon in Gerätepixeln des Steuerelements).
+    /// </summary>
+    class function TextWidth(AFont: TFont; const AText: string): Integer; static;
     /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
     destructor Destroy; override;
@@ -105,11 +117,38 @@ type
     procedure FitRight(AControl: TControl);
   end;
 
+  /// <summary>Selbst gezeichnetes Fenster ohne Rahmen, das den Fokus nimmt; Farben folgen dem IDE-Thema.</summary>
+  TAtlasPopupForm = class(TForm)
+  private
+    FColors: TAtlasColors;
+    FRounded: Boolean;
+    procedure HandleThemeChanged;
+    /// <summary>Runde Ecken und Rand in der Akzentfarbe beim Fenstermanager setzen (nur mit Rounded und Fenster).
+    /// </summary>
+    procedure ApplyFrame;
+  protected
+    /// <summary>Schatten wie die Popups (CS_DROPSHADOW).</summary>
+    procedure CreateParams(var Params: TCreateParams); override;
+    procedure CreateWnd; override;
+    /// <summary>Thema der IDE hat gewechselt, Colors und Color sind neu gesetzt; danach wird neu gezeichnet.
+    /// </summary>
+    procedure ColorsChanged; virtual;
+  public
+    /// <summary>Leeres Fenster ohne Rahmen in den Farben AColors (bis zum nächsten Themenwechsel).</summary>
+    constructor CreatePopup(AOwner: TComponent; const AColors: TAtlasColors);
+    destructor Destroy; override;
+    property Colors: TAtlasColors read FColors;
+    /// <summary>Ecken rund und Rand in der Akzentfarbe vom Fenstermanager (ab Windows 11); vor dem Zeigen setzen.
+    /// </summary>
+    property Rounded: Boolean read FRounded write FRounded;
+  end;
+
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Dwmapi,
   System.Math,
-  Vcl.Graphics,
   Atlas.UI.Foundation.Theme;
 
 { TAtlasButtonRow }
@@ -146,17 +185,8 @@ begin
 end;
 
 function TAtlasButtonRow.ButtonWidth(const ACaption: string): Integer;
-var
-  mBitmap: TBitmap;
 begin
-  mBitmap := TBitmap.Create;
-  try
-    // Font.Height ist schon in Gerätepixeln der Leiste.
-    mBitmap.Canvas.Font.Assign(Font);
-    Result := mBitmap.Canvas.TextWidth(ACaption) + ScaleValue(cButtonPadding);
-  finally
-    mBitmap.Free;
-  end;
+  Result := TAtlasDialog.TextWidth(Font, ACaption) + ScaleValue(cButtonPadding);
   if Result < ScaleValue(cButtonMinWidth) then
   begin
     Result := ScaleValue(cButtonMinWidth);
@@ -226,6 +256,20 @@ destructor TAtlasDialog.Destroy;
 begin
   TAtlasUiTheme.Unsubscribe(Self);
   inherited;
+end;
+
+class function TAtlasDialog.TextWidth(AFont: TFont; const AText: string): Integer;
+var
+  mBitmap: Vcl.Graphics.TBitmap;
+begin
+  // Ausdrücklich die Klasse: Winapi.Windows steht hinter Vcl.Graphics und hat einen Record TBitmap.
+  mBitmap := Vcl.Graphics.TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(AFont);
+    Result := mBitmap.Canvas.TextWidth(AText);
+  finally
+    mBitmap.Free;
+  end;
 end;
 
 procedure TAtlasDialog.VisibleChanging;
@@ -378,6 +422,76 @@ begin
   HandleNeeded;
   AControl.Width := mParent.ClientWidth - AControl.Left - Min(AControl.Left, ScaleValue(cRowGap));
   AControl.Anchors := [akLeft, akTop, akRight];
+end;
+
+const
+  // Ab Windows 11; in älteren Winapi.Dwmapi nicht deklariert, ältere Systeme übergehen die Attribute.
+  cDwmCornerPreference = 33;
+  cDwmBorderColor = 34;
+  cDwmRoundCorners = 2;
+
+{ TAtlasPopupForm }
+
+constructor TAtlasPopupForm.CreatePopup(AOwner: TComponent; const AColors: TAtlasColors);
+begin
+  inherited CreateNew(AOwner);
+  FColors := AColors;
+  BorderStyle := bsNone;
+  Position := poDesigned;
+  KeyPreview := False;
+  DoubleBuffered := True;
+  Color := TColor(FColors.Surface);
+  TAtlasUiTheme.AssignDialogFont(Font);
+  TAtlasUiTheme.Subscribe(Self,
+    procedure
+    begin
+      HandleThemeChanged;
+    end);
+end;
+
+destructor TAtlasPopupForm.Destroy;
+begin
+  TAtlasUiTheme.Unsubscribe(Self);
+  inherited;
+end;
+
+procedure TAtlasPopupForm.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
+end;
+
+procedure TAtlasPopupForm.CreateWnd;
+begin
+  inherited CreateWnd;
+  ApplyFrame;
+end;
+
+procedure TAtlasPopupForm.ApplyFrame;
+var
+  mPreference, mBorder: DWORD;
+begin
+  if not FRounded or not HandleAllocated then
+  begin
+    Exit;
+  end;
+  mPreference := cDwmRoundCorners;
+  DwmSetWindowAttribute(Handle, cDwmCornerPreference, @mPreference, SizeOf(mPreference));
+  mBorder := DWORD(FColors.Accent);
+  DwmSetWindowAttribute(Handle, cDwmBorderColor, @mBorder, SizeOf(mBorder));
+end;
+
+procedure TAtlasPopupForm.HandleThemeChanged;
+begin
+  FColors := TAtlasUiTheme.Colors;
+  Color := TColor(FColors.Surface);
+  ApplyFrame;
+  ColorsChanged;
+  Invalidate;
+end;
+
+procedure TAtlasPopupForm.ColorsChanged;
+begin
 end;
 
 end.

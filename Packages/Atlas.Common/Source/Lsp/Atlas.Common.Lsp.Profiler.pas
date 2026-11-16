@@ -10,7 +10,12 @@
 // Stop löst die Adressen über die Map-Datei auf (Atlas.Common.Profiling.Sampling), schreibt den Lauf nach
 // TAtlasProfileStore.Folder und behält die neuesten fünf. Endet das Programm vorher, schreibt Status den Lauf.
 // Den Prober liefert die Komposition (Atlas.Windows.Profiling.Adapters.Sampler); ohne ihn melden die Befehle einen
-// Fehler. Die Befehle laufen der Reihe nach (nicht nebenläufig), der Zustand braucht deshalb keine Sperre.
+// Fehler. Die Befehle laufen der Reihe nach (nicht nebenläufig); die Sperre trennt sie von StopRun, das beim Ende des
+// Servers aus einem anderen Thread kommen kann.
+// Ende des Servers: Der Prober hält für jede Probe einen Thread des Zielprogramms kurz an. Endet der Server in diesem
+// Moment von außen (TerminateProcess) oder beim Ende des Prozesses, setzt Windows den Thread nicht fort, und das
+// Programm bleibt hängen. Die Komposition ruft deshalb StopRun als ersten Schritt ihres Abbaus, bevor der Client
+// nach seiner Schonfrist hart beendet; OnProcessChange meldet den gemessenen Prozess für die Statusdatei.
 
 interface
 
@@ -24,6 +29,9 @@ uses
   Atlas.Text.Profile;
 
 type
+  /// <summary>Gemessener Prozess; 0, sobald kein Lauf mehr geht.</summary>
+  TLspProfiledProcessProc = reference to procedure(AProcessId: Cardinal);
+
   TLspProfiler = class
   public const
     cStartCommand = 'atlas.server.profilerStart';
@@ -33,6 +41,7 @@ type
     cMinIntervalMs = 1;
     cMaxIntervalMs = 1000;
   private
+    FLock: TObject;
     FFactory: TAtlasProfileSamplerFactory;
     FFolder: string;
     FSampler: IAtlasProfileSampler;
@@ -41,6 +50,10 @@ type
     FProcessId: Cardinal;
     FWatch: TStopwatch;
     FLastFile: string;
+    FOnProcessChange: TLspProfiledProcessProc;
+    /// <summary>AHandler unter FLock.</summary>
+    function Locked(const AHandler: TLspCommandHandler): TLspCommandHandler;
+    procedure ProcessChanged(AProcessId: Cardinal);
     function HandleStart(const AArguments: TJSONArray): TJSONValue;
     function HandleStatus(const AArguments: TJSONArray): TJSONValue;
     function HandleStop(const AArguments: TJSONArray): TJSONValue;
@@ -56,6 +69,12 @@ type
     constructor Create(const AFactory: TAtlasProfileSamplerFactory; const AFolder: string);
     destructor Destroy; override;
     procedure Register(ACommands: TLspCommands);
+    /// <summary>Ende des Servers: hält einen laufenden Lauf an und schreibt ihn; ohne Lauf nichts. Threadsicher.
+    /// Der Prober ist auch dann angehalten, wenn das Schreiben scheitert (die Ausnahme geht an den Aufrufer).
+    /// </summary>
+    procedure StopRun;
+    /// <summary>Gemessener Prozess beim Start, 0 beim Ende eines Laufs (für die Statusdatei); nil = keiner.</summary>
+    property OnProcessChange: TLspProfiledProcessProc read FOnProcessChange write FOnProcessChange;
   end;
 
 implementation
@@ -107,6 +126,7 @@ end;
 constructor TLspProfiler.Create(const AFactory: TAtlasProfileSamplerFactory; const AFolder: string);
 begin
   inherited Create;
+  FLock := TObject.Create;
   FFactory := AFactory;
   FFolder := AFolder;
 end;
@@ -119,7 +139,33 @@ begin
     FSampler := nil;
   end;
   FMap.Free;
+  FLock.Free;
   inherited;
+end;
+
+function TLspProfiler.Locked(const AHandler: TLspCommandHandler): TLspCommandHandler;
+var
+  mLock: TObject;
+begin
+  mLock := FLock;
+  Result :=
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      System.TMonitor.Enter(mLock);
+      try
+        Result := AHandler(AArguments);
+      finally
+        System.TMonitor.Exit(mLock);
+      end;
+    end;
+end;
+
+procedure TLspProfiler.ProcessChanged(AProcessId: Cardinal);
+begin
+  if Assigned(FOnProcessChange) then
+  begin
+    FOnProcessChange(AProcessId);
+  end;
 end;
 
 function TLspProfiler.HandleStart(const AArguments: TJSONArray): TJSONValue;
@@ -228,6 +274,7 @@ procedure TLspProfiler.BeginProfile(AParams: TJSONObject; const ASampler: IAtlas
 begin
   FSampler := ASampler;
   FProcessId := Cardinal(AProcessId);
+  ProcessChanged(FProcessId);
   FWatch := TStopwatch.StartNew;
   FProfile := Default(TAtlasProfile);
   FProfile.ProgramName := TextParam(AParams, 'program');
@@ -266,6 +313,7 @@ var
 begin
   mRun := FSampler.Stop;
   FSampler := nil;
+  ProcessChanged(0);
   mResolver := TAtlasProfileResolver.Create(mRun, FMap);
   try
     mResolver.FillProfile(FProfile);
@@ -299,9 +347,22 @@ end;
 
 procedure TLspProfiler.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(cStartCommand, HandleStart);
-  ACommands.Register(cStatusCommand, HandleStatus);
-  ACommands.Register(cStopCommand, HandleStop);
+  ACommands.Register(cStartCommand, Locked(HandleStart));
+  ACommands.Register(cStatusCommand, Locked(HandleStatus));
+  ACommands.Register(cStopCommand, Locked(HandleStop));
+end;
+
+procedure TLspProfiler.StopRun;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    if FSampler <> nil then
+    begin
+      Finish.Free;
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
 end;
 
 initialization

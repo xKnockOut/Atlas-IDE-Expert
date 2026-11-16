@@ -30,6 +30,9 @@ type
     procedure CaptionsAndTimes;
     [Test]
     procedure SeveritySignalIsStatusBarSignal;
+    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    [Test]
+    procedure FollowsIdeTheme;
   end;
 
 implementation
@@ -48,6 +51,8 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
   Atlas.UI.Strings,
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Notifications.Strings,
   Atlas.UI.Notifications.Window;
 
@@ -251,6 +256,32 @@ begin
     TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Error).Solid, 'Fehler hell');
   Assert.AreEqual<TAtlasColor>(mLight.Signals.Get(TAtlasSignalKind.Info).Fill,
     TAtlasNotificationTexts.SeveritySignal(mLight, TAtlasNotificationSeverity.Info).Fill, 'Info');
+end;
+
+procedure TAtlasNotificationsWindowTests.FollowsIdeTheme;
+var
+  mWindow: TAtlasNotificationsWindow;
+  mDark: TAtlasColors;
+begin
+  mDark := TAtlasColors.Dark;
+  mWindow := TAtlasNotificationsWindow.CreateList(nil, TAtlasColors.Light, SampleCenter);
+  try
+    Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    TAtlasUiTheme.Install(
+      function: TAtlasColors
+      begin
+        Result := TAtlasColors.Dark;
+      end, nil, nil);
+    try
+      TAtlasUiTheme.Changed;
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Integer(TColor(mDark.Surface)), Integer(mWindow.Color), 'Fläche im neuen Thema');
+  finally
+    mWindow.Free;
+  end;
 end;
 
 initialization

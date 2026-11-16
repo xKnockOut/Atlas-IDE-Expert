@@ -1599,15 +1599,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := AContext.FileName;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.RelativePath;
-  end;
-  if mFileName = '' then
-  begin
-    mFileName := AContext.UnitName + '.pas';
-  end;
+  mFileName := AContext.ResolverFileName;
   mResolver := nil;
   try
     Visit(AContext.Tree.Root);

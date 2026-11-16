@@ -90,7 +90,8 @@ uses
   ToolsAPI,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 { TAtlasIdeRecursionGutter }
 
@@ -135,16 +136,10 @@ begin
 end;
 
 /// <summary>Oberer Editor mit einer Pascal-Quelle, sonst nil.</summary>
-function TopSourceView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
+function TopCompiledView: IOTAEditView;
 begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-  if (Result <> nil) and ((Result.Buffer = nil) or not TAtlasSourceFiles.IsCompiled(Result.Buffer.FileName)) then
+  Result := TAtlasEditorBuffer.TopSourceView;
+  if (Result <> nil) and not TAtlasSourceFiles.IsCompiled(Result.Buffer.FileName) then
   begin
     Result := nil;
   end;
@@ -236,7 +231,7 @@ begin
       Clear;
       Exit;
     end;
-    mView := TopSourceView;
+    mView := TopCompiledView;
     if mView = nil then
     begin
       Exit;

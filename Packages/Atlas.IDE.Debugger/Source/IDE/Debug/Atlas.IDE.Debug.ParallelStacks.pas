@@ -85,7 +85,8 @@ uses
   Atlas.Core.Debug.ThreadMarks,
   Atlas.IDE.Debug.ThreadsInSource,
   Atlas.UI.Debug.ThreadMarks,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Commands.Strings,
+  Atlas.UI.Debug.Threads.Strings;
 
 /// <summary>Fenster, falls es sichtbar ist; sonst nil.</summary>
 function ShownFrame: TAtlasDebugParallelStacksFrame;
@@ -208,7 +209,7 @@ begin
   FNext := FNext + Length(mChunk);
   if (mChunk <> nil) and (FNext < mProcess.ThreadCount) then
   begin
-    Rebuild(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.ParallelStacksReading, [FNext, mProcess.ThreadCount]));
+    Rebuild(TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.ParallelStacksReading, [FNext, mProcess.ThreadCount]));
     FTimer.Enabled := True;
     Exit;
   end;
@@ -250,7 +251,7 @@ begin
   mFrame := ShownFrame;
   if mFrame <> nil then
   begin
-    mFrame.ShowStatus(TAtlasDebugStrings.Text(TAtlasDebugTextId.ParallelStacksRunning));
+    mFrame.ShowStatus(TAtlasThreadsStrings.Text(TAtlasThreadsTextId.ParallelStacksRunning));
   end;
 end;
 
@@ -310,7 +311,7 @@ begin
   // Gehört dem Frame und geht mit ihm.
   mMenu := TPopupMenu.Create(AFrame);
   mItem := TMenuItem.Create(mMenu);
-  mItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.ThreadMarksFlagCommand);
+  mItem.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.ThreadMarksFlagCommand);
   mItem.OnClick := FTicker.FlagSelected;
   mMenu.Items.Add(mItem);
   mMenu.OnPopup := FTicker.TreePopup;

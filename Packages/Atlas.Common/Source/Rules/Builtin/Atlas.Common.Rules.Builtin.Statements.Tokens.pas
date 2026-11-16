@@ -8,8 +8,7 @@ interface
 
 uses
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Contract;
+  Atlas.Common.Pascal.SyntaxTree;
 
 type
   TTokens = TArray<TPascalToken>;
@@ -27,8 +26,6 @@ function CodeKey(const ATokens: TTokens; AFirst, ALast: Integer): string;
 function DepthZero(const ATokens: TTokens; AFrom, AStop: Integer; const AText: string; AKeyword: Boolean): Integer;
 /// <summary>Bilden die ABaseCount Code-Token vor AIndex die Basis ABaseKey (CodeKey), ohne Punkt davor?</summary>
 function BaseBefore(const ATokens: TTokens; AIndex: Integer; const ABaseKey: string; ABaseCount: Integer): Boolean;
-/// <summary>Dateiname des Kontexts für die Namensauflösung: Datei, relativer Pfad oder Unitname.</summary>
-function ContextFileName(const AContext: TRuleContext): string;
 /// <summary>Ist AType ein eingebauter String-Typ?</summary>
 function IsStringType(const AType: string): Boolean;
 
@@ -131,20 +128,6 @@ begin
   end;
   mPrev := PreviousCode(ATokens, mBefore);
   Result := (mKey = ABaseKey) and ((mPrev < 0) or not ATokens[mPrev].IsSymbol('.'));
-end;
-
-/// <summary>Dateiname des Kontexts für die Namensauflösung: Datei, relativer Pfad oder Unitname.</summary>
-function ContextFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
 end;
 
 function IsStringType(const AType: string): Boolean;

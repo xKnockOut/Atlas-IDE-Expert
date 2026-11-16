@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Monitor.Servers.Tests;
 
 // Tests für die Logik des Reiters „Server“ und des Symbols im Infobereich von AtlasMonitor (#1901): Zustand je
-// Server, schlechtester Zustand, Texte in beiden Sprachen, Hinweis, Spalten und Einzelheiten.
+// Server, schlechtester Zustand, Texte in beiden Sprachen, Hinweis, Spalten und Einzelheiten, Warnung vor dem
+// Beenden bei laufendem Profil-Lauf.
 
 interface
 
@@ -34,6 +35,8 @@ type
     procedure DetailsShowActivity;
     [Test]
     procedure MenuTextNamesPlaceAndPid;
+    [Test]
+    procedure StopWarnsOnlyWhileProfiling;
   end;
 
 implementation
@@ -206,6 +209,26 @@ begin
   mText := string.Join(#10, TMonitorServers.Details(ReadyEntry, cNow));
   Assert.IsFalse(mText.Contains('Längste Anfrage'), 'ohne laufende Anfrage');
   Assert.IsFalse(mText.Contains('Fortschritt'), 'ohne Fortschritt');
+end;
+
+procedure TMonitorServersTests.StopWarnsOnlyWhileProfiling;
+var
+  mProfiling, mOther: TServerStatusEntry;
+  mWarning: string;
+begin
+  mOther := ReadyEntry;
+  mProfiling := ReadyEntry;
+  mProfiling.Pid := 101;
+  mProfiling.ProfiledProcess := 4711;
+  Assert.AreEqual('', TMonitorServers.StopWarning(TArray<TServerStatusEntry>.Create(mOther)), 'ohne Profil-Lauf');
+  Assert.AreEqual('', TMonitorServers.StopWarning(nil), 'ohne Server');
+  mWarning := TMonitorServers.StopWarning(TArray<TServerStatusEntry>.Create(mOther, mProfiling));
+  Assert.IsTrue(mWarning.StartsWith(sLineBreak + sLineBreak), 'Absatz nach der Rückfrage');
+  Assert.IsTrue(mWarning.Contains('Prozess 4711'), mWarning);
+  Assert.IsTrue(mWarning.Contains('fortsetzen oder neu starten'), mWarning);
+  Assert.IsTrue(string.Join(#10, TMonitorServers.Details(mProfiling, cNow)).Contains('Profiler misst Prozess: 4711'));
+  Assert.IsFalse(string.Join(#10, TMonitorServers.Details(mOther, cNow)).Contains('Profiler'));
+  mWarning := '';
 end;
 
 procedure TMonitorServersTests.MenuTextNamesPlaceAndPid;

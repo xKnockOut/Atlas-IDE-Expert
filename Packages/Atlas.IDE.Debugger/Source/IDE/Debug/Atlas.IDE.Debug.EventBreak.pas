@@ -119,7 +119,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Settings.VisualizerKinds,
   Atlas.UI.Strings,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Commands.Strings,
+  Atlas.UI.Debug.EventBreak.Strings,
   Atlas.UI.Popup.Window,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
@@ -173,7 +174,7 @@ begin
   Result := AProcess <> nil;
   if not Result then
   begin
-    AReport.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoProcess));
+    AReport.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakNoProcess));
   end;
 end;
 
@@ -265,7 +266,7 @@ begin
   if FWatch.Phase <> TAtlasEventWatchPhase.Idle then
   begin
     Finish;
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancelled));
+    FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakCancelled));
   end
   else if Choose(mProcess) then
   begin
@@ -295,7 +296,7 @@ begin
   FChoice := mChoice;
   if FAnswer.Unresolved > 0 then
   begin
-    FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
+    FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakUnresolved, [FAnswer.Unresolved]));
   end;
   // Der Dialog war modal: Das Programm kann inzwischen beendet sein.
   Result := CurrentProcess(AProcess, FMessage);
@@ -352,7 +353,7 @@ begin
     if FWatch.Phase <> TAtlasEventWatchPhase.Idle then
     begin
       Finish;
-      FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
+      FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakEnded));
     end;
     FTimer.Enabled := False;
   end
@@ -456,13 +457,13 @@ begin
   except
     on E: ELspClientError do
     begin
-      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFailed, [E.Message]));
+      FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakFailed, [E.Message]));
       Exit;
     end;
   end;
   if Length(FAnswer.Handlers) = 0 then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
+    FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakNoHandlers));
     Exit;
   end;
   Result := True;
@@ -477,7 +478,7 @@ begin
   mChoice := TAtlasEventBreakWatch.CountChoice(AChoice);
   mSelected := TAtlasEventBreak.Select(FAnswer.Handlers, mChoice,
     TAtlasEventBreakSettings.ExcludedList(TAtlasIdeSettings.Current.DebugBreakOnNextEventExcluded), nil);
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakCount,
+  Result := TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakCount,
     [Length(mSelected), Length(TAtlasEventBreak.Locations(FAnswer.Handlers, mSelected))]);
 end;
 
@@ -523,21 +524,21 @@ begin
     TAtlasEventArmCount.Empty:
       begin
         FTimer.Enabled := False;
-        FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakNoHandlers));
+        FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakNoHandlers));
         Exit;
       end;
     TAtlasEventArmCount.Many:
-      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakMany, [Length(FArmed.Locations)]));
+      FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakMany, [Length(FArmed.Locations)]));
   end;
   Watch;
-  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakWatching, [Length(FArmed.Locations)]));
+  FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakWatching, [Length(FArmed.Locations)]));
 end;
 
 procedure TAtlasIdeEventBreak.ArmAllForms;
 var
   mChoice: TAtlasEventChoice;
 begin
-  FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleUnknown));
+  FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakVisibleUnknown));
   // Nur für diese Beobachtung; die Wahl im Dialog bleibt „sichtbare Formulare“.
   mChoice := FChoice;
   mChoice.Scope := TAtlasEventScope.AllForms;
@@ -591,14 +592,14 @@ begin
   begin
     if AProcess.ProcessState = psStopped then
     begin
-      FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakElsewhere, [ExtractFileName(mFileName),
+      FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakElsewhere, [ExtractFileName(mFileName),
         mLine + 1]));
     end;
     Exit;
   end;
   mCaption := TAtlasEventBreak.Caption(FAnswer.Handlers, FArmed.Locations[mFound],
     IdentifyHandler(FAnswer, FArmed.Locations[mFound]));
-  FMessage.Say(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakStopped, [mCaption]));
+  FMessage.Say(TAtlasEventBreakStrings.Fmt(TAtlasEventBreakTextId.EventBreakStopped, [mCaption]));
   ShowBar(mCaption);
   // Im Takt bleiben, um die Leiste zu schließen, sobald das Programm weiterläuft.
   FTimer.Enabled := True;
@@ -609,7 +610,7 @@ begin
   HideBar;
   if TAtlasIdeBreakpoints.CurrentProcess = nil then
   begin
-    FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakEnded));
+    FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakEnded));
     Exit;
   end;
   if Length(FArmed.Locations) > 0 then
@@ -644,7 +645,7 @@ begin
   end;
   FMenuItem := TMenuItem.Create(nil);
   FMenuItem.Name := cMenuItemName;
-  FMenuItem.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCommand);
+  FMenuItem.Caption := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.EventBreakCommand);
   FMenuItem.OnClick := MenuClick;
   mParent.Add(FMenuItem);
   UpdateMenu;
@@ -694,7 +695,7 @@ begin
   end;
   if not Enabled then
   begin
-    FInstance.FMessage.Say(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOff));
+    FInstance.FMessage.Say(TAtlasEventBreakStrings.Text(TAtlasEventBreakTextId.EventBreakOff));
     Exit;
   end;
   FInstance.Execute;

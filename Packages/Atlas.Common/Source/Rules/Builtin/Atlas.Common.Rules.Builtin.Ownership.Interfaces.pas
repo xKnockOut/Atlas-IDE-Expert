@@ -97,26 +97,6 @@ begin
   Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
-/// <summary>Bezeichner AName unter ANode (nicht als Mitglied hinter einem Punkt), ohne lokale Routinen.</summary>
-function Occurrences(ANode: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
-var
-  mFound: TArray<TSyntaxNode>;
-begin
-  mFound := nil;
-  ANode.Walk(
-    function(AChild: TSyntaxNode): Boolean
-    begin
-      if (AChild.Kind = TSyntaxKind.Identifier) and SameText(AChild.Name, AName) and
-        not ((AChild.Parent <> nil) and (AChild.Parent.Kind = TSyntaxKind.MemberAccess) and
-        (AChild.Parent[0] <> AChild)) then
-      begin
-        mFound := mFound + [AChild];
-      end;
-      Result := (AChild = ANode) or (AChild.Kind <> TSyntaxKind.RoutineDecl);
-    end);
-  Result := mFound;
-end;
-
 /// <summary>Die Anweisung, die ANode enthält.</summary>
 function StatementOf(ANode: TSyntaxNode): TSyntaxNode;
 begin
@@ -384,7 +364,7 @@ var
   mTrack: TMixedTrack;
 begin
   mTrack := Default(TMixedTrack);
-  for mNode in Occurrences(TRoutineBody.BodyOf(ARoutine), AName) do
+  for mNode in TSyntaxNode.IdentifierUsesOutsideNested(TRoutineBody.BodyOf(ARoutine), AName) do
   begin
     // X := … nach der Weitergabe: ab hier ein anderes Objekt.
     if (mTrack.Temporary <> nil) and (mNode.Parent.Kind = TSyntaxKind.AssignStatement) and

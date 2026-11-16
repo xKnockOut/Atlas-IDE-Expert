@@ -60,7 +60,9 @@ uses
   Atlas.Core.Debug.EventLog,
   Atlas.UI.Strings,
   Atlas.UI.Debug.Leaks.Strings,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Settings.Strings,
+  Atlas.UI.Debug.Values.Strings,
+  Atlas.UI.Debug.Stepping.Strings,
   Atlas.UI.Debug.VariablesStrings,
   Atlas.UI.Debug.Memory.Strings,
   Atlas.UI.Debug.Profile.Strings;
@@ -80,7 +82,7 @@ procedure TAtlasDebugSettingsSection.BuildRows;
 begin
   ModuleSwitch('debug.enabled');
   // Variablenwerte im Hover beim Debuggen (#891).
-  Switch('debug.hoverValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverValues));
+  Switch('debug.hoverValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugHoverValues));
   BuildVisualizers;
   BuildStepping;
   BuildMore;
@@ -183,159 +185,186 @@ end;
 
 procedure TAtlasDebugSettingsSection.BuildVisualizers;
 const
-  cKinds: array[TAtlasVisualizerKind] of TAtlasTextId = (TAtlasTextId.DebugVisualizerKindLists,
-    TAtlasTextId.DebugVisualizerKindDictionaries, TAtlasTextId.DebugVisualizerKindDataSets,
-    TAtlasTextId.DebugVisualizerKindBytes, TAtlasTextId.DebugVisualizerKindJson,
-    TAtlasTextId.DebugVisualizerKindColors, TAtlasTextId.DebugVisualizerKindGuid,
-    TAtlasTextId.DebugVisualizerKindGeometry, TAtlasTextId.DebugVisualizerKindGraphics);
+  cKinds: array[TAtlasVisualizerKind] of TAtlasValuesTextId = (TAtlasValuesTextId.DebugVisualizerKindLists,
+    TAtlasValuesTextId.DebugVisualizerKindDictionaries, TAtlasValuesTextId.DebugVisualizerKindDataSets,
+    TAtlasValuesTextId.DebugVisualizerKindBytes, TAtlasValuesTextId.DebugVisualizerKindJson,
+    TAtlasValuesTextId.DebugVisualizerKindColors, TAtlasValuesTextId.DebugVisualizerKindGuid,
+    TAtlasValuesTextId.DebugVisualizerKindGeometry, TAtlasValuesTextId.DebugVisualizerKindGraphics);
 var
   mKind: TAtlasVisualizerKind;
   mEvaluation: TAtlasVisualizerEvaluation;
   mValues: TArray<string>;
 begin
   // Visualisierer für häufige Typen (#835): Hauptschalter, Arten, Namensfelder, Grenzen, Auswertung.
-  Switch('debug.visualizers', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizers));
+  Switch('debug.visualizers', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizers));
   for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
-    FVisualizerKinds[mKind] := OwnCheck(TAtlasStrings.Text(cKinds[mKind]), [cVisualizerTypesKey]);
+    FVisualizerKinds[mKind] := OwnCheck(TAtlasValuesStrings.Text(cKinds[mKind]), [cVisualizerTypesKey]);
   end;
   FVisualizerNameFields := Line(cVisualizerNameFieldsKey,
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerNameFields));
-  Number('debug.visualizers.maxLength', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerMaxLength));
-  Number('debug.visualizers.timeoutMs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerTimeout));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizerNameFields));
+  Number('debug.visualizers.maxLength',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizerMaxLength));
+  Number('debug.visualizers.timeoutMs',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizerTimeout));
   Number('debug.visualizers.maxImagePixels',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerMaxImagePixels));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizerMaxImagePixels));
   mValues := nil;
   for mEvaluation := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
     mValues := mValues + [TAtlasVisualizerSettings.cEvaluationNames[mEvaluation]];
   end;
-  Choice('debug.visualizers.evaluation', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugVisualizerEvaluation),
-    [TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerEvaluationFields),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerEvaluationProperties),
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugVisualizerEvaluationCalls)], mValues);
+  Choice('debug.visualizers.evaluation',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugVisualizerEvaluation),
+    [TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugVisualizerEvaluationFields),
+    TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugVisualizerEvaluationProperties),
+    TAtlasValuesStrings.Text(TAtlasValuesTextId.DebugVisualizerEvaluationCalls)], mValues);
   // Eigene Wertdarstellungen (#854): Schalter und Aufrufe in Vorlagen.
-  Switch('debug.displayRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDisplayRules));
-  Switch('debug.displayRules.allowCalls', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDisplayRulesAllowCalls));
+  Switch('debug.displayRules', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDisplayRules));
+  Switch('debug.displayRules.allowCalls',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDisplayRulesAllowCalls));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildStepping;
 const
-  cKinds: array[TStepFilterKind] of TAtlasTextId = (TAtlasTextId.StepFilterKindGetters,
-    TAtlasTextId.StepFilterKindSetters, TAtlasTextId.StepFilterKindTrivial,
-    TAtlasTextId.StepFilterKindOperators, TAtlasTextId.StepFilterKindEmptyConstructors);
+  cKinds: array[TStepFilterKind] of TAtlasSteppingTextId = (TAtlasSteppingTextId.StepFilterKindGetters,
+    TAtlasSteppingTextId.StepFilterKindSetters, TAtlasSteppingTextId.StepFilterKindTrivial,
+    TAtlasSteppingTextId.StepFilterKindOperators, TAtlasSteppingTextId.StepFilterKindEmptyConstructors);
 var
   mKind: TStepFilterKind;
 begin
   // Gezielt hineinspringen (#836) und Schrittfilter beim Hineinspringen (#850): Schalter, Arten, Muster.
-  Switch('debug.stepIntoTarget', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugStepIntoTarget));
-  Switch('debug.stepFilters', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugStepFilters));
+  Switch('debug.stepIntoTarget',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugStepIntoTarget));
+  Switch('debug.stepFilters', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugStepFilters));
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
-    FStepFilterKinds[mKind] := OwnCheck(TAtlasStrings.Text(cKinds[mKind]), [cStepFilterKindsKey]);
+    FStepFilterKinds[mKind] := OwnCheck(TAtlasSteppingStrings.Text(cKinds[mKind]), [cStepFilterKindsKey]);
   end;
   FStepFilterPatterns := Line(cStepFilterPatternsKey,
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugStepFilterPatterns));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugStepFilterPatterns));
   Key('debug.stepIntoTarget.key', TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
   // Beim nächsten Ereignis anhalten (#856): Schalter und ausgenommene Ereignisse.
-  Switch('debug.breakOnNextEvent', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEvent));
+  Switch('debug.breakOnNextEvent',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEvent));
   FBreakOnNextEventExcluded := Line(cBreakExcludedKey,
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakOnNextEventExcluded));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakOnNextEventExcluded));
   // Haltepunkte, die nicht greifen werden (#577).
-  Switch('debug.checkBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCheckBreakpoints));
+  Switch('debug.checkBreakpoints',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCheckBreakpoints));
   // Haltepunkte auf Methoden nach Muster (#855).
-  Switch('debug.methodBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugMethodBreakpoints));
+  Switch('debug.methodBreakpoints',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugMethodBreakpoints));
   // Haltepunkt nur für ein Objekt (#857).
-  Switch('debug.instanceBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInstanceBreakpoints));
+  Switch('debug.instanceBreakpoints',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInstanceBreakpoints));
   // Anhalten, wenn sich ein Feld ändert (#584).
-  Switch('debug.dataBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDataBreakpoints));
+  Switch('debug.dataBreakpoints',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDataBreakpoints));
   // Haltepunkt-Sätze (#586).
   Switch('debug.breakpointSetPerBranch',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointSetPerBranch));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointSetPerBranch));
   // Bis hier ausführen per Klick (#851).
-  Switch('debug.runToClick', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRunToClick));
+  Switch('debug.runToClick', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRunToClick));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
-  Switch('debug.breakpointsWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointsWindow));
+  Switch('debug.breakpointsWindow',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointsWindow));
   // Haltepunkte wandern mit dem Code (#841).
-  Switch('debug.breakpointAnchors', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointAnchors));
+  Switch('debug.breakpointAnchors',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointAnchors));
   // Abhängige Haltepunkte und Trefferbedingungen (#864).
-  Switch('debug.breakpointRules', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugBreakpointRules));
+  Switch('debug.breakpointRules',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointRules));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildMore;
 begin
   // „kein Zugriff auf Wert“ erklären (#840), Vervollständigung in Debugger-Dialogen (#538), Fenster „Auswerten“
   // (#784), Zugriffsverletzung erklären (#865).
-  Switch('debug.explainUnavailable', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExplainUnavailable));
-  Switch('debug.completionInDialogs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCompletionInDialogs));
-  Switch('debug.evaluateWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEvaluateWindow));
+  Switch('debug.explainUnavailable',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExplainUnavailable));
+  Switch('debug.completionInDialogs',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCompletionInDialogs));
+  Switch('debug.evaluateWindow',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEvaluateWindow));
   Switch('debug.evaluateWindow.replaceCtrlF7',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEvaluateReplaceCtrlF7));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEvaluateReplaceCtrlF7));
   Switch('debug.explainAccessViolation',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExplainAccessViolation));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExplainAccessViolation));
   Switch('debug.explainAccessViolation.allowCalls',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExplainAccessViolationAllowCalls));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExplainAccessViolationAllowCalls));
   // Modul der Fehleradresse (#1820).
-  Switch('debug.moduleOfAddress', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugModuleOfAddress));
+  Switch('debug.moduleOfAddress',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugModuleOfAddress));
   // Was wartet worauf? (#587).
-  Switch('debug.deadlocks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugDeadlocks));
+  Switch('debug.deadlocks', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDeadlocks));
   // Leckbericht am Programmende (#1875).
   Switch('debug.leakReport', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReport));
   Switch('debug.leakReport.compare', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReportCompare));
   Switch('debug.leakReport.window', TAtlasLeaksStrings.Text(TAtlasLeaksTextId.SettingsDebugLeakReportWindow));
   // Parallele Aufrufstapel (#837).
-  Switch('debug.parallelStacks', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacks));
+  Switch('debug.parallelStacks',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugParallelStacks));
   // Fenster „Aufrufstapel“ (#843).
-  Switch('debug.callStackWindow', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCallStackWindow));
+  Switch('debug.callStackWindow',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCallStackWindow));
   Switch('debug.callStackWindow.evaluateParams',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugCallStackWindowEvaluateParams));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugCallStackWindowEvaluateParams));
   // Threads im Quelltext (#852).
-  Switch('debug.threadsInSource', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadsInSource));
+  Switch('debug.threadsInSource',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugThreadsInSource));
   // Threads einfrieren (#852, experimentell).
-  Switch('debug.threadFreeze', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugThreadFreeze));
+  Switch('debug.threadFreeze', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugThreadFreeze));
   // Herkunft eingereihter Methoden (#859, experimentell).
-  Switch('debug.asyncOrigin', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOrigin));
+  Switch('debug.asyncOrigin', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugAsyncOrigin));
   Number('debug.asyncOrigin.maxPerSite',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugAsyncOriginMaxPerSite));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugAsyncOriginMaxPerSite));
   Line('debug.parallelStacks.waitRoutines',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksWaitRoutines));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugParallelStacksWaitRoutines));
   Number('debug.parallelStacks.maxThreads',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugParallelStacksMaxThreads));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugParallelStacksMaxThreads));
 
   // Exception-Verlauf (#517), nur eigener Code (#578), Exception-Leiste (#783), Werte im Editor (#508).
-  Switch('debug.exceptionHistory', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionHistory));
-  Switch('debug.justMyCode', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugJustMyCode));
-  FOwnCodeFolders := Line(cOwnCodeFoldersKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugOwnCodeFolders));
-  Switch('debug.exceptionBanner', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBanner));
+  Switch('debug.exceptionHistory',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionHistory));
+  Switch('debug.justMyCode', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugJustMyCode));
+  FOwnCodeFolders := Line(cOwnCodeFoldersKey,
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugOwnCodeFolders));
+  Switch('debug.exceptionBanner',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBanner));
   Switch('debug.exceptionBanner.ignoreAtLocation',
-    TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
-  Switch('debug.inlineValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValues));
-  Number('debug.inlineValuesPerLine', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugInlineValuesPerLine));
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugExceptionBannerIgnoreAtLocation));
+  Switch('debug.inlineValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValues));
+  Number('debug.inlineValuesPerLine',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugInlineValuesPerLine));
   // „Warum bin ich hier?“ (#1878).
-  Switch('debug.whyHere', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHere));
-  Number('debug.whyHere.depth', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugWhyHereDepth));
+  Switch('debug.whyHere', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHere));
+  Number('debug.whyHere.depth', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugWhyHereDepth));
   BuildStopValues;
   // Ereignisprotokoll (#580).
-  Switch('debug.eventLog', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLog));
-  Line(cEventLogColorsKey, TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEventLogColors));
-  Switch('debug.logpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpoints));
-  Line('debug.logpointPrefix', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLogpointPrefix));
-  Switch('debug.noSourcePage', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourcePage));
-  Line('debug.noSourcePage.ignoredUnits', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugNoSourceIgnored));
+  Switch('debug.eventLog', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLog));
+  Line(cEventLogColorsKey, TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEventLogColors));
+  Switch('debug.logpoints', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpoints));
+  Line('debug.logpointPrefix', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLogpointPrefix));
+  Switch('debug.noSourcePage', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourcePage));
+  Line('debug.noSourcePage.ignoredUnits',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugNoSourceIgnored));
 end;
 
 procedure TAtlasDebugSettingsSection.BuildRestartRows;
 begin
   // Neu starten, erneut anhängen (#2171), Startverbünde (#867), Speicherverlauf (#858), Profiler (#2057).
-  Switch('debug.restart', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestart));
-  Switch('debug.restart.reenableBreakpoints', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugRestartReenable));
+  Switch('debug.restart', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestart));
+  Switch('debug.restart.reenableBreakpoints',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRestartReenable));
   // Erneut anhängen (#2171).
-  Switch('debug.reattach', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattach));
-  Key('debug.reattach.key', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachKey));
-  Number('debug.reattach.waitIntervalMs', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugReattachWait));
+  Switch('debug.reattach', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattach));
+  Key('debug.reattach.key', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattachKey));
+  Number('debug.reattach.waitIntervalMs',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugReattachWait));
   // Startverbünde (#867).
-  Switch('debug.launchGroups', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugLaunchGroups));
-  Switch('debug.pinnedValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPinnedValues));
+  Switch('debug.launchGroups', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugLaunchGroups));
+  Switch('debug.pinnedValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPinnedValues));
   // Speicherverlauf (#858).
   Switch('debug.memoryTimeline', TAtlasMemoryStrings.Text(TAtlasMemoryTextId.SettingsDebugMemoryTimeline));
   Number('debug.memoryTimeline.intervalMs',
@@ -356,15 +385,18 @@ begin
   Number('debug.variablesWindow.searchLimit',
     TAtlasVariablesStrings.Text(TAtlasVariablesTextId.SettingsDebugVariablesSearchLimit));
   // Bedingungen vorausschauen (#2169).
-  Switch('debug.predictConditions', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredict));
-  Switch('debug.predictConditions.dimSkipped', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictDim));
-  Number('debug.predictConditions.lines', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugPredictLines));
+  Switch('debug.predictConditions', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredict));
+  Switch('debug.predictConditions.dimSkipped',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredictDim));
+  Number('debug.predictConditions.lines',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugPredictLines));
   // Werte ändern (#868).
-  Switch('debug.editValues', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugEditValues));
+  Switch('debug.editValues', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugEditValues));
   // Debug-Hover aufklappen und Änderungen markieren (#895).
-  Switch('debug.hoverExpand', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverExpand));
-  Number('debug.hoverMaxChildren', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverMaxChildren));
-  Switch('debug.hoverChanges', TAtlasDebugStrings.Text(TAtlasDebugTextId.SettingsDebugHoverChanges));
+  Switch('debug.hoverExpand', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugHoverExpand));
+  Number('debug.hoverMaxChildren',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugHoverMaxChildren));
+  Switch('debug.hoverChanges', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugHoverChanges));
 end;
 
 function TAtlasDebugSettingsSection.VisualizerKindCheck(AKind: TAtlasVisualizerKind): TCheckBox;

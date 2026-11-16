@@ -38,15 +38,15 @@ uses
   Atlas.Core.Debug.RuntimeReport,
   Atlas.IDE.Foundation.Host,
   Atlas.IDE.Foundation.Files,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.RuntimeReport.Strings;
 
 const
   cMessageGroup = 'Atlas';
   cFrameIndent = '    ';
 
-procedure Say(AId: TAtlasDebugTextId; const AArgs: array of const);
+procedure Say(AId: TAtlasRuntimeReportTextId; const AArgs: array of const);
 begin
-  TAtlasIdeHost.Message(TAtlasDebugStrings.Fmt(AId, AArgs));
+  TAtlasIdeHost.Message(TAtlasRuntimeReportStrings.Fmt(AId, AArgs));
 end;
 
 function Group(const AMessages: IOTAMessageServices): IOTAMessageGroup;
@@ -65,7 +65,7 @@ begin
   Result := AFrame.Location;
   if (AFrame.Line > 0) and (AFrame.FileName = '') then
   begin
-    Result := Result + TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RuntimeReportLine, [AFrame.Line]);
+    Result := Result + TAtlasRuntimeReportStrings.Fmt(TAtlasRuntimeReportTextId.RuntimeReportLine, [AFrame.Line]);
   end;
   if not AIsSite then
   begin
@@ -73,11 +73,11 @@ begin
   end;
   if AKind = TAtlasRuntimeReportKind.Crash then
   begin
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportCrashSite);
+    Result := Result + TAtlasRuntimeReportStrings.Text(TAtlasRuntimeReportTextId.RuntimeReportCrashSite);
   end
   else
   begin
-    Result := Result + TAtlasDebugStrings.Text(TAtlasDebugTextId.RuntimeReportLeakSite);
+    Result := Result + TAtlasRuntimeReportStrings.Text(TAtlasRuntimeReportTextId.RuntimeReportLeakSite);
   end;
 end;
 
@@ -102,15 +102,16 @@ function StackTitle(const AReport: TAtlasRuntimeReport; const AStack: TAtlasRunt
 begin
   if AReport.Kind = TAtlasRuntimeReportKind.Leaks then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RuntimeReportGroup, [AStack.Name, AStack.Count, AStack.Size]);
+    Result := TAtlasRuntimeReportStrings.Fmt(TAtlasRuntimeReportTextId.RuntimeReportGroup, [AStack.Name, AStack.Count,
+      AStack.Size]);
   end
   else if AStack.Crashed then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RuntimeReportCrashedThread, [AStack.Name]);
+    Result := TAtlasRuntimeReportStrings.Fmt(TAtlasRuntimeReportTextId.RuntimeReportCrashedThread, [AStack.Name]);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RuntimeReportThread, [AStack.Name]);
+    Result := TAtlasRuntimeReportStrings.Fmt(TAtlasRuntimeReportTextId.RuntimeReportThread, [AStack.Name]);
   end;
 end;
 
@@ -122,7 +123,7 @@ begin
   begin
     if mStack >= TAtlasIdeRuntimeReport.cMaxStacks then
     begin
-      AMessages.AddTitleMessage(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.RuntimeReportMore,
+      AMessages.AddTitleMessage(TAtlasRuntimeReportStrings.Fmt(TAtlasRuntimeReportTextId.RuntimeReportMore,
         [Length(AReport.Stacks) - mStack]), Group(AMessages));
       Break;
     end;
@@ -139,11 +140,11 @@ begin
   // Passt die Map oder fehlt sie ganz (Zeilen mit Debug-Informationen), gibt es nichts zu sagen.
   if AReport.MapStatus = TAtlasRuntimeMapStatus.Missing then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportMapMissing, [AReport.MapName]);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportMapMissing, [AReport.MapName]);
   end
   else if AReport.MapStatus = TAtlasRuntimeMapStatus.Differs then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportMapDiffers, [AReport.MapName]);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportMapDiffers, [AReport.MapName]);
   end;
 end;
 
@@ -153,23 +154,23 @@ var
 begin
   if AReport.Kind = TAtlasRuntimeReportKind.None then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportNone, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportNone, []);
     Exit;
   end;
   if AReport.Kind = TAtlasRuntimeReportKind.Crash then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportCrashTitle, [AReport.Source, AReport.Title]);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportCrashTitle, [AReport.Source, AReport.Title]);
   end
   else
   begin
-    Say(TAtlasDebugTextId.RuntimeReportLeakTitle, [AReport.Source, AReport.Title]);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportLeakTitle, [AReport.Source, AReport.Title]);
   end;
   SayMapStatus(AReport);
   if Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then
   begin
     AddStacks(mMessages, AReport);
   end;
-  Say(TAtlasDebugTextId.RuntimeReportMarked, [AReport.Diagnostics]);
+  Say(TAtlasRuntimeReportTextId.RuntimeReportMarked, [AReport.Diagnostics]);
   TAtlasIdeHost.ShowMessages;
 end;
 
@@ -183,7 +184,7 @@ begin
     begin
       if not TAtlasRuntimeReports.FromJson(AAnswer, mReport) then
       begin
-        Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
+        Say(TAtlasRuntimeReportTextId.RuntimeReportNoServer, []);
         Exit;
       end;
       Show(mReport);
@@ -205,7 +206,7 @@ begin
       SayMapStatus(mReport);
       if mReport.Diagnostics > 0 then
       begin
-        Say(TAtlasDebugTextId.RuntimeReportMarked, [mReport.Diagnostics]);
+        Say(TAtlasRuntimeReportTextId.RuntimeReportMarked, [mReport.Diagnostics]);
       end;
     end;
 end;
@@ -215,7 +216,7 @@ begin
   Result :=
     procedure(AAnswer: string)
     begin
-      Say(TAtlasDebugTextId.RuntimeReportCleared, []);
+      Say(TAtlasRuntimeReportTextId.RuntimeReportCleared, []);
     end;
 end;
 
@@ -230,19 +231,19 @@ begin
   mProject := TAtlasIdeFiles.ActiveProjectFile;
   if mProject = '' then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportNoProject, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportNoProject, []);
     Exit;
   end;
   mText := Clipboard.AsText;
   if Trim(mText) = '' then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportEmpty, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportEmpty, []);
     Exit;
   end;
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
     TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(mProject, mText), cTimeoutMs, ReportAnswer()) then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportNoServer, []);
   end;
 end;
 
@@ -255,7 +256,7 @@ begin
     TAtlasRuntimeReports.cClearCommand, TAtlasRuntimeReports.ClearArgumentsJson(mProject), cTimeoutMs,
     ClearAnswer()) then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportNoServer, []);
   end;
 end;
 
@@ -268,7 +269,7 @@ begin
   if (TAtlasIdeHost.ActiveSession = nil) or not TAtlasIdeHost.RunServerCommandAsync(AScope, TAtlasFeature.Debugger,
     TAtlasRuntimeReports.cCommand, TAtlasRuntimeReports.ArgumentsJson(AProject, AText), cTimeoutMs, MarkAnswer()) then
   begin
-    Say(TAtlasDebugTextId.RuntimeReportNoServer, []);
+    Say(TAtlasRuntimeReportTextId.RuntimeReportNoServer, []);
   end;
 end;
 

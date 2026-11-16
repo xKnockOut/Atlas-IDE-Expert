@@ -32,7 +32,7 @@ uses
   System.SysUtils,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.Threads,
-  Atlas.UI.Debug.Strings;
+  Atlas.UI.Debug.Threads.Strings;
 
 /// <summary>Threads der Liste AThreads durch Komma getrennt; ASkipMain lässt den Hauptthread weg.</summary>
 function ThreadList(const AReport: TAtlasDebugWaitReport; const AThreads: TArray<Integer>;
@@ -59,7 +59,7 @@ end;
 
 class function TAtlasDebugWaitTexts.Title(const AReport: TAtlasDebugWaitReport): string;
 begin
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsTitle, [Length(AReport.Stacks)]);
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsTitle, [Length(AReport.Stacks)]);
 end;
 
 class function TAtlasDebugWaitTexts.ShortRoutine(const ARoutine: string): string;
@@ -90,7 +90,8 @@ begin
   mStack := AReport.Stacks[AIndex];
   if mStack.Name <> '' then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadName, [IntToStr(mStack.ThreadId), mStack.Name]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsThreadName, [IntToStr(mStack.ThreadId),
+      mStack.Name]);
   end
   else
   begin
@@ -98,7 +99,7 @@ begin
   end;
   if AIndex = AReport.Main then
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsMainThread, [Result]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsMainThread, [Result]);
   end;
 end;
 
@@ -106,19 +107,19 @@ class function TAtlasDebugWaitTexts.WaitText(const AReport: TAtlasDebugWaitRepor
 begin
   if not AReport.Stacks[AIndex].Readable then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsUnreadable);
+    Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsUnreadable);
   end
   else if AReport.Waits[AIndex].Kind = TAtlasDebugWaitKind.None then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsRunning);
+    Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsRunning);
   end
   else if AReport.Waits[AIndex].Kind = TAtlasDebugWaitKind.Idle then
   begin
-    Result := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsIdle);
+    Result := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsIdle);
   end
   else
   begin
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsIn, [ShortRoutine(AReport.Waits[AIndex].Routine)]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsIn, [ShortRoutine(AReport.Waits[AIndex].Routine)]);
   end;
 end;
 
@@ -131,13 +132,13 @@ begin
   mJump := AReport.Stacks[AIndex].JumpFrame;
   if mJump < 0 then
   begin
-    Exit(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadItemNoPlace,
+    Exit(TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsThreadItemNoPlace,
       [ThreadLabel(AReport, AIndex), WaitText(AReport, AIndex)]));
   end;
   mFrame := AReport.Stacks[AIndex].Frames[mJump];
-  mPlace := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsPlace,
+  mPlace := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsPlace,
     [ShortRoutine(mFrame.Routine), ExtractFileName(mFrame.FileName), mFrame.Line]);
-  Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsThreadItem,
+  Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsThreadItem,
     [ThreadLabel(AReport, AIndex), WaitText(AReport, AIndex), mPlace]);
 end;
 
@@ -152,20 +153,20 @@ begin
         mWhere := '';
         if AReport.MainInThreadDestructor then
         begin
-          mWhere := TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugWaitsInDestructor);
+          mWhere := TAtlasThreadsStrings.Text(TAtlasThreadsTextId.DebugWaitsInDestructor);
         end;
-        Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsMainWaitsForSync,
+        Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsMainWaitsForSync,
           [mWhere, ThreadList(AReport, APattern.Threads, True)]);
       end;
     TAtlasDebugDeadlockKind.SynchronizeBlocked:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsSyncBlocked,
+      Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsSyncBlocked,
         [ThreadList(AReport, APattern.Threads, True), ShortRoutine(AReport.Waits[AReport.Main].Routine)]);
     TAtlasDebugDeadlockKind.SameLock:
-      Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsSameLock,
+      Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsSameLock,
         [Length(APattern.Threads), ShortRoutine(APattern.Place),
           ThreadList(AReport, APattern.Threads, False)]);
   else
-    Result := TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugWaitsAllBlocked, [Length(APattern.Threads)]);
+    Result := TAtlasThreadsStrings.Fmt(TAtlasThreadsTextId.DebugWaitsAllBlocked, [Length(APattern.Threads)]);
   end;
 end;
 

@@ -1,30 +1,32 @@
-﻿unit Atlas.IDE.Designer.UndoApply;
+﻿unit Atlas.Core.Designer.UndoApply;
 
 // Rückgängig im Designer (#1887): einen Plan von TAtlasFormUndo im offenen
-// Designer ausführen. Die ToolsAPI lädt keinen Formulartext in einen offenen
+// Designer ausführen, über den Vertrag IAtlasDesignSurface (ohne VCL und
+// Open Tools API). Die ToolsAPI lädt keinen Formulartext in einen offenen
 // Designer; Atlas ändert darum Stück für Stück:
-// - Löschen über IOTAComponent.Delete (der Designer nimmt das Feld aus der
-//   Klasse), Umbenennen über Name (der Designer zieht das Feld nach).
-// - Anlegen über IDesigner.CreateComponent mit der registrierten Klasse
-//   (FindClass), danach Name und Werte wie beim Ändern.
+// - Löschen über IAtlasDesignSurface.DeleteComponent (der Designer nimmt das
+//   Feld aus der Klasse), Umbenennen über Name (der Designer zieht das Feld
+//   nach).
+// - Anlegen über IAtlasDesignSurface.CreateComponent mit der registrierten
+//   Klasse (GetClass), danach Name und Werte wie beim Ändern.
 // - Werte über TReader aus dem kleinen Formulartext des Plans, wie beim
 //   Laden eines Formulars: so auch Kollektionen, Listen, Binärdaten und
 //   Verweise auf andere Komponenten. Entfernte Werte gehen per RTTI auf die
 //   Vorgabe (Kollektionen und Listen werden geleert).
-// - Ereignisse über IDesigner.CreateMethod, nur wenn die Methode im Code
+// - Ereignisse über IAtlasDesignSurface.CreateMethod, nur wenn die Methode im Code
 //   steht; sonst bleibt das Ereignis leer und Atlas meldet es (kein neuer
 //   Handler im Code).
 // Nach Löschen, Umbenennen und Anlegen vergleicht Atlas den Stand noch
 // einmal mit dem Ziel und setzt nur noch Werte. Was nicht ging, steht in
-// Failures bzw. MissingMethods. Nur im Hauptthread.
+// Failures bzw. MissingMethods; die Gründe kommen als TAtlasUndoReasons von
+// außen (Sprache der Oberfläche). Nur im Hauptthread.
 
 interface
 
 uses
   System.Classes,
-  ToolsAPI,
-  DesignIntf,
-  Atlas.Core.Designer.Undo;
+  Atlas.Core.Designer.Undo,
+  Atlas.Core.Designer.Surface;
 
 type
   /// <summary>Ereignis, dessen Handler im Code fehlt.</summary>
@@ -34,11 +36,28 @@ type
     Handler: string;
   end;
 
+  /// <summary>Gründe in Failures in der Sprache der Oberfläche.</summary>
+  TAtlasUndoReasons = record
+    /// <summary>Komponente ließ sich nicht löschen.</summary>
+    Delete: string;
+    /// <summary>Komponente fehlt.</summary>
+    Missing: string;
+    /// <summary>Klassenname: Klasse unbekannt oder nicht anlegbar.</summary>
+    ClassUnknown: string;
+    /// <summary>Pfad: Wert nicht herstellbar.</summary>
+    Value: string;
+    /// <summary>Geerbt oder in einem eingebetteten Frame.</summary>
+    Skipped: string;
+  end;
+
   TAtlasDesignerUndoApply = class
+  private type
+    /// <summary>Text der Meldungen von TReader (FPC: AnsiString).</summary>
+    TReaderText = {$IFDEF FPC}AnsiString{$ELSE}string{$ENDIF};
   private
-    FEditor: IOTAFormEditor;
-    FDesigner: IDesigner;
+    FSurface: IAtlasDesignSurface;
     FRoot: TComponent;
+    FReasons: TAtlasUndoReasons;
     FFailures: TArray<string>;
     FMissing: TArray<TAtlasUndoMissingMethod>;
     /// <summary>Meldungen von TReader für die gerade gelesene Komponente.</summary>
@@ -52,9 +71,9 @@ type
     procedure ReadValues(AComponent: TComponent; const AKey, AText: string);
     procedure ResetValue(AComponent: TComponent; const AKey, APath: string);
     procedure AssignEvent(AComponent: TComponent; const AKey: string; const AEvent: TAtlasUndoEvent);
-    procedure ReaderError(Reader: TReader; const Message: string; var Handled: Boolean);
+    procedure ReaderError(Reader: TReader; const Message: TReaderText; var Handled: Boolean);
   public
-    constructor Create(const AEditor: IOTAFormEditor; const ADesigner: IDesigner; ARoot: TComponent);
+    constructor Create(const ASurface: IAtlasDesignSurface; const AReasons: TAtlasUndoReasons);
     /// <summary>Führt APlan aus und gleicht danach die Werte mit ATarget ab.</summary>
     procedure Run(const APlan: TAtlasUndoPlan; const ATarget: string);
     /// <summary>Nicht hergestellt: „Schlüssel (Grund)“.</summary>
@@ -66,9 +85,7 @@ implementation
 
 uses
   System.SysUtils,
-  System.TypInfo,
-  Atlas.UI.Designer.Strings,
-  Atlas.IDE.Designer.Access;
+  System.TypInfo;
 
 type
   /// <summary>Zugriff auf das geschützte Loaded (E2362).</summary>
@@ -82,13 +99,12 @@ const
 
 { TAtlasDesignerUndoApply }
 
-constructor TAtlasDesignerUndoApply.Create(const AEditor: IOTAFormEditor; const ADesigner: IDesigner;
-  ARoot: TComponent);
+constructor TAtlasDesignerUndoApply.Create(const ASurface: IAtlasDesignSurface; const AReasons: TAtlasUndoReasons);
 begin
   inherited Create;
-  FEditor := AEditor;
-  FDesigner := ADesigner;
-  FRoot := ARoot;
+  FSurface := ASurface;
+  FRoot := ASurface.Root;
+  FReasons := AReasons;
 end;
 
 procedure TAtlasDesignerUndoApply.Fail(const AKey, AReason: string);
@@ -104,33 +120,15 @@ begin
 end;
 
 function TAtlasDesignerUndoApply.Find(const AKey: string): TComponent;
-var
-  mPart: string;
 begin
-  Result := FRoot;
-  if AKey = '' then
-  begin
-    Exit;
-  end;
-  // In eingebetteten Frames: „Frame1.Button1“, Button1 gehört dem Frame.
-  for mPart in AKey.Split(['.']) do
-  begin
-    Result := Result.FindComponent(mPart);
-    if Result = nil then
-    begin
-      Exit;
-    end;
-  end;
+  Result := TAtlasDesignSurfaces.Find(FRoot, AKey);
 end;
 
 procedure TAtlasDesignerUndoApply.DeleteComponent(const AKey: string);
-var
-  mComponent: IOTAComponent;
 begin
-  mComponent := FEditor.FindComponent(AKey);
-  if (mComponent = nil) or not mComponent.Delete then
+  if not FSurface.DeleteComponent(AKey) then
   begin
-    Fail(AKey, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoReasonDelete));
+    Fail(AKey, FReasons.Delete);
   end;
 end;
 
@@ -141,7 +139,7 @@ begin
   mComponent := Find(ARename.OldKey);
   if mComponent = nil then
   begin
-    Fail(ARename.OldKey, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoReasonMissing));
+    Fail(ARename.OldKey, FReasons.Missing);
     Exit;
   end;
   try
@@ -161,11 +159,11 @@ begin
   mParent := Find(ACreate.ParentKey);
   if (mClass = nil) or not mClass.InheritsFrom(TComponent) or (mParent = nil) then
   begin
-    Fail(ACreate.Key, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoReasonClass, [ACreate.TypeName]));
+    Fail(ACreate.Key, Format(FReasons.ClassUnknown, [ACreate.TypeName]));
     Exit;
   end;
   try
-    mComponent := FDesigner.CreateComponent(TComponentClass(mClass), mParent, 0, 0, 0, 0);
+    mComponent := FSurface.CreateComponent(TComponentClass(mClass), mParent);
     if (mComponent <> nil) and not SameText(mComponent.Name, ACreate.Name) then
     begin
       mComponent.Name := ACreate.Name;
@@ -179,7 +177,7 @@ begin
   end;
   if mComponent = nil then
   begin
-    Fail(ACreate.Key, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoReasonClass, [ACreate.TypeName]));
+    Fail(ACreate.Key, Format(FReasons.ClassUnknown, [ACreate.TypeName]));
     Exit;
   end;
   Apply(mComponent, ACreate);
@@ -355,7 +353,7 @@ begin
   end;
   if not Resolve(AComponent, APath, mInstance, mLeaf) then
   begin
-    Fail(AKey, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoReasonValue, [APath]));
+    Fail(AKey, Format(FReasons.Value, [APath]));
     Exit;
   end;
   // Lines.Strings, Items.Strings: Liste ohne Einträge.
@@ -368,7 +366,7 @@ begin
   if (mProp = nil) or ((mProp^.SetProc = nil) and (mProp^.PropType^.Kind <> tkClass)) or
     not ResetProp(mInstance, mProp) then
   begin
-    Fail(AKey, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoReasonValue, [APath]));
+    Fail(AKey, Format(FReasons.Value, [APath]));
   end;
 end;
 
@@ -382,7 +380,7 @@ begin
   mProp := GetPropInfo(AComponent, AEvent.Path);
   if (mProp = nil) or (mProp^.PropType^.Kind <> tkMethod) then
   begin
-    Fail(AKey, TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.UndoReasonValue, [AEvent.Path]));
+    Fail(AKey, Format(FReasons.Value, [AEvent.Path]));
     Exit;
   end;
   mMethod.Code := nil;
@@ -390,7 +388,7 @@ begin
   if AEvent.Handler <> '' then
   begin
     // CreateMethod legte eine fehlende Methode neu an: Der Code bleibt aber unangetastet.
-    if not FDesigner.MethodExists(AEvent.Handler) then
+    if not FSurface.MethodExists(AEvent.Handler) then
     begin
       mMissing.Component := AComponent.Name;
       mMissing.Path := AEvent.Path;
@@ -398,12 +396,13 @@ begin
       FMissing := FMissing + [mMissing];
       Exit;
     end;
-    mMethod := FDesigner.CreateMethod(AEvent.Handler, GetTypeData(mProp^.PropType^));
+    // Delphi führt den Typ über einen Zeiger mehr als FPC.
+    mMethod := FSurface.CreateMethod(AEvent.Handler, GetTypeData(mProp^.PropType{$IFNDEF FPC}^{$ENDIF}));
   end;
   SetMethodProp(AComponent, mProp, mMethod);
 end;
 
-procedure TAtlasDesignerUndoApply.ReaderError(Reader: TReader; const Message: string; var Handled: Boolean);
+procedure TAtlasDesignerUndoApply.ReaderError(Reader: TReader; const Message: TReaderText; var Handled: Boolean);
 begin
   // Unbekannte Eigenschaft oder falscher Wert: diesen Wert auslassen, die übrigen lesen.
   FReadErrors := FReadErrors + [Message];
@@ -432,20 +431,20 @@ begin
   end;
   for mKey in APlan.Skipped do
   begin
-    Fail(mKey, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoReasonInherited));
+    Fail(mKey, FReasons.Skipped);
   end;
   mPlan := APlan;
   if APlan.Structural then
   begin
     // Neu angelegte Komponenten tragen Vorgaben des Designers (Caption = Name): noch einmal abgleichen.
-    mPlan := TAtlasFormUndo.Plan(TAtlasDesignerAccess.FormText(FRoot, FDesigner), ATarget);
+    mPlan := TAtlasFormUndo.Plan(TAtlasDesignSurfaces.FormText(FSurface), ATarget);
   end;
   for mChange in mPlan.Changes do
   begin
     mComponent := Find(mChange.Key);
     if mComponent = nil then
     begin
-      Fail(mChange.Key, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.UndoReasonMissing));
+      Fail(mChange.Key, FReasons.Missing);
     end
     else
     begin

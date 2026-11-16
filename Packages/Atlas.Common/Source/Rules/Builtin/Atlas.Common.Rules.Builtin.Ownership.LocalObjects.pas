@@ -238,35 +238,6 @@ type
 
 { Hilfen über dem Baum }
 
-procedure Occurrences(ANode: TSyntaxNode; const AName: string; var AFound: TArray<TSyntaxNode>);
-var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht).
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ANode);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) and
-        not ((mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.MemberAccess) and (mNode.Parent[0] <> mNode))
-        then
-      begin
-        AFound := AFound + [mNode];
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 /// <summary>Enthält ANode asm oder with? Dort sind Vorkommen der Variablen nicht sicher einzuordnen.</summary>
 function HasAsmOrWith(ANode: TSyntaxNode): Boolean;
 var
@@ -298,26 +269,6 @@ begin
       Exit(True);
     end;
     mCurrent := mCurrent.Parent;
-  end;
-  Result := False;
-end;
-
-function MentionedInLocalRoutine(ARoutine: TSyntaxNode; const AName: string): Boolean;
-var
-  mFound: TArray<TSyntaxNode>;
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ARoutine.ChildCount - 1 do
-  begin
-    mFound := nil;
-    if ARoutine[mIndex].Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Occurrences(ARoutine[mIndex], AName, mFound);
-    end;
-    if mFound <> nil then
-    begin
-      Exit(True);
-    end;
   end;
   Result := False;
 end;
@@ -530,8 +481,7 @@ begin
   begin
     Exit(False);
   end;
-  mFound := nil;
-  Occurrences(TRoutineBody.BodyOf(ARoutine), 'Result', mFound);
+  mFound := TSyntaxNode.IdentifierUses(TRoutineBody.BodyOf(ARoutine), 'Result');
   mCreates := False;
   for mNode in mFound do
   begin
@@ -549,7 +499,7 @@ begin
       Exit(False);
     end;
   end;
-  Result := mCreates and not MentionedInLocalRoutine(ARoutine, 'Result') and
+  Result := mCreates and not TSyntaxNode.UsedInNestedRoutine(ARoutine, 'Result') and
     OnlyCreatingExits(TRoutineBody.BodyOf(ARoutine));
 end;
 
@@ -770,7 +720,7 @@ var
   mUse: TLocalUse;
   mWhat, mFirstWhat: string;
 begin
-  if LooksLikeInterface(ATypeName) or MentionedInLocalRoutine(ARoutine, AName) then
+  if LooksLikeInterface(ATypeName) or TSyntaxNode.UsedInNestedRoutine(ARoutine, AName) then
   begin
     Exit;
   end;
@@ -779,8 +729,7 @@ begin
   begin
     mFirst := AInline;
   end;
-  mFound := nil;
-  Occurrences(TRoutineBody.BodyOf(ARoutine), AName, mFound);
+  mFound := TSyntaxNode.IdentifierUses(TRoutineBody.BodyOf(ARoutine), AName);
   for mNode in mFound do
   begin
     mUse := Classify(mNode);

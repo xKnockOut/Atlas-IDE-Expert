@@ -45,11 +45,12 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  Vcl.ExtCtrls,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Hover.DebugValue,
   Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.StopView,
+
   Atlas.IDE.Hover.DebugValue,
   Atlas.IDE.Debug.EvaluateHook,
   Atlas.IDE.Debug.EvaluateStore,
@@ -59,7 +60,7 @@ type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
   TAtlasEvaluateSessionFunc = reference to function: TLspSession;
 
-  TAtlasIdeDebugEvaluate = class
+  TAtlasIdeDebugEvaluate = class(TAtlasIdeDebugStopView)
   public const
     cSliceMs = 30;
     cTickMs = 10;
@@ -68,15 +69,7 @@ type
     /// <summary>Versuche, bis der Aufrufstapel da ist (je TickMs * 5).</summary>
     cLocationRetries = 20;
   private type
-    TListener = class(TAtlasIdeDebugListener)
-    public
-      procedure DebugStarted; override;
-      procedure DebugStopped(AStop: TAtlasDebugStop); override;
-      procedure DebugResumed; override;
-      procedure DebugEnded; override;
-    end;
     {$SCOPEDENUMS ON}
-    TPhase = (Idle, Location, Evaluate);
     /// <summary>Ergebnis einer Auswertung im Zeitschnitt: weiter, auf den verzögerten Wert warten, kein
     /// angehaltener Prozess mehr.</summary>
     TSliceStep = (Next, Wait, Stopped);
@@ -85,15 +78,6 @@ type
     TPlace = record
       FileName: string;
       Line: Integer;
-    end;
-    /// <summary>Stand der Auswertung eines Halts.</summary>
-    TProgress = record
-      /// <summary>Nummer der Feldanfragen; ältere Antworten verwirft Atlas.</summary>
-      Request: Integer;
-      Phase: TPhase;
-      /// <summary>Halt (TAtlasIdeDebugSession.StopCount), für den Atlas den Ort liest.</summary>
-      Stop: Integer;
-      Retries: Integer;
     end;
     /// <summary>Eigene Auswertungen über einen Auswerter: Zustandswechsel dabei sind kein Fortsetzen
     /// (TAtlasIdeDebugSession.BeginInternal), Key ist die Zeile mit verzögertem Wert.</summary>
@@ -147,24 +131,14 @@ type
     FList: TAtlasEvalList;
     FEvaluation: TEvaluation;
     FLines: TLines;
-    FListener: IAtlasIdeDebugListener;
-    FTimer: TTimer;
     FHook: TAtlasIdeEvaluateHook;
     FWorkers: TAtlasIdeDebugFieldRequests;
-    FProgress: TProgress;
     FPlace: TPlace;
     FSideEffects: Boolean;
     FStore: TAtlasIdeEvaluateStore;
     constructor Create(const ASession: TAtlasEvaluateSessionFunc);
-    procedure Tick(Sender: TObject);
-    procedure Stopped;
-    procedure Ended;
     procedure CancelWork;
-    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal (Phase bleibt Location).
-    /// </summary>
-    function ReadLocation: Boolean;
     procedure StartEvaluate;
-    procedure EvaluateSlice;
     procedure Add(const AExpression: string; APinned: Boolean);
     procedure Delete(ANode: TAtlasEvalNode);
     procedure TogglePin(ANode: TAtlasEvalNode);
@@ -175,6 +149,17 @@ type
     procedure SyncPinned;
     /// <summary>Strg+F7 über die Aktion der IDE an Atlas (AValue) bzw. wieder an die IDE.</summary>
     procedure SetHooked(AValue: Boolean);
+  protected
+    procedure SessionStarted; override;
+    procedure SessionStopped; override;
+    procedure SessionResumed; override;
+    procedure SessionEnded; override;
+    /// <summary>Datei und Zeile des Ausführungspunkts; False: später noch einmal (Phase bleibt Location).
+    /// </summary>
+    function ReadLocation: Boolean; override;
+    /// <summary>Am gelesenen Ausführungspunkt: StartEvaluate.</summary>
+    procedure Ask; override;
+    procedure EvaluateSlice; override;
   public
     destructor Destroy; override;
     class procedure Start(const ASession: TAtlasEvaluateSessionFunc); static;
@@ -205,6 +190,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Debug.CallStack,
   Atlas.Core.Debug.EvaluateRows,
+  Atlas.Core.Debug.StopProgress,
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
@@ -213,7 +199,7 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.EvaluateWindow,
-  Atlas.UI.Debug.Strings,
+  Atlas.UI.Debug.Evaluate.Strings,
   Atlas.Core.Diagnostics.Deadline;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
@@ -415,41 +401,6 @@ begin
   AFrame.SetList(TAtlasIdeDebugEvaluate.FInstance.FList);
 end;
 
-{ TAtlasIdeDebugEvaluate.TListener }
-
-procedure TAtlasIdeDebugEvaluate.TListener.DebugStarted;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.SyncPinned;
-  end;
-end;
-
-procedure TAtlasIdeDebugEvaluate.TListener.DebugStopped(AStop: TAtlasDebugStop);
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Stopped;
-  end;
-end;
-
-procedure TAtlasIdeDebugEvaluate.TListener.DebugResumed;
-begin
-  // Die Werte bleiben grau stehen bis zum nächsten Halt; nur laufende Auswertungen enden.
-  if FInstance <> nil then
-  begin
-    FInstance.CancelWork;
-  end;
-end;
-
-procedure TAtlasIdeDebugEvaluate.TListener.DebugEnded;
-begin
-  if FInstance <> nil then
-  begin
-    FInstance.Ended;
-  end;
-end;
-
 { TAtlasIdeDebugEvaluate.TRun }
 
 constructor TAtlasIdeDebugEvaluate.TRun.Create;
@@ -568,7 +519,7 @@ begin
   mNode := FList.Find(TakeKey);
   if mNode <> nil then
   begin
-    FList.SetResult(mNode, False, TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateTimeout));
+    FList.SetResult(mNode, False, TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout));
   end;
 end;
 
@@ -647,15 +598,11 @@ begin
   FLines := TLines.Create;
   FWorkers := TAtlasIdeDebugFieldRequests.Create;
   FStore := TAtlasIdeEvaluateStore.Create;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  CreateTimer(cTickMs);
 end;
 
 destructor TAtlasIdeDebugEvaluate.Destroy;
 begin
-  FreeAndNil(FTimer);
   SetHooked(False);
   // FWorkers entsteht als letztes Teil der Auswertung: ohne ihn ist nichts zu beenden.
   if FWorkers <> nil then
@@ -672,42 +619,12 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasIdeDebugEvaluate.Tick(Sender: TObject);
+procedure TAtlasIdeDebugEvaluate.SessionStarted;
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.Debugger) then
-  begin
-    FTimer.Enabled := False;
-    Exit;
-  end;
-  try
-    case FProgress.Phase of
-      TPhase.Location:
-        begin
-          FTimer.Enabled := False;
-          if not StillStopped or (TAtlasIdeDebugSession.StopCount <> FProgress.Stop) then
-          begin
-            FProgress.Phase := TPhase.Idle;
-          end
-          else if ReadLocation then
-          begin
-            StartEvaluate;
-          end;
-        end;
-      TPhase.Evaluate:
-        EvaluateSlice;
-    else
-      FTimer.Enabled := False;
-    end;
-  except
-    on E: Exception do
-    begin
-      FTimer.Enabled := False;
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-    end;
-  end;
+  SyncPinned;
 end;
 
-procedure TAtlasIdeDebugEvaluate.Stopped;
+procedure TAtlasIdeDebugEvaluate.SessionStopped;
 begin
   CancelWork;
   if not Enabled then
@@ -721,7 +638,7 @@ begin
   end;
   FProgress.Stop := TAtlasIdeDebugSession.StopCount;
   FProgress.Retries := 0;
-  FProgress.Phase := TPhase.Location;
+  FProgress.Phase := TAtlasStopPhase.Location;
   RefreshFrame;
   if ReadLocation then
   begin
@@ -729,7 +646,13 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugEvaluate.Ended;
+procedure TAtlasIdeDebugEvaluate.SessionResumed;
+begin
+  // Die Werte bleiben grau stehen bis zum nächsten Halt; nur laufende Auswertungen enden.
+  CancelWork;
+end;
+
+procedure TAtlasIdeDebugEvaluate.SessionEnded;
 begin
   CancelWork;
   FList.Unavailable;
@@ -748,7 +671,7 @@ begin
   FLines.Cancel;
   // Antworten noch laufender Feldanfragen verwerfen.
   Inc(FProgress.Request);
-  FProgress.Phase := TPhase.Idle;
+  FProgress.Phase := TAtlasStopPhase.Idle;
   FWorkers.Reap(False);
 end;
 
@@ -781,13 +704,18 @@ begin
   end;
 end;
 
+procedure TAtlasIdeDebugEvaluate.Ask;
+begin
+  StartEvaluate;
+end;
+
 procedure TAtlasIdeDebugEvaluate.StartEvaluate;
 begin
   if not StillStopped then
   begin
     Exit;
   end;
-  FProgress.Phase := TPhase.Evaluate;
+  FProgress.Phase := TAtlasStopPhase.Evaluate;
   FTimer.Interval := cTickMs;
   FTimer.Enabled := True;
 end;
@@ -821,7 +749,7 @@ begin
   if not FEvaluation.Waiting and (Length(FList.Pending) = 0) then
   begin
     FTimer.Enabled := False;
-    FProgress.Phase := TPhase.Idle;
+    FProgress.Phase := TAtlasStopPhase.Idle;
   end;
   if mChanged then
   begin
@@ -853,7 +781,7 @@ begin
   begin
     Frame.Select(mNode.Key);
   end;
-  if StillStopped and (FProgress.Phase = TPhase.Idle) then
+  if StillStopped and (FProgress.Phase = TAtlasStopPhase.Idle) then
   begin
     StartEvaluate;
   end;
@@ -940,7 +868,7 @@ begin
     Exit;
   end;
   RefreshFrame;
-  if StillStopped and (FProgress.Phase = TPhase.Idle) and (Length(FList.Pending) > 0) then
+  if StillStopped and (FProgress.Phase = TAtlasStopPhase.Idle) and (Length(FList.Pending) > 0) then
   begin
     StartEvaluate;
   end;
@@ -959,8 +887,8 @@ begin
   mExpression := ANode.Expression;
   mNewValue := ANode.Value;
   // Der Dialog ist modal: Danach kann der Knoten weg sein.
-  if not InputQuery(TAtlasDebugStrings.Text(TAtlasDebugTextId.DebugEvaluateModifyTitle),
-    TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyPrompt, [mExpression]), mNewValue) or
+  if not InputQuery(TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateModifyTitle),
+    TAtlasEvaluateStrings.Fmt(TAtlasEvaluateTextId.DebugEvaluateModifyPrompt, [mExpression]), mNewValue) or
     not StillStopped then
   begin
     Exit;
@@ -969,7 +897,7 @@ begin
   try
     if not TAtlasIdeDebugValues.Modify(mExpression, FPlace.FileName, FPlace.Line + 1, mNewValue, mOutcome) then
     begin
-      MessageDlg(TAtlasDebugStrings.Fmt(TAtlasDebugTextId.DebugEvaluateModifyFailed, [mExpression, mOutcome]),
+      MessageDlg(TAtlasEvaluateStrings.Fmt(TAtlasEvaluateTextId.DebugEvaluateModifyFailed, [mExpression, mOutcome]),
         mtWarning, [mbOK], 0);
     end;
   finally
@@ -986,7 +914,7 @@ begin
     Frame.InvalidateLines;
   end;
   RefreshFrame;
-  if FProgress.Phase = TPhase.Idle then
+  if FProgress.Phase = TAtlasStopPhase.Idle then
   begin
     StartEvaluate;
   end;
@@ -1036,8 +964,7 @@ begin
   if FInstance = nil then
   begin
     FInstance := TAtlasIdeDebugEvaluate.Create(ASession);
-    FInstance.FListener := TListener.Create;
-    TAtlasIdeDebugSession.AddListener(FInstance.FListener);
+    FInstance.Listen;
   end;
   TAtlasIdeDebugSession.Start;
   TAtlasIdeDebugEvaluateWindow.OnFrame :=
@@ -1058,7 +985,7 @@ begin
   // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
   if StillStopped then
   begin
-    FInstance.Stopped;
+    FInstance.SessionStopped;
   end;
 end;
 
@@ -1073,11 +1000,6 @@ begin
   mInstance := FInstance;
   FInstance := nil;
   TAtlasIdeDebugDialogCompletion.OwnField := nil;
-  if mInstance.FListener <> nil then
-  begin
-    TAtlasIdeDebugSession.RemoveListener(mInstance.FListener);
-  end;
-  mInstance.FListener := nil;
   // Der Frame zeigt die Liste der Instanz: erst lösen, dann Fenster und Instanz freigeben.
   if Frame <> nil then
   begin
@@ -1186,7 +1108,7 @@ begin
   end;
   mReload := TAtlasEvalRows.IndexFieldKeys(FList);
   // Mit oder ohne Funktionsaufrufe kann ein anderer Wert herauskommen: neu auswerten, Felder neu holen.
-  Stopped;
+  SessionStopped;
   for mKey in mReload do
   begin
     Expand(mKey);
