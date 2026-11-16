@@ -2,7 +2,8 @@
 
 // Tests der Befehle atlas.server.profilerStart, …Status und …Stop (#2057) mit einem Prober zum
 // Testen: ohne Prober (außerhalb von Windows), Start, zweiter Start, Status, Stop schreibt die Datei, Ende des
-// Programms vor Stop, fehlende Prozess-ID, Aufräumen auf die neuesten fünf.
+// Programms vor Stop, fehlende Prozess-ID, Aufräumen auf die neuesten fünf, Anhalten beim Ende des Servers (StopRun)
+// und Meldung des gemessenen Prozesses.
 
 interface
 
@@ -34,6 +35,12 @@ type
     procedure SecondStartAndStopWithoutRunFail;
     [Test]
     procedure EndedProgramIsWrittenByStatus;
+    [Test]
+    procedure StopRunStopsAndWritesRun;
+    [Test]
+    procedure StopRunWithoutRunDoesNothing;
+    [Test]
+    procedure ReportsProfiledProcess;
   end;
 
 implementation
@@ -212,6 +219,45 @@ begin
   FEnded^ := True;
   Assert.Contains(Answer(TLspProfiler.cStatusCommand, '{}'), '"running":false');
   Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FFolder, 'profile-*.json'))));
+end;
+
+procedure TLspProfilerTests.StopRunStopsAndWritesRun;
+begin
+  Answer(TLspProfiler.cStartCommand, '{"processId":42}');
+  FProfiler.StopRun;
+  Assert.IsFalse(FSampler.Running, 'Prober angehalten');
+  Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FFolder, 'profile-*.json'))));
+  Assert.Contains(Answer(TLspProfiler.cStatusCommand, '{}'), '"running":false');
+  // Ein zweites Ende ändert nichts.
+  FProfiler.StopRun;
+  Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(FFolder, 'profile-*.json'))));
+end;
+
+procedure TLspProfilerTests.StopRunWithoutRunDoesNothing;
+begin
+  FProfiler.StopRun;
+  Assert.IsFalse(TDirectory.Exists(FFolder), 'keine Datei ohne Lauf');
+end;
+
+procedure TLspProfilerTests.ReportsProfiledProcess;
+var
+  mReported: TArray<Cardinal>;
+begin
+  mReported := nil;
+  FProfiler.OnProcessChange :=
+    procedure(AProcessId: Cardinal)
+    begin
+      mReported := mReported + [AProcessId];
+    end;
+  Answer(TLspProfiler.cStartCommand, '{"processId":666}');
+  Assert.AreEqual(0, Integer(Length(mReported)), 'gescheiterter Start meldet nichts');
+  Answer(TLspProfiler.cStartCommand, '{"processId":42}');
+  Answer(TLspProfiler.cStopCommand, '{}');
+  Assert.AreEqual(2, Integer(Length(mReported)));
+  Assert.AreEqual<Cardinal>(42, mReported[0]);
+  Assert.AreEqual<Cardinal>(0, mReported[1]);
+  FProfiler.OnProcessChange := nil;
+  mReported := nil;
 end;
 
 initialization

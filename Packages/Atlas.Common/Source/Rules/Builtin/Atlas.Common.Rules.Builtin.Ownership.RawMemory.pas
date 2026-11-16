@@ -293,35 +293,6 @@ begin
   end;
 end;
 
-procedure Occurrences(ANode: TSyntaxNode; const AName: string; var AFound: TArray<TSyntaxNode>);
-var
-  mPending: TStack<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  // Iterativ (tiefe Bäume sprengen den Stapel nicht), Reihenfolge wie die frühere Rekursion.
-  mPending := TStack<TSyntaxNode>.Create;
-  try
-    mPending.Push(ANode);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) and
-        not ((mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.MemberAccess) and (mNode.Parent[0] <> mNode))
-        then
-      begin
-        AFound := AFound + [mNode];
-      end;
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-  finally
-    mPending.Free;
-  end;
-end;
-
 function HasAsm(ANode: TSyntaxNode): Boolean;
 var
   mPending: TStack<TSyntaxNode>;
@@ -411,8 +382,7 @@ var
   mNode: TSyntaxNode;
   mUse: TRawMemoryUse;
 begin
-  mFound := nil;
-  Occurrences(ARoutine, AName, mFound);
+  mFound := TSyntaxNode.IdentifierUses(ARoutine, AName);
   AFirst := nil;
   for mNode in mFound do
   begin
@@ -429,26 +399,6 @@ begin
   Result := AFirst <> nil;
 end;
 
-function MentionedInLocalRoutine(ARoutine: TSyntaxNode; const AName: string): Boolean;
-var
-  mFound: TArray<TSyntaxNode>;
-  mIndex: Integer;
-begin
-  for mIndex := 0 to ARoutine.ChildCount - 1 do
-  begin
-    mFound := nil;
-    if ARoutine[mIndex].Kind = TSyntaxKind.RoutineDecl then
-    begin
-      Occurrences(ARoutine[mIndex], AName, mFound);
-    end;
-    if mFound <> nil then
-    begin
-      Exit(True);
-    end;
-  end;
-  Result := False;
-end;
-
 procedure TRawMemoryScan.CheckVariable(ARoutine: TSyntaxNode; const AName: string);
 var
   mFirst, mStatement: TSyntaxNode;
@@ -457,7 +407,7 @@ var
   mFixes: TArray<TRuleFix>;
 begin
   // Lokale Routinen sehen die Variable ebenfalls: dort könnte sie freigegeben werden.
-  if not KeptAllocation(ARoutine, AName, mFirst) or MentionedInLocalRoutine(ARoutine, AName) then
+  if not KeptAllocation(ARoutine, AName, mFirst) or TSyntaxNode.UsedInNestedRoutine(ARoutine, AName) then
   begin
     Exit;
   end;

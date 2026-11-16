@@ -2,7 +2,8 @@
 
 // Tests für den Besucher TSyntaxNode.Walk, die Suche
 // TSyntaxNode.Search, die Baumtiefe TSyntaxTree.Depth/Deepest (#1094)
-// und die Token-Suche FirstTokenFrom/IdentifierAt (#1323).
+// und die Token-Suche FirstTokenFrom/IdentifierAt (#1323), PreOrder und die Suche
+// nach Bezeichnern (IdentifierUses, UsedInNestedRoutine).
 
 interface
 
@@ -42,6 +43,16 @@ type
     procedure FirstTokenFromMatchesLinearSearch;
     [Test]
     procedure FirstTokenOfMatchesLinearSearchOnCodeTokens;
+    [Test]
+    procedure PreOrderMatchesRecursiveOrder;
+    [Test]
+    procedure IdentifierUsesSkipMembersAfterDot;
+    [Test]
+    procedure IdentifierUsesOutsideNestedSkipsLocalRoutines;
+    [Test]
+    procedure UsedInNestedRoutineLooksIntoLocalRoutines;
+    [Test]
+    procedure WithoutNodeNothingIsFound;
   end;
 
 implementation
@@ -83,6 +94,42 @@ begin
   for mIndex := 0 to ANode.ChildCount - 1 do
   begin
     Inc(Result, CountKind(ANode.Children[mIndex], AKind));
+  end;
+end;
+
+const
+  cUsesSource = 'unit A;'#10'interface'#10'implementation'#10 +
+    'procedure P;'#10'var X: Integer;'#10 +
+    '  procedure Inner;'#10'  begin'#10'    X := 3;'#10'  end;'#10 +
+    'begin'#10'  X := 1;'#10'  Y.X := 2;'#10'  X.Z := 4;'#10'end;'#10'end.';
+
+/// <summary>Routine AName im Baum unter ARoot; nil ohne.</summary>
+function RoutineNamed(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+begin
+  Result := ARoot.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end);
+end;
+
+/// <summary>Zeilen (0-basiert) der Knoten, durch Komma getrennt.</summary>
+function LinesOf(const ANodes: TArray<TSyntaxNode>): string;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := '';
+  for mNode in ANodes do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + IntToStr(mNode.StartPos.Line);
   end;
 end;
 
@@ -586,6 +633,83 @@ begin
     mTree.Free;
   end;
   mCode := nil;
+end;
+
+
+procedure TSyntaxTreeTests.PreOrderMatchesRecursiveOrder;
+var
+  mTree: TSyntaxTree;
+  mExpected: TList<TSyntaxNode>;
+  mNodes: TArray<TSyntaxNode>;
+  mIndex: Integer;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  mExpected := TList<TSyntaxNode>.Create;
+  try
+    CollectRecursive(mTree.Root, mExpected);
+    mNodes := TSyntaxNode.PreOrder(mTree.Root);
+    Assert.AreEqual(mExpected.Count, Integer(Length(mNodes)), 'Anzahl Knoten');
+    for mIndex := 0 to mExpected.Count - 1 do
+    begin
+      Assert.AreSame(mExpected[mIndex], mNodes[mIndex], 'Reihenfolge an Stelle ' + IntToStr(mIndex));
+    end;
+  finally
+    mNodes := nil;
+    mExpected.Free;
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.IdentifierUsesSkipMembersAfterDot;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.Parse(cUsesSource);
+  try
+    // X := 3 in Inner, X := 1, X.Z; nicht Y.X.
+    Assert.AreEqual('7,10,12', LinesOf(TSyntaxNode.IdentifierUses(RoutineNamed(mTree.Root, 'P'), 'x')));
+    Assert.AreEqual('', LinesOf(TSyntaxNode.IdentifierUses(mTree.Root, 'Z')));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.IdentifierUsesOutsideNestedSkipsLocalRoutines;
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.Parse(cUsesSource);
+  try
+    Assert.AreEqual('10,12', LinesOf(TSyntaxNode.IdentifierUsesOutsideNested(RoutineNamed(mTree.Root, 'P'), 'X')));
+    // Die Wurzel selbst ist keine verschachtelte Routine.
+    Assert.AreEqual('7', LinesOf(TSyntaxNode.IdentifierUsesOutsideNested(RoutineNamed(mTree.Root, 'Inner'), 'X')));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.UsedInNestedRoutineLooksIntoLocalRoutines;
+var
+  mTree: TSyntaxTree;
+  mRoutine: TSyntaxNode;
+begin
+  mTree := TPascalParser.Parse(cUsesSource);
+  try
+    mRoutine := RoutineNamed(mTree.Root, 'P');
+    Assert.IsTrue(TSyntaxNode.UsedInNestedRoutine(mRoutine, 'X'));
+    Assert.IsFalse(TSyntaxNode.UsedInNestedRoutine(mRoutine, 'Y'));
+    Assert.IsFalse(TSyntaxNode.UsedInNestedRoutine(RoutineNamed(mTree.Root, 'Inner'), 'X'));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.WithoutNodeNothingIsFound;
+begin
+  Assert.AreEqual(0, Integer(Length(TSyntaxNode.PreOrder(nil))));
+  Assert.AreEqual(0, Integer(Length(TSyntaxNode.IdentifierUses(nil, 'X'))));
+  Assert.AreEqual(0, Integer(Length(TSyntaxNode.IdentifierUsesOutsideNested(nil, 'X'))));
+  Assert.IsFalse(TSyntaxNode.UsedInNestedRoutine(nil, 'X'));
 end;
 
 initialization

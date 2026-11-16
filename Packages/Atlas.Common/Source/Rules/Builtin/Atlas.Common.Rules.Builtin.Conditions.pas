@@ -176,20 +176,6 @@ const
 type
   TTokens = TArray<TPascalToken>;
 
-/// <summary>Dateiname für die Namensauflösung: Pfad, sonst relativer Pfad, sonst Unit-Name.</summary>
-function RuleFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
@@ -416,7 +402,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := RuleFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -529,7 +515,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := RuleFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);
@@ -1055,7 +1041,7 @@ begin
   begin
     Exit;
   end;
-  mFileName := RuleFileName(AContext);
+  mFileName := AContext.ResolverFileName;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   mResolver := TRuleDerived.Resolver(mCache, AContext);

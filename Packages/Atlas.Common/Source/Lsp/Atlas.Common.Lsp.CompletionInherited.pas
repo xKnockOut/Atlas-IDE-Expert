@@ -83,33 +83,8 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Pascal.TokenCursor;
-
-function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
-var
-  mIndex, mDepth, mStart: Integer;
-begin
-  Result := nil;
-  mDepth := 0;
-  mStart := 1;
-  for mIndex := 1 to Length(AText) do
-  begin
-    if CharInSet(AText[mIndex], ['(', '[', '<']) then
-    begin
-      Inc(mDepth);
-    end
-    else if CharInSet(AText[mIndex], [')', ']', '>']) then
-    begin
-      Dec(mDepth);
-    end
-    else if (AText[mIndex] = ADelimiter) and (mDepth <= 0) then
-    begin
-      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
-      mStart := mIndex + 1;
-    end;
-  end;
-  Result := Result + [Copy(AText, mStart, MaxInt)];
-end;
 
 function StripModifier(const AText: string): string;
 var
@@ -230,7 +205,7 @@ begin
   begin
     mClose := Length(ARest) + 1;
   end;
-  for mGroup in SplitTopLevel(Copy(ARest, 2, mClose - 2), ';') do
+  for mGroup in TRoutineSignatures.SplitTopLevel(Copy(ARest, 2, mClose - 2), ';') do
   begin
     if Trim(mGroup) <> '' then
     begin
@@ -245,7 +220,7 @@ function HasAbstract(const ADirectives: string): Boolean;
 var
   mGroup: string;
 begin
-  for mGroup in SplitTopLevel(ADirectives, ';') do
+  for mGroup in TRoutineSignatures.SplitTopLevel(ADirectives, ';') do
   begin
     if SameText(Trim(mGroup), 'abstract') then
     begin

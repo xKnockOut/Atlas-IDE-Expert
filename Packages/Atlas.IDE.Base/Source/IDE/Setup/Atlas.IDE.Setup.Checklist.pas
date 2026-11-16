@@ -103,7 +103,6 @@ type
     procedure ShowWindow;
     /// <summary>„Einrichtung prüfen…“ in der Befehlspalette.</summary>
     procedure RegisterCommands(const ARegistry: IAtlasCommandRegistry);
-    procedure ThemeChanged;
     /// <summary>Für die Zustandskachel (#754): grüne Punkte und alle; False vor der ersten Prüfung.</summary>
     function Progress(out ADone, ATotal: Integer): Boolean;
     function Results: TArray<TAtlasSetupResult>;
@@ -616,14 +615,6 @@ begin
         FInstance.ShowWindow;
       end;
     end);
-end;
-
-procedure TAtlasIdeSetupChecklist.ThemeChanged;
-begin
-  if FWindow <> nil then
-  begin
-    FWindow.SetColors(TAtlasIdeStyle.Colors);
-  end;
 end;
 
 function TAtlasIdeSetupChecklist.Progress(out ADone, ATotal: Integer): Boolean;

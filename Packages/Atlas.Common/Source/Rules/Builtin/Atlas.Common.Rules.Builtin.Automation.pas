@@ -193,35 +193,6 @@ begin
   end;
 end;
 
-/// <summary>Alle Knoten unter ARoot in Baumreihenfolge über einen eigenen Stapel.</summary>
-function PreOrder(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
-var
-  mPending: TStack<TSyntaxNode>;
-  mNodes: TList<TSyntaxNode>;
-  mNode: TSyntaxNode;
-  mIndex: Integer;
-begin
-  Result := nil;
-  mPending := TStack<TSyntaxNode>.Create;
-  mNodes := TList<TSyntaxNode>.Create;
-  try
-    mPending.Push(ARoot);
-    while mPending.Count > 0 do
-    begin
-      mNode := mPending.Pop;
-      mNodes.Add(mNode);
-      for mIndex := mNode.ChildCount - 1 downto 0 do
-      begin
-        mPending.Push(mNode[mIndex]);
-      end;
-    end;
-    Result := mNodes.ToArray;
-  finally
-    mNodes.Free;
-    mPending.Free;
-  end;
-end;
-
 /// <summary>Wert einer Zahl als Text (dezimal oder $-hex); '' bei anderem Text.</summary>
 function NumberKey(const AText: string): string;
 var
@@ -243,15 +214,7 @@ begin
   FReport := AReport;
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  FFileName := AContext.FileName;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.RelativePath;
-  end;
-  if FFileName = '' then
-  begin
-    FFileName := AContext.UnitName + '.pas';
-  end;
+  FFileName := AContext.ResolverFileName;
   FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FFileName);
@@ -843,7 +806,7 @@ procedure TAutomationCheck.Run;
 var
   mNode: TSyntaxNode;
 begin
-  for mNode in PreOrder(FContext.Tree.Root) do
+  for mNode in TSyntaxNode.PreOrder(FContext.Tree.Root) do
     case mNode.Kind of
       TSyntaxKind.ClassType:
         CheckClass(mNode);

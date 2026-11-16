@@ -14,6 +14,10 @@
 // überschreiben“ bzw. „abstrakt im Vorfahren lassen“). Fehler zeigt die Zeile über den
 // Knöpfen; „Vorschau …“ geht erst ohne Fehler. Reine VCL; das Modell ist
 // TAtlasClassExtractionModel.
+// Thema, Schrift und Fehlerfarbe kommen über TAtlasDialog. Spalten der Liste
+// richten sich nach dem Inhalt (der Grund füllt den Rest), Beschriftungen und
+// Knöpfe nach ihrem Text; das Fenster wächst beim ersten Zeigen bis zum
+// Inhalt, höchstens auf 80 % des Arbeitsbereichs, und bleibt ziehbar.
 
 interface
 
@@ -26,24 +30,32 @@ uses
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
   Vcl.CheckLst,
-  Atlas.Core.Editor.ClassExtraction;
+  Atlas.Core.Editor.ClassExtraction,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Foundation.ListView;
 
 type
-  TAtlasExtractMembersDialog = class(TForm)
+  TAtlasExtractMembersDialog = class(TAtlasDialog)
   private
     FModel: TAtlasClassExtractionModel;
     FName: TEdit;
     FUnit: TComboBox;
-    FList: TListView;
+    FList: TAtlasListView;
     FAbstract: TCheckBox;
     FTarget: TComboBox;
     FTargetList: TCheckListBox;
     FOptionBox: TCheckBox;
     FError: TLabel;
     FOk: TButton;
+    /// <summary>Linker Rand der Felder im Kopf (rechts der Beschriftungen), Gerätepixel.</summary>
+    FFieldLeft: Integer;
     FUpdating: Boolean;
+    FFitted: Boolean;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer; AControl: TWinControl): Integer;
+    /// <summary>Spalten nach Inhalt; Fenster bis zum Inhalt vergrößern, höchstens cMaxScreenShare des
+    /// Arbeitsbereichs.</summary>
+    procedure FitToContent;
     /// <summary>Knöpfe, Hinweise des Servers und Fehlerzeile unten.</summary>
     procedure CreateFooter;
     /// <summary>Name und Ziel-Unit oben; beim Verschieben die Ziele und die Wahl.</summary>
@@ -72,6 +84,7 @@ type
     procedure OkClick(Sender: TObject);
   protected
     procedure DoShow; override;
+    procedure ThemeChanged; override;
   public
     constructor CreateDialog(AOwner: TComponent; AModel: TAtlasClassExtractionModel; const ATitle: string);
     /// <summary>True, wenn der Benutzer „Vorschau …“ gewählt hat; das Modell enthält dann Name, Ziel und
@@ -82,22 +95,46 @@ type
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.CommCtrl,
+  System.Math,
   Vcl.Themes,
   Vcl.Graphics,
+  Atlas.Core.Style.Signal,
   Atlas.UI.Editor.Strings,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Foundation.WrapLabel;
 
 const
-  // Breiten der Spalten Mitglied, Art, Sichtbarkeit und Grund in der Liste.
+  // Anfangsbreiten der Spalten Mitglied, Art, Sichtbarkeit und Grund (logische Pixel), bis FitToContent sie nach
+  // dem Inhalt setzt.
   cMemberWidth = 260;
   cKindWidth = 70;
   cVisibilityWidth = 90;
   cReasonWidth = 140;
+  /// <summary>Spalten nach Inhalt höchstens so breit, logische Pixel.</summary>
+  cColumnMaxWidth = 360;
+  cColumnReason = 3;
 
 const
   cGap = 8;
   cDialogWidth = 680;
   cDialogHeight = 480;
+  /// <summary>Kleinste Innengröße, logische Pixel.</summary>
+  cMinWidth = 560;
+  cMinHeight = 380;
+  /// <summary>Höhe einer Zeile im Kopf, logische Pixel.</summary>
+  cRowHeight = 23;
+  cRowStep = 28;
+  /// <summary>Beschriftung im Kopf: Abstand von der Oberkante der Zeile und Höhe, logische Pixel.</summary>
+  cLabelOffset = 3;
+  cLabelHeight = 20;
+  /// <summary>Kästchen vor dem Text eines TCheckBox, logische Pixel.</summary>
+  cCheckMark = 16;
+  /// <summary>Anfangs so viele Zeilen der Liste sichtbar.</summary>
+  cInitialRows = 16;
+  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
+  cMaxScreenShare = 80;
 
 function OwnUnitCaption(AModel: TAtlasClassExtractionModel): string;
 begin
@@ -246,29 +283,87 @@ begin
   end;
 end;
 
+/// <summary>ALabel in der Fehlerfarbe des Themas.</summary>
+procedure ShowAsError(ALabel: TLabel);
+begin
+  // Mit seFont zeichnete der Stil die Schrift in seiner Textfarbe statt in der Fehlerfarbe.
+  ALabel.StyleElements := ALabel.StyleElements - [seFont];
+  ALabel.Font.Color := TAtlasUiTheme.TextColor(TAtlasSignalKind.Error);
+end;
+
 { TAtlasExtractMembersDialog }
 
 constructor TAtlasExtractMembersDialog.CreateDialog(AOwner: TComponent; AModel: TAtlasClassExtractionModel;
   const ATitle: string);
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, ATitle, cDialogWidth);
   FModel := AModel;
-  Caption := ATitle;
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
   ClientHeight := ScaleValue(cDialogHeight);
   CreateFooter;
   CreateHeader;
   CreateSide;
   CreateList;
+  ShowAsError(FError);
+  Constraints.MinWidth := Width - ClientWidth + ScaleValue(cMinWidth);
+  Constraints.MinHeight := Height - ClientHeight + ScaleValue(cMinHeight);
   if FName <> nil then
   begin
     ActiveControl := FName;
   end;
+end;
+
+procedure TAtlasExtractMembersDialog.ThemeChanged;
+begin
+  inherited;
+  ShowAsError(FError);
+end;
+
+function WorkArea: TRect;
+begin
+  // Der Dialog erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
+  Result := Screen.WorkAreaRect;
+  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
+  begin
+    Result := Application.MainForm.Monitor.WorkareaRect;
+  end;
+end;
+
+procedure TAtlasExtractMembersDialog.FitToContent;
+var
+  mArea, mRow: TRect;
+  mWidth, mHeight, mIndex, mRowHeight, mRows: Integer;
+begin
+  if FFitted or (FList.Items.Count = 0) then
+  begin
+    Exit;
+  end;
+  FFitted := True;
+  mArea := WorkArea;
+  FList.FillColumn(cColumnReason, cReasonWidth);
+  FList.FitColumnsToContent(cColumnMaxWidth);
+  // Alle Spalten samt ganzem Grund, Rand der Liste und senkrechte Rollleiste.
+  mWidth := FList.ContentWidth(cColumnReason) + FList.Margins.Left + FList.Margins.Right +
+    MulDiv(GetSystemMetrics(SM_CXVSCROLL), CurrentPPI, Screen.PixelsPerInch) + ScaleValue(cGap);
+  for mIndex := 0 to FList.Columns.Count - 1 do
+  begin
+    if mIndex <> cColumnReason then
+    begin
+      Inc(mWidth, FList.Columns[mIndex].Width);
+    end;
+  end;
+  Inc(mWidth, ClientWidth - FList.Width - FList.Margins.Left - FList.Margins.Right);
+  mRowHeight := Abs(FList.Font.Height) + ScaleValue(cGap);
+  if ListView_GetItemRect(FList.Handle, 0, mRow, LVIR_BOUNDS) then
+  begin
+    mRowHeight := mRow.Height;
+  end;
+  mRows := Min(FList.Items.Count, cInitialRows);
+  // Kopfzeile der Liste etwa so hoch wie eine Zeile, dazu ihr Rahmen.
+  mHeight := ClientHeight - FList.Height + (mRows + 2) * mRowHeight;
+  ClientWidth := Max(ClientWidth, Min(mWidth, mArea.Width * cMaxScreenShare div 100));
+  ClientHeight := Max(ClientHeight, Min(mHeight, mArea.Height * cMaxScreenShare div 100));
 end;
 
 procedure TAtlasExtractMembersDialog.DoShow;
@@ -302,6 +397,7 @@ begin
     end;
     FillList;
   end;
+  FitToContent;
   if FName <> nil then
   begin
     FName.SelectAll;
@@ -315,7 +411,8 @@ begin
   Result.Parent := AParent;
   Result.Caption := ACaption;
   Result.OnClick := AClick;
-  Result.Width := ScaleValue(100);
+  Result.Width := Max(TextWidth(Font, ACaption) + ScaleValue(TAtlasButtonRow.cButtonPadding),
+    ScaleValue(TAtlasButtonRow.cButtonMinWidth));
   Result.Top := ScaleValue(cGap);
   Result.Height := ScaleValue(28);
   Result.Anchors := [akTop, akRight];
@@ -329,47 +426,42 @@ begin
   mCaption := TLabel.Create(Self);
   mCaption.Parent := AParent;
   mCaption.Caption := ACaption;
-  mCaption.SetBounds(ScaleValue(cGap), ATop + ScaleValue(3), ScaleValue(110), ScaleValue(20));
+  mCaption.SetBounds(ScaleValue(cGap), ATop + ScaleValue(cLabelOffset), FFieldLeft - ScaleValue(2 * cGap),
+    ScaleValue(cLabelHeight));
   mCaption.FocusControl := AControl;
   AControl.Parent := AParent;
-  AControl.SetBounds(ScaleValue(120), ATop, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
+  AControl.SetBounds(FFieldLeft, ATop, ClientWidth - FFieldLeft - ScaleValue(cGap), ScaleValue(cRowHeight));
   AControl.Anchors := [akLeft, akTop, akRight];
-  Result := ATop + ScaleValue(28);
+  Result := ATop + ScaleValue(cRowStep);
 end;
 
 procedure TAtlasExtractMembersDialog.CreateFooter;
 var
-  mBottom: TPanel;
-  mCancel: TButton;
+  mButtons: TAtlasButtonRow;
   mNotes: TLabel;
 begin
-  mBottom := TPanel.Create(Self);
-  mBottom.Parent := Self;
-  mBottom.Align := alBottom;
-  mBottom.Height := ScaleValue(44);
-  mBottom.BevelOuter := bvNone;
-  mCancel := AddButton(mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersCancel), nil);
-  mCancel.Cancel := True;
-  mCancel.ModalResult := mrCancel;
-  mCancel.Left := mBottom.ClientWidth - mCancel.Width - ScaleValue(cGap);
-  FOk := AddButton(mBottom, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersPreview), OkClick);
-  FOk.Default := True;
-  FOk.Left := mCancel.Left - FOk.Width - ScaleValue(cGap);
+  // Knöpfe rechts unten: von rechts nach links „Abbrechen“, dann „Vorschau …“.
+  mButtons := TAtlasButtonRow.Create(Self);
+  mButtons.Parent := Self;
+  mButtons.Align := alBottom;
+  mButtons.FlowStyle := fsRightLeftTopBottom;
+  mButtons.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap), ScaleValue(cGap div 2));
+  mButtons.AddButton(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersCancel), TAtlasButtonKind.Cancel);
+  FOk := mButtons.AddButton(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersPreview),
+    TAtlasButtonKind.Default);
+  FOk.OnClick := OkClick;
   // Hinweise des Servers und Fehler über den Knöpfen.
   mNotes := TAtlasWrapLabel.Create(Self);
   mNotes.Parent := Self;
   mNotes.Align := alBottom;
   mNotes.AlignWithMargins := True;
-  mNotes.Margins.SetBounds(cGap, 0, cGap, cGap div 2);
-  mNotes.ShowAccelChar := False;
+  mNotes.Margins.SetBounds(ScaleValue(cGap), 0, ScaleValue(cGap), ScaleValue(cGap div 2));
   mNotes.Caption := NotesText(FModel);
   FError := TAtlasWrapLabel.Create(Self);
   FError.Parent := Self;
   FError.Align := alBottom;
   FError.AlignWithMargins := True;
-  FError.Margins.SetBounds(cGap, cGap div 2, cGap, cGap div 2);
-  FError.ShowAccelChar := False;
-  FError.Font.Color := clRed;
+  FError.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap div 2), ScaleValue(cGap), ScaleValue(cGap div 2));
 end;
 
 procedure TAtlasExtractMembersDialog.CreateHeader;
@@ -382,6 +474,12 @@ begin
   mHeader.Align := alTop;
   mHeader.Height := ScaleValue(64);
   mHeader.BevelOuter := bvNone;
+  mHeader.Caption := '';
+  // Beschriftungen so breit wie die längste, damit auch längere Übersetzungen nicht abgeschnitten werden.
+  FFieldLeft := Max(Max(TextWidth(Font, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersName)),
+    TextWidth(Font, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersUnit))),
+    Max(TextWidth(Font, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersTargets)),
+    TextWidth(Font, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersTarget)))) + ScaleValue(2 * cGap);
   mRow := ScaleValue(cGap);
   if FModel.IsMove then
   begin
@@ -408,7 +506,7 @@ begin
     Result := AddLabeled(AHeader, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersTargets), Result,
       FTargetList);
     FTargetList.Height := ScaleValue(66);
-    Result := Result + FTargetList.Height - ScaleValue(23);
+    Result := Result + FTargetList.Height - ScaleValue(cRowHeight);
     FTargetList.OnClickCheck := TargetClickCheck;
   end
   else
@@ -429,11 +527,11 @@ begin
   begin
     FOptionBox.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersKeepAbstract);
   end;
-  FOptionBox.SetBounds(ScaleValue(120), Result, ScaleValue(cDialogWidth - 120 - cGap), ScaleValue(23));
+  FOptionBox.SetBounds(FFieldLeft, Result, ClientWidth - FFieldLeft - ScaleValue(cGap), ScaleValue(cRowHeight));
   FOptionBox.Anchors := [akLeft, akTop, akRight];
   FOptionBox.Checked := FModel.Option;
   FOptionBox.OnClick := OptionClick;
-  Result := Result + ScaleValue(28);
+  Result := Result + ScaleValue(cRowStep);
 end;
 
 procedure TAtlasExtractMembersDialog.CreateSide;
@@ -445,8 +543,8 @@ begin
   mRight := TPanel.Create(Self);
   mRight.Parent := Self;
   mRight.Align := alRight;
-  mRight.Width := ScaleValue(100);
   mRight.BevelOuter := bvNone;
+  mRight.Caption := '';
   mAll := AddButton(mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersAll), CheckAllClick);
   mAll.Tag := 1;
   mNone := AddButton(mRight, TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersNone), CheckAllClick);
@@ -454,8 +552,11 @@ begin
   FAbstract := TCheckBox.Create(Self);
   FAbstract.Parent := mRight;
   FAbstract.Caption := TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersAbstract);
-  FAbstract.Height := ScaleValue(23);
+  FAbstract.Height := ScaleValue(cRowHeight);
   FAbstract.OnClick := AbstractClick;
+  // So breit wie der breiteste Knopf bzw. das Kästchen samt Text, mit Rand links und rechts.
+  mRight.Width := Max(Max(mAll.Width, mNone.Width), Max(mNeeds.Width, TextWidth(Font, FAbstract.Caption) +
+    ScaleValue(2 * cGap + cCheckMark))) + ScaleValue(2 * cGap);
   mAll.Top := ScaleValue(cGap);
   mNone.Top := mAll.Top + mAll.Height + ScaleValue(4);
   mNeeds.Top := mNone.Top + mNone.Height + ScaleValue(3 * cGap);
@@ -473,23 +574,12 @@ begin
 end;
 
 procedure TAtlasExtractMembersDialog.CreateList;
-
-  procedure AddColumn(const ACaption: string; AWidth: Integer);
-  var
-    mColumn: TListColumn;
-  begin
-    mColumn := FList.Columns.Add;
-    mColumn.Caption := ACaption;
-    mColumn.Width := ScaleValue(AWidth);
-  end;
-
 begin
-  FList := TListView.Create(Self);
+  FList := TAtlasListView.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;
-  FList.Margins.SetBounds(cGap, cGap, 0, 0);
-  FList.ViewStyle := vsReport;
+  FList.Margins.SetBounds(ScaleValue(cGap), ScaleValue(cGap), 0, 0);
   FList.ReadOnly := True;
   FList.RowSelect := True;
   FList.HideSelection := False;
@@ -497,10 +587,10 @@ begin
   FList.OnItemChecked := ListChecked;
   FList.OnSelectItem := ListSelect;
   FList.OnCustomDrawItem := ListCustomDraw;
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColMember), cMemberWidth);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColKind), cKindWidth);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColVisibility), cVisibilityWidth);
-  AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColReason), cReasonWidth);
+  FList.AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColMember), cMemberWidth);
+  FList.AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColKind), cKindWidth);
+  FList.AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColVisibility), cVisibilityWidth);
+  FList.AddColumn(TAtlasEditorStrings.Text(TAtlasEditorTextId.ExtractMembersColReason), cReasonWidth);
 end;
 
 procedure TAtlasExtractMembersDialog.FillList;

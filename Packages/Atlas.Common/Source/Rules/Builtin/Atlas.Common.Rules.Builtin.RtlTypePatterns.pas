@@ -88,7 +88,6 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.TypeKinds,
-  Atlas.Common.Rules.Builtin.TypeChecks.Types,
   Atlas.Text.Lines,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Tokens,
   Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory,
@@ -578,7 +577,7 @@ begin
     ACache := TRuleDerived.Open(AContext);
     AResolver := TRuleDerived.Resolver(ACache, AContext);
   end;
-  mResolved := AResolver.ResolveChain(AContext.Tree, ResolverFileName(AContext), ATypeName.Split(['.']), AOffset);
+  mResolved := AResolver.ResolveChain(AContext.Tree, AContext.ResolverFileName, ATypeName.Split(['.']), AOffset);
   Result := mResolved.Found and mResolved.IsType and AResolver.TypeOf(mResolved, mType) and
     (TResolvedTypeKinds.OfType(mType) in [TResolvedTypeKind.Record_, TResolvedTypeKind.Object_]);
 end;

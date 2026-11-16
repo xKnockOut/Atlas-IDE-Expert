@@ -56,8 +56,6 @@ type
     RetryAt: TAtlasDeadline;
     /// <summary>Ausstehende Frage im Hintergrund.</summary>
     Asked: TAtlasLensAsk;
-    /// <summary>Oberer Editor oder nil.</summary>
-    class function TopView: IOTAEditView; static;
     /// <summary>Merkt den Text von AView; True, wenn er seit AQuietMs still steht, keine Antwort aussteht, keine
     /// Wartezeit offen ist und der Stand noch nicht oder vor mindestens ARefreshMs gefragt wurde.</summary>
     function Due(const AView: IOTAEditView; AQuietMs, ARefreshMs: Cardinal): Boolean;
@@ -119,17 +117,6 @@ uses
   Atlas.IDE.Foundation.CodeView;
 
 { TAtlasLensPoll }
-
-class function TAtlasLensPoll.TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
 
 function TAtlasLensPoll.Due(const AView: IOTAEditView; AQuietMs, ARefreshMs: Cardinal): Boolean;
 var

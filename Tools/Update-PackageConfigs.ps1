@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Hält die atlas.json aller Plugin-Packages gleich (Selbstprüfung je Package, Code-Review A-101).
+    Hält die atlas.json aller Plugin-Packages gleich (Selbstprüfung je Package).
 
 .DESCRIPTION
     Atlas liest bei "AtlasServer --check <Projekt>" und im Editor die nächstgelegene

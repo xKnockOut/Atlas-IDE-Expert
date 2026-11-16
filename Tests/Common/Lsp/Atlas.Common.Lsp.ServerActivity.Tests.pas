@@ -28,6 +28,8 @@ type
     [Test]
     procedure ProgressMeansWorking;
     [Test]
+    procedure ReportsProfiledProcess;
+    [Test]
     procedure DetailsFallBackToTarget;
     [Test]
     procedure DetailsComeFromFunction;
@@ -155,6 +157,15 @@ begin
   Assert.AreEqual('working', mEntry.State);
   FActivity.SetProgress(10, 10);
   Assert.AreEqual('ready', FActivity.Snapshot(0).State);
+end;
+
+procedure TServerActivityTests.ReportsProfiledProcess;
+begin
+  Assert.AreEqual<Cardinal>(0, FActivity.Snapshot(0).ProfiledProcess, 'ohne Profil-Lauf');
+  FActivity.SetProfiledProcess(4711);
+  Assert.AreEqual<Cardinal>(4711, FActivity.Snapshot(0).ProfiledProcess);
+  FActivity.SetProfiledProcess(0);
+  Assert.AreEqual<Cardinal>(0, FActivity.Snapshot(0).ProfiledProcess);
 end;
 
 procedure TServerActivityTests.DetailsFallBackToTarget;

@@ -108,17 +108,6 @@ begin
   Result := TPeekState(TAtlasIdePeek.FState);
 end;
 
-function TopView: IOTAEditView;
-var
-  mEditors: IOTAEditorServices;
-begin
-  Result := nil;
-  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
-  begin
-    Result := mEditors.TopView;
-  end;
-end;
-
 /// <summary>Caret in Bildschirmkoordinaten und das Fenster des Editors; False ohne Caret.</summary>
 function CaretRect(out ARect: TRect; out AEditor: HWND): Boolean;
 var
@@ -229,7 +218,7 @@ begin
       Hide;
       Exit;
     end;
-    mView := TopView;
+    mView := TAtlasEditorBuffer.TopView;
     // Weg, sobald sich Ansicht, Cursor oder Bildlauf ändern.
     mStale := not Application.Active or (mView = nil) or (Pointer(mView) <> ShownView);
     mStale := mStale or (mView.CursorPos.Line <> ShownCursor.Line) or (mView.CursorPos.Col <> ShownCursor.Col) or
@@ -289,7 +278,7 @@ var
   mView: IOTAEditView;
   mHeight: Integer;
 begin
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or not CaretRect(mCaret, mEditorWindow) or not GetWindowRect(mEditorWindow, mEditor) then
   begin
     AView.Free;
@@ -368,7 +357,7 @@ var
   mView: IOTAEditView;
 begin
   Result := 8;
-  mView := TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView <> nil) and (mView.Buffer <> nil) then
   begin
     Result := TAtlasEditorBuffer.TabWidth(mView.Buffer);

@@ -33,6 +33,9 @@ type
     procedure OpenSettingRunsAfterClosing;
     [Test]
     procedure AllOffButton;
+    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    [Test]
+    procedure FollowsIdeTheme;
   end;
 
 implementation
@@ -44,6 +47,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.QuickToggles,
+  Vcl.Graphics,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Settings.Strings,
   Atlas.UI.Settings.QuickToggles;
 
@@ -264,6 +269,32 @@ begin
     Assert.AreEqual(1, mClicked);
     mWindow.SetItems(SampleItems, True);
     Assert.AreEqual(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesAllOn), mWindow.AllButton.Caption);
+  finally
+    mWindow.Free;
+  end;
+end;
+
+procedure TAtlasQuickToggleWindowTests.FollowsIdeTheme;
+var
+  mWindow: TAtlasQuickToggleWindow;
+  mDark: TAtlasColors;
+begin
+  mDark := TAtlasColors.Dark;
+  mWindow := TAtlasQuickToggleWindow.CreateToggles(nil, TAtlasColors.Light);
+  try
+    Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
+    Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    TAtlasUiTheme.Install(
+      function: TAtlasColors
+      begin
+        Result := TAtlasColors.Dark;
+      end, nil, nil);
+    try
+      TAtlasUiTheme.Changed;
+    finally
+      TAtlasUiTheme.Uninstall;
+    end;
+    Assert.AreEqual(Integer(TColor(mDark.Surface)), Integer(mWindow.Color), 'Fläche im neuen Thema');
   finally
     mWindow.Free;
   end;

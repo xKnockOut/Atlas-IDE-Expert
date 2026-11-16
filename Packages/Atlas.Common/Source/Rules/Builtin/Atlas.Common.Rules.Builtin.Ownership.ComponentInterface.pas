@@ -317,20 +317,6 @@ begin
     IsMemberNamed(AStore.Parent[0], TComponentInterfaceDanglingRule.cStoreMethods);
 end;
 
-/// <summary>Dateiname für den Namensauflöser: Datei, relativer Pfad oder Unitname.</summary>
-function ContextFileName(const AContext: TRuleContext): string;
-begin
-  Result := AContext.FileName;
-  if Result = '' then
-  begin
-    Result := AContext.RelativePath;
-  end;
-  if Result = '' then
-  begin
-    Result := AContext.UnitName + '.pas';
-  end;
-end;
-
 { TComponentInterfaceScan }
 
 constructor TComponentInterfaceScan.Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -854,7 +840,7 @@ begin
     Exit;
   end;
   FBases := TRuleOptions.Strings(FContext.Options, 'componentClasses', ['TComponent']);
-  FFileName := ContextFileName(FContext);
+  FFileName := FContext.ResolverFileName;
   Collect(FContext.Tree.Root);
   if FReleases = nil then
   begin

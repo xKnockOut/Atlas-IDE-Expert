@@ -97,7 +97,8 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Foundation.EditorBuffer;
 
 const
   cTestUnitCommand = 'atlas.server.testUnit';
@@ -189,7 +190,7 @@ begin
       Clear;
       Exit;
     end;
-    mView := TAtlasLensPoll.TopView;
+    mView := TAtlasEditorBuffer.TopView;
     // Gleicher Stand schon gefragt: nur ab und zu neu (Testunit inzwischen angelegt).
     if (mView <> nil) and (mView.Buffer <> nil) and SameText(ExtractFileExt(mView.Buffer.FileName), '.pas') and
       FPoll.Due(mView, cQuietMs, cRefreshMs) then
@@ -316,7 +317,7 @@ begin
     Exit;
   end;
   // Nur, wenn die Marke noch dort steht: gleiche Datei, nicht gescrollt.
-  mView := TAtlasLensPoll.TopView;
+  mView := TAtlasEditorBuffer.TopView;
   if (mView = nil) or (mView.Buffer = nil) or not SameText(mView.Buffer.FileName, FPoll.FetchedFile) or
     (mView.TopRow <> FLensTopRow) then
   begin

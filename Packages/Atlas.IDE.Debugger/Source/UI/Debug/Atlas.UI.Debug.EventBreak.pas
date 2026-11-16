@@ -8,6 +8,8 @@
 //     Angehalten: btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick
 //     Weiter beobachten   Schließen
 //   ohne Fokus; die Knöpfe sind Klickflächen.
+// Der Dialog erbt von TAtlasDialog (IDE-Thema, Dialogschrift, Knopfleiste);
+// Zeilen in logischen Pixeln, Breiten nach dem Text.
 
 interface
 
@@ -22,13 +24,14 @@ uses
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Atlas.Core.Debug.EventBreak,
+  Atlas.UI.Foundation.Dialog,
   Atlas.UI.Popup.Window;
 
 type
   /// <summary>Text unter der Wahl („12 Handler an 9 Stellen“) zur aktuellen Wahl.</summary>
   TAtlasEventBreakCount = reference to function(const AChoice: TAtlasEventChoice): string;
 
-  TAtlasEventBreakDialog = class(TForm)
+  TAtlasEventBreakDialog = class(TAtlasDialog)
   private
     FCategories: array[TAtlasEventCategory] of TCheckBox;
     FFrequent: TCheckBox;
@@ -36,7 +39,7 @@ type
     FVisible: TRadioButton;
     FOne: TRadioButton;
     FForm: TComboBox;
-    FCount: TLabel;
+    FCount: TAtlasNoteLabel;
     FOk: TButton;
     FCancel: TButton;
     FForms: TArray<string>;
@@ -45,7 +48,6 @@ type
     FPrepared: Boolean;
     function AddCheck(AParent: TWinControl; const ACaption: string): TCheckBox;
     function AddRadio(AParent: TWinControl; const ACaption: string): TRadioButton;
-    function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     procedure Changed(Sender: TObject);
     procedure OkClick(Sender: TObject);
     procedure CancelClick(Sender: TObject);
@@ -67,7 +69,7 @@ type
     property VisibleRadio: TRadioButton read FVisible;
     property OneRadio: TRadioButton read FOne;
     property FormCombo: TComboBox read FForm;
-    property CountLabel: TLabel read FCount;
+    property CountLabel: TAtlasNoteLabel read FCount;
     property OkButton: TButton read FOk;
   end;
 
@@ -106,6 +108,7 @@ implementation
 uses
   System.Math,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Style.Signal,
   Atlas.UI.Debug.Strings,
   Atlas.UI.Popup.Accessibility;
 
@@ -114,6 +117,15 @@ const
   cDialogWidth = 440;
   cPad = 10;
   cButtonGap = 18;
+  /// <summary>Höhe einer Zeile mit Kästchen oder Knopf, der Zeile mit Auswahlfeld und der Zahl darunter, logische
+  /// Pixel.</summary>
+  cLineHeight = 22;
+  cComboRowHeight = 28;
+  cCountHeight = 36;
+  /// <summary>Platz für den Kreis eines Optionsfelds vor seinem Text und Abstand zum Auswahlfeld, logische Pixel.
+  /// </summary>
+  cRadioMark = 24;
+  cComboGap = 4;
 
 function CategoryText(ACategory: TAtlasEventCategory): string;
 begin
@@ -151,7 +163,7 @@ begin
   begin
     ADialog.FCategories[mCategory] := ADialog.AddCheck(Result, CategoryText(mCategory));
     ADialog.FCategories[mCategory].Top := mTop;
-    Inc(mTop, ADialog.ScaleValue(22));
+    Inc(mTop, ADialog.ScaleValue(cLineHeight));
   end;
   ADialog.FFrequent := ADialog.AddCheck(Result, TAtlasDebugStrings.Fmt(TAtlasDebugTextId.EventBreakFrequent,
     [AExcluded]));
@@ -159,22 +171,37 @@ begin
   Result.Height := ADialog.FFrequent.Top + ADialog.ScaleValue(30);
 end;
 
-/// <summary>Leiste mit „OK“ und „Abbrechen“ unten in ADialog.</summary>
-function CreateButtons(ADialog: TAtlasEventBreakDialog): TPanel;
+/// <summary>„Ein Formular“ links, das Auswahlfeld füllt den Rest der Zeile.</summary>
+procedure CreateFormRow(ADialog: TAtlasEventBreakDialog);
+var
+  mRow: TPanel;
 begin
-  Result := TPanel.Create(ADialog);
-  Result.Parent := ADialog;
-  Result.Align := alBottom;
-  Result.Height := ADialog.ScaleValue(44);
-  Result.BevelOuter := bvNone;
-  ADialog.FCancel := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel),
-    ADialog.CancelClick);
-  ADialog.FCancel.Cancel := True;
-  ADialog.FCancel.Left := Result.ClientWidth - ADialog.FCancel.Width - ADialog.ScaleValue(cDialogGap);
-  ADialog.FOk := ADialog.AddButton(Result, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk),
-    ADialog.OkClick);
-  ADialog.FOk.Default := True;
-  ADialog.FOk.Left := ADialog.FCancel.Left - ADialog.FOk.Width - ADialog.ScaleValue(cDialogGap);
+  mRow := ADialog.AddRow(cComboRowHeight);
+  ADialog.FOne := ADialog.AddRadio(mRow, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOneForm));
+  ADialog.FOne.Align := alLeft;
+  ADialog.FOne.Width := ADialog.FOne.Margins.Left + TAtlasDialog.TextWidth(ADialog.Font, ADialog.FOne.Caption) +
+    ADialog.ScaleValue(cRadioMark);
+  ADialog.FForm := TComboBox.Create(ADialog);
+  ADialog.FForm.Style := csDropDownList;
+  ADialog.FForm.AlignWithMargins := True;
+  ADialog.FForm.Margins.SetBounds(ADialog.ScaleValue(cComboGap), 0, 0, 0);
+  ADialog.FForm.Align := alClient;
+  ADialog.FForm.Parent := mRow;
+  ADialog.FForm.OnChange := ADialog.Changed;
+end;
+
+/// <summary>Knopfleiste mit „OK“ und „Abbrechen“ unten in ADialog.</summary>
+procedure CreateButtons(ADialog: TAtlasEventBreakDialog);
+var
+  mButtons: TAtlasButtonRow;
+begin
+  mButtons := ADialog.AddButtonRow;
+  ADialog.FOk := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOk),
+    TAtlasButtonKind.Default);
+  ADialog.FOk.OnClick := ADialog.OkClick;
+  ADialog.FCancel := mButtons.AddButton(TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakCancel),
+    TAtlasButtonKind.Cancel);
+  ADialog.FCancel.OnClick := ADialog.CancelClick;
 end;
 
 { TAtlasEventBreakDialog }
@@ -182,54 +209,23 @@ end;
 constructor TAtlasEventBreakDialog.CreateDialog(AOwner: TComponent; const AChoice: TAtlasEventChoice;
   const AForms: TArray<string>; const AExcluded: string; const ACount: TAtlasEventBreakCount);
 var
-  mGroup: TGroupBox;
-  mBottom: TPanel;
   mHeading: TLabel;
-  mTop: Integer;
 begin
-  inherited CreateNew(AOwner);
+  inherited CreateDialog(AOwner, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle), cDialogWidth);
   FChoice := AChoice;
   FForms := AForms;
   FCountText := ACount;
-  Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle);
-  BorderStyle := bsDialog;
   BorderIcons := [biSystemMenu];
-  Position := poMainFormCenter;
-  Font.Name := 'Segoe UI';
-  Font.Size := 9;
-  ClientWidth := ScaleValue(cDialogWidth);
-
-  mGroup := CreateCategories(Self, AExcluded);
-
-  mHeading := TLabel.Create(Self);
-  mHeading.Parent := Self;
-  mHeading.Caption := TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakScope);
+  CreateCategories(Self, AExcluded);
+  mHeading := AddLabel(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakScope));
   mHeading.Font.Style := [fsBold];
-  mHeading.SetBounds(ScaleValue(cDialogGap), mGroup.Top + mGroup.Height + ScaleValue(cDialogGap), 0, 0);
-  mHeading.AutoSize := True;
-  mTop := mHeading.Top + ScaleValue(20);
-  FAll := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakAllForms));
-  FAll.Top := mTop;
-  FVisible := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleForms));
-  FVisible.Top := mTop + ScaleValue(22);
-  FOne := AddRadio(Self, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakOneForm));
-  FOne.Top := mTop + ScaleValue(44);
-  FOne.Width := ScaleValue(150);
-  FForm := TComboBox.Create(Self);
-  FForm.Parent := Self;
-  FForm.Style := csDropDownList;
-  FForm.SetBounds(FOne.Left + FOne.Width + ScaleValue(4), FOne.Top - ScaleValue(2),
-    ClientWidth - FOne.Left - FOne.Width - ScaleValue(4) - ScaleValue(cDialogGap), FForm.Height);
-  FForm.OnChange := Changed;
-
-  FCount := TLabel.Create(Self);
-  FCount.Parent := Self;
+  FAll := AddRadio(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakAllForms));
+  FVisible := AddRadio(AddRow(cLineHeight), TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakVisibleForms));
+  CreateFormRow(Self);
+  FCount := AddNote(cCountHeight);
   FCount.ShowAccelChar := False;
-  FCount.SetBounds(ScaleValue(cDialogGap), FOne.Top + ScaleValue(32), ClientWidth - 2 * ScaleValue(cDialogGap), 0);
-  FCount.AutoSize := True;
-
-  mBottom := CreateButtons(Self);
-  ClientHeight := FCount.Top + ScaleValue(28) + mBottom.Height;
+  CreateButtons(Self);
+  FitHeight;
 end;
 
 procedure TAtlasEventBreakDialog.DoShow;
@@ -250,26 +246,14 @@ end;
 
 function TAtlasEventBreakDialog.AddRadio(AParent: TWinControl; const ACaption: string): TRadioButton;
 begin
+  // Eingerückt unter der Überschrift; füllt die Zeile, damit längere Übersetzungen nicht abgeschnitten werden.
   Result := TRadioButton.Create(Self);
-  Result.Parent := AParent;
   Result.Caption := ACaption;
-  Result.Left := ScaleValue(cDialogGap) * 2;
-  Result.Width := ClientWidth - 4 * ScaleValue(cDialogGap);
+  Result.AlignWithMargins := True;
+  Result.Margins.SetBounds(ScaleValue(cDialogGap), 0, 0, 0);
+  Result.Align := alClient;
+  Result.Parent := AParent;
   Result.OnClick := Changed;
-end;
-
-function TAtlasEventBreakDialog.AddButton(AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(Self);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-  Canvas.Font := Font;
-  Result.Width := Max(Canvas.TextWidth(ACaption) + ScaleValue(32), ScaleValue(90));
-  Result.Top := ScaleValue(cDialogGap);
-  Result.Height := ScaleValue(28);
-  Result.Anchors := [akTop, akRight];
 end;
 
 procedure TAtlasEventBreakDialog.Changed(Sender: TObject);
@@ -288,11 +272,11 @@ begin
   FOk.Enabled := mCurrent.Categories <> [];
   if Assigned(FCountText) then
   begin
-    FCount.Caption := FCountText(mCurrent);
+    FCount.ShowNote(FCountText(mCurrent), TAtlasSignalKind.Info);
   end
   else
   begin
-    FCount.Caption := '';
+    FCount.ShowNote('', TAtlasSignalKind.Info);
   end;
 end;
 

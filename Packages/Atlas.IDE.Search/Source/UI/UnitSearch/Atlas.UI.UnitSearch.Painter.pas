@@ -79,7 +79,8 @@ type
     /// <summary>Oberste Fläche an (X, Y) aus dem letzten Zeichnen.</summary>
     function HitAt(AX, AY: Integer; out AArea: TAtlasUnitSearchHitArea): Boolean;
     property Fonts: TAtlasUnitSearchFonts read FFonts;
-    property Colors: TAtlasColors read FColors;
+    /// <summary>Farben; nach einem Themenwechsel neu gesetzt.</summary>
+    property Colors: TAtlasColors read FColors write FColors;
   end;
 
   /// <summary>Vorschau rechts: Name, Kenndaten und Abschnitte (#876), die nicht passenden eingeklappt.</summary>
@@ -121,6 +122,7 @@ uses
   Atlas.Core.UnitSearch.UseUnit,
   Atlas.Core.Completion.Presentation,
   Atlas.UI.Strings,
+  Atlas.UI.Foundation.Theme,
   Atlas.UI.Search.Strings;
 
 const
@@ -248,11 +250,12 @@ begin
   FColors := AColors;
   FAreas := TList<TAtlasUnitSearchHitArea>.Create;
   FFonts.UI := TFont.Create;
-  FFonts.UI.Name := 'Segoe UI';
-  FFonts.UI.Size := 10;
+  // Wie die Dialogschrift, Beschriftungen eine Stufe größer, Nebentexte eine kleiner.
+  TAtlasUiTheme.AssignDialogFont(FFonts.UI);
+  FFonts.UI.Size := FFonts.UI.Size + 1;
   FFonts.Small := TFont.Create;
-  FFonts.Small.Name := 'Segoe UI';
-  FFonts.Small.Size := 8;
+  TAtlasUiTheme.AssignDialogFont(FFonts.Small);
+  FFonts.Small.Size := FFonts.Small.Size - 1;
   FFonts.Mono := TFont.Create;
   FFonts.Mono.Name := 'Consolas';
   FFonts.Mono.Size := 9;
