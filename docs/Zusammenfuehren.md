@@ -19,7 +19,10 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
 2. `python3 Tools/Merge-Integration.py` mergt `origin/main-merging` ein (flache Klone vertieft es selbst) und löst:
    - erzeugte Dateien: Stand von `main-merging`, danach neu erzeugt mit den beiden Werkzeugen oben (braucht `pwsh`; fehlt es, nennt das Skript die Befehle und endet mit Code 2),
    - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt` und Markdown (Unit-Listen, Tabellenzeilen in `docs/adr/0017-unit-zuordnung.md`, Aufzählungen): beide behalten,
-   - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu.
+   - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu,
+   - die Baseline wortgleicher Rümpfe `atlas-duplicates.json`: Stand von `main-merging`, danach neu geschrieben mit `AtlasServer --check . --check-duplicates --update-baseline` (gebauter Server unter `Output/` oder im PATH; fehlt er, nennt das Skript den Befehl und endet mit Code 2).
+
+   Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` meldet, wenn sie gegenüber `main-merging` wächst.
 
    Was übrig bleibt, sind echte Konflikte (beide Seiten ändern dieselbe Zeile, Quelltext, JSON). Das Skript nennt sie und lässt den Merge offen; von Hand lösen, `git add`, `git commit --no-edit`.
 3. Prüfungen wie gewohnt (`pwsh Tools/Check-*.ps1`, FPC-Bau und -Tests), dann pushen.

@@ -13,6 +13,9 @@ sich ohne Urteil lösen lässt, und lässt alles andere als Konflikt stehen:
   erst die eigenen Zeilen, dann die fremden; doppelte Zeilen nur einmal.
 - Zeilen in Markdown, die sich nur in Zahlen unterscheiden (Regelzahlen im README):
   Stand des Integrationsbranches, die Zahlen erzeugt Update-RuleCatalog.ps1 neu.
+- Die Baseline wortgleicher Rümpfe (atlas-duplicates.json): Stand des Integrationsbranches,
+  danach mit AtlasServer --check . --check-duplicates --update-baseline neu geschrieben
+  (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH).
 
 Was übrig bleibt (geänderte Zeilen auf beiden Seiten, Quelltext, JSON), meldet das
 Skript; der Merge bleibt dann offen.
@@ -54,12 +57,23 @@ ABGELEITET = [
     ('docs/Regeln.md', 'rules'),
     ('docs/en/Rules.md', 'rules'),
     ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas', 'rules'),
+    ('atlas-duplicates.json', 'duplicates'),
 ]
 
 WERKZEUGE = {
     'config': 'Tools/Update-ConfigDoc.ps1',
     'rules': 'Tools/Update-RuleCatalog.ps1',
 }
+
+# Baseline wortgleicher Rümpfe: schreibt AtlasServer, nicht pwsh.
+DUPLIKATE_AUFRUF = ['--check', '.', '--check-duplicates', '--update-baseline']
+
+
+def atlas_server():
+    for kandidat in ('Output/Linux64/Bin/AtlasServer', 'Output/Win64/Bin/AtlasServer.exe'):
+        if os.path.isfile(kandidat):
+            return kandidat
+    return shutil.which('AtlasServer')
 
 # Dateien, in denen reine Ergänzungen beider Seiten zusammen stehen bleiben dürfen.
 ERGAENZBAR = ['*.md', '*.dpr', '*.dpk', '*.dproj', 'Tools/Linux/FpcTests.txt']
@@ -250,6 +264,7 @@ def selbsttest():
             fehler += 1
     for pfad, soll in [('docs/Einstellungen.md', 'config'),
                        ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.De.Architecture.pas', 'rules'),
+                       ('atlas-duplicates.json', 'duplicates'),
                        ('README.md', None)]:
         if werkzeug_fuer(pfad) != soll:
             print(f'{pfad}: Werkzeug {werkzeug_fuer(pfad)} statt {soll}')
@@ -356,6 +371,15 @@ def einmergen(ref, name, kein_commit):
     pwsh = shutil.which('pwsh')
     fehlt = []
     for werkzeug in sorted(neu_erzeugen):
+        if werkzeug == 'duplicates':
+            server = atlas_server()
+            if not server:
+                fehlt.append('AtlasServer ' + ' '.join(DUPLIKATE_AUFRUF))
+            elif subprocess.run([server, *DUPLIKATE_AUFRUF]).returncode != 0:
+                offen.append('atlas-duplicates.json: AtlasServer meldet Fehler')
+            else:
+                git('add', '--', 'atlas-duplicates.json')
+            continue
         skript = WERKZEUGE[werkzeug]
         if not pwsh:
             fehlt.append(f'pwsh {skript}')

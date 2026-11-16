@@ -4,7 +4,7 @@
 
 *English version: [README.md](README.md).*
 
-Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 353 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
+Atlas ist ein Experte für RAD Studio (Delphi/Object Pascal). Er ersetzt die eingebaute Code Insight durch eigene Fenster und ergänzt die IDE um Code-Analyse mit 354 Prüfregeln, Refactorings, Navigation, Formular-Unterstützung, Test- und Debug-Hilfen und eine eigene Willkommensseite. Die Daten liefert der **Atlas-Server**, ein eigener Language Server (LSP), der das Projekt indiziert und auch ohne IDE als Linter oder als MCP-Server für Claude Code läuft. Ab 2.0 besteht das Plugin aus dem Kern-Package `Atlas.IDE.Base` und 14 Modul-Packages, die man nach Bedarf installiert ([Aufbau](#aufbau)).
 
 Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnockOut/Atlas-IDE-Expert/issues).
 
@@ -84,7 +84,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
-- **353 Prüfregeln** schon beim Tippen: 235 Fehler, 107 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
+- **354 Prüfregeln** schon beim Tippen: 235 Fehler, 108 Code-Smells, 11 Sicherheitsregeln; Befunde folgen ihrer Zeile beim Bearbeiten sofort, schon bevor der Server antwortet (`editor.trackLines`)
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an; auf Wunsch stehen die Fehler der IDE (Error Insight) daneben, mit Spalte und Filter „Quelle“ (`problems.ideErrors`)
 - **Compilermeldungen erklärt:** Der Hover zeigt unter einer Meldung von dcc oder der IDE wie E2003 oder W1035 die typische Ursache, dazu die Links „Erklären“ (Dialog mit falschem und richtigem Beispiel) und „DocWiki“; rund 40 Meldungen auf Deutsch und Englisch, auch ohne dcc (`hover.explainMessages`)
@@ -193,6 +193,7 @@ Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE. Was ohn
 
 - **Claude Code:** MCP-Werkzeuge und LSP als Plugin, siehe [Editors/ClaudeCode](Editors/ClaudeCode/README.md)
 - **CI und Kommandozeile:** `AtlasServer.exe --check`, siehe [Linter-Modus](docs/features/de/Kommandozeile.md#linter-modus)
+- **Wortgleiche Rümpfe über Units hinweg:** `AtlasServer --check . --check-duplicates` findet Routinen, deren Rumpf (ohne Kommentare, Leerraum und Groß-/Kleinschreibung) wortgleich mit einem in einer anderen Unit ist, und vergleicht sie mit der Baseline `atlas-duplicates.json`; neue Kopien und entfernte, aber noch eingetragene Kopien lassen den Build scheitern. Im Editor gibt es denselben Vergleich als Regel `duplicate-routine-body` (Profil strict, abschaltbar)
 - **AtlasMonitor (Windows):** eigenes Fenster mit Symbol im Infobereich für alle laufenden Atlas-Server (IDE, MCP, Kommandozeile): Zustandspunkt (ruht, arbeitet, hängt), Einzelheiten, Server beenden (mit Warnung, wenn der Profiler gerade ein Programm misst), Protokoll öffnen, Index-Cache leeren, mit Windows starten (#1901). Jeder Server schreibt dafür alle 5 s `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` (`server.statusFile`). Einstellungen in `%APPDATA%\Atlas\monitor.json`. Reiter **Prüfen** (#1900): alle Befehle der Kommandozeile ohne IDE (check mit allen Optionen, Metriken, TODOs, Formatierung prüfen/schreiben, Fix mit Probelauf, betroffene Tests, Architektur speichern/vergleichen, Hotspots, Abfrage, Replay) auf einer Zielliste (Ordner, .dproj, .groupproj, Dateien; an/aus, speichern/laden). Jedes Ziel läuft als unsichtbarer Kindprozess mit Fortschritt, Abbrechen und einem Job, der beim Schließen des Monitors alle Läufe beendet; Befunde mit Filter, Doppelklick öffnet den Editor, Export als HTML oder SARIF, „Aufruf kopieren“. Architektur- und Hotspot-Seiten erscheinen im Reiter **Bericht** (WebView2, sonst Standardbrowser).
 - **Claude Code in der Cloud (Linux):** Setup-Skript der Umgebung und SessionStart-Hook legen den Server als `AtlasServer` (und `AtlasServer.exe`) nach `/usr/local/bin`, fertig gebaut aus dem Vorab-Release `cloud-linux` oder mit Free Pascal; Einrichtung in [Editors/ClaudeCode](Editors/ClaudeCode/README.md#in-cloud-sitzungen-linux) ([Bauen unter Linux](#bauen-unter-linux))
 
