@@ -81,6 +81,7 @@ uses
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
@@ -545,24 +546,8 @@ begin
 end;
 
 function TFormAutoCreateAndManualScan.CodeAt(AOffset: Integer): Integer;
-var
-  mHigh, mMiddle: Integer;
 begin
-  // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
-  Result := 0;
-  mHigh := Length(FCode);
-  while Result < mHigh do
-  begin
-    mMiddle := (Result + mHigh) div 2;
-    if FTokens[FCode[mMiddle]].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
+  Result := CodeIndexAt(FTokens, FCode, AOffset);
 end;
 
 function TFormAutoCreateAndManualScan.FindCall(const AVariable: string; out ACall: TCreateFormCall): Boolean;

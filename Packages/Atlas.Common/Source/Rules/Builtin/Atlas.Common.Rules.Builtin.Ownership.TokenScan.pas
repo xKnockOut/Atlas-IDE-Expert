@@ -45,6 +45,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines;
 
 { TOwnershipTokenScan }
@@ -95,48 +96,14 @@ begin
 end;
 
 function TOwnershipTokenScan.CodeAt(AOffset: Integer): Integer;
-var
-  mHigh, mMiddle: Integer;
 begin
-  // Binär statt ab Dateianfang mit einer Kopie je Token: FCode steht nach Offset sortiert (#1342).
-  Result := 0;
-  mHigh := Length(FCode);
-  while Result < mHigh do
-  begin
-    mMiddle := (Result + mHigh) div 2;
-    if FTokens[FCode[mMiddle]].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
+  Result := CodeIndexAt(FTokens, FCode, AOffset);
 end;
 
 /// <summary>Passende schließende Klammer zu AOpen ("(" oder "["), sonst -1.</summary>
 function TOwnershipTokenScan.Closing(AOpen: Integer): Integer;
-var
-  mDepth: Integer;
 begin
-  mDepth := 0;
-  for Result := AOpen to High(FCode) do
-  begin
-    if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
+  Result := CodeClosingParen(FTokens, FCode, AOpen);
 end;
 
 function TOwnershipTokenScan.TextBetween(AFirst, ALast: Integer): string;

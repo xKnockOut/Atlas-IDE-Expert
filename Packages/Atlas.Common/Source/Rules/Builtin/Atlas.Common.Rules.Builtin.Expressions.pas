@@ -331,26 +331,8 @@ begin
 end;
 
 function TStringIndexBaseScan.Closing(AOpen: Integer): Integer;
-var
-  mDepth: Integer;
 begin
-  mDepth := 0;
-  for Result := AOpen to High(FCode) do
-  begin
-    if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
+  Result := CodeClosingParen(FTokens, FCode, AOpen);
 end;
 
 // Positionen der Argumente (erstes Token) zwischen AOpen und AClose.
@@ -1031,26 +1013,8 @@ begin
 end;
 
 function TPosArgumentsSwappedScan.Closing(AOpen: Integer): Integer;
-var
-  mDepth: Integer;
 begin
-  mDepth := 0;
-  for Result := AOpen to High(FCode) do
-  begin
-    if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
+  Result := CodeClosingParen(FTokens, FCode, AOpen);
 end;
 
 // Erstes Token jedes Arguments zwischen AOpen und AClose, dazu AClose + 1 als Ende des letzten.

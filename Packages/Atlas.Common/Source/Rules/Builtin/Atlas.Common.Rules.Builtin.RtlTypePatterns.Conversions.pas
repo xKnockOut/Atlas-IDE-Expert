@@ -713,47 +713,13 @@ begin
 end;
 
 function TUncheckedEnumCastScan.Closing(AOpen: Integer): Integer;
-var
-  mDepth: Integer;
 begin
-  mDepth := 0;
-  for Result := AOpen to High(FCode) do
-  begin
-    if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
-    begin
-      Inc(mDepth);
-    end
-    else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-  end;
-  Result := -1;
+  Result := CodeClosingParen(FTokens, FCode, AOpen);
 end;
 
 function TUncheckedEnumCastScan.CodeAt(AOffset: Integer): Integer;
-var
-  mHigh, mMiddle: Integer;
 begin
-  // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
-  Result := 0;
-  mHigh := Length(FCode);
-  while Result < mHigh do
-  begin
-    mMiddle := (Result + mHigh) div 2;
-    if FTokens[FCode[mMiddle]].Offset < AOffset then
-    begin
-      Result := mMiddle + 1;
-    end
-    else
-    begin
-      mHigh := mMiddle;
-    end;
-  end;
+  Result := CodeIndexAt(FTokens, FCode, AOffset);
 end;
 
 // Aufzählungstyp AName in AUnit: Zahl der Werte und ob sie eigene Ordinalwerte tragen.
