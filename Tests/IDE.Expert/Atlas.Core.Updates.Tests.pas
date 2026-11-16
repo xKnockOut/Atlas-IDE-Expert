@@ -24,6 +24,8 @@ type
     [Test]
     procedure DisabledOrNotDueMakesNoRequest;
     [Test]
+    procedure ChannelChangeIsDueAtOnce;
+    [Test]
     procedure ReportsNewCurrentAndFailed;
     [Test]
     procedure StateRoundTrip;
@@ -38,6 +40,7 @@ uses
   System.IOUtils,
   System.DateUtils,
   System.Zip,
+  Atlas.Text.Updates,
   Atlas.Core.Updates.Contract,
   Atlas.Core.Updates.Check,
   Atlas.Core.Diagnostics.Export;
@@ -155,9 +158,46 @@ begin
   Assert.AreEqual(0, mSource.Calls);
   Assert.AreEqual(Double(0), Double(mState.LastCheck), 1 / SecsPerDay);
   mState.LastCheck := IncHour(mToday, -3);
+  mState.ChannelUrl := TAtlasUpdates.cVersionUrl;
   mOutcome := TAtlasUpdates.Run(mKeep, Query('1.0.0'), mState, True, mToday);
   Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, mOutcome.Outcome);
   Assert.AreEqual(0, mSource.Calls);
+end;
+
+procedure TAtlasUpdatesTests.ChannelChangeIsDueAtOnce;
+var
+  mSource: TFakeSource;
+  mKeep: IAtlasVersionSource;
+  mState: TAtlasUpdateState;
+  mOutcome: TAtlasUpdateResult;
+  mQuery: TAtlasUpdateQuery;
+  mToday: TDateTime;
+begin
+  // Stabil heute geprüft, dann auf Vorabversionen umgestellt: sofort abfragen, nicht erst morgen.
+  mSource := TFakeSource.Create;
+  mKeep := mSource;
+  mToday := EncodeDateTime(2026, 11, 16, 8, 0, 0, 0);
+  mState := Default(TAtlasUpdateState);
+  mSource.Answer := '{"version":"2.1.0"}';
+  mOutcome := TAtlasUpdates.Run(mKeep, Query('2.1.0'), mState, True, mToday);
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.Current, mOutcome.Outcome);
+  Assert.AreEqual(TUpdateChannels.cStableUrl, mState.ChannelUrl);
+  mQuery := Query('2.1.0');
+  mQuery.Url := TUpdateChannels.cPrereleaseUrl;
+  Assert.IsTrue(TAtlasUpdates.IsQueryDue(mState, mQuery.Url, IncHour(mToday, 1)));
+  mSource.Answer := '{"version":"2.2.0-rc.1"}';
+  mOutcome := TAtlasUpdates.Run(mKeep, mQuery, mState, True, IncHour(mToday, 1));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NewVersion, mOutcome.Outcome);
+  Assert.AreEqual('2.2.0-rc.1', mOutcome.Release.Version);
+  Assert.AreEqual(2, mSource.Calls);
+  Assert.AreEqual(TUpdateChannels.cPrereleaseUrl, mState.ChannelUrl);
+  // Im selben Kanal bleibt es bei einmal am Tag.
+  mOutcome := TAtlasUpdates.Run(mKeep, mQuery, mState, True, IncHour(mToday, 2));
+  Assert.AreEqual<TAtlasUpdateOutcome>(TAtlasUpdateOutcome.NotDue, mOutcome.Outcome);
+  Assert.AreEqual(2, mSource.Calls);
+  // Zustand ohne Kanal (ältere updates.json): einmal sofort.
+  mState.ChannelUrl := '';
+  Assert.IsTrue(TAtlasUpdates.IsQueryDue(mState, mQuery.Url, IncHour(mToday, 2)));
 end;
 
 procedure TAtlasUpdatesTests.ReportsNewCurrentAndFailed;
@@ -207,8 +247,10 @@ var
 begin
   mState.Asked := True;
   mState.LastCheck := EncodeDateTime(2026, 10, 14, 9, 30, 15, 0);
+  mState.ChannelUrl := TUpdateChannels.cPrereleaseUrl;
   mLoaded := TAtlasUpdateState.FromJson(mState.ToJson);
   Assert.IsTrue(mLoaded.Asked);
+  Assert.AreEqual(TUpdateChannels.cPrereleaseUrl, mLoaded.ChannelUrl);
   Assert.AreEqual(Double(mState.LastCheck), Double(mLoaded.LastCheck), 1 / SecsPerDay);
   mLoaded := TAtlasUpdateState.FromJson('kein json');
   Assert.IsFalse(mLoaded.Asked);
