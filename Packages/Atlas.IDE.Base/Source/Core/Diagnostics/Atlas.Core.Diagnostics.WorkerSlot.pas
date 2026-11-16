@@ -1,7 +1,7 @@
 ﻿unit Atlas.Core.Diagnostics.WorkerSlot;
 
-// Arbeiter-Threads eines Objekts und was mit überfälligen geschieht (Code-
-// Review T-101). Vorher setzten acht Kopien bei überschrittener Zeitgrenze
+// Arbeiter-Threads eines Objekts und was mit überfälligen geschieht.
+// Vorher setzten acht Kopien bei überschrittener Zeitgrenze
 // FreeOnTerminate und vergaßen den Thread: Endete er zwischen der Prüfung auf
 // Finished und dem Setzen, blieb das Objekt liegen, und wurde das Package
 // seines Codes bei laufender IDE entladen, lief er in nicht mehr geladenem
@@ -15,7 +15,7 @@
 //   seiner Kompositions-Unit, für Base deren Abbau) noch bis cUnloadGraceMs
 //   auf die überfälligen Threads seines Packages; läuft dann noch einer, hält
 //   TAtlasUnloadSafety das Package im Speicher und bittet um einen Neustart.
-//   Das muss vor FreeLibrary geschehen (Code-Review T-103): Die Rückrufe von
+//   Das muss vor FreeLibrary geschehen: Die Rückrufe von
 //   AddModuleUnloadProc ruft die RTL erst aus DLL_PROCESS_DETACH
 //   (SysInit.UninitializeModule); dann entlädt Windows das Modul schon, ein
 //   Festhalten wirkt nicht mehr, und Warten unter der Ladersperre hindert die

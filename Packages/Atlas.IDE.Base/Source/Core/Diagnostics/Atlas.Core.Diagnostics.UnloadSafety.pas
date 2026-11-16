@@ -12,7 +12,7 @@
 // Wirksam ist das nur vor FreeLibrary (beim Aushängen, beim Abmelden des
 // Moduls): Aus DLL_PROCESS_DETACH heraus, etwa in einem Rückruf von
 // AddModuleUnloadProc, entlädt Windows das Modul schon, und die Warnung riefe
-// Oberflächencode unter der Ladersperre (Code-Review T-103).
+// Oberflächencode unter der Ladersperre.
 
 interface
 

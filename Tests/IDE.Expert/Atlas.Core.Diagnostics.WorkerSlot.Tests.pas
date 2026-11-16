@@ -4,7 +4,7 @@
 // beendete frei, übergibt überfällige an TAtlasOverdueThreads, und diese
 // kennzeichnen ihr Package als unsicher, wenn es beim Abmelden seines Moduls
 // noch Code von ihnen ausführt. Festgehalten wird vor FreeLibrary
-// (SettleBeforeUnload), nie im Rückruf beim Entladen (Code-Review T-103).
+// (SettleBeforeUnload), nie im Rückruf beim Entladen.
 
 interface
 

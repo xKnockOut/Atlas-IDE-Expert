@@ -1,7 +1,7 @@
 ﻿unit Atlas.WinBase.Process;
 
 // Startet Kindprozesse so, dass sie genau ihre Standard-Handles erben und
-// sonst nichts (Code-Review R-101). Einziger Ort mit CreateProcess im
+// sonst nichts. Einziger Ort mit CreateProcess im
 // Produktivcode (forbidden-symbol in atlas.json).
 //
 // Warum: CreateProcess mit bInheritHandles = True vererbt alle gerade
