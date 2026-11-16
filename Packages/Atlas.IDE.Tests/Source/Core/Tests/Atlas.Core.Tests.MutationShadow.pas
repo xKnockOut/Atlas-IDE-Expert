@@ -16,9 +16,15 @@
 // dproj: MainSource, Projektname und GUID neu; relative Pfade (Suchpfade,
 // Include= der Einträge, Symbol, Manifest) absolut; der Ordner des Originals
 // und der der Unit stehen vorn im Such- und Include-Pfad (die Kopie liegt
-// woanders, die Nachbarn sollen sich weiter finden); Ausgaben nach Out\;
-// Ereignisse vor und nach dem Bauen geleert, weil sie Dateien des Originals
-// überschreiben könnten.
+// woanders, die Nachbarn sollen sich weiter finden); Ausgaben nach Out\,
+// auch wenn das Original keine nennt (sonst legte der Compiler die DCUs neben
+// die Quelltexte des Originals); Ereignisse vor und nach dem Bauen geleert,
+// weil sie Dateien des Originals überschreiben könnten.
+// Das Original bleibt unverändert, weil zwei Bedingungen zusammen gelten:
+// Der Lauf schreibt nur in den Ordner des Schattenprojekts (IsShadowFile vor
+// jedem Schreiben), und keine Datei des Originals liegt in diesem Ordner
+// (Separate vor dem Anlegen). Wer eine Unit aus dem Schattenprojekt selbst
+// mutieren will, wird abgewiesen.
 // Pfade sind Windows-Pfade; die Funktionen arbeiten nur auf Zeichenketten.
 
 interface
@@ -68,6 +74,18 @@ type
       static;
     /// <summary>Formulardateien, die mit der Unit AUnitFile kopiert werden müssen, falls es sie gibt.</summary>
     class function CompanionFiles(const AUnitFile: string): TArray<string>; static;
+    /// <summary>Dateien des Originals, die der Lauf liest und nie schreiben darf: Unit, ihre Formulardateien, dproj,
+    /// dpr und res des Testprojekts.</summary>
+    class function OriginalFiles(const ASource: TAtlasMutationShadowSource): TArray<string>; static;
+    /// <summary>Liegt AFileName in AFolder oder darunter? Pfade normalisiert, ohne Rücksicht auf
+    /// Groß-/Kleinschreibung (Windows).</summary>
+    class function Inside(const AFolder, AFileName: string): Boolean; static;
+    /// <summary>Darf der Lauf AFileName schreiben? Nur Dateien im Ordner von AShadow.</summary>
+    class function IsShadowFile(const AShadow: TAtlasMutationShadow; const AFileName: string): Boolean; static;
+    /// <summary>Sind Schattenprojekt und Original getrennt? dpr, dproj und Kopie der Unit liegen im Ordner von
+    /// AShadow, und keine Datei des Originals (OriginalFiles) liegt dort. Sonst darf der Lauf nicht beginnen.</summary>
+    class function Separate(const ASource: TAtlasMutationShadowSource; const AShadow: TAtlasMutationShadow): Boolean;
+      static;
     /// <summary>Ist APath absolut (Laufwerk, \\Server, \) oder beginnt mit einer Variablen ($(…), %…%)?</summary>
     class function IsRooted(const APath: string): Boolean; static;
     /// <summary>APath relativ zu ABase aufgelöst und normalisiert; Wurzelpfade bleiben, wie sie sind.</summary>
@@ -121,6 +139,53 @@ var
 begin
   mBase := Copy(AUnitFile, 1, Length(AUnitFile) - Length(ExtractFileExt(AUnitFile)));
   Result := TArray<string>.Create(mBase + '.dfm', mBase + '.fmx');
+end;
+
+/// <summary>AFileName mit der Endung AExt statt der eigenen.</summary>
+function WithExtension(const AFileName, AExt: string): string;
+begin
+  Result := Copy(AFileName, 1, Length(AFileName) - Length(ExtractFileExt(AFileName))) + AExt;
+end;
+
+class function TAtlasMutationShadows.OriginalFiles(const ASource: TAtlasMutationShadowSource): TArray<string>;
+begin
+  Result := TArray<string>.Create(ASource.UnitFile, ASource.ProjectFile, WithExtension(ASource.ProjectFile, '.dpr'),
+    WithExtension(ASource.ProjectFile, '.res')) + CompanionFiles(ASource.UnitFile);
+end;
+
+class function TAtlasMutationShadows.Inside(const AFolder, AFileName: string): Boolean;
+var
+  mFolder: string;
+begin
+  mFolder := Normalized(AFolder);
+  // Mit Trenner vergleichen: C:\P\AB liegt nicht in C:\P\A.
+  Result := (mFolder <> '') and (Trim(AFileName) <> '') and StartsText(mFolder + '\', Normalized(AFileName) + '\');
+end;
+
+class function TAtlasMutationShadows.IsShadowFile(const AShadow: TAtlasMutationShadow;
+  const AFileName: string): Boolean;
+begin
+  Result := Inside(AShadow.Folder, AFileName);
+end;
+
+class function TAtlasMutationShadows.Separate(const ASource: TAtlasMutationShadowSource;
+  const AShadow: TAtlasMutationShadow): Boolean;
+var
+  mOriginal: string;
+begin
+  Result := IsShadowFile(AShadow, AShadow.DprFile) and IsShadowFile(AShadow, AShadow.DprojFile) and
+    IsShadowFile(AShadow, AShadow.UnitFile);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mOriginal in OriginalFiles(ASource) do
+  begin
+    if IsShadowFile(AShadow, mOriginal) then
+    begin
+      Exit(False);
+    end;
+  end;
 end;
 
 class function TAtlasMutationShadows.IsRooted(const APath: string): Boolean;
@@ -572,14 +637,19 @@ begin
   Result := string.Join(';', mParts);
 end;
 
-/// <summary>dproj mit Ordnern des Originals vorn im Such- und Include-Pfad der Basis-Konfiguration.</summary>
+/// <summary>dproj mit Ordnern des Originals vorn im Such- und Include-Pfad der Basis-Konfiguration und den
+/// Ausgaben nach Out.</summary>
 function WithFolders(const AText, AFolders: string): string;
 var
   mGroup, mItems: Integer;
   mLines: string;
 begin
+  // Ausgaben auch dann nach Out, wenn das Original keine nennt: Ohne DCC_DcuOutput legte der Compiler die DCUs neben
+  // die Quelltexte des Originals.
   mLines := cBreak + '        <DCC_UnitSearchPath>' + AFolders + ';$(DCC_UnitSearchPath)</DCC_UnitSearchPath>' +
-    cBreak + '        <DCC_IncludePath>' + AFolders + ';$(DCC_IncludePath)</DCC_IncludePath>';
+    cBreak + '        <DCC_IncludePath>' + AFolders + ';$(DCC_IncludePath)</DCC_IncludePath>' + cBreak +
+    '        <DCC_ExeOutput>' + TAtlasMutationShadows.cOutFolder + '</DCC_ExeOutput>' + cBreak +
+    '        <DCC_DcuOutput>' + TAtlasMutationShadows.cDcuFolder + '</DCC_DcuOutput>';
   mGroup := Pos(cBaseGroup, AText);
   if mGroup > 0 then
   begin
