@@ -3,10 +3,14 @@
 // Ergebnisse eines DUnitX-Laufs lesen, gemeinsam für Server und Plugin
 // (#69): die XML-Berichte der DUnitX-Logger.
 // - NUnit 2 (TDUnitXXMLNUnitFileLogger, Vorgabe der Vorlage von RAD Studio):
-//   <test-results> mit verschachtelten <test-suite type="Namespace|TestFixture|…">
-//   und <test-case name="Unit.Fixture.Methode" result="Success|Failure|Error|
+//   <test-results> mit verschachtelten <test-suite type="Namespace|Fixture|…">
+//   und <test-case name="Methode" result="Success|Failure|Error|
 //   Ignored|…" time="0.012"> samt <failure><message>…</message>
 //   <stack-trace>…</stack-trace></failure> bzw. <reason><message>.
+//   DUnitX schreibt den Namen relativ zur Fixture der umgebenden Suite
+//   („Methode“, bei [TestCase] „Methode.Fall“, bei Fällen aus Werten
+//   „Methode(1, 2)“); andere Logger schreiben den vollen Namen
+//   „Unit.Fixture.Methode[.Fall]“. Beides wird gelesen.
 // - NUnit 3: <test-run> mit <test-case fullname="…" result="Passed|Failed|
 //   Skipped" label="Error" duration="…">.
 // - JUnit (TDUnitXXMLJUnitFileLogger): <testsuite> mit <testcase
@@ -92,7 +96,8 @@ type
     /// AMessage keine ist.</summary>
     class function LeakBytesOf(const AMessage: string): Int64; static;
     /// <summary>Zerlegt AFullName mit der bekannten Fixture AFixture ('' = unbekannt: die letzten beiden Teile
-    /// gelten als Fixture und Methode).</summary>
+    /// gelten als Fixture und Methode). Steht AFixture nicht im Namen, ist er relativ zur Fixture
+    /// („Methode“, „Methode.Fall“ oder „Methode(1, 2)“) wie im NUnit-Bericht von DUnitX.</summary>
     class procedure SplitName(const AFullName, AFixture: string; out AUnitName, AFixtureName, AMethod,
       ACaseName: string); static;
     /// <summary>Sekunden ("0.012", "0,012") in Millisekunden; 0 bei ungültigem Text.</summary>
@@ -254,6 +259,31 @@ begin
     (CompareText(AA.FullName, AB.FullName) < 0));
 end;
 
+/// <summary>Zerlegt „Methode“, „Methode.Fall“ oder „Methode(1, 2)“ (Name von TDUnitXTestCase) in Methode und Fall;
+/// der Fall mit Klammer behält sie wie in TDUnitXCommandLine.CaseName.</summary>
+procedure SplitMethodName(const AName: string; out AMethod, ACaseName: string);
+var
+  mDot, mParen: Integer;
+begin
+  mDot := Pos('.', AName);
+  mParen := Pos('(', AName);
+  if (mParen > 0) and ((mDot = 0) or (mParen < mDot)) then
+  begin
+    AMethod := Copy(AName, 1, mParen - 1);
+    ACaseName := Copy(AName, mParen, MaxInt);
+  end
+  else if mDot > 0 then
+  begin
+    AMethod := Copy(AName, 1, mDot - 1);
+    ACaseName := Copy(AName, mDot + 1, MaxInt);
+  end
+  else
+  begin
+    AMethod := AName;
+    ACaseName := '';
+  end;
+end;
+
 class procedure TTestResults.SplitName(const AFullName, AFixture: string; out AUnitName, AFixtureName, AMethod,
   ACaseName: string);
 var
@@ -274,18 +304,12 @@ begin
       AUnitName := Copy(AFullName, 1, mAt - 2);
       mRest := Copy(AFullName, mAt + Length(AFixture) + 1, MaxInt);
       AFixtureName := Copy(AFullName, mAt, Length(AFixture));
-      mIndex := Pos('.', mRest);
-      if mIndex > 0 then
-      begin
-        AMethod := Copy(mRest, 1, mIndex - 1);
-        ACaseName := Copy(mRest, mIndex + 1, MaxInt);
-      end
-      else
-      begin
-        AMethod := mRest;
-      end;
+      SplitMethodName(mRest, AMethod, ACaseName);
       Exit;
     end;
+    // DUnitX (NUnit-Logger): Name relativ zur Fixture, Unit unbekannt.
+    SplitMethodName(AFullName, AMethod, ACaseName);
+    Exit;
   end;
   mParts := AFullName.Split(['.']);
   if Length(mParts) >= 2 then
@@ -506,22 +530,17 @@ end;
 
 procedure TReportReader.StartJUnitCase;
 var
-  mClassName: string;
+  mClassName, mName: string;
   mDot: Integer;
 begin
   mClassName := FCursor.Attribute('classname');
-  FCurrent.Method := FCursor.Attribute('name');
-  FCurrent.FullName := mClassName + '.' + FCurrent.Method;
+  mName := FCursor.Attribute('name');
+  FCurrent.FullName := mClassName + '.' + mName;
   mDot := LastDelimiter('.', mClassName);
   FCurrent.UnitName := Copy(mClassName, 1, mDot - 1);
   FCurrent.Fixture := Copy(mClassName, mDot + 1, MaxInt);
-  // Testfall: "Methode.Fall" im Namen.
-  mDot := Pos('.', FCurrent.Method);
-  if mDot > 0 then
-  begin
-    FCurrent.CaseName := Copy(FCurrent.Method, mDot + 1, MaxInt);
-    FCurrent.Method := Copy(FCurrent.Method, 1, mDot - 1);
-  end;
+  // Testfall: "Methode.Fall" bzw. "Methode(1, 2)" im Namen.
+  SplitMethodName(mName, FCurrent.Method, FCurrent.CaseName);
   FCurrent.DurationMs := TTestResults.SecondsToMs(FCursor.Attribute('time'));
   FCurrent.Outcome := TTestOutcome.Passed;
 end;
