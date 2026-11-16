@@ -320,16 +320,6 @@ begin
   ShowAsError(FError);
 end;
 
-function WorkArea: TRect;
-begin
-  // Der Dialog erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  Result := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    Result := Application.MainForm.Monitor.WorkareaRect;
-  end;
-end;
-
 procedure TAtlasExtractMembersDialog.FitToContent;
 var
   mArea, mRow: TRect;
@@ -340,7 +330,7 @@ begin
     Exit;
   end;
   FFitted := True;
-  mArea := WorkArea;
+  mArea := MainFormWorkArea;
   FList.FillColumn(cColumnReason, cReasonWidth);
   FList.FitColumnsToContent(cColumnMaxWidth);
   // Alle Spalten samt ganzem Grund, Rand der Liste und senkrechte Rollleiste.

@@ -155,16 +155,6 @@ begin
   Result := Min(AValue, AExtent * cMaxScreenShare div 100);
 end;
 
-/// <summary>Arbeitsfläche des Monitors der IDE.</summary>
-function WorkArea: TRect;
-begin
-  Result := Screen.WorkAreaRect;
-  if Application.MainForm <> nil then
-  begin
-    Result := Application.MainForm.Monitor.WorkareaRect;
-  end;
-end;
-
 /// <summary>Breite eines Knopfs mit ACaption in der Schrift AFont, mindestens AMinWidth; Gerätepixel. Gemessen auf
 /// einem Bitmap: Die Leinwand des Formulars bräuchte schon im Konstruktor ein Fenster.</summary>
 function TextButtonWidth(AFont: TFont; const ACaption: string; AMinWidth, APadding: Integer): Integer;
@@ -213,7 +203,7 @@ begin
   KeyPreview := True;
   OnKeyDown := FormKey;
   OnClose := FormClosed;
-  mArea := WorkArea;
+  mArea := MainFormWorkArea;
   Width := ScreenLimited(S(cWindowWidth), mArea.Width);
   Height := ScreenLimited(S(cWindowHeight), mArea.Height);
   FParts.Bar := TFlowPanel.Create(Self);

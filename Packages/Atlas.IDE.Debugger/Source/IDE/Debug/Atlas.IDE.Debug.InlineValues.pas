@@ -375,9 +375,7 @@ begin
     Exit;
   end;
   FValues.Start(FFileName, FContext, FLine, ARefs, TAtlasIdeSettings.Current.DebugInlineValuesPerLine);
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
+  BeginEvaluate(cTickMs);
   EvaluateSlice;
 end;
 

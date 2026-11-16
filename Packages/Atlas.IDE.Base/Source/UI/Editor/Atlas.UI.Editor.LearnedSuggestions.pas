@@ -149,7 +149,6 @@ type
     procedure BuildList;
     procedure FillList;
     procedure FitToContent;
-    function WorkArea: TRect;
     function AddButton(const ACaption: string; AAlign: TAlign): TButton;
     procedure ItemChecked(Sender: TObject; Item: TListItem);
     procedure ItemSelected(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -282,22 +281,12 @@ begin
   end;
 end;
 
-function TListWindow.WorkArea: TRect;
-begin
-  // Das Fenster erscheint über dem Hauptfenster (poMainFormCenter): dessen Monitor begrenzt die Größe.
-  Result := Screen.WorkAreaRect;
-  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
-  begin
-    Result := Application.MainForm.Monitor.WorkareaRect;
-  end;
-end;
-
 procedure TListWindow.FitToContent;
 var
   mArea, mRow: TRect;
   mWidth, mIndex, mRows, mRowHeight, mHeight: Integer;
 begin
-  mArea := WorkArea;
+  mArea := MainFormWorkArea;
   FList.FillColumn(cColumnFollow, cFollowMinWidth);
   FList.FitColumnsToContent(cColumnMaxWidth);
   // Breit genug für alle Spalten samt ganzer Folge, Rand und senkrechter Rollleiste.

@@ -19,7 +19,8 @@ uses
   Atlas.Core.Designer.UndoFlow,
   Atlas.Tests.DesignSurfaceFake;
 
-/// <summary>Texte der Schritte für Tests (englisch, wie in den Tests von Atlas.Core.Designer.Undo).</summary>
+/// <summary>Texte der Schritte für Tests, auch die von Atlas.Core.Designer.Undo: englisch und ohne Pfeil, weil FPC
+/// Strings mit Zeichen außerhalb von ASCII aus der Quelle anders vergleicht als Delphi.</summary>
 function UndoTestWords: TAtlasUndoWords;
 /// <summary>Gründe beim Zurückladen für Tests.</summary>
 function UndoTestReasons: TAtlasUndoReasons;

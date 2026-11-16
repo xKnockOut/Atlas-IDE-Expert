@@ -324,7 +324,7 @@ begin
   Result := Default(TAtlasEditorWindowState);
   Result.AppActive := Application.Active;
   Result.Focus := GetFocus;
-  mView := CurrentEditView;
+  mView := TAtlasEditorBuffer.TopView;
   if mView = nil then
   begin
     Exit;

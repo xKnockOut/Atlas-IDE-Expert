@@ -29,6 +29,7 @@
 interface
 
 uses
+  System.Types,
   System.Classes,
   Vcl.Graphics,
   Vcl.Controls,
@@ -94,6 +95,10 @@ type
     /// <summary>Breite von AText in AFont, Gerätepixel (Font.Height ist schon in Gerätepixeln des Steuerelements).
     /// </summary>
     class function TextWidth(AFont: TFont; const AText: string): Integer; static;
+    /// <summary>Arbeitsfläche des Monitors, auf dem das Hauptfenster liegt; ohne Hauptfenster die des
+    /// Hauptmonitors. Dialoge erscheinen über dem Hauptfenster (poMainFormCenter), dessen Monitor begrenzt ihre
+    /// Größe.</summary>
+    class function MainFormWorkArea: TRect; static;
     /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
     destructor Destroy; override;
@@ -269,6 +274,15 @@ begin
     Result := mBitmap.Canvas.TextWidth(AText);
   finally
     mBitmap.Free;
+  end;
+end;
+
+class function TAtlasDialog.MainFormWorkArea: TRect;
+begin
+  Result := Screen.WorkAreaRect;
+  if (Application.MainForm <> nil) and (Application.MainForm.Monitor <> nil) then
+  begin
+    Result := Application.MainForm.Monitor.WorkareaRect;
   end;
 end;
 

@@ -496,13 +496,11 @@ end;
 
 procedure TAtlasIdeDebugVariables.StartEvaluate;
 begin
-  if not StillStopped then
+  // StillStopped an dieser Instanz: derselbe Halt wie in FProgress, Thread angehalten.
+  if StillAtStop then
   begin
-    Exit;
+    BeginEvaluate(cTickMs);
   end;
-  FProgress.Phase := TAtlasStopPhase.Evaluate;
-  FTimer.Interval := cTickMs;
-  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeDebugVariables.EvaluateSlice;
