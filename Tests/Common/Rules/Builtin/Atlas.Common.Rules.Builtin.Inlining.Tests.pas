@@ -52,6 +52,10 @@ type
     /// System.Generics.Collections im uses.</summary>
     [Test]
     procedure RealRtlNeedsNoImplicitOrGenericUnit;
+    /// <summary>Parameter über einen Alias aus einer anderen Unit (TTextPosition = Atlas.Text.Lines.TTextPosition):
+    /// Liest der Rumpf seine Felder, verlangt dcc die Unit hinter dem Alias.</summary>
+    [Test]
+    procedure AliasParameterNeedsTargetUnit;
     [Test]
     procedure QuickFixAddsUnit;
     [Test]
@@ -681,6 +685,70 @@ begin
   Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
   mWithRefs := '';
+end;
+
+procedure TInliningRulesTests.AliasParameterNeedsTargetUnit;
+const
+  cBasis =
+    'unit Werk.Basis;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TPunkt = record'#10 +
+    '    Zeile: Integer;'#10 +
+    '    Spalte: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+  cVertrag =
+    'unit Werk.Vertrag;'#10 +
+    'interface'#10 +
+    'uses Werk.Basis;'#10 +
+    'type'#10 +
+    '  TPunkt = Werk.Basis.TPunkt;'#10 +
+    'implementation'#10 +
+    'end.';
+  cZeiger =
+    'unit Werk.Zeiger;'#10 +
+    'interface'#10 +
+    'uses Werk.Vertrag;'#10 +
+    'function Vor(const A, B: TPunkt): Boolean; inline;'#10 +
+    'implementation'#10 +
+    'function Vor(const A, B: TPunkt): Boolean;'#10 +
+    'begin'#10 +
+    '  Result := (A.Zeile < B.Zeile) or ((A.Zeile = B.Zeile) and (A.Spalte < B.Spalte));'#10 +
+    'end;'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Vertrag, Werk.Zeiger;'#10 +
+    'procedure Lauf(const A, B: TPunkt);'#10 +
+    'begin'#10 +
+    '  if Vor(A, B) then'#10 +
+    '    Exit;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+  mRefs: string;
+  mSymbol: TIndexSymbol;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cBasis, 'C:\P\Werk.Basis.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cVertrag, 'C:\P\Werk.Vertrag.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil));
+  // Der Index merkt sich die gelesenen Mitglieder der Parameter (Kopf und Implementierung).
+  mRefs := '';
+  for mSymbol in TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil).Symbols do
+  begin
+    mRefs := mRefs + mSymbol.Name + '=' + String.Join(',', mSymbol.InlineRefs) + '|';
+  end;
+  Assert.AreEqual('Vor=:TPunkt#Zeile,:TPunkt#Spalte|Vor=:TPunkt#Zeile,:TPunkt#Spalte|', mRefs);
+  Assert.AreEqual('6:5 Inline-Funktion Vor wird nicht eingebettet: Werk.Basis fehlt in uses (wie H2443).|',
+    Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '', 'Haupt.pas')));
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
+    StringReplace(cSource, 'uses Werk.Vertrag,', 'uses Werk.Basis, Werk.Vertrag,', []), mIndex, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;
