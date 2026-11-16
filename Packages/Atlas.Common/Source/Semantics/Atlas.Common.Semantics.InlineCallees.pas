@@ -97,6 +97,9 @@ type
     /// <summary>Unit hinter dem Alias des Ergebnistyps von ACallee (TFontStyles = System.UITypes.TFontStyles);
     /// '' ohne.</summary>
     function ResultAliasUnit(const ACallee: TInlineCallee): string;
+    /// <summary>Ziel des einfachen Typalias AResolved (TTextPosition = Atlas.Text.Lines.TTextPosition); False bei
+    /// anderen Typen.</summary>
+    function SimpleAliasTarget(const AResolved: TResolvedSymbol; out ATarget: TResolvedSymbol): Boolean;
     /// <summary>Braucht ein direkter Aufruf von ACallee dessen eigene Unit im uses? Nur bei einem Rumpf mit
     /// Verweisen, nicht für System und SysInit und nicht für Mitglieder generischer Typen.</summary>
     class function OwnUnitNeeded(const ACallee: TInlineCallee): Boolean; static;
@@ -320,7 +323,7 @@ end;
 function TInlineCallees.RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
   const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
 var
-  mResolved, mMember: TResolvedSymbol;
+  mResolved, mMember, mTarget: TResolvedSymbol;
   mTypeText, mMemberName: string;
   mMark: Integer;
 begin
@@ -346,6 +349,12 @@ begin
       begin
         AExternal := True;
       end;
+    end
+    // Mitglied über einen Alias (A.Line bei A: TTextPosition = Atlas.Text.Lines.TTextPosition): dcc braucht die
+    // Unit hinter dem Alias.
+    else if (mMemberName <> '') and SimpleAliasTarget(mResolved, mTarget) then
+    begin
+      Result := UnitOfResolved(mTarget);
     end
     else
     begin
@@ -436,26 +445,23 @@ begin
   end;
 end;
 
-function TInlineCallees.ResultAliasUnit(const ACallee: TInlineCallee): string;
+function TInlineCallees.SimpleAliasTarget(const AResolved: TResolvedSymbol; out ATarget: TResolvedSymbol): Boolean;
 var
-  mResolved, mTarget: TResolvedSymbol;
   mUnit: TUnitIndex;
   mSymbol: TIndexSymbol;
   mText: string;
   mEquals, mPosition: Integer;
 begin
-  Result := '';
-  if not (ACallee.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or
-    (ACallee.Symbol.TypeName = '') or (Pos('<', ACallee.Symbol.TypeName) > 0) or
-    not FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.TypeName, mResolved) or mResolved.Builtin or
-    (mResolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or not FCallee.DeclaringUnit(mResolved, mUnit) then
+  Result := False;
+  if AResolved.Builtin or (AResolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or
+    not FCallee.DeclaringUnit(AResolved, mUnit) then
   begin
     Exit;
   end;
-  for mPosition in mUnit.SymbolsNamed(mResolved.Name) do
+  for mPosition in mUnit.SymbolsNamed(AResolved.Name) do
   begin
     mSymbol := mUnit.Symbols[mPosition];
-    if (mSymbol.SelectionRange.StartPos = mResolved.SelectionRange.StartPos) and (mSymbol.Container = '') then
+    if (mSymbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and (mSymbol.Container = '') then
     begin
       // Signatur "TFontStyles = System.UITypes.TFontStyles;": nur einfache Aliase, keine eigenen Typen.
       mEquals := mSymbol.Signature.IndexOf('=');
@@ -468,14 +474,24 @@ begin
       begin
         mText := mText.Substring(0, mText.Length - 1).TrimRight;
       end;
-      if StartsText('type ', mText) or (mText.IndexOfAny([' ', '(', '[', '<', '^']) >= 0) or
-        not FCallee.ResolveTypeTextFrom(mUnit, mText, mTarget) then
-      begin
-        Exit;
-      end;
-      Result := UnitOfResolved(mTarget);
+      Result := not StartsText('type ', mText) and (mText.IndexOfAny([' ', '(', '[', '<', '^']) < 0) and
+        FCallee.ResolveTypeTextFrom(mUnit, mText, ATarget);
       Exit;
     end;
+  end;
+end;
+
+function TInlineCallees.ResultAliasUnit(const ACallee: TInlineCallee): string;
+var
+  mResolved, mTarget: TResolvedSymbol;
+begin
+  Result := '';
+  if (ACallee.Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+    (ACallee.Symbol.TypeName <> '') and (Pos('<', ACallee.Symbol.TypeName) = 0) and
+    FCallee.ResolveTypeFrom(ACallee.OwnerUnit, ACallee.Symbol.TypeName, mResolved) and
+    SimpleAliasTarget(mResolved, mTarget) then
+  begin
+    Result := UnitOfResolved(mTarget);
   end;
 end;
 
