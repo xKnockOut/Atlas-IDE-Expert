@@ -1516,6 +1516,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.IconAlpha` | `Core/Designer/Atlas.Core.Designer.IconAlpha.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Usages` | `Core/Designer/Atlas.Core.Designer.Usages.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Undo` | `Core/Designer/Atlas.Core.Designer.Undo.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Surface` | `Core/Designer/Atlas.Core.Designer.Surface.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.UndoApply` | `Core/Designer/Atlas.Core.Designer.UndoApply.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.UndoFlow` | `Core/Designer/Atlas.Core.Designer.UndoFlow.pas` | Ordner `Core/Designer` |
 | `Atlas.IDE.Designer.Access` | `IDE/Designer/Atlas.IDE.Designer.Access.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Arrange` | `IDE/Designer/Atlas.IDE.Designer.Arrange.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Bar` | `IDE/Designer/Atlas.IDE.Designer.Bar.pas` | Ordner `IDE/Designer` |
@@ -1571,7 +1574,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Designer.DesktopLayout` | `IDE/Designer/Atlas.IDE.Designer.DesktopLayout.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.OpenWatch` | `IDE/Designer/Atlas.IDE.Designer.OpenWatch.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.NonVisualAction` | `IDE/Designer/Atlas.IDE.Designer.NonVisualAction.pas` | Ordner `IDE/Designer` |
-| `Atlas.IDE.Designer.UndoApply` | `IDE/Designer/Atlas.IDE.Designer.UndoApply.pas` | Ordner `IDE/Designer` |
+| `Atlas.IDE.Designer.Surface` | `IDE/Designer/Atlas.IDE.Designer.Surface.pas` | Ordner `IDE/Designer` |
 | `Atlas.IDE.Designer.Undo` | `IDE/Designer/Atlas.IDE.Designer.Undo.pas` | Ordner `IDE/Designer` |
 | `Atlas.UI.Designer.Bar` | `UI/Designer/Atlas.UI.Designer.Bar.pas` | Ordner `UI/Designer` |
 | `Atlas.UI.Designer.Dialog` | `UI/Designer/Atlas.UI.Designer.Dialog.pas` | Ordner `UI/Designer`; Gerüst der Dialoge des Designers |

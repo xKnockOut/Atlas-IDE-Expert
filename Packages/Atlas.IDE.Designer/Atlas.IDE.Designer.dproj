@@ -102,6 +102,9 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.IconAlpha.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Usages.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Undo.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Surface.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.UndoApply.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.UndoFlow.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.DuplicateRow.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FitContainer.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.NearAlign.pas"/>
@@ -177,7 +180,7 @@
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.OpenWatch.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.NonVisualAction.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.DesktopLayout.pas"/>
-        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.UndoApply.pas"/>
+        <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Surface.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Undo.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Composition.pas"/>
