@@ -49,11 +49,14 @@ uses
   Atlas.UI.Settings.Page,
   Vcl.Graphics,
   Vcl.Forms,
+  Vcl.ComCtrls,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
   Atlas.Common.Projects.PackageLocator,
-  Atlas.Windows.Diagnostics.StackTrace;
+  Atlas.Windows.Diagnostics.StackTrace,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
@@ -502,6 +505,30 @@ begin
   end;
 end;
 
+/// <summary>Erster DPI-Wechsel eines Formulars mit Liste: Die VCL legt dabei für die neue Auflösung Daten an, die bis zu
+/// ihrer Finalisierung bleiben (72 Byte; der Leckbericht zeigt keinen Stapel). Den Nachrichtenverteiler dieses Wegs
+/// legt WarmUpRtlSingletons an. Einmal auf 150 % und zurück skalieren, wie es Tests der Listen tun.</summary>
+procedure WarmUpVclDpiChange;
+var
+  mForm: TForm;
+  mList: TListView;
+  mPPI: Integer;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mList := TListView.Create(mForm);
+    mList.ViewStyle := vsReport;
+    mList.Parent := mForm;
+    mList.Columns.Add.Width := mForm.ScaleValue(100);
+    mForm.HandleNeeded;
+    mPPI := mForm.CurrentPPI;
+    mForm.ScaleForPPI(mPPI * 3 div 2);
+    mForm.ScaleForPPI(mPPI);
+  finally
+    mForm.Free;
+  end;
+end;
+
 /// <summary>Liste der Beiträge in der Modul-Registry (TAtlasModuleRegistry, frei mit der Registry in der
 /// Finalisierung von Base): Ihre Kapazität wächst auf den Höchststand gleichzeitiger Beiträge. Tests, die mehrere
 /// Einstellungsbereiche auf einmal anmelden, heben ihn (400 Byte bei acht). Viele Beiträge auf einmal anmelden
@@ -534,6 +561,19 @@ end;
 
 { TFirstUse }
 
+/// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
+/// Atlas.Core.VersionControl.Tools, freigegeben mit deren Finalisierung. Tests, die einen Fundort vorgeben, stellen
+/// den echten danach mit Remember wieder her, statt ihn zu vergessen.</summary>
+procedure WarmUpVcsTools;
+var
+  mKind: TAtlasVcsKind;
+begin
+  for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+  begin
+    TAtlasVcsTools.Where(mKind);
+  end;
+end;
+
 /// <summary>Windows-Version der RTL (System.SysUtils, Win32Platform und Win32CSDVersion): InitPlatformId legt beim
 /// ersten Zugriff den Text des Service Packs an, den SysUtils bis zur Finalisierung hält. Ausgelöst etwa von
 /// TRegistry.GetKeyInfo (TDelphiInstallation.Versions beim Lesen der globalen Einstellungen).</summary>
@@ -565,9 +605,11 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpVcsTools;
   WarmUpVclCanvasList;
   WarmUpVclBitmapCanvases;
   WarmUpVclControlCanvas;
+  WarmUpVclDpiChange;
   WarmUpRegistryProvisions;
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;

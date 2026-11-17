@@ -9,8 +9,8 @@
 // --format-check und --format-write (#1358): Exit-Codes, Formate, Kodierung
 // und Zeilenenden beim Schreiben, Syntaxfehler, format.* aus atlas.json. Der Ordner
 // bleibt zwischen den Läufen: Der Index der erreichbaren RTL (rund 1500 Units)
-// kostete in einem leeren Cache je Aufbau gut drei Minuten, im Testlauf zweimal
-// (Aufwärmen und Test). Ein neues Cache-Format verwirft er selbst.
+// kostete in einem leeren Cache je Aufbau gut drei Minuten. Ein neues
+// Cache-Format verwirft er selbst.
 // Jede Ausgabe geht in eine Datei (--output), nie auf stdout.
 // TLinterShell.ClearCache bleibt ungetestet: Es löscht die echten Index-Caches
 // des Benutzers.
@@ -30,9 +30,6 @@ type
     function Run(const AArgs: TArray<string>): Integer;
     function OutputText: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -168,29 +165,6 @@ begin
   if TFile.Exists(FOutput) then
   begin
     Result := TFile.ReadAllText(FOutput, TEncoding.UTF8);
-  end;
-end;
-
-procedure TShellLinterTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    MissingTargetFails;
-  finally
-    TearDown;
-  end;
-  // Der erste Symbolindex im Prozess legt bleibende Strukturen und einen Thread des Pools an (#1112).
-  Setup;
-  try
-    IndexKnowsTypesOfOtherUnits;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    HotspotsNeedVersionControl;
-  finally
-    TearDown;
   end;
 end;
 
