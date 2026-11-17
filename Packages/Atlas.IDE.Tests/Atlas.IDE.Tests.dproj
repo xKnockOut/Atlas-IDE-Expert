@@ -121,6 +121,7 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Series.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.UnitScans.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Lists.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListText.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ListFile.pas"/>
@@ -154,6 +155,7 @@
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Series.pas"/>
         <DCCReference Include="Source\UI\Tests\Atlas.UI.Tests.SeriesMenu.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerLog.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.ExplorerTicker.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Explorer.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lists.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.StatusField.pas"/>

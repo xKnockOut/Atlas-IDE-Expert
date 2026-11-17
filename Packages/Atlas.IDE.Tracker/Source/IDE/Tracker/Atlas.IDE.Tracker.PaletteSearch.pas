@@ -5,10 +5,10 @@
 // - Auslöser und Anfrage aus Atlas.Core.Tracker.PaletteSearch: "#Text",
 //   "#42", bei YouTrack "ATL-12" und "ATL-Text"; andere Eingaben bleiben
 //   bei den Befehlen, ohne Netz.
-// - Entprellt um 300 ms (TAtlasIssueSearchDebounce, Zeitgeber der IDE); eine
-//   neue Eingabe bricht die laufende Anfrage ab (IAtlasCiCancel), Zeitgrenze
-//   5 s. Bis zur Antwort steht „Suche im Tracker …“ in der Gruppe „Issues“
-//   unter den Befehlen; die Befehle erscheinen sofort.
+// - Die Abfrage beim Tracker (entprellt, eine Anfrage zur Zeit, Zeitgrenze
+//   5 s, letzte Antwort) steht in Atlas.IDE.Tracker.PaletteSearchFetch. Bis
+//   zur Antwort steht „Suche im Tracker …“ in der Gruppe „Issues“ unter den
+//   Befehlen; die Befehle erscheinen sofort.
 // - Leeres "#": die zuletzt in „Atlas-Issue“ geöffneten Issues (höchstens
 //   10, aus der Vorschau) ohne Netzabfrage.
 // - Enter öffnet die Vorschau (#1264; mit issues.preview aus den Browser),
@@ -19,8 +19,6 @@
 //   den Übergang aus (Hook StateRun). Ohne Netz, auch mit issues.paletteSearch
 //   aus.
 // - Mit issues.paletteSearch aus gibt es keine Suche und keinen Netzzugriff.
-// - Protokoll anonym: Anbieter, Anzahl und Fehlerart, nie Suchtext, Kennung
-//   oder Adresse.
 // Ziel, Transport, Vorschau, „Beginnen“ und die zuletzt geöffneten Issues
 // kommen über Hooks („Meine Issues“).
 
@@ -28,15 +26,13 @@ interface
 
 uses
   System.SysUtils,
-  System.Classes,
-  Vcl.ExtCtrls,
-  Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
+  Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.IDE.Tracker.IssueContext,
-  Atlas.Core.Diagnostics.WorkerSlot,
+  Atlas.IDE.Tracker.PaletteSearchFetch,
   Atlas.Core.Notifications.MessageSink;
 
 type
@@ -73,32 +69,29 @@ type
     FMessage: TAtlasMessageSink;
     FStarted: Boolean;
     FShow: TProc<TAtlasPaletteGroup>;
-    FDebounce: TAtlasIssueSearchDebounce;
-    FTimer: TTimer;
-    FTarget: TAtlasTrackerTarget;
-    FProvider: IAtlasTrackerProvider;
-    FQuery: TAtlasIssueSearchQuery;
-    // Letzte Antwort: dieselbe Eingabe noch einmal (Rücktaste und neu getippt) braucht kein Netz.
-    FLastQuery: TAtlasIssueSearchQuery;
-    FLastIssues: TArray<TAtlasTrackerIssue>;
-    FHasLast: Boolean;
+    FFetch: TAtlasIdeIssueSearchFetch;
+    FFetchRef: IInterface;
     FIssues: TArray<TAtlasTrackerIssue>;
-    FCancel: IAtlasCiCancel;
-    FGeneration: Integer;
-    FWorkers: TAtlasWorkerSlot;
-    procedure TimerTick(Sender: TObject);
-    procedure Schedule;
-    procedure Request(const AQuery: TAtlasIssueSearchQuery);
-    procedure Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery; ASucceeded: Boolean;
+    procedure Answered(const AQuery: TAtlasIssueSearchQuery; AAnswer: TAtlasIssueSearchAnswer;
       const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
     procedure ShowIssues(const ATitle: string; const AQuery: TAtlasIssueSearchQuery;
       const AIssues: TArray<TAtlasTrackerIssue>);
     procedure ShowStatus(const AStatus: string);
     procedure ShowGroup(const AGroup: TAtlasPaletteGroup);
-    procedure CancelRequest;
+    /// <summary>Übergänge des aktuellen Issues zur Eingabe (#2124); ohne passende keine Gruppe.</summary>
+    procedure ShowStates(const APattern: string);
+    /// <summary>Ohne Tracker gehört "#…" trotzdem nicht zu den Befehlen: Hinweis statt stiller Leere.</summary>
+    procedure ShowNoTracker(const APattern: string);
+    /// <summary>Zuletzt gesehene Issues ("#" allein).</summary>
+    procedure ShowRecent(const AQuery: TAtlasIssueSearchQuery);
+    /// <summary>Kennung oder Text: dieselbe Eingabe wie zuletzt aus der letzten Antwort, sonst nach der Wartezeit
+    /// fragen.</summary>
+    procedure ShowOrSearch(const AQuery: TAtlasIssueSearchQuery);
+    /// <summary>Übergang des aktuellen Issues (#2124): Enter und Strg+Enter führen ihn aus, die übrigen Tasten
+    /// nichts. True, wenn AItem von dort stammt.</summary>
+    function RanState(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction): Boolean;
     function ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
     procedure Browse(const AKey: string);
-    class function NowMs: UInt64; static;
   public
     constructor Create(const AHooks: TAtlasIssueSearchHooks);
     destructor Destroy; override;
@@ -116,12 +109,8 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Tracker.PaletteSearchPlan,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,
   Atlas.UI.Tracker.Workflow.Strings,
@@ -130,103 +119,42 @@ uses
 { TAtlasIdeIssueSearch }
 
 constructor TAtlasIdeIssueSearch.Create(const AHooks: TAtlasIssueSearchHooks);
+var
+  mOwner: TAtlasIdeIssueSearch;
 begin
   inherited Create;
   FHooks := AHooks;
   FMessage := TAtlasMessageSink.Create(FHooks.Report);
   FStarted := True;
-  FDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.cDelayMs);
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.OnTimer := TimerTick;
-  FWorkers := TAtlasWorkerSlot.Create(HInstance);
-  FQuery := TAtlasIssueSearchQuery.None;
-  FLastQuery := TAtlasIssueSearchQuery.None;
+  // Die Abfrage lebt, solange eine Anfrage läuft; Stop löst ihren Rückruf.
+  mOwner := Self;
+  FFetch := TAtlasIdeIssueSearchFetch.Create(FHooks.Transport,
+    procedure(const AQuery: TAtlasIssueSearchQuery; AAnswer: TAtlasIssueSearchAnswer;
+      const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError)
+    begin
+      mOwner.Answered(AQuery, AAnswer, AIssues, AError);
+    end);
+  FFetchRef := FFetch;
 end;
 
 destructor TAtlasIdeIssueSearch.Destroy;
 begin
   Stop;
-  FWorkers.Free;
-  FTimer.Free;
-  FDebounce.Free;
+  FFetch := nil;
+  FFetchRef := nil;
   inherited;
 end;
 
-procedure TAtlasIdeIssueSearch.TimerTick(Sender: TObject);
-var
-  mText: string;
+procedure TAtlasIdeIssueSearch.Answered(const AQuery: TAtlasIssueSearchQuery; AAnswer: TAtlasIssueSearchAnswer;
+  const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
 begin
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
   if not FStarted or not Assigned(FShow) then
   begin
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.Palette,
-    procedure
-    begin
-      if FDebounce.Take(NowMs, mText) then
-      begin
-        Request(FQuery);
-      end
-      else
-      begin
-        Schedule;
-      end;
-    end);
-end;
-
-procedure TAtlasIdeIssueSearch.Schedule;
-var
-  mWait: Integer;
-begin
-  if FTimer = nil then
-  begin
-    Exit;
-  end;
-  mWait := FDebounce.WaitMs(NowMs);
-  FTimer.Enabled := False;
-  if mWait < 0 then
-  begin
-    Exit;
-  end;
-  if mWait < 1 then
-  begin
-    mWait := 1;
-  end;
-  FTimer.Interval := Cardinal(mWait);
-  FTimer.Enabled := True;
-end;
-
-procedure TAtlasIdeIssueSearch.Answered(AGeneration: Integer; const AQuery: TAtlasIssueSearchQuery;
-  ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError);
-var
-  mName: string;
-begin
-  FWorkers.Release(False);
-  // Neuere Eingabe, abgebrochen oder Palette zu: diese Antwort zählt nicht.
-  if not FStarted or (AGeneration <> FGeneration) or not Assigned(FShow) then
-  begin
-    Exit;
-  end;
-  FCancel := nil;
-  mName := '';
-  if FProvider <> nil then
-  begin
-    mName := FProvider.Name;
-  end;
-  TAtlasGuard.Log(TAtlasIssuePaletteSearchPlan.AnswerLog(mName, ASucceeded, Length(AIssues), AError));
-  case TAtlasIssuePaletteSearchPlan.AnswerOf(ASucceeded, AError) of
+  case AAnswer of
     TAtlasIssueSearchAnswer.Show:
-      begin
-        FLastQuery := AQuery;
-        FLastIssues := AIssues;
-        FHasLast := True;
-        ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
-      end;
+      ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, AIssues);
     TAtlasIssueSearchAnswer.Ignore:
       ; // Abgebrochen: Eine neuere Eingabe zeigt ihr eigenes Ergebnis.
     TAtlasIssueSearchAnswer.Error:
@@ -266,17 +194,6 @@ begin
   end;
 end;
 
-procedure TAtlasIdeIssueSearch.CancelRequest;
-begin
-  // Die Antwort einer abgebrochenen Anfrage zählt nicht mehr (Generation).
-  Inc(FGeneration);
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
-  FCancel := nil;
-end;
-
 function TAtlasIdeIssueSearch.ErrorText(AError: TAtlasCiFetchError; const AQuery: TAtlasIssueSearchQuery): string;
 begin
   Result := '';
@@ -298,73 +215,68 @@ begin
   end;
 end;
 
-/// <summary>Übergänge des aktuellen Issues zur Eingabe (#2124); ohne passende keine Gruppe.</summary>
-procedure ShowStates(AOwner: TAtlasIdeIssueSearch; const APattern: string);
+procedure TAtlasIdeIssueSearch.ShowStates(const APattern: string);
 var
   mRows: TArray<TAtlasCommand>;
 begin
   mRows := nil;
-  if Assigned(AOwner.FHooks.States) then
+  if Assigned(FHooks.States) then
   begin
-    mRows := AOwner.FHooks.States(APattern);
+    mRows := FHooks.States(APattern);
   end;
-  AOwner.FIssues := nil;
+  FIssues := nil;
   if Length(mRows) = 0 then
   begin
-    AOwner.ShowGroup(TAtlasPaletteGroup.None);
+    ShowGroup(TAtlasPaletteGroup.None);
     Exit;
   end;
-  AOwner.ShowGroup(TAtlasPaletteGroup.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.PaletteStateGroup),
+  ShowGroup(TAtlasPaletteGroup.Create(TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.PaletteStateGroup),
     TAtlasWorkflowStrings.Text(TAtlasWorkflowTextId.PaletteStateStatus), Trim(APattern), mRows));
 end;
 
-/// <summary>Ohne Tracker gehört "#…" trotzdem nicht zu den Befehlen: Hinweis statt stiller Leere.</summary>
-procedure ShowNoTracker(AOwner: TAtlasIdeIssueSearch; const APattern: string);
+procedure TAtlasIdeIssueSearch.ShowNoTracker(const APattern: string);
 begin
-  if TAtlasIdeIssueSearch.Active and TAtlasIssuePaletteSearchPlan.IsIssueInput(APattern) then
+  if Active and TAtlasIssuePaletteSearchPlan.IsIssueInput(APattern) then
   begin
-    AOwner.ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNoTracker));
+    ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNoTracker));
   end
   else
   begin
-    ShowStates(AOwner, APattern);
+    ShowStates(APattern);
   end;
 end;
 
-/// <summary>Zuletzt gesehene Issues ("#" allein).</summary>
-procedure ShowRecent(AOwner: TAtlasIdeIssueSearch; const AQuery: TAtlasIssueSearchQuery);
+procedure TAtlasIdeIssueSearch.ShowRecent(const AQuery: TAtlasIssueSearchQuery);
 var
   mRecent: TArray<TAtlasTrackerIssue>;
 begin
   mRecent := nil;
-  if Assigned(AOwner.FHooks.Recent) then
+  if Assigned(FHooks.Recent) then
   begin
-    mRecent := AOwner.FHooks.Recent(AOwner.FTarget);
+    mRecent := FHooks.Recent(FFetch.Target);
   end;
   if Length(mRecent) = 0 then
   begin
-    AOwner.ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNoRecent));
+    ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesNoRecent));
   end
   else
   begin
-    AOwner.ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesRecent), AQuery, mRecent);
+    ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesRecent), AQuery, mRecent);
   end;
 end;
 
-/// <summary>Kennung oder Text: dieselbe Eingabe wie zuletzt aus der letzten Antwort, sonst nach der Wartezeit
-/// fragen.</summary>
-procedure ShowOrSearch(AOwner: TAtlasIdeIssueSearch; const AQuery: TAtlasIssueSearchQuery);
+procedure TAtlasIdeIssueSearch.ShowOrSearch(const AQuery: TAtlasIssueSearchQuery);
+var
+  mLast: TArray<TAtlasTrackerIssue>;
 begin
-  if AOwner.FHasLast and AQuery.SameAs(AOwner.FLastQuery) then
+  if FFetch.Last(AQuery, mLast) then
   begin
-    AOwner.ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery,
-      AOwner.FLastIssues);
+    ShowIssues(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesGroup), AQuery, mLast);
   end
   else
   begin
-    AOwner.ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesSearching));
-    AOwner.FDebounce.Input(TAtlasIssuePaletteSearchPlan.InputKey(AQuery), TAtlasIdeIssueSearch.NowMs);
-    AOwner.Schedule;
+    ShowStatus(TAtlasIssueStrings.Text(TAtlasIssueTextId.PaletteIssuesSearching));
+    FFetch.Search(AQuery);
   end;
 end;
 
@@ -372,124 +284,13 @@ procedure TAtlasIdeIssueSearch.Browse(const AKey: string);
 var
   mUrl: string;
 begin
-  if FProvider = nil then
+  if FFetch.Provider = nil then
   begin
     Exit;
   end;
   // Nur die Seite aus der eingetragenen Adresse; nie eine Adresse aus der Antwort.
-  mUrl := FProvider.IssuePage(FTarget, AKey);
+  mUrl := FFetch.Provider.IssuePage(FFetch.Target, AKey);
   TAtlasIssuePreview.Browse(mUrl);
-end;
-
-class function TAtlasIdeIssueSearch.NowMs: UInt64;
-begin
-  Result := GetTickCount64;
-end;
-
-type
-  /// <summary>Eine Anfrage der Suche, wie sie in den Hintergrund geht.</summary>
-  TSearchJob = record
-    Generation: Integer;
-    Query: TAtlasIssueSearchQuery;
-    Provider: IAtlasTrackerProvider;
-    Target: TAtlasTrackerTarget;
-    Transport: IAtlasCiTransport;
-  end;
-
-/// <summary>Issue zur Kennung bzw. Suche nach Text; False mit AError.</summary>
-function FetchIssues(const AJob: TSearchJob; out AIssues: TArray<TAtlasTrackerIssue>;
-  out AError: TAtlasCiFetchError): Boolean;
-var
-  mIssue: TAtlasTrackerIssue;
-begin
-  AIssues := nil;
-  if AJob.Query.Kind <> TAtlasIssueSearchKind.Key then
-  begin
-    Exit(AJob.Provider.Search(TAtlasTrackerCall.Create(AJob.Target, AJob.Transport,
-      TAtlasIssuePaletteSearch.cTimeoutMs), AJob.Query.Text, TAtlasIssuePaletteSearch.cMaxResults, AIssues, AError));
-  end;
-  Result := AJob.Provider.Lookup(AJob.Target, AJob.Transport, AJob.Query.Key, TAtlasIssuePaletteSearch.cTimeoutMs,
-    mIssue, AError);
-  if Result then
-  begin
-    AIssues := [mIssue];
-  end;
-end;
-
-/// <summary>Arbeit des Hintergrundthreads; die Antwort geht über den Hauptthread an AOwner, solange AKeep ihn
-/// hält. Eigene Routine: Die anonyme Methode hält nur ihre Parameter.</summary>
-function SearchWorker(AOwner: TAtlasIdeIssueSearch; const AKeep: IInterface; const AJob: TSearchJob): TProc;
-var
-  mJob: TSearchJob;
-  mKeep: IInterface;
-begin
-  mJob := AJob;
-  mKeep := AKeep;
-  Result :=
-    procedure
-    var
-      mIssues: TArray<TAtlasTrackerIssue>;
-      mError: TAtlasCiFetchError;
-      mOk: Boolean;
-    begin
-      mOk := False;
-      mError := TAtlasCiFetchError.Network;
-      try
-        mOk := FetchIssues(mJob, mIssues, mError);
-      except
-        // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
-        on E: Exception do
-        begin
-          mOk := False;
-          mIssues := nil;
-          mError := TAtlasCiFetchError.Network;
-          TAtlasGuard.Log('Palettensuche: Abfrage mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mJob.Transport := nil;
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.Palette,
-        procedure
-        begin
-          if mKeep <> nil then
-          begin
-            AOwner.Answered(mJob.Generation, mJob.Query, mOk, mIssues, mError);
-          end;
-        end);
-    end;
-end;
-
-procedure TAtlasIdeIssueSearch.Request(const AQuery: TAtlasIssueSearchQuery);
-var
-  mJob: TSearchJob;
-begin
-  FWorkers.Release(False);
-  CancelRequest;
-  mJob := Default(TSearchJob);
-  mJob.Generation := FGeneration;
-  mJob.Query := AQuery;
-  mJob.Provider := FProvider;
-  mJob.Target := FTarget;
-  if (mJob.Provider = nil) or not Assigned(FHooks.Transport) then
-  begin
-    Answered(mJob.Generation, AQuery, False, nil, TAtlasCiFetchError.NotConfigured);
-    Exit;
-  end;
-  // Der Transport entsteht hier, damit eine neue Eingabe ihn abbrechen kann; er liest das Token ohne Dialog.
-  mJob.Transport := FHooks.Transport(mJob.Provider, mJob.Target);
-  if mJob.Transport = nil then
-  begin
-    Answered(mJob.Generation, AQuery, False, nil, TAtlasCiFetchError.Unauthorized);
-    Exit;
-  end;
-  if not Supports(mJob.Transport, IAtlasCiCancel, FCancel) then
-  begin
-    FCancel := nil;
-  end;
-  FWorkers.Start(TThread.CreateAnonymousThread(SearchWorker(Self, Self, mJob)));
 end;
 
 procedure TAtlasIdeIssueSearch.Stop;
@@ -499,14 +300,8 @@ begin
     Exit;
   end;
   FStarted := False;
-  Inc(FGeneration);
-  // Der Zeitgeber gehört dem Hauptthread; die letzte Referenz kann ein Hintergrund-Thread lösen.
-  FreeAndNil(FTimer);
-  FDebounce.Clear;
-  CancelRequest;
-  FWorkers.Release(True);
+  FFetch.Stop;
   FShow := nil;
-  FProvider := nil;
   FHooks := Default(TAtlasIssueSearchHooks);
   FMessage.Clear;
 end;
@@ -517,24 +312,25 @@ begin
 end;
 
 procedure TAtlasIdeIssueSearch.Opened(const AShow: TProc<TAtlasPaletteGroup>);
+var
+  mProvider: IAtlasTrackerProvider;
+  mTarget: TAtlasTrackerTarget;
 begin
   FShow := nil;
-  FProvider := nil;
-  FQuery := TAtlasIssueSearchQuery.None;
-  FHasLast := False;
-  FLastIssues := nil;
   FIssues := nil;
-  if not FStarted then
+  mProvider := nil;
+  mTarget := Default(TAtlasTrackerTarget);
+  if FStarted then
   begin
-    Exit;
+    // Die Übergänge des aktuellen Issues (#2124) gibt es auch ohne Suche im Tracker.
+    FShow := AShow;
+    if Active and Assigned(FHooks.Target) then
+    begin
+      // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
+      mProvider := FHooks.Target(mTarget);
+    end;
   end;
-  // Die Übergänge des aktuellen Issues (#2124) gibt es auch ohne Suche im Tracker.
-  FShow := AShow;
-  if Active and Assigned(FHooks.Target) then
-  begin
-    // Einmal je Öffnen: Tracker des aktiven Projekts (liest die .atlas, kein Netz).
-    FProvider := FHooks.Target(FTarget);
-  end;
+  FFetch.Open(mProvider, mTarget);
 end;
 
 procedure TAtlasIdeIssueSearch.Changed(const APattern: string);
@@ -549,26 +345,20 @@ begin
     procedure
     begin
       // Jede Eingabe ersetzt die laufende Anfrage.
-      if FTimer <> nil then
+      FFetch.Cancel;
+      if FFetch.Provider = nil then
       begin
-        FTimer.Enabled := False;
-      end;
-      FDebounce.Clear;
-      CancelRequest;
-      if FProvider = nil then
-      begin
-        ShowNoTracker(Self, APattern);
+        ShowNoTracker(APattern);
         Exit;
       end;
-      mQuery := TAtlasIssuePaletteSearch.Parse(FTarget, APattern);
-      FQuery := mQuery;
+      mQuery := TAtlasIssuePaletteSearch.Parse(FFetch.Target, APattern);
       case mQuery.Kind of
         TAtlasIssueSearchKind.None:
-          ShowStates(Self, APattern);
+          ShowStates(APattern);
         TAtlasIssueSearchKind.Recent:
-          ShowRecent(Self, mQuery);
+          ShowRecent(mQuery);
       else
-        ShowOrSearch(Self, mQuery);
+        ShowOrSearch(mQuery);
       end;
     end);
 end;
@@ -576,29 +366,21 @@ end;
 procedure TAtlasIdeIssueSearch.Closed;
 begin
   FShow := nil;
-  if FTimer <> nil then
-  begin
-    FTimer.Enabled := False;
-  end;
-  FDebounce.Clear;
-  CancelRequest;
-  FWorkers.Release(False);
+  FFetch.Close;
   FIssues := nil;
 end;
 
-/// <summary>Übergang des aktuellen Issues (#2124): Enter und Strg+Enter führen ihn aus, die übrigen Tasten nichts.
-/// True, wenn AItem von dort stammt.</summary>
-function RanState(AOwner: TAtlasIdeIssueSearch; const AItem: TAtlasCommand; AAction: TAtlasPaletteAction): Boolean;
+function TAtlasIdeIssueSearch.RanState(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction): Boolean;
 begin
-  Result := AOwner.FStarted and TAtlasIssuePaletteSearchPlan.RunsState(AAction) and
-    Assigned(AOwner.FHooks.StateRun) and AOwner.FHooks.StateRun(AItem.Id);
+  Result := FStarted and TAtlasIssuePaletteSearchPlan.RunsState(AAction) and Assigned(FHooks.StateRun) and
+    FHooks.StateRun(AItem.Id);
 end;
 
 procedure TAtlasIdeIssueSearch.Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
 var
   mIssue: TAtlasTrackerIssue;
 begin
-  if RanState(Self, AItem, AAction) or not FStarted or
+  if RanState(AItem, AAction) or not FStarted or
     not TAtlasIssuePaletteSearchPlan.IssueOf(FIssues, AItem, mIssue) then
   begin
     Exit;
@@ -610,7 +392,7 @@ begin
         TAtlasPaletteAction.Open:
           if Assigned(FHooks.Show) and Assigned(FHooks.PreviewActive) and FHooks.PreviewActive() then
           begin
-            FHooks.Show(FTarget, mIssue.Key);
+            FHooks.Show(FFetch.Target, mIssue.Key);
           end
           else
           begin

@@ -99,7 +99,8 @@ uses
   System.DateUtils,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Renames,
-  Atlas.Core.Settings.QueryMigration;
+  Atlas.Core.Settings.QueryMigration,
+  Atlas.Text.Timestamps;
 
 { TAtlasMemorySettingsStore }
 
@@ -384,11 +385,9 @@ begin
       TAtlasSettingsQueryMigrations.RemoveLegacy(mStore as IAtlasSettingsNames);
       mSnapshot.Settings := TAtlasPluginSettings.Defaults;
       mSnapshot.Settings.Load(mStore);
-      try
-        mSnapshot.ChangedAt := ISO8601ToDate(mStamp, True);
-      except
-        on EConvertError do
-          Continue;
+      if not TTextTimestamp.TryParseIso(mStamp, True, mSnapshot.ChangedAt) then
+      begin
+        Continue;
       end;
       FSnapshots.Add(mSnapshot);
     end;

@@ -95,8 +95,8 @@ type
 implementation
 
 uses
-  System.DateUtils,
-  Atlas.Core.Localization.Language;
+  Atlas.Core.Localization.Language,
+  Atlas.Text.Timestamps;
 
 {$SCOPEDENUMS ON}
 
@@ -421,17 +421,7 @@ end;
 
 function LocalTimeOf(const AText: string): TDateTime;
 begin
-  Result := 0;
-  if AText = '' then
-  begin
-    Exit;
-  end;
-  try
-    Result := ISO8601ToDate(AText, False);
-  except
-    on Exception do
-      Result := 0;
-  end;
+  Result := TTextTimestamp.IsoOrZero(AText, False);
 end;
 
 class function TLspIndexStatus.Metrics(const AStatus: TJSONValue): TLspIndexMetrics;
