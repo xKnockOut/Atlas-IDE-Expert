@@ -221,7 +221,7 @@ begin
   Assert.IsFalse(TAtlasMutationShadows.Build(Source('library X;' + cBreak + 'end.'), mShadow));
   Assert.AreEqual('', mShadow.Dpr);
   Assert.AreEqual('', mShadow.Folder);
-  Assert.IsTrue(mShadow.Problem = TAtlasMutationShadowProblem.NoProgram);
+  Assert.AreEqual(Integer(Ord(TAtlasMutationShadowProblem.NoProgram)), Integer(Ord(mShadow.Problem)));
 end;
 
 /// <summary>dpr mit ADirectives zwischen uses und begin.</summary>
@@ -237,7 +237,7 @@ var
   mShadow: TAtlasMutationShadow;
 begin
   Assert.IsFalse(TAtlasMutationShadows.Build(Source(ADpr), mShadow), ADpr);
-  Assert.IsTrue(mShadow.Problem = AProblem, ADpr);
+  Assert.AreEqual(Integer(Ord(AProblem)), Integer(Ord(mShadow.Problem)), ADpr);
   Assert.AreEqual(AText, mShadow.ProblemText, ADpr);
   Assert.AreEqual('', mShadow.Dpr);
   Assert.AreEqual('', mShadow.Dproj);
