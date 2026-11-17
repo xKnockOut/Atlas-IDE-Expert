@@ -456,6 +456,18 @@ const
   cArgumentNames: array[0..10] of string = ('manifest', 'version', 'ide', 'platform', 'registry-key', 'target',
     'staging', 'select', 'wait-pid', 'new-modules', 'previous');
 
+/// <summary>Prozesskennung aus dem Aufruf; 0 bei ungültigem Text oder einem Wert außerhalb von Cardinal.</summary>
+function ProcessIdOf(const AValue: string): Cardinal;
+var
+  mValue: Int64;
+begin
+  Result := 0;
+  if TryStrToInt64(AValue, mValue) and (mValue >= 0) and (mValue <= High(Cardinal)) then
+  begin
+    Result := Cardinal(mValue);
+  end;
+end;
+
 procedure AssignArgument(var AArguments: TUpdateArguments; const AName, AValue: string);
 begin
   case IndexText(AName, cArgumentNames) of
@@ -476,7 +488,7 @@ begin
     7:
       AArguments.Select := AValue.Split([','], TStringSplitOptions.ExcludeEmpty);
     8:
-      AArguments.WaitPid := StrToIntDef(AValue, 0);
+      AArguments.WaitPid := ProcessIdOf(AValue);
     9:
       AArguments.NewModules := TUpdateNames.ParseNewModules(AValue);
     10:

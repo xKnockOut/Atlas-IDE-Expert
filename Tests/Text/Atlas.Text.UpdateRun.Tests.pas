@@ -15,6 +15,8 @@ type
     [Test]
     procedure ParsesArguments;
     [Test]
+    procedure WaitPidOutsideCardinalIsZero;
+    [Test]
     procedure ArgumentsRoundTrip;
     [Test]
     procedure StageRoundTrip;
@@ -50,6 +52,20 @@ begin
   Assert.AreEqual('Atlas.IDE.Debugger', mArgs.Select[1]);
   Assert.AreEqual(Cardinal(1234), mArgs.WaitPid);
   Assert.AreEqual<TUpdateNewModules>(TUpdateNewModules.Skip, mArgs.NewModules);
+end;
+
+procedure TTextUpdateRunTests.WaitPidOutsideCardinalIsZero;
+var
+  mArgs: TUpdateArguments;
+begin
+  mArgs := TUpdateArguments.Parse(TArray<string>.Create('apply', '--wait-pid', '-1'));
+  Assert.AreEqual(Cardinal(0), mArgs.WaitPid);
+  mArgs := TUpdateArguments.Parse(TArray<string>.Create('apply', '--wait-pid', '4294967296'));
+  Assert.AreEqual(Cardinal(0), mArgs.WaitPid);
+  mArgs := TUpdateArguments.Parse(TArray<string>.Create('apply', '--wait-pid', '4294967295'));
+  Assert.AreEqual(High(Cardinal), mArgs.WaitPid);
+  mArgs := TUpdateArguments.Parse(TArray<string>.Create('apply', '--wait-pid', 'x'));
+  Assert.AreEqual(Cardinal(0), mArgs.WaitPid);
 end;
 
 procedure TTextUpdateRunTests.ArgumentsRoundTrip;

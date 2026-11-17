@@ -350,7 +350,12 @@ begin
   mHour := StrToIntDef(Copy(mText, 12, 2), -1);
   mMinute := StrToIntDef(Copy(mText, 15, 2), -1);
   mSecond := StrToIntDef(Copy(mText, 18, 2), -1);
-  // Ungültige Teile (-1) lehnen TryEncodeDate und TryEncodeTime ab.
+  // Ungültige Teile (-1) vorher ablehnen: TryEncodeDate und TryEncodeTime nehmen Word, ein negativer Wert löste
+  // mit Bereichsprüfung ERangeError aus statt False.
+  if (Min(mYear, Min(mMonth, mDay)) < 1) or (Min(mHour, Min(mMinute, mSecond)) < 0) then
+  begin
+    Exit;
+  end;
   if not TryEncodeDate(mYear, mMonth, mDay, mDatePart) or not TryEncodeTime(mHour, mMinute, mSecond, 0, mTimePart) then
   begin
     Exit;

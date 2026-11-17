@@ -17,6 +17,8 @@ type
     procedure AppCommandsMapToDirections;
     [Test]
     procedure OtherMessagesAreNone;
+    [Test]
+    procedure HighBitParamsAreAccepted;
   end;
 
 implementation
@@ -24,7 +26,7 @@ implementation
 uses
   Atlas.Core.Editor.MouseButtons;
 
-function Dir(AMessage: Cardinal; AWParam, ALParam: NativeInt): Integer;
+function Dir(AMessage: Cardinal; AWParam: NativeUInt; ALParam: NativeInt): Integer;
 begin
   Result := Ord(TAtlasMouseButtons.DirectionOf(AMessage, AWParam, ALParam));
 end;
@@ -50,6 +52,16 @@ begin
   Assert.AreEqual(Ord(TAtlasNavDirection.None), Dir($020B, $00010000, 0), 'Drücken zählt nicht');
   Assert.AreEqual(Ord(TAtlasNavDirection.None), Dir($0319, 0, $00080000), 'anderer Befehl');
   Assert.AreEqual(Ord(TAtlasNavDirection.None), Dir($0201, 0, 0));
+end;
+
+procedure TAtlasMouseButtonsTests.HighBitParamsAreAccepted;
+begin
+  // Die IDE reicht jede Nachricht durch; WPARAM mit oberstem Bit (etwa Zeiger oder Kennungen) darf mit
+  // Bereichsprüfung keinen ERangeError auslösen.
+  Assert.AreEqual(Ord(TAtlasNavDirection.None), Dir($0201, High(NativeUInt), 0));
+  Assert.AreEqual(Ord(TAtlasNavDirection.None), Dir($0201, NativeUInt($80000000), -1));
+  Assert.AreEqual(Ord(TAtlasNavDirection.Back), Dir($020C, $0001FFFF, 0));
+  Assert.AreEqual(Ord(TAtlasNavDirection.Forward), Dir($0319, High(NativeUInt), NativeInt($F002FFFF)));
 end;
 
 initialization

@@ -1,0 +1,2 @@
+### Behoben
+- Debug-Bau mit Bereichsprüfung: Die Maustasten Zurück/Vor (#1889) reichten jedes `wParam` der IDE an einen vorzeichenbehafteten Parameter weiter; ab `$80000000` meldete Atlas.IDE.Base gleich nach dem Laden `ERangeError`. Dieselbe Prüfung schlug auch an bei Zeitstempeln ohne Ziffern in usage.json und atlas.log, bei `--wait-pid` außerhalb von Cardinal im Update-Lauf und bei Klicks auf Kennungen oder Blame mit negativer Mauskoordinate.
