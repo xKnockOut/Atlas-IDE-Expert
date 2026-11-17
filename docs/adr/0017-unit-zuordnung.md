@@ -1748,6 +1748,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Flaky` | `Core/Tests/Atlas.Core.Tests.Flaky.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Series` | `Core/Tests/Atlas.Core.Tests.Series.pas` | Ordner `Core/Tests`; Serien N-mal bzw. zufällige Reihenfolge (#1782) |
+| `Atlas.Core.Tests.UnitScans` | `Core/Tests/Atlas.Core.Tests.UnitScans.pas` | Ordner `Core/Tests`; gelesene Testunits des Fensters „Atlas-Tests“ mit Zwischenspeicher je Änderungszeit |
 | `Atlas.Core.Tests.Lists` | `Core/Tests/Atlas.Core.Tests.Lists.pas` | Ordner `Core/Tests`; Testlisten: Regeln, Mitglieder, Argumente eines Laufs, JSON (#2167) |
 | `Atlas.Core.Tests.ListText` | `Core/Tests/Atlas.Core.Tests.ListText.pas` | Ordner `Core/Tests`; Beschreibung und Prüfung einer Testliste (#2167) |
 | `Atlas.Core.Tests.ListFile` | `Core/Tests/Atlas.Core.Tests.ListFile.pas` | Ordner `Core/Tests`; Ablage „nur für mich“ der Testlisten (#2167) |
@@ -1779,6 +1780,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Series` | `IDE/Tests/Atlas.IDE.Tests.Series.pas` | Ordner `IDE/Tests`; Befehle „N-mal ausführen …“, zufällige Reihenfolge (#1782) |
 | `Atlas.IDE.Tests.Lists` | `IDE/Tests/Atlas.IDE.Tests.Lists.pas` | Ordner `IDE/Tests`; Testlisten laden, speichern, ausführen (#2167) |
 | `Atlas.IDE.Tests.ExplorerLog` | `IDE/Tests/Atlas.IDE.Tests.ExplorerLog.pas` | Ordner `IDE/Tests`; Protokoll je Test (#2168) |
+| `Atlas.IDE.Tests.ExplorerTicker` | `IDE/Tests/Atlas.IDE.Tests.ExplorerTicker.pas` | Ordner `IDE/Tests`; Zeitgeber des Fensters „Atlas-Tests“ |
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.BoundaryCases` | `IDE/Tests/Atlas.IDE.Tests.BoundaryCases.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Composition.Cases` | `IDE/Tests/Atlas.IDE.Tests.Composition.Cases.pas` | Ordner `IDE/Tests` |

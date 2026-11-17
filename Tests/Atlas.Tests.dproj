@@ -1449,6 +1449,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Series.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitScans.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.UnitScans.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Flaky.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
