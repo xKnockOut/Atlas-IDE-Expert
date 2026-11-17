@@ -17,9 +17,6 @@ type
   [TestFixture]
   TSettingsPageSectionsTests = class
   public
-    /// <summary>Einmalige Anlagen beim ersten Gebrauch zählen nicht als Leck.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure SectionLandsOnSheetOfItsArea;
     [Test]
@@ -206,14 +203,6 @@ begin
 end;
 
 { TSettingsPageSectionsTests }
-
-procedure TSettingsPageSectionsTests.WarmUpFirstUse;
-begin
-  EveryPageGetsOwnSection;
-  BrokenSectionDoesNotStopPage;
-  BrokenProviderDoesNotStopPage;
-  WindowReadyAndShowReachSection;
-end;
 
 procedure TSettingsPageSectionsTests.SectionLandsOnSheetOfItsArea;
 var
