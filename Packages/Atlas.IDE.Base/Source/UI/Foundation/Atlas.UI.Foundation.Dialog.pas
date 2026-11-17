@@ -33,10 +33,16 @@
 // IDE-Thema wie in einem Dialog (vor dem Zeigen und bei jedem Wechsel).
 // Mit Rounded rundet ab Windows 11 der Fenstermanager die Ecken und zeichnet
 // den Rand in der Akzentfarbe (ältere Systeme übergehen beides).
+// Mit PaintsAll füllt Paint die ganze Fläche selbst, und das Fenster löscht
+// seinen Hintergrund nie. Sonst malt der Stil der IDE (ThemedControls hängt
+// ihn ans Fenster) bei jedem Invalidate erst die ganze Fläche leer und am
+// Bildschirm vorbei an der Doppelpufferung; beim Überfahren der Zeilen
+// flackert es.
 
 interface
 
 uses
+  Winapi.Messages,
   System.Types,
   System.Classes,
   Vcl.Graphics,
@@ -142,6 +148,8 @@ type
     FColors: TAtlasColors;
     FRounded: Boolean;
     FThemedControls: Boolean;
+    FPaintsAll: Boolean;
+    procedure SetPaintsAll(AValue: Boolean);
     procedure HandleThemeChanged;
     /// <summary>Runde Ecken und Rand in der Akzentfarbe beim Fenstermanager setzen (nur mit Rounded und Fenster).
     /// </summary>
@@ -150,6 +158,8 @@ type
     /// <summary>Schatten wie die Popups (CS_DROPSHADOW).</summary>
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
+    /// <summary>Mit PaintsAll Löschen des Hintergrunds übergehen, bevor der Stil der IDE es sieht.</summary>
+    procedure WndProc(var Message: TMessage); override;
     /// <summary>Mit ThemedControls das IDE-Thema anwenden, bevor das Fenster sichtbar wird (wie TAtlasDialog).
     /// </summary>
     procedure VisibleChanging; override;
@@ -167,6 +177,9 @@ type
     /// <summary>VCL-Steuerelemente im Fenster (Knöpfe, Auswahllisten) bekommen das IDE-Thema, vor dem Zeigen und
     /// bei jedem Wechsel; ohne bleibt das Fenster beim VCL-Stil außen vor. Vor dem Zeigen setzen.</summary>
     property ThemedControls: Boolean read FThemedControls write FThemedControls;
+    /// <summary>Paint füllt die ganze Fläche selbst: Invalidate und Windows löschen den Hintergrund nie (kein
+    /// Flackern beim Neuzeichnen, auch unter dem Stil der IDE).</summary>
+    property PaintsAll: Boolean read FPaintsAll write SetPaintsAll;
   end;
 
 implementation
@@ -512,6 +525,32 @@ procedure TAtlasPopupForm.CreateWnd;
 begin
   inherited CreateWnd;
   ApplyFrame;
+end;
+
+procedure TAtlasPopupForm.SetPaintsAll(AValue: Boolean);
+begin
+  FPaintsAll := AValue;
+  // Mit csOpaque fordert Invalidate kein Löschen an (InvalidateRect mit bErase = False).
+  if AValue then
+  begin
+    ControlStyle := ControlStyle + [csOpaque];
+  end
+  else
+  begin
+    ControlStyle := ControlStyle - [csOpaque];
+  end;
+end;
+
+procedure TAtlasPopupForm.WndProc(var Message: TMessage);
+begin
+  // Vor inherited: Der Stil der IDE bekommt die Nachricht dort zuerst und füllte die Fläche am Bildschirm. Wenn ein
+  // Kind den Hintergrund der Eltern in seinen DC holt (wParam = lParam), bleibt es beim Üblichen.
+  if FPaintsAll and (Message.Msg = WM_ERASEBKGND) and (Message.WParam <> WPARAM(Message.LParam)) then
+  begin
+    Message.Result := 1;
+    Exit;
+  end;
+  inherited WndProc(Message);
 end;
 
 procedure TAtlasPopupForm.VisibleChanging;

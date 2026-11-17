@@ -1204,6 +1204,7 @@ constructor TAtlasComponentSearchWindow.CreateSearch(AOwner: TComponent; const A
 begin
   // Lage setzt ShowOver (gemerkt oder über der Arbeitsfläche); Rahmen, Schatten und Farben die Basis.
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle);
   Rounded := True;
   FOptions := AOptions;
