@@ -14,6 +14,8 @@
 // - „Leeren Handler entfernen“ (leer oder ohne Zuweisung): Zuweisungen im
 //   Designer auf nil, dann Deklaration und Rumpf als Atlas-Änderung
 //   (TAtlasIdeWorkspaceEdit, ein Schritt im Änderungsprotokoll).
+// - Auch über Ansicht › Atlas › Designer und Atlas › Designer zu öffnen
+//   (Present: öffnet oder holt nach vorn, schließt nie).
 // Nur im Hauptthread.
 
 interface
@@ -56,6 +58,8 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
+    /// <summary>Menü Ansicht › Atlas: Fenster öffnen bzw. nach vorn holen, nie schließen.</summary>
+    procedure Present;
     procedure ApplyTheme;
     /// <summary>Text des Befunds für die Liste.</summary>
     class function FindingText(const ARow: TAtlasEventRow): string; static;
@@ -502,6 +506,18 @@ begin
     Reload(True);
   end;
   FTimer.Enabled := FShown;
+end;
+
+procedure TAtlasIdeEventMap.Present;
+begin
+  if FShown and TAtlasIdeDockWindow.IsShown(Host) then
+  begin
+    Host.Present;
+  end
+  else
+  begin
+    Toggle;
+  end;
 end;
 
 procedure TAtlasIdeEventMap.ApplyTheme;

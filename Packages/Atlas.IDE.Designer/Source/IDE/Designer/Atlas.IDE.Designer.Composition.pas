@@ -10,6 +10,11 @@
 // designer.propertySearch) sowie „Verwendungen im Code“ im Atlas-Menü (#750,
 // designer.usages) und das eigene Desktop-Layout im Designer mit dem Befehl
 // „Aktuelles Layout als Designer-Layout speichern …“ (#2079, designer.layout).
+// Die andockbaren Fenster der Leiste, Atlas-Struktur (designer.structure) und
+// Ereignis-Karte (designer.eventMap), öffnen auch die Befehle
+// Atlas.DesignerStructure und Atlas.DesignerEventMap: im Untermenü Designer
+// des Atlas-Menüs und unter Ansicht › Atlas › Designer, sichtbar nur bei
+// laufender Leiste (editor.designerBar) und eingeschalteter Funktion.
 // Die Benachrichtigungen des Designers (#722, Teil Forms) bleiben in
 // Base. Abmelden in der Finalisierung, solange Base läuft (Regel 5); passt die
 // Vertragsversion von Base nicht, meldet sich das Modul nicht an (Regel 7).
@@ -30,6 +35,8 @@ type
     cPropertySearchCommandId = 'Atlas.PropertySearch';
     cUsagesCommandId = 'Atlas.DesignerUsages';
     cSaveLayoutCommandId = 'Atlas.SaveDesignerLayout';
+    cStructureCommandId = 'Atlas.DesignerStructure';
+    cEventMapCommandId = 'Atlas.DesignerEventMap';
   private
     FActive: Boolean;
     class function Parts: TArray<IAtlasFeaturePart>; static;
@@ -65,6 +72,8 @@ uses
   Atlas.IDE.Designer.PropertySearch,
   Atlas.IDE.Designer.Usages,
   Atlas.IDE.Designer.DesktopLayout,
+  Atlas.IDE.Designer.Structure,
+  Atlas.IDE.Designer.EventMap,
   Atlas.IDE.Designer.Bar;
 
 var
@@ -145,6 +154,38 @@ begin
   Result := TAtlasIdeDesktopLayout.Enabled;
 end;
 
+/// <summary>Andockbares Fenster AId der Designer-Leiste öffnen oder nach vorn holen, abgesichert.</summary>
+procedure PresentView(const AId: string);
+begin
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      TAtlasIdeDesignerBar.Present(AId);
+    end);
+end;
+
+procedure ShowStructure;
+begin
+  PresentView(TAtlasIdeStructure.cId);
+end;
+
+/// <summary>Atlas-Struktur (#609): nur mit laufender Leiste und designer.structure.</summary>
+function StructureVisible: Boolean;
+begin
+  Result := TAtlasIdeDesignerBar.Running and TAtlasIdeSettings.Current.DesignerStructure;
+end;
+
+procedure ShowEventMap;
+begin
+  PresentView(TAtlasIdeEventMap.cId);
+end;
+
+/// <summary>Ereignis-Karte (#612): nur mit laufender Leiste und designer.eventMap.</summary>
+function EventMapVisible: Boolean;
+begin
+  Result := TAtlasIdeDesignerBar.Running and TAtlasIdeSettings.Current.DesignerEventMap;
+end;
+
 function ModuleScope: IAtlasModuleScope;
 begin
   Result := GScope;
@@ -223,6 +264,13 @@ begin
   Result.Section := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.MenuGroupDesigner);
 end;
 
+/// <summary>Eintrag im Untermenü Designer unter Ansicht › Atlas.</summary>
+function ViewEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := MenuEntry(ACommandId, TAtlasMenuPlace.ViewMenu);
+  Result.Section := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.MenuGroupDesigner);
+end;
+
 /// <summary>Hat die Unit ein Formular?</summary>
 function WithForm(const AContext: TAtlasMenuContext): Boolean;
 begin
@@ -249,7 +297,12 @@ begin
     UsagesVisible, nil),
     // Eigenes Desktop-Layout (#2079): öffnet den Dialog „Desktop speichern“ der IDE.
     Command(cSaveLayoutCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.DesktopSaveCommand),
-    SaveDesignerLayout, SaveDesignerLayoutVisible, nil)];
+    SaveDesignerLayout, SaveDesignerLayoutVisible, nil),
+    // Andockbare Fenster der Leiste (#609, #612) auch aus dem Hauptmenü.
+    Command(cStructureCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.StCaption),
+    ShowStructure, StructureVisible, nil),
+    Command(cEventMapCommandId, TAtlasDesignerViewStrings.Text(TAtlasDesignerViewTextId.EmCaption),
+    ShowEventMap, EventMapVisible, nil)];
 end;
 
 function TAtlasDesignerModule.MenuEntries: TArray<TAtlasMenuEntry>;
@@ -259,7 +312,12 @@ begin
     AtlasEntry(cPropertySearchCommandId),
     AtlasEntry(cUsagesCommandId),
     AtlasEntry('-'),
-    AtlasEntry(cSaveLayoutCommandId)];
+    AtlasEntry(cStructureCommandId),
+    AtlasEntry(cEventMapCommandId),
+    AtlasEntry('-'),
+    AtlasEntry(cSaveLayoutCommandId),
+    ViewEntry(cStructureCommandId),
+    ViewEntry(cEventMapCommandId)];
 end;
 
 function TAtlasDesignerModule.Keys: TArray<TAtlasModuleKey>;

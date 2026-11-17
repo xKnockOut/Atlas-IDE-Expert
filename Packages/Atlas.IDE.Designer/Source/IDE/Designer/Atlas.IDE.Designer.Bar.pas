@@ -31,6 +31,8 @@
 //   und das Menü „Anordnen“ (#730 ff.), alles über TAtlasIdeDesignerCommands.
 // - Werkzeuge mit eigenem Knopf (#734 ff.), ebenfalls über
 //   TAtlasIdeDesignerCommands: Symbol schaltet, Pfeil öffnet das Menü.
+// - Andockbare Fenster der Leiste (Atlas-Struktur, Ereignis-Karte) öffnet
+//   Present auch aus dem Hauptmenü; ohne laufende Leiste fehlen die Einträge.
 // - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
@@ -53,6 +55,11 @@ type
     class procedure Uninstall; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
+    /// <summary>Läuft die Leiste (editor.designerBar an)?</summary>
+    class function Running: Boolean; static;
+    /// <summary>Andockbares Fenster AId der Leiste (Atlas-Struktur, Ereignis-Karte) aus dem Hauptmenü öffnen oder
+    /// nach vorn holen; False ohne laufende Leiste oder ohne solches Fenster.</summary>
+    class function Present(const AId: string): Boolean; static;
   end;
 
 implementation
@@ -142,6 +149,8 @@ type
     procedure Reset;
     procedure ApplyTheme;
     procedure OpenSearch;
+    /// <summary>Fenster AId öffnen oder nach vorn holen, danach die Knöpfe (gedrückt) nachziehen.</summary>
+    function Present(const AId: string): Boolean;
   end;
 
 function State: TDesignerBarState;
@@ -824,6 +833,15 @@ begin
   ApplyTheme;
 end;
 
+function TDesignerBarState.Present(const AId: string): Boolean;
+begin
+  Result := FCommands.Present(AId);
+  if Result then
+  begin
+    UpdateBars;
+  end;
+end;
+
 procedure TDesignerBarState.ApplyTheme;
 var
   mColors: TAtlasColors;
@@ -888,6 +906,16 @@ begin
   begin
     State.Reset;
   end;
+end;
+
+class function TAtlasIdeDesignerBar.Running: Boolean;
+begin
+  Result := FState <> nil;
+end;
+
+class function TAtlasIdeDesignerBar.Present(const AId: string): Boolean;
+begin
+  Result := (FState <> nil) and State.Present(AId);
 end;
 
 class procedure TAtlasIdeDesignerBar.ThemeChanged;

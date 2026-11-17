@@ -433,9 +433,28 @@ begin
     'Atlas.BreakpointAnchorsUndo'], TAtlasDebugCommandsTextId.MenuGroupBreakpoints);
 end;
 
+/// <summary>Fenster des Debuggers unter Ansicht › Atlas › Debuggen; anders als im Atlas-Menü auch ohne Projekt,
+/// damit sich das Layout einrichten lässt.</summary>
+function ViewMenuEntries: TArray<TAtlasMenuEntry>;
+const
+  cWindows: array[0..10] of string = ('Atlas.DebugExceptions', 'Atlas.DebugEvaluate', 'Atlas.DebugVariables',
+    'Atlas.DebugCallStack', 'Atlas.DebugParallelStacks', 'Atlas.DebugEventLog', 'Atlas.DebugMemory',
+    'Atlas.DebugLeaks', 'Atlas.StepFilters', 'Atlas.DebugProfile', 'Atlas.BreakpointsWindow');
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(cWindows));
+  for mIndex := 0 to High(cWindows) do
+  begin
+    Result[mIndex] := MenuEntry(cWindows[mIndex], TAtlasMenuPlace.ViewMenu);
+    Result[mIndex].Section := TAtlasDebugCommandsStrings.Text(TAtlasDebugCommandsTextId.DebugEditorMenuGroup);
+  end;
+end;
+
 function TAtlasDebugModule.MenuEntries: TArray<TAtlasMenuEntry>;
 begin
-  Result := AtlasMenuEntries;
+  Result := AtlasMenuEntries + ViewMenuEntries;
   Result := Result + [
     // Kontextmenü des Editors: gezielt hineinspringen (#836) und Schrittfilter (#850).
     ContextEntry('Atlas.StepIntoTarget'),
