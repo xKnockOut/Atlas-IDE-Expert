@@ -70,6 +70,10 @@ uses
 class constructor TSharedUnitListings.Create;
 begin
   FLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(FLock);
+  TMonitor.Exit(FLock);
   FListings := TDictionary<string, TListing>.Create;
 end;
 
