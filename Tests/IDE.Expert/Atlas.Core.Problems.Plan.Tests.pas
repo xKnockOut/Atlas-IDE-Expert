@@ -16,6 +16,8 @@ type
     [Test]
     procedure CompilerMergeUnlessBoth;
     [Test]
+    procedure EditorSwitchesNeedEnabled;
+    [Test]
     procedure IsSourceByExtension;
     [Test]
     procedure CountsDueOnVisibilityOrVersion;
@@ -75,6 +77,25 @@ begin
   Assert.IsTrue(TAtlasProblemsPlan.Shown(mSettings));
   mSettings.Enabled := False;
   Assert.IsFalse(TAtlasProblemsPlan.Shown(mSettings));
+end;
+
+procedure TAtlasProblemsPlanTests.EditorSwitchesNeedEnabled;
+var
+  mSettings: TAtlasPluginSettings;
+begin
+  mSettings := Base;
+  mSettings.TrackLines := True;
+  mSettings.DimUnusedUses := True;
+  mSettings.Problems := True;
+  mSettings.ProblemsStatusCounter := True;
+  mSettings.EditorStatusBar := False;
+  Assert.IsTrue(TAtlasProblemsPlan.DropDeletedLines(mSettings));
+  Assert.IsTrue(TAtlasProblemsPlan.UsesDimmed(mSettings));
+  Assert.IsTrue(TAtlasProblemsPlan.StatusCounter(mSettings));
+  mSettings.Enabled := False;
+  Assert.IsFalse(TAtlasProblemsPlan.DropDeletedLines(mSettings), 'Plugin aus');
+  Assert.IsFalse(TAtlasProblemsPlan.UsesDimmed(mSettings), 'Plugin aus');
+  Assert.IsFalse(TAtlasProblemsPlan.StatusCounter(mSettings), 'Plugin aus');
 end;
 
 procedure TAtlasProblemsPlanTests.CompilerMergeUnlessBoth;

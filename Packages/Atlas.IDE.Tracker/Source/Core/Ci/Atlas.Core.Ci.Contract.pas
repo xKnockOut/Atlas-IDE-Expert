@@ -78,6 +78,13 @@ type
     procedure Cancel;
   end;
 
+  /// <summary>Abbrechen über einen Transport, der es vielleicht nicht kann.</summary>
+  TAtlasCiCancels = record
+    /// <summary>ACancel.Cancel, wenn ACancel da ist (nil: nichts läuft oder der Transport kann nicht abbrechen).
+    /// </summary>
+    class procedure Cancel(const ACancel: IAtlasCiCancel); static;
+  end;
+
   /// <summary>Bedingte Abfrage (#1271, GitHub /notifications): sendet If-Modified-Since und liest Last-Modified und
   /// X-Poll-Interval aus der Antwort, unter denselben Regeln wie IAtlasCiTransport.Get.</summary>
   IAtlasCiConditional = interface
@@ -134,6 +141,16 @@ type
   end;
 
 implementation
+
+{ TAtlasCiCancels }
+
+class procedure TAtlasCiCancels.Cancel(const ACancel: IAtlasCiCancel);
+begin
+  if ACancel <> nil then
+  begin
+    ACancel.Cancel;
+  end;
+end;
 
 { TAtlasCiResponse }
 

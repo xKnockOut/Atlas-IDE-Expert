@@ -222,6 +222,11 @@ type
     cMoveTimeoutMs = 15000;
     /// <summary>Schmaler als so viele Pixel (bei 96 dpi): Spalten untereinander als einklappbare Gruppen.</summary>
     cNarrowWidth = 360;
+    /// <summary>Stufen von PriorityLevel; 0 ist unbekannt.</summary>
+    cPriorityLow = 1;
+    cPriorityNormal = 2;
+    cPriorityHigh = 3;
+    cPriorityCritical = 4;
   public
     /// <summary>Kürzel aus einem Namen: Anfangsbuchstaben der ersten beiden Wörter ("Marco Bähring" → "MB"),
     /// bei einem Wort die ersten zwei Buchstaben ("anna" → "AN"); '' ohne Namen.</summary>
@@ -502,19 +507,19 @@ begin
   end;
   if NameIn(mName, ['Show-stopper', 'Critical', 'Kritisch', 'Blocker', 'Urgent', 'Dringend', 'P0']) then
   begin
-    Result := 4;
+    Result := cPriorityCritical;
   end
   else if NameIn(mName, ['Major', 'High', 'Hoch', 'Wichtig', 'P1']) then
   begin
-    Result := 3;
+    Result := cPriorityHigh;
   end
   else if NameIn(mName, ['Normal', 'Medium', 'Mittel', 'P2']) then
   begin
-    Result := 2;
+    Result := cPriorityNormal;
   end
   else if NameIn(mName, ['Minor', 'Low', 'Niedrig', 'Gering', 'Trivial', 'P3', 'P4']) then
   begin
-    Result := 1;
+    Result := cPriorityLow;
   end
   else
   begin

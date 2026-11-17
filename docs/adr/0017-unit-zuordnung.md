@@ -681,6 +681,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ResultsWindow` | `IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Settings` | `IDE/Foundation/Atlas.IDE.Foundation.Settings.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorSettings` | `IDE/Foundation/Atlas.IDE.Foundation.EditorSettings.pas` | Ordner `IDE/Foundation`; Schalter des Editors aus den wirksamen Einstellungen |
 | `Atlas.IDE.Foundation.StartOptions` | `IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas` | Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455 |
 | `Atlas.IDE.Foundation.StructureSwitch` | `IDE/Foundation/Atlas.IDE.Foundation.StructureSwitch.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Symbol` | `IDE/Foundation/Atlas.IDE.Foundation.Symbol.pas` | Ordner `IDE/Foundation` |
@@ -1211,11 +1212,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.BoardLayout` | `Core/Tracker/Atlas.Core.Tracker.BoardLayout.pas` | Ordner `Core/Tracker`, Anordnung des Boards ohne Fenster |
 | `Atlas.Core.Tracker.BoardLanes` | `Core/Tracker/Atlas.Core.Tracker.BoardLanes.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.FlowMap` | `Core/Tracker/Atlas.Core.Tracker.FlowMap.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackFlow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackFlow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Checklist` | `Core/Tracker/Atlas.Core.Tracker.Checklist.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CodeLinks` | `Core/Tracker/Atlas.Core.Tracker.CodeLinks.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.CommentKeyPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentKeyPlan.pas` | Ordner `Core/Tracker`, Tasten des Kommentarfelds |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
@@ -1292,6 +1295,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.BlameLinks` | `IDE/Tracker/Atlas.IDE.Tracker.BlameLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BlameScope` | `IDE/Tracker/Atlas.IDE.Tracker.BlameScope.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.BoardLoad` | `IDE/Tracker/Atlas.IDE.Tracker.BoardLoad.pas` | Ordner `IDE/Tracker`, Laden des Fensters „Atlas-Board“ |
+| `Atlas.IDE.Tracker.BoardMove` | `IDE/Tracker/Atlas.IDE.Tracker.BoardMove.pas` | Ordner `IDE/Tracker`, Verschieben im Fenster „Atlas-Board“ |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowMap` | `IDE/Tracker/Atlas.IDE.Tracker.FlowMap.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowWindow` | `IDE/Tracker/Atlas.IDE.Tracker.FlowWindow.pas` | Ordner `IDE/Tracker` |
@@ -1307,6 +1312,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueMedia` | `IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueComments` | `IDE/Tracker/Atlas.IDE.Tracker.IssueComments.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueParts` | `IDE/Tracker/Atlas.IDE.Tracker.IssueParts.pas` | Ordner `IDE/Tracker`, Teile des Fensters „Atlas-Issue“ |
+| `Atlas.IDE.Tracker.IssueLoad` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLoad.pas` | Ordner `IDE/Tracker`, Laden des Issues im Fenster „Atlas-Issue“ |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
@@ -1317,6 +1324,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SuggestDialog` | `UI/Tracker/Atlas.UI.Tracker.SuggestDialog.pas` | Ordner `UI/Tracker`, Dialog Arbeitskopien vorschlagen, #1929 |
 | `Atlas.UI.Tracker.ProjectPicker` | `UI/Tracker/Atlas.UI.Tracker.ProjectPicker.pas` | Ordner `UI/Tracker`, Klappliste Tracker-Projekt in Meine Issues, #1927 |
 | `Atlas.IDE.Tracker.IssuesServices` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesServices.pas` | Ordner `IDE/Tracker`, Dienste von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesTracking` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesTracking.pas` | Ordner `IDE/Tracker`, Arbeit am aktuellen Issue in „Meine Issues“ |
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
@@ -1345,6 +1353,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.WelcomeLink` | `IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas` | Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455 |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.BoardPainter` | `UI/Tracker/Atlas.UI.Tracker.BoardPainter.pas` | Ordner `UI/Tracker`, Zeichnen des Boards |
+| `Atlas.UI.Tracker.AttachSources` | `UI/Tracker/Atlas.UI.Tracker.AttachSources.pas` | Ordner `UI/Tracker`, Gruppe „Was anhängen?“ des Dialogs „An Issue anhängen“ |
 | `Atlas.UI.Tracker.BoardFrame` | `UI/Tracker/Atlas.UI.Tracker.BoardFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.FlowFrame` | `UI/Tracker/Atlas.UI.Tracker.FlowFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Capture` | `UI/Tracker/Atlas.UI.Tracker.Capture.pas` | Ordner `UI/Tracker` |
@@ -1421,6 +1431,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Layouts` | `Core/Welcome/Atlas.Core.Welcome.Layouts.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Projects` | `Core/Welcome/Atlas.Core.Welcome.Projects.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.QuickActions` | `Core/Welcome/Atlas.Core.Welcome.QuickActions.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.QuickActionRuns` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRuns.pas` | Ordner `Core/Welcome`; Stand der Schnellaktionen je Projekt |
+| `Atlas.Core.Welcome.QuickActionRows` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRows.pas` | Ordner `Core/Welcome`; Zeilen und Auswahl der Knopfleiste mit Schnellaktionen |
+| `Atlas.Core.Welcome.ContinueQueries` | `Core/Welcome/Atlas.Core.Welcome.ContinueQueries.pas` | Ordner `Core/Welcome`; Stand der HEAD- und Commit-Abfragen von „Weiterarbeiten“ |
 | `Atlas.Core.Welcome.Saved` | `Core/Welcome/Atlas.Core.Welcome.Saved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Scroll` | `Core/Welcome/Atlas.Core.Welcome.Scroll.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Search` | `Core/Welcome/Atlas.Core.Welcome.Search.pas` | Ordner `Core/Welcome` |
@@ -1431,6 +1444,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Unsaved` | `Core/Welcome/Atlas.Core.Welcome.Unsaved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Headers` | `IDE/Welcome/Atlas.IDE.Welcome.Headers.pas` | Ordner `IDE/Welcome`; Köpfe der Willkommensseite (Gruß, Kurzstatus, Suchfeld, Menü) |
 | `Atlas.IDE.Welcome.Areas` | `IDE/Welcome/Atlas.IDE.Welcome.Areas.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Commit` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Commit.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.IdeLayout` | `IDE/Welcome/Atlas.IDE.Welcome.IdeLayout.pas` | Ordner `IDE/Welcome` |

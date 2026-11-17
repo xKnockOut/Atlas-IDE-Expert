@@ -7,7 +7,8 @@
 // (#1271), „An Issue anhängen“ (#1276), wieder geöffnete Issues (#2127) und der Zustand im Statusfeld (#2124). Alle
 // mit Anbieter und Transport aus
 // dem Kontext; ihre Hooks halten den Besitzer (TAtlasIssuesLink.Keep), Stop
-// löst den Ring.
+// löst den Ring. Die Arbeit am aktuellen Issue (Nachführen, Zeit, Statusfeld,
+// „Prüfen“) liegt in Atlas.IDE.Tracker.IssuesTracking.
 
 interface
 
@@ -16,20 +17,16 @@ uses
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.MyIssues,
-  Atlas.Core.Tracker.TimeLog,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.Notify,
-  Atlas.IDE.Tracker.TimeTracking,
-  Atlas.IDE.Tracker.IssueState,
   Atlas.IDE.Tracker.Board,
   Atlas.IDE.Tracker.FlowMap,
-  Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Tracker.PaletteSearch,
   Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Tracker.SprintTile,
   Atlas.IDE.Tracker.Reopened,
-  Atlas.IDE.Tracker.Review,
+  Atlas.IDE.Tracker.IssuesTracking,
   Atlas.IDE.Tracker.IssuesContext;
 
 type
@@ -40,21 +37,18 @@ type
     FBoard: TAtlasIdeBoard;
     FFlowMap: TAtlasIdeFlowMap;
     FSprint: TAtlasIdeSprint;
-    FSync: TAtlasIdeTrackerSync;
-    FTime: TAtlasIdeTrackerTime;
-    // Zustand und Zeit im Statusfeld (#2124).
-    FIssueState: TAtlasIdeIssueState;
+    FTracking: TAtlasIdeIssuesTracking;
     FSearch: TAtlasIdeIssueSearch;
     FSearchRef: IAtlasPaletteSource;
     FComments: TAtlasIdeCommentService;
     FNotify: TAtlasIdeIssueNotify;
     FAttach: TAtlasIdeIssueAttach;
     FReopened: TAtlasIdeIssueReopened;
-    FReview: TAtlasIdeIssueReview;
     // Referenzgezählte Dienste: gehalten bis Stop.
     FRefs: TArray<IInterface>;
   public
     constructor Create(AContext: TAtlasIdeIssuesContext);
+    destructor Destroy; override;
     /// <summary>Alle Dienste anlegen und starten.</summary>
     procedure Start;
     /// <summary>Alle Dienste stoppen und lösen (zuerst die Zeiterfassung); danach nil.</summary>
@@ -68,12 +62,6 @@ type
     function NotifyTargets: TArray<TAtlasTrackerTarget>;
     /// <summary>Gemeldetes Issue öffnen: Vorschau am ersten neuen Kommentar, sonst Browser.</summary>
     procedure OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
-    function TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
-    /// <summary>Uhr der Zeiterfassung und Statusfeld auf das aktuelle Issue AKey von AProject stellen ('' = keins);
-    /// AState ist sein Zustand aus „Meine Issues“ ('' unbekannt).</summary>
-    procedure SyncTime(const AProject, AKey, AState: string);
-    /// <summary>Befehl Atlas.IssueTimeOpen (#1267): offene Zeitbuchungen zeigen.</summary>
-    procedure ShowTimeOpen;
     /// <summary>Die zuletzt abgefragte Liste aus „Meine Issues“ als Vorschläge, ohne Netz.</summary>
     function AttachIssues: TArray<string>;
     /// <summary>Aktuelles Issue begonnen oder beendet: Vorschau und Board nachziehen.</summary>
@@ -85,10 +73,8 @@ type
     property FlowMap: TAtlasIdeFlowMap read FFlowMap;
     /// <summary>Sprint-Kachel (#1277; nil vor Start bzw. nach Stop).</summary>
     property Sprint: TAtlasIdeSprint read FSprint;
-    /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>
-    property Sync: TAtlasIdeTrackerSync read FSync;
-    /// <summary>Zeiterfassung (#1267; nil vor Start bzw. nach Stop).</summary>
-    property Time: TAtlasIdeTrackerTime read FTime;
+    /// <summary>Tracker nachführen, Zeiterfassung, Statusfeld und „Prüfen“ (#1266, #1267, #2124, #2126).</summary>
+    property Tracking: TAtlasIdeIssuesTracking read FTracking;
     /// <summary>Quelle der Befehlspalette für Issues (#1270); nil vor Start bzw. nach Stop.</summary>
     property PaletteSearch: IAtlasPaletteSource read FSearchRef;
     /// <summary>Meldungen zu meinen Issues (#1271; nil vor Start bzw. nach Stop).</summary>
@@ -97,8 +83,6 @@ type
     property Attach: TAtlasIdeIssueAttach read FAttach;
     /// <summary>Wieder geöffnete Issues (#2127; nil vor Start bzw. nach Stop).</summary>
     property Reopened: TAtlasIdeIssueReopened read FReopened;
-    /// <summary>„Prüfen“ (#2126; nil vor Start bzw. nach Stop).</summary>
-    property Review: TAtlasIdeIssueReview read FReview;
   end;
 
 implementation
@@ -106,12 +90,13 @@ implementation
 uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.CiBuild.Contract,
-  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Notify,
   Atlas.Core.Tracker.Reopened,
   Atlas.Core.Tracker.Review,
   Atlas.UI.Tracker.EndDialog,
+  Atlas.IDE.Tracker.Workflow,
+  Atlas.IDE.Tracker.IssueState,
   Atlas.IDE.Tracker.WorkingCopies;
 
 type
@@ -218,9 +203,9 @@ end;
 
 procedure TAtlasIssuesLink.Review(const AIssue: TAtlasTrackerIssue);
 begin
-  if (Keep <> nil) and (Services.FReview <> nil) then
+  if (Keep <> nil) and (Services.FTracking.Review <> nil) then
   begin
-    Services.FReview.Review(AIssue, Services.Options);
+    Services.FTracking.Review.Review(AIssue, Services.Options);
   end;
 end;
 
@@ -278,7 +263,7 @@ end;
 
 function TAtlasIssuesLink.NoSync(const ADone: TAtlasTrackerSendDone): Boolean;
 begin
-  Result := (Keep = nil) or (Services.FSync = nil);
+  Result := (Keep = nil) or (Services.FTracking.Sync = nil);
   if Result then
   begin
     ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
@@ -290,7 +275,7 @@ procedure TAtlasIssuesLink.Comment(const ATarget: TAtlasTrackerTarget; const AKe
 begin
   if not NoSync(ADone) then
   begin
-    Services.FSync.SendComment(Context.ProviderOf(ATarget.Provider), ATarget, AKey, AText, ADone);
+    Services.FTracking.Sync.SendComment(Context.ProviderOf(ATarget.Provider), ATarget, AKey, AText, ADone);
   end;
 end;
 
@@ -307,13 +292,13 @@ begin
   mChange := TAtlasTrackerWrite.Empty;
   mChange.AssigneeField := TAtlasIdeTrackerSync.Options(ATarget).AssigneeField;
   mChange.Assign := TAtlasTrackerAssign.Me;
-  Services.FSync.Apply(Context.ProviderOf(ATarget.Provider), ATarget, AKey, mChange, ADone);
+  Services.FTracking.Sync.Apply(Context.ProviderOf(ATarget.Provider), ATarget, AKey, mChange, ADone);
 end;
 
 function TAtlasIssuesLink.CanWrite(const ATarget: TAtlasTrackerTarget): Boolean;
 begin
-  Result := (Keep <> nil) and (Services.FSync <> nil) and
-    Services.FSync.Enabled(Context.ProviderOf(ATarget.Provider), ATarget);
+  Result := (Keep <> nil) and (Services.FTracking.Sync <> nil) and
+    Services.FTracking.Sync.Enabled(Context.ProviderOf(ATarget.Provider), ATarget);
 end;
 
 procedure TAtlasIssuesLink.EndIssue(const AKey: string);
@@ -412,53 +397,31 @@ begin
     end;
 end;
 
-function CreateSync(const ALink: TAtlasIssuesLink): TAtlasIdeTrackerSync;
+/// <summary>Anbieter, Transport, Feld, Meldungen, „Beenden …“ und Kommentar-Editor für Nachführen, Zeit und
+/// Statusfeld (#2124) über den Kontext.</summary>
+function TrackingHooks(const ALink: TAtlasIssuesLink): TAtlasIdeIssueStateHooks;
 var
   mLink: TAtlasIssuesLink;
 begin
   mLink := ALink;
-  Result := TAtlasIdeTrackerSync.Create(
-    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    begin
-      Result := mLink.Transport(AProvider, ATarget);
-    end,
-    procedure(AText: string)
-    begin
-      mLink.Report(AText);
-    end);
-  Result.CommentAssist :=
-    function(const ATarget: TAtlasTrackerTarget; const AKey, AField: string): IAtlasCommentAssist
-    begin
-      Result := mLink.Assist(ATarget, AKey, AField);
-    end;
-end;
-
-/// <summary>Zustand im Statusfeld (#2124): Anbieter, Transport, Feld, Meldungen, „Beenden …“ und Kommentar-Editor
-/// über den Kontext.</summary>
-function CreateIssueState(const ALink: TAtlasIssuesLink): TAtlasIdeIssueState;
-var
-  mLink: TAtlasIssuesLink;
-  mHooks: TAtlasIdeIssueStateHooks;
-begin
-  mLink := ALink;
-  mHooks := Default(TAtlasIdeIssueStateHooks);
-  mHooks.Provider :=
+  Result := Default(TAtlasIdeIssueStateHooks);
+  Result.Provider :=
     function(const AName: string): IAtlasTrackerProvider
     begin
       Result := mLink.Provider(AName);
     end;
-  mHooks.Transport :=
+  Result.Transport :=
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
     begin
       Result := mLink.Transport(AProvider, ATarget);
     end;
-  mHooks.Field := ALink.Context.Hooks.TimeStatus;
-  mHooks.Report :=
+  Result.Field := ALink.Context.Hooks.TimeStatus;
+  Result.Report :=
     procedure(AText: string)
     begin
       mLink.Report(AText);
     end;
-  mHooks.EndIssue :=
+  Result.EndIssue :=
     procedure
     begin
       if mLink.Keep <> nil then
@@ -466,64 +429,10 @@ begin
         mLink.EndIssue(mLink.Context.ActiveKey);
       end;
     end;
-  mHooks.Assist :=
+  Result.Assist :=
     function(const ATarget: TAtlasTrackerTarget; const AKey, AField: string): IAtlasCommentAssist
     begin
       Result := mLink.Assist(ATarget, AKey, AField);
-    end;
-  Result := TAtlasIdeIssueState.Create(ALink.Services.FSync, mHooks);
-end;
-
-function CreateTime(const ALink: TAtlasIssuesLink): TAtlasIdeTrackerTime;
-var
-  mLink: TAtlasIssuesLink;
-begin
-  mLink := ALink;
-  Result := TAtlasIdeTrackerTime.Create(ALink.Services.FSync,
-    function(const AName: string): IAtlasTrackerProvider
-    begin
-      Result := mLink.Provider(AName);
-    end,
-    procedure(AText: string)
-    begin
-      mLink.Report(AText);
-    end,
-    TAtlasTimeFile.DefaultPath);
-  // Die Zeit zeigt das Feld des Zustands (#2124) mit an.
-  Result.OnStatus :=
-    procedure(const AField: TAtlasIdeTimeField)
-    begin
-      if (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) then
-      begin
-        mLink.Services.FIssueState.TimeChanged(AField);
-      end;
-    end;
-  ALink.Services.FSync.TimeText :=
-    function(const AKey: string): string
-    begin
-      Result := '';
-      if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
-      begin
-        Result := mLink.Services.FTime.TimeText(AKey);
-      end;
-    end;
-  // Zeit im Beenden-Dialog (#2123).
-  ALink.Services.FSync.TimeSeconds :=
-    function(const AKey: string): Int64
-    begin
-      Result := 0;
-      if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
-      begin
-        Result := mLink.Services.FTime.Seconds(AKey);
-      end;
-    end;
-  ALink.Services.FSync.TimeBooked :=
-    procedure(const AKey: string; ASeconds: Int64)
-    begin
-      if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
-      begin
-        mLink.Services.FTime.Booked(AKey, ASeconds);
-      end;
     end;
 end;
 
@@ -632,7 +541,7 @@ begin
   AHooks.CanReview :=
     function(ATarget: TAtlasTrackerTarget; AIssue: TAtlasTrackerIssue): Boolean
     begin
-      Result := (mLink.Keep <> nil) and (mLink.Services.FReview <> nil) and
+      Result := (mLink.Keep <> nil) and (mLink.Services.FTracking.Review <> nil) and
         not SameText(mLink.Context.ActiveKey, AIssue.Key) and
         TAtlasTrackerReview.Offered(AIssue.State, TAtlasIdeTrackerSync.Options(ATarget).ReviewStates);
     end;
@@ -819,16 +728,16 @@ begin
     function(const APattern: string): TArray<TAtlasCommand>
     begin
       Result := nil;
-      if (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) then
+      if (mLink.Keep <> nil) and (mLink.Services.FTracking.IssueState <> nil) then
       begin
-        Result := mLink.Services.FIssueState.PaletteRows(APattern);
+        Result := mLink.Services.FTracking.IssueState.PaletteRows(APattern);
       end;
     end;
   Result.StateRun :=
     function(AId: string): Boolean
     begin
-      Result := (mLink.Keep <> nil) and (mLink.Services.FIssueState <> nil) and
-        mLink.Services.FIssueState.PaletteRun(AId);
+      Result := (mLink.Keep <> nil) and (mLink.Services.FTracking.IssueState <> nil) and
+        mLink.Services.FTracking.IssueState.PaletteRun(AId);
     end;
 end;
 
@@ -1039,35 +948,6 @@ begin
   end;
 end;
 
-/// <summary>Statusfeld, Zeiterfassung und Tracker nachführen anhalten (die Zeit zuerst vor Sync: schreibt die letzte
-/// Zeit darüber).</summary>
-procedure StopTracking(AServices: TAtlasIdeIssuesServices);
-begin
-  // „Prüfen“ vor Sync: Sein Dialog schreibt über Sync.
-  if AServices.FReview <> nil then
-  begin
-    AServices.FReview.Stop;
-    DropRef(AServices, AServices.FReview);
-  end;
-  AServices.FReview := nil;
-  if AServices.FIssueState <> nil then
-  begin
-    AServices.FIssueState.Stop;
-  end;
-  if AServices.FTime <> nil then
-  begin
-    AServices.FTime.Stop;
-    DropRef(AServices, AServices.FTime);
-  end;
-  AServices.FTime := nil;
-  if AServices.FSync <> nil then
-  begin
-    AServices.FSync.Stop;
-  end;
-  // Nach Sync.Stop kommt keine Antwort eines Übergangs mehr an.
-  FreeAndNil(AServices.FIssueState);
-end;
-
 /// <summary>Vorschau, Board und Sprint anhalten (ihre Hooks halten den Besitzer).</summary>
 procedure StopViews(AServices: TAtlasIdeIssuesServices);
 begin
@@ -1095,7 +975,7 @@ begin
     DropRef(AServices, AServices.FSprint);
   end;
   AServices.FSprint := nil;
-  FreeAndNil(AServices.FSync);
+  AServices.FTracking.Release;
 end;
 
 /// <summary>Palettensuche, Kommentare (nach der Vorschau: deren Feld hat den Entwurf gesichert), Meldungen und
@@ -1135,6 +1015,13 @@ constructor TAtlasIdeIssuesServices.Create(AContext: TAtlasIdeIssuesContext);
 begin
   inherited Create;
   FContext := AContext;
+  FTracking := TAtlasIdeIssuesTracking.Create(AContext);
+end;
+
+destructor TAtlasIdeIssuesServices.Destroy;
+begin
+  FTracking.Free;
+  inherited;
 end;
 
 /// <summary>AService in ARefs halten (bis Stop die Liste leert).</summary>
@@ -1152,13 +1039,7 @@ begin
   mFolder := TAtlasIdeIssuesTargets.IssuesFolder;
   FComments := TAtlasIdeCommentService.Create(CommentHooks(mLink), mFolder);
   KeepRef(FRefs, FComments);
-  FSync := CreateSync(mLink);
-  FIssueState := CreateIssueState(mLink);
-  FTime := CreateTime(mLink);
-  KeepRef(FRefs, FTime);
-  FReview := TAtlasIdeIssueReview.Create(FContext, FSync);
-  KeepRef(FRefs, FReview);
-  FTime.Start;
+  FTracking.Start(TrackingHooks(mLink));
   // Anhängen vor der Vorschau: deren Knopf „Anhängen …“ ruft es.
   FAttach := TAtlasIdeIssueAttach.Create(AttachHooks(mLink));
   KeepRef(FRefs, FAttach);
@@ -1186,7 +1067,7 @@ end;
 
 procedure TAtlasIdeIssuesServices.Stop;
 begin
-  StopTracking(Self);
+  FTracking.Stop;
   StopViews(Self);
   StopOthers(Self);
   FRefs := nil;
@@ -1273,44 +1154,6 @@ begin
   begin
     TAtlasIdeIssuesTargets.OpenPage(mProvider.IssuePage(ATarget, AKey));
   end;
-end;
-
-function TAtlasIdeIssuesServices.TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
-var
-  mTarget: TAtlasTrackerTarget;
-begin
-  Result := TAtlasTimeIssue.None;
-  if (AProject = '') or (AKey = '') then
-  begin
-    Exit;
-  end;
-  mTarget := FContext.TargetOf(AProject);
-  Result := TAtlasTimeIssue.Create(mTarget.Provider, mTarget.Url, mTarget.Project, AKey);
-end;
-
-procedure TAtlasIdeIssuesServices.SyncTime(const AProject, AKey, AState: string);
-begin
-  // Zuerst das Feld: Die Uhr meldet ihre Zeit gleich dorthin.
-  if FIssueState <> nil then
-  begin
-    FIssueState.SetIssue(TimeIssueOf(AProject, AKey), AState);
-  end;
-  if FTime <> nil then
-  begin
-    FTime.SetIssue(TimeIssueOf(AProject, AKey));
-  end;
-end;
-
-procedure TAtlasIdeIssuesServices.ShowTimeOpen;
-begin
-  TAtlasGuard.Run(TAtlasFeature.Tracker,
-    procedure
-    begin
-      if FContext.Started and (FTime <> nil) and TAtlasIdeTrackerTime.Active then
-      begin
-        FTime.ShowOpen;
-      end;
-    end);
 end;
 
 function TAtlasIdeIssuesServices.AttachIssues: TArray<string>;

@@ -37,14 +37,14 @@ uses
   System.SysUtils,
   Atlas.Core.Files.TextFile,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Problems.InlineHints,
-  Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.QuickToggles,
   Atlas.Core.Settings.ModuleSwitches;
 
 type
+  PAtlasPluginSettings = ^TAtlasPluginSettings;
+
   TAtlasIdeSettings = class
   private class var
     FOnChanged: TProc;
@@ -63,51 +63,9 @@ type
     class function Current: TAtlasPluginSettings; static;
     /// <summary>Gespeicherte Werte (Registry) ohne Sitzungswerte; Grundlage für Optionsseite und Update.</summary>
     class function Stored: TAtlasPluginSettings; static;
-    /// <summary>Plugin eingeschaltet und Inlay-Hints an; ohne Kopie des Einstellungsrecords.</summary>
-    class function InlayHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Typmarken an (#453); ohne Kopie des Einstellungsrecords.</summary>
-    class function InlayTypeHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Include-Symbole hinter {$I} an (#860); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function InlayDefineHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Codes von Steuerzeichen an (#862).</summary>
-    class function InlayCharHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken „braucht kein Self“ an (#686).</summary>
-    class function InlayMethodHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
-    /// </summary>
-    class function BlockEndLabelsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und ungenutzte uses abblenden an (#621); ohne Kopie des Einstellungsrecords.
-    /// </summary>
-    class function DimUnusedUsesOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Rekursionssymbole an (#623); ohne Kopie des Einstellungsrecords.</summary>
-    class function RecursionMarkersOn: Boolean; static;
-    /// <summary>editor.recursionMarkers.depth (#623).</summary>
-    class function RecursionMarkersDepth: Integer; static;
-    /// <summary>Plugin eingeschaltet und Atlas-Spalte in der Zeilenleiste an (#768); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function GutterColumnOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und gleichen Text hervorheben an (#709); AOptions und ANavigateF3 aus
-    /// highlight.selectionMatches.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions; out ANavigateF3: Boolean): Boolean;
-      static;
-    /// <summary>Plugin eingeschaltet und Austrittspunkte hervorheben an (#698); die Schalter aus
-    /// editor.exitPoints.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean; static;
-    /// <summary>Plugin eingeschaltet und neu zugewiesene Variablen unterstreichen an (#712); Arten, Linie und Farbe
-    /// aus highlight.reassigned.*, ohne Kopie des Einstellungsrecords.</summary>
-    class function ReassignedOn(out ATargets, AStyle, AColor: string): Boolean; static;
-    /// <summary>Plugin eingeschaltet und Problem-Markierungen an; ohne Kopie des Einstellungsrecords.</summary>
-    class function ProblemMarksOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken folgen ihrer Zeile sofort (#1818, editor.trackLines); ohne Kopie des
-    /// Einstellungsrecords.</summary>
-    class function TrackLinesOn: Boolean; static;
-    /// <summary>Fehlertext am Zeilenende (#509); Off, wenn das Plugin oder die Problem-Markierungen aus sind.
-    /// </summary>
-    class function InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode; static;
-    /// <summary>Plugin, Probleme und Zähler in der Statusleiste an (#509), außer die Atlas-Statusleiste am Editor
-    /// zeigt ihre Befundzähler (#1155): Dann stünden Zahlen doppelt.</summary>
-    class function ProblemsStatusCounterOn: Boolean; static;
+    /// <summary>Wirksame Werte ohne Kopie, für häufige Abfragen beim Zeichnen (TAtlasIdeEditorSettings); nur lesen,
+    /// nur im Hauptthread.</summary>
+    class function CurrentRef: PAtlasPluginSettings; static;
     /// <summary>Übernimmt und speichert ASettings (gespeicherte Werte, ohne Sitzungswerte).</summary>
     class procedure Update(const ASettings: TAtlasPluginSettings); static;
     /// <summary>Inhalt von %APPDATA%\Atlas\settings.json ('' ohne Datei) für Export und Import (#723).</summary>
@@ -159,7 +117,6 @@ uses
   Atlas.Core.Settings.Scopes,
   Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
-  Atlas.Core.Problems.Switches,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Files.DataFile,
   Atlas.UI.Strings;
@@ -510,118 +467,10 @@ begin
   Result := GState.Stored;
 end;
 
-class function TAtlasIdeSettings.InlayHintsOn: Boolean;
+class function TAtlasIdeSettings.CurrentRef: PAtlasPluginSettings;
 begin
   EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayHints;
-end;
-
-class function TAtlasIdeSettings.InlayTypeHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayTypeHints;
-end;
-
-class function TAtlasIdeSettings.InlayDefineHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayDefineHints;
-end;
-
-class function TAtlasIdeSettings.InlayCharHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayCharHints;
-end;
-
-class function TAtlasIdeSettings.InlayMethodHintsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.InlayMethodHints;
-end;
-
-class function TAtlasIdeSettings.BlockEndLabelsOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.BlockEndLabels;
-end;
-
-class function TAtlasIdeSettings.DimUnusedUsesOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.DimUnusedUses;
-end;
-
-class function TAtlasIdeSettings.RecursionMarkersOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.RecursionMarkers;
-end;
-
-class function TAtlasIdeSettings.RecursionMarkersDepth: Integer;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.RecursionMarkersDepth;
-end;
-
-class function TAtlasIdeSettings.GutterColumnOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.GutterColumn;
-end;
-
-class function TAtlasIdeSettings.SelectionMatchesOn(out AOptions: TAtlasSelectionMatchOptions;
-  out ANavigateF3: Boolean): Boolean;
-begin
-  EnsureLoaded;
-  AOptions.MinLength := GState.Effective.SelectionMatchesMinLength;
-  AOptions.CaseSensitive := GState.Effective.SelectionMatchesCaseSensitive;
-  AOptions.WholeWord := GState.Effective.SelectionMatchesWholeWord;
-  AOptions.MaxMatches := GState.Effective.SelectionMatchesMaxMatches;
-  ANavigateF3 := GState.Effective.SelectionMatchesNavigateF3;
-  Result := GState.Effective.Enabled and GState.Effective.SelectionMatches;
-end;
-
-class function TAtlasIdeSettings.ExitPointsOn(out AExceptions, ALoops, ABadge: Boolean): Boolean;
-begin
-  EnsureLoaded;
-  AExceptions := GState.Effective.ExitPointsExceptions;
-  ALoops := GState.Effective.ExitPointsLoops;
-  ABadge := GState.Effective.ExitPointsBadge;
-  Result := GState.Effective.Enabled and GState.Effective.ExitPoints;
-end;
-
-class function TAtlasIdeSettings.ReassignedOn(out ATargets, AStyle, AColor: string): Boolean;
-begin
-  EnsureLoaded;
-  ATargets := GState.Effective.ReassignedTargets;
-  AStyle := GState.Effective.ReassignedStyle;
-  AColor := GState.Effective.ReassignedColor;
-  Result := GState.Effective.Enabled and GState.Effective.Reassigned;
-end;
-
-class function TAtlasIdeSettings.ProblemMarksOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.Problems;
-end;
-
-class function TAtlasIdeSettings.TrackLinesOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := GState.Effective.Enabled and GState.Effective.TrackLines;
-end;
-
-class function TAtlasIdeSettings.InlineDiagnosticsMode: TAtlasInlineDiagnosticsMode;
-begin
-  EnsureLoaded;
-  Result := TAtlasProblemSwitches.InlineDiagnostics(GState.Effective);
-end;
-
-class function TAtlasIdeSettings.ProblemsStatusCounterOn: Boolean;
-begin
-  EnsureLoaded;
-  Result := TAtlasProblemSwitches.ProblemsStatusCounter(GState.Effective);
+  Result := @GState.Effective;
 end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);

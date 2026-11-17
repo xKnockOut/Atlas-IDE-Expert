@@ -331,9 +331,9 @@ begin
   GIssueWork := TAtlasTrackerIssueWork.Create(GIssues.Context, GIssues.Services);
   GTiles := GTiles + [GScope.Provide(IAtlasIssueWorkSource, GIssueWork as IAtlasIssueWorkSource)];
   // „Prüfen“ (#2126): Ende der betroffenen Tests.
-  if GIssues.Services.Review <> nil then
+  if GIssues.Services.Tracking.Review <> nil then
   begin
-    GTiles := GTiles + [GIssues.Services.Review.ProvideIn(GScope)];
+    GTiles := GTiles + [GIssues.Services.Tracking.Review.ProvideIn(GScope)];
   end;
 end;
 
@@ -541,7 +541,7 @@ procedure ShowTimeOpen;
 begin
   if SessionAvailable then
   begin
-    GIssues.Services.ShowTimeOpen;
+    GIssues.Services.Tracking.ShowTimeOpen;
   end;
 end;
 

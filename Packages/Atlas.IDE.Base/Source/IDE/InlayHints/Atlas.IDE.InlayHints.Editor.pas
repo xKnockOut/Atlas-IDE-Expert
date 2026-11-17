@@ -165,7 +165,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,
   Atlas.Core.Diagnostics.MainThread,
@@ -285,10 +285,10 @@ end;
 /// Blockende)?</summary>
 function AnyInlayOn: Boolean;
 begin
-  Result := TAtlasIdeSettings.InlayHintsOn or TAtlasIdeSettings.InlayTypeHintsOn or
-    TAtlasIdeSettings.InlayDefineHintsOn;
-  Result := Result or TAtlasIdeSettings.InlayCharHintsOn or TAtlasIdeSettings.InlayMethodHintsOn or
-    TAtlasIdeSettings.BlockEndLabelsOn;
+  Result := TAtlasIdeEditorSettings.InlayHintsOn or TAtlasIdeEditorSettings.InlayTypeHintsOn or
+    TAtlasIdeEditorSettings.InlayDefineHintsOn;
+  Result := Result or TAtlasIdeEditorSettings.InlayCharHintsOn or TAtlasIdeEditorSettings.InlayMethodHintsOn or
+    TAtlasIdeEditorSettings.BlockEndLabelsOn;
 end;
 
 /// <summary>Vorderste Ansicht, wenn sie eine Pascal-Datei zeigt; sonst nil.</summary>
@@ -384,9 +384,9 @@ end;
 
 procedure TAtlasEditorInlayHints.SyncMinLines;
 begin
-  if FMinLines <> TAtlasIdeSettings.Current.BlockEndLabelsMinLines then
+  if FMinLines <> TAtlasIdeEditorSettings.BlockEndLabelsMinLines then
   begin
-    FMinLines := TAtlasIdeSettings.Current.BlockEndLabelsMinLines;
+    FMinLines := TAtlasIdeEditorSettings.BlockEndLabelsMinLines;
     FStore.Clear;
     FClicks.Clear;
   end;
@@ -489,23 +489,23 @@ const
 function KindsOn: TAtlasInlayKinds;
 begin
   Result := [];
-  if TAtlasIdeSettings.InlayHintsOn then
+  if TAtlasIdeEditorSettings.InlayHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Parameters);
   end;
-  if TAtlasIdeSettings.InlayTypeHintsOn then
+  if TAtlasIdeEditorSettings.InlayTypeHintsOn then
   begin
     Include(Result, TAtlasInlayKind.InferredTypes);
   end;
-  if TAtlasIdeSettings.InlayDefineHintsOn then
+  if TAtlasIdeEditorSettings.InlayDefineHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Defines);
   end;
-  if TAtlasIdeSettings.InlayCharHintsOn then
+  if TAtlasIdeEditorSettings.InlayCharHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Chars);
   end;
-  if TAtlasIdeSettings.InlayMethodHintsOn then
+  if TAtlasIdeEditorSettings.InlayMethodHintsOn then
   begin
     Include(Result, TAtlasInlayKind.Method);
   end;
@@ -571,9 +571,9 @@ begin
     end;
     mOn := KindsOn;
     // .atlas erst, wenn die Zeile im Editor der im Speicher entspricht (Stored ist dann gesetzt).
-    if TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, nil) and
+    if TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeEditorSettings.BlockEndLabelsOn, nil) and
       LineMatches(FStore, Context, mHints) and
-      TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeSettings.BlockEndLabelsOn, HiddenIn(Context.FileName)) then
+      TAtlasInlayPlan.KeepShown(mHints, mOn, TAtlasIdeEditorSettings.BlockEndLabelsOn, HiddenIn(Context.FileName)) then
     begin
       DrawHints(Rect, Context, mHints);
     end;
@@ -696,8 +696,8 @@ var
 begin
   mCharacter := -1;
   mStored := AHit.Actions and FStore.MethodOnLine(AHit.FileName, AHit.Line, mCharacter);
-  Result := TAtlasInlayPlan.HitStillShown(AHit, TAtlasIdeSettings.BlockEndLabelsOn,
-    TAtlasIdeSettings.InlayMethodHintsOn, mStored, mCharacter);
+  Result := TAtlasInlayPlan.HitStillShown(AHit, TAtlasIdeEditorSettings.BlockEndLabelsOn,
+    TAtlasIdeEditorSettings.InlayMethodHintsOn, mStored, mCharacter);
 end;
 
 function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; AX, AY: Integer; out AHit: TAtlasInlayPillHit): Boolean;

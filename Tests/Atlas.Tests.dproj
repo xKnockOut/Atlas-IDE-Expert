@@ -1276,6 +1276,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.PaletteSearch.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommentEditor.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.CommentKeyPlan.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CommentKeyPlan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.CommentEditor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Development.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Development.Tests.pas"/>
@@ -1363,6 +1365,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.SyncPlan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.SyncPlan.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLanes.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.BoardLayout.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLayout.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLayout.TestSupport.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.BoardLanes.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.FlowMap.pas"/>
@@ -1408,6 +1413,8 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Capture.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.ImageMarkup.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.ImageMarkup.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachSources.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.BoardPainter.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.AttachDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
@@ -1687,6 +1694,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.ContinueIssues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActions.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRuns.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActionRuns.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.ContinueQueries.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.ContinueQueries.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRows.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActionRows.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Saved.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">

@@ -387,8 +387,8 @@ begin
   mMode := TAtlasIdeSettings.Current.IssuesSprintOnStart;
   mTarget := FContext.TargetOf(FContext.Selection.CurrentProject);
   // Den Zwischenspeicher nur lesen, wenn überhaupt aufgenommen werden kann.
-  mWrites := (mMode <> TAtlasPluginSettings.cIssuesSprintNever) and (FServices.Sync <> nil) and
-    FServices.Sync.Enabled(FContext.ProviderOf(mTarget.Provider), mTarget);
+  mWrites := (mMode <> TAtlasPluginSettings.cIssuesSprintNever) and (FServices.Tracking.Sync <> nil) and
+    FServices.Tracking.Sync.Enabled(FContext.ProviderOf(mTarget.Provider), mTarget);
   mStep := TAtlasIssueStartFlow.SprintOnStart(mMode, mWrites, mWrites and CachedSprint(mTarget, AIssue.Key, mFound));
   if mStep = TAtlasSprintOnStart.Skip then
   begin
@@ -760,11 +760,11 @@ var
 begin
   // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler. Nicht bei
   // „Weiterarbeiten“ (#2127): Den Zustand hat der Tracker gerade selbst zurückgesetzt.
-  if (FServices.Sync <> nil) and not AJob.State.Resuming then
+  if (FServices.Tracking.Sync <> nil) and not AJob.State.Resuming then
   begin
     mTarget := FContext.TargetOf(AJob.Project);
-    FServices.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key, AJob.Outcome.Branch,
-      AJob.Sprint, SprintWritten());
+    FServices.Tracking.Sync.Started(FContext.ProviderOf(mTarget.Provider), mTarget, AJob.Issue.Key,
+      AJob.Outcome.Branch, AJob.Sprint, SprintWritten());
   end;
   FServices.ActiveChanged;
   // Branch und Änderungen neu abfragen; „Projekte“ meldet sich danach selbst.
@@ -879,10 +879,11 @@ begin
   end;
   // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits), nicht nach
   // „nicht geplant“ oder „Duplikat“.
-  if FServices.Time <> nil then
+  if FServices.Tracking.Time <> nil then
   begin
-    FServices.Time.Ended(FServices.TimeIssueOf(AProject, AKey), TAtlasIdeTrackerWorkingCopies.FolderOf(AProject),
-      ABranch, TAtlasIdeSettings.Current.IssuesBranchBase, not AAbandoned);
+    FServices.Tracking.Time.Ended(FServices.Tracking.TimeIssueOf(AProject, AKey),
+      TAtlasIdeTrackerWorkingCopies.FolderOf(AProject), ABranch, TAtlasIdeSettings.Current.IssuesBranchBase,
+      not AAbandoned);
   end;
   FContext.Notice := TAtlasIssuesNotice.Create(AProject,
     TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesEnded, [AKey]),
@@ -917,7 +918,7 @@ begin
     TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest);
   // Titel des Issues für den Pull Request (#2136).
   mInput.Title := mIssue.Title;
-  FServices.Sync.EndIssue(AProvider, ATarget, mInput,
+  FServices.Tracking.Sync.EndIssue(AProvider, ATarget, mInput,
     procedure(AChange: TAtlasTrackerWrite)
     begin
       if mKeep <> nil then
@@ -972,7 +973,7 @@ begin
       TAtlasTrackerIssueWorkLink.BeforeEnd(mProject, mBranch, mCurrent);
       // Tracker nachführen (#1266): Dialog statt Rückfrage; ohne issues.syncState wie bisher.
       mProvider := FContext.ProviderOf(mTarget.Provider);
-      if (FServices.Sync <> nil) and FServices.Sync.Enabled(mProvider, mTarget) then
+      if (FServices.Tracking.Sync <> nil) and FServices.Tracking.Sync.Enabled(mProvider, mTarget) then
       begin
         EndWithTracker(mProject, mBranch, mCurrent.Key, mProvider, mTarget, mState);
       end

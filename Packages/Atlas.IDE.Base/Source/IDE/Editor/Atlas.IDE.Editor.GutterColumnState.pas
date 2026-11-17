@@ -131,6 +131,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
   Atlas.IDE.Foundation.EditorWindows,
@@ -431,7 +432,7 @@ begin
   // Marken folgen ihrer Zeile sofort (#1818): die Zuordnung, die der Zeichner der Befunde angemeldet hat.
   mStore := TAtlasProblemsController.Current;
   mTracked := nil;
-  if (mStore <> nil) and TAtlasIdeSettings.TrackLinesOn then
+  if (mStore <> nil) and TAtlasIdeEditorSettings.TrackLinesOn then
   begin
     mTracked := TAtlasIdeLineTracker.Current(AFileName, TAtlasLineTracking.cProblems, mStore.Stamp(AFileName));
   end;

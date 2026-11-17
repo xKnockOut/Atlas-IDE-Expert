@@ -211,7 +211,7 @@ end;
 procedure TAtlasIdeIssuesStatus.Inactive;
 begin
   Remove;
-  FServices.SyncTime('', '', '');
+  FServices.Tracking.SyncTime('', '', '');
   FPrefix := '';
   // Beim Entladen (Stop) bleibt das Präfix, damit der Hook außerhalb der IDE weiter gilt.
   if FContext.Started then
@@ -498,10 +498,10 @@ begin
   if not mData.Active.Active then
   begin
     Remove;
-    FServices.SyncTime('', '', '');
+    FServices.Tracking.SyncTime('', '', '');
     Exit;
   end;
-  FServices.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
+  FServices.Tracking.SyncTime(mProject, mData.Active.Key, StateOf(mData.Items, mData.Active.Key));
   EnsureLine;
   mText := TAtlasMyIssuesStrings.Fmt(TAtlasMyIssuesTextId.WelcomeIssuesStatusLine,
     [Trim(mData.Active.Key + ' ' + mData.Active.Title)]);

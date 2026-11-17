@@ -143,7 +143,7 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorRefresh;
 
 type
@@ -474,7 +474,7 @@ end;
 function TAtlasIdeGutterColumn.Active: Boolean;
 begin
   Result := (FIndex >= 0) and not TAtlasGuard.Disabled(TAtlasFeature.GutterColumn) and
-    TAtlasIdeSettings.GutterColumnOn;
+    TAtlasIdeEditorSettings.GutterColumnOn;
 end;
 
 procedure TAtlasIdeGutterColumn.EnsureColumn;

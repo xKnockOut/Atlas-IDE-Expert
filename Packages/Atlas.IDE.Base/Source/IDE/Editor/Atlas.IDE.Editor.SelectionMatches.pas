@@ -107,7 +107,7 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
@@ -268,7 +268,7 @@ var
 begin
   ATerm := '';
   AView := nil;
-  if TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3) and
+  if TAtlasIdeEditorSettings.SelectionMatchesOn(AOptions, mNavigateF3) and
     not TAtlasGuard.Disabled(TAtlasFeature.SelectionMatches) then
   begin
     AView := TAtlasEditorBuffer.ActiveView;

@@ -125,7 +125,7 @@ uses
   Atlas.Core.Editor.LineTail,
   Atlas.Core.Editor.Elements,
   Atlas.UI.Editor.Strings,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -289,7 +289,7 @@ var
 begin
   mView := nil;
   mBadge := False;
-  if TAtlasIdeSettings.ExitPointsOn(mExceptions, mLoops, mBadge) and
+  if TAtlasIdeEditorSettings.ExitPointsOn(mExceptions, mLoops, mBadge) and
     not TAtlasGuard.Disabled(TAtlasFeature.ExitPoints) then
   begin
     mView := TAtlasEditorBuffer.ActiveView;
