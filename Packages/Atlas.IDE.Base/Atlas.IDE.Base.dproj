@@ -126,6 +126,7 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Crashes.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.CrashCases.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Framing.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.BackgroundRequest.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
@@ -814,6 +815,8 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DockWindow.pas"/>
         <DCCReference Include="Source\IDE\ElementHelp\Atlas.IDE.ElementHelp.Keys.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarHost.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarPlacement.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorWindows.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBarDock.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Recording.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.VcsQueries.pas"/>
@@ -913,13 +916,16 @@
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.NavigationToolbar.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.NavigationOption.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.NavigationHiding.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.Breadcrumbs.pas"/>
+        <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.CrumbProbe.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.StickyScroll.pas"/>
         <DCCReference Include="Source\IDE\Outline\Atlas.IDE.Outline.StickyPaint.pas"/>
         <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Contract.pas"/>
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Sources.pas"/>
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Center.pas"/>
+        <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Listeners.pas"/>
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="Source\Core\Notifications\Atlas.Core.Notifications.MessageSink.pas"/>
         <DCCReference Include="Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>

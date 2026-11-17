@@ -29,7 +29,8 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session.Json,
   Atlas.Core.Lsp.Session.Base,
-  Atlas.Core.Lsp.Session.Requests;
+  Atlas.Core.Lsp.Session.Requests,
+  Atlas.Core.Lsp.Framing;
 
 /// <summary>Methode und Parameter der gerahmten Nachricht ABytes.</summary>
 function MessageOf(const ABytes: TBytes; out AId: Integer; out AParams: string): string;
@@ -69,7 +70,7 @@ begin
       ASeen.Add(Method + ' ' + Params);
       if Id > 0 then
       begin
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}', [Id, AAnswer]));
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}', [Id, AAnswer]));
         mClient.Receive(Reply, Length(Reply));
       end;
     end);

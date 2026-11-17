@@ -73,7 +73,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.History,
-  Atlas.UI.Search.Bar;
+  Atlas.UI.Search.Bar,
+  Atlas.UI.Search.BarParts;
 
 function NewHost: TForm;
 begin

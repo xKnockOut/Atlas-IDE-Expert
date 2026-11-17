@@ -140,7 +140,7 @@ uses
   Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -404,7 +404,7 @@ var
   mEditor: TWinControl;
 begin
   Result := nil;
-  mEditor := TAtlasEditorBarHost.TopEditor;
+  mEditor := TAtlasIdeEditorWindows.TopEditor;
   if (mEditor <> nil) and (mEditor.Parent <> nil) then
   begin
     Result := mEditor.Parent;

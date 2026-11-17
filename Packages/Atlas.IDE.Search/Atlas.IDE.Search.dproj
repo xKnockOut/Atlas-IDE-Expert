@@ -133,6 +133,8 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
+        <DCCReference Include="Source\UI\Search\Atlas.UI.Search.BarParts.pas"/>
+        <DCCReference Include="Source\UI\Search\Atlas.UI.Search.BarFields.pas"/>
         <DCCReference Include="Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas">
             <Form>AtlasSearchReplaceFrame</Form>
             <FormType>dfm</FormType>
