@@ -35,7 +35,8 @@ uses
   System.DateUtils,
   System.StrUtils,
   Atlas.Common.Mcp.Paths,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Text.Timestamps;
 
 {$SCOPEDENUMS ON}
 
@@ -152,7 +153,7 @@ begin
     ABuild.Platform := mRoot.GetValue<string>('platform', '');
     ABuild.Success := mRoot.GetValue<Boolean>('success', False);
     ABuild.DurationMs := mRoot.GetValue<Int64>('durationMs', 0);
-    ABuild.FinishedAt := ISO8601ToDate(mRoot.GetValue<string>('finishedAt', '2000-01-01T00:00:00'), False);
+    ABuild.FinishedAt := TTextTimestamp.IsoOrZero(mRoot.GetValue<string>('finishedAt', ''), False);
     ABuild.RequestedBy := mRoot.GetValue<string>('requestedBy', '');
     if mRoot.TryGetValue<TJSONArray>('messages', mItems) then
     begin

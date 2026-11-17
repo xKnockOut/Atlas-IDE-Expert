@@ -255,7 +255,7 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
     begin
-      ShowFailedRun(GExplorer, mProject);
+      GExplorer.ShowFailedRun(mProject);
     end);
   if (mFocus <> 0) and IsWindow(mFocus) and (GetFocus <> mFocus) then
   begin

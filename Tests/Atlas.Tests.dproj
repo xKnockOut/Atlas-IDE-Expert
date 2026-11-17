@@ -1264,7 +1264,9 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Workflow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TimeLog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TimeClock.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.TimeStore.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TimeLog.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.TimeStore.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\Core\Tracker\Atlas.Core.Tracker.Links.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Links.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tracker\Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas"/>
@@ -1456,6 +1458,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Series.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitScans.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.UnitScans.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Flaky.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Flaky.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas"/>
@@ -2124,6 +2128,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MultiCursor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedEditing.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedEditing.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.EditSurface.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedSession.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.EditSurfaceFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedSession.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartPaste.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SmartPaste.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartIndent.pas"/>

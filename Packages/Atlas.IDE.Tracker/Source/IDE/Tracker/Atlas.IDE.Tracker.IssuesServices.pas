@@ -504,7 +504,7 @@ begin
       Result := '';
       if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
       begin
-        Result := TAtlasIdeTrackerIssueTime.Text(mLink.Services.FTime, AKey);
+        Result := mLink.Services.FTime.TimeText(AKey);
       end;
     end;
   // Zeit im Beenden-Dialog (#2123).
@@ -514,7 +514,7 @@ begin
       Result := 0;
       if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
       begin
-        Result := TAtlasIdeTrackerIssueTime.Seconds(mLink.Services.FTime, AKey);
+        Result := mLink.Services.FTime.Seconds(AKey);
       end;
     end;
   ALink.Services.FSync.TimeBooked :=
@@ -522,7 +522,7 @@ begin
     begin
       if (mLink.Keep <> nil) and (mLink.Services.FTime <> nil) then
       begin
-        TAtlasIdeTrackerIssueTime.Booked(mLink.Services.FTime, AKey, ASeconds);
+        mLink.Services.FTime.Booked(AKey, ASeconds);
       end;
     end;
 end;

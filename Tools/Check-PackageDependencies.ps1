@@ -73,6 +73,8 @@
     TTextTimestamp in Atlas.Text.Timestamps; außerhalb dieser Unit ruft kein
     Quelltext in Packages und Application TryEncodeDate, TryEncodeTime oder
     TryEncodeDateTime auf. Ausnahmen mit Grund in $AllowedTimestampLocal.
+    Ebenso ruft dort niemand ISO8601ToDate auf (wirft je nach Text und Compiler
+    verschiedene Klassen); ISO 8601 liest TTextTimestamp.TryParseIso/IsoOrZero.
 
     Rollenmatrix: Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
@@ -1284,7 +1286,7 @@ foreach ($folder in @('Packages', 'Application')) {
         $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
         if ($ownUnit -eq $TimestampHome -or $AllowedTimestampLocal.ContainsKey($ownUnit)) { continue }
         $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
-        foreach ($match in [regex]::Matches($text, '(?i)\bTryEncode(?:DateTime|Date|Time)\s*\(')) {
+        foreach ($match in [regex]::Matches($text, '(?i)\b(?:TryEncode(?:DateTime|Date|Time)|ISO8601ToDate)\s*\(')) {
             $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
             $line = ($text.Substring(0, $match.Index) -split "`n").Count
             $call = ($match.Value -replace '[\s(]', '')

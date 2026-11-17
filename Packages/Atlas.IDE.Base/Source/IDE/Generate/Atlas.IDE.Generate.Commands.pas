@@ -88,7 +88,8 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Editor.WorkspacePlan;
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.IDE.Foundation.Caret;
 
 const
   // Wie die Code-Aktionen: Der Server darf etwas rechnen (Vorfahren, Index).
@@ -101,22 +102,6 @@ begin
   begin
     Result := ALines[AIndex];
   end;
-end;
-
-/// <summary>Caret des Editors in Bildschirmkoordinaten; False ohne Caret.</summary>
-function CaretRect(out ARect: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(mInfo.hwndCaret, 0, ARect, 2);
 end;
 
 { TAtlasIdeGenerate }
@@ -521,8 +506,9 @@ end;
 procedure ShowMenuWindow(AWindow: TAtlasGenerateWindow);
 var
   mCaret, mArea: TRect;
+  mCaretWindow: HWND;
 begin
-  if CaretRect(mCaret) then
+  if TAtlasIdeCaret.TryFind(mCaretWindow, mCaret) then
   begin
     AWindow.ShowAt(mCaret);
     Exit;
