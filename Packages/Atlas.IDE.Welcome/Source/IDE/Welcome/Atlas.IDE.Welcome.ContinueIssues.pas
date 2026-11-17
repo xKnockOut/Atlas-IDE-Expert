@@ -30,7 +30,7 @@ uses
   Atlas.IDE.Contracts.IssueWork,
   Atlas.UI.Welcome.ContinueIssues,
   Atlas.IDE.Welcome.Continue.Editor,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeContinueIssues = class(TInterfacedObject, IAtlasContinueIssuesSource)
@@ -87,6 +87,7 @@ uses
   System.UITypes,
   System.DateUtils,
   Vcl.Dialogs,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.VersionControl.Contract,

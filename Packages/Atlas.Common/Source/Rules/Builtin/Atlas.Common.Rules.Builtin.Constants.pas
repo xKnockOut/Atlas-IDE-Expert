@@ -1506,13 +1506,8 @@ end;
 procedure TDefaultParameterInvalidScan.EnsureResolver;
 begin
   // Erst hier die Namensauflösung: Die meisten Dateien haben keinen Standardwert mit eigenem Typ.
-  if FResolver = nil then
-  begin
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    FCache := TRuleDerived.Open(FContext);
-    FResolver := TRuleDerived.Resolver(FCache, FContext);
-    FResolver.PinTree(FContext.Tree, FFileName);
-  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  TRuleDerived.EnsurePinnedResolver(FCache, FResolver, FContext, FFileName);
 end;
 
 /// <summary>Typ eines Parameters mit Standardwert; eingebaute einfache Typen (string, Integer …) brauchen

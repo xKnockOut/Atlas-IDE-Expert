@@ -292,6 +292,8 @@ type
     property BlockEndLabelsMinLines: Integer read FEditorTyping.BlockEndLabelsMinLines
       write FEditorTyping.BlockEndLabelsMinLines;
     property DimUnusedUses: Boolean read FEditorTyping.DimUnusedUses write FEditorTyping.DimUnusedUses;
+    property HighlightMovableUses: Boolean read FEditorTyping.HighlightMovableUses
+      write FEditorTyping.HighlightMovableUses;
     property RecursionMarkers: Boolean read FEditorTyping.RecursionMarkers write FEditorTyping.RecursionMarkers;
     property RecursionMarkersDepth: Integer read FEditorTyping.RecursionMarkersDepth
       write FEditorTyping.RecursionMarkersDepth;

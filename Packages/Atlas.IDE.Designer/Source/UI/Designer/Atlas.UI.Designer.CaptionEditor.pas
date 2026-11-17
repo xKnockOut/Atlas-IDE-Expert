@@ -9,10 +9,10 @@
 // Umschalt+Enter fügt bei mehrzeiligen Captions einen Zeilenumbruch ein. Ein
 // Klick daneben übernimmt. Tastenkürzel der IDE greifen während der Eingabe
 // nicht (IsShortCut); Strg+A/C/X/V/Z bedient das Feld selbst.
-// Basis ist TAtlasDialog (Abo beim Themendienst): Bei einem Wechsel des
-// IDE-Themas holt das Feld Akzent und Grund neu. Rahmen und Feld zeichnet
-// nicht der VCL-Stil, sondern die Farben der Palette (StyleElements leer),
-// damit der Akzentrahmen sichtbar bleibt.
+// Basis ist TAtlasPopupForm (ohne Rahmen, Abo beim Themendienst): Bei einem
+// Wechsel des IDE-Themas holt das Feld Akzent und Grund neu. Rahmen und Feld
+// zeichnet nicht der VCL-Stil, sondern die Farben der Palette (StyleElements
+// leer), damit der Akzentrahmen sichtbar bleibt.
 
 interface
 
@@ -36,13 +36,12 @@ type
 
   TAtlasCaptionDone = reference to procedure(AEnd: TAtlasCaptionEnd; const AText: string);
 
-  TAtlasCaptionEditor = class(TAtlasDialog)
+  TAtlasCaptionEditor = class(TAtlasPopupForm)
   private const
     cBorder = 2;
     cPadding = 12;
   private
     FMemo: TMemo;
-    FColors: TAtlasColors;
     FOnDone: TAtlasCaptionDone;
     FOwnerWindow: HWND;
     FMultiLine: Boolean;
@@ -59,7 +58,8 @@ type
     procedure EditKey(AKey: Word);
   protected
     procedure CreateParams(var Params: TCreateParams); override;
-    procedure ThemeChanged; override;
+    /// <summary>Akzent und Grund des neuen Themas.</summary>
+    procedure ColorsChanged; override;
   public
     /// <summary>AOwnerWindow: Hauptfenster der IDE.</summary>
     constructor CreateEditor(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
@@ -67,7 +67,6 @@ type
     /// <summary>Über AScreen (Bildschirm) öffnen; AOnDone meldet das Ende genau einmal.</summary>
     procedure Open(const AScreen: TRect; AFont: TFont; AAlignment: TAlignment; const AText: string;
       AMultiLine: Boolean; const AOnDone: TAtlasCaptionDone);
-    procedure ApplyColors(const AColors: TAtlasColors);
     property Memo: TMemo read FMemo;
   end;
 
@@ -75,18 +74,17 @@ implementation
 
 uses
   System.Math,
-  Atlas.Core.Designer.InlineCaption,
-  Atlas.UI.Foundation.Theme;
+  Atlas.Core.Designer.InlineCaption;
 
 { TAtlasCaptionEditor }
 
 constructor TAtlasCaptionEditor.CreateEditor(AOwner: TComponent; AOwnerWindow: HWND; const AColors: TAtlasColors);
 begin
   FOwnerWindow := AOwnerWindow;
-  inherited CreateDialog(AOwner, '', 0);
-  BorderStyle := bsNone;
-  // Lage setzt Open über dem Text der Komponente; nicht mittig über der IDE.
-  Position := poDesigned;
+  // Lage setzt Open über dem Text der Komponente.
+  inherited CreatePopup(AOwner, AColors);
+  // Das Feld zeichnet Windows, nicht das Fenster: ohne Puffer wie ein gewöhnliches Eingabefeld.
+  DoubleBuffered := False;
   StyleElements := [];
   Padding.SetBounds(cBorder, cBorder, cBorder, cBorder);
   FMemo := TMemo.Create(Self);
@@ -102,7 +100,7 @@ begin
   FMemo.OnKeyPress := MemoKeyPress;
   FMemo.OnChange := MemoChange;
   OnDeactivate := FormDeactivate;
-  ApplyColors(AColors);
+  ColorsChanged;
 end;
 
 procedure TAtlasCaptionEditor.CreateParams(var Params: TCreateParams);
@@ -110,15 +108,19 @@ begin
   inherited;
   Params.Style := WS_POPUP;
   Params.ExStyle := Params.ExStyle or WS_EX_TOOLWINDOW;
+  // Liegt bündig über dem Text der Komponente: ohne den Schatten der Popups.
+  Params.WindowClass.Style := Params.WindowClass.Style and not CS_DROPSHADOW;
   if FOwnerWindow <> 0 then
   begin
     Params.WndParent := FOwnerWindow;
   end;
 end;
 
-procedure TAtlasCaptionEditor.ThemeChanged;
+procedure TAtlasCaptionEditor.ColorsChanged;
 begin
-  ApplyColors(TAtlasUiTheme.Colors);
+  // Der Akzent als Grund des Fensters ist der Rahmen um das Feld (Padding).
+  Color := TColor(Colors.Accent);
+  FMemo.Color := TColor(Colors.Surface);
 end;
 
 function TAtlasCaptionEditor.IsShortCut(var Message: TWMKey): Boolean;
@@ -277,22 +279,8 @@ begin
   SetBounds(AScreen.Left - cBorder, AScreen.Top - cBorder, FMinWidth, FMinHeight);
   Grow;
   Show;
-  // Das Thema beim ersten Zeigen setzt Farben und Schrift an der Wurzel und den Kindern: Akzentrahmen und Grund
-  // wieder aus der Palette, die Schrift wieder die der Komponente.
-  ApplyColors(FColors);
-  if AFont <> nil then
-  begin
-    FMemo.Font.Assign(AFont);
-  end;
   FMemo.SetFocus;
   FMemo.SelectAll;
-end;
-
-procedure TAtlasCaptionEditor.ApplyColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Color := TColor(AColors.Accent);
-  FMemo.Color := TColor(AColors.Surface);
 end;
 
 end.

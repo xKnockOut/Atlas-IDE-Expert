@@ -452,13 +452,8 @@ end;
 
 procedure TNarrowingAssignmentScan.EnsureResolver;
 begin
-  if FResolver = nil then
-  begin
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    FCache := TRuleDerived.Open(FContext);
-    FResolver := TRuleDerived.Resolver(FCache, FContext);
-    FResolver.PinTree(FContext.Tree, FFileName);
-  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  TRuleDerived.EnsurePinnedResolver(FCache, FResolver, FContext, FFileName);
 end;
 
 /// <summary>Einheitlicher Name des Typs ATypeName; eigene Aliase über den aufgelösten Typ
@@ -1209,13 +1204,8 @@ end;
 
 procedure TStringLengthLimitScan.EnsureResolver;
 begin
-  if FResolver = nil then
-  begin
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    FCache := TRuleDerived.Open(FContext);
-    FResolver := TRuleDerived.Resolver(FCache, FContext);
-    FResolver.PinTree(FContext.Tree, FFileName);
-  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  TRuleDerived.EnsurePinnedResolver(FCache, FResolver, FContext, FFileName);
 end;
 
 /// <summary>Typknoten string[Ausdruck] aus dem Baum: N über die Konstantenwerte (auch string[Laenge]); 0 bei

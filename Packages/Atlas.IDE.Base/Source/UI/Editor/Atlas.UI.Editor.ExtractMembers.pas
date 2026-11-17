@@ -53,8 +53,7 @@ type
     FFitted: Boolean;
     function AddButton(AParent: TWinControl; const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabeled(AParent: TWinControl; const ACaption: string; ATop: Integer; AControl: TWinControl): Integer;
-    /// <summary>Spalten nach Inhalt; Fenster bis zum Inhalt vergrößern, höchstens cMaxScreenShare des
-    /// Arbeitsbereichs.</summary>
+    /// <summary>Spalten nach Inhalt; Fenster bis zum Inhalt vergrößern, höchstens MaxInitialSize.</summary>
     procedure FitToContent;
     /// <summary>Knöpfe, Hinweise des Servers und Fehlerzeile unten.</summary>
     procedure CreateFooter;
@@ -133,8 +132,6 @@ const
   cCheckMark = 16;
   /// <summary>Anfangs so viele Zeilen der Liste sichtbar.</summary>
   cInitialRows = 16;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
 
 function OwnUnitCaption(AModel: TAtlasClassExtractionModel): string;
 begin
@@ -322,7 +319,8 @@ end;
 
 procedure TAtlasExtractMembersDialog.FitToContent;
 var
-  mArea, mRow: TRect;
+  mRow: TRect;
+  mLimit: TSize;
   mWidth, mHeight, mIndex, mRowHeight, mRows: Integer;
 begin
   if FFitted or (FList.Items.Count = 0) then
@@ -330,7 +328,7 @@ begin
     Exit;
   end;
   FFitted := True;
-  mArea := MainFormWorkArea;
+  mLimit := MaxInitialSize;
   FList.FillColumn(cColumnReason, cReasonWidth);
   FList.FitColumnsToContent(cColumnMaxWidth);
   // Alle Spalten samt ganzem Grund, Rand der Liste und senkrechte Rollleiste.
@@ -352,8 +350,8 @@ begin
   mRows := Min(FList.Items.Count, cInitialRows);
   // Kopfzeile der Liste etwa so hoch wie eine Zeile, dazu ihr Rahmen.
   mHeight := ClientHeight - FList.Height + (mRows + 2) * mRowHeight;
-  ClientWidth := Max(ClientWidth, Min(mWidth, mArea.Width * cMaxScreenShare div 100));
-  ClientHeight := Max(ClientHeight, Min(mHeight, mArea.Height * cMaxScreenShare div 100));
+  ClientWidth := Max(ClientWidth, Min(mWidth, mLimit.cx));
+  ClientHeight := Max(ClientHeight, Min(mHeight, mLimit.cy));
 end;
 
 procedure TAtlasExtractMembersDialog.DoShow;

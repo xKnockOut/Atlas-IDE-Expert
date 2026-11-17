@@ -402,18 +402,8 @@ begin
 end;
 
 function TTypeRestrictionViolatedScan.NameRange(AHeader: TSyntaxNode): TTextRange;
-var
-  mAt: Integer;
 begin
-  mAt := NameToken(FTokens, AHeader);
-  if mAt >= 0 then
-  begin
-    Result := TokenRange(FTokens[mAt]);
-  end
-  else
-  begin
-    Result := NodeRange(AHeader);
-  end;
+  Result := HeaderNameRange(FTokens, AHeader);
 end;
 
 function TTypeRestrictionViolatedScan.KeywordRange(ANode: TSyntaxNode): TTextRange;

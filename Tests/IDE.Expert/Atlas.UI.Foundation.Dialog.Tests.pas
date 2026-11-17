@@ -4,7 +4,11 @@
 // Themendienst bis zum Freigeben, Thema beim Zeigen und bei jedem Wechsel,
 // Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
 // Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
-// in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas.
+// in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas,
+// das IDE-Thema an den Steuerelementen nur mit ThemedControls. Ohne Breite
+// legt CreateDialog kein Fenster an, CreatePopup nie: Nachfahren sehen in
+// CreateWnd und Resize ein fertiges Objekt. Mit PaintsAll löscht das Fenster
+// seinen Hintergrund nie (kein Flackern), holt ein Kind ihn aber weiter.
 // MainFormWorkArea: ohne Hauptfenster die Arbeitsfläche des Hauptmonitors.
 
 interface
@@ -22,6 +26,8 @@ type
     procedure TearDown;
     [Test]
     procedure CreateDialogSetsDefaults;
+    [Test]
+    procedure CreateDialogWithoutWidthHasNoWindow;
     [Test]
     procedure SubscribedUntilFreed;
     [Test]
@@ -41,12 +47,20 @@ type
     [Test]
     procedure PopupFormFollowsTheme;
     [Test]
+    procedure PopupFormHasNoWindow;
+    [Test]
+    procedure PopupFormThemesControlsOnRequest;
+    [Test]
+    procedure PopupFormPaintsAllKeepsBackground;
+    [Test]
     procedure WorkAreaWithoutMainForm;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Messages,
   System.SysUtils,
   System.Types,
   System.Classes,
@@ -125,6 +139,20 @@ begin
     Assert.AreEqual<TPosition>(poMainFormCenter, mDialog.Position);
     Assert.AreEqual(string(TAtlasUiTheme.cFontName), string(mDialog.Font.Name));
     Assert.AreEqual(mDialog.ScaleValue(400), mDialog.ClientWidth);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.CreateDialogWithoutWidthHasNoWindow;
+var
+  mDialog: TAtlasDialog;
+begin
+  // Breite 0: Der Dialog setzt sie selbst; ClientWidth würde das Fenster vor dem Konstruktor des Nachfahren anlegen.
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 0);
+  try
+    Assert.IsFalse(mDialog.HandleAllocated, 'Fenster nach CreateDialog');
+    Assert.AreEqual<TFormBorderStyle>(bsDialog, mDialog.BorderStyle);
   finally
     mDialog.Free;
   end;
@@ -331,6 +359,95 @@ begin
     Assert.AreEqual(1, mPopup.ColorsCount);
     Assert.AreEqual(Cardinal(TAtlasColors.Dark.Surface), Cardinal(mPopup.SurfaceSeen), 'Farben vor ColorsChanged');
     Assert.AreEqual(Integer(TColor(TAtlasColors.Dark.Surface)), Integer(mPopup.Color));
+  finally
+    mPopup.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormHasNoWindow;
+var
+  mPopup: TAtlasPopupForm;
+begin
+  mPopup := TAtlasPopupForm.CreatePopup(nil, TAtlasColors.Light);
+  try
+    Assert.IsFalse(mPopup.HandleAllocated, 'Fenster nach CreatePopup');
+    Assert.AreEqual<TFormBorderStyle>(bsNone, mPopup.BorderStyle);
+  finally
+    mPopup.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormThemesControlsOnRequest;
+var
+  mPopup: TProbePopup;
+  mApplied: Integer;
+begin
+  mApplied := 0;
+  TAtlasUiTheme.Install(nil,
+    procedure(AControl: TWinControl)
+    begin
+      Inc(mApplied);
+    end, nil);
+  mPopup := TProbePopup.CreatePopup(nil, TAtlasColors.Light);
+  try
+    // Ohne ThemedControls zeichnet das Fenster alles selbst: kein VCL-Stil.
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(0, mApplied, 'ohne ThemedControls');
+    Assert.AreEqual(1, mPopup.ColorsCount);
+    mPopup.ThemedControls := True;
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(1, mApplied, 'mit ThemedControls');
+    Assert.AreEqual(2, mPopup.ColorsCount);
+  finally
+    mPopup.Free;
+  end;
+end;
+
+function EraseProbe(APopup: TAtlasPopupForm; AFromChild: Boolean): TColor;
+var
+  mBitmap: TBitmap;
+  mDC: HDC;
+  mFrom: LPARAM;
+begin
+  // Rot vorbelegen und löschen lassen: Rot bleibt nur, wenn das Fenster nichts füllt.
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.PixelFormat := pf24bit;
+    mBitmap.SetSize(4, 4);
+    mBitmap.Canvas.Brush.Color := clRed;
+    mBitmap.Canvas.FillRect(Rect(0, 0, 4, 4));
+    mDC := mBitmap.Canvas.Handle;
+    mFrom := 0;
+    if AFromChild then
+    begin
+      mFrom := LPARAM(mDC);
+    end;
+    APopup.Perform(WM_ERASEBKGND, WPARAM(mDC), mFrom);
+    Result := mBitmap.Canvas.Pixels[0, 0];
+  finally
+    mBitmap.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormPaintsAllKeepsBackground;
+var
+  mPopup: TAtlasPopupForm;
+begin
+  mPopup := TAtlasPopupForm.CreatePopup(nil, TAtlasColors.Dark);
+  try
+    // Ohne Doppelpuffer füllt die VCL beim Löschen wie der Stil der IDE.
+    mPopup.DoubleBuffered := False;
+    mPopup.SetBounds(0, 0, 40, 40);
+    mPopup.HandleNeeded;
+    Assert.IsFalse(mPopup.PaintsAll, 'Vorgabe');
+    Assert.IsFalse(csOpaque in mPopup.ControlStyle, 'Vorgabe csOpaque');
+    Assert.AreNotEqual(Integer(clRed), Integer(EraseProbe(mPopup, False)), 'ohne PaintsAll gelöscht');
+    mPopup.PaintsAll := True;
+    Assert.IsTrue(csOpaque in mPopup.ControlStyle, 'Invalidate ohne Löschen');
+    Assert.AreEqual(Integer(clRed), Integer(EraseProbe(mPopup, False)), 'mit PaintsAll nie gelöscht');
+    Assert.AreNotEqual(Integer(clRed), Integer(EraseProbe(mPopup, True)), 'Hintergrund für ein Kind');
+    mPopup.PaintsAll := False;
+    Assert.IsFalse(csOpaque in mPopup.ControlStyle, 'wieder aus');
   finally
     mPopup.Free;
   end;

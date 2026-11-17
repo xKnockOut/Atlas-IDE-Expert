@@ -8,8 +8,9 @@
 // der Statusleiste, nimmt den Fokus (eigene Knöpfe) und schließt mit Esc oder
 // einem Klick daneben. Es zeigt, was SetItems bekommt; neue Zeilen brauchen
 // hier keine Änderung.
-// Basis ist TAtlasDialog: Dialogschrift, IDE-Thema an den Knöpfen und neue
-// Farben bei jedem Themenwechsel, solange das Fenster offen ist.
+// Basis ist TAtlasPopupForm: ohne Rahmen, mit Schatten und Dialogschrift,
+// IDE-Thema an den Knöpfen (ThemedControls) und neue Farben bei jedem
+// Themenwechsel, solange das Fenster offen ist.
 
 interface
 
@@ -28,9 +29,8 @@ uses
   Atlas.UI.Foundation.Dialog;
 
 type
-  TAtlasStatusWindow = class(TAtlasDialog)
+  TAtlasStatusWindow = class(TAtlasPopupForm)
   private
-    FColors: TAtlasColors;
     FItems: TArray<IAtlasStatusItem>;
     FHot: Integer;
     FClosing: Boolean;
@@ -53,13 +53,10 @@ type
     procedure CloseAndRun(const AProc: TProc);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
-    procedure ThemeChanged; override;
   public
     constructor CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Zeilen neu setzen (auch bei offenem Fenster); Größe und Lage folgen.</summary>
@@ -85,7 +82,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Status.Registry,
-  Atlas.UI.Foundation.Theme,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings;
 
@@ -93,16 +89,12 @@ uses
 
 constructor TAtlasStatusWindow.CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
 begin
-  // Breite setzt Layout nach dem Inhalt.
-  inherited CreateDialog(AOwner, '', 0);
-  FColors := AColors;
+  // Größe setzt Layout nach dem Inhalt, die Lage ShowAbove über dem Feld.
+  inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
+  ThemedControls := True;
   FHot := -1;
-  BorderStyle := bsNone;
-  // Lage setzt ShowAbove über dem Feld.
-  Position := poDesigned;
   KeyPreview := True;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
   OnDeactivate := FormDeactivate;
   FLogButton := TButton.Create(Self);
   FLogButton.Parent := Self;
@@ -115,12 +107,6 @@ begin
   Layout;
 end;
 
-procedure TAtlasStatusWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
 procedure TAtlasStatusWindow.Paint;
 var
   mIndex: Integer;
@@ -129,19 +115,19 @@ var
   mText: string;
 begin
   Canvas.Font := Font;
-  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.Brush.Color := ToColor(Colors.Surface);
   Canvas.FillRect(ClientRect);
   // Kopf: Punkt des Gesamtzustands und „Atlas“.
   mPart := Rect(ScaleValue(12), 0, ClientWidth - ScaleValue(8), HeaderHeight);
   DrawDot(Point(mPart.Left + ScaleValue(4), (mPart.Top + mPart.Bottom) div 2), TAtlasStatusSummary.Overall(FItems));
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := ToColor(FColors.Text);
+  Canvas.Font.Color := ToColor(Colors.Text);
   mPart.Left := mPart.Left + ScaleValue(16);
   mText := TAtlasStatusSummary.cFieldCaption;
   DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
   Canvas.Font.Style := [];
-  Canvas.Pen.Color := ToColor(FColors.Line);
+  Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(0, HeaderHeight - ScaleValue(3));
   Canvas.LineTo(ClientWidth, HeaderHeight - ScaleValue(3));
   for mIndex := 0 to High(FItems) do
@@ -151,7 +137,7 @@ begin
     if mIndex = FHot then
     begin
       Canvas.Brush.Style := bsSolid;
-      Canvas.Brush.Color := ToColor(FColors.Selection);
+      Canvas.Brush.Color := ToColor(Colors.Selection);
       Canvas.FillRect(mRow);
     end;
     DrawDot(Point(mRow.Left + ScaleValue(12), (mRow.Top + mRow.Bottom) div 2), mItem.State);
@@ -159,30 +145,23 @@ begin
     mPart := Rect(mRow.Left + ScaleValue(24), mRow.Top, mRow.Right - ScaleValue(4), mRow.Bottom);
     if mItem.HasAction then
     begin
-      Canvas.Font.Color := ToColor(FColors.Accent);
+      Canvas.Font.Color := ToColor(Colors.Accent);
     end
     else
     begin
-      Canvas.Font.Color := ToColor(FColors.Text);
+      Canvas.Font.Color := ToColor(Colors.Text);
     end;
     mText := mItem.Text;
     DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
-  Canvas.Pen.Color := ToColor(FColors.Line);
+  Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(0, ClientHeight - ButtonsHeight);
   Canvas.LineTo(ClientWidth, ClientHeight - ButtonsHeight);
   // Rahmen des Fensters in Akzentfarbe.
   Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Color := ToColor(FColors.Accent);
+  Canvas.Pen.Color := ToColor(Colors.Accent);
   Canvas.Rectangle(ClientRect);
   Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TAtlasStatusWindow.ThemeChanged;
-begin
-  FColors := TAtlasUiTheme.Colors;
-  Color := ToColor(FColors.Surface);
-  Invalidate;
 end;
 
 procedure TAtlasStatusWindow.KeyDown(var Key: Word; Shift: TShiftState);
@@ -313,8 +292,8 @@ var
 begin
   mRadius := ScaleValue(4);
   // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
-  Canvas.Pen.Color := ToColor(FColors.Signals.ForStatus(AState).Ring);
-  Canvas.Brush.Color := ToColor(FColors.Signals.ForStatus(AState).Fill);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(AState).Ring);
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - mRadius, ACenter.Y - mRadius, ACenter.X + mRadius + 1, ACenter.Y + mRadius + 1);
 end;

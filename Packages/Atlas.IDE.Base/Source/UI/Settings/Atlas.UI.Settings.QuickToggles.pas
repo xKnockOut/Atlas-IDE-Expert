@@ -17,8 +17,9 @@
 // offen, Aufklappen schließt die anderen (Akkordeon), höchstens 80 % der
 // Arbeitsfläche hoch; darüber Bildlauf mit Mausrad und Pfeiltasten, rechts ein
 // schmaler Balken.
-// Basis ist TAtlasDialog: Dialogschrift, IDE-Thema am Knopf und neue Farben bei
-// jedem Themenwechsel, solange das Fenster offen ist.
+// Basis ist TAtlasPopupForm: ohne Rahmen, mit Schatten und Dialogschrift,
+// IDE-Thema am Knopf (ThemedControls) und neue Farben bei jedem
+// Themenwechsel, solange das Fenster offen ist.
 // Aufbau: Zeilen und Ein-/Ausklappen in TAtlasQuickToggleRows, Bildlauf in
 // TAtlasQuickToggleScroll, Maße und Zeichnen in Hilfsrecords im
 // Implementationsteil (TToggleGeometry, TTogglePainter).
@@ -97,10 +98,9 @@ type
     AllOff: TProc;
   end;
 
-  TAtlasQuickToggleWindow = class(TAtlasDialog)
+  TAtlasQuickToggleWindow = class(TAtlasPopupForm)
   private
     FScroll: TAtlasQuickToggleScroll;
-    FColors: TAtlasColors;
     FRows: TAtlasQuickToggleRows;
     FAllOff: Boolean;
     FHot: Integer;
@@ -121,15 +121,12 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMDialogKey(var Message: TCMDialogKey); message CM_DIALOGKEY;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Deactivate; override;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
-    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
-    procedure ThemeChanged; override;
   public
     constructor CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
     /// <summary>Schalter und „Alles aus“ neu setzen (auch bei offenem Fenster).</summary>
@@ -163,7 +160,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   System.Math,
   Atlas.Core.Settings.PageNames,
-  Atlas.UI.Foundation.Theme,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Strings;
 
@@ -485,7 +481,7 @@ class function TTogglePainter.Create(AWindow: TAtlasQuickToggleWindow): TToggleP
 begin
   Result.Window := AWindow;
   Result.Canvas := AWindow.Canvas;
-  Result.Colors := AWindow.FColors;
+  Result.Colors := AWindow.Colors;
   Result.Geometry := TToggleGeometry.Create(AWindow);
 end;
 
@@ -693,35 +689,19 @@ end;
 
 constructor TAtlasQuickToggleWindow.CreateToggles(AOwner: TComponent; const AColors: TAtlasColors);
 begin
-  // Breite setzt Layout nach den Zeilen.
-  inherited CreateDialog(AOwner, TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle), 0);
-  FColors := AColors;
+  // Größe setzt Layout nach den Zeilen, die Lage ShowAbove über dem Feld.
+  inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
+  Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle);
+  ThemedControls := True;
   FHot := -1;
   FHotOpen := -1;
-  BorderStyle := bsNone;
-  // Lage setzt ShowAbove über dem Feld.
-  Position := poDesigned;
   KeyPreview := True;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
   FAllButton := TButton.Create(Self);
   FAllButton.Parent := Self;
   FAllButton.OnClick := AllClick;
   FAllButton.TabStop := False;
   SetItems(nil, False);
-end;
-
-procedure TAtlasQuickToggleWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
-procedure TAtlasQuickToggleWindow.ThemeChanged;
-begin
-  FColors := TAtlasUiTheme.Colors;
-  Color := ToColor(FColors.Surface);
-  Invalidate;
 end;
 
 procedure TAtlasQuickToggleWindow.Deactivate;

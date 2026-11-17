@@ -6,6 +6,7 @@
 # Atlas.Text
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
+Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
 Atlas.Text.CommandLine.Tests
 Atlas.Text.DUnitX.Tests
@@ -27,6 +28,7 @@ Atlas.Text.TestResults.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
+Atlas.Text.PascalScan.Tests
 Atlas.Text.Updates.Tests
 Atlas.Text.Uris.Tests
 
@@ -400,6 +402,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
@@ -572,6 +575,7 @@ Atlas.Core.Tests.Mutants.Tests
 Atlas.Core.Tests.MutationShadow.Tests
 Atlas.Core.Tests.MutationResults.Tests
 Atlas.Core.Tests.MutationPlan.Tests
+Atlas.Core.Tests.MutationFlow.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests
@@ -591,6 +595,7 @@ Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
+Atlas.Core.Debug.EvalSlices.Tests
 Atlas.Core.Debug.DialogInput.Tests
 Atlas.Core.Signature.EditorPlan.Tests
 Atlas.Core.CodeInsight.Plan.Tests
@@ -639,6 +644,7 @@ Atlas.Core.Debug.RunToColumnFlow.Tests
 Atlas.Core.Debug.ExceptionDialogFlow.Tests
 Atlas.Core.Debug.AsyncOriginFlow.Tests
 Atlas.Core.Designer.KeptComponents.Tests
+Atlas.Core.Designer.Created.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Abstract.Tests
 Atlas.Common.Rules.Builtin.Inheritance.Tests
 Atlas.Common.Rules.Builtin.XmlDoc.Tests

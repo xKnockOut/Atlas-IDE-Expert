@@ -194,6 +194,7 @@ constructor TAtlasPaletteWindow.CreatePalette(AOwner: TComponent; const ACommand
   AHistory: TAtlasCommandHistory; const AColors: TAtlasColors);
 begin
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   FCommands := ACommands;
   FHistory := AHistory;
   // Eine Stufe größer als die Dialogschrift: Eingabe und Treffer sind der Inhalt der Palette.

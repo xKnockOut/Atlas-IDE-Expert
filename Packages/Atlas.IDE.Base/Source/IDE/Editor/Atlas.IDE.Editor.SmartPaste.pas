@@ -111,7 +111,7 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Vcl.Controls,
+  Atlas.IDE.Editor.CaretPopup,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
@@ -126,28 +126,6 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.SmartIndent;
-
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
-/// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke.</summary>
-function CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
 
 { TAtlasIdeSmartPaste }
 
@@ -198,7 +176,7 @@ begin
   try
     case Msg.message of
       WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
+        if TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) then
         begin
           KeyDown(Msg, Handled);
         end;
@@ -209,7 +187,7 @@ begin
           begin
             FWindow.Dismiss;
           end;
-          if IsEditorWindow(Msg.hwnd) then
+          if TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) then
           begin
             FArmed := True;
           end;
@@ -365,7 +343,7 @@ begin
           end);
       end;
   end;
-  mPoint := CaretPoint;
+  mPoint := TAtlasIdeCaretPopupHooks.CaretPoint;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(AAnalysis, mPoint);

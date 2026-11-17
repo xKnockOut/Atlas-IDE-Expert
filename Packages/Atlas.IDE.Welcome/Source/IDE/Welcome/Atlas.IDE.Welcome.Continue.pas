@@ -22,7 +22,8 @@
 //   Eintrag im Hintergrund beim Anzeigen, höchstens einmal je Minute; fetch nur
 //   mit welcomePage.continue.fetch (5 s, ohne Rückfrage nach Zugangsdaten).
 //   Klick auf einen Commit listet seine Dateien im Fenster „Atlas-Ergebnisse“
-//   (#400); eine eigene Commit-Ansicht hat #571 nicht.
+//   (#400, Atlas.IDE.Welcome.Continue.Commit); eine eigene Commit-Ansicht hat
+//   #571 nicht.
 // - „Fortsetzen“ öffnet das Projekt, dann die Reiter in ihrer Reihenfolge mit
 //   dem Cursor an der letzten Änderung und aktiviert zuletzt den zuvor aktiven
 //   Reiter. Fehlende Dateien werden übersprungen und als Hinweis im Bereich und
@@ -57,7 +58,7 @@ uses
   Atlas.UI.Welcome.Continue,
   Atlas.IDE.Welcome.Continue.Editor,
   Atlas.IDE.Welcome.ContinueIssues,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Was die Komposition dem Bereich mitgibt.</summary>
@@ -186,21 +187,21 @@ implementation
 uses
   Winapi.Windows,
   System.DateUtils,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Results.Model,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
-  Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Contracts.VersionControl,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Welcome.Neighbors,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Projects.Summaries,
-  Atlas.IDE.Welcome.Continue.Saved;
+  Atlas.IDE.Welcome.Continue.Saved,
+  Atlas.IDE.Welcome.Continue.Commit;
 
 type
   /// <summary>Eine HEAD-Abfrage im Hintergrund: Ziel, normierter Schlüssel, Ordner der Zusammenfassungen,
@@ -535,58 +536,6 @@ begin
   begin
     Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMissing,
       [TAtlasContinueSession.MissingNames(AMissing)]);
-  end;
-end;
-
-/// <summary>Einträge für „Atlas-Ergebnisse“: die Dateien des Commits, die eigenen zuerst.</summary>
-function CommitEntries(const ACommit: TAtlasContinueCommit; const AFiles: TArray<string>): TArray<TAtlasResultEntry>;
-var
-  mFileName: string;
-  mEntry: TAtlasResultEntry;
-begin
-  Result := nil;
-  for mFileName in TAtlasContinueSession.OwnFirst(ACommit.Files, AFiles) do
-  begin
-    mEntry := TAtlasResultEntry.Create(mFileName, 0, 0);
-    mEntry.Text := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitFile,
-      [ACommit.Commit.ShortHash]);
-    Result := Result + [mEntry];
-  end;
-end;
-
-procedure ShowCommitEntries(const ACommit: TAtlasContinueCommit; const AEntries: TArray<TAtlasResultEntry>);
-var
-  mCommit: TAtlasContinueCommit;
-  mEntries: TArray<TAtlasResultEntry>;
-begin
-  mCommit := ACommit;
-  mEntries := AEntries;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
-    procedure
-    begin
-      TAtlasIdeResultsWindow.ShowEntries(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitTitle,
-        [mCommit.Commit.ShortHash, mCommit.Commit.Summary, mCommit.Commit.Author, Length(mEntries)]), mEntries);
-    end);
-end;
-
-/// <summary>Im Hintergrund: Dateien des Commits AHash beim Anbieter im Ordner ADir.</summary>
-function CommitFiles(const ADir, AHash: string; out AFiles: TArray<string>): TAtlasVcsOutcome;
-var
-  mLocal: IAtlasVcsLocalWork;
-  mChanges: TArray<TAtlasVcsChange>;
-  mChange: TAtlasVcsChange;
-begin
-  AFiles := nil;
-  Result := TAtlasVcsOutcome.Failed;
-  if not Supports(TAtlasIdeVcs.ForFolder(ADir, TAtlasWelcomeContinue.cFetchTimeoutMs), IAtlasVcsLocalWork,
-    mLocal) then
-  begin
-    Exit;
-  end;
-  Result := mLocal.ChangesIn(AHash, mChanges);
-  for mChange in mChanges do
-  begin
-    AFiles := AFiles + [mChange.Path];
   end;
 end;
 
@@ -1133,41 +1082,13 @@ end;
 procedure TAtlasIdeContinue.ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
 var
   mKeep: IAtlasContinueSource;
-  mCommit: TAtlasContinueCommit;
-  mDir: string;
-  mFiles: TArray<string>;
-  mOutcome: TAtlasVcsOutcome;
 begin
-  mCommit := ACommit;
-  if Length(mCommit.Commit.Files) > 0 then
-  begin
-    ShowCommitEntries(mCommit, CommitEntries(mCommit, mCommit.Commit.Files));
-    Exit;
-  end;
-  // Ohne Dateiliste (z. B. Merge): beim Anbieter nachfragen.
   mKeep := Self;
-  mDir := ExtractFileDir(AProject);
-  mFiles := nil;
-  mOutcome := TAtlasVcsOutcome.Failed;
-  TAtlasIdeVcs.Run(
-    procedure
+  TAtlasIdeContinueCommit.Show(AProject, ACommit,
+    function: Boolean
     begin
-      mOutcome := CommitFiles(mDir, mCommit.Commit.Hash, mFiles);
-    end,
-    procedure
-    begin
-      if (mKeep = nil) or FStopped then
-      begin
-        Exit;
-      end;
-      if mOutcome <> TAtlasVcsOutcome.Ok then
-      begin
-        FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitFailed,
-          [mCommit.Commit.ShortHash, AtlasVcsOutcomeName(mOutcome)]));
-        Exit;
-      end;
-      ShowCommitEntries(mCommit, CommitEntries(mCommit, mFiles));
-    end);
+      Result := (mKeep <> nil) and not FStopped;
+    end, FMessage);
 end;
 
 procedure TAtlasIdeContinue.OpenSaved(const AItem: TAtlasSavedItem);

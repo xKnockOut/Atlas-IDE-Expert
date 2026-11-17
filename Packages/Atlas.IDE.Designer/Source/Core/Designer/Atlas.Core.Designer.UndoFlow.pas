@@ -254,14 +254,18 @@ begin
     try
       mApply.Run(TAtlasFormUndo.Plan(TAtlasDesignSurfaces.FormText(ASurface), mTarget), mTarget);
     finally
-      ASurface.Modified;
-      // Der tatsächliche Stand gilt; was nicht herstellbar war, bleibt so auch beim nächsten Schritt.
-      mHistory.MoveTo(AIndex, TAtlasDesignSurfaces.FormText(ASurface));
-      FBusy := False;
+      try
+        ASurface.Modified;
+      finally
+        // Der tatsächliche Stand gilt; was nicht herstellbar war, bleibt so auch beim nächsten Schritt.
+        mHistory.MoveTo(AIndex, TAtlasDesignSurfaces.FormText(ASurface));
+      end;
     end;
     AOutcome.Failures := mApply.Failures;
     AOutcome.MissingMethods := mApply.MissingMethods;
   finally
+    // Auch wenn das Aufräumen selbst wirft: Bliebe FBusy stehen, erfassten Queue und Capture nichts mehr.
+    FBusy := False;
     mApply.Free;
   end;
 end;

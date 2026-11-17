@@ -4,10 +4,10 @@
 //   - Je Reiter (Autos, Lokal, Überwachung) eine TAtlasEvalList; seit dem
 //     letzten Halt geänderte Werte markiert die Liste (BeginStop/SetResult).
 //   - Slice wertet offene Knoten aus, zuerst im gezeigten Reiter, höchstens
-//     cSliceMs lang, über TAtlasIdeDebugValueRequest ohne Nebenwirkungen
-//     (eseNone: keine Funktionsaufrufe, keine Getter). Ein verzögerter Wert
-//     (LLDB) kommt über den Rückruf; nach cDeferredTimeoutMs gilt er als
-//     nicht auswertbar.
+//     cSliceMs lang, über TAtlasEvalSlices ohne Nebenwirkungen (eseNone:
+//     keine Funktionsaufrufe, keine Getter). Ein verzögerter Wert (LLDB)
+//     kommt über den Rückruf; nach cDeferredTimeoutMs gilt er als nicht
+//     auswertbar.
 //   - Die Suche (TAtlasVariableSearch) gilt für den gezeigten Reiter.
 // Nur im Hauptthread verwenden.
 
@@ -17,7 +17,7 @@ uses
   System.SysUtils,
   Atlas.Core.Debug.Evaluate,
   Atlas.Core.Debug.Variables,
-  Atlas.IDE.Debug.ValueRequest;
+  Atlas.Core.Debug.EvalSlices;
 
 type
   {$SCOPEDENUMS ON}
@@ -33,14 +33,9 @@ type
   private
     FLists: array[TAtlasVariablesTab] of TAtlasEvalList;
     FSearch: TAtlasVariableSearch;
-    FValues: TAtlasIdeDebugValueRequest;
+    FSlices: TAtlasEvalSlices;
     FOnArrived: TProc;
-    /// <summary>Innerhalb von Evaluate: Der Rückruf kommt sofort, nicht verzögert.</summary>
-    FEvaluating: Boolean;
     function GetList(ATab: TAtlasVariablesTab): TAtlasEvalList;
-    procedure Put(ATab: TAtlasVariablesTab; const AKey, AText: string; AOk: Boolean);
-    function EvaluateOne(ATab: TAtlasVariablesTab; ANode: TAtlasEvalNode; const AFileName: string;
-      ALine: Integer): TAtlasVariablesStep;
   public
     /// <summary>AOnArrived: ein verzögerter Wert ist angekommen (neu zeichnen).</summary>
     constructor Create(const AOnArrived: TProc);
@@ -66,7 +61,7 @@ type
 implementation
 
 uses
-  Atlas.Core.Diagnostics.Deadline,
+  Atlas.IDE.Debug.ThreadEvaluator,
   Atlas.UI.Debug.Evaluate.Strings;
 
 /// <summary>Reiter in der Reihenfolge der Auswertung: AFirst, dann die übrigen.</summary>
@@ -102,7 +97,10 @@ begin
     FLists[mTab] := TAtlasEvalList.Create;
   end;
   FSearch := TAtlasVariableSearch.Create;
-  FValues := TAtlasIdeDebugValueRequest.Create(cDeferredTimeoutMs);
+  FSlices := TAtlasEvalSlices.Create(TAtlasIdeDebugThreadEvaluator.Create, cSliceMs, cDeferredTimeoutMs);
+  FSlices.TimeoutText := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout);
+  FSlices.EmptyErrorText := FSlices.TimeoutText;
+  FSlices.OnArrived := AOnArrived;
 end;
 
 destructor TAtlasIdeVariablesLists.Destroy;
@@ -110,7 +108,7 @@ var
   mTab: TAtlasVariablesTab;
 begin
   // Zuerst die Auswertung: Ihr Rückruf kommt danach nicht mehr.
-  FreeAndNil(FValues);
+  FreeAndNil(FSlices);
   FreeAndNil(FSearch);
   for mTab := Low(TAtlasVariablesTab) to High(TAtlasVariablesTab) do
   begin
@@ -123,25 +121,6 @@ end;
 function TAtlasIdeVariablesLists.GetList(ATab: TAtlasVariablesTab): TAtlasEvalList;
 begin
   Result := FLists[ATab];
-end;
-
-procedure TAtlasIdeVariablesLists.Put(ATab: TAtlasVariablesTab; const AKey, AText: string; AOk: Boolean);
-var
-  mNode: TAtlasEvalNode;
-  mText: string;
-begin
-  // Über den Schlüssel: Der Knoten kann seit dem Start der Auswertung weg sein.
-  mNode := FLists[ATab].Find(AKey);
-  if mNode = nil then
-  begin
-    Exit;
-  end;
-  mText := AText;
-  if not AOk and (mText = '') then
-  begin
-    mText := TAtlasEvaluateStrings.Text(TAtlasEvaluateTextId.DebugEvaluateTimeout);
-  end;
-  FLists[ATab].SetResult(mNode, AOk, mText);
 end;
 
 procedure TAtlasIdeVariablesLists.BeginStop;
@@ -168,77 +147,40 @@ end;
 
 procedure TAtlasIdeVariablesLists.Cancel;
 begin
-  FValues.Cancel;
+  FSlices.Cancel;
 end;
 
 function TAtlasIdeVariablesLists.Busy: Boolean;
 begin
-  Result := FValues.Busy;
+  Result := FSlices.Waiting and not FSlices.Overdue;
+  if FSlices.Waiting and not Result then
+  begin
+    // Nach dem Zeitlimit: nicht auswertbar, neu zeichnen.
+    FSlices.Expire;
+    if Assigned(FOnArrived) then
+    begin
+      FOnArrived();
+    end;
+  end;
 end;
 
 function TAtlasIdeVariablesLists.Slice(AFirst: TAtlasVariablesTab; const AFileName: string; ALine: Integer;
   out AChanged: Boolean): TAtlasVariablesStep;
 var
-  mStartedAt: UInt64;
+  mLists: TArray<TAtlasEvalList>;
   mTab: TAtlasVariablesTab;
-  mNode: TAtlasEvalNode;
 begin
-  AChanged := False;
-  mStartedAt := TAtlasTicks.Now;
+  mLists := nil;
   for mTab in TabOrder(AFirst) do
   begin
-    for mNode in FLists[mTab].Pending do
-    begin
-      if TAtlasTicks.Since(mStartedAt) >= cSliceMs then
-      begin
-        Exit(TAtlasVariablesStep.More);
-      end;
-      Result := EvaluateOne(mTab, mNode, AFileName, ALine);
-      if Result <> TAtlasVariablesStep.Done then
-      begin
-        Exit;
-      end;
-      AChanged := True;
-    end;
+    mLists := mLists + [FLists[mTab]];
   end;
-  Result := TAtlasVariablesStep.Done;
-end;
-
-/// <summary>Rückruf einer Auswertung an ALists, eigene Routine: fängt nur, was sie braucht.</summary>
-function ValueDone(ALists: TAtlasIdeVariablesLists; ATab: TAtlasVariablesTab;
-  const AKey: string): TAtlasDebugValueResult;
-var
-  mKey: string;
-begin
-  mKey := AKey;
-  Result :=
-    procedure(const AText: string; AOk: Boolean)
-    begin
-      ALists.Put(ATab, mKey, AText, AOk);
-      if not ALists.FEvaluating and Assigned(ALists.FOnArrived) then
-      begin
-        ALists.FOnArrived();
-      end;
-    end;
-end;
-
-function TAtlasIdeVariablesLists.EvaluateOne(ATab: TAtlasVariablesTab; ANode: TAtlasEvalNode;
-  const AFileName: string; ALine: Integer): TAtlasVariablesStep;
-var
-  mState: TAtlasDebugRequestState;
-begin
-  FEvaluating := True;
-  try
-    // ",r": Records mit Feldnamen, sonst zeigt der Baum nur [0], [1], … (Werte ohne Namen).
-    mState := FValues.Evaluate(TAtlasEvalText.WithFieldNames(ANode.Expression), AFileName, ALine + 1, False,
-      ValueDone(Self, ATab, ANode.Key));
-  finally
-    FEvaluating := False;
-  end;
-  case mState of
-    TAtlasDebugRequestState.Waiting:
+  case FSlices.Slice(mLists, TAtlasEvalPlace.Create(AFileName, ALine, False), AChanged) of
+    TAtlasEvalSliceStep.More:
+      Result := TAtlasVariablesStep.More;
+    TAtlasEvalSliceStep.Wait:
       Result := TAtlasVariablesStep.Wait;
-    TAtlasDebugRequestState.NoProcess:
+    TAtlasEvalSliceStep.Stopped:
       Result := TAtlasVariablesStep.Stopped;
   else
     Result := TAtlasVariablesStep.Done;

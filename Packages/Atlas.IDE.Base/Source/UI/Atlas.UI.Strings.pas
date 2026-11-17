@@ -230,6 +230,8 @@ type
     ElementOwnershipHints, ElementOwnershipHintsPlural,
     // Symbole des Mutationslaufs (#1460) im Menü „Ausblenden“.
     ElementMutationResults, ElementMutationResultsPlural,
+    // Nur in der implementation gebrauchte uses-Einträge (#2465) im Menü „Ausblenden“.
+    ElementMovableUses, ElementMovableUsesPlural,
     // Zuletzt benutzte Testliste ausführen (#2167): Taste in der Übersicht.
     TestsListsRunCommand,
     // Erneut anhängen (Debugger): Taste in der Übersicht.
@@ -762,6 +764,7 @@ const
      'Thread-Zeichen in der Rinne', 'Thread-Zeichen in der Rinne',
      'Marke „Wer gibt das frei?“', 'Marken „Wer gibt das frei?“',
      'Symbol des Mutationslaufs', 'Symbole des Mutationslaufs',
+     'verschiebbarer uses-Eintrag', 'verschiebbare uses-Einträge',
      'Tests: zuletzt benutzte Testliste ausführen',
      'Debugger: erneut an Prozess anhängen'),
     ( 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -1231,6 +1234,7 @@ const
      'thread sign in the gutter', 'thread signs in the gutter',
      '“who frees this?” mark', '“who frees this?” marks',
      'mutation result mark', 'mutation result marks',
+     'movable uses entry', 'movable uses entries',
      'Tests: run last used test list',
      'Debugger: reattach to process'));
 

@@ -5,7 +5,10 @@
 // eigene Knopf-Helfer (46 Units) und färbte Fehlertexte mit clRed; 36 Dialoge
 // bekamen nie das Thema der IDE. TAtlasDialog bringt mit:
 // - CreateDialog: CreateNew, bsDialog, poMainFormCenter, Dialogschrift aus
-//   TAtlasUiTheme, Breite in logischen Pixeln (96 dpi), Abo beim Themendienst;
+//   TAtlasUiTheme, Breite in logischen Pixeln (96 dpi), Abo beim Themendienst.
+//   Das Fenster entsteht nur, wenn eine Breite übergeben wird (ClientWidth
+//   braucht es); sonst erst mit dem Dialog selbst. Nachfahren mit eigenem
+//   CreateWnd, Resize oder CreateParams sehen dann ein fertiges Objekt;
 // - DoShow: IDE-Thema an der Wurzel (Kinder erben den Stil), ThemeChanged bei
 //   jedem Wechsel, solange der Dialog lebt; Abmelden im Destroy;
 // - AddRow, AddLabel, AddButtonRow, AddNote: Zeilen von oben nach unten,
@@ -19,16 +22,27 @@
 // Hinweise in der Textfarbe der Palette (Fehler, Warnung, Ok); Hinweise ohne
 // Aussage zeichnet der Stil. Eigene Farben holt ein Dialog in ThemeChanged.
 // TAtlasPopupForm ist die Basis der selbst gezeichneten Fenster, die anders
-// als TAtlasPopupWindow den Fokus nehmen (Erzeugen-Menü, Unit-Suche): ohne
-// Rahmen, mit Schatten und Dialogschrift, Farben aus TAtlasUiTheme. Es setzt
-// keinen VCL-Stil (das Fenster zeichnet alles selbst und behandelt seinen
-// Rand teils selbst), folgt aber jedem Themenwechsel mit neuen Farben.
+// als TAtlasPopupWindow den Fokus nehmen (Erzeugen-Menü, Unit-Suche,
+// Befehlspalette, Komponentensuche, Statusfeld, Schnellschalter,
+// Benachrichtigungen, Beschriftung im Designer): ohne Rahmen, mit Schatten
+// und Dialogschrift, Farben aus TAtlasUiTheme, ohne Fenster im Konstruktor.
+// Rahmenlose Fenster gehören hierher, nicht auf TAtlasDialog mit bsNone.
+// Es setzt keinen VCL-Stil (das Fenster zeichnet alles selbst und behandelt
+// seinen Rand teils selbst), folgt aber jedem Themenwechsel mit neuen Farben.
+// Mit ThemedControls bekommen Knöpfe und Auswahllisten im Fenster das
+// IDE-Thema wie in einem Dialog (vor dem Zeigen und bei jedem Wechsel).
 // Mit Rounded rundet ab Windows 11 der Fenstermanager die Ecken und zeichnet
 // den Rand in der Akzentfarbe (ältere Systeme übergehen beides).
+// Mit PaintsAll füllt Paint die ganze Fläche selbst, und das Fenster löscht
+// seinen Hintergrund nie. Sonst malt der Stil der IDE (ThemedControls hängt
+// ihn ans Fenster) bei jedem Invalidate erst die ganze Fläche leer und am
+// Bildschirm vorbei an der Doppelpufferung; beim Überfahren der Zeilen
+// flackert es.
 
 interface
 
 uses
+  Winapi.Messages,
   System.Types,
   System.Classes,
   Vcl.Graphics,
@@ -81,6 +95,8 @@ type
     cRowGap = 8;
     /// <summary>Abstand einer Beschriftung vom oberen Rand ihrer Zeile, logische Pixel.</summary>
     cRowLabelTop = 4;
+    /// <summary>Höchstens dieser Anteil (Prozent) der Arbeitsfläche als Anfangsgröße eines Dialogs.</summary>
+    cMaxScreenShare = 80;
   private
     procedure HandleThemeChanged;
   protected
@@ -99,7 +115,11 @@ type
     /// Hauptmonitors. Dialoge erscheinen über dem Hauptfenster (poMainFormCenter), dessen Monitor begrenzt ihre
     /// Größe.</summary>
     class function MainFormWorkArea: TRect; static;
-    /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen.</summary>
+    /// <summary>Größte Anfangsgröße eines Dialogs: cMaxScreenShare Prozent der Arbeitsfläche aus MainFormWorkArea,
+    /// Gerätepixel.</summary>
+    class function MaxInitialSize: TSize; static;
+    /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen. Mit 0 setzt
+    /// der Dialog die Breite selbst; das Fenster entsteht dann noch nicht im Konstruktor.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
     destructor Destroy; override;
     /// <summary>Zeile ohne Rahmen mit Höhe AHeight96 (logische Pixel) unter dem bisher Untersten.</summary>
@@ -127,6 +147,9 @@ type
   private
     FColors: TAtlasColors;
     FRounded: Boolean;
+    FThemedControls: Boolean;
+    FPaintsAll: Boolean;
+    procedure SetPaintsAll(AValue: Boolean);
     procedure HandleThemeChanged;
     /// <summary>Runde Ecken und Rand in der Akzentfarbe beim Fenstermanager setzen (nur mit Rounded und Fenster).
     /// </summary>
@@ -135,6 +158,11 @@ type
     /// <summary>Schatten wie die Popups (CS_DROPSHADOW).</summary>
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
+    /// <summary>Mit PaintsAll Löschen des Hintergrunds übergehen, bevor der Stil der IDE es sieht.</summary>
+    procedure WndProc(var Message: TMessage); override;
+    /// <summary>Mit ThemedControls das IDE-Thema anwenden, bevor das Fenster sichtbar wird (wie TAtlasDialog).
+    /// </summary>
+    procedure VisibleChanging; override;
     /// <summary>Thema der IDE hat gewechselt, Colors und Color sind neu gesetzt; danach wird neu gezeichnet.
     /// </summary>
     procedure ColorsChanged; virtual;
@@ -146,6 +174,12 @@ type
     /// <summary>Ecken rund und Rand in der Akzentfarbe vom Fenstermanager (ab Windows 11); vor dem Zeigen setzen.
     /// </summary>
     property Rounded: Boolean read FRounded write FRounded;
+    /// <summary>VCL-Steuerelemente im Fenster (Knöpfe, Auswahllisten) bekommen das IDE-Thema, vor dem Zeigen und
+    /// bei jedem Wechsel; ohne bleibt das Fenster beim VCL-Stil außen vor. Vor dem Zeigen setzen.</summary>
+    property ThemedControls: Boolean read FThemedControls write FThemedControls;
+    /// <summary>Paint füllt die ganze Fläche selbst: Invalidate und Windows löschen den Hintergrund nie (kein
+    /// Flackern beim Neuzeichnen, auch unter dem Stil der IDE).</summary>
+    property PaintsAll: Boolean read FPaintsAll write SetPaintsAll;
   end;
 
 implementation
@@ -249,7 +283,11 @@ begin
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
   TAtlasUiTheme.AssignDialogFont(Font);
-  ClientWidth := ScaleValue(AWidth96);
+  // ClientWidth legt das Fenster an: nur, wenn der Dialog die Breite wirklich hier setzen lässt.
+  if AWidth96 > 0 then
+  begin
+    ClientWidth := ScaleValue(AWidth96);
+  end;
   TAtlasUiTheme.Subscribe(Self,
     procedure
     begin
@@ -284,6 +322,14 @@ begin
   begin
     Result := Application.MainForm.Monitor.WorkareaRect;
   end;
+end;
+
+class function TAtlasDialog.MaxInitialSize: TSize;
+var
+  mArea: TRect;
+begin
+  mArea := MainFormWorkArea;
+  Result := TSize.Create(mArea.Width * cMaxScreenShare div 100, mArea.Height * cMaxScreenShare div 100);
 end;
 
 procedure TAtlasDialog.VisibleChanging;
@@ -481,6 +527,41 @@ begin
   ApplyFrame;
 end;
 
+procedure TAtlasPopupForm.SetPaintsAll(AValue: Boolean);
+begin
+  FPaintsAll := AValue;
+  // Mit csOpaque fordert Invalidate kein Löschen an (InvalidateRect mit bErase = False).
+  if AValue then
+  begin
+    ControlStyle := ControlStyle + [csOpaque];
+  end
+  else
+  begin
+    ControlStyle := ControlStyle - [csOpaque];
+  end;
+end;
+
+procedure TAtlasPopupForm.WndProc(var Message: TMessage);
+begin
+  // Vor inherited: Der Stil der IDE bekommt die Nachricht dort zuerst und füllte die Fläche am Bildschirm. Wenn ein
+  // Kind den Hintergrund der Eltern in seinen DC holt (wParam = lParam), bleibt es beim Üblichen.
+  if FPaintsAll and (Message.Msg = WM_ERASEBKGND) and (Message.WParam <> WPARAM(Message.LParam)) then
+  begin
+    Message.Result := 1;
+    Exit;
+  end;
+  inherited WndProc(Message);
+end;
+
+procedure TAtlasPopupForm.VisibleChanging;
+begin
+  if FThemedControls and not Visible then
+  begin
+    TAtlasUiTheme.Apply(Self);
+  end;
+  inherited;
+end;
+
 procedure TAtlasPopupForm.ApplyFrame;
 var
   mPreference, mBorder: DWORD;
@@ -497,6 +578,10 @@ end;
 
 procedure TAtlasPopupForm.HandleThemeChanged;
 begin
+  if FThemedControls then
+  begin
+    TAtlasUiTheme.Apply(Self);
+  end;
   FColors := TAtlasUiTheme.Colors;
   Color := TColor(FColors.Surface);
   ApplyFrame;

@@ -300,6 +300,8 @@ begin
   BindText('BlockEndLabelsMinLines',
     AddNumber(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsBlockEndLabelsMinLines)));
   BindCheck('DimUnusedUses', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsDimUnusedUses)));
+  BindCheck('HighlightMovableUses',
+    AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsHighlightMovableUses)));
   BuildBreadcrumbs;
   BindCheck('MouseNavButtons', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsMouseNavButtons)));
   BuildEditorToolbar;

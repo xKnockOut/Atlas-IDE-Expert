@@ -111,7 +111,8 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Core.Completion.Usage;
+  Atlas.Core.Completion.Usage,
+  Atlas.Text.Timestamps;
 
 const
   cKindNames: array[TAtlasItemKind] of string = ('unknown', 'method', 'function', 'procedure', 'constructor',
@@ -131,62 +132,6 @@ begin
     Exit('');
   end;
   Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss', AValue);
-end;
-
-function TryDigits(const AText: string; AStart, ACount: Integer; out AValue: Word): Boolean;
-var
-  mIndex: Integer;
-begin
-  AValue := 0;
-  Result := Length(AText) >= AStart + ACount - 1;
-  if not Result then
-  begin
-    Exit;
-  end;
-  for mIndex := AStart to AStart + ACount - 1 do
-  begin
-    if not CharInSet(AText[mIndex], ['0'..'9']) then
-    begin
-      Exit(False);
-    end;
-    AValue := AValue * 10 + Word(Ord(AText[mIndex]) - Ord('0'));
-  end;
-end;
-
-/// <summary>Trennzeichen eines Zeitstempels "yyyy-mm-ddThh:nn:ss" passen.</summary>
-function StampShape(const AText: string): Boolean;
-begin
-  Result := (Length(AText) >= 19) and
-    (Copy(AText, 5, 1) + Copy(AText, 8, 1) + Copy(AText, 11, 1) + Copy(AText, 14, 1) + Copy(AText, 17, 1) = '--T::');
-end;
-
-function TryDateDigits(const AText: string; out AYear, AMonth, ADay: Word): Boolean;
-begin
-  Result := TryDigits(AText, 1, 4, AYear) and TryDigits(AText, 6, 2, AMonth) and TryDigits(AText, 9, 2, ADay);
-end;
-
-function TryTimeDigits(const AText: string; out AHour, AMinute, ASecond: Word): Boolean;
-begin
-  Result := TryDigits(AText, 12, 2, AHour) and TryDigits(AText, 15, 2, AMinute) and
-    TryDigits(AText, 18, 2, ASecond);
-end;
-
-/// <summary>Liest "yyyy-mm-ddThh:nn:ss"; 0 bei allem anderen.</summary>
-function ParseStamp(const AText: string): TDateTime;
-var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond: Word;
-  mDate, mTime: TDateTime;
-begin
-  Result := 0;
-  if not StampShape(AText) or not TryDateDigits(AText, mYear, mMonth, mDay) or
-    not TryTimeDigits(AText, mHour, mMinute, mSecond) then
-  begin
-    Exit;
-  end;
-  if TryEncodeDate(mYear, mMonth, mDay, mDate) and TryEncodeTime(mHour, mMinute, mSecond, 0, mTime) then
-  begin
-    Result := mDate + mTime;
-  end;
 end;
 
 { TAtlasFavorite }
@@ -452,7 +397,7 @@ begin
       mFavorite.Kind := KindFromName(mEntry.GetValue<string>('kind', ''));
       mFavorite.UnitName := mEntry.GetValue<string>('unit', '');
       mFavorite.Signature := mEntry.GetValue<string>('signature', '');
-      mFavorite.Added := ParseStamp(mEntry.GetValue<string>('added', ''));
+      mFavorite.Added := TTextTimestamp.ParseOrZero(mEntry.GetValue<string>('added', ''));
       TryAdd(mFavorite);
     end;
   finally

@@ -25,16 +25,13 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  Winapi.Windows,
-  Winapi.Messages,
-  Vcl.Graphics,
-  Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Editor.ExpressionType,
   Atlas.UI.Editor.ExpressionType,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink,
+  Atlas.IDE.Editor.CaretPopup;
 
 type
   TAtlasExpressionTypeSessionFunc = reference to function: TLspSession;
@@ -45,29 +42,19 @@ type
     cTimeoutMs = 10000;
     /// <summary>Deckkraft der Hervorhebung über dem Text (0–255).</summary>
     cMarkAlpha = 48;
-  private type
-    TEvents = class(TNTACodeEditorNotifier)
-    protected
-      function AllowedEvents: TCodeEditorEvents; override;
-      function AllowedLineStages: TPaintLineStages; override;
-    end;
   private class var
     FInstance: TAtlasIdeExpressionType;
   private
     FSession: TAtlasExpressionTypeSessionFunc;
     FMessage: TAtlasMessageSink;
-    FMessages: TApplicationEvents;
+    FHooks: TAtlasIdeCaretPopupHooks;
     FTip: TAtlasExpressionTypeTip;
-    FEvents: TEvents;
-    FEventsRef: INTACodeEditorEvents;
-    FIndex: Integer;
     // Gezeigter Ausdruck: Stand, Antwort, Zeilen für die Hervorhebung.
     FShown: TAtlasExpressionTypeShown;
     FInfo: TAtlasExpressionTypeInfo;
     FLines: TArray<string>;
     FTabWidth: Integer;
-    procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
+    procedure KeyDown(AKey: Word; var AHandled: Boolean);
     procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
     function Ask(ASession: TLspSession; const AFileName, AText, AArguments: string;
@@ -75,10 +62,9 @@ type
     procedure Show(const AInfo: TAtlasExpressionTypeInfo);
     procedure Navigate;
     procedure Close;
-    procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
-      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+    procedure PaintLine(const ARect: TRect; const AStage: TPaintLineStage; ABeforeEvent: Boolean;
+      const AContext: INTACodeEditorPaintContext);
     class function KeyText: string; static;
-    class procedure Invalidate; static;
   public
     constructor Create(const ASession: TAtlasExpressionTypeSessionFunc; const AMessage: TProc<string>);
     destructor Destroy; override;
@@ -104,8 +90,10 @@ uses
   Atlas.Core.Lsp.TextChanges,
   System.Math,
   System.JSON,
-  Vcl.Controls,
+  Winapi.Windows,
+  Vcl.Graphics,
   Vcl.Menus,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Text.Lines,
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.Plugin,
@@ -116,34 +104,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Editor.PaintedLine;
-
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
-/// <summary>Schreibmarke in Bildschirmkoordinaten; ohne Schreibmarke eine Zeile an der Maus.</summary>
-function CaretRect: TRect;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  if GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0) then
-  begin
-    Result := mInfo.rcCaret;
-    MapWindowPoints(mInfo.hwndCaret, 0, Result, 2);
-  end
-  else
-  begin
-    Result := TRect.Create(Mouse.CursorPos, 1, 16);
-  end;
-end;
 
 /// <summary>Gedrückte Taste mit Umschalt, Strg und Alt als TShortCut.</summary>
 function PressedShortCut(AKey: Word): TShortCut;
@@ -166,53 +127,24 @@ begin
   Result := ShortCut(AKey, mShift);
 end;
 
-{ TAtlasIdeExpressionType.TEvents }
-
-function TAtlasIdeExpressionType.TEvents.AllowedEvents: TCodeEditorEvents;
-begin
-  Result := [cevPaintLineEvents];
-end;
-
-function TAtlasIdeExpressionType.TEvents.AllowedLineStages: TPaintLineStages;
-begin
-  Result := [plsEndPaint];
-end;
-
 { TAtlasIdeExpressionType }
 
 constructor TAtlasIdeExpressionType.Create(const ASession: TAtlasExpressionTypeSessionFunc;
   const AMessage: TProc<string>);
-var
-  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
-  FIndex := -1;
-  FMessages := TApplicationEvents.Create(nil);
-  FMessages.OnMessage := AppMessage;
-  FEvents := TEvents.Create;
-  FEventsRef := FEvents;
   FMessage := TAtlasMessageSink.Create(AMessage);
-  FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
-  end;
+  FHooks := TAtlasIdeCaretPopupHooks.Create(TAtlasFeature.ExpressionType, KeyDown, Close, PaintLine);
+  FHooks.CloseOnWheel := True;
 end;
 
 destructor TAtlasIdeExpressionType.Destroy;
 var
-  mServices: INTACodeEditorServices;
   mPainted: Boolean;
 begin
-  FreeAndNil(FMessages);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    mServices.RemoveEditorEventsNotifier(FIndex);
-  end;
-  FEvents.OnEditorPaintLine := nil;
-  FEventsRef := nil;
+  FreeAndNil(FHooks);
   mPainted := FShown.Active;
   FreeAndNil(FTip);
   FShown := Default(TAtlasExpressionTypeShown);
@@ -220,57 +152,21 @@ begin
   FLines := nil;
   if mPainted then
   begin
-    Invalidate;
+    TAtlasIdeCaretPopupHooks.Invalidate;
   end;
   inherited;
 end;
 
-procedure TAtlasIdeExpressionType.AppMessage(var Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeExpressionType.KeyDown(AKey: Word; var AHandled: Boolean);
 begin
-  if TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) or (FTip = nil) or not FTip.IsShown then
-  begin
-    Exit;
-  end;
-  try
-    case Msg.message of
-      WM_KEYDOWN, WM_SYSKEYDOWN:
-        if IsEditorWindow(Msg.hwnd) then
-        begin
-          KeyDown(Msg, Handled);
-        end;
-      WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_NCLBUTTONDOWN, WM_MOUSEWHEEL:
-        if not FTip.HandleAllocated or (Msg.hwnd <> FTip.Handle) then
-        begin
-          Close;
-        end;
-    end;
-  except
-    // Keine Exception an die IDE (#493); die Nachricht geht dann normal weiter.
-    on E: Exception do
-    begin
-      Handled := False;
-      TAtlasGuard.Report(TAtlasFeature.ExpressionType, E);
-    end;
-  end;
-end;
-
-procedure TAtlasIdeExpressionType.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
-var
-  mKey: Word;
-begin
-  mKey := Word(AMsg.wParam);
-  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
-  begin
-    Exit;
-  end;
-  if (mKey = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
+  if (AKey = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
   begin
     Close;
     AHandled := True;
     Exit;
   end;
   // Das eigene Kürzel erweitert (Run); jede andere Taste schließt und geht an den Editor.
-  if PressedShortCut(mKey) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
+  if PressedShortCut(AKey) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
   begin
     Exit;
   end;
@@ -340,14 +236,15 @@ begin
             end;
           end);
       end;
+    FHooks.Popup := FTip;
   end;
   // Farben, Editorschrift und Zoom wie der Editor; unter der Zeile der Schreibmarke.
-  mCaret := CaretRect;
+  mCaret := TAtlasIdeCaretPopupHooks.CaretRect;
   TAtlasIdeStyle.Apply(FTip, mCaret);
   FTip.ShowFor(TAtlasExpressionType.Rows(AInfo, TAtlasExpressionTypeTip.Texts(KeyText)),
     TPoint.Create(mCaret.Left, mCaret.Bottom));
   FShown.Active := True;
-  Invalidate;
+  TAtlasIdeCaretPopupHooks.Invalidate;
 end;
 
 procedure TAtlasIdeExpressionType.Navigate;
@@ -374,23 +271,13 @@ begin
   end;
   if mPainted then
   begin
-    Invalidate;
+    TAtlasIdeCaretPopupHooks.Invalidate;
   end;
 end;
 
 class function TAtlasIdeExpressionType.KeyText: string;
 begin
   Result := ShortCutToText(TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey));
-end;
-
-class procedure TAtlasIdeExpressionType.Invalidate;
-var
-  mServices: INTACodeEditorServices;
-begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-  begin
-    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
 end;
 
 class procedure TAtlasIdeExpressionType.Install(const ASession: TAtlasExpressionTypeSessionFunc;
@@ -556,26 +443,17 @@ begin
   end;
 end;
 
-procedure TAtlasIdeExpressionType.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
-  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+procedure TAtlasIdeExpressionType.PaintLine(const ARect: TRect; const AStage: TPaintLineStage;
+  ABeforeEvent: Boolean; const AContext: INTACodeEditorPaintContext);
 var
   mSpan: TAtlasExpressionTypeSpan;
   mLine: Integer;
 begin
-  if not FShown.Active or TAtlasGuard.Disabled(TAtlasFeature.ExpressionType) then
+  // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
+  if FShown.Active and TAtlasPaintedLine.Resolve(AStage, ABeforeEvent, AContext, FShown.FileName, FLines, mLine) and
+    TAtlasExpressionType.SpanOnLine(FShown.Range, mLine, Length(FLines[mLine]), mSpan) then
   begin
-    Exit;
-  end;
-  try
-    // Nur, wenn die Zeile im Editor dem gefragten Stand entspricht.
-    if TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FShown.FileName, FLines, mLine) and
-      TAtlasExpressionType.SpanOnLine(FShown.Range, mLine, Length(FLines[mLine]), mSpan) then
-    begin
-      PaintSpan(Rect, Context, FLines[mLine], mSpan, FTabWidth);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.ExpressionType, E);
+    PaintSpan(ARect, AContext, FLines[mLine], mSpan, FTabWidth);
   end;
 end;
 

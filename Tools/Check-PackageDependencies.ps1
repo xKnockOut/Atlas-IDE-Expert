@@ -69,6 +69,11 @@
     Liste.Add(Element.Value)); dafür TJsonRead.Strings/TrimmedStrings in
     Atlas.Text.Json. Ausnahmen mit Grund in $AllowedJsonReadLocal.
 
+    Kopien-Sperre für Zeitstempel: "yyyy-mm-dd hh:nn:ss" liest nur
+    TTextTimestamp in Atlas.Text.Timestamps; außerhalb dieser Unit ruft kein
+    Quelltext in Packages und Application TryEncodeDate, TryEncodeTime oder
+    TryEncodeDateTime auf. Ausnahmen mit Grund in $AllowedTimestampLocal.
+
     Rollenmatrix: Jede Unit wird nach
     Ausgabeartefakt.Feature.Rolle.Sache eingeordnet; ein uses-Eintrag muss die
     Importregeln aus docs/Architektur.md einhalten. Contract-Units deklarieren
@@ -418,13 +423,13 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Welcome'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Tracker'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Tracker.IssuesServices:Report'                   = 'Methodendeklaration von TAtlasIssuesLink'
             'Atlas.IDE.Tracker.IssuesServices:TAtlasIssuesLink.Report'  = 'meldet nur, solange der Kontext lebt (Keep)'
@@ -434,7 +439,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Debugger'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Debug.AsyncOrigin:TAtlasIdeDebugAsyncOrigin.Report'  = 'zeigt den Ursprung als Meldung oder in der Ergebnisliste'
             'Atlas.IDE.Debug.ReattachWait:TAtlasIdeReattachWaiter.Report'   = 'meldet einen gefundenen Prozess, keine Textzeile'
@@ -1264,6 +1269,26 @@ foreach ($lock in $PluginLock) {
     foreach ($key in $lock.Allowed.Keys) {
         if (-not $found.ContainsKey($key)) {
             $violations += "Tools/Check-PackageDependencies.ps1: `$PluginLock ($($lock.Name)) nennt $key, die Routine gibt es nicht mehr; Zeile streichen"
+        }
+    }
+}
+
+# Kopien-Sperre für Zeitstempel: Datum und Zeit aus Ziffern setzt nur Atlas.Text.Timestamps zusammen.
+# Erlaubte Units mit Grund. Die Liste soll nur schrumpfen.
+$TimestampHome = 'Atlas.Text.Timestamps'
+$AllowedTimestampLocal = @{}
+foreach ($folder in @('Packages', 'Application')) {
+    $path = Join-Path $Root $folder
+    if (-not (Test-Path $path)) { continue }
+    foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+        $ownUnit = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+        if ($ownUnit -eq $TimestampHome -or $AllowedTimestampLocal.ContainsKey($ownUnit)) { continue }
+        $text = Remove-PascalNoise ([IO.File]::ReadAllText($file.FullName))
+        foreach ($match in [regex]::Matches($text, '(?i)\bTryEncode(?:DateTime|Date|Time)\s*\(')) {
+            $relative = $file.FullName.Substring((Resolve-Path $Root).Path.TrimEnd('\', '/').Length + 1) -replace '\\', '/'
+            $line = ($text.Substring(0, $match.Index) -split "`n").Count
+            $call = ($match.Value -replace '[\s(]', '')
+            $violations += "${relative}:${line}: ${call} – Zeitstempel liest TTextTimestamp in Atlas.Text.Timestamps (Kopien-Sperre); dort verwenden oder in `$AllowedTimestampLocal begründen"
         }
     }
 }

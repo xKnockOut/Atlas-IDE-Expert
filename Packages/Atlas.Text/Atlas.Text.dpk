@@ -44,6 +44,7 @@ contains
   Atlas.Text.Product.Version in 'Source\Product\Atlas.Text.Product.Version.pas',
   Atlas.Text.Lines in 'Source\Lines\Atlas.Text.Lines.pas',
   Atlas.Text.Chars in 'Source\Chars\Atlas.Text.Chars.pas',
+  Atlas.Text.Timestamps in 'Source\Timestamps\Atlas.Text.Timestamps.pas',
   Atlas.Text.Encoding in 'Source\Encoding\Atlas.Text.Encoding.pas',
   Atlas.Text.LogMarks in 'Source\LogMarks\Atlas.Text.LogMarks.pas',
   Atlas.Text.Anonymize in 'Source\Anonymize\Atlas.Text.Anonymize.pas',
@@ -69,6 +70,7 @@ contains
   Atlas.Text.CrashReport in 'Source\CrashReport\Atlas.Text.CrashReport.pas',
   Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas',
   Atlas.Text.Updates in 'Source\Updates\Atlas.Text.Updates.pas',
-  Atlas.Text.UpdateRun in 'Source\UpdateRun\Atlas.Text.UpdateRun.pas';
+  Atlas.Text.UpdateRun in 'Source\UpdateRun\Atlas.Text.UpdateRun.pas',
+  Atlas.Text.PascalScan in 'Source\PascalScan\Atlas.Text.PascalScan.pas';
 
 end.

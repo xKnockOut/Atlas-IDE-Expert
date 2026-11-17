@@ -84,7 +84,8 @@ function VcsSafeBranchName(const AName: string): Boolean;
 implementation
 
 uses
-  Atlas.Core.VersionControl.Contract;
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Text.Timestamps;
 
 function VcsUtf8(const ABytes: TBytes): string;
 var
@@ -249,91 +250,9 @@ begin
   Result := IncludeTrailingPathDelimiter(VcsNormalizeDir(ARoot)) + mRelative;
 end;
 
-function Digits(const AText: string; AStart, ACount: Integer; out AValue: Integer): Boolean;
-var
-  mIndex: Integer;
-begin
-  AValue := 0;
-  if AStart + ACount - 1 > Length(AText) then
-  begin
-    Exit(False);
-  end;
-  for mIndex := AStart to AStart + ACount - 1 do
-  begin
-    if (AText[mIndex] < '0') or (AText[mIndex] > '9') then
-    begin
-      Exit(False);
-    end;
-    AValue := AValue * 10 + Ord(AText[mIndex]) - Ord('0');
-  end;
-  Result := True;
-end;
-
-/// <summary>Stehen die Trenner von "JJJJ-MM-TTTHH:MM:SS" an ihrem Platz?</summary>
-function IsoSeparatorsOk(const AText: string): Boolean;
-begin
-  Result := (Length(AText) >= 19) and (AText[5] = '-') and (AText[8] = '-') and CharInSet(AText[11], ['T', ' ']);
-  Result := Result and (AText[14] = ':') and (AText[17] = ':');
-end;
-
-/// <summary>Datum und Uhrzeit aus "JJJJ-MM-TTTHH:MM:SS" (Trenner geprüft); False bei ungültigen Ziffern oder Werten.
-/// </summary>
-function IsoDateTime(const AText: string; out ADate: TDateTime): Boolean;
-var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
-  mDate, mTime: TDateTime;
-begin
-  ADate := 0;
-  Result := Digits(AText, 1, 4, mYear) and Digits(AText, 6, 2, mMonth) and Digits(AText, 9, 2, mDay);
-  Result := Result and Digits(AText, 12, 2, mHour) and Digits(AText, 15, 2, mMinute) and
-    Digits(AText, 18, 2, mSecond);
-  Result := Result and TryEncodeDate(mYear, mMonth, mDay, mDate) and
-    TryEncodeTime(mHour, mMinute, mSecond, 0, mTime);
-  if Result then
-  begin
-    ADate := mDate + mTime;
-  end;
-end;
-
-/// <summary>Bruchteil der Sekunde ab Position 20 (".123456"), auf Millisekunden gerundet, in Tagen; 0 ohne.
-/// </summary>
-function IsoFraction(const AText: string): Double;
-var
-  mIndex, mFraction, mScale, mMillis: Integer;
-begin
-  Result := 0;
-  mIndex := 20;
-  if (mIndex > Length(AText)) or (AText[mIndex] <> '.') then
-  begin
-    Exit;
-  end;
-  Inc(mIndex);
-  mFraction := 0;
-  mScale := 1;
-  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['0'..'9']) do
-  begin
-    if mScale < 1000 then
-    begin
-      mFraction := mFraction * 10 + Ord(AText[mIndex]) - Ord('0');
-      mScale := mScale * 10;
-    end;
-    Inc(mIndex);
-  end;
-  mMillis := mFraction * (1000 div mScale);
-  Result := mMillis / MSecsPerDay;
-end;
-
 function VcsParseIsoDate(const AText: string; out ADate: TDateTime): Boolean;
-var
-  mText: string;
 begin
-  ADate := 0;
-  mText := Trim(AText);
-  Result := IsoSeparatorsOk(mText) and IsoDateTime(mText, ADate);
-  if Result then
-  begin
-    ADate := ADate + IsoFraction(mText);
-  end;
+  Result := TTextTimestamp.TryParse(AText, ADate);
 end;
 
 function VcsUnixToDate(ASeconds: Int64): TDateTime;
