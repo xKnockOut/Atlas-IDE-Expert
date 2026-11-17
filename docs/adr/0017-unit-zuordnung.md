@@ -961,6 +961,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.DataBreakpoint` | `Core/Debug/Atlas.Core.Debug.DataBreakpoint.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBarFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionBarFlow.pas` | Exception-Leiste: Warten auf die Anzeige, Tasten, abgedeckter Halt, Ort ignorieren, #1967 |
+| `Atlas.Core.Debug.ExceptionBarLayout` | `Core/Debug/Atlas.Core.Debug.ExceptionBarLayout.pas` | Exception-Leiste: Zeilen, Höhe, Lage der Knöpfe und der Ortszeile |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialogFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionDialogFlow.pas` | Entscheidungen beim Exception-Dialog der IDE ohne IDE (Formulare, Ausblenden, Ablauf, Knöpfe), #1967 |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
@@ -1084,6 +1085,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Variables` | `IDE/Debug/Atlas.IDE.Debug.Variables.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesLists` | `IDE/Debug/Atlas.IDE.Debug.VariablesLists.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesStore` | `IDE/Debug/Atlas.IDE.Debug.VariablesStore.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.VariablesWatches` | `IDE/Debug/Atlas.IDE.Debug.VariablesWatches.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesWindow` | `IDE/Debug/Atlas.IDE.Debug.VariablesWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
@@ -1101,10 +1103,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.AsyncOrigin` | `UI/Debug/Atlas.UI.Debug.AsyncOrigin.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateTree` | `UI/Debug/Atlas.UI.Debug.EvaluateTree.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.EvaluatePanels` | `UI/Debug/Atlas.UI.Debug.EvaluatePanels.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.EvaluateTreeView` | `UI/Debug/Atlas.UI.Debug.EvaluateTreeView.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.VariablesParts` | `UI/Debug/Atlas.UI.Debug.VariablesParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionBarPainter` | `UI/Debug/Atlas.UI.Debug.ExceptionBarPainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionsParts` | `UI/Debug/Atlas.UI.Debug.ExceptionsParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacksFrame` | `UI/Debug/Atlas.UI.Debug.ParallelStacksFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.CallStackFrame` | `UI/Debug/Atlas.UI.Debug.CallStackFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.LeaksFrame` | `UI/Debug/Atlas.UI.Debug.LeaksFrame.pas` | Inhalt des Fensters „Atlas-Lecks“, #1875 |
@@ -1116,6 +1123,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.MethodBreakpoints` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.StepFilterPatterns` | `UI/Debug/Atlas.UI.Debug.StepFilterPatterns.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Settings.Strings` | `UI/Debug/Atlas.UI.Debug.Settings.Strings.pas` | Texte des Debuggers: Einstellungsseite, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Commands.Strings` | `UI/Debug/Atlas.UI.Debug.Commands.Strings.pas` | Texte des Debuggers: Befehlsnamen und Menügruppen, Sprache von Base, #1455 |
@@ -1140,6 +1148,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.VariablesFrame` | `UI/Debug/Atlas.UI.Debug.VariablesFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.VariablesStrings` | `UI/Debug/Atlas.UI.Debug.VariablesStrings.pas` | Texte des Fensters „Variablen“ (Debugger), Sprache von Base, #853 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ViewerImage` | `UI/Debug/Atlas.UI.Debug.ViewerImage.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.EventLog` | `Core/Debug/Atlas.Core.Debug.EventLog.pas` | Ereignisprotokoll ohne IDE: Arten, Filter, Farben, Sprungziele, #580 |
 | `Atlas.Core.Debug.EventLogFlow` | `Core/Debug/Atlas.Core.Debug.EventLogFlow.pas` | Entscheidungen des Ereignisprotokolls ohne IDE (Fensterzeilen, Logpunkte, Symbol, Zeit, Dateiname), #1967 |
 | `Atlas.Core.Debug.LeakCapture` | `Core/Debug/Atlas.Core.Debug.LeakCapture.pas` | Leckbericht am Ende einer Debug-Sitzung ohne IDE: Meldungsfenster, FastMM-Logdatei, Wahl, Vergleich mit dem letzten Lauf, #1875 |

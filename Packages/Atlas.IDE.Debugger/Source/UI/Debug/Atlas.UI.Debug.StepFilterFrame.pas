@@ -3,10 +3,11 @@
 // Inhalt des Fensters „Schrittfilter“ (#850): Schalter debug.stepFilters, die
 // Arten mit ihren Treffern im Index, die Muster (bearbeiten mit F2 oder
 // Doppelklick, hinzufügen, entfernen) mit Treffern und unten, was Atlas in
-// dieser Debug-Sitzung übersprungen hat. Jede Änderung meldet OnChange mit dem
+// dieser Debug-Sitzung übersprungen hat. Jede Änderung meldet Hooks.Change mit dem
 // ganzen Stand; die IDE-Schicht speichert ihn und ruft SetOptions mit dem
 // gespeicherten Stand zurück. Treffer zählt die IDE-Schicht im Hintergrund
-// (SetCounting, SetCounts, SetNoCounts).
+// (SetCounting, SetCounts, SetNoCounts). Eingabezeile und Liste der Muster
+// stehen in Atlas.UI.Debug.StepFilterPatterns.
 
 interface
 
@@ -17,10 +18,10 @@ uses
   Vcl.Graphics,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
-  Vcl.ComCtrls,
   Vcl.Forms,
   Atlas.Text.StepFilter,
-  Atlas.Core.Debug.StepFilter;
+  Atlas.Core.Debug.StepFilter,
+  Atlas.UI.Debug.StepFilterPatterns;
 
 type
   {$SCOPEDENUMS ON}
@@ -47,59 +48,48 @@ type
       static;
   end;
 
-  TAtlasDebugStepFilterFrame = class(TFrame)
-  private type
-    /// <summary>Steuerelemente, die nach dem Aufbau noch gebraucht werden.</summary>
-    TControls = record
-      EnabledCheck: TCheckBox;
-      Kinds: array[TStepFilterKind] of TCheckBox;
-      PatternEdit: TEdit;
-      Add: TButton;
-      Remove: TButton;
-      Patterns: TListView;
-      Summary: TLabel;
-      Session: TLabel;
-    end;
-    /// <summary>Gezeigter Stand: Schalter, Arten, Muster.</summary>
-    TValue = record
-      Enabled: Boolean;
-      Kinds: TStepFilterKinds;
-      Patterns: TArray<string>;
-    end;
-    /// <summary>Treffer im Index und ob sie schon gezählt sind.</summary>
-    TCount = record
-      State: TAtlasStepCountsState;
-      Counts: TAtlasStepCounts;
-    end;
-    TEvents = record
-      Change: TAtlasStepFilterChange;
-      Refresh: TProc;
-    end;
+  /// <summary>Was der Frame an die IDE-Schicht meldet; nicht gesetzte Einträge bleiben still. Gehört dem Frame.
+  /// </summary>
+  TAtlasStepFilterHooks = class
   private
-    FControls: TControls;
-    FValue: TValue;
-    FCount: TCount;
+    FChange: TAtlasStepFilterChange;
+    FRefresh: TProc;
+  public
+    /// <summary>Schalter, Arten oder Muster geändert, mit dem ganzen Stand.</summary>
+    property Change: TAtlasStepFilterChange read FChange write FChange;
+    /// <summary>„Neu zählen“.</summary>
+    property Refresh: TProc read FRefresh write FRefresh;
+  end;
+
+  TAtlasDebugStepFilterFrame = class(TFrame)
+  private
+    FEnabledCheck: TCheckBox;
+    FKindChecks: array[TStepFilterKind] of TCheckBox;
+    FPatterns: TAtlasStepFilterPatterns;
+    FSummary: TLabel;
+    FSession: TLabel;
+    FEnabled: Boolean;
+    FKinds: TStepFilterKinds;
+    FCountsState: TAtlasStepCountsState;
+    FCounts: TAtlasStepCounts;
     FFilling: Boolean;
-    FEvents: TEvents;
-    procedure FillPatterns;
+    FHooks: TAtlasStepFilterHooks;
+    function AddLabel(AAlign: TAlign; const ACaption: string): TLabel;
+    function BuildTopBar: Integer;
+    procedure BuildKinds(var ATop: Integer);
+    procedure BuildBottomLabels;
     procedure UpdateCounts;
-    procedure UpdateButtons;
     procedure NotifyChange;
     procedure EnabledClick(Sender: TObject);
     procedure KindClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
-    procedure AddClick(Sender: TObject);
-    procedure RemoveClick(Sender: TObject);
-    procedure PatternEditChange(Sender: TObject);
-    procedure PatternEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure PatternsSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-    procedure PatternsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure PatternsEdited(Sender: TObject; Item: TListItem; var S: string);
+    procedure PatternsChange(Sender: TObject);
   protected
     procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
-    /// <summary>Gespeicherter Stand; meldet nichts über OnChange. Die Liste baut sich nur neu, wenn sich die Muster
+    destructor Destroy; override;
+    /// <summary>Gespeicherter Stand; meldet nichts über Hooks.Change. Die Liste baut sich nur neu, wenn sich die Muster
     /// geändert haben (sonst stört es ein laufendes Bearbeiten).</summary>
     procedure SetOptions(AEnabled: Boolean; AKinds: TStepFilterKinds; const APatterns: TArray<string>);
     procedure SetCounting;
@@ -107,22 +97,13 @@ type
     procedure SetCounts(const ACounts: TAtlasStepCounts);
     procedure SetNoCounts;
     procedure SetSession(AStarted: Boolean; ASkipped: Integer; const ALastName, ALastReason: string);
-    /// <summary>Muster aus dem Eingabefeld anfügen; False, wenn es ungültig ist oder schon darin steht.</summary>
-    function AddPattern: Boolean;
-    /// <summary>Gewähltes Muster entfernen; False ohne Auswahl.</summary>
-    function RemoveSelected: Boolean;
-    /// <summary>Muster AIndex durch AText ersetzen; False, wenn AText ungültig ist oder schon darin steht.</summary>
-    function ReplacePattern(AIndex: Integer; const AText: string): Boolean;
-    property EnabledCheck: TCheckBox read FControls.EnabledCheck;
-    property PatternEdit: TEdit read FControls.PatternEdit;
-    property Patterns: TListView read FControls.Patterns;
-    property AddButtonControl: TButton read FControls.Add;
-    property RemoveButtonControl: TButton read FControls.Remove;
-    property Summary: TLabel read FControls.Summary;
-    property Session: TLabel read FControls.Session;
-    property CountsState: TAtlasStepCountsState read FCount.State;
-    property OnChange: TAtlasStepFilterChange read FEvents.Change write FEvents.Change;
-    property OnRefresh: TProc read FEvents.Refresh write FEvents.Refresh;
+    property EnabledCheck: TCheckBox read FEnabledCheck;
+    /// <summary>Eingabezeile und Liste der Muster: anfügen, entfernen, ersetzen.</summary>
+    property Patterns: TAtlasStepFilterPatterns read FPatterns;
+    property Summary: TLabel read FSummary;
+    property Session: TLabel read FSession;
+    property CountsState: TAtlasStepCountsState read FCountsState;
+    property Hooks: TAtlasStepFilterHooks read FHooks;
   end;
 
 implementation
@@ -140,248 +121,149 @@ const
     TAtlasSteppingTextId.StepFilterKindSetters, TAtlasSteppingTextId.StepFilterKindTrivial,
       TAtlasSteppingTextId.StepFilterKindOperators,
     TAtlasSteppingTextId.StepFilterKindEmptyConstructors);
-
-/// <summary>Knopf rechts in AParent (Besitzer AFrame).</summary>
-function AddButton(AFrame: TAtlasDebugStepFilterFrame; AParent: TWinControl; const ACaption: string;
-  AClick: TNotifyEvent): TButton;
-begin
-  Result := TButton.Create(AFrame);
-  Result.Parent := AParent;
-  Result.Align := alRight;
-  Result.AlignWithMargins := True;
-  Result.Width := MulDiv(86, AFrame.CurrentPPI, 96);
-  Result.Caption := ACaption;
-  Result.OnClick := AClick;
-end;
-
-/// <summary>Umbrechende Beschriftung in AFrame, oben bzw. unten nach AAlign.</summary>
-function AddLabel(AFrame: TAtlasDebugStepFilterFrame; AAlign: TAlign; const ACaption: string): TLabel;
-begin
-  Result := TAtlasWrapLabel.Create(AFrame);
-  Result.Parent := AFrame;
-  Result.Align := AAlign;
-  Result.AlignWithMargins := True;
-  Result.ShowAccelChar := False;
-  Result.Caption := ACaption;
-end;
-
-/// <summary>Leiste ohne Rand und Beschriftung in AParent, 30 logische Pixel hoch.</summary>
-function AddBar(AFrame: TAtlasDebugStepFilterFrame; AParent: TWinControl): TPanel;
-begin
-  Result := TPanel.Create(AFrame);
-  Result.Parent := AParent;
-  Result.Align := alTop;
-  Result.BevelOuter := bvNone;
-  Result.ShowCaption := False;
-  Result.ParentBackground := True;
-  Result.Height := MulDiv(30, AFrame.CurrentPPI, 96);
-end;
-
-/// <summary>Leiste oben: Schalter debug.stepFilters und „Neu zählen“; Ergebnis: ihre Höhe.</summary>
-function CreateTopBar(AFrame: TAtlasDebugStepFilterFrame): Integer;
-var
-  mTop: TPanel;
-begin
-  mTop := AddBar(AFrame, AFrame);
-  AddButton(AFrame, mTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterRefresh), AFrame.RefreshClick);
-  AFrame.FControls.EnabledCheck := TCheckBox.Create(AFrame);
-  AFrame.FControls.EnabledCheck.Parent := mTop;
-  AFrame.FControls.EnabledCheck.Align := alClient;
-  AFrame.FControls.EnabledCheck.AlignWithMargins := True;
-  AFrame.FControls.EnabledCheck.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterEnabled);
-  AFrame.FControls.EnabledCheck.OnClick := AFrame.EnabledClick;
-  Result := mTop.Height;
-end;
-
-/// <summary>Kopf und Schalter der Arten ab ATop; mit alTop ordnet die VCL nach Top, deshalb steigend.</summary>
-procedure CreateKinds(AFrame: TAtlasDebugStepFilterFrame; var ATop: Integer);
-var
-  mKind: TStepFilterKind;
-  mHeader: TLabel;
-  mCheck: TCheckBox;
-begin
-  mHeader := AddLabel(AFrame, alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterKindsHeader));
-  mHeader.Font.Style := [fsBold];
-  mHeader.Top := ATop;
-  for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
-  begin
-    mCheck := TCheckBox.Create(AFrame);
-    mCheck.Parent := AFrame;
-    mCheck.Align := alTop;
-    mCheck.AlignWithMargins := True;
-    Inc(ATop, 100);
-    mCheck.Top := ATop;
-    mCheck.Tag := Ord(mKind);
-    mCheck.OnClick := AFrame.KindClick;
-    AFrame.FControls.Kinds[mKind] := mCheck;
-  end;
-end;
-
-/// <summary>Kopf der Muster und Eingabezeile mit „Hinzufügen“ und „Entfernen“ ab ATop.</summary>
-procedure CreatePatternBar(AFrame: TAtlasDebugStepFilterFrame; ATop: Integer);
-var
-  mHeader: TLabel;
-  mBar: TPanel;
-begin
-  mHeader := AddLabel(AFrame, alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterPatternsHeader));
-  mHeader.Font.Style := [fsBold];
-  mHeader.Top := ATop + mHeader.ScaleValue(100);
-  mBar := AddBar(AFrame, AFrame);
-  mBar.Top := ATop + mBar.ScaleValue(200);
-  AFrame.FControls.Remove := AddButton(AFrame, mBar, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterRemove),
-    AFrame.RemoveClick);
-  AFrame.FControls.Add := AddButton(AFrame, mBar, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterAdd),
-    AFrame.AddClick);
-  AFrame.FControls.PatternEdit := TEdit.Create(AFrame);
-  AFrame.FControls.PatternEdit.Parent := mBar;
-  AFrame.FControls.PatternEdit.Align := alClient;
-  AFrame.FControls.PatternEdit.AlignWithMargins := True;
-  AFrame.FControls.PatternEdit.TextHint := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterPatternHint);
-  AFrame.FControls.PatternEdit.OnChange := AFrame.PatternEditChange;
-  AFrame.FControls.PatternEdit.OnKeyDown := AFrame.PatternEditKeyDown;
-end;
-
-/// <summary>Von unten: Hinweis, Sitzung, Zusammenfassung (mit alBottom liegt das größere Top weiter unten).</summary>
-procedure CreateBottomLabels(AFrame: TAtlasDebugStepFilterFrame);
-var
-  mHint: TLabel;
-begin
-  mHint := AddLabel(AFrame, alBottom, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterShiftHint));
-  mHint.Font.Color := clGrayText;
-  mHint.Top := 30000;
-  AFrame.FControls.Session := AddLabel(AFrame, alBottom, '');
-  AFrame.FControls.Session.Top := 20000;
-  AFrame.FControls.Summary := AddLabel(AFrame, alBottom, '');
-  AFrame.FControls.Summary.Top := 10000;
-end;
-
-/// <summary>Liste der Muster mit Treffern; füllt den Rest von AFrame.</summary>
-procedure CreatePatternList(AFrame: TAtlasDebugStepFilterFrame);
-var
-  mList: TListView;
-  mColumn: TListColumn;
-begin
-  mList := TListView.Create(AFrame);
-  AFrame.FControls.Patterns := mList;
-  mList.Parent := AFrame;
-  mList.Align := alClient;
-  mList.AlignWithMargins := True;
-  mList.ViewStyle := vsReport;
-  mList.RowSelect := True;
-  mList.HideSelection := False;
-  mList.ReadOnly := False;
-  mList.MultiSelect := False;
-  mList.ColumnClick := False;
-  mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterColumnPattern);
-  mColumn.Width := MulDiv(260, AFrame.CurrentPPI, 96);
-  mColumn := mList.Columns.Add;
-  mColumn.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterColumnHits);
-  mColumn.Width := MulDiv(70, AFrame.CurrentPPI, 96);
-  mColumn.Alignment := taRightJustify;
-  mList.OnSelectItem := AFrame.PatternsSelectItem;
-  mList.OnKeyDown := AFrame.PatternsKeyDown;
-  mList.OnEdited := AFrame.PatternsEdited;
-end;
+  /// <summary>Höhe der Leiste oben bei 96 dpi.</summary>
+  cTopBarHeight = 30;
+  /// <summary>Abstand der Lage gleich ausgerichteter Teile vor dem Ausrichten: Sie bestimmt ihre Reihenfolge.
+  /// </summary>
+  cOrderStep = 100;
+  /// <summary>Lage der Beschriftungen unten (mit alBottom liegt das größere Top weiter unten).</summary>
+  cHintOrder = 30000;
+  cSessionOrder = 20000;
+  cSummaryOrder = 10000;
 
 { TAtlasDebugStepFilterFrame }
 
 constructor TAtlasDebugStepFilterFrame.Create(AOwner: TComponent);
 var
   mTop: Integer;
+  mHeader: TLabel;
 begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
-  FValue.Kinds := TStepFilterNames.cDefaultKinds;
+  FHooks := TAtlasStepFilterHooks.Create;
+  FKinds := TStepFilterNames.cDefaultKinds;
   // Von oben: Kopf der Arten, die Arten, Kopf der Muster, Eingabezeile; die Liste füllt den Rest.
-  mTop := CreateTopBar(Self);
-  CreateKinds(Self, mTop);
-  CreatePatternBar(Self, mTop);
-  CreateBottomLabels(Self);
-  CreatePatternList(Self);
+  mTop := BuildTopBar;
+  BuildKinds(mTop);
+  mHeader := AddLabel(alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterPatternsHeader));
+  mHeader.Font.Style := [fsBold];
+  mHeader.Top := mTop + mHeader.ScaleValue(cOrderStep);
+  BuildBottomLabels;
+  FPatterns := TAtlasStepFilterPatterns.CreateIn(Self, mTop + ScaleValue(2 * cOrderStep), PatternsChange);
   SetOptions(False, TStepFilterNames.cDefaultKinds, nil);
   SetSession(False, 0, '', '');
   UpdateCounts;
+end;
+
+destructor TAtlasDebugStepFilterFrame.Destroy;
+begin
+  FreeAndNil(FHooks);
+  inherited Destroy;
+end;
+
+function TAtlasDebugStepFilterFrame.AddLabel(AAlign: TAlign; const ACaption: string): TLabel;
+begin
+  Result := TAtlasWrapLabel.Create(Self);
+  Result.Parent := Self;
+  Result.Align := AAlign;
+  Result.AlignWithMargins := True;
+  Result.ShowAccelChar := False;
+  Result.Caption := ACaption;
+end;
+
+function TAtlasDebugStepFilterFrame.BuildTopBar: Integer;
+var
+  mTop: TPanel;
+begin
+  // Schalter debug.stepFilters und „Neu zählen“; Ergebnis: Höhe der Leiste.
+  mTop := TPanel.Create(Self);
+  mTop.Height := MulDiv(cTopBarHeight, CurrentPPI, 96);
+  mTop.Align := alTop;
+  mTop.Parent := Self;
+  mTop.BevelOuter := bvNone;
+  mTop.ShowCaption := False;
+  mTop.ParentBackground := True;
+  TAtlasStepFilterPatterns.AddButton(Self, mTop, CurrentPPI,
+    TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterRefresh), RefreshClick);
+  FEnabledCheck := TCheckBox.Create(Self);
+  FEnabledCheck.Parent := mTop;
+  FEnabledCheck.Align := alClient;
+  FEnabledCheck.AlignWithMargins := True;
+  FEnabledCheck.Caption := TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterEnabled);
+  FEnabledCheck.OnClick := EnabledClick;
+  Result := mTop.Height;
+end;
+
+procedure TAtlasDebugStepFilterFrame.BuildKinds(var ATop: Integer);
+var
+  mKind: TStepFilterKind;
+  mHeader: TLabel;
+  mCheck: TCheckBox;
+begin
+  // Kopf und Schalter der Arten ab ATop; mit alTop ordnet die VCL nach Top, deshalb steigend.
+  mHeader := AddLabel(alTop, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterKindsHeader));
+  mHeader.Font.Style := [fsBold];
+  mHeader.Top := ATop;
+  for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
+    mCheck := TCheckBox.Create(Self);
+    mCheck.Parent := Self;
+    mCheck.Align := alTop;
+    mCheck.AlignWithMargins := True;
+    Inc(ATop, cOrderStep);
+    mCheck.Top := ATop;
+    mCheck.Tag := Ord(mKind);
+    mCheck.OnClick := KindClick;
+    FKindChecks[mKind] := mCheck;
+  end;
+end;
+
+procedure TAtlasDebugStepFilterFrame.BuildBottomLabels;
+var
+  mHint: TLabel;
+begin
+  // Von unten: Hinweis, Sitzung, Zusammenfassung.
+  mHint := AddLabel(alBottom, TAtlasSteppingStrings.Text(TAtlasSteppingTextId.StepFilterShiftHint));
+  mHint.Font.Color := clGrayText;
+  mHint.Top := cHintOrder;
+  FSession := AddLabel(alBottom, '');
+  FSession.Top := cSessionOrder;
+  FSummary := AddLabel(alBottom, '');
+  FSummary.Top := cSummaryOrder;
 end;
 
 procedure TAtlasDebugStepFilterFrame.CreateWnd;
 begin
   inherited CreateWnd;
   // TListView.Items braucht ein Fenster.
-  FillPatterns;
-end;
-
-procedure TAtlasDebugStepFilterFrame.FillPatterns;
-var
-  mIndex: Integer;
-  mItem: TListItem;
-begin
-  // Die Liste braucht ein Fenster; hat der Rahmen schon eines, auch die Liste anlegen (sonst füllt CreateWnd).
-  if not FControls.Patterns.HandleAllocated then
-  begin
-    if not HandleAllocated then
-    begin
-      Exit;
-    end;
-    FControls.Patterns.HandleNeeded;
-  end;
-  FControls.Patterns.Items.BeginUpdate;
-  try
-    FControls.Patterns.Items.Clear;
-    for mIndex := 0 to High(FValue.Patterns) do
-    begin
-      mItem := FControls.Patterns.Items.Add;
-      mItem.Caption := FValue.Patterns[mIndex];
-      mItem.SubItems.Add(TAtlasStepFilterTexts.PatternHits(mIndex, FCount.State, FCount.Counts));
-    end;
-  finally
-    FControls.Patterns.Items.EndUpdate;
-  end;
-  UpdateButtons;
+  FPatterns.Fill;
 end;
 
 procedure TAtlasDebugStepFilterFrame.UpdateCounts;
 var
   mKind: TStepFilterKind;
+  mHits: TArray<string>;
   mIndex: Integer;
 begin
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
   begin
-    FControls.Kinds[mKind].Caption := TAtlasStepFilterTexts.KindCaption(mKind, FCount.State, FCount.Counts);
+    FKindChecks[mKind].Caption := TAtlasStepFilterTexts.KindCaption(mKind, FCountsState, FCounts);
   end;
-  FControls.Summary.Caption := TAtlasStepFilterTexts.SummaryText(FCount.State, FCount.Counts);
-  if not FControls.Patterns.HandleAllocated then
+  FSummary.Caption := TAtlasStepFilterTexts.SummaryText(FCountsState, FCounts);
+  SetLength(mHits, Length(FPatterns.Patterns));
+  for mIndex := 0 to High(mHits) do
   begin
-    Exit;
+    mHits[mIndex] := TAtlasStepFilterTexts.PatternHits(mIndex, FCountsState, FCounts);
   end;
-  for mIndex := 0 to FControls.Patterns.Items.Count - 1 do
-  begin
-    if FControls.Patterns.Items[mIndex].SubItems.Count > 0 then
-    begin
-      FControls.Patterns.Items[mIndex].SubItems[0] := TAtlasStepFilterTexts.PatternHits(mIndex, FCount.State,
-        FCount.Counts);
-    end;
-  end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.UpdateButtons;
-var
-  mText: string;
-begin
-  mText := Trim(FControls.PatternEdit.Text);
-  FControls.Add.Enabled := TStepFilterNames.IsValidPattern(mText) and
-    (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0) and
-    (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
-  FControls.Remove.Enabled := FControls.Patterns.HandleAllocated and (FControls.Patterns.Selected <> nil);
+  FPatterns.SetHits(mHits);
 end;
 
 procedure TAtlasDebugStepFilterFrame.NotifyChange;
 begin
-  UpdateButtons;
-  if Assigned(FEvents.Change) then
+  if Assigned(FHooks.Change) then
   begin
-    FEvents.Change(FValue.Enabled, FValue.Kinds, Copy(FValue.Patterns));
+    FHooks.Change(FEnabled, FKinds, Copy(FPatterns.Patterns));
   end;
 end;
 
@@ -391,7 +273,7 @@ begin
   begin
     Exit;
   end;
-  FValue.Enabled := FControls.EnabledCheck.Checked;
+  FEnabled := FEnabledCheck.Checked;
   NotifyChange;
 end;
 
@@ -404,218 +286,75 @@ begin
     Exit;
   end;
   mKind := TStepFilterKind((Sender as TCheckBox).Tag);
-  if FControls.Kinds[mKind].Checked then
+  if FKindChecks[mKind].Checked then
   begin
-    Include(FValue.Kinds, mKind);
+    Include(FKinds, mKind);
   end
   else
   begin
-    Exclude(FValue.Kinds, mKind);
+    Exclude(FKinds, mKind);
   end;
   NotifyChange;
 end;
 
 procedure TAtlasDebugStepFilterFrame.RefreshClick(Sender: TObject);
 begin
-  if Assigned(FEvents.Refresh) then
+  if Assigned(FHooks.Refresh) then
   begin
-    FEvents.Refresh();
+    FHooks.Refresh();
   end;
 end;
 
-procedure TAtlasDebugStepFilterFrame.AddClick(Sender: TObject);
+procedure TAtlasDebugStepFilterFrame.PatternsChange(Sender: TObject);
 begin
-  AddPattern;
-end;
-
-procedure TAtlasDebugStepFilterFrame.RemoveClick(Sender: TObject);
-begin
-  RemoveSelected;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternEditChange(Sender: TObject);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternEditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if (Key = VK_RETURN) and (Shift = []) then
-  begin
-    AddPattern;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
-begin
-  UpdateButtons;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if FControls.Patterns.IsEditing then
-  begin
-    Exit;
-  end;
-  if (Key = VK_DELETE) and (Shift = []) then
-  begin
-    RemoveSelected;
-    Key := 0;
-  end
-  else if (Key = VK_F2) and (Shift = []) and (FControls.Patterns.Selected <> nil) then
-  begin
-    FControls.Patterns.Selected.EditCaption;
-    Key := 0;
-  end;
-end;
-
-procedure TAtlasDebugStepFilterFrame.PatternsEdited(Sender: TObject; Item: TListItem; var S: string);
-begin
-  // Ungültig oder doppelt: Das alte Muster bleibt stehen.
-  if ReplacePattern(Item.Index, S) then
-  begin
-    S := Trim(S);
-  end
-  else
-  begin
-    S := Item.Caption;
-  end;
+  NotifyChange;
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetOptions(AEnabled: Boolean; AKinds: TStepFilterKinds;
   const APatterns: TArray<string>);
 var
   mKind: TStepFilterKind;
-  mRebuild: Boolean;
 begin
-  mRebuild := TStepFilterNames.PatternsText(APatterns) <> TStepFilterNames.PatternsText(FValue.Patterns);
-  FValue.Enabled := AEnabled;
-  FValue.Kinds := AKinds;
-  FValue.Patterns := Copy(APatterns);
+  FEnabled := AEnabled;
+  FKinds := AKinds;
   FFilling := True;
   try
-    FControls.EnabledCheck.Checked := AEnabled;
+    FEnabledCheck.Checked := AEnabled;
     for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
     begin
-      FControls.Kinds[mKind].Checked := mKind in AKinds;
+      FKindChecks[mKind].Checked := mKind in AKinds;
     end;
   finally
     FFilling := False;
   end;
-  if mRebuild then
-  begin
-    FillPatterns;
-  end;
-  UpdateButtons;
+  FPatterns.SetPatterns(APatterns);
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetCounting;
 begin
-  FCount.State := TAtlasStepCountsState.Counting;
+  FCountsState := TAtlasStepCountsState.Counting;
   UpdateCounts;
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetCounts(const ACounts: TAtlasStepCounts);
 begin
-  FCount.Counts := ACounts;
-  FCount.Counts.Patterns := Copy(ACounts.Patterns);
-  FCount.State := TAtlasStepCountsState.Ready;
+  FCounts := ACounts;
+  FCounts.Patterns := Copy(ACounts.Patterns);
+  FCountsState := TAtlasStepCountsState.Ready;
   UpdateCounts;
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetNoCounts;
 begin
-  FCount.Counts := Default(TAtlasStepCounts);
-  FCount.State := TAtlasStepCountsState.Unavailable;
+  FCounts := Default(TAtlasStepCounts);
+  FCountsState := TAtlasStepCountsState.Unavailable;
   UpdateCounts;
 end;
 
 procedure TAtlasDebugStepFilterFrame.SetSession(AStarted: Boolean; ASkipped: Integer;
   const ALastName, ALastReason: string);
 begin
-  FControls.Session.Caption := TAtlasStepFilterTexts.SessionText(AStarted, ASkipped, ALastName, ALastReason);
-end;
-
-function TAtlasDebugStepFilterFrame.AddPattern: Boolean;
-var
-  mText: string;
-begin
-  mText := Trim(FControls.PatternEdit.Text);
-  Result := TStepFilterNames.IsValidPattern(mText) and (TStepFilterNames.IndexOfPattern(FValue.Patterns, mText) < 0)
-    and (Length(FValue.Patterns) < TStepFilterNames.cMaxPatterns);
-  if not Result then
-  begin
-    Exit;
-  end;
-  FValue.Patterns := TStepFilterNames.WithPattern(FValue.Patterns, mText);
-  FControls.PatternEdit.Text := '';
-  FillPatterns;
-  NotifyChange;
-end;
-
-function TAtlasDebugStepFilterFrame.RemoveSelected: Boolean;
-var
-  mIndex: Integer;
-begin
-  Result := False;
-  if not FControls.Patterns.HandleAllocated or (FControls.Patterns.Selected = nil) then
-  begin
-    Exit;
-  end;
-  mIndex := FControls.Patterns.Selected.Index;
-  if (mIndex < 0) or (mIndex > High(FValue.Patterns)) then
-  begin
-    Exit;
-  end;
-  Delete(FValue.Patterns, mIndex, 1);
-  FillPatterns;
-  // Auswahl bleibt an derselben Stelle, damit Entf mehrfach hintereinander geht.
-  if FControls.Patterns.Items.Count > 0 then
-  begin
-    if mIndex >= FControls.Patterns.Items.Count then
-    begin
-      mIndex := FControls.Patterns.Items.Count - 1;
-    end;
-    FControls.Patterns.Items[mIndex].Selected := True;
-  end;
-  NotifyChange;
-  Result := True;
-end;
-
-function TAtlasDebugStepFilterFrame.ReplacePattern(AIndex: Integer; const AText: string): Boolean;
-var
-  mText: string;
-  mOther: Integer;
-begin
-  Result := False;
-  if (AIndex < 0) or (AIndex > High(FValue.Patterns)) then
-  begin
-    Exit;
-  end;
-  mText := Trim(AText);
-  if not TStepFilterNames.IsValidPattern(mText) then
-  begin
-    Exit;
-  end;
-  mOther := TStepFilterNames.IndexOfPattern(FValue.Patterns, mText);
-  if (mOther >= 0) and (mOther <> AIndex) then
-  begin
-    Exit;
-  end;
-  Result := True;
-  if FValue.Patterns[AIndex] = mText then
-  begin
-    Exit;
-  end;
-  FValue.Patterns[AIndex] := mText;
-  // Die Treffer gelten für das alte Muster; die IDE-Schicht zählt nach dem Speichern neu.
-  if FControls.Patterns.HandleAllocated and (AIndex < FControls.Patterns.Items.Count) and
-    (FControls.Patterns.Items[AIndex].SubItems.Count > 0) then
-  begin
-    FControls.Patterns.Items[AIndex].SubItems[0] := '';
-  end;
-  NotifyChange;
+  FSession.Caption := TAtlasStepFilterTexts.SessionText(AStarted, ASkipped, ALastName, ALastReason);
 end;
 
 { TAtlasStepFilterTexts }

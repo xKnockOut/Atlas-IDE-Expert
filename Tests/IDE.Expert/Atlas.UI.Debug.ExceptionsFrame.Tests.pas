@@ -130,8 +130,8 @@ begin
     Assert.AreEqual('1 · ignoriert', mFrame.List.Items[1].SubItems[2]);
     Assert.AreEqual('Unit1.Laden', mFrame.List.Items[1].SubItems[3], 'ohne Datei die Routine');
     Assert.AreEqual('2 Einträge, 3 Exceptions in dieser Sitzung', mFrame.SummaryLabel.Caption);
-    Assert.AreEqual(3, Integer(mFrame.ClassBox.Items.Count), 'Alle Klassen und zwei Klassen');
-    Assert.AreEqual('Alle Klassen', mFrame.ClassBox.Items[0]);
+    Assert.AreEqual(3, Integer(mFrame.FilterBar.ClassBox.Items.Count), 'Alle Klassen und zwei Klassen');
+    Assert.AreEqual('Alle Klassen', mFrame.FilterBar.ClassBox.Items[0]);
     Assert.IsFalse(mFrame.EmptyLabel.Visible);
   finally
     mHost.Free;
@@ -152,17 +152,17 @@ begin
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;
     mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
-    mFrame.Filter.Text := 'kunde integer';
+    mFrame.FilterBar.Filter.Text := 'kunde integer';
     Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
     Assert.AreEqual('EConvertError', mFrame.Shown[0].ExceptionClass);
-    mFrame.Filter.Text := '';
-    mFrame.ClassBox.ItemIndex := 1;
-    mFrame.ClassBox.OnChange(mFrame.ClassBox);
+    mFrame.FilterBar.Filter.Text := '';
+    mFrame.FilterBar.ClassBox.ItemIndex := 1;
+    mFrame.FilterBar.ClassBox.OnChange(mFrame.FilterBar.ClassBox);
     Assert.AreEqual(1, Integer(mFrame.List.Items.Count));
     Assert.AreEqual('EAbort', mFrame.Shown[0].ExceptionClass, 'Klassen sortiert: EAbort zuerst');
     // Neuer Verlauf: die gewählte Klasse bleibt.
     mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
-    Assert.AreEqual(1, mFrame.ClassBox.ItemIndex);
+    Assert.AreEqual(1, mFrame.FilterBar.ClassBox.ItemIndex);
   finally
     mHost.Free;
     mHistory.Free;
@@ -209,12 +209,12 @@ begin
     mFrame.SetHistory(mHistory, TAtlasDebugIgnoreList.Empty);
     mOpened := '';
     mCopied := '';
-    mFrame.OnOpen :=
+    mFrame.Hooks.Open :=
       procedure(AException: TAtlasDebugException)
       begin
         mOpened := AException.FileName;
       end;
-    mFrame.OnCopy :=
+    mFrame.Hooks.Copy :=
       procedure(AException: TAtlasDebugException)
       begin
         mCopied := AException.ExceptionClass;

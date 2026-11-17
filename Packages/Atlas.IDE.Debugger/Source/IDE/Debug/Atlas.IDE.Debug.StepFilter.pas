@@ -543,7 +543,7 @@ end;
 
 class procedure TAtlasIdeDebugStepFilter.WireFrame(AFrame: TAtlasDebugStepFilterFrame);
 begin
-  AFrame.OnChange :=
+  AFrame.Hooks.Change :=
     procedure(AEnabled: Boolean; AKinds: TStepFilterKinds; const APatterns: TArray<string>)
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger,
@@ -552,7 +552,7 @@ begin
           SaveOptions(AEnabled, AKinds, APatterns);
         end);
     end;
-  AFrame.OnRefresh :=
+  AFrame.Hooks.Refresh :=
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.Debugger, Recount);

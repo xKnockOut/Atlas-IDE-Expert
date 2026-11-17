@@ -13,7 +13,8 @@
 // True/False), „Meldung kopieren“, „Verlauf leeren“ (OnClear). Die
 // IDE-Schicht hält den Verlauf und ruft nach jeder Änderung SetHistory.
 // Unten der Aufrufstapel des gewählten Eintrags (#578, Stack,
-// TAtlasDebugExceptionStack). Die DFM ist leer, weil TCustomFrame.Create für
+// TAtlasDebugExceptionStack). Filterleiste und Meldungen an die IDE-Schicht
+// stehen in Atlas.UI.Debug.ExceptionsParts. Die DFM ist leer, weil TCustomFrame.Create für
 // abgeleitete Frames eine Ressource verlangt; aufgebaut wird im Code.
 
 interface
@@ -30,7 +31,8 @@ uses
   Vcl.Forms,
   Atlas.Core.Debug.Exceptions,
   Atlas.Core.Debug.IgnoreList,
-  Atlas.UI.Debug.ExceptionStack;
+  Atlas.UI.Debug.ExceptionStack,
+  Atlas.UI.Debug.ExceptionsParts;
 
 type
   TAtlasDebugExceptionsFrame = class(TFrame)
@@ -60,16 +62,8 @@ type
       Classes: TArray<string>;
       Total: Integer;
     end;
-    /// <summary>Ereignisse an die IDE-Schicht.</summary>
-    TEvents = record
-      Open: TProc<TAtlasDebugException>;
-      Copy: TProc<TAtlasDebugException>;
-      IgnoreClass: TProc<string, Boolean>;
-      Clear: TProc;
-    end;
   private
-    FClassBox: TComboBox;
-    FFilter: TEdit;
+    FFilterBar: TAtlasDebugExceptionsFilterBar;
     FList: TListView;
     FStack: TAtlasDebugExceptionStack;
     FEmpty: TLabel;
@@ -79,7 +73,8 @@ type
     FIgnore: TAtlasDebugIgnoreList;
     /// <summary>Gezeigte Einträge in der Reihenfolge der Listenzeilen.</summary>
     FShown: TAtlasDebugExceptions;
-    FEvents: TEvents;
+    FHooks: TAtlasDebugExceptionsHooks;
+    procedure BuildList;
     procedure FillClasses;
     procedure Refill;
     procedure FillList(const ASelected: string);
@@ -97,6 +92,7 @@ type
     procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     /// <summary>Verlauf und Ignorier-Liste zeigen; Filter und Auswahl bleiben, soweit möglich.</summary>
     procedure SetHistory(const AHistory: TAtlasDebugExceptionHistory; const AIgnore: TAtlasDebugIgnoreList);
     /// <summary>Gewählter Eintrag; False ohne Auswahl.</summary>
@@ -105,19 +101,15 @@ type
     procedure CopySelected;
     /// <summary>Text der Spalten einer Zeile: Uhrzeit, Klasse, Meldung, Anzahl, Ort, Thread.</summary>
     class function Cells(const AException: TAtlasDebugException; AIgnoredClass: Boolean): TArray<string>; static;
-    property ClassBox: TComboBox read FClassBox;
-    property Filter: TEdit read FFilter;
+    property FilterBar: TAtlasDebugExceptionsFilterBar read FFilterBar;
     property List: TListView read FList;
     property EmptyLabel: TLabel read FEmpty;
     property SummaryLabel: TLabel read FSummary;
     property Shown: TAtlasDebugExceptions read FShown;
     /// <summary>Aufrufstapel des gewählten Eintrags (#578).</summary>
     property Stack: TAtlasDebugExceptionStack read FStack;
-    property OnOpen: TProc<TAtlasDebugException> read FEvents.Open write FEvents.Open;
-    property OnCopy: TProc<TAtlasDebugException> read FEvents.Copy write FEvents.Copy;
-    /// <summary>Klasse und True = künftig ignorieren, False = wieder anhalten.</summary>
-    property OnIgnoreClass: TProc<string, Boolean> read FEvents.IgnoreClass write FEvents.IgnoreClass;
-    property OnClear: TProc read FEvents.Clear write FEvents.Clear;
+    /// <summary>Meldungen an die IDE-Schicht: springen, kopieren, Klasse ignorieren, Verlauf leeren.</summary>
+    property Hooks: TAtlasDebugExceptionsHooks read FHooks;
   end;
 
 implementation
@@ -136,46 +128,6 @@ begin
   Result.Width := MulDiv(AWidth, AList.CurrentPPI, 96);
 end;
 
-/// <summary>Gewählte Klasse aus ABox; '' für „Alle Klassen“ (Eintrag 0).</summary>
-function ClassFilter(ABox: TComboBox; const AClasses: TArray<string>): string;
-begin
-  Result := '';
-  if (ABox.ItemIndex > 0) and (ABox.ItemIndex <= Length(AClasses)) then
-  begin
-    Result := AClasses[ABox.ItemIndex - 1];
-  end;
-end;
-
-/// <summary>Leiste oben in AFrame: Auswahl der Klasse und Textfilter.</summary>
-procedure CreateFilterBar(AFrame: TAtlasDebugExceptionsFrame);
-var
-  mTop: TPanel;
-begin
-  mTop := TPanel.Create(AFrame);
-  mTop.Parent := AFrame;
-  mTop.Align := alTop;
-  mTop.BevelOuter := bvNone;
-  mTop.ShowCaption := False;
-  mTop.ParentBackground := True;
-  mTop.Height := MulDiv(30, AFrame.CurrentPPI, 96);
-
-  AFrame.FClassBox := TComboBox.Create(AFrame);
-  AFrame.FClassBox.Parent := mTop;
-  AFrame.FClassBox.Align := alLeft;
-  AFrame.FClassBox.AlignWithMargins := True;
-  AFrame.FClassBox.Style := csDropDownList;
-  AFrame.FClassBox.Width := MulDiv(170, AFrame.CurrentPPI, 96);
-  AFrame.FClassBox.OnChange := AFrame.FilterChange;
-
-  AFrame.FFilter := TEdit.Create(AFrame);
-  AFrame.FFilter.Parent := mTop;
-  AFrame.FFilter.Align := alClient;
-  AFrame.FFilter.AlignWithMargins := True;
-  AFrame.FFilter.TextHint := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsFilterHint);
-  AFrame.FFilter.OnChange := AFrame.FilterChange;
-  AFrame.FFilter.OnKeyDown := AFrame.FilterKeyDown;
-end;
-
 /// <summary>Graue Beschriftung in AFrame (Summe unten bzw. Hinweis ohne Exceptions).</summary>
 function GrayLabel(AFrame: TAtlasDebugExceptionsFrame; AAlign: TAlign): TLabel;
 begin
@@ -185,45 +137,6 @@ begin
   Result.AlignWithMargins := True;
   Result.ShowAccelChar := False;
   Result.Font.Color := clGrayText;
-end;
-
-/// <summary>Liste der Exceptions in AFrame mit ihren Spalten und Ereignissen.</summary>
-procedure CreateList(AFrame: TAtlasDebugExceptionsFrame);
-const
-  // Spaltenbreiten bei 96 dpi.
-  cTimeWidth = 70;
-  cClassWidth = 130;
-  cMessageWidth = 260;
-  cCountWidth = 60;
-  cLocationWidth = 170;
-  cThreadWidth = 110;
-var
-  mList: TListView;
-begin
-  mList := TListView.Create(AFrame);
-  AFrame.FList := mList;
-  mList.Parent := AFrame;
-  mList.Align := alClient;
-  mList.AlignWithMargins := True;
-  mList.ViewStyle := vsReport;
-  mList.RowSelect := True;
-  mList.HideSelection := False;
-  mList.ReadOnly := True;
-  mList.MultiSelect := False;
-  mList.ColumnClick := False;
-  mList.PopupMenu := AFrame.FMenu;
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnTime), cTimeWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnClass), cClassWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnMessage), cMessageWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnCount),
-    cCountWidth).Alignment := taRightJustify;
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
-  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnThread), cThreadWidth);
-  mList.OnDblClick := AFrame.ListDblClick;
-  mList.OnSelectItem := AFrame.ListSelectItem;
-  mList.OnKeyDown := AFrame.ListKeyDown;
-  mList.OnCustomDrawItem := AFrame.ListCustomDrawItem;
-  mList.OnCustomDrawSubItem := AFrame.ListCustomDrawSubItem;
 end;
 
 /// <summary>Zeile AItem ist eine still fortgesetzte Exception aus AShown.</summary>
@@ -291,9 +204,9 @@ procedure TAtlasDebugExceptionsFrame.TListMenu.IgnoreClick(Sender: TObject);
 var
   mEntry: TAtlasDebugException;
 begin
-  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FEvents.IgnoreClass) then
+  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.IgnoreClass) then
   begin
-    FFrame.FEvents.IgnoreClass(mEntry.ExceptionClass, True);
+    FFrame.FHooks.IgnoreClass(mEntry.ExceptionClass, True);
   end;
 end;
 
@@ -301,9 +214,9 @@ procedure TAtlasDebugExceptionsFrame.TListMenu.StopClick(Sender: TObject);
 var
   mEntry: TAtlasDebugException;
 begin
-  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FEvents.IgnoreClass) then
+  if FFrame.TrySelected(mEntry) and Assigned(FFrame.FHooks.IgnoreClass) then
   begin
-    FFrame.FEvents.IgnoreClass(mEntry.ExceptionClass, False);
+    FFrame.FHooks.IgnoreClass(mEntry.ExceptionClass, False);
   end;
 end;
 
@@ -314,9 +227,9 @@ end;
 
 procedure TAtlasDebugExceptionsFrame.TListMenu.ClearClick(Sender: TObject);
 begin
-  if Assigned(FFrame.FEvents.Clear) then
+  if Assigned(FFrame.FHooks.Clear) then
   begin
-    FFrame.FEvents.Clear();
+    FFrame.FHooks.Clear();
   end;
 end;
 
@@ -328,18 +241,63 @@ begin
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
   FIgnore := TAtlasDebugIgnoreList.Empty;
-  CreateFilterBar(Self);
+  FHooks := TAtlasDebugExceptionsHooks.Create;
+  FFilterBar := TAtlasDebugExceptionsFilterBar.CreateIn(Self, FilterChange, FilterKeyDown);
   FSummary := GrayLabel(Self, alBottom);
   FSummary.Caption := '';
   // Aufrufstapel des gewählten Eintrags (#578) über der Summe.
   FStack := TAtlasDebugExceptionStack.CreateIn(Self);
   FMenu := TListMenu.CreateFor(Self);
-  CreateList(Self);
+  BuildList;
   // Ohne Exceptions: Hinweis statt leerer Liste.
   FEmpty := GrayLabel(Self, alClient);
   FEmpty.WordWrap := True; // window-ok: alClient, die Höhe kommt aus der Ausrichtung
   FEmpty.Caption := TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsEmpty);
   FEmpty.Visible := False;
+end;
+
+destructor TAtlasDebugExceptionsFrame.Destroy;
+begin
+  FreeAndNil(FHooks);
+  inherited Destroy;
+end;
+
+procedure TAtlasDebugExceptionsFrame.BuildList;
+const
+  // Spaltenbreiten bei 96 dpi.
+  cTimeWidth = 70;
+  cClassWidth = 130;
+  cMessageWidth = 260;
+  cCountWidth = 60;
+  cLocationWidth = 170;
+  cThreadWidth = 110;
+var
+  mList: TListView;
+begin
+  mList := TListView.Create(Self);
+  FList := mList;
+  mList.Parent := Self;
+  mList.Align := alClient;
+  mList.AlignWithMargins := True;
+  mList.ViewStyle := vsReport;
+  mList.RowSelect := True;
+  mList.HideSelection := False;
+  mList.ReadOnly := True;
+  mList.MultiSelect := False;
+  mList.ColumnClick := False;
+  mList.PopupMenu := FMenu;
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnTime), cTimeWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnClass), cClassWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnMessage), cMessageWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnCount),
+    cCountWidth).Alignment := taRightJustify;
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnLocation), cLocationWidth);
+  AddColumn(mList, TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsColumnThread), cThreadWidth);
+  mList.OnDblClick := ListDblClick;
+  mList.OnSelectItem := ListSelectItem;
+  mList.OnKeyDown := ListKeyDown;
+  mList.OnCustomDrawItem := ListCustomDrawItem;
+  mList.OnCustomDrawSubItem := ListCustomDrawSubItem;
 end;
 
 procedure TAtlasDebugExceptionsFrame.CreateWnd;
@@ -351,34 +309,11 @@ begin
 end;
 
 procedure TAtlasDebugExceptionsFrame.FillClasses;
-var
-  mKeep, mName: string;
-  mIndex: Integer;
 begin
   // Erst mit Fenster (CreateWnd): TComboBox.Items braucht eins.
-  if not HandleAllocated then
+  if HandleAllocated then
   begin
-    Exit;
-  end;
-  mKeep := ClassFilter(FClassBox, FHistory.Classes);
-  FClassBox.Items.BeginUpdate;
-  try
-    FClassBox.Items.Clear;
-    FClassBox.Items.Add(TAtlasExceptionsStrings.Text(TAtlasExceptionsTextId.DebugExceptionsAllClasses));
-    for mName in FHistory.Classes do
-    begin
-      FClassBox.Items.Add(mName);
-    end;
-  finally
-    FClassBox.Items.EndUpdate;
-  end;
-  FClassBox.ItemIndex := 0;
-  for mIndex := 0 to High(FHistory.Classes) do
-  begin
-    if SameText(FHistory.Classes[mIndex], mKeep) then
-    begin
-      FClassBox.ItemIndex := mIndex + 1;
-    end;
+    FFilterBar.FillClasses(FHistory.Classes);
   end;
 end;
 
@@ -394,8 +329,8 @@ begin
     mSelected := mCurrent.Key;
   end;
   FShown := nil;
-  mWords := TAtlasDebugException.FilterWords(FFilter.Text);
-  mOnlyClass := ClassFilter(FClassBox, FHistory.Classes);
+  mWords := TAtlasDebugException.FilterWords(FFilterBar.Filter.Text);
+  mOnlyClass := FFilterBar.SelectedClass;
   for mEntry in FHistory.Entries do
   begin
     if mEntry.Matches(mOnlyClass, mWords) then
@@ -551,9 +486,9 @@ procedure TAtlasDebugExceptionsFrame.OpenSelected;
 var
   mEntry: TAtlasDebugException;
 begin
-  if TrySelected(mEntry) and mEntry.HasSource and Assigned(FEvents.Open) then
+  if TrySelected(mEntry) and mEntry.HasSource and Assigned(FHooks.Open) then
   begin
-    FEvents.Open(mEntry);
+    FHooks.Open(mEntry);
   end;
 end;
 
@@ -561,9 +496,9 @@ procedure TAtlasDebugExceptionsFrame.CopySelected;
 var
   mEntry: TAtlasDebugException;
 begin
-  if TrySelected(mEntry) and Assigned(FEvents.Copy) then
+  if TrySelected(mEntry) and Assigned(FHooks.Copy) then
   begin
-    FEvents.Copy(mEntry);
+    FHooks.Copy(mEntry);
   end;
 end;
 
