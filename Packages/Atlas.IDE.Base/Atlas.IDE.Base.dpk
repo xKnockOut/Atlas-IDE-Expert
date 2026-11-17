@@ -145,6 +145,7 @@ contains
   Atlas.UI.Foundation.Theme in 'Source\UI\Foundation\Atlas.UI.Foundation.Theme.pas',
   Atlas.UI.Foundation.Dialog in 'Source\UI\Foundation\Atlas.UI.Foundation.Dialog.pas',
   Atlas.UI.Foundation.ListView in 'Source\UI\Foundation\Atlas.UI.Foundation.ListView.pas',
+  Atlas.UI.Foundation.ListBox in 'Source\UI\Foundation\Atlas.UI.Foundation.ListBox.pas',
   Atlas.UI.Foundation.WrapLabel in 'Source\UI\Foundation\Atlas.UI.Foundation.WrapLabel.pas',
   Atlas.UI.Foundation.EditorFont in 'Source\UI\Foundation\Atlas.UI.Foundation.EditorFont.pas',
   Atlas.Core.Style.Symbol in 'Source\Core\Style\Atlas.Core.Style.Symbol.pas',
