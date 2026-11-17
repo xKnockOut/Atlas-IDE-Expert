@@ -7,7 +7,9 @@
 //     Zwischen zwei Attributen gehört, was in der Zeile des ersten steht, zu diesem (Kommentar am Zeilenende);
 //     alle übrigen Zeilen gehören zum zweiten, nur Zeilen bis zum letzten {$ENDIF} gehören noch zum ersten.
 //   - Über dem ersten [TestCase] gehören die Zeilen dazu, die direkt darüber stehen und nur Kommentare
-//     enthalten; hinter dem letzten der Rest seiner Zeile, wenn er nur aus Kommentaren besteht.
+//     enthalten; hinter dem letzten der Rest seiner Zeile, wenn er nur aus Kommentaren besteht. Ein
+//     Doku-Kommentar /// beendet den Weg nach oben: Er gehört zur Methode und bleibt beim Löschen und
+//     Verschieben der Fälle stehen.
 //   - Bedingte Direktiven ({$IFDEF}, {$IF}, {$IFNDEF}, {$IFOPT} … {$ENDIF}, {$IFEND}) sind erlaubt, wenn jede
 //     genau ein Attribut umschließt: Sie wandern dann mit ihm. Die öffnende Direktive darf über dem ersten
 //     bzw. die schließende unter dem letzten Fall stehen. Alles andere ({$ELSE}, eine Bedingung über mehreren
@@ -374,10 +376,11 @@ begin
 end;
 
 /// <summary>Darf das Stück AChunk über dem ersten Fall dazugehören? Nur Kommentare und öffnende Direktiven,
-/// diese nur bis zur Zahl AAllowed.</summary>
+/// diese nur bis zur Zahl AAllowed. Ein Doku-Kommentar /// gehört zur Methode, nicht zum ersten Fall.</summary>
 function FitsAbove(const AChunk: TChunk; var AAllowed: Integer): Boolean;
 begin
-  Result := (AChunk.Others = 0) and (AChunk.Closers = 0) and (AChunk.Openers <= AAllowed);
+  Result := (AChunk.Others = 0) and (AChunk.Closers = 0) and (AChunk.Openers <= AAllowed) and
+    not StartsStr('///', AChunk.Text);
   if Result then
   begin
     Dec(AAllowed, AChunk.Openers);

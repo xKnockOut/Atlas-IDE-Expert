@@ -41,6 +41,8 @@ type
     [Test]
     procedure DeletedCaseTakesItsComments;
     [Test]
+    procedure DocCommentStaysWithMethod;
+    [Test]
     procedure NewCaseHasNoComments;
     [Test]
     procedure DirectiveAroundOneCaseMovesWithIt;
@@ -351,6 +353,24 @@ begin
   mTable := TableOf(mText);
   Assert.AreEqual(TestUnit('    [TestCase(''A'', ''1'')]'#10, '(A: Integer)'),
     Written(mText, mTable, [mTable.Rows[0]]));
+end;
+
+procedure TTestCaseTableTests.DocCommentStaysWithMethod;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  // Der Doku-Kommentar gehört zur Methode, // zu A darunter zum ersten Fall.
+  mText := TestUnit('    /// <summary>Prueft.</summary>'#10'    // zu A'#10'    [TestCase(''A'', ''1'')]'#10 +
+    '    [TestCase(''B'', ''2'')]'#10, '(A: Integer)');
+  mTable := TableAt(mText, 12);
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.AreEqual(11, mTable.Range.StartPos.Line, 'Bereich beginnt unter dem Doku-Kommentar');
+  Assert.AreEqual(TestUnit('    /// <summary>Prueft.</summary>'#10'    [TestCase(''B'', ''2'')]'#10 +
+    '    // zu A'#10'    [TestCase(''A'', ''1'')]'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[1], mTable.Rows[0]]), 'vertauscht');
+  Assert.AreEqual(TestUnit('    /// <summary>Prueft.</summary>'#10'    [TestCase(''B'', ''2'')]'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[1]]), 'erster Fall gelöscht');
 end;
 
 procedure TTestCaseTableTests.NewCaseHasNoComments;
