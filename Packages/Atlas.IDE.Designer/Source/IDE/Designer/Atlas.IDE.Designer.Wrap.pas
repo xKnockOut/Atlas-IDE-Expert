@@ -5,14 +5,16 @@
 // GridPanel-Zellen rechnet TAtlasContainerWrap; hier geht es um den Designer:
 // - Einpacken: alle markierten Steuerelemente im selben Parent; Name (und bei
 //   TGroupBox die Beschriftung) wird vorher abgefragt. Der Container entsteht
-//   über IDesigner.CreateComponent an der Z-Stelle des obersten markierten,
+//   über IAtlasDesignSurface.CreateComponent an der Z-Stelle des obersten markierten,
 //   die Kinder wandern mit umgerechneten Koordinaten hinein; TPageControl
 //   bekommt eine Seite, TFlowPanel und TGridPanel die Kinder zeilenweise.
 // - Auflösen: Verweise im Quelltext der Unit werden vorher gezeigt, Handler
 //   des Containers in der Meldungsansicht genannt; die Kinder kommen an die
 //   Z- und TabOrder-Stelle des Containers, der Container wird gelöscht.
-// - Rückgängig: der letzte Schritt im selben Formular. Beim Auflösen bleibt
-//   dafür eine Kopie der Eigenschaften des Containers (ohne Owner) stehen.
+// - Rückgängig: der letzte Schritt im selben Formular. Beim Einpacken merkt
+//   TAtlasDesignerCreated den angelegten Container (auch umbenannt, nicht
+//   ein neuer unter gleichem Namen); beim Auflösen bleibt eine Kopie der
+//   Eigenschaften des Containers (ohne Owner) stehen.
 // Nur im Hauptthread.
 
 interface
@@ -24,6 +26,8 @@ uses
   Vcl.Controls,
   ToolsAPI,
   DesignIntf,
+  Atlas.Core.Designer.Surface,
+  Atlas.Core.Designer.Created,
   Atlas.IDE.Designer.Tool;
 
 type
@@ -50,6 +54,8 @@ type
   TAtlasIdeWrap = class(TAtlasIdeDesignerTool)
   private
     FState: TAtlasWrapState;
+    /// <summary>Beim Einpacken angelegter Container samt Seite.</summary>
+    FCreated: TAtlasDesignerCreated;
     FTemplate: TComponent;
     FSheetTemplate: TComponent;
     /// <summary>Auswahl und Klasse prüfen; sonst Hinweis und False.</summary>
@@ -58,12 +64,12 @@ type
     procedure ClearState;
     procedure Remember(AStep: TAtlasWrapStep; const AFileName: string; AParent: TWinControl; ARoot: TComponent;
       const AChildren: TArray<TControl>);
-    function CreateContainer(const ADesigner: IDesigner; AClass: TComponentClass; AParent: TWinControl;
+    function CreateContainer(const ASurface: IAtlasDesignSurface; AClass: TComponentClass; AParent: TWinControl;
       const AName, ACaption: string): TWinControl;
     procedure KeepTemplate(AContainer, AInner: TWinControl);
     procedure FinishUnwrap(ARoot: TComponent; AParent: TWinControl);
-    procedure UndoWrap(const AEditor: IOTAFormEditor; ARoot: TComponent);
-    procedure UndoUnwrap(const ADesigner: IDesigner; ARoot: TComponent);
+    procedure UndoWrap(const ASurface: IAtlasDesignSurface; ARoot: TComponent);
+    procedure UndoUnwrap(const ASurface: IAtlasDesignSurface; ARoot: TComponent);
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
@@ -100,6 +106,7 @@ uses
   Atlas.IDE.Designer.KeptForm,
   Atlas.IDE.Designer.Anchors,
   Atlas.IDE.Designer.DuplicateRow,
+  Atlas.IDE.Designer.Surface,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings;
 
@@ -262,14 +269,6 @@ begin
       TControl(mComponent).BoundsRect := ABounds[mIndex];
     end;
   end;
-end;
-
-function DeleteComponent(const AEditor: IOTAFormEditor; const AName: string): Boolean;
-var
-  mComponent: IOTAComponent;
-begin
-  mComponent := AEditor.FindComponent(AName);
-  Result := (mComponent <> nil) and mComponent.Delete;
 end;
 
 /// <summary>Quelltext der Unit zum Formular, auch ungespeichert.</summary>
@@ -475,11 +474,13 @@ end;
 constructor TAtlasIdeWrap.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
+  FCreated := TAtlasDesignerCreated.Create(nil);
 end;
 
 destructor TAtlasIdeWrap.Destroy;
 begin
   ClearState;
+  FCreated.Free;
   inherited Destroy;
 end;
 
@@ -511,6 +512,7 @@ begin
   FreeAndNil(FTemplate);
   FreeAndNil(FSheetTemplate);
   FState := Default(TAtlasWrapState);
+  FCreated.Clear;
 end;
 
 procedure TAtlasIdeWrap.Remember(AStep: TAtlasWrapStep; const AFileName: string; AParent: TWinControl;
@@ -531,12 +533,13 @@ begin
   end;
 end;
 
-function TAtlasIdeWrap.CreateContainer(const ADesigner: IDesigner; AClass: TComponentClass; AParent: TWinControl;
-  const AName, ACaption: string): TWinControl;
+function TAtlasIdeWrap.CreateContainer(const ASurface: IAtlasDesignSurface; AClass: TComponentClass;
+  AParent: TWinControl; const AName, ACaption: string): TWinControl;
 var
   mSheet: TTabSheet;
 begin
-  Result := TWinControl(ADesigner.CreateComponent(AClass, AParent, 0, 0, 0, 0));
+  Result := TWinControl(ASurface.CreateComponent(AClass, AParent));
+  FCreated.Add(Result);
   Result.Name := AName;
   if IsPublishedProp(Result, 'Caption') then
   begin
@@ -544,7 +547,8 @@ begin
   end;
   if Result is TPageControl then
   begin
-    mSheet := TTabSheet(ADesigner.CreateComponent(TTabSheet, Result, 0, 0, 0, 0));
+    mSheet := TTabSheet(ASurface.CreateComponent(TTabSheet, Result));
+    FCreated.Add(mSheet);
     mSheet.PageControl := TPageControl(Result);
     mSheet.Name := UniqueName(Result.Owner, TAtlasWrapOrder.SheetName(AName, AClass.ClassName));
     FState.Sheet := mSheet.Name;
@@ -643,22 +647,23 @@ begin
     mtWarning, [mbYes, mbNo], 0) = mrYes);
 end;
 
-procedure TAtlasIdeWrap.UndoWrap(const AEditor: IOTAFormEditor; ARoot: TComponent);
+procedure TAtlasIdeWrap.UndoWrap(const ASurface: IAtlasDesignSurface; ARoot: TComponent);
 var
   mParent: TWinControl;
 begin
   mParent := ParentByName(ARoot, FState.ParentName);
-  if ARoot.FindComponent(FState.Container) = nil then
+  // Hat der Benutzer den Container inzwischen gelöscht, sind die Kinder mit ihm gegangen.
+  if not FCreated.Holds(ASurface) then
   begin
     Exit;
   end;
   MoveTo(ARoot, mParent, FState.Children, FState.ChildBounds);
-  DeleteComponent(AEditor, FState.Container);
+  FCreated.Undo(ASurface);
   SetTabs(ARoot, FState.Children, FState.ChildTabs);
   Restack(mParent, ARoot, FState.Stack);
 end;
 
-procedure TAtlasIdeWrap.UndoUnwrap(const ADesigner: IDesigner; ARoot: TComponent);
+procedure TAtlasIdeWrap.UndoUnwrap(const ASurface: IAtlasDesignSurface; ARoot: TComponent);
 var
   mParent, mContainer, mInner: TWinControl;
 begin
@@ -667,15 +672,14 @@ begin
   begin
     Exit;
   end;
-  mContainer := TWinControl(ADesigner.CreateComponent(FState.ContainerClass, mParent, 0, 0, 0, 0));
+  mContainer := TWinControl(ASurface.CreateComponent(FState.ContainerClass, mParent));
   mContainer.Name := FState.Container;
   TAtlasIdeDuplicateRow.CopyProperties(FTemplate, mContainer, True);
   mContainer.BoundsRect := FState.ContainerBounds;
   mInner := mContainer;
   if (FSheetTemplate <> nil) and (mContainer is TPageControl) then
   begin
-    mInner := TWinControl(ADesigner.CreateComponent(TComponentClass(FSheetTemplate.ClassType), mContainer, 0, 0, 0,
-      0));
+    mInner := TWinControl(ASurface.CreateComponent(TComponentClass(FSheetTemplate.ClassType), mContainer));
     TTabSheet(mInner).PageControl := TPageControl(mContainer);
     mInner.Name := FState.Sheet;
     TAtlasIdeDuplicateRow.CopyProperties(FSheetTemplate, mInner, True);
@@ -722,6 +726,7 @@ var
   mName, mCaption: string;
   mContainer: TWinControl;
   mKept: TAtlasDesignerKept;
+  mSurface: IAtlasDesignSurface;
 begin
   if not TAtlasIdeSettings.Current.DesignerWrapInContainer or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -746,8 +751,8 @@ begin
     Exit;
   end;
   Remember(TAtlasWrapStep.Wrapped, mEditor.FileName, mControls[0].Parent, mRoot, mControls);
-  mContainer := CreateContainer(TAtlasDesignerAccess.DesignerOf(mEditor), mClass, mControls[0].Parent, mName,
-    mCaption);
+  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
+  mContainer := CreateContainer(mSurface, mClass, mControls[0].Parent, mName, mCaption);
   FState.Container := mContainer.Name;
   PlaceContainer(mContainer, InnerOf(mContainer), FState.ChildBounds,
     TAtlasIdeSettings.Current.DesignerWrapInContainerPadding);
@@ -768,6 +773,7 @@ var
   mBounds: TArray<TRect>;
   mOffset: TPoint;
   mKept: TAtlasDesignerKept;
+  mSurface: IAtlasDesignSurface;
 begin
   if not TAtlasIdeSettings.Current.DesignerWrapInContainer or not TAtlasDesignerAccess.Current(mEditor, mRoot) or
     (TAtlasDesignerAccess.DesignerOf(mEditor) = nil) then
@@ -805,7 +811,8 @@ begin
       mOffset)];
   end;
   MoveTo(mRoot, mParent, FState.Children, mBounds);
-  DeleteComponent(mEditor, FState.Container);
+  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
+  mSurface.DeleteComponent(FState.Container);
   FinishUnwrap(mRoot, mParent);
   TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerWrapUnwrapped, [FState.Container,
@@ -830,27 +837,27 @@ procedure TAtlasIdeWrap.Undo;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
-  mDesigner: IDesigner;
+  mSurface: IAtlasDesignSurface;
 begin
   if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
     Exit;
   end;
-  mDesigner := TAtlasDesignerAccess.DesignerOf(mEditor);
-  if mDesigner = nil then
+  mSurface := TAtlasIdeDesignSurface.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
+  if mSurface = nil then
   begin
     Exit;
   end;
   if FState.Step = TAtlasWrapStep.Wrapped then
   begin
-    UndoWrap(mEditor, mRoot);
+    UndoWrap(mSurface, mRoot);
   end
   else
   begin
-    UndoUnwrap(mDesigner, mRoot);
+    UndoUnwrap(mSurface, mRoot);
   end;
   ClearState;
-  mDesigner.Modified;
+  mSurface.Modified;
   Say(TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerWrapUndone));
 end;
 
