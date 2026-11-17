@@ -351,6 +351,10 @@ end;
 class constructor TSharedCacheWrites.Create;
 begin
   FLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(FLock);
+  TMonitor.Exit(FLock);
   FFiles := TObjectDictionary<string, TWritten>.Create([doOwnsValues]);
 end;
 
@@ -397,6 +401,12 @@ begin
   begin
     AUnits.Free;
     FFiles.Remove(SharedCacheKey(AFileSystem, AFileName));
+    // Leer gewordene Tabelle gibt ihre Plätze ab (TDictionary behält sie nach Remove; TrimExcess legt wieder
+    // vier an): Sonst blieben sie nach dem ersten Aufbau bis Programmende belegt.
+    if FFiles.Count = 0 then
+    begin
+      FFiles.Clear;
+    end;
     Exit;
   end;
   mEntry := TWritten.Create;
@@ -410,6 +420,10 @@ begin
   TMonitor.Enter(FLock);
   try
     FFiles.Remove(SharedCacheKey(AFileSystem, AFileName));
+    if FFiles.Count = 0 then
+    begin
+      FFiles.Clear;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -453,6 +467,10 @@ end;
 class constructor TSharedCacheReads.Create;
 begin
   FLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(FLock);
+  TMonitor.Exit(FLock);
   FFiles := TObjectDictionary<string, TShared>.Create([doOwnsValues]);
 end;
 
@@ -517,6 +535,11 @@ begin
     if mShared.FUsers <= 0 then
     begin
       FFiles.Remove(mKey);
+      // Wie in TSharedCacheWrites.Remember: Die leere Tabelle gibt ihre Plätze ab.
+      if FFiles.Count = 0 then
+      begin
+        FFiles.Clear;
+      end;
       mUnused := True;
     end;
   finally

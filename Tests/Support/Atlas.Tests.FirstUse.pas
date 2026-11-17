@@ -381,11 +381,33 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Erstes Datenmodul des Prozesses (TDataModule, z. B. als Formular der Designer-Fälschung): Es meldet sich
+/// bei Screen an (Vcl.Forms, TScreen.FDataModules wächst auf 4 Einträge und schrumpft nicht, frei mit Screen in der
+/// Finalisierung der VCL); beim Freigeben nimmt es GlobalNameSpace zum Schreiben (Zähler je Thread, frei mit
+/// GlobalNameSpace in der Finalisierung von System.Classes) und sperrt die Liste der offenen Verweise
+/// (GlobalFixupList, Monitor-Datensatz, frei mit der Liste).</summary>
+procedure WarmUpDataModule;
+begin
+  TDataModule.CreateNew(nil).Free;
+end;
+
 { TFirstUse }
+
+/// <summary>Windows-Version der RTL (System.SysUtils, Win32Platform und Win32CSDVersion): InitPlatformId legt beim
+/// ersten Zugriff den Text des Service Packs an, den SysUtils bis zur Finalisierung hält. Ausgelöst etwa von
+/// TRegistry.GetKeyInfo (TDelphiInstallation.Versions beim Lesen der globalen Einstellungen).</summary>
+procedure ShellWarmUpPlatformId;
+begin
+  if Win32Platform < 0 then
+  begin
+    raise EInvalidOperation.Create('Plattform');
+  end;
+end;
 
 class procedure TFirstUse.WarmUp;
 begin
   SwitchOffComponentFieldCache;
+  WarmUpDataModule;
   WarmUpSlashCommands;
   WarmUpRuleCatalogs;
   WarmUpTimeZoneAndJsonPath;
@@ -402,6 +424,7 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  ShellWarmUpPlatformId;
 end;
 
 end.

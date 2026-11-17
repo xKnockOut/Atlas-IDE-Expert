@@ -23,9 +23,6 @@ type
     FFolder: string;
     procedure Notify(const AMethod, AParams: string);
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -92,16 +89,6 @@ begin
     FDispatcher.DispatchMessage(mMessage).Free;
   finally
     mMessage.Free;
-  end;
-end;
-
-procedure TShellConfigurationTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ReplaySettingsAreGlobal;
-  finally
-    TearDown;
   end;
 end;
 
