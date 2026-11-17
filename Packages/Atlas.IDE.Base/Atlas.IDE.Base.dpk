@@ -163,6 +163,7 @@ contains
   Atlas.IDE.Foundation.GutterColumns in 'Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas',
   Atlas.IDE.Foundation.OpenWatch in 'Source\IDE\Foundation\Atlas.IDE.Foundation.OpenWatch.pas',
   Atlas.IDE.Foundation.EditorRefresh in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas',
+  Atlas.IDE.Foundation.Caret in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Caret.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
   Atlas.IDE.Foundation.EditorFiles in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas',
   Atlas.IDE.Foundation.ActiveEditor in 'Source\IDE\Foundation\Atlas.IDE.Foundation.ActiveEditor.pas',

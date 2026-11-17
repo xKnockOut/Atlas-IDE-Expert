@@ -128,26 +128,12 @@ uses
   Atlas.IDE.Debug.Evaluator,
   Atlas.IDE.Debug.Breakpoints,
   Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Caret;
 
 const
   cMenuItemName = 'AtlasBreakOnNextEventItem';
   cBreakpointGroup = 'Atlas.Ereignis';
-
-/// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke (die IDE setzt sie beim Halt auf den
-/// Ausführungspunkt).</summary>
-function CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
 
 function RunMenu: TMenuItem;
 var
@@ -419,7 +405,8 @@ begin
           end);
       end;
   end;
-  mPoint := CaretPoint;
+  // Unter der Zeile mit der Schreibmarke: Die IDE setzt sie beim Halt auf den Ausführungspunkt.
+  mPoint := TAtlasIdeCaret.BelowLine;
   FBar.Colors := TAtlasIdeStyle.Colors;
   FBar.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FBar.ShowFor(ACaption, mPoint);
