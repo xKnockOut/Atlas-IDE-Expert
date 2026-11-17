@@ -80,8 +80,9 @@ jobs:
       - name: Metrikregeln außerhalb der Plugin-Packages
         # Atlas.Common, Atlas.Windows, Application und Tests laufen mit der atlas.json im Wurzelordner. Dort sind
         # nur Methodenlänge und zyklomatische Komplexität eingeschaltet, mit atlas-baseline.json als Bestand, der nur
-        # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab.
-        run: Output/Linux64/Bin/AtlasServer --check . --no-index --rules metric-method-length,metric-cyclomatic-complexity --fail-on hint
+        # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab. Das Profil
+        # metriken (atlas.json) lässt die teuren Regeln weg; --rules allein filtert nur die Ausgabe.
+        run: Output/Linux64/Bin/AtlasServer --check . --no-index --profile metriken --rules metric-method-length,metric-cyclomatic-complexity --fail-on hint
 
       - name: Wortgleiche Rümpfe über Units hinweg
         # Vergleicht die Rümpfe aller Routinen des Repositorys mit atlas-duplicates.json; neue Kopien und
