@@ -14,6 +14,8 @@ type
   public
     /// <summary>PROBE (nicht mergen): misst je Schritt von BoardSizesCardToItsText die erste und zweite Runde.</summary>
     [Test]
+    procedure AAProbeBoardParts;
+    [Test]
     procedure AProbeFirstUse;
     [Test]
     procedure UnreadShowsRowsWithSwitchKeyAndTry;
@@ -47,6 +49,11 @@ uses
   Atlas.UI.Welcome.WhatsNew,
   Atlas.UI.Welcome.TestSupport,
   System.IOUtils,
+  Vcl.ExtCtrls,
+  Vcl.Menus,
+  Vcl.AppEvnts,
+  Atlas.UI.Welcome.Header,
+  Atlas.UI.Welcome.Arrange,
   Atlas.Common.Diagnostics.ShutdownRest;
 
 
@@ -144,6 +151,69 @@ begin
   Result.Source := ASource;
 end;
 { TAtlasWelcomeWhatsNewFrameTests }
+
+type
+  TProbeStep = reference to procedure(AHost: TForm);
+
+procedure TAtlasWelcomeWhatsNewFrameTests.AAProbeBoardParts;
+var
+  mLines: TStringList;
+  mNames: TArray<string>;
+  mSteps: TArray<TProbeStep>;
+  mIndex, mRound: Integer;
+  mBefore: Int64;
+  mDelta: array[0..1] of Int64;
+  mHost: TForm;
+
+  procedure Add(const AName: string; const AStep: TProbeStep);
+  begin
+    SetLength(mNames, Length(mNames) + 1);
+    mNames[High(mNames)] := AName;
+    SetLength(mSteps, Length(mSteps) + 1);
+    mSteps[High(mSteps)] := AStep;
+  end;
+
+begin
+  mNames := nil;
+  mSteps := nil;
+  Add('AppEvents', procedure(AHost: TForm) begin TApplicationEvents.Create(nil).Free; end);
+  Add('AppEventsOnMessage', procedure(AHost: TForm) var mEvents: TApplicationEvents; begin
+    mEvents := TApplicationEvents.Create(nil); mEvents.OnMessage := nil; mEvents.Free; end);
+  Add('Timer', procedure(AHost: TForm) begin TTimer.Create(AHost).Free; end);
+  Add('ScrollBox', procedure(AHost: TForm) var mBox: TScrollBox; begin
+    mBox := TScrollBox.Create(AHost); mBox.Parent := AHost; mBox.Free; end);
+  Add('PopupMenu', procedure(AHost: TForm) var mMenu: TPopupMenu; begin
+    mMenu := TPopupMenu.Create(AHost); TMenuItem.Create(mMenu); mMenu.Free; end);
+  Add('Header', procedure(AHost: TForm) var mHeader: TAtlasWelcomeHeaderFrame; begin
+    mHeader := TAtlasWelcomeHeaderFrame.Create(AHost); mHeader.Parent := AHost; mHeader.Free; end);
+  Add('Strip', procedure(AHost: TForm) var mStrip: TAtlasArrangeStrip; begin
+    mStrip := TAtlasArrangeStrip.Create(AHost); mStrip.Parent := AHost; mStrip.Free; end);
+  Add('Board', procedure(AHost: TForm) begin TAtlasWelcomeBoardFrame.Create(AHost).Free; end);
+  Add('BoardParent', procedure(AHost: TForm) var mBoard: TAtlasWelcomeBoardFrame; begin
+    mBoard := TAtlasWelcomeBoardFrame.Create(AHost); mBoard.Parent := AHost; mBoard.Free; end);
+  mHost := TForm.CreateNew(nil);
+  mLines := TStringList.Create;
+  try
+    mHost.HandleNeeded;
+    for mIndex := 0 to High(mSteps) do
+    begin
+      for mRound := 0 to 1 do
+      begin
+        mBefore := TShutdownRest.AllocatedBytes;
+        mSteps[mIndex](mHost);
+        mDelta[mRound] := TShutdownRest.AllocatedBytes - mBefore;
+      end;
+      mLines.Add(Format('%s: erster %d, zweiter %d', [mNames[mIndex], mDelta[0], mDelta[1]]));
+    end;
+    mLines.SaveToFile(TPath.Combine(TPath.GetTempPath, 'atlas-probe-boardparts.txt'));
+  finally
+    mLines.Free;
+    mHost.Free;
+  end;
+  mSteps := nil;
+  mNames := nil;
+  Assert.IsTrue(True);
+end;
 
 procedure TAtlasWelcomeWhatsNewFrameTests.AProbeFirstUse;
 var
