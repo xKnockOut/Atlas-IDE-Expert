@@ -18,8 +18,9 @@
 // Inaktive {$IFDEF}-Zweige (#615) liefert InactiveSpans je Zeile als Spalten
 // des Editors, auch für Zweige, die innerhalb einer Zeile beginnen oder enden.
 // Hinweise zu uses-Einträgen (#621, data.uses) sind weder Probleme noch
-// inaktive Zweige: UsesSpans liefert die ungenutzten zum Abblenden, UsesAt die
-// an einer Stelle für den Tooltip.
+// inaktive Zweige: UsesSpans liefert die ungenutzten zum Abblenden,
+// MovableSpans die nur in der implementation gebrauchten zum Einfärben (#2465),
+// UsesAt die an einer Stelle für den Tooltip.
 // Fehlgeschlagene Tests (#69) stehen als dritte Art neben Atlas- und
 // Compilermeldungen (Quelle "DUnitX"): SetTests ersetzt die eines Testlaufs,
 // Update des Servers lässt sie stehen, Edit führt sie wie Atlas-Meldungen mit.
@@ -92,7 +93,9 @@ type
       FVisibleValid: Boolean;
       FInactiveList: TArray<TAtlasProblem>;
       FInactiveValid: Boolean;
+      // Ungenutzte und verschiebbare uses-Einträge, zusammen aufgebaut (CacheUses).
       FUsesList: TArray<TAtlasProblem>;
+      FMovableList: TArray<TAtlasProblem>;
       FUsesValid: Boolean;
       // Zeilen von Text, bei Bedarf.
       FLines: TArray<string>;
@@ -111,6 +114,8 @@ type
     function Ensure(const AFileName: string): TEntry;
     /// <summary>Neuer Stand für AEntry (Stamp).</summary>
     class procedure Touch(AEntry: TEntry); static;
+    /// <summary>Ungenutzte und verschiebbare uses-Einträge von AEntry merken, bis sich etwas ändert.</summary>
+    class procedure CacheUses(AEntry: TEntry); static;
     /// <summary>Positionen auf ANewText bringen; ADropDeleted: Meldungen in rein gelöschten Zeilen entfernen.
     /// </summary>
     class procedure Shift(AEntry: TEntry; const ANewText: string; ADropDeleted: Boolean); static;
@@ -190,6 +195,10 @@ type
     function UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
     /// <summary>Spalten ungenutzter uses-Einträge in der Zeile (0-basiert), wie InactiveSpans.</summary>
     function UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
+    /// <summary>uses-Einträge im interface, die nur die implementation braucht (#2465).</summary>
+    function MovableUses(const AFileName: string): TArray<TAtlasProblem>;
+    /// <summary>Spalten verschiebbarer uses-Einträge in der Zeile (0-basiert), wie UsesSpans.</summary>
+    function MovableSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
     /// <summary>Hinweise zu uses-Einträgen an der Stelle (0-basiert), auch behaltene und verschiebbare.</summary>
     function UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
     /// <summary>Probleme, die die Zeile (0-basiert) berühren.</summary>
@@ -994,35 +1003,65 @@ begin
   end;
 end;
 
-function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
+class procedure TAtlasProblemStore.CacheUses(AEntry: TEntry);
 var
-  mEntry: TEntry;
   mProblem: TAtlasProblem;
 begin
-  Result := nil;
-  mEntry := Find(AFileName);
-  if mEntry = nil then
+  if AEntry.FUsesValid then
   begin
     Exit;
   end;
-  if mEntry.FUsesValid then
-  begin
-    Exit(mEntry.FUsesList);
-  end;
-  for mProblem in mEntry.FAtlas do
+  AEntry.FUsesList := nil;
+  AEntry.FMovableList := nil;
+  for mProblem in AEntry.FAtlas do
   begin
     if mProblem.UsesState = TAtlasProblem.cUsesUnused then
     begin
-      Result := Result + [mProblem];
+      AEntry.FUsesList := AEntry.FUsesList + [mProblem];
+    end
+    else if mProblem.UsesState = TAtlasProblem.cUsesImplementation then
+    begin
+      AEntry.FMovableList := AEntry.FMovableList + [mProblem];
     end;
   end;
-  mEntry.FUsesList := Result;
-  mEntry.FUsesValid := True;
+  AEntry.FUsesValid := True;
+end;
+
+function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
+var
+  mEntry: TEntry;
+begin
+  Result := nil;
+  mEntry := Find(AFileName);
+  if mEntry <> nil then
+  begin
+    CacheUses(mEntry);
+    Result := mEntry.FUsesList;
+  end;
 end;
 
 function TAtlasProblemStore.UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
 begin
   Result := SpansOf(AFileName, UnusedUses(AFileName), ALine, ATabWidth);
+end;
+
+function TAtlasProblemStore.MovableUses(const AFileName: string): TArray<TAtlasProblem>;
+var
+  mEntry: TEntry;
+begin
+  Result := nil;
+  mEntry := Find(AFileName);
+  if mEntry <> nil then
+  begin
+    CacheUses(mEntry);
+    Result := mEntry.FMovableList;
+  end;
+end;
+
+function TAtlasProblemStore.MovableSpans(const AFileName: string; ALine, ATabWidth: Integer):
+  TArray<TAtlasColumnSpan>;
+begin
+  Result := SpansOf(AFileName, MovableUses(AFileName), ALine, ATabWidth);
 end;
 
 function TAtlasProblemStore.UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;

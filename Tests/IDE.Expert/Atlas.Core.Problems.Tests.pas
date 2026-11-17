@@ -63,6 +63,7 @@ type
     /// oder inaktiver Zweig.</summary>
     [Test]
     procedure UsesHintsAreKeptApart;
+    procedure MovableUsesHaveOwnSpans;
     /// <summary>Große Units: Tausende Befunde und 30.000 Zeilen; Ändern und ForFile laufen nach jeder Änderung
     /// im Hauptthread und dürfen nicht quadratisch wachsen.</summary>
     [Test]
@@ -744,6 +745,45 @@ begin
     mStore.Edit('C:\P\U.pas', 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, Units.Re;'#10'implementation'#10 +
       'x'#10'end.');
     Assert.AreEqual(0, Integer(Length(mStore.UsesSpans('C:\P\U.pas', 3, 4))));
+  finally
+    mStore.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.MovableUsesHaveOwnSpans;
+const
+  cFile = 'C:\P\U.pas';
+  cText = 'unit U;'#10'interface'#10'uses'#10'  Vcl.Grids, System.Generics.Collections;'#10'implementation'#10 +
+    'end.';
+var
+  mUnused, mMovable: TAtlasProblem;
+  mStore: TAtlasProblemStore;
+  mSpans: TArray<TAtlasColumnSpan>;
+begin
+  mUnused := Problem(3, 2, 'ungenutzt', 'Atlas', TAtlasProblemSeverity.Hint);
+  mUnused.EndCharacter := 11;
+  mUnused.UsesUnit := 'Vcl.Grids';
+  mUnused.UsesState := TAtlasProblem.cUsesUnused;
+  mMovable := Problem(3, 13, 'nur in der implementation', 'Atlas', TAtlasProblemSeverity.Hint);
+  mMovable.EndCharacter := 40;
+  mMovable.UsesUnit := 'System.Generics.Collections';
+  mMovable.UsesState := TAtlasProblem.cUsesImplementation;
+  mStore := TAtlasProblemStore.Create;
+  try
+    mStore.Update(cFile, cText, True, [mUnused, mMovable], '1', True);
+    Assert.AreEqual(1, Integer(Length(mStore.UnusedUses(cFile))), 'nur der ungenutzte');
+    Assert.AreEqual(1, Integer(Length(mStore.MovableUses(cFile))), 'nur der verschiebbare');
+    Assert.AreEqual('System.Generics.Collections', mStore.MovableUses(cFile)[0].UsesUnit);
+    mSpans := mStore.MovableSpans(cFile, 3, 4);
+    Assert.AreEqual(1, Integer(Length(mSpans)));
+    Assert.AreEqual(14, mSpans[0].First);
+    Assert.AreEqual(40, mSpans[0].Last);
+    Assert.AreEqual(3, mStore.UsesSpans(cFile, 3, 4)[0].First, 'ungenutzte getrennt');
+    Assert.AreEqual(0, Integer(Length(mStore.MovableSpans(cFile, 2, 4))), 'andere Zeile');
+    Assert.AreEqual(0, Integer(Length(mStore.MovableSpans('C:\P\Andere.pas', 3, 4))), 'andere Datei');
+    // Neue Diagnosen ohne den Eintrag (verschoben): nichts mehr einzufärben.
+    mStore.Update(cFile, cText, True, [mUnused], '2', True);
+    Assert.AreEqual(0, Integer(Length(mStore.MovableUses(cFile))));
   finally
     mStore.Free;
   end;

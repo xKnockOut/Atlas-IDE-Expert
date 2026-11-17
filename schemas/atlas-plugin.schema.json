@@ -680,6 +680,19 @@
       "x-captionEn": "Dim unused uses entries",
       "x-issue": "#621"
     },
+    "HighlightMovableUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.highlightMovableUses",
+      "x-area": "editor",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-drawing": true,
+      "x-caption": "Nur in der implementation gebrauchte uses-Einträge hervorheben",
+      "x-captionEn": "Highlight uses entries only needed in the implementation",
+      "x-issue": "#2465"
+    },
     "RecursionMarkers": {
       "type": "boolean",
       "default": true,

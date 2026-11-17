@@ -60,7 +60,8 @@ uses
 
 class function TAtlasProblemsPlan.Active(const ASettings: TAtlasPluginSettings): Boolean;
 begin
-  Result := ASettings.Enabled and (ASettings.Problems or ASettings.InactiveDim or ASettings.DimUnusedUses);
+  Result := ASettings.Enabled and (ASettings.Problems or ASettings.InactiveDim or ASettings.DimUnusedUses or
+    ASettings.HighlightMovableUses);
 end;
 
 class function TAtlasProblemsPlan.Shown(const ASettings: TAtlasPluginSettings): Boolean;
