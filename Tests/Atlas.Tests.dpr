@@ -1994,6 +1994,8 @@ uses
   Atlas.Core.Editor.LinkedSession in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedSession.pas',
   Atlas.Tests.EditSurfaceFake in 'Support\Atlas.Tests.EditSurfaceFake.pas',
   Atlas.Core.Editor.LinkedSession.Tests in 'IDE.Expert\Atlas.Core.Editor.LinkedSession.Tests.pas',
+  Atlas.Core.Editor.MultiCursorSession in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.MultiCursorSession.pas',
+  Atlas.Core.Editor.MultiCursorSession.Tests in 'IDE.Expert\Atlas.Core.Editor.MultiCursorSession.Tests.pas',
   Atlas.Core.Editor.SmartPaste in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartPaste.pas',
   Atlas.Core.Editor.SmartPaste.Tests in 'IDE.Expert\Atlas.Core.Editor.SmartPaste.Tests.pas',
   Atlas.Core.Editor.SmartIndent in '..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartIndent.pas',

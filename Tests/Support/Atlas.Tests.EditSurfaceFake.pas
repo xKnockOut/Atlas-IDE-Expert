@@ -7,7 +7,8 @@
 // übernommen), ebenfalls als eigenen Schritt. Undo und Redo wandern im
 // Stapel; mit UndoFails gibt es keinen Schritt zurück. OnWrite läuft nach
 // jedem Write, etwa um eine IDE nachzustellen, die den Text anders schreibt
-// als verlangt. Writes zählt die Schreibvorgänge. Write mit einem ABase, das
+// als verlangt. Writes zählt die Schreibvorgänge, Paints das Neuzeichnen,
+// Revealed ist die zuletzt sichtbar gemachte Zeile; Write setzt Modified. Write mit einem ABase, das
 // nicht der aktuelle Text ist, löst EArgumentException aus: Der Schreiber der
 // IDE würde dann an falschen Stellen schreiben.
 
@@ -27,8 +28,13 @@ type
     FRedo: TList<string>;
     FLine: Integer;
     FCharacter: Integer;
-    FSelection: Boolean;
+    FAnchorLine: Integer;
+    FAnchorCharacter: Integer;
     FReadOnly: Boolean;
+    FModified: Boolean;
+    FTabWidth: Integer;
+    FRevealed: Integer;
+    FPaints: Integer;
     FUndoFails: Boolean;
     FWrites: Integer;
     FOnWrite: TProc;
@@ -39,8 +45,8 @@ type
     destructor Destroy; override;
     /// <summary>Cursor auf Zeile ALine, Zeichen ACharacter (ohne Markierung).</summary>
     procedure Caret(ALine, ACharacter: Integer);
-    /// <summary>Markierung am Cursor an- oder abschalten.</summary>
-    procedure Select(AOn: Boolean);
+    /// <summary>Markierung von ALine/ACharacter bis zum Cursor.</summary>
+    procedure SelectFrom(ALine, ACharacter: Integer);
     /// <summary>Änderung der IDE selbst: ANewText als eigener Rückgängig-Schritt, Cursor auf ALine/ACharacter.
     /// </summary>
     procedure TypeText(const ANewText: string; ALine, ACharacter: Integer);
@@ -51,15 +57,25 @@ type
     { IAtlasEditSurface }
     function FileName: string;
     function IsReadOnly: Boolean;
+    function IsModified: Boolean;
+    function TabWidth: Integer;
     function Text: string;
     function LineText(ALine: Integer): string;
     function HasSelection: Boolean;
     procedure ReadCaret(out ALine, ACharacter: Integer);
     procedure WriteCaret(ALine, ACharacter: Integer);
+    procedure ReadSelection(out AAnchorLine, AAnchorCharacter, ALine, ACharacter: Integer);
+    procedure WriteSelection(AAnchorLine, AAnchorCharacter, ALine, ACharacter: Integer);
+    procedure Reveal(ALine: Integer);
+    procedure Paint;
     procedure Write(const ABase: string; const AEdits: TAtlasTextEdits);
     function Undo: Boolean;
     function Redo: Boolean;
     property ReadOnly: Boolean read FReadOnly write FReadOnly;
+    property Modified: Boolean read FModified write FModified;
+    property Tabs: Integer read FTabWidth write FTabWidth;
+    property Revealed: Integer read FRevealed;
+    property Paints: Integer read FPaints;
     property UndoFails: Boolean read FUndoFails write FUndoFails;
     property Writes: Integer read FWrites;
     property OnWrite: TProc read FOnWrite write FOnWrite;
@@ -79,6 +95,8 @@ begin
   FText := AText;
   FUndo := TList<string>.Create;
   FRedo := TList<string>.Create;
+  FTabWidth := 2;
+  FRevealed := -1;
 end;
 
 destructor TAtlasEditSurfaceFake.Destroy;
@@ -99,12 +117,14 @@ procedure TAtlasEditSurfaceFake.Caret(ALine, ACharacter: Integer);
 begin
   FLine := ALine;
   FCharacter := ACharacter;
-  FSelection := False;
+  FAnchorLine := ALine;
+  FAnchorCharacter := ACharacter;
 end;
 
-procedure TAtlasEditSurfaceFake.Select(AOn: Boolean);
+procedure TAtlasEditSurfaceFake.SelectFrom(ALine, ACharacter: Integer);
 begin
-  FSelection := AOn;
+  FAnchorLine := ALine;
+  FAnchorCharacter := ACharacter;
 end;
 
 procedure TAtlasEditSurfaceFake.TypeText(const ANewText: string; ALine, ACharacter: Integer);
@@ -133,6 +153,16 @@ begin
   Result := FReadOnly;
 end;
 
+function TAtlasEditSurfaceFake.IsModified: Boolean;
+begin
+  Result := FModified;
+end;
+
+function TAtlasEditSurfaceFake.TabWidth: Integer;
+begin
+  Result := FTabWidth;
+end;
+
 function TAtlasEditSurfaceFake.Text: string;
 begin
   Result := FText;
@@ -145,7 +175,7 @@ end;
 
 function TAtlasEditSurfaceFake.HasSelection: Boolean;
 begin
-  Result := FSelection;
+  Result := (FAnchorLine <> FLine) or (FAnchorCharacter <> FCharacter);
 end;
 
 procedure TAtlasEditSurfaceFake.ReadCaret(out ALine, ACharacter: Integer);
@@ -157,6 +187,31 @@ end;
 procedure TAtlasEditSurfaceFake.WriteCaret(ALine, ACharacter: Integer);
 begin
   Caret(ALine, ACharacter);
+  Paint;
+end;
+
+procedure TAtlasEditSurfaceFake.ReadSelection(out AAnchorLine, AAnchorCharacter, ALine, ACharacter: Integer);
+begin
+  AAnchorLine := FAnchorLine;
+  AAnchorCharacter := FAnchorCharacter;
+  ALine := FLine;
+  ACharacter := FCharacter;
+end;
+
+procedure TAtlasEditSurfaceFake.WriteSelection(AAnchorLine, AAnchorCharacter, ALine, ACharacter: Integer);
+begin
+  Caret(ALine, ACharacter);
+  SelectFrom(AAnchorLine, AAnchorCharacter);
+end;
+
+procedure TAtlasEditSurfaceFake.Reveal(ALine: Integer);
+begin
+  FRevealed := ALine;
+end;
+
+procedure TAtlasEditSurfaceFake.Paint;
+begin
+  Inc(FPaints);
 end;
 
 procedure TAtlasEditSurfaceFake.Write(const ABase: string; const AEdits: TAtlasTextEdits);
@@ -176,6 +231,7 @@ begin
       Copy(mText, AEdits[mIndex].Start + AEdits[mIndex].Count + 1, MaxInt);
   end;
   Push(mText);
+  FModified := True;
   Inc(FWrites);
   if Assigned(FOnWrite) then
   begin
