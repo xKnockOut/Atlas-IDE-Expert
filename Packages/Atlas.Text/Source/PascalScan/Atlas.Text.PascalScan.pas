@@ -4,11 +4,14 @@
 // Compileranweisungen und Zeichenketten finden (gemeinsam für Server und
 // Plugin). Für Stellen, die in kleinen Texten wie Projektdateien nur einzelne
 // Wörter suchen und dafür keinen Lexer haben.
-// Jede Suche läuft nur vorwärts: Ein Kommentar, eine Anweisung oder eine
-// Zeichenkette ohne Abschluss reicht bis zum Textende, die Suche endet dann
-// mit „nicht gefunden“. Ob ein Text solche offenen Stellen hat, sagt
-// IsClosed; wer einen Text umschreiben will, prüft das vorher, weil der
-// Compiler ihn ohnehin nicht übersetzt.
+// Jede Suche läuft nur vorwärts: Ein Kommentar oder eine Anweisung ohne
+// Abschluss reicht bis zum Textende, die Suche endet dann mit „nicht
+// gefunden“; eine einzeilige Zeichenkette ohne Abschluss endet am
+// Zeilenende, gesucht wird in der nächsten Zeile weiter. Ob ein Text solche
+// offenen Stellen hat, sagt IsClosed; wer einen Text umschreiben will, prüft
+// das vorher, weil der Compiler ihn ohnehin nicht übersetzt.
+// Kein Schritt legt Teilkopien des Texts an: Die Arbeit wächst linear mit der
+// Länge, auch bei ganzen Units mit vielen Zeichenketten.
 // Erkannt werden {…}, (*…*), //… bis zum Zeilenende, '…' bis zum nächsten
 // Hochkomma in derselben Zeile ('' darin sind zwei Zeichenketten hintereinander)
 // und mehrzeilige Zeichenketten ab Delphi 12 (''' am Zeilenende bis zum
@@ -20,8 +23,8 @@ type
   TPascalScan = class
   public
     /// <summary>Position (ab 1) hinter dem Kommentar oder der Zeichenkette, die bei AIndex beginnt; AIndex selbst,
-    /// wenn dort keins beginnt; Length(AText) + 1, wenn der Abschluss fehlt. Beginnt bei AIndex etwas, ist das
-    /// Ergebnis immer größer als AIndex.</summary>
+    /// wenn dort keins beginnt. Fehlt der Abschluss, Length(AText) + 1, bei einer einzeiligen Zeichenkette die
+    /// Position des Zeilenendes. Beginnt bei AIndex etwas, ist das Ergebnis immer größer als AIndex.</summary>
     class function SkipNoise(const AText: string; AIndex: Integer): Integer; static;
     /// <summary>Sind alle Kommentare, Anweisungen und Zeichenketten in AText abgeschlossen?</summary>
     class function IsClosed(const AText: string): Boolean; static;
@@ -47,10 +50,33 @@ uses
 const
   cMultiQuote = '''''''';
 
-/// <summary>Folgt AText ab AIndex die Zeichenfolge APart?</summary>
+/// <summary>Folgt AText ab AIndex die Zeichenfolge APart? Vergleicht zeichenweise, ohne Teilkopie.</summary>
 function At(const AText: string; AIndex: Integer; const APart: string): Boolean;
+var
+  mOffset: Integer;
 begin
-  Result := Copy(AText, AIndex, Length(APart)) = APart;
+  Result := (AIndex >= 1) and (AIndex + Length(APart) - 1 <= Length(AText));
+  mOffset := 0;
+  while Result and (mOffset < Length(APart)) do
+  begin
+    Result := AText[AIndex + mOffset] = APart[mOffset + 1];
+    Inc(mOffset);
+  end;
+end;
+
+/// <summary>Folgt AText ab AIndex das Wort AWord, ohne Rücksicht auf Groß-/Kleinschreibung der ASCII-Buchstaben
+/// (wie SameText)? Vergleicht zeichenweise, ohne Teilkopie.</summary>
+function AtIgnoringCase(const AText: string; AIndex: Integer; const AWord: string): Boolean;
+var
+  mOffset: Integer;
+begin
+  Result := (AIndex >= 1) and (AIndex + Length(AWord) - 1 <= Length(AText));
+  mOffset := 0;
+  while Result and (mOffset < Length(AWord)) do
+  begin
+    Result := UpCase(AText[AIndex + mOffset]) = UpCase(AWord[mOffset + 1]);
+    Inc(mOffset);
+  end;
 end;
 
 /// <summary>Position des ersten Zeilenendes (#13 oder #10) ab AIndex; Length(AText) + 1 ohne.</summary>
@@ -92,16 +118,23 @@ end;
 
 /// <summary>Ende der Zeichenkette ab AIndex (auf dem Hochkomma).</summary>
 function StringEnd(const AText: string; AIndex: Integer; out AClosed: Boolean): Integer;
-var
-  mLineEnd: Integer;
 begin
   if At(AText, AIndex, cMultiQuote) and OnlyBlanksToLineEnd(AText, AIndex + Length(cMultiQuote)) then
   begin
     Exit(After(AText, cMultiQuote, AIndex + Length(cMultiQuote), AClosed));
   end;
-  // Ohne Hochkomma in derselben Zeile endet die Zeichenkette offen am Zeilenende.
-  mLineEnd := LineEnd(AText, AIndex + 1);
-  Result := After(Copy(AText, 1, mLineEnd - 1), '''', AIndex + 1, AClosed);
+  // Bis zum nächsten Hochkomma oder Zeilenende, was zuerst kommt; ohne Hochkomma in derselben Zeile endet die
+  // Zeichenkette offen am Zeilenende. Die Suche geht nie über die Zeile hinaus.
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and not CharInSet(AText[Result], ['''', #13, #10]) do
+  begin
+    Inc(Result);
+  end;
+  AClosed := (Result <= Length(AText)) and (AText[Result] = '''');
+  if AClosed then
+  begin
+    Inc(Result);
+  end;
 end;
 
 /// <summary>Wie SkipNoise; AClosed sagt, ob das Übersprungene einen Abschluss hat.</summary>
@@ -138,7 +171,7 @@ var
   mAfter: Integer;
 begin
   mAfter := AIndex + Length(AWord);
-  Result := SameText(Copy(AText, AIndex, Length(AWord)), AWord) and
+  Result := AtIgnoringCase(AText, AIndex, AWord) and
     ((AIndex = 1) or not (TTextChars.IsIdentChar(AText[AIndex - 1]) or CharInSet(AText[AIndex - 1], ['.', '&']))) and
     ((mAfter > Length(AText)) or not TTextChars.IsIdentChar(AText[mAfter]));
 end;
