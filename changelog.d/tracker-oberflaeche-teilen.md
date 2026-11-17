@@ -1,0 +1,2 @@
+### Geändert
+- Fenster „Atlas-Board“, Kommentarfeld, Dialog „An Issue anhängen“ und Ansicht „Entwicklung“ nach Zuständigkeit aufgeteilt: Anordnung des Boards und Tasten des Kommentarfelds liegen ohne VCL im Kern und haben eigene Tests, Zeichnen, Auswahl von Board und Sprint, Kontextmenü der Karten, Quellen des Anhangs, Befehle des Kommentarfelds und Klicks auf Commits sind eigene Klassen. Feste Maße sind benannt. Verhalten unverändert.
