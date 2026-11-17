@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.FormModel.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Gaps.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.KeptComponents.pas"/>
+        <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Created.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas"/>
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas"/>
