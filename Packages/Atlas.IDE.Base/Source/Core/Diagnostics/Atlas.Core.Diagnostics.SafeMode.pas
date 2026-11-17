@@ -183,7 +183,8 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Localization.Language,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 {$SCOPEDENUMS ON}
 
@@ -638,24 +639,15 @@ begin
 end;
 
 function LineStamp(const ALine: string; out AStamp: TDateTime): Boolean;
-var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli: Integer;
+const
+  // Protokollzeilen beginnen mit "yyyy-mm-dd hh:nn:ss.zzz".
+  cStampLength = 23;
+  cClockGap = 11;
+  cMilliDot = 20;
 begin
   AStamp := 0;
-  Result := (Length(ALine) >= 23) and (ALine[5] = '-') and (ALine[8] = '-') and (ALine[11] = ' ') and
-    (ALine[14] = ':') and (ALine[17] = ':') and (ALine[20] = '.') and
-    TryStrToInt(Copy(ALine, 1, 4), mYear) and TryStrToInt(Copy(ALine, 6, 2), mMonth) and
-    TryStrToInt(Copy(ALine, 9, 2), mDay) and TryStrToInt(Copy(ALine, 12, 2), mHour) and
-    TryStrToInt(Copy(ALine, 15, 2), mMinute) and TryStrToInt(Copy(ALine, 18, 2), mSecond) and
-    TryStrToInt(Copy(ALine, 21, 3), mMilli);
-  // TryStrToInt nimmt auch Vorzeichen ("-1"); TryEncodeDateTime erwartet Word, ein negativer Wert löste mit
-  // Bereichsprüfung ERangeError aus statt False.
-  Result := Result and (mYear >= 0) and (mMonth >= 0) and (mDay >= 0) and (mHour >= 0) and (mMinute >= 0) and
-    (mSecond >= 0) and (mMilli >= 0);
-  if Result then
-  begin
-    Result := TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli, AStamp);
-  end;
+  Result := (Length(ALine) >= cStampLength) and (ALine[cClockGap] = ' ') and (ALine[cMilliDot] = '.') and
+    TTextTimestamp.TryParse(Copy(ALine, 1, cStampLength), AStamp);
 end;
 
 class function TAtlasSafeMode.Details(const AMarker: TAtlasSessionMarker): TArray<string>;

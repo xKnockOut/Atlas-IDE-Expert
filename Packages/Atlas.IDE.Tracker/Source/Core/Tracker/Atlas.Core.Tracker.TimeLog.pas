@@ -137,7 +137,8 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.Core.Tracker.Files,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 const
   cLocalAppData = 'LOCALAPPDATA';
@@ -208,13 +209,13 @@ begin
 end;
 
 function ParseDay(const AText: string; out ADay: Integer): Boolean;
+const
+  // Genau "yyyy-mm-dd" wie DayText.
+  cDayLength = 10;
 var
-  mYear, mMonth, mDay: Integer;
   mDate: TDateTime;
 begin
-  Result := (Length(AText) = 10) and (AText[5] = '-') and (AText[8] = '-') and
-    TryStrToInt(Copy(AText, 1, 4), mYear) and TryStrToInt(Copy(AText, 6, 2), mMonth) and
-    TryStrToInt(Copy(AText, 9, 2), mDay) and TryEncodeDate(mYear, mMonth, mDay, mDate);
+  Result := (Length(AText) = cDayLength) and TTextTimestamp.TryParseDate(AText, mDate);
   ADay := 0;
   if Result then
   begin
@@ -223,18 +224,13 @@ begin
 end;
 
 function ParseTime(const AText: string; out ATime: TDateTime): Boolean;
-var
-  mDay, mHour, mMinute, mSecond: Integer;
-  mClock: TDateTime;
+const
+  // Genau "yyyy-mm-ddThh:nn:ss" wie TimeText.
+  cTimeLength = 19;
+  cClockMark = 11;
 begin
   ATime := 0;
-  Result := (Length(AText) = 19) and (AText[11] = 'T') and ParseDay(Copy(AText, 1, 10), mDay) and
-    TryStrToInt(Copy(AText, 12, 2), mHour) and TryStrToInt(Copy(AText, 15, 2), mMinute) and
-    TryStrToInt(Copy(AText, 18, 2), mSecond) and TryEncodeTime(mHour, mMinute, mSecond, 0, mClock);
-  if Result then
-  begin
-    ATime := mDay + mClock;
-  end;
+  Result := (Length(AText) = cTimeLength) and (AText[cClockMark] = 'T') and TTextTimestamp.TryParse(AText, ATime);
 end;
 
 { TAtlasTimeLog }
