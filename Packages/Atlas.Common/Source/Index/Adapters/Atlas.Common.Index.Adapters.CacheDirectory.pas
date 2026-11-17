@@ -309,7 +309,7 @@ begin
     // gälte im ersten Test, der einen Index-Cache sperrt, als Leck.
     if FFiles.Count = 0 then
     begin
-      FFiles.TrimExcess;
+      FFiles.Clear;
     end;
   finally
     System.TMonitor.Exit(FLock);
