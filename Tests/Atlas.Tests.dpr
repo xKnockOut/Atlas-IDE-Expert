@@ -328,6 +328,7 @@ uses
   Atlas.Common.Rules.Builtin.Testing.Attributes.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.Attributes.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCases.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCases.Tests.pas',
   Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests.pas',
+  Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Tests.pas',
   Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerTraps.Rtl.Tests.pas',
   Atlas.Common.Rules.Builtin.DelphiSemantics.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DelphiSemantics.Tests.pas',
