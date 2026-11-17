@@ -5,7 +5,8 @@
 // „Alle gleich kurzen Wege“. Beim Tippen fragt der Dialog nach kurzer Pause
 // OnSuggest (Symbole des Projekts, setzt die IDE-Schicht) und zeigt die
 // Vorschläge in einer Liste unter dem Feld: ↓ geht in die Liste, Enter oder
-// Doppelklick übernimmt, Esc schließt erst die Liste, dann den Dialog. Ohne
+// Doppelklick übernimmt, Esc schließt erst die Liste, dann den Dialog. Die
+// Liste mit Pause und Übernahme hält TAtlasSymbolPathSuggestions. Ohne
 // beide Angaben bleibt der Dialog offen und sagt, was fehlt. Aufgebaut wird
 // im Code (keine DFM), damit der Dialog ohne Ressource entsteht.
 
@@ -34,6 +35,41 @@ type
     All: Boolean;
   end;
 
+  /// <summary>Vorschlagsliste unter einem Feld: holt nach kurzer Pause die Vorschläge, ↓ geht in die
+  /// Liste, ↑ in der ersten Zeile zurück ins Feld, Doppelklick übernimmt.</summary>
+  TAtlasSymbolPathSuggestions = class(TComponent)
+  private
+    FList: TListBox;
+    FTimer: TTimer;
+    /// <summary>Feld, zu dem die Liste gehört bzw. das zuletzt getippt wurde.</summary>
+    FTarget: TEdit;
+    FSuggest: TAtlasSymbolPathSuggest;
+    FFilling: Boolean;
+    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure ListDblClick(Sender: TObject);
+    procedure TimerTick(Sender: TObject);
+    procedure FocusTarget;
+  public
+    /// <summary>Liste auf AParent (erst beim Tippen sichtbar) mit Breite AWidth.</summary>
+    constructor CreateFor(AParent: TWinControl; AWidth: Integer; const ASuggest: TAtlasSymbolPathSuggest);
+    /// <summary>In AEdit wurde getippt: nach der Pause Vorschläge holen.</summary>
+    procedure Edited(AEdit: TEdit);
+    /// <summary>Vorschläge für AEdit sofort holen und zeigen (ohne Pause; auch für Tests).</summary>
+    procedure Show(AEdit: TEdit);
+    /// <summary>Gewählten Vorschlag ins Feld übernehmen.</summary>
+    procedure Take;
+    procedure Hide;
+    /// <summary>Liste schließen und zurück ins Feld.</summary>
+    procedure Close;
+    /// <summary>↓ im Feld der Liste geht in die Liste.</summary>
+    procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    function Visible: Boolean;
+    property Target: TEdit read FTarget;
+    /// <summary>Gerade wird ein Vorschlag ins Feld geschrieben (kein neues Tippen).</summary>
+    property Filling: Boolean read FFilling;
+    property List: TListBox read FList;
+  end;
+
   TAtlasSymbolPathDialog = class(TAtlasDialog)
   private
     FFrom: TEdit;
@@ -44,32 +80,19 @@ type
     FMessage: TLabel;
     FSearch: TButton;
     FCancel: TButton;
-    FList: TListBox;
-    FTimer: TTimer;
-    /// <summary>Feld, zu dem die Liste gehört bzw. das zuletzt getippt wurde.</summary>
-    FTarget: TEdit;
-    FSuggest: TAtlasSymbolPathSuggest;
+    FSuggestions: TAtlasSymbolPathSuggestions;
     FFilling: Boolean;
     procedure EditChange(Sender: TObject);
-    procedure EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure ControlEnter(Sender: TObject);
-    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure ListDblClick(Sender: TObject);
-    procedure TimerTick(Sender: TObject);
     procedure SearchClick(Sender: TObject);
     /// <summary>Enter und Esc bei offener Vorschlagsliste: übernehmen bzw. Liste schließen, statt „Suchen“
     /// oder „Abbrechen“ auszulösen (die VCL fragt Standard- und Abbrechen-Knopf vor OnKeyDown).</summary>
     procedure CMDialogKey(var Message: TCMDialogKey); message CM_DIALOGKEY;
     procedure Accept;
-    procedure HideList;
     function GetInput: TAtlasSymbolPathRequestInput;
     procedure SetInput(const AValue: TAtlasSymbolPathRequestInput);
   public
     constructor CreateDialog(AOwner: TComponent; const ASuggest: TAtlasSymbolPathSuggest);
-    /// <summary>Vorschläge für AEdit sofort holen und zeigen (ohne Pause; auch für Tests).</summary>
-    procedure Suggest(AEdit: TEdit);
-    /// <summary>Gewählten Vorschlag ins Feld übernehmen.</summary>
-    procedure TakeSuggestion;
     /// <summary>Beide Angaben vorhanden; sonst Hinweis und Fokus ins leere Feld.</summary>
     function Validate: Boolean;
     /// <summary>Modal zeigen; True mit AInput, wenn „Suchen“ gewählt wurde.</summary>
@@ -81,7 +104,7 @@ type
     property StepsEdit: TEdit read FSteps;
     property AllCheck: TCheckBox read FAll;
     property MessageLabel: TLabel read FMessage;
-    property SuggestionList: TListBox read FList;
+    property Suggestions: TAtlasSymbolPathSuggestions read FSuggestions;
   end;
 
 implementation
@@ -99,6 +122,8 @@ const
   cMaxSuggestions = 12;
   cDefaultSteps = 8;
   cMaxSteps = 16;
+  /// <summary>Höhe der Vorschlagsliste bei 96 dpi.</summary>
+  cListHeight96 = 160;
 
 { TAtlasSymbolPathDialog }
 
@@ -141,7 +166,7 @@ begin
   Result.Width := ALayout.EditWidth;
   Result.TextHint := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathInputHint);
   Result.OnChange := ADialog.EditChange;
-  Result.OnKeyDown := ADialog.EditKeyDown;
+  Result.OnKeyDown := ADialog.FSuggestions.EditKeyDown;
   Result.OnEnter := ADialog.ControlEnter;
 end;
 
@@ -203,20 +228,157 @@ begin
   ADialog.ClientHeight := AY + ADialog.FSearch.Height + ALayout.Gap;
 end;
 
-/// <summary>Vorschlagsliste über den Feldern darunter (erst beim Tippen sichtbar) und Zeitgeber der Pause.</summary>
-procedure BuildList(ADialog: TAtlasSymbolPathDialog; const ALayout: TDialogLayout);
+{ TAtlasSymbolPathSuggestions }
+
+constructor TAtlasSymbolPathSuggestions.CreateFor(AParent: TWinControl; AWidth: Integer;
+  const ASuggest: TAtlasSymbolPathSuggest);
 begin
-  ADialog.FList := TListBox.Create(ADialog);
-  ADialog.FList.Parent := ADialog;
-  ADialog.FList.Visible := False;
-  ADialog.FList.Width := ALayout.EditWidth;
-  ADialog.FList.Height := MulDiv(160, ADialog.CurrentPPI, 96);
-  ADialog.FList.OnKeyDown := ADialog.ListKeyDown;
-  ADialog.FList.OnDblClick := ADialog.ListDblClick;
-  ADialog.FTimer := TTimer.Create(ADialog);
-  ADialog.FTimer.Enabled := False;
-  ADialog.FTimer.Interval := cSuggestDelayMs;
-  ADialog.FTimer.OnTimer := ADialog.TimerTick;
+  inherited Create(AParent);
+  FSuggest := ASuggest;
+  FList := TListBox.Create(Self);
+  FList.Parent := AParent;
+  FList.Visible := False;
+  FList.Width := AWidth;
+  FList.Height := MulDiv(cListHeight96, AParent.CurrentPPI, 96);
+  FList.OnKeyDown := ListKeyDown;
+  FList.OnDblClick := ListDblClick;
+  FTimer := TTimer.Create(Self);
+  FTimer.Enabled := False;
+  FTimer.Interval := cSuggestDelayMs;
+  FTimer.OnTimer := TimerTick;
+end;
+
+procedure TAtlasSymbolPathSuggestions.Edited(AEdit: TEdit);
+begin
+  FTarget := AEdit;
+  FTimer.Enabled := False;
+  FTimer.Enabled := Assigned(FSuggest);
+end;
+
+procedure TAtlasSymbolPathSuggestions.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if not FList.Visible or (Sender <> FTarget) then
+  begin
+    Exit;
+  end;
+  case Key of
+    VK_DOWN:
+      begin
+        if FList.Showing and FList.CanFocus then
+        begin
+          FList.SetFocus;
+        end;
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasSymbolPathSuggestions.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  case Key of
+    VK_UP:
+      if (FList.ItemIndex <= 0) and (FTarget <> nil) and FTarget.Showing and FTarget.CanFocus then
+      begin
+        FTarget.SetFocus;
+        Key := 0;
+      end;
+  end;
+end;
+
+procedure TAtlasSymbolPathSuggestions.ListDblClick(Sender: TObject);
+begin
+  Take;
+end;
+
+procedure TAtlasSymbolPathSuggestions.TimerTick(Sender: TObject);
+begin
+  FTimer.Enabled := False;
+  if FTarget <> nil then
+  begin
+    Show(FTarget);
+  end;
+end;
+
+procedure TAtlasSymbolPathSuggestions.FocusTarget;
+begin
+  if (FTarget <> nil) and FTarget.Showing and FTarget.CanFocus then
+  begin
+    FTarget.SetFocus;
+  end;
+end;
+
+procedure TAtlasSymbolPathSuggestions.Show(AEdit: TEdit);
+var
+  mItems: TArray<string>;
+  mItem: string;
+begin
+  FTarget := AEdit;
+  mItems := nil;
+  if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
+  begin
+    mItems := FSuggest(Trim(AEdit.Text));
+  end;
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mItem in mItems do
+    begin
+      if FList.Items.Count >= cMaxSuggestions then
+      begin
+        Break;
+      end;
+      if FList.Items.IndexOf(mItem) < 0 then
+      begin
+        FList.Items.Add(mItem);
+      end;
+    end;
+  finally
+    FList.Items.EndUpdate;
+  end;
+  if FList.Items.Count = 0 then
+  begin
+    Hide;
+    Exit;
+  end;
+  FList.Left := AEdit.Left;
+  FList.Top := AEdit.Top + AEdit.Height;
+  FList.Width := AEdit.Width;
+  FList.ItemIndex := 0;
+  FList.Visible := True;
+  FList.BringToFront;
+end;
+
+procedure TAtlasSymbolPathSuggestions.Take;
+begin
+  if (FTarget = nil) or not FList.Visible or (FList.ItemIndex < 0) then
+  begin
+    Exit;
+  end;
+  FFilling := True;
+  try
+    FTarget.Text := FList.Items[FList.ItemIndex];
+    FTarget.SelStart := Length(FTarget.Text);
+  finally
+    FFilling := False;
+  end;
+  Hide;
+  FocusTarget;
+end;
+
+procedure TAtlasSymbolPathSuggestions.Hide;
+begin
+  FList.Visible := False;
+end;
+
+procedure TAtlasSymbolPathSuggestions.Close;
+begin
+  Hide;
+  FocusTarget;
+end;
+
+function TAtlasSymbolPathSuggestions.Visible: Boolean;
+begin
+  Result := FList.Visible;
 end;
 
 { TAtlasSymbolPathDialog }
@@ -227,10 +389,11 @@ var
   mY: Integer;
 begin
   inherited CreateDialog(AOwner, '', 0);
-  FSuggest := ASuggest;
   Caption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathCaption);
   mLayout := LayoutOf(Self);
   ClientWidth := mLayout.Gap * 2 + mLayout.LabelWidth + mLayout.EditWidth;
+  // Vor den Feldern: deren Tasten gehen an die Liste.
+  FSuggestions := TAtlasSymbolPathSuggestions.CreateFor(Self, mLayout.EditWidth, ASuggest);
   mY := mLayout.Gap;
   FFrom := NewEdit(Self, mLayout, mY);
   AddFieldLabel(Self, mLayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathFrom), mY, FFrom);
@@ -240,7 +403,6 @@ begin
   Inc(mY, FTo.Height + mLayout.Spacing);
   BuildOptions(Self, mLayout, mY);
   BuildButtons(Self, mLayout, mY);
-  BuildList(Self, mLayout);
   ActiveControl := FFrom;
 end;
 
@@ -276,66 +438,20 @@ end;
 
 procedure TAtlasSymbolPathDialog.EditChange(Sender: TObject);
 begin
-  if FFilling or not (Sender is TEdit) then
+  if FFilling or FSuggestions.Filling or not (Sender is TEdit) then
   begin
     Exit;
   end;
-  FTarget := TEdit(Sender);
   FMessage.Caption := '';
-  FTimer.Enabled := False;
-  FTimer.Enabled := Assigned(FSuggest);
-end;
-
-procedure TAtlasSymbolPathDialog.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  if not FList.Visible or (Sender <> FTarget) then
-  begin
-    Exit;
-  end;
-  case Key of
-    VK_DOWN:
-      begin
-        if FList.Showing and FList.CanFocus then
-        begin
-          FList.SetFocus;
-        end;
-        Key := 0;
-      end;
-  end;
+  FSuggestions.Edited(TEdit(Sender));
 end;
 
 procedure TAtlasSymbolPathDialog.ControlEnter(Sender: TObject);
 begin
   // Ein anderes Feld: die Liste gehört nicht dazu und verdeckte es sonst.
-  if Sender <> FTarget then
+  if Sender <> FSuggestions.Target then
   begin
-    HideList;
-  end;
-end;
-
-procedure TAtlasSymbolPathDialog.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  case Key of
-    VK_UP:
-      if (FList.ItemIndex <= 0) and (FTarget <> nil) and FTarget.Showing and FTarget.CanFocus then
-      begin
-        FTarget.SetFocus;
-        Key := 0;
-      end;
-  end;
-end;
-
-procedure TAtlasSymbolPathDialog.ListDblClick(Sender: TObject);
-begin
-  TakeSuggestion;
-end;
-
-procedure TAtlasSymbolPathDialog.TimerTick(Sender: TObject);
-begin
-  FTimer.Enabled := False;
-  if FTarget <> nil then
-  begin
-    Suggest(FTarget);
+    FSuggestions.Hide;
   end;
 end;
 
@@ -346,19 +462,15 @@ end;
 
 procedure TAtlasSymbolPathDialog.CMDialogKey(var Message: TCMDialogKey);
 begin
-  if FList.Visible and ((Message.CharCode = VK_RETURN) or (Message.CharCode = VK_ESCAPE)) then
+  if FSuggestions.Visible and ((Message.CharCode = VK_RETURN) or (Message.CharCode = VK_ESCAPE)) then
   begin
     if Message.CharCode = VK_RETURN then
     begin
-      TakeSuggestion;
+      FSuggestions.Take;
     end
     else
     begin
-      HideList;
-      if (FTarget <> nil) and FTarget.Showing and FTarget.CanFocus then
-      begin
-        FTarget.SetFocus;
-      end;
+      FSuggestions.Close;
     end;
     Message.Result := 1;
     Exit;
@@ -368,76 +480,10 @@ end;
 
 procedure TAtlasSymbolPathDialog.Accept;
 begin
-  HideList;
+  FSuggestions.Hide;
   if Validate then
   begin
     ModalResult := mrOk;
-  end;
-end;
-
-procedure TAtlasSymbolPathDialog.HideList;
-begin
-  FList.Visible := False;
-end;
-
-procedure TAtlasSymbolPathDialog.Suggest(AEdit: TEdit);
-var
-  mItems: TArray<string>;
-  mItem: string;
-begin
-  FTarget := AEdit;
-  mItems := nil;
-  if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
-  begin
-    mItems := FSuggest(Trim(AEdit.Text));
-  end;
-  FList.Items.BeginUpdate;
-  try
-    FList.Items.Clear;
-    for mItem in mItems do
-    begin
-      if FList.Items.Count >= cMaxSuggestions then
-      begin
-        Break;
-      end;
-      if FList.Items.IndexOf(mItem) < 0 then
-      begin
-        FList.Items.Add(mItem);
-      end;
-    end;
-  finally
-    FList.Items.EndUpdate;
-  end;
-  if FList.Items.Count = 0 then
-  begin
-    HideList;
-    Exit;
-  end;
-  FList.Left := AEdit.Left;
-  FList.Top := AEdit.Top + AEdit.Height;
-  FList.Width := AEdit.Width;
-  FList.ItemIndex := 0;
-  FList.Visible := True;
-  FList.BringToFront;
-end;
-
-procedure TAtlasSymbolPathDialog.TakeSuggestion;
-begin
-  if (FTarget = nil) or not FList.Visible or (FList.ItemIndex < 0) then
-  begin
-    Exit;
-  end;
-  FFilling := True;
-  try
-    FTarget.Text := FList.Items[FList.ItemIndex];
-    FTarget.SelStart := Length(FTarget.Text);
-  finally
-    FFilling := False;
-  end;
-  HideList;
-  if FTarget.Showing and FTarget.CanFocus then
-  begin
-    FTarget.SetFocus;
   end;
 end;
 

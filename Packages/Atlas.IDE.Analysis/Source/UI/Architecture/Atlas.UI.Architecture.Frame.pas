@@ -601,7 +601,7 @@ begin
   AFrame.FParts.Map.Align := alClient;
   AFrame.FParts.Map.OnSelect := MapSelectHandler(AFrame);
   AFrame.FParts.Map.OnOpen := MapOpenHandler(AFrame);
-  AFrame.FParts.Map.State.OnPathChanged := PathChangedHandler(AFrame);
+  AFrame.FParts.Map.State.Events.OnPathChanged := PathChangedHandler(AFrame);
 end;
 
 procedure BuildCentral(AFrame: TArchFrame);

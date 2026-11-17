@@ -467,7 +467,7 @@ begin
   DoubleBuffered := True;
   TabStop := True;
   FState := TAtlasArchitectureMapState.Create;
-  FState.OnChange := InvalidateHandler(Self);
+  FState.Events.OnChange := InvalidateHandler(Self);
   FView := Default(TAtlasArchitectureView);
   FView.Scale := 1;
 end;

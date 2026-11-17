@@ -221,13 +221,13 @@ begin
     Assert.AreEqual(8, mDialog.Input.MaxSteps, 'außerhalb 1–16: Vorgabe');
     // Vorschläge ohne Doppelte, Übernahme ins Feld.
     mDialog.ToEdit.Text := 'TKunden';
-    mDialog.Suggest(mDialog.ToEdit);
-    Assert.IsTrue(mDialog.SuggestionList.Visible);
-    Assert.AreEqual(2, mDialog.SuggestionList.Items.Count);
-    mDialog.SuggestionList.ItemIndex := 1;
-    mDialog.TakeSuggestion;
+    mDialog.Suggestions.Show(mDialog.ToEdit);
+    Assert.IsTrue(mDialog.Suggestions.List.Visible);
+    Assert.AreEqual(2, mDialog.Suggestions.List.Items.Count);
+    mDialog.Suggestions.List.ItemIndex := 1;
+    mDialog.Suggestions.Take;
     Assert.AreEqual('TKundenRepo.Laden', mDialog.ToEdit.Text);
-    Assert.IsFalse(mDialog.SuggestionList.Visible);
+    Assert.IsFalse(mDialog.Suggestions.List.Visible);
     Assert.IsTrue(mDialog.Validate);
     mDialog.AllCheck.Checked := True;
     mDialog.StepsEdit.Text := '5';
@@ -238,8 +238,8 @@ begin
     Assert.IsTrue(mInput.All);
     // Leeres Feld: keine Vorschläge.
     mDialog.ToEdit.Text := '';
-    mDialog.Suggest(mDialog.ToEdit);
-    Assert.IsFalse(mDialog.SuggestionList.Visible);
+    mDialog.Suggestions.Show(mDialog.ToEdit);
+    Assert.IsFalse(mDialog.Suggestions.List.Visible);
   finally
     mDialog.Free;
   end;

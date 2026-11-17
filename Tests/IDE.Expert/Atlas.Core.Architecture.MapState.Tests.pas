@@ -69,8 +69,8 @@ end;
 
 procedure Watch(AState: TAtlasArchitectureMapState; ACounter: TCounter);
 begin
-  AState.OnChange := CountChange(ACounter);
-  AState.OnPathChanged := CountPath(ACounter);
+  AState.Events.OnChange := CountChange(ACounter);
+  AState.Events.OnPathChanged := CountPath(ACounter);
 end;
 
 { TAtlasArchitectureMapStateTests }
