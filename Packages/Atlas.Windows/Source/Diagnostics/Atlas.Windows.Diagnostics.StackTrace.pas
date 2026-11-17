@@ -203,6 +203,10 @@ end;
 
 initialization
   MapLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(MapLock);
+  TMonitor.Exit(MapLock);
 
 finalization
   Map.Free;
