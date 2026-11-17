@@ -544,7 +544,8 @@ end;
 /// <summary>Liste der Gliederung und der Hinweis an ihrer Stelle.</summary>
 procedure TAtlasOutlineFrame.BuildList;
 begin
-  // Doppelt gepuffert: Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl leer auf.
+  // Löscht nur die Fläche ohne Zeilen: Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl
+  // leer auf.
   FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;

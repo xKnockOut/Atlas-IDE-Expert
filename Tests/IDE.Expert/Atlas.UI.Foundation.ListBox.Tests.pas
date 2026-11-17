@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Foundation.ListBox.Tests;
 
-// Liste ohne Flackern: doppelt gepuffert; WM_ERASEBKGND am Bildschirm löscht
-// nichts, das Löschen in den Puffer (wParam = lParam) füllt wie üblich.
+// Liste ohne Flackern: WM_ERASEBKGND füllt nur die Fläche unter der letzten
+// Zeile (ohne Zeilen die ganze Liste), am Bildschirm wie beim Löschen in
+// einen Puffer (wParam = lParam); die Zeilen bleiben unberührt.
 
 interface
 
@@ -16,22 +17,26 @@ type
   private
     FForm: TForm;
     FList: TAtlasListBox;
-    /// <summary>Farbe eines Bildes in Rot, nachdem die Liste WM_ERASEBKGND mit dessen DC bekommen hat; AIntoBuffer
-    /// wie TWinControl.WMPaint beim Zeichnen in den Puffer (wParam = lParam).</summary>
-    function ColorAfterErase(AIntoBuffer: Boolean; out AResult: NativeInt): Integer;
+    FRowPixel: Integer;
+    FFreePixel: Integer;
+    FResult: NativeInt;
+    /// <summary>Bild in Rot in der Größe der Liste, WM_ERASEBKGND mit dessen DC; merkt die Farbe mitten in der
+    /// ersten Zeile und unter der letzten. AIntoBuffer wie beim Löschen in einen Puffer (wParam = lParam).</summary>
+    procedure Erase(AIntoBuffer: Boolean);
+    procedure AddRows(ACount: Integer);
   public
     [Setup]
     procedure SetUp;
     [TearDown]
     procedure TearDown;
     [Test]
-    procedure IsDoubleBuffered;
+    procedure KeepsRowsOnScreen;
     [Test]
-    procedure SkipsEraseOnScreen;
+    procedure KeepsRowsIntoBuffer;
     [Test]
-    procedure ErasesIntoBuffer;
+    procedure WithoutRowsFillsAll;
     [Test]
-    procedure WithoutBufferErasesOnScreen;
+    procedure FullListLeavesNothingFree;
   end;
 
 implementation
@@ -39,7 +44,13 @@ implementation
 uses
   Winapi.Windows,
   Winapi.Messages,
+  System.Types,
+  Vcl.Controls,
+  Vcl.StdCtrls,
   Vcl.Graphics;
+
+const
+  cRowHeight = 16;
 
 { TAtlasListBoxTests }
 
@@ -48,6 +59,10 @@ begin
   FForm := TForm.CreateNew(nil);
   FList := TAtlasListBox.Create(FForm);
   FList.Parent := FForm;
+  FList.Style := lbOwnerDrawFixed;
+  FList.ItemHeight := cRowHeight;
+  FList.BorderStyle := bsNone;
+  FList.SetBounds(0, 0, 120, 10 * cRowHeight);
   FList.Color := clLime;
   FList.HandleNeeded;
 end;
@@ -59,7 +74,17 @@ begin
   FList := nil;
 end;
 
-function TAtlasListBoxTests.ColorAfterErase(AIntoBuffer: Boolean; out AResult: NativeInt): Integer;
+procedure TAtlasListBoxTests.AddRows(ACount: Integer);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to ACount do
+  begin
+    FList.Items.Add('Zeile');
+  end;
+end;
+
+procedure TAtlasListBoxTests.Erase(AIntoBuffer: Boolean);
 var
   mBitmap: Vcl.Graphics.TBitmap;
   mDC: HDC;
@@ -67,50 +92,54 @@ var
 begin
   mBitmap := Vcl.Graphics.TBitmap.Create;
   try
-    mBitmap.SetSize(8, 8);
+    mBitmap.SetSize(FList.ClientWidth, FList.ClientHeight);
     mBitmap.Canvas.Brush.Color := clRed;
-    mBitmap.Canvas.FillRect(Rect(0, 0, 8, 8));
+    mBitmap.Canvas.FillRect(TRect.Create(0, 0, mBitmap.Width, mBitmap.Height));
     mDC := mBitmap.Canvas.Handle;
     mLParam := 0;
     if AIntoBuffer then
     begin
       mLParam := LPARAM(mDC);
     end;
-    AResult := FList.Perform(WM_ERASEBKGND, WPARAM(mDC), mLParam);
-    Result := ColorToRGB(mBitmap.Canvas.Pixels[1, 1]);
+    FResult := FList.Perform(WM_ERASEBKGND, WPARAM(mDC), mLParam);
+    FRowPixel := ColorToRGB(mBitmap.Canvas.Pixels[4, cRowHeight div 2]);
+    FFreePixel := ColorToRGB(mBitmap.Canvas.Pixels[4, mBitmap.Height - 2]);
   finally
     mBitmap.Free;
   end;
 end;
 
-procedure TAtlasListBoxTests.IsDoubleBuffered;
+procedure TAtlasListBoxTests.KeepsRowsOnScreen;
 begin
-  Assert.IsTrue(FList.DoubleBuffered);
+  AddRows(2);
+  Erase(False);
+  // Die Zeile malt sich selbst; vorher leer gefüllt blitzte sie auf.
+  Assert.AreEqual(Integer(ColorToRGB(clRed)), FRowPixel);
+  Assert.AreEqual(Integer(ColorToRGB(clLime)), FFreePixel);
+  Assert.AreEqual(Integer(1), Integer(FResult));
 end;
 
-procedure TAtlasListBoxTests.SkipsEraseOnScreen;
-var
-  mResult: NativeInt;
+procedure TAtlasListBoxTests.KeepsRowsIntoBuffer;
 begin
-  // Am Bildschirm (lParam = 0) bleibt die Fläche, wie sie ist; 1 meldet „gelöscht“, damit niemand nachfüllt.
-  Assert.AreEqual(Integer(ColorToRGB(clRed)), ColorAfterErase(False, mResult));
-  Assert.AreEqual(Integer(1), Integer(mResult));
+  AddRows(2);
+  Erase(True);
+  Assert.AreEqual(Integer(ColorToRGB(clRed)), FRowPixel);
+  Assert.AreEqual(Integer(ColorToRGB(clLime)), FFreePixel);
 end;
 
-procedure TAtlasListBoxTests.ErasesIntoBuffer;
-var
-  mResult: NativeInt;
+procedure TAtlasListBoxTests.WithoutRowsFillsAll;
 begin
-  // In den Puffer füllt die Liste ihre Farbe (auch die Fläche unter der letzten Zeile).
-  Assert.AreEqual(Integer(ColorToRGB(clLime)), ColorAfterErase(True, mResult));
+  Erase(False);
+  Assert.AreEqual(Integer(ColorToRGB(clLime)), FRowPixel);
+  Assert.AreEqual(Integer(ColorToRGB(clLime)), FFreePixel);
 end;
 
-procedure TAtlasListBoxTests.WithoutBufferErasesOnScreen;
-var
-  mResult: NativeInt;
+procedure TAtlasListBoxTests.FullListLeavesNothingFree;
 begin
-  FList.DoubleBuffered := False;
-  Assert.AreEqual(Integer(ColorToRGB(clLime)), ColorAfterErase(False, mResult));
+  AddRows(20);
+  Assert.IsTrue(FList.FreeArea.IsEmpty);
+  Erase(False);
+  Assert.AreEqual(Integer(ColorToRGB(clRed)), FFreePixel);
 end;
 
 initialization
