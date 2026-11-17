@@ -37,7 +37,7 @@ type
     /// <summary>Ausstehenden Build beenden; False, wenn keiner aussteht.</summary>
     function FinishBuild(ASucceeded: Boolean; const AExecutable, AError: string): Boolean;
     /// <summary>Ausstehende Test-EXE beenden; False, wenn keine aussteht.</summary>
-    function FinishRun(ACancelled, ATimedOut: Boolean; AExitCode: Integer; const AXml: string): Boolean;
+    function FinishRun(AState: TAtlasMutationRunState; AExitCode: Integer; const AXml: string): Boolean;
     /// <summary>Wie FinishRun mit einem Bericht, in dem alle Tests grün (AGreen) bzw. U.TT.B rot sind.</summary>
     function FinishTests(AGreen: Boolean): Boolean;
     property Calls: TStringList read FCalls;
@@ -145,7 +145,7 @@ begin
   mDone(ASucceeded, AExecutable, AError);
 end;
 
-function TAtlasMutationShadowFake.FinishRun(ACancelled, ATimedOut: Boolean; AExitCode: Integer;
+function TAtlasMutationShadowFake.FinishRun(AState: TAtlasMutationRunState; AExitCode: Integer;
   const AXml: string): Boolean;
 var
   mDone: TAtlasMutationRan;
@@ -157,18 +157,18 @@ begin
   end;
   mDone := FRan;
   FRan := nil;
-  mDone(ACancelled, ATimedOut, AExitCode, AXml);
+  mDone(AState, AExitCode, AXml);
 end;
 
 function TAtlasMutationShadowFake.FinishTests(AGreen: Boolean): Boolean;
 begin
   if AGreen then
   begin
-    Result := FinishRun(False, False, 0, cGreen);
+    Result := FinishRun(TAtlasMutationRunState.Completed, 0, cGreen);
   end
   else
   begin
-    Result := FinishRun(False, False, 1, cRed);
+    Result := FinishRun(TAtlasMutationRunState.Completed, 1, cRed);
   end;
 end;
 

@@ -7,6 +7,12 @@
 // - Öffnen, Schreiben, Bauen, Ausführen und Schließen des Schattenprojekts
 //   übernimmt IAtlasMutationShadowProject: in der IDE das echte
 //   Schattenprojekt, in den Tests eine Fälschung.
+// - Ein Ende mitten im Lauf (Kopie nicht schreibbar, Build abgelehnt, keine
+//   oder nicht startbare Test-EXE) behält wie „Abbrechen“ alles bis dahin
+//   Bewertete: Grund, Überlebende, Schlusszeile, Ende Cancelled. Nur vor dem
+//   ersten Mutanten (Öffnen, Lauf ohne Mutation) endet er mit Stopped.
+// - Eine Test-EXE, die nicht gestartet ist, sagt nichts über den Mutanten;
+//   sie zählt nie als „erkannt“, sondern beendet den Lauf.
 // - Was zu melden ist, geht als TAtlasMutationNote an OnNote (den Text macht
 //   der Aufrufer), das Ende an OnEnded. Bei Finished und Cancelled stehen
 //   Jobs, Outcomes und DoneCount in beiden noch bereit (Ergebnisse merken).
@@ -17,15 +23,29 @@
 interface
 
 uses
+  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan;
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Wie die Test-EXE endete: Completed = gelaufen (Exitcode und Bericht zählen), Cancelled = abgebrochen,
+  /// TimedOut = Zeitlimit, NotStarted = gar nicht gelaufen (fehlt, gesperrt, nicht startbar).</summary>
+  TAtlasMutationRunState = (Completed, Cancelled, TimedOut, NotStarted);
+  {$SCOPEDENUMS OFF}
+
   /// <summary>Ende des Builds: ASucceeded = übersetzt; AExecutable: die Test-EXE ('' = keine gefunden); AError: Build
   /// gar nicht gelaufen.</summary>
   TAtlasMutationBuilt = reference to procedure(ASucceeded: Boolean; const AExecutable, AError: string);
-  /// <summary>Ende der Test-EXE: abgebrochen, Zeitlimit, Exitcode und XML-Bericht ('' = keiner).</summary>
-  TAtlasMutationRan = reference to procedure(ACancelled, ATimedOut: Boolean; AExitCode: Integer; const AXml: string);
+  /// <summary>Ende der Test-EXE: wie sie endete, Exitcode und XML-Bericht ('' = keiner).</summary>
+  TAtlasMutationRan = reference to procedure(AState: TAtlasMutationRunState; AExitCode: Integer; const AXml: string);
+
+  TAtlasMutationRunStates = class
+  public
+    /// <summary>Zustand der Test-EXE aus dem Ergebnis des Prozessläufers: fehlende oder nicht startbare EXE
+    /// (ToolMissing, Failed mit Exitcode -1) und jede Ablehnung ohne Prozess gelten als NotStarted.</summary>
+    class function FromRunner(AOutcome: TAtlasVcsOutcome; AExitCode: Integer): TAtlasMutationRunState; static;
+  end;
 
   /// <summary>Das Schattenprojekt neben dem Testprojekt, wie der Ablauf es braucht.</summary>
   IAtlasMutationShadowProject = interface
@@ -56,11 +76,11 @@ type
   TAtlasMutationEnd = (Finished, Cancelled, Stopped);
   /// <summary>Started: Schattenprojekt offen, Lauf ohne Mutation folgt. OpenFailed: Text = Grund. WriteFailed: Text =
   /// Fehler beim Schreiben der Kopie. BuildRefused: Text = Grund. NoExecutable: gebaut, aber keine Test-EXE.
-  /// BaselineFailed: Lauf ohne Mutation nicht grün (Status, By). Outcome: Ausgang des Mutanten Position. Survivor:
-  /// Mutant Position überlebt (am Ende). Cancelled: abgebrochen nach Done von Total. Finished: Totals. CloseFailed:
-  /// Text = Fehler beim Schließen.</summary>
-  TAtlasMutationNoteKind = (Started, OpenFailed, WriteFailed, BuildRefused, NoExecutable, BaselineFailed, Outcome,
-    Survivor, Cancelled, Finished, CloseFailed);
+  /// NotStarted: Test-EXE ließ sich nicht starten. BaselineFailed: Lauf ohne Mutation nicht grün (Status, By).
+  /// Outcome: Ausgang des Mutanten Position. Survivor: Mutant Position überlebt (am Ende). Cancelled: abgebrochen nach
+  /// Done von Total. Finished: Totals. CloseFailed: Text = Fehler beim Schließen.</summary>
+  TAtlasMutationNoteKind = (Started, OpenFailed, WriteFailed, BuildRefused, NoExecutable, NotStarted, BaselineFailed,
+    Outcome, Survivor, Cancelled, Finished, CloseFailed);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Eine Meldung des Ablaufs; nur die Felder ihrer Art sind gesetzt.</summary>
@@ -115,7 +135,7 @@ type
     procedure Abandon;
     /// <summary>Rückrufe des Schattenprojekts zum Lauf ARun.</summary>
     procedure Built(ARun: Integer; ASucceeded: Boolean; const AExecutable, AError: string);
-    procedure Ran(ARun: Integer; ACancelled, ATimedOut: Boolean; AExitCode: Integer; const AXml: string);
+    procedure Ran(ARun: Integer; AState: TAtlasMutationRunState; AExitCode: Integer; const AXml: string);
     property Active: Boolean read FActive;
     property Jobs: TArray<TAtlasMutationJob> read FSource.Jobs;
     property Outcomes: TArray<TAtlasMutationOutcome> read FOutcomes;
@@ -156,10 +176,38 @@ begin
   mFlow := AFlow;
   mRun := ARun;
   Result :=
-    procedure(ACancelled, ATimedOut: Boolean; AExitCode: Integer; const AXml: string)
+    procedure(AState: TAtlasMutationRunState; AExitCode: Integer; const AXml: string)
     begin
-      mFlow.Ran(mRun, ACancelled, ATimedOut, AExitCode, AXml);
+      mFlow.Ran(mRun, AState, AExitCode, AXml);
     end;
+end;
+
+{ TAtlasMutationRunStates }
+
+class function TAtlasMutationRunStates.FromRunner(AOutcome: TAtlasVcsOutcome;
+  AExitCode: Integer): TAtlasMutationRunState;
+begin
+  case AOutcome of
+    TAtlasVcsOutcome.Ok:
+      Result := TAtlasMutationRunState.Completed;
+    // Failed mit echtem Exitcode: gelaufen, aber zu viel Ausgabe; -1: Pipes oder Start gescheitert.
+    TAtlasVcsOutcome.Failed:
+      if AExitCode = -1 then
+      begin
+        Result := TAtlasMutationRunState.NotStarted;
+      end
+      else
+      begin
+        Result := TAtlasMutationRunState.Completed;
+      end;
+    TAtlasVcsOutcome.Cancelled:
+      Result := TAtlasMutationRunState.Cancelled;
+    TAtlasVcsOutcome.TimedOut:
+      Result := TAtlasMutationRunState.TimedOut;
+  else
+    // ToolMissing, MainThread und alles, was keinen Prozess gestartet hat.
+    Result := TAtlasMutationRunState.NotStarted;
+  end;
 end;
 
 /// <summary>Leere Meldung der Art AKind.</summary>
@@ -296,7 +344,7 @@ begin
   mProject.Run(AExecutable, RanProc(Self, FRun));
 end;
 
-procedure TAtlasMutationFlow.Ran(ARun: Integer; ACancelled, ATimedOut: Boolean; AExitCode: Integer;
+procedure TAtlasMutationFlow.Ran(ARun: Integer; AState: TAtlasMutationRunState; AExitCode: Integer;
   const AXml: string);
 var
   mBy: string;
@@ -306,12 +354,18 @@ begin
   begin
     Exit;
   end;
-  if ACancelled then
+  if AState = TAtlasMutationRunState.Cancelled then
   begin
     Finish(True);
     Exit;
   end;
-  mStatus := TAtlasMutationPlan.StatusOf(ATimedOut, AExitCode, AXml, mBy);
+  // Nicht gestartet ist nicht „erkannt“: Der Exitcode -1 stammt dann vom Läufer, nicht von den Tests.
+  if AState = TAtlasMutationRunState.NotStarted then
+  begin
+    StopWith(TAtlasMutationNoteKind.NotStarted, '');
+    Exit;
+  end;
+  mStatus := TAtlasMutationPlan.StatusOf(AState = TAtlasMutationRunState.TimedOut, AExitCode, AXml, mBy);
   Rate(mStatus, mBy);
 end;
 
@@ -394,6 +448,12 @@ begin
   if AKind <> TAtlasMutationNoteKind.BaselineFailed then
   begin
     NoteText(AKind, AText);
+  end;
+  // Mitten im Lauf (nach dem Lauf ohne Mutation): Was bis hierher bewertet ist, zählt wie nach „Abbrechen“.
+  if FActive and (FPosition >= 0) then
+  begin
+    Finish(True);
+    Exit;
   end;
   if FActive then
   begin
