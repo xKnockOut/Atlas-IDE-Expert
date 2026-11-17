@@ -6,7 +6,8 @@
 {$STRONGLINKTYPES ON}
 
 uses
-  // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
+  // Muss als erste Unit stehen: misst den Speicherrest beim Beenden nach allen anderen Finalisierungen (#177).
+  Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   System.SysUtils,
   System.IOUtils,
@@ -480,6 +481,7 @@ uses
   Atlas.Common.Lsp.Protocol.Tests in 'Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas',
+  Atlas.Tests.FirstUse in 'Support\Atlas.Tests.FirstUse.pas',
   Atlas.Tests.LeakMonitor in 'Support\Atlas.Tests.LeakMonitor.pas',
   Atlas.Tests.LeakMonitor.Tests in 'Support\Atlas.Tests.LeakMonitor.Tests.pas',
   Atlas.Tests.RuleAssert in 'Support\Atlas.Tests.RuleAssert.pas',
@@ -2880,11 +2882,21 @@ uses
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}
 
-// Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
-procedure ReportShutdownLeak(ABytes: Int64);
+// Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177). Läuft nach der
+// Finalisierung aller anderen Units: nur System. Flush, weil danach niemand mehr den Puffer leert (unter FPC
+// fehlte die Zeile sonst).
+procedure ReportShutdownLeak(const ALine: string);
 begin
-  System.Writeln(TShutdownLeaks.Describe(ABytes));
+  System.Writeln(ALine);
+  System.Flush(System.Output);
 end;
+
+const
+  /// <summary>So viele Bytes darf der Debug-Lauf beim Beenden mehr belegt haben als beim Start: Belegungen der
+  /// RTL, die nie freigegeben werden (z. B. Verwaltungsknoten der Warteobjekte von TMonitor). Darüber scheitert
+  /// der Lauf: Was ein Test beim ersten Gebrauch anlegt und nie freigibt, fällt hier auf, auch wenn ein
+  /// Aufwärmen es aus der Messung je Test nimmt.</summary>
+  cShutdownRestBytes = 0;
 
 {$IFNDEF TESTINSIGHT}
 var
@@ -2896,6 +2908,7 @@ var
 begin
   {$IFDEF DEBUG}
   TShutdownLeaks.Enable(ReportShutdownLeak);
+  TShutdownLeaks.Expect(cShutdownRestBytes, EXIT_ERRORS);
   {$ENDIF}
   // Tests bilden Namen von Arbeitsordnern mit Random; ohne Randomize hätten zwei gleichzeitige Läufe dieselben.
   Randomize;

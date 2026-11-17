@@ -9,7 +9,8 @@
 {$MAXSTACKSIZE $00800000}
 
 uses
-  // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
+  // Muss als erste Unit stehen: misst den Speicherrest beim Beenden nach allen anderen Finalisierungen (#177).
+  Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Windows.Diagnostics.DebugOutput,
   Shell.Application in 'Source\Shell\Shell.Application.pas',
@@ -161,12 +162,12 @@ uses
 // Atlas-Symbol (#751) als Programmsymbol (MAINICON).
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Icon.res'}
 
-// Speicherrest beim Beenden an den Debugger; die Zeile im Log (--log) schreibt
-// TShutdownLeaks selbst. Kein ReportMemoryLeaksOnShutdown: dessen Dialog
-// blockiert den unsichtbar gestarteten Server (#177).
-procedure ReportShutdownLeak(ABytes: Int64);
+// Speicherrest beim Beenden an den Debugger. Kein ReportMemoryLeaksOnShutdown: dessen Dialog
+// blockiert den unsichtbar gestarteten Server (#177). Läuft nach der Finalisierung aller anderen
+// Units; TDebugOutput.Write ruft nur OutputDebugString.
+procedure ReportShutdownLeak(const ALine: string);
 begin
-  TDebugOutput.Write(TShutdownLeaks.Describe(ABytes));
+  TDebugOutput.Write(ALine);
 end;
 
 begin

@@ -23,8 +23,6 @@ type
     /// <summary>Statt der Abschnitte aus Setup nur ASection anmelden.</summary>
     procedure ProvideOnly(const ASection: TAtlasRulesChecksSection);
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -97,11 +95,6 @@ begin
   RevokeAll(FRegistrations);
   mSection := ASection;
   FRegistrations := [ProvideSection(mSection)];
-end;
-
-procedure TRulesSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
 end;
 
 procedure TRulesSettingsSectionTests.Setup;

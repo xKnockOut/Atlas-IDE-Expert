@@ -11,9 +11,6 @@ type
   [TestFixture]
   TAtlasSettingsPageTreeTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>Baum links (#890): Bereiche, Unterpunkte, Seitenwechsel, Auswahl bis zum nächsten Öffnen.</summary>
     [Test]
     procedure TreeShowsAreasAndNodes;
@@ -60,11 +57,6 @@ uses
   Atlas.UI.Settings.Page.General;
 
 { TAtlasSettingsPageTreeTests }
-
-procedure TAtlasSettingsPageTreeTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;

@@ -28,6 +28,10 @@ type
     procedure FreeBetweenSetupAndTestIsNoLeak;
     [Test]
     procedure ReportNamesThreads;
+    /// <summary>Die bekannten Einmal-Belegungen (TFirstUse) sind vor dem ersten Test angelegt: Ein zweiter
+    /// Durchlauf belegt nichts mehr, sonst meldet der Leckmonitor diesen Test.</summary>
+    [Test]
+    procedure FirstUseWarmUpIsDoneOnce;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
     // (RTTI, JSON), die der Monitor sonst diesem Test anlastete.
@@ -63,6 +67,8 @@ uses
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.ProtocolReplay,
+  Atlas.Common.Diagnostics.ShutdownRest,
+  Atlas.Tests.FirstUse,
   Atlas.Tests.LeakMonitor;
 
 const
@@ -530,6 +536,16 @@ begin
   mGrowth := SoakGrowth(nil);
   Assert.IsTrue(mGrowth <= cAllowedGrowth, Format('Speicher nach %d Anfragen um %d Bytes gewachsen',
     [cSoakRounds * (cSoakGroups * 4 + 1), mGrowth]));
+end;
+
+procedure TLeakMonitorTests.FirstUseWarmUpIsDoneOnce;
+var
+  mBefore: Int64;
+begin
+  // Selbst messen statt Assert.Pass: Dessen Ausnahme lebt noch, wenn der Leckmonitor misst, und zählte als Leck.
+  mBefore := TShutdownRest.AllocatedBytes;
+  TFirstUse.WarmUp;
+  Assert.AreEqual(mBefore, TShutdownRest.AllocatedBytes, 'Zweites Aufwärmen hat Speicher behalten');
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;

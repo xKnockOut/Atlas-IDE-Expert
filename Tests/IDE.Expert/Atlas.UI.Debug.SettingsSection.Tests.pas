@@ -21,8 +21,6 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -63,11 +61,6 @@ uses
   Atlas.UI.Settings.Page.TestSupport;
 
 { TDebugSettingsSectionTests }
-
-procedure TDebugSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TDebugSettingsSectionTests.Setup;
 begin

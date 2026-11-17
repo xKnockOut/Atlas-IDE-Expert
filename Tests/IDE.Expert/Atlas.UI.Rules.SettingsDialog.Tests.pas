@@ -14,9 +14,6 @@ type
   [Category('Atlas.IDE.Rules')]
   TAtlasRulesSettingsDialogTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure ProviderNamesRulesDialog;
     [Test]
@@ -44,15 +41,10 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.UI.Settings.ProjectDialog,
   Atlas.UI.Rules.Editor,
-  Atlas.UI.Rules.SettingsDialog,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Rules.SettingsDialog;
 
 { TAtlasRulesSettingsDialogTests }
 
-procedure TAtlasRulesSettingsDialogTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 procedure TAtlasRulesSettingsDialogTests.ProviderNamesRulesDialog;
 var
   mProvider: IAtlasSettingsDialogProvider;

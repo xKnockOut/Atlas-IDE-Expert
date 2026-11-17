@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasSettingsPageEditorTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>Erzeugen-Menü (#719) auf dem Reiter Befehle.</summary>
     [Test]
     procedure GenerateMenuRoundTrip;
@@ -68,10 +65,6 @@ uses
 
 { TAtlasSettingsPageEditorTests }
 
-procedure TAtlasSettingsPageEditorTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 /// <summary>Vorgaben und Änderungen: Blockende, Datenfluss, Austrittspunkte, Unterstreichung, Ausdruckstyp.</summary>
 procedure EditHideElementMarkers(APage: TAtlasSettingsPage);
 begin

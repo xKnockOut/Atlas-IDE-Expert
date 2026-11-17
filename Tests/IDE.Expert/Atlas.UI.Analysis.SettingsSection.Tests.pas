@@ -17,8 +17,6 @@ type
   private
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -43,11 +41,6 @@ uses
   Atlas.UI.Analysis.SettingsSection;
 
 { TAnalysisSettingsSectionTests }
-
-procedure TAnalysisSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TAnalysisSettingsSectionTests.Setup;
 begin

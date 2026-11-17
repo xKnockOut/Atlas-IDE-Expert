@@ -1,0 +1,3 @@
+### Tests
+- Speicherrest beim Beenden ist ein Kriterium des Testlaufs: Im Debug-Build scheitert Atlas.Tests, wenn am Ende mehr belegt ist als erlaubt (`TShutdownLeaks.Expect`, ausgewertet auch von `Tools/Build-Test.ps1`). Bekannte Einmal-Belegungen stehen mit ihrem Besitzer in `Atlas.Tests.FirstUse`; neue `[SetupFixture]`-Aufwärmer verhindert `Tools/Check-TestWarmUps.ps1`.
+- Der Speicherrest beim Beenden wird erst nach der Finalisierung aller anderen Units gemessen (`Atlas.Common.Diagnostics.ShutdownRest`, erste Unit der .dpr, ohne uses). Bisher zählten Texttabellen und andere bis zum Ende gehaltene Daten mit, gut 1,3 MB schon ohne Tests.

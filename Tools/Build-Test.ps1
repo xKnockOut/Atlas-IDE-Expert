@@ -20,6 +20,12 @@
        AUTO je IDE-Version anders, z. B. Atlas.IDE.Base370.bpl (#281).
     3. Atlas.Tests.exe --exitbehavior:Continue mit NUnit-XML als Ergebnis;
        die Benchmarks (Kategorie Benchmark, #415) nur mit -Benchmarks.
+    4. Im Debug-Build ist der Speicherrest beim Beenden ein Kriterium: Die
+       Test-exe schreibt am Ende "Speicherrest beim Beenden: n Bytes
+       (erlaubt: m)". Fehlt die Zeile oder liegt n über m, scheitert der
+       Lauf, auch wenn der Exit-Code der exe 0 ist. Was beim ersten Gebrauch
+       angelegt und nie freigegeben wird, fällt so auf, auch wenn ein
+       Aufwärmen es aus der Messung je Test nimmt.
 
     Exit-Code 0: alles grün. 1: Build-Fehler, Hinweis oder Warnung.
     2: Tests fehlgeschlagen. 3: Aufruf- oder Umgebungsfehler (auch ohne
@@ -88,6 +94,23 @@ function Invoke-DelphiBuild([string] $Project, [string] $Platform) {
     $start = $output.IndexOf('{')
     if ($start -lt 0) { throw "Das Bau-Skript lieferte kein JSON:`n$output" }
     $output.Substring($start) | ConvertFrom-Json
+}
+
+# Wertet die Zeile zum Speicherrest beim Beenden aus (deutsch oder englisch, je nach Sprache am Ende des Laufs);
+# liefert den Verstoß als Text oder $null.
+function Test-ShutdownRest([string[]] $Lines) {
+    $pattern = '(?:Speicherrest beim Beenden|Memory left at shutdown): (-?\d+) [Bb]ytes \((?:erlaubt|allowed): (-?\d+)\)'
+    $found = @($Lines | Select-String -Pattern $pattern)
+    if ($found.Count -eq 0) {
+        return 'Zeile zum Speicherrest beim Beenden fehlt (Testprogramm vorzeitig beendet oder ohne TShutdownLeaks.Expect)'
+    }
+    $match = $found[-1].Matches[0]
+    $rest = [long] $match.Groups[1].Value
+    $allowed = [long] $match.Groups[2].Value
+    if ($rest -gt $allowed) {
+        return "Speicherrest beim Beenden $rest Bytes über der Grenze $allowed (Belegung beim ersten Gebrauch, nie freigegeben)"
+    }
+    return $null
 }
 
 function Get-Property($Object, [string] $Name) {
@@ -162,9 +185,15 @@ try {
         # Benchmarks laufen getrennt von den Funktionstests (#415), wie Tests\Tests.bat.
         $filter = '--exclude:Benchmark'
         if ($Benchmarks) { $filter = '--include:Benchmark' }
-        & $TestExe $filter '--exitbehavior:Continue' "--xmlfile:$ResultFile"
-        if ($LASTEXITCODE -ne 0) {
-            Write-Step "Tests fehlgeschlagen (Exit-Code $LASTEXITCODE)"
+        & $TestExe $filter '--exitbehavior:Continue' "--xmlfile:$ResultFile" | Tee-Object -Variable testLines | Out-Host
+        $testExit = $LASTEXITCODE
+        $restProblem = $null
+        if ($Config -eq 'Debug') { $restProblem = Test-ShutdownRest @($testLines) }
+        if ($testExit -ne 0) {
+            Write-Step "Tests fehlgeschlagen (Exit-Code $testExit)"
+            $exitCode = 2
+        } elseif ($restProblem) {
+            Write-Step $restProblem
             $exitCode = 2
         } else {
             Write-Step 'Build und Tests grün'

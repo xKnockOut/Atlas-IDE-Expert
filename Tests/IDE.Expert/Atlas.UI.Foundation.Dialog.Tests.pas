@@ -20,8 +20,6 @@ type
   [TestFixture]
   TAtlasDialogTests = class
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -109,19 +107,6 @@ begin
 end;
 
 { TAtlasDialogTests }
-
-procedure TAtlasDialogTests.WarmUpFirstUse;
-var
-  mDialog: TAtlasDialog;
-begin
-  // Erste Benutzung (VCL-Formular, Liste der Abonnenten des Themendienstes) nicht dem ersten Test anrechnen.
-  mDialog := TAtlasDialog.CreateDialog(nil, 'Aufwärmen', 300);
-  try
-    mDialog.HandleNeeded;
-  finally
-    mDialog.Free;
-  end;
-end;
 
 procedure TAtlasDialogTests.TearDown;
 begin

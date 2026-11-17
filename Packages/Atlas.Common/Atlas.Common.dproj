@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownRest.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.StackGuard.pas"/>

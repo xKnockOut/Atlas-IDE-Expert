@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasSettingsPageBuildTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>Aktion nach dem Speichern (#398, #548): nichts, Syntaxprüfung oder Kompilieren, nie beides; Kosten
     /// einer interface-Änderung (#554).</summary>
     [Test]
@@ -34,11 +31,6 @@ uses
   Atlas.UI.Settings.Page.Completion;
 
 { TAtlasSettingsPageBuildTests }
-
-procedure TAtlasSettingsPageBuildTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TAtlasSettingsPageBuildTests.AfterSaveRoundTrip;
 var

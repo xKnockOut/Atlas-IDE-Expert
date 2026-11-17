@@ -36,6 +36,7 @@ uses
   System.Classes,
   Winapi.Messages,
   Vcl.Controls,
+  Vcl.Forms,
   Vcl.Menus,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Welcome.QuickActions;

@@ -12,8 +12,6 @@ type
     FFileName: string;
     procedure DeleteFiles;
   public
-    [SetupFixture]
-    procedure SetupFixture;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -66,29 +64,6 @@ begin
       TFile.Delete(mName);
     end;
   end;
-end;
-
-procedure TRotatingFileStreamTests.SetupFixture;
-var
-  mFileName: string;
-  mFirst: TStream;
-begin
-  // Die RTL legt beim ersten EFOpenError Daten an, die bis Programmende bleiben (vgl.
-  // EFCreateError in den Cache-Tests). Einmal vorab auslösen, damit der Leck-Monitor in
-  // den Tests nur deren eigenen Speicher sieht.
-  mFileName := TPath.Combine(TPath.GetTempPath, 'Atlas.Tests.' + TGUID.NewGuid.ToString + '.log');
-  mFirst := TFileStream.Create(mFileName, fmCreate or fmShareExclusive);
-  try
-    try
-      TFileStream.Create(mFileName, fmOpenWrite or fmShareDenyWrite).Free;
-    except
-      on EFOpenError do
-        ;
-    end;
-  finally
-    mFirst.Free;
-  end;
-  TFile.Delete(mFileName);
 end;
 
 procedure TRotatingFileStreamTests.Setup;

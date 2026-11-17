@@ -20,8 +20,6 @@ type
     FReleaseRef: IAtlasSettingsSection;
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -45,11 +43,6 @@ uses
   Atlas.UI.Settings.Page.TestSupport;
 
 { TBuildPipelineSettingsSectionTests }
-
-procedure TBuildPipelineSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TBuildPipelineSettingsSectionTests.Setup;
 begin
