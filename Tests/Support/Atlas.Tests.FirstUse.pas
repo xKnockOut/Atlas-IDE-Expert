@@ -49,6 +49,7 @@ uses
   Atlas.UI.Settings.Page,
   Vcl.Graphics,
   Vcl.Forms,
+  Vcl.ComCtrls,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
@@ -504,6 +505,30 @@ begin
   end;
 end;
 
+/// <summary>Erster DPI-Wechsel eines Formulars mit Liste: Die VCL legt dabei für die neue Auflösung Daten an, die bis zu
+/// ihrer Finalisierung bleiben (72 Byte; der Leckbericht zeigt keinen Stapel). Den Nachrichtenverteiler dieses Wegs
+/// legt WarmUpRtlSingletons an. Einmal auf 150 % und zurück skalieren, wie es Tests der Listen tun.</summary>
+procedure WarmUpVclDpiChange;
+var
+  mForm: TForm;
+  mList: TListView;
+  mPPI: Integer;
+begin
+  mForm := TForm.CreateNew(nil);
+  try
+    mList := TListView.Create(mForm);
+    mList.ViewStyle := vsReport;
+    mList.Parent := mForm;
+    mList.Columns.Add.Width := mForm.ScaleValue(100);
+    mForm.HandleNeeded;
+    mPPI := mForm.CurrentPPI;
+    mForm.ScaleForPPI(mPPI * 3 div 2);
+    mForm.ScaleForPPI(mPPI);
+  finally
+    mForm.Free;
+  end;
+end;
+
 /// <summary>Liste der Beiträge in der Modul-Registry (TAtlasModuleRegistry, frei mit der Registry in der
 /// Finalisierung von Base): Ihre Kapazität wächst auf den Höchststand gleichzeitiger Beiträge. Tests, die mehrere
 /// Einstellungsbereiche auf einmal anmelden, heben ihn (400 Byte bei acht). Viele Beiträge auf einmal anmelden
@@ -584,6 +609,7 @@ begin
   WarmUpVclCanvasList;
   WarmUpVclBitmapCanvases;
   WarmUpVclControlCanvas;
+  WarmUpVclDpiChange;
   WarmUpRegistryProvisions;
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;
