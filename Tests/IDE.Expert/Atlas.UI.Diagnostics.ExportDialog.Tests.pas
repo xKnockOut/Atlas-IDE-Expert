@@ -12,6 +12,9 @@ type
   [TestFixture]
   TAtlasDiagnosticExportDialogTests = class
   public
+    /// <summary>Erste Benutzung (VCL, Schriften) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Langer Hinweis: wenige Zeilen hoch, nicht ein Wort je Zeile.</summary>
     [Test]
     procedure HintKeepsItsWrappedHeight;
@@ -37,6 +40,13 @@ const
     'den Trace der letzten Minuten. Pfade, Benutzername und Bezeichner sind ersetzt. Zugangsdaten stehen nie darin.';
 
 { TAtlasDiagnosticExportDialogTests }
+
+procedure TAtlasDiagnosticExportDialogTests.WarmUpFirstUse;
+begin
+  HintKeepsItsWrappedHeight;
+  // Erste modale Anzeige legt einmalige VCL-Zustände an.
+  PrepareRunsBeforeShowing;
+end;
 
 procedure TAtlasDiagnosticExportDialogTests.HintKeepsItsWrappedHeight;
 var
