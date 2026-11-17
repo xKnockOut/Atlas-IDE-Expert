@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasProcessesDialogTests = class
   public
-    /// <summary>Erstgebrauch der VCL (Fenster, Listenansicht, Memo) vor der Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ShowsWorkspaceProcessesAndLog;
     [Test]
@@ -55,13 +52,6 @@ begin
 end;
 
 { TAtlasProcessesDialogTests }
-
-procedure TAtlasProcessesDialogTests.WarmUpFirstUse;
-begin
-  ShowsWorkspaceProcessesAndLog;
-  RefreshAsksAndCopyGivesMarkdown;
-  LateAnswerAfterCloseIsIgnored;
-end;
 
 procedure TAtlasProcessesDialogTests.ShowsWorkspaceProcessesAndLog;
 var

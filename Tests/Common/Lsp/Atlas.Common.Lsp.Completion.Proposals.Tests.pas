@@ -21,9 +21,6 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure OffersOverridesWithDeclarationAndBody;
     [Test]
@@ -506,15 +503,6 @@ end;
 procedure TLspCompletionProposalTests.TearDown;
 begin
   Release;
-end;
-procedure TLspCompletionProposalTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersOverridesWithDeclarationAndBody;
-  finally
-    TearDown;
-  end;
 end;
 procedure TLspCompletionProposalTests.OffersOverridesWithDeclarationAndBody;
 const

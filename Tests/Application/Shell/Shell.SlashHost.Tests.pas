@@ -12,9 +12,6 @@ type
   [TestFixture]
   TShellSlashHostTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure SelectBuildRunsThroughLoopRunner;
     [Test]
@@ -65,11 +62,6 @@ begin
 end;
 
 { TShellSlashHostTests }
-
-procedure TShellSlashHostTests.WarmUpFirstUse;
-begin
-  WriteFilesOnDisk;
-end;
 
 procedure TShellSlashHostTests.SelectBuildRunsThroughLoopRunner;
 var

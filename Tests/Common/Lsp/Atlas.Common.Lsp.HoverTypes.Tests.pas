@@ -19,9 +19,6 @@ type
     FResolver: TNameResolver;
     function InfoAt(const AMarker: string): THoverInfo;
   public
-    /// <summary>Ein Hover vorab; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -165,23 +162,6 @@ begin
       PositionOf(cUnitHaupt, AMarker));
   finally
     mTree.Free;
-  end;
-end;
-
-procedure TLspHoverTypesTests.WarmUp;
-begin
-  Setup;
-  try
-    InfoAt('B :=');
-    InfoAt('TBlatt;');
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    HoverReadsFilesThatAreNotOpen;
-  finally
-    TearDown;
   end;
 end;
 

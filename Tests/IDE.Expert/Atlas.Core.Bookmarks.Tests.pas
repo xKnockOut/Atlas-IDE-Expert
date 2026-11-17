@@ -80,9 +80,6 @@ type
     function Project: string;
     function UnitFile: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -609,17 +606,6 @@ end;
 function TAtlasBookmarkStorageTests.UnitFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(FFolder, 'Source'), 'Kunde.pas');
-end;
-
-procedure TAtlasBookmarkStorageTests.WarmUpFirstUse;
-begin
-  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
-  Setup;
-  try
-    BrokenFileSetAsideLockedFileKept;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TAtlasBookmarkStorageTests.Setup;

@@ -13,9 +13,6 @@ type
     FFolder: string;
     FOldFolder: string;
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -106,23 +103,6 @@ begin
 end;
 
 { TAtlasGuardTests }
-
-procedure TAtlasGuardTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ProviderFuseTripsOnlyThatProvider;
-  finally
-    TearDown;
-  end;
-  // Schreibfehler des Protokolls: Erstgebrauch der Fehlerpfade beim Anhängen.
-  Setup;
-  try
-    LogCountsLostLinesAndReportsTheGap;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasGuardTests.Setup;
 begin

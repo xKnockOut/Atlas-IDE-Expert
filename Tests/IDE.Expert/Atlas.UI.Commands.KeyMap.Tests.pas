@@ -16,9 +16,6 @@ type
   [TestFixture]
   TAtlasKeyMapWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -105,16 +102,6 @@ begin
 end;
 
 { TAtlasKeyMapWindowTests }
-
-procedure TAtlasKeyMapWindowTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    PaletteKeyShowsOriginAtlas;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasKeyMapWindowTests.Setup;
 begin
