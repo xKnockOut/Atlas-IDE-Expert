@@ -1517,6 +1517,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Designer.FormModel` | `Core/Designer/Atlas.Core.Designer.FormModel.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.Gaps` | `Core/Designer/Atlas.Core.Designer.Gaps.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.KeptComponents` | `Core/Designer/Atlas.Core.Designer.KeptComponents.pas` | Ordner `Core/Designer` |
+| `Atlas.Core.Designer.Created` | `Core/Designer/Atlas.Core.Designer.Created.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.InsertSpace` | `Core/Designer/Atlas.Core.Designer.InsertSpace.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.MultiResize` | `Core/Designer/Atlas.Core.Designer.MultiResize.pas` | Ordner `Core/Designer` |
 | `Atlas.Core.Designer.SelectionBar` | `Core/Designer/Atlas.Core.Designer.SelectionBar.pas` | Ordner `Core/Designer` |
