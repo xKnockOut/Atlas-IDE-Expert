@@ -53,6 +53,8 @@ type
     [Test]
     procedure GuideStartsAtTheStatement;
     [Test]
+    procedure GuideOfWrappedHeadStartsAtTheStatement;
+    [Test]
     procedure PenWidthScalesWithLineHeight;
     [Test]
     procedure LocalRoutineTokensCarryTheirNesting;
@@ -376,6 +378,29 @@ begin
   Assert.AreEqual('3-5@3:1 1-6@1:0', DescribeGuides(cCode, 2));
   // begin hinter then in derselben Zeile: unverändert.
   Assert.AreEqual('0-2@1:0', DescribeOwnerGuides('if A then begin'#10'  B;'#10'end;', 2));
+end;
+
+/// <summary>Routine X mit AHead als Kopf eines Blocks, dessen begin in der letzten Kopfzeile steht.</summary>
+function WrappedHead(const AHead: string): string;
+begin
+  Result := 'procedure X;'#10'begin'#10 + AHead + ' begin'#10'    C;'#10'  end;'#10'end;';
+end;
+
+procedure TAtlasPairsTests.GuideOfWrappedHeadStartsAtTheStatement;
+begin
+  // Umbrochene Bedingung, "then begin" auf eigener Zeile: Linie ab der if-Zeile.
+  Assert.AreEqual('2-6@3:1 0-7@1:0', DescribeOwnerGuides(WrappedHead('  if A and'#10'    B'#10'  then'), 2));
+  // "then begin" am Ende der letzten Zeile der Bedingung.
+  Assert.AreEqual('2-5@3:1 0-6@1:0', DescribeOwnerGuides(WrappedHead('  if A and'#10'    B then'), 2));
+  // else if über mehrere Zeilen: ab der else-Zeile.
+  Assert.AreEqual('4-7@3:1 0-8@1:0', DescribeOwnerGuides(WrappedHead('  if Z then'#10'    Y'#10'  else if A and'#10 +
+    '    B then'), 2));
+  // Schleifen und with: ab while, for bzw. with.
+  Assert.AreEqual('2-6@3:1 0-7@1:0', DescribeOwnerGuides(WrappedHead('  while A and'#10'    B'#10'  do'), 2));
+  Assert.AreEqual('2-5@3:1 0-6@1:0', DescribeOwnerGuides(WrappedHead('  for I := 0 to'#10'    N do'), 2));
+  Assert.AreEqual('2-5@3:1 0-6@1:0', DescribeOwnerGuides(WrappedHead('  with A,'#10'    B do'), 2));
+  // Ohne Besitzer wie bisher an der Zeile des begin.
+  Assert.AreEqual('4-6@3:1 1-7@1:0', DescribeGuides(WrappedHead('  if A and'#10'    B'#10'  then'), 2));
 end;
 
 procedure TAtlasPairsTests.PenWidthScalesWithLineHeight;
