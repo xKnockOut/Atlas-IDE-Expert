@@ -14,6 +14,10 @@
 //   FrameCreated herein. Registrieren muss früh geschehen (Register des
 //   Experten), sonst kennt die IDE beim Laden des Start-Desktops die Kennung
 //   noch nicht.
+// - Fester Name: Die IDE merkt sich den Platz angedockter Fenster unter dem
+//   Komponentennamen der Form; die Namen OTADockForm_<N> der IDE hängen von
+//   der Reihenfolge des Anlegens ab. SetForm benennt die Form nach der Kennung
+//   (TAtlasDockPlan.FormName), sonst tauschen Fenster nach dem Neustart Plätze.
 // Die Entscheidungen ohne VCL/OTA liegen in Atlas.Core.Dock.Plan (getestet).
 // ApplyIdeTheme: Thema der IDE auf den Inhalt eines Atlas-Fensters, beim
 // Anlegen und bei jedem Themenwechsel. ApplyTheme färbt nur Steuerelemente
@@ -60,6 +64,8 @@ type
     class procedure ApplyDarkCaption(AForm: TCustomForm); static;
     procedure FormWndProc(var AMessage: TMessage);
     procedure SetForm(AForm: TCustomForm);
+    /// <summary>Form nach der Kennung benennen, damit der Desktop sie beim nächsten Start wiederfindet.</summary>
+    procedure NameForm;
     procedure FreeForm;
     procedure Reveal;
   protected
@@ -275,8 +281,36 @@ begin
     end;
     // Beim Ab- und Andocken legt die IDE das Fenster neu an; die Titelleiste muss dann neu dunkel werden.
     FWndHook := TAtlasWndProcHook.Create(FForm, FormWndProc);
+    NameForm;
     ThemeForm(FForm);
   end;
+end;
+
+procedure TAtlasIdeDockWindow.NameForm;
+var
+  mName: string;
+  mCaption: string;
+begin
+  if (FForm = nil) or (FDock = nil) then
+  begin
+    Exit;
+  end;
+  mName := TAtlasDockPlan.FormName(FDock.GetIdentifier, FForm.Name);
+  if mName = '' then
+  begin
+    Exit;
+  end;
+  // SetName übernimmt den neuen Namen auch als Titel, wenn der Titel noch dem alten Namen glich.
+  mCaption := FForm.Caption;
+  try
+    FForm.Name := mName;
+  except
+    on E: EComponentError do
+    begin
+      TAtlasGuard.Log('Dock form name ' + mName + ': ' + TAtlasGuard.ErrorText(E));
+    end;
+  end;
+  FForm.Caption := mCaption;
 end;
 
 procedure TAtlasIdeDockWindow.FreeForm;

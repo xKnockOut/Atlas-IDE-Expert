@@ -8,10 +8,18 @@
 // (Reiterseite, Dock-Fenster, Hauptfenster) sichtbar sind. Ein Fenster mit
 // fester Vorgabe (etwa „Atlas-Architektur“ rechts, #1118) wird nur beim
 // allerersten Anlegen dorthin gelegt; danach gilt der Desktop der IDE.
+// Die IDE merkt sich angedockte Fenster im Desktop (Panel- und Reiterbäume)
+// unter dem Komponentennamen der Form. CreateDockableForm nennt Formen
+// OTADockForm_<N> nach der Reihenfolge des Anlegens; die schwankt von Start zu
+// Start, und dann landet ein Fenster auf dem Platz eines anderen. Darum heißt
+// jede Atlas-Form wie ihre Kennung (FormName).
 
 {$SCOPEDENUMS ON}
 
 interface
+
+uses
+  System.SysUtils;
 
 type
   /// <summary>Was „Fenster zeigen“ tun muss.</summary>
@@ -37,6 +45,10 @@ type
     /// merkt sich das) und nur, wenn das Ziel selbst angedockt ist. Ein Fenster, das der Desktop schon
     /// angedockt wiederhergestellt hat, bleibt, wo es ist.</summary>
     class function DockToDefault(ACreated, AFloating, APlaced, ATargetDocked: Boolean): Boolean; static;
+    /// <summary>Fester Komponentenname der Form zur Kennung AIdentifier, damit der Desktop das Fenster beim
+    /// nächsten Start am selben Platz findet. Leer, wenn nichts umzubenennen ist (Name stimmt schon) oder die
+    /// Kennung kein gültiger Bezeichner ist.</summary>
+    class function FormName(const AIdentifier, ACurrent: string): string; static;
   end;
 
 implementation
@@ -82,6 +94,27 @@ end;
 class function TAtlasDockPlan.DockToDefault(ACreated, AFloating, APlaced, ATargetDocked: Boolean): Boolean;
 begin
   Result := ACreated and AFloating and not APlaced and ATargetDocked;
+end;
+
+class function TAtlasDockPlan.FormName(const AIdentifier, ACurrent: string): string;
+var
+  mIndex: Integer;
+  mChar: Char;
+begin
+  Result := '';
+  if (AIdentifier = '') or SameText(AIdentifier, ACurrent) then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to Length(AIdentifier) do
+  begin
+    mChar := AIdentifier[mIndex];
+    if not (CharInSet(mChar, ['A'..'Z', 'a'..'z', '_']) or ((mIndex > 1) and CharInSet(mChar, ['0'..'9']))) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := AIdentifier;
 end;
 
 end.
