@@ -61,9 +61,6 @@ type
     procedure WriteBytes(const AFileName: string; const ABytes: TBytes);
     function ReadAll(const AFileName: string): TBytes;
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -322,16 +319,6 @@ begin
     end;
   finally
     mStream.Free;
-  end;
-end;
-
-procedure TFileEncodingDefaultTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    DecodesCodePage1250;
-  finally
-    TearDown;
   end;
 end;
 
