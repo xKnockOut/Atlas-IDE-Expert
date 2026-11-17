@@ -576,6 +576,8 @@ begin
     TAtlasIdeSearchSession.Histories := TAtlasIdeSearchHistories.Create(TAtlasIdeSettings.Current.SearchHistory);
   end;
   TAtlasIdeSearchSession.Histories.Load;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  TAtlasIdeSearchReplaceWindow.Prepare;
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;
