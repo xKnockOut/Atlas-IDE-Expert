@@ -1,8 +1,10 @@
 ﻿unit Atlas.UI.Tracker.IssueFrame.Contract;
 
-// Typen des Fensters „Atlas-Issue“ (#1264) für Frame und IDE-Schicht: Schalter (SetFlag), feste Steuerelemente,
-// Inhalt des gezeigten Issues, Zustand zwischen den Aufrufen und Wünsche an die IDE-Schicht. Der Frame selbst steht
-// in Atlas.UI.Tracker.IssueFrame.
+// Typen des Fensters „Atlas-Issue“ (#1264) für Frame und IDE-Schicht: Schalter (SetFlag), Knöpfe und Teile des
+// Inhalts (Tag der Steuerelemente), feste Steuerelemente, Inhalt des gezeigten Issues, Zustand zwischen den Aufrufen
+// und Wünsche an die IDE-Schicht. Der Frame selbst steht in Atlas.UI.Tracker.IssueFrame, seine Teile in
+// Atlas.UI.Tracker.IssueFrame.Chrome (feste Steuerelemente), .Layout und .Sections (Inhalt) und .Deferred
+// (Wünsche nach dem Klick).
 
 interface
 
@@ -10,7 +12,6 @@ uses
   System.SysUtils,
   System.Actions,
   System.Generics.Collections,
-  Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.ComCtrls,
@@ -56,8 +57,19 @@ type
     CanWriteLinks,
     /// <summary>issues.preview.development: Reiter „Entwicklung“ zeigen.</summary>
     Development);
+  /// <summary>Feste Knöpfe, Reiter und Aktionen (Tag = cAtlasIssueToolTag + Ord).</summary>
+  TAtlasIssueTool = (Back, Forward, Start, Finish, Review, Browse, CopyKey, Attach, Refresh, Fix, CommentSend, Pages);
+  /// <summary>Teile des Inhalts (Tag = cAtlasIssuePartTag + Ord).</summary>
+  TAtlasIssuePart = (Title, Older, AddTask, Image, Attachment, Link, LinkTree, CreateSubtask, AddLink);
   {$SCOPEDENUMS OFF}
   TAtlasIssueFlags = set of TAtlasIssueFlag;
+
+const
+  /// <summary>Tag der festen Knöpfe ab hier, der Teile des Inhalts ab cAtlasIssuePartTag.</summary>
+  cAtlasIssueToolTag = 1;
+  cAtlasIssuePartTag = 100;
+
+type
 
   /// <summary>Feste Steuerelemente des Frames; sie gehören dem Frame.</summary>
   TAtlasIssueFrameParts = record
@@ -101,12 +113,8 @@ type
 
   /// <summary>Inhalt des gezeigten Issues; entsteht bei jedem Neuaufbau, nil ohne den Teil.</summary>
   TAtlasIssueFrameContent = record
-    /// <summary>Alle Teile des Inhalts (für das Aufräumen).</summary>
-    Controls: TList<TControl>;
     Images: TList<TAtlasIssueImageBox>;
     Docs: TList<TAtlasIssueDocBox>;
-    /// <summary>Behälter für Place: nil = Bildlauf, sonst eine Karte (Kopf, Kommentar).</summary>
-    Target: TAtlasIssueCard;
     /// <summary>Kopf mit Kennung, Titel und Abzeichen.</summary>
     Head: TAtlasIssueCard;
     KeyLabel: TLabel;
@@ -131,7 +139,6 @@ type
     AnchorComment: Integer;
     /// <summary>Fortschritt in der Kopfzeile ("3/5"; '' ohne Checkliste oder ohne Checklists).</summary>
     ProgressText: string;
-    NextTop: Integer;
   end;
 
   /// <summary>Zustand des Frames zwischen den Aufrufen.</summary>
@@ -142,16 +149,8 @@ type
     Now: TDateTime;
     CommentsExpanded: Boolean;
     CommentsOff: Boolean;
-    FixKind: TAtlasIssueFix;
     /// <summary>Anker einer Meldung (#1271): Zeit des ersten neuen Kommentars (UTC); 0 = oben.</summary>
     Anchor: TDateTime;
-    /// <summary>Nach dem auslösenden Klick (cWM_ATLAS_ISSUE_DEFERRED): neu aufbauen, Link öffnen, Kästchen
-    /// melden, „Punkt hinzufügen …“ melden.</summary>
-    PendingRebuild: Boolean;
-    PendingLink: TAtlasTrackerLink;
-    HasPendingLink: Boolean;
-    PendingTask: Integer;
-    PendingAdd: Boolean;
     /// <summary>Zur Checkliste blättern, sobald sie zu sehen ist.</summary>
     RevealTasks: Boolean;
   end;
