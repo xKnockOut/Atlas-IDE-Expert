@@ -17,7 +17,9 @@
 //     Parameter der Deklaration in derselben Datei.
 // Der Baum wird iterativ durchlaufen: Lange Ausdrucksketten ergeben sehr
 // tiefe Bäume. Structure liefert die Kennzahlen des Aufbaus (#939): Member je
-// Klasse, Zeilen der Unit und Units im uses. Conditions liefert die
+// Klasse samt den freien Routinen der Unit, die auf ihre nicht öffentlichen
+// Mitglieder zugreifen (Atlas.Common.Metrics.UnitRoutines), Zeilen der Unit
+// und Units im uses. Conditions liefert die
 // Bedingungen mit ihren Operanden für metric-boolean-operands (#980).
 
 interface
@@ -65,7 +67,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Metrics.UnitRoutines;
 
 const
   cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
@@ -1249,6 +1252,25 @@ begin
   end;
 end;
 
+/// <summary>Zählt zu jeder Klasse in AClasses die freien Routinen der Unit mit Zugriff auf ihre nicht öffentlichen
+/// Mitglieder.</summary>
+procedure AddUnitRoutines(ATree: TSyntaxTree; var AClasses: TArray<TStructureMetrics>);
+var
+  mCounts: TArray<TClassUnitRoutines>;
+  mIndex: Integer;
+begin
+  mCounts := TUnitRoutineAccess.Count(ATree);
+  if mCounts = nil then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(AClasses) do
+  begin
+    AClasses[mIndex].UnitRoutines := TUnitRoutineAccess.CountOf(mCounts, AClasses[mIndex].Name);
+    Inc(AClasses[mIndex].Value, AClasses[mIndex].UnitRoutines);
+  end;
+end;
+
 class function TMetricsCalculator.Structure(ATree: TSyntaxTree): TArray<TStructureMetrics>;
 var
   mScan: TStructureScan;
@@ -1259,6 +1281,7 @@ begin
     Exit;
   end;
   mScan := ScanStructure(ATree);
+  AddUnitRoutines(ATree, mScan.Classes);
   if ATree.Root.Kind = TSyntaxKind.UnitFile then
   begin
     Result := UnitStructure(ATree, mScan);

@@ -233,6 +233,7 @@ Atlas.Common.Mcp.ReportTools.Tests
 Atlas.Common.Diagnostics.RuntimeReport.Tests
 Atlas.Common.Metrics.Calculator.Tests
 Atlas.Common.Metrics.Report.Tests
+Atlas.Common.Metrics.UnitRoutines.Tests
 Atlas.Common.Metrics.DuplicateBodies.Tests
 Atlas.Common.Metrics.DuplicateBaseline.Tests
 Atlas.Common.Rules.Builtin.DuplicateBodies.Tests
