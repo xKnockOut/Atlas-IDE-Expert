@@ -355,6 +355,11 @@ end;
 destructor TAtlasWelcomeWhatsNewFrame.Destroy;
 begin
   Live.Remove(Self);
+  if Live.Count = 0 then
+  begin
+    // Ohne lebende Karte hält die Liste keinen Speicher.
+    Live.Capacity := 0;
+  end;
   if FMenu <> nil then
   begin
     FMenu.Source := nil;

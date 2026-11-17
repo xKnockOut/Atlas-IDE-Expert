@@ -22,6 +22,9 @@ type
     procedure WithoutConfiguredPathSearchesPathThenKnownDirs;
     [Test]
     procedure ConfigureForgetsRememberedLocation;
+    /// <summary>Remember setzt den gemerkten Fundort samt Quelle; Where sucht danach nicht neu.</summary>
+    [Test]
+    procedure RememberSetsLocationWithSource;
     [Test]
     procedure VersionArgumentsPerProgram;
     [Test]
@@ -168,7 +171,11 @@ begin
 end;
 
 procedure TAtlasVcsToolCheckTests.ConfigureForgetsRememberedLocation;
+var
+  mGit: TAtlasVcsToolLocation;
 begin
+  // Den echten Fund danach zurück: Forget ließe ihn den nächsten Test neu anlegen (Leck dort).
+  mGit := TAtlasVcsTools.Where(TAtlasVcsKind.Git);
   TAtlasVcsTools.Preset(TAtlasVcsKind.Git, Under('alt/' + Exe('git')));
   try
     Assert.AreEqual(Under('alt/' + Exe('git')), TAtlasVcsTools.Find(TAtlasVcsKind.Git));
@@ -179,8 +186,26 @@ begin
       'neuer Pfad gilt sofort, der alte Fund ist vergessen');
   finally
     TAtlasVcsTools.Configure(TAtlasVcsKind.Git, '');
-    TAtlasVcsTools.Forget;
+    TAtlasVcsTools.Remember(TAtlasVcsKind.Git, mGit);
   end;
+end;
+
+procedure TAtlasVcsToolCheckTests.RememberSetsLocationWithSource;
+var
+  mGit, mLocation: TAtlasVcsToolLocation;
+begin
+  mGit := TAtlasVcsTools.Where(TAtlasVcsKind.Git);
+  mLocation := TAtlasVcsToolLocation.Empty;
+  mLocation.Executable := Under('Git/cmd/' + Exe('git'));
+  mLocation.Source := TAtlasVcsToolSource.KnownDir;
+  TAtlasVcsTools.Remember(TAtlasVcsKind.Git, mLocation);
+  try
+    Assert.AreEqual(Under('Git/cmd/' + Exe('git')), TAtlasVcsTools.Find(TAtlasVcsKind.Git));
+    Assert.AreEqual<TAtlasVcsToolSource>(TAtlasVcsToolSource.KnownDir, TAtlasVcsTools.Where(TAtlasVcsKind.Git).Source);
+  finally
+    TAtlasVcsTools.Remember(TAtlasVcsKind.Git, mGit);
+  end;
+  Assert.AreEqual(mGit.Executable, TAtlasVcsTools.Find(TAtlasVcsKind.Git), 'echter Fund wieder da');
 end;
 
 procedure TAtlasVcsToolCheckTests.VersionArgumentsPerProgram;

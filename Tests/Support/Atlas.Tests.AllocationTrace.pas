@@ -6,6 +6,11 @@
 // jede Belegung mit ihren Rücksprungadressen, eine Freigabe streicht sie wieder. Report nennt, was übrig ist,
 // gruppiert nach Stapel, mit Unit und Zeile aus der Map-Datei (TStackTrace).
 //
+// Wächst ein Block, der vor Start angelegt wurde (Liste, Dictionary, Zwischenspeicher, String), per ReallocMem,
+// zählt der Leckmonitor nur den Zuwachs. Die Aufzeichnung kennt die alte Größe nicht; sie merkt sich den Block
+// mit seiner neuen Größe und nennt ihn als „vergrößert“. Stapel mit einem Rahmen aus Atlas (Units Atlas.* und
+// Shell.*) stehen vorn; Stapel nur aus RTL, VCL und DUnitX (Ergebnisobjekte des Testlaufs) werden nur gezählt.
+//
 // Die Tabelle liegt in Speicher von VirtualAlloc, außerhalb des Speichermanagers: Sie zählt weder für den
 // Leckmonitor noch für den Speicherrest beim Beenden, und die Haken belegen selbst nichts. Ohne Start kostet
 // der Haken je Aufruf nur einen Vergleich. Der Leckmonitor startet die Aufzeichnung nur, wenn die Umgebung
@@ -27,7 +32,7 @@ type
     /// <summary>Übrige Belegungen seit Start, je Stapel eine Gruppe mit Bytes und Blöcken, die größten zuerst,
     /// höchstens AMaxGroups; '' ohne Rest.</summary>
     class function Report(AMaxGroups: Integer): string; static;
-    /// <summary>Bytes der übrigen Belegungen seit Start.</summary>
+    /// <summary>Bytes der übrigen Belegungen seit Start, ohne vergrößerte ältere Blöcke.</summary>
     class function Bytes: Int64; static;
   end;
 
@@ -51,6 +56,10 @@ type
   TSlot = record
     Address: Pointer;
     Size: NativeInt;
+    // Vor Start angelegt und seitdem per ReallocMem verändert: Size ist die neue Größe, nicht der Zuwachs.
+    Grown: Boolean;
+    // Thread, der belegt hat; der Bericht nennt Belegungen außerhalb des Hauptthreads.
+    ThreadId: Cardinal;
     Count: Integer;
     Frames: array[0..cFrames - 1] of Pointer;
   end;
@@ -61,6 +70,9 @@ type
     Bytes: Int64;
     Blocks: Integer;
     Slot: PSlot;
+    // Mit Map aufgelöster Stapel und ob ein Rahmen aus Atlas darin liegt.
+    Text: string;
+    Own: Boolean;
   end;
 
 var
@@ -69,6 +81,12 @@ var
   Recording: Boolean;
   Used: Integer;
   Overflow: Boolean;
+  // Aufrufe der Haken seit Start, auch für Blöcke von vor Start: zeigt, ob der Haken überhaupt etwas sieht.
+  CountGetMem: Integer;
+  CountFreeMem: Integer;
+  CountFreeUnknown: Integer;
+  CountRealloc: Integer;
+  CountReallocUnknown: Integer;
   Slots: PSlots;
   LockFlag: Integer;
   // Markiert gelöschte Plätze, damit die Suche dahinter weitergeht.
@@ -99,7 +117,7 @@ begin
   {$IFDEF TRACE_Q}{$Q+}{$UNDEF TRACE_Q}{$ENDIF}
 end;
 
-procedure Add(AAddress: Pointer; ASize: NativeInt);
+procedure Add(AAddress: Pointer; ASize: NativeInt; AGrown: Boolean);
 var
   mIndex: Integer;
   mProbe: Integer;
@@ -125,6 +143,8 @@ begin
       begin
         mSlot.Address := AAddress;
         mSlot.Size := ASize;
+        mSlot.Grown := AGrown;
+        mSlot.ThreadId := GetCurrentThreadId;
         // Ohne diese Routine und den Haken, der sie ruft.
         mSlot.Count := CaptureStackBackTrace(2, cFrames, @mSlot.Frames[0], nil);
         Inc(Used);
@@ -136,12 +156,14 @@ begin
   end;
 end;
 
-procedure Remove(AAddress: Pointer);
+/// <summary>Streicht AAddress; False, wenn der Block nicht aufgezeichnet war.</summary>
+function Remove(AAddress: Pointer): Boolean;
 var
   mIndex: Integer;
   mProbe: Integer;
   mSlot: PSlot;
 begin
+  Result := False;
   if (AAddress = nil) or (Used = 0) then
   begin
     Exit;
@@ -160,6 +182,7 @@ begin
       begin
         mSlot.Address := @Removed;
         Dec(Used);
+        Result := True;
         Exit;
       end;
     end;
@@ -173,7 +196,8 @@ begin
   Result := Previous.GetMem(ASize);
   if Recording then
   begin
-    Add(Result, ASize);
+    AtomicIncrement(CountGetMem);
+    Add(Result, ASize, False);
   end;
 end;
 
@@ -182,23 +206,42 @@ begin
   Result := Previous.AllocMem(ASize);
   if Recording then
   begin
-    Add(Result, ASize);
+    AtomicIncrement(CountGetMem);
+    Add(Result, ASize, False);
   end;
 end;
 
 function TraceFreeMem(AAddress: Pointer): Integer;
 begin
-  Remove(AAddress);
+  if Recording then
+  begin
+    AtomicIncrement(CountFreeMem);
+    if not Remove(AAddress) then
+    begin
+      AtomicIncrement(CountFreeUnknown);
+    end;
+  end
+  else
+  begin
+    Remove(AAddress);
+  end;
   Result := Previous.FreeMem(AAddress);
 end;
 
 function TraceReallocMem(AAddress: Pointer; ASize: NativeInt): Pointer;
+var
+  mKnown: Boolean;
 begin
-  Remove(AAddress);
+  mKnown := Remove(AAddress);
   Result := Previous.ReallocMem(AAddress, ASize);
   if Recording then
   begin
-    Add(Result, ASize);
+    AtomicIncrement(CountRealloc);
+    if not mKnown then
+    begin
+      AtomicIncrement(CountReallocUnknown);
+    end;
+    Add(Result, ASize, not mKnown);
   end;
 end;
 
@@ -216,7 +259,7 @@ function SameStack(ALeft, ARight: PSlot): Boolean;
 var
   mIndex: Integer;
 begin
-  Result := ALeft.Count = ARight.Count;
+  Result := (ALeft.Count = ARight.Count) and (ALeft.Grown = ARight.Grown);
   mIndex := 0;
   while Result and (mIndex < ALeft.Count) do
   begin
@@ -275,11 +318,37 @@ begin
   end;
 end;
 
-/// <summary>Größte Gruppe zuerst; bei Gleichstand nach Platz, denn Sort ist nicht stabil.</summary>
+/// <summary>True, wenn ein aufgelöster Rahmen in einer Unit von Atlas liegt (Atlas.*, Shell.*).</summary>
+function HasOwnFrame(const AStack: string): Boolean;
+begin
+  Result := AStack.Contains(' Atlas.') or AStack.Contains(' Shell.');
+end;
+
+/// <summary>Stapel jeder Gruppe auflösen und nach eigenen Rahmen einordnen.</summary>
+procedure DescribeGroups(AGroups: TList<TGroup>);
+var
+  mGroup: TGroup;
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AGroups.Count - 1 do
+  begin
+    mGroup := AGroups[mIndex];
+    mGroup.Text := StackText(mGroup.Slot);
+    mGroup.Own := HasOwnFrame(mGroup.Text);
+    AGroups[mIndex] := mGroup;
+  end;
+end;
+
+/// <summary>Gruppen mit Atlas-Rahmen zuerst, dann die größte; bei Gleichstand nach Platz, denn Sort ist nicht
+/// stabil.</summary>
 function CompareGroups(const ALeft, ARight: TGroup): Integer;
 begin
   Result := 0;
-  if ALeft.Bytes > ARight.Bytes then
+  if ALeft.Own <> ARight.Own then
+  begin
+    Result := Ord(ARight.Own) - Ord(ALeft.Own);
+  end
+  else if ALeft.Bytes > ARight.Bytes then
   begin
     Result := -1;
   end
@@ -297,25 +366,78 @@ begin
   end;
 end;
 
+/// <summary>True, solange der Speichermanager noch über diese Haken läuft.</summary>
+function HooksActive: Boolean;
+var
+  mCurrent: TMemoryManagerEx;
+begin
+  GetMemoryManager(mCurrent);
+  Result := (@mCurrent.GetMem = @TraceGetMem) and (@mCurrent.FreeMem = @TraceFreeMem) and
+    (@mCurrent.ReallocMem = @TraceReallocMem);
+end;
+
+/// <summary>Was die Haken seit Start gesehen haben; erklärt ein Leck, zu dem keine Belegung übrig ist.</summary>
+function CountersText: string;
+const
+  cActive: array[Boolean] of string = ('nein', 'ja');
+begin
+  Result := Format('Aufzeichnung: %d Belegungen, %d Freigaben (%d von älteren Blöcken), %d Größenänderungen ' +
+    '(%d von älteren Blöcken); Haken aktiv: %s', [CountGetMem, CountFreeMem, CountFreeUnknown, CountRealloc,
+    CountReallocUnknown, cActive[HooksActive]]) + sLineBreak;
+end;
+
+function GroupHeading(const AGroup: TGroup): string;
+begin
+  if AGroup.Slot.Grown then
+  begin
+    Result := Format('%d Bytes in %d Blöcken vergrößert bei (vor dem Test angelegt, alte Größe unbekannt):',
+      [AGroup.Bytes, AGroup.Blocks]);
+  end
+  else
+  begin
+    Result := Format('%d Bytes in %d Blöcken angelegt bei:', [AGroup.Bytes, AGroup.Blocks]);
+  end;
+  if AGroup.Slot.ThreadId <> MainThreadID then
+  begin
+    Result := Result + Format(' (Thread %d, nicht der Hauptthread)', [AGroup.Slot.ThreadId]);
+  end;
+end;
+
+/// <summary>Stapel mit Atlas-Rahmen ausschreiben (höchstens AMaxGroups); die übrigen nur zählen.</summary>
 function GroupsText(AGroups: TList<TGroup>; AMaxGroups: Integer): string;
 var
-  mIndex: Integer;
+  mGroup: TGroup;
+  mShown: Integer;
+  mOtherGroups: Integer;
+  mOtherBytes: Int64;
 begin
   Result := '';
-  for mIndex := 0 to AGroups.Count - 1 do
+  mShown := 0;
+  mOtherGroups := 0;
+  mOtherBytes := 0;
+  for mGroup in AGroups do
   begin
-    if mIndex >= AMaxGroups then
+    if mGroup.Own and (mShown < AMaxGroups) then
     begin
-      Result := Result + Format('… und %d weitere Stapel', [AGroups.Count - AMaxGroups]) + sLineBreak;
-      Break;
+      Result := Result + GroupHeading(mGroup) + sLineBreak + mGroup.Text;
+      Inc(mShown);
+    end
+    else
+    begin
+      Inc(mOtherGroups);
+      Inc(mOtherBytes, mGroup.Bytes);
     end;
-    Result := Result + Format('%d Bytes in %d Blöcken angelegt bei:', [AGroups[mIndex].Bytes,
-      AGroups[mIndex].Blocks]) + sLineBreak + StackText(AGroups[mIndex].Slot);
+  end;
+  if mOtherGroups > 0 then
+  begin
+    Result := Result + Format('… und %d weitere Stapel mit %d Bytes (ohne Atlas-Rahmen oder über der Grenze)',
+      [mOtherGroups, mOtherBytes]) + sLineBreak;
   end;
   if Overflow then
   begin
     Result := Result + 'Tabelle voll, weitere Belegungen nicht aufgezeichnet' + sLineBreak;
   end;
+  Result := Result + CountersText;
 end;
 
 { TAllocationTrace }
@@ -361,6 +483,11 @@ begin
     FillChar(Slots^, SizeOf(TSlots), 0);
     Used := 0;
     Overflow := False;
+    CountGetMem := 0;
+    CountFreeMem := 0;
+    CountFreeUnknown := 0;
+    CountRealloc := 0;
+    CountReallocUnknown := 0;
     Recording := True;
   finally
     Unlock;
@@ -385,7 +512,7 @@ begin
   try
     for mIndex := 0 to cMask do
     begin
-      if (Slots[mIndex].Address <> nil) and (Slots[mIndex].Address <> @Removed) then
+      if (Slots[mIndex].Address <> nil) and (Slots[mIndex].Address <> @Removed) and not Slots[mIndex].Grown then
       begin
         Inc(Result, Slots[mIndex].Size);
       end;
@@ -411,6 +538,7 @@ begin
   mGroups := TList<TGroup>.Create;
   try
     CollectGroups(mGroups);
+    DescribeGroups(mGroups);
     mGroups.Sort(TComparer<TGroup>.Construct(CompareGroups));
     Result := GroupsText(mGroups, AMaxGroups);
   finally

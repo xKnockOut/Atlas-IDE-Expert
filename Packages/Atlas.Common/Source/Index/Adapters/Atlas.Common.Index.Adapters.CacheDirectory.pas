@@ -257,6 +257,10 @@ type
 class constructor TIndexCacheHeldLocks.Create;
 begin
   FLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  System.TMonitor.Enter(FLock);
+  System.TMonitor.Exit(FLock);
   FFiles := TDictionary<string, Boolean>.Create;
 end;
 
@@ -301,6 +305,12 @@ begin
   System.TMonitor.Enter(FLock);
   try
     FFiles.Remove(AKey);
+    // Remove gibt die Plätze der Tabelle nicht frei: Ohne gehaltene Sperre bliebe sie bis Programmende belegt und
+    // gälte im ersten Test, der einen Index-Cache sperrt, als Leck.
+    if FFiles.Count = 0 then
+    begin
+      FFiles.Clear;
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
