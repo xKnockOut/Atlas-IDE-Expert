@@ -16,6 +16,8 @@ type
     procedure EventsAreMergedByTime;
     [Test]
     procedure JsonRoundTrip;
+    [Test]
+    procedure UnreadableTimesAreZero;
   end;
 
 implementation
@@ -99,6 +101,20 @@ begin
   Assert.AreEqual('bereit', mCopy.Events[0].Text);
   Assert.IsFalse(TIndexProcessInfo.FromJson('{"pid":', mCopy));
   Assert.IsFalse(TIndexProcessInfo.FromJson('{"kind":"LSP"}', mCopy));
+end;
+
+procedure TIndexProcessInfoTests.UnreadableTimesAreZero;
+var
+  mCopy: TIndexProcessInfo;
+begin
+  // Unlesbarer Zeitpunkt: 0, die Anmeldung und ihre Ereignisse bleiben.
+  Assert.IsTrue(TIndexProcessInfo.FromJson('{"pid":7,"kind":"MCP","started":"gestern",' +
+    '"events":[{"time":"2026-13-01T00:00:00","text":"bereit"}]}', mCopy));
+  Assert.AreEqual(Cardinal(7), mCopy.Pid);
+  Assert.AreEqual(Double(0), Double(mCopy.Started));
+  Assert.AreEqual(1, Integer(Length(mCopy.Events)));
+  Assert.AreEqual(Double(0), Double(mCopy.Events[0].Time));
+  Assert.AreEqual('bereit', mCopy.Events[0].Text);
 end;
 
 initialization

@@ -35,6 +35,8 @@ type
     [Test]
     procedure StateRoundTrips;
     [Test]
+    procedure UnreadableStampsCountAsUnknown;
+    [Test]
     procedure SafeSessionTurnsEveryToggleOff;
     [Test]
     procedure SuggestsChangedThenFaulty;
@@ -253,6 +255,44 @@ begin
   Assert.AreEqual(Int64(7), Int64(mMarker.ProcessId));
   mLoaded := TAtlasSafeState.FromJson('kein JSON');
   Assert.AreEqual(0, mLoaded.CrashCount);
+end;
+
+procedure TAtlasSafeModeTests.UnreadableStampsCountAsUnknown;
+var
+  mMarker: TAtlasSessionMarker;
+  mState: TAtlasSafeState;
+  mHistory, mLoaded: TAtlasSettingsHistory;
+  mSecond: TAtlasPluginSettings;
+  mJson: string;
+begin
+  // Ein Text ohne Ziffern macht nur den Zeitpunkt unbekannt, nicht die ganze Marke, den Zustand oder den Verlauf.
+  Assert.IsTrue(TAtlasSessionMarker.FromJson('{"processId": 7, "startedAt": "gestern"}', mMarker));
+  Assert.AreEqual(Int64(7), Int64(mMarker.ProcessId));
+  Assert.AreEqual(Double(0), Double(mMarker.StartedAt));
+  mState := TAtlasSafeState.FromJson('{"crashCount": 2, "lastCrashAt": "gestern"}');
+  Assert.AreEqual(2, mState.CrashCount);
+  Assert.AreEqual(Double(0), Double(mState.LastCrashAt));
+  mState := TAtlasSafeState.FromJson('{"crashCount": 1, "lastCrashAt": "2026-13-01T00:00:00Z"}');
+  Assert.AreEqual(1, mState.CrashCount);
+  Assert.AreEqual(Double(0), Double(mState.LastCrashAt));
+  mSecond := TAtlasPluginSettings.Defaults;
+  mSecond.PairColors := False;
+  mHistory := TAtlasSettingsHistory.Create;
+  try
+    mHistory.Push(TAtlasPluginSettings.Defaults, mSecond, EncodeDateTime(2026, 10, 14, 8, 0, 0, 0), 5);
+    mHistory.Push(mSecond, TAtlasPluginSettings.Defaults, EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 5);
+    mJson := StringReplace(mHistory.ToJson, DateToISO8601(mHistory[1].ChangedAt, True), 'gestern', []);
+    mLoaded := TAtlasSettingsHistory.Create;
+    try
+      Assert.IsTrue(mLoaded.LoadJson(mJson));
+      Assert.AreEqual(1, Integer(mLoaded.Count), 'nur der unlesbare Stand fällt weg');
+      Assert.IsTrue(SameDateTime(mHistory[0].ChangedAt, mLoaded[0].ChangedAt));
+    finally
+      mLoaded.Free;
+    end;
+  finally
+    mHistory.Free;
+  end;
 end;
 
 procedure TAtlasSafeModeTests.SafeSessionTurnsEveryToggleOff;

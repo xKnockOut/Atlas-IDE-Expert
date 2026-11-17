@@ -308,19 +308,7 @@ end;
 /// <summary>ISO-8601-Zeitpunkt (UTC); 0 bei leerem oder ungültigem Text.</summary>
 function MarkerDateOf(const AStamp: string): TDateTime;
 begin
-  Result := 0;
-  if AStamp = '' then
-  begin
-    Exit;
-  end;
-  try
-    Result := ISO8601ToDate(AStamp, True);
-  except
-    on EConvertError do
-    begin
-      Result := 0;
-    end;
-  end;
+  Result := TTextTimestamp.IsoOrZero(AStamp, True);
 end;
 
 function MarkerFailuresOf(const AValue: TJSONValue): TArray<TPair<string, Integer>>;
@@ -423,7 +411,6 @@ end;
 class function TAtlasSafeState.FromJson(const AText: string): TAtlasSafeState;
 var
   mRoot, mValue: TJSONValue;
-  mStamp: string;
 begin
   Result := Default(TAtlasSafeState);
   mRoot := TJSONObject.ParseJSONValue(AText);
@@ -437,14 +424,7 @@ begin
     begin
       Result.CrashCount := Max(0, TJSONNumber(mValue).AsInt);
     end;
-    mStamp := TJSONObject(mRoot).GetValue<string>('lastCrashAt', '');
-    if mStamp <> '' then
-      try
-        Result.LastCrashAt := ISO8601ToDate(mStamp, True);
-      except
-        on EConvertError do
-          Result.LastCrashAt := 0;
-      end;
+    Result.LastCrashAt := MarkerDateOf(TJSONObject(mRoot).GetValue<string>('lastCrashAt', ''));
     // "slowStart" älterer Fassungen bleibt unbeachtet: Ein langsamer Start ist kein Absturz.
     mValue := TJSONObject(mRoot).GetValue('crashed');
     if mValue is TJSONObject then
