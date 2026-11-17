@@ -86,7 +86,10 @@ type
   private class var
     FFactories: TDictionary<string, TAtlasWelcomeViewFactory>;
   public
+    /// <summary>Gibt beim Entladen frei, was noch angemeldet ist.</summary>
+    class destructor Destroy;
     class procedure Register(const AId: string; const AFactory: TAtlasWelcomeViewFactory); static;
+    /// <summary>Meldet AId ab; mit der letzten Fabrik wird auch das Verzeichnis freigegeben.</summary>
     class procedure Unregister(const AId: string); static;
     class function Exists(const AId: string): Boolean; static;
     /// <summary>Neuer Frame für AId mit SectionId; nil ohne Fabrik.</summary>
@@ -208,6 +211,11 @@ end;
 
 { TAtlasWelcomeViews }
 
+class destructor TAtlasWelcomeViews.Destroy;
+begin
+  Release;
+end;
+
 class procedure TAtlasWelcomeViews.Register(const AId: string; const AFactory: TAtlasWelcomeViewFactory);
 begin
   if FFactories = nil then
@@ -219,9 +227,14 @@ end;
 
 class procedure TAtlasWelcomeViews.Unregister(const AId: string);
 begin
-  if FFactories <> nil then
+  if FFactories = nil then
   begin
-    FFactories.Remove(LowerCase(AId));
+    Exit;
+  end;
+  FFactories.Remove(LowerCase(AId));
+  if FFactories.Count = 0 then
+  begin
+    FreeAndNil(FFactories);
   end;
 end;
 
