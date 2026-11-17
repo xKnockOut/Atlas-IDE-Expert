@@ -573,6 +573,8 @@ begin
     mReport := TAllocationTrace.Report(50);
     Assert.Contains(mReport, '4321 Bytes in 1 Blöcken angelegt bei:');
     Assert.IsTrue(mReport.Contains('TLeakMonitorTests.TraceNamesSurvivingAllocation'), mReport);
+    // Die Zähler erklären einen Bericht ohne übrige Belegung.
+    Assert.IsTrue(mReport.Contains('Haken aktiv: ja'), mReport);
   finally
     FreeMem(mBlock);
   end;
