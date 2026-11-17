@@ -4370,7 +4370,7 @@ Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Ver
 
 **Klasse mit zu vielen Membern** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var. Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
+Die Klasse hat mehr Member als der Grenzwert (Vorgabe 40): Feldnamen, Methoden, Properties mit eigenem Typ und class var, dazu jede freie Routine derselben Unit, die über einen Parameter oder eine Variable dieses Typs auf ein privates oder geschütztes Mitglied der Klasse zugreift (eine solche Routine ist eine Methode außerhalb der Klasse). Properties, die nur die Sichtbarkeit anheben (property Align;), und geschachtelte Typen zählen nicht; eine geschachtelte Klasse wird für sich gemessen. Erscheint auch in der Metrik-Linse über der Klasse. Die Klasse aufteilen oder Teile in Hilfsklassen auslagern; „Klasse in eigene Unit verschieben“ (#103) hilft, wenn auch die Unit voll ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|

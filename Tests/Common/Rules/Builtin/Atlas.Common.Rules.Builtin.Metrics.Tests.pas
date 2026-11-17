@@ -39,6 +39,8 @@ type
     [Test]
     procedure ClassSizeCountsMembers;
     [Test]
+    procedure ClassSizeCountsFreeRoutinesOfUnit;
+    [Test]
     procedure UnitLengthAndUsesCount;
     [Test]
     procedure StructureLimitsOffAndExclude;
@@ -262,6 +264,25 @@ begin
   Assert.AreEqual('TFoo hat 6 Member (Grenze 1).', mFindings[0].Message);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
     cSource, '{"rules": {"metric-class-size": {"max": 6}}}'))));
+end;
+
+procedure TMetricRulesTests.ClassSizeCountsFreeRoutinesOfUnit;
+const
+  // 2 Member und zwei freie Routinen, die das private Feld schreiben: 4; die Routine ohne Zugriff zählt nicht.
+  cSource = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  private'#10'    FA: Integer;'#10'  public'#10 +
+    '    procedure Zeige;'#10'  end;'#10'implementation'#10'procedure Eins(AFoo: TFoo);'#10'begin'#10 +
+    '  AFoo.FA := 1;'#10'end;'#10'procedure Zwei(AFoo: TFoo);'#10'begin'#10'  AFoo.FA := 2;'#10'end;'#10 +
+    'procedure Drei(AFoo: TFoo);'#10'begin'#10'  AFoo.Zeige;'#10'end;'#10'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize), cSource,
+    '{"rules": {"metric-class-size": {"max": 3}}}');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TFoo hat 4 Member, davon 2 freie Routinen der Unit mit Zugriff auf private oder geschützte ' +
+    'Mitglieder (Grenze 3); die Klasse nach Aufgaben teilen.', mFindings[0].Message);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize),
+    cSource, '{"rules": {"metric-class-size": {"max": 4}}}'))));
 end;
 
 procedure TMetricRulesTests.UnitLengthAndUsesCount;

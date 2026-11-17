@@ -576,9 +576,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var. Properties that only raise visibility (property Align;' +
-    ') and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103)' +
-    ' helps when the unit is crowded too.",',
+    '      "description": "The class has more members than the limit (default 40): field names, methods, properties with their own type and class var, plus every free routine of the same unit that accesses' +
+    ' a private or protected member of the class through a parameter or variable of that type (such a routine is a method written outside the class). Properties that only raise visibility (property Align;)' +
+    ' and nested types do not count; a nested class is measured on its own. Also shown in the metrics lens above the class. Split the class or move parts into helper classes; Move class to own unit (#103) ' +
+    'helps when the unit is crowded too.",',
     '      "bad": "type\n  TfrmHaupt = class(TForm)\n    { 87 members }\n  end;",',
     '      "good": "type\n  TfrmHaupt = class(TForm)\n    { 25 members; data access in TKundenDaten }\n  end;",',
     '      "options": [',

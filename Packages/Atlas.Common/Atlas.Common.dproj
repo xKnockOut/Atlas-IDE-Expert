@@ -275,6 +275,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CodeLens.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Contract.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Calculator.pas"/>
+        <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.UnitRoutines.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Report.pas"/>
         <DCCReference Include="Source\Query\Atlas.Common.Query.Contract.pas"/>
         <DCCReference Include="Source\Query\Atlas.Common.Query.Catalog.pas"/>

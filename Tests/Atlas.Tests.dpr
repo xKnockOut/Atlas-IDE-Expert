@@ -195,6 +195,7 @@ uses
   Atlas.Common.Lsp.InterfaceMethods.Tests in 'Common\Lsp\Atlas.Common.Lsp.InterfaceMethods.Tests.pas',
   Atlas.Common.Metrics.Calculator.Tests in 'Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas',
   Atlas.Common.Metrics.Report.Tests in 'Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas',
+  Atlas.Common.Metrics.UnitRoutines.Tests in 'Common\Metrics\Atlas.Common.Metrics.UnitRoutines.Tests.pas',
   Atlas.Common.Query.Language.Tests in 'Common\Query\Atlas.Common.Query.Language.Tests.pas',
   Atlas.Common.Query.Engine.Tests in 'Common\Query\Atlas.Common.Query.Engine.Tests.pas',
   Atlas.Common.Query.Output.Tests in 'Common\Query\Atlas.Common.Query.Output.Tests.pas',
