@@ -31,11 +31,6 @@ type
   [TestFixture]
   TShellReplayServerTests = class
   public
-    /// <summary>Den Server einmal durchlaufen: Geteilte Speicher wie die Ordnerlisten der Unit-Suche
-    /// (TSharedUnitListings) entstehen beim ersten Gebrauch und leben bis Programmende; das ist kein Leck des
-    /// Tests.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Hover auf einer gesunden Unit stürzt nicht ab: „nicht reproduziert“, Exit-Code 0.</summary>
     [Test]
     procedure HealthyHoverIsNotReproduced;
@@ -112,13 +107,6 @@ const
     'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10;
 
 { TShellReplayServerTests }
-
-procedure TShellReplayServerTests.WarmUpFirstUse;
-begin
-  TCrashReplayTest.Replay(cHoverRequest, TArray<TCrashReplayFile>.Create(TCrashReplayFile.Create('Demo.pas',
-    cDemoUnit)));
-  TCrashReplayTest.LastLog := nil;
-end;
 
 procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
