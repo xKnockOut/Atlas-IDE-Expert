@@ -1,5 +1,5 @@
 {
-  "count": 169,
+  "count": 167,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Baselines.Tests.pas: TShellBaselinesTests.WarmUpFirstUse",
@@ -65,8 +65,6 @@
     "Tests/IDE.Expert/Atlas.Core.Commands.Palette.Tests.pas: TAtlasCommandPaletteTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Completion.Tests.pas: TAtlasServerCompletionTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Debug.EventLog.Tests.pas: TAtlasEventLogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.Created.Tests.pas: TAtlasDesignerCreatedTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.KeptComponents.Tests.pas: TAtlasKeptComponentsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Tests.pas: TAtlasDesignerUndoFlowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Vcl.Tests.pas: TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Designer.Usages.Tests.pas: TAtlasDesignerUsagesTests.WarmUpFirstUse",
