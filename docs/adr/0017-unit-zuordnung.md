@@ -939,6 +939,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.DisplayRules` | `Core/Debug/Atlas.Core.Debug.DisplayRules.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Evaluate` | `Core/Debug/Atlas.Core.Debug.Evaluate.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EvaluateRows` | `Core/Debug/Atlas.Core.Debug.EvaluateRows.pas` | Zeilen des Fensters „Auswerten“: Ergebnis, kein Zugriff, Felder, Festgeheftete, #1967 |
+| `Atlas.Core.Debug.EvalSlices` | `Core/Debug/Atlas.Core.Debug.EvalSlices.pas` | Auswertung in Zeitscheiben für „Auswerten“ und „Variablen“, Vertrag IAtlasDebugEvaluator, #1967 |
 | `Atlas.Core.Debug.BreakpointCheck` | `Core/Debug/Atlas.Core.Debug.BreakpointCheck.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointAnchors` | `Core/Debug/Atlas.Core.Debug.BreakpointAnchors.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.BreakpointAnchorFlow` | `Core/Debug/Atlas.Core.Debug.BreakpointAnchorFlow.pas` | Entscheidungen der mitwandernden Haltepunkte ohne IDE (geänderte Datei, Fall je Zeile, Ergebnis, Speichern), #1967 |
@@ -1060,6 +1061,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.EditValue` | `IDE/Debug/Atlas.IDE.Debug.EditValue.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.HoverTree` | `IDE/Debug/Atlas.IDE.Debug.HoverTree.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.ValueRequest` | `IDE/Debug/Atlas.IDE.Debug.ValueRequest.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.ThreadEvaluator` | `IDE/Debug/Atlas.IDE.Debug.ThreadEvaluator.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.LineEnd` | `IDE/Debug/Atlas.IDE.Debug.LineEnd.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Pins` | `IDE/Debug/Atlas.IDE.Debug.Pins.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.OwnCode` | `IDE/Debug/Atlas.IDE.Debug.OwnCode.pas` | Ordner `IDE/Debug` |

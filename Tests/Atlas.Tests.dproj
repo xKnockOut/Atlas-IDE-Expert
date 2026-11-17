@@ -2589,6 +2589,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvaluateRows.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvalSlices.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.DebugEvaluatorFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvalSlices.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>
