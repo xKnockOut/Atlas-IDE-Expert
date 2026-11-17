@@ -12,9 +12,6 @@ type
   [TestFixture]
   TRuleFindingsMemoTests = class
   public
-    /// <summary>Erster Aufbau der Regeln und ihrer Tabellen, nicht dem ersten Test anrechnen.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure GivesFindingsForSameText;
     [Test]
@@ -159,17 +156,6 @@ begin
 end;
 
 { TRuleFindingsMemoTests }
-
-procedure TRuleFindingsMemoTests.WarmUp;
-var
-  mMemo: IRuleFindingsMemo;
-begin
-  mMemo := TRuleFindingsMemo.Create;
-  ActionTitles(mMemo, 2);
-  // Ein Treffer ohne bekannte Regel lädt den Katalog: wie CodeActionReadsMemo.
-  mMemo.Put(cFileName, cText, [Finding('aus-dem-memo', 2, 'Korrektur aus dem Memo')]);
-  ActionTitles(mMemo, 2);
-end;
 
 procedure TRuleFindingsMemoTests.GivesFindingsForSameText;
 var

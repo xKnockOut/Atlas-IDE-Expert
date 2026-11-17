@@ -26,9 +26,6 @@ type
     /// <summary>Titel aller Aktionen in Zeile ALine, mit "|" getrennt.</summary>
     function Titles(const AText: string; ALine: Integer): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -116,16 +113,6 @@ begin
   end;
 end;
 
-procedure TLspCodeActionsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersTryFinallyAndClassActions;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TLspCodeActionsTests.Setup;
 begin
   FStore := TDocumentStore.Create;
@@ -146,6 +133,9 @@ begin
   FDispatcher.Free;
   FActions.Free;
   FStore := nil;
+  // Die Standardwerte enthalten Arrays und Texte (TRefactoringSettings.Default); blieben sie bis zum nächsten Setup
+  // stehen, zählte der Leckmonitor sie dem ersten Test als Leck.
+  FSettings := Default(TRefactoringSettings);
 end;
 
 procedure TLspCodeActionsTests.OffersTryFinallyAndClassActions;
