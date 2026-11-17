@@ -1315,6 +1315,8 @@ uses
   Atlas.Core.Tests.Durations.Tests in 'IDE.Expert\Atlas.Core.Tests.Durations.Tests.pas',
   Atlas.Core.Tests.Series in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Series.pas',
   Atlas.Core.Tests.Series.Tests in 'IDE.Expert\Atlas.Core.Tests.Series.Tests.pas',
+  Atlas.Core.Tests.UnitScans in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.UnitScans.pas',
+  Atlas.Core.Tests.UnitScans.Tests in 'IDE.Expert\Atlas.Core.Tests.UnitScans.Tests.pas',
   Atlas.Core.Tests.Flaky in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Flaky.pas',
   Atlas.Core.Tests.Flaky.Tests in 'IDE.Expert\Atlas.Core.Tests.Flaky.Tests.pas',
   Atlas.Core.Tests.Explorer in '..\Packages\Atlas.IDE.Tests\Source\Core\Tests\Atlas.Core.Tests.Explorer.pas',
