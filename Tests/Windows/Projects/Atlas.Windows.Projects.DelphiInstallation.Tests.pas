@@ -12,10 +12,6 @@ type
   [TestFixture]
   TDelphiInstallationTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Die RTL legt beim ersten Registry-Zugriff Daten an,
-    /// die bis Programmende bleiben (statt [IgnoreMemoryLeaks]).</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure VersionsAreSortedAscending;
     [Test]
@@ -33,12 +29,6 @@ uses
   Atlas.Windows.Projects.DelphiInstallation;
 
 { TDelphiInstallationTests }
-
-procedure TDelphiInstallationTests.WarmUpFirstUse;
-begin
-  VersionsAreSortedAscending;
-  LatestProvidesExpandedLibraryPaths;
-end;
 
 procedure TDelphiInstallationTests.VersionsAreSortedAscending;
 var

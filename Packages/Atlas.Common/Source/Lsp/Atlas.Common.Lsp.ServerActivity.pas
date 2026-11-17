@@ -216,6 +216,12 @@ begin
   System.TMonitor.Enter(FLock);
   try
     FRuns.Remove(TThread.CurrentThread.ThreadID);
+    // Ohne laufende Anfrage die Tabelle ganz leeren: Remove behält die beim ersten Eintrag gewachsene Tabelle,
+    // die bei Shared bis zum Programmende bliebe und als Leck der ersten Anfrage zählte.
+    if FRuns.Count = 0 then
+    begin
+      FRuns.Clear;
+    end;
     if AFailed then
     begin
       Inc(FErrors);

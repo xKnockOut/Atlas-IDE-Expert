@@ -26,7 +26,7 @@ type
       const ACatalog: TRuleCatalog): string; overload; static;
     /// <summary>Deutscher Katalog (Basis mit deutschem Overlay); der Aufrufer gibt ihn frei.</summary>
     class function GermanCatalog: TRuleCatalog; static;
-    /// <summary>Gemeinsamer deutscher Katalog, einmal geladen; nicht freigeben.</summary>
+    /// <summary>Gemeinsamer Katalog in der Sprache der Texte (TRuleCatalog.Localized); nicht freigeben.</summary>
     class function SharedCatalog: TRuleCatalog; static;
   end;
 
@@ -60,10 +60,6 @@ const
 
 {$SCOPEDENUMS OFF}
 
-var
-  Shared: TRuleCatalog;
-  SharedLock: TObject;
-
 { TFindingPrompt }
 
 class function TFindingPrompt.Markdown(const AFinding: TRuleFinding; const AFileName, AText: string;
@@ -79,16 +75,8 @@ end;
 
 class function TFindingPrompt.SharedCatalog: TRuleCatalog;
 begin
-  TMonitor.Enter(SharedLock);
-  try
-    if Shared = nil then
-    begin
-      Shared := GermanCatalog;
-    end;
-    Result := Shared;
-  finally
-    TMonitor.Exit(SharedLock);
-  end;
+  // Kein eigener Katalog: Ein zweiter deutscher neben TRuleCatalog.Localized hielt rund 850 KB doppelt.
+  Result := TRuleCatalog.Localized;
 end;
 
 /// <summary>Abschnitt "### Code": AContext Zeilen um ALine (ab 0), die Fundzeile mit ">" markiert.</summary>
@@ -194,10 +182,5 @@ end;
 
 initialization
   TAtlasTextTables.Add('Atlas.Common.Rules.Prompt', cTexts);
-  SharedLock := TObject.Create;
-
-finalization
-  FreeAndNil(Shared);
-  FreeAndNil(SharedLock);
 
 end.
