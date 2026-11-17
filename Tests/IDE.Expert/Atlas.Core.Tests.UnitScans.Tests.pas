@@ -31,6 +31,8 @@ type
     procedure ForgottenIsReadAgain;
     [Test]
     procedure OtherUnitKeepsNoText;
+    [Test]
+    procedure WithoutAgeFunctionUsesDisk;
   end;
 
 implementation
@@ -111,6 +113,24 @@ begin
   Assert.IsFalse(mScan.IsTest);
   Assert.AreEqual(0, Integer(Length(mScan.Lines)));
   Assert.AreEqual(1.0, Double(mScan.Age), 0);
+end;
+
+procedure TAtlasTestUnitScansTests.WithoutAgeFunctionUsesDisk;
+var
+  mScans: TAtlasTestUnitScans;
+begin
+  mScans := TAtlasTestUnitScans.Create(
+    function(const AFileName: string; out ALines: TArray<string>): Boolean
+    begin
+      ALines := nil;
+      Result := True;
+    end, nil);
+  try
+    // Datei gibt es nicht: Änderungszeit 0.
+    Assert.AreEqual(0.0, Double(mScans.Scan('Z:\Fehlt\Gibt.Es.Nicht.pas').Age), 0);
+  finally
+    mScans.Free;
+  end;
 end;
 
 initialization

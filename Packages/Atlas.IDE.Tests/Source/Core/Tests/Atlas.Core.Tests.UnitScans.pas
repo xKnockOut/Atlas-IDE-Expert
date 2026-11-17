@@ -36,6 +36,7 @@ type
     FReadLines: TAtlasTestReadLines;
     FAgeOf: TAtlasTestAgeOf;
   public
+    /// <summary>AAgeOf: Änderungszeit; nil = die der Datei auf der Platte.</summary>
     constructor Create(const AReadLines: TAtlasTestReadLines; const AAgeOf: TAtlasTestAgeOf);
     destructor Destroy; override;
     /// <summary>Stand von AFileName, aus dem Speicher, solange die Änderungszeit gleich ist.</summary>
@@ -77,7 +78,15 @@ var
   mAge: TDateTime;
   mKnown: TAtlasTestUnitScan;
 begin
-  mAge := FAgeOf(AFileName);
+  // Ohne eigene Funktion: Änderungszeit auf der Platte, 0 ohne Datei.
+  if Assigned(FAgeOf) then
+  begin
+    mAge := FAgeOf(AFileName);
+  end
+  else if not FileAge(AFileName, mAge) then
+  begin
+    mAge := 0;
+  end;
   if FScanned.TryGetValue(KeyOf(AFileName), mKnown) and (mKnown.Age = mAge) then
   begin
     Result := mKnown;

@@ -141,7 +141,6 @@ type
 implementation
 
 uses
-  System.IOUtils,
   System.Math,
   System.DateUtils,
   System.StrUtils,
@@ -187,16 +186,6 @@ end;
 function ReadLinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
 begin
   Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
-end;
-
-/// <summary>Änderungszeit von AFileName; 0, wenn es die Datei nicht gibt.</summary>
-function LastWriteOf(const AFileName: string): TDateTime;
-begin
-  Result := 0;
-  if FileExists(AFileName) then
-  begin
-    Result := TFile.GetLastWriteTime(AFileName);
-  end;
 end;
 
 type
@@ -264,7 +253,7 @@ begin
   FQueries := AQueries;
   FNext := ANext;
   FResults := TDictionary<string, TProjectRun>.Create;
-  FScans := TAtlasTestUnitScans.Create(ReadLinesOf, LastWriteOf);
+  FScans := TAtlasTestUnitScans.Create(ReadLinesOf, nil);
   FLogs := TAtlasIdeTestLogs.Create;
   FTicker := TAtlasIdeTestExplorerTicker.Create(FTests, Reload, ShowBusy);
   // Testlisten (#2167): Stand für Palette, Taste und Reiter; ohne gezeigtes Fenster liest es neu, das Fenster
