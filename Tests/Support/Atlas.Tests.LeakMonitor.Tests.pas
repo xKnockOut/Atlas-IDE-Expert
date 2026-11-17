@@ -32,6 +32,10 @@ type
     /// Durchlauf belegt nichts mehr, sonst meldet der Leckmonitor diesen Test.</summary>
     [Test]
     procedure FirstUseWarmUpIsDoneOnce;
+    /// <summary>Die Aufzeichnung nennt eine übrige Belegung mit Größe und vergisst sie bei der Freigabe.
+    /// </summary>
+    [Test]
+    procedure TraceNamesSurvivingAllocation;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
     // (RTTI, JSON), die der Monitor sonst diesem Test anlastete.
@@ -68,6 +72,7 @@ uses
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.ProtocolReplay,
   Atlas.Common.Diagnostics.ShutdownRest,
+  Atlas.Tests.AllocationTrace,
   Atlas.Tests.FirstUse,
   Atlas.Tests.LeakMonitor;
 
@@ -546,6 +551,27 @@ begin
   mBefore := TShutdownRest.AllocatedBytes;
   TFirstUse.WarmUp;
   Assert.AreEqual(mBefore, TShutdownRest.AllocatedBytes, 'Zweites Aufwärmen hat Speicher behalten');
+end;
+
+procedure TLeakMonitorTests.TraceNamesSurvivingAllocation;
+var
+  mBlock: Pointer;
+  mHeld: Int64;
+begin
+  TAllocationTrace.Install;
+  TAllocationTrace.Start;
+  GetMem(mBlock, 4321);
+  try
+    TAllocationTrace.Stop;
+    // Andere Threads können während der Aufzeichnung ebenfalls belegen.
+    mHeld := TAllocationTrace.Bytes;
+    Assert.IsTrue(mHeld >= 4321, 'Belegung fehlt in der Aufzeichnung');
+    Assert.Contains(TAllocationTrace.Report(50), '4321 Bytes in 1 Blöcken angelegt bei:');
+  finally
+    FreeMem(mBlock);
+  end;
+  // Nach Stop streichen auch Freigaben anderer Threads: höchstens, nicht genau.
+  Assert.IsTrue(TAllocationTrace.Bytes <= mHeld - 4321, 'Freigabe nicht gestrichen');
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;
