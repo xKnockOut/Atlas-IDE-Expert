@@ -249,6 +249,11 @@ begin
   TMonitor.Enter(DefaultsLock);
   try
     DefaultFolders.Remove(FolderKey(ARoot));
+    // Leer gewordene Tabelle gibt ihre Hashfelder frei; sonst lebten sie nach dem letzten Eintrag bis Programmende.
+    if DefaultFolders.Count = 0 then
+    begin
+      DefaultFolders.Clear;
+    end;
   finally
     TMonitor.Exit(DefaultsLock);
   end;
