@@ -46,6 +46,11 @@ type
     procedure FormatWithoutSettingsOwnRoutineInOtherUnit;
     [Test]
     procedure FormatWithoutSettingsOwnRoutineInSameUnit;
+    /// <summary>Eigene Unit mit StrToDate, FloatToStr …, die nicht im Index steht (Prüfung im Editor während des
+    /// Indexaufbaus, Unit außerhalb der Suchpfade): Steht sie in uses nach System.SysUtils, kann sie die RTL
+    /// verdecken, die Regel schweigt.</summary>
+    [Test]
+    procedure FormatWithoutSettingsUnknownWrapperUnit;
     [Test]
     procedure LocaleSpecifiers;
     [Test]
@@ -457,6 +462,28 @@ begin
     'function TBericht.Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
     '  Result := AFormat;'#10'end;'#10'procedure TBericht.Schreiben(X: Double);'#10'begin'#10 +
     '  Format(''%.2f'', [X]);'#10'end;'#10'end.');
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsUnknownWrapperUnit;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Ohne Index: Werkzeuge nach System.SysUtils ist unbekannt und kann StrToDate deklarieren.
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, FormatCaller('System.SysUtils, System.DateUtils, Werkzeuge',
+    'DateToStr(StrToDate(''1.1.2020''))'));
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, FormatCaller('Werkzeuge', 'FloatToStr(X)'));
+  // Steht Werkzeuge davor oder folgen nur Units von Embarcadero, ruft der Compiler die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, System.SysUtils', 'FloatToStr(X)')))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('SysUtils, System.Classes, Vcl.Forms, Math', 'FloatToStr(X)')))));
+  // Steht die Unit im Index, deklariert sie den Namen nicht (sonst hätte der Resolver sie gefunden).
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Andere;'#10'interface'#10'procedure Leer;'#10'implementation'#10 +
+    'end.', 'C:\Projekt\Andere.pas', nil));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Andere', 'FloatToStr(X)'), mIndex, '', 'Fall.pas'))));
+  mIndex := nil;
 end;
 
 procedure TRtlTypePatternRulesTests.LocaleSpecifiers;

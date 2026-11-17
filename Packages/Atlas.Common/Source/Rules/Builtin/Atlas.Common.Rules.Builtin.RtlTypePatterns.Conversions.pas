@@ -6,6 +6,8 @@
 //   format-without-settings  Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate … ohne TFormatSettings
 //                            (FormatDateTime/FormatFloat mit festem Bild nur, wenn es Trennzeichen
 //                            wie : / . , enthält)
+//                            Eigene Routinen gleichen Namens (Unit nach System.SysUtils in uses) bleiben still,
+//                            ebenso unaufgelöste Namen, wenn eine unbekannte Unit sie verdecken kann
 //   unchecked-conversion     StrToInt, StrToFloat, StrToDate … direkt auf Edit.Text, Cells[…] oder Lines[…]
 //                            ohne umgebendes try/except (#932); Korrektur: TryStrToInt … mit raise im
 //                            Fehlerzweig, wenn das Ziel eine Variable des passenden Typs ist
@@ -96,6 +98,7 @@ uses
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Pascal.FormatStrings,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.RoutineBody,
@@ -355,10 +358,47 @@ begin
   Result := -1;
 end;
 
+/// <summary>Ist AUnitName eine Unit von Embarcadero (System.Classes, auch Classes über die Namespaces des Projekts)?
+/// Diese deklarieren keine eigenen Formatierungsroutinen gleichen Namens wie System.SysUtils.</summary>
+function IsRtlScopeUnit(const AContext: TRuleContext; const AUnitName: string): Boolean;
+var
+  mNamespace: string;
+begin
+  Result := TLibraryUnits.IsLibraryUnit(AUnitName) or MatchText(AUnitName, ['SysUtils', 'StrUtils', 'Math']);
+  for mNamespace in AContext.Namespaces do
+  begin
+    Result := Result or TLibraryUnits.IsLibraryUnit(mNamespace + '.' + AUnitName);
+  end;
+end;
+
+/// <summary>Kann eine Unit, die in uses nach System.SysUtils steht (bzw. jede, wenn System.SysUtils fehlt), den
+/// unaufgelösten Namen deklarieren? Ja, wenn eine davon weder zur RTL gehört noch im Index steht: Ihr Inhalt ist
+/// unbekannt (Lauf ohne Index, Unit außerhalb der Suchpfade), etwa eine eigene Unit mit StrToDate, die
+/// TFormatSettings selbst übergibt. Units im Index deklarieren den Namen nicht, sonst hätte der Resolver sie
+/// gefunden.</summary>
+function MayBeHiddenByUnknownUnit(const AContext: TRuleContext; const AUnit: TUnitIndex): Boolean;
+var
+  mRtlRank: Integer;
+  mUnitName: string;
+  mFound: TUnitIndex;
+begin
+  mRtlRank := UsesRank(AUnit, ['System.SysUtils', 'SysUtils']);
+  for mUnitName in AUnit.ImplementationUses + AUnit.InterfaceUses do
+  begin
+    if ((mRtlRank < 0) or (UsesRank(AUnit, [mUnitName]) < mRtlRank)) and not IsRtlScopeUnit(AContext, mUnitName) and
+      not ((AContext.Index <> nil) and AContext.Index.FindUnit(mUnitName, mFound)) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 /// <summary>Ruft der Name an AIndex eine eigene Routine statt der aus System.SysUtils auf? Aufgelöst wie vom
 /// Compiler: lokale Routinen, Methoden der eigenen Klasse und Routinen der eigenen Unit verdecken die RTL, ebenso
-/// eine Unit, die in uses nach System.SysUtils steht. Unbekannte Namen (ohne Index) gelten als RTL; ebenso eine
-/// fremde Unit, wenn System.SysUtils in uses danach steht, aber nicht im Index ist.</summary>
+/// eine Unit, die in uses nach System.SysUtils steht. Ein unaufgelöster Name gilt nur als RTL, wenn keine
+/// unbekannte Unit ihn verdecken kann (MayBeHiddenByUnknownUnit); ebenso eine fremde Unit, wenn System.SysUtils in
+/// uses danach steht, aber nicht im Index ist.</summary>
 function CallsOwnRoutine(const AContext: TRuleContext; var ACache: IRuleDerivedCache; const AToken: TPascalToken):
   Boolean;
 var
@@ -373,12 +413,15 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mResolved := TRuleDerived.Resolver(ACache, AContext).ResolveChain(AContext.Tree, AContext.RelativePath,
     [AToken.Text], AToken.Offset, False);
-  if (mResolved.Kind in [TResolvedKind.None, TResolvedKind.UnitName]) or
-    MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
+  mUnit := TRuleDerived.UnitIndex(ACache, AContext);
+  if mResolved.Kind = TResolvedKind.None then
+  begin
+    Exit(MayBeHiddenByUnknownUnit(AContext, mUnit));
+  end;
+  if (mResolved.Kind = TResolvedKind.UnitName) or MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
   begin
     Exit(False);
   end;
-  mUnit := TRuleDerived.UnitIndex(ACache, AContext);
   if (mResolved.Kind = TResolvedKind.Local) or (mResolved.Container <> '') or
     SameText(mResolved.UnitName, mUnit.UnitName) then
   begin
