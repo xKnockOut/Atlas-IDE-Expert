@@ -92,6 +92,9 @@ begin
     begin
       Wire(AFrame);
     end;
+  // Beim Desktop anmelden, bevor die IDE ihn lädt: Sonst kennt sie das angedockte Fenster nicht und lässt es samt
+  // seinem Platz in der Andockgruppe fallen.
+  TAtlasIdeOutlineWindow.Prepare;
   // Das Fenster gab es schon (Paket neu geladen): neu verdrahten.
   if TAtlasIdeOutlineWindow.ExistingFrame <> nil then
   begin
