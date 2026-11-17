@@ -249,6 +249,11 @@ begin
   TMonitor.Enter(DefaultsLock);
   try
     DefaultFolders.Remove(FolderKey(ARoot));
+    // Leer gewordene Tabelle gibt ihre Hashfelder frei; sonst lebten sie nach dem letzten Eintrag bis Programmende.
+    if DefaultFolders.Count = 0 then
+    begin
+      DefaultFolders.Clear;
+    end;
   finally
     TMonitor.Exit(DefaultsLock);
   end;
@@ -951,6 +956,10 @@ end;
 initialization
   TAtlasTextTables.Add('Atlas.Common.Documents.FileEncoding', cTexts);
   DefaultsLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(DefaultsLock);
+  TMonitor.Exit(DefaultsLock);
   DefaultFolders := TDictionary<string, Integer>.Create;
 
 finalization

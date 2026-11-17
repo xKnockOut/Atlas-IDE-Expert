@@ -36,6 +36,9 @@ type
     /// </summary>
     [Test]
     procedure TraceNamesSurvivingAllocation;
+    /// <summary>Ein vor der Aufzeichnung angelegter Block, der danach wächst, erscheint als vergrößert.</summary>
+    [Test]
+    procedure TraceNamesGrownOlderBlock;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
     // (RTTI, JSON), die der Monitor sonst diesem Test anlastete.
@@ -557,6 +560,7 @@ procedure TLeakMonitorTests.TraceNamesSurvivingAllocation;
 var
   mBlock: Pointer;
   mHeld: Int64;
+  mReport: string;
 begin
   TAllocationTrace.Install;
   TAllocationTrace.Start;
@@ -566,12 +570,37 @@ begin
     // Andere Threads können während der Aufzeichnung ebenfalls belegen.
     mHeld := TAllocationTrace.Bytes;
     Assert.IsTrue(mHeld >= 4321, 'Belegung fehlt in der Aufzeichnung');
-    Assert.Contains(TAllocationTrace.Report(50), '4321 Bytes in 1 Blöcken angelegt bei:');
+    mReport := TAllocationTrace.Report(50);
+    Assert.Contains(mReport, '4321 Bytes in 1 Blöcken angelegt bei:');
+    Assert.IsTrue(mReport.Contains('TLeakMonitorTests.TraceNamesSurvivingAllocation'), mReport);
   finally
     FreeMem(mBlock);
   end;
   // Nach Stop streichen auch Freigaben anderer Threads: höchstens, nicht genau.
   Assert.IsTrue(TAllocationTrace.Bytes <= mHeld - 4321, 'Freigabe nicht gestrichen');
+  mReport := '';
+end;
+
+procedure TLeakMonitorTests.TraceNamesGrownOlderBlock;
+var
+  mBlock: Pointer;
+  mReport: string;
+begin
+  // Vor Start angelegt, danach vergrößert: wie ein Zwischenspeicher, der im Test wächst.
+  GetMem(mBlock, 64);
+  try
+    TAllocationTrace.Install;
+    TAllocationTrace.Start;
+    ReallocMem(mBlock, 5432);
+    TAllocationTrace.Stop;
+    mReport := TAllocationTrace.Report(50);
+    Assert.IsTrue(mReport.Contains('5432 Bytes in 1 Blöcken vergrößert bei'), mReport);
+    Assert.IsTrue(mReport.Contains('TLeakMonitorTests.TraceNamesGrownOlderBlock'), mReport);
+  finally
+    FreeMem(mBlock);
+  end;
+  Assert.DoesNotContain(TAllocationTrace.Report(50), '5432 Bytes');
+  mReport := '';
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;

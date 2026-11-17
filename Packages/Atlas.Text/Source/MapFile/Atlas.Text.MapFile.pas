@@ -406,7 +406,7 @@ end;
 function TMapFile.Resolve(AModuleOffset: UInt64): TMapLocation;
 var
   mAddress: UInt64;
-  mFound, mDot: Integer;
+  mFound, mSymbol, mDot: Integer;
 begin
   Result := Default(TMapLocation);
   if (AModuleOffset < FCodeStart) or (FSymbols.Count = 0) then
@@ -428,20 +428,22 @@ begin
   begin
     Exit;
   end;
+  mSymbol := mFound;
   Result.Found := True;
-  Result.Routine := FSymbols[mFound].Name;
+  Result.Routine := FSymbols[mSymbol].Name;
   mDot := Pos('.', Result.Routine);
   if mDot > 0 then
   begin
     Result.UnitName := Copy(Result.Routine, 1, mDot - 1);
   end;
-  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine.
+  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine. Routinen ohne Zeileninfo
+  // (System, Generika, Units ohne Debug-Info) bekämen sonst die Zeile einer Routine davor.
   mFound := LastAtOrBefore(FLines.Count,
     function(AIndex: Integer): UInt64
     begin
       Result := FLines[AIndex].Address;
     end, mAddress);
-  if (mFound >= 0) and (FLines[mFound].Address >= FSymbols[0].Address) then
+  if (mFound >= 0) and (FLines[mFound].Address >= FSymbols[mSymbol].Address) then
   begin
     Result.Line := FLines[mFound].Line;
     Result.FileName := FLines[mFound].FileName;

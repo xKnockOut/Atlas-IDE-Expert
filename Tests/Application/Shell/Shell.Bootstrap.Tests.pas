@@ -15,9 +15,6 @@ type
     FFolder: string;
     function Write(const AName, AText: string): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -144,16 +141,6 @@ function TShellBootstrapTests.Write(const AName, AText: string): string;
 begin
   Result := TPath.Combine(FFolder, AName);
   TFile.WriteAllText(Result, AText, TEncoding.UTF8);
-end;
-
-procedure TShellBootstrapTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ReadSourceText_Utf8Bom_ReturnsText;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TShellBootstrapTests.Setup;

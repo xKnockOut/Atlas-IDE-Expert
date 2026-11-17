@@ -14,10 +14,6 @@ type
     FFolder: string;
     function Path(const AName: string): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Der erste Symbolindex im Prozess legt bleibende
-    /// Strukturen an, die je nach Reihenfolge der Tests als Leck zählen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -43,6 +39,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Shell.Bootstrap,
+  Shell.Workspace.Listings,
   Shell.WorkspaceGroup,
   Atlas.Tests.TempFolder;
 
@@ -79,16 +76,6 @@ begin
   Result := TPath.Combine(FFolder, AName);
 end;
 
-procedure TShellWorkspaceGroupTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    LoadIndexesProjectAndGivesRuleProject;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TShellWorkspaceGroupTests.Setup;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-WorkspaceGroup-' + IntToStr(Random(MaxInt)));
@@ -97,6 +84,8 @@ end;
 
 procedure TShellWorkspaceGroupTests.TearDown;
 begin
+  // Die Ordnerlisten teilen alle Arbeitsbereiche des Prozesses; je Testordner bliebe sonst ein Eintrag stehen.
+  TSharedUnitListings.Clear;
   TTestTempFolder.Remove(FFolder);
 end;
 
