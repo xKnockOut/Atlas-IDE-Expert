@@ -141,7 +141,9 @@ type
     MutationCancelled, MutationScore, MutationNoScore, MutationStatusKilledBy, MutationStatusKilledExit,
     MutationStatusKilled, MutationStatusSurvived, MutationStatusTimedOut, MutationStatusBuildFailed,
     MutationStatusInvalid, MutationTipTitle, MutationTipLine, SettingsTestsMutation, SettingsTestsMutationTimeout,
-    SettingsTestsMutationOperators, SettingsTestsMutationMarks);
+    SettingsTestsMutationOperators, SettingsTestsMutationMarks,
+    // Fenster „Atlas-Tests“ bei Fehlschlägen öffnen (#2467).
+    SettingsTestsWindowOnFailure);
 
   TAtlasTestsStrings = class
   public
@@ -663,7 +665,8 @@ const
      'Mutationslauf: prüfen, ob die Tests Fehler im Code bemerken',
      'Zeitlimit je Mutant (Sekunden)',
      'Operatoren (leer = alle)',
-     'Symbole des Mutationslaufs im Editor anzeigen'),
+     'Symbole des Mutationslaufs im Editor anzeigen',
+     'Bei Fehlschlägen von selbst öffnen'),
     ('Run tests',
      'Re-run failed tests',
      'Tests: No DUnitX test project in the project group (main file using DUnitX.TestFramework).',
@@ -1168,7 +1171,8 @@ const
      'Mutation testing: check whether tests notice faults in the code',
      'Time limit per mutant (seconds)',
      'Operators (empty = all)',
-     'Show mutation testing marks in the editor'));
+     'Show mutation testing marks in the editor',
+     'Open automatically when tests fail'));
 
 { TAtlasTestsStrings }
 

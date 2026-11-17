@@ -1715,6 +1715,19 @@
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
     },
+    "TestsWindowOnFailure": {
+      "description": "Nach einem Testlauf mit fehlgeschlagenen Tests oder einem Lauf, der mit Fehler abbricht (kein Bericht, Zeitgrenze), öffnet sich das Fenster „Atlas-Tests“ von selbst, kommt nach vorn und zeigt das Testprojekt des Laufs. Gilt für jeden Weg: Tests ausführen, fehlgeschlagene erneut ausführen, Tests nach dem Build, betroffene Tests beim Speichern, Serien, Testlisten und Testlinse. Der Fokus bleibt, wo er war (etwa im Editor). Nach einem grünen oder vom Benutzer abgebrochenen Lauf passiert nichts. Aus: Das Fenster öffnet sich nur über Befehl oder Menü.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.window.openOnFailure",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Bei Fehlschlägen von selbst öffnen",
+      "x-captionEn": "Open automatically when tests fail",
+      "x-issue": "#2467"
+    },
     "TestsLists": {
       "description": "Testlisten im Fenster „Atlas-Tests“: Reiter neben „Alle“ mit festen Listen (Tests, Fixtures oder Units über „Zu Liste hinzufügen“) und dynamischen (Regeln mit „und“: Kategorie, Muster für Unit bzw. Fixture, Stand), „Liste ausführen“ im Reiter, in der Befehlspalette und mit Taste. Ablage je Liste in atlas.json (testLists, für das Team) oder nur für mich. Aus: keine Reiter, kein Eintrag in der Palette, testLists wird nicht gelesen.",
       "type": "boolean",

@@ -11,6 +11,8 @@
 //   bzw. einmal an den Empfänger aus SendNextEndTo (Serie von Läufen, #1782).
 // - Jump schreibt eine anklickbare Zeile zu einer Stelle (ungetestete
 //   Methoden des Projekts, #1783), ShowView zeigt die Meldungsansicht.
+// - Ended meldet das Ende jedes Laufs, ob im Hintergrund oder nicht, mit Testprojekt, Art des Endes und Bericht an
+//   OnEnded (Fenster „Atlas-Tests“ bei Fehlschlägen öffnen, #2467).
 
 interface
 
@@ -34,6 +36,10 @@ type
     Run: TTestRunResult;
   end;
   TAtlasTestsQuietEndProc = reference to procedure(const AEnd: TAtlasTestsQuietEnd);
+  /// <summary>Ein Lauf des Testprojekts AProject endete mit AFinish; ARun ist der Bericht (nur mit Report gültig).
+  /// </summary>
+  TAtlasTestsEndedProc = reference to procedure(const AProject: string; AFinish: TAtlasTestFinish;
+    const ARun: TTestRunResult);
 
   TAtlasIdeTestsOutput = class
   private
@@ -42,6 +48,7 @@ type
     FFailures: TArray<TAtlasTestFailure>;
     FOnQuietEnded: TAtlasTestsQuietEndProc;
     FNextEnd: TAtlasTestsQuietEndProc;
+    FOnEnded: TAtlasTestsEndedProc;
   public
     /// <summary>Zeile in der Meldungsansicht, immer.</summary>
     procedure Say(const AText: string);
@@ -63,9 +70,12 @@ type
     /// <summary>Zeilen und Fehlschläge des letzten Laufs im Hintergrund in die Meldungsansicht und diese zeigen;
     /// False ohne solchen Lauf.</summary>
     function ShowLast: Boolean;
+    /// <summary>Ein Lauf von AProject endete mit AFinish und Bericht ARun (#2467): an OnEnded.</summary>
+    procedure Ended(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
     /// <summary>Läuft gerade ein Lauf im Hintergrund?</summary>
     property Quiet: Boolean read FQuiet;
     property OnQuietEnded: TAtlasTestsQuietEndProc read FOnQuietEnded write FOnQuietEnded;
+    property OnEnded: TAtlasTestsEndedProc read FOnEnded write FOnEnded;
   end;
 
 implementation
@@ -232,6 +242,14 @@ begin
   // FQuiet ist aus: Failures schreibt die Zeilen, statt sie zu merken.
   Failures(FFailures);
   mMessages.ShowMessageView(Group(mMessages));
+end;
+
+procedure TAtlasIdeTestsOutput.Ended(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
+begin
+  if Assigned(FOnEnded) then
+  begin
+    FOnEnded(AProject, AFinish, ARun);
+  end;
 end;
 
 end.

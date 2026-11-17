@@ -161,6 +161,9 @@ type
     TestsShowDuration: Boolean;
     /// <summary>Andockbares Fenster „Atlas-Tests“ mit allen Tests des Testprojekts (#1776, tests.window).</summary>
     TestsWindow: Boolean;
+    /// <summary>Fenster „Atlas-Tests“ nach einem Lauf mit Fehlschlägen oder Abbruch zeigen (#2467,
+    /// tests.window.openOnFailure).</summary>
+    TestsWindowOnFailure: Boolean;
     /// <summary>Testlisten im Fenster „Atlas-Tests“ (#2167, tests.lists).</summary>
     TestsLists: Boolean;
     /// <summary>Taste für die zuletzt benutzte Testliste (#2167, tests.lists.runKey; TShortCut, 0 = keine).</summary>
@@ -460,6 +463,7 @@ begin
   TestsApprovalFiles := True;
   TestsShowDuration := True;
   TestsWindow := True;
+  TestsWindowOnFailure := True;
   TestsLists := True;
   TestsListsRunKey := cDefaultTestsListsRunKey;
   TestsLog := True;
@@ -501,6 +505,7 @@ begin
   AIo.Flag('TestsApprovalFiles', TestsApprovalFiles);
   AIo.Flag('TestsShowDuration', TestsShowDuration);
   AIo.Flag('TestsWindow', TestsWindow);
+  AIo.Flag('TestsWindowOnFailure', TestsWindowOnFailure);
   AIo.Flag('TestsLists', TestsLists);
   AIo.Number('TestsListsRunKey', TestsListsRunKey);
   AIo.Flag('TestsLog', TestsLog);
