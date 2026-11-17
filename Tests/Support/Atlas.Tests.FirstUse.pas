@@ -38,7 +38,17 @@ uses
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
-  Atlas.UI.Foundation.Theme;
+  Atlas.UI.Foundation.Theme,
+  Atlas.Core.Modules.Contract,
+  Atlas.Core.Modules.Registry,
+  Atlas.UI.Settings.Contract,
+  Atlas.UI.Settings.Section,
+  Atlas.UI.Settings.Page,
+  Vcl.Forms,
+  Atlas.UI.Foundation.Dialog,
+  Atlas.UI.Settings.Keys,
+  Atlas.UI.Settings.Overview,
+  Atlas.Common.Projects.PackageLocator;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
@@ -72,8 +82,8 @@ begin
 end;
 
 /// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError,
-/// EInOutError) und
-/// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
+/// EInOutError) und behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden
+/// Datei (z. B. die Protokolldatei in TRotatingFileStream, die Sperre des Index-Caches).</summary>
 procedure WarmUpFileErrors;
 var
   mMissing: string;
@@ -92,11 +102,18 @@ begin
     on Exception do
       ;
   end;
-  // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches.
+  // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches, und zum Schreiben öffnen
+  // (EFOpenError wegen Freigabeverletzung), wie eine Protokolldatei, die ein anderer Prozess hält.
   mHeld := TFileStream.Create(mMissing, fmCreate or fmShareExclusive);
   try
     try
       TFileStream.Create(mMissing, fmCreate or fmShareExclusive).Free;
+    except
+      on Exception do
+        ;
+    end;
+    try
+      TFileStream.Create(mMissing, fmOpenWrite or fmShareDenyWrite).Free;
     except
       on Exception do
         ;
@@ -251,6 +268,107 @@ begin
   TAtlasOverdueThreads.Adopt(mThread, 0);
 end;
 
+/// <summary>Einstellungsseite (TAtlasSettingsPage) mit einem Abschnitt, einmal ohne und einmal mit Fenster: Die erste
+/// Anmeldung legt die Listen der Modul-Registry an (frei mit der Registry in der Finalisierung von Base), das erste
+/// Erzeugen der Steuerelemente legt einmalige Daten der VCL an (Themes, Schriften, Fensterklassen; frei in der
+/// Finalisierung der VCL).</summary>
+procedure WarmUpSettingsPage;
+var
+  mRegistration: IAtlasRegistration;
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+begin
+  mRegistration := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
+    TAtlasSettingsSectionFactory.Create(TAtlasSettingsSection) as IAtlasSettingsSectionProvider);
+  mRegistration.Revoke;
+  TAtlasSettingsPage.Create(nil).Free;
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+  finally
+    mHost.Free;
+  end;
+end;
+
+/// <summary>IDE-Thema auf ein Formular anwenden (TAtlasUiTheme): Farben und erstes Formular der VCL legen
+/// einmalige Daten an, frei in der Finalisierung der VCL.</summary>
+procedure WarmUpThemeApply;
+var
+  mForm: TForm;
+begin
+  // Erste Benutzung (VCL-Formular, Liste der Abonnenten) nicht dem ersten Test anrechnen.
+  TAtlasUiTheme.Subscribed(nil);
+  TAtlasUiTheme.Uninstall;
+  TAtlasUiTheme.Colors;
+  TAtlasUiTheme.Apply(nil);
+  mForm := TForm.CreateNew(nil);
+  try
+    TAtlasUiTheme.Apply(mForm);
+  finally
+    mForm.Free;
+  end;
+end;
+
+/// <summary>Erster Dialog mit Fenster (TAtlasDialog): einmalige Daten der VCL (Fensterklasse, Schrift), frei in deren
+/// Finalisierung.</summary>
+procedure WarmUpDialog;
+var
+  mDialog: TAtlasDialog;
+begin
+  // Erste Benutzung (VCL-Formular, Liste der Abonnenten des Themendienstes) nicht dem ersten Test anrechnen.
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Aufwärmen', 300);
+  try
+    mDialog.HandleNeeded;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+/// <summary>Seite der Tastenkürzel (TAtlasKeysPage): einmalige Daten ihrer Steuerelemente.</summary>
+procedure WarmUpKeysPage;
+begin
+  TAtlasKeysPage.Create(nil).Free;
+end;
+
+/// <summary>Übersicht der Einstellungen einmal laden und durchsuchen: Katalog und Texte legen dabei einen
+/// Zwischenspeicher bis Prozessende an.</summary>
+procedure WarmUpSettingsOverview;
+var
+  mPage: TAtlasSettingsOverview;
+begin
+  mPage := TAtlasSettingsOverview.Create(nil);
+  try
+    mPage.Load(1, 1, 1);
+    mPage.SearchFor('enabled');
+  finally
+    mPage.Free;
+  end;
+end;
+
+/// <summary>Package-Suche mit .dcp auf der Platte einmal durchlaufen: Datei- und Zeitfunktionen legen beim ersten
+/// Aufruf Objekte bis Prozessende an (z. B. die Zeitzone).</summary>
+procedure WarmUpPackageLocator;
+var
+  mFolder: string;
+  mLocator: TPackageLocator;
+  mContains: Boolean;
+begin
+  // Einmal der ganze Weg der Tests mit .dcp auf der Platte (Ordner, Zeitstempel, geteiltes Lesen).
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDcpWarmUp' + TGUID.NewGuid.ToString);
+  TDirectory.CreateDirectory(mFolder);
+  TFile.WriteAllBytes(TPath.Combine(mFolder, 'Warm.dcp'), TEncoding.ASCII.GetBytes('WARM'));
+  mLocator := TPackageLocator.Create([mFolder]);
+  try
+    mLocator.Provides('Warm', 'Warm', mContains);
+  finally
+    mLocator.Free;
+    TPackageCompiledFiles.Clear;
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
 { TFirstUse }
 
 class procedure TFirstUse.WarmUp;
@@ -265,6 +383,12 @@ begin
   WarmUpDuplicateCatalog;
   WarmUpThemeListeners;
   WarmUpOverdueThreads;
+  WarmUpSettingsPage;
+  WarmUpThemeApply;
+  WarmUpDialog;
+  WarmUpKeysPage;
+  WarmUpSettingsOverview;
+  WarmUpPackageLocator;
 end;
 
 end.

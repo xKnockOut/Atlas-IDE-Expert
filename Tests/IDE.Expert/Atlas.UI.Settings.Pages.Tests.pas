@@ -11,9 +11,6 @@ type
   [TestFixture]
   TAtlasSettingsPagesTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure SnippetsPageShowsCatalogAndValidates;
     [Test]
@@ -34,15 +31,10 @@ uses
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.UI.Settings.SnippetsPage,
-  Atlas.UI.Settings.ServerPage,
-  Atlas.UI.Settings.Page.TestSupport;
+  Atlas.UI.Settings.ServerPage;
 
 { TAtlasSettingsPagesTests }
 
-procedure TAtlasSettingsPagesTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 /// <summary>Feste Antworten für Cache und Rückfrage; Baseline und Unterdrückungen stehen seit #1755 im
 /// Abschnitt des Moduls Prüfregeln.</summary>
 procedure WireServerPageAnswers(APage: TAtlasServerPage);

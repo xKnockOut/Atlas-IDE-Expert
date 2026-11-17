@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasSettingsPageDialogTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure DialogShowsOriginAndResetsToGlobal;
     /// <summary>Ohne das Modul Prüfregeln (#1755): "rules" als JSON-Text, keine Knoten je Gruppe, kein Regel-Editor.
@@ -36,15 +33,10 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Validation,
   Vcl.Controls,
-  Vcl.StdCtrls,
-  Atlas.UI.Settings.Page.TestSupport;
+  Vcl.StdCtrls;
 
 { TAtlasSettingsPageDialogTests }
 
-procedure TAtlasSettingsPageDialogTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 procedure TAtlasSettingsPageDialogTests.DialogShowsOriginAndResetsToGlobal;
 var
   mModel: TAtlasSettingsModel;

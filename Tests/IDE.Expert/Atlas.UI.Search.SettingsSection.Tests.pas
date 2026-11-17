@@ -16,8 +16,6 @@ type
   private
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -39,11 +37,6 @@ uses
   Atlas.UI.Search.SettingsSection;
 
 { TSearchSettingsSectionTests }
-
-procedure TSearchSettingsSectionTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 procedure TSearchSettingsSectionTests.Setup;
 begin

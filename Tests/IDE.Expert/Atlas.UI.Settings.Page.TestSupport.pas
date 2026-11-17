@@ -17,10 +17,6 @@ uses
   Vcl.Forms,
   Vcl.ComCtrls;
 
-/// <summary>Erzeugt die Seite einmal ohne und einmal mit Fenster, damit einmalige VCL-Daten keinem Test
-/// angerechnet werden.</summary>
-procedure WarmUpSettingsPage;
-
 /// <summary>Reiter, auf dem AControl liegt; nil ohne.</summary>
 function SheetOf(AControl: TControl): TTabSheet;
 
@@ -75,27 +71,6 @@ end;
 function TAtlasFixedSectionProvider.CreateSection: IAtlasSettingsSection;
 begin
   Result := FSection;
-end;
-
-procedure WarmUpSettingsPage;
-var
-  mHost: TForm;
-  mPage: TAtlasSettingsPage;
-  mRegistrations: TArray<IAtlasRegistration>;
-begin
-  // Erste Anmeldung legt die Listen der Registry an: nicht dem ersten Setup anrechnen.
-  mRegistrations := ProvideSections([TAtlasSettingsSection]);
-  RevokeAll(mRegistrations);
-  TAtlasSettingsPage.Create(nil).Free;
-  // Auch mit Fenster (Reiter, PageControl): einmalige VCL-Daten nicht dem ersten Test anrechnen.
-  mHost := TForm.CreateNew(nil);
-  try
-    mPage := TAtlasSettingsPage.Create(mHost);
-    mPage.Parent := mHost;
-    mPage.HandleNeeded;
-  finally
-    mHost.Free;
-  end;
 end;
 
 function SheetOf(AControl: TControl): TTabSheet;

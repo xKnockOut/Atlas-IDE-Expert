@@ -13,9 +13,6 @@ type
   [Category('Atlas.IDE.VersionControl')]
   TAtlasSettingsPageVcsTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     /// <summary>#1285: Seite Versionsverwaltung als eigener Bereich: Art, Programmpfade mit Fundort ohne
     /// Prozess, „Prüfen“ im Hintergrund, Zeitlimit, aktuelles Projekt beim ersten Zeigen und Links.</summary>
     [Test]
@@ -108,11 +105,6 @@ begin
 end;
 
 { TAtlasSettingsPageVcsTests }
-
-procedure TAtlasSettingsPageVcsTests.WarmUp;
-begin
-  WarmUpSettingsPage;
-end;
 
 type
   /// <summary>Hält fest, was die Seite „Versionsverwaltung“ über ihre Ereignisse angefragt hat.</summary>

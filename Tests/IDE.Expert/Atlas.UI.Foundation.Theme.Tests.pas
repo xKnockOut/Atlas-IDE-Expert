@@ -16,8 +16,6 @@ type
   private
     FLog: string;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -47,23 +45,6 @@ uses
   Atlas.UI.Foundation.Theme;
 
 { TAtlasUiThemeTests }
-
-procedure TAtlasUiThemeTests.WarmUpFirstUse;
-var
-  mForm: TForm;
-begin
-  // Erste Benutzung (VCL-Formular, Liste der Abonnenten) nicht dem ersten Test anrechnen.
-  TAtlasUiTheme.Subscribed(nil);
-  TAtlasUiTheme.Uninstall;
-  TAtlasUiTheme.Colors;
-  TAtlasUiTheme.Apply(nil);
-  mForm := TForm.CreateNew(nil);
-  try
-    TAtlasUiTheme.Apply(mForm);
-  finally
-    mForm.Free;
-  end;
-end;
 
 procedure TAtlasUiThemeTests.TearDown;
 begin

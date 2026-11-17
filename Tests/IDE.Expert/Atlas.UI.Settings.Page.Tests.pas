@@ -233,7 +233,6 @@ end;
 
 procedure TAtlasSettingsPageTests.WarmUp;
 begin
-  WarmUpSettingsPage;
   FilterAndResetPerNode;
   // Erste Fehler legen die Listen der Sicherung an.
   TAtlasGuard.ReportProvider('Testquelle', 'Fehler');

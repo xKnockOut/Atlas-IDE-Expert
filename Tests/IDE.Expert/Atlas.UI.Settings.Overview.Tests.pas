@@ -11,10 +11,6 @@ type
   [TestFixture]
   TAtlasSettingsOverviewTests = class
   public
-    /// <summary>Katalog und Texte einmal vorab anlegen: Ihr Zwischenspeicher zählt sonst als Leck im ersten Test.
-    /// </summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure ShowsPackages;
     [Test]
@@ -30,19 +26,6 @@ uses
   Atlas.UI.Settings.Overview;
 
 { TAtlasSettingsOverviewTests }
-
-procedure TAtlasSettingsOverviewTests.WarmUp;
-var
-  mPage: TAtlasSettingsOverview;
-begin
-  mPage := TAtlasSettingsOverview.Create(nil);
-  try
-    mPage.Load(1, 1, 1);
-    mPage.SearchFor('enabled');
-  finally
-    mPage.Free;
-  end;
-end;
 
 procedure TAtlasSettingsOverviewTests.ShowsPackages;
 var
