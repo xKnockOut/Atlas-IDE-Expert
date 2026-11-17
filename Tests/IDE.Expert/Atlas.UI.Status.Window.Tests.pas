@@ -21,7 +21,8 @@ type
     procedure DotColorsFollowState;
     [Test]
     procedure ButtonsRunAfterClosing;
-    /// <summary>Dialogschrift und IDE-Thema über TAtlasDialog; ein Themenwechsel holt die neuen Farben.</summary>
+    /// <summary>Dialogschrift und IDE-Thema an den Steuerelementen über TAtlasPopupForm (ThemedControls); ein
+    /// Themenwechsel holt die neuen Farben.</summary>
     [Test]
     procedure FollowsIdeTheme;
   end;
@@ -144,6 +145,7 @@ begin
   try
     Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
     Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
+    Assert.IsTrue(mWindow.ThemedControls, 'IDE-Thema an Knöpfen und Listen');
     TAtlasUiTheme.Install(
       function: TAtlasColors
       begin
