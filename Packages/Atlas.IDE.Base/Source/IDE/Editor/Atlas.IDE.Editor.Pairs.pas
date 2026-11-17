@@ -98,6 +98,11 @@ type
       /// <summary>Paarfarben mit zu wenig Kontrast zum Hintergrund weichen der Schriftfarbe (#1244).</summary>
       procedure KeepContrast;
       function AnyDimmed: Boolean;
+      /// <summary>True, wenn der Lauf im Text der Diagnosen an seiner Stelle steht (für Teile einer Zeile);
+      /// ATabWidth wie beim Abblenden.</summary>
+      function InDiagnosedLine(ATabWidth: Integer): Boolean;
+      /// <summary>Zeichen in ASpans, die nicht abgeblendet sind, in ATint (verschiebbare uses, #2465).</summary>
+      procedure Tint(const ASpans: TArray<TAtlasColumnSpan>; ATint: TColor);
       /// <summary>Lauf zeichnen: Hintergrund wie vorbereitet, Zeichen in fester Zellbreite.</summary>
       procedure Draw(AError: TAtlasColor);
     end;
@@ -167,10 +172,6 @@ type
     function MovableSpans(const AContext: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
     /// <summary>Tabweite für die Spalten der Diagnosen, je Zeichnen einmal aus dem Puffer gelesen.</summary>
     procedure EnsureDimTabWidth(const AContext: INTACodeEditorPaintContext);
-    /// <summary>True, wenn der Lauf im Text der Diagnosen an seiner Stelle steht (für Teile einer Zeile).</summary>
-    function RunInDiagnosedLine(const ARun: TPairRun): Boolean;
-    /// <summary>Verschiebbare uses-Einträge des Laufs in Hinweisfarbe (#2465).</summary>
-    procedure TintRun(var ARun: TPairRun; const ASpans: TArray<TAtlasColumnSpan>; const APalette: TAtlasColors);
     /// <summary>Gezeichnete Abblendung der Zeile melden (#628): Zweige und uses-Einträge getrennt.</summary>
     procedure ReportDimmed(const AContext: INTACodeEditorPaintContext; ALine: Integer; const ARect: TRect);
     /// <summary>Lauf ARun färben und zeichnen; False = die IDE zeichnet ihn.</summary>
@@ -222,6 +223,8 @@ const
   cBandAlpha = 28;
   /// <summary>Anteil der Akzentfarbe an verschiebbaren uses-Einträgen (#2465), etwa wie Inlay-Hints.</summary>
   cMovableTint = 0.7;
+  /// <summary>Tabweite, wenn der Puffer keine nennt.</summary>
+  cDefaultTabWidth = 8;
 
 type
   /// <summary>Strich einer Blocklinie in einer Zeile.</summary>
@@ -565,6 +568,30 @@ begin
   end;
 end;
 
+function TAtlasEditorPairs.TPairRun.InDiagnosedLine(ATabWidth: Integer): Boolean;
+var
+  mLineText: string;
+begin
+  Result := (TAtlasProblemsController.Current <> nil) and
+    TAtlasProblemsController.Current.LineText(Context.FileName, Line, mLineText) and
+    TAtlasPairs.RunMatches(TAtlasPairs.DisplayLine(mLineText, ATabWidth), Text, Column);
+end;
+
+procedure TAtlasEditorPairs.TPairRun.Tint(const ASpans: TArray<TAtlasColumnSpan>; ATint: TColor);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Colors) do
+  begin
+    if not Dimmed[mIndex] and TAtlasColumnSpan.Contains(ASpans, Column + mIndex) then
+    begin
+      Colors[mIndex] := ATint;
+      Found := True;
+      Tinted := True;
+    end;
+  end;
+end;
+
 function TAtlasEditorPairs.TPairRun.AnyDimmed: Boolean;
 var
   mIndex: Integer;
@@ -887,7 +914,7 @@ begin
   end
   else
   begin
-    FDimTabWidth := 8;
+    FDimTabWidth := cDefaultTabWidth;
   end;
 end;
 
@@ -898,8 +925,7 @@ begin
   Result := nil;
   mStore := TAtlasProblemsController.Current;
   if not TAtlasIdeSettings.Current.Enabled or not TAtlasIdeSettings.Current.HighlightMovableUses or
-    (mStore = nil) or (Length(mStore.MovableUses(AContext.FileName)) = 0) or
-    TAtlasIdeElements.FileHidden(TAtlasDrawnElement.MovableUses, AContext.FileName) then
+    (mStore = nil) or TAtlasIdeElements.FileHidden(TAtlasDrawnElement.MovableUses, AContext.FileName) then
   begin
     Exit;
   end;
@@ -943,9 +969,12 @@ begin
   begin
     Exit(True);
   end;
-  if Length(mMovable) > 0 then
+  // Verschiebbare uses (#2465): wie beim Abblenden nur, wenn der Lauf im Text der Diagnosen an dieser Stelle steht.
+  if (Length(mMovable) > 0) and (TAtlasColumnSpan.Covers(mMovable, ARun.Column, Length(ARun.Text)) or
+    ARun.InDiagnosedLine(FDimTabWidth)) then
   begin
-    TintRun(ARun, mMovable, mPalette);
+    ARun.Tint(mMovable, TColor(TAtlasColorMath.Mix(mPalette.Accent, TAtlasColor(ColorToRGB(ARun.Original)),
+      cMovableTint)));
   end;
   if mColorsOn then
   begin
@@ -976,7 +1005,7 @@ begin
     Exit;
   end;
   // Teile einer Zeile nur, wenn der Lauf dort im Text der Diagnosen steht (wie bei den Paaren).
-  if not RunInDiagnosedLine(ARun) then
+  if not ARun.InDiagnosedLine(FDimTabWidth) then
   begin
     Exit;
   end;
@@ -987,38 +1016,6 @@ begin
       ARun.Colors[mIndex] := mDim;
       ARun.Dimmed[mIndex] := True;
       ARun.Found := True;
-    end;
-  end;
-end;
-
-function TAtlasEditorPairs.RunInDiagnosedLine(const ARun: TPairRun): Boolean;
-var
-  mLineText: string;
-begin
-  Result := (TAtlasProblemsController.Current <> nil) and
-    TAtlasProblemsController.Current.LineText(ARun.Context.FileName, ARun.Line, mLineText) and
-    TAtlasPairs.RunMatches(TAtlasPairs.DisplayLine(mLineText, FDimTabWidth), ARun.Text, ARun.Column);
-end;
-
-procedure TAtlasEditorPairs.TintRun(var ARun: TPairRun; const ASpans: TArray<TAtlasColumnSpan>;
-  const APalette: TAtlasColors);
-var
-  mTint: TColor;
-  mIndex: Integer;
-begin
-  // Wie beim Abblenden: nur, wenn der Lauf im Text der Diagnosen an dieser Stelle steht.
-  if not TAtlasColumnSpan.Covers(ASpans, ARun.Column, Length(ARun.Text)) and not RunInDiagnosedLine(ARun) then
-  begin
-    Exit;
-  end;
-  mTint := TColor(TAtlasColorMath.Mix(APalette.Accent, TAtlasColor(ColorToRGB(ARun.Original)), cMovableTint));
-  for mIndex := 0 to High(ARun.Colors) do
-  begin
-    if not ARun.Dimmed[mIndex] and TAtlasColumnSpan.Contains(ASpans, ARun.Column + mIndex) then
-    begin
-      ARun.Colors[mIndex] := mTint;
-      ARun.Found := True;
-      ARun.Tinted := True;
     end;
   end;
 end;

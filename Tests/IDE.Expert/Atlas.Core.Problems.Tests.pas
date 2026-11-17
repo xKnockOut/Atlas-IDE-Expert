@@ -772,8 +772,6 @@ begin
   try
     mStore.Update(cFile, cText, True, [mUnused, mMovable], '1', True);
     Assert.AreEqual(1, Integer(Length(mStore.UnusedUses(cFile))), 'nur der ungenutzte');
-    Assert.AreEqual(1, Integer(Length(mStore.MovableUses(cFile))), 'nur der verschiebbare');
-    Assert.AreEqual('System.Generics.Collections', mStore.MovableUses(cFile)[0].UsesUnit);
     mSpans := mStore.MovableSpans(cFile, 3, 4);
     Assert.AreEqual(1, Integer(Length(mSpans)));
     Assert.AreEqual(14, mSpans[0].First);
@@ -783,7 +781,7 @@ begin
     Assert.AreEqual(0, Integer(Length(mStore.MovableSpans('C:\P\Andere.pas', 3, 4))), 'andere Datei');
     // Neue Diagnosen ohne den Eintrag (verschoben): nichts mehr einzufärben.
     mStore.Update(cFile, cText, True, [mUnused], '2', True);
-    Assert.AreEqual(0, Integer(Length(mStore.MovableUses(cFile))));
+    Assert.AreEqual(0, Integer(Length(mStore.MovableSpans(cFile, 3, 4))));
   finally
     mStore.Free;
   end;

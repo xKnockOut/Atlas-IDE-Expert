@@ -195,9 +195,8 @@ type
     function UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
     /// <summary>Spalten ungenutzter uses-Einträge in der Zeile (0-basiert), wie InactiveSpans.</summary>
     function UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
-    /// <summary>uses-Einträge im interface, die nur die implementation braucht (#2465).</summary>
-    function MovableUses(const AFileName: string): TArray<TAtlasProblem>;
-    /// <summary>Spalten verschiebbarer uses-Einträge in der Zeile (0-basiert), wie UsesSpans.</summary>
+    /// <summary>Spalten der uses-Einträge im interface, die nur die implementation braucht (#2465), in der Zeile
+    /// (0-basiert), wie UsesSpans.</summary>
     function MovableSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
     /// <summary>Hinweise zu uses-Einträgen an der Stelle (0-basiert), auch behaltene und verschiebbare.</summary>
     function UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
@@ -1045,7 +1044,8 @@ begin
   Result := SpansOf(AFileName, UnusedUses(AFileName), ALine, ATabWidth);
 end;
 
-function TAtlasProblemStore.MovableUses(const AFileName: string): TArray<TAtlasProblem>;
+function TAtlasProblemStore.MovableSpans(const AFileName: string; ALine, ATabWidth: Integer):
+  TArray<TAtlasColumnSpan>;
 var
   mEntry: TEntry;
 begin
@@ -1054,14 +1054,8 @@ begin
   if mEntry <> nil then
   begin
     CacheUses(mEntry);
-    Result := mEntry.FMovableList;
+    Result := SpansOf(AFileName, mEntry.FMovableList, ALine, ATabWidth);
   end;
-end;
-
-function TAtlasProblemStore.MovableSpans(const AFileName: string; ALine, ATabWidth: Integer):
-  TArray<TAtlasColumnSpan>;
-begin
-  Result := SpansOf(AFileName, MovableUses(AFileName), ALine, ATabWidth);
 end;
 
 function TAtlasProblemStore.UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
