@@ -16,8 +16,6 @@ type
   private
     FRegistrations: TArray<IAtlasRegistration>;
   public
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -104,26 +102,6 @@ uses
   Atlas.UI.Designer.SettingsSection;
 
 { TDesignerSettingsSectionTests }
-
-procedure TDesignerSettingsSectionTests.WarmUp;
-var
-  mRegistrations: TArray<IAtlasRegistration>;
-  mPage: TAtlasSettingsPage;
-begin
-  // Auch der Designer-Abschnitt hat Speicher erster Benutzung (Steuerelemente, Tastenliste), der sonst dem ersten
-  // Test zugerechnet wird.
-  mRegistrations := ProvideSections([TAtlasDesignerSettingsSection]);
-  try
-    mPage := TAtlasSettingsPage.Create(nil);
-    try
-      mPage.LoadFrom(TAtlasPluginSettings.Defaults);
-    finally
-      mPage.Free;
-    end;
-  finally
-    RevokeAll(mRegistrations);
-  end;
-end;
 
 procedure TDesignerSettingsSectionTests.Setup;
 begin
