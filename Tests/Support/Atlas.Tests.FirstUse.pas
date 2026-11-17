@@ -391,6 +391,19 @@ begin
   TDataModule.CreateNew(nil).Free;
 end;
 
+/// <summary>Erster Systemfehler (RaiseLastOSError, z. B. ein Serverstart mit fehlender Datei): EOSError holt seinen
+/// Meldungstext (SOSError) über den Zwischenspeicher der Ressourcentexte von System.SysUtils (ResStringLoad). Der
+/// Text bleibt dort bis zum Programmende und wird in der Finalisierung von System.SysUtils freigegeben.</summary>
+procedure WarmUpOsErrorText;
+begin
+  try
+    RaiseLastOSError(ERROR_PATH_NOT_FOUND);
+  except
+    on EOSError do
+      ;
+  end;
+end;
+
 { TFirstUse }
 
 class procedure TFirstUse.WarmUp;
@@ -402,6 +415,7 @@ begin
   WarmUpTimeZoneAndJsonPath;
   WarmUpSettingsTransfer;
   WarmUpFileErrors;
+  WarmUpOsErrorText;
   WarmUpDataFiles;
   WarmUpDefaultEncoding;
   WarmUpDuplicateCatalog;
