@@ -31,6 +31,8 @@ uses
   System.DateUtils,
   System.JSON,
   System.Generics.Collections,
+  System.RegularExpressions,
+  System.RegularExpressionsCore,
   System.Messaging,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
@@ -416,6 +418,33 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Fehlerpfade der Regex-Engine (System.RegularExpressions) einmal durchlaufen: Ein ungültiger Ausdruck
+/// und ein unbekannter Gruppenname lösen ERegularExpressionError aus; die RTL lädt dabei die Ressourcentexte der
+/// Meldungen und behält sie bis zum Programmende. Das träfe sonst den ersten Test mit einem ungültigen Suchmuster
+/// (Suche/Ersetzen, eigene Muster der Projektaufgaben, Filter des Ereignisprotokolls) oder einem Ersatztext mit
+/// unbekannter Gruppe.</summary>
+procedure WarmUpRegexErrors;
+var
+  mFound: TMatch;
+begin
+  try
+    TRegEx.Create('(abc', [roIgnoreCase]).IsMatch('');
+  except
+    on ERegularExpressionError do
+      ;
+  end;
+  mFound := TRegEx.Create('(?<name>\w+)').Match('Wert');
+  try
+    if mFound.Groups['gibt_es_nicht'].Success then
+    begin
+      raise EInvalidOperation.Create('Unbekannte Gruppe passt');
+    end;
+  except
+    on ERegularExpressionError do
+      ;
+  end;
+end;
+
 /// <summary>Erstes Datenmodul des Prozesses (TDataModule, z. B. als Formular der Designer-Fälschung): Es meldet sich
 /// bei Screen an (Vcl.Forms, TScreen.FDataModules wächst auf 4 Einträge und schrumpft nicht, frei mit Screen in der
 /// Finalisierung der VCL); beim Freigeben nimmt es GlobalNameSpace zum Schreiben (Zähler je Thread, frei mit
@@ -614,6 +643,7 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpRegexErrors;
   WarmUpVcsTools;
   WarmUpVclCanvasList;
   WarmUpVclBitmapCanvases;

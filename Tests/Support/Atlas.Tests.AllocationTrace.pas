@@ -366,6 +366,13 @@ begin
   end;
 end;
 
+procedure SortGroups(AGroups: TList<TGroup>);
+begin
+  // Eigene Routine: Die Hülle der Methodenreferenz legt Delphi schon beim Eintritt in die Routine an. In Report
+  // entstünde sie, bevor die Aufzeichnung ruht, und stünde als Belegung des Tests im Bericht.
+  AGroups.Sort(TComparer<TGroup>.Construct(CompareGroups));
+end;
+
 /// <summary>True, solange der Speichermanager noch über diese Haken läuft.</summary>
 function HooksActive: Boolean;
 var
@@ -539,7 +546,7 @@ begin
   try
     CollectGroups(mGroups);
     DescribeGroups(mGroups);
-    mGroups.Sort(TComparer<TGroup>.Construct(CompareGroups));
+    SortGroups(mGroups);
     Result := GroupsText(mGroups, AMaxGroups);
   finally
     mGroups.Free;
