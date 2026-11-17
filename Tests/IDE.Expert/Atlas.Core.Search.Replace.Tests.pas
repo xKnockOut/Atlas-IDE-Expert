@@ -15,9 +15,6 @@ type
   [Category('Atlas.IDE.Search')]
   TAtlasSearchReplaceTests = class
   public
-    /// <summary>Einmalige Puffer der Regex-Engine (Fehlertexte, Gruppen) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure RegexFindsMatchesPerLine;
     [Test]
@@ -117,12 +114,6 @@ begin
 end;
 
 { TAtlasSearchReplaceTests }
-
-procedure TAtlasSearchReplaceTests.WarmUpFirstUse;
-begin
-  InvalidRegexReportsErrorAndFindsNothing;
-  ExpandHandlesGroupsNamesAndDollar;
-end;
 
 procedure TAtlasSearchReplaceTests.RegexFindsMatchesPerLine;
 begin
