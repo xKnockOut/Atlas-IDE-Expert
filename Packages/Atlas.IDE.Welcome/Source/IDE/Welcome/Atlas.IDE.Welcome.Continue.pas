@@ -53,6 +53,7 @@ uses
   DockForm,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Continue,
+  Atlas.Core.Welcome.ContinueQueries,
   Atlas.Core.Welcome.Saved,
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.Continue,
@@ -113,22 +114,6 @@ type
       /// <summary>Letztes Schließen einer Datei und letzter geschriebener Stand.</summary>
       Ticks: TAtlasContinueTicks;
     end;
-
-    /// <summary>Normiertes Ziel → HEAD-Stand (VcsKind, Head, Upstream, UpstreamRevision) bzw. Zeitpunkt der
-    /// letzten und der laufenden Abfrage.</summary>
-    THeads = record
-      States: TDictionary<string, TAtlasWorkState>;
-      Fresh: TDictionary<string, UInt64>;
-      Querying: TDictionary<string, UInt64>;
-    end;
-
-    /// <summary>Eingehende Commits zum obersten Eintrag.</summary>
-    TIncomingState = record
-      Data: TAtlasContinueIncoming;
-      Key: string;
-      Fresh: UInt64;
-      Started: UInt64;
-    end;
   private
     FMessage: TAtlasMessageSink;
     FNotifiers: TNotifiers;
@@ -136,8 +121,9 @@ type
     // Großgeschriebener Pfad → letzte Änderungsstelle dieser Sitzung.
     FChanges: TDictionary<string, TAtlasWorkTab>;
     FBatch: TBatch;
-    FHeads: THeads;
-    FIncoming: TIncomingState;
+    // Normiertes Ziel → HEAD-Stand und Abfragen; eingehende Commits zum obersten Eintrag.
+    FHeads: TAtlasContinueHeads;
+    FIncoming: TAtlasContinueIncomingQueries;
     FNotice: string;
     // Reiter „Issues“ (#2052); die Referenz hält es am Leben, auch solange Frames es noch kennen.
     FIssues: IInterface;
@@ -189,7 +175,6 @@ uses
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.VersionControl.Contract,
   Atlas.Core.Welcome.Search,
   Atlas.UI.Welcome.Strings,
   Atlas.UI.Welcome.Frame,
@@ -353,16 +338,6 @@ begin
   Result := TAtlasProjectSummaries.NormalizedPath(APath);
 end;
 
-function IncomingRunning(ASelf: TAtlasIdeContinue): Boolean;
-begin
-  Result := TAtlasContinueSession.Recent(ASelf.FIncoming.Started, GetTickCount64,
-    TAtlasWelcomeContinue.cQueryLimitMs);
-  if not Result then
-  begin
-    ASelf.FIncoming.Started := 0;
-  end;
-end;
-
 /// <summary>Oberster Eintrag; leer ohne.</summary>
 function Top(ASelf: TAtlasIdeContinue): TAtlasContinueEntry;
 var
@@ -408,29 +383,6 @@ begin
     end);
 end;
 
-/// <summary>Ergebnis einer HEAD-Abfrage im Hauptthread.</summary>
-procedure HeadArrived(ASelf: TAtlasIdeContinue; const AQuery: THeadQuery; AOk: Boolean;
-  const AHead: TAtlasWorkState);
-var
-  mCurrent: UInt64;
-begin
-  if ASelf.FHeads.Querying.TryGetValue(AQuery.Key, mCurrent) and (mCurrent = AQuery.Started) then
-  begin
-    ASelf.FHeads.Querying.Remove(AQuery.Key);
-  end;
-  ASelf.FHeads.Fresh.AddOrSetValue(AQuery.Key, GetTickCount64);
-  if not AOk then
-  begin
-    Exit;
-  end;
-  ASelf.FHeads.States.AddOrSetValue(AQuery.Key, AHead);
-  if AQuery.Stamp > 0 then
-  begin
-    StoreHead(AQuery, AHead);
-    ASelf.Changed;
-  end;
-end;
-
 /// <summary>Hauptbranch des Projekts (#1286) für Branches ohne verfolgten Branch; .atlas und Gruppe im
 /// Hauptthread.</summary>
 function MainBranchFor(const AProject: string): string;
@@ -447,10 +399,12 @@ end;
 
 /// <summary>Abfrage eingehender Commits für den obersten Eintrag fällig (AEntry); nicht bei laufender Abfrage
 /// oder (ohne AForce) frischem Ergebnis.</summary>
-function IncomingDue(ASelf: TAtlasIdeContinue; AForce: Boolean; out AEntry: TAtlasContinueEntry): Boolean;
+function IncomingDue(ASelf: TAtlasIdeContinue; AQueries: TAtlasContinueIncomingQueries; AEnabled, AForce: Boolean;
+  out AEntry: TAtlasContinueEntry): Boolean;
 begin
   AEntry := Default(TAtlasContinueEntry);
-  Result := ASelf.Enabled and TAtlasIdeSettings.Current.WelcomePageContinueIncoming and not IncomingRunning(ASelf);
+  Result := AEnabled and TAtlasIdeSettings.Current.WelcomePageContinueIncoming and
+    not AQueries.Running(GetTickCount64);
   if Result then
   begin
     AEntry := Top(ASelf);
@@ -458,8 +412,7 @@ begin
   end;
   if Result then
   begin
-    Result := TAtlasContinueSession.IncomingDue(AForce, Key(AEntry.Project) = ASelf.FIncoming.Key,
-      ASelf.FIncoming.Fresh, GetTickCount64);
+    Result := AQueries.Due(AForce, Key(AEntry.Project), GetTickCount64);
   end;
 end;
 
@@ -467,60 +420,42 @@ end;
 /// Anbieter nie ab.</summary>
 function ProbeIncoming(const AQuery: TIncomingQuery; out AFound: TAtlasContinueIncoming): Boolean;
 var
-  mFetchVcs: IAtlasVersionControl;
+  mProbe: TAtlasContinueProbe;
 begin
-  mFetchVcs := nil;
+  mProbe := TAtlasContinueProbe.Create(AQuery.Project, AQuery.MainBranch, AQuery.State, AQuery.Stamp);
   if AQuery.Fetch then
   begin
-    mFetchVcs := TAtlasIdeVcs.ForFolder(AQuery.Dir, TAtlasWelcomeContinue.cFetchTimeoutMs);
-  end;
-  Result := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(AQuery.Dir,
-    TAtlasWelcomeContinue.cCallTimeoutMs), mFetchVcs, TAtlasContinueProbe.Create(AQuery.Project, AQuery.MainBranch,
-    AQuery.State, AQuery.Stamp), AFound);
-end;
-
-/// <summary>Ergebnis der Abfrage eingehender Commits im Hauptthread.</summary>
-procedure IncomingArrived(ASelf: TAtlasIdeContinue; const AQuery: TIncomingQuery; AOk: Boolean;
-  const AFound: TAtlasContinueIncoming);
-begin
-  if ASelf.FIncoming.Started = AQuery.Started then
+    Result := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(AQuery.Dir,
+      TAtlasWelcomeContinue.cCallTimeoutMs), TAtlasIdeVcs.ForFolder(AQuery.Dir, TAtlasWelcomeContinue.cFetchTimeoutMs),
+      mProbe, AFound);
+  end
+  else
   begin
-    ASelf.FIncoming.Started := 0;
+    Result := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(AQuery.Dir,
+      TAtlasWelcomeContinue.cCallTimeoutMs), nil, mProbe, AFound);
   end;
-  if ASelf.FIncoming.Key <> AQuery.Key then
-  begin
-    Exit;
-  end;
-  ASelf.FIncoming.Fresh := GetTickCount64;
-  ASelf.FIncoming.Data := AFound;
-  if not AOk then
-  begin
-    // Fehler oder Zeitüberschreitung: kein Abschnitt.
-    ASelf.FIncoming.Data := Default(TAtlasContinueIncoming);
-    ASelf.FIncoming.Data.Project := AQuery.Project;
-  end;
-  ASelf.Changed;
 end;
 
 /// <summary>Gespeicherter Stand des Projekts AProject mit Reitern; sonst False mit Meldung.</summary>
-function ResumeState(ASelf: TAtlasIdeContinue; const AProject: string; out AState: TAtlasWorkState): Boolean;
+function ResumeState(AEnabled: Boolean; const AMessage: TAtlasMessageSink; const AProject: string;
+  out AState: TAtlasWorkState): Boolean;
 var
   mSummary: TAtlasProjectSummary;
 begin
   Result := False;
   AState := TAtlasWorkState.Empty;
-  if not ASelf.Enabled then
+  if not AEnabled then
   begin
-    ASelf.FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
+    AMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueDisabled));
   end
   else if not TAtlasProjectSummaries.Load(TAtlasIdeProjectSummaries.Folder, AProject, mSummary) or
     not TAtlasWelcomeContinue.Read(mSummary, AState) or (AState.TabCount = 0) then
   begin
-    ASelf.FMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
+    AMessage.Say(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueNothing));
   end
   else if not FileExists(AProject) then
   begin
-    ASelf.FMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
+    AMessage.Say(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeProjectsMissing, [AProject]));
   end
   else
   begin
@@ -548,9 +483,8 @@ begin
   FNotifiers.IdeIndex := -1;
   FNotifiers.EditIndex := -1;
   FChanges := TDictionary<string, TAtlasWorkTab>.Create;
-  FHeads.States := TDictionary<string, TAtlasWorkState>.Create;
-  FHeads.Fresh := TDictionary<string, UInt64>.Create;
-  FHeads.Querying := TDictionary<string, UInt64>.Create;
+  FHeads := TAtlasContinueHeads.Create;
+  FIncoming := TAtlasContinueIncomingQueries.Create;
   FIssues := TAtlasIdeContinueIssues.Create(AMessage, FChanges, Changed);
 end;
 
@@ -558,9 +492,8 @@ destructor TAtlasIdeContinue.Destroy;
 begin
   Stop;
   FIssues := nil;
-  FHeads.Querying.Free;
-  FHeads.Fresh.Free;
-  FHeads.States.Free;
+  FIncoming.Free;
+  FHeads.Free;
   FChanges.Free;
   inherited;
 end;
@@ -602,7 +535,6 @@ end;
 procedure TAtlasIdeContinue.Activated;
 var
   mTarget: string;
-  mLast: UInt64;
 begin
   // HEAD beim Arbeiten aktuell halten (höchstens einmal je Minute), damit er beim Beenden bekannt ist.
   if not Recording or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming then
@@ -610,8 +542,7 @@ begin
     Exit;
   end;
   mTarget := TAtlasIdeContinueEditor.CurrentTarget;
-  if (mTarget = '') or (FHeads.Fresh.TryGetValue(Key(mTarget), mLast) and
-    TAtlasContinueSession.Recent(mLast, GetTickCount64, TAtlasWelcomeContinue.cRefreshMs)) then
+  if (mTarget = '') or FHeads.Recent(Key(mTarget), GetTickCount64, TAtlasWelcomeContinue.cRefreshMs) then
   begin
     Exit;
   end;
@@ -697,7 +628,7 @@ begin
     TAtlasWelcomeContinue.Read(mSummary, mOld);
   end;
   mState := TAtlasWelcomeContinue.Build(ASnapshot.Tabs, ASnapshot.Active, FChanges.Values.ToArray, mOld, mStamp);
-  if FHeads.States.TryGetValue(mTargetKey, mHead) then
+  if FHeads.TryHead(mTargetKey, mHead) then
   begin
     TakeHead(mState, mHead);
   end;
@@ -713,10 +644,7 @@ begin
   FBatch.Snapshot := Default(TAtlasContinueSnapshot);
   // Neue Sitzung: Änderungen gehören zum geschriebenen Stand.
   FChanges.Clear;
-  if FIncoming.Key = mTargetKey then
-  begin
-    FIncoming.Fresh := 0;
-  end;
+  FIncoming.Outdate(mTargetKey);
   // HEAD frisch abfragen und nachtragen; beim Beenden der IDE weder Abfrage noch neues Zeichnen.
   if not AProbe then
   begin
@@ -730,7 +658,6 @@ procedure TAtlasIdeContinue.QueryHead(const ATarget: string; AStamp: TDateTime);
 var
   mKeep: IAtlasContinueSource;
   mQuery: THeadQuery;
-  mStarted: UInt64;
   mDir: string;
   mOk: Boolean;
   mHead: TAtlasWorkState;
@@ -741,8 +668,7 @@ begin
   end;
   mQuery := Default(THeadQuery);
   mQuery.Key := Key(ATarget);
-  if FHeads.Querying.TryGetValue(mQuery.Key, mStarted) and
-    TAtlasContinueSession.Recent(mStarted, GetTickCount64, TAtlasWelcomeContinue.cQueryLimitMs) then
+  if FHeads.Querying(mQuery.Key, GetTickCount64) then
   begin
     Exit;
   end;
@@ -750,7 +676,7 @@ begin
   mQuery.Root := TAtlasIdeProjectSummaries.Folder;
   mQuery.Started := GetTickCount64;
   mQuery.Stamp := AStamp;
-  FHeads.Querying.AddOrSetValue(mQuery.Key, mQuery.Started);
+  FHeads.Started(mQuery.Key, mQuery.Started);
   mKeep := Self;
   mDir := ExtractFileDir(ATarget);
   mOk := False;
@@ -763,14 +689,19 @@ begin
     end,
     procedure
     begin
-      if (mKeep <> nil) and not FStopped then
+      if (mKeep = nil) or FStopped then
       begin
-        HeadArrived(Self, mQuery, mOk, mHead);
+        Exit;
+      end;
+      FHeads.Arrived(mQuery.Key, mQuery.Started, GetTickCount64, mOk, mHead);
+      if mOk and (mQuery.Stamp > 0) then
+      begin
+        StoreHead(mQuery, mHead);
+        Changed;
       end;
     end) then
   begin
-    FHeads.Querying.Remove(mQuery.Key);
-    FHeads.Fresh.AddOrSetValue(mQuery.Key, GetTickCount64);
+    FHeads.NotStarted(mQuery.Key, GetTickCount64);
   end;
 end;
 
@@ -782,7 +713,7 @@ var
   mOk: Boolean;
   mFound: TAtlasContinueIncoming;
 begin
-  if not IncomingDue(Self, AForce, mEntry) then
+  if not IncomingDue(Self, FIncoming, Enabled, AForce, mEntry) then
   begin
     Exit;
   end;
@@ -798,13 +729,7 @@ begin
   mQuery.Started := GetTickCount64;
   mOk := False;
   mFound := Default(TAtlasContinueIncoming);
-  FIncoming.Started := mQuery.Started;
-  // Ein anderer oberster Eintrag: alte Commits nicht mehr zeigen.
-  if mQuery.Key <> FIncoming.Key then
-  begin
-    FIncoming.Data := Default(TAtlasContinueIncoming);
-  end;
-  FIncoming.Key := mQuery.Key;
+  FIncoming.Started(mQuery.Key, mQuery.Started);
   if not TAtlasIdeVcs.Run(
     procedure
     begin
@@ -812,14 +737,14 @@ begin
     end,
     procedure
     begin
-      if (mKeep <> nil) and not FStopped then
+      if (mKeep <> nil) and not FStopped and
+        FIncoming.Arrived(mQuery.Key, mQuery.Project, mQuery.Started, GetTickCount64, mOk, mFound) then
       begin
-        IncomingArrived(Self, mQuery, mOk, mFound);
+        Changed;
       end;
     end) then
   begin
-    FIncoming.Started := 0;
-    FIncoming.Fresh := GetTickCount64;
+    FIncoming.NotStarted(GetTickCount64);
   end;
 end;
 
@@ -997,10 +922,7 @@ begin
   begin
     Exit;
   end;
-  if TAtlasContinueSession.IncomingFits(Top(Self).Project, FIncoming.Key, FIncoming.Data.Project) then
-  begin
-    Result := FIncoming.Data;
-  end;
+  Result := FIncoming.Current(Top(Self).Project);
 end;
 
 function TAtlasIdeContinue.IncomingQuerying: Boolean;
@@ -1008,7 +930,8 @@ var
   mEntry: TAtlasContinueEntry;
 begin
   Result := False;
-  if not Enabled or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming or not IncomingRunning(Self) then
+  if not Enabled or not TAtlasIdeSettings.Current.WelcomePageContinueIncoming or
+    not FIncoming.Running(GetTickCount64) then
   begin
     Exit;
   end;
@@ -1051,7 +974,7 @@ begin
       Plan: TAtlasContinuePlan;
       Tab: TAtlasWorkTab;
     begin
-      if not ResumeState(Self, mProject, State) then
+      if not ResumeState(Enabled, FMessage, mProject, State) then
       begin
         Exit;
       end;

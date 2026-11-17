@@ -27,10 +27,8 @@
 // - Kopf: Grußzeile nach Uhrzeit und Vorname des Windows-Kontos, Version,
 //   Kurzstatus aus Server und Index; nach jeder Änderung im Statusfeld neu
 //   bestimmt, gezeichnet aber nur, wenn sich daran etwas ändert (das Statusfeld
-//   ändert sich oft, der Kopf selten).
-//   Den Anzeigenamen des Kontos schlägt TAtlasWelcomeAccountName einmal im
-//   Hintergrund nach (bei Domänenkonten fragt Windows dafür den
-//   Domänencontroller; im Hauptthread kostete das bei jedem Neuzeichnen).
+//   ändert sich oft, der Kopf selten). Füllen der Köpfe und Name des Kontos:
+//   Atlas.IDE.Welcome.Headers.
 //   Rechts das Suchfeld (#760, welcomePage.search), angebunden an Search.
 // - Karte „Neu in Atlas“ (#756, WhatsNew): nach einem Update oben in der
 //   ersten Spalte; Kontextmenü von Frame „Atlas“ und Kopf mit „Neuigkeiten
@@ -79,33 +77,21 @@ uses
   System.SysUtils,
   System.Classes,
   Atlas.Core.Status.Lines,
-  Atlas.Core.Welcome.AccountName,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.Frame,
-  Atlas.UI.Welcome.Header,
   Atlas.UI.Welcome.Board,
   Atlas.IDE.Status.Lines,
   Atlas.IDE.Welcome.Page,
   Atlas.IDE.Welcome.Search,
   Atlas.IDE.Welcome.Layouts,
   Atlas.IDE.Welcome.Areas,
+  Atlas.IDE.Welcome.Headers,
   Atlas.IDE.Welcome.IdeLayout,
   Atlas.IDE.Welcome.ProjectWatch;
 
 type
   TAtlasIdeWelcome = class
   private type
-    /// <summary>Was die Komposition hereinreicht (siehe Create).</summary>
-    THooks = record
-      ServerInfo: TFunc<TAtlasServerInfo>;
-      Indexing: TAtlasIndexingFunc;
-      Units: TFunc<Integer>;
-      Message: TProc<string>;
-      /// <summary>Anzeigename des Kontos für den Gruß; im Hintergrund nachgeschlagen (gehört der Steuerung).
-      /// </summary>
-      Account: TAtlasWelcomeAccountName;
-    end;
-
     /// <summary>Kennungen der Beobachter bei den Bereichen und beim Statusfeld.</summary>
     TListeners = record
       Sections: Integer;
@@ -130,7 +116,8 @@ type
   private
     // Abbau läuft: Was jetzt noch eingereiht würde, liefe nach dem Entladen des Moduls.
     FStopping: Boolean;
-    FHooks: THooks;
+    // Köpfe: Gruß, Kurzstatus, Suchfeld, Menü „Neu in Atlas“.
+    FHeaders: TAtlasIdeWelcomeHeaders;
     FListeners: TListeners;
     FDirty: TDirty;
     FSync: TSyncState;
@@ -142,7 +129,6 @@ type
     // Hält die Quelle für „Seite anpassen“ am Leben; die Tafeln halten sie ebenfalls.
     FLayoutsRef: IInterface;
     procedure Announce(const AIds: TArray<string>);
-    procedure AttachMenu(AFrame: TAtlasWelcomeFrame);
     procedure SectionChanged(const AId: string);
     procedure Flush;
     function CreateClient(const APluginId: string; AOwner: TComponent): TAtlasWelcomeFrame;
@@ -150,14 +136,9 @@ type
     procedure RefreshClient(AClient: TAtlasWelcomeFrame);
     /// <summary>Tafel füllen; AFold: Fenster „Atlas-Start“ (Spalten falten, wenn es schmal ist).</summary>
     procedure FillBoard(ABoard: TAtlasWelcomeBoardFrame; AFold: Boolean);
-    /// <summary>Gruß und Kurzstatus, wie der Kopf sie jetzt zeigen soll.</summary>
-    function HeaderInfo: TAtlasWelcomeHeaderInfo;
-    /// <summary>Kopf ganz füllen (Einstellungen, Suchfeld, Menü, Thema).</summary>
-    procedure FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
-    procedure UpdateHeaders;
-    /// <summary>Nur Gruß und Kurzstatus aller gezeigten Köpfe; unverändert bleibt der Kopf unberührt.</summary>
-    procedure UpdateHeaderInfos;
     procedure SetLayout(const AValue: string);
+    /// <summary>Köpfe mit Kurzstatus aus AStatus anlegen (nach FAreas).</summary>
+    procedure CreateHeaders(const AStatus: TAtlasIdeWelcomeStatusHooks);
   public
     /// <summary>Vor dem Abbau: Kacheln melden beim Freigeben Änderungen, die niemand mehr zeichnet.</summary>
     procedure BeginStop;
@@ -193,76 +174,25 @@ implementation
 
 uses
   Atlas.Core.Diagnostics.MainThread,
-  Winapi.Windows,
-  Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Registry,
   Atlas.Core.Welcome.Sections,
-  Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Layout,
   Atlas.Core.Welcome.Layouts,
   Atlas.Core.Welcome.HostLayout,
   Atlas.UI.Welcome.Strings,
-  Atlas.UI.Welcome.WhatsNew,
+  Atlas.UI.Welcome.Header,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Welcome.Window;
-
-const
-  cNameDisplay = 3;
-
-function GetUserNameExW(ANameFormat: Integer; ABuffer: PWideChar; var ASize: ULONG): BOOL; stdcall;
-  external 'secur32.dll' name 'GetUserNameExW';
 
 var
   // Lebt die Steuerung noch? Für Arbeit, die über die Nachrichtenschleife kommt.
   Instance: TAtlasIdeWelcome;
 
-/// <summary>Anzeigename des Windows-Kontos; fragt bei Domänenkonten den Domänencontroller (nur im Hintergrund
-/// aufrufen, siehe TAtlasWelcomeAccountName).</summary>
-function DisplayName: string;
-var
-  mSize: ULONG;
-  mBuffer: array[0..255] of WideChar;
-begin
-  // Puffer leeren und nur die gemeldete Länge übernehmen: Bei lokalen Konten meldet die Funktion teils
-  // Erfolg, ohne etwas zu schreiben; dann stand Speicherrest als Vorname im Gruß.
-  FillChar(mBuffer, SizeOf(mBuffer), 0);
-  mSize := Length(mBuffer);
-  Result := '';
-  if GetUserNameExW(cNameDisplay, @mBuffer[0], mSize) and (mSize > 0) and (mSize < ULONG(Length(mBuffer))) then
-  begin
-    SetString(Result, PWideChar(@mBuffer[0]), mSize);
-  end;
-  Result := Trim(Result);
-end;
-
 function Settings: TAtlasPluginSettings;
 begin
   Result := TAtlasIdeSettings.Current;
-end;
-
-/// <summary>Nachschlagen des Anzeigenamens für TAtlasWelcomeAccountName (läuft im Hintergrund).</summary>
-function AccountLookup: TFunc<string>;
-begin
-  Result :=
-    function: string
-    begin
-      Result := DisplayName;
-    end;
-end;
-
-/// <summary>Der Name ist da: Kopf neu zeichnen, solange die Steuerung lebt.</summary>
-function AccountChanged: TProc;
-begin
-  Result :=
-    procedure
-    begin
-      if Instance <> nil then
-      begin
-        Instance.SectionChanged(TAtlasWelcomeIds.cHeader);
-      end;
-    end;
 end;
 
 { Hilfen }
@@ -270,44 +200,6 @@ end;
 function BoardId: string;
 begin
   Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard);
-end;
-
-/// <summary>Gezeigte Köpfe: eigener Bereich und Tafel auf der Willkommensseite der IDE, Tafel im Fenster
-/// „Atlas-Start“.</summary>
-function Headers: TArray<TAtlasWelcomeHeaderFrame>;
-var
-  mClient: TAtlasWelcomeFrame;
-  mBoard: TAtlasWelcomeBoardFrame;
-begin
-  Result := nil;
-  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader));
-  if mClient is TAtlasWelcomeHeaderFrame then
-  begin
-    Result := Result + [TAtlasWelcomeHeaderFrame(mClient)];
-  end;
-  mClient := TAtlasIdeWelcomePage.Client(BoardId);
-  if mClient is TAtlasWelcomeBoardFrame then
-  begin
-    Result := Result + [TAtlasWelcomeBoardFrame(mClient).Header];
-  end;
-  mBoard := TAtlasIdeWelcomeWindow.ExistingBoard;
-  if mBoard <> nil then
-  begin
-    Result := Result + [mBoard.Header];
-  end;
-end;
-
-/// <summary>Kopfzeile ohne Gruß: Version des Plugins (die des Servers steht im Statusfeld), Phase, Index.
-/// </summary>
-function StatusInfo(const AServer: TAtlasServerInfo; AIndexing: Boolean; APercent, AUnits: Integer):
-  TAtlasWelcomeHeaderInfo;
-begin
-  Result := Default(TAtlasWelcomeHeaderInfo);
-  Result.Version := TAtlasPluginVersion.cVersion;
-  Result.Phase := AServer.Phase;
-  Result.Units := AUnits;
-  Result.Indexing := AIndexing;
-  Result.Percent := APercent;
 end;
 
 function CaptionOf(const APluginId: string): string;
@@ -473,6 +365,15 @@ begin
   end;
 end;
 
+function StatusHooks(const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
+  const AUnits: TFunc<Integer>): TAtlasIdeWelcomeStatusHooks;
+begin
+  Result := Default(TAtlasIdeWelcomeStatusHooks);
+  Result.ServerInfo := AServerInfo;
+  Result.Indexing := AIndexing;
+  Result.Units := AUnits;
+end;
+
 { TAtlasIdeWelcome }
 
 constructor TAtlasIdeWelcome.Create(const AServerInfo: TFunc<TAtlasServerInfo>;
@@ -480,12 +381,8 @@ constructor TAtlasIdeWelcome.Create(const AServerInfo: TFunc<TAtlasServerInfo>;
 begin
   inherited Create;
   Instance := Self;
-  FHooks.ServerInfo := AServerInfo;
-  FHooks.Indexing := AIndexing;
-  FHooks.Units := AUnits;
-  FHooks.Message := AMessage;
   FAreas := TAtlasIdeWelcomeAreas.Create;
-  FHooks.Account := TAtlasWelcomeAccountName.Create(AccountLookup(), AccountChanged());
+  CreateHeaders(StatusHooks(AServerInfo, AIndexing, AUnits));
   FIdeLayout := TAtlasIdeWelcomeIdeLayout.Create(AMessage);
   FLayouts := TAtlasIdeWelcomeLayouts.Create(
     procedure
@@ -540,7 +437,10 @@ destructor TAtlasIdeWelcome.Destroy;
 begin
   Instance := nil;
   // Zuerst: wartet eine laufende Abfrage des Namens ab; ihr Abschluss erreicht danach nichts mehr.
-  FreeAndNil(FHooks.Account);
+  if FHeaders <> nil then
+  begin
+    FHeaders.Stop;
+  end;
   FreeAndNil(FProjectWatch);
   // Vor den Frames: löst die Suchfelder, die noch leben.
   FreeAndNil(FSearch);
@@ -556,7 +456,25 @@ begin
   FLayouts := nil;
   FLayoutsRef := nil;
   FreeAndNil(FIdeLayout);
+  FreeAndNil(FHeaders);
   inherited;
+end;
+
+procedure TAtlasIdeWelcome.CreateHeaders(const AStatus: TAtlasIdeWelcomeStatusHooks);
+begin
+  FHeaders := TAtlasIdeWelcomeHeaders.Create(AStatus, FAreas,
+    function: TAtlasIdeWelcomeSearch
+    begin
+      Result := FSearch;
+    end,
+    procedure
+    begin
+      // Der Name ist da: Kopf neu zeichnen, solange die Steuerung lebt.
+      if Instance <> nil then
+      begin
+        Instance.SectionChanged(TAtlasWelcomeIds.cHeader);
+      end;
+    end);
 end;
 
 procedure TAtlasIdeWelcome.Announce(const AIds: TArray<string>);
@@ -585,37 +503,6 @@ begin
     mItems := mItems + [mItem];
   end;
   FAreas.WhatsNew.Announce(mItems);
-end;
-
-/// <summary>Kontextmenü „Neu in Atlas“ an Frame „Atlas“ bzw. Kopf hängen oder (off) entfernen.</summary>
-procedure TAtlasIdeWelcome.AttachMenu(AFrame: TAtlasWelcomeFrame);
-var
-  mMenu: TAtlasWhatsNewMenu;
-begin
-  if AFrame = nil then
-  begin
-    Exit;
-  end;
-  mMenu := nil;
-  if AFrame.PopupMenu is TAtlasWhatsNewMenu then
-  begin
-    mMenu := TAtlasWhatsNewMenu(AFrame.PopupMenu);
-  end;
-  if (FAreas.WhatsNew = nil) or not FAreas.WhatsNew.Active then
-  begin
-    if mMenu <> nil then
-    begin
-      AFrame.PopupMenu := nil;
-      mMenu.Free;
-    end;
-    Exit;
-  end;
-  if mMenu = nil then
-  begin
-    mMenu := TAtlasWhatsNewMenu.Create(AFrame);
-    AFrame.PopupMenu := mMenu;
-  end;
-  mMenu.Source := FAreas.WhatsNew;
 end;
 
 procedure TAtlasIdeWelcome.SectionChanged(const AId: string);
@@ -660,7 +547,7 @@ begin
         if SameText(Item, TAtlasWelcomeIds.cHeader) then
         begin
           // Statusfeld oder Kontoname: nur Gruß und Kurzstatus, und nur, wenn sich daran etwas ändert.
-          UpdateHeaderInfos;
+          FHeaders.UpdateInfos;
         end
         else
         begin
@@ -681,7 +568,7 @@ begin
   if SameText(mId, TAtlasWelcomeIds.cHeader) then
   begin
     mHeader := TAtlasWelcomeHeaderFrame.Create(AOwner);
-    FillHeader(mHeader);
+    FHeaders.Fill(mHeader);
     Result := mHeader;
   end
   else if SameText(mId, TAtlasWelcomeIds.cBoard) then
@@ -730,7 +617,7 @@ begin
   end
   else if AClient is TAtlasWelcomeHeaderFrame then
   begin
-    FillHeader(TAtlasWelcomeHeaderFrame(AClient));
+    FHeaders.Fill(TAtlasWelcomeHeaderFrame(AClient));
   end
   else if AClient <> nil then
   begin
@@ -761,104 +648,11 @@ begin
     mLayout := mLayout.MovedToTop(TAtlasWelcomeIds.cNews);
   end;
   ABoard.Header.Visible := Settings.WelcomePageHeader;
-  FillHeader(ABoard.Header);
-  AttachMenu(ABoard);
+  FHeaders.Fill(ABoard.Header);
+  FHeaders.AttachMenu(ABoard);
   ABoard.AutoFold := AFold;
   ABoard.Source := FLayouts;
   ABoard.Rebuild(TAtlasWelcomeSections.Default.Visible, mLayout, mLayout.Columns);
-end;
-
-function TAtlasIdeWelcome.HeaderInfo: TAtlasWelcomeHeaderInfo;
-var
-  mServer: TAtlasServerInfo;
-  mPercent, mUnits: Integer;
-  mIndexing: Boolean;
-  mHour, mMinute, mSecond, mMSec: Word;
-begin
-  mServer := Default(TAtlasServerInfo);
-  if Assigned(FHooks.ServerInfo) then
-  begin
-    mServer := FHooks.ServerInfo();
-  end;
-  mPercent := -1;
-  mIndexing := False;
-  if Assigned(FHooks.Indexing) then
-  begin
-    mIndexing := FHooks.Indexing(mPercent);
-  end;
-  mUnits := -1;
-  if Assigned(FHooks.Units) then
-  begin
-    mUnits := FHooks.Units();
-  end;
-  DecodeTime(Now, mHour, mMinute, mSecond, mMSec);
-  Result := StatusInfo(mServer, mIndexing, mPercent, mUnits);
-  Result.Greeting := Settings.WelcomePageGreeting;
-  Result.Hour := mHour;
-  // Ohne Grußzeile kein Nachschlagen des Namens (bei Domänenkonten eine Anfrage an den Domänencontroller).
-  if Result.Greeting then
-  begin
-    Result.FirstName := TAtlasWelcomeGreeting.FirstName(FHooks.Account.Name, GetEnvironmentVariable('USERNAME'));
-  end;
-end;
-
-procedure TAtlasIdeWelcome.FillHeader(AHeader: TAtlasWelcomeHeaderFrame);
-begin
-  if AHeader = nil then
-  begin
-    Exit;
-  end;
-  // Thema, Sprache oder Einstellungen können sich geändert haben: alles neu setzen.
-  AHeader.Renew;
-  AHeader.ShowInfo(HeaderInfo);
-  AHeader.ShowSearch(Settings.WelcomePageSearch and (FSearch <> nil));
-  if (FSearch <> nil) and (AHeader.Search <> nil) then
-  begin
-    FSearch.Attach(AHeader.Search);
-  end;
-  AttachMenu(AHeader);
-end;
-
-procedure TAtlasIdeWelcome.UpdateHeaders;
-var
-  mClient: TAtlasWelcomeFrame;
-  mBoard: TAtlasWelcomeBoardFrame;
-begin
-  mClient := TAtlasIdeWelcomePage.Client(TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cHeader));
-  if mClient is TAtlasWelcomeHeaderFrame then
-  begin
-    FillHeader(TAtlasWelcomeHeaderFrame(mClient));
-  end;
-  mClient := TAtlasIdeWelcomePage.Client(BoardId);
-  if mClient is TAtlasWelcomeBoardFrame then
-  begin
-    TAtlasWelcomeBoardFrame(mClient).Header.Visible := Settings.WelcomePageHeader;
-    FillHeader(TAtlasWelcomeBoardFrame(mClient).Header);
-  end;
-  mBoard := TAtlasIdeWelcomeWindow.ExistingBoard;
-  if mBoard <> nil then
-  begin
-    mBoard.Header.Visible := Settings.WelcomePageHeader;
-    FillHeader(mBoard.Header);
-  end;
-end;
-
-procedure TAtlasIdeWelcome.UpdateHeaderInfos;
-var
-  mHeaders: TArray<TAtlasWelcomeHeaderFrame>;
-  mHeader: TAtlasWelcomeHeaderFrame;
-  mInfo: TAtlasWelcomeHeaderInfo;
-begin
-  mHeaders := Headers;
-  if mHeaders = nil then
-  begin
-    Exit;
-  end;
-  mInfo := HeaderInfo;
-  for mHeader in mHeaders do
-  begin
-    mHeader.ShowInfo(mInfo);
-  end;
 end;
 
 procedure TAtlasIdeWelcome.SetLayout(const AValue: string);
@@ -908,7 +702,7 @@ begin
       FSync.ShownIde := mIdePage;
       FSync.LastLayout := mCurrent.WelcomePageLayout;
       FSync.Started := True;
-      UpdateHeaders;
+      FHeaders.UpdateAll;
       mLaps[4] := ElapsedMs(mStart);
       if mLaps[4] >= cSlowSyncMs then
       begin
@@ -1004,7 +798,7 @@ begin
       TAtlasIdeWelcomePage.ApplyTheme;
       TAtlasIdeWelcomeWindow.ApplyTheme;
       // Farben der Ergebnisliste des Suchfelds (#760).
-      UpdateHeaders;
+      FHeaders.UpdateAll;
     end);
 end;
 

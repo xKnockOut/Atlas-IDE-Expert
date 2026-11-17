@@ -1681,6 +1681,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.ContinueIssues.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActions.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRuns.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActionRuns.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.ContinueQueries.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.ContinueQueries.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.QuickActionRows.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.QuickActionRows.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Saved.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Welcome\Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas">
