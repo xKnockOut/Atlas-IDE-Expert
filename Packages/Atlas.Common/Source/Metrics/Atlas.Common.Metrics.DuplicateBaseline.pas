@@ -119,20 +119,6 @@ begin
   end;
 end;
 
-function SortedKeys(const AKeys: TArray<string>): TArray<string>;
-begin
-  Result := Copy(AKeys);
-  TArray.Sort<string>(Result, TComparer<string>.Construct(
-    function(const ALeft, ARight: string): Integer
-    begin
-      Result := CompareText(ALeft, ARight);
-      if Result = 0 then
-      begin
-        Result := CompareStr(ALeft, ARight);
-      end;
-    end));
-end;
-
 { TDuplicateBaseline }
 
 class function TDuplicateBaseline.FromGroups(const AGroups: TArray<TDuplicateBodyGroup>;
@@ -147,7 +133,7 @@ begin
   begin
     Result.Groups[mIndex].Hash := AGroups[mIndex].Hash;
     Result.Groups[mIndex].BodyLines := AGroups[mIndex].BodyLines;
-    Result.Groups[mIndex].Members := SortedKeys(KeysOf(AGroups[mIndex]));
+    Result.Groups[mIndex].Members := TDuplicateBodies.SortedPaths(KeysOf(AGroups[mIndex]));
   end;
   TArray.Sort<TDuplicateBaselineGroup>(Result.Groups, TComparer<TDuplicateBaselineGroup>.Construct(
     function(const ALeft, ARight: TDuplicateBaselineGroup): Integer

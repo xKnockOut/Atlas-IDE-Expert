@@ -2,12 +2,13 @@
 
 // Rümpfe der Units eines Projekts für die Regel duplicate-routine-body: Die Regel prüft eine Unit, braucht aber die
 // Fingerabdrücke aller anderen. Der Katalog merkt sich je Datei die Rümpfe (Prüfsumme und Länge des Textes, wie
-// TMetricsCollector) und je Dateiliste ein Verzeichnis Fingerabdruck → Fassungen.
+// TMetricsCollector) und für die zuletzt angefragte Dateiliste ein Verzeichnis Fingerabdruck → Fassungen.
 //
-// Ein Verzeichnis gilt cFreshMs lang: Ein Lauf über viele Units (--check, „Projekt prüfen“) liest die Dateien so
-// nur einmal statt einmal je Unit. Danach liest der nächste Aufruf alle Texte neu und parst nur geänderte. Im
-// Editor sieht die Regel Änderungen an anderen Units deshalb erst nach höchstens cFreshMs; die geprüfte Unit selbst
-// kommt immer aus ihrem aktuellen Text. Threadsicher.
+// Die Regel fragt für jede Unit einer Projektgruppe dieselbe Liste an (alle Dateien der Gruppe, die geprüfte Unit
+// eingeschlossen); die Reihenfolge zählt nicht. Ein Verzeichnis gilt cFreshMs lang ab dem Ende seines Baus: Ein Lauf
+// über viele Units (--check, „Projekt prüfen“) liest die Dateien so nur einmal statt einmal je Unit. Danach liest
+// der nächste Aufruf alle Texte neu und parst nur geänderte. Im Editor sieht die Regel Änderungen an anderen Units
+// deshalb erst nach höchstens cFreshMs; die geprüfte Unit selbst kommt immer aus ihrem aktuellen Text. Threadsicher.
 
 interface
 
@@ -47,11 +48,13 @@ type
     FIndexStamp: Int64;
     function BodiesOf(const AFileName, AText: string): TArray<TRoutineBody>;
     function Build(const AFiles: TArray<string>; const AReadText: TMetricsReadText): IDuplicateBodyIndex;
+    /// <summary>Kurzer Schlüssel einer sortierten Dateiliste: Anzahl, Länge und Prüfsumme der Pfade.</summary>
+    class function KeyOf(const AFiles: TArray<string>): string; static;
   public
     constructor Create;
     destructor Destroy; override;
     /// <summary>Verzeichnis über AFiles (.pas, .dpr, .dpk; andere fehlen); aus dem Speicher, solange es für
-    /// dieselbe Liste jünger als cFreshMs ist.</summary>
+    /// dieselben Dateien (in beliebiger Reihenfolge) jünger als cFreshMs ist.</summary>
     function IndexOf(const AFiles: TArray<string>; const AReadText: TMetricsReadText): IDuplicateBodyIndex;
     /// <summary>Vergisst alles (Tests: Der Leckmonitor zählt gemerkte Dateien sonst dem Test zu).</summary>
     procedure Clear;
@@ -206,25 +209,36 @@ begin
   mIndex.FFileCount := mCount;
 end;
 
+class function TDuplicateBodyCatalog.KeyOf(const AFiles: TArray<string>): string;
+var
+  mJoined: string;
+begin
+  mJoined := UpperCase(string.Join(#1, AFiles));
+  Result := Format('%d:%d:%x', [Length(AFiles), Length(mJoined), TMetricsCollector.Checksum(mJoined)]);
+end;
+
 function TDuplicateBodyCatalog.IndexOf(const AFiles: TArray<string>;
   const AReadText: TMetricsReadText): IDuplicateBodyIndex;
 var
+  mFiles: TArray<string>;
   mKey: string;
-  mNow: Int64;
 begin
-  mKey := UpperCase(string.Join(#1, AFiles));
-  mNow := TStopwatch.GetTimeStamp;
+  // Sortiert: Die Reihenfolge der Anfrage zählt nicht, und das Verzeichnis nennt die Fassungen stets in derselben
+  // Folge.
+  mFiles := TDuplicateBodies.SortedPaths(AFiles);
+  mKey := KeyOf(mFiles);
   System.TMonitor.Enter(FLock);
   try
     if (FIndex <> nil) and (FIndexKey = mKey) and
-      ((mNow - FIndexStamp) * 1000 div TStopwatch.Frequency < cFreshMs) then
+      ((TStopwatch.GetTimeStamp - FIndexStamp) * 1000 div TStopwatch.Frequency < cFreshMs) then
     begin
       Exit(FIndex);
     end;
-    // Unter der Sperre gebaut: Zwei Prüfungen gleichzeitig lesen die Dateien so nicht doppelt.
-    FIndex := Build(AFiles, AReadText);
+    // Unter der Sperre gebaut: Zwei Prüfungen gleichzeitig lesen die Dateien so nicht doppelt. Die Frist beginnt
+    // erst nach dem Bau, sonst wäre ein Verzeichnis, dessen Bau länger als cFreshMs dauert, sofort veraltet.
+    FIndex := Build(mFiles, AReadText);
     FIndexKey := mKey;
-    FIndexStamp := mNow;
+    FIndexStamp := TStopwatch.GetTimeStamp;
     Result := FIndex;
   finally
     System.TMonitor.Exit(FLock);

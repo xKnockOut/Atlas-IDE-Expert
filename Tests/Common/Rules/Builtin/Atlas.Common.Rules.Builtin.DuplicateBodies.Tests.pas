@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin.DuplicateBodies.Tests;
 
 // Tests der Regel duplicate-routine-body: Kopie in einer anderen Unit, Schweigen ohne Projekt, bei unvollständigem
-// Index, für Kopien in derselben Unit und unter minLines, aus im Profil standard, und der Katalog der Rümpfe.
+// Index, für Kopien in derselben Unit und unter minLines, aus im Profil standard, und der Katalog der Rümpfe: ein
+// Verzeichnis je Projektgruppe, das alle Units teilen.
 
 interface
 
@@ -32,6 +33,10 @@ type
     procedure OffInStandardProfile;
     [Test]
     procedure CatalogKeepsIndexForSameFiles;
+    [Test]
+    procedure CatalogReadsEachFileOncePerGroup;
+    [Test]
+    procedure CatalogIgnoresOrderOfFiles;
   end;
 
 implementation
@@ -57,15 +62,18 @@ const
   cOn = '{"rules": {"duplicate-routine-body": "hint"}}';
 
 type
-  /// <summary>Projektgruppe aus Texten im Speicher.</summary>
+  /// <summary>Projektgruppe aus Texten im Speicher; zählt, wie oft jede Datei gelesen wird. ProjectsOf nennt wie
+  /// der Server die angefragte Datei zuerst, die Reihenfolge hängt also von der geprüften Unit ab.</summary>
   TFakeProjectFiles = class(TInterfacedObject, IRuleProjectFiles)
   private
     FTexts: TDictionary<string, string>;
+    FReads: TDictionary<string, Integer>;
     FComplete: Boolean;
   public
     constructor Create(AComplete: Boolean);
     destructor Destroy; override;
     procedure Put(const AFileName, AText: string);
+    function ReadsOf(const AFileName: string): Integer;
     function Complete(out AReason: string): Boolean;
     function ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
     function NameIn(const AFileName, AName: string): TRuleNameAnswer;
@@ -79,10 +87,12 @@ begin
   inherited Create;
   FComplete := AComplete;
   FTexts := TDictionary<string, string>.Create;
+  FReads := TDictionary<string, Integer>.Create;
 end;
 
 destructor TFakeProjectFiles.Destroy;
 begin
+  FReads.Free;
   FTexts.Free;
   inherited Destroy;
 end;
@@ -90,6 +100,17 @@ end;
 procedure TFakeProjectFiles.Put(const AFileName, AText: string);
 begin
   FTexts.AddOrSetValue(UpperCase(AFileName), AText);
+end;
+
+function TFakeProjectFiles.ReadsOf(const AFileName: string): Integer;
+var
+  mCount: Integer;
+begin
+  Result := 0;
+  if FReads.TryGetValue(UpperCase(AFileName), mCount) then
+  begin
+    Result := mCount;
+  end;
 end;
 
 function TFakeProjectFiles.Complete(out AReason: string): Boolean;
@@ -110,9 +131,16 @@ begin
   mProject := Default(TRuleProject);
   mProject.FileName := 'C:\P\App.dproj';
   mProject.Kind := TRuleProjectKind.Application;
+  if FTexts.ContainsKey(UpperCase(AFileName)) then
+  begin
+    mProject.Sources := mProject.Sources + [UpperCase(AFileName)];
+  end;
   for mKey in FTexts.Keys do
   begin
-    mProject.Sources := mProject.Sources + [mKey];
+    if mKey <> UpperCase(AFileName) then
+    begin
+      mProject.Sources := mProject.Sources + [mKey];
+    end;
   end;
   Result := [mProject];
 end;
@@ -124,6 +152,7 @@ end;
 
 function TFakeProjectFiles.ReadText(const AFileName: string; out AText: string): Boolean;
 begin
+  FReads.AddOrSetValue(UpperCase(AFileName), ReadsOf(AFileName) + 1);
   Result := FTexts.TryGetValue(UpperCase(AFileName), AText);
 end;
 
@@ -180,17 +209,23 @@ begin
   end;
 end;
 
+procedure Fill(const AFiles: TFakeProjectFiles; const ATexts: array of string);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ATexts) div 2 do
+  begin
+    AFiles.Put(ATexts[2 * mIndex], ATexts[2 * mIndex + 1]);
+  end;
+end;
+
 function Group(const ATexts: array of string; AComplete: Boolean): IRuleProjectFiles;
 var
   mFiles: TFakeProjectFiles;
-  mIndex: Integer;
 begin
   mFiles := TFakeProjectFiles.Create(AComplete);
   Result := mFiles;
-  for mIndex := 0 to High(ATexts) div 2 do
-  begin
-    mFiles.Put(ATexts[2 * mIndex], ATexts[2 * mIndex + 1]);
-  end;
+  Fill(mFiles, ATexts);
 end;
 
 { TDuplicateRoutineBodyTests }
@@ -304,6 +339,55 @@ begin
   mFirst := nil;
   mSecond := nil;
   mHash := '';
+end;
+
+procedure TDuplicateRoutineBodyTests.CatalogReadsEachFileOncePerGroup;
+var
+  mFake: TFakeProjectFiles;
+  mFiles: IRuleProjectFiles;
+  mTextA, mTextB, mTextC: string;
+begin
+  mTextA := UnitText('Einheit.A', 'procedure P;'#10 + cBody);
+  mTextB := UnitText('Einheit.B', 'procedure Q;'#10 + cBody);
+  mTextC := UnitText('Einheit.C', '');
+  mFake := TFakeProjectFiles.Create(True);
+  mFiles := mFake;
+  Fill(mFake, [cFileA, mTextA, cFileB, mTextB, cFileC, mTextC]);
+  Assert.AreEqual(1, Integer(Length(Run(mFiles, cFileA, mTextA, cOn))), 'A hat die Kopie in B');
+  Assert.AreEqual(1, Integer(Length(Run(mFiles, cFileB, mTextB, cOn))), 'B hat die Kopie in A');
+  Assert.AreEqual(0, Integer(Length(Run(mFiles, cFileC, mTextC, cOn))), 'C ohne Kopie');
+  Assert.AreEqual(1, mFake.ReadsOf(cFileA), 'A einmal gelesen');
+  Assert.AreEqual(1, mFake.ReadsOf(cFileB), 'B einmal gelesen');
+  Assert.AreEqual(1, mFake.ReadsOf(cFileC), 'C einmal gelesen');
+  mFiles := nil;
+end;
+
+procedure TDuplicateRoutineBodyTests.CatalogIgnoresOrderOfFiles;
+var
+  mReads: Integer;
+  mFirst, mSecond: IDuplicateBodyIndex;
+  mHash: string;
+  mCopies: TArray<TDuplicateBodyMember>;
+begin
+  mReads := 0;
+  mHash := TDuplicateBodies.ForText(UnitText('X', 'procedure P;'#10 + cBody))[0].Hash;
+  mFirst := TDuplicateBodyCatalog.Shared.IndexOf([cFileB, cFileA],
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Inc(mReads);
+      AText := UnitText('X', 'procedure P;'#10 + cBody);
+      Result := True;
+    end);
+  mSecond := TDuplicateBodyCatalog.Shared.IndexOf([cFileA, cFileB], nil);
+  Assert.AreEqual(2, mReads, 'dieselben Dateien in anderer Folge: dasselbe Verzeichnis');
+  Assert.IsTrue(mFirst = mSecond, 'dasselbe Verzeichnis');
+  mCopies := mSecond.Copies(mHash);
+  Assert.AreEqual(2, Integer(Length(mCopies)));
+  Assert.AreEqual(cFileA, mCopies[0].Path, 'Fassungen nach Pfad sortiert');
+  mFirst := nil;
+  mSecond := nil;
+  mHash := '';
+  mCopies := nil;
 end;
 
 end.

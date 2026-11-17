@@ -159,6 +159,7 @@ Jedes Plugin-Package (`Packages/Atlas.IDE.*`) hat eine eigene `atlas.json` und `
 - `Tools/Linux/Check-PluginPackages.sh` prüft jedes Package mit seiner Konfiguration und Baseline; jeder Treffer außerhalb der Baseline, auch ein Hinweis, lässt den Lauf (und den Job in `linux-server.yml`) scheitern. Neue Treffer werden behoben, nicht in die Baseline aufgenommen.
 - `Tools/Check-Baselines.ps1` (CI) meldet Baseline-Einträge auf fehlende Dateien und jede Regel, deren Einträge gegenüber dem Zielbranch zunehmen. Nur wenn sich die `atlas.json` eines Packages ändert, wird seine Baseline neu erzeugt (`AtlasServer --check Packages/<Package>/<Package>.dproj --update-baseline`).
 - Beim Verschieben einer Unit in ein anderes Package wandern ihre Einträge nicht mit: Baseline beider Packages neu erzeugen und prüfen, dass keine Regel wächst.
+- Außerhalb der Plugin-Packages (Atlas.Common, Atlas.Windows, Application, Tests) gilt die `atlas.json` im Wurzelordner. Von den Metrikregeln sind dort nur `metric-method-length` und `metric-cyclomatic-complexity` an, mit `atlas-baseline.json` im Wurzelordner als Bestand. Der Schritt „Metrikregeln außerhalb der Plugin-Packages“ in `linux-server.yml` (`AtlasServer --check . --no-index --rules metric-method-length,metric-cyclomatic-complexity --fail-on hint`) bricht bei jeder neuen Routine über den Grenzwerten ab; `Tools/Check-Baselines.ps1` zählt die Baseline mit. Wer eine Routine aus der Baseline zerlegt, schreibt sie mit demselben Befehl und `--update-baseline` neu.
 
 ### Keine Unit-Zyklen (#1450)
 

@@ -77,6 +77,12 @@ jobs:
         # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
         run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
 
+      - name: Metrikregeln außerhalb der Plugin-Packages
+        # Atlas.Common, Atlas.Windows, Application und Tests laufen mit der atlas.json im Wurzelordner. Dort sind
+        # nur Methodenlänge und zyklomatische Komplexität eingeschaltet, mit atlas-baseline.json als Bestand, der nur
+        # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab.
+        run: Output/Linux64/Bin/AtlasServer --check . --no-index --rules metric-method-length,metric-cyclomatic-complexity --fail-on hint
+
       - name: Wortgleiche Rümpfe über Units hinweg
         # Vergleicht die Rümpfe aller Routinen des Repositorys mit atlas-duplicates.json; neue Kopien und
         # entfernte, aber noch eingetragene Kopien brechen ab. Nach dem Zusammenlegen von Kopien die Baseline mit

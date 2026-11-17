@@ -3,7 +3,8 @@
     Prüft die Baselines der Selbstprüfung: keine toten Einträge, und sie wachsen nicht.
 
 .DESCRIPTION
-    Für jede eingecheckte atlas-baseline.json unter Packages/:
+    Für jede eingecheckte atlas-baseline.json unter Packages/ und im Wurzelordner (dort nur
+    die Metrikregeln für Atlas.Common, Atlas.Windows, Application und Tests):
     1. Jeder Eintrag zeigt auf eine vorhandene Datei (Pfad relativ zum Ordner der
        Baseline). Eine verschobene oder gelöschte Datei hinterlässt sonst Ballast,
        und ihre Treffer erscheinen am neuen Ort unbemerkt als neu.
@@ -59,8 +60,9 @@ if ($LASTEXITCODE -ne 0) {
 $Problems = [System.Collections.Generic.List[string]]::new()
 $Before = @{}
 $After = @{}
-$Baselines = @(@(& git -C $Root ls-files -- 'Packages/*atlas-baseline.json') +
-    @(& git -C $Root ls-tree -r --name-only $BaseRef -- Packages | Where-Object { $_ -like '*atlas-baseline.json' }) |
+$Baselines = @(@(& git -C $Root ls-files -- 'Packages/*atlas-baseline.json' 'atlas-baseline.json') +
+    @(& git -C $Root ls-tree -r --name-only $BaseRef -- Packages | Where-Object { $_ -like '*atlas-baseline.json' }) +
+    @(& git -C $Root ls-tree --name-only $BaseRef -- 'atlas-baseline.json') |
     Sort-Object -Unique)
 foreach ($mRelative in $Baselines) {
     $mFile = Join-Path $Root $mRelative
@@ -77,7 +79,9 @@ foreach ($mRelative in $Baselines) {
         }
     }
 
-    $mConfig = (Split-Path -Parent $mRelative).Replace('\', '/') + '/atlas.json'
+    $mConfig = 'atlas.json'
+    $mParent = (Split-Path -Parent $mRelative).Replace('\', '/')
+    if ($mParent) { $mConfig = "$mParent/atlas.json" }
     $mConfigPath = Join-Path $Root $mConfig
     $mConfigBase = Get-BaseText $mConfig
     if ($null -eq $mConfigBase -or -not (Test-Path -LiteralPath $mConfigPath)) { continue }
