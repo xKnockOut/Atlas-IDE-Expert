@@ -175,6 +175,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Outline.Strings,
+  Atlas.UI.Foundation.ListBox,
   Atlas.UI.Foundation.WrapLabel;
 
 {$R *.dfm}
@@ -543,7 +544,8 @@ end;
 /// <summary>Liste der Gliederung und der Hinweis an ihrer Stelle.</summary>
 procedure TAtlasOutlineFrame.BuildList;
 begin
-  FList := TListBox.Create(Self);
+  // Doppelt gepuffert: Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl leer auf.
+  FList := TAtlasListBox.Create(Self);
   FList.Parent := Self;
   FList.Align := alClient;
   FList.AlignWithMargins := True;

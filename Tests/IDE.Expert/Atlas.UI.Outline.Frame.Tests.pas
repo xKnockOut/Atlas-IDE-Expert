@@ -40,6 +40,8 @@ type
     procedure SortButtonAndMessage;
     [Test]
     procedure ShowsConditionUnlessSwitchedOff;
+    [Test]
+    procedure ListIsBuffered;
   end;
 
 implementation
@@ -55,7 +57,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Core.Outline.Model;
+  Atlas.Core.Outline.Model,
+  Atlas.UI.Foundation.ListBox;
 
 const
   cFormCode =
@@ -317,6 +320,13 @@ begin
   Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
   FFrame.ShowConditions := False;
   Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
+end;
+
+procedure TAtlasOutlineFrameTests.ListIsBuffered;
+begin
+  // Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl leer auf.
+  Assert.IsTrue(FFrame.List is TAtlasListBox);
+  Assert.IsTrue(FFrame.List.DoubleBuffered);
 end;
 
 initialization

@@ -789,6 +789,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Foundation.Theme` | `UI/Foundation/Atlas.UI.Foundation.Theme.pas` | Themendienst der Atlas-Fenster (#2061) |
 | `Atlas.UI.Foundation.Dialog` | `UI/Foundation/Atlas.UI.Foundation.Dialog.pas` | Basis der im Code gebauten Dialoge, Knopfleiste, Hinweiszeile (#2062) |
 | `Atlas.UI.Foundation.ListView` | `UI/Foundation/Atlas.UI.Foundation.ListView.pas` | Liste mit Spaltenbreiten in logischen Pixeln (#2063) |
+| `Atlas.UI.Foundation.ListBox` | `UI/Foundation/Atlas.UI.Foundation.ListBox.pas` | Doppelt gepufferte TListBox ohne Löschen am Bildschirm (kein Flackern unter dem IDE-Thema) |
 | `Atlas.UI.Foundation.WrapLabel` | `UI/Foundation/Atlas.UI.Foundation.WrapLabel.pas` | Umbrechende Beschriftung, Höhe folgt der Breite |
 | `Atlas.UI.Foundation.EditorFont` | `UI/Foundation/Atlas.UI.Foundation.EditorFont.pas` | Fassung der Editorschrift mit fester Auszeichnung für Texte im Editor (Befunde, Werte, Änderungsmarken) |
 | `Atlas.UI.Generate.Strings` | `UI/Generate/Atlas.UI.Generate.Strings.pas` | Ordner `UI/Generate` |
