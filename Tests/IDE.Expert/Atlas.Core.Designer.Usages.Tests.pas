@@ -14,10 +14,6 @@ type
   [Category('Atlas.IDE.Designer')]
   TAtlasDesignerUsagesTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Die RTL legt beim ersten Benennen von Komponenten bzw.
-    /// beim ersten RTTI-Zugriff Daten an, die bis Programmende bleiben.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure KindOfAccess;
     [Test]
@@ -148,11 +144,6 @@ begin
 end;
 
 { TAtlasDesignerUsagesTests }
-
-procedure TAtlasDesignerUsagesTests.WarmUpFirstUse;
-begin
-  FindsBindings;
-end;
 
 procedure TAtlasDesignerUsagesTests.KindOfAccess;
 begin
