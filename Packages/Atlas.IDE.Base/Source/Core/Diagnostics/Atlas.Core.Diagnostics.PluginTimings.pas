@@ -283,8 +283,11 @@ type
     FEnabled: Boolean;
     class procedure SetEnabled(AValue: Boolean); static;
   public
+    /// <summary>Legt den gemeinsamen Rekorder mit dem Laden des Packages an: Erst beim ersten Messpunkt angelegt,
+    /// könnten zwei Threads gleichzeitig je einen anlegen, und die Belegung fiele mitten in die Arbeit.</summary>
+    class constructor CreateShared;
     class destructor DestroyShared;
-    /// <summary>Gemeinsamer Rekorder; lebt bis zum Entladen des Packages.</summary>
+    /// <summary>Gemeinsamer Rekorder; lebt vom Laden bis zum Entladen des Packages.</summary>
     class function Shared: TAtlasPluginRecorder; static;
     /// <summary>Messung an: TAtlasGuard.Timing zeigt auf Shared. Aus (Vorgabe): nil.</summary>
     class property Enabled: Boolean read FEnabled write SetEnabled;
@@ -904,6 +907,11 @@ end;
 
 { TAtlasPluginTimings }
 
+class constructor TAtlasPluginTimings.CreateShared;
+begin
+  FShared := TAtlasPluginRecorder.Create;
+end;
+
 class destructor TAtlasPluginTimings.DestroyShared;
 begin
   Enabled := False;
@@ -925,10 +933,6 @@ end;
 
 class function TAtlasPluginTimings.Shared: TAtlasPluginRecorder;
 begin
-  if FShared = nil then
-  begin
-    FShared := TAtlasPluginRecorder.Create;
-  end;
   Result := FShared;
 end;
 
