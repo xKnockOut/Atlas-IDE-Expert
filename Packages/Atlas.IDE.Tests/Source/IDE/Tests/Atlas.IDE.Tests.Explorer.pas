@@ -30,6 +30,9 @@
 // - Protokoll je Test (#2168, tests.log): Atlas.IDE.Tests.ExplorerLog merkt
 //   sich das Protokoll der Läufe; der Reiter „Protokoll (n)“ zeigt es zum
 //   gewählten Test, Fall bzw. zur Fixture.
+// - Nach einem Lauf, der schiefging (Fehlschläge, kein Bericht, Zeitgrenze),
+//   zeigt ShowFailedRun das Fenster mit dem Testprojekt des Laufs und holt
+//   es nach vorn (#2467, tests.window.openOnFailure).
 // - Ein Zeitgeber folgt dem Läufer (Lauf beginnt bzw. endet), solange das
 //   Fenster zu sehen ist; er lebt nur so lange wie dieses Objekt.
 // Nur im Hauptthread.
@@ -136,6 +139,10 @@ type
     function StatusInput(const AProject: string): TAtlasTestStatusInput;
   end;
 
+/// <summary>Fenster „Atlas-Tests“ nach einem Lauf von AProject zeigen, der schiefging (#2467): mit diesem
+/// Testprojekt, nach vorn. Nichts mit tests.window.openOnFailure oder tests.window aus.</summary>
+procedure ShowFailedRun(AExplorer: TAtlasIdeTestExplorer; const AProject: string);
+
 implementation
 
 uses
@@ -183,6 +190,20 @@ begin
 end;
 
 /// <summary>Statuszeile des Fensters; freie Routine, weil TAtlasIdeTestExplorer am Mitgliederlimit ist.</summary>
+procedure ShowFailedRun(AExplorer: TAtlasIdeTestExplorer; const AProject: string);
+begin
+  if (AExplorer = nil) or not TAtlasIdeSettings.Current.TestsWindowOnFailure or not TAtlasIdeTestExplorer.Wanted then
+  begin
+    Exit;
+  end;
+  // Das Fenster zeigt das Testprojekt des Laufs; ReadProjects behält es, solange es zur Gruppe gehört.
+  if AProject <> '' then
+  begin
+    AExplorer.FProject := AProject;
+  end;
+  AExplorer.Show(False);
+end;
+
 function StatusOf(AExplorer: TAtlasIdeTestExplorer): string;
 var
   mTotal, mPassed, mFailed, mNotRun: Integer;
