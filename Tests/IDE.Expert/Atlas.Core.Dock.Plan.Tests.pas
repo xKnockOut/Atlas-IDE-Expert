@@ -102,9 +102,6 @@ begin
   Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, True, False, False));
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasDockPlanTests);
-
 procedure TAtlasDockPlanTests.FormNameIsIdentifier;
 begin
   // Die IDE vergibt OTADockForm_<N> nach Reihenfolge; der Desktop braucht einen festen Namen.
@@ -122,5 +119,8 @@ begin
   Assert.AreEqual('', TAtlasDockPlan.FormName('Atlas.Outline', 'OTADockForm_1'));
   Assert.AreEqual('', TAtlasDockPlan.FormName('1Atlas', 'OTADockForm_1'));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasDockPlanTests);
 
 end.
