@@ -611,6 +611,7 @@ Atlas.Core.Problems.Switches.Tests
 Atlas.Core.Forms.PropertyValues.Tests
 Atlas.Core.Editor.GutterMarks.Tests
 Atlas.Core.Tasks.Plan.Tests
+Atlas.Core.Tasks.RunFlow.Tests
 Atlas.Core.StartProfiles.Picker.Tests
 Atlas.Core.Build.OpenBuild.Tests
 Atlas.Core.Bookmarks.ColumnPlan.Tests

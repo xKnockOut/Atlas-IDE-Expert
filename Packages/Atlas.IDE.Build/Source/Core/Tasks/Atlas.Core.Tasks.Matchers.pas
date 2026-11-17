@@ -92,6 +92,8 @@ type
     /// dann die Projektdatei, deren Pfad auf APath endet, dann ASearchPath; sonst gegen ACwd.</summary>
     class function Resolve(const APath, ACwd: string; const AProjectFiles, ASearchPath: TArray<string>;
       const AExists: TAtlasTaskFileExists): string; static;
+    /// <summary>Fragt die Platte (FileExists).</summary>
+    class function OnDisk: TAtlasTaskFileExists; static;
   end;
 
 implementation
@@ -612,6 +614,15 @@ begin
   begin
     Result := mCandidate;
   end;
+end;
+
+class function TAtlasTaskPaths.OnDisk: TAtlasTaskFileExists;
+begin
+  Result :=
+    function(const AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
 end;
 
 end.

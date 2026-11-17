@@ -2191,6 +2191,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Reports.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.PreBuild.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.RunFlow.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.TaskLauncherFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.RunFlow.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Build\Source\Core\Tasks\Atlas.Core.Tasks.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.Plan.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tasks.OutputGroup.Tests.pas"/>

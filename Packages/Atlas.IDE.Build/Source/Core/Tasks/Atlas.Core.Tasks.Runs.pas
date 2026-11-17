@@ -39,6 +39,12 @@ type
     Error: string;
   end;
 
+  /// <summary>Führt die (mit Variablen eingesetzte) Aufgabe aus, nicht im Hauptthread. ACancelled wird im Takt
+  /// gefragt; ACodePage für Ausgaben, die kein UTF-8 sind (0 = OEM-Codepage); jede Zeile geht an AOnLine. Die
+  /// Kompositionswurzel reicht den Adapter (Atlas.Core.Tasks.Adapters.Process) hinein (Rollenmatrix).</summary>
+  TAtlasTaskProcessRun = reference to function(const ATask: TAtlasTaskDefinition; ACodePage: Integer;
+    const ACancelled: TFunc<Boolean>; const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult;
+
   TAtlasTaskLines = class
   private
     FPending: TBytes;

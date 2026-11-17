@@ -1850,6 +1850,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tasks.Plan` | `Core/Tasks/Atlas.Core.Tasks.Plan.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Reports` | `Core/Tasks/Atlas.Core.Tasks.Reports.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Runs` | `Core/Tasks/Atlas.Core.Tasks.Runs.pas` | Ordner `Core/Tasks` |
+| `Atlas.Core.Tasks.RunFlow` | `Core/Tasks/Atlas.Core.Tasks.RunFlow.pas` | Ordner `Core/Tasks`; Ablauf der Läufe und Reihen hinter `IAtlasTaskLauncher` |
 | `Atlas.Core.StartProfiles.Picker` | `Core/StartProfiles/Atlas.Core.StartProfiles.Picker.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.IDE.Build.CompilerSwitches` | `IDE/Build/Atlas.IDE.Build.CompilerSwitches.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.BuildTools.Composition` | `IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas` | Anmeldung des Moduls `atlas.build`, #1455 |
@@ -1857,10 +1858,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Build.SwitchesWindow` | `IDE/Build/Atlas.IDE.Build.SwitchesWindow.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.StartProfiles.Service` | `IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas` | Ordner `IDE/StartProfiles` |
 | `Atlas.IDE.Tasks.Output` | `IDE/Tasks/Atlas.IDE.Tasks.Output.pas` | Ordner `IDE/Tasks` |
-| `Atlas.IDE.Tasks.History` | `IDE/Tasks/Atlas.IDE.Tasks.History.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Projects` | `IDE/Tasks/Atlas.IDE.Tasks.Projects.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Shortcuts` | `IDE/Tasks/Atlas.IDE.Tasks.Shortcuts.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Pickers` | `IDE/Tasks/Atlas.IDE.Tasks.Pickers.pas` | Ordner `IDE/Tasks` |
+| `Atlas.IDE.Tasks.Launcher` | `IDE/Tasks/Atlas.IDE.Tasks.Launcher.pas` | Ordner `IDE/Tasks`; `IAtlasTaskLauncher` der IDE (Thread je Lauf) |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
 | `Atlas.UI.Build.SettingsSection` | `UI/Build/Atlas.UI.Build.SettingsSection.pas` | Ordner `UI/Build`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |
