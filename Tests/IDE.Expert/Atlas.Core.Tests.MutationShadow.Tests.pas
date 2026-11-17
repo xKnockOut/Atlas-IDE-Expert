@@ -2,10 +2,11 @@
 
 // Tests des Schattenprojekts (#1460): Pfade auflösen, dpr (Programmname,
 // in-Pfade, mutierte Unit nach Src\ bzw. angehängt, {$R}/{$I}, Schalter
-// bleiben, {$R} mit .res und .rc, Unit ohne „in“ oder mit Namen außerhalb
+// bleiben, {$R} mit .res und .rc (die .res im Schatten), Masken, Unit ohne „in“ oder mit Namen außerhalb
 // von ASCII, unbekannte Formen als Problem statt kaputter dpr, offene
 // Kommentare und Zeichenketten an jeder Stelle, uses ohne Ende) und dproj
-// (MainSource, Name, GUID, Suchpfade, Ausgaben, Ereignisse, Include=, Ordner
+// (MainSource, Name, GUID, Suchpfade, Ausgaben auch des Ressourcen-Compilers,
+// Ereignisse, Include=, Ordner
 // des Originals vorn); Trennung von Original und Schatten:
 // Der Lauf schreibt nur in den Ordner des Schattenprojekts, dort liegt keine
 // Datei des Originals, und die Ausgaben gehen immer nach Out.
@@ -34,6 +35,10 @@ type
     procedure DprWithoutProgramFails;
     [Test]
     procedure DprResourceWithRcFile;
+    [Test]
+    procedure DprResourceMasks;
+    [Test]
+    procedure DprojResourcesStayInShadow;
     [Test]
     procedure DprUnitWithoutIn;
     [Test]
@@ -247,19 +252,58 @@ procedure TAtlasMutationShadowTests.DprResourceWithRcFile;
 var
   mDpr: string;
 begin
-  // So trägt die IDE eine .rc des Projekts ein: .res und .rc, beide relativ.
-  mDpr := Shadow(Source(DprWith('  Preise', '{$R ''Daten.res'' ''..\Res\Daten.rc''}' + cBreak +
+  // So trägt die IDE eine .rc des Projekts ein: .res und .rc, beide relativ. Der Build übersetzt die .rc; die .res
+  // entsteht im Ordner des Schattenprojekts (relativ zur dpr), nie beim Original.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R ''..\Res\Daten.res'' ''..\Res\Daten.rc''}' + cBreak +
     '{$RESOURCE Bild.res Bild.rc}'))).Dpr;
-  Assert.IsTrue(mDpr.Contains('{$R ''C:\P\Tests\Daten.res'' ''C:\P\Res\Daten.rc''}'), mDpr);
-  Assert.IsTrue(mDpr.Contains('{$RESOURCE ''C:\P\Tests\Bild.res'' ''C:\P\Tests\Bild.rc''}'), mDpr);
-  // Masken bleiben.
-  mDpr := Shadow(Source(DprWith('  Preise', '{$R *.dfm}'))).Dpr;
-  Assert.IsTrue(mDpr.Contains('{$R *.dfm}'), mDpr);
+  Assert.IsTrue(mDpr.Contains('{$R ''Daten.res'' ''C:\P\Res\Daten.rc''}'), mDpr);
+  Assert.IsTrue(mDpr.Contains('{$RESOURCE ''Bild.res'' ''C:\P\Tests\Bild.rc''}'), mDpr);
+  Assert.IsFalse(mDpr.Contains('C:\P\Res\Daten.res'), mDpr);
+  // Eine fertige .res ohne .rc liest der Build nur: absolut beim Original.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R ''..\Res\Fertig.res''}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$R ''C:\P\Res\Fertig.res''}'), mDpr);
   // {$I} ohne Anführungszeichen mit Leerzeichen bleibt; der Include-Pfad findet die Datei.
   mDpr := Shadow(Source(DprWith('  Preise', '{$I Meine Defs.inc}'))).Dpr;
   Assert.IsTrue(mDpr.Contains('{$I Meine Defs.inc}'), mDpr);
   mDpr := Shadow(Source(DprWith('  Preise', '{$INCLUDE ''Meine Defs.inc''}'))).Dpr;
   Assert.IsTrue(mDpr.Contains('{$INCLUDE ''C:\P\Tests\Meine Defs.inc''}'), mDpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprResourceMasks;
+var
+  mDpr: string;
+begin
+  // „*“ meint den Namen der dpr; im Schattenprojekt hieße er Demo.TestsMutation, die Datei hat nur das Original.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R *.tlb}' + cBreak + '{$RESOURCE *.otares}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$R ''C:\P\Tests\Demo.Tests.tlb''}'), mDpr);
+  Assert.IsTrue(mDpr.Contains('{$RESOURCE ''C:\P\Tests\Demo.Tests.otares''}'), mDpr);
+  // Die .dres erzeugt der Build des Schattenprojekts selbst aus den Ressourcen der dproj.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R *.dres}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$R *.dres}'), mDpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprojResourcesStayInShadow;
+var
+  mSource: TAtlasMutationShadowSource;
+  mDproj: string;
+begin
+  mSource := Source(cDpr);
+  mSource.Dproj := '<Project>' + cBreak + '    <PropertyGroup Condition="''$(Base)''!=''''">' + cBreak +
+    '        <BRCC_OutputDir>..\Res</BRCC_OutputDir>' + cBreak +
+    '        <BRCC_IncludePath>..\Include;$(BRCC_IncludePath)</BRCC_IncludePath>' + cBreak +
+    '    </PropertyGroup>' + cBreak + '    <ItemGroup>' + cBreak +
+    '        <DCCReference Include="..\Src\Preise.pas">' + cBreak + '            <Form>Form1</Form>' + cBreak +
+    '        </DCCReference>' + cBreak + '        <RcCompile Include="..\Res\Daten.rc">' + cBreak +
+    '            <Form>..\Res\Daten.res</Form>' + cBreak + '        </RcCompile>' + cBreak + '    </ItemGroup>' +
+    cBreak + '</Project>';
+  mDproj := Shadow(mSource).Dproj;
+  // Die .rc liest der Build beim Original, die .res schreibt er neben die dpr des Schattenprojekts.
+  Assert.IsTrue(mDproj.Contains('<RcCompile Include="C:\P\Res\Daten.rc">' + cBreak +
+    '            <Form>Daten.res</Form>'), mDproj);
+  Assert.IsTrue(mDproj.Contains('<BRCC_OutputDir></BRCC_OutputDir>'), mDproj);
+  Assert.IsTrue(mDproj.Contains('<BRCC_IncludePath>C:\P\Include;$(BRCC_IncludePath)</BRCC_IncludePath>'), mDproj);
+  // Formularnamen der Units bleiben.
+  Assert.IsTrue(mDproj.Contains('<Form>Form1</Form>'), mDproj);
 end;
 
 procedure TAtlasMutationShadowTests.DprUnitWithoutIn;
