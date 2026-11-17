@@ -53,6 +53,7 @@ contains
   Atlas.Text.Product.Version in '..\Atlas.Text\Source\Product\Atlas.Text.Product.Version.pas',
   Atlas.Text.Lines in '..\Atlas.Text\Source\Lines\Atlas.Text.Lines.pas',
   Atlas.Text.Chars in '..\Atlas.Text\Source\Chars\Atlas.Text.Chars.pas',
+  Atlas.Text.Timestamps in '..\Atlas.Text\Source\Timestamps\Atlas.Text.Timestamps.pas',
   Atlas.Text.Encoding in '..\Atlas.Text\Source\Encoding\Atlas.Text.Encoding.pas',
   Atlas.Text.LogMarks in '..\Atlas.Text\Source\LogMarks\Atlas.Text.LogMarks.pas',
   Atlas.Text.Anonymize in '..\Atlas.Text\Source\Anonymize\Atlas.Text.Anonymize.pas',
