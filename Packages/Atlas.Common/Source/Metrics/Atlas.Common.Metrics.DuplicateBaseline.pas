@@ -246,14 +246,36 @@ begin
   end;
 end;
 
+/// <summary>Einträge aus AGroups, deren Fassungen in AFound (Fingerabdruck → gefundene Schlüssel) fehlen, je
+/// Gruppe nur mit den toten Fassungen.</summary>
+function StaleEntries(const AGroups: TArray<TDuplicateBaselineGroup>;
+  AFound: TDictionary<string, TArray<string>>): TArray<TDuplicateBaselineGroup>;
+var
+  mEntry, mDead: TDuplicateBaselineGroup;
+  mKeys: TArray<string>;
+begin
+  Result := nil;
+  for mEntry in AGroups do
+  begin
+    if not AFound.TryGetValue(mEntry.Hash, mKeys) then
+    begin
+      mKeys := nil;
+    end;
+    mDead := mEntry;
+    mDead.Members := Missing(mEntry.Members, mKeys);
+    if Length(mDead.Members) > 0 then
+    begin
+      Result := Result + [mDead];
+    end;
+  end;
+end;
+
 function TDuplicateBaseline.Compare(const AGroups: TArray<TDuplicateBodyGroup>): TDuplicateComparison;
 var
   mKnown: TDictionary<string, Integer>;
   mFound: TDictionary<string, TArray<string>>;
   mGroup: TDuplicateBodyGroup;
-  mEntry: TDuplicateBaselineGroup;
   mCopies: TDuplicateNewCopies;
-  mDead: TDuplicateBaselineGroup;
   mAt: Integer;
   mKeys: TArray<string>;
 begin
@@ -289,19 +311,7 @@ begin
         Inc(Result.KnownGroups);
       end;
     end;
-    for mEntry in Groups do
-    begin
-      if not mFound.TryGetValue(mEntry.Hash, mKeys) then
-      begin
-        mKeys := nil;
-      end;
-      mDead := mEntry;
-      mDead.Members := Missing(mEntry.Members, mKeys);
-      if Length(mDead.Members) > 0 then
-      begin
-        Result.Stale := Result.Stale + [mDead];
-      end;
-    end;
+    Result.Stale := StaleEntries(Groups, mFound);
   finally
     mFound.Free;
     mKnown.Free;

@@ -473,9 +473,10 @@ begin
     'uses Werk.Ansicht, Werk.Sammlung, Werk.Generisch, Werk.Typen;', []))));
 end;
 
-procedure TInliningRulesTests.ImplicitSystemNeedsNoUses;
+/// <summary>Testquellen von ImplicitSystemNeedsNoUses: System und SysInit mit inline-Routinen, deren Rümpfe auf die
+/// jeweils andere implizite Unit verweisen.</summary>
 const
-  cSystem =
+  cImplicitSystem =
     'unit System;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -504,7 +505,7 @@ const
     '  Result := PosIntern(ATeil, AText) + Kennung;'#10 +
     'end;'#10 +
     'end.';
-  cSysInit =
+  cImplicitSysInit =
     'unit SysInit;'#10 +
     'interface'#10 +
     'function Kennung: Integer; inline;'#10 +
@@ -518,7 +519,7 @@ const
     '  Result := Intern + Pos(''a'', ''b'');'#10 +
     'end;'#10 +
     'end.';
-  cSource =
+  cImplicitSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -532,18 +533,20 @@ const
     '  X := Pos(''='', ''a=b'') + Kennung + Halb(2);'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.ImplicitSystemNeedsNoUses;
 var
   mIndex: ISymbolIndex;
   mRefs: string;
   mSymbol: TIndexSymbol;
 begin
   mIndex := NewIndex;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cSysInit, 'C:\P\SysInit.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cImplicitSystem, 'C:\P\System.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cImplicitSysInit, 'C:\P\SysInit.pas', nil));
   // Die Rümpfe haben Verweise (wie in der RTL, hier auf die jeweils andere implizite Unit): Ohne die Ausnahme
   // verlangte die Regel System bzw. SysInit im uses.
   mRefs := '';
-  for mSymbol in TIndexExtractor.ExtractText(cSystem, 'C:\P\System.pas', nil).Symbols do
+  for mSymbol in TIndexExtractor.ExtractText(cImplicitSystem, 'C:\P\System.pas', nil).Symbols do
   begin
     if mSymbol.InlineRefs <> nil then
     begin
@@ -551,7 +554,7 @@ begin
     end;
   end;
   Assert.AreEqual('TMonitor.Enter=Kennung|Pos=Kennung|TMonitor.Enter=Kennung|Pos=Kennung|', mRefs);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cImplicitSource, mIndex, '',
     'Haupt.pas')));
 end;
 
@@ -617,9 +620,10 @@ begin
     TIncludeFiles.Resolver(TArray<string>.Create(TPath.Combine(ARoot, 'sys'), TPath.Combine(ARoot, 'common')))));
 end;
 
-procedure TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit;
+/// <summary>Testquellen von RealRtlNeedsNoImplicitOrGenericUnit: Halter mit generischen Listen der RTL und eine Unit,
+/// die sie benutzt.</summary>
 const
-  cHalter =
+  cRtlHalter =
     'unit Werk.Halter;'#10 +
     'interface'#10 +
     'uses System.Generics.Collections;'#10 +
@@ -631,7 +635,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  cSource =
+  cRtlSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -650,6 +654,8 @@ const
     '    X := Ord(C);'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit;
 var
   mRoot: string;
   mIndex: ISymbolIndex;
@@ -668,7 +674,7 @@ begin
   AddRtlUnit(mIndex, mRoot, 'sys', 'SysInit.pas');
   AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Defaults.pas');
   AddRtlUnit(mIndex, mRoot, 'common', 'System.Generics.Collections.pas');
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cHalter, 'C:\P\Werk.Halter.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cRtlHalter, 'C:\P\Werk.Halter.pas', nil));
   // Die Rümpfe haben Verweise: Ohne die Ausnahmen verlangte die Regel System bzw. System.Generics.Collections.
   Assert.IsTrue(mIndex.FindUnit('System', mUnit));
   mWithRefs := '';
@@ -682,14 +688,15 @@ begin
   end;
   Assert.IsTrue(ContainsText(mWithRefs, 'TMonitor.Enter|'), mWithRefs);
   Assert.IsTrue(ContainsText(mWithRefs, 'Pos|'), mWithRefs);
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cRtlSource, mIndex, '',
     'Haupt.pas')));
   mWithRefs := '';
 end;
 
-procedure TInliningRulesTests.AliasParameterNeedsTargetUnit;
+/// <summary>Testquellen von AliasParameterNeedsTargetUnit: Parameter über einen Typalias, dessen Ziel in einer dritten
+/// Unit steht.</summary>
 const
-  cBasis =
+  cAliasBasis =
     'unit Werk.Basis;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -699,7 +706,7 @@ const
     '  end;'#10 +
     'implementation'#10 +
     'end.';
-  cVertrag =
+  cAliasVertrag =
     'unit Werk.Vertrag;'#10 +
     'interface'#10 +
     'uses Werk.Basis;'#10 +
@@ -707,7 +714,7 @@ const
     '  TPunkt = Werk.Basis.TPunkt;'#10 +
     'implementation'#10 +
     'end.';
-  cZeiger =
+  cAliasZeiger =
     'unit Werk.Zeiger;'#10 +
     'interface'#10 +
     'uses Werk.Vertrag;'#10 +
@@ -718,7 +725,7 @@ const
     '  Result := (A.Zeile < B.Zeile) or ((A.Zeile = B.Zeile) and (A.Spalte < B.Spalte));'#10 +
     'end;'#10 +
     'end.';
-  cSource =
+  cAliasSource =
     'unit Haupt;'#10 +
     'interface'#10 +
     'implementation'#10 +
@@ -729,26 +736,28 @@ const
     '    Exit;'#10 +
     'end;'#10 +
     'end.';
+
+procedure TInliningRulesTests.AliasParameterNeedsTargetUnit;
 var
   mIndex: ISymbolIndex;
   mRefs: string;
   mSymbol: TIndexSymbol;
 begin
   mIndex := NewIndex;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cBasis, 'C:\P\Werk.Basis.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cVertrag, 'C:\P\Werk.Vertrag.pas', nil));
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasBasis, 'C:\P\Werk.Basis.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasVertrag, 'C:\P\Werk.Vertrag.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cAliasZeiger, 'C:\P\Werk.Zeiger.pas', nil));
   // Der Index merkt sich die gelesenen Mitglieder der Parameter (Kopf und Implementierung).
   mRefs := '';
-  for mSymbol in TIndexExtractor.ExtractText(cZeiger, 'C:\P\Werk.Zeiger.pas', nil).Symbols do
+  for mSymbol in TIndexExtractor.ExtractText(cAliasZeiger, 'C:\P\Werk.Zeiger.pas', nil).Symbols do
   begin
     mRefs := mRefs + mSymbol.Name + '=' + String.Join(',', mSymbol.InlineRefs) + '|';
   end;
   Assert.AreEqual('Vor=:TPunkt#Zeile,:TPunkt#Spalte|Vor=:TPunkt#Zeile,:TPunkt#Spalte|', mRefs);
   Assert.AreEqual('6:5 Inline-Funktion Vor wird nicht eingebettet: Werk.Basis fehlt in uses (wie H2443).|',
-    Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '', 'Haupt.pas')));
+    Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cAliasSource, mIndex, '', 'Haupt.pas')));
   Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
-    StringReplace(cSource, 'uses Werk.Vertrag,', 'uses Werk.Basis, Werk.Vertrag,', []), mIndex, '', 'Haupt.pas')));
+    StringReplace(cAliasSource, 'uses Werk.Vertrag,', 'uses Werk.Basis, Werk.Vertrag,', []), mIndex, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.QuickFixAddsUnit;

@@ -86,6 +86,8 @@ type
     /// <summary>Art einer Ganzzahlrechnung: NativeInt, sobald eine Seite es ist und die andere eine Ganzzahl.
     /// </summary>
     function KindOfArithmetic(ANode: TSyntaxNode): TArgumentKind;
+    /// <summary>Art nach dem Typ des Ausdrucks ANode (NativeInt, Integer, sonst unbekannt).</summary>
+    function KindOfType(ANode: TSyntaxNode): TArgumentKind;
     procedure CheckCall(ACall: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -149,33 +151,54 @@ begin
     StartsText('System.TArray<', mType) or StartsText('arrayof', mType);
 end;
 
+/// <summary>Ganzzahl-Literal (42, $FF), kein Gleitkomma (1.5, 1e3).</summary>
+function IsIntegerLiteral(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Literal) and (ANode.Name <> '') and CharInSet(ANode.Name[1], ['0'..'9', '$']) and
+    (Pos('.', ANode.Name) = 0) and not ContainsText(ANode.Name, 'e');
+end;
+
+/// <summary>Aufruf Length(X), High(X) oder Low(X) mit einem Argument.</summary>
+function IsArrayIntrinsicCall(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) and
+    MatchText(ANode[0].Name, cArrayIntrinsics);
+end;
+
 function TAreEqualCheck.KindOf(ANode: TSyntaxNode): TArgumentKind;
 var
   mNode: TSyntaxNode;
-  mType: string;
 begin
   Result := TArgumentKind.Unknown;
   mNode := Unwrapped(ANode);
   if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and MatchText(mNode.Name, cIntegerOperators) then
   begin
-    Exit(KindOfArithmetic(mNode));
-  end;
-  if (mNode.Kind = TSyntaxKind.Literal) and (mNode.Name <> '') and CharInSet(mNode.Name[1], ['0'..'9', '$']) and
-    (Pos('.', mNode.Name) = 0) and not ContainsText(mNode.Name, 'e') then
+    Result := KindOfArithmetic(mNode);
+  end
+  else if IsIntegerLiteral(mNode) then
   begin
-    Exit(TArgumentKind.Integer_);
-  end;
+    Result := TArgumentKind.Integer_;
+  end
   // Length(FListe), High(Werte): dynamisches Array ab Delphi 12 NativeInt, String Integer.
-  if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and (mNode[0].Kind = TSyntaxKind.Identifier) and
-    MatchText(mNode[0].Name, cArrayIntrinsics) then
+  else if IsArrayIntrinsicCall(mNode) then
   begin
     if IsDynamicArray(mNode[1]) then
     begin
       Result := TArgumentKind.Native;
     end;
-    Exit;
+  end
+  else
+  begin
+    Result := KindOfType(mNode);
   end;
-  mType := TypeNameOf(mNode);
+end;
+
+function TAreEqualCheck.KindOfType(ANode: TSyntaxNode): TArgumentKind;
+var
+  mType: string;
+begin
+  Result := TArgumentKind.Unknown;
+  mType := TypeNameOf(ANode);
   if MatchText(mType, cNativeTypes) or MatchText(mType, ['System.NativeInt', 'System.NativeUInt']) then
   begin
     Result := TArgumentKind.Native;
