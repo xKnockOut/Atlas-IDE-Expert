@@ -5176,6 +5176,18 @@
       "x-captionEn": "Atlas menu: Debug and Breakpoints only with an open project",
       "x-issue": "#2102"
     },
+    "AtlasViewMenu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas unter Ansicht: alle andockbaren Atlas-Fenster öffnen, Fenster von Modulen in ihren Untermenüs (etwa Debuggen, Designer mit Atlas-Struktur und Ereignis-Karte). Jeder Eintrag erscheint nur, solange seine Funktion an ist. Aus = kein Untermenü Atlas unter Ansicht; die Fenster bleiben über das Menü Atlas, die Befehlspalette und ihre Knöpfe erreichbar.",
+      "x-key": "commands.viewMenu.windows",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Atlas-Fenster unter Ansicht › Atlas",
+      "x-captionEn": "Atlas windows under View › Atlas",
+      "x-issue": "#2470"
+    },
     "Snippets": {
       "type": "boolean",
       "default": true,

@@ -531,6 +531,14 @@ begin
   Result.Section := TAtlasBuildStrings.Text(TAtlasBuildTextId.MenuGroupBuild);
 end;
 
+/// <summary>Fenster unter Ansicht › Atlas.</summary>
+function ViewEntry(const ACommandId: string): TAtlasMenuEntry;
+begin
+  Result := Default(TAtlasMenuEntry);
+  Result.CommandId := ACommandId;
+  Result.Place := TAtlasMenuPlace.ViewMenu;
+end;
+
 /// <summary>Eintrag ohne Befehl für eine Projektaufgabe im Untermenü „Build“; ARun nil = ausgegraut.</summary>
 function TaskEntry(const AId, ACaption: string; const ARun: TProc): TAtlasMenuEntry;
 begin
@@ -563,8 +571,8 @@ var
   mItem: TAtlasTaskMenuItem;
   mItems: TArray<TAtlasTaskMenuItem>;
 begin
-  // Wirksame Compiler-Schalter an der Cursorposition (#558).
-  Result := [MenuEntry('Atlas.CompilerSwitches')];
+  // Wirksame Compiler-Schalter an der Cursorposition (#558), auch als Fenster unter Ansicht › Atlas.
+  Result := [MenuEntry('Atlas.CompilerSwitches'), ViewEntry('Atlas.CompilerSwitches')];
   // Projektaufgaben (#900) hinter einer Trennlinie: ohne Läufer bzw. mit tasks.enabled aus fehlen sie; Base fragt
   // bei jedem Öffnen.
   if not TasksVisible then

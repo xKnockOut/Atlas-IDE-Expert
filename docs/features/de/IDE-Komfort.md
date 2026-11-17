@@ -233,6 +233,7 @@ Einstellungen: `vcs.externals.show`, `vcs.externals.update` (mit, ohne, fragen)
 | **Markierung suchen** | F3 bzw. Umschalt+F3 |
 
 - **Änderungsmarken** in der Rinne gegenüber Git HEAD bzw. SVN BASE
+- **Atlas-Fenster unter *Ansicht › Atlas*** (`commands.viewMenu.windows`): Jedes andockbare Atlas-Fenster lässt sich dort öffnen, wie die Fenster der IDE unter *Ansicht*. Direkt darin stehen *Prüfung*, *Ergebnisse*, *Gliederung*, *Atlas-Server* und die Fenster der Module (etwa Willkommensseite, Architektur, Hotspots, Unit-Beziehungen, Abfrage, Ersetzen, Lesezeichen, Tests, Compiler-Schalter, Board und Ablauf-Karte); die Fenster des Debuggers stehen im Untermenü *Debuggen* (auch ohne offenes Projekt, damit sich das Layout einrichten lässt), *Atlas-Struktur* und *Ereignis-Karte* im Untermenü *Designer*. Ein Eintrag erscheint nur, solange seine Funktion an ist; die Fenster der Designer-Leiste brauchen dazu die Designer-Leiste (`editor.designerBar`). Ein offenes Fenster holt der Eintrag nach vorn, er schließt es nicht.
 - **Stilles Neuladen** extern geänderter Dateien
 
 <a id="window-atlasserverstatus"></a>

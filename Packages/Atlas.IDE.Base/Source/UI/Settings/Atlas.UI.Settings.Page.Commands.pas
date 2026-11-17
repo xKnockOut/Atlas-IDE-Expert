@@ -127,6 +127,8 @@ begin
   // Hauptmenü Atlas: Debuggen und Haltepunkte nur mit offenem Projekt.
   BindCheck('AtlasMenuContextual',
     AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasMenuContextual)));
+  // Ansicht › Atlas: alle andockbaren Atlas-Fenster.
+  BindCheck('AtlasViewMenu', AddCheck(TAtlasSettingsStrings.Text(TAtlasSettingsTextId.SettingsAtlasViewMenu)));
 end;
 
 procedure TAtlasSettingsCommandsPart.Build;
