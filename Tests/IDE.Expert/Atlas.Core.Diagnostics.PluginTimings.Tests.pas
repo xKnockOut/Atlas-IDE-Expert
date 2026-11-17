@@ -24,9 +24,6 @@ type
     FOldFolder: string;
     procedure Call(AToken: Integer);
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -90,16 +87,6 @@ uses
 procedure TAtlasPluginTimingsTests.Call(AToken: Integer);
 begin
   FRecorder.Leave(TAtlasFeature.Completion, AToken);
-end;
-
-procedure TAtlasPluginTimingsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    EnabledSwitchesGuardHook;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TAtlasPluginTimingsTests.Setup;
