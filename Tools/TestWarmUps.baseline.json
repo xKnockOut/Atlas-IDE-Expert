@@ -1,11 +1,10 @@
 {
-  "count": 26,
+  "count": 23,
   "warmUps": [
     "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Debug.EventLog.Tests.pas: TAtlasEventLogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Vcl.Tests.pas: TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Diagnostics.PluginTimings.Tests.pas: TAtlasPluginTimingsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.PropertyValues.Tests.pas: TAtlasFormPropertyValuesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
@@ -14,7 +13,6 @@
     "Tests/IDE.Expert/Atlas.Core.Search.Replace.Tests.pas: TAtlasSearchReplaceTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tasks.Matchers.Tests.pas: TAtlasTaskMatchersTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tracker.Attach.Tests.pas: TAtlasAttachTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Tracker.Development.Tests.pas: TAtlasIssueDevelopmentTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.MethodBreakpoints.Tests.pas: TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.Search.Tests.pas: TAtlasComponentSearchWindowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.SettingsSection.Tests.pas: TDesignerSettingsSectionTests.WarmUp",
@@ -22,7 +20,6 @@
     "Tests/IDE.Expert/Atlas.UI.Diagnostics.PluginFrame.Tests.pas: TAtlasDiagnosticsFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Sections.Tests.pas: TSettingsPageSectionsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Tests.pas: TAtlasSettingsPageTests.WarmUp",
-    "Tests/IDE.Expert/Atlas.UI.Tracker.SettingsSection.Tests.pas: TTrackerSettingsSectionTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Arrange.Tests.pas: TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Discover.Tests.pas: TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Tests.pas: TAtlasWelcomeBoardTests.WarmUpFirstUse",

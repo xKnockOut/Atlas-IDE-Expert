@@ -22,9 +22,6 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -139,22 +136,6 @@ begin
 end;
 
 { TTrackerSettingsSectionTests }
-
-procedure TTrackerSettingsSectionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    IssuesTrackerOwnPage;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    SettingsRoundTrip;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TTrackerSettingsSectionTests.Setup;
 begin

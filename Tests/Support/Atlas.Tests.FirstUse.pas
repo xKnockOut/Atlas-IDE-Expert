@@ -49,6 +49,7 @@ uses
   Atlas.UI.Settings.Page,
   Vcl.Graphics,
   Vcl.Forms,
+  Vcl.AppEvnts,
   Vcl.ComCtrls,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
@@ -425,6 +426,14 @@ begin
   TDataModule.CreateNew(nil).Free;
 end;
 
+/// <summary>Erstes Ereignisobjekt der Anwendung (TApplicationEvents, z. B. im Scroller der Willkommenstafel): Es meldet
+/// sich beim Verteiler der VCL an (Vcl.AppEvnts, MultiCaster); dessen Liste legt dabei Verwaltungsdaten und Kapazität an,
+/// die beim Abmelden bleiben (208 Byte), frei mit dem Verteiler in der Finalisierung der VCL.</summary>
+procedure WelcomeWarmUpApplicationEvents;
+begin
+  TApplicationEvents.Create(nil).Free;
+end;
+
 /// <summary>Liste aller Leinwände der VCL (Vcl.Graphics, TCanvas.Create trägt jede ein, TCanvas.Destroy trägt sie
 /// aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig lebender Leinwände und bleibt bis zur Finalisierung
 /// von Vcl.Graphics. Jedes TCustomControl hat eine; eine Einstellungsseite mit allen Bereichen kommt auf mehrere
@@ -614,6 +623,7 @@ begin
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
+  WelcomeWarmUpApplicationEvents;
 end;
 
 end.
