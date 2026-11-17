@@ -46,6 +46,7 @@ uses
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
   Vcl.Forms,
+  Vcl.Clipbrd,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
@@ -381,6 +382,17 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Zwischenablage der VCL (Clipboard): Das Objekt entsteht beim ersten Zugriff und wird in der
+/// Finalisierung von Vcl.Clipbrd freigegeben; das träfe sonst den ersten Test, der etwas kopiert (z. B. „Name
+/// kopieren“ im Fenster „Komponenten suchen“).</summary>
+procedure WarmUpDesignerClipboard;
+begin
+  if Clipboard = nil then
+  begin
+    raise EInvalidOperation.Create('Zwischenablage');
+  end;
+end;
+
 { TFirstUse }
 
 class procedure TFirstUse.WarmUp;
@@ -402,6 +414,7 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpDesignerClipboard;
 end;
 
 end.
