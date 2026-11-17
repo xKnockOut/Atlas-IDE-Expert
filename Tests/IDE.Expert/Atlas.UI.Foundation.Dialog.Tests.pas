@@ -4,7 +4,10 @@
 // Themendienst bis zum Freigeben, Thema beim Zeigen und bei jedem Wechsel,
 // Zeilen von oben nach unten, Knopfbreiten nach Text, Vorgabe und Abbrechen,
 // Hinweiszeile in der Textfarbe der Palette. TAtlasPopupForm: ohne Rahmen
-// in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas.
+// in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas,
+// das IDE-Thema an den Steuerelementen nur mit ThemedControls. Ohne Breite
+// legt CreateDialog kein Fenster an, CreatePopup nie: Nachfahren sehen in
+// CreateWnd und Resize ein fertiges Objekt.
 // MainFormWorkArea: ohne Hauptfenster die Arbeitsfläche des Hauptmonitors.
 
 interface
@@ -23,6 +26,8 @@ type
     [Test]
     procedure CreateDialogSetsDefaults;
     [Test]
+    procedure CreateDialogWithoutWidthHasNoWindow;
+    [Test]
     procedure SubscribedUntilFreed;
     [Test]
     procedure ThemeChangeAppliesAndNotifies;
@@ -40,6 +45,10 @@ type
     procedure PopupFormSetsDefaults;
     [Test]
     procedure PopupFormFollowsTheme;
+    [Test]
+    procedure PopupFormHasNoWindow;
+    [Test]
+    procedure PopupFormThemesControlsOnRequest;
     [Test]
     procedure WorkAreaWithoutMainForm;
   end;
@@ -125,6 +134,20 @@ begin
     Assert.AreEqual<TPosition>(poMainFormCenter, mDialog.Position);
     Assert.AreEqual(string(TAtlasUiTheme.cFontName), string(mDialog.Font.Name));
     Assert.AreEqual(mDialog.ScaleValue(400), mDialog.ClientWidth);
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.CreateDialogWithoutWidthHasNoWindow;
+var
+  mDialog: TAtlasDialog;
+begin
+  // Breite 0: Der Dialog setzt sie selbst; ClientWidth würde das Fenster vor dem Konstruktor des Nachfahren anlegen.
+  mDialog := TAtlasDialog.CreateDialog(nil, 'Titel', 0);
+  try
+    Assert.IsFalse(mDialog.HandleAllocated, 'Fenster nach CreateDialog');
+    Assert.AreEqual<TFormBorderStyle>(bsDialog, mDialog.BorderStyle);
   finally
     mDialog.Free;
   end;
@@ -331,6 +354,45 @@ begin
     Assert.AreEqual(1, mPopup.ColorsCount);
     Assert.AreEqual(Cardinal(TAtlasColors.Dark.Surface), Cardinal(mPopup.SurfaceSeen), 'Farben vor ColorsChanged');
     Assert.AreEqual(Integer(TColor(TAtlasColors.Dark.Surface)), Integer(mPopup.Color));
+  finally
+    mPopup.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormHasNoWindow;
+var
+  mPopup: TAtlasPopupForm;
+begin
+  mPopup := TAtlasPopupForm.CreatePopup(nil, TAtlasColors.Light);
+  try
+    Assert.IsFalse(mPopup.HandleAllocated, 'Fenster nach CreatePopup');
+    Assert.AreEqual<TFormBorderStyle>(bsNone, mPopup.BorderStyle);
+  finally
+    mPopup.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormThemesControlsOnRequest;
+var
+  mPopup: TProbePopup;
+  mApplied: Integer;
+begin
+  mApplied := 0;
+  TAtlasUiTheme.Install(nil,
+    procedure(AControl: TWinControl)
+    begin
+      Inc(mApplied);
+    end, nil);
+  mPopup := TProbePopup.CreatePopup(nil, TAtlasColors.Light);
+  try
+    // Ohne ThemedControls zeichnet das Fenster alles selbst: kein VCL-Stil.
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(0, mApplied, 'ohne ThemedControls');
+    Assert.AreEqual(1, mPopup.ColorsCount);
+    mPopup.ThemedControls := True;
+    TAtlasUiTheme.Changed;
+    Assert.AreEqual(1, mApplied, 'mit ThemedControls');
+    Assert.AreEqual(2, mPopup.ColorsCount);
   finally
     mPopup.Free;
   end;
