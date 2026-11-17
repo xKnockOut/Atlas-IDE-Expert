@@ -25,6 +25,10 @@ type
     procedure ParseOrZeroGivesZero;
     [Test]
     procedure ReadsDateOnly;
+    [Test]
+    procedure ReadsIsoWithZone;
+    [Test]
+    procedure IsoNeverRaises;
   end;
 
 implementation
@@ -122,6 +126,34 @@ begin
   Assert.AreEqual<TDateTime>(0, mDate);
   Assert.IsFalse(TTextTimestamp.TryParseDate('2026-02-29', mDate));
   Assert.IsFalse(TTextTimestamp.TryParseDate('2026-1-5', mDate));
+end;
+
+procedure TTextTimestampTests.ReadsIsoWithZone;
+var
+  mStamp: TDateTime;
+begin
+  Assert.IsTrue(TTextTimestamp.TryParseIso('2026-11-17T10:57:54.123Z', True, mStamp));
+  Assert.AreEqual<TDateTime>(EncodeDateTime(2026, 11, 17, 10, 57, 54, 123), mStamp);
+  // Zone wird nach UTC umgerechnet.
+  Assert.IsTrue(TTextTimestamp.TryParseIso('2026-11-17T11:57:54+01:00', True, mStamp));
+  Assert.AreEqual<TDateTime>(EncodeDateTime(2026, 11, 17, 10, 57, 54, 0), mStamp);
+  Assert.AreEqual<TDateTime>(EncodeDateTime(2026, 11, 17, 10, 57, 54, 0),
+    TTextTimestamp.IsoOrZero('2026-11-17T10:57:54Z', True));
+end;
+
+procedure TTextTimestampTests.IsoNeverRaises;
+var
+  mStamp: TDateTime;
+begin
+  // Unlesbarer Text, fremde Form und ungültige Teile: False bzw. 0, keine Ausnahme gleich welcher Klasse.
+  Assert.IsFalse(TTextTimestamp.TryParseIso('gestern', True, mStamp));
+  Assert.AreEqual<TDateTime>(0, mStamp);
+  Assert.IsFalse(TTextTimestamp.TryParseIso('', False, mStamp));
+  Assert.IsFalse(TTextTimestamp.TryParseIso('17.11.2026 10:00', True, mStamp));
+  Assert.IsFalse(TTextTimestamp.TryParseIso('2026-13-01T00:00:00Z', True, mStamp));
+  Assert.AreEqual<TDateTime>(0, mStamp);
+  Assert.AreEqual<TDateTime>(0, TTextTimestamp.IsoOrZero('gestern', False));
+  Assert.AreEqual<TDateTime>(0, TTextTimestamp.IsoOrZero('2026-02-30T10:00:00', False));
 end;
 
 initialization

@@ -29,6 +29,9 @@ type
 
   {$SCOPEDENUMS ON}
   TAtlasDebugBannerMark = (Neutral, Ok, Bad);
+  /// <summary>Knöpfe der Exception-Leiste und ihre anklickbare Ortszeile (Open).</summary>
+  TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open, WhereAssigned, Evaluate,
+    CopyExplanation, CreateTest);
   {$SCOPEDENUMS OFF}
 
   TAtlasDebugBannerLine = record

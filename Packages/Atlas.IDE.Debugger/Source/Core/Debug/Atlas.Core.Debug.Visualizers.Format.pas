@@ -40,6 +40,8 @@ type
   public const
     /// <summary>Trenner der Teile eines Ersatztexts.</summary>
     cSeparator = ' · ';
+    /// <summary>Bytes je Zeile der Hex-Ansicht.</summary>
+    cHexLineBytes = 16;
   public
     /// <summary>Höchstens AMaxLength Zeichen, gekürzt mit „…“.</summary>
     class function Shorten(const AText: string; AMaxLength: Integer): string; static;
@@ -66,6 +68,8 @@ type
     class function HexPreview(const ABytes: TBytes; ATotal: Int64; AMaxBytes: Integer): string; static;
     /// <summary>Zeile der Hex-Ansicht ab AOffset: „00000010  48 65 … 6F  Hello“ (16 Bytes je Zeile).</summary>
     class function HexLine(const ABytes: TBytes; AOffset: Integer): string; static;
+    /// <summary>Zeile ALine (ab 0) der Hex-Ansicht.</summary>
+    class function HexLineAt(const ABytes: TBytes; ALine: Integer): string; static;
     class function HexLineCount(ALength: Integer): Integer; static;
     /// <summary>JSON-Text kompakt (ohne Leerraum außerhalb von Zeichenketten).</summary>
     class function CompactJson(const AText: string): string; static;
@@ -76,6 +80,8 @@ type
     class function ColorName(AValue: Int64): string; static;
     /// <summary>TColor als $RRGGBB; Systemfarben und clNone haben keinen.</summary>
     class function ColorRgb(AValue: Int64; out ARgb: Cardinal): Boolean; static;
+    /// <summary>$RRGGBB als TColor-Wert ($00BBGGRR).</summary>
+    class function RgbToColor(ARgb: Cardinal): Cardinal; static;
     /// <summary>„clWebDodgerBlue · $1E90FF“, „$123456“, „clBtnFace“.</summary>
     class function ColorText(AValue: Int64): string; static;
     /// <summary>TAlphaColor ($AARRGGBB) als „claDodgerBlue“ bzw. „$801E90FF“.</summary>
@@ -458,6 +464,11 @@ begin
   Result := IntToHex(AOffset, 8) + '  ' + mHex + ' ' + mText;
 end;
 
+class function TAtlasVisualizerFormat.HexLineAt(const ABytes: TBytes; ALine: Integer): string;
+begin
+  Result := HexLine(ABytes, ALine * cHexLineBytes);
+end;
+
 class function TAtlasVisualizerFormat.HexLineCount(ALength: Integer): Integer;
 begin
   Result := (ALength + 15) div 16;
@@ -571,6 +582,12 @@ end;
 function SwapRedBlue(AValue: Cardinal): Cardinal;
 begin
   Result := ((AValue and $FF) shl 16) or (AValue and $FF00) or ((AValue shr 16) and $FF);
+end;
+
+class function TAtlasVisualizerFormat.RgbToColor(ARgb: Cardinal): Cardinal;
+begin
+  // Rot und Blau tauschen die Plätze; derselbe Tausch macht aus TColor wieder $RRGGBB.
+  Result := SwapRedBlue(ARgb);
 end;
 
 class function TAtlasVisualizerFormat.ColorRgb(AValue: Int64; out ARgb: Cardinal): Boolean;

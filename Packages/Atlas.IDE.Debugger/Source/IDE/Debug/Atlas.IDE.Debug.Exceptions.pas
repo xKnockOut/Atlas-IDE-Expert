@@ -451,7 +451,7 @@ begin
   begin
     Exit;
   end;
-  AFrame.OnOpen :=
+  AFrame.Hooks.Open :=
     procedure(AException: TAtlasDebugException)
     var
       Path: string;
@@ -472,17 +472,17 @@ begin
     begin
       TAtlasIdeNavigation.GoToLocation(AFrameInfo.FileName, AFrameInfo.Line - 1, 0);
     end;
-  AFrame.OnCopy :=
+  AFrame.Hooks.Copy :=
     procedure(AException: TAtlasDebugException)
     begin
       Clipboard.AsText := AException.CopyText;
     end;
-  AFrame.OnIgnoreClass :=
+  AFrame.Hooks.IgnoreClass :=
     procedure(AClass: string; AIgnore: Boolean)
     begin
       SetIgnored(AClass, AIgnore);
     end;
-  AFrame.OnClear :=
+  AFrame.Hooks.Clear :=
     procedure
     begin
       if FHistory <> nil then

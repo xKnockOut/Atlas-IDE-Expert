@@ -44,8 +44,7 @@ uses
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.AccessViolationUnderline,
   Atlas.IDE.Debug.Modules,
-  Atlas.IDE.Debug.ThreadEvaluator,
-  Atlas.UI.Debug.ExceptionBar;
+  Atlas.IDE.Debug.ThreadEvaluator;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>

@@ -65,8 +65,9 @@ type
     cTickMs = 10;
     /// <summary>So lange wartet Atlas auf einen verzögerten Wert (LLDB).</summary>
     cDeferredTimeoutMs = 2000;
-    /// <summary>Versuche, bis der Aufrufstapel da ist (je TickMs * 5).</summary>
+    /// <summary>Versuche, bis der Aufrufstapel da ist (je cTickMs * cLocationTicks).</summary>
     cLocationRetries = 20;
+    cLocationTicks = 5;
   private type
     /// <summary>Ausführungspunkt: Datei und Zeile (0-basiert, -1 ohne).</summary>
     TPlace = record
@@ -355,7 +356,7 @@ begin
   end;
   WireRows(AFrame);
   WireValues(AFrame);
-  AFrame.SetSideEffects(TAtlasIdeDebugEvaluate.FInstance.FSideEffects);
+  AFrame.InputBar.SetSideEffects(TAtlasIdeDebugEvaluate.FInstance.FSideEffects);
   AFrame.SetList(TAtlasIdeDebugEvaluate.FInstance.FList);
 end;
 
@@ -382,7 +383,7 @@ begin
   FKey := '';
   if (mKey <> '') and (Frame <> nil) then
   begin
-    Frame.SetLines(mKey, AValue.State = TAtlasDebugValueState.Value, AValue.Text);
+    Frame.Detail.SetLines(mKey, AValue.State = TAtlasDebugValueState.Value, AValue.Text);
   end;
 end;
 
@@ -462,7 +463,7 @@ begin
   FList.BeginStop;
   if Frame <> nil then
   begin
-    Frame.InvalidateLines;
+    Frame.Detail.InvalidateLines;
   end;
   FProgress.Stop := TAtlasIdeDebugSession.StopCount;
   FProgress.Retries := 0;
@@ -517,7 +518,7 @@ begin
         Inc(FProgress.Retries);
         if FProgress.Retries <= cLocationRetries then
         begin
-          FTimer.Interval := cTickMs * 5;
+          FTimer.Interval := cTickMs * cLocationTicks;
           FTimer.Enabled := True;
           Result := False;
         end;
@@ -735,7 +736,7 @@ begin
   end;
   if Frame <> nil then
   begin
-    Frame.InvalidateLines;
+    Frame.Detail.InvalidateLines;
   end;
   RefreshFrame;
   if FProgress.Phase = TAtlasStopPhase.Idle then
@@ -803,7 +804,7 @@ begin
       mCurrent: TAtlasDebugEvaluateFrame;
     begin
       mCurrent := Frame;
-      Result := (mCurrent <> nil) and (AControl = mCurrent.Parts.Input);
+      Result := (mCurrent <> nil) and (AControl = mCurrent.InputBar.Input);
     end;
   ApplySettings;
   // Eingeschaltet, während der Prozess steht: gleich für diesen Halt.
@@ -882,7 +883,7 @@ begin
   end;
   WireFrame(mShown);
   FInstance.SyncPinned;
-  mShown.FocusInput(mExpression);
+  mShown.InputBar.FocusInput(mExpression);
 end;
 
 class procedure TAtlasIdeDebugEvaluate.ShowWindow(const AExpression: string);

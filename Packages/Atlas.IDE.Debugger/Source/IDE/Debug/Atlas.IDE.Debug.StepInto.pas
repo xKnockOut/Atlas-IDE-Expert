@@ -122,7 +122,8 @@ uses
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Debug.Evaluator,
-  Atlas.IDE.Debug.Breakpoints;
+  Atlas.IDE.Debug.Breakpoints,
+  Atlas.IDE.Foundation.Caret;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
 function ListKey(AWindow: TAtlasStepIntoWindow; AKey: Word): Boolean;
@@ -319,7 +320,7 @@ begin
           end);
       end;
   end;
-  mPoint := TAtlasIdeCaretPopupHooks.CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(FRows, mPoint);

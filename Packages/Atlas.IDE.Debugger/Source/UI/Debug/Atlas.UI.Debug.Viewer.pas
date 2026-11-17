@@ -19,6 +19,7 @@
 // - Schließen gibt das Fenster frei und meldet OnClosed.
 // - Thema und Schrift über TAtlasDialog (folgt jedem Themenwechsel), Spalten
 //   in logischen Pixeln über TAtlasListView; die letzte Spalte füllt den Rest.
+// - Das Bild zeichnet TAtlasDebugViewerImage (Atlas.UI.Debug.ViewerImage).
 
 interface
 
@@ -35,7 +36,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Debug.Visualizers,
   Atlas.UI.Foundation.Dialog,
-  Atlas.UI.Foundation.ListView;
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Debug.ViewerImage;
 
 type
   TAtlasDebugViewer = class(TAtlasDialog)
@@ -45,16 +47,15 @@ type
     FAllFields: TCheckBox;
     FList: TAtlasListView;
     FTree: TTreeView;
-    FImageBox: TScrollBox;
-    FImage: TPaintBox;
+    FImage: TAtlasDebugViewerImage;
     FColor: TPanel;
     FText: TMemo;
     FMenu: TPopupMenu;
     FView: TAtlasVisualizerView;
-    FBitmap: TBitmap;
     FOnClosed: TNotifyEvent;
+    procedure BuildListAndTree;
+    procedure BuildImageAndText;
     procedure ListData(Sender: TObject; AItem: TListItem);
-    procedure ImagePaint(Sender: TObject);
     procedure AllFieldsClick(Sender: TObject);
     /// <summary>Angezeigte Tabellenzeilen: AllRows mit „Alle Felder“, sonst Rows.</summary>
     function CurrentRows: TArray<TArray<string>>;
@@ -71,7 +72,6 @@ type
     function RowText(AIndex: Integer): string;
   public
     constructor CreateViewer(AOwner: TComponent);
-    destructor Destroy; override;
     /// <summary>Inhalt zeigen; AExpression steht im Titel.</summary>
     procedure ShowView(const AExpression: string; const AView: TAtlasVisualizerView);
     /// <summary>Inhalt ausgrauen, AReason darüber.</summary>
@@ -84,6 +84,7 @@ type
     property List: TAtlasListView read FList;
     property AllFieldsCheck: TCheckBox read FAllFields;
     property Tree: TTreeView read FTree;
+    property Image: TAtlasDebugViewerImage read FImage;
     property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
   end;
 
@@ -148,54 +149,6 @@ begin
   Result.Items.Add(mItem);
 end;
 
-/// <summary>Tabelle und Baum des Betrachters AViewer.</summary>
-procedure CreateListAndTree(AViewer: TAtlasDebugViewer);
-begin
-  AViewer.FList := TAtlasListView.Create(AViewer);
-  PlaceClient(AViewer.FList, AViewer);
-  AViewer.FList.OwnerData := True;
-  AViewer.FList.ReadOnly := True;
-  AViewer.FList.RowSelect := True;
-  AViewer.FList.MultiSelect := True;
-  AViewer.FList.HideSelection := False;
-  AViewer.FList.OnData := AViewer.ListData;
-  AViewer.FList.OnKeyDown := AViewer.ContentKeyDown;
-  AViewer.FList.PopupMenu := AViewer.FMenu;
-
-  AViewer.FTree := TTreeView.Create(AViewer);
-  PlaceClient(AViewer.FTree, AViewer);
-  AViewer.FTree.ReadOnly := True;
-  AViewer.FTree.HideSelection := False;
-  AViewer.FTree.OnKeyDown := AViewer.ContentKeyDown;
-  AViewer.FTree.PopupMenu := AViewer.FMenu;
-end;
-
-/// <summary>Bild, Farbfläche und Text des Betrachters AViewer.</summary>
-procedure CreateImageAndText(AViewer: TAtlasDebugViewer);
-begin
-  AViewer.FImageBox := TScrollBox.Create(AViewer);
-  PlaceClient(AViewer.FImageBox, AViewer);
-  AViewer.FImageBox.BorderStyle := bsNone;
-  AViewer.FImage := TPaintBox.Create(AViewer);
-  AViewer.FImage.Parent := AViewer.FImageBox;
-  AViewer.FImage.OnPaint := AViewer.ImagePaint;
-
-  AViewer.FColor := TPanel.Create(AViewer);
-  PlaceTop(AViewer.FColor, AViewer, cGap);
-  AViewer.FColor.Height := AViewer.ScaleValue(cColorSize);
-  AViewer.FColor.BevelOuter := bvNone;
-  AViewer.FColor.ParentBackground := False;
-  // Die Fläche zeigt die Farbe des Werts, nicht die des Themas.
-  AViewer.FColor.StyleElements := [];
-
-  AViewer.FText := TMemo.Create(AViewer);
-  PlaceClient(AViewer.FText, AViewer);
-  AViewer.FText.ReadOnly := True;
-  AViewer.FText.ScrollBars := ssBoth;
-  AViewer.FText.WordWrap := False;
-  AViewer.FText.Font.Name := 'Consolas';
-end;
-
 /// <summary>Überschrift der Tabellenspalte AColumn.</summary>
 function ColumnCaption(AColumn: TAtlasVisualizerColumn): string;
 begin
@@ -242,15 +195,51 @@ begin
   FAllFields.Top := FNote.Top + FNote.Height + 1;
   FAllFields.OnClick := AllFieldsClick;
 
-  CreateListAndTree(Self);
-  CreateImageAndText(Self);
+  BuildListAndTree;
+  BuildImageAndText;
   HideContent;
 end;
 
-destructor TAtlasDebugViewer.Destroy;
+procedure TAtlasDebugViewer.BuildListAndTree;
 begin
-  FBitmap.Free;
-  inherited;
+  FList := TAtlasListView.Create(Self);
+  PlaceClient(FList, Self);
+  FList.OwnerData := True;
+  FList.ReadOnly := True;
+  FList.RowSelect := True;
+  FList.MultiSelect := True;
+  FList.HideSelection := False;
+  FList.OnData := ListData;
+  FList.OnKeyDown := ContentKeyDown;
+  FList.PopupMenu := FMenu;
+
+  FTree := TTreeView.Create(Self);
+  PlaceClient(FTree, Self);
+  FTree.ReadOnly := True;
+  FTree.HideSelection := False;
+  FTree.OnKeyDown := ContentKeyDown;
+  FTree.PopupMenu := FMenu;
+end;
+
+procedure TAtlasDebugViewer.BuildImageAndText;
+begin
+  FImage := TAtlasDebugViewerImage.Create(Self);
+  PlaceClient(FImage, Self);
+
+  FColor := TPanel.Create(Self);
+  PlaceTop(FColor, Self, cGap);
+  FColor.Height := ScaleValue(cColorSize);
+  FColor.BevelOuter := bvNone;
+  FColor.ParentBackground := False;
+  // Die Fläche zeigt die Farbe des Werts, nicht die des Themas.
+  FColor.StyleElements := [];
+
+  FText := TMemo.Create(Self);
+  PlaceClient(FText, Self);
+  FText.ReadOnly := True;
+  FText.ScrollBars := ssBoth;
+  FText.WordWrap := False;
+  FText.Font.Name := 'Consolas';
 end;
 
 procedure TAtlasDebugViewer.ListData(Sender: TObject; AItem: TListItem);
@@ -261,7 +250,7 @@ var
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Hex then
   begin
-    AItem.Caption := TAtlasVisualizerFormat.HexLine(FView.Bytes, AItem.Index * 16);
+    AItem.Caption := TAtlasVisualizerFormat.HexLineAt(FView.Bytes, AItem.Index);
     Exit;
   end;
   mRows := CurrentRows;
@@ -279,35 +268,6 @@ begin
   begin
     AItem.SubItems.Add(mCells[mIndex]);
   end;
-end;
-
-procedure TAtlasDebugViewer.ImagePaint(Sender: TObject);
-const
-  cCell = 8;
-var
-  X, Y: Integer;
-begin
-  if FBitmap = nil then
-  begin
-    Exit;
-  end;
-  // Schachbrett hinter dem Bild, damit Transparenz und Weiß erkennbar sind.
-  for Y := 0 to (FImage.Height - 1) div cCell do
-  begin
-    for X := 0 to (FImage.Width - 1) div cCell do
-    begin
-      if Odd(X + Y) then
-      begin
-        FImage.Canvas.Brush.Color := $00E0E0E0;
-      end
-      else
-      begin
-        FImage.Canvas.Brush.Color := clWhite;
-      end;
-      FImage.Canvas.FillRect(Rect(X * cCell, Y * cCell, (X + 1) * cCell, (Y + 1) * cCell));
-    end;
-  end;
-  FImage.Canvas.Draw(0, 0, FBitmap);
 end;
 
 procedure TAtlasDebugViewer.AllFieldsClick(Sender: TObject);
@@ -368,7 +328,7 @@ procedure TAtlasDebugViewer.HideContent;
 begin
   FList.Visible := False;
   FTree.Visible := False;
-  FImageBox.Visible := False;
+  FImage.Visible := False;
   FColor.Visible := False;
   FText.Visible := False;
 end;
@@ -452,35 +412,14 @@ begin
 end;
 
 procedure TAtlasDebugViewer.ShowImage;
-var
-  mRow: Integer;
 begin
-  FreeAndNil(FBitmap);
-  if (FView.Width > 0) and (FView.Height > 0) and (Length(FView.Pixels) = FView.Width * FView.Height) then
-  begin
-    FBitmap := TBitmap.Create;
-    FBitmap.PixelFormat := pf32bit;
-    FBitmap.SetSize(FView.Width, FView.Height);
-    // $AARRGGBB liegt im Speicher als B, G, R, A: genau die Zeile eines 32-Bit-DIB.
-    for mRow := 0 to FView.Height - 1 do
-    begin
-      Move(FView.Pixels[mRow * FView.Width], FBitmap.ScanLine[mRow]^, FView.Width * SizeOf(Cardinal));
-    end;
-    FImage.SetBounds(0, 0, FView.Width, FView.Height);
-  end
-  else
-  begin
-    FImage.SetBounds(0, 0, 0, 0);
-  end;
-  FImageBox.Visible := True;
-  FImage.Invalidate;
+  FImage.ShowPixels(FView.Width, FView.Height, FView.Pixels);
+  FImage.Visible := True;
 end;
 
 procedure TAtlasDebugViewer.ShowColor;
 begin
-  // $RRGGBB → TColor ($00BBGGRR).
-  FColor.Color := TColor(((FView.Color and $FF) shl 16) or (FView.Color and $FF00) or
-    ((FView.Color shr 16) and $FF));
+  FColor.Color := TColor(TAtlasVisualizerFormat.RgbToColor(FView.Color));
   FColor.Caption := '';
   FColor.Visible := True;
   FText.Text := FView.Text;
@@ -497,7 +436,7 @@ function TAtlasDebugViewer.RowText(AIndex: Integer): string;
 begin
   if FView.Mode = TAtlasVisualizerViewMode.Hex then
   begin
-    Result := TAtlasVisualizerFormat.HexLine(FView.Bytes, AIndex * 16);
+    Result := TAtlasVisualizerFormat.HexLineAt(FView.Bytes, AIndex);
   end
   else if (AIndex >= 0) and (AIndex < Length(CurrentRows)) then
   begin
@@ -522,7 +461,7 @@ begin
   HideContent;
   FList.Enabled := True;
   FTree.Enabled := True;
-  FImageBox.Enabled := True;
+  FImage.Enabled := True;
   FText.Enabled := True;
   case AView.Mode of
     TAtlasVisualizerViewMode.Table:
@@ -553,7 +492,7 @@ begin
   FAllFields.Enabled := False;
   FList.Enabled := False;
   FTree.Enabled := False;
-  FImageBox.Enabled := False;
+  FImage.Enabled := False;
   FText.Enabled := False;
 end;
 

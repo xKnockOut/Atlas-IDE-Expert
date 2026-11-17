@@ -104,7 +104,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Editor.PaintedLine;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.IDE.Foundation.Caret;
 
 /// <summary>Gedrückte Taste mit Umschalt, Strg und Alt als TShortCut.</summary>
 function PressedShortCut(AKey: Word): TShortCut;
@@ -239,7 +240,7 @@ begin
     FHooks.Popup := FTip;
   end;
   // Farben, Editorschrift und Zoom wie der Editor; unter der Zeile der Schreibmarke.
-  mCaret := TAtlasIdeCaretPopupHooks.CaretRect;
+  mCaret := TAtlasIdeCaret.Area;
   TAtlasIdeStyle.Apply(FTip, mCaret);
   FTip.ShowFor(TAtlasExpressionType.Rows(AInfo, TAtlasExpressionTypeTip.Texts(KeyText)),
     TPoint.Create(mCaret.Left, mCaret.Bottom));

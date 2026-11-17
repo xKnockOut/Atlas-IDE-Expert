@@ -1,0 +1,2 @@
+### Behoben
+- Ein beschädigter ISO-Zeitstempel in den Dateien des abgesicherten Starts, im Einstellungsverlauf, in der Vorschau der Unit-Suche oder im zuletzt gemerkten Build gilt jetzt nur als unbekannter Zeitpunkt. Bisher verwarf der abgesicherte Start dabei die ganze Sitzungsmarke samt Absturzzähler, der Einstellungsverlauf blieb bei jedem Start leer, die Vorschau der Unit scheiterte und `get_last_build` endete mit einer Ausnahme.
