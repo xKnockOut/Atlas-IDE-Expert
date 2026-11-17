@@ -105,7 +105,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Editor.PaintedLine;
+  Atlas.IDE.Editor.PaintedLine,
+  Atlas.IDE.Foundation.Caret;
 
 { TAtlasIdeUnwrap }
 
@@ -188,7 +189,7 @@ begin
   begin
     CreateWindow;
   end;
-  mPoint := TAtlasIdeCaretPopupHooks.CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(FEntries, mPoint);

@@ -114,7 +114,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.IDE.Foundation.Caret;
 
 /// <summary>Größe des Editorfensters (Client-Bereich); (0, 0) ohne Fenster.</summary>
 function EditorSize(AWindow: HWND): TPoint;
@@ -169,22 +170,6 @@ begin
   Result.Character := TLspSession.ColumnToIndex(TAtlasEditorBuffer.LineText(AView, mCursor.Line), mCursor.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   Result.Caret := TAtlasEditorBuffer.CharOffset(Result.Text, mCursor.Line - 1, Result.Character);
-end;
-
-/// <summary>Fenster und Rechteck des Carets (Bildschirmkoordinaten); False ohne Caret.</summary>
-function CaretAnchor(out AWindow: HWND; out AAnchor: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  AWindow := mInfo.hwndCaret;
-  AAnchor := mInfo.rcCaret;
-  if Result then
-  begin
-    MapWindowPoints(AWindow, 0, AAnchor, 2);
-  end;
 end;
 
 type
@@ -603,7 +588,7 @@ begin
     FController.UpdateParameter(mSite.ActiveParameter);
     Exit(True);
   end;
-  if not CaretAnchor(mWindow, mAnchor) then
+  if not TAtlasIdeCaret.TryFind(mWindow, mAnchor) then
   begin
     Exit;
   end;

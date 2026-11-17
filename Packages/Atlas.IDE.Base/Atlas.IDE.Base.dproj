@@ -207,6 +207,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.OpenWatch.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorRefresh.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Caret.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorFiles.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.ActiveEditor.pas"/>

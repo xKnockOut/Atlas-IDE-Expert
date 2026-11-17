@@ -22,7 +22,6 @@ type
       AWordStart: Integer): TAtlasContext;
   private
     procedure ApplyStyle(const ACaret: TRect);
-    function CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
     /// <summary>Einstellungen der Liste in Popup und Ablauf übernehmen (vor jedem Öffnen).</summary>
     procedure ApplyOptions;
     /// <summary>Popup am Wortanfang verankern (ACaret: Caret-Rechteck) und die offene Stelle merken.</summary>
@@ -55,7 +54,8 @@ uses
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Caret;
 
 /// <summary>Plattform und Konfiguration des aktiven Projekts („Win32 · Debug“, #476); '' ohne Projekt.</summary>
 function ActiveTarget: string;
@@ -153,22 +153,6 @@ begin
   // Farben aus dem Thema der IDE (hell/dunkel), Schrift aus den Editoroptionen, Monitor-DPI und Zoom
   // am Caret (#411, #412, #445).
   Log(TAtlasIdeStyle.Apply(FPopup, ACaret));
-end;
-
-function TAtlasEditorCompletionOpen.CaretRect(out AWindow: HWND; out ARect: TRect): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AWindow := mInfo.hwndCaret;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(AWindow, 0, ARect, 2);
 end;
 
 procedure TAtlasEditorCompletionOpen.ApplyOptions;
@@ -294,7 +278,7 @@ begin
   mLineText := TAtlasEditorBuffer.LineText(AView, mCursor.Line);
   mCharacter := TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer));
   mWordStart := TAtlasWord.StartBefore(mLineText, mCharacter);
-  if not CaretRect(mWindow, mAnchor) then
+  if not TAtlasIdeCaret.TryFind(mWindow, mAnchor) then
   begin
     Log('Vervollständigung: kein Caret gefunden');
     Exit;
