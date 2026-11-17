@@ -1289,6 +1289,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.BlameLinks` | `IDE/Tracker/Atlas.IDE.Tracker.BlameLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BlameScope` | `IDE/Tracker/Atlas.IDE.Tracker.BlameScope.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.BoardLoad` | `IDE/Tracker/Atlas.IDE.Tracker.BoardLoad.pas` | Ordner `IDE/Tracker`, Laden des Fensters „Atlas-Board“ |
+| `Atlas.IDE.Tracker.BoardMove` | `IDE/Tracker/Atlas.IDE.Tracker.BoardMove.pas` | Ordner `IDE/Tracker`, Verschieben im Fenster „Atlas-Board“ |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowMap` | `IDE/Tracker/Atlas.IDE.Tracker.FlowMap.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowWindow` | `IDE/Tracker/Atlas.IDE.Tracker.FlowWindow.pas` | Ordner `IDE/Tracker` |
@@ -1304,6 +1306,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueMedia` | `IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueComments` | `IDE/Tracker/Atlas.IDE.Tracker.IssueComments.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueParts` | `IDE/Tracker/Atlas.IDE.Tracker.IssueParts.pas` | Ordner `IDE/Tracker`, Teile des Fensters „Atlas-Issue“ |
+| `Atlas.IDE.Tracker.IssueLoad` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLoad.pas` | Ordner `IDE/Tracker`, Laden des Issues im Fenster „Atlas-Issue“ |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
@@ -1314,6 +1318,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SuggestDialog` | `UI/Tracker/Atlas.UI.Tracker.SuggestDialog.pas` | Ordner `UI/Tracker`, Dialog Arbeitskopien vorschlagen, #1929 |
 | `Atlas.UI.Tracker.ProjectPicker` | `UI/Tracker/Atlas.UI.Tracker.ProjectPicker.pas` | Ordner `UI/Tracker`, Klappliste Tracker-Projekt in Meine Issues, #1927 |
 | `Atlas.IDE.Tracker.IssuesServices` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesServices.pas` | Ordner `IDE/Tracker`, Dienste von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesTracking` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesTracking.pas` | Ordner `IDE/Tracker`, Arbeit am aktuellen Issue in „Meine Issues“ |
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |

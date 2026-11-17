@@ -321,10 +321,7 @@ end;
 
 procedure TAtlasIdeIssueMedia.Cancel;
 begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
+  TAtlasCiCancels.Cancel(FCancel);
 end;
 
 procedure TAtlasIdeIssueMedia.Retire;

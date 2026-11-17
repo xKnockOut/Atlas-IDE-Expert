@@ -172,10 +172,7 @@ end;
 
 procedure TAtlasIdeFlowMap.CancelLoad;
 begin
-  if FCancel <> nil then
-  begin
-    FCancel.Cancel;
-  end;
+  TAtlasCiCancels.Cancel(FCancel);
 end;
 
 class function TAtlasIdeFlowMap.NowUtc: TDateTime;

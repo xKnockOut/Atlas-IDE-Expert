@@ -420,7 +420,7 @@ begin
     Result.Reopened := FServices.Reopened.Marks(AProject);
   end;
   // „Prüfen“ (#2126) an Zeilen im Prüfzustand.
-  if FServices.Review <> nil then
+  if FServices.Tracking.Review <> nil then
   begin
     Result.ReviewStates := TAtlasIdeTrackerSync.Options(mTarget).ReviewStates;
   end;
@@ -553,9 +553,9 @@ begin
   case TAtlasMyIssuesPlan.StepOf(cRowActions[AAction], FServices.Reopened <> nil) of
     TAtlasIssueRowStep.Review:
       // „Prüfen“ (#2126): Bei „Alle“ gilt das Tracker-Projekt der Zeile (FocusIssue).
-      if FServices.Review <> nil then
+      if FServices.Tracking.Review <> nil then
       begin
-        FServices.Review.Review(AIssue, FServices.Options);
+        FServices.Tracking.Review.Review(AIssue, FServices.Options);
       end;
     TAtlasIssueRowStep.Resume:
       begin
