@@ -1404,9 +1404,11 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.EditorContextMenuContextual);
   Assert.IsTrue(mSettings.AtlasMenuContextual);
+  Assert.IsTrue(mSettings.AtlasViewMenu);
   Assert.AreEqual('navigation,edit,analysis,findings,debug,tests,notes', mSettings.EditorContextMenuGroups);
   mSettings.EditorContextMenuContextual := False;
   mSettings.AtlasMenuContextual := False;
+  mSettings.AtlasViewMenu := False;
   mSettings.EditorContextMenuGroups := 'notes; quatsch, Debug';
   mSettings.Normalize;
   Assert.AreEqual('debug,notes', mSettings.EditorContextMenuGroups);
@@ -1416,6 +1418,7 @@ begin
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.EditorContextMenuContextual);
   Assert.IsFalse(mLoaded.AtlasMenuContextual);
+  Assert.IsFalse(mLoaded.AtlasViewMenu);
   Assert.AreEqual('debug,notes', mLoaded.EditorContextMenuGroups);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;

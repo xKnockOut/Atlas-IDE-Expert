@@ -393,7 +393,9 @@ begin
     // Der IDE-Dialog, falls Atlas Strg+F12 übernimmt.
     AtlasEntry('Atlas.UnitSearchIde'),
     AtlasEntry('Atlas.Query'),
-    MenuEntry('Atlas.Query', TAtlasMenuPlace.ViewMenu)];
+    MenuEntry('Atlas.Query', TAtlasMenuPlace.ViewMenu),
+    // Fenster „Atlas-Suche: Ersetzen“ auch unter Ansicht › Atlas.
+    MenuEntry('Atlas.SearchReplace', TAtlasMenuPlace.ViewMenu)];
 end;
 
 function TAtlasSearchModule.Keys: TArray<TAtlasModuleKey>;

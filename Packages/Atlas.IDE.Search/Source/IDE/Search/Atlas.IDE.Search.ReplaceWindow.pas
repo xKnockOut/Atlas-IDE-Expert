@@ -5,8 +5,9 @@
 // TAtlasSearchReplaceFrame). Das Register „Atlas-Suche“ der Meldungen kann
 // keine Häkchen zeigen; deshalb dieses Fenster, verankerbar wie das
 // Diagnosefenster (#479) über INTAServices.CreateDockableForm, mit IDE-Thema
-// und Atlas-Symbol (#751). Nicht im Desktop: Die Suchleiste öffnet es mit
-// „Auswählen …“. OnFrame meldet einen neuen Frame, damit die Suche ihn füllt.
+// und Atlas-Symbol (#751). Die Suchleiste öffnet es mit „Auswählen …“; im
+// Desktop angemeldet, damit es angedockt seinen Platz behält. OnFrame meldet
+// einen neuen Frame, damit die Suche ihn füllt.
 
 interface
 
@@ -29,6 +30,9 @@ type
     class function Visible: Boolean; static;
     class procedure Hide; static;
     class procedure ApplyTheme; static;
+    /// <summary>Früh (Start): bei der IDE anmelden, damit der Desktop das Fenster samt Andockplatz speichert und
+    /// beim Laden wiederherstellt (#879).</summary>
+    class procedure Prepare; static;
     class procedure Release; static;
   end;
 
@@ -161,10 +165,9 @@ end;
 
 procedure EnsureHost;
 begin
-  // Nicht im Desktop: Die Suchleiste öffnet das Fenster selbst.
   if Host = nil then
   begin
-    Host := TAtlasIdeDockWindow.Create(TReplaceDock.Create, False);
+    Host := TAtlasIdeDockWindow.Create(TReplaceDock.Create, True);
   end;
 end;
 
@@ -207,6 +210,11 @@ begin
     Theme(mFrame);
   end;
   TAtlasIdeDockWindow.UpdateIcon(Host);
+end;
+
+class procedure TAtlasIdeSearchReplaceWindow.Prepare;
+begin
+  EnsureHost;
 end;
 
 class procedure TAtlasIdeSearchReplaceWindow.Release;

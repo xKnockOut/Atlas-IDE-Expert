@@ -1,0 +1,2 @@
+### Neu
+- Alle andockbaren Atlas-Fenster lassen sich unter *Ansicht › Atlas* öffnen: Prüfung, Ergebnisse, Gliederung, Atlas-Server und die Fenster der Module, die des Debuggers im Untermenü *Debuggen*, *Atlas-Struktur* und *Ereignis-Karte* im Untermenü *Designer* (auch im Atlas-Menü und in der Befehlspalette). Ein offenes Fenster holt der Eintrag nach vorn. Abschaltbar mit `commands.viewMenu.windows` (#2470).

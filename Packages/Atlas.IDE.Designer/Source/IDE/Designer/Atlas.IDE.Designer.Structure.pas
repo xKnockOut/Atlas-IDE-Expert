@@ -11,6 +11,8 @@
 //   Ein Takt (300 ms) vergleicht eine Kennung aus Namen, Klassen, Eltern und
 //   Verweisen und füllt bei Änderung neu; so erscheinen neue, gelöschte und
 //   umbenannte Komponenten sofort, ohne eigenen Designer-Notifier.
+// - Auch über Ansicht › Atlas › Designer und Atlas › Designer zu öffnen
+//   (Present: öffnet oder holt nach vorn, schließt nie).
 // - Klick wählt im Designer (bei einer Verknüpfung ihr Ziel), Doppelklick
 //   ruft den Komponenten-Editor (wie im Designer), Rechtsklick zeigt dessen
 //   Befehle. Die Auswahl im Designer wird im Baum markiert.
@@ -79,6 +81,8 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
+    /// <summary>Menü Ansicht › Atlas: Fenster öffnen bzw. nach vorn holen, nie schließen.</summary>
+    procedure Present;
     procedure ApplyTheme;
   end;
 
@@ -769,6 +773,18 @@ begin
   begin
     HideOnForm(TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
     FTimer.Enabled := True;
+  end;
+end;
+
+procedure TAtlasIdeStructure.Present;
+begin
+  if TAtlasIdeDockWindow.IsShown(FHost) then
+  begin
+    FHost.Present;
+  end
+  else
+  begin
+    Toggle;
   end;
 end;
 

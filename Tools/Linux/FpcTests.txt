@@ -353,6 +353,7 @@ Atlas.Common.Rules.Builtin.Testing.TearDown.Tests
 Atlas.Common.Rules.Builtin.Testing.Attributes.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCases.Tests
 Atlas.Common.Rules.Builtin.Testing.TestCaseTable.Tests
+Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia.Tests
 Atlas.Common.Rules.Builtin.Testing.Tests
 Atlas.Common.Rules.Builtin.TrivialAccessor.Tests
 Atlas.Common.Rules.Builtin.TypeDeclarations.Scan.Tests

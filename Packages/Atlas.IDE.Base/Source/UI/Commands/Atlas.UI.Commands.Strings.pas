@@ -26,7 +26,9 @@ type
     QuickOpenNoEditor, FormatCodeNothing, FormatCodeOff, UndoActionFormat, ProblemsViewMenuAtlas,
     ProblemsViewMenuWindow, ProjectMenuCheck,
     // Untermenü „Code“ im Hauptmenü Atlas (Erzeugen, Methodenreihenfolge).
-    MenuGroupCode);
+    MenuGroupCode,
+    // Fenster von Base unter Ansicht › Atlas (neben „Prüfung“).
+    ViewMenuResults, ViewMenuOutline, ViewMenuServer);
 
   TAtlasCommandsStrings = class
   public
@@ -123,7 +125,10 @@ const
      'Atlas',
      'Prüfung',
      'Mit Atlas prüfen',
-     'Code'),
+     'Code',
+     'Ergebnisse',
+     'Gliederung',
+     'Atlas-Server'),
     ('Project settings (atlas.json)…',
      'Atlas',
      'Options…',
@@ -203,7 +208,10 @@ const
      'Atlas',
      'Findings',
      'Check with Atlas',
-     'Code'));
+     'Code',
+     'Results',
+     'Outline',
+     'Atlas server'));
 
 { TAtlasCommandsStrings }
 
