@@ -27,6 +27,12 @@ type
     procedure ShownNeedsAllHosts;
     [Test]
     procedure DocksToDefaultOnlyOnce;
+    [Test]
+    procedure FormNameIsIdentifier;
+    [Test]
+    procedure FormNameEmptyWhenAlreadyNamed;
+    [Test]
+    procedure FormNameEmptyForInvalidIdentifier;
   end;
 
 implementation
@@ -98,5 +104,23 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasDockPlanTests);
+
+procedure TAtlasDockPlanTests.FormNameIsIdentifier;
+begin
+  // Die IDE vergibt OTADockForm_<N> nach Reihenfolge; der Desktop braucht einen festen Namen.
+  Assert.AreEqual('AtlasOutline', TAtlasDockPlan.FormName('AtlasOutline', 'OTADockForm_4'));
+end;
+
+procedure TAtlasDockPlanTests.FormNameEmptyWhenAlreadyNamed;
+begin
+  Assert.AreEqual('', TAtlasDockPlan.FormName('AtlasOutline', 'AtlasOutline'));
+end;
+
+procedure TAtlasDockPlanTests.FormNameEmptyForInvalidIdentifier;
+begin
+  Assert.AreEqual('', TAtlasDockPlan.FormName('', 'OTADockForm_1'));
+  Assert.AreEqual('', TAtlasDockPlan.FormName('Atlas.Outline', 'OTADockForm_1'));
+  Assert.AreEqual('', TAtlasDockPlan.FormName('1Atlas', 'OTADockForm_1'));
+end;
 
 end.
