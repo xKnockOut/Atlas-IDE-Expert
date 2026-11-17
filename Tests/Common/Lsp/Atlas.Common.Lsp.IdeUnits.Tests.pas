@@ -138,6 +138,19 @@ begin
   end;
 end;
 
+/// <summary>Ersatz-Units anlegen, einmal vervollständigen und wieder freigeben.</summary>
+procedure CompleteWithFreshUnits;
+var
+  mUnits: TIdeUnits;
+begin
+  mUnits := Units;
+  try
+    CompletionNames(mUnits, cMain, 'G.;', 2);
+  finally
+    mUnits.Free;
+  end;
+end;
+
 { TIdeUnitsTests }
 
 procedure TIdeUnitsTests.ShortTypeDropsUnitsAndCollectsUses;
@@ -307,25 +320,19 @@ end;
 
 procedure TIdeUnitsTests.ReleasedIndexKeepsNoImportNames;
 var
-  mUnits: TIdeUnits;
   mOther: ISymbolIndex;
   mBefore: Int64;
 begin
-  mUnits := Units;
-  try
-    // Erster Lauf: was die Vervollständigung beim ersten Gebrauch anlegt, zählt nicht.
-    CompletionNames(mUnits, cMain, 'G.;', 2);
-    // Den Namensindex der Import-Vorschläge auf einen eigenen Index setzen und mit ihm freigeben.
-    mOther := TSymbolIndex.Create;
-    TImportNames.Current(mOther);
-    mOther := nil;
-    mBefore := TShutdownLeaks.AllocatedBytes;
-    // Der Index der Vervollständigung lebt nur in CompletionNames; danach hält niemand seine Namen fest.
-    CompletionNames(mUnits, cMain, 'G.;', 2);
-    Assert.AreEqual(Int64(0), TShutdownLeaks.AllocatedBytes - mBefore);
-  finally
-    mUnits.Free;
-  end;
+  // Erster Lauf: was Ersatz-Units und Vervollständigung beim ersten Gebrauch anlegen, zählt nicht.
+  CompleteWithFreshUnits;
+  // Den Namensindex der Import-Vorschläge auf einen eigenen Index setzen und mit ihm freigeben.
+  mOther := TSymbolIndex.Create;
+  TImportNames.Current(mOther);
+  mOther := nil;
+  mBefore := TShutdownLeaks.AllocatedBytes;
+  // Ersatz-Units und der Index der Vervollständigung sind danach frei; niemand hält ihre Namen fest.
+  CompleteWithFreshUnits;
+  Assert.AreEqual(Int64(0), TShutdownLeaks.AllocatedBytes - mBefore);
 end;
 
 initialization
