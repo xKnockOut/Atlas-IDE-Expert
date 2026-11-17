@@ -24,9 +24,6 @@ type
     FOpened: string;
     FLine: Integer;
   public
-    /// <summary>Einmalige VCL-Puffer (PageControl, Listen, Karte) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -91,23 +88,6 @@ begin
 end;
 
 { TAtlasArchitectureFrameTests }
-
-procedure TAtlasArchitectureFrameTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    FillsTablesAndTrees;
-  finally
-    TearDown;
-  end;
-  // Erste Anzeige der Scrollbox mit Erklärung legt einmalige VCL-Puffer an.
-  Setup;
-  try
-    AssignmentInProfileTreeAndExplanation;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasArchitectureFrameTests.SetUp;
 var

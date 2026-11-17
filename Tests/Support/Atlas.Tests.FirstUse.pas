@@ -25,6 +25,7 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
+  System.Types,
   System.Classes,
   System.IOUtils,
   System.DateUtils,
@@ -46,6 +47,7 @@ uses
   Atlas.UI.Settings.Contract,
   Atlas.UI.Settings.Section,
   Atlas.UI.Settings.Page,
+  Vcl.Graphics,
   Vcl.Forms,
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
@@ -422,6 +424,116 @@ begin
   TDataModule.CreateNew(nil).Free;
 end;
 
+/// <summary>Liste aller Leinwände der VCL (Vcl.Graphics, TCanvas.Create trägt jede ein, TCanvas.Destroy trägt sie
+/// aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig lebender Leinwände und bleibt bis zur Finalisierung
+/// von Vcl.Graphics. Jedes TCustomControl hat eine; eine Einstellungsseite mit allen Bereichen kommt auf mehrere
+/// hundert (Block von 6.928 Byte für 864 Einträge). Viele Leinwände auf einmal anlegen und freigeben setzt den
+/// Höchststand weit über den jedes Tests.</summary>
+procedure WarmUpVclCanvasList;
+const
+  cCanvases = 4096;
+var
+  mCanvases: TArray<TCanvas>;
+  mIndex: Integer;
+begin
+  SetLength(mCanvases, cCanvases);
+  try
+    for mIndex := 0 to High(mCanvases) do
+    begin
+      mCanvases[mIndex] := TCanvas.Create;
+    end;
+  finally
+    for mIndex := 0 to High(mCanvases) do
+    begin
+      mCanvases[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Liste der Bitmap-Leinwände mit Gerätekontext (Vcl.Graphics, TBitmapCanvas.CreateHandle trägt ein, das
+/// Freigeben des Kontexts trägt aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig offener Kontexte und
+/// bleibt bis zur Finalisierung von Vcl.Graphics. Eine Bildliste legt beim Initialisieren mehrere an (80 Byte).
+/// Viele Bitmaps mit Kontext auf einmal anlegen und freigeben setzt den Höchststand über den jedes Tests.</summary>
+procedure WarmUpVclBitmapCanvases;
+const
+  cBitmaps = 64;
+var
+  mBitmaps: TArray<TBitmap>;
+  mIndex: Integer;
+begin
+  SetLength(mBitmaps, cBitmaps);
+  try
+    for mIndex := 0 to High(mBitmaps) do
+    begin
+      mBitmaps[mIndex] := TBitmap.Create;
+      mBitmaps[mIndex].SetSize(1, 1);
+      mBitmaps[mIndex].Canvas.FillRect(TRect.Create(0, 0, 1, 1));
+    end;
+  finally
+    for mIndex := 0 to High(mBitmaps) do
+    begin
+      mBitmaps[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Zwischenspeicher der Gerätekontexte von Steuerelementen (Vcl.Controls, TControlCanvas.CreateHandle):
+/// Seine Liste fasst höchstens vier Leinwände, ihre Kapazität entsteht beim ersten Textmessen auf einem
+/// Steuerelement mit Fenster (48 Byte) und bleibt bis zur Finalisierung von Vcl.Controls. Fünf Formulare messen
+/// gleichzeitig: Die Liste ist danach voll angelegt.</summary>
+procedure WarmUpVclControlCanvas;
+const
+  cForms = 5;
+var
+  mForms: TArray<TForm>;
+  mIndex: Integer;
+begin
+  SetLength(mForms, cForms);
+  try
+    for mIndex := 0 to High(mForms) do
+    begin
+      mForms[mIndex] := TForm.CreateNew(nil);
+      mForms[mIndex].HandleNeeded;
+      mForms[mIndex].Canvas.TextWidth('Atlas');
+    end;
+  finally
+    for mIndex := 0 to High(mForms) do
+    begin
+      mForms[mIndex].Free;
+    end;
+  end;
+end;
+
+/// <summary>Liste der Beiträge in der Modul-Registry (TAtlasModuleRegistry, frei mit der Registry in der
+/// Finalisierung von Base): Ihre Kapazität wächst auf den Höchststand gleichzeitiger Beiträge. Tests, die mehrere
+/// Einstellungsbereiche auf einmal anmelden, heben ihn (400 Byte bei acht). Viele Beiträge auf einmal anmelden
+/// und zurückziehen setzt ihn über den jedes Tests.</summary>
+procedure WarmUpRegistryProvisions;
+const
+  cProvisions = 64;
+var
+  mRegistrations: TArray<IAtlasRegistration>;
+  mIndex: Integer;
+begin
+  SetLength(mRegistrations, cProvisions);
+  try
+    for mIndex := 0 to High(mRegistrations) do
+    begin
+      mRegistrations[mIndex] := AtlasModuleRegistry.Provide(IAtlasSettingsSectionProvider,
+        TAtlasSettingsSectionFactory.Create(TAtlasSettingsSection) as IAtlasSettingsSectionProvider);
+    end;
+  finally
+    for mIndex := 0 to High(mRegistrations) do
+    begin
+      if mRegistrations[mIndex] <> nil then
+      begin
+        mRegistrations[mIndex].Revoke;
+      end;
+    end;
+    mRegistrations := nil;
+  end;
+end;
+
 { TFirstUse }
 
 /// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
@@ -469,6 +581,10 @@ begin
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
   WarmUpVcsTools;
+  WarmUpVclCanvasList;
+  WarmUpVclBitmapCanvases;
+  WarmUpVclControlCanvas;
+  WarmUpRegistryProvisions;
   WarmUpStackTraceMap;
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
