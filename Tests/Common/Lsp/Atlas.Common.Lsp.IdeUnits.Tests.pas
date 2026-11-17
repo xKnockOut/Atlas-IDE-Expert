@@ -13,9 +13,6 @@ type
   [TestFixture]
   TIdeUnitsTests = class
   public
-    /// <summary>Erste Vervollständigung füllt Caches, nicht dem Test anrechnen.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure ShortTypeDropsUnitsAndCollectsUses;
     [Test]
@@ -30,6 +27,8 @@ type
     procedure HoverShowsMemberOfIdeType;
     [Test]
     procedure CompletionListsMembersAndEnumValues;
+    [Test]
+    procedure ReleasedIndexKeepsNoImportNames;
   end;
 
 implementation
@@ -52,7 +51,9 @@ uses
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.IdeUnits.Source,
   Atlas.Common.Lsp.IdeUnits,
-  Atlas.Common.Lsp.IdeIndex;
+  Atlas.Common.Lsp.IdeIndex,
+  Atlas.Common.Index.NameIndex,
+  Atlas.Common.Diagnostics.ShutdownLeaks;
 
 const
   cMembers = '{"units":[{"unit":"Vendor.Grid","types":[' +
@@ -138,19 +139,6 @@ begin
 end;
 
 { TIdeUnitsTests }
-
-procedure TIdeUnitsTests.WarmUp;
-var
-  mUnits: TIdeUnits;
-begin
-  mUnits := Units;
-  try
-    CompletionNames(mUnits, cMain, 'G.;', 2);
-    CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
-  finally
-    mUnits.Free;
-  end;
-end;
 
 procedure TIdeUnitsTests.ShortTypeDropsUnitsAndCollectsUses;
 var
@@ -312,6 +300,29 @@ begin
     mNames := CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
     Assert.IsTrue(mNames.Contains('gsNone '), mNames);
     Assert.IsTrue(mNames.Contains('gsEdit '), mNames);
+  finally
+    mUnits.Free;
+  end;
+end;
+
+procedure TIdeUnitsTests.ReleasedIndexKeepsNoImportNames;
+var
+  mUnits: TIdeUnits;
+  mOther: ISymbolIndex;
+  mBefore: Int64;
+begin
+  mUnits := Units;
+  try
+    // Erster Lauf: was die Vervollständigung beim ersten Gebrauch anlegt, zählt nicht.
+    CompletionNames(mUnits, cMain, 'G.;', 2);
+    // Den Namensindex der Import-Vorschläge auf einen eigenen Index setzen und mit ihm freigeben.
+    mOther := TSymbolIndex.Create;
+    TImportNames.Current(mOther);
+    mOther := nil;
+    mBefore := TShutdownLeaks.AllocatedBytes;
+    // Der Index der Vervollständigung lebt nur in CompletionNames; danach hält niemand seine Namen fest.
+    CompletionNames(mUnits, cMain, 'G.;', 2);
+    Assert.AreEqual(Int64(0), TShutdownLeaks.AllocatedBytes - mBefore);
   finally
     mUnits.Free;
   end;
