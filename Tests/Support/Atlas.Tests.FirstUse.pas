@@ -422,6 +422,17 @@ end;
 
 { TFirstUse }
 
+/// <summary>Windows-Version der RTL (System.SysUtils, Win32Platform und Win32CSDVersion): InitPlatformId legt beim
+/// ersten Zugriff den Text des Service Packs an, den SysUtils bis zur Finalisierung hält. Ausgelöst etwa von
+/// TRegistry.GetKeyInfo (TDelphiInstallation.Versions beim Lesen der globalen Einstellungen).</summary>
+procedure ShellWarmUpPlatformId;
+begin
+  if Win32Platform < 0 then
+  begin
+    raise EInvalidOperation.Create('Plattform');
+  end;
+end;
+
 class procedure TFirstUse.WarmUp;
 begin
   SwitchOffComponentFieldCache;
@@ -443,6 +454,7 @@ begin
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
   WarmUpRegexErrors;
+  ShellWarmUpPlatformId;
 end;
 
 end.
