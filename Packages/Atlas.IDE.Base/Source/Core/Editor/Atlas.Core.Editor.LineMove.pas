@@ -551,7 +551,9 @@ begin
   begin
     Inc(mSuffix);
   end;
-  while (mSuffix > 0) and (AOld[Length(AOld) - mSuffix] <> #10) do
+  // Reicht das gleiche Ende bis an den Anfang des alten Texts, entscheidet das Zeichen davor im neuen.
+  while (mSuffix > 0) and (((mSuffix < Length(AOld)) and (AOld[Length(AOld) - mSuffix] <> #10)) or
+    ((mSuffix = Length(AOld)) and (ANew[Length(ANew) - mSuffix] <> #10))) do
   begin
     Dec(mSuffix);
   end;
