@@ -13,9 +13,6 @@ type
   [TestFixture]
   TIdeUnitsTests = class
   public
-    /// <summary>Erste Vervollständigung füllt Caches, nicht dem Test anrechnen.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure ShortTypeDropsUnitsAndCollectsUses;
     [Test]
@@ -30,6 +27,8 @@ type
     procedure HoverShowsMemberOfIdeType;
     [Test]
     procedure CompletionListsMembersAndEnumValues;
+    [Test]
+    procedure ReleasedIndexKeepsNoImportNames;
   end;
 
 implementation
@@ -52,7 +51,9 @@ uses
   Atlas.Common.Lsp.Completion.Lists,
   Atlas.Common.Lsp.IdeUnits.Source,
   Atlas.Common.Lsp.IdeUnits,
-  Atlas.Common.Lsp.IdeIndex;
+  Atlas.Common.Lsp.IdeIndex,
+  Atlas.Common.Index.NameIndex,
+  Atlas.Common.Diagnostics.ShutdownLeaks;
 
 const
   cMembers = '{"units":[{"unit":"Vendor.Grid","types":[' +
@@ -137,20 +138,20 @@ begin
   end;
 end;
 
-{ TIdeUnitsTests }
-
-procedure TIdeUnitsTests.WarmUp;
+/// <summary>Ersatz-Units anlegen, einmal vervollständigen und wieder freigeben.</summary>
+procedure CompleteWithFreshUnits;
 var
   mUnits: TIdeUnits;
 begin
   mUnits := Units;
   try
     CompletionNames(mUnits, cMain, 'G.;', 2);
-    CompletionNames(mUnits, StringReplace(cMain, 'gsEdit;', 'gs;', []), ':= gs;', 5);
   finally
     mUnits.Free;
   end;
 end;
+
+{ TIdeUnitsTests }
 
 procedure TIdeUnitsTests.ShortTypeDropsUnitsAndCollectsUses;
 var
@@ -315,6 +316,23 @@ begin
   finally
     mUnits.Free;
   end;
+end;
+
+procedure TIdeUnitsTests.ReleasedIndexKeepsNoImportNames;
+var
+  mOther: ISymbolIndex;
+  mBefore: Int64;
+begin
+  // Erster Lauf: was Ersatz-Units und Vervollständigung beim ersten Gebrauch anlegen, zählt nicht.
+  CompleteWithFreshUnits;
+  // Den Namensindex der Import-Vorschläge auf einen eigenen Index setzen und mit ihm freigeben.
+  mOther := TSymbolIndex.Create;
+  TImportNames.Current(mOther);
+  mOther := nil;
+  mBefore := TShutdownLeaks.AllocatedBytes;
+  // Ersatz-Units und der Index der Vervollständigung sind danach frei; niemand hält ihre Namen fest.
+  CompleteWithFreshUnits;
+  Assert.AreEqual(Int64(0), TShutdownLeaks.AllocatedBytes - mBefore);
 end;
 
 initialization
