@@ -10,8 +10,6 @@
     "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
-    "Tests/Common/Lsp/Atlas.Common.Lsp.CodeActions.Tests.pas: TLspCodeActionsTests.WarmUpFirstUse",
-    "Tests/Common/Lsp/Atlas.Common.Lsp.FindingsMemo.Tests.pas: TRuleFindingsMemoTests.WarmUp",
     "Tests/Common/Lsp/Atlas.Common.Lsp.IdeUnits.Tests.pas: TIdeUnitsTests.WarmUp",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Query.Tests.pas: TLspQueryTests.WarmUpFirstUse",
     "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.SavedQueries.Tests.pas: TSavedQueryRuleTests.WarmUpFirstUse",
