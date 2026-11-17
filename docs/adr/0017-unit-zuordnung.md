@@ -1339,6 +1339,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.IssueBoxes` | `UI/Tracker/Atlas.UI.Tracker.IssueBoxes.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame.Contract` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Contract.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.IssueFrame.Chrome` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Chrome.pas` | Ordner `UI/Tracker`, feste Steuerelemente des Issue-Fensters |
+| `Atlas.UI.Tracker.IssueFrame.Layout` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Layout.pas` | Ordner `UI/Tracker`, Ablage des Inhalts im Bildlauf |
+| `Atlas.UI.Tracker.IssueFrame.Sections` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Sections.pas` | Ordner `UI/Tracker`, Abschnitte des gezeigten Issues |
+| `Atlas.UI.Tracker.IssueFrame.Deferred` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Deferred.pas` | Ordner `UI/Tracker`, Wünsche nach dem Klick |
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
