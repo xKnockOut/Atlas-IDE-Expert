@@ -191,10 +191,10 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  System.DateUtils,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 const
   cKindTexts: array[TAtlasUnitKind] of string = ('unit', 'form', 'frame', 'dm', 'test', 'inc');
@@ -415,14 +415,7 @@ begin
   Result := 0;
   if AObject.TryGetValue<string>('modified', mText) then
   begin
-    try
-      Result := ISO8601ToDate(mText, False);
-    except
-      on EConvertError do
-      begin
-        Result := 0;
-      end;
-    end;
+    Result := TTextTimestamp.IsoOrZero(mText, False);
   end;
 end;
 

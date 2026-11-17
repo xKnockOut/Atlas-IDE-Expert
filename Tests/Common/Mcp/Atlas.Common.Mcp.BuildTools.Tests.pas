@@ -22,6 +22,8 @@ type
     [Test]
     procedure KeepsRequestedBy;
     [Test]
+    procedure UnreadableFinishedAtIsUnknown;
+    [Test]
     procedure OmitsFilesOutsideWorkspaceAndFiltersProject;
     [Test]
     procedure BuildFileSameForBothProcesses;
@@ -125,6 +127,18 @@ begin
   finally
     mReport.Free;
   end;
+end;
+
+procedure TMcpBuildToolsTests.UnreadableFinishedAtIsUnknown;
+var
+  mBuild: TIdeBuild;
+begin
+  // Unlesbarer oder fehlender Zeitpunkt: der Build bleibt bekannt, nur der Zeitpunkt ist 0.
+  Assert.IsTrue(TMcpBuildTools.FromFileText('{"project":"C:\\P\\App.dproj","finishedAt":"gestern"}', mBuild));
+  Assert.AreEqual('C:\P\App.dproj', mBuild.Project);
+  Assert.AreEqual(Double(0), Double(mBuild.FinishedAt));
+  Assert.IsTrue(TMcpBuildTools.FromFileText('{"project":"C:\\P\\App.dproj"}', mBuild));
+  Assert.AreEqual(Double(0), Double(mBuild.FinishedAt));
 end;
 
 procedure TMcpBuildToolsTests.OmitsFilesOutsideWorkspaceAndFiltersProject;

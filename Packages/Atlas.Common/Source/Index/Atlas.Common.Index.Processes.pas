@@ -56,7 +56,8 @@ type
 implementation
 
 uses
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Text.Timestamps;
 
 { TIndexProcessInfo }
 
@@ -90,14 +91,10 @@ var
   mText: string;
 begin
   Result := 0;
-  if AObject.TryGetValue<string>(AName, mText) and (mText <> '') then
-    try
-      Result := ISO8601ToDate(mText, False);
-    except
-      // lsp-ignore: catch-all-without-raise -- Prozessdatei unlesbar heißt kein Eintrag
-      on Exception do
-        Result := 0;
-    end;
+  if AObject.TryGetValue<string>(AName, mText) then
+  begin
+    Result := TTextTimestamp.IsoOrZero(mText, False);
+  end;
 end;
 
 /// <summary>Ereignisse mit Text aus "events".</summary>
