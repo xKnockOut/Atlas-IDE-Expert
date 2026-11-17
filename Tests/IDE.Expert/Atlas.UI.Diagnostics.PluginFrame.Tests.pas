@@ -15,9 +15,6 @@ type
   [TestFixture]
   TAtlasDiagnosticsFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure StartsOnMainThreadWithBar;
     [Test]
@@ -96,11 +93,6 @@ begin
 end;
 
 { TAtlasDiagnosticsFrameTests }
-
-procedure TAtlasDiagnosticsFrameTests.WarmUpFirstUse;
-begin
-  PaintsAllPages;
-end;
 
 procedure TAtlasDiagnosticsFrameTests.StartsOnMainThreadWithBar;
 var
