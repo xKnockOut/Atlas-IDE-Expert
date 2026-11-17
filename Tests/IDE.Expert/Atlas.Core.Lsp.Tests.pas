@@ -508,11 +508,9 @@ begin
       finally
         Request.Free;
       end;
-      Reply := TLspFrameReader.Frame(
-        Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
+      Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
         [Token])) +
-        TLspFrameReader.Frame(
-          '{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
+        TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
         TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
         [Token])) +
         TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
