@@ -49,6 +49,7 @@ contains
   Atlas.UI.Designer.Magnifier in 'Source\UI\Designer\Atlas.UI.Designer.Magnifier.pas',
   Atlas.Core.Designer.Gaps in 'Source\Core\Designer\Atlas.Core.Designer.Gaps.pas',
   Atlas.Core.Designer.KeptComponents in 'Source\Core\Designer\Atlas.Core.Designer.KeptComponents.pas',
+  Atlas.Core.Designer.Created in 'Source\Core\Designer\Atlas.Core.Designer.Created.pas',
   Atlas.Core.Designer.MultiResize in 'Source\Core\Designer\Atlas.Core.Designer.MultiResize.pas',
   Atlas.Core.Designer.SelectionBar in 'Source\Core\Designer\Atlas.Core.Designer.SelectionBar.pas',
   Atlas.Core.Designer.Magnifier in 'Source\Core\Designer\Atlas.Core.Designer.Magnifier.pas',
