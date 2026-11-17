@@ -30,9 +30,7 @@ uses
   System.DateUtils,
   System.JSON,
   System.Generics.Collections,
-  System.TypInfo,
   System.Messaging,
-  Vcl.Graphics,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
@@ -382,20 +380,14 @@ end;
 /// Der Zwischenspeicher selbst gehört der RTL und wird in ihrem Klassendestruktor freigegeben.</summary>
 /// <summary>Einmal-Belegungen der RTL, die Tests über Atlas-Code treffen: die Kodierungen UTF-16 LE und BE
 /// (TEncoding.Unicode, BigEndianUnicode; TParser beim Lesen von DFM-Text), der Nachrichtenverteiler
-/// TMessageManager.DefaultManager (VCL beim DPI-Wechsel) und die Ressourcentexte, die die RTL beim ersten Fehler lädt
-/// und bis zum Ende behält (StringToSet mit unbekanntem Element, UTF-8 mit ungültigen Bytes). Freigegeben in der
-/// Finalisierung von System.SysUtils bzw. System.Messaging.</summary>
+/// TMessageManager.DefaultManager (VCL beim DPI-Wechsel) und der Ressourcentext, den die RTL beim ersten UTF-8-Fehler
+/// lädt und bis zum Ende behält (TEncoding.GetString mit ungültigen Bytes). Freigegeben in der Finalisierung von
+/// System.SysUtils bzw. System.Messaging.</summary>
 procedure WarmUpRtlSingletons;
 begin
   TEncoding.Unicode;
   TEncoding.BigEndianUnicode;
   TMessageManager.DefaultManager;
-  try
-    StringToSet(GetPropInfo(TFont, 'Style'), '[ErstgebrauchUnbekannt]');
-  except
-    on Exception do
-      ;
-  end;
   try
     TEncoding.UTF8.GetString(TBytes.Create($C3, $28, $FF));
   except
