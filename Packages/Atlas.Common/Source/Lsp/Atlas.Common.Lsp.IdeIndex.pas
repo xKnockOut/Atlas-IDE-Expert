@@ -18,6 +18,9 @@ type
   public
     /// <summary>AInner ist der gemeinsame Index, AIde der Index der Ersatz-Units.</summary>
     constructor Create(const AInner, AIde: ISymbolIndex);
+    /// <summary>Verwirft den Namensindex der Import-Vorschläge zu diesem Index; er hielte sonst die
+    /// Ersatz-Units über das Ende hinaus fest.</summary>
+    destructor Destroy; override;
     procedure AddUnit(const AUnit: TUnitIndex);
     procedure RemoveFile(const AFileName: string);
     function FindUnit(const AUnitName: string; out AUnit: TUnitIndex): Boolean;
@@ -41,6 +44,9 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Common.Index.NameIndex;
 
 /// <summary>AFirst, dann ASecond; ohne ASecond AFirst selbst (keine Kopie).</summary>
 function Joined(const AFirst, ASecond: TArray<TSymbolLocation>): TArray<TSymbolLocation>;
@@ -67,6 +73,13 @@ begin
   inherited Create;
   FInner := AInner;
   FIde := AIde;
+end;
+
+destructor TIdeIndex.Destroy;
+begin
+  // Die Vervollständigung fragt TImportNames.Current mit diesem Objekt; wie TSymbolIndex abmelden.
+  TImportNames.Forget(Self);
+  inherited;
 end;
 
 procedure TIdeIndex.AddUnit(const AUnit: TUnitIndex);
