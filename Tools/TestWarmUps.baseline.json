@@ -1,5 +1,5 @@
 {
-  "count": 47,
+  "count": 43,
   "warmUps": [
     "Tests/Application/Shell/Shell.Hotspots.Tests.pas: TShellHotspotsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Linter.Tests.pas: TShellLinterTests.WarmUpFirstUse",
