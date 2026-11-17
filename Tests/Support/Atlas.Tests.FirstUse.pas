@@ -164,6 +164,39 @@ begin
   end;
 end;
 
+/// <summary>TFile.Replace mit fehlendem Ziel und fehlender Quelle: Die RTL lädt dabei den Ressourcentext von
+/// EFileNotFoundException und behält ihn bis Programmende. Im Index-Cache tritt das nur im Wettlauf zweier
+/// Schreiber auf (TDiskIndexFileSystem.WriteBytes, Test ConcurrentWritersLeaveReadableCache) und träfe dann
+/// zufällig den Test, in dem das Ziel gerade fehlt.</summary>
+procedure WarmUpIndexCacheReplace;
+var
+  mFolder: string;
+  mExisting: string;
+  mMissing: string;
+begin
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-erstgebrauch-ersetzen-' + IntToStr(GetCurrentProcessId));
+  TDirectory.CreateDirectory(mFolder);
+  try
+    mExisting := TPath.Combine(mFolder, 'vorhanden.json');
+    mMissing := TPath.Combine(mFolder, 'fehlt.json');
+    TFile.WriteAllText(mExisting, '{}');
+    try
+      TFile.Replace(mExisting, mMissing, mExisting + '.bak');
+    except
+      on EFileNotFoundException do
+        ;
+    end;
+    try
+      TFile.Replace(mMissing, mExisting, mExisting + '.bak');
+    except
+      on EFileNotFoundException do
+        ;
+    end;
+  finally
+    TDirectory.Delete(mFolder, True);
+  end;
+end;
+
 /// <summary>Gemeinsame Befehlsliste je Sprache (#1458): entsteht beim ersten Zugriff in der jeweiligen Sprache und
 /// bleibt; sonst trifft das je nach Reihenfolge einen anderen Test als Leck (die englische etwa
 /// EnglishTextsWithoutGerman über die Regel slash-command, rund 23 KB).</summary>
@@ -403,6 +436,7 @@ begin
   WarmUpSettingsTransfer;
   WarmUpFileErrors;
   WarmUpDataFiles;
+  WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;
   WarmUpDuplicateCatalog;
   WarmUpThemeListeners;

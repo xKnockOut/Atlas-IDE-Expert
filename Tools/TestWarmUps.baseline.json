@@ -1,5 +1,5 @@
 {
-  "count": 58,
+  "count": 56,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
@@ -15,8 +15,6 @@
     "Tests/Common/Documents/Atlas.Common.Documents.FileEncoding.Tests.pas: TFileEncodingDefaultTests.WarmUpFirstUse",
     "Tests/Common/Editing/Atlas.Common.Editing.ClassCommands.Tests.pas: TClassCommandsTests.WarmUp",
     "Tests/Common/Index/Atlas.Common.Index.Builder.Tests.pas: TIndexBuilderTests.WarmUpFirstUse",
-    "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
-    "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.CodeActions.Tests.pas: TLspCodeActionsTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.FindingsMemo.Tests.pas: TRuleFindingsMemoTests.WarmUp",
