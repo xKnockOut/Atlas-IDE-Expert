@@ -377,6 +377,30 @@ begin
   AEntry.FStamp := FLastStamp;
 end;
 
+class procedure TAtlasProblemEntries.CacheUses(AEntry: TEntry);
+var
+  mProblem: TAtlasProblem;
+begin
+  if AEntry.FUsesValid then
+  begin
+    Exit;
+  end;
+  AEntry.FUsesList := nil;
+  AEntry.FMovableList := nil;
+  for mProblem in AEntry.FAtlas do
+  begin
+    if mProblem.UsesState = TAtlasProblem.cUsesUnused then
+    begin
+      AEntry.FUsesList := AEntry.FUsesList + [mProblem];
+    end
+    else if mProblem.UsesState = TAtlasProblem.cUsesImplementation then
+    begin
+      AEntry.FMovableList := AEntry.FMovableList + [mProblem];
+    end;
+  end;
+  AEntry.FUsesValid := True;
+end;
+
 procedure TAtlasProblemStore.Update(const AFileName, AText: string; ATextKnown: Boolean;
   const AProblems: TArray<TAtlasProblem>; const AResultId: string; AReplaceCompiler: Boolean);
 var
@@ -1001,30 +1025,6 @@ begin
       Result := Result + [mProblem];
     end;
   end;
-end;
-
-class procedure TAtlasProblemStore.CacheUses(AEntry: TEntry);
-var
-  mProblem: TAtlasProblem;
-begin
-  if AEntry.FUsesValid then
-  begin
-    Exit;
-  end;
-  AEntry.FUsesList := nil;
-  AEntry.FMovableList := nil;
-  for mProblem in AEntry.FAtlas do
-  begin
-    if mProblem.UsesState = TAtlasProblem.cUsesUnused then
-    begin
-      AEntry.FUsesList := AEntry.FUsesList + [mProblem];
-    end
-    else if mProblem.UsesState = TAtlasProblem.cUsesImplementation then
-    begin
-      AEntry.FMovableList := AEntry.FMovableList + [mProblem];
-    end;
-  end;
-  AEntry.FUsesValid := True;
 end;
 
 function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
