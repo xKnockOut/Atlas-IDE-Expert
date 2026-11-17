@@ -1150,7 +1150,6 @@
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.MultiCursor.pas", "rule": "duplicate-routine-body", "fingerprint": "0c7c0775", "count": 1, "routine": "FormShown", "context": "af189181"},
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.MultiCursor.pas", "rule": "duplicate-routine-body", "fingerprint": "c1b0d760", "count": 1, "routine": "Invalidate", "context": "94a80820"},
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.MultiCursor.pas", "rule": "magic-number", "fingerprint": "8caab869", "count": 1, "routine": "TAtlasIdeMultiCursor.Create", "context": "1d6d9db5"},
-    {"path": "Source/IDE/Editor/Atlas.IDE.Editor.MultiCursorState.pas", "rule": "duplicate-routine-body", "fingerprint": "c5f4b430", "count": 1, "routine": "LineOf", "context": "f521f12c"},
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.NavHistory.pas", "rule": "public-field", "fingerprint": "088d072e", "count": 1, "routine": "implementation", "context": "aa89c88f"},
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.NavHistory.pas", "rule": "public-field", "fingerprint": "3893410a", "count": 1, "routine": "implementation", "context": "d0fe44c7"},
     {"path": "Source/IDE/Editor/Atlas.IDE.Editor.NavHistory.pas", "rule": "public-field", "fingerprint": "5449811d", "count": 1, "routine": "implementation", "context": "91df6f69"},

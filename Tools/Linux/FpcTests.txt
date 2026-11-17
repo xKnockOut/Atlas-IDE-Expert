@@ -442,6 +442,9 @@ Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
 Atlas.Core.Editor.LinkedSession.Tests
+Atlas.Core.Editor.MultiCursorSession.Tests
+Atlas.Core.Editor.MultiCursor.Tests
+Atlas.Core.Editor.LineMove.Tests
 Atlas.Core.Editor.LinkedEditing.Tests
 Atlas.Core.Editor.MouseButtons.Tests
 Atlas.Core.Diagnostics.SafeMode.Tests

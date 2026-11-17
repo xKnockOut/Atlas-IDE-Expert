@@ -151,9 +151,9 @@ begin
   Assert.IsFalse(FSession.Start(FSurface, 'C:\Projekt\Unit2.pas', cText, CountRanges, nil), 'andere Datei');
   Assert.IsFalse(StartCount(3, 0), 'Cursor außerhalb');
   FFake.Caret(4, 4);
-  FFake.Select(True);
+  FFake.SelectFrom(4, 2);
   Assert.IsFalse(FSession.Start(FSurface, cFile, cText, CountRanges, nil), 'Markierung');
-  FFake.Select(False);
+  FFake.Caret(4, 4);
   FFake.ReadOnly := True;
   Assert.IsFalse(StartCount(4, 4), 'schreibgeschützt');
   FFake.ReadOnly := False;
@@ -347,7 +347,7 @@ end;
 procedure TAtlasLinkedSessionTests.SelectionGivesKeyToIde;
 begin
   Assert.IsTrue(StartCount(4, 4));
-  FFake.Select(True);
+  FFake.SelectFrom(4, 2);
   Assert.IsFalse(Key(TAtlasLinkedKey.Insert, 'X'));
   Assert.IsFalse(FSession.Active);
   Assert.AreEqual(cText, FFake.Text);

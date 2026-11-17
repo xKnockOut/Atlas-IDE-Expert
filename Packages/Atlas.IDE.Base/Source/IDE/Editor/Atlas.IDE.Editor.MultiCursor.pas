@@ -1,8 +1,10 @@
 ﻿unit Atlas.IDE.Editor.MultiCursor;
 
 // Mehrere Einfügemarken (#589, experimentell) im Editor. Was sich an den
-// Marken ändert, rechnet Atlas.Core.Editor.MultiCursor aus; hier bleiben
-// Tasten, Maus, Puffer, Zeichnen und Statusfeld.
+// Marken ändert, rechnet Atlas.Core.Editor.MultiCursor aus; den Ablauf im
+// Puffer führt Atlas.Core.Editor.MultiCursorSession über
+// Atlas.IDE.Editor.EditSurface. Hier bleiben Tasten, Maus, Zwischenablage,
+// Takt, Zeichnen und Statusfeld.
 // - Marken setzen: Strg+D, Alt+Umschalt+I und Strg+Alt+↑/↓ sind Editorbefehle
 //   (Atlas.IDE.Commands.Bindings) mit Rückfall: Ohne Treffer geht die Taste an
 //   die IDE, Strg+D ohne Wort am Cursor also an „Quelltext formatieren“.
@@ -51,7 +53,8 @@ uses
   Vcl.AppEvnts,
   ToolsAPI,
   ToolsAPI.Editor,
-  Atlas.IDE.Editor.MultiCursorState;
+  Atlas.Core.Editor.EditSurface,
+  Atlas.Core.Editor.MultiCursorSession;
 
 type
   /// <summary>Statusfeld setzen; AText '' entfernt es.</summary>
@@ -89,9 +92,11 @@ type
     FBlink: Boolean;
     FWasModified: Boolean;
     FInput: TInput;
-    FState: TAtlasIdeMultiCursorState;
+    FSession: TAtlasMultiCursorSession;
     function IsBusy: Boolean;
     function IsActive: Boolean;
+    /// <summary>Puffer der aktiven Ansicht; nil ohne.</summary>
+    class function ActiveSurface: IAtlasEditSurface; static;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure MouseDown(const AMsg: TMsg; var AHandled: Boolean);
     procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
@@ -104,6 +109,8 @@ type
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure PaintCarets(const AContext: INTACodeEditorPaintContext; const ARect: TRect);
     procedure Refresh;
+    /// <summary>Die Zusatzmarken sind zu Ende: Eingabe vergessen, Takt aus, Statusfeld leeren.</summary>
+    procedure Finished;
     procedure Finish;
   public
     constructor Create(const ABusy: TFunc<Boolean>; const AStatus: TAtlasMultiCursorStatusProc);
@@ -135,6 +142,7 @@ uses
   System.Math,
   Vcl.Forms,
   Vcl.Graphics,
+  Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Session,
@@ -143,7 +151,9 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh;
+  Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.EditSurface,
+  Atlas.IDE.Editor.WrapSelection;
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.
@@ -228,25 +238,27 @@ begin
     mSettings.Enabled and mSettings.MultiCursor);
 end;
 
-/// <summary>Datei, Zeile (0-basiert) und Spalte des Editors unter dem Klick AMsg; False außerhalb des Textes.
+/// <summary>Datei, Zeile und Zeichen (0-basiert) des Editors unter dem Klick AMsg; False außerhalb des Textes.
 /// </summary>
-function ClickedAt(const AMsg: TMsg; out AFileName: string; out ALine, AColumn: Integer): Boolean;
+function ClickedAt(const AMsg: TMsg; out AFileName: string; out ALine, ACharacter: Integer): Boolean;
 var
   mServices: INTACodeEditorServices;
   mState: INTACodeEditorState;
-  mVisibleLine: Integer;
+  mVisibleLine, mColumn: Integer;
+  mLineText: string;
 begin
   Result := False;
   AFileName := '';
   ALine := -1;
-  AColumn := 0;
+  ACharacter := 0;
+  mColumn := 0;
   if not Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     Exit;
   end;
   mState := mServices.EditorState[FindControl(AMsg.hwnd)];
   if (mState = nil) or not mState.PointToCharacterPos(Point(SmallInt(LoWord(Cardinal(AMsg.lParam))),
-    SmallInt(HiWord(Cardinal(AMsg.lParam)))), AColumn, mVisibleLine) then
+    SmallInt(HiWord(Cardinal(AMsg.lParam)))), mColumn, mVisibleLine) then
   begin
     Exit;
   end;
@@ -255,6 +267,9 @@ begin
   if Result then
   begin
     AFileName := mState.View.Buffer.FileName;
+    mLineText := TAtlasEditorBuffer.LineText(mState.View, ALine + 1);
+    ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mColumn, TAtlasEditorBuffer.TabWidth(mState.View.Buffer)),
+      Length(mLineText));
   end;
 end;
 
@@ -338,31 +353,55 @@ begin
   end;
 end;
 
-/// <summary>ACommand an allen Marken von AOwner ausführen; False gibt die Taste an die IDE.</summary>
-function Perform(AOwner: TAtlasIdeMultiCursor; const ACommand: TAtlasMultiCursorKeyCommand): Boolean;
+/// <summary>Markierungen aller Marken in die Zwischenablage; False ohne Markierung (Kopieren bleibt der IDE).
+/// </summary>
+function CopyTo(const ASession: TAtlasMultiCursorSession; const ASurface: IAtlasEditSurface): Boolean;
+var
+  mSelected: string;
+begin
+  Result := ASession.Selected(ASurface, mSelected);
+  if Result then
+  begin
+    Clipboard.AsText := mSelected;
+  end;
+end;
+
+/// <summary>Text der Zwischenablage an allen Marken einfügen.</summary>
+procedure PasteFrom(const ASession: TAtlasMultiCursorSession; const ASurface: IAtlasEditSurface);
+begin
+  if Clipboard.HasFormat(CF_UNICODETEXT) or Clipboard.HasFormat(CF_TEXT) then
+  begin
+    ASession.DoPaste(ASurface, Clipboard.AsText);
+  end;
+end;
+
+/// <summary>Bearbeitende Taste ACommand an allen Marken von ASession ausführen; False gibt sie an die IDE.</summary>
+function PerformEdit(const ASession: TAtlasMultiCursorSession; const ASurface: IAtlasEditSurface;
+  const ACommand: TAtlasMultiCursorKeyCommand): Boolean;
 begin
   Result := True;
   case ACommand.Action of
-    TAtlasMultiCursorKeyAction.Finish:
-      AOwner.Finish;
     TAtlasMultiCursorKeyAction.Skip:
-      AOwner.FState.DoSkip;
+      ASession.DoSkip(ASurface);
     TAtlasMultiCursorKeyAction.Chord:
       ;
     TAtlasMultiCursorKeyAction.Backspace:
-      AOwner.FState.DoEdit(TAtlasCaretEditKind.Backspace, '');
+      ASession.DoEdit(ASurface, TAtlasCaretEditKind.Backspace, '');
     TAtlasMultiCursorKeyAction.Delete:
-      AOwner.FState.DoEdit(TAtlasCaretEditKind.Delete, '');
+      ASession.DoEdit(ASurface, TAtlasCaretEditKind.Delete, '');
     TAtlasMultiCursorKeyAction.NewLine:
-      AOwner.FState.DoEdit(TAtlasCaretEditKind.NewLine, '');
+      ASession.DoEdit(ASurface, TAtlasCaretEditKind.NewLine, '');
     TAtlasMultiCursorKeyAction.Cut:
-      AOwner.FState.DoCut;
+      if CopyTo(ASession, ASurface) then
+      begin
+        ASession.DoEdit(ASurface, TAtlasCaretEditKind.Insert, '');
+      end;
     TAtlasMultiCursorKeyAction.Copy:
-      Result := AOwner.FState.DoCopy;
+      Result := CopyTo(ASession, ASurface);
     TAtlasMultiCursorKeyAction.Paste:
-      AOwner.FState.DoPaste;
+      PasteFrom(ASession, ASurface);
     TAtlasMultiCursorKeyAction.Move:
-      AOwner.FState.DoMove(ACommand.Move, ACommand.Extend);
+      ASession.DoMove(ASurface, ACommand.Move, ACommand.Extend);
   else
     Result := False;
   end;
@@ -390,10 +429,10 @@ begin
   FBusy := ABusy;
   FStatus := AStatus;
   FIndex := -1;
-  FState := TAtlasIdeMultiCursorState.Create(
+  FSession := TAtlasMultiCursorSession.Create(
     procedure
     begin
-      Finish;
+      Finished;
     end,
     procedure
     begin
@@ -434,7 +473,7 @@ begin
   begin
     FStatus('', '');
   end;
-  FreeAndNil(FState);
+  FreeAndNil(FSession);
   inherited;
 end;
 
@@ -445,7 +484,12 @@ end;
 
 function TAtlasIdeMultiCursor.IsActive: Boolean;
 begin
-  Result := (FState <> nil) and FState.Active;
+  Result := (FSession <> nil) and FSession.Active;
+end;
+
+class function TAtlasIdeMultiCursor.ActiveSurface: IAtlasEditSurface;
+begin
+  Result := TAtlasIdeEditSurface.Wrap(TAtlasEditorBuffer.ActiveView);
 end;
 
 procedure TAtlasIdeMultiCursor.AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -483,7 +527,7 @@ procedure TAtlasIdeMultiCursor.MouseDown(const AMsg: TMsg; var AHandled: Boolean
 var
   mShift: TShiftState;
   mFileName: string;
-  mLine, mColumn: Integer;
+  mLine, mCharacter: Integer;
 begin
   if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) then
   begin
@@ -499,9 +543,9 @@ begin
     end;
     Exit;
   end;
-  if ClickedAt(AMsg, mFileName, mLine, mColumn) then
+  if ClickedAt(AMsg, mFileName, mLine, mCharacter) then
   begin
-    AHandled := FState.Toggle(mFileName, mLine, mColumn);
+    AHandled := FSession.Toggle(ActiveSurface, mFileName, mLine, mCharacter);
   end;
 end;
 
@@ -531,13 +575,22 @@ begin
   begin
     mCommand := TAtlasMultiCursorKeys.Command(mKey, mShift);
   end;
-  AHandled := Perform(Self, mCommand);
+  if mCommand.Action = TAtlasMultiCursorKeyAction.Finish then
+  begin
+    Finish;
+    AHandled := True;
+  end
+  else
+  begin
+    AHandled := PerformEdit(FSession, ActiveSurface, mCommand);
+  end;
 end;
 
 procedure TAtlasIdeMultiCursor.CharTyped(const AMsg: TMsg; var AHandled: Boolean);
 var
   mTyped: Char;
   mText: string;
+  mSurface: IAtlasEditSurface;
 begin
   mTyped := Char(AMsg.wParam);
   // Steuerzeichen (Strg+Buchstabe, Rücktaste, Enter, Tab) nicht: Tab übernimmt die IDE, Mirror zieht nach.
@@ -551,9 +604,11 @@ begin
     Exit;
   end;
   // Öffnendes Zeichen bei Markierungen: umschließen (#672) statt überschreiben.
-  if (Length(mText) > 1) or not FState.DoWrap(mTyped) then
+  mSurface := ActiveSurface;
+  if (Length(mText) > 1) or not TAtlasIdeWrapSelection.Enabled or
+    not FSession.DoWrap(mSurface, mTyped, TAtlasIdeWrapSelection.Chars) then
   begin
-    FState.DoEdit(TAtlasCaretEditKind.Insert, mText);
+    FSession.DoEdit(mSurface, TAtlasCaretEditKind.Insert, mText);
   end;
 end;
 
@@ -584,7 +639,8 @@ var
   mView: IOTAEditView;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
-  Result := FState.Shows(mView) and Enabled and not FormShown and
+  Result := (mView <> nil) and (mView.Buffer <> nil) and FSession.ShowsFile(mView.Buffer.FileName) and Enabled and
+    not FormShown and
     not (FWasModified and not mView.Buffer.IsModified);
   if not Result then
   begin
@@ -592,7 +648,7 @@ begin
   end;
   FWasModified := mView.Buffer.IsModified;
   // Cursor der IDE ohne Atlas bewegt (Bild auf/ab, Suchen): Hauptmarke nachziehen.
-  FState.SyncMain;
+  FSession.SyncMain;
   Result := IsActive;
 end;
 
@@ -617,13 +673,14 @@ var
   mRun: TPaintRun;
   mCode: TRect;
   mSaved, mIndex: Integer;
+  mCarets: TAtlasCarets;
 begin
-  if not FState.ShowsFile(AContext.FileName) or (AContext.LineState = nil) then
+  if not FSession.ShowsFile(AContext.FileName) or (AContext.LineState = nil) then
   begin
     Exit;
   end;
   mRun.Line := AContext.LogicalLineNum - 1;
-  mRun.Text := FState.LineText(mRun.Line);
+  mRun.Text := FSession.LineText(mRun.Line);
   // Nur, wenn die Zeile im Editor dem bekannten Stand entspricht (sonst steht gleich ein Reconcile an).
   if TrimRight(AContext.LineState.Text) <> TrimRight(mRun.Text) then
   begin
@@ -631,7 +688,7 @@ begin
   end;
   mRun.Context := AContext;
   mRun.Rect := ARect;
-  mRun.TabWidth := TAtlasEditorBuffer.TabWidth(FState.View.Buffer);
+  mRun.TabWidth := FSession.Surface.TabWidth;
   mRun.Color := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Accent)));
   mRun.DC := AContext.Canvas.Handle;
   mCode := AContext.LineState.CodeRect;
@@ -643,9 +700,10 @@ begin
       IntersectClipRect(mRun.DC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
     // Die Hauptmarke zeichnet die IDE.
-    for mIndex := 1 to FState.Count - 1 do
+    mCarets := FSession.Carets;
+    for mIndex := 1 to High(mCarets) do
     begin
-      PaintCaret(mRun, FState.Carets[mIndex], FBlink);
+      PaintCaret(mRun, mCarets[mIndex], FBlink);
     end;
   finally
     DeleteObject(mRun.Brush);
@@ -660,10 +718,10 @@ begin
     Finish;
     Exit;
   end;
-  FWasModified := FState.View.Buffer.IsModified;
+  FWasModified := FSession.Surface.IsModified;
   if Assigned(FStatus) then
   begin
-    FStatus(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MultiCursorStatus, [FState.Count]),
+    FStatus(TAtlasEditorStrings.Fmt(TAtlasEditorTextId.MultiCursorStatus, [FSession.Count]),
       TAtlasEditorStrings.Text(TAtlasEditorTextId.MultiCursorStatusHint));
   end;
   // Nach jedem Schritt sichtbar, dann wieder im Takt.
@@ -673,24 +731,27 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasIdeMultiCursor.Finish;
-var
-  mWas: Boolean;
+procedure TAtlasIdeMultiCursor.Finished;
 begin
-  mWas := IsActive;
-  FState.Clear;
   FInput := Default(TInput);
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
   end;
-  if mWas then
+  if Assigned(FStatus) then
   begin
-    if Assigned(FStatus) then
-    begin
-      FStatus('', '');
-    end;
-    Invalidate;
+    FStatus('', '');
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasIdeMultiCursor.Finish;
+begin
+  FSession.Finish;
+  FInput := Default(TInput);
+  if FTimer <> nil then
+  begin
+    FTimer.Enabled := False;
   end;
 end;
 
@@ -730,18 +791,19 @@ begin
   end
   else if Result then
   begin
-    Result := FInstance.FState.Next;
+    Result := FInstance.FSession.Next(ActiveSurface);
   end;
 end;
 
 class function TAtlasIdeMultiCursor.TryLineEnds: Boolean;
 begin
-  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.LineEnds;
+  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FSession.LineEnds(ActiveSurface);
 end;
 
 class function TAtlasIdeMultiCursor.TryVertical(AUp: Boolean): Boolean;
 begin
-  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and FInstance.FState.Vertical(AUp);
+  Result := (FInstance <> nil) and Enabled and not FInstance.IsBusy and
+    FInstance.FSession.Vertical(ActiveSurface, AUp);
 end;
 
 class procedure TAtlasIdeMultiCursor.Dismiss;
@@ -754,8 +816,11 @@ end;
 
 class procedure TAtlasIdeMultiCursor.EditorModified(const AView: IOTAEditView);
 begin
-  if (FInstance = nil) or not FInstance.IsActive or FInstance.FState.Writing or
-    not FInstance.FState.Shows(AView) then
+  if (FInstance = nil) or not FInstance.IsActive or FInstance.FSession.Writing then
+  begin
+    Exit;
+  end;
+  if (AView = nil) or (AView.Buffer = nil) or not FInstance.FSession.ShowsFile(AView.Buffer.FileName) then
   begin
     Exit;
   end;
@@ -766,9 +831,9 @@ begin
       TAtlasGuard.Run(TAtlasFeature.MultiCursor,
         procedure
         begin
-          if (FInstance <> nil) and FInstance.IsActive and (FInstance.FState.View <> nil) then
+          if (FInstance <> nil) and FInstance.IsActive then
           begin
-            FInstance.FState.Reconcile(TAtlasEditorBuffer.Text(FInstance.FState.View.Buffer));
+            FInstance.FSession.BufferChanged;
             FInstance.Refresh;
           end;
         end);
