@@ -179,6 +179,8 @@ contains
   Atlas.IDE.Tracker.IssueMedia in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssueMedia.pas',
   Atlas.IDE.Tracker.IssueComments in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssueComments.pas',
   Atlas.IDE.Tracker.IssuePreview in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas',
+  Atlas.IDE.Tracker.IssueParts in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssueParts.pas',
+  Atlas.IDE.Tracker.IssueLoad in 'Source\IDE\Tracker\Atlas.IDE.Tracker.IssueLoad.pas',
   Atlas.IDE.Tracker.CodeLinks in 'Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas',
   Atlas.IDE.Tracker.CodeLinkMarks in 'Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinkMarks.pas',
   Atlas.IDE.Tracker.BlameLinks in 'Source\IDE\Tracker\Atlas.IDE.Tracker.BlameLinks.pas',

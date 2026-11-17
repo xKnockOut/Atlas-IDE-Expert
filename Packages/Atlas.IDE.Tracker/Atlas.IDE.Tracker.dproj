@@ -204,6 +204,8 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueMedia.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueComments.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueParts.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueLoad.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.MyIssues.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuesContext.pas"/>
