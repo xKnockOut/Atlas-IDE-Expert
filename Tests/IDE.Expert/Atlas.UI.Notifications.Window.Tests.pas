@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasNotificationsWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ListsNewestFirstAndFilters;
     [Test]
@@ -67,11 +64,6 @@ begin
 end;
 
 { TAtlasNotificationsWindowTests }
-
-procedure TAtlasNotificationsWindowTests.WarmUpFirstUse;
-begin
-  ListsNewestFirstAndFilters;
-end;
 
 procedure TAtlasNotificationsWindowTests.ListsNewestFirstAndFilters;
 var

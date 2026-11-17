@@ -21,9 +21,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -157,16 +154,6 @@ begin
 end;
 
 { TAtlasBranchDialogTests }
-
-procedure TAtlasBranchDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    GitDefaultsAndSteps;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasBranchDialogTests.Setup;
 begin

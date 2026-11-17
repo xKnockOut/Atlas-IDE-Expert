@@ -21,8 +21,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -82,23 +80,6 @@ begin
 end;
 
 { TAtlasEvalTreeSyncTests }
-
-procedure TAtlasEvalTreeSyncTests.WarmUpFirstUse;
-var
-  mHost: TTreeHost;
-  mList: TAtlasEvalList;
-begin
-  // Erste Benutzung (Formular, Baum mit Fenster, Abgleich) nicht dem ersten Test anrechnen.
-  mList := TAtlasEvalList.Create;
-  mHost := TTreeHost.Create;
-  try
-    mList.SetResult(mList.Add('Self'), True, '(FName: ''Meier''; FCount: 3)');
-    mHost.Sync.Sync(mList);
-  finally
-    mHost.Free;
-    mList.Free;
-  end;
-end;
 
 procedure TAtlasEvalTreeSyncTests.Setup;
 begin

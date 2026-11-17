@@ -15,9 +15,6 @@ type
   [Category('Atlas.IDE.Debugger')]
   TAtlasDebugVariablesFrameTests = class
   public
-    /// <summary>Einmalige VCL-Puffer (Baumansicht) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure SearchFiltersAndHighlights;
     [Test]
@@ -42,11 +39,6 @@ uses
   Atlas.UI.Debug.VariablesFrame;
 
 { TAtlasDebugVariablesFrameTests }
-
-procedure TAtlasDebugVariablesFrameTests.WarmUpFirstUse;
-begin
-  SearchFiltersAndHighlights;
-end;
 
 procedure TAtlasDebugVariablesFrameTests.SearchFiltersAndHighlights;
 var
@@ -181,7 +173,7 @@ begin
     mFrame.Hooks.CanEditValue :=
       function: Boolean
       begin
-        Result := mCanEdit; // lsp-ignore: captured-loop-variable -- Schalter, den der Test gewollt umlegt
+        Result := mCanEdit;
       end;
     mList.SetResult(mList.Add('Betrag'), True, '125');
     mList.Add('Offen');

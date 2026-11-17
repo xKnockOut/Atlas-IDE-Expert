@@ -13,9 +13,6 @@ type
   [TestFixture]
   TRuleEngineTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure RegistryRejectsDuplicateId;
     [Test]
@@ -355,11 +352,6 @@ begin
 end;
 
 { TRuleEngineTests }
-
-procedure TRuleEngineTests.WarmUpFirstUse;
-begin
-  CancelledStopsBeforeNextRule;
-end;
 
 procedure TRuleEngineTests.RegistryRejectsDuplicateId;
 var

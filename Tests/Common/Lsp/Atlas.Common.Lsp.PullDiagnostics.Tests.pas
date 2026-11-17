@@ -9,9 +9,6 @@ type
   [TestFixture]
   TLspPullDiagnosticsTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure DetectsClientSupport;
     [Test]
@@ -164,11 +161,6 @@ begin
 end;
 
 { TLspPullDiagnosticsTests }
-
-procedure TLspPullDiagnosticsTests.WarmUpFirstUse;
-begin
-  CancelStopsRuleChecks;
-end;
 
 procedure TLspPullDiagnosticsTests.DetectsClientSupport;
 var

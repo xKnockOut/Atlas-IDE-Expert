@@ -22,9 +22,6 @@ type
     procedure RunSession(AEnabled: Boolean);
     function AllLogText: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -249,22 +246,6 @@ begin
   end;
 end;
 
-procedure TShellDiagnosticsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    NoMarkerReachesLogOrExport;
-  finally
-    TearDown;
-  end;
-  Setup;
-  try
-    AddLogFile_BadPath_LogsError;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TShellDiagnosticsTests.Setup;
 begin
   FRoot := TPath.Combine(TPath.GetTempPath, 'atlas-' + TGUID.NewGuid.ToString.Substring(1, 8));
@@ -425,7 +406,6 @@ begin
   end;
   Assert.Contains(TShellDiagnostics.EndReasonText(TDiagnosticEndReason.InputClosed), 'ohne exit');
 end;
-
 
 procedure TShellDiagnosticsTests.AddLogFile_EmptyName_DoesNothing;
 var

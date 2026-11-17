@@ -32,9 +32,6 @@ type
     /// <summary>Beschriftungen der Einträge, durch Komma getrennt und mit Komma eingefasst.</summary>
     class function Labels(AAnswer: TJSONObject): string; static;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -117,16 +114,6 @@ begin
   for mValue in AAnswer.GetValue('items') as TJSONArray do
   begin
     Result := Result + (mValue as TJSONObject).GetValue('label').Value + ',';
-  end;
-end;
-
-procedure TLspExpressionCompletionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    OffersLocalsAndParameters;
-  finally
-    TearDown;
   end;
 end;
 

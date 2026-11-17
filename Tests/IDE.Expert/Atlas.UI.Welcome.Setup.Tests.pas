@@ -13,9 +13,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSetupFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowLanguage;
     /// <summary>Mockup #ws7: erledigte Schritte grün mit ✓ und ohne Knöpfe, offene mit Knopf.</summary>
@@ -56,7 +53,6 @@ uses
   Atlas.Core.Welcome.Setup,
   Atlas.UI.Welcome.Setup,
   Atlas.UI.Welcome.SetupPreview;
-
 
 type
   /// <summary>Quelle des Bereichs „Projekt für Atlas einrichten“ für die Tests; merkt sich die Aufrufe.</summary>
@@ -129,10 +125,6 @@ begin
 end;
 { TAtlasWelcomeSetupFrameTests }
 
-procedure TAtlasWelcomeSetupFrameTests.WarmUpFirstUse;
-begin
-  PreviewShowsContent;
-end;
 procedure TAtlasWelcomeSetupFrameTests.TextsFollowLanguage;
 var
   mSaved: TAtlasLanguage;

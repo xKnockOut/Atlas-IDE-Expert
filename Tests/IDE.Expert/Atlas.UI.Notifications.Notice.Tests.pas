@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasNoticeWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure SitsInLowerRightCornerInsideWorkArea;
     [Test]
@@ -31,11 +28,6 @@ uses
   Atlas.UI.Notifications.Notice;
 
 { TAtlasNoticeWindowTests }
-
-procedure TAtlasNoticeWindowTests.WarmUpFirstUse;
-begin
-  ActionsReportIndexAndHide;
-end;
 
 procedure TAtlasNoticeWindowTests.SitsInLowerRightCornerInsideWorkArea;
 var

@@ -9,8 +9,6 @@ type
   [TestFixture]
   TDfmBinaryTests = class
   public
-    [SetupFixture]
-    procedure SetupFixture;
     [Test]
     procedure ConvertsSimpleForm;
     [Test]
@@ -92,16 +90,6 @@ begin
 end;
 
 { TDfmBinaryTests }
-
-procedure TDfmBinaryTests.SetupFixture;
-begin
-  // Kodierungen und Formatierungen legt die RTL beim ersten Zugriff an und hält sie bis
-  // Programmende; einmal vorab umwandeln, damit der Leck-Monitor nur den Test sieht.
-  TEncoding.ANSI.GetString(B([65]));
-  TEncoding.Unicode.GetString(B([65, 0]));
-  TEncoding.UTF8.GetString(B([65]));
-  Convert(SimpleForm);
-end;
 
 procedure TDfmBinaryTests.ConvertsSimpleForm;
 begin

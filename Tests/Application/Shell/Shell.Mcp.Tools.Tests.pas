@@ -13,11 +13,6 @@ type
   [TestFixture]
   TMcpToolsTests = class
   public
-    /// <summary>Dienste einmal ungemessen anlegen: Was Index, Gruppe und Dienste beim ersten Gebrauch prozessweit
-    /// anlegen und behalten (globale Sperren), zählte sonst als Leck von ServicesStartWithoutLoading (72 Byte).
-    /// </summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure EachGroupRegistersItsTools;
     [Test]
@@ -179,11 +174,6 @@ begin
 end;
 
 { TMcpToolsTests }
-
-procedure TMcpToolsTests.WarmUpFirstUse;
-begin
-  ServicesStartWithoutLoading;
-end;
 
 procedure TMcpToolsTests.EachGroupRegistersItsTools;
 begin
