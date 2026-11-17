@@ -350,7 +350,7 @@ end;
 procedure TAtlasTaskFlowTests.UnknownOrRepeatedEndIsIgnored;
 begin
   FFlow.Finished(99, Ran('X', 0));
-  Assert.AreEqual(0, FNotes.Count);
+  Assert.AreEqual(0, Integer(FNotes.Count));
   Assert.AreEqual(0, FFake.Calls.Count);
   FFlow.Run(Target, Task('Lint'));
   FFlow.Finished(1, Ran('Lint', 0));
