@@ -1,5 +1,5 @@
 {
-  "count": 55,
+  "count": 52,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
