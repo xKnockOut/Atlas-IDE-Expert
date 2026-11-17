@@ -25,6 +25,9 @@ type
     class function SkipNoise(const AText: string; AIndex: Integer): Integer; static;
     /// <summary>Sind alle Kommentare, Anweisungen und Zeichenketten in AText abgeschlossen?</summary>
     class function IsClosed(const AText: string): Boolean; static;
+    /// <summary>Position (ab 1) des ersten Kommentars, der ersten Anweisung oder Zeichenkette ohne Abschluss; 0, wenn
+    /// alle abgeschlossen sind.</summary>
+    class function FirstOpen(const AText: string): Integer; static;
     /// <summary>Position (ab 1) des Worts AWord ab AFrom außerhalb von Kommentaren und Zeichenketten, ohne Rücksicht
     /// auf Groß-/Kleinschreibung; 0 ohne. Teil eines längeren oder qualifizierten Namens (X.uses, &amp;in) zählt
     /// nicht.</summary>
@@ -183,14 +186,23 @@ begin
 end;
 
 class function TPascalScan.IsClosed(const AText: string): Boolean;
+begin
+  Result := FirstOpen(AText) = 0;
+end;
+
+class function TPascalScan.FirstOpen(const AText: string): Integer;
 var
   mIndex, mNext: Integer;
+  mClosed: Boolean;
 begin
-  Result := True;
   mIndex := 1;
-  while Result and (mIndex <= Length(AText)) do
+  while mIndex <= Length(AText) do
   begin
-    mNext := NoiseEnd(AText, mIndex, Result);
+    mNext := NoiseEnd(AText, mIndex, mClosed);
+    if not mClosed then
+    begin
+      Exit(mIndex);
+    end;
     if mNext > mIndex then
     begin
       mIndex := mNext;
@@ -200,6 +212,7 @@ begin
       Inc(mIndex);
     end;
   end;
+  Result := 0;
 end;
 
 class function TPascalScan.FindWord(const AText, AWord: string; AFrom: Integer): Integer;

@@ -100,6 +100,9 @@ begin
   Assert.IsFalse(TPascalScan.IsClosed('program X; (* a'));
   Assert.IsFalse(TPascalScan.IsClosed('program X; ''a' + cBreak + 'b'';'));
   Assert.IsFalse(TPascalScan.IsClosed('x := ''''''' + cBreak + 'a'));
+  Assert.AreEqual(0, TPascalScan.FirstOpen('a { b } c'));
+  Assert.AreEqual(9, TPascalScan.FirstOpen('a { b } (* c'));
+  Assert.AreEqual(3, TPascalScan.FirstOpen('a ''b' + cBreak + '{ c'));
 end;
 
 procedure TPascalScanTests.FindWordSkipsNoise;

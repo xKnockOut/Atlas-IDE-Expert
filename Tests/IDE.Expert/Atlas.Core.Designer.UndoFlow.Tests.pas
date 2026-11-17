@@ -69,6 +69,8 @@ type
     procedure SetCaption(const AName, ACaption: string);
     function Undo: TAtlasUndoOutcome;
     function Redo: TAtlasUndoOutcome;
+    /// <summary>Zurück auf den Ausgangsstand, für WillRaise.</summary>
+    procedure RestoreFirst;
   public
     /// <summary>Einmal-Belegungen (erstes Formular mit Verlauf, erstes Find/AreSame) vorwegnehmen; sie gehören
     /// nicht in die Leckmessung.</summary>
@@ -96,6 +98,8 @@ type
     procedure ClosingDropsHistoryAndPendingCapture;
     [Test]
     procedure RestoreDoesNotCaptureOwnChanges;
+    [Test]
+    procedure FailedCleanupKeepsCapturing;
     [Test]
     procedure UndoRestoresHandler;
     [Test]
@@ -393,6 +397,36 @@ begin
   Assert.IsTrue(FFlow.Active(FSurface, mHistory));
   Assert.AreEqual(2, mHistory.Count);
   Assert.AreEqual(0, mHistory.Index);
+end;
+
+procedure TAtlasDesignerUndoFlowTests.FailedCleanupKeepsCapturing;
+var
+  mHistory: TAtlasFormUndoHistory;
+begin
+  OpenWithWidget;
+  SetCaption('AtlasUndoWidget1', 'Zwei');
+  AfterEvent;
+  FFake.FailModified := True;
+  Assert.WillRaise(RestoreFirst, EAtlasDesignSurfaceFakeFailure);
+  FFake.FailModified := False;
+  // Der Verlauf steht trotzdem auf dem hergestellten Stand ...
+  Assert.AreEqual('Eins', Widget('AtlasUndoWidget1').Caption);
+  Assert.IsTrue(FFlow.Active(FSurface, mHistory));
+  Assert.AreEqual(0, mHistory.Index);
+  // ... und Rückgängig erfasst weiter Änderungen.
+  FQueued := 0;
+  SetCaption('AtlasUndoWidget1', 'Drei');
+  Assert.AreEqual(1, FQueued, 'eingereiht');
+  AfterEvent;
+  Assert.AreEqual(1, mHistory.Index);
+  Assert.IsTrue(FFlow.CanUndo(FSurface));
+end;
+
+procedure TAtlasDesignerUndoFlowTests.RestoreFirst;
+var
+  mOutcome: TAtlasUndoOutcome;
+begin
+  FFlow.Restore(FSurface, 0, mOutcome);
 end;
 
 procedure TAtlasDesignerUndoFlowTests.UndoRestoresHandler;

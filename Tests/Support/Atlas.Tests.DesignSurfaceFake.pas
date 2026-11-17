@@ -21,6 +21,9 @@ uses
   Atlas.Core.Designer.Surface;
 
 type
+  /// <summary>Gewollter Fehler der Fälschung (FailModified).</summary>
+  EAtlasDesignSurfaceFakeFailure = class(Exception);
+
   TAtlasDesignSurfaceFake = class(TInterfacedObject, IAtlasDesignSurface)
   private
     FRoot: TComponent;
@@ -28,6 +31,7 @@ type
     /// <summary>Handler im „Code“; der Index + 1 ist die Codeadresse der Methode.</summary>
     FMethods: TList<string>;
     FModifiedCount: Integer;
+    FFailModified: Boolean;
     FDeleteRefused: TList<string>;
     /// <summary>Aus dem Code entfernte Handler (bleiben an Ereignissen zugeordnet).</summary>
     FRemoved: TList<string>;
@@ -70,6 +74,8 @@ type
     function MethodName(const AMethod: TMethod): string;
     /// <summary>Wie oft Modified gerufen wurde.</summary>
     property ModifiedCount: Integer read FModifiedCount;
+    /// <summary>Modified wirft (wie der Designer nach einem halb gescheiterten Zurückladen).</summary>
+    property FailModified: Boolean read FFailModified write FFailModified;
   end;
 
 implementation
@@ -207,6 +213,10 @@ end;
 procedure TAtlasDesignSurfaceFake.Modified;
 begin
   Inc(FModifiedCount);
+  if FFailModified then
+  begin
+    raise EAtlasDesignSurfaceFakeFailure.Create('Modified');
+  end;
 end;
 
 function TAtlasDesignSurfaceFake.DeleteComponent(const AKey: string): Boolean;

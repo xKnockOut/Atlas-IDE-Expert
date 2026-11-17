@@ -500,6 +500,24 @@ begin
   end;
 end;
 
+/// <summary>Meldung, warum sich die dpr ADpr für die Unit AUnit nicht umschreiben ließ: eigener Grund statt eines
+/// Builds, der erst später scheitert.</summary>
+function ShadowProblemText(const AUnit, ADpr: string; const AShadow: TAtlasMutationShadow): string;
+begin
+  if AShadow.Problem = TAtlasMutationShadowProblem.NoProgram then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNoProgram, [AUnit, ADpr]);
+  end
+  else if AShadow.Problem = TAtlasMutationShadowProblem.Unclosed then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprUnclosed, [ADpr, AShadow.ProblemText]);
+  end
+  else
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNotRewritable, [ADpr, AShadow.ProblemText]);
+  end;
+end;
+
 function TAtlasIdeMutationRun.PrepareShadow: Boolean;
 var
   mUnit: string;
@@ -512,8 +530,8 @@ begin
     mSource := ShadowSource(FState.Target.Project, FState.FileName);
     if not TAtlasMutationShadows.Build(mSource, FState.Shadow) then
     begin
-      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowFailed, [mUnit,
-        ExtractFileName(ChangeFileExt(FState.Target.Project, '.dpr'))]));
+      StopWith(ShadowProblemText(mUnit, ExtractFileName(ChangeFileExt(FState.Target.Project, '.dpr')),
+        FState.Shadow));
       Exit;
     end;
     // Läge eine Datei des Originals im Schattenordner (etwa die Kopie eines früheren Laufs im Editor), schriebe der

@@ -2,12 +2,13 @@
 
 // Tests des Schattenprojekts (#1460): Pfade auflösen, dpr (Programmname,
 // in-Pfade, mutierte Unit nach Src\ bzw. angehängt, {$R}/{$I}, Schalter
-// bleiben) und dproj (MainSource, Name, GUID, Suchpfade, Ausgaben, Ereignisse,
-// Include=, Ordner des Originals vorn); Trennung von Original und Schatten:
+// bleiben, {$R} mit .res und .rc, Unit ohne „in“ oder mit Namen außerhalb
+// von ASCII, unbekannte Formen als Problem statt kaputter dpr, offene
+// Kommentare und Zeichenketten an jeder Stelle, uses ohne Ende) und dproj
+// (MainSource, Name, GUID, Suchpfade, Ausgaben, Ereignisse, Include=, Ordner
+// des Originals vorn); Trennung von Original und Schatten:
 // Der Lauf schreibt nur in den Ordner des Schattenprojekts, dort liegt keine
 // Datei des Originals, und die Ausgaben gehen immer nach Out.
-// Fehlerhafte dpr (offener Kommentar an jeder Stelle, offene Zeichenkette,
-// uses ohne Ende) lehnt der Bau ab, statt zu raten oder nicht zu enden.
 
 interface
 
@@ -31,6 +32,18 @@ type
     procedure DprDirectives;
     [Test]
     procedure DprWithoutProgramFails;
+    [Test]
+    procedure DprResourceWithRcFile;
+    [Test]
+    procedure DprUnitWithoutIn;
+    [Test]
+    procedure DprUnitNameOutsideAscii;
+    [Test]
+    procedure DprPathWithQuote;
+    [Test]
+    procedure DprUnknownDirectiveFails;
+    [Test]
+    procedure DprUnknownUsesEntryFails;
     [Test]
     procedure DprWithOpenCommentFails;
     [Test]
@@ -208,6 +221,107 @@ begin
   Assert.IsFalse(TAtlasMutationShadows.Build(Source('library X;' + cBreak + 'end.'), mShadow));
   Assert.AreEqual('', mShadow.Dpr);
   Assert.AreEqual('', mShadow.Folder);
+  Assert.IsTrue(mShadow.Problem = TAtlasMutationShadowProblem.NoProgram);
+end;
+
+/// <summary>dpr mit ADirectives zwischen uses und begin.</summary>
+function DprWith(const AUses, ADirectives: string): string;
+begin
+  Result := 'program Demo.Tests;' + cBreak + cBreak + 'uses' + cBreak + AUses + ';' + cBreak + cBreak + ADirectives +
+    cBreak + cBreak + 'begin' + cBreak + 'end.';
+end;
+
+/// <summary>Build muss mit AProblem und AText scheitern.</summary>
+procedure AssertFails(const ADpr: string; AProblem: TAtlasMutationShadowProblem; const AText: string);
+var
+  mShadow: TAtlasMutationShadow;
+begin
+  Assert.IsFalse(TAtlasMutationShadows.Build(Source(ADpr), mShadow), ADpr);
+  Assert.IsTrue(mShadow.Problem = AProblem, ADpr);
+  Assert.AreEqual(AText, mShadow.ProblemText, ADpr);
+  Assert.AreEqual('', mShadow.Dpr);
+  Assert.AreEqual('', mShadow.Dproj);
+end;
+
+procedure TAtlasMutationShadowTests.DprResourceWithRcFile;
+var
+  mDpr: string;
+begin
+  // So trägt die IDE eine .rc des Projekts ein: .res und .rc, beide relativ.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R ''Daten.res'' ''..\Res\Daten.rc''}' + cBreak +
+    '{$RESOURCE Bild.res Bild.rc}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$R ''C:\P\Tests\Daten.res'' ''C:\P\Res\Daten.rc''}'), mDpr);
+  Assert.IsTrue(mDpr.Contains('{$RESOURCE ''C:\P\Tests\Bild.res'' ''C:\P\Tests\Bild.rc''}'), mDpr);
+  // Masken bleiben.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$R *.dfm}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$R *.dfm}'), mDpr);
+  // {$I} ohne Anführungszeichen mit Leerzeichen bleibt; der Include-Pfad findet die Datei.
+  mDpr := Shadow(Source(DprWith('  Preise', '{$I Meine Defs.inc}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$I Meine Defs.inc}'), mDpr);
+  mDpr := Shadow(Source(DprWith('  Preise', '{$INCLUDE ''Meine Defs.inc''}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('{$INCLUDE ''C:\P\Tests\Meine Defs.inc''}'), mDpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprUnitWithoutIn;
+var
+  mDpr: string;
+begin
+  mDpr := Shadow(Source(DprWith('  System.SysUtils,' + cBreak + '  Preise {Form1},' + cBreak +
+    '  PreiseTests in ''PreiseTests.pas''', ''))).Dpr;
+  Assert.IsTrue(mDpr.Contains('  Preise in ''Src\Preise.pas'' {Form1},' + cBreak), mDpr);
+  Assert.IsTrue(mDpr.Contains('  System.SysUtils,' + cBreak), mDpr);
+  Assert.IsTrue(mDpr.Contains('PreiseTests in ''C:\P\Tests\PreiseTests.pas'';'), mDpr);
+  Assert.AreEqual(1, Integer(Length(mDpr.Split(['Src\Preise.pas'])) - 1), 'nicht ein zweites Mal angehängt');
+  // Als letzter Eintrag, ohne Leerraum davor.
+  mDpr := Shadow(Source('program X;uses Preise;begin end.')).Dpr;
+  Assert.IsTrue(mDpr.Contains('uses Preise in ''Src\Preise.pas'';begin'), mDpr);
+  // Ein anderer Name mit demselben Anfang ist nicht die Unit.
+  mDpr := Shadow(Source(DprWith('  Preise.Extra', ''))).Dpr;
+  Assert.IsTrue(mDpr.Contains('  Preise.Extra,' + cBreak + '  Preise in ''Src\Preise.pas'';'), mDpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprUnitNameOutsideAscii;
+var
+  mSource: TAtlasMutationShadowSource;
+  mName, mDpr: string;
+begin
+  // Als Zeichencodes, damit FPC und Delphi dieselbe Zeichenkette sehen.
+  mName := 'Gr' + #$00F6 + #$00DF + 'en';
+  mSource := Source(DprWith('  ' + mName + ' in ''..\Src\' + mName + '.pas'',' + cBreak + '  Stra' + #$00DF +
+    'e', ''));
+  mSource.UnitName := mName;
+  mSource.UnitFile := 'C:\P\Src\' + mName + '.pas';
+  mDpr := Shadow(mSource).Dpr;
+  Assert.IsTrue(mDpr.Contains('  ' + mName + ' in ''Src\' + mName + '.pas'',' + cBreak), mDpr);
+  Assert.IsTrue(mDpr.Contains('  Stra' + #$00DF + 'e;'), mDpr);
+  Assert.AreEqual(1, Integer(Length(mDpr.Split(['Src\' + mName + '.pas'])) - 1), 'nicht ein zweites Mal angehängt');
+end;
+
+procedure TAtlasMutationShadowTests.DprPathWithQuote;
+var
+  mDpr: string;
+begin
+  mDpr := Shadow(Source(DprWith('  Preise,' + cBreak + '  Hilfe in ''O''''Brien.pas''',
+    '{$I ''O''''Brien.inc''}'))).Dpr;
+  Assert.IsTrue(mDpr.Contains('Hilfe in ''C:\P\Tests\O''''Brien.pas'';'), mDpr);
+  Assert.IsTrue(mDpr.Contains('{$I ''C:\P\Tests\O''''Brien.inc''}'), mDpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprUnknownDirectiveFails;
+begin
+  AssertFails(DprWith('  Preise', '{$R ''a.res'' ''a.rc'' ''b.rc''}'), TAtlasMutationShadowProblem.Directive,
+    '{$R ''a.res'' ''a.rc'' ''b.rc''}');
+  AssertFails(DprWith('  Preise', '{$I ''a.inc'' ''b.inc''}'), TAtlasMutationShadowProblem.Directive,
+    '{$I ''a.inc'' ''b.inc''}');
+  AssertFails(DprWith('  Preise', '{$R ''offen.res}'), TAtlasMutationShadowProblem.Directive, '{$R ''offen.res}');
+end;
+
+procedure TAtlasMutationShadowTests.DprUnknownUsesEntryFails;
+begin
+  AssertFails(DprWith('  Preise,' + cBreak + '  Hilfe in Hilfe.pas', ''), TAtlasMutationShadowProblem.UsesEntry,
+    'Hilfe in Hilfe.pas');
+  AssertFails(DprWith('  Preise Hilfe', ''), TAtlasMutationShadowProblem.UsesEntry, 'Preise Hilfe');
+  AssertFails(DprWith('  Preise,' + cBreak + '  ''Hilfe''', ''), TAtlasMutationShadowProblem.UsesEntry, '''Hilfe''');
 end;
 
 procedure TAtlasMutationShadowTests.DprWithOpenCommentFails;
@@ -217,37 +331,30 @@ const
   cBody = 'begin' + cBreak + 'end.';
 var
   mOpen: string;
-  mShadow: TAtlasMutationShadow;
 begin
   // Gespeichert mitten im Auskommentieren: vor dem Programmkopf, vor uses, in uses, hinter uses; "(*)" schließt
-  // nicht.
+  // nicht. Die Textstelle ist die Zeile ab dem offenen Kommentar.
   for mOpen in TArray<string>.Create('(* ', '{ ', '(*) ') do
   begin
-    Assert.IsFalse(TAtlasMutationShadows.Build(Source(mOpen + cHead + cUses + cBody), mShadow), mOpen);
-    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + mOpen + cUses + cBody), mShadow), mOpen);
-    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + 'uses' + cBreak + '  System.SysUtils,' + cBreak +
-      mOpen + '  Preise in ''..\Src\Preise.pas'';' + cBreak + cBody), mShadow), mOpen);
-    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + cUses + mOpen + cBody), mShadow), mOpen);
-    Assert.AreEqual('', mShadow.Dpr);
+    AssertFails(mOpen + cHead + cUses + cBody, TAtlasMutationShadowProblem.Unclosed, Trim(mOpen + cHead));
+    AssertFails(cHead + mOpen + cUses + cBody, TAtlasMutationShadowProblem.Unclosed, mOpen + 'uses');
+    AssertFails(cHead + 'uses' + cBreak + '  System.SysUtils,' + cBreak + mOpen +
+      '  Preise in ''..\Src\Preise.pas'';' + cBreak + cBody, TAtlasMutationShadowProblem.Unclosed,
+      mOpen + '  Preise in ''..\Src\Preise.pas'';');
+    AssertFails(cHead + cUses + mOpen + cBody, TAtlasMutationShadowProblem.Unclosed, mOpen + 'begin');
   end;
 end;
 
 procedure TAtlasMutationShadowTests.DprWithOpenStringFails;
-var
-  mShadow: TAtlasMutationShadow;
 begin
-  Assert.IsFalse(TAtlasMutationShadows.Build(Source('program X;' + cBreak + 'uses' + cBreak +
-    '  Preise in ''..\Src\Preise.pas;' + cBreak + 'begin' + cBreak + 'end.'), mShadow));
-  Assert.AreEqual('', mShadow.Dpr);
+  AssertFails('program X;' + cBreak + 'uses' + cBreak + '  Preise in ''..\Src\Preise.pas;' + cBreak + 'begin' + cBreak +
+    'end.', TAtlasMutationShadowProblem.Unclosed, '''..\Src\Preise.pas;');
 end;
 
 procedure TAtlasMutationShadowTests.DprUsesWithoutEndFails;
-var
-  mShadow: TAtlasMutationShadow;
 begin
-  Assert.IsFalse(TAtlasMutationShadows.Build(Source('program X;' + cBreak + 'uses' + cBreak +
-    '  Preise in ''..\Src\Preise.pas''' + cBreak + 'begin' + cBreak + 'end.'), mShadow));
-  Assert.AreEqual('', mShadow.Dpr);
+  AssertFails('program X;' + cBreak + 'uses' + cBreak + '  Preise in ''..\Src\Preise.pas''' + cBreak + 'begin' +
+    cBreak + 'end.', TAtlasMutationShadowProblem.UsesEntry, 'uses');
 end;
 
 procedure TAtlasMutationShadowTests.DprWithClosedCommentsBuilds;
