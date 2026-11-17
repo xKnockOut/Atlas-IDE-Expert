@@ -24,6 +24,10 @@ type
     FSurface: IAtlasDesignSurface;
     FFlow: TAtlasDesignerUndoFlow;
   public
+    /// <summary>Einmal-Belegungen der VCL (erstes Fenster, Panel und Knopf streamen) vorwegnehmen; sie gehören
+    /// nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -46,6 +50,17 @@ uses
   Atlas.Core.Designer.UndoFlow.Tests;
 
 { TAtlasDesignerUndoFlowVclTests }
+
+procedure TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse;
+begin
+  // Einziger Test der Fixture und erster mit VCL-Steuerelementen im Lauf: einmal ungemessen vorweg.
+  Setup;
+  try
+    MovedButtonAndDeletedPanelComeBack;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDesignerUndoFlowVclTests.Setup;
 var
