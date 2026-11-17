@@ -1,5 +1,5 @@
 {
-  "count": 31,
+  "count": 26,
   "warmUps": [
     "Tests/Application/Shell/Shell.Composition.FileChanges.Tests.pas: TShellFileChangesTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Sources.Tests.pas: TShellSourcesTests.WarmUpFirstUse",
@@ -13,8 +13,6 @@
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Lsp.Adapters.ServerProcess.Tests.pas: TLspServerProcessTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Lsp.Tests.pas: TLspClientTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Search.Replace.Tests.pas: TAtlasSearchReplaceTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Tasks.Matchers.Tests.pas: TAtlasTaskMatchersTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tracker.Attach.Tests.pas: TAtlasAttachTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.MethodBreakpoints.Tests.pas: TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.Search.Tests.pas: TAtlasComponentSearchWindowTests.WarmUpFirstUse",
