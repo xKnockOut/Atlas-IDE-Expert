@@ -381,11 +381,22 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Erstes Datenmodul des Prozesses (TDataModule, z. B. als Formular der Designer-Fälschung): Es meldet sich
+/// bei Screen an (Vcl.Forms, TScreen.FDataModules wächst auf 4 Einträge und schrumpft nicht, frei mit Screen in der
+/// Finalisierung der VCL); beim Freigeben nimmt es GlobalNameSpace zum Schreiben (Zähler je Thread, frei mit
+/// GlobalNameSpace in der Finalisierung von System.Classes) und sperrt die Liste der offenen Verweise
+/// (GlobalFixupList, Monitor-Datensatz, frei mit der Liste).</summary>
+procedure WarmUpDataModule;
+begin
+  TDataModule.CreateNew(nil).Free;
+end;
+
 { TFirstUse }
 
 class procedure TFirstUse.WarmUp;
 begin
   SwitchOffComponentFieldCache;
+  WarmUpDataModule;
   WarmUpSlashCommands;
   WarmUpRuleCatalogs;
   WarmUpTimeZoneAndJsonPath;
