@@ -18,9 +18,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -101,16 +98,6 @@ begin
 end;
 
 { TAtlasDebugBreakpointsFrameTests }
-
-procedure TAtlasDebugBreakpointsFrameTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ListFollowsSearchChipsAndGrouping;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasDebugBreakpointsFrameTests.Setup;
 begin

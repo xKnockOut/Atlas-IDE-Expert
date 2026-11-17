@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasCommandPaletteTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure FuzzyFindsBuildProject;
     [Test]
@@ -127,11 +124,6 @@ begin
 end;
 
 { TAtlasCommandPaletteTests }
-
-procedure TAtlasCommandPaletteTests.WarmUpFirstUse;
-begin
-  BrokenFileSetAsideLockedFileKept;
-end;
 
 procedure TAtlasCommandPaletteTests.FuzzyFindsBuildProject;
 var

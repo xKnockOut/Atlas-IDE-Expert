@@ -35,7 +35,9 @@
 //   Pfad und Text und behält die Nummern bis Programmende (höchstens MaxLabels). Jeder Wert zählte so als Leck
 //   des Tests, der ihn zuerst schreibt (z. B. FailingProviderTripsOnlyItself, GuardErrorLineHidesMessage).
 //   PostTearDown vergisst die Nummern vor der letzten Messung; jeder Test beginnt mit leerer Tabelle.
-// Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
+// Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an. Mit ATLAS_LEAK_TRACE=1 in der Umgebung
+// zeichnet TAllocationTrace (Atlas.Tests.AllocationTrace) jede Belegung des Tests mit Stapel auf, und der
+// Bericht nennt die Stellen, deren Speicher übrig blieb.
 //
 // Der Monitor ist der einzige Haken vor jedem Setup und setzt deshalb auch den gemeinsamen Ausgangszustand:
 // Jeder Test beginnt mit deutschen Texten (TAtlasLocale, #1458). Die Sprache gilt prozessweit, und Tests, die
@@ -104,6 +106,7 @@ uses
   System.Classes,
   System.Threading,
   DUnitX.ServiceLocator,
+  Atlas.Tests.AllocationTrace,
   Atlas.Tests.FirstUse,
   Atlas.Common.Localization.Texts,
   Atlas.Core.Diagnostics.Guard,
@@ -117,6 +120,12 @@ const
   cStableSamples = 3;
   /// <summary>Mindestzahl gleichzeitig wartender Threads beim Vorwärmen.</summary>
   cMinPrewarmWaiters = 64;
+  /// <summary>So viele Stapel nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1.</summary>
+  cTraceGroups = 5;
+
+var
+  /// <summary>Belegungen je Test mit Stapel aufzeichnen (ATLAS_LEAK_TRACE=1, TAllocationTrace).</summary>
+  TraceLeaks: Boolean;
 
 function AllocatedBytes: Int64;
 var
@@ -278,6 +287,11 @@ begin
   timeBeginPeriod(1);
   PrewarmRuntime;
   TFirstUse.WarmUp;
+  TraceLeaks := TAllocationTrace.Requested;
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Install;
+  end;
   TDUnitXServiceLocator.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
     function: IMemoryLeakMonitor
     begin
@@ -353,6 +367,10 @@ procedure TLeakMonitor.PreSetup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);
   Start;
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Start;
+  end;
   FSetUpBefore := AllocatedBytes;
 end;
 
@@ -412,6 +430,10 @@ begin
   begin
     Settle(FTearDownBefore, FTearDownAllocated, FSetUpAllocated + FTestAllocated);
   end;
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Stop;
+  end;
 end;
 
 function TLeakMonitor.SetUpMemoryAllocated: Int64;
@@ -434,6 +456,10 @@ begin
   Result := Format(' (Setup %d, Test %d, TearDown %d Byte; Threads am Anfang %d, am Ende %d; ' +
     '%d ms auf andere Threads gewartet)', [FSetUpAllocated, FTestAllocated, FTearDownAllocated,
     FThreadsAtStart, FThreadsAtEnd, FWaitedMs]);
+  if TraceLeaks then
+  begin
+    Result := Result + sLineBreak + TAllocationTrace.Report(cTraceGroups);
+  end;
 end;
 
 end.

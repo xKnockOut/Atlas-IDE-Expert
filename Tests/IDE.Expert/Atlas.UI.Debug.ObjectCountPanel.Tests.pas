@@ -16,8 +16,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -60,19 +58,6 @@ begin
 end;
 
 { TAtlasDebugObjectCountPanelTests }
-
-procedure TAtlasDebugObjectCountPanelTests.WarmUpFirstUse;
-begin
-  // Tabelle und Frame legen unter Delphi beim ersten Mal einmalig Speicher an (1024 bzw. 216 Byte im Einzellauf):
-  // vorab, damit der Leckmonitor ihn nicht den ersten Tests zuschreibt; je nach Teil des Gesamtlaufs sonst rot.
-  Setup;
-  try
-    ShowsGrowthFirst;
-    FrameShowsPanelOnlyWhenAsked;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasDebugObjectCountPanelTests.Setup;
 begin

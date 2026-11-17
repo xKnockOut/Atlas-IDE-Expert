@@ -28,9 +28,6 @@ type
     function HoverParams: TJSONValue;
     function GuardRejects: Boolean;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -135,16 +132,6 @@ begin
     end;
   finally
     mParams.Free;
-  end;
-end;
-
-procedure TShellCrashCasesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    CrashWritesCaseAndNotifies;
-  finally
-    TearDown;
   end;
 end;
 

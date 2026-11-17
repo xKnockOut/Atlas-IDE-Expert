@@ -24,9 +24,6 @@ type
     FSectionRef: IAtlasSettingsSection;
     FRegistration: IAtlasRegistration;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -102,16 +99,6 @@ begin
 end;
 
 { TWelcomeSettingsSectionTests }
-
-procedure TWelcomeSettingsSectionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    SettingsRoundTrip;
-  finally
-    TearDown;
-  end;
-end;
 
 function TileSwitch(const AKey, ASetting, ASettingsKey: string): TAtlasWelcomeTileSwitch;
 begin

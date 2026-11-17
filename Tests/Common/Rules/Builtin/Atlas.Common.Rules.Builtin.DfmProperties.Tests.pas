@@ -13,9 +13,6 @@ type
   [TestFixture]
   TDfmPropertyRulesTests = class
   public
-    /// <summary>Ein Lauf vorab; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure DefaultValueCountsWhenNotStored;
     [Test]
@@ -265,11 +262,6 @@ begin
 end;
 
 { TDfmPropertyRulesTests }
-
-procedure TDfmPropertyRulesTests.WarmUp;
-begin
-  Run(Format(cTransparentRule, ['']), Form('  object Label1: TLabel'#10'  end'#10));
-end;
 
 procedure TDfmPropertyRulesTests.DefaultValueCountsWhenNotStored;
 var

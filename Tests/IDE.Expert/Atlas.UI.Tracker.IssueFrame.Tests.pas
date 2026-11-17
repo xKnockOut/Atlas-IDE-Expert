@@ -24,9 +24,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -148,16 +145,6 @@ begin
 end;
 
 { TAtlasIssueFrameTests }
-
-procedure TAtlasIssueFrameTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ShowsHeaderBadgesAndLists;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasIssueFrameTests.Setup;
 begin

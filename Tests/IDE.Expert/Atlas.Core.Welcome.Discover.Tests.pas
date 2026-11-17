@@ -31,9 +31,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasDiscoverTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure NeverUsedComesBeforeUsed;
     [Test]
@@ -216,11 +213,6 @@ begin
 end;
 
 { TAtlasDiscoverTests }
-
-procedure TAtlasDiscoverTests.WarmUpFirstUse;
-begin
-  EnabledFollowsSettingAndCommand;
-end;
 
 procedure TAtlasDiscoverTests.NeverUsedComesBeforeUsed;
 var
