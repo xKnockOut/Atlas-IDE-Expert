@@ -58,7 +58,8 @@ uses
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.SearchItems,
   Atlas.IDE.Foundation.DesignerView,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.Caret;
 
 type
   /// <summary>Menüeintrag mit seinem Ziel.</summary>
@@ -101,27 +102,6 @@ begin
     TAtlasDesignerSearchItems.ItemsOf(ARoot, ADesigner);
 end;
 
-const
-  /// <summary>Abstand unter der Oberkante der Schreibmarke: unter die Zeile, nicht in sie hinein.</summary>
-  cBelowCaret = 18;
-
-/// <summary>Bildschirmpunkt unter dem Cursor des Editors (Caret), sonst die Maus.</summary>
-function CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-    Inc(Result.Y, cBelowCaret);
-  end
-  else
-  begin
-    GetCursorPos(Result);
-  end;
-end;
-
 { TAtlasIdeShowComponent }
 
 class procedure TAtlasIdeShowComponent.Say(const AText: string);
@@ -152,7 +132,7 @@ begin
     mItem.FTarget := mTarget;
     mMenu.Items.Add(mItem);
   end;
-  mPoint := CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   mMenu.Popup(mPoint.X, mPoint.Y);
 end;
 

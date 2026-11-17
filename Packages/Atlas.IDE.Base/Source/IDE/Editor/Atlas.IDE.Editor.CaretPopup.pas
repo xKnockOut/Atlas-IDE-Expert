@@ -69,10 +69,6 @@ type
     property CloseOnWheel: Boolean read FCloseOnWheel write FCloseOnWheel;
     /// <summary>Editor neu zeichnen (Markierung gesetzt oder entfernt).</summary>
     class procedure Invalidate; static;
-    /// <summary>Bildschirmstelle unter der Zeile mit der Schreibmarke; ohne Schreibmarke die Maus.</summary>
-    class function CaretPoint: TPoint; static;
-    /// <summary>Schreibmarke in Bildschirmkoordinaten; ohne Schreibmarke eine Zeile an der Maus.</summary>
-    class function CaretRect: TRect; static;
   end;
 
 implementation
@@ -80,14 +76,9 @@ implementation
 uses
   System.SysUtils,
   Winapi.Messages,
-  Vcl.Controls,
   ToolsAPI,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh;
-
-const
-  /// <summary>Abstand unter der Schreibmarke, wenn nur ihr Punkt bekannt ist.</summary>
-  cCaretLineHeight = 16;
 
 function IsModifierKey(AKey: Word): Boolean;
 begin
@@ -219,36 +210,6 @@ begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
-  end;
-end;
-
-class function TAtlasIdeCaretPopupHooks.CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    Inc(Result.Y, cCaretLineHeight);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
-class function TAtlasIdeCaretPopupHooks.CaretRect: TRect;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  if GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0) then
-  begin
-    Result := mInfo.rcCaret;
-    MapWindowPoints(mInfo.hwndCaret, 0, Result, 2);
-  end
-  else
-  begin
-    Result := TRect.Create(Mouse.CursorPos, 1, cCaretLineHeight);
   end;
 end;
 
