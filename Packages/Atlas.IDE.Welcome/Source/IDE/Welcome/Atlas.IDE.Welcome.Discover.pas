@@ -34,7 +34,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Discover,
   Atlas.UI.Welcome.Discover,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeDiscover = class(TInterfacedObject, IAtlasDiscoverSource)
@@ -109,6 +109,7 @@ implementation
 
 uses
   System.Classes,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Commands.Usage,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Commands.ShortcutTips,
