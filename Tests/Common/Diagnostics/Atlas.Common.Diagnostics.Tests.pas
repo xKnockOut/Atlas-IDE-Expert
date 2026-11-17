@@ -78,6 +78,13 @@ type
     procedure CountsAllocatedMemory;
     [Test]
     procedure DescribesWithoutNames;
+    /// <summary>Mit Grenze nennt die Zeile Rest und Grenze; Skripte lesen beide Zahlen daraus.</summary>
+    [Test]
+    procedure DescribesRestWithLimit;
+    /// <summary>Nur ein Rest über der Grenze lässt den Lauf scheitern; genau die Grenze und ein negativer Rest
+    /// (mehr freigegeben als beim Start belegt) nicht.</summary>
+    [Test]
+    procedure ExceedsOnlyAboveLimit;
   end;
 
 implementation
@@ -757,6 +764,21 @@ end;
 procedure TShutdownLeaksTests.DescribesWithoutNames;
 begin
   Assert.AreEqual('Speicherrest beim Beenden: 128 Bytes', TShutdownLeaks.Describe(128));
+end;
+
+procedure TShutdownLeaksTests.DescribesRestWithLimit;
+begin
+  Assert.AreEqual('Speicherrest beim Beenden: 4096 Bytes (erlaubt: 512)', TShutdownLeaks.DescribeLimit(4096, 512));
+  Assert.AreEqual('Speicherrest beim Beenden: -24 Bytes (erlaubt: 0)', TShutdownLeaks.DescribeLimit(-24, 0));
+end;
+
+procedure TShutdownLeaksTests.ExceedsOnlyAboveLimit;
+begin
+  Assert.IsTrue(TShutdownLeaks.Exceeds(1, 0));
+  Assert.IsTrue(TShutdownLeaks.Exceeds(513, 512));
+  Assert.IsFalse(TShutdownLeaks.Exceeds(512, 512));
+  Assert.IsFalse(TShutdownLeaks.Exceeds(0, 0));
+  Assert.IsFalse(TShutdownLeaks.Exceeds(-24, 0));
 end;
 
 initialization

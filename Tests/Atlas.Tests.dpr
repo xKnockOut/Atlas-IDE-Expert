@@ -477,6 +477,7 @@ uses
   Atlas.Common.Lsp.Protocol.Tests in 'Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas',
+  Atlas.Tests.FirstUse in 'Support\Atlas.Tests.FirstUse.pas',
   Atlas.Tests.LeakMonitor in 'Support\Atlas.Tests.LeakMonitor.pas',
   Atlas.Tests.LeakMonitor.Tests in 'Support\Atlas.Tests.LeakMonitor.Tests.pas',
   Atlas.Tests.RuleAssert in 'Support\Atlas.Tests.RuleAssert.pas',
@@ -2819,8 +2820,15 @@ uses
 // Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
 procedure ReportShutdownLeak(ABytes: Int64);
 begin
-  System.Writeln(TShutdownLeaks.Describe(ABytes));
+  System.Writeln(TShutdownLeaks.Summary(ABytes));
 end;
+
+const
+  /// <summary>So viele Bytes darf der Debug-Lauf beim Beenden mehr belegt haben als beim Start: Belegungen der
+  /// RTL, die nie freigegeben werden (z. B. Verwaltungsknoten der Warteobjekte von TMonitor). Darüber scheitert
+  /// der Lauf: Was ein Test beim ersten Gebrauch anlegt und nie freigibt, fällt hier auf, auch wenn ein
+  /// Aufwärmen es aus der Messung je Test nimmt.</summary>
+  cShutdownRestBytes = 0;
 
 {$IFNDEF TESTINSIGHT}
 var
@@ -2832,6 +2840,7 @@ var
 begin
   {$IFDEF DEBUG}
   TShutdownLeaks.Enable(ReportShutdownLeak);
+  TShutdownLeaks.Expect(cShutdownRestBytes, EXIT_ERRORS);
   {$ENDIF}
   // Tests bilden Namen von Arbeitsordnern mit Random; ohne Randomize hätten zwei gleichzeitige Läufe dieselben.
   Randomize;

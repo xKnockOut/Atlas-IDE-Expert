@@ -120,8 +120,6 @@ type
 {$SCOPEDENUMS OFF}
 
 const
-  /// <summary>Plätze, die die Liste der Einträge gleich zu Beginn bekommt.</summary>
-  cInitialEntries = 4;
   cTexts: array[TAtlasLanguage, TWorkerSlotText] of string = (
     ('%d Arbeiter-Thread(s) über ihrer Zeitgrenze'),
     ('%d worker thread(s) past their time limit'));
@@ -144,9 +142,6 @@ class constructor TAtlasOverdueThreads.Create;
 begin
   FLock := TCriticalSection.Create;
   FEntries := TList<TEntry>.Create;
-  // Platz für die üblichen wenigen Einträge gleich anlegen: Wüchse die Liste erst beim ersten Adopt, bliebe der
-  // Speicher bis zum Entladen belegt und der Leckmonitor der Tests zählte ihn dem ersten Test zu.
-  FEntries.Capacity := cInitialEntries;
   AddModuleUnloadProc(AtlasOverdueModuleUnload);
 end;
 

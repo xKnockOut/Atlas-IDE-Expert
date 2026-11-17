@@ -5,8 +5,12 @@
 // und TearDown netto belegt haben. DUnitX wertet einen Test mit Rest als
 // Speicherleck. Eine Leckmeldung ist ein Befund, kein Grund zum Wiederholen
 //: Tests warten auf jeden Thread, den sie starten, und leeren
-// Felder im TearDown; Einmal-Belegungen der RTL nimmt ein [SetupFixture]
-// vorweg. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
+// Felder im TearDown; bekannte Einmal-Belegungen legt TFirstUse
+// (Atlas.Tests.FirstUse) vor dem ersten Test an, jede mit ihrem Besitzer. Ob
+// eine solche Belegung wirklich bis zum Programmende lebt und dort frei wird,
+// entscheidet der Speicherrest beim Beenden (TShutdownLeaks.Expect in der
+// .dpr): Ein Leck der ersten Benutzung lässt dort den Lauf scheitern, auch
+// wenn ein Aufwärmen es aus der Messung je Test nimmt. [IgnoreMemoryLeaks] nur, wo ein Test sein Wachstum selbst misst oder
 // Speicher absichtlich über das Testende hinaus lebt, und dann mit Grund.
 //
 // Die Messung ist prozessweit und sieht deshalb auch andere Threads. Damit
@@ -84,7 +88,8 @@ function ProcessThreadCount: Integer;
 /// <summary>Löst Einmal-Belegungen der RTL aus, die sonst in fremden Tests auffallen.</summary>
 procedure PrewarmRuntime;
 
-/// <summary>Wärmt die RTL vor und meldet TLeakMonitor als Überwachung bei DUnitX an.</summary>
+/// <summary>Wärmt die RTL und die bekannten Einmal-Belegungen (TFirstUse) vor und meldet TLeakMonitor als
+/// Überwachung bei DUnitX an.</summary>
 procedure RegisterLeakMonitor;
 
 implementation
@@ -97,19 +102,10 @@ uses
   Winapi.TlHelp32,
   System.SysUtils,
   System.Classes,
-  System.IOUtils,
   System.Threading,
-  System.DateUtils,
-  System.JSON,
-  System.Generics.Collections,
   DUnitX.ServiceLocator,
-  Atlas.Common.Editing.SlashCommands,
+  Atlas.Tests.FirstUse,
   Atlas.Common.Localization.Texts,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Core.Files.DataFile,
-  Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.Plugin,
-  Atlas.Core.Settings.Transfer,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit;
 
@@ -255,140 +251,12 @@ begin
   end;
 end;
 
-/// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
-/// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
-procedure PrewarmSettingsTransfer;
-var
-  mCatalog: TAtlasSettingsCatalog;
-  mState: TAtlasSettingsState;
-  mExported: TAtlasExportResult;
-  mEnvironment: TAtlasSettingsEnvironment;
-  mIndex: Integer;
-begin
-  mEnvironment :=
-    function(const AName: string): string
-    begin
-      Result := '';
-    end;
-  mCatalog := TAtlasSettingsCatalog.CreateDefault;
-  try
-    mState := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
-    // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
-    for mIndex := 0 to mCatalog.Count - 1 do
-    begin
-      TAtlasSettingsTransfer.DefaultJson(mCatalog, mIndex);
-    end;
-    mExported := TAtlasSettingsTransfer.ExportSettings(mCatalog, mState, TAtlasExportOptions.ForBackup, mEnvironment);
-    TAtlasSettingsTransfer.Apply(mCatalog, mState, TAtlasSettingsTransfer.Preview(mCatalog, mState,
-      TAtlasSettingsTransfer.ParseFile(mExported.Text), TAtlasImportOptions.Create(imMerge, nil, mEnvironment)));
-  finally
-    mCatalog.Free;
-  end;
-end;
-
-/// <summary>Dateifehler einmal auslösen: Die RTL lädt dabei Ressourcen-Strings (EFOpenError, EFCreateError,
-/// EInOutError) und
-/// behält sie bis Programmende; das träfe sonst den ersten Test mit einer gesperrten oder fehlenden Datei.</summary>
-procedure PrewarmFileErrors;
-var
-  mMissing: string;
-  mHeld: TFileStream;
-begin
-  mMissing := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-fehlt-' + IntToStr(GetCurrentProcessId) + '.bin');
-  try
-    TFile.ReadAllBytes(mMissing);
-  except
-    on Exception do
-      ;
-  end;
-  try
-    TFileStream.Create(mMissing, fmOpenRead or fmShareDenyNone).Free;
-  except
-    on Exception do
-      ;
-  end;
-  // Gesperrte Datei neu anlegen (EFCreateError), wie die Sperre des Index-Caches.
-  mHeld := TFileStream.Create(mMissing, fmCreate or fmShareExclusive);
-  try
-    try
-      TFileStream.Create(mMissing, fmCreate or fmShareExclusive).Free;
-    except
-      on Exception do
-        ;
-    end;
-  finally
-    mHeld.Free;
-    System.SysUtils.DeleteFile(mMissing);
-  end;
-end;
-
-/// <summary>Datendatei einmal unbrauchbar beiseitelegen und gesperrt lesen und schreiben: Was die
-/// Melde- und Fehlerpfade beim ersten Mal anlegen, träfe sonst den ersten Test mit einer gesperrten Datei.</summary>
-procedure PrewarmDataFiles;
-var
-  mFileName: string;
-  mLock: TFileStream;
-begin
-  mFileName := TPath.Combine(TPath.GetTempPath, 'atlas-leckmonitor-daten-' + IntToStr(GetCurrentProcessId) + '.json');
-  try
-    TFile.WriteAllText(mFileName, '[1, 2]');
-    TAtlasDataFile.Load(mFileName, 'Leckmonitor',
-      function(const AText: string): Boolean
-      begin
-        Result := False;
-      end);
-    TAtlasDataFile.Write(mFileName, '{}');
-    mLock := TFileStream.Create(mFileName, fmOpenRead or fmShareExclusive);
-    try
-      TAtlasDataFile.Load(mFileName, 'Leckmonitor',
-        function(const AText: string): Boolean
-        begin
-          Result := True;
-        end);
-      try
-        TAtlasDataFile.Write(mFileName, '{}');
-      except
-        on E: Exception do
-          TAtlasDataFile.ReportNotWritten('Leckmonitor', E);
-      end;
-    finally
-      mLock.Free;
-    end;
-  finally
-    System.SysUtils.DeleteFile(mFileName);
-    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
-    TAtlasDataFile.ForgetReports;
-  end;
-end;
-
-/// <summary>Gemeinsame Befehlsliste je Sprache (#1458): entsteht beim ersten Zugriff in der jeweiligen Sprache und
-/// bleibt; sonst trifft das je nach Reihenfolge einen anderen Test als Leck (die englische etwa
-/// EnglishTextsWithoutGerman über die Regel slash-command, rund 23 KB).</summary>
-procedure PrewarmSlashCommands;
-var
-  mLanguage: TTextLanguage;
-begin
-  try
-    for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
-    begin
-      TAtlasLocale.Use(mLanguage);
-      TSlashCommandRegistry.Shared;
-    end;
-  finally
-    TAtlasLocale.Use(TTextLanguage.German);
-  end;
-end;
-
 procedure PrewarmRuntime;
 var
   mTask: ITask;
   mCurrent: TThread;
-  mJson: TJSONValue;
 begin
   PrewarmWaitObjects;
-  PrewarmSlashCommands;
-  // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
-  TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
   mTask := TTask.Run(
     procedure
@@ -401,30 +269,6 @@ begin
   begin
     raise EInvalidOperation.Create('Kein aktueller Thread');
   end;
-  // Lokale Zeitzone (ISO-8601-Zeitstempel) und JSON-Pfade legen beim ersten Gebrauch Daten an,
-  // die bis Programmende bleiben.
-  if DateToISO8601(Now, False) = '' then
-  begin
-    raise EInvalidOperation.Create('Keine Zeitzone');
-  end;
-  mJson := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
-  try
-    if not mJson.GetValue<Boolean>('a.b') then
-    begin
-      raise EInvalidOperation.Create('JSON-Pfad');
-    end;
-  finally
-    mJson.Free;
-  end;
-  PrewarmSettingsTransfer;
-  PrewarmFileErrors;
-  PrewarmDataFiles;
-  // Dateien ohne BOM liest TFile.ReadAllText mit TEncoding.Default (Singleton beim ersten Gebrauch, z. B. im
-  // Korpustest des Parsers über die RTL-Quellen).
-  if TEncoding.Default.GetString(TEncoding.Default.GetBytes('a')) <> 'a' then
-  begin
-    raise EInvalidOperation.Create('Kodierung');
-  end;
 end;
 
 procedure RegisterLeakMonitor;
@@ -433,6 +277,7 @@ begin
   // und verdreifachte die Laufzeit der Tests.
   timeBeginPeriod(1);
   PrewarmRuntime;
+  TFirstUse.WarmUp;
   TDUnitXServiceLocator.DefaultContainer.RegisterType<IMemoryLeakMonitor>(
     function: IMemoryLeakMonitor
     begin

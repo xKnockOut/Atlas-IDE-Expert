@@ -11,9 +11,6 @@ type
   [TestFixture]
   TSlashCommandsTests = class
   public
-    /// <summary>Legt das gemeinsame Register vorab an, sonst zählt es als Leck des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure SplitsCommandLines;
     [Test]
@@ -93,11 +90,6 @@ begin
 end;
 
 { TSlashCommandsTests }
-
-procedure TSlashCommandsTests.WarmUp;
-begin
-  Assert.IsNotNull(TSlashCommandRegistry.Shared);
-end;
 
 procedure TSlashCommandsTests.SplitsCommandLines;
 var

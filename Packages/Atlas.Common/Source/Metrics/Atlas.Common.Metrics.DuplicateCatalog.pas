@@ -129,9 +129,6 @@ begin
   inherited Create;
   FLock := TObject.Create;
   FFiles := TDictionary<string, TEntry>.Create;
-  // Den Monitor jetzt anlegen: Beim ersten Sperren in einem Test zählte ihn der Leckmonitor sonst diesem zu.
-  System.TMonitor.Enter(FLock);
-  System.TMonitor.Exit(FLock);
 end;
 
 destructor TDuplicateBodyCatalog.Destroy;
