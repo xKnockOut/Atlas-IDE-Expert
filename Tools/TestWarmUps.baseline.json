@@ -1,5 +1,5 @@
 {
-  "count": 58,
+  "count": 55,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
@@ -52,9 +52,6 @@
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Sections.Tests.pas: TSettingsPageSectionsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Tests.pas: TAtlasSettingsPageTests.WarmUp",
     "Tests/IDE.Expert/Atlas.UI.Tracker.SettingsSection.Tests.pas: TTrackerSettingsSectionTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Welcome.Arrange.Tests.pas: TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Welcome.Discover.Tests.pas: TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Welcome.Tests.pas: TAtlasWelcomeBoardTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.WhatsNew.Tests.pas: TAtlasWelcomeWhatsNewFrameTests.WarmUpFirstUse",
     "Tests/Text/Atlas.Debug.Attributes.Tests.pas: TAtlasDebugAttributesTests.WarmUpFirstUse",
     "Tests/Windows/Diagnostics/Atlas.Windows.Diagnostics.StackTrace.Tests.pas: TStackTraceTests.WarmUp",
