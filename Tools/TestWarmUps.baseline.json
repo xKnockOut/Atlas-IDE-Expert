@@ -16,7 +16,6 @@
     "Tests/IDE.Expert/Atlas.Core.Search.Replace.Tests.pas: TAtlasSearchReplaceTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tasks.Matchers.Tests.pas: TAtlasTaskMatchersTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tracker.Attach.Tests.pas: TAtlasAttachTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Tracker.Development.Tests.pas: TAtlasIssueDevelopmentTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.MethodBreakpoints.Tests.pas: TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.Search.Tests.pas: TAtlasComponentSearchWindowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.SettingsSection.Tests.pas: TDesignerSettingsSectionTests.WarmUp",
