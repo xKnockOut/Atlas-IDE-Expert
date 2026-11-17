@@ -4,53 +4,79 @@
 // Unter dem Thema der IDE hängt an jeder TListBox ein Stil. Der zeichnet die
 // ganze Liste neu, sobald sie den Fokus bekommt oder verliert (Klick in die
 // Liste, Sprung in den Editor nach der Auswahl), und füllt dabei zuerst die
-// Fläche am Bildschirm in der Grundfarbe, an der Doppelpufferung vorbei;
-// danach kommen die Zeilen: Die Liste blitzt kurz leer auf.
-// TAtlasListBox ist doppelt gepuffert und übergeht das Löschen am Bildschirm
-// in WndProc, bevor der Stil es sieht. Das Löschen in den Puffer (wParam =
-// lParam, aus TWinControl.WMPaint) bleibt beim Üblichen, so behält die Fläche
-// unter der letzten Zeile ihre Farbe.
+// ganze Fläche in der Grundfarbe; danach kommen die Zeilen: Die Liste blitzt
+// kurz leer auf.
+// TAtlasListBox beantwortet WM_ERASEBKGND selbst, bevor der Stil es sieht
+// (WndProc), und füllt nur die Fläche, auf die keine Zeile kommt: unter der
+// letzten Zeile, ohne Zeilen die ganze Liste. Die Zeilen malen ihr Rechteck
+// selbst ganz aus. So wird nichts doppelt gemalt, mit oder ohne Puffer, und
+// die Liste hängt nicht davon ab, ob und wie die VCL in einen Puffer löscht.
+// Gefüllt wird mit dem Pinsel der Liste (Color).
 
 interface
 
 uses
   Winapi.Windows,
   Winapi.Messages,
-  System.Classes,
+  System.Types,
   Vcl.StdCtrls;
 
 type
   TAtlasListBox = class(TListBox)
+  private
+    procedure EraseOutsideRows(ADC: HDC);
   protected
-    /// <summary>Löschen des Hintergrunds am Bildschirm übergehen; gezeichnet wird über den Puffer.</summary>
+    /// <summary>WM_ERASEBKGND selbst beantworten: nur die Fläche ohne Zeilen füllen.</summary>
     procedure WndProc(var Message: TMessage); override;
   public
-    constructor Create(AOwner: TComponent); override;
-    /// <summary>Löscht WM_ERASEBKGND mit diesen Parametern den Hintergrund? Nur beim Zeichnen in den Puffer
-    /// (wParam = lParam).</summary>
-    class function ErasesBackground(AWParam: WPARAM; ALParam: LPARAM): Boolean; static;
+    /// <summary>Fläche, auf die keine Zeile kommt (unter der letzten Zeile); leer, wenn die Zeilen die Liste
+    /// füllen.</summary>
+    function FreeArea: TRect;
   end;
 
 implementation
 
 { TAtlasListBox }
 
-constructor TAtlasListBox.Create(AOwner: TComponent);
+function TAtlasListBox.FreeArea: TRect;
+var
+  mBottom: Integer;
 begin
-  inherited Create(AOwner);
-  DoubleBuffered := True;
+  Result := ClientRect;
+  if Count = 0 then
+  begin
+    Exit;
+  end;
+  // ItemRect kennt auch Zeilen unterhalb des sichtbaren Bereichs; dann ist nichts frei.
+  mBottom := ItemRect(Count - 1).Bottom;
+  if mBottom >= Result.Bottom then
+  begin
+    Result := TRect.Empty;
+    Exit;
+  end;
+  if mBottom > Result.Top then
+  begin
+    Result.Top := mBottom;
+  end;
 end;
 
-class function TAtlasListBox.ErasesBackground(AWParam: WPARAM; ALParam: LPARAM): Boolean;
+procedure TAtlasListBox.EraseOutsideRows(ADC: HDC);
+var
+  mArea: TRect;
 begin
-  Result := AWParam = WPARAM(ALParam);
+  mArea := FreeArea;
+  if not mArea.IsEmpty then
+  begin
+    FillRect(ADC, mArea, Brush.Handle);
+  end;
 end;
 
 procedure TAtlasListBox.WndProc(var Message: TMessage);
 begin
-  // Vor inherited: Dort sieht der Stil der IDE die Nachricht zuerst und füllte die Fläche am Bildschirm.
-  if (Message.Msg = WM_ERASEBKGND) and DoubleBuffered and not ErasesBackground(Message.WParam, Message.LParam) then
+  // Vor inherited: Dort sieht der Stil der IDE die Nachricht zuerst und füllte die ganze Fläche.
+  if (Message.Msg = WM_ERASEBKGND) and HandleAllocated then
   begin
+    EraseOutsideRows(HDC(Message.WParam));
     Message.Result := 1;
     Exit;
   end;
