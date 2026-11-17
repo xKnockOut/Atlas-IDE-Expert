@@ -12,6 +12,9 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeWhatsNewFrameTests = class
   public
+    /// <summary>PROBE (nicht mergen): misst je Schritt von BoardSizesCardToItsText die erste und zweite Runde.</summary>
+    [Test]
+    procedure AProbeFirstUse;
     [Test]
     procedure UnreadShowsRowsWithSwitchKeyAndTry;
     [Test]
@@ -42,7 +45,9 @@ uses
   Atlas.UI.Welcome.Board,
   Atlas.Core.Welcome.WhatsNew,
   Atlas.UI.Welcome.WhatsNew,
-  Atlas.UI.Welcome.TestSupport;
+  Atlas.UI.Welcome.TestSupport,
+  System.IOUtils,
+  Atlas.Common.Diagnostics.ShutdownRest;
 
 
 type
@@ -139,6 +144,96 @@ begin
   Result.Source := ASource;
 end;
 { TAtlasWelcomeWhatsNewFrameTests }
+
+procedure TAtlasWelcomeWhatsNewFrameTests.AProbeFirstUse;
+var
+  mLines: TStringList;
+  mRound: Integer;
+  mStart, mLast: Int64;
+  mText: string;
+  mHost: TForm;
+  mBoard: TAtlasWelcomeBoardFrame;
+  mFake: TFakeWhatsNew;
+  mSource: IAtlasWhatsNewSource;
+  mCard: TAtlasWelcomeSectionFrame;
+
+  procedure Mark(const AName: string);
+  var
+    mNow: Int64;
+  begin
+    mNow := TShutdownRest.AllocatedBytes;
+    mText := mText + Format('  %s %d (gesamt %d)', [AName, mNow - mLast, mNow - mStart]);
+    mLast := TShutdownRest.AllocatedBytes;
+  end;
+
+begin
+  mLines := TStringList.Create;
+  try
+    for mRound := 0 to 2 do
+    begin
+      mText := Format('Runde %d:', [mRound]);
+      mStart := TShutdownRest.AllocatedBytes;
+      mLast := mStart;
+      mFake := TFakeWhatsNew.Create;
+      mSource := mFake;
+      mFake.FView := TAtlasWhatsNewView.Unread;
+      mFake.FVersions := [NewsVersion('1.1.0', [NewsItem('Suchfeld', 'An', 'Taste', 'Atlas.WelcomeStart'),
+        NewsItem('Zweite', 'Aus', '', '')])];
+      Mark('Quelle');
+      if mRound = 2 then
+      begin
+        RegisterViews([TAtlasWelcomeIds.cNews]);
+      end
+      else
+      begin
+        TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cNews,
+          function(AOwner: TComponent): TAtlasWelcomeSectionFrame
+          var
+            Frame: TAtlasWelcomeWhatsNewFrame;
+          begin
+            Frame := TAtlasWelcomeWhatsNewFrame.Create(AOwner);
+            Frame.Source := mSource;
+            Result := Frame;
+          end);
+      end;
+      Mark('Register');
+      mHost := TForm.CreateNew(nil);
+      mHost.ClientWidth := 1200;
+      mHost.ClientHeight := 600;
+      Mark('Form');
+      mBoard := TAtlasWelcomeBoardFrame.Create(mHost);
+      Mark('BoardCreate');
+      mBoard.Parent := mHost;
+      mBoard.Align := alClient;
+      Mark('BoardParent');
+      mBoard.Rebuild([Section(TAtlasWelcomeIds.cNews, 50, TAtlasWelcomeColumn.Right)],
+        TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.cNews), 2);
+      Mark('Rebuild');
+      mCard := mBoard.View(TAtlasWelcomeIds.cNews);
+      mCard.PreferredHeight;
+      Mark('View');
+      mCard.Width := 900;
+      mCard.PreferredHeight;
+      Mark('Breit');
+      mCard.Width := 260;
+      mCard.PreferredHeight;
+      Mark('Schmal');
+      mHost.Free;
+      Mark('HostFree');
+      TAtlasWelcomeViews.Release;
+      Mark('Release');
+      mFake.FVersions := nil;
+      mSource := nil;
+      Mark('QuelleFrei');
+      mLines.Add(mText);
+    end;
+    mLines.SaveToFile(TPath.Combine(TPath.GetTempPath, 'atlas-probe-whatsnew.txt'));
+  finally
+    mLines.Free;
+  end;
+  mText := '';
+  Assert.IsTrue(True);
+end;
 
 procedure TAtlasWelcomeWhatsNewFrameTests.UnreadShowsRowsWithSwitchKeyAndTry;
 var
