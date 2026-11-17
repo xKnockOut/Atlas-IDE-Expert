@@ -69,7 +69,6 @@ type
     function UndoStep(const AStep: TStep): Boolean;
     class function RefusalText(ARefusal: TAtlasHideRefusal): string; static;
     class function SettingCaption(const AKey: string): string; static;
-    class function CaretPoint: TPoint; static;
     class procedure Applied; static;
   public
     constructor Create;
@@ -118,6 +117,7 @@ uses
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.StructureSwitch,
+  Atlas.IDE.Foundation.Caret,
   Atlas.IDE.Editor.HideTeamFile;
 
 { TAtlasIdeHide }
@@ -378,20 +378,6 @@ begin
   end;
 end;
 
-class function TAtlasIdeHide.CaretPoint: TPoint;
-var
-  mFocus: HWND;
-begin
-  Result := Mouse.CursorPos;
-  mFocus := GetFocus;
-  if (mFocus <> 0) and GetCaretPos(Result) then
-  begin
-    // Unter die Zeile der Schreibmarke, nicht in sie hinein.
-    Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(mFocus, Result);
-  end;
-end;
-
 class procedure TAtlasIdeHide.Applied;
 begin
   // Wie die Schnellschalter: Strukturhervorhebung der IDE abgleichen, Treffer vergessen, neu zeichnen.
@@ -556,7 +542,7 @@ begin
   begin
     Exit;
   end;
-  ShowMenu(mTargets, CaretPoint);
+  ShowMenu(mTargets, TAtlasIdeCaret.BelowLine);
   Result := True;
 end;
 
@@ -579,7 +565,7 @@ begin
   begin
     Exit;
   end;
-  FInstance.FWhere := CaretPoint;
+  FInstance.FWhere := TAtlasIdeCaret.BelowLine;
   FInstance.Refused(TAtlasEditorStrings.Text(TAtlasEditorTextId.HideNoElement));
 end;
 

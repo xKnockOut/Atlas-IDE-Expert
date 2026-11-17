@@ -2119,6 +2119,10 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.MultiCursor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedEditing.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedEditing.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.EditSurface.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.LinkedSession.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.EditSurfaceFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.LinkedSession.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartPaste.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.SmartPaste.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Editor\Atlas.Core.Editor.SmartIndent.pas"/>

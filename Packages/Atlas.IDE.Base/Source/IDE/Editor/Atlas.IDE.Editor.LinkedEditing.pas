@@ -2,8 +2,9 @@
 
 // Bezeichner live mitziehen (#658, experimentell) im Editor. Was eine Taste
 // aus dem Namen macht und wie er in alle Vorkommen kommt, rechnet
-// Atlas.Core.Editor.LinkedEditing; hier bleiben Anfrage, Tasten, Puffer und
-// Zeichnen.
+// Atlas.Core.Editor.LinkedEditing; den Ablauf der Sitzung im Puffer führt
+// Atlas.Core.Editor.LinkedSession über Atlas.IDE.Editor.EditSurface. Hier
+// bleiben Anfrage, Tasten, Takt, Statusfeld und Zeichnen.
 // - Ruht der Cursor auf einem Bezeichner, fragt Atlas im Hintergrund den
 //   Server nach den Vorkommen (linkedEditingRange mit "atlasLocals"). Nur
 //   lokale Variablen, Parameter, lokale Konstanten, Inline- und
@@ -43,6 +44,7 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Editor.LinkedEditing,
+  Atlas.Core.Editor.LinkedSession,
   Atlas.IDE.Editor.LinkedEditingQuery;
 
 type
@@ -58,42 +60,6 @@ type
       function AllowedEvents: TCodeEditorEvents; override;
       function AllowedLineStages: TPaintLineStages; override;
     end;
-
-    /// <summary>Laufende Sitzung: Ansicht, bekannter Text, Vorkommen ([Primary] wird bearbeitet), Stand zu
-    /// Beginn.</summary>
-    TRun = record
-      View: IOTAEditView;
-      Text: string;
-      Lines: TArray<string>;
-      Ranges: TAtlasLinkedRanges;
-      Primary: Integer;
-      Conflicts: TAtlasLinkedConflicts;
-      Original: string;
-      OriginalText: string;
-      OriginalRanges: TAtlasLinkedRanges;
-      // Der eigene Schritt oben in der Rückgängig-Liste enthält die ganze Sitzung.
-      Grouped: Boolean;
-      Problem: TAtlasLinkedProblem;
-      Detail: string;
-      function Active: Boolean;
-      /// <summary>Datei der Sitzung; '' ohne.</summary>
-      function FileName: string;
-      function PrimaryRange: TAtlasLinkedRange;
-      function PrimaryName: string;
-      /// <summary>Hinweis zum Konflikt; '' ohne.</summary>
-      function ProblemText: string;
-      /// <summary>Marke und Statusfeld: Konflikt oder Anzahl der Vorkommen.</summary>
-      function Caption: string;
-      procedure SetState(const AText: string; const ARanges: TAtlasLinkedRanges);
-      procedure UpdateProblem;
-      /// <summary>Neuer Name und Cursorversatz für die Taste AKind am Cursor von AView; False außerhalb des Namens
-      /// oder wenn die Taste die Sitzung beendet.</summary>
-      function NextName(const AView: IOTAEditView; AKind: TAtlasLinkedKey; const AInsert: string;
-        out ANewName: string; out ANewOffset: Integer): Boolean;
-      /// <summary>Eigenen Schritt zurücknehmen: ABase/ABaseRanges werden der Stand zu Beginn; sonst den letzten
-      /// Stand wiederherstellen. False, wenn das nicht gelingt.</summary>
-      function Rewind(var ABase: string; var ABaseRanges: TAtlasLinkedRanges): Boolean;
-    end;
   private class var
     FInstance: TAtlasIdeLinkedEditing;
   private
@@ -105,8 +71,7 @@ type
     FMessages: TApplicationEvents;
     FTimer: TTimer;
     FQuery: TAtlasIdeLinkedEditingQuery;
-    FRun: TRun;
-    FWriting: Boolean;
+    FSession: TAtlasLinkedSession;
     FHighSurrogate: Char;
     function IsBusy: Boolean;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -125,20 +90,13 @@ type
     function Start(const AView: IOTAEditView): Boolean;
     /// <summary>Taste im Namen ausführen; False gibt sie an die IDE (und beendet die Sitzung).</summary>
     function Edit(AKind: TAtlasLinkedKey; const AInsert: string): Boolean;
-    /// <summary>Sitzung für die aktive Ansicht AView bereit (begonnen, ohne Markierung, Text nachgezogen)?</summary>
-    function Prepare(out AView: IOTAEditView): Boolean;
-    /// <summary>ANewName ab ABase in alle Vorkommen schreiben und den Cursor setzen.</summary>
-    function Apply(const AView: IOTAEditView; const ABase: string; const ABaseRanges: TAtlasLinkedRanges;
-      const ANewName: string; ANewOffset: Integer): Boolean;
-    /// <summary>Fremde Änderung: nur am bearbeiteten Namen, dann die übrigen nachziehen; sonst False.</summary>
-    function Follow(const AText: string): Boolean;
-    /// <summary>Esc bei Konflikt: alten Namen wiederherstellen.</summary>
-    procedure Restore;
-    procedure Reconcile;
-    /// <summary>AName in die Bereiche ARanges von ABase schreiben (ein Schreiber), ASkip ausgenommen.</summary>
-    procedure WriteNames(const ABuffer: IOTAEditBuffer; const ABase: string; const ARanges: TAtlasLinkedRanges;
-      const AName: string; ASkip: Integer);
+    /// <summary>Hinweis zum Konflikt; '' ohne.</summary>
+    function ProblemText: string;
+    /// <summary>Marke und Statusfeld: Konflikt oder Anzahl der Vorkommen.</summary>
+    function Caption: string;
     procedure Refresh;
+    /// <summary>Sitzung ist zu Ende: Statusfeld leeren, neu zeichnen.</summary>
+    procedure Finished;
     procedure Finish;
   public
     constructor Create(const ABusy: TFunc<Boolean>; const ASession: TAtlasLinkedSessionFunc;
@@ -163,7 +121,6 @@ implementation
 
 uses
   System.Math,
-  System.Generics.Collections,
   Vcl.Forms,
   Vcl.Graphics,
   Atlas.Text.Lines,
@@ -175,9 +132,9 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
-  Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.EditorRefresh,
+  Atlas.IDE.Editor.EditSurface,
   Atlas.IDE.Editor.PaintedLine;
 
 function CurrentShift: TShiftState;
@@ -197,15 +154,6 @@ begin
   end;
 end;
 
-function LineOf(const ALines: TArray<string>; ALine: Integer): string;
-begin
-  Result := '';
-  if (ALine >= 0) and (ALine < Length(ALines)) then
-  begin
-    Result := ALines[ALine];
-  end;
-end;
-
 procedure Invalidate;
 var
   mServices: INTACodeEditorServices;
@@ -214,27 +162,6 @@ begin
   begin
     TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
-end;
-
-procedure WriteCaret(const AView: IOTAEditView; const ALines: TArray<string>; ALine, ACharacter: Integer);
-var
-  mPosition: TOTAEditPos;
-begin
-  AView.Block.Reset;
-  mPosition.Line := ALine + 1;
-  mPosition.Col := TLspSession.IndexToColumn(LineOf(ALines, ALine), ACharacter,
-    TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  AView.CursorPos := mPosition;
-  AView.MoveViewToCursor;
-  AView.Paint;
-end;
-
-function HasBlock(const AView: IOTAEditView): Boolean;
-var
-  mBlock: IOTAEditBlock;
-begin
-  mBlock := AView.Block;
-  Result := (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0);
 end;
 
 /// <summary>Zeigt der aktuelle Modul ein Formular?</summary>
@@ -319,21 +246,22 @@ begin
 end;
 
 /// <summary>Rahmen der Vorkommen in Zeile ALine und (in der Zeile des bearbeiteten) die Marke dahinter.</summary>
-procedure PaintRun(const ARun: TAtlasIdeLinkedEditing.TRun; const ARect: TRect;
-  const AContext: INTACodeEditorPaintContext; ALine: Integer);
+procedure PaintRun(const ASession: TAtlasLinkedSession; ATabWidth: Integer; const ACaption: string;
+  const ARect: TRect; const AContext: INTACodeEditorPaintContext; ALine: Integer);
 var
   mText: string;
-  mIndex, mTabWidth, mSaved: Integer;
+  mIndex, mSaved: Integer;
+  mRanges: TAtlasLinkedRanges;
   mColor: COLORREF;
   mDC: HDC;
   mCode: TRect;
   mBrush: HBRUSH;
   mPen: HPEN;
 begin
-  mText := ARun.Lines[ALine];
-  mTabWidth := TAtlasEditorBuffer.TabWidth(ARun.View.Buffer);
+  mText := TTextLines.LineAt(ASession.Lines, ALine);
+  mRanges := ASession.Ranges;
   mColor := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Accent)));
-  if ARun.Problem <> TAtlasLinkedProblem.None then
+  if ASession.Problem <> TAtlasLinkedProblem.None then
   begin
     mColor := COLORREF(ColorToRGB(TColor(TAtlasIdeStyle.Colors.Error)));
   end;
@@ -347,18 +275,18 @@ begin
     begin
       IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    for mIndex := 0 to High(ARun.Ranges) do
+    for mIndex := 0 to High(mRanges) do
     begin
-      if ARun.Ranges[mIndex].Line = ALine then
+      if mRanges[mIndex].Line = ALine then
       begin
-        PaintFrame(mDC, FrameOf(AContext, mText, ARun.Ranges[mIndex], mTabWidth, ARect), mIndex = ARun.Primary,
-          mBrush, mPen);
+        PaintFrame(mDC, FrameOf(AContext, mText, mRanges[mIndex], ATabWidth, ARect),
+          mIndex = ASession.Primary, mBrush, mPen);
       end;
     end;
     // Marke hinter der Zeile des bearbeiteten Vorkommens: Anzahl bzw. Konflikt.
-    if ARun.PrimaryRange.Line = ALine then
+    if ASession.PrimaryRange.Line = ALine then
     begin
-      PaintMark(AContext, TLspSession.IndexToColumn(mText, Length(mText), mTabWidth) + 2, ARect, ARun.Caption,
+      PaintMark(AContext, TLspSession.IndexToColumn(mText, Length(mText), ATabWidth) + 2, ARect, ACaption,
         TColor(mColor));
     end;
   finally
@@ -380,97 +308,6 @@ begin
   Result := [plsEndPaint];
 end;
 
-{ TAtlasIdeLinkedEditing.TRun }
-
-function TAtlasIdeLinkedEditing.TRun.Active: Boolean;
-begin
-  Result := Length(Ranges) > 0;
-end;
-
-function TAtlasIdeLinkedEditing.TRun.FileName: string;
-begin
-  Result := '';
-  if (View <> nil) and (View.Buffer <> nil) then
-  begin
-    Result := View.Buffer.FileName;
-  end;
-end;
-
-function TAtlasIdeLinkedEditing.TRun.PrimaryRange: TAtlasLinkedRange;
-begin
-  Result := Ranges[Primary];
-end;
-
-function TAtlasIdeLinkedEditing.TRun.PrimaryName: string;
-begin
-  Result := TAtlasLinkedEditing.NameOf(Lines, Ranges[Primary]);
-end;
-
-function TAtlasIdeLinkedEditing.TRun.ProblemText: string;
-begin
-  case Problem of
-    TAtlasLinkedProblem.Reserved:
-      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingReserved, [PrimaryName]);
-    TAtlasLinkedProblem.Visible:
-      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingVisible, [Detail]);
-  else
-    Result := '';
-  end;
-end;
-
-function TAtlasIdeLinkedEditing.TRun.Caption: string;
-begin
-  Result := ProblemText;
-  if Result = '' then
-  begin
-    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingCount, [Length(Ranges)]);
-  end;
-end;
-
-procedure TAtlasIdeLinkedEditing.TRun.SetState(const AText: string; const ARanges: TAtlasLinkedRanges);
-begin
-  Text := AText;
-  Lines := TTextLines.SplitLines(AText);
-  Ranges := Copy(ARanges);
-end;
-
-procedure TAtlasIdeLinkedEditing.TRun.UpdateProblem;
-begin
-  Problem := TAtlasLinkedEditing.Problem(PrimaryName, Original, Conflicts, Detail);
-end;
-
-function TAtlasIdeLinkedEditing.TRun.NextName(const AView: IOTAEditView; AKind: TAtlasLinkedKey;
-  const AInsert: string; out ANewName: string; out ANewOffset: Integer): Boolean;
-var
-  mLine, mCharacter: Integer;
-  mRange: TAtlasLinkedRange;
-begin
-  ANewName := '';
-  ANewOffset := 0;
-  TAtlasIdeLinkedEditingQuery.ReadCaret(AView, mLine, mCharacter);
-  mRange := PrimaryRange;
-  Result := mRange.Contains(mLine, mCharacter) and TAtlasLinkedEditing.Key(TAtlasLinkedEditing.NameOf(Lines, mRange),
-    mCharacter - mRange.Character, AKind, AInsert, ANewName, ANewOffset);
-end;
-
-function TAtlasIdeLinkedEditing.TRun.Rewind(var ABase: string; var ABaseRanges: TAtlasLinkedRanges): Boolean;
-var
-  mBuffer: IOTAEditBuffer;
-begin
-  mBuffer := View.Buffer;
-  if mBuffer.Undo and (TAtlasEditorBuffer.Text(mBuffer) = OriginalText) then
-  begin
-    ABase := OriginalText;
-    ABaseRanges := OriginalRanges;
-    Exit(True);
-  end;
-  if TAtlasEditorBuffer.Text(mBuffer) <> Text then
-  begin
-    mBuffer.Redo;
-  end;
-  Result := TAtlasEditorBuffer.Text(mBuffer) = Text;
-end;
-
 { TAtlasIdeLinkedEditing }
 
 constructor TAtlasIdeLinkedEditing.Create(const ABusy: TFunc<Boolean>; const ASession: TAtlasLinkedSessionFunc;
@@ -482,7 +319,15 @@ begin
   FBusy := ABusy;
   FStatus := AStatus;
   FIndex := -1;
-  FRun.Primary := -1;
+  FSession := TAtlasLinkedSession.Create(
+    procedure
+    begin
+      Refresh;
+    end,
+    procedure
+    begin
+      Finished;
+    end);
   FQuery := TAtlasIdeLinkedEditingQuery.Create(ASession, DeliverToInstance());
   FMessages := TApplicationEvents.Create(nil);
   FMessages.OnMessage := AppMessage;
@@ -517,11 +362,11 @@ begin
   FreeAndNil(FTimer);
   // Wartet laufende Anfragen ab.
   FreeAndNil(FQuery);
-  if Assigned(FStatus) and FRun.Active then
+  if Assigned(FStatus) and (FSession <> nil) and FSession.Active then
   begin
     FStatus('', '');
   end;
-  FRun := Default(TRun);
+  FreeAndNil(FSession);
   inherited;
 end;
 
@@ -564,11 +409,11 @@ begin
     Finish;
     Exit;
   end;
-  case TAtlasLinkedKeys.KeyStep(Word(AMsg.wParam), CurrentShift <> [], FRun.Active,
-    FRun.Problem <> TAtlasLinkedProblem.None) of
+  case TAtlasLinkedKeys.KeyStep(Word(AMsg.wParam), CurrentShift <> [], FSession.Active,
+    FSession.Problem <> TAtlasLinkedProblem.None) of
     TAtlasLinkedKeyStep.RestoreAndFinish:
       begin
-        Restore;
+        FSession.Restore;
         Finish;
         AHandled := True;
       end;
@@ -596,7 +441,7 @@ begin
   case TAtlasLinkedKeys.CharStep(mTyped, FHighSurrogate <> #0) of
     TAtlasLinkedCharStep.HighSurrogate:
       // Zeichen außerhalb der Grundebene kommen als zwei WM_CHAR; nur in einer laufenden Sitzung.
-      if FRun.Active then
+      if FSession.Active then
       begin
         FHighSurrogate := mTyped;
         AHandled := True;
@@ -638,9 +483,9 @@ begin
       Exit;
     end;
     FQuery.Prune;
-    if FRun.Active then
+    if FSession.Active then
     begin
-      if not FWriting then
+      if not FSession.Writing then
       begin
         CheckRun;
       end;
@@ -658,7 +503,6 @@ end;
 procedure TAtlasIdeLinkedEditing.CheckRun;
 var
   mView: IOTAEditView;
-  mLine, mCharacter: Integer;
 begin
   mView := TAtlasEditorBuffer.ActiveView;
   // Datei gewechselt, Formular angezeigt oder abgeschaltet: Sitzung zu Ende.
@@ -667,26 +511,12 @@ begin
     Finish;
     Exit;
   end;
-  // Eine Änderung, deren Meldung noch aussteht, zuerst nachziehen.
-  if TAtlasEditorBuffer.LineText(mView, FRun.PrimaryRange.Line + 1) <> FRun.Lines[FRun.PrimaryRange.Line] then
-  begin
-    Reconcile;
-  end;
-  if not FRun.Active then
-  begin
-    Exit;
-  end;
-  // Cursor hat den Namen verlassen.
-  TAtlasIdeLinkedEditingQuery.ReadCaret(mView, mLine, mCharacter);
-  if not FRun.PrimaryRange.Contains(mLine, mCharacter) then
-  begin
-    Finish;
-  end;
+  FSession.Check(TAtlasIdeEditSurface.Wrap(mView));
 end;
 
 function TAtlasIdeLinkedEditing.Lost(const AView: IOTAEditView): Boolean;
 begin
-  Result := (AView = nil) or (AView.Buffer = nil) or not SameText(AView.Buffer.FileName, FRun.FileName) or
+  Result := (AView = nil) or (AView.Buffer = nil) or not SameText(AView.Buffer.FileName, FSession.FileName) or
     not Enabled or IsBusy or FormShown;
 end;
 
@@ -694,16 +524,26 @@ procedure TAtlasIdeLinkedEditing.PaintLine(const Rect: TRect; const Stage: TPain
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
   mLine: Integer;
+  mView: IOTAEditView;
+  mCaption: string;
 begin
-  if not FRun.Active or TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
+  if not FSession.Active or TAtlasGuard.Disabled(TAtlasFeature.LinkedEditing) then
   begin
     Exit;
   end;
   try
     // Nur, wenn die Zeile im Editor dem bekannten Stand entspricht (sonst steht gleich ein Reconcile an).
-    if TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context, FRun.FileName, FRun.Lines, mLine) then
+    mView := Context.EditView;
+    if (mView <> nil) and (mView.Buffer <> nil) and TAtlasPaintedLine.Resolve(Stage, BeforeEvent, Context,
+      FSession.FileName, FSession.Lines, mLine) then
     begin
-      PaintRun(FRun, Rect, Context, mLine);
+      // Die Marke steht nur in der Zeile des bearbeiteten Vorkommens.
+      mCaption := '';
+      if FSession.PrimaryRange.Line = mLine then
+      begin
+        mCaption := Caption;
+      end;
+      PaintRun(FSession, TAtlasEditorBuffer.TabWidth(mView.Buffer), mCaption, Rect, Context, mLine);
     end;
   except
     on E: Exception do
@@ -714,307 +554,91 @@ end;
 function TAtlasIdeLinkedEditing.Start(const AView: IOTAEditView): Boolean;
 var
   mCandidate: TAtlasLinkedCandidate;
-  mText: string;
-  mLine, mCharacter, mPrimary: Integer;
 begin
   mCandidate := FQuery.Candidate;
-  Result := Enabled and not IsBusy and mCandidate.Valid and (AView <> nil) and (AView.Buffer <> nil) and
-    not AView.Buffer.IsReadOnly and SameText(mCandidate.FileName, AView.Buffer.FileName) and not HasBlock(AView);
-  if not Result then
+  Result := Enabled and not IsBusy and mCandidate.Valid and FSession.Start(TAtlasIdeEditSurface.Wrap(AView),
+    mCandidate.FileName, mCandidate.Text, mCandidate.Ranges, mCandidate.Conflicts);
+  if Result then
   begin
-    Exit;
+    FQuery.Drop;
   end;
-  mText := TAtlasEditorBuffer.Text(AView.Buffer);
-  TAtlasIdeLinkedEditingQuery.ReadCaret(AView, mLine, mCharacter);
-  mPrimary := TAtlasLinkedEditing.IndexAt(mCandidate.Ranges, mLine, mCharacter);
-  Result := (mText = mCandidate.Text) and
-    TAtlasLinkedEditing.Matches(TTextLines.SplitLines(mText), mCandidate.Ranges) and (mPrimary >= 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  FRun.View := AView;
-  FRun.Primary := mPrimary;
-  FRun.Conflicts := mCandidate.Conflicts;
-  FRun.OriginalText := mText;
-  FRun.OriginalRanges := Copy(mCandidate.Ranges);
-  FRun.SetState(mText, mCandidate.Ranges);
-  FRun.Original := FRun.PrimaryName;
-  FRun.Grouped := False;
-  FRun.Problem := TAtlasLinkedProblem.None;
-  FRun.Detail := '';
-  FQuery.Drop;
 end;
 
 function TAtlasIdeLinkedEditing.Edit(AKind: TAtlasLinkedKey; const AInsert: string): Boolean;
 var
   mView: IOTAEditView;
-  mNewName, mBase: string;
-  mNewOffset: Integer;
-  mBaseRanges: TAtlasLinkedRanges;
 begin
   Result := False;
-  if not Prepare(mView) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
-  if not FRun.NextName(mView, AKind, AInsert, mNewName, mNewOffset) then
+  if FSession.Active and not SameText(mView.Buffer.FileName, FSession.FileName) then
   begin
     Finish;
+  end;
+  if not FSession.Active and not Start(mView) then
+  begin
     Exit;
   end;
-  // Direkt auf den eigenen Schritt: zurücknehmen und die ganze Sitzung als einen Schritt schreiben.
-  mBase := FRun.Text;
-  mBaseRanges := FRun.Ranges;
-  if FRun.Grouped and not FRun.Rewind(mBase, mBaseRanges) then
-  begin
-    // Lässt sich der Stand nicht wiederherstellen, lieber nichts ändern.
-    Finish;
-    Exit(True);
-  end;
-  Result := Apply(mView, mBase, mBaseRanges, mNewName, mNewOffset);
+  Result := FSession.Key(TAtlasIdeEditSurface.Wrap(mView), AKind, AInsert);
 end;
 
-function TAtlasIdeLinkedEditing.Prepare(out AView: IOTAEditView): Boolean;
-var
-  mText: string;
+function TAtlasIdeLinkedEditing.ProblemText: string;
 begin
-  Result := False;
-  AView := TAtlasEditorBuffer.ActiveView;
-  if (AView = nil) or (AView.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  if FRun.Active and not SameText(AView.Buffer.FileName, FRun.FileName) then
-  begin
-    Finish;
-  end;
-  if not FRun.Active and not Start(AView) then
-  begin
-    Exit;
-  end;
-  // Mit Markierung ersetzt die Taste die Markierung: das bleibt der IDE.
-  Result := not HasBlock(AView);
-  if Result then
-  begin
-    mText := TAtlasEditorBuffer.Text(AView.Buffer);
-    Result := (mText = FRun.Text) or Follow(mText);
-  end;
-  if not Result then
-  begin
-    Finish;
-  end;
-end;
-
-function TAtlasIdeLinkedEditing.Apply(const AView: IOTAEditView; const ABase: string;
-  const ABaseRanges: TAtlasLinkedRanges; const ANewName: string; ANewOffset: Integer): Boolean;
-var
-  mNewText: string;
-  mNewRanges: TAtlasLinkedRanges;
-  mGrouped: Boolean;
-begin
-  Result := TAtlasLinkedEditing.Rename(ABase, ABaseRanges, ANewName, mNewText, mNewRanges);
-  if not Result then
-  begin
-    Finish;
-    Exit;
-  end;
-  // Ein Schritt ab dem Stand zu Beginn enthält die ganze Sitzung.
-  mGrouped := ABase = FRun.OriginalText;
-  WriteNames(AView.Buffer, ABase, ABaseRanges, ANewName, -1);
-  if TAtlasEditorBuffer.Text(AView.Buffer) <> mNewText then
-  begin
-    // Der Puffer sieht anders aus als gerechnet: Sitzung beenden, nichts weiter schreiben.
-    Finish;
-    Exit;
-  end;
-  FRun.Grouped := mGrouped;
-  FRun.SetState(mNewText, mNewRanges);
-  WriteCaret(AView, FRun.Lines, FRun.PrimaryRange.Line, FRun.PrimaryRange.Character + ANewOffset);
-  FRun.UpdateProblem;
-  Refresh;
-end;
-
-function TAtlasIdeLinkedEditing.Follow(const AText: string): Boolean;
-var
-  mLines: TArray<string>;
-  mIndex, mLine: Integer;
-  mName, mNewText: string;
-  mRanges, mNewRanges: TAtlasLinkedRanges;
-begin
-  Result := FRun.Active;
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Nur die Zeile des bearbeiteten Namens darf sich geändert haben.
-  mLines := TTextLines.SplitLines(AText);
-  mLine := FRun.PrimaryRange.Line;
-  Result := Length(mLines) = Length(FRun.Lines);
-  mIndex := 0;
-  while Result and (mIndex <= High(mLines)) do
-  begin
-    Result := (mIndex = mLine) or (mLines[mIndex] = FRun.Lines[mIndex]);
-    Inc(mIndex);
-  end;
-  Result := Result and TAtlasLinkedEditing.Follow(FRun.Lines[mLine], mLines[mLine], FRun.PrimaryRange, mName) and
-    TAtlasLinkedEditing.IsName(mName);
-  if Result then
-  begin
-    mRanges := TAtlasLinkedEditing.Resized(FRun.Ranges, FRun.Primary, Length(mName));
-    Result := TAtlasLinkedEditing.Rename(AText, mRanges, mName, mNewText, mNewRanges);
-  end;
-  if not Result then
-  begin
-    Exit;
-  end;
-  // Die Änderung der IDE liegt jetzt oben in der Rückgängig-Liste: ab hier ein Schritt je Taste.
-  WriteNames(FRun.View.Buffer, AText, mRanges, mName, FRun.Primary);
-  Result := TAtlasEditorBuffer.Text(FRun.View.Buffer) = mNewText;
-  if Result then
-  begin
-    FRun.Grouped := False;
-    FRun.SetState(mNewText, mNewRanges);
-    FRun.UpdateProblem;
-  end;
-end;
-
-procedure TAtlasIdeLinkedEditing.Restore;
-var
-  mBuffer: IOTAEditBuffer;
-  mText: string;
-begin
-  if not FRun.Active or (FRun.View = nil) or (FRun.View.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  mBuffer := FRun.View.Buffer;
-  mText := TAtlasEditorBuffer.Text(mBuffer);
-  if FRun.Grouped and (mText = FRun.Text) and mBuffer.Undo and
-    (TAtlasEditorBuffer.Text(mBuffer) = FRun.OriginalText) then
-  begin
-    FRun.SetState(FRun.OriginalText, FRun.OriginalRanges);
-    WriteCaret(FRun.View, FRun.Lines, FRun.PrimaryRange.Line, FRun.PrimaryRange.EndCharacter);
-    Exit;
-  end;
-  if TAtlasEditorBuffer.Text(mBuffer) <> FRun.Text then
-  begin
-    mBuffer.Redo;
-  end;
-  if TAtlasEditorBuffer.Text(mBuffer) = FRun.Text then
-  begin
-    WriteNames(mBuffer, FRun.Text, FRun.Ranges, FRun.Original, -1);
-    WriteCaret(FRun.View, TTextLines.SplitLines(TAtlasEditorBuffer.Text(mBuffer)), FRun.PrimaryRange.Line,
-      FRun.PrimaryRange.Character + Length(FRun.Original));
-  end;
-end;
-
-procedure TAtlasIdeLinkedEditing.Reconcile;
-var
-  mText: string;
-begin
-  if not FRun.Active or (FRun.View = nil) or (FRun.View.Buffer = nil) then
-  begin
-    Exit;
-  end;
-  mText := TAtlasEditorBuffer.Text(FRun.View.Buffer);
-  if mText = FRun.Text then
-  begin
-    Exit;
-  end;
-  if Follow(mText) then
-  begin
-    Refresh;
-  end
+  case FSession.Problem of
+    TAtlasLinkedProblem.Reserved:
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingReserved, [FSession.PrimaryName]);
+    TAtlasLinkedProblem.Visible:
+      Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingVisible, [FSession.Detail]);
   else
-  begin
-    Finish;
+    Result := '';
   end;
 end;
 
-procedure TAtlasIdeLinkedEditing.WriteNames(const ABuffer: IOTAEditBuffer; const ABase: string;
-  const ARanges: TAtlasLinkedRanges; const AName: string; ASkip: Integer);
-var
-  mTable: TLineTable;
-  mStarts: TList<Integer>;
-  mLengths: TDictionary<Integer, Integer>;
-  mIndex, mOffset: Integer;
-  mWriter: IOTAEditWriter;
-  mUtf8: UTF8String;
+function TAtlasIdeLinkedEditing.Caption: string;
 begin
-  mTable := TLineTable.Build(ABase);
-  mStarts := TList<Integer>.Create;
-  mLengths := TDictionary<Integer, Integer>.Create;
-  FWriting := True;
-  try
-    for mIndex := 0 to High(ARanges) do
-    begin
-      mOffset := mTable.LineStart(ARanges[mIndex].Line) + ARanges[mIndex].Character;
-      if (mIndex <> ASkip) and not mLengths.ContainsKey(mOffset) then
-      begin
-        mStarts.Add(mOffset);
-        mLengths.Add(mOffset, ARanges[mIndex].Length);
-      end;
-    end;
-    mStarts.Sort;
-    mUtf8 := UTF8Encode(AName);
-    // Ein Schreiber: ein Rückgängig-Schritt; nur die Namen, der Text dazwischen bleibt unberührt.
-    mWriter := ABuffer.CreateUndoableWriter;
-    for mOffset in mStarts do
-    begin
-      mWriter.CopyTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, mOffset)));
-      mWriter.DeleteTo(TEncoding.UTF8.GetByteCount(Copy(ABase, 1, mOffset + mLengths[mOffset])));
-      if mUtf8 <> '' then
-      begin
-        mWriter.Insert(PAnsiChar(mUtf8));
-      end;
-    end;
-    mWriter := nil;
-  finally
-    FWriting := False;
-    mLengths.Free;
-    mStarts.Free;
+  Result := ProblemText;
+  if Result = '' then
+  begin
+    Result := TAtlasEditorStrings.Fmt(TAtlasEditorTextId.LinkedEditingCount, [Length(FSession.Ranges)]);
   end;
-  TAtlasEditorSnapshots.Invalidate(ABuffer.FileName);
 end;
 
 procedure TAtlasIdeLinkedEditing.Refresh;
 var
   mHint: string;
 begin
-  if not FRun.Active then
+  if not FSession.Active then
   begin
     Exit;
   end;
   if Assigned(FStatus) then
   begin
     mHint := '';
-    if FRun.ProblemText <> '' then
+    if ProblemText <> '' then
     begin
       mHint := TAtlasEditorStrings.Text(TAtlasEditorTextId.LinkedEditingRestoreHint);
     end;
-    FStatus(FRun.Caption, mHint);
+    FStatus(Caption, mHint);
+  end;
+  Invalidate;
+end;
+
+procedure TAtlasIdeLinkedEditing.Finished;
+begin
+  if Assigned(FStatus) then
+  begin
+    FStatus('', '');
   end;
   Invalidate;
 end;
 
 procedure TAtlasIdeLinkedEditing.Finish;
-var
-  mWas: Boolean;
 begin
-  mWas := FRun.Active;
-  FRun := Default(TRun);
-  FRun.Primary := -1;
-  FRun.Problem := TAtlasLinkedProblem.None;
+  FSession.Finish;
   FHighSurrogate := #0;
-  if mWas then
-  begin
-    if Assigned(FStatus) then
-    begin
-      FStatus('', '');
-    end;
-    Invalidate;
-  end;
 end;
 
 class procedure TAtlasIdeLinkedEditing.Install(const ABusy: TFunc<Boolean>; const ASession: TAtlasLinkedSessionFunc;
@@ -1041,7 +665,7 @@ end;
 
 class function TAtlasIdeLinkedEditing.Active: Boolean;
 begin
-  Result := (FInstance <> nil) and FInstance.FRun.Active;
+  Result := (FInstance <> nil) and FInstance.FSession.Active;
 end;
 
 class procedure TAtlasIdeLinkedEditing.Dismiss;
@@ -1055,17 +679,17 @@ end;
 
 class procedure TAtlasIdeLinkedEditing.EditorModified(const AView: IOTAEditView);
 begin
-  if (FInstance = nil) or FInstance.FWriting then
+  if (FInstance = nil) or FInstance.FSession.Writing then
   begin
     Exit;
   end;
   // Ohne Sitzung gilt die letzte Antwort nicht mehr; beim nächsten Ruhen fragt Atlas neu.
-  if not FInstance.FRun.Active then
+  if not FInstance.FSession.Active then
   begin
     FInstance.FQuery.Forget;
     Exit;
   end;
-  if (AView = nil) or (AView.Buffer = nil) or not SameText(AView.Buffer.FileName, FInstance.FRun.FileName) then
+  if (AView = nil) or (AView.Buffer = nil) or not SameText(AView.Buffer.FileName, FInstance.FSession.FileName) then
   begin
     Exit;
   end;
@@ -1078,7 +702,7 @@ begin
         begin
           if FInstance <> nil then
           begin
-            FInstance.Reconcile;
+            FInstance.FSession.BufferChanged;
           end;
         end);
     end);
