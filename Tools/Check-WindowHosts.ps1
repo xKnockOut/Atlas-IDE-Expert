@@ -30,6 +30,10 @@
       Formular, das von außen über X.CreateNew angelegt wird (TForm.CreateNew(nil)
       bekommt weder Dialogschrift noch IDE-Thema), und keine Fensterklasse
       direkt von TForm (create-new-call, form-class).
+    - Rahmenlose Fenster erben von TAtlasPopupForm (CreatePopup), nicht von
+      TAtlasDialog mit BorderStyle := bsNone: Die Dialogbasis legt ein
+      Dialogfenster an, das bsNone wieder verwirft, und Schatten, runde Ecken
+      und Akzentrand müsste jedes Fenster selbst nachtragen.
     - Umbrechende Beschriftungen sind TAtlasWrapLabel
       (Atlas.UI.Foundation.WrapLabel): Ein TLabel mit WordWrap rechnet seine
       Höhe bei der Anfangsbreite (65 Pixel) und behält sie, wenn Align oder
@@ -172,6 +176,13 @@ foreach ($file in $files) {
         if ($file.Name -eq $rule.Allowed) { continue }
         foreach ($match in [regex]::Matches($text, $rule.Pattern)) {
             $violations += "${relative}:$(Get-LineNumber $text $match.Index): $($rule.Message)"
+        }
+    }
+
+    # Rahmenlose Fenster gehören auf TAtlasPopupForm: Ein Nachfahre von TAtlasDialog, der den Rahmen abschaltet.
+    if ($text -match '(?i)=\s*class\s*\(\s*TAtlasDialog\s*\)') {
+        foreach ($match in [regex]::Matches($text, '(?im)^\s*(Self\s*\.\s*)?BorderStyle\s*:=\s*bsNone\b')) {
+            $violations += "${relative}:$(Get-LineNumber $text $match.Index): Rahmenloses Fenster auf TAtlasDialog; von TAtlasPopupForm erben (CreatePopup)"
         }
     }
 

@@ -17,8 +17,9 @@
 // Das Fenster liest nur IAtlasNotificationCenter; neue Quellen brauchen hier
 // keine Änderung (ihr Name ist ohne eigenen Text die Kennung der Quelle).
 // Es nimmt den Fokus (eigene Knöpfe, Filter, Menü) und schließt mit Esc oder
-// einem Klick daneben. Basis ist TAtlasDialog: Dialogschrift, IDE-Thema an
-// Filter und Knöpfen und neue Farben bei jedem Themenwechsel.
+// einem Klick daneben. Basis ist TAtlasPopupForm: ohne Rahmen, mit Schatten
+// und Dialogschrift, IDE-Thema an Filter und Knöpfen (ThemedControls) und
+// neue Farben bei jedem Themenwechsel.
 
 interface
 
@@ -53,7 +54,7 @@ type
     class function TimeText(ATime, ANow: TDateTime): string; static;
   end;
 
-  TAtlasNotificationsWindow = class(TAtlasDialog)
+  TAtlasNotificationsWindow = class(TAtlasPopupForm)
   private type
     /// <summary>Einträge, ihre Lage in der Liste (ohne Blättern), Auswahl und Eintrag unter der Maus.</summary>
     TRows = record
@@ -102,7 +103,6 @@ type
       Anchor: TPoint;
     end;
   private
-    FColors: TAtlasColors;
     FCenter: IAtlasNotificationCenter;
     FRows: TRows;
     FParts: TParts;
@@ -124,14 +124,11 @@ type
     procedure CloseAndRun(const AProc: TProc);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
-    /// <summary>Farben des neuen Themas holen und neu zeichnen.</summary>
-    procedure ThemeChanged; override;
   public
     constructor CreateList(AOwner: TComponent; const AColors: TAtlasColors;
       const ACenter: IAtlasNotificationCenter);
@@ -169,7 +166,6 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Notifications.Sources,
-  Atlas.UI.Foundation.Theme,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,
   Atlas.UI.Notifications.Strings;
@@ -467,7 +463,7 @@ class function TNotificationsPainter.Create(AWindow: TAtlasNotificationsWindow):
 begin
   Result.Window := AWindow;
   Result.Canvas := AWindow.Canvas;
-  Result.Colors := AWindow.FColors;
+  Result.Colors := AWindow.Colors;
   Result.Geometry := TNotificationsGeometry.Create(AWindow);
 end;
 
@@ -703,20 +699,15 @@ end;
 constructor TAtlasNotificationsWindow.CreateList(AOwner: TComponent; const AColors: TAtlasColors;
   const ACenter: IAtlasNotificationCenter);
 begin
-  // Breite setzt Layout nach dem Inhalt.
-  inherited CreateDialog(AOwner, '', 0);
-  FColors := AColors;
+  // Größe setzt Layout nach dem Inhalt, die Lage ShowAbove über dem Feld.
+  inherited CreatePopup(AOwner, AColors);
+  ThemedControls := True;
   FCenter := ACenter;
   FRows.Selected := -1;
   FRows.HotRow := -1;
   FRows.HotChip := -1;
   FState.MenuRow := -1;
-  BorderStyle := bsNone;
-  // Lage setzt ShowAbove über dem Feld.
-  Position := poDesigned;
   KeyPreview := True;
-  DoubleBuffered := True;
-  Color := ToColor(FColors.Surface);
   OnDeactivate := FormDeactivate;
   FParts.FilterBox := TComboBox.Create(Self);
   FParts.FilterBox.Parent := Self;
@@ -734,22 +725,9 @@ begin
   Reload;
 end;
 
-procedure TAtlasNotificationsWindow.CreateParams(var Params: TCreateParams);
-begin
-  inherited;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
 procedure TAtlasNotificationsWindow.Paint;
 begin
   TNotificationsPainter.Create(Self).Paint;
-end;
-
-procedure TAtlasNotificationsWindow.ThemeChanged;
-begin
-  FColors := TAtlasUiTheme.Colors;
-  Color := ToColor(FColors.Surface);
-  Invalidate;
 end;
 
 procedure TAtlasNotificationsWindow.KeyDown(var Key: Word; Shift: TShiftState);
