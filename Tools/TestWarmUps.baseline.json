@@ -1,10 +1,9 @@
 {
-  "count": 5,
+  "count": 4,
   "warmUps": [
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Lsp.Adapters.ServerProcess.Tests.pas: TLspServerProcessTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Lsp.Tests.pas: TLspClientTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Diagnostics.ExportDialog.Tests.pas: TAtlasDiagnosticExportDialogTests.WarmUpFirstUse"
+    "Tests/IDE.Expert/Atlas.Core.Lsp.Tests.pas: TLspClientTests.WarmUpFirstUse"
   ]
 }
