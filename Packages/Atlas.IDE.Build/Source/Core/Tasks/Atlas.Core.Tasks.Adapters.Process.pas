@@ -20,7 +20,7 @@ uses
   Atlas.Core.Tasks.Runs;
 
 type
-  /// <summary>Umsetzung von TAtlasTaskProcessRun (Atlas.IDE.Tasks.Runner); die Kompositionswurzel reicht Run
+  /// <summary>Umsetzung von TAtlasTaskProcessRun (Atlas.Core.Tasks.Runs); die Kompositionswurzel reicht Run
   /// hinein.</summary>
   TAtlasTaskProcess = class
   public const
@@ -109,15 +109,6 @@ begin
   end;
 end;
 
-function FileExistsProc: TAtlasTaskFileExists;
-begin
-  Result :=
-    function(const AFileName: string): Boolean
-    begin
-      Result := FileExists(AFileName);
-    end;
-end;
-
 type
   /// <summary>Programm, Befehlszeile und Umgebungsblock für TAtlasProcessLauncher.</summary>
   TLaunch = record
@@ -149,7 +140,7 @@ begin
     Exit;
   end;
   ALaunch.ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),
-    GetEnvironmentVariable('PATHEXT'), FileExistsProc());
+    GetEnvironmentVariable('PATHEXT'), TAtlasTaskPaths.OnDisk());
   if ALaunch.ProgramPath = '' then
   begin
     AResult.Outcome := TAtlasTaskOutcome.ProgramMissing;
