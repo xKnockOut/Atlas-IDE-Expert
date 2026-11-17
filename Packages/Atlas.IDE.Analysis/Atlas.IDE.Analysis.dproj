@@ -99,6 +99,7 @@
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.RoleUnit.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.MapMarks.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
         <DCCReference Include="Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
         <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
@@ -131,6 +132,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
+        <DCCReference Include="Source\UI\SymbolPath\Atlas.UI.SymbolPath.Suggestions.pas"/>
         <DCCReference Include="Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas"/>
         <DCCReference Include="Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas"/>
         <DCCReference Include="Source\IDE\Analysis\Atlas.IDE.Analysis.MetricsLens.pas"/>

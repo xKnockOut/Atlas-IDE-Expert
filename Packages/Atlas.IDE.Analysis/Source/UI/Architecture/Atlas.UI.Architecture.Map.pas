@@ -188,7 +188,7 @@ end;
 function Emphasized(const APaint: TMapPaint; AIndex: Integer; const AEdge: TAtlasArchEdge): Boolean;
 begin
   Result := APaint.State.MarksCycle(AEdge) or TouchesSelected(APaint, AEdge)
-    or (APaint.Changes and APaint.State.IsAdded(AIndex));
+    or (APaint.Changes and APaint.State.Marks.IsAdded(AIndex));
 end;
 
 /// <summary>Gewöhnliche Kante; Kanten zum Fundament (#1365) blass und gepunktet, abschaltbar.</summary>
@@ -384,7 +384,7 @@ var
   mHighlighted, mMajor: Boolean;
 begin
   mHighlighted := APaint.State.Highlighted(AIndex);
-  mMajor := APaint.State.IsCentral(AIndex) or (AIndex = APaint.State.Selected)
+  mMajor := APaint.State.Marks.IsCentral(AIndex) or (AIndex = APaint.State.Selected)
     or ((APaint.Pathing or AFiltered) and mHighlighted);
   Result := mMajor or ((APaint.View.Scale >= cAllNamesScale) and mHighlighted);
 end;

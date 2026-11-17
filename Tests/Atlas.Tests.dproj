@@ -732,6 +732,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Localization\Atlas.Core.Localization.Language.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Framing.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.BackgroundRequest.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
@@ -771,6 +772,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.IdeMembers.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Session.Requests.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Framing.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.Adapters.ServerProcess.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Lsp.TextChanges.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Completion\Atlas.Core.Completion.Contract.pas"/>
@@ -1765,9 +1767,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Sources.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Center.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Listeners.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Listeners.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.MessageSink.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.MessageSink.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Window.Tests.pas"/>
@@ -1827,7 +1831,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.View.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\Core\Architecture\Atlas.Core.Architecture.MapMarks.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.MapState.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.MapMarks.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Architecture.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas"/>
@@ -1862,6 +1868,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.SymbolPath.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\SymbolPath\Atlas.UI.SymbolPath.Chain.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Analysis\Source\UI\SymbolPath\Atlas.UI.SymbolPath.Suggestions.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.SymbolPath.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Outline\Atlas.Core.Outline.Breadcrumbs.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Outline.Breadcrumbs.Tests.pas"/>
@@ -2171,6 +2178,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Search.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Results.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.Bar.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.BarParts.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\UI\Search\Atlas.UI.Search.BarFields.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Search.Bar.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.Replace.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Search\Source\Core\Search\Atlas.Core.Search.History.pas"/>

@@ -19,8 +19,8 @@ interface
 
 uses
   System.SysUtils,
-  System.Generics.Collections,
-  Atlas.Core.Architecture.Model;
+  Atlas.Core.Architecture.Model,
+  Atlas.Core.Architecture.MapMarks;
 
 type
 {$SCOPEDENUMS ON}
@@ -51,6 +51,10 @@ type
     /// <summary>Markierungen neu rechnen; ein fester Weg bleibt, sonst sucht ShortestPath.</summary>
     procedure Compute(const AModel: TAtlasArchitectureModel; AImplementation: Boolean;
       const AHidden: TArray<Boolean>);
+    /// <summary>Einen bestehenden Weg neu suchen (ausgeblendetes Teilsystem, implementation-uses); False ohne Weg.
+    /// </summary>
+    function Recompute(const AModel: TAtlasArchitectureModel; AImplementation: Boolean;
+      const AHidden: TArray<Boolean>): Boolean;
     /// <summary>Ein Weg ist markiert; ein fester Weg kann aus einer einzigen Unit bestehen.</summary>
     function Shown: Boolean;
     function IsEdge(AEdge: Integer): Boolean;
@@ -65,13 +69,6 @@ type
 
   TAtlasArchitectureMapState = class
   private type
-    /// <summary>Aus den Daten abgeleitete Markierungen.</summary>
-    TMarks = record
-      Central: TArray<Boolean>;
-      /// <summary>Je Kante in Model.Edges: neu gegenüber dem gespeicherten Stand.</summary>
-      AddedEdges: TArray<Boolean>;
-    end;
-
     THandlers = record
       OnChange: TProc;
       OnPathChanged: TProc;
@@ -84,8 +81,8 @@ type
     FFlags: TAtlasArchMapFlags;
     /// <summary>Ausgeblendete Teilsysteme, je Teilsystem.</summary>
     FHidden: TArray<Boolean>;
-    FMarks: TMarks;
-    FCycleEdges: TDictionary<Int64, Boolean>;
+    /// <summary>Aus den Daten abgeleitete Markierungen.</summary>
+    FMarks: TAtlasArchitectureMapMarks;
     FPath: TAtlasArchitectureMapPath;
     FHandlers: THandlers;
     function GetSubsystemVisible(ASubsystem: Integer): Boolean;
@@ -119,8 +116,6 @@ type
     function MarksCycle(const AEdge: TAtlasArchEdge): Boolean;
     /// <summary>Unit tritt nicht zurück: auf dem Weg bzw. ohne Weg vom Filter getroffen (oder kein Filter).</summary>
     function Highlighted(AUnit: Integer): Boolean;
-    function IsCentral(AUnit: Integer): Boolean;
-    function IsAdded(AEdge: Integer): Boolean;
     property Model: TAtlasArchitectureModel read FModel;
     property Selected: Integer read FSelected;
     property Hover: Integer read FHover;
@@ -128,6 +123,8 @@ type
     property Filter: string read FFilter write SetFilter;
     property SubsystemVisible[ASubsystem: Integer]: Boolean read GetSubsystemVisible write SetSubsystemVisible;
     property Path: TAtlasArchitectureMapPath read FPath;
+    /// <summary>Zentrale Units und neue Kanten (unabhängig von den Schaltern).</summary>
+    property Marks: TAtlasArchitectureMapMarks read FMarks;
     /// <summary>Ausgeblendete Teilsysteme, je Teilsystem (für TAtlasArchitectureView.UnitAt).</summary>
     property Hidden: TArray<Boolean> read FHidden;
     /// <summary>Die Karte muss neu gezeichnet werden.</summary>
@@ -136,11 +133,6 @@ type
   end;
 
 implementation
-
-function EdgeKey(ASource, ATarget: Integer): Int64;
-begin
-  Result := Int64(ASource) shl 32 or Cardinal(ATarget);
-end;
 
 procedure Changed(AState: TAtlasArchitectureMapState);
 begin
@@ -156,17 +148,6 @@ begin
   begin
     AState.FHandlers.OnPathChanged();
   end;
-end;
-
-/// <summary>Ein bestehender Weg wird neu gesucht (ausgeblendetes Teilsystem, implementation-uses).</summary>
-procedure RecomputePath(AState: TAtlasArchitectureMapState);
-begin
-  if AState.FPath.From < 0 then
-  begin
-    Exit;
-  end;
-  AState.FPath.Compute(AState.FModel, AState.Has(TAtlasArchMapFlag.ShowImplementation), AState.FHidden);
-  PathChanged(AState);
 end;
 
 function ValidUnit(const AModel: TAtlasArchitectureModel; AUnit: Integer): Boolean;
@@ -271,6 +252,16 @@ begin
   end;
 end;
 
+function TAtlasArchitectureMapPath.Recompute(const AModel: TAtlasArchitectureModel; AImplementation: Boolean;
+  const AHidden: TArray<Boolean>): Boolean;
+begin
+  Result := FFrom >= 0;
+  if Result then
+  begin
+    Compute(AModel, AImplementation, AHidden);
+  end;
+end;
+
 function TAtlasArchitectureMapPath.Shown: Boolean;
 begin
   Result := FFound and ((Length(FEdges) > 0) or (Length(FRoute) > 0));
@@ -295,46 +286,15 @@ begin
   FHover := -1;
   FFlags := [TAtlasArchMapFlag.ShowNames, TAtlasArchMapFlag.ShowImplementation, TAtlasArchMapFlag.ShowChanges,
     TAtlasArchMapFlag.ShowFoundationEdges, TAtlasArchMapFlag.ShowAssignment];
-  FCycleEdges := TDictionary<Int64, Boolean>.Create;
+  FMarks := TAtlasArchitectureMapMarks.Create;
   FPath := TAtlasArchitectureMapPath.Create;
 end;
 
 destructor TAtlasArchitectureMapState.Destroy;
 begin
   FPath.Free;
-  FCycleEdges.Free;
+  FMarks.Free;
   inherited Destroy;
-end;
-
-/// <summary>Zentrale Units, Kanten der Zyklen und neue Kanten des Vergleichs aus den Daten.</summary>
-procedure ReadMarks(AState: TAtlasArchitectureMapState);
-var
-  mMember: Integer;
-  mCycle: TAtlasArchCycle;
-  mLink: TAtlasArchLink;
-begin
-  AState.FMarks := Default(TAtlasArchitectureMapState.TMarks);
-  SetLength(AState.FMarks.Central, Length(AState.FModel.Units));
-  for mMember in AState.FModel.Central do
-  begin
-    AState.FMarks.Central[mMember] := True;
-  end;
-  AState.FCycleEdges.Clear;
-  for mCycle in AState.FModel.Cycles do
-  begin
-    for mLink in mCycle.Edges do
-    begin
-      AState.FCycleEdges.AddOrSetValue(EdgeKey(mLink.Source, mLink.Target), True);
-    end;
-  end;
-  SetLength(AState.FMarks.AddedEdges, Length(AState.FModel.Edges));
-  for mMember in AState.FModel.Comparison.AddedEdges do
-  begin
-    if (mMember >= 0) and (mMember <= High(AState.FMarks.AddedEdges)) then
-    begin
-      AState.FMarks.AddedEdges[mMember] := True;
-    end;
-  end;
 end;
 
 procedure TAtlasArchitectureMapState.SetFilter(const AValue: string);
@@ -364,7 +324,10 @@ begin
     FSelected := -1;
   end;
   // Wie die HTML-Karte: Ein bestehender Weg wird ohne das Teilsystem neu gesucht.
-  RecomputePath(Self);
+  if FPath.Recompute(FModel, Has(TAtlasArchMapFlag.ShowImplementation), FHidden) then
+  begin
+    PathChanged(Self);
+  end;
   Changed(Self);
 end;
 
@@ -380,7 +343,7 @@ begin
   end;
   mHadPath := FPath.From >= 0;
   FModel := AModel;
-  ReadMarks(Self);
+  FMarks.Read(FModel);
   FHidden := nil;
   SetLength(FHidden, Length(FModel.Subsystems));
   FPath.Clear;
@@ -440,9 +403,9 @@ begin
     Exclude(FFlags, AFlag);
   end;
   // Der Weg hängt davon ab, ob implementation-uses zählen.
-  if AFlag = TAtlasArchMapFlag.ShowImplementation then
+  if (AFlag = TAtlasArchMapFlag.ShowImplementation) and FPath.Recompute(FModel, AValue, FHidden) then
   begin
-    RecomputePath(Self);
+    PathChanged(Self);
   end;
   Changed(Self);
 end;
@@ -522,7 +485,7 @@ end;
 
 function TAtlasArchitectureMapState.MarksCycle(const AEdge: TAtlasArchEdge): Boolean;
 begin
-  Result := Has(TAtlasArchMapFlag.MarkCycles) and FCycleEdges.ContainsKey(EdgeKey(AEdge.Source, AEdge.Target));
+  Result := Has(TAtlasArchMapFlag.MarkCycles) and FMarks.OnCycle(AEdge);
 end;
 
 function TAtlasArchitectureMapState.Highlighted(AUnit: Integer): Boolean;
@@ -535,16 +498,6 @@ begin
   begin
     Result := (Trim(FFilter) = '') or FModel.Matches(AUnit, FFilter);
   end;
-end;
-
-function TAtlasArchitectureMapState.IsCentral(AUnit: Integer): Boolean;
-begin
-  Result := (AUnit >= 0) and (AUnit < Length(FMarks.Central)) and FMarks.Central[AUnit];
-end;
-
-function TAtlasArchitectureMapState.IsAdded(AEdge: Integer): Boolean;
-begin
-  Result := (AEdge >= 0) and (AEdge < Length(FMarks.AddedEdges)) and FMarks.AddedEdges[AEdge];
 end;
 
 end.

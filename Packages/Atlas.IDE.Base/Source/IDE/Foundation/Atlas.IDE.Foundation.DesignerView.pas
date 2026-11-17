@@ -47,7 +47,7 @@ type
     class function RootOf(const AEditor: IOTAFormEditor): TComponent; static;
     /// <summary>Zeigt das Editorfenster mit dem Eltern-Steuerelement AEditorParent gerade den Designer?</summary>
     class function Shown(AEditorParent: TWinControl): Boolean; static;
-    /// <summary>Zeigt das Editorfenster mit dem Editor-Steuerelement AEditor (TAtlasEditorBarHost.EditorIn) gerade
+    /// <summary>Zeigt das Editorfenster mit dem Editor-Steuerelement AEditor (TAtlasIdeEditorWindows.EditorIn) gerade
     /// den Code-Editor (sichtbar, nicht von Willkommensseite oder Designer verdeckt)?</summary>
     class function CodeShown(AEditor: TWinControl): Boolean; static;
     /// <summary>CodeShown und das Editorfenster von AEditor zeigt nicht den Designer: Leisten und Anfragen, die nur

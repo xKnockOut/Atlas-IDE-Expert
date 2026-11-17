@@ -385,8 +385,8 @@ begin
       Result := CreateBar;
     end, nil);
   // Oben neben dem Editor-Bereich, nicht im EditorPanel: Dort lag die Designfläche darunter.
-  FHost.DockTop;
-  FHost.ShowIn := TAtlasEditorBarView.Designer;
+  FHost.Placement.DockTop;
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Designer;
   FAlignMenu := TPopupMenu.Create(nil);
   FCommands := TAtlasIdeDesignerCommands.Create(
     procedure(AText: string)
