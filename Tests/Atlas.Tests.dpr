@@ -6,7 +6,8 @@
 {$STRONGLINKTYPES ON}
 
 uses
-  // Muss als erste Unit stehen: zählt den Speicherrest beim Beenden (#177).
+  // Muss als erste Unit stehen: misst den Speicherrest beim Beenden nach allen anderen Finalisierungen (#177).
+  Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   System.SysUtils,
   System.IOUtils,
@@ -2871,10 +2872,13 @@ uses
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Base\Resources\Symbol\Atlas.Symbol.res'}
 
-// Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177).
-procedure ReportShutdownLeak(ABytes: Int64);
+// Speicherrest beim Beenden in den Testbericht (Konsole) statt in einen Dialog (#177). Läuft nach der
+// Finalisierung aller anderen Units: nur System. Flush, weil danach niemand mehr den Puffer leert (unter FPC
+// fehlte die Zeile sonst).
+procedure ReportShutdownLeak(const ALine: string);
 begin
-  System.Writeln(TShutdownLeaks.Summary(ABytes));
+  System.Writeln(ALine);
+  System.Flush(System.Output);
 end;
 
 const

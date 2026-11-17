@@ -85,6 +85,10 @@ type
     /// (mehr freigegeben als beim Start belegt) nicht.</summary>
     [Test]
     procedure ExceedsOnlyAboveLimit;
+    /// <summary>Die Zeile beim Beenden entsteht ohne Format: erstes %d der Rest, zweites die Grenze, alles
+    /// andere unverändert.</summary>
+    [Test]
+    procedure RendersRestAndLimit;
   end;
 
 implementation
@@ -103,6 +107,7 @@ uses
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Diagnostics.RequestScope,
+  Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.Providers.Log,
   Atlas.Common.Diagnostics.Adapters.LogFolder;
@@ -774,11 +779,19 @@ end;
 
 procedure TShutdownLeaksTests.ExceedsOnlyAboveLimit;
 begin
-  Assert.IsTrue(TShutdownLeaks.Exceeds(1, 0));
-  Assert.IsTrue(TShutdownLeaks.Exceeds(513, 512));
-  Assert.IsFalse(TShutdownLeaks.Exceeds(512, 512));
-  Assert.IsFalse(TShutdownLeaks.Exceeds(0, 0));
-  Assert.IsFalse(TShutdownLeaks.Exceeds(-24, 0));
+  Assert.IsTrue(TShutdownRest.Exceeds(1, 0));
+  Assert.IsTrue(TShutdownRest.Exceeds(513, 512));
+  Assert.IsFalse(TShutdownRest.Exceeds(512, 512));
+  Assert.IsFalse(TShutdownRest.Exceeds(0, 0));
+  Assert.IsFalse(TShutdownRest.Exceeds(-24, 0));
+end;
+
+procedure TShutdownLeaksTests.RendersRestAndLimit;
+begin
+  Assert.AreEqual('Rest 1357744 (max 0) 100%', TShutdownRest.Render('Rest %d (max %d) 100%', 1357744, 0));
+  Assert.AreEqual('-24 / 9223372036854775807', TShutdownRest.Render('%d / %d', -24, High(Int64)));
+  Assert.AreEqual('ohne Zahl', TShutdownRest.Render('ohne Zahl', 1, 2));
+  Assert.AreEqual('', TShutdownRest.Render('', 1, 2));
 end;
 
 initialization

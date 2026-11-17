@@ -23,6 +23,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.IOUtils,

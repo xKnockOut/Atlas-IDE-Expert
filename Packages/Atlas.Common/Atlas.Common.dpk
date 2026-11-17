@@ -90,6 +90,7 @@ contains
   Atlas.Common.Diagnostics.BugReport in 'Source\Diagnostics\Atlas.Common.Diagnostics.BugReport.pas',
   Atlas.Common.Diagnostics.CheckProfile in 'Source\Diagnostics\Atlas.Common.Diagnostics.CheckProfile.pas',
   Atlas.Common.Diagnostics.ServerPackage in 'Source\Diagnostics\Atlas.Common.Diagnostics.ServerPackage.pas',
+  Atlas.Common.Diagnostics.ShutdownRest in 'Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownRest.pas',
   Atlas.Common.Diagnostics.ShutdownLeaks in 'Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas',
   Atlas.Common.Diagnostics.RequestScope in 'Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas',
   Atlas.Common.Diagnostics.StackGuard in 'Source\Diagnostics\Atlas.Common.Diagnostics.StackGuard.pas',
