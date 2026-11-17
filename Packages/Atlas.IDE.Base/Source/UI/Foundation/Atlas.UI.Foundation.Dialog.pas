@@ -81,6 +81,8 @@ type
     cRowGap = 8;
     /// <summary>Abstand einer Beschriftung vom oberen Rand ihrer Zeile, logische Pixel.</summary>
     cRowLabelTop = 4;
+    /// <summary>Höchstens dieser Anteil (Prozent) der Arbeitsfläche als Anfangsgröße eines Dialogs.</summary>
+    cMaxScreenShare = 80;
   private
     procedure HandleThemeChanged;
   protected
@@ -99,6 +101,9 @@ type
     /// Hauptmonitors. Dialoge erscheinen über dem Hauptfenster (poMainFormCenter), dessen Monitor begrenzt ihre
     /// Größe.</summary>
     class function MainFormWorkArea: TRect; static;
+    /// <summary>Größte Anfangsgröße eines Dialogs: cMaxScreenShare Prozent der Arbeitsfläche aus MainFormWorkArea,
+    /// Gerätepixel.</summary>
+    class function MaxInitialSize: TSize; static;
     /// <summary>Leeren Dialog mit Titel ACaption und Innenbreite AWidth96 (logische Pixel) anlegen.</summary>
     constructor CreateDialog(AOwner: TComponent; const ACaption: string; AWidth96: Integer);
     destructor Destroy; override;
@@ -284,6 +289,14 @@ begin
   begin
     Result := Application.MainForm.Monitor.WorkareaRect;
   end;
+end;
+
+class function TAtlasDialog.MaxInitialSize: TSize;
+var
+  mArea: TRect;
+begin
+  mArea := MainFormWorkArea;
+  Result := TSize.Create(mArea.Width * cMaxScreenShare div 100, mArea.Height * cMaxScreenShare div 100);
 end;
 
 procedure TAtlasDialog.VisibleChanging;

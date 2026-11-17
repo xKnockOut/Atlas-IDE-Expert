@@ -37,7 +37,7 @@ uses
   Atlas.Core.VersionControl.Worker,
   Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Tracker.BoardFrame,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasBoardProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -131,6 +131,7 @@ uses
   Winapi.Windows,
   System.DateUtils,
   Atlas.Core.Tracker.BoardPlan,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.Issue.Strings,

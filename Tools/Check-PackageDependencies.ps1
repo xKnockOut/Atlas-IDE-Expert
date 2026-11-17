@@ -418,13 +418,13 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Welcome'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{}
     }
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Tracker'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Tracker.IssuesServices:Report'                   = 'Methodendeklaration von TAtlasIssuesLink'
             'Atlas.IDE.Tracker.IssuesServices:TAtlasIssuesLink.Report'  = 'meldet nur, solange der Kontext lebt (Keep)'
@@ -434,7 +434,7 @@ $PluginLock = @(
     [pscustomobject]@{
         Name    = 'Report'
         Folder  = 'Packages/Atlas.IDE.Debugger'
-        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Diagnostics.Guard'
+        Home    = 'TAtlasMessageSink.Say in Atlas.Core.Notifications.MessageSink'
         Allowed = @{
             'Atlas.IDE.Debug.AsyncOrigin:TAtlasIdeDebugAsyncOrigin.Report'  = 'zeigt den Ursprung als Meldung oder in der Ergebnisliste'
             'Atlas.IDE.Debug.ReattachWait:TAtlasIdeReattachWaiter.Report'   = 'meldet einen gefundenen Prozess, keine Textzeile'

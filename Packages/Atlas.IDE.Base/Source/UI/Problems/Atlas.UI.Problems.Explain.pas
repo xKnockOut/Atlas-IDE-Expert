@@ -121,8 +121,6 @@ const
   cCodeFontSize = 9;
   /// <summary>Rand und Innenabstand eines Beispiels oben und unten bzw. links und rechts, logische Pixel.</summary>
   cMemoChrome = 10;
-  /// <summary>Höchstens dieser Anteil (Prozent) des Arbeitsbereichs als Anfangsgröße.</summary>
-  cMaxScreenShare = 80;
   /// <summary>Zeilen je Rastung des Mausrads.</summary>
   cWheelLines = 3;
   cBadColor = $003C3CD8;
@@ -328,16 +326,16 @@ end;
 
 procedure TAtlasRuleExplainDialog.FitToContent;
 var
-  mArea: TRect;
+  mLimit: TSize;
   mBad, mGood, mLineHeight, mCodeWidth, mWidth, mHeight, mPass: Integer;
 begin
-  mArea := MainFormWorkArea;
+  mLimit := MaxInitialSize;
   // Breiter, damit die längste Codezeile ohne Rollen passt; Rand, Rollleiste und Rahmen dazu.
   MeasureCode(FBad, mBad, mLineHeight);
   MeasureCode(FGood, mGood, mLineHeight);
   mCodeWidth := Max(mBad, mGood) + ScaleValue(2 * cGap + cMemoChrome) +
     MulDiv(GetSystemMetrics(SM_CXVSCROLL), CurrentPPI, Screen.PixelsPerInch);
-  mWidth := Min(Max(ClientWidth, mCodeWidth), mArea.Width * cMaxScreenShare div 100);
+  mWidth := Min(Max(ClientWidth, mCodeWidth), mLimit.cx);
   ClientWidth := Max(mWidth, ScaleValue(cDialogMinWidth));
   // Ohne Fenster ordnet die VCL nicht an: Breiten und damit Umbruch und Höhen wären die vorläufigen.
   HandleNeeded;
@@ -347,7 +345,7 @@ begin
   for mPass := 1 to 2 do
   begin
     mHeight := ContentBottom + ScaleValue(cGap) + FButtons.Height;
-    ClientHeight := Max(Min(mHeight, mArea.Height * cMaxScreenShare div 100), ScaleValue(cDialogMinHeight));
+    ClientHeight := Max(Min(mHeight, mLimit.cy), ScaleValue(cDialogMinHeight));
   end;
   Constraints.MinWidth := Width - ClientWidth + ScaleValue(cDialogMinWidth);
   Constraints.MinHeight := Height - ClientHeight + ScaleValue(cDialogMinHeight);

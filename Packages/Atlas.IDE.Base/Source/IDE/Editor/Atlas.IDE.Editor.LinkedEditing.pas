@@ -197,14 +197,6 @@ begin
   end;
 end;
 
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
 function LineOf(const ALines: TArray<string>; ALine: Integer): string;
 begin
   Result := '';
@@ -563,7 +555,7 @@ end;
 
 procedure TAtlasIdeLinkedEditing.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 begin
-  if not IsEditorWindow(AMsg.hwnd) then
+  if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) then
   begin
     Exit;
   end;
@@ -596,7 +588,7 @@ procedure TAtlasIdeLinkedEditing.CharTyped(const AMsg: TMsg; var AHandled: Boole
 var
   mTyped: Char;
 begin
-  if not IsEditorWindow(AMsg.hwnd) or not Enabled or IsBusy then
+  if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) or not Enabled or IsBusy then
   begin
     Exit;
   end;

@@ -179,14 +179,6 @@ begin
   end;
 end;
 
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
 /// <summary>Blinkt der Caret laut Windows (Animationen an)?</summary>
 function Blinking: Boolean;
 var
@@ -493,7 +485,7 @@ var
   mFileName: string;
   mLine, mColumn: Integer;
 begin
-  if not IsEditorWindow(AMsg.hwnd) then
+  if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) then
   begin
     Exit;
   end;
@@ -521,7 +513,8 @@ var
   mCommand: TAtlasMultiCursorKeyCommand;
 begin
   mKey := Word(AMsg.wParam);
-  if not IsEditorWindow(AMsg.hwnd) or IsBusy or (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
+  if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) or IsBusy
+    or (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
@@ -548,7 +541,7 @@ var
 begin
   mTyped := Char(AMsg.wParam);
   // Steuerzeichen (Strg+Buchstabe, Rücktaste, Enter, Tab) nicht: Tab übernimmt die IDE, Mirror zieht nach.
-  if not IsEditorWindow(AMsg.hwnd) or IsBusy or TAtlasMultiCursorKeys.IsControlChar(mTyped) then
+  if not TAtlasEditorBuffer.IsEditorWindow(AMsg.hwnd) or IsBusy or TAtlasMultiCursorKeys.IsControlChar(mTyped) then
   begin
     Exit;
   end;

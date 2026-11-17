@@ -17,8 +17,9 @@
 // - Esc schließt; OnClosed meldet es dem Aufrufer.
 // - Basis ist TAtlasDialog: Dialogschrift und IDE-Thema an der Wurzel, bei
 //   einem Wechsel des Themas neue Farben für das Abbild. Anfangs 900 × 640
-//   logische Pixel, höchstens 80 % der Arbeitsfläche; Knöpfe so breit wie
-//   ihr Text, die Leiste bricht in schmalen Fenstern um.
+//   logische Pixel, höchstens TAtlasDialog.MaxInitialSize; die Leiste ist eine
+//   TAtlasButtonRow (Knöpfe so breit wie ihr Text, bricht in schmalen Fenstern
+//   um).
 
 interface
 
@@ -53,12 +54,28 @@ type
   /// <summary>Steuerelemente des Vorschaufensters: Leiste, Größenfelder, Statuszeile, Rollbereich und
   /// Zeichenfläche.</summary>
   TAtlasFormPreviewParts = record
-    Bar: TFlowPanel;
+    Bar: TAtlasButtonRow;
     WidthEdit: TEdit;
     HeightEdit: TEdit;
     Status: TLabel;
     Box: TScrollBox;
     Paint: TPaintBox;
+  end;
+
+  /// <summary>Zeichnet die Teile des Abbilds auf Canvas: Knoten mit Beschriftung, Nadeln an verankerten Kanten
+  /// und den Ziehgriff. Pin ist die Länge einer Nadel, Inset der Abstand der Beschriftung, beides in Pixeln des
+  /// Fensters.</summary>
+  TAtlasFormPreviewPainter = record
+    Canvas: TCanvas;
+    Colors: TAtlasColors;
+    Pin: Integer;
+    Inset: TPoint;
+    /// <summary>Knoten in ARect mit AText; ABad: mit Befund (rot), ATinted: ausgerichtet (getönt).</summary>
+    procedure Node(const ARect: TRect; const AText: string; ABad, ATinted: Boolean);
+    /// <summary>Nadeln an den Kanten von ARect, an denen AAnchors verankern.</summary>
+    procedure Anchors(const ARect: TRect; AAnchors: TAtlasLayoutAnchors);
+    /// <summary>Dreieck rechts unten in AGrip.</summary>
+    procedure Grip(const AGrip: TRect);
   end;
 
   /// <summary>Ziehen am Griff läuft; Größenfelder werden gerade gesetzt.</summary>
@@ -81,8 +98,6 @@ type
     procedure QuickClick(Sender: TObject);
     procedure SizeEdited(Sender: TObject);
     procedure PaintPreview(Sender: TObject);
-    procedure PaintNode(AIndex: Integer);
-    procedure PaintAnchors(AIndex: Integer; const ARect: TRect);
     procedure PreviewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure PreviewMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure PreviewMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -140,35 +155,10 @@ const
   cEditWidth = 56;
   cWindowWidth = 900;
   cWindowHeight = 640;
-  /// <summary>Höchstens dieser Anteil der Arbeitsfläche in Prozent.</summary>
-  cMaxScreenShare = 80;
-  cButtonMinWidth = 75;
-  cButtonPadding = 24;
   cBasePpi = 96;
   cAlignNames: array[TAtlasLayoutAlign] of string = ('', 'alTop', 'alBottom', 'alLeft', 'alRight', 'alClient',
     'alCustom');
   cAnchorNames: array[TAtlasLayoutAnchor] of string = ('akLeft', 'akTop', 'akRight', 'akBottom');
-
-/// <summary>AValue, höchstens cMaxScreenShare Prozent von AExtent (Arbeitsfläche).</summary>
-function ScreenLimited(AValue, AExtent: Integer): Integer;
-begin
-  Result := Min(AValue, AExtent * cMaxScreenShare div 100);
-end;
-
-/// <summary>Breite eines Knopfs mit ACaption in der Schrift AFont, mindestens AMinWidth; Gerätepixel. Gemessen auf
-/// einem Bitmap: Die Leinwand des Formulars bräuchte schon im Konstruktor ein Fenster.</summary>
-function TextButtonWidth(AFont: TFont; const ACaption: string; AMinWidth, APadding: Integer): Integer;
-var
-  mBitmap: Vcl.Graphics.TBitmap;
-begin
-  mBitmap := Vcl.Graphics.TBitmap.Create;
-  try
-    mBitmap.Canvas.Font.Assign(AFont);
-    Result := Max(AMinWidth, mBitmap.Canvas.TextWidth(ACaption) + APadding);
-  finally
-    mBitmap.Free;
-  end;
-end;
 
 function AnchorText(AAnchors: TAtlasLayoutAnchors): string;
 var
@@ -188,12 +178,75 @@ begin
   end;
 end;
 
+{ TAtlasFormPreviewPainter }
+
+procedure TAtlasFormPreviewPainter.Node(const ARect: TRect; const AText: string; ABad, ATinted: Boolean);
+var
+  mRect: TRect;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(Colors.Surface);
+  Canvas.Pen.Color := TColor(Colors.Line);
+  Canvas.Font.Color := TColor(Colors.Muted);
+  if ABad then
+  begin
+    Canvas.Brush.Color := TColor(Colors.ErrorSoft);
+    Canvas.Pen.Color := TColor(Colors.Error);
+    Canvas.Font.Color := TColor(Colors.Error);
+  end
+  else if ATinted then
+  begin
+    Canvas.Brush.Color := TColor(Colors.AccentSoft);
+  end;
+  Canvas.Rectangle(ARect);
+  Canvas.Brush.Style := bsClear;
+  mRect := ARect;
+  InflateRect(mRect, -Inset.X, -Inset.Y);
+  DrawText(Canvas.Handle, PChar(AText), -1, mRect, DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+end;
+
+procedure TAtlasFormPreviewPainter.Anchors(const ARect: TRect; AAnchors: TAtlasLayoutAnchors);
+var
+  mMid: TPoint;
+begin
+  mMid := ARect.CenterPoint;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(Colors.Accent);
+  Canvas.Pen.Color := TColor(Colors.Accent);
+  if TAtlasLayoutAnchor.Left in AAnchors then
+  begin
+    Canvas.Rectangle(ARect.Left, mMid.Y - Pin, ARect.Left + Pin div 2 + 1, mMid.Y + Pin);
+  end;
+  if TAtlasLayoutAnchor.Right in AAnchors then
+  begin
+    Canvas.Rectangle(ARect.Right - Pin div 2 - 1, mMid.Y - Pin, ARect.Right, mMid.Y + Pin);
+  end;
+  if TAtlasLayoutAnchor.Top in AAnchors then
+  begin
+    Canvas.Rectangle(mMid.X - Pin, ARect.Top, mMid.X + Pin, ARect.Top + Pin div 2 + 1);
+  end;
+  if TAtlasLayoutAnchor.Bottom in AAnchors then
+  begin
+    Canvas.Rectangle(mMid.X - Pin, ARect.Bottom - Pin div 2 - 1, mMid.X + Pin, ARect.Bottom);
+  end;
+end;
+
+procedure TAtlasFormPreviewPainter.Grip(const AGrip: TRect);
+begin
+  // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := TColor(Colors.Accent);
+  Canvas.Pen.Color := TColor(Colors.Accent);
+  Canvas.Polygon([Point(AGrip.Right, AGrip.Top), Point(AGrip.Right, AGrip.Bottom), Point(AGrip.Left, AGrip.Bottom)]);
+end;
+
 { TAtlasFormPreviewWindow }
 
 constructor TAtlasFormPreviewWindow.CreatePreview(AOwner: TComponent; const AData: TAtlasFormPreviewData;
   const AColors: TAtlasColors);
 var
-  mArea: TRect;
+  mLimit: TSize;
 begin
   inherited CreateDialog(AOwner, TAtlasDesignerViewStrings.Fmt(TAtlasDesignerViewTextId.ResizeTitle,
     [AData.FormName]), cWindowWidth);
@@ -203,15 +256,11 @@ begin
   KeyPreview := True;
   OnKeyDown := FormKey;
   OnClose := FormClosed;
-  mArea := MainFormWorkArea;
-  Width := ScreenLimited(S(cWindowWidth), mArea.Width);
-  Height := ScreenLimited(S(cWindowHeight), mArea.Height);
-  FParts.Bar := TFlowPanel.Create(Self);
+  mLimit := MaxInitialSize;
+  Width := Min(S(cWindowWidth), mLimit.cx);
+  Height := Min(S(cWindowHeight), mLimit.cy);
+  FParts.Bar := TAtlasButtonRow.Create(Self);
   FParts.Bar.Top := 0;
-  FParts.Bar.AutoSize := True;
-  FParts.Bar.BevelOuter := bvNone;
-  FParts.Bar.Caption := '';
-  FParts.Bar.Align := alTop;
   FParts.Bar.Parent := Self;
   BuildBar;
   FParts.Status := TLabel.Create(Self);
@@ -275,14 +324,10 @@ end;
 
 function TAtlasFormPreviewWindow.AddButton(const ACaption: string; ATag: Integer): TButton;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := FParts.Bar;
-  Result.Caption := ACaption;
+  // Breite nach dem Text in der Dialogschrift, damit „1920 × 1080“ auch bei hoher DPI passt.
+  Result := FParts.Bar.AddButton(ACaption);
   Result.Tag := ATag;
   Result.OnClick := QuickClick;
-  Result.AlignWithMargins := True;
-  // Breite nach dem Text in der Dialogschrift, damit „1920 × 1080“ auch bei hoher DPI passt.
-  Result.Width := TextButtonWidth(Font, ACaption, S(cButtonMinWidth), S(cButtonPadding));
 end;
 
 procedure TAtlasFormPreviewWindow.QuickClick(Sender: TObject);
@@ -320,110 +365,45 @@ end;
 
 procedure TAtlasFormPreviewWindow.PaintPreview(Sender: TObject);
 var
+  mPainter: TAtlasFormPreviewPainter;
   mIndex: Integer;
-  mGrip: TRect;
+  mNode: TAtlasLayoutNode;
+  mText: string;
 begin
-  FParts.Paint.Canvas.Font := Font;
-  FParts.Paint.Canvas.Brush.Style := bsSolid;
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Gutter);
-  FParts.Paint.Canvas.FillRect(FParts.Paint.ClientRect);
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Rectangle(FormRect);
+  mPainter.Canvas := FParts.Paint.Canvas;
+  mPainter.Colors := FColors;
+  mPainter.Pin := S(cPin);
+  mPainter.Inset := Point(S(2), S(1));
+  mPainter.Canvas.Font := Font;
+  mPainter.Canvas.Brush.Style := bsSolid;
+  mPainter.Canvas.Brush.Color := TColor(FColors.Gutter);
+  mPainter.Canvas.FillRect(FParts.Paint.ClientRect);
+  mPainter.Canvas.Brush.Color := TColor(FColors.Surface);
+  mPainter.Canvas.Pen.Color := TColor(FColors.Accent);
+  mPainter.Canvas.Rectangle(FormRect);
   for mIndex := 0 to High(FData.Nodes) do
   begin
-    if FData.Nodes[mIndex].Visible then
+    mNode := FData.Nodes[mIndex];
+    if not mNode.Visible then
     begin
-      PaintNode(mIndex);
+      Continue;
+    end;
+    mText := NodeText(mIndex);
+    if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
+    begin
+      mText := mText + ' (' + cAlignNames[mNode.Align] + ')';
+    end;
+    mPainter.Node(NodeRect(mIndex), mText, HasFinding(mIndex),
+      FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None));
+    if FData.ShowAnchors and (mNode.Align = TAtlasLayoutAlign.None) then
+    begin
+      mPainter.Anchors(NodeRect(mIndex), mNode.Anchors);
     end;
   end;
   PaintOver;
-  if not GripResizes then
+  if GripResizes then
   begin
-    Exit;
-  end;
-  // Ziehgriff rechts unten: Dreieck in der Akzentfarbe.
-  mGrip := GripRect;
-  FParts.Paint.Canvas.Brush.Style := bsSolid;
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Polygon([Point(mGrip.Right, mGrip.Top), Point(mGrip.Right, mGrip.Bottom),
-    Point(mGrip.Left, mGrip.Bottom)]);
-end;
-
-procedure TAtlasFormPreviewWindow.PaintNode(AIndex: Integer);
-var
-  mRect: TRect;
-  mNode: TAtlasLayoutNode;
-  mBad: Boolean;
-  mText: string;
-begin
-  mNode := FData.Nodes[AIndex];
-  mRect := NodeRect(AIndex);
-  mBad := HasFinding(AIndex);
-  FParts.Paint.Canvas.Brush.Style := bsSolid;
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Surface);
-  if mBad then
-  begin
-    FParts.Paint.Canvas.Brush.Color := TColor(FColors.ErrorSoft);
-  end
-  else if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
-  begin
-    FParts.Paint.Canvas.Brush.Color := TColor(FColors.AccentSoft);
-  end;
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Line);
-  if mBad then
-  begin
-    FParts.Paint.Canvas.Pen.Color := TColor(FColors.Error);
-  end;
-  FParts.Paint.Canvas.Rectangle(mRect);
-  mText := NodeText(AIndex);
-  if FData.ShowAnchors and (mNode.Align <> TAtlasLayoutAlign.None) then
-  begin
-    mText := mText + ' (' + cAlignNames[mNode.Align] + ')';
-  end;
-  FParts.Paint.Canvas.Brush.Style := bsClear;
-  FParts.Paint.Canvas.Font.Color := TColor(FColors.Muted);
-  if mBad then
-  begin
-    FParts.Paint.Canvas.Font.Color := TColor(FColors.Error);
-  end;
-  InflateRect(mRect, -S(2), -S(1));
-  DrawText(FParts.Paint.Canvas.Handle, PChar(mText), -1, mRect, DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or
-    DT_END_ELLIPSIS);
-  if FData.ShowAnchors and (mNode.Align = TAtlasLayoutAlign.None) then
-  begin
-    PaintAnchors(AIndex, NodeRect(AIndex));
-  end;
-end;
-
-procedure TAtlasFormPreviewWindow.PaintAnchors(AIndex: Integer; const ARect: TRect);
-var
-  mAnchors: TAtlasLayoutAnchors;
-  mMid: TPoint;
-  mPin: Integer;
-begin
-  mAnchors := FData.Nodes[AIndex].Anchors;
-  mMid := ARect.CenterPoint;
-  mPin := S(cPin);
-  FParts.Paint.Canvas.Brush.Style := bsSolid;
-  FParts.Paint.Canvas.Brush.Color := TColor(FColors.Accent);
-  FParts.Paint.Canvas.Pen.Color := TColor(FColors.Accent);
-  if TAtlasLayoutAnchor.Left in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(ARect.Left, mMid.Y - mPin, ARect.Left + mPin div 2 + 1, mMid.Y + mPin);
-  end;
-  if TAtlasLayoutAnchor.Right in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(ARect.Right - mPin div 2 - 1, mMid.Y - mPin, ARect.Right, mMid.Y + mPin);
-  end;
-  if TAtlasLayoutAnchor.Top in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Top, mMid.X + mPin, ARect.Top + mPin div 2 + 1);
-  end;
-  if TAtlasLayoutAnchor.Bottom in mAnchors then
-  begin
-    FParts.Paint.Canvas.Rectangle(mMid.X - mPin, ARect.Bottom - mPin div 2 - 1, mMid.X + mPin, ARect.Bottom);
+    mPainter.Grip(GripRect);
   end;
 end;
 

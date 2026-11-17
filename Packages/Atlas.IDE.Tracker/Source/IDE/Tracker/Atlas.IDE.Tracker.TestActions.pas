@@ -17,7 +17,7 @@ uses
   Atlas.Core.Tracker.TestResults,
   Atlas.IDE.Tracker.Access,
   Atlas.IDE.Tracker.WelcomeLink,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Aktionen der Kachel: Projekt öffnen, Test öffnen, ausführen und debuggen, Seite des Builds.</summary>
@@ -57,6 +57,7 @@ implementation
 uses
   Winapi.Windows,
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.Files,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Modules.Contract,

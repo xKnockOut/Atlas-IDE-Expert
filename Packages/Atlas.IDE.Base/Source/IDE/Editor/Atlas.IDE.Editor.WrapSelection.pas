@@ -65,14 +65,6 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot;
 
-function IsEditorWindow(AWnd: HWND): Boolean;
-var
-  mControl: TWinControl;
-begin
-  mControl := FindControl(AWnd);
-  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
-end;
-
 function LineOf(const ALines: TArray<string>; ARow: Integer): string;
 begin
   Result := '';
@@ -195,7 +187,8 @@ begin
   end;
   try
     mTyped := Char(Msg.wParam);
-    if not IsEditorWindow(Msg.hwnd) or not Enabled or not TAtlasWrapSelection.Accepts(mTyped, Chars) then
+    if not TAtlasEditorBuffer.IsEditorWindow(Msg.hwnd) or not Enabled
+      or not TAtlasWrapSelection.Accepts(mTyped, Chars) then
     begin
       Exit;
     end;
