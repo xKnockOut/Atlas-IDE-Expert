@@ -71,6 +71,7 @@ begin
   Switch('tests.showDuration', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsShowDuration));
   Number('tests.slowMs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsSlowMs));
   Switch('tests.window', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsWindow));
+  Switch('tests.window.openOnFailure', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsWindowOnFailure));
   Switch('tests.flaky', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFlaky));
   Number('tests.flaky.runs', TAtlasTestsStrings.Text(TAtlasTestsTextId.SettingsTestsFlakyRuns));
   // Testlisten im Fenster „Atlas-Tests“ (#2167).

@@ -1,0 +1,2 @@
+### Neu
+- Fenster „Atlas-Tests“ öffnet sich bei Fehlschlägen von selbst (#2467, `tests.window.openOnFailure`, Vorgabe an): Schlägt nach einem Lauf ein Test fehl oder bricht der Lauf mit Fehler ab (kein Bericht, Zeitgrenze), kommt das Fenster mit dem Testprojekt des Laufs nach vorn, auf jedem Weg (Tests ausführen, nach dem Build, beim Speichern, Serien, Testlisten, Testlinse, Test debuggen). Der Fokus bleibt im Editor.
