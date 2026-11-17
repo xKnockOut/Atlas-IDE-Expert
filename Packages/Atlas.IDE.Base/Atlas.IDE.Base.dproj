@@ -160,6 +160,7 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.View.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Plan.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.IdeHelpInsight.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Contract.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Layout.pas"/>
         <DCCReference Include="Source\Core\Documentation\Atlas.Core.Documentation.Typeset.pas"/>
@@ -486,6 +487,7 @@
         <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.Editor.pas"/>
         <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.EditorContent.pas"/>
         <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.DebugValue.pas"/>
+        <DCCReference Include="Source\IDE\Hover\Atlas.IDE.Hover.IdeHelpInsight.pas"/>
         <DCCReference Include="Source\Core\Completion\Atlas.Core.Completion.Preview.pas"/>
         <DCCReference Include="Source\IDE\Completion\Atlas.IDE.Completion.Preview.pas"/>
         <DCCReference Include="Source\Core\Build\Atlas.Core.Build.Events.pas"/>
