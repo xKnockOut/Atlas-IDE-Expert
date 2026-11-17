@@ -20,9 +20,6 @@ type
   private
     FDir: string;
   public
-    /// <summary>Einmalige Puffer des Multipart-Aufbaus (PNG, Kodierung) vor dem Leckmonitor anlegen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -208,16 +205,6 @@ begin
 end;
 
 { TAtlasAttachTests }
-
-procedure TAtlasAttachTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    YouTrackUploadsThenComments;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasAttachTests.Setup;
 begin
