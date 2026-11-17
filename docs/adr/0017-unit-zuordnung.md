@@ -1192,11 +1192,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.BoardLayout` | `Core/Tracker/Atlas.Core.Tracker.BoardLayout.pas` | Ordner `Core/Tracker`, Anordnung des Boards ohne Fenster |
 | `Atlas.Core.Tracker.BoardLanes` | `Core/Tracker/Atlas.Core.Tracker.BoardLanes.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.FlowMap` | `Core/Tracker/Atlas.Core.Tracker.FlowMap.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackFlow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackFlow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Checklist` | `Core/Tracker/Atlas.Core.Tracker.Checklist.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CodeLinks` | `Core/Tracker/Atlas.Core.Tracker.CodeLinks.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.CommentKeyPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentKeyPlan.pas` | Ordner `Core/Tracker`, Tasten des Kommentarfelds |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
@@ -1323,6 +1325,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.WelcomeLink` | `IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas` | Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455 |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.BoardPainter` | `UI/Tracker/Atlas.UI.Tracker.BoardPainter.pas` | Ordner `UI/Tracker`, Zeichnen des Boards |
+| `Atlas.UI.Tracker.AttachSources` | `UI/Tracker/Atlas.UI.Tracker.AttachSources.pas` | Ordner `UI/Tracker`, Gruppe „Was anhängen?“ des Dialogs „An Issue anhängen“ |
 | `Atlas.UI.Tracker.BoardFrame` | `UI/Tracker/Atlas.UI.Tracker.BoardFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.FlowFrame` | `UI/Tracker/Atlas.UI.Tracker.FlowFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Capture` | `UI/Tracker/Atlas.UI.Tracker.Capture.pas` | Ordner `UI/Tracker` |

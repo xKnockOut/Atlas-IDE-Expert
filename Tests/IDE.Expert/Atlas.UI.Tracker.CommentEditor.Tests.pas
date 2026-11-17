@@ -369,9 +369,9 @@ begin
     mEditor.Bind(mRef);
     mEditor.Memo.Text := 'Hallo. ';
     mEditor.Memo.SelStart := 7;
-    mEditor.InsertSnippet(1);
+    mEditor.Commands.InsertSnippet(1);
     Assert.AreEqual('Hallo. Behoben in 4f2c9e1 auf feature/ATL-12 (ATL-12).', mEditor.Memo.Text);
-    mEditor.InsertSnippet(9);
+    mEditor.Commands.InsertSnippet(9);
     Assert.AreEqual('Hallo. Behoben in 4f2c9e1 auf feature/ATL-12 (ATL-12).', mEditor.Memo.Text, 'unbekannt');
   finally
     mHost.Free;

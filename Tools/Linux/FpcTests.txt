@@ -540,6 +540,8 @@ Atlas.Core.Hover.Layout.Members.Tests
 Atlas.Core.Hover.Layout.DebugTree.Tests
 Atlas.Core.Settings.Tests
 Atlas.Core.Tracker.Transitions.Tests
+Atlas.Core.Tracker.CommentKeyPlan.Tests
+Atlas.Core.Tracker.BoardLayout.Tests
 Atlas.Core.Tracker.EndSteps.Tests
 Atlas.Core.Tracker.Internals.GitHubProjects.Tests
 Atlas.Core.Tracker.Internals.GitHubLinkedBranches.Tests
