@@ -49,7 +49,9 @@ uses
   Atlas.UI.Foundation.Dialog,
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
-  Atlas.Common.Projects.PackageLocator;
+  Atlas.Common.Projects.PackageLocator,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools;
 
 /// <summary>Katalog, Export und Import der Einstellungen (#723) einmal durchlaufen: Was dabei beim ersten
 /// Gebrauch bleibt, träfe sonst je nach Reihenfolge einen anderen Test als Leck.</summary>
@@ -383,6 +385,19 @@ end;
 
 { TFirstUse }
 
+/// <summary>Fundorte von git und svn (TAtlasVcsTools.Where): gemerkt bis Programmende in Klassenvariablen von
+/// Atlas.Core.VersionControl.Tools, freigegeben mit deren Finalisierung. Tests, die einen Fundort vorgeben, stellen
+/// den echten danach mit Remember wieder her, statt ihn zu vergessen.</summary>
+procedure WarmUpVcsTools;
+var
+  mKind: TAtlasVcsKind;
+begin
+  for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+  begin
+    TAtlasVcsTools.Where(mKind);
+  end;
+end;
+
 class procedure TFirstUse.WarmUp;
 begin
   SwitchOffComponentFieldCache;
@@ -402,6 +417,7 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpVcsTools;
 end;
 
 end.
