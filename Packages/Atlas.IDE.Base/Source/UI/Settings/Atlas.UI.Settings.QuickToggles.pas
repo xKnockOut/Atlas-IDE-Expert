@@ -691,6 +691,7 @@ constructor TAtlasQuickToggleWindow.CreateToggles(AOwner: TComponent; const ACol
 begin
   // Größe setzt Layout nach den Zeilen, die Lage ShowAbove über dem Feld.
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   Caption := TAtlasSettingsStrings.Text(TAtlasSettingsTextId.QuickTogglesTitle);
   ThemedControls := True;
   FHot := -1;

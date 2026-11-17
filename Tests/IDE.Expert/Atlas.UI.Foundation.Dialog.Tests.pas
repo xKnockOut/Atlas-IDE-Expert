@@ -7,7 +7,8 @@
 // in den übergebenen Farben, bei jedem Themenwechsel die Farben des Themas,
 // das IDE-Thema an den Steuerelementen nur mit ThemedControls. Ohne Breite
 // legt CreateDialog kein Fenster an, CreatePopup nie: Nachfahren sehen in
-// CreateWnd und Resize ein fertiges Objekt.
+// CreateWnd und Resize ein fertiges Objekt. Mit PaintsAll löscht das Fenster
+// seinen Hintergrund nie (kein Flackern), holt ein Kind ihn aber weiter.
 // MainFormWorkArea: ohne Hauptfenster die Arbeitsfläche des Hauptmonitors.
 
 interface
@@ -50,12 +51,16 @@ type
     [Test]
     procedure PopupFormThemesControlsOnRequest;
     [Test]
+    procedure PopupFormPaintsAllKeepsBackground;
+    [Test]
     procedure WorkAreaWithoutMainForm;
   end;
 
 implementation
 
 uses
+  Winapi.Windows,
+  Winapi.Messages,
   System.SysUtils,
   System.Types,
   System.Classes,
@@ -393,6 +398,56 @@ begin
     TAtlasUiTheme.Changed;
     Assert.AreEqual(1, mApplied, 'mit ThemedControls');
     Assert.AreEqual(2, mPopup.ColorsCount);
+  finally
+    mPopup.Free;
+  end;
+end;
+
+function EraseProbe(APopup: TAtlasPopupForm; AFromChild: Boolean): TColor;
+var
+  mBitmap: TBitmap;
+  mDC: HDC;
+  mFrom: LPARAM;
+begin
+  // Rot vorbelegen und löschen lassen: Rot bleibt nur, wenn das Fenster nichts füllt.
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.PixelFormat := pf24bit;
+    mBitmap.SetSize(4, 4);
+    mBitmap.Canvas.Brush.Color := clRed;
+    mBitmap.Canvas.FillRect(Rect(0, 0, 4, 4));
+    mDC := mBitmap.Canvas.Handle;
+    mFrom := 0;
+    if AFromChild then
+    begin
+      mFrom := LPARAM(mDC);
+    end;
+    APopup.Perform(WM_ERASEBKGND, WPARAM(mDC), mFrom);
+    Result := mBitmap.Canvas.Pixels[0, 0];
+  finally
+    mBitmap.Free;
+  end;
+end;
+
+procedure TAtlasDialogTests.PopupFormPaintsAllKeepsBackground;
+var
+  mPopup: TAtlasPopupForm;
+begin
+  mPopup := TAtlasPopupForm.CreatePopup(nil, TAtlasColors.Dark);
+  try
+    // Ohne Doppelpuffer füllt die VCL beim Löschen wie der Stil der IDE.
+    mPopup.DoubleBuffered := False;
+    mPopup.SetBounds(0, 0, 40, 40);
+    mPopup.HandleNeeded;
+    Assert.IsFalse(mPopup.PaintsAll, 'Vorgabe');
+    Assert.IsFalse(csOpaque in mPopup.ControlStyle, 'Vorgabe csOpaque');
+    Assert.AreNotEqual(Integer(clRed), Integer(EraseProbe(mPopup, False)), 'ohne PaintsAll gelöscht');
+    mPopup.PaintsAll := True;
+    Assert.IsTrue(csOpaque in mPopup.ControlStyle, 'Invalidate ohne Löschen');
+    Assert.AreEqual(Integer(clRed), Integer(EraseProbe(mPopup, False)), 'mit PaintsAll nie gelöscht');
+    Assert.AreNotEqual(Integer(clRed), Integer(EraseProbe(mPopup, True)), 'Hintergrund für ein Kind');
+    mPopup.PaintsAll := False;
+    Assert.IsFalse(csOpaque in mPopup.ControlStyle, 'wieder aus');
   finally
     mPopup.Free;
   end;

@@ -91,6 +91,7 @@ constructor TAtlasStatusWindow.CreateStatus(AOwner: TComponent; const AColors: T
 begin
   // Größe setzt Layout nach dem Inhalt, die Lage ShowAbove über dem Feld.
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   ThemedControls := True;
   FHot := -1;
   KeyPreview := True;
