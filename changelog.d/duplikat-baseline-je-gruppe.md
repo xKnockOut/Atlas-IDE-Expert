@@ -1,0 +1,3 @@
+### Geändert
+- CI: Die Prüfung der Baselines vergleicht `atlas-duplicates.json` jetzt je Gruppe mit dem Zielbranch, nicht nur die Summe der Fassungen. Eine neue Kopie oder eine gewachsene Gruppe ist ein Fehler, auch wenn im selben Stand mehr alte Kopien entfallen; durch kommt sie nur mit einer Zeile `Neue Kopien: …` in der Beschreibung des Pull Requests. `Tools/Merge-Integration.py` nennt solche Gruppen, wenn es die Baseline nach einem Konflikt neu schreibt.
+- `THIRD-PARTY-NOTICES.md` nennt die Bestandteile des Linux-Servers: Free Pascal (RTL, FCL, vcl-compat) samt den Kopien unter `Tools/Linux/Compat` und PCRE2.

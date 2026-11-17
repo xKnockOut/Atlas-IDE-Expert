@@ -32,6 +32,8 @@ type
     [Test]
     procedure GetCallsFactoryOnce;
     [Test]
+    procedure EnsurePinnedResolverFetchesOnce;
+    [Test]
     procedure ClearFreesValues;
     [Test]
     procedure WithoutTreeEverythingIsEmpty;
@@ -47,6 +49,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Derived;
 
@@ -271,6 +274,36 @@ begin
   mPosition := TRuleDerived.PositionAt(mCache, ContextOf(nil, 'ab'#13'cd'), 4);
   Assert.AreEqual(1, mPosition.Line);
   Assert.AreEqual(1, mPosition.Character);
+end;
+
+procedure TRuleDerivedTests.EnsurePinnedResolverFetchesOnce;
+var
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mShared, mCache: IRuleDerivedCache;
+  mResolver, mFirst: TNameResolver;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mContext := ContextOf(mTree, cSource);
+    mShared := TRuleDerivedCache.Create;
+    mContext.Derived := mShared;
+    mResolver := nil;
+    TRuleDerived.EnsurePinnedResolver(mCache, mResolver, mContext, 'U.pas');
+    Assert.IsNotNull(mResolver, 'beim ersten Aufruf geholt');
+    Assert.AreSame(mShared, mCache, 'Cache des Laufs gehalten');
+    Assert.AreSame(TRuleDerived.Resolver(mShared, mContext), mResolver, 'Resolver des Laufs');
+    mFirst := mResolver;
+    mCache := nil;
+    TRuleDerived.EnsurePinnedResolver(mCache, mResolver, mContext, 'U.pas');
+    Assert.AreSame(mFirst, mResolver, 'gesetzter Resolver bleibt');
+    Assert.IsNull(mCache, 'ohne Bedarf kein Cache geöffnet');
+    mResolver.UnpinTree;
+    mContext.Derived := nil;
+    mShared := nil;
+  finally
+    mTree.Free;
+  end;
 end;
 
 procedure TRuleDerivedTests.GetCallsFactoryOnce;

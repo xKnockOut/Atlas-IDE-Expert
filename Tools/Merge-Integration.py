@@ -15,7 +15,9 @@ sich ohne Urteil lösen lässt, und lässt alles andere als Konflikt stehen:
   Stand des Integrationsbranches, die Zahlen erzeugt Update-RuleCatalog.ps1 neu.
 - Die Baseline wortgleicher Rümpfe (atlas-duplicates.json): Stand des Integrationsbranches,
   danach mit AtlasServer --check . --check-duplicates --update-baseline neu geschrieben
-  (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH).
+  (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH). Gruppen, die dabei gegenüber dem
+  Integrationsbranch neu sind oder wachsen, nennt das Skript: Sie stammen aus dem eigenen Branch,
+  und Tools/Check-Baselines.ps1 lässt sie in der CI nur mit „Neue Kopien: …“ im Pull Request durch.
 
 Was übrig bleibt (geänderte Zeilen auf beiden Seiten, Quelltext, JSON), meldet das
 Skript; der Merge bleibt dann offen.
@@ -37,6 +39,7 @@ neu erzeugt werden (pwsh fehlt), 3: Vorbedingung verletzt.
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 import shutil
@@ -67,6 +70,29 @@ WERKZEUGE = {
 
 # Baseline wortgleicher Rümpfe: schreibt AtlasServer, nicht pwsh.
 DUPLIKATE_AUFRUF = ['--check', '.', '--check-duplicates', '--update-baseline']
+
+
+def neue_kopien(alt, neu):
+    """Gruppen in neu (atlas-duplicates.json als dict), die alt nicht kennt oder die dort weniger Fassungen
+    haben. Wiedererkannt am Fingerabdruck, sonst an einer gemeinsamen Fassung; wie Tools/Check-Baselines.ps1."""
+    if alt.get('minLines') != neu.get('minLines'):
+        return []
+    nach_hash, nach_fassung = {}, {}
+    for gruppe in alt.get('groups', []):
+        anzahl = len(gruppe.get('members', []))
+        nach_hash[gruppe.get('hash')] = anzahl
+        for fassung in gruppe.get('members', []):
+            nach_fassung[fassung] = max(nach_fassung.get(fassung, 0), anzahl)
+    befunde = []
+    for gruppe in neu.get('groups', []):
+        fassungen = gruppe.get('members', [])
+        bekannt = [nach_hash[gruppe.get('hash')]] if gruppe.get('hash') in nach_hash else []
+        bekannt += [nach_fassung[f] for f in fassungen if f in nach_fassung]
+        if not bekannt:
+            befunde.append(f'neu: {", ".join(fassungen)}')
+        elif len(fassungen) > max(bekannt):
+            befunde.append(f'{max(bekannt)} -> {len(fassungen)} Fassungen: {", ".join(fassungen)}')
+    return befunde
 
 
 def atlas_server():
@@ -262,6 +288,19 @@ def selbsttest():
         if (neu, offen, genommen) != (erwartet, offen_soll, zahlen_soll):
             print(f'Fall {nr}: erwartet {erwartet!r}/{offen_soll}/{zahlen_soll}, erhalten {neu!r}/{offen}/{genommen}')
             fehler += 1
+    def gruppe(kennung, *fassungen):
+        return {'hash': kennung, 'lines': 6, 'members': list(fassungen)}
+    alt = {'minLines': 6, 'groups': [gruppe('a', 'A:X', 'B:X'), gruppe('b', 'C:Y', 'D:Y', 'E:Y')]}
+    for nr, (gruppen, soll) in enumerate([
+            ([gruppe('a', 'A:X', 'B:X')], 0),                   # entfernt
+            ([gruppe('a', 'A2:X', 'B:X')], 0),                  # Datei umbenannt
+            ([gruppe('c', 'A:X', 'B:X')], 0),                   # Rumpf in beiden Kopien gleich geändert
+            ([gruppe('a', 'A:X', 'B:X', 'F:X')], 1),            # wächst
+            ([gruppe('d', 'G:Z', 'H:Z')], 1)], 1):              # neu, obwohl die Summe sinkt
+        erhalten = len(neue_kopien(alt, {'minLines': 6, 'groups': gruppen}))
+        if erhalten != soll:
+            print(f'Kopien-Fall {nr}: {erhalten} Befunde statt {soll}')
+            fehler += 1
     for pfad, soll in [('docs/Einstellungen.md', 'config'),
                        ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.De.Architecture.pas', 'rules'),
                        ('atlas-duplicates.json', 'duplicates'),
@@ -297,6 +336,20 @@ def main():
         print(f'{args.ziel} ist schon enthalten.')
         return 0
     return einmergen(ref, args.ziel, args.kein_commit)
+
+
+def kopien_melden(ref, name):
+    """Nennt Gruppen der neu geschriebenen Duplikat-Baseline, die gegenüber ref neu sind oder wachsen."""
+    stand = git('show', f'{ref}:atlas-duplicates.json', check=False)
+    if stand.returncode != 0:
+        return
+    with open('atlas-duplicates.json', encoding='utf-8-sig') as datei:
+        befunde = neue_kopien(json.loads(stand.stdout.lstrip('\ufeff')), json.load(datei))
+    if befunde:
+        print(f'Hinweis: Kopien, die {name} nicht hat (zusammenlegen oder im Pull Request mit „Neue Kopien: …“ '
+              'begründen, sonst scheitert Tools/Check-Baselines.ps1):')
+        for befund in befunde:
+            print(f'  {befund}')
 
 
 def eigenen_stand_einholen():
@@ -379,6 +432,7 @@ def einmergen(ref, name, kein_commit):
                 offen.append('atlas-duplicates.json: AtlasServer meldet Fehler')
             else:
                 git('add', '--', 'atlas-duplicates.json')
+                kopien_melden(ref, name)
             continue
         skript = WERKZEUGE[werkzeug]
         if not pwsh:
