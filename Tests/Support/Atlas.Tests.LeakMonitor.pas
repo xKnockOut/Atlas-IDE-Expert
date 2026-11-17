@@ -34,7 +34,10 @@
 // - Anonymes Protokoll (#1478): Das gemeinsame atlas.log (TAtlasGuard.RotatingLog) nummeriert jeden neuen Namen,
 //   Pfad und Text und behält die Nummern bis Programmende (höchstens MaxLabels). Jeder Wert zählte so als Leck
 //   des Tests, der ihn zuerst schreibt (z. B. FailingProviderTripsOnlyItself, GuardErrorLineHidesMessage).
-//   PostTearDown vergisst die Nummern vor der letzten Messung; jeder Test beginnt mit leerer Tabelle.
+//   PostTest und PostTearDown vergessen die Nummern vor ihrer Messung; jeder Test beginnt mit leerer Tabelle.
+// - Fixtures ohne Setup oder TearDown: DUnitX ruft PreSetup/PostSetUp und PreTearDown/PostTearDown nur, wenn die
+//   Fixture die Methode hat. Was für jeden Test gelten muss (Sprache, Aufzeichnung, Vergessen der Nummern,
+//   Festhalten des Stapelberichts), steht deshalb auch in PreTest und PostTest.
 // Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an. Mit ATLAS_LEAK_TRACE=1 in der Umgebung
 // zeichnet TAllocationTrace (Atlas.Tests.AllocationTrace) jede Belegung des Tests mit Stapel auf, und der
 // Bericht nennt die Stellen, deren Speicher übrig blieb.
@@ -68,6 +71,7 @@ type
     /// später ab, wenn die Aufzeichnung schon dem nächsten Test gehört.</summary>
     FTraceReport: string;
     procedure Start;
+    procedure CaptureTrace;
     function RawTotal: Int64;
     function Reported(AValue: Int64): Int64;
     procedure Settle(ABefore: Int64; var AAllocated: Int64; AOthers: Int64);
@@ -307,13 +311,31 @@ end;
 
 procedure TLeakMonitor.Start;
 begin
+  // Aus PreSetup oder, bei einer Fixture ohne Setup, aus PreTest: nur beim ersten Aufruf.
   if FStarted then
   begin
     Exit;
   end;
   FStarted := True;
+  TAtlasLocale.Use(TTextLanguage.German);
   FThreadsAtStart := ProcessThreadCount;
   FThreadsAtEnd := FThreadsAtStart;
+  // Vor der Messung freigeben: Der Bericht des vorigen Tests gehört nicht zu diesem.
+  FTraceReport := '';
+  if TraceLeaks then
+  begin
+    TAllocationTrace.Start;
+  end;
+end;
+
+procedure TLeakMonitor.CaptureTrace;
+begin
+  // Gleich festhalten, solange die Tabelle noch diesem Test gehört; nur bei einem Leck, der Bericht kostet Zeit.
+  // Ohne TearDown ist PostTest der letzte Haken, mit TearDown ersetzt PostTearDown den Bericht.
+  if TraceLeaks and (RawTotal > 0) then
+  begin
+    FTraceReport := TAllocationTrace.Report(cTraceGroups);
+  end;
 end;
 
 function TLeakMonitor.RawTotal: Int64;
@@ -369,14 +391,7 @@ end;
 
 procedure TLeakMonitor.PreSetup;
 begin
-  TAtlasLocale.Use(TTextLanguage.German);
   Start;
-  // Vor der Messung freigeben: Der Bericht des vorigen Tests gehört nicht zu diesem.
-  FTraceReport := '';
-  if TraceLeaks then
-  begin
-    TAllocationTrace.Start;
-  end;
   FSetUpBefore := AllocatedBytes;
 end;
 
@@ -410,6 +425,8 @@ begin
   // Arbeiter des Zeitlimits (#493) bleiben für den nächsten Aufruf stehen; ihr Speicher gehört zu keinem
   // Test. Vor dem Messen beenden, der nächste Aufruf legt neue an.
   TAtlasTimeLimit.StopAll(1000);
+  // Nummern des anonymen Protokolls (siehe Kopf); ohne TearDown gibt es keinen späteren Haken dafür.
+  TAtlasGuard.RotatingLog.Redactor.Forget;
   FTestAllocated := AllocatedBytes - FTestBefore;
   // Nur der Test selbst: Was das Setup belegt, gibt meist erst das TearDown frei.
   if FTestAllocated > 0 then
@@ -420,6 +437,7 @@ begin
   begin
     FThreadsAtEnd := ProcessThreadCount;
   end;
+  CaptureTrace;
 end;
 
 procedure TLeakMonitor.PreTearDown;
@@ -439,12 +457,8 @@ begin
   if TraceLeaks then
   begin
     TAllocationTrace.Stop;
-    // Gleich festhalten, solange die Tabelle noch diesem Test gehört; nur bei einem Leck, der Bericht kostet Zeit.
-    if RawTotal > 0 then
-    begin
-      FTraceReport := TAllocationTrace.Report(cTraceGroups);
-    end;
   end;
+  CaptureTrace;
 end;
 
 function TLeakMonitor.SetUpMemoryAllocated: Int64;
