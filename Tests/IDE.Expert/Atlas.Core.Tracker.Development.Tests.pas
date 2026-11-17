@@ -18,9 +18,6 @@ type
   [Category('Atlas.IDE.Tracker')]
   TAtlasIssueDevelopmentTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure KeyCountsOnlyAsOwnToken;
     [Test]
@@ -261,14 +258,6 @@ begin
 end;
 
 { TAtlasIssueDevelopmentTests }
-
-procedure TAtlasIssueDevelopmentTests.WarmUpFirstUse;
-begin
-  // Der Benchmark sucht git einmal und merkt sich den Pfad (TAtlasVcsTools); TEncoding.ASCII legt die RTL beim
-  // ersten Zugriff an. Beides bleibt bis zum Programmende und zählte sonst als Leck des Tests.
-  TAtlasVcsTools.Find(TAtlasVcsKind.Git);
-  TEncoding.ASCII.GetBytes('');
-end;
 
 procedure TAtlasIssueDevelopmentTests.KeyCountsOnlyAsOwnToken;
 begin

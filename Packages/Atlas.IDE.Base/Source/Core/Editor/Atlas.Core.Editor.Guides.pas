@@ -8,9 +8,11 @@
 // zeichnet, schaltet Atlas sie ab, solange die eigenen Linien an sind, und
 // stellt sie wieder her, wenn sie aus sind. Die IDE liest den Schalter nur
 // beim Start.
-// Mit Besitzern (#653): Steht der Öffner allein am Zeilenanfang unter seiner
-// Anweisung (if … then / begin), beginnt die Linie samt Haken an der Zeile der
-// Anweisung und steht vor deren Einzug.
+// Mit Besitzern (#653): Steht der Öffner unter seiner Anweisung, beginnt die
+// Linie samt Haken an der Zeile der Anweisung und steht vor deren Einzug. Das
+// gilt für begin allein auf der Zeile wie für umbrochene Köpfe, deren Zeile mit
+// "then begin" oder "do begin" anfängt oder endet (if/while/for/with über
+// mehrere Zeilen).
 
 interface
 
@@ -86,9 +88,9 @@ begin
       Continue;
     end;
     mFirst := mBlock.OpenLine;
-    // Öffner allein am Zeilenanfang unter seiner Anweisung: Linie ab der Anweisung.
-    if AOwners and (mBlock.OwnerLine < mBlock.OpenLine) and (mBlock.OwnerLine >= 0) and
-      (Trim(Copy(ALines[mBlock.OpenLine], 1, mBlock.OpenCharacter)) = '') then
+    // Öffner unter seiner Anweisung: Linie ab der Anweisung, auch wenn vor dem Öffner noch then/do
+    // oder der Rest der umbrochenen Bedingung steht.
+    if AOwners and (mBlock.OwnerLine < mBlock.OpenLine) and (mBlock.OwnerLine >= 0) then
     begin
       mFirst := mBlock.OwnerLine;
     end;
