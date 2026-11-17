@@ -1,5 +1,5 @@
 {
-  "count": 10,
+  "count": 9,
   "warmUps": [
     "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
@@ -9,7 +9,6 @@
     "Tests/IDE.Expert/Atlas.Core.Lsp.Tests.pas: TLspClientTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.MethodBreakpoints.Tests.pas: TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Diagnostics.ExportDialog.Tests.pas: TAtlasDiagnosticExportDialogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Diagnostics.PluginFrame.Tests.pas: TAtlasDiagnosticsFrameTests.WarmUpFirstUse",
-    "Tests/Text/Atlas.Debug.Attributes.Tests.pas: TAtlasDebugAttributesTests.WarmUpFirstUse"
+    "Tests/IDE.Expert/Atlas.UI.Diagnostics.PluginFrame.Tests.pas: TAtlasDiagnosticsFrameTests.WarmUpFirstUse"
   ]
 }
