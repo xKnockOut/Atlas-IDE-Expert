@@ -167,25 +167,32 @@ const
     'begin' + sLineBreak +
     'end.';
 
-var
-  gTexts: TDictionary<string, string>;
-
-function Texts: TDictionary<string, string>;
-begin
-  if gTexts = nil then
-  begin
-    gTexts := TDictionary<string, string>.Create;
-    gTexts.Add(UpperCase('C:\P\Data.Kunden.pas'), cKunden);
-    gTexts.Add(UpperCase('C:\P\Main.pas'), cMain);
-    gTexts.Add(UpperCase('C:\P\Main.dfm'), cMainForm);
-    gTexts.Add(UpperCase('C:\P\Start.dpr'), cStart);
-  end;
-  Result := gTexts;
-end;
-
+/// <summary>Text der Testdatei AFileName, ohne Belegung: Eine Tabelle, beim ersten Lesen angelegt und erst am
+/// Programmende freigegeben, zählte im ersten Test, der eine Datei liest, als Leck.</summary>
 function ReadTestText(const AFileName: string; out AText: string): Boolean;
 begin
-  Result := Texts.TryGetValue(UpperCase(AFileName), AText);
+  Result := True;
+  if SameText(AFileName, 'C:\P\Data.Kunden.pas') then
+  begin
+    AText := cKunden;
+  end
+  else if SameText(AFileName, 'C:\P\Main.pas') then
+  begin
+    AText := cMain;
+  end
+  else if SameText(AFileName, 'C:\P\Main.dfm') then
+  begin
+    AText := cMainForm;
+  end
+  else if SameText(AFileName, 'C:\P\Start.dpr') then
+  begin
+    AText := cStart;
+  end
+  else
+  begin
+    AText := '';
+    Result := False;
+  end;
 end;
 
 function AddText(const AIndex: ISymbolIndex; const AFileName, AText: string): TUnitIndex;
@@ -535,10 +542,5 @@ begin
   Assert.AreEqual(Int64(47), CellOf(mResult, 0, 'methods').Number);
   Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
 end;
-
-initialization
-
-finalization
-  gTexts.Free;
 
 end.
