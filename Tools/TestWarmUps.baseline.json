@@ -26,7 +26,6 @@
     "Tests/IDE.Expert/Atlas.Core.Tasks.Matchers.Tests.pas: TAtlasTaskMatchersTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tracker.Attach.Tests.pas: TAtlasAttachTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Tracker.Development.Tests.pas: TAtlasIssueDevelopmentTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.IDE.Welcome.Tiles.Tests.pas: TAtlasIdeWelcomeTilesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Architecture.Frame.Tests.pas: TAtlasArchitectureFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Commands.ShortcutTip.Tests.pas: TAtlasShortcutTipWindowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.EvaluateFrame.Tests.pas: TAtlasDebugEvaluateFrameTests.WarmUpFirstUse",
@@ -45,7 +44,6 @@
     "Tests/IDE.Expert/Atlas.UI.Welcome.Arrange.Tests.pas: TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Discover.Tests.pas: TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Tests.pas: TAtlasWelcomeBoardTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Welcome.WhatsNew.Tests.pas: TAtlasWelcomeWhatsNewFrameTests.WarmUpFirstUse",
     "Tests/Text/Atlas.Debug.Attributes.Tests.pas: TAtlasDebugAttributesTests.WarmUpFirstUse",
     "Tests/Windows/Diagnostics/Atlas.Windows.Diagnostics.StackTrace.Tests.pas: TStackTraceTests.WarmUp",
     "Tests/Windows/Projects/Atlas.Windows.Projects.DelphiInstallation.Tests.pas: TDelphiInstallationTests.WarmUpFirstUse"
