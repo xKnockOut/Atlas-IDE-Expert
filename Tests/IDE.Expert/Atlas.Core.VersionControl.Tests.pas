@@ -422,6 +422,7 @@ procedure TAtlasVcsTests.LocatesProgramInPathAndKnownDirs;
 var
   mExe, mPathText: string;
   mDirs: TArray<string>;
+  mSvn: TAtlasVcsToolLocation;
 begin
   mExe := 'svn';
   if PathDelim = '\' then
@@ -448,11 +449,13 @@ begin
       Result := False;
     end), 'nicht installiert');
   Assert.AreEqual(0, Integer(Length(TAtlasVcsTools.KnownDirs(TAtlasVcsKind.None, [Root]))));
+  // Den echten Fund danach zurück: Forget ließe ihn den nächsten Test neu anlegen (Leck dort).
+  mSvn := TAtlasVcsTools.Where(TAtlasVcsKind.Svn);
   TAtlasVcsTools.Preset(TAtlasVcsKind.Svn, '');
   try
     Assert.AreEqual('', TAtlasVcsTools.Find(TAtlasVcsKind.Svn), 'Preset gilt für Find');
   finally
-    TAtlasVcsTools.Forget;
+    TAtlasVcsTools.Remember(TAtlasVcsKind.Svn, mSvn);
   end;
 end;
 procedure TAtlasVcsTests.GitProviderRunsExpectedCommands;

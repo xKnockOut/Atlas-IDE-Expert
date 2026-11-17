@@ -14,9 +14,6 @@ type
   [TestFixture]
   TSavedQueryRuleTests = class
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ReportsHitsOfCheckedFileOnly;
     [Test]
@@ -114,11 +111,6 @@ begin
 end;
 
 { TSavedQueryRuleTests }
-
-procedure TSavedQueryRuleTests.WarmUpFirstUse;
-begin
-  ReportsHitsOfCheckedFileOnly;
-end;
 
 procedure TSavedQueryRuleTests.ReportsHitsOfCheckedFileOnly;
 var
