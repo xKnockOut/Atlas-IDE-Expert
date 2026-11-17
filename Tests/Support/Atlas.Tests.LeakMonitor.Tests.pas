@@ -67,6 +67,7 @@ uses
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.ProtocolReplay,
+  Atlas.Common.Diagnostics.ShutdownRest,
   Atlas.Tests.FirstUse,
   Atlas.Tests.LeakMonitor;
 
@@ -538,9 +539,13 @@ begin
 end;
 
 procedure TLeakMonitorTests.FirstUseWarmUpIsDoneOnce;
+var
+  mBefore: Int64;
 begin
+  // Selbst messen statt Assert.Pass: Dessen Ausnahme lebt noch, wenn der Leckmonitor misst, und zählte als Leck.
+  mBefore := TShutdownRest.AllocatedBytes;
   TFirstUse.WarmUp;
-  Assert.Pass;
+  Assert.AreEqual(mBefore, TShutdownRest.AllocatedBytes, 'Zweites Aufwärmen hat Speicher behalten');
 end;
 
 procedure TLeakMonitorTests.ConnectionSoakDetectsWorkerLeak;
