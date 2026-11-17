@@ -28,6 +28,10 @@ type
     procedure FreeBetweenSetupAndTestIsNoLeak;
     [Test]
     procedure ReportNamesThreads;
+    /// <summary>DUnitX ruft PreSetup nur bei Fixtures mit Setup: PreTest übernimmt dann den Ausgangszustand.
+    /// </summary>
+    [Test]
+    procedure WithoutSetupStartsInGerman;
     /// <summary>Die bekannten Einmal-Belegungen (TFirstUse) sind vor dem ersten Test angelegt: Ein zweiter
     /// Durchlauf belegt nichts mehr, sonst meldet der Leckmonitor diesen Test.</summary>
     [Test]
@@ -75,6 +79,7 @@ uses
   Atlas.Common.Lsp.Internals.Debouncer,
   Atlas.Common.Lsp.ProtocolReplay,
   Atlas.Common.Diagnostics.ShutdownRest,
+  Atlas.Common.Localization.Texts,
   Atlas.Tests.AllocationTrace,
   Atlas.Tests.FirstUse,
   Atlas.Tests.LeakMonitor;
@@ -478,6 +483,21 @@ begin
   Assert.IsTrue(Supports(mMonitor, IMemoryLeakMonitor2, mReport));
   Assert.Contains(mReport.GetReport, 'Threads am Anfang');
   Assert.IsTrue(ProcessThreadCount > 0);
+end;
+
+procedure TLeakMonitorTests.WithoutSetupStartsInGerman;
+var
+  mMonitor: IMemoryLeakMonitor;
+begin
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mMonitor := TLeakMonitor.Create;
+    mMonitor.PreTest;
+    mMonitor.PostTest;
+    Assert.IsTrue(TAtlasLocale.Language = TTextLanguage.German, 'PreTest ohne PreSetup setzt die Sprache nicht');
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
 end;
 
 procedure TLeakMonitorTests.ReplayDoesNotGrowMemory;
