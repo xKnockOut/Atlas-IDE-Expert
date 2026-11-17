@@ -7,8 +7,6 @@
     "Tests/Application/Shell/Shell.Hotspots.Tests.pas: TShellHotspotsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Linter.Tests.pas: TShellLinterTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.ReplayServer.Tests.pas: TShellReplayServerTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Workspace.Parts.Tests.pas: TShellWorkspacePartsTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.WorkspaceGroup.Tests.pas: TShellWorkspaceGroupTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
