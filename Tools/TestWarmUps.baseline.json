@@ -1,5 +1,5 @@
 {
-  "count": 58,
+  "count": 55,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
@@ -24,9 +24,6 @@
     "Tests/Common/Lsp/Atlas.Common.Lsp.Query.Tests.pas: TLspQueryTests.WarmUpFirstUse",
     "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.SavedQueries.Tests.pas: TSavedQueryRuleTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Debug.EventLog.Tests.pas: TAtlasEventLogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Tests.pas: TAtlasDesignerUndoFlowTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Vcl.Tests.pas: TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.Usages.Tests.pas: TAtlasDesignerUsagesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Diagnostics.PluginTimings.Tests.pas: TAtlasPluginTimingsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.PropertyValues.Tests.pas: TAtlasFormPropertyValuesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
