@@ -1,9 +1,6 @@
 {
-  "count": 53,
+  "count": 47,
   "warmUps": [
-    "Tests/Application/Shell/Shell.Composition.FileChanges.Tests.pas: TShellFileChangesTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Composition.Sources.Tests.pas: TShellSourcesTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Composition.Status.Tests.pas: TShellStatusReportsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Hotspots.Tests.pas: TShellHotspotsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Linter.Tests.pas: TShellLinterTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.ReplayServer.Tests.pas: TShellReplayServerTests.WarmUpFirstUse",

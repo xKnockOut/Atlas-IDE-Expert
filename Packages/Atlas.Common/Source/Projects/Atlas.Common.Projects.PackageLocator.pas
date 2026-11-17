@@ -140,14 +140,16 @@ end;
 
 class function TPackageCompiledFiles.Bytes: Int64;
 var
-  mEntry: TEntry;
+  mPair: TPair<string, TEntry>;
 begin
   Result := 0;
   TMonitor.Enter(FLock);
   try
-    for mEntry in FFiles.Values do
+    // Über die Paare statt über Values: Values legt beim ersten Aufruf eine Sammlung an, die das Wörterbuch bis
+    // zu seiner Freigabe behält (24 Byte, gezählt als Leck des ersten Statusabrufs).
+    for mPair in FFiles do
     begin
-      Inc(Result, Length(mEntry.Data));
+      Inc(Result, Length(mPair.Value.Data));
     end;
   finally
     TMonitor.Exit(FLock);
