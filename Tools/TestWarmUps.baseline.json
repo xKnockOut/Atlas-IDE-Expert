@@ -1,5 +1,5 @@
 {
-  "count": 58,
+  "count": 55,
   "warmUps": [
     "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
@@ -41,11 +41,8 @@
     "Tests/IDE.Expert/Atlas.UI.Commands.ShortcutTip.Tests.pas: TAtlasShortcutTipWindowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.EvaluateFrame.Tests.pas: TAtlasDebugEvaluateFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Debug.ExceptionBar.Tests.pas: TAtlasDebugExceptionBarTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Debug.MethodBreakpoints.Tests.pas: TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.Search.Tests.pas: TAtlasComponentSearchWindowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Designer.SettingsSection.Tests.pas: TDesignerSettingsSectionTests.WarmUp",
-    "Tests/IDE.Expert/Atlas.UI.Diagnostics.ExportDialog.Tests.pas: TAtlasDiagnosticExportDialogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.UI.Diagnostics.PluginFrame.Tests.pas: TAtlasDiagnosticsFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Editor.Hide.Tests.pas: TAtlasHideUiTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.EditorToolbar.Bar.Tests.pas: TAtlasEditorToolbarTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Foundation.ListView.Tests.pas: TAtlasListViewTests.WarmUpFirstUse",
