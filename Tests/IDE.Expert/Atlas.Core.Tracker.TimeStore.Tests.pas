@@ -56,6 +56,11 @@ begin
   Result := TAtlasTimeIssue.Create('youtrack', 'https://yt.beispiel.de/', 'ATL', AKey);
 end;
 
+const
+  /// <summary>Leerlauf der Uhr: Die Tests melden Arbeit in Abständen bis 40 Minuten, die als Arbeit zählen
+  /// sollen.</summary>
+  cIdleMinutes = 60;
+
 function At(AHour, AMinute: Word): TDateTime;
 begin
   Result := EncodeDateTime(2026, 10, 28, AHour, AMinute, 0, 0);
@@ -79,7 +84,7 @@ begin
     function: TDateTime
     begin
       Result := FNow;
-    end, 10);
+    end, cIdleMinutes);
   FStore := TAtlasTimeStore.Create(Path, FClock,
     procedure
     begin
