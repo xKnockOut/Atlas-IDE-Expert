@@ -206,6 +206,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LineMove` | `Core/Editor/Atlas.Core.Editor.LineMove.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineTail` | `Core/Editor/Atlas.Core.Editor.LineTail.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LinkedEditing` | `Core/Editor/Atlas.Core.Editor.LinkedEditing.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.EditSurface` | `Core/Editor/Atlas.Core.Editor.EditSurface.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.LinkedSession` | `Core/Editor/Atlas.Core.Editor.LinkedSession.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Match` | `Core/Editor/Atlas.Core.Editor.Match.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodPlacement` | `Core/Editor/Atlas.Core.Editor.MethodPlacement.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MultiCursorKeys` | `Core/Editor/Atlas.Core.Editor.MultiCursorKeys.pas` | Ordner `Core/Editor` |
@@ -604,6 +606,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.LineMove` | `IDE/Editor/Atlas.IDE.Editor.LineMove.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditing` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditing.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.EditSurface` | `IDE/Editor/Atlas.IDE.Editor.EditSurface.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodKind` | `IDE/Editor/Atlas.IDE.Editor.MethodKind.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodPlacement` | `IDE/Editor/Atlas.IDE.Editor.MethodPlacement.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.RegionFolds` | `IDE/Editor/Atlas.IDE.Editor.RegionFolds.pas` | Ordner `IDE/Editor` |
