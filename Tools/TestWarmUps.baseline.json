@@ -1,5 +1,5 @@
 {
-  "count": 55,
+  "count": 49,
   "warmUps": [
     "Tests/Application/Shell/Shell.Composition.FileChanges.Tests.pas: TShellFileChangesTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Sources.Tests.pas: TShellSourcesTests.WarmUpFirstUse",
