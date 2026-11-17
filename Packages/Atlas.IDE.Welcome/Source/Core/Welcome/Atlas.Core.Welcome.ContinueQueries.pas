@@ -8,7 +8,9 @@
 //   gefragt und welche Abfrage gerade läuft (höchstens eine je Ziel innerhalb
 //   von cQueryLimitMs).
 // - TAtlasContinueIncomingQueries: eingehende Commits zum obersten Eintrag,
-//   laufende Abfrage und Zeitpunkt des letzten Ergebnisses.
+//   laufende Abfrage und Zeitpunkt des letzten Ergebnisses. Sie nimmt
+//   Projektpfade und bildet den Schlüssel selbst, damit Schlüssel und
+//   Projekt der Commits nie auseinanderlaufen.
 // Zeiten in Millisekunden (GetTickCount64 der IDE); der Aufrufer reicht sie
 // herein. Nur im Hauptthread.
 
@@ -51,25 +53,28 @@ type
   public
     /// <summary>Läuft eine Abfrage, die nicht älter als die Grenze ist? Eine ältere gilt als vergessen.</summary>
     function Running(ANowMs: UInt64): Boolean;
-    /// <summary>Ist eine Abfrage für AKey fällig (AForce: auch mit frischem Ergebnis)?</summary>
-    function Due(AForce: Boolean; const AKey: string; ANowMs: UInt64): Boolean;
-    /// <summary>Abfrage für AKey begonnen; ein anderer Schlüssel verwirft die alten Commits.</summary>
-    procedure Started(const AKey: string; AStarted: UInt64);
+    /// <summary>Ist eine Abfrage für das Projekt AProject fällig (AForce: auch mit frischem Ergebnis)?</summary>
+    function Due(AForce: Boolean; const AProject: string; ANowMs: UInt64): Boolean;
+    /// <summary>Abfrage für AProject begonnen; ein anderes Projekt verwirft die alten Commits.</summary>
+    procedure Started(const AProject: string; AStarted: UInt64);
     /// <summary>Die Abfrage kam nicht in Gang.</summary>
     procedure NotStarted(ANowMs: UInt64);
-    /// <summary>Ergebnis der Abfrage AStarted für AKey bzw. AProject; ohne AOk kein Abschnitt. False, wenn der
-    /// oberste Eintrag inzwischen ein anderer ist (nichts geändert).</summary>
-    function Arrived(const AKey, AProject: string; AStarted, ANowMs: UInt64; AOk: Boolean;
+    /// <summary>Ergebnis der Abfrage AStarted für AProject; ohne AOk kein Abschnitt. False, wenn der oberste
+    /// Eintrag inzwischen ein anderer ist (nichts geändert).</summary>
+    function Arrived(const AProject: string; AStarted, ANowMs: UInt64; AOk: Boolean;
       const AFound: TAtlasContinueIncoming): Boolean;
-    /// <summary>Stand von AKey wurde geschrieben: beim nächsten Anzeigen neu fragen.</summary>
-    procedure Outdate(const AKey: string);
+    /// <summary>Stand von AProject wurde geschrieben: beim nächsten Anzeigen neu fragen.</summary>
+    procedure Outdate(const AProject: string);
     /// <summary>Commits zum obersten Eintrag ATop; leer, wenn sie zu einem anderen gehören.</summary>
     function Current(const ATop: string): TAtlasContinueIncoming;
-    /// <summary>Schlüssel der letzten Abfrage.</summary>
-    property Key: string read FKey;
+    /// <summary>Galt die letzte Abfrage dem Projekt AProject?</summary>
+    function Concerns(const AProject: string): Boolean;
   end;
 
 implementation
+
+uses
+  Atlas.Core.Projects.Summary;
 
 { TAtlasContinueHeads }
 
@@ -147,20 +152,20 @@ begin
   end;
 end;
 
-function TAtlasContinueIncomingQueries.Due(AForce: Boolean; const AKey: string; ANowMs: UInt64): Boolean;
+function TAtlasContinueIncomingQueries.Due(AForce: Boolean; const AProject: string; ANowMs: UInt64): Boolean;
 begin
-  Result := TAtlasContinueSession.IncomingDue(AForce, AKey = FKey, FFresh, ANowMs);
+  Result := TAtlasContinueSession.IncomingDue(AForce, Concerns(AProject), FFresh, ANowMs);
 end;
 
-procedure TAtlasContinueIncomingQueries.Started(const AKey: string; AStarted: UInt64);
+procedure TAtlasContinueIncomingQueries.Started(const AProject: string; AStarted: UInt64);
 begin
   FStarted := AStarted;
   // Ein anderer oberster Eintrag: alte Commits nicht mehr zeigen.
-  if AKey <> FKey then
+  if not Concerns(AProject) then
   begin
     FData := Default(TAtlasContinueIncoming);
   end;
-  FKey := AKey;
+  FKey := TAtlasProjectSummaries.NormalizedPath(AProject);
 end;
 
 procedure TAtlasContinueIncomingQueries.NotStarted(ANowMs: UInt64);
@@ -169,14 +174,14 @@ begin
   FFresh := ANowMs;
 end;
 
-function TAtlasContinueIncomingQueries.Arrived(const AKey, AProject: string; AStarted, ANowMs: UInt64;
-  AOk: Boolean; const AFound: TAtlasContinueIncoming): Boolean;
+function TAtlasContinueIncomingQueries.Arrived(const AProject: string; AStarted, ANowMs: UInt64; AOk: Boolean;
+  const AFound: TAtlasContinueIncoming): Boolean;
 begin
   if FStarted = AStarted then
   begin
     FStarted := 0;
   end;
-  Result := FKey = AKey;
+  Result := Concerns(AProject);
   if not Result then
   begin
     Exit;
@@ -191,9 +196,9 @@ begin
   end;
 end;
 
-procedure TAtlasContinueIncomingQueries.Outdate(const AKey: string);
+procedure TAtlasContinueIncomingQueries.Outdate(const AProject: string);
 begin
-  if FKey = AKey then
+  if Concerns(AProject) then
   begin
     FFresh := 0;
   end;
@@ -206,6 +211,11 @@ begin
   begin
     Result := FData;
   end;
+end;
+
+function TAtlasContinueIncomingQueries.Concerns(const AProject: string): Boolean;
+begin
+  Result := (FKey <> '') and (TAtlasProjectSummaries.NormalizedPath(AProject) = FKey);
 end;
 
 end.

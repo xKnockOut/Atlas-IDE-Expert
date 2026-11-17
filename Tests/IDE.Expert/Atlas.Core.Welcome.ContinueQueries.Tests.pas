@@ -31,6 +31,8 @@ type
     procedure IncomingOutdateMakesDue;
     [Test]
     procedure IncomingOtherKeyDropsCommits;
+    [Test]
+    procedure IncomingSameProjectIgnoresSpelling;
   end;
 
 implementation
@@ -116,12 +118,12 @@ var
 begin
   mQueries := TAtlasContinueIncomingQueries.Create;
   try
-    mQueries.Started('a', 1000);
+    mQueries.Started('A.dproj', 1000);
     Assert.IsTrue(mQueries.Running(2000), 'Abfrage läuft');
-    mQueries.Started('b', 1500);
-    Assert.IsFalse(mQueries.Arrived('a', 'A.dproj', 1000, 2000, True, Found('A.dproj')), 'veraltete Abfrage');
+    mQueries.Started('B.dproj', 1500);
+    Assert.IsFalse(mQueries.Arrived('A.dproj', 1000, 2000, True, Found('A.dproj')), 'veraltete Abfrage');
     Assert.IsTrue(mQueries.Running(2000), 'Abfrage zu b läuft weiter');
-    Assert.IsTrue(mQueries.Arrived('b', 'B.dproj', 1500, 2500, True, Found('B.dproj')), 'passende Abfrage');
+    Assert.IsTrue(mQueries.Arrived('B.dproj', 1500, 2500, True, Found('B.dproj')), 'passende Abfrage');
     Assert.IsFalse(mQueries.Running(2600), 'fertig');
     Assert.AreEqual('origin/main', mQueries.Current('B.dproj').Upstream);
   finally
@@ -136,8 +138,8 @@ var
 begin
   mQueries := TAtlasContinueIncomingQueries.Create;
   try
-    mQueries.Started('a', 1000);
-    Assert.IsTrue(mQueries.Arrived('a', 'A.dproj', 1000, 2000, False, Found('A.dproj')), 'Ergebnis übernommen');
+    mQueries.Started('A.dproj', 1000);
+    Assert.IsTrue(mQueries.Arrived('A.dproj', 1000, 2000, False, Found('A.dproj')), 'Ergebnis übernommen');
     mData := mQueries.Current('A.dproj');
     Assert.IsFalse(mData.Available, 'ohne Abschnitt');
     Assert.AreEqual('', mData.Upstream);
@@ -152,15 +154,15 @@ var
 begin
   mQueries := TAtlasContinueIncomingQueries.Create;
   try
-    mQueries.Started('a', 1000);
-    mQueries.Arrived('a', 'A.dproj', 1000, 2000, True, Found('A.dproj'));
-    Assert.IsFalse(mQueries.Due(False, 'a', 3000), 'frisches Ergebnis');
-    Assert.IsTrue(mQueries.Due(True, 'a', 3000), 'erzwungen');
-    Assert.IsTrue(mQueries.Due(False, 'b', 3000), 'anderer Eintrag');
-    mQueries.Outdate('b');
-    Assert.IsFalse(mQueries.Due(False, 'a', 3000), 'anderer Schlüssel ändert nichts');
-    mQueries.Outdate('a');
-    Assert.IsTrue(mQueries.Due(False, 'a', 3000), 'neuer Stand geschrieben');
+    mQueries.Started('A.dproj', 1000);
+    mQueries.Arrived('A.dproj', 1000, 2000, True, Found('A.dproj'));
+    Assert.IsFalse(mQueries.Due(False, 'A.dproj', 3000), 'frisches Ergebnis');
+    Assert.IsTrue(mQueries.Due(True, 'A.dproj', 3000), 'erzwungen');
+    Assert.IsTrue(mQueries.Due(False, 'B.dproj', 3000), 'anderer Eintrag');
+    mQueries.Outdate('B.dproj');
+    Assert.IsFalse(mQueries.Due(False, 'A.dproj', 3000), 'anderes Projekt ändert nichts');
+    mQueries.Outdate('A.dproj');
+    Assert.IsTrue(mQueries.Due(False, 'A.dproj', 3000), 'neuer Stand geschrieben');
   finally
     mQueries.Free;
   end;
@@ -172,13 +174,30 @@ var
 begin
   mQueries := TAtlasContinueIncomingQueries.Create;
   try
-    mQueries.Started('a', 1000);
-    mQueries.Arrived('a', 'A.dproj', 1000, 2000, True, Found('A.dproj'));
-    mQueries.Started('b', 3000);
-    Assert.AreEqual('b', mQueries.Key);
+    mQueries.Started('A.dproj', 1000);
+    mQueries.Arrived('A.dproj', 1000, 2000, True, Found('A.dproj'));
+    mQueries.Started('B.dproj', 3000);
+    Assert.IsTrue(mQueries.Concerns('B.dproj'), 'Abfrage zu b');
+    Assert.IsFalse(mQueries.Concerns('A.dproj'), 'nicht mehr zu a');
     Assert.IsFalse(mQueries.Current('A.dproj').Available, 'alte Commits verworfen');
     mQueries.NotStarted(3100);
     Assert.IsFalse(mQueries.Running(3200), 'nicht in Gang');
+  finally
+    mQueries.Free;
+  end;
+end;
+
+procedure TAtlasContinueQueriesTests.IncomingSameProjectIgnoresSpelling;
+var
+  mQueries: TAtlasContinueIncomingQueries;
+begin
+  mQueries := TAtlasContinueIncomingQueries.Create;
+  try
+    mQueries.Started('C:/Src/A.dproj', 1000);
+    Assert.IsTrue(mQueries.Arrived('c:\src\a.DPROJ', 1000, 2000, True, Found('C:\Src\A.dproj')),
+      'gleiches Projekt, andere Schreibweise');
+    Assert.IsTrue(mQueries.Concerns(' C:\SRC\A.dproj '), 'Leerzeichen und Groß-/Kleinschreibung zählen nicht');
+    Assert.AreEqual('origin/main', mQueries.Current('C:/src/a.dproj').Upstream);
   finally
     mQueries.Free;
   end;

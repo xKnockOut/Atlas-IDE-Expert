@@ -201,7 +201,6 @@ type
 
   /// <summary>Eine Abfrage eingehender Commits zum obersten Eintrag.</summary>
   TIncomingQuery = record
-    Key: string;
     Project: string;
     Dir: string;
     MainBranch: string;
@@ -412,7 +411,7 @@ begin
   end;
   if Result then
   begin
-    Result := AQueries.Due(AForce, Key(AEntry.Project), GetTickCount64);
+    Result := AQueries.Due(AForce, AEntry.Project, GetTickCount64);
   end;
 end;
 
@@ -644,7 +643,7 @@ begin
   FBatch.Snapshot := Default(TAtlasContinueSnapshot);
   // Neue Sitzung: Änderungen gehören zum geschriebenen Stand.
   FChanges.Clear;
-  FIncoming.Outdate(mTargetKey);
+  FIncoming.Outdate(ATarget);
   // HEAD frisch abfragen und nachtragen; beim Beenden der IDE weder Abfrage noch neues Zeichnen.
   if not AProbe then
   begin
@@ -719,7 +718,6 @@ begin
   end;
   mKeep := Self;
   mQuery := Default(TIncomingQuery);
-  mQuery.Key := Key(mEntry.Project);
   mQuery.Project := mEntry.Project;
   mQuery.State := mEntry.State;
   mQuery.Dir := ExtractFileDir(mEntry.Project);
@@ -729,7 +727,7 @@ begin
   mQuery.Started := GetTickCount64;
   mOk := False;
   mFound := Default(TAtlasContinueIncoming);
-  FIncoming.Started(mQuery.Key, mQuery.Started);
+  FIncoming.Started(mQuery.Project, mQuery.Started);
   if not TAtlasIdeVcs.Run(
     procedure
     begin
@@ -738,7 +736,7 @@ begin
     procedure
     begin
       if (mKeep <> nil) and not FStopped and
-        FIncoming.Arrived(mQuery.Key, mQuery.Project, mQuery.Started, GetTickCount64, mOk, mFound) then
+        FIncoming.Arrived(mQuery.Project, mQuery.Started, GetTickCount64, mOk, mFound) then
       begin
         Changed;
       end;
@@ -936,7 +934,7 @@ begin
     Exit;
   end;
   mEntry := Top(Self);
-  Result := (mEntry.Project <> '') and (Key(mEntry.Project) = FIncoming.Key);
+  Result := (mEntry.Project <> '') and FIncoming.Concerns(mEntry.Project);
 end;
 
 function TAtlasIdeContinue.SavedEnabled: Boolean;
