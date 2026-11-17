@@ -1,5 +1,5 @@
 {
-  "count": 35,
+  "count": 34,
   "warmUps": [
     "Tests/Application/Shell/Shell.Composition.FileChanges.Tests.pas: TShellFileChangesTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Sources.Tests.pas: TShellSourcesTests.WarmUpFirstUse",
@@ -31,7 +31,6 @@
     "Tests/IDE.Expert/Atlas.UI.Diagnostics.PluginFrame.Tests.pas: TAtlasDiagnosticsFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Sections.Tests.pas: TSettingsPageSectionsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Settings.Page.Tests.pas: TAtlasSettingsPageTests.WarmUp",
-    "Tests/IDE.Expert/Atlas.UI.Tracker.SettingsSection.Tests.pas: TTrackerSettingsSectionTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Arrange.Tests.pas: TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Discover.Tests.pas: TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Tests.pas: TAtlasWelcomeBoardTests.WarmUpFirstUse",
