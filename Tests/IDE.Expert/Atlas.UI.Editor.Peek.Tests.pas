@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasPeekUiTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure HeightGrowsWithLines;
     [Test]
@@ -69,11 +66,6 @@ begin
 end;
 
 { TAtlasPeekUiTests }
-
-procedure TAtlasPeekUiTests.WarmUpFirstUse;
-begin
-  HeightGrowsWithLines;
-end;
 
 procedure TAtlasPeekUiTests.HeightGrowsWithLines;
 var

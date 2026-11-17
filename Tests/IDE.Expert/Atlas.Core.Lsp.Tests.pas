@@ -49,9 +49,6 @@ type
   [TestFixture]
   TLspSessionTests = class
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ConvertsPathsAndUris;
     [Test]
@@ -653,10 +650,6 @@ end;
 
 { TLspSessionTests }
 
-procedure TLspSessionTests.WarmUpFirstUse;
-begin
-  AcceptsApplyEditAndRepliesLater;
-end;
 procedure TLspSessionTests.ConvertsPathsAndUris;
 begin
   Assert.AreEqual('file:///c%3A/Mein%20Projekt/%C3%9Cbung.pas', TLspSession.PathToUri('C:\Mein Projekt\Übung.pas'));

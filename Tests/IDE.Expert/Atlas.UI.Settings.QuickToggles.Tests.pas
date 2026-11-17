@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasQuickToggleWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure GroupsByPage;
     [Test]
@@ -68,11 +65,6 @@ begin
 end;
 
 { TAtlasQuickToggleWindowTests }
-
-procedure TAtlasQuickToggleWindowTests.WarmUpFirstUse;
-begin
-  GroupsByPage;
-end;
 
 procedure TAtlasQuickToggleWindowTests.GroupsByPage;
 var

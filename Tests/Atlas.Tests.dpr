@@ -481,6 +481,7 @@ uses
   Atlas.Common.Lsp.Protocol.Tests in 'Common\Lsp\Atlas.Common.Lsp.Protocol.Tests.pas',
   Shell.CommandLine in '..\Application\Source\Shell\Shell.CommandLine.pas',
   Shell.CommandLine.Tests in 'Application\Shell\Shell.CommandLine.Tests.pas',
+  Atlas.Tests.AllocationTrace in 'Support\Atlas.Tests.AllocationTrace.pas',
   Atlas.Tests.FirstUse in 'Support\Atlas.Tests.FirstUse.pas',
   Atlas.Tests.LeakMonitor in 'Support\Atlas.Tests.LeakMonitor.pas',
   Atlas.Tests.LeakMonitor.Tests in 'Support\Atlas.Tests.LeakMonitor.Tests.pas',

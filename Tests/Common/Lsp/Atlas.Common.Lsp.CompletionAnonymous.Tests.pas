@@ -23,9 +23,6 @@ type
     function ItemAt(const AMarked: string; out AItem: TCompletionItem): Boolean; overload;
     function HeaderAt(const AMarked: string): string;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -203,16 +200,6 @@ begin
   if ItemAt(AMarked, mItem) then
   begin
     Result := mItem.Name;
-  end;
-end;
-
-procedure TCompletionAnonymousTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    AloneAfterParenthesis;
-  finally
-    TearDown;
   end;
 end;
 

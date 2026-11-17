@@ -21,9 +21,6 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -108,16 +105,6 @@ begin
 end;
 
 { TAtlasSearchBarTests }
-
-procedure TAtlasSearchBarTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    PrepareFillsFieldsAndQueryReadsThemBack;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasSearchBarTests.Setup;
 begin

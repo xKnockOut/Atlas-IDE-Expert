@@ -12,10 +12,6 @@ type
   [TestFixture]
   TAtlasResultsDataFlowTests = class
   public
-    /// <summary>Ergebnisfenster mit Baum einmal vorab zeigen: Zwischenspeicher der ersten Benutzung zählen sonst als
-    /// Leck im ersten Test.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure NodeTextShowsKindDetailViaUnsafeAndPlace;
     [Test]
@@ -103,22 +99,6 @@ begin
 end;
 
 { TAtlasResultsDataFlowTests }
-
-procedure TAtlasResultsDataFlowTests.WarmUp;
-var
-  mHost: TForm;
-  mFrame: TAtlasResultsFrame;
-begin
-  mHost := TForm.CreateNew(nil);
-  try
-    mFrame := TAtlasResultsFrame.Create(mHost);
-    mFrame.Parent := mHost;
-    mFrame.Flow.Show('Woher kommt X?', TAtlasDataFlowDirection.Sources,
-      Answer([Assignment('0', [Place(3, 'X := 0;')], nil)]), 6, False, False);
-  finally
-    mHost.Free;
-  end;
-end;
 
 procedure TAtlasResultsDataFlowTests.NodeTextShowsKindDetailViaUnsafeAndPlace;
 var
