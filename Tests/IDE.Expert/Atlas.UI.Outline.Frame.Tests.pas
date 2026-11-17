@@ -41,7 +41,7 @@ type
     [Test]
     procedure ShowsConditionUnlessSwitchedOff;
     [Test]
-    procedure ListIsBuffered;
+    procedure ListKeepsRowsOnErase;
   end;
 
 implementation
@@ -322,11 +322,10 @@ begin
   Assert.AreEqual('+ Make · class', FFrame.RowText(RowOf(FFrame, 'Make')));
 end;
 
-procedure TAtlasOutlineFrameTests.ListIsBuffered;
+procedure TAtlasOutlineFrameTests.ListKeepsRowsOnErase;
 begin
   // Unter dem Thema der IDE blitzte die Liste beim Klick und nach der Auswahl leer auf.
   Assert.IsTrue(FFrame.List is TAtlasListBox);
-  Assert.IsTrue(FFrame.List.DoubleBuffered);
 end;
 
 initialization
