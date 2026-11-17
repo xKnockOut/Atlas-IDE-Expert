@@ -2,7 +2,8 @@
 
 // Tests der TestCase-Tabelle (#1879): Spalten und Zeilen lesen, Zeile zur Methode finden, eigenes Trennzeichen
 // und weitere Argumente behalten, Hochkommas und Steuerzeichen schreiben, mehrzeilige Attribute, Attribute
-// zwischen den Fällen, nicht bearbeitbare Formen und die Prüfung je Zelle und Zeile.
+// zwischen den Fällen, Kommentare und Direktiven, die mit ihrem Fall wandern, nicht bearbeitbare Formen und die
+// Prüfung je Zelle und Zeile.
 
 interface
 
@@ -35,6 +36,20 @@ type
     procedure RefusesSeparatorInValueAndEmptyTable;
     [Test]
     procedure NewerFormsKeepTheirShape;
+    [Test]
+    procedure CommentsMoveWithTheirCase;
+    [Test]
+    procedure DeletedCaseTakesItsComments;
+    [Test]
+    procedure NewCaseHasNoComments;
+    [Test]
+    procedure DirectiveAroundOneCaseMovesWithIt;
+    [Test]
+    procedure LineCommentBeforeCodeGetsOwnLine;
+    [Test]
+    procedure CommentOfOtherAttributeMovesWithIt;
+    [Test]
+    procedure CommentsWithCrLf;
   end;
 
 implementation
@@ -62,17 +77,23 @@ begin
     '  Assert.Pass;'#10'end;'#10'end.';
 end;
 
-/// <summary>Tabelle an Zeile 10; schlägt fehl ohne.</summary>
-function TableOf(const AText: string): TTestCaseTable;
+/// <summary>Tabelle an Zeile ALine; schlägt fehl ohne.</summary>
+function TableAt(const AText: string; ALine: Integer): TTestCaseTable;
 var
   mTree: TSyntaxTree;
 begin
   mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Assert.IsTrue(TTestCaseTables.Find(mTree, AText, 10, Result), 'Tabelle an Zeile 10');
+    Assert.IsTrue(TTestCaseTables.Find(mTree, AText, ALine, Result), 'Tabelle an Zeile ' + IntToStr(ALine));
   finally
     mTree.Free;
   end;
+end;
+
+/// <summary>Tabelle an Zeile 10; schlägt fehl ohne.</summary>
+function TableOf(const AText: string): TTestCaseTable;
+begin
+  Result := TableAt(AText, 10);
 end;
 
 /// <summary>Text nach dem Schreiben von ARows; schlägt fehl, wenn nicht geschrieben wird.</summary>
@@ -241,7 +262,19 @@ begin
   Assert.IsFalse(mTable.Editable, 'Name als Konstante');
   mTable := TableOf(TestUnit('    [TestCase(''A'', ''1'')]'#10'    // Kommentar'#10'    [TestCase(''B'', ''2'')]'#10,
     '(A: Integer)'));
-  Assert.IsFalse(mTable.Editable, 'Kommentar dazwischen');
+  Assert.IsTrue(mTable.Editable, 'Kommentar dazwischen');
+  mTable := TableOf(TestUnit('    [TestCase(''A'', ''1'')]'#10'    {$IFDEF MSWINDOWS}'#10'    [TestCase(''B'', ''2'')]'#10 +
+    '    [TestCase(''C'', ''3'')]'#10'    {$ENDIF}'#10, '(A: Integer)'));
+  Assert.IsFalse(mTable.Editable, 'Bedingung über zwei Fällen');
+  Assert.Contains(mTable.Reason, '{$ELSE}');
+  mTable := TableAt(TestUnit('    {$IFDEF MSWINDOWS}'#10'    [TestCase(''A'', ''1'')]'#10'    {$ELSE}'#10 +
+    '    [TestCase(''B'', ''2'')]'#10'    {$ENDIF}'#10, '(A: Integer)'), 11);
+  Assert.IsFalse(mTable.Editable, '{$ELSE} zwischen zwei Fällen');
+  // Ein Fall im inaktiven Zweig steht im Baum und ist mit seiner Bedingung bearbeitbar.
+  mTable := TableOf(TestUnit('    [TestCase(''A'', ''1'')]'#10'    {$IFDEF NIE_DEFINIERT}'#10 +
+    '    [TestCase(''X'', ''9'')]'#10'    {$ENDIF}'#10'    [TestCase(''B'', ''2'')]'#10, '(A: Integer)'));
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.AreEqual(3, mTable.Count);
 end;
 
 procedure TTestCaseTableTests.CellAndRowProblems;
@@ -291,6 +324,104 @@ begin
   Assert.AreEqual<TTestCaseForm>(TTestCaseForm.Named, mTable.Rows[1].Form);
   Assert.AreEqual('[TestCase(''1,2'')]', TTestCaseTables.AttributeText(mTable.Rows[0]));
   Assert.AreEqual('[NamedTestCase(''N'', ''3;4'', '';'')]', TTestCaseTables.AttributeText(mTable.Rows[1]));
+end;
+
+procedure TTestCaseTableTests.CommentsMoveWithTheirCase;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  // Kommentar über dem ersten, am Zeilenende, in eigener Zeile und in der Zeile davor.
+  mText := TestUnit('    // zu A'#10'    [TestCase(''A'', ''1'')] // A'#10'    // zu B'#10 +
+    '    { vor B } [TestCase(''B'', ''2'')] // B'#10'    [TestCase(''C'', ''3'')]'#10, '(A: Integer)');
+  mTable := TableAt(mText, 11);
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.AreEqual(TestUnit('    // zu B'#10'    { vor B } [TestCase(''B'', ''2'')] // B'#10 +
+    '    [TestCase(''C'', ''3'')]'#10'    // zu A'#10'    [TestCase(''A'', ''1'')] // A'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[1], mTable.Rows[2], mTable.Rows[0]]));
+end;
+
+procedure TTestCaseTableTests.DeletedCaseTakesItsComments;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  mText := TestUnit('    [TestCase(''A'', ''1'')]'#10'    // zu B'#10'    [TestCase(''B'', ''2'')] // B'#10,
+    '(A: Integer)');
+  mTable := TableOf(mText);
+  Assert.AreEqual(TestUnit('    [TestCase(''A'', ''1'')]'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[0]]));
+end;
+
+procedure TTestCaseTableTests.NewCaseHasNoComments;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  mText := TestUnit('    [TestCase(''A'', ''1'')] // A'#10, '(A: Integer)');
+  mTable := TableOf(mText);
+  Assert.AreEqual(TestUnit('    [TestCase(''A'', ''1'')] // A'#10'    [TestCase(''B'', ''2'')]'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[0], TTestCaseTables.NewRow(mTable, 'B', ['2'])]));
+end;
+
+procedure TTestCaseTableTests.DirectiveAroundOneCaseMovesWithIt;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  mText := TestUnit('    {$IFDEF MSWINDOWS}'#10'    [TestCase(''A'', ''1'')]'#10'    {$ENDIF}'#10 +
+    '    [TestCase(''B'', ''2'')]'#10, '(A: Integer)');
+  mTable := TableAt(mText, 11);
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.AreEqual(TestUnit('    [TestCase(''B'', ''2'')]'#10'    {$IFDEF MSWINDOWS}'#10 +
+    '    [TestCase(''A'', ''1'')]'#10'    {$ENDIF}'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[1], mTable.Rows[0]]));
+  // Gelöscht verschwindet die Bedingung mit dem Fall.
+  Assert.AreEqual(TestUnit('    [TestCase(''B'', ''2'')]'#10, '(A: Integer)'),
+    Written(mText, mTable, [mTable.Rows[1]]));
+end;
+
+procedure TTestCaseTableTests.LineCommentBeforeCodeGetsOwnLine;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  // Hinter dem letzten Fall steht die Deklaration in derselben Zeile.
+  mText := TestUnit('    [TestCase(''A'', ''1'')] // A'#10'    [TestCase(''B'', ''2'')] ', '(A: Integer)');
+  mTable := TableOf(mText);
+  Assert.IsTrue(mTable.CodeAfter);
+  Assert.AreEqual(TestUnit('    [TestCase(''B'', ''2'')]'#10'    [TestCase(''A'', ''1'')] // A'#10'     ',
+    '(A: Integer)'), Written(mText, mTable, [mTable.Rows[1], mTable.Rows[0]]));
+end;
+
+procedure TTestCaseTableTests.CommentOfOtherAttributeMovesWithIt;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+begin
+  mText := TestUnit('    [TestCase(''A'', ''1'')]'#10'    // langsam'#10'    [Category(''Langsam'')]'#10 +
+    '    [TestCase(''B'', ''2'')]'#10, '(A: Integer)');
+  mTable := TableOf(mText);
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.AreEqual(TestUnit('    // langsam'#10'    [Category(''Langsam'')]'#10'    [TestCase(''A'', ''1'')]'#10 +
+    '    [TestCase(''B'', ''2'')]'#10, '(A: Integer)'), Written(mText, mTable, mTable.Rows));
+end;
+
+procedure TTestCaseTableTests.CommentsWithCrLf;
+var
+  mText: string;
+  mTable: TTestCaseTable;
+  mEdit: TTextEdit;
+  mReason: string;
+begin
+  mText := StringReplace(TestUnit('    [TestCase(''A'', ''1'')] // A'#10'    {$IFDEF MSWINDOWS}'#10 +
+    '    [TestCase(''B'', ''2'')]'#10'    {$ENDIF}'#10, '(A: Integer)'), #10, #13#10, [rfReplaceAll]);
+  mTable := TableOf(mText);
+  Assert.IsTrue(mTable.Editable, mTable.Reason);
+  Assert.IsTrue(TTestCaseTables.Write(mTable, [mTable.Rows[1], mTable.Rows[0]], #13#10, mEdit, mReason), mReason);
+  Assert.AreEqual(StringReplace(TestUnit('    {$IFDEF MSWINDOWS}'#10'    [TestCase(''B'', ''2'')]'#10 +
+    '    {$ENDIF}'#10'    [TestCase(''A'', ''1'')] // A'#10, '(A: Integer)'), #10, #13#10, [rfReplaceAll]),
+    TTextChanges.Apply(mText, [mEdit]));
 end;
 
 end.

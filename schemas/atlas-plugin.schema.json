@@ -680,6 +680,19 @@
       "x-captionEn": "Dim unused uses entries",
       "x-issue": "#621"
     },
+    "HighlightMovableUses": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.highlightMovableUses",
+      "x-area": "editor",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "completion.enabled",
+      "x-drawing": true,
+      "x-caption": "Nur in der implementation gebrauchte uses-Einträge hervorheben",
+      "x-captionEn": "Highlight uses entries only needed in the implementation",
+      "x-issue": "#2465"
+    },
     "RecursionMarkers": {
       "type": "boolean",
       "default": true,
@@ -1701,6 +1714,19 @@
       "x-caption": "Fenster „Atlas-Tests“",
       "x-captionEn": "“Atlas Tests” window",
       "x-issue": "#1776"
+    },
+    "TestsWindowOnFailure": {
+      "description": "Nach einem Testlauf mit fehlgeschlagenen Tests oder einem Lauf, der mit Fehler abbricht (kein Bericht, Zeitgrenze), öffnet sich das Fenster „Atlas-Tests“ von selbst, kommt nach vorn und zeigt das Testprojekt des Laufs. Gilt für jeden Weg: Tests ausführen, fehlgeschlagene erneut ausführen, Tests nach dem Build, betroffene Tests beim Speichern, Serien, Testlisten und Testlinse. Der Fokus bleibt, wo er war (etwa im Editor). Nach einem grünen oder vom Benutzer abgebrochenen Lauf passiert nichts. Aus: Das Fenster öffnet sich nur über Befehl oder Menü.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.window.openOnFailure",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.window",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Bei Fehlschlägen von selbst öffnen",
+      "x-captionEn": "Open automatically when tests fail",
+      "x-issue": "#2467"
     },
     "TestsLists": {
       "description": "Testlisten im Fenster „Atlas-Tests“: Reiter neben „Alle“ mit festen Listen (Tests, Fixtures oder Units über „Zu Liste hinzufügen“) und dynamischen (Regeln mit „und“: Kategorie, Muster für Unit bzw. Fixture, Stand), „Liste ausführen“ im Reiter, in der Befehlspalette und mit Taste. Ablage je Liste in atlas.json (testLists, für das Team) oder nur für mich. Aus: keine Reiter, kein Eintrag in der Palette, testLists wird nicht gelesen.",
@@ -5162,6 +5188,18 @@
       "x-caption": "Menü Atlas: Debuggen und Haltepunkte nur mit offenem Projekt",
       "x-captionEn": "Atlas menu: Debug and Breakpoints only with an open project",
       "x-issue": "#2102"
+    },
+    "AtlasViewMenu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Untermenü Atlas unter Ansicht: alle andockbaren Atlas-Fenster öffnen, Fenster von Modulen in ihren Untermenüs (etwa Debuggen, Designer mit Atlas-Struktur und Ereignis-Karte). Jeder Eintrag erscheint nur, solange seine Funktion an ist. Aus = kein Untermenü Atlas unter Ansicht; die Fenster bleiben über das Menü Atlas, die Befehlspalette und ihre Knöpfe erreichbar.",
+      "x-key": "commands.viewMenu.windows",
+      "x-area": "codeActions",
+      "x-page": "Befehle",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Atlas-Fenster unter Ansicht › Atlas",
+      "x-captionEn": "Atlas windows under View › Atlas",
+      "x-issue": "#2470"
     },
     "Snippets": {
       "type": "boolean",

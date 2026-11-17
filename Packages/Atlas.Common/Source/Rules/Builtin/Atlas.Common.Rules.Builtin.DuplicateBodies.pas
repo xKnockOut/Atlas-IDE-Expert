@@ -7,9 +7,9 @@
 // minLines Zeilen (Vorgabe 6) und erzeugte Units. Eine lokale Routine, deren umschließende Routine selbst eine
 // Kopie hat, meldet die Regel nicht ein zweites Mal.
 //
-// Die Rümpfe der übrigen Units kommen aus TDuplicateBodyCatalog; Änderungen an anderen Units sieht die Regel im
-// Editor deshalb mit kurzer Verzögerung. Für den Build gibt es denselben Vergleich als --check-duplicates mit
-// eigener Baseline.
+// Die Rümpfe der übrigen Units kommen aus TDuplicateBodyCatalog, einem Verzeichnis je Projektgruppe, das alle
+// Units der Gruppe teilen; Änderungen an anderen Units sieht die Regel im Editor deshalb mit kurzer Verzögerung.
+// Für den Build gibt es denselben Vergleich als --check-duplicates mit eigener Baseline.
 
 interface
 
@@ -64,8 +64,10 @@ begin
     cTexts[TDuplicateBodiesText.Title].Text);
 end;
 
-/// <summary>Dateien der Projektgruppe außer AOwnFile, jede einmal.</summary>
-function OtherSources(const AProjects: TArray<TRuleProject>; const AOwnFile: string): TArray<string>;
+/// <summary>Dateien der Projektgruppe, jede einmal, die geprüfte Unit eingeschlossen: So ist die Liste für alle
+/// Units der Gruppe dieselbe, und der Katalog baut das Verzeichnis nur einmal. Die eigene Unit filtert
+/// ForeignCopies beim Nachschlagen aus.</summary>
+function AllSources(const AProjects: TArray<TRuleProject>): TArray<string>;
 var
   mProject: TRuleProject;
   mSource: string;
@@ -75,7 +77,6 @@ begin
   mSeen := TDictionary<string, Boolean>.Create;
   mList := TList<string>.Create;
   try
-    mSeen.Add(UpperCase(AOwnFile), True);
     for mProject in AProjects do
     begin
       for mSource in mProject.Sources do
@@ -94,7 +95,9 @@ begin
   end;
 end;
 
-/// <summary>Fassungen von AHash in AIndex außerhalb von AOwnFile.</summary>
+/// <summary>Fassungen von AHash in AIndex außerhalb von AOwnFile. Pfade ohne Groß-/Kleinschreibung wie in
+/// AllSources: Das Verzeichnis enthält die geprüfte Unit selbst, ihre Schreibweise im Projekt kann von AOwnFile
+/// abweichen.</summary>
 function ForeignCopies(const AIndex: IDuplicateBodyIndex; const AHash, AOwnFile: string): TArray<TDuplicateBodyMember>;
 var
   mMember: TDuplicateBodyMember;
@@ -102,7 +105,7 @@ begin
   Result := nil;
   for mMember in AIndex.Copies(AHash) do
   begin
-    if not SameFileName(mMember.Path, AOwnFile) then
+    if not SameText(mMember.Path, AOwnFile) then
     begin
       Result := Result + [mMember];
     end;
@@ -166,7 +169,7 @@ begin
     Exit;
   end;
   mFiles := AContext.ProjectFiles;
-  mIndex := TDuplicateBodyCatalog.Shared.IndexOf(OtherSources(mProjects, AContext.FileName),
+  mIndex := TDuplicateBodyCatalog.Shared.IndexOf(AllSources(mProjects),
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := mFiles.ReadText(AFileName, AText);

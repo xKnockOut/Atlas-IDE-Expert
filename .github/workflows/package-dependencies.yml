@@ -64,16 +64,35 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: "Baselines: Selbsttest des Vergleichs je Kopie"
+        shell: pwsh
+        run: ./Tools/Check-Baselines.ps1 -SelfTest
       - name: atlas.json der Plugin-Packages aus Packages/atlas.plugin.json
         shell: pwsh
         run: ./Tools/Update-PackageConfigs.ps1 -Check
-      - name: Baselines ohne tote Einträge, keine Regel wächst
+      - name: Baselines ohne tote Einträge, keine Regel und keine Kopie wächst
         shell: pwsh
         env:
           BASE_REF: ${{ github.base_ref }}
           BEFORE: ${{ github.event.before }}
           BASIS: ${{ steps.stand.outputs.basis }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMMER: ${{ github.event.pull_request.number }}
         run: |
+          # Neue oder gewachsene Gruppen in atlas-duplicates.json lässt nur eine Zeile „Neue Kopien: …“ im
+          # Pull Request durch. Der Text wird hier gelesen, nicht aus dem Ereignis: Nach dem Ergänzen der
+          # Beschreibung genügt es, den Lauf neu zu starten. Ohne Pull Request im Ereignis (Push nach dem
+          # Merge, Abgleich) gilt der Pull Request, zu dem der geprüfte Commit gehört.
+          $text = ''
+          if ($env:PR_NUMMER) {
+            $text = gh api "repos/$env:GITHUB_REPOSITORY/pulls/$env:PR_NUMMER" --jq '.body // ""'
+          } else {
+            $text = gh api "repos/$env:GITHUB_REPOSITORY/commits/$env:GITHUB_SHA/pulls" --jq '.[0].body // ""' 2>$null
+          }
+          $grund = ''
+          foreach ($zeile in @($text)) {
+            if (-not $grund -and $zeile -match '^\s*Neue Kopien:\s*(\S.*)$') { $grund = $Matches[1].Trim() }
+          }
           if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:BASIS) {
             $ref = $env:BASIS
           } elseif ($env:BASE_REF) {
@@ -86,7 +105,7 @@ jobs:
             Write-Host 'Kein Vergleichsstand (erster Push des Branches); nur tote Einträge prüfen.'
             $ref = 'HEAD'
           }
-          ./Tools/Check-Baselines.ps1 -BaseRef $ref
+          ./Tools/Check-Baselines.ps1 -BaseRef $ref -DuplicatesReason $grund
       - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
         if: steps.stand.outputs.grenzen == 'true'
         shell: pwsh

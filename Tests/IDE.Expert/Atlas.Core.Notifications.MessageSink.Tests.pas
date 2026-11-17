@@ -1,6 +1,6 @@
-﻿unit Atlas.Core.Diagnostics.Guard.MessageSink.Tests;
+﻿unit Atlas.Core.Notifications.MessageSink.Tests;
 
-// Empfänger einer Meldungszeile, der fehlen darf (TAtlasMessageSink in Atlas.Core.Diagnostics.Guard).
+// Empfänger einer Meldungszeile, der fehlen darf (TAtlasMessageSink).
 
 interface
 
@@ -29,7 +29,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 { TAtlasMessageSinkTests }
 

@@ -72,6 +72,8 @@ function ContainerName(AHeader: TSyntaxNode): string;
 function NameToken(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 function TokenRange(const AToken: TPascalToken): TTextRange;
 function NodeRange(ANode: TSyntaxNode): TTextRange;
+/// <summary>Bereich des Namens im Kopf AHeader (NameToken), ohne Namen der ganze Knoten.</summary>
+function HeaderNameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TTextRange;
 /// <summary>Text eines Knotens in einer Zeile, ohne doppelte Leerzeichen, für Meldungen.</summary>
 function OneLine(const AText: string; ANode: TSyntaxNode): string;
 /// <summary>Text eines Knotens ohne Zeilenumbrüche und doppelte Leerzeichen, für Vergleiche.</summary>
@@ -372,6 +374,21 @@ end;
 function NodeRange(ANode: TSyntaxNode): TTextRange;
 begin
   Result := TTextRange.Create(ANode.StartPos, ANode.EndPos);
+end;
+
+function HeaderNameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TTextRange;
+var
+  mAt: Integer;
+begin
+  mAt := NameToken(ATokens, AHeader);
+  if mAt >= 0 then
+  begin
+    Result := TokenRange(ATokens[mAt]);
+  end
+  else
+  begin
+    Result := NodeRange(AHeader);
+  end;
 end;
 
 /// <summary>Text eines Knotens in einer Zeile, ohne doppelte Leerzeichen, für Meldungen.</summary>

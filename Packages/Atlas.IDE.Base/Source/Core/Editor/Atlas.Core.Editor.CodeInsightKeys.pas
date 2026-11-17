@@ -13,6 +13,9 @@
 // Die Merker (was Atlas abgeschaltet hat) gelten je Version und Ort; vorher
 // teilten sich Delphi 12 und 13 einen Merker, und die eine IDE drehte zurück,
 // was die andere abgeschaltet hatte.
+// Für den Manager „Atlas IDE Expert“ selbst hilft das unter Delphi 12 nicht:
+// Die IDE speichert dessen Schalter nirgends und beginnt jeden Start mit „an“.
+// Help Insight blendet dort Atlas.IDE.Hover.IdeHelpInsight aus.
 
 interface
 

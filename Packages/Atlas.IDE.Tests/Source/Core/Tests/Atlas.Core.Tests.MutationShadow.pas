@@ -9,10 +9,13 @@
 //     <Projekt>Mutation.dpr / .dproj
 //     Src\<Unit>.pas          mutierte Kopie (dazu .dfm/.fmx der Unit)
 //     Out\, Out\Dcu\          Ausgaben, getrennt vom Original
-// dpr: Programmname ersetzt; alle „in '…'“-Pfade und {$R}/{$I} absolut
-// zum Ordner des Originals, die mutierte Unit nach Src\ (steht sie nicht in
-// der dpr, wird sie an die uses-Klausel angehängt); {$R *.res} zeigt auf die
-// .res des Originals oder fällt weg, wenn es keine gibt.
+// dpr: Programmname ersetzt; alle „in '…'“-Pfade und die Argumente von
+// {$R}/{$I} absolut zum Ordner des Originals ({$R 'X.res' 'X.rc'} mit beiden),
+// die mutierte Unit nach Src\ (mit oder ohne „in“ in der dpr; fehlt sie, wird
+// sie an die uses-Klausel angehängt); {$R *.res} zeigt auf die .res des
+// Originals oder fällt weg, wenn es keine gibt. Eine Form, die das Umschreiben
+// nicht kennt, meldet Build als Problem samt Textstelle, statt eine dpr zu
+// liefern, die erst beim Bauen scheitert.
 // dproj: MainSource, Projektname und GUID neu; relative Pfade (Suchpfade,
 // Include= der Einträge, Symbol, Manifest) absolut; der Ordner des Originals
 // und der der Unit stehen vorn im Such- und Include-Pfad (die Kopie liegt
@@ -30,6 +33,23 @@
 interface
 
 type
+  {$SCOPEDENUMS ON}
+  /// <summary>Warum Build kein Schattenprojekt liefert.</summary>
+  TAtlasMutationShadowProblem = (
+    /// <summary>Kein Problem.</summary>
+    None,
+    /// <summary>Die dpr hat keinen Programmkopf.</summary>
+    NoProgram,
+    /// <summary>Eine Direktive {$R}/{$I} hat eine unbekannte Form (zu viele Argumente, offenes Anführungszeichen).
+    /// </summary>
+    Directive,
+    /// <summary>Ein Eintrag der uses-Klausel hat eine unbekannte Form oder die Klausel kein Ende.</summary>
+    UsesEntry,
+    /// <summary>Ein Kommentar oder eine Zeichenkette hat keinen Abschluss (etwa beim Speichern mitten im
+    /// Auskommentieren); jede Stelle dahinter wäre geraten.</summary>
+    Unclosed);
+  {$SCOPEDENUMS OFF}
+
   /// <summary>Was das Schattenprojekt braucht.</summary>
   TAtlasMutationShadowSource = record
     /// <summary>Voller Pfad der .dproj des Testprojekts.</summary>
@@ -56,6 +76,10 @@ type
     UnitFile: string;
     Dpr: string;
     Dproj: string;
+    /// <summary>Warum Build scheiterte, sonst None.</summary>
+    Problem: TAtlasMutationShadowProblem;
+    /// <summary>Textstelle der dpr, an der das Umschreiben scheiterte (Direktive oder uses-Eintrag).</summary>
+    ProblemText: string;
   end;
 
   TAtlasMutationShadows = class
@@ -69,7 +93,8 @@ type
   public
     /// <summary>Ordner der Mutationsdaten eines Testprojekts (.atlas-local\mutation).</summary>
     class function DataFolderOf(const AProjectFile: string): string; static;
-    /// <summary>Schattenprojekt zu ASource. False, wenn die dpr keinen Programmkopf hat.</summary>
+    /// <summary>Schattenprojekt zu ASource. False, wenn sich die dpr nicht umschreiben lässt; AShadow ist dann leer
+    /// bis auf Problem und ProblemText.</summary>
     class function Build(const ASource: TAtlasMutationShadowSource; out AShadow: TAtlasMutationShadow): Boolean;
       static;
     /// <summary>Formulardateien, die mit der Unit AUnitFile kopiert werden müssen, falls es sie gibt.</summary>
@@ -102,7 +127,10 @@ implementation
 
 uses
   System.SysUtils,
-  System.StrUtils;
+  System.StrUtils,
+  System.Math,
+  Atlas.Text.Chars,
+  Atlas.Text.PascalScan;
 
 const
   cBreak = #13#10;
@@ -119,10 +147,22 @@ const
   /// <summary>Einträge, deren Include= ein Pfad ist.</summary>
   cIncludeItems: array[0..3] of string = ('DCCReference', 'RcCompile', 'RcItem', 'ResourceCompile');
   cBaseGroup = '<PropertyGroup Condition="''$(Base)''!=''''">';
-  cIdentChars = ['A'..'Z', 'a'..'z', '0'..'9', '_', '.'];
+  cBlanks = [' ', #9, #13, #10];
 
 type
   TValueFunc = reference to function(const AValue: string): string;
+
+  /// <summary>Was das Umschreiben der uses-Klausel braucht und ob es die mutierte Unit fand.</summary>
+  TUsesRewrite = record
+    /// <summary>Name der mutierten Unit.</summary>
+    UnitName: string;
+    /// <summary>Pfad der Kopie, relativ zum Schattenprojekt.</summary>
+    Target: string;
+    /// <summary>Ordner des Originals, Bezug für relative Pfade.</summary>
+    Base: string;
+    /// <summary>Kam die mutierte Unit vor?</summary>
+    Found: Boolean;
+  end;
 
 { Pfade }
 
@@ -275,152 +315,170 @@ end;
 
 { dpr }
 
-/// <summary>Position (ab 1) des Zeichens hinter dem Kommentar oder der Zeichenkette ab AIndex; AIndex selbst, wenn
-/// dort keins beginnt.</summary>
-function SkipNoise(const AText: string; AIndex: Integer): Integer;
+/// <summary>Zeichen eines (auch gepunkteten) Bezeichners; Delphi erlaubt Unicode.</summary>
+function IsNameChar(AChar: Char): Boolean;
+begin
+  Result := TTextChars.IsIdentChar(AChar) or (AChar = '.');
+end;
+
+/// <summary>Position hinter Leerraum und Kommentaren ab AIndex, höchstens AStop. Zeichenketten sind kein Leerraum.
+/// </summary>
+function SkipBlank(const AText: string; AIndex, AStop: Integer): Integer;
 var
-  mClose: Integer;
+  mNext: Integer;
 begin
   Result := AIndex;
-  if AText[AIndex] = '{' then
+  while Result < AStop do
   begin
-    mClose := PosEx('}', AText, AIndex);
-  end
-  else if Copy(AText, AIndex, 2) = '(*' then
-  begin
-    mClose := PosEx('*)', AText, AIndex) + 1;
-  end
-  else if Copy(AText, AIndex, 2) = '//' then
-  begin
-    mClose := PosEx(#10, AText, AIndex);
-  end
-  else if AText[AIndex] = '''' then
-  begin
-    mClose := PosEx('''', AText, AIndex + 1);
-  end
-  else
-  begin
-    Exit;
-  end;
-  Result := Length(AText) + 1;
-  if mClose > 0 then
-  begin
-    Result := mClose + 1;
-  end;
-end;
-
-/// <summary>Position (ab 1) des Worts AWord außerhalb von Kommentaren und Zeichenketten ab AFrom; 0 ohne.</summary>
-function FindWord(const AText, AWord: string; AFrom: Integer): Integer;
-var
-  mIndex, mNext: Integer;
-begin
-  mIndex := AFrom;
-  while mIndex <= Length(AText) do
-  begin
-    mNext := SkipNoise(AText, mIndex);
-    if mNext <> mIndex then
+    if CharInSet(AText[Result], cBlanks) then
     begin
-      mIndex := mNext;
+      Inc(Result);
       Continue;
     end;
-    if SameText(Copy(AText, mIndex, Length(AWord)), AWord) and ((mIndex = 1) or
-      not CharInSet(AText[mIndex - 1], cIdentChars)) and ((mIndex + Length(AWord) > Length(AText)) or
-      not CharInSet(AText[mIndex + Length(AWord)], cIdentChars)) then
-    begin
-      Exit(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := 0;
-end;
-
-/// <summary>Position des ";" ab AFrom außerhalb von Kommentaren und Zeichenketten; 0 ohne.</summary>
-function FindSemicolon(const AText: string; AFrom: Integer): Integer;
-var
-  mIndex, mNext: Integer;
-begin
-  mIndex := AFrom;
-  while mIndex <= Length(AText) do
-  begin
-    mNext := SkipNoise(AText, mIndex);
-    if mNext <> mIndex then
-    begin
-      mIndex := mNext;
-      Continue;
-    end;
-    if AText[mIndex] = ';' then
-    begin
-      Exit(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := 0;
-end;
-
-/// <summary>Bezeichner, der vor AIndex (über Leerraum hinweg) endet.</summary>
-function IdentBefore(const AText: string; AIndex: Integer): string;
-var
-  mEnd, mStart: Integer;
-begin
-  mEnd := AIndex - 1;
-  while (mEnd > 0) and CharInSet(AText[mEnd], [' ', #9, #13, #10]) do
-  begin
-    Dec(mEnd);
-  end;
-  mStart := mEnd;
-  while (mStart > 0) and CharInSet(AText[mStart], cIdentChars) do
-  begin
-    Dec(mStart);
-  end;
-  Result := Copy(AText, mStart + 1, mEnd - mStart);
-end;
-
-/// <summary>Ersetzt in der uses-Klausel ab AFrom bis AStop die Pfade hinter „in“; ATarget für die mutierte Unit
-/// von ASource. AFound sagt, ob sie vorkam.</summary>
-function RewriteUses(const AText: string; AFrom, AStop: Integer; const ASource: TAtlasMutationShadowSource;
-  const ATarget: string; out AFound: Boolean): string;
-var
-  mIndex, mIn, mOpen, mClose: Integer;
-  mPath, mBase: string;
-begin
-  mBase := TAtlasMutationShadows.FolderOf(ASource.ProjectFile);
-  AFound := False;
-  Result := Copy(AText, 1, AFrom - 1);
-  mIndex := AFrom;
-  while mIndex < AStop do
-  begin
-    mIn := FindWord(AText, 'in', mIndex);
-    if (mIn = 0) or (mIn >= AStop) then
+    if AText[Result] = '''' then
     begin
       Break;
     end;
-    mClose := mIn + 2;
-    while (mClose <= Length(AText)) and CharInSet(AText[mClose], [' ', #9, #13, #10]) do
+    mNext := TPascalScan.SkipNoise(AText, Result);
+    if mNext <= Result then
     begin
-      Inc(mClose);
+      Break;
     end;
-    if (mClose > Length(AText)) or (AText[mClose] <> '''') then
+    Result := mNext;
+  end;
+  Result := Min(Result, AStop);
+end;
+
+/// <summary>Position des Kommas hinter dem uses-Eintrag ab AFrom außerhalb von Kommentaren und Zeichenketten;
+/// AStop ohne.</summary>
+function EntryEnd(const AText: string; AFrom, AStop: Integer): Integer;
+var
+  mNext: Integer;
+begin
+  Result := AFrom;
+  while (Result < AStop) and (AText[Result] <> ',') do
+  begin
+    mNext := TPascalScan.SkipNoise(AText, Result);
+    if mNext > Result then
     begin
-      Result := Result + Copy(AText, mIndex, mIn + 2 - mIndex);
-      mIndex := mIn + 2;
-      Continue;
-    end;
-    mOpen := mClose;
-    mClose := PosEx('''', AText, mOpen + 1);
-    mPath := Copy(AText, mOpen + 1, mClose - mOpen - 1);
-    if SameText(IdentBefore(AText, mIn), ASource.UnitName) then
-    begin
-      AFound := True;
-      mPath := ATarget;
+      Result := mNext;
     end
     else
     begin
-      mPath := TAtlasMutationShadows.Absolute(mBase, mPath);
+      Inc(Result);
     end;
-    Result := Result + Copy(AText, mIndex, mOpen - mIndex) + Quoted(mPath);
-    mIndex := mClose + 1;
   end;
-  Result := Result + Copy(AText, mIndex, MaxInt);
+  Result := Min(Result, AStop);
+end;
+
+/// <summary>Position des schließenden Anführungszeichens zu dem bei AOpen ('' zählt als Zeichen); 0 ohne.</summary>
+function QuoteEnd(const AText: string; AOpen: Integer): Integer;
+begin
+  Result := PosEx('''', AText, AOpen + 1);
+  while (Result > 0) and (Result < Length(AText)) and (AText[Result + 1] = '''') do
+  begin
+    Result := PosEx('''', AText, Result + 2);
+  end;
+end;
+
+/// <summary>Steht das Wort AWord bei AIndex (vor AStop) und endet dort?</summary>
+function IsWordAt(const AText, AWord: string; AIndex, AStop: Integer): Boolean;
+var
+  mAfter: Integer;
+begin
+  mAfter := AIndex + Length(AWord);
+  Result := (mAfter <= AStop) and SameText(Copy(AText, AIndex, Length(AWord)), AWord) and
+    ((mAfter > Length(AText)) or not IsNameChar(AText[mAfter]));
+end;
+
+/// <summary>Ein uses-Eintrag „Name“ oder „Name in 'Pfad'“ (mit Kommentaren) von AFrom bis vor AStop: Pfad absolut
+/// zu ARewrite.Base, die mutierte Unit mit „in ARewrite.Target“, ob mit „in“ oder ohne. False bei unbekannter Form.
+/// </summary>
+function RewriteEntry(const AText: string; AFrom, AStop: Integer; var ARewrite: TUsesRewrite;
+  out AEntry: string): Boolean;
+var
+  mName, mNameEnd, mIn, mOpen, mClose, mRest: Integer;
+  mMine: Boolean;
+  mPath: string;
+begin
+  AEntry := Copy(AText, AFrom, AStop - AFrom);
+  mName := SkipBlank(AText, AFrom, AStop);
+  mNameEnd := mName;
+  while (mNameEnd < AStop) and IsNameChar(AText[mNameEnd]) do
+  begin
+    Inc(mNameEnd);
+  end;
+  if mNameEnd = mName then
+  begin
+    // Nur Leerraum und Kommentare: nichts umzuschreiben.
+    Exit(mName >= AStop);
+  end;
+  mMine := SameText(Copy(AText, mName, mNameEnd - mName), ARewrite.UnitName);
+  mIn := SkipBlank(AText, mNameEnd, AStop);
+  mRest := mNameEnd;
+  if IsWordAt(AText, 'in', mIn, AStop) then
+  begin
+    mOpen := SkipBlank(AText, mIn + 2, AStop);
+    mClose := 0;
+    if (mOpen < AStop) and (AText[mOpen] = '''') then
+    begin
+      mClose := QuoteEnd(AText, mOpen);
+    end;
+    if (mClose = 0) or (mClose >= AStop) then
+    begin
+      Exit(False);
+    end;
+    mPath := ARewrite.Target;
+    if not mMine then
+    begin
+      mPath := TAtlasMutationShadows.Absolute(ARewrite.Base,
+        StringReplace(Copy(AText, mOpen + 1, mClose - mOpen - 1), '''''', '''', [rfReplaceAll]));
+    end;
+    AEntry := Copy(AText, AFrom, mOpen - AFrom) + Quoted(mPath);
+    mRest := mClose + 1;
+  end
+  else
+  begin
+    AEntry := Copy(AText, AFrom, mNameEnd - AFrom);
+    if mMine then
+    begin
+      AEntry := AEntry + ' in ' + Quoted(ARewrite.Target);
+    end;
+  end;
+  // Hinter Name bzw. Pfad dürfen nur Leerraum und Kommentare ({Form1}) stehen.
+  Result := SkipBlank(AText, mRest, AStop) >= AStop;
+  AEntry := AEntry + Copy(AText, mRest, AStop - mRest);
+  ARewrite.Found := ARewrite.Found or mMine;
+end;
+
+/// <summary>Schreibt die uses-Klausel (AFrom zeigt auf „uses“, AStop auf ihr Semikolon) Eintrag für Eintrag um; siehe
+/// RewriteEntry. ARewrite.Found sagt, ob die mutierte Unit vorkam; AProblem ist der erste Eintrag unbekannter Form,
+/// sonst leer.</summary>
+function RewriteUses(const AText: string; AFrom, AStop: Integer; var ARewrite: TUsesRewrite;
+  out AProblem: string): string;
+var
+  mIndex, mEnd: Integer;
+  mEntry: string;
+begin
+  AProblem := '';
+  mIndex := AFrom + Length('uses');
+  Result := Copy(AText, 1, mIndex - 1);
+  while mIndex < AStop do
+  begin
+    mEnd := EntryEnd(AText, mIndex, AStop);
+    if not RewriteEntry(AText, mIndex, mEnd, ARewrite, mEntry) then
+    begin
+      AProblem := Trim(Copy(AText, mIndex, mEnd - mIndex));
+      Exit(AText);
+    end;
+    Result := Result + mEntry;
+    if mEnd < AStop then
+    begin
+      Result := Result + ',';
+    end;
+    mIndex := mEnd + 1;
+  end;
+  Result := Result + Copy(AText, AStop, MaxInt);
 end;
 
 /// <summary>Position der nächsten Direktive {$R, {$RESOURCE, {$I oder {$INCLUDE mit Argument in AUpper (Text in
@@ -445,44 +503,126 @@ begin
   end;
 end;
 
-/// <summary>Neuer Text der Direktive ADirective (Anfang AName); {$R *.res} zeigt auf AResFile oder fällt weg,
-/// Masken und Argumente mit Leerzeichen ohne Anführungszeichen bleiben.</summary>
-function DirectiveText(const ADirective, AName, ABase, AResFile: string): string;
+/// <summary>Argumente einer Direktive: in Anführungszeichen ('' als Zeichen) oder bis zum Leerraum. False bei offenem
+/// Anführungszeichen.</summary>
+function DirectiveArguments(const AText: string; out AArguments: TArray<string>): Boolean;
 var
-  mArgument, mPath: string;
+  mIndex, mClose: Integer;
 begin
-  mArgument := Trim(Copy(ADirective, Length(AName) + 1, Length(ADirective) - Length(AName) - 1));
-  mPath := mArgument;
-  if StartsStr('''', mPath) then
+  AArguments := nil;
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    mPath := Copy(mPath, 2, Length(mPath) - 2);
-  end;
-  if SameText(mPath, '*.res') then
-  begin
-    Result := '';
-    if AResFile <> '' then
+    if CharInSet(AText[mIndex], cBlanks) then
     begin
-      Result := '{$R ' + Quoted(AResFile) + '}';
+      Inc(mIndex);
+      Continue;
     end;
-  end
-  else if (mPath = '') or StartsStr('*', mPath) or ((Pos(' ', mPath) > 0) and not StartsStr('''', mArgument)) then
+    if AText[mIndex] = '''' then
+    begin
+      mClose := QuoteEnd(AText, mIndex);
+      if mClose = 0 then
+      begin
+        Exit(False);
+      end;
+      AArguments := AArguments + [StringReplace(Copy(AText, mIndex + 1, mClose - mIndex - 1), '''''', '''',
+        [rfReplaceAll])];
+      mIndex := mClose + 1;
+      Continue;
+    end;
+    mClose := mIndex;
+    while (mClose <= Length(AText)) and not CharInSet(AText[mClose], cBlanks) do
+    begin
+      Inc(mClose);
+    end;
+    AArguments := AArguments + [Copy(AText, mIndex, mClose - mIndex)];
+    mIndex := mClose;
+  end;
+  Result := True;
+end;
+
+/// <summary>Ist AName (Anfang aus NextDirective) {$I bzw. {$INCLUDE?</summary>
+function IsIncludeDirective(const AName: string): Boolean;
+begin
+  Result := SameText(AName, '{$I ') or SameText(AName, '{$INCLUDE ');
+end;
+
+/// <summary>Argumente AArguments absolut zu ABase, mit Anführungszeichen und durch Leerzeichen getrennt; Masken (*)
+/// bleiben.</summary>
+function AbsoluteArguments(const AArguments: TArray<string>; const ABase: string): string;
+var
+  mArgument: string;
+begin
+  Result := '';
+  for mArgument in AArguments do
   begin
-    Result := ADirective;
-  end
-  else
-  begin
-    Result := Copy(ADirective, 1, Length(AName)) + Quoted(TAtlasMutationShadows.Absolute(ABase, mPath)) + '}';
+    if Result <> '' then
+    begin
+      Result := Result + ' ';
+    end;
+    if StartsStr('*', mArgument) then
+    begin
+      Result := Result + mArgument;
+    end
+    else
+    begin
+      Result := Result + Quoted(TAtlasMutationShadows.Absolute(ABase, mArgument));
+    end;
   end;
 end;
 
-/// <summary>{$R …}, {$RESOURCE …}, {$I …}, {$INCLUDE …} mit absolutem Pfad; {$R *.res} auf AResFile bzw. weg.
-/// Schalter wie {$R+} oder {$I-} bleiben.</summary>
-function RewriteDirectives(const AText, ABase, AResFile: string): string;
+/// <summary>Neuer Text ATextOut der Direktive ADirective (Anfang AName): jedes Argument absolut ({$R} hat bis zu zwei:
+/// .res und .rc, {$I} eins); {$R *.res} zeigt auf AResFile oder fällt weg; Masken und ein {$I} ohne
+/// Anführungszeichen mit Leerzeichen bleiben. False bei unbekannter Form (mehr Argumente, offenes Anführungszeichen).
+/// </summary>
+function DirectiveText(const ADirective, AName, ABase, AResFile: string; out ATextOut: string): Boolean;
+var
+  mArgument: string;
+  mArguments: TArray<string>;
+  mMax: Integer;
+begin
+  ATextOut := ADirective;
+  mArgument := Trim(Copy(ADirective, Length(AName) + 1, Length(ADirective) - Length(AName) - 1));
+  Result := DirectiveArguments(mArgument, mArguments);
+  if not Result or (mArguments = nil) then
+  begin
+    Exit;
+  end;
+  if (Length(mArguments) = 1) and SameText(mArguments[0], '*.res') then
+  begin
+    ATextOut := '';
+    if AResFile <> '' then
+    begin
+      ATextOut := '{$R ' + Quoted(AResFile) + '}';
+    end;
+    Exit;
+  end;
+  mMax := 2;
+  if IsIncludeDirective(AName) then
+  begin
+    // Ein Pfad ohne Anführungszeichen mit Leerzeichen bleibt, der Include-Pfad findet ihn im Ordner des Originals.
+    if (Length(mArguments) > 1) and not StartsStr('''', mArgument) then
+    begin
+      Exit;
+    end;
+    mMax := 1;
+  end;
+  Result := Length(mArguments) <= mMax;
+  if Result then
+  begin
+    ATextOut := Copy(ADirective, 1, Length(AName)) + AbsoluteArguments(mArguments, ABase) + '}';
+  end;
+end;
+
+/// <summary>{$R …}, {$RESOURCE …}, {$I …}, {$INCLUDE …} mit absoluten Pfaden; {$R *.res} auf AResFile bzw. weg.
+/// Schalter wie {$R+} oder {$I-} bleiben. AProblem ist die erste Direktive unbekannter Form, sonst leer.</summary>
+function RewriteDirectives(const AText, ABase, AResFile: string; out AProblem: string): string;
 var
   mIndex, mStart, mClose: Integer;
-  mName, mUpper: string;
+  mName, mUpper, mDirective, mNew: string;
 begin
   Result := '';
+  AProblem := '';
   mIndex := 1;
   mUpper := UpperCase(AText);
   while True do
@@ -497,62 +637,119 @@ begin
     begin
       Break;
     end;
-    Result := Result + Copy(AText, mIndex, mStart - mIndex) +
-      DirectiveText(Copy(AText, mStart, mClose - mStart + 1), mName, ABase, AResFile);
+    mDirective := Copy(AText, mStart, mClose - mStart + 1);
+    if not DirectiveText(mDirective, mName, ABase, AResFile, mNew) then
+    begin
+      AProblem := mDirective;
+      Exit(AText);
+    end;
+    Result := Result + Copy(AText, mIndex, mStart - mIndex) + mNew;
     mIndex := mClose + 1;
   end;
   Result := Result + Copy(AText, mIndex, MaxInt);
 end;
 
-/// <summary>dpr des Schattenprojekts; False ohne Programmkopf.</summary>
-function ShadowDpr(const ASource: TAtlasMutationShadowSource; const AName, ATarget: string;
-  out ADpr: string): Boolean;
-var
-  mBase, mResFile, mText: string;
-  mProgram, mHeaderEnd, mUses, mUsesEnd: Integer;
-  mFound: Boolean;
+/// <summary>Datei der .res des Originals, leer ohne.</summary>
+function ResFileOf(const ASource: TAtlasMutationShadowSource): string;
 begin
-  ADpr := '';
-  mBase := TAtlasMutationShadows.FolderOf(ASource.ProjectFile);
+  Result := '';
+  if ASource.ResExists then
+  begin
+    Result := WithExtension(ASource.ProjectFile, '.res');
+  end;
+end;
+
+/// <summary>Text von AIndex bis zum Zeilenende, ohne Leerraum am Rand.</summary>
+function LineAt(const AText: string; AIndex: Integer): string;
+var
+  mEnd: Integer;
+begin
+  mEnd := AIndex;
+  while (mEnd <= Length(AText)) and not CharInSet(AText[mEnd], [#13, #10]) do
+  begin
+    Inc(mEnd);
+  end;
+  Result := Trim(Copy(AText, AIndex, mEnd - AIndex));
+end;
+
+/// <summary>Schreibt die uses-Klausel ab AHeaderEnd (Semikolon des Programmkopfs) um bzw. legt eine an.</summary>
+function WithShadowUses(const AText: string; AHeaderEnd: Integer; const ASource: TAtlasMutationShadowSource;
+  const ATarget: string; out AProblem: string): string;
+var
+  mUses, mUsesEnd: Integer;
+  mRewrite: TUsesRewrite;
+begin
+  AProblem := '';
+  mUses := TPascalScan.FindWord(AText, 'uses', AHeaderEnd);
+  if mUses = 0 then
+  begin
+    Exit(Copy(AText, 1, AHeaderEnd) + cBreak + cBreak + 'uses' + cBreak + '  ' + ASource.UnitName + ' in ' +
+      Quoted(ATarget) + ';' + Copy(AText, AHeaderEnd + 1, MaxInt));
+  end;
+  mUsesEnd := TPascalScan.FindChar(AText, ';', mUses);
+  if mUsesEnd = 0 then
+  begin
+    AProblem := LineAt(AText, mUses);
+    Exit(AText);
+  end;
+  mRewrite := Default(TUsesRewrite);
+  mRewrite.UnitName := ASource.UnitName;
+  mRewrite.Target := ATarget;
+  mRewrite.Base := TAtlasMutationShadows.FolderOf(ASource.ProjectFile);
+  Result := RewriteUses(AText, mUses, mUsesEnd, mRewrite, AProblem);
+  if (AProblem = '') and not mRewrite.Found then
+  begin
+    // Nach dem Umschreiben hat sich die Länge geändert: Ende der Klausel neu suchen.
+    mUsesEnd := TPascalScan.FindChar(Result, ';', mUses);
+    Result := Copy(Result, 1, mUsesEnd - 1) + ',' + cBreak + '  ' + ASource.UnitName + ' in ' + Quoted(ATarget) +
+      Copy(Result, mUsesEnd, MaxInt);
+  end;
+end;
+
+/// <summary>dpr des Schattenprojekts nach AShadow.Dpr; sonst AShadow.Problem und ProblemText. Eine dpr mit offenem
+/// Kommentar oder offener Zeichenkette wird nicht umgeschrieben.</summary>
+procedure ShadowDpr(const ASource: TAtlasMutationShadowSource; const ATarget: string;
+  var AShadow: TAtlasMutationShadow);
+var
+  mText, mProblem: string;
+  mProgram, mHeaderEnd, mOpen: Integer;
+begin
   mText := ASource.Dpr;
-  mProgram := FindWord(mText, 'program', 1);
+  mOpen := TPascalScan.FirstOpen(mText);
+  if mOpen > 0 then
+  begin
+    AShadow.Problem := TAtlasMutationShadowProblem.Unclosed;
+    AShadow.ProblemText := LineAt(mText, mOpen);
+    Exit;
+  end;
+  mProgram := TPascalScan.FindWord(mText, 'program', 1);
   mHeaderEnd := 0;
   if mProgram > 0 then
   begin
-    mHeaderEnd := FindSemicolon(mText, mProgram);
+    mHeaderEnd := TPascalScan.FindChar(mText, ';', mProgram);
   end;
   if mHeaderEnd = 0 then
   begin
-    Exit(False);
+    AShadow.Problem := TAtlasMutationShadowProblem.NoProgram;
+    Exit;
   end;
-  mText := Copy(mText, 1, mProgram - 1) + 'program ' + AName + Copy(mText, mHeaderEnd, MaxInt);
-  mHeaderEnd := FindSemicolon(mText, mProgram);
-  mUses := FindWord(mText, 'uses', mHeaderEnd);
-  if mUses > 0 then
+  mText := Copy(mText, 1, mProgram - 1) + 'program ' + AShadow.Name + Copy(mText, mHeaderEnd, MaxInt);
+  mText := WithShadowUses(mText, TPascalScan.FindChar(mText, ';', mProgram), ASource, ATarget, mProblem);
+  if mProblem <> '' then
   begin
-    mUsesEnd := FindSemicolon(mText, mUses);
-    mText := RewriteUses(mText, mUses, mUsesEnd, ASource, ATarget, mFound);
-    if not mFound then
-    begin
-      // Nach dem Umschreiben hat sich die Länge geändert: Ende der Klausel neu suchen.
-      mUsesEnd := FindSemicolon(mText, mUses);
-      mText := Copy(mText, 1, mUsesEnd - 1) + ',' + cBreak + '  ' + ASource.UnitName + ' in ' + Quoted(ATarget) +
-        Copy(mText, mUsesEnd, MaxInt);
-    end;
-  end
-  else
-  begin
-    mText := Copy(mText, 1, mHeaderEnd) + cBreak + cBreak + 'uses' + cBreak + '  ' + ASource.UnitName + ' in ' +
-      Quoted(ATarget) + ';' + Copy(mText, mHeaderEnd + 1, MaxInt);
+    AShadow.Problem := TAtlasMutationShadowProblem.UsesEntry;
+    AShadow.ProblemText := mProblem;
+    Exit;
   end;
-  mResFile := '';
-  if ASource.ResExists then
+  mText := RewriteDirectives(mText, TAtlasMutationShadows.FolderOf(ASource.ProjectFile), ResFileOf(ASource),
+    mProblem);
+  if mProblem <> '' then
   begin
-    mResFile := Copy(ASource.ProjectFile, 1, Length(ASource.ProjectFile) -
-      Length(ExtractFileExt(ASource.ProjectFile))) + '.res';
+    AShadow.Problem := TAtlasMutationShadowProblem.Directive;
+    AShadow.ProblemText := mProblem;
+    Exit;
   end;
-  ADpr := RewriteDirectives(mText, mBase, mResFile);
-  Result := True;
+  AShadow.Dpr := mText;
 end;
 
 { dproj }
@@ -761,7 +958,8 @@ end;
 class function TAtlasMutationShadows.Build(const ASource: TAtlasMutationShadowSource;
   out AShadow: TAtlasMutationShadow): Boolean;
 var
-  mProject, mTarget: string;
+  mProject, mTarget, mProblemText: string;
+  mProblem: TAtlasMutationShadowProblem;
 begin
   AShadow := Default(TAtlasMutationShadow);
   mProject := BaseNameOf(ASource.ProjectFile);
@@ -771,15 +969,18 @@ begin
   AShadow.DprojFile := AShadow.Folder + '\' + AShadow.Name + '.dproj';
   mTarget := cSourceFolder + '\' + FileNameOf(ASource.UnitFile);
   AShadow.UnitFile := AShadow.Folder + '\' + mTarget;
-  Result := ShadowDpr(ASource, AShadow.Name, mTarget, AShadow.Dpr);
+  ShadowDpr(ASource, mTarget, AShadow);
+  Result := AShadow.Problem = TAtlasMutationShadowProblem.None;
   if Result then
   begin
     AShadow.Dproj := ShadowDproj(ASource, AShadow.Name, AShadow.Name + '.dpr', mTarget);
-  end
-  else
-  begin
-    AShadow := Default(TAtlasMutationShadow);
+    Exit;
   end;
+  mProblem := AShadow.Problem;
+  mProblemText := AShadow.ProblemText;
+  AShadow := Default(TAtlasMutationShadow);
+  AShadow.Problem := mProblem;
+  AShadow.ProblemText := mProblemText;
 end;
 
 end.

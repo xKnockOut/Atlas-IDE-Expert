@@ -3,10 +3,13 @@
   "minDelphiVersion": "23.0",
   "exclude": ["Output/**", "Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
     "Tests/Referenzprojekt/**", "Tests/**/*Golden.pas", "Setup/Beispiele/**", "docs/Beispiele/**"],
+  "profiles": {
+    "metriken": {"extends": "standard", "categories": ["security-hotspot"]}
+  },
   "rules": {
-    "metric-method-length": "off",
+    "metric-method-length": "hint",
     "metric-nesting-depth": "off",
-    "metric-cyclomatic-complexity": "off",
+    "metric-cyclomatic-complexity": "hint",
     "metric-cognitive-complexity": "off",
     "metric-parameter-count": "off",
     "metric-boolean-operands": "off",

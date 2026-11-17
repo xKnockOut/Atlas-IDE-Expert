@@ -14,6 +14,8 @@
 // - „Leeren Handler entfernen“ (leer oder ohne Zuweisung): Zuweisungen im
 //   Designer auf nil, dann Deklaration und Rumpf als Atlas-Änderung
 //   (TAtlasIdeWorkspaceEdit, ein Schritt im Änderungsprotokoll).
+// - Auch über Ansicht › Atlas › Designer und Atlas › Designer zu öffnen
+//   (Present: öffnet oder holt nach vorn, schließt nie).
 // Nur im Hauptthread.
 
 interface
@@ -35,12 +37,16 @@ type
     FOnMessage: TProc<string>;
     FTimer: TTimer;
     FShown: Boolean;
+    /// <summary>Vom Desktop angelegt und noch nicht zu sehen gewesen: Der Takt wartet, statt zu schließen.</summary>
+    FPending: Boolean;
     FFormFile: string;
     FFormClass: string;
     FRootName: string;
     FText: string;
     FRows: TArray<TAtlasEventRow>;
     procedure Tick(Sender: TObject);
+    /// <summary>Neuer Frame, auch vom Desktop beim Start angelegt: verdrahten und dem Formular folgen.</summary>
+    procedure FrameArrived;
     procedure Reload(AForce: Boolean);
     procedure FillList;
     function ClearAssignments(ARoot: TComponent; const AHandler: string): Integer;
@@ -56,6 +62,8 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
+    /// <summary>Menü Ansicht › Atlas: Fenster öffnen bzw. nach vorn holen, nie schließen.</summary>
+    procedure Present;
     procedure ApplyTheme;
     /// <summary>Text des Befunds für die Liste.</summary>
     class function FindingText(const ARow: TAtlasEventRow): string; static;
@@ -111,8 +119,11 @@ type
   end;
 
 var
-  // Fenster der Karte; nicht im Desktop gespeichert, es öffnet der Knopf.
+  // Fenster der Karte; im Desktop angemeldet, damit es angedockt seinen Platz behält. Öffnen tut es der Knopf
+  // oder der Desktop beim Laden.
   Host: TAtlasIdeDockWindow;
+  // Meldet der Karte jeden neuen Frame; nil ohne Karte.
+  OnHostFrame: TProc;
 
 { TEventDock }
 
@@ -138,6 +149,10 @@ begin
     Host.FrameCreated(AFrame);
   end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
+  if Assigned(OnHostFrame) then
+  begin
+    OnHostFrame();
+  end;
 end;
 
 function TEventDock.GetMenuActionList: TCustomActionList;
@@ -215,6 +230,16 @@ begin
   Result.NewText := '';
 end;
 
+/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
+function HostFrame: TAtlasEventFrame;
+begin
+  Result := nil;
+  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
+  begin
+    Result := TAtlasEventFrame(Host.Frame);
+  end;
+end;
+
 { TAtlasIdeEventMap }
 
 constructor TAtlasIdeEventMap.Create(const AOnMessage: TProc<string>);
@@ -225,10 +250,21 @@ begin
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
   FTimer.OnTimer := Tick;
+  OnHostFrame :=
+    procedure
+    begin
+      FrameArrived;
+    end;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  if Host = nil then
+  begin
+    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, True);
+  end;
 end;
 
 destructor TAtlasIdeEventMap.Destroy;
 begin
+  OnHostFrame := nil;
   if FTimer <> nil then
   begin
     FTimer.Enabled := False;
@@ -242,12 +278,33 @@ procedure TAtlasIdeEventMap.Tick(Sender: TObject);
 begin
   if (Host = nil) or not Host.Shown then
   begin
+    // Vom Desktop angelegt, aber noch verdeckt (etwa als Reiter im Hintergrund): warten.
+    if FPending and (HostFrame <> nil) then
+    begin
+      Exit;
+    end;
     // Fenster mit dem X geschlossen.
     FShown := False;
+    FPending := False;
     FTimer.Enabled := False;
     Exit;
   end;
+  FPending := False;
   Reload(False);
+end;
+
+procedure TAtlasIdeEventMap.FrameArrived;
+begin
+  if HostFrame = nil then
+  begin
+    Exit;
+  end;
+  Wire(HostFrame);
+  ApplyTheme;
+  FShown := True;
+  FPending := True;
+  FText := '';
+  FTimer.Enabled := True;
 end;
 
 procedure TAtlasIdeEventMap.Reload(AForce: Boolean);
@@ -274,16 +331,6 @@ begin
   FText := mDfm + #0 + mUnit;
   FRows := TAtlasEventMap.Rows(TAtlasFormModel.Parse(mDfm), TAtlasEventMap.Handlers(mUnit, FFormClass));
   FillList;
-end;
-
-/// <summary>Inhalt des Fensters; nil, solange es nicht angelegt ist.</summary>
-function HostFrame: TAtlasEventFrame;
-begin
-  Result := nil;
-  if (Host <> nil) and (Host.Frame is TAtlasEventFrame) then
-  begin
-    Result := TAtlasEventFrame(Host.Frame);
-  end;
 end;
 
 procedure TAtlasIdeEventMap.FillList;
@@ -492,7 +539,7 @@ begin
   end;
   if Host = nil then
   begin
-    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, False);
+    Host := TAtlasIdeDockWindow.Create(TEventDock.Create, True);
   end;
   FShown := Host.Show(mCreated) and (HostFrame <> nil);
   if FShown then
@@ -502,6 +549,18 @@ begin
     Reload(True);
   end;
   FTimer.Enabled := FShown;
+end;
+
+procedure TAtlasIdeEventMap.Present;
+begin
+  if FShown and TAtlasIdeDockWindow.IsShown(Host) then
+  begin
+    Host.Present;
+  end
+  else
+  begin
+    Toggle;
+  end;
 end;
 
 procedure TAtlasIdeEventMap.ApplyTheme;

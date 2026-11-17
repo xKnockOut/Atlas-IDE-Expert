@@ -52,6 +52,10 @@ type
     procedure TallyAndProblemsOfLeaks;
     [Test]
     procedure FinishFollowsOutcomeAndReport;
+    /// <summary>#2467: Fehlschlag, Fehler, kein Bericht und Zeitgrenze gehen schief; grün, leer und Abbruch nicht.
+    /// </summary>
+    [Test]
+    procedure WentWrongOnFailureOrAbort;
     [Test]
     procedure LastLinesKeepsTheEnd;
     [Test]
@@ -633,6 +637,41 @@ begin
   Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.Cancelled,
     TAtlasTestRun.FinishOf(TAtlasVcsOutcome.Cancelled, True));
   Assert.AreEqual<TAtlasTestFinish>(TAtlasTestFinish.TimedOut, TAtlasTestRun.FinishOf(TAtlasVcsOutcome.TimedOut, True));
+end;
+
+/// <summary>Lauf mit je einem Test der Ausgänge AOutcomes.</summary>
+function RunOf(const AOutcomes: array of TTestOutcome): TTestRunResult;
+var
+  mOutcome: TTestOutcome;
+  mCase: TTestCaseResult;
+begin
+  Result := Default(TTestRunResult);
+  Result.Valid := True;
+  for mOutcome in AOutcomes do
+  begin
+    mCase := Default(TTestCaseResult);
+    mCase.FullName := 'U.TFix.Test' + IntToStr(Length(Result.Cases));
+    mCase.Outcome := mOutcome;
+    SetLength(Result.Cases, Length(Result.Cases) + 1);
+    Result.Cases[High(Result.Cases)] := mCase;
+  end;
+end;
+
+procedure TAtlasTestRunTests.WentWrongOnFailureOrAbort;
+var
+  mGreen: TTestRunResult;
+begin
+  mGreen := RunOf([TTestOutcome.Passed, TTestOutcome.Skipped]);
+  Assert.IsFalse(TAtlasTestRun.WentWrong(TAtlasTestFinish.Report, mGreen), 'grün');
+  Assert.IsFalse(TAtlasTestRun.WentWrong(TAtlasTestFinish.Report, RunOf([])), 'ohne Tests');
+  Assert.IsTrue(TAtlasTestRun.WentWrong(TAtlasTestFinish.Report, RunOf([TTestOutcome.Passed, TTestOutcome.Failed])),
+    'fehlgeschlagen');
+  Assert.IsTrue(TAtlasTestRun.WentWrong(TAtlasTestFinish.Report, RunOf([TTestOutcome.Error])), 'Fehler im Test');
+  Assert.IsTrue(TAtlasTestRun.WentWrong(TAtlasTestFinish.NoReport, Default(TTestRunResult)), 'ohne Bericht');
+  Assert.IsTrue(TAtlasTestRun.WentWrong(TAtlasTestFinish.TimedOut, Default(TTestRunResult)), 'Zeitgrenze');
+  Assert.IsFalse(TAtlasTestRun.WentWrong(TAtlasTestFinish.Cancelled, Default(TTestRunResult)),
+    'vom Benutzer abgebrochen');
+  mGreen := Default(TTestRunResult);
 end;
 
 procedure TAtlasTestRunTests.LastLinesKeepsTheEnd;

@@ -70,7 +70,8 @@ type
     SettingsImportApply, SettingsImportDone, SettingsImportNothing, SettingsImportInvalidFile, SettingsProfileTitle,
     SettingsTransferFailed, SettingsExperimentalEnabled, SettingsExperimentalTag, SettingsExperimentalOff,
     SettingsExperimentalAllow, SettingsFilter, SettingsFilterAll, SettingsFilterModified,
-    SettingsFilterExperimental, SettingsDimUnusedUses, SettingsInlineDiagnostics, SettingsInlineDiagnosticsOff,
+    SettingsFilterExperimental, SettingsDimUnusedUses, SettingsHighlightMovableUses,
+    SettingsInlineDiagnostics, SettingsInlineDiagnosticsOff,
     SettingsInlineDiagnosticsErrors, SettingsInlineDiagnosticsWarnings, SettingsInlineDiagnosticsAll,
     SettingsProblemsStatusCounter, SettingsRecursionMarkers, SettingsRecursionMarkersDepth, SettingsListMode,
     SettingsListModeFilter, SettingsListModeAll, SettingsListModeRest, SettingsListScope, SettingsListScopeMembers,
@@ -144,6 +145,8 @@ type
     SettingsContextGroupTests, SettingsContextGroupNotes,
     // Hauptmenü Atlas: nur passende Einträge.
     SettingsAtlasMenuContextual,
+    // Andockbare Atlas-Fenster unter Ansicht › Atlas.
+    SettingsAtlasViewMenu,
     // Compilermeldungen im Hover erklären (#54).
     SettingsHoverExplainMessages,
     // Beispiel falsch/richtig im Befund-Hover (#145).
@@ -451,6 +454,7 @@ const
      'Geändert',
      'Nur experimentelle',
      'Ungenutzte uses-Einträge abblenden',
+     'Nur in der implementation gebrauchte uses-Einträge hervorheben',
      'Fehlertext am Zeilenende:',
      'Aus',
      'Nur Fehler',
@@ -708,6 +712,7 @@ const
      'Tests',
      'Notizen und Lesezeichen',
      'Menü Atlas: Debuggen und Haltepunkte nur zeigen, wenn ein Projekt offen ist',
+     'Atlas-Fenster unter Ansicht › Atlas öffnen (Prüfung, Gliederung, Debuggen, Designer …)',
      'Compilermeldungen im Hover erklären: typische Ursache, Links „Erklären“ und „DocWiki“',
      'Link „Beispiel zeigen“ unter Befunden im Hover (Beschreibung und Beispiel aus dem Regelkatalog)',
      'Teststand in der Statusleiste („Tests 41/42“ mit Ampel für das Testprojekt der aktuellen Datei)'),
@@ -995,6 +1000,7 @@ const
      'Changed',
      'Experimental only',
      'Dim unused uses entries',
+     'Highlight uses entries only needed in the implementation',
      'Error text at line end:',
      'Off',
      'Errors only',
@@ -1252,6 +1258,7 @@ const
      'Tests',
      'Notes and bookmarks',
      'Atlas menu: show Debug and Breakpoints only while a project is open',
+     'Open Atlas windows from View › Atlas (Findings, Outline, Debug, Designer …)',
      'Explain compiler messages in the hover: typical cause, links "Explain" and "DocWiki"',
      'Link "Show example" below findings in the hover (description and example from the rule catalog)',
      'Test status in the status bar ("Tests 41/42" with a traffic light for the test project of the current file)'));

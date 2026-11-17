@@ -20,9 +20,11 @@
 //   sobald es den Fokus verliert.
 // Was die Aktionen in der IDE tun, entscheidet Atlas.IDE.Designer.Bar
 // (OnAction); Name kopieren erledigt das Fenster selbst.
-// Basis ist TAtlasDialog (Abo beim Themendienst): Bei einem Wechsel des
-// IDE-Themas holt das offene Fenster die Farben neu. Gezeichnet wird alles
-// selbst, der VCL-Stil bleibt außen vor (StyleElements leer).
+// Basis ist TAtlasPopupForm: ohne Rahmen, mit Schatten, runden Ecken und
+// Akzentrand (Rounded); bei einem Wechsel des IDE-Themas holt das offene
+// Fenster die Farben neu (ColorsChanged). Gezeichnet wird alles selbst, der
+// VCL-Stil bleibt außen vor (StyleElements leer). Größer ziehen geht an den
+// Rändern über WM_NCHITTEST.
 
 interface
 
@@ -68,7 +70,7 @@ type
   TAtlasComponentSearchActionEvent = reference to procedure(AAction: TAtlasComponentSearchAction;
     const AItem: TAtlasDesignerItem);
 
-  TAtlasComponentSearchWindow = class(TAtlasDialog)
+  TAtlasComponentSearchWindow = class(TAtlasPopupForm)
   private type
     THit = (None, Chip, Grouping, Row, Action);
     THitArea = record
@@ -175,9 +177,8 @@ type
     procedure WMNCHitTest(var Message: TWMNCHitTest); message WM_NCHITTEST;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
   protected
-    procedure CreateParams(var Params: TCreateParams); override;
-    procedure CreateWnd; override;
-    procedure ThemeChanged; override;
+    /// <summary>Farben des neuen Themas an den Zeichner.</summary>
+    procedure ColorsChanged; override;
     procedure Paint; override;
     procedure Resize; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -217,7 +218,6 @@ implementation
 
 uses
   System.Math,
-  Winapi.Dwmapi,
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -225,10 +225,6 @@ uses
   Atlas.UI.Designer.Strings;
 
 const
-  // Ab Windows 11; ältere Systeme ignorieren die Attribute.
-  cCornerPreference = 33;
-  cRoundCorners = 2;
-  cBorderColorAttribute = 34;
   cCompactRows = 12;
   /// <summary>Schriftgrößen der Liste und der Nebenzeilen in Punkt.</summary>
   cUIFontSize = 10;
@@ -237,15 +233,6 @@ const
 function C(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
-end;
-
-/// <summary>Rahmenfarbe des Fensters AHandle über DWM (ab Windows 11).</summary>
-procedure SetDwmBorderColor(AHandle: HWND; AColor: TAtlasColor);
-var
-  mBorder: DWORD;
-begin
-  mBorder := DWORD(AColor);
-  DwmSetWindowAttribute(AHandle, cBorderColorAttribute, @mBorder, SizeOf(mBorder));
 end;
 
 function KindCaption(AKind: TAtlasDesignerKind): string;
@@ -1215,16 +1202,15 @@ end;
 constructor TAtlasComponentSearchWindow.CreateSearch(AOwner: TComponent; const AOptions: TAtlasComponentSearchOptions;
   const AItems: TArray<TAtlasDesignerItem>; const AColors: TAtlasColors);
 begin
-  inherited CreateDialog(AOwner, TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle), 0);
+  // Lage setzt ShowOver (gemerkt oder über der Arbeitsfläche); Rahmen, Schatten und Farben die Basis.
+  inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
+  Caption := TAtlasDesignerStrings.Text(TAtlasDesignerTextId.DesignerSearchTitle);
+  Rounded := True;
   FOptions := AOptions;
   FItems := AItems;
   FPainter := TPainter.Create(Self, AColors);
-  BorderStyle := bsNone;
-  // Lage setzt ShowOver (gemerkt oder über der Arbeitsfläche); nicht mittig über der IDE.
-  Position := poDesigned;
   StyleElements := [];
-  DoubleBuffered := True;
-  Color := C(AColors.Surface);
   OnClose := FormClose;
   OnDeactivate := FormDeactivate;
   Font.Assign(FPainter.UIFont);
@@ -1252,42 +1238,9 @@ begin
   inherited Destroy;
 end;
 
-procedure TAtlasComponentSearchWindow.CreateParams(var Params: TCreateParams);
+procedure TAtlasComponentSearchWindow.ColorsChanged;
 begin
-  inherited;
-  // Ohne Systemrahmen; vergrößert wird über WM_NCHITTEST. Schatten wie die Palette.
-  Params.Style := (Params.Style and not (WS_CAPTION or WS_THICKFRAME)) or WS_POPUP;
-  Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
-procedure TAtlasComponentSearchWindow.CreateWnd;
-var
-  mPreference: DWORD;
-begin
-  inherited CreateWnd;
-  mPreference := cRoundCorners;
-  DwmSetWindowAttribute(Handle, cCornerPreference, @mPreference, SizeOf(mPreference));
-  // TAtlasDialog legt das Fenster schon im geerbten Konstruktor an, bevor FPainter besteht; die Randfarbe setzt dann
-  // ThemeChanged nach.
-  if FPainter <> nil then
-  begin
-    SetDwmBorderColor(Handle, FPainter.Colors.Accent);
-  end;
-end;
-
-procedure TAtlasComponentSearchWindow.ThemeChanged;
-begin
-  if FPainter = nil then
-  begin
-    Exit;
-  end;
-  FPainter.SetColors(TAtlasUiTheme.Colors);
-  Color := C(FPainter.Colors.Surface);
-  if HandleAllocated then
-  begin
-    SetDwmBorderColor(Handle, FPainter.Colors.Accent);
-  end;
-  Invalidate;
+  FPainter.SetColors(Colors);
 end;
 
 procedure TAtlasComponentSearchWindow.Paint;

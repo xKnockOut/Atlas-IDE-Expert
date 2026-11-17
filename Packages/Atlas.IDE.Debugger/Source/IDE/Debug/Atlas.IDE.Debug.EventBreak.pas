@@ -37,7 +37,7 @@ uses
   Atlas.Core.Debug.EventBreak,
   Atlas.Core.Debug.EventBreakWatch,
   Atlas.UI.Debug.EventBreak,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasEventBreakSessionFunc = reference to function: TLspSession;
@@ -114,6 +114,7 @@ uses
   Winapi.Windows,
   System.JSON,
   Vcl.Controls,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Core.Lsp.Client,

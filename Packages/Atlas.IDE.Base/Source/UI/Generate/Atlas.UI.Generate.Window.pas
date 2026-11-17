@@ -665,6 +665,7 @@ constructor TAtlasGenerateWindow.CreateMenu(AOwner: TComponent; const AEntries: 
   const AOptions: TAtlasGenerateOptions; ARecent: TAtlasGenerateRecent; const AColors: TAtlasColors);
 begin
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   FEntries := AEntries;
   FOptions := AOptions;
   FRecent := ARecent;

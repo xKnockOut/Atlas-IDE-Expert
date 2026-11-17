@@ -34,9 +34,9 @@
 //   cmd.exe.
 // - Stand je Projekt in dieser Sitzung (läuft seit, Ergebnis, Grund);
 //   Meldungen mit Pfaden nur in die Meldungsansicht (AMessage).
-// - Strg+B und Strg+T (einstellbar) nimmt die Quelle über
-//   TApplicationEvents vor den Tasten der IDE ab, solange die unsichtbare
-//   Tastatur-Steuerung einer Leiste den Fokus hat.
+// - Strg+B und Strg+T (einstellbar) nimmt die Quelle vor den Tasten der IDE
+//   ab, solange die unsichtbare Tastatur-Steuerung einer Leiste den Fokus hat
+//   (Atlas.IDE.Welcome.QuickActions.Keys).
 // - Nutzung: Ein Klick zählt als Aufruf per Maus (Tastenkürzel-Tipps #600,
 //   Atlas.WelcomeQuickBuild bzw. Atlas.WelcomeQuickTests); die Taste zählt
 //   die Beobachtung der Tastatur selbst.
@@ -46,14 +46,13 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Winapi.Windows,
   Vcl.ExtCtrls,
-  Vcl.AppEvnts,
   Atlas.IDE.Contracts.BuildTools,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
   Atlas.IDE.Welcome.Projects,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.IDE.Welcome.QuickActions.Keys,
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Ende eines Builds: AError &lt;&gt; '' = nicht gebaut (Grund), sonst Erfolg.</summary>
@@ -107,7 +106,7 @@ type
     end;
     TInput = record
       Watch: TTimer;
-      Events: TApplicationEvents;
+      Keys: TAtlasQuickActionKeys;
       KeyAt: UInt64;
     end;
   private
@@ -125,7 +124,7 @@ type
       const AConfiguration, APlatform: string);
     procedure Pull(const AProject: string); overload;
     procedure WatchTick(Sender: TObject);
-    procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
+    function KeyAccepted(AShortCut: Integer): Boolean;
   public
     Hooks: TAtlasQuickActionHooks;
     /// <summary>AProjects: Quelle von „Projekte“ (Branch und Änderungen, Ordner, Neu-Abfrage nach Pull);
@@ -168,13 +167,12 @@ implementation
 
 uses
   Atlas.Core.Projects.Summary,
-  Winapi.Messages,
+  Winapi.Windows,
   Winapi.ShellAPI,
   System.Classes,
-  Vcl.Controls,
   Vcl.Forms,
-  Vcl.Menus,
   ToolsAPI,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.VersionControl.Contract,
@@ -582,48 +580,21 @@ begin
   end;
 end;
 
-procedure TAtlasIdeQuickActions.AppMessage(var Msg: TMsg; var Handled: Boolean);
-var
-  mControl: TWinControl;
-  mShift: TShiftState;
-  mPressed: TShortCut;
+function TAtlasIdeQuickActions.KeyAccepted(AShortCut: Integer): Boolean;
 begin
-  if (Msg.message <> WM_KEYDOWN) and (Msg.message <> WM_SYSKEYDOWN) then
+  Result := not FStopped and Enabled and ((AShortCut = BuildKey) or (AShortCut = TestKey));
+  if Result then
   begin
-    Exit;
-  end;
-  try
-    if FStopped or not Enabled then
-    begin
-      Exit;
-    end;
-    mControl := FindControl(Msg.hwnd);
-    if not (mControl is TAtlasQuickKeySink) then
-    begin
-      Exit;
-    end;
-    mShift := KeyDataToShiftState(Msg.lParam);
-    mPressed := ShortCut(Word(Msg.wParam), mShift);
-    if (mPressed = 0) or ((Integer(mPressed) <> BuildKey) and (Integer(mPressed) <> TestKey)) then
-    begin
-      Exit;
-    end;
-    // Vor den Tasten der IDE (Strg+B, Strg+T im Editor): nur in der Zeile mit dem Fokus.
     FInput.KeyAt := NowMs;
-    Handled := TAtlasQuickKeySink(mControl).HandleKey(Word(Msg.wParam), mShift);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
 end;
 
 procedure TAtlasIdeQuickActions.Start;
 begin
   FStopped := False;
-  if FInput.Events = nil then
+  if FInput.Keys = nil then
   begin
-    FInput.Events := TApplicationEvents.Create(nil);
-    FInput.Events.OnMessage := AppMessage;
+    FInput.Keys := TAtlasQuickActionKeys.Create(KeyAccepted);
   end;
   if FInput.Watch = nil then
   begin
@@ -637,7 +608,7 @@ end;
 procedure TAtlasIdeQuickActions.Stop;
 begin
   FStopped := True;
-  FreeAndNil(FInput.Events);
+  FreeAndNil(FInput.Keys);
   FreeAndNil(FInput.Watch);
   FProjects := nil;
   Hooks := Default(TAtlasQuickActionHooks);

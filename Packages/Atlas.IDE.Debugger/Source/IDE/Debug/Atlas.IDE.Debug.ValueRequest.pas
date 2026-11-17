@@ -2,9 +2,9 @@
 
 // Eine Auswertung nach der anderen für Funktionen, die beim Halt Werte
 // nachladen („Warum bin ich hier?“ #1878, angeheftete Werte #526):
-//   - Evaluate über TAtlasIdeDebugValues im Kontext von Datei und Zeile, als
-//     eigene Auswertung der Debug-Sitzung geklammert (BeginInternal/EndInternal):
-//     Zustandswechsel dabei sind kein Fortsetzen.
+//   - Evaluate über TAtlasIdeDebugThreadValues im Kontext von Datei und
+//     Zeile, als eigene Auswertung der Debug-Sitzung geklammert: Zustandswechsel
+//     dabei sind kein Fortsetzen.
 //   - Antwortet der Debugger verzögert (erDeferred, LLDB), meldet Busy das
 //     Warten, höchstens ATimeoutMs lang; danach gilt der Wert als nicht
 //     auswertbar und der Rückruf kommt mit AOk = False.
@@ -15,7 +15,7 @@ interface
 
 uses
   Atlas.Core.Hover.DebugValue,
-  Atlas.IDE.Hover.DebugValue;
+  Atlas.IDE.Debug.ThreadEvaluator;
 
 type
   /// <summary>Ergebnis einer Auswertung; AOk = False: nicht auswertbar.</summary>
@@ -29,13 +29,11 @@ type
 
   TAtlasIdeDebugValueRequest = class
   private
-    FValues: TAtlasIdeDebugValues;
+    FEvaluator: TAtlasIdeDebugThreadValues;
     FTimeoutMs: Cardinal;
-    FInternal: Boolean;
     FWaiting: Boolean;
     FSince: UInt64;
     FDone: TAtlasDebugValueResult;
-    procedure EndInternal;
     procedure Deferred(const AValue: TAtlasDebugValue);
     procedure Finish(const AText: string; AOk: Boolean);
   public
@@ -54,8 +52,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline,
-  Atlas.IDE.Debug.Session;
+  Atlas.Core.Diagnostics.Deadline;
 
 { TAtlasIdeDebugValueRequest }
 
@@ -63,23 +60,14 @@ constructor TAtlasIdeDebugValueRequest.Create(ATimeoutMs: Cardinal);
 begin
   inherited Create;
   FTimeoutMs := ATimeoutMs;
-  FValues := TAtlasIdeDebugValues.Create;
+  FEvaluator := TAtlasIdeDebugThreadValues.Create;
 end;
 
 destructor TAtlasIdeDebugValueRequest.Destroy;
 begin
   Cancel;
-  FreeAndNil(FValues);
+  FreeAndNil(FEvaluator);
   inherited Destroy;
-end;
-
-procedure TAtlasIdeDebugValueRequest.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
-  end;
 end;
 
 procedure TAtlasIdeDebugValueRequest.Deferred(const AValue: TAtlasDebugValue);
@@ -94,7 +82,6 @@ procedure TAtlasIdeDebugValueRequest.Finish(const AText: string; AOk: Boolean);
 var
   mDone: TAtlasDebugValueResult;
 begin
-  EndInternal;
   FWaiting := False;
   mDone := FDone;
   FDone := nil;
@@ -111,17 +98,7 @@ var
 begin
   Cancel;
   FDone := ADone;
-  mValue := Default(TAtlasDebugValue);
-  TAtlasIdeDebugSession.BeginInternal;
-  FInternal := True;
-  try
-    mValue := FValues.Evaluate(AExpression, AFileName, ALine, ASideEffects, Deferred);
-  finally
-    if mValue.State <> TAtlasDebugValueState.Pending then
-    begin
-      EndInternal;
-    end;
-  end;
+  mValue := FEvaluator.Evaluate(AExpression, AFileName, ALine, ASideEffects, Deferred);
   case mValue.State of
     TAtlasDebugValueState.Pending:
       begin
@@ -145,18 +122,17 @@ begin
   Result := FWaiting and (TAtlasTicks.Since(FSince) < FTimeoutMs);
   if FWaiting and not Result then
   begin
-    FValues.Cancel;
+    FEvaluator.Cancel;
     Finish('', False);
   end;
 end;
 
 procedure TAtlasIdeDebugValueRequest.Cancel;
 begin
-  if FValues <> nil then
+  if FEvaluator <> nil then
   begin
-    FValues.Cancel;
+    FEvaluator.Cancel;
   end;
-  EndInternal;
   FWaiting := False;
   FDone := nil;
 end;

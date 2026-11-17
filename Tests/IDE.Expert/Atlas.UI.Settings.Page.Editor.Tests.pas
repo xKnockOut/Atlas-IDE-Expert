@@ -72,6 +72,7 @@ begin
   Assert.AreEqual(ShortCutToText($40BE), EditOf(APage, 'HideElementKey').Text, 'Strg+.');
   Assert.AreEqual('25', EditOf(APage, 'BlockEndLabelsMinLines').Text, 'Mindestlänge (#620)');
   Assert.IsTrue(CheckOf(APage, 'DimUnusedUses').Checked, 'uses abblenden standardmäßig an (#621)');
+  Assert.IsTrue(CheckOf(APage, 'HighlightMovableUses').Checked, 'verschiebbare uses standardmäßig an (#2465)');
   Assert.IsTrue(CheckOf(APage, 'RecursionMarkers').Checked, 'Rekursionssymbole standardmäßig an (#623)');
   Assert.AreEqual('4', EditOf(APage, 'RecursionMarkersDepth').Text);
   // Datenfluss (#690).
@@ -161,6 +162,7 @@ begin
   Assert.AreEqual(ShortCutToText($C077), EditOf(APage, 'NextProblemKey').Text);
   CheckOf(APage, 'BlockEndLabels').Checked := False;
   CheckOf(APage, 'DimUnusedUses').Checked := False;
+  CheckOf(APage, 'HighlightMovableUses').Checked := False;
   CheckOf(APage, 'RecursionMarkers').Checked := False;
   EditOf(APage, 'RecursionMarkersDepth').Text := '2';
   CheckOf(APage, 'ExitPoints').Checked := False;
@@ -187,6 +189,7 @@ begin
   Assert.IsFalse(ASaved.BlockEndLabels, 'abschaltbar');
   Assert.AreEqual(30, ASaved.BlockEndLabelsMinLines);
   Assert.IsFalse(ASaved.DimUnusedUses);
+  Assert.IsFalse(ASaved.HighlightMovableUses);
   Assert.IsFalse(ASaved.RecursionMarkers);
   Assert.AreEqual(2, ASaved.RecursionMarkersDepth);
   Assert.IsFalse(ASaved.DataFlow);
@@ -247,6 +250,7 @@ procedure AssertHideElementReloaded(APage: TAtlasSettingsPage);
 begin
   Assert.IsFalse(CheckOf(APage, 'BlockEndLabels').Checked);
   Assert.IsFalse(CheckOf(APage, 'DimUnusedUses').Checked);
+  Assert.IsFalse(CheckOf(APage, 'HighlightMovableUses').Checked);
   Assert.IsFalse(CheckOf(APage, 'RecursionMarkers').Checked);
   Assert.IsFalse(CheckOf(APage, 'ExitPoints').Checked);
   Assert.IsFalse(CheckOf(APage, 'ExitPointsBadge').Checked);

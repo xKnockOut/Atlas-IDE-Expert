@@ -9,9 +9,12 @@
 //     Rückgängig-Schritt im Editor). Jede Zeile behält Form (TestCase('Name', 'Werte'), TestCase('Werte'),
 //     NamedTestCase), Attributnamen, Trennzeichen und weitere Argumente (Trim); neue Zeilen übernehmen sie von
 //     der letzten Zeile.
+//   - Kommentare zwischen, über und hinter den Fällen gehören zu einem Attribut und wandern mit ihm, ebenso
+//     bedingte Direktiven, die genau einen Fall umschließen (Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia).
 //   - Bearbeitbar ist die Tabelle nur, wenn jedes [TestCase] allein in seinen Klammern steht, die Attribute
-//     lesbar sind (Literale) und zwischen ihnen nur Leerraum und andere ganze Attribute stehen; andere Attribute
-//     dazwischen ([Test], [Category]) wandern beim Schreiben vor die Fälle. Sonst nennt Reason den Grund.
+//     lesbar sind (Literale) und zwischen ihnen nur Leerraum, Kommentare, solche Direktiven und andere ganze
+//     Attribute stehen; andere Attribute dazwischen ([Test], [Category]) wandern beim Schreiben mit ihren
+//     Kommentaren vor die Fälle. Sonst nennt Reason den Grund.
 // DUnitX kennt in den Werten keine Anführung: Ein Wert mit einem Zeichen des Trennzeichens ist ein Fehler der
 // Zelle und lässt sich nicht schreiben.
 
@@ -20,7 +23,8 @@ interface
 uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Builtin.Testing.TestCases;
+  Atlas.Common.Rules.Builtin.Testing.TestCases,
+  Atlas.Common.Rules.Builtin.Testing.TestCaseTrivia;
 
 type
 {$SCOPEDENUMS ON}
@@ -54,6 +58,15 @@ type
     HasSeparator: Boolean;
     /// <summary>Zeile des Attributs (0-basiert); -1 bei neuen Zeilen.</summary>
     Line: Integer;
+    /// <summary>Kommentare und Direktiven, die mit dem Fall wandern; leer bei neuen Zeilen.</summary>
+    Trivia: TAttributeTrivia;
+  end;
+
+  /// <summary>Ein anderes Attribut zwischen den Fällen mit seinem Umfeld.</summary>
+  TTestCaseBetween = record
+    /// <summary>Das Attribut wie geschrieben ([Category('x')]).</summary>
+    Text: string;
+    Trivia: TAttributeTrivia;
   end;
 
   /// <summary>Die Fälle einer Testmethode.</summary>
@@ -67,12 +80,15 @@ type
     FirstLine: Integer;
     Columns: TArray<TTestCaseColumn>;
     Rows: TArray<TTestCaseRow>;
-    /// <summary>Vom ersten bis zum Ende des letzten [TestCase]-Attributs (mit Klammern).</summary>
+    /// <summary>Vom ersten bis zum Ende des letzten [TestCase]-Attributs (mit Klammern), samt Kommentaren
+    /// direkt darüber und dahinter in der Zeile.</summary>
     Range: TTextRange;
     /// <summary>Einrückung des ersten [TestCase].</summary>
     Indent: string;
     /// <summary>Attribute zwischen den Fällen ([Test], [Category('x')]); sie stehen beim Schreiben davor.</summary>
-    Between: TArray<string>;
+    Between: TArray<TTestCaseBetween>;
+    /// <summary>Steht hinter Range in derselben Zeile noch Text (dann darf keine Zeile mit // enden)?</summary>
+    CodeAfter: Boolean;
     Editable: Boolean;
     /// <summary>Warum die Tabelle nicht bearbeitbar ist; sonst ''.</summary>
     Reason: string;
@@ -119,15 +135,19 @@ uses
 
 type
   /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
-  TTestCaseTableText = (NotLiteral, SharedBrackets, CodeBetween, NoRows, ValueHasSeparator, NotInteger, NotFloat,
+  TTestCaseTableText = (NotLiteral, SharedBrackets, CodeBetween, DirectiveBetween, NoRows, ValueHasSeparator, NotInteger, NotFloat,
     NotBoolean, NotEnum, CountMismatch, NoParameters);
 
 const
   cTexts: array[TTestCaseTableText] of TAtlasText = (
     (De: '%s enthält Werte, die keine String-Literale sind'; En: '%s contains values that are not string literals'),
     (De: '%s steht mit anderen Attributen in einer Klammer'; En: '%s shares its brackets with other attributes'),
-    (De: 'Zwischen den TestCase-Attributen steht Text, der kein Attribut ist (Kommentar, Direktive)';
-     En: 'There is text between the TestCase attributes that is not an attribute (comment, directive)'),
+    (De: 'Zwischen den TestCase-Attributen steht Code, der weder Attribut noch Kommentar noch Direktive ist';
+     En: 'There is code between the TestCase attributes that is neither an attribute nor a comment nor a directive'),
+    (De: 'Eine Direktive zwischen den TestCase-Attributen umschließt nicht genau einen Fall ({$ELSE}, Bedingung ' +
+       'über mehreren Fällen oder Schalter); beim Bearbeiten ginge sie verloren';
+     En: 'A directive between the TestCase attributes does not enclose exactly one case ({$ELSE}, condition ' +
+       'around several cases or a switch); editing would lose it'),
     (De: 'Mindestens ein Fall muss bleiben'; En: 'At least one case must remain'),
     (De: 'Wert enthält das Trennzeichen ''%s''; DUnitX kann ihn nicht übergeben';
      En: 'Value contains the separator ''%s''; DUnitX cannot pass it'),
@@ -245,30 +265,16 @@ begin
   Result := False;
 end;
 
-/// <summary>Nur Leerraum zwischen den Offsets?</summary>
-function OnlyBlank(const AText: string; AFrom, ATo: Integer): Boolean;
-var
-  mIndex: Integer;
-begin
-  for mIndex := AFrom + 1 to ATo do
-  begin
-    if not CharInSet(AText[mIndex], [' ', #9, #13, #10]) then
-    begin
-      Exit(False);
-    end;
-  end;
-  Result := True;
-end;
-
 type
   /// <summary>Sammelt die Fälle einer Methode und prüft, ob sie sich schreiben lassen.</summary>
   TTableReader = record
     Text: string;
+    Lines: TLineTable;
     Table: TTestCaseTable;
     First, Last: TSyntaxNode;
     procedure Refuse(const AReason: string);
     procedure AddAttribute(AAttribute: TSyntaxNode);
-    procedure CheckBetween(const AAttributes: TArray<TSyntaxNode>);
+    procedure BindTrivia(const AAttributes: TArray<TSyntaxNode>);
   end;
 
 { TTableReader }
@@ -330,41 +336,68 @@ begin
   end;
 end;
 
-procedure TTableReader.CheckBetween(const AAttributes: TArray<TSyntaxNode>);
+/// <summary>Attribute vom ersten bis zum letzten [TestCase].</summary>
+function Span(const AAttributes: TArray<TSyntaxNode>; AFirst, ALast: TSyntaxNode): TArray<TSyntaxNode>;
 var
   mInside: Boolean;
-  mPrevious, mAttribute: TSyntaxNode;
+  mAttribute: TSyntaxNode;
 begin
+  Result := nil;
   mInside := False;
-  mPrevious := nil;
   for mAttribute in AAttributes do
   begin
-    if mAttribute = First then
+    mInside := mInside or (mAttribute = AFirst);
+    if mInside then
     begin
-      mInside := True;
-    end
-    else if mInside then
-    begin
-      if not OnlyBlank(Text, mPrevious.EndOffset, mAttribute.StartOffset) then
-      begin
-        Refuse(cTexts[TTestCaseTableText.CodeBetween].Text);
-      end;
-      if not HasTestCase(mAttribute) then
-      begin
-        Table.Between := Table.Between + [SourceOf(Text, mAttribute)];
-      end;
+      Result := Result + [mAttribute];
     end;
-    mPrevious := mAttribute;
-    if mAttribute = Last then
+    if mAttribute = ALast then
     begin
       Break;
     end;
   end;
 end;
 
+procedure TTableReader.BindTrivia(const AAttributes: TArray<TSyntaxNode>);
+var
+  mSpan: TArray<TSyntaxNode>;
+  mBinding: TTriviaBinding;
+  mIndex, mRow: Integer;
+  mBetween: TTestCaseBetween;
+begin
+  mSpan := Span(AAttributes, First, Last);
+  mBinding := TTestCaseTrivia.Bind(Text, Lines, mSpan);
+  if mBinding.Problem = TTriviaProblem.Code then
+  begin
+    Refuse(cTexts[TTestCaseTableText.CodeBetween].Text);
+  end
+  else if mBinding.Problem = TTriviaProblem.Directive then
+  begin
+    Refuse(cTexts[TTestCaseTableText.DirectiveBetween].Text);
+  end;
+  Table.Range := mBinding.Range;
+  Table.CodeAfter := mBinding.CodeAfter;
+  // Bearbeitbar heißt: ein Fall je Attribut, die Zeilen stehen in der Reihenfolge der Attribute.
+  mRow := 0;
+  for mIndex := 0 to High(mSpan) do
+  begin
+    if not HasTestCase(mSpan[mIndex]) then
+    begin
+      mBetween.Text := SourceOf(Text, mSpan[mIndex]);
+      mBetween.Trivia := mBinding.Items[mIndex];
+      Table.Between := Table.Between + [mBetween];
+    end
+    else if mRow <= High(Table.Rows) then
+    begin
+      Table.Rows[mRow].Trivia := mBinding.Items[mIndex];
+      Inc(mRow);
+    end;
+  end;
+end;
+
 /// <summary>Tabelle der Methode AHeader; False ohne [TestCase].</summary>
-function ReadTable(const AText, AFixture: string; AHeader: TSyntaxNode; const AEnums: TArray<string>;
-  out ATable: TTestCaseTable): Boolean;
+function ReadTable(const AText: string; const ALines: TLineTable; const AFixture: string; AHeader: TSyntaxNode;
+  const AEnums: TArray<string>; out ATable: TTestCaseTable): Boolean;
 var
   mReader: TTableReader;
   mAttributes: TArray<TSyntaxNode>;
@@ -372,6 +405,7 @@ var
 begin
   mReader := Default(TTableReader);
   mReader.Text := AText;
+  mReader.Lines := ALines;
   mReader.Table.Editable := True;
   mAttributes := AttributesBefore(AHeader);
   for mAttribute in mAttributes do
@@ -384,13 +418,12 @@ begin
     ATable := Default(TTestCaseTable);
     Exit;
   end;
-  mReader.CheckBetween(mAttributes);
+  mReader.BindTrivia(mAttributes);
   mReader.Table.Fixture := AFixture;
   mReader.Table.Method := AHeader.Name;
   mReader.Table.MethodLine := AHeader.StartPos.Line;
   mReader.Table.FirstLine := mAttributes[0].StartPos.Line;
   mReader.Table.Columns := ColumnsOf(AHeader, AEnums);
-  mReader.Table.Range := TTextRange.Create(mReader.First.StartPos, mReader.Last.EndPos);
   mReader.Table.Indent := TTextLines.IndentOf(AText, mReader.First.StartPos.Line);
   ATable := mReader.Table;
 end;
@@ -400,6 +433,7 @@ end;
 class function TTestCaseTables.All(ATree: TSyntaxTree; const AText: string): TArray<TTestCaseTable>;
 var
   mEnums: TArray<string>;
+  mLines: TLineTable;
   mClass: TDUnitXClass;
   mMember: TDUnitXMember;
   mTable: TTestCaseTable;
@@ -411,12 +445,13 @@ begin
     Exit;
   end;
   mEnums := TDUnitXTestCases.Enums(ATree.Root);
+  mLines := TLineTable.Build(AText);
   for mClass in TDUnitXClasses.Collect(ATree.Root) do
   begin
     for mMember in mClass.Members do
     begin
       if (mMember.Node.Kind = TSyntaxKind.RoutineHeader) and
-        ReadTable(AText, mClass.Name, mMember.Node, mEnums, mTable) then
+        ReadTable(AText, mLines, mClass.Name, mMember.Node, mEnums, mTable) then
       begin
         Result := Result + [mTable];
       end;
@@ -519,6 +554,7 @@ begin
   Result.Name := AName;
   Result.Values := AValues;
   Result.Line := -1;
+  Result.Trivia := Default(TAttributeTrivia);
   if (Result.Form = TTestCaseForm.ValuesOnly) and (AName <> '') then
   begin
     Result.Form := TTestCaseForm.Classic;
@@ -562,7 +598,8 @@ end;
 class function TTestCaseTables.Write(const ATable: TTestCaseTable; const ARows: TArray<TTestCaseRow>;
   const ALineEnd: string; out AEdit: TTextEdit; out AReason: string): Boolean;
 var
-  mText, mValue, mLine: string;
+  mText, mValue: string;
+  mBetween: TTestCaseBetween;
   mIndex: Integer;
   mSeparator: Char;
 begin
@@ -578,9 +615,9 @@ begin
     Exit(False);
   end;
   mText := '';
-  for mLine in ATable.Between do
+  for mBetween in ATable.Between do
   begin
-    mText := mText + mLine + ALineEnd + ATable.Indent;
+    mText := mText + mBetween.Trivia.Wrap(mBetween.Text, ALineEnd, ATable.Indent) + ALineEnd + ATable.Indent;
   end;
   for mIndex := 0 to High(ARows) do
   begin
@@ -597,7 +634,12 @@ begin
     begin
       mText := mText + ALineEnd + ATable.Indent;
     end;
-    mText := mText + AttributeText(ARows[mIndex]);
+    mText := mText + ARows[mIndex].Trivia.Wrap(AttributeText(ARows[mIndex]), ALineEnd, ATable.Indent);
+  end;
+  // Steht hinter den Fällen noch Code in der Zeile, darf die letzte nicht mit einem Kommentar // enden.
+  if ATable.CodeAfter and ARows[High(ARows)].Trivia.EndsWithLineComment then
+  begin
+    mText := mText + ALineEnd + ATable.Indent;
   end;
   AEdit := TTextEdit.Create(ATable.Range, mText);
   Result := True;

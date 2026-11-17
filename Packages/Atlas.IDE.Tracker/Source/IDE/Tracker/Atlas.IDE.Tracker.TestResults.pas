@@ -48,7 +48,7 @@ uses
   Atlas.IDE.Tracker.WelcomeLink,
   Atlas.UI.Tracker.TestResults,
   Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   /// <summary>Projekte, Zusammenfassungen und Jobs der Kachel; liest .atlas und Zusammenfassungen höchstens alle
@@ -175,6 +175,7 @@ uses
   Atlas.Core.Ci.Contract,
   Winapi.Windows,
   System.DateUtils,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Notifications.Contract,

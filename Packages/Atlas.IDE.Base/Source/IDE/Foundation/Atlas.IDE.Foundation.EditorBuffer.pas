@@ -2,12 +2,14 @@
 
 // Lesen aus dem Editorpuffer der IDE und Umrechnen von Positionen. Der Puffer
 // ist UTF-8; LSP-Positionen sind 0-basierte Zeilen und UTF-16-Zeichen, die
-// Schreib- und Lesepositionen der IDE sind Byte-Offsets im Puffer.
+// Schreib- und Lesepositionen der IDE sind Byte-Offsets im Puffer. Dazu die
+// Frage, ob ein Fenster das Editorfenster ist (Tasten und Klicks im Editor).
 
 interface
 
 uses
   System.SysUtils,
+  Winapi.Windows,
   ToolsAPI;
 
 type
@@ -33,11 +35,14 @@ type
     class function TopView: IOTAEditView; static;
     /// <summary>Wie TopView, aber nil, wenn die Ansicht keinen Puffer hat.</summary>
     class function TopSourceView: IOTAEditView; static;
+    /// <summary>Ist AWnd das Editorfenster der IDE (TEditControl)?</summary>
+    class function IsEditorWindow(AWnd: HWND): Boolean; static;
   end;
 
 implementation
 
 uses
+  Vcl.Controls,
   Atlas.Core.Lsp.TextOffsets;
 
 /// <summary>Ansicht des aktuellen Moduls; bei mehreren Fenstern die zuletzt benutzte.</summary>
@@ -206,6 +211,14 @@ begin
   begin
     Result := nil;
   end;
+end;
+
+class function TAtlasEditorBuffer.IsEditorWindow(AWnd: HWND): Boolean;
+var
+  mControl: TWinControl;
+begin
+  mControl := FindControl(AWnd);
+  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
 end.

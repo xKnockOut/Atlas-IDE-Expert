@@ -43,6 +43,10 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// Ansicht › Atlas (commands.viewMenu.windows) sammelt alle andockbaren
+// Atlas-Fenster: von Base Prüfung, Ergebnisse, Gliederung und Atlas-Server,
+// dazu die Fenster der Module (TAtlasMenuPlace.ViewMenu), in Untermenüs nach
+// ihrer Section (etwa Debuggen, Designer).
 // „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
@@ -114,9 +118,12 @@ type
     FModules: TAtlasMenuModuleItems;
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
-    /// <summary>Ansicht › Atlas mit „Prüfung“ (#909) und den Einträgen der Module.</summary>
+    /// <summary>Ansicht › Atlas mit den andockbaren Fenstern: „Prüfung“ (#909), Ergebnisse, Gliederung,
+    /// Atlas-Server und die Fenster der Module; nur mit commands.viewMenu.windows.</summary>
     FViewAtlas: TMenuItem;
     FViewProblems: TMenuItem;
+    FViewOutline: TMenuItem;
+    FViewServer: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
   protected
@@ -162,6 +169,10 @@ type
     procedure AddSettingsItems;
     /// <summary>Atlas-Menü hinter „Tools“ einhängen, Ansicht › Atlas unter „Ansicht“.</summary>
     procedure InsertIntoIde(AMainMenu: TMainMenu);
+    /// <summary>Ansicht › Atlas mit den Fenstern von Base unter AViews anlegen.</summary>
+    procedure AddViewMenu(AViews: TMenuItem);
+    /// <summary>Eintrag unter Ansicht › Atlas.</summary>
+    function AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
     procedure EditorClick(Sender: TObject);
@@ -226,6 +237,8 @@ const
   cToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht das Untermenü „Atlas“ (#909, #1455).
   cViewsMenu = 'ViewsMenu';
+  /// <summary>Befehl „Ergebnisfenster“ in TAtlasMenuActions.RunResults.</summary>
+  cResultsWindowTag = 7;
   cToggleTexts: array[TAtlasToggle] of TAtlasTextId = (TAtlasTextId.MenuToggleEnabled, TAtlasTextId.MenuToggleHover,
     TAtlasTextId.MenuTogglePairs, TAtlasTextId.MenuToggleGuides, TAtlasTextId.MenuToggleOwners,
     TAtlasTextId.MenuToggleProblems, TAtlasTextId.MenuToggleInactive, TAtlasTextId.MenuToggleInlayHints);
@@ -328,7 +341,10 @@ begin
   // Atlas-Prüfung (#909) nach problems.window.
   ShowItem(FProblemsItem, TAtlasIdeProblems.Enabled);
   ShowItem(FViewProblems, TAtlasIdeProblems.Enabled);
-  ShowItem(FViewAtlas, TAtlasIdeProblems.Enabled or TAtlasMenuModuleItems.HasViewItems);
+  ShowItem(FViewOutline, TAtlasIdeSettings.Current.Outline);
+  ShowItem(FViewServer, TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus));
+  // Ansicht › Atlas (commands.viewMenu.windows); die Ergebnisse stehen immer darin.
+  ShowItem(FViewAtlas, TAtlasIdeSettings.Current.AtlasViewMenu);
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   ShowItem(FImpactItem, TAtlasIdeImpact.Enabled);
   // Datenfluss (#690) nach navigation.dataFlow.
@@ -454,7 +470,7 @@ begin
   FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 10, ResultsClick),
     AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
   FParent.Add(NewLine);
-  AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
+  AddItem(TAtlasTextId.MenuResultsWindow, cResultsWindowTag, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
@@ -527,21 +543,37 @@ begin
   begin
     if SameText(AMainMenu.Items[mIndex].Name, cViewsMenu) then
     begin
-      // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
-      // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
-      FViewAtlas := TMenuItem.Create(FRoot);
-      FViewAtlas.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuAtlas);
-      FViewProblems := TMenuItem.Create(FViewAtlas);
-      FViewProblems.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuWindow);
-      FViewProblems.OnClick := ProblemsClick;
-      FViewAtlas.Add(FViewProblems);
-      // Einträge der Module (#1455) kommen beim Öffnen dazu.
-      FViewAtlas.OnClick := ViewAtlasClick;
-      FModules.ViewAtlas := FViewAtlas;
-      AMainMenu.Items[mIndex].Add(FViewAtlas);
+      AddViewMenu(AMainMenu.Items[mIndex]);
       Break;
     end;
   end;
+end;
+
+function TAtlasMainMenu.AddViewItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem;
+begin
+  Result := TMenuItem.Create(FViewAtlas);
+  Result.Caption := ACaption;
+  Result.Tag := ATag;
+  Result.OnClick := AOnClick;
+  FViewAtlas.Add(Result);
+end;
+
+procedure TAtlasMainMenu.AddViewMenu(AViews: TMenuItem);
+begin
+  // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
+  FViewAtlas := TMenuItem.Create(FRoot);
+  FViewAtlas.Caption := TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuAtlas);
+  // Fenster von Base: Prüfung (#909), Ergebnisse (#400), Gliederung (#537), Atlas-Server (#1356).
+  FViewProblems := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ProblemsViewMenuWindow), 0,
+    ProblemsClick);
+  AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuResults), cResultsWindowTag, ResultsClick);
+  FViewOutline := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuOutline), 0, OutlineClick);
+  FViewServer := AddViewItem(TAtlasCommandsStrings.Text(TAtlasCommandsTextId.ViewMenuServer), 0,
+    ServerStatusClick);
+  // Fenster der Module (#1455) kommen beim Öffnen dazu, in ihren Untermenüs (etwa Debuggen, Designer).
+  FViewAtlas.OnClick := ViewAtlasClick;
+  FModules.ViewAtlas := FViewAtlas;
+  AViews.Add(FViewAtlas);
 end;
 
 procedure TAtlasMainMenu.RenameClick(Sender: TObject);
@@ -602,6 +634,8 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
     begin
+      // Sichtbarkeit der Fenster von Base nach den aktuellen Einstellungen, dann die der Module.
+      UpdateKeyMap;
       FModules.UpdateView;
     end);
 end;

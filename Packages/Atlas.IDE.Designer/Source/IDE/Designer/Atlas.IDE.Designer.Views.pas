@@ -20,6 +20,8 @@
 //   Dialog mit Vorschau je Datei.
 // - Ereignis-Karte (#612, designer.eventMap, TAtlasIdeEventMap): andockbares
 //   Fenster mit allen Ereignissen des Formulars.
+// Die beiden andockbaren Fenster öffnet Present auch aus dem Hauptmenü
+// (Ansicht › Atlas › Designer, Atlas › Designer).
 // Nur im Hauptthread.
 
 interface
@@ -56,6 +58,9 @@ type
     function Buttons(const ASettings: TAtlasPluginSettings): TArray<TAtlasDesignerButton>;
     /// <summary>Klick auf den Knopf AId ohne Menü; False, wenn er nicht hierher gehört.</summary>
     function Run(const AId: string): Boolean;
+    /// <summary>Andockbares Fenster AId (Atlas-Struktur, Ereignis-Karte) aus dem Hauptmenü öffnen oder nach vorn
+    /// holen; False, wenn AId kein solches Fenster ist.</summary>
+    function Present(const AId: string): Boolean;
     procedure ApplyTheme;
   end;
 
@@ -141,6 +146,23 @@ begin
   else if SameText(AId, TAtlasIdeEventMap.cId) then
   begin
     FEvents.Toggle;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TAtlasIdeDesignerViews.Present(const AId: string): Boolean;
+begin
+  Result := True;
+  if SameText(AId, TAtlasIdeStructure.cId) then
+  begin
+    FStructure.Present;
+  end
+  else if SameText(AId, TAtlasIdeEventMap.cId) then
+  begin
+    FEvents.Present;
   end
   else
   begin

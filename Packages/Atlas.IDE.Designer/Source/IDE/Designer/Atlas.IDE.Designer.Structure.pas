@@ -11,6 +11,8 @@
 //   Ein Takt (300 ms) vergleicht eine Kennung aus Namen, Klassen, Eltern und
 //   Verweisen und füllt bei Änderung neu; so erscheinen neue, gelöschte und
 //   umbenannte Komponenten sofort, ohne eigenen Designer-Notifier.
+// - Auch über Ansicht › Atlas › Designer und Atlas › Designer zu öffnen
+//   (Present: öffnet oder holt nach vorn, schließt nie).
 // - Klick wählt im Designer (bei einer Verknüpfung ihr Ziel), Doppelklick
 //   ruft den Komponenten-Editor (wie im Designer), Rechtsklick zeigt dessen
 //   Befehle. Die Auswahl im Designer wird im Baum markiert.
@@ -55,7 +57,13 @@ type
     FFilter: string;
     FByKind: Boolean;
     FHidOnForm: Boolean;
+    /// <summary>Vom Desktop angelegt und noch nicht zu sehen gewesen: Der Takt wartet, statt zu schließen.</summary>
+    FPending: Boolean;
     function Frame: TAtlasStructureFrame;
+    /// <summary>Fenster bei der IDE anmelden (Desktop), noch ohne es anzulegen.</summary>
+    procedure EnsureHost;
+    /// <summary>Neuer Frame, auch vom Desktop beim Start angelegt: verdrahten und dem Designer folgen.</summary>
+    procedure FrameArrived(AFrame: TCustomFrame);
     function Open: Boolean;
     procedure CloseWindow;
     procedure Wire(AFrame: TAtlasStructureFrame);
@@ -79,6 +87,8 @@ type
     function Button(const ASettings: TAtlasPluginSettings): TAtlasDesignerButton;
     /// <summary>Klick: Fenster öffnen bzw. schließen.</summary>
     procedure Toggle;
+    /// <summary>Menü Ansicht › Atlas: Fenster öffnen bzw. nach vorn holen, nie schließen.</summary>
+    procedure Present;
     procedure ApplyTheme;
   end;
 
@@ -335,6 +345,8 @@ begin
   FTimer.OnTimer := Tick;
   FPalette := TAtlasPaletteImages.Create;
   FMenu := TPopupMenu.Create(nil);
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  EnsureHost;
 end;
 
 destructor TAtlasIdeStructure.Destroy;
@@ -370,21 +382,42 @@ begin
   end;
 end;
 
-function TAtlasIdeStructure.Open: Boolean;
+procedure TAtlasIdeStructure.EnsureHost;
 var
   mDock: TStructureDock;
+begin
+  if FHost <> nil then
+  begin
+    Exit;
+  end;
+  mDock := TStructureDock.Create;
+  mDock.OnFrame :=
+    procedure(AFrame: TCustomFrame)
+    begin
+      FrameArrived(AFrame);
+    end;
+  // Im Desktop angemeldet, damit es angedockt seinen Platz behält.
+  FHost := TAtlasIdeDockWindow.Create(mDock, True);
+end;
+
+procedure TAtlasIdeStructure.FrameArrived(AFrame: TCustomFrame);
+begin
+  FHost.FrameCreated(AFrame);
+  if Frame = nil then
+  begin
+    Exit;
+  end;
+  Wire(Frame);
+  FSignature := '';
+  FPending := True;
+  FTimer.Enabled := True;
+end;
+
+function TAtlasIdeStructure.Open: Boolean;
+var
   mCreated: Boolean;
 begin
-  if FHost = nil then
-  begin
-    mDock := TStructureDock.Create;
-    FHost := TAtlasIdeDockWindow.Create(mDock, False);
-    mDock.OnFrame :=
-      procedure(AFrame: TCustomFrame)
-      begin
-        FHost.FrameCreated(AFrame);
-      end;
-  end;
+  EnsureHost;
   Result := FHost.Show(mCreated) and (Frame <> nil);
   if not Result then
   begin
@@ -466,10 +499,17 @@ procedure TAtlasIdeStructure.Tick(Sender: TObject);
 begin
   if (FHost = nil) or not FHost.Shown then
   begin
+    // Vom Desktop angelegt, aber noch verdeckt (etwa als Reiter im Hintergrund): warten.
+    if FPending and (Frame <> nil) then
+    begin
+      Exit;
+    end;
     // Mit dem X geschlossen: vorherigen Zustand der Formularfläche wiederherstellen.
+    FPending := False;
     CloseWindow;
     Exit;
   end;
+  FPending := False;
   Fill(False);
   SyncSelection;
 end;
@@ -769,6 +809,18 @@ begin
   begin
     HideOnForm(TAtlasIdeSettings.Current.DesignerStructureHideOnForm);
     FTimer.Enabled := True;
+  end;
+end;
+
+procedure TAtlasIdeStructure.Present;
+begin
+  if TAtlasIdeDockWindow.IsShown(FHost) then
+  begin
+    FHost.Present;
+  end
+  else
+  begin
+    Toggle;
   end;
 end;
 

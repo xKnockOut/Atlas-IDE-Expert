@@ -27,7 +27,7 @@ uses
   ToolsAPI,
   Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Debug.Session,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIdeInstanceBreakpoint = class

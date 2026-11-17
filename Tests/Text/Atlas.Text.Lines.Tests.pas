@@ -37,6 +37,8 @@ type
     [Test]
     procedure IndentOfLineOfText;
     [Test]
+    procedure LineAtOutsideIsEmpty;
+    [Test]
     procedure JoinLines;
     [Test]
     procedure StripTrailingCr;
@@ -191,6 +193,19 @@ begin
   Assert.AreEqual('   ', TTextLines.IndentOf('   '));
   Assert.AreEqual<Integer>(3, TTextLines.IndentLength('   '));
   Assert.AreEqual('', TTextLines.IndentOf(''));
+end;
+
+procedure TTextLinesTests.LineAtOutsideIsEmpty;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TArray<string>.Create('a', 'b');
+  Assert.AreEqual('a', TTextLines.LineAt(mLines, 0));
+  Assert.AreEqual('b', TTextLines.LineAt(mLines, 1));
+  Assert.AreEqual('', TTextLines.LineAt(mLines, 2));
+  Assert.AreEqual('', TTextLines.LineAt(mLines, -1));
+  Assert.AreEqual('', TTextLines.LineAt(nil, 0));
+  mLines := nil;
 end;
 
 procedure TTextLinesTests.IndentOfLineOfText;

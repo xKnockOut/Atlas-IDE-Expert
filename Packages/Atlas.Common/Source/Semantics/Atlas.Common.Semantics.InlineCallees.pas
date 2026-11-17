@@ -89,6 +89,14 @@ type
     /// eines inline-Mitglieds einer generischen Instanz) kommen nach AUnits.</summary>
     function RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
       const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
+    /// <summary>RefUnit für einen Typverweis ":Typ" oder ":Typ#Mitglied" (ATypeRef ohne den Doppelpunkt).
+    /// </summary>
+    function TypeRefUnit(const ACallee: TInlineCallee; const ATypeRef: string; AUnits: TList<string>;
+      var AExternal: Boolean): string;
+    /// <summary>Default-Property des generischen Typs AType selbst (TList&lt;T&gt;.Items) als ATarget.</summary>
+    function DefaultPropertyOf(const AType: TResolvedSymbol; out ATarget: TInlineCallee): Boolean;
+    /// <summary>AUnitName nach AUnits, wenn nicht leer und noch nicht dort.</summary>
+    class procedure AddMissing(AUnits: TList<string>; const AUnitName: string); static;
     /// <summary>Bedarf des Verweises ":Typ#Mitglied" auf ein Feld eines instanziierten generischen Typs
     /// (TList&lt;TKunde&gt;): nur der eines inline-Mitglieds, samt dessen Unit. False, wenn das Mitglied unbekannt ist.
     /// </summary>
@@ -320,46 +328,55 @@ begin
   end;
 end;
 
-function TInlineCallees.RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
-  const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
+function TInlineCallees.TypeRefUnit(const ACallee: TInlineCallee; const ATypeRef: string; AUnits: TList<string>;
+  var AExternal: Boolean): string;
 var
-  mResolved, mMember, mTarget: TResolvedSymbol;
+  mResolved, mTarget: TResolvedSymbol;
   mTypeText, mMemberName: string;
   mMark: Integer;
 begin
   Result := '';
-  if ARef[1] = ':' then
+  mTypeText := ATypeRef;
+  mMemberName := '';
+  mMark := Pos(TIndexSymbol.cInlineMemberMark, mTypeText);
+  if mMark > 0 then
   begin
-    mTypeText := Copy(ARef, 2, MaxInt);
-    mMemberName := '';
-    mMark := Pos(TIndexSymbol.cInlineMemberMark, mTypeText);
-    if mMark > 0 then
-    begin
-      mMemberName := Copy(mTypeText, mMark + 1, MaxInt);
-      mTypeText := Copy(mTypeText, 1, mMark - 1);
-    end;
-    if not FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, mTypeText, mResolved) then
+    mMemberName := Copy(mTypeText, mMark + 1, MaxInt);
+    mTypeText := Copy(mTypeText, 1, mMark - 1);
+  end;
+  if not FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, mTypeText, mResolved) then
+  begin
+    AExternal := True;
+  end
+  // Instanz eines generischen Typs: gehört der Unit der Routine; zählt nur ein inline-Mitglied.
+  else if (Pos('<', mTypeText) > 0) and (mMemberName <> '') and not mResolved.Builtin then
+  begin
+    if not AddInstanceMemberNeeds(ACallee, mResolved, mMemberName, AUnits) then
     begin
       AExternal := True;
-    end
-    // Instanz eines generischen Typs: gehört der Unit der Routine; zählt nur ein inline-Mitglied.
-    else if (Pos('<', mTypeText) > 0) and (mMemberName <> '') and not mResolved.Builtin then
-    begin
-      if not AddInstanceMemberNeeds(ACallee, mResolved, mMemberName, AUnits) then
-      begin
-        AExternal := True;
-      end;
-    end
-    // Mitglied über einen Alias (A.Line bei A: TTextPosition = Atlas.Text.Lines.TTextPosition): dcc braucht die
-    // Unit hinter dem Alias.
-    else if (mMemberName <> '') and SimpleAliasTarget(mResolved, mTarget) then
-    begin
-      Result := UnitOfResolved(mTarget);
-    end
-    else
-    begin
-      Result := UnitOfResolved(mResolved);
     end;
+  end
+  // Mitglied über einen Alias (A.Line bei A: TTextPosition = Atlas.Text.Lines.TTextPosition): dcc braucht die
+  // Unit hinter dem Alias.
+  else if (mMemberName <> '') and SimpleAliasTarget(mResolved, mTarget) then
+  begin
+    Result := UnitOfResolved(mTarget);
+  end
+  else
+  begin
+    Result := UnitOfResolved(mResolved);
+  end;
+end;
+
+function TInlineCallees.RefUnit(const ACallee: TInlineCallee; const ARef: string; AHasOwner: Boolean;
+  const AOwner: TResolvedSymbol; AUnits: TList<string>; var AExternal: Boolean): string;
+var
+  mResolved, mMember: TResolvedSymbol;
+begin
+  Result := '';
+  if ARef[1] = ':' then
+  begin
+    Result := TypeRefUnit(ACallee, Copy(ARef, 2, MaxInt), AUnits, AExternal);
     Exit;
   end;
   // Mitglieder der eigenen Klasse samt Vorfahren gehören nicht zu den Units; ist die Klasse unbekannt, lässt
@@ -379,40 +396,55 @@ begin
   end;
 end;
 
+class procedure TInlineCallees.AddMissing(AUnits: TList<string>; const AUnitName: string);
+begin
+  if (AUnitName <> '') and (AUnits.IndexOf(AUnitName) < 0) then
+  begin
+    AUnits.Add(AUnitName);
+  end;
+end;
+
+function TInlineCallees.DefaultPropertyOf(const AType: TResolvedSymbol; out ATarget: TInlineCallee): Boolean;
+var
+  mTypeUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  ATarget := Default(TInlineCallee);
+  if not FCallee.DeclaringUnit(AType, mTypeUnit) then
+  begin
+    Exit;
+  end;
+  for mSymbol in mTypeUnit.Symbols do
+  begin
+    if mSymbol.IsDefault and (mSymbol.Kind = TIndexSymbolKind.Property_) and
+      SameText(mSymbol.Container, AType.QualifiedName) then
+    begin
+      ATarget.OwnerUnit := mTypeUnit;
+      ATarget.Symbol := mSymbol;
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 function TInlineCallees.AddInstanceMemberNeeds(const ACallee: TInlineCallee; const AType: TResolvedSymbol;
   const AMember: string; AUnits: TList<string>): Boolean;
 var
   mMember: TResolvedSymbol;
-  mTypeUnit: TUnitIndex;
-  mSymbol: TIndexSymbol;
   mTarget, mGetter: TInlineCallee;
   mUnitName: string;
-  mFound: Boolean;
 begin
-  mFound := False;
   if AMember = '[]' then
   begin
     // Default-Property des generischen Typs selbst (TList<T>.Items).
-    if FCallee.DeclaringUnit(AType, mTypeUnit) then
-    begin
-      for mSymbol in mTypeUnit.Symbols do
-      begin
-        if not mFound and mSymbol.IsDefault and (mSymbol.Kind = TIndexSymbolKind.Property_) and
-          SameText(mSymbol.Container, AType.QualifiedName) then
-        begin
-          mTarget.OwnerUnit := mTypeUnit;
-          mTarget.Symbol := mSymbol;
-          mFound := True;
-        end;
-      end;
-    end;
+    Result := DefaultPropertyOf(AType, mTarget);
   end
   else
   begin
-    mFound := FCallee.DeclaredMember(AType, AMember, mMember) and CalleeOf(mMember, mTarget);
+    Result := FCallee.DeclaredMember(AType, AMember, mMember) and CalleeOf(mMember, mTarget);
   end;
-  Result := mFound;
-  if not mFound then
+  if not Result then
   begin
     Exit;
   end;
@@ -434,14 +466,11 @@ begin
   // eingebetteten Rumpf einer anderen Unit heraus schon (TJSONArray.GetValue).
   for mUnitName in NeedsOf(mTarget).Units do
   begin
-    if AUnits.IndexOf(mUnitName) < 0 then
-    begin
-      AUnits.Add(mUnitName);
-    end;
+    AddMissing(AUnits, mUnitName);
   end;
-  if not IsWithoutRefs(mTarget.Symbol) and (AUnits.IndexOf(mTarget.OwnerUnit.UnitName) < 0) then
+  if not IsWithoutRefs(mTarget.Symbol) then
   begin
-    AUnits.Add(mTarget.OwnerUnit.UnitName);
+    AddMissing(AUnits, mTarget.OwnerUnit.UnitName);
   end;
 end;
 
@@ -795,7 +824,7 @@ end;
 
 function TInlineCallees.NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
 var
-  mKey, mRef, mUnitName: string;
+  mKey, mRef: string;
   mOwner: TResolvedSymbol;
   mHasOwner: Boolean;
   mUnits: TList<string>;
@@ -821,19 +850,10 @@ begin
       begin
         Continue;
       end;
-      mUnitName := RefUnit(ACallee, mRef, mHasOwner, mOwner, mUnits, Result.External);
-      if (mUnitName <> '') and not SameText(mUnitName, ACallee.OwnerUnit.UnitName) and
-        (mUnits.IndexOf(mUnitName) < 0) then
-      begin
-        mUnits.Add(mUnitName);
-      end;
+      // Die eigene Unit fällt unten wieder heraus.
+      AddMissing(mUnits, RefUnit(ACallee, mRef, mHasOwner, mOwner, mUnits, Result.External));
     end;
-    mUnitName := ResultAliasUnit(ACallee);
-    if (mUnitName <> '') and not SameText(mUnitName, ACallee.OwnerUnit.UnitName) and
-      (mUnits.IndexOf(mUnitName) < 0) then
-    begin
-      mUnits.Add(mUnitName);
-    end;
+    AddMissing(mUnits, ResultAliasUnit(ACallee));
     // Units außerhalb der eigenen machen den Rumpf „extern“ (H2456, H2457); System und SysInit zählen nicht.
     for mIndex := mUnits.Count - 1 downto 0 do
     begin

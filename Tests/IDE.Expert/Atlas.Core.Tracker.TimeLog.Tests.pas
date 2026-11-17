@@ -499,6 +499,14 @@ begin
     '"url": "https://yt.beispiel.de", "key": "ATL-2", "date": "2026-10-28", "seconds": 60}]}', mRead));
   Assert.AreEqual(1, Integer(Length(mRead.Entries)));
   Assert.AreEqual('ATL-2', mRead.Entries[0].Issue.Key);
+  // Vorzeichen im Tag oder in der letzten Zeit: Eintrag fällt weg bzw. ohne Zeit, kein ERangeError im Debug-Bau.
+  Assert.IsTrue(TAtlasTimeLog.Parse('{"version": 1, "entries": [{"provider": "youtrack", ' +
+    '"url": "https://yt.beispiel.de", "key": "ATL-2", "date": "2026--1-05", "seconds": 60}, {"provider": ' +
+    '"youtrack", "url": "https://yt.beispiel.de", "key": "ATL-3", "date": "2026-10-28", "seconds": 60, ' +
+    '"last": "2026-10-28T-1:00:00"}]}', mRead));
+  Assert.AreEqual(1, Integer(Length(mRead.Entries)));
+  Assert.AreEqual('ATL-3', mRead.Entries[0].Issue.Key);
+  Assert.AreEqual<TDateTime>(0, mRead.Entries[0].Last);
 end;
 
 procedure TAtlasTimeLogTests.FileUpdateAndRead;

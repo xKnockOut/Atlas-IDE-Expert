@@ -11,6 +11,9 @@
 // Untermenüs stehen in der Reihenfolge ihres ersten Eintrags. Texte der Befehle
 // stehen ohne „Atlas: “ vorn; When blendet Einträge aus, die nicht zur Lage
 // passen (etwa Debuggen ohne Projekt, commands.atlasMenu.contextual).
+// Unter Ansicht › Atlas stehen die andockbaren Fenster der Module; Einträge mit
+// Section landen auch dort in einem Untermenü (etwa Debuggen, Designer), ein
+// Untermenü ohne sichtbaren Eintrag fehlt.
 
 interface
 
@@ -32,11 +35,17 @@ type
     FIds: TArray<string>;
     /// <summary>Ansicht › Atlas; nil, wenn die IDE kein Menü „Ansicht“ hat.</summary>
     FViewAtlas: TMenuItem;
-    /// <summary>Einträge der Module unter Ansicht › Atlas und ihre Befehls-Ids (Index = Tag).</summary>
+    /// <summary>Einträge und Untermenüs der Module direkt unter Ansicht › Atlas und die Befehls-Ids aller Einträge
+    /// (Index = Tag).</summary>
     FViewItems: TArray<TMenuItem>;
     FViewIds: TArray<string>;
     procedure ItemClick(Sender: TObject);
     procedure ViewItemClick(Sender: TObject);
+    /// <summary>Eintrag unter Ansicht › Atlas für den Befehl ACommand; Text aus AEntry, sonst der des Befehls.
+    /// </summary>
+    function NewViewItem(const AEntry: TAtlasMenuEntry; const ACommand: TAtlasModuleCommand): TMenuItem;
+    /// <summary>Untermenü ASection unter Ansicht › Atlas; legt es am Ende an, wenn es noch fehlt.</summary>
+    function ViewSectionOf(const ASection: string; var AGroups: TArray<TMenuItem>): TMenuItem;
     /// <summary>Neuer Eintrag für AEntry (Trennlinie, Befehl oder Eintrag ohne Befehl); nil, wenn es den Befehl
     /// nicht mehr gibt.</summary>
     function NewItem(const AEntry: TAtlasMenuEntry): TMenuItem;
@@ -279,9 +288,44 @@ begin
   end;
 end;
 
+function TAtlasMenuModuleItems.NewViewItem(const AEntry: TAtlasMenuEntry;
+  const ACommand: TAtlasModuleCommand): TMenuItem;
+begin
+  Result := TMenuItem.Create(FViewAtlas);
+  // Unter Ansicht › Atlas darf der Eintrag einen eigenen Text haben („Atlas: Hotspots“ statt „Hotspots …“).
+  Result.Caption := AEntry.Caption;
+  if Result.Caption = '' then
+  begin
+    Result.Caption := TAtlasMenuContextRules.MenuCaption(ACommand.Caption);
+  end;
+  Result.Tag := Length(FViewIds);
+  Result.OnClick := ViewItemClick;
+  Result.Visible := TAtlasModuleContributions.IsVisible(ACommand);
+  FViewIds := FViewIds + [ACommand.Id];
+end;
+
+function TAtlasMenuModuleItems.ViewSectionOf(const ASection: string; var AGroups: TArray<TMenuItem>): TMenuItem;
+var
+  mGroup: TMenuItem;
+begin
+  for mGroup in AGroups do
+  begin
+    if mGroup.Caption = ASection then
+    begin
+      Exit(mGroup);
+    end;
+  end;
+  Result := TMenuItem.Create(FViewAtlas);
+  Result.Caption := ASection;
+  FViewAtlas.Add(Result);
+  AGroups := AGroups + [Result];
+  FViewItems := FViewItems + [Result];
+end;
+
 procedure TAtlasMenuModuleItems.UpdateView;
 var
-  mItem: TMenuItem;
+  mItem, mGroup: TMenuItem;
+  mGroups: TArray<TMenuItem>;
   mEntry: TAtlasMenuEntry;
   mCommand: TAtlasModuleCommand;
 begin
@@ -289,31 +333,34 @@ begin
   begin
     Exit;
   end;
+  // Untermenüs geben ihre Einträge mit frei.
   for mItem in FViewItems do
   begin
     mItem.Free;
   end;
   FViewItems := nil;
   FViewIds := nil;
+  mGroups := nil;
   for mEntry in EntriesOf(TAtlasMenuPlace.ViewMenu) do
   begin
     if not TAtlasModuleContributions.FindCommand(AtlasModuleRegistry, mEntry.CommandId, mCommand) then
     begin
       Continue;
     end;
-    mItem := TMenuItem.Create(FViewAtlas);
-    // Unter Ansicht › Atlas darf der Eintrag einen eigenen Text haben („Atlas: Hotspots“ statt „Hotspots …“).
-    mItem.Caption := mEntry.Caption;
-    if mItem.Caption = '' then
+    mItem := NewViewItem(mEntry, mCommand);
+    if mEntry.Section = '' then
     begin
-      mItem.Caption := mCommand.Caption;
+      FViewAtlas.Add(mItem);
+      FViewItems := FViewItems + [mItem];
+    end
+    else
+    begin
+      ViewSectionOf(mEntry.Section, mGroups).Add(mItem);
     end;
-    mItem.Tag := Length(FViewIds);
-    mItem.OnClick := ViewItemClick;
-    mItem.Visible := TAtlasModuleContributions.IsVisible(mCommand);
-    FViewAtlas.Add(mItem);
-    FViewItems := FViewItems + [mItem];
-    FViewIds := FViewIds + [mCommand.Id];
+  end;
+  for mGroup in mGroups do
+  begin
+    TidySection(mGroup);
   end;
 end;
 

@@ -1,0 +1,2 @@
+### Behoben
+- Delphi 12: Neben dem Atlas-Tooltip öffnete die IDE ihr eigenes Help-Insight-Fenster („Symbolbeschreibung“), auch wenn der Haken nach jedem Start wieder gesetzt war. Delphi 12 merkt sich die Code-Insight-Schalter eines fremden Managers nicht; Atlas blendet das Fenster jetzt aus, solange der eigene Tooltip an ist und Atlas die Datei bedient. Mit ausgeschaltetem Atlas-Tooltip (`editor.hoverTooltip`) zeigt die IDE ihren Hinweis wie bisher.
