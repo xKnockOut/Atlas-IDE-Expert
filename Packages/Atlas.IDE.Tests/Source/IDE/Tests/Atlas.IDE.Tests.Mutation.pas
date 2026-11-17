@@ -8,20 +8,13 @@
 //   Mutanten beim Server erfragen (atlas.server.mutants mit den Operatoren
 //   aus tests.mutation.operators), auswählen (Atlas.Core.Tests.MutationPlan),
 //   Schattenprojekt neben dem Testprojekt anlegen (Atlas.Core.Tests.
-//   MutationShadow) und in der Projektgruppe öffnen; das aktive Projekt
-//   bleibt das des Benutzers. Erst laufen die Tests gegen die unveränderte
-//   Kopie (sonst ist jedes Ergebnis wertlos), dann je Mutant: Kopie
-//   schreiben, Schattenprojekt vollständig bauen (Build-Pipeline, Haken
-//   OnBuild), Test-EXE im eigenen Thread mit Zeitlimit
-//   tests.mutation.timeoutSec ausführen, Ausgang festhalten.
-// - Original und seine DCUs bleiben unberührt; der Text der Unit kommt aus
-//   dem Editor (auch ungespeichert), die übrigen Units von der Platte.
-//   Geschrieben wird nur über WriteShadowFile/SaveLines, und die schreiben nur
-//   in den Ordner des Schattenprojekts (TAtlasMutationShadows.IsShadowFile);
-//   vor dem Anlegen prüft TAtlasMutationShadows.Separate, dass keine Datei des
-//   Originals dort liegt.
-// - Die Test-EXE läuft in einem Thread des TAtlasWorkerSlot (Package des
-//   Testmoduls). Abbrechen setzt TAlive.Cancelled; der Prozessläufer prüft das
+//   MutationShadow) und in der Projektgruppe öffnen
+//   (Atlas.IDE.Tests.MutationShadowProject). Den Ablauf (erst unverändert,
+//   dann je Mutant schreiben, bauen, Test-EXE mit Zeitlimit
+//   tests.mutation.timeoutSec ausführen, Ausgang festhalten) führt
+//   TAtlasMutationFlow (Atlas.Core.Tests.MutationFlow).
+// - Original und seine DCUs bleiben unberührt.
+// - Abbrechen setzt TAtlasMutationAlive.Cancelled; der Prozessläufer prüft das
 //   alle 10 ms und beendet die Test-EXE. Destroy wartet mit der üblichen
 //   Zeitgrenze, was dann noch läuft, übernimmt TAtlasOverdueThreads.
 // - Am Ende (oder nach „Mutationslauf abbrechen“) schließt der Lauf das
@@ -30,59 +23,37 @@
 //   Meldungsansicht Zahlen, Mutation-Score und je überlebendem Mutanten eine
 //   anklickbare Zeile. Die Rinne (Atlas.IDE.Tests.MutationMarks) zeigt die
 //   Ergebnisse, solange die Routine unverändert ist.
-// Rückrufe (Server, Build, Thread) prüfen über TAlive, ob der Lauf noch lebt.
+// Rückrufe (Server, Build, Thread) prüfen über TAtlasMutationAlive, ob der Lauf noch lebt.
 
 interface
 
 uses
-  System.SysUtils,
-  System.Classes,
   ToolsAPI,
   Atlas.Core.Modules.Contract,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Diagnostics.WorkerSlot,
   Atlas.Core.Tests.Run,
-  Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.MutationResults,
   Atlas.Core.Tests.MutationPlan,
+  Atlas.Core.Tests.MutationFlow,
   Atlas.IDE.Tests.Runner,
-  Atlas.IDE.Tests.Output;
+  Atlas.IDE.Tests.Output,
+  Atlas.IDE.Tests.MutationShadowProject;
 
 type
-  /// <summary>Baut ATarget.Project vollständig mit Konfiguration und Plattform aus ATarget; False mit Grund, wenn
-  /// nicht gebaut wird, sonst kommt ADone nach dem Build.</summary>
-  TAtlasMutationBuildFunc = reference to function(const ATarget: TAtlasTestTarget;
-    const ADone: TAtlasTestsBuildDone; out AReason: string): Boolean;
-
   TAtlasIdeMutationRun = class
   private type
-    /// <summary>Lebt, solange der Lauf lebt; Cancelled liest auch der Thread der Test-EXE.</summary>
-    TAlive = class(TInterfacedObject)
-    public
-      Alive: Boolean;
-      Cancelled: Boolean;
-    end;
-    /// <summary>Ein laufender Mutationslauf.</summary>
+    /// <summary>Ein laufender Mutationslauf (vom Start bis zum Ende des Ablaufs).</summary>
     TState = record
       Active: Boolean;
       Scope: TAtlasMutationScope;
       FileName: string;
       Line: Integer;
       Lines: TArray<string>;
-      Content: TAtlasTextFileContent;
       Original: IOTAProject;
       Target: TAtlasTestTarget;
-      Shadow: TAtlasMutationShadow;
-      ShadowTarget: TAtlasTestTarget;
-      Jobs: TArray<TAtlasMutationJob>;
-      Outcomes: TArray<TAtlasMutationOutcome>;
-      /// <summary>-1 = Lauf ohne Mutation, sonst Index in Jobs.</summary>
-      Position: Integer;
-      StartedAt: UInt64;
     end;
   private const
     cServerTimeoutMs = 60000;
-    cMsPerSecond = 1000;
   private class var
     FCurrent: TAtlasIdeMutationRun;
   private
@@ -91,8 +62,9 @@ type
     FOutput: TAtlasIdeTestsOutput;
     FNewRunner: TAtlasTestsRunnerFactory;
     FBuild: TAtlasMutationBuildFunc;
-    FAlive: TAlive;
+    FAlive: TAtlasMutationAlive;
     FAliveRef: IInterface;
+    FFlow: TAtlasMutationFlow;
     /// <summary>Thread der Test-EXE; höchstens einer läuft, ein endender Vorgänger kann noch darin stehen.</summary>
     FThreads: TAtlasWorkerSlot;
     FResults: TAtlasMutationResults;
@@ -101,21 +73,15 @@ type
     FState: TState;
     procedure ProjectChosen(const AProject: IOTAProject);
     procedure Answered(const AJson: string);
-    function PrepareShadow: Boolean;
-    function OpenShadow: Boolean;
-    procedure CloseShadow;
-    procedure Step;
-    procedure Built(ASucceeded: Boolean; const AOutputFile, AError: string);
-    procedure RunExe(const AExecutable: string);
-    procedure Ran(ATimedOut: Boolean; AExitCode: Integer; const AXml: string);
-    procedure Rate(AStatus: TAtlasMutationStatus; const ABy: string);
-    procedure Advance;
-    procedure Finish(ACancelled: Boolean);
+    /// <summary>Schattenprojekt für den Lauf in FState.</summary>
+    function NewShadowProject: IAtlasMutationShadowProject;
+    procedure StartFlow(const AJobs: TArray<TAtlasMutationJob>);
+    procedure FlowNote(const ANote: TAtlasMutationNote);
+    procedure FlowEnded(AEnd: TAtlasMutationEnd);
     procedure StopWith(const AText: string);
     procedure Remember;
     procedure LoadResults(const AProject: string);
     procedure SaveResults;
-    function Done: Integer;
   public
     /// <summary>ATests und AOutput gehören dem Aufrufer und leben länger.</summary>
     constructor Create(const AScope: IAtlasModuleScope; ATests: TAtlasIdeTests; AOutput: TAtlasIdeTestsOutput;
@@ -140,14 +106,14 @@ type
 implementation
 
 uses
+  System.SysUtils,
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Files.TextFile,
   Atlas.Core.Lsp.Session.Json,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Text.DUnitX,
+  Atlas.Core.Tests.MutationShadow,
   Atlas.Core.Tests.Mutants,
   Atlas.UI.Tests.Strings,
   Atlas.IDE.Foundation.Host,
@@ -188,11 +154,11 @@ begin
 end;
 
 /// <summary>Rückruf der Projektwahl, solange der Lauf lebt.</summary>
-function ChosenProc(ARun: TAtlasIdeMutationRun; AAlive: TAtlasIdeMutationRun.TAlive;
+function ChosenProc(ARun: TAtlasIdeMutationRun; AAlive: TAtlasMutationAlive;
   const AKeep: IInterface): TAtlasTestsProjectProc;
 var
   mRun: TAtlasIdeMutationRun;
-  mAlive: TAtlasIdeMutationRun.TAlive;
+  mAlive: TAtlasMutationAlive;
   mKeep: IInterface;
 begin
   mRun := ARun;
@@ -209,11 +175,11 @@ begin
 end;
 
 /// <summary>Rückruf des Servers, solange der Lauf lebt.</summary>
-function AnswerProc(ARun: TAtlasIdeMutationRun; AAlive: TAtlasIdeMutationRun.TAlive;
+function AnswerProc(ARun: TAtlasIdeMutationRun; AAlive: TAtlasMutationAlive;
   const AKeep: IInterface): TProc<string>;
 var
   mRun: TAtlasIdeMutationRun;
-  mAlive: TAtlasIdeMutationRun.TAlive;
+  mAlive: TAtlasMutationAlive;
   mKeep: IInterface;
 begin
   mRun := ARun;
@@ -229,27 +195,6 @@ begin
     end;
 end;
 
-/// <summary>Rückruf des Builds, solange der Lauf lebt.</summary>
-function BuiltProc(ARun: TAtlasIdeMutationRun; AAlive: TAtlasIdeMutationRun.TAlive;
-  const AKeep: IInterface): TAtlasTestsBuildDone;
-var
-  mRun: TAtlasIdeMutationRun;
-  mAlive: TAtlasIdeMutationRun.TAlive;
-  mKeep: IInterface;
-begin
-  mRun := ARun;
-  mAlive := AAlive;
-  mKeep := AKeep;
-  Result :=
-    procedure(ASucceeded: Boolean; const AOutputFile, AError: string)
-    begin
-      if (mKeep <> nil) and mAlive.Alive then
-      begin
-        mRun.Built(ASucceeded, AOutputFile, AError);
-      end;
-    end;
-end;
-
 { TAtlasIdeMutationRun }
 
 constructor TAtlasIdeMutationRun.Create(const AScope: IAtlasModuleScope; ATests: TAtlasIdeTests;
@@ -261,11 +206,14 @@ begin
   FOutput := AOutput;
   FNewRunner := ANewRunner;
   FBuild := ABuild;
-  FAlive := TAlive.Create;
+  FAlive := TAtlasMutationAlive.Create;
   FAlive.Alive := True;
   FAliveRef := FAlive;
   FResults := TAtlasMutationResults.Create;
   FThreads := TAtlasWorkerSlot.Create(HInstance);
+  FFlow := TAtlasMutationFlow.Create;
+  FFlow.OnNote := FlowNote;
+  FFlow.OnEnded := FlowEnded;
   FCurrent := Self;
 end;
 
@@ -285,9 +233,10 @@ begin
     FThreads.Stop(TAtlasShutdown.cStopMs);
     FreeAndNil(FThreads);
   end;
-  if FState.Active then
+  if FFlow <> nil then
   begin
-    CloseShadow;
+    FFlow.Abandon;
+    FreeAndNil(FFlow);
   end;
   FResults.Free;
   FAliveRef := nil;
@@ -329,6 +278,7 @@ procedure TAtlasIdeMutationRun.Answered(const AJson: string);
 var
   mList: TAtlasMutantList;
   mUnit: string;
+  mJobs: TArray<TAtlasMutationJob>;
 begin
   mUnit := ExtractFileName(FState.FileName);
   if not TAtlasMutants.Parse(AJson, mList) then
@@ -336,9 +286,8 @@ begin
     StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationServerFailed, [mUnit]));
     Exit;
   end;
-  FState.Jobs := TAtlasMutationPlan.Select(mList, FState.Scope, FState.Line, FState.FileName, FState.Lines,
-    FResults);
-  if Length(FState.Jobs) = 0 then
+  mJobs := TAtlasMutationPlan.Select(mList, FState.Scope, FState.Line, FState.FileName, FState.Lines, FResults);
+  if Length(mJobs) = 0 then
   begin
     case FState.Scope of
       TAtlasMutationScope.Routine:
@@ -350,415 +299,115 @@ begin
     end;
     Exit;
   end;
-  SetLength(FState.Outcomes, Length(FState.Jobs));
-  if not PrepareShadow then
-  begin
-    Exit;
-  end;
-  FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStarted, [Length(FState.Jobs), mUnit,
-    ProjectName(FState.Target.Project), FState.Target.Configuration, FState.Target.Platform]));
-  FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.MutationBaseline));
-  FState.Position := -1;
-  Step;
+  StartFlow(mJobs);
 end;
 
-function TAtlasIdeMutationRun.OpenShadow: Boolean;
+function TAtlasIdeMutationRun.NewShadowProject: IAtlasMutationShadowProject;
 var
-  mActions: IOTAActionServices;
-  mModules: IOTAModuleServices;
-  mShadow: IOTAProject;
+  mSetup: TAtlasIdeMutationShadowSetup;
 begin
-  mShadow := nil;
-  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
-  begin
-    // Fügt das Projekt der offenen Gruppe hinzu (Probe in der IDE); das aktive Projekt danach zurück.
-    mActions.OpenProject(FState.Shadow.DprojFile, False);
-    mShadow := TAtlasIdeTestProjects.ProjectByFile(FState.Shadow.DprojFile);
-  end;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) and (mModules.MainProjectGroup <> nil) and
-    (FState.Original <> nil) then
-  begin
-    mModules.MainProjectGroup.ActiveProject := FState.Original;
-  end;
-  Result := mShadow <> nil;
-  if not Result then
-  begin
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotOpened, [FState.Shadow.DprojFile]));
-    Exit;
-  end;
-  FState.ShadowTarget := TAtlasIdeTests.TargetOf(mShadow, nil);
-  FState.ShadowTarget.Configuration := FState.Target.Configuration;
-  FState.ShadowTarget.Platform := FState.Target.Platform;
+  mSetup := Default(TAtlasIdeMutationShadowSetup);
+  mSetup.Original := FState.Original;
+  mSetup.Target := FState.Target;
+  mSetup.UnitFile := FState.FileName;
+  mSetup.Build := FBuild;
+  mSetup.NewRunner := FNewRunner;
+  mSetup.Threads := FThreads;
+  mSetup.Alive := FAlive;
+  Result := TAtlasIdeMutationShadowProject.Create(mSetup);
 end;
 
-procedure TAtlasIdeMutationRun.CloseShadow;
+procedure TAtlasIdeMutationRun.StartFlow(const AJobs: TArray<TAtlasMutationJob>);
 var
-  mModules: IOTAModuleServices;
-  mModule: IOTAModule;
+  mSource: TAtlasMutationFlowSource;
 begin
-  if (FState.Shadow.DprojFile = '') or not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
+  mSource := Default(TAtlasMutationFlowSource);
+  mSource.Jobs := AJobs;
+  mSource.Lines := FState.Lines;
+  FFlow.Start(NewShadowProject, mSource);
+end;
+
+/// <summary>Score der Zahlen ATotals für die Schlussmeldung.</summary>
+function ScoreText(const ATotals: TAtlasMutationTotals): string;
+begin
+  Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.MutationNoScore);
+  if ATotals.Score >= 0 then
   begin
-    Exit;
-  end;
-  try
-    mModule := mModules.FindModule(FState.Shadow.DprojFile);
-    if mModule <> nil then
-    begin
-      mModule.CloseModule(True);
-    end;
-    if (mModules.MainProjectGroup <> nil) and (FState.Original <> nil) then
-    begin
-      mModules.MainProjectGroup.ActiveProject := FState.Original;
-    end;
-  except
-    on E: Exception do
-      FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotOpened, [E.Message]));
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationScore, [ATotals.Score]);
   end;
 end;
 
-procedure TAtlasIdeMutationRun.Built(ASucceeded: Boolean; const AOutputFile, AError: string);
-var
-  mExecutable: string;
-  mShadow: IOTAProject;
+/// <summary>Text der Meldung ANote zum Mutanten AJob; Unit AUnit, Testprojekt mit Ziel ATarget.</summary>
+function NoteText(const ANote: TAtlasMutationNote; const AJob: TAtlasMutationJob; const AUnit: string;
+  const ATarget: TAtlasTestTarget): string;
 begin
-  if AError <> '' then
-  begin
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBuildRefused, [FState.Shadow.Name, AError]));
-    Exit;
-  end;
-  if not ASucceeded then
-  begin
-    Rate(TAtlasMutationStatus.BuildFailed, '');
-    Exit;
-  end;
-  mExecutable := AOutputFile;
-  if mExecutable = '' then
-  begin
-    mShadow := TAtlasIdeTestProjects.ProjectByFile(FState.Shadow.DprojFile);
-    if mShadow <> nil then
-    begin
-      mExecutable := TAtlasIdeTests.TargetOf(mShadow, nil).Executable;
-    end;
-  end;
-  if (mExecutable = '') or not FileExists(mExecutable) then
-  begin
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationNoExe, [FState.Shadow.Name]));
-    Exit;
-  end;
-  RunExe(mExecutable);
-end;
-
-/// <summary>Quelle des Schattenprojekts für das Testprojekt AProject und die Unit AUnitFile.</summary>
-function ShadowSource(const AProject, AUnitFile: string): TAtlasMutationShadowSource;
-begin
-  Result := Default(TAtlasMutationShadowSource);
-  Result.ProjectFile := AProject;
-  Result.Dpr := TAtlasTextFile.LoadText(ChangeFileExt(AProject, '.dpr'));
-  Result.Dproj := TAtlasTextFile.LoadText(AProject);
-  Result.UnitName := ChangeFileExt(ExtractFileName(AUnitFile), '');
-  Result.UnitFile := AUnitFile;
-  Result.Guid := TGUID.NewGuid.ToString;
-  Result.ResExists := FileExists(ChangeFileExt(AProject, '.res'));
-end;
-
-/// <summary>Wirft, wenn AFileName nicht im Ordner von AShadow liegt: Der Lauf schreibt nie woanders hin.</summary>
-procedure CheckShadowFile(const AShadow: TAtlasMutationShadow; const AFileName: string);
-begin
-  if not TAtlasMutationShadows.IsShadowFile(AShadow, AFileName) then
-  begin
-    raise EInOutError.Create(AFileName);
-  end;
-end;
-
-/// <summary>Text AText als AFileName im Ordner von AShadow schreiben.</summary>
-procedure WriteShadowFile(const AShadow: TAtlasMutationShadow; const AFileName, AText: string);
-begin
-  CheckShadowFile(AShadow, AFileName);
-  TFile.WriteAllText(AFileName, AText, TEncoding.UTF8);
-end;
-
-/// <summary>Dateien des Schattenprojekts AShadow schreiben; vorhandene Formulardateien der Unit AUnitFile
-/// daneben.</summary>
-procedure WriteShadow(const AShadow: TAtlasMutationShadow; const AUnitFile: string);
-var
-  mCompanion, mTarget: string;
-begin
-  CheckShadowFile(AShadow, AShadow.UnitFile);
-  ForceDirectories(ExtractFileDir(AShadow.UnitFile));
-  ForceDirectories(TPath.Combine(AShadow.Folder, TAtlasMutationShadows.cDcuFolder));
-  WriteShadowFile(AShadow, AShadow.DprFile, AShadow.Dpr);
-  WriteShadowFile(AShadow, AShadow.DprojFile, AShadow.Dproj);
-  for mCompanion in TAtlasMutationShadows.CompanionFiles(AUnitFile) do
-  begin
-    // Units ohne Formular haben keine; TFile.Copy würfe sonst.
-    if FileExists(mCompanion) then
-    begin
-      mTarget := TPath.Combine(ExtractFileDir(AShadow.UnitFile), ExtractFileName(mCompanion));
-      CheckShadowFile(AShadow, mTarget);
-      TFile.Copy(mCompanion, mTarget, True);
-    end;
-  end;
-end;
-
-/// <summary>Meldung, warum sich die dpr ADpr für die Unit AUnit nicht umschreiben ließ: eigener Grund statt eines
-/// Builds, der erst später scheitert.</summary>
-function ShadowProblemText(const AUnit, ADpr: string; const AShadow: TAtlasMutationShadow): string;
-begin
-  if AShadow.Problem = TAtlasMutationShadowProblem.NoProgram then
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNoProgram, [AUnit, ADpr]);
-  end
-  else if AShadow.Problem = TAtlasMutationShadowProblem.Unclosed then
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprUnclosed, [ADpr, AShadow.ProblemText]);
-  end
+  case ANote.Kind of
+    TAtlasMutationNoteKind.Started:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationStarted, [ANote.Total, AUnit,
+        ProjectName(ATarget.Project), ATarget.Configuration, ATarget.Platform]);
+    TAtlasMutationNoteKind.WriteFailed:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowFailed, [AUnit, ANote.Text]);
+    TAtlasMutationNoteKind.BuildRefused:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBuildRefused, [ANote.Shadow, ANote.Text]);
+    TAtlasMutationNoteKind.NoExecutable:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationNoExe, [ANote.Shadow]);
+    TAtlasMutationNoteKind.BaselineFailed:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBaselineFailed, [ProjectName(ATarget.Project),
+        TAtlasIdeMutationRun.StatusText(ANote.Status, ANote.By)]);
+    TAtlasMutationNoteKind.Outcome:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationOutcome, [ANote.Position + 1, ANote.Total,
+        AJob.Routine.Name, AJob.Mutant.Line, AJob.Mutant.Original, AJob.Mutant.Replacement,
+        TAtlasIdeMutationRun.StatusText(ANote.Status, ANote.By)]);
+    TAtlasMutationNoteKind.Survivor:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationSurvivor, [AJob.Routine.Name, AJob.Mutant.Line,
+        AJob.Mutant.Original, AJob.Mutant.Replacement, AJob.Mutant.OperatorId]);
+    TAtlasMutationNoteKind.Cancelled:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationCancelled, [ANote.Done, ANote.Total]);
+    TAtlasMutationNoteKind.Finished:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationFinished, [AUnit,
+        ANote.Totals.Killed + ANote.Totals.TimedOut, ANote.Totals.Survived,
+        ANote.Totals.BuildFailed + ANote.Totals.Invalid, ScoreText(ANote.Totals)]);
+    TAtlasMutationNoteKind.CloseFailed:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotOpened, [ANote.Text]);
   else
-  begin
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNotRewritable, [ADpr, AShadow.ProblemText]);
+    // OpenFailed: Der Grund ist schon der Text.
+    Result := ANote.Text;
   end;
 end;
 
-function TAtlasIdeMutationRun.PrepareShadow: Boolean;
-var
-  mUnit: string;
-  mSource: TAtlasMutationShadowSource;
-begin
-  mUnit := ExtractFileName(FState.FileName);
-  Result := False;
-  try
-    FState.Content := TAtlasTextFile.Load(FState.FileName);
-    mSource := ShadowSource(FState.Target.Project, FState.FileName);
-    if not TAtlasMutationShadows.Build(mSource, FState.Shadow) then
-    begin
-      StopWith(ShadowProblemText(mUnit, ExtractFileName(ChangeFileExt(FState.Target.Project, '.dpr')),
-        FState.Shadow));
-      Exit;
-    end;
-    // Läge eine Datei des Originals im Schattenordner (etwa die Kopie eines früheren Laufs im Editor), schriebe der
-    // Lauf genau diese Datei.
-    if not TAtlasMutationShadows.Separate(mSource, FState.Shadow) then
-    begin
-      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowOverlaps, [mUnit, FState.Shadow.Folder]));
-      Exit;
-    end;
-    WriteShadow(FState.Shadow, FState.FileName);
-  except
-    on E: Exception do
-    begin
-      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowFailed, [mUnit, E.Message]));
-      Exit;
-    end;
-  end;
-  Result := OpenShadow;
-end;
-
-procedure TAtlasIdeMutationRun.Ran(ATimedOut: Boolean; AExitCode: Integer; const AXml: string);
-var
-  mBy: string;
-  mStatus: TAtlasMutationStatus;
-begin
-  mStatus := TAtlasMutationPlan.StatusOf(ATimedOut, AExitCode, AXml, mBy);
-  Rate(mStatus, mBy);
-end;
-
-procedure TAtlasIdeMutationRun.Rate(AStatus: TAtlasMutationStatus; const ABy: string);
+procedure TAtlasIdeMutationRun.FlowNote(const ANote: TAtlasMutationNote);
 var
   mJob: TAtlasMutationJob;
+  mText: string;
 begin
-  // Rot, nicht gebaut oder nicht bewertbar schon ohne Mutation: Jeder Mutant wäre „erkannt“.
-  if TAtlasMutationSteps.BaselineFailed(FState.Position, AStatus) then
+  mJob := Default(TAtlasMutationJob);
+  if (ANote.Position >= 0) and (ANote.Position < Length(FFlow.Jobs)) then
   begin
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBaselineFailed, [ProjectName(FState.Target.Project),
-      StatusText(AStatus, ABy)]));
+    mJob := FFlow.Jobs[ANote.Position];
+  end;
+  mText := NoteText(ANote, mJob, ExtractFileName(FState.FileName), FState.Target);
+  if ANote.Kind = TAtlasMutationNoteKind.Survivor then
+  begin
+    FOutput.Jump(FState.FileName, mText, mJob.Mutant.Line - 1, mJob.Mutant.Character - 1);
     Exit;
   end;
-  if FState.Position < 0 then
+  FOutput.Say(mText);
+  if ANote.Kind = TAtlasMutationNoteKind.Started then
   begin
-    Advance;
+    FOutput.Say(TAtlasTestsStrings.Text(TAtlasTestsTextId.MutationBaseline));
+  end;
+end;
+
+procedure TAtlasIdeMutationRun.FlowEnded(AEnd: TAtlasMutationEnd);
+begin
+  if AEnd = TAtlasMutationEnd.Stopped then
+  begin
+    FState := Default(TState);
+    Inc(FVersion);
     Exit;
   end;
-  mJob := FState.Jobs[FState.Position];
-  FState.Outcomes[FState.Position] := TAtlasMutationSteps.OutcomeOf(mJob, AStatus, ABy,
-    Integer(TThread.GetTickCount64 - FState.StartedAt));
-  FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationOutcome, [FState.Position + 1,
-    Length(FState.Jobs), mJob.Routine.Name, mJob.Mutant.Line, mJob.Mutant.Original, mJob.Mutant.Replacement,
-    StatusText(AStatus, ABy)]));
-  Advance;
-end;
-
-/// <summary>AContent mit den Zeilen ALines (CRLF) als Kopie der Unit von AShadow speichern.</summary>
-procedure SaveLines(const AShadow: TAtlasMutationShadow; const AContent: TAtlasTextFileContent;
-  const ALines: TArray<string>);
-var
-  mContent: TAtlasTextFileContent;
-begin
-  CheckShadowFile(AShadow, AShadow.UnitFile);
-  mContent := AContent;
-  mContent.Text := string.Join(#13#10, ALines) + #13#10;
-  TAtlasTextFile.Save(AShadow.UnitFile, mContent);
-end;
-
-procedure TAtlasIdeMutationRun.Step;
-var
-  mLines: TArray<string>;
-  mReason: string;
-begin
-  if FAlive.Cancelled then
-  begin
-    Finish(True);
-    Exit;
-  end;
-  mLines := FState.Lines;
-  if (FState.Position >= 0) and
-    not TAtlasMutants.Apply(FState.Lines, FState.Jobs[FState.Position].Mutant, mLines) then
-  begin
-    Rate(TAtlasMutationStatus.Invalid, '');
-    Exit;
-  end;
-  try
-    SaveLines(FState.Shadow, FState.Content, mLines);
-  except
-    on E: Exception do
-    begin
-      StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowFailed, [ExtractFileName(FState.FileName),
-        E.Message]));
-      Exit;
-    end;
-  end;
-  FState.StartedAt := TThread.GetTickCount64;
-  if not FBuild(FState.ShadowTarget, BuiltProc(Self, FAlive, FAliveRef), mReason) then
-  begin
-    StopWith(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationBuildRefused, [FState.Shadow.Name, mReason]));
-  end;
-end;
-
-procedure TAtlasIdeMutationRun.Advance;
-begin
-  Inc(FState.Position);
-  if FState.Position > High(FState.Jobs) then
-  begin
-    Finish(False);
-    Exit;
-  end;
-  Step;
-end;
-
-/// <summary>Test-EXE AExecutable mit Bericht in einer Temp-Datei ausführen (im Thread des Laufs).</summary>
-function RunTestExe(const AFactory: TAtlasTestsRunnerFactory; const AExecutable: string; ATimeoutMs: Cardinal;
-  const ACancelled: TFunc<Boolean>; out AXml: string): TAtlasVcsRunResult;
-var
-  mRunner: IAtlasVcsRunner;
-  mResultFile: string;
-begin
-  AXml := '';
-  mResultFile := TPath.Combine(TPath.GetTempPath, 'atlas-mutation-' +
-    TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '') + '.xml');
-  try
-    mRunner := AFactory(ACancelled);
-    Result := mRunner.Run(AExecutable, TDUnitXCommandLine.Arguments(mResultFile, nil), ExtractFileDir(AExecutable),
-      ATimeoutMs);
-    if FileExists(mResultFile) then
-    begin
-      AXml := TFile.ReadAllText(mResultFile, TEncoding.UTF8);
-      TFile.Delete(mResultFile);
-    end;
-  except
-    on Exception do
-      Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
-  end;
-end;
-
-/// <summary>Abbruch des Laufs, beim Entladen oder über „Mutationslauf abbrechen“.</summary>
-function CancelledCheck(AAlive: TAtlasIdeMutationRun.TAlive; const AKeep: IInterface): TFunc<Boolean>;
-var
-  mAlive: TAtlasIdeMutationRun.TAlive;
-  mKeep: IInterface;
-begin
-  mAlive := AAlive;
-  mKeep := AKeep;
-  Result :=
-    function: Boolean
-    begin
-      Result := TAtlasShutdown.Signalled or (mKeep = nil) or mAlive.Cancelled;
-    end;
-end;
-
-procedure TAtlasIdeMutationRun.RunExe(const AExecutable: string);
-var
-  mFactory: TAtlasTestsRunnerFactory;
-  mCancelled: TFunc<Boolean>;
-  mAlive: TAlive;
-  mKeep: IInterface;
-  mRun: TAtlasIdeMutationRun;
-  mTimeoutMs: Cardinal;
-  mExecutable: string;
-begin
-  mFactory := FNewRunner;
-  mAlive := FAlive;
-  mKeep := FAliveRef;
-  mRun := Self;
-  mExecutable := AExecutable;
-  mCancelled := CancelledCheck(FAlive, FAliveRef);
-  mTimeoutMs := Cardinal(TAtlasIdeSettings.Current.TestsMutationTimeoutSec) * cMsPerSecond;
-  // Ein Thread je Testlauf. Start gibt beendete Vorgänger frei; einer, der nach seinem Rückruf noch endet, bleibt bis
-  // zum nächsten Mal im Slot, statt hier im Hauptthread auf ihn zu warten.
-  FThreads.Start(TThread.CreateAnonymousThread(
-    procedure
-    var
-      mResult: TAtlasVcsRunResult;
-      mXml: string;
-    begin
-      mResult := RunTestExe(mFactory, mExecutable, mTimeoutMs, mCancelled, mXml);
-      TAtlasMainThread.Queue(TAtlasFeature.Build,
-        procedure
-        begin
-          if (mKeep = nil) or not mAlive.Alive then
-          begin
-            Exit;
-          end;
-          if mResult.Outcome = TAtlasVcsOutcome.Cancelled then
-          begin
-            mRun.Finish(True);
-            Exit;
-          end;
-          mRun.Ran(mResult.Outcome = TAtlasVcsOutcome.TimedOut, mResult.ExitCode, mXml);
-        end);
-    end));
-end;
-
-procedure TAtlasIdeMutationRun.Finish(ACancelled: Boolean);
-var
-  mTotals: TAtlasMutationTotals;
-  mScore, mUnit: string;
-  mIndex: Integer;
-begin
-  if not FState.Active then
-  begin
-    Exit;
-  end;
-  CloseShadow;
   Remember;
   SaveResults;
-  mTotals := TAtlasMutationSteps.Totals(FState.Outcomes, Done);
-  for mIndex in TAtlasMutationSteps.Survivors(FState.Outcomes, Done) do
-  begin
-    FOutput.Jump(FState.FileName, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationSurvivor,
-      [FState.Jobs[mIndex].Routine.Name, FState.Jobs[mIndex].Mutant.Line, FState.Jobs[mIndex].Mutant.Original,
-      FState.Jobs[mIndex].Mutant.Replacement, FState.Jobs[mIndex].Mutant.OperatorId]),
-      FState.Jobs[mIndex].Mutant.Line - 1, FState.Jobs[mIndex].Mutant.Character - 1);
-  end;
-  if ACancelled then
-  begin
-    FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationCancelled, [Done, Length(FState.Jobs)]));
-  end;
-  mScore := TAtlasTestsStrings.Text(TAtlasTestsTextId.MutationNoScore);
-  if mTotals.Score >= 0 then
-  begin
-    mScore := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationScore, [mTotals.Score]);
-  end;
-  mUnit := ExtractFileName(FState.FileName);
-  FOutput.Say(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationFinished, [mUnit, mTotals.Killed + mTotals.TimedOut,
-    mTotals.Survived, mTotals.BuildFailed + mTotals.Invalid, mScore]));
   FOutput.ShowView;
   FState := Default(TState);
   Inc(FVersion);
@@ -768,17 +417,8 @@ end;
 procedure TAtlasIdeMutationRun.StopWith(const AText: string);
 begin
   FOutput.Say(AText);
-  if FState.Active then
-  begin
-    CloseShadow;
-  end;
   FState := Default(TState);
   Inc(FVersion);
-end;
-
-function TAtlasIdeMutationRun.Done: Integer;
-begin
-  Result := TAtlasMutationSteps.Done(FState.Position);
 end;
 
 procedure TAtlasIdeMutationRun.Start(AScope: TAtlasMutationScope);
@@ -813,16 +453,18 @@ var
   mIndex: Integer;
   mResult: TAtlasMutationRoutineResult;
   mComplete: Boolean;
+  mJobs: TArray<TAtlasMutationJob>;
 begin
-  for mIndex := 0 to High(FState.Jobs) do
+  mJobs := FFlow.Jobs;
+  for mIndex := 0 to High(mJobs) do
   begin
-    if not TAtlasMutationSteps.FirstOfRoutine(FState.Jobs, mIndex) then
+    if not TAtlasMutationSteps.FirstOfRoutine(mJobs, mIndex) then
     begin
       Continue;
     end;
-    mResult := TAtlasMutationSteps.RoutineResult(FState.Jobs, FState.Outcomes, mIndex, Done, mComplete);
+    mResult := TAtlasMutationSteps.RoutineResult(mJobs, FFlow.Outcomes, mIndex, FFlow.DoneCount, mComplete);
     mResult.FileName := FState.FileName;
-    mResult.Body := TAtlasMutants.RoutineBody(FState.Lines, FState.Jobs[mIndex].Routine);
+    mResult.Body := TAtlasMutants.RoutineBody(FState.Lines, mJobs[mIndex].Routine);
     mResult.AtUtc := TTimeZone.Local.ToUniversalTime(Now);
     // Abgebrochen: nur ganz geprüfte Routinen gelten, sonst fehlten „geänderten Methoden“ Mutanten.
     if mComplete then
@@ -837,6 +479,7 @@ begin
   if FState.Active then
   begin
     FAlive.Cancelled := True;
+    FFlow.Cancel;
   end;
 end;
 
