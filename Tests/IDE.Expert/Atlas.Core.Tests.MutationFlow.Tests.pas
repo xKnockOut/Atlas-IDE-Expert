@@ -5,7 +5,9 @@
 // Tests: erst unverändert, dann je Mutant; rote, nicht gebaute und nicht
 // bewertbare Läufe ohne Mutation; ungültiger Mutant; Build abgelehnt, ohne
 // EXE, Kopie nicht schreibbar, Schattenprojekt nicht zu öffnen oder zu
-// schließen; Abbruch; späte Antworten; Ergebnisse im Ende.
+// schließen; Ende mitten im Lauf behält die Ergebnisse; nicht gestartete
+// Test-EXE zählt nicht als erkannt; Abbruch; späte Antworten; Ergebnisse im
+// Ende; Zustand der Test-EXE aus dem Ergebnis des Prozessläufers.
 
 interface
 
@@ -78,6 +80,20 @@ type
     [Test]
     procedure CloseErrorIsNoted;
     [Test]
+    procedure BuildRefusedMidRunKeepsResults;
+    [Test]
+    procedure BuildErrorMidRunKeepsResults;
+    [Test]
+    procedure WriteErrorMidRunKeepsResults;
+    [Test]
+    procedure MissingExecutableMidRunKeepsResults;
+    [Test]
+    procedure BaselineNotStartedStops;
+    [Test]
+    procedure MutantNotStartedIsNotKilled;
+    [Test]
+    procedure RunStatesFromRunner;
+    [Test]
     procedure CancelEndsAfterCurrentStep;
     [Test]
     procedure CancelledTestRunEnds;
@@ -91,12 +107,13 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Diagnostics.Deadline;
+  Atlas.Core.Diagnostics.Deadline,
+  Atlas.Core.VersionControl.Contract;
 
 const
   cExe = 'C:\P\Shadow\Tests.exe';
   cKindNames: array[TAtlasMutationNoteKind] of string = ('Started', 'OpenFailed', 'WriteFailed', 'BuildRefused',
-    'NoExecutable', 'BaselineFailed', 'Outcome', 'Survivor', 'Cancelled', 'Finished', 'CloseFailed');
+    'NoExecutable', 'NotStarted', 'BaselineFailed', 'Outcome', 'Survivor', 'Cancelled', 'Finished', 'CloseFailed');
   cEndNames: array[TAtlasMutationEnd] of string = ('Finished', 'Cancelled', 'Stopped');
 
 /// <summary>Zeilen der Unit: Routine P mit „A &gt; B“ in Zeile 3 (ab 1).</summary>
@@ -332,7 +349,7 @@ begin
   Start;
   Pass(True);
   Assert.IsTrue(FFake.FinishBuild(True, cExe, ''));
-  Assert.IsTrue(FFake.FinishRun(False, True, 0, ''));
+  Assert.IsTrue(FFake.FinishRun(TAtlasMutationRunState.TimedOut, 0, ''));
   Pass(True);
   Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.TimedOut, FEndedStatus[0]);
 end;
@@ -399,7 +416,111 @@ begin
   Pass(True);
   Assert.AreEqual('Started,Outcome,Outcome,CloseFailed,Survivor,Finished', Kinds);
   Assert.AreEqual('Projekt gesperrt', FNotes[3].Text);
+  Assert.AreEqual(cMutationShadowFakeName, FNotes[3].Shadow, 'Name für die Meldung, das Projekt steht noch offen');
   Assert.AreEqual('Finished', FEnds);
+end;
+
+/// <summary>Erst ohne Mutation grün, der erste Mutant überlebt; danach endet der Lauf durch die Umgebung.</summary>
+procedure TAtlasMutationFlowTests.BuildRefusedMidRunKeepsResults;
+begin
+  Start;
+  Pass(True);
+  // Beim Build des zweiten Mutanten läuft der Debugger.
+  FFake.BuildRefusal := 'Debugger läuft';
+  Pass(True);
+  Assert.AreEqual('Started,Outcome,BuildRefused,Survivor,Cancelled,Finished', Kinds);
+  Assert.AreEqual('Debugger läuft', FNotes[2].Text);
+  Assert.AreEqual(0, FNotes[3].Position, 'Überlebender des ersten Mutanten');
+  Assert.AreEqual(1, LastNote.Done);
+  Assert.AreEqual(1, LastNote.Totals.Survived);
+  Assert.AreEqual(0, LastNote.Totals.Score);
+  Assert.AreEqual('Cancelled', FEnds, 'wie Abbrechen: Ergebnisse werden gemerkt');
+  Assert.AreEqual(1, FEndedDone);
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Survived, FEndedStatus[0]);
+  Assert.AreEqual('close', FFake.Calls[FFake.Calls.Count - 1]);
+  Assert.IsFalse(FFlow.Active);
+end;
+
+procedure TAtlasMutationFlowTests.BuildErrorMidRunKeepsResults;
+begin
+  Start;
+  Pass(True);
+  Pass(False);
+  Assert.IsTrue(FFake.FinishBuild(False, '', 'anderer Build läuft'));
+  Assert.AreEqual('Started,Outcome,BuildRefused,Cancelled,Finished', Kinds);
+  Assert.AreEqual('anderer Build läuft', FNotes[2].Text);
+  Assert.AreEqual(1, LastNote.Totals.Killed);
+  Assert.AreEqual('Cancelled', FEnds);
+  Assert.AreEqual(1, FEndedDone);
+  Assert.AreEqual<TAtlasMutationStatus>(TAtlasMutationStatus.Killed, FEndedStatus[0]);
+end;
+
+procedure TAtlasMutationFlowTests.WriteErrorMidRunKeepsResults;
+begin
+  Start;
+  Pass(True);
+  FFake.WriteError := 'Zugriff verweigert';
+  Pass(False);
+  Assert.AreEqual('Started,Outcome,WriteFailed,Cancelled,Finished', Kinds);
+  Assert.AreEqual('Cancelled', FEnds);
+  Assert.AreEqual(1, FEndedDone);
+end;
+
+procedure TAtlasMutationFlowTests.MissingExecutableMidRunKeepsResults;
+begin
+  Start;
+  Pass(True);
+  Pass(True);
+  Assert.IsTrue(FFake.FinishBuild(True, '', ''));
+  Assert.AreEqual('Started,Outcome,NoExecutable,Survivor,Cancelled,Finished', Kinds);
+  Assert.AreEqual('Cancelled', FEnds);
+  Assert.AreEqual(1, FEndedDone);
+end;
+
+procedure TAtlasMutationFlowTests.BaselineNotStartedStops;
+begin
+  Start;
+  Assert.IsTrue(FFake.FinishBuild(True, cExe, ''));
+  Assert.IsTrue(FFake.FinishRun(TAtlasMutationRunState.NotStarted, -1, ''));
+  Assert.AreEqual('Started,NotStarted', Kinds);
+  Assert.AreEqual(cMutationShadowFakeName, LastNote.Shadow);
+  Assert.AreEqual('Stopped', FEnds);
+  Assert.AreEqual(1, FFake.Written.Count, 'kein Mutant geschrieben');
+end;
+
+procedure TAtlasMutationFlowTests.MutantNotStartedIsNotKilled;
+begin
+  StartWith(TArray<TAtlasMutationJob>.Create(Job(0, '>', '>='), Job(1, '>', '<'), Job(2, '>', '<=')));
+  Pass(True);
+  Pass(False);
+  Pass(True);
+  // Der dritte Mutant ist gebaut, aber die Test-EXE startet nicht (Virenscanner hält sie fest).
+  Assert.IsTrue(FFake.FinishBuild(True, cExe, ''));
+  Assert.IsTrue(FFake.FinishRun(TAtlasMutationRunState.NotStarted, -1, ''));
+  Assert.AreEqual('Started,Outcome,Outcome,NotStarted,Survivor,Cancelled,Finished', Kinds);
+  Assert.AreEqual('Cancelled', FEnds);
+  Assert.AreEqual(2, FEndedDone, 'der dritte zählt nicht');
+  Assert.AreEqual(1, LastNote.Totals.Killed);
+  Assert.AreEqual(1, LastNote.Totals.Survived);
+  Assert.AreEqual(4, FFake.Written.Count, 'kein weiterer Schritt');
+end;
+
+procedure TAtlasMutationFlowTests.RunStatesFromRunner;
+begin
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.Completed,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.Ok, 1));
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.Completed,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.Failed, 3), 'gelaufen, nur zu viel Ausgabe');
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.NotStarted,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.Failed, -1), 'Pipes oder Start gescheitert');
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.NotStarted,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.ToolMissing, -1));
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.NotStarted,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.MainThread, 0));
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.Cancelled,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.Cancelled, -1));
+  Assert.AreEqual<TAtlasMutationRunState>(TAtlasMutationRunState.TimedOut,
+    TAtlasMutationRunStates.FromRunner(TAtlasVcsOutcome.TimedOut, -1));
 end;
 
 procedure TAtlasMutationFlowTests.CancelEndsAfterCurrentStep;
@@ -422,7 +543,7 @@ begin
   Start;
   Pass(True);
   Assert.IsTrue(FFake.FinishBuild(True, cExe, ''));
-  Assert.IsTrue(FFake.FinishRun(True, False, 0, ''));
+  Assert.IsTrue(FFake.FinishRun(TAtlasMutationRunState.Cancelled, 0, ''));
   Assert.AreEqual('Cancelled', FEnds);
   Assert.AreEqual(0, FEndedDone);
   Assert.AreEqual('close', FFake.Calls[FFake.Calls.Count - 1]);

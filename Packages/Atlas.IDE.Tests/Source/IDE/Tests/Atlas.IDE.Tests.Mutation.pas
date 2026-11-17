@@ -367,8 +367,10 @@ begin
       Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationFinished, [AUnit,
         ANote.Totals.Killed + ANote.Totals.TimedOut, ANote.Totals.Survived,
         ANote.Totals.BuildFailed + ANote.Totals.Invalid, ScoreText(ANote.Totals)]);
+    TAtlasMutationNoteKind.NotStarted:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationTestsNotStarted, [ANote.Shadow]);
     TAtlasMutationNoteKind.CloseFailed:
-      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotOpened, [ANote.Text]);
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationShadowNotClosed, [ANote.Shadow, ANote.Text]);
   else
     // OpenFailed: Der Grund ist schon der Text.
     Result := ANote.Text;
