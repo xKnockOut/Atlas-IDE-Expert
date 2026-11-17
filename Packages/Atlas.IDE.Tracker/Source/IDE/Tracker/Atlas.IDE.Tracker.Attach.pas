@@ -7,7 +7,8 @@
 //   PaintTo), Logdateien aus issues.attach.logFiles ($(ProjectDir) aus dem
 //   Projekt des Debuggers, sonst dem aktiven), die Debug-Notiz (#582: Ort,
 //   Ausschnitt, Aufrufstapel, letzte Exception; nur bei angehaltenem
-//   Programm) und der Exception-Verlauf (#517, höchstens MaxExceptions).
+//   Programm) und der Exception-Verlauf (#517, höchstens MaxExceptions);
+//   gesammelt in Atlas.IDE.Tracker.Attach.Sources.
 // - Senden: TAtlasAttachSender.Send im Hintergrund-Thread mit TimeoutMs,
 //   Rückkehr über TAtlasMainThread; Stop bricht über IAtlasCiCancel ab.
 //   Eine Sendung zur Zeit.
@@ -31,7 +32,7 @@ uses
   Atlas.Core.Tracker.Attach,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.Core.Diagnostics.WorkerSlot,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasIssueAttachHooks = record
@@ -50,7 +51,6 @@ type
   public const
     /// <summary>Zeitgrenze für Hochladen und Kommentar zusammen.</summary>
     cTimeoutMs = 60000;
-    cMaxExceptions = 20;
     /// <summary>Abstand der Bilder in der Zwischenablage (GitHub).</summary>
     cImageGap = 16;
   private
@@ -83,26 +83,18 @@ type
     function Busy: Boolean;
     /// <summary>issues.attach an?</summary>
     class function Active: Boolean; static;
-    /// <summary>Debug-Notiz des aktuellen Halts mit Dateiname; False, wenn das Programm nicht angehalten ist oder
-    /// kein Modul eine Debug-Sitzung kennt.</summary>
-    class function DebugNote(out AMarkdown, AFileName: string): Boolean; static;
-    /// <summary>Exception-Verlauf der Sitzung als Text, neueste zuerst; '' ohne Einträge.</summary>
-    class function ExceptionsText(out ACount: Integer): string; static;
   end;
 
 implementation
 
 uses
   Atlas.Core.CiBuild.Contract,
-  Winapi.Windows,
   System.UITypes,
   System.IOUtils,
-  ToolsAPI,
-  Vcl.Controls,
-  Vcl.Forms,
   Vcl.Graphics,
   Vcl.Clipbrd,
   Vcl.Dialogs,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Tracker.AttachPlan,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
@@ -113,101 +105,7 @@ uses
   Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Tracker.AttachDialog,
   Atlas.IDE.Foundation.Settings,
-  Atlas.Core.Modules.Registry,
-  Atlas.IDE.Contracts.DebugReport;
-
-// Bild des Formulars im Designer des aktiven Moduls; nil ohne (Datenmodul, FMX, kein Designer).
-/// <summary>Bild eines Formulars bzw. Frames im Designer; nil ohne Fenster.</summary>
-function RootImage(ARoot: TComponent): TBitmap;
-begin
-  Result := nil;
-  if ARoot is TCustomForm then
-  begin
-    Result := TCustomForm(ARoot).GetFormImage;
-  end
-  else if (ARoot is TWinControl) and TWinControl(ARoot).HandleAllocated then
-  begin
-    Result := TBitmap.Create;
-    try
-      Result.SetSize(TWinControl(ARoot).Width, TWinControl(ARoot).Height);
-      TWinControl(ARoot).PaintTo(Result.Canvas.Handle, 0, 0);
-    except
-      FreeAndNil(Result);
-      raise;
-    end;
-  end;
-end;
-
-/// <summary>Wurzel des ersten Formular-Editors im Modul; nil ohne.</summary>
-function DesignerRoot(const AModule: IOTAModule): TComponent;
-var
-  mEditor: IOTAFormEditor;
-  mComponent: INTAComponent;
-  mIndex: Integer;
-begin
-  Result := nil;
-  for mIndex := 0 to AModule.ModuleFileCount - 1 do
-  begin
-    if Supports(AModule.ModuleFileEditors[mIndex], IOTAFormEditor, mEditor) and
-      Supports(mEditor.GetRootComponent, INTAComponent, mComponent) then
-    begin
-      Exit(mComponent.GetComponent);
-    end;
-  end;
-end;
-
-function DesignerImage(out AName: string): TBitmap;
-var
-  mServices: IOTAModuleServices;
-  mRoot: TComponent;
-begin
-  Result := nil;
-  AName := '';
-  mRoot := nil;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mServices) and (mServices.CurrentModule <> nil) then
-  begin
-    mRoot := DesignerRoot(mServices.CurrentModule);
-  end;
-  if mRoot <> nil then
-  begin
-    Result := RootImage(mRoot);
-  end;
-  if Result <> nil then
-  begin
-    AName := mRoot.Name;
-  end;
-end;
-
-/// <summary>Bericht des Debuggers (#1455); nil, solange kein Modul eine Debug-Sitzung kennt.</summary>
-function DebugReport: IAtlasDebugReportSource;
-var
-  mItem: IInterface;
-begin
-  Result := nil;
-  if AtlasModuleRegistry = nil then
-  begin
-    Exit;
-  end;
-  for mItem in AtlasModuleRegistry.FindAll(IAtlasDebugReportSource) do
-  begin
-    if Supports(mItem, IAtlasDebugReportSource, Result) then
-    begin
-      Exit;
-    end;
-  end;
-end;
-
-function DebugProcessId: DWORD;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  Result := 0;
-  mReport := DebugReport;
-  if mReport <> nil then
-  begin
-    Result := mReport.DebuggedProcessId;
-  end;
-end;
+  Atlas.IDE.Tracker.Attach.Sources;
 
 { TAtlasIdeIssueAttach }
 
@@ -316,16 +214,9 @@ end;
 
 
 function TAtlasIdeIssueAttach.ProjectFile: string;
-var
-  mReport: IAtlasDebugReportSource;
 begin
   // Beim Debuggen das gestartete Projekt, sonst das aktive.
-  Result := '';
-  mReport := DebugReport;
-  if mReport <> nil then
-  begin
-    Result := mReport.LaunchProject;
-  end;
+  Result := TAtlasIdeAttachSources.LaunchProject;
   if (Result = '') and Assigned(FHooks.Project) then
   begin
     Result := FHooks.Project();
@@ -402,15 +293,15 @@ begin
     begin
       Result := TAtlasIssuePreview.KeyOf(mName, AInput);
     end;
-  Result.ProcessId := DebugProcessId;
+  Result.ProcessId := TAtlasIdeAttachSources.ProcessId;
   Result.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles, AOwner.ProjectFile);
-  TAtlasIdeIssueAttach.DebugNote(Result.DebugNote, Result.DebugNoteName);
-  Result.ExceptionsText := TAtlasIdeIssueAttach.ExceptionsText(Result.ExceptionCount);
+  TAtlasIdeAttachSources.DebugNote(Result.DebugNote, Result.DebugNoteName);
+  Result.ExceptionsText := TAtlasIdeAttachSources.ExceptionsText(Result.ExceptionCount);
   Result.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
   Result.RaiseProgram := TAtlasIdeSettings.Current.IssuesAttachRaiseProgram;
   Result.Extra := AExtra;
   try
-    Result.FormImage := DesignerImage(Result.FormName);
+    Result.FormImage := TAtlasIdeAttachSources.DesignerImage(Result.FormName);
   except
     on E: Exception do
     begin
@@ -569,29 +460,6 @@ begin
   end;
   FMessage.Say(TAtlasAttachStrings.Fmt(TAtlasAttachTextId.AttachSending, [ARequest.Key]));
   FWorker.Start(TThread.CreateAnonymousThread(SendWorker(Self, Self, AProvider, mTransport, ARequest)));
-end;
-
-class function TAtlasIdeIssueAttach.DebugNote(out AMarkdown, AFileName: string): Boolean;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  AMarkdown := '';
-  AFileName := '';
-  mReport := DebugReport;
-  Result := (mReport <> nil) and mReport.DebugNote(AMarkdown, AFileName);
-end;
-
-class function TAtlasIdeIssueAttach.ExceptionsText(out ACount: Integer): string;
-var
-  mReport: IAtlasDebugReportSource;
-begin
-  Result := '';
-  ACount := 0;
-  mReport := DebugReport;
-  if mReport <> nil then
-  begin
-    Result := mReport.ExceptionsText(cMaxExceptions, ACount);
-  end;
 end;
 
 end.

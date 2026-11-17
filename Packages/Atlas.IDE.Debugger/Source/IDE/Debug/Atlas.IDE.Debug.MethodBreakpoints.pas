@@ -26,7 +26,7 @@ uses
   Atlas.UI.Debug.MethodBreakpoints,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.BreakpointListMenu,
-  Atlas.Core.Diagnostics.Guard;
+  Atlas.Core.Notifications.MessageSink;
 
 type
   TAtlasMethodBreakpointSessionFunc = reference to function: TLspSession;

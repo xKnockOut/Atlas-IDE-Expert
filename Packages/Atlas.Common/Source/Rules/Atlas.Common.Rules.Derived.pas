@@ -57,6 +57,11 @@ type
     /// gleichzeitig einen zweiten Resolver braucht (ResolveNameFrom setzt den Zustand zurück), legt den
     /// zweiten selbst an.</summary>
     class function Resolver(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TNameResolver; static;
+    /// <summary>Für Regeln, die den Resolver erst bei Bedarf holen: Ist AResolver nil, Cache des Laufs nach ACache
+    /// (hält ihn, solange AResolver benutzt wird), Resolver nach AResolver und dessen PinTree auf den Baum von
+    /// AContext unter AFileName. Sonst nichts. UnpinTree bleibt Sache des Aufrufers.</summary>
+    class procedure EnsurePinnedResolver(var ACache: IRuleDerivedCache; var AResolver: TNameResolver;
+      const AContext: TRuleContext; const AFileName: string); static;
     /// <summary>Alle RoutineDecl mit Rumpf, auch lokale, in Baumreihenfolge.</summary>
     class function Routines(const ACache: IRuleDerivedCache; const AContext: TRuleContext): TArray<TSyntaxNode>; static;
     /// <summary>TFlowSignatures.FromTree der Datei; nil ohne Baum.</summary>
@@ -253,6 +258,17 @@ begin
   Result := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   Result.Namespaces := AContext.Namespaces;
   ACache.Put(cKeyResolver, Result);
+end;
+
+class procedure TRuleDerived.EnsurePinnedResolver(var ACache: IRuleDerivedCache; var AResolver: TNameResolver;
+  const AContext: TRuleContext; const AFileName: string);
+begin
+  if AResolver = nil then
+  begin
+    ACache := Open(AContext);
+    AResolver := Resolver(ACache, AContext);
+    AResolver.PinTree(AContext.Tree, AFileName);
+  end;
 end;
 
 class function TRuleDerived.Routines(const ACache: IRuleDerivedCache;

@@ -66,7 +66,8 @@ uses
   System.StrUtils,
   System.DateUtils,
   System.Generics.Collections,
-  System.Generics.Defaults;
+  System.Generics.Defaults,
+  Atlas.Text.Timestamps;
 
 { THotspotHistory }
 
@@ -117,15 +118,8 @@ begin
 end;
 
 class function THotspotHistory.TryParseIsoDate(const AText: string; out ADate: TDateTime): Boolean;
-var
-  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
 begin
-  ADate := 0;
-  Result := (Length(AText) >= 19) and (AText[5] = '-') and (AText[8] = '-') and (AText[11] = 'T') and
-    TryStrToInt(Copy(AText, 1, 4), mYear) and TryStrToInt(Copy(AText, 6, 2), mMonth) and
-    TryStrToInt(Copy(AText, 9, 2), mDay) and TryStrToInt(Copy(AText, 12, 2), mHour) and
-    TryStrToInt(Copy(AText, 15, 2), mMinute) and TryStrToInt(Copy(AText, 18, 2), mSecond) and
-    TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, 0, ADate);
+  Result := TTextTimestamp.TryParse(AText, ADate);
 end;
 
 function CountOf(const AText: string): Integer;

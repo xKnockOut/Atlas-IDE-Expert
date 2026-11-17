@@ -56,6 +56,7 @@
         <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Lines.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Chars.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Timestamps.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Encoding.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.LogMarks.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Anonymize.Tests.pas"/>
@@ -1739,7 +1740,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.Build.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Window.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.Tests.pas"/>
-        <DCCReference Include="IDE.Expert\Atlas.Core.Diagnostics.Guard.MessageSink.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Notifications\Atlas.Core.Notifications.MessageSink.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Notifications.MessageSink.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Window.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Notifications\Atlas.UI.Notifications.Notice.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Notifications.Notice.Tests.pas"/>
@@ -2588,6 +2590,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Evaluate.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvaluateRows.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvaluateRows.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.EvalSlices.pas"/>
+        <DCCReference Include="Support\Atlas.Tests.DebugEvaluatorFake.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Debug.EvalSlices.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.Evaluate.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Debugger\Source\UI\Debug\Atlas.UI.Debug.EvaluateTree.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.EvaluateTree.Tests.pas"/>
@@ -2764,6 +2769,7 @@
         <DCCReference Include="Support\Atlas.Tests.DebugTargetFake.pas"/>
         <DCCReference Include="Text\Atlas.Text.Updates.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.UpdateRun.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.PascalScan.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas"/>
         <DCCReference Include="Common\Updates\Atlas.Common.Updates.Apply.Tests.pas"/>

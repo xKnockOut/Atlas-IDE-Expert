@@ -494,13 +494,8 @@ end;
 
 procedure TTypedConstantModifiedScan.EnsureResolver;
 begin
-  if FResolver = nil then
-  begin
-    // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-    FCache := TRuleDerived.Open(FContext);
-    FResolver := TRuleDerived.Resolver(FCache, FContext);
-    FResolver.PinTree(FContext.Tree, FFileName);
-  end;
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  TRuleDerived.EnsurePinnedResolver(FCache, FResolver, FContext, FFileName);
 end;
 
 /// <summary>Ein Schritt an der Zugriffskette ANode (Name oder Feld) entlang: AFound, wenn ANode eine typisierte

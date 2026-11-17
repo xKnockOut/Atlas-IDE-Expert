@@ -6,6 +6,7 @@
 # Atlas.Text
 Atlas.Text.Anonymize.Tests
 Atlas.Text.Chars.Tests
+Atlas.Text.Timestamps.Tests
 Atlas.Text.Checkin.Tests
 Atlas.Text.CommandLine.Tests
 Atlas.Text.DUnitX.Tests
@@ -27,6 +28,7 @@ Atlas.Text.TestResults.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
+Atlas.Text.PascalScan.Tests
 Atlas.Text.Updates.Tests
 Atlas.Text.Uris.Tests
 
@@ -400,6 +402,7 @@ Atlas.Common.Updates.Tests
 
 # Plugin-Kern
 Atlas.Core.Assistants.EditPlan.Tests
+Atlas.Core.Notifications.MessageSink.Tests
 Atlas.Core.Projects.Summary.Json.Tests
 Atlas.Core.Problems.IdeErrors.Tests
 Atlas.Core.Problems.AtCaret.Tests
@@ -591,6 +594,7 @@ Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
+Atlas.Core.Debug.EvalSlices.Tests
 Atlas.Core.Debug.DialogInput.Tests
 Atlas.Core.Signature.EditorPlan.Tests
 Atlas.Core.CodeInsight.Plan.Tests

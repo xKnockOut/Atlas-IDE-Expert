@@ -74,6 +74,7 @@
         <DCCReference Include="Source\Product\Atlas.Text.Product.Version.pas"/>
         <DCCReference Include="Source\Lines\Atlas.Text.Lines.pas"/>
         <DCCReference Include="Source\Chars\Atlas.Text.Chars.pas"/>
+        <DCCReference Include="Source\Timestamps\Atlas.Text.Timestamps.pas"/>
         <DCCReference Include="Source\Encoding\Atlas.Text.Encoding.pas"/>
         <DCCReference Include="Source\LogMarks\Atlas.Text.LogMarks.pas"/>
         <DCCReference Include="Source\Anonymize\Atlas.Text.Anonymize.pas"/>
@@ -100,6 +101,7 @@
         <DCCReference Include="Source\StepFilter\Atlas.Text.StepFilter.pas"/>
         <DCCReference Include="Source\Updates\Atlas.Text.Updates.pas"/>
         <DCCReference Include="Source\UpdateRun\Atlas.Text.UpdateRun.pas"/>
+        <DCCReference Include="Source\PascalScan\Atlas.Text.PascalScan.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

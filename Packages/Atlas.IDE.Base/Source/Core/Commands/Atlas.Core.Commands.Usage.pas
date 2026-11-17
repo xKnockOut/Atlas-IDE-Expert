@@ -197,7 +197,8 @@ uses
   System.Generics.Defaults,
   System.Math,
   Atlas.Core.Files.DataFile,
-  Atlas.Text.Json;
+  Atlas.Text.Json,
+  Atlas.Text.Timestamps;
 
 { TAtlasCommandUsageEntry }
 
@@ -325,42 +326,9 @@ begin
   Result := Format('%.4d-%.2d-%.2dT%.2d:%.2d:%.2d', [mYear, mMonth, mDay, mHour, mMinute, mSecond]);
 end;
 
-/// <summary>Hat AText die Form "yyyy-mm-ddThh:nn:ss" (auch mit Leerzeichen statt T, Rest danach erlaubt)?</summary>
-function HasTimeShape(const AText: string): Boolean;
-begin
-  Result := (Length(AText) >= 19) and (AText[5] + AText[8] = '--') and CharInSet(AText[11], ['T', 't', ' ']) and
-    (AText[14] + AText[17] = '::');
-end;
-
 class function TAtlasCommandUsageFormat.TimeOf(const AText: string): TDateTime;
-var
-  mText: string;
-  mYear, mMonth, mDay, mHour, mMinute, mSecond: Integer;
-  mDatePart, mTimePart: TDateTime;
 begin
-  Result := 0;
-  mText := Trim(AText);
-  if not HasTimeShape(mText) then
-  begin
-    Exit;
-  end;
-  mYear := StrToIntDef(Copy(mText, 1, 4), -1);
-  mMonth := StrToIntDef(Copy(mText, 6, 2), -1);
-  mDay := StrToIntDef(Copy(mText, 9, 2), -1);
-  mHour := StrToIntDef(Copy(mText, 12, 2), -1);
-  mMinute := StrToIntDef(Copy(mText, 15, 2), -1);
-  mSecond := StrToIntDef(Copy(mText, 18, 2), -1);
-  // Ungültige Teile (-1) vorher ablehnen: TryEncodeDate und TryEncodeTime nehmen Word, ein negativer Wert löste
-  // mit Bereichsprüfung ERangeError aus statt False.
-  if (Min(mYear, Min(mMonth, mDay)) < 1) or (Min(mHour, Min(mMinute, mSecond)) < 0) then
-  begin
-    Exit;
-  end;
-  if not TryEncodeDate(mYear, mMonth, mDay, mDatePart) or not TryEncodeTime(mHour, mMinute, mSecond, 0, mTimePart) then
-  begin
-    Exit;
-  end;
-  Result := mDatePart + mTimePart;
+  Result := TTextTimestamp.ParseOrZero(AText);
 end;
 
 procedure TAtlasCommandUsage.ClearCounts;

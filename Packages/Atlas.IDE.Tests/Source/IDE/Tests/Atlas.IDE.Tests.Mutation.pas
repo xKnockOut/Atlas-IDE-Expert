@@ -508,6 +508,10 @@ begin
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNoProgram, [AUnit, ADpr]);
   end
+  else if AShadow.Problem = TAtlasMutationShadowProblem.Unclosed then
+  begin
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprUnclosed, [ADpr, AShadow.ProblemText]);
+  end
   else
   begin
     Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.MutationDprNotRewritable, [ADpr, AShadow.ProblemText]);

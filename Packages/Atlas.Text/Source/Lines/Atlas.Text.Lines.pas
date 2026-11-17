@@ -74,6 +74,8 @@ type
     class function JoinLines(const ALines: array of string; const ALineBreak: string): string; static;
     /// <summary>Führende Leerzeichen und Tabs.</summary>
     class function IndentOf(const ALine: string): string; overload; static;
+    /// <summary>Zeile AIndex (0-basiert) von ALines; '' außerhalb.</summary>
+    class function LineAt(const ALines: TArray<string>; AIndex: Integer): string; static;
     /// <summary>Einrückung der Zeile ALine (0-basiert) von AText; '' außerhalb.</summary>
     class function IndentOf(const AText: string; ALine: Integer): string; overload; static;
     /// <summary>Anzahl führender Leerzeichen und Tabs.</summary>
@@ -452,6 +454,15 @@ end;
 class function TTextLines.IndentOf(const ALine: string): string;
 begin
   Result := Copy(ALine, 1, IndentLength(ALine));
+end;
+
+class function TTextLines.LineAt(const ALines: TArray<string>; AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex <= High(ALines)) then
+  begin
+    Result := ALines[AIndex];
+  end;
 end;
 
 class function TTextLines.IndentOf(const AText: string; ALine: Integer): string;
