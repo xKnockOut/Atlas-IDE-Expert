@@ -13,9 +13,6 @@ type
   [Category('Atlas.IDE.Debugger')]
   TAtlasEventBreakWindowTests = class
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure DialogShowsAndReturnsChoice;
     [Test]
@@ -36,11 +33,6 @@ uses
   Atlas.UI.Debug.EventBreak;
 
 { TAtlasEventBreakWindowTests }
-
-procedure TAtlasEventBreakWindowTests.WarmUpFirstUse;
-begin
-  DialogShowsAndReturnsChoice;
-end;
 
 procedure TAtlasEventBreakWindowTests.DialogShowsAndReturnsChoice;
 var

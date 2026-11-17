@@ -20,9 +20,6 @@ type
     function Assess(const AMarked: string): TCompletionSyntaxNotice; overload;
     function ScopeOf(const AMarked: string): TCompletionScope;
   public
-    /// <summary>Erste Benutzung des Dispatcher-Wegs legt Dauerhaftes an; das gehört nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ScopeIsCurrentRoutine;
     [Test]
@@ -132,11 +129,6 @@ begin
   finally
     mTree.Free;
   end;
-end;
-
-procedure TCompletionSyntaxTests.WarmUpFirstUse;
-begin
-  DispatcherAnswersWithNotice;
 end;
 
 procedure TCompletionSyntaxTests.ScopeIsCurrentRoutine;

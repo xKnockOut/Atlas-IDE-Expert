@@ -12,10 +12,6 @@ type
   [TestFixture]
   TTestCommandsTests = class
   public
-    /// <summary>Führt einen Befehl vorab aus; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.
-    /// </summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure SplitValuesKeepsCommasInStrings;
     [Test]
@@ -149,12 +145,6 @@ begin
 end;
 
 { TTestCommandsTests }
-
-procedure TTestCommandsTests.WarmUp;
-begin
-  SplitValuesKeepsCommasInStrings;
-  DumpListsSimpleLocals;
-end;
 
 procedure TTestCommandsTests.SplitValuesKeepsCommasInStrings;
 var

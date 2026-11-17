@@ -18,9 +18,6 @@ type
     FForm: TForm;
     FRuler: TAtlasOverviewRuler;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -49,16 +46,6 @@ type
   TRulerAccess = class(TAtlasOverviewRuler);
 
 { TAtlasOverviewRulerTests }
-
-procedure TAtlasOverviewRulerTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    KeepsWidth;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasOverviewRulerTests.SetUp;
 begin

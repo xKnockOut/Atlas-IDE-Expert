@@ -48,9 +48,6 @@ type
   [TestFixture]
   TAtlasServerCompletionTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     // Startet den echten Server neben dem Testprogramm.
     [Test]
     procedure CompletesMembersFromServer;
@@ -681,20 +678,6 @@ begin
 end;
 
 { TAtlasServerCompletionTests }
-
-procedure TAtlasServerCompletionTests.WarmUpFirstUse;
-begin
-  // Erster echter Start (Pipes, Threads, Sitzung, Zeitlimit-Arbeiter) ungemessen statt [IgnoreMemoryLeaks]
-  //. Ohne Server neben dem Testprogramm überspringt der Test ohnehin.
-  if FileExists(TPath.Combine(ExtractFilePath(ParamStr(0)), 'AtlasServer.exe')) then
-    try
-      CompletesMembersFromServer;
-    except
-      // Scheitert der Lauf, meldet das der Test selbst.
-      on Exception do
-        ;
-    end;
-end;
 
 const
   cCompletesMembersUnitText =

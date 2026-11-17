@@ -17,9 +17,6 @@ type
   [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTestResultsViewTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFollowMockup;
     [Test]
@@ -238,11 +235,6 @@ begin
 end;
 
 { TAtlasTrackerTestResultsViewTests }
-
-procedure TAtlasTrackerTestResultsViewTests.WarmUpFirstUse;
-begin
-  ClicksReachSource;
-end;
 
 procedure TAtlasTrackerTestResultsViewTests.TextsFollowMockup;
 var

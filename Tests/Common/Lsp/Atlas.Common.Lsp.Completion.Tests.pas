@@ -13,9 +13,6 @@ type
   [TestFixture]
   TLspCompletionTests = class(TLspCompletionTestCase)
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -214,15 +211,6 @@ end;
 
 { TLspCompletionTests }
 
-procedure TLspCompletionTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    ScopeListsLocalsMembersAndUsedUnits;
-  finally
-    TearDown;
-  end;
-end;
 procedure TLspCompletionTests.Setup;
 begin
   Prepare;

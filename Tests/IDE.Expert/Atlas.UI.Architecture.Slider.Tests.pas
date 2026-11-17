@@ -20,9 +20,6 @@ type
     FChanged: TArray<Double>;
     FTracked: Integer;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -55,17 +52,6 @@ type
   TSliderAccess = class(TAtlasResolutionSlider);
 
 { TAtlasResolutionSliderTests }
-
-procedure TAtlasResolutionSliderTests.WarmUpFirstUse;
-begin
-  SetUp;
-  try
-    StartsAtOneInTheMiddle;
-    MouseDragReportsOnMouseUp;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasResolutionSliderTests.SetUp;
 begin
