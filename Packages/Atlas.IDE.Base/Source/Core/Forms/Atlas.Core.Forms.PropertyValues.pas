@@ -197,28 +197,44 @@ begin
   end;
 end;
 
-function AssignSet(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
-  ACheckOnly: Boolean): string;
-var
-  mNumber: Integer;
+/// <summary>Elementtyp der Menge hinter AProp.</summary>
+function SetElementType(AProp: PPropInfo): PTypeInfo;
 begin
-  Result := '';
-  try
-    mNumber := StringToSet(AProp, AChange.Value);
-  except
-    // Delphi meldet ein unbekanntes Element als EPropertyConvertError, FPC als EPropertyError.
-    on E: Exception do
+  {$IFDEF FPC}
+  Result := GetTypeData(PropTypeOf(AProp))^.CompType;
+  {$ELSE}
+  Result := GetTypeData(PropTypeOf(AProp))^.CompType^;
+  {$ENDIF}
+end;
+
+/// <summary>True, wenn jedes Wort in AText ('[A, B]') ein Element von AElementType ist. Trennt wie StringToSet an
+/// Leerzeichen, Komma und Klammern; danach löst StringToSet keine Ausnahme mehr aus.</summary>
+function KnownSetElements(AElementType: PTypeInfo; const AText: string): Boolean;
+var
+  mWord: string;
+begin
+  for mWord in AText.Split([' ', ',', '[', ']'], TStringSplitOptions.ExcludeEmpty) do
+  begin
+    if GetEnumValue(AElementType, mWord) < 0 then
     begin
-      if not (E is EPropertyConvertError) and not (E is EPropertyError) then
-      begin
-        raise;
-      end;
-      Exit(Format(UiText(TPropertyText.UnknownSetElement), [AChange.PropertyPath, AChange.Value]));
+      Exit(False);
     end;
   end;
-  if not ACheckOnly then
+  Result := True;
+end;
+
+function AssignSet(AInstance: TObject; AProp: PPropInfo; const AChange: TAtlasFormPropertyChange;
+  ACheckOnly: Boolean): string;
+begin
+  Result := '';
+  // Vorher prüfen statt die Ausnahme von StringToSet abzufangen: Ein Tippfehler im Wert ist kein Ausnahmefall.
+  if not KnownSetElements(SetElementType(AProp), AChange.Value) then
   begin
-    SetOrdProp(AInstance, AProp, mNumber);
+    Result := Format(UiText(TPropertyText.UnknownSetElement), [AChange.PropertyPath, AChange.Value]);
+  end
+  else if not ACheckOnly then
+  begin
+    SetOrdProp(AInstance, AProp, StringToSet(AProp, AChange.Value));
   end;
 end;
 

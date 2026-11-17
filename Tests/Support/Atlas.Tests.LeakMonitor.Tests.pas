@@ -426,23 +426,22 @@ var
   mWorker: TThread;
 begin
   // Ein Thread des Tests gibt Speicher frei, während der Test schon endet: Der
-  // Monitor wartet die Freigabe ab, statt ein Leck zu melden.
+  // Monitor wartet die Freigabe ab, statt ein Leck zu melden. Der Thread entsteht wie in einem echten Test
+  // innerhalb der Messung: Der Monitor wartet, bis die Zahl der Threads wieder auf dem Stand von PreTest ist.
+  // Entstünde er vorher, zählte er schon zum Anfangsstand, und unter Last endete das Warten nach wenigen ruhigen
+  // Messungen, bevor der Thread überhaupt lief. Er gibt sich selbst frei (FreeOnTerminate), also auch sein
+  // Objekt und seine Startdaten.
   mMonitor := TLeakMonitor.Create;
+  mMonitor.PreTest;
+  mShared := TStringBuilder.Create(1024);
   mWorker := TThread.CreateAnonymousThread(
     procedure
     begin
       FreeAndNil(mShared); // lsp-ignore: captured-loop-variable -- Absicht: der Thread gibt das Objekt später frei
     end);
-  mWorker.FreeOnTerminate := False;
-  try
-    mMonitor.PreTest;
-    mShared := TStringBuilder.Create(1024);
-    mWorker.Start;
-    mMonitor.PostTest;
-    mWorker.WaitFor;
-  finally
-    mWorker.Free;
-  end;
+  mWorker.Start;
+  mMonitor.PostTest;
+  Assert.IsNull(mShared, 'Der Monitor hat die Freigabe des Threads nicht abgewartet');
   Assert.AreEqual(Int64(0), mMonitor.TestMemoryAllocated);
 end;
 
