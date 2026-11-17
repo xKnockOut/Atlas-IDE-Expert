@@ -286,6 +286,8 @@ begin
     Assert.AreEqual(TAtlasUiTheme.cFontName, string(mWindow.Font.Name));
     Assert.IsTrue(TAtlasUiTheme.Subscribed(mWindow), 'meldet sich beim Themendienst an');
     Assert.IsTrue(mWindow.ThemedControls, 'IDE-Thema an Knöpfen und Listen');
+    // Sonst löscht der Stil der IDE bei jedem Wechsel der Zeile unter der Maus die Fläche: Flackern.
+    Assert.IsTrue(mWindow.PaintsAll, 'löscht den Hintergrund nie');
     TAtlasUiTheme.Install(
       function: TAtlasColors
       begin

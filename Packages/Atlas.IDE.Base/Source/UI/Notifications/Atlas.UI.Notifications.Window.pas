@@ -701,6 +701,7 @@ constructor TAtlasNotificationsWindow.CreateList(AOwner: TComponent; const AColo
 begin
   // Größe setzt Layout nach dem Inhalt, die Lage ShowAbove über dem Feld.
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   ThemedControls := True;
   FCenter := ACenter;
   FRows.Selected := -1;

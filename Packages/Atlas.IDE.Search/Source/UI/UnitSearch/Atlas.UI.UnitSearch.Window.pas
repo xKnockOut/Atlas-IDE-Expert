@@ -406,6 +406,7 @@ constructor TAtlasUnitSearchWindow.CreateSearch(AOwner: TComponent; const AOptio
   AState: TAtlasUnitSearchState; const AColors: TAtlasColors);
 begin
   inherited CreatePopup(AOwner, AColors);
+  PaintsAll := True;
   FData := TAtlasUnitSearchData.Create(AOptions, AState);
   FData.Metrics.PPI := CurrentPPI;
   FPainter := TAtlasUnitSearchPainter.Create(FData, AColors);
