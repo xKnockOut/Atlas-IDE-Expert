@@ -57,6 +57,7 @@ contains
   Atlas.Core.Tasks.OutputGroup in 'Source\Core\Tasks\Atlas.Core.Tasks.OutputGroup.pas',
   Atlas.UI.Tasks.Texts in 'Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas',
   Atlas.IDE.Tasks.Output in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Output.pas',
+  Atlas.IDE.Tasks.History in 'Source\IDE\Tasks\Atlas.IDE.Tasks.History.pas',
   Atlas.IDE.Tasks.Projects in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Projects.pas',
   Atlas.IDE.Tasks.Shortcuts in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Shortcuts.pas',
   Atlas.IDE.Tasks.Pickers in 'Source\IDE\Tasks\Atlas.IDE.Tasks.Pickers.pas',

@@ -3,7 +3,7 @@
 // Benachrichtigungszentrale (#601), ohne VCL:
 // - TAtlasNotificationCenter: threadsichere Liste der Einträge der IDE-Sitzung,
 //   neueste zuerst, höchstens MaxEntries (Vorgabe 200, ältere fallen weg), mit
-//   Beobachtern für Änderungen. Default ist die Zentrale des Plugins; Tests
+//   Beobachtern für Änderungen (TAtlasNotificationListeners). Default ist die Zentrale des Plugins; Tests
 //   legen eigene mit eigener Uhr an.
 // - Zusammenfassen: Ein Hinweis mit derselben Quelle und demselben Titel
 //   innerhalb von cMergeSeconds (10 s) nach dem letzten gleichartigen erhöht
@@ -21,7 +21,8 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Notifications.Contract;
+  Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Listeners;
 
 type
   TAtlasNotificationClock = reference to function: TDateTime;
@@ -60,15 +61,16 @@ type
     // Neueste zuerst. Die Einträge sind unveränderlich nach außen: Änderungen ersetzen sie durch Kopien.
     FItems: TList<IAtlasNotification>;
     FModes: TDictionary<string, TAtlasNotificationMode>;
-    FListeners: TDictionary<Integer, TProc>;
-    FNextListener: Integer;
+    /// <summary>Beobachter und Version (Zahl der Änderungen).</summary>
+    FListeners: TAtlasNotificationListeners;
     FNextId: Integer;
-    FVersion: Integer;
     FMaxEntries: Integer;
     FEnabled: Boolean;
     FClock: TAtlasNotificationClock;
     procedure SetEnabled(AValue: Boolean);
     function GetEnabled: Boolean;
+    /// <summary>Version erhöhen und die Beobachter rufen; außerhalb der Sperre.</summary>
+    procedure Changed;
   public
     constructor Create; overload;
     /// <summary>AClock liefert die Zeit (Tests); nil = Now.</summary>
@@ -218,7 +220,7 @@ begin
   FLock := TCriticalSection.Create;
   FItems := TList<IAtlasNotification>.Create;
   FModes := TDictionary<string, TAtlasNotificationMode>.Create;
-  FListeners := TDictionary<Integer, TProc>.Create;
+  FListeners := TAtlasNotificationListeners.Create;
   FMaxEntries := cDefaultMaxEntries;
   FEnabled := True;
 end;
@@ -240,6 +242,11 @@ begin
   finally
     FLock.Leave;
   end;
+end;
+
+procedure TAtlasNotificationCenter.Changed;
+begin
+  FListeners.Changed;
 end;
 
 function TAtlasNotificationCenter.Notify(const ASource: string; ASeverity: TAtlasNotificationSeverity;
@@ -333,30 +340,6 @@ begin
   end;
 end;
 
-/// <summary>Version erhöhen und die Beobachter von ACenter rufen.</summary>
-procedure NotifyChanged(ACenter: TAtlasNotificationCenter);
-var
-  mListeners: TArray<TProc>;
-  mListener: TProc;
-begin
-  ACenter.FLock.Enter;
-  try
-    Inc(ACenter.FVersion);
-    mListeners := ACenter.FListeners.Values.ToArray;
-  finally
-    ACenter.FLock.Leave;
-  end;
-  // Außerhalb der Sperre: Beobachter dürfen die Zentrale lesen.
-  for mListener in mListeners do
-    try
-      mListener();
-    except
-      // Ein Fehler im Beobachter darf die meldende Funktion nicht stören.
-      on Exception do
-        ;
-    end;
-end;
-
 procedure TAtlasNotificationCenter.SetEnabled(AValue: Boolean);
 begin
   FLock.Enter;
@@ -374,7 +357,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 function TAtlasNotificationCenter.Notify(const ASource: string; ASeverity: TAtlasNotificationSeverity;
@@ -431,7 +414,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 function TAtlasNotificationCenter.ModeOf(const ASource: string): TAtlasNotificationMode;
@@ -463,7 +446,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 function TAtlasNotificationCenter.Find(AId: Integer): IAtlasNotification;
@@ -525,7 +508,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 procedure TAtlasNotificationCenter.MarkAllRead;
@@ -552,7 +535,7 @@ begin
   end;
   if mChanged then
   begin
-    NotifyChanged(Self);
+    Changed;
   end;
 end;
 
@@ -564,7 +547,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 function TAtlasNotificationCenter.RunAction(AId, AIndex: Integer): Boolean;
@@ -667,39 +650,22 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 function TAtlasNotificationCenter.Version: Integer;
 begin
-  FLock.Enter;
-  try
-    Result := FVersion;
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Version;
 end;
 
 function TAtlasNotificationCenter.AddListener(const AListener: TProc): Integer;
 begin
-  FLock.Enter;
-  try
-    Inc(FNextListener);
-    Result := FNextListener;
-    FListeners.Add(Result, AListener);
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Add(AListener);
 end;
 
 procedure TAtlasNotificationCenter.RemoveListener(AHandle: Integer);
 begin
-  FLock.Enter;
-  try
-    FListeners.Remove(AHandle);
-  finally
-    FLock.Leave;
-  end;
+  FListeners.Remove(AHandle);
 end;
 
 procedure TAtlasNotificationCenter.ApplyModes(const ASpec: string);
@@ -719,7 +685,7 @@ begin
   finally
     FLock.Leave;
   end;
-  NotifyChanged(Self);
+  Changed;
 end;
 
 class function TAtlasNotificationCenter.Default: IAtlasNotificationCenter;

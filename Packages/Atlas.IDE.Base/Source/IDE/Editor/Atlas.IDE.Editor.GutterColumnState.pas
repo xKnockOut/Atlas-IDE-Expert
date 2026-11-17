@@ -133,7 +133,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorRefresh,
   Atlas.IDE.Foundation.LineTracker,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.Core.Editor.LineTracking;
 
@@ -209,7 +209,7 @@ end;
 procedure TAtlasIdeGutterColumnState.FetchDue(ASession: TLspSession);
 begin
   // Im Designer und auf der Willkommensseite ist die Spalte nicht zu sehen: keine Anfragen an den Server.
-  if not TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor) then
+  if not TAtlasIdeDesignerView.CodeInFront(TAtlasIdeEditorWindows.TopEditor) then
   begin
     Exit;
   end;

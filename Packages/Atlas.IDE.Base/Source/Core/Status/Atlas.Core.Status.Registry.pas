@@ -17,16 +17,15 @@ uses
   System.SysUtils,
   System.SyncObjs,
   System.Generics.Collections,
-  Atlas.Core.Status.Contract;
+  Atlas.Core.Status.Contract,
+  Atlas.Core.Notifications.Listeners;
 
 type
   TAtlasStatusRegistry = class(TInterfacedObject, IAtlasStatusRegistry)
   private
     FLock: TCriticalSection;
     FItems: TList<IAtlasStatusItem>;
-    FListeners: TDictionary<Integer, TProc>;
-    FNextListener: Integer;
-    FVersion: Integer;
+    FListeners: TAtlasNotificationListeners;
     class var FDefault: IAtlasStatusRegistry;
     function IndexOf(const AId: string): Integer;
     procedure Notify;
@@ -129,7 +128,7 @@ begin
   inherited Create;
   FLock := TCriticalSection.Create;
   FItems := TList<IAtlasStatusItem>.Create;
-  FListeners := TDictionary<Integer, TProc>.Create;
+  FListeners := TAtlasNotificationListeners.Create;
 end;
 
 destructor TAtlasStatusRegistry.Destroy;
@@ -155,26 +154,8 @@ begin
 end;
 
 procedure TAtlasStatusRegistry.Notify;
-var
-  mListeners: TArray<TProc>;
-  mListener: TProc;
 begin
-  FLock.Enter;
-  try
-    Inc(FVersion);
-    mListeners := FListeners.Values.ToArray;
-  finally
-    FLock.Leave;
-  end;
-  // Außerhalb der Sperre: Beobachter dürfen die Registry lesen.
-  for mListener in mListeners do
-    try
-      mListener();
-    except
-      // Ein Fehler im Beobachter darf die meldende Zeile nicht stören.
-      on Exception do
-        ;
-    end;
+  FListeners.Changed;
 end;
 
 procedure TAtlasStatusRegistry.Remove(const AId: string);
@@ -271,34 +252,17 @@ end;
 
 function TAtlasStatusRegistry.Version: Integer;
 begin
-  FLock.Enter;
-  try
-    Result := FVersion;
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Version;
 end;
 
 function TAtlasStatusRegistry.AddListener(const AListener: TProc): Integer;
 begin
-  FLock.Enter;
-  try
-    Inc(FNextListener);
-    Result := FNextListener;
-    FListeners.Add(Result, AListener);
-  finally
-    FLock.Leave;
-  end;
+  Result := FListeners.Add(AListener);
 end;
 
 procedure TAtlasStatusRegistry.RemoveListener(AHandle: Integer);
 begin
-  FLock.Enter;
-  try
-    FListeners.Remove(AHandle);
-  finally
-    FLock.Leave;
-  end;
+  FListeners.Remove(AHandle);
 end;
 
 class function TAtlasStatusRegistry.Default: IAtlasStatusRegistry;

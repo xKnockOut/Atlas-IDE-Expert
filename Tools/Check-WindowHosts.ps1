@@ -75,7 +75,7 @@ $SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Fil
     Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
     ForEach-Object { "Packages/$($_.Name)/Source" })
 $DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
-$BarUnit = 'Atlas.IDE.Foundation.EditorBarHost.pas'
+$BarUnit = 'Atlas.IDE.Foundation.EditorWindows.pas'
 $RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
 $DialogUnit = 'Atlas.UI.Foundation.Dialog.pas'
 $ThemeUnit = 'Atlas.UI.Foundation.Theme.pas'
@@ -101,7 +101,7 @@ $Rules = @(
     @{ Pattern = '(?i)\b(Create|Register|Unregister)DockableForm\s*\('; Allowed = $DockUnit
        Message = 'Andockbares Fenster am Fenster-Host vorbei; TAtlasIdeDockWindow verwenden' },
     @{ Pattern = '(?i)\bFindComponent\s*\(\s*''Editor''\s*\)'; Allowed = $BarUnit
-       Message = 'Editor-Steuerelement am Leisten-Host vorbei gesucht; TAtlasEditorBarHost.EditorOf/TopEditor/FocusEditor verwenden' },
+       Message = 'Editor-Steuerelement an TAtlasIdeEditorWindows vorbei gesucht; TAtlasIdeEditorWindows.EditorOf/TopEditor/FocusEditor verwenden' },
     @{ Pattern = '(?i)\.\s*InvalidateTopEditor(LogicalLine)?\b'; Allowed = $RefreshUnit
        Message = 'Editor direkt neu gezeichnet (legt ohne Editorfenster eins an); TAtlasIdeEditorRefresh.InvalidateTop/InvalidateTopLine verwenden' },
     @{ Pattern = '(?i)\bif\s+(F?Host)\s*<>\s*nil\s+then\s+begin\s+\1\s*\.\s*Hide\s*;\s*end\b'; Allowed = $DockUnit

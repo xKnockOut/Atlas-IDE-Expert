@@ -49,6 +49,7 @@ uses
   Atlas.Core.Tasks.Matchers,
   Atlas.Core.Tasks.Runs,
   Atlas.Core.Tasks.PreBuild,
+  Atlas.IDE.Tasks.History,
   Atlas.IDE.Tasks.Output,
   Atlas.IDE.Tasks.Projects,
   Atlas.IDE.Tasks.Shortcuts;
@@ -163,12 +164,6 @@ type
       Names: TAtlasIdeTaskNames;
     end;
 
-    /// <summary>Verlauf in tasks.json; Kept = gesperrt gelesen, nicht überschreiben.</summary>
-    THistory = record
-      Data: TAtlasTaskHistory;
-      Kept: Boolean;
-    end;
-
     /// <summary>Letzte einzeln gestartete Aufgabe (wiederholen).</summary>
     TLast = record
       Name: string;
@@ -183,7 +178,8 @@ type
     FProcess: TAtlasTaskProcessRun;
     FAlive: TKeepAlive;
     FOutput: TAtlasIdeTaskOutput;
-    FHistory: THistory;
+    /// <summary>Verlauf in tasks.json.</summary>
+    FHistory: TAtlasIdeTaskHistory;
     FPreBuild: TAtlasTaskPreBuild;
     FRuns: TRuns;
     FShortcuts: TAtlasIdeTaskShortcuts;
@@ -250,7 +246,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
-  Atlas.Core.Files.DataFile,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tasks.Plan,
@@ -267,7 +262,6 @@ uses
 const
   cRefreshMs = 2000;
   cFlushMs = 100;
-  cHistoryWhat = 'Verlauf der Projektaufgaben';
 
 type
   /// <summary>Gibt CancelCompile an die Aufgaben weiter (die Ereignisse besitzen den Teilnehmer).</summary>
@@ -327,33 +321,6 @@ begin
     begin
       Result := AOwner.RunByName(AName, AReason);
     end;
-end;
-
-procedure LoadHistory(var AHistory: TAtlasIdeTasks.THistory);
-var
-  mData: TAtlasTaskHistory;
-begin
-  mData := AHistory.Data;
-  AHistory.Kept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(TAtlasIdeTaskProjects.HistoryFile, cHistoryWhat,
-    function(const AText: string): Boolean
-    begin
-      Result := mData.FromJson(AText);
-    end));
-end;
-
-procedure SaveHistory(const AHistory: TAtlasIdeTasks.THistory);
-begin
-  // Gesperrt gelesene Datei nicht mit dem Stand dieser Sitzung überschreiben.
-  if AHistory.Kept then
-  begin
-    Exit;
-  end;
-  try
-    TAtlasDataFile.Write(TAtlasIdeTaskProjects.HistoryFile, AHistory.Data.ToJson);
-  except
-    on E: Exception do
-      TAtlasDataFile.ReportNotWritten(cHistoryWhat, E);
-  end;
 end;
 
 { TAtlasIdeTasks.TWorker }
@@ -551,13 +518,12 @@ begin
   FAlive.Ref := FAlive.Flag;
   FOutput := TAtlasIdeTaskOutput.Create;
   FOutput.OnlyFindings := TAtlasIdeSettings.Current.TasksOnlyFindings;
-  FHistory.Data := TAtlasTaskHistory.Create;
+  FHistory := TAtlasIdeTaskHistory.Create;
   FPreBuild := TAtlasTaskPreBuild.Create;
   FRuns.Jobs := TObjectList<TJob>.Create(True);
   FRuns.Batches := TObjectList<TBatch>.Create(True);
   FShortcuts := TAtlasIdeTaskShortcuts.Create;
   FLoaded.Names := TAtlasIdeTaskNames.Create;
-  LoadHistory(FHistory);
   FLoaded.Timer := TTimer.Create(nil);
   FLoaded.Timer.Interval := cRefreshMs;
   FLoaded.Timer.OnTimer := Tick;
@@ -579,7 +545,7 @@ begin
   FreeAndNil(FShortcuts);
   FreeAndNil(FLoaded.Names);
   FreeAndNil(FPreBuild);
-  FreeAndNil(FHistory.Data);
+  FreeAndNil(FHistory);
   // Schutznetz: Scheitert das Leeren des Registers, wird der Läufer trotzdem ganz abgebaut.
   try
     if FOutput <> nil then
@@ -1105,8 +1071,7 @@ begin
     FreeAndNil(mJob.FWorker);
   end;
   FOutput.Finished(AId, ARun);
-  FHistory.Data.Remember(mJob.FProject, ARun);
-  SaveHistory(FHistory);
+  FHistory.Remember(mJob.FProject, ARun);
   ApplyProblems(ARun, FHistory.Data.IsHidden(mJob.FProject, ARun.Name));
   if TAtlasTaskPlan.IsLoadedProject(mJob.FProject, FLoaded.Project, TAtlasIdeTaskProjects.cNoProject) then
   begin
@@ -1236,7 +1201,7 @@ begin
 end;
 
 /// <summary>Befunde der Aufgabe AName im Projekt AKey ein- bzw. ausblenden und merken.</summary>
-function FindingsToggle(AOwner: TAtlasIdeTasks; const AKey: string): TProc<string>;
+function FindingsToggle(AHistory: TAtlasIdeTaskHistory; const AKey: string): TProc<string>;
 begin
   Result :=
     procedure(AName: string)
@@ -1244,9 +1209,7 @@ begin
       mHidden: Boolean;
       mStore: TAtlasProblemStore;
     begin
-      mHidden := not AOwner.FHistory.Data.IsHidden(AKey, AName);
-      AOwner.FHistory.Data.SetHidden(AKey, AName, mHidden);
-      SaveHistory(AOwner.FHistory);
+      mHidden := AHistory.ToggleHidden(AKey, AName);
       mStore := TAtlasProblemsController.Current;
       if mStore <> nil then
       begin
@@ -1273,7 +1236,7 @@ begin
     function(AName: string): Boolean
     begin
       Result := mHistory.IsHidden(mKey, AName);
-    end, FindingsToggle(Self, mKey), AliveCheck(FAlive));
+    end, FindingsToggle(FHistory, mKey), AliveCheck(FAlive));
 end;
 
 function TAtlasIdeTasks.Busy: Boolean;

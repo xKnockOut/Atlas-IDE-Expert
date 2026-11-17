@@ -270,7 +270,7 @@ begin
       Place(TAtlasEditorToolbar(ABar), AEditorParent);
     end);
   // Nur im Code-Editor; im Formular-Designer steht die Designer-Leiste (#1442).
-  FHost.ShowIn := TAtlasEditorBarView.Code;
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Code;
   FPoints := TAtlasReturnPoints.Create;
   FLineCounts := TDictionary<string, Integer>.Create;
   FLastLine := -1;

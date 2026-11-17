@@ -201,8 +201,8 @@ begin
     end, nil);
   // Unten neben dem Editor-Bereich direkt am Editor, über der Statusleiste; nicht im EditorPanel, dort lag die
   // Designfläche samt Bildlaufleiste darüber.
-  FHost.DockBottom(TAtlasBarDock.cOrderNearest);
-  FHost.ShowIn := TAtlasEditorBarView.Designer;
+  FHost.Placement.DockBottom(TAtlasBarDock.cOrderNearest);
+  FHost.Placement.ShowIn := TAtlasEditorBarView.Designer;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.Interval := cTick;
