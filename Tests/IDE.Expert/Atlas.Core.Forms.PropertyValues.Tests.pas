@@ -60,8 +60,6 @@ type
     FRoot: TComponent;
     FControl: TSampleControl;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -76,6 +74,8 @@ type
     procedure IntegerAcceptsIdentifiers;
     [Test]
     procedure RejectsBadValues;
+    [Test]
+    procedure SetElementsAreCheckedBeforeWriting;
     [Test]
     procedure RemovedLineResetsToDefault;
     [Test]
@@ -154,19 +154,6 @@ end;
 
 { TAtlasFormPropertyValuesTests }
 
-procedure TAtlasFormPropertyValuesTests.WarmUpFirstUse;
-begin
-  // Unter Delphi legen die RTL-Routinen beim ersten Aufruf einmalig 88 Byte an (Monitor-Datensatz einer globalen
-  // Liste): vorab, damit der Leckmonitor sie nicht den ersten Tests zuschreibt.
-  SetUp;
-  try
-    ResolvesNestedPath;
-    RejectsBadValues;
-  finally
-    TearDown;
-  end;
-end;
-
 procedure TAtlasFormPropertyValuesTests.SetUp;
 begin
   FRoot := TComponent.Create(nil);
@@ -243,6 +230,25 @@ begin
   Assert.Contains(WriteTo(FControl, Change('Button1', 'OnChange', 'Button1Change')), 'OnChange');
   Assert.AreEqual('', FControl.Caption);
   Assert.AreEqual(3, FControl.Count);
+end;
+
+procedure TAtlasFormPropertyValuesTests.SetElementsAreCheckedBeforeWriting;
+begin
+  FControl.Kinds := [TSampleKind.Second];
+  // Leerzeichen, Groß-/Kleinschreibung und leere Menge wie StringToSet.
+  Assert.AreEqual('', WriteTo(FControl, Change('Button1', 'Kinds', '[ first , Third ]')));
+  Assert.IsTrue(TSampleKind.First in FControl.Kinds);
+  Assert.IsFalse(TSampleKind.Second in FControl.Kinds);
+  Assert.IsTrue(TSampleKind.Third in FControl.Kinds);
+  Assert.AreEqual('', WriteTo(FControl, Change('Button1', 'Kinds', '[]')));
+  Assert.IsFalse(TSampleKind.First in FControl.Kinds);
+  Assert.IsFalse(TSampleKind.Second in FControl.Kinds);
+  Assert.IsFalse(TSampleKind.Third in FControl.Kinds);
+  // Ein unbekanntes Element verwirft den ganzen Wert, auch die bekannten davor.
+  FControl.Kinds := [TSampleKind.Second];
+  Assert.Contains(WriteTo(FControl, Change('Button1', 'Kinds', '[First,Fourth]')), 'Fourth');
+  Assert.IsFalse(TSampleKind.First in FControl.Kinds, 'bekanntes Element vor dem unbekannten');
+  Assert.IsTrue(TSampleKind.Second in FControl.Kinds);
 end;
 
 procedure TAtlasFormPropertyValuesTests.RemovedLineResetsToDefault;

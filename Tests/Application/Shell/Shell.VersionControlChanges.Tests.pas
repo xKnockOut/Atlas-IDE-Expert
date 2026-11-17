@@ -8,13 +8,17 @@
 interface
 
 uses
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Atlas.Core.VersionControl.Contract,
+  Atlas.Core.VersionControl.Tools;
 
 type
   [TestFixture]
   TShellVcsChangesTests = class
   private
     FFolder: string;
+    /// <summary>Echter Fund von git und svn vor dem Test; TearDown stellt ihn nach Preset wieder her.</summary>
+    FFound: array[TAtlasVcsKind] of TAtlasVcsToolLocation;
   public
     [Setup]
     procedure Setup;
@@ -64,8 +68,6 @@ uses
   System.Generics.Collections,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Rules.ChangedFiles,
-  Atlas.Core.VersionControl.Contract,
-  Atlas.Core.VersionControl.Tools,
   Shell.VersionControlChanges;
 
 type
@@ -217,14 +219,27 @@ end;
 { TShellVcsChangesTests }
 
 procedure TShellVcsChangesTests.Setup;
+var
+  mKind: TAtlasVcsKind;
 begin
+  for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+  begin
+    FFound[mKind] := TAtlasVcsTools.Where(mKind);
+  end;
   FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-ShellVcs-' + IntToStr(Random(MaxInt)));
   ForceDirectories(TPath.Combine(FFolder, 'Sub'));
 end;
 
 procedure TShellVcsChangesTests.TearDown;
+var
+  mKind: TAtlasVcsKind;
 begin
-  TAtlasVcsTools.Forget;
+  // Den echten Fund zurück statt Forget: Sonst legte ihn der nächste Test, der git oder svn sucht, neu an.
+  for mKind := Low(TAtlasVcsKind) to High(TAtlasVcsKind) do
+  begin
+    TAtlasVcsTools.Remember(mKind, FFound[mKind]);
+    FFound[mKind] := TAtlasVcsToolLocation.Empty;
+  end;
   if TDirectory.Exists(FFolder) then
   begin
     TDirectory.Delete(FFolder, True);

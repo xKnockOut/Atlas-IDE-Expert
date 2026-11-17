@@ -24,10 +24,6 @@ type
     function Open(ACompact: Boolean; const ACurrent: string): TAtlasComponentSearchWindow;
     function SelectedName: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen: Clipboard legt sein Objekt einmal an und gibt es erst am
-    /// Programmende frei.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -105,15 +101,6 @@ begin
   if mIndex >= 0 then
   begin
     Result := Items[mIndex].Name;
-  end;
-end;
-
-procedure TAtlasComponentSearchWindowTests.WarmUpFirstUse;
-begin
-  try
-    ActionsNeedWhatTheyUse;
-  finally
-    TearDown;
   end;
 end;
 

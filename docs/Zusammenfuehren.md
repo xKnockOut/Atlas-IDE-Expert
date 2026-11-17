@@ -21,6 +21,7 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
    - reine Ergänzungen beider Seiten an derselben Stelle in `.dpr`, `.dpk`, `.dproj`, `Tools/Linux/FpcTests.txt` und Markdown (Unit-Listen, Tabellenzeilen in `docs/adr/0017-unit-zuordnung.md`, Aufzählungen): beide behalten,
    - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu,
    - die Baseline wortgleicher Rümpfe `atlas-duplicates.json`: Stand von `main-merging`, danach neu geschrieben mit `AtlasServer --check . --check-duplicates --update-baseline` (gebauter Server unter `Output/` oder im PATH; fehlt er, nennt das Skript den Befehl und endet mit Code 2).
+   - die Liste der Aufwärm-Routinen `Tools/TestWarmUps.baseline.json`: Stand von `main-merging`, danach neu geschrieben mit `pwsh Tools/Check-TestWarmUps.ps1 -Update`.
 
    Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` vergleicht sie je Gruppe mit `main-merging` und meldet jede neue Gruppe und jede Gruppe mit mehr Fassungen, auch wenn die Summe sinkt. Das Merge-Skript nennt solche Gruppen schon beim Neuschreiben. Gibt es einen Grund, eine Kopie zu behalten, steht er in der Beschreibung des Pull Requests in einer Zeile `Neue Kopien: <Grund>`; danach den Lauf der Prüfung neu starten, die Befunde werden dann zu Warnungen.
 
