@@ -6,6 +6,8 @@
 // Include=, Ordner des Originals vorn); Trennung von Original und Schatten:
 // Der Lauf schreibt nur in den Ordner des Schattenprojekts, dort liegt keine
 // Datei des Originals, und die Ausgaben gehen immer nach Out.
+// Fehlerhafte dpr (offener Kommentar an jeder Stelle, offene Zeichenkette,
+// uses ohne Ende) lehnt der Bau ab, statt zu raten oder nicht zu enden.
 
 interface
 
@@ -29,6 +31,14 @@ type
     procedure DprDirectives;
     [Test]
     procedure DprWithoutProgramFails;
+    [Test]
+    procedure DprWithOpenCommentFails;
+    [Test]
+    procedure DprWithOpenStringFails;
+    [Test]
+    procedure DprUsesWithoutEndFails;
+    [Test]
+    procedure DprWithClosedCommentsBuilds;
     [Test]
     procedure DprojRewritesProject;
     [Test]
@@ -198,6 +208,58 @@ begin
   Assert.IsFalse(TAtlasMutationShadows.Build(Source('library X;' + cBreak + 'end.'), mShadow));
   Assert.AreEqual('', mShadow.Dpr);
   Assert.AreEqual('', mShadow.Folder);
+end;
+
+procedure TAtlasMutationShadowTests.DprWithOpenCommentFails;
+const
+  cHead = 'program Demo.Tests;' + cBreak;
+  cUses = 'uses' + cBreak + '  System.SysUtils,' + cBreak + '  Preise in ''..\Src\Preise.pas'';' + cBreak;
+  cBody = 'begin' + cBreak + 'end.';
+var
+  mOpen: string;
+  mShadow: TAtlasMutationShadow;
+begin
+  // Gespeichert mitten im Auskommentieren: vor dem Programmkopf, vor uses, in uses, hinter uses; "(*)" schließt
+  // nicht.
+  for mOpen in TArray<string>.Create('(* ', '{ ', '(*) ') do
+  begin
+    Assert.IsFalse(TAtlasMutationShadows.Build(Source(mOpen + cHead + cUses + cBody), mShadow), mOpen);
+    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + mOpen + cUses + cBody), mShadow), mOpen);
+    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + 'uses' + cBreak + '  System.SysUtils,' + cBreak +
+      mOpen + '  Preise in ''..\Src\Preise.pas'';' + cBreak + cBody), mShadow), mOpen);
+    Assert.IsFalse(TAtlasMutationShadows.Build(Source(cHead + cUses + mOpen + cBody), mShadow), mOpen);
+    Assert.AreEqual('', mShadow.Dpr);
+  end;
+end;
+
+procedure TAtlasMutationShadowTests.DprWithOpenStringFails;
+var
+  mShadow: TAtlasMutationShadow;
+begin
+  Assert.IsFalse(TAtlasMutationShadows.Build(Source('program X;' + cBreak + 'uses' + cBreak +
+    '  Preise in ''..\Src\Preise.pas;' + cBreak + 'begin' + cBreak + 'end.'), mShadow));
+  Assert.AreEqual('', mShadow.Dpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprUsesWithoutEndFails;
+var
+  mShadow: TAtlasMutationShadow;
+begin
+  Assert.IsFalse(TAtlasMutationShadows.Build(Source('program X;' + cBreak + 'uses' + cBreak +
+    '  Preise in ''..\Src\Preise.pas''' + cBreak + 'begin' + cBreak + 'end.'), mShadow));
+  Assert.AreEqual('', mShadow.Dpr);
+end;
+
+procedure TAtlasMutationShadowTests.DprWithClosedCommentsBuilds;
+var
+  mDpr: string;
+begin
+  mDpr := Shadow(Source('(* program Alt; *) program X; { uses Alt; }' + cBreak + '(*$R+*) uses' + cBreak +
+    '  // Preise in ''alt.pas'';' + cBreak + '  Preise in ''..\Src\Preise.pas'' (* ; *);' + cBreak + 'begin' +
+    cBreak + 'end.')).Dpr;
+  Assert.IsTrue(mDpr.Contains('(* program Alt; *) program Demo.TestsMutation; { uses Alt; }'), mDpr);
+  Assert.IsTrue(mDpr.Contains('// Preise in ''alt.pas'';'), mDpr);
+  Assert.IsTrue(mDpr.Contains('  Preise in ''Src\Preise.pas'' (* ; *);'), mDpr);
 end;
 
 procedure TAtlasMutationShadowTests.DprojRewritesProject;

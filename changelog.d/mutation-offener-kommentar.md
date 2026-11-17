@@ -1,0 +1,2 @@
+### Behoben
+- Mutationslauf (experimentell, `tests.mutation`): Eine gespeicherte .dpr des Testprojekts mit nicht abgeschlossenem `(*`-Kommentar ließ die IDE beim Anlegen des Schattenprojekts nicht mehr reagieren. Kommentare und Zeichenketten in Projektdateien überspringt jetzt ein gemeinsamer Helfer, dessen Suche nur vorwärts läuft; eine .dpr mit offenem Kommentar, offener Zeichenkette oder uses-Klausel ohne Ende meldet der Lauf als „Schattenprojekt nicht angelegt“. `(*)` gilt nicht mehr als abgeschlossener Kommentar.

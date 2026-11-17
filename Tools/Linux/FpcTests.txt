@@ -27,6 +27,7 @@ Atlas.Text.TestResults.Tests
 Atlas.Text.Xml.Tests
 Atlas.Text.Coverage.Tests
 Atlas.Text.UpdateRun.Tests
+Atlas.Text.PascalScan.Tests
 Atlas.Text.Updates.Tests
 Atlas.Text.Uris.Tests
 
