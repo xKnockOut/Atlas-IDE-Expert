@@ -238,6 +238,7 @@ uses
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Plan,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.UI.Hover.Strings;
@@ -315,7 +316,7 @@ var
   mTargets, mStyle, mColor: string;
   mEnabled: Boolean;
 begin
-  mEnabled := TAtlasIdeSettings.ReassignedOn(mTargets, mStyle, mColor) and
+  mEnabled := TAtlasIdeEditorSettings.ReassignedOn(mTargets, mStyle, mColor) and
     not TAtlasGuard.Disabled(TAtlasFeature.Reassigned);
   Result := TAtlasHoverPlan.ShowsReassigned(mEnabled, mTargets, AData.ReassignedTarget);
 end;

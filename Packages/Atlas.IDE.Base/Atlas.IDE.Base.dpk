@@ -333,6 +333,7 @@ contains
   Atlas.UI.Settings.SnippetsPage in 'Source\UI\Settings\Atlas.UI.Settings.SnippetsPage.pas' {AtlasSnippetsPage: TFrame},
   Atlas.UI.Settings.Keys in 'Source\UI\Settings\Atlas.UI.Settings.Keys.pas' {AtlasKeysPage: TFrame},
   Atlas.IDE.Foundation.Settings in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Settings.pas',
+  Atlas.IDE.Foundation.EditorSettings in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorSettings.pas',
   Atlas.IDE.Foundation.Host in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas',
   Atlas.IDE.Foundation.StartOptions in 'Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas',
   Atlas.IDE.Settings.Options in 'Source\IDE\Settings\Atlas.IDE.Settings.Options.pas',

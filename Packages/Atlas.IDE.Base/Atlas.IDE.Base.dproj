@@ -388,6 +388,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Settings.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorSettings.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Host.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.StartOptions.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Options.pas"/>
