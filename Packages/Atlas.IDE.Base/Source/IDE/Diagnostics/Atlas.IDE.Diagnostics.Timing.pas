@@ -139,6 +139,8 @@ begin
         FInstance.FrameCreated(AFrame);
       end;
     end;
+  // Vor dem Laden des Desktops anmelden, sonst verliert das angedockte Fenster seinen Platz.
+  TAtlasIdeTimingWindow.Prepare;
   FKey := TAtlasIdeKeyBinding.Create('Atlas.DiagnosticMode', 'Atlas-Diagnosemodus', TAtlasFeature.Settings,
     procedure
     begin

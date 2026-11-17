@@ -452,6 +452,8 @@ begin
     NotesMenuEntry('Atlas.QuickBookmarkToggle'),
     NotesMenuEntry('Atlas.NextBookmark'),
     NotesMenuEntry('Atlas.PreviousBookmark'),
+    // Fenster „Lesezeichen“ (#622) auch unter Ansicht › Atlas.
+    MenuEntry('Atlas.BookmarkWindow', TAtlasMenuPlace.ViewMenu),
     // Kontextmenü des Editors: nach Rechtsklick in die Rinne für die angeklickte Zeile, sonst für den Cursor; die
     // Spalte der schnellen Lesezeichen hat ihr eigenes Menü. Eigenes Untermenü, sonst wird das Kontextmenü höher
     // als der Bildschirm.

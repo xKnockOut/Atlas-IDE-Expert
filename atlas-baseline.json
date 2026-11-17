@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "findings": [
+    {"path": "Packages/Atlas.Common/Source/Metrics/Atlas.Common.Metrics.DuplicateBaseline.pas", "rule": "metric-method-length", "fingerprint": "12ec8941", "count": 1, "routine": "TDuplicateBaseline.Compare", "context": "8ea9b54c"},
+    {"path": "Packages/Atlas.Common/Source/Rules/Builtin/Atlas.Common.Rules.Builtin.Testing.AreEqual.pas", "rule": "metric-cyclomatic-complexity", "fingerprint": "66fe7bb5", "count": 1, "routine": "TAreEqualCheck.KindOf", "context": "927c97cf"},
+    {"path": "Packages/Atlas.Common/Source/Semantics/Atlas.Common.Semantics.ControlFlow.pas", "rule": "metric-cyclomatic-complexity", "fingerprint": "5e64c08e", "count": 1, "routine": "TFlowBuilder.BuildCall", "context": "a8cb08d2"},
+    {"path": "Packages/Atlas.Common/Source/Semantics/Atlas.Common.Semantics.InlineCallees.pas", "rule": "metric-cyclomatic-complexity", "fingerprint": "a92d1d37", "count": 1, "routine": "TInlineCallees.AddInstanceMemberNeeds", "context": "e4d5632f"},
+    {"path": "Packages/Atlas.Common/Source/Semantics/Atlas.Common.Semantics.InlineCallees.pas", "rule": "metric-cyclomatic-complexity", "fingerprint": "506806d8", "count": 1, "routine": "TInlineCallees.NeedsOf", "context": "f334e2b2"},
+    {"path": "Packages/Atlas.Common/Source/Semantics/Atlas.Common.Semantics.InlineCallees.pas", "rule": "metric-cyclomatic-complexity", "fingerprint": "a3a97d26", "count": 1, "routine": "TInlineCallees.RefUnit", "context": "98d5775a"},
+    {"path": "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.Inlining.Tests.pas", "rule": "metric-method-length", "fingerprint": "07bd7f72", "count": 1, "routine": "TInliningRulesTests.AliasParameterNeedsTargetUnit", "context": "567c564e"},
+    {"path": "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.Inlining.Tests.pas", "rule": "metric-method-length", "fingerprint": "49146e07", "count": 1, "routine": "TInliningRulesTests.ImplicitSystemNeedsNoUses", "context": "a66d05db"},
+    {"path": "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.Inlining.Tests.pas", "rule": "metric-method-length", "fingerprint": "dd76b428", "count": 1, "routine": "TInliningRulesTests.RealRtlNeedsNoImplicitOrGenericUnit", "context": "a10cdc2e"}
+  ]
+}

@@ -1,6 +1,7 @@
 {
   "version": 1,
   "findings": [
+    {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "duplicate-routine-body", "fingerprint": "edd00864", "count": 1, "routine": "FileExistsProc", "context": "b6bf7d04"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "hardcoded-string", "fingerprint": "d10c26e0", "count": 1, "routine": "PrepareLaunch", "context": "a94dc1dd"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "magic-number", "fingerprint": "d1804fa5", "count": 1, "routine": "StopProcess", "context": "5ea96822"},
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Adapters.Process.pas", "rule": "magic-number", "fingerprint": "d5897557", "count": 1, "routine": "Watch", "context": "d23707f8"},
@@ -35,12 +36,8 @@
     {"path": "Source/Core/Tasks/Atlas.Core.Tasks.Matchers.pas", "rule": "string-if-chain", "fingerprint": "90407432", "count": 1, "routine": "TAtlasTaskLineMatcher.SeverityWord", "context": "0c28ad7a"},
     {"path": "Source/IDE/Build/Atlas.IDE.Build.OpenBuild.pas", "rule": "hardcoded-string", "fingerprint": "f77a4b99", "count": 1, "routine": "TAtlasIdeOpenBuild.Compile", "context": "c3c417e9"},
     {"path": "Source/IDE/Build/Atlas.IDE.Build.OpenBuild.pas", "rule": "magic-number", "fingerprint": "3df2fa4e", "count": 1, "routine": "TAtlasIdeOpenBuild.Create", "context": "9df66e02"},
-    {"path": "Source/IDE/Build/Atlas.IDE.Build.OpenBuild.pas", "rule": "owned-field-free-unclear", "fingerprint": "43b736de", "count": 1, "routine": "interface", "context": "3b50d798"},
-    {"path": "Source/IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas", "rule": "string-concat-in-loop", "fingerprint": "84706910", "count": 1, "routine": "TAtlasIdeStartProfiles.Summary", "context": "01a5a736"},
-    {"path": "Source/IDE/StartProfiles/Atlas.IDE.StartProfiles.Service.pas", "rule": "string-concat-in-loop", "fingerprint": "ff99ae25", "count": 1, "routine": "TAtlasIdeStartProfiles.Summary", "context": "d36547d3"},
     {"path": "Source/IDE/Tasks/Atlas.IDE.Tasks.Output.pas", "rule": "magic-number", "fingerprint": "578b620e", "count": 1, "routine": "THeaderMessage.CalcRect", "context": "5826403d"},
-    {"path": "Source/IDE/Tasks/Atlas.IDE.Tasks.Runner.pas", "rule": "string-concat-in-loop", "fingerprint": "9e80b33f", "count": 1, "routine": "PlanPreBuild", "context": "38369e30"},
-    {"path": "Source/IDE/Tasks/Atlas.IDE.Tasks.Runner.pas", "rule": "string-concat-in-loop", "fingerprint": "c005caf0", "count": 1, "routine": "PlanPreBuild", "context": "d2393024"},
+    {"path": "Source/IDE/Tasks/Atlas.IDE.Tasks.Runner.pas", "rule": "duplicate-routine-body", "fingerprint": "0ccf583a", "count": 1, "routine": "ExistsProc", "context": "b6bf7d04"},
     {"path": "Source/UI/Build/Atlas.UI.Build.SwitchesFrame.pas", "rule": "magic-number", "fingerprint": "1ca848d8", "count": 1, "routine": "TAtlasBuildSwitchesFrame.Create", "context": "af55fd21"},
     {"path": "Source/UI/Build/Atlas.UI.Build.SwitchesFrame.pas", "rule": "magic-number", "fingerprint": "669ef3bc", "count": 1, "routine": "TAtlasBuildSwitchesFrame.Create", "context": "ab422dea"},
     {"path": "Source/UI/Build/Atlas.UI.Build.SwitchesFrame.pas", "rule": "magic-number", "fingerprint": "68994cf4", "count": 1, "routine": "TAtlasBuildSwitchesFrame.Create", "context": "51ac4aa1"},

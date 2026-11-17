@@ -77,6 +77,29 @@ jobs:
         # Jedes Packages/Atlas.IDE.* mit seiner atlas.json und Baseline; jeder neue Treffer bricht ab.
         run: Tools/Linux/Check-PluginPackages.sh Output/Linux64/Bin/AtlasServer
 
+      - name: Metrikregeln außerhalb der Plugin-Packages
+        # Atlas.Common, Atlas.Windows, Application und Tests laufen mit der atlas.json im Wurzelordner. Dort sind
+        # nur Methodenlänge und zyklomatische Komplexität eingeschaltet, mit atlas-baseline.json als Bestand, der nur
+        # schrumpfen darf (Check-Baselines.ps1). Jede neue zu lange oder zu verzweigte Routine bricht ab, auch als
+        # Hinweis (--fail-on kennt keine Hinweise, deshalb die Auswertung des JSON). Das Profil metriken (atlas.json)
+        # lässt die teuren Regeln weg; --rules allein filtert nur die Ausgabe.
+        run: |
+          Output/Linux64/Bin/AtlasServer --check . --no-index --profile metriken \
+            --rules metric-method-length,metric-cyclomatic-complexity --format json --fail-on never \
+            --output "$RUNNER_TEMP/metriken.json"
+          python3 - "$RUNNER_TEMP/metriken.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1], encoding='utf-8'))
+          count = 0
+          for item in data['files']:
+              for finding in item['findings']:
+                  count += 1
+                  line = finding['range']['start']['line'] + 1
+                  print(f"::error file={item['path']},line={line}::{finding['rule']}: {finding['message']}")
+          print(f"{count} neue Treffer in {data['summary']['files']} Dateien")
+          sys.exit(1 if count else 0)
+          PY
+
       - name: Wortgleiche Rümpfe über Units hinweg
         # Vergleicht die Rümpfe aller Routinen des Repositorys mit atlas-duplicates.json; neue Kopien und
         # entfernte, aber noch eingetragene Kopien brechen ab. Nach dem Zusammenlegen von Kopien die Baseline mit

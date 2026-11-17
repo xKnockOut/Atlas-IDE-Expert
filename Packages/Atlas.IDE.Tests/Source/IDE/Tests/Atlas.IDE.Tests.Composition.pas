@@ -297,6 +297,8 @@ begin
   // Wackelnde Tests (#1773), Fenster „Atlas-Tests“ (#1776), Testlisten (#2167) und Teststand (#1777); das Fenster
   // hängt sich als OnReported an, die wackelnden Tests reichen den Lauf an die langsamsten Tests weiter.
   StartExplorer(GTests, GDebugger, GSeries, GStale.StaleIn, GSlowest.Remember);
+  // Lauf ging schief (#2467): Fenster „Atlas-Tests“ öffnen.
+  GOutput.OnEnded := ExplorerRunEnded;
   GLens := TAtlasIdeTestsLens.Create(GTests, GDebugger, StateQueries(GStale.StaleIn), CompareHooks);
   // Marke „getestet von“ an Methoden normaler Units (#1778).
   GCoveredBy := TAtlasIdeCoveredByLens.Create(GTests, ModuleScope, GStale.StaleIn);
@@ -332,7 +334,11 @@ begin
     GTests.OnReported := nil;
   end;
   // Der Teststand (#1777) liest aus dem Fenster „Atlas-Tests“ (#1776), das auf Läufer und Debugger-Teil zeigt:
-  // vor allen.
+  // vor allen. Vorher erreicht das Ende eines Laufs das Fenster nicht mehr (#2467).
+  if GOutput <> nil then
+  begin
+    GOutput.OnEnded := nil;
+  end;
   StopExplorer;
   FreeAndNil(GCoveredBy);
   FreeAndNil(GLens);

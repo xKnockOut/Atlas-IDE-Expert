@@ -441,6 +441,7 @@ type
     property TestsApprovalFiles: Boolean read FBuild.TestsApprovalFiles write FBuild.TestsApprovalFiles;
     property TestsShowDuration: Boolean read FBuild.TestsShowDuration write FBuild.TestsShowDuration;
     property TestsWindow: Boolean read FBuild.TestsWindow write FBuild.TestsWindow;
+    property TestsWindowOnFailure: Boolean read FBuild.TestsWindowOnFailure write FBuild.TestsWindowOnFailure;
     property TestsLists: Boolean read FBuild.TestsLists write FBuild.TestsLists;
     property TestsListsRunKey: Integer read FBuild.TestsListsRunKey write FBuild.TestsListsRunKey;
     property TestsLog: Boolean read FBuild.TestsLog write FBuild.TestsLog;
@@ -612,6 +613,7 @@ type
       write FCodeActions.EditorContextMenuGroups;
     property AtlasMenuContextual: Boolean read FCodeActions.AtlasMenuContextual
       write FCodeActions.AtlasMenuContextual;
+    property AtlasViewMenu: Boolean read FCodeActions.AtlasViewMenu write FCodeActions.AtlasViewMenu;
     property GenerateMenuKey: Integer read FEditingKeys.GenerateMenuKey write FEditingKeys.GenerateMenuKey;
     property GenerateMenuGroups: string read FCodeActions.GenerateMenuGroups write FCodeActions.GenerateMenuGroups;
     property GenerateMenuHidden: string read FCodeActions.GenerateMenuHidden write FCodeActions.GenerateMenuHidden;

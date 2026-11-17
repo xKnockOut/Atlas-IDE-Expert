@@ -139,6 +139,7 @@ begin
   Assert.IsTrue(ASettings.TestsApprovalFiles, 'Vergleichsdateien standardmäßig an (#1881)');
   Assert.IsTrue(ASettings.TestsShowDuration, 'Dauer an der Testmarke standardmäßig an (#1772)');
   Assert.IsTrue(ASettings.TestsWindow, 'Fenster „Atlas-Tests“ standardmäßig an (#1776)');
+  Assert.IsTrue(ASettings.TestsWindowOnFailure, 'Fenster bei Fehlschlägen öffnen standardmäßig an (#2467)');
   Assert.IsTrue(ASettings.TestsLists, 'Testlisten standardmäßig an (#2167)');
   Assert.AreEqual($C052, ASettings.TestsListsRunKey, 'Testliste mit Strg+Alt+R (#2167)');
   Assert.IsTrue(ASettings.EditorStatusBarTests, 'Teststand in der Statusleiste standardmäßig an (#1777)');
@@ -359,6 +360,7 @@ begin
   ASettings.TestsApprovalFiles := False;
   ASettings.TestsShowDuration := False;
   ASettings.TestsWindow := False;
+  ASettings.TestsWindowOnFailure := False;
   ASettings.TestsLists := False;
   ASettings.TestsListsRunKey := 0;
   ASettings.TestsSlowMs := 1000;
@@ -559,6 +561,7 @@ begin
   Assert.IsFalse(ALoaded.TestsApprovalFiles, 'tests.approvalFiles (#1881)');
   Assert.IsFalse(ALoaded.TestsShowDuration, 'tests.showDuration (#1772)');
   Assert.IsFalse(ALoaded.TestsWindow, 'tests.window (#1776)');
+  Assert.IsFalse(ALoaded.TestsWindowOnFailure, 'tests.window.openOnFailure (#2467)');
   Assert.IsFalse(ALoaded.TestsLists, 'tests.lists (#2167)');
   Assert.AreEqual(0, ALoaded.TestsListsRunKey, 'tests.lists.runKey (#2167)');
   Assert.AreEqual(1000, ALoaded.TestsSlowMs, 'tests.slowMs (#1772)');
@@ -1401,9 +1404,11 @@ begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.EditorContextMenuContextual);
   Assert.IsTrue(mSettings.AtlasMenuContextual);
+  Assert.IsTrue(mSettings.AtlasViewMenu);
   Assert.AreEqual('navigation,edit,analysis,findings,debug,tests,notes', mSettings.EditorContextMenuGroups);
   mSettings.EditorContextMenuContextual := False;
   mSettings.AtlasMenuContextual := False;
+  mSettings.AtlasViewMenu := False;
   mSettings.EditorContextMenuGroups := 'notes; quatsch, Debug';
   mSettings.Normalize;
   Assert.AreEqual('debug,notes', mSettings.EditorContextMenuGroups);
@@ -1413,6 +1418,7 @@ begin
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.EditorContextMenuContextual);
   Assert.IsFalse(mLoaded.AtlasMenuContextual);
+  Assert.IsFalse(mLoaded.AtlasViewMenu);
   Assert.AreEqual('debug,notes', mLoaded.EditorContextMenuGroups);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
