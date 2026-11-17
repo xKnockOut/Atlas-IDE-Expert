@@ -195,6 +195,10 @@ end;
 initialization
   TAtlasTextTables.Add('Atlas.Common.Rules.Prompt', cTexts);
   SharedLock := TObject.Create;
+  // Monitor-Datensatz der Sperre gleich anlegen: Sonst entsteht er beim ersten Sperren und gilt im ersten Test,
+  // der sie nutzt, als Leck (72 Byte bis zur Freigabe der Sperre).
+  TMonitor.Enter(SharedLock);
+  TMonitor.Exit(SharedLock);
 
 finalization
   FreeAndNil(Shared);

@@ -17,9 +17,6 @@ type
   private
     FFolder: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -115,16 +112,6 @@ begin
 end;
 
 { TAtlasReportDialogTests }
-
-procedure TAtlasReportDialogTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    PreviewFollowsChecks;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasReportDialogTests.Setup;
 begin

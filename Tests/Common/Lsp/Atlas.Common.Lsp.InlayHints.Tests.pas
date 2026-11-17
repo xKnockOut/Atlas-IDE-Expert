@@ -16,9 +16,6 @@ type
     FResolver: TNameResolver;
     function Describe(const AHints: TArray<TInlayHint>): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -267,16 +264,6 @@ begin
   for mHint in AHints do
   begin
     Result := Result + Format('%d:%d %s|', [mHint.Position.Line, mHint.Position.Character, mHint.Text]);
-  end;
-end;
-
-procedure TLspInlayHintsTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    EndMarkersCarryBlockStartAndRequestMinLines;
-  finally
-    TearDown;
   end;
 end;
 

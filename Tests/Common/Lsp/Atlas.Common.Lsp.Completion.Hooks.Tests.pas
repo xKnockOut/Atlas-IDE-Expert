@@ -15,9 +15,6 @@ type
   private
     FHooks: TCompletionHooks;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -81,16 +78,6 @@ begin
 end;
 
 { TCompletionHooksTests }
-
-procedure TCompletionHooksTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    NamespacesRoundTrip;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TCompletionHooksTests.Setup;
 begin

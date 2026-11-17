@@ -19,9 +19,6 @@ type
     function NewWorkspace(const ARoot, AName, AProjectFile, AOrigin: string): TShellWorkspace;
     procedure CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -87,16 +84,6 @@ end;
 procedure TShellWorkspaceRegistryTests.CountVisited(const AWorkspaces: TArray<TShellWorkspace>);
 begin
   FVisited := Length(AWorkspaces);
-end;
-
-procedure TShellWorkspaceRegistryTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    GroupProjectsAndPackageFolders;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TShellWorkspaceRegistryTests.Setup;

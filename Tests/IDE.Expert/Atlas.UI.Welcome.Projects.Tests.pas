@@ -12,9 +12,6 @@ type
   [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeProjectsFrameTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure PillTextsFollowKind;
     [Test]
@@ -50,7 +47,6 @@ uses
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions.Tests;
-
 
 type
   /// <summary>Quelle des Bereichs „Projekte“ für die Tests; merkt sich die Aufrufe.</summary>
@@ -160,10 +156,6 @@ begin
 end;
 { TAtlasWelcomeProjectsFrameTests }
 
-procedure TAtlasWelcomeProjectsFrameTests.WarmUpFirstUse;
-begin
-  RowsSetHeightAndAskForRefresh;
-end;
 procedure TAtlasWelcomeProjectsFrameTests.PillTextsFollowKind;
 var
   mSaved: TAtlasLanguage;

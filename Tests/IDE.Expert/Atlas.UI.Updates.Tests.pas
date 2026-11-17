@@ -14,9 +14,6 @@ type
   [TestFixture]
   TAtlasUpdateConsentTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure AsksOnceAndRunsFirstAnswer;
     [Test]
@@ -59,12 +56,6 @@ uses
   Atlas.UI.Settings.Page.Startup;
 
 { TAtlasUpdateConsentTests }
-
-procedure TAtlasUpdateConsentTests.WarmUpFirstUse;
-begin
-  AsksOnceAndRunsFirstAnswer;
-  SettingsPageShowsVersionAndSwitch;
-end;
 
 procedure TAtlasUpdateConsentTests.AsksOnceAndRunsFirstAnswer;
 var

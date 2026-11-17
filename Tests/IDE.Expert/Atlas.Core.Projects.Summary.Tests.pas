@@ -16,9 +16,6 @@ type
   private
     FFolder: string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -172,23 +169,6 @@ begin
 end;
 
 { TAtlasProjectSummaryTests }
-
-procedure TAtlasProjectSummaryTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    KeyIsStableAndIgnoresCaseAndSlashes;
-  finally
-    TearDown;
-  end;
-  // Gesperrte Datei: Erstgebrauch der Melde- und Fehlerpfade.
-  Setup;
-  try
-    BrokenFileSetAsideLockedFileKept;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasProjectSummaryTests.Setup;
 begin

@@ -12,10 +12,6 @@ type
   [TestFixture]
   TGoldenCorpusTests = class
   public
-    /// <summary>Prüft das Referenzprojekt einmal vorab; einmalig angelegte Daten der Regeln zählen
-    /// sonst als Leck von ReferenceProjectMatchesMarkers.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure MarkersReadExpectedAndNoFinding;
     [Test]
@@ -280,28 +276,6 @@ begin
 end;
 
 { TGoldenCorpusTests }
-
-procedure TGoldenCorpusTests.WarmUp;
-var
-  mFolder, mFileName, mText: string;
-  mRules: TArray<IRule>;
-  mTexts: TArray<string>;
-begin
-  mFolder := ReferenceFolder;
-  if mFolder = '' then
-  begin
-    Exit;
-  end;
-  mRules := BuiltinRules;
-  mTexts := nil;
-  for mFileName in TDirectory.GetFiles(TPath.Combine(mFolder, 'Source'), '*.pas') do
-  begin
-    mText := ReadSource(mFileName);
-    mTexts := mTexts + [mText];
-    TFileChecker.CheckText(mRules, TServerSettings.Default, ExtractFileName(mFileName), mText);
-  end;
-  TGoldenCorpus.TimeRules(mRules, TServerSettings.Default, mTexts);
-end;
 
 procedure TGoldenCorpusTests.MarkersReadExpectedAndNoFinding;
 var

@@ -20,9 +20,6 @@ type
     /// <summary>Antwort des Handlers als JSON-Text.</summary>
     function Answer(ALine, ACharacter: Integer; ALocalsOnly: Boolean): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -208,16 +205,6 @@ begin
   finally
     mDispatcher.Free;
     mLinked.Free;
-  end;
-end;
-
-procedure TLspLinkedEditingTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    HandlerKeepsMethodsOnlyWithoutLocalsFlag;
-  finally
-    TearDown;
   end;
 end;
 
