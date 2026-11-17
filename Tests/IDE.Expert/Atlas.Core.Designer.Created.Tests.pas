@@ -52,10 +52,6 @@ type
     function CreateOne: TComponent;
     function Find(const AName: string): TComponent;
   public
-    /// <summary>Komponenten mit Namen legen unter Delphi beim ersten Mal einmalig Speicher an; das gehört nicht
-    /// in die Leckmessung des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -141,16 +137,6 @@ begin
 end;
 
 { TAtlasDesignerCreatedTests }
-
-procedure TAtlasDesignerCreatedTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    UndoDeletesInReverseOrder;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TAtlasDesignerCreatedTests.Setup;
 var

@@ -370,10 +370,22 @@ begin
   end;
 end;
 
+/// <summary>Zwischenspeicher der Feldadressen von System.Classes (TFieldsCache) aus: Benennt ein Test eine
+/// Komponente, sucht TComponent.SetReference das gleichnamige Feld im Besitzer und legt dafür je Klasse des
+/// Besitzers einen Eintrag an (Feldtabelle als Wörterbuch, je nach Klasse 240 bis 340 Byte), der bis zum
+/// Programmende bleibt. Jeder Test mit einer neuen Besitzerklasse zählte das als Leck. Ohne Zwischenspeicher sucht
+/// die RTL das Feld direkt (FieldAddress), mit demselben Ergebnis; schon angelegte Einträge gibt Clear frei.
+/// Der Zwischenspeicher selbst gehört der RTL und wird in ihrem Klassendestruktor freigegeben.</summary>
+procedure SwitchOffComponentFieldCache;
+begin
+  SetComponentFieldAddressCache(True, 0);
+end;
+
 { TFirstUse }
 
 class procedure TFirstUse.WarmUp;
 begin
+  SwitchOffComponentFieldCache;
   WarmUpSlashCommands;
   WarmUpRuleCatalogs;
   WarmUpTimeZoneAndJsonPath;
