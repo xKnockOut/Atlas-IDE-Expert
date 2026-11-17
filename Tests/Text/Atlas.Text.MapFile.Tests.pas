@@ -27,6 +27,8 @@ type
     procedure ResolvesAbsoluteAddress;
     [Test]
     procedure ReadsPackageBase;
+    [Test]
+    procedure RoutineWithoutLinesHasNoLine;
   end;
 
 implementation
@@ -58,6 +60,7 @@ const
     ''#13#10 +
     ' 0001:00000000       System.TObject.Create'#13#10 +
     ' 0001:00000040       System.TObject.Free'#13#10 +
+    ' 0001:00000080       System.Generics.Collections.TListHelper.InternalGrow'#13#10 +
     ' 0001:00000100       Shell.Composition.TComposition.Run'#13#10 +
     ' 0001:00000180       Shell.Composition.TComposition.Stop'#13#10 +
     ' 0002:00000010       Shell.Composition.GlobaleVariable'#13#10 +
@@ -85,7 +88,7 @@ begin
   mMap := TMapFile.Create(cSampleMap);
   try
     // Publics by Name wird übergangen, Datensegment zählt nicht.
-    Assert.AreEqual(4, mMap.SymbolCount);
+    Assert.AreEqual(5, mMap.SymbolCount);
   finally
     mMap.Free;
   end;
@@ -204,6 +207,23 @@ begin
     Assert.AreEqual<UInt64>($1000, mMap.CodeStart);
     Assert.AreEqual<UInt64>(0, mMap.EntryPoint);
     Assert.AreEqual(503, mMap.ResolveAddress($50001124, mMap.ImageBase).Line);
+  finally
+    mMap.Free;
+  end;
+end;
+
+procedure TMapFileTests.RoutineWithoutLinesHasNoLine;
+var
+  mMap: TMapFile;
+  mLocation: TMapLocation;
+begin
+  mMap := TMapFile.Create(cSampleMap);
+  try
+    // InternalGrow hat keine Zeilenangaben; die letzte davor gehört zu TObject.Free.
+    mLocation := mMap.Resolve($1090);
+    Assert.AreEqual('System.Generics.Collections.TListHelper.InternalGrow', mLocation.Routine);
+    Assert.AreEqual(0, mLocation.Line);
+    Assert.AreEqual('System.Generics.Collections.TListHelper.InternalGrow', mLocation.ToString);
   finally
     mMap.Free;
   end;

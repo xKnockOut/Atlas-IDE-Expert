@@ -120,8 +120,9 @@ const
   cStableSamples = 3;
   /// <summary>Mindestzahl gleichzeitig wartender Threads beim Vorwärmen.</summary>
   cMinPrewarmWaiters = 64;
-  /// <summary>So viele Stapel nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1.</summary>
-  cTraceGroups = 5;
+  /// <summary>So viele Stapel mit Atlas-Rahmen nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1; Stapel nur
+  /// aus RTL, VCL und DUnitX zählt er nur.</summary>
+  cTraceGroups = 20;
 
 var
   /// <summary>Belegungen je Test mit Stapel aufzeichnen (ATLAS_LEAK_TRACE=1, TAllocationTrace).</summary>
