@@ -1,8 +1,6 @@
 {
-  "count": 12,
+  "count": 10,
   "warmUps": [
-    "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
-    "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Lsp.Adapters.ServerProcess.Tests.pas: TLspServerProcessTests.WarmUpFirstUse",
