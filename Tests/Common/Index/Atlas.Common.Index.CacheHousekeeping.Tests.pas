@@ -42,11 +42,6 @@ type
     function CreateCache(const AName: string): string;
     function CreateFile(const AFileName: string; ASize: Integer): string;
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen. Genau ein [SetupFixture] je Fixture: DUnitX führt nur
-    /// eine solche Methode aus, eine zweite fiel still weg (so blieb die Sperrliste ungewärmt, SecondLockFails).
-    /// </summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -287,95 +282,6 @@ end;
 
 { TIndexCacheDirectoryTests }
 
-/// <summary>TFile.Replace prüft, ob Quelle und Ziel existieren; im Wettlauf fehlt das Ziel kurz
-/// (EFileNotFoundException mit Ressourcentext). Beide Fälle einmal auslösen.</summary>
-procedure WarmUpReplaceFailures(const ARoot, ATarget: string);
-var
-  mMissing: string;
-begin
-  for mMissing in [TPath.Combine(ARoot, 'fehlt-ziel.json'), TPath.Combine(ARoot, 'fehlt-quelle.json')] do
-    try
-      if mMissing.Contains('ziel') then
-      begin
-        TFile.Replace(ATarget, mMissing, ATarget + '.bak');
-      end
-      else
-      begin
-        TFile.Replace(mMissing, ATarget, ATarget + '.bak');
-      end;
-    except
-      on Exception do
-        ;
-    end;
-end;
-
-/// <summary>Schreibt ATarget in einem eigenen Thread, während es gesperrt ist.</summary>
-procedure WarmUpLockInOtherThread(const ADisk: IIndexFileSystem; const ATarget: string);
-var
-  mDisk: IIndexFileSystem;
-  mTarget: string;
-  mWorker: TThread;
-begin
-  mDisk := ADisk;
-  mTarget := ATarget;
-  mWorker := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mThreadLock: TFileStream;
-    begin
-      mThreadLock := TFileStream.Create(mTarget, fmOpenRead or fmShareExclusive);
-      try
-        mDisk.WriteText(mTarget, 'v');
-      finally
-        mThreadLock.Free;
-      end;
-    end);
-  try
-    mWorker.FreeOnTerminate := False;
-    mWorker.Start;
-    mWorker.WaitFor;
-  finally
-    mWorker.Free;
-  end;
-end;
-
-procedure WarmUpFailures(const ARoot: string);
-var
-  mTarget: string;
-  mLock, mBackupLock: TFileStream;
-  mDisk: IIndexFileSystem;
-  mCacheLock: TStream;
-begin
-  mDisk := TDiskIndexFileSystem.Create;
-  mTarget := TPath.Combine(ARoot, 'index-00000001.json');
-  mDisk.WriteText(mTarget, 'x');
-  // Die RTL legt bei der ersten gescheiterten Sperre (EFCreateError) Daten an, die bis Programmende bleiben:
-  // hier statt [IgnoreMemoryLeaks] an SecondLockFails.
-  mCacheLock := TIndexCacheDirectory.TryLock(mTarget);
-  try
-    TIndexCacheDirectory.TryLock(mTarget).Free;
-  finally
-    mCacheLock.Free;
-  end;
-  mLock := TFileStream.Create(mTarget, fmOpenRead or fmShareExclusive);
-  try
-    mDisk.WriteText(mTarget, 'y');
-  finally
-    mLock.Free;
-  end;
-  mDisk.WriteText(mTarget, 'z');
-  mBackupLock := TFileStream.Create(Format('%s.%d.bak', [mTarget, TThread.CurrentThread.ThreadID]), fmCreate or
-    fmShareExclusive);
-  try
-    mDisk.WriteText(mTarget, 'w');
-  finally
-    mBackupLock.Free;
-  end;
-  WarmUpReplaceFailures(ARoot, mTarget);
-  // Dasselbe in einem anderen Thread: Thread-lokale Daten der RTL legt jeder Thread selbst an.
-  WarmUpLockInOtherThread(mDisk, mTarget);
-end;
-
 { TIndexCacheDirectoryTests }
 
 function TIndexCacheDirectoryTests.CreateCache(const AName: string): string;
@@ -392,32 +298,6 @@ begin
   ForceDirectories(ExtractFileDir(Result));
   SetLength(mData, ASize);
   TFile.WriteAllBytes(Result, mData);
-end;
-
-procedure TIndexCacheDirectoryTests.WarmUpFirstUse;
-var
-  mRoot: string;
-begin
-  Setup;
-  try
-    DiskFileSystemOverwritesExistingFile;
-  finally
-    TearDown;
-  end;
-  // Gleichzeitiges Ersetzen löst Fehler aus, deren Meldungstexte die RTL beim ersten Mal
-  // bis Programmende zwischenspeichert. Einmal vorab durchlaufen, damit der Leck-Monitor
-  // in ConcurrentWritersLeaveReadableCache nur den Speicher des Tests sieht.
-  mRoot := TPath.Combine(TPath.GetTempPath, 'AtlasCacheWarmup' + IntToStr(TThread.GetTickCount64));
-  ForceDirectories(mRoot);
-  try
-    WriteConcurrently(TPath.Combine(mRoot, 'index-00000000.json'), 50);
-    // Die Fehlerpfade gezielt, nicht nur zufällig: Ziel gesperrt (Replace scheitert), Ziel und
-    // Sicherung gesperrt, Ziel fehlt. Dabei auch die Liste der eigenen Sperren (#1479): Ihr TMonitor und
-    // ihre Tabelle entstehen beim ersten TryLock und bleiben bis Programmende.
-    WarmUpFailures(mRoot);
-  finally
-    TDirectory.Delete(mRoot, True);
-  end;
 end;
 
 procedure TIndexCacheDirectoryTests.Setup;
