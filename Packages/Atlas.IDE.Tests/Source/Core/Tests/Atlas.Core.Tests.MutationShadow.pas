@@ -43,8 +43,11 @@ type
     /// <summary>Eine Direktive {$R}/{$I} hat eine unbekannte Form (zu viele Argumente, offenes Anführungszeichen).
     /// </summary>
     Directive,
-    /// <summary>Ein Eintrag der uses-Klausel hat eine unbekannte Form.</summary>
-    UsesEntry);
+    /// <summary>Ein Eintrag der uses-Klausel hat eine unbekannte Form oder die Klausel kein Ende.</summary>
+    UsesEntry,
+    /// <summary>Ein Kommentar oder eine Zeichenkette hat keinen Abschluss (etwa beim Speichern mitten im
+    /// Auskommentieren); jede Stelle dahinter wäre geraten.</summary>
+    Unclosed);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Was das Schattenprojekt braucht.</summary>
@@ -126,7 +129,8 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Text.PascalScan;
 
 const
   cBreak = #13#10;
@@ -317,88 +321,6 @@ begin
   Result := TTextChars.IsIdentChar(AChar) or (AChar = '.');
 end;
 
-/// <summary>Position (ab 1) des Zeichens hinter dem Kommentar oder der Zeichenkette ab AIndex; AIndex selbst, wenn
-/// dort keins beginnt.</summary>
-function SkipNoise(const AText: string; AIndex: Integer): Integer;
-var
-  mClose: Integer;
-begin
-  Result := AIndex;
-  if AText[AIndex] = '{' then
-  begin
-    mClose := PosEx('}', AText, AIndex);
-  end
-  else if Copy(AText, AIndex, 2) = '(*' then
-  begin
-    mClose := PosEx('*)', AText, AIndex) + 1;
-  end
-  else if Copy(AText, AIndex, 2) = '//' then
-  begin
-    mClose := PosEx(#10, AText, AIndex);
-  end
-  else if AText[AIndex] = '''' then
-  begin
-    mClose := PosEx('''', AText, AIndex + 1);
-  end
-  else
-  begin
-    Exit;
-  end;
-  Result := Length(AText) + 1;
-  if mClose > 0 then
-  begin
-    Result := mClose + 1;
-  end;
-end;
-
-/// <summary>Position (ab 1) des Worts AWord außerhalb von Kommentaren und Zeichenketten ab AFrom; 0 ohne.</summary>
-function FindWord(const AText, AWord: string; AFrom: Integer): Integer;
-var
-  mIndex, mNext: Integer;
-begin
-  mIndex := AFrom;
-  while mIndex <= Length(AText) do
-  begin
-    mNext := SkipNoise(AText, mIndex);
-    if mNext <> mIndex then
-    begin
-      mIndex := mNext;
-      Continue;
-    end;
-    if SameText(Copy(AText, mIndex, Length(AWord)), AWord) and ((mIndex = 1) or
-      not IsNameChar(AText[mIndex - 1])) and ((mIndex + Length(AWord) > Length(AText)) or
-      not IsNameChar(AText[mIndex + Length(AWord)])) then
-    begin
-      Exit(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := 0;
-end;
-
-/// <summary>Position des ";" ab AFrom außerhalb von Kommentaren und Zeichenketten; 0 ohne.</summary>
-function FindSemicolon(const AText: string; AFrom: Integer): Integer;
-var
-  mIndex, mNext: Integer;
-begin
-  mIndex := AFrom;
-  while mIndex <= Length(AText) do
-  begin
-    mNext := SkipNoise(AText, mIndex);
-    if mNext <> mIndex then
-    begin
-      mIndex := mNext;
-      Continue;
-    end;
-    if AText[mIndex] = ';' then
-    begin
-      Exit(mIndex);
-    end;
-    Inc(mIndex);
-  end;
-  Result := 0;
-end;
-
 /// <summary>Position hinter Leerraum und Kommentaren ab AIndex, höchstens AStop. Zeichenketten sind kein Leerraum.
 /// </summary>
 function SkipBlank(const AText: string; AIndex, AStop: Integer): Integer;
@@ -417,7 +339,7 @@ begin
     begin
       Break;
     end;
-    mNext := SkipNoise(AText, Result);
+    mNext := TPascalScan.SkipNoise(AText, Result);
     if mNext <= Result then
     begin
       Break;
@@ -436,7 +358,7 @@ begin
   Result := AFrom;
   while (Result < AStop) and (AText[Result] <> ',') do
   begin
-    mNext := SkipNoise(AText, Result);
+    mNext := TPascalScan.SkipNoise(AText, Result);
     if mNext > Result then
     begin
       Result := mNext;
@@ -737,6 +659,19 @@ begin
   end;
 end;
 
+/// <summary>Text von AIndex bis zum Zeilenende, ohne Leerraum am Rand.</summary>
+function LineAt(const AText: string; AIndex: Integer): string;
+var
+  mEnd: Integer;
+begin
+  mEnd := AIndex;
+  while (mEnd <= Length(AText)) and not CharInSet(AText[mEnd], [#13, #10]) do
+  begin
+    Inc(mEnd);
+  end;
+  Result := Trim(Copy(AText, AIndex, mEnd - AIndex));
+end;
+
 /// <summary>Schreibt die uses-Klausel ab AHeaderEnd (Semikolon des Programmkopfs) um bzw. legt eine an.</summary>
 function WithShadowUses(const AText: string; AHeaderEnd: Integer; const ASource: TAtlasMutationShadowSource;
   const ATarget: string; out AProblem: string): string;
@@ -745,13 +680,18 @@ var
   mRewrite: TUsesRewrite;
 begin
   AProblem := '';
-  mUses := FindWord(AText, 'uses', AHeaderEnd);
+  mUses := TPascalScan.FindWord(AText, 'uses', AHeaderEnd);
   if mUses = 0 then
   begin
     Exit(Copy(AText, 1, AHeaderEnd) + cBreak + cBreak + 'uses' + cBreak + '  ' + ASource.UnitName + ' in ' +
       Quoted(ATarget) + ';' + Copy(AText, AHeaderEnd + 1, MaxInt));
   end;
-  mUsesEnd := FindSemicolon(AText, mUses);
+  mUsesEnd := TPascalScan.FindChar(AText, ';', mUses);
+  if mUsesEnd = 0 then
+  begin
+    AProblem := LineAt(AText, mUses);
+    Exit(AText);
+  end;
   mRewrite := Default(TUsesRewrite);
   mRewrite.UnitName := ASource.UnitName;
   mRewrite.Target := ATarget;
@@ -760,25 +700,33 @@ begin
   if (AProblem = '') and not mRewrite.Found then
   begin
     // Nach dem Umschreiben hat sich die Länge geändert: Ende der Klausel neu suchen.
-    mUsesEnd := FindSemicolon(Result, mUses);
+    mUsesEnd := TPascalScan.FindChar(Result, ';', mUses);
     Result := Copy(Result, 1, mUsesEnd - 1) + ',' + cBreak + '  ' + ASource.UnitName + ' in ' + Quoted(ATarget) +
       Copy(Result, mUsesEnd, MaxInt);
   end;
 end;
 
-/// <summary>dpr des Schattenprojekts nach AShadow.Dpr; sonst AShadow.Problem und ProblemText.</summary>
+/// <summary>dpr des Schattenprojekts nach AShadow.Dpr; sonst AShadow.Problem und ProblemText. Eine dpr mit offenem
+/// Kommentar oder offener Zeichenkette wird nicht umgeschrieben.</summary>
 procedure ShadowDpr(const ASource: TAtlasMutationShadowSource; const ATarget: string;
   var AShadow: TAtlasMutationShadow);
 var
   mText, mProblem: string;
-  mProgram, mHeaderEnd: Integer;
+  mProgram, mHeaderEnd, mOpen: Integer;
 begin
   mText := ASource.Dpr;
-  mProgram := FindWord(mText, 'program', 1);
+  mOpen := TPascalScan.FirstOpen(mText);
+  if mOpen > 0 then
+  begin
+    AShadow.Problem := TAtlasMutationShadowProblem.Unclosed;
+    AShadow.ProblemText := LineAt(mText, mOpen);
+    Exit;
+  end;
+  mProgram := TPascalScan.FindWord(mText, 'program', 1);
   mHeaderEnd := 0;
   if mProgram > 0 then
   begin
-    mHeaderEnd := FindSemicolon(mText, mProgram);
+    mHeaderEnd := TPascalScan.FindChar(mText, ';', mProgram);
   end;
   if mHeaderEnd = 0 then
   begin
@@ -786,7 +734,7 @@ begin
     Exit;
   end;
   mText := Copy(mText, 1, mProgram - 1) + 'program ' + AShadow.Name + Copy(mText, mHeaderEnd, MaxInt);
-  mText := WithShadowUses(mText, FindSemicolon(mText, mProgram), ASource, ATarget, mProblem);
+  mText := WithShadowUses(mText, TPascalScan.FindChar(mText, ';', mProgram), ASource, ATarget, mProblem);
   if mProblem <> '' then
   begin
     AShadow.Problem := TAtlasMutationShadowProblem.UsesEntry;

@@ -2728,6 +2728,7 @@ uses
   Atlas.Tests.DebugTargetFake in 'Support\Atlas.Tests.DebugTargetFake.pas',
   Atlas.Text.Updates.Tests in 'Text\Atlas.Text.Updates.Tests.pas',
   Atlas.Text.UpdateRun.Tests in 'Text\Atlas.Text.UpdateRun.Tests.pas',
+  Atlas.Text.PascalScan.Tests in 'Text\Atlas.Text.PascalScan.Tests.pas',
   Atlas.Common.Updates.Tests in 'Common\Updates\Atlas.Common.Updates.Tests.pas',
   Atlas.Common.Updates.Prepare.Tests in 'Common\Updates\Atlas.Common.Updates.Prepare.Tests.pas',
   Atlas.Common.Updates.Apply.Tests in 'Common\Updates\Atlas.Common.Updates.Apply.Tests.pas',
