@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasSmartPasteWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TitleCountsUniqueAndChosenUnits;
     [Test]
@@ -58,11 +55,6 @@ begin
 end;
 
 { TAtlasSmartPasteWindowTests }
-
-procedure TAtlasSmartPasteWindowTests.WarmUpFirstUse;
-begin
-  TitleCountsUniqueAndChosenUnits;
-end;
 
 procedure TAtlasSmartPasteWindowTests.TitleCountsUniqueAndChosenUnits;
 var

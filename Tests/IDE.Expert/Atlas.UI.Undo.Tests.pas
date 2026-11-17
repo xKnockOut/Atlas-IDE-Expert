@@ -28,9 +28,6 @@ type
   [TestFixture]
   TAtlasUndoViewTests = class
   public
-    /// <summary>Erste Benutzung (VCL, Codepages, RTTI) ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure DiffViewShowsLines;
     [Test]
@@ -197,12 +194,6 @@ begin
 end;
 
 { TAtlasUndoViewTests }
-
-procedure TAtlasUndoViewTests.WarmUpFirstUse;
-begin
-  ChangeListShowsSetsAndRaisesEvents;
-  DiffViewShowsLines;
-end;
 
 procedure TAtlasUndoViewTests.DiffViewShowsLines;
 var

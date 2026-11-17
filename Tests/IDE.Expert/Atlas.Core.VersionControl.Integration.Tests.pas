@@ -24,9 +24,6 @@ type
   [Category('Atlas.IDE.VersionControl')]
   TAtlasVcsIntegrationTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure GitWorkingCopyReportsBranchRevisionAndChanges;
     [Test]
@@ -120,23 +117,6 @@ begin
 end;
 
 { TAtlasVcsIntegrationTests }
-
-procedure TAtlasVcsIntegrationTests.WarmUpFirstUse;
-begin
-  // Ohne git bzw. svn meldet der Test Assert.Pass; das gilt hier nicht als Fehler.
-  try
-    GitWorkingCopyReportsBranchRevisionAndChanges;
-  except
-    on Exception do
-      ;
-  end;
-  try
-    SvnWorkingCopyReportsBranchRevisionAndChanges;
-  except
-    on Exception do
-      ;
-  end;
-end;
 
 /// <summary>Legt in AFolder ein Git-Repository mit Branch main für „Atlas Test“ an (ohne CRLF-Umwandlung und
 /// Signatur).</summary>

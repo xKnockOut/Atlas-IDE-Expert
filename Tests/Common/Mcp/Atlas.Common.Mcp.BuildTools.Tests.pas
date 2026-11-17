@@ -11,9 +11,6 @@ type
   [TestFixture]
   TMcpBuildToolsTests = class
   public
-    /// <summary>Zeitzone und ISO-8601-Umrechnung legen beim ersten Aufruf einmalige Daten an.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure NoBuildYet;
     [Test]
@@ -69,13 +66,6 @@ begin
 end;
 
 { TMcpBuildToolsTests }
-
-procedure TMcpBuildToolsTests.WarmUp;
-var
-  mBuild: TIdeBuild;
-begin
-  TMcpBuildTools.FromFileText(TMcpBuildTools.ToFileText(Sample), mBuild);
-end;
 
 procedure TMcpBuildToolsTests.NoBuildYet;
 begin

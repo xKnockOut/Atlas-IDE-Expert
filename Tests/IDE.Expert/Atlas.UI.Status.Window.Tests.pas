@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasStatusWindowTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure ShowsEveryRegisteredLine;
     [Test]
@@ -53,11 +50,6 @@ begin
 end;
 
 { TAtlasStatusWindowTests }
-
-procedure TAtlasStatusWindowTests.WarmUpFirstUse;
-begin
-  ShowsEveryRegisteredLine;
-end;
 
 procedure TAtlasStatusWindowTests.ShowsEveryRegisteredLine;
 var

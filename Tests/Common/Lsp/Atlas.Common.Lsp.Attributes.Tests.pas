@@ -16,9 +16,6 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
   public
-    /// <summary>Ein Hover vorab; einmalig angelegte Daten zählen sonst als Leck des ersten Tests.</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -134,17 +131,6 @@ begin
 end;
 
 { TLspAttributesTests }
-
-procedure TLspAttributesTests.WarmUp;
-begin
-  Setup;
-  try
-    Hover(FResolver, FIndex, 'TestCase(');
-    Hover(FResolver, FIndex, 'TestFixture]');
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TLspAttributesTests.Setup;
 begin

@@ -13,9 +13,6 @@ type
   [TestFixture]
   TAtlasExpressionTypeTipTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure TextsFromStrings;
     [Test]
@@ -57,12 +54,6 @@ begin
 end;
 
 { TAtlasExpressionTypeTipTests }
-
-procedure TAtlasExpressionTypeTipTests.WarmUpFirstUse;
-begin
-  TextsFromStrings;
-  RowsAndLink;
-end;
 
 procedure TAtlasExpressionTypeTipTests.TextsFromStrings;
 var
