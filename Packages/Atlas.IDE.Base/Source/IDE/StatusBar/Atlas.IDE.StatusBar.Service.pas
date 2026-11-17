@@ -212,7 +212,7 @@ begin
       Result := CreateBar;
     end, nil);
   // Am weitesten unten von den Leisten neben dem Editor-Bereich, direkt über der Statuszeile der IDE.
-  FHost.DockBottom(TAtlasBarDock.cOrderStatusBar);
+  FHost.Placement.DockBottom(TAtlasBarDock.cOrderStatusBar);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;

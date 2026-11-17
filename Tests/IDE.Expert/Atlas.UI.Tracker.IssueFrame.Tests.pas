@@ -694,9 +694,6 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasIssueFrameTests);
-
 procedure TAtlasIssueFrameTests.LayoutPlacesInOrderAndClears;
 var
   mHost: TForm;
@@ -782,5 +779,8 @@ begin
     mRebuild := nil;
   end;
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasIssueFrameTests);
 
 end.

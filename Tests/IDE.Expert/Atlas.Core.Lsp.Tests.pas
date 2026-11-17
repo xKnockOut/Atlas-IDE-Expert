@@ -132,7 +132,8 @@ uses
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Results.Model,
-  Atlas.Core.Diagnostics.PluginTimings;
+  Atlas.Core.Diagnostics.PluginTimings,
+  Atlas.Core.Lsp.Framing;
 
 // Liest die JSON-Nachricht aus gerahmten Bytes.
 function Unframe(const ABytes: TBytes): TJSONObject;
@@ -158,7 +159,7 @@ begin
       try
         if Message.GetValue<string>('method', '') = 'initialize' then
         begin
-          Answer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          Answer := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [Message.GetValue<Integer>('id')]));
           mClient.Receive(Answer, Length(Answer));
         end
@@ -249,7 +250,7 @@ begin
       Request := Unframe(ABytes);
       try
         Id := Request.GetValue<Integer>('id');
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"wert":"Grüße"}}', [Id]));
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"wert":"Grüße"}}', [Id]));
       finally
         Request.Free;
       end;
@@ -286,7 +287,8 @@ begin
       Request := Unframe(ABytes);
       try
         Id := Request.GetValue<Integer>('id');
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"error":{"code":-32601,"message":"unbekannt"}}', [Id]));
+        Reply := TLspFrameReader.Frame(
+          Format('{"jsonrpc":"2.0","id":%d,"error":{"code":-32601,"message":"unbekannt"}}', [Id]));
       finally
         Request.Free;
       end;
@@ -323,8 +325,9 @@ begin
       end;
     end);
   try
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"p1","method":"window/workDoneProgress/create","params":{}}') +
-      TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"x"}}');
+    mIncoming :=
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"p1","method":"window/workDoneProgress/create","params":{}}') +
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"x"}}');
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, Integer(mSent.Count));
     Assert.AreEqual('{"jsonrpc":"2.0","id":"p1","result":null}', mSent[0]);
@@ -466,8 +469,8 @@ begin
           mSeen.Add(AMethod);
         end;
       end;
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
-      TLspClient.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}') +
+      TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3}}');
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(2, Integer(mSeen.Count));
     Assert.AreEqual('workspace/diagnostic/refresh', mSeen[0]);
@@ -505,12 +508,12 @@ begin
       finally
         Request.Free;
       end;
-      Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
+      Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[1]}}',
         [Token])) +
-        TLspClient.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
-        TLspClient.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
+        TLspFrameReader.Frame('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"fremd","value":{"kind":"end"}}}') +
+        TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","method":"$/progress","params":{"token":"%s","value":[2,3]}}',
         [Token])) +
-        TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
+        TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[4]}', [Id]));
       mClient.Receive(Reply, Length(Reply));
     end);
   try
@@ -585,7 +588,7 @@ begin
         if mMessage.GetValue<string>('method', '') = 'initialize' then
         begin
           AProbe.FAnnounced := mMessage.GetValue<Boolean>('params.capabilities.workspace.applyEdit', False);
-          mAnswer := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          mAnswer := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [mMessage.GetValue<Integer>('id')]));
           AProbe.FClient.Receive(mAnswer, Length(mAnswer));
         end
@@ -638,7 +641,7 @@ begin
           Exit;
         end;
         ASeen.Add(Method + ' ' + Message.GetValue('params').ToJSON);
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
           [Message.GetValue<Integer>('id'), Answer]));
         mClient.Receive(Reply, Length(Reply));
       finally
@@ -825,7 +828,7 @@ begin
         if Message.GetValue<string>('method', '') = 'initialize' then
         begin
           mCapabilities := Message.GetValue<TJSONObject>('params.capabilities').ToJSON;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [Message.GetValue<Integer>('id')]));
           mClient.Receive(Reply, Length(Reply));
         end;
@@ -840,8 +843,8 @@ begin
     // Seit #648 meldet der Client unter "workspace" auch workspaceFolders; geprüft wird nur refreshSupport.
     Assert.Contains(mCapabilities, '"diagnostics":{"refreshSupport":true}');
     Assert.AreEqual(0, mSession.RefreshCount);
-    mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
-      Length(TLspClient.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
+    mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}'),
+      Length(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":"r1","method":"workspace/diagnostic/refresh"}')));
     Assert.AreEqual(1, mSession.RefreshCount);
   finally
     mSession.Free;
@@ -1064,7 +1067,7 @@ begin
         begin
           Exit;
         end;
-        Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
+        Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":%s}',
           [Message.GetValue<Integer>('id'), Answer]));
         mClient.Receive(Reply, Length(Reply));
       finally
@@ -1118,7 +1121,7 @@ begin
           begin
             mInitial := Contexts.ToJSON;
           end;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
+          Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":{"capabilities":{}}}',
             [Message.GetValue<Integer>('id')]));
           mClient.Receive(Reply, Length(Reply));
         end
@@ -1166,7 +1169,7 @@ begin
     WireApplyEdit(mSession, mProbe);
     mSession.Initialize;
     Assert.IsTrue(mProbe.FAnnounced, 'applyEdit angekündigt');
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":7,"method":"workspace/applyEdit","params":{"edit":' +
       '{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":0,"character":0},' +
       '"end":{"line":0,"character":1}},"newText":"b"}]}}}}');
     mProbe.FClient.Receive(mIncoming, Length(mIncoming));
@@ -1178,7 +1181,7 @@ begin
     Assert.AreEqual('{"jsonrpc":"2.0","id":7,"result":{"applied":false,"failureReason":"gesperrt"}}',
       mProbe.FSent[0]);
     // Andere Anfragen weiter mit null.
-    mIncoming := TLspClient.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
+    mIncoming := TLspFrameReader.Frame('{"jsonrpc":"2.0","id":8,"method":"window/workDoneProgress/create","params":{}}');
     mProbe.FClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual('{"jsonrpc":"2.0","id":8,"result":null}', mProbe.FSent[1]);
   finally
@@ -1212,7 +1215,7 @@ begin
         Inc(mCalls);
       end;
     mSession.Initialize;
-    mIncoming := TLspClient.Frame(cApplyEditRequest);
+    mIncoming := TLspFrameReader.Frame(cApplyEditRequest);
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, mCalls);
     // Keine Antwort; die Id gibt die Sitzung frei (der Leak-Monitor prüft das).
@@ -1242,7 +1245,7 @@ begin
         mReply := AReply;
       end;
     mSession.Initialize;
-    mIncoming := TLspClient.Frame(cApplyEditRequest);
+    mIncoming := TLspFrameReader.Frame(cApplyEditRequest);
     mClient.Receive(mIncoming, Length(mIncoming));
     mReply(True, '');
     mReply(True, '');
@@ -1275,7 +1278,7 @@ begin
         begin
           mRange := Message.GetValue<Integer>('params.range.start.line').ToString + '-' +
             Message.GetValue<Integer>('params.range.end.line').ToString;
-          Reply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
+          Reply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":[' +
             '{"position":{"line":3,"character":9},"label":"AWert:","kind":2,"paddingRight":true},' +
             '{"position":{"line":4,"character":2},"label":": Integer","kind":1},' +
             '{"position":{"line":5,"character":7},"label":[{"value":"AName"},{"value":":"}],"kind":2},' +
@@ -1461,9 +1464,9 @@ begin
         mSeen.Add(AMethod);
       end;
     // Kopf knapp unter der Grenze: ein langes Füllfeld vor Content-Length.
-    mHeader := 'X-Fill: ' + StringOfChar('a', TLspClient.cMaxHeaderLength - 40) + #13#10 +
+    mHeader := 'X-Fill: ' + StringOfChar('a', TLspFrameReader.cMaxHeaderLength - 40) + #13#10 +
       'Content-Length: ' + IntToStr(Length(cBody)) + #13#10#13#10;
-    Assert.IsTrue(Length(mHeader) - 4 <= TLspClient.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
+    Assert.IsTrue(Length(mHeader) - 4 <= TLspFrameReader.cMaxHeaderLength, 'Kopf innerhalb der Grenze');
     mIncoming := TEncoding.UTF8.GetBytes(mHeader + cBody);
     mClient.Receive(mIncoming, Length(mIncoming));
     Assert.AreEqual(1, Integer(mSeen.Count));
@@ -1493,7 +1496,7 @@ begin
       finally
         mRequest.Free;
       end;
-      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
+      mReply := TLspFrameReader.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
       mClient.Receive(mReply, Length(mReply));
     end);
   TAtlasPluginTimings.Shared.Reset;

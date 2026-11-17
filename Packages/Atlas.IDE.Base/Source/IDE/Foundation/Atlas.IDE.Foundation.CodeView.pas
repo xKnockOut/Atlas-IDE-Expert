@@ -22,14 +22,14 @@ type
 implementation
 
 uses
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Foundation.DesignerView;
 
 { TAtlasIdeCodeView }
 
 class function TAtlasIdeCodeView.InFront: Boolean;
 begin
-  Result := TAtlasIdeDesignerView.CodeInFront(TAtlasEditorBarHost.TopEditor);
+  Result := TAtlasIdeDesignerView.CodeInFront(TAtlasIdeEditorWindows.TopEditor);
 end;
 
 end.

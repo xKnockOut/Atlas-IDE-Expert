@@ -114,7 +114,8 @@ uses
   Atlas.Core.Files.Format,
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Progress,
-  Atlas.Core.Settings.Plugin;
+  Atlas.Core.Settings.Plugin,
+  Atlas.Core.Lsp.Framing;
 
 type
   /// <summary>Zeile eines anderen Issues, ohne TAtlasStatusLine (Abnahme: erscheint ohne Änderung).</summary>
@@ -765,7 +766,7 @@ begin
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
-      mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspClient.Frame(
+      mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspFrameReader.Frame(
         '{"jsonrpc":"2.0","id":1,"result":null}')));
     end);
   try
@@ -783,13 +784,13 @@ var
   mSamples: Integer;
 begin
   // Rückmeldung 15.10.2026: workspace/diagnostic wartet absichtlich bis zu 10 s.
-  Assert.IsFalse(TLspClient.CountsResponseTime('workspace/diagnostic'));
-  Assert.IsTrue(TLspClient.CountsResponseTime('textDocument/diagnostic'));
+  Assert.IsFalse(TLspResponseTimes.Counts('workspace/diagnostic'));
+  Assert.IsTrue(TLspResponseTimes.Counts('textDocument/diagnostic'));
   mClient := nil;
   mClient := TLspClient.Create(
     procedure(const ABytes: TBytes)
     begin
-      mClient.Receive(TLspClient.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspClient.Frame(
+      mClient.Receive(TLspFrameReader.Frame('{"jsonrpc":"2.0","id":1,"result":null}'), Length(TLspFrameReader.Frame(
         '{"jsonrpc":"2.0","id":1,"result":null}')));
     end);
   try

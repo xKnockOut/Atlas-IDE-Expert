@@ -144,7 +144,7 @@ uses
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorBarHost,
+  Atlas.IDE.Foundation.EditorWindows,
   Atlas.IDE.Commands.KeyMap;
 
 /// <summary>Angehaltene Debug-Sitzung (Haltepunkt, Ausnahme).</summary>
@@ -193,7 +193,7 @@ begin
     mWindow := mServices.TopEditWindow;
     if (mWindow <> nil) and (mWindow.Form <> nil) and mWindow.Form.Visible then
     begin
-      mEditor := TAtlasEditorBarHost.EditorOf(mWindow);
+      mEditor := TAtlasIdeEditorWindows.EditorOf(mWindow);
       if (mEditor <> nil) and mEditor.Showing then
       begin
         mControl := mEditor;

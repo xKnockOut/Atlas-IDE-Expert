@@ -1,7 +1,6 @@
 {
   "version": 1,
   "findings": [
-    {"path": "Source/Core/Architecture/Atlas.Core.Architecture.MapState.pas", "rule": "magic-number", "fingerprint": "dafd072a", "count": 1, "routine": "EdgeKey", "context": "a2c54573"},
     {"path": "Source/Core/Architecture/Atlas.Core.Architecture.Model.pas", "rule": "magic-number", "fingerprint": "b20b0b0f", "count": 2, "routine": "AssignmentOf", "context": "f7c1c8dd"},
     {"path": "Source/Core/Architecture/Atlas.Core.Architecture.Model.pas", "rule": "magic-number", "fingerprint": "b2a266b4", "count": 1, "routine": "AssignmentOf", "context": "75882a82"},
     {"path": "Source/Core/Architecture/Atlas.Core.Architecture.Model.pas", "rule": "magic-number", "fingerprint": "d4020986", "count": 1, "routine": "AssignmentOf", "context": "b6f7fd1a"},
@@ -134,8 +133,7 @@
     {"path": "Source/UI/Hotspots/Atlas.UI.Hotspots.Frame.pas", "rule": "string-concat-in-loop", "fingerprint": "43a93774", "count": 1, "routine": "ListText", "context": "e6e07b8f"},
     {"path": "Source/UI/Hotspots/Atlas.UI.Hotspots.Frame.pas", "rule": "string-if-chain", "fingerprint": "8b78d84c", "count": 1, "routine": "TrendCaption", "context": "75ddbb0a"},
     {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "a55a5dc3", "count": 1, "routine": "AddFieldLabel", "context": "c3561938"},
-    {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "a32e650e", "count": 1, "routine": "BuildList", "context": "270f8abe"},
-    {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "6716ffb8", "count": 1, "routine": "BuildOptions", "context": "324a86fc"},
+    {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "6716ffb8", "count": 1, "routine": "BuildOptions", "context": "5efb35c5"},
     {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "05cfa2f7", "count": 1, "routine": "LayoutOf", "context": "8aa6f855"},
     {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "3f741737", "count": 1, "routine": "LayoutOf", "context": "7d71c0be"},
     {"path": "Source/UI/SymbolPath/Atlas.UI.SymbolPath.Dialog.pas", "rule": "magic-number", "fingerprint": "44a20cd5", "count": 1, "routine": "LayoutOf", "context": "525e8a56"},

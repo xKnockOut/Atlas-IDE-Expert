@@ -79,6 +79,9 @@ type
     /// <summary>Name in der Deklaration bzw. im Kopf der Unit; bei UsesCount das Schlüsselwort uses.</summary>
     NameRange: TTextRange;
     Value: Integer;
+    /// <summary>Nur bei ClassSize: freie Routinen der Unit mit Zugriff auf nicht öffentliche Mitglieder der Klasse
+    /// (Atlas.Common.Metrics.UnitRoutines); in Value enthalten.</summary>
+    UnitRoutines: Integer;
     /// <summary>Value ist nur eine Untergrenze: Die Vererbungskette bricht an einem unbekannten Vorfahren ab
     /// (#980).</summary>
     AtLeast: Boolean;

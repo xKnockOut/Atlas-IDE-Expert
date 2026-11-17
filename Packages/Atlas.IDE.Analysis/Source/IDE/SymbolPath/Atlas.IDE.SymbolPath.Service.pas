@@ -61,7 +61,8 @@ uses
   Atlas.Core.SymbolPath.Model,
   Atlas.UI.Analysis.Strings,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.ResultsWindow;
+  Atlas.IDE.Foundation.ResultsWindow,
+  Atlas.UI.SymbolPath.Suggestions;
 
 const
   /// <summary>Der Server bricht nach vier Fünfteln von requestTimeoutMs selbst ab; das hier ist nur die Grenze

@@ -7,6 +7,8 @@
 //   metric-cognitive-complexity   kognitive Komplexität (Vorgabe 15)
 //   metric-parameter-count        Parameteranzahl (Vorgabe 6)
 //   metric-class-size             Member je Klasse (Vorgabe 40, #939), Treffer auf dem Klassennamen
+//                                 samt freien Routinen der Unit mit Zugriff auf private oder geschützte
+//                                 Mitglieder (Atlas.Common.Metrics.UnitRoutines)
 //   metric-unit-length            Zeilen je Unit (Vorgabe 2000, #939), Treffer auf dem Unit-Namen
 //   metric-uses-count             Units im uses (Vorgabe 30, #939), Treffer auf dem ersten uses
 //   metric-boolean-operands       Operanden einer Bedingung (Vorgabe 5, #980), Treffer auf der Bedingung,
@@ -122,7 +124,7 @@ type
   TMetricsText = (MethodLength, Nesting, Cyclomatic, Cognitive, Parameters, Operands, Locals, Exits, MoveClassHint,
     Members, UnitLines, UsesCount, Depth, DepthAtLeast, MembersTitle, UnitLinesTitle, UsesTitle, DepthTitle,
     MethodLengthTitle, NestingTitle, CyclomaticTitle, CognitiveTitle, ParametersTitle, OperandsTitle, LocalsTitle,
-    ExitsTitle);
+    ExitsTitle, MembersWithRoutines);
 
 const
   cTexts: array[TMetricsText] of TAtlasText = (
@@ -166,7 +168,11 @@ const
     (De: 'Bedingung mit mehr and/or/xor-Operanden als der Grenzwert';
      En: 'Condition with more and/or/xor operands than the limit'),
     (De: 'Methode mit mehr lokalen Variablen als der Grenzwert'; En: 'Method with more local variables than the limit'),
-    (De: 'Methode mit mehr Exit und raise als der Grenzwert'; En: 'Method with more Exit and raise than the limit'));
+    (De: 'Methode mit mehr Exit und raise als der Grenzwert'; En: 'Method with more Exit and raise than the limit'),
+    (De: '%s hat %d Member, davon %d freie Routinen der Unit mit Zugriff auf private oder geschützte Mitglieder ' +
+      '(Grenze %d); die Klasse nach Aufgaben teilen.';
+     En: '%s has %d members, %d of them free routines of the unit accessing private or protected members ' +
+      '(limit %d); split the class by responsibility.'));
 
 {$SCOPEDENUMS OFF}
 
@@ -420,7 +426,12 @@ begin
   end;
   for mItem in mItems do
   begin
-    if (mItem.Kind = FKind) and (mItem.Value > mLimit) then
+    if (mItem.Kind = FKind) and (mItem.Value > mLimit) and (mItem.UnitRoutines > 0) then
+    begin
+      AReport.Add(mItem.NameRange, cTexts[TMetricsText.MembersWithRoutines].Fmt([mItem.Name, mItem.Value,
+        mItem.UnitRoutines, mLimit]));
+    end
+    else if (mItem.Kind = FKind) and (mItem.Value > mLimit) then
     begin
       AReport.Add(mItem.NameRange, TMetricRules.Message(FKind, mItem.Name, mItem.Value, mLimit, mItem.AtLeast));
     end;

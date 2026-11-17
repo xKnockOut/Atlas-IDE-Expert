@@ -1,8 +1,8 @@
 ﻿unit Atlas.Core.Lsp.Client;
 
-// Schlanker LSP-Client für das IDE-Plugin: JSON-RPC mit
-// Content-Length-Rahmung, Zuordnung der Antworten zu Anfragen und Warten mit
-// Zeitlimit. Der Transport ist ausgelagert: Gesendet wird über ASend (fertig
+// Schlanker LSP-Client für das IDE-Plugin: JSON-RPC, Zuordnung der Antworten
+// zu Anfragen und Warten mit Zeitlimit. Die Content-Length-Rahmung liegt in
+// Atlas.Core.Lsp.Framing (TLspFrameReader). Der Transport ist ausgelagert: Gesendet wird über ASend (fertig
 // gerahmte Bytes), empfangene Bytes kommen über Receive herein, auch in
 // beliebigen Stücken und aus einem anderen Thread.
 // Anfragen des Servers (z. B. window/workDoneProgress/create) beantwortet der
@@ -31,7 +31,8 @@ uses
   System.SyncObjs,
   System.JSON,
   System.Diagnostics,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Lsp.Framing;
 
 type
   TLspSendProc = reference to procedure(const ABytes: TBytes);
@@ -44,7 +45,8 @@ type
   TLspServerRequestFunc = reference to function(const AMethod: string; const AParams: TJSONValue;
     AId: TJSONValue): Boolean;
 
-  ELspClientError = class(Exception);
+  /// <summary>Fehler des Clients (Rahmung, Fehlerantwort, Zeitlimit, Abbruch, beendete Verbindung).</summary>
+  ELspClientError = Atlas.Core.Lsp.Framing.ELspClientError;
   /// <summary>Keine Antwort innerhalb des Zeitlimits.</summary>
   ELspTimeoutError = class(ELspClientError);
   /// <summary>Der Aufrufer hat die Anfrage abgebrochen.</summary>
@@ -79,14 +81,11 @@ type
     procedure Add(AMilliseconds: Int64);
     /// <summary>Mittelwert der gemerkten Zeiten, 0 ohne Zeiten; ASamples ist ihre Anzahl.</summary>
     function Average(out ASamples: Integer): Double;
+    /// <summary>Geht die Antwortzeit von AMethod in den Durchschnitt ein? Nicht bei Long-Polling.</summary>
+    class function Counts(const AMethod: string): Boolean; static;
   end;
 
   TLspClient = class
-  public const
-    /// <summary>Obergrenzen der Rahmung wie im Server (Atlas.Common.JsonRpc.StreamTransport): Kopf 8 KB,
-    /// Inhalt 256 MB. Darüber gilt die Verbindung als kaputt.</summary>
-    cMaxHeaderLength = 8 * 1024;
-    cMaxContentLength = 256 * 1024 * 1024;
   private type
     TPending = class
     public
@@ -104,7 +103,7 @@ type
     FPartials: TDictionary<string, TLspPartialProc>;
     FNextId: Integer;
     FNextPartial: Integer;
-    FBuffer: TBytes;
+    FReader: TLspFrameReader;
     FClosed: Boolean;
     FLastMethod: string;
     FCloseInfo: TLspCloseInfo;
@@ -118,7 +117,6 @@ type
     procedure HandleMessage(const AText: string);
     /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
     function HandlePartial(AMessage: TJSONObject): Boolean;
-    function TakeMessage(out AText: string): Boolean;
     function DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
       const ACancelled: TFunc<Boolean>): TJSONValue;
   public const
@@ -127,8 +125,6 @@ type
   public
     constructor Create(const ASend: TLspSendProc);
     destructor Destroy; override;
-    /// <summary>Rahmt AText mit Content-Length.</summary>
-    class function Frame(const AText: string): TBytes; static;
     /// <summary>
     /// Sendet eine Anfrage und wartet auf die Antwort. Übernimmt AParams.
     /// Liefert das Ergebnis (nil bei null), der Aufrufer gibt es frei.
@@ -162,8 +158,6 @@ type
     /// <summary>Mittlere Antwortzeit der letzten TLspResponseTimes.cSamples Anfragen in ms; ASamples = deren
     /// Anzahl.</summary>
     function AverageMs(out ASamples: Integer): Double;
-    /// <summary>Geht die Antwortzeit von AMethod in AverageMs ein? Nicht bei Long-Polling.</summary>
-    class function CountsResponseTime(const AMethod: string): Boolean; static;
     property Closed: Boolean read FClosed;
     /// <summary>Einmal beim Schließen der Verbindung, im Thread des Schließenden (Lese-Thread bei
     /// beendetem Prozess).</summary>
@@ -194,22 +188,18 @@ uses
 
 type
   /// <summary>Benutzertexte dieser Unit (#1458).</summary>
-  TClientText = (ErrorResponseFromTheServer, ServerMessageWithoutEndOf, ServerMessageWithBytesExceeds,
-    ConnectionToTheServerHas, Cancelled, NoAnswerToAtlasIs, NoAnswerToWithinMs);
+  TClientText = (ErrorResponseFromTheServer, ConnectionToTheServerHas, Cancelled, NoAnswerToAtlasIs,
+    NoAnswerToWithinMs);
 {$SCOPEDENUMS OFF}
 
 const
   cTexts: array[TAtlasLanguage, TClientText] of string = (
     ('Fehlerantwort des Servers',
-     'Servernachricht ohne Kopfende',
-     'Servernachricht mit %d Bytes über der Grenze von %d Bytes',
      'Verbindung zum Server ist beendet',
      '%s abgebrochen',
      'Keine Antwort auf %s: Atlas wird beendet',
      'Keine Antwort auf %s innerhalb von %d ms'),
     ('Error response from the server',
-     'Server message without end of header',
-     'Server message with %d bytes exceeds the limit of %d bytes',
      'Connection to the server has ended',
      '%s cancelled',
      'No answer to %s: Atlas is shutting down',
@@ -220,9 +210,6 @@ function UiText(AId: TClientText): string;
 begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
-
-const
-  cHeaderEnd: array[0..3] of Byte = (13, 10, 13, 10);
 
 type
   /// <summary>Ablauf einer Anfrage aus TLspClient.DoRequest: anmelden, senden, auf die Antwort warten,
@@ -363,66 +350,6 @@ begin
   end;
 end;
 
-/// <summary>Index des Kopfendes (CR LF CR LF) in den ersten MaxHeaderLength Bytes, -1 ohne.</summary>
-function HeaderEndIndex(const ABuffer: TBytes): Integer;
-var
-  mIndex, mLast: Integer;
-begin
-  Result := -1;
-  // Nur im möglichen Kopf suchen, nicht im ganzen Puffer.
-  mLast := Length(ABuffer) - Length(cHeaderEnd);
-  if mLast > TLspClient.cMaxHeaderLength then
-  begin
-    mLast := TLspClient.cMaxHeaderLength;
-  end;
-  mIndex := 0;
-  while (Result < 0) and (mIndex <= mLast) do
-  begin
-    if CompareMem(@ABuffer[mIndex], @cHeaderEnd[0], Length(cHeaderEnd)) then
-    begin
-      Result := mIndex;
-    end;
-    Inc(mIndex);
-  end;
-end;
-
-/// <summary>Kein Kopfende in den ersten MaxHeaderLength Bytes: kein LSP, Verbindung aufgeben statt den
-/// Speicher zu füllen.</summary>
-procedure RejectEndlessHeader(var ABuffer: TBytes);
-begin
-  if Length(ABuffer) >= TLspClient.cMaxHeaderLength + Length(cHeaderEnd) then
-  begin
-    ABuffer := nil;
-    raise ELspClientError.Create(UiText(TClientText.ServerMessageWithoutEndOf));
-  end;
-end;
-
-/// <summary>Nachricht über MaxContentLength: Verbindung aufgeben statt den Speicher zu füllen.</summary>
-procedure RejectOversizedBody(var ABuffer: TBytes; ABodyLength: Integer);
-begin
-  if ABodyLength > TLspClient.cMaxContentLength then
-  begin
-    ABuffer := nil;
-    raise ELspClientError.CreateFmt(UiText(TClientText.ServerMessageWithBytesExceeds),
-      [ABodyLength, TLspClient.cMaxContentLength]);
-  end;
-end;
-
-/// <summary>Wert von Content-Length im Kopf, -1 ohne oder bei ungültiger Zahl.</summary>
-function ContentLengthOf(const AHeader: string): Integer;
-var
-  mLine: string;
-begin
-  Result := -1;
-  for mLine in AHeader.Split([#13#10]) do
-  begin
-    if mLine.StartsWith('Content-Length:', True) then
-    begin
-      Result := StrToIntDef(mLine.Substring(Length('Content-Length:')).Trim, -1);
-    end;
-  end;
-end;
-
 { TLspRequestRun }
 
 constructor TLspRequestRun.Create(AClient: TLspClient; const AMethod: string; ATimeoutMs: Cardinal;
@@ -455,7 +382,7 @@ begin
     Inc(FClient.FNextId);
     FId := FClient.FNextId;
     FClient.FPending.Add(FId, FPending);
-    if TLspClient.CountsResponseTime(FMethod) then
+    if TLspResponseTimes.Counts(FMethod) then
     begin
       FClient.FLastMethod := FMethod;
     end;
@@ -512,7 +439,7 @@ procedure TLspRequestRun.Check(AWait: TWaitResult; AElapsedMs: Int64);
 var
   mCounts: Boolean;
 begin
-  mCounts := TLspClient.CountsResponseTime(FMethod);
+  mCounts := TLspResponseTimes.Counts(FMethod);
   case AWait of
     wrSignaled:
       // Beendete Verbindung ist keine Antwort und zählt nicht.
@@ -581,11 +508,13 @@ begin
   FLock := TObject.Create;
   FPending := TDictionary<Integer, TPending>.Create;
   FPartials := TDictionary<string, TLspPartialProc>.Create;
+  FReader := TLspFrameReader.Create;
 end;
 
 destructor TLspClient.Destroy;
 begin
   Close;
+  FReader.Free;
   FPartials.Free;
   FPending.Free;
   FLock.Free;
@@ -594,7 +523,7 @@ end;
 
 procedure TLspClient.SendText(const AText: string);
 begin
-  FSend(Frame(AText));
+  FSend(TLspFrameReader.Frame(AText));
 end;
 
 procedure TLspClient.CancelOnServer(AId: Integer);
@@ -687,33 +616,6 @@ begin
   end;
 end;
 
-function TLspClient.TakeMessage(out AText: string): Boolean;
-var
-  mHeaderLength, mLen, mBodyLength: Integer;
-begin
-  Result := False;
-  mHeaderLength := HeaderEndIndex(FBuffer);
-  if mHeaderLength < 0 then
-  begin
-    RejectEndlessHeader(FBuffer);
-    Exit;
-  end;
-  mBodyLength := ContentLengthOf(TEncoding.UTF8.GetString(FBuffer, 0, mHeaderLength));
-  mLen := mHeaderLength + Length(cHeaderEnd);
-  if mBodyLength < 0 then
-  begin
-    // Kaputter Kopf: verwerfen und weitermachen.
-    Delete(FBuffer, 0, mLen);
-    Exit(True);
-  end;
-  RejectOversizedBody(FBuffer, mBodyLength);
-  if Length(FBuffer) >= mLen + mBodyLength then
-  begin
-    AText := TEncoding.UTF8.GetString(FBuffer, mLen, mBodyLength);
-    Delete(FBuffer, 0, mLen + mBodyLength);
-    Result := True;
-  end;
-end;
 
 function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
   const ACancelled: TFunc<Boolean>): TJSONValue;
@@ -728,15 +630,6 @@ begin
   end;
 end;
 
-class function TLspClient.Frame(const AText: string): TBytes;
-var
-  mBody: TBytes;
-  mHeader: TBytes;
-begin
-  mBody := TEncoding.UTF8.GetBytes(AText);
-  mHeader := TEncoding.UTF8.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)]));
-  Result := mHeader + mBody;
-end;
 
 function TLspClient.Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
 begin
@@ -852,20 +745,14 @@ procedure TLspClient.Receive(const ABytes: TBytes; ACount: Integer);
 var
   mMessages: TList<string>;
   mText: string;
-  mStart: Integer;
 begin
   mMessages := TList<string>.Create;
   try
     TMonitor.Enter(FLock);
     try
-      mStart := Length(FBuffer);
-      SetLength(FBuffer, mStart + ACount);
-      if ACount > 0 then
-      begin
-        Move(ABytes[0], FBuffer[mStart], ACount);
-      end;
+      FReader.Append(ABytes, ACount);
       mText := '';
-      while TakeMessage(mText) do
+      while FReader.TakeMessage(mText) do
       begin
         if mText <> '' then
         begin
@@ -908,7 +795,7 @@ begin
       FCloseInfo.OpenMethods := nil;
       for mPending in FPending.Values do
       begin
-        if CountsResponseTime(mPending.Method) then
+        if TLspResponseTimes.Counts(mPending.Method) then
         begin
           FCloseInfo.OpenMethods := FCloseInfo.OpenMethods + [mPending.Method];
         end;
@@ -963,11 +850,6 @@ begin
   end;
 end;
 
-class function TLspClient.CountsResponseTime(const AMethod: string): Boolean;
-begin
-  Result := not SameText(AMethod, 'workspace/diagnostic');
-end;
-
 { TLspResponseTimes }
 
 procedure TLspResponseTimes.Add(AMilliseconds: Int64);
@@ -996,6 +878,11 @@ begin
   begin
     Result := mSum / ASamples;
   end;
+end;
+
+class function TLspResponseTimes.Counts(const AMethod: string): Boolean;
+begin
+  Result := not SameText(AMethod, 'workspace/diagnostic');
 end;
 
 initialization
