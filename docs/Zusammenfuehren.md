@@ -22,7 +22,7 @@ Erzeugte Dateien tragen in `.gitattributes` die Markierung `linguist-generated`;
    - Markdown-Zeilen, die sich nur in Zahlen unterscheiden: Stand von `main-merging`, die Regelzahlen erzeugt `Update-RuleCatalog.ps1` neu,
    - die Baseline wortgleicher Rümpfe `atlas-duplicates.json`: Stand von `main-merging`, danach neu geschrieben mit `AtlasServer --check . --check-duplicates --update-baseline` (gebauter Server unter `Output/` oder im PATH; fehlt er, nennt das Skript den Befehl und endet mit Code 2).
 
-   Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` meldet, wenn sie gegenüber `main-merging` wächst.
+   Wer Kopien zusammenlegt, schreibt die Baseline mit demselben Befehl neu und checkt sie mit ein; sonst scheitert der Schritt „Wortgleiche Rümpfe“ der CI an den toten Einträgen. Neue Kopien gehören nicht in die Baseline: `Tools/Check-Baselines.ps1` vergleicht sie je Gruppe mit `main-merging` und meldet jede neue Gruppe und jede Gruppe mit mehr Fassungen, auch wenn die Summe sinkt. Das Merge-Skript nennt solche Gruppen schon beim Neuschreiben. Gibt es einen Grund, eine Kopie zu behalten, steht er in der Beschreibung des Pull Requests in einer Zeile `Neue Kopien: <Grund>`; danach den Lauf der Prüfung neu starten, die Befunde werden dann zu Warnungen.
 
    Was übrig bleibt, sind echte Konflikte (beide Seiten ändern dieselbe Zeile, Quelltext, JSON). Das Skript nennt sie und lässt den Merge offen; von Hand lösen, `git add`, `git commit --no-edit`.
 3. Prüfungen wie gewohnt (`pwsh Tools/Check-*.ps1`, FPC-Bau und -Tests), dann pushen.

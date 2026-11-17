@@ -1111,11 +1111,7 @@ end;
 
 function TStringIfChainScan.LineOf(ALine: Integer): string;
 begin
-  Result := '';
-  if (ALine >= 0) and (ALine <= High(FLines)) then
-  begin
-    Result := FLines[ALine];
-  end;
+  Result := TTextLines.LineAt(FLines, ALine);
 end;
 
 // Text von ANode, Folgezeilen um die Einrückung seiner ersten Zeile auf AIndent verschoben.

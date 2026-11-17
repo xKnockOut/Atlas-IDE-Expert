@@ -262,22 +262,10 @@ const
 const
   cFormatVersion = 1;
 
-function LineAt(const ALines: TArray<string>; ALine: Integer): string;
-begin
-  if (ALine >= 0) and (ALine <= High(ALines)) then
-  begin
-    Result := ALines[ALine];
-  end
-  else
-  begin
-    Result := '';
-  end;
-end;
-
 /// Zeile ALine (0-basiert) von AText; Zeilen wie TTextLines.SplitLines.
 function LineOf(const AText: string; ALine: Integer): string;
 begin
-  Result := LineAt(TTextLines.SplitLines(AText), ALine);
+  Result := TTextLines.LineAt(TTextLines.SplitLines(AText), ALine);
 end;
 
 function CollapseWhitespace(const AText: string): string;
@@ -328,7 +316,7 @@ end;
 
 function LineFingerprint(const ALines: TArray<string>; ALine: Integer): string;
 begin
-  Result := Fnv1a(CollapseWhitespace(LineAt(ALines, ALine)));
+  Result := Fnv1a(CollapseWhitespace(TTextLines.LineAt(ALines, ALine)));
 end;
 
 function ContextOf(const ALines: TArray<string>; ALine, AHeaderLine: Integer): string;
@@ -347,7 +335,7 @@ begin
       // Der Kopf trägt den Namen der Routine: Umbenennen soll den Kontext nicht ändern.
       if mLine <> AHeaderLine then
       begin
-        mBuilder.Append(CollapseWhitespace(LineAt(ALines, mLine)));
+        mBuilder.Append(CollapseWhitespace(TTextLines.LineAt(ALines, mLine)));
       end;
     end;
     Result := Fnv1a(mBuilder.ToString);
