@@ -1,29 +1,20 @@
 {
-  "count": 53,
+  "count": 44,
   "warmUps": [
-    "Tests/Application/Shell/Shell.Bootstrap.Tests.pas: TShellBootstrapTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Composition.ClientStart.Tests.pas: TShellClientStartTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Composition.Configuration.Tests.pas: TShellConfigurationTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.FileChanges.Tests.pas: TShellFileChangesTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Sources.Tests.pas: TShellSourcesTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Composition.Status.Tests.pas: TShellStatusReportsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Hotspots.Tests.pas: TShellHotspotsTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.Linter.Tests.pas: TShellLinterTests.WarmUpFirstUse",
     "Tests/Application/Shell/Shell.ReplayServer.Tests.pas: TShellReplayServerTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.Workspace.Parts.Tests.pas: TShellWorkspacePartsTests.WarmUpFirstUse",
-    "Tests/Application/Shell/Shell.WorkspaceGroup.Tests.pas: TShellWorkspaceGroupTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.CacheHousekeeping.Tests.pas: TIndexCacheDirectoryTests.WarmUpFirstUse",
     "Tests/Common/Index/Atlas.Common.Index.Content.Tests.pas: TIndexServiceCacheTests.WarmUpFirstUse",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse",
-    "Tests/Common/Lsp/Atlas.Common.Lsp.CodeActions.Tests.pas: TLspCodeActionsTests.WarmUpFirstUse",
-    "Tests/Common/Lsp/Atlas.Common.Lsp.FindingsMemo.Tests.pas: TRuleFindingsMemoTests.WarmUp",
     "Tests/Common/Lsp/Atlas.Common.Lsp.IdeUnits.Tests.pas: TIdeUnitsTests.WarmUp",
     "Tests/Common/Lsp/Atlas.Common.Lsp.Query.Tests.pas: TLspQueryTests.WarmUpFirstUse",
     "Tests/Common/Rules/Builtin/Atlas.Common.Rules.Builtin.SavedQueries.Tests.pas: TSavedQueryRuleTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Debug.EventLog.Tests.pas: TAtlasEventLogTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Tests.pas: TAtlasDesignerUndoFlowTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Designer.UndoFlow.Vcl.Tests.pas: TAtlasDesignerUndoFlowVclTests.WarmUpFirstUse",
-    "Tests/IDE.Expert/Atlas.Core.Designer.Usages.Tests.pas: TAtlasDesignerUsagesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Diagnostics.PluginTimings.Tests.pas: TAtlasPluginTimingsTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.PropertyValues.Tests.pas: TAtlasFormPropertyValuesTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.Core.Forms.Tests.pas: TAtlasFormsTests.WarmUpFirstUse",
@@ -51,8 +42,6 @@
     "Tests/IDE.Expert/Atlas.UI.Welcome.Arrange.Tests.pas: TAtlasWelcomeArrangeBoardTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Discover.Tests.pas: TAtlasWelcomeDiscoverFrameTests.WarmUpFirstUse",
     "Tests/IDE.Expert/Atlas.UI.Welcome.Tests.pas: TAtlasWelcomeBoardTests.WarmUpFirstUse",
-    "Tests/Text/Atlas.Debug.Attributes.Tests.pas: TAtlasDebugAttributesTests.WarmUpFirstUse",
-    "Tests/Windows/Diagnostics/Atlas.Windows.Diagnostics.StackTrace.Tests.pas: TStackTraceTests.WarmUp",
-    "Tests/Windows/Projects/Atlas.Windows.Projects.DelphiInstallation.Tests.pas: TDelphiInstallationTests.WarmUpFirstUse"
+    "Tests/Text/Atlas.Debug.Attributes.Tests.pas: TAtlasDebugAttributesTests.WarmUpFirstUse"
   ]
 }

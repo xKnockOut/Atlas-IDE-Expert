@@ -64,6 +64,9 @@ type
     FThreadsAtStart: Integer;
     FThreadsAtEnd: Integer;
     FWaitedMs: UInt64;
+    /// <summary>Stapelbericht, festgehalten am Ende des Tests (ATLAS_LEAK_TRACE=1). DUnitX fragt GetReport erst
+    /// später ab, wenn die Aufzeichnung schon dem nächsten Test gehört.</summary>
+    FTraceReport: string;
     procedure Start;
     function RawTotal: Int64;
     function Reported(AValue: Int64): Int64;
@@ -120,8 +123,9 @@ const
   cStableSamples = 3;
   /// <summary>Mindestzahl gleichzeitig wartender Threads beim Vorwärmen.</summary>
   cMinPrewarmWaiters = 64;
-  /// <summary>So viele Stapel nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1.</summary>
-  cTraceGroups = 5;
+  /// <summary>So viele Stapel mit Atlas-Rahmen nennt der Bericht eines Lecks mit ATLAS_LEAK_TRACE=1; Stapel nur
+  /// aus RTL, VCL und DUnitX zählt er nur.</summary>
+  cTraceGroups = 20;
 
 var
   /// <summary>Belegungen je Test mit Stapel aufzeichnen (ATLAS_LEAK_TRACE=1, TAllocationTrace).</summary>
@@ -367,6 +371,8 @@ procedure TLeakMonitor.PreSetup;
 begin
   TAtlasLocale.Use(TTextLanguage.German);
   Start;
+  // Vor der Messung freigeben: Der Bericht des vorigen Tests gehört nicht zu diesem.
+  FTraceReport := '';
   if TraceLeaks then
   begin
     TAllocationTrace.Start;
@@ -433,6 +439,11 @@ begin
   if TraceLeaks then
   begin
     TAllocationTrace.Stop;
+    // Gleich festhalten, solange die Tabelle noch diesem Test gehört; nur bei einem Leck, der Bericht kostet Zeit.
+    if RawTotal > 0 then
+    begin
+      FTraceReport := TAllocationTrace.Report(cTraceGroups);
+    end;
   end;
 end;
 
@@ -458,7 +469,7 @@ begin
     FThreadsAtStart, FThreadsAtEnd, FWaitedMs]);
   if TraceLeaks then
   begin
-    Result := Result + sLineBreak + TAllocationTrace.Report(cTraceGroups);
+    Result := Result + sLineBreak + FTraceReport;
   end;
 end;
 
