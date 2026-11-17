@@ -9,9 +9,6 @@ type
   [TestFixture]
   TStackTraceTests = class
   public
-    /// <summary>Der erste Stapel-Abzug liest die Map-Datei einmal für die ganze Sitzung (#282).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [TearDown]
     procedure TearDown;
     [Test]
@@ -36,28 +33,6 @@ begin
 end;
 
 { TStackTraceTests }
-
-procedure TStackTraceTests.WarmUp;
-var
-  mTrace: string;
-begin
-  mTrace := '';
-  TStackTrace.Install;
-  try
-    try
-      RaiseSomething;
-    except
-      on E: EAbort do
-        mTrace := E.StackTrace;
-    end;
-  finally
-    TStackTrace.Uninstall;
-  end;
-  if mTrace = '' then
-  begin
-    Exit;
-  end;
-end;
 
 procedure TStackTraceTests.TearDown;
 begin
