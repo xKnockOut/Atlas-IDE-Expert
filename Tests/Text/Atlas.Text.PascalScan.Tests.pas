@@ -3,7 +3,8 @@
 // Tests der Suche außerhalb von Kommentaren und Zeichenketten: jede Art
 // Kommentar, Anweisung und Zeichenkette mit und ohne Abschluss, Wortgrenzen
 // (qualifizierte Namen, &-Bezeichner, Unicode), und dass jede Suche auch bei
-// offenen Kommentaren endet.
+// offenen Kommentaren endet. Eine Zeitmessung prüft, dass die Arbeit bei
+// vielen Zeichenketten linear mit der Länge wächst.
 
 interface
 
@@ -34,11 +35,20 @@ type
     procedure FindAfterOpenCommentEnds;
     [Test]
     procedure FindCharSkipsNoise;
+    [Test]
+    procedure StringEndsAtQuoteOrLineEnd;
+    [Test]
+    procedure SearchGoesOnAfterOpenString;
+    [Test]
+    [Category('Benchmark')]
+    procedure ManyStringsStayLinear;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  System.Diagnostics,
   Atlas.Text.PascalScan;
 
 const
@@ -147,6 +157,68 @@ begin
   Assert.AreEqual(0, TPascalScan.FindChar('abc', ';', 1));
   Assert.AreEqual(0, TPascalScan.FindChar('', ';', 1));
   Assert.AreEqual(1, TPascalScan.FindChar(';', ';', 0));
+end;
+
+procedure TPascalScanTests.StringEndsAtQuoteOrLineEnd;
+begin
+  // Das nächste Hochkomma schließt, wenn es vor dem Zeilenende steht; eins in einer späteren Zeile nicht.
+  Assert.AreEqual(6, TPascalScan.SkipNoise('''abc''' + cBreak + 'x''', 1));
+  Assert.AreEqual(5, TPascalScan.SkipNoise('''abc' + cBreak + 'x''', 1));
+  Assert.AreEqual(5, TPascalScan.SkipNoise('''abc' + #10 + 'x''', 1));
+  Assert.AreEqual(3, TPascalScan.SkipNoise('''a', 1));
+  Assert.AreEqual(2, TPascalScan.SkipNoise('''', 1));
+  Assert.AreEqual(3, TPascalScan.SkipNoise('''''', 1));
+  // ''' mitten in der Zeile ist keine mehrzeilige Zeichenkette.
+  Assert.AreEqual(3, TPascalScan.SkipNoise(''''''' x''', 1));
+end;
+
+procedure TPascalScanTests.SearchGoesOnAfterOpenString;
+const
+  cText = 'a ''x;' + cBreak + 'b;';
+begin
+  // Eine einzeilige Zeichenkette ohne Abschluss endet am Zeilenende; gesucht wird in der nächsten Zeile weiter.
+  Assert.AreEqual(Integer(Length(cText)), TPascalScan.FindChar(cText, ';', 1));
+  Assert.AreEqual(Integer(Pos('b;', cText)), TPascalScan.FindWord(cText, 'B', 1));
+  Assert.AreEqual(3, TPascalScan.FirstOpen(cText));
+end;
+
+procedure TPascalScanTests.ManyStringsStayLinear;
+const
+  cEntries = 20000;
+var
+  mBuilder: TStringBuilder;
+  mText: string;
+  mIndex, mFound, mCount: Integer;
+  mWatch: TStopwatch;
+begin
+  // Wie eine große .dpr: viele Einträge "Unit in 'Pfad'"; jede Zeichenkette kostet nur ihre eigene Länge.
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append('program P;' + cBreak + 'uses' + cBreak);
+    for mIndex := 1 to cEntries do
+    begin
+      mBuilder.Append('  Unit' + IntToStr(mIndex) + ' in ''Quelle\Ordner\Unit' + IntToStr(mIndex) + '.pas'',' +
+        cBreak);
+    end;
+    mBuilder.Append('  Letzte;' + cBreak + 'begin' + cBreak + 'end.');
+    mText := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+  mWatch := TStopwatch.StartNew;
+  Assert.AreEqual(0, TPascalScan.FirstOpen(mText));
+  mCount := 0;
+  mFound := TPascalScan.FindWord(mText, 'in', 1);
+  while mFound > 0 do
+  begin
+    Inc(mCount);
+    mFound := TPascalScan.FindWord(mText, 'in', mFound + 1);
+  end;
+  Assert.AreEqual(Integer(Pos('begin', mText)), TPascalScan.FindWord(mText, 'begin', 1));
+  mWatch.Stop;
+  Assert.AreEqual(cEntries, mCount);
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, 'Dauer ' + IntToStr(mWatch.ElapsedMilliseconds) + ' ms');
+  mText := '';
 end;
 
 end.

@@ -1,0 +1,2 @@
+### Behoben
+- `format-without-settings` meldet keine Aufrufe mehr, die eine eigene Unit mit gleichnamigen Routinen (StrToDate, FloatToStr …) verdecken kann, wenn diese Unit nicht im Index steht: etwa im Editor, solange der Index aufgebaut wird, oder bei einer Unit außerhalb der Suchpfade. Gemeldet wird ein unaufgelöster Name nur noch, wenn nach System.SysUtils in uses ausschließlich Units der RTL oder bekannte Units ohne diesen Namen stehen.

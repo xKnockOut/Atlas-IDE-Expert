@@ -138,7 +138,8 @@ begin
   // #492: Units, Deklarationen, Größe (Speicher und Platte), letzte Aktualisierung.
   mStatus := TJSONObject.ParseJSONValue('{"units":1000,"symbols":250000,"indexBytes":104857600,' +
     '"budgetBytes":268435456,"offloadedUnits":12,"diskBytes":52428800,' +
-    '"workspaces":[{"name":"A","lastUpdate":"2026-10-14T10:00:00.000Z"},{"name":"B","lastUpdate":""}]}');
+    '"workspaces":[{"name":"A","lastUpdate":"2026-10-14T10:00:00.000Z"},{"name":"B","lastUpdate":""},' +
+    '{"name":"C","lastUpdate":"gestern"}]}');
   try
     mMetrics := TLspIndexStatus.Metrics(mStatus);
   finally

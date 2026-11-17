@@ -441,6 +441,8 @@ Atlas.Core.Editor.SourceFiles.Tests
 Atlas.Core.Editor.GutterPanel.Tests
 Atlas.Core.Editor.CaretSteps.Tests
 Atlas.Core.Editor.LinkedKeys.Tests
+Atlas.Core.Editor.LinkedSession.Tests
+Atlas.Core.Editor.LinkedEditing.Tests
 Atlas.Core.Editor.MouseButtons.Tests
 Atlas.Core.Diagnostics.SafeMode.Tests
 Atlas.Core.Editor.GuideStroke.Tests
@@ -581,6 +583,7 @@ Atlas.Core.Tests.MutationFlow.Tests
 Atlas.Core.Tests.Approval.Tests
 Atlas.Core.Tests.Durations.Tests
 Atlas.Core.Tests.Series.Tests
+Atlas.Core.Tests.UnitScans.Tests
 Atlas.Core.Tests.Flaky.Tests
 Atlas.Core.Tests.StatusField.Tests
 Atlas.Core.Debug.BreakpointList.Tests

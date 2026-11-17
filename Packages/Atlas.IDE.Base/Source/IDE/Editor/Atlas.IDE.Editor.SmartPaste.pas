@@ -111,7 +111,7 @@ implementation
 uses
   System.Math,
   System.JSON,
-  Atlas.IDE.Editor.CaretPopup,
+  Atlas.IDE.Foundation.Caret,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
   Atlas.Core.Diagnostics.Guard,
@@ -343,7 +343,7 @@ begin
           end);
       end;
   end;
-  mPoint := TAtlasIdeCaretPopupHooks.CaretPoint;
+  mPoint := TAtlasIdeCaret.BelowLine;
   FWindow.Colors := TAtlasIdeStyle.Colors;
   FWindow.SetScaling(TAtlasPopupWindow.MonitorPPI(mPoint), 1, '', 10);
   FWindow.ShowFor(AAnalysis, mPoint);

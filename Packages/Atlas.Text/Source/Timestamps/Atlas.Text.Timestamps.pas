@@ -4,6 +4,9 @@
 // Der eine Leser für Protokollzeilen, JSON-Dateien und Ausgaben von git/svn: Er prüft jede
 // Ziffer selbst und kann darum keinen negativen Teil an TryEncodeDate/TryEncodeTime
 // (Word-Parameter) weitergeben; mit Bereichsprüfung löste das sonst ERangeError aus statt False.
+// Dazu der eine Leser für ISO 8601 mit Zeitzone (RTL): Er wirft nie. ISO8601ToDate wirft je nach Text und Compiler
+// verschiedene Klassen (Delphi EDateTimeException bei unlesbarem Text, EConvertError bei ungültigen Teilen; Free
+// Pascal EConvertError), ein Handler für nur eine davon greift nicht immer.
 
 interface
 
@@ -20,12 +23,18 @@ type
     /// <summary>Liest das Datum "yyyy-mm-dd" am Anfang von AText (Leerraum außen wird übergangen); False bei anderer
     /// Form oder ungültigem Datum, ADate ist dann 0.</summary>
     class function TryParseDate(const AText: string; out ADate: TDateTime): Boolean; static;
+    /// <summary>Liest einen Zeitpunkt nach ISO 8601 mit Zeitzone ("2026-11-17T10:57:54.123+01:00"); mit AReturnUTC
+    /// in UTC, sonst in Ortszeit. False bei leerem oder unlesbarem Text, AStamp ist dann 0. Wirft nie.</summary>
+    class function TryParseIso(const AText: string; AReturnUTC: Boolean; out AStamp: TDateTime): Boolean; static;
+    /// <summary>Wie TryParseIso, aber 0 statt False.</summary>
+    class function IsoOrZero(const AText: string; AReturnUTC: Boolean): TDateTime; static;
   end;
 
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.DateUtils;
 
 const
   // Stellen in "yyyy-mm-ddThh:nn:ss.zzz".
@@ -154,6 +163,24 @@ end;
 class function TTextTimestamp.TryParseDate(const AText: string; out ADate: TDateTime): Boolean;
 begin
   Result := TryDatePart(Trim(AText), ADate);
+end;
+
+class function TTextTimestamp.TryParseIso(const AText: string; AReturnUTC: Boolean; out AStamp: TDateTime): Boolean;
+begin
+  AStamp := 0;
+  Result := (AText <> '') and TryISO8601ToDate(AText, AStamp, AReturnUTC);
+  if not Result then
+  begin
+    AStamp := 0;
+  end;
+end;
+
+class function TTextTimestamp.IsoOrZero(const AText: string; AReturnUTC: Boolean): TDateTime;
+begin
+  if not TryParseIso(AText, AReturnUTC, Result) then
+  begin
+    Result := 0;
+  end;
 end;
 
 end.

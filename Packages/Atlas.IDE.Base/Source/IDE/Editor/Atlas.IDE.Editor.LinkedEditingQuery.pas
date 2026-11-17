@@ -73,12 +73,12 @@ type
 implementation
 
 uses
-  System.Math,
   System.JSON,
   Atlas.Text.Chars,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.IDE.Foundation.EditorBuffer;
+  Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Editor.EditSurface;
 
 /// <summary>Steht an oder vor ACharacter ein Zeichen eines Bezeichners?</summary>
 function NearIdentifier(const ALine: string; ACharacter: Integer): Boolean;
@@ -177,15 +177,8 @@ begin
 end;
 
 class procedure TAtlasIdeLinkedEditingQuery.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
-var
-  mCursor: TOTAEditPos;
-  mLineText: string;
 begin
-  mCursor := AView.CursorPos;
-  ALine := Max(0, mCursor.Line - 1);
-  mLineText := TAtlasEditorBuffer.LineText(AView, ALine + 1);
-  ACharacter := Min(TLspSession.ColumnToIndex(mLineText, mCursor.Col, TAtlasEditorBuffer.TabWidth(AView.Buffer)),
-    Length(mLineText));
+  TAtlasIdeEditSurface.Wrap(AView).ReadCaret(ALine, ACharacter);
 end;
 
 procedure TAtlasIdeLinkedEditingQuery.Watch(const AView: IOTAEditView);
