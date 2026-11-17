@@ -69,7 +69,8 @@ uses
   Atlas.Core.Hover.Plan,
   Atlas.Core.Editor.CloseRules,
   Atlas.IDE.Foundation.KeyHook,
-  Atlas.IDE.Hover.EditorContent;
+  Atlas.IDE.Hover.EditorContent,
+  Atlas.IDE.Hover.IdeHelpInsight;
 
 type
   /// <summary>Stelle unter der Maus im Editor: Zeile (1-basiert), Spalte und sichtbare Zeile des Editors, Index im
@@ -118,7 +119,11 @@ type
     FWorkers: TAtlasWorkerSlot;
     // Fenster beim Anzeigen (Fokus, Datei, oberste Zeile); TAtlasCloseRules vergleicht damit.
     FShown: TAtlasEditorWindowState;
+    // Blendet Help Insight der IDE aus, solange der Atlas-Tooltip gilt (Delphi 12 merkt sich den Schalter nicht).
+    FHelpInsight: TAtlasIdeHelpInsightGuard;
     function WindowState: TAtlasEditorWindowState;
+    /// <summary>Wächter für Help Insight der IDE anlegen.</summary>
+    procedure CreateHelpInsightGuard;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     /// <summary>Stelle unter der Maus in einer Datei, die Atlas bedient; False sonst.</summary>
     function MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos): Boolean;
@@ -257,6 +262,23 @@ begin
   begin
     FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
+  CreateHelpInsightGuard;
+end;
+
+procedure TAtlasEditorHover.CreateHelpInsightGuard;
+begin
+  FHelpInsight := TAtlasIdeHelpInsightGuard.Create(
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.HoverTooltip;
+    end,
+    function: Boolean
+    var
+      mView: IOTAEditView;
+    begin
+      mView := TAtlasEditorBuffer.TopView;
+      Result := (mView <> nil) and (mView.Buffer <> nil) and Handles(mView.Buffer.FileName);
+    end);
 end;
 
 constructor TAtlasEditorHover.Create(const ASession: TAtlasHoverSessionFunc; const ALog: TAtlasHoverLogFunc;
@@ -275,6 +297,7 @@ var
   mServices: INTACodeEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
+  FreeAndNil(FHelpInsight);
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
     mServices.RemoveEditorEventsNotifier(FIndex);

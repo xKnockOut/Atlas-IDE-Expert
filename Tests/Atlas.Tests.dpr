@@ -613,6 +613,8 @@ uses
   Atlas.Core.Hover.Declaration.Tests in 'IDE.Expert\Atlas.Core.Hover.Declaration.Tests.pas',
   Atlas.Core.Hover.DebugValue in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',
   Atlas.Core.Hover.DebugValue.Tests in 'IDE.Expert\Atlas.Core.Hover.DebugValue.Tests.pas',
+  Atlas.Core.Hover.IdeHelpInsight in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.IdeHelpInsight.pas',
+  Atlas.Core.Hover.IdeHelpInsight.Tests in 'IDE.Expert\Atlas.Core.Hover.IdeHelpInsight.Tests.pas',
   Atlas.Core.Debug.Visualizers in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.Visualizers.pas',
   Atlas.Core.Debug.VisualizerFlow in '..\Packages\Atlas.IDE.Debugger\Source\Core\Debug\Atlas.Core.Debug.VisualizerFlow.pas',
   Atlas.Core.Debug.VisualizerFlow.Tests in 'IDE.Expert\Atlas.Core.Debug.VisualizerFlow.Tests.pas',
