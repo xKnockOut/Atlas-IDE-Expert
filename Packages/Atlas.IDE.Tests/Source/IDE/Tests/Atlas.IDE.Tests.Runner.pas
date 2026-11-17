@@ -31,6 +31,8 @@
 //   dem XML-Bericht des Laufs im Debugger (ReportRun).
 // - Nach jedem gemeldeten Lauf ruft der Läufer den Haken OnReported (Stand
 //   der Tests für veraltete Ergebnisse, #1770, Atlas.IDE.Tests.Stale).
+// - Das Ende jedes Laufs mit Bericht, ohne Bericht oder nach der Zeitgrenze geht
+//   an die Ausgabe (Ended, #2467: Fenster „Atlas-Tests“ bei Fehlschlägen).
 // - Lecks je Test (tests.leaks, #1774): Ein Test, den der Bericht nur wegen
 //   eines Lecks als fehlgeschlagen nennt, gilt als bestanden mit Leck
 //   (Atlas.Core.Tests.Leaks); Warnung am Methodenkopf und eine Zeile mit
@@ -390,8 +392,11 @@ begin
       // Abgebrochen (Serie, #1782): Ein Lauf im Hintergrund endet ohne Bericht.
       FOutput.EndQuiet(False, Default(TTestRunResult));
     TAtlasTestFinish.TimedOut:
-      Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
-        TAtlasTestRun.cTimeoutMs div 1000]));
+      begin
+        Refuse(FOutput, TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsTimedOut, [ProjectName(ATarget.Project),
+          TAtlasTestRun.cTimeoutMs div 1000]));
+        FOutput.Ended(ATarget.Project, TAtlasTestFinish.TimedOut, mRun);
+      end;
     TAtlasTestFinish.NoReport:
       begin
         FOutput.Tell(TAtlasTestsStrings.Fmt(TAtlasTestsTextId.TestsNoReport, [ProjectName(ATarget.Project),
@@ -401,6 +406,7 @@ begin
           FOutput.Tell('  ' + mLine);
         end;
         FOutput.EndQuiet(False, mRun);
+        FOutput.Ended(ATarget.Project, TAtlasTestFinish.NoReport, mRun);
       end;
   else
     mRun.Output := AExe.Output;
@@ -905,6 +911,7 @@ begin
       UnitFileFunc(ATarget.Project), ReadLines), TTimeZone.Local.ToUniversalTime(Now)));
   end;
   FOutput.EndQuiet(True, ARun);
+  FOutput.Ended(ATarget.Project, TAtlasTestFinish.Report, ARun);
 end;
 
 function TAtlasIdeTests.Busy: Boolean;

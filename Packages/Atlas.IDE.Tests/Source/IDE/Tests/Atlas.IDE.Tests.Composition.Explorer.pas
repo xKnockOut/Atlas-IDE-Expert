@@ -6,11 +6,13 @@
 // - Befehle „Atlas-Tests“ und „Wackelnde Tests zeigen“ (#1773, Filter „wackelt“),
 // - je Testliste ein Befehl „Testliste ausführen: <Name>“ und die Taste tests.lists.runKey für die zuletzt
 //   benutzte,
-// - Einstellungen, Farbschema und gespeicherte Testunits reicht die Composition herein.
+// - Einstellungen, Farbschema und gespeicherte Testunits reicht die Composition herein,
+// - das Ende jedes Laufs auch (ExplorerRunEnded): Ging er schief, öffnet sich das Fenster (#2467).
 
 interface
 
 uses
+  Atlas.Text.TestResults,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Tests.Run,
   Atlas.IDE.Tests.Runner,
@@ -44,10 +46,14 @@ procedure ApplyExplorerSettings;
 procedure ExplorerThemeChanged;
 /// <summary>Gespeicherte Testunit im Fenster neu lesen.</summary>
 procedure ExplorerFileSaved(const AFileName: string);
+/// <summary>Ein Lauf von AProject endete mit AFinish und Bericht ARun (Haken OnEnded der Ausgabe): Ging er schief,
+/// das Fenster „Atlas-Tests“ zeigen (#2467).</summary>
+procedure ExplorerRunEnded(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
 
 implementation
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Foundation.Settings,
@@ -231,6 +237,29 @@ begin
   if GExplorer <> nil then
   begin
     GExplorer.FileSaved(AFileName);
+  end;
+end;
+
+procedure ExplorerRunEnded(const AProject: string; AFinish: TAtlasTestFinish; const ARun: TTestRunResult);
+var
+  mProject: string;
+  mFocus: HWND;
+begin
+  if (GExplorer = nil) or not TAtlasTestRun.WentWrong(AFinish, ARun) then
+  begin
+    Exit;
+  end;
+  mProject := AProject;
+  // Ein Lauf beim Speichern (#1775) darf das Tippen im Editor nicht unterbrechen: Fokus danach zurückgeben.
+  mFocus := GetFocus;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      ShowFailedRun(GExplorer, mProject);
+    end);
+  if (mFocus <> 0) and IsWindow(mFocus) and (GetFocus <> mFocus) then
+  begin
+    Winapi.Windows.SetFocus(mFocus);
   end;
 end;
 

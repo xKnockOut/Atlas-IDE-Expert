@@ -236,9 +236,10 @@ Open it with *View › Atlas › Atlas Tests*, the Atlas menu or the command pal
 - The filters *Failed*, *Not run*, *Outdated* and *Slow* (above `tests.slowMs`) apply at once, several together with “or”; the search box searches the full name (Unit.Fixture.Method.Case). The path to every match stays visible.
 - Double-click or Enter goes to the test, for a case to its `[TestCase]`. Below, the selected test shows message, expected and actual value and the stack trace; lines naming a unit of the test project open on double-click.
 - Results are kept for this session, per test project; changes to a test unit show up after saving.
+- It opens by itself when tests fail (#2467): if at least one test fails after a run, or the run aborts with an error (no report, time limit), the window opens, comes to the front and shows the test project of the run. This applies to every way of running tests: run tests, re-run failed tests, tests after the build, affected tests on save, series, test lists, test lens and debug test. The focus stays where it was, so a run on save does not interrupt your typing. Nothing happens after a green or cancelled run. Turn it off with `tests.window.openOnFailure`.
 - `tests.window` off: no menu entry, the window is not restored.
 
-Setting: `tests.window`
+Settings: `tests.window`, `tests.window.openOnFailure`
 
 ### Test lists in the “Atlas Tests” window (#2167)
 
