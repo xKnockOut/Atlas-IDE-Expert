@@ -352,7 +352,7 @@ begin
   mSecond := StrToIntDef(Copy(mText, 18, 2), -1);
   // Ungültige Teile (-1) vorher ablehnen: TryEncodeDate und TryEncodeTime nehmen Word, ein negativer Wert löste
   // mit Bereichsprüfung ERangeError aus statt False.
-  if (mYear < 1) or (mMonth < 1) or (mDay < 1) or (mHour < 0) or (mMinute < 0) or (mSecond < 0) then
+  if (Min(mYear, Min(mMonth, mDay)) < 1) or (Min(mHour, Min(mMinute, mSecond)) < 0) then
   begin
     Exit;
   end;
