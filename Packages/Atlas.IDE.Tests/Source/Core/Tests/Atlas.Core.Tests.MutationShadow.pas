@@ -10,21 +10,28 @@
 //     Src\<Unit>.pas          mutierte Kopie (dazu .dfm/.fmx der Unit)
 //     Out\, Out\Dcu\          Ausgaben, getrennt vom Original
 // dpr: Programmname ersetzt; alle „in '…'“-Pfade und die Argumente von
-// {$R}/{$I} absolut zum Ordner des Originals ({$R 'X.res' 'X.rc'} mit beiden),
-// die mutierte Unit nach Src\ (mit oder ohne „in“ in der dpr; fehlt sie, wird
-// sie an die uses-Klausel angehängt); {$R *.res} zeigt auf die .res des
-// Originals oder fällt weg, wenn es keine gibt. Eine Form, die das Umschreiben
+// {$R}/{$I} absolut zum Ordner des Originals, die mutierte Unit nach Src\ (mit
+// oder ohne „in“ in der dpr; fehlt sie, wird sie an die uses-Klausel
+// angehängt); {$R *.res} zeigt auf die .res des Originals oder fällt weg, wenn
+// es keine gibt; andere Masken ({$R *.tlb}) meinen im Schattenprojekt einen
+// anderen Namen und zeigen darum auf die Datei des Originals, nur {$R *.dres}
+// bleibt (der Build erzeugt sie aus den Ressourcen der dproj neu). Bei
+// {$R 'X.res' 'X.rc'} übersetzt der Build die .rc: Die .rc bleibt beim Original,
+// die .res entsteht im Ordner des Schattenprojekts. Eine Form, die das Umschreiben
 // nicht kennt, meldet Build als Problem samt Textstelle, statt eine dpr zu
 // liefern, die erst beim Bauen scheitert.
-// dproj: MainSource, Projektname und GUID neu; relative Pfade (Suchpfade,
-// Include= der Einträge, Symbol, Manifest) absolut; der Ordner des Originals
+// dproj: MainSource, Projektname und GUID neu; relative Pfade (Suchpfade auch
+// des Ressourcen-Compilers, Include= der Einträge, Symbol, Manifest) absolut; der Ordner des Originals
 // und der der Unit stehen vorn im Such- und Include-Pfad (die Kopie liegt
 // woanders, die Nachbarn sollen sich weiter finden); Ausgaben nach Out\,
 // auch wenn das Original keine nennt (sonst legte der Compiler die DCUs neben
-// die Quelltexte des Originals); Ereignisse vor und nach dem Bauen geleert,
+// die Quelltexte des Originals); die aus .rc übersetzten .res (Form der
+// RcCompile-Einträge, ohne BRCC_OutputDir) in den Ordner des Schattenprojekts,
+// passend zum ersten Argument von {$R 'X.res' 'X.rc'}; Ereignisse vor und nach dem Bauen geleert,
 // weil sie Dateien des Originals überschreiben könnten.
-// Das Original bleibt unverändert, weil zwei Bedingungen zusammen gelten:
-// Der Lauf schreibt nur in den Ordner des Schattenprojekts (IsShadowFile vor
+// Das Original bleibt unverändert, weil drei Bedingungen zusammen gelten:
+// Jede Ausgabe des Builds (Compiler, Ressourcen-Compiler) liegt im Ordner des
+// Schattenprojekts, der Lauf schreibt nur in den Ordner des Schattenprojekts (IsShadowFile vor
 // jedem Schreiben), und keine Datei des Originals liegt in diesem Ordner
 // (Separate vor dem Anlegen). Wer eine Unit aus dem Schattenprojekt selbst
 // mutieren will, wird abgewiesen.
@@ -136,14 +143,19 @@ const
   cBreak = #13#10;
   cUncPrefix = '\\';
   /// <summary>Elemente der dproj mit einer Liste von Pfaden.</summary>
-  cPathLists: array[0..3] of string = ('DCC_UnitSearchPath', 'DCC_IncludePath', 'DCC_ResourcePath',
-    'DCC_ObjPath');
+  cPathLists: array[0..4] of string = ('DCC_UnitSearchPath', 'DCC_IncludePath', 'DCC_ResourcePath',
+    'DCC_ObjPath', 'BRCC_IncludePath');
   /// <summary>Elemente der dproj mit einem Pfad.</summary>
   cPathSingles: array[0..1] of string = ('Icon_MainIcon', 'Manifest_File');
   /// <summary>Ausgaben, die in Out\Dcu umziehen (DCC_ExeOutput geht nach Out).</summary>
   cOutputs: array[0..5] of string = ('DCC_DcuOutput', 'DCC_BplOutput', 'DCC_DcpOutput', 'DCC_HppOutput',
     'DCC_ObjOutput', 'DCC_BpiOutput');
   cEvents: array[0..2] of string = ('PreBuildEvent', 'PostBuildEvent', 'PreLinkEvent');
+  /// <summary>Ausgabeordner des Ressourcen-Compilers: leer, damit die .res aus einer .rc nach Form relativ zum
+  /// Schattenprojekt entsteht, wie {$R 'X.res' 'X.rc'} sie dort sucht.</summary>
+  cResourceOutputs: array[0..0] of string = ('BRCC_OutputDir');
+  /// <summary>Maske, deren Datei der Build des Schattenprojekts selbst erzeugt (Ressourcen der dproj).</summary>
+  cGeneratedMask = '*.dres';
   /// <summary>Einträge, deren Include= ein Pfad ist.</summary>
   cIncludeItems: array[0..3] of string = ('DCCReference', 'RcCompile', 'RcItem', 'ResourceCompile');
   cBaseGroup = '<PropertyGroup Condition="''$(Base)''!=''''">';
@@ -151,6 +163,16 @@ const
 
 type
   TValueFunc = reference to function(const AValue: string): string;
+
+  /// <summary>Bezug für die Argumente von {$R}/{$I}.</summary>
+  TDirectiveFiles = record
+    /// <summary>Ordner des Originals.</summary>
+    Base: string;
+    /// <summary>Pfad des Testprojekts ohne Endung (für Masken wie *.tlb).</summary>
+    Project: string;
+    /// <summary>.res des Originals, leer ohne.</summary>
+    ResFile: string;
+  end;
 
   /// <summary>Was das Umschreiben der uses-Klausel braucht und ob es die mutierte Unit fand.</summary>
   TUsesRewrite = record
@@ -571,11 +593,40 @@ begin
   end;
 end;
 
-/// <summary>Neuer Text ATextOut der Direktive ADirective (Anfang AName): jedes Argument absolut ({$R} hat bis zu zwei:
-/// .res und .rc, {$I} eins); {$R *.res} zeigt auf AResFile oder fällt weg; Masken und ein {$I} ohne
-/// Anführungszeichen mit Leerzeichen bleiben. False bei unbekannter Form (mehr Argumente, offenes Anführungszeichen).
-/// </summary>
-function DirectiveText(const ADirective, AName, ABase, AResFile: string; out ATextOut: string): Boolean;
+/// <summary>Text einer Direktive mit nur der Maske AMask ({$R *.res}, {$R *.tlb}) zu AFiles: *.res auf die .res
+/// des Originals oder weg, *.dres bleibt, jede andere auf die Datei des Originals.</summary>
+function MaskText(const AName, AMask: string; const AFiles: TDirectiveFiles): string;
+begin
+  if SameText(AMask, '*.res') then
+  begin
+    Result := '';
+    if AFiles.ResFile <> '' then
+    begin
+      Result := '{$R ' + Quoted(AFiles.ResFile) + '}';
+    end;
+    Exit;
+  end;
+  Result := AName + AMask + '}';
+  // Im Schattenprojekt hieße „*“ <Projekt>Mutation; die Datei hat nur das Original.
+  if not SameText(AMask, cGeneratedMask) and StartsStr('*.', AMask) then
+  begin
+    Result := AName + Quoted(AFiles.Project + Copy(AMask, 2, MaxInt)) + '}';
+  end;
+end;
+
+/// <summary>{$R 'X.res' 'X.rc'}: .res im Ordner des Schattenprojekts (dort übersetzt der Build die .rc hin), .rc
+/// absolut beim Original.</summary>
+function CompiledResourceText(const AName: string; const AArguments: TArray<string>; const ABase: string): string;
+begin
+  Result := AName + Quoted(TAtlasMutationShadows.FileNameOf(AArguments[0])) + ' ' +
+    AbsoluteArguments(Copy(AArguments, 1, 1), ABase) + '}';
+end;
+
+/// <summary>Neuer Text ATextOut der Direktive ADirective (Anfang AName): jedes Argument absolut zu AFiles.Base ({$R}
+/// hat bis zu zwei: .res und .rc, {$I} eins); Masken nach MaskText; bei .res und .rc die .res nach
+/// CompiledResourceText; ein {$I} ohne Anführungszeichen mit Leerzeichen bleibt. False bei unbekannter Form (mehr
+/// Argumente, offenes Anführungszeichen).</summary>
+function DirectiveText(const ADirective, AName: string; const AFiles: TDirectiveFiles; out ATextOut: string): Boolean;
 var
   mArgument: string;
   mArguments: TArray<string>;
@@ -588,15 +639,6 @@ begin
   begin
     Exit;
   end;
-  if (Length(mArguments) = 1) and SameText(mArguments[0], '*.res') then
-  begin
-    ATextOut := '';
-    if AResFile <> '' then
-    begin
-      ATextOut := '{$R ' + Quoted(AResFile) + '}';
-    end;
-    Exit;
-  end;
   mMax := 2;
   if IsIncludeDirective(AName) then
   begin
@@ -606,17 +648,27 @@ begin
       Exit;
     end;
     mMax := 1;
+  end
+  else if (Length(mArguments) = 1) and StartsStr('*', mArguments[0]) then
+  begin
+    ATextOut := MaskText(Copy(ADirective, 1, Length(AName)), mArguments[0], AFiles);
+    Exit;
+  end
+  else if (Length(mArguments) = 2) and not StartsStr('*', mArguments[0]) then
+  begin
+    ATextOut := CompiledResourceText(Copy(ADirective, 1, Length(AName)), mArguments, AFiles.Base);
+    Exit;
   end;
   Result := Length(mArguments) <= mMax;
   if Result then
   begin
-    ATextOut := Copy(ADirective, 1, Length(AName)) + AbsoluteArguments(mArguments, ABase) + '}';
+    ATextOut := Copy(ADirective, 1, Length(AName)) + AbsoluteArguments(mArguments, AFiles.Base) + '}';
   end;
 end;
 
 /// <summary>{$R …}, {$RESOURCE …}, {$I …}, {$INCLUDE …} mit absoluten Pfaden; {$R *.res} auf AResFile bzw. weg.
 /// Schalter wie {$R+} oder {$I-} bleiben. AProblem ist die erste Direktive unbekannter Form, sonst leer.</summary>
-function RewriteDirectives(const AText, ABase, AResFile: string; out AProblem: string): string;
+function RewriteDirectives(const AText: string; const AFiles: TDirectiveFiles; out AProblem: string): string;
 var
   mIndex, mStart, mClose: Integer;
   mName, mUpper, mDirective, mNew: string;
@@ -638,7 +690,7 @@ begin
       Break;
     end;
     mDirective := Copy(AText, mStart, mClose - mStart + 1);
-    if not DirectiveText(mDirective, mName, ABase, AResFile, mNew) then
+    if not DirectiveText(mDirective, mName, AFiles, mNew) then
     begin
       AProblem := mDirective;
       Exit(AText);
@@ -649,13 +701,15 @@ begin
   Result := Result + Copy(AText, mIndex, MaxInt);
 end;
 
-/// <summary>Datei der .res des Originals, leer ohne.</summary>
-function ResFileOf(const ASource: TAtlasMutationShadowSource): string;
+/// <summary>Bezug der Direktiven im Original zu ASource; ResFile leer, wenn es die .res nicht gibt.</summary>
+function DirectiveFilesOf(const ASource: TAtlasMutationShadowSource): TDirectiveFiles;
 begin
-  Result := '';
+  Result := Default(TDirectiveFiles);
+  Result.Base := TAtlasMutationShadows.FolderOf(ASource.ProjectFile);
+  Result.Project := WithExtension(TAtlasMutationShadows.Normalized(ASource.ProjectFile), '');
   if ASource.ResExists then
   begin
-    Result := WithExtension(ASource.ProjectFile, '.res');
+    Result.ResFile := WithExtension(ASource.ProjectFile, '.res');
   end;
 end;
 
@@ -741,8 +795,7 @@ begin
     AShadow.ProblemText := mProblem;
     Exit;
   end;
-  mText := RewriteDirectives(mText, TAtlasMutationShadows.FolderOf(ASource.ProjectFile), ResFileOf(ASource),
-    mProblem);
+  mText := RewriteDirectives(mText, DirectiveFilesOf(ASource), mProblem);
   if mProblem <> '' then
   begin
     AShadow.Problem := TAtlasMutationShadowProblem.Directive;
@@ -935,6 +988,14 @@ begin
   Result := SetElements(Result, ['DCC_ExeOutput'], TAtlasMutationShadows.cOutFolder);
   Result := SetElements(Result, cOutputs, TAtlasMutationShadows.cDcuFolder);
   Result := SetElements(Result, cEvents, '');
+  Result := SetElements(Result, cResourceOutputs, '');
+  // Form eines RcCompile-Eintrags ist die .res, die aus der .rc entsteht: nur der Name, also im Schattenprojekt.
+  // Form eines DCCReference-Eintrags ist ein Formularname ohne Ordner und bleibt dabei, wie er ist.
+  Result := MapElements(Result, 'Form',
+    function(const AValue: string): string
+    begin
+      Result := TAtlasMutationShadows.FileNameOf(AValue);
+    end);
   for mTag in cIncludeItems do
   begin
     Result := MapIncludes(Result, mTag,
