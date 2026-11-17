@@ -22,8 +22,6 @@ type
     FRoot: string;
     procedure AddWorkspace;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -101,20 +99,6 @@ begin
   FRegistry.Add(TShellWorkspace.Create(FRoot, 'Ordner', TShellWorkspaceServices.Create(TDocumentStore.Create,
     TJsonRpcStreamTransport.Create(nil, TBytesStream.Create, True), TLogger.Create, TSymbolIndex.Create,
     'atlas-test-index')));
-end;
-
-procedure TShellSourcesTests.WarmUpFirstUse;
-var
-  mMetrics: TLspMetricsSource;
-begin
-  // Erste Benutzung (Einstellungen des Arbeitsbereichs, Monitor-Datensätze) nicht dem ersten Test anrechnen.
-  Setup;
-  try
-    AddWorkspace;
-    FSources.MetricsSource()('', False, mMetrics);
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TShellSourcesTests.Setup;

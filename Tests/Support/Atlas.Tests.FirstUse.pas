@@ -51,6 +51,7 @@ uses
   Atlas.UI.Settings.Page,
   Vcl.Graphics,
   Vcl.Forms,
+  Vcl.Clipbrd,
   Vcl.AppEvnts,
   Vcl.ComCtrls,
   Atlas.UI.Foundation.Dialog,
@@ -418,6 +419,17 @@ begin
   SetComponentFieldAddressCache(True, 0);
 end;
 
+/// <summary>Zwischenablage der VCL (Clipboard): Das Objekt entsteht beim ersten Zugriff und wird in der
+/// Finalisierung von Vcl.Clipbrd freigegeben; das träfe sonst den ersten Test, der etwas kopiert (z. B. „Name
+/// kopieren“ im Fenster „Komponenten suchen“).</summary>
+procedure WarmUpDesignerClipboard;
+begin
+  if Clipboard = nil then
+  begin
+    raise EInvalidOperation.Create('Zwischenablage');
+  end;
+end;
+
 /// <summary>Fehlerpfade der Regex-Engine (System.RegularExpressions) einmal durchlaufen: Ein ungültiger Ausdruck
 /// und ein unbekannter Gruppenname lösen ERegularExpressionError aus; die RTL lädt dabei die Ressourcentexte der
 /// Meldungen und behält sie bis zum Programmende. Das träfe sonst den ersten Test mit einem ungültigen Suchmuster
@@ -643,6 +655,7 @@ begin
   WarmUpKeysPage;
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
+  WarmUpDesignerClipboard;
   WarmUpRegexErrors;
   WarmUpVcsTools;
   WarmUpVclCanvasList;

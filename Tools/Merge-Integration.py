@@ -18,6 +18,8 @@ sich ohne Urteil lösen lässt, und lässt alles andere als Konflikt stehen:
   (Output/Linux64/Bin/AtlasServer oder AtlasServer im PATH). Gruppen, die dabei gegenüber dem
   Integrationsbranch neu sind oder wachsen, nennt das Skript: Sie stammen aus dem eigenen Branch,
   und Tools/Check-Baselines.ps1 lässt sie in der CI nur mit „Neue Kopien: …“ im Pull Request durch.
+- Die Liste der Aufwärm-Routinen (Tools/TestWarmUps.baseline.json): Stand des
+  Integrationsbranches, danach mit Check-TestWarmUps.ps1 -Update aus dem Quelltext neu geschrieben.
 
 Was übrig bleibt (geänderte Zeilen auf beiden Seiten, Quelltext, JSON), meldet das
 Skript; der Merge bleibt dann offen.
@@ -61,11 +63,14 @@ ABGELEITET = [
     ('docs/en/Rules.md', 'rules'),
     ('Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data*.pas', 'rules'),
     ('atlas-duplicates.json', 'duplicates'),
+    ('Tools/TestWarmUps.baseline.json', 'warmups'),
 ]
 
 WERKZEUGE = {
-    'config': 'Tools/Update-ConfigDoc.ps1',
-    'rules': 'Tools/Update-RuleCatalog.ps1',
+    'config': ['Tools/Update-ConfigDoc.ps1'],
+    'rules': ['Tools/Update-RuleCatalog.ps1'],
+    # Liste der Aufwärm-Routinen: aus dem Quelltext neu geschrieben, darf nur sinken.
+    'warmups': ['Tools/Check-TestWarmUps.ps1', '-Update'],
 }
 
 # Baseline wortgleicher Rümpfe: schreibt AtlasServer, nicht pwsh.
@@ -436,11 +441,11 @@ def einmergen(ref, name, kein_commit):
             continue
         skript = WERKZEUGE[werkzeug]
         if not pwsh:
-            fehlt.append(f'pwsh {skript}')
+            fehlt.append('pwsh ' + ' '.join(skript))
             continue
-        lauf = subprocess.run([pwsh, '-NoProfile', '-File', skript])
+        lauf = subprocess.run([pwsh, '-NoProfile', '-File', *skript])
         if lauf.returncode != 0:
-            offen.append(f'{skript} meldet Fehler')
+            offen.append(f'{skript[0]} meldet Fehler')
     if neu_erzeugen and pwsh:
         git('add', '-u')
 

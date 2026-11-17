@@ -23,9 +23,6 @@ type
     FFolder: string;
     FEvents: string;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -87,16 +84,6 @@ begin
 end;
 
 { TShellFileChangesTests }
-
-procedure TShellFileChangesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    GlobalSettingsReload;
-  finally
-    TearDown;
-  end;
-end;
 
 procedure TShellFileChangesTests.Setup;
 var
