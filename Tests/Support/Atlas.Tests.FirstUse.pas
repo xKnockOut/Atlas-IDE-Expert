@@ -30,6 +30,7 @@ uses
   System.DateUtils,
   System.JSON,
   System.Generics.Collections,
+  System.Messaging,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Metrics.DuplicateCatalog,
@@ -50,6 +51,7 @@ uses
   Atlas.UI.Settings.Keys,
   Atlas.UI.Settings.Overview,
   Atlas.Common.Projects.PackageLocator,
+  Atlas.Windows.Diagnostics.StackTrace,
   Atlas.Core.VersionControl.Contract,
   Atlas.Core.VersionControl.Tools;
 
@@ -378,6 +380,33 @@ end;
 /// Programmende bleibt. Jeder Test mit einer neuen Besitzerklasse zählte das als Leck. Ohne Zwischenspeicher sucht
 /// die RTL das Feld direkt (FieldAddress), mit demselben Ergebnis; schon angelegte Einträge gibt Clear frei.
 /// Der Zwischenspeicher selbst gehört der RTL und wird in ihrem Klassendestruktor freigegeben.</summary>
+/// <summary>Einmal-Belegungen der RTL, die Tests über Atlas-Code treffen: die Kodierungen UTF-16 LE und BE
+/// (TEncoding.Unicode, BigEndianUnicode; TParser beim Lesen von DFM-Text), der Nachrichtenverteiler
+/// TMessageManager.DefaultManager (VCL beim DPI-Wechsel) und der Ressourcentext, den die RTL beim ersten UTF-8-Fehler
+/// lädt und bis zum Ende behält (TEncoding.GetString mit ungültigen Bytes). Freigegeben in der Finalisierung von
+/// System.SysUtils bzw. System.Messaging.</summary>
+procedure WarmUpRtlSingletons;
+begin
+  TEncoding.Unicode;
+  TEncoding.BigEndianUnicode;
+  TMessageManager.DefaultManager;
+  try
+    TEncoding.UTF8.GetString(TBytes.Create($C3, $28, $FF));
+  except
+    on Exception do
+      ;
+  end;
+end;
+
+/// <summary>Map-Datei der Test-EXE einmal lesen. Atlas.Windows.Diagnostics.StackTrace lädt sie beim ersten
+/// Auflösen eines Stapels (Exception.StackTrace, Leckbericht mit ATLAS_LEAK_TRACE) für die ganze Sitzung und gibt
+/// sie in seiner Finalisierung frei; das wären sonst rund 65 MB Leck im ersten Test, der einen Stapel nennt.
+/// Ohne .map-Datei kostet der Schritt nichts.</summary>
+procedure WarmUpStackTraceMap;
+begin
+  TStackTrace.Current;
+end;
+
 procedure SwitchOffComponentFieldCache;
 begin
   SetComponentFieldAddressCache(True, 0);
@@ -440,6 +469,8 @@ begin
   WarmUpSettingsOverview;
   WarmUpPackageLocator;
   WarmUpVcsTools;
+  WarmUpStackTraceMap;
+  WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
 end;
 
