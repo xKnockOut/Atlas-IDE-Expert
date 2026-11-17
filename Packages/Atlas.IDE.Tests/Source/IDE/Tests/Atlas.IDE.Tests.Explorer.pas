@@ -7,7 +7,7 @@
 //   Atlas.Text.DUnitX gelesen (Puffer der IDE, sonst Platte; ohne Server).
 //   Gelesen wird beim Öffnen, nach jedem Lauf, nach dem Speichern einer
 //   Unit des Testprojekts und mit „Neu einlesen“; ungeänderte Dateien kommen
-//   aus dem Zwischenspeicher (Änderungszeit).
+//   aus dem Zwischenspeicher (Änderungszeit, Atlas.Core.Tests.UnitScans).
 // - Ergebnisse: Nach jedem gemeldeten Lauf (Haken OnReported des Läufers)
 //   merkt sich das Fenster die Ergebnisse je Testprojekt dieser Sitzung und
 //   reicht den Lauf an ANext weiter; veraltete (#1770) und wackelnde Tests
@@ -34,7 +34,8 @@
 //   zeigt ShowFailedRun das Fenster mit dem Testprojekt des Laufs und holt
 //   es nach vorn (#2467, tests.window.openOnFailure).
 // - Ein Zeitgeber folgt dem Läufer (Lauf beginnt bzw. endet), solange das
-//   Fenster zu sehen ist; er lebt nur so lange wie dieses Objekt.
+//   Fenster zu sehen ist (Atlas.IDE.Tests.ExplorerTicker); er lebt nur so
+//   lange wie dieses Objekt.
 // Nur im Hauptthread.
 
 interface
@@ -42,17 +43,18 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Vcl.ExtCtrls,
-  Atlas.Text.DUnitX,
   Atlas.Text.TestResults,
   Atlas.Core.Tests.Run,
   Atlas.Core.Tests.Explorer,
+  Atlas.Core.Tests.Series,
   Atlas.Core.Tests.StatusField,
+  Atlas.Core.Tests.UnitScans,
   Atlas.IDE.Tests.Runner,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Series,
   Atlas.IDE.Tests.Lists,
   Atlas.IDE.Tests.ExplorerLog,
+  Atlas.IDE.Tests.ExplorerTicker,
   Atlas.UI.Tests.ExplorerFrame;
 
 type
@@ -61,50 +63,40 @@ type
 
   TAtlasIdeTestExplorer = class
   private type
-    /// <summary>Gelesene Unit des Testprojekts: Änderungszeit, Text (nur Testunits) und Fixtures.</summary>
-    TScanned = record
-      Age: TDateTime;
-      IsTest: Boolean;
-      Lines: TArray<string>;
-      Found: TDUnitXUnit;
-    end;
     /// <summary>Ergebnisse eines Testprojekts dieser Sitzung und Ende und Dauer des letzten Laufs.</summary>
     TProjectRun = record
       Cases: TArray<TTestCaseResult>;
       At: TDateTime;
       DurationMs: Int64;
     end;
-  private const
-    cTickMs = 500;
   private
     FTests: TAtlasIdeTests;
     FDebugger: TAtlasIdeTestDebugger;
     FSeries: TAtlasIdeTestSeries;
     FQueries: TAtlasTestStateQueries;
     FNext: TAtlasTestsReportedProc;
-    FTimer: TTimer;
+    FTicker: TAtlasIdeTestExplorerTicker;
     /// <summary>Ergebnisse je Testprojekt (Schlüssel klein) dieser Sitzung.</summary>
     FResults: TDictionary<string, TProjectRun>;
     /// <summary>Protokoll je Test (#2168) je Testprojekt dieser Sitzung.</summary>
     FLogs: TAtlasIdeTestLogs;
-    /// <summary>Gelesene Units je Datei (Schlüssel klein).</summary>
-    FScanned: TDictionary<string, TScanned>;
+    /// <summary>Gelesene Units des Testprojekts.</summary>
+    FScans: TAtlasTestUnitScans;
     /// <summary>Gewähltes Testprojekt (.dproj); '' = noch keins.</summary>
     FProject: string;
     FProjects: TArray<string>;
     FUnits: TArray<TAtlasTestUnitInput>;
     FRefs: TArray<TAtlasTestUnitRef>;
     FNodes: TArray<TAtlasTestNode>;
-    FDirty: Boolean;
-    FBusy: Boolean;
-    FVersion: Integer;
-    procedure Tick(Sender: TObject);
     procedure Wire(AFrame: TAtlasTestsExplorerFrame);
     /// <summary>Testprojekte und Testunits neu lesen, Baum neu bauen und zeigen.</summary>
     procedure Reload;
     procedure ReadProjects;
     procedure ReadUnits;
-    function ScanFile(const AFileName: string): TScanned;
+    /// <summary>Statuszeile des Fensters.</summary>
+    function StatusText: string;
+    /// <summary>Neuer Stand des Läufers (läuft bzw. neuer Bericht) im Fenster.</summary>
+    procedure ShowBusy(ABusy: Boolean);
     /// <summary>Baum mit den aktuellen Filtern zeigen.</summary>
     procedure ShowRows;
     procedure ChooseProject(AIndex: Integer);
@@ -115,6 +107,10 @@ type
     procedure DebugSelected;
     /// <summary>Gewählte Knoten; ohne Auswahl eine Meldung und leer.</summary>
     function Chosen: TArray<Integer>;
+    /// <summary>Gewählte Knoten als Serie (#1782): Datei, Gegenstand und Namen (AShuffle: je Test bzw. Fall ein
+    /// Name). False ohne Auswahl.</summary>
+    function SeriesChoice(AShuffle: Boolean; out AFileName: string; out ASubject: TAtlasTestSeriesSubject;
+      out ANames: TArray<string>): Boolean;
   public
     /// <summary>ATests, ADebugger und ASeries gehören dem Aufrufer und leben länger; AQueries nennt veraltete
     /// (#1770) und wackelnde Tests (#1773, je nil = keine); ANext bekommt jeden Lauf danach (nil = keiner).</summary>
@@ -137,16 +133,14 @@ type
     /// Fenster gerade dieses Testprojekt zeigt, die Zahl der veralteten Tests (sonst -1). Project bleibt leer;
     /// der Aufrufer setzt den Namen.</summary>
     function StatusInput(const AProject: string): TAtlasTestStatusInput;
+    /// <summary>Fenster nach einem Lauf von AProject zeigen, der schiefging (#2467): mit diesem Testprojekt, nach
+    /// vorn. Nichts mit tests.window.openOnFailure oder tests.window aus.</summary>
+    procedure ShowFailedRun(const AProject: string);
   end;
-
-/// <summary>Fenster „Atlas-Tests“ nach einem Lauf von AProject zeigen, der schiefging (#2467): mit diesem
-/// Testprojekt, nach vorn. Nichts mit tests.window.openOnFailure oder tests.window aus.</summary>
-procedure ShowFailedRun(AExplorer: TAtlasIdeTestExplorer; const AProject: string);
 
 implementation
 
 uses
-  System.IOUtils,
   System.Math,
   System.DateUtils,
   System.StrUtils,
@@ -159,7 +153,6 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Tests.Projects,
   Atlas.IDE.Tests.ExplorerWindow,
-  Atlas.Core.Tests.Series,
   Atlas.UI.Tests.SeriesMenu,
   Atlas.UI.Tests.Strings;
 
@@ -189,75 +182,26 @@ begin
     end);
 end;
 
-/// <summary>Statuszeile des Fensters; freie Routine, weil TAtlasIdeTestExplorer am Mitgliederlimit ist.</summary>
-procedure ShowFailedRun(AExplorer: TAtlasIdeTestExplorer; const AProject: string);
+/// <summary>Text von AFileName: Puffer der IDE, sonst Platte.</summary>
+function ReadLinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
 begin
-  if (AExplorer = nil) or not TAtlasIdeSettings.Current.TestsWindowOnFailure or not TAtlasIdeTestExplorer.Wanted then
-  begin
-    Exit;
-  end;
-  // Das Fenster zeigt das Testprojekt des Laufs; ReadProjects behält es, solange es zur Gruppe gehört.
-  if AProject <> '' then
-  begin
-    AExplorer.FProject := AProject;
-  end;
-  AExplorer.Show(False);
+  Result := TAtlasIdeFiles.ReadLines(AFileName, ALines);
 end;
 
-function StatusOf(AExplorer: TAtlasIdeTestExplorer): string;
-var
-  mTotal, mPassed, mFailed, mNotRun: Integer;
-begin
-  case TAtlasTestExplorerChoice.Status(AExplorer.FTests.Busy, AExplorer.FProject, Length(AExplorer.FNodes)) of
-    TAtlasTestExplorerStatus.Running:
-      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning);
-    TAtlasTestExplorerStatus.NoProject:
-      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject);
-    TAtlasTestExplorerStatus.NoTests:
-      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(AExplorer.FProject)]);
-  else
-    TAtlasTestExplorer.Totals(AExplorer.FNodes, mTotal, mPassed, mFailed, mNotRun);
-    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
-  end;
-end;
+type
+  /// <summary>Gewählte Knoten als Serie (#1782); False ohne Auswahl.</summary>
+  TAtlasTestSeriesChoice = reference to function(AShuffle: Boolean; out AFileName: string;
+    out ASubject: TAtlasTestSeriesSubject; out ANames: TArray<string>): Boolean;
 
-{ Serien (#1782): freie Routinen, weil TAtlasIdeTestExplorer keine weiteren Mitglieder aufnimmt. }
-
-/// <summary>Gewählte Knoten des Fensters als Serie: Datei, Gegenstand und Namen (AShuffle: je Test bzw. Fall ein
-/// Name). False ohne Auswahl.</summary>
-function SeriesChoice(AExplorer: TAtlasIdeTestExplorer; AShuffle: Boolean; out AFileName: string;
-  out ASubject: TAtlasTestSeriesSubject; out ANames: TArray<string>): Boolean;
+/// <summary>Einträge des Kontextmenüs für Serien (#1782) über ASeries mit der Auswahl aus AChoice.</summary>
+function SeriesHandlers(ASeries: TAtlasIdeTestSeries; const AChoice: TAtlasTestSeriesChoice):
+  TAtlasTestsSeriesHandlers;
 var
-  mChosen: TArray<Integer>;
-  mNode: TAtlasTestNode;
+  mSeries: TAtlasIdeTestSeries;
+  mChoice: TAtlasTestSeriesChoice;
 begin
-  AFileName := '';
-  ASubject := Default(TAtlasTestSeriesSubject);
-  ANames := nil;
-  mChosen := AExplorer.Chosen;
-  Result := Length(mChosen) > 0;
-  if not Result then
-  begin
-    Exit;
-  end;
-  mNode := AExplorer.FNodes[mChosen[0]];
-  AFileName := mNode.FileName;
-  ASubject := TAtlasTestExplorerChoice.SubjectOf(AExplorer.FUnits[mNode.UnitIndex].Found, mNode);
-  if AShuffle then
-  begin
-    ANames := TAtlasTestExplorerChoice.ShuffleNames(AExplorer.FUnits, AExplorer.FNodes, mChosen);
-  end
-  else
-  begin
-    ANames := TAtlasTestExplorer.RunNames(AExplorer.FUnits, AExplorer.FNodes, mChosen);
-  end;
-end;
-
-function SeriesHandlers(AExplorer: TAtlasIdeTestExplorer): TAtlasTestsSeriesHandlers;
-var
-  mExplorer: TAtlasIdeTestExplorer;
-begin
-  mExplorer := AExplorer;
+  mSeries := ASeries;
+  mChoice := AChoice;
   Result := Default(TAtlasTestsSeriesHandlers);
   Result.OnRepeat :=
     procedure
@@ -266,9 +210,9 @@ begin
       mSubject: TAtlasTestSeriesSubject;
       mNames: TArray<string>;
     begin
-      if SeriesChoice(mExplorer, False, mFileName, mSubject, mNames) then
+      if mChoice(False, mFileName, mSubject, mNames) then
       begin
-        mExplorer.FSeries.RepeatNames(mFileName, mSubject, mNames);
+        mSeries.RepeatNames(mFileName, mSubject, mNames);
       end;
     end;
   Result.OnShuffle :=
@@ -278,22 +222,22 @@ begin
       mSubject: TAtlasTestSeriesSubject;
       mNames: TArray<string>;
     begin
-      if SeriesChoice(mExplorer, True, mFileName, mSubject, mNames) then
+      if mChoice(True, mFileName, mSubject, mNames) then
       begin
-        mExplorer.FSeries.ShuffleNames(mFileName, mSubject, mNames);
+        mSeries.ShuffleNames(mFileName, mSubject, mNames);
       end;
     end;
-  Result.OnShuffleAgain := mExplorer.FSeries.ShuffleAgain;
-  Result.OnCancel := mExplorer.FSeries.Cancel;
+  Result.OnShuffleAgain := mSeries.ShuffleAgain;
+  Result.OnCancel := mSeries.Cancel;
   Result.Running :=
     function: Boolean
     begin
-      Result := mExplorer.FSeries.Running;
+      Result := mSeries.Running;
     end;
   Result.CanShuffleAgain :=
     function: Boolean
     begin
-      Result := mExplorer.FSeries.CanShuffleAgain;
+      Result := mSeries.CanShuffleAgain;
     end;
 end;
 
@@ -309,13 +253,9 @@ begin
   FQueries := AQueries;
   FNext := ANext;
   FResults := TDictionary<string, TProjectRun>.Create;
-  FScanned := TDictionary<string, TScanned>.Create;
+  FScans := TAtlasTestUnitScans.Create(ReadLinesOf, nil);
   FLogs := TAtlasIdeTestLogs.Create;
-  FDirty := True;
-  FTimer := TTimer.Create(nil);
-  FTimer.Enabled := False;
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
+  FTicker := TAtlasIdeTestExplorerTicker.Create(FTests, Reload, ShowBusy);
   // Testlisten (#2167): Stand für Palette, Taste und Reiter; ohne gezeigtes Fenster liest es neu, das Fenster
   // zieht beim nächsten Takt nach.
   if Lists <> nil then
@@ -329,7 +269,7 @@ begin
         begin
           ReadUnits;
           FNodes := TAtlasTestExplorer.Build(FUnits, StatusInput(FProject).Cases);
-          FDirty := True;
+          FTicker.MarkDirty;
         end;
         Result.Project := FProject;
         Result.Units := FUnits;
@@ -351,7 +291,7 @@ end;
 destructor TAtlasIdeTestExplorer.Destroy;
 begin
   // Erst der Zeitgeber, dann das Fenster: Danach erreicht nichts mehr dieses Objekt.
-  FreeAndNil(FTimer);
+  FreeAndNil(FTicker);
   if Lists <> nil then
   begin
     Lists.Connect(nil, nil);
@@ -364,42 +304,11 @@ begin
   end;
   TAtlasIdeTestsExplorerWindow.Release;
   FResults.Free;
-  FScanned.Free;
+  FScans.Free;
   FLogs.Free;
   FQueries := Default(TAtlasTestStateQueries);
   FNext := nil;
   inherited;
-end;
-
-procedure TAtlasIdeTestExplorer.Tick(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.Build,
-    procedure
-    var
-      mFrame: TAtlasTestsExplorerFrame;
-    begin
-      mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-      if mFrame = nil then
-      begin
-        FTimer.Enabled := False;
-        Exit;
-      end;
-      if not TAtlasIdeTestsExplorerWindow.Visible then
-      begin
-        Exit;
-      end;
-      if FDirty then
-      begin
-        Reload;
-      end
-      else if (FBusy <> FTests.Busy) or (FVersion <> FTests.Version) then
-      begin
-        FBusy := FTests.Busy;
-        FVersion := FTests.Version;
-        mFrame.SetBusy(FBusy);
-        mFrame.SetStatus(StatusOf(Self));
-      end;
-    end);
 end;
 
 procedure TAtlasIdeTestExplorer.Wire(AFrame: TAtlasTestsExplorerFrame);
@@ -413,7 +322,7 @@ begin
   mHandlers.OnRefresh :=
     procedure
     begin
-      FScanned.Clear;
+      FScans.Clear;
       Reload;
     end;
   mHandlers.OnFilter := ShowRows;
@@ -429,12 +338,12 @@ begin
   AFrame.SetHandlers(mHandlers);
   // Serien (#1782) im Kontextmenü des Baums.
   TAtlasTestsSeriesMenu.Detach(AFrame.Tree);
-  TAtlasTestsSeriesMenu.Attach(AFrame.Tree, SeriesHandlers(Self));
+  TAtlasTestsSeriesMenu.Attach(AFrame.Tree, SeriesHandlers(FSeries, SeriesChoice));
   if Lists <> nil then
   begin
     Lists.Wire(AFrame);
   end;
-  FTimer.Enabled := True;
+  FTicker.Start;
   Reload;
 end;
 
@@ -445,9 +354,9 @@ var
   mProject: string;
 begin
   mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
-  FDirty := False;
   if mFrame = nil then
   begin
+    FTicker.Synced;
     Exit;
   end;
   ReadProjects;
@@ -463,9 +372,7 @@ begin
   begin
     Lists.Refresh(FProject);
   end;
-  FBusy := FTests.Busy;
-  FVersion := FTests.Version;
-  mFrame.SetBusy(FBusy);
+  mFrame.SetBusy(FTicker.Synced);
   ShowRows;
 end;
 
@@ -492,7 +399,7 @@ var
   mProject: IOTAProject;
   mIndex: Integer;
   mFileName: string;
-  mScanned: TScanned;
+  mScanned: TAtlasTestUnitScan;
   mInput: TAtlasTestUnitInput;
   mRef: TAtlasTestUnitRef;
   mState: TAtlasTestUnitState;
@@ -514,7 +421,7 @@ begin
     mRef.UnitName := ProjectName(mFileName);
     mRef.FileName := mFileName;
     FRefs := FRefs + [mRef];
-    mScanned := ScanFile(mFileName);
+    mScanned := FScans.Scan(mFileName);
     if not mScanned.IsTest then
     begin
       Continue;
@@ -529,32 +436,33 @@ begin
   end;
 end;
 
-function TAtlasIdeTestExplorer.ScanFile(const AFileName: string): TScanned;
+function TAtlasIdeTestExplorer.StatusText: string;
 var
-  mAge: TDateTime;
+  mTotal, mPassed, mFailed, mNotRun: Integer;
 begin
-  mAge := 0;
-  if FileExists(AFileName) then
-  begin
-    mAge := TFile.GetLastWriteTime(AFileName);
+  case TAtlasTestExplorerChoice.Status(FTests.Busy, FProject, Length(FNodes)) of
+    TAtlasTestExplorerStatus.Running:
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.TestsLensRunning);
+    TAtlasTestExplorerStatus.NoProject:
+      Result := TAtlasTestsStrings.Text(TAtlasTestsTextId.ExplorerNoProject);
+    TAtlasTestExplorerStatus.NoTests:
+      Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerNoTests, [ProjectName(FProject)]);
+  else
+    TAtlasTestExplorer.Totals(FNodes, mTotal, mPassed, mFailed, mNotRun);
+    Result := TAtlasTestsStrings.Fmt(TAtlasTestsTextId.ExplorerSummary, [mTotal, mPassed, mFailed, mNotRun]);
   end;
-  if FScanned.TryGetValue(KeyOf(AFileName), Result) and (Result.Age = mAge) then
+end;
+
+procedure TAtlasIdeTestExplorer.ShowBusy(ABusy: Boolean);
+var
+  mFrame: TAtlasTestsExplorerFrame;
+begin
+  mFrame := TAtlasIdeTestsExplorerWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Exit;
+    mFrame.SetBusy(ABusy);
+    mFrame.SetStatus(StatusText);
   end;
-  Result := Default(TScanned);
-  Result.Age := mAge;
-  if TAtlasIdeFiles.ReadLines(AFileName, Result.Lines) and TDUnitXSource.UsesDUnitX(Result.Lines) then
-  begin
-    Result.Found := TDUnitXSource.Scan(Result.Lines);
-    Result.IsTest := Length(Result.Found.Fixtures) > 0;
-  end;
-  if not Result.IsTest then
-  begin
-    // Nur Testunits behalten ihren Text (veraltete Tests); andere Units merken sich nur die Zeit.
-    Result.Lines := nil;
-  end;
-  FScanned.AddOrSetValue(KeyOf(AFileName), Result);
 end;
 
 procedure TAtlasIdeTestExplorer.ShowRows;
@@ -578,7 +486,7 @@ begin
     // Im Reiter einer Testliste (#2167) nur deren Tests.
     mVisible := Lists.Filter(mFrame, FUnits, FNodes, mVisible);
   end;
-  mFrame.SetRows(TAtlasTestExplorer.Rows(FNodes, mVisible, mTexts), StatusOf(Self));
+  mFrame.SetRows(TAtlasTestExplorer.Rows(FNodes, mVisible, mTexts), StatusText);
   Selected(mFrame.FocusedNode);
 end;
 
@@ -641,6 +549,34 @@ begin
   end;
 end;
 
+function TAtlasIdeTestExplorer.SeriesChoice(AShuffle: Boolean; out AFileName: string;
+  out ASubject: TAtlasTestSeriesSubject; out ANames: TArray<string>): Boolean;
+var
+  mChosen: TArray<Integer>;
+  mNode: TAtlasTestNode;
+begin
+  AFileName := '';
+  ASubject := Default(TAtlasTestSeriesSubject);
+  ANames := nil;
+  mChosen := Chosen;
+  Result := Length(mChosen) > 0;
+  if not Result then
+  begin
+    Exit;
+  end;
+  mNode := FNodes[mChosen[0]];
+  AFileName := mNode.FileName;
+  ASubject := TAtlasTestExplorerChoice.SubjectOf(FUnits[mNode.UnitIndex].Found, mNode);
+  if AShuffle then
+  begin
+    ANames := TAtlasTestExplorerChoice.ShuffleNames(FUnits, FNodes, mChosen);
+  end
+  else
+  begin
+    ANames := TAtlasTestExplorer.RunNames(FUnits, FNodes, mChosen);
+  end;
+end;
+
 function TAtlasIdeTestExplorer.Chosen: TArray<Integer>;
 var
   mFrame: TAtlasTestsExplorerFrame;
@@ -678,7 +614,7 @@ begin
   FResults.AddOrSetValue(mKey, mRun);
   FLogs.Remember(ATarget.Project, ARun);
   // Der Lauf kann Testunits geändert haben (Vergleichsdateien, Fälle aus der Tabelle): beim nächsten Takt neu.
-  FDirty := True;
+  FTicker.MarkDirty;
   if Assigned(FNext) then
   begin
     FNext(ATarget, ARun);
@@ -747,10 +683,9 @@ end;
 
 procedure TAtlasIdeTestExplorer.FileSaved(const AFileName: string);
 begin
-  if FScanned.ContainsKey(KeyOf(AFileName)) then
+  if FScans.Forget(AFileName) then
   begin
-    FScanned.Remove(KeyOf(AFileName));
-    FDirty := True;
+    FTicker.MarkDirty;
   end;
 end;
 
@@ -766,7 +701,7 @@ begin
   mFrame := TAtlasIdeTestsExplorerWindow.Show;
   if mFrame <> nil then
   begin
-    FTimer.Enabled := True;
+    FTicker.Start;
     Reload;
     if AFlakyOnly then
     begin
@@ -780,7 +715,7 @@ begin
   if not Wanted then
   begin
     TAtlasIdeTestsExplorerWindow.Hide;
-    FTimer.Enabled := False;
+    FTicker.Stop;
   end;
 end;
 
@@ -807,6 +742,20 @@ begin
     Exit;
   end;
   Result.Stale := TAtlasTestExplorerChoice.StaleCount(FNodes);
+end;
+
+procedure TAtlasIdeTestExplorer.ShowFailedRun(const AProject: string);
+begin
+  if not TAtlasIdeSettings.Current.TestsWindowOnFailure or not Wanted then
+  begin
+    Exit;
+  end;
+  // Das Fenster zeigt das Testprojekt des Laufs; ReadProjects behält es, solange es zur Gruppe gehört.
+  if AProject <> '' then
+  begin
+    FProject := AProject;
+  end;
+  Show(False);
 end;
 
 end.

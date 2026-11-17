@@ -94,7 +94,7 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
@@ -228,7 +228,7 @@ var
   mFront: TAtlasColor;
   mSize: TSize;
 begin
-  mMode := TAtlasIdeSettings.InlineDiagnosticsMode;
+  mMode := TAtlasIdeEditorSettings.InlineDiagnosticsMode;
   if (mMode = TAtlasInlineDiagnosticsMode.Off) or
     not TAtlasInlineDiagnostics.Pick(AProblems, ALine, mMode, mFound) then
   begin
@@ -412,7 +412,7 @@ begin
     end;
     mProblems := FStore.OnLine(Context.FileName, mSource);
     // Einstellung erst hier, ohne Kopie des Einstellungsrecords: die meisten Zeilen haben keine Probleme.
-    if (Length(mProblems) > 0) and TAtlasIdeSettings.ProblemMarksOn and
+    if (Length(mProblems) > 0) and TAtlasIdeEditorSettings.ProblemMarksOn and
       LineToPaint(Context, mSource, mText, mTabWidth, mBusy) then
     begin
       PaintMarks(Rect, Context, mProblems, mSource, mText, mTabWidth);
@@ -435,7 +435,7 @@ var
   mFileName: string;
 begin
   Result := nil;
-  if not TAtlasIdeSettings.TrackLinesOn or (AContext.EditView = nil) then
+  if not TAtlasIdeEditorSettings.TrackLinesOn or (AContext.EditView = nil) then
   begin
     Exit;
   end;

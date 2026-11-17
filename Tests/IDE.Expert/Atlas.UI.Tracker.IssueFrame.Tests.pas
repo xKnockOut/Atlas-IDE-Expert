@@ -8,7 +8,8 @@
 // Fortschritt, Zustand und Knöpfen zum Anlegen und Verknüpfen (#1279);
 // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen, „Punkt
 // hinzufügen …“, nur lesbar, abgeschaltet; Reiter „Details“ und „Entwicklung“
-// mit Schalter (#1269).
+// mit Schalter (#1269); Teile des Frames: Ablage im Bildlauf (Reihenfolge,
+// Karten, Leeren) und Wünsche nach dem Klick (Reihenfolge, nur einmal).
 
 interface
 
@@ -61,6 +62,14 @@ type
     /// <summary>#2126: „Prüfen …“ nur mit CanReview und Issue, meldet OnReview.</summary>
     [Test]
     procedure ReviewButton;
+    /// <summary>Ablage: untereinander in Anlegereihenfolge, Teile einer Karte in der Karte, Clear gibt alles frei.
+    /// </summary>
+    [Test]
+    procedure LayoutPlacesInOrderAndClears;
+    /// <summary>Wünsche nach dem Klick: erst Neuaufbau, dann Link, Kästchen, „Punkt hinzufügen …“; je nur einmal.
+    /// </summary>
+    [Test]
+    procedure DeferredRunsInOrderOnce;
   end;
 
 implementation
@@ -70,12 +79,15 @@ uses
   System.SysUtils,
   Vcl.Forms,
   Vcl.ComCtrls,
+  Vcl.StdCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueBoxes,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.IssueFrame.Contract;
+  Atlas.UI.Tracker.IssueFrame.Contract,
+  Atlas.UI.Tracker.IssueFrame.Layout,
+  Atlas.UI.Tracker.IssueFrame.Deferred;
 
 const
   cNow = 46323.5;
@@ -684,5 +696,91 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasIssueFrameTests);
+
+procedure TAtlasIssueFrameTests.LayoutPlacesInOrderAndClears;
+var
+  mHost: TForm;
+  mBox: TScrollBox;
+  mLayout: TAtlasIssueLayout;
+  mCard: TAtlasIssueCard;
+  mInside, mBelow: TLabel;
+begin
+  mHost := TForm.CreateNew(nil);
+  mLayout := nil;
+  try
+    mBox := TScrollBox.Create(mHost);
+    mBox.Parent := mHost;
+    mLayout := TAtlasIssueLayout.Create(mHost, mBox, nil);
+    mLayout.AddSection('Abschnitt');
+    mCard := mLayout.BeginCard(0.1);
+    mInside := mLayout.AddText('in der Karte', False);
+    Assert.AreEqual(Int64(mCard.Fill), Int64(mLayout.ContentColors.Surface), 'in der Karte deren Fläche');
+    mLayout.EndCard;
+    mBelow := mLayout.AddText('darunter', True);
+    Assert.AreEqual(3, mBox.ControlCount, 'Überschrift, Karte, Text');
+    Assert.AreSame(mCard, mInside.Parent);
+    Assert.AreSame(mBox, mBelow.Parent);
+    Assert.IsTrue(mBelow.Top > mCard.Top, 'in der Reihenfolge des Anlegens');
+    Assert.AreEqual(Int64(mLayout.Colors.Surface), Int64(mLayout.ContentColors.Surface),
+      'nach der Karte wieder der Bildlauf');
+    mLayout.Clear;
+    Assert.AreEqual(0, mBox.ControlCount, 'alles frei');
+  finally
+    mLayout.Free;
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.DeferredRunsInOrderOnce;
+var
+  mHost: TForm;
+  mDeferred: TAtlasIssueDeferred;
+  mEvents: TAtlasIssueFrameEvents;
+  mLink: TAtlasTrackerLink;
+  mLog: string;
+  mRebuild: TProc;
+begin
+  mLog := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    // Ohne Fenster bleibt die Nachricht aus; Run führt aus, was gemerkt ist.
+    mDeferred := TAtlasIssueDeferred.Create(mHost, cWM_ATLAS_ISSUE_DEFERRED);
+    mEvents := Default(TAtlasIssueFrameEvents);
+    mEvents.OpenLink :=
+      procedure(ALink: TAtlasTrackerLink)
+      begin
+        mLog := mLog + 'Link ' + ALink.Key + ';';
+      end;
+    mEvents.ToggleTask :=
+      procedure(AIndex: Integer)
+      begin
+        mLog := mLog + 'Kästchen ' + IntToStr(AIndex) + ';';
+      end;
+    mEvents.AddTask :=
+      procedure
+      begin
+        mLog := mLog + 'Punkt;';
+      end;
+    mRebuild :=
+      procedure
+      begin
+        mLog := mLog + 'Neuaufbau;';
+      end;
+    mLink := Default(TAtlasTrackerLink);
+    mLink.Key := 'ATL-7';
+    mDeferred.AddTask;
+    mDeferred.ToggleTask(2);
+    mDeferred.OpenLink(mLink);
+    mDeferred.Rebuild;
+    mDeferred.Run(mEvents, mRebuild);
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;', mLog);
+    mDeferred.Run(mEvents, mRebuild);
+    Assert.AreEqual('Neuaufbau;Link ATL-7;Kästchen 2;Punkt;', mLog, 'nur einmal');
+  finally
+    mHost.Free;
+    mEvents := Default(TAtlasIssueFrameEvents);
+    mRebuild := nil;
+  end;
+end;
 
 end.

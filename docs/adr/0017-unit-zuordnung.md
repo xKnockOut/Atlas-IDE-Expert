@@ -206,6 +206,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LineMove` | `Core/Editor/Atlas.Core.Editor.LineMove.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LineTail` | `Core/Editor/Atlas.Core.Editor.LineTail.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LinkedEditing` | `Core/Editor/Atlas.Core.Editor.LinkedEditing.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.EditSurface` | `Core/Editor/Atlas.Core.Editor.EditSurface.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.LinkedSession` | `Core/Editor/Atlas.Core.Editor.LinkedSession.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.MultiCursorSession` | `Core/Editor/Atlas.Core.Editor.MultiCursorSession.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Match` | `Core/Editor/Atlas.Core.Editor.Match.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodPlacement` | `Core/Editor/Atlas.Core.Editor.MethodPlacement.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MultiCursorKeys` | `Core/Editor/Atlas.Core.Editor.MultiCursorKeys.pas` | Ordner `Core/Editor` |
@@ -604,6 +607,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.LineMove` | `IDE/Editor/Atlas.IDE.Editor.LineMove.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditing` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditing.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.EditSurface` | `IDE/Editor/Atlas.IDE.Editor.EditSurface.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodKind` | `IDE/Editor/Atlas.IDE.Editor.MethodKind.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodPlacement` | `IDE/Editor/Atlas.IDE.Editor.MethodPlacement.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.RegionFolds` | `IDE/Editor/Atlas.IDE.Editor.RegionFolds.pas` | Ordner `IDE/Editor` |
@@ -616,7 +620,6 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.MoveClass` | `IDE/Editor/Atlas.IDE.Editor.MoveClass.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MoveMember` | `IDE/Editor/Atlas.IDE.Editor.MoveMember.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MultiCursor` | `IDE/Editor/Atlas.IDE.Editor.MultiCursor.pas` | Ordner `IDE/Editor` |
-| `Atlas.IDE.Editor.MultiCursorState` | `IDE/Editor/Atlas.IDE.Editor.MultiCursorState.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.NamedRefactoring` | `IDE/Editor/Atlas.IDE.Editor.NamedRefactoring.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.NavHistory` | `IDE/Editor/Atlas.IDE.Editor.NavHistory.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MouseButtons` | `IDE/Editor/Atlas.IDE.Editor.MouseButtons.pas` | Ordner `IDE/Editor`; Maustasten Zurück/Vor (#1889) |
@@ -649,6 +652,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Files.DirtyExport` | `IDE/Files/Atlas.IDE.Files.DirtyExport.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Files.Reloader` | `IDE/Files/Atlas.IDE.Files.Reloader.pas` | Ordner `IDE/Files` |
 | `Atlas.IDE.Forms.Designer` | `IDE/Forms/Atlas.IDE.Forms.Designer.pas` | Ordner `IDE/Forms` |
+| `Atlas.IDE.Foundation.Caret` | `IDE/Foundation/Atlas.IDE.Foundation.Caret.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.CodeView` | `IDE/Foundation/Atlas.IDE.Foundation.CodeView.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.DesignerView` | `IDE/Foundation/Atlas.IDE.Foundation.DesignerView.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.DockWindow` | `IDE/Foundation/Atlas.IDE.Foundation.DockWindow.pas` | Ordner `IDE/Foundation` |
@@ -673,6 +677,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ResultsWindow` | `IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Settings` | `IDE/Foundation/Atlas.IDE.Foundation.Settings.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorSettings` | `IDE/Foundation/Atlas.IDE.Foundation.EditorSettings.pas` | Ordner `IDE/Foundation`; Schalter des Editors aus den wirksamen Einstellungen |
 | `Atlas.IDE.Foundation.StartOptions` | `IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas` | Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455 |
 | `Atlas.IDE.Foundation.StructureSwitch` | `IDE/Foundation/Atlas.IDE.Foundation.StructureSwitch.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Symbol` | `IDE/Foundation/Atlas.IDE.Foundation.Symbol.pas` | Ordner `IDE/Foundation` |
@@ -961,6 +966,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.DataBreakpoint` | `Core/Debug/Atlas.Core.Debug.DataBreakpoint.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBanner` | `Core/Debug/Atlas.Core.Debug.ExceptionBanner.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionBarFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionBarFlow.pas` | Exception-Leiste: Warten auf die Anzeige, Tasten, abgedeckter Halt, Ort ignorieren, #1967 |
+| `Atlas.Core.Debug.ExceptionBarLayout` | `Core/Debug/Atlas.Core.Debug.ExceptionBarLayout.pas` | Exception-Leiste: Zeilen, Höhe, Lage der Knöpfe und der Ortszeile |
 | `Atlas.Core.Debug.ExceptionDialog` | `Core/Debug/Atlas.Core.Debug.ExceptionDialog.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.ExceptionDialogFlow` | `Core/Debug/Atlas.Core.Debug.ExceptionDialogFlow.pas` | Entscheidungen beim Exception-Dialog der IDE ohne IDE (Formulare, Ausblenden, Ablauf, Knöpfe), #1967 |
 | `Atlas.Core.Debug.Modules` | `Core/Debug/Atlas.Core.Debug.Modules.pas` | Ordner `Core/Debug` |
@@ -1084,6 +1090,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.Variables` | `IDE/Debug/Atlas.IDE.Debug.Variables.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesLists` | `IDE/Debug/Atlas.IDE.Debug.VariablesLists.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesStore` | `IDE/Debug/Atlas.IDE.Debug.VariablesStore.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.VariablesWatches` | `IDE/Debug/Atlas.IDE.Debug.VariablesWatches.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.VariablesWindow` | `IDE/Debug/Atlas.IDE.Debug.VariablesWindow.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Visualizers` | `IDE/Debug/Atlas.IDE.Debug.Visualizers.pas` | Ordner `IDE/Debug` |
 | `Atlas.UI.Debug.AccessViolation` | `UI/Debug/Atlas.UI.Debug.AccessViolation.pas` | Ordner `UI/Debug` |
@@ -1101,10 +1108,15 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.AsyncOrigin` | `UI/Debug/Atlas.UI.Debug.AsyncOrigin.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateFrame` | `UI/Debug/Atlas.UI.Debug.EvaluateFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EvaluateTree` | `UI/Debug/Atlas.UI.Debug.EvaluateTree.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.EvaluatePanels` | `UI/Debug/Atlas.UI.Debug.EvaluatePanels.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.EvaluateTreeView` | `UI/Debug/Atlas.UI.Debug.EvaluateTreeView.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.VariablesParts` | `UI/Debug/Atlas.UI.Debug.VariablesParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventBreak` | `UI/Debug/Atlas.UI.Debug.EventBreak.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionBar` | `UI/Debug/Atlas.UI.Debug.ExceptionBar.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionBarPainter` | `UI/Debug/Atlas.UI.Debug.ExceptionBarPainter.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionStack` | `UI/Debug/Atlas.UI.Debug.ExceptionStack.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ExceptionsFrame` | `UI/Debug/Atlas.UI.Debug.ExceptionsFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ExceptionsParts` | `UI/Debug/Atlas.UI.Debug.ExceptionsParts.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.ParallelStacksFrame` | `UI/Debug/Atlas.UI.Debug.ParallelStacksFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.CallStackFrame` | `UI/Debug/Atlas.UI.Debug.CallStackFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.LeaksFrame` | `UI/Debug/Atlas.UI.Debug.LeaksFrame.pas` | Inhalt des Fensters „Atlas-Lecks“, #1875 |
@@ -1116,6 +1128,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.MethodBreakpoints` | `UI/Debug/Atlas.UI.Debug.MethodBreakpoints.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.SettingsSection` | `UI/Debug/Atlas.UI.Debug.SettingsSection.pas` | Ordner `UI/Debug`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Debug.StepFilterFrame` | `UI/Debug/Atlas.UI.Debug.StepFilterFrame.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.StepFilterPatterns` | `UI/Debug/Atlas.UI.Debug.StepFilterPatterns.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.StepInto` | `UI/Debug/Atlas.UI.Debug.StepInto.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.Settings.Strings` | `UI/Debug/Atlas.UI.Debug.Settings.Strings.pas` | Texte des Debuggers: Einstellungsseite, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Commands.Strings` | `UI/Debug/Atlas.UI.Debug.Commands.Strings.pas` | Texte des Debuggers: Befehlsnamen und Menügruppen, Sprache von Base, #1455 |
@@ -1140,6 +1153,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.VariablesFrame` | `UI/Debug/Atlas.UI.Debug.VariablesFrame.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.VariablesStrings` | `UI/Debug/Atlas.UI.Debug.VariablesStrings.pas` | Texte des Fensters „Variablen“ (Debugger), Sprache von Base, #853 |
 | `Atlas.UI.Debug.Viewer` | `UI/Debug/Atlas.UI.Debug.Viewer.pas` | Ordner `UI/Debug` |
+| `Atlas.UI.Debug.ViewerImage` | `UI/Debug/Atlas.UI.Debug.ViewerImage.pas` | Ordner `UI/Debug` |
 | `Atlas.Core.Debug.EventLog` | `Core/Debug/Atlas.Core.Debug.EventLog.pas` | Ereignisprotokoll ohne IDE: Arten, Filter, Farben, Sprungziele, #580 |
 | `Atlas.Core.Debug.EventLogFlow` | `Core/Debug/Atlas.Core.Debug.EventLogFlow.pas` | Entscheidungen des Ereignisprotokolls ohne IDE (Fensterzeilen, Logpunkte, Symbol, Zeit, Dateiname), #1967 |
 | `Atlas.Core.Debug.LeakCapture` | `Core/Debug/Atlas.Core.Debug.LeakCapture.pas` | Leckbericht am Ende einer Debug-Sitzung ohne IDE: Meldungsfenster, FastMM-Logdatei, Wahl, Vergleich mit dem letzten Lauf, #1875 |
@@ -1192,11 +1206,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Attach` | `Core/Tracker/Atlas.Core.Tracker.Attach.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.BlameLinks` | `Core/Tracker/Atlas.Core.Tracker.BlameLinks.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Board` | `Core/Tracker/Atlas.Core.Tracker.Board.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.BoardLayout` | `Core/Tracker/Atlas.Core.Tracker.BoardLayout.pas` | Ordner `Core/Tracker`, Anordnung des Boards ohne Fenster |
 | `Atlas.Core.Tracker.BoardLanes` | `Core/Tracker/Atlas.Core.Tracker.BoardLanes.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.FlowMap` | `Core/Tracker/Atlas.Core.Tracker.FlowMap.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackFlow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackFlow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Checklist` | `Core/Tracker/Atlas.Core.Tracker.Checklist.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CodeLinks` | `Core/Tracker/Atlas.Core.Tracker.CodeLinks.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.CommentKeyPlan` | `Core/Tracker/Atlas.Core.Tracker.CommentKeyPlan.pas` | Ordner `Core/Tracker`, Tasten des Kommentarfelds |
 | `Atlas.Core.Tracker.CommentEditor` | `Core/Tracker/Atlas.Core.Tracker.CommentEditor.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.CommitHook` | `Core/Tracker/Atlas.Core.Tracker.CommitHook.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Connections` | `Core/Tracker/Atlas.Core.Tracker.Connections.pas` | Ordner `Core/Tracker` |
@@ -1243,6 +1259,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TestResults` | `Core/Tracker/Atlas.Core.Tracker.TestResults.pas` | Ordner `Core/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.TimeStore` | `Core/Tracker/Atlas.Core.Tracker.TimeStore.pas` | Ordner `Core/Tracker`; Ablage der erfassten Zeit in time.json |
 | `Atlas.Core.Tracker.TimeLog` | `Core/Tracker/Atlas.Core.Tracker.TimeLog.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Workflow` | `Core/Tracker/Atlas.Core.Tracker.Workflow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackWorkflow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackWorkflow.pas` | Ordner `Core/Tracker` |
@@ -1272,6 +1289,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.BlameLinks` | `IDE/Tracker/Atlas.IDE.Tracker.BlameLinks.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.BlameScope` | `IDE/Tracker/Atlas.IDE.Tracker.BlameScope.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.Board` | `IDE/Tracker/Atlas.IDE.Tracker.Board.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.BoardLoad` | `IDE/Tracker/Atlas.IDE.Tracker.BoardLoad.pas` | Ordner `IDE/Tracker`, Laden des Fensters „Atlas-Board“ |
+| `Atlas.IDE.Tracker.BoardMove` | `IDE/Tracker/Atlas.IDE.Tracker.BoardMove.pas` | Ordner `IDE/Tracker`, Verschieben im Fenster „Atlas-Board“ |
 | `Atlas.IDE.Tracker.BoardWindow` | `IDE/Tracker/Atlas.IDE.Tracker.BoardWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowMap` | `IDE/Tracker/Atlas.IDE.Tracker.FlowMap.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.FlowWindow` | `IDE/Tracker/Atlas.IDE.Tracker.FlowWindow.pas` | Ordner `IDE/Tracker` |
@@ -1287,6 +1306,8 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.IssueMedia` | `IDE/Tracker/Atlas.IDE.Tracker.IssueMedia.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssueComments` | `IDE/Tracker/Atlas.IDE.Tracker.IssueComments.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.IssuePreview` | `IDE/Tracker/Atlas.IDE.Tracker.IssuePreview.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.IssueParts` | `IDE/Tracker/Atlas.IDE.Tracker.IssueParts.pas` | Ordner `IDE/Tracker`, Teile des Fensters „Atlas-Issue“ |
+| `Atlas.IDE.Tracker.IssueLoad` | `IDE/Tracker/Atlas.IDE.Tracker.IssueLoad.pas` | Ordner `IDE/Tracker`, Laden des Issues im Fenster „Atlas-Issue“ |
 | `Atlas.IDE.Tracker.IssueWindow` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWindow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.MyIssues` | `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas` | Ordner `IDE/Tracker`, Kachel aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.IssuesContext` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesContext.pas` | Ordner `IDE/Tracker`, gemeinsamer Stand von „Meine Issues“, #1455 |
@@ -1297,6 +1318,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.SuggestDialog` | `UI/Tracker/Atlas.UI.Tracker.SuggestDialog.pas` | Ordner `UI/Tracker`, Dialog Arbeitskopien vorschlagen, #1929 |
 | `Atlas.UI.Tracker.ProjectPicker` | `UI/Tracker/Atlas.UI.Tracker.ProjectPicker.pas` | Ordner `UI/Tracker`, Klappliste Tracker-Projekt in Meine Issues, #1927 |
 | `Atlas.IDE.Tracker.IssuesServices` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesServices.pas` | Ordner `IDE/Tracker`, Dienste von „Meine Issues“, #1455 |
+| `Atlas.IDE.Tracker.IssuesTracking` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesTracking.pas` | Ordner `IDE/Tracker`, Arbeit am aktuellen Issue in „Meine Issues“ |
 | `Atlas.IDE.Tracker.IssueCommands` | `IDE/Tracker/Atlas.IDE.Tracker.IssueCommands.pas` | Ordner `IDE/Tracker`, Befehle von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesStatus` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesStatus.pas` | Ordner `IDE/Tracker`, Statusfeld und Titel von „Meine Issues“, #1455 |
 | `Atlas.IDE.Tracker.IssuesQuery` | `IDE/Tracker/Atlas.IDE.Tracker.IssuesQuery.pas` | Ordner `IDE/Tracker`, Abfrage von „Meine Issues“, #1455 |
@@ -1311,6 +1333,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Review` | `IDE/Tracker/Atlas.IDE.Tracker.Review.pas` | Ordner `IDE/Tracker`, „Prüfen“, #2126 |
 | `Atlas.IDE.Tracker.IssueWorkLink` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWorkLink.pas` | Ordner `IDE/Tracker`, Arbeitsstand bei „Beginnen“, „Beenden“, „Prüfen“ |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.PaletteSearchFetch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearchFetch.pas` | Ordner `IDE/Tracker`, Abfrage der Palettensuche beim Tracker |
 | `Atlas.IDE.Tracker.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Parts.pas` | Teile, Befehle und Menü des Moduls; die Komposition meldet nur an und baut die Adapter, #1455 |
 | `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.SettingsBranches` | `UI/Tracker/Atlas.UI.Tracker.SettingsBranches.pas` | Unterpunkt „Versionsverwaltung“ des Issue-Trackers, nur mit Versionsverwaltung (#1903) |
@@ -1319,10 +1342,13 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas` | Ordner `IDE/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Tiles.pas` | Kacheln „Meine Issues“ und „Sprint“ (`IAtlasWelcomeTile`), #1455 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.TimeBooking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeBooking.pas` | Ordner `IDE/Tracker`, erfasste Zeit buchen |
 | `Atlas.IDE.Tracker.IssueState` | `IDE/Tracker/Atlas.IDE.Tracker.IssueState.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.WelcomeLink` | `IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas` | Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455 |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.AttachDialog` | `UI/Tracker/Atlas.UI.Tracker.AttachDialog.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.BoardPainter` | `UI/Tracker/Atlas.UI.Tracker.BoardPainter.pas` | Ordner `UI/Tracker`, Zeichnen des Boards |
+| `Atlas.UI.Tracker.AttachSources` | `UI/Tracker/Atlas.UI.Tracker.AttachSources.pas` | Ordner `UI/Tracker`, Gruppe „Was anhängen?“ des Dialogs „An Issue anhängen“ |
 | `Atlas.UI.Tracker.BoardFrame` | `UI/Tracker/Atlas.UI.Tracker.BoardFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.FlowFrame` | `UI/Tracker/Atlas.UI.Tracker.FlowFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.Capture` | `UI/Tracker/Atlas.UI.Tracker.Capture.pas` | Ordner `UI/Tracker` |
@@ -1339,6 +1365,10 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Tracker.IssueBoxes` | `UI/Tracker/Atlas.UI.Tracker.IssueBoxes.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.IssueFrame.Contract` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Contract.pas` | Ordner `UI/Tracker` |
+| `Atlas.UI.Tracker.IssueFrame.Chrome` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Chrome.pas` | Ordner `UI/Tracker`, feste Steuerelemente des Issue-Fensters |
+| `Atlas.UI.Tracker.IssueFrame.Layout` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Layout.pas` | Ordner `UI/Tracker`, Ablage des Inhalts im Bildlauf |
+| `Atlas.UI.Tracker.IssueFrame.Sections` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Sections.pas` | Ordner `UI/Tracker`, Abschnitte des gezeigten Issues |
+| `Atlas.UI.Tracker.IssueFrame.Deferred` | `UI/Tracker/Atlas.UI.Tracker.IssueFrame.Deferred.pas` | Ordner `UI/Tracker`, Wünsche nach dem Klick |
 | `Atlas.UI.Tracker.IssueTip` | `UI/Tracker/Atlas.UI.Tracker.IssueTip.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.LinkDialogs` | `UI/Tracker/Atlas.UI.Tracker.LinkDialogs.pas` | Ordner `UI/Tracker` |
 | `Atlas.UI.Tracker.MoveDialog` | `UI/Tracker/Atlas.UI.Tracker.MoveDialog.pas` | Ordner `UI/Tracker` |
@@ -1395,6 +1425,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Layouts` | `Core/Welcome/Atlas.Core.Welcome.Layouts.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Projects` | `Core/Welcome/Atlas.Core.Welcome.Projects.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.QuickActions` | `Core/Welcome/Atlas.Core.Welcome.QuickActions.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.QuickActionRuns` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRuns.pas` | Ordner `Core/Welcome`; Stand der Schnellaktionen je Projekt |
+| `Atlas.Core.Welcome.QuickActionRows` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRows.pas` | Ordner `Core/Welcome`; Zeilen und Auswahl der Knopfleiste mit Schnellaktionen |
+| `Atlas.Core.Welcome.ContinueQueries` | `Core/Welcome/Atlas.Core.Welcome.ContinueQueries.pas` | Ordner `Core/Welcome`; Stand der HEAD- und Commit-Abfragen von „Weiterarbeiten“ |
 | `Atlas.Core.Welcome.Saved` | `Core/Welcome/Atlas.Core.Welcome.Saved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Scroll` | `Core/Welcome/Atlas.Core.Welcome.Scroll.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Search` | `Core/Welcome/Atlas.Core.Welcome.Search.pas` | Ordner `Core/Welcome` |
@@ -1405,6 +1438,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Unsaved` | `Core/Welcome/Atlas.Core.Welcome.Unsaved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Headers` | `IDE/Welcome/Atlas.IDE.Welcome.Headers.pas` | Ordner `IDE/Welcome`; Köpfe der Willkommensseite (Gruß, Kurzstatus, Suchfeld, Menü) |
 | `Atlas.IDE.Welcome.Areas` | `IDE/Welcome/Atlas.IDE.Welcome.Areas.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Commit` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Commit.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.IdeLayout` | `IDE/Welcome/Atlas.IDE.Welcome.IdeLayout.pas` | Ordner `IDE/Welcome` |
@@ -1744,6 +1778,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tests.Flaky` | `Core/Tests/Atlas.Core.Tests.Flaky.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Explorer` | `Core/Tests/Atlas.Core.Tests.Explorer.pas` | Ordner `Core/Tests` |
 | `Atlas.Core.Tests.Series` | `Core/Tests/Atlas.Core.Tests.Series.pas` | Ordner `Core/Tests`; Serien N-mal bzw. zufällige Reihenfolge (#1782) |
+| `Atlas.Core.Tests.UnitScans` | `Core/Tests/Atlas.Core.Tests.UnitScans.pas` | Ordner `Core/Tests`; gelesene Testunits des Fensters „Atlas-Tests“ mit Zwischenspeicher je Änderungszeit |
 | `Atlas.Core.Tests.Lists` | `Core/Tests/Atlas.Core.Tests.Lists.pas` | Ordner `Core/Tests`; Testlisten: Regeln, Mitglieder, Argumente eines Laufs, JSON (#2167) |
 | `Atlas.Core.Tests.ListText` | `Core/Tests/Atlas.Core.Tests.ListText.pas` | Ordner `Core/Tests`; Beschreibung und Prüfung einer Testliste (#2167) |
 | `Atlas.Core.Tests.ListFile` | `Core/Tests/Atlas.Core.Tests.ListFile.pas` | Ordner `Core/Tests`; Ablage „nur für mich“ der Testlisten (#2167) |
@@ -1775,6 +1810,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tests.Series` | `IDE/Tests/Atlas.IDE.Tests.Series.pas` | Ordner `IDE/Tests`; Befehle „N-mal ausführen …“, zufällige Reihenfolge (#1782) |
 | `Atlas.IDE.Tests.Lists` | `IDE/Tests/Atlas.IDE.Tests.Lists.pas` | Ordner `IDE/Tests`; Testlisten laden, speichern, ausführen (#2167) |
 | `Atlas.IDE.Tests.ExplorerLog` | `IDE/Tests/Atlas.IDE.Tests.ExplorerLog.pas` | Ordner `IDE/Tests`; Protokoll je Test (#2168) |
+| `Atlas.IDE.Tests.ExplorerTicker` | `IDE/Tests/Atlas.IDE.Tests.ExplorerTicker.pas` | Ordner `IDE/Tests`; Zeitgeber des Fensters „Atlas-Tests“ |
 | `Atlas.IDE.Tests.CaseTable` | `IDE/Tests/Atlas.IDE.Tests.CaseTable.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.BoundaryCases` | `IDE/Tests/Atlas.IDE.Tests.BoundaryCases.pas` | Ordner `IDE/Tests` |
 | `Atlas.IDE.Tests.Composition.Cases` | `IDE/Tests/Atlas.IDE.Tests.Composition.Cases.pas` | Ordner `IDE/Tests` |
@@ -1818,6 +1854,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tasks.Plan` | `Core/Tasks/Atlas.Core.Tasks.Plan.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Reports` | `Core/Tasks/Atlas.Core.Tasks.Reports.pas` | Ordner `Core/Tasks` |
 | `Atlas.Core.Tasks.Runs` | `Core/Tasks/Atlas.Core.Tasks.Runs.pas` | Ordner `Core/Tasks` |
+| `Atlas.Core.Tasks.RunFlow` | `Core/Tasks/Atlas.Core.Tasks.RunFlow.pas` | Ordner `Core/Tasks`; Ablauf der Läufe und Reihen hinter `IAtlasTaskLauncher` |
 | `Atlas.Core.StartProfiles.Picker` | `Core/StartProfiles/Atlas.Core.StartProfiles.Picker.pas` | Ordner `Core/StartProfiles` |
 | `Atlas.IDE.Build.CompilerSwitches` | `IDE/Build/Atlas.IDE.Build.CompilerSwitches.pas` | Ordner `IDE/Build` |
 | `Atlas.IDE.BuildTools.Composition` | `IDE/BuildTools/Atlas.IDE.BuildTools.Composition.pas` | Anmeldung des Moduls `atlas.build`, #1455 |
@@ -1828,6 +1865,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tasks.Projects` | `IDE/Tasks/Atlas.IDE.Tasks.Projects.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Shortcuts` | `IDE/Tasks/Atlas.IDE.Tasks.Shortcuts.pas` | Ordner `IDE/Tasks` |
 | `Atlas.IDE.Tasks.Pickers` | `IDE/Tasks/Atlas.IDE.Tasks.Pickers.pas` | Ordner `IDE/Tasks` |
+| `Atlas.IDE.Tasks.Launcher` | `IDE/Tasks/Atlas.IDE.Tasks.Launcher.pas` | Ordner `IDE/Tasks`; `IAtlasTaskLauncher` der IDE (Thread je Lauf) |
 | `Atlas.IDE.Tasks.Runner` | `IDE/Tasks/Atlas.IDE.Tasks.Runner.pas` | Ordner `IDE/Tasks` |
 | `Atlas.UI.Build.SettingsSection` | `UI/Build/Atlas.UI.Build.SettingsSection.pas` | Ordner `UI/Build`; Einstellungen des Moduls als Abschnitte (#1456) |
 | `Atlas.UI.Build.Strings` | `UI/Build/Atlas.UI.Build.Strings.pas` | Texte des Moduls (Build-Werkzeuge), Sprache von Base, #1455 |

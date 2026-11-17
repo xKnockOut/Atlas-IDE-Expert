@@ -293,26 +293,27 @@ begin
     begin
       Result := TAtlasIssuePreview.KeyOf(mName, AInput);
     end;
-  Result.ProcessId := TAtlasIdeAttachSources.ProcessId;
-  Result.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles, AOwner.ProjectFile);
-  TAtlasIdeAttachSources.DebugNote(Result.DebugNote, Result.DebugNoteName);
-  Result.ExceptionsText := TAtlasIdeAttachSources.ExceptionsText(Result.ExceptionCount);
-  Result.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
-  Result.RaiseProgram := TAtlasIdeSettings.Current.IssuesAttachRaiseProgram;
-  Result.Extra := AExtra;
+  Result.Sources.ProcessId := TAtlasIdeAttachSources.ProcessId;
+  Result.Sources.LogFiles := TAtlasAttachLog.Candidates(TAtlasIdeSettings.Current.IssuesAttachLogFiles,
+    AOwner.ProjectFile);
+  TAtlasIdeAttachSources.DebugNote(Result.Sources.DebugNote, Result.Sources.DebugNoteName);
+  Result.Sources.ExceptionsText := TAtlasIdeAttachSources.ExceptionsText(Result.Sources.ExceptionCount);
+  Result.Sources.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
+  Result.Sources.RaiseProgram := TAtlasIdeSettings.Current.IssuesAttachRaiseProgram;
+  Result.Sources.Extra := AExtra;
   try
-    Result.FormImage := TAtlasIdeAttachSources.DesignerImage(Result.FormName);
+    Result.Sources.FormImage := TAtlasIdeAttachSources.DesignerImage(Result.Sources.FormName);
   except
     on E: Exception do
     begin
-      Result.FormImage := nil;
+      Result.Sources.FormImage := nil;
       TAtlasGuard.Report(TAtlasFeature.Tracker, E);
     end;
   end;
 end;
 
-/// <summary>Dialog zeigen; True nach „Senden“ mit der Anfrage. AInput.FormImage gibt er frei (der Dialog hat eine
-/// Kopie).</summary>
+/// <summary>Dialog zeigen; True nach „Senden“ mit der Anfrage. AInput.Sources.FormImage gibt er frei (der Dialog hat
+/// eine Kopie).</summary>
 function AskRequest(AOwner: TAtlasIdeIssueAttach; var AInput: TAtlasAttachDialogInput;
   const ATarget: TAtlasTrackerTarget; out ARequest: TAtlasAttachRequest): Boolean;
 var
@@ -322,8 +323,8 @@ begin
   try
     mDialog := TAtlasAttachDialog.CreateFor(nil, AInput, AOwner.FTemp);
   finally
-    AInput.FormImage.Free;
-    AInput.FormImage := nil;
+    AInput.Sources.FormImage.Free;
+    AInput.Sources.FormImage := nil;
   end;
   try
     Result := mDialog.ShowModal = mrOk;

@@ -52,6 +52,7 @@ uses
   Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Debug.Evaluate,
+  Atlas.UI.Debug.EvaluatePanels,
   Atlas.UI.Debug.EvaluateFrame;
 
 { TAtlasDebugEvaluateFrameTests }
@@ -86,24 +87,24 @@ begin
   mList := TAtlasEvalList.Create;
   try
     Assert.AreEqual('Eine Zeile wählen, um ihren Wert zu sehen.',
-      TAtlasDebugEvaluateFrame.DetailText(nil, TAtlasEvalView.Text, False, '', mUnfit));
+      TAtlasEvalDetailPanel.DetailText(nil, TAtlasEvalView.Text, False, '', mUnfit));
     mNode := mList.Add('S');
     mList.SetResult(mNode, True, '''a''#9''b''');
-    Assert.AreEqual('a'#$2192'b', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Text, False, '', mUnfit));
+    Assert.AreEqual('a'#$2192'b', TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Text, False, '', mUnfit));
     Assert.IsFalse(mUnfit);
-    TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Hex, False, '', mUnfit);
+    TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Hex, False, '', mUnfit);
     Assert.IsTrue(mUnfit, 'String ist keine Zahl');
-    Assert.AreEqual('eins' + sLineBreak + 'zwei', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Lines,
+    Assert.AreEqual('eins' + sLineBreak + 'zwei', TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Lines,
       True, '''eins''#13#10''zwei''#13#10', mUnfit), 'Zeilen aus .Text');
     Assert.IsFalse(mUnfit);
-    Assert.IsTrue(TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Lines, False, 'E2003', mUnfit)
+    Assert.IsTrue(TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Lines, False, 'E2003', mUnfit)
       .StartsWith('Keine Zeilen: „S.Text“ ließ sich nicht auswerten (E2003).'));
     Assert.IsTrue(mUnfit);
     mList.SetResult(mNode, True, '''{"a":1}''');
     Assert.AreEqual('{' + sLineBreak + '  "a": 1' + sLineBreak + '}',
-      TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Json, False, '', mUnfit));
+      TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Json, False, '', mUnfit));
     mList.SetResult(mNode, True, '255');
-    Assert.AreEqual('$000000FF (255)', TAtlasDebugEvaluateFrame.DetailText(mNode, TAtlasEvalView.Hex, False, '',
+    Assert.AreEqual('$000000FF (255)', TAtlasEvalDetailPanel.DetailText(mNode, TAtlasEvalView.Hex, False, '',
       mUnfit));
   finally
     mList.Free;
@@ -134,19 +135,19 @@ begin
     mList.SetResult(mNode, True, '(FName: ''Meier''; FCount: 3)');
     mList.SetResult(mList.Add('Zahl'), True, '7');
     mFrame.SetList(mList);
-    Assert.AreEqual(3, Integer(mFrame.Parts.Tree.Items.Count), 'Self, Platzhalter, Zahl');
-    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', mFrame.Parts.Tree.Items[0].Text);
-    mFrame.Parts.Tree.Items[0].Expand(False);
+    Assert.AreEqual(3, Integer(mFrame.Tree.Items.Count), 'Self, Platzhalter, Zahl');
+    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', mFrame.Tree.Items[0].Text);
+    mFrame.Tree.Items[0].Expand(False);
     Assert.AreEqual('Self', mExpanded, 'Felder holt die IDE-Schicht');
     Assert.IsTrue(mNode.Expanded);
     mList.SetParts(mNode);
     mFrame.Refresh;
-    Assert.AreEqual(4, Integer(mFrame.Parts.Tree.Items.Count));
-    Assert.AreEqual('FName = ''Meier''', mFrame.Parts.Tree.Items[1].Text);
-    Assert.IsTrue(mFrame.Parts.Tree.Items[0].Expanded);
-    mFrame.Parts.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Meier', mFrame.Parts.Detail.Text);
-    Assert.IsFalse(mFrame.Parts.ModifyButton.Enabled, 'Teil ohne Ausdruck');
+    Assert.AreEqual(4, Integer(mFrame.Tree.Items.Count));
+    Assert.AreEqual('FName = ''Meier''', mFrame.Tree.Items[1].Text);
+    Assert.IsTrue(mFrame.Tree.Items[0].Expanded);
+    mFrame.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Meier', mFrame.Detail.Memo.Text);
+    Assert.IsFalse(mFrame.Detail.ModifyButton.Enabled, 'Teil ohne Ausdruck');
     mFrame.SetList(nil);
   finally
     mHost.Free;
@@ -179,18 +180,18 @@ begin
       begin
         mPinned := AExpression;
       end;
-    mFrame.Parts.Input.Text := ' Kunde.Name ';
+    mFrame.InputBar.Input.Text := ' Kunde.Name ';
     mKey := VK_RETURN;
-    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, []);
+    mFrame.InputBar.Input.OnKeyDown(mFrame.InputBar.Input, mKey, []);
     Assert.AreEqual('Kunde.Name', mAdded);
-    Assert.AreEqual('', mFrame.Parts.Input.Text, 'Feld leer für den nächsten');
-    mFrame.Parts.Input.Text := 'Liste.Count';
+    Assert.AreEqual('', mFrame.InputBar.Input.Text, 'Feld leer für den nächsten');
+    mFrame.InputBar.Input.Text := 'Liste.Count';
     mKey := VK_RETURN;
-    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, [ssCtrl]);
+    mFrame.InputBar.Input.OnKeyDown(mFrame.InputBar.Input, mKey, [ssCtrl]);
     Assert.AreEqual('Liste.Count', mPinned);
     mAdded := '';
     mKey := VK_RETURN;
-    mFrame.Parts.Input.OnKeyDown(mFrame.Parts.Input, mKey, []);
+    mFrame.InputBar.Input.OnKeyDown(mFrame.InputBar.Input, mKey, []);
     Assert.AreEqual('', mAdded, 'leer fügt nichts an');
   finally
     mHost.Free;
@@ -225,9 +226,9 @@ begin
     mNode.Expanded := True;
     mList.SetParts(mNode);
     mFrame.SetList(mList);
-    mFrame.Parts.Tree.Items[2].Selected := True;
+    mFrame.Tree.Items[2].Selected := True;
     mKey := VK_DELETE;
-    mFrame.Parts.Tree.OnKeyDown(mFrame.Parts.Tree, mKey, []);
+    mFrame.Tree.OnKeyDown(mFrame.Tree, mKey, []);
     Assert.AreEqual('P', mDeleted);
     mFrame.SetList(nil);
   finally
@@ -252,10 +253,10 @@ begin
     mList.Add('A').Pinned := True;
     mList.Add('B');
     mFrame.SetList(mList);
-    mFrame.Parts.Tree.Items[0].Selected := True;
-    Assert.AreEqual('Lösen', mFrame.Parts.PinButton.Caption);
-    mFrame.Parts.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Festheften', mFrame.Parts.PinButton.Caption);
+    mFrame.Tree.Items[0].Selected := True;
+    Assert.AreEqual('Lösen', mFrame.Detail.PinButton.Caption);
+    mFrame.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Festheften', mFrame.Detail.PinButton.Caption);
     mFrame.SetList(nil);
   finally
     mHost.Free;
@@ -277,18 +278,18 @@ begin
     mFrame.Parent := mHost;
     mFrame.Align := alClient;
     mFrame.HandleNeeded;
-    mWide := mFrame.Parts.Keys.Height;
+    mWide := mFrame.Keys.Height;
     Assert.IsTrue(mWide > 0, 'Tastenhilfe sichtbar');
     mHost.ClientWidth := 200;
-    Assert.IsTrue(mFrame.Parts.Keys.Height > mWide, 'schmal: mehr Zeilen');
+    Assert.IsTrue(mFrame.Keys.Height > mWide, 'schmal: mehr Zeilen');
     mHost.ClientWidth := 900;
-    Assert.AreEqual(mWide, mFrame.Parts.Keys.Height, 'wieder breit: wieder eine Zeile, kein leerer Streifen');
+    Assert.AreEqual(mWide, mFrame.Keys.Height, 'wieder breit: wieder eine Zeile, kein leerer Streifen');
     // Höher: Der Baum bekommt den ganzen Zuwachs.
-    mTree := mFrame.Parts.Tree.Height;
+    mTree := mFrame.Tree.Height;
     mHost.ClientHeight := 800;
-    Assert.AreEqual(mTree + 200, mFrame.Parts.Tree.Height, 'Baum wächst mit');
-    Assert.AreEqual(mHost.ClientHeight, mFrame.Parts.Keys.Top + mFrame.Parts.Keys.Height +
-      mFrame.Parts.Keys.Margins.Bottom, 'Tastenhilfe schließt unten ab');
+    Assert.AreEqual(mTree + 200, mFrame.Tree.Height, 'Baum wächst mit');
+    Assert.AreEqual(mHost.ClientHeight, mFrame.Keys.Top + mFrame.Keys.Height +
+      mFrame.Keys.Margins.Bottom, 'Tastenhilfe schließt unten ab');
   finally
     mHost.Free;
   end;
@@ -308,19 +309,20 @@ begin
     mFrame.Align := alClient;
     mFrame.HandleNeeded;
     // Ein unsichtbares Fenster legt die Leiste nicht an, dann richtet sie sich nicht neu aus.
-    mFrame.Parts.Bar.HandleNeeded;
-    mFrame.Parts.Bar.Realign;
+    mFrame.Detail.Bar.HandleNeeded;
+    mFrame.Detail.Bar.Realign;
     // Links Text, Zeilen, JSON, Hex; rechts Ändern, Festheften, IDE-Dialog (IDE-Dialog ganz rechts).
     for mKind := Low(TAtlasEvalView) to Pred(High(TAtlasEvalView)) do
     begin
-      Assert.IsTrue(mFrame.Parts.ViewButtons[mKind].Left < mFrame.Parts.ViewButtons[Succ(mKind)].Left,
+      Assert.IsTrue(mFrame.Detail.ViewButtons[mKind].Left < mFrame.Detail.ViewButtons[Succ(mKind)].Left,
         'Ansichten in Reihenfolge');
     end;
-    Assert.IsTrue(mFrame.Parts.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Parts.ModifyButton.Left, 'Ansichten links von Ändern');
-    Assert.IsTrue(mFrame.Parts.ModifyButton.Left < mFrame.Parts.PinButton.Left, 'Ändern vor Festheften');
-    Assert.IsTrue(mFrame.Parts.PinButton.Left < mFrame.Parts.IdeDialogButton.Left, 'Festheften vor IDE-Dialog');
-    Assert.IsTrue(mFrame.Parts.IdeDialogButton.Left + mFrame.Parts.IdeDialogButton.Width <=
-      mFrame.Parts.Bar.ClientWidth, 'innerhalb der Leiste');
+    Assert.IsTrue(mFrame.Detail.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Detail.ModifyButton.Left,
+      'Ansichten links von Ändern');
+    Assert.IsTrue(mFrame.Detail.ModifyButton.Left < mFrame.Detail.PinButton.Left, 'Ändern vor Festheften');
+    Assert.IsTrue(mFrame.Detail.PinButton.Left < mFrame.Detail.IdeDialogButton.Left, 'Festheften vor IDE-Dialog');
+    Assert.IsTrue(mFrame.Detail.IdeDialogButton.Left + mFrame.Detail.IdeDialogButton.Width <=
+      mFrame.Detail.Bar.ClientWidth, 'innerhalb der Leiste');
   finally
     mHost.Free;
   end;

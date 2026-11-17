@@ -50,6 +50,8 @@ type
     [Test]
     procedure ReadsPreview;
     [Test]
+    procedure PreviewWithUnreadableModified;
+    [Test]
     procedure StateRoundTrip;
     /// <summary>Unbrauchbare Datei liegt danach als .defekt daneben; eine beim Lesen gesperrte wird nicht
     /// überschrieben.</summary>
@@ -445,6 +447,23 @@ begin
   mPreview := TAtlasUnitPreview.FromJson(nil, Path);
   Assert.AreEqual(-1, mPreview.UsedBy);
   Assert.IsFalse(mPreview.HasForm);
+end;
+
+procedure TAtlasUnitSearchTests.PreviewWithUnreadableModified;
+var
+  mValue: TJSONValue;
+  mPreview: TAtlasUnitPreview;
+begin
+  // Unlesbare Änderungszeit: Zeitpunkt 0, die übrige Vorschau bleibt.
+  mValue := TJSONObject.ParseJSONValue('{"uri":"C:\\P\\Haupt.pas","header":"Kopf","lines":120,"modified":"gestern"}');
+  try
+    mPreview := TAtlasUnitPreview.FromJson(mValue, Path);
+  finally
+    mValue.Free;
+  end;
+  Assert.AreEqual('Kopf', mPreview.Header);
+  Assert.AreEqual(120, mPreview.Lines);
+  Assert.AreEqual(Double(0), Double(mPreview.Modified));
 end;
 
 procedure TAtlasUnitSearchTests.StateRoundTrip;

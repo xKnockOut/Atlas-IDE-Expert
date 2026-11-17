@@ -2564,7 +2564,7 @@ List := TStringList.Create;
 
 **Formatting depends on the locale** · Code smell · Hint · Group Robustness and patterns
 
-Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy"-"mm"-"dd' or 'ddddd t'. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after System.SysUtils in uses.
+Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy"-"mm"-"dd' or 'ddddd t'. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after System.SysUtils in uses. If the name cannot be resolved (check without index, e.g. in the editor while the index is being built, or a unit outside the search paths), the rule stays silent when a unit after System.SysUtils in uses is neither part of the RTL nor in the index.
 
 Flagged:
 

@@ -13,7 +13,9 @@
 // jeweiligen Abschnitt. Laden, Wechseln, Diff und Öffnen liegen in der
 // IDE-Schicht; die Ansicht meldet nur Wünsche (On…). Klick und Doppelklick
 // auf einen Commit trennt ein Zeitgeber mit der Doppelklickzeit des Systems:
-// Erst wenn kein zweiter Klick kommt, folgt der Diff.
+// Erst wenn kein zweiter Klick kommt, folgt der Diff (TAtlasIssueCommitClicks).
+// Überschriften, Hinweise und Listen stehen untereinander
+// (TAtlasIssueDevelopmentStack).
 
 interface
 
@@ -54,21 +56,71 @@ type
     Pulls: TListView;
     Changes: TListView;
     Units: TTreeView;
-    CommitTimer: TTimer;
+  end;
+
+  /// <summary>Inhalt der Ansicht untereinander in der Reihenfolge des Anlegens: Überschriften, Hinweise, Listen.
+  /// Die Steuerelemente gehören der Ansicht; Clear gibt sie frei.</summary>
+  TAtlasIssueDevelopmentStack = class
+  private
+    FView: TScrollingWinControl;
+    FItems: TList<TControl>;
+    FNextTop: Integer;
+    FColors: TAtlasColors;
+  public
+    constructor Create(AView: TScrollingWinControl);
+    destructor Destroy; override;
+    /// <summary>AControl unter das zuletzt angelegte Steuerelement.</summary>
+    procedure Place(AControl: TControl);
+    /// <summary>Zeile; AHeading: Überschrift in Großbuchstaben.</summary>
+    function AddLabel(const ACaption: string; AHeading: Boolean): TLabel;
+    /// <summary>Hinweis in gedämpfter Farbe.</summary>
+    function AddNote(const ACaption: string): TLabel;
+    /// <summary>Liste mit den Spalten AColumns, so hoch wie ARows Zeilen (höchstens zwölf).</summary>
+    function AddList(const AColumns: TArray<string>; ARows: Integer): TListView;
+    /// <summary>Alle Steuerelemente freigeben.</summary>
+    procedure Clear;
+    property Colors: TAtlasColors read FColors write FColors;
+  end;
+
+  TAtlasIssueDevelopmentView = class;
+
+  /// <summary>Klick und Doppelklick auf einen Commit: Klick zeigt nach der Doppelklickzeit des Systems den Diff,
+  /// Doppelklick bzw. Eingabe öffnet die erste geänderte Unit, Leertaste zeigt den Diff sofort.</summary>
+  TAtlasIssueCommitClicks = class
+  private
+    FView: TAtlasIssueDevelopmentView;
+    FTimer: TTimer;
+    FPending: Integer;
+    /// <summary>Liste der Commits; gehört der Ansicht, Reset löst sie vor dem Freigeben.</summary>
+    FList: TListView;
+    procedure ListClick(Sender: TObject);
+    procedure ListDblClick(Sender: TObject);
+    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure TimerFired(Sender: TObject);
+    function Selected(out AEntry: TAtlasVcsLogEntry): Boolean;
+  public
+    constructor Create(AView: TAtlasIssueDevelopmentView);
+    destructor Destroy; override;
+    /// <summary>Klicks auf die Liste der Commits auswerten.</summary>
+    procedure Attach(AList: TListView);
+    /// <summary>Wartenden Klick verwerfen und die Liste vergessen (neuer Inhalt; die Ansicht gibt sie frei).</summary>
+    procedure Reset;
+    /// <summary>Wartenden Klick sofort auswerten (statt nach der Doppelklickzeit); auch für Tests.</summary>
+    procedure Fire;
+    /// <summary>Wartet ein Klick auf die Doppelklickzeit?</summary>
+    function Waiting: Boolean;
   end;
 
   TAtlasIssueDevelopmentView = class(TScrollBox)
   private
-    FItems: TList<TControl>;
-    FNextTop: Integer;
-    FColors: TAtlasColors;
+    FStack: TAtlasIssueDevelopmentStack;
+    FCommitClicks: TAtlasIssueCommitClicks;
     FDevelopment: TAtlasIssueDevelopment;
     FHasDevelopment: Boolean;
     FTrackerNote: string;
     FVcsNote: string;
     FParts: TAtlasIssueDevelopmentParts;
     FUnitList: TArray<TAtlasIssueUnit>;
-    FPendingCommit: Integer;
     FEvents: TAtlasIssueDevelopmentEvents;
     procedure Clear;
     procedure AddBranches;
@@ -77,14 +129,9 @@ type
     procedure AddUnits;
     procedure BranchesSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure SwitchClick(Sender: TObject);
-    procedure CommitsClick(Sender: TObject);
-    procedure CommitsDblClick(Sender: TObject);
-    procedure CommitsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure CommitTimerFired(Sender: TObject);
     procedure PullsDblClick(Sender: TObject);
     procedure UnitsClick(Sender: TObject);
     procedure UnitsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    function SelectedCommit(out AEntry: TAtlasVcsLogEntry): Boolean;
     procedure ScrollWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
       var Handled: Boolean);
   public
@@ -100,12 +147,11 @@ type
     procedure ShowDevelopment(const ADevelopment: TAtlasIssueDevelopment; const ATrackerNote, AVcsNote: string);
       overload;
     procedure ApplyColors(const AColors: TAtlasColors);
-    /// <summary>Für Tests: Klick auf einen Commit sofort auswerten (statt nach der Doppelklickzeit).</summary>
-    procedure FireCommitClick;
     property Development: TAtlasIssueDevelopment read FDevelopment;
     property HasDevelopment: Boolean read FHasDevelopment;
     property Parts: TAtlasIssueDevelopmentParts read FParts;
     property Events: TAtlasIssueDevelopmentEvents read FEvents write FEvents;
+    property CommitClicks: TAtlasIssueCommitClicks read FCommitClicks;
   end;
 
   /// <summary>Für Tests: Inhalt der Ansicht als Text.</summary>
@@ -129,80 +175,85 @@ uses
   Atlas.UI.Tracker.Development.Strings,
   Atlas.UI.Tracker.GitHubStrings;
 
+const
+  /// <summary>Abstand der Oberkanten beim Stapeln: alTop ordnet nach Top, die Lücke lässt Platz für jede Höhe.
+  /// </summary>
+  cPlaceStep = 1000;
+  // Maße bei 96 dpi.
+  cPadding = 8;
+  cPaddingTop = 4;
+  cListMaxRows = 12;
+  /// <summary>Zeilen der Liste dazu: Kopf und Rand.</summary>
+  cListExtraRows = 2;
+  cListRowHeight = 20;
+  cUnitsMaxRows = 20;
+  cUnitRowHeight = 19;
+  cToolsHeight = 30;
+  cSwitchWidth = 100;
+
 function ToColor(AColor: TAtlasColor): TColor;
 begin
   Result := TColor(AColor);
 end;
 
-{ TAtlasIssueDevelopmentView }
+{ TAtlasIssueDevelopmentStack }
 
-constructor TAtlasIssueDevelopmentView.Create(AOwner: TComponent);
+constructor TAtlasIssueDevelopmentStack.Create(AView: TScrollingWinControl);
 begin
-  inherited Create(AOwner);
+  inherited Create;
+  FView := AView;
   FItems := TList<TControl>.Create;
   FColors := TAtlasColors.Light;
-  FDevelopment := TAtlasIssueDevelopment.Empty;
-  FPendingCommit := -1;
-  BorderStyle := bsNone;
-  VertScrollBar.Tracking := True;
-  HorzScrollBar.Visible := False;
-  Padding.SetBounds(8, 4, 8, 8);
-  OnMouseWheel := ScrollWheel;
-  FParts.CommitTimer := TTimer.Create(Self);
-  FParts.CommitTimer.Enabled := False;
-  FParts.CommitTimer.Interval := GetDoubleClickTime;
-  FParts.CommitTimer.OnTimer := CommitTimerFired;
 end;
 
-destructor TAtlasIssueDevelopmentView.Destroy;
+destructor TAtlasIssueDevelopmentStack.Destroy;
 begin
-  if FParts.CommitTimer <> nil then
-  begin
-    FParts.CommitTimer.Enabled := False;
-  end;
+  // Die Steuerelemente gehören der Ansicht und gehen mit ihr.
   FItems.Free;
   inherited;
 end;
 
-/// <summary>Untereinander in der Reihenfolge des Anlegens: alTop ordnet nach Top.</summary>
-procedure Place(AView: TAtlasIssueDevelopmentView; AControl: TControl);
+procedure TAtlasIssueDevelopmentStack.Place(AControl: TControl);
 begin
-  Inc(AView.FNextTop, 1000);
-  AControl.Parent := AView;
+  Inc(FNextTop, cPlaceStep);
+  AControl.Parent := FView;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
-  AControl.Top := AView.FNextTop;
-  AView.FItems.Add(AControl);
+  AControl.Top := FNextTop;
+  FItems.Add(AControl);
 end;
-function AddLabel(AView: TAtlasIssueDevelopmentView; const ACaption: string; AHeading: Boolean): TLabel;
+
+function TAtlasIssueDevelopmentStack.AddLabel(const ACaption: string; AHeading: Boolean): TLabel;
 begin
-  Result := TAtlasWrapLabel.Create(AView);
-  Place(AView, Result);
+  Result := TAtlasWrapLabel.Create(FView);
+  Place(Result);
   Result.ShowAccelChar := False;
-  Result.Font.Color := ToColor(AView.FColors.Text);
+  Result.Font.Color := ToColor(FColors.Text);
   if AHeading then
   begin
     Result.Caption := AnsiUpperCase(ACaption);
     Result.Font.Style := [fsBold];
-    Result.Font.Color := ToColor(AView.FColors.Muted);
+    Result.Font.Color := ToColor(FColors.Muted);
   end
   else
   begin
     Result.Caption := ACaption;
   end;
 end;
-function AddNote(AView: TAtlasIssueDevelopmentView; const ACaption: string): TLabel;
+
+function TAtlasIssueDevelopmentStack.AddNote(const ACaption: string): TLabel;
 begin
-  Result := AddLabel(AView, ACaption, False);
-  Result.Font.Color := ToColor(AView.FColors.Muted);
+  Result := AddLabel(ACaption, False);
+  Result.Font.Color := ToColor(FColors.Muted);
 end;
-function AddList(AView: TAtlasIssueDevelopmentView; const AColumns: TArray<string>; ARows: Integer): TListView;
+
+function TAtlasIssueDevelopmentStack.AddList(const AColumns: TArray<string>; ARows: Integer): TListView;
 var
   mCaption: string;
   mColumn: TListColumn;
 begin
-  Result := TListView.Create(AView);
-  Place(AView, Result);
+  Result := TListView.Create(FView);
+  Place(Result);
   Result.ViewStyle := vsReport;
   Result.ReadOnly := True;
   Result.RowSelect := True;
@@ -214,7 +265,182 @@ begin
     mColumn.Caption := mCaption;
     mColumn.AutoSize := True;
   end;
-  Result.Height := (Min(ARows, 12) + 2) * MulDiv(20, AView.CurrentPPI, 96);
+  Result.Height := (Min(ARows, cListMaxRows) + cListExtraRows) * MulDiv(cListRowHeight, FView.CurrentPPI, 96);
+end;
+
+procedure TAtlasIssueDevelopmentStack.Clear;
+var
+  mIndex: Integer;
+begin
+  for mIndex := FItems.Count - 1 downto 0 do
+  begin
+    FItems[mIndex].Free;
+  end;
+  FItems.Clear;
+  FNextTop := 0;
+end;
+
+{ TAtlasIssueCommitClicks }
+
+constructor TAtlasIssueCommitClicks.Create(AView: TAtlasIssueDevelopmentView);
+begin
+  inherited Create;
+  FView := AView;
+  FPending := -1;
+  // Der Zeitgeber gehört der Ansicht.
+  FTimer := TTimer.Create(AView);
+  FTimer.Enabled := False;
+  FTimer.Interval := GetDoubleClickTime;
+  FTimer.OnTimer := TimerFired;
+end;
+
+destructor TAtlasIssueCommitClicks.Destroy;
+begin
+  if Assigned(FList) then
+  begin
+    FList.OnClick := nil;
+    FList.OnDblClick := nil;
+    FList.OnKeyDown := nil;
+  end;
+  FTimer.Enabled := False;
+  FTimer.OnTimer := nil;
+  inherited;
+end;
+
+procedure TAtlasIssueCommitClicks.Attach(AList: TListView);
+begin
+  FList := AList;
+  FList.OnClick := ListClick;
+  FList.OnDblClick := ListDblClick;
+  FList.OnKeyDown := ListKeyDown;
+end;
+
+procedure TAtlasIssueCommitClicks.Reset;
+begin
+  FList := nil;
+  FTimer.Enabled := False;
+  FPending := -1;
+end;
+
+function TAtlasIssueCommitClicks.Waiting: Boolean;
+begin
+  Result := FTimer.Enabled;
+end;
+
+function TAtlasIssueCommitClicks.Selected(out AEntry: TAtlasVcsLogEntry): Boolean;
+var
+  mList: TListView;
+  mCommits: TArray<TAtlasVcsLogEntry>;
+begin
+  mList := FView.Parts.Commits;
+  mCommits := FView.Development.Commits;
+  Result := (mList <> nil) and (mList.Selected <> nil) and (mList.Selected.Index <= High(mCommits));
+  if Result then
+  begin
+    AEntry := mCommits[mList.Selected.Index];
+  end
+  else
+  begin
+    AEntry := Default(TAtlasVcsLogEntry);
+  end;
+end;
+
+procedure TAtlasIssueCommitClicks.ListClick(Sender: TObject);
+var
+  mList: TListView;
+begin
+  mList := FView.Parts.Commits;
+  if (mList = nil) or (mList.Selected = nil) then
+  begin
+    Exit;
+  end;
+  // Erst nach der Doppelklickzeit: Ein Doppelklick öffnet statt des Diffs.
+  FPending := mList.Selected.Index;
+  FTimer.Enabled := False;
+  FTimer.Enabled := True;
+end;
+
+procedure TAtlasIssueCommitClicks.ListDblClick(Sender: TObject);
+var
+  mEntry: TAtlasVcsLogEntry;
+  mEvents: TAtlasIssueDevelopmentEvents;
+begin
+  Reset;
+  mEvents := FView.Events;
+  if Selected(mEntry) and Assigned(mEvents.OpenCommit) then
+  begin
+    mEvents.OpenCommit(mEntry);
+  end;
+end;
+
+procedure TAtlasIssueCommitClicks.ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  mEntry: TAtlasVcsLogEntry;
+  mEvents: TAtlasIssueDevelopmentEvents;
+begin
+  // Eingabe öffnet, Leertaste zeigt den Diff.
+  if Key = VK_RETURN then
+  begin
+    ListDblClick(Sender);
+    Key := 0;
+  end
+  else if (Key = VK_SPACE) and Selected(mEntry) then
+  begin
+    mEvents := FView.Events;
+    if Assigned(mEvents.ShowDiff) then
+    begin
+      mEvents.ShowDiff(mEntry);
+    end;
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasIssueCommitClicks.TimerFired(Sender: TObject);
+begin
+  Fire;
+end;
+
+procedure TAtlasIssueCommitClicks.Fire;
+var
+  mIndex: Integer;
+  mCommits: TArray<TAtlasVcsLogEntry>;
+  mEvents: TAtlasIssueDevelopmentEvents;
+begin
+  FTimer.Enabled := False;
+  mIndex := FPending;
+  FPending := -1;
+  mCommits := FView.Development.Commits;
+  if (mIndex < 0) or (mIndex > High(mCommits)) then
+  begin
+    Exit;
+  end;
+  mEvents := FView.Events;
+  if Assigned(mEvents.ShowDiff) then
+  begin
+    mEvents.ShowDiff(mCommits[mIndex]);
+  end;
+end;
+
+{ TAtlasIssueDevelopmentView }
+
+constructor TAtlasIssueDevelopmentView.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FStack := TAtlasIssueDevelopmentStack.Create(Self);
+  FCommitClicks := TAtlasIssueCommitClicks.Create(Self);
+  FDevelopment := TAtlasIssueDevelopment.Empty;
+  BorderStyle := bsNone;
+  VertScrollBar.Tracking := True;
+  HorzScrollBar.Visible := False;
+  Padding.SetBounds(cPadding, cPaddingTop, cPadding, cPadding);
+  OnMouseWheel := ScrollWheel;
+end;
+
+destructor TAtlasIssueDevelopmentView.Destroy;
+begin
+  FreeAndNil(FCommitClicks);
+  FreeAndNil(FStack);
+  inherited;
 end;
 
 /// <summary>Spalten Commit, Betreff, Autor, Zeit.</summary>
@@ -226,18 +452,11 @@ begin
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnTime));
 end;
 procedure TAtlasIssueDevelopmentView.Clear;
-var
-  mIndex: Integer;
 begin
-  FParts.CommitTimer.Enabled := False;
-  FPendingCommit := -1;
+  FCommitClicks.Reset;
   DisableAlign;
   try
-    for mIndex := FItems.Count - 1 downto 0 do
-    begin
-      FItems[mIndex].Free;
-    end;
-    FItems.Clear;
+    FStack.Clear;
     FParts.Status := nil;
     FParts.Branches := nil;
     FParts.Switch := nil;
@@ -246,7 +465,6 @@ begin
     FParts.Changes := nil;
     FParts.Units := nil;
     FUnitList := nil;
-    FNextTop := 0;
   finally
     EnableAlign;
   end;
@@ -312,20 +530,20 @@ var
 begin
   if FDevelopment.Truncated then
   begin
-    AddLabel(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevCommitsMore, [Length(FDevelopment.Commits)]),
-      True);
+    FStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevCommitsMore,
+      [Length(FDevelopment.Commits)]), True);
   end
   else
   begin
-    AddLabel(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevCommits, [Length(FDevelopment.Commits)]),
+    FStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevCommits, [Length(FDevelopment.Commits)]),
       True);
   end;
   if Length(FDevelopment.Commits) = 0 then
   begin
-    AddNote(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoCommits, [FDevelopment.Key]));
+    FStack.AddNote(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoCommits, [FDevelopment.Key]));
     Exit;
   end;
-  FParts.Commits := AddList(Self, CommitColumns, Length(FDevelopment.Commits));
+  FParts.Commits := FStack.AddList(CommitColumns, Length(FDevelopment.Commits));
   FParts.Commits.Items.BeginUpdate;
   try
     for mEntry in FDevelopment.Commits do
@@ -341,22 +559,8 @@ begin
   end;
   FParts.Commits.Hint := TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevCommitHint);
   FParts.Commits.ShowHint := True;
-  FParts.Commits.OnClick := CommitsClick;
-  FParts.Commits.OnDblClick := CommitsDblClick;
-  FParts.Commits.OnKeyDown := CommitsKeyDown;
-  AddNote(Self, TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevCommitHint));
-end;
-
-procedure TAtlasIssueDevelopmentView.CommitsClick(Sender: TObject);
-begin
-  if (FParts.Commits = nil) or (FParts.Commits.Selected = nil) then
-  begin
-    Exit;
-  end;
-  // Erst nach der Doppelklickzeit: Ein Doppelklick öffnet statt des Diffs.
-  FPendingCommit := FParts.Commits.Selected.Index;
-  FParts.CommitTimer.Enabled := False;
-  FParts.CommitTimer.Enabled := True;
+  FCommitClicks.Attach(FParts.Commits);
+  FStack.AddNote(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevCommitHint));
 end;
 
 /// <summary>Ort eines Branches: lokal, entfernt oder beides.</summary>
@@ -406,20 +610,20 @@ begin
 end;
 
 /// <summary>Knopf „Wechseln“ unter der Liste der Branches.</summary>
-function AddSwitch(AView: TAtlasIssueDevelopmentView): TButton;
+function AddSwitch(AView: TScrollingWinControl; AStack: TAtlasIssueDevelopmentStack): TButton;
 var
   mTools: TPanel;
 begin
   mTools := TPanel.Create(AView);
-  Place(AView, mTools);
+  AStack.Place(mTools);
   mTools.BevelOuter := bvNone;
   mTools.ShowCaption := False;
-  mTools.Height := MulDiv(30, AView.CurrentPPI, 96);
+  mTools.Height := MulDiv(cToolsHeight, AView.CurrentPPI, 96);
   Result := TButton.Create(AView);
   Result.Parent := mTools;
   Result.Align := alLeft;
   Result.Caption := TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevSwitch);
-  Result.Width := MulDiv(100, AView.CurrentPPI, 96);
+  Result.Width := MulDiv(cSwitchWidth, AView.CurrentPPI, 96);
   Result.Enabled := False;
 end;
 
@@ -428,14 +632,14 @@ var
   mBranch: TAtlasIssueBranch;
   mItem: TListItem;
 begin
-  AddLabel(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevBranches, [Length(FDevelopment.Branches)]),
+  FStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevBranches, [Length(FDevelopment.Branches)]),
     True);
   if Length(FDevelopment.Branches) = 0 then
   begin
-    AddNote(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoBranch, [FDevelopment.Key]));
+    FStack.AddNote(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoBranch, [FDevelopment.Key]));
     Exit;
   end;
-  FParts.Branches := AddList(Self, TArray<string>.Create(
+  FParts.Branches := FStack.AddList(TArray<string>.Create(
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnBranch),
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnWhere),
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnState)), Length(FDevelopment.Branches));
@@ -452,28 +656,18 @@ begin
     FParts.Branches.Items.EndUpdate;
   end;
   FParts.Branches.OnSelectItem := BranchesSelect;
-  FParts.Switch := AddSwitch(Self);
+  FParts.Switch := AddSwitch(Self, FStack);
   FParts.Switch.OnClick := SwitchClick;
 end;
-procedure TAtlasIssueDevelopmentView.CommitsDblClick(Sender: TObject);
-var
-  mEntry: TAtlasVcsLogEntry;
-begin
-  FParts.CommitTimer.Enabled := False;
-  FPendingCommit := -1;
-  if SelectedCommit(mEntry) and Assigned(FEvents.OpenCommit) then
-  begin
-    FEvents.OpenCommit(mEntry);
-  end;
-end;
 /// <summary>Im Tracker verknüpfte Änderungen (YouTrack kennt keine Pull Requests).</summary>
-function AddChanges(AView: TAtlasIssueDevelopmentView; const AChanges: TArray<TAtlasTrackerVcsChange>): TListView;
+function AddChanges(AStack: TAtlasIssueDevelopmentStack; const AChanges: TArray<TAtlasTrackerVcsChange>):
+  TListView;
 var
   mChange: TAtlasTrackerVcsChange;
   mItem: TListItem;
 begin
-  AddLabel(AView, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevTrackerChanges, [Length(AChanges)]), True);
-  Result := AddList(AView, CommitColumns, Length(AChanges));
+  AStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevTrackerChanges, [Length(AChanges)]), True);
+  Result := AStack.AddList(CommitColumns, Length(AChanges));
   Result.Items.BeginUpdate;
   try
     for mChange in AChanges do
@@ -518,12 +712,12 @@ begin
 end;
 
 /// <summary>Liste der Pull Requests: Nummer, Titel, Stand, CI.</summary>
-function AddPulls(AView: TAtlasIssueDevelopmentView; const APulls: TArray<TAtlasTrackerPull>): TListView;
+function AddPulls(AStack: TAtlasIssueDevelopmentStack; const APulls: TArray<TAtlasTrackerPull>): TListView;
 var
   mPull: TAtlasTrackerPull;
   mItem: TListItem;
 begin
-  Result := AddList(AView, TArray<string>.Create(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnNumber),
+  Result := AStack.AddList(TArray<string>.Create(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnNumber),
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnSubject),
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnState),
     TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevColumnChecks)), Length(APulls));
@@ -548,7 +742,7 @@ var
 begin
   if ATrackerNote <> '' then
   begin
-    AddNote(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevTrackerFailed, [ATrackerNote]));
+    FStack.AddNote(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevTrackerFailed, [ATrackerNote]));
     Exit;
   end;
   if not FDevelopment.TrackerLoaded then
@@ -558,21 +752,21 @@ begin
   mPulls := FDevelopment.Tracker.Pulls;
   if Length(FDevelopment.Tracker.Changes) > 0 then
   begin
-    FParts.Changes := AddChanges(Self, FDevelopment.Tracker.Changes);
+    FParts.Changes := AddChanges(FStack, FDevelopment.Tracker.Changes);
   end;
   // Mit verknüpften Änderungen ohne Pull Requests entfällt der leere Abschnitt.
   if (Length(FDevelopment.Tracker.Changes) > 0) and (Length(mPulls) = 0) then
   begin
     Exit;
   end;
-  AddLabel(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevPulls, [Length(mPulls)]), True);
+  FStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevPulls, [Length(mPulls)]), True);
   if Length(mPulls) = 0 then
   begin
-    AddNote(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoPulls, [FDevelopment.Key]));
+    FStack.AddNote(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevNoPulls, [FDevelopment.Key]));
   end
   else
   begin
-    FParts.Pulls := AddPulls(Self, mPulls);
+    FParts.Pulls := AddPulls(FStack, mPulls);
     FParts.Pulls.OnDblClick := PullsDblClick;
   end;
 end;
@@ -604,14 +798,14 @@ var
   mCaption: string;
   mRows: Integer;
 begin
-  AddLabel(Self, TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevUnits, [FDevelopment.UnitCount]), True);
+  FStack.AddLabel(TAtlasIssueDevStrings.Fmt(TAtlasIssueDevTextId.IssueDevUnits, [FDevelopment.UnitCount]), True);
   if FDevelopment.UnitCount = 0 then
   begin
-    AddNote(Self, TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoUnits));
+    FStack.AddNote(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevNoUnits));
     Exit;
   end;
   FParts.Units := TTreeView.Create(Self);
-  Place(Self, FParts.Units);
+  FStack.Place(FParts.Units);
   FParts.Units.ReadOnly := True;
   FParts.Units.HideSelection := False;
   FParts.Units.ShowRoot := True;
@@ -639,29 +833,9 @@ begin
   finally
     FParts.Units.Items.EndUpdate;
   end;
-  FParts.Units.Height := (Min(mRows, 20) + 1) * MulDiv(19, CurrentPPI, 96);
+  FParts.Units.Height := (Min(mRows, cUnitsMaxRows) + 1) * MulDiv(cUnitRowHeight, CurrentPPI, 96);
   FParts.Units.OnClick := UnitsClick;
   FParts.Units.OnKeyDown := UnitsKeyDown;
-end;
-
-procedure TAtlasIssueDevelopmentView.CommitsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-var
-  mEntry: TAtlasVcsLogEntry;
-begin
-  // Eingabe öffnet, Leertaste zeigt den Diff.
-  if Key = VK_RETURN then
-  begin
-    CommitsDblClick(Sender);
-    Key := 0;
-  end
-  else if (Key = VK_SPACE) and SelectedCommit(mEntry) then
-  begin
-    if Assigned(FEvents.ShowDiff) then
-    begin
-      FEvents.ShowDiff(mEntry);
-    end;
-    Key := 0;
-  end;
 end;
 
 { TAtlasIssueDevelopmentProbe }
@@ -696,12 +870,6 @@ begin
       Result := Result + ['  ' + mNode.Text];
     end;
   end;
-end;
-
-procedure TAtlasIssueDevelopmentView.CommitTimerFired(Sender: TObject);
-begin
-  FParts.CommitTimer.Enabled := False;
-  FireCommitClick;
 end;
 
 procedure TAtlasIssueDevelopmentView.PullsDblClick(Sender: TObject);
@@ -745,20 +913,6 @@ begin
   end;
 end;
 
-function TAtlasIssueDevelopmentView.SelectedCommit(out AEntry: TAtlasVcsLogEntry): Boolean;
-begin
-  Result := (FParts.Commits <> nil) and (FParts.Commits.Selected <> nil) and
-    (FParts.Commits.Selected.Index <= High(FDevelopment.Commits));
-  if Result then
-  begin
-    AEntry := FDevelopment.Commits[FParts.Commits.Selected.Index];
-  end
-  else
-  begin
-    AEntry := Default(TAtlasVcsLogEntry);
-  end;
-end;
-
 procedure TAtlasIssueDevelopmentView.ScrollWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer;
   MousePos: TPoint; var Handled: Boolean);
 begin
@@ -771,7 +925,7 @@ begin
   FHasDevelopment := False;
   FDevelopment := TAtlasIssueDevelopment.Empty;
   Clear;
-  FParts.Status := AddNote(Self, TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevLoading));
+  FParts.Status := FStack.AddNote(TAtlasIssueDevStrings.Text(TAtlasIssueDevTextId.IssueDevLoading));
 end;
 
 procedure TAtlasIssueDevelopmentView.ShowNote(const AText: string);
@@ -779,7 +933,7 @@ begin
   FHasDevelopment := False;
   FDevelopment := TAtlasIssueDevelopment.Empty;
   Clear;
-  FParts.Status := AddNote(Self, AText);
+  FParts.Status := FStack.AddNote(AText);
 end;
 
 procedure TAtlasIssueDevelopmentView.ShowDevelopment(const ADevelopment: TAtlasIssueDevelopment;
@@ -807,7 +961,7 @@ begin
     end;
     if mVcs <> '' then
     begin
-      FParts.Status := AddNote(Self, mVcs);
+      FParts.Status := FStack.AddNote(mVcs);
     end
     else
     begin
@@ -827,7 +981,7 @@ end;
 
 procedure TAtlasIssueDevelopmentView.ApplyColors(const AColors: TAtlasColors);
 begin
-  FColors := AColors;
+  FStack.Colors := AColors;
   Color := ToColor(AColors.Surface);
   ParentBackground := False;
   if FHasDevelopment then
@@ -837,23 +991,6 @@ begin
   else if FParts.Status <> nil then
   begin
     FParts.Status.Font.Color := ToColor(AColors.Muted);
-  end;
-end;
-
-procedure TAtlasIssueDevelopmentView.FireCommitClick;
-var
-  mIndex: Integer;
-begin
-  FParts.CommitTimer.Enabled := False;
-  mIndex := FPendingCommit;
-  FPendingCommit := -1;
-  if (mIndex < 0) or (mIndex > High(FDevelopment.Commits)) then
-  begin
-    Exit;
-  end;
-  if Assigned(FEvents.ShowDiff) then
-  begin
-    FEvents.ShowDiff(FDevelopment.Commits[mIndex]);
   end;
 end;
 

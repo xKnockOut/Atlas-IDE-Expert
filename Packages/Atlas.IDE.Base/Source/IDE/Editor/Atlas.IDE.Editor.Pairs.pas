@@ -33,6 +33,8 @@
 // Lokale Routinen (#1788, NestedRoutines): Farbe aus Tiefe und Verschachtelung der Routine
 // (TAtlasRoutineNesting), gestrichelte Linien in eigener Farbe; mit NestedRoutineBand werden die Zeilen
 // lokaler Routinen nach dem Zeichnen schwach in ihrer Farbe überblendet.
+// Einstellungen: je Zeichnen einmal gelesen (BeginPaint, FPaint), die Läufe und Zeilen lesen nur noch Felder.
+// TAtlasIdeSettings.Current liefert den ganzen Record als Kopie; je Textlauf wären das mehrere Kopien.
 // Ränder beim Bildlauf: Wo eine Linie am unteren Rand oder unter dem Kopf spitz ausläuft (oder im Rest darunter
 // fehlt), hängt der Strich an der Position im Fenster. Verschiebt der Editor beim Bildlauf die gemalten Pixel
 // (ScrollDC), wanderten diese Zeilen als Bruchstücke mit. Solche Zeilen werden gemerkt und nach einem Bildlauf
@@ -53,7 +55,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Editor.RoutineNesting,
-  Atlas.Core.Problems.Store;
+  Atlas.Core.Problems.Store,
+  Atlas.Core.Settings.Plugin;
 
 type
   TAtlasEditorPairs = class
@@ -111,9 +114,17 @@ type
       Color: TColor;
       Known: Boolean;
       /// <summary>Palette zum Hintergrund des Laufs AContext (merkt ihn sich).</summary>
-      function PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
-      /// <summary>Palette zum zuletzt gemerkten Hintergrund, mit eigenen Paarfarben.</summary>
-      function Palette: TAtlasColors;
+      function PaletteFor(const AContext: INTACodeEditorPaintContext;
+        const ASettings: TAtlasPluginSettings): TAtlasColors;
+      /// <summary>Palette zum zuletzt gemerkten Hintergrund, mit den Paarfarben aus ASettings.</summary>
+      function Palette(const ASettings: TAtlasPluginSettings): TAtlasColors;
+    end;
+    /// <summary>Was je Zeichnen einmal gelesen wird (BeginPaint): die Einstellungen und die Tabweite für die
+    /// Bereiche aus dem Problemspeicher.</summary>
+    TPaintState = record
+      Settings: TAtlasPluginSettings;
+      // Tabweite für inaktive Bereiche; -1 = noch nicht gelesen.
+      TabWidth: Integer;
     end;
     /// <summary>Logische Zeilen (1-basiert), deren Linien beim Zeichnen von der Fensterposition abhingen, und die
     /// oberste Zeile dabei: Nach einem Bildlauf stehen sie verschoben da und werden neu gezeichnet.</summary>
@@ -143,8 +154,7 @@ type
     FBands: TArray<TAtlasRoutineBand>;
     FBandOf: TArray<Integer>;
     FTabWidth: Integer;
-    // Tabweite für inaktive Bereiche, je Zeichnen einmal gelesen; -1 = noch nicht.
-    FDimTabWidth: Integer;
+    FPaint: TPaintState;
     /// <summary>Was InactiveSpans für die Zeile geliefert hat: inaktive Zweige, ungenutzte uses (#621).</summary>
     FBranchesDimmed: Boolean;
     FUsesDimmed: Boolean;
@@ -203,7 +213,6 @@ uses
   Atlas.Core.Editor.GuideStroke,
   Atlas.Core.Diagnostics.Guard,
   System.Math,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorRefresh,
@@ -647,7 +656,8 @@ var
 begin
   inherited Create;
   FIndex := -1;
-  FDimTabWidth := -1;
+  // Die Einstellungen liest erst BeginPaint; bis dahin ist FPaint.Settings.Enabled False und nichts wird gefärbt.
+  FPaint.TabWidth := -1;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorBeginPaint := BeginPaint;
@@ -684,7 +694,9 @@ begin
   end;
   try
     FCheck := True;
-    FDimTabWidth := -1;
+    // Die einzige Kopie des Einstellungsrecords je Zeichnen; Läufe und Zeilen lesen FPaint.
+    FPaint.Settings := TAtlasIdeSettings.Current;
+    FPaint.TabWidth := -1;
     FBaseTextHeight := 0;
   except
     on E: Exception do
@@ -767,9 +779,9 @@ begin
     Exit;
   end;
   mText := TAtlasEditorBuffer.Text(mView.Buffer);
-  mOwners := TAtlasIdeSettings.Current.PairOwners and
+  mOwners := FPaint.Settings.PairOwners and
     not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairOwners, AContext.FileName);
-  mNesting := TAtlasRoutineNesting.FromSettings(TAtlasIdeSettings.Current);
+  mNesting := TAtlasRoutineNesting.FromSettings(FPaint.Settings);
   if (mText = FText) and SameText(AContext.FileName, FFileName) and (FOwners = mOwners) and
     (FNesting.Style = mNesting.Style) and (FNesting.Band = mNesting.Band) then
   begin
@@ -796,7 +808,8 @@ end;
 
 { TAtlasEditorPairs.TBackdrop }
 
-function TAtlasEditorPairs.TBackdrop.PaletteFor(const AContext: INTACodeEditorPaintContext): TAtlasColors;
+function TAtlasEditorPairs.TBackdrop.PaletteFor(const AContext: INTACodeEditorPaintContext;
+  const ASettings: TAtlasPluginSettings): TAtlasColors;
 begin
   // Der vorbereitete Pinsel ist der Hintergrund des Editor-Farbschemas.
   if (AContext <> nil) and (AContext.Canvas <> nil) then
@@ -804,10 +817,10 @@ begin
     Color := AContext.Canvas.Brush.Color;
     Known := True;
   end;
-  Result := Palette;
+  Result := Palette(ASettings);
 end;
 
-function TAtlasEditorPairs.TBackdrop.Palette: TAtlasColors;
+function TAtlasEditorPairs.TBackdrop.Palette(const ASettings: TAtlasPluginSettings): TAtlasColors;
 begin
   if Known then
   begin
@@ -817,7 +830,7 @@ begin
   begin
     Result := TAtlasIdeStyle.Colors;
   end;
-  Result := TAtlasRoutineNesting.PairPalette(Result, TAtlasIdeSettings.Current);
+  Result := TAtlasRoutineNesting.PairPalette(Result, ASettings);
 end;
 
 procedure TAtlasEditorPairs.AddTokens(const ALines: TArray<string>; const ATokens: TArray<TAtlasPairToken>);
@@ -862,7 +875,6 @@ end;
 
 function TAtlasEditorPairs.InactiveSpans(const AContext: INTACodeEditorPaintContext): TArray<TAtlasColumnSpan>;
 var
-  mSettings: TAtlasPluginSettings;
   mStore: TAtlasProblemStore;
   mBranches, mUnusedUses: Boolean;
   mEntrySpans: TArray<TAtlasColumnSpan>;
@@ -870,16 +882,15 @@ begin
   Result := nil;
   FBranchesDimmed := False;
   FUsesDimmed := False;
-  mSettings := TAtlasIdeSettings.Current;
   mStore := TAtlasProblemsController.Current;
-  if not mSettings.Enabled or (mStore = nil) then
+  if not FPaint.Settings.Enabled or (mStore = nil) then
   begin
     Exit;
   end;
   // Inaktive Zweige (#615) und ungenutzte uses-Einträge (#621) dimmen gleich, mit eigenem Schalter.
-  mBranches := mSettings.InactiveDim and (Length(mStore.Inactive(AContext.FileName)) > 0) and
+  mBranches := FPaint.Settings.InactiveDim and (Length(mStore.Inactive(AContext.FileName)) > 0) and
     not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.InactiveDim, AContext.FileName);
-  mUnusedUses := mSettings.DimUnusedUses and (Length(mStore.UnusedUses(AContext.FileName)) > 0) and
+  mUnusedUses := FPaint.Settings.DimUnusedUses and (Length(mStore.UnusedUses(AContext.FileName)) > 0) and
     not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.UnusedUses, AContext.FileName);
   if not (mBranches or mUnusedUses) then
   begin
@@ -888,12 +899,12 @@ begin
   EnsureDimTabWidth(AContext);
   if mBranches then
   begin
-    Result := mStore.InactiveSpans(AContext.FileName, AContext.LogicalLineNum - 1, FDimTabWidth);
+    Result := mStore.InactiveSpans(AContext.FileName, AContext.LogicalLineNum - 1, FPaint.TabWidth);
     FBranchesDimmed := Length(Result) > 0;
   end;
   if mUnusedUses then
   begin
-    mEntrySpans := mStore.UsesSpans(AContext.FileName, AContext.LogicalLineNum - 1, FDimTabWidth);
+    mEntrySpans := mStore.UsesSpans(AContext.FileName, AContext.LogicalLineNum - 1, FPaint.TabWidth);
     FUsesDimmed := Length(mEntrySpans) > 0;
     Result := Result + mEntrySpans;
   end;
@@ -903,18 +914,18 @@ procedure TAtlasEditorPairs.EnsureDimTabWidth(const AContext: INTACodeEditorPain
 var
   mView: IOTAEditView;
 begin
-  if FDimTabWidth >= 0 then
+  if FPaint.TabWidth >= 0 then
   begin
     Exit;
   end;
   mView := AContext.EditView;
   if (mView <> nil) and (mView.Buffer <> nil) then
   begin
-    FDimTabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
+    FPaint.TabWidth := TAtlasEditorBuffer.TabWidth(mView.Buffer);
   end
   else
   begin
-    FDimTabWidth := cDefaultTabWidth;
+    FPaint.TabWidth := cDefaultTabWidth;
   end;
 end;
 
@@ -924,13 +935,13 @@ var
 begin
   Result := nil;
   mStore := TAtlasProblemsController.Current;
-  if not TAtlasIdeSettings.Current.Enabled or not TAtlasIdeSettings.Current.HighlightMovableUses or
+  if not FPaint.Settings.Enabled or not FPaint.Settings.HighlightMovableUses or
     (mStore = nil) or TAtlasIdeElements.FileHidden(TAtlasDrawnElement.MovableUses, AContext.FileName) then
   begin
     Exit;
   end;
   EnsureDimTabWidth(AContext);
-  Result := mStore.MovableSpans(AContext.FileName, AContext.LogicalLineNum - 1, FDimTabWidth);
+  Result := mStore.MovableSpans(AContext.FileName, AContext.LogicalLineNum - 1, FPaint.TabWidth);
 end;
 
 procedure TAtlasEditorPairs.ReportDimmed(const AContext: INTACodeEditorPaintContext; ALine: Integer;
@@ -958,20 +969,20 @@ begin
   // Inaktive {$IFDEF}-Zweige (#615): ganze Läufe gleich, Teile zeichenweise.
   mSpans := InactiveSpans(ARun.Context);
   mMovable := MovableSpans(ARun.Context);
-  mColorsOn := TAtlasIdeSettings.Current.PairColors and
+  mColorsOn := FPaint.Settings.PairColors and
     not TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, ARun.Context.FileName);
   if (Length(mSpans) = 0) and (Length(mMovable) = 0) and not mColorsOn then
   begin
     Exit;
   end;
-  mPalette := FBackdrop.PaletteFor(ARun.Context);
+  mPalette := FBackdrop.PaletteFor(ARun.Context, FPaint.Settings);
   if (Length(mSpans) > 0) and DimRun(ARun, mSpans) then
   begin
     Exit(True);
   end;
   // Verschiebbare uses (#2465): wie beim Abblenden nur, wenn der Lauf im Text der Diagnosen an dieser Stelle steht.
   if (Length(mMovable) > 0) and (TAtlasColumnSpan.Covers(mMovable, ARun.Column, Length(ARun.Text)) or
-    ARun.InDiagnosedLine(FDimTabWidth)) then
+    ARun.InDiagnosedLine(FPaint.TabWidth)) then
   begin
     ARun.Tint(mMovable, TColor(TAtlasColorMath.Mix(mPalette.Accent, TAtlasColor(ColorToRGB(ARun.Original)),
       cMovableTint)));
@@ -1005,7 +1016,7 @@ begin
     Exit;
   end;
   // Teile einer Zeile nur, wenn der Lauf dort im Text der Diagnosen steht (wie bei den Paaren).
-  if not ARun.InDiagnosedLine(FDimTabWidth) then
+  if not ARun.InDiagnosedLine(FPaint.TabWidth) then
   begin
     Exit;
   end;
@@ -1075,14 +1086,11 @@ end;
 
 function TAtlasEditorPairs.GuidesLine(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   out ALine: Integer; out ACode: TRect): Boolean;
-var
-  mSettings: TAtlasPluginSettings;
 begin
   Result := False;
   ALine := AContext.LogicalLineNum - 1;
   ACode := TRect.Empty;
-  mSettings := TAtlasIdeSettings.Current;
-  if not (mSettings.PairColors and mSettings.PairGuides) or
+  if not (FPaint.Settings.PairColors and FPaint.Settings.PairGuides) or
     TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairGuides, AContext.FileName) then
   begin
     Exit;
@@ -1113,12 +1121,12 @@ begin
     FBaseTextHeight := TAtlasIdeStyle.BaseTextHeight;
   end;
   // Hintergrund aus den Textläufen: Beim Zeichnen der Zeile ist der Pinsel nicht sicher der des Editors.
-  mPaint.Palette := FBackdrop.Palette;
+  mPaint.Palette := FBackdrop.Palette(FPaint.Settings);
   mPaint.Rect := ARect;
   mPaint.Code := ACode;
   mPaint.Context := AContext;
-  mPaint.Opacity := TAtlasIdeSettings.Current.PairGuideOpacity;
-  mPaint.Width := TAtlasGuides.PenWidth(TAtlasIdeSettings.Current.PairGuideWidth, AContext.CellSize.cy,
+  mPaint.Opacity := FPaint.Settings.PairGuideOpacity;
+  mPaint.Width := TAtlasGuides.PenWidth(FPaint.Settings.PairGuideWidth, AContext.CellSize.cy,
     FBaseTextHeight);
   mPaint.Covered := TAtlasIdeStickyScroll.CoveredRows(AContext.FileName);
   mPaint.Back := TAtlasColor(ColorToRGB(FBackdrop.Color));
@@ -1150,13 +1158,11 @@ end;
 
 procedure TAtlasEditorPairs.PaintBand(const ARect: TRect; const AContext: INTACodeEditorPaintContext);
 var
-  mSettings: TAtlasPluginSettings;
   mLine: Integer;
   mCode: TRect;
   mBand: TAtlasRoutineBand;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  if not (mSettings.PairColors and mSettings.NestedRoutineBand) or
+  if not (FPaint.Settings.PairColors and FPaint.Settings.NestedRoutineBand) or
     TAtlasIdeElements.FileHidden(TAtlasDrawnElement.PairColors, AContext.FileName) then
   begin
     Exit;
@@ -1174,7 +1180,7 @@ begin
   end;
   mBand := FBands[FBandOf[mLine]];
   BlendRect(AContext.Canvas.Handle, TRect.Create(Max(ARect.Left, mCode.Left), ARect.Top, ARect.Right, ARect.Bottom),
-    FNesting.Color(FBackdrop.Palette, mBand.Depth, mBand.Routine), cBandAlpha);
+    FNesting.Color(FBackdrop.Palette(FPaint.Settings), mBand.Depth, mBand.Routine), cBandAlpha);
 end;
 
 function TAtlasEditorPairs.LineMatches(const AContext: INTACodeEditorPaintContext; ALine: Integer;

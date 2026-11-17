@@ -9,13 +9,13 @@
 //   Stand mit „Stand vom …“, ohne Dialog; ohne Stand eine Meldung mit Knopf
 //   zum Beheben (Token hinterlegen, Tracker-Einstellungen, Im Browser öffnen,
 //   erneut versuchen).
-// - Eine Abfrage zur Zeit: Ein neuer Wunsch bricht die laufende ab und folgt
-//   ihr.
+// - Laden und Zeigen: Atlas.IDE.Tracker.IssueLoad. Eine Abfrage zur Zeit:
+//   Ein neuer Wunsch bricht die laufende ab und folgt ihr.
 // - Aus einer Meldung zu meinen Issues (#1271) öffnet Show mit Anker am
 //   ersten neuen Kommentar.
 // - Links aus dem Text öffnen nur im Browser (http/https ohne Benutzer).
 // - issues.preview.comments aus: Kommentare werden nicht abgefragt.
-// - Teile: gemeinsamer Stand TAtlasIdeIssueContext, Kurzabfrage für den Hover
+// - Teile (Atlas.IDE.Tracker.IssueParts): gemeinsamer Stand TAtlasIdeIssueContext, Kurzabfrage für den Hover
 //   TAtlasIdeIssueLookups (Lookups, #1265), Checklisten und Statusfeld
 //   TAtlasIdeIssueChecklists (Checklists, #1273), Verknüpfungen
 //   TAtlasIdeIssueLinkWrites (LinkWrites, #1279), Bilder und Anhänge
@@ -36,20 +36,18 @@ interface
 
 uses
   Winapi.Windows,
-  Atlas.Core.CiBuild.Contract,
   System.SysUtils,
-  System.Classes,
-  Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.IDE.Tracker.Development,
+  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.IDE.Tracker.IssueContext,
   Atlas.IDE.Tracker.IssueLookups,
   Atlas.IDE.Tracker.IssueChecklists,
   Atlas.IDE.Tracker.IssueLinkWrites,
-  Atlas.IDE.Tracker.IssueMedia,
-  Atlas.IDE.Tracker.IssueComments;
+  Atlas.IDE.Tracker.IssueComments,
+  Atlas.IDE.Tracker.IssueParts,
+  Atlas.IDE.Tracker.IssueLoad;
 
 type
   TAtlasIssuePreviewCredentialsHook = reference to function(const AProvider: IAtlasTrackerProvider;
@@ -89,40 +87,31 @@ type
     CanAttach: TFunc<Boolean>;
   end;
 
-  /// <summary>Laufende Abfrage des gezeigten Issues und der Wunsch, der ihr folgt.</summary>
-  TAtlasIssueLoadState = record
-    Thread: TThread;
-    Cancel: IAtlasCiCancel;
-    Pending: TAtlasIssueHistoryEntry;
-    HasPending: Boolean;
-  end;
-
   TAtlasIdeIssuePreview = class(TInterfacedObject)
   private
     FHooks: TAtlasIssuePreviewHooks;
     FHistory: TAtlasIssueHistory;
-    FContext: TAtlasIdeIssueContext;
-    FLoad: TAtlasIssueLoadState;
-    FDevelopment: TAtlasIdeIssueDevelopment;
-    FDevelopmentRef: IInterface;
-    FLookups: TAtlasIdeIssueLookups;
-    FChecklists: TAtlasIdeIssueChecklists;
-    FLinkWrites: TAtlasIdeIssueLinkWrites;
-    FMedia: TAtlasIdeIssueMedia;
-    FComments: TAtlasIdeIssueComments;
+    FParts: TAtlasIdeIssueParts;
+    FLoad: TAtlasIdeIssueLoad;
     /// <summary>Anmeldung bei den Maustasten Zurück/Vor (#1889); -1 ohne.</summary>
     FMouseHistory: Integer;
     function MouseStep(AWindow: HWND; AForward: Boolean): Boolean;
     procedure CreateParts(const ACacheFolder: string);
-    procedure CreateDevelopment;
     procedure Wire(AFrame: TAtlasIssueFrame);
-    procedure Load(const AEntry: TAtlasIssueHistoryEntry);
-    procedure Loaded(AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry; ASucceeded: Boolean;
-      const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
-    procedure ShowCurrent;
-    procedure CancelLoad;
-    procedure ReleaseThreads(AWait: Boolean);
     procedure Fix(AFix: TAtlasIssueFix);
+    /// <summary>Zurück, Vor, Aktualisieren, Abbrechen, Schließen und Browser.</summary>
+    procedure AddMoveEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+    /// <summary>„Prüfen …“ (#2126) für das gezeigte Issue.</summary>
+    procedure AddReviewEvent(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+    /// <summary>Beginnen, Beenden, Kennung kopieren und Anhängen.</summary>
+    procedure AddIssueEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+    /// <summary>Verknüpftes Issue, Beheben, Anhang, Adresse und Bilder öffnen bzw. laden.</summary>
+    procedure AddOpenEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+    /// <summary>Kommentar, Checkliste (#1273) und Verknüpfungen (#1279) schreiben.</summary>
+    procedure AddWriteEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+    function GetLookups: TAtlasIdeIssueLookups;
+    function GetChecklists: TAtlasIdeIssueChecklists;
+    function GetLinkWrites: TAtlasIdeIssueLinkWrites;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers auf der Platte ('' = nur im Speicher).</summary>
     constructor Create(const AHooks: TAtlasIssuePreviewHooks; const ACacheFolder: string);
@@ -152,318 +141,25 @@ type
     /// <summary>Zuletzt gezeigte Issues des Trackers ATarget, neueste zuerst (#1270).</summary>
     function RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
     /// <summary>Kurzabfrage für den Hover über Kennungen (#1265).</summary>
-    property Lookups: TAtlasIdeIssueLookups read FLookups;
+    property Lookups: TAtlasIdeIssueLookups read GetLookups;
     /// <summary>Fortschritt und Auffrischen der Checklisten fürs Statusfeld (#1273).</summary>
-    property Checklists: TAtlasIdeIssueChecklists read FChecklists;
+    property Checklists: TAtlasIdeIssueChecklists read GetChecklists;
     /// <summary>Verknüpfungen, auch die Prüfung vor „Beginnen“ (#1279).</summary>
-    property LinkWrites: TAtlasIdeIssueLinkWrites read FLinkWrites;
+    property LinkWrites: TAtlasIdeIssueLinkWrites read GetLinkWrites;
   end;
 
 implementation
 
 uses
   ToolsAPI,
-  System.DateUtils,
   Vcl.Graphics,
   Vcl.Clipbrd,
-  Atlas.UI.Tracker.IssueFrame.Contract,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Editor.MouseButtons,
   Atlas.IDE.Contracts.MouseHistory,
-  Atlas.UI.Tracker.Issue.Strings,
-  Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
-
-function StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
-var
-  mWhen: string;
-begin
-  mWhen := FormatDateTime('dd.mm.yyyy hh:nn', TTimeZone.Local.ToLocalTime(ADetails.Fetched), FormatSettings);
-  if AReason = '' then
-  begin
-    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewStale, [mWhen]);
-  end
-  else
-  begin
-    Result := TAtlasIssueStrings.Fmt(TAtlasIssueTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
-  end;
-end;
-
-procedure UpdateHistory(AOwner: TAtlasIdeIssuePreview);
-var
-  mFrame: TAtlasIssueFrame;
-begin
-  mFrame := AOwner.FContext.Frame;
-  if mFrame <> nil then
-  begin
-    mFrame.SetHistory(AOwner.FHistory.CanBack, AOwner.FHistory.CanForward);
-  end;
-end;
-
-/// <summary>Issue im Frame zeigen; Baum oder Liste (#1279), die Knöpfe nur, wenn der Anbieter schreiben kann.
-/// </summary>
-procedure ShowOn(AOwner: TAtlasIdeIssuePreview; AFrame: TAtlasIssueFrame; const ADetails: TAtlasTrackerDetails;
-  const AStatus: string);
-var
-  mProvider: IAtlasTrackerProvider;
-  mLinks: Boolean;
-begin
-  mProvider := nil;
-  if AOwner.FContext.HasCurrent then
-  begin
-    mProvider := AOwner.FContext.ProviderOf(AOwner.FContext.Current.Target);
-  end;
-  mLinks := TAtlasIdeSettings.Current.IssuesPreviewLinks;
-  AFrame.SetFlag(TAtlasIssueFlag.LinksAsTree, mLinks);
-  AFrame.SetFlag(TAtlasIssueFlag.CanWriteLinks, mLinks and Supports(mProvider, IAtlasTrackerLinkWriter));
-  AFrame.SetFlag(TAtlasIssueFlag.CanReview, AOwner.FContext.HasCurrent and Assigned(AOwner.FHooks.CanReview) and
-    AOwner.FHooks.CanReview(AOwner.FContext.Current.Target, ADetails.Issue));
-  AFrame.ShowDetails(ADetails, TAtlasIdeIssueContext.NowUtc, AStatus,
-    not TAtlasIdeSettings.Current.IssuesPreviewComments);
-end;
-
-/// <summary>Schalter aus den Hooks: „Beginnen“ und „Anhängen …“.</summary>
-procedure ApplyHookFlags(AOwner: TAtlasIdeIssuePreview; AFrame: TAtlasIssueFrame);
-begin
-  if Assigned(AOwner.FHooks.CanStart) then
-  begin
-    AFrame.SetFlag(TAtlasIssueFlag.CanStart, AOwner.FHooks.CanStart());
-  end;
-  AFrame.SetFlag(TAtlasIssueFlag.CanAttach, Assigned(AOwner.FHooks.CanAttach) and AOwner.FHooks.CanAttach());
-end;
-
-{ Ereignisse des Frames }
-
-/// <summary>Zurück, Vor, Aktualisieren, Abbrechen, Schließen und Browser.</summary>
-procedure AddMoveEvents(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
-var
-  mKeep: IInterface;
-begin
-  mKeep := AKeep;
-  AEvents.Back :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.GoBack;
-      end;
-    end;
-  AEvents.Forward :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.GoForward;
-      end;
-    end;
-  AEvents.Refresh :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.Refresh;
-      end;
-    end;
-  AEvents.Cancel :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.CancelLoad;
-        AOwner.FDevelopment.Cancel;
-      end;
-    end;
-  AEvents.Hidden :=
-    procedure
-    begin
-      // Fenster geschlossen: Laden und Bilder abbrechen.
-      if mKeep <> nil then
-      begin
-        AOwner.CancelLoad;
-        AOwner.FMedia.Cancel;
-        AOwner.FDevelopment.Cancel;
-      end;
-    end;
-  AEvents.Browse :=
-    procedure
-    begin
-      if (mKeep <> nil) and AOwner.FContext.HasCurrent then
-      begin
-        AOwner.Fix(TAtlasIssueFix.Browser);
-      end;
-    end;
-end;
-
-/// <summary>„Prüfen …“ (#2126) für das gezeigte Issue.</summary>
-procedure AddReviewEvent(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
-var
-  mKeep: IInterface;
-begin
-  mKeep := AKeep;
-  AEvents.Review :=
-    procedure
-    var
-      mFrame: TAtlasIssueFrame;
-    begin
-      mFrame := AOwner.FContext.Frame;
-      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails and Assigned(AOwner.FHooks.Review) then
-      begin
-        AOwner.FHooks.Review(mFrame.State.Details.Issue);
-      end;
-    end;
-end;
-
-/// <summary>Beginnen, Beenden, Kennung kopieren und Anhängen.</summary>
-procedure AddIssueEvents(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
-var
-  mKeep: IInterface;
-begin
-  mKeep := AKeep;
-  AEvents.Start :=
-    procedure
-    var
-      mFrame: TAtlasIssueFrame;
-    begin
-      mFrame := AOwner.FContext.Frame;
-      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails and Assigned(AOwner.FHooks.Start) then
-      begin
-        AOwner.FHooks.Start(mFrame.State.Details.Issue);
-      end;
-    end;
-  AEvents.Finish :=
-    procedure
-    begin
-      if (mKeep <> nil) and AOwner.FContext.HasCurrent and Assigned(AOwner.FHooks.EndIssue) then
-      begin
-        AOwner.FHooks.EndIssue(AOwner.FContext.Current.Key);
-      end;
-    end;
-  AEvents.CopyKey :=
-    procedure
-    var
-      mFrame: TAtlasIssueFrame;
-    begin
-      mFrame := AOwner.FContext.Frame;
-      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails then
-      begin
-        Clipboard.AsText := mFrame.State.Details.Key;
-      end;
-    end;
-  AEvents.Attach :=
-    procedure
-    begin
-      if (mKeep <> nil) and AOwner.FContext.HasCurrent and Assigned(AOwner.FHooks.Attach) then
-      begin
-        AOwner.FHooks.Attach(AOwner.FContext.Current.Target, AOwner.FContext.Current.Key);
-      end;
-    end;
-end;
-
-/// <summary>Verknüpftes Issue, Beheben, Anhang, Adresse und Bilder öffnen bzw. laden.</summary>
-procedure AddOpenEvents(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
-var
-  mKeep: IInterface;
-begin
-  mKeep := AKeep;
-  AEvents.OpenLink :=
-    procedure(ALink: TAtlasTrackerLink)
-    begin
-      if (mKeep = nil) or not AOwner.FContext.HasCurrent then
-      begin
-        Exit;
-      end;
-      if ALink.Local then
-      begin
-        AOwner.Show(AOwner.FContext.Current.Target, ALink.Key);
-      end
-      else
-      begin
-        TAtlasIssuePreview.Browse(ALink.Page);
-      end;
-    end;
-  AEvents.Fix :=
-    procedure(AFix: TAtlasIssueFix)
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.Fix(AFix);
-      end;
-    end;
-  AEvents.OpenAttachment :=
-    procedure(AAttachment: TAtlasTrackerAttachment)
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FMedia.OpenAttachment(AAttachment);
-      end;
-    end;
-  AEvents.OpenUrl :=
-    procedure(AUrl: string)
-    begin
-      // Braucht den Besitzer nicht; nach dem Abmelden öffnet die leere Shell nichts mehr.
-      TAtlasIssuePreview.Browse(AUrl);
-    end;
-  AEvents.Images :=
-    procedure(AUrls: TArray<string>)
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FMedia.LoadImages(AUrls);
-      end;
-    end;
-end;
-
-/// <summary>Kommentar, Checkliste (#1273) und Verknüpfungen (#1279) schreiben.</summary>
-procedure AddWriteEvents(AOwner: TAtlasIdeIssuePreview; const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
-var
-  mKeep: IInterface;
-begin
-  mKeep := AKeep;
-  AEvents.Comment :=
-    procedure(AText: string)
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FComments.Send(AText);
-      end;
-    end;
-  AEvents.ToggleTask :=
-    procedure(AIndex: Integer)
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FChecklists.Toggle(AIndex);
-      end;
-    end;
-  AEvents.AddTask :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FChecklists.AddTask;
-      end;
-    end;
-  AEvents.CreateSubtask :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FLinkWrites.CreateSubtask;
-      end;
-    end;
-  AEvents.AddLink :=
-    procedure
-    begin
-      if mKeep <> nil then
-      begin
-        AOwner.FLinkWrites.AddLink;
-      end;
-    end;
-end;
 
 /// <summary>Editorschrift der IDE für Code im Fenster (Vorgabe Consolas 10).</summary>
 procedure ApplyMonoFont(AFrame: TAtlasIssueFrame);
@@ -486,176 +182,61 @@ begin
   end;
 end;
 
-{ Laden }
-
-/// <summary>Frisch geladen: Zwischenspeicher, zuletzt geöffnet und Fenster mit den Meldungen der Teile.</summary>
-procedure ShowLoaded(AOwner: TAtlasIdeIssuePreview; AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry;
-  const ADetails: TAtlasTrackerDetails);
-var
-  mDetails: TAtlasTrackerDetails;
-  mNotice: string;
-begin
-  mDetails := ADetails;
-  mDetails.Fetched := TAtlasIdeIssueContext.NowUtc;
-  AOwner.FContext.Cache.Put(AEntry.Target, mDetails);
-  AOwner.FContext.Remember(AEntry.Target, mDetails.Issue);
-  // Nach einem abgewiesenen Abhaken (Beschreibung geändert): Hinweis über dem neuen Stand.
-  mNotice := AOwner.FChecklists.TakeNotice;
-  if AFrame = nil then
-  begin
-    AOwner.FLinkWrites.TakeNotice;
-    Exit;
-  end;
-  AFrame.SetFlag(TAtlasIssueFlag.Loading, False);
-  ApplyHookFlags(AOwner, AFrame);
-  AOwner.FChecklists.Prepare(AFrame, AEntry);
-  // Meldung nach dem Anlegen bzw. Verknüpfen (#1279) über dem frischen Stand.
-  ShowOn(AOwner, AFrame, mDetails, AOwner.FLinkWrites.TakeNotice);
-  AOwner.FComments.UpdateWrite;
-  if mNotice <> '' then
-  begin
-    AFrame.ShowNotice(mNotice);
-  end;
-end;
-
-/// <summary>Nicht geladen: ohne Netz der letzte Stand mit Grund, sonst die Meldung; abgebrochen nichts.</summary>
-procedure ShowFailed(AOwner: TAtlasIdeIssuePreview; AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry;
-  AError: TAtlasCiFetchError);
-var
-  mCached: TAtlasTrackerDetails;
-begin
-  AOwner.FChecklists.TakeNotice;
-  if AFrame = nil then
-  begin
-    Exit;
-  end;
-  AFrame.SetFlag(TAtlasIssueFlag.Loading, False);
-  if AError = TAtlasCiFetchError.Cancelled then
-  begin
-    Exit;
-  end;
-  if AOwner.FContext.Cache.Get(AEntry.Target, AEntry.Key, TAtlasIdeIssueContext.NowUtc, mCached) then
-  begin
-    ShowOn(AOwner, AFrame, mCached, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)));
-  end
-  else
-  begin
-    AFrame.ShowError(TAtlasIssueTip.ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
-  end;
-end;
-
-/// <summary>Sofort der letzte Stand aus dem Zwischenspeicher; frisch geladen ersetzt ihn.</summary>
-procedure ShowCached(AOwner: TAtlasIdeIssuePreview; const AEntry: TAtlasIssueHistoryEntry);
-var
-  mFrame: TAtlasIssueFrame;
-  mDetails: TAtlasTrackerDetails;
-begin
-  mFrame := AOwner.FContext.Frame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  AOwner.FChecklists.Prepare(mFrame, AEntry);
-  if AOwner.FContext.Cache.Get(AEntry.Target, AEntry.Key, TAtlasIdeIssueContext.NowUtc, mDetails) then
-  begin
-    ShowOn(AOwner, mFrame, mDetails, StaleText(mDetails, ''));
-    AOwner.FContext.Remember(AEntry.Target, mDetails.Issue);
-  end;
-  mFrame.SetFlag(TAtlasIssueFlag.Loading, True);
-end;
-
-/// <summary>Abfrage im Hintergrund; das Ergebnis über Loaded im Hauptthread.</summary>
-procedure StartLoad(AOwner: TAtlasIdeIssuePreview; AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry;
-  const AProvider: IAtlasTrackerProvider; const ATransport: IAtlasCiTransport);
-var
-  mKeep: IInterface;
-  mEntry: TAtlasIssueHistoryEntry;
-  mProvider: IAtlasTrackerProvider;
-  mTransport: IAtlasCiTransport;
-  mComments: Boolean;
-begin
-  mKeep := AOwner.FContext.Keep;
-  mEntry := AEntry;
-  mProvider := AProvider;
-  mTransport := ATransport;
-  mComments := TAtlasIdeSettings.Current.IssuesPreviewComments;
-  AOwner.FLoad.Thread := TThread.CreateAnonymousThread(
-    procedure
-    var
-      mResult: TAtlasTrackerDetails;
-      mError: TAtlasCiFetchError;
-      mOk: Boolean;
-    begin
-      mResult := TAtlasTrackerDetails.Empty;
-      mOk := False;
-      mError := TAtlasCiFetchError.Network;
-      try
-        mOk := mProvider.Details(TAtlasTrackerCall.Create(mEntry.Target, mTransport, TAtlasIssuePreview.cTimeoutMs),
-          mEntry.Key, mComments, mResult, mError);
-      except
-        // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
-        on E: Exception do
-        begin
-          mOk := False;
-          mError := TAtlasCiFetchError.Network;
-          TAtlasGuard.Log('Issue-Vorschau: Abfrage mit ' + E.ClassName + ' abgebrochen');
-        end;
-      end;
-      mTransport := nil;
-      if TAtlasShutdown.Signalled then
-      begin
-        Exit;
-      end;
-      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
-        procedure
-        begin
-          if mKeep <> nil then
-          begin
-            AOwner.Loaded(AGeneration, mEntry, mOk, mResult, mError);
-          end;
-        end);
-    end);
-  AOwner.FLoad.Thread.FreeOnTerminate := False;
-  AOwner.FLoad.Thread.Start;
-end;
-
 { TAtlasIdeIssuePreview }
 
 constructor TAtlasIdeIssuePreview.Create(const AHooks: TAtlasIssuePreviewHooks; const ACacheFolder: string);
+var
+  mLoad: TAtlasIssueLoadHooks;
 begin
   inherited Create;
   FMouseHistory := -1;
   FHooks := AHooks;
   FHistory := TAtlasIssueHistory.Create;
   CreateParts(ACacheFolder);
-  CreateDevelopment;
+  mLoad := Default(TAtlasIssueLoadHooks);
+  mLoad.CanStart := FHooks.CanStart;
+  mLoad.CanAttach := FHooks.CanAttach;
+  mLoad.CanReview := FHooks.CanReview;
+  FLoad := TAtlasIdeIssueLoad.Create(FParts, FHistory, mLoad);
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
-  if FDevelopment <> nil then
+  if FParts <> nil then
   begin
-    FDevelopment.Stop;
+    FParts.Development.Stop;
   end;
-  FDevelopment := nil;
-  FDevelopmentRef := nil;
-  ReleaseThreads(True);
-  FComments.Free;
-  FMedia.Free;
-  FLinkWrites.Free;
-  FChecklists.Free;
-  FLookups.Free;
-  FContext.Free;
+  if FLoad <> nil then
+  begin
+    FLoad.ReleaseThreads(True);
+  end;
+  FLoad.Free;
+  FParts.Free;
   FHistory.Free;
   inherited;
+end;
+
+function TAtlasIdeIssuePreview.GetLookups: TAtlasIdeIssueLookups;
+begin
+  Result := FParts.Lookups;
+end;
+
+function TAtlasIdeIssuePreview.GetChecklists: TAtlasIdeIssueChecklists;
+begin
+  Result := FParts.Checklists;
+end;
+
+function TAtlasIdeIssuePreview.GetLinkWrites: TAtlasIdeIssueLinkWrites;
+begin
+  Result := FParts.LinkWrites;
 end;
 
 function TAtlasIdeIssuePreview.MouseStep(AWindow: HWND; AForward: Boolean): Boolean;
 var
   mFrame: TAtlasIssueFrame;
 begin
-  mFrame := FContext.Frame;
-  Result := FContext.Started and (mFrame <> nil) and mFrame.HandleAllocated and
+  mFrame := FParts.Context.Frame;
+  Result := FParts.Context.Started and (mFrame <> nil) and mFrame.HandleAllocated and
     ((AWindow = mFrame.Handle) or IsChild(mFrame.Handle, AWindow));
   if not Result then
   begin
@@ -674,56 +255,19 @@ end;
 procedure TAtlasIdeIssuePreview.CreateParts(const ACacheFolder: string);
 var
   mOwner: TAtlasIdeIssuePreview;
-  mComments: TAtlasIssueCommentHooks;
+  mHooks: TAtlasIssuePartsHooks;
 begin
   // Eigene Routine: Die anonymen Methoden halten nur Self; die Teile gibt der Destruktor frei.
   mOwner := Self;
-  FContext := TAtlasIdeIssueContext.Create(Self, FHooks.Provider, FHooks.Transport, ACacheFolder);
-  FLookups := TAtlasIdeIssueLookups.Create(FContext);
-  FChecklists := TAtlasIdeIssueChecklists.Create(FContext,
-    procedure(AEntry: TAtlasIssueHistoryEntry)
-    begin
-      mOwner.Load(AEntry);
-    end);
-  FLinkWrites := TAtlasIdeIssueLinkWrites.Create(FContext,
-    procedure
-    begin
-      mOwner.Refresh;
-    end);
-  FMedia := TAtlasIdeIssueMedia.Create(FContext);
-  mComments := Default(TAtlasIssueCommentHooks);
-  mComments.CanWrite := FHooks.CanWrite;
-  mComments.IsActive := FHooks.IsActive;
-  mComments.Comment := FHooks.Comment;
-  mComments.CommentAssist := FHooks.CommentAssist;
-  mComments.CommentSent := FHooks.CommentSent;
-  FComments := TAtlasIdeIssueComments.Create(FContext, mComments,
-    procedure
-    begin
-      mOwner.Refresh;
-    end);
-end;
-
-procedure TAtlasIdeIssuePreview.CreateDevelopment;
-var
-  mHooks: TAtlasIssueDevelopmentHooks;
-  mOwner: TAtlasIdeIssuePreview;
-  mContext: TAtlasIdeIssueContext;
-begin
-  // Eigene Routine: Die anonymen Methoden halten nur Self und den Kontext. Stop der Entwicklung löst sie wieder.
-  mOwner := Self;
-  mContext := FContext;
-  mHooks := Default(TAtlasIssueDevelopmentHooks);
-  mHooks.Provider :=
-    function(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider
-    begin
-      Result := mContext.ProviderOf(ATarget);
-    end;
-  mHooks.Transport :=
-    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    begin
-      Result := mContext.TransportOf(AProvider, ATarget);
-    end;
+  mHooks := Default(TAtlasIssuePartsHooks);
+  mHooks.Provider := FHooks.Provider;
+  mHooks.Transport := FHooks.Transport;
+  mHooks.Comments.CanWrite := FHooks.CanWrite;
+  mHooks.Comments.IsActive := FHooks.IsActive;
+  mHooks.Comments.Comment := FHooks.Comment;
+  mHooks.Comments.CommentAssist := FHooks.CommentAssist;
+  mHooks.Comments.CommentSent := FHooks.CommentSent;
+  // Nach Stop sind die Hooks leer: dann kein Projekt mehr.
   mHooks.Project :=
     function: string
     begin
@@ -733,18 +277,249 @@ begin
         Result := mOwner.FHooks.Project();
       end;
     end;
-  mHooks.Browse :=
+  mHooks.Reload :=
+    procedure(AEntry: TAtlasIssueHistoryEntry)
+    begin
+      mOwner.FLoad.Load(AEntry);
+    end;
+  mHooks.Refresh :=
+    procedure
+    begin
+      mOwner.Refresh;
+    end;
+  FParts := TAtlasIdeIssueParts.Create(Self, mHooks, ACacheFolder);
+end;
+
+procedure TAtlasIdeIssuePreview.AddMoveEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mKeep := AKeep;
+  mOwner := Self;
+  AEvents.Back :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.GoBack;
+      end;
+    end;
+  AEvents.Forward :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.GoForward;
+      end;
+    end;
+  AEvents.Refresh :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.Refresh;
+      end;
+    end;
+  AEvents.Cancel :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FLoad.CancelLoad;
+        mOwner.FParts.Development.Cancel;
+      end;
+    end;
+  AEvents.Hidden :=
+    procedure
+    begin
+      // Fenster geschlossen: Laden und Bilder abbrechen.
+      if mKeep <> nil then
+      begin
+        mOwner.FLoad.CancelLoad;
+        mOwner.FParts.Media.Cancel;
+        mOwner.FParts.Development.Cancel;
+      end;
+    end;
+  AEvents.Browse :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FParts.Context.HasCurrent then
+      begin
+        mOwner.Fix(TAtlasIssueFix.Browser);
+      end;
+    end;
+end;
+
+procedure TAtlasIdeIssuePreview.AddReviewEvent(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mKeep := AKeep;
+  mOwner := Self;
+  AEvents.Review :=
+    procedure
+    var
+      mFrame: TAtlasIssueFrame;
+    begin
+      mFrame := mOwner.FParts.Context.Frame;
+      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails and Assigned(mOwner.FHooks.Review) then
+      begin
+        mOwner.FHooks.Review(mFrame.State.Details.Issue);
+      end;
+    end;
+end;
+
+procedure TAtlasIdeIssuePreview.AddIssueEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mKeep := AKeep;
+  mOwner := Self;
+  AEvents.Start :=
+    procedure
+    var
+      mFrame: TAtlasIssueFrame;
+    begin
+      mFrame := mOwner.FParts.Context.Frame;
+      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails and Assigned(mOwner.FHooks.Start) then
+      begin
+        mOwner.FHooks.Start(mFrame.State.Details.Issue);
+      end;
+    end;
+  AEvents.Finish :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FParts.Context.HasCurrent and Assigned(mOwner.FHooks.EndIssue) then
+      begin
+        mOwner.FHooks.EndIssue(mOwner.FParts.Context.Current.Key);
+      end;
+    end;
+  AEvents.CopyKey :=
+    procedure
+    var
+      mFrame: TAtlasIssueFrame;
+    begin
+      mFrame := mOwner.FParts.Context.Frame;
+      if (mKeep <> nil) and (mFrame <> nil) and mFrame.State.HasDetails then
+      begin
+        Clipboard.AsText := mFrame.State.Details.Key;
+      end;
+    end;
+  AEvents.Attach :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FParts.Context.HasCurrent and Assigned(mOwner.FHooks.Attach) then
+      begin
+        mOwner.FHooks.Attach(mOwner.FParts.Context.Current.Target, mOwner.FParts.Context.Current.Key);
+      end;
+    end;
+end;
+
+procedure TAtlasIdeIssuePreview.AddOpenEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mKeep := AKeep;
+  mOwner := Self;
+  AEvents.OpenLink :=
+    procedure(ALink: TAtlasTrackerLink)
+    begin
+      if (mKeep = nil) or not mOwner.FParts.Context.HasCurrent then
+      begin
+        Exit;
+      end;
+      if ALink.Local then
+      begin
+        mOwner.Show(mOwner.FParts.Context.Current.Target, ALink.Key);
+      end
+      else
+      begin
+        TAtlasIssuePreview.Browse(ALink.Page);
+      end;
+    end;
+  AEvents.Fix :=
+    procedure(AFix: TAtlasIssueFix)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.Fix(AFix);
+      end;
+    end;
+  AEvents.OpenAttachment :=
+    procedure(AAttachment: TAtlasTrackerAttachment)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.Media.OpenAttachment(AAttachment);
+      end;
+    end;
+  AEvents.OpenUrl :=
     procedure(AUrl: string)
     begin
+      // Braucht den Besitzer nicht; nach dem Abmelden öffnet die leere Shell nichts mehr.
       TAtlasIssuePreview.Browse(AUrl);
     end;
-  mHooks.Frame :=
-    function: TAtlasIssueFrame
+  AEvents.Images :=
+    procedure(AUrls: TArray<string>)
     begin
-      Result := mContext.Frame;
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.Media.LoadImages(AUrls);
+      end;
     end;
-  FDevelopment := TAtlasIdeIssueDevelopment.Create(mHooks);
-  FDevelopmentRef := FDevelopment;
+end;
+
+procedure TAtlasIdeIssuePreview.AddWriteEvents(const AKeep: IInterface; var AEvents: TAtlasIssueFrameEvents);
+var
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mKeep := AKeep;
+  mOwner := Self;
+  AEvents.Comment :=
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.Comments.Send(AText);
+      end;
+    end;
+  AEvents.ToggleTask :=
+    procedure(AIndex: Integer)
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.Checklists.Toggle(AIndex);
+      end;
+    end;
+  AEvents.AddTask :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.Checklists.AddTask;
+      end;
+    end;
+  AEvents.CreateSubtask :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.LinkWrites.CreateSubtask;
+      end;
+    end;
+  AEvents.AddLink :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.FParts.LinkWrites.AddLink;
+      end;
+    end;
 end;
 
 procedure TAtlasIdeIssuePreview.Wire(AFrame: TAtlasIssueFrame);
@@ -753,144 +528,19 @@ var
   mEvents: TAtlasIssueFrameEvents;
 begin
   mKeep := Self;
-  FComments.Unbind;
+  FParts.Comments.Unbind;
   AFrame.ApplyColors(TAtlasIdeStyle.WindowColorsIf(TAtlasIdeSettings.Current.IssuesIdeColors));
   ApplyMonoFont(AFrame);
   mEvents := Default(TAtlasIssueFrameEvents);
-  AddMoveEvents(Self, mKeep, mEvents);
-  AddIssueEvents(Self, mKeep, mEvents);
-  AddReviewEvent(Self, mKeep, mEvents);
-  AddOpenEvents(Self, mKeep, mEvents);
-  AddWriteEvents(Self, mKeep, mEvents);
+  AddMoveEvents(mKeep, mEvents);
+  AddIssueEvents(mKeep, mEvents);
+  AddReviewEvent(mKeep, mEvents);
+  AddOpenEvents(mKeep, mEvents);
+  AddWriteEvents(mKeep, mEvents);
   AFrame.Events := mEvents;
-  if Assigned(FHooks.CanStart) then
-  begin
-    AFrame.SetFlag(TAtlasIssueFlag.CanStart, FHooks.CanStart());
-  end;
-  FDevelopment.Wire(AFrame);
-  AFrame.SetFlag(TAtlasIssueFlag.CanAttach, Assigned(FHooks.CanAttach) and FHooks.CanAttach());
-  ShowCurrent;
-end;
-
-procedure TAtlasIdeIssuePreview.Load(const AEntry: TAtlasIssueHistoryEntry);
-var
-  mProvider: IAtlasTrackerProvider;
-  mTransport: IAtlasCiTransport;
-  mGeneration: Integer;
-begin
-  if not FContext.Started then
-  begin
-    Exit;
-  end;
-  // Eine Abfrage zur Zeit: die laufende abbrechen, dieser Wunsch folgt ihr.
-  ReleaseThreads(False);
-  if FLoad.Thread <> nil then
-  begin
-    FLoad.Pending := AEntry;
-    FLoad.HasPending := True;
-    if FLoad.Cancel <> nil then
-    begin
-      FLoad.Cancel.Cancel;
-    end;
-    Exit;
-  end;
-  FMedia.Cancel;
-  mGeneration := FContext.Select(AEntry);
-  FComments.UpdateWrite;
-  FDevelopment.Select(AEntry.Target, AEntry.Key);
-  UpdateHistory(Self);
-  ShowCached(Self, AEntry);
-  mProvider := FContext.ProviderOf(AEntry.Target);
-  // Der Transport entsteht hier, damit „Abbrechen“ ihn erreicht; er liest das Token ohne Dialog.
-  mTransport := FContext.TransportOf(mProvider, AEntry.Target);
-  if mTransport = nil then
-  begin
-    Loaded(mGeneration, AEntry, False, TAtlasTrackerDetails.Empty,
-      TAtlasIssuePreview.MissingTransport(mProvider <> nil, FContext.CanTransport));
-    Exit;
-  end;
-  if not Supports(mTransport, IAtlasCiCancel, FLoad.Cancel) then
-  begin
-    FLoad.Cancel := nil;
-  end;
-  StartLoad(Self, mGeneration, AEntry, mProvider, mTransport);
-end;
-
-procedure TAtlasIdeIssuePreview.Loaded(AGeneration: Integer; const AEntry: TAtlasIssueHistoryEntry;
-  ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
-var
-  mProvider: IAtlasTrackerProvider;
-begin
-  FLoad.Cancel := nil;
-  ReleaseThreads(False);
-  if not FContext.Started then
-  begin
-    Exit;
-  end;
-  mProvider := FContext.ProviderOf(AEntry.Target);
-  if mProvider <> nil then
-  begin
-    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, TAtlasIdeIssueContext.LoadState(ASucceeded, AError)]));
-  end;
-  case TAtlasIssuePreview.LoadStep(FLoad.HasPending, AGeneration, FContext.Generation, ASucceeded) of
-    TAtlasIssueLoadStep.Pending:
-      begin
-        // Ein anderer Wunsch wartet: der zählt.
-        FLoad.HasPending := False;
-        Load(FLoad.Pending);
-      end;
-    TAtlasIssueLoadStep.Show:
-      ShowLoaded(Self, FContext.Frame, AEntry, ADetails);
-    TAtlasIssueLoadStep.Fail:
-      ShowFailed(Self, FContext.Frame, AEntry, AError);
-    TAtlasIssueLoadStep.Outdated:
-      begin
-        // Veraltet: ein neuerer Wunsch läuft.
-      end;
-  end;
-end;
-
-procedure TAtlasIdeIssuePreview.ShowCurrent;
-var
-  mFrame: TAtlasIssueFrame;
-  mDetails: TAtlasTrackerDetails;
-  mCurrent: TAtlasIssueHistoryEntry;
-begin
-  mFrame := FContext.Frame;
-  if mFrame = nil then
-  begin
-    Exit;
-  end;
-  UpdateHistory(Self);
-  FComments.UpdateWrite;
-  if not FContext.HasCurrent then
-  begin
-    mFrame.ShowEmpty;
-    Exit;
-  end;
-  mCurrent := FContext.Current;
-  FChecklists.Prepare(mFrame, mCurrent);
-  if FContext.Cache.Get(mCurrent.Target, mCurrent.Key, TAtlasIdeIssueContext.NowUtc, mDetails) then
-  begin
-    ShowOn(Self, mFrame, mDetails, '');
-  end;
-end;
-
-procedure TAtlasIdeIssuePreview.CancelLoad;
-begin
-  FLoad.HasPending := False;
-  if FLoad.Cancel <> nil then
-  begin
-    FLoad.Cancel.Cancel;
-  end;
-end;
-
-procedure TAtlasIdeIssuePreview.ReleaseThreads(AWait: Boolean);
-begin
-  FContext.Retire(FLoad.Thread);
-  FLoad.Thread := nil;
-  FMedia.Retire;
-  FContext.ReleaseThreads(AWait);
+  FParts.Development.Wire(AFrame);
+  FLoad.ApplyHookFlags(AFrame);
+  FLoad.ShowCurrent;
 end;
 
 procedure TAtlasIdeIssuePreview.Fix(AFix: TAtlasIssueFix);
@@ -898,15 +548,15 @@ var
   mProvider: IAtlasTrackerProvider;
   mCurrent: TAtlasIssueHistoryEntry;
 begin
-  if not FContext.HasCurrent then
+  if not FParts.Context.HasCurrent then
   begin
     Exit;
   end;
-  mCurrent := FContext.Current;
+  mCurrent := FParts.Context.Current;
   case AFix of
     TAtlasIssueFix.EnterToken:
       begin
-        mProvider := FContext.ProviderOf(mCurrent.Target);
+        mProvider := FParts.Context.ProviderOf(mCurrent.Target);
         if (mProvider <> nil) and Assigned(FHooks.Credentials) and FHooks.Credentials(mProvider, mCurrent.Target) then
         begin
           Refresh;
@@ -919,7 +569,7 @@ begin
       end;
     TAtlasIssueFix.Browser:
       // Nur die Seite aus der eingetragenen Adresse, nie eine aus der Antwort.
-      TAtlasIssuePreview.BrowseIssue(FContext.ProviderOf(mCurrent.Target), mCurrent.Target, mCurrent.Key);
+      TAtlasIssuePreview.BrowseIssue(FParts.Context.ProviderOf(mCurrent.Target), mCurrent.Target, mCurrent.Key);
     TAtlasIssueFix.Retry:
       Refresh;
     TAtlasIssueFix.None:
@@ -934,7 +584,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssuePreview;
 begin
-  if FContext.Started then
+  if FParts.Context.Started then
   begin
     Exit;
   end;
@@ -943,15 +593,15 @@ begin
   TAtlasIdeIssueWindow.OnFrame :=
     procedure(AFrame: TAtlasIssueFrame)
     begin
-      if (mKeep <> nil) and mOwner.FContext.Started then
+      if (mKeep <> nil) and mOwner.FParts.Context.Started then
       begin
         mOwner.Wire(AFrame);
       end;
     end;
-  FDevelopment.Start;
+  FParts.Development.Start;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
-  FContext.Start;
+  FParts.Context.Start;
   // Zurück-/Vor-Taste der Maus über dem Fenster blättern in dessen Verlauf (#1889).
   FMouseHistory := TAtlasMouseHistory.Register(
     function(AWindow: HWND; ADirection: TAtlasNavDirection): Boolean
@@ -962,21 +612,22 @@ end;
 
 procedure TAtlasIdeIssuePreview.Stop;
 begin
-  if not FContext.Started then
+  if not FParts.Context.Started then
   begin
     Exit;
   end;
   TAtlasMouseHistory.Unregister(FMouseHistory);
   FMouseHistory := -1;
-  FContext.Stop;
-  CancelLoad;
-  FMedia.Cancel;
-  FDevelopment.Stop;
-  ReleaseThreads(True);
+  FParts.Context.Stop;
+  FLoad.CancelLoad;
+  FParts.Media.Cancel;
+  FParts.Development.Stop;
+  FLoad.ReleaseThreads(True);
   // Rückrufe des Editors nicht mehr aufrufen.
-  FLookups.Clear;
-  FComments.Stop;
+  FParts.Lookups.Clear;
+  FParts.Comments.Stop;
   TAtlasIdeIssueWindow.Release;
+  FLoad.Stop;
   FHooks := Default(TAtlasIssuePreviewHooks);
 end;
 
@@ -989,7 +640,7 @@ procedure TAtlasIdeIssuePreview.Show(const ATarget: TAtlasTrackerTarget; const A
 var
   mEntry: TAtlasIssueHistoryEntry;
 begin
-  if not FContext.Started or not Active or (Trim(AKey) = '') then
+  if not FParts.Context.Started or not Active or (Trim(AKey) = '') then
   begin
     Exit;
   end;
@@ -1006,18 +657,18 @@ begin
         TAtlasIdeIssueWindow.ApplyTheme;
         mFrame.SetAnchor(AAnchor);
       end;
-      Load(mEntry);
+      FLoad.Load(mEntry);
     end);
 end;
 
 procedure TAtlasIdeIssuePreview.Refresh;
 begin
-  if not FContext.HasCurrent then
+  if not FParts.Context.HasCurrent then
   begin
     Exit;
   end;
-  FDevelopment.Refresh;
-  Load(FContext.Current);
+  FParts.Development.Refresh;
+  FLoad.Load(FParts.Context.Current);
 end;
 
 procedure TAtlasIdeIssuePreview.GoBack;
@@ -1026,7 +677,7 @@ var
 begin
   if FHistory.GoBack(mEntry) then
   begin
-    Load(mEntry);
+    FLoad.Load(mEntry);
   end;
 end;
 
@@ -1036,13 +687,13 @@ var
 begin
   if FHistory.GoForward(mEntry) then
   begin
-    Load(mEntry);
+    FLoad.Load(mEntry);
   end;
 end;
 
 procedure TAtlasIdeIssuePreview.UpdateWrite;
 begin
-  FComments.UpdateWrite;
+  FParts.Comments.UpdateWrite;
 end;
 
 procedure TAtlasIdeIssuePreview.ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -1050,7 +701,7 @@ var
   mFrame: TAtlasIssueFrame;
 begin
   Show(ATarget, AKey);
-  mFrame := FContext.Frame;
+  mFrame := FParts.Context.Frame;
   if mFrame <> nil then
   begin
     mFrame.RevealChecklist;
@@ -1059,13 +710,13 @@ end;
 
 procedure TAtlasIdeIssuePreview.ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
 begin
-  case TAtlasIssuePreview.LinkOpen(ALink, FContext.Started and Active) of
+  case TAtlasIssuePreview.LinkOpen(ALink, FParts.Context.Started and Active) of
     TAtlasIssueLinkOpen.Preview:
       Show(ATarget, ALink.Key);
     TAtlasIssueLinkOpen.Page:
       TAtlasIssuePreview.Browse(ALink.Page);
     TAtlasIssueLinkOpen.IssuePage:
-      TAtlasIssuePreview.BrowseIssue(FContext.ProviderOf(ATarget), ATarget, ALink.Key);
+      TAtlasIssuePreview.BrowseIssue(FParts.Context.ProviderOf(ATarget), ATarget, ALink.Key);
   end;
 end;
 
@@ -1076,7 +727,7 @@ end;
 
 function TAtlasIdeIssuePreview.RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
 begin
-  Result := FContext.RecentIssues(ATarget);
+  Result := FParts.Context.RecentIssues(ATarget);
 end;
 
 end.
