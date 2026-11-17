@@ -377,6 +377,10 @@ begin
     '2026-10-14 09:00:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 2);
   Assert.AreEqual(2, Integer(Length(mLines)), 'nur die letzten');
   Assert.AreEqual('2026-10-14 09:00:02.000 c', mLines[1]);
+  // Vorzeichen in einem Zeitfeld: keine Zeitmarke (kein ERangeError), die Zeile gehört zur laufenden Sitzung.
+  mLines := TAtlasSafeMode.LogLinesBetween(['2026-10-14 09:00:00.000 a', '2026--1-14 09:00:01.000 b',
+    '2026-10-14 09:-1:02.000 c'], EncodeDateTime(2026, 10, 14, 9, 0, 0, 0), 0, 10);
+  Assert.AreEqual(3, Integer(Length(mLines)), 'Zeilen ohne gültige Zeit');
 end;
 
 procedure TAtlasSafeModeTests.MarkerFilesFindCrashedSessions;

@@ -577,7 +577,8 @@ procedure LinkClick(AOwner: TAtlasIdeCodeLinks; const AMsg: TMsg; var AHandled: 
 var
   mHit: TAtlasCodeLinkHit;
 begin
-  if not AOwner.HitAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)), mHit) then
+  if not AOwner.HitAt(AMsg.hwnd, SmallInt(LoWord(Cardinal(AMsg.lParam))),
+    SmallInt(HiWord(Cardinal(AMsg.lParam))), mHit) then
   begin
     Exit;
   end;

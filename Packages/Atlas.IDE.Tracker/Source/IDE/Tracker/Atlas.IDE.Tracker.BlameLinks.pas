@@ -609,8 +609,8 @@ var
   mPattern: TAtlasIssueKeyPattern;
   mCommand: Integer;
 begin
-  if not TAtlasLineChangeMarks.Current.BlameAt(AMsg.hwnd, SmallInt(LoWord(AMsg.lParam)), SmallInt(HiWord(AMsg.lParam)),
-    mCommit) or not AOwner.PatternOf(mTarget, mPattern) then
+  if not TAtlasLineChangeMarks.Current.BlameAt(AMsg.hwnd, SmallInt(LoWord(Cardinal(AMsg.lParam))),
+    SmallInt(HiWord(Cardinal(AMsg.lParam))), mCommit) or not AOwner.PatternOf(mTarget, mPattern) then
   begin
     Exit;
   end;

@@ -472,6 +472,9 @@ begin
     Assert.AreEqual(TAtlasCommandUsage.TimeText(Moment(9, 30, 0)),
       TAtlasCommandUsage.TimeText(TAtlasCommandUsage.TimeOf('2026-10-15T09:30:00.123Z')));
     Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('gestern'));
+    // Richtige Trenner, aber keine Ziffern: 0 statt ERangeError (Word-Parameter von TryEncodeDate/-Time).
+    Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('jjjj-mm-ttT09:30:00'));
+    Assert.AreEqual<TDateTime>(0, TAtlasCommandUsage.TimeOf('2026-10-15Thh:mm:ss'));
   finally
     mLoaded.Free;
     mUsage.Free;

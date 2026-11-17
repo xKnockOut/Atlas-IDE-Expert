@@ -648,6 +648,10 @@ begin
     TryStrToInt(Copy(ALine, 9, 2), mDay) and TryStrToInt(Copy(ALine, 12, 2), mHour) and
     TryStrToInt(Copy(ALine, 15, 2), mMinute) and TryStrToInt(Copy(ALine, 18, 2), mSecond) and
     TryStrToInt(Copy(ALine, 21, 3), mMilli);
+  // TryStrToInt nimmt auch Vorzeichen ("-1"); TryEncodeDateTime erwartet Word, ein negativer Wert löste mit
+  // Bereichsprüfung ERangeError aus statt False.
+  Result := Result and (mYear >= 0) and (mMonth >= 0) and (mDay >= 0) and (mHour >= 0) and (mMinute >= 0) and
+    (mSecond >= 0) and (mMilli >= 0);
   if Result then
   begin
     Result := TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, mMilli, AStamp);

@@ -28,15 +28,19 @@ type
     /// <summary>Gerätebits im oberen Wort von lParam (FAPPCOMMAND_MASK).</summary>
     cAppCommandDeviceMask = $F000;
   public
-    /// <summary>Richtung zur Nachricht AMessage mit AWParam/ALParam; None, wenn sie keine Verlaufstaste ist.</summary>
-    class function DirectionOf(AMessage: Cardinal; AWParam, ALParam: NativeInt): TAtlasNavDirection; static;
+    /// <summary>Richtung zur Nachricht AMessage mit AWParam/ALParam; None, wenn sie keine Verlaufstaste ist.
+    /// AWParam ist vorzeichenlos wie WPARAM, ALParam vorzeichenbehaftet wie LPARAM: Der Aufrufer reicht jede
+    /// Nachricht der IDE durch, auch mit gesetztem oberstem Bit.</summary>
+    class function DirectionOf(AMessage: Cardinal; AWParam: NativeUInt; ALParam: NativeInt): TAtlasNavDirection;
+      static;
   end;
 
 implementation
 
 { TAtlasMouseButtons }
 
-class function TAtlasMouseButtons.DirectionOf(AMessage: Cardinal; AWParam, ALParam: NativeInt): TAtlasNavDirection;
+class function TAtlasMouseButtons.DirectionOf(AMessage: Cardinal; AWParam: NativeUInt;
+  ALParam: NativeInt): TAtlasNavDirection;
 var
   mCode: Integer;
 begin
