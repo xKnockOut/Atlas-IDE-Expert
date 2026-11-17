@@ -280,8 +280,7 @@ begin
           begin
             Exit;
           end;
-          mDone(mResult.Outcome = TAtlasVcsOutcome.Cancelled, mResult.Outcome = TAtlasVcsOutcome.TimedOut,
-            mResult.ExitCode, mXml);
+          mDone(TAtlasMutationRunStates.FromRunner(mResult.Outcome, mResult.ExitCode), mResult.ExitCode, mXml);
         end);
     end);
 end;

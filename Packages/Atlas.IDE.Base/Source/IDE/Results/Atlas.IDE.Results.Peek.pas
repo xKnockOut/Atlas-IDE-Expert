@@ -61,7 +61,8 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Editor.WorkspaceEdit,
-  Atlas.IDE.Results.Commands;
+  Atlas.IDE.Results.Commands,
+  Atlas.IDE.Foundation.Caret;
 
 const
   cWatchMs = 200;
@@ -106,23 +107,6 @@ type
 function State: TPeekState;
 begin
   Result := TPeekState(TAtlasIdePeek.FState);
-end;
-
-/// <summary>Caret in Bildschirmkoordinaten und das Fenster des Editors; False ohne Caret.</summary>
-function CaretRect(out ARect: TRect; out AEditor: HWND): Boolean;
-var
-  mInfo: TGUIThreadInfo;
-begin
-  FillChar(mInfo, SizeOf(mInfo), 0);
-  mInfo.cbSize := SizeOf(mInfo);
-  Result := GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0);
-  if not Result then
-  begin
-    Exit;
-  end;
-  AEditor := mInfo.hwndCaret;
-  ARect := mInfo.rcCaret;
-  MapWindowPoints(mInfo.hwndCaret, 0, ARect, 2);
 end;
 
 { TPeekKeys }
@@ -279,7 +263,8 @@ var
   mHeight: Integer;
 begin
   mView := TAtlasEditorBuffer.TopView;
-  if (mView = nil) or not CaretRect(mCaret, mEditorWindow) or not GetWindowRect(mEditorWindow, mEditor) then
+  if (mView = nil) or not TAtlasIdeCaret.TryFind(mEditorWindow, mCaret)
+    or not GetWindowRect(mEditorWindow, mEditor) then
   begin
     AView.Free;
     Exit;
