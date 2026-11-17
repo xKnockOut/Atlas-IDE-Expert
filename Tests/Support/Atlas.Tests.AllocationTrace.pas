@@ -58,6 +58,8 @@ type
     Size: NativeInt;
     // Vor Start angelegt und seitdem per ReallocMem verändert: Size ist die neue Größe, nicht der Zuwachs.
     Grown: Boolean;
+    // Thread, der belegt hat; der Bericht nennt Belegungen außerhalb des Hauptthreads.
+    ThreadId: Cardinal;
     Count: Integer;
     Frames: array[0..cFrames - 1] of Pointer;
   end;
@@ -79,6 +81,12 @@ var
   Recording: Boolean;
   Used: Integer;
   Overflow: Boolean;
+  // Aufrufe der Haken seit Start, auch für Blöcke von vor Start: zeigt, ob der Haken überhaupt etwas sieht.
+  CountGetMem: Integer;
+  CountFreeMem: Integer;
+  CountFreeUnknown: Integer;
+  CountRealloc: Integer;
+  CountReallocUnknown: Integer;
   Slots: PSlots;
   LockFlag: Integer;
   // Markiert gelöschte Plätze, damit die Suche dahinter weitergeht.
@@ -136,6 +144,7 @@ begin
         mSlot.Address := AAddress;
         mSlot.Size := ASize;
         mSlot.Grown := AGrown;
+        mSlot.ThreadId := GetCurrentThreadId;
         // Ohne diese Routine und den Haken, der sie ruft.
         mSlot.Count := CaptureStackBackTrace(2, cFrames, @mSlot.Frames[0], nil);
         Inc(Used);
@@ -187,6 +196,7 @@ begin
   Result := Previous.GetMem(ASize);
   if Recording then
   begin
+    AtomicIncrement(CountGetMem);
     Add(Result, ASize, False);
   end;
 end;
@@ -196,13 +206,25 @@ begin
   Result := Previous.AllocMem(ASize);
   if Recording then
   begin
+    AtomicIncrement(CountGetMem);
     Add(Result, ASize, False);
   end;
 end;
 
 function TraceFreeMem(AAddress: Pointer): Integer;
 begin
-  Remove(AAddress);
+  if Recording then
+  begin
+    AtomicIncrement(CountFreeMem);
+    if not Remove(AAddress) then
+    begin
+      AtomicIncrement(CountFreeUnknown);
+    end;
+  end
+  else
+  begin
+    Remove(AAddress);
+  end;
   Result := Previous.FreeMem(AAddress);
 end;
 
@@ -214,6 +236,11 @@ begin
   Result := Previous.ReallocMem(AAddress, ASize);
   if Recording then
   begin
+    AtomicIncrement(CountRealloc);
+    if not mKnown then
+    begin
+      AtomicIncrement(CountReallocUnknown);
+    end;
     Add(Result, ASize, not mKnown);
   end;
 end;
@@ -339,6 +366,26 @@ begin
   end;
 end;
 
+/// <summary>True, solange der Speichermanager noch über diese Haken läuft.</summary>
+function HooksActive: Boolean;
+var
+  mCurrent: TMemoryManagerEx;
+begin
+  GetMemoryManager(mCurrent);
+  Result := (@mCurrent.GetMem = @TraceGetMem) and (@mCurrent.FreeMem = @TraceFreeMem) and
+    (@mCurrent.ReallocMem = @TraceReallocMem);
+end;
+
+/// <summary>Was die Haken seit Start gesehen haben; erklärt ein Leck, zu dem keine Belegung übrig ist.</summary>
+function CountersText: string;
+const
+  cActive: array[Boolean] of string = ('nein', 'ja');
+begin
+  Result := Format('Aufzeichnung: %d Belegungen, %d Freigaben (%d von älteren Blöcken), %d Größenänderungen ' +
+    '(%d von älteren Blöcken); Haken aktiv: %s', [CountGetMem, CountFreeMem, CountFreeUnknown, CountRealloc,
+    CountReallocUnknown, cActive[HooksActive]]) + sLineBreak;
+end;
+
 function GroupHeading(const AGroup: TGroup): string;
 begin
   if AGroup.Slot.Grown then
@@ -349,6 +396,10 @@ begin
   else
   begin
     Result := Format('%d Bytes in %d Blöcken angelegt bei:', [AGroup.Bytes, AGroup.Blocks]);
+  end;
+  if AGroup.Slot.ThreadId <> MainThreadID then
+  begin
+    Result := Result + Format(' (Thread %d, nicht der Hauptthread)', [AGroup.Slot.ThreadId]);
   end;
 end;
 
@@ -386,6 +437,7 @@ begin
   begin
     Result := Result + 'Tabelle voll, weitere Belegungen nicht aufgezeichnet' + sLineBreak;
   end;
+  Result := Result + CountersText;
 end;
 
 { TAllocationTrace }
@@ -431,6 +483,11 @@ begin
     FillChar(Slots^, SizeOf(TSlots), 0);
     Used := 0;
     Overflow := False;
+    CountGetMem := 0;
+    CountFreeMem := 0;
+    CountFreeUnknown := 0;
+    CountRealloc := 0;
+    CountReallocUnknown := 0;
     Recording := True;
   finally
     Unlock;
