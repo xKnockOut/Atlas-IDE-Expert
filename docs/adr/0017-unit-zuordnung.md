@@ -1247,6 +1247,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Tracker.Templates` | `Core/Tracker/Atlas.Core.Tracker.Templates.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.TestResults` | `Core/Tracker/Atlas.Core.Tracker.TestResults.pas` | Ordner `Core/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.Core.Tracker.TimeClock` | `Core/Tracker/Atlas.Core.Tracker.TimeClock.pas` | Ordner `Core/Tracker` |
+| `Atlas.Core.Tracker.TimeStore` | `Core/Tracker/Atlas.Core.Tracker.TimeStore.pas` | Ordner `Core/Tracker`; Ablage der erfassten Zeit in time.json |
 | `Atlas.Core.Tracker.TimeLog` | `Core/Tracker/Atlas.Core.Tracker.TimeLog.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.Workflow` | `Core/Tracker/Atlas.Core.Tracker.Workflow.pas` | Ordner `Core/Tracker` |
 | `Atlas.Core.Tracker.YouTrackWorkflow` | `Core/Tracker/Atlas.Core.Tracker.YouTrackWorkflow.pas` | Ordner `Core/Tracker` |
@@ -1315,6 +1316,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.Review` | `IDE/Tracker/Atlas.IDE.Tracker.Review.pas` | Ordner `IDE/Tracker`, „Prüfen“, #2126 |
 | `Atlas.IDE.Tracker.IssueWorkLink` | `IDE/Tracker/Atlas.IDE.Tracker.IssueWorkLink.pas` | Ordner `IDE/Tracker`, Arbeitsstand bei „Beginnen“, „Beenden“, „Prüfen“ |
 | `Atlas.IDE.Tracker.PaletteSearch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearch.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.PaletteSearchFetch` | `IDE/Tracker/Atlas.IDE.Tracker.PaletteSearchFetch.pas` | Ordner `IDE/Tracker`, Abfrage der Palettensuche beim Tracker |
 | `Atlas.IDE.Tracker.Parts` | `IDE/Tracker/Atlas.IDE.Tracker.Parts.pas` | Teile, Befehle und Menü des Moduls; die Komposition meldet nur an und baut die Adapter, #1455 |
 | `Atlas.IDE.Tracker.Settings` | `IDE/Tracker/Atlas.IDE.Tracker.Settings.pas` | Ordner `IDE/Tracker` |
 | `Atlas.UI.Tracker.SettingsBranches` | `UI/Tracker/Atlas.UI.Tracker.SettingsBranches.pas` | Unterpunkt „Versionsverwaltung“ des Issue-Trackers, nur mit Versionsverwaltung (#1903) |
@@ -1323,6 +1325,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Tracker.TestResults` | `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas` | Ordner `IDE/Tracker`, Kachel „Testergebnisse“ aus der Willkommensseite, #1455 |
 | `Atlas.IDE.Tracker.Tiles` | `IDE/Tracker/Atlas.IDE.Tracker.Tiles.pas` | Kacheln „Meine Issues“ und „Sprint“ (`IAtlasWelcomeTile`), #1455 |
 | `Atlas.IDE.Tracker.TimeTracking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeTracking.pas` | Ordner `IDE/Tracker` |
+| `Atlas.IDE.Tracker.TimeBooking` | `IDE/Tracker/Atlas.IDE.Tracker.TimeBooking.pas` | Ordner `IDE/Tracker`, erfasste Zeit buchen |
 | `Atlas.IDE.Tracker.IssueState` | `IDE/Tracker/Atlas.IDE.Tracker.IssueState.pas` | Ordner `IDE/Tracker` |
 | `Atlas.IDE.Tracker.WelcomeLink` | `IDE/Tracker/Atlas.IDE.Tracker.WelcomeLink.pas` | Projekte und Meldungen der Willkommensseite über `Atlas.IDE.Contracts.WelcomeTiles`, #1455 |
 | `Atlas.IDE.Tracker.Workflow` | `IDE/Tracker/Atlas.IDE.Tracker.Workflow.pas` | Ordner `IDE/Tracker` |

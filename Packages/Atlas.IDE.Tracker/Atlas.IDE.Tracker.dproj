@@ -180,6 +180,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Templates.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TestResults.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TimeClock.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TimeStore.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TimeLog.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Workflow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Access.pas"/>
@@ -227,6 +228,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Review.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWorkLink.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PaletteSearch.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PaletteSearchFetch.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Parts.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.SettingsBranches.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Settings.pas"/>
@@ -235,6 +237,7 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TestResults.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Tiles.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TimeTracking.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TimeBooking.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.WelcomeLink.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Workflow.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
