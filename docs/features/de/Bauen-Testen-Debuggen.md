@@ -212,9 +212,10 @@ Aufruf: *Ansicht › Atlas › Atlas-Tests*, Atlas-Menü oder Befehlspalette. Da
 - Filter *Fehlgeschlagen*, *Nicht gelaufen*, *Veraltet* und *Langsam* (über `tests.slowMs`) wirken sofort, mehrere zusammen mit „oder“; das Suchfeld sucht im vollen Namen (Unit.Fixture.Methode.Fall). Der Weg zu jedem Treffer bleibt sichtbar.
 - Doppelklick oder Enter springt zum Test, bei einem Fall zu seinem `[TestCase]`. Unten stehen zum gewählten Test Meldung, erwarteter und erhaltener Wert und der Stacktrace; Zeilen, die eine Unit des Testprojekts nennen, öffnen sich per Doppelklick.
 - Die Ergebnisse gelten für diese Sitzung, je Testprojekt; Änderungen an einer Testunit zeigt das Fenster nach dem Speichern.
+- Bei Fehlschlägen öffnet es sich von selbst (#2467): Schlägt nach einem Lauf mindestens ein Test fehl oder bricht der Lauf mit Fehler ab (kein Bericht, Zeitgrenze), öffnet sich das Fenster, kommt nach vorn und zeigt das Testprojekt des Laufs. Das gilt für jeden Weg: Tests ausführen, fehlgeschlagene erneut ausführen, Tests nach dem Build, betroffene Tests beim Speichern, Serien, Testlisten, Testlinse und Test debuggen. Der Fokus bleibt, wo er war, ein Lauf beim Speichern unterbricht also nicht das Tippen. Nach einem grünen oder abgebrochenen Lauf passiert nichts. Abschalten mit `tests.window.openOnFailure`.
 - `tests.window` aus: kein Menüeintrag, das Fenster wird nicht wiederhergestellt.
 
-Einstellung: `tests.window`
+Einstellungen: `tests.window`, `tests.window.openOnFailure`
 
 ### Testlisten im Fenster „Atlas-Tests“ (#2167)
 
