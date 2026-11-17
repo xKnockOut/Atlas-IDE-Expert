@@ -39,6 +39,7 @@ begin
   Result.Problems := False;
   Result.InactiveDim := False;
   Result.DimUnusedUses := False;
+  Result.HighlightMovableUses := False;
 end;
 
 { TAtlasProblemsPlanTests }
@@ -51,6 +52,9 @@ begin
   Assert.IsFalse(TAtlasProblemsPlan.Active(mSettings));
   mSettings.DimUnusedUses := True;
   Assert.IsTrue(TAtlasProblemsPlan.Active(mSettings));
+  mSettings := Base;
+  mSettings.HighlightMovableUses := True;
+  Assert.IsTrue(TAtlasProblemsPlan.Active(mSettings), 'verschiebbare uses einfärben braucht Diagnosen (#2465)');
   mSettings := Base;
   mSettings.InactiveDim := True;
   Assert.IsTrue(TAtlasProblemsPlan.Active(mSettings));

@@ -142,6 +142,9 @@ type
     /// <summary>Ungenutzte uses-Einträge abblenden (#621, editor.dimUnusedUses); der Tooltip nennt den Grund und
     /// bietet Entfernen und Verschieben an. Aus: weder Abblenden noch Hinweise.</summary>
     DimUnusedUses: Boolean;
+    /// <summary>uses-Einträge im interface, die nur die implementation braucht, in Hinweisfarbe zeichnen (#2465,
+    /// editor.highlightMovableUses); folgt der Regel uses-only-in-implementation.</summary>
+    HighlightMovableUses: Boolean;
     /// <summary>Rekursionssymbol (↻) in der Rinne neben Aufrufen, die zur Methode zurückführen (#623,
     /// editor.recursionMarkers); der Tooltip zeigt die Kette, jede Methode anklickbar.</summary>
     RecursionMarkers: Boolean;
@@ -984,6 +987,7 @@ begin
   Result.BlockEndLabels := True;
   Result.BlockEndLabelsMinLines := 25;
   Result.DimUnusedUses := True;
+  Result.HighlightMovableUses := True;
   Result.RecursionMarkers := True;
   Result.RecursionMarkersDepth := 4;
   Result.InlineDiagnostics := 'errors';
@@ -1034,6 +1038,7 @@ begin
   AIo.Flag('BlockEndLabels', BlockEndLabels);
   AIo.Number('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AIo.Flag('DimUnusedUses', DimUnusedUses);
+  AIo.Flag('HighlightMovableUses', HighlightMovableUses);
   AIo.Flag('RecursionMarkers', RecursionMarkers);
   AIo.Number('RecursionMarkersDepth', RecursionMarkersDepth);
   AIo.Text('InlineDiagnostics', InlineDiagnostics);

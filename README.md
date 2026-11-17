@@ -69,7 +69,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows); parameters and return value of a routine are always listed one per line below the declaration like Help Insight, also without XMLDoc (`hover.signatureParams`); over a uses entry it lists the unit's types grouped by kind and clickable, the ones used in the file first (`hints.unitContents`); below a finding, “Show example” expands the description and the wrong/right example from the rule catalog (`hover.ruleExamples`)
-- **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
+- **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches and unused uses entries dimmed, interface uses entries only needed in the implementation shown in a hint colour (`editor.highlightMovableUses`)
 - **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
 - **Code queries** such as `classes where inherits TForm and methods > 40`

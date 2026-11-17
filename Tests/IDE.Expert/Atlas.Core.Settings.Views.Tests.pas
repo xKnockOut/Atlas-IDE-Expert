@@ -86,6 +86,7 @@ begin
   ASettings.BlockEndLabels := False;
   ASettings.BlockEndLabelsMinLines := 40;
   ASettings.DimUnusedUses := False;
+  ASettings.HighlightMovableUses := False;
   ASettings.RecursionMarkers := False;
   ASettings.RecursionMarkersDepth := 7;
   ASettings.ExitPoints := False;
@@ -112,6 +113,7 @@ begin
   Assert.IsFalse(ALoaded.BlockEndLabels, 'abschaltbar');
   Assert.AreEqual(40, ALoaded.BlockEndLabelsMinLines);
   Assert.IsFalse(ALoaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
+  Assert.IsFalse(ALoaded.HighlightMovableUses, 'verschiebbare uses abschaltbar (#2465)');
   Assert.IsFalse(ALoaded.RecursionMarkers, 'Rekursionssymbole abschaltbar (#623)');
   Assert.AreEqual(7, ALoaded.RecursionMarkersDepth);
   Assert.IsFalse(ALoaded.ExitPoints, 'Austrittspunkte abschaltbar (#698)');
@@ -984,6 +986,7 @@ begin
   Assert.AreEqual(0, mSettings.HideElementKey, 'negativ = keine Taste');
   Assert.AreEqual(25, TAtlasPluginSettings.Defaults.BlockEndLabelsMinLines, 'Mindestlänge (#620)');
   Assert.IsTrue(mSettings.DimUnusedUses, 'ungenutzte uses standardmäßig abgeblendet (#621)');
+  Assert.IsTrue(mSettings.HighlightMovableUses, 'verschiebbare uses standardmäßig hervorgehoben (#2465)');
   // Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).
   Assert.AreEqual('errors', mSettings.InlineDiagnostics);
   Assert.IsTrue(mSettings.ProblemsStatusCounter);
