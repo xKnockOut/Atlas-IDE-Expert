@@ -9,7 +9,7 @@
 //     noch am selben Halt steht; ShowWaitMs höchstens.
 //   - Zerlegen: atlas/accessChains (TLspSession.AccessChains) im Hintergrund-Thread; den Text der Datei gleicht
 //     Atlas vorher im Hauptthread ab. Startet keinen Server.
-//   - Auswerten: TAtlasAvAnalysis fragt, Atlas antwortet über TAtlasIdeDebugValues im Hauptthread in
+//   - Auswerten: TAtlasAvAnalysis fragt, Atlas antwortet über TAtlasIdeDebugThreadValues im Hauptthread in
 //     Zeitscheiben von höchstens SliceMs (wie die Werte im Editor, #508); verzögerte Antworten (LLDB)
 //     höchstens DeferredTimeoutMs. Ohne debug.explainAccessViolation.allowCalls ohne Nebenwirkungen (eseNone):
 //     Glieder mit Getter oder Aufruf bleiben „nicht ausgewertet“.
@@ -44,7 +44,7 @@ uses
   Atlas.IDE.Debug.Exceptions,
   Atlas.IDE.Debug.AccessViolationUnderline,
   Atlas.IDE.Debug.Modules,
-  Atlas.IDE.Hover.DebugValue,
+  Atlas.IDE.Debug.ThreadEvaluator,
   Atlas.UI.Debug.ExceptionBar;
 
 type
@@ -127,11 +127,11 @@ type
     FHandler: Integer;
     FTimer: TTimer;
     FWorkers: TAtlasWorkerSlot;
-    FEvaluator: TAtlasIdeDebugValues;
+    /// <summary>Eigene Auswertungen im angehaltenen Thread (BeginInternal/EndInternal darin).</summary>
+    FEvaluator: TAtlasIdeDebugThreadValues;
     FAnalysis: TAtlasAvAnalysis;
     FProgress: TProgress;
     FDeferred: TDeferred;
-    FInternal: Boolean;
     FFacts: TStopFacts;
     FOutcome: TOutcome;
     FUnderline: TAtlasIdeAvUnderline;
@@ -153,7 +153,6 @@ type
     procedure Finish;
     procedure Publish(const AExplanation: TAtlasDebugBannerExplanation);
     procedure RunAction(AAction: TAtlasDebugBarAction);
-    procedure EndInternal;
     function StillStopped: Boolean;
   public
     destructor Destroy; override;
@@ -225,7 +224,7 @@ begin
   inherited Create;
   FHooks.Session := ASession;
   FHooks.Message := AMessage;
-  FEvaluator := TAtlasIdeDebugValues.Create;
+  FEvaluator := TAtlasIdeDebugThreadValues.Create;
   FWorkers := TAtlasWorkerSlot.Create(HInstance);
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
@@ -239,7 +238,6 @@ begin
   FreeAndNil(FUnderline);
   FreeAndNil(FTimer);
   FEvaluator.Cancel;
-  EndInternal;
   // Laufende Anfragen halten die Sitzung als rohen Zeiger: abwarten.
   if FWorkers <> nil then
   begin
@@ -269,7 +267,6 @@ begin
     FEvaluator.Cancel;
   end;
   FDeferred.Active := False;
-  EndInternal;
   FreeAndNil(FAnalysis);
   FProgress.Phase := TPhase.Idle;
   FOutcome.Explanation := Default(TAtlasDebugBannerExplanation);
@@ -441,7 +438,6 @@ begin
   if not Result then
   begin
     FEvaluator.Cancel;
-    EndInternal;
     FDeferred.Active := False;
     FAnalysis.Answer(False, TAtlasAccessViolationStrings.Text(TAtlasAccessViolationTextId.DebugAvNoAnswer));
   end;
@@ -452,19 +448,9 @@ var
   mValue: TAtlasDebugValue;
 begin
   Result := TSliceStep.Next;
-  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugSession).
-  mValue := Default(TAtlasDebugValue);
-  TAtlasIdeDebugSession.BeginInternal;
-  FInternal := True;
-  try
-    mValue := FEvaluator.Evaluate(ARequest.Expression, FFacts.FileName, FFacts.Line + 1, ARequest.SideEffects,
-      DeferredDone);
-  finally
-    if mValue.State <> TAtlasDebugValueState.Pending then
-    begin
-      EndInternal;
-    end;
-  end;
+  // Eigene Auswertung: Zustandswechsel dabei sind kein Fortsetzen (TAtlasIdeDebugThreadValues).
+  mValue := FEvaluator.Evaluate(ARequest.Expression, FFacts.FileName, FFacts.Line + 1, ARequest.SideEffects,
+    DeferredDone);
   case mValue.State of
     TAtlasDebugValueState.Pending:
       begin
@@ -586,7 +572,6 @@ begin
   begin
     Exit;
   end;
-  EndInternal;
   FDeferred.Active := False;
   FAnalysis.Answer(AValue.State = TAtlasDebugValueState.Value, AValue.Text);
 end;
@@ -670,15 +655,6 @@ begin
     TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
     TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
     TAtlasDebugBarAction.Open, TAtlasDebugBarAction.CreateTest: ;
-  end;
-end;
-
-procedure TAtlasIdeDebugAccessViolation.EndInternal;
-begin
-  if FInternal then
-  begin
-    FInternal := False;
-    TAtlasIdeDebugSession.EndInternal;
   end;
 end;
 

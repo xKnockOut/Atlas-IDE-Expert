@@ -591,6 +591,7 @@ Atlas.Core.Editor.PlaceholderPlan.Tests
 Atlas.Core.Lsp.TextOffsets.Tests
 Atlas.Core.Completion.CommitPlan.Tests
 Atlas.Core.Debug.EvaluateRows.Tests
+Atlas.Core.Debug.EvalSlices.Tests
 Atlas.Core.Debug.DialogInput.Tests
 Atlas.Core.Signature.EditorPlan.Tests
 Atlas.Core.CodeInsight.Plan.Tests
