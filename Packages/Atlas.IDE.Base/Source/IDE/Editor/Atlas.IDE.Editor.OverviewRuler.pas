@@ -69,6 +69,7 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.OpenWatch,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Editor.OverviewMarks;
 
 const
@@ -326,7 +327,7 @@ var
   mNavigateF3: Boolean;
 begin
   Result := '';
-  AMatching := TAtlasIdeSettings.SelectionMatchesOn(AOptions, mNavigateF3);
+  AMatching := TAtlasIdeEditorSettings.SelectionMatchesOn(AOptions, mNavigateF3);
   AKey := '';
   if AMatching then
   begin

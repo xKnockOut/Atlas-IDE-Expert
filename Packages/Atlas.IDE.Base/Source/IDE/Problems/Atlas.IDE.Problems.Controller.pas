@@ -628,7 +628,7 @@ begin
   begin
     Exit;
   end;
-  mShow := ProblemsActive and TAtlasIdeSettings.ProblemsStatusCounterOn;
+  mShow := ProblemsActive and TAtlasProblemsPlan.StatusCounter(TAtlasIdeSettings.Current);
   if not TAtlasProblemsPlan.CountsDue(mShow, FCountsShown, FStore.Version, FCountsVersion) then
   begin
     Exit;
@@ -871,7 +871,7 @@ begin
   // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
   FStore.CompilerMerge := TAtlasProblemsPlan.CompilerMerge(TAtlasIdeSettings.Current);
   // Meldungen gelöschter Zeilen fallen weg statt blass auf die Folgezeile zu rutschen (#1818, editor.trackLines).
-  FStore.DropDeletedLines := TAtlasIdeSettings.TrackLinesOn;
+  FStore.DropDeletedLines := TAtlasProblemsPlan.DropDeletedLines(TAtlasIdeSettings.Current);
   ApplyIdeErrorsSetting;
   // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
   // Die Projektprüfung des Servers erfährt es eigens (#1247), sonst liefe ihr Lauf weiter.
@@ -1210,7 +1210,7 @@ begin
     end;
   end;
   // uses-Einträge (#621): Grund in der Sprache des Plugins, Zahl der ungenutzten für „Alle entfernen“.
-  if not TAtlasIdeSettings.DimUnusedUsesOn then
+  if not TAtlasProblemsPlan.UsesDimmed(TAtlasIdeSettings.Current) then
   begin
     Exit;
   end;

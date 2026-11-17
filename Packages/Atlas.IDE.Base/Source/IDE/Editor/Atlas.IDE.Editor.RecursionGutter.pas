@@ -90,7 +90,7 @@ uses
   ToolsAPI,
   Atlas.UI.Editor.Strings,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorBuffer;
 
 { TAtlasIdeRecursionGutter }
@@ -127,7 +127,7 @@ end;
 
 function TAtlasIdeRecursionGutter.Wanted: Boolean;
 begin
-  Result := TAtlasIdeSettings.RecursionMarkersOn;
+  Result := TAtlasIdeEditorSettings.RecursionMarkersOn;
 end;
 
 procedure TAtlasIdeRecursionGutter.Track(const AFileName, AText: string; AOpened: Boolean);
@@ -236,7 +236,7 @@ begin
     begin
       Exit;
     end;
-    mDepth := TAtlasIdeSettings.RecursionMarkersDepth;
+    mDepth := TAtlasIdeEditorSettings.RecursionMarkersDepth;
     // Andere Tiefe: der geholte Stand gilt nicht mehr.
     if (mDepth <> FFetchedDepth) and (FPoll.FetchedFile <> '') then
     begin

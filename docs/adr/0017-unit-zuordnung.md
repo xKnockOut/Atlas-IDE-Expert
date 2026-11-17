@@ -677,6 +677,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Foundation.Navigation` | `IDE/Foundation/Atlas.IDE.Foundation.Navigation.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.ResultsWindow` | `IDE/Foundation/Atlas.IDE.Foundation.ResultsWindow.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Settings` | `IDE/Foundation/Atlas.IDE.Foundation.Settings.pas` | Ordner `IDE/Foundation` |
+| `Atlas.IDE.Foundation.EditorSettings` | `IDE/Foundation/Atlas.IDE.Foundation.EditorSettings.pas` | Ordner `IDE/Foundation`; Schalter des Editors aus den wirksamen Einstellungen |
 | `Atlas.IDE.Foundation.StartOptions` | `IDE/Foundation/Atlas.IDE.Foundation.StartOptions.pas` | Startoptionen und vorübergehende Startparameter; Startprofile (Build) und „Test debuggen“ (Tests) brauchen sie, #1455 |
 | `Atlas.IDE.Foundation.StructureSwitch` | `IDE/Foundation/Atlas.IDE.Foundation.StructureSwitch.pas` | Ordner `IDE/Foundation` |
 | `Atlas.IDE.Foundation.Symbol` | `IDE/Foundation/Atlas.IDE.Foundation.Symbol.pas` | Ordner `IDE/Foundation` |
@@ -1419,6 +1420,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Layouts` | `Core/Welcome/Atlas.Core.Welcome.Layouts.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Projects` | `Core/Welcome/Atlas.Core.Welcome.Projects.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.QuickActions` | `Core/Welcome/Atlas.Core.Welcome.QuickActions.pas` | Ordner `Core/Welcome` |
+| `Atlas.Core.Welcome.QuickActionRuns` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRuns.pas` | Ordner `Core/Welcome`; Stand der Schnellaktionen je Projekt |
+| `Atlas.Core.Welcome.QuickActionRows` | `Core/Welcome/Atlas.Core.Welcome.QuickActionRows.pas` | Ordner `Core/Welcome`; Zeilen und Auswahl der Knopfleiste mit Schnellaktionen |
+| `Atlas.Core.Welcome.ContinueQueries` | `Core/Welcome/Atlas.Core.Welcome.ContinueQueries.pas` | Ordner `Core/Welcome`; Stand der HEAD- und Commit-Abfragen von „Weiterarbeiten“ |
 | `Atlas.Core.Welcome.Saved` | `Core/Welcome/Atlas.Core.Welcome.Saved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Scroll` | `Core/Welcome/Atlas.Core.Welcome.Scroll.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.Search` | `Core/Welcome/Atlas.Core.Welcome.Search.pas` | Ordner `Core/Welcome` |
@@ -1429,6 +1433,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Welcome.Unsaved` | `Core/Welcome/Atlas.Core.Welcome.Unsaved.pas` | Ordner `Core/Welcome` |
 | `Atlas.Core.Welcome.WhatsNew` | `Core/Welcome/Atlas.Core.Welcome.WhatsNew.pas` | Ordner `Core/Welcome` |
 | `Atlas.IDE.Welcome.Commands` | `IDE/Welcome/Atlas.IDE.Welcome.Commands.pas` | Ordner `IDE/Welcome` |
+| `Atlas.IDE.Welcome.Headers` | `IDE/Welcome/Atlas.IDE.Welcome.Headers.pas` | Ordner `IDE/Welcome`; Köpfe der Willkommensseite (Gruß, Kurzstatus, Suchfeld, Menü) |
 | `Atlas.IDE.Welcome.Areas` | `IDE/Welcome/Atlas.IDE.Welcome.Areas.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.Continue.Commit` | `IDE/Welcome/Atlas.IDE.Welcome.Continue.Commit.pas` | Ordner `IDE/Welcome` |
 | `Atlas.IDE.Welcome.IdeLayout` | `IDE/Welcome/Atlas.IDE.Welcome.IdeLayout.pas` | Ordner `IDE/Welcome` |

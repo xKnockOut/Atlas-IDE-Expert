@@ -121,7 +121,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
-  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
@@ -214,7 +214,7 @@ var
   mFirst, mLast: Integer;
 begin
   mView := nil;
-  if TAtlasIdeSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
+  if TAtlasIdeEditorSettings.ReassignedOn(mTargetsText, mStyleText, mColorText) and
     not TAtlasGuard.Disabled(TAtlasFeature.Reassigned) then
   begin
     mView := TAtlasEditorBuffer.ActiveView;

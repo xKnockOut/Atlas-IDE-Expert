@@ -65,6 +65,7 @@ uses
   Atlas.UI.Commands.Strings,
   Atlas.IDE.Build.Target,
   Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorSettings,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Editor.SafeDelete;
 
@@ -310,7 +311,7 @@ begin
     Exit;
   end;
   // Gleichen Text hervorheben (#709): F3 springt zwischen dessen Treffern, mit denselben Optionen.
-  mSearch.Matching := TAtlasIdeSettings.SelectionMatchesOn(mSearch.Options, mNavigateF3) and
+  mSearch.Matching := TAtlasIdeEditorSettings.SelectionMatchesOn(mSearch.Options, mNavigateF3) and
     TAtlasSelectionMatches.Term(mSearch.Needle, mSearch.Options, mTerm);
   mBlock := mCaret.View.Block;
   mRow := mBlock.StartingRow - 1;
@@ -348,7 +349,7 @@ begin
     Exit;
   end;
   mProblems := nil;
-  if Assigned(FProblemsOf) and TAtlasIdeSettings.ProblemMarksOn then
+  if Assigned(FProblemsOf) and TAtlasIdeEditorSettings.ProblemMarksOn then
   begin
     mProblems := FProblemsOf(mCaret.View.Buffer.FileName);
   end;
