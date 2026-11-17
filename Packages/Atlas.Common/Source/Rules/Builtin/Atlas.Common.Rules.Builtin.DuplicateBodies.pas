@@ -8,8 +8,8 @@
 // Kopie hat, meldet die Regel nicht ein zweites Mal.
 //
 // Die Rümpfe der übrigen Units kommen aus TDuplicateBodyCatalog, einem Verzeichnis je Projektgruppe, das alle
-// Units der Gruppe teilen; Änderungen an anderen Units sieht die Regel im Editor deshalb mit kurzer Verzögerung. Für den Build gibt es denselben Vergleich als --check-duplicates mit
-// eigener Baseline.
+// Units der Gruppe teilen; Änderungen an anderen Units sieht die Regel im Editor deshalb mit kurzer Verzögerung.
+// Für den Build gibt es denselben Vergleich als --check-duplicates mit eigener Baseline.
 
 interface
 

@@ -380,7 +380,7 @@ begin
     end);
   mSecond := TDuplicateBodyCatalog.Shared.IndexOf([cFileA, cFileB], nil);
   Assert.AreEqual(2, mReads, 'dieselben Dateien in anderer Folge: dasselbe Verzeichnis');
-  Assert.IsTrue(mFirst = mSecond, 'dasselbe Verzeichnis');
+  Assert.AreSame(mFirst, mSecond, 'dasselbe Verzeichnis');
   mCopies := mSecond.Copies(mHash);
   Assert.AreEqual(2, Integer(Length(mCopies)));
   Assert.AreEqual(cFileA, mCopies[0].Path, 'Fassungen nach Pfad sortiert');
