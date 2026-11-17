@@ -20,6 +20,7 @@ uses
   Atlas.Common.Product.Version.Tests in 'Common\Atlas.Common.Product.Version.Tests.pas',
   Atlas.Text.Lines.Tests in 'Text\Atlas.Text.Lines.Tests.pas',
   Atlas.Text.Chars.Tests in 'Text\Atlas.Text.Chars.Tests.pas',
+  Atlas.Text.Timestamps.Tests in 'Text\Atlas.Text.Timestamps.Tests.pas',
   Atlas.Text.Encoding.Tests in 'Text\Atlas.Text.Encoding.Tests.pas',
   Atlas.Text.LogMarks.Tests in 'Text\Atlas.Text.LogMarks.Tests.pas',
   Atlas.Text.Anonymize.Tests in 'Text\Atlas.Text.Anonymize.Tests.pas',

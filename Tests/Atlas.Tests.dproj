@@ -56,6 +56,7 @@
         <DCCReference Include="Common\Atlas.Common.Product.Version.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Lines.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Chars.Tests.pas"/>
+        <DCCReference Include="Text\Atlas.Text.Timestamps.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Encoding.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.LogMarks.Tests.pas"/>
         <DCCReference Include="Text\Atlas.Text.Anonymize.Tests.pas"/>
