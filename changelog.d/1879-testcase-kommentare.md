@@ -1,0 +1,2 @@
+### Geändert
+- TestCase-Editor: Kommentare zwischen, über und hinter den `[TestCase]`-Attributen sperren die Tabelle nicht mehr. Sie gehören zu ihrem Fall und wandern beim Verschieben mit, beim Löschen verschwinden sie mit ihm. Ebenso bleiben `{$IFDEF}`/`{$ENDIF}` erhalten, die genau einen Fall umschließen. Nur Direktiven, die sich nicht sicher erhalten lassen (`{$ELSE}`, eine Bedingung über mehreren Fällen, Schalter, inaktive Zweige), lassen die Tabelle weiter nur lesbar und nennen den Grund genauer (#1879).
