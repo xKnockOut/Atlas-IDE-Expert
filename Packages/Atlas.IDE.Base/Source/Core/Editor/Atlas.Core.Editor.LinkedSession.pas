@@ -195,11 +195,7 @@ end;
 
 function TAtlasLinkedSession.FileName: string;
 begin
-  Result := '';
-  if FSurface <> nil then
-  begin
-    Result := FSurface.FileName;
-  end;
+  Result := TAtlasEditSurfaces.FileNameOf(FSurface);
 end;
 
 function TAtlasLinkedSession.PrimaryRange: TAtlasLinkedRange;

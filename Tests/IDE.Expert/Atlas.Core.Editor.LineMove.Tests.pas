@@ -379,6 +379,15 @@ begin
   Assert.AreEqual(2, mStart);
   Assert.AreEqual(0, mOldLength);
   Assert.AreEqual('b'#10, mInsert);
+  // Der ganze alte Text ist das Ende des neuen: trotzdem die ganze Zeile.
+  Assert.IsTrue(TAtlasLineMover.Difference('x', 'yx', mStart, mOldLength, mInsert));
+  Assert.AreEqual(0, mStart);
+  Assert.AreEqual(1, mOldLength);
+  Assert.AreEqual('yx', mInsert);
+  Assert.IsTrue(TAtlasLineMover.Difference('b'#10'c', 'a'#10'b'#10'c', mStart, mOldLength, mInsert));
+  Assert.AreEqual(0, mStart);
+  Assert.AreEqual(0, mOldLength);
+  Assert.AreEqual('a'#10, mInsert);
   Assert.IsFalse(TAtlasLineMover.Difference('a', 'a', mStart, mOldLength, mInsert));
 end;
 
