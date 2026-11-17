@@ -29,6 +29,7 @@ uses
   System.Generics.Collections,
   Vcl.Controls,
   DesignIntf,
+  Atlas.Core.Designer.Created,
   Atlas.IDE.Designer.Snapshot,
   Atlas.IDE.Designer.Tool;
 
@@ -56,8 +57,8 @@ type
     FCurrent: TAtlasIdeLabelPairs;
   private
     FSnapshot: TAtlasDesignerSnapshot;
-    FCreated: TArray<string>;
-    FCreatedFile: string;
+    /// <summary>Von „Label erzeugen“ angelegte Labels für „Label rückgängig“.</summary>
+    FCreated: TAtlasDesignerCreated;
     FNotification: TNotification;
     FNotificationRef: IDesignNotification;
     FRoot: TComponent;
@@ -92,6 +93,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   ToolsAPI,
+  Atlas.Core.Designer.Surface,
   Atlas.Core.Designer.LabelPairs,
   Atlas.Core.Designer.NearAlign,
   Atlas.Core.Diagnostics.Guard,
@@ -100,6 +102,7 @@ uses
   Atlas.UI.Designer.Strings,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.NearAlign,
+  Atlas.IDE.Designer.Surface,
   Atlas.IDE.Foundation.Settings;
 
 function IsLabel(AControl: TControl): Boolean;
@@ -313,6 +316,7 @@ constructor TAtlasIdeLabelPairs.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
   FSnapshot := TAtlasDesignerSnapshot.Create;
+  FCreated := TAtlasDesignerCreated.Create(nil);
   FBounds := TDictionary<string, TRect>.Create;
   FNotification := TNotification.Create;
   FNotification.FOwner := Self;
@@ -334,6 +338,7 @@ begin
     FNotificationRef := nil;
   end;
   FBounds.Free;
+  FCreated.Free;
   FSnapshot.Free;
   inherited Destroy;
 end;
@@ -592,7 +597,7 @@ begin
   end;
   mSettings := TAtlasIdeSettings.Current;
   FSnapshot.Take(mEditor.FileName, mRoot);
-  FCreated := nil;
+  FCreated.Clear;
   mCount := 0;
   mBitmap := TBitmap.Create;
   FBusy := True;
@@ -669,14 +674,15 @@ begin
 end;
 
 /// <summary>Neues Label für AField anlegen, beschriften und an seinen Platz rücken.</summary>
-function NewLabel(const ADesigner: IDesigner; ARoot: TComponent; AField: TControl;
+function NewLabel(const ASurface: IAtlasDesignSurface; ARoot: TComponent; AField: TControl;
   const ASettings: TAtlasPluginSettings; ACanvas: TCanvas): TControl;
 var
   mSide: TAtlasPairSide;
   mPoint: TPoint;
   mAscent, mGap: Integer;
 begin
-  Result := TControl(ADesigner.CreateComponent(TLabel, AField.Parent, AField.Left, AField.Top, 0, 0));
+  Result := TControl(ASurface.CreateComponent(TLabel, AField.Parent));
+  Result.SetBounds(AField.Left, AField.Top, Result.Width, Result.Height);
   Result.Name := UniqueName(ARoot, TAtlasLabelPairs.NameFor(AField.Name));
   TLabel(Result).Caption := TAtlasLabelPairs.CaptionFor(AField.Name, ASettings.DesignerLabelPairsAbbreviations);
   if AField is TWinControl then
@@ -696,6 +702,7 @@ procedure TAtlasIdeLabelPairs.DoCreate;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
+  mSurface: IAtlasDesignSurface;
   mSettings: TAtlasPluginSettings;
   mField: TControl;
   mBitmap: TBitmap;
@@ -704,26 +711,25 @@ begin
   begin
     Exit;
   end;
+  mSurface := TAtlasIdeDesignSurface.Create(TAtlasDesignerAccess.DesignerOf(mEditor), mEditor);
   mSettings := TAtlasIdeSettings.Current;
   FSnapshot.Take(mEditor.FileName, mRoot);
-  FCreated := nil;
-  FCreatedFile := mEditor.FileName;
+  FCreated.Clear;
   mBitmap := TBitmap.Create;
   FBusy := True;
   try
     for mField in Unlabeled(mRoot, TAtlasDesignerAccess.Selection(mEditor, mRoot),
       mSettings.DesignerLabelPairsPairDistance) do
     begin
-      FCreated := FCreated + [NewLabel(TAtlasDesignerAccess.DesignerOf(mEditor), mRoot, mField, mSettings,
-        mBitmap.Canvas).Name];
+      FCreated.Add(NewLabel(mSurface, mRoot, mField, mSettings, mBitmap.Canvas));
     end;
-    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
+    mSurface.Modified;
   finally
     FBusy := False;
     mBitmap.Free;
   end;
   Remember(mRoot);
-  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPairsCreated, [Length(FCreated)]));
+  Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerPairsCreated, [FCreated.Count]));
 end;
 
 procedure TAtlasIdeLabelPairs.DoMark(ARelease: Boolean);
@@ -775,8 +781,7 @@ procedure TAtlasIdeLabelPairs.DoUndo;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
-  mComponent: IOTAComponent;
-  mName: string;
+  mSurface: IAtlasDesignSurface;
 begin
   if not CanUndo or not TAtlasDesignerAccess.Current(mEditor, mRoot) then
   begin
@@ -784,19 +789,13 @@ begin
   end;
   FBusy := True;
   try
-    // Erst die erzeugten Labels löschen, dann die Lage der übrigen zurücksetzen.
-    if SameText(mEditor.FileName, FCreatedFile) then
+    // Erst die erzeugten Labels löschen (nur die noch lebenden dieses Formulars), dann die Lage der übrigen
+    // zurücksetzen.
+    mSurface := TAtlasIdeDesignSurface.Wrap(TAtlasDesignerAccess.DesignerOf(mEditor));
+    if mSurface <> nil then
     begin
-      for mName in FCreated do
-      begin
-        mComponent := mEditor.FindComponent(mName);
-        if mComponent <> nil then
-        begin
-          mComponent.Delete;
-        end;
-      end;
+      FCreated.Undo(mSurface);
     end;
-    FCreated := nil;
     FSnapshot.Restore;
   finally
     FBusy := False;
@@ -826,12 +825,8 @@ begin
 end;
 
 function TAtlasIdeLabelPairs.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := FSnapshot.CanRestore or ((Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FCreatedFile));
+  Result := FSnapshot.CanRestore or FCreated.Holds(TAtlasIdeDesignSurface.Active);
 end;
 
 class function TAtlasIdeLabelPairs.CanCreate: Boolean;

@@ -4,7 +4,7 @@
 // markierten Steuerelemente (Geschwister der ersten Auswahl) werden mehrmals
 // nach unten oder rechts kopiert. Lage, Namen, Captions, TabOrder und
 // Verweise rechnet TAtlasDuplicateRow; hier entstehen die Kopien über
-// IDesigner.CreateComponent (der Designer legt die Felder an).
+// IAtlasDesignSurface.CreateComponent (der Designer legt die Felder an).
 // - Eigenschaften: alle gespeicherten veröffentlichten außer Name, Lage und
 //   TabOrder; Ereignis-Handler nur mit „Ereignis-Handler teilen“. Kinder von
 //   Containern werden mitkopiert.
@@ -12,8 +12,9 @@
 //   in der Kopie auf dessen Kopie.
 // - Vorschau: Umrisse der Kopien über dem Elternelement, live beim Ändern im
 //   Dialog (TAtlasDesignerOutlines).
-// - Rückgängig: „Duplizieren rückgängig“ entfernt alle Kopien des letzten
-//   Laufs und schiebt verschobene Steuerelemente zurück.
+// - Rückgängig: „Duplizieren rückgängig“ entfernt die noch vorhandenen Kopien
+//   des letzten Laufs (TAtlasDesignerCreated, auch umbenannte) und schiebt
+//   verschobene Steuerelemente zurück.
 // Nur im Hauptthread.
 
 interface
@@ -23,15 +24,15 @@ uses
   System.Classes,
   System.Types,
   Vcl.Controls,
+  Atlas.Core.Designer.Created,
   Atlas.UI.Designer.Outlines,
   Atlas.IDE.Designer.Tool;
 
 type
   TAtlasIdeDuplicateRow = class(TAtlasIdeDesignerTool)
   private
-    /// <summary>Letzter Lauf: Datei, angelegte Kopien und verschobene Steuerelemente mit alter Lage.</summary>
-    FLastFile: string;
-    FCreated: TArray<string>;
+    /// <summary>Letzter Lauf: angelegte Kopien und verschobene Steuerelemente mit alter Lage.</summary>
+    FCreated: TAtlasDesignerCreated;
     FMoved: TArray<string>;
     FMovedFrom: TArray<TRect>;
     procedure ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
@@ -39,6 +40,7 @@ type
   public
     /// <summary>AOnMessage: Zeile in der Meldungsansicht.</summary>
     constructor Create(const AOnMessage: TProc<string>);
+    destructor Destroy; override;
     /// <summary>Gibt es einen Lauf im aktiven Designer, der sich zurücknehmen lässt?</summary>
     function CanUndo: Boolean;
     /// <summary>Dialog zeigen und die Kopien anlegen.</summary>
@@ -57,11 +59,13 @@ uses
   ToolsAPI,
   DesignIntf,
   Atlas.Core.Designer.DuplicateRow,
+  Atlas.Core.Designer.Surface,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Designer.Strings,
   Atlas.UI.Designer.DuplicateDialog,
   Atlas.IDE.Designer.Access,
   Atlas.IDE.Designer.KeptForm,
+  Atlas.IDE.Designer.Surface,
   Atlas.IDE.Foundation.Settings;
 
 type
@@ -75,6 +79,8 @@ type
   TDuplicateRun = record
     Root: TComponent;
     Designer: IDesigner;
+    /// <summary>Derselbe Designer für Anlegen und Löschen.</summary>
+    Surface: IAtlasDesignSurface;
     Controls: TArray<TControl>;
     Others: TArray<TControl>;
     Options: TAtlasDuplicateOptions;
@@ -280,8 +286,8 @@ var
   mChild: TControl;
   mTaken: TArray<string>;
 begin
-  Result := TControl(ARun.Designer.CreateComponent(TComponentClass(AControl.ClassType), AParent, ABounds.Left,
-    ABounds.Top, ABounds.Width, ABounds.Height));
+  Result := TControl(ARun.Surface.CreateComponent(TComponentClass(AControl.ClassType), AParent));
+  Result.BoundsRect := ABounds;
   // Erst der Name, dann die Eigenschaften: SetName setzt sonst eine Caption gleich dem alten Namen mit um.
   Result.Name := AName;
   CopyProps(AControl, Result, ARun.Options.ShareEvents);
@@ -436,6 +442,25 @@ begin
   end;
 end;
 
+/// <summary>Alle Kopien (samt Kindern) für „Duplizieren rückgängig“ in ACreated merken; Ergebnis: ihre Namen.
+/// </summary>
+function KeepCopies(ACreated: TAtlasDesignerCreated; const AGroups: TArray<TCopyGroup>): TArray<string>;
+var
+  mGroup: TCopyGroup;
+  mCopy: TComponent;
+begin
+  ACreated.Clear;
+  Result := nil;
+  for mGroup in AGroups do
+  begin
+    for mCopy in mGroup.Copies do
+    begin
+      ACreated.Add(mCopy);
+    end;
+    Result := Result + NamesOf(mGroup.Copies);
+  end;
+end;
+
 /// <summary>Kopien direkt im Elternelement AParent (ohne Kinder von Containern).</summary>
 function TopCopies(const AGroups: TArray<TCopyGroup>; AParent: TWinControl): TArray<TComponent>;
 var
@@ -460,6 +485,13 @@ end;
 constructor TAtlasIdeDuplicateRow.Create(const AOnMessage: TProc<string>);
 begin
   inherited Create(AOnMessage);
+  FCreated := TAtlasDesignerCreated.Create(nil);
+end;
+
+destructor TAtlasIdeDuplicateRow.Destroy;
+begin
+  FCreated.Free;
+  inherited Destroy;
 end;
 
 procedure TAtlasIdeDuplicateRow.ShowOutlines(AParent: TWinControl; const AOutlines: TArray<TAtlasOutline>);
@@ -494,12 +526,8 @@ begin
 end;
 
 function TAtlasIdeDuplicateRow.CanUndo: Boolean;
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
 begin
-  Result := (Length(FCreated) > 0) and TAtlasDesignerAccess.Current(mEditor, mRoot) and
-    SameText(mEditor.FileName, FLastFile) and (mRoot.FindComponent(FCreated[0]) <> nil);
+  Result := FCreated.Holds(TAtlasIdeDesignSurface.Active);
 end;
 
 /// <summary>Vorschau zu AOptions: Umrisse im Designer, Zeile „Kopien: …“ und Hinweis im Dialog.</summary>
@@ -603,13 +631,13 @@ var
   mOptions: TAtlasDuplicateOptions;
   mLayout: TAtlasDuplicateLayout;
   mGroups: TArray<TCopyGroup>;
-  mGroup: TCopyGroup;
 begin
   if not TAtlasIdeSettings.Current.DesignerDuplicateRow or not TAtlasDesignerAccess.Current(mEditor, mRun.Root) then
   begin
     Exit;
   end;
   mRun.Designer := TAtlasDesignerAccess.DesignerOf(mEditor);
+  mRun.Surface := TAtlasIdeDesignSurface.Wrap(mRun.Designer);
   mRun.Controls := TAtlasDesignerAccess.SelectedSiblings(mEditor, mRun.Root);
   if (mRun.Designer = nil) or (Length(mRun.Controls) = 0) then
   begin
@@ -636,23 +664,17 @@ begin
   Push(Self, mRun, mLayout);
   mGroups := CreateCopies(mRun, mLayout);
   ApplyTabOrder(mRun, mGroups);
-  FLastFile := mEditor.FileName;
-  FCreated := nil;
-  for mGroup in mGroups do
-  begin
-    FCreated := FCreated + NamesOf(mGroup.Copies);
-  end;
   TAtlasDesignerAccess.Select(mRun.Designer, mRun.Root, TopCopies(mGroups, mRun.Controls[0].Parent));
-  mRun.Designer.Modified;
+  mRun.Surface.Modified;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerDuplicateDone, [Length(mGroups),
-    string.Join(', ', FCreated)]));
+    string.Join(', ', KeepCopies(FCreated, mGroups))]));
 end;
 
 procedure TAtlasIdeDuplicateRow.Undo;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
-  mComponent: IOTAComponent;
+  mSurface: IAtlasDesignSurface;
   mControl: TComponent;
   mIndex, mCount: Integer;
 begin
@@ -660,16 +682,13 @@ begin
   begin
     Exit;
   end;
-  // Rückwärts: Kinder vor ihren Containern.
-  mCount := 0;
-  for mIndex := High(FCreated) downto 0 do
+  mSurface := TAtlasIdeDesignSurface.Active;
+  if mSurface = nil then
   begin
-    mComponent := mEditor.FindComponent(FCreated[mIndex]);
-    if (mComponent <> nil) and mComponent.Delete then
-    begin
-      Inc(mCount);
-    end;
+    Exit;
   end;
+  // Rückwärts: Kinder vor ihren Containern; vom Benutzer gelöschte Kopien sind schon heraus.
+  mCount := FCreated.Undo(mSurface);
   for mIndex := 0 to High(FMoved) do
   begin
     mControl := mRoot.FindComponent(FMoved[mIndex]);
@@ -678,13 +697,9 @@ begin
       TControl(mControl).BoundsRect := FMovedFrom[mIndex];
     end;
   end;
-  FCreated := nil;
   FMoved := nil;
   FMovedFrom := nil;
-  if TAtlasDesignerAccess.DesignerOf(mEditor) <> nil then
-  begin
-    TAtlasDesignerAccess.DesignerOf(mEditor).Modified;
-  end;
+  mSurface.Modified;
   Say(TAtlasDesignerStrings.Fmt(TAtlasDesignerTextId.DesignerDuplicateUndone, [mCount]));
 end;
 
