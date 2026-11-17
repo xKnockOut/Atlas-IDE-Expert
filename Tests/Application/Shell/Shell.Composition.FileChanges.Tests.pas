@@ -23,9 +23,9 @@ type
     FFolder: string;
     FEvents: string;
   public
-    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
+    /// <summary>PROBE (nicht mergen): misst je Schritt erste und zweite Belegung.</summary>
+    [Test]
+    procedure AProbeFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -58,7 +58,10 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Providers.DocumentStore,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  System.Classes,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Windows.Projects.DelphiInstallation;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -88,14 +91,53 @@ end;
 
 { TShellFileChangesTests }
 
-procedure TShellFileChangesTests.WarmUpFirstUse;
-begin
-  Setup;
-  try
-    GlobalSettingsReload;
-  finally
-    TearDown;
+procedure TShellFileChangesTests.AProbeFirstUse;
+var
+  mLines: TStringList;
+  mRound: Integer;
+  mFile: string;
+  mBefore: Int64;
+
+  procedure Note(const AName: string);
+  begin
+    mLines.Add(Format('Runde %d %s: %d', [mRound, AName, TShutdownLeaks.AllocatedBytes - mBefore]));
+    mBefore := TShutdownLeaks.AllocatedBytes;
   end;
+
+begin
+  mLines := TStringList.Create;
+  try
+    mLines.Capacity := 200;
+    for mRound := 1 to 2 do
+    begin
+      mBefore := TShutdownLeaks.AllocatedBytes;
+      mFile := TPath.Combine(FFolder, 'settings.json');
+      TFile.WriteAllText(mFile, '{}', TEncoding.UTF8);
+      Note('WriteAllText');
+      FConfiguration.UseReplaySettings(mFile);
+      Note('UseReplaySettings');
+      FConfiguration.Start;
+      Note('Start');
+      TFile.WriteAllText(mFile, '{"hover":{"enabled":false}}', TEncoding.UTF8);
+      Note('WriteAllText2');
+      FChanges.Handle(TArray<TFileChange>.Create(TFileChange.Create(mFile, TFileChangeKind.Changed)));
+      Note('Handle');
+      Trim(FSettings.GlobalSettings);
+      Note('GlobalSettings');
+      TearDown;
+      Note('TearDown');
+      Setup;
+      Note('Setup');
+      TDelphiInstallation.Versions;
+      Note('Versions');
+    end;
+    mLines.SaveToFile(TPath.Combine(TPath.GetTempPath, 'atlas-probe-filechanges.txt'));
+  finally
+    mLines.Free;
+  end;
+  mFile := '';
+  FEvents := '';
+  Assert.IsTrue(True);
 end;
 
 procedure TShellFileChangesTests.Setup;
