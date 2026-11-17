@@ -172,38 +172,38 @@ begin
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;
     mFrame.SetOptions(True, [TStepFilterKind.Getters], TArray<string>.Create('*.Log*'));
-    mFrame.OnChange := Watch(mLog);
-    Assert.AreEqual(1, mFrame.Patterns.Items.Count);
+    mFrame.Hooks.Change := Watch(mLog);
+    Assert.AreEqual(1, mFrame.Patterns.List.Items.Count);
 
-    mFrame.PatternEdit.Text := '  TBasisForm.*  ';
-    Assert.IsTrue(mFrame.AddButtonControl.Enabled);
-    Assert.IsTrue(mFrame.AddPattern);
+    mFrame.Patterns.Edit.Text := '  TBasisForm.*  ';
+    Assert.IsTrue(mFrame.Patterns.AddButtonControl.Enabled);
+    Assert.IsTrue(mFrame.Patterns.AddPattern);
     Assert.AreEqual(1, mLog.Count);
     Assert.AreEqual('*.Log*;TBasisForm.*', TStepFilterNames.PatternsText(mLog.Patterns));
-    Assert.AreEqual('', mFrame.PatternEdit.Text, 'Feld leer für das nächste');
-    Assert.AreEqual(2, mFrame.Patterns.Items.Count);
+    Assert.AreEqual('', mFrame.Patterns.Edit.Text, 'Feld leer für das nächste');
+    Assert.AreEqual(2, mFrame.Patterns.List.Items.Count);
 
-    mFrame.PatternEdit.Text := '*.log*';
-    Assert.IsFalse(mFrame.AddButtonControl.Enabled, 'doppelt ohne Groß-/Kleinschreibung');
-    Assert.IsFalse(mFrame.AddPattern);
-    mFrame.PatternEdit.Text := 'a b';
-    Assert.IsFalse(mFrame.AddPattern, 'Leerraum ist ungültig');
+    mFrame.Patterns.Edit.Text := '*.log*';
+    Assert.IsFalse(mFrame.Patterns.AddButtonControl.Enabled, 'doppelt ohne Groß-/Kleinschreibung');
+    Assert.IsFalse(mFrame.Patterns.AddPattern);
+    mFrame.Patterns.Edit.Text := 'a b';
+    Assert.IsFalse(mFrame.Patterns.AddPattern, 'Leerraum ist ungültig');
     Assert.AreEqual(1, mLog.Count);
 
-    Assert.IsFalse(mFrame.ReplacePattern(1, '*.Log*'), 'würde doppelt');
-    Assert.IsFalse(mFrame.ReplacePattern(1, '*.'), 'nur Platzhalter');
-    Assert.IsTrue(mFrame.ReplacePattern(1, ' Fremd.* '));
+    Assert.IsFalse(mFrame.Patterns.ReplacePattern(1, '*.Log*'), 'würde doppelt');
+    Assert.IsFalse(mFrame.Patterns.ReplacePattern(1, '*.'), 'nur Platzhalter');
+    Assert.IsTrue(mFrame.Patterns.ReplacePattern(1, ' Fremd.* '));
     Assert.AreEqual(2, mLog.Count);
     Assert.AreEqual('*.Log*;Fremd.*', TStepFilterNames.PatternsText(mLog.Patterns));
 
-    Assert.IsFalse(mFrame.RemoveSelected, 'ohne Auswahl');
-    mFrame.Patterns.Items[0].Selected := True;
-    Assert.IsTrue(mFrame.RemoveButtonControl.Enabled);
-    Assert.IsTrue(mFrame.RemoveSelected);
+    Assert.IsFalse(mFrame.Patterns.RemoveSelected, 'ohne Auswahl');
+    mFrame.Patterns.List.Items[0].Selected := True;
+    Assert.IsTrue(mFrame.Patterns.RemoveButtonControl.Enabled);
+    Assert.IsTrue(mFrame.Patterns.RemoveSelected);
     Assert.AreEqual(3, mLog.Count);
     Assert.AreEqual('Fremd.*', TStepFilterNames.PatternsText(mLog.Patterns));
-    Assert.AreEqual(1, mFrame.Patterns.Items.Count);
-    Assert.IsTrue(mFrame.Patterns.Items[0].Selected, 'Auswahl bleibt an der Stelle');
+    Assert.AreEqual(1, mFrame.Patterns.List.Items.Count);
+    Assert.IsTrue(mFrame.Patterns.List.Items[0].Selected, 'Auswahl bleibt an der Stelle');
     Assert.IsTrue(mLog.Enabled);
     Assert.AreEqual<TStepFilterKinds>([TStepFilterKind.Getters], mLog.Kinds);
   finally
@@ -225,7 +225,7 @@ begin
     mFrame := TAtlasDebugStepFilterFrame.Create(mHost);
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;
-    mFrame.OnChange := Watch(mLog);
+    mFrame.Hooks.Change := Watch(mLog);
     mFrame.SetOptions(False, [TStepFilterKind.Trivial], TArray<string>.Create('*.Log*'));
     Assert.AreEqual(0, mLog.Count, 'SetOptions meldet nichts');
     mFrame.EnabledCheck.Checked := True;
@@ -251,17 +251,17 @@ begin
     mFrame.Parent := mHost;
     mFrame.HandleNeeded;
     mFrame.SetOptions(True, [], TArray<string>.Create('A.*', 'B.*'));
-    mFrame.Patterns.Items[1].Selected := True;
+    mFrame.Patterns.List.Items[1].Selected := True;
     mFrame.SetOptions(False, [TStepFilterKind.Setters], TArray<string>.Create('A.*', 'B.*'));
-    Assert.IsTrue(mFrame.Patterns.Items[1].Selected, 'gleiche Muster: Liste bleibt samt Auswahl');
+    Assert.IsTrue(mFrame.Patterns.List.Items[1].Selected, 'gleiche Muster: Liste bleibt samt Auswahl');
     mFrame.SetCounts(Counted);
-    Assert.AreEqual('3', mFrame.Patterns.Items[0].SubItems[0]);
+    Assert.AreEqual('3', mFrame.Patterns.List.Items[0].SubItems[0]);
     Assert.AreEqual(TAtlasStepCountsState.Ready, mFrame.CountsState);
     mFrame.SetOptions(False, [], TArray<string>.Create('C.*'));
-    Assert.AreEqual(1, mFrame.Patterns.Items.Count);
-    Assert.AreEqual('C.*', mFrame.Patterns.Items[0].Caption);
+    Assert.AreEqual(1, mFrame.Patterns.List.Items.Count);
+    Assert.AreEqual('C.*', mFrame.Patterns.List.Items[0].Caption);
     mFrame.SetNoCounts;
-    Assert.AreEqual('', mFrame.Patterns.Items[0].SubItems[0]);
+    Assert.AreEqual('', mFrame.Patterns.List.Items[0].SubItems[0]);
   finally
     mHost.Free;
   end;

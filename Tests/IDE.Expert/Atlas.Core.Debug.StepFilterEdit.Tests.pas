@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Debug.StepFilterEdit.Tests;
 
 // Tests für die Entscheidungen des Schrittfilters außerhalb von Urteil und Ablauf (#850, #1967): Art des Schritts,
-// Halt des Laufs, Haltepunkt an der neuen Routine, Routine überspringen bzw. nicht mehr überspringen; ohne IDE.
+// Halt des Laufs, Haltepunkt an der neuen Routine, Routine überspringen bzw. nicht mehr überspringen, Muster anfügen
+// und ersetzen; ohne IDE.
 
 interface
 
@@ -25,11 +26,16 @@ type
     procedure UnskipRemovesPattern;
     [Test]
     procedure UnskipNamesWhatStillFilters;
+    [Test]
+    procedure AddPatternOnlyValidAndNew;
+    [Test]
+    procedure ReplacePatternOnlyValidAndUnique;
   end;
 
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Text.StepFilter,
   Atlas.Core.Debug.StepFilter,
   Atlas.Core.Debug.StepFilterEdit;
@@ -124,6 +130,33 @@ begin
     Routine([TStepFilterKind.Getters]));
   Assert.AreEqual<TAtlasStepUnskipOutcome>(TAtlasStepUnskipOutcome.StillByKind, mEdit.Outcome);
   Assert.IsTrue(mEdit.Changed);
+end;
+
+procedure TAtlasStepFilterEditTests.AddPatternOnlyValidAndNew;
+var
+  mFull: TArray<string>;
+  mIndex: Integer;
+begin
+  Assert.IsTrue(TAtlasStepFilterEdit.CanAddPattern(['*.Log*'], '  TBasisForm.*  '));
+  Assert.IsFalse(TAtlasStepFilterEdit.CanAddPattern(['*.Log*'], '*.log*'), 'doppelt ohne Groß-/Kleinschreibung');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanAddPattern(nil, 'a b'), 'Leerraum ist ungültig');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanAddPattern(nil, '   '), 'leer');
+  SetLength(mFull, TStepFilterNames.cMaxPatterns);
+  for mIndex := 0 to High(mFull) do
+  begin
+    mFull[mIndex] := 'Unit' + IntToStr(mIndex) + '.*';
+  end;
+  Assert.IsFalse(TAtlasStepFilterEdit.CanAddPattern(mFull, 'Neu.*'), 'voll');
+end;
+
+procedure TAtlasStepFilterEditTests.ReplacePatternOnlyValidAndUnique;
+begin
+  Assert.IsTrue(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*', 'A.*'], 1, ' Fremd.* '));
+  Assert.IsTrue(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*', 'A.*'], 1, 'a.*'), 'nur anders geschrieben');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*', 'A.*'], 1, '*.Log*'), 'würde doppelt');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*', 'A.*'], 1, '*.'), 'nur Platzhalter');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*'], 1, 'B.*'), 'kein solches Muster');
+  Assert.IsFalse(TAtlasStepFilterEdit.CanReplacePattern(['*.Log*'], -1, 'B.*'));
 end;
 
 initialization

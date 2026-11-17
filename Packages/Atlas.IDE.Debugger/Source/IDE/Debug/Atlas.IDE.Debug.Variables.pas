@@ -10,7 +10,7 @@
 //     Gleiche Ausdrücke behalten Knoten, Aufklappzustand und die Markierung
 //     geänderter Werte. Ohne Server bleiben beide Reiter leer.
 //   - Reiter Überwachung: eigene Ausdrücke je Projekt
-//     (TAtlasIdeVariablesStore), kommen mit dem Projekt wieder.
+//     (TAtlasIdeVariablesWatches), kommen mit dem Projekt wieder.
 //   - Werte: TAtlasIdeVariablesLists in Zeitscheiben ohne Nebenwirkungen,
 //     zuerst der gezeigte Reiter. Aufklappen holt Felder aus dem Atlas-Index
 //     (TAtlasIdeDebugFieldRequests), sonst Teile des Ergebnis-Strings.
@@ -29,12 +29,12 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
-  Atlas.Core.Debug.Evaluate,
+  Atlas.UI.Debug.VariablesFrame,
   Atlas.Core.Debug.Variables,
   Atlas.IDE.Debug.StopView,
   Atlas.IDE.Debug.FieldRequests,
   Atlas.IDE.Debug.VariablesLists,
-  Atlas.IDE.Debug.VariablesStore;
+  Atlas.IDE.Debug.VariablesWatches;
 
 type
   /// <summary>Laufende Sitzung oder nil; startet keinen Server.</summary>
@@ -71,7 +71,7 @@ type
     FRun: TAtlasVariablesRunner;
     FLists: TAtlasIdeVariablesLists;
     FFields: TAtlasIdeDebugFieldRequests;
-    FStore: TAtlasIdeVariablesStore;
+    FWatches: TAtlasIdeVariablesWatches;
     FTab: TAtlasVariablesTab;
     FSearch: TSearchState;
     FPlace: TPlace;
@@ -86,9 +86,11 @@ type
     procedure Expand(ATab: TAtlasVariablesTab; const AKey: string);
     procedure AcceptFields(ARequest: Integer; ATab: TAtlasVariablesTab; const AKey: string;
       const AFields: TArray<string>);
-    procedure AddWatch(const AExpression: string);
-    procedure RemoveWatch(ANode: TAtlasEvalNode);
-    procedure SyncWatches;
+    /// <summary>Überwachung geändert: neu zeichnen und mit AEvaluate neue Zeilen auswerten.</summary>
+    procedure WatchesChanged(AEvaluate: Boolean);
+    /// <summary>AFrame an die Instanz hängen (nach jedem Anlegen des Fensters); einen verpassten Halt nachholen.
+    /// </summary>
+    procedure Attach(AFrame: TAtlasDebugVariablesFrame);
     procedure SetTab(ATab: TAtlasVariablesTab);
     /// <summary>Suche mit AText im gezeigten Reiter (neu) starten; leer: Suche aus.</summary>
     procedure Search(const AText: string; AMode: TAtlasVariableSearchMode; ADeep: Boolean);
@@ -121,6 +123,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Debug.Evaluate,
   Atlas.IDE.Debug.Session,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -135,7 +138,6 @@ uses
   Atlas.IDE.Debug.Sources,
   Atlas.IDE.Debug.EditValue,
   Atlas.IDE.Debug.VariablesWindow,
-  Atlas.UI.Debug.VariablesFrame,
   Atlas.UI.Debug.VariablesStrings;
 
 /// <summary>Das Fenster, falls es schon besteht; sonst nil.</summary>
@@ -236,7 +238,7 @@ end;
 /// <summary>Reiter, Suche und Aufklappen.</summary>
 procedure WireView(AFrame: TAtlasDebugVariablesFrame);
 begin
-  AFrame.OnTab :=
+  AFrame.Hooks.Tab :=
     procedure(ATab: TAtlasVariablesTab)
     begin
       if TAtlasIdeDebugVariables.FInstance <> nil then
@@ -244,7 +246,7 @@ begin
         TAtlasIdeDebugVariables.FInstance.SetTab(ATab);
       end;
     end;
-  AFrame.OnSearch :=
+  AFrame.Hooks.Search :=
     procedure(const AText: string; AMode: TAtlasVariableSearchMode; ADeep: Boolean)
     begin
       if TAtlasIdeDebugVariables.FInstance <> nil then
@@ -252,7 +254,7 @@ begin
         TAtlasIdeDebugVariables.FInstance.Search(AText, AMode, ADeep);
       end;
     end;
-  AFrame.OnExpand :=
+  AFrame.Hooks.Expand :=
     procedure(ANode: TAtlasEvalNode)
     begin
       QueueExpand(ANode.Key);
@@ -262,20 +264,20 @@ end;
 /// <summary>Überwachung hinzufügen und entfernen.</summary>
 procedure WireWatches(AFrame: TAtlasDebugVariablesFrame);
 begin
-  AFrame.OnAddWatch :=
+  AFrame.Hooks.AddWatch :=
     procedure(AExpression: string)
     begin
       if TAtlasIdeDebugVariables.FInstance <> nil then
       begin
-        TAtlasIdeDebugVariables.FInstance.AddWatch(AExpression);
+        TAtlasIdeDebugVariables.FInstance.FWatches.Add(AExpression, StillStopped);
       end;
     end;
-  AFrame.OnRemoveWatch :=
+  AFrame.Hooks.RemoveWatch :=
     procedure(ANode: TAtlasEvalNode)
     begin
       if TAtlasIdeDebugVariables.FInstance <> nil then
       begin
-        TAtlasIdeDebugVariables.FInstance.RemoveWatch(ANode);
+        TAtlasIdeDebugVariables.FInstance.FWatches.Remove(ANode);
       end;
     end;
 end;
@@ -283,13 +285,13 @@ end;
 /// <summary>Wert ändern (#868): nur mit laufendem „Werte ändern“, im angehaltenen Programm und mit Ort.</summary>
 procedure WireEdit(AFrame: TAtlasDebugVariablesFrame);
 begin
-  AFrame.OnCanEditValue :=
+  AFrame.Hooks.CanEditValue :=
     function: Boolean
     begin
       Result := TAtlasIdeDebugEditValue.Started and StillStopped and
         (TAtlasIdeDebugVariables.FInstance.FPlace.Line >= 0);
     end;
-  AFrame.OnEditValue :=
+  AFrame.Hooks.EditValue :=
     procedure(ANode: TAtlasEvalNode)
     var
       mPlace: TAtlasIdeDebugVariables.TPlace;
@@ -302,31 +304,6 @@ begin
       TAtlasIdeDebugEditValue.Act(TAtlasDebugValue.Evaluated(ANode.Expression, ANode.Value), mPlace.FileName,
         mPlace.Line + 1, TAtlasIdeDebugEditValue.cEditAction);
     end;
-end;
-
-/// <summary>AFrame an die Instanz hängen (nach jedem Anlegen des Fensters); einen verpassten Halt nachholen.
-/// </summary>
-procedure WireFrame(AFrame: TAtlasDebugVariablesFrame);
-var
-  mInstance: TAtlasIdeDebugVariables;
-begin
-  mInstance := TAtlasIdeDebugVariables.FInstance;
-  if mInstance = nil then
-  begin
-    Exit;
-  end;
-  WireView(AFrame);
-  WireWatches(AFrame);
-  WireEdit(AFrame);
-  AFrame.SetTab(mInstance.FTab);
-  AFrame.SetList(mInstance.FLists[mInstance.FTab], mInstance.FLists.Search);
-  mInstance.SyncWatches;
-  if (TAtlasIdeDebugSession.StoppedThread <> nil) and
-    (TAtlasIdeDebugSession.StopCount <> mInstance.FProgress.Stop) then
-  begin
-    mInstance.SessionStopped;
-  end;
-  mInstance.Refresh;
 end;
 
 { TAtlasIdeDebugVariables }
@@ -342,7 +319,7 @@ begin
   FTab := TAtlasVariablesTab.Autos;
   FLists := TAtlasIdeVariablesLists.Create(ValueArrived());
   FFields := TAtlasIdeDebugFieldRequests.Create;
-  FStore := TAtlasIdeVariablesStore.Create;
+  FWatches := TAtlasIdeVariablesWatches.Create(FLists[TAtlasVariablesTab.Watch], WatchesChanged);
   CreateTimer(cTickMs);
 end;
 
@@ -350,8 +327,8 @@ destructor TAtlasIdeDebugVariables.Destroy;
 begin
   // Laufende Feldanfragen halten die Sitzung: Destroy wartet sie ab.
   FreeAndNil(FFields);
+  FreeAndNil(FWatches);
   FreeAndNil(FLists);
-  FreeAndNil(FStore);
   FText := '';
   FSearch.Key := '';
   inherited Destroy;
@@ -373,7 +350,7 @@ end;
 
 procedure TAtlasIdeDebugVariables.SessionStarted;
 begin
-  SyncWatches;
+  FWatches.Sync(StillStopped);
 end;
 
 procedure TAtlasIdeDebugVariables.SessionStopped;
@@ -384,7 +361,7 @@ begin
   FPrevious := FPlace;
   FPlace := NoPlace;
   FText := '';
-  // Ohne Fenster nichts auswerten; öffnet es sich bei diesem Halt, holt WireFrame ihn nach.
+  // Ohne Fenster nichts auswerten; öffnet es sich bei diesem Halt, holt Attach ihn nach.
   if not Enabled or (Frame = nil) then
   begin
     FPrevious := NoPlace;
@@ -627,66 +604,28 @@ begin
   end;
 end;
 
-procedure TAtlasIdeDebugVariables.AddWatch(const AExpression: string);
-var
-  mList: TAtlasEvalList;
-  mNode: TAtlasEvalNode;
+procedure TAtlasIdeDebugVariables.WatchesChanged(AEvaluate: Boolean);
 begin
-  mList := FLists[TAtlasVariablesTab.Watch];
-  if not TAtlasVariablesFlow.CanAddWatch(mList, AExpression) then
-  begin
-    Exit;
-  end;
-  mNode := mList.Add(AExpression);
-  FStore.Add(mNode.Expression);
-  if not StillStopped then
-  begin
-    mNode.State := TAtlasEvalState.Unavailable;
-  end;
   Refresh;
-  if FProgress.Phase = TAtlasStopPhase.Idle then
+  if AEvaluate and (FProgress.Phase = TAtlasStopPhase.Idle) then
   begin
     StartEvaluate;
   end;
 end;
 
-procedure TAtlasIdeDebugVariables.RemoveWatch(ANode: TAtlasEvalNode);
-var
-  mList: TAtlasEvalList;
-  mIndex: Integer;
+procedure TAtlasIdeDebugVariables.Attach(AFrame: TAtlasDebugVariablesFrame);
 begin
-  mList := FLists[TAtlasVariablesTab.Watch];
-  mIndex := mList.IndexOf(ANode);
-  if mIndex < 0 then
+  WireView(AFrame);
+  WireWatches(AFrame);
+  WireEdit(AFrame);
+  AFrame.SetTab(FTab);
+  AFrame.SetList(FLists[FTab], FLists.Search);
+  FWatches.Sync(StillStopped);
+  if (TAtlasIdeDebugSession.StoppedThread <> nil) and (TAtlasIdeDebugSession.StopCount <> FProgress.Stop) then
   begin
-    Exit;
-  end;
-  FStore.Remove(ANode.Expression);
-  // Eine laufende Auswertung dieser Zeile findet ihren Knoten nicht mehr und verfällt.
-  mList.Delete(mIndex);
-  Refresh;
-end;
-
-procedure TAtlasIdeDebugVariables.SyncWatches;
-var
-  mProject: string;
-  mList: TAtlasEvalList;
-begin
-  if not FStore.SwitchProject(mProject) then
-  begin
-    Exit;
-  end;
-  mList := FLists[TAtlasVariablesTab.Watch];
-  mList.Replace(FStore.Items(mProject));
-  if not StillStopped then
-  begin
-    mList.Unavailable;
+    SessionStopped;
   end;
   Refresh;
-  if FProgress.Phase = TAtlasStopPhase.Idle then
-  begin
-    StartEvaluate;
-  end;
 end;
 
 procedure TAtlasIdeDebugVariables.SetTab(ATab: TAtlasVariablesTab);
@@ -756,7 +695,10 @@ begin
   TAtlasIdeDebugVariablesWindow.OnFrame :=
     procedure(AFrame: TAtlasDebugVariablesFrame)
     begin
-      WireFrame(AFrame);
+      if FInstance <> nil then
+      begin
+        FInstance.Attach(AFrame);
+      end;
     end;
   TAtlasIdeDebugVariablesWindow.Prepare;
   // Eingeschaltet, während der Prozess steht und das Fenster schon besteht: gleich für diesen Halt.
@@ -822,7 +764,7 @@ begin
   mShown := TAtlasIdeDebugVariablesWindow.Show;
   if mShown <> nil then
   begin
-    WireFrame(mShown);
+    FInstance.Attach(mShown);
   end;
 end;
 

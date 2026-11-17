@@ -563,6 +563,8 @@ begin
   mLine := TAtlasVisualizerFormat.HexLine(mBytes, 16);
   Assert.IsTrue(mLine.StartsWith('00000010  32 33'), mLine);
   Assert.IsTrue(mLine.EndsWith('23456789'), mLine);
+  Assert.AreEqual(mLine, TAtlasVisualizerFormat.HexLineAt(mBytes, 1), 'Zeile 1 beginnt bei Byte 16');
+  Assert.AreEqual(Cardinal($00563412), TAtlasVisualizerFormat.RgbToColor($123456), '$RRGGBB → $00BBGGRR');
   Assert.AreEqual('3 Bytes · 01 0A 41 · ..A', TAtlasVisualizerFormat.HexPreview(TBytes.Create(1, 10, 65), 3, 16));
   Assert.AreEqual('0 Bytes', TAtlasVisualizerFormat.HexPreview(nil, 0, 16));
 end;
