@@ -12,9 +12,6 @@ type
   [TestFixture]
   TAtlasSettingsPageTests = class
   public
-    /// <summary>Erstes Erzeugen von Steuerelementen legt einmalige VCL-Daten an (Themes, Schriften).</summary>
-    [SetupFixture]
-    procedure WarmUp;
     [Test]
     procedure CreatesAndRoundTripsSettings;
     [Test]
@@ -231,14 +228,6 @@ end;
 
 { TAtlasSettingsPageTests }
 
-procedure TAtlasSettingsPageTests.WarmUp;
-begin
-  FilterAndResetPerNode;
-  // Erste Fehler legen die Listen der Sicherung an.
-  TAtlasGuard.ReportProvider('Testquelle', 'Fehler');
-  TAtlasGuard.Fuse.Failed(TAtlasFeature.Pairs);
-  TAtlasGuard.Fuse.ResetAll;
-end;
 procedure TAtlasSettingsPageTests.CreatesAndRoundTripsSettings;
 var
   mPage: TAtlasSettingsPage;
