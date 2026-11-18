@@ -17,9 +17,6 @@ type
   [TestFixture]
   TShellHotspotsTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Test]
     procedure DetectWithoutWorkingCopyGivesReason;
     [Test]
@@ -192,16 +189,6 @@ begin
 end;
 
 { TShellHotspotsTests }
-
-procedure TShellHotspotsTests.WarmUpFirstUse;
-begin
-  try
-    GitHistoryFollowsRenameAndMatchesGitLog;
-  except
-    on Exception do
-      ;
-  end;
-end;
 
 procedure TShellHotspotsTests.DetectWithoutWorkingCopyGivesReason;
 var

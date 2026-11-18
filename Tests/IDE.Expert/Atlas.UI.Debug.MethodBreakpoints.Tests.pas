@@ -23,8 +23,6 @@ type
     function Hits: TAtlasMethodHits;
     function SearchOk: TAtlasMethodSearch;
   public
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -86,18 +84,6 @@ begin
       AError := '';
       Result := True;
     end;
-end;
-
-procedure TAtlasMethodBreakpointsDialogTests.WarmUpFirstUse;
-begin
-  // Der erste Dialog mit gefüllter Liste legt in der VCL einmalig Speicher an (unter Delphi 13 1608 Byte im
-  // Einzellauf, 192 Byte im Gesamtlauf): einmal vorab, damit der Leckmonitor ihn nicht dem ersten Test zuschreibt.
-  Setup;
-  try
-    SearchFillsListAndSelection;
-  finally
-    TearDown;
-  end;
 end;
 
 procedure TAtlasMethodBreakpointsDialogTests.Setup;

@@ -78,6 +78,9 @@ type
     class procedure Forget; static;
     /// <summary>Für Tests: Ergebnis von Find vorgeben ('' = nicht installiert).</summary>
     class procedure Preset(AKind: TAtlasVcsKind; const AExecutable: string); static;
+    /// <summary>Für Tests: gemerkten Fundort setzen, etwa den vorher mit Where geholten nach Preset oder Configure
+    /// wiederherstellen. Anders als Forget legt der nächste Aufruf von Find dann nichts neu an.</summary>
+    class procedure Remember(AKind: TAtlasVcsKind; const ALocation: TAtlasVcsToolLocation); static;
   end;
 
   /// <summary>Ein Programm (git oder svn) mit Arbeitsverzeichnis und Zeitlimit.</summary>
@@ -342,6 +345,17 @@ begin
     begin
       FFound[AKind].Source := TAtlasVcsToolSource.Path;
     end;
+    FSearched[AKind] := True;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+class procedure TAtlasVcsTools.Remember(AKind: TAtlasVcsKind; const ALocation: TAtlasVcsToolLocation);
+begin
+  FLock.Enter;
+  try
+    FFound[AKind] := ALocation;
     FSearched[AKind] := True;
   finally
     FLock.Leave;
