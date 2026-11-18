@@ -674,6 +674,18 @@ Editor margin while paused, context menu Atlas › Debug, command palette. Inste
 
 Settings: `debug.runToClick`
 
+### Drag the execution point *(experimental)*
+
+Editor margin while paused, context menu Atlas › Debug › “Set next statement here”, command palette. Run a line again or skip a block without switching to the CPU window.
+
+- When the program is paused, a narrow column to the right of the line numbers shows an arrow at the line of the execution point.
+- Drag the arrow to another line of the same routine: a tooltip names the effect, e.g. “Lines 117–119 run again” or “Lines 121–124 are skipped”. Releasing sets the next statement there without executing anything; F7 or F8 continues from there.
+- Blocked (the mouse pointer shows a no-entry sign, the tooltip the reason): lines outside the routine, lines without executable code, the head of a counted `for` loop and targets in another part of a `try` block (`try`, `finally`, `except`) or of an anonymous method.
+- “Set next statement here” works like dragging, for the line of the caret or of the last right-click in the margin.
+- Atlas only moves the instruction pointer; stack, registers and variables stay as they are. A notice asks the first time. Win32 and Win64 only; Atlas refuses other platforms.
+
+Setting: `debug.dragNextStatement` (default off)
+
 ### Breakpoint only for one object
 
 A breakpoint in `TKunde.Speichere` stops 500 times for 500 customers. While the program is paused, with the caret on the breakpoint line, the editor context menu offers under Debug:

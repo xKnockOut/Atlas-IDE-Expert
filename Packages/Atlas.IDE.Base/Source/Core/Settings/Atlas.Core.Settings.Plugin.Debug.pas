@@ -161,6 +161,13 @@ type
     /// Spalte im Rand an ausführbaren Zeilen unter der Maus ▶; Klick führt bis dorthin aus, Strg+Klick ohne Halt an
     /// anderen Haltepunkten; dazu die Befehle „Bis hier“ und „Einmaliger Haltepunkt“. Aus = nichts davon.</summary>
     DebugRunToClick: Boolean;
+    /// <summary>Ausführungspfeil ziehen (#871, debug.dragNextStatement, experimentell): Im angehaltenen Zustand
+    /// lässt sich der Pfeil in einer Spalte im Rand auf eine andere ausführbare Zeile derselben Routine ziehen; dazu
+    /// der Befehl „Nächste Anweisung hier“. Setzt nur den Befehlszähler. Aus = nichts davon.</summary>
+    DebugDragNextStatement: Boolean;
+    /// <summary>Hinweis auf die Folgen beim ersten Setzen der nächsten Anweisung bestätigt (#871, Zustand).
+    /// </summary>
+    DebugNextStatementNoticeShown: Boolean;
     /// <summary>Haltepunktfenster (#863, debug.breakpointsWindow): eigenes andockbares Fenster mit Suche,
     /// Filterchips, Etiketten, Trefferzahlen dieser Sitzung und Gruppen. Aus = kein Fenster, kein Befehl.</summary>
     DebugBreakpointsWindow: Boolean;
@@ -379,6 +386,9 @@ type
     procedure Normalize;
     /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
     procedure Exchange(const AIo: TAtlasSettingsExchange);
+    /// <summary>Werte der Haltepunkte (Prüfen bis Regeln, mit „Bis hier“ und nächster Anweisung) über AIo; Teil
+    /// von Exchange.</summary>
+    procedure ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
     /// <summary>Vorgaben ab debug.whyHere (Halt, Protokoll, Neustart, Anhängen, Start); Teil von Defaults.</summary>
     procedure SetStopAndLaunchDefaults;
     /// <summary>Werte ab debug.whyHere über AIo lesen bzw. schreiben; Teil von Exchange.</summary>
@@ -524,15 +534,7 @@ begin
   AIo.Number('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
   AIo.Flag('DebugBreakOnNextEvent', DebugBreakOnNextEvent);
   AIo.Text('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
-  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
-  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
-  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
-  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
-  AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
-  AIo.Flag('DebugRunToClick', DebugRunToClick);
-  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
-  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
-  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
+  ExchangeBreakpoints(AIo);
   AIo.Flag('DebugExplainUnavailable', DebugExplainUnavailable);
   AIo.Flag('DebugCompletionInDialogs', DebugCompletionInDialogs);
   AIo.Flag('DebugEvaluateWindow', DebugEvaluateWindow);
@@ -558,6 +560,21 @@ begin
   AIo.Flag('DebugInlineValues', DebugInlineValues);
   AIo.Number('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
   ExchangeStopAndLaunch(AIo);
+end;
+
+procedure TAtlasPluginDebugSettings.ExchangeBreakpoints(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('DebugCheckBreakpoints', DebugCheckBreakpoints);
+  AIo.Flag('DebugMethodBreakpoints', DebugMethodBreakpoints);
+  AIo.Flag('DebugInstanceBreakpoints', DebugInstanceBreakpoints);
+  AIo.Flag('DebugDataBreakpoints', DebugDataBreakpoints);
+  AIo.Flag('DebugBreakpointSetPerBranch', DebugBreakpointSetPerBranch);
+  AIo.Flag('DebugRunToClick', DebugRunToClick);
+  AIo.Flag('DebugDragNextStatement', DebugDragNextStatement);
+  AIo.Flag('DebugNextStatementNoticeShown', DebugNextStatementNoticeShown);
+  AIo.Flag('DebugBreakpointsWindow', DebugBreakpointsWindow);
+  AIo.Flag('DebugBreakpointAnchors', DebugBreakpointAnchors);
+  AIo.Flag('DebugBreakpointRules', DebugBreakpointRules);
 end;
 
 procedure TAtlasPluginDebugSettings.SetStopAndLaunchDefaults;

@@ -266,6 +266,9 @@ begin
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointSetPerBranch));
   // Bis hier ausführen per Klick (#851).
   Switch('debug.runToClick', TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugRunToClick));
+  // Ausführungspfeil ziehen (#871, experimentell).
+  Switch('debug.dragNextStatement',
+    TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugDragNextStatement));
   // Haltepunktfenster mit Suche, Etiketten und Trefferzahlen (#863).
   Switch('debug.breakpointsWindow',
     TAtlasDebugSettingsStrings.Text(TAtlasDebugSettingsTextId.SettingsDebugBreakpointsWindow));

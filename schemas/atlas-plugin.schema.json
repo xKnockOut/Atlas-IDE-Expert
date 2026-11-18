@@ -3001,6 +3001,29 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#851"
     },
+    "DebugDragNextStatement": {
+      "description": "Ausführungspfeil ziehen (#871): Hält das Programm im Debugger an, steht in einer schmalen Spalte im Rand ein Pfeil an der Zeile des Ausführungspunkts. Ihn auf eine andere ausführbare Zeile derselben Routine ziehen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; ein Tooltip nennt die Zeilen, die erneut laufen bzw. übersprungen werden. Gesperrt sind Zeilen außerhalb der Routine, ohne Code, im Kopf einer for-Schleife mit Zähler und in einem anderen Teil eines try-Blocks oder einer anonymen Methode. Dazu „Nächste Anweisung hier“ im Kontextmenü des Editors und in der Befehlspalette. Setzt nur den Befehlszähler: Stack und Register können danach ungültig sein. Aus = keine Spalte, kein Befehl.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-experimental": true,
+      "x-caption": "Ausführungspfeil ziehen (nächste Anweisung setzen)",
+      "x-captionEn": "Drag the execution point (set next statement)",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#871"
+    },
+    "DebugNextStatementNoticeShown": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "debug.dragNextStatement.noticeShown",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-state": true,
+      "x-issue": "#871"
+    },
     "DebugBreakpointsWindow": {
       "description": "Haltepunktfenster: eigenes andockbares Fenster „Haltepunkte“ neben der Liste der IDE, mit Suche über Datei, Methode, Bedingung und Etikett, Filterchips (aktiv, mit Bedingung, nie getroffen, greift nicht), Trefferzahl dieser Sitzung, persönlichen Etiketten, Gruppieren nach Etikett, Datei oder Gruppe und Befehlen für mehrere Haltepunkte (ein, aus, Etikett, löschen mit Rückgängig). Aus = kein Fenster, kein Befehl.",
       "type": "boolean",

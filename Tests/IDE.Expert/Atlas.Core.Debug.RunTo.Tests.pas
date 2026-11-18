@@ -22,6 +22,9 @@ type
     procedure CommentsAndKeywordsHaveNoCode;
     [Test]
     procedure NestedRoutineHasOwnBegin;
+    /// <summary>Der variante Teil eines Records (case … of) öffnet keinen eigenen Block (#871).</summary>
+    [Test]
+    procedure VariantRecordInVarSection;
     /// <summary>Akzeptanzkriterium: nur aktive Haltepunkte außer am Ziel werden ausgeschaltet.</summary>
     [Test]
     procedure ToDisableKeepsTargetAndInactive;
@@ -114,6 +117,25 @@ begin
   Assert.IsTrue(TAtlasRunTo.CodeLine(cSource, 10));
   Assert.IsTrue(TAtlasRunTo.CodeLine(cSource, 11), 'end der lokalen Routine');
   Assert.IsFalse(TAtlasRunTo.CodeLine(cSource, 12), 'zwischen lokaler Routine und begin');
+end;
+
+procedure TAtlasRunToTests.VariantRecordInVarSection;
+const
+  cVariant =
+    'unit Kunden;' + #10 +                                           // 0
+    'implementation' + #10 +                                         // 1
+    'procedure Laden;' + #10 +                                       // 2
+    'var' + #10 +                                                    // 3
+    '  R: record case Integer of 0: (X: Integer); end;' + #10 +      // 4
+    'begin' + #10 +                                                  // 5
+    '  R.X := 1;' + #10 +                                            // 6
+    'end;' + #10 +                                                   // 7
+    'end.';                                                          // 8
+begin
+  Assert.IsFalse(TAtlasRunTo.CodeLine(cVariant, 4), 'var-Abschnitt');
+  Assert.IsTrue(TAtlasRunTo.CodeLine(cVariant, 5), 'begin');
+  Assert.IsTrue(TAtlasRunTo.CodeLine(cVariant, 6));
+  Assert.IsTrue(TAtlasRunTo.CodeLine(cVariant, 7), 'end');
 end;
 
 procedure TAtlasRunToTests.ToDisableKeepsTargetAndInactive;

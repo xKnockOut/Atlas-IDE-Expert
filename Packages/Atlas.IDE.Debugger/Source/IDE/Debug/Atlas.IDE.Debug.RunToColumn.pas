@@ -1,9 +1,9 @@
 ﻿unit Atlas.IDE.Debug.RunToColumn;
 
-// Spalte „Bis hier ausführen“ im Rand (#851): Solange das Programm angehalten
-// ist und debug.runToClick an ist, fordert Atlas über
-// INTACodeEditorServices280.RequestGutterColumn eine schmale Spalte rechts
-// der Zeilennummern an; läuft das Programm wieder, verschwindet sie.
+// Spalte „Bis hier ausführen“ im Rand (#851): Solange das Programm
+// angehalten ist und debug.runToClick an ist, steht rechts der Zeilennummern
+// eine schmale Spalte (TAtlasIdeDebugStopColumn); läuft das Programm wieder,
+// verschwindet sie.
 // - Unter dem Mauszeiger zeigt die Spalte ▶, wenn die Zeile ausführbaren Code
 //   hat (TAtlasRunTo.CodeLine auf dem Text des Editors).
 // - Klick: bis hier ausführen; Strg+Klick: dabei andere Haltepunkte
@@ -18,43 +18,20 @@ uses
   System.SysUtils,
   System.Types,
   System.Classes,
-  System.Generics.Collections,
   Vcl.Controls,
-  Vcl.ExtCtrls,
-  ToolsAPI,
-  ToolsAPI.Editor,
+  Vcl.Graphics,
   Atlas.Core.Editor.MethodToggle,
-  Atlas.Core.Debug.RunToColumnFlow,
-  Atlas.UI.Popup.TitledTip;
+  Atlas.IDE.Debug.StopColumn;
 
 type
-  TAtlasIdeRunToColumn = class
-  private type
-    TEvents = class(TNTACodeEditorNotifier)
-    protected
-      function AllowedEvents: TCodeEditorEvents; override;
-      function AllowedGutterStages: TPaintGutterStages; override;
-    end;
-    /// <summary>Gezeichnete Zeile der Spalte (Koordinaten des Editors).</summary>
-    TRow = TAtlasRunToRow;
+  TAtlasIdeRunToColumn = class(TAtlasIdeDebugStopColumn)
   private const
     cHoverMs = 400;
-    cTickMs = 100;
     cTextMs = 500;
   private class var
     FInstance: TAtlasIdeRunToColumn;
   private
-    FEvents: TEvents;
-    FEventsRef: INTACodeEditorEvents;
-    FIndex: Integer;
-    FColumn: Integer;
-    FWidth: Integer;
-    FWantedWidth: Integer;
-    FColumnsHandle: Integer;
-    FTimer: TTimer;
-    FTip: TAtlasTitledTip;
-    FRows: TDictionary<Integer, TRow>;
-    FHover: TRow;
+    FHover: TAtlasDebugStopRow;
     FHovering: Boolean;
     FHoverSince: UInt64;
     FHoverScreen: TRect;
@@ -64,23 +41,19 @@ type
     FCodeLines: TArray<string>;
     FCodePlaces: TArray<TAtlasMethodPlace>;
     FCodeReadAt: UInt64;
-    function Wanted: Boolean;
-    procedure EnsureColumn;
-    procedure DropColumn;
-    procedure Tick(Sender: TObject);
     procedure ReadText;
     function IsCode(const AFileName: string; ALine: Integer): Boolean;
-    function RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
-    procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
-      var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
-    procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
-    procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure CheckHover;
-    procedure HideTip;
     procedure Leave;
+  protected
+    function Wanted: Boolean; override;
+    procedure Tick; override;
+    procedure Idle; override;
+    procedure PaintRow(ACanvas: TCanvas; const ARow: TAtlasDebugStopRow); override;
+    procedure EditorMouseDown(const AEditor: TWinControl; AButton: TMouseButton; AShift: TShiftState;
+      AX, AY: Integer); override;
+    procedure EditorMouseMove(const AEditor: TWinControl; AShift: TShiftState; AX, AY: Integer); override;
   public
-    constructor Create;
-    destructor Destroy; override;
     class procedure Install; static;
     class procedure Uninstall; static;
     class function Installed: Boolean; static;
@@ -89,207 +62,41 @@ type
 implementation
 
 uses
-  Winapi.Windows,
-  System.Math,
+  ToolsAPI,
   Vcl.Forms,
-  Vcl.Graphics,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Style.Color,
-  Atlas.Core.Style.Palette,
-  Atlas.Core.Editor.GutterColumn,
+  Atlas.Core.Debug.RunToColumnFlow,
   Atlas.Core.Editor.LineAnchor,
   Atlas.Core.Debug.RunTo,
   Atlas.UI.Debug.Stepping.Strings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.EditorRefresh,
-  Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Debug.Session,
   Atlas.IDE.Debug.RunTo;
 
 const
-  /// <summary>Kleinste Kantenlänge des ▶ und Abstand zum Rand der Zelle (Pixel).</summary>
-  cMinArrow = 6;
-  cArrowPad = 4;
   /// <summary>Abstand des Tooltips zur Zelle (Pixel).</summary>
   cTipGap = 4;
 
-function Services: INTACodeEditorServices280;
-begin
-  if not Supports(BorlandIDEServices, INTACodeEditorServices280, Result) then
-  begin
-    Result := nil;
-  end;
-end;
-
-/// <summary>▶ in ARect, Farbe aus dem Grund der Spalte; Pinsel und Stift der IDE bleiben erhalten.</summary>
-procedure PaintArrow(ACanvas: TCanvas; const ARect: TRect);
-var
-  mSample: COLORREF;
-  mBack: TAtlasColor;
-  mOldBrush: TBrush;
-  mOldPen: TPen;
-begin
-  mSample := GetPixel(ACanvas.Handle, ARect.Left + 1, ARect.Top + 1);
-  mBack := TAtlasColor(mSample);
-  if mSample = CLR_INVALID then
-  begin
-    mBack := TAtlasColor(ColorToRGB(ACanvas.Brush.Color));
-  end;
-  mOldBrush := TBrush.Create;
-  mOldPen := TPen.Create;
-  try
-    mOldBrush.Assign(ACanvas.Brush);
-    mOldPen.Assign(ACanvas.Pen);
-    ACanvas.Pen.Width := 1;
-    ACanvas.Pen.Color := TColor(TAtlasColors.ForBackground(mBack).Accent);
-    ACanvas.Brush.Color := ACanvas.Pen.Color;
-    ACanvas.Brush.Style := bsSolid;
-    ACanvas.Polygon(TAtlasRunToColumnFlow.Arrow(ARect, cMinArrow, cArrowPad));
-  finally
-    ACanvas.Brush.Assign(mOldBrush);
-    ACanvas.Pen.Assign(mOldPen);
-    mOldPen.Free;
-    mOldBrush.Free;
-  end;
-end;
-
-{ TAtlasIdeRunToColumn.TEvents }
-
-function TAtlasIdeRunToColumn.TEvents.AllowedEvents: TCodeEditorEvents;
-begin
-  Result := [cevPaintGutterEvents, cevMouseEvents];
-end;
-
-function TAtlasIdeRunToColumn.TEvents.AllowedGutterStages: TPaintGutterStages;
-begin
-  // Nur die letzte Stufe: Die Spalte ist dann schon vom Grund der Rinne gefüllt.
-  Result := [High(TPaintGutterStage)];
-end;
-
 { TAtlasIdeRunToColumn }
-
-constructor TAtlasIdeRunToColumn.Create;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  inherited Create;
-  FIndex := -1;
-  FColumn := -1;
-  FRows := TDictionary<Integer, TRow>.Create;
-  FTip := TAtlasTitledTip.Create(nil);
-  FTip.GuardFeature := TAtlasFeature.Debugger;
-  FEvents := TEvents.Create;
-  FEventsRef := FEvents;
-  FEvents.OnEditorPaintGutter := PaintGutter;
-  FEvents.OnEditorMouseMove := EditorMouseMove;
-  FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    FIndex := mEditors.AddEditorEventsNotifier(FEventsRef);
-  end;
-  FColumnsHandle := TAtlasIdeGutterColumns.Register(
-    procedure
-    begin
-      DropColumn;
-    end);
-  FTimer := TTimer.Create(nil);
-  FTimer.Interval := cTickMs;
-  FTimer.OnTimer := Tick;
-  FTimer.Enabled := True;
-end;
-
-destructor TAtlasIdeRunToColumn.Destroy;
-var
-  mEditors: INTACodeEditorServices;
-begin
-  FTimer.Free;
-  TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
-  // Erst Spalte und Notifier abmelden, dann freigeben (#493).
-  DropColumn;
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mEditors) then
-  begin
-    mEditors.RemoveEditorEventsNotifier(FIndex);
-  end;
-  if FEvents <> nil then
-  begin
-    FEvents.OnEditorPaintGutter := nil;
-    FEvents.OnEditorMouseMove := nil;
-    FEvents.OnEditorMouseDown := nil;
-  end;
-  FEventsRef := nil;
-  FTip.Free;
-  FRows.Free;
-  inherited Destroy;
-end;
 
 function TAtlasIdeRunToColumn.Wanted: Boolean;
 begin
-  Result := (FIndex >= 0) and not TAtlasGuard.Disabled(TAtlasFeature.Debugger) and TAtlasIdeRunTo.Enabled and
+  Result := Registered and not TAtlasGuard.Disabled(TAtlasFeature.Debugger) and TAtlasIdeRunTo.Enabled and
     (TAtlasIdeDebugSession.StoppedThread <> nil);
 end;
 
-procedure TAtlasIdeRunToColumn.EnsureColumn;
-var
-  mEditors: INTACodeEditorServices280;
+procedure TAtlasIdeRunToColumn.Idle;
 begin
-  if FWantedWidth <= 0 then
-  begin
-    FWantedWidth := TAtlasGutterColumn.Width(MulDiv(TAtlasGutterColumn.cBaseWidth, Screen.PixelsPerInch, 96));
-  end;
-  if not TAtlasRunToColumnFlow.NeedsColumn(FColumn, FWidth, FWantedWidth) then
-  begin
-    Exit;
-  end;
-  mEditors := Services;
-  // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233).
-  if (mEditors = nil) or not TAtlasIdeGutterColumns.Allowed then
-  begin
-    Exit;
-  end;
-  DropColumn;
-  FColumn := mEditors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterLineNumbers);
-  FWidth := FWantedWidth;
-  FRows.Clear;
-  TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
+  Leave;
+  FCodeFile := '';
 end;
 
-procedure TAtlasIdeRunToColumn.DropColumn;
-var
-  mEditors: INTACodeEditorServices280;
+procedure TAtlasIdeRunToColumn.Tick;
 begin
-  if FColumn < 0 then
-  begin
-    Exit;
-  end;
-  mEditors := Services;
-  if mEditors <> nil then
-  begin
-    mEditors.RemoveGutterColumn(FColumn);
-    TAtlasIdeEditorRefresh.InvalidateTop(mEditors);
-  end;
-  FColumn := -1;
-  FRows.Clear;
-end;
-
-procedure TAtlasIdeRunToColumn.Tick(Sender: TObject);
-begin
-  try
-    if not Wanted then
-    begin
-      Leave;
-      DropColumn;
-      FCodeFile := '';
-      Exit;
-    end;
-    EnsureColumn;
-    ReadText;
-    CheckHover;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-  end;
+  ReadText;
+  CheckHover;
 end;
 
 procedure TAtlasIdeRunToColumn.ReadText;
@@ -320,117 +127,53 @@ begin
   Result := SameText(AFileName, FCodeFile) and TAtlasRunTo.CodeLine(FCodeLines, FCodePlaces, ALine);
 end;
 
-function TAtlasIdeRunToColumn.RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
-var
-  mRow: TRow;
-  mView: IOTAEditView;
+procedure TAtlasIdeRunToColumn.PaintRow(ACanvas: TCanvas; const ARow: TAtlasDebugStopRow);
 begin
-  ARow := Default(TRow);
-  Result := False;
-  mView := TAtlasEditorBuffer.TopView;
-  if (mView = nil) or (mView.Buffer = nil) then
+  if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, ARow) and IsCode(ARow.FileName, ARow.Line) then
+  begin
+    PaintArrow(ACanvas, ARow.Rect, False);
+  end;
+end;
+
+procedure TAtlasIdeRunToColumn.EditorMouseMove(const AEditor: TWinControl; AShift: TShiftState; AX, AY: Integer);
+var
+  mRow: TAtlasDebugStopRow;
+begin
+  if not Wanted or not RowAt(AX, AY, False, mRow) or not IsCode(mRow.FileName, mRow.Line) then
+  begin
+    Leave;
+    Exit;
+  end;
+  if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, mRow) then
   begin
     Exit;
   end;
-  for mRow in FRows.Values do
-  begin
-    if (mRow.Line >= 0) and PtInRect(mRow.Rect, Point(AX, AY)) then
-    begin
-      // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
-      Result := TAtlasRunToColumnFlow.StillThere(mRow, mView.Buffer.FileName, mView.TopRow);
-      ARow := mRow;
-      Exit;
-    end;
-  end;
+  HideTip;
+  FHover := mRow;
+  FHovering := True;
+  FHoverSince := TThread.GetTickCount64;
+  FHoverScreen := ScreenRect(AEditor, mRow);
+  Invalidate;
 end;
 
-procedure TAtlasIdeRunToColumn.PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage;
-  const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
+procedure TAtlasIdeRunToColumn.EditorMouseDown(const AEditor: TWinControl; AButton: TMouseButton;
+  AShift: TShiftState; AX, AY: Integer);
 var
-  mRow: TRow;
+  mRow: TAtlasDebugStopRow;
 begin
-  if BeforeEvent or (Stage <> High(TPaintGutterStage)) or (FColumn < 0) or (Context = nil) then
+  if not Wanted or not RowAt(AX, AY, False, mRow) then
   begin
     Exit;
   end;
-  try
-    if (Context.EditView = nil) or (Context.EditorState = nil) or not Wanted then
-    begin
-      Exit;
-    end;
-    // Schrift oder Skalierung geändert: Der Zeitgeber fordert die Spalte neu an.
-    if Context.CellSize.cy > 0 then
-    begin
-      FWantedWidth := TAtlasGutterColumn.Width(Context.CellSize.cy);
-    end;
-    mRow := Default(TRow);
-    mRow.FileName := Context.FileName;
-    mRow.Line := Context.LogicalLineNum - 1;
-    mRow.TopRow := Context.EditView.TopRow;
-    mRow.Rect := Context.EditorState.GetGutterColumnRect(Context.EditControl, Context.EditorLineNum, FColumn);
-    FRows.AddOrSetValue(Context.EditorLineNum, mRow);
-    if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, mRow) and not mRow.Rect.IsEmpty and
-      IsCode(mRow.FileName, mRow.Line) then
-    begin
-      PaintArrow(Context.Canvas, mRow.Rect);
-    end;
-  except
-    // Zeichnen darf die IDE nie stören.
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-  end;
-end;
-
-procedure TAtlasIdeRunToColumn.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
-var
-  mRow: TRow;
-begin
-  try
-    if not Wanted or not RowAt(X, Y, mRow) or not IsCode(mRow.FileName, mRow.Line) then
-    begin
-      Leave;
-      Exit;
-    end;
-    if TAtlasRunToColumnFlow.SameHover(FHovering, FHover, mRow) then
-    begin
-      Exit;
-    end;
-    HideTip;
-    FHover := mRow;
-    FHovering := True;
-    FHoverSince := TThread.GetTickCount64;
-    FHoverScreen := TRect.Create(Editor.ClientToScreen(mRow.Rect.TopLeft),
-      Editor.ClientToScreen(mRow.Rect.BottomRight));
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
-  end;
-end;
-
-procedure TAtlasIdeRunToColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
-var
-  mRow: TRow;
-begin
-  try
-    if not Wanted or not RowAt(X, Y, mRow) then
-    begin
-      Exit;
-    end;
-    if Button = mbRight then
-    begin
-      // Gilt für „Bis hier …“ und „Einmaliger Haltepunkt“ im Kontextmenü.
-      TAtlasIdeGutterMarks.RememberLine(mRow.FileName, mRow.Line);
-    end
-    else if (Button = mbLeft) and IsCode(mRow.FileName, mRow.Line) then
-    begin
-      Leave;
-      TAtlasIdeRunTo.RunToLine(mRow.FileName, mRow.Line, ssCtrl in Shift);
-    end;
-  except
-    on E: Exception do
-      TAtlasGuard.Report(TAtlasFeature.Debugger, E);
+  if AButton = mbRight then
+  begin
+    // Gilt für „Bis hier …“ und „Einmaliger Haltepunkt“ im Kontextmenü.
+    TAtlasIdeGutterMarks.RememberLine(mRow.FileName, mRow.Line);
+  end
+  else if (AButton = mbLeft) and IsCode(mRow.FileName, mRow.Line) then
+  begin
+    Leave;
+    TAtlasIdeRunTo.RunToLine(mRow.FileName, mRow.Line, ssCtrl in AShift);
   end;
 end;
 
@@ -445,20 +188,12 @@ begin
   begin
     Leave;
   end
-  else if TAtlasRunToColumnFlow.TipDue(FTip.IsShown, TThread.GetTickCount64, FHoverSince, cHoverMs) then
+  else if TAtlasRunToColumnFlow.TipDue(Tip.IsShown, TThread.GetTickCount64, FHoverSince, cHoverMs) then
   begin
-    TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-    FTip.ShowNote(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToTipTitle),
+    TAtlasIdeStyle.Apply(Tip, FHoverScreen);
+    Tip.ShowNote(TAtlasSteppingStrings.Text(TAtlasSteppingTextId.RunToTipTitle),
       TAtlasSteppingStrings.Fmt(TAtlasSteppingTextId.RunToTipText, [FHover.Line + 1]),
       Point(FHoverScreen.Right + cTipGap, FHoverScreen.Bottom + cTipGap div 2));
-  end;
-end;
-
-procedure TAtlasIdeRunToColumn.HideTip;
-begin
-  if (FTip <> nil) and FTip.IsShown then
-  begin
-    FTip.HidePopup;
   end;
 end;
 
@@ -468,7 +203,7 @@ begin
   if FHovering then
   begin
     FHovering := False;
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    Invalidate;
   end;
 end;
 

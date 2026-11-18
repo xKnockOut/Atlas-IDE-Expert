@@ -11,6 +11,7 @@ type
   TAtlasDebugSettingsTextId = (
     SettingsDebugDataBreakpoints, SettingsDebugMethodBreakpoints, SettingsDebugInstanceBreakpoints,
     SettingsDebugCheckBreakpoints, SettingsDebugBreakpointSetPerBranch, SettingsDebugRunToClick,
+    SettingsDebugDragNextStatement,
     SettingsDebugBreakpointsWindow, SettingsDebugBreakpointAnchors, SettingsDebugBreakpointRules,
     SettingsDebugHoverValues, SettingsDebugVisualizers, SettingsDebugVisualizerNameFields,
     SettingsDebugVisualizerMaxLength, SettingsDebugVisualizerTimeout, SettingsDebugVisualizerMaxImagePixels,
@@ -53,6 +54,7 @@ const
      'Haltepunkte vor dem Start prüfen (Zeile ohne Code, inaktiver Zweig, $D-)',
      'Haltepunkt-Satz beim Branch-Wechsel mitwechseln',
      'Bis hier ausführen per Klick im Rand (▶) und Befehle „Bis hier“',
+     'Ausführungspfeil ziehen und „Nächste Anweisung hier“ (setzt nur den Befehlszähler)',
      'Haltepunktfenster mit Suche, Etiketten und Trefferzahlen',
      'Haltepunkte nach Änderungen von außen nachziehen',
      'Abhängige Haltepunkte, Trefferbedingungen und Thread-Filter',
@@ -123,6 +125,7 @@ const
      'Check breakpoints before starting (line without code, inactive branch, $D-)',
      'Switch the breakpoint set together with the branch',
      'Run to here by clicking the margin (▶) and "Run to here" commands',
+     'Drag the execution point and "Set next statement here" (only moves the instruction pointer)',
      'Breakpoints window with search, tags and hit counts',
      'Move breakpoints along after outside changes',
      'Dependent breakpoints, hit conditions and thread filters',

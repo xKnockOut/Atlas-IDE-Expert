@@ -998,6 +998,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Debug.WhyHere` | `Core/Debug/Atlas.Core.Debug.WhyHere.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.WhyHereFlow` | `Core/Debug/Atlas.Core.Debug.WhyHereFlow.pas` | „Warum bin ich hier?“: Reihenfolge der Teile, Zeilenende, Klick, #1967 |
 | `Atlas.Core.Debug.Elapsed` | `Core/Debug/Atlas.Core.Debug.Elapsed.pas` | Ordner `Core/Debug` |
+| `Atlas.Core.Debug.NextStatement` | `Core/Debug/Atlas.Core.Debug.NextStatement.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.Forecast` | `Core/Debug/Atlas.Core.Debug.Forecast.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EditValue` | `Core/Debug/Atlas.Core.Debug.EditValue.pas` | Ordner `Core/Debug` |
 | `Atlas.Core.Debug.EditValueFlow` | `Core/Debug/Atlas.Core.Debug.EditValueFlow.pas` | Entscheidungen beim Ändern von Werten ohne IDE (Aktionen, Antworten, Text, Rückgängig), #1967 |
@@ -1076,6 +1077,9 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Debug.BreakpointListMenu` | `IDE/Debug/Atlas.IDE.Debug.BreakpointListMenu.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.WhyHere` | `IDE/Debug/Atlas.IDE.Debug.WhyHere.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Elapsed` | `IDE/Debug/Atlas.IDE.Debug.Elapsed.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.NextStatement` | `IDE/Debug/Atlas.IDE.Debug.NextStatement.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.NextStatementColumn` | `IDE/Debug/Atlas.IDE.Debug.NextStatementColumn.pas` | Ordner `IDE/Debug` |
+| `Atlas.IDE.Debug.StopColumn` | `IDE/Debug/Atlas.IDE.Debug.StopColumn.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.Forecast` | `IDE/Debug/Atlas.IDE.Debug.Forecast.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.EditValue` | `IDE/Debug/Atlas.IDE.Debug.EditValue.pas` | Ordner `IDE/Debug` |
 | `Atlas.IDE.Debug.HoverTree` | `IDE/Debug/Atlas.IDE.Debug.HoverTree.pas` | Ordner `IDE/Debug` |
@@ -1154,6 +1158,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Debug.CallStack.Strings` | `UI/Debug/Atlas.UI.Debug.CallStack.Strings.pas` | Texte des Debuggers: Aufrufstapel, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Stepping.Strings` | `UI/Debug/Atlas.UI.Debug.Stepping.Strings.pas` | Texte des Debuggers: Schrittbetrieb, Schrittfilter, ohne Quelltext, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Elapsed.Strings` | `UI/Debug/Atlas.UI.Debug.Elapsed.Strings.pas` | Texte des Debuggers: Laufzeit zwischen Haltepunkten, Sprache von Base, #579 |
+| `Atlas.UI.Debug.NextStatement.Strings` | `UI/Debug/Atlas.UI.Debug.NextStatement.Strings.pas` | Ordner `UI/Debug` |
 | `Atlas.UI.Debug.EventLog.Strings` | `UI/Debug/Atlas.UI.Debug.EventLog.Strings.pas` | Texte des Debuggers: Ereignisprotokoll, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.Session.Strings` | `UI/Debug/Atlas.UI.Debug.Session.Strings.pas` | Texte des Debuggers: Neustart, erneut anhängen, Startgruppen, Sprache von Base, #1455 |
 | `Atlas.UI.Debug.RuntimeReport.Strings` | `UI/Debug/Atlas.UI.Debug.RuntimeReport.Strings.pas` | Texte des Debuggers: Leck- und Absturzberichte, Sprache von Base, #1455 |

@@ -467,6 +467,18 @@ Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debugge
 
 Einstellungen: `debug.runToClick`
 
+#### Ausführungspfeil ziehen *(experimentell)*
+
+Aufruf: Rand des Editors im angehaltenen Zustand, Kontextmenü Atlas › Debuggen › „Nächste Anweisung hier“, Befehlspalette. Eine Zeile noch einmal ausführen oder einen Block überspringen, ohne ins CPU-Fenster zu wechseln.
+
+- Hält das Programm an, steht in einer schmalen Spalte rechts der Zeilennummern ein Pfeil an der Zeile des Ausführungspunkts.
+- Den Pfeil mit der Maus auf eine andere Zeile derselben Routine ziehen: Ein Tooltip nennt die Folge, etwa „Zeilen 117–119 laufen erneut“ oder „Zeilen 121–124 werden übersprungen“. Loslassen setzt die nächste Anweisung dorthin, ohne etwas auszuführen; F7 oder F8 geht dort weiter.
+- Gesperrt (der Mauszeiger zeigt ein Verbot, der Tooltip den Grund): Zeilen außerhalb der Routine, Zeilen ohne ausführbaren Code, der Kopf einer `for`-Schleife mit Zähler und Ziele in einem anderen Teil eines `try`-Blocks (`try`, `finally`, `except`) oder einer anonymen Methode.
+- „Nächste Anweisung hier“ wirkt wie das Ziehen, für die Zeile der Schreibmarke bzw. des letzten Rechtsklicks in den Rand.
+- Atlas setzt nur den Befehlszähler; Stack, Register und Variablen bleiben, wie sie sind. Beim ersten Mal fragt ein Hinweis nach. Unter Win32 und Win64, andere Plattformen lehnt Atlas ab.
+
+Einstellung: `debug.dragNextStatement` (Vorgabe aus)
+
 #### Haltepunkt nur für ein Objekt
 
 Ein Haltepunkt in `TKunde.Speichere` hält bei 500 Kunden 500 Mal. Im angehaltenen Programm, mit der Schreibmarke auf der Zeile des Haltepunkts, bietet das Kontextmenü des Editors unter Debuggen:

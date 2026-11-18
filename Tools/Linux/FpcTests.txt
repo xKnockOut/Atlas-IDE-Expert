@@ -639,6 +639,7 @@ Atlas.Core.Debug.StopProgress.Tests
 Atlas.Core.Debug.Phases.Tests
 Atlas.Core.Debug.WhyHereFlow.Tests
 Atlas.Core.Debug.Elapsed.Tests
+Atlas.Core.Debug.NextStatement.Tests
 Atlas.Core.Debug.BreakpointSetFlow.Tests
 Atlas.Core.Debug.StepIntoJump.Tests
 Atlas.Core.Debug.UnavailableNote.Tests
