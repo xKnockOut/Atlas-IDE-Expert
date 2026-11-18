@@ -12,7 +12,7 @@
 // (IAtlasTestValues): Befund-Hover (Base) und Kachel „Testergebnisse“ der
 // Willkommensseite fragen, ob es zu einem Test Werte gibt, und zeigen dann
 // „Vergleichen“. Ohne Modul fehlt der Eintrag.
-// Nur Interfaces, kein Code. Liegt in Base (Source/Contracts, #1456, Entscheidung 04.11.2026).
+// Nur Interfaces, kein Code. Liegt in Base (Source/Contracts, #1456).
 
 interface
 

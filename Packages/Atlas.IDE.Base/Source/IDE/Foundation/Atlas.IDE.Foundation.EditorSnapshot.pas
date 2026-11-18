@@ -1,8 +1,8 @@
 ﻿unit Atlas.IDE.Foundation.EditorSnapshot;
 
 // Gemeinsamer Stand des Editorpuffers für Probleme und Inlay-Hints:
-// Beide Zeitgeber fragten bisher je Takt den ganzen Puffer ab und verglichen
-// den ganzen Text. Jetzt liest Get nur, wenn ein Ereignis (EditorViewModified,
+// Statt dass beide Zeitgeber je Takt den ganzen Puffer abfragen und den
+// ganzen Text vergleichen, liest Get nur, wenn ein Ereignis (EditorViewModified,
 // Wechsel des Editors, eigene Schreibvorgänge, Neuladen) den Stand als veraltet
 // markiert hat, Zeilenzahl oder Änderungsstatus abweichen oder das
 // Sicherheitsnetz abgelaufen ist (je Puffer 2 bis 32 s, siehe

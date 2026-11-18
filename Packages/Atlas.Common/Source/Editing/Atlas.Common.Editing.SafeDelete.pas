@@ -686,16 +686,6 @@ begin
   end;
 end;
 
-/// <summary>Erstes Token ab AIndex, das kein Leerraum und kein Kommentar ist.</summary>
-function NextSolid(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-end;
-
 /// <summary>Letztes Token bis AIndex, das kein Leerraum und kein Kommentar ist; -1 ohne.</summary>
 function PreviousSolid(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
@@ -719,10 +709,10 @@ begin
   begin
     Exit;
   end;
-  mNext := NextSolid(mTokens, mName + 1);
+  mNext := NextCode(mTokens, mName + 1);
   if (mNext <= High(mTokens)) and mTokens[mNext].IsSymbol(',') then
   begin
-    mNext := NextSolid(mTokens, mNext + 1);
+    mNext := NextCode(mTokens, mNext + 1);
     AEdit := TTextEdit.Create(TTextRange.Create(mTokens[mName].StartPos, mTokens[mNext].StartPos), '');
     Exit(True);
   end;
