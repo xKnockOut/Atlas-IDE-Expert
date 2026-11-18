@@ -67,7 +67,8 @@ type
 implementation
 
 uses
-  Atlas.UI.Settings.Strings;
+  Atlas.UI.Settings.Strings,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   // Linker Rand des Knopfs für die Projekteinstellungen.
@@ -109,16 +110,7 @@ end;
 
 function TAtlasServerPage.AddPanel(AHeight: Integer): TPanel;
 begin
-  Result := TPanel.Create(Self);
-  Result.Parent := Self;
-  Result.Align := alTop;
-  Result.AlignWithMargins := True;
-  Result.BevelOuter := bvNone;
-  Result.Height := Result.ScaleValue(AHeight);
-  // alTop stapelt nach Top: jedes neue Element unter das vorige.
-  Result.Top := FNextTop;
-  Inc(FNextTop, 100);
-  Result.ParentBackground := True;
+  Result := TAtlasSettingsPageSheets.NewTopPanel(Self, AHeight, FNextTop);
 end;
 
 function TAtlasServerPage.AddTitle(const ACaption: string): TLabel;

@@ -159,12 +159,13 @@ implementation
 
 uses
   Vcl.Graphics,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.ListView,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   cLabelTop = 5;
   cControlTop = 1;
-  cButtonTop = 3;
 
 { TAtlasTrackerSettingsRows }
 
@@ -269,13 +270,7 @@ end;
 function TAtlasTrackerSettingsRows.AddButton(AParent: TWinControl; ALeft, AWidth: Integer; const ACaption: string;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(FOwner);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := Result.ScaleValue(ALeft);
-  Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := Result.ScaleValue(AWidth);
-  Result.OnClick := AClick;
+  Result := TAtlasSettingsPageSheets.NewRowButton(FOwner, AParent, ALeft, AWidth, ACaption, AClick);
 end;
 
 function TAtlasTrackerSettingsRows.AddList(AParent: TWinControl; ASelect: TLVSelectItemEvent): TListView;
@@ -291,12 +286,8 @@ begin
 end;
 
 class procedure TAtlasTrackerSettingsRows.AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AList.ScaleValue(AWidth);
+  TAtlasListView.AddColumnTo(AList, ACaption, AWidth);
 end;
 
 function TAtlasTrackerSettingsRows.AddNote(AAnchor: TControl): TLabel;

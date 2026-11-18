@@ -79,7 +79,8 @@ uses
   Atlas.UI.Editor.Strings,
   Atlas.Core.Style.Signal,
   Atlas.UI.Foundation.Theme,
-  Atlas.UI.Foundation.WrapLabel;
+  Atlas.UI.Foundation.WrapLabel,
+  Atlas.UI.Foundation.ListView;
 
 const
   // Breiten der Spalten Name, Typ, Modifizierer und Vorgabewert in der Parameterliste.
@@ -160,16 +161,6 @@ begin
   Result := ATop + ADialog.ScaleValue(28);
 end;
 
-/// <summary>Spalte ACaption mit der Breite AWidth (logische Pixel, 96 dpi); skaliert über AList.</summary>
-procedure AddColumn(AList: TListView; const ACaption: string; AWidth: Integer);
-var
-  mColumn: TListColumn;
-begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AList.ScaleValue(AWidth);
-end;
-
 /// <summary>Hinweise zum Modell: festes Ereignis und Warnungen des Servers, je eine Zeile.</summary>
 function NotesOf(AModel: TAtlasSignatureModel): string;
 var
@@ -215,10 +206,10 @@ begin
   FList.RowSelect := True;
   FList.HideSelection := False;
   FList.OnSelectItem := ListSelect;
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), cSigNameWidth);
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), cSigTypeWidth);
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), cSigModifierWidth);
-  AddColumn(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), cSigValueWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColName), cSigNameWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColType), cSigTypeWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColModifier), cSigModifierWidth);
+  TAtlasListView.AddColumnTo(FList, TAtlasEditorStrings.Text(TAtlasEditorTextId.SigColValue), cSigValueWidth);
   ActiveControl := FList;
 end;
 

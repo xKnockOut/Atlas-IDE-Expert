@@ -85,7 +85,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.UI.Foundation.ListView;
 
 const
   cRowButtonTop = 3;
@@ -213,12 +214,8 @@ end;
 
 class procedure TAtlasVcsSettingsPart.AddListColumnCaption(AList: TListView; const ACaption: string;
   AWidth: Integer);
-var
-  mColumn: TListColumn;
 begin
-  mColumn := AList.Columns.Add;
-  mColumn.Caption := ACaption;
-  mColumn.Width := AList.ScaleValue(AWidth);
+  TAtlasListView.AddColumnTo(AList, ACaption, AWidth);
 end;
 
 function TAtlasVcsSettingsPart.AddChoice(const AKey: string; ACaption: TAtlasVcsTextId;

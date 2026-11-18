@@ -63,6 +63,10 @@ type
     function AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn; overload;
     /// <summary>Linksbündige Spalte anfügen.</summary>
     function AddColumn(const ACaption: string; AWidth96: Integer): TListColumn; overload;
+    /// <summary>Wie AddColumn, für jede TListView (auch aus DFM-Frames); skaliert über die Pixeldichte von AList.
+    /// </summary>
+    class function AddColumnTo(AList: TListView; const ACaption: string; AWidth96: Integer;
+      AAlignment: TAlignment = taLeftJustify): TListColumn; static;
     /// <summary>Breite in Gerätepixeln, die Überschrift und längster Eintrag der Spalte AColumn brauchen.</summary>
     function ContentWidth(AColumn: Integer): Integer;
     /// <summary>Alle Spalten außer der füllenden nach ContentWidth, höchstens AMaxWidth96 (logische Pixel);
@@ -173,12 +177,18 @@ begin
   end;
 end;
 
-function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn;
+class function TAtlasListView.AddColumnTo(AList: TListView; const ACaption: string; AWidth96: Integer;
+  AAlignment: TAlignment): TListColumn;
 begin
-  Result := Columns.Add;
+  Result := AList.Columns.Add;
   Result.Caption := ACaption;
   Result.Alignment := AAlignment;
-  Result.Width := TAtlasScaling.ToDevice(AWidth96, CurrentPPI);
+  Result.Width := TAtlasScaling.ToDevice(AWidth96, AList.CurrentPPI);
+end;
+
+function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer; AAlignment: TAlignment): TListColumn;
+begin
+  Result := AddColumnTo(Self, ACaption, AWidth96, AAlignment);
 end;
 
 function TAtlasListView.AddColumn(const ACaption: string; AWidth96: Integer): TListColumn;

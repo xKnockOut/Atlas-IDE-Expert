@@ -201,7 +201,8 @@ uses
   Atlas.Core.Welcome.Trends,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.QuickActions.Texts,
-  Atlas.UI.Welcome.Trends;
+  Atlas.UI.Welcome.Trends,
+  Atlas.UI.Settings.Page.Sheets;
 
 const
   cRowHeight = 26;
@@ -378,13 +379,7 @@ end;
 function TAtlasWelcomeSettingsSection.AddButton(AParent: TWinControl; ALeft, AWidth: Integer;
   const ACaption: string; AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(FOwner);
-  Result.Parent := AParent;
-  Result.Caption := ACaption;
-  Result.Left := Result.ScaleValue(ALeft);
-  Result.Top := Result.ScaleValue(cButtonTop);
-  Result.Width := Result.ScaleValue(AWidth);
-  Result.OnClick := AClick;
+  Result := TAtlasSettingsPageSheets.NewRowButton(FOwner, AParent, ALeft, AWidth, ACaption, AClick);
 end;
 
 procedure TAtlasWelcomeSettingsSection.BuildStart;

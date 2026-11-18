@@ -11,6 +11,7 @@ uses
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ComCtrls,
+  Vcl.ExtCtrls,
   Vcl.Forms,
   Atlas.UI.Strings,
   Atlas.UI.Settings.ChoiceBox;
@@ -69,6 +70,13 @@ type
     /// <summary>Knopf in AParent; ALeft und AWidth in logischen Pixeln (96 dpi).</summary>
     function AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
+    /// <summary>Knopf mit Besitzer AOwner in AParent; ALeft und AWidth in logischen Pixeln (96 dpi). Auch für die
+    /// Abschnitte der Module, die die Seite nicht selbst bauen.</summary>
+    class function NewRowButton(AOwner: TComponent; AParent: TWinControl; ALeft, AWidth: Integer;
+      const ACaption: string; AClick: TNotifyEvent): TButton; static;
+    /// <summary>Zeile oben in AParent (alTop, Höhe AHeight in logischen Pixeln) unter die vorigen; ANextTop zählt
+    /// die Stapelfolge. Für Seiten ohne Reiter (Tasten, Server).</summary>
+    class function NewTopPanel(AParent: TWinControl; AHeight: Integer; var ANextTop: Integer): TPanel; static;
     /// <summary>Beschriftung in einer Zeile, darunter ein Textfeld über die ganze Breite (#766).</summary>
     function AddTextLine(const ACaption: string): TEdit;
     /// <summary>Reiter und ihr Inhalt in der Reihenfolge des Aufbaus.</summary>
@@ -276,13 +284,36 @@ end;
 function TAtlasSettingsPageSheets.AddRowButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
   AClick: TNotifyEvent): TButton;
 begin
-  Result := TButton.Create(Self);
+  Result := NewRowButton(Self, AParent, ALeft, AWidth, TAtlasStrings.Text(AId), AClick);
+end;
+
+class function TAtlasSettingsPageSheets.NewRowButton(AOwner: TComponent; AParent: TWinControl; ALeft,
+  AWidth: Integer; const ACaption: string; AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(AOwner);
   Result.Parent := AParent;
-  Result.Caption := TAtlasStrings.Text(AId);
+  Result.Caption := ACaption;
   Result.Left := Result.ScaleValue(ALeft);
   Result.Top := Result.ScaleValue(cRowButtonTop);
   Result.Width := Result.ScaleValue(AWidth);
   Result.OnClick := AClick;
+end;
+
+class function TAtlasSettingsPageSheets.NewTopPanel(AParent: TWinControl; AHeight: Integer;
+  var ANextTop: Integer): TPanel;
+const
+  cStackStep = 100;
+begin
+  Result := TPanel.Create(AParent);
+  Result.Parent := AParent;
+  Result.Align := alTop;
+  Result.AlignWithMargins := True;
+  Result.BevelOuter := bvNone;
+  Result.Height := Result.ScaleValue(AHeight);
+  // alTop stapelt nach Top: jedes neue Element unter das vorige.
+  Result.Top := ANextTop;
+  Inc(ANextTop, cStackStep);
+  Result.ParentBackground := True;
 end;
 
 function TAtlasSettingsPageSheets.AddTextLine(const ACaption: string): TEdit;
