@@ -125,6 +125,8 @@ begin
   Assert.IsFalse(CheckOf(APage, 'DebugProfiler').Checked, 'debug.profiler (#2057)');
   Assert.AreEqual('10', EditOf(APage, 'DebugProfilerIntervalMs').Text, 'debug.profiler.intervalMs (#2057)');
   Assert.IsFalse(CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked, 'objectCount (#858)');
+  Assert.IsTrue(CheckOf(APage, 'DebugNote').Checked, 'debug.note (#582)');
+  Assert.IsTrue(CheckOf(APage, 'DebugNoteSaveFile').Checked, 'debug.note.saveFile (#582)');
 end;
 
 /// <summary>Alle Schalter des Abschnitts umstellen.</summary>
@@ -159,6 +161,8 @@ begin
   CheckOf(APage, 'DebugProfiler').Checked := True;
   EditOf(APage, 'DebugProfilerIntervalMs').Text := '25';
   CheckOf(APage, 'DebugMemoryTimelineObjectCount').Checked := True;
+  CheckOf(APage, 'DebugNote').Checked := False;
+  CheckOf(APage, 'DebugNoteSaveFile').Checked := False;
   ASection.OwnCodeFoldersEdit.Text := 'C:\Komponenten\; ;c:\komponenten';
 end;
 
@@ -195,6 +199,8 @@ begin
   Assert.IsTrue(ASaved.DebugProfiler);
   Assert.AreEqual(25, ASaved.DebugProfilerIntervalMs);
   Assert.IsTrue(ASaved.DebugMemoryTimelineObjectCount);
+  Assert.IsFalse(ASaved.DebugNote);
+  Assert.IsFalse(ASaved.DebugNoteSaveFile);
   Assert.AreEqual('C:\Komponenten', ASaved.DebugOwnCodeFolders, 'bereinigt (#578)');
 end;
 
