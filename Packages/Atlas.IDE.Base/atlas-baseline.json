@@ -984,8 +984,6 @@
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.ToolCheck.pas", "rule": "magic-number", "fingerprint": "7c382440", "count": 1, "routine": "VersionNumber", "context": "0cc5a5c4"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Tools.pas", "rule": "hardcoded-string", "fingerprint": "61404f64", "count": 1, "routine": "TAtlasVcsTools.KnownDirs", "context": "8e3ad408"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Tools.pas", "rule": "hardcoded-string", "fingerprint": "6e2ee460", "count": 1, "routine": "TAtlasVcsTools.KnownDirs", "context": "39d85603"},
-    {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Worker.pas", "rule": "duplicate-routine-body", "fingerprint": "938b6caa", "count": 1, "routine": "TAtlasVcsWorker.Pending", "context": "edf304f8"},
-    {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.Worker.pas", "rule": "magic-number", "fingerprint": "5091bb42", "count": 1, "routine": "TAtlasVcsWorker.Destroy", "context": "6fa5b211"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.WorkingCopies.pas", "rule": "magic-number", "fingerprint": "165c4132", "count": 1, "routine": "TAtlasVcsWorkingCopies.FromSubmodules", "context": "78d6ecbb"},
     {"path": "Source/Core/VersionControl/Atlas.Core.VersionControl.WorkingCopies.pas", "rule": "magic-number", "fingerprint": "43ccaba6", "count": 1, "routine": "TAtlasVcsWorkingCopies.FromSubmodules", "context": "2010b982"},
     {"path": "Source/Core/Versions/Atlas.Core.Versions.Project.pas", "rule": "string-if-chain", "fingerprint": "c0841508", "count": 1, "routine": "TAtlasProjectVersion.IsOn", "context": "96306360"},

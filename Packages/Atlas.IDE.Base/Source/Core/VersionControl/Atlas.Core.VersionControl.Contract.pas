@@ -7,7 +7,7 @@
 // Einstellung vcs.provider.
 // Die Umsetzungen rufen git bzw. svn über IAtlasVcsRunner auf (Kommandozeile,
 // keine Bibliotheken). Jeder Aufruf startet einen Prozess: Er gehört nie in
-// den Hauptthread der IDE (siehe Atlas.Core.VersionControl.Worker), der Prozessläufer der
+// den Hauptthread der IDE (siehe Atlas.Core.Diagnostics.BackgroundJobs), der Prozessläufer der
 // IDE lehnt ihn dort ab.
 // Ohne VCL und Open Tools API; auch der Server (--changed mit SVN, #276)
 // übersetzt diese Units mit.
