@@ -396,7 +396,7 @@ begin
     end;
     for mPair in TJSONObject(mRoot) do
     begin
-      // Früher brach ein kurzes oder falsch getyptes Paar das Lesen mit einer Ausnahme ab.
+      // Ein kurzes oder falsch getyptes Paar wird übergangen, statt das Lesen mit einer Ausnahme abzubrechen.
       if not (mPair.JsonValue is TJSONArray) then
       begin
         Continue;

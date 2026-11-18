@@ -16,7 +16,7 @@
 // immer ein. Beide sind aus jedem Thread aufrufbar.
 // Einträge je Modul: Base bleibt geladen, wenn ein Modul-Package einzeln
 // entladen wird; Stop läuft dann nicht. Ein Eintrag, dessen Code im Modul liegt,
-// lief früher danach in nicht mehr geladenem Code (Zugriffsverletzung in
+// liefe danach in nicht mehr geladenem Code (Zugriffsverletzung in
 // Guarded). Jeder Eintrag merkt sich daher das Modul seines Codes
 // (FindHInstance der anonymen Methode). Die Registry ruft beim Abmelden
 // CloseModule (wartende Einträge verwerfen, keine neuen annehmen), beim Anmelden

@@ -33,7 +33,9 @@
     definiert nur Atlas.Common.Pascal.TokenCursor Routinen wie TokenFrom,
     NextCode, PreviousCode, IsTrivia, MatchingParen, IsKeywordIn; abweichende
     Fassungen stehen mit Grund in $TokenAllowedLocal. Dazu gehören auch die
-    alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …).
+    alten Namen für PreviousCode (Prev, PreviousToken, PreviousIndex …), für
+    NextCode/NextCodeAfter/FollowingCode (NextToken, NextSignificant,
+    NextSolid, SkipTrivia), IsCode und ClosingParen (MatchingParen).
     JSON aus Text lesen (ParseObject, ParseValue, ParseJson mit einem string als
     Parameter und TJSONObject/TJSONValue als Ergebnis) gibt es nur als
     TJsonRead.Parse/ParseObject/ParseObjectOrEmpty in Atlas.Text.Json; eigene
@@ -338,15 +340,24 @@ $TokenLockNames = @('TokenAt', 'TokenFrom', 'TokenAtOffset', 'TokenExactly', 'Ma
     # Suche nach Zeile und Spalte, Bezeichner unter dem Cursor.
     'TokenFromPosition', 'TokenUpToPosition', 'TokenTouching', 'IdentifierAt', 'NameTokenAt',
     # Alte Namen für PreviousCode.
-    'PreviousToken', 'PreviousIndex', 'PreviousSignificant', 'PreviousSolid', 'PreviousCodeToken', 'PrevCode', 'Prev')
+    'PreviousToken', 'PreviousIndex', 'PreviousSignificant', 'PreviousSolid', 'PreviousCodeToken', 'PrevCode', 'Prev',
+    # Alte Namen für NextCode, NextCodeAfter, FollowingCode, IsCode und MatchingParen.
+    'NextCodeAfter', 'FollowingCode', 'NextToken', 'NextSignificant', 'NextSolid', 'SkipTrivia', 'IsCode',
+    'ClosingParen')
 $TokenLockHomes = @('Atlas.Common.Pascal.TokenCursor', 'Atlas.Common.Pascal.RoutineSignatures:TRoutineSignatures.WithoutTypeParams')
 
 # Erlaubte abweichende Fassungen ("Unit:Routine") mit Grund. Die Liste soll nur schrumpfen.
 $TokenAllowedLocal = @{
-    'Atlas.Common.Editing.DocumentationCommands:NextCode'                 = 'beginnt hinter AIndex und zählt nach IsCode der Unit'
-    'Atlas.Common.Editing.DocumentationCommands:PrevCode'                 = 'zählt nach IsCode der Unit'
     'Atlas.Common.Editing.Formatter.Indent:PreviousSignificant'           = 'Methodendeklaration von TIndentTokens'
-    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers'
+    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.PreviousSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an PreviousCode weiter'
+    'Atlas.Common.Editing.Formatter.Indent:NextSignificant'               = 'Methodendeklaration von TIndentTokens'
+    'Atlas.Common.Editing.Formatter.Indent:TIndentTokens.NextSignificant' = 'Methode über die eigenen Token des Formatierers, leitet an NextCodeAfter weiter'
+    'Atlas.Common.Editing.Unwrap:IsCode'                                  = 'Methodendeklaration von TBuilder'
+    'Atlas.Common.Editing.Unwrap:TBuilder.IsCode'                         = 'Token-Index statt Token, außerhalb des Arrays False'
+    'Atlas.Common.Rules.Builtin.Capture:NextToken'                        = 'sucht ab einem Offset über den Regelkontext und liefert das Token mit out-Parameter'
+    'Atlas.Common.Rules.Builtin.Migration.Win64:NextToken'                = 'überspringt nur Kommentare, Direktiven nicht'
+    'Atlas.Common.Rules.Builtin.TypedExpressions:NextToken'               = 'überspringt nur Kommentare, Direktiven nicht'
+    'Atlas.Common.Rules.Builtin.Todos:IsCode'                             = 'prüft Kommentarzeilen auf auskommentierten Code, keine Token'
     'Atlas.Common.Editing.SafeDelete:PreviousSolid'                       = 'schließt AIndex ein'
     'Atlas.Common.Editing.Unwrap:PrevCode'                                = 'Offset im Text statt Token-Index'
     'Atlas.Common.Editing.Unwrap:TBuilder.PrevCode'                       = 'Offset im Text statt Token-Index'
@@ -363,20 +374,15 @@ $TokenAllowedLocal = @{
     'Atlas.Common.Lsp.InvertBoolean:TokenAt'                              = 'Methodendeklaration von TSourceFile, sucht nach TTextPosition'
     'Atlas.Common.Lsp.InvertBoolean:TSourceFile.TokenAt'                  = 'Methode der Unit-Sicht: rechnet die Position in den Offset um und leitet an TokenExactly weiter'
     'Atlas.Common.Lsp.SelectionRanges:TokenAt'                            = 'Token im Syntaxbaum mit out-Parameter, sucht das umschließende Token'
-    'Atlas.Common.Pascal.LanguageFeatures:NextCode'                       = 'beginnt hinter AIndex, -1 statt Length ohne Treffer'
     'Atlas.Common.Pascal.SyntaxTree:TSyntaxTree.IdentifierAt'             = 'Methode des Baums: ein #13-Teil einer Zeichenkonstante (IsControlCharPart) gilt nicht als Bezeichner'
     'Atlas.Common.Editing.InvertBoolean:IdentifierAt'                     = 'Methodendeklaration von TSourceTokens'
     'Atlas.Common.Editing.InvertBoolean:TSourceTokens.IdentifierAt'       = 'Bezeichner, der genau bei einem Offset beginnt, nicht nach Zeile und Spalte'
     'Atlas.Common.Pascal.SyntaxChecks:NextCode'                           = 'Methodendeklaration von TTreeChecker'
     'Atlas.Common.Pascal.SyntaxChecks:TTreeChecker.NextCode'              = 'überspringt zusätzlich Token außerhalb aktiver Zweige'
-    'Atlas.Common.Rules.Builtin.Automation:NextCode'                      = 'Methodendeklaration von TAutomationCheck'
-    'Atlas.Common.Rules.Builtin.Automation:TAutomationCheck.NextCode'     = 'mit Grenze AStop'
     'Atlas.Common.Rules.Builtin.Database:TokenAt'                         = 'Methodendeklaration von TSqlBuild'
     'Atlas.Common.Rules.Builtin.Database:TSqlBuild.TokenAt'               = 'Token eines SQL-Stücks, nicht Token-Index der Unit'
     'Atlas.Common.Rules.Builtin.Inheritance.Ancestry:TokenAt'             = 'liefert das Token mit out-Parameter über den Regelkontext'
     'Atlas.Common.Rules.Builtin.MethodDirectives:WithoutTypeParams'       = 'schneidet beim ersten < ab ("A<T>.B" ergibt "A")'
-    'Atlas.Common.Rules.Builtin.TypeDeclarations.Scan:TDeclarationScan.NextCode' = 'mit Grenze AStop'
-    'Atlas.Common.Rules.Builtin.Units:NextCode'                           = 'zählt nach IsCode der Unit'
     'Atlas.Common.Rules.Builtin.Visibility:TokenAt'                       = 'Methodendeklaration von TInaccessibleMemberCheck'
     'Atlas.Common.Rules.Builtin.Visibility:TInaccessibleMemberCheck.TokenAt' = 'liefert High statt Length ohne Treffer'
 }

@@ -81,6 +81,7 @@ uses
   System.SysUtils,
   System.Math,
   Vcl.Graphics,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Completion.Favorites,
   Atlas.Core.Diagnostics.Timing,
@@ -92,6 +93,47 @@ uses
 
 const
   cTextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
+  /// <summary>Gedämpfte Zeilen (#419, #476, #497, #2108): Anteil der Farbe über der Fläche, 62 % Deckkraft.</summary>
+  cDimShare = 0.62;
+  /// <summary>Punktmuster des Griffs: Anteil von Muted über der Fläche.</summary>
+  cGripShare = 0.6;
+  /// <summary>Innerer Radius des Sterns als Anteil des äußeren; fünf Zacken.</summary>
+  cStarInnerShare = 0.45;
+  cStarTips = 5;
+  /// <summary>Logische Bildpunkte bei 96 dpi. Chips: Einzug, Höhe über der Schrift, Breite über dem Text,
+  /// Eckenradius, Abstand.</summary>
+  cChipInset = 4;
+  cChipLeading = 4;
+  cChipPadding = 14;
+  cChipRoundness = 9;
+  cChipGap = 6;
+  /// <summary>Warnleiste: Einzug des Textes.</summary>
+  cSyntaxTextInset = 8;
+  /// <summary>Überschrift: Versatz nach unten.</summary>
+  cHeaderDrop = 4;
+  /// <summary>Marke der gewählten Zeile: halbe Höhe und Breite.</summary>
+  cMarkerHalf = 4;
+  cMarkerWidth = 3;
+  /// <summary>Eckenradien von Badge, Auswahl und Kontrollkästchen; Größe des Kästchens.</summary>
+  cBadgeRadius = 4;
+  cSelectionRadius = 4;
+  cCheckRadius = 3;
+  cCheckSize = 13;
+  /// <summary>Stern: Einzug und äußerer Radius.</summary>
+  cStarInset = 4;
+  cStarRadius = 6;
+  /// <summary>Scrollleiste: Abstand vom rechten Rand, kleinste Daumenhöhe.</summary>
+  cScrollBarInset = 5;
+  cMinThumb = 16;
+  /// <summary>Fußzeile: Einzug links und rechts.</summary>
+  cFooterInset = 9;
+  /// <summary>Zugeklapptes Panel: Abstand des Pfeils von oben.</summary>
+  cArrowTop = 6;
+  /// <summary>Griff unten rechts: Abstand vom Rand und Raster der Punkte.</summary>
+  cGripInset = 4;
+  cGripStep = 4;
+  /// <summary>Haken im Kontrollkästchen auf einem Raster von cCheckSize Punkten.</summary>
+  cCheckMark: array[0..2] of TPoint = ((X: 3; Y: 7), (X: 5; Y: 10), (X: 10; Y: 3));
 
 { TAtlasCompletionPopupPainter }
 
@@ -141,7 +183,7 @@ function TAtlasCompletionPopupPainter.Dim(AColor: TAtlasColor): TAtlasColor;
 begin
   if FDimRow then
   begin
-    Result := TAtlasColorMath.Mix(AColor, Colors.Surface, 0.62);
+    Result := TAtlasColorMath.Mix(AColor, Colors.Surface, cDimShare);
   end
   else
   begin
@@ -163,9 +205,9 @@ begin
     Exit;
   end;
   Canvas.Font := UIFont;
-  mHeight := Canvas.TextHeight('Wg') + Scale(4);
+  mHeight := Canvas.TextHeight('Wg') + Scale(cChipLeading);
   mTop := Pad + (ChipsHeight - mHeight) div 2;
-  X := ListLeft + Pad + Scale(4);
+  X := ListLeft + Pad + Scale(cChipInset);
   for mChip := Low(TAtlasChip) to High(TAtlasChip) do
   begin
     if (mChip <> TAtlasChip.All) and (FChips.Counts[mChip] = 0) then
@@ -175,19 +217,19 @@ begin
     mText := Format('%s %d', [TAtlasStrings.Text(TAtlasTextId(Ord(TAtlasTextId.ChipAll) + Ord(mChip))),
       FChips.Counts[mChip]]);
     Canvas.Font := UIFont;
-    mBox := Rect(X, mTop, X + Canvas.TextWidth(mText) + Scale(14), mTop + mHeight);
+    mBox := Rect(X, mTop, X + Canvas.TextWidth(mText) + Scale(cChipPadding), mTop + mHeight);
     if mBox.Right > ListRight - Pad then
     begin
       Break;
     end;
     if mChip = FChips.Active then
     begin
-      FrameRounded(mBox, Colors.Accent, 9, ToColor(Colors.AccentSoft));
+      FrameRounded(mBox, Colors.Accent, cChipRoundness, ToColor(Colors.AccentSoft));
       Canvas.Font.Color := ToColor(Colors.Accent);
     end
     else
     begin
-      FrameRounded(mBox, Colors.Line, 9);
+      FrameRounded(mBox, Colors.Line, cChipRoundness);
       Canvas.Font.Color := ToColor(Colors.Muted);
     end;
     Canvas.Brush.Style := bsClear;
@@ -195,7 +237,7 @@ begin
     DrawText(Canvas.Handle, PChar(mText), -1, mTextRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
     FChips.Rects := FChips.Rects + [mBox];
     FChips.Kinds := FChips.Kinds + [mChip];
-    X := mBox.Right + Scale(6);
+    X := mBox.Right + Scale(cChipGap);
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
@@ -212,7 +254,7 @@ begin
   begin
     Exit;
   end;
-  mBar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
+  mBar := Rect(ListLeft + Pad + Scale(cChipInset), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(cChipInset),
     Pad + ChipsHeight + SyntaxHeight - Scale(2));
   FillRounded(mBar, Colors.WarnSoft, TAtlasDraw.cChipRadius);
   mLead := TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust);
@@ -220,7 +262,7 @@ begin
   Canvas.Font := UIFont;
   Canvas.Font.Color := ToColor(Colors.Warn);
   Canvas.Brush.Style := bsClear;
-  mText := Rect(mBar.Left + Scale(8), mBar.Top, mBar.Right - Scale(8), mBar.Bottom);
+  mText := Rect(mBar.Left + Scale(cSyntaxTextInset), mBar.Top, mBar.Right - Scale(cSyntaxTextInset), mBar.Bottom);
   DrawText(Canvas.Handle, PChar(mLead), -1, mText, cTextFlags or DT_END_ELLIPSIS);
   // Zeilenangabe unterstrichen dahinter; nur sie ist anklickbar.
   mLeft := mText.Left + Canvas.TextWidth(mLead);
@@ -243,12 +285,12 @@ var
 begin
   mText := TAtlasCompletionTexts.HeaderText(FItems, FOrder, APosition);
   mRow := RowRect(ARow);
-  Inc(mRow.Left, Scale(7));
+  Inc(mRow.Left, Scale(cRowInset));
   Canvas.Font := UIFont;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Muted);
   Canvas.Brush.Style := bsClear;
-  mRow.Top := mRow.Top + Scale(4);
+  mRow.Top := mRow.Top + Scale(cHeaderDrop);
   DrawText(Canvas.Handle, PChar(mText), -1, mRow, cTextFlags or DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
   Canvas.Brush.Style := bsSolid;
@@ -267,11 +309,12 @@ begin
   // Schmales Dreieck im Rand vor dem Badge bzw. Stern; passt auch neben die Sternspalte.
   mLeft := ARow.Left + Scale(1);
   mMiddle := (ARow.Top + ARow.Bottom) div 2;
-  mHalf := Scale(4);
+  mHalf := Scale(cMarkerHalf);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Accent);
   Canvas.Pen.Color := ToColor(Colors.Accent);
-  Canvas.Polygon([Point(mLeft, mMiddle - mHalf), Point(mLeft + Scale(3), mMiddle), Point(mLeft, mMiddle + mHalf)]);
+  Canvas.Polygon([Point(mLeft, mMiddle - mHalf), Point(mLeft + Scale(cMarkerWidth), mMiddle),
+    Point(mLeft, mMiddle + mHalf)]);
 end;
 
 procedure TAtlasCompletionPopupPainter.DrawBadge(const ARow: TRect; const AItem: TAtlasCompletionItem;
@@ -282,12 +325,13 @@ var
   mTop: Integer;
 begin
   mBadge := TAtlasItemPresentation.Badge(AItem);
-  mTop := ARow.Top + (ARow.Height - Scale(17)) div 2;
-  mBox := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7 + 24), mTop + Scale(17));
-  FillRounded(mBox, Dim(Colors.Badges[mBadge.Kind].Background), 4);
+  mTop := ARow.Top + (ARow.Height - Scale(cBadgeHeight)) div 2;
+  mBox := Rect(ARow.Left + Scale(cRowInset), mTop, ARow.Left + Scale(cRowInset + cBadgeWidth),
+    mTop + Scale(cBadgeHeight));
+  FillRounded(mBox, Dim(Colors.Badges[mBadge.Kind].Background), cBadgeRadius);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Height := -Round(mBox.Height * 0.62);
+  Canvas.Font.Height := -Round(mBox.Height * cAtlasBadgeFontShare);
   Canvas.Font.Color := ToColor(Dim(Colors.Badges[mBadge.Kind].Text));
   Canvas.Brush.Style := bsClear;
   mText := mBox;
@@ -326,20 +370,23 @@ var
   mBox: TRect;
   mSize, mTop: Integer;
   mPoints: array[0..2] of TPoint;
+  mIndex: Integer;
 begin
-  mSize := Scale(13);
+  mSize := Scale(cCheckSize);
   mTop := ARow.Top + (ARow.Height - mSize) div 2;
-  mBox := Rect(ARow.Left + Scale(7), mTop, ARow.Left + Scale(7) + mSize, mTop + mSize);
+  mBox := Rect(ARow.Left + Scale(cRowInset), mTop, ARow.Left + Scale(cRowInset) + mSize, mTop + mSize);
   if not AChecked then
   begin
-    FrameRounded(mBox, Colors.Muted, 3);
+    FrameRounded(mBox, Colors.Muted, cCheckRadius);
     Exit;
   end;
-  FillRounded(mBox, Colors.Accent, 3);
+  FillRounded(mBox, Colors.Accent, cCheckRadius);
   // Haken in der Flächenfarbe.
-  mPoints[0] := Point(mBox.Left + MulDiv(mSize, 3, 13), mBox.Top + MulDiv(mSize, 7, 13));
-  mPoints[1] := Point(mBox.Left + MulDiv(mSize, 5, 13), mBox.Top + MulDiv(mSize, 10, 13));
-  mPoints[2] := Point(mBox.Left + MulDiv(mSize, 10, 13), mBox.Top + MulDiv(mSize, 3, 13));
+  for mIndex := Low(mPoints) to High(mPoints) do
+  begin
+    mPoints[mIndex] := Point(mBox.Left + MulDiv(mSize, cCheckMark[mIndex].X, cCheckSize),
+      mBox.Top + MulDiv(mSize, cCheckMark[mIndex].Y, cCheckSize));
+  end;
   Canvas.Pen.Color := ToColor(Colors.Surface);
   Canvas.Pen.Width := Max(1, Scale(2));
   Canvas.Polyline(mPoints);
@@ -348,16 +395,16 @@ end;
 
 procedure TAtlasCompletionPopupPainter.DrawStar(const ARow: TRect; AFilled: Boolean);
 var
-  mPoints: array[0..9] of TPoint;
+  mPoints: array[0..2 * cStarTips - 1] of TPoint;
   mIndex, mRadius, mOuter, mInner, mCenterX, mCenterY: Integer;
   mAngle: Double;
 begin
   // Fünfzackiger Stern, Spitze oben: abwechselnd äußerer und innerer Radius.
-  mOuter := Scale(6);
-  mInner := Max(1, Round(mOuter * 0.45));
-  mCenterX := ARow.Left + Scale(4) + mOuter;
+  mOuter := Scale(cStarRadius);
+  mInner := Max(1, Round(mOuter * cStarInnerShare));
+  mCenterX := ARow.Left + Scale(cStarInset) + mOuter;
   mCenterY := ARow.Top + ARow.Height div 2;
-  for mIndex := 0 to 9 do
+  for mIndex := Low(mPoints) to High(mPoints) do
   begin
     if Odd(mIndex) then
     begin
@@ -367,7 +414,7 @@ begin
     begin
       mRadius := mOuter;
     end;
-    mAngle := -Pi / 2 + mIndex * Pi / 5;
+    mAngle := -Pi / 2 + mIndex * Pi / cStarTips;
     mPoints[mIndex] := Point(mCenterX + Round(mRadius * Cos(mAngle)), mCenterY + Round(mRadius * Sin(mAngle)));
   end;
   Canvas.Pen.Width := 1;
@@ -489,8 +536,8 @@ begin
     ((FRestFrom >= 0) and (APosition > FRestFrom))) and (APosition <> FSelected);
   DrawRowMarks(mRow, mItem, APosition);
   DrawBadge(mRow, mItem, mNameLeft);
-  Inc(mNameLeft, Scale(9));
-  mGap := Scale(6);
+  Inc(mNameLeft, Scale(cNameGap));
+  mGap := Scale(cTailGap);
   // Breiten: Name, Tags, Detail; zu lang: erst das Detail kürzen bzw. weglassen, dann den Namen.
   Canvas.Font := Font;
   mNameWidth := Canvas.TextWidth(mItem.Name);
@@ -509,11 +556,11 @@ procedure TAtlasCompletionPopupPainter.DrawRowMarks(var ARow: TRect; const AItem
 begin
   if APosition = FSelected then
   begin
-    FillRounded(ARow, Colors.Selection, 4);
+    FillRounded(ARow, Colors.Selection, cSelectionRadius);
     // Nicht nur Farbe (#447): Rahmen in Akzentfarbe und Marke im Rand vor dem Badge.
     if FOptions.SelectionMarker then
     begin
-      FrameRounded(ARow, Colors.Accent, 4);
+      FrameRounded(ARow, Colors.Accent, cSelectionRadius);
       DrawMarker(ARow);
     end;
   end;
@@ -547,8 +594,8 @@ var
   mPart: TRect;
   mRight, mGap, mTagsWidth, mDetailWidth: Integer;
 begin
-  mRight := ARow.Right - Scale(7);
-  mGap := Scale(6);
+  mRight := ARow.Right - Scale(cRowInset);
+  mGap := Scale(cTailGap);
   mTags := ItemTags(AItem);
   mTagsWidth := 0;
   for mTag in mTags do
@@ -560,8 +607,8 @@ begin
   mDetailWidth := 0;
   if mDetail <> '' then
   begin
-    mDetailWidth := Min(Canvas.TextWidth(mDetail), mRight - ANameLeft - ANameWidth - mTagsWidth - Scale(12));
-    if mDetailWidth < Scale(40) then
+    mDetailWidth := Min(Canvas.TextWidth(mDetail), mRight - ANameLeft - ANameWidth - mTagsWidth - Scale(cDetailGap));
+    if mDetailWidth < Scale(cMinDetailWidth) then
     begin
       mDetailWidth := 0;
     end;
@@ -580,7 +627,7 @@ begin
   for mTag in mTags do
   begin
     Dec(Result, TagWidth(mTag));
-    if Result < ANameLeft + Scale(40) then
+    if Result < ANameLeft + Scale(cMinDetailWidth) then
     begin
       ATruncated := True;
       Break;
@@ -610,9 +657,9 @@ begin
   begin
     Exit;
   end;
-  mTrack := Rect(ListRight - Pad - Scale(5), ListTop + Scale(2), ListRight - Pad - Scale(1),
+  mTrack := Rect(ListRight - Pad - Scale(cScrollBarInset), ListTop + Scale(2), ListRight - Pad - Scale(1),
     ListTop + mVisible * RowHeight - Scale(2));
-  mThumbHeight := Max(Scale(16), mTrack.Height * mVisible div mTotal);
+  mThumbHeight := Max(Scale(cMinThumb), mTrack.Height * mVisible div mTotal);
   mThumbTop := mTrack.Top + (mTrack.Height - mThumbHeight) * FTop div Max(1, mTotal - mVisible);
   mThumb := Rect(mTrack.Left, mThumbTop, mTrack.Right, mThumbTop + mThumbHeight);
   TAtlasDraw.Thumb(Canvas, mThumb, Colors, Scale(2));
@@ -633,7 +680,8 @@ begin
   Canvas.Font := UIFont;
   Canvas.Font.Color := ToColor(Colors.Muted);
   Canvas.Brush.Style := bsClear;
-  mText := Rect(mFooter.Left + Scale(9), mFooter.Top + 1, mFooter.Right - Scale(9), mFooter.Bottom);
+  mText := Rect(mFooter.Left + Scale(cFooterInset), mFooter.Top + 1, mFooter.Right - Scale(cFooterInset),
+    mFooter.Bottom);
   DrawText(Canvas.Handle, PChar(ARight), -1, mText, cTextFlags or DT_RIGHT);
   mText.Right := mText.Right - Canvas.TextWidth(ARight) - Scale(10);
   DrawText(Canvas.Handle, PChar(ALeft), -1, mText, cTextFlags or DT_END_ELLIPSIS);
@@ -674,8 +722,8 @@ var
 
   procedure DrawLine(AIndex: Integer; const AText: string; AColor: TAtlasColor);
   begin
-    mLine := Rect(ListLeft + Pad + Scale(7), ListTop + AIndex * RowHeight, ListRight - Pad - Scale(7),
-      ListTop + (AIndex + 1) * RowHeight);
+    mLine := Rect(ListLeft + Pad + Scale(cRowInset), ListTop + AIndex * RowHeight,
+      ListRight - Pad - Scale(cRowInset), ListTop + (AIndex + 1) * RowHeight);
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(AColor);
     Canvas.Brush.Style := bsClear;
@@ -741,7 +789,7 @@ begin
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    mBar := Rect(mPanel.Left, Scale(6), mPanel.Right, Scale(6) + Canvas.TextHeight('Wg'));
+    mBar := Rect(mPanel.Left, Scale(cArrowTop), mPanel.Right, Scale(cArrowTop) + Canvas.TextHeight('Wg'));
     if FPanel.Left then
     begin
       mArrow := '‹';
@@ -769,11 +817,11 @@ var
 begin
   // Punktmuster unten rechts (#416): drei Reihen, nach unten rechts dichter.
   mSize := Max(1, Scale(2));
-  mStep := Scale(4);
-  mRight := ClientWidth - Scale(4);
-  mBottom := ClientHeight - Scale(4);
+  mStep := Scale(cGripStep);
+  mRight := ClientWidth - Scale(cGripInset);
+  mBottom := ClientHeight - Scale(cGripInset);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, 0.6));
+  Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(Colors.Muted, Colors.Surface, cGripShare));
   for mRow := 0 to 2 do
   begin
     for mColumn := 0 to 2 - mRow do

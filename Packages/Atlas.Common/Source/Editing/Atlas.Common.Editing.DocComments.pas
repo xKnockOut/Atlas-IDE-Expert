@@ -59,6 +59,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  Atlas.Common.Pascal.TokenCursor,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -236,32 +237,6 @@ begin
   end;
 end;
 
-/// <summary>Index der schließenden Klammer zur öffnenden an AOpen; 0, wenn sie fehlt.</summary>
-function ClosingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mDepth: Integer;
-begin
-  mDepth := 0;
-  Result := AOpen;
-  while Result <= Length(AText) do
-  begin
-    if AText[Result] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[Result] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit;
-      end;
-    end;
-    Inc(Result);
-  end;
-  Result := 0;
-end;
-
 /// <summary>Parameternamen der Liste, die an AOpen beginnt; leer ohne Liste.</summary>
 function ParamsOf(const AText: string; AOpen: Integer): TArray<string>;
 var
@@ -272,7 +247,7 @@ begin
   mClose := 0;
   if AOpen > 0 then
   begin
-    mClose := ClosingParen(AText, AOpen);
+    mClose := MatchingParen(AText, AOpen);
   end;
   if mClose = 0 then
   begin
