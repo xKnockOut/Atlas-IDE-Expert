@@ -563,6 +563,7 @@ type
     property DebugOwnCodeFolders: string read FDebug.DebugOwnCodeFolders write FDebug.DebugOwnCodeFolders;
     property DebugWhyHere: Boolean read FDebug.DebugWhyHere write FDebug.DebugWhyHere;
     property DebugWhyHereDepth: Integer read FDebug.DebugWhyHereDepth write FDebug.DebugWhyHereDepth;
+    property DebugShowElapsed: Boolean read FDebug.DebugShowElapsed write FDebug.DebugShowElapsed;
     property DebugVariablesWindow: Boolean read FDebug.DebugVariablesWindow write FDebug.DebugVariablesWindow;
     property DebugVariablesSearchDepth: Integer read FDebug.DebugVariablesSearchDepth
       write FDebug.DebugVariablesSearchDepth;

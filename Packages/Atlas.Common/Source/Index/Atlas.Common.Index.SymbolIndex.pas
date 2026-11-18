@@ -4,8 +4,8 @@
 // Dateinamen ohne Groß-/Kleinschreibung; Symbolnamen und Vorfahren werden
 // beim Hinzufügen einer Unit in Nachschlagetabellen eingetragen.
 //
-// Nachschlagetabellen (Diagnoselog 15.10.2026): FindSymbols und Descendants
-// liefen früher über alle Symbole aller Units. Mit eingelesener Bibliothek
+// Nachschlagetabellen: FindSymbols und Descendants
+// liefen sonst über alle Symbole aller Units. Mit eingelesener Bibliothek
 // (über 5000 Units) kostete jeder Aufruf mehrere Zehntel Sekunden; Prüfregeln
 // rufen ihn je Methode und Vorfahr auf, eine Datei brauchte so 30 s bis über
 // 200 s. Jetzt verweist je Name (und je Vorfahr ohne Unit-Präfix) eine Liste
@@ -255,7 +255,7 @@ var
   mStored: TUnitIndex;
   mName, mCurrent: string;
 begin
-  // Jede abgelegte Fassung bekommt ihre eigene Namenstabelle (Diagnoselog 15.10.2026); FindUnit und
+  // Jede abgelegte Fassung bekommt ihre eigene Namenstabelle; FindUnit und
   // FindFile geben sie mit, die Namensauflösung sucht darüber statt linear.
   mStored := AUnit;
   mStored.PrepareNames;

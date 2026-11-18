@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.FreeFields.Tests;
 
-// Tests für field-not-freed (bis #918 owned-field-not-freed) und
+// Tests für field-not-freed (Alias owned-field-not-freed, #918) und
 // owned-field-free-unclear (#666): Beispiel aus #918, Owner-Komponenten,
 // Option ignoreTypes, frühere Kennung, Abschalten und Ausnahmen; dazu
 // initialization-not-finalized (#971).

@@ -22,7 +22,7 @@ type
     /// <summary>Alle Befehle der Übersichten stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig (Diagnose 06.11.2026), Berichte speichern und uses ändern in der
+    /// <summary>Lesende Befehle laufen nebenläufig, Berichte speichern und uses ändern in der
     /// Reihenfolge der Nachrichten.</summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;

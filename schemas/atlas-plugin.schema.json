@@ -2413,6 +2413,19 @@
       "x-parent": "debug.whyHere",
       "x-issue": "#1878"
     },
+    "DebugShowElapsed": {
+      "description": "Laufzeit zwischen Haltepunkten: Beim Halt steht am Ende der Zeile des Ausführungspunkts gedimmt die Zeit seit dem letzten Halt („+124 ms“). Gemessen wird nur, solange das Programm läuft; Zeit im angehaltenen Zustand und Auswertungen zählen nicht. An einem Haltepunkt immer, bei Schritten und Pausen ab 1 ms. Klick auf die Zeit zeigt die letzten 20 Messungen mit Start- und Zielzeile. Die Zeit enthält den Aufwand des Debuggers und gilt nur als Richtwert.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.showElapsed",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Laufzeit seit dem letzten Halt",
+      "x-captionEn": "Run time since the last stop",
+      "x-issue": "#579"
+    },
     "DebugPredictConditions": {
       "description": "Bedingungen vorausschauen: Beim Halt stehen an den kommenden if, while und case derselben Routine die vorhergesagten Ergebnisse, wenn dazwischen nichts die Bedingung ändern kann; Aufrufe werden nie ausgewertet.",
       "type": "boolean",

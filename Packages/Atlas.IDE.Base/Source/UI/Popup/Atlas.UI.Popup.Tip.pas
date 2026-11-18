@@ -16,6 +16,11 @@ uses
 
 type
   TAtlasTextTip = class(TAtlasPopupWindow)
+  private const
+    /// <summary>Logische Bildpunkte bei 96 dpi: Abstand des Textes links und rechts, Rand oben und unten
+    /// zusammen.</summary>
+    cPadding = 9;
+    cVerticalPadding = 10;
   private
     FText: string;
   protected
@@ -43,7 +48,7 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mText := Rect(Scale(9), 0, ClientWidth - Scale(9), ClientHeight);
+  mText := Rect(Scale(cPadding), 0, ClientWidth - Scale(cPadding), ClientHeight);
   DrawText(Canvas.Handle, PChar(FText), -1, mText, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
   Canvas.Brush.Style := bsSolid;
@@ -58,8 +63,8 @@ begin
   FText := AText;
   Canvas.Font := Font;
   mArea := WorkAreaAt(APoint);
-  mWidth := Min(Canvas.TextWidth(AText) + Scale(18), mArea.Width);
-  mHeight := Canvas.TextHeight('Wg') + Scale(10);
+  mWidth := Min(Canvas.TextWidth(AText) + 2 * Scale(cPadding), mArea.Width);
+  mHeight := Canvas.TextHeight('Wg') + Scale(cVerticalPadding);
   mBounds := TRect.Create(APoint, mWidth, mHeight);
   if mBounds.Right > mArea.Right then
   begin

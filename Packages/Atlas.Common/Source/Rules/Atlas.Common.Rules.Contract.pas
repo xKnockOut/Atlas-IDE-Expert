@@ -308,7 +308,8 @@ type
     /// <summary>Zugriffsmethoden im protected-Abschnitt anlegen (completion.accessorSection, #467, für #1001).
     /// </summary>
     AccessorsProtected: Boolean;
-    /// <summary>Abbruch zwischen den Regeln (Diagnoselog 15.10.2026); nil = nie abbrechen.</summary>
+    /// <summary>Abbruch zwischen den Regeln, damit ein veralteter Lauf nicht zu Ende rechnet; nil = nie abbrechen.
+    /// </summary>
     Cancelled: TRuleCancelled;
     /// <summary>Gemeinsame Ableitungen des Laufs; setzt TRuleEngine.Run. nil = jede Regel
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
