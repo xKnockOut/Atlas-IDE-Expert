@@ -546,8 +546,8 @@ var
   mFileSystem: IIndexFileSystem;
 begin
   // Der Fehlerpfad aus ConcurrentWritersLeaveReadableCache, aber deterministisch: Ist das Ziel
-  // gesperrt, scheitert ReplaceFile, ohne dass TFile.Replace eine Ausnahme wirft. Früher meldete
-  // WriteText dann Erfolg und ließ die temporäre Datei liegen.
+  // gesperrt, scheitert ReplaceFile, ohne dass TFile.Replace eine Ausnahme wirft. WriteText darf
+  // dann keinen Erfolg melden und keine temporäre Datei liegen lassen.
   mCache := CreateCache('index-00000004.json');
   mFileSystem := TDiskIndexFileSystem.Create;
   mLock := TFileStream.Create(mCache, fmOpenRead or fmShareExclusive);

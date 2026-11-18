@@ -833,7 +833,7 @@ begin
     '  try'#10'    FDatei.Free;'#10'  finally'#10'    inherited;'#10'  end;'#10));
   // Threads warten in Destroy auf das Ende von Execute: dort gehört inherited an den Anfang.
   TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TThread', '', '  inherited;'#10'  FDatei.Free;'#10));
-  // Ohne Destruktor in der Vorfahrenkette baut inherited nichts ab (FP-Prüfung 28.10.2026).
+  // Ohne Destruktor in der Vorfahrenkette baut inherited nichts ab.
   TRuleAssert.Silent(TInheritedOrderRule.Create, Exporte('TObject', '', '  inherited;'#10'  FDatei.Free;'#10));
   TRuleAssert.Silent(TInheritedOrderRule.Create, StringReplace(Exporte('TBasisExport', '',
     '  inherited;'#10'  FDatei.Free;'#10), '    destructor Destroy; override;'#10'    property',

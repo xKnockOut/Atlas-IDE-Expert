@@ -30,6 +30,8 @@
 // Sicherung (Feature Debugger, #493).
 // Ein Halt, den der Filter (SetStopFilter) erledigt, etwa ein Haltepunkt der Herkunft eingereihter Methoden (#859),
 // der den Stapel merkt und gleich fortsetzt, erreicht die Zuhörer nicht, auch nicht das Weiterlaufen danach.
+// Laufzeit vor einem Halt (#579): Die Phasen zählen mit einer Uhr in Mikrosekunden (TStopwatch), wie lange der
+// Prozess vor dem gemeldeten Halt lief (RunTimeBeforeStop).
 // Nur im Hauptthread verwenden.
 
 interface
@@ -144,6 +146,9 @@ type
     class function StoppedThread: IOTAThread; static;
     /// <summary>Halt Nummer n der Sitzung (zählt jeden gemeldeten Halt); 0 vor dem ersten.</summary>
     class function StopCount: Integer; static;
+    /// <summary>Laufzeit in Mikrosekunden vor dem zuletzt gemeldeten Halt (#579), ohne angehaltene Zeit; 0 ohne.
+    /// </summary>
+    class function RunTimeBeforeStop: Int64; static;
     /// <summary>Projekt (.dproj), Konfiguration und Plattform beim Start ('' = unbekannt, etwa angehängt).
     /// </summary>
     class function LaunchProject: string; static;
@@ -174,6 +179,7 @@ implementation
 
 uses
   System.Math,
+  System.Diagnostics,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Projects.Context;
 
@@ -212,6 +218,23 @@ type
   public
     procedure Tick(Sender: TObject);
   end;
+
+/// <summary>Monotone Uhr in Mikrosekunden für die Laufzeit (#579); ohne Überlauf bei langer Laufzeit des Rechners.
+/// </summary>
+function MicrosecondsNow: Int64;
+const
+  cMicrosPerSecond = 1000000;
+var
+  mStamp, mFrequency: Int64;
+begin
+  mStamp := TStopwatch.GetTimeStamp;
+  mFrequency := TStopwatch.Frequency;
+  Result := 0;
+  if mFrequency > 0 then
+  begin
+    Result := (mStamp div mFrequency) * cMicrosPerSecond + ((mStamp mod mFrequency) * cMicrosPerSecond) div mFrequency;
+  end;
+end;
 
 { TStopTicker }
 
@@ -386,6 +409,7 @@ begin
   if FPhases = nil then
   begin
     FPhases := TAtlasDebugPhases.Create(TTarget.Create);
+    FPhases.Clock := MicrosecondsNow;
   end;
   Result := FPhases;
 end;
@@ -539,6 +563,15 @@ begin
   if FPhases <> nil then
   begin
     Result := FPhases.StopCount;
+  end;
+end;
+
+class function TAtlasIdeDebugSession.RunTimeBeforeStop: Int64;
+begin
+  Result := 0;
+  if FPhases <> nil then
+  begin
+    Result := FPhases.RunTimeBeforeStop;
   end;
 end;
 

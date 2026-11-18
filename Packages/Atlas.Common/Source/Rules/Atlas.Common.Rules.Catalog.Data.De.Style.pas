@@ -6,7 +6,7 @@
 interface
 
 const
-  cCatalogLinesDeStyle: array[0..580] of string = (
+  cCatalogLinesDeStyle: array[0..586] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Ungenutzte lokale Variable",',
@@ -64,7 +64,13 @@ const
     '      "name": "Text im Code statt resourcestring",',
     '      "description": "In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Still bei Texten, die niemand übersetzt: Argument' +
     'e von Protokoll- und Prüfaufrufen (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und Form' +
-    'atFloat, Markup (HTML ab <, JSON ab { oder \"Schlüssel\":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz."',
+    'atFloat, Markup (HTML ab <, JSON ab { oder \"Schlüssel\":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz.",',
+    '      "options": [',
+    '        {',
+    '          "name": "ignoreCalls",',
+    '          "description": "Weitere Routinen, deren Text-Argumente niemand übersetzt, z. B. eine eigene Pick(Englisch, ''en'', ''de''). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer."',
+    '        }',
+    '      ]',
     '    },',
     '{',
     '      "id": "bool-compare",',

@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.Idioms;
 
-// Regeln für das passendere Sprachmittel (#909, Runde 67):
+// Regeln für das passendere Sprachmittel (#909):
 //   money-as-float   Feld, Variable, Parameter oder Property mit einem Geldnamen
 //                    vom Typ Double, Single, Extended oder Real (#1064). Die
 //                    Namensteile nennt die Option namePatterns (Vorgabe Betrag,

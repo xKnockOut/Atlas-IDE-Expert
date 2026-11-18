@@ -2,7 +2,7 @@
 
 // Vervollständigung für Methodenzeiger und Methodenreferenzen: passende Methoden und „Neue Methode …“ nach
 // "Objekt.Ereignis := " (#444) und das Gerüst einer anonymen Methode, wo ein Methodenreferenztyp erwartet
-// wird (#468). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// wird (#468). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

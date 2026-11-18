@@ -1,0 +1,2 @@
+### Geändert
+- Pufferstand: Das Sicherheitsnetz, das den Editorpuffer auch ohne Änderungsereignis neu liest, passt seinen Abstand je Puffer an (#2019). Findet es nichts Neues, verdoppelt sich der Abstand bis 32 s; sobald sich der Text ändert, gilt wieder 2 s. Ruhende große Units werden nicht mehr alle zwei Sekunden ganz gelesen, die Spitzen von 20 bis 50 ms in der Editorleiste ohne Tippen entfallen.

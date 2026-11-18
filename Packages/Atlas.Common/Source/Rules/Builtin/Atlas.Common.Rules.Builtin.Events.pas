@@ -901,7 +901,7 @@ begin
   mName := LowerCase(FCode.At(APosition).Text);
   Result := ((AFirst = APosition) and Shadowed(ARoutine, mName)) or Guarded(ARoutine, FCode.At(APosition).Offset,
     mName);
-  // Property und Feld aus ihrem read sind dasselbe Ereignis (FP-Prüfung 28.10.2026).
+  // Property und Feld aus ihrem read sind dasselbe Ereignis.
   for mIndex := 0 to High(FAliasProperties) do
   begin
     if not Result and (mName = FAliasProperties[mIndex]) then

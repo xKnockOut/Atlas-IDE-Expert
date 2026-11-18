@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Architecture.SymbolPath.Nodes;
 
-// Knoten und Kanten der Pfadsuche zwischen Symbolen (#1117), ausgelagert aus
+// Knoten und Kanten der Pfadsuche zwischen Symbolen (#1117), Teil von
 // Atlas.Common.Architecture.SymbolPath.
 //
 // - Ein Knoten ist eine Unit oder eine Deklaration des Index. Die Knotentabelle

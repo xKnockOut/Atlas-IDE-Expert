@@ -4,7 +4,7 @@
 //   An einen var- oder out-Parameter geht eine Konstante, ein const-Parameter, eine Property oder ein
 //   Funktionsergebnis (wie E2197), eine Konstante an ein offenes Array (wie E2192) oder ein Ausdruck (wie E2036);
 //   ebenso @ vor einem Rechenausdruck wie @(mZahl + 1) (wie E2036, Cm.E2036, #1380). Slice an ein var- oder
-//   out-Open-Array übersetzt dcc (Spring4D TArray.Sort<T>, IV1-IV4; dcc-Lauf vom 29.10.2026, #1328): Slice übergibt
+//   out-Open-Array übersetzt dcc (Spring4D TArray.Sort<T>, IV1-IV4, #1328): Slice übergibt
 //   den Speicher des Arrays. Nur bei eindeutiger Routine ohne Überladungen und ohne eingebaute Routinen (Inc, Move
 //   ... nehmen mehr an). Ein String-Element (S[I]) an einen var-Zeichen-Parameter übersetzt dcc ebenfalls (E2354
 //   gab es nur unter .NET; Cm.E2354, #1383). @P einer Variablen prozeduralen Typs ist bei dcc eine Variable und
