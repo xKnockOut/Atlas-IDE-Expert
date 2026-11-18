@@ -574,7 +574,7 @@ $OwnAllowed = @{
     Hosting     = @('Contract', 'Providers', 'Adapters', 'Root', 'Composition', 'Hosting')
 }
 # Fremdes Feature; alle nicht genannten Rollen: Contract und Root.
-# Host (8.1, Annahme bis zur Bestätigung des Konzepts): alles außer Internals.
+# Host: alles außer Internals, weil er die Features zusammensetzt; Internals bleiben im Feature.
 $ForeignAllowed = @{
     Contract = @('Contract')
     Host     = @('Contract', 'Root', 'Providers', 'Adapters', 'Composition', 'Hosting')

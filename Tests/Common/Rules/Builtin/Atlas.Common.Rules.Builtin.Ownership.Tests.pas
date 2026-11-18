@@ -546,7 +546,7 @@ const
 var
   mFindings: TArray<TRuleFinding>;
 begin
-  // FP-Prüfung 28.10.2026: Ein Konstruktor mit out-Parameter gibt das Objekt selbst weiter; in Assert.WillRaise
+  // Ein Konstruktor mit out-Parameter gibt das Objekt selbst weiter; in Assert.WillRaise
   // soll Create scheitern. Gemeldet bleibt nur das letzte TStringListe.Create.
   mFindings := TRuleAssert.Findings(TCreateWithoutAssignmentRule.Create, cSource);
   Assert.AreEqual(1, Integer(Length(mFindings)));

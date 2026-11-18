@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.SharedState;
 
-// Ungeschützte Schreibzugriffe auf gemeinsame Variablen aus mehreren Threads (Runde 67):
+// Ungeschützte Schreibzugriffe auf gemeinsame Variablen aus mehreren Threads:
 //   parallel-for-shared-write  Der Rumpf von TParallel.For bzw. ein TTask, der in einer Schleife entsteht, schreibt
 //                              eine Variable von außerhalb (Summe := Summe + …, Inc/Dec) oder verändert eine
 //                              Sammlung von außerhalb (Liste.Add, Delete, Clear …) ohne Sperre (#1058). Typen aus
