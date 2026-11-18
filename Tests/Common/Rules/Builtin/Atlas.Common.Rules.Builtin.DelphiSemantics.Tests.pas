@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Rules.Builtin.DelphiSemantics.Tests;
 
-// Tests der Regeln aus #2309 (B6), Stellen, an denen Delphi zur Laufzeit anders arbeitet als FPC: Result als Variable
+// Tests der Regeln aus #2309, Stellen, an denen Delphi zur Laufzeit anders arbeitet als FPC: Result als Variable
 // des Aufrufers, TryGetValue setzt den out-Wert immer, Records teilen dynamische Arrays, ExtractFileName trennt unter
 // Windows nur an '\', gewollter Hash-Überlauf außerhalb von {$Q-}. Die Fälle stammen aus dem Delphi-Bau von
 // main-merging (TestExplorer.Visible, ProfileTools, StatusBar, LeakSetup, CrashSkip.Checksum).
@@ -261,7 +261,7 @@ begin
     'const', '  cPrime = 16777619;', 'begin', '  Result := Cardinal((H xor 1) * cPrime);', 'end;']));
   Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
   Assert.AreEqual(15, mFound[0].Range.StartPos.Line);
-  Assert.IsTrue(Pos('(Result xor Ord(C)) * UInt64($00000100000001B3) läuft gewollt über', mFound[0].Message) = 1,
+  Assert.AreEqual(1, Pos('(Result xor Ord(C)) * UInt64($00000100000001B3) läuft gewollt über', mFound[0].Message),
     mFound[0].Message);
   Assert.AreEqual(21, mFound[1].Range.StartPos.Line);
 end;

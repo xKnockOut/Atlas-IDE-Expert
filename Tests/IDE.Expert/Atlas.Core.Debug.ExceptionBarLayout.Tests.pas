@@ -93,8 +93,10 @@ begin
     Assert.AreEqual(50 + TAtlasDebugBarLayout.cButtonPadding, mBreak.Width);
     Assert.AreEqual(mBreak.Right + TAtlasDebugBarLayout.cGap, mContinue.Left);
     Assert.AreEqual(mLayout.RowTop(2) + 2, mBreak.Top, 'dritte Zeile');
-    Assert.IsTrue(TAtlasDebugBarAction.Continue = mLayout.ActionAt(mContinue.Left + 1, mContinue.Top + 1));
-    Assert.IsTrue(TAtlasDebugBarAction.None = mLayout.ActionAt(1, 1), 'Titelzeile ist kein Knopf');
+    Assert.AreEqual<TAtlasDebugBarAction>(TAtlasDebugBarAction.Continue,
+      mLayout.ActionAt(mContinue.Left + 1, mContinue.Top + 1));
+    Assert.AreEqual<TAtlasDebugBarAction>(TAtlasDebugBarAction.None,
+      mLayout.ActionAt(1, 1), 'Titelzeile ist kein Knopf');
     Assert.AreEqual(mLayout.ActionRect(TAtlasDebugBarAction.Copy).Right, mLayout.LastButtonRight);
   finally
     mLayout.Free;

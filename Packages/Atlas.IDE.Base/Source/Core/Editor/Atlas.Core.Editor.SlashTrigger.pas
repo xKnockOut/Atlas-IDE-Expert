@@ -12,9 +12,9 @@
 // abgeschaltet, keine Deklaration darunter). Damit Atlas nicht bei jedem
 // weiteren Zeichen erneut fragt, merkt sich die IDE-Schicht den Schlüssel
 // des letzten Auslösers.
-// Die Anfrage läuft im Hintergrund (Diagnose 06.11.2026: bis zu 3 s Hänger
-// beim Tippen); die Antwort gilt nur, solange Datei und Text unverändert sind
-// (StillValid), denn die Änderungen des Servers zählen auf diesen Stand.
+// Die Anfrage läuft im Hintergrund (sonst bis zu 3 s Hänger beim Tippen);
+// die Antwort gilt nur, solange Datei und Text unverändert sind (StillValid),
+// denn die Änderungen des Servers zählen auf diesen Stand.
 // Das eingesetzte Gerüst füllt der Platzhalter-Modus (#51): je Beschreibung
 // (zwischen ">" und "</") ein leerer Platzhalter, Tab springt weiter, am Ende
 // steht der Cursor hinter dem letzten Tag.

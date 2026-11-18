@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Architecture.SymbolPath.Graph;
 
-// Kanten aus dem Index für die Pfadsuche zwischen Symbolen (#1117), ausgelagert
-// aus Atlas.Common.Architecture.SymbolPath. Aufrufkanten stehen in
+// Kanten aus dem Index für die Pfadsuche zwischen Symbolen (#1117), Teil von
+// Atlas.Common.Architecture.SymbolPath. Aufrufkanten stehen in
 // Atlas.Common.Architecture.SymbolPath.Calls.
 //
 // - Vorwärts je Knoten: uses (Uses-Graph), contains, inherits, implements
