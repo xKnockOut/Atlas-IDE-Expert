@@ -1,6 +1,4 @@
 {
-  "count": 1,
-  "warmUps": [
-    "Tests/Common/Lsp/Atlas.Common.Lsp.Architecture.Tests.pas: TLspArchitectureTests.WarmUpFirstUse"
-  ]
+  "count": 0,
+  "warmUps": []
 }
