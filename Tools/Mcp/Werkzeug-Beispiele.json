@@ -190,6 +190,15 @@
       },
       "contains": "TDezimalFormatierer.Formatieren"
     },
+    "batch": {
+      "arguments": {
+        "calls": [
+          {"tool": "find_symbol", "args": {"name": "TKundenSuche"}},
+          {"tool": "get_call_hierarchy", "args": {"name": "TKundenSuche.Suchen", "direction": "incoming"}}
+        ]
+      },
+      "contains": "## 2 get_call_hierarchy"
+    },
     "get_impact": {
       "arguments": { "name": "TKundenSuche.Suchen", "depth": 2 },
       "contains": "TKundenSuche"
