@@ -1,14 +1,14 @@
 ﻿unit Shell.Mcp.NavigationTools;
 
 // Host-Rolle Shell: MCP-Modus (--mcp, #48), Werkzeuge zur Navigation im Symbolindex:
-// Symbole, Deklarationen, Hierarchien, Verweise, Auswirkungen und qualifizierte Namen.
+// Symbole, Deklarationen, Hierarchien, Verweise, Umsetzungen (#2635), Auswirkungen und qualifizierte Namen.
 
 interface
 
 uses
   Shell.Mcp.Context;
 
-/// <summary>Meldet find_symbol bis get_impact und qualified_name an.</summary>
+/// <summary>Meldet find_symbol bis get_impact, find_implementations und qualified_name an.</summary>
 procedure RegisterNavigationTools(const AContext: TMcpToolContext);
 
 implementation
@@ -18,6 +18,7 @@ uses
   System.JSON,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Mcp.ImplementationTools,
   Atlas.Common.Localization.Texts,
   Shell.Texts;
 
@@ -28,7 +29,8 @@ type
     GetComponentInfoName, GetUnitOutlineTool, GetUnitOutlineUnit, FindReferencesTool, FindReferencesName,
     GetCallHierarchyTool, GetCallHierarchyName, GetCallHierarchyDirection, GetImpactTool, GetImpactName,
     GetImpactDepth, GetImpactFormat, QualifiedNameTool, QualifiedNameFile, QualifiedNameLine, QualifiedNameColumn,
-    QualifiedNameWithParameters);
+    QualifiedNameWithParameters, FindImplementationsTool, FindImplementationsName, FindImplementationsFile,
+    FindImplementationsLine, FindImplementationsColumn, FindImplementationsIncludeBody, FindImplementationsFormat);
 {$SCOPEDENUMS OFF}
 
 const
@@ -90,7 +92,23 @@ const
     En: 'Path of the unit (relative to the project or absolute)'),
     (De: 'Zeile ab 1'; En: 'Line from 1'),
     (De: 'Spalte ab 1'; En: 'Column from 1'),
-    (De: 'Bei Routinen die Parametertypen anhängen'; En: 'For routines, append the parameter types'));
+    (De: 'Bei Routinen die Parametertypen anhängen'; En: 'For routines, append the parameter types'),
+    (De: 'Umsetzungen einer Interface- oder virtuellen Methode (#2635): welche Klassen sie umsetzen, wo die ' +
+    'Rümpfe stehen und wie (umgesetzt, überschrieben, abstrakt, reintroduce, Methodenzuordnung, Delegation ' +
+    'über implements), Testunits gekennzeichnet. Dieselben Ziele wie „Gehe zu Implementierung“ und dieselbe ' +
+    'Zahl wie get_call_hierarchy. Bei Klassen und Interfaces die Nachfahren bzw. umsetzenden Klassen.';
+    En: 'Implementations of an interface or virtual method (#2635): which classes implement it, where the ' +
+    'bodies are and how (implemented, overridden, abstract, reintroduce, method resolution, delegation via ' +
+    'implements), test units marked. The same targets as "Go to implementation" and the same count as ' +
+    'get_call_hierarchy. For classes and interfaces the descendants or implementing classes.'),
+    (De: 'Methode oder Typ, z. B. IFoo.Bar, TFoo.Bar oder Unit.TFoo.Bar; statt file, line und column';
+    En: 'Method or type, e.g. IFoo.Bar, TFoo.Bar or Unit.TFoo.Bar; instead of file, line and column'),
+    (De: 'Pfad der Unit mit dem Symbol (statt name)'; En: 'Path of the unit with the symbol (instead of name)'),
+    (De: 'Zeile ab 1 (mit file)'; En: 'Line from 1 (with file)'),
+    (De: 'Spalte ab 1 (mit file)'; En: 'Column from 1 (with file)'),
+    (De: 'Rumpf je Umsetzung mitliefern, höchstens 20 Zeilen (Vorgabe false)';
+    En: 'Include the body of each implementation, at most 20 lines (default false)'),
+    (De: 'markdown (Vorgabe) oder json'; En: 'markdown (default) or json'));
 
 function ToolFindSymbol(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
 begin
@@ -273,6 +291,70 @@ begin
     ContextTool(AContext, ToolQualifiedName));
 end;
 
+/// <summary>Name des Symbols aus name bzw. aus file, line und column (über qualified_name).</summary>
+function ImplementationsName(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFileName: string;
+  mLine, mColumn: Integer;
+begin
+  Result := TMcpArgs.OptionalString(AArguments, 'name');
+  if Result <> '' then
+  begin
+    Exit;
+  end;
+  mFileName := TMcpArgs.OptionalString(AArguments, 'file');
+  if (mFileName = '') or not (AArguments.TryGetValue<Integer>('line', mLine) and
+    AArguments.TryGetValue<Integer>('column', mColumn)) then
+  begin
+    raise EMcpToolError.Create(TShellTexts.Missing(['name', 'file', 'line', 'column']));
+  end;
+  AContext.Code.Namespaces := AContext.Group.Main.State.Namespaces;
+  Result := AContext.Code.QualifiedName(AContext.Guard.Resolve(mFileName), mLine, mColumn, False);
+end;
+
+function ToolFindImplementations(const AContext: TMcpToolContext; const AArguments: TJSONObject): string;
+var
+  mFormat: string;
+  mIncludeBody: Boolean;
+  mTools: TMcpImplementationTools;
+begin
+  mFormat := TMcpArgs.OptionalString(AArguments, 'format');
+  if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+  begin
+    raise EMcpToolError.Create(TShellTexts.Choice('format', ['markdown', 'json']));
+  end;
+  if not AArguments.TryGetValue<Boolean>('includeBody', mIncludeBody) then
+  begin
+    mIncludeBody := False;
+  end;
+  mTools := TMcpImplementationTools.Create(AContext.Index, ReadSourceText);
+  try
+    mTools.ImpactOptionsFor := AContext.ImpactOptionsFor;
+    Result := mTools.Find(ImplementationsName(AContext, AArguments), mIncludeBody, SameText(mFormat, 'json'));
+  finally
+    mTools.Free;
+  end;
+end;
+
+procedure AddFindImplementations(const AContext: TMcpToolContext);
+begin
+  AContext.Server.AddTool('find_implementations', cTexts[TMcpNavigationText.FindImplementationsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"name":{"type":"string","description":%s},' +
+      '"file":{"type":"string","description":%s},' +
+      '"line":{"type":"integer","minimum":1,"description":%s},' +
+      '"column":{"type":"integer","minimum":1,"description":%s},' +
+      '"includeBody":{"type":"boolean","description":%s},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":%s}}}',
+      [cTexts[TMcpNavigationText.FindImplementationsName].Text,
+      cTexts[TMcpNavigationText.FindImplementationsFile].Text,
+      cTexts[TMcpNavigationText.FindImplementationsLine].Text,
+      cTexts[TMcpNavigationText.FindImplementationsColumn].Text,
+      cTexts[TMcpNavigationText.FindImplementationsIncludeBody].Text,
+      cTexts[TMcpNavigationText.FindImplementationsFormat].Text]),
+    ContextTool(AContext, ToolFindImplementations));
+end;
+
 procedure RegisterNavigationTools(const AContext: TMcpToolContext);
 begin
   AddFindSymbol(AContext);
@@ -284,6 +366,7 @@ begin
   AddFindReferences(AContext);
   AddGetCallHierarchy(AContext);
   AddGetImpact(AContext);
+  AddFindImplementations(AContext);
   AddQualifiedName(AContext);
 end;
 

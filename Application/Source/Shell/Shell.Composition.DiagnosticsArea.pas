@@ -49,7 +49,7 @@ type
     FServices: TShellDiagnosticsAreaServices;
     FSyntax: TLspSyntaxDiagnostics;
     FPull: TLspPullDiagnostics;
-    // Projektprüfung je Indexaufbau nur einmal neu starten (29.10.2026).
+    // Projektprüfung je Indexaufbau nur einmal neu starten.
     FIndexRecheck: TWorkspaceCheckIndexGate;
     function Providers: TSyntaxDiagnosticsProviders;
     procedure CheckFailed(AError: Exception);

@@ -69,7 +69,8 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Pascal.TokenCursor;
 
 { TRoutineLocals }
 
@@ -113,7 +114,7 @@ class function TRoutineLocals.IsInlineFor(const ATokens: TArray<TPascalToken>; A
 var
   mIndex: Integer;
 begin
-  mIndex := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, AFor.StartOffset));
+  mIndex := NextCodeAfter(ATokens, TRoutineBody.TokenAt(ATokens, AFor.StartOffset));
   Result := (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('var');
 end;
 

@@ -27,7 +27,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.CommandSource,
-  Atlas.Common.Localization.Texts;
+  Atlas.Common.Localization.Texts,
+  Atlas.Common.Pascal.TokenCursor;
 
 {$SCOPEDENUMS ON}
 
@@ -84,11 +85,6 @@ const
     'UnlockFile', 'GetFileTime', 'SetFileTime', 'GetComputerName', 'GetUserName', 'SystemParametersInfo',
     'SetFileAttributes', 'CreateProcess', 'ReleaseSemaphore', 'SetThreadPriority');
   cBoolTypes: array[0..3] of string = ('BOOL', 'LongBool', 'Boolean', 'WordBool');
-
-function IsCode(const AToken: TPascalToken): Boolean;
-begin
-  Result := not (AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]);
-end;
 
 { /external }
 

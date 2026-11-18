@@ -1,0 +1,2 @@
+### Neu
+- Debug-Notiz: „Debug-Zustand festhalten“ (Atlas-Menü, Befehlspalette) schreibt im angehaltenen Debugger eine Markdown-Notiz mit Stelle, Aufrufstapel, lokalen Variablen, Überwachten Ausdrücken, Exception und den letzten Zeilen des Ereignisprotokolls (Geheimnisse maskiert) in die Zwischenablage und auf Wunsch in den Ordner `debug-notizen` neben dem Projekt (#582, `debug.note`, `debug.note.saveFile`).

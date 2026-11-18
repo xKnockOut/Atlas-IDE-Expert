@@ -195,19 +195,6 @@ begin
     (IndexText(AToken.Text, AWords) >= 0);
 end;
 
-function NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
-begin
-  Result := AIndex + 1;
-  while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
-  begin
-    Inc(Result);
-  end;
-  if Result > High(ATokens) then
-  begin
-    Result := -1;
-  end;
-end;
-
 function IsSymbolAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ASymbol: string): Boolean;
 begin
   Result := (AIndex >= 0) and (AIndex <= High(ATokens)) and ATokens[AIndex].IsSymbol(ASymbol);
@@ -479,11 +466,11 @@ begin
   end;
   AHeader.OpenToken := ACurrent;
   AHeader.CloseToken := mClose;
-  if mClose > NextToken(ATokens, ACurrent) then
+  if mClose > FollowingCode(ATokens, ACurrent) then
   begin
     AHeader.Parameters := TChangeSignature.ParseParameters(SliceText(AText, ATokens, ACurrent + 1, mClose - 1));
   end;
-  ACurrent := NextToken(ATokens, mClose);
+  ACurrent := FollowingCode(ATokens, mClose);
 end;
 
 /// <summary>Liest den Ergebnistyp ab ACurrent, falls dort ":" steht, und setzt ACurrent auf das ";" bzw. "of"
@@ -502,12 +489,12 @@ begin
   while (mNext >= 0) and (mNext <= High(ATokens)) and not ATokens[mNext].IsSymbol(';') and
     not ATokens[mNext].IsKeyword('of') do
   begin
-    mNext := NextToken(ATokens, mNext);
+    mNext := FollowingCode(ATokens, mNext);
   end;
   Result := mNext >= 0;
   if Result then
   begin
-    AHeader.ResultType := TTextLines.CollapseSpace(SliceText(AText, ATokens, NextToken(ATokens, ACurrent),
+    AHeader.ResultType := TTextLines.CollapseSpace(SliceText(AText, ATokens, FollowingCode(ATokens, ACurrent),
       PreviousCode(ATokens, mNext)));
     ACurrent := mNext;
   end;
@@ -519,13 +506,13 @@ var
   mNext, mLast: Integer;
 begin
   AHeader.Directives := nil;
-  mNext := NextToken(ATokens, AHeader.EndToken);
+  mNext := FollowingCode(ATokens, AHeader.EndToken);
   while (mNext >= 0) and IsWord(ATokens[mNext], cDirectiveWords) do
   begin
     mLast := mNext;
     while (mLast >= 0) and not ATokens[mLast].IsSymbol(';') do
     begin
-      mLast := NextToken(ATokens, mLast);
+      mLast := FollowingCode(ATokens, mLast);
     end;
     if mLast < 0 then
     begin
@@ -534,7 +521,7 @@ begin
     AHeader.Directives := AHeader.Directives + [LowerCase(TTextLines.CollapseSpace(SliceText(AText, ATokens, mNext,
       PreviousCode(ATokens, mLast))))];
     AHeader.LastToken := mLast;
-    mNext := NextToken(ATokens, mLast);
+    mNext := FollowingCode(ATokens, mLast);
   end;
 end;
 
@@ -556,7 +543,7 @@ begin
   // Prozedurale Typen: "of object" bzw. "reference to" gehören vor das ";".
   while (mCurrent >= 0) and (ATokens[mCurrent].IsKeyword('of') or SameText(ATokens[mCurrent].Text, 'object')) do
   begin
-    mCurrent := NextToken(ATokens, mCurrent);
+    mCurrent := FollowingCode(ATokens, mCurrent);
   end;
   if IsSymbolAt(ATokens, mCurrent, ';') then
   begin
@@ -635,7 +622,7 @@ begin
     Result := Matching(ATokens, Result);
     if Result >= 0 then
     begin
-      Result := NextToken(ATokens, Result);
+      Result := FollowingCode(ATokens, Result);
     end;
   end;
 end;
@@ -665,9 +652,9 @@ begin
     AHeader.StartToken := mBefore;
   end;
   AHeader.QualifiedName := StringReplace(TTextLines.CollapseSpace(SliceText(AText, ATokens,
-    NextToken(ATokens, mCurrent), ANameToken)), ' ', '', [rfReplaceAll]);
+    FollowingCode(ATokens, mCurrent), ANameToken)), ' ', '', [rfReplaceAll]);
   // Generische Methode Bar<T>(...): Bleibt die Klammer offen, scheitert ReadTail am fehlenden ";".
-  Result := ReadTail(AText, ATokens, SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken)), AHeader, True);
+  Result := ReadTail(AText, ATokens, SkipGenericArguments(ATokens, FollowingCode(ATokens, ANameToken)), AHeader, True);
 end;
 
 class function TChangeSignature.ReadProcedureType(const AText: string; const ATokens: TArray<TPascalToken>;
@@ -682,18 +669,18 @@ begin
     Exit;
   end;
   // TFooEvent = [reference to] procedure(...)
-  mCurrent := NextToken(ATokens, ANameToken);
+  mCurrent := FollowingCode(ATokens, ANameToken);
   if not IsSymbolAt(ATokens, mCurrent, '=') then
   begin
     Exit;
   end;
-  mCurrent := NextToken(ATokens, mCurrent);
+  mCurrent := FollowingCode(ATokens, mCurrent);
   if (mCurrent >= 0) and SameText(ATokens[mCurrent].Text, 'reference') then
   begin
-    mCurrent := NextToken(ATokens, mCurrent);
+    mCurrent := FollowingCode(ATokens, mCurrent);
     if (mCurrent >= 0) and SameText(ATokens[mCurrent].Text, 'to') then
     begin
-      mCurrent := NextToken(ATokens, mCurrent);
+      mCurrent := FollowingCode(ATokens, mCurrent);
     end;
   end;
   if (mCurrent < 0) or not IsWord(ATokens[mCurrent], ['procedure', 'function']) then
@@ -705,7 +692,7 @@ begin
   // Der "Name" ist das Schlüsselwort: die Klammern folgen direkt.
   AHeader.NameToken := mCurrent;
   AHeader.QualifiedName := ATokens[ANameToken].Text;
-  Result := ReadTail(AText, ATokens, NextToken(ATokens, mCurrent), AHeader, False);
+  Result := ReadTail(AText, ATokens, FollowingCode(ATokens, mCurrent), AHeader, False);
 end;
 
 /// <summary>Steht der Name von AChanges[AIndex] schon weiter vorn in der Liste?</summary>
@@ -915,7 +902,7 @@ begin
   begin
     Result := TSignatureUse.Pointer_;
   end
-  else if IsSymbolAt(ATokens, SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken)), '(') then
+  else if IsSymbolAt(ATokens, SkipGenericArguments(ATokens, FollowingCode(ATokens, ANameToken)), '(') then
   begin
     Result := TSignatureUse.Call;
   end
@@ -939,17 +926,17 @@ var
 begin
   AArguments := nil;
   AClose := -1;
-  AOpen := SkipGenericArguments(ATokens, NextToken(ATokens, ANameToken));
+  AOpen := SkipGenericArguments(ATokens, FollowingCode(ATokens, ANameToken));
   if not IsSymbolAt(ATokens, AOpen, '(') then
   begin
     AOpen := -1;
     Exit(True);
   end;
   AClose := Matching(ATokens, AOpen);
-  if AClose > NextToken(ATokens, AOpen) then
+  if AClose > FollowingCode(ATokens, AOpen) then
   begin
     for mValue in TRoutineSignatures.SplitTopLevel(
-      SliceText(AText, ATokens, NextToken(ATokens, AOpen), PreviousCode(ATokens, AClose)), ',') do
+      SliceText(AText, ATokens, FollowingCode(ATokens, AOpen), PreviousCode(ATokens, AClose)), ',') do
     begin
       AArguments := AArguments + [Trim(mValue)];
     end;
@@ -1148,7 +1135,7 @@ begin
     Exit(-1);
   end;
   // Das ";" hinter end gehört dazu.
-  mIndex := NextToken(mTokens, Result);
+  mIndex := FollowingCode(mTokens, Result);
   if IsSymbolAt(mTokens, mIndex, ';') then
   begin
     Result := mIndex;

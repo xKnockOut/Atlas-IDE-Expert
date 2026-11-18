@@ -1,10 +1,9 @@
 ﻿unit Atlas.UI.Popup.TitledTip;
 
 // Tooltip mit Titel und Text für Symbole in Rinne, Übersichtsleiste und
-// Atlas-Spalte (zuerst für persönliche Notizen, #545; bis #1455
-// Atlas.UI.Notes.Tip): oben gedämpft „Notiz vom 15.10.2026“, darunter der Text, auch
-// mehrzeilig, umbrochen auf höchstens MaxWidth logische Pixel. Ohne Fokus wie
-// alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
+// Atlas-Spalte (etwa für persönliche Notizen, #545): oben gedämpft
+// „Notiz vom 15.10.2026“, darunter der Text, auch mehrzeilig, umbrochen auf
+// höchstens MaxWidth logische Pixel. Ohne Fokus wie alle Atlas-Fenster (TAtlasPopupWindow), Schrift der Oberfläche.
 // Unter dem Text optional Links, je einer pro Zeile in der Akzentfarbe (etwa
 // die Methoden einer Rekursionskette, #623); ein Klick meldet ihre Nummer an
 // OnLink.
@@ -26,6 +25,11 @@ type
     /// <summary>Höchstbreite des Textes in logischen Pixeln (96 dpi).</summary>
     cMaxWidth = 420;
     cPadding = 9;
+  private const
+    /// <summary>Logische Bildpunkte bei 96 dpi: Abstand zwischen Überschrift und Text bzw. zwischen Text und
+    /// Links.</summary>
+    cTitleGap = 4;
+    cLinksGap = 6;
   private
     FTitle: string;
     FText: string;
@@ -108,7 +112,7 @@ begin
   begin
     Canvas.Font.Color := ToColor(Colors.Accent);
     Canvas.Font.Style := [fsUnderline];
-    mTop := mArea.Bottom + Scale(6);
+    mTop := mArea.Bottom + Scale(cLinksGap);
     for mIndex := 0 to High(FLinks) do
     begin
       mLinkArea := Rect(Scale(cPadding), mTop, Min(ClientWidth - Scale(cPadding), Scale(cPadding) +
@@ -246,11 +250,11 @@ begin
     end;
   end;
   Result.cx := Min(mWidth, Scale(cMaxWidth)) + 2 * Scale(cPadding);
-  // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand 4, Text, Padding unten.
-  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + mBody.Height + Scale(cPadding);
+  // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand cTitleGap, Text, Padding unten.
+  Result.cy := TitleArea(Result.cx).Bottom + Scale(cTitleGap) + mBody.Height + Scale(cPadding);
   if Length(FLinks) > 0 then
   begin
-    Inc(Result.cy, Scale(6) + Length(FLinks) * (mLineHeight + Scale(2)));
+    Inc(Result.cy, Scale(cLinksGap) + Length(FLinks) * (mLineHeight + Scale(2)));
   end;
 end;
 
@@ -270,7 +274,7 @@ end;
 
 function TAtlasTitledTip.BodyArea(const ASize: TSize): TRect;
 begin
-  Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(cPadding),
+  Result := Rect(Scale(cPadding), TitleArea(ASize.cx).Bottom + Scale(cTitleGap), ASize.cx - Scale(cPadding),
     ASize.cy - Scale(cPadding));
 end;
 

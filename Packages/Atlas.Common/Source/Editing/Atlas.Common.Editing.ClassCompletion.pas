@@ -27,8 +27,8 @@
 // Aufrufkonvention. Standardwerte bleiben nur in der Deklaration.
 //
 // Neue Rümpfe (#1834) kommen in der Reihenfolge Lebenszyklus, Zugriffsmethoden,
-// überschriebene, übrige (TClassBodies.RankOf), vorbefüllt (O1) und beim
-// ersten Rumpf eines Typs mit dem Kommentar über dem Abschnitt (K1–K4);
+// überschriebene, übrige (TClassBodies.RankOf), vorbefüllt und beim
+// ersten Rumpf eines Typs mit dem Kommentar über dem Abschnitt (classCompletion.typeComment);
 // Einstellungen über TClassBodyOptions. Mit BlankLines (#1839) steht an den
 // Rändern der neuen Rümpfe genau eine Leerzeile (TBodySpacing).
 
@@ -1662,7 +1662,7 @@ begin
   Result := (Int64(mRank.Group) * 100000 + mRank.Sub) * 100000 + AOrder;
 end;
 
-/// <summary>Fehlende Methoden nach Lebenszyklus, Zugriffsmethoden, überschriebenen, übrigen (R2, #1836).</summary>
+/// <summary>Fehlende Methoden nach Lebenszyklus, Zugriffsmethoden, überschriebenen, übrigen (#1836).</summary>
 procedure SortMissing(const ALines: TArray<string>; const AShape: TTypeShape; var APlan: TBodyPlan);
 var
   mKeys: TArray<Int64>;

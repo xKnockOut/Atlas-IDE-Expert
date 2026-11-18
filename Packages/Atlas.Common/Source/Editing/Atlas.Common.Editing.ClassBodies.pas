@@ -3,15 +3,15 @@
 // Rümpfe der Klassenvervollständigung (#1834), gemeinsam für TClassCompletion
 // und TMethodOrder:
 // - TTypeShape liest aus dem Typ, was die Rümpfe brauchen: Vorfahr, Felder,
-//   Properties mit read/write und die Kurzbeschreibung der Summary (K3).
-// - RankOf ordnet eine Methode in eine Gruppe (R2, #1836): Lebenszyklus
+//   Properties mit read/write und die Kurzbeschreibung der Summary (Form summary).
+// - RankOf ordnet eine Methode in eine Gruppe (#1836): Lebenszyklus
 //   (class constructor, class destructor, constructor, destructor,
 //   AfterConstruction, BeforeDestruction), Zugriffsmethoden der Properties als
 //   Paar in Reihenfolge der Properties, überschriebene, übrige.
-// - StubLines füllt einen neuen Rumpf vor (O1, #1837): inherited bei override,
+// - StubLines füllt einen neuen Rumpf vor (#1837): inherited bei override,
 //   Konstruktor und Destruktor, Result := FName bzw. FName := AValue bei
 //   Getter und Setter mit eindeutigem Feld.
-// - Wrapped setzt den Kommentar über den Abschnitt eines Typs (K1–K4, #1835).
+// - Wrapped setzt den Kommentar über den Abschnitt eines Typs in der eingestellten Form (#1835).
 // Die Einstellungen kommen über TClassBodyOptions (classCompletion.*).
 
 interface
@@ -31,7 +31,7 @@ type
     LifecycleFirst: Boolean;
     /// <summary>Leerzeilen an den Rändern neuer Rümpfe angleichen (#1839).</summary>
     BlankLines: Boolean;
-    /// <summary>Breite der Trennlinie (K2); 0 = Vorgabe.</summary>
+    /// <summary>Breite der Trennlinie (Form line); 0 = Vorgabe.</summary>
     LineLength: Integer;
     /// <summary>Eine Ebene Einrückung im Rumpf.</summary>
     Indent: string;
@@ -61,7 +61,7 @@ type
     Ancestor: string;
     Fields: TArray<TIndexSymbol>;
     Properties: TArray<TTypeProperty>;
-    /// <summary>Erste Zeile der Summary über dem Typ (K3); '' ohne.</summary>
+    /// <summary>Erste Zeile der Summary über dem Typ (Form summary); '' ohne.</summary>
     Summary: string;
     /// <summary>Typ ATypeName ("TAussen.TInnen") aus AUnit; leer, wenn es ihn nicht gibt.</summary>
     class function Read(const AUnit: TUnitIndex; const ALines: TArray<string>;
@@ -70,7 +70,7 @@ type
     function FieldType(const AName: string; out ATypeName: string): Boolean;
   end;
 
-  /// <summary>Rang einer Methode beim Ordnen (R2): Gruppe, darin Stelle.</summary>
+  /// <summary>Rang einer Methode beim Ordnen: Gruppe, darin Stelle.</summary>
   TMethodRank = record
     Group: Integer;
     Sub: Integer;
