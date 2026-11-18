@@ -168,8 +168,8 @@ foreach ($Language in $Overlays.Keys) {
 }
 
 # Eingebettete Units. Je Katalog konstante Arrays mit einer JSON-Zeile je Element, zur Laufzeit mit #10 verbunden.
-# Früher war jeder Katalog ein einziger Ausdruck aus über 5000 mit + verketteten Literalen; daran lief der Compiler
-# der IDE (32 Bit) aus dem Speicher (F2046 „Zu wenig Arbeitsspeicher“). Die Regeln stehen deshalb in Teil-Units je
+# Ein einziger Ausdruck aus über 5000 mit + verketteten Literalen je Katalog lässt den Compiler
+# der IDE (32 Bit) aus dem Speicher laufen (F2046 „Zu wenig Arbeitsspeicher“). Die Regeln stehen deshalb in Teil-Units je
 # Gruppe der Einstellungsseite (#909), Atlas.Common.Rules.Catalog.Data.<Sprache>.<Gruppe>, die Gruppe compiler
 # zusätzlich nach Stufe geteilt (CompilerSyntax, CompilerNames, CompilerTypes). So bleibt jede Unit unter der Grenze
 # von metric-unit-length (2000), und der Name sagt, welche Regeln sie enthält. Atlas.Common.Rules.Catalog.Data fügt

@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.Completion.Names;
 
 // Namensvorschläge an der Namensposition einer Deklaration (#452) und das Präfix dafür (Vorgabe des Projekts
-// oder Zählung im Index). Aus Atlas.Common.Lsp.Completion herausgelöst.
+// oder Zählung im Index). Teil der Vervollständigung (Atlas.Common.Lsp.Completion).
 
 interface
 

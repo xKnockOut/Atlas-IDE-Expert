@@ -32,7 +32,7 @@ type
     procedure ConditionalAndGenericAreSilent;
     [Test]
     procedure TypesFromIndex;
-    /// <summary>F01 aus der FP-Prüfung (#1326): Prozedurtyp über mehrere Zeilen, "of object" in der letzten.
+    /// <summary>Minimalfall F01 (#1326): Prozedurtyp über mehrere Zeilen, "of object" in der letzten.
     /// </summary>
     [Test]
     procedure MultilineProcedureTypes;

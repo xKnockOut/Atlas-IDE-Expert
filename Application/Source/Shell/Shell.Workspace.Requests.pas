@@ -175,7 +175,7 @@ begin
 end;
 
 /// <summary>Schlüssel des Suchpfad-Caches: Suchpfad-Units einmal für alle Projekte mit denselben Suchpfaden,
-/// Defines und Include-Pfaden (Speicher, Rückmeldung 01.11.2026); sie werden mit den Defines des Projekts gelesen,
+/// Defines und Include-Pfaden (Speicher bei Projektgruppen); sie werden mit den Defines des Projekts gelesen,
 /// die gehören in den Schlüssel.</summary>
 function SearchCacheKey(const ARequest: TIndexRequest; const AProject: TProjectInfo): string;
 begin
