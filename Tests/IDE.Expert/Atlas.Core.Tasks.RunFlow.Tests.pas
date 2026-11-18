@@ -284,7 +284,8 @@ procedure TAtlasTaskFlowTests.PassedBlockAsksForRebuild;
 var
   mPassed: TArray<TAtlasTaskFlowNote>;
 begin
-  Assert.IsTrue(FFlow.PreBuild.Decide(Compile, True, False, 0) = TAtlasTaskPreBuildAction.StartAndCancel);
+  Assert.AreEqual<TAtlasTaskPreBuildAction>(TAtlasTaskPreBuildAction.StartAndCancel,
+    FFlow.PreBuild.Decide(Compile, True, False, 0));
   FFlow.RunBatch(Target, Tasks('A', 'B', 'C'), Modes(TAtlasTaskBeforeBuild.Block, 3), True, True);
   Assert.AreEqual('launch:2:A:' + cProject, FFake.Calls[0], 'vor dem Build ohne Ausgabe');
   FFlow.Finished(2, Ran('A', 0));
@@ -317,7 +318,8 @@ procedure TAtlasTaskFlowTests.WarnOnlyReportsAndNeverRebuilds;
 var
   mWarned: TArray<TAtlasTaskFlowNote>;
 begin
-  Assert.IsTrue(FFlow.PreBuild.Decide(Compile, False, True, 0) = TAtlasTaskPreBuildAction.StartWarn);
+  Assert.AreEqual<TAtlasTaskPreBuildAction>(TAtlasTaskPreBuildAction.StartWarn,
+    FFlow.PreBuild.Decide(Compile, False, True, 0));
   FFlow.RunBatch(Target, Tasks('A', 'B', 'C'), Modes(TAtlasTaskBeforeBuild.Warn, 3), True, True);
   FFlow.Finished(2, Ran('A', 1));
   FFlow.Finished(3, Ran('B', 0));
