@@ -580,6 +580,14 @@ begin
   end;
 end;
 
+/// <summary>Liste der Zwischenablage-Formate der Bilder (Vcl.Graphics, GetClipboardFormats): Das erste TPicture
+/// (etwa in TImage.Create, Karte von „Atlas entdecken“) legt sie an, mit Einträgen für jede Grafikklasse (208 Byte); sie
+/// bleibt bis zur Finalisierung von Vcl.Graphics.</summary>
+procedure WelcomeWarmUpPictureFormats;
+begin
+  TPicture.Create.Free;
+end;
+
 /// <summary>Liste der Bitmap-Leinwände mit Gerätekontext (Vcl.Graphics, TBitmapCanvas.CreateHandle trägt ein, das
 /// Freigeben des Kontexts trägt aus): Ihre Kapazität wächst auf den Höchststand gleichzeitig offener Kontexte und
 /// bleibt bis zur Finalisierung von Vcl.Graphics. Eine Bildliste legt beim Initialisieren mehrere an (80 Byte).
@@ -748,6 +756,7 @@ begin
   WarmUpRtlSingletons;
   ShellWarmUpPlatformId;
   WelcomeWarmUpApplicationEvents;
+  WelcomeWarmUpPictureFormats;
   DiagnosticsWarmUpFirstModal;
 end;
 
