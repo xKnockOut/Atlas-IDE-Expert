@@ -500,6 +500,19 @@ begin
   TDataModule.CreateNew(nil).Free;
 end;
 
+/// <summary>Erster Systemfehler (RaiseLastOSError, z. B. ein Serverstart mit fehlender Datei): EOSError holt seinen
+/// Meldungstext (SOSError) über den Zwischenspeicher der Ressourcentexte von System.SysUtils (ResStringLoad). Der
+/// Text bleibt dort bis zum Programmende und wird in der Finalisierung von System.SysUtils freigegeben.</summary>
+procedure WarmUpOsErrorText;
+begin
+  try
+    RaiseLastOSError(ERROR_PATH_NOT_FOUND);
+  except
+    on EOSError do
+      ;
+  end;
+end;
+
 /// <summary>Erstes Ereignisobjekt der Anwendung (TApplicationEvents, z. B. im Scroller der Willkommenstafel): Es meldet
 /// sich beim Verteiler der VCL an (Vcl.AppEvnts, MultiCaster); dessen Liste legt dabei Verwaltungsdaten und Kapazität an,
 /// die beim Abmelden bleiben (208 Byte), frei mit dem Verteiler in der Finalisierung der VCL.</summary>
@@ -677,6 +690,7 @@ begin
   WarmUpTimeZoneAndJsonPath;
   WarmUpSettingsTransfer;
   WarmUpFileErrors;
+  WarmUpOsErrorText;
   WarmUpDataFiles;
   WarmUpIndexCacheReplace;
   WarmUpDefaultEncoding;

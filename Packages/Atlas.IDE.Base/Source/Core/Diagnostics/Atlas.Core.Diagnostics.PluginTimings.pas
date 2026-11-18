@@ -236,6 +236,9 @@ type
       AOuter: Boolean);
     procedure SetThresholdMs(AValue: Integer);
     procedure SetPaused(AValue: Boolean);
+    /// <summary>Werte von ADictionary als Array, ohne die Wertesammlung (Values) des Wörterbuchs anzulegen: Die
+    /// bliebe bis zu dessen Freigabe stehen, beim gemeinsamen Rekorder also bis zum Entladen.</summary>
+    class function ValuesOf<T>(ADictionary: TDictionary<string, T>): TArray<T>; static;
   public
     /// <summary>AClock: Mikrosekunden; ANow: Uhrzeit der Einträge; AIsMainThread: läuft der Aufrufer im
     /// Hauptthread? Tests setzen alle drei.</summary>
@@ -862,6 +865,21 @@ begin
   end;
 end;
 
+class function TAtlasPluginRecorder.ValuesOf<T>(ADictionary: TDictionary<string, T>): TArray<T>;
+var
+  mPair: TPair<string, T>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, ADictionary.Count);
+  mIndex := 0;
+  for mPair in ADictionary do
+  begin
+    Result[mIndex] := mPair.Value;
+    Inc(mIndex);
+  end;
+end;
+
 function TAtlasPluginRecorder.Snapshot: TAtlasPluginSnapshot;
 var
   mFeature: TAtlasFeature;
@@ -886,8 +904,8 @@ begin
     end;
     SetLength(Result.Features, mCount);
     Result.Slow := FSlow.ToArray;
-    Result.Requests := FRequests.Values.ToArray;
-    Result.Sources := FSources.Values.ToArray;
+    Result.Requests := ValuesOf<TAtlasRequestTiming>(FRequests);
+    Result.Sources := ValuesOf<TAtlasSourceTiming>(FSources);
     Result.Hangs := FHangs.ToArray;
     Result.Busy := FBusy.Values(FClock());
   finally
