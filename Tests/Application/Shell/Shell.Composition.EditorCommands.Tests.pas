@@ -23,8 +23,8 @@ type
     /// <summary>Markierungs- und Textbefehle stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>„Text in Literal“ fragt die Einstellungen der Datei über den Dienst ab, bevor es die Argumente

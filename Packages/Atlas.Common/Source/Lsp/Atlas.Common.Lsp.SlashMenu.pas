@@ -335,7 +335,7 @@ begin
       mItem.AddPair('multi', TJSONBool.Create(mEntry.Multi));
       mItem.AddPair('separator', mEntry.Separator);
       mCommands.AddElement(mItem);
-      // „Interface implementieren“ (#466) nach /override, wie im Mockup.
+      // „Interface implementieren“ (#466) direkt nach /override, weil beide fehlende Methoden anlegen.
       if SameText(mEntry.Name, 'override') and MissingInterfaceMethods(mUri, mDocument.Text, mSpot, mMissing,
         mCommandLine) then
       begin

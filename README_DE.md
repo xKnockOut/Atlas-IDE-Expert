@@ -126,7 +126,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Testfall aus der Unit anlegen:** Code-Aktion an einer Methode trägt einen Entwurf mit Aufruf und Platzhalter-Prüfungen in die Testunit ein und legt sie bei Bedarf an
 - **Leckprüfung einrichten …** im Kontextmenü eines Projekts: zeigt, was für die Lecksuche fehlt (FastMM4/FastMM5 gefunden, erste Unit im uses, Meldung beim Beenden, Symbole und DLL der Konfiguration Debug), und richtet die gewählte Variante mit Vorschau ein, nur im Debug-Build (`tests.leakSetup`)
 - **Test aus dem Debug-Halt:** „Test daraus anlegen …“ in der Exception-Leiste macht aus den Werten des Halts einen DUnitX-Test, der funktionieren oder die Exception werfen soll
-- **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, Fenster „Variablen“ (Autos, Lokal, Überwachung, Suche auch in Unterelementen), gezieltes Hineinspringen, Aufrufstapel mit benannten Parameterwerten, Suche und Vergleich mit dem letzten Halt
+- **Debuggen:** Werte im Hover und im Editor, Visualisierer, Auswertungsfenster, Fenster „Variablen“ (Autos, Lokal, Überwachung, Suche auch in Unterelementen), gezieltes Hineinspringen, Aufrufstapel mit benannten Parameterwerten, Suche und Vergleich mit dem letzten Halt; Laufzeit seit dem letzten Halt am Zeilenende
 - **Haltepunkte:** eigenes Fenster „Haltepunkte“ mit Suche, Etiketten und Trefferzahlen; Haltepunkte auf Methoden nach Muster, nur für ein Objekt, **Anhalten, wenn sich ein Feld ändert**, Regeln (abhängig, Trefferbedingung, Thread, **nur bei Aufruf aus einer bestimmten Methode**), benannte Sätze, Prüfung vor dem Start; sie wandern mit dem Code, „bis hier ausführen“ per Klick in den Rand
 - **„Warum bin ich hier?“ und Bedingungen vorausschauen:** Beim Halt stehen an den umgebenden `if`, `while` und `case` die Werte ihrer Bedingungen, an den kommenden die vorhergesagten Ergebnisse; übersprungene Zweige sind blass
 - **Werte im Debug-Hover** aufklappen (geänderte Werte hinterlegt, alter Wert dahinter), direkt **ändern** (F2) und **anheften**
@@ -165,6 +165,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **33 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
 - **Grenzfälle als Testfälle:** `suggest_test_cases` liest sie aus den Bedingungen einer Routine ab (`>= 100` gibt 99, 100, 101; case-Marken, Textvergleiche, Längen) als Werte für `[TestCase]`; in der IDE zeigt „Grenzfälle vorschlagen …“ sie als Liste und schreibt die gewählten in die Testunit, mit eigenen Erwartungen oder „Heutiges Ergebnis übernehmen“ aus einem Lauf
+- **Umsetzungen finden:** `find_implementations` nennt zu einer Interface- oder virtuellen Methode alle Rümpfe mit Art (umgesetzt, überschrieben, abstrakt, Zuordnung, Delegation über `implements`), auf Wunsch mit Rumpf; „Gehe zu Implementierung“ im Editor findet jetzt auch Methodenzuordnungen und Delegation
 - **5 Prompts** als Schrägstrich-Befehle, z. B. Unit-Review oder Commit vorbereiten
 - **Hook:** Jede Pascal-Datei, die Claude ändert, wird sofort geprüft
 

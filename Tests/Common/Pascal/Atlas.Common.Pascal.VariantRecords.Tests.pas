@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Pascal.VariantRecords.Tests;
 
 // Tests für Felder varianter Records (#846): Baum, Index mit Zweig, Cache,
-// Gliederung und Vervollständigung nach "R.". Die Quelle von TRect2 ist der
-// nachgestellte Fall 06 aus planung/parser-luecken-faelle.
+// Gliederung und Vervollständigung nach "R.". Die Quelle von TRect2 stellt
+// den Fall aus dem Issue nach.
 
 interface
 

@@ -77,7 +77,7 @@ function NamesBelow(ANode: TSyntaxNode): TArray<string>;
 function SectionNames(ASection: TSyntaxNode): TArray<string>;
 /// <summary>Namen des implementation-Teils, die eine Inline-Routine aus dem interface-Teil verwenden darf: echte
 /// Konstanten, Typen samt Aufzählungswerten und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1,
-/// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
+/// TR2, TR4, TR8 in Tests/DccFaelle, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
 /// TG4).</summary>
 function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
 /// <summary>Echte Konstanten (ohne Typ) auf oberster Ebene von ASection. Methoden generischer Typen und

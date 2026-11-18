@@ -128,6 +128,17 @@ const
   cGap = 10;
   cIndent = 24;
   cBar = 3;
+  /// <summary>Logische Bildpunkte: Abstand des Akzentbalkens zum Rand und zur Zeile; Höhe über der Schrift für
+  /// Aufrufkette, Signaturzeilen und Doku-Zeilen; Rand oben und unten der Doku; Abstand hinter Name bzw.
+  /// Überschrift.</summary>
+  cBarInset = 3;
+  cCrumbLeading = 8;
+  cLineLeading = 6;
+  cDocRowLeading = 4;
+  cDocPad = 4;
+  cNameGap = 8;
+  /// <summary>Überschrift „Parameter“: Schrifthöhe in Prozent der UI-Schrift.</summary>
+  cHeadingPercent = 85;
 
 /// <summary>Gezeigte Überladungen: höchstens MaxSignatures.</summary>
 function ShownCount(const AHelp: TAtlasSignatureHelp): Integer;
@@ -310,8 +321,8 @@ begin
     // Akzentbalken links neben der gewählten Überladung.
     if mIndex = FSignature then
     begin
-      FillRounded(Rect(Scale(3), mTop + mRowIndex * mHeight + Scale(3), Scale(3) + Scale(cBar),
-        mTop + (mRowIndex + Length(FLayouts[mIndex])) * mHeight - Scale(3)), Colors.Accent, 1);
+      FillRounded(Rect(Scale(cBarInset), mTop + mRowIndex * mHeight + Scale(cBarInset), Scale(cBarInset) + Scale(cBar),
+        mTop + (mRowIndex + Length(FLayouts[mIndex])) * mHeight - Scale(cBarInset)), Colors.Accent, 1);
     end;
     for mLine := 0 to High(FLayouts[mIndex]) do
     begin
@@ -322,8 +333,9 @@ begin
       end;
       X := mRow.Left;
       Canvas.Font := Font;
-      FStyled[mIndex].Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), FLayouts[mIndex][mLine], X,
-        Rect(mRow.Left, mRow.Top + Scale(2), mRow.Right, mRow.Bottom - Scale(2)), not Fits(mIndex));
+      FStyled[mIndex].Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(TAtlasStyledTarget.cRadius)),
+        FLayouts[mIndex][mLine], X, Rect(mRow.Left, mRow.Top + Scale(2), mRow.Right, mRow.Bottom - Scale(2)),
+        not Fits(mIndex));
       Inc(mRowIndex);
     end;
   end;
@@ -380,7 +392,7 @@ begin
     Exit(0);
   end;
   Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + Scale(8);
+  Result := Canvas.TextHeight('Wg') + Scale(cCrumbLeading);
 end;
 
 procedure TAtlasSignatureHint.PaintCrumb;
@@ -431,7 +443,7 @@ end;
 function TAtlasSignatureHint.LineHeight: Integer;
 begin
   Canvas.Font := Font;
-  Result := Canvas.TextHeight('Wg') + Scale(6);
+  Result := Canvas.TextHeight('Wg') + Scale(cLineLeading);
 end;
 
 function TAtlasSignatureHint.Fits(AIndex: Integer): Boolean;
@@ -448,7 +460,7 @@ end;
 function TAtlasSignatureHint.DocRowHeight: Integer;
 begin
   Canvas.Font := UIFont;
-  Result := Canvas.TextHeight('Wg') + Scale(4);
+  Result := Canvas.TextHeight('Wg') + Scale(cDocRowLeading);
   Canvas.Font := Font;
 end;
 
@@ -486,7 +498,7 @@ begin
       mRows := 1;
     end;
   end;
-  Result := mRows * DocRowHeight + Scale(8);
+  Result := mRows * DocRowHeight + Scale(2 * cDocPad);
 end;
 
 function TAtlasSignatureHint.Layout(AIndex, AAvailable: Integer): TArray<TPoint>;
@@ -601,7 +613,7 @@ begin
   begin
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
-    mNameWidth := Canvas.TextWidth(mName) + Scale(8);
+    mNameWidth := Canvas.TextWidth(mName) + Scale(cNameGap);
     Canvas.Font := UIFont;
     Result := Max(Result, Min(mNameWidth + Canvas.TextWidth(mText), AAvailable));
     Result := Max(Result, Min(Canvas.TextWidth(SummaryOf(FHelp, FSignature)), AAvailable));
@@ -658,20 +670,20 @@ begin
   // Überschrift in Kapitälchen mit Linie bis zum Rand, wie in Tooltip und Detailpanel.
   mHeading := TAtlasStrings.Text(TAtlasTextId.DocParams);
   Canvas.Font := UIFont;
-  Canvas.Font.Height := MulDiv(UIFont.Height, 85, 100);
+  Canvas.Font.Height := MulDiv(UIFont.Height, cHeadingPercent, 100);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Muted);
   DrawText(Canvas.Handle, PChar(mHeading), -1, APart, cTextFlags or DT_END_ELLIPSIS);
   mRuleY := (APart.Top + APart.Bottom) div 2;
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(APart.Left + Canvas.TextWidth(mHeading) + Scale(8), mRuleY);
+  Canvas.MoveTo(APart.Left + Canvas.TextWidth(mHeading) + Scale(cNameGap), mRuleY);
   Canvas.LineTo(APart.Right, mRuleY);
   OffsetRect(APart, 0, ARow);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Accent);
   DrawText(Canvas.Handle, PChar(mName), -1, APart, cTextFlags or DT_END_ELLIPSIS);
-  APart.Left := APart.Left + Canvas.TextWidth(mName) + Scale(8);
+  APart.Left := APart.Left + Canvas.TextWidth(mName) + Scale(cNameGap);
   Canvas.Font := UIFont;
   if mDocumented then
   begin
@@ -720,7 +732,7 @@ begin
   Canvas.Brush.Style := bsClear;
   X := Scale(cGap) + Scale(cBar);
   mRow := DocRowHeight;
-  mPart := Rect(X, ATop + Scale(4), ClientWidth - Scale(cGap), ATop + Scale(4) + mRow);
+  mPart := Rect(X, ATop + Scale(cDocPad), ClientWidth - Scale(cGap), ATop + Scale(cDocPad) + mRow);
   // Platzhalter (#451) zuerst: Problem in Fehlerfarbe, sonst Akzent.
   if FormatText <> '' then
   begin

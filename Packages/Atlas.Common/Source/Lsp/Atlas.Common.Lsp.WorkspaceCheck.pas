@@ -1,9 +1,9 @@
 ﻿unit Atlas.Common.Lsp.WorkspaceCheck;
 
-// Projektprüfung als begrenzter Lauf (#1247). Früher rechnete jede Anfrage
-// workspace/diagnostic selbst, mit Budget und Long-Polling, und hörte nie
-// richtig auf: Jede Index- oder Compileränderung hob die Generation, und alle
-// Units veralteten. Jetzt:
+// Projektprüfung als begrenzter Lauf (#1247). Rechnet jede Anfrage
+// workspace/diagnostic selbst, mit Budget und Long-Polling, hört sie nie
+// richtig auf: Jede Index- oder Compileränderung hebt die Generation, und alle
+// Units veralten. Deshalb:
 //
 // - Ein eigener Thread mit niedriger Priorität prüft eine Warteschlange von
 //   Dateien. Ein Lauf hat Anfang und Ende: Start (Projekt geöffnet, Index
@@ -328,9 +328,9 @@ type
 
   /// <summary>Entscheidet, wann ein Indexaufbau die Projektprüfung neu startet. Nach der Projektstufe sind alle
   /// Units indiziert, die das Projekt über uses erreicht; die Prüfung läuft ab da. Das Ende des Aufbaus
-  /// (Suchpfade, Bibliothek) startet sie nur, wenn die Projektstufe es nicht schon getan hat. Früher begann
-  /// der Lauf am Ende erzwungen von vorn und warf alles weg, was er während der Bibliotheksstufe geprüft
-  /// hatte (Diagnose-Log 29.10.2026: 630 Units in 3 Minuten verworfen). Threadsicher.</summary>
+  /// (Suchpfade, Bibliothek) startet sie nur, wenn die Projektstufe es nicht schon getan hat. Begänne
+  /// der Lauf am Ende erzwungen von vorn, verwürfe er alles, was er während der Bibliotheksstufe geprüft
+  /// hat (gemessen: 630 Units in 3 Minuten). Threadsicher.</summary>
   TWorkspaceCheckIndexGate = class
   private
     // 1, sobald dieser Aufbau die Prüfung neu gestartet hat.
