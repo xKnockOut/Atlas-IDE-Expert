@@ -25,8 +25,8 @@ type
     /// <summary>Ohne Arbeitsbereich gibt es kein Umfeld; gefragt wird mit dem Pfad der Datei.</summary>
     [Test]
     procedure NoContextWithoutWorkspace;
-    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
-    /// 06.11.2026).</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten.
+    /// </summary>
     [Test]
     procedure ReadingCommandsRunConcurrently;
     /// <summary>Der Befehl atlas.server.testUnit ist angemeldet, ohne Ordner gibt es keine Code-Aktionen.</summary>
