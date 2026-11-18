@@ -1506,7 +1506,7 @@ end;
 
 /// <summary>Kürzt AList auf ARoom Einträge. Nahe Einträge (lokal, Parameter, eigene Mitglieder ohne geerbte,
 /// eigene Unit) nie abschneiden: Bei Formularen mit Hunderten geerbten Mitgliedern verdrängten kurze geerbte
-/// Namen sonst die eigenen Methoden mit längerem Namen (Rückmeldung 15.10.2026). Die Reihenfolge bleibt.
+/// Namen sonst die eigenen Methoden mit längerem Namen. Die Reihenfolge bleibt.
 /// </summary>
 procedure KeepRoom(AList: TList<TScoredItem>; ARoom: Integer);
 var

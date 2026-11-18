@@ -14,10 +14,9 @@
 //
 // Ein finally-Block wird je Ausgang einmal modelliert: für das normale Ende
 // des try-Teils und für jedes Sprungziel (Exit, Break, Continue, Ausnahme)
-// eine eigene Kopie, deren Ende nur zu diesem Ziel führt. Früher gab es eine
-// Kopie für alle; dann lief der Weg einer Ausnahme nach dem finally normal
-// weiter, und result-not-set meldete jede Funktion, die Result im try-Teil
-// setzt (#647).
+// eine eigene Kopie, deren Ende nur zu diesem Ziel führt. Mit einer Kopie
+// für alle liefe der Weg einer Ausnahme nach dem finally normal weiter, und
+// result-not-set meldete jede Funktion, die Result im try-Teil setzt (#647).
 //
 // Zuweisungen: einfache Zuweisungen an einen Bezeichner, Schleifenvariablen,
 // Inline-Variablen mit Startwert und Exit(Wert) für Result.

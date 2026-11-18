@@ -101,12 +101,12 @@ begin
   begin
     if mPart > 0 then
     begin
-      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
       if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
       begin
         Exit;
       end;
-      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+      mIndex := NextCodeAfter(ATokens, mIndex);
     end;
     if (mIndex > High(ATokens)) or (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
       not SameText(CleanName(ATokens[mIndex].Text), AParts[mPart]) then
@@ -137,12 +137,12 @@ var
   mIndex, mNext, mLast: Integer;
 begin
   Result := -1;
-  mIndex := TRoutineBody.NextToken(ATokens, -1);
+  mIndex := NextCodeAfter(ATokens, -1);
   if (mIndex > High(ATokens)) or not ATokens[mIndex].IsKeyword('unit') then
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, mIndex);
+  mNext := NextCodeAfter(ATokens, mIndex);
   if (mNext <= High(ATokens)) and Matches(ATokens, mNext, AParts, mLast) then
   begin
     Result := ATokens[mLast].Offset;
@@ -165,7 +165,7 @@ begin
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens,
+  mNext := NextCodeAfter(ATokens, TRoutineBody.TokenAt(ATokens,
     ALines.OffsetAt(AReference.Range.EndPos)) - 1);
   Result := (mNext > High(ATokens)) or not ATokens[mNext].IsKeyword('in');
 end;
@@ -219,7 +219,7 @@ begin
   begin
     Exit;
   end;
-  mNext := TRoutineBody.NextToken(ATokens, ALast);
+  mNext := NextCodeAfter(ATokens, ALast);
   Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
 end;
 

@@ -58,7 +58,8 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Pascal.TokenCursor;
 
 const
   // Dynamische Arrays der RTL, auch wenn ihre Unit nicht im Index steht.
@@ -319,30 +320,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Index der Klammer, die die Klammer an AOpen schließt; 0 ohne.</summary>
-function ClosingParen(const AText: string; AOpen: Integer): Integer;
-var
-  mIndex, mDepth: Integer;
-begin
-  Result := 0;
-  mDepth := 0;
-  for mIndex := AOpen to Length(AText) do
-  begin
-    if AText[mIndex] = '(' then
-    begin
-      Inc(mDepth);
-    end
-    else if AText[mIndex] = ')' then
-    begin
-      Dec(mDepth);
-      if mDepth = 0 then
-      begin
-        Exit(mIndex);
-      end;
-    end;
-  end;
-end;
-
 /// <summary>Parameter aus dem Kopf ASignature des Index; False, wenn die Klammer nicht schließt oder overload im
 /// Kopf steht.</summary>
 function SignatureParams(const ASignature: string; out AParams: TArray<TSignatureParameter>): Boolean;
@@ -355,7 +332,7 @@ begin
   begin
     Exit(True);
   end;
-  mClose := ClosingParen(ASignature, mOpen);
+  mClose := MatchingParen(ASignature, mOpen);
   // Überladungen aus anderen Units kennt die Namensauflösung nicht immer (Overloads leer); die Direktive
   // im Kopf zeigt sie sicher an.
   Result := (mClose > 0) and not MatchText('overload', SplitString(LowerCase(Copy(ASignature, mClose + 1, MaxInt)),
