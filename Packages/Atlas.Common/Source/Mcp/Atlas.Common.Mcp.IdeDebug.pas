@@ -94,6 +94,7 @@ uses
   // Inline-Funktionen von TJSONObject (H2443).
   System.Generics.Collections,
   System.IOUtils,
+  Atlas.Text.Json,
   Atlas.Common.Localization.Texts;
 
 type
@@ -164,44 +165,28 @@ end;
 
 /// <summary>Ganzzahliges Argument AName in ARange, ohne Angabe die Vorgabe; False mit Grund bei anderem Wert.
 /// </summary>
-function NumberOf(const AArguments: TJSONObject; const AName: string; const ARange: TNumberRange;
+function ArgumentInRange(const AArguments: TJSONObject; const AName: string; const ARange: TNumberRange;
   out AValue: Integer; out AReason: string): Boolean;
 var
   mValue: TJSONValue;
+  mNumber: Int64;
 begin
   AValue := ARange.Default;
   AReason := '';
-  mValue := nil;
-  if AArguments <> nil then
-  begin
-    mValue := AArguments.GetValue(AName);
-  end;
+  mValue := TJsonRead.Value(AArguments, AName);
   if (mValue = nil) or (mValue is TJSONNull) then
   begin
     Exit(True);
   end;
-  Result := (mValue is TJSONNumber) and AArguments.TryGetValue<Integer>(AName, AValue) and (AValue >= ARange.Min) and
-    (AValue <= ARange.Max);
-  if not Result then
+  Result := (mValue is TJSONNumber) and TJsonRead.TryInt64(AArguments, AName, mNumber) and
+    (mNumber >= ARange.Min) and (mNumber <= ARange.Max);
+  if Result then
+  begin
+    AValue := Integer(mNumber);
+  end
+  else
   begin
     AReason := cTexts[TIdeDebugText.NumberRange].Fmt([AName, ARange.Min, ARange.Max]);
-  end;
-end;
-
-function FlagOf(const AArguments: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
-begin
-  if (AArguments = nil) or not AArguments.TryGetValue<Boolean>(AName, Result) then
-  begin
-    Result := ADefault;
-  end;
-end;
-
-function TextOf(const AArguments: TJSONObject; const AName: string): string;
-begin
-  Result := '';
-  if AArguments <> nil then
-  begin
-    Result := Trim(AArguments.GetValue<string>(AName, ''));
   end;
 end;
 
@@ -210,7 +195,7 @@ function AddWait(ARequest, AArguments: TJSONObject; out AReason: string): Boolea
 var
   mWait: Integer;
 begin
-  Result := NumberOf(AArguments, 'waitSeconds', Range(0, TMcpIdeDebug.cWaitMax, TMcpIdeDebug.cWaitDefault), mWait,
+  Result := ArgumentInRange(AArguments, 'waitSeconds', Range(0, TMcpIdeDebug.cWaitMax, TMcpIdeDebug.cWaitDefault), mWait,
     AReason);
   ARequest.AddPair('waitSeconds', TJSONNumber.Create(mWait));
 end;
@@ -222,8 +207,8 @@ var
   mLine: Integer;
   mFile: string;
 begin
-  mFile := TextOf(AArguments, 'file');
-  if not NumberOf(AArguments, 'line', Range(1, MaxInt, 0), mLine, AReason) or (mLine < 1) then
+  mFile := TJsonRead.TrimmedText(AArguments, 'file');
+  if not ArgumentInRange(AArguments, 'line', Range(1, MaxInt, 0), mLine, AReason) or (mLine < 1) then
   begin
     AReason := cTexts[TIdeDebugText.LineMissing].Text;
     Exit(False);
@@ -241,10 +226,10 @@ end;
 function AddStart(ARequest, AArguments: TJSONObject; const AProject: string; out AReason: string): Boolean;
 begin
   ARequest.AddPair('project', AProject);
-  ARequest.AddPair('configuration', TextOf(AArguments, 'configuration'));
-  ARequest.AddPair('platform', TextOf(AArguments, 'platform'));
-  ARequest.AddPair('test', TextOf(AArguments, 'test'));
-  ARequest.AddPair('arguments', TextOf(AArguments, 'arguments'));
+  ARequest.AddPair('configuration', TJsonRead.TrimmedText(AArguments, 'configuration'));
+  ARequest.AddPair('platform', TJsonRead.TrimmedText(AArguments, 'platform'));
+  ARequest.AddPair('test', TJsonRead.TrimmedText(AArguments, 'test'));
+  ARequest.AddPair('arguments', TJsonRead.TrimmedText(AArguments, 'arguments'));
   Result := AddWait(ARequest, AArguments, AReason);
 end;
 
@@ -254,10 +239,10 @@ var
   mPassCount: Integer;
 begin
   Result := AddPlace(ARequest, AArguments, AResolve, AReason) and
-    NumberOf(AArguments, 'passCount', Range(0, MaxInt, 0), mPassCount, AReason);
+    ArgumentInRange(AArguments, 'passCount', Range(0, MaxInt, 0), mPassCount, AReason);
   if Result then
   begin
-    ARequest.AddPair('condition', TextOf(AArguments, 'condition'));
+    ARequest.AddPair('condition', TJsonRead.TrimmedText(AArguments, 'condition'));
     ARequest.AddPair('passCount', TJSONNumber.Create(mPassCount));
   end;
 end;
@@ -267,8 +252,8 @@ var
   mId: Integer;
   mAll: Boolean;
 begin
-  mAll := FlagOf(AArguments, 'all', False);
-  Result := NumberOf(AArguments, 'id', Range(1, MaxInt, 0), mId, AReason) and (mAll <> (mId > 0));
+  mAll := TJsonRead.FlagOr(AArguments, 'all', False);
+  Result := ArgumentInRange(AArguments, 'id', Range(1, MaxInt, 0), mId, AReason) and (mAll <> (mId > 0));
   if not Result then
   begin
     AReason := cTexts[TIdeDebugText.IdOrAll].Text;
@@ -283,7 +268,7 @@ function AddStep(ARequest, AArguments: TJSONObject; const AResolve: TMcpIdeDebug
 var
   mKind: string;
 begin
-  mKind := TextOf(AArguments, 'kind');
+  mKind := TJsonRead.TrimmedText(AArguments, 'kind');
   if mKind = '' then
   begin
     mKind := 'over';
@@ -313,17 +298,17 @@ function AddState(ARequest, AArguments: TJSONObject; out AReason: string): Boole
 var
   mFrames: Integer;
 begin
-  Result := NumberOf(AArguments, 'frames', Range(1, TMcpIdeDebug.cFramesMax, TMcpIdeDebug.cFramesDefault), mFrames,
+  Result := ArgumentInRange(AArguments, 'frames', Range(1, TMcpIdeDebug.cFramesMax, TMcpIdeDebug.cFramesDefault), mFrames,
     AReason);
   ARequest.AddPair('frames', TJSONNumber.Create(mFrames));
-  ARequest.AddPair('locals', TJSONBool.Create(FlagOf(AArguments, 'locals', True)));
+  ARequest.AddPair('locals', TJSONBool.Create(TJsonRead.FlagOr(AArguments, 'locals', True)));
 end;
 
 function AddEvaluate(ARequest, AArguments: TJSONObject; out AReason: string): Boolean;
 var
   mExpression: string;
 begin
-  mExpression := TextOf(AArguments, 'expression');
+  mExpression := TJsonRead.TrimmedText(AArguments, 'expression');
   Result := mExpression <> '';
   if not Result then
   begin
@@ -331,7 +316,7 @@ begin
     Exit;
   end;
   ARequest.AddPair('expression', mExpression);
-  ARequest.AddPair('sideEffects', TJSONBool.Create(FlagOf(AArguments, 'sideEffects', False)));
+  ARequest.AddPair('sideEffects', TJSONBool.Create(TJsonRead.FlagOr(AArguments, 'sideEffects', False)));
 end;
 
 /// <summary>Argumente von ATool in ARequest; False mit Grund.</summary>
@@ -405,7 +390,7 @@ var
   mWait: Integer;
   mReason: string;
 begin
-  if not NumberOf(AArguments, 'waitSeconds', Range(0, cWaitMax, cWaitDefault), mWait, mReason) then
+  if not ArgumentInRange(AArguments, 'waitSeconds', Range(0, cWaitMax, cWaitDefault), mWait, mReason) then
   begin
     mWait := cWaitDefault;
   end;
