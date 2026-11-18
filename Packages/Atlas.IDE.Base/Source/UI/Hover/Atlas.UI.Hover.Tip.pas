@@ -230,6 +230,7 @@ implementation
 uses
   Atlas.Core.Hover.Layout.Contract,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.Texts,
   Atlas.Core.Diagnostics.Guard,
@@ -247,6 +248,26 @@ const
   cDebugRows = 12;
   /// <summary>Zeilen je Rasterstufe des Mausrads in den Rollbereichen.</summary>
   cWheelRows = 3;
+  /// <summary>Kleine Schriften: Anteil an der UI- bzw. Editorschrift.</summary>
+  cSmallUiShare = 0.88;
+  cSmallMonoShare = 0.8;
+  /// <summary>So viele Zeichen der Doku liest die Sprachausgabe mit vor.</summary>
+  cSpokenDocChars = 300;
+  /// <summary>Logische Bildpunkte bei 96 dpi. Breite: Einzug von Debug-Wert und Problemen, Ränder zusammen,
+  /// kleinste Breite; Rand links und rechts der Doku; Trefferzone neben der Doku links und rechts.</summary>
+  cItemIndent = 9;
+  cSidePadding = 26;
+  cMinWidth = 200;
+  cDocInset = 22;
+  cDocSlackLeft = 4;
+  cDocSlackRight = 8;
+  /// <summary>Platz: Abstand zum Wort, Rand zum Arbeitsbereich beim Zeigen, Anpassen und Nachladen, kleinste
+  /// Höhe beim Nachladen.</summary>
+  cWordGap = 4;
+  cWordMargin = 12;
+  cScreenMargin = 8;
+  cBottomMargin = 4;
+  cMinUpdateHeight = 80;
 
 function HoverKindCaption(const AKind: string): string;
 const
@@ -377,18 +398,18 @@ begin
     TAtlasHoverFont.SmallUi:
       begin
         ACanvas.Font := AUIFont;
-        ACanvas.Font.Height := Round(AUIFont.Height * 0.88);
+        ACanvas.Font.Height := Round(AUIFont.Height * cSmallUiShare);
       end;
     TAtlasHoverFont.SmallMono:
       begin
         ACanvas.Font := AFont;
-        ACanvas.Font.Height := Round(AFont.Height * 0.8);
+        ACanvas.Font.Height := Round(AFont.Height * cSmallMonoShare);
       end;
     TAtlasHoverFont.Badge:
       begin
         // Größe aus der Höhe des Kästchens: nur für Kästchen fester Größe (Kopfzeile), nicht zum Messen.
         ACanvas.Font := AFont;
-        ACanvas.Font.Height := -Round(ABadgeHeight * 0.62);
+        ACanvas.Font.Height := -Round(ABadgeHeight * cAtlasBadgeFontShare);
       end;
   else
     ACanvas.Font := AUIFont;
@@ -593,7 +614,7 @@ begin
     Exit;
   end;
   HandleNeeded;
-  FDoc.Build(Canvas, mContent, AWidth - Scale(22), TAtlasDocFonts.Create(Font, UIFont, PPI),
+  FDoc.Build(Canvas, mContent, AWidth - Scale(cDocInset), TAtlasDocFonts.Create(Font, UIFont, PPI),
     TAtlasStrings.DocLabels);
 end;
 
@@ -700,29 +721,29 @@ begin
   mWidest := Canvas.TextWidth(FView.Data.Declaration);
   if FView.DebugValue.Visible then
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Expression) + Scale(cItemIndent));
   end;
   Canvas.Font := UIFont;
   if FView.DebugValue.Visible then
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(FView.DebugValue.Text) + Scale(cItemIndent));
   end;
   mWidest := Max(mWidest, Canvas.TextWidth(FView.Data.UnitName));
   for mProblem in FView.Problems do
   begin
-    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(9));
+    mWidest := Max(mWidest, Canvas.TextWidth(mProblem.Caption) + Scale(cItemIndent));
   end;
   if NeedsFullWidth(FView) then
   begin
     mWidest := Scale(cMaxWidth);
   end;
-  Result := EnsureRange(mWidest + Scale(26), Scale(200), Scale(cMaxWidth));
+  Result := EnsureRange(mWidest + Scale(cSidePadding), Scale(cMinWidth), Scale(cMaxWidth));
 end;
 
 function TAtlasHoverTipView.InDoc(AX, AY: Integer): Boolean;
 begin
-  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(4)) and
-    (AX < FLayout.DocLeft + FDoc.Width + Scale(8)) and
+  Result := not FDoc.IsEmpty and (AX >= FLayout.DocLeft - Scale(cDocSlackLeft)) and
+    (AX < FLayout.DocLeft + FDoc.Width + Scale(cDocSlackRight)) and
     (AY >= FLayout.DocTop) and (AY < FLayout.DocTop + FDoc.Height);
 end;
 
@@ -850,8 +871,8 @@ begin
       begin
         Canvas.Font := Font;
         mX := AItem.Rect.Left;
-        FDeclaration.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), Point(AItem.From, AItem.Till), mX,
-          AItem.Rect, False);
+        FDeclaration.Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(TAtlasStyledTarget.cRadius)),
+          Point(AItem.From, AItem.Till), mX, AItem.Rect, False);
       end;
     TAtlasHoverItemKind.Doc:
       FDoc.Paint(Canvas, Colors, AItem.Rect.Left, AItem.Rect.Top);
@@ -864,7 +885,7 @@ var
   mNewHeight: Integer;
 begin
   mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mNewHeight := FitHeight(Width, mArea.Height - Scale(8));
+  mNewHeight := FitHeight(Width, mArea.Height - Scale(cScreenMargin));
   mBounds := TRect.Create(BoundsRect.TopLeft, Width, mNewHeight);
   // Wächst nach unten; über dem Wort bzw. ohne Platz darunter nach oben.
   if FAbove or (mBounds.Bottom > mArea.Bottom) then
@@ -1142,12 +1163,12 @@ begin
   PrepareDoc(mWidth);
   mArea := WorkAreaAt(AWord.TopLeft);
   // Höchstens so hoch wie der größere Platz unter bzw. über dem Wort; darüber scrollt die Doku.
-  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(12));
-  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(4)), mWidth, mHeight);
+  mHeight := FitHeight(mWidth, Max(mArea.Bottom - AWord.Bottom, AWord.Top - mArea.Top) - Scale(cWordMargin));
+  mBounds := TRect.Create(Point(AWord.Left, AWord.Bottom + Scale(cWordGap)), mWidth, mHeight);
   FAbove := mBounds.Bottom > mArea.Bottom;
   if FAbove then
   begin
-    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(4));
+    mBounds.SetLocation(mBounds.Left, AWord.Top - mHeight - Scale(cWordGap));
   end;
   if mBounds.Right > mArea.Right then
   begin
@@ -1156,7 +1177,7 @@ begin
   ShowAt(mBounds);
   // Sprachausgabe (#447): Deklaration und Anfang der Doku.
   SetAccessible(cUiaToolTipControlType, TAtlasHoverStrings.Text(TAtlasHoverTextId.AccessHover));
-  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, 300));
+  mSpoken := Trim(AView.Data.Declaration + '. ' + Copy(AView.Data.Documentation, 1, cSpokenDocChars));
   // Wert im Debugger (#891) zuerst.
   if AView.DebugValue.PlainText <> '' then
   begin
@@ -1278,8 +1299,8 @@ begin
   mWidth := Max(BoundsRect.Width, PreferredWidth);
   PrepareDoc(mWidth);
   mArea := WorkAreaAt(BoundsRect.TopLeft);
-  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(4)));
-  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(80)));
+  mHeight := Max(BoundsRect.Height, FitHeight(mWidth, mArea.Bottom - BoundsRect.Top - Scale(cBottomMargin)));
+  mHeight := Min(mHeight, Max(mArea.Bottom - BoundsRect.Top, Scale(cMinUpdateHeight)));
   mBounds := TRect.Create(BoundsRect.TopLeft, mWidth, mHeight);
   ShowAt(mBounds);
   Invalidate;
